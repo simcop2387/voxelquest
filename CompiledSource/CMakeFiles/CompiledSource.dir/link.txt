@@ -1,0 +1,2 @@
+/usr/bin/ar cr libCompiledSource.a  CMakeFiles/CompiledSource.dir/Simplex.cpp.o
+/usr/bin/ranlib libCompiledSource.a

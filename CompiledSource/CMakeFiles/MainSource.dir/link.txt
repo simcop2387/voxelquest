@@ -1,0 +1,2 @@
+/usr/bin/ar cr libMainSource.a  CMakeFiles/MainSource.dir/imageloader.cpp.o CMakeFiles/MainSource.dir/Simplex.cpp.o CMakeFiles/MainSource.dir/Timer.cpp.o
+/usr/bin/ranlib libMainSource.a

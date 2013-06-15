@@ -1,0 +1,38 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/gavanw/Desktop/displaylists/MainSource/Simplex.cpp
+math.h
+-
+Simplex.h
+/Users/gavanw/Desktop/displaylists/MainSource/Simplex.h
+
+/Users/gavanw/Desktop/displaylists/MainSource/Simplex.h
+
+/Users/gavanw/Desktop/displaylists/MainSource/Timer.cpp
+Timer.h
+/Users/gavanw/Desktop/displaylists/MainSource/Timer.h
+stdlib.h
+-
+
+/Users/gavanw/Desktop/displaylists/MainSource/Timer.h
+windows.h
+-
+sys/time.h
+-
+
+/Users/gavanw/Desktop/displaylists/MainSource/imageloader.cpp
+assert.h
+-
+fstream
+-
+imageloader.h
+/Users/gavanw/Desktop/displaylists/MainSource/imageloader.h
+
+/Users/gavanw/Desktop/displaylists/MainSource/imageloader.h
+

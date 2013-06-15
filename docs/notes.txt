@@ -1,0 +1,15 @@
+./mergefiles.sh
+
+cmake -DCMAKE_BUILD_TYPE=Release CMakeLists.txt
+
+make clean;make VERBOSE=1;./voxelquest
+
+
+./mergefiles.sh;cmake -DCMAKE_BUILD_TYPE=Release CMakeLists.txt;make clean;make;./voxelquest
+
+libjson
+
+cat *.txt > all.txt
+cat file1 file2 file3 file4 file5 file6 > out.txt
+
+For debug, capture just one frame of output, then disable debug.
