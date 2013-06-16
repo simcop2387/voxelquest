@@ -1,25 +1,69 @@
+char* g_RecBuffer;
+static int g_MAX_FRAME_SIZE = 16777216; //16 MB
+
 class WebSocketRequestHandler: public HTTPRequestHandler
 	/// Handle a WebSocket connection.
 {
 public:
+
+	
+
 	void handleRequest(HTTPServerRequest& request, HTTPServerResponse& response)
 	{
+
+		JSONValue *value;
+
+
+
 		Application& app = Application::instance();
 		try
 		{
 			WebSocket ws(request, response);
 			app.logger().information("WebSocket connection established.");
-			char buffer[1024];
+			//char buffer[1024];
 			int flags;
 			int n;
+			
 			do
 			{
-				n = ws.receiveFrame(buffer, sizeof(buffer), flags);
+				n = ws.receiveFrame(g_RecBuffer, g_MAX_FRAME_SIZE, flags);
 				app.logger().information(Poco::format("Frame received (length=%d, flags=0x%x).", n, unsigned(flags)));
-				ws.sendFrame(buffer, n, flags);
+				ws.sendFrame(g_RecBuffer, n, flags);
+
+
+				if (n > 0) {
+
+					g_RecBuffer[n+1] = '\0';
+
+					cout << g_RecBuffer << '\n';
+
+
+
+					value = JSON::Parse(g_RecBuffer);
+					if (value == NULL)
+					{
+						app.logger().information("Invalid JSON\n\n");
+					}
+					else {
+						app.logger().information("Valid JSON\n\n");
+
+						cout << value->Child(L"x")->number_value << "\n\n";
+
+					}
+
+				}
+				
+
+
 			}
 			while (n > 0 || (flags & WebSocket::FRAME_OP_BITMASK) != WebSocket::FRAME_OP_CLOSE);
 			app.logger().information("WebSocket connection closed.");
+
+
+
+			
+
+
 		}
 		catch (WebSocketException& exc)
 		{
@@ -38,6 +82,10 @@ public:
 				break;
 			}
 		}
+
+
+		
+
 	}
 };
 
@@ -95,6 +143,8 @@ public:
 	{
 	}
 
+	int main(const std::vector<std::string>& args);
+
 protected:
 	void initialize(Application& self)
 	{
@@ -134,6 +184,7 @@ protected:
 		helpFormatter.format(std::cout);
 	}
 
+	/*
 	int main(const std::vector<std::string>& args)
 	{
 		if (_helpRequested)
@@ -158,6 +209,7 @@ protected:
 		}
 		return Application::EXIT_OK;
 	}
+	*/
 	
 private:
 	bool _helpRequested;

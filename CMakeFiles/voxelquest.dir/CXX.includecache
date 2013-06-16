@@ -101,6 +101,10 @@ boost/asio.hpp
 -
 boost/thread/thread.hpp
 -
+wctype.h
+-
+wchar.h
+-
 
 /usr/local/boost_1_53_0/boost/../libs/system/src/error_code.cpp
 boost/config/warning_disable.hpp
