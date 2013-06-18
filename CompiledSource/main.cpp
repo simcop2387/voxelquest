@@ -2210,7 +2210,7 @@ public:
 
 					g_RecBuffer[n+1] = '\0';
 
-					cout << g_RecBuffer << '\n';
+					//cout << g_RecBuffer << '\n';
 
 
 
@@ -2221,14 +2221,14 @@ public:
 					}
 					else {
 						app.logger().information("Valid JSON\n\n");
-
 						cout << value->Child(L"x")->number_value << "\n\n";
+
+						delete value;
+						value = NULL;
 
 					}
 
 				}
-				
-
 
 			}
 			while (n > 0 || (flags & WebSocket::FRAME_OP_BITMASK) != WebSocket::FRAME_OP_CLOSE);
@@ -6920,7 +6920,6 @@ void idleFunc(void) {
 }
 
 
-
 int WebSocketServer::main(const std::vector<std::string>& args)
 {
 
@@ -6951,6 +6950,7 @@ int WebSocketServer::main(const std::vector<std::string>& args)
 
 
 		glutInit(&argCount, argStrs); //&argc, argv
+
 		glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);	
 		glutInitWindowSize(winW, winH);
 		glutInitWindowPosition(100, 100);
@@ -6980,40 +6980,4 @@ int WebSocketServer::main(const std::vector<std::string>& args)
 
 
 POCO_SERVER_MAIN(WebSocketServer)
-
-
-
-
-/*
-int main(int argc, char **argv) {
-	srand ( time(NULL) );
-	
-	int winW = 1024;
-	int winH = 1024;
-	
-	cout << "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n";
-	
-    glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);	
-	glutInitWindowSize(winW, winH);
-	glutInitWindowPosition(100, 100);
-    glutCreateWindow("Voxel Quest");
-    glutDisplayFunc(display);
-	glutIdleFunc(display);
-    glutReshapeFunc(reshape);
-	glutPassiveMotionFunc(mouseMovementWithoutButton);
-	glutMotionFunc(mouseMovementWithButton);
-	glutMouseFunc(mouseClick);
-	glutKeyboardFunc(keyboardDown);
-	glutKeyboardUpFunc(keyboardUp);
-	glutSpecialFunc(processSpecialKeys);
-
-	singleton = new Singleton();
-	singleton->init(winW,winH);
-    
-    glutMainLoop();
-    
-    return 0;
-}
-*/
 

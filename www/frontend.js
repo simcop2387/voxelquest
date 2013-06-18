@@ -132,7 +132,11 @@ $(function() {
 			gob.doTraceTab("ERROR: " + error);
 		});
 		wf("connectionOnMessage",function(message) {
+
+			var result = JSON.parse(message.data);
 			gob.doTraceTab("MESSAGE: " + message.data);
+
+			//console.log("RESULT Y: " + result.y);
 			//var json = JSON.parse(message.data);
 		});
 		wf("connectionClose",function() {
@@ -194,7 +198,139 @@ $(function() {
 	}
 
 
-	gob.init();
+	//gob.init();
+
+
+
+
+	if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+	var container, stats;
+	var camera, scene, renderer;
+	var uniforms, material, mesh;
+	var mouseX = 0, mouseY = 0, lat = 0, lon = 0, phy = 0, theta = 0;
+	var windowHalfX = window.innerWidth / 2;
+	var windowHalfY = window.innerHeight / 2;
+	var shaderNames = ["default"];
+	var shaders = {};
+	
+
+	var drawString = function(str) {
+		var cf = g_fonts["arial_black_regular_48.png"];
+		var i;
+		var curChar;
+
+
+		for (i = 0; i < str.length; i++) {
+			curChar = str.charAt(i);
+		}
+
+
+	}
+
+	var onWindowResize = function( event ) {
+
+		uniforms.resolution.value.x = window.innerWidth;
+		uniforms.resolution.value.y = window.innerHeight;
+		renderer.setSize( window.innerWidth, window.innerHeight );
+
+	}
+
+	var animate = function() {
+
+		requestAnimationFrame( animate );
+		render();
+		stats.update();
+
+	}
+
+	var render = function() {
+
+		uniforms.time.value += 0.05;
+		//uniforms.basepos.value.x = Math.abs(Math.sin(uniforms.time.value)*0.5);
+		renderer.render( scene, camera )
+
+	}
+
+	var init = function() {
+
+		container = document.getElementById( 'container' );
+		camera = new THREE.Camera();
+		camera.position.z = 1;
+		scene = new THREE.Scene();
+
+		uniforms = {
+			time: { type: "f", value: 1.0 },
+			resolution: { type: "v2", value: new THREE.Vector2() },
+			basepos: { type: "v2", value: new THREE.Vector2() }
+		};
+
+		material = new THREE.ShaderMaterial( {
+
+			side: THREE.DoubleSide,
+			uniforms: uniforms,
+			vertexShader: shaders["default"].vert,
+			fragmentShader: shaders["default"].frag
+
+		} );
+
+		//mesh = new THREE.Mesh( new THREE.PlaneGeometry( 1.0,1.0 ), material );
+		mesh = new THREE.Mesh( new THREE.PlaneGeometry( 0.5,0.5 ), material );
+		mesh.position = new THREE.Vector3(0, 0, 0);
+
+		scene.add( mesh );
+
+		renderer = new THREE.WebGLRenderer();
+		container.appendChild( renderer.domElement );
+
+		stats = new Stats();
+		stats.domElement.style.position = 'absolute';
+		stats.domElement.style.top = '0px';
+		//container.appendChild( stats.domElement );
+
+		onWindowResize();
+
+		window.addEventListener( 'resize', onWindowResize, false );
+
+
+	}
+
+	var preload = function() {
+
+		var i;
+
+		for (i = 0; i < shaderNames.length; i++) {
+
+
+			jQuery.ajax({
+				url: './shaders/'+shaderNames[i]+'.c',
+				success: function(result) {
+
+					var splitText = result.split("$");
+					shaders[shaderNames[i]] = {};
+					shaders[shaderNames[i]].vert = splitText[0] + splitText[1];
+					shaders[shaderNames[i]].frag = splitText[0] + splitText[2];
+
+
+
+					//console.log(result);
+				},
+				async:   false,
+				dataType:"text"
+			});
+
+		}
+
+		init();
+		animate();
+		
+	}
+
+	preload();
+
+
+	
+
 
 
 

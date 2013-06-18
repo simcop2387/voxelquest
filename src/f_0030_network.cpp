@@ -35,7 +35,7 @@ public:
 
 					g_RecBuffer[n+1] = '\0';
 
-					cout << g_RecBuffer << '\n';
+					//cout << g_RecBuffer << '\n';
 
 
 
@@ -46,14 +46,14 @@ public:
 					}
 					else {
 						app.logger().information("Valid JSON\n\n");
-
 						cout << value->Child(L"x")->number_value << "\n\n";
+
+						delete value;
+						value = NULL;
 
 					}
 
 				}
-				
-
 
 			}
 			while (n > 0 || (flags & WebSocket::FRAME_OP_BITMASK) != WebSocket::FRAME_OP_CLOSE);
