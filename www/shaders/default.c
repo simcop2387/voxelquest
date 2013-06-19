@@ -1,36 +1,44 @@
-uniform float time;
-uniform vec2 basepos;
-uniform vec2 resolution;
-varying vec2 tc;
+uniform sampler2D u_Texture0;
+uniform float u_Time;
+uniform vec2 u_Resolution;
+uniform vec4 u_SourceRect;
+uniform vec4 u_DestRect;
+
+
+varying vec2 v_TexCoords;
+varying vec2 v_Position;
+
 
 $
 
 void main()	{
-	tc = uv.xy;
-	//tc.y = 1.0-tc.y;
+
+	vec2 a_TexCoords = uv.xy;
+
+	v_TexCoords.x = mix(u_SourceRect.x, u_SourceRect.z, a_TexCoords.x);
+	v_TexCoords.y = mix(u_SourceRect.y, u_SourceRect.w, a_TexCoords.y);
+
+	vec4 newDest;
+
+	newDest.x = -1.0 +  u_DestRect.x*2.0;
+	newDest.y =  1.0 -  u_DestRect.y*2.0;
+	newDest.z = -1.0 + (u_DestRect.x + u_DestRect.z)*2.0;
+	newDest.w =  1.0 - (u_DestRect.y + u_DestRect.w)*2.0;
 
 
-	vec3 pos2 = position.xyz;
-
-	// insert movement here
-	//pos2.x += abs(sin(time))/2.0;
-	//pos2.y += abs(cos(time*2.0))/2.0;
-	//
-
-	pos2.xy += basepos;
+	v_Position.x = mix(newDest.x,newDest.z,a_TexCoords.x);
+	v_Position.y = mix(newDest.y,newDest.w,a_TexCoords.y);	
 
 
-	pos2.y *= -1.0;
-	pos2.xy *= 2.0;
-	pos2.x -= 1.0;
-
-
-	gl_Position = vec4( pos2.xyz, 1.0 );
+	gl_Position = vec4( v_Position.xy, position.z, 1.0 );
 
 }
 
 $
 
 void main()	{
-	gl_FragColor=vec4(tc,0.0,1.0);
+
+	float val = texture2D( u_Texture0, v_TexCoords ).a;
+	gl_FragColor = vec4(1.0,1.0,1.0,val);
+	//gl_FragColor=vec4(v_TexCoords,0.0,1.0);
 }

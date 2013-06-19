@@ -1,3 +1,4 @@
+
 var TRACE_ON = true;
 var gob;
 
@@ -208,30 +209,112 @@ $(function() {
 	var container, stats;
 	var camera, scene, renderer;
 	var uniforms, material, mesh;
-	var mouseX = 0, mouseY = 0, lat = 0, lon = 0, phy = 0, theta = 0;
-	var windowHalfX = window.innerWidth / 2;
-	var windowHalfY = window.innerHeight / 2;
 	var shaderNames = ["default"];
 	var shaders = {};
+	var texture;
 	
+	var computeBounds = function(str,x,y,scale,maxW,maxH) {
 
-	var drawString = function(str) {
-		var cf = g_fonts["arial_black_regular_48.png"];
+		var lineArr = str.split('\n');
+		var wordArr = [];
+
+		var curFont = g_fonts["arial_black_regular_48.png"];
 		var i;
 		var curChar;
+		var charCode;
+		var nextCharCode;
 
+		var curK;
+		var curX = x/scale;
+		var curY = y/scale;
 
+		var resDestX = uniforms.u_Resolution.value.x;
+		var resDestY = uniforms.u_Resolution.value.y;
+		
+		var resSourceX = curFont.texture.width;
+		var resSourceY = curFont.texture.height;
+
+		/*
 		for (i = 0; i < str.length; i++) {
-			curChar = str.charAt(i);
+			charCode = str.charCodeAt(i);
+			curChar = curFont.chars[charCode-32];
+
+			if (i < str.length - 1) {
+				nextCharCode = str.charCodeAt(i+1);
+				curK = curFont.kernMap[charCode*128 + nextCharCode];
+				curX += curChar.width + curK;
+			}
+
+		}
+		*/
+
+
+		for (i = 0; i < lineArr.length; i++) {
+			wordArr.push(lineArr[i].split(' '));
 		}
 
+		for (i = 0; i < wordArr.length; i++) {
+			for (j = 0; j < wordArr[i].length; j++) {
+				
+			}
+		}
+
+		
+
+	}
+
+
+	var drawString = function(str,x,y,scale) {
+		var curFont = g_fonts["arial_black_regular_48.png"];
+		var i;
+		var curChar;
+		var charCode;
+		var nextCharCode;
+
+		var curK;
+		var curX = x/scale;
+		var curY = y/scale;
+
+		var resDestX = uniforms.u_Resolution.value.x;
+		var resDestY = uniforms.u_Resolution.value.y;
+		
+		var resSourceX = curFont.texture.width;
+		var resSourceY = curFont.texture.height;
+
+		for (i = 0; i < str.length; i++) {
+			
+			charCode = str.charCodeAt(i);
+
+			curChar = curFont.chars[charCode-32];
+
+
+			uniforms.u_DestRect.value.x = (curX + curChar.ox)*scale/resDestX;
+			uniforms.u_DestRect.value.y = ( curFont.metrics.height - (curY + curChar.oy) )*scale/resDestY;
+			uniforms.u_DestRect.value.z = (curChar.w)*scale/resDestX;
+			uniforms.u_DestRect.value.w = (curChar.h)*scale/resDestY;
+
+			uniforms.u_SourceRect.value.x = (curChar.x)/resSourceX;
+			uniforms.u_SourceRect.value.y = (resSourceY - (curChar.y) )/resSourceY;
+			uniforms.u_SourceRect.value.z = (curChar.x + curChar.w)/resSourceX;
+			uniforms.u_SourceRect.value.w = (resSourceY - (curChar.y + curChar.h) )/resSourceY;
+
+
+			renderer.render( scene, camera );
+
+			if (i < str.length - 1) {
+				nextCharCode = str.charCodeAt(i+1);
+				curK = curFont.kernMap[charCode*128 + nextCharCode];
+				curX += curChar.width + curK;
+			}
+
+		}
 
 	}
 
 	var onWindowResize = function( event ) {
 
-		uniforms.resolution.value.x = window.innerWidth;
-		uniforms.resolution.value.y = window.innerHeight;
+		uniforms.u_Resolution.value.x = window.innerWidth;
+		uniforms.u_Resolution.value.y = window.innerHeight;
 		renderer.setSize( window.innerWidth, window.innerHeight );
 
 	}
@@ -246,27 +329,37 @@ $(function() {
 
 	var render = function() {
 
-		uniforms.time.value += 0.05;
+		uniforms.u_Time.value += 0.05;
 		//uniforms.basepos.value.x = Math.abs(Math.sin(uniforms.time.value)*0.5);
-		renderer.render( scene, camera )
+		
+		drawString("abcdefghijklmopqrstuvwxyzABCDEFGHIJK",10,10,0.5);
+
+		//renderer.clear()
 
 	}
 
 	var init = function() {
+
 
 		container = document.getElementById( 'container' );
 		camera = new THREE.Camera();
 		camera.position.z = 1;
 		scene = new THREE.Scene();
 
+		texture = THREE.ImageUtils.loadTexture( './fonts/arial_black_regular_48.png', new THREE.UVMapping(), function() { } );
+
 		uniforms = {
-			time: { type: "f", value: 1.0 },
-			resolution: { type: "v2", value: new THREE.Vector2() },
-			basepos: { type: "v2", value: new THREE.Vector2() }
+			u_Texture0: { type: "t", value: texture },
+			u_Time: { type: "f", value: 1.0 },
+			u_Resolution: { type: "v2", value: new THREE.Vector2() },
+			u_SourceRect: { type: "v4", value: new THREE.Vector4() },
+			u_DestRect: { type: "v4", value: new THREE.Vector4() }
 		};
+		
 
 		material = new THREE.ShaderMaterial( {
-
+			map: texture,
+			transparent: true,
 			side: THREE.DoubleSide,
 			uniforms: uniforms,
 			vertexShader: shaders["default"].vert,
@@ -274,13 +367,16 @@ $(function() {
 
 		} );
 
-		//mesh = new THREE.Mesh( new THREE.PlaneGeometry( 1.0,1.0 ), material );
-		mesh = new THREE.Mesh( new THREE.PlaneGeometry( 0.5,0.5 ), material );
+		mesh = new THREE.Mesh( new THREE.PlaneGeometry( 2.0,2.0 ), material );
+		//mesh = new THREE.Mesh( new THREE.PlaneGeometry( 0.5,0.5 ), material );
 		mesh.position = new THREE.Vector3(0, 0, 0);
 
 		scene.add( mesh );
 
 		renderer = new THREE.WebGLRenderer();
+
+		renderer.autoClear = false;
+
 		container.appendChild( renderer.domElement );
 
 		stats = new Stats();
@@ -292,6 +388,26 @@ $(function() {
 
 		window.addEventListener( 'resize', onWindowResize, false );
 
+
+	}
+
+	var getKernMap = function(curFont) {
+		var i;
+		var curKern;
+		var totSize = 128*128;
+
+		curFont.kernMap = new Array(totSize);
+
+		for (i = 0; i < totSize; i++) {
+			curFont.kernMap[i] = 0;
+		}
+
+		for (i = 0; i < curFont.kernings.length; i++) {
+			curKern = curFont.kernings[i];
+
+			curFont.kernMap[ curKern.from.charCodeAt(0)*128 + curKern.to.charCodeAt(0) ] = curKern.offset;
+
+		}
 
 	}
 
@@ -311,15 +427,19 @@ $(function() {
 					shaders[shaderNames[i]].vert = splitText[0] + splitText[1];
 					shaders[shaderNames[i]].frag = splitText[0] + splitText[2];
 
-
-
-					//console.log(result);
 				},
 				async:   false,
 				dataType:"text"
 			});
 
 		}
+
+		for (i in g_fonts) {
+			if (g_fonts.hasOwnProperty(i)) {
+				getKernMap(g_fonts[i]);
+			}
+		}
+
 
 		init();
 		animate();
