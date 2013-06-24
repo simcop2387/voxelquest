@@ -111,7 +111,7 @@ g_fonts["arial_black_regular_48.png"] = {
 		{char:"{",width:25,x:393,y:365,w:25,h:62,ox:0,oy:48},
 		{char:"|",width:18,x:419,y:366,w:9,h:60,ox:4,oy:47},
 		{char:"}",width:25,x:429,y:365,w:25,h:62,ox:-1,oy:48},
-		{char:"~",width:42,x:455,y:382,w:37,h:16,ox:2,oy:31}
+		{char:"~",width:42,x:455,y:382,w:37,h:16,ox:2,oy:31},
 	],
 	kernings:[
 		{from:"A",to:"C",offset:-1},

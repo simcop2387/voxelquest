@@ -1,10 +1,5 @@
 
-var TRACE_ON = true;
 var gob;
-
-function g_trim(str) {
-    return str.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
-}
 
 if(!Array.prototype.last) {
     Array.prototype.last = function() {
@@ -12,15 +7,52 @@ if(!Array.prototype.last) {
     }
 }
 
-$(function() {
+j$(function() {
+
+
+	var DisplayNode = new Class({
+		initialize: function() {
+			this.children = {};
+			this.childArr = [];
+			this.isBatchRoot = false;
+
+		},
+		addChild: function(obj) {
+			this.childArr.push(obj);
+			this.children[obj.nodeId] = obj;
+		}
+	});
+
+	var firstFrame = 0;
+
+	var container, stats;
+	var camera, camera2, scene, renderer;
+	var shaderNames = ["textShader","rtShader"];
+	var shaders = {};
+	var materials = {};
+	var texture;
+	var testObj;
+	var zoom = 1;
+	
+	var sceneRTT;
+	var rtTexture;
+	var sceneScreen;
+	
+	var mesh;
+	var geoBuffer;
 
 	gob = {
+		displayList:[],
+		traceOn:true,
 		traceLevel: 0,
 		hasConnection:false,
 		popCount: 0,
 		traceArr: [],
 		lastMessage: null,
 		maxFrameSize: 16777216,
+		doError: function(str) {
+			console.log(str);
+		},
 		pushTrace: function() {
 			gob.traceLevel++;
 			gob.popCount = 0;
@@ -47,7 +79,7 @@ $(function() {
 		},
 		doTrace:function(traceStr, otherPrefix) {
 			
-			if (TRACE_ON) {
+			if (gob.traceOn) {
 				gob.popCount++;
 
 				var op = otherPrefix;
@@ -76,7 +108,7 @@ $(function() {
 			
 		},
 		doTraceTab: function(traceStr) {
-			if (TRACE_ON) {
+			if (gob.traceOn) {
 				gob.doTrace(traceStr,"|  ");
 			}
 			else {
@@ -86,30 +118,96 @@ $(function() {
 		},
 		getTracePrefix: function() {
 			return gob.traceArr[gob.traceLevel];
+		},
+		wf:function(varName, func) {
+			if (gob.traceOn) {
+				gob[varName] = function() {
+
+					var argArr = Array.prototype.slice.call(arguments, 0);
+
+					gob.pushTrace();
+					gob.doTrace(varName + "("+argArr.join(",")+")");
+					
+					func.apply(func,arguments);
+					gob.popTrace();
+				}
+			}
+			else {
+				gob[varName] = func;
+			}
+
+			return gob[varName];
+			
 		}
 
 	};
 
-	var wf = function(varName, func) {
-		if (TRACE_ON) {
-			gob[varName] = function() {
+	gob.wf("connectionOnOpen",function() {
+		gob.hasConnection = true;
 
-				var argArr = Array.prototype.slice.call(arguments, 0);
+		if (gob.lastMessage) {
+			gob.sendMessage(gob.lastMessage);
+		}
 
-				gob.pushTrace();
-				gob.doTrace(varName + "("+argArr.join(",")+")");
+	});
+	gob.wf("connectionOnError",function(error) {
+		gob.doTraceTab("ERROR: " + error);
+	});
+	gob.wf("connectionOnMessage",function(message) {
+
+		var result = JSON.parse(message.data);
+		gob.doTraceTab("MESSAGE: " + message.data);
+
+	});
+	gob.wf("connectionClose",function() {
+		gob.hasConnection = false;
+	});
+
+	gob.wf("openNewConnection", function(url) {
+
+		gob.connection = new WebSocket(url);
+		gob.connection.onopen = gob.connectionOnOpen;
+		gob.connection.onerror = gob.connectionOnError;
+		gob.connection.onmessage = gob.connectionOnMessage;
+		gob.connection.onclose = gob.connectionClose;
+
+	});
+
+	gob.wf("sendMessage",function(msg) {
+
+		var url = 'ws://127.0.0.1:9980';
+		var sendStr;
+
+		if (gob.hasConnection) {
+
+			gob.doTraceTab("READYSTATE: " + gob.connection.readyState);
+
+			if (gob.connection.readyState !== 1) {
+				gob.connection.close();
+				gob.lastMessage = msg;
+				gob.openNewConnection(url);
+			}
+			else {
+
+				sendStr = JSON.stringify(msg);
 				
-				func.apply(func,arguments);
-				gob.popTrace();
+				if (sendStr.length + 256 >= gob.maxFrameSize) {
+					doTraceTab("ERROR: Frame Size Exceeded");
+				}
+				else {
+					gob.connection.send(sendStr);
+				}
+
+				
+				gob.lastMessage = null;
 			}
 		}
 		else {
-			gob[varName] = func;
+			gob.lastMessage = msg;
+			gob.openNewConnection(url);
 		}
-
-		return gob[varName];
 		
-	}
+	});
 
 
 	gob.init = function() {
@@ -126,109 +224,110 @@ $(function() {
 		}
 
 		if (window.WebSocket || window.MozWebSocket) {} else {
-			console.log("Browser does not support web sockets");
+			gob.doError("Browser does not support WebSockets");
 			return;
 		}
-
-
-		wf("connectionOnOpen",function() {
-			gob.hasConnection = true;
-
-			if (gob.lastMessage) {
-				gob.sendMessage(gob.lastMessage);
-			}
-
-		});
-		wf("connectionOnError",function(error) {
-			gob.doTraceTab("ERROR: " + error);
-		});
-		wf("connectionOnMessage",function(message) {
-
-			var result = JSON.parse(message.data);
-			gob.doTraceTab("MESSAGE: " + message.data);
-
-			//console.log("RESULT Y: " + result.y);
-			//var json = JSON.parse(message.data);
-		});
-		wf("connectionClose",function() {
-			gob.hasConnection = false;
-		});
-
-		wf("openNewConnection", function(url) {
-
-			gob.connection = new WebSocket(url);
-			gob.connection.onopen = gob.connectionOnOpen;
-			gob.connection.onerror = gob.connectionOnError;
-			gob.connection.onmessage = gob.connectionOnMessage;
-			gob.connection.onclose = gob.connectionClose;
-
-		});
-
-		wf("sendMessage",function(msg) {
-
-			var url = 'ws://127.0.0.1:9980';
-			var sendStr;
-
-			if (gob.hasConnection) {
-
-				gob.doTraceTab("READYSTATE: " + gob.connection.readyState);
-
-				if (gob.connection.readyState !== 1) {
-					gob.connection.close();
-					gob.lastMessage = msg;
-					gob.openNewConnection(url);
-				}
-				else {
-
-					sendStr = JSON.stringify(msg);
-					
-					if (sendStr.length + 256 >= gob.maxFrameSize) {
-						doTraceTab("ERROR: Frame Size Exceeded");
-					}
-					else {
-						gob.connection.send(sendStr);
-					}
-
-					
-					gob.lastMessage = null;
-				}
-			}
-			else {
-				gob.lastMessage = msg;
-				gob.openNewConnection(url);
-			}
-			
-			
-		});
+		if ( ! Detector.webgl ) {
+			gob.doError("Browser does not support WebGL");
+		}
 
 		window.onbeforeunload = function() {
 		    gob.connection.onclose = function () {}; // disable onclose handler first
 		    gob.connection.close()
 		};
 
+
+		var myMap;
+
+		var textTexture = THREE.ImageUtils.loadTexture( './fonts/arial_black_regular_48.png', new THREE.UVMapping(), function() { } );
+		rtTexture = new THREE.WebGLRenderTarget( 512,512, {//curFont.texture.width, curFont.texture.height, { 
+			minFilter: THREE.LinearFilter, 
+			magFilter: THREE.LinearFilter, 
+			format: THREE.RGBAFormat
+		} );
+
+		for (i = 0; i < shaderNames.length; i++) {
+
+
+			j$.ajax({
+				url: './shaders/'+shaderNames[i]+'.c',
+				success: function(result) {
+
+					var splitText = result.split("$");
+
+					if (splitText.length != 4) {
+						gob.doError("Invalid Shader, missing some sections ($)");
+					}
+
+					shaders[shaderNames[i]] = {};
+					
+					if (shaderNames[i] == "textShader") {
+						myMap = rtTexture;
+					}
+					else {
+						myMap = textTexture;
+					}
+					
+					
+					shaders[shaderNames[i]].side = THREE.DoubleSide;
+					shaders[shaderNames[i]].transparent = true;
+					shaders[shaderNames[i]].vertexShader = splitText[0] + splitText[1] + splitText[2];
+					shaders[shaderNames[i]].fragmentShader = splitText[0] + splitText[3];
+					shaders[shaderNames[i]].uniforms = gob.getUniforms(splitText[0],myMap,"uniform");
+					shaders[shaderNames[i]].attributes = gob.getUniforms(splitText[1],myMap,"attribute");
+					shaders[shaderNames[i]].depthWrite = false;
+
+					materials[shaderNames[i]] = new THREE.ShaderMaterial(shaders[shaderNames[i]]);
+
+
+				},
+				async:   false,
+				dataType:"text"
+			});
+
+		}
+
+		for (i in g_fonts) {
+			if (g_fonts.hasOwnProperty(i)) {
+				gob.getKernMap(g_fonts[i]);
+			}
+		}
+
+
+		gob.initScene();
+
+
+		j$(document).ready(function(){
+			j$(document).mousemove(function(e){
+				
+			});
+			j$(document).mousedown(function(e){
+				
+				testObj.maxWidth = e.pageX-testObj.x;
+				testObj.maxHeight = e.pageY-testObj.y;
+
+				gob.drawTextArea(testObj, false);
+			});
+
+			j$(document).mousewheel(function(event, delta, deltaX, deltaY) {
+
+				zoom += deltaY/100.0;
+
+			});
+
+
+
+		})
+
+		gob.animate();
+
+
+
 	}
-
-
-	//gob.init();
-
-
-
-
-	if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
-
-	// globals
-
-	var container, stats;
-	var camera, scene, renderer;
-	var mesh;
-	var shaderNames = ["textShader"];
-	var shaders = {};
-	var materials = {};
-	var texture;
-	var curTime = 0;
-	var geoBuffer;
 	
-	var drawTextArea = function(obj) {
+	gob.drawTextArea = function(obj, firstRun) {
+
+		obj.curInd = 0;
 
 		var str = obj.str;
 		var x = obj.x;
@@ -236,7 +335,7 @@ $(function() {
 		var scale = obj.scale;
 		var pMaxW = obj.maxWidth;
 		var pMaxH = obj.maxHeight;
-
+		var curFont = obj.font;
 
 		var xOff;
 		var yOff;
@@ -251,7 +350,7 @@ $(function() {
 		var wordObjArr = [];
 		var finalLineArr = [];
 		
-		var curFont = g_fonts["arial_black_regular_48.png"];
+		
 		var curChar;
 		var charCode;
 		var curWordObj;
@@ -268,9 +367,15 @@ $(function() {
 
 		var hAlign = obj.hAlign ? obj.hAlign:0;
 		var vAlign = obj.vAlign ? obj.vAlign:0;
+		var tempWordStart;
 
+		var curInd0;
+		var curInd1;
+		var curInd2;
+		var curInd3;
+		var curIndDiv4;
 
-
+		var extraInd = 0;
 
 
 		for (i = 0; i < lineArr.length; i++) {
@@ -280,16 +385,21 @@ $(function() {
 		// determine width of each word
 		for (i = 0; i < wordArr.length; i++) {
 			wordObjArr.push([]);
+			
 			for (j = 0; j < wordArr[i].length; j++) {
 
 				curWordWidth = 0;
+				tempWordStart = 0;
 				curWordStr = wordArr[i][j];
+
+
 
 				for (k = 0; k < curWordStr.length; k++) {
 
 					charCode = curWordStr.charCodeAt(k);
 					curChar = curFont.chars[charCode-32];
 
+					
 					if (k < curWordStr.length - 1) {
 						nextCharCode = curWordStr.charCodeAt(k+1);
 						curWordWidth += curChar.width + curFont.kernMap[charCode*128 + nextCharCode];
@@ -298,12 +408,45 @@ $(function() {
 						curWordWidth += curChar.width;
 					}
 
+
+					if (curWordWidth + dashWidth*3 > maxW) {
+
+						wordObjArr[i].push({
+							wordStr:curWordStr.substring(tempWordStart,k+1)+"-",
+							wordWidth:curWordWidth+dashWidth
+						});
+						curWordWidth = 0;
+						tempWordStart = k+1;
+
+
+					}
+
 				}
 
-				wordObjArr[i].push({
-					wordStr:curWordStr,
-					wordWidth:curWordWidth
-				});
+				
+
+				if (curWordWidth > 0) {
+
+
+					if (tempWordStart == 0) {
+						wordObjArr[i].push({
+							wordStr:curWordStr,
+							wordWidth:curWordWidth
+						});
+					}
+					else {
+						wordObjArr[i].push({
+							wordStr:curWordStr.substring(tempWordStart,k+1),
+							wordWidth:curWordWidth
+						});
+					}
+
+					
+				}
+				
+
+
+				
 			}
 		}
 
@@ -318,9 +461,7 @@ $(function() {
 
 				curWordObj = wordObjArr[i][j];
 
-				if (curLineWidth + curWordObj.wordWidth > maxW) {
-					
-					
+				if (curLineWidth + curWordObj.wordWidth + spaceWidth > maxW) {
 					
 					finalLineArr.push({
 						lineStr:curLineStr,
@@ -357,11 +498,7 @@ $(function() {
 
 
 		if (obj.drawBG) {
-
-			obj.curXB = x;
-			obj.curYB = y;
-
-			drawString(obj,true);
+			gob.drawString(obj,true, "", x, y, 0, 0, firstRun);
 		}
 
 		
@@ -381,41 +518,104 @@ $(function() {
 					xOff = (maxW-finalLineArr[i].lineWidth);
 				break;
 			}
-
-
-
-			obj.curStr = finalLineArr[i].lineStr;
-			obj.curXB = x;
-			obj.curYB = y;
-			obj.curXO = xOff;
-			obj.curYO = yOff;
 			
 
 			if ( (i+1)*curFont.metrics.ascender < maxH) {
-				drawString(obj,false);
+				gob.drawString(obj,false, finalLineArr[i].lineStr, x, y, xOff, yOff, firstRun);
+			}
+			else {
+				extraInd += finalLineArr[i].lineStr.length*4;
 			}
 
 
 		}
 
+		if (firstRun) {
+			obj.maxInd = Math.floor( (obj.curInd+extraInd) *1.5);
+
+			for (i = obj.curInd; i < obj.maxInd; i += 4) {
+				geoBuffer.vertices.push(
+					new THREE.Vector3( 0, 0, 0 ),
+					new THREE.Vector3( 0, 0, 0 ),
+					new THREE.Vector3( 0, 0, 0 ),
+					new THREE.Vector3( 0, 0, 0 )
+				);
+
+				geoBuffer.faceVertexUvs[0].push([
+					new THREE.Vector2( 0, 0 ),
+					new THREE.Vector2( 0, 0 ),
+					new THREE.Vector2( 0, 0 ),
+					new THREE.Vector2( 0, 0 )
+				]);
+
+				shaders.textShader.attributes.a_Data0.value.push(
+
+					new THREE.Vector4( 0, 0, 0, 0 ),
+					new THREE.Vector4( 0, 0, 0, 0 ),
+					new THREE.Vector4( 0, 0, 0, 0 ),
+					new THREE.Vector4( 0, 0, 0, 0 )
+
+				);
+
+				geoBuffer.faces.push( new THREE.Face4(i+0, i+1, i+2, i+3) );
+			}
+
+		}
+		else {
+			for (i = obj.curInd; i < obj.maxInd; i += 4) {
+
+				curInd0 = i;
+				curInd1 = i+1;
+				curInd2 = i+2;
+				curInd3 = i+3;
+				curIndDiv4 = Math.floor(curInd0/4);
+
+				geoBuffer.vertices[curInd0].set( 0, 0, 0 );
+				geoBuffer.vertices[curInd1].set( 0, 0, 0 );
+				geoBuffer.vertices[curInd2].set( 0, 0, 0 );
+				geoBuffer.vertices[curInd3].set( 0, 0, 0 );
+
+				geoBuffer.faceVertexUvs[0][curIndDiv4][0].set( 0, 0 );
+				geoBuffer.faceVertexUvs[0][curIndDiv4][1].set( 0, 0 );
+				geoBuffer.faceVertexUvs[0][curIndDiv4][2].set( 0, 0 );
+				geoBuffer.faceVertexUvs[0][curIndDiv4][3].set( 0, 0 );
+
+				shaders.textShader.attributes.a_Data0.value[curInd0].set( 0, 0, 0, 0 );
+				shaders.textShader.attributes.a_Data0.value[curInd1].set( 0, 0, 0, 0 );
+				shaders.textShader.attributes.a_Data0.value[curInd2].set( 0, 0, 0, 0 );
+				shaders.textShader.attributes.a_Data0.value[curInd3].set( 0, 0, 0, 0 );
+
+			}
+		}
+
 
 		
 
+
+		mesh.geometry.verticesNeedUpdate = true;
+		mesh.geometry.elementsNeedUpdate = true;
+		mesh.geometry.uvsNeedUpdate = true;
+		shaders.textShader.attributes[ "a_Data0" ].needsUpdate = true;
+
+		//mesh.geometry.morphTargetsNeedUpdate = true;
+		//mesh.geometry.normalsNeedUpdate = true;
+		//mesh.geometry.colorsNeedUpdate = true;
+		//mesh.geometry.tangentsNeedUpdate = true;
+
+		//mesh.renderDepth = ;
+		//renderer.sortObjects = false;
+		//mesh.visible = false;
+
+
 	}
 
-	var drawString = function(obj, isBG) {
+	gob.drawString = function(obj, isBG, str, xBase, yBase, xOff, yOff, firstRun) {
 
-
-		var str = obj.curStr;
-		var xBase = obj.curXB;
-		var yBase = obj.curYB;
-		var xOff = obj.curXO;
-		var yOff = obj.curYO;
 		var scale = obj.scale;
 		var isRect = obj.isRect;
+		var curFont = obj.font;
 
 
-		var curFont = g_fonts["arial_black_regular_48.png"];
 		var curUniforms = shaders.textShader.uniforms;
 
 		var i;
@@ -448,6 +648,12 @@ $(function() {
 		var at1;
 		var at2;
 		var at3;
+
+		var curInd0;
+		var curInd1;
+		var curInd2;
+		var curInd3;
+		var curIndDiv4;
 
 
 		var curGBLen;
@@ -511,38 +717,76 @@ $(function() {
 				}
 			}
 
-			geoBuffer.vertices.push(
-				new THREE.Vector3( vx1, vy1, 0 ),
-				new THREE.Vector3( vx2, vy1, 0 ),
-				new THREE.Vector3( vx2, vy2, 0 ),
-				new THREE.Vector3( vx1, vy2, 0 )
-			);
 
-			curGBLen = geoBuffer.vertices.length - 4;
+			curInd0 = obj.curInd;
+			curInd1 = obj.curInd+1;
+			curInd2 = obj.curInd+2;
+			curInd3 = obj.curInd+3;
+			curIndDiv4 = Math.floor(curInd0/4);
 
-			geoBuffer.faces.push( new THREE.Face4(curGBLen+0, curGBLen+1, curGBLen+2, curGBLen+3) );
+			if (firstRun) {
+				geoBuffer.vertices.push(
+					new THREE.Vector3( vx1, vy1, 0 ),
+					new THREE.Vector3( vx2, vy1, 0 ),
+					new THREE.Vector3( vx2, vy2, 0 ),
+					new THREE.Vector3( vx1, vy2, 0 )
+				);
 
-			geoBuffer.faceVertexUvs[0].push([
-				new THREE.Vector2( tx1, ty1 ),
-				new THREE.Vector2( tx2, ty1 ),
-				new THREE.Vector2( tx2, ty2 ),
-				new THREE.Vector2( tx1, ty2 )
-			]);
+				geoBuffer.faceVertexUvs[0].push([
+					new THREE.Vector2( tx1, ty1 ),
+					new THREE.Vector2( tx2, ty1 ),
+					new THREE.Vector2( tx2, ty2 ),
+					new THREE.Vector2( tx1, ty2 )
+				]);
 
-			shaders.textShader.attributes.a_Data0.value.push(
+				shaders.textShader.attributes.a_Data0.value.push(
 
-				new THREE.Vector4( at0, at1, at2, at3 ),
-				new THREE.Vector4( at0, at1, at2, at3 ),
-				new THREE.Vector4( at0, at1, at2, at3 ),
-				new THREE.Vector4( at0, at1, at2, at3 )
+					new THREE.Vector4( at0, at1, at2, at3 ),
+					new THREE.Vector4( at0, at1, at2, at3 ),
+					new THREE.Vector4( at0, at1, at2, at3 ),
+					new THREE.Vector4( at0, at1, at2, at3 )
 
-			);
+				);
+
+				curGBLen = geoBuffer.vertices.length - 4;
+				geoBuffer.faces.push( new THREE.Face4(curGBLen+0, curGBLen+1, curGBLen+2, curGBLen+3) );
+			}
+			else {
+
+				if (curInd0 < obj.maxInd) {
+					geoBuffer.vertices[curInd0].set( vx1, vy1, 0 );
+					geoBuffer.vertices[curInd1].set( vx2, vy1, 0 );
+					geoBuffer.vertices[curInd2].set( vx2, vy2, 0 );
+					geoBuffer.vertices[curInd3].set( vx1, vy2, 0 );
+
+					geoBuffer.faceVertexUvs[0][curIndDiv4][0].set( tx1, ty1 );
+					geoBuffer.faceVertexUvs[0][curIndDiv4][1].set( tx2, ty1 );
+					geoBuffer.faceVertexUvs[0][curIndDiv4][2].set( tx2, ty2 );
+					geoBuffer.faceVertexUvs[0][curIndDiv4][3].set( tx1, ty2 );
+
+					shaders.textShader.attributes.a_Data0.value[curInd0].set( at0, at1, at2, at3 );
+					shaders.textShader.attributes.a_Data0.value[curInd1].set( at0, at1, at2, at3 );
+					shaders.textShader.attributes.a_Data0.value[curInd2].set( at0, at1, at2, at3 );
+					shaders.textShader.attributes.a_Data0.value[curInd3].set( at0, at1, at2, at3 );
+
+					//geoBuffer.faces[ curIndDiv4 ].set(curInd0, curInd1, curInd2, curInd3);
+				}
+				else {
+					gob.doError("Exceeded Buffer Length");
+				}
+
+				
+
+
+			}
+
+			obj.curInd += 4;
 
 		}
 
 	}
 
-	var onWindowResize = function( event ) {
+	gob.onWindowResize = function( event ) {
 
 		var i;
 		for (i = 0; i < shaderNames.length; i++) {
@@ -555,87 +799,144 @@ $(function() {
 
 	}
 
-	var animate = function() {
+	gob.animate = function() {
 
-		requestAnimationFrame( animate );
-		render();
+		requestAnimationFrame( gob.animate );
+		
+
+		var i;
+
+		for (i = 0; i < shaderNames.length; i++) {
+			shaders[shaderNames[i]].uniforms.u_Zoom.value = zoom;
+		}
+
+		
+		if (firstFrame < 3) {
+			console.log("firstFrame");
+			firstFrame++;
+			renderer.render( sceneScreen, camera2, rtTexture );
+			renderer.autoClear = false;
+		}
+		else {
+			renderer.render( scene, camera );
+		}
+		
+		
+
+
+
 		stats.update();
 
 	}
 
-	var render = function() {
-
-		curTime += 0.05;
-		renderer.render( scene, camera );
-
-	}
-
-	var init = function() {
+	gob.initScene = function() {
 
 
 		container = document.getElementById( 'container' );
 		camera = new THREE.Camera();
 		camera.position.z = 1;
+		camera2 = new THREE.Camera();
+		camera2.position.z = 1;
 		scene = new THREE.Scene();
-
-
-
 		geoBuffer = new THREE.Geometry();
 		geoBuffer.dynamic = true;
-
-
-
-
-
-		drawTextArea({
-			str:"Lorem ipsum dolor sit amet, pro graeci nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea. Lorem ipsum dolor sit amet, pro graeci nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea. Lorem ipsum dolor sit amet, pro graeci nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea.",
-			x:50,
-			y:100,
-			scale:0.25,
-			maxWidth:800,
-			maxHeight:200,
-			hAlign:0,
-			vAlign:0,
-			drawBG:true,
-
-			curStr:"",
-			curXB:0,
-			curYB:0,
-			curXO:0,
-			curYO:0,
-
-		});
-
 		mesh = new THREE.Mesh( geoBuffer, materials.textShader);
 
-		mesh.geometry.verticesNeedUpdate = true;
-		mesh.geometry.elementsNeedUpdate = true;
-		mesh.geometry.uvsNeedUpdate = true;
-		shaders.textShader.attributes[ "a_Data0" ].needsUpdate = true;
+		sceneRTT = new THREE.Scene();
+		sceneScreen = new THREE.Scene();
 
-		//mesh.geometry.morphTargetsNeedUpdate = true;
-		//mesh.geometry.normalsNeedUpdate = true;
-		//mesh.geometry.colorsNeedUpdate = true;
-		//mesh.geometry.tangentsNeedUpdate = true;
-
-
-
-
-		scene.add( mesh );
 		renderer = new THREE.WebGLRenderer();
 		renderer.autoClear = false;
+		//renderer.render( sceneRTT, camera, rtTexture, true );
+		//renderer.render( sceneScreen, camera, rtTexture );
+
+		/*
+		var materialScreen = new THREE.ShaderMaterial( {
+			uniforms: { tDiffuse: { type: "t", value: rtTexture } },
+			vertexShader: document.getElementById( 'vertexShader' ).textContent,
+			fragmentShader: document.getElementById( 'fragment_shader_screen' ).textContent,
+			depthWrite: false
+		} );
+		
+
+		var plane = new THREE.PlaneGeometry( window.innerWidth, window.innerHeight );
+		quad = new THREE.Mesh( plane, materials.rtShader );
+		quad.position.z = -100;
+		sceneScreen.add( quad );
+		*/
+
+		
+
+
+		var curFont = g_fonts["arial_black_regular_48.png"];
+
+		
+		
+		var geoBufferFSQ = new THREE.Geometry();
+		geoBufferFSQ.dynamic = true;
+		var meshFSQ = new THREE.Mesh( geoBufferFSQ, materials.rtShader);
+
+		//
+		geoBufferFSQ.vertices.push(
+			new THREE.Vector3( -1, -1, 0 ),
+			new THREE.Vector3(  1, -1, 0 ),
+			new THREE.Vector3(  1,  1, 0 ),
+			new THREE.Vector3( -1,  1, 0 )
+		);
+
+		geoBufferFSQ.faceVertexUvs[0].push([
+			new THREE.Vector2( 0, 0 ),
+			new THREE.Vector2( 1, 0 ),
+			new THREE.Vector2( 1, 1 ),
+			new THREE.Vector2( 0, 1 )
+		]);
+
+		geoBufferFSQ.faces.push( new THREE.Face4(0, 1, 2, 3) );
+		//
+
+		sceneScreen.add(meshFSQ);
+		
+
+		
+		testObj = {
+			curInd:  		0,
+			maxInd: 		0,
+
+			str: 			"Lorem ipsum dolor sit amet, pro test1test2test3test4test5test6test7test8test9test10test11test12test13test14test1test2test3test4test5test6test7test8test9test10test11test12test13test14 nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea. Lorem ipsum dolor sit amet, pro graeci nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea. Lorem ipsum dolor sit amet, pro graeci nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea.",
+			font: 			curFont,
+			x: 				1,
+			y: 				1,
+			scale: 			0.25,
+			maxWidth: 		400,
+			maxHeight: 		400,
+			hAlign: 		0,
+			vAlign: 		0,
+			drawBG: 		true,
+			border: 		0,
+			padding: 		0,
+			margin: 		0,
+			zdepth: 		0
+		};
+
+
+		gob.drawTextArea(testObj, true);
+		
+		
+
+		scene.add( mesh );
+		
 		container.appendChild( renderer.domElement );
 		stats = new Stats();
 		stats.domElement.style.position = 'absolute';
 		stats.domElement.style.bottom = '0px';
 		container.appendChild( stats.domElement );
-		onWindowResize();
-		window.addEventListener( 'resize', onWindowResize, false );
+		gob.onWindowResize();
+		window.addEventListener( 'resize', gob.onWindowResize, false );
 
 
 	}
 
-	var getKernMap = function(curFont) {
+	gob.getKernMap = function(curFont) {
 		var i;
 		var curKern;
 		var totSize = 128*128;
@@ -655,7 +956,7 @@ $(function() {
 
 	}
 
-	var getUniforms = function(str, curMap, varType) {
+	gob.getUniforms = function(str, curMap, varType) {
 		var strArr = str.split(';\n');
 		var resObj = {};
 		var i;
@@ -694,7 +995,7 @@ $(function() {
 								resObj[curName] = { type: "t", value: curMap };
 							break;
 							default:
-								console.log("Invalid type: " + curType);
+								gob.doError("Invalid type: " + curType);
 							break;
 						}
 					}
@@ -713,7 +1014,7 @@ $(function() {
 								resObj[curName] = { type: "v4", value: [] };
 							break;
 							default:
-								console.log("Invalid type: " + curType);
+								gob.doError("Invalid type: " + curType);
 							break;
 						}
 					}
@@ -722,72 +1023,18 @@ $(function() {
 
 				}
 				else {
-					console.log('Invalid uniform: ' + newStr);
+					gob.doError('Invalid uniform: ' + newStr);
 				}
 			}
 		}
 
-		//console.log(resObj);
-
 		return resObj;
 	}
-
-	var preload = function() {
-
-		var i;
-
-		var myMap = THREE.ImageUtils.loadTexture( './fonts/arial_black_regular_48.png', new THREE.UVMapping(), function() { } );
-
-		for (i = 0; i < shaderNames.length; i++) {
-
-
-			jQuery.ajax({
-				url: './shaders/'+shaderNames[i]+'.c',
-				success: function(result) {
-
-					var splitText = result.split("$");
-
-					if (splitText.length != 4) {
-						console.log("Invalid Shader, missing some sections ($)");
-					}
-
-					shaders[shaderNames[i]] = {};
-					shaders[shaderNames[i]].map = myMap;
-					shaders[shaderNames[i]].side = THREE.DoubleSide;
-					shaders[shaderNames[i]].transparent = true;
-					shaders[shaderNames[i]].vertexShader = splitText[0] + splitText[1] + splitText[2];
-					shaders[shaderNames[i]].fragmentShader = splitText[0] + splitText[3];
-					shaders[shaderNames[i]].uniforms = getUniforms(splitText[0],myMap,"uniform");
-					shaders[shaderNames[i]].attributes = getUniforms(splitText[1],myMap,"attribute");
-
-					materials[shaderNames[i]] = new THREE.ShaderMaterial(shaders[shaderNames[i]]);
-
-
-				},
-				async:   false,
-				dataType:"text"
-			});
-
-		}
-
-		for (i in g_fonts) {
-			if (g_fonts.hasOwnProperty(i)) {
-				getKernMap(g_fonts[i]);
-			}
-		}
-
-
-		init();
-		animate();
-		
-	}
-
-	preload();
 
 
 	
 
-
+	gob.init();
 
 
 
