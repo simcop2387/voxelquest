@@ -1,4 +1,4 @@
-g_fonts["arial_black_regular_48.png"] = {
+g_fonts["arial_black_regular_48"] = {
 	file:"arial_black_regular_48.png",
 	height:90,
 	description:{

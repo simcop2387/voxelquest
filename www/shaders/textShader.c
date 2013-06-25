@@ -1,4 +1,7 @@
 uniform sampler2D u_Texture0;
+uniform sampler2D u_Texture1;
+uniform sampler2D u_Texture2;
+uniform sampler2D u_Texture3;
 uniform float u_Time;
 
 uniform vec2 u_Resolution;
@@ -31,8 +34,13 @@ $
 void main()	{
 
 	vec4 val = texture2D( u_Texture0, v_TexCoords );
+	vec4 val2 = texture2D( u_Texture1, v_TexCoords );
 
-	vec4 colText = vec4(val.b,val.b,val.b,val.g);
+	vec3 normVec = normalize( (val2.rgb-0.5)*2.0 );
+	vec3 lightVec = normalize(vec3(0.24,0.37,1.0));
+	float lVal = dot(normVec,-lightVec);
+
+	vec4 colText = vec4(lVal,lVal,lVal,val.g);
 	vec4 colBG = vec4(1.0,0.0,0.0,0.5);
 
 	gl_FragColor = mix(colText,colBG,v_Data0.x);

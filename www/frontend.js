@@ -23,25 +23,27 @@ j$(function() {
 		}
 	});
 
-	var firstFrame = 0;
-
 	var container, stats;
-	var camera, camera2, scene, renderer;
-	var shaderNames = ["textShader","rtShader"];
-	var shaders = {};
-	var materials = {};
+	var camera, scene, renderer;
 	var texture;
 	var testObj;
 	var zoom = 1;
 	
-	var sceneRTT;
-	var rtTexture;
-	var sceneScreen;
+	var rtScene;
 	
 	var mesh;
+	var meshFSQ;
 	var geoBuffer;
 
 	gob = {
+
+		shaderNames:["textShader","heightShader","normShader"],
+		fontNames:["arial_black_regular_48"],
+		fontLoaded:{},
+		shaders:{},
+		materials:{},
+
+
 		displayList:[],
 		traceOn:true,
 		traceLevel: 0,
@@ -209,48 +211,19 @@ j$(function() {
 		
 	});
 
-
-	gob.init = function() {
+	gob.initFinal = function() {
+		var curShader;
 		var i;
-		var curStr = "";
 
-		gob.traceLevel = 0;
-		gob.popCount = 0;
-		gob.traceArr = ["",""];
-
-		for (i = 2; i < 100; i++) {
-			curStr += "|  ";
-			gob.traceArr.push(curStr);
-		}
-
-		if (window.WebSocket || window.MozWebSocket) {} else {
-			gob.doError("Browser does not support WebSockets");
-			return;
-		}
-		if ( ! Detector.webgl ) {
-			gob.doError("Browser does not support WebGL");
-		}
-
-		window.onbeforeunload = function() {
-		    gob.connection.onclose = function () {}; // disable onclose handler first
-		    gob.connection.close()
-		};
+		
 
 
-		var myMap;
-
-		var textTexture = THREE.ImageUtils.loadTexture( './fonts/arial_black_regular_48.png', new THREE.UVMapping(), function() { } );
-		rtTexture = new THREE.WebGLRenderTarget( 512,512, {//curFont.texture.width, curFont.texture.height, { 
-			minFilter: THREE.LinearFilter, 
-			magFilter: THREE.LinearFilter, 
-			format: THREE.RGBAFormat
-		} );
-
-		for (i = 0; i < shaderNames.length; i++) {
+		
+		for (i = 0; i < gob.shaderNames.length; i++) {
 
 
 			j$.ajax({
-				url: './shaders/'+shaderNames[i]+'.c',
+				url: './shaders/'+gob.shaderNames[i]+'.c',
 				success: function(result) {
 
 					var splitText = result.split("$");
@@ -259,25 +232,38 @@ j$(function() {
 						gob.doError("Invalid Shader, missing some sections ($)");
 					}
 
-					shaders[shaderNames[i]] = {};
-					
-					if (shaderNames[i] == "textShader") {
-						myMap = rtTexture;
-					}
-					else {
-						myMap = textTexture;
-					}
-					
-					
-					shaders[shaderNames[i]].side = THREE.DoubleSide;
-					shaders[shaderNames[i]].transparent = true;
-					shaders[shaderNames[i]].vertexShader = splitText[0] + splitText[1] + splitText[2];
-					shaders[shaderNames[i]].fragmentShader = splitText[0] + splitText[3];
-					shaders[shaderNames[i]].uniforms = gob.getUniforms(splitText[0],myMap,"uniform");
-					shaders[shaderNames[i]].attributes = gob.getUniforms(splitText[1],myMap,"attribute");
-					shaders[shaderNames[i]].depthWrite = false;
+					gob.shaders[gob.shaderNames[i]] = {};
+					curShader = gob.shaders[gob.shaderNames[i]];
 
-					materials[shaderNames[i]] = new THREE.ShaderMaterial(shaders[shaderNames[i]]);
+
+					switch (gob.shaderNames[i]) {
+						
+						case "heightShader":
+							curShader.transparent = false;
+						break;
+
+						case "normShader":
+							curShader.transparent = false;
+						break;
+
+						case "textShader":
+							curShader.transparent = true;
+						break;
+
+
+					}
+					
+					
+					
+					curShader.side = THREE.DoubleSide;
+					curShader.depthWrite = false;
+
+					curShader.vertexShader = splitText[0] + splitText[1] + splitText[2];
+					curShader.fragmentShader = splitText[0] + splitText[3];
+					curShader.uniforms = gob.getUniforms(splitText[0],"uniform");
+					curShader.attributes = gob.getUniforms(splitText[1],"attribute");
+
+					gob.materials[gob.shaderNames[i]] = new THREE.ShaderMaterial(curShader);
 
 
 				},
@@ -320,8 +306,70 @@ j$(function() {
 		})
 
 		gob.animate();
+	}
+
+	gob.init = function() {
+		var i;
+		var curStr = "";
+		
+
+		gob.traceLevel = 0;
+		gob.popCount = 0;
+		gob.traceArr = ["",""];
+
+		for (i = 2; i < 100; i++) {
+			curStr += "|  ";
+			gob.traceArr.push(curStr);
+		}
+
+		if (window.WebSocket || window.MozWebSocket) {} else {
+			gob.doError("Browser does not support WebSockets");
+			return;
+		}
+		if ( ! Detector.webgl ) {
+			gob.doError("Browser does not support WebGL");
+		}
+
+		window.onbeforeunload = function() {
+		    gob.connection.onclose = function () {}; // disable onclose handler first
+		    gob.connection.close()
+		};
 
 
+		for (i = 0; i < gob.fontNames.length; i++) {
+
+			var cfName = gob.fontNames[i];
+
+			g_fonts[cfName].heightRT = new THREE.WebGLRenderTarget( g_fonts[cfName].texture.width,g_fonts[cfName].texture.height, {
+				minFilter: THREE.LinearFilter, 
+				magFilter: THREE.LinearFilter, 
+				format: THREE.RGBAFormat
+			} );
+			g_fonts[cfName].normRT = new THREE.WebGLRenderTarget( g_fonts[cfName].texture.width,g_fonts[cfName].texture.height, {
+				minFilter: THREE.LinearFilter, 
+				magFilter: THREE.LinearFilter, 
+				format: THREE.RGBAFormat
+			} );
+
+			g_fonts[cfName].texData = THREE.ImageUtils.loadTexture( './fonts/'+gob.fontNames[i]+'.png', new THREE.UVMapping(), function() {
+				gob.fontLoaded[cfName] = true;
+				var allLoaded = true;
+				var k;
+				for (k = 0; k < gob.fontNames.length; k++) {
+					if (gob.fontLoaded[ gob.fontNames[k] ]) {
+
+					}
+					else {
+						allLoaded = false;
+					}
+				}
+
+				if (allLoaded) {
+					gob.initFinal();
+				}
+
+			} );
+		}
 
 	}
 	
@@ -335,7 +383,7 @@ j$(function() {
 		var scale = obj.scale;
 		var pMaxW = obj.maxWidth;
 		var pMaxH = obj.maxHeight;
-		var curFont = obj.font;
+		//var curFont = obj.font;
 
 		var xOff;
 		var yOff;
@@ -358,11 +406,11 @@ j$(function() {
 		var curWordStr;
 		var curLineWidth;
 		var nextCharCode;
-		var resSourceX = curFont.texture.width;
-		var resSourceY = curFont.texture.height;
+		var resSourceX = gob.curFont.texture.width;
+		var resSourceY = gob.curFont.texture.height;
 		var curLineStr;
-		var spaceWidth = curFont.chars[0].width;
-		var dashWidth = curFont.chars[13].width;
+		var spaceWidth = gob.curFont.chars[0].width;
+		var dashWidth = gob.curFont.chars[13].width;
 		var wordMod;
 
 		var hAlign = obj.hAlign ? obj.hAlign:0;
@@ -397,12 +445,12 @@ j$(function() {
 				for (k = 0; k < curWordStr.length; k++) {
 
 					charCode = curWordStr.charCodeAt(k);
-					curChar = curFont.chars[charCode-32];
+					curChar = gob.curFont.chars[charCode-32];
 
 					
 					if (k < curWordStr.length - 1) {
 						nextCharCode = curWordStr.charCodeAt(k+1);
-						curWordWidth += curChar.width + curFont.kernMap[charCode*128 + nextCharCode];
+						curWordWidth += curChar.width + gob.curFont.kernMap[charCode*128 + nextCharCode];
 					}
 					else {
 						curWordWidth += curChar.width;
@@ -503,7 +551,7 @@ j$(function() {
 
 		
 		for (i = 0; i < finalLineArr.length; i++) {
-			yOff = (i*curFont.metrics.ascender) + curFont.metrics.descender;
+			yOff = (i*gob.curFont.metrics.ascender) + gob.curFont.metrics.descender;
 			switch (hAlign) {
 				//left
 				case 0:
@@ -520,7 +568,7 @@ j$(function() {
 			}
 			
 
-			if ( (i+1)*curFont.metrics.ascender < maxH) {
+			if ( (i+1)*gob.curFont.metrics.ascender < maxH) {
 				gob.drawString(obj,false, finalLineArr[i].lineStr, x, y, xOff, yOff, firstRun);
 			}
 			else {
@@ -548,7 +596,7 @@ j$(function() {
 					new THREE.Vector2( 0, 0 )
 				]);
 
-				shaders.textShader.attributes.a_Data0.value.push(
+				gob.shaders.textShader.attributes.a_Data0.value.push(
 
 					new THREE.Vector4( 0, 0, 0, 0 ),
 					new THREE.Vector4( 0, 0, 0, 0 ),
@@ -580,10 +628,10 @@ j$(function() {
 				geoBuffer.faceVertexUvs[0][curIndDiv4][2].set( 0, 0 );
 				geoBuffer.faceVertexUvs[0][curIndDiv4][3].set( 0, 0 );
 
-				shaders.textShader.attributes.a_Data0.value[curInd0].set( 0, 0, 0, 0 );
-				shaders.textShader.attributes.a_Data0.value[curInd1].set( 0, 0, 0, 0 );
-				shaders.textShader.attributes.a_Data0.value[curInd2].set( 0, 0, 0, 0 );
-				shaders.textShader.attributes.a_Data0.value[curInd3].set( 0, 0, 0, 0 );
+				gob.shaders.textShader.attributes.a_Data0.value[curInd0].set( 0, 0, 0, 0 );
+				gob.shaders.textShader.attributes.a_Data0.value[curInd1].set( 0, 0, 0, 0 );
+				gob.shaders.textShader.attributes.a_Data0.value[curInd2].set( 0, 0, 0, 0 );
+				gob.shaders.textShader.attributes.a_Data0.value[curInd3].set( 0, 0, 0, 0 );
 
 			}
 		}
@@ -595,16 +643,12 @@ j$(function() {
 		mesh.geometry.verticesNeedUpdate = true;
 		mesh.geometry.elementsNeedUpdate = true;
 		mesh.geometry.uvsNeedUpdate = true;
-		shaders.textShader.attributes[ "a_Data0" ].needsUpdate = true;
+		gob.shaders.textShader.attributes[ "a_Data0" ].needsUpdate = true;
 
 		//mesh.geometry.morphTargetsNeedUpdate = true;
 		//mesh.geometry.normalsNeedUpdate = true;
 		//mesh.geometry.colorsNeedUpdate = true;
 		//mesh.geometry.tangentsNeedUpdate = true;
-
-		//mesh.renderDepth = ;
-		//renderer.sortObjects = false;
-		//mesh.visible = false;
 
 
 	}
@@ -613,10 +657,10 @@ j$(function() {
 
 		var scale = obj.scale;
 		var isRect = obj.isRect;
-		var curFont = obj.font;
+		//var curFont = obj.font;
 
 
-		var curUniforms = shaders.textShader.uniforms;
+		var curUniforms = gob.shaders.textShader.uniforms;
 
 		var i;
 		var curChar;
@@ -626,8 +670,8 @@ j$(function() {
 		var curX = xOff;
 		var curY = yOff;
 		
-		var resSourceX = curFont.texture.width;
-		var resSourceY = curFont.texture.height;
+		var resSourceX = gob.curFont.texture.width;
+		var resSourceY = gob.curFont.texture.height;
 
 		var vx;
 		var vy;
@@ -688,10 +732,10 @@ j$(function() {
 			}
 			else {
 				charCode = str.charCodeAt(i);
-				curChar = curFont.chars[charCode-32];
+				curChar = gob.curFont.chars[charCode-32];
 
 				vx = (xBase + (curX + curChar.ox)*scale);
-				vy = (yBase + (curY + curFont.metrics.height - (curChar.oy) )*scale);
+				vy = (yBase + (curY + gob.curFont.metrics.height - (curChar.oy) )*scale);
 				vw = (curChar.w)*scale;
 				vh = (curChar.h)*scale;
 
@@ -713,7 +757,7 @@ j$(function() {
 
 				if (i < str.length - 1) {
 					nextCharCode = str.charCodeAt(i+1);
-					curX += curChar.width + curFont.kernMap[charCode*128 + nextCharCode];
+					curX += curChar.width + gob.curFont.kernMap[charCode*128 + nextCharCode];
 				}
 			}
 
@@ -739,7 +783,7 @@ j$(function() {
 					new THREE.Vector2( tx1, ty2 )
 				]);
 
-				shaders.textShader.attributes.a_Data0.value.push(
+				gob.shaders.textShader.attributes.a_Data0.value.push(
 
 					new THREE.Vector4( at0, at1, at2, at3 ),
 					new THREE.Vector4( at0, at1, at2, at3 ),
@@ -764,10 +808,10 @@ j$(function() {
 					geoBuffer.faceVertexUvs[0][curIndDiv4][2].set( tx2, ty2 );
 					geoBuffer.faceVertexUvs[0][curIndDiv4][3].set( tx1, ty2 );
 
-					shaders.textShader.attributes.a_Data0.value[curInd0].set( at0, at1, at2, at3 );
-					shaders.textShader.attributes.a_Data0.value[curInd1].set( at0, at1, at2, at3 );
-					shaders.textShader.attributes.a_Data0.value[curInd2].set( at0, at1, at2, at3 );
-					shaders.textShader.attributes.a_Data0.value[curInd3].set( at0, at1, at2, at3 );
+					gob.shaders.textShader.attributes.a_Data0.value[curInd0].set( at0, at1, at2, at3 );
+					gob.shaders.textShader.attributes.a_Data0.value[curInd1].set( at0, at1, at2, at3 );
+					gob.shaders.textShader.attributes.a_Data0.value[curInd2].set( at0, at1, at2, at3 );
+					gob.shaders.textShader.attributes.a_Data0.value[curInd3].set( at0, at1, at2, at3 );
 
 					//geoBuffer.faces[ curIndDiv4 ].set(curInd0, curInd1, curInd2, curInd3);
 				}
@@ -789,10 +833,15 @@ j$(function() {
 	gob.onWindowResize = function( event ) {
 
 		var i;
-		for (i = 0; i < shaderNames.length; i++) {
-			shaders[shaderNames[i]].uniforms.u_Resolution.value.x = window.innerWidth;
-			shaders[shaderNames[i]].uniforms.u_Resolution.value.y = window.innerHeight;
-		}
+		
+		/*
+		for (i = 0; i < gob.shaderNames.length; i++) {
+			gob.shaders[gob.shaderNames[i]].uniforms.u_Resolution.value.x = window.innerWidth;
+			gob.shaders[gob.shaderNames[i]].uniforms.u_Resolution.value.y = window.innerHeight;
+		}*/
+
+		gob.shaders.textShader.uniforms.u_Resolution.value.x = window.innerWidth;
+		gob.shaders.textShader.uniforms.u_Resolution.value.y = window.innerHeight;
 
 		renderer.setSize( window.innerWidth, window.innerHeight );
 
@@ -806,20 +855,13 @@ j$(function() {
 
 		var i;
 
-		for (i = 0; i < shaderNames.length; i++) {
-			shaders[shaderNames[i]].uniforms.u_Zoom.value = zoom;
+		for (i = 0; i < gob.shaderNames.length; i++) {
+			gob.shaders[gob.shaderNames[i]].uniforms.u_Zoom.value = zoom;
 		}
 
 		
-		if (firstFrame < 3) {
-			console.log("firstFrame");
-			firstFrame++;
-			renderer.render( sceneScreen, camera2, rtTexture );
-			renderer.autoClear = false;
-		}
-		else {
-			renderer.render( scene, camera );
-		}
+		
+		renderer.render( scene, camera );
 		
 		
 
@@ -829,52 +871,46 @@ j$(function() {
 
 	}
 
+	gob.renderToTarget = function(shad, renderTarg, textureArr) {
+
+		var i;
+
+		meshFSQ.material = gob.materials[shad];
+
+		for (i = 0; i < textureArr.length; i++) {
+			gob.shaders[shad].uniforms["u_Texture"+i].value = textureArr[i];
+		}
+
+		renderer.render( rtScene, camera, renderTarg );
+	}
+
+	gob.setCurFont = function(fName) {
+		gob.curFont = fName;
+		gob.shaders.textShader.uniforms.u_Texture0.value = gob.curFont.heightRT;
+		gob.shaders.textShader.uniforms.u_Texture1.value = gob.curFont.normRT;
+	}
+
 	gob.initScene = function() {
 
 
 		container = document.getElementById( 'container' );
 		camera = new THREE.Camera();
 		camera.position.z = 1;
-		camera2 = new THREE.Camera();
-		camera2.position.z = 1;
 		scene = new THREE.Scene();
 		geoBuffer = new THREE.Geometry();
 		geoBuffer.dynamic = true;
-		mesh = new THREE.Mesh( geoBuffer, materials.textShader);
+		mesh = new THREE.Mesh( geoBuffer, gob.materials.textShader);
 
-		sceneRTT = new THREE.Scene();
-		sceneScreen = new THREE.Scene();
+		rtScene = new THREE.Scene();
 
 		renderer = new THREE.WebGLRenderer();
 		renderer.autoClear = false;
-		//renderer.render( sceneRTT, camera, rtTexture, true );
-		//renderer.render( sceneScreen, camera, rtTexture );
-
-		/*
-		var materialScreen = new THREE.ShaderMaterial( {
-			uniforms: { tDiffuse: { type: "t", value: rtTexture } },
-			vertexShader: document.getElementById( 'vertexShader' ).textContent,
-			fragmentShader: document.getElementById( 'fragment_shader_screen' ).textContent,
-			depthWrite: false
-		} );
 		
-
-		var plane = new THREE.PlaneGeometry( window.innerWidth, window.innerHeight );
-		quad = new THREE.Mesh( plane, materials.rtShader );
-		quad.position.z = -100;
-		sceneScreen.add( quad );
-		*/
-
-		
-
-
-		var curFont = g_fonts["arial_black_regular_48.png"];
-
+		gob.setCurFont(g_fonts["arial_black_regular_48"])
 		
 		
 		var geoBufferFSQ = new THREE.Geometry();
-		geoBufferFSQ.dynamic = true;
-		var meshFSQ = new THREE.Mesh( geoBufferFSQ, materials.rtShader);
+		meshFSQ = new THREE.Mesh( geoBufferFSQ);
 
 		//
 		geoBufferFSQ.vertices.push(
@@ -894,7 +930,32 @@ j$(function() {
 		geoBufferFSQ.faces.push( new THREE.Face4(0, 1, 2, 3) );
 		//
 
-		sceneScreen.add(meshFSQ);
+		rtScene.add(meshFSQ);
+
+		
+		gob.shaders.heightShader.uniforms.u_Resolution.value.x = gob.curFont.texture.width;
+		gob.shaders.heightShader.uniforms.u_Resolution.value.y = gob.curFont.texture.height;
+		gob.shaders.normShader.uniforms.u_Resolution.value.x = gob.curFont.texture.width;
+		gob.shaders.normShader.uniforms.u_Resolution.value.y = gob.curFont.texture.height;
+
+		gob.renderToTarget(
+			"heightShader",
+			gob.curFont.heightRT,
+			[
+				gob.curFont.texData
+			]
+		);
+
+		gob.renderToTarget(
+			"normShader",
+			gob.curFont.normRT,
+			[
+				gob.curFont.texData,
+				gob.curFont.heightRT
+			]
+		);
+		
+		
 		
 
 		
@@ -903,7 +964,7 @@ j$(function() {
 			maxInd: 		0,
 
 			str: 			"Lorem ipsum dolor sit amet, pro test1test2test3test4test5test6test7test8test9test10test11test12test13test14test1test2test3test4test5test6test7test8test9test10test11test12test13test14 nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea. Lorem ipsum dolor sit amet, pro graeci nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea. Lorem ipsum dolor sit amet, pro graeci nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea.",
-			font: 			curFont,
+			font: 			gob.curFont,
 			x: 				1,
 			y: 				1,
 			scale: 			0.25,
@@ -936,27 +997,27 @@ j$(function() {
 
 	}
 
-	gob.getKernMap = function(curFont) {
+	gob.getKernMap = function(fontObj) {
 		var i;
 		var curKern;
 		var totSize = 128*128;
 
-		curFont.kernMap = new Array(totSize);
+		fontObj.kernMap = new Array(totSize);
 
 		for (i = 0; i < totSize; i++) {
-			curFont.kernMap[i] = 0;
+			fontObj.kernMap[i] = 0;
 		}
 
-		for (i = 0; i < curFont.kernings.length; i++) {
-			curKern = curFont.kernings[i];
+		for (i = 0; i < fontObj.kernings.length; i++) {
+			curKern = fontObj.kernings[i];
 
-			curFont.kernMap[ curKern.from.charCodeAt(0)*128 + curKern.to.charCodeAt(0) ] = curKern.offset;
+			fontObj.kernMap[ curKern.from.charCodeAt(0)*128 + curKern.to.charCodeAt(0) ] = curKern.offset;
 
 		}
 
 	}
 
-	gob.getUniforms = function(str, curMap, varType) {
+	gob.getUniforms = function(str, varType) {
 		var strArr = str.split(';\n');
 		var resObj = {};
 		var i;
@@ -992,7 +1053,7 @@ j$(function() {
 								resObj[curName] = { type: "v4", value: new THREE.Vector4() };
 							break;
 							case "sampler2D":
-								resObj[curName] = { type: "t", value: curMap };
+								resObj[curName] = { type: "t" };//, value: curMap };
 							break;
 							default:
 								gob.doError("Invalid type: " + curType);
