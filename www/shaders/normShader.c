@@ -5,6 +5,7 @@ uniform sampler2D u_Texture3;
 uniform float u_Time;
 
 uniform vec2 u_Resolution;
+uniform vec2 u_TexResolution;
 uniform float u_Zoom;
 //uniform vec4 u_SourceRect;
 //uniform vec4 u_DestRect;
@@ -61,48 +62,51 @@ void main()	{
 	vec2 totVec = vec2(0.0,0.0);
 
 
+	float sampDis;
+	vec2 size;
+	vec2 off0;
+	vec2 off1;
+	vec2 off2;
+	vec2 off3;
 
-	for (i = -loopMax; i <= loopMax; i++) {
-		for (j = -loopMax; j <= loopMax; j++) {
+    float s11 = 0.0;
+    float s01 = 0.0;
+    float s21 = 0.0;
+    float s10 = 0.0;
+    float s12 = 0.0;
+	
 
-			fi = float(i);
-			fj = float(j);
-			tc.x = fi/u_Resolution.x;
-			tc.y = fj/u_Resolution.y;
+	for (i = 1; i < 4; i++) {
+		sampDis = float(i);
 
-			dis = 1.0+(1.0-clamp(sqrt(fi*fi+fj*fj)/fLoopMax,0.0,1.0));
+		size = vec2(2.0,0.0);
+		off0 = vec2(-sampDis/u_TexResolution.x,0.0);
+		off1 = vec2(sampDis/u_TexResolution.x,0.0);
+		off2 = vec2(0.0,-sampDis/u_TexResolution.y);
+		off3 = vec2(0.0,sampDis/u_TexResolution.y);
 
-			samp0 = texture2D( u_Texture0, v_TexCoords + tc );
-			//samp1 = texture2D( u_Texture1, v_TexCoords + tc );
+	    s11 += texture2D(u_Texture1, v_TexCoords).b;
+	    s01 += texture2D(u_Texture1, v_TexCoords + off0).b;
+	    s21 += texture2D(u_Texture1, v_TexCoords + off1).b;
+	    s10 += texture2D(u_Texture1, v_TexCoords + off2).b;
+	    s12 += texture2D(u_Texture1, v_TexCoords + off3).b;
 
-			// if the sample is within the letter
-			if (baseval.r == samp0.r) {
-
-				mixVal = abs(baseval.g - samp0.g);
-
-				if (baseval.g != samp0.g) {
-					totVec.x += tc.x*dis*mixVal;
-					totVec.y += tc.y*dis*mixVal;
-				}
-				
-
-			}
-			else {
-
-				totVec.x += tc.x*dis;
-				totVec.y += tc.y*dis;
-
-			}
-
-		}
 	}
 
+	
+    
 
 
-	vec3 xx = vec3(normalize(totVec),baseval2.b );
 
-	vec3 totVec2 = (normalize(xx) + 1.0)/2.0;
+    vec3 va = normalize(vec3(size.xy,s21-s01));
+    vec3 vb = normalize(vec3(size.yx,s12-s10));
+    vec3 bump = cross(va,vb);
 
+    bump.b = 0.0;
+    bump = normalize(bump);
 
-	gl_FragColor=vec4(totVec2.rg, baseval2.b,1.0);
+    bump.g = -bump.g;
+
+    gl_FragColor = vec4((bump.rg+1.0)/2.0, baseval2.b,1.0);
+
 }

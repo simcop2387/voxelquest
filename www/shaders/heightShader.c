@@ -5,6 +5,7 @@ uniform sampler2D u_Texture3;
 uniform float u_Time;
 
 uniform vec2 u_Resolution;
+uniform vec2 u_TexResolution;
 uniform float u_Zoom;
 //uniform vec4 u_SourceRect;
 //uniform vec4 u_DestRect;
@@ -64,8 +65,8 @@ void main()	{
 
 			fi = float(i);
 			fj = float(j);
-			tc.x = fi/u_Resolution.x;
-			tc.y = fj/u_Resolution.y;
+			tc.x = fi/u_TexResolution.x;
+			tc.y = fj/u_TexResolution.y;
 
 			dis = clamp(sqrt(fi*fi+fj*fj)/fLoopMax,0.0,1.0);
 
@@ -84,55 +85,11 @@ void main()	{
 				minVal = min(dis,minVal);
 			}
 
-			//totDis += 1.0;
-
 		}
 	}
-
-
-	/*
-	loopMax = 7;//int(minVal*4.0+4.0);
-	fLoopMax = float(loopMax);
-
-
-
-	for (i = -loopMax; i <= loopMax; i++) {
-		for (j = -loopMax; j <= loopMax; j++) {
-
-			fi = float(i);
-			fj = float(j);
-			tc.x = fi/512.0;
-			tc.y = fj/512.0;
-
-			dis = sqrt(fi*fi+fj*fj)/fLoopMax;
-
-			samp = texture2D( u_Texture0, v_TexCoords + tc );
-
-			// if the sample is within the letter
-			if (baseval.r == samp.r) {
-
-				mixVal = abs(baseval.g - samp.g);
-
-				if (baseval.g != samp.g) {
-					totVec.x += tc.x*mixVal;
-					totVec.y += tc.y*mixVal;
-				}
-				
-
-			}
-			else {
-
-				totVec.x += tc.x;
-				totVec.y += tc.y;
-
-			}
-
-		}
-	}
-	*/
 
 
 	totVec = (normalize(totVec) + 1.0)/2.0;
-	baseval.b = minVal;
+	baseval.b = minVal*baseval.g;
 	gl_FragColor = baseval;
 }
