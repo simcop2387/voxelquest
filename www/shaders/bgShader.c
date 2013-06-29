@@ -171,21 +171,9 @@ void main()	{
 	vec3 borderCol = finalNorm;//mix(normInner,normOuter,isBorder);//(cornerLengthVec),0.0);
 
 	vec4 colBG;
-	colBG.xyz = (borderCol+1.0)/2.0;//mix(normOuter.xyz, borderCol, isBorderF);// + u_Params.z*abs(sin(u_SysTime/40.0))/3.0;  res.xyz + isStripe
-	colBG.z = mix(10.0/255.0,40.0/255.0,isBorderF);
+	colBG.xyz = (borderCol+1.0)/2.0;
+	colBG.z = mix(20.0/255.0,40.0/255.0,isBorderF); //(20.0+sin(v_Position.x*50.0+v_Position.y*50.0)*10.0)
 	colBG.w = mix(1.0,isOpaque,isBorderF);// *u_AlphaMod;
-	
-
-	/*
-	vec3 lightVec;
-	float disVal = 1.0-clamp(distance(v_MouseCoords, v_Position)*2.0/u_Zoom,0.0,1.0);
-	lightVec.xy = v_MouseCoords - v_Position;
-	lightVec.z = 0.1;
-	lightVec = normalize(lightVec);
-	float lVal = dot(finalNorm,lightVec)*disVal;
-	colBG.xyz = vec3(lVal);
-	*/
-
 	
 	//vec4 colBG = vec4(1.0,0.0,0.0,0.5);
 	gl_FragColor = colBG;

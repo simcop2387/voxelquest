@@ -43,7 +43,7 @@ void main()	{
 	float fj;
 	float dis;
 
-	int loopMax = 10;
+	int loopMax = 8;
 	float fLoopMax = float(loopMax);
 
 	float divVal = 2.0*fLoopMax*fLoopMax;
@@ -65,8 +65,8 @@ void main()	{
 
 			fi = float(i);
 			fj = float(j);
-			tc.x = fi/u_TexResolution.x;
-			tc.y = fj/u_TexResolution.y;
+			tc.x = fi/u_TexResolution.x*(u_TexResolution.x/512.0);
+			tc.y = fj/u_TexResolution.y*(u_TexResolution.y/512.0);
 
 			dis = clamp(sqrt(fi*fi+fj*fj)/fLoopMax,0.0,1.0);
 

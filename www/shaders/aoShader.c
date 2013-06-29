@@ -86,6 +86,9 @@ void main()	{
 
 	float resVal = (totHits/totRays);
 
+	
+	
+
 
 	gl_FragColor = vec4(baseval.rgb,resVal);
 	//gl_FragColor = vec4(resVal,resVal,resVal,1.0);

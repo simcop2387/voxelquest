@@ -42,6 +42,10 @@ void main()	{
 
 $
 
+float rand(vec2 co){
+    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
+
 void main()	{
 
 	vec4 baseval = texture2D( u_Texture0, v_TexCoords );
@@ -53,21 +57,88 @@ void main()	{
 	finalNorm = normalize(finalNorm);
 	
 	vec3 lightVec;
-	float disVal = 1.0-clamp(distance(v_MouseCoords, v_Position.xy)*0.5,0.0,1.0);
+	float disVal = min(1.0-clamp(distance(v_MouseCoords, v_Position.xy)*1.0,0.0,1.0)+0.1,1.0);
 	lightVec.xy = v_MouseCoords - v_Position.xy;
 	//lightVec.xy = normalize(lightVec.xy);
-	lightVec.z = 0.2;
+	lightVec.z = 40.0/255.0;
 	lightVec = normalize(lightVec);
 	lightVec.y = -lightVec.y;
 
 
-	//for (i = 0; i <)
 
 
-	float lVal = dot(finalNorm,lightVec)*disVal;
-	lVal = mix(baseval.a*0.2,lVal,lVal);
+	///////
+
+
+	vec4 samp;
+	vec3 tc;
+
+	int i;
+	int j;
+	int k;
+	float fi;
+	float fj;
+	float fk;
+	float dis;
+
+	int loopMax = 64;
+	int stepAmount = 1;
+	float fLoopMax = float(loopMax);
+
+	float totHits = 0.0;
+	float totRays = 0.0;
+	float bias = 2.0/255.0;
+
+	vec3 offsetNorm;
+
+
+	for (i = 0; i <= loopMax; i += stepAmount) {
+
+			fi = float(i);
+
+			offsetNorm = lightVec*fi;
+			offsetNorm.y *= -1.0;
+
+			tc.x = (offsetNorm.x)/u_Resolution.x;
+			tc.y = (offsetNorm.y + offsetNorm.z  )/u_Resolution.y;
+			tc.z = baseval.b + offsetNorm.z/255.0;
+
+			//tc.x = (fi + offsetNorm.x)/u_Resolution.x;
+			//tc.y = (fj + offsetNorm.y  + (fk + offsetNorm.z)  )/u_Resolution.y;
+			//tc.z = baseval.b + (fk + offsetNorm.z)/255.0;
+			//dis = clamp(sqrt(fi*fi+fj*fj+fk*fk)/fLoopMax,0.0,1.0);
+
+			samp = texture2D( u_Texture0, v_TexCoords + tc.xy );
+
+			if (samp.b + bias < tc.z) {
+				totHits += 1.0;
+			}
+
+			totRays += 1.0;
+
+
+	}
+
+	float resVal = clamp(totHits/totRays,0.0,1.0);
+
+
+
+	resVal = clamp(pow(resVal,2.0),0.0,1.0);
+
+	///////
+
+
+
+
+	float lVal = clamp(dot(finalNorm,lightVec),0.0,1.0)*resVal;
+	lVal = mix(baseval.a*0.3,lVal,lVal);
 	lVal *= float(baseval.b > 0.0);
 
+	lVal = sqrt(lVal);//*disVal;
+
+	//float v1 = 8.0;
+	//float v2 = v1+1.0;
+	//lVal = floor(lVal*v1  +(abs(fract(lVal*v1)-0.5)*2.0)*rand(v_TexCoords)     )/v2;   
 
 
 	gl_FragColor = vec4(lVal,lVal,lVal,1.0);

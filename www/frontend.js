@@ -61,7 +61,7 @@ j$(function() {
 		renderTargets:{},
 
 		shaderNames:["lightingShader","aoShader","layerShader","bgShader","textShader","heightShader","normShader","debugShader"],
-		fontNames:["arial_black_regular_48"],
+		fontNames:["arial_black_regular_48","arial_black_regular_96"],
 		fontLoaded:{},
 		shaders:{},
 		materials:{},
@@ -394,7 +394,7 @@ j$(function() {
 
 			j$(document).mousewheel(function(event, delta, deltaX, deltaY) {
 
-				zoom += deltaY/100.0;
+				//zoom += deltaY/100.0;
 
 			});
 
@@ -468,6 +468,13 @@ j$(function() {
 			format: THREE.RGBAFormat
 		} );
 
+		gob.curFLIndex = 0;
+
+		
+
+
+		
+
 
 		for (i = 0; i < gob.fontNames.length; i++) {
 
@@ -484,25 +491,55 @@ j$(function() {
 				format: THREE.RGBAFormat
 			} );
 
+			/*
 			g_fonts[cfName].texData = THREE.ImageUtils.loadTexture( './fonts/'+gob.fontNames[i]+'.png', new THREE.UVMapping(), function() {
 				gob.fontLoaded[cfName] = true;
 				var allLoaded = true;
 				var k;
 				for (k = 0; k < gob.fontNames.length; k++) {
 					if (gob.fontLoaded[ gob.fontNames[k] ]) {
-
+						console.log("loaded: " + gob.fontNames[k]);
 					}
 					else {
 						allLoaded = false;
 					}
 				}
 
+
+
+
 				if (allLoaded) {
+
+					console.log("aaa");
+
 					gob.initFinal();
 				}
 
+				console.log("---");
+
 			} );
+			*/
 		}
+
+
+		var loadFont = function() {
+
+			g_fonts[gob.fontNames[ gob.curFLIndex] ].texData = THREE.ImageUtils.loadTexture( './fonts/'+gob.fontNames[gob.curFLIndex]+'.png', new THREE.UVMapping(), function() {
+
+				gob.curFLIndex++;
+
+				if (gob.curFLIndex == gob.fontNames.length) {
+					gob.initFinal();
+				}
+				else {
+					loadFont();
+				}
+
+			});
+
+		}
+
+		loadFont();
 
 	}
 	
@@ -672,11 +709,16 @@ j$(function() {
 
 		}
 
-		// trim off newlines at end;
+		// trim off newlines at start/end;
 
 		while (finalLineArr.last().lineWidth == 0) {
 			finalLineArr.pop();
 		}
+
+		while (finalLineArr[0].lineWidth == 0) {
+			finalLineArr.shift();
+		}
+
 
 		if (isBG && obj.drawBG) {
 			curShader = "bgShader";
@@ -696,7 +738,7 @@ j$(function() {
 
 			
 			for (i = 0; i < finalLineArr.length; i++) {
-				yOff = (i*gob.curFont.metrics.ascender) + gob.curFont.metrics.descender;
+				yOff = i*gob.curFont.metrics.ascender + gob.curFont.metrics.descender;
 				switch (hAlign) {
 					//left
 					case 0:
@@ -713,7 +755,7 @@ j$(function() {
 				}
 				
 
-				if ( (i+1)*gob.curFont.metrics.ascender < maxH) {
+				if ( (i+1)*gob.curFont.metrics.ascender - gob.curFont.metrics.descender < maxH) {
 					gob.drawString(obj,false, finalLineArr[i].lineStr, x, y, xOff, yOff, firstRun, curMesh);
 				}
 				else {
@@ -1115,7 +1157,7 @@ j$(function() {
 		renderer = new THREE.WebGLRenderer();
 		renderer.autoClear = false;
 		
-		gob.setCurFont(g_fonts["arial_black_regular_48"]);
+		gob.setCurFont(g_fonts["arial_black_regular_96"]);
 		
 		
 
@@ -1141,9 +1183,11 @@ j$(function() {
 		
 		var curh;
 		var curd;
+		var layerScale;
 		for (i = 0; i < gob.maxLayers; i++) {
 			curh = 2.0*i/window.innerHeight;
 			curd = i/255.0;
+			//layerScale = 1.0 + (i/gob.maxLayers)*( gob.maxLayers/Math.min(window.innerHeight,window.innerWidth) );
 			geoBufferLayer.vertices.push(
 				new THREE.Vector3( -1.0, -1.0+curh, curd ),
 				new THREE.Vector3(  1.0, -1.0+curh, curd ),

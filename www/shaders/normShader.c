@@ -102,11 +102,11 @@ void main()	{
     vec3 vb = normalize(vec3(size.yx,s12-s10));
     vec3 bump = cross(va,vb);
 
-    bump.b = 0.0;
+    //bump.b = 0.0;
     bump = normalize(bump);
 
     bump.g = -bump.g;
 
-    gl_FragColor = vec4((bump.rg+1.0)/2.0, baseval2.b,1.0);
+    gl_FragColor = vec4((bump.rgb+1.0)/2.0, 1.0);
 
 }

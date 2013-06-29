@@ -33,6 +33,17 @@ void main()	{
 		discard;
 	}
 
+	/*
+	vec2 nmVec = baseval.rg;
+	if (baseval.b != v_Position.z) {
+		vec2 nmVec = (baseval.rg-0.5)*2.0;
+		nmVec = normalize(nmVec);
+		nmVec = (nmVec+1.0)/2.0;
+	}
+	*/
+
+
+
 	gl_FragColor = vec4(baseval.xy,v_Position.z,1.0);//vec4(cp,1.0);
 	
 }
