@@ -60,7 +60,7 @@ j$(function() {
 		updateBaseRT:true,
 		renderTargets:{},
 
-		shaderNames:["lightingShader","aoShader","layerShader","bgShader","textShader","heightShader","normShader","debugShader"],
+		shaderNames:["reflShader","lightingShader","aoShader","layerShader","bgShader","textShader","heightShader","normShader","downscaleShader","upscaleShader","debugShader"],
 		fontNames:["arial_black_regular_48","arial_black_regular_96"],
 		fontLoaded:{},
 		shaders:{},
@@ -235,6 +235,12 @@ j$(function() {
 		
 	});
 
+	gob.doTextUpdate = function() {
+		gob.drawTextArea(testObj, true, false, meshBG);
+		gob.drawTextArea(testObj, false, false, meshText);
+		gob.updateBaseRT = true;
+	}
+
 	gob.initFinal = function() {
 		var curShader;
 		var i;
@@ -277,12 +283,20 @@ j$(function() {
 							curShader.transparent = false;
 						break;
 
+						case "downscaleShader":
+							curShader.transparent = false;
+						break;
+
+						case "upscaleShader":
+							curShader.transparent = false;
+						break;
+
 						case "textShader":
-							curShader.transparent = true;
+							curShader.transparent = false;
 						break;
 
 						case "bgShader":
-							curShader.transparent = true;
+							curShader.transparent = false;
 						break;
 
 						case "layerShader":
@@ -293,6 +307,9 @@ j$(function() {
 							curShader.transparent = false;
 						break;
 						case "lightingShader":
+							curShader.transparent = false;
+						break;
+						case "reflShader":
 							curShader.transparent = false;
 						break;
 
@@ -334,6 +351,18 @@ j$(function() {
 
 				var x = ((e.pageX/window.innerWidth)-0.5)*2.0;
 				var y = -((e.pageY/window.innerHeight)-0.5)*2.0;
+
+				var oldRendering = gob.isRendering;
+
+				var maxval = 0.9;
+
+				gob.isRendering = (x < maxval && x > -maxval && y < maxval && y > -maxval);
+
+				if (oldRendering != gob.isRendering) {
+					console.log("gob.isRendering: " + gob.isRendering);
+				}
+
+				//TODO: update rendering on mouse movement instead
 
 
 				gob.shaders.lightingShader.uniforms.u_MouseCoords.value.x = x;
@@ -380,10 +409,7 @@ j$(function() {
 					testObj.maxHeight = (e.pageY-testObj.y)/zoom;
 
 					//(obj, isBG, firstRun, geoBuffer)
-					gob.drawTextArea(testObj, true, false, meshBG);
-					gob.drawTextArea(testObj, false, false, meshText);
-
-					gob.updateBaseRT = true;
+					gob.doTextUpdate();
 				}
 
 				
@@ -405,7 +431,7 @@ j$(function() {
 				var code = (e.keyCode ? e.keyCode : e.which);
 
 				if ( code == "s".charCodeAt(0) ) {
-					gob.isRendering = !gob.isRendering;
+					//gob.isRendering = !gob.isRendering;
 
 					if (gob.isRendering) {
 						console.log("animation resumed");
@@ -468,6 +494,20 @@ j$(function() {
 			format: THREE.RGBAFormat
 		} );
 
+		gob.renderTargets.lightingRT = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, {
+			minFilter: THREE.LinearFilter, // NearestFilter // LinearFilter
+			magFilter: THREE.LinearFilter, 
+			format: THREE.RGBAFormat
+		} );
+
+		gob.renderTargets.downscaleRT = new THREE.WebGLRenderTarget( window.innerWidth/2, window.innerHeight/2, {
+			minFilter: THREE.NearestFilter, // NearestFilter // LinearFilter
+			magFilter: THREE.NearestFilter, 
+			format: THREE.RGBAFormat
+		} );
+
+		
+
 		gob.curFLIndex = 0;
 
 		
@@ -490,35 +530,11 @@ j$(function() {
 				magFilter: THREE.LinearFilter, 
 				format: THREE.RGBAFormat
 			} );
-
-			/*
-			g_fonts[cfName].texData = THREE.ImageUtils.loadTexture( './fonts/'+gob.fontNames[i]+'.png', new THREE.UVMapping(), function() {
-				gob.fontLoaded[cfName] = true;
-				var allLoaded = true;
-				var k;
-				for (k = 0; k < gob.fontNames.length; k++) {
-					if (gob.fontLoaded[ gob.fontNames[k] ]) {
-						console.log("loaded: " + gob.fontNames[k]);
-					}
-					else {
-						allLoaded = false;
-					}
-				}
-
-
-
-
-				if (allLoaded) {
-
-					console.log("aaa");
-
-					gob.initFinal();
-				}
-
-				console.log("---");
-
+			g_fonts[cfName].normHalfRT = new THREE.WebGLRenderTarget( g_fonts[cfName].texture.width/2,g_fonts[cfName].texture.height/2, {
+				minFilter: THREE.LinearFilter, 
+				magFilter: THREE.LinearFilter, 
+				format: THREE.RGBAFormat
 			} );
-			*/
 		}
 
 
@@ -596,6 +612,8 @@ j$(function() {
 
 		var extraInd = 0;
 
+		var dStr;
+
 
 		for (i = 0; i < lineArr.length; i++) {
 			wordArr.push(lineArr[i].split(' '));
@@ -630,8 +648,13 @@ j$(function() {
 
 					if (curWordWidth + dashWidth*3 > maxW) {
 
+						dStr = "-";
+						if (k+1 == curWordStr.length) {
+							dStr = "";
+						}
+
 						wordObjArr[i].push({
-							wordStr:curWordStr.substring(tempWordStart,k+1)+"-",
+							wordStr:curWordStr.substring(tempWordStart,k+1)+dStr,
 							wordWidth:curWordWidth+dashWidth
 						});
 						curWordWidth = 0;
@@ -944,6 +967,8 @@ j$(function() {
 				}
 			}
 
+			//%%%
+
 
 			curInd0 = curMesh.curInd;
 			curInd1 = curMesh.curInd+1;
@@ -1024,6 +1049,11 @@ j$(function() {
 			gob.shaders[gob.shaderNames[i]].uniforms.u_Resolution.value.y = window.innerHeight;
 		}
 
+		gob.shaders.downscaleShader.uniforms.u_TexResolution.value.x = Math.floor(window.innerWidth/2);
+		gob.shaders.downscaleShader.uniforms.u_TexResolution.value.y = Math.floor(window.innerHeight/2);
+		gob.shaders.upscaleShader.uniforms.u_TexResolution.value.x = Math.floor(window.innerWidth/2);
+		gob.shaders.upscaleShader.uniforms.u_TexResolution.value.y = Math.floor(window.innerHeight/2);
+
 		renderer.setSize( window.innerWidth, window.innerHeight );
 
 
@@ -1048,6 +1078,9 @@ j$(function() {
 
 				if (gob.updateBaseRT) {
 
+					//gl.disable(gl.BLEND);
+					//gl.enable(gl.DEPTH_TEST);
+
 					gob.updateBaseRT = false;
 					
 					renderer.render( scene, camera, gob.renderTargets.baseRT, true );
@@ -1068,18 +1101,35 @@ j$(function() {
 					
 					gob.renderToTarget(
 						"lightingShader",
-						undefined,
+						undefined,//gob.renderTargets.lightingRT,
 						[
-							gob.renderTargets.aoRT
+							gob.renderTargets.aoRT,
+							gob.renderTargets.layerRT
 						]
 					);
+
+					/*
+					gob.renderToTarget(
+						"downscaleShader",
+						gob.renderTargets.downscaleRT,
+						[
+							gob.renderTargets.lightingRT
+						]
+					);
+
+					gob.renderToTarget(
+						"upscaleShader",
+						undefined,
+						[
+							gob.renderTargets.downscaleRT,
+							gob.renderTargets.layerRT
+
+						]
+					);
+					*/
+
 					
 				}
-
-
-				
-
-				
 
 				
 
@@ -1124,7 +1174,44 @@ j$(function() {
 	gob.setCurFont = function(fName) {
 		gob.curFont = fName;
 		gob.shaders.textShader.uniforms.u_Texture0.value = gob.curFont.heightRT;
-		gob.shaders.textShader.uniforms.u_Texture1.value = gob.curFont.normRT;
+		gob.shaders.textShader.uniforms.u_Texture1.value = gob.curFont.normHalfRT;
+
+
+		gob.shaders.heightShader.uniforms.u_TexResolution.value.x = gob.curFont.texture.width;
+		gob.shaders.heightShader.uniforms.u_TexResolution.value.y = gob.curFont.texture.height;
+		gob.shaders.normShader.uniforms.u_TexResolution.value.x = gob.curFont.texture.width;
+		gob.shaders.normShader.uniforms.u_TexResolution.value.y = gob.curFont.texture.height;
+
+		gob.shaders.downscaleShader.uniforms.u_TexResolution.value.x = gob.curFont.texture.width;
+		gob.shaders.downscaleShader.uniforms.u_TexResolution.value.y = gob.curFont.texture.height;
+		gob.shaders.upscaleShader.uniforms.u_TexResolution.value.x = gob.curFont.texture.width;
+		gob.shaders.upscaleShader.uniforms.u_TexResolution.value.y = gob.curFont.texture.height;
+
+		gob.renderToTarget(
+			"heightShader",
+			gob.curFont.heightRT,
+			[
+				gob.curFont.texData
+			]
+		);
+
+		gob.renderToTarget(
+			"normShader",
+			gob.curFont.normRT,
+			[
+				gob.curFont.texData,
+				gob.curFont.heightRT
+			]
+		);
+
+		gob.renderToTarget(
+			"downscaleShader",
+			gob.curFont.normHalfRT,
+			[
+				gob.curFont.normRT
+			]
+		);
+
 	}
 
 	gob.initScene = function() {
@@ -1155,11 +1242,8 @@ j$(function() {
 
 
 		renderer = new THREE.WebGLRenderer();
+		renderer.sortObjects = false;
 		renderer.autoClear = false;
-		
-		gob.setCurFont(g_fonts["arial_black_regular_96"]);
-		
-		
 
 		var geoBufferFSQ = new THREE.Geometry();
 		meshFSQ = new THREE.Mesh( geoBufferFSQ);
@@ -1177,7 +1261,6 @@ j$(function() {
 		]);
 		geoBufferFSQ.faces.push( new THREE.Face4(0, 1, 2, 3) );
 		rtScene.add(meshFSQ);
-
 
 		var geoBufferLayer = new THREE.Geometry();
 		
@@ -1208,52 +1291,21 @@ j$(function() {
 
 
 
-		gob.shaders.heightShader.uniforms.u_TexResolution.value.x = gob.curFont.texture.width;
-		gob.shaders.heightShader.uniforms.u_TexResolution.value.y = gob.curFont.texture.height;
-		gob.shaders.normShader.uniforms.u_TexResolution.value.x = gob.curFont.texture.width;
-		gob.shaders.normShader.uniforms.u_TexResolution.value.y = gob.curFont.texture.height;
-
-		gob.renderToTarget(
-			"heightShader",
-			gob.curFont.heightRT,
-			[
-				gob.curFont.texData
-			]
-		);
-
-		gob.renderToTarget(
-			"normShader",
-			gob.curFont.normRT,
-			[
-				gob.curFont.texData,
-				gob.curFont.heightRT
-			]
-		);
 		
+		gob.setCurFont(g_fonts["arial_black_regular_96"]);
 		
-		// corner radius
-		// border width
-		// padding
-		// margin
-
-
-		// normals rg
-		// height b
 
 
 		
 		testObj = {
 
-			
-
-
-			str: 			"Lorem ipsum dolor sit amet, pro test1test2test3test4test5test6test7test8test9test10test11test12test13test14test1test2test3test4test5test6test7test8test9test10test11test12test13test14 nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea. Lorem ipsum dolor sit amet, pro graeci nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea. Lorem ipsum dolor sit amet, pro graeci nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea.",
+			str: 			"Lorem ipsum dolor sit amet, pro nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea. Lorem ipsum dolor sit amet, pro graeci nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea. Lorem ipsum dolor sit amet, pro graeci nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea.",
 			font: 			gob.curFont,
 			x: 				50,
 			y: 				50,
 			scale: 			1.0,
-			maxWidth: 		400,
-			maxHeight: 		400,
+			maxWidth: 		700,
+			maxHeight: 		550,
 			hAlign: 		0,
 			vAlign: 		0,
 			drawBG: 		true,
@@ -1270,19 +1322,26 @@ j$(function() {
 		gob.drawTextArea(testObj, false, true, meshText);
 		
 		
-
-		scene.add( meshBG );
 		scene.add( meshText );
+		scene.add( meshBG );
+		
 		
 		container.appendChild( renderer.domElement );
 		stats = new Stats();
 		stats.domElement.style.position = 'absolute';
 		stats.domElement.style.bottom = '0px';
-		container.appendChild( stats.domElement );
+		//container.appendChild( stats.domElement );
 		gob.onWindowResize();
 		window.addEventListener( 'resize', gob.onWindowResize, false );
 
 
+	}
+
+	gob.setFont = function(val) {
+		//testObj.scale = val;
+		gob.setCurFont(val);
+		gob.doTextUpdate();
+		
 	}
 
 	gob.getKernMap = function(fontObj) {

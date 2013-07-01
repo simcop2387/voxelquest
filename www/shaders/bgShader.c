@@ -142,13 +142,16 @@ void main()	{
 	vec3 norm;
 	norm.z = 0.0;
 	norm.xy = mix(-tcCubed,tcCubed,isBorder);
+
+	norm = normalize(norm);
+
 	vec3 faceNorm = vec3(0.0,0.0,1.0);
 	float curDis = mix(bDis2,bDis,isBorderF);
 	float maxDis = 255.0/255.0;
 	float startZ = 0.0;
 	float endZ = 1.0;
 	float lerpPow = 2.0;
-	float lerpAmount = max(maxDis-curDis,0.0)/maxDis;
+	float lerpAmount = clamp(max(maxDis-curDis,0.0)/maxDis,0.0,1.0);
 	if (curDis <= 32.0/255.0) {
 		if (isBorderF == 1.0) {
 			lerpAmount = 1.0;
@@ -174,6 +177,12 @@ void main()	{
 	colBG.xyz = (borderCol+1.0)/2.0;
 	colBG.z = mix(20.0/255.0,40.0/255.0,isBorderF); //(20.0+sin(v_Position.x*50.0+v_Position.y*50.0)*10.0)
 	colBG.w = mix(1.0,isOpaque,isBorderF);// *u_AlphaMod;
+
+	if (colBG.w < 1.0) {
+		discard;
+	}
+
+	colBG.w = v_Data0.w;
 	
 	//vec4 colBG = vec4(1.0,0.0,0.0,0.5);
 	gl_FragColor = colBG;

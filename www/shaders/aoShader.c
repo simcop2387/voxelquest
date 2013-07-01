@@ -48,7 +48,7 @@ void main()	{
 	float fk;
 	float dis;
 
-	int loopMax = 8;
+	int loopMax = 10;
 	int stepAmount = 2;
 	float fLoopMax = float(loopMax);
 
@@ -86,8 +86,10 @@ void main()	{
 
 	float resVal = (totHits/totRays);
 
+	resVal = resVal*resVal;
+
 	
-	
+
 
 
 	gl_FragColor = vec4(baseval.rgb,resVal);

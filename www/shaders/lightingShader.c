@@ -28,13 +28,6 @@ void main()	{
 
 	v_Position = position.xy;
 	v_MouseCoords = u_MouseCoords;
-
-	/*
-	v_Position.x = position.x * m_Zoom / u_Resolution.x;
-	v_Position.y = position.y * m_Zoom / u_Resolution.y;
-	v_MouseCoords.x = u_MouseCoords.x / u_Resolution.x;
-	v_MouseCoords.y = u_MouseCoords.y / u_Resolution.y;
-	*/
 	
 	gl_Position = vec4( position.xyz, 1.0 );
 
@@ -49,6 +42,7 @@ float rand(vec2 co){
 void main()	{
 
 	vec4 baseval = texture2D( u_Texture0, v_TexCoords );
+	vec4 baseval2 = texture2D( u_Texture1, v_TexCoords );
 
 
 	vec3 finalNorm;
@@ -57,15 +51,15 @@ void main()	{
 	finalNorm = normalize(finalNorm);
 	
 	vec3 lightVec;
-	float disVal = min(1.0-clamp(distance(v_MouseCoords, v_Position.xy)*1.0,0.0,1.0)+0.1,1.0);
-	lightVec.xy = v_MouseCoords - v_Position.xy;
+	float disVal = min(1.0-clamp(distance(v_MouseCoords, v_Position)*1.0,0.0,1.0)+0.1,1.0);
+	lightVec.xy = v_MouseCoords - v_Position;
 	//lightVec.xy = normalize(lightVec.xy);
-	lightVec.z = 40.0/255.0;
+	lightVec.z = 50.0/255.0;
 	lightVec = normalize(lightVec);
 	lightVec.y = -lightVec.y;
 
 
-
+	
 
 	///////
 
@@ -89,29 +83,33 @@ void main()	{
 	float totRays = 0.0;
 	float bias = 2.0/255.0;
 
-	vec3 offsetNorm;
+	//vec3 offsetNorm;
+
+	float lerpVal;
+	float heightAtCurPos;
+	float lightHeight = 60.0/255.0;
+
+	vec3 startPos = vec3(v_MouseCoords.xy,lightHeight);
+	vec3 endPos = vec3(v_Position.xy,baseval.b);
+	//vec2 offPos = normalize(endPos.xy-startPos.xy);
+	//startPos.xy += offPos.yx*0.1;
 
 
-	for (i = 0; i <= loopMax; i += stepAmount) {
+	vec3 rayPos;
+	float lastHit = 1.0;
+
+	for (i = 1; i <= loopMax; i ++) {
 
 			fi = float(i);
 
-			offsetNorm = lightVec*fi;
-			offsetNorm.y *= -1.0;
+			lerpVal = fi/fLoopMax;
 
-			tc.x = (offsetNorm.x)/u_Resolution.x;
-			tc.y = (offsetNorm.y + offsetNorm.z  )/u_Resolution.y;
-			tc.z = baseval.b + offsetNorm.z/255.0;
+			rayPos = mix(startPos,endPos,lerpVal);
+			heightAtCurPos = texture2D( u_Texture0, (rayPos.xy+1.0)/2.0 ).b;
 
-			//tc.x = (fi + offsetNorm.x)/u_Resolution.x;
-			//tc.y = (fj + offsetNorm.y  + (fk + offsetNorm.z)  )/u_Resolution.y;
-			//tc.z = baseval.b + (fk + offsetNorm.z)/255.0;
-			//dis = clamp(sqrt(fi*fi+fj*fj+fk*fk)/fLoopMax,0.0,1.0);
-
-			samp = texture2D( u_Texture0, v_TexCoords + tc.xy );
-
-			if (samp.b + bias < tc.z) {
+			if (heightAtCurPos > rayPos.z+bias) {
 				totHits += 1.0;
+				lastHit = lerpVal;
 			}
 
 			totRays += 1.0;
@@ -119,29 +117,38 @@ void main()	{
 
 	}
 
-	float resVal = clamp(totHits/totRays,0.0,1.0);
+	float shadVal = clamp((1.0-lastHit*lastHit*lastHit*lastHit) + (1.0-float(totHits>0.0)),0.0,1.0);// 1.0-clamp(float(totHits>0.0)+lastHit,0.0,1.0); //mix(clamp(totHits/totRays,0.0,1.0),float(totHits>0.0),totHits/totRays);
 
+	shadVal = pow(shadVal,0.3);
 
-
-	resVal = clamp(pow(resVal,2.0),0.0,1.0);
-
-	///////
+	//resVal = clamp(pow(resVal,2.0),0.0,1.0);
 
 
 
 
-	float lVal = clamp(dot(finalNorm,lightVec),0.0,1.0)*resVal;
+	float lVal = clamp(dot(finalNorm,lightVec),0.0,1.0)*shadVal;
 	lVal = mix(baseval.a*0.3,lVal,lVal);
 	lVal *= float(baseval.b > 0.0);
 
-	lVal = sqrt(lVal);//*disVal;
+	lVal = sqrt(lVal)*disVal;
 
 	//float v1 = 8.0;
 	//float v2 = v1+1.0;
 	//lVal = floor(lVal*v1  +(abs(fract(lVal*v1)-0.5)*2.0)*rand(v_TexCoords)     )/v2;   
 
+	float lv2 = sqrt(mix(baseval.a*0.5,lVal,lVal))*0.8;
 
-	gl_FragColor = vec4(lVal,lVal,lVal,1.0);
+	//lv2 = pow(lv2,2.0);
+
+	vec3 col0 = vec3(255.0/255.0,153.0/255.0,0.0/255.0)*lVal + lVal*lVal/2.0;
+	vec3 col1 = mix(vec3(65.0/255.0,38.0/255.0,16.0/255.0),vec3(241.0/255.0,233.0/255.0,214.0/255.0),lv2)*lv2;
+
+	col1.r += 0.01;
+
+
+	//vec4(baseval.a,baseval.a,baseval.a,1.0);//
+
+	gl_FragColor = vec4(mix(col0,col1,float(baseval2.w > 0.0)),1.0);//vec4(lVal,lVal,lVal,1.0);//vec4(baseval.rgb,lVal);
 	
 
 	

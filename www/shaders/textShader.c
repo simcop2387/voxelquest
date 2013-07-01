@@ -49,7 +49,7 @@ void main()	{
 	vec4 heightRT = texture2D( u_Texture0, v_TexCoords );
 	vec4 normRT = texture2D( u_Texture1, v_TexCoords );
 	vec3 baseNorm = (normRT.rgb-0.5)*2.0;
-	baseNorm.z = 0.1;
+	baseNorm.z = 0.0;
 	baseNorm = normalize(baseNorm);
 
 	vec3 faceNorm = vec3(0.0,0.0,1.0);
@@ -60,11 +60,17 @@ void main()	{
 	float lerpPow = 2.0;
 	float lerpAmount = max(maxDis-curDis,0.0)/maxDis;
 	
-
+	/*
+	// sharp bevel
+	lerpAmount = 0.5;
+	if (curDis >= 80.0/255.0) {
+		lerpAmount = 0.0;
+	}*/
 	if (curDis <= 16.0/255.0) {
 		lerpAmount = 1.0;
 	}
-	vec3 finalNorm = mix(faceNorm, baseNorm, clamp(pow(lerpAmount,lerpPow),0.0,1.0) );
+
+	vec3 finalNorm = mix(faceNorm, baseNorm, lerpAmount );
 
 	finalNorm = normalize(finalNorm);
 
@@ -72,11 +78,11 @@ void main()	{
 	float alphaVal = heightRT.g;
 
 	
-	if (alphaVal != 0.0) {
-		alphaVal = 1.0;
+	if (alphaVal < 1.0) {
+		discard;
 	}
 
-	gl_FragColor = vec4((finalNorm.xy+1.0)/2.0, (40.0)/255.0, alphaVal ); //+sin(v_Position.x*v_Position.y*100.0)*10.0
+	gl_FragColor = vec4((finalNorm.xy+1.0)/2.0, (40.0)/255.0, v_Data0.w ); //+sin(v_Position.x*v_Position.y*100.0)*10.0
 	
 	
 }
