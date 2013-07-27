@@ -100,19 +100,19 @@ void main()	{
 
 	for (i = 1; i <= loopMax; i ++) {
 
-			fi = float(i);
+		fi = float(i);
 
-			lerpVal = fi/fLoopMax;
+		lerpVal = fi/fLoopMax;
 
-			rayPos = mix(startPos,endPos,lerpVal);
-			heightAtCurPos = texture2D( u_Texture0, (rayPos.xy+1.0)/2.0 ).b;
+		rayPos = mix(startPos,endPos,lerpVal);
+		heightAtCurPos = texture2D( u_Texture0, (rayPos.xy+1.0)/2.0 ).b;
 
-			if (heightAtCurPos > rayPos.z+bias) {
-				totHits += 1.0;
-				lastHit = lerpVal;
-			}
+		if (heightAtCurPos > rayPos.z+bias) {
+			totHits += 1.0;
+			lastHit = lerpVal;
+		}
 
-			totRays += 1.0;
+		totRays += 1.0;
 
 
 	}

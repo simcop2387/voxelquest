@@ -1,6 +1,58 @@
 
 var gob;
 
+var enums = {
+	fillDir: {
+		horizontal:0,
+		vertical:1
+	},
+	align: {
+		left:0,
+		center:1,
+		right:2,
+
+		top:3,
+		middle:4,
+		bottom:5
+	}
+}
+
+
+function combineObjs(oArr) {
+	var resObj = {};
+
+	var i;
+	var j;
+	var curObj;
+
+	if (oArr.length) {
+
+	}
+	else {
+		return oArr;
+	}
+
+	for (i = 0; i < oArr.length; i++) {
+
+		curObj = oArr[i];
+
+		for (j in curObj) {
+			if (curObj.hasOwnProperty(j)) {
+				resObj[j] = curObj[j];
+			}
+		}
+	}
+
+	return resObj;
+}
+
+function createNode(propArr,childArr) {
+	return {
+		props:combineObjs(propArr),
+		childArr:childArr
+	}
+}
+
 if(!Array.prototype.last) {
     Array.prototype.last = function() {
         return this[this.length - 1];
@@ -40,6 +92,9 @@ j$(function() {
 	var camera, scene, renderer;
 	var texture;
 	var testObj;
+
+	var mainRoot;
+
 	var zoom = 1;
 	var atArr = [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
 	
@@ -54,6 +109,8 @@ j$(function() {
 	gob = {
 		curDebugSection:0.0,
 
+		bufferWidth: 1024,
+		bufferHeight: 768,
 
 		isRendering: true,
 		maxLayers: 40,
@@ -71,8 +128,9 @@ j$(function() {
 		displayList:[],
 		traceOn:true,
 		traceLevel: 0,
+		lastTraceLevel: 0,
 		hasConnection:false,
-		popCount: 0,
+		tracesAtLevel: 0,
 		traceArr: [],
 		lastMessage: null,
 		maxFrameSize: 16777216,
@@ -81,32 +139,36 @@ j$(function() {
 		},
 		pushTrace: function() {
 			gob.traceLevel++;
-			gob.popCount = 0;
+			gob.tracesAtLevel = 0;
 		},
 		popTrace: function() {
 			
 
+			if (gob.traceLevel < gob.lastTraceLevel) {
+				gob.doTrace("END");
+			}
+
 			gob.traceLevel--;
 			if (gob.traceLevel < 0) {
 				gob.traceLevel = 0;
-			}
+			}			
 
-			if (gob.traceLevel == 0 && gob.popCount >= 1) {
-				gob.doTrace("END");
-			}
-			else {
-				if (gob.popCount >= 2) {
-					gob.doTraceTab("END");
-				}
+			gob.tracesAtLevel = 0;
 
-				
-			}
+
+
 			
 		},
 		doTrace:function(traceStr, otherPrefix) {
 			
+			var resStr;
+
 			if (gob.traceOn) {
-				gob.popCount++;
+				gob.tracesAtLevel++;
+
+				
+
+				gob.lastTraceLevel = gob.traceLevel;
 
 				var op = otherPrefix;
 
@@ -122,15 +184,17 @@ j$(function() {
 					var objStr = JSON.stringify(traceStr,null,"\t");
 					var newStr = prefix + objStr.replace(/[\r\n]/g, prefixn);
 
-					console.log( newStr );
+					resStr = ( newStr );
 				}
 				else {
-					console.log(prefix + traceStr);
+					resStr = (prefix + traceStr);
 				}
 			}
 			else {
-				console.log(traceStr);
+				resStr = (traceStr);
 			}
+
+			console.log(resStr);
 			
 		},
 		doTraceTab: function(traceStr) {
@@ -145,17 +209,28 @@ j$(function() {
 		getTracePrefix: function() {
 			return gob.traceArr[gob.traceLevel];
 		},
-		wf:function(varName, func) {
+		wf:function(varName, func, avoidArgs) {
 			if (gob.traceOn) {
 				gob[varName] = function() {
 
 					var argArr = Array.prototype.slice.call(arguments, 0);
 
 					gob.pushTrace();
-					gob.doTrace(varName + "("+argArr.join(",")+")");
+
+					var aStr = "";
 					
-					func.apply(func,arguments);
+					if (avoidArgs) {
+
+					}
+					else {
+						aStr = argArr.join(",");
+					}
+
+					gob.doTrace(varName + "("+aStr+")");
+					
+					var myr = func.apply(func,arguments);
 					gob.popTrace();
+					return myr;
 				}
 			}
 			else {
@@ -235,13 +310,271 @@ j$(function() {
 		
 	});
 
-	gob.doTextUpdate = function() {
+
+
+	/*
+	var defContH = {
+		str: 			"",
+		drawBG: 		true,
+		scale: 			1.0,
+		font: 			gob.curFont,
+		hTextAlign:		enums.align.left,
+		vTextAlign:		enums.align.top,
+
+		//x: 				50,
+		//y: 				50,
+		//maxWidth: 		700,
+		//maxHeight: 		550,
+
+		//scrollx: 0,
+		//scrolly: 0,
+
+		fillDir: 		enums.fillDir.horizontal,
+		fillRatio: 		1,
+		maxLines: 		1,
+		itemsPerLine: 	0,
+
+		cornerRad: 		8,
+		margin: 		0,
+		border: 		0,
+		padding: 		16,
+		
+		baseDepth: 		0
+	};
+
+	
+	var defContV = combineObjs([
+		defContH,
+		{
+			fillDir: 		enums.fillDir.vertical,
+		}
+	]);
+
+	//props
+	//childArr
+	mainRoot = createNode( defContV, [
+		createNode( defContH, [
+			createNode( defContV, []),
+			createNode( defContV, []),
+			createNode( defContV, [])
+		]),
+		createNode( defContH, [
+
+		]),
+		createNode( defContH, [
+			createNode( defContV, []),
+			createNode( defContV, [])
+		])
+	]);
+	*/
+
+
+	gob.getStringLength = function(rootProps) {
+		var i;
+		var curChar;
+		var charCode;
+		var nextCharCode;
+		var curX = 0;
+		var str = rootProps.str;
+
+		for (i = 0; i < str.length; i++) {
+			charCode = str.charCodeAt(i);
+			curChar = gob.curFont.chars[charCode-32];
+			
+			if (i < str.length - 1) {
+				nextCharCode = str.charCodeAt(i+1);
+				curX += curChar.width + gob.curFont.kernMap[charCode*128 + nextCharCode];
+			}
+			else {
+				curX += curChar.width;
+			}
+		}
+
+		return curX*rootProps.scale + rootProps.padding*2;
+	}
+
+
+
+
+
+	gob.getMinWidths = function(rootObj) {
+		var i;
+
+		var curParentProps = rootObj.props;
+		var curChildProps;
+
+		var minWidth = 0;
+
+		if (rootObj.childArr.length == 0) {
+			if (curParentProps.maxLines == 1 && curParentProps.fitText) {
+				minWidth = gob.getStringLength(curParentProps);
+			}
+		}
+		else {
+
+			/*
+			if (curParentProps.fillDir == enums.fillDir.horizontal) {
+				for (i = 0; i < rootObj.childArr.length; i++) {
+					minWidth += gob.getMinWidths(rootObj.childArr[i]);
+				}
+			}
+			else {
+				for (i = 0; i < rootObj.childArr.length; i++) {
+					minWidth = Math.max(gob.getMinWidths(rootObj.childArr[i]), minWidth); 
+				}
+			}
+			*/
+
+			for (i = 0; i < rootObj.childArr.length; i++) {
+				minWidth = Math.max(gob.getMinWidths(rootObj.childArr[i]), minWidth); 
+			}
+
+			
+		}
+
+		curParentProps.minWidth = minWidth+(curParentProps.padding)*(2);// + Math.max(0,rootObj.childArr.length-1) );
+
+		return curParentProps.minWidth;
+		
+	}
+
+	gob.setResultWidths = function(rootObj) {
+		var i;
+		var j;
+
+		var curParentProps = rootObj.props;
+		var curChildProps;
+		var availWidth;
+
+		var totRatio = 0;
+		var totFilled = 0;
+		var maxWidth;
+		var totWidth;
+		var wordCount;
+		var curLine;
+
+		var startItem;
+		var endItem;
+		var curLineWidth;
+
+		rootObj.lineWidthArr = [];
+
+		if (rootObj.childArr.length == 0) {
+
+		}
+		else {
+
+
+			if (curParentProps.fillDir == enums.fillDir.horizontal) {
+
+				rootObj.lineArr = [[]];
+				
+				totWidth = curParentProps.padding*2;
+				wordCount = 0;
+				curLine = 0;
+
+
+				// determine lines and line widths
+				for (i = 0; i < rootObj.childArr.length; i++) {
+					
+					wordCount++;
+					curChildProps = rootObj.childArr[i].props;
+
+					totWidth += curChildProps.minWidth + curParentProps.padding;
+
+					if (totWidth-curParentProps.padding > curParentProps.resultWidth) {
+
+						if (wordCount == 1) {
+							rootObj.lineArr[curLine].push(i);
+							rootObj.lineWidthArr.push(curParentProps.resultWidth - curParentProps.padding*2);
+						}
+						else {
+							rootObj.lineWidthArr.push(totWidth - (curChildProps.minWidth + curParentProps.padding) );
+						}
+						wordCount = 0;
+						totWidth = curParentProps.padding*2;
+						curLine++;
+						lineArr.push([]);
+						
+					}
+					else {
+						rootObj.lineArr[curLine].push(i);
+					}
+				}
+
+
+				for (j = 0; j < rootObj.lineArr.length; j++) {
+					startItem = rootObj.lineArr[j][0];
+					endItem = rootObj.lineArr[j].last();
+					curLineWidth = rootObj.lineWidthArr[j];
+					availWidth = curParentProps.resultWidth - curLineWidth;
+
+					totRatio = 0;
+					for (i = startItem; i <= endItem; i++) {
+						curChildProps = rootObj.childArr[i].props;
+						totRatio += curChildProps.fillRatio;
+					}
+
+					totFilled = 0;
+					for (i = startItem; i <= endItem; i++) {
+						curChildProps = rootObj.childArr[i].props;
+						curChildProps.resultWidth = curChildProps.minWidth + Math.floor(curChildProps.fillRatio*availWidth/totRatio);
+
+						totFilled += curChildProps.resultWidth;
+					}
+
+					//add on left over space from rounding down
+					curChildProps.resultWidth += availWidth - totFilled;
+
+				}
+
+			}
+			else {
+
+				rootObj.lineArr = [];
+
+				for (i = 0; i < rootObj.childArr.length; i++) {
+					curChildProps = rootObj.childArr[i].props;
+					maxWidth = curParentProps.resultWidth - curParentProps.padding*2;
+
+					if (curChildProps.fillRatio > 0) {
+						curChildProps.resultWidth = maxWidth;
+					}
+					else {
+						curChildProps.resultWidth = Math.min(curChildProps.minWidth,maxWidth);
+					}
+
+					rootObj.lineArr.push([i]);
+					rootObj.lineWidthArr.push(curChildProps.resultWidth);
+
+				}
+			}
+
+
+			for (i = 0; i < rootObj.childArr.length; i++) {
+				gob.setResultWidths(rootObj.childArr[i]);
+			}
+
+			
+		}
+		
+	}
+
+	gob.layoutGUI = function(rootObj) {
+		gob.getMinWidths(rootObj);
+		gob.setResultWidths(rootObj);
+		gob.getMinHeights(rootObj);
+
+	};
+
+
+	gob.wf("doTextUpdate", function() {
 		gob.drawTextArea(testObj, true, false, meshBG);
 		gob.drawTextArea(testObj, false, false, meshText);
 		gob.updateBaseRT = true;
-	}
+	});
 
-	gob.initFinal = function() {
+	gob.wf("initFinal", function() {
 		var curShader;
 		var i;
 
@@ -345,118 +678,117 @@ j$(function() {
 
 		gob.initScene();
 
+		j$(document).mousemove(function(e){
 
-		j$(document).ready(function(){
-			j$(document).mousemove(function(e){
+			var x = ((e.pageX/gob.bufferWidth)-0.5)*2.0;
+			var y = -((e.pageY/gob.bufferHeight)-0.5)*2.0;
 
-				var x = ((e.pageX/window.innerWidth)-0.5)*2.0;
-				var y = -((e.pageY/window.innerHeight)-0.5)*2.0;
+			var oldRendering = gob.isRendering;
 
-				var oldRendering = gob.isRendering;
+			var maxval = 0.9;
 
-				var maxval = 0.9;
+			gob.isRendering = (x < maxval && x > -maxval && y < maxval && y > -maxval);
 
-				gob.isRendering = (x < maxval && x > -maxval && y < maxval && y > -maxval);
+			if (oldRendering != gob.isRendering) {
+				console.log("gob.isRendering: " + gob.isRendering);
+			}
 
-				if (oldRendering != gob.isRendering) {
-					console.log("gob.isRendering: " + gob.isRendering);
-				}
-
-				//TODO: update rendering on mouse movement instead
+			//TODO: update rendering on mouse movement instead
 
 
-				gob.shaders.lightingShader.uniforms.u_MouseCoords.value.x = x;
-				gob.shaders.lightingShader.uniforms.u_MouseCoords.value.y = y;
+			gob.shaders.lightingShader.uniforms.u_MouseCoords.value.x = x;
+			gob.shaders.lightingShader.uniforms.u_MouseCoords.value.y = y;
 
-				//gob.shaders.textShader.uniforms.u_MouseCoords.value.x = e.pageX;
-				//gob.shaders.textShader.uniforms.u_MouseCoords.value.y = e.pageY;
-				//gob.shaders.bgShader.uniforms.u_MouseCoords.value.x = e.pageX;
-				//gob.shaders.bgShader.uniforms.u_MouseCoords.value.y = e.pageY;
-			});
-			j$(document).mousedown(function(e){
-				
-				var wRatio = e.pageX/window.innerWidth;
-				var hRatio = e.pageY/window.innerHeight;
+			//gob.shaders.textShader.uniforms.u_MouseCoords.value.x = e.pageX;
+			//gob.shaders.textShader.uniforms.u_MouseCoords.value.y = e.pageY;
+			//gob.shaders.bgShader.uniforms.u_MouseCoords.value.x = e.pageX;
+			//gob.shaders.bgShader.uniforms.u_MouseCoords.value.y = e.pageY;
+		});
+		j$(document).mousedown(function(e){
+			
+			var wRatio = e.pageX/gob.bufferWidth;
+			var hRatio = e.pageY/gob.bufferHeight;
 
-				if (gob.debugTex) {
-					if (gob.curDebugSection == 0.0) {
-						if (hRatio < 0.5) {
-							if (wRatio < 0.5) {
-								gob.curDebugSection = 1.0;
-							}
-							else {
-								gob.curDebugSection = 2.0;
-							}
+			if (gob.debugTex) {
+				if (gob.curDebugSection == 0.0) {
+					if (hRatio < 0.5) {
+						if (wRatio < 0.5) {
+							gob.curDebugSection = 1.0;
 						}
 						else {
-							if (wRatio < 0.5) {
-								gob.curDebugSection = 3.0;
-							}
-							else {
-								gob.curDebugSection = 4.0;
-							}
+							gob.curDebugSection = 2.0;
 						}
 					}
 					else {
-						gob.curDebugSection = 0.0;
+						if (wRatio < 0.5) {
+							gob.curDebugSection = 3.0;
+						}
+						else {
+							gob.curDebugSection = 4.0;
+						}
 					}
-
-					gob.shaders.debugShader.uniforms.u_Section.value = gob.curDebugSection;
-
 				}
 				else {
-					testObj.maxWidth = (e.pageX-testObj.x)/zoom;
-					testObj.maxHeight = (e.pageY-testObj.y)/zoom;
-
-					//(obj, isBG, firstRun, geoBuffer)
-					gob.doTextUpdate();
+					gob.curDebugSection = 0.0;
 				}
 
+				gob.shaders.debugShader.uniforms.u_Section.value = gob.curDebugSection;
+
+			}
+			else {
 				
 
+				testObj.maxWidth = (e.pageX-testObj.x)/zoom;
+				testObj.maxHeight = (e.pageY-testObj.y)/zoom;
 
-				
-			});
+				//(obj, isBG, firstRun, geoBuffer)
+				gob.doTextUpdate();
+			}
 
-			j$(document).mousewheel(function(event, delta, deltaX, deltaY) {
-
-				//zoom += deltaY/100.0;
-
-			});
-
+			
 
 
-			j$(document).keypress(function(e) {
+			
+		});
 
-				var code = (e.keyCode ? e.keyCode : e.which);
+		j$(document).mousewheel(function(event, delta, deltaX, deltaY) {
 
-				if ( code == "s".charCodeAt(0) ) {
-					//gob.isRendering = !gob.isRendering;
+			//zoom += deltaY/100.0;
 
-					if (gob.isRendering) {
-						console.log("animation resumed");
-					}
-					else {
-						console.log("animation stopped");
-					}
+		});
 
+
+
+		j$(document).keypress(function(e) {
+
+			var code = (e.keyCode ? e.keyCode : e.which);
+
+			if ( code == "s".charCodeAt(0) ) {
+				//gob.isRendering = !gob.isRendering;
+
+				if (gob.isRendering) {
+					console.log("animation resumed");
 				}
-			});
+				else {
+					console.log("animation stopped");
+				}
 
-
-
-		})
+			}
+		});
 
 		gob.animate();
-	}
+	});
 
 	gob.init = function() {
+
+		console.log("-- gob.init() --");
+
 		var i;
 		var curStr = "";
 		
 
 		gob.traceLevel = 0;
-		gob.popCount = 0;
+		gob.tracesAtLevel = 0;
 		gob.traceArr = ["",""];
 
 		for (i = 2; i < 100; i++) {
@@ -478,29 +810,29 @@ j$(function() {
 		};
 
 		//renderer.deallocateRenderTarget(gob.renderTargets.baseRT);
-		gob.renderTargets.baseRT = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, {
+		gob.renderTargets.baseRT = new THREE.WebGLRenderTarget( gob.bufferWidth, gob.bufferHeight, {
 			minFilter: THREE.LinearFilter, // NearestFilter // LinearFilter
 			magFilter: THREE.LinearFilter, 
 			format: THREE.RGBAFormat
 		} );
-		gob.renderTargets.layerRT = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, {
+		gob.renderTargets.layerRT = new THREE.WebGLRenderTarget( gob.bufferWidth, gob.bufferHeight, {
 			minFilter: THREE.LinearFilter, // NearestFilter // LinearFilter
 			magFilter: THREE.LinearFilter, 
 			format: THREE.RGBAFormat
 		} );
-		gob.renderTargets.aoRT = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, {
-			minFilter: THREE.LinearFilter, // NearestFilter // LinearFilter
-			magFilter: THREE.LinearFilter, 
-			format: THREE.RGBAFormat
-		} );
-
-		gob.renderTargets.lightingRT = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, {
+		gob.renderTargets.aoRT = new THREE.WebGLRenderTarget( gob.bufferWidth, gob.bufferHeight, {
 			minFilter: THREE.LinearFilter, // NearestFilter // LinearFilter
 			magFilter: THREE.LinearFilter, 
 			format: THREE.RGBAFormat
 		} );
 
-		gob.renderTargets.downscaleRT = new THREE.WebGLRenderTarget( window.innerWidth/2, window.innerHeight/2, {
+		gob.renderTargets.lightingRT = new THREE.WebGLRenderTarget( gob.bufferWidth, gob.bufferHeight, {
+			minFilter: THREE.LinearFilter, // NearestFilter // LinearFilter
+			magFilter: THREE.LinearFilter, 
+			format: THREE.RGBAFormat
+		} );
+
+		gob.renderTargets.downscaleRT = new THREE.WebGLRenderTarget( gob.bufferWidth/2, gob.bufferHeight/2, {
 			minFilter: THREE.NearestFilter, // NearestFilter // LinearFilter
 			magFilter: THREE.NearestFilter, 
 			format: THREE.RGBAFormat
@@ -600,8 +932,8 @@ j$(function() {
 		var dashWidth = gob.curFont.chars[13].width;
 		var wordMod;
 
-		var hAlign = obj.hAlign ? obj.hAlign:0;
-		var vAlign = obj.vAlign ? obj.vAlign:0;
+		var hTextAlign = obj.hTextAlign ? obj.hTextAlign:0;
+		var vTextAlign = obj.vTextAlign ? obj.vTextAlign:0;
 		var tempWordStart;
 
 		var curInd0;
@@ -762,7 +1094,7 @@ j$(function() {
 			
 			for (i = 0; i < finalLineArr.length; i++) {
 				yOff = i*gob.curFont.metrics.ascender + gob.curFont.metrics.descender;
-				switch (hAlign) {
+				switch (hTextAlign) {
 					//left
 					case 0:
 						xOff = 0;
@@ -1045,16 +1377,17 @@ j$(function() {
 		
 		
 		for (i = 0; i < gob.shaderNames.length; i++) {
-			gob.shaders[gob.shaderNames[i]].uniforms.u_Resolution.value.x = window.innerWidth;
-			gob.shaders[gob.shaderNames[i]].uniforms.u_Resolution.value.y = window.innerHeight;
+			gob.shaders[gob.shaderNames[i]].uniforms.u_Resolution.value.x = gob.bufferWidth;//window.innerWidth;
+			gob.shaders[gob.shaderNames[i]].uniforms.u_Resolution.value.y = gob.bufferHeight;//window.innerHeight;
 		}
 
-		gob.shaders.downscaleShader.uniforms.u_TexResolution.value.x = Math.floor(window.innerWidth/2);
-		gob.shaders.downscaleShader.uniforms.u_TexResolution.value.y = Math.floor(window.innerHeight/2);
-		gob.shaders.upscaleShader.uniforms.u_TexResolution.value.x = Math.floor(window.innerWidth/2);
-		gob.shaders.upscaleShader.uniforms.u_TexResolution.value.y = Math.floor(window.innerHeight/2);
+		gob.shaders.downscaleShader.uniforms.u_TexResolution.value.x = Math.floor(gob.bufferWidth/2);
+		gob.shaders.downscaleShader.uniforms.u_TexResolution.value.y = Math.floor(gob.bufferHeight/2);
+		gob.shaders.upscaleShader.uniforms.u_TexResolution.value.x = Math.floor(gob.bufferWidth/2);
+		gob.shaders.upscaleShader.uniforms.u_TexResolution.value.y = Math.floor(gob.bufferHeight/2);
 
-		renderer.setSize( window.innerWidth, window.innerHeight );
+		//renderer.setClearColorHex( 0xffffff, 1 );
+		renderer.setSize( gob.bufferWidth, gob.bufferHeight );
 
 
 	}
@@ -1171,7 +1504,7 @@ j$(function() {
 	}
 
 
-	gob.setCurFont = function(fName) {
+	gob.wf("setCurFont", function(fName) {
 		gob.curFont = fName;
 		gob.shaders.textShader.uniforms.u_Texture0.value = gob.curFont.heightRT;
 		gob.shaders.textShader.uniforms.u_Texture1.value = gob.curFont.normHalfRT;
@@ -1212,9 +1545,9 @@ j$(function() {
 			]
 		);
 
-	}
+	});
 
-	gob.initScene = function() {
+	gob.wf("initScene", function() {
 
 		var i;
 
@@ -1268,9 +1601,9 @@ j$(function() {
 		var curd;
 		var layerScale;
 		for (i = 0; i < gob.maxLayers; i++) {
-			curh = 2.0*i/window.innerHeight;
+			curh = 2.0*i/gob.bufferHeight;
 			curd = i/255.0;
-			//layerScale = 1.0 + (i/gob.maxLayers)*( gob.maxLayers/Math.min(window.innerHeight,window.innerWidth) );
+
 			geoBufferLayer.vertices.push(
 				new THREE.Vector3( -1.0, -1.0+curh, curd ),
 				new THREE.Vector3(  1.0, -1.0+curh, curd ),
@@ -1295,6 +1628,61 @@ j$(function() {
 		gob.setCurFont(g_fonts["arial_black_regular_96"]);
 		
 
+		var defContH = {
+			str: 			"",
+			drawBG: 		true,
+			scale: 			1.0,
+			font: 			gob.curFont,
+			hTextAlign:		enums.align.left,
+			vTextAlign:		enums.align.top,
+
+			//x: 				50,
+			//y: 				50,
+			//maxWidth: 		700,
+			//maxHeight: 		550,
+
+			//scrollx: 0,
+			//scrolly: 0,
+
+			fillDir: 		enums.fillDir.horizontal,
+			fillRatio: 		1,
+			maxLines: 		1,
+			itemsPerLine: 	0,
+
+			cornerRad: 		8,
+			margin: 		0,
+			border: 		0,
+			padding: 		16,
+			
+			baseDepth: 		0
+		};
+
+		
+		var defContV = combineObjs([
+			defContH,
+			{
+				fillDir: 		enums.fillDir.vertical,
+			}
+		]);
+		
+
+
+		mainRoot = createNode( defContH, [
+			createNode( defContV, [
+				createNode( [defContH,{str:"test 123"}], []),
+				createNode( [defContH,{str:"test 456"}], []),
+				createNode( [defContH,{str:"test 789"}], [])
+			]),
+			createNode( defContV, [
+
+			]),
+			createNode( defContV, [
+				createNode( [defContH,{str:"test abc"}], []),
+				createNode( [defContH,{str:"test xyz"}], [])
+			])
+		]);
+
+		gob.layoutGUI(mainRoot);
 
 		
 		testObj = {
@@ -1306,16 +1694,17 @@ j$(function() {
 			scale: 			1.0,
 			maxWidth: 		700,
 			maxHeight: 		550,
-			hAlign: 		0,
-			vAlign: 		0,
+			hTextAlign: 	0,
+			vTextAlign: 	0,
 			drawBG: 		true,
 			
 			cornerRad: 		8,
 			padding: 		16,
 			border: 		0,
 			margin: 		0,
-			zdepth: 		0
+			baseDepth: 		0
 		};
+		
 
 		//(obj, isBG, firstRun, geoBuffer)
 		gob.drawTextArea(testObj, true, true, meshBG);
@@ -1335,16 +1724,16 @@ j$(function() {
 		window.addEventListener( 'resize', gob.onWindowResize, false );
 
 
-	}
+	});
 
-	gob.setFont = function(val) {
+	gob.wf("setFont", function(val) {
 		//testObj.scale = val;
 		gob.setCurFont(val);
 		gob.doTextUpdate();
 		
-	}
+	});
 
-	gob.getKernMap = function(fontObj) {
+	gob.wf("getKernMap", function(fontObj) {
 		var i;
 		var curKern;
 		var totSize = 128*128;
@@ -1362,7 +1751,7 @@ j$(function() {
 
 		}
 
-	}
+	});
 
 	gob.getUniforms = function(str, varType) {
 		var strArr = str.split(';\n');
@@ -1437,12 +1826,14 @@ j$(function() {
 		}
 
 		return resObj;
-	}
+	};
 
 
 	
-
-	gob.init();
+	j$(document).ready(function(){
+		gob.init();
+	})
+	
 
 
 
