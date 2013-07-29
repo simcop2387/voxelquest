@@ -17,6 +17,10 @@ var enums = {
 	}
 }
 
+function logInPlace(obj) {
+	//console.log(obj);
+	return obj;
+}
 
 function combineObjs(oArr) {
 	var resObj = {};
@@ -29,7 +33,7 @@ function combineObjs(oArr) {
 
 	}
 	else {
-		return oArr;
+		return JSON.parse(JSON.stringify(oArr));
 	}
 
 	for (i = 0; i < oArr.length; i++) {
@@ -43,7 +47,8 @@ function combineObjs(oArr) {
 		}
 	}
 
-	return resObj;
+	return JSON.parse(JSON.stringify(resObj));
+	//resObj
 }
 
 function createNode(propArr,childArr) {
@@ -91,7 +96,7 @@ j$(function() {
 	var container, stats;
 	var camera, scene, renderer;
 	var texture;
-	var testObj;
+	//var testObj;
 
 	var mainRoot;
 
@@ -108,6 +113,8 @@ j$(function() {
 
 	gob = {
 		curDebugSection:0.0,
+
+		traceVals:[],
 
 		bufferWidth: 1024,
 		bufferHeight: 768,
@@ -214,13 +221,15 @@ j$(function() {
 				gob[varName] = function() {
 
 					var argArr = Array.prototype.slice.call(arguments, 0);
-
+					var i;
 					gob.pushTrace();
 
 					var aStr = "";
 					
-					if (avoidArgs) {
-
+					if (avoidArgs || (gob.traceVals.length > 0) ) {
+						for (i = 0; i < gob.traceVals.length; i++) {
+							aStr += argArr[0].props[gob.traceVals[i]] + " ";
+						}
 					}
 					else {
 						aStr = argArr.join(",");
@@ -311,65 +320,7 @@ j$(function() {
 	});
 
 
-
-	/*
-	var defContH = {
-		str: 			"",
-		drawBG: 		true,
-		scale: 			1.0,
-		font: 			gob.curFont,
-		hTextAlign:		enums.align.left,
-		vTextAlign:		enums.align.top,
-
-		//x: 				50,
-		//y: 				50,
-		//maxWidth: 		700,
-		//maxHeight: 		550,
-
-		//scrollx: 0,
-		//scrolly: 0,
-
-		fillDir: 		enums.fillDir.horizontal,
-		fillRatio: 		1,
-		maxLines: 		1,
-		itemsPerLine: 	0,
-
-		cornerRad: 		8,
-		margin: 		0,
-		border: 		0,
-		padding: 		16,
-		
-		baseDepth: 		0
-	};
-
-	
-	var defContV = combineObjs([
-		defContH,
-		{
-			fillDir: 		enums.fillDir.vertical,
-		}
-	]);
-
-	//props
-	//childArr
-	mainRoot = createNode( defContV, [
-		createNode( defContH, [
-			createNode( defContV, []),
-			createNode( defContV, []),
-			createNode( defContV, [])
-		]),
-		createNode( defContH, [
-
-		]),
-		createNode( defContH, [
-			createNode( defContV, []),
-			createNode( defContV, [])
-		])
-	]);
-	*/
-
-
-	gob.getStringLength = function(rootProps) {
+	gob.getStringWidth = function(rootProps) {
 		var i;
 		var curChar;
 		var charCode;
@@ -397,7 +348,9 @@ j$(function() {
 
 
 
-	gob.getMinWidths = function(rootObj) {
+
+
+	gob.wf("getMinWidths", function(rootObj) {
 		var i;
 
 		var curParentProps = rootObj.props;
@@ -407,23 +360,10 @@ j$(function() {
 
 		if (rootObj.childArr.length == 0) {
 			if (curParentProps.maxLines == 1 && curParentProps.fitText) {
-				minWidth = gob.getStringLength(curParentProps);
+				minWidth = gob.getStringWidth(curParentProps);
 			}
 		}
 		else {
-
-			/*
-			if (curParentProps.fillDir == enums.fillDir.horizontal) {
-				for (i = 0; i < rootObj.childArr.length; i++) {
-					minWidth += gob.getMinWidths(rootObj.childArr[i]);
-				}
-			}
-			else {
-				for (i = 0; i < rootObj.childArr.length; i++) {
-					minWidth = Math.max(gob.getMinWidths(rootObj.childArr[i]), minWidth); 
-				}
-			}
-			*/
 
 			for (i = 0; i < rootObj.childArr.length; i++) {
 				minWidth = Math.max(gob.getMinWidths(rootObj.childArr[i]), minWidth); 
@@ -436,11 +376,14 @@ j$(function() {
 
 		return curParentProps.minWidth;
 		
-	}
+	});
 
-	gob.setResultWidths = function(rootObj) {
+
+
+	gob.wf("setResultWidths", function(rootObj) {
 		var i;
 		var j;
+		var curX;
 
 		var curParentProps = rootObj.props;
 		var curChildProps;
@@ -458,16 +401,16 @@ j$(function() {
 		var curLineWidth;
 
 		rootObj.lineWidthArr = [];
+		rootObj.lineArr = [];
 
 		if (rootObj.childArr.length == 0) {
-
+			
 		}
 		else {
 
 
 			if (curParentProps.fillDir == enums.fillDir.horizontal) {
-
-				rootObj.lineArr = [[]];
+				
 				
 				totWidth = curParentProps.padding*2;
 				wordCount = 0;
@@ -480,34 +423,48 @@ j$(function() {
 					wordCount++;
 					curChildProps = rootObj.childArr[i].props;
 
+
 					totWidth += curChildProps.minWidth + curParentProps.padding;
+
+					while (rootObj.lineArr.length <= curLine) {
+						rootObj.lineArr.push([]);
+					}
 
 					if (totWidth-curParentProps.padding > curParentProps.resultWidth) {
 
 						if (wordCount == 1) {
+
 							rootObj.lineArr[curLine].push(i);
 							rootObj.lineWidthArr.push(curParentProps.resultWidth - curParentProps.padding*2);
 						}
 						else {
+							i--;
 							rootObj.lineWidthArr.push(totWidth - (curChildProps.minWidth + curParentProps.padding) );
 						}
 						wordCount = 0;
 						totWidth = curParentProps.padding*2;
 						curLine++;
-						lineArr.push([]);
+
 						
 					}
 					else {
+
 						rootObj.lineArr[curLine].push(i);
 					}
 				}
 
+
+				if (totWidth != curParentProps.padding*2) {
+
+					rootObj.lineWidthArr.push(totWidth - curParentProps.padding );
+				}
 
 				for (j = 0; j < rootObj.lineArr.length; j++) {
 					startItem = rootObj.lineArr[j][0];
 					endItem = rootObj.lineArr[j].last();
 					curLineWidth = rootObj.lineWidthArr[j];
 					availWidth = curParentProps.resultWidth - curLineWidth;
+
 
 					totRatio = 0;
 					for (i = startItem; i <= endItem; i++) {
@@ -516,63 +473,193 @@ j$(function() {
 					}
 
 					totFilled = 0;
+					curX = curParentProps.x + curParentProps.padding;
+					
+					
 					for (i = startItem; i <= endItem; i++) {
 						curChildProps = rootObj.childArr[i].props;
-						curChildProps.resultWidth = curChildProps.minWidth + Math.floor(curChildProps.fillRatio*availWidth/totRatio);
-
+						
+						curChildProps.resultWidth = (curChildProps.minWidth + Math.floor(curChildProps.fillRatio*availWidth/totRatio));
+						curChildProps.x = curX;
+						
 						totFilled += curChildProps.resultWidth;
+
+						curX += curParentProps.padding + curChildProps.resultWidth;
 					}
 
 					//add on left over space from rounding down
-					curChildProps.resultWidth += availWidth - totFilled;
+					//curChildProps.resultWidth += availWidth - totFilled;
+
 
 				}
 
 			}
 			else {
 
-				rootObj.lineArr = [];
-
 				for (i = 0; i < rootObj.childArr.length; i++) {
+
+
+
 					curChildProps = rootObj.childArr[i].props;
 					maxWidth = curParentProps.resultWidth - curParentProps.padding*2;
 
 					if (curChildProps.fillRatio > 0) {
-						curChildProps.resultWidth = maxWidth;
+						curChildProps.resultWidth = (maxWidth);
 					}
 					else {
-						curChildProps.resultWidth = Math.min(curChildProps.minWidth,maxWidth);
+						curChildProps.resultWidth = (Math.min(curChildProps.minWidth,maxWidth));
 					}
 
 					rootObj.lineArr.push([i]);
 					rootObj.lineWidthArr.push(curChildProps.resultWidth);
 
 				}
+
+				
+
+
+				for (i = 0; i < rootObj.childArr.length; i++) {
+					curChildProps = rootObj.childArr[i].props;
+					curChildProps.x = curParentProps.x + curParentProps.padding;
+				}
+
+
 			}
 
 
 			for (i = 0; i < rootObj.childArr.length; i++) {
 				gob.setResultWidths(rootObj.childArr[i]);
 			}
+		}
+		
+	});
+
+	gob.wf("getMinHeights",function(rootObj) {
+		var i;
+		var j;
+
+		var curY;
+
+		//function(obj, isBG, firstRun, curMesh, calcHeight)
+		//gob.drawTextArea(testObj, false, false, null, true);
+
+		var curParentProps = rootObj.props;
+		var curChildProps;
+
+		var minHeight = 0;
+		var totalMinHeight = 0;
+		var curMod;
+
+		curY = curParentProps.y + curParentProps.padding;
+
+		if (rootObj.childArr.length == 0) {
+			if (curParentProps.maxLines == 1 ) {
+				minHeight = gob.curFont.metrics.height*curParentProps.scale;
+			}
+			else {
+				minHeight = gob.drawTextArea(curParentProps, false, false, null, true);
+			}
+		}
+		else {
+			
+			if (curParentProps.fillDir == enums.fillDir.horizontal) {
+
+
+				for (j = 0; j < rootObj.lineArr.length; j++) {
+					startItem = rootObj.lineArr[j][0];
+					endItem = rootObj.lineArr[j].last();
+
+					minHeight = 0;
+					for (i = startItem; i <= endItem; i++) {
+						curChildProps = rootObj.childArr[i].props;
+						curChildProps.y = curY;
+
+						minHeight = Math.max(gob.getMinHeights(rootObj.childArr[i]), minHeight); 
+
+						
+					}
+
+
+
+					totalMinHeight += minHeight;
+
+					if (j != rootObj.lineArr.length-1) {
+						totalMinHeight += curParentProps.padding;
+					}
+
+					curY += minHeight + curParentProps.padding;
+
+				}
+
+				minHeight = totalMinHeight;
+			}
+			else {
+
+				for (i = 0; i < rootObj.childArr.length; i++) {
+					curChildProps = rootObj.childArr[i].props;
+					curChildProps.y = curY;
+
+					curMod = gob.getMinHeights(rootObj.childArr[i]);
+					
+
+
+					if (i != rootObj.childArr.length-1) {
+						curMod += curParentProps.padding;
+					}
+
+					minHeight += curMod;
+
+					curY += curMod;
+
+
+				}
+				
+			}
+
 
 			
 		}
+
+		curParentProps.minHeight = minHeight+(curParentProps.padding)*(2);// + Math.max(0,rootObj.childArr.length-1) );
+
+		curParentProps.resultHeight = curParentProps.minHeight;
+
+		return curParentProps.minHeight;
 		
-	}
+	});
+
+
+	gob.wf("addMeshes",function(rootObj) {
+		var i;
+
+		gob.drawTextArea(rootObj.props, true, true, meshBG);
+		gob.drawTextArea(rootObj.props, false, true, meshText);
+
+		for (i = 0; i < rootObj.childArr.length; i++) {
+			gob.addMeshes(rootObj.childArr[i]);
+		}
+
+	});
 
 	gob.layoutGUI = function(rootObj) {
+		
+		gob.traceVals = ["x","y","resultWidth","resultHeight", "fillDir"];
+
 		gob.getMinWidths(rootObj);
 		gob.setResultWidths(rootObj);
 		gob.getMinHeights(rootObj);
-
+		gob.addMeshes(rootObj);
+		gob.traceVals = [];
 	};
 
 
+	/*
 	gob.wf("doTextUpdate", function() {
 		gob.drawTextArea(testObj, true, false, meshBG);
 		gob.drawTextArea(testObj, false, false, meshText);
 		gob.updateBaseRT = true;
 	});
+	*/
 
 	gob.wf("initFinal", function() {
 		var curShader;
@@ -683,6 +770,8 @@ j$(function() {
 			var x = ((e.pageX/gob.bufferWidth)-0.5)*2.0;
 			var y = -((e.pageY/gob.bufferHeight)-0.5)*2.0;
 
+
+			/*
 			var oldRendering = gob.isRendering;
 
 			var maxval = 0.9;
@@ -692,6 +781,9 @@ j$(function() {
 			if (oldRendering != gob.isRendering) {
 				console.log("gob.isRendering: " + gob.isRendering);
 			}
+			*/
+
+			gob.isRendering = true;
 
 			//TODO: update rendering on mouse movement instead
 
@@ -738,11 +830,11 @@ j$(function() {
 			else {
 				
 
-				testObj.maxWidth = (e.pageX-testObj.x)/zoom;
-				testObj.maxHeight = (e.pageY-testObj.y)/zoom;
+				//testObj.maxWidth = (e.pageX-testObj.x)/zoom;
+				//testObj.maxHeight = (e.pageY-testObj.y)/zoom;
 
 				//(obj, isBG, firstRun, geoBuffer)
-				gob.doTextUpdate();
+				//gob.doTextUpdate();
 			}
 
 			
@@ -763,6 +855,7 @@ j$(function() {
 
 			var code = (e.keyCode ? e.keyCode : e.which);
 
+			/*
 			if ( code == "s".charCodeAt(0) ) {
 				//gob.isRendering = !gob.isRendering;
 
@@ -772,8 +865,8 @@ j$(function() {
 				else {
 					console.log("animation stopped");
 				}
-
 			}
+			*/
 		});
 
 		gob.animate();
@@ -891,17 +984,25 @@ j$(function() {
 
 	}
 	
-	gob.drawTextArea = function(obj, isBG, firstRun, curMesh) {
+	gob.drawTextArea = function(obj, isBG, firstRun, curMesh, calcHeight) {
 
-		curMesh.curInd = 0;
+		//var firstRun = ;
+		//var curMesh = ;
+		
+		//console.log(obj);
 
 		var curShader;
 		var str = obj.str;
 		var x = obj.x;
 		var y = obj.y;
 		var scale = obj.scale;
+
+
+		obj.maxWidth = obj.resultWidth;
+		obj.maxHeight = obj.resultHeight;
+
 		var pMaxW = obj.maxWidth;
-		var pMaxH = obj.maxHeight;
+		var pMaxH = obj.maxHeight;//maxLines*gob.curFont.metrics.height;
 		//var curFont = obj.font;
 
 		var xOff;
@@ -932,8 +1033,8 @@ j$(function() {
 		var dashWidth = gob.curFont.chars[13].width;
 		var wordMod;
 
-		var hTextAlign = obj.hTextAlign ? obj.hTextAlign:0;
-		var vTextAlign = obj.vTextAlign ? obj.vTextAlign:0;
+		var hTextAlign = obj.hTextAlign ? obj.hTextAlign:enums.align.left;
+		var vTextAlign = obj.vTextAlign ? obj.vTextAlign:enums.align.top;
 		var tempWordStart;
 
 		var curInd0;
@@ -1018,9 +1119,6 @@ j$(function() {
 					
 				}
 				
-
-
-				
 			}
 		}
 
@@ -1066,134 +1164,142 @@ j$(function() {
 
 		// trim off newlines at start/end;
 
-		while (finalLineArr.last().lineWidth == 0) {
+		while ( (finalLineArr.length > 0) && (finalLineArr.last().lineWidth == 0) ) {
 			finalLineArr.pop();
 		}
 
-		while (finalLineArr[0].lineWidth == 0) {
+		while ( (finalLineArr.length > 0) && (finalLineArr[0].lineWidth == 0) ) {
 			finalLineArr.shift();
 		}
 
 
-		if (isBG && obj.drawBG) {
-			curShader = "bgShader";
-			atArr[0] =  obj.maxWidth;  atArr[1] = obj.maxHeight;  atArr[2] = 0.0;  atArr[3] = 1.0;
-			atArr[4] =  obj.maxWidth;  atArr[5] = obj.maxHeight;  atArr[6] = 0.0;  atArr[7] = 1.0;
-			atArr[8] =  obj.maxWidth;  atArr[9] = obj.maxHeight;  atArr[10] = 0.0; atArr[11] = 1.0;
-			atArr[12] = obj.maxWidth; atArr[13] = obj.maxHeight; atArr[14] = 0.0; atArr[15] = 1.0;
-			
-			gob.drawString(obj,true, "", x, y, 0, 0, firstRun, curMesh);
+
+		if (calcHeight) {
+			return Math.min(finalLineArr.length, obj.maxLines)*gob.curFont.metrics.height*scale;
 		}
 		else {
-			curShader = "textShader";
-			atArr[0] = 0.0;  atArr[1] = 0.0;  atArr[2] = 0.0;  atArr[3] = 0.0;
-			atArr[4] = 0.0;  atArr[5] = 0.0;  atArr[6] = 0.0;  atArr[7] = 0.0;
-			atArr[8] = 0.0;  atArr[9] = 0.0;  atArr[10] = 0.0; atArr[11] = 0.0;
-			atArr[12] = 0.0; atArr[13] = 0.0; atArr[14] = 0.0; atArr[15] = 0.0;
+			//curMesh.curInd = 0;
 
-			
-			for (i = 0; i < finalLineArr.length; i++) {
-				yOff = i*gob.curFont.metrics.ascender + gob.curFont.metrics.descender;
-				switch (hTextAlign) {
-					//left
-					case 0:
-						xOff = 0;
-					break;
-					// center
-					case 1:
-						xOff = (maxW-finalLineArr[i].lineWidth)/(2);
-					break;
-					// right
-					case 2:
-						xOff = (maxW-finalLineArr[i].lineWidth);
-					break;
-				}
+			if (isBG && obj.drawBG) {
+				curShader = "bgShader";
+				atArr[0] =  obj.maxWidth;  atArr[1] = obj.maxHeight;  atArr[2] = 0.0;  atArr[3] = 1.0;
+				atArr[4] =  obj.maxWidth;  atArr[5] = obj.maxHeight;  atArr[6] = 0.0;  atArr[7] = 1.0;
+				atArr[8] =  obj.maxWidth;  atArr[9] = obj.maxHeight;  atArr[10] = 0.0; atArr[11] = 1.0;
+				atArr[12] = obj.maxWidth; atArr[13] = obj.maxHeight; atArr[14] = 0.0; atArr[15] = 1.0;
 				
+				gob.drawString(obj,true, "", x, y, 0, 0, firstRun, curMesh);
+			}
+			else {
+				curShader = "textShader";
+				atArr[0] = 0.0;  atArr[1] = 0.0;  atArr[2] = 0.0;  atArr[3] = 0.0;
+				atArr[4] = 0.0;  atArr[5] = 0.0;  atArr[6] = 0.0;  atArr[7] = 0.0;
+				atArr[8] = 0.0;  atArr[9] = 0.0;  atArr[10] = 0.0; atArr[11] = 0.0;
+				atArr[12] = 0.0; atArr[13] = 0.0; atArr[14] = 0.0; atArr[15] = 0.0;
 
-				if ( (i+1)*gob.curFont.metrics.ascender - gob.curFont.metrics.descender < maxH) {
-					gob.drawString(obj,false, finalLineArr[i].lineStr, x, y, xOff, yOff, firstRun, curMesh);
+				
+				for (i = 0; i < finalLineArr.length; i++) {
+					yOff = i*gob.curFont.metrics.ascender + gob.curFont.metrics.descender;
+					switch (hTextAlign) {
+						case enums.align.left:
+							xOff = 0;
+						break;
+						case enums.align.center:
+							xOff = (maxW-finalLineArr[i].lineWidth)/(2);
+						break;
+						case enums.align.right:
+							xOff = (maxW-finalLineArr[i].lineWidth);
+						break;
+					}
+					
+
+					//if ( (i+1)*gob.curFont.metrics.ascender - gob.curFont.metrics.descender < maxH) {
+					if ( i < obj.maxLines )
+					{	
+						gob.drawString(obj,false, finalLineArr[i].lineStr, x, y, xOff, yOff, firstRun, curMesh);
+					}
+					else {
+						extraInd += finalLineArr[i].lineStr.length*4;
+					}
 				}
-				else {
-					extraInd += finalLineArr[i].lineStr.length*4;
+			}
+
+			//curMesh.maxInd = curMesh.curInd;
+			
+			
+			/*
+			if (firstRun) {
+				curMesh.maxInd = Math.floor( (curMesh.curInd+extraInd) *1.5);
+
+				for (i = curMesh.curInd; i < curMesh.maxInd; i += 4) {
+					curMesh.geometry.vertices.push(
+						new THREE.Vector3( 0, 0, 0 ),
+						new THREE.Vector3( 0, 0, 0 ),
+						new THREE.Vector3( 0, 0, 0 ),
+						new THREE.Vector3( 0, 0, 0 )
+					);
+
+					curMesh.geometry.faceVertexUvs[0].push([
+						new THREE.Vector2( 0, 0 ),
+						new THREE.Vector2( 0, 0 ),
+						new THREE.Vector2( 0, 0 ),
+						new THREE.Vector2( 0, 0 )
+					]);
+
+					gob.shaders[curShader].attributes.a_Data0.value.push(
+
+						new THREE.Vector4( 0, 0, 0, 0 ),
+						new THREE.Vector4( 0, 0, 0, 0 ),
+						new THREE.Vector4( 0, 0, 0, 0 ),
+						new THREE.Vector4( 0, 0, 0, 0 )
+
+					);
+
+					curMesh.geometry.faces.push( new THREE.Face4(i+0, i+1, i+2, i+3) );
+				}
+
+			}
+			else {
+				for (i = curMesh.curInd; i < curMesh.maxInd; i += 4) {
+
+					curInd0 = i;
+					curInd1 = i+1;
+					curInd2 = i+2;
+					curInd3 = i+3;
+					curIndDiv4 = Math.floor(curInd0/4);
+
+					curMesh.geometry.vertices[curInd0].set( 0, 0, 0 );
+					curMesh.geometry.vertices[curInd1].set( 0, 0, 0 );
+					curMesh.geometry.vertices[curInd2].set( 0, 0, 0 );
+					curMesh.geometry.vertices[curInd3].set( 0, 0, 0 );
+
+					curMesh.geometry.faceVertexUvs[0][curIndDiv4][0].set( 0, 0 );
+					curMesh.geometry.faceVertexUvs[0][curIndDiv4][1].set( 0, 0 );
+					curMesh.geometry.faceVertexUvs[0][curIndDiv4][2].set( 0, 0 );
+					curMesh.geometry.faceVertexUvs[0][curIndDiv4][3].set( 0, 0 );
+
+					gob.shaders[curShader].attributes.a_Data0.value[curInd0].set( 0, 0, 0, 0 );
+					gob.shaders[curShader].attributes.a_Data0.value[curInd1].set( 0, 0, 0, 0 );
+					gob.shaders[curShader].attributes.a_Data0.value[curInd2].set( 0, 0, 0, 0 );
+					gob.shaders[curShader].attributes.a_Data0.value[curInd3].set( 0, 0, 0, 0 );
+
 				}
 			}
+			*/
+
+
+			
+
+
+			curMesh.geometry.verticesNeedUpdate = true;
+			curMesh.geometry.elementsNeedUpdate = true;
+			curMesh.geometry.uvsNeedUpdate = true;
+			gob.shaders[curShader].attributes[ "a_Data0" ].needsUpdate = true;
+
+			//curMesh.geometry.morphTargetsNeedUpdate = true;
+			//curMesh.geometry.normalsNeedUpdate = true;
+			//curMesh.geometry.colorsNeedUpdate = true;
+			//curMesh.geometry.tangentsNeedUpdate = true;
 		}
-
-
-		
-		
-
-		if (firstRun) {
-			curMesh.maxInd = Math.floor( (curMesh.curInd+extraInd) *1.5);
-
-			for (i = curMesh.curInd; i < curMesh.maxInd; i += 4) {
-				curMesh.geometry.vertices.push(
-					new THREE.Vector3( 0, 0, 0 ),
-					new THREE.Vector3( 0, 0, 0 ),
-					new THREE.Vector3( 0, 0, 0 ),
-					new THREE.Vector3( 0, 0, 0 )
-				);
-
-				curMesh.geometry.faceVertexUvs[0].push([
-					new THREE.Vector2( 0, 0 ),
-					new THREE.Vector2( 0, 0 ),
-					new THREE.Vector2( 0, 0 ),
-					new THREE.Vector2( 0, 0 )
-				]);
-
-				gob.shaders[curShader].attributes.a_Data0.value.push(
-
-					new THREE.Vector4( 0, 0, 0, 0 ),
-					new THREE.Vector4( 0, 0, 0, 0 ),
-					new THREE.Vector4( 0, 0, 0, 0 ),
-					new THREE.Vector4( 0, 0, 0, 0 )
-
-				);
-
-				curMesh.geometry.faces.push( new THREE.Face4(i+0, i+1, i+2, i+3) );
-			}
-
-		}
-		else {
-			for (i = curMesh.curInd; i < curMesh.maxInd; i += 4) {
-
-				curInd0 = i;
-				curInd1 = i+1;
-				curInd2 = i+2;
-				curInd3 = i+3;
-				curIndDiv4 = Math.floor(curInd0/4);
-
-				curMesh.geometry.vertices[curInd0].set( 0, 0, 0 );
-				curMesh.geometry.vertices[curInd1].set( 0, 0, 0 );
-				curMesh.geometry.vertices[curInd2].set( 0, 0, 0 );
-				curMesh.geometry.vertices[curInd3].set( 0, 0, 0 );
-
-				curMesh.geometry.faceVertexUvs[0][curIndDiv4][0].set( 0, 0 );
-				curMesh.geometry.faceVertexUvs[0][curIndDiv4][1].set( 0, 0 );
-				curMesh.geometry.faceVertexUvs[0][curIndDiv4][2].set( 0, 0 );
-				curMesh.geometry.faceVertexUvs[0][curIndDiv4][3].set( 0, 0 );
-
-				gob.shaders[curShader].attributes.a_Data0.value[curInd0].set( 0, 0, 0, 0 );
-				gob.shaders[curShader].attributes.a_Data0.value[curInd1].set( 0, 0, 0, 0 );
-				gob.shaders[curShader].attributes.a_Data0.value[curInd2].set( 0, 0, 0, 0 );
-				gob.shaders[curShader].attributes.a_Data0.value[curInd3].set( 0, 0, 0, 0 );
-
-			}
-		}
-
-
-		
-
-
-		curMesh.geometry.verticesNeedUpdate = true;
-		curMesh.geometry.elementsNeedUpdate = true;
-		curMesh.geometry.uvsNeedUpdate = true;
-		gob.shaders[curShader].attributes[ "a_Data0" ].needsUpdate = true;
-
-		//curMesh.geometry.morphTargetsNeedUpdate = true;
-		//curMesh.geometry.normalsNeedUpdate = true;
-		//curMesh.geometry.colorsNeedUpdate = true;
-		//curMesh.geometry.tangentsNeedUpdate = true;
 
 
 	}
@@ -1469,8 +1575,10 @@ j$(function() {
 				//gob.renderTargets.baseRT
 				//renderer.render( scene, camera );
 			}
-
 		}
+
+
+		gob.isRendering = false;
 
 		stats.update();
 
@@ -1625,14 +1733,14 @@ j$(function() {
 
 
 		
-		gob.setCurFont(g_fonts["arial_black_regular_96"]);
+		gob.setCurFont(g_fonts["arial_black_regular_48"]);
 		
 
 		var defContH = {
 			str: 			"",
 			drawBG: 		true,
 			scale: 			1.0,
-			font: 			gob.curFont,
+			//font: 			gob.curFont,
 			hTextAlign:		enums.align.left,
 			vTextAlign:		enums.align.top,
 
@@ -1647,6 +1755,7 @@ j$(function() {
 			fillDir: 		enums.fillDir.horizontal,
 			fillRatio: 		1,
 			maxLines: 		1,
+			fitText: 		true,
 			itemsPerLine: 	0,
 
 			cornerRad: 		8,
@@ -1667,49 +1776,40 @@ j$(function() {
 		
 
 
-		mainRoot = createNode( defContH, [
-			createNode( defContV, [
-				createNode( [defContH,{str:"test 123"}], []),
-				createNode( [defContH,{str:"test 456"}], []),
-				createNode( [defContH,{str:"test 789"}], [])
-			]),
-			createNode( defContV, [
+		mainRoot = createNode( 
 
-			]),
-			createNode( defContV, [
-				createNode( [defContH,{str:"test abc"}], []),
-				createNode( [defContH,{str:"test xyz"}], [])
-			])
-		]);
+
+			[
+				defContH,
+				{
+					resultWidth:1024,
+					resultHeight:1024,
+					x:0,
+					y:0
+					//,str:"Lorem ipsum dolor sit amet, pro nostrum ullamcorper at\nLorem ipsum dolor sit amet, pro nostrum ullamcorper at"
+				}
+			],
+
+			
+			[
+				createNode( defContV, [
+					createNode( [defContH,{str:"test 123"}], []),
+					createNode( [defContH,{str:"test 456"}], []),
+					createNode( [defContH,{str:"test 789"}], [])
+				]),
+				createNode( defContV, [
+					createNode( [defContH,{str:"test def"}], []),
+					createNode( [defContH,{str:"test fff"}], []),
+				]),
+				createNode( defContV, [
+					createNode( [defContH,{str:"test abc"}], []),
+					createNode( [defContH,{str:"test xyz"}], [])
+				])
+			]
+		);
 
 		gob.layoutGUI(mainRoot);
 
-		
-		testObj = {
-
-			str: 			"Lorem ipsum dolor sit amet, pro nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea. Lorem ipsum dolor sit amet, pro graeci nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea. Lorem ipsum dolor sit amet, pro graeci nostrum ullamcorper at,\n\n est meis mediocritatem eu. No ludus zril quando eum, et altera aliquam menandri per, ad his ridens discere efficiendi. An quo detracto vituperata, pro regione detracto abhorreant no, tantas sententiae te mei. Pri suavitate conclusionemque te, enim laoreet per te. Utinam aliquam detracto te sea.",
-			font: 			gob.curFont,
-			x: 				50,
-			y: 				50,
-			scale: 			1.0,
-			maxWidth: 		700,
-			maxHeight: 		550,
-			hTextAlign: 	0,
-			vTextAlign: 	0,
-			drawBG: 		true,
-			
-			cornerRad: 		8,
-			padding: 		16,
-			border: 		0,
-			margin: 		0,
-			baseDepth: 		0
-		};
-		
-
-		//(obj, isBG, firstRun, geoBuffer)
-		gob.drawTextArea(testObj, true, true, meshBG);
-		gob.drawTextArea(testObj, false, true, meshText);
-		
 		
 		scene.add( meshText );
 		scene.add( meshBG );
@@ -1729,7 +1829,7 @@ j$(function() {
 	gob.wf("setFont", function(val) {
 		//testObj.scale = val;
 		gob.setCurFont(val);
-		gob.doTextUpdate();
+		//gob.doTextUpdate();
 		
 	});
 
