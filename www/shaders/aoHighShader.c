@@ -49,7 +49,7 @@ void main()	{
 	float dis;
 
 	const int loopMax = 8;//10;
-	const int stepAmount = 8;
+	const int stepAmount = 2;
 	const float fLoopMax = float(loopMax);
 
 	float totHits = 0.0;

@@ -3,6 +3,7 @@ uniform sampler2D u_Texture1;
 uniform sampler2D u_Texture2;
 uniform sampler2D u_Texture3;
 uniform float u_Time;
+uniform float u_MaxLayers;
 
 uniform vec2 u_Resolution;
 uniform float u_Zoom;
@@ -85,7 +86,7 @@ void main()	{
 		discard;
 	}
 
-	gl_FragColor = vec4((finalNorm.xy+1.0)/2.0, (30.0)/255.0, v_Data0.w ); //+sin(v_Position.x*v_Position.y*100.0)*10.0
+	gl_FragColor = vec4((finalNorm.xy+1.0)/2.0, 1.0*u_MaxLayers, v_Data0.w ); //+sin(v_Position.x*v_Position.y*100.0)*10.0
 	
 	
 }

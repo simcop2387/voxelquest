@@ -2,6 +2,7 @@
 var gob;
 
 var g_curGroup = 0;
+var a_DataArr = ["a_Data0","a_Data1"];
 
 var enums = {
 	fillDir: {
@@ -116,32 +117,25 @@ j$(function() {
 	
 
 	gob = {
-
+		lockOn: false,
+		activeComp: 0,
 		autoUpdate: false,
-
 		curDebugSection:0.0,
-
 		traceVals:[],
-
 		styleSheets:{},
 		mainRoot:null,
-
 		bufferWidth: 1024,
 		bufferHeight: 768,
-
 		isRendering: true,
-		maxLayers: 40,
+		maxLayers: 20,
 		updateBaseRT:true,
 		renderTargets:{},
-
-		shaderNames:["reflShader","lightingShader","aoShader","extrudeShader","layerShader","bgShader","textShader","bgIdShader","textIdShader","heightShader","normShader","downscaleShader","upscaleShader","debugShader"],
+		shaderNames:["reflShader","lightingShader","aoShader","aoHighShader","extrudeShader","layerShader","bgShader","textShader","bgIdShader","textIdShader","heightShader","normShader","downscaleShader","upscaleShader","debugShader"],
 		fontNames:["arial_black_regular_48","arial_black_regular_96"],
 		fontLoaded:{},
 		shaders:{},
 		materials:{},
 		debugTex:null,
-
-
 		displayList:[],
 		traceOn:false,
 		traceLevel: 0,
@@ -641,14 +635,14 @@ j$(function() {
 	});
 
 
-	gob.wf("addMeshes",function(rootObj) {
+	gob.wf("addMeshes",function(rootObj,firstRun) {
 		var i;
 
-		gob.drawTextArea(rootObj.props, true, true, meshBG);
-		gob.drawTextArea(rootObj.props, false, true, meshText);
+		gob.drawTextArea(rootObj.props, true, firstRun, meshBG);
+		gob.drawTextArea(rootObj.props, false, firstRun, meshText);
 
 		for (i = 0; i < rootObj.childArr.length; i++) {
-			gob.addMeshes(rootObj.childArr[i]);
+			gob.addMeshes(rootObj.childArr[i],firstRun);
 		}
 
 	});
@@ -668,7 +662,7 @@ j$(function() {
 				mouseX <= (cp.x + cp.resultWidth) &&
 				mouseY <= (cp.y + cp.resultHeight)
 			) {
-				return cp.groupId;
+				return cp;
 			}
 			else {
 				return 0;
@@ -680,7 +674,7 @@ j$(function() {
 		for (i = 0; i < rootObj.childArr.length; i++) {
 			res = gob.testHit(rootObj.childArr[i], mouseX, mouseY);
 
-			if (res != 0) {
+			if (res !== 0) {
 				return res;
 			}
 		}
@@ -722,19 +716,71 @@ j$(function() {
 		}
 	}
 
-	gob.layoutGUI = function(rootObj) {
+	gob.updateActiveComp = function(xval) {
+		if (gob.activeComp === 0) {
+
+		}
+		else {
+			gob.activeComp.curValue = Math.min(Math.max(xval-gob.activeComp.x,0),gob.activeComp.resultWidth)/gob.activeComp.resultWidth;
+			//console.log(gob.activeComp.curValue);
+
+			if (gob.lockOn) {
+
+			}
+			else {
+				gob.lockOn = true;
+
+				gob.layoutGUI(gob.mainRoot,false);
+				gob.updateBaseRT = true;
+
+				gob.lockOn = false;
+			}
+
+			
+
+		}
+	}
+
+	gob.layoutGUI = function(rootObj, firstRun) {
+
+
+
+		
+
+
+
+		if (firstRun) {
+			meshText.maxInd = 0;
+			meshBG.maxInd = 0;
+		}
+
+		meshText.curInd = 0;
+		meshText.extraInd = 0;
+		meshBG.curInd = 0;
+		meshBG.extraInd = 0;
+		
+		g_curGroup = 1;
 		
 		gob.traceVals = ["x","y","resultWidth","resultHeight", "fillDir"];
 
-		g_curGroup = 1;
-		gob.numberGroups(rootObj,5);
-		gob.setGroups(rootObj,0);
+		if (firstRun) {
+			gob.numberGroups(rootObj,5);
+			gob.setGroups(rootObj,0);
+			gob.getMinWidths(rootObj);
+			gob.setResultWidths(rootObj);
+			gob.getMinHeights(rootObj);
+		}
 
-		gob.getMinWidths(rootObj);
-		gob.setResultWidths(rootObj);
-		gob.getMinHeights(rootObj);
-		gob.addMeshes(rootObj);
+		
+
+		gob.addMeshes(rootObj,firstRun);
 		gob.traceVals = [];
+
+
+		gob.zeroOutVerts(rootObj,true,firstRun,meshBG);
+		gob.zeroOutVerts(rootObj,false,firstRun,meshText);
+
+
 	};
 
 
@@ -883,6 +929,14 @@ j$(function() {
 			//gob.shaders.textShader.uniforms.u_MouseCoords.value.y = e.pageY;
 			//gob.shaders.bgShader.uniforms.u_MouseCoords.value.x = e.pageX;
 			//gob.shaders.bgShader.uniforms.u_MouseCoords.value.y = e.pageY;
+
+
+			if (gob.mouseDown) {
+
+				gob.updateActiveComp(e.pageX);
+			}
+
+
 		});
 		j$(document).mousedown(function(e){
 			
@@ -921,11 +975,16 @@ j$(function() {
 				
 				res = gob.testHit(gob.mainRoot, e.pageX, e.pageY + gob.maxLayers);
 
-				if (res == 0) {
+				if (res === 0) {
 					res = gob.testHit(gob.mainRoot, e.pageX, e.pageY);
 				}
 
-				console.log(res);
+				//console.log(res);
+
+				gob.activeComp = res;
+
+
+				gob.mouseDown = true;
 
 				//testObj.maxWidth = (e.pageX-testObj.x)/zoom;
 				//testObj.maxHeight = (e.pageY-testObj.y)/zoom;
@@ -934,7 +993,25 @@ j$(function() {
 				//gob.doTextUpdate();
 			}
 
+
 			
+		});
+
+		j$(document).mouseup(function(e){
+			
+			var wRatio = e.pageX/gob.bufferWidth;
+			var hRatio = e.pageY/gob.bufferHeight;
+
+			var res;
+
+			if (gob.debugTex) {
+				
+			}
+			else {
+				gob.mouseDown = false;
+				gob.lockOn = false;
+				gob.updateActiveComp(e.pageX);
+			}
 
 
 			
@@ -955,6 +1032,7 @@ j$(function() {
 			
 			if ( code == "a".charCodeAt(0) ) {
 				gob.autoUpdate = !gob.autoUpdate;
+				console.log("Auto Update: " + gob.autoUpdate);
 			}
 			
 		});
@@ -1085,13 +1163,126 @@ j$(function() {
 		loadFont();
 
 	}
+
+	gob.zeroOutVerts = function(obj,isBG,firstRun,curMesh) {
+		
+
+		var i;
+		var j;
+		var k;
+		var curShader;
+		var curShaders;
+
+		if (isBG) {
+			curShaders = ["bgShader","bgIdShader"];
+		}
+		else {
+			curShaders = ["textShader","textIdShader"];
+		}
+
+
+		//curMesh.maxInd = curMesh.curInd;
+		
+
+		if (firstRun) {
+			curMesh.maxInd = curMesh.curInd;
+		}
+		
+		// zero out the remaining vertices
+		/*
+		if (firstRun) {
+			curMesh.maxInd = Math.floor( (curMesh.curInd+curMesh.extraInd) * 2);
+
+			for (i = curMesh.curInd; i < curMesh.maxInd; i += 4) {
+				curMesh.geometry.vertices.push(
+					new THREE.Vector3( 0, 0, 0 ),
+					new THREE.Vector3( 0, 0, 0 ),
+					new THREE.Vector3( 0, 0, 0 ),
+					new THREE.Vector3( 0, 0, 0 )
+				);
+
+				curMesh.geometry.faceVertexUvs[0].push([
+					new THREE.Vector2( 0, 0 ),
+					new THREE.Vector2( 0, 0 ),
+					new THREE.Vector2( 0, 0 ),
+					new THREE.Vector2( 0, 0 )
+				]);
+
+				for (k = 0; k < curShaders.length; k++) {
+					for (j = 0; j < a_DataArr.length; j++) {
+						gob.shaders[curShaders[k]].attributes[a_DataArr[j]].value.push(
+
+							new THREE.Vector4( 0, 0, 0, 0 ),
+							new THREE.Vector4( 0, 0, 0, 0 ),
+							new THREE.Vector4( 0, 0, 0, 0 ),
+							new THREE.Vector4( 0, 0, 0, 0 )
+
+						);
+					}
+					
+				}
+				
+
+				curMesh.geometry.faces.push( new THREE.Face4(i+0, i+1, i+2, i+3) );
+			}
+
+		}
+		else {
+			for (i = curMesh.curInd; i < curMesh.maxInd; i += 4) {
+
+				curInd0 = i;
+				curInd1 = i+1;
+				curInd2 = i+2;
+				curInd3 = i+3;
+				curIndDiv4 = Math.floor(curInd0/4);
+
+				curMesh.geometry.vertices[curInd0].set( 0, 0, 0 );
+				curMesh.geometry.vertices[curInd1].set( 0, 0, 0 );
+				curMesh.geometry.vertices[curInd2].set( 0, 0, 0 );
+				curMesh.geometry.vertices[curInd3].set( 0, 0, 0 );
+
+				curMesh.geometry.faceVertexUvs[0][curIndDiv4][0].set( 0, 0 );
+				curMesh.geometry.faceVertexUvs[0][curIndDiv4][1].set( 0, 0 );
+				curMesh.geometry.faceVertexUvs[0][curIndDiv4][2].set( 0, 0 );
+				curMesh.geometry.faceVertexUvs[0][curIndDiv4][3].set( 0, 0 );
+
+				for (k = 0; k < curShaders.length; k++) {
+					for (j = 0; j < a_DataArr.length; j++) {
+						curShader = curShaders[k];
+						gob.shaders[curShader].attributes[a_DataArr[j]].value[curInd0].set( 0, 0, 0, 0 );
+						gob.shaders[curShader].attributes[a_DataArr[j]].value[curInd1].set( 0, 0, 0, 0 );
+						gob.shaders[curShader].attributes[a_DataArr[j]].value[curInd2].set( 0, 0, 0, 0 );
+						gob.shaders[curShader].attributes[a_DataArr[j]].value[curInd3].set( 0, 0, 0, 0 );
+					}
+				}
+
+			}
+		}
+
+		*/
+
+		
+		
+
+
+
+		curMesh.geometry.verticesNeedUpdate = true;
+		curMesh.geometry.elementsNeedUpdate = true;
+		curMesh.geometry.uvsNeedUpdate = true;
+
+		for (i = 0; i < curShaders.length; i++) {
+			for (j = 0; j < a_DataArr.length; j++) {
+				gob.shaders[curShaders[i]].attributes[ a_DataArr[j] ].needsUpdate = true;
+			}
+		}
+
+		//curMesh.geometry.morphTargetsNeedUpdate = true;
+		//curMesh.geometry.normalsNeedUpdate = true;
+		//curMesh.geometry.colorsNeedUpdate = true;
+		//curMesh.geometry.tangentsNeedUpdate = true;
+	}
 	
 	gob.drawTextArea = function(obj, isBG, firstRun, curMesh, calcHeight) {
-
-		//var firstRun = ;
-		//var curMesh = ;
-		
-		//console.log(obj);
 
 		var curShaders;
 		var curShader;
@@ -1148,8 +1339,6 @@ j$(function() {
 		var curInd2;
 		var curInd3;
 		var curIndDiv4;
-
-		var extraInd = 0;
 
 		var dStr;
 
@@ -1340,103 +1529,11 @@ j$(function() {
 						gob.drawString(obj,false, finalLineArr[i].lineStr, x, y, xOff, yOff, firstRun, curMesh);
 					}
 					else {
-						extraInd += finalLineArr[i].lineStr.length*4;
+						curMesh.extraInd += finalLineArr[i].lineStr.length*4;
 					}
 				}
 			}
 
-
-			//curMesh.maxInd = curMesh.curInd;
-			
-
-			/*
-			
-			// zero out the remaining vertices
-
-			if (firstRun) {
-				curMesh.maxInd = Math.floor( (curMesh.curInd+extraInd) *1.5);
-
-				for (i = curMesh.curInd; i < curMesh.maxInd; i += 4) {
-					curMesh.geometry.vertices.push(
-						new THREE.Vector3( 0, 0, 0 ),
-						new THREE.Vector3( 0, 0, 0 ),
-						new THREE.Vector3( 0, 0, 0 ),
-						new THREE.Vector3( 0, 0, 0 )
-					);
-
-					curMesh.geometry.faceVertexUvs[0].push([
-						new THREE.Vector2( 0, 0 ),
-						new THREE.Vector2( 0, 0 ),
-						new THREE.Vector2( 0, 0 ),
-						new THREE.Vector2( 0, 0 )
-					]);
-
-					for (i = 0; i < 2; i++) {
-						gob.shaders[curShaders[i]].attributes.a_Data0.value.push(
-
-							new THREE.Vector4( 0, 0, 0, 0 ),
-							new THREE.Vector4( 0, 0, 0, 0 ),
-							new THREE.Vector4( 0, 0, 0, 0 ),
-							new THREE.Vector4( 0, 0, 0, 0 )
-
-						);
-					}
-					
-
-					curMesh.geometry.faces.push( new THREE.Face4(i+0, i+1, i+2, i+3) );
-				}
-
-			}
-			else {
-				for (i = curMesh.curInd; i < curMesh.maxInd; i += 4) {
-
-					curInd0 = i;
-					curInd1 = i+1;
-					curInd2 = i+2;
-					curInd3 = i+3;
-					curIndDiv4 = Math.floor(curInd0/4);
-
-					curMesh.geometry.vertices[curInd0].set( 0, 0, 0 );
-					curMesh.geometry.vertices[curInd1].set( 0, 0, 0 );
-					curMesh.geometry.vertices[curInd2].set( 0, 0, 0 );
-					curMesh.geometry.vertices[curInd3].set( 0, 0, 0 );
-
-					curMesh.geometry.faceVertexUvs[0][curIndDiv4][0].set( 0, 0 );
-					curMesh.geometry.faceVertexUvs[0][curIndDiv4][1].set( 0, 0 );
-					curMesh.geometry.faceVertexUvs[0][curIndDiv4][2].set( 0, 0 );
-					curMesh.geometry.faceVertexUvs[0][curIndDiv4][3].set( 0, 0 );
-
-					for (i = 0; i < 2; i++) {
-						curShader = curShaders[i];
-						gob.shaders[curShader].attributes.a_Data0.value[curInd0].set( 0, 0, 0, 0 );
-						gob.shaders[curShader].attributes.a_Data0.value[curInd1].set( 0, 0, 0, 0 );
-						gob.shaders[curShader].attributes.a_Data0.value[curInd2].set( 0, 0, 0, 0 );
-						gob.shaders[curShader].attributes.a_Data0.value[curInd3].set( 0, 0, 0, 0 );
-					}
-
-					
-
-				}
-			}
-			*/
-
-
-
-			curMesh.geometry.verticesNeedUpdate = true;
-			curMesh.geometry.elementsNeedUpdate = true;
-			curMesh.geometry.uvsNeedUpdate = true;
-
-			for (i = 0; i < 2; i++) {
-				gob.shaders[curShaders[0]].attributes[ "a_Data"+i ].needsUpdate = true;
-				gob.shaders[curShaders[1]].attributes[ "a_Data"+i ].needsUpdate = true;
-			}
-
-			//curMesh.geometry.morphTargetsNeedUpdate = true;
-			//curMesh.geometry.normalsNeedUpdate = true;
-			//curMesh.geometry.colorsNeedUpdate = true;
-			//curMesh.geometry.tangentsNeedUpdate = true;
-
-			
 		}
 
 
@@ -1572,11 +1669,11 @@ j$(function() {
 					new THREE.Vector2( tx1, ty2 )
 				]);
 
-				for (j = 0; j < 2; j++) {
+				for (j = 0; j < curShaders.length; j++) {
 
-					for (k = 0; k < 2; k++) {
+					for (k = 0; k < a_DataArr.length; k++) {
 						atArr = atArrs[k];
-						gob.shaders[curShaders[j]].attributes["a_Data"+k].value.push(
+						gob.shaders[curShaders[j]].attributes[a_DataArr[k]].value.push(
 
 							new THREE.Vector4( atArr[0], atArr[1], atArr[2], atArr[3] ),
 							new THREE.Vector4( atArr[4], atArr[5], atArr[6], atArr[7] ),
@@ -1606,14 +1703,14 @@ j$(function() {
 					curMesh.geometry.faceVertexUvs[0][curIndDiv4][2].set( tx2, ty2 );
 					curMesh.geometry.faceVertexUvs[0][curIndDiv4][3].set( tx1, ty2 );
 
-					for (j = 0; j < 2; j++) {
+					for (j = 0; j < curShaders.length; j++) {
 						curShader = curShaders[j];
-						for (k = 0; k < 2; k++) {
+						for (k = 0; k < a_DataArr.length; k++) {
 							atArr = atArrs[k];
-							gob.shaders[curShader].attributes["a_Data"+k].value[curInd0].set( atArr[0], atArr[1], atArr[2], atArr[3] );
-							gob.shaders[curShader].attributes["a_Data"+k].value[curInd1].set( atArr[4], atArr[5], atArr[6], atArr[7] );
-							gob.shaders[curShader].attributes["a_Data"+k].value[curInd2].set( atArr[8], atArr[9], atArr[10], atArr[11] );
-							gob.shaders[curShader].attributes["a_Data"+k].value[curInd3].set( atArr[12], atArr[13], atArr[14], atArr[15] );
+							gob.shaders[curShader].attributes[a_DataArr[k]].value[curInd0].set( atArr[0], atArr[1], atArr[2], atArr[3] );
+							gob.shaders[curShader].attributes[a_DataArr[k]].value[curInd1].set( atArr[4], atArr[5], atArr[6], atArr[7] );
+							gob.shaders[curShader].attributes[a_DataArr[k]].value[curInd2].set( atArr[8], atArr[9], atArr[10], atArr[11] );
+							gob.shaders[curShader].attributes[a_DataArr[k]].value[curInd3].set( atArr[12], atArr[13], atArr[14], atArr[15] );
 						}
 						
 					}
@@ -1623,7 +1720,7 @@ j$(function() {
 					//curMesh.geometry.faces[ curIndDiv4 ].set(curInd0, curInd1, curInd2, curInd3);
 				}
 				else {
-					gob.doError("Exceeded Buffer Length");
+					gob.doError("Exceeded Buffer Length (" + curInd0 + " of " + curMesh.maxInd + ")");
 				}
 
 				
@@ -1652,6 +1749,9 @@ j$(function() {
 		gob.shaders.upscaleShader.uniforms.u_TexResolution.value.x = Math.floor(gob.bufferWidth/2);
 		gob.shaders.upscaleShader.uniforms.u_TexResolution.value.y = Math.floor(gob.bufferHeight/2);
 
+		gob.shaders.bgShader.uniforms.u_MaxLayers.value = gob.maxLayers/255.0;
+		gob.shaders.textShader.uniforms.u_MaxLayers.value = gob.maxLayers/255.0;
+
 		//renderer.setClearColorHex( 0xffffff, 1 );
 		renderer.setSize( gob.bufferWidth, gob.bufferHeight );
 
@@ -1664,7 +1764,7 @@ j$(function() {
 
 		requestAnimationFrame( gob.animate );
 
-		if (gob.isRendering || gob.autoUpdate) {
+		if (gob.isRendering || gob.autoUpdate || gob.mouseDown) {
 			
 			for (i = 0; i < gob.shaderNames.length; i++) {
 				gob.shaders[gob.shaderNames[i]].uniforms.u_Zoom.value = zoom;
@@ -1673,12 +1773,15 @@ j$(function() {
 			gob.shaders.bgShader.uniforms.u_BorderRad.value = gob.styleSheets.defContH.border;
 			gob.shaders.bgIdShader.uniforms.u_BorderRad.value = gob.styleSheets.defContH.border;
 
+
+
 			if (gob.debugTex) {
 				gob.debugTexture();
 			}
 			else {
 
 				if (gob.updateBaseRT) {
+
 
 					//gl.disable(gl.BLEND);
 					//gl.enable(gl.DEPTH_TEST);
@@ -1690,11 +1793,14 @@ j$(function() {
 					meshBG.setMaterial(gob.materials.bgShader);
 					renderer.render( scene, camera, gob.renderTargets.baseRT, true );
 
+
 					meshText.setMaterial(gob.materials.textIdShader);
 					meshBG.setMaterial(gob.materials.bgIdShader);
 					renderer.render( scene, camera, gob.renderTargets.idRT, true );
+
 					
 					gob.renderLayers();
+
 
 					gob.renderToTarget(
 						"extrudeShader",
@@ -1705,13 +1811,28 @@ j$(function() {
 						]
 					);
 
-					gob.renderToTarget(
-						"aoShader",
-						gob.renderTargets.aoRT,
-						[
-							gob.renderTargets.layerRT
-						]
-					);
+
+					if (gob.mouseDown) {
+						
+						gob.renderToTarget(
+							"aoShader",
+							gob.renderTargets.aoRT,
+							[
+								gob.renderTargets.layerRT
+							]
+						);
+					}
+					else {
+						gob.renderToTarget(
+							"aoHighShader",
+							gob.renderTargets.aoRT,
+							[
+								gob.renderTargets.layerRT
+							]
+						);
+					}
+					
+
 					
 
 				}
@@ -1852,15 +1973,15 @@ j$(function() {
 		var gbText = new THREE.Geometry();
 		gbText.dynamic = true;
 		meshText = new THREE.Mesh( gbText, gob.materials.textShader);
-		meshText.curInd = 0;
-		meshText.maxInd = 0;
+
 
 		var gbBG = new THREE.Geometry();
 		gbBG.dynamic = true;
 		meshBG = new THREE.Mesh( gbBG, gob.materials.bgShader);
-		meshBG.curInd = 0;
-		meshBG.maxInd = 0;
 		
+		
+
+
 
 
 		rtScene = new THREE.Scene();
@@ -1918,13 +2039,13 @@ j$(function() {
 
 
 		
-		gob.setCurFont(g_fonts["arial_black_regular_48"]);
+		gob.setCurFont(g_fonts["arial_black_regular_96"]);
 		
 
 		gob.styleSheets.defContH = {
 			str: 			"",
 			drawBG: 		true,
-			scale: 			1.0,
+			scale: 			0.5,
 			//font: 			gob.curFont,
 			hTextAlign:		enums.align.left,
 			vTextAlign:		enums.align.top,
@@ -1937,7 +2058,7 @@ j$(function() {
 			//scrollx: 0,
 			//scrolly: 0,
 
-			curValue: 		0.5,
+			curValue: 		0.0,
 
 			groupId: 		0,
 
@@ -1973,8 +2094,8 @@ j$(function() {
 			[
 				gob.styleSheets.defContH,
 				{
-					resultWidth:1024,
-					resultHeight:1024,
+					resultWidth:gob.bufferWidth,
+					resultHeight:gob.bufferHeight,
 					x:0,
 					y:0
 					//,str:"Lorem ipsum dolor sit amet, pro nostrum ullamcorper at\nLorem ipsum dolor sit amet, pro nostrum ullamcorper at"
@@ -1999,7 +2120,7 @@ j$(function() {
 			]
 		);
 
-		gob.layoutGUI(gob.mainRoot);
+		gob.layoutGUI(gob.mainRoot,true);
 
 		
 		scene.add( meshText );

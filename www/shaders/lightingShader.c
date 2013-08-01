@@ -63,10 +63,11 @@ void main()	{
 	vec3 lightVec;
 
 	vec2 timedLight = v_MouseCoords;
-	//timedLight.x += sin(u_Time/50.0)/20.0;
+	//timedLight.x -= 0.2;
+	//timedLight.y -= 0.2;
 	//timedLight.y += cos(u_Time/100.0)/20.0;
 
-	float disVal = min(1.0-clamp(distance(timedLight, v_Position)*1.0,0.0,1.0)+0.1,1.0);
+	float disVal = min(1.0-clamp(distance(timedLight, v_Position)*0.6,0.0,1.0)+0.1,1.0);
 	lightVec.xy = timedLight - v_Position;
 	//lightVec.xy = normalize(lightVec.xy);
 	lightVec.z = 50.0/255.0;
@@ -90,7 +91,7 @@ void main()	{
 	float fk;
 	float dis;
 
-	int loopMax = 64;
+	const int loopMax = 64;
 	int stepAmount = 1;
 	float fLoopMax = float(loopMax);
 

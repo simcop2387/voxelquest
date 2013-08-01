@@ -3,6 +3,7 @@ uniform sampler2D u_Texture1;
 uniform sampler2D u_Texture2;
 uniform sampler2D u_Texture3;
 uniform float u_Time;
+uniform float u_MaxLayers;
 
 uniform vec2 u_Resolution;
 uniform float u_Zoom;
@@ -185,7 +186,7 @@ void main()	{
 
 	vec4 colBG;
 	colBG.xyz = (borderCol+1.0)/2.0;
-	colBG.z = mix((baseDepth+10.0*isFilled)/255.0,(baseDepth+20.0)/255.0,isBorderF); //(20.0+sin(v_Position.x*50.0+v_Position.y*50.0)*10.0)
+	colBG.z = mix((0.25+0.5*isFilled),(1.0),isBorderF)*u_MaxLayers; //(20.0+sin(v_Position.x*50.0+v_Position.y*50.0)*10.0)
 	colBG.w = v_Data0.w;
 
 	float aVal = mix(1.0,isOpaque,isBorderF);// *u_AlphaMod;
