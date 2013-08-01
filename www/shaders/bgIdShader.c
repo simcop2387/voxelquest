@@ -125,12 +125,7 @@ void main()	{
 	//isNotDiv = min(isNotDiv + float(v_TexCoords.x > iDivAmount) + float(u_Params.w <= 1.0), 1.0);
 
 
-	float fillAmount = v_Data1.x;
-	float baseDepth = v_Data1.y;
-
-	float isFilled = float((v_TexCoords.x+1.0)/2.0 < fillAmount);// *(1.0-isBorderF);
-
-
+	//float isFilled = float(curVal < u_Params.x)*isNotDiv;
 	//float isFilled2 = float(curVal < u_Params.y)/2.0;
 
 	//float toggleAmount = (1.0-isBorderF)*(isFilled-isFilled2);
@@ -147,54 +142,26 @@ void main()	{
 
 
 	//////
-
 	
-	vec3 norm;
-	norm.z = 0.0;
-	norm.xy = mix(-tcCubed,tcCubed,isBorder);
 
-	norm = normalize(norm);
+	vec4 gIdRGBA;
 
-	vec3 faceNorm = vec3(0.0,0.0,1.0);
-	float curDis = mix(bDis2,bDis,isBorderF);
-	float maxDis = 255.0/255.0;
-	float startZ = 0.0;
-	float endZ = 1.0;
-	float lerpPow = 2.0;
-	float lerpAmount = clamp(max(maxDis-curDis,0.0)/maxDis,0.0,1.0);
-	if (curDis <= 32.0/255.0) {
-		if (isBorderF == 1.0) {
-			lerpAmount = 1.0;
-		}
-	}
-	vec3 finalNorm = mix(faceNorm, norm, pow(lerpAmount,lerpPow) );
+	float groupId = v_Data0.z;
+	gIdRGBA.r = floor(groupId/256.0)/255.0;
+	gIdRGBA.g = mod(groupId,256.0)/255.0;
 
-	finalNorm = normalize(finalNorm);
-	
-	//////
+	float matId = v_Data0.w;
+	gIdRGBA.b = floor(matId/256.0)/255.0;
+	gIdRGBA.a = mod(matId,256.0)/255.0;
 
-
-
-
-	vec3 normOuter = vec3(bDis);//vec3(cornerLength/fillRad);//vec3(tcCubed.xy,0.0);
-	vec3 normInner = vec3(bDis);//vec3(cornerLength/fillRad);//vec3(-tcCubed.xy,0.0);
-
-	//float isStripe = float(mod(v_TexCoords.x*40.0 + v_TexCoords.y*20.0 , 2.0) > 1.0)/16.0;
-
-	vec3 borderCol = finalNorm;//mix(normInner,normOuter,isBorder);//(cornerLengthVec),0.0);
-
-	vec4 colBG;
-	colBG.xyz = (borderCol+1.0)/2.0;
-	colBG.z = mix((baseDepth+10.0*isFilled)/255.0,(baseDepth+20.0)/255.0,isBorderF); //(20.0+sin(v_Position.x*50.0+v_Position.y*50.0)*10.0)
-	colBG.w = v_Data0.w;
 
 	float aVal = mix(1.0,isOpaque,isBorderF);// *u_AlphaMod;
 
 	if (aVal < 1.0) {
 		discard;
 	}
+
 	
-	//vec4 colBG = vec4(1.0,0.0,0.0,0.5);
-	gl_FragColor = colBG;
+	gl_FragColor = gIdRGBA;
 	
 }

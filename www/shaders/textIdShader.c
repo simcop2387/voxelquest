@@ -85,7 +85,21 @@ void main()	{
 		discard;
 	}
 
-	gl_FragColor = vec4((finalNorm.xy+1.0)/2.0, (30.0)/255.0, v_Data0.w ); //+sin(v_Position.x*v_Position.y*100.0)*10.0
+	
+
+	vec4 gIdRGBA;
+
+	float groupId = v_Data0.z;
+	gIdRGBA.r = floor(groupId/256.0)/255.0;
+	gIdRGBA.g = mod(groupId,256.0)/255.0;
+
+	float matId = v_Data0.w;
+	gIdRGBA.b = floor(matId/256.0)/255.0;
+	gIdRGBA.a = mod(matId,256.0)/255.0;
+
+
+	
+	gl_FragColor = gIdRGBA;
 	
 	
 }

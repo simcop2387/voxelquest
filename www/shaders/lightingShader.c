@@ -43,6 +43,16 @@ void main()	{
 
 	vec4 baseval = texture2D( u_Texture0, v_TexCoords );
 	vec4 baseval2 = texture2D( u_Texture1, v_TexCoords );
+	vec4 idAtPixel = texture2D( u_Texture2, v_TexCoords );
+
+	vec2 newMC = v_MouseCoords;
+
+	newMC.x = (newMC.x+1.0)/2.0;
+	newMC.y = (newMC.y+1.0)/2.0;
+
+	vec4 idAtMouse = texture2D( u_Texture2, newMC );
+
+	float lMod = float(idAtMouse.g == idAtPixel.g) * float(idAtPixel.g > 0.0);
 
 
 	vec3 finalNorm;
@@ -51,8 +61,13 @@ void main()	{
 	finalNorm = normalize(finalNorm);
 	
 	vec3 lightVec;
-	float disVal = min(1.0-clamp(distance(v_MouseCoords, v_Position)*1.0,0.0,1.0)+0.1,1.0);
-	lightVec.xy = v_MouseCoords - v_Position;
+
+	vec2 timedLight = v_MouseCoords;
+	//timedLight.x += sin(u_Time/50.0)/20.0;
+	//timedLight.y += cos(u_Time/100.0)/20.0;
+
+	float disVal = min(1.0-clamp(distance(timedLight, v_Position)*1.0,0.0,1.0)+0.1,1.0);
+	lightVec.xy = timedLight - v_Position;
 	//lightVec.xy = normalize(lightVec.xy);
 	lightVec.z = 50.0/255.0;
 	lightVec = normalize(lightVec);
@@ -148,7 +163,7 @@ void main()	{
 
 	//vec4(baseval.a,baseval.a,baseval.a,1.0);//
 
-	gl_FragColor = vec4(mix(col0,col1,float(baseval2.w > 0.0)),1.0);//vec4(lVal,lVal,lVal,1.0);//vec4(baseval.rgb,lVal);
+	gl_FragColor = vec4(mix(col0,col1,float(baseval2.w > 0.0)),1.0) + lMod*0.2;//*abs(sin(u_Time/300.0));//vec4(lVal,lVal,lVal,1.0);//vec4(baseval.rgb,lVal);
 	
 
 	
