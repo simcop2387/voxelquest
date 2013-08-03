@@ -36,7 +36,6 @@ void main()	{
 	offsetNorm.rg = (baseval.rg-0.5)*2.0;
 	offsetNorm.b = abs(sqrt( abs(1.0-(offsetNorm.r*offsetNorm.r+offsetNorm.g*offsetNorm.g) )));
 
-
 	vec4 samp;
 	vec3 tc;
 

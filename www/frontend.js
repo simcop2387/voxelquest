@@ -130,7 +130,7 @@ j$(function() {
 		maxLayers: 20,
 		updateBaseRT:true,
 		renderTargets:{},
-		shaderNames:["reflShader","lightingShader","aoShader","aoHighShader","extrudeShader","layerShader","bgShader","textShader","bgIdShader","textIdShader","heightShader","normShader","downscaleShader","upscaleShader","debugShader"],
+		shaderNames:["reflShader","lightingShader","palShader","aoShader","aoHighShader","extrudeShader","layerShader","bgShader","textShader","bgIdShader","textIdShader","heightShader","normShader","downscaleShader","upscaleShader","debugShader"],
 		fontNames:["arial_black_regular_48","arial_black_regular_96"],
 		fontLoaded:{},
 		shaders:{},
@@ -741,6 +741,29 @@ j$(function() {
 		}
 	}
 
+
+	gob.renderPal = function(r,g,b,a,x,y) {
+
+		gob.shaders.palShader.uniforms.u_PalCol.value.x = r;
+		gob.shaders.palShader.uniforms.u_PalCol.value.y = g;
+		gob.shaders.palShader.uniforms.u_PalCol.value.z = b;
+		gob.shaders.palShader.uniforms.u_PalCol.value.w = a;
+		
+		gob.shaders.palShader.uniforms.u_PalCoords.value.x = x;
+		gob.shaders.palShader.uniforms.u_PalCoords.value.y = y;
+
+
+		gob.renderToTarget(
+			"palShader",
+			gob.renderTargets.palRT,
+			[
+				
+			]
+		);
+
+	}
+
+
 	gob.layoutGUI = function(rootObj, firstRun) {
 
 
@@ -1071,42 +1094,51 @@ j$(function() {
 		};
 
 		//renderer.deallocateRenderTarget(gob.renderTargets.baseRT);
+		// NearestFilter // LinearFilter
+
 		gob.renderTargets.baseRT = new THREE.WebGLRenderTarget( gob.bufferWidth, gob.bufferHeight, {
-			minFilter: THREE.LinearFilter, // NearestFilter // LinearFilter
+			minFilter: THREE.LinearFilter, 
 			magFilter: THREE.LinearFilter, 
 			format: THREE.RGBAFormat
 		} );
 
 		gob.renderTargets.idRT = new THREE.WebGLRenderTarget( gob.bufferWidth, gob.bufferHeight, {
-			minFilter: THREE.NearestFilter, // NearestFilter // LinearFilter
+			minFilter: THREE.NearestFilter,
 			magFilter: THREE.NearestFilter, 
 			format: THREE.RGBAFormat
 		} );
 		gob.renderTargets.extrudeRT = new THREE.WebGLRenderTarget( gob.bufferWidth, gob.bufferHeight, {
-			minFilter: THREE.NearestFilter, // NearestFilter // LinearFilter
+			minFilter: THREE.NearestFilter,
 			magFilter: THREE.NearestFilter, 
 			format: THREE.RGBAFormat
 		} );
 
 		gob.renderTargets.layerRT = new THREE.WebGLRenderTarget( gob.bufferWidth, gob.bufferHeight, {
-			minFilter: THREE.LinearFilter, // NearestFilter // LinearFilter
+			minFilter: THREE.LinearFilter,
 			magFilter: THREE.LinearFilter, 
 			format: THREE.RGBAFormat
 		} );
 		gob.renderTargets.aoRT = new THREE.WebGLRenderTarget( gob.bufferWidth, gob.bufferHeight, {
-			minFilter: THREE.LinearFilter, // NearestFilter // LinearFilter
+			minFilter: THREE.LinearFilter,
 			magFilter: THREE.LinearFilter, 
 			format: THREE.RGBAFormat
 		} );
 
 		gob.renderTargets.lightingRT = new THREE.WebGLRenderTarget( gob.bufferWidth, gob.bufferHeight, {
-			minFilter: THREE.LinearFilter, // NearestFilter // LinearFilter
+			minFilter: THREE.LinearFilter,
 			magFilter: THREE.LinearFilter, 
 			format: THREE.RGBAFormat
 		} );
 
 		gob.renderTargets.downscaleRT = new THREE.WebGLRenderTarget( gob.bufferWidth/2, gob.bufferHeight/2, {
-			minFilter: THREE.NearestFilter, // NearestFilter // LinearFilter
+			minFilter: THREE.NearestFilter,
+			magFilter: THREE.NearestFilter, 
+			format: THREE.RGBAFormat
+		} );
+
+
+		gob.renderTargets.palRT = new THREE.WebGLRenderTarget( 256, 256, {
+			minFilter: THREE.NearestFilter,
 			magFilter: THREE.NearestFilter, 
 			format: THREE.RGBAFormat
 		} );
@@ -1473,28 +1505,32 @@ j$(function() {
 			return Math.min(finalLineArr.length, obj.maxLines)*gob.curFont.metrics.height*scale;
 		}
 		else {
-			//curMesh.curInd = 0;
+
+
+			atArr = atArrs[0];
+			atArr[0] =  obj.maxWidth;  atArr[1] = obj.maxHeight;  atArr[2] = obj.groupId;  atArr[3] = 0.0;
+			atArr[4] =  obj.maxWidth;  atArr[5] = obj.maxHeight;  atArr[6] = obj.groupId;  atArr[7] = 0.0;
+			atArr[8] =  obj.maxWidth;  atArr[9] = obj.maxHeight;  atArr[10] = obj.groupId; atArr[11] = 0.0;
+			atArr[12] = obj.maxWidth; atArr[13] = obj.maxHeight; atArr[14] = obj.groupId; atArr[15] = 0.0;
+
+			atArr = atArrs[1];
+			atArr[0] =  obj.curValue;  atArr[1] = obj.baseDepth;  atArr[2] =  0.0;  atArr[3] = 0.0;
+			atArr[4] =  obj.curValue;  atArr[5] = obj.baseDepth;  atArr[6] =  0.0;  atArr[7] = 0.0;
+			atArr[8] =  obj.curValue;  atArr[9] = obj.baseDepth;  atArr[10] = 0.0;  atArr[11] = 0.0;
+			atArr[12] = obj.curValue; atArr[13] = obj.baseDepth;  atArr[14] =  0.0; atArr[15] = 0.0;
+
 
 			if (isBG && obj.drawBG) {
 				curShaders = ["bgShader","bgIdShader"];
 
-				atArr = atArrs[0];
-				atArr[0] =  obj.maxWidth;  atArr[1] = obj.maxHeight;  atArr[2] = obj.groupId;  atArr[3] = 1.0;
-				atArr[4] =  obj.maxWidth;  atArr[5] = obj.maxHeight;  atArr[6] = obj.groupId;  atArr[7] = 1.0;
-				atArr[8] =  obj.maxWidth;  atArr[9] = obj.maxHeight;  atArr[10] = obj.groupId; atArr[11] = 1.0;
-				atArr[12] = obj.maxWidth; atArr[13] = obj.maxHeight; atArr[14] = obj.groupId; atArr[15] = 1.0;
-
-				atArr = atArrs[1];
-				atArr[0] =  obj.curValue;  atArr[1] = obj.baseDepth;  atArr[2] =  0.0;  atArr[3] = 0.0;
-				atArr[4] =  obj.curValue;  atArr[5] = obj.baseDepth;  atArr[6] =  0.0;  atArr[7] = 0.0;
-				atArr[8] =  obj.curValue;  atArr[9] = obj.baseDepth;  atArr[10] = 0.0;  atArr[11] = 0.0;
-				atArr[12] = obj.curValue; atArr[13] = obj.baseDepth;  atArr[14] =  0.0; atArr[15] = 0.0;
+				
 				
 				gob.drawString(obj,true, "", x, y, 0, 0, firstRun, curMesh);
 			}
 			else {
 				curShaders = ["textShader","textIdShader"];
 				
+				/*
 				atArr = atArrs[0];
 				atArr[0] = 0.0;  atArr[1] = 0.0;  atArr[2] = obj.groupId;  atArr[3] = 0.0;
 				atArr[4] = 0.0;  atArr[5] = 0.0;  atArr[6] = obj.groupId;  atArr[7] = 0.0;
@@ -1506,6 +1542,7 @@ j$(function() {
 				atArr[4] =  0.0;  atArr[5] = 0.0;  atArr[6] =  0.0;  atArr[7] = 0.0;
 				atArr[8] =  0.0;  atArr[9] = 0.0;  atArr[10] = 0.0; atArr[11] = 0.0;
 				atArr[12] = 0.0; atArr[13] = 0.0; atArr[14] =  0.0; atArr[15] = 0.0;
+				*/
 
 				
 				for (i = 0; i < finalLineArr.length; i++) {
@@ -1812,6 +1849,7 @@ j$(function() {
 					);
 
 
+
 					if (gob.mouseDown) {
 						
 						gob.renderToTarget(
@@ -1840,13 +1878,16 @@ j$(function() {
 					
 					gob.shaders.lightingShader.uniforms.u_Time.value = performance.now();
 
+					gob.renderPal(1.0,1.0,1.0,1.0, 1.0,1.0);
+
 					gob.renderToTarget(
 						"lightingShader",
 						undefined,//gob.renderTargets.lightingRT,
 						[
 							gob.renderTargets.aoRT,
 							gob.renderTargets.layerRT,
-							gob.renderTargets.extrudeRT
+							gob.renderTargets.extrudeRT,
+							gob.renderTargets.palRT
 						]
 					);
 

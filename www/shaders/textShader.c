@@ -86,7 +86,7 @@ void main()	{
 		discard;
 	}
 
-	gl_FragColor = vec4((finalNorm.xy+1.0)/2.0, 1.0*u_MaxLayers, v_Data0.w ); //+sin(v_Position.x*v_Position.y*100.0)*10.0
+	gl_FragColor = vec4((finalNorm.xy+1.0)/2.0, 1.0*u_MaxLayers, 0.0);//v_Data0.w ); //+sin(v_Position.x*v_Position.y*100.0)*10.0
 	
 	
 }

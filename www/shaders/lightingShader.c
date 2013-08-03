@@ -43,7 +43,7 @@ void main()	{
 
 	vec4 baseval = texture2D( u_Texture0, v_TexCoords );
 	vec4 baseval2 = texture2D( u_Texture1, v_TexCoords );
-	vec4 idAtPixel = texture2D( u_Texture2, v_TexCoords );
+	vec4 baseval3 = texture2D( u_Texture2, v_TexCoords );
 
 	vec2 newMC = v_MouseCoords;
 
@@ -52,8 +52,10 @@ void main()	{
 
 	vec4 idAtMouse = texture2D( u_Texture2, newMC );
 
-	float lMod = float(idAtMouse.g == idAtPixel.g) * float(idAtPixel.g > 0.0);
+	float lMod = float(idAtMouse.g == baseval3.g) * float(baseval3.g > 0.0);
 
+	float palInd = baseval3.b;
+	float matInd = baseval3.a;
 
 	vec3 finalNorm;
 	finalNorm.rg = (baseval.rg-0.5)*2.0;
@@ -152,20 +154,23 @@ void main()	{
 	//float v2 = v1+1.0;
 	//lVal = floor(lVal*v1  +(abs(fract(lVal*v1)-0.5)*2.0)*rand(v_TexCoords)     )/v2;   
 
-	float lv2 = sqrt(mix(baseval.a*0.5,lVal,lVal))*0.8;
+	//float lv2 = sqrt(mix(baseval.a*0.5,lVal,lVal))*0.8;
 
 	//lv2 = pow(lv2,2.0);
 
-	vec3 col0 = vec3(255.0/255.0,153.0/255.0,0.0/255.0)*lVal + lVal*lVal/2.0;
-	vec3 col1 = mix(vec3(65.0/255.0,38.0/255.0,16.0/255.0),vec3(241.0/255.0,233.0/255.0,214.0/255.0),lv2)*lv2;
+	//vec3 col0 = vec3(255.0/255.0,153.0/255.0,0.0/255.0)*lVal + lVal*lVal/2.0;
+	//vec3 col1 = mix(vec3(65.0/255.0,38.0/255.0,16.0/255.0),vec3(241.0/255.0,233.0/255.0,214.0/255.0),lv2)*lv2;
 
-	col1.r += 0.01;
+	//col1.r += 0.01;
 
 
 	//vec4(baseval.a,baseval.a,baseval.a,1.0);//
 
-	gl_FragColor = vec4(mix(col0,col1,float(baseval2.w > 0.0)),1.0) + lMod*0.2;//*abs(sin(u_Time/300.0));//vec4(lVal,lVal,lVal,1.0);//vec4(baseval.rgb,lVal);
+	//gl_FragColor = vec4(mix(col0,col1,float(baseval2.w > 0.0)),1.0) + lMod*0.2;//*abs(sin(u_Time/300.0));//vec4(lVal,lVal,lVal,1.0);//vec4(baseval.rgb,lVal);
 	
+	vec4 matCol = texture2D( u_Texture3, vec2(lVal,matInd) );
+	vec4 palCol = texture2D( u_Texture3, vec2(palInd,0.0) );
 
+	gl_FragColor = matCol;//mix(palCol,matCol,float(matInd > 0.0));
 	
 }
