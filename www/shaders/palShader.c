@@ -49,7 +49,7 @@ void main()	{
 	v_Position.y *= -1.0;
 	*/
 	
-	gl_Position = vec4( position.xy, position.z, 1.0 );
+	gl_Position = vec4( newPos.xy, position.z, 1.0 );
 
 }
 
@@ -57,6 +57,6 @@ $
 
 void main()	{
 
-	gl_FragColor = vec4(v_TexCoords.x, 0.0,0.0,1.0);//vec4(1.0,0.0,0.0,1.0);//u_PalCol;
+	gl_FragColor = u_PalCol;
 	
 }

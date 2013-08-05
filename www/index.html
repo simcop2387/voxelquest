@@ -7,6 +7,7 @@
 	    <meta charset="utf-8">
 	    <title>VoxelQuest</title>
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
 		<style>
 			body {
 				color: #ffffff;
@@ -30,6 +31,13 @@
 	</head>
 	<body>
 
+		<canvas
+			id="canvas"
+			height="256"
+			width="256"
+			style="display: none"
+		>
+		</canvas>
 		<div id="container"></div>
 
 		<script>g_fonts = {};</script>
@@ -38,6 +46,7 @@
 		<script src="../../threejs/build/three.js"></script>
 		<script src="../../threejs/examples/js/Detector.js"></script>
 		<script src="../../threejs/examples/js/libs/stats.min.js"></script>
+		<script src="./colors.js"></script>
 		<!--<script src="./planeover.js"></script>-->
 		<script src="./jquerymin.js"></script>
 		<script src="./jqmousewheel.js"></script>

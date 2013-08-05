@@ -150,6 +150,13 @@ void main()	{
 
 	lVal = sqrt(lVal)*disVal;
 
+	float lValOrig = lVal;
+	lVal = floor(lVal*16.0)/16.0 + rand(v_TexCoords)/8.0;
+
+	//float remd = lValOrig-lVal;
+	//lVal += remd*rand(v_TexCoords);
+	//lVal = clamp(lVal,0.0,1.0);
+
 	//float v1 = 8.0;
 	//float v2 = v1+1.0;
 	//lVal = floor(lVal*v1  +(abs(fract(lVal*v1)-0.5)*2.0)*rand(v_TexCoords)     )/v2;   
@@ -168,7 +175,7 @@ void main()	{
 
 	//gl_FragColor = vec4(mix(col0,col1,float(baseval2.w > 0.0)),1.0) + lMod*0.2;//*abs(sin(u_Time/300.0));//vec4(lVal,lVal,lVal,1.0);//vec4(baseval.rgb,lVal);
 	
-	vec4 matCol = texture2D( u_Texture3, vec2(lVal,matInd) );
+	vec4 matCol = texture2D( u_Texture3, vec2(lVal,1.0/255.0) ); //matInd
 	vec4 palCol = texture2D( u_Texture3, vec2(palInd,0.0) );
 
 	gl_FragColor = matCol;//mix(palCol,matCol,float(matInd > 0.0));

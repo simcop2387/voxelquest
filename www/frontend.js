@@ -130,7 +130,7 @@ j$(function() {
 		maxLayers: 20,
 		updateBaseRT:true,
 		renderTargets:{},
-		shaderNames:["reflShader","lightingShader","palShader","aoShader","aoHighShader","extrudeShader","layerShader","bgShader","textShader","bgIdShader","textIdShader","heightShader","normShader","downscaleShader","upscaleShader","debugShader"],
+		shaderNames:["reflShader","lightingShader","palShader","palFromTexShader","aoShader","aoHighShader","extrudeShader","layerShader","bgShader","textShader","bgIdShader","textIdShader","heightShader","normShader","downscaleShader","upscaleShader","debugShader"],
 		fontNames:["arial_black_regular_48","arial_black_regular_96"],
 		fontLoaded:{},
 		shaders:{},
@@ -322,6 +322,11 @@ j$(function() {
 		}
 		
 	});
+
+
+
+
+
 
 
 	gob.getStringWidth = function(curParentProps) {
@@ -742,6 +747,126 @@ j$(function() {
 	}
 
 
+
+	gob.updatePalCanv = function() {
+	    var canvas = document.getElementById('canvas');
+	    var canvasWidth  = canvas.width;
+	    var canvasHeight = canvas.height;
+	    var ctx = canvas.getContext('2d');
+	    var imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+	    var buf = new ArrayBuffer(imageData.data.length);
+	    var buf8 = new Uint8ClampedArray(buf);
+	    var data = new Uint32Array(buf);
+	    var value;
+	    var o;
+	    var n;
+	    var m;
+	    var lerpVal;
+
+	    var cl = new CIELCh(0,0,0);
+	    var omax;
+
+	    var hueVals = [
+
+	        10,
+	        40,
+	        70,
+	        110,
+	        170,
+	        210,
+	        250,
+	        290
+	    ]
+
+	    for (n = 0; n < 256; n++) {
+	        for (m = 0; m < 256; m++) {
+
+
+
+	            data[(n) * canvasWidth + m] =
+	                (255   << 24) |
+	                (m << 16) |
+	                (m <<  8) |
+	                 m;
+	        }
+	    }
+
+	    for (o = 0; o < 4; o++) {
+	        for (n = 0; n < 8; n++) {
+	            for (m = 0; m < 8; m++) {
+
+	                omax = o*23.0 + 30.0;
+	                
+	                cl.c = omax;
+	                cl.l = Math.floor(n*75.0/7.0 + (12-o*3));
+	                cl.h = hueVals[m];
+
+	                /*
+	                if (n < 4) {
+	                    lerpVal = n/3.0;
+	                    cl.h = hueVals[m]*lerpVal + (1.0-lerpVal)*40.0;
+	                }
+	                else {
+	                    lerpVal = ((n-4.0)/3.0)*0.5;
+	                    cl.h = (1.0-lerpVal)*hueVals[m] + 250.0*lerpVal;
+	                }
+	                */
+
+
+	                value = cl.toRGB();
+
+	                //canvasWidth = 8;
+
+	                data[(n+o*8) * 8 + m] =
+	                    (255   << 24) |
+	                    (value.r << 16) |
+	                    (value.g <<  8) |
+	                     value.b;
+
+	            }
+	        }
+	    }
+
+	    
+
+	    var createGrad = function(col, sm,sn,so,em,en,eo) {
+			
+			var i;
+	    	var row;
+	    	var ind;
+
+	    	var mRes;
+	    	var nRes;
+	    	var oRes;
+	    	var lerpVal;
+	    	var iLerpVal;
+
+	    	for (i = 0; i < 256; i++) {
+	    		row = i;
+	    		lerpVal = (i+30)/255.0;
+	    		iLerpVal = 1.0-lerpVal;
+
+	    		mRes = Math.floor(iLerpVal*sm + lerpVal*em);
+	    		nRes = Math.floor(iLerpVal*sn + lerpVal*en);
+	    		oRes = Math.floor(iLerpVal*so + lerpVal*eo);
+
+	    		ind = oRes*64 + nRes*8 + mRes;
+
+	    		data[col*256 + row] = data[ind];
+	    	}
+	    }
+	    createGrad(1, 0,0,0, 7,7,3 );
+
+	    
+
+
+	    imageData.data.set(buf8);
+	    ctx.putImageData(imageData, 0, 0);
+
+	    return new THREE.Texture(canvas);
+	}
+
+
 	gob.renderPal = function(r,g,b,a,x,y) {
 
 		gob.shaders.palShader.uniforms.u_PalCol.value.x = r;
@@ -918,6 +1043,10 @@ j$(function() {
 				gob.getKernMap(g_fonts[i]);
 			}
 		}
+
+
+
+
 
 
 		gob.initScene();
@@ -1871,14 +2000,12 @@ j$(function() {
 					}
 					
 
-					
-
 				}
 				else {
 					
 					gob.shaders.lightingShader.uniforms.u_Time.value = performance.now();
 
-					gob.renderPal(1.0,1.0,1.0,1.0, 1.0,1.0);
+					//gob.renderPal(1.0,1.0,1.0,1.0, 1.0,1.0);
 
 					gob.renderToTarget(
 						"lightingShader",
@@ -2021,7 +2148,7 @@ j$(function() {
 		meshBG = new THREE.Mesh( gbBG, gob.materials.bgShader);
 		
 		
-
+		
 
 
 
@@ -2173,6 +2300,19 @@ j$(function() {
 		stats.domElement.style.position = 'absolute';
 		stats.domElement.style.bottom = '0px';
 		//container.appendChild( stats.domElement );
+
+
+		gob.palTexture = gob.updatePalCanv();
+		gob.palTexture.needsUpdate = true;
+		gob.renderToTarget(
+			"palFromTexShader",
+			gob.renderTargets.palRT,
+			[
+				gob.palTexture
+			]
+		);
+
+
 		gob.onWindowResize();
 		window.addEventListener( 'resize', gob.onWindowResize, false );
 
