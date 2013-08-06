@@ -134,6 +134,12 @@ void main()	{
 	//vec2 coords2 = vec2(v_TexCoords.y,u_TexLookup + 1.0/255.0);
 	//vec4 ltex = texture2D(u_Texture1, coords2);
 	//vec4 dtex = texture2D(u_Texture1, coords1);
+
+
+
+	float fillAmount = v_Data1.x;
+	float isFilled = float((v_TexCoords.x+1.0)/2.0 < fillAmount);// *(1.0-isBorderF);
+
 	
 	vec4 ltex = vec4(1.0,0.0,0.0,1.0);
 	vec4 dtex = vec4(0.0,1.0,0.0,1.0);
@@ -150,7 +156,7 @@ void main()	{
 	gIdRGBA.r = floor(groupId/256.0)/255.0;
 	gIdRGBA.g = mod(groupId,256.0)/255.0;
 
-	float matId = v_Data0.w;
+	float matId = mix(v_Data0.w,v_Data1.w,isFilled*(1.0-isBorderF));
 	gIdRGBA.b = floor(matId/256.0)/255.0;
 	gIdRGBA.a = mod(matId,256.0)/255.0;
 

@@ -77,6 +77,10 @@ void main()	{
 		gl_FragColor = vec4(basevalo.aaa,1.0);
 	}
 
+	if (u_Section == 5.0) {
+		gl_FragColor = vec4(basevalo.rgb,1.0);
+	}
+
 	
 	
 }

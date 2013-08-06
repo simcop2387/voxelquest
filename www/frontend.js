@@ -1,5 +1,6 @@
 
 var gob;
+var dat;
 
 var g_curGroup = 0;
 var a_DataArr = ["a_Data0","a_Data1"];
@@ -115,8 +116,40 @@ j$(function() {
 	var meshBG;
 	var meshFSQ;
 	
+	var xx = new RGB(255,0,0);
+	console.log(xx.toCIELCh());
+
+	dat = {
+		gradients: [
+			
+			{
+				steps: [
+					{h:0.1, s:0.0, l:0.0, pow:0.5, pos:0},
+					{h:0.4, s:0.3, l:1.0, pow:0.5, pos:256}
+				]
+			},
+			{
+				steps: [
+					{h:0.8, s:0.0, l:0.0, pow:0.5, pos:0},
+					{h:0.75, s:0.8, l:0.9, pow:0.5, pos:64},
+					{h:0.75, s:0.5, l:0.5, pow:0.5, pos:128},
+					{h:0.75, s:0.8, l:0.9, pow:0.5, pos:192},
+					{h:0.75, s:0.0, l:1.0, pow:2.0, pos:256}
+				]
+			},
+			{
+				steps: [
+					{h:0.0, s:0.4, l:0.0, pow:0.5, pos:0},
+					{h:0.0, s:0.2, l:0.5, pow:0.3, pos:192},
+					{h:0.0, s:0.1, l:0.6, pow:0.1, pos:256}
+				]
+			}
+			
+		]
+	};
 
 	gob = {
+		showFullBuffer:false,
 		lockOn: false,
 		activeComp: 0,
 		autoUpdate: false,
@@ -757,13 +790,13 @@ j$(function() {
 	    var buf = new ArrayBuffer(imageData.data.length);
 	    var buf8 = new Uint8ClampedArray(buf);
 	    var data = new Uint32Array(buf);
-	    var value;
+	    
 	    var o;
 	    var n;
 	    var m;
 	    var lerpVal;
 
-	    var cl = new CIELCh(0,0,0);
+
 	    var omax;
 
 	    var hueVals = [
@@ -791,27 +824,17 @@ j$(function() {
 	        }
 	    }
 
+/*
 	    for (o = 0; o < 4; o++) {
 	        for (n = 0; n < 8; n++) {
 	            for (m = 0; m < 8; m++) {
 
-	                omax = o*23.0 + 30.0;
+	                omax = o*30.0 + 10.0;
 	                
-	                cl.c = omax;
-	                cl.l = Math.floor(n*75.0/7.0 + (12-o*3));
+	                
 	                cl.h = hueVals[m];
-
-	                /*
-	                if (n < 4) {
-	                    lerpVal = n/3.0;
-	                    cl.h = hueVals[m]*lerpVal + (1.0-lerpVal)*40.0;
-	                }
-	                else {
-	                    lerpVal = ((n-4.0)/3.0)*0.5;
-	                    cl.h = (1.0-lerpVal)*hueVals[m] + 250.0*lerpVal;
-	                }
-	                */
-
+	                cl.l = Math.floor(n*75.0/7.0 + (12-o*3));
+	                cl.c = omax;
 
 	                value = cl.toRGB();
 
@@ -826,13 +849,20 @@ j$(function() {
 	            }
 	        }
 	    }
+*/
+
+
+		//list of gradients
+		//	list of colors / grad values
+		//  	color / grad editor
 
 	    
 
-	    var createGrad = function(col, sm,sn,so,em,en,eo) {
+	    var createGrad = function(col, colorArr) {
 			
 			var i;
-	    	var row;
+			var j;
+			var jNext, jPrev;
 	    	var ind;
 
 	    	var mRes;
@@ -840,30 +870,95 @@ j$(function() {
 	    	var oRes;
 	    	var lerpVal;
 	    	var iLerpVal;
+	    	var sm,sn,so,em,en,eo;
 
-	    	for (i = 0; i < 256; i++) {
-	    		row = i;
-	    		lerpVal = (i+30)/255.0;
-	    		iLerpVal = 1.0-lerpVal;
+	    	var curPow;
 
-	    		mRes = Math.floor(iLerpVal*sm + lerpVal*em);
-	    		nRes = Math.floor(iLerpVal*sn + lerpVal*en);
-	    		oRes = Math.floor(iLerpVal*so + lerpVal*eo);
+	    	var numCols = colorArr.length - 2;
 
-	    		ind = oRes*64 + nRes*8 + mRes;
+	    	var value;
+	    	var cl = new CIELCh(0,0,0);
 
-	    		data[col*256 + row] = data[ind];
+	    	i = 0;
+
+	    	for (j = 0; j < colorArr.length; j++) {
+	    		while ( (i < 256) && (i < colorArr[j].pos) ) {
+
+
+
+	    			jNext = Math.min(j+1,colorArr.length-1);
+	    			jPrev = Math.max(j-1,0);
+
+	    			lerpVal = (i-colorArr[jPrev].pos)/(colorArr[j].pos-colorArr[jPrev].pos);
+	    			iLerpVal = 1.0-lerpVal;
+
+
+
+
+	    			startCol = colorArr[jPrev];
+	    			endCol = colorArr[j];
+
+	    			curPow = iLerpVal*startCol.pow + lerpVal*endCol.pow;
+
+	    			lerpVal = Math.pow(lerpVal,curPow);
+	    			iLerpVal = 1.0-lerpVal;
+
+
+	    			cl.h = Math.floor(  (iLerpVal*startCol.h + lerpVal*endCol.h)*360.0  );
+	    			cl.c = Math.floor(  (iLerpVal*startCol.s + lerpVal*endCol.s)*100.0  );
+	    			cl.l = Math.floor(  (iLerpVal*startCol.l + lerpVal*endCol.l)*100.0  );
+
+
+	    			value = cl.toRGB();
+
+	    			data[col*256 + i] =
+	    			    (255   << 24) |
+	    			    (value.r << 16) |
+	    			    (value.g <<  8) |
+	    			     value.b;
+
+	    			i++;
+	    		}
 	    	}
-	    }
-	    createGrad(1, 0,0,0, 7,7,3 );
 
-	    
+	    	
+
+	    }
+
+	    for (m = 0; m < dat.gradients.length; m++) {
+
+	    	createGrad(m,dat.gradients[m].steps);
+	    }
+
+
+	    /*
+		dat = {
+			gradients: [
+				{
+					steps: [
+						{h:0.0, s:0.0, l:0.0},
+						{h:0.5, s:1.0, l:1.0},
+						{h:1.0, s:0.0, l:1.0}
+					]
+				}
+				
+			]
+		};
+		*/
+
+	    //createGrad(1, [0,0,0, 3.0,7.0,3.0, 5.0,7.0,0.0]  );
+
+	    //hue, lightness, saturation
 
 
 	    imageData.data.set(buf8);
 	    ctx.putImageData(imageData, 0, 0);
 
-	    return new THREE.Texture(canvas);
+	    var newRes = new THREE.Texture(canvas);
+	    newRes.minFilter = THREE.NearestFilter; 
+	    newRes.magFilter = THREE.NearestFilter; 
+
+	    return newRes;
 	}
 
 
@@ -1120,6 +1215,11 @@ j$(function() {
 					gob.curDebugSection = 0.0;
 				}
 
+				if (gob.showFullBuffer) {
+					gob.curDebugSection = 5.0;
+				}
+
+
 				gob.shaders.debugShader.uniforms.u_Section.value = gob.curDebugSection;
 
 			}
@@ -1185,6 +1285,11 @@ j$(function() {
 			if ( code == "a".charCodeAt(0) ) {
 				gob.autoUpdate = !gob.autoUpdate;
 				console.log("Auto Update: " + gob.autoUpdate);
+			}
+
+			if ( code == "d".charCodeAt(0) ) {
+				gob.showFullBuffer = !gob.showFullBuffer;
+				console.log("Show Full Buffer:" + gob.showFullBuffer);
 			}
 			
 		});
@@ -1502,7 +1607,7 @@ j$(function() {
 		var curIndDiv4;
 
 		var dStr;
-
+		var matId;
 
 		for (i = 0; i < lineArr.length; i++) {
 			wordArr.push(lineArr[i].split(' '));
@@ -1635,18 +1740,24 @@ j$(function() {
 		}
 		else {
 
+			if (isBG) {
+				matId = obj.bgMatId;
+			}
+			else {
+				matId = obj.textMatId;
+			}
 
 			atArr = atArrs[0];
-			atArr[0] =  obj.maxWidth;  atArr[1] = obj.maxHeight;  atArr[2] = obj.groupId;  atArr[3] = 0.0;
-			atArr[4] =  obj.maxWidth;  atArr[5] = obj.maxHeight;  atArr[6] = obj.groupId;  atArr[7] = 0.0;
-			atArr[8] =  obj.maxWidth;  atArr[9] = obj.maxHeight;  atArr[10] = obj.groupId; atArr[11] = 0.0;
-			atArr[12] = obj.maxWidth; atArr[13] = obj.maxHeight; atArr[14] = obj.groupId; atArr[15] = 0.0;
+			atArr[0] =  obj.maxWidth;  atArr[1] = obj.maxHeight;  atArr[2] = obj.groupId;  atArr[3] = matId;
+			atArr[4] =  obj.maxWidth;  atArr[5] = obj.maxHeight;  atArr[6] = obj.groupId;  atArr[7] = matId;
+			atArr[8] =  obj.maxWidth;  atArr[9] = obj.maxHeight;  atArr[10] = obj.groupId; atArr[11] = matId;
+			atArr[12] = obj.maxWidth; atArr[13] = obj.maxHeight; atArr[14] = obj.groupId; atArr[15] = matId;
 
 			atArr = atArrs[1];
-			atArr[0] =  obj.curValue;  atArr[1] = obj.baseDepth;  atArr[2] =  0.0;  atArr[3] = 0.0;
-			atArr[4] =  obj.curValue;  atArr[5] = obj.baseDepth;  atArr[6] =  0.0;  atArr[7] = 0.0;
-			atArr[8] =  obj.curValue;  atArr[9] = obj.baseDepth;  atArr[10] = 0.0;  atArr[11] = 0.0;
-			atArr[12] = obj.curValue; atArr[13] = obj.baseDepth;  atArr[14] =  0.0; atArr[15] = 0.0;
+			atArr[0] =  obj.curValue;  atArr[1] = obj.baseDepth;  atArr[2] =  0.0;  atArr[3] = obj.fillMatId;
+			atArr[4] =  obj.curValue;  atArr[5] = obj.baseDepth;  atArr[6] =  0.0;  atArr[7] = obj.fillMatId;
+			atArr[8] =  obj.curValue;  atArr[9] = obj.baseDepth;  atArr[10] = 0.0;  atArr[11] = obj.fillMatId;
+			atArr[12] = obj.curValue; atArr[13] = obj.baseDepth;  atArr[14] =  0.0; atArr[15] = obj.fillMatId;
 
 
 			if (isBG && obj.drawBG) {
@@ -2217,6 +2328,11 @@ j$(function() {
 			//font: 			gob.curFont,
 			hTextAlign:		enums.align.left,
 			vTextAlign:		enums.align.top,
+
+			bgMatId: 			0.0,
+			textMatId: 			1.0,
+			fillMatId: 			2.0,
+
 
 			//x: 				50,
 			//y: 				50,

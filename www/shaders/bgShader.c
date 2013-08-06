@@ -128,7 +128,6 @@ void main()	{
 
 	float fillAmount = v_Data1.x;
 	float baseDepth = v_Data1.y;
-
 	float isFilled = float((v_TexCoords.x+1.0)/2.0 < fillAmount);// *(1.0-isBorderF);
 
 

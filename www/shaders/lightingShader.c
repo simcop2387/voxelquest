@@ -69,7 +69,7 @@ void main()	{
 	//timedLight.y -= 0.2;
 	//timedLight.y += cos(u_Time/100.0)/20.0;
 
-	float disVal = min(1.0-clamp(distance(timedLight, v_Position)*0.6,0.0,1.0)+0.1,1.0);
+	float disVal = clamp(1.0-clamp(distance(timedLight, v_Position)*0.6,0.0,1.0),0.0,1.0);
 	lightVec.xy = timedLight - v_Position;
 	//lightVec.xy = normalize(lightVec.xy);
 	lightVec.z = 50.0/255.0;
@@ -135,9 +135,9 @@ void main()	{
 
 	}
 
-	float shadVal = clamp((1.0-lastHit*lastHit*lastHit*lastHit) + (1.0-float(totHits>0.0)),0.0,1.0);// 1.0-clamp(float(totHits>0.0)+lastHit,0.0,1.0); //mix(clamp(totHits/totRays,0.0,1.0),float(totHits>0.0),totHits/totRays);
+	float shadVal = clamp((1.0 - pow(lastHit,16.0) ) + (1.0-float(totHits>0.0)),0.0,1.0);// 1.0-clamp(float(totHits>0.0)+lastHit,0.0,1.0); //mix(clamp(totHits/totRays,0.0,1.0),float(totHits>0.0),totHits/totRays);
 
-	shadVal = pow(shadVal,0.3);
+	//shadVal = pow(shadVal,0.3);
 
 	//resVal = clamp(pow(resVal,2.0),0.0,1.0);
 
@@ -145,13 +145,25 @@ void main()	{
 
 
 	float lVal = clamp(dot(finalNorm,lightVec),0.0,1.0)*shadVal;
-	lVal = mix(baseval.a*0.3,lVal,lVal);
+	lVal = mix(baseval.a*0.3,lVal,lVal); //(lVal+abs(baseval.a-0.5)*lVal)/1.5
 	lVal *= float(baseval.b > 0.0);
 
-	lVal = sqrt(lVal)*disVal;
+	lVal = lVal*disVal;
+	//lVal = pow(lVal,0.5)*disVal;
 
-	float lValOrig = lVal;
-	lVal = floor(lVal*16.0)/16.0 + rand(v_TexCoords)/8.0;
+	//lVal = clamp(lVal+abs(baseval.a-0.5),0.0,1.0);
+
+	
+	//float lValOrig = lVal;
+	//float lVal2 = floor(lVal*16.0)/16.0;
+	//float dithVal = rand(v_TexCoords)*(lValOrig-lVal2)*16.0;
+	
+
+	float dithVal = mod(v_TexCoords.x*1024.0+v_TexCoords.y*768.0, 2.0 );
+
+	lVal += dithVal/128.0;
+
+	//lVal = floor(lVal*255.0 + dithVal )/256.0;//rand(v_TexCoords);
 
 	//float remd = lValOrig-lVal;
 	//lVal += remd*rand(v_TexCoords);
@@ -175,9 +187,9 @@ void main()	{
 
 	//gl_FragColor = vec4(mix(col0,col1,float(baseval2.w > 0.0)),1.0) + lMod*0.2;//*abs(sin(u_Time/300.0));//vec4(lVal,lVal,lVal,1.0);//vec4(baseval.rgb,lVal);
 	
-	vec4 matCol = texture2D( u_Texture3, vec2(lVal,1.0/255.0) ); //matInd
+	vec4 matCol = texture2D( u_Texture3, vec2(lVal,matInd) ); //matInd
 	vec4 palCol = texture2D( u_Texture3, vec2(palInd,0.0) );
 
-	gl_FragColor = matCol;//mix(palCol,matCol,float(matInd > 0.0));
+	gl_FragColor = matCol;//vec4(lVal,lVal,lVal,1.0);//mix(palCol,matCol,float(matInd > 0.0));
 	
 }
