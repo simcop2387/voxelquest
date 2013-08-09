@@ -10,7 +10,8 @@ uniform vec2 u_MouseCoords;
 varying vec2 v_TexCoords;
 varying vec2 v_Position;
 varying vec2 v_MouseCoords;
-
+varying vec2 v_NewMouse;
+varying vec2 v_NewPos;
 
 
 
@@ -28,6 +29,14 @@ void main()	{
 
 	v_Position = position.xy;
 	v_MouseCoords = u_MouseCoords;
+
+	float minDis = min(u_Resolution.x,u_Resolution.y);
+
+	v_NewMouse = vec2(v_MouseCoords.x*u_Resolution.x,v_MouseCoords.y*u_Resolution.y)/minDis;
+	v_NewPos = vec2(v_Position.x*u_Resolution.x,v_Position.y*u_Resolution.y)/minDis;
+
+	
+
 	
 	gl_Position = vec4( position.xyz, 1.0 );
 
@@ -45,6 +54,9 @@ void main()	{
 	vec4 baseval2 = texture2D( u_Texture1, v_TexCoords );
 	vec4 baseval3 = texture2D( u_Texture2, v_TexCoords );
 
+	
+
+
 	vec2 newMC = v_MouseCoords;
 
 	newMC.x = (newMC.x+1.0)/2.0;
@@ -54,25 +66,63 @@ void main()	{
 
 	float lMod = float(idAtMouse.g == baseval3.g) * float(baseval3.g > 0.0);
 
-	float palInd = baseval3.b;
+	//float palInd = baseval3.b;
 	float matInd = baseval3.a;
+
+
+	float matIndU = texture2D( u_Texture2, vec2(v_TexCoords.x,v_TexCoords.y-1.0/u_Resolution.y) ).a;
+	float matIndD = texture2D( u_Texture2, vec2(v_TexCoords.x,v_TexCoords.y+1.0/u_Resolution.y) ).a;
+	float matIndL = texture2D( u_Texture2, vec2(v_TexCoords.x-1.0/u_Resolution.x,v_TexCoords.y) ).a;
+	float matIndR = texture2D( u_Texture2, vec2(v_TexCoords.x+1.0/u_Resolution.x,v_TexCoords.y) ).a;
+	
+	float outMod = float ( float(matInd != matIndU) + float(matInd != matIndD) + float(matInd != matIndL) + float(matInd != matIndR) );
+	//float outMod = float ( float(matInd < matIndU) + float(matInd < matIndD) + float(matInd < matIndL) + float(matInd < matIndR) );
+	//float outMod = float ( float(matInd > matIndU) + float(matInd > matIndD) + float(matInd > matIndL) + float(matInd > matIndR) );
+
+
 
 	vec3 finalNorm;
 	finalNorm.rg = (baseval.rg-0.5)*2.0;
 	finalNorm.b = abs(sqrt( abs(1.0-(finalNorm.r*finalNorm.r+finalNorm.g*finalNorm.g) )));
 	finalNorm = normalize(finalNorm);
 	
+	//vec3 upNorm = vec3(0.0,0.0,1.0);
+	//finalNorm = mix(upNorm,finalNorm,baseval.b*255.0/40.0);
+	//finalNorm = normalize(finalNorm);
+
 	vec3 lightVec;
 
-	vec2 timedLight = v_MouseCoords;
+
 	//timedLight.x -= 0.2;
 	//timedLight.y -= 0.2;
 	//timedLight.y += cos(u_Time/100.0)/20.0;
 
-	float disVal = clamp(1.0-clamp(distance(timedLight, v_Position)*0.6,0.0,1.0),0.0,1.0);
-	lightVec.xy = timedLight - v_Position;
+	//float disVal = clamp(1.0-clamp(distance(timedLight, v_Position)*1.0,0.0,1.0),0.0,1.0);
+	
+	/*
+	float dis1 = distance(timedLight,vec2(-1.0,-1.0));
+	float dis2 = distance(timedLight,vec2(1.0,-1.0));
+	float dis3 = distance(timedLight,vec2(1.0,1.0));
+	float dis4 = distance(timedLight,vec2(-1.0,1.0));
+
+	float dis5 = max(dis1,dis2);
+	float dis6 = max(dis3,dis4);
+	float dis7 = max(dis5,dis6);
+	*/
+
+
+
+
+	float disVal = (1.0-clamp(distance( v_NewMouse, v_NewPos )*0.5,0.0,1.0));
+
+
+
+	disVal += (disVal)*abs(sin(atan( (v_NewMouse.y-v_NewPos.y),(v_NewMouse.x-v_NewPos.x) )*10.0))*0.01;
+	disVal = clamp(disVal,0.0,1.0);
+
+	lightVec.xy = v_MouseCoords - v_Position;
 	//lightVec.xy = normalize(lightVec.xy);
-	lightVec.z = 50.0/255.0;
+	lightVec.z = 60.0/255.0;
 	lightVec = normalize(lightVec);
 	lightVec.y = -lightVec.y;
 
@@ -143,12 +193,15 @@ void main()	{
 
 
 
+	float lVal = clamp(dot(finalNorm,lightVec),0.0,1.0)*shadVal*disVal;
+	lVal = mix(baseval.a*(0.05+disVal*0.25),lVal,lVal); //(lVal+abs(baseval.a-0.5)*lVal)/1.5
+	lVal *= float(baseval.b > 0.0);// *pow(disVal,2.0);
 
-	float lVal = clamp(dot(finalNorm,lightVec),0.0,1.0)*shadVal;
-	lVal = mix(baseval.a*0.3,lVal,lVal); //(lVal+abs(baseval.a-0.5)*lVal)/1.5
-	lVal *= float(baseval.b > 0.0);
+	//lVal = lVal*disVal;
 
-	lVal = lVal*disVal;
+
+	//lVal += pow(sin((v_TexCoords.x + v_TexCoords.y + u_Time/10000.0)*4.0),10.0)/2.0;//*(u_Time/100.0) );
+
 	//lVal = pow(lVal,0.5)*disVal;
 
 	//lVal = clamp(lVal+abs(baseval.a-0.5),0.0,1.0);
@@ -159,37 +212,24 @@ void main()	{
 	//float dithVal = rand(v_TexCoords)*(lValOrig-lVal2)*16.0;
 	
 
-	float dithVal = mod(v_TexCoords.x*1024.0+v_TexCoords.y*768.0, 2.0 );
+	float dithVal = mod(v_TexCoords.x*u_Resolution.x+v_TexCoords.y*u_Resolution.y, 2.0 );
 
-	lVal += dithVal/128.0;
+	lVal += dithVal/255.0;
 
-	//lVal = floor(lVal*255.0 + dithVal )/256.0;//rand(v_TexCoords);
+	lVal -= mix(0.0,outMod,lVal)*0.2;
 
-	//float remd = lValOrig-lVal;
-	//lVal += remd*rand(v_TexCoords);
-	//lVal = clamp(lVal,0.0,1.0);
-
-	//float v1 = 8.0;
-	//float v2 = v1+1.0;
-	//lVal = floor(lVal*v1  +(abs(fract(lVal*v1)-0.5)*2.0)*rand(v_TexCoords)     )/v2;   
-
-	//float lv2 = sqrt(mix(baseval.a*0.5,lVal,lVal))*0.8;
-
-	//lv2 = pow(lv2,2.0);
-
-	//vec3 col0 = vec3(255.0/255.0,153.0/255.0,0.0/255.0)*lVal + lVal*lVal/2.0;
-	//vec3 col1 = mix(vec3(65.0/255.0,38.0/255.0,16.0/255.0),vec3(241.0/255.0,233.0/255.0,214.0/255.0),lv2)*lv2;
-
-	//col1.r += 0.01;
-
-
-	//vec4(baseval.a,baseval.a,baseval.a,1.0);//
-
-	//gl_FragColor = vec4(mix(col0,col1,float(baseval2.w > 0.0)),1.0) + lMod*0.2;//*abs(sin(u_Time/300.0));//vec4(lVal,lVal,lVal,1.0);//vec4(baseval.rgb,lVal);
+	lVal = clamp(lVal+lMod*0.05,0.0,1.0);// pow(,1.0 - lMod*0.3);
 	
-	vec4 matCol = texture2D( u_Texture3, vec2(lVal,matInd) ); //matInd
-	vec4 palCol = texture2D( u_Texture3, vec2(palInd,0.0) );
 
-	gl_FragColor = matCol;//vec4(lVal,lVal,lVal,1.0);//mix(palCol,matCol,float(matInd > 0.0));
+	vec4 matCol = texture2D( u_Texture3, vec2(lVal,matInd + 0.5/255.0) ); //matInd
+	//vec4 palCol = texture2D( u_Texture3, vec2(palInd,0.0) );
+
+	//vec4 matCol2 = matCol;
+	//matCol2.r += 0.1;
+	//matCol2.g += 0.1;
+	//matCol2.b += 0.1;
+
+	//vec4(finalNorm,1.0);//
+	gl_FragColor = matCol;//mix(matCol,matCol2,lMod);//vec4(lVal,lVal,lVal,1.0);//mix(palCol,matCol,float(matInd > 0.0));
 	
 }

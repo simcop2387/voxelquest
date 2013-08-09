@@ -52,29 +52,20 @@ void main()	{
 	
 	vec4 heightRT = texture2D( u_Texture0, v_TexCoords );
 	vec4 normRT = texture2D( u_Texture1, v_TexCoords );
-	vec3 baseNorm = (normRT.rgb-0.5)*2.0;
-	baseNorm.z = 0.0;
-	baseNorm = normalize(baseNorm);
+	vec3 sideNorm = (normRT.rgb-0.5)*2.0;
+	sideNorm.z = 0.0;
+	sideNorm = normalize(sideNorm);
 
-	vec3 faceNorm = vec3(0.0,0.0,1.0);
+	vec3 upNorm = vec3(0.0,0.0,1.0);
 	float curDis = heightRT.b;
 	float maxDis = 128.0/255.0;
 	float startZ = 0.0;
 	float endZ = 1.0;
 	float lerpPow = 2.0;
-	float lerpAmount = max(maxDis-curDis,0.0)/maxDis;
-	
-	/*
-	// sharp bevel
-	lerpAmount = 0.5;
-	if (curDis >= 80.0/255.0) {
-		lerpAmount = 0.0;
-	}*/
-	if (curDis <= 16.0/255.0) {
-		lerpAmount = 1.0;
-	}
 
-	vec3 finalNorm = mix(faceNorm, baseNorm, lerpAmount );
+
+
+	vec3 finalNorm = mix(sideNorm, upNorm, min(pow(heightRT.b,2.0)*3.5,1.0) );
 
 	finalNorm = normalize(finalNorm);
 

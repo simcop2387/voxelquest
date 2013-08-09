@@ -1,87 +1,191 @@
 
 var gob;
-var dat;
 
-var g_curGroup = 0;
-var a_DataArr = ["a_Data0","a_Data1"];
+j$(function() {
 
-var enums = {
-	fillDir: {
-		horizontal:0,
-		vertical:1
-	},
-	align: {
-		left:0,
-		center:1,
-		right:2,
 
-		top:3,
-		middle:4,
-		bottom:5
-	}
-}
 
-function logInPlace(obj) {
-	//console.log(obj);
-	return obj;
-}
 
-function combineObjs(oArr) {
-	var resObj = {};
+	var dat;
+	var g_curGroup = 0;
+	var a_DataArr = ["a_Data0","a_Data1"];
 
-	var i;
-	var j;
-	var curObj;
+	var enums = {
+		fillDir: {
+			horizontal:0,
+			vertical:1
+		},
+		align: {
+			left:0,
+			center:1,
+			right:2,
 
-	if (oArr.length) {
+			top:3,
+			middle:4,
+			bottom:5
+		},
+		types: {
+			untypedList: 1,
+			untyped: 2,
+			
+			nodeList: 3,
+			node: 4,
+			
+			numberList:5,
+			number: 6,
+			
+			colorList: 7, 
+			color: 8,
 
-	}
-	else {
-		return JSON.parse(JSON.stringify(oArr));
-	}
+			gradientList: 9,
+			gradient: 10,
 
-	for (i = 0; i < oArr.length; i++) {
-
-		curObj = oArr[i];
-
-		for (j in curObj) {
-			if (curObj.hasOwnProperty(j)) {
-				resObj[j] = curObj[j];
-			}
+			gradientStepList: 11,
+			gradientStep: 12
 		}
 	}
 
-	return JSON.parse(JSON.stringify(resObj));
-	//resObj
-}
-
-function createNode(propArr,childArr) {
-	return {
-		props:combineObjs(propArr),
-		childArr:childArr
+	function logInPlace(obj) {
+		//console.log(obj);
+		return obj;
 	}
-}
 
-if(!Array.prototype.last) {
-    Array.prototype.last = function() {
-        return this[this.length - 1];
-    }
-}
+	function combineObjs(oArr) {
+		var resObj = {};
 
-window.performance = window.performance || {};
-performance.now = (function() {
-    return performance.now       ||
-        performance.mozNow    ||
-        performance.msNow     ||
-        performance.oNow      ||
-        performance.webkitNow ||
-        function() {
-            //Doh! Crap browser!
-            return new Date().getTime(); 
-        };
-})();
+		var i;
+		var j;
+		var curObj;
 
-j$(function() {
+		if (oArr.length) {
+
+		}
+		else {
+			return JSON.parse(JSON.stringify(oArr));
+		}
+
+		for (i = 0; i < oArr.length; i++) {
+
+			curObj = oArr[i];
+
+			for (j in curObj) {
+				if (curObj.hasOwnProperty(j)) {
+					resObj[j] = curObj[j];
+				}
+			}
+		}
+
+		return JSON.parse(JSON.stringify(resObj));
+		//resObj
+	}
+
+	function createNode(propArr, childArr, iv) {
+		var obj = {
+			props:combineObjs(propArr),
+			childArr:childArr
+		};
+
+		var i;
+
+		if (obj.props.type) {
+
+			switch(obj.props.type) {
+				
+				case enums.types.untypedList:
+
+				break;
+				case enums.types.untyped:
+
+				break;
+				case enums.types.nodeList:
+
+				break;
+				case enums.types.node:
+
+				break;
+				case enums.types.numberList:
+
+				break;
+				case enums.types.number:
+					if (iv === undefined) {
+						obj.props.value = 0;
+					}
+					else {
+						obj.props.value = iv;
+					}
+				break;
+				case enums.types.colorList:
+
+				break;
+				case enums.types.color:
+					obj.childArr.push(
+
+						createNode( {label:"Hue", type:enums.types.number}, [], iv.hue ),
+						createNode( {label:"Saturation", type:enums.types.number}, [], iv.saturation ),
+						createNode( {label:"Lightness", type:enums.types.number}, [], iv.lightness )
+
+					);
+				break;
+				case enums.types.gradientList:
+					for (i = 0; i < iv.length; i++) {
+						obj.childArr.push(
+							createNode( {label:"Gradient " + i, type:enums.types.gradient}, [], iv[i] )
+						);
+					}
+				break;
+				case enums.types.gradient:
+					obj.childArr.push(
+						createNode( {label:"Steps", type:enums.types.gradientStepList}, [], iv.steps )
+					);
+				break;
+				case enums.types.gradientStepList:
+					for (i = 0; i < iv.length; i++) {
+						obj.childArr.push(
+							createNode( {label:"Step " + i, type:enums.types.gradientStep}, [], iv[i] )
+						);
+					}
+				break;
+				case enums.types.gradientStep:
+					obj.childArr.push(
+						createNode( {label:"Color", type:enums.types.color}, [], {
+							hue: iv.h,
+							saturation: iv.s,
+							lightness: iv.l
+						} ),
+
+						createNode( {label:"Power", type:enums.types.number}, [], iv.pow ),
+						createNode( {label:"Position", type:enums.types.number}, [], iv.pos )
+
+					);
+				break;
+			}
+
+		}
+
+
+		return obj;
+	}
+
+	if(!Array.prototype.last) {
+	    Array.prototype.last = function() {
+	        return this[this.length - 1];
+	    }
+	}
+
+	window.performance = window.performance || {};
+	performance.now = (function() {
+	    return performance.now       ||
+	        performance.mozNow    ||
+	        performance.msNow     ||
+	        performance.oNow      ||
+	        performance.webkitNow ||
+	        function() {
+	            //Doh! Crap browser!
+	            return new Date().getTime(); 
+	        };
+	})();
+
+
 
 
 	var DisplayNode = new Class({
@@ -115,9 +219,6 @@ j$(function() {
 	var meshText;
 	var meshBG;
 	var meshFSQ;
-	
-	var xx = new RGB(255,0,0);
-	console.log(xx.toCIELCh());
 
 	dat = {
 		gradients: [
@@ -130,11 +231,21 @@ j$(function() {
 			},
 			{
 				steps: [
+					{h:0.1, s:0.0, l:0.0, pow:0.5, pos:0},
+					{h:0.4, s:0.3, l:1.0, pow:0.5, pos:256}
+				]
+			},
+			{
+				steps: [
+
 					{h:0.8, s:0.0, l:0.0, pow:0.5, pos:0},
-					{h:0.75, s:0.8, l:0.9, pow:0.5, pos:64},
-					{h:0.75, s:0.5, l:0.5, pow:0.5, pos:128},
+					{h:0.75, s:0.5, l:0.2, pow:2.0, pos:20},
+					{h:0.75, s:0.3, l:0.1, pow:0.5, pos:28},
+					{h:0.75, s:0.2, l:0.2, pow:0.5, pos:40},
+					{h:0.75, s:0.8, l:0.8, pow:2.0, pos:120},
+					{h:0.8, s:0.5, l:0.4, pow:0.5, pos:128},
 					{h:0.75, s:0.8, l:0.9, pow:0.5, pos:192},
-					{h:0.75, s:0.0, l:1.0, pow:2.0, pos:256}
+					{h:0.75, s:0.1, l:1.0, pow:2.0, pos:256}
 				]
 			},
 			{
@@ -147,6 +258,7 @@ j$(function() {
 			
 		]
 	};
+	
 
 	gob = {
 		showFullBuffer:false,
@@ -195,7 +307,7 @@ j$(function() {
 			gob.traceLevel--;
 			if (gob.traceLevel < 0) {
 				gob.traceLevel = 0;
-			}			
+			}
 
 			gob.tracesAtLevel = 0;
 
@@ -601,7 +713,7 @@ j$(function() {
 				minHeight = gob.curFont.metrics.height*curParentProps.scale;
 			}
 			else {
-				minHeight = gob.drawTextArea(curParentProps, false, false, null, true);
+				minHeight = gob.drawTextArea(curParentProps, null, true);
 			}
 		}
 		else {
@@ -673,14 +785,14 @@ j$(function() {
 	});
 
 
-	gob.wf("addMeshes",function(rootObj,firstRun) {
+	gob.wf("addMeshes",function(rootObj) {
 		var i;
 
-		gob.drawTextArea(rootObj.props, true, firstRun, meshBG);
-		gob.drawTextArea(rootObj.props, false, firstRun, meshText);
+		gob.drawTextArea(rootObj.props, meshBG, false);
+		gob.drawTextArea(rootObj.props, meshText, false);
 
 		for (i = 0; i < rootObj.childArr.length; i++) {
-			gob.addMeshes(rootObj.childArr[i],firstRun);
+			gob.addMeshes(rootObj.childArr[i]);
 		}
 
 	});
@@ -768,7 +880,7 @@ j$(function() {
 			else {
 				gob.lockOn = true;
 
-				gob.layoutGUI(gob.mainRoot,false);
+				gob.layoutGUI(gob.mainRoot,gob.mainDat,false);
 				gob.updateBaseRT = true;
 
 				gob.lockOn = false;
@@ -955,8 +1067,8 @@ j$(function() {
 	    ctx.putImageData(imageData, 0, 0);
 
 	    var newRes = new THREE.Texture(canvas);
-	    newRes.minFilter = THREE.NearestFilter; 
-	    newRes.magFilter = THREE.NearestFilter; 
+	    newRes.minFilter = THREE.LinearFilter; 
+	    newRes.magFilter = THREE.LinearFilter; 
 
 	    return newRes;
 	}
@@ -984,25 +1096,49 @@ j$(function() {
 	}
 
 
-	gob.layoutGUI = function(rootObj, firstRun) {
+	
+
+	gob.calcVertices = function(rootObj, curMesh) {
+		var i;
 
 
-
-		
-
-
-
-		if (firstRun) {
-			meshText.maxInd = 0;
-			meshBG.maxInd = 0;
+		if (curMesh.isBG) {
+			curMesh.maxInd += 8;
+			for (i = 0; i < rootObj.childArr.length; i++) {
+				gob.calcVertices(rootObj.childArr[i], curMesh);
+			}
+		}
+		else {
+			if (rootObj.childArr.length == 0) {
+				curMesh.maxInd += 8*rootObj.props.str.length;
+			}
+			else {
+				for (i = 0; i < rootObj.childArr.length; i++) {
+					gob.calcVertices(rootObj.childArr[i], curMesh);
+				}
+			}
 		}
 
-		meshText.curInd = 0;
-		meshText.extraInd = 0;
-		meshBG.curInd = 0;
-		meshBG.extraInd = 0;
 		
+
+		
+	}
+
+	gob.layoutGUI = function(rootObj, rootData, firstRun) {
+
+		meshText.curInd = 0;
+		meshBG.curInd = 0;
 		g_curGroup = 1;
+
+		if (firstRun) {
+			//meshText.maxInd = 0;
+			//meshBG.maxInd = 0;
+			//gob.calcVertices(rootObj, meshBG);
+			//gob.calcVertices(rootObj, meshText);
+
+			gob.zeroOutVerts(rootObj,meshBG, true);
+			gob.zeroOutVerts(rootObj,meshText, true);
+		}
 		
 		gob.traceVals = ["x","y","resultWidth","resultHeight", "fillDir"];
 
@@ -1016,24 +1152,16 @@ j$(function() {
 
 		
 
-		gob.addMeshes(rootObj,firstRun);
+		gob.addMeshes(rootObj);
 		gob.traceVals = [];
 
 
-		gob.zeroOutVerts(rootObj,true,firstRun,meshBG);
-		gob.zeroOutVerts(rootObj,false,firstRun,meshText);
+		gob.zeroOutVerts(rootObj,meshBG, false);
+		gob.zeroOutVerts(rootObj,meshText, false);
 
 
 	};
 
-
-	/*
-	gob.wf("doTextUpdate", function() {
-		gob.drawTextArea(testObj, true, false, meshBG);
-		gob.drawTextArea(testObj, false, false, meshText);
-		gob.updateBaseRT = true;
-	});
-	*/
 
 	gob.wf("initFinal", function() {
 		var curShader;
@@ -1234,15 +1362,9 @@ j$(function() {
 				//console.log(res);
 
 				gob.activeComp = res;
-
-
 				gob.mouseDown = true;
 
-				//testObj.maxWidth = (e.pageX-testObj.x)/zoom;
-				//testObj.maxHeight = (e.pageY-testObj.y)/zoom;
-
-				//(obj, isBG, firstRun, geoBuffer)
-				//gob.doTextUpdate();
+				
 			}
 
 
@@ -1372,8 +1494,8 @@ j$(function() {
 
 
 		gob.renderTargets.palRT = new THREE.WebGLRenderTarget( 256, 256, {
-			minFilter: THREE.NearestFilter,
-			magFilter: THREE.NearestFilter, 
+			minFilter: THREE.LinearFilter,
+			magFilter: THREE.LinearFilter, 
 			format: THREE.RGBAFormat
 		} );
 
@@ -1430,7 +1552,7 @@ j$(function() {
 
 	}
 
-	gob.zeroOutVerts = function(obj,isBG,firstRun,curMesh) {
+	gob.zeroOutVerts = function(obj,curMesh, firstRun) {
 		
 
 		var i;
@@ -1439,25 +1561,17 @@ j$(function() {
 		var curShader;
 		var curShaders;
 
-		if (isBG) {
+		if (curMesh.isBG) {
 			curShaders = ["bgShader","bgIdShader"];
 		}
 		else {
 			curShaders = ["textShader","textIdShader"];
 		}
-
-
-		//curMesh.maxInd = curMesh.curInd;
 		
-
-		if (firstRun) {
-			curMesh.maxInd = curMesh.curInd;
-		}
 		
 		// zero out the remaining vertices
-		/*
+		
 		if (firstRun) {
-			curMesh.maxInd = Math.floor( (curMesh.curInd+curMesh.extraInd) * 2);
 
 			for (i = curMesh.curInd; i < curMesh.maxInd; i += 4) {
 				curMesh.geometry.vertices.push(
@@ -1525,12 +1639,6 @@ j$(function() {
 			}
 		}
 
-		*/
-
-		
-		
-
-
 
 		curMesh.geometry.verticesNeedUpdate = true;
 		curMesh.geometry.elementsNeedUpdate = true;
@@ -1548,7 +1656,7 @@ j$(function() {
 		//curMesh.geometry.tangentsNeedUpdate = true;
 	}
 	
-	gob.drawTextArea = function(obj, isBG, firstRun, curMesh, calcHeight) {
+	gob.drawTextArea = function(obj, curMesh, calcHeight) {
 
 		var curShaders;
 		var curShader;
@@ -1740,7 +1848,7 @@ j$(function() {
 		}
 		else {
 
-			if (isBG) {
+			if (curMesh.isBG) {
 				matId = obj.bgMatId;
 			}
 			else {
@@ -1760,12 +1868,12 @@ j$(function() {
 			atArr[12] = obj.curValue; atArr[13] = obj.baseDepth;  atArr[14] =  0.0; atArr[15] = obj.fillMatId;
 
 
-			if (isBG && obj.drawBG) {
+			if (curMesh.isBG && obj.drawBG) {
 				curShaders = ["bgShader","bgIdShader"];
 
 				
 				
-				gob.drawString(obj,true, "", x, y, 0, 0, firstRun, curMesh);
+				gob.drawString(obj, "", x, y, 0, 0, curMesh);
 			}
 			else {
 				curShaders = ["textShader","textIdShader"];
@@ -1803,10 +1911,10 @@ j$(function() {
 					//if ( (i+1)*gob.curFont.metrics.ascender - gob.curFont.metrics.descender < maxH) {
 					if ( i < obj.maxLines )
 					{	
-						gob.drawString(obj,false, finalLineArr[i].lineStr, x, y, xOff, yOff, firstRun, curMesh);
+						gob.drawString(obj, finalLineArr[i].lineStr, x, y, xOff, yOff, curMesh);
 					}
 					else {
-						curMesh.extraInd += finalLineArr[i].lineStr.length*4;
+
 					}
 				}
 			}
@@ -1816,7 +1924,7 @@ j$(function() {
 
 	}
 
-	gob.drawString = function(obj, isBG, str, xBase, yBase, xOff, yOff, firstRun, curMesh) {
+	gob.drawString = function(obj, str, xBase, yBase, xOff, yOff, curMesh) {
 		var curShader;
 		var curShaders;
 		var scale = obj.scale;
@@ -1866,7 +1974,7 @@ j$(function() {
 
 		var totPadding = obj.padding + obj.border;
 
-		if (isBG) {
+		if (curMesh.isBG) {
 			curShaders = ["bgShader","bgIdShader"];
 			strln = 1;
 		}
@@ -1878,7 +1986,7 @@ j$(function() {
 		for (i = 0; i < strln; i++) {
 			
 
-			if (isBG) {
+			if (curMesh.isBG) {
 
 				vx1 = xBase;
 				vy1 = yBase;
@@ -1931,6 +2039,7 @@ j$(function() {
 			curInd3 = curMesh.curInd+3;
 			curIndDiv4 = Math.floor(curInd0/4);
 
+			/*
 			if (firstRun) {
 				curMesh.geometry.vertices.push(
 					new THREE.Vector3( vx1, vy1, 0 ),
@@ -1968,42 +2077,40 @@ j$(function() {
 				curMesh.geometry.faces.push( new THREE.Face4(curGBLen+0, curGBLen+1, curGBLen+2, curGBLen+3) );
 			}
 			else {
-
-				if (curInd0 < curMesh.maxInd) {
-					curMesh.geometry.vertices[curInd0].set( vx1, vy1, 0 );
-					curMesh.geometry.vertices[curInd1].set( vx2, vy1, 0 );
-					curMesh.geometry.vertices[curInd2].set( vx2, vy2, 0 );
-					curMesh.geometry.vertices[curInd3].set( vx1, vy2, 0 );
-
-					curMesh.geometry.faceVertexUvs[0][curIndDiv4][0].set( tx1, ty1 );
-					curMesh.geometry.faceVertexUvs[0][curIndDiv4][1].set( tx2, ty1 );
-					curMesh.geometry.faceVertexUvs[0][curIndDiv4][2].set( tx2, ty2 );
-					curMesh.geometry.faceVertexUvs[0][curIndDiv4][3].set( tx1, ty2 );
-
-					for (j = 0; j < curShaders.length; j++) {
-						curShader = curShaders[j];
-						for (k = 0; k < a_DataArr.length; k++) {
-							atArr = atArrs[k];
-							gob.shaders[curShader].attributes[a_DataArr[k]].value[curInd0].set( atArr[0], atArr[1], atArr[2], atArr[3] );
-							gob.shaders[curShader].attributes[a_DataArr[k]].value[curInd1].set( atArr[4], atArr[5], atArr[6], atArr[7] );
-							gob.shaders[curShader].attributes[a_DataArr[k]].value[curInd2].set( atArr[8], atArr[9], atArr[10], atArr[11] );
-							gob.shaders[curShader].attributes[a_DataArr[k]].value[curInd3].set( atArr[12], atArr[13], atArr[14], atArr[15] );
-						}
-						
-					}
-
-					
-
-					//curMesh.geometry.faces[ curIndDiv4 ].set(curInd0, curInd1, curInd2, curInd3);
-				}
-				else {
-					gob.doError("Exceeded Buffer Length (" + curInd0 + " of " + curMesh.maxInd + ")");
-				}
-
 				
-
-
 			}
+			*/
+
+			if ( curInd0 < curMesh.maxInd ) {
+				curMesh.geometry.vertices[curInd0].set( vx1, vy1, 0 );
+				curMesh.geometry.vertices[curInd1].set( vx2, vy1, 0 );
+				curMesh.geometry.vertices[curInd2].set( vx2, vy2, 0 );
+				curMesh.geometry.vertices[curInd3].set( vx1, vy2, 0 );
+
+				curMesh.geometry.faceVertexUvs[0][curIndDiv4][0].set( tx1, ty1 );
+				curMesh.geometry.faceVertexUvs[0][curIndDiv4][1].set( tx2, ty1 );
+				curMesh.geometry.faceVertexUvs[0][curIndDiv4][2].set( tx2, ty2 );
+				curMesh.geometry.faceVertexUvs[0][curIndDiv4][3].set( tx1, ty2 );
+
+				for (j = 0; j < curShaders.length; j++) {
+					curShader = curShaders[j];
+					for (k = 0; k < a_DataArr.length; k++) {
+						atArr = atArrs[k];
+						gob.shaders[curShader].attributes[a_DataArr[k]].value[curInd0].set( atArr[0], atArr[1], atArr[2], atArr[3] );
+						gob.shaders[curShader].attributes[a_DataArr[k]].value[curInd1].set( atArr[4], atArr[5], atArr[6], atArr[7] );
+						gob.shaders[curShader].attributes[a_DataArr[k]].value[curInd2].set( atArr[8], atArr[9], atArr[10], atArr[11] );
+						gob.shaders[curShader].attributes[a_DataArr[k]].value[curInd3].set( atArr[12], atArr[13], atArr[14], atArr[15] );
+					}
+					
+				}
+
+				//curMesh.geometry.faces[ curIndDiv4 ].set(curInd0, curInd1, curInd2, curInd3);
+			}
+			else {
+				gob.doError("Exceeded Buffer Length (" + curInd0 + " of " + curMesh.maxInd + ")");
+				console.log(curMesh);
+			}
+
 
 			curMesh.curInd += 4;
 
@@ -2259,7 +2366,8 @@ j$(function() {
 		meshBG = new THREE.Mesh( gbBG, gob.materials.bgShader);
 		
 		
-		
+		meshBG.isBG = true;
+		meshText.isBG = false;
 
 
 
@@ -2366,12 +2474,67 @@ j$(function() {
 		gob.styleSheets.defContV = combineObjs([
 			gob.styleSheets.defContH,
 			{
-				fillDir: 		enums.fillDir.vertical,
+				fillDir: 		enums.fillDir.vertical
+			}
+		]);
+
+		
+		gob.styleSheets.defContHG = combineObjs([
+			gob.styleSheets.defContH,
+			{
+				isGroup: true
+			}
+		]);
+		gob.styleSheets.defContVG = combineObjs([
+			gob.styleSheets.defContV,
+			{
+				isGroup: true
 			}
 		]);
 		
 
+		gob.mainDat = createNode( 
 
+			{
+				label:"",
+				type: enums.types.untypedList,
+			},
+			
+			[
+
+				createNode( {label:"Gradients", type:enums.types.gradientList}, [],
+					[
+						{
+							steps: [
+								{h:0.1, s:0.0, l:0.0, pow:0.5, pos:0},
+								{h:0.4, s:0.3, l:1.0, pow:0.5, pos:256}
+							]
+						},
+						{
+							steps: [
+								{h:0.8, s:0.0, l:0.0, pow:0.5, pos:0},
+								{h:0.75, s:0.8, l:0.8, pow:2.0, pos:120},
+								{h:0.8, s:0.5, l:0.4, pow:0.5, pos:128},
+								{h:0.75, s:0.8, l:0.9, pow:0.5, pos:192},
+								{h:0.75, s:0.1, l:1.0, pow:2.0, pos:256}
+							]
+						},
+						{
+							steps: [
+								{h:0.0, s:0.4, l:0.0, pow:0.5, pos:0},
+								{h:0.0, s:0.2, l:0.5, pow:0.3, pos:192},
+								{h:0.0, s:0.1, l:0.6, pow:0.1, pos:256}
+							]
+						}
+					]
+				)
+
+			]
+		);
+
+
+
+		
 		gob.mainRoot = createNode( 
 
 
@@ -2386,7 +2549,10 @@ j$(function() {
 				}
 			],
 
+			[]
+
 			
+			/*
 			[
 				createNode( gob.styleSheets.defContV, [
 					createNode( [gob.styleSheets.defContH,{isGroup:true,str:"Tg|ST g|T 456"}], []),
@@ -2402,9 +2568,60 @@ j$(function() {
 					createNode( [gob.styleSheets.defContH,{isGroup:true,str:"test xyz"}], [])
 				])
 			]
-		);
+			*/
+			
 
-		gob.layoutGUI(gob.mainRoot,true);
+		);
+		
+
+		
+		
+		gob.guiFromJSON = function(rootObj, mBG, mText) {
+			var i;
+			var curParentProps = rootObj.props;
+			var curStr;
+			
+
+			rootObj.guiData = createNode( gob.styleSheets.defContV, []);
+			mBG.maxInd += 8;
+
+
+			for (i = 0; i < rootObj.childArr.length; i++) {
+
+				curStr = rootObj.childArr[i].props.label;
+
+				mBG.maxInd += 8;
+				mText.maxInd += 8*curStr.length;
+
+
+				rootObj.guiData.childArr.push(
+					createNode( [gob.styleSheets.defContHG,{str:curStr},{baseProps:rootObj.childArr[i].props}], [])
+				);
+			}
+
+			for (i = 0; i < rootObj.childArr.length; i++) {
+				gob.guiFromJSON(rootObj.childArr[i], mBG, mText);
+			}
+
+		}
+
+		gob.updateGUIStack = function() {
+			gob.mainRoot.childArr = [gob.mainDat.guiData, gob.mainDat.childArr[0].guiData];
+
+		}
+		
+
+		meshBG.maxInd = 0;
+		meshText.maxInd = 0;
+
+		gob.guiFromJSON(gob.mainDat, meshBG, meshText);
+		
+		gob.updateGUIStack();
+
+
+		gob.layoutGUI(gob.mainRoot,gob.mainDat,true);
+
+
 
 		
 		scene.add( meshText );
@@ -2437,9 +2654,7 @@ j$(function() {
 
 	gob.wf("setFont", function(val) {
 		//testObj.scale = val;
-		gob.setCurFont(val);
-		//gob.doTextUpdate();
-		
+		gob.setCurFont(val);		
 	});
 
 	gob.wf("getKernMap", function(fontObj) {

@@ -82,7 +82,7 @@ void main()	{
     float s10 = 0.0;
     float s12 = 0.0;
 	
-    int rad = 3;
+    int rad = 2;
     float frad = float(rad);
 
 
@@ -121,24 +121,50 @@ void main()	{
     }
     */
 
-    for (i = 1; i < 4; i++) {
-    	sampDis = float(i);
+    vec3 bumpTotal = vec3(0.0,0.0,0.0);
+    vec3 va;
+    vec3 vb;
+    vec3 bump = cross(va,vb);
 
-    	
-    	off0 = vec2((-sampDis )/u_TexResolution.x,0.0);
-    	off1 = vec2((sampDis)/u_TexResolution.x,0.0);
-    	off2 = vec2(0.0,(-sampDis)/u_TexResolution.y);
-    	off3 = vec2(0.0,(sampDis)/u_TexResolution.y);
 
-        s11 += texture2D(u_Texture1, v_TexCoords).b;
-        s01 += texture2D(u_Texture1, v_TexCoords + off0).b;
-        s21 += texture2D(u_Texture1, v_TexCoords + off1).b;
-        s10 += texture2D(u_Texture1, v_TexCoords + off2).b;
-        s12 += texture2D(u_Texture1, v_TexCoords + off3).b;
+    for (k = -rad; k <= rad; k++) {
+        fk = float(k);
+        for (j = -rad; j <= rad; j++) {
+            fj = float(j);
 
-        totalSamples += 1.0;
 
+            for (i = 1; i < 4; i++) {
+                sampDis = float(i);
+
+                
+                off0 = vec2((-sampDis + fj )/u_TexResolution.x,0.0);
+                off1 = vec2((sampDis + fj)/u_TexResolution.x,0.0);
+                off2 = vec2(0.0,(-sampDis + fk)/u_TexResolution.y);
+                off3 = vec2(0.0,(sampDis + fk)/u_TexResolution.y);
+
+                s11 = texture2D(u_Texture1, v_TexCoords).b;
+                s01 = texture2D(u_Texture1, v_TexCoords + off0).b;
+                s21 = texture2D(u_Texture1, v_TexCoords + off1).b;
+                s10 = texture2D(u_Texture1, v_TexCoords + off2).b;
+                s12 = texture2D(u_Texture1, v_TexCoords + off3).b;
+
+                //totalSamples += 1.0;
+
+                va = normalize(vec3(size.xy, (s21-s01) ));
+                vb = normalize(vec3(size.yx, (s12-s10) ));
+                bump = cross(va,vb);
+
+                bumpTotal.x += bump.x;
+                bumpTotal.y += bump.y;
+                bumpTotal.z += bump.z;
+
+            }
+
+
+        }
     }
+
+    
 
 	
 
@@ -147,12 +173,14 @@ void main()	{
 
 
 
-    vec3 va = normalize(vec3(size.xy, (s21-s01)/totalSamples ));
-    vec3 vb = normalize(vec3(size.yx, (s12-s10)/totalSamples ));
-    vec3 bump = cross(va,vb);
-
-    bump.b = 0.0;
-    bump = normalize(bump);
+    //vec3 va = normalize(vec3(size.xy, (s21-s01)/totalSamples ));
+    //vec3 vb = normalize(vec3(size.yx, (s12-s10)/totalSamples ));
+    //vec3 bump = cross(va,vb);
+    //bump.b = 0.0;
+    //bumpTotal.b = 0.0;
+    bumpTotal.b = 0.0;
+    bump = normalize(bumpTotal);
+    
 
     bump.g = -bump.g;
 
