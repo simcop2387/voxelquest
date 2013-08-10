@@ -75,7 +75,7 @@ void main()	{
 	float matIndL = texture2D( u_Texture2, vec2(v_TexCoords.x-1.0/u_Resolution.x,v_TexCoords.y) ).a;
 	float matIndR = texture2D( u_Texture2, vec2(v_TexCoords.x+1.0/u_Resolution.x,v_TexCoords.y) ).a;
 	
-	float outMod = float ( float(matInd != matIndU) + float(matInd != matIndD) + float(matInd != matIndL) + float(matInd != matIndR) );
+	//float outMod = float ( float(matInd != matIndU) + float(matInd != matIndD) + float(matInd != matIndL) + float(matInd != matIndR) );
 	//float outMod = float ( float(matInd < matIndU) + float(matInd < matIndD) + float(matInd < matIndL) + float(matInd < matIndR) );
 	//float outMod = float ( float(matInd > matIndU) + float(matInd > matIndD) + float(matInd > matIndL) + float(matInd > matIndR) );
 
@@ -216,7 +216,7 @@ void main()	{
 
 	lVal += dithVal/255.0;
 
-	lVal -= mix(0.0,outMod,lVal)*0.2;
+	//lVal -= outMod*0.1;//mix(0.0,outMod,lVal)*0.2;
 
 	lVal = clamp(lVal+lMod*0.05,0.0,1.0);// pow(,1.0 - lMod*0.3);
 	

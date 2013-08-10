@@ -229,12 +229,7 @@ j$(function() {
 					{h:0.4, s:0.3, l:1.0, pow:0.5, pos:256}
 				]
 			},
-			{
-				steps: [
-					{h:0.1, s:0.0, l:0.0, pow:0.5, pos:0},
-					{h:0.4, s:0.3, l:1.0, pow:0.5, pos:256}
-				]
-			},
+
 			{
 				steps: [
 
@@ -866,15 +861,74 @@ j$(function() {
 		}
 	}
 
-	gob.updateActiveComp = function(xval) {
+	gob.updateActiveComp = function(xval, mouseUp) {
+		
+		var noForce = true;
+
 		if (gob.activeComp === 0) {
 
 		}
 		else {
-			gob.activeComp.curValue = Math.min(Math.max(xval-gob.activeComp.x,0),gob.activeComp.resultWidth)/gob.activeComp.resultWidth;
+
+			//gob.activeComp.baseProps.type
+
+			switch (gob.activeComp.baseProps.type) {
+
+					
+					case enums.types.number:
+						gob.activeComp.curValue = Math.min(Math.max(xval-gob.activeComp.x,0),gob.activeComp.resultWidth)/gob.activeComp.resultWidth;
+					break;
+					default:
+						gob.activeComp.curValue = 1.0 - gob.activeComp.curValue;
+						noForce = false;
+					break;
+
+					/*
+					case enums.types.untypedList:
+
+					break;
+					case enums.types.untyped:
+
+					break;
+					case enums.types.nodeList:
+
+					break;
+					case enums.types.node:
+
+					break;
+					case enums.types.numberList:
+
+					break;
+					case enums.types.number:
+						gob.activeComp.curValue = Math.min(Math.max(xval-gob.activeComp.x,0),gob.activeComp.resultWidth)/gob.activeComp.resultWidth;
+					break;
+					case enums.types.colorList:
+
+					break;
+					case enums.types.color:
+						
+					break;
+					case enums.types.gradientList:
+						
+					break;
+					case enums.types.gradient:
+						
+					break;
+					case enums.types.gradientStepList:
+						
+					break;
+					case enums.types.gradientStep:
+						
+					break;
+					*/
+				
+
+			}
+
+			
 			//console.log(gob.activeComp.curValue);
 
-			if (gob.lockOn) {
+			if (gob.lockOn || noForce) {
 
 			}
 			else {
@@ -1308,7 +1362,7 @@ j$(function() {
 
 			if (gob.mouseDown) {
 
-				gob.updateActiveComp(e.pageX);
+				gob.updateActiveComp(e.pageX, false);
 			}
 
 
@@ -1359,10 +1413,17 @@ j$(function() {
 					res = gob.testHit(gob.mainRoot, e.pageX, e.pageY);
 				}
 
+
+
+
 				//console.log(res);
 
 				gob.activeComp = res;
 				gob.mouseDown = true;
+
+				//if (gob.activeComp !== 0) {
+				//	console.log(gob.activeComp.baseProps);
+				//}
 
 				
 			}
@@ -1384,7 +1445,7 @@ j$(function() {
 			else {
 				gob.mouseDown = false;
 				gob.lockOn = false;
-				gob.updateActiveComp(e.pageX);
+				gob.updateActiveComp(e.pageX, true);
 			}
 
 
