@@ -4,9 +4,11 @@ uniform sampler2D u_Texture2;
 uniform sampler2D u_Texture3;
 uniform float u_Time;
 
+uniform vec2 u_Scroll;
 uniform vec2 u_Resolution;
 uniform float u_Zoom;
 uniform float u_BorderRad;
+uniform float u_CornerRad;
 uniform vec2 u_MouseCoords;
 //uniform vec4 u_SourceRect;
 //uniform vec4 u_DestRect;
@@ -33,15 +35,14 @@ void main()	{
 	v_Data0 = a_Data0;
 	v_Data1 = a_Data1;
 
-	float zoomi = 1.0/u_Zoom;
-
-	v_Position.x = position.x*u_Zoom/u_Resolution.x;
-	v_Position.y = position.y*u_Zoom/u_Resolution.y;
+	v_Position.x = position.x/u_Resolution.x;
+	v_Position.y = position.y/u_Resolution.y;
 
 	v_MouseCoords.x = u_MouseCoords.x / u_Resolution.x;
 	v_MouseCoords.y = u_MouseCoords.y / u_Resolution.y;
 
-	gl_Position = vec4( -1.0 + (position.x*u_Zoom/u_Resolution.x)*2.0, 1.0 - (position.y*u_Zoom/u_Resolution.y)*2.0, position.z, 1.0 );
+	vec2 newPos = vec2(-1.0 + ( (position.x+u_Scroll.x)*u_Zoom/u_Resolution.x)*2.0, 1.0 - ( (position.y+u_Scroll.y )*u_Zoom/u_Resolution.y)*2.0);
+	gl_Position = vec4( newPos.xy, position.z, 1.0 );
 
 }
 
@@ -64,7 +65,7 @@ void main()	{
 	vec2 samp = abs(v_TexCoords);
 	float fillRad = borderRad*2.0;
 	
-	float cornerRad = 40.0;
+	float cornerRad = u_CornerRad;
 
 	vec2 u_Dimensions = v_Data0.xy;
 

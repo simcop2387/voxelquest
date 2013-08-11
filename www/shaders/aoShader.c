@@ -5,6 +5,7 @@ uniform sampler2D u_Texture3;
 uniform float u_Time;
 uniform float u_Zoom;
 uniform vec2 u_Resolution;
+uniform float u_MaxLayers;
 
 varying vec2 v_TexCoords;
 varying vec3 v_Position;
@@ -29,6 +30,8 @@ $
 float rand(vec2 co){
     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
+
+
 
 void main()	{
 
@@ -57,16 +60,19 @@ void main()	{
 	float fit;
 	float fjt;
 
-	const int jMax = 64;
-	const int iMax = 50;
+	float rad;
+
+	const int jMax = 32;
+	const int counterMod = 4;
+
 	const float fjMax = float(jMax);
-	const float fiMax = float(iMax);
+	const float pi = 3.14159;
 
-	const int loopMax = 32;//10;
-	const int stepAmount = 1;
-	const float fLoopMax = float(loopMax);
+	int iMax;
+	float fiMax = float(iMax);
 
-	float pi = 3.14159;
+
+	
 
 	float totHits = 0.0;
 	float totRays = 0.0;
@@ -76,63 +82,49 @@ void main()	{
 	float phi;
 	float theta;
 
-	float offsetLen = fLoopMax/4.0;
+	int counter = 1;
 
-	//for (i = -loopMax; i <= loopMax; i += stepAmount) {
-		//for (j = -loopMax; j <= loopMax; j += stepAmount) {
-			//for (k = -loopMax; k <= loopMax; k += stepAmount) {
+	
 
-		for (j = 2; j < jMax; j *= 4) {
+	for (j = 2; j < jMax; j *= 2) {
 
-			fjt = float(j);
+		fjt = float(j);
 
-			hitPower = (fjMax-fjt)/fjMax;
+		hitPower = (fjMax-fjt)/fjMax;
 
-			for (i = 0; i < iMax; i++) {
+		iMax = counterMod*counter;
+		fiMax = float(iMax);
 
-				fit = float(i)*pi/fiMax;
+		for (i = 0; i < iMax; i++) {
 
-				//fi = float(i);
-				//fj = float(j);
-				//fk = float(k);
+			fit = float(i)*pi/fiMax;
 
-				//fi = rand(vec2(v_TexCoords.x*23.0+fl*7.0, v_TexCoords.y*23.0+fl*22.0));
-				//fj = rand(vec2(v_TexCoords.x*52.0+fl*32.0, v_TexCoords.y*16.0+fl*29.0));
-				//fk = rand(vec2(v_TexCoords.x*21.0+fl*13.0, v_TexCoords.y*12.0+fl*3.0));
+			theta = fit/2.0;//1.5*pi;////2.0*pi - fit/2.0;
+			phi = 2.0*fit;
 
-				//fi = (fi-0.5)*fLoopMax;
-				//fj = (fj-0.5)*fLoopMax;
-				//fk *= fLoopMax;
+			rad = fjt*fit/pi;
 
+			fi = rad*cos(phi+fjt)*sin(theta);
+			fj = rad*sin(phi+fjt)*sin(theta);
+			fk = rad*cos(theta);
 
-				theta = 2.0*pi - fit/2.0;
-				phi = 20.0*fit;
+			tc.x = (fi + offsetNorm.x)/u_Resolution.x;
+			tc.y = ( (fj - offsetNorm.y) + (fk + offsetNorm.z)  )/u_Resolution.y;
+			tc.z = clamp(baseval.b + (fk + offsetNorm.z)/255.0,0.0,u_MaxLayers);
 
-				fi = fjt*cos(phi)*sin(theta);
-				fj = fjt*sin(phi)*sin(theta);
-				fk = fjt*cos(theta);
+			dis = clamp(sqrt(fi*fi+fj*fj+fk*fk)/fjt,0.0,1.0);
 
-				tc.x = (fi + offsetNorm.x)/u_Resolution.x;
-				tc.y = ( (fj - offsetNorm.y) + (fk + offsetNorm.z)  )/u_Resolution.y;
-				tc.z = baseval.b + (fk + offsetNorm.z)/255.0;
+			samp = texture2D( u_Texture0, v_TexCoords + tc.xy );
 
-				dis = clamp(sqrt(fi*fi+fj*fj+fk*fk)/fjt,0.0,1.0);
-
-				samp = texture2D( u_Texture0, v_TexCoords + tc.xy );
-
-				if (samp.b < tc.z) {
-					totHits += hitPower;
-				}
-
-				totRays += hitPower;
+			if (samp.b < tc.z) {
+				totHits += hitPower;
 			}
+
+			totRays += hitPower;
 		}
-			
 
-			//}
-
-		//}
-	//}
+		counter++;
+	}
 
 	float resVal = (totHits/totRays);
 

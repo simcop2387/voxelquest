@@ -77,7 +77,7 @@ void main()	{
 	
 	//float outMod = float ( float(matInd != matIndU) + float(matInd != matIndD) + float(matInd != matIndL) + float(matInd != matIndR) );
 	//float outMod = float ( float(matInd < matIndU) + float(matInd < matIndD) + float(matInd < matIndL) + float(matInd < matIndR) );
-	//float outMod = float ( float(matInd > matIndU) + float(matInd > matIndD) + float(matInd > matIndL) + float(matInd > matIndR) );
+	float outMod = float ( float(matInd > matIndU) + float(matInd > matIndD) + float(matInd > matIndL) + float(matInd > matIndR) );
 
 
 
@@ -214,11 +214,11 @@ void main()	{
 
 	float dithVal = mod(v_TexCoords.x*u_Resolution.x+v_TexCoords.y*u_Resolution.y, 2.0 );
 
-	lVal += dithVal/255.0;
+	//lVal += dithVal/255.0;
 
 	//lVal -= outMod*0.1;//mix(0.0,outMod,lVal)*0.2;
 
-	lVal = clamp(lVal+lMod*0.05,0.0,1.0);// pow(,1.0 - lMod*0.3);
+	lVal = clamp(lVal-outMod*lMod,0.0,1.0);//pow(clamp(lVal-outMod*lMod,0.0,1.0),1.0-lMod*0.5);// pow(,1.0 - lMod*0.3);
 	
 
 	vec4 matCol = texture2D( u_Texture3, vec2(lVal,matInd + 0.5/255.0) ); //matInd
@@ -230,6 +230,11 @@ void main()	{
 	//matCol2.b += 0.1;
 
 	//vec4(finalNorm,1.0);//
+	//vec4(baseval.aaa,1.0);//
+
+	//matCol.rgb -= lMod*outMod;
+	//matCol.rgb += lMod*outMod2;
+
 	gl_FragColor = matCol;//mix(matCol,matCol2,lMod);//vec4(lVal,lVal,lVal,1.0);//mix(palCol,matCol,float(matInd > 0.0));
 	
 }

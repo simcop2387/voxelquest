@@ -45,6 +45,10 @@ j$(function() {
 		}
 	}
 
+	var isNode = new Array(256);
+
+
+
 	function logInPlace(obj) {
 		//console.log(obj);
 		return obj;
@@ -86,6 +90,8 @@ j$(function() {
 		};
 
 		var i;
+
+
 
 		if (obj.props.type) {
 
@@ -201,7 +207,8 @@ j$(function() {
 		}
 	});
 
-	var container, stats;
+	var container;
+	//var stats;
 	var camera, scene, renderer;
 	var texture;
 	//var testObj;
@@ -256,6 +263,16 @@ j$(function() {
 	
 
 	gob = {
+		lastMouseX: null,
+		lastMouseY: null,
+		shiftDown: false,
+		buttonWidth: 256,
+		isScrolling: 0,
+		scrollX:0.0,
+		scrollY:0.0,
+		targScrollX:0.0,
+		targScrollY:0.0,
+		guiInvalidated:false,
 		showFullBuffer:false,
 		lockOn: false,
 		activeComp: 0,
@@ -267,7 +284,7 @@ j$(function() {
 		bufferWidth: 1024,
 		bufferHeight: 768,
 		isRendering: true,
-		maxLayers: 20,
+		maxLayers: 12,
 		updateBaseRT:true,
 		renderTargets:{},
 		shaderNames:["reflShader","lightingShader","palShader","palFromTexShader","aoShader","aoHighShader","extrudeShader","layerShader","bgShader","textShader","bgIdShader","textIdShader","heightShader","normShader","downscaleShader","upscaleShader","debugShader"],
@@ -395,6 +412,8 @@ j$(function() {
 		}
 
 	};
+
+	gob.scrollY = gob.maxLayers;
 
 	gob.wf("connectionOnOpen",function() {
 		gob.hasConnection = true;
@@ -792,12 +811,53 @@ j$(function() {
 
 	});
 
+	/*
+	gob.updateGUIElement = function(curEl) {
+		var i;
+		var curType;
+
+
+		for (i = 0; i < curEl.childArr.length; i++) {
+
+			curType = curEl.guiData.childArr[i].props.baseProps.type;
+
+			if (isNode[curType]) {
+				if (curEl.guiData.childArr[i].props.curValue == 1) {
+					gob.mainRoot.childArr.push(curEl.childArr[i].guiData);
+				}
+			}
+
+		}
+
+
+		for (i = 0; i < curEl.childArr.length; i++) {
+
+			curType = curEl.guiData.childArr[i].props.baseProps.type;
+
+			if (isNode[curType]) {
+				if (curEl.guiData.childArr[i].props.curValue == 1) {
+
+					gob.updateGUIElement(curEl.childArr[i]);
+				}
+			}
+
+		}
+
+
+	}
+	*/
+
 
 	gob.testHit = function(rootObj, mouseX, mouseY) {
 		var i;
+		var j;
 
 		var cp = rootObj.props;
 		var res;
+
+		//for (j = 0; j < rootObj.guiData.childArr.length; j++) {
+
+		//}
 
 		if (rootObj.props.isGroup) {
 
@@ -862,8 +922,6 @@ j$(function() {
 	}
 
 	gob.updateActiveComp = function(xval, mouseUp) {
-		
-		var noForce = true;
 
 		if (gob.activeComp === 0) {
 
@@ -877,10 +935,17 @@ j$(function() {
 					
 					case enums.types.number:
 						gob.activeComp.curValue = Math.min(Math.max(xval-gob.activeComp.x,0),gob.activeComp.resultWidth)/gob.activeComp.resultWidth;
+
 					break;
 					default:
-						gob.activeComp.curValue = 1.0 - gob.activeComp.curValue;
-						noForce = false;
+						
+						if (mouseUp) {
+							gob.activeComp.curValue = 1.0 - gob.activeComp.curValue;
+							gob.updateGUIStack();
+							gob.guiInvalidated = true;
+						}
+						
+						
 					break;
 
 					/*
@@ -894,7 +959,7 @@ j$(function() {
 
 					break;
 					case enums.types.node:
-
+						
 					break;
 					case enums.types.numberList:
 
@@ -925,19 +990,15 @@ j$(function() {
 
 			}
 
-			
-			//console.log(gob.activeComp.curValue);
-
-			if (gob.lockOn || noForce) {
-
-			}
-			else {
+			if ( (!gob.lockOn) || (mouseUp) ) {
 				gob.lockOn = true;
 
 				gob.layoutGUI(gob.mainRoot,gob.mainDat,false);
 				gob.updateBaseRT = true;
 
 				gob.lockOn = false;
+
+				gob.mouseClicked = mouseUp;
 			}
 
 			
@@ -1196,7 +1257,7 @@ j$(function() {
 		
 		gob.traceVals = ["x","y","resultWidth","resultHeight", "fillDir"];
 
-		if (firstRun) {
+		if (firstRun || gob.guiInvalidated) {
 			gob.numberGroups(rootObj,5);
 			gob.setGroups(rootObj,0);
 			gob.getMinWidths(rootObj);
@@ -1212,6 +1273,8 @@ j$(function() {
 
 		gob.zeroOutVerts(rootObj,meshBG, false);
 		gob.zeroOutVerts(rootObj,meshText, false);
+
+		gob.guiInvalidated = false;
 
 
 	};
@@ -1334,6 +1397,39 @@ j$(function() {
 			var y = -((e.pageY/gob.bufferHeight)-0.5)*2.0;
 
 
+
+			
+			
+
+			if (gob.shiftDown) {
+
+				if (gob.lastMouseX == null) {
+					gob.lastMouseX = e.pageX;
+					gob.lastMouseY = e.pageY;
+				}
+
+				gob.scrollX += (e.pageX-gob.lastMouseX)/zoom;
+				gob.scrollY += (e.pageY-gob.lastMouseY)/zoom;
+
+				gob.lastMouseX = e.pageX;
+				gob.lastMouseY = e.pageY;
+
+				gob.targScrollX = gob.scrollX;
+
+				gob.isScrolling = 15;
+				gob.updateBaseRT = true;
+				gob.isRendering = true;
+			}
+			else {
+				
+			}
+
+
+			
+
+
+
+
 			/*
 			var oldRendering = gob.isRendering;
 
@@ -1362,7 +1458,7 @@ j$(function() {
 
 			if (gob.mouseDown) {
 
-				gob.updateActiveComp(e.pageX, false);
+				gob.updateActiveComp(e.pageX - gob.scrollX, false);
 			}
 
 
@@ -1407,23 +1503,15 @@ j$(function() {
 			}
 			else {
 				
-				res = gob.testHit(gob.mainRoot, e.pageX, e.pageY + gob.maxLayers);
+				res = gob.testHit(gob.mainRoot, (e.pageX - gob.scrollX), (e.pageY + gob.maxLayers - gob.scrollY) );
 
 				if (res === 0) {
-					res = gob.testHit(gob.mainRoot, e.pageX, e.pageY);
+					res = gob.testHit(gob.mainRoot, (e.pageX - gob.scrollX), (e.pageY - gob.scrollY) );
 				}
 
 
-
-
-				//console.log(res);
-
 				gob.activeComp = res;
 				gob.mouseDown = true;
-
-				//if (gob.activeComp !== 0) {
-				//	console.log(gob.activeComp.baseProps);
-				//}
 
 				
 			}
@@ -1445,7 +1533,7 @@ j$(function() {
 			else {
 				gob.mouseDown = false;
 				gob.lockOn = false;
-				gob.updateActiveComp(e.pageX, true);
+				gob.updateActiveComp(e.pageX - gob.scrollX, true);
 			}
 
 
@@ -1454,10 +1542,55 @@ j$(function() {
 
 		j$(document).mousewheel(function(event, delta, deltaX, deltaY) {
 
-			//zoom += deltaY/100.0;
+			//gob.scrollX += deltaX;
+			
+
+			if (gob.shiftDown) {
+				zoom += deltaY/100.0;
+
+				if (zoom < 0.25) {
+					zoom = 0.25;
+				}
+			}
+			else {
+				gob.scrollY += deltaY;
+			}
+
+			
+
+			if (gob.scrollY > gob.maxLayers) {
+				//gob.scrollY = gob.maxLayers;
+			}
+
+			gob.isScrolling = 15;
+			gob.updateBaseRT = true;
+			gob.isRendering = true;
+			
 
 		});
 
+
+		j$(document).keydown(function(e) {
+
+			var code = (e.keyCode ? e.keyCode : e.which);
+
+			if (code == 16) {
+
+				gob.shiftDown = true;
+			}
+
+		});
+		j$(document).keyup(function(e) {
+
+			var code = (e.keyCode ? e.keyCode : e.which);
+
+			if (code == 16) {
+				gob.lastMouseX = null;
+				gob.lastMouseY = null;
+				gob.shiftDown = false;
+			}
+
+		});
 
 
 		j$(document).keypress(function(e) {
@@ -1473,6 +1606,13 @@ j$(function() {
 			if ( code == "d".charCodeAt(0) ) {
 				gob.showFullBuffer = !gob.showFullBuffer;
 				console.log("Show Full Buffer:" + gob.showFullBuffer);
+			}
+
+			if ( code == "z".charCodeAt(0) ) {
+				zoom = 1;
+				gob.updateBaseRT = true;
+				gob.isRendering = true;
+				console.log("Zoom reset");
 			}
 			
 		});
@@ -2197,6 +2337,9 @@ j$(function() {
 		gob.shaders.bgShader.uniforms.u_MaxLayers.value = gob.maxLayers/255.0;
 		gob.shaders.textShader.uniforms.u_MaxLayers.value = gob.maxLayers/255.0;
 
+		gob.shaders.aoShader.uniforms.u_MaxLayers.value = gob.maxLayers/255.0;
+		gob.shaders.aoHighShader.uniforms.u_MaxLayers.value = gob.maxLayers/255.0;
+
 		//renderer.setClearColorHex( 0xffffff, 1 );
 		renderer.setSize( gob.bufferWidth, gob.bufferHeight );
 
@@ -2207,9 +2350,44 @@ j$(function() {
 
 		var i;
 
+		if (gob.scrollX != gob.targScrollX) {
+
+			gob.scrollX += (gob.targScrollX-gob.scrollX)/2.0;
+
+			if (Math.abs(gob.scrollX-gob.targScrollX) < 2) {
+				gob.scrollX = gob.targScrollX;
+			}
+
+
+			gob.isScrolling = 15;
+			gob.updateBaseRT = true;
+			gob.isRendering = true;
+		}
+
+
+
+
+		gob.isScrolling--;
+
+		if (gob.isScrolling < 0) {
+			gob.isScrolling = 0;
+		}
+
+		//console.log(gob.isScrolling);
+
+		if (gob.isScrolling == 1) {
+			
+			gob.isRendering = true;
+			gob.updateBaseRT = true;
+		}
+
 		requestAnimationFrame( gob.animate );
 
-		if (gob.isRendering || gob.autoUpdate || gob.mouseDown) {
+		if (gob.isRendering || gob.autoUpdate || gob.mouseDown || gob.mouseClicked) {
+
+
+
+
 			
 			for (i = 0; i < gob.shaderNames.length; i++) {
 				gob.shaders[gob.shaderNames[i]].uniforms.u_Zoom.value = zoom;
@@ -2217,6 +2395,8 @@ j$(function() {
 
 			gob.shaders.bgShader.uniforms.u_BorderRad.value = gob.styleSheets.defContH.border;
 			gob.shaders.bgIdShader.uniforms.u_BorderRad.value = gob.styleSheets.defContH.border;
+			gob.shaders.bgShader.uniforms.u_CornerRad.value = gob.styleSheets.defContH.cornerRad;
+			gob.shaders.bgIdShader.uniforms.u_CornerRad.value = gob.styleSheets.defContH.cornerRad;
 
 
 
@@ -2226,6 +2406,17 @@ j$(function() {
 			else {
 
 				if (gob.updateBaseRT) {
+
+
+					gob.shaders.textShader.uniforms.u_Scroll.value.x = gob.scrollX;
+					gob.shaders.textShader.uniforms.u_Scroll.value.y = gob.scrollY;
+					gob.shaders.bgShader.uniforms.u_Scroll.value.x = gob.scrollX;
+					gob.shaders.bgShader.uniforms.u_Scroll.value.y = gob.scrollY;
+
+					gob.shaders.textIdShader.uniforms.u_Scroll.value.x = gob.scrollX;
+					gob.shaders.textIdShader.uniforms.u_Scroll.value.y = gob.scrollY;
+					gob.shaders.bgIdShader.uniforms.u_Scroll.value.x = gob.scrollX;
+					gob.shaders.bgIdShader.uniforms.u_Scroll.value.y = gob.scrollY;
 
 
 					//gl.disable(gl.BLEND);
@@ -2258,8 +2449,8 @@ j$(function() {
 
 
 
-					if (gob.mouseDown) {
-						
+					if (gob.mouseDown || (gob.isScrolling > 1) ) {
+
 						gob.renderToTarget(
 							"aoShader",
 							gob.renderTargets.aoRT,
@@ -2280,7 +2471,7 @@ j$(function() {
 					
 
 				}
-				else {
+				//else {
 					
 					gob.shaders.lightingShader.uniforms.u_Time.value = performance.now();
 
@@ -2316,21 +2507,24 @@ j$(function() {
 						]
 					);
 					*/
+					
 
 					
-				}
+				//}
 
 				
 
 				//gob.renderTargets.baseRT
 				//renderer.render( scene, camera );
 			}
+
+			gob.mouseClicked = false;
 		}
 
 
 		gob.isRendering = false;
 
-		stats.update();
+		//stats.update();
 
 		
 
@@ -2369,6 +2563,9 @@ j$(function() {
 
 		gob.shaders.textIdShader.uniforms.u_Texture0.value = gob.curFont.heightRT;
 		gob.shaders.textIdShader.uniforms.u_Texture1.value = gob.curFont.normHalfRT;
+
+
+		
 
 
 		gob.shaders.heightShader.uniforms.u_TexResolution.value.x = gob.curFont.texture.width;
@@ -2484,6 +2681,17 @@ j$(function() {
 		meshLayer.material = gob.materials["layerShader"];
 		layerScene.add(meshLayer);
 
+		gob.initEnums = function() {
+			var i;
+
+			for (i = 0; i < 256; i++) {
+				isNode[i] = true;
+			}
+
+			isNode[enums.types.number] = false;
+		}
+
+		gob.initEnums();
 
 
 		
@@ -2493,7 +2701,7 @@ j$(function() {
 		gob.styleSheets.defContH = {
 			str: 			"",
 			drawBG: 		true,
-			scale: 			0.5,
+			scale: 			0.25,
 			//font: 			gob.curFont,
 			hTextAlign:		enums.align.left,
 			vTextAlign:		enums.align.top,
@@ -2501,15 +2709,6 @@ j$(function() {
 			bgMatId: 			0.0,
 			textMatId: 			1.0,
 			fillMatId: 			2.0,
-
-
-			//x: 				50,
-			//y: 				50,
-			//maxWidth: 		700,
-			//maxHeight: 		550,
-
-			//scrollx: 0,
-			//scrolly: 0,
 
 			curValue: 		0.0,
 
@@ -2519,14 +2718,14 @@ j$(function() {
 
 			fillDir: 		enums.fillDir.horizontal,
 			fillRatio: 		1,
-			maxLines: 		3,
+			maxLines: 		1,
 			fitText: 		true,
 			itemsPerLine: 	0,
 
-			cornerRad: 		8,
+			cornerRad: 		16,
 			margin: 		0,
-			border: 		8,
-			padding: 		8,
+			border: 		4,
+			padding: 		4,
 			
 			baseDepth: 		5
 		};
@@ -2588,12 +2787,15 @@ j$(function() {
 							]
 						}
 					]
-				)
+				),
+
+				createNode( {label:"Settings", type:enums.types.untypedList}, [])
 
 			]
 		);
 
 
+		
 
 		
 		gob.mainRoot = createNode( 
@@ -2666,9 +2868,47 @@ j$(function() {
 
 		}
 
-		gob.updateGUIStack = function() {
-			gob.mainRoot.childArr = [gob.mainDat.guiData, gob.mainDat.childArr[0].guiData];
+		gob.updateGUIElement = function(curEl) {
+			var i;
+			var curType;
 
+
+			for (i = 0; i < curEl.childArr.length; i++) {
+
+				curType = curEl.guiData.childArr[i].props.baseProps.type;
+
+				if (isNode[curType]) {
+					if (curEl.guiData.childArr[i].props.curValue == 1) {
+						gob.mainRoot.childArr.push(curEl.childArr[i].guiData);
+					}
+				}
+
+			}
+
+
+			for (i = 0; i < curEl.childArr.length; i++) {
+
+				curType = curEl.guiData.childArr[i].props.baseProps.type;
+
+				if (isNode[curType]) {
+					if (curEl.guiData.childArr[i].props.curValue == 1) {
+
+						gob.updateGUIElement(curEl.childArr[i]);
+					}
+				}
+
+			}
+
+
+		}
+
+		gob.updateGUIStack = function() {
+			gob.mainRoot.childArr = [gob.mainDat.guiData];
+			gob.updateGUIElement(gob.mainDat);
+
+			gob.mainRoot.props.resultWidth = gob.buttonWidth*gob.mainRoot.childArr.length;
+
+			gob.targScrollX = (gob.bufferWidth - gob.buttonWidth/2.0) - (gob.buttonWidth*gob.mainRoot.childArr.length - gob.buttonWidth/2.0);
 		}
 		
 
@@ -2690,9 +2930,9 @@ j$(function() {
 		
 		
 		container.appendChild( renderer.domElement );
-		stats = new Stats();
-		stats.domElement.style.position = 'absolute';
-		stats.domElement.style.bottom = '0px';
+		//stats = new Stats();
+		//stats.domElement.style.position = 'absolute';
+		//stats.domElement.style.bottom = '0px';
 		//container.appendChild( stats.domElement );
 
 
@@ -2729,10 +2969,11 @@ j$(function() {
 			fontObj.kernMap[i] = 0;
 		}
 
+
 		for (i = 0; i < fontObj.kernings.length; i++) {
 			curKern = fontObj.kernings[i];
 
-			fontObj.kernMap[ curKern.from.charCodeAt(0)*128 + curKern.to.charCodeAt(0) ] = curKern.offset;
+			fontObj.kernMap[ curKern.from.charCodeAt(0)*128 + curKern.to.charCodeAt(0) ] = -curKern.offset;
 
 		}
 
