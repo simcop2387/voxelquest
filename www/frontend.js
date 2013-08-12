@@ -230,15 +230,16 @@ j$(function() {
 	dat = {
 		gradients: [
 			
+
 			{
-				steps: [
-					{h:0.1, s:0.0, l:0.0, pow:0.5, pos:0},
-					{h:0.4, s:0.3, l:1.0, pow:0.5, pos:256}
+				steps: [ // background
+					{h:0.0, s:0.02, l:0.01, pow:0.5, pos:0},
+					{h:0.8, s:0.05, l:1.0, pow:0.5, pos:256}
 				]
 			},
 
 			{
-				steps: [
+				steps: [ // gold
 
 					{h:0.8, s:0.0, l:0.0, pow:0.5, pos:0},
 					{h:0.75, s:0.5, l:0.2, pow:2.0, pos:20},
@@ -251,18 +252,44 @@ j$(function() {
 				]
 			},
 			{
-				steps: [
+				steps: [ // fill
 					{h:0.0, s:0.4, l:0.0, pow:0.5, pos:0},
 					{h:0.0, s:0.2, l:0.5, pow:0.3, pos:192},
 					{h:0.0, s:0.1, l:0.6, pow:0.1, pos:256}
 				]
+			},
+			{
+				steps: [ // selected border
+
+					{h:0.8, s:0.0, l:0.0, pow:0.5, pos:0},
+					{h:0.75, s:0.5, l:0.2, pow:2.0, pos:20},
+					{h:0.75, s:0.3, l:0.1, pow:0.5, pos:28},
+					{h:0.75, s:0.2, l:0.2, pow:0.5, pos:40},
+					{h:0.75, s:0.8, l:0.8, pow:2.0, pos:120},
+					{h:0.8, s:0.5, l:0.4, pow:0.5, pos:128},
+					{h:0.75, s:0.8, l:0.9, pow:0.5, pos:192},
+					{h:0.75, s:0.1, l:1.0, pow:2.0, pos:256}
+				]
+			},
+
+			{
+				steps: [ // background
+					{h:0.1, s:0.0, l:0.0, pow:0.5, pos:0},
+					{h:0.4, s:0.8, l:1.0, pow:0.5, pos:128},
+					{h:0.4, s:0.1, l:1.0, pow:2.0, pos:256}
+				]
 			}
+
 			
 		]
 	};
 	
 
 	gob = {
+		lastHit: 0,
+		lastParent: 0,
+		disTraveledX: 0,
+		disTraveledY: 0,
 		lastMouseX: null,
 		lastMouseY: null,
 		shiftDown: false,
@@ -811,44 +838,30 @@ j$(function() {
 
 	});
 
-	/*
-	gob.updateGUIElement = function(curEl) {
+	gob.findParent = function(parentObj, rootObj) {
+		//gob.lastParent = parentObj;
+
 		var i;
-		var curType;
+		var res;
 
-
-		for (i = 0; i < curEl.childArr.length; i++) {
-
-			curType = curEl.guiData.childArr[i].props.baseProps.type;
-
-			if (isNode[curType]) {
-				if (curEl.guiData.childArr[i].props.curValue == 1) {
-					gob.mainRoot.childArr.push(curEl.childArr[i].guiData);
-				}
-			}
-
+		if (rootObj == gob.activeComp) {
+			gob.lastParent = parentObj;
+			return true;
 		}
 
 
-		for (i = 0; i < curEl.childArr.length; i++) {
 
-			curType = curEl.guiData.childArr[i].props.baseProps.type;
+		for (i = 0; i < rootObj.childArr.length; i++) {
+			res = gob.findParent(rootObj,rootObj.childArr[i]);
 
-			if (isNode[curType]) {
-				if (curEl.guiData.childArr[i].props.curValue == 1) {
-
-					gob.updateGUIElement(curEl.childArr[i]);
-				}
+			if (res) {
+				return true;
 			}
-
 		}
-
-
 	}
-	*/
 
 
-	gob.testHit = function(rootObj, mouseX, mouseY) {
+	gob.testHit = function(parentObj, rootObj, mouseX, mouseY) {
 		var i;
 		var j;
 
@@ -867,7 +880,8 @@ j$(function() {
 				mouseX <= (cp.x + cp.resultWidth) &&
 				mouseY <= (cp.y + cp.resultHeight)
 			) {
-				return cp;
+
+				return rootObj;
 			}
 			else {
 				return 0;
@@ -877,7 +891,7 @@ j$(function() {
 
 
 		for (i = 0; i < rootObj.childArr.length; i++) {
-			res = gob.testHit(rootObj.childArr[i], mouseX, mouseY);
+			res = gob.testHit(rootObj,rootObj.childArr[i], mouseX, mouseY);
 
 			if (res !== 0) {
 				return res;
@@ -921,26 +935,55 @@ j$(function() {
 		}
 	}
 
-	gob.updateActiveComp = function(xval, mouseUp) {
+	gob.selectCurNode = function() {
+		var i;
+		var tempval;
+
 
 		if (gob.activeComp === 0) {
 
 		}
 		else {
+			if (isNode[gob.activeComp.props.baseProps.type]) {
+				tempval = 1.0 - gob.activeComp.props.curValue;
 
-			//gob.activeComp.baseProps.type
+				if (gob.lastParent) {
+					for (i = 0; i < gob.lastParent.childArr.length; i++) {
+						gob.lastParent.childArr[i].props.curValue = 0.0;
+					}
+				}
 
-			switch (gob.activeComp.baseProps.type) {
+				gob.activeComp.props.curValue = tempval;
+			}
+		}
+
+		
+
+		
+	}
+
+	gob.updateActiveComp = function(xval, mouseUp) {
+
+		
+
+		if (gob.lastHit === 0) {
+
+		}
+		else {
+
+			switch (gob.activeComp.props.baseProps.type) {
 
 					
 					case enums.types.number:
-						gob.activeComp.curValue = Math.min(Math.max(xval-gob.activeComp.x,0),gob.activeComp.resultWidth)/gob.activeComp.resultWidth;
+						gob.activeComp.props.curValue = Math.min(Math.max(xval-gob.activeComp.props.x,0),gob.activeComp.props.resultWidth)/gob.activeComp.props.resultWidth;
 
 					break;
 					default:
 						
 						if (mouseUp) {
-							gob.activeComp.curValue = 1.0 - gob.activeComp.curValue;
+
+							
+							gob.selectCurNode();
 							gob.updateGUIStack();
 							gob.guiInvalidated = true;
 						}
@@ -965,7 +1008,7 @@ j$(function() {
 
 					break;
 					case enums.types.number:
-						gob.activeComp.curValue = Math.min(Math.max(xval-gob.activeComp.x,0),gob.activeComp.resultWidth)/gob.activeComp.resultWidth;
+						
 					break;
 					case enums.types.colorList:
 
@@ -994,9 +1037,8 @@ j$(function() {
 				gob.lockOn = true;
 
 				gob.layoutGUI(gob.mainRoot,gob.mainDat,false);
-				gob.updateBaseRT = true;
 
-				gob.lockOn = false;
+				//gob.lockOn = false;
 
 				gob.mouseClicked = mouseUp;
 			}
@@ -1275,9 +1317,51 @@ j$(function() {
 		gob.zeroOutVerts(rootObj,meshText, false);
 
 		gob.guiInvalidated = false;
+		gob.updateBaseRT = true;
+		gob.isRendering = true;
 
 
 	};
+
+	gob.setActiveComp = function(res, newParent) {
+
+
+
+		if (gob.activeComp === 0) {
+
+		}
+		else {
+			gob.activeComp.props.outlineMatId = 0.0;
+		}
+
+		gob.activeComp = res;
+
+		if (gob.activeComp === 0) {
+
+		}
+		else {
+
+			gob.activeComp.props.outlineMatId = 3.0;
+		}
+
+		if (newParent == 0) {
+			gob.findParent(0, gob.mainRoot);
+		}
+		else {
+			gob.lastParent = newParent;
+		}
+
+		console.log("-----");
+		console.log(gob.activeComp.props.baseProps.label);
+		console.log(gob.lastParent);
+		console.log("-----");
+
+		
+
+		
+
+		
+	}
 
 
 	gob.wf("initFinal", function() {
@@ -1395,21 +1479,38 @@ j$(function() {
 
 			var x = ((e.pageX/gob.bufferWidth)-0.5)*2.0;
 			var y = -((e.pageY/gob.bufferHeight)-0.5)*2.0;
+			var sx;
+			var sy;
+
+
+			var doPan = false;
+
+			if (gob.lastHit === 0) {
+				doPan = true;
+			}
+			else {
+				doPan = isNode[gob.activeComp.props.baseProps.type];
+			}
 
 
 
-			
-			
-
-			if (gob.shiftDown) {
+			if (gob.mouseDown && doPan) {
 
 				if (gob.lastMouseX == null) {
 					gob.lastMouseX = e.pageX;
 					gob.lastMouseY = e.pageY;
+					
 				}
 
-				gob.scrollX += (e.pageX-gob.lastMouseX)/zoom;
-				gob.scrollY += (e.pageY-gob.lastMouseY)/zoom;
+				sx = (e.pageX-gob.lastMouseX);// (zoom);
+				sy = (e.pageY-gob.lastMouseY);// (zoom);
+
+				gob.scrollX += sx;
+				gob.scrollY += sy;
+
+				gob.disTraveledX += sx;
+				gob.disTraveledY += sy;
+				
 
 				gob.lastMouseX = e.pageX;
 				gob.lastMouseY = e.pageY;
@@ -1421,7 +1522,8 @@ j$(function() {
 				gob.isRendering = true;
 			}
 			else {
-				
+				gob.lastMouseX = null;
+				gob.lastMouseY = null;
 			}
 
 
@@ -1458,7 +1560,7 @@ j$(function() {
 
 			if (gob.mouseDown) {
 
-				gob.updateActiveComp(e.pageX - gob.scrollX, false);
+				gob.updateActiveComp( (e.pageX - gob.scrollX)/zoom , false);
 			}
 
 
@@ -1467,55 +1569,95 @@ j$(function() {
 			
 			var wRatio = e.pageX/gob.bufferWidth;
 			var hRatio = e.pageY/gob.bufferHeight;
-
 			var res;
 
-			if (gob.debugTex) {
-				if (gob.curDebugSection == 0.0) {
-					if (hRatio < 0.5) {
-						if (wRatio < 0.5) {
-							gob.curDebugSection = 1.0;
+			var mx;
+			var my;
+			var myzoom;
+
+			switch (e.which) {
+				
+				case 1: // left
+					if (gob.debugTex) {
+						if (gob.curDebugSection == 0.0) {
+							if (hRatio < 0.5) {
+								if (wRatio < 0.5) {
+									gob.curDebugSection = 1.0;
+								}
+								else {
+									gob.curDebugSection = 2.0;
+								}
+							}
+							else {
+								if (wRatio < 0.5) {
+									gob.curDebugSection = 3.0;
+								}
+								else {
+									gob.curDebugSection = 4.0;
+								}
+							}
 						}
 						else {
-							gob.curDebugSection = 2.0;
+							gob.curDebugSection = 0.0;
 						}
+
+						if (gob.showFullBuffer) {
+							gob.curDebugSection = 5.0;
+						}
+
+
+						gob.shaders.debugShader.uniforms.u_Section.value = gob.curDebugSection;
+
 					}
 					else {
-						if (wRatio < 0.5) {
-							gob.curDebugSection = 3.0;
+
+						myzoom = 1.0/zoom;
+
+
+						mx = (e.pageX - gob.scrollX)*myzoom;
+						my = (e.pageY - gob.scrollY)*myzoom + gob.maxLayers; 
+						res = gob.testHit(0, gob.mainRoot, mx, my );
+
+						
+						if (res === 0) {
+							mx = (e.pageX - gob.scrollX)*myzoom;
+							my = (e.pageY - gob.scrollY)*myzoom; 
+							res = gob.testHit(0, gob.mainRoot, mx, my );
+						}
+						
+
+						//console.log( "(" + mx + "," + my + "): " + zoom );
+
+						if (res === 0) {
+
 						}
 						else {
-							gob.curDebugSection = 4.0;
+							gob.setActiveComp(res,0);
 						}
+
+						gob.lastHit = res;
+
+						
+						gob.mouseDown = true;
+
+						
 					}
-				}
-				else {
-					gob.curDebugSection = 0.0;
-				}
+				break;
+				case 2: // right
+					
+				break;
+				case 3: // middle
 
-				if (gob.showFullBuffer) {
-					gob.curDebugSection = 5.0;
-				}
+				break;
+				default: // unknown
 
+				break;
 
-				gob.shaders.debugShader.uniforms.u_Section.value = gob.curDebugSection;
 
 			}
-			else {
-				
-				res = gob.testHit(gob.mainRoot, (e.pageX - gob.scrollX), (e.pageY + gob.maxLayers - gob.scrollY) );
 
-				if (res === 0) {
-					res = gob.testHit(gob.mainRoot, (e.pageX - gob.scrollX), (e.pageY - gob.scrollY) );
-				}
-
-
-				gob.activeComp = res;
-				gob.mouseDown = true;
-
-				
-			}
-
+			
+			
 
 			
 		});
@@ -1524,19 +1666,43 @@ j$(function() {
 			
 			var wRatio = e.pageX/gob.bufferWidth;
 			var hRatio = e.pageY/gob.bufferHeight;
-
 			var res;
 
-			if (gob.debugTex) {
+			switch (e.which) {
 				
-			}
-			else {
-				gob.mouseDown = false;
-				gob.lockOn = false;
-				gob.updateActiveComp(e.pageX - gob.scrollX, true);
-			}
+				case 1: // left
+					if (gob.debugTex) {
+						
+					}
+					else {
+						gob.mouseDown = false;
+						gob.lockOn = false;						
+
+						if (Math.abs(gob.disTraveledX) + Math.abs(gob.disTraveledY) < 50) {
+							gob.updateActiveComp( (e.pageX - gob.scrollX)/zoom, true);
+						}
+						else {
+
+						}
+
+						gob.disTraveledX = 0;
+						gob.disTraveledY = 0;
+
+						
+					}
+				break;
+				case 2: // right
+					
+				break;
+				case 3: // middle
+
+				break;
+				default: // unknown
+
+				break;
 
 
+			}
 			
 		});
 
@@ -1545,16 +1711,16 @@ j$(function() {
 			//gob.scrollX += deltaX;
 			
 
-			if (gob.shiftDown) {
-				zoom += deltaY/100.0;
+			//if (gob.shiftDown) {
+				zoom += deltaY/300.0;
 
 				if (zoom < 0.25) {
 					zoom = 0.25;
 				}
-			}
+			/*}
 			else {
 				gob.scrollY += deltaY;
-			}
+			}*/
 
 			
 
@@ -1574,9 +1740,10 @@ j$(function() {
 
 			var code = (e.keyCode ? e.keyCode : e.which);
 
-			if (code == 16) {
-
-				gob.shiftDown = true;
+			switch (code) {
+				case 16: //shift
+					gob.shiftDown = true;
+				break;
 			}
 
 		});
@@ -1584,10 +1751,113 @@ j$(function() {
 
 			var code = (e.keyCode ? e.keyCode : e.which);
 
-			if (code == 16) {
-				gob.lastMouseX = null;
-				gob.lastMouseY = null;
-				gob.shiftDown = false;
+			var ind;
+
+			switch (code) {
+				case 16: //shift
+					gob.shiftDown = false;
+				break;
+				case 37: //left
+
+					//if (isNode[gob.activeComp.props.baseProps.type]) {
+						
+
+						
+						gob.moveFocus(gob.mainDat,-1);
+						
+
+						if (gob.activeComp.props.curValue == 1) {
+							gob.selectCurNode();
+						}
+						else {
+							
+						}
+
+						gob.updateGUIStack();
+
+
+						gob.guiInvalidated = true;
+						gob.layoutGUI(gob.mainRoot,gob.mainDat,false);
+					//}
+
+				break;
+				
+				case 39: //right
+					
+					if (isNode[gob.activeComp.props.baseProps.type]) {
+						if (gob.activeComp.props.curValue == 0) {
+							gob.selectCurNode();
+							gob.updateGUIStack();
+							
+						}
+						else {
+							
+						}
+
+												
+						gob.moveFocus(gob.mainDat,1);
+						//gob.updateGUIStack();
+
+
+
+						gob.guiInvalidated = true;
+						gob.layoutGUI(gob.mainRoot,gob.mainDat,false);
+					}
+					
+				break;
+				case 38: //up
+					ind = 0;
+
+					if (gob.lastParent === 0 || gob.activeComp == 0) {
+						
+					}
+					else {
+						while (gob.lastParent.childArr[ind] != gob.activeComp) {
+							ind--;
+							if (ind < 0) {
+								ind = gob.lastParent.childArr.length-1;
+							}
+						}
+						ind--;
+
+						if (ind < 0) {
+							ind = gob.lastParent.childArr.length-1;
+						}
+
+
+						gob.setActiveComp(gob.lastParent.childArr[ind],gob.lastParent);
+						gob.layoutGUI(gob.mainRoot,gob.mainDat,false);
+						
+					}
+
+				break;
+				case 40: //down
+					ind = 0;
+
+					if (gob.lastParent === 0 || gob.activeComp == 0) {
+
+					}
+					else {
+						while (gob.lastParent.childArr[ind] != gob.activeComp) {
+							ind++;
+							if (ind >= gob.lastParent.childArr.length) {
+								ind = 0;
+							}
+						}
+						ind++;
+
+						if (ind >= gob.lastParent.childArr.length) {
+							ind = 0;
+						}
+
+
+						gob.setActiveComp(gob.lastParent.childArr[ind],gob.lastParent);
+						gob.layoutGUI(gob.mainRoot,gob.mainDat,false);
+					}
+
+					
+				break;
+				
 			}
 
 		});
@@ -1917,6 +2187,7 @@ j$(function() {
 
 		var dStr;
 		var matId;
+		var fmId;
 
 		for (i = 0; i < lineArr.length; i++) {
 			wordArr.push(lineArr[i].split(' '));
@@ -2049,8 +2320,15 @@ j$(function() {
 		}
 		else {
 
+			fmId = obj.fillMatId;
+
 			if (curMesh.isBG) {
 				matId = obj.bgMatId;
+				
+				if (  obj.curValue == 1.0 ) {
+					fmId = obj.selMatId;
+				}
+
 			}
 			else {
 				matId = obj.textMatId;
@@ -2063,10 +2341,10 @@ j$(function() {
 			atArr[12] = obj.maxWidth; atArr[13] = obj.maxHeight; atArr[14] = obj.groupId; atArr[15] = matId;
 
 			atArr = atArrs[1];
-			atArr[0] =  obj.curValue;  atArr[1] = obj.baseDepth;  atArr[2] =  0.0;  atArr[3] = obj.fillMatId;
-			atArr[4] =  obj.curValue;  atArr[5] = obj.baseDepth;  atArr[6] =  0.0;  atArr[7] = obj.fillMatId;
-			atArr[8] =  obj.curValue;  atArr[9] = obj.baseDepth;  atArr[10] = 0.0;  atArr[11] = obj.fillMatId;
-			atArr[12] = obj.curValue; atArr[13] = obj.baseDepth;  atArr[14] =  0.0; atArr[15] = obj.fillMatId;
+			atArr[0] =  obj.curValue;  atArr[1] = obj.baseDepth;  atArr[2] =  obj.outlineMatId;  atArr[3] = fmId;
+			atArr[4] =  obj.curValue;  atArr[5] = obj.baseDepth;  atArr[6] =  obj.outlineMatId;  atArr[7] = fmId;
+			atArr[8] =  obj.curValue;  atArr[9] = obj.baseDepth;  atArr[10] = obj.outlineMatId;  atArr[11] = fmId;
+			atArr[12] = obj.curValue; atArr[13] = obj.baseDepth;  atArr[14] = obj.outlineMatId; atArr[15] = fmId;
 
 
 			if (curMesh.isBG && obj.drawBG) {
@@ -2469,6 +2747,7 @@ j$(function() {
 						);
 					}
 					
+					gob.lockOn = false;
 
 				}
 				//else {
@@ -2519,10 +2798,11 @@ j$(function() {
 			}
 
 			gob.mouseClicked = false;
+			gob.isRendering = false;
 		}
 
 
-		gob.isRendering = false;
+		
 
 		//stats.update();
 
@@ -2658,16 +2938,18 @@ j$(function() {
 		
 		var curh;
 		var curd;
+		var curscale;
 		var layerScale;
 		for (i = 0; i < gob.maxLayers; i++) {
 			curh = 2.0*i/gob.bufferHeight;
 			curd = i/255.0;
+			curscale = 1.0;
 
 			geoBufferLayer.vertices.push(
-				new THREE.Vector3( -1.0, -1.0+curh, curd ),
-				new THREE.Vector3(  1.0, -1.0+curh, curd ),
-				new THREE.Vector3(  1.0,  1.0+curh, curd ),
-				new THREE.Vector3( -1.0,  1.0+curh, curd )
+				new THREE.Vector3( -curscale, -curscale+curh, curd ),
+				new THREE.Vector3(  curscale, -curscale+curh, curd ),
+				new THREE.Vector3(  curscale,  curscale+curh, curd ),
+				new THREE.Vector3( -curscale,  curscale+curh, curd )
 			);
 			geoBufferLayer.faceVertexUvs[0].push([
 				new THREE.Vector2( 0, 0 ),
@@ -2709,6 +2991,8 @@ j$(function() {
 			bgMatId: 			0.0,
 			textMatId: 			1.0,
 			fillMatId: 			2.0,
+			outlineMatId: 		0.0,
+			selMatId: 			4.0,
 
 			curValue: 		0.0,
 
@@ -2885,6 +3169,7 @@ j$(function() {
 
 			}
 
+			
 
 			for (i = 0; i < curEl.childArr.length; i++) {
 
@@ -2899,8 +3184,67 @@ j$(function() {
 
 			}
 
+		}
+
+		gob.moveFocus = function(curEl,moveFocus) {
+			var i;
+			var j;
+
+			var curType;
+			var res;
+			
+
+			for (i = 0; i < curEl.childArr.length; i++) {
+
+				curType = curEl.guiData.childArr[i].props.baseProps.type;
+
+				if (isNode[curType]) {
+					if (curEl.guiData.childArr[i].props.curValue == 1) {
+
+						res = gob.moveFocus(curEl.childArr[i],moveFocus);
+
+						if (res) {
+							return true;
+						}
+					}
+				}
+
+			}
+
+			if (moveFocus == 1) {
+				for (i = 0; i < curEl.childArr.length; i++) {
+
+					curType = curEl.guiData.childArr[i].props.baseProps.type;
+
+					if (gob.activeComp == curEl.guiData.childArr[i] && isNode[curType]) {
+						gob.setActiveComp(curEl.childArr[i].guiData.childArr[0], curEl.childArr[i].guiData);
+						return true;
+					}
+				}
+			}
+			else {
+				for (i = 0; i < curEl.childArr.length; i++) {
+
+					curType = curEl.guiData.childArr[i].props.baseProps.type;
+
+					for (j = 0; j < curEl.childArr[i].guiData.childArr.length; j++) {
+						if (gob.activeComp == curEl.childArr[i].guiData.childArr[j] ) {
+							gob.setActiveComp(curEl.guiData.childArr[i], curEl.guiData);
+							return true;
+						}
+					}
+
+					
+				}
+			}
+
+			
+
+			return false;
+
 
 		}
+
 
 		gob.updateGUIStack = function() {
 			gob.mainRoot.childArr = [gob.mainDat.guiData];
@@ -2908,7 +3252,7 @@ j$(function() {
 
 			gob.mainRoot.props.resultWidth = gob.buttonWidth*gob.mainRoot.childArr.length;
 
-			gob.targScrollX = (gob.bufferWidth - gob.buttonWidth/2.0) - (gob.buttonWidth*gob.mainRoot.childArr.length - gob.buttonWidth/2.0);
+			gob.targScrollX = ( (gob.bufferWidth) - (gob.buttonWidth*(gob.mainRoot.childArr.length))*zoom );
 		}
 		
 
@@ -3057,6 +3401,7 @@ j$(function() {
 
 	
 	j$(document).ready(function(){
+		document.oncontextmenu = document.body.oncontextmenu = function() {return false;}
 		gob.init();
 	})
 	

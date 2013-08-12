@@ -39,7 +39,7 @@ void main()	{
 	v_MouseCoords.x = u_MouseCoords.x / u_Resolution.x;
 	v_MouseCoords.y = u_MouseCoords.y / u_Resolution.y;
 
-	vec2 newPos = vec2(-1.0 + ( (position.x+u_Scroll.x)*u_Zoom/u_Resolution.x)*2.0, 1.0 - ( (position.y+u_Scroll.y )*u_Zoom/u_Resolution.y)*2.0);
+	vec2 newPos = vec2(-1.0 + ( (position.x*u_Zoom+u_Scroll.x)/u_Resolution.x)*2.0, 1.0 - ( (position.y*u_Zoom+u_Scroll.y )/u_Resolution.y)*2.0);
 	gl_Position = vec4( newPos.xy, position.z, 1.0 );
 
 }

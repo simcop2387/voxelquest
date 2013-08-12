@@ -35,6 +35,9 @@ void main()	{
 
 	baseval.b = v_Position.z;
 
+	const vec2 cutoff = vec2(128.0/255.0,1.0);
+	baseval.rg = mix(baseval.rg,cutoff, float(v_TexCoords.y > 0.99) );
+
 	gl_FragColor = baseval;//vec4(baseval.xy,v_Position.z,1.0);//vec4(cp,1.0);
 	
 }

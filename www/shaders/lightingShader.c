@@ -77,7 +77,7 @@ void main()	{
 	
 	//float outMod = float ( float(matInd != matIndU) + float(matInd != matIndD) + float(matInd != matIndL) + float(matInd != matIndR) );
 	//float outMod = float ( float(matInd < matIndU) + float(matInd < matIndD) + float(matInd < matIndL) + float(matInd < matIndR) );
-	float outMod = float ( float(matInd > matIndU) + float(matInd > matIndD) + float(matInd > matIndL) + float(matInd > matIndR) );
+	//float outMod2 = float ( float(matInd > matIndU) + float(matInd > matIndD) + float(matInd > matIndL) + float(matInd > matIndR) );
 
 
 
@@ -214,14 +214,18 @@ void main()	{
 
 	float dithVal = mod(v_TexCoords.x*u_Resolution.x+v_TexCoords.y*u_Resolution.y, 2.0 );
 
-	//lVal += dithVal/255.0;
+	lVal += dithVal/128.0;
 
 	//lVal -= outMod*0.1;//mix(0.0,outMod,lVal)*0.2;
 
-	lVal = clamp(lVal-outMod*lMod,0.0,1.0);//pow(clamp(lVal-outMod*lMod,0.0,1.0),1.0-lMod*0.5);// pow(,1.0 - lMod*0.3);
+	// - lMod*0.1 + outMod2*lMod + outMod*lMod*0.3
+
+	lVal = clamp(lVal,0.0,1.0);//pow(clamp(lVal-outMod*lMod,0.0,1.0),1.0-lMod*0.5);// pow(,1.0 - lMod*0.3);
 	
 
 	vec4 matCol = texture2D( u_Texture3, vec2(lVal,matInd + 0.5/255.0) ); //matInd
+	vec4 matColSel = texture2D( u_Texture3, vec2(lVal,3.0/255.0 + 0.5/255.0) ); //matInd
+	//vec4 iMatCol = 1.0-texture2D( u_Texture3, vec2(1.0-lVal,matInd + 0.5/255.0) );
 	//vec4 palCol = texture2D( u_Texture3, vec2(palInd,0.0) );
 
 	//vec4 matCol2 = matCol;
@@ -235,6 +239,6 @@ void main()	{
 	//matCol.rgb -= lMod*outMod;
 	//matCol.rgb += lMod*outMod2;
 
-	gl_FragColor = matCol;//mix(matCol,matCol2,lMod);//vec4(lVal,lVal,lVal,1.0);//mix(palCol,matCol,float(matInd > 0.0));
+	gl_FragColor = mix(matCol,matColSel,lMod*0.3);//mix(matCol,matCol2,lMod);//vec4(lVal,lVal,lVal,1.0);//mix(palCol,matCol,float(matInd > 0.0));
 	
 }
