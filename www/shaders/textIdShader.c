@@ -81,7 +81,7 @@ void main()	{
 	float alphaVal = heightRT.g;
 
 	
-	if (alphaVal < 1.0) {
+	if (alphaVal == 0.0) {
 		discard;
 	}
 

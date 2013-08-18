@@ -3,7 +3,18 @@ var gob;
 
 j$(function() {
 
-
+	function gup( name, def ){
+		name = name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");  
+		var regexS = "[\\?&]"+name+"=([^&#]*)";  
+		var regex = new RegExp( regexS );  
+		var results = regex.exec( window.location.href ); 
+		if( results == null ) {
+			return def;
+		}  
+		else {
+			return results[1];
+		}
+	}
 
 
 	var dat;
@@ -41,9 +52,29 @@ j$(function() {
 			gradient: 10,
 
 			gradientStepList: 11,
-			gradientStep: 12
+			gradientStep: 12,
+
+			boolList:13,
+			bool:14
+		},
+		invalidations: {
+			gradient: 0
+		},
+		materials: {
+			bluegray: 0,
+			gold: 1,
+			purple: 2,
+			skyblue: 3,
+			silver: 4,
+			lightbluegray: 5
 		}
 	}
+
+
+	var gradArr = [];
+
+	
+
 
 	var isNode = new Array(256);
 
@@ -54,7 +85,7 @@ j$(function() {
 		return obj;
 	}
 
-	function combineObjs(oArr) {
+	function combineObjs(oArr, noClone) {
 		var resObj = {};
 
 		var i;
@@ -65,7 +96,15 @@ j$(function() {
 
 		}
 		else {
-			return JSON.parse(JSON.stringify(oArr));
+
+			if (noClone) {
+				return oArr;
+			}
+			else {
+				return JSON.parse(JSON.stringify(oArr));
+			}
+
+			
 		}
 
 		for (i = 0; i < oArr.length; i++) {
@@ -79,21 +118,43 @@ j$(function() {
 			}
 		}
 
-		return JSON.parse(JSON.stringify(resObj));
-		//resObj
+		if (noClone) {
+			return resObj;
+		}
+		else {
+			return JSON.parse(JSON.stringify(resObj));
+		}
 	}
 
 	function createNode(propArr, childArr, iv) {
-		var obj = {
-			props:combineObjs(propArr),
-			childArr:childArr
-		};
+		var obj;
+		var myProps;
+
+		if (propArr.noClone) {
+			myProps = combineObjs( [ combineObjs(propArr.doClone, false), propArr.noClone], true);
+
+
+			obj = {
+				props:myProps,
+				childArr:childArr
+			};
+		}
+		else {
+			obj = {
+				props:combineObjs(propArr, false),
+				childArr:childArr
+			};
+		}
+
+		
 
 		var i;
 
 
 
 		if (obj.props.type) {
+
+			obj.props.value = 0;
 
 			switch(obj.props.type) {
 				
@@ -119,6 +180,9 @@ j$(function() {
 					else {
 						obj.props.value = iv;
 					}
+
+					obj.props.actionFunc = "updatePalette";
+
 				break;
 				case enums.types.colorList:
 
@@ -135,7 +199,7 @@ j$(function() {
 				case enums.types.gradientList:
 					for (i = 0; i < iv.length; i++) {
 						obj.childArr.push(
-							createNode( {label:"Gradient " + i, type:enums.types.gradient}, [], iv[i] )
+							createNode( {label:/*"Gradient " + i*/"Voxel Quest", type:enums.types.gradient, ind:i}, [], iv[i] )
 						);
 					}
 				break;
@@ -167,7 +231,6 @@ j$(function() {
 			}
 
 		}
-
 
 		return obj;
 	}
@@ -226,66 +289,13 @@ j$(function() {
 	var meshText;
 	var meshBG;
 	var meshFSQ;
-
-	dat = {
-		gradients: [
-			
-
-			{
-				steps: [ // background
-					{h:0.0, s:0.02, l:0.01, pow:0.5, pos:0},
-					{h:0.8, s:0.05, l:1.0, pow:0.5, pos:256}
-				]
-			},
-
-			{
-				steps: [ // gold
-
-					{h:0.8, s:0.0, l:0.0, pow:0.5, pos:0},
-					{h:0.75, s:0.5, l:0.2, pow:2.0, pos:20},
-					{h:0.75, s:0.3, l:0.1, pow:0.5, pos:28},
-					{h:0.75, s:0.2, l:0.2, pow:0.5, pos:40},
-					{h:0.75, s:0.8, l:0.8, pow:2.0, pos:120},
-					{h:0.8, s:0.5, l:0.4, pow:0.5, pos:128},
-					{h:0.75, s:0.8, l:0.9, pow:0.5, pos:192},
-					{h:0.75, s:0.1, l:1.0, pow:2.0, pos:256}
-				]
-			},
-			{
-				steps: [ // fill
-					{h:0.0, s:0.4, l:0.0, pow:0.5, pos:0},
-					{h:0.0, s:0.2, l:0.5, pow:0.3, pos:192},
-					{h:0.0, s:0.1, l:0.6, pow:0.1, pos:256}
-				]
-			},
-			{
-				steps: [ // selected border
-
-					{h:0.8, s:0.0, l:0.0, pow:0.5, pos:0},
-					{h:0.75, s:0.5, l:0.2, pow:2.0, pos:20},
-					{h:0.75, s:0.3, l:0.1, pow:0.5, pos:28},
-					{h:0.75, s:0.2, l:0.2, pow:0.5, pos:40},
-					{h:0.75, s:0.8, l:0.8, pow:2.0, pos:120},
-					{h:0.8, s:0.5, l:0.4, pow:0.5, pos:128},
-					{h:0.75, s:0.8, l:0.9, pow:0.5, pos:192},
-					{h:0.75, s:0.1, l:1.0, pow:2.0, pos:256}
-				]
-			},
-
-			{
-				steps: [ // background
-					{h:0.1, s:0.0, l:0.0, pow:0.5, pos:0},
-					{h:0.4, s:0.8, l:1.0, pow:0.5, pos:128},
-					{h:0.4, s:0.1, l:1.0, pow:2.0, pos:256}
-				]
-			}
-
-			
-		]
-	};
+	
 	
 
 	gob = {
+		powMax: 4.0,
+		callbacks:{},
+		superSample: false,
 		lastHit: 0,
 		lastParent: 0,
 		disTraveledX: 0,
@@ -302,20 +312,21 @@ j$(function() {
 		guiInvalidated:false,
 		showFullBuffer:false,
 		lockOn: false,
-		activeComp: 0,
+		activeGUI: 0,
 		autoUpdate: false,
 		curDebugSection:0.0,
 		traceVals:[],
 		styleSheets:{},
 		mainRoot:null,
-		bufferWidth: 1024,
-		bufferHeight: 768,
+		bufferWidth: parseInt(gup('width',1024),10),
+		bufferHeight: parseInt(gup('height',768),10),
+
 		isRendering: true,
-		maxLayers: 12,
+		maxLayers: parseInt(gup('maxheight',20),10),
 		updateBaseRT:true,
 		renderTargets:{},
 		shaderNames:["reflShader","lightingShader","palShader","palFromTexShader","aoShader","aoHighShader","extrudeShader","layerShader","bgShader","textShader","bgIdShader","textIdShader","heightShader","normShader","downscaleShader","upscaleShader","debugShader"],
-		fontNames:["arial_black_regular_48","arial_black_regular_96"],
+		fontNames:["arial_black_regular_48","arial_black_regular_96","old_london_regular_96"],
 		fontLoaded:{},
 		shaders:{},
 		materials:{},
@@ -439,6 +450,68 @@ j$(function() {
 		}
 
 	};
+
+
+	gradArr[enums.materials.bluegray] = {
+		steps: [
+			{h:0.9, s:0.0, l:0.1, pow:0.5/gob.powMax, pos:0/255.0},
+			{h:0.4, s:0.1, l:1.0, pow:0.3/gob.powMax, pos:255/255.0}
+		]
+	};
+
+	
+
+	gradArr[enums.materials.gold] = {
+		steps: [ // gold
+
+			{h:0.8, s:0.0, l:0.0, pow:0.5/gob.powMax, pos:0/255.0},
+			{h:0.75, s:0.5, l:0.2, pow:2.0/gob.powMax, pos:20/255.0},
+			{h:0.75, s:0.3, l:0.1, pow:0.5/gob.powMax, pos:28/255.0},
+			{h:0.75, s:0.2, l:0.2, pow:0.5/gob.powMax, pos:40/255.0},
+			{h:0.75, s:0.8, l:0.8, pow:2.0/gob.powMax, pos:120/255.0},
+			{h:0.8, s:0.5, l:0.4, pow:0.5/gob.powMax, pos:128/255.0},
+			{h:0.75, s:0.8, l:0.9, pow:0.5/gob.powMax, pos:192/255.0},
+			{h:0.75, s:0.1, l:1.0, pow:2.0/gob.powMax, pos:255/255.0}
+		]
+	};
+
+	gradArr[enums.materials.purple] = {
+		steps: [ // fill
+			{h:0.0, s:0.4, l:0.0, pow:0.5/gob.powMax, pos:0/255.0},
+			{h:0.0, s:0.2, l:0.5, pow:0.3/gob.powMax, pos:192/255.0},
+			{h:0.0, s:0.1, l:1.0, pow:0.1/gob.powMax, pos:255/255.0}
+		]
+	};
+
+	gradArr[enums.materials.skyblue] = {
+		steps: [ // background
+			{h:0.1, s:0.0, l:0.0, pow:2.0/gob.powMax, pos:0/255.0},
+			{h:0.4, s:0.8, l:1.0, pow:0.5/gob.powMax, pos:128/255.0},
+			{h:0.4, s:0.1, l:1.0, pow:2.0/gob.powMax, pos:255/255.0}
+		]
+	};
+
+	gradArr[enums.materials.silver] = {
+		steps: [ // background
+			{h:0.0, s:0.0, l:0.0, pow:0.5/gob.powMax, pos:0/255.0},
+			{h:0.0, s:0.1, l:0.2, pow:2.0/gob.powMax, pos:20/255.0},
+			{h:0.0, s:0.0, l:0.1, pow:0.5/gob.powMax, pos:28/255.0},
+			{h:0.0, s:0.0, l:0.2, pow:0.5/gob.powMax, pos:40/255.0},
+			{h:0.0, s:0.2, l:0.8, pow:2.0/gob.powMax, pos:120/255.0},
+			{h:0.0, s:0.1, l:0.4, pow:0.5/gob.powMax, pos:128/255.0},
+			{h:0.0, s:0.2, l:0.9, pow:0.5/gob.powMax, pos:192/255.0},
+			{h:0.0, s:0.2, l:1.0, pow:2.0/gob.powMax, pos:255/255.0}
+		]
+	};
+
+	gradArr[enums.materials.lightbluegray] = {
+		steps: [
+			{h:0.1, s:0.1, l:0.1, pow:0.3/gob.powMax, pos:0/255.0},
+			{h:0.4, s:0.2, l:1.0, pow:0.5/gob.powMax, pos:255/255.0}
+		]
+	};
+
+
 
 	gob.scrollY = gob.maxLayers;
 
@@ -844,7 +917,7 @@ j$(function() {
 		var i;
 		var res;
 
-		if (rootObj == gob.activeComp) {
+		if (rootObj == gob.activeGUI) {
 			gob.lastParent = parentObj;
 			return true;
 		}
@@ -867,10 +940,6 @@ j$(function() {
 
 		var cp = rootObj.props;
 		var res;
-
-		//for (j = 0; j < rootObj.guiData.childArr.length; j++) {
-
-		//}
 
 		if (rootObj.props.isGroup) {
 
@@ -940,20 +1009,25 @@ j$(function() {
 		var tempval;
 
 
-		if (gob.activeComp === 0) {
+		if (gob.activeGUI === 0) {
 
 		}
 		else {
-			if (isNode[gob.activeComp.props.baseProps.type]) {
-				tempval = 1.0 - gob.activeComp.props.curValue;
+			if (isNode[gob.activeGUI.props.baseProps.type]) {
+				tempval = 1.0 - gob.activeGUI.props.baseProps.value;
 
 				if (gob.lastParent) {
 					for (i = 0; i < gob.lastParent.childArr.length; i++) {
-						gob.lastParent.childArr[i].props.curValue = 0.0;
+
+						if (isNode[gob.lastParent.childArr[i].props.baseProps.type]) {
+							gob.lastParent.childArr[i].props.baseProps.value = 0.0;
+						}
+
+						
 					}
 				}
 
-				gob.activeComp.props.curValue = tempval;
+				gob.activeGUI.props.baseProps.value = tempval;
 			}
 		}
 
@@ -962,7 +1036,7 @@ j$(function() {
 		
 	}
 
-	gob.updateActiveComp = function(xval, mouseUp) {
+	gob.updateActiveGUI = function(xval, mouseUp) {
 
 		
 
@@ -971,11 +1045,29 @@ j$(function() {
 		}
 		else {
 
-			switch (gob.activeComp.props.baseProps.type) {
+			switch (gob.activeGUI.props.baseProps.type) {
 
 					
 					case enums.types.number:
-						gob.activeComp.props.curValue = Math.min(Math.max(xval-gob.activeComp.props.x,0),gob.activeComp.props.resultWidth)/gob.activeComp.props.resultWidth;
+						gob.activeGUI.props.baseProps.value = Math.min(Math.max(xval-gob.activeGUI.props.x,0),gob.activeGUI.props.resultWidth)/gob.activeGUI.props.resultWidth;
+
+						if (gob.activeGUI.props.baseProps.actionFunc) {
+							gob.callbacks[gob.activeGUI.props.baseProps.actionFunc](gob.activeGUI.props.baseProps.value);
+						}
+
+					break;
+					case enums.types.bool:
+						
+
+						if (mouseUp) {
+
+							gob.activeGUI.props.baseProps.value = 1.0-gob.activeGUI.props.baseProps.value;
+
+
+							if (gob.activeGUI.props.baseProps.actionFunc) {
+								gob.callbacks[gob.activeGUI.props.baseProps.actionFunc](gob.activeGUI.props.baseProps.value);
+							}
+						}
 
 					break;
 					default:
@@ -990,45 +1082,6 @@ j$(function() {
 						
 						
 					break;
-
-					/*
-					case enums.types.untypedList:
-
-					break;
-					case enums.types.untyped:
-
-					break;
-					case enums.types.nodeList:
-
-					break;
-					case enums.types.node:
-						
-					break;
-					case enums.types.numberList:
-
-					break;
-					case enums.types.number:
-						
-					break;
-					case enums.types.colorList:
-
-					break;
-					case enums.types.color:
-						
-					break;
-					case enums.types.gradientList:
-						
-					break;
-					case enums.types.gradient:
-						
-					break;
-					case enums.types.gradientStepList:
-						
-					break;
-					case enums.types.gradientStep:
-						
-					break;
-					*/
 				
 
 			}
@@ -1036,7 +1089,7 @@ j$(function() {
 			if ( (!gob.lockOn) || (mouseUp) ) {
 				gob.lockOn = true;
 
-				gob.layoutGUI(gob.mainRoot,gob.mainDat,false);
+				gob.layoutGUI(gob.mainRoot,false);
 
 				//gob.lockOn = false;
 
@@ -1049,22 +1102,148 @@ j$(function() {
 	}
 
 
+	gob.objFromNode = function(rootObj) {
+
+		var i;
+		var res;
+		var isList
+
+		if (rootObj.childArr.length == 0) {
+			return rootObj.props.value;
+		}
+
+		isList = (rootObj.props.type%2 != 0);
+
+		if (isList) {
+			res = [];
+		}
+		else {
+			res = {};
+		}
+
+		for (i = 0; i < rootObj.childArr.length; i++) {
+
+			if (isList) {
+				res[i] = gob.objFromNode(rootObj.childArr[i]);
+			}
+			else {
+				res[rootObj.childArr[i].props.label] = gob.objFromNode(rootObj.childArr[i]);
+			}
+
+		}
+
+		return res;
+
+		
+	}
+
+
+    gob.createGrad = function(col, baseObj, data) {
+		
+		var i;
+		var j;
+		var jPrev;
+    	var ind;
+
+    	var mRes;
+    	var nRes;
+    	var oRes;
+    	var lerpVal;
+    	var iLerpVal;
+    	var sm,sn,so,em,en,eo;
+
+    	var prevPos;
+    	var curPos;
+    	var curPow;
+
+    	
+
+    	var value;
+    	var cl = new CIELCh(0,0,0);
+
+    	i = 0;
+
+    	var numCols = baseObj.length - 2;
+
+
+    	for (j = 0; j < baseObj.length; j++) {
+
+    		jPrev = Math.max(j-1,0);
+    		prevPos = Math.floor(baseObj[jPrev].Position*255.0);
+    		curPos = Math.floor(baseObj[j].Position*255.0);
+
+    		while ( (i < 256) && (i < curPos) ) {
+
+    			
+    			lerpVal = (i-prevPos)/(curPos-prevPos);
+    			iLerpVal = 1.0-lerpVal;
+
+
+    			startCol = baseObj[jPrev];
+    			endCol = baseObj[j];
+
+    			curPow = iLerpVal*startCol.Power*gob.powMax + lerpVal*endCol.Power*gob.powMax;
+
+    			lerpVal = Math.pow(lerpVal,curPow);
+    			iLerpVal = 1.0-lerpVal;
+
+
+    			cl.h = Math.floor(  (iLerpVal*startCol.Color.Hue + lerpVal*endCol.Color.Hue)*360.0  );
+    			cl.c = Math.floor(  (iLerpVal*startCol.Color.Saturation + lerpVal*endCol.Color.Saturation)*100.0  );
+    			cl.l = Math.floor(  (iLerpVal*startCol.Color.Lightness + lerpVal*endCol.Color.Lightness)*100.0  );
+
+
+    			value = cl.toRGB();
+
+    			data[col*256 + i] =
+    			    (255   << 24) |
+    			    (value.r << 16) |
+    			    (value.g <<  8) |
+    			     value.b;
+
+    			i++;
+    		}
+    	}
+
+    	
+
+    }
 
 	gob.updatePalCanv = function() {
-	    var canvas = document.getElementById('canvas');
-	    var canvasWidth  = canvas.width;
-	    var canvasHeight = canvas.height;
-	    var ctx = canvas.getContext('2d');
-	    var imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
-	    var buf = new ArrayBuffer(imageData.data.length);
-	    var buf8 = new Uint8ClampedArray(buf);
-	    var data = new Uint32Array(buf);
+
+		var firstTime = true;
+
+		if (gob.canvData) {
+			firstTime = false;
+		}
+		else {
+			gob.canvData = {}
+			gob.canvData.canvas = document.getElementById('canvas');
+			gob.canvData.canvasWidth = gob.canvData.canvas.width;
+			gob.canvData.canvasHeight = gob.canvData.canvas.height;
+			gob.canvData.ctx = gob.canvData.canvas.getContext('2d');
+			gob.canvData.imageData = gob.canvData.ctx.getImageData(0, 0, gob.canvData.canvasWidth, gob.canvData.canvasHeight);
+			gob.canvData.buf = new ArrayBuffer(gob.canvData.imageData.data.length);
+			gob.canvData.buf8 = new Uint8ClampedArray(gob.canvData.buf);
+			gob.canvData.data = new Uint32Array(gob.canvData.buf);
+		}
+		
+
+	    var canvas = 		gob.canvData.canvas;
+	    var canvasWidth  = 	gob.canvData.canvasWidth;
+	    var canvasHeight = 	gob.canvData.canvasHeight;
+	    var ctx = 			gob.canvData.ctx;
+	    var imageData = 	gob.canvData.imageData;
+	    var buf = 			gob.canvData.buf;
+	    var buf8 = 			gob.canvData.buf8;
+	    var data = 			gob.canvData.data;
 	    
 	    var o;
 	    var n;
 	    var m;
 	    var lerpVal;
 
+	    var grads = gob.findLabel(gob.mainDat, "Gradients");
 
 	    var omax;
 
@@ -1080,154 +1259,57 @@ j$(function() {
 	        290
 	    ]
 
-	    for (n = 0; n < 256; n++) {
-	        for (m = 0; m < 256; m++) {
+	    if (firstTime) {
+	    	for (n = 0; n < 256; n++) {
+	    	    for (m = 0; m < 256; m++) {
 
 
 
-	            data[(n) * canvasWidth + m] =
-	                (255   << 24) |
-	                (m << 16) |
-	                (m <<  8) |
-	                 m;
-	        }
+	    	        data[(n) * canvasWidth + m] =
+	    	            (255   << 24) |
+	    	            (m << 16) |
+	    	            (m <<  8) |
+	    	             m;
+	    	    }
+	    	}
 	    }
 
-/*
-	    for (o = 0; o < 4; o++) {
-	        for (n = 0; n < 8; n++) {
-	            for (m = 0; m < 8; m++) {
+	    var myobj;
 
-	                omax = o*30.0 + 10.0;
-	                
-	                
-	                cl.h = hueVals[m];
-	                cl.l = Math.floor(n*75.0/7.0 + (12-o*3));
-	                cl.c = omax;
-
-	                value = cl.toRGB();
-
-	                //canvasWidth = 8;
-
-	                data[(n+o*8) * 8 + m] =
-	                    (255   << 24) |
-	                    (value.r << 16) |
-	                    (value.g <<  8) |
-	                     value.b;
-
-	            }
-	        }
-	    }
-*/
-
-
-		//list of gradients
-		//	list of colors / grad values
-		//  	color / grad editor
 
 	    
 
-	    var createGrad = function(col, colorArr) {
-			
-			var i;
-			var j;
-			var jNext, jPrev;
-	    	var ind;
+	    for (m = 0; m < grads.childArr.length; m++) {
 
-	    	var mRes;
-	    	var nRes;
-	    	var oRes;
-	    	var lerpVal;
-	    	var iLerpVal;
-	    	var sm,sn,so,em,en,eo;
-
-	    	var curPow;
-
-	    	var numCols = colorArr.length - 2;
-
-	    	var value;
-	    	var cl = new CIELCh(0,0,0);
-
-	    	i = 0;
-
-	    	for (j = 0; j < colorArr.length; j++) {
-	    		while ( (i < 256) && (i < colorArr[j].pos) ) {
-
-
-
-	    			jNext = Math.min(j+1,colorArr.length-1);
-	    			jPrev = Math.max(j-1,0);
-
-	    			lerpVal = (i-colorArr[jPrev].pos)/(colorArr[j].pos-colorArr[jPrev].pos);
-	    			iLerpVal = 1.0-lerpVal;
-
-
-
-
-	    			startCol = colorArr[jPrev];
-	    			endCol = colorArr[j];
-
-	    			curPow = iLerpVal*startCol.pow + lerpVal*endCol.pow;
-
-	    			lerpVal = Math.pow(lerpVal,curPow);
-	    			iLerpVal = 1.0-lerpVal;
-
-
-	    			cl.h = Math.floor(  (iLerpVal*startCol.h + lerpVal*endCol.h)*360.0  );
-	    			cl.c = Math.floor(  (iLerpVal*startCol.s + lerpVal*endCol.s)*100.0  );
-	    			cl.l = Math.floor(  (iLerpVal*startCol.l + lerpVal*endCol.l)*100.0  );
-
-
-	    			value = cl.toRGB();
-
-	    			data[col*256 + i] =
-	    			    (255   << 24) |
-	    			    (value.r << 16) |
-	    			    (value.g <<  8) |
-	    			     value.b;
-
-	    			i++;
-	    		}
-	    	}
-
-	    	
-
+	    	myobj = gob.objFromNode( gob.findLabel(grads.childArr[m],"Steps") );
+	    	gob.createGrad(m, myobj, data );
 	    }
-
-	    for (m = 0; m < dat.gradients.length; m++) {
-
-	    	createGrad(m,dat.gradients[m].steps);
-	    }
-
-
-	    /*
-		dat = {
-			gradients: [
-				{
-					steps: [
-						{h:0.0, s:0.0, l:0.0},
-						{h:0.5, s:1.0, l:1.0},
-						{h:1.0, s:0.0, l:1.0}
-					]
-				}
-				
-			]
-		};
-		*/
-
-	    //createGrad(1, [0,0,0, 3.0,7.0,3.0, 5.0,7.0,0.0]  );
-
-	    //hue, lightness, saturation
 
 
 	    imageData.data.set(buf8);
 	    ctx.putImageData(imageData, 0, 0);
 
-	    var newRes = new THREE.Texture(canvas);
-	    newRes.minFilter = THREE.LinearFilter; 
-	    newRes.magFilter = THREE.LinearFilter; 
 
-	    return newRes;
+	    if (gob.palTexture) {
+
+	    }
+	    else {
+	    	gob.palTexture = new THREE.Texture(canvas);
+	    	gob.palTexture.minFilter = THREE.LinearFilter; 
+	    	gob.palTexture.magFilter = THREE.LinearFilter;
+	    }
+
+	    gob.palTexture.needsUpdate = true;
+
+	    gob.renderToTarget(
+	    	"palFromTexShader",
+	    	gob.renderTargets.palRT,
+	    	[
+	    		gob.palTexture
+	    	]
+	    );
+
+
 	}
 
 
@@ -1281,7 +1363,7 @@ j$(function() {
 		
 	}
 
-	gob.layoutGUI = function(rootObj, rootData, firstRun) {
+	gob.layoutGUI = function(rootObj, firstRun) {
 
 		meshText.curInd = 0;
 		meshBG.curInd = 0;
@@ -1323,25 +1405,25 @@ j$(function() {
 
 	};
 
-	gob.setActiveComp = function(res, newParent) {
+	gob.setActiveGUI = function(res, newParent) {
 
 
 
-		if (gob.activeComp === 0) {
-
-		}
-		else {
-			gob.activeComp.props.outlineMatId = 0.0;
-		}
-
-		gob.activeComp = res;
-
-		if (gob.activeComp === 0) {
+		if (gob.activeGUI === 0) {
 
 		}
 		else {
+			gob.activeGUI.props.outlineMatId = enums.materials.bluegray;
+		}
 
-			gob.activeComp.props.outlineMatId = 3.0;
+		gob.activeGUI = res;
+
+		if (gob.activeGUI === 0) {
+
+		}
+		else {
+
+			gob.activeGUI.props.outlineMatId = enums.materials.gold;
 		}
 
 		if (newParent == 0) {
@@ -1350,11 +1432,6 @@ j$(function() {
 		else {
 			gob.lastParent = newParent;
 		}
-
-		console.log("-----");
-		console.log(gob.activeComp.props.baseProps.label);
-		console.log(gob.lastParent);
-		console.log("-----");
 
 		
 
@@ -1489,7 +1566,7 @@ j$(function() {
 				doPan = true;
 			}
 			else {
-				doPan = isNode[gob.activeComp.props.baseProps.type];
+				doPan = isNode[gob.activeGUI.props.baseProps.type];
 			}
 
 
@@ -1526,24 +1603,6 @@ j$(function() {
 				gob.lastMouseY = null;
 			}
 
-
-			
-
-
-
-
-			/*
-			var oldRendering = gob.isRendering;
-
-			var maxval = 0.9;
-
-			gob.isRendering = (x < maxval && x > -maxval && y < maxval && y > -maxval);
-
-			if (oldRendering != gob.isRendering) {
-				console.log("gob.isRendering: " + gob.isRendering);
-			}
-			*/
-
 			gob.isRendering = true;
 
 			//TODO: update rendering on mouse movement instead
@@ -1560,7 +1619,7 @@ j$(function() {
 
 			if (gob.mouseDown) {
 
-				gob.updateActiveComp( (e.pageX - gob.scrollX)/zoom , false);
+				gob.updateActiveGUI( (e.pageX - gob.scrollX)/zoom , false);
 			}
 
 
@@ -1626,13 +1685,11 @@ j$(function() {
 						}
 						
 
-						//console.log( "(" + mx + "," + my + "): " + zoom );
-
 						if (res === 0) {
 
 						}
 						else {
-							gob.setActiveComp(res,0);
+							gob.setActiveGUI(res,0);
 						}
 
 						gob.lastHit = res;
@@ -1679,7 +1736,7 @@ j$(function() {
 						gob.lockOn = false;						
 
 						if (Math.abs(gob.disTraveledX) + Math.abs(gob.disTraveledY) < 50) {
-							gob.updateActiveComp( (e.pageX - gob.scrollX)/zoom, true);
+							gob.updateActiveGUI( (e.pageX - gob.scrollX)/zoom, true);
 						}
 						else {
 
@@ -1759,14 +1816,14 @@ j$(function() {
 				break;
 				case 37: //left
 
-					//if (isNode[gob.activeComp.props.baseProps.type]) {
+					//if (isNode[gob.activeGUI.props.baseProps.type]) {
 						
 
 						
 						gob.moveFocus(gob.mainDat,-1);
 						
 
-						if (gob.activeComp.props.curValue == 1) {
+						if (gob.activeGUI.props.baseProps.value == 1) {
 							gob.selectCurNode();
 						}
 						else {
@@ -1777,15 +1834,15 @@ j$(function() {
 
 
 						gob.guiInvalidated = true;
-						gob.layoutGUI(gob.mainRoot,gob.mainDat,false);
+						gob.layoutGUI(gob.mainRoot,false);
 					//}
 
 				break;
 				
 				case 39: //right
 					
-					if (isNode[gob.activeComp.props.baseProps.type]) {
-						if (gob.activeComp.props.curValue == 0) {
+					if (isNode[gob.activeGUI.props.baseProps.type]) {
+						if (gob.activeGUI.props.baseProps.value == 0) {
 							gob.selectCurNode();
 							gob.updateGUIStack();
 							
@@ -1801,18 +1858,18 @@ j$(function() {
 
 
 						gob.guiInvalidated = true;
-						gob.layoutGUI(gob.mainRoot,gob.mainDat,false);
+						gob.layoutGUI(gob.mainRoot,false);
 					}
 					
 				break;
 				case 38: //up
 					ind = 0;
 
-					if (gob.lastParent === 0 || gob.activeComp == 0) {
+					if (gob.lastParent === 0 || gob.activeGUI == 0) {
 						
 					}
 					else {
-						while (gob.lastParent.childArr[ind] != gob.activeComp) {
+						while (gob.lastParent.childArr[ind] != gob.activeGUI) {
 							ind--;
 							if (ind < 0) {
 								ind = gob.lastParent.childArr.length-1;
@@ -1825,8 +1882,8 @@ j$(function() {
 						}
 
 
-						gob.setActiveComp(gob.lastParent.childArr[ind],gob.lastParent);
-						gob.layoutGUI(gob.mainRoot,gob.mainDat,false);
+						gob.setActiveGUI(gob.lastParent.childArr[ind],gob.lastParent);
+						gob.layoutGUI(gob.mainRoot,false);
 						
 					}
 
@@ -1834,11 +1891,11 @@ j$(function() {
 				case 40: //down
 					ind = 0;
 
-					if (gob.lastParent === 0 || gob.activeComp == 0) {
+					if (gob.lastParent === 0 || gob.activeGUI == 0) {
 
 					}
 					else {
-						while (gob.lastParent.childArr[ind] != gob.activeComp) {
+						while (gob.lastParent.childArr[ind] != gob.activeGUI) {
 							ind++;
 							if (ind >= gob.lastParent.childArr.length) {
 								ind = 0;
@@ -1851,8 +1908,8 @@ j$(function() {
 						}
 
 
-						gob.setActiveComp(gob.lastParent.childArr[ind],gob.lastParent);
-						gob.layoutGUI(gob.mainRoot,gob.mainDat,false);
+						gob.setActiveGUI(gob.lastParent.childArr[ind],gob.lastParent);
+						gob.layoutGUI(gob.mainRoot,false);
 					}
 
 					
@@ -1983,6 +2040,8 @@ j$(function() {
 		for (i = 0; i < gob.fontNames.length; i++) {
 
 			var cfName = gob.fontNames[i];
+
+			console.log(g_fonts);
 
 			g_fonts[cfName].heightRT = new THREE.WebGLRenderTarget( g_fonts[cfName].texture.width,g_fonts[cfName].texture.height, {
 				minFilter: THREE.LinearFilter, // NearestFilter // LinearFilter
@@ -2136,6 +2195,8 @@ j$(function() {
 		var y = obj.y;
 		var scale = obj.scale;
 
+		var tempValue;
+
 
 		obj.maxWidth = obj.resultWidth;
 		obj.maxHeight = obj.resultHeight;
@@ -2186,8 +2247,9 @@ j$(function() {
 		var curIndDiv4;
 
 		var dStr;
-		var matId;
-		var fmId;
+		var emptyMat;
+		var filledMat;
+		var outMat;
 
 		for (i = 0; i < lineArr.length; i++) {
 			wordArr.push(lineArr[i].split(' '));
@@ -2320,31 +2382,59 @@ j$(function() {
 		}
 		else {
 
-			fmId = obj.fillMatId;
+			filledMat = obj.fillMatId;
 
 			if (curMesh.isBG) {
-				matId = obj.bgMatId;
+				emptyMat = obj.bgMatId;
 				
-				if (  obj.curValue == 1.0 ) {
-					fmId = obj.selMatId;
+				outMat = obj.outlineMatId;
+				if (  obj.baseProps.value == 1.0 && isNode[obj.baseProps.type] ) {
+					//filledMat = obj.selMatId;
+					outMat = enums.materials.skyblue;
 				}
+
+				if (obj.outlineMatId != emptyMat) {
+					outMat = obj.outlineMatId
+				}
+
+				
+
+				if (obj.baseProps.type == enums.types.color || obj.baseProps.type == enums.types.gradient) {
+					tempValue = 1.0;
+
+				}
+				else {
+					tempValue = obj.baseProps.value;
+				}
+
+				if (obj.baseProps.type == enums.types.gradient) {
+					filledMat = obj.baseProps.ind;
+				}
+
+
 
 			}
 			else {
-				matId = obj.textMatId;
+				
+
+				emptyMat = enums.materials.gold;
+
+				//if (  obj.baseProps.value == 1.0 && isNode[obj.baseProps.type] ) {	
+				//	emptyMat = enums.materials.gold;
+				//}
 			}
 
 			atArr = atArrs[0];
-			atArr[0] =  obj.maxWidth;  atArr[1] = obj.maxHeight;  atArr[2] = obj.groupId;  atArr[3] = matId;
-			atArr[4] =  obj.maxWidth;  atArr[5] = obj.maxHeight;  atArr[6] = obj.groupId;  atArr[7] = matId;
-			atArr[8] =  obj.maxWidth;  atArr[9] = obj.maxHeight;  atArr[10] = obj.groupId; atArr[11] = matId;
-			atArr[12] = obj.maxWidth; atArr[13] = obj.maxHeight; atArr[14] = obj.groupId; atArr[15] = matId;
+			atArr[0] =  obj.maxWidth;  atArr[1] = obj.maxHeight;  atArr[2] = obj.groupId;  atArr[3] = emptyMat;
+			atArr[4] =  obj.maxWidth;  atArr[5] = obj.maxHeight;  atArr[6] = obj.groupId;  atArr[7] = emptyMat;
+			atArr[8] =  obj.maxWidth;  atArr[9] = obj.maxHeight;  atArr[10] = obj.groupId; atArr[11] = emptyMat;
+			atArr[12] = obj.maxWidth; atArr[13] = obj.maxHeight; atArr[14] = obj.groupId; atArr[15] = emptyMat;
 
 			atArr = atArrs[1];
-			atArr[0] =  obj.curValue;  atArr[1] = obj.baseDepth;  atArr[2] =  obj.outlineMatId;  atArr[3] = fmId;
-			atArr[4] =  obj.curValue;  atArr[5] = obj.baseDepth;  atArr[6] =  obj.outlineMatId;  atArr[7] = fmId;
-			atArr[8] =  obj.curValue;  atArr[9] = obj.baseDepth;  atArr[10] = obj.outlineMatId;  atArr[11] = fmId;
-			atArr[12] = obj.curValue; atArr[13] = obj.baseDepth;  atArr[14] = obj.outlineMatId; atArr[15] = fmId;
+			atArr[0] =  tempValue;  atArr[1] = obj.baseDepth;  atArr[2] =  outMat;  atArr[3] = filledMat;
+			atArr[4] =  tempValue;  atArr[5] = obj.baseDepth;  atArr[6] =  outMat;  atArr[7] = filledMat;
+			atArr[8] =  tempValue;  atArr[9] = obj.baseDepth;  atArr[10] = outMat;  atArr[11] = filledMat;
+			atArr[12] = tempValue; atArr[13] = obj.baseDepth;  atArr[14] = outMat; atArr[15] = filledMat;
 
 
 			if (curMesh.isBG && obj.drawBG) {
@@ -2614,7 +2704,6 @@ j$(function() {
 
 		gob.shaders.bgShader.uniforms.u_MaxLayers.value = gob.maxLayers/255.0;
 		gob.shaders.textShader.uniforms.u_MaxLayers.value = gob.maxLayers/255.0;
-
 		gob.shaders.aoShader.uniforms.u_MaxLayers.value = gob.maxLayers/255.0;
 		gob.shaders.aoHighShader.uniforms.u_MaxLayers.value = gob.maxLayers/255.0;
 
@@ -2627,6 +2716,7 @@ j$(function() {
 	gob.animate = function() {
 
 		var i;
+		var myRt;
 
 		if (gob.scrollX != gob.targScrollX) {
 
@@ -2756,9 +2846,16 @@ j$(function() {
 
 					//gob.renderPal(1.0,1.0,1.0,1.0, 1.0,1.0);
 
+					if (gob.superSample) {
+						myRt = gob.renderTargets.lightingRT;
+					}
+					else {
+						myRt = undefined;
+					}
+
 					gob.renderToTarget(
 						"lightingShader",
-						undefined,//gob.renderTargets.lightingRT,
+						myRt,
 						[
 							gob.renderTargets.aoRT,
 							gob.renderTargets.layerRT,
@@ -2767,25 +2864,26 @@ j$(function() {
 						]
 					);
 
-					/*
-					gob.renderToTarget(
-						"downscaleShader",
-						gob.renderTargets.downscaleRT,
-						[
-							gob.renderTargets.lightingRT
-						]
-					);
-
-					gob.renderToTarget(
-						"upscaleShader",
-						undefined,
-						[
+					if (gob.superSample) {
+						gob.renderToTarget(
+							"downscaleShader",
 							gob.renderTargets.downscaleRT,
-							gob.renderTargets.layerRT
+							[
+								gob.renderTargets.lightingRT
+							]
+						);
 
-						]
-					);
-					*/
+						gob.renderToTarget(
+							"upscaleShader",
+							undefined,
+							[
+								gob.renderTargets.downscaleRT,
+								gob.renderTargets.layerRT
+
+							]
+						);
+					}
+					
 					
 
 					
@@ -2885,6 +2983,183 @@ j$(function() {
 
 	});
 
+
+	gob.initEnums = function() {
+		var i;
+
+		for (i = 0; i < 256; i++) {
+			isNode[i] = true;
+		}
+
+		isNode[enums.types.number] = false;
+		isNode[enums.types.bool] = false;
+	}
+	gob.guiFromJSON = function(rootObj, mBG, mText) {
+
+		// rootObj = gob.mainDat
+
+		var i;
+		var curParentProps = rootObj.props;
+		var curStr;
+		
+
+		rootObj.guiData = createNode( [gob.styleSheets.defContV, {baseProps: {label:"",type:enums.types.untyped,value:0} }], []);
+		//rootObj.guiData = createNode( [gob.styleSheets.defContV, {baseProps:rootObj.props}], []);
+		//rootObj.guiData = createNode( {doClone:gob.styleSheets.defContV,noClone:{baseProps:rootObj.props}}, []);
+		mBG.maxInd += 8;
+
+
+		for (i = 0; i < rootObj.childArr.length; i++) {
+
+			curStr = rootObj.childArr[i].props.label;
+
+			mBG.maxInd += 8;
+			mText.maxInd += 8*curStr.length;
+
+
+			rootObj.guiData.childArr.push(
+				createNode( {doClone:[gob.styleSheets.defContHG,{str:curStr}],noClone:{baseProps:rootObj.childArr[i].props} }, [])
+			);
+		}
+
+		for (i = 0; i < rootObj.childArr.length; i++) {
+			gob.guiFromJSON(rootObj.childArr[i], mBG, mText);
+		}
+
+	}
+
+	gob.updateGUIElement = function(curEl) {
+		var i;
+		var curType;
+
+
+		for (i = 0; i < curEl.childArr.length; i++) {
+
+			curType = curEl.guiData.childArr[i].props.baseProps.type;
+
+			if (isNode[curType]) {
+				if (curEl.guiData.childArr[i].props.baseProps.value == 1) {
+					gob.mainRoot.childArr.push(curEl.childArr[i].guiData);
+				}
+			}
+
+		}
+
+		
+
+		for (i = 0; i < curEl.childArr.length; i++) {
+
+			curType = curEl.guiData.childArr[i].props.baseProps.type;
+
+			if (isNode[curType]) {
+				if (curEl.guiData.childArr[i].props.baseProps.value == 1) {
+
+					gob.updateGUIElement(curEl.childArr[i]);
+				}
+			}
+
+		}
+
+	}
+
+	gob.moveFocus = function(curEl,moveFocus) {
+		var i;
+		var j;
+
+		var curType;
+		var res;
+		
+
+		for (i = 0; i < curEl.childArr.length; i++) {
+
+			curType = curEl.guiData.childArr[i].props.baseProps.type;
+
+			if (isNode[curType]) {
+				if (curEl.guiData.childArr[i].props.baseProps.value == 1) {
+
+					res = gob.moveFocus(curEl.childArr[i],moveFocus);
+
+					if (res) {
+						return true;
+					}
+				}
+			}
+
+		}
+
+		if (moveFocus == 1) {
+			for (i = 0; i < curEl.childArr.length; i++) {
+
+				curType = curEl.guiData.childArr[i].props.baseProps.type;
+
+				if (gob.activeGUI == curEl.guiData.childArr[i] && isNode[curType]) {
+					gob.setActiveGUI(curEl.childArr[i].guiData.childArr[0], curEl.childArr[i].guiData);
+					return true;
+				}
+			}
+		}
+		else {
+			for (i = 0; i < curEl.childArr.length; i++) {
+
+				curType = curEl.guiData.childArr[i].props.baseProps.type;
+
+				for (j = 0; j < curEl.childArr[i].guiData.childArr.length; j++) {
+					if (gob.activeGUI == curEl.childArr[i].guiData.childArr[j] ) {
+						gob.setActiveGUI(curEl.guiData.childArr[i], curEl.guiData);
+						return true;
+					}
+				}
+
+				
+			}
+		}
+
+		
+
+		return false;
+
+
+	}
+
+
+	gob.updateGUIStack = function() {
+		gob.mainRoot.childArr = [gob.mainDat.guiData];
+		gob.updateGUIElement(gob.mainDat);
+
+		gob.mainRoot.props.resultWidth = gob.buttonWidth*gob.mainRoot.childArr.length;
+
+		gob.targScrollX = ( (gob.bufferWidth) - (gob.buttonWidth*(gob.mainRoot.childArr.length))*zoom );
+	}
+
+	gob.findLabel = function(rootObj,lab) {
+		var i;
+		var res = 0;
+
+		if (rootObj.props.label == lab) {
+			return rootObj;
+		}
+		else {
+			res = 0;
+		}
+
+		for (i = 0; i < rootObj.childArr.length; i++) {
+			res = gob.findLabel(rootObj.childArr[i],lab);
+
+			if (res === 0) {
+
+			}
+			else {
+				return res;
+			}
+
+
+		}
+
+		return res;
+
+	}
+
+
 	gob.wf("initScene", function() {
 
 		var i;
@@ -2963,22 +3238,14 @@ j$(function() {
 		meshLayer.material = gob.materials["layerShader"];
 		layerScene.add(meshLayer);
 
-		gob.initEnums = function() {
-			var i;
 
-			for (i = 0; i < 256; i++) {
-				isNode[i] = true;
-			}
-
-			isNode[enums.types.number] = false;
-		}
 
 		gob.initEnums();
 
 
 		
 		gob.setCurFont(g_fonts["arial_black_regular_96"]);
-		
+
 
 		gob.styleSheets.defContH = {
 			str: 			"",
@@ -2988,13 +3255,13 @@ j$(function() {
 			hTextAlign:		enums.align.left,
 			vTextAlign:		enums.align.top,
 
-			bgMatId: 			0.0,
-			textMatId: 			1.0,
-			fillMatId: 			2.0,
-			outlineMatId: 		0.0,
-			selMatId: 			4.0,
+			bgMatId: 			enums.materials.bluegray,
+			textMatId: 			enums.materials.gold,
+			fillMatId: 			enums.materials.skyblue,
+			outlineMatId: 		enums.materials.bluegray,
+			selMatId: 			enums.materials.skyblue,
 
-			curValue: 		0.0,
+			//curValue: 		0.0,
 
 			groupId: 		0,
 
@@ -3020,7 +3287,7 @@ j$(function() {
 			{
 				fillDir: 		enums.fillDir.vertical
 			}
-		]);
+		],false);
 
 		
 		gob.styleSheets.defContHG = combineObjs([
@@ -3028,52 +3295,49 @@ j$(function() {
 			{
 				isGroup: true
 			}
-		]);
+		],false);
 		gob.styleSheets.defContVG = combineObjs([
 			gob.styleSheets.defContV,
 			{
 				isGroup: true
 			}
-		]);
+		],false);
 		
+
+		gob.callbacks.updatePalette = function(val) {
+			gob.updatePalCanv();
+		}
+		gob.callbacks.superSample = function(val) { 
+						
+			if (val == 1.0) {
+				gob.superSample = true;
+			}
+			else {
+				gob.superSample = false;
+			}
+		}
+
+
 
 		gob.mainDat = createNode( 
 
 			{
 				label:"",
 				type: enums.types.untypedList,
+				value: 0
 			},
 			
 			[
 
 				createNode( {label:"Gradients", type:enums.types.gradientList}, [],
-					[
-						{
-							steps: [
-								{h:0.1, s:0.0, l:0.0, pow:0.5, pos:0},
-								{h:0.4, s:0.3, l:1.0, pow:0.5, pos:256}
-							]
-						},
-						{
-							steps: [
-								{h:0.8, s:0.0, l:0.0, pow:0.5, pos:0},
-								{h:0.75, s:0.8, l:0.8, pow:2.0, pos:120},
-								{h:0.8, s:0.5, l:0.4, pow:0.5, pos:128},
-								{h:0.75, s:0.8, l:0.9, pow:0.5, pos:192},
-								{h:0.75, s:0.1, l:1.0, pow:2.0, pos:256}
-							]
-						},
-						{
-							steps: [
-								{h:0.0, s:0.4, l:0.0, pow:0.5, pos:0},
-								{h:0.0, s:0.2, l:0.5, pow:0.3, pos:192},
-								{h:0.0, s:0.1, l:0.6, pow:0.1, pos:256}
-							]
-						}
-					]
+					gradArr
 				),
 
-				createNode( {label:"Settings", type:enums.types.untypedList}, [])
+				createNode( {label:"Settings", type:enums.types.untypedList}, [
+
+					createNode( {label:"Down Samp", type:enums.types.bool, actionFunc:"superSample" }, [])
+
+				])
 
 			]
 		);
@@ -3091,180 +3355,24 @@ j$(function() {
 					resultWidth:gob.bufferWidth,
 					resultHeight:gob.bufferHeight,
 					x:0,
-					y:0
+					y:0,
+					baseProps:{type:enums.types.untypedList, label: "", value: 0}
 					//,str:"Lorem ipsum dolor sit amet, pro nostrum ullamcorper at\nLorem ipsum dolor sit amet, pro nostrum ullamcorper at"
 				}
 			],
 
 			[]
-
-			
-			/*
-			[
-				createNode( gob.styleSheets.defContV, [
-					createNode( [gob.styleSheets.defContH,{isGroup:true,str:"Tg|ST g|T 456"}], []),
-					createNode( [gob.styleSheets.defContH,{isGroup:true,str:"test"}], []),
-					createNode( [gob.styleSheets.defContH,{isGroup:true,str:"test"}], [])
-				]),
-				createNode( gob.styleSheets.defContV, [
-					createNode( [gob.styleSheets.defContH,{isGroup:true,str:"test 12"}], []),
-					createNode( [gob.styleSheets.defContH,{isGroup:true,str:"test"}], []),
-				]),
-				createNode( gob.styleSheets.defContV, [
-					createNode( [gob.styleSheets.defContH,{isGroup:true,str:"test abc"}], []),
-					createNode( [gob.styleSheets.defContH,{isGroup:true,str:"test xyz"}], [])
-				])
-			]
-			*/
 			
 
 		);
 		
-
 		
-		
-		gob.guiFromJSON = function(rootObj, mBG, mText) {
-			var i;
-			var curParentProps = rootObj.props;
-			var curStr;
-			
-
-			rootObj.guiData = createNode( gob.styleSheets.defContV, []);
-			mBG.maxInd += 8;
-
-
-			for (i = 0; i < rootObj.childArr.length; i++) {
-
-				curStr = rootObj.childArr[i].props.label;
-
-				mBG.maxInd += 8;
-				mText.maxInd += 8*curStr.length;
-
-
-				rootObj.guiData.childArr.push(
-					createNode( [gob.styleSheets.defContHG,{str:curStr},{baseProps:rootObj.childArr[i].props}], [])
-				);
-			}
-
-			for (i = 0; i < rootObj.childArr.length; i++) {
-				gob.guiFromJSON(rootObj.childArr[i], mBG, mText);
-			}
-
-		}
-
-		gob.updateGUIElement = function(curEl) {
-			var i;
-			var curType;
-
-
-			for (i = 0; i < curEl.childArr.length; i++) {
-
-				curType = curEl.guiData.childArr[i].props.baseProps.type;
-
-				if (isNode[curType]) {
-					if (curEl.guiData.childArr[i].props.curValue == 1) {
-						gob.mainRoot.childArr.push(curEl.childArr[i].guiData);
-					}
-				}
-
-			}
-
-			
-
-			for (i = 0; i < curEl.childArr.length; i++) {
-
-				curType = curEl.guiData.childArr[i].props.baseProps.type;
-
-				if (isNode[curType]) {
-					if (curEl.guiData.childArr[i].props.curValue == 1) {
-
-						gob.updateGUIElement(curEl.childArr[i]);
-					}
-				}
-
-			}
-
-		}
-
-		gob.moveFocus = function(curEl,moveFocus) {
-			var i;
-			var j;
-
-			var curType;
-			var res;
-			
-
-			for (i = 0; i < curEl.childArr.length; i++) {
-
-				curType = curEl.guiData.childArr[i].props.baseProps.type;
-
-				if (isNode[curType]) {
-					if (curEl.guiData.childArr[i].props.curValue == 1) {
-
-						res = gob.moveFocus(curEl.childArr[i],moveFocus);
-
-						if (res) {
-							return true;
-						}
-					}
-				}
-
-			}
-
-			if (moveFocus == 1) {
-				for (i = 0; i < curEl.childArr.length; i++) {
-
-					curType = curEl.guiData.childArr[i].props.baseProps.type;
-
-					if (gob.activeComp == curEl.guiData.childArr[i] && isNode[curType]) {
-						gob.setActiveComp(curEl.childArr[i].guiData.childArr[0], curEl.childArr[i].guiData);
-						return true;
-					}
-				}
-			}
-			else {
-				for (i = 0; i < curEl.childArr.length; i++) {
-
-					curType = curEl.guiData.childArr[i].props.baseProps.type;
-
-					for (j = 0; j < curEl.childArr[i].guiData.childArr.length; j++) {
-						if (gob.activeComp == curEl.childArr[i].guiData.childArr[j] ) {
-							gob.setActiveComp(curEl.guiData.childArr[i], curEl.guiData);
-							return true;
-						}
-					}
-
-					
-				}
-			}
-
-			
-
-			return false;
-
-
-		}
-
-
-		gob.updateGUIStack = function() {
-			gob.mainRoot.childArr = [gob.mainDat.guiData];
-			gob.updateGUIElement(gob.mainDat);
-
-			gob.mainRoot.props.resultWidth = gob.buttonWidth*gob.mainRoot.childArr.length;
-
-			gob.targScrollX = ( (gob.bufferWidth) - (gob.buttonWidth*(gob.mainRoot.childArr.length))*zoom );
-		}
-		
-
 		meshBG.maxInd = 0;
 		meshText.maxInd = 0;
 
 		gob.guiFromJSON(gob.mainDat, meshBG, meshText);
-		
 		gob.updateGUIStack();
-
-
-		gob.layoutGUI(gob.mainRoot,gob.mainDat,true);
+		gob.layoutGUI(gob.mainRoot,true);
 
 
 
@@ -3280,15 +3388,9 @@ j$(function() {
 		//container.appendChild( stats.domElement );
 
 
-		gob.palTexture = gob.updatePalCanv();
-		gob.palTexture.needsUpdate = true;
-		gob.renderToTarget(
-			"palFromTexShader",
-			gob.renderTargets.palRT,
-			[
-				gob.palTexture
-			]
-		);
+		gob.updatePalCanv();
+
+		
 
 
 		gob.onWindowResize();
@@ -3313,13 +3415,15 @@ j$(function() {
 			fontObj.kernMap[i] = 0;
 		}
 
+		if (fontObj.kernings) {
+			for (i = 0; i < fontObj.kernings.length; i++) {
+				curKern = fontObj.kernings[i];
 
-		for (i = 0; i < fontObj.kernings.length; i++) {
-			curKern = fontObj.kernings[i];
+				fontObj.kernMap[ curKern.from.charCodeAt(0)*128 + curKern.to.charCodeAt(0) ] = -curKern.offset;
 
-			fontObj.kernMap[ curKern.from.charCodeAt(0)*128 + curKern.to.charCodeAt(0) ] = -curKern.offset;
-
+			}
 		}
+		
 
 	});
 

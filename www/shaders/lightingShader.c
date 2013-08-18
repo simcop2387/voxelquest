@@ -195,7 +195,7 @@ void main()	{
 
 	float lVal = clamp(dot(finalNorm,lightVec),0.0,1.0)*shadVal*disVal;
 	lVal = mix(baseval.a*(0.05+disVal*0.25),lVal,lVal); //(lVal+abs(baseval.a-0.5)*lVal)/1.5
-	lVal *= float(baseval.b > 0.0);// *pow(disVal,2.0);
+	lVal *= float(baseval.b > 0.0);
 
 	//lVal = lVal*disVal;
 
@@ -214,7 +214,7 @@ void main()	{
 
 	float dithVal = mod(v_TexCoords.x*u_Resolution.x+v_TexCoords.y*u_Resolution.y, 2.0 );
 
-	lVal += dithVal/128.0;
+	//lVal += dithVal/128.0;
 
 	//lVal -= outMod*0.1;//mix(0.0,outMod,lVal)*0.2;
 
@@ -224,7 +224,7 @@ void main()	{
 	
 
 	vec4 matCol = texture2D( u_Texture3, vec2(lVal,matInd + 0.5/255.0) ); //matInd
-	vec4 matColSel = texture2D( u_Texture3, vec2(lVal,3.0/255.0 + 0.5/255.0) ); //matInd
+	vec4 matColSel = texture2D( u_Texture3, vec2(lVal,1.0/255.0 + 0.5/255.0) ); //matInd
 	//vec4 iMatCol = 1.0-texture2D( u_Texture3, vec2(1.0-lVal,matInd + 0.5/255.0) );
 	//vec4 palCol = texture2D( u_Texture3, vec2(palInd,0.0) );
 
@@ -239,6 +239,9 @@ void main()	{
 	//matCol.rgb -= lMod*outMod;
 	//matCol.rgb += lMod*outMod2;
 
-	gl_FragColor = mix(matCol,matColSel,lMod*0.3);//mix(matCol,matCol2,lMod);//vec4(lVal,lVal,lVal,1.0);//mix(palCol,matCol,float(matInd > 0.0));
+	vec4 resCol = mix(matCol,matColSel,lMod*0.3);
+	resCol.rgb *= float(baseval.b > 0.0);
+
+	gl_FragColor = resCol;//mix(matCol,matCol2,lMod);//vec4(lVal,lVal,lVal,1.0);//mix(palCol,matCol,float(matInd > 0.0));
 	
 }
