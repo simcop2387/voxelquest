@@ -199,7 +199,7 @@ j$(function() {
 				case enums.types.gradientList:
 					for (i = 0; i < iv.length; i++) {
 						obj.childArr.push(
-							createNode( {label:/*"Gradient " + i*/"Voxel Quest", type:enums.types.gradient, ind:i}, [], iv[i] )
+							createNode( {label:"Gradient " + i, type:enums.types.gradient, ind:i}, [], iv[i] )
 						);
 					}
 				break;
@@ -322,6 +322,7 @@ j$(function() {
 		bufferHeight: parseInt(gup('height',768),10),
 
 		isRendering: true,
+		scrollSpeed: parseInt(gup('scrollSpeed',300),10)/10.0,
 		maxLayers: parseInt(gup('maxheight',20),10),
 		updateBaseRT:true,
 		renderTargets:{},
@@ -1769,7 +1770,7 @@ j$(function() {
 			
 
 			//if (gob.shiftDown) {
-				zoom += deltaY/300.0;
+				zoom += deltaY/gob.scrollSpeed;
 
 				if (zoom < 0.25) {
 					zoom = 0.25;
@@ -2040,8 +2041,6 @@ j$(function() {
 		for (i = 0; i < gob.fontNames.length; i++) {
 
 			var cfName = gob.fontNames[i];
-
-			console.log(g_fonts);
 
 			g_fonts[cfName].heightRT = new THREE.WebGLRenderTarget( g_fonts[cfName].texture.width,g_fonts[cfName].texture.height, {
 				minFilter: THREE.LinearFilter, // NearestFilter // LinearFilter

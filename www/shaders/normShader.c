@@ -34,6 +34,15 @@ float rand(vec2 co){
 }
 
 
+vec3 myCross(vec3 uVec, vec3 vVec)
+{
+    vec3 w;
+    w.x=uVec.y*vVec.z-uVec.z*vVec.y;
+    w.y=uVec.z*vVec.x-uVec.x*vVec.z;
+    w.z=uVec.x*vVec.y-uVec.y*vVec.x;
+    return w;
+}
+
 void main()	{
 
 	vec4 baseval = texture2D( u_Texture0, v_TexCoords );
@@ -82,7 +91,7 @@ void main()	{
     float s10 = 0.0;
     float s12 = 0.0;
 	
-    int rad = 2;
+    int rad = 1;
     float frad = float(rad);
 
 
@@ -122,9 +131,9 @@ void main()	{
     */
 
     vec3 bumpTotal = vec3(0.0,0.0,0.0);
-    vec3 va;
-    vec3 vb;
-    vec3 bump = cross(va,vb);
+    vec3 u;
+    vec3 v;
+    vec3 bump;
 
 
     for (k = -rad; k <= rad; k++) {
@@ -150,9 +159,12 @@ void main()	{
 
                 //totalSamples += 1.0;
 
-                va = normalize(vec3(size.xy, (s21-s01) ));
-                vb = normalize(vec3(size.yx, (s12-s10) ));
-                bump = cross(va,vb);
+                u = normalize(vec3(size.xy, (s21-s01) ));
+                v = normalize(vec3(size.yx, (s12-s10) ));
+                
+
+
+                bump = myCross(v,u);
 
                 bumpTotal.x += bump.x;
                 bumpTotal.y += bump.y;
@@ -178,11 +190,12 @@ void main()	{
     //vec3 bump = cross(va,vb);
     //bump.b = 0.0;
     //bumpTotal.b = 0.0;
+    
     bumpTotal.b = 0.0;
     bump = normalize(bumpTotal);
     
 
-    bump.g = -bump.g;
+    bump.r *= -1.0;
 
     gl_FragColor = vec4((bump.rgb+1.0)/2.0, 1.0);
 

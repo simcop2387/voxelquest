@@ -1,0 +1,16 @@
+﻿Build started 8/21/2013 10:27:47 PM.
+     1>Project "C:\glew-1.10.0\build\vc10\glew_static.vcxproj" on node 2 (Build target(s)).
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\CL.exe /c /I../../include /I../../include /Zi /nologo /W3 /WX- /O2 /Ob1 /Oy- /D WIN32 /D NDEBUG /D _LIB /D WIN32_LEAN_AND_MEAN /D GLEW_STATIC /D _MBCS /GF /Gm- /EHsc /MT /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"tmp\glew_static\Release\Win32\\" /Fd"tmp\glew_static\Release\Win32\vc110.pdb" /Gd /TC /analyze- /errorReport:prompt ..\..\src\glew.c
+         glew.c
+       ResourceCompile:
+         C:\Program Files (x86)\Windows Kits\8.0\bin\x86\rc.exe /D NDEBUG /D GLEW_STATIC /l"0x0409" /nologo /fo"tmp\glew_static\Release\Win32\glew.res" ..\glew.rc 
+       Lib:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\Lib.exe /OUT:"../../lib\Release\Win32\glew32s.lib" /NOLOGO /MACHINE:X86 tmp\glew_static\Release\Win32\glew.res
+         tmp\glew_static\Release\Win32\glew.obj
+         glew_static.vcxproj -> C:\glew-1.10.0\build\vc10\../../lib\Release\Win32\glew32s.lib
+     1>Done Building Project "C:\glew-1.10.0\build\vc10\glew_static.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:01.19

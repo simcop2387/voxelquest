@@ -1,0 +1,17 @@
+﻿Build started 8/27/2013 12:40:39 AM.
+     1>Project "C:\wamp\www\voxelquest\glew\build\vc10\glew_shared.vcxproj" on node 2 (Rebuild target(s)).
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\CL.exe /c /I../../include /Zi /nologo /W3 /WX- /O2 /Ob1 /Oy- /D WIN32 /D WIN32_LEAN_AND_MEAN /D VC_EXTRALEAN /D GLEW_BUILD /D _WINDLL /GF /Gm- /EHsc /MT /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"tmp\glew_shared\Release\Win32\\" /Fd"tmp\glew_shared\Release\Win32\vc110.pdb" /Gd /TC /analyze- /errorReport:prompt ..\..\src\glew.c
+         glew.c
+       ResourceCompile:
+         C:\Program Files (x86)\Windows Kits\8.0\bin\x86\rc.exe /D NDEBUG /l"0x0409" /nologo /fo"tmp\glew_shared\Release\Win32\glew.res" ..\glew.rc 
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"../../bin\Release\Win32\glew32.dll" /INCREMENTAL:NO /NOLOGO opengl32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:"../../bin\Release\Win32\glew32.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /BASE:"0x62AA0000" /DYNAMICBASE /NXCOMPAT /IMPLIB:"../../lib\Release\Win32\glew32.lib" /MACHINE:X86 /SAFESEH  /ignore:4089 /DLL tmp\glew_shared\Release\Win32\glew.res
+         tmp\glew_shared\Release\Win32\glew.obj
+            Creating library ../../lib\Release\Win32\glew32.lib and object ../../lib\Release\Win32\glew32.exp
+         glew_shared.vcxproj -> C:\wamp\www\voxelquest\glew\build\vc10\../../bin\Release\Win32\glew32.dll
+     1>Done Building Project "C:\wamp\www\voxelquest\glew\build\vc10\glew_shared.vcxproj" (Rebuild target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:01.16

@@ -1,0 +1,14 @@
+﻿Build started 8/21/2013 10:27:23 PM.
+     1>Project "C:\glew-1.10.0\build\vc10\visualinfo.vcxproj" on node 3 (Build target(s)).
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\CL.exe /c /I../../include /Zi /nologo /W3 /WX- /Od /Oy- /D WIN32 /D WIN32_LEAN_AND_MEAN /D VC_EXTRA_LEAN /D GLEW_STATIC /D _CRT_SECURE_NO_WARNINGS /Gm- /EHsc /RTC1 /MDd /GS /Gy- /fp:precise /Zc:wchar_t /Zc:forScope /Fo"tmp\visualinfo\Debug\Win32\\" /Fd"tmp\visualinfo\Debug\Win32\vc110.pdb" /Gd /TC /analyze- /errorReport:prompt ..\..\src\visualinfo.c
+         visualinfo.c
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"../../bin\Debug\Win32\visualinfod.exe" /INCREMENTAL:NO /NOLOGO /LIBPATH:../../lib\Debug\Win32\ glew32sd.lib glu32.lib opengl32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"../../bin\Debug\Win32\visualinfod.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"../../bin\Debug\Win32\visualinfod.lib" /MACHINE:X86 /SAFESEH tmp\visualinfo\Debug\Win32\visualinfo.obj
+         "C:\glew-1.10.0\lib\Debug\Win32\glew32sd.lib"
+         visualinfo.vcxproj -> C:\glew-1.10.0\build\vc10\../../bin\Debug\Win32\visualinfod.exe
+     1>Done Building Project "C:\glew-1.10.0\build\vc10\visualinfo.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:00.46
