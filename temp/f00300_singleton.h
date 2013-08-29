@@ -122,6 +122,7 @@ void Singleton::orthographicProjection ()
 	}
 Singleton::Singleton ()
                     {
+		volTris = NULL;
 		gw = NULL;
     	//gm = NULL;
 	}
@@ -130,6 +131,11 @@ Singleton::~ Singleton ()
 		if (gw) {
 			delete gw;
 		}
+	}
+float Singleton::genRand (float LO, float HI)
+                                          {
+
+		return LO + (float)rand()/((float)RAND_MAX/(HI-LO));
 	}
 void Singleton::setProgAction (eProgramState ps, unsigned char kc, eProgramAction pa, bool isDown)
                                                                                                {
@@ -158,12 +164,126 @@ void Singleton::keySetup ()
 		setProgActionAll('r', E_PA_REFRESH, false);
 
 	}
+void Singleton::createVTList ()
+                            {
+
+		volTris = glGenLists(1);
+		
+
+		float texMin = 0.0f;
+		float texMax = 1.0f;
+
+		float fx1 = -1.0f;
+		float fy2 = -1.0f;
+		float fx2 = 1.0f;
+		float fy1 = 1.0f;
+
+		float centerX = (fx1 + fx2)/2.0f;
+		float centerY = (fy1 + fy2)/2.0f;
+
+		float fy25 = fy1*0.75f + fy2*0.25f;
+		float fy75 = fy1*0.25f + fy2*0.75f;
+
+		float coordsX[8];
+		float coordsY[8];
+
+		coordsX[0] = centerX;
+		coordsY[0] = centerY;
+
+		coordsX[1] = centerX;
+		coordsY[1] = fy1;
+
+		coordsX[2] = fx2;
+		coordsY[2] = fy25;
+
+		coordsX[3] = fx2;
+		coordsY[3] = fy75;
+
+		coordsX[4] = centerX;
+		coordsY[4] = fy2;
+
+		coordsX[5] = fx1;
+		coordsY[5] = fy75;
+
+		coordsX[6] = fx1;
+		coordsY[6] = fy25;
+
+		coordsX[7] = coordsX[1];
+		coordsY[7] = coordsY[1];
+
+		float backfaceX[8];
+		float backfaceY[8];
+		float backfaceZ[8];
+
+
+
+		backfaceX[0] = texMin;
+		backfaceY[0] = texMin;
+		backfaceZ[0] = texMin;
+		backfaceX[1] = texMin;
+		backfaceY[1] = texMin;
+		backfaceZ[1] = texMax;
+		backfaceX[2] = texMax;
+		backfaceY[2] = texMin;
+		backfaceZ[2] = texMax;
+		backfaceX[3] = texMax;
+		backfaceY[3] = texMin;
+		backfaceZ[3] = texMin;
+		backfaceX[4] = texMax;
+		backfaceY[4] = texMax;
+		backfaceZ[4] = texMin;
+		backfaceX[5] = texMin;
+		backfaceY[5] = texMax;
+		backfaceZ[5] = texMin;
+		backfaceX[6] = texMin;
+		backfaceY[6] = texMax;
+		backfaceZ[6] = texMax;
+		backfaceX[7] = backfaceX[1];
+		backfaceY[7] = backfaceY[1];
+		backfaceZ[7] = backfaceZ[1];
+
+
+		glNewList(volTris, GL_COMPILE);
+
+		glBegin(GL_TRIANGLE_FAN);
+		glNormal3f(0, 0, 1);
+
+		int i;
+
+		for (i = 0; i < 8; i++) {
+
+			glColor4f(backfaceX[i], backfaceY[i], backfaceZ[i], 1.0f);
+
+			glMultiTexCoord3f( GL_TEXTURE0, backfaceX[i], backfaceY[i], backfaceZ[i]);
+			
+			if (i == 0) {
+				//glColor4f((backfaceX[i]+1.0f)/2.0f, (backfaceY[i]+1.0f)/2.0f, (backfaceZ[i]+1.0f)/2.0f, 1.0f);
+				glMultiTexCoord3f( GL_TEXTURE1, 1.0f, 1.0f, 1.0f);
+			}
+			else {
+				glMultiTexCoord3f( GL_TEXTURE1, backfaceX[i], backfaceY[i], backfaceZ[i]);
+			}
+
+			glVertex3f(coordsX[i],coordsY[i],0.0f);
+		}
+
+		glEnd();
+		
+
+		glEndList();
+	}
 void Singleton::init (int _defaultWinW, int _defaultWinH)
                                                       {
 
 		pushTrace("Singleton init");
 
+		srand(time(0));
+		seedX = genRand(5000.0f,500000.0f);
+		seedY = genRand(5000.0f,500000.0f);
+		seedZ = genRand(5000.0f,500000.0f);
+
 		int i;
+		mbDown=false;
 		lbDown=false;
 		rbDown=false;
 
@@ -183,6 +303,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 
 	    cameraPos.x = 0.0f;
 	    cameraPos.y = 0.0f;
+	    cameraPos.z = 0.0f;
+
+	    iCameraPos.x = 0;
+	    iCameraPos.y = 0;
+	    iCameraPos.z = 0;
+
 	    cameraZoom = 1.0f;
 
 	    mouseX = 0.0f;
@@ -194,10 +320,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 		ctrlPressed = false;
 		altPressed = false;
 
+		createVTList();
 
 
 		//// GL WIDGET START ////
-		maxH = 0;
+		
 		frameCount = 0;
 		changesMade = false;
 		bufferInvalid = false;
@@ -214,6 +341,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 
 
 		gw->init(igwSize, this, E_RENDER_VOL);
+		maxH = gw->loadRadZ;
 
 		//gm = new GameMap();
 		//gm->init(this, 1024, 512);
@@ -231,6 +359,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 	    glDisable(GL_BLEND);
 	    //glEnable(GL_BLEND);
 
+
+	    
 
 
 
@@ -412,6 +542,13 @@ void Singleton::setShaderVec3 (string paramName, float x, float y, float z)
 	        shaderMap[curShader]->setShaderVec3(paramName, x, y, z);
 	    }
 	}
+void Singleton::setShaderfVec3 (string paramName, fVector3 * v)
+                                                           {
+	    if (shadersAreLoaded) {
+	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
+	        shaderMap[curShader]->setShaderfVec3(paramName, v);
+	    }
+	}
 void Singleton::setShaderVec4 (string paramName, float x, float y, float z, float w)
                                                                                  {
 	    if (shadersAreLoaded) {
@@ -485,8 +622,38 @@ void Singleton::drawFBOOffset (string fboName, int ind, float xOff, float yOff, 
 	}
 void Singleton::moveCamera (float dx, float dy, float zoom)
                                                         {
-	    cameraPos.x += dx/(baseW*zoom/2.0);
-	    cameraPos.y -= dy/(baseH*zoom/2.0);
+
+
+		/*
+		int dxmod = dx*pitchSrc2 - singleton->iCameraPos.x;
+		int dymod = dy*pitchSrc2 - singleton->iCameraPos.y;
+		int dzmod = dz*pitchSrc2 - singleton->iCameraPos.z;
+
+
+		int x1 = (dxmod-dymod) - pitchSrc2;
+		int y1 = (-(dxmod/2) + -(dymod/2) + dzmod) - pitchSrc2;
+		*/
+
+		float dxZoom = dx/zoom;
+		float dyZoom = dy/zoom;
+
+		if (lbDown) {
+			cameraPos.x -= dyZoom + dxZoom/2.0;
+			cameraPos.y -= dyZoom - dxZoom/2.0;//
+			
+			//cameraPos.x += dx/zoom;
+			//cameraPos.y -= dy/zoom;
+		}
+		if (rbDown) {
+			cameraPos.z += dyZoom;
+		}
+
+		iCameraPos.x = (int)cameraPos.x;
+		iCameraPos.y = (int)cameraPos.y;
+		iCameraPos.z = (int)cameraPos.z;
+
+		//cameraPos.x += dx/(zoom/2.0);
+		//cameraPos.y -= dy/(zoom/2.0);
 	}
 void Singleton::doAction (eProgramAction pa)
                                          {
@@ -513,9 +680,6 @@ void Singleton::doAction (eProgramAction pa)
 
 			break;
 			case E_PA_REFRESH:
-				cameraPos.x = 0.0f;
-            	cameraPos.y = 0.0f;
-            	cameraZoom = 1.0f;
             	doShaderRefresh();
 			break;
 			case E_PA_SIZE:
@@ -573,18 +737,21 @@ void Singleton::keyboardUp (unsigned char key, int x, int y)
 			case 'r':
 				//gm->baseRendered = false;
 
-				cameraPos.x = 0.0f;
-				cameraPos.y = 0.0f;
-				cameraZoom = 1.0f;
 				doShaderRefresh();
 				bufferInvalid = true;
 
-				if (ctrlPressed) {
-				    //clearFBO();
-				    gw->resetToState(E_STATE_CREATESIMPLEXNOISE_END);
-				}
+
+				
 
 			break;
+
+			case 't':
+				doShaderRefresh();
+			    gw->resetToState(E_STATE_COPYTOTEXTURE_END);
+			    bufferInvalid = true;
+			    changesMade = true;
+			break;
+
 			case 'a':
 				changesMade = true;
 				maxH++;
@@ -627,17 +794,24 @@ void Singleton::mouseMove (int x, int y)
 		mouseXUp = x;
 		mouseYUp = y;
 
-		if (lbDown) {
+		if (lbDown || rbDown) {
 		    moveCamera((float)dx, (float)dy, cameraZoom);
-		} else if (rbDown) {
+		}
+		if (mbDown) {
 		    mouseX = x;
 		    mouseY = y;		    
 		}
 		lastPosX = x;
 		lastPosY = y;
 
-		if ( (x >= 0) && (y >= 0) && (x < baseW) && (y < baseH) && (rbDown||lbDown) ) {
+		if ( (x >= 0) && (y >= 0) && (x < baseW) && (y < baseH) && (rbDown||lbDown||mbDown) ) {
 			bufferInvalid = true;
+			
+			if (rbDown||lbDown) {
+				changesMade = true;
+			}
+			
+			
 		}
 	}
 void Singleton::mouseClick (int button, int state, int x, int y)
@@ -651,17 +825,23 @@ void Singleton::mouseClick (int button, int state, int x, int y)
 		switch (button) {
 			case GLUT_LEFT_BUTTON:
 				lbDown = (state == GLUT_DOWN);
+				changesMade = true;
 			break;
 			case GLUT_RIGHT_BUTTON:
 				rbDown = (state == GLUT_DOWN);
 			break;
+			case GLUT_MIDDLE_BUTTON:
+				mbDown = (state == GLUT_DOWN);
+			break;
 
 			case 3: // wheel up
 				wheelDelta = 1.0/20.0f;
+				changesMade = true;
 			break;
 
 			case 4: // wheel down
 				wheelDelta = -1.0/20.0f;
+				changesMade = true;
 			break;
 		}
 
@@ -691,10 +871,9 @@ void Singleton::reshape (int w, int h)
 		
 		setWH(w,h);
 
-		
 		screenWidth = w;
 		screenHeight = h;
-		gw->setWH(w, h);
+		
 		glViewport(0,0,w,h);
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();

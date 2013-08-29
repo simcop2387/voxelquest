@@ -1,55 +1,61 @@
 #version 120
 ////////////////  GenerateVolume  ////////////////
 
-uniform sampler3D Texture0; //volume texture linear
-uniform sampler3D Texture1; //voro texture nearest
+uniform sampler3D Texture0; //volume texture nearest
+uniform sampler3D Texture1; //voro texture linear
 uniform sampler2D Texture2; //2d to 3d coords
 varying vec2 TexCoord0;
 uniform vec2 resolution;
 
-const float unitsPerDim = 8.0;
-const float voroPerDim = 8.0;
+uniform float unitsPerDim;
+uniform float voroScale;
 
-/*
+
 vec3 COLOR_MASKS[27] = vec3[](
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 ),
+	vec3(  -1.0,  -1.0,  -1.0  ),
+	vec3(  -1.0,  -1.0,  0.0  ),
+	vec3(  -1.0,  -1.0,  1.0  ),
 
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 ),
+	vec3(  -1.0,  0.0,  -1.0  ),
+	vec3(  -1.0,  0.0,  0.0  ),
+	vec3(  -1.0,  0.0,  1.0  ),
 
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 ),
+	vec3(  -1.0,  1.0,  -1.0  ),
+	vec3(  -1.0,  1.0,  0.0  ),
+	vec3(  -1.0,  1.0,  1.0  ),
 
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 ),
 
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 ),
+	
+	vec3(  0.0,  -1.0,  -1.0  ),
+	vec3(  0.0,  -1.0,  0.0  ),
+	vec3(  0.0,  -1.0,  1.0  ),
 
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 ),
+	vec3(  0.0,  0.0,  -1.0  ),
+	vec3(  0.0,  0.0,  0.0  ),
+	vec3(  0.0,  0.0,  1.0  ),
 
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 ),
+	vec3(  0.0,  1.0,  -1.0  ),
+	vec3(  0.0,  1.0,  0.0  ),
+	vec3(  0.0,  1.0,  1.0  ),
 
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 ),
 
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 ),
-	vec3( 0.0, 0.0, 0.0 )
+
+	vec3(  1.0,  -1.0,  -1.0  ),
+	vec3(  1.0,  -1.0,  0.0  ),
+	vec3(  1.0,  -1.0,  1.0  ),
+
+	vec3(  1.0,  0.0,  -1.0  ),
+	vec3(  1.0,  0.0,  0.0  ),
+	vec3(  1.0,  0.0,  1.0  ),
+
+	vec3(  1.0,  1.0,  -1.0  ),
+	vec3(  1.0,  1.0,  0.0  ),
+	vec3(  1.0,  1.0,  1.0  )
+
+
 
 );
-*/
+
 
 
 $
@@ -64,13 +70,11 @@ $
 
 void main() {
 
+	float voroMod = (1.0-(1.0/voroScale))/2.0;
+
 	vec3 coords = texture2D(Texture2, TexCoord0.xy).rgb;
-
-	vec3 newCoords = (coords * 255.0 + 0.5)/256.0;
-
-	//vec4 tex1 =  texture3D(Texture0, floor(newCoords*unitsPerDim)/unitsPerDim);
+	vec3 newCoords = coords;//(coords * 255.0 + 0.5)/256.0;
 	vec4 tex1 =  texture3D(Texture0, newCoords);
-
 
 
 	int i = 0;
@@ -81,30 +85,30 @@ void main() {
 	float fj = 0.0;
 	float fk = 0.0;
 
-	float rad = 1.0/voroPerDim;
+	//float unitsPerDimScaled = unitsPerDim/voroScale;
+
+	float rad = 1.0/(unitsPerDim);
 	vec3 offVec = vec3(0.0,0.0,0.0);
 	vec3 sampPoint = vec3(0.0,0.0,0.0);
 	vec3 samp = vec3(0.0,0.0,0.0);
-
+	vec3 bestSamp = vec3(0.0,0.0,0.0);
 	float curDis = 0.0;
-
 	float minDis1 = 999.0;
 	float minDis2 = 999.0;
 
-	for (i = -1; i <= 1; i++) {
+	const int minrad = -1;
+	const int maxrad = 1;
+	
+	/*
+	for (i = minrad; i <= maxrad; i++) {
 		offVec.x = float(i);
-		for (j = -1; j <= 1; j++) {
+		for (j = minrad; j <= maxrad; j++) {
 			offVec.y = float(j);
-			for (k = -1; k <= 1; k++) {
+			for (k = minrad; k <= maxrad; k++) {
 				offVec.z = float(k);
 
-				sampPoint = newCoords+offVec*rad;
-
-				samp = texture3D(Texture1,sampPoint).rgb;
-
-				samp = (samp-0.5)*0.25*rad + sampPoint;
-
-				curDis = distance(samp,newCoords);
+				samp = texture3D(Texture0, floor( (newCoords + offVec*rad)*unitsPerDim )/unitsPerDim ).rgb;
+				curDis = distance( samp , newCoords/voroScale + voroMod);
 
 				if (curDis < minDis1) {
 					minDis2 = minDis1;
@@ -118,16 +122,43 @@ void main() {
 
 			}
 		}
+	}*/
+
+	for (i = 0; i < 27; i++) {
+		samp = texture3D(Texture0, floor( (newCoords + COLOR_MASKS[i]*rad)*unitsPerDim )/unitsPerDim ).rgb;
+
+		if ((samp.r + samp.g + samp.b) == 0.0) {
+
+		}
+		else {
+			curDis = distance( samp , newCoords/voroScale + voroMod);
+
+			if (curDis < minDis1) {
+				bestSamp = samp;
+
+				minDis2 = minDis1;
+				minDis1 = curDis;
+			}
+			else {
+				if (curDis < minDis2) {
+					minDis2 = curDis;
+				}
+			}
+		}
+
+		
 	}
 
-	tex1.b = 1.0 - (minDis1*2.0/(minDis1+minDis2));
+	float gradVal = clamp(1.0 - (minDis1*2.0/(minDis1+minDis2)),1.0/255.0,1.0);
+	
+	//(bestSamp.r + bestSamp.g*unitsPerDim + bestSamp.b*unitsPerDim*unitsPerDim);
+
+	tex1.a = float(texture3D(Texture1, bestSamp).a > 0.5)*gradVal;
+	
+	tex1.rgb = bestSamp;
+	
+
 	gl_FragData[0] = tex1;
 
-
-	/*
-	vec4 ress = texture3D(Texture1, newCoords);
-	ress.a = tex1.a;
-    gl_FragData[0] = ress;
-    */
 }
 

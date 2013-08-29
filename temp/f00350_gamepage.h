@@ -16,20 +16,26 @@ void GamePage::init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRe
 
 		singleton = _singleton;
 
+		voroScale = 1.0;
 		
 
 		iDim = _iDim;
 		iOff = _iOff;
 
-		int iBuf = iDim/2;
+		
 		int tmp = ((iOff.z * (256/iDim)) >> 8);
 		origHeight = tmp;
 		origHeight = origHeight/255.0;
-		iDim += iBuf*2;
 
-		iOff.x -= iBuf;
-		iOff.y -= iBuf;
-		iOff.z -= iBuf;
+
+
+		int iBuf = iDim/2;
+
+		iDim += iBuf*2;
+		
+		//iOff.x -= iBuf;
+		//iOff.y -= iBuf;
+		//iOff.z -= iBuf;
 
 		iVolumeSize = iDim*iDim*iDim;
 		volData = new uint[iVolumeSize];
@@ -38,8 +44,7 @@ void GamePage::init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRe
 		}
 
 
-
-		uint voroPerUnit = 2;
+		/*
 		iVoroDim = iDim;
 		iVoroSize = iVoroDim*iVoroDim*iVoroDim;
 		voroData = new uint[iVoroSize];
@@ -47,6 +52,7 @@ void GamePage::init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRe
 		for (i = 0; i < iVoroSize; i++) {
 			voroData[i] = 0;
 		}
+		*/
 		
 
 
@@ -63,7 +69,8 @@ void GamePage::init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRe
 		fboSet = new FBOSet();
 		fboSet->init(2,iRenderSize,iRenderSize,1);
 		glGenTextures(1,&volID);
-		glGenTextures(1,&voroID);
+		glGenTextures(1,&volIDLinear);
+		//glGenTextures(1,&voroID);
 		
 
 		curState = E_STATE_INIT_END;
@@ -96,24 +103,31 @@ float GamePage::sqrtFast (float x)
 void GamePage::createSimplexNoise ()
                                   {
 
+		bool isBlank = true;
+		bool isFull = true;
+		
 
 		curState = E_STATE_CREATESIMPLEXNOISE_BEG;
 
 		int i, j, k, m;
 
+		float maxGenHeight = 32.0f;
 
 		int totLen = iDim;
-
+		int totLenO2 = iDim/2;
+		float fTotLen = (float)totLen;
+		float fTotLenT2 = fTotLen*2.0f;
 
 		int ind = 0;
 
 		uint tmp;
 
-		float fx;
-		float fy;
-		float fz;
+		float fx, fy, fz;
+		float fx2, fy2, fz2;
 
 		uint randOff[3];
+
+		float ijkVals[3];
 
 		const float RAND_MOD[9] = {
 			3456.0f, 5965.0f, 45684.0f,
@@ -125,195 +139,121 @@ void GamePage::createSimplexNoise ()
 		float thresh;
 		float testVal;
 
-
-		
-		
-		for (j = 0; j < totLen; j++) {
-			fy = j + iOff.y;
-
-			for (i = 0; i < totLen; i++) {
-				fx = i + iOff.x;
-				
-				for (k = 0; k < totLen; k++) {
-					fz = k + iOff.z;
-
-					ind = k*totLen*totLen + j*totLen + i;
-
-					
-					
-					if (fx < 0.0f || fy < 0.0f || fz < 0.0f ) {
-						volData[ind] = 0;
-					}
-					else {
-						testVal = simplexScaledNoise(
-											4.0f, //octaves
-											0.5f, //persistence (amount added in each successive generation)
-											1.0f/64.0f, //scale (frequency)
-											0.0f,
-											1.0f,
-											fx+332.0f,
-											fy+997.0f,
-											fz+4444.0f
-										);
-						
-
-						thresh = fz/255.0;
-						tmp = clamp(testVal*255.0*(1.0-thresh*thresh*thresh));
-						volData[ind] = (tmp<<24);
-
-						//(tmp<<24)|(randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
-					}
-					
-					
-
-					
-				}
-			}
+		if (iOff.z- totLenO2 > maxGenHeight) {
+			isBlank = true;
+			isFull = false;
 		}
+		else {
+			for (j = 0; j < totLen; j++) {
 
-		totLen = iVoroDim;
+				ijkVals[1] = (float)j;
 
-		ind = 0;
+				fy = (j - totLenO2) + iOff.y;
+				fy2 = (j - totLenO2)*voroScale + iOff.y;
 
-		for (j = 0; j < totLen; j++) {
-			fy = j + iOff.y;
+				for (i = 0; i < totLen; i++) {
 
-			for (i = 0; i < totLen; i++) {
-				fx = i + iOff.x;
-				
-				for (k = 0; k < totLen; k++) {
-					fz = k + iOff.z;
+					ijkVals[0] = (float)i;
 
-					ind = k*totLen*totLen + j*totLen + i;
+					fx = (i - totLenO2) + iOff.x;
+					fx2 = (i - totLenO2)*voroScale + iOff.x;
+					
+					for (k = 0; k < totLen; k++) {
 
-					if (fx < 0.0f || fy < 0.0f || fz < 0.0f ) {
-						voroData[ind] = 0;
-					}
-					else {
+						ijkVals[2] = (float)k;
 
-						for (m = 0; m < 3; m++) {
-							randOff[m] = clamp(simplexScaledNoise(
-												1.0f, //octaves
-												1.0f, //persistence (amount added in each successive generation)
-												1.0f/4.0, //scale (frequency)
+						fz = (k - totLenO2) + iOff.z;
+						fz2 = (k - totLenO2)*voroScale + iOff.z;
+
+						ind = k*totLen*totLen + j*totLen + i;
+
+						
+						
+						if (fx < 0.0f || fy < 0.0f || fz < 0.0f ) {
+							volData[ind] = 0;
+						}
+						else {
+							testVal = simplexScaledNoise(
+												4.0f, //octaves
+												0.5f, //persistence (amount added in each successive generation)
+												1.0f/32.0f, //scale (frequency)
 												0.0f,
 												1.0f,
-												fx+RAND_MOD[m*3+0],
-												fy+RAND_MOD[m*3+1],
-												fz+RAND_MOD[m*3+2]
-											)*255.0);
+												fx+singleton->seedX,
+												fy+singleton->seedY,
+												fz+singleton->seedZ
+											);
+							
+
+							thresh = (fz/maxGenHeight);
+							if (thresh > 1.0) {
+								thresh = 1.0;
+							}
+							tmp = clamp(testVal*255.0*(1.0-thresh*thresh*thresh));
+
+							if (tmp >= 127) {
+								isBlank = false;
+							}
+							else {
+								isFull = false;
+							}
+							
+
+
+							for (m = 0; m < 3; m++) {
+								randOff[m] = clamp((simplexScaledNoise(
+																			1.0f, //octaves
+																			1.0f, //persistence (amount added in each successive generation)
+																			1.0f/4.0, //scale (frequency)
+																			0.0f,
+																			1.0f,
+																			fx2+RAND_MOD[m*3+0],
+																			fy2+RAND_MOD[m*3+1],
+																			fz2+RAND_MOD[m*3+2]
+																		) + ijkVals[m])*255.0/fTotLen);
+							}
+
+							if (tmp%16 > 1) {
+								volData[ind] = (tmp<<24)|(randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
+							}
+							else {
+								volData[ind] = (tmp<<24);
+							}
+
+							
 						}
 						
-						voroData[ind] = (randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
-					}
+						
 
-					
+						
+					}
 				}
 			}
 		}
 		
+		
+		
+		
+		
 
+		if (isBlank||isFull) {
 
-		curState = E_STATE_CREATESIMPLEXNOISE_END;
+			if (isBlank) {
+				fillState = E_FILL_STATE_EMPTY;
+			}
+			if (isFull) {
+				fillState = E_FILL_STATE_FULL;
+			}
 
-
-	}
-void GamePage::renderVolume (float texMin, float texMax)
-                                                      {
-
-		float fx1 = -1.0f;
-		float fy2 = -1.0f;
-		float fx2 = 1.0f;
-		float fy1 = 1.0f;
-
-		float centerX = (fx1 + fx2)/2.0f;
-		float centerY = (fy1 + fy2)/2.0f;
-
-		float fy25 = fy1*0.75f + fy2*0.25f;
-		float fy75 = fy1*0.25f + fy2*0.75f;
-
-		float coordsX[8];
-		float coordsY[8];
-
-		coordsX[0] = centerX;
-		coordsY[0] = centerY;
-
-		coordsX[1] = centerX;
-		coordsY[1] = fy1;
-
-		coordsX[2] = fx2;
-		coordsY[2] = fy25;
-
-		coordsX[3] = fx2;
-		coordsY[3] = fy75;
-
-		coordsX[4] = centerX;
-		coordsY[4] = fy2;
-
-		coordsX[5] = fx1;
-		coordsY[5] = fy75;
-
-		coordsX[6] = fx1;
-		coordsY[6] = fy25;
-
-		coordsX[7] = coordsX[1];
-		coordsY[7] = coordsY[1];
-
-		float backfaceX[8];
-		float backfaceY[8];
-		float backfaceZ[8];
+			curState = E_STATE_LENGTH;
+		}
+		else {
+			fillState = E_FILL_STATE_PARTIAL;
+			curState = E_STATE_CREATESIMPLEXNOISE_END;
+		}
 
 		
 
-		backfaceX[0] = texMin;
-		backfaceY[0] = texMin;
-		backfaceZ[0] = texMin;
-		backfaceX[1] = texMin;
-		backfaceY[1] = texMin;
-		backfaceZ[1] = texMax;
-		backfaceX[2] = texMax;
-		backfaceY[2] = texMin;
-		backfaceZ[2] = texMax;
-		backfaceX[3] = texMax;
-		backfaceY[3] = texMin;
-		backfaceZ[3] = texMin;
-		backfaceX[4] = texMax;
-		backfaceY[4] = texMax;
-		backfaceZ[4] = texMin;
-		backfaceX[5] = texMin;
-		backfaceY[5] = texMax;
-		backfaceZ[5] = texMin;
-		backfaceX[6] = texMin;
-		backfaceY[6] = texMax;
-		backfaceZ[6] = texMax;
-		backfaceX[7] = backfaceX[1];
-		backfaceY[7] = backfaceY[1];
-		backfaceZ[7] = backfaceZ[1];
-
-
-	    glBegin(GL_TRIANGLE_FAN);
-	    glNormal3f(0, 0, 1);
-
-	    int i;
-
-	    for (i = 0; i < 8; i++) {
-
-	    	glColor4f(backfaceX[i], backfaceY[i], backfaceZ[i], 1.0f);
-
-	    	glMultiTexCoord3f( GL_TEXTURE0, backfaceX[i], backfaceY[i], backfaceZ[i]);
-			
-			if (i == 0) {
-				//glColor4f((backfaceX[i]+1.0f)/2.0f, (backfaceY[i]+1.0f)/2.0f, (backfaceZ[i]+1.0f)/2.0f, 1.0f);
-				glMultiTexCoord3f( GL_TEXTURE1, 1.0f, 1.0f, 1.0f);
-			}
-			else {
-				glMultiTexCoord3f( GL_TEXTURE1, backfaceX[i], backfaceY[i], backfaceZ[i]);
-			}
-
-	    	glVertex3f(coordsX[i],coordsY[i],0.0f);
-	    }
-	    
-	    glEnd();
 
 	}
 void GamePage::copyToTexture ()
@@ -324,6 +264,16 @@ void GamePage::copyToTexture ()
 		//copy volData to 3d Texture
 		glBindTexture(GL_TEXTURE_3D,volID);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, iDim, iDim, iDim, 0, GL_RGBA, GL_UNSIGNED_BYTE, volData);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_LINEAR
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//GL_NEAREST
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+		glBindTexture(GL_TEXTURE_3D,0);
+
+		glBindTexture(GL_TEXTURE_3D,volIDLinear);
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, iDim, iDim, iDim, 0, GL_RGBA, GL_UNSIGNED_BYTE, volData);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);//GL_LINEAR
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);//GL_NEAREST
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
@@ -332,7 +282,15 @@ void GamePage::copyToTexture ()
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 		glBindTexture(GL_TEXTURE_3D,0);
 
+		curState = E_STATE_COPYTOTEXTURE_END;
 
+	}
+void GamePage::generateVolume ()
+                              {
+
+		curState = E_STATE_GENERATEVOLUME_BEG;
+
+		/*
 		//copy voroData to 3d Texture
 		glBindTexture(GL_TEXTURE_3D,voroID);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, iVoroDim, iVoroDim, iVoroDim, 0, GL_RGBA, GL_UNSIGNED_BYTE, voroData);
@@ -343,6 +301,7 @@ void GamePage::copyToTexture ()
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 		glBindTexture(GL_TEXTURE_3D,0);
+		*/
 
 
 		
@@ -351,10 +310,11 @@ void GamePage::copyToTexture ()
 		singleton->bindShader("GenerateVolume");
 		singleton->bindFBO("volGenFBO");
 		singleton->setShaderTexture3D(volID, 0);
-		singleton->setShaderTexture3D(voroID, 1);
+		singleton->setShaderTexture3D(volIDLinear, 1);
 		singleton->setShaderTexture(singleton->lookup2to3ID, 2);
 
-		//singleton->setShaderFloat("unitsPerDim", iDim.x);
+		singleton->setShaderFloat("unitsPerDim", iDim);
+		singleton->setShaderFloat("voroScale", voroScale);
 		singleton->drawFSQuad(1.0f);
 
 		singleton->setShaderTexture3D(0, 0);
@@ -371,7 +331,7 @@ void GamePage::copyToTexture ()
 		glClearColor(0.0f,0.0f,0.0f,0.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		singleton->setShaderFloat("curHeight",origHeight);
-		renderVolume(0.0f,1.0f);
+		glCallList(singleton->volTris);
 		singleton->unsampleFBO("volGenFBO");
 		singleton->unbindFBO();
 		singleton->unbindShader();
@@ -388,7 +348,7 @@ void GamePage::copyToTexture ()
 		glClearColor(0.0f,0.0f,0.0f,0.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		singleton->setShaderFloat("curHeight",origHeight);
-		renderVolume(0.0f,1.0f);
+		glCallList(singleton->volTris);
 		singleton->setShaderTexture3D("Texture0", 0, 0);
 
 		singleton->unbindFBO();
@@ -398,7 +358,7 @@ void GamePage::copyToTexture ()
 
 
 
-		curState = E_STATE_COPYTOTEXTURE_END;
+		curState = E_STATE_GENERATEVOLUME_END;
 	}
 GamePage::~ GamePage ()
                     {
@@ -406,16 +366,17 @@ GamePage::~ GamePage ()
 		if (volData) {
 			delete[] volData;
 		}
-		if (voroData) {
+		
+		/*if (voroData) {
 			delete[] voroData;
-		}
+		}*/
 		
 
 		if (volID) {
 			glDeleteTextures(1, &volID);
 		}
-		if (voroID) {
-			glDeleteTextures(1, &voroID);
+		if (volIDLinear) {
+			glDeleteTextures(1, &volIDLinear);
 		}
 	}
 void GamePage::run ()

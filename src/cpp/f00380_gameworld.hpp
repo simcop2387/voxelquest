@@ -3,13 +3,15 @@ class GameWorld {
 public:
 
 
+	
+	int pageCount;
+
 	iVector3 iDim;
 	int iPageSize;
 	int iVolumeSize;
+	int renderRad;
 	int loadRad;
 	int loadRadZ;
-	int renderRad;
-	float unitScale;
 	int diagrams[E_RENDER_LENGTH][E_STATE_LENGTH];
 	int* curDiagram;
 	int renderMethod;
@@ -21,11 +23,9 @@ public:
 	GamePage** texData;
 	int iBufferSize;
 	iVector3 origin;
-	iVector3 cameraPos;
-	iVector3 playerPos;
-	iVector2 iScreenDim;
-	fVector2 fScreenDim;
 	Poco::ThreadPool threadpool;
+
+	int iRSize;
 
 
 	GameWorld()
@@ -39,16 +39,16 @@ public:
 
 	}
 
-	int checkBounds(int i, int j, int k) {
+	bool checkBounds(int i, int j, int k) {
 		
-		int res = 1;
+		bool res = true;
 
-		if (i < 0) {res = 0;}
-		if (j < 0) {res = 0;}
-		if (k < 0) {res = 0;}
-		if (i >= iDim.x) {res = 0;}
-		if (j >= iDim.y) {res = 0;}
-		if (k >= iDim.z) {res = 0;}
+		if (i < 0) {res = false;}
+		if (j < 0) {res = false;}
+		if (k < 0) {res = false;}
+		if (i >= iDim.x) {res = false;}
+		if (j >= iDim.y) {res = false;}
+		if (k >= iDim.z) {res = false;}
 
 		return res;
 	}
@@ -59,13 +59,27 @@ public:
 		for (i = 0; i < iVolumeSize; i++) {
 			if (worldData[i]) {
 				if( worldData[i]->curState > resState) {
-					worldData[i]->curState = resState;
+
+					if (worldData[i]->fillState == E_FILL_STATE_PARTIAL) {
+						worldData[i]->curState = resState;
+					}
+
+					
 				}
 			}
 		}
 	}
 
+
+	
+
+
 	void init(iVector3 _iDim, Singleton* _singleton, int _renderMethod) {
+
+		pageCount = 0;
+		iRSize = 128;
+
+
 		#ifdef DEBUG_MODE
 		pushTrace("GameWorld init");
 		#endif
@@ -87,17 +101,17 @@ public:
 
 	    diagrams[E_RENDER_VOL][E_STATE_INIT_END] = E_STATE_CREATESIMPLEXNOISE_LAUNCH;
 		diagrams[E_RENDER_VOL][E_STATE_CREATESIMPLEXNOISE_END] = E_STATE_COPYTOTEXTURE_LAUNCH;
-	    diagrams[E_RENDER_VOL][E_STATE_COPYTOTEXTURE_END] = E_STATE_LENGTH;
+	    diagrams[E_RENDER_VOL][E_STATE_COPYTOTEXTURE_END] = E_STATE_GENERATEVOLUME_LAUNCH;
+	    diagrams[E_RENDER_VOL][E_STATE_GENERATEVOLUME_END] = E_STATE_LENGTH;
 
 		curDiagram = diagrams[renderMethod];
 
 		iPageSize = 4;
-		unitScale = 0.25f;
-
-		loadRad = 4;
-		loadRadZ = 4;
-	    renderRad = loadRad-1;
+		loadRad = 3;
+		loadRadZ = 3;
 		
+		renderRad = 12;
+
 		iVolumeSize = iDim.x*iDim.y*iDim.z;
 		
 	    worldData = new GamePage*[iVolumeSize];
@@ -105,12 +119,13 @@ public:
 	    
 		
 
-	    cameraPos.x = loadRad*iPageSize;
-	    cameraPos.y = loadRad*iPageSize;
-	    cameraPos.z = loadRadZ*iPageSize;
+	    singleton->cameraPos.x = loadRad*iRSize;
+	    singleton->cameraPos.y = loadRad*iRSize;
+	    singleton->cameraPos.z = loadRadZ*iRSize;
+	    singleton->iCameraPos.x = loadRad*iRSize;
+	    singleton->iCameraPos.y = loadRad*iRSize;
+	    singleton->iCameraPos.z = loadRadZ*iRSize;
 	    
-	    playerPos = cameraPos;
-
 
 		
 		for (i = 0; i < iVolumeSize; i++) {
@@ -130,7 +145,7 @@ public:
 
 		bool procResult = processPages();
 		if (procResult || changesMade) {
-			renderPages(singleton->cameraZoom, maxH);
+			renderPages(maxH);
 		}
 
 		if (procResult || changesMade || bufferInvalid) {
@@ -138,7 +153,7 @@ public:
 			glClearColor(0.6,0.6,0.7,0.0);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			postProcess(singleton->cameraZoom);
+			postProcess();
 
 			glutSwapBuffers();
 			glFlush();
@@ -150,6 +165,10 @@ public:
 	}
 
 	bool processPages() {
+
+
+		
+
 		int i, j, k;
 		int res;
 		int ind;
@@ -164,15 +183,13 @@ public:
 
 	    bool cmade = false;
 
-	    bool cont = true;
-
 
 	    iVector3 curPos;
 	    iVector3 camPagePos;
 
-	    camPagePos.x = cameraPos.x/iPageSize;
-	    camPagePos.y = cameraPos.y/iPageSize;
-	    camPagePos.z = cameraPos.z/iPageSize;
+	    camPagePos.x = singleton->iCameraPos.x/iRSize;
+	    camPagePos.y = singleton->iCameraPos.y/iRSize;
+	    camPagePos.z = singleton->iCameraPos.z/iRSize;
 
 		minWithinLR.x = camPagePos.x - loadRad;
 		minWithinLR.y = camPagePos.y - loadRad;
@@ -189,23 +206,33 @@ public:
 	    E_STATES nState;
 
 
-	    if (threadpool.allocated() >= 16) {
-	    	threadpool.joinAll();
-	    }
+	    int changeCount = 0;
+	    int maxChanges = 16;
 
+	    int extraRad = 4;
+
+	    if (singleton->lbDown || singleton->rbDown) {
+	    	extraRad = 0;
+	    }
+	    
 
 		for (k = -loadRadZ; k <= loadRadZ; k++) {
-			for (j = -loadRad; j <= loadRad; j++) {
-				for (i = -loadRad; i <= loadRad; i++) {
+			for (j = -(loadRad+extraRad); j <= (loadRad+extraRad); j++) {
+				for (i = -(loadRad+extraRad); i <= (loadRad+extraRad); i++) {
+
+					
+					/*
+					if (threadpool.allocated() >= 16) {
+						threadpool.joinAll();
+					}
+					*/
 
 					ii = i+camPagePos.x;
 					jj = j+camPagePos.y;
 					kk = k+camPagePos.z;
 
 
-					res = checkBounds(ii,jj,kk);
-
-					if (res > 0) {
+					if ( checkBounds(ii,jj,kk) ) {
 
 
 
@@ -225,11 +252,14 @@ public:
 							#endif
 
 							worldData[ind] = new GamePage();
-							worldData[ind]->init(singleton, iPageSize, curPos, 512);
+							worldData[ind]->init(singleton, iPageSize, curPos, iRSize*2);
 
-							cont=false;
+							pageCount++;
+
+							//doTrace("Voxel Count (million): ", i__s(pageCount*(iRSize*iRSize*iRSize/(1024*1024)) ));
+
 						}
-						else if (cont) {
+						else {
 
 							nState = (E_STATES)curDiagram[worldData[ind]->curState];
 
@@ -241,10 +271,19 @@ public:
 	                            	#endif
 
 	                            	worldData[ind]->nextState = nState;
-	                            	
-	                            	
+
 	                            	if ( threadpool.available() > 0 ) {
-	                            		threadpool.start(*worldData[ind]);
+
+	                            		try {
+	                            			threadpool.start(*worldData[ind]);
+	                            		}
+	                            		catch (SystemException & exc) {
+	                            			doTrace("MEM EXCEPTION");
+	                            		}
+
+	                            		
+
+	                            		changeCount++;
 	                            	}
 	                            	else {
 	                            		return cmade;
@@ -263,12 +302,31 @@ public:
 
 									
 									worldData[ind]->nextState = nState;
-
 									worldData[ind]->copyToTexture();
 									cmade = true;
 									
+									changeCount++;
+
 									//return cmade;
 								break;
+
+
+								case E_STATE_GENERATEVOLUME_LAUNCH:
+
+									#ifdef DEBUG_MODE
+									doTrace("E_STATE_GENERATE_VOLUME_LAUNCH");
+									#endif
+
+									
+									worldData[ind]->nextState = nState;
+									worldData[ind]->generateVolume();
+									cmade = true;
+
+									changeCount++;
+									
+									//return cmade;
+								break;
+
 								
 								case E_STATE_WAIT:
 
@@ -282,6 +340,10 @@ public:
 								break;
 
 							}
+
+							if (changeCount >= maxChanges) {
+								return cmade;
+							}
 							
 						}
 
@@ -291,11 +353,15 @@ public:
 				}
 			}
 		}
+
+
+
 		
 		return cmade;
 	}
 
-	void renderPages(float zoom, int maxH) {
+	void renderPages(int maxH) {
+
 		int i, j, k;
 		int res;
 		int ind;
@@ -308,12 +374,11 @@ public:
 	    int jj;
 	    int kk;
 
-	    iVector3 curPos;
 	    iVector3 camPagePos;
 
-	    camPagePos.x = cameraPos.x/iPageSize;
-	    camPagePos.y = cameraPos.y/iPageSize;
-	    camPagePos.z = cameraPos.z/iPageSize;
+	    camPagePos.x = singleton->iCameraPos.x/iRSize;
+	    camPagePos.y = singleton->iCameraPos.y/iRSize;
+	    camPagePos.z = singleton->iCameraPos.z/iRSize;
 
 	    int curInd = 0;
 		
@@ -326,39 +391,36 @@ public:
 
 	    
 
-	    maxH = std::max(std::min(loadRadZ,maxH), -loadRadZ);
+	    maxH = std::max(std::min(renderRad,maxH), -renderRad);
 
-		for (k = -loadRadZ; k <= maxH; k++) {
-			for (j = -loadRad; j <= loadRad; j++) {
-				for (i = -loadRad; i <= loadRad; i++) {
+		for (k = -renderRad; k <= renderRad; k++) {
+			for (j = -renderRad; j <= renderRad; j++) {
+				for (i = -renderRad; i <= renderRad; i++) {
 
 					ii = i+camPagePos.x;
 					jj = j+camPagePos.y;
 					kk = k+camPagePos.z;
 
-
-					res = checkBounds(ii,jj,kk);
-
-					if (res > 0) {
+					if ( checkBounds(ii,jj,kk) ) {
 
 
 
 						ind = kk*jw*iw + jj*iw + ii;
-
-						curPos.x = ii*iPageSize;
-						curPos.y = jj*iPageSize;
-						curPos.z = kk*iPageSize;
 
 						if (worldData[ind] == NULL) {
 
 						}
 						else {
 
-							switch(curDiagram[worldData[ind]->curState]) {
-								case E_STATE_LENGTH:
-									drawPage(worldData[ind], ii, jj, kk);
-								break;
+							if (worldData[ind]->fillState = E_FILL_STATE_PARTIAL) {
+								switch(curDiagram[worldData[ind]->curState]) {
+									case E_STATE_LENGTH:
+										drawPage(worldData[ind], ii, jj, kk);
+									break;
+								}
 							}
+
+							
 							
 						}
 
@@ -381,15 +443,17 @@ public:
 
 
 	void drawPage(GamePage* gp, int dx, int dy, int dz) {
-	    
 
 		int pitchSrc = gp->iRenderSize;
 		int pitchSrc2 = gp->iRenderSize/2;
-		int pitchSrc4 = gp->iRenderSize/4;
+
+		int dxmod = dx*pitchSrc2 - singleton->iCameraPos.x;
+		int dymod = dy*pitchSrc2 - singleton->iCameraPos.y;
+		int dzmod = dz*pitchSrc2 - singleton->iCameraPos.z;
 
 
-		int x1 = (dx*pitchSrc2-dy*pitchSrc2) - pitchSrc2;
-		int y1 = (-(dx*pitchSrc2/2) + -(dy*pitchSrc2/2) + dz*pitchSrc2) - pitchSrc2;
+		int x1 = (dxmod-dymod) - pitchSrc2;
+		int y1 = (-(dxmod/2) + -(dymod/2) + dzmod) - pitchSrc2;
 		int x2 = x1 + pitchSrc;
 		int y2 = y1 + pitchSrc;
 
@@ -398,11 +462,15 @@ public:
 		float fx2 = x2;
 		float fy2 = y2;
 
+		fVector2 fScreenDim;
+		fScreenDim.x = (float)singleton->baseW;
+		fScreenDim.y = (float)singleton->baseH;
 
-		fx1 = fx1*2.0f*unitScale/fScreenDim.x;
-		fy1 = fy1*2.0f*unitScale/fScreenDim.y;
-		fx2 = fx2*2.0f*unitScale/fScreenDim.x;
-		fy2 = fy2*2.0f*unitScale/fScreenDim.y;
+
+		fx1 = fx1*2.0f*(singleton->cameraZoom)/fScreenDim.x;
+		fy1 = fy1*2.0f*(singleton->cameraZoom)/fScreenDim.y;
+		fx2 = fx2*2.0f*(singleton->cameraZoom)/fScreenDim.x;
+		fy2 = fy2*2.0f*(singleton->cameraZoom)/fScreenDim.y;
 
 
 
@@ -437,15 +505,16 @@ public:
 
 
 
-	void postProcess(float zoom) {
+	void postProcess() {
 		
 
 		if (doDrawFBO) {
-			singleton->drawFBOOffset("volGenFBO", 0, singleton->cameraPos.x, singleton->cameraPos.y, zoom);
+
 		}
 		else {
 			singleton->bindShader("ShaderLighting");
 			singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
+			singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
 			
 			singleton->bindFBO("resultFBO");
 			singleton->sampleFBO("testFBO");
@@ -458,143 +527,9 @@ public:
 			singleton->unbindFBO();
 			singleton->unbindShader();
 
-			//glEnable(GL_BLEND);
-			singleton->drawFBOOffset("resultFBO", 0, singleton->cameraPos.x, singleton->cameraPos.y, zoom);
-			//glDisable(GL_BLEND);
+			singleton->drawFBO("resultFBO", 0, 1.0f);
 		}
 		
-	}
-
-	/*
-	void setNeighbors(int x, int y, int z) {
-		int rad = 1;
-		int i, j, k;
-		int ind;
-
-		int iw = iDim.x;
-	    int jw = iDim.y;
-	    int kw = iDim.z;
-
-		int curX, curY, curZ;
-
-		ind = z*jw*iw + y*iw + x;
-
-		int ind2;
-		int ind3;
-
-		int minX = std::max(0,minWithinLR.x);
-		int minY = std::max(0,minWithinLR.y);
-		int minZ = std::max(0,minWithinLR.z);
-
-		int maxX = std::min(iDim.x,maxWithinLR.x + 1);
-		int maxY = std::min(iDim.y,maxWithinLR.y + 1);
-		int maxZ = std::min(iDim.z,maxWithinLR.z + 1);
-
-
-		for (k = -rad; k <= rad; k++) {
-			curZ = k + z;
-			for (j = -rad; j <= rad; j++) {
-				curY = j + y;
-				for (i = -rad; i <= rad; i++) {
-					curX = i + x;
-
-					ind2 = (k+1)*9 + (j+1)*3 + (i+1);
-					ind3 = curZ*jw*iw + curY*iw + curX;
-					
-					if ((curZ < minZ || curZ >= maxZ)||(curY < minY || curY >= maxY)||(curX < minX || curX >= maxX)) {
-						worldData[ind]->neighbors[ind2] = blankPage;
-					}
-					else {
-
-
-						worldData[ind]->neighbors[ind2] = worldData[ind3];
-					}
-
-				}
-			}
-
-
-		}
-
-	}
-
-	int checkNeighbors(int x, int y, int z, int rad, int minState) {
-		int i, j, k;
-		int ind;
-
-		int iw = iDim.x;
-	    int jw = iDim.y;
-	    int kw = iDim.z;
-
-		int curX, curY, curZ;
-
-		int minX = std::max(0,minWithinLR.x);
-		int minY = std::max(0,minWithinLR.y);
-		int minZ = std::max(0,minWithinLR.z);
-
-		int maxX = std::min(iDim.x,maxWithinLR.x + 1);
-		int maxY = std::min(iDim.y,maxWithinLR.y + 1);
-		int maxZ = std::min(iDim.z,maxWithinLR.z + 1);
-
-
-
-		for (k = -rad; k <= rad; k++) {
-			curZ = k + z;
-
-			if (curZ < minZ || curZ >= maxZ) {
-
-			}
-			else {
-				for (j = -rad; j <= rad; j++) {
-					curY = j + y;
-
-					if (curY < minY || curY >= maxY) {
-
-					}
-					else {
-						for (i = -rad; i <= rad; i++) {
-							curX = i + x;
-
-							if (curX < minX || curX >= maxX) {
-								
-							}
-							else {
-								ind = curZ*jw*iw + curY*iw + curX;
-								
-
-
-								if (worldData[ind] == NULL) {
-									return 0;
-								}
-								else {
-									if (worldData[ind]->curState < minState) {
-										return 0;
-									}
-								}
-								
-							}
-
-						}
-					}
-
-					
-				}
-			}
-
-
-		}
-
-		return 1;
-	}
-	*/
-
-	
-
-	void setWH(int width, int height) {
-		iScreenDim.x = width;
-		fScreenDim.x = width;
-		iScreenDim.y = height;
-		fScreenDim.y = height;
 	}
 
 	~GameWorld() {

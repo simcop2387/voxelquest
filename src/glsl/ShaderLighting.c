@@ -7,6 +7,7 @@ uniform sampler2D Texture1;
 varying vec2 TexCoord0;
 uniform vec2 mouseCoords;
 uniform vec2 resolution;
+uniform vec3 cameraPos;
 //uniform vec4 bgColor;
 
 const int iNumRaySteps = 64;
@@ -27,11 +28,13 @@ float rand(vec2 co){
     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
-/*
+
 void main() {
 
     vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
     vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
+
+    vec4 fogColor = vec4(0.6, 0.6, 0.7, 1.0);
 
     ////////////////////////
     //gl_FragData[0] = tex0;
@@ -43,9 +46,9 @@ void main() {
 
     float tot = tex0.r + tex0.g + tex0.b + tex0.a;
 
-    if (tot == 0.0) {
-            discard;
-    }
+    //if (tot == 0.0) {
+            //discard;
+    //}
 
     vec3 lightVec = vec3(sin(phi)*cos(theta), sin(phi)*sin(theta), cos(phi));
     lightVec = normalize(lightVec);
@@ -105,8 +108,8 @@ void main() {
 
     //resComp = float(resComp > 0.9);
 
-    if (tex1.a == 1.0) {
-        //resComp = 1.0;
+    if (tex1.a == 0.0) {
+        resComp = 1.0;
     }
 
     vec3 myVec;
@@ -121,7 +124,7 @@ void main() {
     lightRes = pow(lightRes,0.8);
     lightRes = clamp(lightRes,0.0,1.0);
 
-    float hfog = clamp(baseHeight*0.2,0.0,1.0);
+    float hfog = clamp( (baseHeight*256.0-cameraPos.z)/1024.0,0.0,1.0);
     hfog = pow(hfog, 2.0);
 
     lightRes *= hfog;
@@ -132,12 +135,13 @@ void main() {
 
     //lightRes = floor(lightRes*16.0)/16.0;
 
-    if (hfog == 0.0) {
-        discard;
-    }
+
+    //if (baseHeight == 0.0) {
+        //discard;
+    //}
 
 
-    gl_FragData[0] = vec4(lightRes,lightRes,lightRes,1.0);// *0.8,lightRes*0.7,lightRes*0.6,1.0);
+    gl_FragData[0] = mix( fogColor, vec4(lightRes*0.8,lightRes*0.7,lightRes*0.6,1.0), hfog );
     //gl_FragData[0] = vec4(aoval,aoval,aoval,1.0);
 
     //gl_FragData[0] = vec4(lightRes,lightRes,lightRes,1.0);
@@ -145,14 +149,14 @@ void main() {
 
 
 }
-*/
 
 
+/*
 void main() {
     vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
     vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
 
     gl_FragData[0] = tex1;
 }
-
+*/
 

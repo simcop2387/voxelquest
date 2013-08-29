@@ -1,5 +1,5 @@
-﻿Build started 8/26/2013 9:46:08 PM.
-     1>Project "C:\wamp\www\voxelquest\glew\build\vc10\glew_shared.vcxproj" on node 2 (Rebuild target(s)).
+﻿Build started 8/28/2013 9:25:19 PM.
+     1>Project "C:\wamp\www\voxelquest\glew\build\vc10\glew_shared.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\CL.exe /c /I../../include /Zi /nologo /W3 /WX- /Od /Oy- /D WIN32 /D WIN32_MEAN_AND_LEAN /D VC_EXTRALEAN /D GLEW_BUILD /D _WINDLL /Gm- /EHsc /RTC1 /MDd /GS /Gy- /fp:precise /Zc:wchar_t /Zc:forScope /Fo"tmp\glew_shared\Debug\Win32\\" /Fd"tmp\glew_shared\Debug\Win32\vc110.pdb" /Gd /TC /analyze- /errorReport:prompt ..\..\src\glew.c
          glew.c
@@ -10,8 +10,8 @@
          tmp\glew_shared\Debug\Win32\glew.obj
             Creating library ../../lib\Debug\Win32\glew32d.lib and object ../../lib\Debug\Win32\glew32d.exp
          glew_shared.vcxproj -> C:\wamp\www\voxelquest\glew\build\vc10\../../bin\Debug\Win32\glew32d.dll
-     1>Done Building Project "C:\wamp\www\voxelquest\glew\build\vc10\glew_shared.vcxproj" (Rebuild target(s)).
+     1>Done Building Project "C:\wamp\www\voxelquest\glew\build\vc10\glew_shared.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:00.73
+Time Elapsed 00:00:00.75

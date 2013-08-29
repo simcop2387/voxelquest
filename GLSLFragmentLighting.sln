@@ -41,13 +41,15 @@ Global
 		{AEAC4286-2203-4B42-A016-BCE0503806CF}.Debug MX|x64.ActiveCfg = Debug|Win32
 		{AEAC4286-2203-4B42-A016-BCE0503806CF}.Debug|Win32.ActiveCfg = Debug|Win32
 		{AEAC4286-2203-4B42-A016-BCE0503806CF}.Debug|Win32.Build.0 = Debug|Win32
-		{AEAC4286-2203-4B42-A016-BCE0503806CF}.Debug|x64.ActiveCfg = Debug|Win32
+		{AEAC4286-2203-4B42-A016-BCE0503806CF}.Debug|x64.ActiveCfg = Debug|x64
+		{AEAC4286-2203-4B42-A016-BCE0503806CF}.Debug|x64.Build.0 = Debug|x64
 		{AEAC4286-2203-4B42-A016-BCE0503806CF}.Release MX|Win32.ActiveCfg = Release|Win32
 		{AEAC4286-2203-4B42-A016-BCE0503806CF}.Release MX|Win32.Build.0 = Release|Win32
 		{AEAC4286-2203-4B42-A016-BCE0503806CF}.Release MX|x64.ActiveCfg = Release|Win32
 		{AEAC4286-2203-4B42-A016-BCE0503806CF}.Release|Win32.ActiveCfg = Release|Win32
 		{AEAC4286-2203-4B42-A016-BCE0503806CF}.Release|Win32.Build.0 = Release|Win32
-		{AEAC4286-2203-4B42-A016-BCE0503806CF}.Release|x64.ActiveCfg = Release|Win32
+		{AEAC4286-2203-4B42-A016-BCE0503806CF}.Release|x64.ActiveCfg = Release|x64
+		{AEAC4286-2203-4B42-A016-BCE0503806CF}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

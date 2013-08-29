@@ -8,6 +8,7 @@ class Singleton
 {
 public:
   bool (keyDownArr) [MAX_KEYS];
+  GLuint volTris;
   vector <string> shaderStrings;
   vector <string> fboStrings;
   vector <string> shaderTextureIDs;
@@ -33,6 +34,7 @@ public:
   bool ctrlPressed;
   bool altPressed;
   fVector3 cameraPos;
+  iVector3 iCameraPos;
   float cameraZoom;
   uint * lookup2to3;
   GLuint lookup2to3ID;
@@ -40,6 +42,10 @@ public:
   int readyToRecompile;
   bool lbDown;
   bool rbDown;
+  bool mbDown;
+  float seedX;
+  float seedY;
+  float seedZ;
   float myDelta;
   int frameCount;
   bool changesMade;
@@ -61,9 +67,11 @@ public:
   void orthographicProjection ();
   Singleton ();
   ~ Singleton ();
+  float genRand (float LO, float HI);
   void setProgAction (eProgramState ps, unsigned char kc, eProgramAction pa, bool isDown);
   void setProgActionAll (unsigned char kc, eProgramAction pa, bool isDown);
   void keySetup ();
+  void createVTList ();
   void init (int _defaultWinW, int _defaultWinH);
   void doShaderRefresh ();
   void setMatrices (int w, int h);
@@ -80,6 +88,7 @@ public:
   void setShaderFloat (string paramName, float x);
   void setShaderVec2 (string paramName, float x, float y);
   void setShaderVec3 (string paramName, float x, float y, float z);
+  void setShaderfVec3 (string paramName, fVector3 * v);
   void setShaderVec4 (string paramName, float x, float y, float z, float w);
   void setShaderTexture (uint texID, int multitexNumber);
   void setShaderTexture3D (uint texID, int multitexNumber);
@@ -112,28 +121,27 @@ class GamePage : public Poco::Runnable
 {
 public:
   int iDim;
-  int iVoroDim;
   iVector3 iOff;
   int iVolumeSize;
-  int iVoroSize;
   int iRenderSize;
   float origHeight;
   uint * volData;
-  uint * voroData;
   Singleton * singleton;
   FBOSet * fboSet;
   uint volID;
-  uint voroID;
+  uint volIDLinear;
   E_STATES curState;
   E_STATES nextState;
+  float voroScale;
+  E_FILL_STATE fillState;
   GamePage ();
   void init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRenderSize);
   uint NumberOfSetBits (uint i);
   uint clamp (uint val);
   float sqrtFast (float x);
   void createSimplexNoise ();
-  void renderVolume (float texMin, float texMax);
   void copyToTexture ();
+  void generateVolume ();
   ~ GamePage ();
   void run ();
 };
@@ -148,13 +156,13 @@ public:
 class GameWorld
 {
 public:
+  int pageCount;
   iVector3 iDim;
   int iPageSize;
   int iVolumeSize;
+  int renderRad;
   int loadRad;
   int loadRadZ;
-  int renderRad;
-  float unitScale;
   int ((diagrams) [E_RENDER_LENGTH]) [E_STATE_LENGTH];
   int * curDiagram;
   int renderMethod;
@@ -166,21 +174,17 @@ public:
   GamePage * * texData;
   int iBufferSize;
   iVector3 origin;
-  iVector3 cameraPos;
-  iVector3 playerPos;
-  iVector2 iScreenDim;
-  fVector2 fScreenDim;
   Poco::ThreadPool threadpool;
+  int iRSize;
   GameWorld ();
-  int checkBounds (int i, int j, int k);
+  bool checkBounds (int i, int j, int k);
   void resetToState (E_STATES resState);
   void init (iVector3 _iDim, Singleton * _singleton, int _renderMethod);
   void update (bool changesMade, bool bufferInvalid, int maxH);
   bool processPages ();
-  void renderPages (float zoom, int maxH);
+  void renderPages (int maxH);
   void drawPage (GamePage * gp, int dx, int dy, int dz);
-  void postProcess (float zoom);
-  void setWH (int width, int height);
+  void postProcess ();
   ~ GameWorld ();
 };
 #undef LZZ_INLINE

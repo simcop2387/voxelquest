@@ -355,6 +355,11 @@ public:
 		glUniform1i(loc,multitexNumber);
 	}
 
+	void setShaderfVec3(string paramName, fVector3* f) {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform3f(loc,f->x,f->y,f->z);
+	}
+
 	
 
 };

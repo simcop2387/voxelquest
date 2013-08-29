@@ -49,7 +49,7 @@ float rand(vec2 co){
     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
-vec4 getAO(vec3 testPoint) {
+vec4 getAO(vec3 testPoint, vec4 curSamp) {
     int i;
     int a, b, c;
     
@@ -78,17 +78,21 @@ vec4 getAO(vec3 testPoint) {
     float curPower;
 
     float rval;
+    float rval2;
 
     vec3 norm = vec3(0.0,0.0,0.0);
+    vec3 norm2 = vec3(0.0,0.0,0.0);
 
-    const int rad = 20;
-    const int radStep = 4;
-    const float frad = float(radStep);
+    int rad = 8;
+    int radStep = 2;
+    float frad = float(radStep);
 
     float totSteps = 0.0;
     float totHits = 0.0;
 
     float ovLen = 0.0;
+
+    float rvMix = 0.0;
 
     for (c = -rad; c <= rad; c+=radStep) {
         for (b = -rad; b <= rad; b+=radStep) {
@@ -104,9 +108,12 @@ vec4 getAO(vec3 testPoint) {
                 ovLen = 1.0/length(offVal);
 
                 res = sampleAtPoint(offVal/tsize + testPoint);
-                rval = float(res.a <= 0.5);
+                rval = float(res.a == 0.0);
 
-                norm += rval*(offVal);
+                rval2 = float( abs(res.r-curSamp.r) + abs(res.g-curSamp.g) + abs(res.b-curSamp.b) != 0.0 );
+                rvMix = mix(rval,rval2,0.8);
+                norm += rvMix*(offVal);
+                norm2 += res.a*offVal;
 
                 totHits += rval;
                 totSteps += 1.0;
@@ -115,83 +122,139 @@ vec4 getAO(vec3 testPoint) {
         }
     }
 
-    norm = normalize(norm);
+    if (totHits == 0.0) {
+        norm = norm2/totSteps;
 
-    
-    /*
-    if ((norm.x + norm.y + norm.z) == 0.0) {
-        if (testPoint.x > testPoint.y) {
-            if (testPoint.z > testPoint.x) {
-                norm.z = 1.0;
-            }
-            else {
-                norm.x = 1.0;
-            }
+        if (testPoint.x == 1.0) {
+            norm.x = curSamp.a*10.0;
         }
-        else {
-            if (testPoint.z > testPoint.y) {
-                norm.z = 1.0;
-            }
-            else {
-                norm.y = 1.0;
-            }
+        if (testPoint.y == 1.0) {
+            norm.y = curSamp.a*10.0;
         }
+        if (testPoint.z == 1.0) {
+            norm.z = curSamp.a*4.0;
+        }
+
+        aoVal = 0.0;//curSamp.a;
     }
-    */
-    
+    else {
+        maxRad = 64;
+        fMaxRad = float(maxRad);
 
-    /*
-    rad = 32;
-    frad = float(rad);
-    radStep = rad/8;
-    
-    //maxRad = 64;
-    //fMaxRad = float(maxRad);
-    */
+        for (rad = 16; rad < maxRad; rad *= 2) {
+            radStep = rad/2;
+            frad = float(rad);
 
-    /*
-    maxRad = 64;
+            //curPower = 1.0-frad/fMaxRad;
 
-    for (rad = 16; rad < maxRad; rad *= 2) {
-        radStep = rad/2;
-        frad = float(rad);
+            for (c = -rad; c <= rad; c+=radStep) {
+                for (b = -rad; b <= rad; b+=radStep) {
+                    for (a = -rad; a <= rad; a+=radStep) {
+                        
+                        offVal.x = float(a);
+                        offVal.y = float(b);
+                        offVal.z = float(c);
 
-        //curPower = 1.0-frad/fMaxRad;
+                        //offVal = offVal*16.0;
 
-        for (c = -rad; c <= rad; c+=radStep) {
-            for (b = -rad; b <= rad; b+=radStep) {
-                for (a = -rad; a <= rad; a+=radStep) {
-                    
-                    offVal.x = float(a);
-                    offVal.y = float(b);
-                    offVal.z = float(c);
+                        offValAbs = abs(offVal);
 
-                    //offVal = offVal*16.0;
-
-                    offValAbs = abs(offVal);
-
-                    notZero = float( (offValAbs.x + offValAbs.y + offValAbs.z) > 0.0);
-                    offVal = normalize(offVal);
-                    offVal *= frad/tsize;
-                    res = sampleAtPoint(offVal+testPoint); //+norm*2.0/(tsize)
-                    rval = float(res.a > 0.5);
-                    aoVal += rval*notZero;// *curPower;//frad;
-                    totalAO += notZero;// *curPower;//frad*notZero;
-                    
+                        notZero = float( (offValAbs.x + offValAbs.y + offValAbs.z) > 0.0);
+                        offVal = normalize(offVal);
+                        offVal *= frad/tsize;
+                        res = sampleAtPoint(offVal+testPoint); //+norm*2.0/(tsize)
+                        rval = float(res.a != 0.0);
+                        aoVal += rval*notZero;// *curPower;//frad;
+                        totalAO += notZero;// *curPower;//frad*notZero;
+                        
+                    }
                 }
             }
         }
+
+        aoVal = clamp(1.0 - aoVal/totalAO, 1.0/255.0, 1.0);
     }
 
-    aoVal = clamp(1.0 - aoVal/totalAO, 0.0, 1.0);
-    */
 
-    float totRes = totHits/totSteps;
-
+    norm = normalize(norm);
     norm = (norm + 1.0)/2.0;
 
-    return vec4(norm,totRes);
+
+
+
+
+    return vec4(norm,aoVal); //totHits/totSteps
 }
+
+
+
+/*
+if ((norm.x + norm.y + norm.z) == 0.0) {
+    if (testPoint.x > testPoint.y) {
+        if (testPoint.z > testPoint.x) {
+            norm.z = 1.0;
+        }
+        else {
+            norm.x = 1.0;
+        }
+    }
+    else {
+        if (testPoint.z > testPoint.y) {
+            norm.z = 1.0;
+        }
+        else {
+            norm.y = 1.0;
+        }
+    }
+}
+*/
+
+
+/*
+rad = 32;
+frad = float(rad);
+radStep = rad/8;
+
+//maxRad = 64;
+//fMaxRad = float(maxRad);
+*/
+
+/*
+maxRad = 64;
+
+for (rad = 16; rad < maxRad; rad *= 2) {
+    radStep = rad/2;
+    frad = float(rad);
+
+    //curPower = 1.0-frad/fMaxRad;
+
+    for (c = -rad; c <= rad; c+=radStep) {
+        for (b = -rad; b <= rad; b+=radStep) {
+            for (a = -rad; a <= rad; a+=radStep) {
+                
+                offVal.x = float(a);
+                offVal.y = float(b);
+                offVal.z = float(c);
+
+                //offVal = offVal*16.0;
+
+                offValAbs = abs(offVal);
+
+                notZero = float( (offValAbs.x + offValAbs.y + offValAbs.z) > 0.0);
+                offVal = normalize(offVal);
+                offVal *= frad/tsize;
+                res = sampleAtPoint(offVal+testPoint); //+norm*2.0/(tsize)
+                rval = float(res.a != 0.0);
+                aoVal += rval*notZero;// *curPower;//frad;
+                totalAO += notZero;// *curPower;//frad*notZero;
+                
+            }
+        }
+    }
+}
+
+aoVal = clamp(1.0 - aoVal/totalAO, 0.0, 1.0);
+*/
 
 void main() {
 
@@ -245,7 +308,7 @@ void main() {
             curPos.xyz = mix(front,back,fLerp);
             samp = sampleAtPoint(curPos.xyz);
 
-            if (samp.a > 0.5) {
+            if (samp.a != 0.0) {
                 break;
             }
         }
@@ -261,23 +324,20 @@ void main() {
     samp = sampleAtPoint(curPos.xyz);
 
 
-    vec4 normAO;
-    vec4 heightMat;
-
-    normAO = blackCol;
-    heightMat = blackCol;
+    vec4 normAO = blackCol;
+    vec4 heightMat = blackCol;
 
     if (isGood == 0.0) {
-        discard;
+        //discard;
         //normAO = blackCol;
         //heightMat = blackCol;
     }
     else {
-        normAO = getAO(curPos.xyz);
+        normAO = getAO(curPos.xyz, samp);
         heightMat = vec4(curPos.b, curHeight, 1.0, 1.0);
     }
     
-    gl_FragData[0] = heightMat;//vec4(TexCoord1.z/256.0,TexCoord1.z/(256.0*256.0),1.0,1.0);
-    gl_FragData[1] = vec4(samp.b,samp.b,samp.b,1.0);//normAO;//gl_FragData[0];
+    gl_FragData[0] = heightMat;
+    gl_FragData[1] = normAO;
 
 }

@@ -1,0 +1,279 @@
+﻿Build started 8/29/2013 5:43:52 AM.
+     1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
+     1>PreBuildEvent:
+         ../combine.bat
+         :VCEnd
+         cleaning files
+         copying files to source
+         .\src\cpp\f00025_includes.h
+         .\src\cpp\f00027_vectors.h
+         .\src\cpp\f00030_json.h
+         .\src\cpp\f00050_enums.h
+         .\src\cpp\f00215_helperfuncs.h
+         .\src\cpp\f00217_helperclasses.h
+         .\src\cpp\f00220_timer.h
+         .\src\cpp\f00230_network.h
+         .\src\cpp\f00240_simplex.h
+         .\src\cpp\f00250_imageloader.h
+         .\src\cpp\f00251_fbos.h
+         .\src\cpp\f00260_classdefs.h
+         .\src\cpp\f00300_singleton.hpp
+         .\src\cpp\f00350_gamepage.hpp
+         .\src\cpp\f00380_gameworld.hpp
+         .\src\cpp\f00500_mainfuncs.h
+         16 File(s) copied
+         running lzz
+         Missing operator.
+         tot hpp
+         3
+         copying headers to one file
+         .\f00300_singleton.e
+         .\f00350_gamepage.e
+         .\f00380_gameworld.e
+                 1 file(s) copied.
+         Missing operator.
+         tot e
+         3
+         .
+         copying files to compiled
+         .\temp\f00300_singleton.e
+         .\temp\f00350_gamepage.e
+         .\temp\f00380_gameworld.e
+         3 File(s) copied
+         .\temp\f00025_includes.h
+         .\temp\f00027_vectors.h
+         .\temp\f00030_json.h
+         .\temp\f00050_enums.h
+         .\temp\f00215_helperfuncs.h
+         .\temp\f00217_helperclasses.h
+         .\temp\f00220_timer.h
+         .\temp\f00230_network.h
+         .\temp\f00240_simplex.h
+         .\temp\f00250_imageloader.h
+         .\temp\f00251_fbos.h
+         .\temp\f00260_classdefs.h
+         .\temp\f00270_headers.h
+         .\temp\f00300_singleton.h
+         .\temp\f00350_gamepage.h
+         .\temp\f00380_gameworld.h
+         .\temp\f00500_mainfuncs.h
+                 1 file(s) copied.
+       ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W1 /WX- /sdl /Ox /Oi /GL /D WIN32 /D NDEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Release\\" /Fd"x64\Release\vc110.pdb" /Gd /TP /errorReport:prompt ..\compiled\main.cpp
+         main.cpp
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.exe" /INCREMENTAL:NO /NOLOGO /LIBPATH:C:\wamp\www\voxelquest\glew\lib /LIBPATH:"C:\Program Files (x86)\Windows Kits\8.0\Lib\win8\um\x64" /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\lib\amd64" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.lib" /MACHINE:X64 x64\Release\main.obj
+         Generating code
+         Finished generating code
+         VoxelQuest.vcxproj -> C:\wamp\www\voxelquest\x64\Release\VoxelQuest.exe
+       PostBuildEvent:
+         ../cleanup.bat;
+         :VCEnd
+         Cleanup Started
+         .\x64\Release\VoxelQuest.exe
+         .\x64\Release\VoxelQuest.pdb
+         2 File(s) copied
+         running EXE
+         GLEW_OK          
+         Singleton init          
+         |  setupLookups          
+         |  doShaderRefresh          
+         |  |  Shader( ../src/glsl/shaderWater.c )        
+         |  |  |  init( ../src/glsl/shaderWater.c )        
+         |  |  |  |  textFileRead( ../src/glsl/shaderWater.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/shaderWater.c         
+         |  |  |  |  validateShader( ../src/glsl/shaderWater.c )        
+         |  |  |  |  validateShader( ../src/glsl/shaderWater.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  |  Shader( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  init( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  |  textFileRead( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/ShaderTarg2.c         
+         |  |  |  |  validateShader( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  |  validateShader( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  |  Shader( ../src/glsl/ShaderLighting.c )        
+         |  |  |  init( ../src/glsl/ShaderLighting.c )        
+         |  |  |  |  textFileRead( ../src/glsl/ShaderLighting.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/ShaderLighting.c         
+         |  |  |  |  validateShader( ../src/glsl/ShaderLighting.c )        
+         |  |  |  |  validateShader( ../src/glsl/ShaderLighting.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  |  Shader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  init( ../src/glsl/GenerateVolume.c )        
+         |  |  |  |  textFileRead( ../src/glsl/GenerateVolume.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/GenerateVolume.c         
+         |  |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  |  Shader( ../src/glsl/RenderVolume.c )        
+         |  |  |  init( ../src/glsl/RenderVolume.c )        
+         |  |  |  |  textFileRead( ../src/glsl/RenderVolume.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/RenderVolume.c         
+         |  |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
+         |  |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  |  Shader( ../src/glsl/Simplex2D.c )        
+         |  |  |  init( ../src/glsl/Simplex2D.c )        
+         |  |  |  |  textFileRead( ../src/glsl/Simplex2D.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/Simplex2D.c         
+         |  |  |  |  validateShader( ../src/glsl/Simplex2D.c )        
+         |  |  |  |  validateShader( ../src/glsl/Simplex2D.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  |  Shader( ../src/glsl/CalcFlow.c )        
+         |  |  |  init( ../src/glsl/CalcFlow.c )        
+         |  |  |  |  textFileRead( ../src/glsl/CalcFlow.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/CalcFlow.c         
+         |  |  |  |  validateShader( ../src/glsl/CalcFlow.c )        
+         |  |  |  |  validateShader( ../src/glsl/CalcFlow.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  |  Shader( ../src/glsl/Erode.c )        
+         |  |  |  init( ../src/glsl/Erode.c )        
+         |  |  |  |  textFileRead( ../src/glsl/Erode.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/Erode.c         
+         |  |  |  |  validateShader( ../src/glsl/Erode.c )        
+         |  |  |  |  validateShader( ../src/glsl/Erode.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  |  Shader( ../src/glsl/DLA.c )        
+         |  |  |  init( ../src/glsl/DLA.c )        
+         |  |  |  |  textFileRead( ../src/glsl/DLA.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/DLA.c         
+         |  |  |  |  validateShader( ../src/glsl/DLA.c )        
+         |  |  |  |  validateShader( ../src/glsl/DLA.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  |  Shader( ../src/glsl/MapShader.c )        
+         |  |  |  init( ../src/glsl/MapShader.c )        
+         |  |  |  |  textFileRead( ../src/glsl/MapShader.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/MapShader.c         
+         |  |  |  |  validateShader( ../src/glsl/MapShader.c )        
+         |  |  |  |  validateShader( ../src/glsl/MapShader.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  END          
+         END          
+         doShaderRefresh          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/shaderWater.c )        
+         |  |  init( ../src/glsl/shaderWater.c )        
+         |  |  |  textFileRead( ../src/glsl/shaderWater.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/shaderWater.c         
+         |  |  |  validateShader( ../src/glsl/shaderWater.c )        
+         |  |  |  validateShader( ../src/glsl/shaderWater.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/ShaderTarg2.c )        
+         |  |  init( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  textFileRead( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/ShaderTarg2.c         
+         |  |  |  validateShader( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  validateShader( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/ShaderLighting.c )        
+         |  |  init( ../src/glsl/ShaderLighting.c )        
+         |  |  |  textFileRead( ../src/glsl/ShaderLighting.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/ShaderLighting.c         
+         |  |  |  validateShader( ../src/glsl/ShaderLighting.c )        
+         |  |  |  validateShader( ../src/glsl/ShaderLighting.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/GenerateVolume.c )        
+         |  |  init( ../src/glsl/GenerateVolume.c )        
+         |  |  |  textFileRead( ../src/glsl/GenerateVolume.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/GenerateVolume.c         
+         |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/RenderVolume.c )        
+         |  |  init( ../src/glsl/RenderVolume.c )        
+         |  |  |  textFileRead( ../src/glsl/RenderVolume.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/RenderVolume.c         
+         |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
+         |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/Simplex2D.c )        
+         |  |  init( ../src/glsl/Simplex2D.c )        
+         |  |  |  textFileRead( ../src/glsl/Simplex2D.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/Simplex2D.c         
+         |  |  |  validateShader( ../src/glsl/Simplex2D.c )        
+         |  |  |  validateShader( ../src/glsl/Simplex2D.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/CalcFlow.c )        
+         |  |  init( ../src/glsl/CalcFlow.c )        
+         |  |  |  textFileRead( ../src/glsl/CalcFlow.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/CalcFlow.c         
+         |  |  |  validateShader( ../src/glsl/CalcFlow.c )        
+         |  |  |  validateShader( ../src/glsl/CalcFlow.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/Erode.c )        
+         |  |  init( ../src/glsl/Erode.c )        
+         |  |  |  textFileRead( ../src/glsl/Erode.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/Erode.c         
+         |  |  |  validateShader( ../src/glsl/Erode.c )        
+         |  |  |  validateShader( ../src/glsl/Erode.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/DLA.c )        
+         |  |  init( ../src/glsl/DLA.c )        
+         |  |  |  textFileRead( ../src/glsl/DLA.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/DLA.c         
+         |  |  |  validateShader( ../src/glsl/DLA.c )        
+         |  |  |  validateShader( ../src/glsl/DLA.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/MapShader.c )        
+         |  |  init( ../src/glsl/MapShader.c )        
+         |  |  |  textFileRead( ../src/glsl/MapShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/MapShader.c         
+         |  |  |  validateShader( ../src/glsl/MapShader.c )        
+         |  |  |  validateShader( ../src/glsl/MapShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         END          
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:03:15.17
