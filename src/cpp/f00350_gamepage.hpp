@@ -7,24 +7,21 @@ class GamePage: public Poco::Runnable {
 public:
 
 	int iDim;
-	//int iVoroDim;
 	iVector3 iOff;
 	int iVolumeSize;
-	//int iVoroSize;
 	int iRenderSize;
 	float origHeight;
 	uint* volData;
-	//uint* voroData;
 	Singleton* singleton;
 	FBOSet* fboSet;
 	uint volID;
 	uint volIDLinear;
-	//uint voroID;
 	E_STATES curState;
 	E_STATES nextState;
 
-	float voroScale;
-	
+	fVector3 worldMin;
+	fVector3 worldMax;
+
 
 	E_FILL_STATE fillState;
 
@@ -42,8 +39,6 @@ public:
 
 		singleton = _singleton;
 
-		voroScale = 1.0;
-		
 
 		iDim = _iDim;
 		iOff = _iOff;
@@ -56,12 +51,7 @@ public:
 
 
 		int iBuf = iDim/2;
-
 		iDim += iBuf*2;
-		
-		//iOff.x -= iBuf;
-		//iOff.y -= iBuf;
-		//iOff.z -= iBuf;
 
 		iVolumeSize = iDim*iDim*iDim;
 		volData = new uint[iVolumeSize];
@@ -70,24 +60,9 @@ public:
 		}
 
 
-		/*
-		iVoroDim = iDim;
-		iVoroSize = iVoroDim*iVoroDim*iVoroDim;
-		voroData = new uint[iVoroSize];
-		
-		for (i = 0; i < iVoroSize; i++) {
-			voroData[i] = 0;
-		}
-		*/
-		
 
 
 		iRenderSize = _iRenderSize;
-
-		if (iRenderSize == -1) {
-			iRenderSize = iDim*2;
-		}
-
 		
 		int renderDim2 = iRenderSize*iRenderSize;
 
@@ -96,7 +71,6 @@ public:
 		fboSet->init(2,iRenderSize,iRenderSize,1);
 		glGenTextures(1,&volID);
 		glGenTextures(1,&volIDLinear);
-		//glGenTextures(1,&voroID);
 		
 
 		curState = E_STATE_INIT_END;
@@ -144,6 +118,7 @@ public:
 		float maxGenHeight = 32.0f;
 
 		int totLen = iDim;
+		int totLenM1 = totLen-1;
 		int totLenO2 = iDim/2;
 		float fTotLen = (float)totLen;
 		float fTotLenT2 = fTotLen*2.0f;
@@ -153,7 +128,6 @@ public:
 		uint tmp;
 
 		float fx, fy, fz;
-		float fx2, fy2, fz2;
 
 		uint randOff[3];
 
@@ -165,11 +139,24 @@ public:
 			4567.0f, 67893.0f, 13245.0f
 		};
 
+
+		
+
+		worldMin.x = (0 - totLenO2) + iOff.x;
+		worldMin.y = (0 - totLenO2) + iOff.y;
+		worldMin.z = (0 - totLenO2) + iOff.z;
+
+		worldMax.x = (totLenM1 - totLenO2) + iOff.x;
+		worldMax.y = (totLenM1 - totLenO2) + iOff.y;
+		worldMax.z = (totLenM1 - totLenO2) + iOff.z;
+
+
+
 		
 		float thresh;
 		float testVal;
 
-		if (iOff.z- totLenO2 > maxGenHeight) {
+		if (iOff.z - totLenO2*2.0f > maxGenHeight) {
 			isBlank = true;
 			isFull = false;
 		}
@@ -179,21 +166,18 @@ public:
 				ijkVals[1] = (float)j;
 
 				fy = (j - totLenO2) + iOff.y;
-				fy2 = (j - totLenO2)*voroScale + iOff.y;
 
 				for (i = 0; i < totLen; i++) {
 
 					ijkVals[0] = (float)i;
 
 					fx = (i - totLenO2) + iOff.x;
-					fx2 = (i - totLenO2)*voroScale + iOff.x;
 					
 					for (k = 0; k < totLen; k++) {
 
 						ijkVals[2] = (float)k;
 
 						fz = (k - totLenO2) + iOff.z;
-						fz2 = (k - totLenO2)*voroScale + iOff.z;
 
 						ind = k*totLen*totLen + j*totLen + i;
 
@@ -237,13 +221,13 @@ public:
 																			1.0f/4.0, //scale (frequency)
 																			0.0f,
 																			1.0f,
-																			fx2+RAND_MOD[m*3+0],
-																			fy2+RAND_MOD[m*3+1],
-																			fz2+RAND_MOD[m*3+2]
-																		) + ijkVals[m])*255.0/fTotLen);
+																			fx+RAND_MOD[m*3+0],
+																			fy+RAND_MOD[m*3+1],
+																			fz+RAND_MOD[m*3+2]
+																		) + ijkVals[m])*255.0f/fTotLen);
 							}
 
-							if (tmp%16 > 1) {
+							if ( (tmp%16 > 0) && ( (i+j+k)%2 == 0) ) {
 								volData[ind] = (tmp<<24)|(randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
 							}
 							else {
@@ -278,6 +262,11 @@ public:
 			curState = E_STATE_LENGTH;
 		}
 		else {
+
+
+
+
+
 			fillState = E_FILL_STATE_PARTIAL;
 			curState = E_STATE_CREATESIMPLEXNOISE_END;
 		}
@@ -320,21 +309,6 @@ public:
 	void generateVolume() {
 
 		curState = E_STATE_GENERATEVOLUME_BEG;
-
-		/*
-		//copy voroData to 3d Texture
-		glBindTexture(GL_TEXTURE_3D,voroID);
-		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, iVoroDim, iVoroDim, iVoroDim, 0, GL_RGBA, GL_UNSIGNED_BYTE, voroData);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);//GL_LINEAR
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);//GL_NEAREST
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-		glBindTexture(GL_TEXTURE_3D,0);
-		*/
-
-
 		
 		
 		//render 3D texture to 2D, interpolate data
@@ -345,7 +319,9 @@ public:
 		singleton->setShaderTexture(singleton->lookup2to3ID, 2);
 
 		singleton->setShaderFloat("unitsPerDim", iDim);
-		singleton->setShaderFloat("voroScale", voroScale);
+		singleton->setShaderfVec3("worldMin", &(worldMin));
+		singleton->setShaderfVec3("worldMax", &(worldMax));
+
 		singleton->drawFSQuad(1.0f);
 
 		singleton->setShaderTexture3D(0, 0);
@@ -362,6 +338,9 @@ public:
 		glClearColor(0.0f,0.0f,0.0f,0.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		singleton->setShaderFloat("curHeight",origHeight);
+		singleton->setShaderfVec3("worldMin", &(worldMin));
+		singleton->setShaderfVec3("worldMax", &(worldMax));
+
 		glCallList(singleton->volTris);
 		singleton->unsampleFBO("volGenFBO");
 		singleton->unbindFBO();
@@ -397,11 +376,6 @@ public:
 		if (volData) {
 			delete[] volData;
 		}
-		
-		/*if (voroData) {
-			delete[] voroData;
-		}*/
-		
 
 		if (volID) {
 			glDeleteTextures(1, &volID);

@@ -4,11 +4,13 @@
 uniform sampler3D Texture0; //volume texture nearest
 uniform sampler3D Texture1; //voro texture linear
 uniform sampler2D Texture2; //2d to 3d coords
-varying vec2 TexCoord0;
-uniform vec2 resolution;
 
+uniform vec2 resolution;
 uniform float unitsPerDim;
-uniform float voroScale;
+uniform vec3 worldMin;
+uniform vec3 worldMax;
+
+varying vec2 TexCoord0;
 
 
 vec3 COLOR_MASKS[27] = vec3[](
@@ -52,9 +54,21 @@ vec3 COLOR_MASKS[27] = vec3[](
 	vec3(  1.0,  1.0,  0.0  ),
 	vec3(  1.0,  1.0,  1.0  )
 
-
-
 );
+
+
+
+// vec3 COLOR_MASKS[8] = vec3[](
+// 	vec3(  -1.0,  -1.0,  -1.0  ),
+// 	vec3(  -1.0,  -1.0,  1.0  ),
+// 	vec3(  -1.0,  1.0,  -1.0  ),
+// 	vec3(  -1.0,  1.0,  1.0  ),
+// 	vec3(  1.0,  -1.0,  -1.0  ),
+// 	vec3(  1.0,  -1.0,  1.0  ),
+// 	vec3(  1.0,  1.0,  -1.0  ),
+// 	vec3(  1.0,  1.0,  1.0  )
+
+// );
 
 
 
@@ -70,12 +84,10 @@ $
 
 void main() {
 
-	float voroMod = (1.0-(1.0/voroScale))/2.0;
-
 	vec3 coords = texture2D(Texture2, TexCoord0.xy).rgb;
 	vec3 newCoords = coords;//(coords * 255.0 + 0.5)/256.0;
 	vec4 tex1 =  texture3D(Texture0, newCoords);
-
+	vec4 tex2 =  texture3D(Texture1, newCoords);
 
 	int i = 0;
 	int j = 0;
@@ -85,7 +97,6 @@ void main() {
 	float fj = 0.0;
 	float fk = 0.0;
 
-	//float unitsPerDimScaled = unitsPerDim/voroScale;
 
 	float rad = 1.0/(unitsPerDim);
 	vec3 offVec = vec3(0.0,0.0,0.0);
@@ -93,45 +104,38 @@ void main() {
 	vec3 samp = vec3(0.0,0.0,0.0);
 	vec3 bestSamp = vec3(0.0,0.0,0.0);
 	float curDis = 0.0;
-	float minDis1 = 999.0;
-	float minDis2 = 999.0;
+
+
+	float notValid = 999.0;
+
+	float minDis1 = notValid;
+	float minDis2 = notValid;
 
 	const int minrad = -1;
 	const int maxrad = 1;
+
+	vec3 newCoords2 = newCoords;
+	//newCoords2.x *= 0.5;
+	//newCoords2.z *= 0.5;
 	
-	/*
-	for (i = minrad; i <= maxrad; i++) {
-		offVec.x = float(i);
-		for (j = minrad; j <= maxrad; j++) {
-			offVec.y = float(j);
-			for (k = minrad; k <= maxrad; k++) {
-				offVec.z = float(k);
 
-				samp = texture3D(Texture0, floor( (newCoords + offVec*rad)*unitsPerDim )/unitsPerDim ).rgb;
-				curDis = distance( samp , newCoords/voroScale + voroMod);
-
-				if (curDis < minDis1) {
-					minDis2 = minDis1;
-					minDis1 = curDis;
-				}
-				else {
-					if (curDis < minDis2) {
-						minDis2 = curDis;
-					}
-				}
-
-			}
-		}
-	}*/
+	// to create voro scale, just use more dense array for voro data
 
 	for (i = 0; i < 27; i++) {
-		samp = texture3D(Texture0, floor( (newCoords + COLOR_MASKS[i]*rad)*unitsPerDim )/unitsPerDim ).rgb;
+
+
+
+		samp = texture3D(Texture0, newCoords + COLOR_MASKS[i]*rad ).rgb;
 
 		if ((samp.r + samp.g + samp.b) == 0.0) {
 
 		}
 		else {
-			curDis = distance( samp , newCoords/voroScale + voroMod);
+
+
+
+			curDis = distance( samp, newCoords2 );
+
 
 			if (curDis < minDis1) {
 				bestSamp = samp;
@@ -146,19 +150,34 @@ void main() {
 			}
 		}
 
-		
 	}
 
 	float gradVal = clamp(1.0 - (minDis1*2.0/(minDis1+minDis2)),1.0/255.0,1.0);
 	
 	//(bestSamp.r + bestSamp.g*unitsPerDim + bestSamp.b*unitsPerDim*unitsPerDim);
 
-	tex1.a = float(texture3D(Texture1, bestSamp).a > 0.5)*gradVal;
 	
-	tex1.rgb = bestSamp;
-	
+	float rockIsOnTer = float(texture3D(Texture1, bestSamp).a > 0.48);
+	float rockIsInside = rockIsOnTer*float(gradVal > 0.1);
+	float isTerrain = float(tex2.a > 0.5);
 
-	gl_FragData[0] = tex1;
+	
+	vec4 res = vec4(0.0,0.0,0.0,0.0);
+
+	if ( (minDis1 == notValid) || (minDis2 == notValid) ) {
+
+	}
+	else {
+		
+		//res.a = float( (rockIsInside+isTerrain) > 0.0)*gradVal;
+		//res.rgb = mix(vec3(0.0,0.0,0.0),bestSamp,rockIsInside);
+
+		res.rgb = bestSamp;
+		res.a = rockIsOnTer*gradVal;
+	}
+
+
+	gl_FragData[0] = res;
 
 }
 

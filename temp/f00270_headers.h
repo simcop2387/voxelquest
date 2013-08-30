@@ -132,7 +132,8 @@ public:
   uint volIDLinear;
   E_STATES curState;
   E_STATES nextState;
-  float voroScale;
+  fVector3 worldMin;
+  fVector3 worldMax;
   E_FILL_STATE fillState;
   GamePage ();
   void init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRenderSize);

@@ -207,7 +207,7 @@ public:
 
 
 	    int changeCount = 0;
-	    int maxChanges = 16;
+	    int maxChanges = 4;
 
 	    int extraRad = 4;
 
@@ -216,7 +216,7 @@ public:
 	    }
 	    
 
-		for (k = -loadRadZ; k <= loadRadZ; k++) {
+		for (k = -(loadRadZ+extraRad/2); k <= (loadRadZ+extraRad/2); k++) {
 			for (j = -(loadRad+extraRad); j <= (loadRad+extraRad); j++) {
 				for (i = -(loadRad+extraRad); i <= (loadRad+extraRad); i++) {
 
