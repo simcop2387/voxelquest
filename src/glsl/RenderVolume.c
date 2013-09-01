@@ -51,7 +51,7 @@ float rand(vec2 co){
     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
-vec4 getAO(vec3 testPoint, vec4 curSamp, vec3 wp) {
+vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
     int i;
     int a, b, c;
     
@@ -75,6 +75,8 @@ vec4 getAO(vec3 testPoint, vec4 curSamp, vec3 wp) {
 
     int maxRad;
     float tsize = 255.0;
+
+    vec3 testPoint = tp + 1.0/tsize;
 
     float fMaxRad;
     float curPower;
@@ -267,6 +269,6 @@ void main() {
     }
     
     gl_FragData[0] = heightMat;
-    gl_FragData[1] = normAO;
+    gl_FragData[1] = normAO;//vec4(curPos,1.0);//normAO;
 
 }

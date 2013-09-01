@@ -44,10 +44,6 @@ void GamePage::init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRe
 		int renderDim2 = iRenderSize*iRenderSize;
 
 		fboSet = NULL;
-		fboSet = new FBOSet();
-		fboSet->init(2,iRenderSize,iRenderSize,1);
-		glGenTextures(1,&volID);
-		glGenTextures(1,&volIDLinear);
 		
 
 		curState = E_STATE_INIT_END;
@@ -80,8 +76,8 @@ float GamePage::sqrtFast (float x)
 void GamePage::createSimplexNoise ()
                                   {
 
-		bool isBlank = true;
-		bool isFull = true;
+		bool isBlank = false;
+		bool isFull = false;
 		
 
 		curState = E_STATE_CREATESIMPLEXNOISE_BEG;
@@ -92,7 +88,9 @@ void GamePage::createSimplexNoise ()
 
 		int totLen = iDim;
 		int totLenM1 = totLen-1;
-		int totLenO2 = iDim/2;
+		int totLenO2 = totLen/2;
+		int totLenO3 = (totLen*3)/4;
+		int totLenO4 = totLen/4;
 		float fTotLen = (float)totLen;
 		float fTotLenT2 = fTotLen*2.0f;
 
@@ -125,11 +123,13 @@ void GamePage::createSimplexNoise ()
 
 
 
+
+
 		
 		float thresh;
 		float testVal;
 
-		if (iOff.z - totLenO2*2.0f > maxGenHeight) {
+		if (false) { //(iOff.z - totLenO2*2.0f > maxGenHeight) {
 			isBlank = true;
 			isFull = false;
 		}
@@ -178,12 +178,27 @@ void GamePage::createSimplexNoise ()
 							}
 							tmp = clamp(testVal*255.0*(1.0-thresh*thresh*thresh));
 
-							if (tmp >= 127) {
+
+							// if (i >= totLenO4 && i <= totLenO3) {
+							// 	if (j >= totLenO4 && j <= totLenO3) {
+							// 		if (k >= totLenO4 && k <= totLenO3) {
+							// 			if (tmp >= 127) {
+							// 				//isBlank = false;
+							// 			}
+							// 			else {
+							// 				isFull = false;
+							// 			}
+							// 		}
+							// 	}
+							// }
+
+							
+							if (tmp >= 126) {
 								isBlank = false;
 							}
 							else {
 								isFull = false;
-							}
+							}							
 							
 
 
@@ -252,6 +267,14 @@ void GamePage::copyToTexture ()
                              {
 
 		curState = E_STATE_COPYTOTEXTURE_BEG;
+
+		if (fboSet == NULL) {
+			
+			fboSet = new FBOSet();
+			fboSet->init(2,iRenderSize,iRenderSize,1);
+			glGenTextures(1,&volID);
+			glGenTextures(1,&volIDLinear);
+		}
 
 		//copy volData to 3d Texture
 		glBindTexture(GL_TEXTURE_3D,volID);

@@ -164,6 +164,76 @@ void Singleton::keySetup ()
 		setProgActionAll('r', E_PA_REFRESH, false);
 
 	}
+void Singleton::createGrassList ()
+                               {
+
+		int i;
+		int j;
+
+		float fi;
+		float fj;
+
+		float tcx;
+		float tcy;
+
+
+		int iMax = 512;
+		int jMax = 512;
+
+		float fiMax = (float)iMax;
+		float fjMax = (float)jMax;
+		float baseRad = 1.0f/fiMax;
+		float grassHeight = 0.0;//(4.0f)/fjMax;
+		float heightMod;
+
+		grassTris = glGenLists(1);
+		
+
+		glNewList(grassTris, GL_COMPILE);
+
+		//glBegin(GL_TRIANGLES);
+		glBegin(GL_QUADS);
+
+		//glNormal3f(0, 0, 1);
+
+		
+
+		for (j = jMax-1; j >= 0; j--) {
+			fj = ((float)(j*2-jMax))/fjMax;
+			tcy = (fj + 1.0f)/2.0f;
+			for (i = 0; i < iMax; i++) {
+				fi = ((float)(i*2-iMax))/fiMax;
+				tcx = (fi + 1.0f)/2.0f;
+			
+
+				heightMod = 0.0;//genRand(0.0f,4.0f)/fjMax;
+
+				//glColor4f(backfaceX[i], backfaceY[i], backfaceZ[i], 1.0f);
+
+				//
+				
+				
+				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 0.0f);
+				glVertex3f(fi-baseRad,fj,0.0f);
+				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 0.0f);
+				glVertex3f(fi+baseRad,fj,0.0f);
+
+				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 1.0f);
+				glVertex3f(fi-baseRad,fj+grassHeight+heightMod,1.0f);
+				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 1.0f);
+				glVertex3f(fi+baseRad,fj+grassHeight+heightMod,1.0f);
+				
+			}
+
+
+			
+		}
+
+		glEnd();
+		
+		glEndList();
+		
+	}
 void Singleton::createVTList ()
                             {
 
@@ -277,6 +347,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 
 		pushTrace("Singleton init");
 
+		myTimer.start();
+
+		extraRad = 0;
+		lastTime = 0.0;
+
 		srand(time(0));
 		seedX = genRand(5000.0f,500000.0f);
 		seedY = genRand(5000.0f,500000.0f);
@@ -321,6 +396,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 		altPressed = false;
 
 		createVTList();
+		createGrassList();
 
 
 		//// GL WIDGET START ////
@@ -371,6 +447,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 	    shaderStrings.push_back("shaderWater");
 	    shaderStrings.push_back("ShaderTarg2");
 	    shaderStrings.push_back("ShaderLighting");
+	    shaderStrings.push_back("GrassShader");
 	    shaderStrings.push_back("GenerateVolume");
 	    shaderStrings.push_back("RenderVolume");
 	    shaderStrings.push_back("Simplex2D");
@@ -745,6 +822,24 @@ void Singleton::keyboardUp (unsigned char key, int x, int y)
 
 			break;
 
+			case '[':
+				extraRad--;
+				if (extraRad < 0) {
+					extraRad = 0;
+				}
+
+				if (shiftPressed) {
+					extraRad = 0;
+				}
+
+				doTrace("Extra Radius: ", i__s(extraRad));
+			break;
+
+			case ']':
+				extraRad++;
+				doTrace("Extra Radius: ", i__s(extraRad));
+			break;
+
 			case 't':
 				doShaderRefresh();
 			    gw->resetToState(E_STATE_COPYTOTEXTURE_END);
@@ -856,12 +951,24 @@ void Singleton::mouseClick (int button, int state, int x, int y)
 void Singleton::display ()
                            {
 
-		if (shadersAreLoaded) {
-			gw->update(changesMade, bufferInvalid, maxH);
+		curTime = myTimer.getElapsedTimeInMilliSec();
+
+		float elTime = curTime - lastTime;
+
+		if (elTime >= 16.0) {
+			lastTime = curTime;
+
+			if (shadersAreLoaded) {
+				gw->update(changesMade, bufferInvalid, maxH);
+
+				changesMade = false;
+				bufferInvalid = false;
+			}
 		}
 
-		changesMade = false;
-		bufferInvalid = false;
+		
+
+		
 
 		//doTrace( "POSSIBLE ERROR: " , i__s(glGetError()) , "\n" );
 

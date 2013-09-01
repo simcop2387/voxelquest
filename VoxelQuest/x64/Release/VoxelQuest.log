@@ -1,4 +1,4 @@
-﻿Build started 8/30/2013 7:29:51 AM.
+﻿Build started 9/1/2013 5:07:39 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -105,6 +105,15 @@
          |  |  |  |  validateProgram()          
          |  |  |  END          
          |  |  END          
+         |  |  Shader( ../src/glsl/GrassShader.c )        
+         |  |  |  init( ../src/glsl/GrassShader.c )        
+         |  |  |  |  textFileRead( ../src/glsl/GrassShader.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/GrassShader.c         
+         |  |  |  |  validateShader( ../src/glsl/GrassShader.c )        
+         |  |  |  |  validateShader( ../src/glsl/GrassShader.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
          |  |  Shader( ../src/glsl/GenerateVolume.c )        
          |  |  |  init( ../src/glsl/GenerateVolume.c )        
          |  |  |  |  textFileRead( ../src/glsl/GenerateVolume.c )        
@@ -170,6 +179,9 @@
          |  |  END          
          |  END          
          END          
+         Extra Radius:  1         
+         Extra Radius:  2         
+         Extra Radius:  3         
          doShaderRefresh          
          |  ~Shader()          
          |  Shader( ../src/glsl/shaderWater.c )        
@@ -198,6 +210,352 @@
          |  |  |  |  READ FILE:  ../src/glsl/ShaderLighting.c         
          |  |  |  validateShader( ../src/glsl/ShaderLighting.c )        
          |  |  |  validateShader( ../src/glsl/ShaderLighting.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/GrassShader.c )        
+         |  |  init( ../src/glsl/GrassShader.c )        
+         |  |  |  textFileRead( ../src/glsl/GrassShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/GrassShader.c         
+         |  |  |  validateShader( ../src/glsl/GrassShader.c )        
+         |  |  |  validateShader( ../src/glsl/GrassShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/GenerateVolume.c )        
+         |  |  init( ../src/glsl/GenerateVolume.c )        
+         |  |  |  textFileRead( ../src/glsl/GenerateVolume.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/GenerateVolume.c         
+         |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/RenderVolume.c )        
+         |  |  init( ../src/glsl/RenderVolume.c )        
+         |  |  |  textFileRead( ../src/glsl/RenderVolume.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/RenderVolume.c         
+         |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
+         |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/Simplex2D.c )        
+         |  |  init( ../src/glsl/Simplex2D.c )        
+         |  |  |  textFileRead( ../src/glsl/Simplex2D.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/Simplex2D.c         
+         |  |  |  validateShader( ../src/glsl/Simplex2D.c )        
+         |  |  |  validateShader( ../src/glsl/Simplex2D.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/CalcFlow.c )        
+         |  |  init( ../src/glsl/CalcFlow.c )        
+         |  |  |  textFileRead( ../src/glsl/CalcFlow.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/CalcFlow.c         
+         |  |  |  validateShader( ../src/glsl/CalcFlow.c )        
+         |  |  |  validateShader( ../src/glsl/CalcFlow.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/Erode.c )        
+         |  |  init( ../src/glsl/Erode.c )        
+         |  |  |  textFileRead( ../src/glsl/Erode.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/Erode.c         
+         |  |  |  validateShader( ../src/glsl/Erode.c )        
+         |  |  |  validateShader( ../src/glsl/Erode.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/DLA.c )        
+         |  |  init( ../src/glsl/DLA.c )        
+         |  |  |  textFileRead( ../src/glsl/DLA.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/DLA.c         
+         |  |  |  validateShader( ../src/glsl/DLA.c )        
+         |  |  |  validateShader( ../src/glsl/DLA.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/MapShader.c )        
+         |  |  init( ../src/glsl/MapShader.c )        
+         |  |  |  textFileRead( ../src/glsl/MapShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/MapShader.c         
+         |  |  |  validateShader( ../src/glsl/MapShader.c )        
+         |  |  |  validateShader( ../src/glsl/MapShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         END          
+         doShaderRefresh          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/shaderWater.c )        
+         |  |  init( ../src/glsl/shaderWater.c )        
+         |  |  |  textFileRead( ../src/glsl/shaderWater.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/shaderWater.c         
+         |  |  |  validateShader( ../src/glsl/shaderWater.c )        
+         |  |  |  validateShader( ../src/glsl/shaderWater.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/ShaderTarg2.c )        
+         |  |  init( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  textFileRead( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/ShaderTarg2.c         
+         |  |  |  validateShader( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  validateShader( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/ShaderLighting.c )        
+         |  |  init( ../src/glsl/ShaderLighting.c )        
+         |  |  |  textFileRead( ../src/glsl/ShaderLighting.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/ShaderLighting.c         
+         |  |  |  validateShader( ../src/glsl/ShaderLighting.c )        
+         |  |  |  validateShader( ../src/glsl/ShaderLighting.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/GrassShader.c )        
+         |  |  init( ../src/glsl/GrassShader.c )        
+         |  |  |  textFileRead( ../src/glsl/GrassShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/GrassShader.c         
+         |  |  |  validateShader( ../src/glsl/GrassShader.c )        
+         |  |  |  validateShader( ../src/glsl/GrassShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/GenerateVolume.c )        
+         |  |  init( ../src/glsl/GenerateVolume.c )        
+         |  |  |  textFileRead( ../src/glsl/GenerateVolume.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/GenerateVolume.c         
+         |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/RenderVolume.c )        
+         |  |  init( ../src/glsl/RenderVolume.c )        
+         |  |  |  textFileRead( ../src/glsl/RenderVolume.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/RenderVolume.c         
+         |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
+         |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/Simplex2D.c )        
+         |  |  init( ../src/glsl/Simplex2D.c )        
+         |  |  |  textFileRead( ../src/glsl/Simplex2D.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/Simplex2D.c         
+         |  |  |  validateShader( ../src/glsl/Simplex2D.c )        
+         |  |  |  validateShader( ../src/glsl/Simplex2D.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/CalcFlow.c )        
+         |  |  init( ../src/glsl/CalcFlow.c )        
+         |  |  |  textFileRead( ../src/glsl/CalcFlow.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/CalcFlow.c         
+         |  |  |  validateShader( ../src/glsl/CalcFlow.c )        
+         |  |  |  validateShader( ../src/glsl/CalcFlow.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/Erode.c )        
+         |  |  init( ../src/glsl/Erode.c )        
+         |  |  |  textFileRead( ../src/glsl/Erode.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/Erode.c         
+         |  |  |  validateShader( ../src/glsl/Erode.c )        
+         |  |  |  validateShader( ../src/glsl/Erode.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/DLA.c )        
+         |  |  init( ../src/glsl/DLA.c )        
+         |  |  |  textFileRead( ../src/glsl/DLA.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/DLA.c         
+         |  |  |  validateShader( ../src/glsl/DLA.c )        
+         |  |  |  validateShader( ../src/glsl/DLA.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/MapShader.c )        
+         |  |  init( ../src/glsl/MapShader.c )        
+         |  |  |  textFileRead( ../src/glsl/MapShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/MapShader.c         
+         |  |  |  validateShader( ../src/glsl/MapShader.c )        
+         |  |  |  validateShader( ../src/glsl/MapShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         END          
+         doShaderRefresh          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/shaderWater.c )        
+         |  |  init( ../src/glsl/shaderWater.c )        
+         |  |  |  textFileRead( ../src/glsl/shaderWater.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/shaderWater.c         
+         |  |  |  validateShader( ../src/glsl/shaderWater.c )        
+         |  |  |  validateShader( ../src/glsl/shaderWater.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/ShaderTarg2.c )        
+         |  |  init( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  textFileRead( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/ShaderTarg2.c         
+         |  |  |  validateShader( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  validateShader( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/ShaderLighting.c )        
+         |  |  init( ../src/glsl/ShaderLighting.c )        
+         |  |  |  textFileRead( ../src/glsl/ShaderLighting.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/ShaderLighting.c         
+         |  |  |  validateShader( ../src/glsl/ShaderLighting.c )        
+         |  |  |  validateShader( ../src/glsl/ShaderLighting.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/GrassShader.c )        
+         |  |  init( ../src/glsl/GrassShader.c )        
+         |  |  |  textFileRead( ../src/glsl/GrassShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/GrassShader.c         
+         |  |  |  validateShader( ../src/glsl/GrassShader.c )        
+         |  |  |  validateShader( ../src/glsl/GrassShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/GenerateVolume.c )        
+         |  |  init( ../src/glsl/GenerateVolume.c )        
+         |  |  |  textFileRead( ../src/glsl/GenerateVolume.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/GenerateVolume.c         
+         |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/RenderVolume.c )        
+         |  |  init( ../src/glsl/RenderVolume.c )        
+         |  |  |  textFileRead( ../src/glsl/RenderVolume.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/RenderVolume.c         
+         |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
+         |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/Simplex2D.c )        
+         |  |  init( ../src/glsl/Simplex2D.c )        
+         |  |  |  textFileRead( ../src/glsl/Simplex2D.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/Simplex2D.c         
+         |  |  |  validateShader( ../src/glsl/Simplex2D.c )        
+         |  |  |  validateShader( ../src/glsl/Simplex2D.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/CalcFlow.c )        
+         |  |  init( ../src/glsl/CalcFlow.c )        
+         |  |  |  textFileRead( ../src/glsl/CalcFlow.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/CalcFlow.c         
+         |  |  |  validateShader( ../src/glsl/CalcFlow.c )        
+         |  |  |  validateShader( ../src/glsl/CalcFlow.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/Erode.c )        
+         |  |  init( ../src/glsl/Erode.c )        
+         |  |  |  textFileRead( ../src/glsl/Erode.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/Erode.c         
+         |  |  |  validateShader( ../src/glsl/Erode.c )        
+         |  |  |  validateShader( ../src/glsl/Erode.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/DLA.c )        
+         |  |  init( ../src/glsl/DLA.c )        
+         |  |  |  textFileRead( ../src/glsl/DLA.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/DLA.c         
+         |  |  |  validateShader( ../src/glsl/DLA.c )        
+         |  |  |  validateShader( ../src/glsl/DLA.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/MapShader.c )        
+         |  |  init( ../src/glsl/MapShader.c )        
+         |  |  |  textFileRead( ../src/glsl/MapShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/MapShader.c         
+         |  |  |  validateShader( ../src/glsl/MapShader.c )        
+         |  |  |  validateShader( ../src/glsl/MapShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         END          
+         doShaderRefresh          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/shaderWater.c )        
+         |  |  init( ../src/glsl/shaderWater.c )        
+         |  |  |  textFileRead( ../src/glsl/shaderWater.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/shaderWater.c         
+         |  |  |  validateShader( ../src/glsl/shaderWater.c )        
+         |  |  |  validateShader( ../src/glsl/shaderWater.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/ShaderTarg2.c )        
+         |  |  init( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  textFileRead( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/ShaderTarg2.c         
+         |  |  |  validateShader( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  validateShader( ../src/glsl/ShaderTarg2.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/ShaderLighting.c )        
+         |  |  init( ../src/glsl/ShaderLighting.c )        
+         |  |  |  textFileRead( ../src/glsl/ShaderLighting.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/ShaderLighting.c         
+         |  |  |  validateShader( ../src/glsl/ShaderLighting.c )        
+         |  |  |  validateShader( ../src/glsl/ShaderLighting.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/GrassShader.c )        
+         |  |  init( ../src/glsl/GrassShader.c )        
+         |  |  |  textFileRead( ../src/glsl/GrassShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/GrassShader.c         
+         |  |  |  validateShader( ../src/glsl/GrassShader.c )        
+         |  |  |  validateShader( ../src/glsl/GrassShader.c )        
          |  |  |  validateProgram()          
          |  |  END          
          |  END          
@@ -276,4 +634,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:04:28.66
+Time Elapsed 00:05:59.82

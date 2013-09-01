@@ -107,8 +107,8 @@ public:
 		curDiagram = diagrams[renderMethod];
 
 		iPageSize = 4;
-		loadRad = 3;
-		loadRadZ = 3;
+		loadRad = 2;
+		loadRadZ = 2;
 		
 		renderRad = 12;
 
@@ -143,6 +143,7 @@ public:
 
 	void update(bool changesMade, bool bufferInvalid, int maxH) {
 
+
 		bool procResult = processPages();
 		if (procResult || changesMade) {
 			renderPages(maxH);
@@ -155,11 +156,15 @@ public:
 
 			postProcess();
 
+
+			drawGrass();
 			glutSwapBuffers();
 			glFlush();
 			
 		}
 
+
+		
 		
 		
 	}
@@ -207,16 +212,17 @@ public:
 
 
 	    int changeCount = 0;
-	    int maxChanges = 4;
+	    int maxChanges = 32;
 
-	    int extraRad = 4;
+	    int extraRad = singleton->extraRad;
 
 	    if (singleton->lbDown || singleton->rbDown) {
 	    	extraRad = 0;
+	    	maxChanges = 1;
 	    }
 	    
 
-		for (k = -(loadRadZ+extraRad/2); k <= (loadRadZ+extraRad/2); k++) {
+		for (k = -(loadRadZ+extraRad); k <= (loadRadZ+extraRad); k++) {
 			for (j = -(loadRad+extraRad); j <= (loadRad+extraRad); j++) {
 				for (i = -(loadRad+extraRad); i <= (loadRad+extraRad); i++) {
 
@@ -255,6 +261,7 @@ public:
 							worldData[ind]->init(singleton, iPageSize, curPos, iRSize*2);
 
 							pageCount++;
+							changeCount++;
 
 							//doTrace("Voxel Count (million): ", i__s(pageCount*(iRSize*iRSize*iRSize/(1024*1024)) ));
 
@@ -272,7 +279,7 @@ public:
 
 	                            	worldData[ind]->nextState = nState;
 
-	                            	if ( threadpool.available() > 0 ) {
+	                            	if ( threadpool.available() > 1 ) {
 
 	                            		try {
 	                            			threadpool.start(*worldData[ind]);
@@ -503,7 +510,40 @@ public:
 	}
 
 
+	void drawGrass() {
 
+
+		
+		//glEnable(GL_DEPTH_TEST);
+
+
+		singleton->bindShader("GrassShader");
+		//singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
+		//singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
+		
+		
+		singleton->setShaderFloat("curTime", singleton->curTime);
+		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+		
+
+		//singleton->bindFBO("resultFBO");
+		
+		//singleton->sampleFBO("resultFBO");
+		singleton->sampleFBO("testFBO");
+
+		//MUST BE CALLED AFTER FBO IS BOUND
+		//singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+
+		glCallList(singleton->grassTris);
+
+
+		singleton->unsampleFBO("testFBO");
+		singleton->unbindShader();
+
+		//glDisable(GL_DEPTH_TEST);
+
+		
+	}
 
 	void postProcess() {
 		

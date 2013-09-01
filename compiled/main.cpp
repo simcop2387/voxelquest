@@ -3232,6 +3232,7 @@ class Singleton
 public:
   bool (keyDownArr) [MAX_KEYS];
   GLuint volTris;
+  GLuint grassTris;
   vector <string> shaderStrings;
   vector <string> fboStrings;
   vector <string> shaderTextureIDs;
@@ -3245,6 +3246,7 @@ public:
   bool isFullScreen;
   int baseW;
   int baseH;
+  int extraRad;
   int defaultWinW;
   int defaultWinH;
   float currentFBOResolutionX;
@@ -3269,6 +3271,9 @@ public:
   float seedX;
   float seedY;
   float seedZ;
+  Timer myTimer;
+  float curTime;
+  float lastTime;
   float myDelta;
   int frameCount;
   bool changesMade;
@@ -3294,6 +3299,7 @@ public:
   void setProgAction (eProgramState ps, unsigned char kc, eProgramAction pa, bool isDown);
   void setProgActionAll (unsigned char kc, eProgramAction pa, bool isDown);
   void keySetup ();
+  void createGrassList ();
   void createVTList ();
   void init (int _defaultWinW, int _defaultWinH);
   void doShaderRefresh ();
@@ -3408,6 +3414,7 @@ public:
   bool processPages ();
   void renderPages (int maxH);
   void drawPage (GamePage * gp, int dx, int dy, int dz);
+  void drawGrass ();
   void postProcess ();
   ~ GameWorld ();
 };
@@ -3580,6 +3587,76 @@ void Singleton::keySetup ()
 		setProgActionAll('r', E_PA_REFRESH, false);
 
 	}
+void Singleton::createGrassList ()
+                               {
+
+		int i;
+		int j;
+
+		float fi;
+		float fj;
+
+		float tcx;
+		float tcy;
+
+
+		int iMax = 512;
+		int jMax = 512;
+
+		float fiMax = (float)iMax;
+		float fjMax = (float)jMax;
+		float baseRad = 1.0f/fiMax;
+		float grassHeight = 0.0;//(4.0f)/fjMax;
+		float heightMod;
+
+		grassTris = glGenLists(1);
+		
+
+		glNewList(grassTris, GL_COMPILE);
+
+		//glBegin(GL_TRIANGLES);
+		glBegin(GL_QUADS);
+
+		//glNormal3f(0, 0, 1);
+
+		
+
+		for (j = jMax-1; j >= 0; j--) {
+			fj = ((float)(j*2-jMax))/fjMax;
+			tcy = (fj + 1.0f)/2.0f;
+			for (i = 0; i < iMax; i++) {
+				fi = ((float)(i*2-iMax))/fiMax;
+				tcx = (fi + 1.0f)/2.0f;
+			
+
+				heightMod = 0.0;//genRand(0.0f,4.0f)/fjMax;
+
+				//glColor4f(backfaceX[i], backfaceY[i], backfaceZ[i], 1.0f);
+
+				//
+				
+				
+				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 0.0f);
+				glVertex3f(fi-baseRad,fj,0.0f);
+				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 0.0f);
+				glVertex3f(fi+baseRad,fj,0.0f);
+
+				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 1.0f);
+				glVertex3f(fi-baseRad,fj+grassHeight+heightMod,1.0f);
+				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 1.0f);
+				glVertex3f(fi+baseRad,fj+grassHeight+heightMod,1.0f);
+				
+			}
+
+
+			
+		}
+
+		glEnd();
+		
+		glEndList();
+		
+	}
 void Singleton::createVTList ()
                             {
 
@@ -3693,6 +3770,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 
 		pushTrace("Singleton init");
 
+		myTimer.start();
+
+		extraRad = 0;
+		lastTime = 0.0;
+
 		srand(time(0));
 		seedX = genRand(5000.0f,500000.0f);
 		seedY = genRand(5000.0f,500000.0f);
@@ -3737,6 +3819,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 		altPressed = false;
 
 		createVTList();
+		createGrassList();
 
 
 		//// GL WIDGET START ////
@@ -3787,6 +3870,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 	    shaderStrings.push_back("shaderWater");
 	    shaderStrings.push_back("ShaderTarg2");
 	    shaderStrings.push_back("ShaderLighting");
+	    shaderStrings.push_back("GrassShader");
 	    shaderStrings.push_back("GenerateVolume");
 	    shaderStrings.push_back("RenderVolume");
 	    shaderStrings.push_back("Simplex2D");
@@ -4161,6 +4245,24 @@ void Singleton::keyboardUp (unsigned char key, int x, int y)
 
 			break;
 
+			case '[':
+				extraRad--;
+				if (extraRad < 0) {
+					extraRad = 0;
+				}
+
+				if (shiftPressed) {
+					extraRad = 0;
+				}
+
+				doTrace("Extra Radius: ", i__s(extraRad));
+			break;
+
+			case ']':
+				extraRad++;
+				doTrace("Extra Radius: ", i__s(extraRad));
+			break;
+
 			case 't':
 				doShaderRefresh();
 			    gw->resetToState(E_STATE_COPYTOTEXTURE_END);
@@ -4272,12 +4374,24 @@ void Singleton::mouseClick (int button, int state, int x, int y)
 void Singleton::display ()
                            {
 
-		if (shadersAreLoaded) {
-			gw->update(changesMade, bufferInvalid, maxH);
+		curTime = myTimer.getElapsedTimeInMilliSec();
+
+		float elTime = curTime - lastTime;
+
+		if (elTime >= 16.0) {
+			lastTime = curTime;
+
+			if (shadersAreLoaded) {
+				gw->update(changesMade, bufferInvalid, maxH);
+
+				changesMade = false;
+				bufferInvalid = false;
+			}
 		}
 
-		changesMade = false;
-		bufferInvalid = false;
+		
+
+		
 
 		//doTrace( "POSSIBLE ERROR: " , i__s(glGetError()) , "\n" );
 
@@ -4352,10 +4466,6 @@ void GamePage::init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRe
 		int renderDim2 = iRenderSize*iRenderSize;
 
 		fboSet = NULL;
-		fboSet = new FBOSet();
-		fboSet->init(2,iRenderSize,iRenderSize,1);
-		glGenTextures(1,&volID);
-		glGenTextures(1,&volIDLinear);
 		
 
 		curState = E_STATE_INIT_END;
@@ -4388,8 +4498,8 @@ float GamePage::sqrtFast (float x)
 void GamePage::createSimplexNoise ()
                                   {
 
-		bool isBlank = true;
-		bool isFull = true;
+		bool isBlank = false;
+		bool isFull = false;
 		
 
 		curState = E_STATE_CREATESIMPLEXNOISE_BEG;
@@ -4400,7 +4510,9 @@ void GamePage::createSimplexNoise ()
 
 		int totLen = iDim;
 		int totLenM1 = totLen-1;
-		int totLenO2 = iDim/2;
+		int totLenO2 = totLen/2;
+		int totLenO3 = (totLen*3)/4;
+		int totLenO4 = totLen/4;
 		float fTotLen = (float)totLen;
 		float fTotLenT2 = fTotLen*2.0f;
 
@@ -4433,11 +4545,13 @@ void GamePage::createSimplexNoise ()
 
 
 
+
+
 		
 		float thresh;
 		float testVal;
 
-		if (iOff.z - totLenO2*2.0f > maxGenHeight) {
+		if (false) { //(iOff.z - totLenO2*2.0f > maxGenHeight) {
 			isBlank = true;
 			isFull = false;
 		}
@@ -4486,12 +4600,27 @@ void GamePage::createSimplexNoise ()
 							}
 							tmp = clamp(testVal*255.0*(1.0-thresh*thresh*thresh));
 
-							if (tmp >= 127) {
+
+							// if (i >= totLenO4 && i <= totLenO3) {
+							// 	if (j >= totLenO4 && j <= totLenO3) {
+							// 		if (k >= totLenO4 && k <= totLenO3) {
+							// 			if (tmp >= 127) {
+							// 				//isBlank = false;
+							// 			}
+							// 			else {
+							// 				isFull = false;
+							// 			}
+							// 		}
+							// 	}
+							// }
+
+							
+							if (tmp >= 126) {
 								isBlank = false;
 							}
 							else {
 								isFull = false;
-							}
+							}							
 							
 
 
@@ -4560,6 +4689,14 @@ void GamePage::copyToTexture ()
                              {
 
 		curState = E_STATE_COPYTOTEXTURE_BEG;
+
+		if (fboSet == NULL) {
+			
+			fboSet = new FBOSet();
+			fboSet->init(2,iRenderSize,iRenderSize,1);
+			glGenTextures(1,&volID);
+			glGenTextures(1,&volIDLinear);
+		}
 
 		//copy volData to 3d Texture
 		glBindTexture(GL_TEXTURE_3D,volID);
@@ -4757,8 +4894,8 @@ void GameWorld::init (iVector3 _iDim, Singleton * _singleton, int _renderMethod)
 		curDiagram = diagrams[renderMethod];
 
 		iPageSize = 4;
-		loadRad = 3;
-		loadRadZ = 3;
+		loadRad = 2;
+		loadRadZ = 2;
 		
 		renderRad = 12;
 
@@ -4793,6 +4930,7 @@ void GameWorld::init (iVector3 _iDim, Singleton * _singleton, int _renderMethod)
 void GameWorld::update (bool changesMade, bool bufferInvalid, int maxH)
                                                                     {
 
+
 		bool procResult = processPages();
 		if (procResult || changesMade) {
 			renderPages(maxH);
@@ -4805,11 +4943,15 @@ void GameWorld::update (bool changesMade, bool bufferInvalid, int maxH)
 
 			postProcess();
 
+
+			drawGrass();
 			glutSwapBuffers();
 			glFlush();
 			
 		}
 
+
+		
 		
 		
 	}
@@ -4857,16 +4999,17 @@ bool GameWorld::processPages ()
 
 
 	    int changeCount = 0;
-	    int maxChanges = 4;
+	    int maxChanges = 32;
 
-	    int extraRad = 4;
+	    int extraRad = singleton->extraRad;
 
 	    if (singleton->lbDown || singleton->rbDown) {
 	    	extraRad = 0;
+	    	maxChanges = 1;
 	    }
 	    
 
-		for (k = -(loadRadZ+extraRad/2); k <= (loadRadZ+extraRad/2); k++) {
+		for (k = -(loadRadZ+extraRad); k <= (loadRadZ+extraRad); k++) {
 			for (j = -(loadRad+extraRad); j <= (loadRad+extraRad); j++) {
 				for (i = -(loadRad+extraRad); i <= (loadRad+extraRad); i++) {
 
@@ -4905,6 +5048,7 @@ bool GameWorld::processPages ()
 							worldData[ind]->init(singleton, iPageSize, curPos, iRSize*2);
 
 							pageCount++;
+							changeCount++;
 
 							//doTrace("Voxel Count (million): ", i__s(pageCount*(iRSize*iRSize*iRSize/(1024*1024)) ));
 
@@ -4922,7 +5066,7 @@ bool GameWorld::processPages ()
 
 	                            	worldData[ind]->nextState = nState;
 
-	                            	if ( threadpool.available() > 0 ) {
+	                            	if ( threadpool.available() > 1 ) {
 
 	                            		try {
 	                            			threadpool.start(*worldData[ind]);
@@ -5148,6 +5292,41 @@ void GameWorld::drawPage (GamePage * gp, int dx, int dy, int dz)
 
 
 	}
+void GameWorld::drawGrass ()
+                         {
+
+
+		
+		//glEnable(GL_DEPTH_TEST);
+
+
+		singleton->bindShader("GrassShader");
+		//singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
+		//singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
+		
+		
+		singleton->setShaderFloat("curTime", singleton->curTime);
+		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+		
+
+		//singleton->bindFBO("resultFBO");
+		
+		//singleton->sampleFBO("resultFBO");
+		singleton->sampleFBO("testFBO");
+
+		//MUST BE CALLED AFTER FBO IS BOUND
+		//singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+
+		glCallList(singleton->grassTris);
+
+
+		singleton->unsampleFBO("testFBO");
+		singleton->unbindShader();
+
+		//glDisable(GL_DEPTH_TEST);
+
+		
+	}
 void GameWorld::postProcess ()
                            {
 		
@@ -5339,7 +5518,7 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE|GLUT_RGB);
     glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
-    glutInitWindowPosition(400, 200);
+    glutInitWindowPosition(140, 200);
     glutCreateWindow("VoxelQuest");
 
     GLenum err = glewInit();

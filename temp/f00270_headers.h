@@ -9,6 +9,7 @@ class Singleton
 public:
   bool (keyDownArr) [MAX_KEYS];
   GLuint volTris;
+  GLuint grassTris;
   vector <string> shaderStrings;
   vector <string> fboStrings;
   vector <string> shaderTextureIDs;
@@ -22,6 +23,7 @@ public:
   bool isFullScreen;
   int baseW;
   int baseH;
+  int extraRad;
   int defaultWinW;
   int defaultWinH;
   float currentFBOResolutionX;
@@ -46,6 +48,9 @@ public:
   float seedX;
   float seedY;
   float seedZ;
+  Timer myTimer;
+  float curTime;
+  float lastTime;
   float myDelta;
   int frameCount;
   bool changesMade;
@@ -71,6 +76,7 @@ public:
   void setProgAction (eProgramState ps, unsigned char kc, eProgramAction pa, bool isDown);
   void setProgActionAll (unsigned char kc, eProgramAction pa, bool isDown);
   void keySetup ();
+  void createGrassList ();
   void createVTList ();
   void init (int _defaultWinW, int _defaultWinH);
   void doShaderRefresh ();
@@ -185,6 +191,7 @@ public:
   bool processPages ();
   void renderPages (int maxH);
   void drawPage (GamePage * gp, int dx, int dy, int dz);
+  void drawGrass ();
   void postProcess ();
   ~ GameWorld ();
 };

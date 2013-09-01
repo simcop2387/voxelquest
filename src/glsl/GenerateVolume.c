@@ -169,11 +169,11 @@ void main() {
 	}
 	else {
 		
-		//res.a = float( (rockIsInside+isTerrain) > 0.0)*gradVal;
-		//res.rgb = mix(vec3(0.0,0.0,0.0),bestSamp,rockIsInside);
+		res.a = float( (rockIsInside+isTerrain) > 0.0)*gradVal;
+		res.rgb = mix(vec3(0.0,0.0,0.0),bestSamp,rockIsInside);
 
-		res.rgb = bestSamp;
-		res.a = rockIsOnTer*gradVal;
+		//res.rgb = bestSamp;
+		//res.a = rockIsOnTer*gradVal;
 	}
 
 
