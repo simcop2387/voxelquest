@@ -176,13 +176,14 @@ void Singleton::createGrassList ()
 		float tcx;
 		float tcy;
 
+		int spacing = 1;
 
 		int iMax = 512;
 		int jMax = 512;
 
 		float fiMax = (float)iMax;
 		float fjMax = (float)jMax;
-		float baseRad = 1.0f/fiMax;
+		float baseRad = 4.0f/fiMax;
 		float grassHeight = 0.0;//(4.0f)/fjMax;
 		float heightMod;
 
@@ -198,12 +199,12 @@ void Singleton::createGrassList ()
 
 		
 
-		for (j = jMax-1; j >= 0; j--) {
-			fj = ((float)(j*2-jMax))/fjMax;
-			tcy = (fj + 1.0f)/2.0f;
-			for (i = 0; i < iMax; i++) {
-				fi = ((float)(i*2-iMax))/fiMax;
-				tcx = (fi + 1.0f)/2.0f;
+		for (j = jMax-1; j >= 0; j -= spacing) {
+			fj = ((float)(j*2-jMax) + 1.0f)/fjMax;
+			tcy = fj;//(fj + 1.0f)/2.0f;
+			for (i = 0; i < iMax; i += spacing) {
+				fi = ((float)(i*2-iMax) + 1.0f)/fiMax;
+				tcx = fi;//(fi + 1.0f)/2.0f;
 			
 
 				heightMod = 0.0;//genRand(0.0f,4.0f)/fjMax;
@@ -213,15 +214,16 @@ void Singleton::createGrassList ()
 				//
 				
 				
-				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 0.0f);
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.0f, -1.0);
 				glVertex3f(fi-baseRad,fj,0.0f);
-				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 0.0f);
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.0f, 1.0);
 				glVertex3f(fi+baseRad,fj,0.0f);
 
-				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 1.0f);
-				glVertex3f(fi-baseRad,fj+grassHeight+heightMod,1.0f);
-				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 1.0f);
-				glVertex3f(fi+baseRad,fj+grassHeight+heightMod,1.0f);
+				
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, 1.0);
+				glVertex3f(fi+baseRad/8.0f,fj+grassHeight+heightMod,1.0f);
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, -1.0);
+				glVertex3f(fi-baseRad/8.0f,fj+grassHeight+heightMod,1.0f);
 				
 			}
 
@@ -349,6 +351,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 
 		myTimer.start();
 
+		grassOn = false;
+		animateGrass = false;
+
 		extraRad = 0;
 		lastTime = 0.0;
 
@@ -440,7 +445,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 
 
 
-	    fboStrings.push_back("testFBO");
+	    fboStrings.push_back("pagesFBO");
+	    fboStrings.push_back("grassFBO");
+	    fboStrings.push_back("combineFBO");
 	    fboStrings.push_back("resultFBO");
 	    fboStrings.push_back("volGenFBO");
 
@@ -448,6 +455,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 	    shaderStrings.push_back("ShaderTarg2");
 	    shaderStrings.push_back("ShaderLighting");
 	    shaderStrings.push_back("GrassShader");
+	    shaderStrings.push_back("CombineShader");
 	    shaderStrings.push_back("GenerateVolume");
 	    shaderStrings.push_back("RenderVolume");
 	    shaderStrings.push_back("Simplex2D");
@@ -482,7 +490,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 	    }
 
 	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel);
-	    fboMap["testFBO"]->init(2, 1024, 1024, 1);
+	    fboMap["pagesFBO"]->init(2, 1024, 1024, 1);
+	    fboMap["grassFBO"]->init(2, 1024, 1024, 1);
+	    fboMap["combineFBO"]->init(2, 1024, 1024, 1);
 	    fboMap["resultFBO"]->init(1, 1024, 1024, 1);
 	    fboMap["volGenFBO"]->init(1, 4096, 4096, 1);
 	    
@@ -533,21 +543,21 @@ void Singleton::setWH (int w, int h)
 	    baseW = w;
 	    baseH = h;
 	}
-void Singleton::sampleFBODirect (FBOSet * fbos)
-                                           {
+void Singleton::sampleFBODirect (FBOSet * fbos, int offset)
+                                                         {
 	    int i;
 	    if (shadersAreLoaded) {
 	        for (i = 0; i < fbos->numBufs; i++) {
-	            setShaderTexture(fbos->fbos[i].color_tex, i);
+	            setShaderTexture(fbos->fbos[i].color_tex, i+offset);
 	        }
 	    }
 	}
-void Singleton::unsampleFBODirect (FBOSet * fbos)
-                                             {
+void Singleton::unsampleFBODirect (FBOSet * fbos, int offset)
+                                                           {
 	    int i;
 	    if (shadersAreLoaded) {
 	        for (i = fbos->numBufs - 1; i >= 0; i--) {
-	            setShaderTexture(0, i);
+	            setShaderTexture(0, i+offset);
 	        }
 	    }
 	}
@@ -558,16 +568,16 @@ void Singleton::bindFBODirect (FBOSet * fbos)
 	    currentFBOResolutionX = fbos->width;
 	    currentFBOResolutionY = fbos->height;
 	}
-void Singleton::sampleFBO (string fboName)
-                                       {
+void Singleton::sampleFBO (string fboName, int offset)
+                                                     {
 	    FBOSet* fbos = fboMap[fboName];
-	    sampleFBODirect(fbos);
+	    sampleFBODirect(fbos,offset);
 	}
-void Singleton::unsampleFBO (string fboName)
-                                         {
+void Singleton::unsampleFBO (string fboName, int offset)
+                                                       {
 	    
 	    FBOSet* fbos = fboMap[fboName];
-	    unsampleFBODirect(fbos);
+	    unsampleFBODirect(fbos,offset);
 	}
 void Singleton::bindFBO (string fboName)
                                      {
@@ -840,6 +850,21 @@ void Singleton::keyboardUp (unsigned char key, int x, int y)
 				doTrace("Extra Radius: ", i__s(extraRad));
 			break;
 
+			case 'f':
+				animateGrass = !animateGrass;
+				bufferInvalid = true;
+				changesMade = true;
+			break;
+			case 'g':
+				grassOn = !grassOn;
+				bufferInvalid = true;
+				changesMade = true;
+			break;
+
+
+
+
+
 			case 't':
 				doShaderRefresh();
 			    gw->resetToState(E_STATE_COPYTOTEXTURE_END);
@@ -855,9 +880,7 @@ void Singleton::keyboardUp (unsigned char key, int x, int y)
 				changesMade = true;
 				maxH--;
 			break;
-			case 'f':
-				gw->doDrawFBO = !(gw->doDrawFBO);
-			break;
+			
 			default:
 				
 			break;

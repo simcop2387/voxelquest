@@ -51,6 +51,8 @@ public:
   Timer myTimer;
   float curTime;
   float lastTime;
+  bool grassOn;
+  bool animateGrass;
   float myDelta;
   int frameCount;
   bool changesMade;
@@ -82,11 +84,11 @@ public:
   void doShaderRefresh ();
   void setMatrices (int w, int h);
   void setWH (int w, int h);
-  void sampleFBODirect (FBOSet * fbos);
-  void unsampleFBODirect (FBOSet * fbos);
+  void sampleFBODirect (FBOSet * fbos, int offset = 0);
+  void unsampleFBODirect (FBOSet * fbos, int offset = 0);
   void bindFBODirect (FBOSet * fbos);
-  void sampleFBO (string fboName);
-  void unsampleFBO (string fboName);
+  void sampleFBO (string fboName, int offset = 0);
+  void unsampleFBO (string fboName, int offset = 0);
   void bindFBO (string fboName);
   void unbindFBO ();
   void bindShader (string shaderName);
@@ -191,7 +193,8 @@ public:
   bool processPages ();
   void renderPages (int maxH);
   void drawPage (GamePage * gp, int dx, int dy, int dz);
-  void drawGrass ();
+  void combineBuffers ();
+  void renderGrass ();
   void postProcess ();
   ~ GameWorld ();
 };

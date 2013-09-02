@@ -34,7 +34,7 @@ void main() {
     vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
     vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
 
-    vec4 fogColor = vec4(0.6, 0.6, 0.7, 1.0);
+    
 
     ////////////////////////
     //gl_FragData[0] = tex0;
@@ -140,8 +140,37 @@ void main() {
         //discard;
     //}
 
+    vec3 fogColor = vec3(0.6, 0.6, 0.7);
 
-    gl_FragData[0] = mix( fogColor, vec4(lightRes*0.8,lightRes*0.7,lightRes*0.6,1.0), hfog );
+
+    vec3 resCol0 = vec3(0.0,0.0,0.0);
+    vec3 resCol1 = vec3(1.0,1.0,1.0);
+
+
+    //35:32:27
+    //232:225:206
+
+
+    //26:9:17
+    //75:40:44
+
+    if (tex0.b == 2.0/255.0) {
+        resCol0 = vec3(26.0/255.0, 9.0/255.0, 17.0/255.0);
+        resCol1 = vec3(75.0/255.0, 40.0/255.0, 44.0/255.0);
+    }
+    if (tex0.b == 1.0/255.0) {
+        resCol0 = vec3(35.0/255.0, 32.0/255.0, 27.0/255.0);
+        resCol1 = vec3(232.0/255.0, 225.0/255.0, 206.0/255.0);
+
+    }
+    if (tex0.b == 3.0/255.0) {
+        resCol0 = vec3(10.0/255.0, 25.0/255.0, 0.0/255.0);
+        resCol1 = vec3(145.0/255.0, 192.0/255.0, 62.0/255.0);
+    }
+
+
+    //vec4(lightRes*0.8,lightRes*0.7,lightRes*0.6, lightRes)
+    gl_FragData[0] = vec4(mix( fogColor, mix(resCol0,resCol1,lightRes), hfog ),1.0);
     //gl_FragData[0] = vec4(aoval,aoval,aoval,1.0);
 
     //gl_FragData[0] = vec4(lightRes,lightRes,lightRes,1.0);
@@ -151,12 +180,12 @@ void main() {
 }
 
 
-/*
-void main() {
-    vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
-    vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
 
-    gl_FragData[0] = tex1;
-}
-*/
+// void main() {
+//     vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
+//     vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
+
+//     gl_FragData[0] = tex1;
+// }
+
 

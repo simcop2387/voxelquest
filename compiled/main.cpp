@@ -3274,6 +3274,8 @@ public:
   Timer myTimer;
   float curTime;
   float lastTime;
+  bool grassOn;
+  bool animateGrass;
   float myDelta;
   int frameCount;
   bool changesMade;
@@ -3305,11 +3307,11 @@ public:
   void doShaderRefresh ();
   void setMatrices (int w, int h);
   void setWH (int w, int h);
-  void sampleFBODirect (FBOSet * fbos);
-  void unsampleFBODirect (FBOSet * fbos);
+  void sampleFBODirect (FBOSet * fbos, int offset = 0);
+  void unsampleFBODirect (FBOSet * fbos, int offset = 0);
   void bindFBODirect (FBOSet * fbos);
-  void sampleFBO (string fboName);
-  void unsampleFBO (string fboName);
+  void sampleFBO (string fboName, int offset = 0);
+  void unsampleFBO (string fboName, int offset = 0);
   void bindFBO (string fboName);
   void unbindFBO ();
   void bindShader (string shaderName);
@@ -3414,7 +3416,8 @@ public:
   bool processPages ();
   void renderPages (int maxH);
   void drawPage (GamePage * gp, int dx, int dy, int dz);
-  void drawGrass ();
+  void combineBuffers ();
+  void renderGrass ();
   void postProcess ();
   ~ GameWorld ();
 };
@@ -3599,13 +3602,14 @@ void Singleton::createGrassList ()
 		float tcx;
 		float tcy;
 
+		int spacing = 1;
 
 		int iMax = 512;
 		int jMax = 512;
 
 		float fiMax = (float)iMax;
 		float fjMax = (float)jMax;
-		float baseRad = 1.0f/fiMax;
+		float baseRad = 4.0f/fiMax;
 		float grassHeight = 0.0;//(4.0f)/fjMax;
 		float heightMod;
 
@@ -3621,12 +3625,12 @@ void Singleton::createGrassList ()
 
 		
 
-		for (j = jMax-1; j >= 0; j--) {
-			fj = ((float)(j*2-jMax))/fjMax;
-			tcy = (fj + 1.0f)/2.0f;
-			for (i = 0; i < iMax; i++) {
-				fi = ((float)(i*2-iMax))/fiMax;
-				tcx = (fi + 1.0f)/2.0f;
+		for (j = jMax-1; j >= 0; j -= spacing) {
+			fj = ((float)(j*2-jMax) + 1.0f)/fjMax;
+			tcy = fj;//(fj + 1.0f)/2.0f;
+			for (i = 0; i < iMax; i += spacing) {
+				fi = ((float)(i*2-iMax) + 1.0f)/fiMax;
+				tcx = fi;//(fi + 1.0f)/2.0f;
 			
 
 				heightMod = 0.0;//genRand(0.0f,4.0f)/fjMax;
@@ -3636,15 +3640,16 @@ void Singleton::createGrassList ()
 				//
 				
 				
-				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 0.0f);
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.0f, -1.0);
 				glVertex3f(fi-baseRad,fj,0.0f);
-				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 0.0f);
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.0f, 1.0);
 				glVertex3f(fi+baseRad,fj,0.0f);
 
-				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 1.0f);
-				glVertex3f(fi-baseRad,fj+grassHeight+heightMod,1.0f);
-				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 1.0f);
-				glVertex3f(fi+baseRad,fj+grassHeight+heightMod,1.0f);
+				
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, 1.0);
+				glVertex3f(fi+baseRad/8.0f,fj+grassHeight+heightMod,1.0f);
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, -1.0);
+				glVertex3f(fi-baseRad/8.0f,fj+grassHeight+heightMod,1.0f);
 				
 			}
 
@@ -3772,6 +3777,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 
 		myTimer.start();
 
+		grassOn = false;
+		animateGrass = false;
+
 		extraRad = 0;
 		lastTime = 0.0;
 
@@ -3863,7 +3871,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 
 
 
-	    fboStrings.push_back("testFBO");
+	    fboStrings.push_back("pagesFBO");
+	    fboStrings.push_back("grassFBO");
+	    fboStrings.push_back("combineFBO");
 	    fboStrings.push_back("resultFBO");
 	    fboStrings.push_back("volGenFBO");
 
@@ -3871,6 +3881,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 	    shaderStrings.push_back("ShaderTarg2");
 	    shaderStrings.push_back("ShaderLighting");
 	    shaderStrings.push_back("GrassShader");
+	    shaderStrings.push_back("CombineShader");
 	    shaderStrings.push_back("GenerateVolume");
 	    shaderStrings.push_back("RenderVolume");
 	    shaderStrings.push_back("Simplex2D");
@@ -3905,7 +3916,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 	    }
 
 	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel);
-	    fboMap["testFBO"]->init(2, 1024, 1024, 1);
+	    fboMap["pagesFBO"]->init(2, 1024, 1024, 1);
+	    fboMap["grassFBO"]->init(2, 1024, 1024, 1);
+	    fboMap["combineFBO"]->init(2, 1024, 1024, 1);
 	    fboMap["resultFBO"]->init(1, 1024, 1024, 1);
 	    fboMap["volGenFBO"]->init(1, 4096, 4096, 1);
 	    
@@ -3956,21 +3969,21 @@ void Singleton::setWH (int w, int h)
 	    baseW = w;
 	    baseH = h;
 	}
-void Singleton::sampleFBODirect (FBOSet * fbos)
-                                           {
+void Singleton::sampleFBODirect (FBOSet * fbos, int offset)
+                                                         {
 	    int i;
 	    if (shadersAreLoaded) {
 	        for (i = 0; i < fbos->numBufs; i++) {
-	            setShaderTexture(fbos->fbos[i].color_tex, i);
+	            setShaderTexture(fbos->fbos[i].color_tex, i+offset);
 	        }
 	    }
 	}
-void Singleton::unsampleFBODirect (FBOSet * fbos)
-                                             {
+void Singleton::unsampleFBODirect (FBOSet * fbos, int offset)
+                                                           {
 	    int i;
 	    if (shadersAreLoaded) {
 	        for (i = fbos->numBufs - 1; i >= 0; i--) {
-	            setShaderTexture(0, i);
+	            setShaderTexture(0, i+offset);
 	        }
 	    }
 	}
@@ -3981,16 +3994,16 @@ void Singleton::bindFBODirect (FBOSet * fbos)
 	    currentFBOResolutionX = fbos->width;
 	    currentFBOResolutionY = fbos->height;
 	}
-void Singleton::sampleFBO (string fboName)
-                                       {
+void Singleton::sampleFBO (string fboName, int offset)
+                                                     {
 	    FBOSet* fbos = fboMap[fboName];
-	    sampleFBODirect(fbos);
+	    sampleFBODirect(fbos,offset);
 	}
-void Singleton::unsampleFBO (string fboName)
-                                         {
+void Singleton::unsampleFBO (string fboName, int offset)
+                                                       {
 	    
 	    FBOSet* fbos = fboMap[fboName];
-	    unsampleFBODirect(fbos);
+	    unsampleFBODirect(fbos,offset);
 	}
 void Singleton::bindFBO (string fboName)
                                      {
@@ -4263,6 +4276,21 @@ void Singleton::keyboardUp (unsigned char key, int x, int y)
 				doTrace("Extra Radius: ", i__s(extraRad));
 			break;
 
+			case 'f':
+				animateGrass = !animateGrass;
+				bufferInvalid = true;
+				changesMade = true;
+			break;
+			case 'g':
+				grassOn = !grassOn;
+				bufferInvalid = true;
+				changesMade = true;
+			break;
+
+
+
+
+
 			case 't':
 				doShaderRefresh();
 			    gw->resetToState(E_STATE_COPYTOTEXTURE_END);
@@ -4278,9 +4306,7 @@ void Singleton::keyboardUp (unsigned char key, int x, int y)
 				changesMade = true;
 				maxH--;
 			break;
-			case 'f':
-				gw->doDrawFBO = !(gw->doDrawFBO);
-			break;
+			
 			default:
 				
 			break;
@@ -4498,8 +4524,8 @@ float GamePage::sqrtFast (float x)
 void GamePage::createSimplexNoise ()
                                   {
 
-		bool isBlank = false;
-		bool isFull = false;
+		bool isBlank = true;
+		bool isFull = true;
 		
 
 		curState = E_STATE_CREATESIMPLEXNOISE_BEG;
@@ -4519,6 +4545,7 @@ void GamePage::createSimplexNoise ()
 		int ind = 0;
 
 		uint tmp;
+		uint tmp2;
 
 		float fx, fy, fz;
 
@@ -4550,6 +4577,7 @@ void GamePage::createSimplexNoise ()
 		
 		float thresh;
 		float testVal;
+		float testVal2;
 
 		if (false) { //(iOff.z - totLenO2*2.0f > maxGenHeight) {
 			isBlank = true;
@@ -4582,6 +4610,14 @@ void GamePage::createSimplexNoise ()
 							volData[ind] = 0;
 						}
 						else {
+
+							thresh = (fz/maxGenHeight);
+							if (thresh > 1.0) {
+								thresh = 1.0;
+							}
+
+
+
 							testVal = simplexScaledNoise(
 												4.0f, //octaves
 												0.5f, //persistence (amount added in each successive generation)
@@ -4592,35 +4628,41 @@ void GamePage::createSimplexNoise ()
 												fy+singleton->seedY,
 												fz+singleton->seedZ
 											);
+
+							testVal2 = simplexScaledNoise(
+												4.0f, //octaves
+												0.5f, //persistence (amount added in each successive generation)
+												1.0f/32.0f, //scale (frequency)
+												0.0f,
+												1.0f,
+												fx+singleton->seedX - 1.0f,
+												fy+singleton->seedY - 1.0f,
+												fz+singleton->seedZ - 1.0f
+											);
 							
 
-							thresh = (fz/maxGenHeight);
-							if (thresh > 1.0) {
-								thresh = 1.0;
-							}
+							
 							tmp = clamp(testVal*255.0*(1.0-thresh*thresh*thresh));
+							tmp2 = clamp(testVal2*255.0*(1.0-thresh*thresh*thresh));
 
 
-							// if (i >= totLenO4 && i <= totLenO3) {
-							// 	if (j >= totLenO4 && j <= totLenO3) {
-							// 		if (k >= totLenO4 && k <= totLenO3) {
-							// 			if (tmp >= 127) {
-							// 				//isBlank = false;
-							// 			}
-							// 			else {
-							// 				isFull = false;
-							// 			}
-							// 		}
-							// 	}
-							// }
+							if (i >= totLenO4 && i <= totLenO3) {
+								if (j >= totLenO4 && j <= totLenO3) {
+									if (k >= totLenO4 && k <= totLenO3) {
+										if (tmp > 126) {
+											//isBlank = false;
+										}
+										else {
+											isFull = false;
+										}
+									}
+								}
+							}
 
 							
-							if (tmp >= 126) {
+							if (tmp > 126 || tmp2 > 126) {
 								isBlank = false;
 							}
-							else {
-								isFull = false;
-							}							
 							
 
 
@@ -4934,7 +4976,21 @@ void GameWorld::update (bool changesMade, bool bufferInvalid, int maxH)
 		bool procResult = processPages();
 		if (procResult || changesMade) {
 			renderPages(maxH);
+			
+			if ( !(singleton->animateGrass) ) {
+				renderGrass();
+				combineBuffers();
+			}
+
+			
 		}
+
+		if (singleton->animateGrass) {
+			renderGrass();
+			combineBuffers();
+			bufferInvalid = true;
+		}
+
 
 		if (procResult || changesMade || bufferInvalid) {
 
@@ -4942,9 +4998,7 @@ void GameWorld::update (bool changesMade, bool bufferInvalid, int maxH)
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			postProcess();
-
-
-			drawGrass();
+			
 			glutSwapBuffers();
 			glFlush();
 			
@@ -5181,7 +5235,7 @@ void GameWorld::renderPages (int maxH)
 
 
 	    singleton->bindShader("ShaderTarg2");
-	    singleton->bindFBO("testFBO");
+	    singleton->bindFBO("pagesFBO");
 
 	    
 
@@ -5292,35 +5346,50 @@ void GameWorld::drawPage (GamePage * gp, int dx, int dy, int dz)
 
 
 	}
-void GameWorld::drawGrass ()
-                         {
+void GameWorld::combineBuffers ()
+                              {
+
+		singleton->bindShader("CombineShader");
+
+		singleton->bindFBO("combineFBO");
+		singleton->sampleFBO("pagesFBO",0);
+		singleton->sampleFBO("grassFBO",2);
+
+
+		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+		
+		singleton->drawFSQuad(1.0f);
+
+
+		singleton->unsampleFBO("pagesFBO",0);
+		singleton->unsampleFBO("grassFBO",2);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+	}
+void GameWorld::renderGrass ()
+                           {
 
 
 		
 		//glEnable(GL_DEPTH_TEST);
 
-
 		singleton->bindShader("GrassShader");
-		//singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
-		//singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
-		
 		
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
+		
+		singleton->bindFBO("grassFBO");
+		singleton->sampleFBO("pagesFBO");
+
+		if (singleton->grassOn) {
+			glCallList(singleton->grassTris);
+		}
+
 		
 
-		//singleton->bindFBO("resultFBO");
-		
-		//singleton->sampleFBO("resultFBO");
-		singleton->sampleFBO("testFBO");
-
-		//MUST BE CALLED AFTER FBO IS BOUND
-		//singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-
-		glCallList(singleton->grassTris);
-
-
-		singleton->unsampleFBO("testFBO");
+		singleton->unsampleFBO("pagesFBO");
+		singleton->unbindFBO();
 		singleton->unbindShader();
 
 		//glDisable(GL_DEPTH_TEST);
@@ -5340,13 +5409,13 @@ void GameWorld::postProcess ()
 			singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
 			
 			singleton->bindFBO("resultFBO");
-			singleton->sampleFBO("testFBO");
+			singleton->sampleFBO("combineFBO");
 
 			//MUST BE CALLED AFTER FBO IS BOUND
 			singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 
-			singleton->drawFSQuad(1.0);
-			singleton->unsampleFBO("testFBO");
+			singleton->drawFSQuad(1.0f);
+			singleton->unsampleFBO("combineFBO");
 			singleton->unbindFBO();
 			singleton->unbindShader();
 

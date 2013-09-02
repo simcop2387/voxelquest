@@ -117,7 +117,21 @@ void GameWorld::update (bool changesMade, bool bufferInvalid, int maxH)
 		bool procResult = processPages();
 		if (procResult || changesMade) {
 			renderPages(maxH);
+			
+			if ( !(singleton->animateGrass) ) {
+				renderGrass();
+				combineBuffers();
+			}
+
+			
 		}
+
+		if (singleton->animateGrass) {
+			renderGrass();
+			combineBuffers();
+			bufferInvalid = true;
+		}
+
 
 		if (procResult || changesMade || bufferInvalid) {
 
@@ -125,9 +139,7 @@ void GameWorld::update (bool changesMade, bool bufferInvalid, int maxH)
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			postProcess();
-
-
-			drawGrass();
+			
 			glutSwapBuffers();
 			glFlush();
 			
@@ -364,7 +376,7 @@ void GameWorld::renderPages (int maxH)
 
 
 	    singleton->bindShader("ShaderTarg2");
-	    singleton->bindFBO("testFBO");
+	    singleton->bindFBO("pagesFBO");
 
 	    
 
@@ -475,35 +487,50 @@ void GameWorld::drawPage (GamePage * gp, int dx, int dy, int dz)
 
 
 	}
-void GameWorld::drawGrass ()
-                         {
+void GameWorld::combineBuffers ()
+                              {
+
+		singleton->bindShader("CombineShader");
+
+		singleton->bindFBO("combineFBO");
+		singleton->sampleFBO("pagesFBO",0);
+		singleton->sampleFBO("grassFBO",2);
+
+
+		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+		
+		singleton->drawFSQuad(1.0f);
+
+
+		singleton->unsampleFBO("pagesFBO",0);
+		singleton->unsampleFBO("grassFBO",2);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+	}
+void GameWorld::renderGrass ()
+                           {
 
 
 		
 		//glEnable(GL_DEPTH_TEST);
 
-
 		singleton->bindShader("GrassShader");
-		//singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
-		//singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
-		
 		
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
+		
+		singleton->bindFBO("grassFBO");
+		singleton->sampleFBO("pagesFBO");
+
+		if (singleton->grassOn) {
+			glCallList(singleton->grassTris);
+		}
+
 		
 
-		//singleton->bindFBO("resultFBO");
-		
-		//singleton->sampleFBO("resultFBO");
-		singleton->sampleFBO("testFBO");
-
-		//MUST BE CALLED AFTER FBO IS BOUND
-		//singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-
-		glCallList(singleton->grassTris);
-
-
-		singleton->unsampleFBO("testFBO");
+		singleton->unsampleFBO("pagesFBO");
+		singleton->unbindFBO();
 		singleton->unbindShader();
 
 		//glDisable(GL_DEPTH_TEST);
@@ -523,13 +550,13 @@ void GameWorld::postProcess ()
 			singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
 			
 			singleton->bindFBO("resultFBO");
-			singleton->sampleFBO("testFBO");
+			singleton->sampleFBO("combineFBO");
 
 			//MUST BE CALLED AFTER FBO IS BOUND
 			singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 
-			singleton->drawFSQuad(1.0);
-			singleton->unsampleFBO("testFBO");
+			singleton->drawFSQuad(1.0f);
+			singleton->unsampleFBO("combineFBO");
 			singleton->unbindFBO();
 			singleton->unbindShader();
 

@@ -130,30 +130,25 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
         }
     }
 
-    /*
+    
     if (totHits == 0.0) {
         norm = vec3(0.0,0.0,0.0);//norm2/totSteps;
 
         
         if (testPoint.x == 1.0) {
-            norm.x = curSamp.a*10.0;
+            norm.x = 1.0;
         }
         if (testPoint.y == 1.0) {
-            norm.y = curSamp.a*10.0;
+            norm.y = 1.0;
         }
         if (testPoint.z == 1.0) {
-            norm.z = curSamp.a*4.0;
+            norm.z = 1.0;
         }
         
 
         aoVal = 0.0;//curSamp.a;
     }
     else {
-
-    }
-    */
-
-
         maxRad = 64;
         fMaxRad = float(maxRad);
 
@@ -189,6 +184,11 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
         }
 
         aoVal = clamp(1.0 - aoVal/totalAO, 1.0/255.0, 1.0);
+    }
+    
+
+
+        
     
 
 
@@ -263,7 +263,7 @@ void main() {
     }
     else {
         normAO = getAO(curPos, samp, worldPos);
-        heightMat = vec4(curPos.b, curHeight, 1.0, 1.0);
+        heightMat = vec4(curPos.b, curHeight, samp.a, 1.0);
 
         
     }

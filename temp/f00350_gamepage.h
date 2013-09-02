@@ -76,8 +76,8 @@ float GamePage::sqrtFast (float x)
 void GamePage::createSimplexNoise ()
                                   {
 
-		bool isBlank = false;
-		bool isFull = false;
+		bool isBlank = true;
+		bool isFull = true;
 		
 
 		curState = E_STATE_CREATESIMPLEXNOISE_BEG;
@@ -97,6 +97,7 @@ void GamePage::createSimplexNoise ()
 		int ind = 0;
 
 		uint tmp;
+		uint tmp2;
 
 		float fx, fy, fz;
 
@@ -128,6 +129,7 @@ void GamePage::createSimplexNoise ()
 		
 		float thresh;
 		float testVal;
+		float testVal2;
 
 		if (false) { //(iOff.z - totLenO2*2.0f > maxGenHeight) {
 			isBlank = true;
@@ -160,6 +162,14 @@ void GamePage::createSimplexNoise ()
 							volData[ind] = 0;
 						}
 						else {
+
+							thresh = (fz/maxGenHeight);
+							if (thresh > 1.0) {
+								thresh = 1.0;
+							}
+
+
+
 							testVal = simplexScaledNoise(
 												4.0f, //octaves
 												0.5f, //persistence (amount added in each successive generation)
@@ -170,35 +180,41 @@ void GamePage::createSimplexNoise ()
 												fy+singleton->seedY,
 												fz+singleton->seedZ
 											);
+
+							testVal2 = simplexScaledNoise(
+												4.0f, //octaves
+												0.5f, //persistence (amount added in each successive generation)
+												1.0f/32.0f, //scale (frequency)
+												0.0f,
+												1.0f,
+												fx+singleton->seedX - 1.0f,
+												fy+singleton->seedY - 1.0f,
+												fz+singleton->seedZ - 1.0f
+											);
 							
 
-							thresh = (fz/maxGenHeight);
-							if (thresh > 1.0) {
-								thresh = 1.0;
-							}
+							
 							tmp = clamp(testVal*255.0*(1.0-thresh*thresh*thresh));
+							tmp2 = clamp(testVal2*255.0*(1.0-thresh*thresh*thresh));
 
 
-							// if (i >= totLenO4 && i <= totLenO3) {
-							// 	if (j >= totLenO4 && j <= totLenO3) {
-							// 		if (k >= totLenO4 && k <= totLenO3) {
-							// 			if (tmp >= 127) {
-							// 				//isBlank = false;
-							// 			}
-							// 			else {
-							// 				isFull = false;
-							// 			}
-							// 		}
-							// 	}
-							// }
+							if (i >= totLenO4 && i <= totLenO3) {
+								if (j >= totLenO4 && j <= totLenO3) {
+									if (k >= totLenO4 && k <= totLenO3) {
+										if (tmp > 126) {
+											//isBlank = false;
+										}
+										else {
+											isFull = false;
+										}
+									}
+								}
+							}
 
 							
-							if (tmp >= 126) {
+							if (tmp > 126 || tmp2 > 126) {
 								isBlank = false;
 							}
-							else {
-								isFull = false;
-							}							
 							
 
 

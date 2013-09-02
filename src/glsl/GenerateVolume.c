@@ -157,23 +157,32 @@ void main() {
 	//(bestSamp.r + bestSamp.g*unitsPerDim + bestSamp.b*unitsPerDim*unitsPerDim);
 
 	
-	float rockIsOnTer = float(texture3D(Texture1, bestSamp).a > 0.48);
-	float rockIsInside = rockIsOnTer*float(gradVal > 0.1);
-	float isTerrain = float(tex2.a > 0.5);
+	float rockIsOnTer = float( texture3D(Texture1, bestSamp).a > 126.0/255.0);
+	float rockIsInside = rockIsOnTer*float(gradVal > 0.05);
+	float isTerrain = float(tex2.a > 126.0/255.0);
 
 	
 	vec4 res = vec4(0.0,0.0,0.0,0.0);
+	vec4 resA = vec4(0.0,0.0,0.0,0.0);
+	vec4 resB = vec4(0.0,0.0,0.0,0.0);
 
 	if ( (minDis1 == notValid) || (minDis2 == notValid) ) {
 
 	}
 	else {
 		
-		res.a = float( (rockIsInside+isTerrain) > 0.0)*gradVal;
-		res.rgb = mix(vec3(0.0,0.0,0.0),bestSamp,rockIsInside);
+		//res.a = float( pow(tex2.a,6.0) > 0.01);
+		//res.rgb = vec3(0.0,0.0,1.0);
 
-		//res.rgb = bestSamp;
-		//res.a = rockIsOnTer*gradVal;
+		resA.a = isTerrain;
+		resA.a += float( (rockIsInside+isTerrain) > 0.0);
+		resA.a = resA.a/255.0;
+		resA.rgb = mix(vec3(0.0,0.0,0.0),bestSamp,rockIsInside);
+
+		resB.rgb = bestSamp;
+		resB.a = rockIsOnTer*2.0/255.0;
+
+		res = resA;//mix(resA,resB, float( mod(tex2.a*1024.0,69.0)/69.0 > 0.5));
 	}
 
 

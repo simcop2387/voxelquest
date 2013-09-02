@@ -77,7 +77,8 @@ public:
 	float lastTime;
 
 
-
+	bool grassOn;
+	bool animateGrass;
 
 	///// GLWIDGET /////////
 
@@ -306,13 +307,14 @@ public:
 		float tcx;
 		float tcy;
 
+		int spacing = 1;
 
 		int iMax = 512;
 		int jMax = 512;
 
 		float fiMax = (float)iMax;
 		float fjMax = (float)jMax;
-		float baseRad = 1.0f/fiMax;
+		float baseRad = 4.0f/fiMax;
 		float grassHeight = 0.0;//(4.0f)/fjMax;
 		float heightMod;
 
@@ -328,12 +330,12 @@ public:
 
 		
 
-		for (j = jMax-1; j >= 0; j--) {
-			fj = ((float)(j*2-jMax))/fjMax;
-			tcy = (fj + 1.0f)/2.0f;
-			for (i = 0; i < iMax; i++) {
-				fi = ((float)(i*2-iMax))/fiMax;
-				tcx = (fi + 1.0f)/2.0f;
+		for (j = jMax-1; j >= 0; j -= spacing) {
+			fj = ((float)(j*2-jMax) + 1.0f)/fjMax;
+			tcy = fj;//(fj + 1.0f)/2.0f;
+			for (i = 0; i < iMax; i += spacing) {
+				fi = ((float)(i*2-iMax) + 1.0f)/fiMax;
+				tcx = fi;//(fi + 1.0f)/2.0f;
 			
 
 				heightMod = 0.0;//genRand(0.0f,4.0f)/fjMax;
@@ -343,15 +345,16 @@ public:
 				//
 				
 				
-				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 0.0f);
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.0f, -1.0);
 				glVertex3f(fi-baseRad,fj,0.0f);
-				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 0.0f);
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.0f, 1.0);
 				glVertex3f(fi+baseRad,fj,0.0f);
 
-				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 1.0f);
-				glVertex3f(fi-baseRad,fj+grassHeight+heightMod,1.0f);
-				glMultiTexCoord3f( GL_TEXTURE0, tcx, tcy, 1.0f);
-				glVertex3f(fi+baseRad,fj+grassHeight+heightMod,1.0f);
+				
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, 1.0);
+				glVertex3f(fi+baseRad/8.0f,fj+grassHeight+heightMod,1.0f);
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, -1.0);
+				glVertex3f(fi-baseRad/8.0f,fj+grassHeight+heightMod,1.0f);
 				
 			}
 
@@ -481,6 +484,9 @@ public:
 
 		myTimer.start();
 
+		grassOn = false;
+		animateGrass = false;
+
 		extraRad = 0;
 		lastTime = 0.0;
 
@@ -572,7 +578,9 @@ public:
 
 
 
-	    fboStrings.push_back("testFBO");
+	    fboStrings.push_back("pagesFBO");
+	    fboStrings.push_back("grassFBO");
+	    fboStrings.push_back("combineFBO");
 	    fboStrings.push_back("resultFBO");
 	    fboStrings.push_back("volGenFBO");
 
@@ -580,6 +588,7 @@ public:
 	    shaderStrings.push_back("ShaderTarg2");
 	    shaderStrings.push_back("ShaderLighting");
 	    shaderStrings.push_back("GrassShader");
+	    shaderStrings.push_back("CombineShader");
 	    shaderStrings.push_back("GenerateVolume");
 	    shaderStrings.push_back("RenderVolume");
 	    shaderStrings.push_back("Simplex2D");
@@ -614,7 +623,9 @@ public:
 	    }
 
 	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel);
-	    fboMap["testFBO"]->init(2, 1024, 1024, 1);
+	    fboMap["pagesFBO"]->init(2, 1024, 1024, 1);
+	    fboMap["grassFBO"]->init(2, 1024, 1024, 1);
+	    fboMap["combineFBO"]->init(2, 1024, 1024, 1);
 	    fboMap["resultFBO"]->init(1, 1024, 1024, 1);
 	    fboMap["volGenFBO"]->init(1, 4096, 4096, 1);
 	    
@@ -670,20 +681,20 @@ public:
 	    baseH = h;
 	}
 
-	void sampleFBODirect(FBOSet* fbos) {
+	void sampleFBODirect(FBOSet* fbos, int offset=0) {
 	    int i;
 	    if (shadersAreLoaded) {
 	        for (i = 0; i < fbos->numBufs; i++) {
-	            setShaderTexture(fbos->fbos[i].color_tex, i);
+	            setShaderTexture(fbos->fbos[i].color_tex, i+offset);
 	        }
 	    }
 	}
 
-	void unsampleFBODirect(FBOSet* fbos) {
+	void unsampleFBODirect(FBOSet* fbos, int offset=0) {
 	    int i;
 	    if (shadersAreLoaded) {
 	        for (i = fbos->numBufs - 1; i >= 0; i--) {
-	            setShaderTexture(0, i);
+	            setShaderTexture(0, i+offset);
 	        }
 	    }
 	}
@@ -697,15 +708,15 @@ public:
 
 	////
 
-	void sampleFBO(string fboName) {
+	void sampleFBO(string fboName, int offset=0) {
 	    FBOSet* fbos = fboMap[fboName];
-	    sampleFBODirect(fbos);
+	    sampleFBODirect(fbos,offset);
 	}
 
-	void unsampleFBO(string fboName) {
+	void unsampleFBO(string fboName, int offset=0) {
 	    
 	    FBOSet* fbos = fboMap[fboName];
-	    unsampleFBODirect(fbos);
+	    unsampleFBODirect(fbos,offset);
 	}
 
 	void bindFBO(string fboName) {
@@ -1015,6 +1026,21 @@ public:
 				doTrace("Extra Radius: ", i__s(extraRad));
 			break;
 
+			case 'f':
+				animateGrass = !animateGrass;
+				bufferInvalid = true;
+				changesMade = true;
+			break;
+			case 'g':
+				grassOn = !grassOn;
+				bufferInvalid = true;
+				changesMade = true;
+			break;
+
+
+
+
+
 			case 't':
 				doShaderRefresh();
 			    gw->resetToState(E_STATE_COPYTOTEXTURE_END);
@@ -1030,9 +1056,7 @@ public:
 				changesMade = true;
 				maxH--;
 			break;
-			case 'f':
-				gw->doDrawFBO = !(gw->doDrawFBO);
-			break;
+			
 			default:
 				
 			break;

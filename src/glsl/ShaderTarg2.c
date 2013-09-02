@@ -23,7 +23,7 @@ void main() {
         float tot = tex0.r + tex0.g + tex0.b + tex0.a;
 
         if (tot == 0.0) {
-                discard;
+            discard;
         }
 
         gl_FragData[0] = tex0;
