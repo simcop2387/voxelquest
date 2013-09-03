@@ -119,9 +119,9 @@ public:
 	    
 		
 
-	    singleton->cameraPos.x = loadRad*iRSize;
-	    singleton->cameraPos.y = loadRad*iRSize;
-	    singleton->cameraPos.z = loadRadZ*iRSize;
+	    singleton->fCameraPos.x = loadRad*iRSize;
+	    singleton->fCameraPos.y = loadRad*iRSize;
+	    singleton->fCameraPos.z = loadRadZ*iRSize;
 	    singleton->iCameraPos.x = loadRad*iRSize;
 	    singleton->iCameraPos.y = loadRad*iRSize;
 	    singleton->iCameraPos.z = loadRadZ*iRSize;
@@ -150,6 +150,7 @@ public:
 			
 			if ( !(singleton->animateGrass) ) {
 				renderGrass();
+				renderGeom();
 				combineBuffers();
 			}
 
@@ -158,6 +159,7 @@ public:
 
 		if (singleton->animateGrass) {
 			renderGrass();
+			renderGeom();
 			combineBuffers();
 			bufferInvalid = true;
 		}
@@ -228,9 +230,13 @@ public:
 
 	    int extraRad = singleton->extraRad;
 
-	    if (singleton->lbDown || singleton->rbDown) {
+	    if (singleton->lbDown) {
 	    	extraRad = 0;
 	    	maxChanges = 1;
+	    }
+
+	    if ( singleton->rbDown) {
+
 	    }
 	    
 
@@ -275,7 +281,6 @@ public:
 							pageCount++;
 							changeCount++;
 
-							//doTrace("Voxel Count (million): ", i__s(pageCount*(iRSize*iRSize*iRSize/(1024*1024)) ));
 
 						}
 						else {
@@ -405,7 +410,7 @@ public:
 	    int m;
 
 
-	    singleton->bindShader("ShaderTarg2");
+	    singleton->bindShader("BlitShader");
 	    singleton->bindFBO("pagesFBO");
 
 	    
@@ -485,11 +490,13 @@ public:
 		fScreenDim.x = (float)singleton->baseW;
 		fScreenDim.y = (float)singleton->baseH;
 
+		float myZoom = std::min(1.0f,singleton->cameraZoom);
 
-		fx1 = fx1*2.0f*(singleton->cameraZoom)/fScreenDim.x;
-		fy1 = fy1*2.0f*(singleton->cameraZoom)/fScreenDim.y;
-		fx2 = fx2*2.0f*(singleton->cameraZoom)/fScreenDim.x;
-		fy2 = fy2*2.0f*(singleton->cameraZoom)/fScreenDim.y;
+
+		fx1 = fx1*2.0f*(myZoom)/fScreenDim.x;
+		fy1 = fy1*2.0f*(myZoom)/fScreenDim.y;
+		fx2 = fx2*2.0f*(myZoom)/fScreenDim.x;
+		fy2 = fy2*2.0f*(myZoom)/fScreenDim.y;
 
 
 
@@ -528,6 +535,7 @@ public:
 		singleton->bindFBO("combineFBO");
 		singleton->sampleFBO("pagesFBO",0);
 		singleton->sampleFBO("grassFBO",2);
+		singleton->sampleFBO("geomFBO",4);
 
 
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
@@ -537,8 +545,42 @@ public:
 
 		singleton->unsampleFBO("pagesFBO",0);
 		singleton->unsampleFBO("grassFBO",2);
+		singleton->unsampleFBO("geomFBO",4);
 		singleton->unbindFBO();
 		singleton->unbindShader();
+	}
+
+
+	void renderGeom() {
+
+
+		
+		//glEnable(GL_DEPTH_TEST);
+
+		singleton->bindShader("GeomShader");
+		
+		singleton->setShaderFloat("curTime", singleton->curTime);
+		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
+		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
+		
+		singleton->bindFBO("geomFBO");
+		//singleton->sampleFBO("pagesFBO");
+
+
+		glEnable(GL_DEPTH_TEST);
+		singleton->drawCubeCentered(singleton->fLightPos,64.0);
+		glDisable(GL_DEPTH_TEST);
+
+		
+
+		//singleton->unsampleFBO("pagesFBO");
+		singleton->unbindFBO();
+		singleton->unbindShader();
+
+		//glDisable(GL_DEPTH_TEST);
+
+		
 	}
 
 	void renderGrass() {
@@ -551,7 +593,7 @@ public:
 		
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
-		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
+		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
 		
 		singleton->bindFBO("grassFBO");
 		singleton->sampleFBO("pagesFBO");
@@ -574,27 +616,48 @@ public:
 	void postProcess() {
 		
 
-		if (doDrawFBO) {
 
-		}
-		else {
-			singleton->bindShader("ShaderLighting");
-			singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
-			singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
-			
-			singleton->bindFBO("resultFBO");
-			singleton->sampleFBO("combineFBO");
+		int dxmod = singleton->iLightPos.x - singleton->iCameraPos.x;
+		int dymod = singleton->iLightPos.y - singleton->iCameraPos.y;
+		int dzmod = singleton->iLightPos.z - singleton->iCameraPos.z;
 
-			//MUST BE CALLED AFTER FBO IS BOUND
-			singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+		int x = (dxmod-dymod);
+		int y = (-(dxmod/2) + -(dymod/2) + dzmod);
+		int z = singleton->iLightPos.z;
 
-			singleton->drawFSQuad(1.0f);
-			singleton->unsampleFBO("combineFBO");
-			singleton->unbindFBO();
-			singleton->unbindShader();
+		
 
-			singleton->drawFBO("resultFBO", 0, 1.0f);
-		}
+		float newZoom = std::max(1.0f,singleton->cameraZoom);
+
+
+		float fx = ((float)x)*2.0f*(newZoom)/(singleton->fBufferWidth);
+		float fy = ((float)y)*2.0f*(newZoom)/(singleton->fBufferWidth);
+		float fz = ((float)z);
+
+
+		singleton->bindShader("LightingShader");
+		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
+		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
+		singleton->setShaderfVec3("lightPosWS", &(singleton->fLightPos));
+
+		singleton->setShaderVec3("lightPosSS", fx, fy, fz);
+		singleton->setShaderFloat("cameraZoom",newZoom);
+		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
+
+
+		
+		singleton->bindFBO("resultFBO");
+		singleton->sampleFBO("combineFBO");
+
+		//MUST BE CALLED AFTER FBO IS BOUND
+		singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+
+		singleton->drawFSQuad(1.0f);
+		singleton->unsampleFBO("combineFBO");
+		singleton->unbindFBO();
+		singleton->unbindShader();
+
+		singleton->drawFBO("resultFBO", 0, newZoom );
 		
 	}
 

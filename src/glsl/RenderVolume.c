@@ -1,5 +1,3 @@
-////////////////  RenderVolume  ////////////////  
-
 //uniform sampler3D Texture0; //volume texture
 uniform sampler2D Texture0;
 
@@ -9,6 +7,7 @@ varying vec3 TexCoord0;
 varying vec3 TexCoord1;
 
 uniform float curHeight;
+uniform float heightOfVol;
 uniform vec3 worldMin;
 uniform vec3 worldMax;
 
@@ -263,7 +262,7 @@ void main() {
     }
     else {
         normAO = getAO(curPos, samp, worldPos);
-        heightMat = vec4(curPos.b, curHeight, samp.a, 1.0);
+        heightMat = vec4(curPos.b, curHeight, samp.a, 1.0); //*heightOfVol/255.0
 
         
     }

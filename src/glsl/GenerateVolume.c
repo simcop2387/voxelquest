@@ -1,5 +1,4 @@
 #version 120
-////////////////  GenerateVolume  ////////////////
 
 uniform sampler3D Texture0; //volume texture nearest
 uniform sampler3D Texture1; //voro texture linear
@@ -182,7 +181,7 @@ void main() {
 		resB.rgb = bestSamp;
 		resB.a = rockIsOnTer*2.0/255.0;
 
-		res = resA;//mix(resA,resB, float( mod(tex2.a*1024.0,69.0)/69.0 > 0.5));
+		res = resA;//mix(resA,resB, float( mod(tex2.a*1020.0,69.0)/69.0 > 0.5));
 	}
 
 

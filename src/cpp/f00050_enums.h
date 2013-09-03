@@ -54,6 +54,13 @@ enum E_FILL_STATE {
     E_FILL_STATE_FULL,
 };
 
+enum E_OBJ {
+    E_OBJ_CAMERA,
+    E_OBJ_LIGHT,
+    E_OBJ_LENGTH
+};
+
+
 //#define DEBUG_MODE 
 
 //const static int MAX_THREADS = 8;

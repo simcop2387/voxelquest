@@ -178,8 +178,8 @@ void Singleton::createGrassList ()
 
 		int spacing = 1;
 
-		int iMax = 512;
-		int jMax = 512;
+		int iMax = 1024;
+		int jMax = 256;
 
 		float fiMax = (float)iMax;
 		float fjMax = (float)jMax;
@@ -214,16 +214,28 @@ void Singleton::createGrassList ()
 				//
 				
 				
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.0f, -1.0);
-				glVertex3f(fi-baseRad,fj,0.0f);
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.0f, 1.0);
-				glVertex3f(fi+baseRad,fj,0.0f);
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.5f, -1.0);
+				glVertex3f(fi-baseRad,fj,0.5f);
+				
+
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.0f, 0.0);
+				glVertex3f(fi,fj+baseRad,0.0f);
+
+
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.5f, 1.0);
+				glVertex3f(fi+baseRad,fj+baseRad,0.5f);
+
+
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, -1.0);
+				glVertex3f(fi,fj,1.0f);
 
 				
+				/*
 				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, 1.0);
-				glVertex3f(fi+baseRad/8.0f,fj+grassHeight+heightMod,1.0f);
+				glVertex3f(fi+baseRad/4.0f,fj+grassHeight+heightMod,1.0f);
 				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, -1.0);
-				glVertex3f(fi-baseRad/8.0f,fj+grassHeight+heightMod,1.0f);
+				glVertex3f(fi-baseRad/4.0f,fj+grassHeight+heightMod,1.0f);
+				*/
 				
 			}
 
@@ -236,6 +248,131 @@ void Singleton::createGrassList ()
 		glEndList();
 		
 	}
+void Singleton::drawCubeCentered (fVector3 origin, float radius)
+                                                             {
+		fVector3 minV;
+		fVector3 maxV;
+
+		minV.x = origin.x - radius;
+		minV.y = origin.y - radius;
+		minV.z = origin.z - radius;
+
+		maxV.x = origin.x + radius;
+		maxV.y = origin.y + radius;
+		maxV.z = origin.z + radius;
+
+
+		drawBox(minV,maxV);
+	}
+void Singleton::drawBox (fVector3 minVec, fVector3 maxVec)
+                                                   {
+    	glBegin(GL_QUADS);
+    	    
+    	    /*
+    	    // front
+    	    glVertex3f(-1.0f, -1.0f, 1.0f);
+    	    glVertex3f(1.0f, -1.0f, 1.0f);
+    	    glVertex3f(1.0f, 1.0f, 1.0f);
+    	    glVertex3f(-1.0f, 1.0f, 1.0f);
+    	    // back
+    	    glVertex3f(-1.0f, -1.0f, -1.0f);
+    	    glVertex3f(1.0f, -1.0f, -1.0f);
+    	    glVertex3f(1.0f, 1.0f, -1.0f);
+    	    glVertex3f(-1.0f, 1.0f, -1.0f);
+    	    // right
+    	    glVertex3f(1.0f, -1.0f, 1.0f);
+    	    glVertex3f(1.0f, -1.0f, -1.0f);
+    	    glVertex3f(1.0f, 1.0f, -1.0f);
+    	    glVertex3f(1.0f, 1.0f, 1.0f);
+    	    // left
+    	    glVertex3f(-1.0f, -1.0f, 1.0f);
+    	    glVertex3f(-1.0f, -1.0f, -1.0f);
+    	    glVertex3f(-1.0f, 1.0f, -1.0f);
+    	    glVertex3f(-1.0f, 1.0f, 1.0f);
+    	    // top
+    	    glVertex3f(-1.0f, 1.0f, 1.0f);
+    	    glVertex3f(1.0f, 1.0f, 1.0f);
+    	    glVertex3f(1.0f, 1.0f, -1.0f);
+    	    glVertex3f(-1.0f, 1.0f, -1.0f);
+    	    // bottom
+    	    glVertex3f(-1.0f, -1.0f, 1.0f);
+    	    glVertex3f(1.0f, -1.0f, 1.0f);
+    	    glVertex3f(1.0f, -1.0f, -1.0f);
+    	    glVertex3f(-1.0f, -1.0f, -1.0f);
+    	    */
+
+
+    	    /*
+    	    // front
+    	        glVertex3f(0.0f, 0.0f, 0.0f);
+    	        glVertex3f(1.0f, 0.0f, 0.0f);
+    	        glVertex3f(1.0f, 1.0f, 0.0f);
+    	        glVertex3f(0.0f, 1.0f, 0.0f);
+    	        // back
+    	        glVertex3f(0.0f, 0.0f, -1.0f);
+    	        glVertex3f(1.0f, 0.0f, -1.0f);
+    	        glVertex3f(1.0f, 1.0f, -1.0f);
+    	        glVertex3f(0.0f, 1.0f, -1.0f);
+    	        // right
+    	        glVertex3f(1.0f, 0.0f, 0.0f);
+    	        glVertex3f(1.0f, 0.0f, -1.0f);
+    	        glVertex3f(1.0f, 1.0f, -1.0f);
+    	        glVertex3f(1.0f, 1.0f, 0.0f);
+    	        // left
+    	        glVertex3f(0.0f, 0.0f, 0.0f);
+    	        glVertex3f(0.0f, 0.0f, -1.0f);
+    	        glVertex3f(0.0f, 1.0f, -1.0f);
+    	        glVertex3f(0.0f, 1.0f, 0.0f);
+    	        // top
+    	        glVertex3f(0.0f, 1.0f, 0.0f);
+    	        glVertex3f(1.0f, 1.0f, 0.0f);
+    	        glVertex3f(1.0f, 1.0f, -1.0f);
+    	        glVertex3f(0.0f, 1.0f, -1.0f);
+    	        // bottom
+    	        glVertex3f(0.0f, 0.0f, 0.0f);
+    	        glVertex3f(1.0f, 0.0f, 0.0f);
+    	        glVertex3f(1.0f, 0.0f, -1.0f);
+    	        glVertex3f(0.0f, 0.0f, -1.0f);
+    	    */
+
+
+
+
+    	    // front
+    	    glVertex3f(minVec.x, minVec.y, maxVec.z);
+    	    glVertex3f(maxVec.x, minVec.y, maxVec.z);
+    	    glVertex3f(maxVec.x, maxVec.y, maxVec.z);
+    	    glVertex3f(minVec.x, maxVec.y, maxVec.z);
+    	    // back
+    	    glVertex3f(minVec.x, minVec.y, minVec.z);
+    	    glVertex3f(maxVec.x, minVec.y, minVec.z);
+    	    glVertex3f(maxVec.x, maxVec.y, minVec.z);
+    	    glVertex3f(minVec.x, maxVec.y, minVec.z);
+    	    // right
+    	    glVertex3f(maxVec.x, minVec.y, maxVec.z);
+    	    glVertex3f(maxVec.x, minVec.y, minVec.z);
+    	    glVertex3f(maxVec.x, maxVec.y, minVec.z);
+    	    glVertex3f(maxVec.x, maxVec.y, maxVec.z);
+    	    // left
+    	    glVertex3f(minVec.x, minVec.y, maxVec.z);
+    	    glVertex3f(minVec.x, minVec.y, minVec.z);
+    	    glVertex3f(minVec.x, maxVec.y, minVec.z);
+    	    glVertex3f(minVec.x, maxVec.y, maxVec.z);
+    	    // top
+    	    glVertex3f(minVec.x, maxVec.y, maxVec.z);
+    	    glVertex3f(maxVec.x, maxVec.y, maxVec.z);
+    	    glVertex3f(maxVec.x, maxVec.y, minVec.z);
+    	    glVertex3f(minVec.x, maxVec.y, minVec.z);
+    	    // bottom
+    	    glVertex3f(minVec.x, minVec.y, maxVec.z);
+    	    glVertex3f(maxVec.x, minVec.y, maxVec.z);
+    	    glVertex3f(maxVec.x, minVec.y, minVec.z);
+    	    glVertex3f(minVec.x, minVec.y, minVec.z);
+
+
+
+    	glEnd();
+    }
 void Singleton::createVTList ()
                             {
 
@@ -347,12 +484,18 @@ void Singleton::createVTList ()
 void Singleton::init (int _defaultWinW, int _defaultWinH)
                                                       {
 
+
+		iBufferWidth = _defaultWinW;
+		fBufferWidth = (float)iBufferWidth;
+
 		pushTrace("Singleton init");
 
 		myTimer.start();
 
 		grassOn = false;
 		animateGrass = false;
+
+		activeObject = E_OBJ_CAMERA;
 
 		extraRad = 0;
 		lastTime = 0.0;
@@ -381,13 +524,21 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 
 		programState = E_PS_IN_GAME;
 
-	    cameraPos.x = 0.0f;
-	    cameraPos.y = 0.0f;
-	    cameraPos.z = 0.0f;
+		fCameraPos.x = 0.0f;
+		fCameraPos.y = 0.0f;
+		fCameraPos.z = 0.0f;
 
-	    iCameraPos.x = 0;
-	    iCameraPos.y = 0;
-	    iCameraPos.z = 0;
+		iCameraPos.x = (int)fCameraPos.x;
+		iCameraPos.y = (int)fCameraPos.y;
+		iCameraPos.z = (int)fCameraPos.z;
+
+		fLightPos.x = 0.0f;
+		fLightPos.y = 0.0f;
+		fLightPos.z = 20.0f;
+
+		iLightPos.x = (int)fLightPos.x;
+		iLightPos.y = (int)fLightPos.y;
+		iLightPos.z = (int)fLightPos.z;
 
 	    cameraZoom = 1.0f;
 
@@ -447,22 +598,32 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 
 	    fboStrings.push_back("pagesFBO");
 	    fboStrings.push_back("grassFBO");
+	    fboStrings.push_back("geomFBO");
 	    fboStrings.push_back("combineFBO");
 	    fboStrings.push_back("resultFBO");
 	    fboStrings.push_back("volGenFBO");
 
-	    shaderStrings.push_back("shaderWater");
-	    shaderStrings.push_back("ShaderTarg2");
-	    shaderStrings.push_back("ShaderLighting");
-	    shaderStrings.push_back("GrassShader");
-	    shaderStrings.push_back("CombineShader");
-	    shaderStrings.push_back("GenerateVolume");
-	    shaderStrings.push_back("RenderVolume");
+
+	    /*
 	    shaderStrings.push_back("Simplex2D");
 	    shaderStrings.push_back("CalcFlow");
 	    shaderStrings.push_back("Erode");
 	    shaderStrings.push_back("DLA");
 	    shaderStrings.push_back("MapShader");
+	    shaderStrings.push_back("shaderWater");
+	    */
+
+
+
+	    shaderStrings.push_back("BlitShader");
+	    shaderStrings.push_back("LightingShader");
+	    shaderStrings.push_back("GeomShader");
+	    shaderStrings.push_back("GrassShader");
+	    shaderStrings.push_back("CombineShader");
+	    shaderStrings.push_back("GenerateVolume");
+	    shaderStrings.push_back("RenderVolume");
+	    
+
 	    
 
 	    shaderTextureIDs.push_back("Texture0");
@@ -490,11 +651,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 	    }
 
 	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel);
-	    fboMap["pagesFBO"]->init(2, 1024, 1024, 1);
-	    fboMap["grassFBO"]->init(2, 1024, 1024, 1);
-	    fboMap["combineFBO"]->init(2, 1024, 1024, 1);
-	    fboMap["resultFBO"]->init(1, 1024, 1024, 1);
-	    fboMap["volGenFBO"]->init(1, 4096, 4096, 1);
+	    fboMap["pagesFBO"]->init(2, iBufferWidth, iBufferWidth, 1, false);
+	    fboMap["grassFBO"]->init(2, iBufferWidth, iBufferWidth, 1, false);
+	    fboMap["geomFBO"]->init(2, iBufferWidth, iBufferWidth, 1, true);
+	    fboMap["combineFBO"]->init(2, iBufferWidth, iBufferWidth, 1, false);
+	    fboMap["resultFBO"]->init(1, iBufferWidth, iBufferWidth, 1, false);
+	    fboMap["volGenFBO"]->init(1, 4096, 4096, 1, false);
 	    
 	    popTrace();
 
@@ -707,40 +869,50 @@ void Singleton::drawFBOOffset (string fboName, int ind, float xOff, float yOff, 
 	    FBOSet* fbos = fboMap[fboName];
 	    drawFBOOffsetDirect(fbos, ind, xOff, yOff, zoom);
 	}
-void Singleton::moveCamera (float dx, float dy, float zoom)
+void Singleton::moveObject (float dx, float dy, float zoom)
                                                         {
 
-
-		/*
-		int dxmod = dx*pitchSrc2 - singleton->iCameraPos.x;
-		int dymod = dy*pitchSrc2 - singleton->iCameraPos.y;
-		int dzmod = dz*pitchSrc2 - singleton->iCameraPos.z;
-
-
-		int x1 = (dxmod-dymod) - pitchSrc2;
-		int y1 = (-(dxmod/2) + -(dymod/2) + dzmod) - pitchSrc2;
-		*/
 
 		float dxZoom = dx/zoom;
 		float dyZoom = dy/zoom;
 
+		float modX = 0.0;
+		float modY = 0.0;
+		float modZ = 0.0;
+
 		if (lbDown) {
-			cameraPos.x -= dyZoom + dxZoom/2.0;
-			cameraPos.y -= dyZoom - dxZoom/2.0;//
-			
-			//cameraPos.x += dx/zoom;
-			//cameraPos.y -= dy/zoom;
+			modX = -(dyZoom + dxZoom/2.0);
+			modY = -(dyZoom - dxZoom/2.0);
 		}
 		if (rbDown) {
-			cameraPos.z += dyZoom;
+			modZ = dyZoom;
 		}
 
-		iCameraPos.x = (int)cameraPos.x;
-		iCameraPos.y = (int)cameraPos.y;
-		iCameraPos.z = (int)cameraPos.z;
+		switch (activeObject) {
 
-		//cameraPos.x += dx/(zoom/2.0);
-		//cameraPos.y -= dy/(zoom/2.0);
+			case E_OBJ_CAMERA:
+				fCameraPos.x += modX;
+				fCameraPos.y += modY;
+				fCameraPos.z += modZ;
+
+				iCameraPos.x = (int)fCameraPos.x;
+				iCameraPos.y = (int)fCameraPos.y;
+				iCameraPos.z = (int)fCameraPos.z;
+			break;
+
+			case E_OBJ_LIGHT:
+				fLightPos.x -= modX;
+				fLightPos.y -= modY;
+				fLightPos.z -= modZ;
+
+				iLightPos.x = (int)fLightPos.x;
+				iLightPos.y = (int)fLightPos.y;
+				iLightPos.z = (int)fLightPos.z;
+			break;
+		}
+
+		
+
 	}
 void Singleton::doAction (eProgramAction pa)
                                          {
@@ -816,6 +988,8 @@ void Singleton::keyboardUp (unsigned char key, int x, int y)
 
 		//doAction(progActionsUp[((int)programState)*256 + key]);
 
+		int actObj;
+
 
 		switch(key) {
 			case 'q':
@@ -862,7 +1036,18 @@ void Singleton::keyboardUp (unsigned char key, int x, int y)
 			break;
 
 
+			case 'o':
 
+				actObj = (int)activeObject;
+
+				actObj++;
+
+				activeObject = (E_OBJ)actObj;
+
+				if (activeObject == E_OBJ_LENGTH) {
+					activeObject = (E_OBJ)0;
+				}
+			break;
 
 
 			case 't':
@@ -913,7 +1098,7 @@ void Singleton::mouseMove (int x, int y)
 		mouseYUp = y;
 
 		if (lbDown || rbDown) {
-		    moveCamera((float)dx, (float)dy, cameraZoom);
+		    moveObject((float)dx, (float)dy, cameraZoom);
 		}
 		if (mbDown) {
 		    mouseX = x;

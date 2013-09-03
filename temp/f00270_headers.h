@@ -7,6 +7,7 @@
 class Singleton
 {
 public:
+  E_OBJ activeObject;
   bool (keyDownArr) [MAX_KEYS];
   GLuint volTris;
   GLuint grassTris;
@@ -35,13 +36,17 @@ public:
   bool shiftPressed;
   bool ctrlPressed;
   bool altPressed;
-  fVector3 cameraPos;
-  iVector3 iCameraPos;
   float cameraZoom;
+  fVector3 fCameraPos;
+  iVector3 iCameraPos;
+  fVector3 fLightPos;
+  iVector3 iLightPos;
   uint * lookup2to3;
   GLuint lookup2to3ID;
   int shadersAreLoaded;
   int readyToRecompile;
+  int iBufferWidth;
+  float fBufferWidth;
   bool lbDown;
   bool rbDown;
   bool mbDown;
@@ -79,6 +84,8 @@ public:
   void setProgActionAll (unsigned char kc, eProgramAction pa, bool isDown);
   void keySetup ();
   void createGrassList ();
+  void drawCubeCentered (fVector3 origin, float radius);
+  void drawBox (fVector3 minVec, fVector3 maxVec);
   void createVTList ();
   void init (int _defaultWinW, int _defaultWinH);
   void doShaderRefresh ();
@@ -105,7 +112,7 @@ public:
   void drawFBO (string fboName, int ind, float zoom);
   void drawFBOOffsetDirect (FBOSet * fbos, int ind, float xOff, float yOff, float zoom);
   void drawFBOOffset (string fboName, int ind, float xOff, float yOff, float zoom);
-  void moveCamera (float dx, float dy, float zoom);
+  void moveObject (float dx, float dy, float zoom);
   void doAction (eProgramAction pa);
   void processSpecialKeys (int key, int x, int y);
   void processKey (unsigned char key, int x, int y, bool isPressed);
@@ -194,6 +201,7 @@ public:
   void renderPages (int maxH);
   void drawPage (GamePage * gp, int dx, int dy, int dz);
   void combineBuffers ();
+  void renderGeom ();
   void renderGrass ();
   void postProcess ();
   ~ GameWorld ();

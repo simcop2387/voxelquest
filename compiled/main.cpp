@@ -1551,6 +1551,13 @@ enum E_FILL_STATE {
     E_FILL_STATE_FULL,
 };
 
+enum E_OBJ {
+    E_OBJ_CAMERA,
+    E_OBJ_LIGHT,
+    E_OBJ_LENGTH
+};
+
+
 //#define DEBUG_MODE 
 
 //const static int MAX_THREADS = 8; 
@@ -3058,19 +3065,22 @@ class FBOWrapper
 public:
 
 	uint color_tex;
+	uint depth_rb;
 	//uint color_buf;
 	//uint depth_buf;
 	uint slot;
 	int width;
 	int height;
 	int bytesPerChannel;
+	bool hasDepth;
 
     FBOWrapper() {}
     ~FBOWrapper() {}
-    int init(int _width, int _height, int _bytesPerChannel, int _slot) {
+    int init(int _width, int _height, int _bytesPerChannel, int _slot, bool _hasDepth) {
 		width = _width;
 		height = _height;
 		bytesPerChannel = _bytesPerChannel;
+		hasDepth = _hasDepth;
 
 		int w = width;
 		int h = height;
@@ -3125,6 +3135,20 @@ public:
 	            //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, 0);
 	    	break;
 	    }
+
+
+	    //
+
+	    if (hasDepth) {
+	    	glGenRenderbuffersEXT(1, &depth_rb);
+	    	glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, depth_rb);
+	    	glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, w, h);
+	    	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, depth_rb);
+	    }
+
+	    
+	    //
+
 		
 		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, slot, GL_TEXTURE_2D, color_tex, 0);
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -3134,6 +3158,72 @@ public:
 	}
 
 };
+
+
+/*
+//RGBA8 2D texture, 24 bit depth texture, 256x256
+   glGenTextures(1, &color_tex);
+   glBindTexture(GL_TEXTURE_2D, color_tex);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+   //NULL means reserve texture memory, but texels are undefined
+   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 256, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
+   //-------------------------
+   glGenFramebuffersEXT(1, &fb);
+   glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fb);
+   //Attach 2D texture to this FBO
+   glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, color_tex, 0);
+   //-------------------------
+   glGenRenderbuffersEXT(1, &depth_rb);
+   glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, depth_rb);
+   glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, 256, 256);
+   //-------------------------
+   //Attach depth buffer to FBO
+   glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, depth_rb);
+   //-------------------------
+   //Does the GPU support current FBO configuration?
+   GLenum status;
+   status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+   switch(status)
+   {
+      case GL_FRAMEBUFFER_COMPLETE_EXT:
+      cout<<"good";
+   default:
+      HANDLE_THE_ERROR;
+   }
+   //-------------------------
+   //and now you can render to GL_TEXTURE_2D
+   glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fb);
+   glClearColor(0.0, 0.0, 0.0, 0.0);
+   glClearDepth(1.0f);
+   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+   //-------------------------
+   glViewport(0, 0, 256, 256);
+   glMatrixMode(GL_PROJECTION);
+   glLoadIdentity();
+   glOrtho(0.0, 256.0, 0.0, 256.0, -1.0, 1.0); 
+   glMatrixMode(GL_MODELVIEW);
+   glLoadIdentity();
+   //-------------------------
+   glDisable(GL_TEXTURE_2D);
+   glDisable(GL_BLEND);
+   glEnable(GL_DEPTH_TEST);
+   //-------------------------
+   //**************************
+   //RenderATriangle, {0.0, 0.0}, {256.0, 0.0}, {256.0, 256.0}
+   //Read http://www.opengl.org/wiki/VBO_-_just_examples
+   RenderATriangle();
+   //-------------------------
+   GLubyte pixels[4*4*4];
+   glReadPixels(0, 0, 4, 4, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
+   //pixels 0, 1, 2 should be white
+   //pixel 4 should be black
+   //----------------
+   //Bind 0, which means render to back buffer
+   glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+*/
 
 
 
@@ -3152,10 +3242,14 @@ public:
 
 	FBOWrapper* fbos;
 
+	bool hasDepth;
+
     FBOSet() {}
     ~FBOSet() {}
-    void init(int _numBufs, int _width, int _height, int _bytesPerChannel) {
+    void init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool _hasDepth) {
 		int i;
+
+		hasDepth = _hasDepth;
 
 		numBufs = _numBufs;
 		height = _height;
@@ -3169,7 +3263,7 @@ public:
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
 
 		for (i = 0; i < numBufs; i++) {
-			fbos[i].init(width, height, bytesPerChannel, i);
+			fbos[i].init(width, height, bytesPerChannel, i, hasDepth);
 		}
 
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
@@ -3230,6 +3324,7 @@ class GameWorld;
 class Singleton
 {
 public:
+  E_OBJ activeObject;
   bool (keyDownArr) [MAX_KEYS];
   GLuint volTris;
   GLuint grassTris;
@@ -3258,13 +3353,17 @@ public:
   bool shiftPressed;
   bool ctrlPressed;
   bool altPressed;
-  fVector3 cameraPos;
-  iVector3 iCameraPos;
   float cameraZoom;
+  fVector3 fCameraPos;
+  iVector3 iCameraPos;
+  fVector3 fLightPos;
+  iVector3 iLightPos;
   uint * lookup2to3;
   GLuint lookup2to3ID;
   int shadersAreLoaded;
   int readyToRecompile;
+  int iBufferWidth;
+  float fBufferWidth;
   bool lbDown;
   bool rbDown;
   bool mbDown;
@@ -3302,6 +3401,8 @@ public:
   void setProgActionAll (unsigned char kc, eProgramAction pa, bool isDown);
   void keySetup ();
   void createGrassList ();
+  void drawCubeCentered (fVector3 origin, float radius);
+  void drawBox (fVector3 minVec, fVector3 maxVec);
   void createVTList ();
   void init (int _defaultWinW, int _defaultWinH);
   void doShaderRefresh ();
@@ -3328,7 +3429,7 @@ public:
   void drawFBO (string fboName, int ind, float zoom);
   void drawFBOOffsetDirect (FBOSet * fbos, int ind, float xOff, float yOff, float zoom);
   void drawFBOOffset (string fboName, int ind, float xOff, float yOff, float zoom);
-  void moveCamera (float dx, float dy, float zoom);
+  void moveObject (float dx, float dy, float zoom);
   void doAction (eProgramAction pa);
   void processSpecialKeys (int key, int x, int y);
   void processKey (unsigned char key, int x, int y, bool isPressed);
@@ -3417,6 +3518,7 @@ public:
   void renderPages (int maxH);
   void drawPage (GamePage * gp, int dx, int dy, int dz);
   void combineBuffers ();
+  void renderGeom ();
   void renderGrass ();
   void postProcess ();
   ~ GameWorld ();
@@ -3604,8 +3706,8 @@ void Singleton::createGrassList ()
 
 		int spacing = 1;
 
-		int iMax = 512;
-		int jMax = 512;
+		int iMax = 1024;
+		int jMax = 256;
 
 		float fiMax = (float)iMax;
 		float fjMax = (float)jMax;
@@ -3640,16 +3742,28 @@ void Singleton::createGrassList ()
 				//
 				
 				
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.0f, -1.0);
-				glVertex3f(fi-baseRad,fj,0.0f);
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.0f, 1.0);
-				glVertex3f(fi+baseRad,fj,0.0f);
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.5f, -1.0);
+				glVertex3f(fi-baseRad,fj,0.5f);
+				
+
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.0f, 0.0);
+				glVertex3f(fi,fj+baseRad,0.0f);
+
+
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.5f, 1.0);
+				glVertex3f(fi+baseRad,fj+baseRad,0.5f);
+
+
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, -1.0);
+				glVertex3f(fi,fj,1.0f);
 
 				
+				/*
 				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, 1.0);
-				glVertex3f(fi+baseRad/8.0f,fj+grassHeight+heightMod,1.0f);
+				glVertex3f(fi+baseRad/4.0f,fj+grassHeight+heightMod,1.0f);
 				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, -1.0);
-				glVertex3f(fi-baseRad/8.0f,fj+grassHeight+heightMod,1.0f);
+				glVertex3f(fi-baseRad/4.0f,fj+grassHeight+heightMod,1.0f);
+				*/
 				
 			}
 
@@ -3662,6 +3776,131 @@ void Singleton::createGrassList ()
 		glEndList();
 		
 	}
+void Singleton::drawCubeCentered (fVector3 origin, float radius)
+                                                             {
+		fVector3 minV;
+		fVector3 maxV;
+
+		minV.x = origin.x - radius;
+		minV.y = origin.y - radius;
+		minV.z = origin.z - radius;
+
+		maxV.x = origin.x + radius;
+		maxV.y = origin.y + radius;
+		maxV.z = origin.z + radius;
+
+
+		drawBox(minV,maxV);
+	}
+void Singleton::drawBox (fVector3 minVec, fVector3 maxVec)
+                                                   {
+    	glBegin(GL_QUADS);
+    	    
+    	    /*
+    	    // front
+    	    glVertex3f(-1.0f, -1.0f, 1.0f);
+    	    glVertex3f(1.0f, -1.0f, 1.0f);
+    	    glVertex3f(1.0f, 1.0f, 1.0f);
+    	    glVertex3f(-1.0f, 1.0f, 1.0f);
+    	    // back
+    	    glVertex3f(-1.0f, -1.0f, -1.0f);
+    	    glVertex3f(1.0f, -1.0f, -1.0f);
+    	    glVertex3f(1.0f, 1.0f, -1.0f);
+    	    glVertex3f(-1.0f, 1.0f, -1.0f);
+    	    // right
+    	    glVertex3f(1.0f, -1.0f, 1.0f);
+    	    glVertex3f(1.0f, -1.0f, -1.0f);
+    	    glVertex3f(1.0f, 1.0f, -1.0f);
+    	    glVertex3f(1.0f, 1.0f, 1.0f);
+    	    // left
+    	    glVertex3f(-1.0f, -1.0f, 1.0f);
+    	    glVertex3f(-1.0f, -1.0f, -1.0f);
+    	    glVertex3f(-1.0f, 1.0f, -1.0f);
+    	    glVertex3f(-1.0f, 1.0f, 1.0f);
+    	    // top
+    	    glVertex3f(-1.0f, 1.0f, 1.0f);
+    	    glVertex3f(1.0f, 1.0f, 1.0f);
+    	    glVertex3f(1.0f, 1.0f, -1.0f);
+    	    glVertex3f(-1.0f, 1.0f, -1.0f);
+    	    // bottom
+    	    glVertex3f(-1.0f, -1.0f, 1.0f);
+    	    glVertex3f(1.0f, -1.0f, 1.0f);
+    	    glVertex3f(1.0f, -1.0f, -1.0f);
+    	    glVertex3f(-1.0f, -1.0f, -1.0f);
+    	    */
+
+
+    	    /*
+    	    // front
+    	        glVertex3f(0.0f, 0.0f, 0.0f);
+    	        glVertex3f(1.0f, 0.0f, 0.0f);
+    	        glVertex3f(1.0f, 1.0f, 0.0f);
+    	        glVertex3f(0.0f, 1.0f, 0.0f);
+    	        // back
+    	        glVertex3f(0.0f, 0.0f, -1.0f);
+    	        glVertex3f(1.0f, 0.0f, -1.0f);
+    	        glVertex3f(1.0f, 1.0f, -1.0f);
+    	        glVertex3f(0.0f, 1.0f, -1.0f);
+    	        // right
+    	        glVertex3f(1.0f, 0.0f, 0.0f);
+    	        glVertex3f(1.0f, 0.0f, -1.0f);
+    	        glVertex3f(1.0f, 1.0f, -1.0f);
+    	        glVertex3f(1.0f, 1.0f, 0.0f);
+    	        // left
+    	        glVertex3f(0.0f, 0.0f, 0.0f);
+    	        glVertex3f(0.0f, 0.0f, -1.0f);
+    	        glVertex3f(0.0f, 1.0f, -1.0f);
+    	        glVertex3f(0.0f, 1.0f, 0.0f);
+    	        // top
+    	        glVertex3f(0.0f, 1.0f, 0.0f);
+    	        glVertex3f(1.0f, 1.0f, 0.0f);
+    	        glVertex3f(1.0f, 1.0f, -1.0f);
+    	        glVertex3f(0.0f, 1.0f, -1.0f);
+    	        // bottom
+    	        glVertex3f(0.0f, 0.0f, 0.0f);
+    	        glVertex3f(1.0f, 0.0f, 0.0f);
+    	        glVertex3f(1.0f, 0.0f, -1.0f);
+    	        glVertex3f(0.0f, 0.0f, -1.0f);
+    	    */
+
+
+
+
+    	    // front
+    	    glVertex3f(minVec.x, minVec.y, maxVec.z);
+    	    glVertex3f(maxVec.x, minVec.y, maxVec.z);
+    	    glVertex3f(maxVec.x, maxVec.y, maxVec.z);
+    	    glVertex3f(minVec.x, maxVec.y, maxVec.z);
+    	    // back
+    	    glVertex3f(minVec.x, minVec.y, minVec.z);
+    	    glVertex3f(maxVec.x, minVec.y, minVec.z);
+    	    glVertex3f(maxVec.x, maxVec.y, minVec.z);
+    	    glVertex3f(minVec.x, maxVec.y, minVec.z);
+    	    // right
+    	    glVertex3f(maxVec.x, minVec.y, maxVec.z);
+    	    glVertex3f(maxVec.x, minVec.y, minVec.z);
+    	    glVertex3f(maxVec.x, maxVec.y, minVec.z);
+    	    glVertex3f(maxVec.x, maxVec.y, maxVec.z);
+    	    // left
+    	    glVertex3f(minVec.x, minVec.y, maxVec.z);
+    	    glVertex3f(minVec.x, minVec.y, minVec.z);
+    	    glVertex3f(minVec.x, maxVec.y, minVec.z);
+    	    glVertex3f(minVec.x, maxVec.y, maxVec.z);
+    	    // top
+    	    glVertex3f(minVec.x, maxVec.y, maxVec.z);
+    	    glVertex3f(maxVec.x, maxVec.y, maxVec.z);
+    	    glVertex3f(maxVec.x, maxVec.y, minVec.z);
+    	    glVertex3f(minVec.x, maxVec.y, minVec.z);
+    	    // bottom
+    	    glVertex3f(minVec.x, minVec.y, maxVec.z);
+    	    glVertex3f(maxVec.x, minVec.y, maxVec.z);
+    	    glVertex3f(maxVec.x, minVec.y, minVec.z);
+    	    glVertex3f(minVec.x, minVec.y, minVec.z);
+
+
+
+    	glEnd();
+    }
 void Singleton::createVTList ()
                             {
 
@@ -3773,12 +4012,18 @@ void Singleton::createVTList ()
 void Singleton::init (int _defaultWinW, int _defaultWinH)
                                                       {
 
+
+		iBufferWidth = _defaultWinW;
+		fBufferWidth = (float)iBufferWidth;
+
 		pushTrace("Singleton init");
 
 		myTimer.start();
 
 		grassOn = false;
 		animateGrass = false;
+
+		activeObject = E_OBJ_CAMERA;
 
 		extraRad = 0;
 		lastTime = 0.0;
@@ -3807,13 +4052,21 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 
 		programState = E_PS_IN_GAME;
 
-	    cameraPos.x = 0.0f;
-	    cameraPos.y = 0.0f;
-	    cameraPos.z = 0.0f;
+		fCameraPos.x = 0.0f;
+		fCameraPos.y = 0.0f;
+		fCameraPos.z = 0.0f;
 
-	    iCameraPos.x = 0;
-	    iCameraPos.y = 0;
-	    iCameraPos.z = 0;
+		iCameraPos.x = (int)fCameraPos.x;
+		iCameraPos.y = (int)fCameraPos.y;
+		iCameraPos.z = (int)fCameraPos.z;
+
+		fLightPos.x = 0.0f;
+		fLightPos.y = 0.0f;
+		fLightPos.z = 20.0f;
+
+		iLightPos.x = (int)fLightPos.x;
+		iLightPos.y = (int)fLightPos.y;
+		iLightPos.z = (int)fLightPos.z;
 
 	    cameraZoom = 1.0f;
 
@@ -3873,22 +4126,32 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 
 	    fboStrings.push_back("pagesFBO");
 	    fboStrings.push_back("grassFBO");
+	    fboStrings.push_back("geomFBO");
 	    fboStrings.push_back("combineFBO");
 	    fboStrings.push_back("resultFBO");
 	    fboStrings.push_back("volGenFBO");
 
-	    shaderStrings.push_back("shaderWater");
-	    shaderStrings.push_back("ShaderTarg2");
-	    shaderStrings.push_back("ShaderLighting");
-	    shaderStrings.push_back("GrassShader");
-	    shaderStrings.push_back("CombineShader");
-	    shaderStrings.push_back("GenerateVolume");
-	    shaderStrings.push_back("RenderVolume");
+
+	    /*
 	    shaderStrings.push_back("Simplex2D");
 	    shaderStrings.push_back("CalcFlow");
 	    shaderStrings.push_back("Erode");
 	    shaderStrings.push_back("DLA");
 	    shaderStrings.push_back("MapShader");
+	    shaderStrings.push_back("shaderWater");
+	    */
+
+
+
+	    shaderStrings.push_back("BlitShader");
+	    shaderStrings.push_back("LightingShader");
+	    shaderStrings.push_back("GeomShader");
+	    shaderStrings.push_back("GrassShader");
+	    shaderStrings.push_back("CombineShader");
+	    shaderStrings.push_back("GenerateVolume");
+	    shaderStrings.push_back("RenderVolume");
+	    
+
 	    
 
 	    shaderTextureIDs.push_back("Texture0");
@@ -3916,11 +4179,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 	    }
 
 	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel);
-	    fboMap["pagesFBO"]->init(2, 1024, 1024, 1);
-	    fboMap["grassFBO"]->init(2, 1024, 1024, 1);
-	    fboMap["combineFBO"]->init(2, 1024, 1024, 1);
-	    fboMap["resultFBO"]->init(1, 1024, 1024, 1);
-	    fboMap["volGenFBO"]->init(1, 4096, 4096, 1);
+	    fboMap["pagesFBO"]->init(2, iBufferWidth, iBufferWidth, 1, false);
+	    fboMap["grassFBO"]->init(2, iBufferWidth, iBufferWidth, 1, false);
+	    fboMap["geomFBO"]->init(2, iBufferWidth, iBufferWidth, 1, true);
+	    fboMap["combineFBO"]->init(2, iBufferWidth, iBufferWidth, 1, false);
+	    fboMap["resultFBO"]->init(1, iBufferWidth, iBufferWidth, 1, false);
+	    fboMap["volGenFBO"]->init(1, 4096, 4096, 1, false);
 	    
 	    popTrace();
 
@@ -4133,40 +4397,50 @@ void Singleton::drawFBOOffset (string fboName, int ind, float xOff, float yOff, 
 	    FBOSet* fbos = fboMap[fboName];
 	    drawFBOOffsetDirect(fbos, ind, xOff, yOff, zoom);
 	}
-void Singleton::moveCamera (float dx, float dy, float zoom)
+void Singleton::moveObject (float dx, float dy, float zoom)
                                                         {
 
-
-		/*
-		int dxmod = dx*pitchSrc2 - singleton->iCameraPos.x;
-		int dymod = dy*pitchSrc2 - singleton->iCameraPos.y;
-		int dzmod = dz*pitchSrc2 - singleton->iCameraPos.z;
-
-
-		int x1 = (dxmod-dymod) - pitchSrc2;
-		int y1 = (-(dxmod/2) + -(dymod/2) + dzmod) - pitchSrc2;
-		*/
 
 		float dxZoom = dx/zoom;
 		float dyZoom = dy/zoom;
 
+		float modX = 0.0;
+		float modY = 0.0;
+		float modZ = 0.0;
+
 		if (lbDown) {
-			cameraPos.x -= dyZoom + dxZoom/2.0;
-			cameraPos.y -= dyZoom - dxZoom/2.0;//
-			
-			//cameraPos.x += dx/zoom;
-			//cameraPos.y -= dy/zoom;
+			modX = -(dyZoom + dxZoom/2.0);
+			modY = -(dyZoom - dxZoom/2.0);
 		}
 		if (rbDown) {
-			cameraPos.z += dyZoom;
+			modZ = dyZoom;
 		}
 
-		iCameraPos.x = (int)cameraPos.x;
-		iCameraPos.y = (int)cameraPos.y;
-		iCameraPos.z = (int)cameraPos.z;
+		switch (activeObject) {
 
-		//cameraPos.x += dx/(zoom/2.0);
-		//cameraPos.y -= dy/(zoom/2.0);
+			case E_OBJ_CAMERA:
+				fCameraPos.x += modX;
+				fCameraPos.y += modY;
+				fCameraPos.z += modZ;
+
+				iCameraPos.x = (int)fCameraPos.x;
+				iCameraPos.y = (int)fCameraPos.y;
+				iCameraPos.z = (int)fCameraPos.z;
+			break;
+
+			case E_OBJ_LIGHT:
+				fLightPos.x -= modX;
+				fLightPos.y -= modY;
+				fLightPos.z -= modZ;
+
+				iLightPos.x = (int)fLightPos.x;
+				iLightPos.y = (int)fLightPos.y;
+				iLightPos.z = (int)fLightPos.z;
+			break;
+		}
+
+		
+
 	}
 void Singleton::doAction (eProgramAction pa)
                                          {
@@ -4242,6 +4516,8 @@ void Singleton::keyboardUp (unsigned char key, int x, int y)
 
 		//doAction(progActionsUp[((int)programState)*256 + key]);
 
+		int actObj;
+
 
 		switch(key) {
 			case 'q':
@@ -4288,7 +4564,18 @@ void Singleton::keyboardUp (unsigned char key, int x, int y)
 			break;
 
 
+			case 'o':
 
+				actObj = (int)activeObject;
+
+				actObj++;
+
+				activeObject = (E_OBJ)actObj;
+
+				if (activeObject == E_OBJ_LENGTH) {
+					activeObject = (E_OBJ)0;
+				}
+			break;
 
 
 			case 't':
@@ -4339,7 +4626,7 @@ void Singleton::mouseMove (int x, int y)
 		mouseYUp = y;
 
 		if (lbDown || rbDown) {
-		    moveCamera((float)dx, (float)dy, cameraZoom);
+		    moveObject((float)dx, (float)dy, cameraZoom);
 		}
 		if (mbDown) {
 		    mouseX = x;
@@ -4469,8 +4756,7 @@ void GamePage::init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRe
 		iOff = _iOff;
 
 		
-		int tmp = ((iOff.z * (256/iDim)) >> 8);
-		origHeight = tmp;
+		origHeight = ((iOff.z * (256/iDim)) >> 8);
 		origHeight = origHeight/255.0;
 
 
@@ -4715,10 +5001,6 @@ void GamePage::createSimplexNoise ()
 		}
 		else {
 
-
-
-
-
 			fillState = E_FILL_STATE_PARTIAL;
 			curState = E_STATE_CREATESIMPLEXNOISE_END;
 		}
@@ -4735,7 +5017,7 @@ void GamePage::copyToTexture ()
 		if (fboSet == NULL) {
 			
 			fboSet = new FBOSet();
-			fboSet->init(2,iRenderSize,iRenderSize,1);
+			fboSet->init(2,iRenderSize,iRenderSize,1,false);
 			glGenTextures(1,&volID);
 			glGenTextures(1,&volIDLinear);
 		}
@@ -4948,9 +5230,9 @@ void GameWorld::init (iVector3 _iDim, Singleton * _singleton, int _renderMethod)
 	    
 		
 
-	    singleton->cameraPos.x = loadRad*iRSize;
-	    singleton->cameraPos.y = loadRad*iRSize;
-	    singleton->cameraPos.z = loadRadZ*iRSize;
+	    singleton->fCameraPos.x = loadRad*iRSize;
+	    singleton->fCameraPos.y = loadRad*iRSize;
+	    singleton->fCameraPos.z = loadRadZ*iRSize;
 	    singleton->iCameraPos.x = loadRad*iRSize;
 	    singleton->iCameraPos.y = loadRad*iRSize;
 	    singleton->iCameraPos.z = loadRadZ*iRSize;
@@ -4979,6 +5261,7 @@ void GameWorld::update (bool changesMade, bool bufferInvalid, int maxH)
 			
 			if ( !(singleton->animateGrass) ) {
 				renderGrass();
+				renderGeom();
 				combineBuffers();
 			}
 
@@ -4987,6 +5270,7 @@ void GameWorld::update (bool changesMade, bool bufferInvalid, int maxH)
 
 		if (singleton->animateGrass) {
 			renderGrass();
+			renderGeom();
 			combineBuffers();
 			bufferInvalid = true;
 		}
@@ -5057,9 +5341,13 @@ bool GameWorld::processPages ()
 
 	    int extraRad = singleton->extraRad;
 
-	    if (singleton->lbDown || singleton->rbDown) {
+	    if (singleton->lbDown) {
 	    	extraRad = 0;
 	    	maxChanges = 1;
+	    }
+
+	    if ( singleton->rbDown) {
+
 	    }
 	    
 
@@ -5104,7 +5392,6 @@ bool GameWorld::processPages ()
 							pageCount++;
 							changeCount++;
 
-							//doTrace("Voxel Count (million): ", i__s(pageCount*(iRSize*iRSize*iRSize/(1024*1024)) ));
 
 						}
 						else {
@@ -5234,7 +5521,7 @@ void GameWorld::renderPages (int maxH)
 	    int m;
 
 
-	    singleton->bindShader("ShaderTarg2");
+	    singleton->bindShader("BlitShader");
 	    singleton->bindFBO("pagesFBO");
 
 	    
@@ -5311,11 +5598,13 @@ void GameWorld::drawPage (GamePage * gp, int dx, int dy, int dz)
 		fScreenDim.x = (float)singleton->baseW;
 		fScreenDim.y = (float)singleton->baseH;
 
+		float myZoom = std::min(1.0f,singleton->cameraZoom);
 
-		fx1 = fx1*2.0f*(singleton->cameraZoom)/fScreenDim.x;
-		fy1 = fy1*2.0f*(singleton->cameraZoom)/fScreenDim.y;
-		fx2 = fx2*2.0f*(singleton->cameraZoom)/fScreenDim.x;
-		fy2 = fy2*2.0f*(singleton->cameraZoom)/fScreenDim.y;
+
+		fx1 = fx1*2.0f*(myZoom)/fScreenDim.x;
+		fy1 = fy1*2.0f*(myZoom)/fScreenDim.y;
+		fx2 = fx2*2.0f*(myZoom)/fScreenDim.x;
+		fy2 = fy2*2.0f*(myZoom)/fScreenDim.y;
 
 
 
@@ -5354,6 +5643,7 @@ void GameWorld::combineBuffers ()
 		singleton->bindFBO("combineFBO");
 		singleton->sampleFBO("pagesFBO",0);
 		singleton->sampleFBO("grassFBO",2);
+		singleton->sampleFBO("geomFBO",4);
 
 
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
@@ -5363,8 +5653,41 @@ void GameWorld::combineBuffers ()
 
 		singleton->unsampleFBO("pagesFBO",0);
 		singleton->unsampleFBO("grassFBO",2);
+		singleton->unsampleFBO("geomFBO",4);
 		singleton->unbindFBO();
 		singleton->unbindShader();
+	}
+void GameWorld::renderGeom ()
+                          {
+
+
+		
+		//glEnable(GL_DEPTH_TEST);
+
+		singleton->bindShader("GeomShader");
+		
+		singleton->setShaderFloat("curTime", singleton->curTime);
+		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
+		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
+		
+		singleton->bindFBO("geomFBO");
+		//singleton->sampleFBO("pagesFBO");
+
+
+		glEnable(GL_DEPTH_TEST);
+		singleton->drawCubeCentered(singleton->fLightPos,64.0);
+		glDisable(GL_DEPTH_TEST);
+
+		
+
+		//singleton->unsampleFBO("pagesFBO");
+		singleton->unbindFBO();
+		singleton->unbindShader();
+
+		//glDisable(GL_DEPTH_TEST);
+
+		
 	}
 void GameWorld::renderGrass ()
                            {
@@ -5377,7 +5700,7 @@ void GameWorld::renderGrass ()
 		
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
-		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
+		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
 		
 		singleton->bindFBO("grassFBO");
 		singleton->sampleFBO("pagesFBO");
@@ -5400,27 +5723,48 @@ void GameWorld::postProcess ()
                            {
 		
 
-		if (doDrawFBO) {
 
-		}
-		else {
-			singleton->bindShader("ShaderLighting");
-			singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
-			singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
-			
-			singleton->bindFBO("resultFBO");
-			singleton->sampleFBO("combineFBO");
+		int dxmod = singleton->iLightPos.x - singleton->iCameraPos.x;
+		int dymod = singleton->iLightPos.y - singleton->iCameraPos.y;
+		int dzmod = singleton->iLightPos.z - singleton->iCameraPos.z;
 
-			//MUST BE CALLED AFTER FBO IS BOUND
-			singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+		int x = (dxmod-dymod);
+		int y = (-(dxmod/2) + -(dymod/2) + dzmod);
+		int z = singleton->iLightPos.z;
 
-			singleton->drawFSQuad(1.0f);
-			singleton->unsampleFBO("combineFBO");
-			singleton->unbindFBO();
-			singleton->unbindShader();
+		
 
-			singleton->drawFBO("resultFBO", 0, 1.0f);
-		}
+		float newZoom = std::max(1.0f,singleton->cameraZoom);
+
+
+		float fx = ((float)x)*2.0f*(newZoom)/(singleton->fBufferWidth);
+		float fy = ((float)y)*2.0f*(newZoom)/(singleton->fBufferWidth);
+		float fz = ((float)z);
+
+
+		singleton->bindShader("LightingShader");
+		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
+		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
+		singleton->setShaderfVec3("lightPosWS", &(singleton->fLightPos));
+
+		singleton->setShaderVec3("lightPosSS", fx, fy, fz);
+		singleton->setShaderFloat("cameraZoom",newZoom);
+		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
+
+
+		
+		singleton->bindFBO("resultFBO");
+		singleton->sampleFBO("combineFBO");
+
+		//MUST BE CALLED AFTER FBO IS BOUND
+		singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+
+		singleton->drawFSQuad(1.0f);
+		singleton->unsampleFBO("combineFBO");
+		singleton->unbindFBO();
+		singleton->unbindShader();
+
+		singleton->drawFBO("resultFBO", 0, newZoom );
 		
 	}
 GameWorld::~ GameWorld ()

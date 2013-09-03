@@ -21,8 +21,7 @@ void GamePage::init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRe
 		iOff = _iOff;
 
 		
-		int tmp = ((iOff.z * (256/iDim)) >> 8);
-		origHeight = tmp;
+		origHeight = ((iOff.z * (256/iDim)) >> 8);
 		origHeight = origHeight/255.0;
 
 
@@ -267,10 +266,6 @@ void GamePage::createSimplexNoise ()
 		}
 		else {
 
-
-
-
-
 			fillState = E_FILL_STATE_PARTIAL;
 			curState = E_STATE_CREATESIMPLEXNOISE_END;
 		}
@@ -287,7 +282,7 @@ void GamePage::copyToTexture ()
 		if (fboSet == NULL) {
 			
 			fboSet = new FBOSet();
-			fboSet->init(2,iRenderSize,iRenderSize,1);
+			fboSet->init(2,iRenderSize,iRenderSize,1,false);
 			glGenTextures(1,&volID);
 			glGenTextures(1,&volIDLinear);
 		}
