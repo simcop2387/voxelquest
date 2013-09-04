@@ -3436,6 +3436,7 @@ public:
   void keyboardUp (unsigned char key, int x, int y);
   void keyboardDown (unsigned char key, int x, int y);
   void mouseMove (int x, int y);
+  void worldToScreen (fVector2 * sc, fVector3 * wc);
   void mouseClick (int button, int state, int x, int y);
   void display ();
   void reshape (int w, int h);
@@ -3456,12 +3457,12 @@ public:
   iVector3 iOff;
   int iVolumeSize;
   int iRenderSize;
-  float origHeight;
   uint * volData;
   Singleton * singleton;
   FBOSet * fboSet;
   uint volID;
   uint volIDLinear;
+  float unitSize;
   E_STATES curState;
   E_STATES nextState;
   fVector3 worldMin;
@@ -3706,8 +3707,8 @@ void Singleton::createGrassList ()
 
 		int spacing = 1;
 
-		int iMax = 1024;
-		int jMax = 256;
+		int iMax = 512;
+		int jMax = 512;
 
 		float fiMax = (float)iMax;
 		float fjMax = (float)jMax;
@@ -3742,20 +3743,20 @@ void Singleton::createGrassList ()
 				//
 				
 				
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.5f, -1.0);
-				glVertex3f(fi-baseRad,fj,0.5f);
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.2f, -1.0);
+				glVertex3f(fi,fj,0.0);
 				
 
 				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.0f, 0.0);
-				glVertex3f(fi,fj+baseRad,0.0f);
+				glVertex3f(fi,fj,0.0f);
 
 
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.5f, 1.0);
-				glVertex3f(fi+baseRad,fj+baseRad,0.5f);
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.2f, 1.0);
+				glVertex3f(fi,fj,0.0f);
 
 
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, -1.0);
-				glVertex3f(fi,fj,1.0f);
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, 0.0);
+				glVertex3f(fi,fj,0.0f);
 
 				
 				/*
@@ -4060,9 +4061,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 		iCameraPos.y = (int)fCameraPos.y;
 		iCameraPos.z = (int)fCameraPos.z;
 
-		fLightPos.x = 0.0f;
-		fLightPos.y = 0.0f;
-		fLightPos.z = 20.0f;
+		fLightPos.x = 512.0f;
+		fLightPos.y = 512.0f;
+		fLightPos.z = 2048.0f;
 
 		iLightPos.x = (int)fLightPos.x;
 		iLightPos.y = (int)fLightPos.y;
@@ -4409,12 +4410,22 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 		float modZ = 0.0;
 
 		if (lbDown) {
-			modX = -(dyZoom + dxZoom/2.0);
-			modY = -(dyZoom - dxZoom/2.0);
+			modX = -(dyZoom + dxZoom/2.0f)*2.0f;
+			modY = -(dyZoom - dxZoom/2.0f)*2.0f;
 		}
 		if (rbDown) {
-			modZ = dyZoom;
+			modZ = dyZoom*2.0f;
 		}
+
+		
+
+		if (glutGetModifiers()&GLUT_ACTIVE_SHIFT) {
+			activeObject = E_OBJ_LIGHT;
+		}
+		else {
+			activeObject = E_OBJ_CAMERA;
+		}
+
 
 		switch (activeObject) {
 
@@ -4422,6 +4433,10 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 				fCameraPos.x += modX;
 				fCameraPos.y += modY;
 				fCameraPos.z += modZ;
+
+				if (fCameraPos.z < 0.0f) {
+					fCameraPos.z = 0.0f;
+				}
 
 				iCameraPos.x = (int)fCameraPos.x;
 				iCameraPos.y = (int)fCameraPos.y;
@@ -4645,6 +4660,29 @@ void Singleton::mouseMove (int x, int y)
 			
 		}
 	}
+void Singleton::worldToScreen (fVector2 * sc, fVector3 * wc)
+                                                       {
+
+
+
+		float dxmod = wc->x - fCameraPos.x;
+		float dymod = wc->y - fCameraPos.y;
+		float dzmod = wc->z - fCameraPos.z;
+
+		float x1 = (dxmod-dymod);
+		float y1 = (-(dxmod/2.0f) + -(dymod/2.0f) + dzmod);
+		
+		float myZoom = cameraZoom;//std::min(1.0f, cameraZoom);
+
+		x1 = x1*(myZoom)/fBufferWidth;
+		y1 = y1*(myZoom)/fBufferWidth;
+
+		x1 = (x1 + 1.0)/2.0;
+		y1 = (y1 + 1.0)/2.0;
+
+		sc->x = x1;
+		sc->y = y1;
+	}
 void Singleton::mouseClick (int button, int state, int x, int y)
                                                              {
 		
@@ -4678,6 +4716,10 @@ void Singleton::mouseClick (int button, int state, int x, int y)
 
 		myDelta += wheelDelta;
 		cameraZoom = pow(2.0, myDelta);
+
+		if (button == 3 || button == 4) {
+			//doTrace("Zoom: ", f__s(cameraZoom) );
+		}
 
 		if (x >= 0 && y >= 0 && x < baseW && y < baseH) {
 			bufferInvalid = true;
@@ -4755,9 +4797,15 @@ void GamePage::init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRe
 		iDim = _iDim;
 		iOff = _iOff;
 
+		iRenderSize = _iRenderSize;
+
+		//heightOfVol = (((float)iRenderSize)/2.0f - 1.0f)/255.0f;
+
 		
-		origHeight = ((iOff.z * (256/iDim)) >> 8);
-		origHeight = origHeight/255.0;
+		unitSize = ( ( (float)iRenderSize )/2.0f ) / ( (float)iDim );
+
+		//curHeight = ((iOff.z * (256/iDim)) >> 8);
+		//curHeight = curHeight/255.0;
 
 
 
@@ -4773,9 +4821,8 @@ void GamePage::init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRe
 
 
 
-		iRenderSize = _iRenderSize;
+
 		
-		int renderDim2 = iRenderSize*iRenderSize;
 
 		fboSet = NULL;
 		
@@ -4848,17 +4895,13 @@ void GamePage::createSimplexNoise ()
 
 		
 
-		worldMin.x = (0 - totLenO2) + iOff.x;
-		worldMin.y = (0 - totLenO2) + iOff.y;
-		worldMin.z = (0 - totLenO2) + iOff.z;
+		worldMin.x = ((0 + totLenO4) + iOff.x)*unitSize;
+		worldMin.y = ((0 + totLenO4) + iOff.y)*unitSize;
+		worldMin.z = ((0 + totLenO4) + iOff.z)*unitSize;
 
-		worldMax.x = (totLenM1 - totLenO2) + iOff.x;
-		worldMax.y = (totLenM1 - totLenO2) + iOff.y;
-		worldMax.z = (totLenM1 - totLenO2) + iOff.z;
-
-
-
-
+		worldMax.x = ((totLen - totLenO4) + iOff.x)*unitSize;
+		worldMax.y = ((totLen - totLenO4) + iOff.y)*unitSize;
+		worldMax.z = ((totLen - totLenO4) + iOff.z)*unitSize;
 
 		
 		float thresh;
@@ -5078,7 +5121,8 @@ void GamePage::generateVolume ()
 		singleton->sampleFBO("volGenFBO");
 		glClearColor(0.0f,0.0f,0.0f,0.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		singleton->setShaderFloat("curHeight",origHeight);
+		//singleton->setShaderFloat("curHeight",curHeight);
+		//singleton->setShaderFloat("heightOfVol",heightOfVol);
 		singleton->setShaderfVec3("worldMin", &(worldMin));
 		singleton->setShaderfVec3("worldMax", &(worldMax));
 
@@ -5087,27 +5131,6 @@ void GamePage::generateVolume ()
 		singleton->unbindFBO();
 		singleton->unbindShader();
 		
-
-
-
-		/*
-		//ray trace new texture, generate normals, AO, depth, etc
-		singleton->bindShader("RenderVolume");
-		singleton->bindFBODirect(fboSet);
-	
-		singleton->setShaderTexture3D("Texture0", volID, 0);
-		glClearColor(0.0f,0.0f,0.0f,0.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		singleton->setShaderFloat("curHeight",origHeight);
-		glCallList(singleton->volTris);
-		singleton->setShaderTexture3D("Texture0", 0, 0);
-
-		singleton->unbindFBO();
-		singleton->unbindShader();
-		*/
-
-
-
 
 		curState = E_STATE_GENERATEVOLUME_END;
 	}
@@ -5188,7 +5211,7 @@ void GameWorld::init (iVector3 _iDim, Singleton * _singleton, int _renderMethod)
                                                                             {
 
 		pageCount = 0;
-		iRSize = 128;
+		iRSize = 256;
 
 
 		#ifdef DEBUG_MODE
@@ -5218,8 +5241,8 @@ void GameWorld::init (iVector3 _iDim, Singleton * _singleton, int _renderMethod)
 		curDiagram = diagrams[renderMethod];
 
 		iPageSize = 4;
-		loadRad = 2;
-		loadRadZ = 2;
+		loadRad = 4;
+		loadRadZ = 4;
 		
 		renderRad = 12;
 
@@ -5601,10 +5624,10 @@ void GameWorld::drawPage (GamePage * gp, int dx, int dy, int dz)
 		float myZoom = std::min(1.0f,singleton->cameraZoom);
 
 
-		fx1 = fx1*2.0f*(myZoom)/fScreenDim.x;
-		fy1 = fy1*2.0f*(myZoom)/fScreenDim.y;
-		fx2 = fx2*2.0f*(myZoom)/fScreenDim.x;
-		fy2 = fy2*2.0f*(myZoom)/fScreenDim.y;
+		fx1 = fx1*(myZoom)/fScreenDim.x;
+		fy1 = fy1*(myZoom)/fScreenDim.y;
+		fx2 = fx2*(myZoom)/fScreenDim.x;
+		fy2 = fy2*(myZoom)/fScreenDim.y;
 
 
 
@@ -5676,7 +5699,8 @@ void GameWorld::renderGeom ()
 
 
 		glEnable(GL_DEPTH_TEST);
-		singleton->drawCubeCentered(singleton->fLightPos,64.0);
+		//remember 2x radius
+		singleton->drawCubeCentered(singleton->fLightPos,32.0);
 		glDisable(GL_DEPTH_TEST);
 
 		
@@ -5701,6 +5725,7 @@ void GameWorld::renderGrass ()
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
+		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
 		
 		singleton->bindFBO("grassFBO");
 		singleton->sampleFBO("pagesFBO");
@@ -5724,22 +5749,27 @@ void GameWorld::postProcess ()
 		
 
 
+		/*
 		int dxmod = singleton->iLightPos.x - singleton->iCameraPos.x;
 		int dymod = singleton->iLightPos.y - singleton->iCameraPos.y;
 		int dzmod = singleton->iLightPos.z - singleton->iCameraPos.z;
 
 		int x = (dxmod-dymod);
 		int y = (-(dxmod/2) + -(dymod/2) + dzmod);
-		int z = singleton->iLightPos.z;
 
 		
 
-		float newZoom = std::max(1.0f,singleton->cameraZoom);
 
+		float fx = ((float)x)*(newZoom)/(singleton->fBufferWidth);
+		float fy = ((float)y)*(newZoom)/(singleton->fBufferWidth);
 
-		float fx = ((float)x)*2.0f*(newZoom)/(singleton->fBufferWidth);
-		float fy = ((float)y)*2.0f*(newZoom)/(singleton->fBufferWidth);
-		float fz = ((float)z);
+		fx = (fx + 1.0f)/4.0f;
+		fy = (fy + 1.0f)/4.0f;
+		*/
+
+		fVector2 screenCoords;
+		singleton->worldToScreen(&screenCoords, &(singleton->fLightPos));
+
 
 
 		singleton->bindShader("LightingShader");
@@ -5747,8 +5777,8 @@ void GameWorld::postProcess ()
 		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
 		singleton->setShaderfVec3("lightPosWS", &(singleton->fLightPos));
 
-		singleton->setShaderVec3("lightPosSS", fx, fy, fz);
-		singleton->setShaderFloat("cameraZoom",newZoom);
+		singleton->setShaderVec2("lightPosSS", screenCoords.x, screenCoords.y);
+		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
 
 
@@ -5764,6 +5794,7 @@ void GameWorld::postProcess ()
 		singleton->unbindFBO();
 		singleton->unbindShader();
 
+		float newZoom = std::max(1.0f,singleton->cameraZoom);
 		singleton->drawFBO("resultFBO", 0, newZoom );
 		
 	}

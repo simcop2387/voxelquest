@@ -322,8 +322,8 @@ public:
 
 		int spacing = 1;
 
-		int iMax = 1024;
-		int jMax = 256;
+		int iMax = 512;
+		int jMax = 512;
 
 		float fiMax = (float)iMax;
 		float fjMax = (float)jMax;
@@ -358,20 +358,20 @@ public:
 				//
 				
 				
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.5f, -1.0);
-				glVertex3f(fi-baseRad,fj,0.5f);
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.2f, -1.0);
+				glVertex3f(fi,fj,0.0);
 				
 
 				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.0f, 0.0);
-				glVertex3f(fi,fj+baseRad,0.0f);
+				glVertex3f(fi,fj,0.0f);
 
 
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.5f, 1.0);
-				glVertex3f(fi+baseRad,fj+baseRad,0.5f);
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.2f, 1.0);
+				glVertex3f(fi,fj,0.0f);
 
 
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, -1.0);
-				glVertex3f(fi,fj,1.0f);
+				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, 0.0);
+				glVertex3f(fi,fj,0.0f);
 
 				
 				/*
@@ -683,9 +683,9 @@ public:
 		iCameraPos.y = (int)fCameraPos.y;
 		iCameraPos.z = (int)fCameraPos.z;
 
-		fLightPos.x = 0.0f;
-		fLightPos.y = 0.0f;
-		fLightPos.z = 20.0f;
+		fLightPos.x = 512.0f;
+		fLightPos.y = 512.0f;
+		fLightPos.z = 2048.0f;
 
 		iLightPos.x = (int)fLightPos.x;
 		iLightPos.y = (int)fLightPos.y;
@@ -1041,12 +1041,22 @@ public:
 		float modZ = 0.0;
 
 		if (lbDown) {
-			modX = -(dyZoom + dxZoom/2.0);
-			modY = -(dyZoom - dxZoom/2.0);
+			modX = -(dyZoom + dxZoom/2.0f)*2.0f;
+			modY = -(dyZoom - dxZoom/2.0f)*2.0f;
 		}
 		if (rbDown) {
-			modZ = dyZoom;
+			modZ = dyZoom*2.0f;
 		}
+
+		
+
+		if (glutGetModifiers()&GLUT_ACTIVE_SHIFT) {
+			activeObject = E_OBJ_LIGHT;
+		}
+		else {
+			activeObject = E_OBJ_CAMERA;
+		}
+
 
 		switch (activeObject) {
 
@@ -1054,6 +1064,10 @@ public:
 				fCameraPos.x += modX;
 				fCameraPos.y += modY;
 				fCameraPos.z += modZ;
+
+				if (fCameraPos.z < 0.0f) {
+					fCameraPos.z = 0.0f;
+				}
 
 				iCameraPos.x = (int)fCameraPos.x;
 				iCameraPos.y = (int)fCameraPos.y;
@@ -1309,6 +1323,31 @@ public:
 			
 		}
 	}
+
+
+	void worldToScreen(fVector2* sc, fVector3* wc) {
+
+
+
+		float dxmod = wc->x - fCameraPos.x;
+		float dymod = wc->y - fCameraPos.y;
+		float dzmod = wc->z - fCameraPos.z;
+
+		float x1 = (dxmod-dymod);
+		float y1 = (-(dxmod/2.0f) + -(dymod/2.0f) + dzmod);
+		
+		float myZoom = cameraZoom;//std::min(1.0f, cameraZoom);
+
+		x1 = x1*(myZoom)/fBufferWidth;
+		y1 = y1*(myZoom)/fBufferWidth;
+
+		x1 = (x1 + 1.0)/2.0;
+		y1 = (y1 + 1.0)/2.0;
+
+		sc->x = x1;
+		sc->y = y1;
+	}
+
 	void mouseClick(int button, int state, int x, int y) {
 		
 		lastPosX = x;
@@ -1341,6 +1380,10 @@ public:
 
 		myDelta += wheelDelta;
 		cameraZoom = pow(2.0, myDelta);
+
+		if (button == 3 || button == 4) {
+			//doTrace("Zoom: ", f__s(cameraZoom) );
+		}
 
 		if (x >= 0 && y >= 0 && x < baseW && y < baseH) {
 			bufferInvalid = true;

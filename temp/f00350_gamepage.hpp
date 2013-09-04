@@ -10,12 +10,16 @@ public:
 	iVector3 iOff;
 	int iVolumeSize;
 	int iRenderSize;
-	float origHeight;
+	//float curHeight;
+	//float heightOfVol;
 	uint* volData;
 	Singleton* singleton;
 	FBOSet* fboSet;
 	uint volID;
 	uint volIDLinear;
+
+	float unitSize;
+
 	E_STATES curState;
 	E_STATES nextState;
 
@@ -43,9 +47,15 @@ public:
 		iDim = _iDim;
 		iOff = _iOff;
 
+		iRenderSize = _iRenderSize;
+
+		//heightOfVol = (((float)iRenderSize)/2.0f - 1.0f)/255.0f;
+
 		
-		origHeight = ((iOff.z * (256/iDim)) >> 8);
-		origHeight = origHeight/255.0;
+		unitSize = ( ( (float)iRenderSize )/2.0f ) / ( (float)iDim );
+
+		//curHeight = ((iOff.z * (256/iDim)) >> 8);
+		//curHeight = curHeight/255.0;
 
 
 
@@ -61,9 +71,8 @@ public:
 
 
 
-		iRenderSize = _iRenderSize;
+
 		
-		int renderDim2 = iRenderSize*iRenderSize;
 
 		fboSet = NULL;
 		
@@ -140,17 +149,13 @@ public:
 
 		
 
-		worldMin.x = (0 - totLenO2) + iOff.x;
-		worldMin.y = (0 - totLenO2) + iOff.y;
-		worldMin.z = (0 - totLenO2) + iOff.z;
+		worldMin.x = ((0 + totLenO4) + iOff.x)*unitSize;
+		worldMin.y = ((0 + totLenO4) + iOff.y)*unitSize;
+		worldMin.z = ((0 + totLenO4) + iOff.z)*unitSize;
 
-		worldMax.x = (totLenM1 - totLenO2) + iOff.x;
-		worldMax.y = (totLenM1 - totLenO2) + iOff.y;
-		worldMax.z = (totLenM1 - totLenO2) + iOff.z;
-
-
-
-
+		worldMax.x = ((totLen - totLenO4) + iOff.x)*unitSize;
+		worldMax.y = ((totLen - totLenO4) + iOff.y)*unitSize;
+		worldMax.z = ((totLen - totLenO4) + iOff.z)*unitSize;
 
 		
 		float thresh;
@@ -371,7 +376,8 @@ public:
 		singleton->sampleFBO("volGenFBO");
 		glClearColor(0.0f,0.0f,0.0f,0.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		singleton->setShaderFloat("curHeight",origHeight);
+		//singleton->setShaderFloat("curHeight",curHeight);
+		//singleton->setShaderFloat("heightOfVol",heightOfVol);
 		singleton->setShaderfVec3("worldMin", &(worldMin));
 		singleton->setShaderfVec3("worldMax", &(worldMax));
 
@@ -380,27 +386,6 @@ public:
 		singleton->unbindFBO();
 		singleton->unbindShader();
 		
-
-
-
-		/*
-		//ray trace new texture, generate normals, AO, depth, etc
-		singleton->bindShader("RenderVolume");
-		singleton->bindFBODirect(fboSet);
-	
-		singleton->setShaderTexture3D("Texture0", volID, 0);
-		glClearColor(0.0f,0.0f,0.0f,0.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		singleton->setShaderFloat("curHeight",origHeight);
-		glCallList(singleton->volTris);
-		singleton->setShaderTexture3D("Texture0", 0, 0);
-
-		singleton->unbindFBO();
-		singleton->unbindShader();
-		*/
-
-
-
 
 		curState = E_STATE_GENERATEVOLUME_END;
 	}

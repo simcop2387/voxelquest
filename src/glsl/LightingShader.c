@@ -5,7 +5,7 @@ uniform vec2 mouseCoords;
 uniform vec2 resolution;
 uniform vec3 cameraPos;
 uniform vec3 lightPosWS;
-uniform vec3 lightPosSS;
+uniform vec2 lightPosSS;
 uniform float bufferWidth;
 uniform float cameraZoom;
 //uniform vec4 bgColor;
@@ -33,6 +33,29 @@ float rand(vec2 co){
 
 
 
+int intMod(int lhs, int rhs) {
+    return lhs - ( (lhs/rhs)*rhs );
+}
+
+vec2 pack16(float num) {
+
+    int iz = int(num);
+    int ir = intMod(iz,256);
+    int ig = (iz)/256;
+
+    vec2 res;
+
+    res.r = float(ir)/255.0;
+    res.g = float(ig)/255.0;
+
+    return res;
+
+}
+
+float unpack16(vec2 num) {
+    return num.r*255.0 + num.g*65280.0;
+}
+
 
 
 
@@ -43,11 +66,7 @@ void main() {
 
     
 
-    ////////////////////////
-    //gl_FragData[0] = tex0;
-    ////////////////////////
-
-    
+    float newZoom = min(cameraZoom,1.0);
     
 
     float tot = tex0.r + tex0.g + tex0.b + tex0.a;
@@ -55,26 +74,21 @@ void main() {
             //discard;
     //}
     
-    float baseHeight = tex0.r*255.0 + tex0.g*255.0*256.0;
-
-    //float lDis = clamp( (1.0-distance(lightPosSS.xy,TexCoord0.xy)*40.0),0.0,1.0)*float(lightPosSS.z > baseHeight);
-
+    float baseHeight = unpack16(tex0.rg);//tex0.r*255.0 + tex0.g*255.0*256.0;
 
     vec3 worldPosition = vec3(0.0,0.0,0.0);
-
-    vec2 tcMod = TexCoord0.xy*bufferWidth/cameraZoom;
-    tcMod.y += baseHeight;
-
-    worldPosition.x = tcMod.x + tcMod.y;
-    worldPosition.y = tcMod.x - tcMod.y;
+    vec2 tcMod = (vec2(TexCoord0.x,1.0-TexCoord0.y)*2.0-1.0 )*bufferWidth/(newZoom);
+    tcMod.y -= cameraPos.z;
+    worldPosition.x = tcMod.y + tcMod.x/2.0 + (baseHeight);
+    worldPosition.y = tcMod.y - tcMod.x/2.0 + (baseHeight);
     worldPosition.z = baseHeight;
+    worldPosition.x += cameraPos.x;
+    worldPosition.y += cameraPos.y;
 
 
-    //map.x = screen.x / TILE_WIDTH + screen.y / TILE_HEIGHT;
-    //map.y = screen.y / TILE_HEIGHT - screen.x / TILE_WIDTH;
 
 
-    vec3 lightVec = normalize(worldPosition-lightPosWS);
+    vec3 lightVec = normalize(lightPosWS-worldPosition);
 
     vec3 targ;
     vec3 orig = vec3(TexCoord0.x, TexCoord0.y, baseHeight);
@@ -83,6 +97,53 @@ void main() {
     float aoval = tex1.a;
 
 
+
+    int i;
+    float fi;
+
+    const int iNumSteps = 64;
+    const float fNumSteps = float(iNumSteps);
+    float flerp = 0.0;
+
+    vec3 wStartPos = worldPosition;
+    vec3 wEndPos = lightPosWS;
+
+    vec2 sStartPos = TexCoord0.xy;
+    vec2 sEndPos = lightPosSS;
+
+    vec3 wCurPos;
+    vec2 sCurPos;
+    vec4 samp;
+
+    float curHeight;
+
+    float mval = float(distance(sStartPos,sEndPos) < 0.06*cameraZoom)*0.2;
+
+    float totHits = 0.0;
+    float wasHit = 0.0;
+    float lastHit = 0.0;
+    
+    for (i = 0; i < iNumSteps; i++) {
+        fi = float(i);
+        flerp = fi/fNumSteps;
+
+        wCurPos = mix(wStartPos,wEndPos,flerp);
+        sCurPos = mix(sStartPos,sEndPos,flerp);
+
+        samp = texture2D(Texture0, sCurPos);
+
+        curHeight = unpack16(samp.rg);
+
+        wasHit = float (curHeight > wCurPos.z )*float(samp.b != 4.0/255.0);
+        totHits += wasHit;
+        lastHit = mix(lastHit, flerp, wasHit);
+    }
+
+    //float shadVal = clamp((1.0 - pow(lastHit,4.0) ) + (1.0-float(totHits>0.0)),0.0,1.0);
+
+    resComp = mix(1.0,0.0, totHits*2.0/fNumSteps );
+    resComp = clamp(resComp,0.0,1.0);
+    
 
 
 
@@ -98,20 +159,15 @@ void main() {
     float lightval = dot(myVec,lightVec);
     lightval = clamp(lightval, 0.0, 1.0);
     lightval = lightval*resComp;
-    float lightRes = mix(aoval*0.3,lightval,lightval);
+    float lightRes = mix(aoval*0.1,lightval,lightval);
     lightRes = pow(lightRes,0.8);
     lightRes = clamp(lightRes,0.0,1.0);
 
-    float hfog = clamp( (baseHeight-cameraPos.z)/1024.0,0.0,1.0);
+    float hfog = clamp( (baseHeight-cameraPos.z)/512.0,0.0,1.0);
     hfog = pow(hfog, 2.0);
 
     lightRes *= hfog;
 
-
-    //float curHeight = tex0.g;
-    //gl_FragData[0] = vec4(tex0.r,tex0.g,0.0,1.0);
-
-    //lightRes = floor(lightRes*16.0)/16.0;
 
 
     //if (baseHeight == 0.0) {
@@ -132,23 +188,30 @@ void main() {
     //26:9:17
     //75:40:44
 
-    if (tex0.b == 2.0/255.0) {
-        resCol0 = vec3(26.0/255.0, 9.0/255.0, 17.0/255.0);
-        resCol1 = vec3(75.0/255.0, 40.0/255.0, 44.0/255.0);
-    }
+
+    // stone
     if (tex0.b == 1.0/255.0) {
-        resCol0 = vec3(35.0/255.0, 32.0/255.0, 27.0/255.0);
+        resCol0 = vec3(35.0/255.0, 32.0/255.0, 27.0/255.0)*0.3;
         resCol1 = vec3(232.0/255.0, 225.0/255.0, 206.0/255.0);
 
     }
+
+    // dirt
+    if (tex0.b == 2.0/255.0) {
+        resCol0 = vec3(22.0/255.0, 9.0/255.0, 17.0/255.0);
+        resCol1 = vec3(110.0/255.0, 80.0/255.0, 70.0/255.0);
+    }
+
+    // grass
     if (tex0.b == 3.0/255.0) {
 
-        lightRes = clamp(lightRes*aoval,0.0,1.0);
+        lightRes = clamp( pow((lightRes+aoval)/2.0,2.0),0.0,1.0);
 
-        resCol0 = vec3(10.0/255.0, 25.0/255.0, 0.0/255.0);
+        resCol0 = vec3(10.0/255.0, 25.0/255.0, 0.0/255.0)*0.3;
         resCol1 = vec3(145.0/255.0, 192.0/255.0, 62.0/255.0);
     }
 
+    // light
     if (tex0.b == 4.0/255.0) {
 
         resCol0 = vec3(255.0/255.0, 255.0/255.0, 255.0/255.0);
@@ -156,9 +219,17 @@ void main() {
 
     }
 
+    if (aoval == 0.0) {
+        resCol0 = vec3(0.0/255.0, 0.0/255.0, 0.0/255.0);
+        resCol1 = vec3(0.0/255.0, 0.0/255.0, 0.0/255.0);
+    }
+
+    vec3 resColor = mix(resCol0,resCol1,lightRes);
+    //vec3 resColor = vec3(lightRes);//mix(resCol0,resCol1,lightRes);//mod(worldPosition,256.0)/255.0;//vec3(lightRes);//mix(resCol0,resCol1,lightRes);
+    //vec3 resColor = tex1.rgb;
 
     //vec4(lightRes*0.8,lightRes*0.7,lightRes*0.6, lightRes)
-    gl_FragData[0] = vec4(mix( fogColor, mix(resCol0,resCol1,lightRes), hfog ),1.0); //vec4(lightRes,lightRes,lightRes,1.0);//
+    gl_FragData[0] = vec4(mix( fogColor, resColor, hfog ),1.0)+mval; //vec4(lightRes,lightRes,lightRes,1.0);//
     //gl_FragData[0] = vec4(aoval,aoval,aoval,1.0);
 
     //gl_FragData[0] = vec4(lightRes,lightRes,lightRes,1.0);

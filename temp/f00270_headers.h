@@ -119,6 +119,7 @@ public:
   void keyboardUp (unsigned char key, int x, int y);
   void keyboardDown (unsigned char key, int x, int y);
   void mouseMove (int x, int y);
+  void worldToScreen (fVector2 * sc, fVector3 * wc);
   void mouseClick (int button, int state, int x, int y);
   void display ();
   void reshape (int w, int h);
@@ -139,12 +140,12 @@ public:
   iVector3 iOff;
   int iVolumeSize;
   int iRenderSize;
-  float origHeight;
   uint * volData;
   Singleton * singleton;
   FBOSet * fboSet;
   uint volID;
   uint volIDLinear;
+  float unitSize;
   E_STATES curState;
   E_STATES nextState;
   fVector3 worldMin;

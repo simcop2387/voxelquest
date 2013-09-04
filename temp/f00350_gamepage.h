@@ -20,9 +20,15 @@ void GamePage::init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRe
 		iDim = _iDim;
 		iOff = _iOff;
 
+		iRenderSize = _iRenderSize;
+
+		//heightOfVol = (((float)iRenderSize)/2.0f - 1.0f)/255.0f;
+
 		
-		origHeight = ((iOff.z * (256/iDim)) >> 8);
-		origHeight = origHeight/255.0;
+		unitSize = ( ( (float)iRenderSize )/2.0f ) / ( (float)iDim );
+
+		//curHeight = ((iOff.z * (256/iDim)) >> 8);
+		//curHeight = curHeight/255.0;
 
 
 
@@ -38,9 +44,8 @@ void GamePage::init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRe
 
 
 
-		iRenderSize = _iRenderSize;
+
 		
-		int renderDim2 = iRenderSize*iRenderSize;
 
 		fboSet = NULL;
 		
@@ -113,17 +118,13 @@ void GamePage::createSimplexNoise ()
 
 		
 
-		worldMin.x = (0 - totLenO2) + iOff.x;
-		worldMin.y = (0 - totLenO2) + iOff.y;
-		worldMin.z = (0 - totLenO2) + iOff.z;
+		worldMin.x = ((0 + totLenO4) + iOff.x)*unitSize;
+		worldMin.y = ((0 + totLenO4) + iOff.y)*unitSize;
+		worldMin.z = ((0 + totLenO4) + iOff.z)*unitSize;
 
-		worldMax.x = (totLenM1 - totLenO2) + iOff.x;
-		worldMax.y = (totLenM1 - totLenO2) + iOff.y;
-		worldMax.z = (totLenM1 - totLenO2) + iOff.z;
-
-
-
-
+		worldMax.x = ((totLen - totLenO4) + iOff.x)*unitSize;
+		worldMax.y = ((totLen - totLenO4) + iOff.y)*unitSize;
+		worldMax.z = ((totLen - totLenO4) + iOff.z)*unitSize;
 
 		
 		float thresh;
@@ -343,7 +344,8 @@ void GamePage::generateVolume ()
 		singleton->sampleFBO("volGenFBO");
 		glClearColor(0.0f,0.0f,0.0f,0.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		singleton->setShaderFloat("curHeight",origHeight);
+		//singleton->setShaderFloat("curHeight",curHeight);
+		//singleton->setShaderFloat("heightOfVol",heightOfVol);
 		singleton->setShaderfVec3("worldMin", &(worldMin));
 		singleton->setShaderfVec3("worldMax", &(worldMax));
 
@@ -352,27 +354,6 @@ void GamePage::generateVolume ()
 		singleton->unbindFBO();
 		singleton->unbindShader();
 		
-
-
-
-		/*
-		//ray trace new texture, generate normals, AO, depth, etc
-		singleton->bindShader("RenderVolume");
-		singleton->bindFBODirect(fboSet);
-	
-		singleton->setShaderTexture3D("Texture0", volID, 0);
-		glClearColor(0.0f,0.0f,0.0f,0.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		singleton->setShaderFloat("curHeight",origHeight);
-		glCallList(singleton->volTris);
-		singleton->setShaderTexture3D("Texture0", 0, 0);
-
-		singleton->unbindFBO();
-		singleton->unbindShader();
-		*/
-
-
-
 
 		curState = E_STATE_GENERATEVOLUME_END;
 	}

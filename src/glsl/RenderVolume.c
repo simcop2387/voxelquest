@@ -6,8 +6,6 @@ uniform sampler2D Texture0;
 varying vec3 TexCoord0;
 varying vec3 TexCoord1;
 
-uniform float curHeight;
-uniform float heightOfVol;
 uniform vec3 worldMin;
 uniform vec3 worldMax;
 
@@ -118,7 +116,7 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
                 rval = float(res.a == 0.0);
 
                 rval2 = float( abs(res.r-curSamp.r) + abs(res.g-curSamp.g) + abs(res.b-curSamp.b) != 0.0 );
-                rvMix = mix(rval,rval2, isRock);//abs(sin(wp.y)) );//isRock
+                rvMix = rval2;//mix(rval,rval2, isRock);//abs(sin(wp.y)) );//isRock
                 norm += rvMix*(offVal);
                 //norm2 += res.a*offVal;
 
@@ -202,6 +200,29 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
 }
 
 
+int intMod(int lhs, int rhs) {
+    return lhs - ( (lhs/rhs)*rhs );
+}
+
+vec2 pack16(float num) {
+
+    int iz = int(num);
+    int ir = intMod(iz,256);
+    int ig = (iz)/256;
+
+    vec2 res;
+
+    res.r = float(ir)/255.0;
+    res.g = float(ig)/255.0;
+
+    return res;
+
+}
+
+float unpack16(vec2 num) {
+    return num.r*255.0 + num.g*65280.0;
+}
+
 void main() {
 
     int i = 0;
@@ -214,15 +235,7 @@ void main() {
     vec3 front = TexCoord1.xyz;
     vec3 back = TexCoord0.xyz;
 
-    vec3 worldFront = front;
-    vec3 worldBack = back;
-
-    worldFront.x *= worldMax.x;
-    worldFront.y *= worldMax.y;
-    worldFront.z *= worldMax.z;
-    worldBack.x *= worldMin.x;
-    worldBack.y *= worldMin.y;
-    worldBack.z *= worldMin.z;
+    
 
     
     
@@ -251,8 +264,16 @@ void main() {
         }
     }
 
-    vec3 worldPos = mix(worldFront,worldBack,fLerp);
 
+
+    vec3 worldPos;
+
+    worldPos.x = mix(worldMin.x, worldMax.x, curPos.x);
+    worldPos.y = mix(worldMin.y, worldMax.y, curPos.y);
+    worldPos.z = mix(worldMin.z, worldMax.z, curPos.z);
+
+
+    vec2 heightVals = pack16(worldPos.z);
 
     vec4 normAO = blackCol;
     vec4 heightMat = blackCol;
@@ -262,9 +283,7 @@ void main() {
     }
     else {
         normAO = getAO(curPos, samp, worldPos);
-        heightMat = vec4(curPos.b, curHeight, samp.a, 1.0); //*heightOfVol/255.0
-
-        
+        heightMat = vec4(heightVals.rg, samp.a, 1.0);
     }
     
     gl_FragData[0] = heightMat;

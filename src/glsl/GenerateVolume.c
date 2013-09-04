@@ -118,6 +118,14 @@ void main() {
 	//newCoords2.z *= 0.5;
 	
 
+
+
+	//gl_FragData[0] = float(tex1.a > 0.5)*(vec4(1.0,0.0,0.0,2.0/255.0));
+
+
+
+
+
 	// to create voro scale, just use more dense array for voro data
 
 	for (i = 0; i < 27; i++) {
@@ -175,11 +183,13 @@ void main() {
 
 		resA.a = isTerrain;
 		resA.a += float( (rockIsInside+isTerrain) > 0.0);
-		resA.a = resA.a/255.0;
-		resA.rgb = mix(vec3(0.0,0.0,0.0),bestSamp,rockIsInside);
+		
+		resA.rgb = mix(vec3(0.0,0.0,0.0),bestSamp,resA.a);//mix(vec3(0.0,0.0,0.0),bestSamp,rockIsInside);
 
-		resB.rgb = bestSamp;
-		resB.a = rockIsOnTer*2.0/255.0;
+		resA.a = resA.a/255.0;
+
+		//resB.rgb = bestSamp;
+		//resB.a = rockIsOnTer*2.0/255.0;
 
 		res = resA;//mix(resA,resB, float( mod(tex2.a*1020.0,69.0)/69.0 > 0.5));
 	}

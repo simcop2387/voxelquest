@@ -47,7 +47,7 @@ void GameWorld::init (iVector3 _iDim, Singleton * _singleton, int _renderMethod)
                                                                             {
 
 		pageCount = 0;
-		iRSize = 128;
+		iRSize = 256;
 
 
 		#ifdef DEBUG_MODE
@@ -77,8 +77,8 @@ void GameWorld::init (iVector3 _iDim, Singleton * _singleton, int _renderMethod)
 		curDiagram = diagrams[renderMethod];
 
 		iPageSize = 4;
-		loadRad = 2;
-		loadRadZ = 2;
+		loadRad = 4;
+		loadRadZ = 4;
 		
 		renderRad = 12;
 
@@ -460,10 +460,10 @@ void GameWorld::drawPage (GamePage * gp, int dx, int dy, int dz)
 		float myZoom = std::min(1.0f,singleton->cameraZoom);
 
 
-		fx1 = fx1*2.0f*(myZoom)/fScreenDim.x;
-		fy1 = fy1*2.0f*(myZoom)/fScreenDim.y;
-		fx2 = fx2*2.0f*(myZoom)/fScreenDim.x;
-		fy2 = fy2*2.0f*(myZoom)/fScreenDim.y;
+		fx1 = fx1*(myZoom)/fScreenDim.x;
+		fy1 = fy1*(myZoom)/fScreenDim.y;
+		fx2 = fx2*(myZoom)/fScreenDim.x;
+		fy2 = fy2*(myZoom)/fScreenDim.y;
 
 
 
@@ -535,7 +535,8 @@ void GameWorld::renderGeom ()
 
 
 		glEnable(GL_DEPTH_TEST);
-		singleton->drawCubeCentered(singleton->fLightPos,64.0);
+		//remember 2x radius
+		singleton->drawCubeCentered(singleton->fLightPos,32.0);
 		glDisable(GL_DEPTH_TEST);
 
 		
@@ -560,6 +561,7 @@ void GameWorld::renderGrass ()
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
+		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
 		
 		singleton->bindFBO("grassFBO");
 		singleton->sampleFBO("pagesFBO");
@@ -583,22 +585,27 @@ void GameWorld::postProcess ()
 		
 
 
+		/*
 		int dxmod = singleton->iLightPos.x - singleton->iCameraPos.x;
 		int dymod = singleton->iLightPos.y - singleton->iCameraPos.y;
 		int dzmod = singleton->iLightPos.z - singleton->iCameraPos.z;
 
 		int x = (dxmod-dymod);
 		int y = (-(dxmod/2) + -(dymod/2) + dzmod);
-		int z = singleton->iLightPos.z;
 
 		
 
-		float newZoom = std::max(1.0f,singleton->cameraZoom);
 
+		float fx = ((float)x)*(newZoom)/(singleton->fBufferWidth);
+		float fy = ((float)y)*(newZoom)/(singleton->fBufferWidth);
 
-		float fx = ((float)x)*2.0f*(newZoom)/(singleton->fBufferWidth);
-		float fy = ((float)y)*2.0f*(newZoom)/(singleton->fBufferWidth);
-		float fz = ((float)z);
+		fx = (fx + 1.0f)/4.0f;
+		fy = (fy + 1.0f)/4.0f;
+		*/
+
+		fVector2 screenCoords;
+		singleton->worldToScreen(&screenCoords, &(singleton->fLightPos));
+
 
 
 		singleton->bindShader("LightingShader");
@@ -606,8 +613,8 @@ void GameWorld::postProcess ()
 		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
 		singleton->setShaderfVec3("lightPosWS", &(singleton->fLightPos));
 
-		singleton->setShaderVec3("lightPosSS", fx, fy, fz);
-		singleton->setShaderFloat("cameraZoom",newZoom);
+		singleton->setShaderVec2("lightPosSS", screenCoords.x, screenCoords.y);
+		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
 
 
@@ -623,6 +630,7 @@ void GameWorld::postProcess ()
 		singleton->unbindFBO();
 		singleton->unbindShader();
 
+		float newZoom = std::max(1.0f,singleton->cameraZoom);
 		singleton->drawFBO("resultFBO", 0, newZoom );
 		
 	}
