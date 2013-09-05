@@ -48,6 +48,21 @@ enum E_STATES {
 
 };
 
+////////////////////////////////////////////////////
+
+//    DONT FORGET SEMICOLONS!
+
+////////////////////////////////////////////////////
+
+
+
+enum E_GRASS_STATE {
+    E_GRASS_STATE_OFF,
+    E_GRASS_STATE_ON,
+    E_GRASS_STATE_ANIM,
+    E_GRASS_STATE_LENGTH
+};
+
 enum E_FILL_STATE {
     E_FILL_STATE_EMPTY,
     E_FILL_STATE_PARTIAL,
@@ -55,6 +70,7 @@ enum E_FILL_STATE {
 };
 
 enum E_OBJ {
+    E_OBJ_NONE,
     E_OBJ_CAMERA,
     E_OBJ_LIGHT,
     E_OBJ_LENGTH

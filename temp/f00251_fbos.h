@@ -12,6 +12,13 @@ public:
 	int bytesPerChannel;
 	bool hasDepth;
 
+
+	GLint internalFormat;
+
+	unsigned char *pixelsChar;
+	float *pixelsFloat;
+	bool isFloat;
+
     FBOWrapper() {}
     ~FBOWrapper() {}
     int init(int _width, int _height, int _bytesPerChannel, int _slot, bool _hasDepth) {
@@ -22,6 +29,11 @@ public:
 
 		int w = width;
 		int h = height;
+
+		isFloat = false;
+
+		pixelsChar = NULL;
+		pixelsFloat = NULL;
 
 
 		slot = GL_COLOR_ATTACHMENT0_EXT;
@@ -64,15 +76,24 @@ public:
 		
 	    switch (bytesPerChannel) {
 	    	case 1:
-	    		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	    		internalFormat = GL_RGBA8;
+	    		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	    		
 	    	break;
 	    	case 2:
-	            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16, w, h, 0, GL_RGBA, GL_UNSIGNED_SHORT, 0);
+	    		internalFormat = GL_RGBA16;
+	            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_UNSIGNED_SHORT, 0);
+
 	    	break;
 	    	case 4:
-	            //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, 0);
+	    		internalFormat = GL_RGBA32F;
+	            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_FLOAT, 0);
+	            isFloat = true;
+
 	    	break;
 	    }
+
+	    TOT_GPU_MEM_USAGE += ((float)(w*h*bytesPerChannel*4))/(1024.0f*1024.0f);
 
 
 	    //
@@ -95,7 +116,200 @@ public:
 
 	}
 
+
+
+	void getPixelAtF(fVector4* fv, int x, int y) {
+
+		if (isFloat) {
+
+
+			if ( (pixelsFloat == NULL) ) {
+				getPixels();
+			}
+
+			//a
+			//b
+			//g
+			//r
+
+			fv->x = pixelsFloat[ (x + y*width)*4 + 0 ];
+			fv->y = pixelsFloat[ (x + y*width)*4 + 1 ];
+			fv->z = pixelsFloat[ (x + y*width)*4 + 2 ];
+			fv->w = pixelsFloat[ (x + y*width)*4 + 3 ];
+
+		}
+		else {
+			doTrace("Attempted to call getPixelAtF on char buffer.");
+		}
+
+	}
+
+	unsigned char getPixelAtC(int x, int y, int channel) {
+
+		if (isFloat) {
+			if ( (pixelsFloat == NULL) ) {
+				getPixels();
+			}
+
+			return pixelsChar[ (x + y*width)*4 + channel ];
+
+		}
+		else {
+			doTrace("Attempted to call getPixelAtC on float buffer.");
+		}
+
+	}
+
+
+	void getPixels() {
+
+		glBindTexture(GL_TEXTURE_2D, color_tex);
+		GLint numBytes = 0;
+		
+		//GLint intForm;
+		//glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPONENTS, &intForm); // get internal format type of GL texture
+
+
+		switch(internalFormat) // determine what type GL texture has...
+		{
+			case GL_RGB:
+				numBytes = width * height * 3;
+			break;
+			case GL_RGBA:
+				numBytes = width * height * 4;
+			break;
+			case GL_RGBA8:
+				numBytes = width * height * 4;
+			break;
+			//case GL_RGBA16:
+			//
+			//break;
+			case GL_RGBA32F:
+				numBytes = width * height * 4 * 4;
+			break;
+
+			default:
+				doTrace("Unsupported Format Type");
+				return;
+			break;
+		}
+
+		if (numBytes) {
+
+			if (isFloat) {
+
+				if (pixelsFloat == NULL) {
+					pixelsFloat = (float*)malloc(numBytes);
+				}
+				
+				glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pixelsFloat);
+			}
+			else {
+
+				if (pixelsChar == NULL) {
+					pixelsChar = (unsigned char*)malloc(numBytes);
+				}
+				glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelsChar);
+			}
+
+			
+		}
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+
+	}
+
+
 };
+
+
+class FBOSet
+{
+public:
+	int numBufs;
+	int width;
+	int height;
+	int bytesPerChannel;
+
+	GLuint mFBO;
+
+	FBOWrapper* fbos;
+
+	bool hasDepth;
+
+    FBOSet() {}
+    ~FBOSet() {}
+
+    FBOWrapper* getFBOWrapper(int offset) {
+    	return &(fbos[offset]);
+    }
+
+    void init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool _hasDepth) {
+		int i;
+
+		hasDepth = _hasDepth;
+
+		numBufs = _numBufs;
+		height = _height;
+		width = _width;
+		bytesPerChannel = _bytesPerChannel;
+
+		fbos = new FBOWrapper[numBufs];
+
+
+		glGenFramebuffersEXT(1, &mFBO);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
+
+		for (i = 0; i < numBufs; i++) {
+			fbos[i].init(width, height, bytesPerChannel, i, hasDepth);
+		}
+
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+	}
+    void bind(int doClear) {
+
+		//setWH(width, height);
+
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
+
+		GLenum buffers[] = {GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_COLOR_ATTACHMENT4_EXT};
+		glDrawBuffers(numBufs, buffers);
+
+		if (doClear) {
+	    	glClearColor(0.0,0.0,0.0,0.0);
+	    	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	    }
+
+	}
+	/*
+    void setWH(int w, int h) {
+		glViewport(0,0,w,h);
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(-0.5, +0.5, -0.5, +0.5, 4.0, 15.0);
+		glMatrixMode(GL_MODELVIEW);
+		glMatrixMode (GL_MODELVIEW);
+		glLoadIdentity ();
+		glMatrixMode (GL_PROJECTION);
+		glLoadIdentity ();
+	}
+	*/
+    void copyFromMem(int ind, uint* dat) {
+
+		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
+
+	    glBindTexture(GL_TEXTURE_2D,fbos[ind].color_tex);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dat);
+		//glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbos[ind].slot, GL_TEXTURE_2D, fbos[ind].color_tex, 0);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glBindTexture(GL_TEXTURE_2D,0);
+
+		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+	}
+};
+
 
 
 /*
@@ -163,88 +377,4 @@ public:
    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 */
 
-
-
-
-
-
-class FBOSet
-{
-public:
-	int numBufs;
-	int width;
-	int height;
-	int bytesPerChannel;
-
-	GLuint mFBO;
-
-	FBOWrapper* fbos;
-
-	bool hasDepth;
-
-    FBOSet() {}
-    ~FBOSet() {}
-    void init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool _hasDepth) {
-		int i;
-
-		hasDepth = _hasDepth;
-
-		numBufs = _numBufs;
-		height = _height;
-		width = _width;
-		bytesPerChannel = _bytesPerChannel;
-
-		fbos = new FBOWrapper[numBufs];
-
-
-		glGenFramebuffersEXT(1, &mFBO);
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
-
-		for (i = 0; i < numBufs; i++) {
-			fbos[i].init(width, height, bytesPerChannel, i, hasDepth);
-		}
-
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-	}
-    void bind(int doClear) {
-
-		//setWH(width, height);
-
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
-
-		GLenum buffers[] = {GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_COLOR_ATTACHMENT4_EXT};
-		glDrawBuffers(numBufs, buffers);
-
-		if (doClear) {
-	    	glClearColor(0.0,0.0,0.0,0.0);
-	    	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	    }
-
-	}
-	/*
-    void setWH(int w, int h) {
-		glViewport(0,0,w,h);
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(-0.5, +0.5, -0.5, +0.5, 4.0, 15.0);
-		glMatrixMode(GL_MODELVIEW);
-		glMatrixMode (GL_MODELVIEW);
-		glLoadIdentity ();
-		glMatrixMode (GL_PROJECTION);
-		glLoadIdentity ();
-	}
-	*/
-    void copyFromMem(int ind, uint* dat) {
-
-		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
-
-	    glBindTexture(GL_TEXTURE_2D,fbos[ind].color_tex);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dat);
-		//glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbos[ind].slot, GL_TEXTURE_2D, fbos[ind].color_tex, 0);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glBindTexture(GL_TEXTURE_2D,0);
-
-		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-	}
-}; 
+ 

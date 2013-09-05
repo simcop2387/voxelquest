@@ -25,7 +25,7 @@ void GamePage::init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRe
 		//heightOfVol = (((float)iRenderSize)/2.0f - 1.0f)/255.0f;
 
 		
-		unitSize = ( ( (float)iRenderSize )/2.0f ) / ( (float)iDim );
+		unitSize = (float)(singleton->unitSize);
 
 		//curHeight = ((iOff.z * (256/iDim)) >> 8);
 		//curHeight = curHeight/255.0;
@@ -231,7 +231,7 @@ void GamePage::createSimplexNoise ()
 																		) + ijkVals[m])*255.0f/fTotLen);
 							}
 
-							if ( (tmp%16 > 0) && ( (i+j+k)%2 == 0) ) {
+							if ( (tmp%16 > 6) && ( (i+j+k)%2 == 0) ) {
 								volData[ind] = (tmp<<24)|(randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
 							}
 							else {
@@ -299,6 +299,8 @@ void GamePage::copyToTexture ()
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 		glBindTexture(GL_TEXTURE_3D,0);
 
+
+
 		glBindTexture(GL_TEXTURE_3D,volIDLinear);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, iDim, iDim, iDim, 0, GL_RGBA, GL_UNSIGNED_BYTE, volData);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);//GL_LINEAR
@@ -308,6 +310,8 @@ void GamePage::copyToTexture ()
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 		glBindTexture(GL_TEXTURE_3D,0);
+
+		TOT_GPU_MEM_USAGE += ((float)(iDim*iDim*iDim*4*2))/(1024.0f*1024.0f);
 
 		curState = E_STATE_COPYTOTEXTURE_END;
 

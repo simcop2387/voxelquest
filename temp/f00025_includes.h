@@ -93,6 +93,9 @@ using Poco::Util::HelpFormatter;
 
 //#define DEBUG_MODE 1
 
+
+float TOT_GPU_MEM_USAGE = 0.0f;
+
 #ifdef WIN32
 #include <windows.h>
 #else

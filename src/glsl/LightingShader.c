@@ -6,8 +6,12 @@ uniform vec2 resolution;
 uniform vec3 cameraPos;
 uniform vec3 lightPosWS;
 uniform vec2 lightPosSS;
+uniform vec4 curWorldPos;
 uniform float bufferWidth;
 uniform float cameraZoom;
+uniform float diskOn;
+uniform float curTime;
+
 //uniform vec4 bgColor;
 
 const int iNumRaySteps = 64;
@@ -117,7 +121,17 @@ void main() {
 
     float curHeight;
 
+
+
     float mval = float(distance(sStartPos,sEndPos) < 0.06*cameraZoom)*0.2;
+
+    float wpDis = distance(curWorldPos.xy,worldPosition.xy);
+
+    vec2 wpNorm = normalize(curWorldPos.xy-worldPosition.xy);
+
+    float theta = atan(wpNorm.y,wpNorm.x);
+
+    float pval = float(wpDis < 200.0 && wpDis > 150.0) * float(abs(sin(theta*8.0 + curTime/100.0)) > 0.75) * diskOn * (1.0-clamp(abs(curWorldPos.z-worldPosition.z)/2000.0,0.1,1.0)) ; //
 
     float totHits = 0.0;
     float wasHit = 0.0;
@@ -229,7 +243,7 @@ void main() {
     //vec3 resColor = tex1.rgb;
 
     //vec4(lightRes*0.8,lightRes*0.7,lightRes*0.6, lightRes)
-    gl_FragData[0] = vec4(mix( fogColor, resColor, hfog ),1.0)+mval; //vec4(lightRes,lightRes,lightRes,1.0);//
+    gl_FragData[0] = vec4(mix( fogColor, resColor+pval, hfog ),1.0)+mval; //vec4(lightRes,lightRes,lightRes,1.0);//
     //gl_FragData[0] = vec4(aoval,aoval,aoval,1.0);
 
     //gl_FragData[0] = vec4(lightRes,lightRes,lightRes,1.0);

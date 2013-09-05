@@ -9,6 +9,12 @@ class Singleton
 public:
   E_OBJ activeObject;
   bool (keyDownArr) [MAX_KEYS];
+  bool wsBufferInvalid;
+  fVector4 mouseUpPD;
+  fVector4 mouseDownPD;
+  fVector4 mouseMovePD;
+  fVector4 fActiveObjPos;
+  float diskOn;
   GLuint volTris;
   GLuint grassTris;
   vector <string> shaderStrings;
@@ -24,6 +30,10 @@ public:
   bool isFullScreen;
   int baseW;
   int baseH;
+  int iRSize;
+  int iPageSize;
+  int unitSize;
+  iVector3 igwSize;
   int extraRad;
   int defaultWinW;
   int defaultWinH;
@@ -56,8 +66,7 @@ public:
   Timer myTimer;
   float curTime;
   float lastTime;
-  bool grassOn;
-  bool animateGrass;
+  E_GRASS_STATE grassState;
   float myDelta;
   int frameCount;
   bool changesMade;
@@ -96,6 +105,7 @@ public:
   void bindFBODirect (FBOSet * fbos);
   void sampleFBO (string fboName, int offset = 0);
   void unsampleFBO (string fboName, int offset = 0);
+  FBOWrapper * getFBOWrapper (string fboName, int offset);
   void bindFBO (string fboName);
   void unbindFBO ();
   void bindShader (string shaderName);
@@ -105,6 +115,7 @@ public:
   void setShaderVec3 (string paramName, float x, float y, float z);
   void setShaderfVec3 (string paramName, fVector3 * v);
   void setShaderVec4 (string paramName, float x, float y, float z, float w);
+  void setShaderfVec4 (string paramName, fVector4 * v);
   void setShaderTexture (uint texID, int multitexNumber);
   void setShaderTexture3D (uint texID, int multitexNumber);
   void drawFSQuad (float zoom);
@@ -118,8 +129,11 @@ public:
   void processKey (unsigned char key, int x, int y, bool isPressed);
   void keyboardUp (unsigned char key, int x, int y);
   void keyboardDown (unsigned char key, int x, int y);
+  int clamp (int val, int min, int max);
+  void getPixData (fVector4 * toVector, int x, int y);
   void mouseMove (int x, int y);
   void worldToScreen (fVector2 * sc, fVector3 * wc);
+  void screenToWorld (fVector2 * tc, fVector3 * wc);
   void mouseClick (int button, int state, int x, int y);
   void display ();
   void reshape (int w, int h);
@@ -188,7 +202,6 @@ public:
   iVector3 maxWithinLR;
   Singleton * singleton;
   GamePage * * worldData;
-  GamePage * * texData;
   int iBufferSize;
   iVector3 origin;
   Poco::ThreadPool threadpool;
@@ -203,6 +216,7 @@ public:
   void drawPage (GamePage * gp, int dx, int dy, int dz);
   void combineBuffers ();
   void renderGeom ();
+  void renderWorldSpace ();
   void renderGrass ();
   void postProcess ();
   ~ GameWorld ();

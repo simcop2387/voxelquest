@@ -183,8 +183,6 @@ void Singleton::createGrassList ()
 
 		float fiMax = (float)iMax;
 		float fjMax = (float)jMax;
-		float baseRad = 4.0f/fiMax;
-		float grassHeight = 0.0;//(4.0f)/fjMax;
 		float heightMod;
 
 		grassTris = glGenLists(1);
@@ -229,13 +227,6 @@ void Singleton::createGrassList ()
 				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, 0.0);
 				glVertex3f(fi,fj,0.0f);
 
-				
-				/*
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, 1.0);
-				glVertex3f(fi+baseRad/4.0f,fj+grassHeight+heightMod,1.0f);
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, -1.0);
-				glVertex3f(fi-baseRad/4.0f,fj+grassHeight+heightMod,1.0f);
-				*/
 				
 			}
 
@@ -484,6 +475,13 @@ void Singleton::createVTList ()
 void Singleton::init (int _defaultWinW, int _defaultWinH)
                                                       {
 
+		diskOn = 0.0f;
+		iRSize = 128;
+		iPageSize = 4;
+		unitSize = (iRSize/2)/iPageSize;//( ( (float)iRenderSize )/2.0f ) / ( (float)iDim );
+
+
+		wsBufferInvalid = true;
 
 		iBufferWidth = _defaultWinW;
 		fBufferWidth = (float)iBufferWidth;
@@ -492,10 +490,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 
 		myTimer.start();
 
-		grassOn = false;
-		animateGrass = false;
+		grassState = E_GRASS_STATE_OFF;
 
-		activeObject = E_OBJ_CAMERA;
+		activeObject = E_OBJ_NONE;
 
 		extraRad = 0;
 		lastTime = 0.0;
@@ -567,13 +564,15 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 		mouseLeftDown = mouseRightDown = false;
 		mouseX = mouseY = 0;
 		myDelta = 0.0f;
-		iVector3 igwSize; igwSize.x = 64; igwSize.y = 64; igwSize.z = 64;
-		gw = new GameWorld();
+		igwSize.x = 64; igwSize.y = 64; igwSize.z = 64;
+		
 
+		gw = new GameWorld();
 
 
 		gw->init(igwSize, this, E_RENDER_VOL);
 		maxH = gw->loadRadZ;
+
 
 		//gm = new GameMap();
 		//gm->init(this, 1024, 512);
@@ -595,6 +594,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 	    
 
 
+	    fboStrings.push_back("worldSpaceFBO");
 
 	    fboStrings.push_back("pagesFBO");
 	    fboStrings.push_back("grassFBO");
@@ -614,7 +614,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 	    */
 
 
-
+	    shaderStrings.push_back("WorldSpaceShader");
 	    shaderStrings.push_back("BlitShader");
 	    shaderStrings.push_back("LightingShader");
 	    shaderStrings.push_back("GeomShader");
@@ -651,6 +651,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 	    }
 
 	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel);
+
+	    fboMap["worldSpaceFBO"]->init(1, iBufferWidth, iBufferWidth, 4, false);
+
 	    fboMap["pagesFBO"]->init(2, iBufferWidth, iBufferWidth, 1, false);
 	    fboMap["grassFBO"]->init(2, iBufferWidth, iBufferWidth, 1, false);
 	    fboMap["geomFBO"]->init(2, iBufferWidth, iBufferWidth, 1, true);
@@ -741,6 +744,11 @@ void Singleton::unsampleFBO (string fboName, int offset)
 	    FBOSet* fbos = fboMap[fboName];
 	    unsampleFBODirect(fbos,offset);
 	}
+FBOWrapper * Singleton::getFBOWrapper (string fboName, int offset)
+                                                               {
+		FBOSet* fbos = fboMap[fboName];
+		return fbos->getFBOWrapper(offset);
+	}
 void Singleton::bindFBO (string fboName)
                                      {
 	    
@@ -803,6 +811,13 @@ void Singleton::setShaderVec4 (string paramName, float x, float y, float z, floa
 	    if (shadersAreLoaded) {
 	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y,z,w);
 	        shaderMap[curShader]->setShaderVec4(paramName, x, y, z, w);
+	    }
+	}
+void Singleton::setShaderfVec4 (string paramName, fVector4 * v)
+                                                           {
+	    if (shadersAreLoaded) {
+	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
+	        shaderMap[curShader]->setShaderfVec4(paramName, v);
 	    }
 	}
 void Singleton::setShaderTexture (uint texID, int multitexNumber)
@@ -888,19 +903,12 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 			modZ = dyZoom*2.0f;
 		}
 
-		
-
-		if (glutGetModifiers()&GLUT_ACTIVE_SHIFT) {
-			activeObject = E_OBJ_LIGHT;
-		}
-		else {
-			activeObject = E_OBJ_CAMERA;
-		}
-
-
 		switch (activeObject) {
 
 			case E_OBJ_CAMERA:
+
+				wsBufferInvalid = true;
+
 				fCameraPos.x += modX;
 				fCameraPos.y += modY;
 				fCameraPos.z += modZ;
@@ -918,6 +926,10 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 				fLightPos.x -= modX;
 				fLightPos.y -= modY;
 				fLightPos.z -= modZ;
+
+				fActiveObjPos.x = fLightPos.x;
+				fActiveObjPos.y = fLightPos.y;
+				fActiveObjPos.z = fLightPos.z;
 
 				iLightPos.x = (int)fLightPos.x;
 				iLightPos.y = (int)fLightPos.y;
@@ -1002,7 +1014,7 @@ void Singleton::keyboardUp (unsigned char key, int x, int y)
 
 		//doAction(progActionsUp[((int)programState)*256 + key]);
 
-		int actObj;
+		int enCounter;
 
 
 		switch(key) {
@@ -1038,37 +1050,29 @@ void Singleton::keyboardUp (unsigned char key, int x, int y)
 				doTrace("Extra Radius: ", i__s(extraRad));
 			break;
 
-			case 'f':
-				animateGrass = !animateGrass;
-				bufferInvalid = true;
-				changesMade = true;
-			break;
 			case 'g':
-				grassOn = !grassOn;
+
+				enCounter = (int)grassState;
+				enCounter++;
+				grassState = (E_GRASS_STATE)enCounter;
+
+				if (grassState == E_GRASS_STATE_LENGTH) {
+					grassState = (E_GRASS_STATE)0;
+				}
+
 				bufferInvalid = true;
 				changesMade = true;
 			break;
-
-
-			case 'o':
-
-				actObj = (int)activeObject;
-
-				actObj++;
-
-				activeObject = (E_OBJ)actObj;
-
-				if (activeObject == E_OBJ_LENGTH) {
-					activeObject = (E_OBJ)0;
-				}
-			break;
-
 
 			case 't':
 				doShaderRefresh();
 			    gw->resetToState(E_STATE_COPYTOTEXTURE_END);
 			    bufferInvalid = true;
 			    changesMade = true;
+			break;
+
+			case 'm':
+				doTrace("TOT GPU MEM USED (MB): ", f__s(TOT_GPU_MEM_USAGE));
 			break;
 
 			case 'a':
@@ -1103,20 +1107,61 @@ void Singleton::keyboardDown (unsigned char key, int x, int y)
 
 		//doAction(progActionsDown[((int)programState)*256 + key]);
 	}
+int Singleton::clamp (int val, int min, int max)
+                                             {
+		if (val > max) {
+			val = max;
+		}
+		if (val < min) {
+			val = min;
+		}
+		return val;
+	}
+void Singleton::getPixData (fVector4 * toVector, int x, int y)
+                                                          {
+		FBOWrapper* fbow;
+
+		if (wsBufferInvalid) {
+			gw->renderWorldSpace();
+		}
+
+		int newX = clamp(x,0,1023);
+		int newY = clamp(y,0,1023);
+
+		fbow = getFBOWrapper("worldSpaceFBO",0);
+		fbow->getPixelAtF(toVector, newX, (iBufferWidth-1)-newY);
+	}
 void Singleton::mouseMove (int x, int y)
                                      {
 		int dx = x - lastPosX;
 		int dy = y - lastPosY;
 
+		
+
 		mouseXUp = x;
 		mouseYUp = y;
 
 		if (lbDown || rbDown) {
+
+			if (activeObject == E_OBJ_CAMERA || activeObject == E_OBJ_NONE) {
+
+			}
+			else {
+				getPixData(&mouseMovePD, x, y);
+			}
+
+			
+
 		    moveObject((float)dx, (float)dy, cameraZoom);
 		}
 		if (mbDown) {
-		    mouseX = x;
-		    mouseY = y;		    
+
+			
+
+			//doTrace("x:",f__s(wp.x)," y:",f__s(wp.y)," z:",f__s(wp.z)," w:",f__s(wp.w));
+
+
+
 		}
 		lastPosX = x;
 		lastPosY = y;
@@ -1154,24 +1199,49 @@ void Singleton::worldToScreen (fVector2 * sc, fVector3 * wc)
 		sc->x = x1;
 		sc->y = y1;
 	}
+void Singleton::screenToWorld (fVector2 * tc, fVector3 * wc)
+                                                       {
+
+
+	}
 void Singleton::mouseClick (int button, int state, int x, int y)
                                                              {
 		
 		lastPosX = x;
 		lastPosY = y;
 
+		iVector3 pagePos;
+		iVector3 unitPos;
+
+		float fRSize = (float)iRSize;
+
 		float wheelDelta = 0.0;
+
+		bool mbClicked = false;
+		bool rbClicked = false;
+		bool lbClicked = false;
+
+		int iw = igwSize.x;
+		int jw = igwSize.y;
+		int kw = igwSize.z;
+		int ind;
+
 
 		switch (button) {
 			case GLUT_LEFT_BUTTON:
 				lbDown = (state == GLUT_DOWN);
-				changesMade = true;
+				lbClicked = (state == GLUT_UP);
+				
 			break;
 			case GLUT_RIGHT_BUTTON:
 				rbDown = (state == GLUT_DOWN);
+				rbClicked = (state == GLUT_UP);
+
 			break;
 			case GLUT_MIDDLE_BUTTON:
 				mbDown = (state == GLUT_DOWN);
+				mbClicked = (state == GLUT_UP);
+
 			break;
 
 			case 3: // wheel up
@@ -1185,10 +1255,87 @@ void Singleton::mouseClick (int button, int state, int x, int y)
 			break;
 		}
 
+
+
+
+
+
+
+
+
+
+		if (mbClicked) {
+
+		}
+		
+		if (rbClicked || lbClicked) {
+
+			activeObject = E_OBJ_NONE;
+			wsBufferInvalid = true;
+			getPixData(&mouseUpPD, x, y);
+
+			pagePos.x = ((int)mouseUpPD.x) / iRSize;
+			pagePos.y = ((int)mouseUpPD.y) / iRSize;
+			pagePos.z = ((int)mouseUpPD.z) / iRSize;
+
+			
+			unitPos.x = (((int)mouseUpPD.x) / unitSize) - pagePos.x*iPageSize;
+			unitPos.y = (((int)mouseUpPD.y) / unitSize) - pagePos.y*iPageSize;
+			unitPos.z = (((int)mouseUpPD.z) / unitSize) - pagePos.z*iPageSize;
+
+
+
+			/*
+
+			ind = pagePos.z*jw*iw + pagePos.y*iw + pagePos.x;
+
+			if (gw->worldData[ind] == NULL) {
+
+			}
+			else {
+				if (gw->worldData[ind]->curState == E_STATE_LENGTH) {
+					doTrace("YEP");
+				}
+				else {
+					doTrace("NOPE");
+				}
+			}
+			*/
+
+
+			diskOn = 0.0f;
+		}
+		if (rbDown || lbDown) {
+			getPixData(&mouseDownPD, x, y);
+
+			//doTrace("MDPW: ", f__s(mouseDownPD.w));
+
+			if (mouseDownPD.w == 4.0) {
+				diskOn = 1.0f;
+				activeObject = E_OBJ_LIGHT;
+			}
+			else {
+				diskOn = 0.0f;
+				activeObject = E_OBJ_CAMERA;
+				//changesMade = true;
+			}
+
+			fActiveObjPos.w = mouseDownPD.w;
+		}
+
+
+
+
+
+
+
+
+
 		myDelta += wheelDelta;
 		cameraZoom = pow(2.0, myDelta);
 
 		if (button == 3 || button == 4) {
+			wsBufferInvalid = true;
 			//doTrace("Zoom: ", f__s(cameraZoom) );
 		}
 

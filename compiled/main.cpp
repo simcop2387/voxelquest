@@ -93,6 +93,9 @@ using Poco::Util::HelpFormatter;
 
 //#define DEBUG_MODE 1
 
+
+float TOT_GPU_MEM_USAGE = 0.0f;
+
 #ifdef WIN32
 #include <windows.h>
 #else
@@ -1545,6 +1548,21 @@ enum E_STATES {
 
 };
 
+////////////////////////////////////////////////////
+
+//    DONT FORGET SEMICOLONS!
+
+////////////////////////////////////////////////////
+
+
+
+enum E_GRASS_STATE {
+    E_GRASS_STATE_OFF,
+    E_GRASS_STATE_ON,
+    E_GRASS_STATE_ANIM,
+    E_GRASS_STATE_LENGTH
+};
+
 enum E_FILL_STATE {
     E_FILL_STATE_EMPTY,
     E_FILL_STATE_PARTIAL,
@@ -1552,6 +1570,7 @@ enum E_FILL_STATE {
 };
 
 enum E_OBJ {
+    E_OBJ_NONE,
     E_OBJ_CAMERA,
     E_OBJ_LIGHT,
     E_OBJ_LENGTH
@@ -2008,9 +2027,15 @@ public:
 		glUniform1i(loc,multitexNumber);
 	}
 
+
+
 	void setShaderfVec3(string paramName, fVector3* f) {
 		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
 		glUniform3f(loc,f->x,f->y,f->z);
+	}
+	void setShaderfVec4(string paramName, fVector4* f) {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform4f(loc,f->x,f->y,f->z,f->w);
 	}
 
 	
@@ -3074,6 +3099,13 @@ public:
 	int bytesPerChannel;
 	bool hasDepth;
 
+
+	GLint internalFormat;
+
+	unsigned char *pixelsChar;
+	float *pixelsFloat;
+	bool isFloat;
+
     FBOWrapper() {}
     ~FBOWrapper() {}
     int init(int _width, int _height, int _bytesPerChannel, int _slot, bool _hasDepth) {
@@ -3084,6 +3116,11 @@ public:
 
 		int w = width;
 		int h = height;
+
+		isFloat = false;
+
+		pixelsChar = NULL;
+		pixelsFloat = NULL;
 
 
 		slot = GL_COLOR_ATTACHMENT0_EXT;
@@ -3126,15 +3163,24 @@ public:
 		
 	    switch (bytesPerChannel) {
 	    	case 1:
-	    		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	    		internalFormat = GL_RGBA8;
+	    		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	    		
 	    	break;
 	    	case 2:
-	            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16, w, h, 0, GL_RGBA, GL_UNSIGNED_SHORT, 0);
+	    		internalFormat = GL_RGBA16;
+	            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_UNSIGNED_SHORT, 0);
+
 	    	break;
 	    	case 4:
-	            //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, 0);
+	    		internalFormat = GL_RGBA32F;
+	            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_FLOAT, 0);
+	            isFloat = true;
+
 	    	break;
 	    }
+
+	    TOT_GPU_MEM_USAGE += ((float)(w*h*bytesPerChannel*4))/(1024.0f*1024.0f);
 
 
 	    //
@@ -3157,7 +3203,200 @@ public:
 
 	}
 
+
+
+	void getPixelAtF(fVector4* fv, int x, int y) {
+
+		if (isFloat) {
+
+
+			if ( (pixelsFloat == NULL) ) {
+				getPixels();
+			}
+
+			//a
+			//b
+			//g
+			//r
+
+			fv->x = pixelsFloat[ (x + y*width)*4 + 0 ];
+			fv->y = pixelsFloat[ (x + y*width)*4 + 1 ];
+			fv->z = pixelsFloat[ (x + y*width)*4 + 2 ];
+			fv->w = pixelsFloat[ (x + y*width)*4 + 3 ];
+
+		}
+		else {
+			doTrace("Attempted to call getPixelAtF on char buffer.");
+		}
+
+	}
+
+	unsigned char getPixelAtC(int x, int y, int channel) {
+
+		if (isFloat) {
+			if ( (pixelsFloat == NULL) ) {
+				getPixels();
+			}
+
+			return pixelsChar[ (x + y*width)*4 + channel ];
+
+		}
+		else {
+			doTrace("Attempted to call getPixelAtC on float buffer.");
+		}
+
+	}
+
+
+	void getPixels() {
+
+		glBindTexture(GL_TEXTURE_2D, color_tex);
+		GLint numBytes = 0;
+		
+		//GLint intForm;
+		//glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPONENTS, &intForm); // get internal format type of GL texture
+
+
+		switch(internalFormat) // determine what type GL texture has...
+		{
+			case GL_RGB:
+				numBytes = width * height * 3;
+			break;
+			case GL_RGBA:
+				numBytes = width * height * 4;
+			break;
+			case GL_RGBA8:
+				numBytes = width * height * 4;
+			break;
+			//case GL_RGBA16:
+			//
+			//break;
+			case GL_RGBA32F:
+				numBytes = width * height * 4 * 4;
+			break;
+
+			default:
+				doTrace("Unsupported Format Type");
+				return;
+			break;
+		}
+
+		if (numBytes) {
+
+			if (isFloat) {
+
+				if (pixelsFloat == NULL) {
+					pixelsFloat = (float*)malloc(numBytes);
+				}
+				
+				glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pixelsFloat);
+			}
+			else {
+
+				if (pixelsChar == NULL) {
+					pixelsChar = (unsigned char*)malloc(numBytes);
+				}
+				glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelsChar);
+			}
+
+			
+		}
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+
+	}
+
+
 };
+
+
+class FBOSet
+{
+public:
+	int numBufs;
+	int width;
+	int height;
+	int bytesPerChannel;
+
+	GLuint mFBO;
+
+	FBOWrapper* fbos;
+
+	bool hasDepth;
+
+    FBOSet() {}
+    ~FBOSet() {}
+
+    FBOWrapper* getFBOWrapper(int offset) {
+    	return &(fbos[offset]);
+    }
+
+    void init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool _hasDepth) {
+		int i;
+
+		hasDepth = _hasDepth;
+
+		numBufs = _numBufs;
+		height = _height;
+		width = _width;
+		bytesPerChannel = _bytesPerChannel;
+
+		fbos = new FBOWrapper[numBufs];
+
+
+		glGenFramebuffersEXT(1, &mFBO);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
+
+		for (i = 0; i < numBufs; i++) {
+			fbos[i].init(width, height, bytesPerChannel, i, hasDepth);
+		}
+
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+	}
+    void bind(int doClear) {
+
+		//setWH(width, height);
+
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
+
+		GLenum buffers[] = {GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_COLOR_ATTACHMENT4_EXT};
+		glDrawBuffers(numBufs, buffers);
+
+		if (doClear) {
+	    	glClearColor(0.0,0.0,0.0,0.0);
+	    	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	    }
+
+	}
+	/*
+    void setWH(int w, int h) {
+		glViewport(0,0,w,h);
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(-0.5, +0.5, -0.5, +0.5, 4.0, 15.0);
+		glMatrixMode(GL_MODELVIEW);
+		glMatrixMode (GL_MODELVIEW);
+		glLoadIdentity ();
+		glMatrixMode (GL_PROJECTION);
+		glLoadIdentity ();
+	}
+	*/
+    void copyFromMem(int ind, uint* dat) {
+
+		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
+
+	    glBindTexture(GL_TEXTURE_2D,fbos[ind].color_tex);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dat);
+		//glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbos[ind].slot, GL_TEXTURE_2D, fbos[ind].color_tex, 0);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glBindTexture(GL_TEXTURE_2D,0);
+
+		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+	}
+};
+
 
 
 /*
@@ -3225,91 +3464,7 @@ public:
    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 */
 
-
-
-
-
-
-class FBOSet
-{
-public:
-	int numBufs;
-	int width;
-	int height;
-	int bytesPerChannel;
-
-	GLuint mFBO;
-
-	FBOWrapper* fbos;
-
-	bool hasDepth;
-
-    FBOSet() {}
-    ~FBOSet() {}
-    void init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool _hasDepth) {
-		int i;
-
-		hasDepth = _hasDepth;
-
-		numBufs = _numBufs;
-		height = _height;
-		width = _width;
-		bytesPerChannel = _bytesPerChannel;
-
-		fbos = new FBOWrapper[numBufs];
-
-
-		glGenFramebuffersEXT(1, &mFBO);
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
-
-		for (i = 0; i < numBufs; i++) {
-			fbos[i].init(width, height, bytesPerChannel, i, hasDepth);
-		}
-
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-	}
-    void bind(int doClear) {
-
-		//setWH(width, height);
-
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
-
-		GLenum buffers[] = {GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_COLOR_ATTACHMENT4_EXT};
-		glDrawBuffers(numBufs, buffers);
-
-		if (doClear) {
-	    	glClearColor(0.0,0.0,0.0,0.0);
-	    	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	    }
-
-	}
-	/*
-    void setWH(int w, int h) {
-		glViewport(0,0,w,h);
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(-0.5, +0.5, -0.5, +0.5, 4.0, 15.0);
-		glMatrixMode(GL_MODELVIEW);
-		glMatrixMode (GL_MODELVIEW);
-		glLoadIdentity ();
-		glMatrixMode (GL_PROJECTION);
-		glLoadIdentity ();
-	}
-	*/
-    void copyFromMem(int ind, uint* dat) {
-
-		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
-
-	    glBindTexture(GL_TEXTURE_2D,fbos[ind].color_tex);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dat);
-		//glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbos[ind].slot, GL_TEXTURE_2D, fbos[ind].color_tex, 0);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glBindTexture(GL_TEXTURE_2D,0);
-
-		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-	}
-}; 
+ 
 
 class Singleton;
 class GamePage;
@@ -3326,6 +3481,12 @@ class Singleton
 public:
   E_OBJ activeObject;
   bool (keyDownArr) [MAX_KEYS];
+  bool wsBufferInvalid;
+  fVector4 mouseUpPD;
+  fVector4 mouseDownPD;
+  fVector4 mouseMovePD;
+  fVector4 fActiveObjPos;
+  float diskOn;
   GLuint volTris;
   GLuint grassTris;
   vector <string> shaderStrings;
@@ -3341,6 +3502,10 @@ public:
   bool isFullScreen;
   int baseW;
   int baseH;
+  int iRSize;
+  int iPageSize;
+  int unitSize;
+  iVector3 igwSize;
   int extraRad;
   int defaultWinW;
   int defaultWinH;
@@ -3373,8 +3538,7 @@ public:
   Timer myTimer;
   float curTime;
   float lastTime;
-  bool grassOn;
-  bool animateGrass;
+  E_GRASS_STATE grassState;
   float myDelta;
   int frameCount;
   bool changesMade;
@@ -3413,6 +3577,7 @@ public:
   void bindFBODirect (FBOSet * fbos);
   void sampleFBO (string fboName, int offset = 0);
   void unsampleFBO (string fboName, int offset = 0);
+  FBOWrapper * getFBOWrapper (string fboName, int offset);
   void bindFBO (string fboName);
   void unbindFBO ();
   void bindShader (string shaderName);
@@ -3422,6 +3587,7 @@ public:
   void setShaderVec3 (string paramName, float x, float y, float z);
   void setShaderfVec3 (string paramName, fVector3 * v);
   void setShaderVec4 (string paramName, float x, float y, float z, float w);
+  void setShaderfVec4 (string paramName, fVector4 * v);
   void setShaderTexture (uint texID, int multitexNumber);
   void setShaderTexture3D (uint texID, int multitexNumber);
   void drawFSQuad (float zoom);
@@ -3435,8 +3601,11 @@ public:
   void processKey (unsigned char key, int x, int y, bool isPressed);
   void keyboardUp (unsigned char key, int x, int y);
   void keyboardDown (unsigned char key, int x, int y);
+  int clamp (int val, int min, int max);
+  void getPixData (fVector4 * toVector, int x, int y);
   void mouseMove (int x, int y);
   void worldToScreen (fVector2 * sc, fVector3 * wc);
+  void screenToWorld (fVector2 * tc, fVector3 * wc);
   void mouseClick (int button, int state, int x, int y);
   void display ();
   void reshape (int w, int h);
@@ -3505,7 +3674,6 @@ public:
   iVector3 maxWithinLR;
   Singleton * singleton;
   GamePage * * worldData;
-  GamePage * * texData;
   int iBufferSize;
   iVector3 origin;
   Poco::ThreadPool threadpool;
@@ -3520,6 +3688,7 @@ public:
   void drawPage (GamePage * gp, int dx, int dy, int dz);
   void combineBuffers ();
   void renderGeom ();
+  void renderWorldSpace ();
   void renderGrass ();
   void postProcess ();
   ~ GameWorld ();
@@ -3712,8 +3881,6 @@ void Singleton::createGrassList ()
 
 		float fiMax = (float)iMax;
 		float fjMax = (float)jMax;
-		float baseRad = 4.0f/fiMax;
-		float grassHeight = 0.0;//(4.0f)/fjMax;
 		float heightMod;
 
 		grassTris = glGenLists(1);
@@ -3758,13 +3925,6 @@ void Singleton::createGrassList ()
 				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, 0.0);
 				glVertex3f(fi,fj,0.0f);
 
-				
-				/*
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, 1.0);
-				glVertex3f(fi+baseRad/4.0f,fj+grassHeight+heightMod,1.0f);
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, -1.0);
-				glVertex3f(fi-baseRad/4.0f,fj+grassHeight+heightMod,1.0f);
-				*/
 				
 			}
 
@@ -4013,6 +4173,13 @@ void Singleton::createVTList ()
 void Singleton::init (int _defaultWinW, int _defaultWinH)
                                                       {
 
+		diskOn = 0.0f;
+		iRSize = 128;
+		iPageSize = 4;
+		unitSize = (iRSize/2)/iPageSize;//( ( (float)iRenderSize )/2.0f ) / ( (float)iDim );
+
+
+		wsBufferInvalid = true;
 
 		iBufferWidth = _defaultWinW;
 		fBufferWidth = (float)iBufferWidth;
@@ -4021,10 +4188,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 
 		myTimer.start();
 
-		grassOn = false;
-		animateGrass = false;
+		grassState = E_GRASS_STATE_OFF;
 
-		activeObject = E_OBJ_CAMERA;
+		activeObject = E_OBJ_NONE;
 
 		extraRad = 0;
 		lastTime = 0.0;
@@ -4096,13 +4262,15 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 		mouseLeftDown = mouseRightDown = false;
 		mouseX = mouseY = 0;
 		myDelta = 0.0f;
-		iVector3 igwSize; igwSize.x = 64; igwSize.y = 64; igwSize.z = 64;
-		gw = new GameWorld();
+		igwSize.x = 64; igwSize.y = 64; igwSize.z = 64;
+		
 
+		gw = new GameWorld();
 
 
 		gw->init(igwSize, this, E_RENDER_VOL);
 		maxH = gw->loadRadZ;
+
 
 		//gm = new GameMap();
 		//gm->init(this, 1024, 512);
@@ -4124,6 +4292,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 	    
 
 
+	    fboStrings.push_back("worldSpaceFBO");
 
 	    fboStrings.push_back("pagesFBO");
 	    fboStrings.push_back("grassFBO");
@@ -4143,7 +4312,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 	    */
 
 
-
+	    shaderStrings.push_back("WorldSpaceShader");
 	    shaderStrings.push_back("BlitShader");
 	    shaderStrings.push_back("LightingShader");
 	    shaderStrings.push_back("GeomShader");
@@ -4180,6 +4349,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 	    }
 
 	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel);
+
+	    fboMap["worldSpaceFBO"]->init(1, iBufferWidth, iBufferWidth, 4, false);
+
 	    fboMap["pagesFBO"]->init(2, iBufferWidth, iBufferWidth, 1, false);
 	    fboMap["grassFBO"]->init(2, iBufferWidth, iBufferWidth, 1, false);
 	    fboMap["geomFBO"]->init(2, iBufferWidth, iBufferWidth, 1, true);
@@ -4270,6 +4442,11 @@ void Singleton::unsampleFBO (string fboName, int offset)
 	    FBOSet* fbos = fboMap[fboName];
 	    unsampleFBODirect(fbos,offset);
 	}
+FBOWrapper * Singleton::getFBOWrapper (string fboName, int offset)
+                                                               {
+		FBOSet* fbos = fboMap[fboName];
+		return fbos->getFBOWrapper(offset);
+	}
 void Singleton::bindFBO (string fboName)
                                      {
 	    
@@ -4332,6 +4509,13 @@ void Singleton::setShaderVec4 (string paramName, float x, float y, float z, floa
 	    if (shadersAreLoaded) {
 	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y,z,w);
 	        shaderMap[curShader]->setShaderVec4(paramName, x, y, z, w);
+	    }
+	}
+void Singleton::setShaderfVec4 (string paramName, fVector4 * v)
+                                                           {
+	    if (shadersAreLoaded) {
+	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
+	        shaderMap[curShader]->setShaderfVec4(paramName, v);
 	    }
 	}
 void Singleton::setShaderTexture (uint texID, int multitexNumber)
@@ -4417,19 +4601,12 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 			modZ = dyZoom*2.0f;
 		}
 
-		
-
-		if (glutGetModifiers()&GLUT_ACTIVE_SHIFT) {
-			activeObject = E_OBJ_LIGHT;
-		}
-		else {
-			activeObject = E_OBJ_CAMERA;
-		}
-
-
 		switch (activeObject) {
 
 			case E_OBJ_CAMERA:
+
+				wsBufferInvalid = true;
+
 				fCameraPos.x += modX;
 				fCameraPos.y += modY;
 				fCameraPos.z += modZ;
@@ -4447,6 +4624,10 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 				fLightPos.x -= modX;
 				fLightPos.y -= modY;
 				fLightPos.z -= modZ;
+
+				fActiveObjPos.x = fLightPos.x;
+				fActiveObjPos.y = fLightPos.y;
+				fActiveObjPos.z = fLightPos.z;
 
 				iLightPos.x = (int)fLightPos.x;
 				iLightPos.y = (int)fLightPos.y;
@@ -4531,7 +4712,7 @@ void Singleton::keyboardUp (unsigned char key, int x, int y)
 
 		//doAction(progActionsUp[((int)programState)*256 + key]);
 
-		int actObj;
+		int enCounter;
 
 
 		switch(key) {
@@ -4567,37 +4748,29 @@ void Singleton::keyboardUp (unsigned char key, int x, int y)
 				doTrace("Extra Radius: ", i__s(extraRad));
 			break;
 
-			case 'f':
-				animateGrass = !animateGrass;
-				bufferInvalid = true;
-				changesMade = true;
-			break;
 			case 'g':
-				grassOn = !grassOn;
+
+				enCounter = (int)grassState;
+				enCounter++;
+				grassState = (E_GRASS_STATE)enCounter;
+
+				if (grassState == E_GRASS_STATE_LENGTH) {
+					grassState = (E_GRASS_STATE)0;
+				}
+
 				bufferInvalid = true;
 				changesMade = true;
 			break;
-
-
-			case 'o':
-
-				actObj = (int)activeObject;
-
-				actObj++;
-
-				activeObject = (E_OBJ)actObj;
-
-				if (activeObject == E_OBJ_LENGTH) {
-					activeObject = (E_OBJ)0;
-				}
-			break;
-
 
 			case 't':
 				doShaderRefresh();
 			    gw->resetToState(E_STATE_COPYTOTEXTURE_END);
 			    bufferInvalid = true;
 			    changesMade = true;
+			break;
+
+			case 'm':
+				doTrace("TOT GPU MEM USED (MB): ", f__s(TOT_GPU_MEM_USAGE));
 			break;
 
 			case 'a':
@@ -4632,20 +4805,61 @@ void Singleton::keyboardDown (unsigned char key, int x, int y)
 
 		//doAction(progActionsDown[((int)programState)*256 + key]);
 	}
+int Singleton::clamp (int val, int min, int max)
+                                             {
+		if (val > max) {
+			val = max;
+		}
+		if (val < min) {
+			val = min;
+		}
+		return val;
+	}
+void Singleton::getPixData (fVector4 * toVector, int x, int y)
+                                                          {
+		FBOWrapper* fbow;
+
+		if (wsBufferInvalid) {
+			gw->renderWorldSpace();
+		}
+
+		int newX = clamp(x,0,1023);
+		int newY = clamp(y,0,1023);
+
+		fbow = getFBOWrapper("worldSpaceFBO",0);
+		fbow->getPixelAtF(toVector, newX, (iBufferWidth-1)-newY);
+	}
 void Singleton::mouseMove (int x, int y)
                                      {
 		int dx = x - lastPosX;
 		int dy = y - lastPosY;
 
+		
+
 		mouseXUp = x;
 		mouseYUp = y;
 
 		if (lbDown || rbDown) {
+
+			if (activeObject == E_OBJ_CAMERA || activeObject == E_OBJ_NONE) {
+
+			}
+			else {
+				getPixData(&mouseMovePD, x, y);
+			}
+
+			
+
 		    moveObject((float)dx, (float)dy, cameraZoom);
 		}
 		if (mbDown) {
-		    mouseX = x;
-		    mouseY = y;		    
+
+			
+
+			//doTrace("x:",f__s(wp.x)," y:",f__s(wp.y)," z:",f__s(wp.z)," w:",f__s(wp.w));
+
+
+
 		}
 		lastPosX = x;
 		lastPosY = y;
@@ -4683,24 +4897,49 @@ void Singleton::worldToScreen (fVector2 * sc, fVector3 * wc)
 		sc->x = x1;
 		sc->y = y1;
 	}
+void Singleton::screenToWorld (fVector2 * tc, fVector3 * wc)
+                                                       {
+
+
+	}
 void Singleton::mouseClick (int button, int state, int x, int y)
                                                              {
 		
 		lastPosX = x;
 		lastPosY = y;
 
+		iVector3 pagePos;
+		iVector3 unitPos;
+
+		float fRSize = (float)iRSize;
+
 		float wheelDelta = 0.0;
+
+		bool mbClicked = false;
+		bool rbClicked = false;
+		bool lbClicked = false;
+
+		int iw = igwSize.x;
+		int jw = igwSize.y;
+		int kw = igwSize.z;
+		int ind;
+
 
 		switch (button) {
 			case GLUT_LEFT_BUTTON:
 				lbDown = (state == GLUT_DOWN);
-				changesMade = true;
+				lbClicked = (state == GLUT_UP);
+				
 			break;
 			case GLUT_RIGHT_BUTTON:
 				rbDown = (state == GLUT_DOWN);
+				rbClicked = (state == GLUT_UP);
+
 			break;
 			case GLUT_MIDDLE_BUTTON:
 				mbDown = (state == GLUT_DOWN);
+				mbClicked = (state == GLUT_UP);
+
 			break;
 
 			case 3: // wheel up
@@ -4714,10 +4953,87 @@ void Singleton::mouseClick (int button, int state, int x, int y)
 			break;
 		}
 
+
+
+
+
+
+
+
+
+
+		if (mbClicked) {
+
+		}
+		
+		if (rbClicked || lbClicked) {
+
+			activeObject = E_OBJ_NONE;
+			wsBufferInvalid = true;
+			getPixData(&mouseUpPD, x, y);
+
+			pagePos.x = ((int)mouseUpPD.x) / iRSize;
+			pagePos.y = ((int)mouseUpPD.y) / iRSize;
+			pagePos.z = ((int)mouseUpPD.z) / iRSize;
+
+			
+			unitPos.x = (((int)mouseUpPD.x) / unitSize) - pagePos.x*iPageSize;
+			unitPos.y = (((int)mouseUpPD.y) / unitSize) - pagePos.y*iPageSize;
+			unitPos.z = (((int)mouseUpPD.z) / unitSize) - pagePos.z*iPageSize;
+
+
+
+			/*
+
+			ind = pagePos.z*jw*iw + pagePos.y*iw + pagePos.x;
+
+			if (gw->worldData[ind] == NULL) {
+
+			}
+			else {
+				if (gw->worldData[ind]->curState == E_STATE_LENGTH) {
+					doTrace("YEP");
+				}
+				else {
+					doTrace("NOPE");
+				}
+			}
+			*/
+
+
+			diskOn = 0.0f;
+		}
+		if (rbDown || lbDown) {
+			getPixData(&mouseDownPD, x, y);
+
+			//doTrace("MDPW: ", f__s(mouseDownPD.w));
+
+			if (mouseDownPD.w == 4.0) {
+				diskOn = 1.0f;
+				activeObject = E_OBJ_LIGHT;
+			}
+			else {
+				diskOn = 0.0f;
+				activeObject = E_OBJ_CAMERA;
+				//changesMade = true;
+			}
+
+			fActiveObjPos.w = mouseDownPD.w;
+		}
+
+
+
+
+
+
+
+
+
 		myDelta += wheelDelta;
 		cameraZoom = pow(2.0, myDelta);
 
 		if (button == 3 || button == 4) {
+			wsBufferInvalid = true;
 			//doTrace("Zoom: ", f__s(cameraZoom) );
 		}
 
@@ -4802,7 +5118,7 @@ void GamePage::init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRe
 		//heightOfVol = (((float)iRenderSize)/2.0f - 1.0f)/255.0f;
 
 		
-		unitSize = ( ( (float)iRenderSize )/2.0f ) / ( (float)iDim );
+		unitSize = (float)(singleton->unitSize);
 
 		//curHeight = ((iOff.z * (256/iDim)) >> 8);
 		//curHeight = curHeight/255.0;
@@ -5008,7 +5324,7 @@ void GamePage::createSimplexNoise ()
 																		) + ijkVals[m])*255.0f/fTotLen);
 							}
 
-							if ( (tmp%16 > 0) && ( (i+j+k)%2 == 0) ) {
+							if ( (tmp%16 > 6) && ( (i+j+k)%2 == 0) ) {
 								volData[ind] = (tmp<<24)|(randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
 							}
 							else {
@@ -5076,6 +5392,8 @@ void GamePage::copyToTexture ()
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 		glBindTexture(GL_TEXTURE_3D,0);
 
+
+
 		glBindTexture(GL_TEXTURE_3D,volIDLinear);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, iDim, iDim, iDim, 0, GL_RGBA, GL_UNSIGNED_BYTE, volData);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);//GL_LINEAR
@@ -5085,6 +5403,8 @@ void GamePage::copyToTexture ()
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 		glBindTexture(GL_TEXTURE_3D,0);
+
+		TOT_GPU_MEM_USAGE += ((float)(iDim*iDim*iDim*4*2))/(1024.0f*1024.0f);
 
 		curState = E_STATE_COPYTOTEXTURE_END;
 
@@ -5211,7 +5531,6 @@ void GameWorld::init (iVector3 _iDim, Singleton * _singleton, int _renderMethod)
                                                                             {
 
 		pageCount = 0;
-		iRSize = 256;
 
 
 		#ifdef DEBUG_MODE
@@ -5233,6 +5552,8 @@ void GameWorld::init (iVector3 _iDim, Singleton * _singleton, int _renderMethod)
 		singleton = _singleton;
 		iDim = _iDim;
 
+		iRSize = singleton->iRSize;
+
 	    diagrams[E_RENDER_VOL][E_STATE_INIT_END] = E_STATE_CREATESIMPLEXNOISE_LAUNCH;
 		diagrams[E_RENDER_VOL][E_STATE_CREATESIMPLEXNOISE_END] = E_STATE_COPYTOTEXTURE_LAUNCH;
 	    diagrams[E_RENDER_VOL][E_STATE_COPYTOTEXTURE_END] = E_STATE_GENERATEVOLUME_LAUNCH;
@@ -5240,7 +5561,7 @@ void GameWorld::init (iVector3 _iDim, Singleton * _singleton, int _renderMethod)
 
 		curDiagram = diagrams[renderMethod];
 
-		iPageSize = 4;
+		iPageSize = singleton->iPageSize;
 		loadRad = 4;
 		loadRadZ = 4;
 		
@@ -5279,19 +5600,28 @@ void GameWorld::update (bool changesMade, bool bufferInvalid, int maxH)
 
 
 		bool procResult = processPages();
+
+		if (procResult) {
+			singleton->wsBufferInvalid = true;
+		}
+
 		if (procResult || changesMade) {
 			renderPages(maxH);
+
 			
-			if ( !(singleton->animateGrass) ) {
+			
+			if ( (singleton->grassState != E_GRASS_STATE_ANIM) ) {
 				renderGrass();
 				renderGeom();
 				combineBuffers();
+
+
 			}
 
 			
 		}
 
-		if (singleton->animateGrass) {
+		if (singleton->grassState == E_GRASS_STATE_ANIM) {
 			renderGrass();
 			renderGeom();
 			combineBuffers();
@@ -5299,7 +5629,7 @@ void GameWorld::update (bool changesMade, bool bufferInvalid, int maxH)
 		}
 
 
-		if (procResult || changesMade || bufferInvalid) {
+		if (procResult || changesMade || bufferInvalid || singleton->rbDown || singleton->lbDown) {
 
 			glClearColor(0.6,0.6,0.7,0.0);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -5599,8 +5929,8 @@ void GameWorld::renderPages (int maxH)
 void GameWorld::drawPage (GamePage * gp, int dx, int dy, int dz)
                                                             {
 
-		int pitchSrc = gp->iRenderSize;
-		int pitchSrc2 = gp->iRenderSize/2;
+		int pitchSrc = gp->iRenderSize*2;
+		int pitchSrc2 = gp->iRenderSize;
 
 		int dxmod = dx*pitchSrc2 - singleton->iCameraPos.x;
 		int dymod = dy*pitchSrc2 - singleton->iCameraPos.y;
@@ -5713,16 +6043,68 @@ void GameWorld::renderGeom ()
 
 		
 	}
+void GameWorld::renderWorldSpace ()
+                                {
+		doTrace("renderWorldSpace()");
+
+		singleton->wsBufferInvalid = false;
+
+		fVector2 screenCoords;
+		singleton->worldToScreen(&screenCoords, &(singleton->fLightPos));
+
+		singleton->bindShader("WorldSpaceShader");
+		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
+		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
+		singleton->setShaderfVec3("lightPosWS", &(singleton->fLightPos));
+
+		singleton->setShaderVec2("lightPosSS", screenCoords.x, screenCoords.y);
+		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
+		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
+
+
+		
+		singleton->bindFBO("worldSpaceFBO");
+		singleton->sampleFBO("pagesFBO",0);
+		singleton->sampleFBO("geomFBO",2);
+
+		
+
+
+		//MUST BE CALLED AFTER FBO IS BOUND
+		singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+
+		singleton->drawFSQuad(1.0f);
+		
+		singleton->unsampleFBO("pagesFBO",0);
+		singleton->unsampleFBO("geomFBO",2);
+
+		singleton->unbindFBO();
+		singleton->unbindShader();
+
+		float newZoom = std::max(1.0f,singleton->cameraZoom);
+		singleton->drawFBO("resultFBO", 0, newZoom );
+
+		FBOWrapper* fbow = singleton->getFBOWrapper("worldSpaceFBO",0);
+
+		fbow->getPixels();
+
+	}
 void GameWorld::renderGrass ()
                            {
 
+
+		float curTime = 0.0;
+
+		if (singleton->grassState == E_GRASS_STATE_ANIM) {
+			curTime = singleton->curTime;
+		}
 
 		
 		//glEnable(GL_DEPTH_TEST);
 
 		singleton->bindShader("GrassShader");
 		
-		singleton->setShaderFloat("curTime", singleton->curTime);
+		singleton->setShaderFloat("curTime", curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
 		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
@@ -5730,10 +6112,9 @@ void GameWorld::renderGrass ()
 		singleton->bindFBO("grassFBO");
 		singleton->sampleFBO("pagesFBO");
 
-		if (singleton->grassOn) {
+		if (singleton->grassState == E_GRASS_STATE_ANIM || singleton->grassState == E_GRASS_STATE_ON) {
 			glCallList(singleton->grassTris);
 		}
-
 		
 
 		singleton->unsampleFBO("pagesFBO");
@@ -5746,42 +6127,27 @@ void GameWorld::renderGrass ()
 	}
 void GameWorld::postProcess ()
                            {
-		
 
 
-		/*
-		int dxmod = singleton->iLightPos.x - singleton->iCameraPos.x;
-		int dymod = singleton->iLightPos.y - singleton->iCameraPos.y;
-		int dzmod = singleton->iLightPos.z - singleton->iCameraPos.z;
 
-		int x = (dxmod-dymod);
-		int y = (-(dxmod/2) + -(dymod/2) + dzmod);
+
+		//singleton->drawFBO("worldSpaceFBO", 0, 1.0 );
 
 		
-
-
-		float fx = ((float)x)*(newZoom)/(singleton->fBufferWidth);
-		float fy = ((float)y)*(newZoom)/(singleton->fBufferWidth);
-
-		fx = (fx + 1.0f)/4.0f;
-		fy = (fy + 1.0f)/4.0f;
-		*/
 
 		fVector2 screenCoords;
 		singleton->worldToScreen(&screenCoords, &(singleton->fLightPos));
-
-
 
 		singleton->bindShader("LightingShader");
 		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
 		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
 		singleton->setShaderfVec3("lightPosWS", &(singleton->fLightPos));
-
 		singleton->setShaderVec2("lightPosSS", screenCoords.x, screenCoords.y);
+		singleton->setShaderfVec4("curWorldPos", &(singleton->fActiveObjPos) );
 		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
-
-
+		singleton->setShaderFloat("diskOn",singleton->diskOn);
+		singleton->setShaderFloat("curTime", singleton->curTime);
 		
 		singleton->bindFBO("resultFBO");
 		singleton->sampleFBO("combineFBO");
@@ -5796,6 +6162,8 @@ void GameWorld::postProcess ()
 
 		float newZoom = std::max(1.0f,singleton->cameraZoom);
 		singleton->drawFBO("resultFBO", 0, newZoom );
+
+		
 		
 	}
 GameWorld::~ GameWorld ()

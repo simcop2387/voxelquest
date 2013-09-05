@@ -20,7 +20,6 @@ public:
 	iVector3 maxWithinLR;
 	Singleton* singleton;
 	GamePage** worldData;
-	GamePage** texData;
 	int iBufferSize;
 	iVector3 origin;
 	Poco::ThreadPool threadpool;
@@ -77,7 +76,6 @@ public:
 	void init(iVector3 _iDim, Singleton* _singleton, int _renderMethod) {
 
 		pageCount = 0;
-		iRSize = 256;
 
 
 		#ifdef DEBUG_MODE
@@ -99,6 +97,8 @@ public:
 		singleton = _singleton;
 		iDim = _iDim;
 
+		iRSize = singleton->iRSize;
+
 	    diagrams[E_RENDER_VOL][E_STATE_INIT_END] = E_STATE_CREATESIMPLEXNOISE_LAUNCH;
 		diagrams[E_RENDER_VOL][E_STATE_CREATESIMPLEXNOISE_END] = E_STATE_COPYTOTEXTURE_LAUNCH;
 	    diagrams[E_RENDER_VOL][E_STATE_COPYTOTEXTURE_END] = E_STATE_GENERATEVOLUME_LAUNCH;
@@ -106,7 +106,7 @@ public:
 
 		curDiagram = diagrams[renderMethod];
 
-		iPageSize = 4;
+		iPageSize = singleton->iPageSize;
 		loadRad = 4;
 		loadRadZ = 4;
 		
@@ -145,19 +145,28 @@ public:
 
 
 		bool procResult = processPages();
+
+		if (procResult) {
+			singleton->wsBufferInvalid = true;
+		}
+
 		if (procResult || changesMade) {
 			renderPages(maxH);
+
 			
-			if ( !(singleton->animateGrass) ) {
+			
+			if ( (singleton->grassState != E_GRASS_STATE_ANIM) ) {
 				renderGrass();
 				renderGeom();
 				combineBuffers();
+
+
 			}
 
 			
 		}
 
-		if (singleton->animateGrass) {
+		if (singleton->grassState == E_GRASS_STATE_ANIM) {
 			renderGrass();
 			renderGeom();
 			combineBuffers();
@@ -165,7 +174,7 @@ public:
 		}
 
 
-		if (procResult || changesMade || bufferInvalid) {
+		if (procResult || changesMade || bufferInvalid || singleton->rbDown || singleton->lbDown) {
 
 			glClearColor(0.6,0.6,0.7,0.0);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -468,8 +477,8 @@ public:
 
 	void drawPage(GamePage* gp, int dx, int dy, int dz) {
 
-		int pitchSrc = gp->iRenderSize;
-		int pitchSrc2 = gp->iRenderSize/2;
+		int pitchSrc = gp->iRenderSize*2;
+		int pitchSrc2 = gp->iRenderSize;
 
 		int dxmod = dx*pitchSrc2 - singleton->iCameraPos.x;
 		int dymod = dy*pitchSrc2 - singleton->iCameraPos.y;
@@ -584,15 +593,68 @@ public:
 		
 	}
 
+	void renderWorldSpace() {
+		doTrace("renderWorldSpace()");
+
+		singleton->wsBufferInvalid = false;
+
+		fVector2 screenCoords;
+		singleton->worldToScreen(&screenCoords, &(singleton->fLightPos));
+
+		singleton->bindShader("WorldSpaceShader");
+		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
+		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
+		singleton->setShaderfVec3("lightPosWS", &(singleton->fLightPos));
+
+		singleton->setShaderVec2("lightPosSS", screenCoords.x, screenCoords.y);
+		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
+		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
+
+
+		
+		singleton->bindFBO("worldSpaceFBO");
+		singleton->sampleFBO("pagesFBO",0);
+		singleton->sampleFBO("geomFBO",2);
+
+		
+
+
+		//MUST BE CALLED AFTER FBO IS BOUND
+		singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+
+		singleton->drawFSQuad(1.0f);
+		
+		singleton->unsampleFBO("pagesFBO",0);
+		singleton->unsampleFBO("geomFBO",2);
+
+		singleton->unbindFBO();
+		singleton->unbindShader();
+
+		float newZoom = std::max(1.0f,singleton->cameraZoom);
+		singleton->drawFBO("resultFBO", 0, newZoom );
+
+		FBOWrapper* fbow = singleton->getFBOWrapper("worldSpaceFBO",0);
+
+		fbow->getPixels();
+
+	}
+
+
 	void renderGrass() {
 
+
+		float curTime = 0.0;
+
+		if (singleton->grassState == E_GRASS_STATE_ANIM) {
+			curTime = singleton->curTime;
+		}
 
 		
 		//glEnable(GL_DEPTH_TEST);
 
 		singleton->bindShader("GrassShader");
 		
-		singleton->setShaderFloat("curTime", singleton->curTime);
+		singleton->setShaderFloat("curTime", curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
 		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
@@ -600,10 +662,9 @@ public:
 		singleton->bindFBO("grassFBO");
 		singleton->sampleFBO("pagesFBO");
 
-		if (singleton->grassOn) {
+		if (singleton->grassState == E_GRASS_STATE_ANIM || singleton->grassState == E_GRASS_STATE_ON) {
 			glCallList(singleton->grassTris);
 		}
-
 		
 
 		singleton->unsampleFBO("pagesFBO");
@@ -616,42 +677,27 @@ public:
 	}
 
 	void postProcess() {
-		
 
 
-		/*
-		int dxmod = singleton->iLightPos.x - singleton->iCameraPos.x;
-		int dymod = singleton->iLightPos.y - singleton->iCameraPos.y;
-		int dzmod = singleton->iLightPos.z - singleton->iCameraPos.z;
 
-		int x = (dxmod-dymod);
-		int y = (-(dxmod/2) + -(dymod/2) + dzmod);
+
+		//singleton->drawFBO("worldSpaceFBO", 0, 1.0 );
 
 		
-
-
-		float fx = ((float)x)*(newZoom)/(singleton->fBufferWidth);
-		float fy = ((float)y)*(newZoom)/(singleton->fBufferWidth);
-
-		fx = (fx + 1.0f)/4.0f;
-		fy = (fy + 1.0f)/4.0f;
-		*/
 
 		fVector2 screenCoords;
 		singleton->worldToScreen(&screenCoords, &(singleton->fLightPos));
-
-
 
 		singleton->bindShader("LightingShader");
 		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
 		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
 		singleton->setShaderfVec3("lightPosWS", &(singleton->fLightPos));
-
 		singleton->setShaderVec2("lightPosSS", screenCoords.x, screenCoords.y);
+		singleton->setShaderfVec4("curWorldPos", &(singleton->fActiveObjPos) );
 		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
-
-
+		singleton->setShaderFloat("diskOn",singleton->diskOn);
+		singleton->setShaderFloat("curTime", singleton->curTime);
 		
 		singleton->bindFBO("resultFBO");
 		singleton->sampleFBO("combineFBO");
@@ -666,6 +712,8 @@ public:
 
 		float newZoom = std::max(1.0f,singleton->cameraZoom);
 		singleton->drawFBO("resultFBO", 0, newZoom );
+
+		
 		
 	}
 
