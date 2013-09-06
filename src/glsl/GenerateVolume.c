@@ -168,30 +168,28 @@ void main() {
 	float rockIsInside = rockIsOnTer*float(gradVal > 0.05);
 	float isTerrain = float(tex2.a > 126.0/255.0);
 
-	
+	vec3 normSamp;
 	vec4 res = vec4(0.0,0.0,0.0,0.0);
-	vec4 resA = vec4(0.0,0.0,0.0,0.0);
-	vec4 resB = vec4(0.0,0.0,0.0,0.0);
 
 	if ( (minDis1 == notValid) || (minDis2 == notValid) ) {
 
 	}
 	else {
 		
-		//res.a = float( pow(tex2.a,6.0) > 0.01);
-		//res.rgb = vec3(0.0,0.0,1.0);
 
-		resA.a = isTerrain;
-		resA.a += float( (rockIsInside+isTerrain) > 0.0);
+		//res.a = isTerrain;
+		//res.a += float( (rockIsInside+isTerrain) > 0.0);
+		//res.rgb = mix(vec3(0.0,0.0,0.0),bestSamp,res.a);
+		//res.a = res.a/255.0;
 		
-		resA.rgb = mix(vec3(0.0,0.0,0.0),bestSamp,resA.a);//mix(vec3(0.0,0.0,0.0),bestSamp,rockIsInside);
+		normSamp = normalize(newCoords2-bestSamp);
 
-		resA.a = resA.a/255.0;
 
-		//resB.rgb = bestSamp;
-		//resB.a = rockIsOnTer*2.0/255.0;
 
-		res = resA;//mix(resA,resB, float( mod(tex2.a*1020.0,69.0)/69.0 > 0.5));
+		res.a = rockIsOnTer/255.0 ;// *mix(1.0, 2.0, float(normSamp.z > 0.1) )/255.0;
+		res.rgb = bestSamp;
+
+
 	}
 
 

@@ -7,7 +7,9 @@ uniform vec3 cameraPos;
 uniform vec3 lightPosWS;
 uniform vec2 lightPosSS;
 uniform vec4 curWorldPos;
-uniform float bufferWidth;
+uniform vec4 lastUnitPos;
+uniform vec4 lastPagePos;
+uniform vec2 bufferDim;
 uniform float cameraZoom;
 uniform float diskOn;
 uniform float curTime;
@@ -60,7 +62,12 @@ float unpack16(vec2 num) {
     return num.r*255.0 + num.g*65280.0;
 }
 
+float distanceAspect(vec2 p1, vec2 p2, float aspect) {
+    p1.x = p1.x * aspect;
+    p2.x = p2.x * aspect;
 
+    return distance(p1,p2);
+}
 
 
 void main() {
@@ -71,6 +78,9 @@ void main() {
     
 
     float newZoom = min(cameraZoom,1.0);
+    float newZoom2 = max(cameraZoom,1.0);
+
+    float newZoom3 = mix(newZoom,cameraZoom, float(cameraZoom <= 1.0) );
     
 
     float tot = tex0.r + tex0.g + tex0.b + tex0.a;
@@ -81,7 +91,11 @@ void main() {
     float baseHeight = unpack16(tex0.rg);//tex0.r*255.0 + tex0.g*255.0*256.0;
 
     vec3 worldPosition = vec3(0.0,0.0,0.0);
-    vec2 tcMod = (vec2(TexCoord0.x,1.0-TexCoord0.y)*2.0-1.0 )*bufferWidth/(newZoom);
+    vec2 tcMod = (vec2(TexCoord0.x,1.0-TexCoord0.y)*2.0-1.0 );
+    tcMod.x *= bufferDim.x/(newZoom);
+    tcMod.y *= bufferDim.y/(newZoom);
+
+
     tcMod.y -= cameraPos.z;
     worldPosition.x = tcMod.y + tcMod.x/2.0 + (baseHeight);
     worldPosition.y = tcMod.y - tcMod.x/2.0 + (baseHeight);
@@ -90,6 +104,32 @@ void main() {
     worldPosition.y += cameraPos.y;
 
 
+    //worldPosition.x = 0.0;
+    //worldPosition.y = 0.0;
+    //worldPosition.z = 0.0;
+
+
+    float isLastUnit =
+
+    float(worldPosition.x >= lastUnitPos.x-4.0) *
+    float(worldPosition.y >= lastUnitPos.y-4.0) *
+    float(worldPosition.z >= lastUnitPos.z-4.0) *
+    float(worldPosition.x <= lastUnitPos.x+lastUnitPos.w+4.0) *
+    float(worldPosition.y <= lastUnitPos.y+lastUnitPos.w+4.0) *
+    float(worldPosition.z <= lastUnitPos.z+lastUnitPos.w+4.0) * 0.2;
+    
+
+    float isLastPage =
+
+    float(worldPosition.x >= lastPagePos.x-4.0) *
+    float(worldPosition.y >= lastPagePos.y-4.0) *
+    float(worldPosition.z >= lastPagePos.z-4.0) *
+    float(worldPosition.x <= lastPagePos.x+lastPagePos.w+4.0) *
+    float(worldPosition.y <= lastPagePos.y+lastPagePos.w+4.0) *
+    float(worldPosition.z <= lastPagePos.z+lastPagePos.w+4.0) * 0.1;
+
+
+    
 
 
     vec3 lightVec = normalize(lightPosWS-worldPosition);
@@ -121,9 +161,11 @@ void main() {
 
     float curHeight;
 
+    float aspectRatio = bufferDim.x/bufferDim.y;
 
 
-    float mval = float(distance(sStartPos,sEndPos) < 0.06*cameraZoom)*0.2;
+
+    float mval = float( distanceAspect(sStartPos,sEndPos,aspectRatio)/(newZoom3) < 0.1)*0.2;
 
     float wpDis = distance(curWorldPos.xy,worldPosition.xy);
 
@@ -239,11 +281,14 @@ void main() {
     }
 
     vec3 resColor = mix(resCol0,resCol1,lightRes);
+    
+    //vec3 resColor = mod(worldPosition,256.0)/255.0;
     //vec3 resColor = vec3(lightRes);//mix(resCol0,resCol1,lightRes);//mod(worldPosition,256.0)/255.0;//vec3(lightRes);//mix(resCol0,resCol1,lightRes);
     //vec3 resColor = tex1.rgb;
 
+
     //vec4(lightRes*0.8,lightRes*0.7,lightRes*0.6, lightRes)
-    gl_FragData[0] = vec4(mix( fogColor, resColor+pval, hfog ),1.0)+mval; //vec4(lightRes,lightRes,lightRes,1.0);//
+    gl_FragData[0] = vec4(mix( fogColor, resColor+pval, hfog ),1.0)+mval+isLastUnit+isLastPage; //vec4(lightRes,lightRes,lightRes,1.0);//
     //gl_FragData[0] = vec4(aoval,aoval,aoval,1.0);
 
     //gl_FragData[0] = vec4(lightRes,lightRes,lightRes,1.0);

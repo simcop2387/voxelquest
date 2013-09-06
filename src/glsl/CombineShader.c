@@ -60,7 +60,7 @@ void main() {
 
 
     float bh1 = unpack16(tex0.rg);//tex0.r+tex0.g*255.0;
-    float bh2 = unpack16(tex2.rg) + 50.0;//tex2.r+tex2.g*255.0 + 1.0;
+    float bh2 = unpack16(tex2.rg);// + 50.0;//tex2.r+tex2.g*255.0 + 1.0;
     float bh3 = unpack16(tex4.rg);//tex4.r+tex4.g*255.0;
 
 
@@ -94,16 +94,3 @@ void main() {
 
 
 }
-
-/*
-//float numSteps = bufferWidth/cameraZoom;
-//float offset = 1.0/numSteps;
-//vec2 newCoords = floor(TexCoord0*numSteps)/numSteps;
-newCoords.x += offset;
-tex3 += texture2D(Texture3, newCoords );
-newCoords.y += offset;
-tex3 += texture2D(Texture3, newCoords );
-newCoords.x -= offset;
-tex3 += texture2D(Texture3, newCoords );
-tex3 = tex3/4.0;
-*/

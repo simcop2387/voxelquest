@@ -14,7 +14,7 @@ varying vec4 TexCoord0;
 uniform float curTime;
 uniform float cameraZoom;
 uniform vec3 cameraPos;
-uniform float bufferWidth;
+uniform vec2 bufferDim;
 
 varying vec4 resVert;
 varying vec3 normMod;
@@ -22,7 +22,7 @@ varying float baseHeight;
 
 
 const float grassHeight = 1.0/64.0;
-const float grassWidth = 2.0/1024.0;
+const float grassWidth = 1.0/512.0;
 
 
 int intMod(int lhs, int rhs) {
@@ -64,7 +64,10 @@ vec3 worldFromTC(vec2 tc, float bh, float zoom ) {
     //float newZoom = min(cameraZoom,1.0);
 
     vec3 wp = vec3(0.0,0.0,0.0);
-    vec2 tcMod = (vec2(tc.x,1.0-tc.y)*2.0-1.0 )*bufferWidth/(zoom);
+    vec2 tcMod = (vec2(tc.x,1.0-tc.y)*2.0-1.0 );
+    tcMod.x *= bufferDim.x/(zoom);
+    tcMod.y *= bufferDim.y/(zoom);
+
     tcMod.y -= cameraPos.z;
     wp.x = tcMod.y + tcMod.x/2.0 + (bh);
     wp.y = tcMod.y - tcMod.x/2.0 + (bh);
@@ -111,7 +114,7 @@ void main() {
     float isValid = float( tex0.b == 2.0/255.0 );
 
 
-    
+    float aspectRatio = bufferDim.x/bufferDim.y;
     
 
     float wind = (sin( curTime/700.0 + worldPos.x*8.0 + worldPos.y*6.0 ));
@@ -126,11 +129,11 @@ void main() {
     vec2 resVec = normalize(mix(grassVec,windVec,windAmount));
 
 
-
     myVert.x = gl_Vertex.x + ((gl_MultiTexCoord0.w)*grassWidth  + (resVec.x*2.0 - 0.25)*gl_MultiTexCoord0.z*grassHeight*2.0)*isValid;
-    myVert.y = gl_Vertex.y + ((gl_MultiTexCoord0.z)*grassHeight + gl_MultiTexCoord0.z*grassHeight)*isValid;
+    myVert.y = gl_Vertex.y + ((gl_MultiTexCoord0.z)*grassHeight + gl_MultiTexCoord0.z*grassHeight)*isValid*aspectRatio;
     myVert.z = gl_MultiTexCoord0.z;
 
+    myVert.xy *= newZoom;
 
     //normMod.x += grassVec.x;
     //normMod.y += 1.0-grassVec.y;
@@ -138,7 +141,7 @@ void main() {
     normMod = normalize(normMod);
 
 
-    myVert.xy *= newZoom;
+    //myVert.xy *= newZoom;
     resVert = myVert;
     gl_Position = myVert;
 
@@ -175,7 +178,7 @@ void main() {
 
 
     
-    float newHeight = baseHeight + TexCoord0.z*grassHeight*bufferWidth;
+    float newHeight = baseHeight + TexCoord0.z*50.0/min(cameraZoom,1.0);// + TexCoord0.z*grassHeight*bufferDim.y;
 
    
 

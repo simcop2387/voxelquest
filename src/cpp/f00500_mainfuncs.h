@@ -131,19 +131,45 @@ void RedirectIOToConsole()
 
 
 
-#define WINDOW_WIDTH 1024
-#define WINDOW_HEIGHT 1024
-
 
 int main(int argc, char* argv[])
 {
+
+    int winWidth;
+    int winHeight;
+    int scaleFactor;
+    int resMode = 0;
+
+    switch (resMode) {
+        case 0:
+            winWidth = 1024;
+            winHeight = 1024;
+            scaleFactor = 1;
+        break;
+
+        case 1:
+            winWidth = 1024;
+            winHeight = 512;
+            scaleFactor = 1;
+        break;
+
+        case 2:
+            winWidth = 2048;
+            winHeight = 1024;
+            scaleFactor = 2;
+        break;
+    }
 
 
     RedirectIOToConsole();
 
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_SINGLE|GLUT_RGB);
-    glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
+
+
+    //glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);  //GLUT_SINGLE
+
+    glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGB);
+    glutInitWindowSize(winWidth, winHeight);
     glutInitWindowPosition(140, 200);
     glutCreateWindow("VoxelQuest");
 
@@ -158,16 +184,8 @@ int main(int argc, char* argv[])
     
     ////////////
     singleton = new Singleton();
-    singleton->init(WINDOW_WIDTH,WINDOW_HEIGHT);
-    glClearColor(0, 0, 0, 0);
-    glDisable(GL_DEPTH_TEST);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0.0, WINDOW_WIDTH-1, WINDOW_HEIGHT-1, 0, -1.0, 1.0);
-    glMatrixMode(GL_MODELVIEW);
-    ////////////
-
-
+    singleton->init(winWidth,winHeight, scaleFactor);
+    
 
     glutDisplayFunc(display);
     glutIdleFunc(idleFunc);
@@ -182,6 +200,19 @@ int main(int argc, char* argv[])
 
     return 0;
 }
+
+
+
+
+/*
+glClearColor(0, 0, 0, 0);
+glDisable(GL_DEPTH_TEST);
+glMatrixMode(GL_PROJECTION);
+glLoadIdentity();
+glOrtho(0.0, WINDOW_WIDTH-1, WINDOW_HEIGHT-1, 0, -1.0, 1.0);
+glMatrixMode(GL_MODELVIEW);
+*/
+////////////
 
 
 

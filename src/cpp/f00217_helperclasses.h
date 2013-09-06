@@ -357,13 +357,17 @@ public:
 
 
 
-	void setShaderfVec3(string paramName, fVector3* f) {
+	void setShaderfVec2(string paramName, FIVector4* f) {
 		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
-		glUniform3f(loc,f->x,f->y,f->z);
+		glUniform2f(loc,f->getFX(),f->getFY());
 	}
-	void setShaderfVec4(string paramName, fVector4* f) {
+	void setShaderfVec3(string paramName, FIVector4* f) {
 		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
-		glUniform4f(loc,f->x,f->y,f->z,f->w);
+		glUniform3f(loc,f->getFX(),f->getFY(),f->getFZ());
+	}
+	void setShaderfVec4(string paramName, FIVector4* f) {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform4f(loc,f->getFX(),f->getFY(),f->getFZ(),f->getFW());
 	}
 
 	

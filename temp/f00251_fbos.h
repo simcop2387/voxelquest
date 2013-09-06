@@ -118,7 +118,7 @@ public:
 
 
 
-	void getPixelAtF(fVector4* fv, int x, int y) {
+	void getPixelAtF(FIVector4* fv, int x, int y) {
 
 		if (isFloat) {
 
@@ -132,10 +132,10 @@ public:
 			//g
 			//r
 
-			fv->x = pixelsFloat[ (x + y*width)*4 + 0 ];
-			fv->y = pixelsFloat[ (x + y*width)*4 + 1 ];
-			fv->z = pixelsFloat[ (x + y*width)*4 + 2 ];
-			fv->w = pixelsFloat[ (x + y*width)*4 + 3 ];
+			fv->setFX(pixelsFloat[ (x + y*width)*4 + 0 ]);
+			fv->setFY(pixelsFloat[ (x + y*width)*4 + 1 ]);
+			fv->setFZ(pixelsFloat[ (x + y*width)*4 + 2 ]);
+			fv->setFW(pixelsFloat[ (x + y*width)*4 + 3 ]);
 
 		}
 		else {

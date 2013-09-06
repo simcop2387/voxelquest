@@ -8,7 +8,7 @@ uniform vec2 resolution;
 uniform vec3 cameraPos;
 uniform vec3 lightPosWS;
 uniform vec2 lightPosSS;
-uniform float bufferWidth;
+uniform vec2 bufferDim;
 uniform float cameraZoom;
 
 
@@ -64,7 +64,11 @@ void main() {
     float baseHeight = unpack16(texFinal.rg);
 
     vec3 worldPosition = vec3(0.0,0.0,0.0);
-    vec2 tcMod = (vec2(TexCoord0.x,1.0-TexCoord0.y)*2.0-1.0 )*bufferWidth/(newZoom);
+    vec2 tcMod = (vec2(TexCoord0.x,1.0-TexCoord0.y)*2.0-1.0 );
+
+    tcMod.x *= bufferDim.x/(newZoom);
+    tcMod.y *= bufferDim.y/(newZoom);
+
     tcMod.y -= cameraPos.z;
     worldPosition.x = tcMod.y + tcMod.x/2.0 + (baseHeight);
     worldPosition.y = tcMod.y - tcMod.x/2.0 + (baseHeight);

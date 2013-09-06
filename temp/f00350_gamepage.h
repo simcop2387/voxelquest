@@ -7,9 +7,11 @@ GamePage::GamePage ()
                    {
 
 	}
-void GamePage::init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRenderSize)
-                                                                                      {
+void GamePage::init (Singleton * _singleton, int _iDim, FIVector4 _iOff, int _iRSize2)
+                                                                                   {
 		int i;
+
+		isDirty = false;
 
 		curState = E_STATE_INIT_BEG;
 		nextState = E_STATE_WAIT;
@@ -20,9 +22,9 @@ void GamePage::init (Singleton * _singleton, int _iDim, iVector3 _iOff, int _iRe
 		iDim = _iDim;
 		iOff = _iOff;
 
-		iRenderSize = _iRenderSize;
+		iRSize2 = _iRSize2;
 
-		//heightOfVol = (((float)iRenderSize)/2.0f - 1.0f)/255.0f;
+		//heightOfVol = (((float)iRSize2)/2.0f - 1.0f)/255.0f;
 
 		
 		unitSize = (float)(singleton->unitSize);
@@ -118,13 +120,29 @@ void GamePage::createSimplexNoise ()
 
 		
 
-		worldMin.x = ((0 + totLenO4) + iOff.x)*unitSize;
-		worldMin.y = ((0 + totLenO4) + iOff.y)*unitSize;
-		worldMin.z = ((0 + totLenO4) + iOff.z)*unitSize;
+		/*
+		worldMin.setFX( ((0 + totLenO4) + iOff.getFX())*unitSize );
+		worldMin.setFY( ((0 + totLenO4) + iOff.getFY())*unitSize );
+		worldMin.setFZ( ((0 + totLenO4) + iOff.getFZ())*unitSize );
 
-		worldMax.x = ((totLen - totLenO4) + iOff.x)*unitSize;
-		worldMax.y = ((totLen - totLenO4) + iOff.y)*unitSize;
-		worldMax.z = ((totLen - totLenO4) + iOff.z)*unitSize;
+		worldMax.setFX( ((totLen - totLenO4) + iOff.getFX())*unitSize );
+		worldMax.setFY( ((totLen - totLenO4) + iOff.getFY())*unitSize );
+		worldMax.setFZ( ((totLen - totLenO4) + iOff.getFZ())*unitSize );
+		*/
+
+		worldMin.copyFrom(&iOff);
+		worldMax.copyFrom(&iOff);
+		worldMin.addXYZ( -totLenO4 );
+		worldMax.addXYZ(  totLenO4 );
+		worldMin.multXYZ((float)unitSize);
+		worldMax.multXYZ((float)unitSize);
+
+
+		worldUnitMin.copyFrom(&iOff);
+		worldUnitMax.copyFrom(&iOff);
+		worldUnitMin.addXYZ( -totLenO2 );
+		worldUnitMax.addXYZ(  totLenO2-1 );
+
 
 		
 		float thresh;
@@ -140,19 +158,19 @@ void GamePage::createSimplexNoise ()
 
 				ijkVals[1] = (float)j;
 
-				fy = (j - totLenO2) + iOff.y;
+				fy = (j - totLenO2) + iOff.getFY();
 
 				for (i = 0; i < totLen; i++) {
 
 					ijkVals[0] = (float)i;
 
-					fx = (i - totLenO2) + iOff.x;
+					fx = (i - totLenO2) + iOff.getFX();
 					
 					for (k = 0; k < totLen; k++) {
 
 						ijkVals[2] = (float)k;
 
-						fz = (k - totLenO2) + iOff.z;
+						fz = (k - totLenO2) + iOff.getFZ();
 
 						ind = k*totLen*totLen + j*totLen + i;
 
@@ -283,35 +301,110 @@ void GamePage::copyToTexture ()
 		if (fboSet == NULL) {
 			
 			fboSet = new FBOSet();
-			fboSet->init(2,iRenderSize,iRenderSize,1,false);
+			fboSet->init(2,iRSize2,iRSize2,1,false);
 			glGenTextures(1,&volID);
 			glGenTextures(1,&volIDLinear);
+
+			glBindTexture(GL_TEXTURE_3D,volID);
+			glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, iDim, iDim, iDim, 0, GL_RGBA, GL_UNSIGNED_BYTE, volData);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_LINEAR
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//GL_NEAREST
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+			glBindTexture(GL_TEXTURE_3D,0);
+
+			glBindTexture(GL_TEXTURE_3D,volIDLinear);
+			glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, iDim, iDim, iDim, 0, GL_RGBA, GL_UNSIGNED_BYTE, volData);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);//GL_LINEAR
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);//GL_NEAREST
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+			glBindTexture(GL_TEXTURE_3D,0);
+
+			TOT_GPU_MEM_USAGE += ((float)(iDim*iDim*iDim*4*2))/(1024.0f*1024.0f);
+
 		}
-
-		//copy volData to 3d Texture
-		glBindTexture(GL_TEXTURE_3D,volID);
-		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, iDim, iDim, iDim, 0, GL_RGBA, GL_UNSIGNED_BYTE, volData);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_LINEAR
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//GL_NEAREST
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-		glBindTexture(GL_TEXTURE_3D,0);
+		else {
 
 
+			/*
+			void glTexImage3D(	GLenum target,
+			 	GLint level,
+			 	GLint internalFormat,
+			 	GLsizei width,
+			 	GLsizei height,
+			 	GLsizei depth,
+			 	GLint border,
+			 	GLenum format,
+			 	GLenum type,
+			 	const GLvoid * data);
 
-		glBindTexture(GL_TEXTURE_3D,volIDLinear);
-		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, iDim, iDim, iDim, 0, GL_RGBA, GL_UNSIGNED_BYTE, volData);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);//GL_LINEAR
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);//GL_NEAREST
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-		glBindTexture(GL_TEXTURE_3D,0);
+			*/
 
-		TOT_GPU_MEM_USAGE += ((float)(iDim*iDim*iDim*4*2))/(1024.0f*1024.0f);
+			glBindTexture(GL_TEXTURE_3D,volID);
+				glTexSubImage3D(
+					GL_TEXTURE_3D,
+					0,
+					
+					0,
+					0,
+					0,
+
+					iDim,
+					iDim,
+					iDim,
+
+					GL_RGBA,
+					GL_UNSIGNED_BYTE,
+
+					volData
+				);
+
+			glBindTexture(GL_TEXTURE_3D,0);
+			glBindTexture(GL_TEXTURE_3D,volIDLinear);
+				glTexSubImage3D(
+					GL_TEXTURE_3D,
+					0,
+					
+					0,
+					0,
+					0,
+
+					iDim,
+					iDim,
+					iDim,
+
+					GL_RGBA,
+					GL_UNSIGNED_BYTE,
+
+					volData
+				);
+			glBindTexture(GL_TEXTURE_3D,0);
+
+	
+			
+			//GLenum target,
+			//GLint level,
+			
+			//GLint xoffset,
+			//GLint yoffset,
+			//GLint zoffset,
+			
+			//GLsizei width,
+			//GLsizei height,
+			//GLsizei depth,
+			
+			//GLenum format,
+			//GLenum type,
+			
+			//const GLvoid * data
+
+
+		}
 
 		curState = E_STATE_COPYTOTEXTURE_END;
 

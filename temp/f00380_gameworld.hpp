@@ -6,22 +6,32 @@ public:
 	
 	int pageCount;
 
-	iVector3 iDim;
+	
 	int iPageSize;
 	int iVolumeSize;
 	int renderRad;
 	int loadRad;
-	int loadRadZ;
 	int diagrams[E_RENDER_LENGTH][E_STATE_LENGTH];
 	int* curDiagram;
 	int renderMethod;
 	bool doDrawFBO;
-	iVector3 minWithinLR;
-	iVector3 maxWithinLR;
+	
+	FIVector4 screenCoords;
+	FIVector4 gwSize;
+	FIVector4 minWithinLR;
+	FIVector4 maxWithinLR;
+	FIVector4 curPos;
+	FIVector4 camPagePos;
+	FIVector4 iPixelWorldCoords;
+	FIVector4 pagePos;
+	FIVector4 unitPos;
+	FIVector4 lastUnitPos;
+	FIVector4 lastPagePos;
+
 	Singleton* singleton;
 	GamePage** worldData;
 	int iBufferSize;
-	iVector3 origin;
+	
 	Poco::ThreadPool threadpool;
 
 	int iRSize;
@@ -45,9 +55,9 @@ public:
 		if (i < 0) {res = false;}
 		if (j < 0) {res = false;}
 		if (k < 0) {res = false;}
-		if (i >= iDim.x) {res = false;}
-		if (j >= iDim.y) {res = false;}
-		if (k >= iDim.z) {res = false;}
+		if (i >= gwSize.getIX()) {res = false;}
+		if (j >= gwSize.getIY()) {res = false;}
+		if (k >= gwSize.getIZ()) {res = false;}
 
 		return res;
 	}
@@ -73,7 +83,7 @@ public:
 	
 
 
-	void init(iVector3 _iDim, Singleton* _singleton, int _renderMethod) {
+	void init(Singleton* _singleton) {
 
 		pageCount = 0;
 
@@ -93,9 +103,9 @@ public:
 			}
 		}
 
-		renderMethod = _renderMethod;
+		renderMethod = (int)E_RENDER_VOL;
 		singleton = _singleton;
-		iDim = _iDim;
+		gwSize.copyFrom( &(singleton->gwSize) );
 
 		iRSize = singleton->iRSize;
 
@@ -108,32 +118,20 @@ public:
 
 		iPageSize = singleton->iPageSize;
 		loadRad = 4;
-		loadRadZ = 4;
 		
 		renderRad = 12;
 
-		iVolumeSize = iDim.x*iDim.y*iDim.z;
+		iVolumeSize = gwSize.getIX()*gwSize.getIY()*gwSize.getIZ();
 		
 	    worldData = new GamePage*[iVolumeSize];
 	    
 	    
-		
-
-	    singleton->fCameraPos.x = loadRad*iRSize;
-	    singleton->fCameraPos.y = loadRad*iRSize;
-	    singleton->fCameraPos.z = loadRadZ*iRSize;
-	    singleton->iCameraPos.x = loadRad*iRSize;
-	    singleton->iCameraPos.y = loadRad*iRSize;
-	    singleton->iCameraPos.z = loadRadZ*iRSize;
-	    
+		singleton->cameraPos.setIXY(loadRad*iRSize,loadRad*iRSize);	    
 
 		
 		for (i = 0; i < iVolumeSize; i++) {
 			worldData[i] = NULL;
 		}
-
-
-		origin.x = 0; origin.y = 0; origin.z = 0;
 
 	    
 	    #ifdef DEBUG_MODE
@@ -201,9 +199,9 @@ public:
 		int res;
 		int ind;
 
-		int iw = iDim.x;
-	    int jw = iDim.y;
-	    int kw = iDim.z;
+		int iw = gwSize.getIX();
+	    int jw = gwSize.getIY();
+	    int kw = gwSize.getIZ();
 
 	    int ii;
 	    int jj;
@@ -212,20 +210,15 @@ public:
 	    bool cmade = false;
 
 
-	    iVector3 curPos;
-	    iVector3 camPagePos;
 
-	    camPagePos.x = singleton->iCameraPos.x/iRSize;
-	    camPagePos.y = singleton->iCameraPos.y/iRSize;
-	    camPagePos.z = singleton->iCameraPos.z/iRSize;
 
-		minWithinLR.x = camPagePos.x - loadRad;
-		minWithinLR.y = camPagePos.y - loadRad;
-		minWithinLR.z = camPagePos.z - loadRadZ;
+	    camPagePos.copyFrom( &(singleton->cameraPos) );
+		camPagePos.intDivXYZ(iRSize);
 
-		maxWithinLR.x = camPagePos.x + loadRad;
-		maxWithinLR.y = camPagePos.y + loadRad;
-		maxWithinLR.z = camPagePos.z + loadRadZ;
+	    minWithinLR.copyFrom( &(camPagePos) );
+	    maxWithinLR.copyFrom( &(camPagePos) );
+	    minWithinLR.addXYZ((float)loadRad, -1.0f);
+	    maxWithinLR.addXYZ((float)loadRad, 1.0f);
 
 	    int curInd = 0;
 		
@@ -249,7 +242,7 @@ public:
 	    }
 	    
 
-		for (k = -(loadRadZ+extraRad); k <= (loadRadZ+extraRad); k++) {
+		for (k = -(loadRad+extraRad); k <= (loadRad+extraRad); k++) {
 			for (j = -(loadRad+extraRad); j <= (loadRad+extraRad); j++) {
 				for (i = -(loadRad+extraRad); i <= (loadRad+extraRad); i++) {
 
@@ -260,9 +253,9 @@ public:
 					}
 					*/
 
-					ii = i+camPagePos.x;
-					jj = j+camPagePos.y;
-					kk = k+camPagePos.z;
+					ii = i+camPagePos.getIX();
+					jj = j+camPagePos.getIY();
+					kk = k+camPagePos.getIZ();
 
 
 					if ( checkBounds(ii,jj,kk) ) {
@@ -271,9 +264,7 @@ public:
 
 						ind = kk*jw*iw + jj*iw + ii;
 
-						curPos.x = ii*iPageSize;
-						curPos.y = jj*iPageSize;
-						curPos.z = kk*iPageSize;
+						curPos.setIXYZ(ii*iPageSize,jj*iPageSize,kk*iPageSize);
 
 						
 
@@ -399,19 +390,18 @@ public:
 		int res;
 		int ind;
 
-		int iw = iDim.x;
-	    int jw = iDim.y;
-	    int kw = iDim.z;
+		int iw = gwSize.getIX();
+	    int jw = gwSize.getIY();
+	    int kw = gwSize.getIZ();
 
 	    int ii;
 	    int jj;
 	    int kk;
 
-	    iVector3 camPagePos;
+	    
 
-	    camPagePos.x = singleton->iCameraPos.x/iRSize;
-	    camPagePos.y = singleton->iCameraPos.y/iRSize;
-	    camPagePos.z = singleton->iCameraPos.z/iRSize;
+	    camPagePos.copyFrom( &(singleton->cameraPos) );
+	    camPagePos.intDivXYZ(iRSize);
 
 	    int curInd = 0;
 		
@@ -430,9 +420,10 @@ public:
 			for (j = -renderRad; j <= renderRad; j++) {
 				for (i = -renderRad; i <= renderRad; i++) {
 
-					ii = i+camPagePos.x;
-					jj = j+camPagePos.y;
-					kk = k+camPagePos.z;
+					
+					ii = i+camPagePos.getIX();
+					jj = j+camPagePos.getIY();
+					kk = k+camPagePos.getIZ();
 
 					if ( checkBounds(ii,jj,kk) ) {
 
@@ -477,12 +468,12 @@ public:
 
 	void drawPage(GamePage* gp, int dx, int dy, int dz) {
 
-		int pitchSrc = gp->iRenderSize*2;
-		int pitchSrc2 = gp->iRenderSize;
+		int pitchSrc = gp->iRSize2*(singleton->unitScale);
+		int pitchSrc2 = gp->iRSize2;
 
-		int dxmod = dx*pitchSrc2 - singleton->iCameraPos.x;
-		int dymod = dy*pitchSrc2 - singleton->iCameraPos.y;
-		int dzmod = dz*pitchSrc2 - singleton->iCameraPos.z;
+		int dxmod = dx*pitchSrc2 - singleton->cameraPos.getIX();
+		int dymod = dy*pitchSrc2 - singleton->cameraPos.getIY();
+		int dzmod = dz*pitchSrc2 - singleton->cameraPos.getIZ();
 
 
 		int x1 = (dxmod-dymod) - pitchSrc2;
@@ -495,17 +486,19 @@ public:
 		float fx2 = x2;
 		float fy2 = y2;
 
-		fVector2 fScreenDim;
-		fScreenDim.x = (float)singleton->baseW;
-		fScreenDim.y = (float)singleton->baseH;
+		
+		// TODO: should be baseW/H?
+
+		float sx = singleton->bufferDim.getFX();
+		float sy = singleton->bufferDim.getFY();
 
 		float myZoom = std::min(1.0f,singleton->cameraZoom);
 
 
-		fx1 = fx1*(myZoom)/fScreenDim.x;
-		fy1 = fy1*(myZoom)/fScreenDim.y;
-		fx2 = fx2*(myZoom)/fScreenDim.x;
-		fy2 = fy2*(myZoom)/fScreenDim.y;
+		fx1 = fx1*(myZoom)/sx;
+		fy1 = fy1*(myZoom)/sy;
+		fx2 = fx2*(myZoom)/sx;
+		fy2 = fy2*(myZoom)/sy;
 
 
 
@@ -570,8 +563,8 @@ public:
 		
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
-		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
-		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
+		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 		
 		singleton->bindFBO("geomFBO");
 		//singleton->sampleFBO("pagesFBO");
@@ -579,7 +572,7 @@ public:
 
 		glEnable(GL_DEPTH_TEST);
 		//remember 2x radius
-		singleton->drawCubeCentered(singleton->fLightPos,32.0);
+		singleton->drawCubeCentered(singleton->lightPos,32.0);
 		glDisable(GL_DEPTH_TEST);
 
 		
@@ -593,22 +586,177 @@ public:
 		
 	}
 
+
+	void modifyUnit(FIVector4 *fPixelWorldCoordsBase, bool doAdd) {
+
+		FIVector4 fPixelWorldCoords;
+		fPixelWorldCoords.copyFrom(fPixelWorldCoordsBase);
+
+		float selMod;
+
+		if (doAdd) {
+			selMod = 3.0f;
+		}
+		else {
+			selMod = -3.0f;
+		}
+
+		fPixelWorldCoords.addXYZ(selMod);
+
+
+		int iw = gwSize.getIX();
+		int jw = gwSize.getIY();
+		int kw = gwSize.getIZ();
+		int ind;
+		int ind2;
+		int pageSizeX2 = iPageSize*2;
+
+
+		int i;
+		int j;
+		int k;
+		int m;
+
+		int ii;
+		int jj;
+		int kk;
+
+		int newIRS = iRSize*singleton->unitScale;
+
+		FIVector4 tempVec;
+
+		lastUnitPos.copyFrom(&fPixelWorldCoords);
+		lastUnitPos.intDivXYZ(singleton->unitSize);
+		lastUnitPos.multXYZ(singleton->unitSize);
+		lastUnitPos.setFW(singleton->unitSize);
+
+		lastPagePos.copyFrom(&fPixelWorldCoords);
+		lastPagePos.intDivXYZ(newIRS);
+		lastPagePos.multXYZ(newIRS);
+		lastPagePos.setFW(newIRS);
+
+		bool changes = false;
+
+		
+		for (m = 0; m < 2; m++) {
+			for (i = -1; i <= 1; i++) {
+				for (j = -1; j <= 1; j++) {
+					for (k = -1; k <= 1; k++) {
+						pagePos.copyFrom(&fPixelWorldCoords);
+						unitPos.copyFrom(&fPixelWorldCoords);
+
+						pagePos.intDivXYZ( newIRS );
+						unitPos.intDivXYZ( singleton->unitSize );
+
+
+						ii = i+pagePos.getIX();
+						jj = j+pagePos.getIY();
+						kk = k+pagePos.getIZ();
+
+						if (checkBounds(ii,jj,kk)) {
+							ind = kk*jw*iw + jj*iw + ii;
+
+							if (worldData[ind] != NULL) {
+
+								if (
+									(worldData[ind]->curState == E_STATE_GENERATEVOLUME_END) ||
+									(worldData[ind]->curState == E_STATE_LENGTH)
+
+									) {
+									
+									// && worldData[ind]->fillState != E_FILL_STATE_EMPTY
+
+									if (
+										unitPos.inBoundsXYZ(
+											&(worldData[ind]->worldUnitMin),
+											&(worldData[ind]->worldUnitMax)
+										)
+									) {
+										tempVec.copyFrom(&unitPos);
+										tempVec.addXYZRef( &(worldData[ind]->worldUnitMin), -1.0);
+
+										ind2 = tempVec.getIZ()*pageSizeX2*pageSizeX2 + tempVec.getIY()*pageSizeX2 + tempVec.getIX();
+										
+										if (ind2 < 0 || ind2 > pageSizeX2*pageSizeX2*pageSizeX2) {
+											//doTrace("ind2 out of range ", i__s(ind2), " of ", i__s(pageSizeX2*pageSizeX2*pageSizeX2));
+										}
+										else {
+
+											if (m == 0) {
+												if (doAdd) {
+													worldData[ind]->volData[ind2] |= (255<<24);
+												}
+												else {
+													worldData[ind]->volData[ind2] &= (255<<16)|(255<<8)|(255);
+												}
+
+												worldData[ind]->isDirty = true;
+												changes = true;
+											}
+											else {
+												if (worldData[ind]->isDirty) {
+													worldData[ind]->isDirty = false;
+													worldData[ind]->copyToTexture();
+													worldData[ind]->generateVolume();
+												}
+											}
+
+											
+
+
+										}
+
+										
+									}
+									else {
+										
+										// doTraceVec("min: ", &(worldData[ind]->worldUnitMin) );
+										// doTraceVec("cur: ", &(unitPos) );
+										// doTraceVec("max: ", &(worldData[ind]->worldUnitMax) );
+										// doTrace(" ");
+
+									}
+
+								}
+								else {
+									//doTrace("curState: ", i__s( (int)(worldData[ind]->curState) ));
+								}
+							}
+							else {
+								//doTrace("WD is null at", i__s(ii), " ", i__s(jj), " ", i__s(kk) );
+							}
+						}
+
+					}
+				}
+			}
+		}
+
+		if (changes) {
+			singleton->changesMade=true;
+		}
+
+		
+		
+
+	}
+
 	void renderWorldSpace() {
 		doTrace("renderWorldSpace()");
 
 		singleton->wsBufferInvalid = false;
 
-		fVector2 screenCoords;
-		singleton->worldToScreen(&screenCoords, &(singleton->fLightPos));
+		
+		singleton->worldToScreen(&screenCoords, &(singleton->lightPos));
 
 		singleton->bindShader("WorldSpaceShader");
 		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
-		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
-		singleton->setShaderfVec3("lightPosWS", &(singleton->fLightPos));
+		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
+		singleton->setShaderfVec3("lightPosWS", &(singleton->lightPos));
 
-		singleton->setShaderVec2("lightPosSS", screenCoords.x, screenCoords.y);
+		singleton->setShaderfVec2("lightPosSS", &screenCoords);
 		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
-		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim) );
 
 
 		
@@ -656,8 +804,8 @@ public:
 		
 		singleton->setShaderFloat("curTime", curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
-		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
-		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
+		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 		
 		singleton->bindFBO("grassFBO");
 		singleton->sampleFBO("pagesFBO");
@@ -685,19 +833,22 @@ public:
 
 		
 
-		fVector2 screenCoords;
-		singleton->worldToScreen(&screenCoords, &(singleton->fLightPos));
+		singleton->worldToScreen(&screenCoords, &(singleton->lightPos));
 
 		singleton->bindShader("LightingShader");
 		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
-		singleton->setShaderfVec3("cameraPos", &(singleton->fCameraPos));
-		singleton->setShaderfVec3("lightPosWS", &(singleton->fLightPos));
-		singleton->setShaderVec2("lightPosSS", screenCoords.x, screenCoords.y);
-		singleton->setShaderfVec4("curWorldPos", &(singleton->fActiveObjPos) );
+		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
+		singleton->setShaderfVec3("lightPosWS", &(singleton->lightPos));
+		singleton->setShaderfVec2("lightPosSS", &screenCoords);
+		singleton->setShaderfVec4("curWorldPos", &(singleton->activeObjPos) );
+		singleton->setShaderfVec4("lastUnitPos", &(lastUnitPos) );
+		singleton->setShaderfVec4("lastPagePos", &(lastPagePos) );
+
 		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
-		singleton->setShaderFloat("bufferWidth",singleton->fBufferWidth);
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 		singleton->setShaderFloat("diskOn",singleton->diskOn);
 		singleton->setShaderFloat("curTime", singleton->curTime);
+
 		
 		singleton->bindFBO("resultFBO");
 		singleton->sampleFBO("combineFBO");

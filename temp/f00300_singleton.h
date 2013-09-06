@@ -239,24 +239,38 @@ void Singleton::createGrassList ()
 		glEndList();
 		
 	}
-void Singleton::drawCubeCentered (fVector3 origin, float radius)
-                                                             {
-		fVector3 minV;
-		fVector3 maxV;
+void Singleton::drawCubeCentered (FIVector4 origin, float radius)
+                                                              {
+		FIVector4 minV;
+		FIVector4 maxV;
 
-		minV.x = origin.x - radius;
-		minV.y = origin.y - radius;
-		minV.z = origin.z - radius;
+		minV.setFXYZ(
+			origin.getFX()-radius,
+			origin.getFY()-radius,
+			origin.getFZ()-radius
+		);
 
-		maxV.x = origin.x + radius;
-		maxV.y = origin.y + radius;
-		maxV.z = origin.z + radius;
-
+		maxV.setFXYZ(
+			origin.getFX()+radius,
+			origin.getFY()+radius,
+			origin.getFZ()+radius
+		);
 
 		drawBox(minV,maxV);
 	}
-void Singleton::drawBox (fVector3 minVec, fVector3 maxVec)
-                                                   {
+void Singleton::drawBox (FIVector4 minVec, FIVector4 maxVec)
+                                                     {
+
+
+		float minX = minVec.getFX();
+		float minY = minVec.getFY();
+		float minZ = minVec.getFZ();
+
+		float maxX = maxVec.getFX();
+		float maxY = maxVec.getFY();
+		float maxZ = maxVec.getFZ();
+
+
     	glBegin(GL_QUADS);
     	    
     	    /*
@@ -330,35 +344,35 @@ void Singleton::drawBox (fVector3 minVec, fVector3 maxVec)
 
 
     	    // front
-    	    glVertex3f(minVec.x, minVec.y, maxVec.z);
-    	    glVertex3f(maxVec.x, minVec.y, maxVec.z);
-    	    glVertex3f(maxVec.x, maxVec.y, maxVec.z);
-    	    glVertex3f(minVec.x, maxVec.y, maxVec.z);
+    	    glVertex3f(minX, minY, maxZ);
+    	    glVertex3f(maxX, minY, maxZ);
+    	    glVertex3f(maxX, maxY, maxZ);
+    	    glVertex3f(minX, maxY, maxZ);
     	    // back
-    	    glVertex3f(minVec.x, minVec.y, minVec.z);
-    	    glVertex3f(maxVec.x, minVec.y, minVec.z);
-    	    glVertex3f(maxVec.x, maxVec.y, minVec.z);
-    	    glVertex3f(minVec.x, maxVec.y, minVec.z);
+    	    glVertex3f(minX, minY, minZ);
+    	    glVertex3f(maxX, minY, minZ);
+    	    glVertex3f(maxX, maxY, minZ);
+    	    glVertex3f(minX, maxY, minZ);
     	    // right
-    	    glVertex3f(maxVec.x, minVec.y, maxVec.z);
-    	    glVertex3f(maxVec.x, minVec.y, minVec.z);
-    	    glVertex3f(maxVec.x, maxVec.y, minVec.z);
-    	    glVertex3f(maxVec.x, maxVec.y, maxVec.z);
+    	    glVertex3f(maxX, minY, maxZ);
+    	    glVertex3f(maxX, minY, minZ);
+    	    glVertex3f(maxX, maxY, minZ);
+    	    glVertex3f(maxX, maxY, maxZ);
     	    // left
-    	    glVertex3f(minVec.x, minVec.y, maxVec.z);
-    	    glVertex3f(minVec.x, minVec.y, minVec.z);
-    	    glVertex3f(minVec.x, maxVec.y, minVec.z);
-    	    glVertex3f(minVec.x, maxVec.y, maxVec.z);
+    	    glVertex3f(minX, minY, maxZ);
+    	    glVertex3f(minX, minY, minZ);
+    	    glVertex3f(minX, maxY, minZ);
+    	    glVertex3f(minX, maxY, maxZ);
     	    // top
-    	    glVertex3f(minVec.x, maxVec.y, maxVec.z);
-    	    glVertex3f(maxVec.x, maxVec.y, maxVec.z);
-    	    glVertex3f(maxVec.x, maxVec.y, minVec.z);
-    	    glVertex3f(minVec.x, maxVec.y, minVec.z);
+    	    glVertex3f(minX, maxY, maxZ);
+    	    glVertex3f(maxX, maxY, maxZ);
+    	    glVertex3f(maxX, maxY, minZ);
+    	    glVertex3f(minX, maxY, minZ);
     	    // bottom
-    	    glVertex3f(minVec.x, minVec.y, maxVec.z);
-    	    glVertex3f(maxVec.x, minVec.y, maxVec.z);
-    	    glVertex3f(maxVec.x, minVec.y, minVec.z);
-    	    glVertex3f(minVec.x, minVec.y, minVec.z);
+    	    glVertex3f(minX, minY, maxZ);
+    	    glVertex3f(maxX, minY, maxZ);
+    	    glVertex3f(maxX, minY, minZ);
+    	    glVertex3f(minX, minY, minZ);
 
 
 
@@ -472,21 +486,35 @@ void Singleton::createVTList ()
 
 		glEndList();
 	}
-void Singleton::init (int _defaultWinW, int _defaultWinH)
-                                                      {
+void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
+                                                                        {
 
+		pushTrace("Singleton init");
+
+		defaultWinW = _defaultWinW/_scaleFactor;
+		defaultWinH = _defaultWinH/_scaleFactor;
+		scaleFactor = _scaleFactor;
+
+		unitScale = 2;
 		diskOn = 0.0f;
 		iRSize = 128;
 		iPageSize = 4;
-		unitSize = (iRSize/2)/iPageSize;//( ( (float)iRenderSize )/2.0f ) / ( (float)iDim );
+		gwSize.setIXYZ(64,64,64);
+		unitSize = (iRSize*unitScale)/iPageSize;
+
+		minBoundsInPixels.setIXYZ(0,0,0);
+		maxBoundsInPixels.setIXYZ(
+			gwSize.getIX()*unitSize*iPageSize,
+			gwSize.getIY()*unitSize*iPageSize,
+			gwSize.getIZ()*unitSize*iPageSize
+		);
 
 
 		wsBufferInvalid = true;
 
-		iBufferWidth = _defaultWinW;
-		fBufferWidth = (float)iBufferWidth;
+		bufferDim.setIXY(defaultWinW,defaultWinH);
 
-		pushTrace("Singleton init");
+		
 
 		myTimer.start();
 
@@ -512,8 +540,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 		}
 		keySetup();
 
-		defaultWinW = _defaultWinW;
-		defaultWinH = _defaultWinH;
+		
 
 		isFullScreen = false;
 	    shadersAreLoaded = 0;
@@ -521,21 +548,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 
 		programState = E_PS_IN_GAME;
 
-		fCameraPos.x = 0.0f;
-		fCameraPos.y = 0.0f;
-		fCameraPos.z = 0.0f;
-
-		iCameraPos.x = (int)fCameraPos.x;
-		iCameraPos.y = (int)fCameraPos.y;
-		iCameraPos.z = (int)fCameraPos.z;
-
-		fLightPos.x = 512.0f;
-		fLightPos.y = 512.0f;
-		fLightPos.z = 2048.0f;
-
-		iLightPos.x = (int)fLightPos.x;
-		iLightPos.y = (int)fLightPos.y;
-		iLightPos.z = (int)fLightPos.z;
+		cameraPos.setFXYZ(0.0f,0.0f,0.0f);
+		lightPos.setFXYZ(1024.0f,1024.0f,2048.0f);
 
 	    cameraZoom = 1.0f;
 
@@ -564,18 +578,17 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 		mouseLeftDown = mouseRightDown = false;
 		mouseX = mouseY = 0;
 		myDelta = 0.0f;
-		igwSize.x = 64; igwSize.y = 64; igwSize.z = 64;
+		
 		
 
 		gw = new GameWorld();
 
 
-		gw->init(igwSize, this, E_RENDER_VOL);
-		maxH = gw->loadRadZ;
+		gw->init(this);
+		maxH = gw->loadRad;
 
 
 		//gm = new GameMap();
-		//gm->init(this, 1024, 512);
 		orthographicProjection();
 		//// GL WIDGET END ////
 
@@ -652,13 +665,13 @@ void Singleton::init (int _defaultWinW, int _defaultWinH)
 
 	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel);
 
-	    fboMap["worldSpaceFBO"]->init(1, iBufferWidth, iBufferWidth, 4, false);
+	    fboMap["worldSpaceFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false);
 
-	    fboMap["pagesFBO"]->init(2, iBufferWidth, iBufferWidth, 1, false);
-	    fboMap["grassFBO"]->init(2, iBufferWidth, iBufferWidth, 1, false);
-	    fboMap["geomFBO"]->init(2, iBufferWidth, iBufferWidth, 1, true);
-	    fboMap["combineFBO"]->init(2, iBufferWidth, iBufferWidth, 1, false);
-	    fboMap["resultFBO"]->init(1, iBufferWidth, iBufferWidth, 1, false);
+	    fboMap["pagesFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+	    fboMap["grassFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+	    fboMap["geomFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, true);
+	    fboMap["combineFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["volGenFBO"]->init(1, 4096, 4096, 1, false);
 	    
 	    popTrace();
@@ -785,6 +798,13 @@ void Singleton::setShaderFloat (string paramName, float x)
 	        shaderMap[curShader]->setShaderFloat(paramName, x);
 	    }
 	}
+void Singleton::setShaderfVec2 (string paramName, FIVector4 * v)
+                                                            {
+	    if (shadersAreLoaded) {
+	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
+	        shaderMap[curShader]->setShaderfVec2(paramName, v);
+	    }
+	}
 void Singleton::setShaderVec2 (string paramName, float x, float y)
                                                                {
 	    if (shadersAreLoaded) {
@@ -799,8 +819,8 @@ void Singleton::setShaderVec3 (string paramName, float x, float y, float z)
 	        shaderMap[curShader]->setShaderVec3(paramName, x, y, z);
 	    }
 	}
-void Singleton::setShaderfVec3 (string paramName, fVector3 * v)
-                                                           {
+void Singleton::setShaderfVec3 (string paramName, FIVector4 * v)
+                                                            {
 	    if (shadersAreLoaded) {
 	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
 	        shaderMap[curShader]->setShaderfVec3(paramName, v);
@@ -813,8 +833,8 @@ void Singleton::setShaderVec4 (string paramName, float x, float y, float z, floa
 	        shaderMap[curShader]->setShaderVec4(paramName, x, y, z, w);
 	    }
 	}
-void Singleton::setShaderfVec4 (string paramName, fVector4 * v)
-                                                           {
+void Singleton::setShaderfVec4 (string paramName, FIVector4 * v)
+                                                            {
 	    if (shadersAreLoaded) {
 	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
 	        shaderMap[curShader]->setShaderfVec4(paramName, v);
@@ -891,49 +911,29 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 		float dxZoom = dx/zoom;
 		float dyZoom = dy/zoom;
 
-		float modX = 0.0;
-		float modY = 0.0;
-		float modZ = 0.0;
+		FIVector4 modXYZ;
 
 		if (lbDown) {
-			modX = -(dyZoom + dxZoom/2.0f)*2.0f;
-			modY = -(dyZoom - dxZoom/2.0f)*2.0f;
+			modXYZ.setFX( -(dyZoom + dxZoom/2.0f)*2.0f );
+			modXYZ.setFY( -(dyZoom - dxZoom/2.0f)*2.0f );
 		}
 		if (rbDown) {
-			modZ = dyZoom*2.0f;
+			modXYZ.setFZ(  dyZoom*2.0f );
 		}
 
 		switch (activeObject) {
 
 			case E_OBJ_CAMERA:
-
 				wsBufferInvalid = true;
-
-				fCameraPos.x += modX;
-				fCameraPos.y += modY;
-				fCameraPos.z += modZ;
-
-				if (fCameraPos.z < 0.0f) {
-					fCameraPos.z = 0.0f;
-				}
-
-				iCameraPos.x = (int)fCameraPos.x;
-				iCameraPos.y = (int)fCameraPos.y;
-				iCameraPos.z = (int)fCameraPos.z;
+				cameraPos.addXYZRef(&modXYZ);
+				cameraPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
 			break;
 
 			case E_OBJ_LIGHT:
-				fLightPos.x -= modX;
-				fLightPos.y -= modY;
-				fLightPos.z -= modZ;
+				lightPos.addXYZRef(&modXYZ, -1.0f);
+				lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
+				activeObjPos.setFXYZ(lightPos.getFX(),lightPos.getFY(),lightPos.getFZ());
 
-				fActiveObjPos.x = fLightPos.x;
-				fActiveObjPos.y = fLightPos.y;
-				fActiveObjPos.z = fLightPos.z;
-
-				iLightPos.x = (int)fLightPos.x;
-				iLightPos.y = (int)fLightPos.y;
-				iLightPos.z = (int)fLightPos.z;
 			break;
 		}
 
@@ -973,8 +973,11 @@ void Singleton::doAction (eProgramAction pa)
 
 		}
 	}
-void Singleton::processSpecialKeys (int key, int x, int y)
-                                                       {
+void Singleton::processSpecialKeys (int key, int _x, int _y)
+                                                         {
+
+		int x = _x/scaleFactor;
+		int y = _y/scaleFactor;
 
 		switch(key) {
 			case GLUT_KEY_F1 :
@@ -988,12 +991,17 @@ void Singleton::processSpecialKeys (int key, int x, int y)
 			break;
 		}
 	}
-void Singleton::processKey (unsigned char key, int x, int y, bool isPressed)
-                                                                         {
+void Singleton::processKey (unsigned char key, int _x, int _y, bool isPressed)
+                                                                           {
 		
+		int x = _x/scaleFactor;
+		int y = _y/scaleFactor;
 	}
-void Singleton::keyboardUp (unsigned char key, int x, int y)
-                                                         {
+void Singleton::keyboardUp (unsigned char key, int _x, int _y)
+                                                           {
+
+		int x = _x/scaleFactor;
+		int y = _y/scaleFactor;
 
 		changesMade = false;
 
@@ -1066,7 +1074,7 @@ void Singleton::keyboardUp (unsigned char key, int x, int y)
 
 			case 't':
 				doShaderRefresh();
-			    gw->resetToState(E_STATE_COPYTOTEXTURE_END);
+			    gw->resetToState(E_STATE_CREATESIMPLEXNOISE_END);
 			    bufferInvalid = true;
 			    changesMade = true;
 			break;
@@ -1090,8 +1098,12 @@ void Singleton::keyboardUp (unsigned char key, int x, int y)
 		}
 
 	}
-void Singleton::keyboardDown (unsigned char key, int x, int y)
-                                                           {
+void Singleton::keyboardDown (unsigned char key, int _x, int _y)
+                                                             {
+
+
+		int x = _x/scaleFactor;
+		int y = _y/scaleFactor;
 
 		int keymod = glutGetModifiers();
 
@@ -1117,22 +1129,27 @@ int Singleton::clamp (int val, int min, int max)
 		}
 		return val;
 	}
-void Singleton::getPixData (fVector4 * toVector, int x, int y)
-                                                          {
+void Singleton::getPixData (FIVector4 * toVector, int xv, int yv)
+                                                             {
+
 		FBOWrapper* fbow;
 
 		if (wsBufferInvalid) {
 			gw->renderWorldSpace();
 		}
 
-		int newX = clamp(x,0,1023);
-		int newY = clamp(y,0,1023);
+		int newX = clamp(xv,0,bufferDim.getIX()-1);
+		int newY = clamp(yv,0,bufferDim.getIY()-1);
 
 		fbow = getFBOWrapper("worldSpaceFBO",0);
-		fbow->getPixelAtF(toVector, newX, (iBufferWidth-1)-newY);
+		fbow->getPixelAtF(toVector, newX, (bufferDim.getIY()-1)-newY);
 	}
-void Singleton::mouseMove (int x, int y)
-                                     {
+void Singleton::mouseMove (int _x, int _y)
+                                       {
+
+		int x = _x/scaleFactor;
+		int y = _y/scaleFactor;
+
 		int dx = x - lastPosX;
 		int dy = y - lastPosY;
 
@@ -1156,12 +1173,6 @@ void Singleton::mouseMove (int x, int y)
 		}
 		if (mbDown) {
 
-			
-
-			//doTrace("x:",f__s(wp.x)," y:",f__s(wp.y)," z:",f__s(wp.z)," w:",f__s(wp.w));
-
-
-
 		}
 		lastPosX = x;
 		lastPosY = y;
@@ -1176,55 +1187,48 @@ void Singleton::mouseMove (int x, int y)
 			
 		}
 	}
-void Singleton::worldToScreen (fVector2 * sc, fVector3 * wc)
-                                                       {
+void Singleton::worldToScreen (FIVector4 * sc, FIVector4 * wc)
+                                                         {
 
+		FIVector4 dMod;
 
+		dMod.copyFrom(wc);
+		dMod.addXYZRef(&cameraPos, -1.0);
 
-		float dxmod = wc->x - fCameraPos.x;
-		float dymod = wc->y - fCameraPos.y;
-		float dzmod = wc->z - fCameraPos.z;
+		float x1 = (dMod.getFX()-dMod.getFY());
+		float y1 = (-(dMod.getFX()/2.0f) + -(dMod.getFY()/2.0f) + dMod.getFZ());
+		float myZoom = std::min(1.0f, cameraZoom);
 
-		float x1 = (dxmod-dymod);
-		float y1 = (-(dxmod/2.0f) + -(dymod/2.0f) + dzmod);
-		
-		float myZoom = cameraZoom;//std::min(1.0f, cameraZoom);
-
-		x1 = x1*(myZoom)/fBufferWidth;
-		y1 = y1*(myZoom)/fBufferWidth;
+		x1 = x1*(myZoom)/bufferDim.getFX();
+		y1 = y1*(myZoom)/bufferDim.getFY();
 
 		x1 = (x1 + 1.0)/2.0;
 		y1 = (y1 + 1.0)/2.0;
 
-		sc->x = x1;
-		sc->y = y1;
+		sc->setFX(x1);
+		sc->setFY(y1);
 	}
-void Singleton::screenToWorld (fVector2 * tc, fVector3 * wc)
-                                                       {
+void Singleton::screenToWorld (FIVector4 * tc, FIVector4 * wc)
+                                                         {
 
 
 	}
-void Singleton::mouseClick (int button, int state, int x, int y)
-                                                             {
+void Singleton::mouseClick (int button, int state, int _x, int _y)
+                                                               {
 		
+
+		int x = _x/scaleFactor;
+		int y = _y/scaleFactor;
+
 		lastPosX = x;
 		lastPosY = y;
 
-		iVector3 pagePos;
-		iVector3 unitPos;
-
-		float fRSize = (float)iRSize;
-
 		float wheelDelta = 0.0;
-
 		bool mbClicked = false;
 		bool rbClicked = false;
 		bool lbClicked = false;
 
-		int iw = igwSize.x;
-		int jw = igwSize.y;
-		int kw = igwSize.z;
-		int ind;
+		
 
 
 		switch (button) {
@@ -1274,33 +1278,13 @@ void Singleton::mouseClick (int button, int state, int x, int y)
 			wsBufferInvalid = true;
 			getPixData(&mouseUpPD, x, y);
 
-			pagePos.x = ((int)mouseUpPD.x) / iRSize;
-			pagePos.y = ((int)mouseUpPD.y) / iRSize;
-			pagePos.z = ((int)mouseUpPD.z) / iRSize;
-
 			
-			unitPos.x = (((int)mouseUpPD.x) / unitSize) - pagePos.x*iPageSize;
-			unitPos.y = (((int)mouseUpPD.y) / unitSize) - pagePos.y*iPageSize;
-			unitPos.z = (((int)mouseUpPD.z) / unitSize) - pagePos.z*iPageSize;
-
-
-
-			/*
-
-			ind = pagePos.z*jw*iw + pagePos.y*iw + pagePos.x;
-
-			if (gw->worldData[ind] == NULL) {
+			if (mouseDownPD.getFW() == 4.0) {
 
 			}
 			else {
-				if (gw->worldData[ind]->curState == E_STATE_LENGTH) {
-					doTrace("YEP");
-				}
-				else {
-					doTrace("NOPE");
-				}
+				gw->modifyUnit(&mouseUpPD, lbClicked);
 			}
-			*/
 
 
 			diskOn = 0.0f;
@@ -1310,7 +1294,7 @@ void Singleton::mouseClick (int button, int state, int x, int y)
 
 			//doTrace("MDPW: ", f__s(mouseDownPD.w));
 
-			if (mouseDownPD.w == 4.0) {
+			if (mouseDownPD.getFW() == 4.0) {
 				diskOn = 1.0f;
 				activeObject = E_OBJ_LIGHT;
 			}
@@ -1320,7 +1304,7 @@ void Singleton::mouseClick (int button, int state, int x, int y)
 				//changesMade = true;
 			}
 
-			fActiveObjPos.w = mouseDownPD.w;
+			activeObjPos.setFW( mouseDownPD.getFW() );
 		}
 
 

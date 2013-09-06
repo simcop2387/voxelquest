@@ -14,7 +14,7 @@
 uniform float curTime;
 uniform float cameraZoom;
 uniform vec3 cameraPos;
-uniform float bufferWidth;
+uniform vec2 bufferDim;
 
 varying vec3 finalVec;
 
@@ -37,9 +37,10 @@ void main() {
     transVert.z = myVert.z;
 
     
+    float newZoom = min(cameraZoom,1.0);
     
-    finalVec.x = (transVert.x)*cameraZoom/(bufferWidth);
-    finalVec.y = (transVert.y)*cameraZoom/(bufferWidth);
+    finalVec.x = (transVert.x)*newZoom/(bufferDim.x);
+    finalVec.y = (transVert.y)*newZoom/(bufferDim.y);
     finalVec.z = gl_Vertex.z;//(transVert.z);
 
 
