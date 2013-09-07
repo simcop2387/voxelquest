@@ -1,18 +1,26 @@
+// pages fbo
 uniform sampler2D Texture0;
 uniform sampler2D Texture1;
+
+// geom fbo
+uniform sampler2D Texture2;
+uniform sampler2D Texture3;
+
 varying vec2 TexCoord0;
 uniform vec2 mouseCoords;
 uniform vec2 resolution;
 uniform vec3 cameraPos;
 uniform vec3 lightPosWS;
 uniform vec2 lightPosSS;
-uniform vec4 curWorldPos;
+uniform vec4 activeObjectPos;
 uniform vec4 lastUnitPos;
 uniform vec4 lastPagePos;
 uniform vec2 bufferDim;
 uniform float cameraZoom;
 uniform float diskOn;
 uniform float curTime;
+
+uniform vec4 fogPos;
 
 //uniform vec4 bgColor;
 
@@ -75,6 +83,9 @@ void main() {
     vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
     vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
 
+    vec4 tex2 = texture2D(Texture2, TexCoord0.xy);
+    vec4 tex3 = texture2D(Texture3, TexCoord0.xy);
+
     
 
     float newZoom = min(cameraZoom,1.0);
@@ -89,6 +100,12 @@ void main() {
     //}
     
     float baseHeight = unpack16(tex0.rg);//tex0.r*255.0 + tex0.g*255.0*256.0;
+    
+
+    float baseHeight2 = unpack16(tex2.rg);
+    float geomMod = float(tex2.b > 0.0)*mix(0.0,1.0,float( baseHeight2 > baseHeight ));
+
+
 
     vec3 worldPosition = vec3(0.0,0.0,0.0);
     vec2 tcMod = (vec2(TexCoord0.x,1.0-TexCoord0.y)*2.0-1.0 );
@@ -110,24 +127,24 @@ void main() {
 
 
     
-    float isLastUnit =
+    // float isLastUnit =
 
-    float(worldPosition.x >= lastUnitPos.x-4.0) *
-    float(worldPosition.y >= lastUnitPos.y-4.0) *
-    float(worldPosition.z >= lastUnitPos.z-4.0) *
-    float(worldPosition.x <= lastUnitPos.x+lastUnitPos.w+4.0) *
-    float(worldPosition.y <= lastUnitPos.y+lastUnitPos.w+4.0) *
-    float(worldPosition.z <= lastUnitPos.z+lastUnitPos.w+4.0) * 0.2;
+    // float(worldPosition.x >= lastUnitPos.x-4.0) *
+    // float(worldPosition.y >= lastUnitPos.y-4.0) *
+    // float(worldPosition.z >= lastUnitPos.z-4.0) *
+    // float(worldPosition.x <= lastUnitPos.x+lastUnitPos.w+4.0) *
+    // float(worldPosition.y <= lastUnitPos.y+lastUnitPos.w+4.0) *
+    // float(worldPosition.z <= lastUnitPos.z+lastUnitPos.w+4.0) * 0.2;
     
 
-    float isLastPage =
+    // float isLastPage =
 
-    float(worldPosition.x >= lastPagePos.x-4.0) *
-    float(worldPosition.y >= lastPagePos.y-4.0) *
-    float(worldPosition.z >= lastPagePos.z-4.0) *
-    float(worldPosition.x <= lastPagePos.x+lastPagePos.w+4.0) *
-    float(worldPosition.y <= lastPagePos.y+lastPagePos.w+4.0) *
-    float(worldPosition.z <= lastPagePos.z+lastPagePos.w+4.0) * 0.1;
+    // float(worldPosition.x >= lastPagePos.x-4.0) *
+    // float(worldPosition.y >= lastPagePos.y-4.0) *
+    // float(worldPosition.z >= lastPagePos.z-4.0) *
+    // float(worldPosition.x <= lastPagePos.x+lastPagePos.w+4.0) *
+    // float(worldPosition.y <= lastPagePos.y+lastPagePos.w+4.0) *
+    // float(worldPosition.z <= lastPagePos.z+lastPagePos.w+4.0) * 0.1;
 
 
     
@@ -166,15 +183,17 @@ void main() {
 
 
 
-    float mval = float( distanceAspect(sStartPos,sEndPos,aspectRatio)/(newZoom3) < 0.1)*0.2;
+    //float mval = float( distanceAspect(sStartPos,sEndPos,aspectRatio)/(newZoom3) < 0.1)*0.2;
 
-    float wpDis = distance(curWorldPos.xy,worldPosition.xy);
+    float wpDis = distance(activeObjectPos.xy,worldPosition.xy);
 
-    vec2 wpNorm = normalize(curWorldPos.xy-worldPosition.xy);
+    vec2 wpNorm = normalize(activeObjectPos.xy-worldPosition.xy);
 
     float theta = atan(wpNorm.y,wpNorm.x);
 
-    float pval = float(wpDis < 200.0 && wpDis > 150.0) * float(abs(sin(theta*8.0 + curTime/100.0)) > 0.75) * diskOn * (1.0-clamp(abs(curWorldPos.z-worldPosition.z)/2000.0,0.1,1.0)) ; //
+    float pval = float(wpDis < 100.0 && wpDis > 75.0) *
+        float(abs(sin(theta*8.0 + curTime/100.0)) > 0.75) * 
+        (1.0-clamp(abs(activeObjectPos.z-worldPosition.z)/1024.0,0.1,1.0)) * diskOn * 0.5; //
 
     float totHits = 0.0;
     float wasHit = 0.0;
@@ -191,12 +210,10 @@ void main() {
 
         curHeight = unpack16(samp.rg);
 
-        wasHit = float (curHeight > wCurPos.z )*float(samp.b != 4.0/255.0);
+        wasHit = float (curHeight > wCurPos.z );
         totHits += wasHit;
         lastHit = mix(lastHit, flerp, wasHit);
     }
-
-    //float shadVal = clamp((1.0 - pow(lastHit,4.0) ) + (1.0-float(totHits>0.0)),0.0,1.0);
 
     resComp = mix(1.0,0.0, totHits*2.0/fNumSteps );
     resComp = clamp(resComp,0.0,1.0);
@@ -228,41 +245,28 @@ void main() {
     newCam.x = min(newCam.x,0.0);
     newCam.y = min(newCam.y,0.0);
     
+    
 
-    float fogDis = 1.0-clamp(1.0-length(newCam)/4096.0,0.0,1.0);
-    float fogDis2 = clamp((baseHeight-cameraPos.z)/1024.0,0.0,1.0);
+    vec3 newFog = (fogPos.xyz-worldPosition.xyz)/256.0;
+    newFog.xy /= 4.0;
 
 
+    vec3 fogXYZ = 1.0-clamp( newFog, 0.0, 1.0);
 
-    float hfog = min(fogDis*fogDis2*float(baseHeight != 0.0)*1.5,1.0);
-    //clamp((1.0-clamp(distance(cameraPos.xyz + 2000.0,worldPosition.xyz)/4096.0,0.0,1.0))*1.5,0.0,1.0)*float(baseHeight != 0.0);
+    float fogLen = 1.0-clamp(1.0-(fogXYZ.x*fogXYZ.y),0.0,1.0);
 
-    //float hfog = clamp( (baseHeight-cameraPos.z)/512.0,0.0,1.0);
+    float hfog = min(clamp(sqrt(fogLen),0.0,1.0),fogXYZ.z);//(clamp( distance(newFP.xyz,worldPosition)*float(baseHeight > 0.0)/6000.0, 0.0, 1.0) * fogV);
+
+    //hfog: 0.0 is foggy, 1.0 is clear
+
+    hfog *= float(baseHeight > 0.0);
+
     hfog = pow(hfog, 2.0);
-
-    hfog = 1.0;
-
     lightRes *= hfog;
 
-
-
-    //if (baseHeight == 0.0) {
-        //discard;
-    //}
-
     vec3 fogColor = vec3(0.6, 0.6, 0.7);
-
-
     vec3 resCol0 = vec3(0.0,0.0,0.0);
     vec3 resCol1 = vec3(1.0,1.0,1.0);
-
-
-    //35:32:27
-    //232:225:206
-
-
-    //26:9:17
-    //75:40:44
 
 
     // stone
@@ -287,6 +291,7 @@ void main() {
         resCol1 = vec3(145.0/255.0, 192.0/255.0, 62.0/255.0);
     }
 
+    /*
     // light
     if (tex0.b == 4.0/255.0 || tex0.b == 5.0/255.0) {
 
@@ -294,14 +299,24 @@ void main() {
         resCol1 = vec3(255.0/255.0, 255.0/255.0, 255.0/255.0);
 
     }
+    */
 
 
     if (aoval == 0.0) {
         //resCol0 = vec3(0.0/255.0, 0.0/255.0, 0.0/255.0);
         //resCol1 = vec3(0.0/255.0, 0.0/255.0, 0.0/255.0);
-        resCol0 = mod(worldPosition,256.0)/255.0;
-        resCol1 = resCol0;
+        //resCol0 = mod(worldPosition,256.0)/255.0;
+        //resCol1 = resCol0;
+
+        
+        
+        
+
+        resCol0 = vec3 (0.0,0.0,0.0);
+        resCol1 = vec3 (0.0,0.0,0.0);
+
     }
+
 
     vec3 resColor = mix(resCol0,resCol1,lightRes);
     
@@ -311,7 +326,7 @@ void main() {
 
 
     //vec4(lightRes*0.8,lightRes*0.7,lightRes*0.6, lightRes)
-    gl_FragData[0] = vec4(mix( fogColor, resColor+pval, hfog ),1.0)+mval+isLastUnit+isLastPage;//+isLastUnit+isLastPage; //vec4(lightRes,lightRes,lightRes,1.0);//
+    gl_FragData[0] = vec4(mix( fogColor, resColor, hfog ),1.0)+geomMod*0.5+pval;//+geomMod;//+isLastUnit+isLastPage;//+isLastUnit+isLastPage; //vec4(lightRes,lightRes,lightRes,1.0);//
     //gl_FragData[0] = vec4(aoval,aoval,aoval,1.0);
 
     //gl_FragData[0] = vec4(lightRes,lightRes,lightRes,1.0);

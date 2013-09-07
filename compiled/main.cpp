@@ -326,6 +326,16 @@ public:
         iv4.y = (int)y;
         iv4.z = (int)z;
     }
+
+    void setFXYZRef(FIVector4 * v1) {
+        fv4.x = v1->getFX();
+        fv4.y = v1->getFY();
+        fv4.z = v1->getFZ();
+        iv4.x = (int)fv4.x;
+        iv4.y = (int)fv4.y;
+        iv4.z = (int)fv4.z;
+    }
+
     void setFXY(float x, float y) {
         fv4.x = x;
         fv4.y = y;
@@ -1894,6 +1904,8 @@ enum E_BRUSH {
     E_BRUSH_LENGTH
 };
 
+
+
 ////////////////////////////////////////////////////
 
 //    DONT FORGET SEMICOLONS!
@@ -1917,8 +1929,11 @@ enum E_FILL_STATE {
 
 enum E_OBJ {
     E_OBJ_NONE,
-    E_OBJ_CAMERA,
+    E_OBJ_STONE,
+    E_OBJ_DIRT,
+    E_OBJ_GRASS,
     E_OBJ_LIGHT,
+    E_OBJ_FOG,
     E_OBJ_LENGTH
 };
 
@@ -3824,6 +3839,7 @@ public:
 class Singleton;
 class GamePage;
 class GameWorld;
+class PooledResource;
  
 // f00300_singleton.e
 //
@@ -3835,10 +3851,14 @@ class Singleton
 {
 public:
   E_OBJ activeObject;
+  E_OBJ tempObj;
   bool (keyDownArr) [MAX_KEYS];
   bool wsBufferInvalid;
   int curBrushRad;
   float diskOn;
+  float grassHeight;
+  bool showUI;
+  bool isBare;
   GLuint volTris;
   GLuint grassTris;
   vector <string> shaderStrings;
@@ -3856,10 +3876,9 @@ public:
   int baseH;
   E_MOUSE_STATE mouseState;
   int scaleFactor;
-  int iRSize;
-  int iPageSize;
-  int unitSize;
-  int unitScale;
+  int visPageSizeInPixels;
+  int visPageSizeInUnits;
+  int unitSizeInPixels;
   int bufferMult;
   int maxHeightInUnits;
   int extraRad;
@@ -3875,13 +3894,13 @@ public:
   bool ctrlPressed;
   bool altPressed;
   float cameraZoom;
+  FIVector4 activeObjectPos;
   FIVector4 minBoundsInPixels;
   FIVector4 maxBoundsInPixels;
   FIVector4 mouseUpPD;
   FIVector4 mouseDownPD;
   FIVector4 mouseMovePD;
-  FIVector4 activeObjPos;
-  FIVector4 gwSize;
+  FIVector4 worldSizeInPages;
   FIVector4 cameraPos;
   FIVector4 lightPos;
   FIVector4 mouseStart;
@@ -3891,12 +3910,11 @@ public:
   int shadersAreLoaded;
   int readyToRecompile;
   FIVector4 bufferDim;
+  FIVector4 bufferDimHalf;
   bool lbDown;
   bool rbDown;
   bool mbDown;
-  float seedX;
-  float seedY;
-  float seedZ;
+  FIVector4 worldSeed;
   Timer myTimer;
   float curTime;
   float lastTime;
@@ -3917,6 +3935,7 @@ public:
   GameWorld * gw;
   int lastPosX;
   int lastPosY;
+  FIVector4 fogPos;
   static void qNormalizeAngle (int & angle);
   void setupLookups ();
   void perspectiveProjection ();
@@ -3977,6 +3996,20 @@ public:
 };
 #undef LZZ_INLINE
 #endif
+// f00310_pooledresource.e
+//
+
+#ifndef LZZ_f00310_pooledresource_e
+#define LZZ_f00310_pooledresource_e
+#define LZZ_INLINE inline
+class PooledResource
+{
+public:
+  PooledResource ();
+  void init ();
+};
+#undef LZZ_INLINE
+#endif
 // f00350_gamepage.e
 //
 
@@ -3986,19 +4019,22 @@ public:
 class GamePage : public Poco::Runnable
 {
 public:
+  int threshVal;
   int iDim;
-  FIVector4 iOff;
+  FIVector4 offsetInUnits;
   int iVolumeSize;
-  int iRSize2;
   uint * volData;
   Singleton * singleton;
   FBOSet * fboSet;
   uint volID;
   uint volIDLinear;
+  int maxHeightInUnits;
   int totLenO2;
   int totLenVisO2;
+  FIVector4 worldSeed;
   bool isDirty;
-  float unitSize;
+  bool threadRunning;
+  float unitSizeInPixels;
   E_STATES curState;
   E_STATES nextState;
   FIVector4 worldMin;
@@ -4007,7 +4043,7 @@ public:
   FIVector4 worldUnitMax;
   E_FILL_STATE fillState;
   GamePage ();
-  void init (Singleton * _singleton, int _iDim, FIVector4 * _iOff, int _iRSize2);
+  void init (Singleton * _singleton, FIVector4 * _offsetInUnits);
   uint NumberOfSetBits (uint i);
   uint clamp (uint val);
   void createSimplexNoise ();
@@ -4028,15 +4064,16 @@ class GameWorld
 {
 public:
   int pageCount;
-  int iPageSize;
+  int visPageSizeInUnits;
   int iVolumeSize;
   int ((diagrams) [E_RENDER_LENGTH]) [E_STATE_LENGTH];
   int * curDiagram;
   int renderMethod;
   bool doDrawFBO;
   bool lastProcResult;
+  vector <int> ocThreads;
   FIVector4 screenCoords;
-  FIVector4 gwSize;
+  FIVector4 worldSizeInPages;
   FIVector4 curPos;
   FIVector4 camPagePos;
   FIVector4 iPixelWorldCoords;
@@ -4053,7 +4090,9 @@ public:
   GamePage * * worldData;
   int iBufferSize;
   Poco::ThreadPool threadpool;
-  int iRSize;
+  int maxThreads;
+  int availThreads;
+  int visPageSizeInPixels;
   GameWorld ();
   bool checkBounds (int i, int j, int k);
   void resetToState (E_STATES resState);
@@ -4520,6 +4559,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 		pushTrace("Singleton init");
 
+		showUI = true;
+		isBare = false;
+		grassHeight = 1.0/128.0;
+
 		defaultWinW = _defaultWinW/_scaleFactor;
 		defaultWinH = _defaultWinH/_scaleFactor;
 		scaleFactor = _scaleFactor;
@@ -4528,28 +4571,40 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 		mouseState = E_MOUSE_STATE_MOVE;
 
-		unitScale = 2;
-		bufferMult = 4;
-		diskOn = 0.0f;
-		iRSize = 64;
-		iPageSize = 4;
-		gwSize.setIXYZ(128,128,32);
-		unitSize = (iRSize*unitScale)/iPageSize;
+		worldSeed.setFXYZ(
 
-		maxHeightInUnits = (gwSize.getIZ()-1)*(iPageSize);
+			genRand(5000.0f,500000.0f),
+			genRand(5000.0f,500000.0f),
+			genRand(5000.0f,500000.0f)
+		);
+
+		
+		bufferMult = 2;
+		diskOn = 0.0f;
+		visPageSizeInPixels = 128; // height of one page in pixels
+		visPageSizeInUnits = 8;
+		worldSizeInPages.setIXYZ(128,128,8);
+		unitSizeInPixels = (visPageSizeInPixels)/visPageSizeInUnits;
+		
+
+		maxH = worldSizeInPages.getIZ();
+		maxW = 4;
+
+
+		maxHeightInUnits = (worldSizeInPages.getIZ()-bufferMult)*(visPageSizeInUnits);
 
 		minBoundsInPixels.setIXYZ(0,0,0);
 		maxBoundsInPixels.setIXYZ(
-			(gwSize.getIX()-1)*unitSize*iPageSize,
-			(gwSize.getIY()-1)*unitSize*iPageSize,
-			(gwSize.getIZ()-1)*unitSize*iPageSize
+			(worldSizeInPages.getIX()-1)*unitSizeInPixels*visPageSizeInUnits,
+			(worldSizeInPages.getIY()-1)*unitSizeInPixels*visPageSizeInUnits,
+			(worldSizeInPages.getIZ()-1)*unitSizeInPixels*visPageSizeInUnits
 		);
 
 
 		wsBufferInvalid = true;
 
 		bufferDim.setIXY(defaultWinW,defaultWinH);
-
+		bufferDimHalf.setIXY(defaultWinW/2,defaultWinH/2);
 		
 
 		myTimer.start();
@@ -4562,9 +4617,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		lastTime = 0.0;
 
 		srand(time(0));
-		seedX = genRand(5000.0f,500000.0f);
-		seedY = genRand(5000.0f,500000.0f);
-		seedZ = genRand(5000.0f,500000.0f);
+
+		
+
 
 		int i;
 		mbDown=false;
@@ -4584,8 +4639,14 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 		programState = E_PS_IN_GAME;
 
-		cameraPos.setFXYZ(0.0f,0.0f,0.0f);
-		lightPos.setFXYZ(2024.0f,2024.0f,2048.0f);
+
+		cameraPos.setFXYZ(2048.0, 2048.0, 512.0);
+
+		lightPos.copyFrom(&cameraPos);
+		fogPos.copyFrom(&cameraPos);
+
+		lightPos.addXYZ(0.0f, 0.0f, 0.0f);
+		fogPos.addXYZ(0.0f, 0.0f, -256.0f);
 
 	    cameraZoom = 1.0f;
 
@@ -4620,11 +4681,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		gw = new GameWorld();
 
 
-		maxH = 8;
-		maxW = 4;
+		
 
 		gw->init(this);
-		
+
+	
 
 
 		//gm = new GameMap();
@@ -4673,6 +4734,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 	    shaderStrings.push_back("GrassShader");
 	    shaderStrings.push_back("CombineShader");
 	    shaderStrings.push_back("GenerateVolume");
+	    shaderStrings.push_back("GenerateVolumeBare");
 	    shaderStrings.push_back("RenderVolume");
 	    
 
@@ -4953,40 +5015,67 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 		FIVector4 modXYZ;
 
 		if (lbDown||rbDown) {
-			if (rbDown) {  //rbDown glutGetModifiers()&GLUT_ACTIVE_SHIFT
-				modXYZ.setFZ(  dyZoom*2.0f );
-				modXYZ.setFX( -(0.0f + dxZoom/2.0f)*2.0f );
-				modXYZ.setFY( -(0.0f - dxZoom/2.0f)*2.0f );
+			if (rbDown || (glutGetModifiers()&GLUT_ACTIVE_SHIFT) ) {
+				modXYZ.setFZ(  dyZoom );
+				modXYZ.setFX( -(0.0f + dxZoom/2.0f) );
+				modXYZ.setFY( -(0.0f - dxZoom/2.0f) );
 
 			}
 			else {
-				modXYZ.setFX( -(dyZoom + dxZoom/2.0f)*2.0f );
-				modXYZ.setFY( -(dyZoom - dxZoom/2.0f)*2.0f );
+				modXYZ.setFX( -(dyZoom + dxZoom/2.0f) );
+				modXYZ.setFY( -(dyZoom - dxZoom/2.0f) );
+			}
+		}
+
+		if (glutGetModifiers()&GLUT_ACTIVE_SHIFT) {
+			grassHeight -= modXYZ.getFZ()/10000.0f;
+
+			if (grassHeight < 0.0f) {
+				grassHeight = 0.0f;
+			}
+		}
+		else {
+			switch (activeObject) {
+
+				case E_OBJ_LIGHT:
+					lightPos.addXYZRef(&modXYZ, -1.0f);
+					//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
+					activeObjectPos.setFXYZRef(&lightPos);
+				break;
+
+				case E_OBJ_FOG:
+					fogPos.addXYZRef(&modXYZ, -1.0f);
+					//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
+					activeObjectPos.setFXYZRef(&fogPos);
+				break;
+				default:
+					/*
+					if (glutGetModifiers()&GLUT_ACTIVE_SHIFT) {
+						fogPos.addXYZRef(&modXYZ);
+					}
+					else {
+						
+					}
+					*/
+
+
+					wsBufferInvalid = true;
+					cameraPos.addXYZRef(&modXYZ);
+					//cameraPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
+
+					modXYZ.setFZ(0.0f);
+					
+					lightPos.addXYZRef(&modXYZ, 1.0f);
+					fogPos.addXYZRef(&modXYZ, 1.0f);
+					//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
+					//activeObjectPos.setFXYZ(lightPos.getFX(),lightPos.getFY(),lightPos.getFZ());
+				break;
+
 			}
 		}
 
 
-		switch (activeObject) {
-
-			case E_OBJ_CAMERA:
-				wsBufferInvalid = true;
-				cameraPos.addXYZRef(&modXYZ);
-				//cameraPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-
-				modXYZ.setFZ(0.0f);
-				lightPos.addXYZRef(&modXYZ, 1.0f);
-				//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-				activeObjPos.setFXYZ(lightPos.getFX(),lightPos.getFY(),lightPos.getFZ());
-
-			break;
-
-			case E_OBJ_LIGHT:
-				lightPos.addXYZRef(&modXYZ, -1.0f);
-				//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-				activeObjPos.setFXYZ(lightPos.getFX(),lightPos.getFY(),lightPos.getFZ());
-
-			break;
-		}
+		
 
 		
 
@@ -5075,6 +5164,8 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 
 		int enCounter;
 
+		bool restartGen = false;
+
 		//doTrace(i__s(key) );
 
 
@@ -5136,14 +5227,17 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 			case 't':
-				doShaderRefresh();
-			    gw->resetToState(E_STATE_CREATESIMPLEXNOISE_END);
-			    bufferInvalid = true;
+				restartGen = true;
+			break;
+
+			case '\t':
+				showUI = !showUI;
+				bufferInvalid = true;
 			    changesMade = true;
+
 			break;
 
 			case 'b':
-				
 
 				enCounter = (int)mouseState;
 				enCounter++;
@@ -5154,11 +5248,17 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 				}
 
 				bufferInvalid = true;
+				changesMade = true;
 
 			break;
 
+			case 'c':
+				isBare = !isBare;
+				restartGen = true;
+			break;
+
 			case 'm':
-				
+				doTrace("Avail threads: ", i__s(gw->availThreads));
 			break;
 
 			case 'a':
@@ -5186,6 +5286,13 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			default:
 				
 			break;
+		}
+
+		if (restartGen) {
+			doShaderRefresh();
+			gw->resetToState(E_STATE_CREATESIMPLEXNOISE_END);
+			bufferInvalid = true;
+			changesMade = true;
 		}
 
 	}
@@ -5250,21 +5357,19 @@ void Singleton::mouseMove (int _x, int _y)
 		mouseXUp = x;
 		mouseYUp = y;
 
-
-		if (activeObject == E_OBJ_CAMERA || activeObject == E_OBJ_LIGHT) { //  || activeObject == E_OBJ_NONE
-
-		}
-		else {
-			getPixData(&mouseMovePD, x, y);
-
-			if (mouseState == E_MOUSE_STATE_BRUSH) {
-				gw->modifyUnit(&mouseMovePD, E_BRUSH_MOVE);
-			}
-		}
+		
 
 		if (lbDown || rbDown) {
 		    moveObject((float)dx, (float)dy, cameraZoom);
 		}
+		else {
+			if (mouseState == E_MOUSE_STATE_BRUSH  ) {
+				getPixData(&mouseMovePD, x, y);
+				gw->modifyUnit(&mouseMovePD, E_BRUSH_MOVE);
+			}
+		}
+
+
 		if (mbDown) {
 
 		}
@@ -5317,6 +5422,8 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		lastPosX = x;
 		lastPosY = y;
 
+		int res;
+
 		float wheelDelta = 0.0;
 		bool mbClicked = false;
 		bool rbClicked = false;
@@ -5365,73 +5472,109 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 		}
 		
-		if (rbClicked || lbClicked) {
 
-			mouseEnd.setIXY(x,y);
-
-
-
-			activeObject = E_OBJ_NONE;
-			wsBufferInvalid = true;
-			getPixData(&mouseUpPD, x, y);
-
-			
-			if (mouseDownPD.getFW() == 4.0) {
-
-			}
-			else {
-
-				if ( mouseEnd.distance(&mouseStart) > 30.0 ) {
-					
-				} 
-				else {
-
-					if (mouseState == E_MOUSE_STATE_BRUSH) {
-						if (lbClicked) {
-							gw->modifyUnit(&mouseUpPD, E_BRUSH_ADD);
-						}
-						else {
-							gw->modifyUnit(&mouseUpPD, E_BRUSH_SUB);
-						}
-					}
-
-					
-				}
-
-				
-
-				
-			}
-
-
-			diskOn = 0.0f;
-		}
 		if (rbDown || lbDown) {
 
-			if (rbDown && lbDown) {
+		}
+		else {
+
+		}
+
+		if (rbClicked || lbClicked) {
+
+			
+
+
+			if (rbDown || lbDown) {
 
 			}
 			else {
-				mouseStart.setIXY(x,y);
-				getPixData(&mouseDownPD, x, y);
+				mouseEnd.setIXY(x,y);
 
-				//doTrace("MDPW: ", f__s(mouseDownPD.getFW()));
+				activeObject = E_OBJ_NONE;
+				wsBufferInvalid = true;
+				getPixData(&mouseUpPD, x, y);
 
-				if (mouseDownPD.getFW() == 4.0) {
-					diskOn = 1.0f;
-					activeObject = E_OBJ_LIGHT;
+				
+				tempObj = (E_OBJ) ( (int)mouseDownPD.getFW() );
+
+				switch (tempObj) {
+					case E_OBJ_LIGHT:
+
+					break;
+
+					case E_OBJ_FOG:
+
+					break;
+					default:
+
+
+						if ( mouseEnd.distance(&mouseStart) > 30.0 ) {
+							
+						} 
+						else {
+							
+						}
+
+
+						if (mouseState == E_MOUSE_STATE_BRUSH) {
+							if (lbClicked) {
+								gw->modifyUnit(&mouseUpPD, E_BRUSH_ADD);
+							}
+							else {
+								gw->modifyUnit(&mouseUpPD, E_BRUSH_SUB);
+							}
+						}
+						
+					break;
 				}
-				else {
-					diskOn = 0.0f;
-					activeObject = E_OBJ_CAMERA;
-					//changesMade = true;
-				}
 
-				activeObjPos.setFW( mouseDownPD.getFW() );
+				diskOn = 0.0f;
 			}
 
 			
 		}
+		else {
+			if (rbDown || lbDown) {
+
+				if (rbDown && lbDown) {
+
+				}
+				else {
+
+
+					
+
+					mouseStart.setIXY(x,y);
+					getPixData(&mouseDownPD, x, y);
+					activeObject = (E_OBJ)((int) mouseDownPD.getFW());
+
+					switch (activeObject) {
+						case E_OBJ_LIGHT:
+							diskOn = 1.0f;
+						break;
+
+						case E_OBJ_FOG:
+							diskOn = 1.0f;
+						break;
+						default:
+							
+						break;
+					}
+
+					if (mouseState == E_MOUSE_STATE_BRUSH) {
+						diskOn = 0.0;
+					}
+
+
+				}
+
+				
+			}
+		}
+
+
+		
 
 
 
@@ -5503,6 +5646,21 @@ void Singleton::idleFunc ()
 	}
 #undef LZZ_INLINE
  
+// f00310_pooledresource.h
+//
+
+#include "f00310_pooledresource.e"
+#define LZZ_INLINE inline
+PooledResource::PooledResource ()
+                         {
+
+	}
+void PooledResource::init ()
+                    {
+
+	}
+#undef LZZ_INLINE
+ 
 // f00350_gamepage.h
 //
 
@@ -5512,9 +5670,19 @@ GamePage::GamePage ()
                    {
 
 	}
-void GamePage::init (Singleton * _singleton, int _iDim, FIVector4 * _iOff, int _iRSize2)
-                                                                                    {
+void GamePage::init (Singleton * _singleton, FIVector4 * _offsetInUnits)
+                                                                    {
 		int i;
+		singleton = _singleton;
+
+
+		threshVal = 140;
+
+
+		threadRunning = false;
+
+
+		maxHeightInUnits = (singleton->maxHeightInUnits);
 
 		isDirty = false;
 
@@ -5523,15 +5691,20 @@ void GamePage::init (Singleton * _singleton, int _iDim, FIVector4 * _iOff, int _
 		curState = E_STATE_INIT_BEG;
 		nextState = E_STATE_WAIT;
 
-		singleton = _singleton;
+		
+
+		int _iDim = singleton->visPageSizeInUnits;
+
 
 
 		iDim = _iDim * (singleton->bufferMult);
-		iOff.copyFrom(_iOff);
+		offsetInUnits.copyFrom(_offsetInUnits);
 
-		iRSize2 = _iRSize2;
+		unitSizeInPixels = (float)(singleton->unitSizeInPixels);
 
-		unitSize = (float)(singleton->unitSize);
+
+		worldSeed.copyFrom(&(singleton->worldSeed));
+
 
 
 		iVolumeSize = iDim*iDim*iDim;
@@ -5546,17 +5719,16 @@ void GamePage::init (Singleton * _singleton, int _iDim, FIVector4 * _iOff, int _
 
 
 
-
-		worldMin.copyFrom(&iOff);
-		worldMax.copyFrom(&iOff);
+		worldMin.copyFrom(&offsetInUnits);
+		worldMax.copyFrom(&offsetInUnits);
 		worldMin.addXYZ( -totLenVisO2 );
 		worldMax.addXYZ(  totLenVisO2 );
-		worldMin.multXYZ((float)unitSize);
-		worldMax.multXYZ((float)unitSize);
+		worldMin.multXYZ((float)unitSizeInPixels);
+		worldMax.multXYZ((float)unitSizeInPixels);
 
 
-		worldUnitMin.copyFrom(&iOff);
-		worldUnitMax.copyFrom(&iOff);
+		worldUnitMin.copyFrom(&offsetInUnits);
+		worldUnitMax.copyFrom(&offsetInUnits);
 		worldUnitMin.addXYZ( -totLenO2 );
 		worldUnitMax.addXYZ(  totLenO2 );
 
@@ -5586,6 +5758,10 @@ uint GamePage::clamp (uint val)
 void GamePage::createSimplexNoise ()
                                   {
 
+		threadRunning = true;
+
+		// REMINDER: DO NOT ACCESS EXTERNAL POINTERS INSIDE THREAD
+
 		bool isBlank = false;
 		bool isFull = false;
 		
@@ -5593,8 +5769,6 @@ void GamePage::createSimplexNoise ()
 		curState = E_STATE_CREATESIMPLEXNOISE_BEG;
 
 		int i, j, k, m;
-
-		float maxGenHeight = 32.0f;
 
 		int totLen = iDim;
 
@@ -5619,32 +5793,28 @@ void GamePage::createSimplexNoise ()
 		float totLenO4 = totLen/4;
 		float totLen3O4 = (totLen*3)/4;
 		
-		float thresh;
+		float heightThresh;
 		float testVal;
-		float testVal2;
 
 		bool mustNotBeFull = false;
-
-		int maxHeight = (singleton->maxHeightInUnits) - 2;
-
 
 		for (j = 0; j < totLen; j++) {
 
 			ijkVals[1] = (float)j;
 
-			fy = (j - totLenO2) + iOff.getFY();
+			fy = (j - totLenO2) + offsetInUnits.getFY();
 
 			for (i = 0; i < totLen; i++) {
 
 				ijkVals[0] = (float)i;
 
-				fx = (i - totLenO2) + iOff.getFX();
+				fx = (i - totLenO2) + offsetInUnits.getFX();
 				
 				for (k = 0; k < totLen; k++) {
 
 					ijkVals[2] = (float)k;
 
-					fz = (k - totLenO2) + iOff.getFZ();
+					fz = (k - totLenO2) + offsetInUnits.getFZ();
 
 					ind = k*totLen*totLen + j*totLen + i;
 
@@ -5655,14 +5825,17 @@ void GamePage::createSimplexNoise ()
 					}
 					else {
 
-						thresh = (fz/maxGenHeight);
-						if (thresh > 1.0) {
-							thresh = 1.0;
+						heightThresh = (fz/ ((float)maxHeightInUnits) );
+						if (heightThresh > 1.0f) {
+							heightThresh = 1.0f;
+						}
+						if (heightThresh < 0.0f) {
+							heightThresh = 0.0f;
 						}
 
 
 
-						if (k + iOff.getIZ() >= maxHeight) {
+						if (k + offsetInUnits.getIZ() >= maxHeightInUnits) {
 							tmp = 0;
 							mustNotBeFull = true;
 						}
@@ -5673,14 +5846,14 @@ void GamePage::createSimplexNoise ()
 												1.0f/32.0f, //scale (frequency)
 												0.0f,
 												1.0f,
-												fx+singleton->seedX,
-												fy+singleton->seedY,
-												fz+singleton->seedZ
+												fx+worldSeed.getFX(),
+												fy+worldSeed.getFY(),
+												fz+worldSeed.getFZ()
 											);
 							
 
 							
-							tmp = clamp(testVal*255.0*(1.0-thresh*thresh*thresh));
+							tmp = clamp(testVal*255.0*(1.0-heightThresh*heightThresh*heightThresh));
 						}
 
 						
@@ -5688,7 +5861,7 @@ void GamePage::createSimplexNoise ()
 						if ( i >= totLenO4 && i <= totLen3O4 ) {
 							if ( j >= totLenO4 && j <= totLen3O4 ) {
 								if ( k >= totLenO4 && k <= totLen3O4 ) {
-									if (tmp > 126) {
+									if (tmp > threshVal) {
 										isBlank = false;
 									}
 									else {
@@ -5756,8 +5929,7 @@ void GamePage::createSimplexNoise ()
 			curState = E_STATE_CREATESIMPLEXNOISE_END;
 		}
 
-		
-
+		threadRunning = false;
 
 	}
 void GamePage::copyToTexture ()
@@ -5768,7 +5940,7 @@ void GamePage::copyToTexture ()
 		if (fboSet == NULL) {
 			
 			fboSet = new FBOSet();
-			fboSet->init(2,iRSize2,iRSize2,1,false);
+			fboSet->init(2,(singleton->visPageSizeInPixels)*2,(singleton->visPageSizeInPixels)*2,1,false);
 			glGenTextures(1,&volID);
 			glGenTextures(1,&volIDLinear);
 
@@ -5798,19 +5970,7 @@ void GamePage::copyToTexture ()
 		else {
 
 
-			/*
-			void glTexImage3D(	GLenum target,
-			 	GLint level,
-			 	GLint internalFormat,
-			 	GLsizei width,
-			 	GLsizei height,
-			 	GLsizei depth,
-			 	GLint border,
-			 	GLenum format,
-			 	GLenum type,
-			 	const GLvoid * data);
-
-			*/
+			
 
 			glBindTexture(GL_TEXTURE_3D,volID);
 				glTexSubImage3D(
@@ -5852,25 +6012,6 @@ void GamePage::copyToTexture ()
 				);
 			glBindTexture(GL_TEXTURE_3D,0);
 
-	
-			
-			//GLenum target,
-			//GLint level,
-			
-			//GLint xoffset,
-			//GLint yoffset,
-			//GLint zoffset,
-			
-			//GLsizei width,
-			//GLsizei height,
-			//GLsizei depth,
-			
-			//GLenum format,
-			//GLenum type,
-			
-			//const GLvoid * data
-
-
 		}
 
 		curState = E_STATE_COPYTOTEXTURE_END;
@@ -5882,14 +6023,25 @@ void GamePage::generateVolume ()
 		curState = E_STATE_GENERATEVOLUME_BEG;
 		
 		
-		//render 3D texture to 2D, interpolate data
-		singleton->bindShader("GenerateVolume");
+		
+		if (singleton->isBare) {
+			singleton->bindShader("GenerateVolumeBare");
+		}
+		else {
+			singleton->bindShader("GenerateVolume");
+		}
+
+		
+
+
+
 		singleton->bindFBO("volGenFBO");
 		singleton->setShaderTexture3D(volID, 0);
 		singleton->setShaderTexture3D(volIDLinear, 1);
 		singleton->setShaderTexture(singleton->lookup2to3ID, 2);
 
 		singleton->setShaderFloat("unitsPerDim", iDim);
+		singleton->setShaderFloat("threshVal", (float)threshVal);
 		singleton->setShaderfVec3("worldMin", &(worldMin));
 		singleton->setShaderfVec3("worldMax", &(worldMax));
 
@@ -5974,15 +6126,18 @@ bool GameWorld::checkBounds (int i, int j, int k)
 		if (i < 0) {res = false;}
 		if (j < 0) {res = false;}
 		if (k < 0) {res = false;}
-		if (i >= gwSize.getIX()) {res = false;}
-		if (j >= gwSize.getIY()) {res = false;}
-		if (k >= gwSize.getIZ()) {res = false;}
+		if (i >= worldSizeInPages.getIX()) {res = false;}
+		if (j >= worldSizeInPages.getIY()) {res = false;}
+		if (k >= worldSizeInPages.getIZ()) {res = false;}
 
 		return res;
 	}
 void GameWorld::resetToState (E_STATES resState)
                                              {
 		int i;
+
+		threadpool.joinAll();
+
 		for (i = 0; i < iVolumeSize; i++) {
 			if (worldData[i]) {
 				if( worldData[i]->curState > resState) {
@@ -5999,17 +6154,25 @@ void GameWorld::resetToState (E_STATES resState)
 void GameWorld::init (Singleton * _singleton)
                                          {
 
-		pageCount = 0;
-
-		lastProcResult = true;
-
-
 		#ifdef DEBUG_MODE
 		pushTrace("GameWorld init");
 		#endif
 
 		int i;
 		int j;
+
+		pageCount = 0;
+		lastProcResult = true;
+		maxThreads = 7;
+		availThreads = maxThreads;
+
+		for (i = 0; i < maxThreads; i++) {
+			ocThreads.push_back(-1);
+		}
+
+		
+
+		
 
 		doDrawFBO = false;
 
@@ -6021,9 +6184,9 @@ void GameWorld::init (Singleton * _singleton)
 
 		renderMethod = (int)E_RENDER_VOL;
 		singleton = _singleton;
-		gwSize.copyFrom( &(singleton->gwSize) );
+		worldSizeInPages.copyFrom( &(singleton->worldSizeInPages) );
 
-		iRSize = singleton->iRSize;
+		visPageSizeInPixels = singleton->visPageSizeInPixels;
 
 	    diagrams[E_RENDER_VOL][E_STATE_INIT_END] = E_STATE_CREATESIMPLEXNOISE_LAUNCH;
 		diagrams[E_RENDER_VOL][E_STATE_CREATESIMPLEXNOISE_END] = E_STATE_COPYTOTEXTURE_LAUNCH;
@@ -6032,14 +6195,13 @@ void GameWorld::init (Singleton * _singleton)
 
 		curDiagram = diagrams[renderMethod];
 
-		iPageSize = singleton->iPageSize;
+		visPageSizeInUnits = singleton->visPageSizeInUnits;
 
-		iVolumeSize = gwSize.getIX()*gwSize.getIY()*gwSize.getIZ();
+		iVolumeSize = worldSizeInPages.getIX()*worldSizeInPages.getIY()*worldSizeInPages.getIZ();
 		
 	    worldData = new GamePage*[iVolumeSize];
 	    
-	    
-		singleton->cameraPos.setIXY(2028, 2048);	    
+	      
 
 		
 		for (i = 0; i < iVolumeSize; i++) {
@@ -6056,6 +6218,7 @@ void GameWorld::update (bool changesMade, bool bufferInvalid)
 
 
 		bool procResult = processPages();
+		bool doRenderGeom = false;
 
 
 		if ( (lastProcResult != procResult) && (procResult == false)  ) {
@@ -6069,7 +6232,7 @@ void GameWorld::update (bool changesMade, bool bufferInvalid)
 			
 			if ( (singleton->grassState != E_GRASS_STATE_ANIM) ) {
 				renderGrass();
-
+				doRenderGeom = true;
 
 			}
 
@@ -6078,6 +6241,7 @@ void GameWorld::update (bool changesMade, bool bufferInvalid)
 
 		if (singleton->grassState == E_GRASS_STATE_ANIM) {
 			renderGrass();
+			doRenderGeom = true;
 			bufferInvalid = true;
 		}
 
@@ -6085,9 +6249,15 @@ void GameWorld::update (bool changesMade, bool bufferInvalid)
 		if (procResult || changesMade || bufferInvalid || singleton->rbDown || singleton->lbDown) {
 
 
+			if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
+				doRenderGeom = true;
+			}
 
-			renderGeom();
-			combineBuffers();
+			if (doRenderGeom) {
+				renderGeom();
+				combineBuffers();
+			}
+			
 
 			glClearColor(0.6,0.6,0.7,0.0);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -6109,14 +6279,14 @@ bool GameWorld::processPages ()
 
 
 		
-
+		int counter;
 		int i, j, k;
 		int res;
 		int ind;
 
-		int iw = gwSize.getIX();
-	    int jw = gwSize.getIY();
-	    int kw = gwSize.getIZ();
+		int iw = worldSizeInPages.getIX();
+	    int jw = worldSizeInPages.getIY();
+	    int kw = worldSizeInPages.getIZ();
 
 	    int ii;
 	    int jj;
@@ -6128,7 +6298,7 @@ bool GameWorld::processPages ()
 
 
 	    camPagePos.copyFrom( &(singleton->cameraPos) );
-		camPagePos.intDivXYZ(iRSize);
+		camPagePos.intDivXYZ(visPageSizeInPixels);
 
 	    int curInd = 0;
 		
@@ -6141,14 +6311,43 @@ bool GameWorld::processPages ()
 	    int changeCount = 0;
 	    int maxChanges = 32;
 
-	    if (singleton->lbDown) {
+	    if (singleton->lbDown || singleton->rbDown) {
+	    	loadRad = 1;
+	    	//return false;
+	    }
+	    
+
+
+	    // check for threads to free
+	    if (availThreads < maxThreads) {
+	    	for (i = 0; i < ocThreads.size(); i++) {
+	    		if ( ocThreads[i] == -1) {
+	    			// already freed
+	    		}
+	    		else{
+	    			if ( worldData[ocThreads[i]] == NULL ) {
+	    				// page was destroyed, free thread
+
+	    				ocThreads[i] = -1;
+	    				availThreads++;
+	    			}
+	    			else {
+	    				if (worldData[ocThreads[i]]->threadRunning) {
+
+	    				}
+	    				else {
+	    					ocThreads[i] = -1;
+	    					availThreads++;
+	    				}
+	    			}
+	    		}
+	    	}
+	    }
+
+	    if (availThreads == 0) {
 	    	return false;
 	    }
 
-	    if ( singleton->rbDown) {
-	    	return false;
-	    }
-	    
 
 		for (k = 0; k < singleton->maxH; k++) {
 	    //for (k = -loadRad; k <= loadRad; k++) {
@@ -6169,7 +6368,7 @@ bool GameWorld::processPages ()
 
 						ind = kk*jw*iw + jj*iw + ii;
 
-						curPos.setIXYZ(ii*iPageSize,jj*iPageSize,kk*iPageSize);
+						curPos.setIXYZ(ii*visPageSizeInUnits,jj*visPageSizeInUnits,kk*visPageSizeInUnits);
 
 						
 
@@ -6181,7 +6380,7 @@ bool GameWorld::processPages ()
 							#endif
 
 							worldData[ind] = new GamePage();
-							worldData[ind]->init(singleton, iPageSize, &curPos, iRSize*2);
+							worldData[ind]->init(singleton, &curPos);
 
 							pageCount++;
 							changeCount++;
@@ -6190,7 +6389,30 @@ bool GameWorld::processPages ()
 						}
 						else {
 
+							
+							/*
+
+							if (worldData[ind]->curState == E_STATE_CREATESIMPLEXNOISE_END_NOT_PARTIAL) {
+								availThreads++;
+								if (availThreads > maxThreads) {
+									availThreads = maxThreads;
+								}
+								worldData[ind]->curState = E_STATE_LENGTH;
+							}
+
+							if (worldData[ind]->curState == E_STATE_CREATESIMPLEXNOISE_END_PARTIAL) {
+								availThreads++;
+								if (availThreads > maxThreads) {
+									availThreads = maxThreads;
+								}
+								worldData[ind]->curState = E_STATE_CREATESIMPLEXNOISE_END;
+								
+							}
+
+							*/
+
 							nState = (E_STATES)curDiagram[worldData[ind]->curState];
+
 
 							switch(nState) {
 	                            case E_STATE_CREATESIMPLEXNOISE_LAUNCH:
@@ -6199,20 +6421,44 @@ bool GameWorld::processPages ()
 	                            	doTrace("E_STATE_CREATESIMPLEXNOISE_LAUNCH");
 	                            	#endif
 
-	                            	worldData[ind]->nextState = nState;
+	                            	
 
-	                            	if ( threadpool.available() > 1 ) {
-
-	                            		try {
-	                            			threadpool.start(*worldData[ind]);
-	                            		}
-	                            		catch (SystemException & exc) {
-	                            			doTrace("MEM EXCEPTION");
-	                            		}
+	                            	if ( availThreads > 0 ) {
 
 	                            		
 
-	                            		changeCount++;
+	                            		counter = 0;
+	                            		while (ocThreads[counter] != -1) {
+	                            			counter++;
+	                            			if (counter >= maxThreads) {
+	                            				break;
+	                            			}
+	                            		}
+	                            		if (counter >= maxThreads) {
+	                            			
+	                            		}
+	                            		else {
+
+
+	                            			ocThreads[counter] = ind;
+	                            			
+	                            			availThreads--;
+
+	                            			worldData[ind]->nextState = nState;
+
+	                            			try {
+	                            				threadpool.start(*worldData[ind]);
+	                            			}
+	                            			catch (SystemException & exc) {
+	                            				doTrace("MEM EXCEPTION");
+	                            			}
+
+	                            			changeCount++;
+
+	                            		}
+
+
+	                            		
 	                            	}
 	                            	else {
 	                            		return cmade;
@@ -6224,6 +6470,8 @@ bool GameWorld::processPages ()
 									
 								break;
 								case E_STATE_COPYTOTEXTURE_LAUNCH:
+
+									
 
 									#ifdef DEBUG_MODE
 									doTrace("E_STATE_COPYTOTEXTURE_LAUNCH");
@@ -6295,18 +6543,18 @@ void GameWorld::renderPages ()
 		int res;
 		int ind;
 
-		int iw = gwSize.getIX();
-	    int jw = gwSize.getIY();
-	    int kw = gwSize.getIZ();
+		int iw = worldSizeInPages.getIX();
+	    int jw = worldSizeInPages.getIY();
+	    int kw = worldSizeInPages.getIZ();
 
 	    int ii;
 	    int jj;
 	    int kk;
 
-	    int loadRad = singleton->maxW;
+	    int loadRad = 12;//singleton->maxW;
 
 	    camPagePos.copyFrom( &(singleton->cameraPos) );
-	    camPagePos.intDivXYZ(iRSize);
+	    camPagePos.intDivXYZ(visPageSizeInPixels);
 
 	    int curInd = 0;
 		
@@ -6381,8 +6629,8 @@ void GameWorld::renderPages ()
 void GameWorld::drawPage (GamePage * gp, int dx, int dy, int dz)
                                                             {
 
-		int pitchSrc = gp->iRSize2*2;//*(singleton->unitScale);
-		int pitchSrc2 = gp->iRSize2*2/2;
+		int pitchSrc = (singleton->visPageSizeInPixels*2);
+		int pitchSrc2 = (singleton->visPageSizeInPixels*2)/2;
 
 		int dxmod = dx*pitchSrc2 - singleton->cameraPos.getIX();
 		int dymod = dy*pitchSrc2 - singleton->cameraPos.getIY();
@@ -6402,8 +6650,8 @@ void GameWorld::drawPage (GamePage * gp, int dx, int dy, int dz)
 		
 		// TODO: should be baseW/H?
 
-		float sx = singleton->bufferDim.getFX();
-		float sy = singleton->bufferDim.getFY();
+		float sx = singleton->bufferDimHalf.getFX();
+		float sy = singleton->bufferDimHalf.getFY();
 
 		float myZoom = std::min(1.0f,singleton->cameraZoom);
 
@@ -6450,17 +6698,17 @@ void GameWorld::combineBuffers ()
 		singleton->bindFBO("combineFBO");
 		singleton->sampleFBO("pagesFBO",0);
 		singleton->sampleFBO("grassFBO",2);
-		singleton->sampleFBO("geomFBO",4);
+		//singleton->sampleFBO("geomFBO",4);
 
 
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		
 		singleton->drawFSQuad(1.0f);
 
-
-		singleton->unsampleFBO("pagesFBO",0);
+		//singleton->unsampleFBO("geomFBO",4);
 		singleton->unsampleFBO("grassFBO",2);
-		singleton->unsampleFBO("geomFBO",4);
+		singleton->unsampleFBO("pagesFBO",0);
+		
 		singleton->unbindFBO();
 		singleton->unbindShader();
 	}
@@ -6476,7 +6724,7 @@ void GameWorld::renderGeom ()
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDimHalf));
 		
 		singleton->bindFBO("geomFBO");
 		//singleton->sampleFBO("pagesFBO");
@@ -6486,22 +6734,49 @@ void GameWorld::renderGeom ()
 		//remember 2x radius
 
 
+		/*
+
 		if (singleton->activeObject == E_OBJ_LIGHT) { //  || activeObject == E_OBJ_NONE singleton->activeObject == E_OBJ_CAMERA || 
 
 		}
 		else {
 
+			
 			if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
 				singleton->setShaderFloat("matVal", 5.0f);
-				singleton->drawCubeCentered(lastUnitPos, (singleton->curBrushRad)*(singleton->unitSize)  );
+				singleton->drawCubeCentered(lastUnitPos, (singleton->curBrushRad)*(singleton->unitSizeInPixels)  );
 			}
+			
 
 		}
+		*/
 
-		
-		singleton->setShaderFloat("matVal", 4.0f);
-		singleton->drawCubeCentered(singleton->lightPos,32.0);
+		if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
+			singleton->setShaderFloat("matVal", 5.0f);
+			singleton->drawCubeCentered(lastUnitPos, (singleton->curBrushRad)*(singleton->unitSizeInPixels)  );
+		}
 
+		glClear(GL_DEPTH_BUFFER_BIT);
+
+
+
+
+		if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
+			singleton->setShaderFloat("matVal", 6.0f);
+			singleton->drawCubeCentered(lastUnitPos, (singleton->curBrushRad)*(singleton->unitSizeInPixels)  );
+		}
+		else {
+			if (singleton->showUI) {
+				singleton->setShaderFloat("matVal", 4.0f);
+				singleton->drawCubeCentered(singleton->lightPos,32.0);
+
+				singleton->setShaderFloat("matVal", 5.0f);
+				singleton->drawCubeCentered(singleton->fogPos,32.0);
+			}	
+		}
+
+
+			
 
 		
 
@@ -6530,17 +6805,26 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 		selMod = 0.0f;
 
+		/*
+		if (brushAction == E_BRUSH_ADD) {
+			fPixelWorldCoords.addXYZ(0.0,0.0,radius*singleton->unitSizeInPixels);
+		}
+		if (brushAction == E_BRUSH_SUB) {
+			fPixelWorldCoords.addXYZ(0.0,0.0,-radius*singleton->unitSizeInPixels);
+		}
+		*/
+
 		
 
-		fPixelWorldCoords.addXYZ(selMod);
+		
 
 
-		int iw = gwSize.getIX();
-		int jw = gwSize.getIY();
-		int kw = gwSize.getIZ();
+		int iw = worldSizeInPages.getIX();
+		int jw = worldSizeInPages.getIY();
+		int kw = worldSizeInPages.getIZ();
 		int ind;
 		int ind2;
-		int pageSizeMult = iPageSize*(singleton->bufferMult);
+		int pageSizeMult = visPageSizeInUnits*(singleton->bufferMult);
 
 
 		int i, j, k, m, n, o, p;
@@ -6549,16 +6833,14 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 		int jj;
 		int kk;
 
-		int pixelPS = (singleton->unitSize*singleton->iPageSize);
-
-		//int newIRS = iRSize*singleton->unitScale;
+		int pixelPS = (singleton->unitSizeInPixels*singleton->visPageSizeInUnits);
 
 
 
 		lastUnitPos.copyFrom(&fPixelWorldCoords);
-		lastUnitPos.intDivXYZ(singleton->unitSize);
-		lastUnitPos.multXYZ(singleton->unitSize);
-		lastUnitPos.setFW(singleton->unitSize);
+		lastUnitPos.intDivXYZ(singleton->unitSizeInPixels);
+		lastUnitPos.multXYZ(singleton->unitSizeInPixels);
+		lastUnitPos.setFW(singleton->unitSizeInPixels);
 
 		lastPagePos.copyFrom(&fPixelWorldCoords);
 		lastPagePos.intDivXYZ(pixelPS);
@@ -6567,14 +6849,14 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 		bool changes = false;
 
-		int newRad = 2 + radius/iPageSize;
+		int newRad = 2 + radius/visPageSizeInUnits;
 
 
 		pagePos.copyFrom(&fPixelWorldCoords);
 		unitPos.copyFrom(&fPixelWorldCoords);
 
 		pagePos.intDivXYZ( pixelPS );
-		unitPos.intDivXYZ( singleton->unitSize );
+		unitPos.intDivXYZ( singleton->unitSizeInPixels );
 
 
 		unitPosMin.copyFrom(&unitPos);
@@ -6584,57 +6866,12 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 		unitPosMax.addXYZ((float)radius, 1.0f);
 
 
-		switch(brushAction) {
-			case E_BRUSH_ADD:
-
-			break;
-			case E_BRUSH_SUB:
-
-			break;
-			case E_BRUSH_MOVE:
-
-
-
-				return;
-			break;
-			
+		if (brushAction == E_BRUSH_MOVE) {
+			return;
 		}
 
 
 
-/*
-
-    	kk = k;//+camPagePos.getIZ();
-
-		for (j = -(loadRad); j <= (loadRad); j++) {
-			jj = j+camPagePos.getIY();
-
-			for (i = -(loadRad); i <= (loadRad); i++) {
-				ii = i+camPagePos.getIX();
-
-				
-				
-
-				if ( checkBounds(ii,jj,kk) ) {
-
-
-
-					ind = kk*jw*iw + jj*iw + ii;
-
-					curPos.setIXYZ(ii*iPageSize,jj*iPageSize,kk*iPageSize);
-
-					
-
-
-					if (worldData[ind] == NULL) {
-
-						#ifdef DEBUG_MODE
-						doTrace("E_STATE_INIT_LAUNCH");
-						#endif
-
-						worldData[ind] = new GamePage();
-						worldData[ind]->init(singleton, iPageSize, &curPos, iRSize*2);
-*/
 		
 		for (m = 0; m < 2; m++) {
 			for (i = -newRad; i <= newRad; i++) {
@@ -6653,9 +6890,10 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 							if (worldData[ind] == NULL) {
 
-								curPos.setIXYZ(ii*iPageSize,jj*iPageSize,kk*iPageSize);
+								curPos.setIXYZ(ii*visPageSizeInUnits,jj*visPageSizeInUnits,kk*visPageSizeInUnits);
 								worldData[ind] = new GamePage();
-								worldData[ind]->init(singleton, iPageSize, &curPos, iRSize*2);
+								worldData[ind]->init(singleton, &curPos);
+								worldData[ind]->createSimplexNoise();
 
 								//doTrace("created new page");
 								//worldData[ind]->curState = E_STATE_LENGTH;
@@ -6684,15 +6922,11 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 									(startBounds.getFY() > endBounds.getFY()) ||
 									(startBounds.getFZ() > endBounds.getFZ())
 								) {
-									doTrace("out of start bounds");
+									
 								}
 								else {
 
-									/*
-									if (endBounds.getIZ() >= singleton->maxHeightInUnits) {
-										endBounds.setIZ(singleton->maxHeightInUnits - 1);
-									}
-									*/
+									
 
 
 									for (n = startBounds.getIX(); n < endBounds.getIX(); n++) {
@@ -6719,11 +6953,11 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 														if (m == 0) {
 
 
-															if (brushAction == E_BRUSH_SUB) { // || p >= singleton->maxHeightInUnits-2) {
+															if (brushAction == E_BRUSH_SUB || p >= singleton->maxHeightInUnits) {
 																worldData[ind]->volData[ind2] &= (255<<16)|(255<<8)|(255);
 															}
 															else {
-																worldData[ind]->volData[ind2] |= (127<<24);
+																worldData[ind]->volData[ind2] |= (255<<24);
 															}
 
 															worldData[ind]->isDirty = true;
@@ -6740,9 +6974,6 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 													}
 
 												}
-												else {
-													doTrace("out of tempvec bounds");
-												}
 
 
 											}
@@ -6757,9 +6988,6 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 							}
 							
-						}
-						else {
-							doTrace("checkbounds failed");
 						}
 
 
@@ -6795,30 +7023,30 @@ void GameWorld::renderWorldSpace ()
 		singleton->worldToScreen(&screenCoords, &(singleton->lightPos));
 
 		singleton->bindShader("WorldSpaceShader");
-		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
-		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
-		singleton->setShaderfVec3("lightPosWS", &(singleton->lightPos));
-
-		singleton->setShaderfVec2("lightPosSS", &screenCoords);
-		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim) );
-
-
 		
+
 		singleton->bindFBO("worldSpaceFBO");
 		singleton->sampleFBO("pagesFBO",0);
 		singleton->sampleFBO("geomFBO",2);
 
 		
-
-
 		//MUST BE CALLED AFTER FBO IS BOUND
 		singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
+		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
+		singleton->setShaderfVec4("fogPos", &(singleton->fogPos));
+		singleton->setShaderfVec3("lightPosWS", &(singleton->lightPos));
+		singleton->setShaderfVec2("lightPosSS", &screenCoords);
+		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDimHalf) );
+
 
 		singleton->drawFSQuad(1.0f);
+
 		
-		singleton->unsampleFBO("pagesFBO",0);
 		singleton->unsampleFBO("geomFBO",2);
+		singleton->unsampleFBO("pagesFBO",0);
+		
 
 		singleton->unbindFBO();
 		singleton->unbindShader();
@@ -6847,9 +7075,11 @@ void GameWorld::renderGrass ()
 		singleton->bindShader("GrassShader");
 		
 		singleton->setShaderFloat("curTime", curTime);
+		singleton->setShaderFloat("grassHeight", singleton->grassHeight);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDimHalf));
+
 		
 		singleton->bindFBO("grassFBO");
 		singleton->sampleFBO("pagesFBO");
@@ -6870,7 +7100,7 @@ void GameWorld::renderGrass ()
 void GameWorld::postProcess ()
                            {
 
-
+		// NOTE: ALWAYS UNSAMPLE IN REVERSE ORDER!!!
 
 
 		//singleton->drawFBO("worldSpaceFBO", 0, 1.0 );
@@ -6883,25 +7113,31 @@ void GameWorld::postProcess ()
 		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
 		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
 		singleton->setShaderfVec3("lightPosWS", &(singleton->lightPos));
+		singleton->setShaderfVec4("fogPos", &(singleton->fogPos));
+		singleton->setShaderfVec4("activeObjectPos", &(singleton->activeObjectPos));
 		singleton->setShaderfVec2("lightPosSS", &screenCoords);
-		singleton->setShaderfVec4("curWorldPos", &(singleton->activeObjPos) );
 		singleton->setShaderfVec4("lastUnitPos", &(lastUnitPos) );
 		singleton->setShaderfVec4("lastPagePos", &(lastPagePos) );
 
+
+
+
 		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDimHalf));
 		singleton->setShaderFloat("diskOn",singleton->diskOn);
 		singleton->setShaderFloat("curTime", singleton->curTime);
 
 		
 		singleton->bindFBO("resultFBO");
-		singleton->sampleFBO("combineFBO");
+		singleton->sampleFBO("combineFBO",0);
+		singleton->sampleFBO("geomFBO", 2);
 
 		//MUST BE CALLED AFTER FBO IS BOUND
 		singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 
 		singleton->drawFSQuad(1.0f);
-		singleton->unsampleFBO("combineFBO");
+		singleton->unsampleFBO("geomFBO", 2);
+		singleton->unsampleFBO("combineFBO",0);
 		singleton->unbindFBO();
 		singleton->unbindShader();
 

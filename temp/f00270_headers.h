@@ -8,10 +8,14 @@ class Singleton
 {
 public:
   E_OBJ activeObject;
+  E_OBJ tempObj;
   bool (keyDownArr) [MAX_KEYS];
   bool wsBufferInvalid;
   int curBrushRad;
   float diskOn;
+  float grassHeight;
+  bool showUI;
+  bool isBare;
   GLuint volTris;
   GLuint grassTris;
   vector <string> shaderStrings;
@@ -29,10 +33,9 @@ public:
   int baseH;
   E_MOUSE_STATE mouseState;
   int scaleFactor;
-  int iRSize;
-  int iPageSize;
-  int unitSize;
-  int unitScale;
+  int visPageSizeInPixels;
+  int visPageSizeInUnits;
+  int unitSizeInPixels;
   int bufferMult;
   int maxHeightInUnits;
   int extraRad;
@@ -48,13 +51,13 @@ public:
   bool ctrlPressed;
   bool altPressed;
   float cameraZoom;
+  FIVector4 activeObjectPos;
   FIVector4 minBoundsInPixels;
   FIVector4 maxBoundsInPixels;
   FIVector4 mouseUpPD;
   FIVector4 mouseDownPD;
   FIVector4 mouseMovePD;
-  FIVector4 activeObjPos;
-  FIVector4 gwSize;
+  FIVector4 worldSizeInPages;
   FIVector4 cameraPos;
   FIVector4 lightPos;
   FIVector4 mouseStart;
@@ -64,12 +67,11 @@ public:
   int shadersAreLoaded;
   int readyToRecompile;
   FIVector4 bufferDim;
+  FIVector4 bufferDimHalf;
   bool lbDown;
   bool rbDown;
   bool mbDown;
-  float seedX;
-  float seedY;
-  float seedZ;
+  FIVector4 worldSeed;
   Timer myTimer;
   float curTime;
   float lastTime;
@@ -90,6 +92,7 @@ public:
   GameWorld * gw;
   int lastPosX;
   int lastPosY;
+  FIVector4 fogPos;
   static void qNormalizeAngle (int & angle);
   void setupLookups ();
   void perspectiveProjection ();
@@ -150,6 +153,20 @@ public:
 };
 #undef LZZ_INLINE
 #endif
+// f00310_pooledresource.e
+//
+
+#ifndef LZZ_f00310_pooledresource_e
+#define LZZ_f00310_pooledresource_e
+#define LZZ_INLINE inline
+class PooledResource
+{
+public:
+  PooledResource ();
+  void init ();
+};
+#undef LZZ_INLINE
+#endif
 // f00350_gamepage.e
 //
 
@@ -159,19 +176,22 @@ public:
 class GamePage : public Poco::Runnable
 {
 public:
+  int threshVal;
   int iDim;
-  FIVector4 iOff;
+  FIVector4 offsetInUnits;
   int iVolumeSize;
-  int iRSize2;
   uint * volData;
   Singleton * singleton;
   FBOSet * fboSet;
   uint volID;
   uint volIDLinear;
+  int maxHeightInUnits;
   int totLenO2;
   int totLenVisO2;
+  FIVector4 worldSeed;
   bool isDirty;
-  float unitSize;
+  bool threadRunning;
+  float unitSizeInPixels;
   E_STATES curState;
   E_STATES nextState;
   FIVector4 worldMin;
@@ -180,7 +200,7 @@ public:
   FIVector4 worldUnitMax;
   E_FILL_STATE fillState;
   GamePage ();
-  void init (Singleton * _singleton, int _iDim, FIVector4 * _iOff, int _iRSize2);
+  void init (Singleton * _singleton, FIVector4 * _offsetInUnits);
   uint NumberOfSetBits (uint i);
   uint clamp (uint val);
   void createSimplexNoise ();
@@ -201,15 +221,16 @@ class GameWorld
 {
 public:
   int pageCount;
-  int iPageSize;
+  int visPageSizeInUnits;
   int iVolumeSize;
   int ((diagrams) [E_RENDER_LENGTH]) [E_STATE_LENGTH];
   int * curDiagram;
   int renderMethod;
   bool doDrawFBO;
   bool lastProcResult;
+  vector <int> ocThreads;
   FIVector4 screenCoords;
-  FIVector4 gwSize;
+  FIVector4 worldSizeInPages;
   FIVector4 curPos;
   FIVector4 camPagePos;
   FIVector4 iPixelWorldCoords;
@@ -226,7 +247,9 @@ public:
   GamePage * * worldData;
   int iBufferSize;
   Poco::ThreadPool threadpool;
-  int iRSize;
+  int maxThreads;
+  int availThreads;
+  int visPageSizeInPixels;
   GameWorld ();
   bool checkBounds (int i, int j, int k);
   void resetToState (E_STATES resState);

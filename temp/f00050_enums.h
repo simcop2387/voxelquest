@@ -59,6 +59,8 @@ enum E_BRUSH {
     E_BRUSH_LENGTH
 };
 
+
+
 ////////////////////////////////////////////////////
 
 //    DONT FORGET SEMICOLONS!
@@ -82,8 +84,11 @@ enum E_FILL_STATE {
 
 enum E_OBJ {
     E_OBJ_NONE,
-    E_OBJ_CAMERA,
+    E_OBJ_STONE,
+    E_OBJ_DIRT,
+    E_OBJ_GRASS,
     E_OBJ_LIGHT,
+    E_OBJ_FOG,
     E_OBJ_LENGTH
 };
 

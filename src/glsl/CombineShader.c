@@ -4,8 +4,8 @@ uniform sampler2D Texture1;
 uniform sampler2D Texture2;
 uniform sampler2D Texture3;
 
-uniform sampler2D Texture4;
-uniform sampler2D Texture5;
+//uniform sampler2D Texture4;
+//uniform sampler2D Texture5;
 
 uniform float cameraZoom;
 
@@ -55,16 +55,26 @@ void main() {
     vec4 tex3 = texture2D(Texture3, TexCoord0 );
 
     // geom
-    vec4 tex4 = texture2D(Texture4, TexCoord0 );
-    vec4 tex5 = texture2D(Texture5, TexCoord0 );
+    //vec4 tex4 = texture2D(Texture4, TexCoord0 );
+    //vec4 tex5 = texture2D(Texture5, TexCoord0 );
 
 
     float bh1 = unpack16(tex0.rg);//tex0.r+tex0.g*255.0;
     float bh2 = unpack16(tex2.rg);// + 50.0;//tex2.r+tex2.g*255.0 + 1.0;
-    float bh3 = unpack16(tex4.rg);//tex4.r+tex4.g*255.0;
+    //float bh3 = unpack16(tex4.rg);//tex4.r+tex4.g*255.0;
 
 
+    if (bh1 > bh2) {
+        gl_FragData[0] = tex0;
+        gl_FragData[1] = tex1;
+    }
+    else {
+        gl_FragData[0] = tex2;
+        gl_FragData[1] = tex3;
+    }
 
+    
+    /*
     if (bh2 > bh1) {
         if (bh3 > bh2) {
             gl_FragData[0] = tex4;
@@ -85,6 +95,7 @@ void main() {
             gl_FragData[1] = tex1;
         }
     }
+    */
 
     //gl_FragData[0] = mix(tex0,tex4,isGeom);
     //gl_FragData[1] = mix(tex1,tex5,isGeom);

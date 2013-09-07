@@ -7,7 +7,7 @@ public:
 	int pageCount;
 
 	
-	int iPageSize;
+	int visPageSizeInUnits;
 	int iVolumeSize;
 	int diagrams[E_RENDER_LENGTH][E_STATE_LENGTH];
 	int* curDiagram;
@@ -15,9 +15,11 @@ public:
 	bool doDrawFBO;
 
 	bool lastProcResult;
+
+	vector<int> ocThreads;
 	
 	FIVector4 screenCoords;
-	FIVector4 gwSize;
+	FIVector4 worldSizeInPages;
 	FIVector4 curPos;
 	FIVector4 camPagePos;
 	FIVector4 iPixelWorldCoords;
@@ -38,7 +40,10 @@ public:
 	
 	Poco::ThreadPool threadpool;
 
-	int iRSize;
+	int maxThreads;
+	int availThreads;
+
+	int visPageSizeInPixels;
 
 
 	GameWorld()
@@ -59,9 +64,9 @@ public:
 		if (i < 0) {res = false;}
 		if (j < 0) {res = false;}
 		if (k < 0) {res = false;}
-		if (i >= gwSize.getIX()) {res = false;}
-		if (j >= gwSize.getIY()) {res = false;}
-		if (k >= gwSize.getIZ()) {res = false;}
+		if (i >= worldSizeInPages.getIX()) {res = false;}
+		if (j >= worldSizeInPages.getIY()) {res = false;}
+		if (k >= worldSizeInPages.getIZ()) {res = false;}
 
 		return res;
 	}
@@ -69,6 +74,9 @@ public:
 
 	void resetToState(E_STATES resState) {
 		int i;
+
+		threadpool.joinAll();
+
 		for (i = 0; i < iVolumeSize; i++) {
 			if (worldData[i]) {
 				if( worldData[i]->curState > resState) {
@@ -89,17 +97,25 @@ public:
 
 	void init(Singleton* _singleton) {
 
-		pageCount = 0;
-
-		lastProcResult = true;
-
-
 		#ifdef DEBUG_MODE
 		pushTrace("GameWorld init");
 		#endif
 
 		int i;
 		int j;
+
+		pageCount = 0;
+		lastProcResult = true;
+		maxThreads = 7;
+		availThreads = maxThreads;
+
+		for (i = 0; i < maxThreads; i++) {
+			ocThreads.push_back(-1);
+		}
+
+		
+
+		
 
 		doDrawFBO = false;
 
@@ -111,9 +127,9 @@ public:
 
 		renderMethod = (int)E_RENDER_VOL;
 		singleton = _singleton;
-		gwSize.copyFrom( &(singleton->gwSize) );
+		worldSizeInPages.copyFrom( &(singleton->worldSizeInPages) );
 
-		iRSize = singleton->iRSize;
+		visPageSizeInPixels = singleton->visPageSizeInPixels;
 
 	    diagrams[E_RENDER_VOL][E_STATE_INIT_END] = E_STATE_CREATESIMPLEXNOISE_LAUNCH;
 		diagrams[E_RENDER_VOL][E_STATE_CREATESIMPLEXNOISE_END] = E_STATE_COPYTOTEXTURE_LAUNCH;
@@ -122,14 +138,13 @@ public:
 
 		curDiagram = diagrams[renderMethod];
 
-		iPageSize = singleton->iPageSize;
+		visPageSizeInUnits = singleton->visPageSizeInUnits;
 
-		iVolumeSize = gwSize.getIX()*gwSize.getIY()*gwSize.getIZ();
+		iVolumeSize = worldSizeInPages.getIX()*worldSizeInPages.getIY()*worldSizeInPages.getIZ();
 		
 	    worldData = new GamePage*[iVolumeSize];
 	    
-	    
-		singleton->cameraPos.setIXY(2028, 2048);	    
+	      
 
 		
 		for (i = 0; i < iVolumeSize; i++) {
@@ -146,6 +161,7 @@ public:
 
 
 		bool procResult = processPages();
+		bool doRenderGeom = false;
 
 
 		if ( (lastProcResult != procResult) && (procResult == false)  ) {
@@ -159,7 +175,7 @@ public:
 			
 			if ( (singleton->grassState != E_GRASS_STATE_ANIM) ) {
 				renderGrass();
-
+				doRenderGeom = true;
 
 			}
 
@@ -168,6 +184,7 @@ public:
 
 		if (singleton->grassState == E_GRASS_STATE_ANIM) {
 			renderGrass();
+			doRenderGeom = true;
 			bufferInvalid = true;
 		}
 
@@ -175,9 +192,15 @@ public:
 		if (procResult || changesMade || bufferInvalid || singleton->rbDown || singleton->lbDown) {
 
 
+			if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
+				doRenderGeom = true;
+			}
 
-			renderGeom();
-			combineBuffers();
+			if (doRenderGeom) {
+				renderGeom();
+				combineBuffers();
+			}
+			
 
 			glClearColor(0.6,0.6,0.7,0.0);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -199,14 +222,14 @@ public:
 
 
 		
-
+		int counter;
 		int i, j, k;
 		int res;
 		int ind;
 
-		int iw = gwSize.getIX();
-	    int jw = gwSize.getIY();
-	    int kw = gwSize.getIZ();
+		int iw = worldSizeInPages.getIX();
+	    int jw = worldSizeInPages.getIY();
+	    int kw = worldSizeInPages.getIZ();
 
 	    int ii;
 	    int jj;
@@ -218,7 +241,7 @@ public:
 
 
 	    camPagePos.copyFrom( &(singleton->cameraPos) );
-		camPagePos.intDivXYZ(iRSize);
+		camPagePos.intDivXYZ(visPageSizeInPixels);
 
 	    int curInd = 0;
 		
@@ -231,14 +254,43 @@ public:
 	    int changeCount = 0;
 	    int maxChanges = 32;
 
-	    if (singleton->lbDown) {
+	    if (singleton->lbDown || singleton->rbDown) {
+	    	loadRad = 1;
+	    	//return false;
+	    }
+	    
+
+
+	    // check for threads to free
+	    if (availThreads < maxThreads) {
+	    	for (i = 0; i < ocThreads.size(); i++) {
+	    		if ( ocThreads[i] == -1) {
+	    			// already freed
+	    		}
+	    		else{
+	    			if ( worldData[ocThreads[i]] == NULL ) {
+	    				// page was destroyed, free thread
+
+	    				ocThreads[i] = -1;
+	    				availThreads++;
+	    			}
+	    			else {
+	    				if (worldData[ocThreads[i]]->threadRunning) {
+
+	    				}
+	    				else {
+	    					ocThreads[i] = -1;
+	    					availThreads++;
+	    				}
+	    			}
+	    		}
+	    	}
+	    }
+
+	    if (availThreads == 0) {
 	    	return false;
 	    }
 
-	    if ( singleton->rbDown) {
-	    	return false;
-	    }
-	    
 
 		for (k = 0; k < singleton->maxH; k++) {
 	    //for (k = -loadRad; k <= loadRad; k++) {
@@ -259,7 +311,7 @@ public:
 
 						ind = kk*jw*iw + jj*iw + ii;
 
-						curPos.setIXYZ(ii*iPageSize,jj*iPageSize,kk*iPageSize);
+						curPos.setIXYZ(ii*visPageSizeInUnits,jj*visPageSizeInUnits,kk*visPageSizeInUnits);
 
 						
 
@@ -271,7 +323,7 @@ public:
 							#endif
 
 							worldData[ind] = new GamePage();
-							worldData[ind]->init(singleton, iPageSize, &curPos, iRSize*2);
+							worldData[ind]->init(singleton, &curPos);
 
 							pageCount++;
 							changeCount++;
@@ -280,7 +332,30 @@ public:
 						}
 						else {
 
+							
+							/*
+
+							if (worldData[ind]->curState == E_STATE_CREATESIMPLEXNOISE_END_NOT_PARTIAL) {
+								availThreads++;
+								if (availThreads > maxThreads) {
+									availThreads = maxThreads;
+								}
+								worldData[ind]->curState = E_STATE_LENGTH;
+							}
+
+							if (worldData[ind]->curState == E_STATE_CREATESIMPLEXNOISE_END_PARTIAL) {
+								availThreads++;
+								if (availThreads > maxThreads) {
+									availThreads = maxThreads;
+								}
+								worldData[ind]->curState = E_STATE_CREATESIMPLEXNOISE_END;
+								
+							}
+
+							*/
+
 							nState = (E_STATES)curDiagram[worldData[ind]->curState];
+
 
 							switch(nState) {
 	                            case E_STATE_CREATESIMPLEXNOISE_LAUNCH:
@@ -289,20 +364,44 @@ public:
 	                            	doTrace("E_STATE_CREATESIMPLEXNOISE_LAUNCH");
 	                            	#endif
 
-	                            	worldData[ind]->nextState = nState;
+	                            	
 
-	                            	if ( threadpool.available() > 1 ) {
-
-	                            		try {
-	                            			threadpool.start(*worldData[ind]);
-	                            		}
-	                            		catch (SystemException & exc) {
-	                            			doTrace("MEM EXCEPTION");
-	                            		}
+	                            	if ( availThreads > 0 ) {
 
 	                            		
 
-	                            		changeCount++;
+	                            		counter = 0;
+	                            		while (ocThreads[counter] != -1) {
+	                            			counter++;
+	                            			if (counter >= maxThreads) {
+	                            				break;
+	                            			}
+	                            		}
+	                            		if (counter >= maxThreads) {
+	                            			
+	                            		}
+	                            		else {
+
+
+	                            			ocThreads[counter] = ind;
+	                            			
+	                            			availThreads--;
+
+	                            			worldData[ind]->nextState = nState;
+
+	                            			try {
+	                            				threadpool.start(*worldData[ind]);
+	                            			}
+	                            			catch (SystemException & exc) {
+	                            				doTrace("MEM EXCEPTION");
+	                            			}
+
+	                            			changeCount++;
+
+	                            		}
+
+
+	                            		
 	                            	}
 	                            	else {
 	                            		return cmade;
@@ -314,6 +413,8 @@ public:
 									
 								break;
 								case E_STATE_COPYTOTEXTURE_LAUNCH:
+
+									
 
 									#ifdef DEBUG_MODE
 									doTrace("E_STATE_COPYTOTEXTURE_LAUNCH");
@@ -385,18 +486,18 @@ public:
 		int res;
 		int ind;
 
-		int iw = gwSize.getIX();
-	    int jw = gwSize.getIY();
-	    int kw = gwSize.getIZ();
+		int iw = worldSizeInPages.getIX();
+	    int jw = worldSizeInPages.getIY();
+	    int kw = worldSizeInPages.getIZ();
 
 	    int ii;
 	    int jj;
 	    int kk;
 
-	    int loadRad = singleton->maxW;
+	    int loadRad = 12;//singleton->maxW;
 
 	    camPagePos.copyFrom( &(singleton->cameraPos) );
-	    camPagePos.intDivXYZ(iRSize);
+	    camPagePos.intDivXYZ(visPageSizeInPixels);
 
 	    int curInd = 0;
 		
@@ -474,8 +575,8 @@ public:
 
 	void drawPage(GamePage* gp, int dx, int dy, int dz) {
 
-		int pitchSrc = gp->iRSize2*2;//*(singleton->unitScale);
-		int pitchSrc2 = gp->iRSize2*2/2;
+		int pitchSrc = (singleton->visPageSizeInPixels*2);
+		int pitchSrc2 = (singleton->visPageSizeInPixels*2)/2;
 
 		int dxmod = dx*pitchSrc2 - singleton->cameraPos.getIX();
 		int dymod = dy*pitchSrc2 - singleton->cameraPos.getIY();
@@ -495,8 +596,8 @@ public:
 		
 		// TODO: should be baseW/H?
 
-		float sx = singleton->bufferDim.getFX();
-		float sy = singleton->bufferDim.getFY();
+		float sx = singleton->bufferDimHalf.getFX();
+		float sy = singleton->bufferDimHalf.getFY();
 
 		float myZoom = std::min(1.0f,singleton->cameraZoom);
 
@@ -543,17 +644,17 @@ public:
 		singleton->bindFBO("combineFBO");
 		singleton->sampleFBO("pagesFBO",0);
 		singleton->sampleFBO("grassFBO",2);
-		singleton->sampleFBO("geomFBO",4);
+		//singleton->sampleFBO("geomFBO",4);
 
 
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		
 		singleton->drawFSQuad(1.0f);
 
-
-		singleton->unsampleFBO("pagesFBO",0);
+		//singleton->unsampleFBO("geomFBO",4);
 		singleton->unsampleFBO("grassFBO",2);
-		singleton->unsampleFBO("geomFBO",4);
+		singleton->unsampleFBO("pagesFBO",0);
+		
 		singleton->unbindFBO();
 		singleton->unbindShader();
 	}
@@ -570,7 +671,7 @@ public:
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDimHalf));
 		
 		singleton->bindFBO("geomFBO");
 		//singleton->sampleFBO("pagesFBO");
@@ -580,22 +681,49 @@ public:
 		//remember 2x radius
 
 
+		/*
+
 		if (singleton->activeObject == E_OBJ_LIGHT) { //  || activeObject == E_OBJ_NONE singleton->activeObject == E_OBJ_CAMERA || 
 
 		}
 		else {
 
+			
 			if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
 				singleton->setShaderFloat("matVal", 5.0f);
-				singleton->drawCubeCentered(lastUnitPos, (singleton->curBrushRad)*(singleton->unitSize)  );
+				singleton->drawCubeCentered(lastUnitPos, (singleton->curBrushRad)*(singleton->unitSizeInPixels)  );
 			}
+			
 
 		}
+		*/
 
-		
-		singleton->setShaderFloat("matVal", 4.0f);
-		singleton->drawCubeCentered(singleton->lightPos,32.0);
+		if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
+			singleton->setShaderFloat("matVal", 5.0f);
+			singleton->drawCubeCentered(lastUnitPos, (singleton->curBrushRad)*(singleton->unitSizeInPixels)  );
+		}
 
+		glClear(GL_DEPTH_BUFFER_BIT);
+
+
+
+
+		if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
+			singleton->setShaderFloat("matVal", 6.0f);
+			singleton->drawCubeCentered(lastUnitPos, (singleton->curBrushRad)*(singleton->unitSizeInPixels)  );
+		}
+		else {
+			if (singleton->showUI) {
+				singleton->setShaderFloat("matVal", 4.0f);
+				singleton->drawCubeCentered(singleton->lightPos,32.0);
+
+				singleton->setShaderFloat("matVal", 5.0f);
+				singleton->drawCubeCentered(singleton->fogPos,32.0);
+			}	
+		}
+
+
+			
 
 		
 
@@ -625,17 +753,26 @@ public:
 
 		selMod = 0.0f;
 
+		/*
+		if (brushAction == E_BRUSH_ADD) {
+			fPixelWorldCoords.addXYZ(0.0,0.0,radius*singleton->unitSizeInPixels);
+		}
+		if (brushAction == E_BRUSH_SUB) {
+			fPixelWorldCoords.addXYZ(0.0,0.0,-radius*singleton->unitSizeInPixels);
+		}
+		*/
+
 		
 
-		fPixelWorldCoords.addXYZ(selMod);
+		
 
 
-		int iw = gwSize.getIX();
-		int jw = gwSize.getIY();
-		int kw = gwSize.getIZ();
+		int iw = worldSizeInPages.getIX();
+		int jw = worldSizeInPages.getIY();
+		int kw = worldSizeInPages.getIZ();
 		int ind;
 		int ind2;
-		int pageSizeMult = iPageSize*(singleton->bufferMult);
+		int pageSizeMult = visPageSizeInUnits*(singleton->bufferMult);
 
 
 		int i, j, k, m, n, o, p;
@@ -644,16 +781,14 @@ public:
 		int jj;
 		int kk;
 
-		int pixelPS = (singleton->unitSize*singleton->iPageSize);
-
-		//int newIRS = iRSize*singleton->unitScale;
+		int pixelPS = (singleton->unitSizeInPixels*singleton->visPageSizeInUnits);
 
 
 
 		lastUnitPos.copyFrom(&fPixelWorldCoords);
-		lastUnitPos.intDivXYZ(singleton->unitSize);
-		lastUnitPos.multXYZ(singleton->unitSize);
-		lastUnitPos.setFW(singleton->unitSize);
+		lastUnitPos.intDivXYZ(singleton->unitSizeInPixels);
+		lastUnitPos.multXYZ(singleton->unitSizeInPixels);
+		lastUnitPos.setFW(singleton->unitSizeInPixels);
 
 		lastPagePos.copyFrom(&fPixelWorldCoords);
 		lastPagePos.intDivXYZ(pixelPS);
@@ -662,14 +797,14 @@ public:
 
 		bool changes = false;
 
-		int newRad = 2 + radius/iPageSize;
+		int newRad = 2 + radius/visPageSizeInUnits;
 
 
 		pagePos.copyFrom(&fPixelWorldCoords);
 		unitPos.copyFrom(&fPixelWorldCoords);
 
 		pagePos.intDivXYZ( pixelPS );
-		unitPos.intDivXYZ( singleton->unitSize );
+		unitPos.intDivXYZ( singleton->unitSizeInPixels );
 
 
 		unitPosMin.copyFrom(&unitPos);
@@ -679,57 +814,12 @@ public:
 		unitPosMax.addXYZ((float)radius, 1.0f);
 
 
-		switch(brushAction) {
-			case E_BRUSH_ADD:
-
-			break;
-			case E_BRUSH_SUB:
-
-			break;
-			case E_BRUSH_MOVE:
-
-
-
-				return;
-			break;
-			
+		if (brushAction == E_BRUSH_MOVE) {
+			return;
 		}
 
 
 
-/*
-
-    	kk = k;//+camPagePos.getIZ();
-
-		for (j = -(loadRad); j <= (loadRad); j++) {
-			jj = j+camPagePos.getIY();
-
-			for (i = -(loadRad); i <= (loadRad); i++) {
-				ii = i+camPagePos.getIX();
-
-				
-				
-
-				if ( checkBounds(ii,jj,kk) ) {
-
-
-
-					ind = kk*jw*iw + jj*iw + ii;
-
-					curPos.setIXYZ(ii*iPageSize,jj*iPageSize,kk*iPageSize);
-
-					
-
-
-					if (worldData[ind] == NULL) {
-
-						#ifdef DEBUG_MODE
-						doTrace("E_STATE_INIT_LAUNCH");
-						#endif
-
-						worldData[ind] = new GamePage();
-						worldData[ind]->init(singleton, iPageSize, &curPos, iRSize*2);
-*/
 		
 		for (m = 0; m < 2; m++) {
 			for (i = -newRad; i <= newRad; i++) {
@@ -748,9 +838,10 @@ public:
 
 							if (worldData[ind] == NULL) {
 
-								curPos.setIXYZ(ii*iPageSize,jj*iPageSize,kk*iPageSize);
+								curPos.setIXYZ(ii*visPageSizeInUnits,jj*visPageSizeInUnits,kk*visPageSizeInUnits);
 								worldData[ind] = new GamePage();
-								worldData[ind]->init(singleton, iPageSize, &curPos, iRSize*2);
+								worldData[ind]->init(singleton, &curPos);
+								worldData[ind]->createSimplexNoise();
 
 								//doTrace("created new page");
 								//worldData[ind]->curState = E_STATE_LENGTH;
@@ -779,15 +870,11 @@ public:
 									(startBounds.getFY() > endBounds.getFY()) ||
 									(startBounds.getFZ() > endBounds.getFZ())
 								) {
-									doTrace("out of start bounds");
+									
 								}
 								else {
 
-									/*
-									if (endBounds.getIZ() >= singleton->maxHeightInUnits) {
-										endBounds.setIZ(singleton->maxHeightInUnits - 1);
-									}
-									*/
+									
 
 
 									for (n = startBounds.getIX(); n < endBounds.getIX(); n++) {
@@ -814,11 +901,11 @@ public:
 														if (m == 0) {
 
 
-															if (brushAction == E_BRUSH_SUB) { // || p >= singleton->maxHeightInUnits-2) {
+															if (brushAction == E_BRUSH_SUB || p >= singleton->maxHeightInUnits) {
 																worldData[ind]->volData[ind2] &= (255<<16)|(255<<8)|(255);
 															}
 															else {
-																worldData[ind]->volData[ind2] |= (127<<24);
+																worldData[ind]->volData[ind2] |= (255<<24);
 															}
 
 															worldData[ind]->isDirty = true;
@@ -835,9 +922,6 @@ public:
 													}
 
 												}
-												else {
-													doTrace("out of tempvec bounds");
-												}
 
 
 											}
@@ -852,9 +936,6 @@ public:
 
 							}
 							
-						}
-						else {
-							doTrace("checkbounds failed");
 						}
 
 
@@ -890,30 +971,30 @@ public:
 		singleton->worldToScreen(&screenCoords, &(singleton->lightPos));
 
 		singleton->bindShader("WorldSpaceShader");
-		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
-		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
-		singleton->setShaderfVec3("lightPosWS", &(singleton->lightPos));
-
-		singleton->setShaderfVec2("lightPosSS", &screenCoords);
-		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim) );
-
-
 		
+
 		singleton->bindFBO("worldSpaceFBO");
 		singleton->sampleFBO("pagesFBO",0);
 		singleton->sampleFBO("geomFBO",2);
 
 		
-
-
 		//MUST BE CALLED AFTER FBO IS BOUND
 		singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
+		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
+		singleton->setShaderfVec4("fogPos", &(singleton->fogPos));
+		singleton->setShaderfVec3("lightPosWS", &(singleton->lightPos));
+		singleton->setShaderfVec2("lightPosSS", &screenCoords);
+		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDimHalf) );
+
 
 		singleton->drawFSQuad(1.0f);
+
 		
-		singleton->unsampleFBO("pagesFBO",0);
 		singleton->unsampleFBO("geomFBO",2);
+		singleton->unsampleFBO("pagesFBO",0);
+		
 
 		singleton->unbindFBO();
 		singleton->unbindShader();
@@ -943,9 +1024,11 @@ public:
 		singleton->bindShader("GrassShader");
 		
 		singleton->setShaderFloat("curTime", curTime);
+		singleton->setShaderFloat("grassHeight", singleton->grassHeight);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDimHalf));
+
 		
 		singleton->bindFBO("grassFBO");
 		singleton->sampleFBO("pagesFBO");
@@ -966,7 +1049,7 @@ public:
 
 	void postProcess() {
 
-
+		// NOTE: ALWAYS UNSAMPLE IN REVERSE ORDER!!!
 
 
 		//singleton->drawFBO("worldSpaceFBO", 0, 1.0 );
@@ -979,25 +1062,31 @@ public:
 		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
 		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
 		singleton->setShaderfVec3("lightPosWS", &(singleton->lightPos));
+		singleton->setShaderfVec4("fogPos", &(singleton->fogPos));
+		singleton->setShaderfVec4("activeObjectPos", &(singleton->activeObjectPos));
 		singleton->setShaderfVec2("lightPosSS", &screenCoords);
-		singleton->setShaderfVec4("curWorldPos", &(singleton->activeObjPos) );
 		singleton->setShaderfVec4("lastUnitPos", &(lastUnitPos) );
 		singleton->setShaderfVec4("lastPagePos", &(lastPagePos) );
 
+
+
+
 		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDimHalf));
 		singleton->setShaderFloat("diskOn",singleton->diskOn);
 		singleton->setShaderFloat("curTime", singleton->curTime);
 
 		
 		singleton->bindFBO("resultFBO");
-		singleton->sampleFBO("combineFBO");
+		singleton->sampleFBO("combineFBO",0);
+		singleton->sampleFBO("geomFBO", 2);
 
 		//MUST BE CALLED AFTER FBO IS BOUND
 		singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 
 		singleton->drawFSQuad(1.0f);
-		singleton->unsampleFBO("combineFBO");
+		singleton->unsampleFBO("geomFBO", 2);
+		singleton->unsampleFBO("combineFBO",0);
 		singleton->unbindFBO();
 		singleton->unbindShader();
 

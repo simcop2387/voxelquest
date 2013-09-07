@@ -48,9 +48,10 @@ void main() {
     finalVec.z = gl_Vertex.z;//(transVert.z);
 
 
-    float hv = mix(0.5,0.0,float(matVal==4.0));
+    //float hv = mix(0.5,0.0,float(matVal == 4.0));
+    //*0.5 + hv
 
-    gl_Position = vec4(finalVec.xy, clamp( (1.0-finalVec.z/(256.0*255.0))*0.5 + hv ,0.0,1.0),gl_Vertex.w);
+    gl_Position = vec4(finalVec.xy, clamp( (1.0-finalVec.z/(256.0*255.0)) ,0.0,1.0),gl_Vertex.w);
 
 }
 
@@ -84,7 +85,7 @@ void main() {
     vec2 res = pack16(finalVec.z);
 
 
-    
+    /*
     float rad = 0.95;
     if (matVal == 4.0) {
 
@@ -99,6 +100,7 @@ void main() {
             discard;
         }
     }
+    */
     
     //float bhr = mod(finalVec.z/2.0,256.0);
     //float bhg = floor((finalVec.z)/256.0);

@@ -87,8 +87,8 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
     vec3 norm = vec3(0.0,0.0,0.0);
     vec3 norm2 = vec3(0.0,0.0,0.0);
 
-    int rad = 12;
-    int radStep = 3;
+    int rad = 6;
+    int radStep = 1;
     float frad = float(radStep);
 
     float totSteps = 0.0;

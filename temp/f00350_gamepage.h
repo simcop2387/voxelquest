@@ -7,9 +7,19 @@ GamePage::GamePage ()
                    {
 
 	}
-void GamePage::init (Singleton * _singleton, int _iDim, FIVector4 * _iOff, int _iRSize2)
-                                                                                    {
+void GamePage::init (Singleton * _singleton, FIVector4 * _offsetInUnits)
+                                                                    {
 		int i;
+		singleton = _singleton;
+
+
+		threshVal = 140;
+
+
+		threadRunning = false;
+
+
+		maxHeightInUnits = (singleton->maxHeightInUnits);
 
 		isDirty = false;
 
@@ -18,15 +28,20 @@ void GamePage::init (Singleton * _singleton, int _iDim, FIVector4 * _iOff, int _
 		curState = E_STATE_INIT_BEG;
 		nextState = E_STATE_WAIT;
 
-		singleton = _singleton;
+		
+
+		int _iDim = singleton->visPageSizeInUnits;
+
 
 
 		iDim = _iDim * (singleton->bufferMult);
-		iOff.copyFrom(_iOff);
+		offsetInUnits.copyFrom(_offsetInUnits);
 
-		iRSize2 = _iRSize2;
+		unitSizeInPixels = (float)(singleton->unitSizeInPixels);
 
-		unitSize = (float)(singleton->unitSize);
+
+		worldSeed.copyFrom(&(singleton->worldSeed));
+
 
 
 		iVolumeSize = iDim*iDim*iDim;
@@ -41,17 +56,16 @@ void GamePage::init (Singleton * _singleton, int _iDim, FIVector4 * _iOff, int _
 
 
 
-
-		worldMin.copyFrom(&iOff);
-		worldMax.copyFrom(&iOff);
+		worldMin.copyFrom(&offsetInUnits);
+		worldMax.copyFrom(&offsetInUnits);
 		worldMin.addXYZ( -totLenVisO2 );
 		worldMax.addXYZ(  totLenVisO2 );
-		worldMin.multXYZ((float)unitSize);
-		worldMax.multXYZ((float)unitSize);
+		worldMin.multXYZ((float)unitSizeInPixels);
+		worldMax.multXYZ((float)unitSizeInPixels);
 
 
-		worldUnitMin.copyFrom(&iOff);
-		worldUnitMax.copyFrom(&iOff);
+		worldUnitMin.copyFrom(&offsetInUnits);
+		worldUnitMax.copyFrom(&offsetInUnits);
 		worldUnitMin.addXYZ( -totLenO2 );
 		worldUnitMax.addXYZ(  totLenO2 );
 
@@ -81,6 +95,10 @@ uint GamePage::clamp (uint val)
 void GamePage::createSimplexNoise ()
                                   {
 
+		threadRunning = true;
+
+		// REMINDER: DO NOT ACCESS EXTERNAL POINTERS INSIDE THREAD
+
 		bool isBlank = false;
 		bool isFull = false;
 		
@@ -88,8 +106,6 @@ void GamePage::createSimplexNoise ()
 		curState = E_STATE_CREATESIMPLEXNOISE_BEG;
 
 		int i, j, k, m;
-
-		float maxGenHeight = 32.0f;
 
 		int totLen = iDim;
 
@@ -114,32 +130,28 @@ void GamePage::createSimplexNoise ()
 		float totLenO4 = totLen/4;
 		float totLen3O4 = (totLen*3)/4;
 		
-		float thresh;
+		float heightThresh;
 		float testVal;
-		float testVal2;
 
 		bool mustNotBeFull = false;
-
-		int maxHeight = (singleton->maxHeightInUnits) - 2;
-
 
 		for (j = 0; j < totLen; j++) {
 
 			ijkVals[1] = (float)j;
 
-			fy = (j - totLenO2) + iOff.getFY();
+			fy = (j - totLenO2) + offsetInUnits.getFY();
 
 			for (i = 0; i < totLen; i++) {
 
 				ijkVals[0] = (float)i;
 
-				fx = (i - totLenO2) + iOff.getFX();
+				fx = (i - totLenO2) + offsetInUnits.getFX();
 				
 				for (k = 0; k < totLen; k++) {
 
 					ijkVals[2] = (float)k;
 
-					fz = (k - totLenO2) + iOff.getFZ();
+					fz = (k - totLenO2) + offsetInUnits.getFZ();
 
 					ind = k*totLen*totLen + j*totLen + i;
 
@@ -150,14 +162,17 @@ void GamePage::createSimplexNoise ()
 					}
 					else {
 
-						thresh = (fz/maxGenHeight);
-						if (thresh > 1.0) {
-							thresh = 1.0;
+						heightThresh = (fz/ ((float)maxHeightInUnits) );
+						if (heightThresh > 1.0f) {
+							heightThresh = 1.0f;
+						}
+						if (heightThresh < 0.0f) {
+							heightThresh = 0.0f;
 						}
 
 
 
-						if (k + iOff.getIZ() >= maxHeight) {
+						if (k + offsetInUnits.getIZ() >= maxHeightInUnits) {
 							tmp = 0;
 							mustNotBeFull = true;
 						}
@@ -168,14 +183,14 @@ void GamePage::createSimplexNoise ()
 												1.0f/32.0f, //scale (frequency)
 												0.0f,
 												1.0f,
-												fx+singleton->seedX,
-												fy+singleton->seedY,
-												fz+singleton->seedZ
+												fx+worldSeed.getFX(),
+												fy+worldSeed.getFY(),
+												fz+worldSeed.getFZ()
 											);
 							
 
 							
-							tmp = clamp(testVal*255.0*(1.0-thresh*thresh*thresh));
+							tmp = clamp(testVal*255.0*(1.0-heightThresh*heightThresh*heightThresh));
 						}
 
 						
@@ -183,7 +198,7 @@ void GamePage::createSimplexNoise ()
 						if ( i >= totLenO4 && i <= totLen3O4 ) {
 							if ( j >= totLenO4 && j <= totLen3O4 ) {
 								if ( k >= totLenO4 && k <= totLen3O4 ) {
-									if (tmp > 126) {
+									if (tmp > threshVal) {
 										isBlank = false;
 									}
 									else {
@@ -251,8 +266,7 @@ void GamePage::createSimplexNoise ()
 			curState = E_STATE_CREATESIMPLEXNOISE_END;
 		}
 
-		
-
+		threadRunning = false;
 
 	}
 void GamePage::copyToTexture ()
@@ -263,7 +277,7 @@ void GamePage::copyToTexture ()
 		if (fboSet == NULL) {
 			
 			fboSet = new FBOSet();
-			fboSet->init(2,iRSize2,iRSize2,1,false);
+			fboSet->init(2,(singleton->visPageSizeInPixels)*2,(singleton->visPageSizeInPixels)*2,1,false);
 			glGenTextures(1,&volID);
 			glGenTextures(1,&volIDLinear);
 
@@ -293,19 +307,7 @@ void GamePage::copyToTexture ()
 		else {
 
 
-			/*
-			void glTexImage3D(	GLenum target,
-			 	GLint level,
-			 	GLint internalFormat,
-			 	GLsizei width,
-			 	GLsizei height,
-			 	GLsizei depth,
-			 	GLint border,
-			 	GLenum format,
-			 	GLenum type,
-			 	const GLvoid * data);
-
-			*/
+			
 
 			glBindTexture(GL_TEXTURE_3D,volID);
 				glTexSubImage3D(
@@ -347,25 +349,6 @@ void GamePage::copyToTexture ()
 				);
 			glBindTexture(GL_TEXTURE_3D,0);
 
-	
-			
-			//GLenum target,
-			//GLint level,
-			
-			//GLint xoffset,
-			//GLint yoffset,
-			//GLint zoffset,
-			
-			//GLsizei width,
-			//GLsizei height,
-			//GLsizei depth,
-			
-			//GLenum format,
-			//GLenum type,
-			
-			//const GLvoid * data
-
-
 		}
 
 		curState = E_STATE_COPYTOTEXTURE_END;
@@ -377,14 +360,25 @@ void GamePage::generateVolume ()
 		curState = E_STATE_GENERATEVOLUME_BEG;
 		
 		
-		//render 3D texture to 2D, interpolate data
-		singleton->bindShader("GenerateVolume");
+		
+		if (singleton->isBare) {
+			singleton->bindShader("GenerateVolumeBare");
+		}
+		else {
+			singleton->bindShader("GenerateVolume");
+		}
+
+		
+
+
+
 		singleton->bindFBO("volGenFBO");
 		singleton->setShaderTexture3D(volID, 0);
 		singleton->setShaderTexture3D(volIDLinear, 1);
 		singleton->setShaderTexture(singleton->lookup2to3ID, 2);
 
 		singleton->setShaderFloat("unitsPerDim", iDim);
+		singleton->setShaderFloat("threshVal", (float)threshVal);
 		singleton->setShaderfVec3("worldMin", &(worldMin));
 		singleton->setShaderfVec3("worldMax", &(worldMax));
 

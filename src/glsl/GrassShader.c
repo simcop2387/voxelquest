@@ -11,17 +11,19 @@ varying vec4 TexCoord0;
 //uniform vec3 worldMin;
 //uniform vec3 worldMax;
 
+uniform float grassHeight;
 uniform float curTime;
 uniform float cameraZoom;
 uniform vec3 cameraPos;
 uniform vec2 bufferDim;
+
 
 varying vec4 resVert;
 varying vec3 normMod;
 varying float baseHeight;
 
 
-const float grassHeight = 1.0/64.0;
+//const float grassHeight = 1.0/128.0;
 const float grassWidth = 1.0/512.0;
 
 

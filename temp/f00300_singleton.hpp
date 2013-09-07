@@ -3,6 +3,7 @@ class Singleton {
 public:
 
 	E_OBJ activeObject;
+	E_OBJ tempObj;
 
 	bool keyDownArr[MAX_KEYS];
 	bool wsBufferInvalid;
@@ -11,6 +12,10 @@ public:
 	int curBrushRad;
 
 	float diskOn;
+	float grassHeight;
+
+	bool showUI;
+	bool isBare;
 
 
 	GLuint volTris;
@@ -41,10 +46,9 @@ public:
 
 	int scaleFactor;
 
-	int iRSize;
-	int iPageSize;
-	int unitSize;
-	int unitScale;
+	int visPageSizeInPixels;
+	int visPageSizeInUnits;
+	int unitSizeInPixels;
 	int bufferMult;
 	int maxHeightInUnits;
 
@@ -69,7 +73,7 @@ public:
 	float cameraZoom;
 
 
-
+	FIVector4 activeObjectPos;
 
 	FIVector4 minBoundsInPixels;
 	FIVector4 maxBoundsInPixels;
@@ -77,9 +81,8 @@ public:
 	FIVector4 mouseUpPD;
 	FIVector4 mouseDownPD;
 	FIVector4 mouseMovePD;
-	FIVector4 activeObjPos;
 
-	FIVector4 gwSize;
+	FIVector4 worldSizeInPages;
 	FIVector4 cameraPos;
 	FIVector4 lightPos;
 
@@ -96,6 +99,7 @@ public:
 	int readyToRecompile;
 
 	FIVector4 bufferDim;
+	FIVector4 bufferDimHalf;
 
 	bool lbDown;
 	bool rbDown;
@@ -103,9 +107,7 @@ public:
 
 
 
-	float seedX;
-	float seedY;
-	float seedZ;
+	FIVector4 worldSeed;
 
 
 
@@ -139,6 +141,8 @@ public:
 	//QPoint lastPos;
 	int lastPosX;
 	int lastPosY;
+
+	FIVector4 fogPos;
 
 
 	static void qNormalizeAngle(int &angle)
@@ -622,6 +626,10 @@ public:
 
 		pushTrace("Singleton init");
 
+		showUI = true;
+		isBare = false;
+		grassHeight = 1.0/128.0;
+
 		defaultWinW = _defaultWinW/_scaleFactor;
 		defaultWinH = _defaultWinH/_scaleFactor;
 		scaleFactor = _scaleFactor;
@@ -630,28 +638,40 @@ public:
 
 		mouseState = E_MOUSE_STATE_MOVE;
 
-		unitScale = 2;
-		bufferMult = 4;
-		diskOn = 0.0f;
-		iRSize = 64;
-		iPageSize = 4;
-		gwSize.setIXYZ(128,128,32);
-		unitSize = (iRSize*unitScale)/iPageSize;
+		worldSeed.setFXYZ(
 
-		maxHeightInUnits = (gwSize.getIZ()-1)*(iPageSize);
+			genRand(5000.0f,500000.0f),
+			genRand(5000.0f,500000.0f),
+			genRand(5000.0f,500000.0f)
+		);
+
+		
+		bufferMult = 2;
+		diskOn = 0.0f;
+		visPageSizeInPixels = 128; // height of one page in pixels
+		visPageSizeInUnits = 8;
+		worldSizeInPages.setIXYZ(128,128,8);
+		unitSizeInPixels = (visPageSizeInPixels)/visPageSizeInUnits;
+		
+
+		maxH = worldSizeInPages.getIZ();
+		maxW = 4;
+
+
+		maxHeightInUnits = (worldSizeInPages.getIZ()-bufferMult)*(visPageSizeInUnits);
 
 		minBoundsInPixels.setIXYZ(0,0,0);
 		maxBoundsInPixels.setIXYZ(
-			(gwSize.getIX()-1)*unitSize*iPageSize,
-			(gwSize.getIY()-1)*unitSize*iPageSize,
-			(gwSize.getIZ()-1)*unitSize*iPageSize
+			(worldSizeInPages.getIX()-1)*unitSizeInPixels*visPageSizeInUnits,
+			(worldSizeInPages.getIY()-1)*unitSizeInPixels*visPageSizeInUnits,
+			(worldSizeInPages.getIZ()-1)*unitSizeInPixels*visPageSizeInUnits
 		);
 
 
 		wsBufferInvalid = true;
 
 		bufferDim.setIXY(defaultWinW,defaultWinH);
-
+		bufferDimHalf.setIXY(defaultWinW/2,defaultWinH/2);
 		
 
 		myTimer.start();
@@ -664,9 +684,9 @@ public:
 		lastTime = 0.0;
 
 		srand(time(0));
-		seedX = genRand(5000.0f,500000.0f);
-		seedY = genRand(5000.0f,500000.0f);
-		seedZ = genRand(5000.0f,500000.0f);
+
+		
+
 
 		int i;
 		mbDown=false;
@@ -686,8 +706,14 @@ public:
 
 		programState = E_PS_IN_GAME;
 
-		cameraPos.setFXYZ(0.0f,0.0f,0.0f);
-		lightPos.setFXYZ(2024.0f,2024.0f,2048.0f);
+
+		cameraPos.setFXYZ(2048.0, 2048.0, 512.0);
+
+		lightPos.copyFrom(&cameraPos);
+		fogPos.copyFrom(&cameraPos);
+
+		lightPos.addXYZ(0.0f, 0.0f, 0.0f);
+		fogPos.addXYZ(0.0f, 0.0f, -256.0f);
 
 	    cameraZoom = 1.0f;
 
@@ -722,11 +748,11 @@ public:
 		gw = new GameWorld();
 
 
-		maxH = 8;
-		maxW = 4;
+		
 
 		gw->init(this);
-		
+
+	
 
 
 		//gm = new GameMap();
@@ -775,6 +801,7 @@ public:
 	    shaderStrings.push_back("GrassShader");
 	    shaderStrings.push_back("CombineShader");
 	    shaderStrings.push_back("GenerateVolume");
+	    shaderStrings.push_back("GenerateVolumeBare");
 	    shaderStrings.push_back("RenderVolume");
 	    
 
@@ -1061,40 +1088,67 @@ public:
 		FIVector4 modXYZ;
 
 		if (lbDown||rbDown) {
-			if (rbDown) {  //rbDown glutGetModifiers()&GLUT_ACTIVE_SHIFT
-				modXYZ.setFZ(  dyZoom*2.0f );
-				modXYZ.setFX( -(0.0f + dxZoom/2.0f)*2.0f );
-				modXYZ.setFY( -(0.0f - dxZoom/2.0f)*2.0f );
+			if (rbDown || (glutGetModifiers()&GLUT_ACTIVE_SHIFT) ) {
+				modXYZ.setFZ(  dyZoom );
+				modXYZ.setFX( -(0.0f + dxZoom/2.0f) );
+				modXYZ.setFY( -(0.0f - dxZoom/2.0f) );
 
 			}
 			else {
-				modXYZ.setFX( -(dyZoom + dxZoom/2.0f)*2.0f );
-				modXYZ.setFY( -(dyZoom - dxZoom/2.0f)*2.0f );
+				modXYZ.setFX( -(dyZoom + dxZoom/2.0f) );
+				modXYZ.setFY( -(dyZoom - dxZoom/2.0f) );
+			}
+		}
+
+		if (glutGetModifiers()&GLUT_ACTIVE_SHIFT) {
+			grassHeight -= modXYZ.getFZ()/10000.0f;
+
+			if (grassHeight < 0.0f) {
+				grassHeight = 0.0f;
+			}
+		}
+		else {
+			switch (activeObject) {
+
+				case E_OBJ_LIGHT:
+					lightPos.addXYZRef(&modXYZ, -1.0f);
+					//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
+					activeObjectPos.setFXYZRef(&lightPos);
+				break;
+
+				case E_OBJ_FOG:
+					fogPos.addXYZRef(&modXYZ, -1.0f);
+					//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
+					activeObjectPos.setFXYZRef(&fogPos);
+				break;
+				default:
+					/*
+					if (glutGetModifiers()&GLUT_ACTIVE_SHIFT) {
+						fogPos.addXYZRef(&modXYZ);
+					}
+					else {
+						
+					}
+					*/
+
+
+					wsBufferInvalid = true;
+					cameraPos.addXYZRef(&modXYZ);
+					//cameraPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
+
+					modXYZ.setFZ(0.0f);
+					
+					lightPos.addXYZRef(&modXYZ, 1.0f);
+					fogPos.addXYZRef(&modXYZ, 1.0f);
+					//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
+					//activeObjectPos.setFXYZ(lightPos.getFX(),lightPos.getFY(),lightPos.getFZ());
+				break;
+
 			}
 		}
 
 
-		switch (activeObject) {
-
-			case E_OBJ_CAMERA:
-				wsBufferInvalid = true;
-				cameraPos.addXYZRef(&modXYZ);
-				//cameraPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-
-				modXYZ.setFZ(0.0f);
-				lightPos.addXYZRef(&modXYZ, 1.0f);
-				//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-				activeObjPos.setFXYZ(lightPos.getFX(),lightPos.getFY(),lightPos.getFZ());
-
-			break;
-
-			case E_OBJ_LIGHT:
-				lightPos.addXYZRef(&modXYZ, -1.0f);
-				//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-				activeObjPos.setFXYZ(lightPos.getFX(),lightPos.getFY(),lightPos.getFZ());
-
-			break;
-		}
+		
 
 		
 
@@ -1217,6 +1271,8 @@ public:
 
 		int enCounter;
 
+		bool restartGen = false;
+
 		//doTrace(i__s(key) );
 
 
@@ -1278,14 +1334,17 @@ public:
 			break;
 
 			case 't':
-				doShaderRefresh();
-			    gw->resetToState(E_STATE_CREATESIMPLEXNOISE_END);
-			    bufferInvalid = true;
+				restartGen = true;
+			break;
+
+			case '\t':
+				showUI = !showUI;
+				bufferInvalid = true;
 			    changesMade = true;
+
 			break;
 
 			case 'b':
-				
 
 				enCounter = (int)mouseState;
 				enCounter++;
@@ -1296,11 +1355,17 @@ public:
 				}
 
 				bufferInvalid = true;
+				changesMade = true;
 
 			break;
 
+			case 'c':
+				isBare = !isBare;
+				restartGen = true;
+			break;
+
 			case 'm':
-				
+				doTrace("Avail threads: ", i__s(gw->availThreads));
 			break;
 
 			case 'a':
@@ -1328,6 +1393,13 @@ public:
 			default:
 				
 			break;
+		}
+
+		if (restartGen) {
+			doShaderRefresh();
+			gw->resetToState(E_STATE_CREATESIMPLEXNOISE_END);
+			bufferInvalid = true;
+			changesMade = true;
 		}
 
 	}
@@ -1392,21 +1464,19 @@ public:
 		mouseXUp = x;
 		mouseYUp = y;
 
-
-		if (activeObject == E_OBJ_CAMERA || activeObject == E_OBJ_LIGHT) { //  || activeObject == E_OBJ_NONE
-
-		}
-		else {
-			getPixData(&mouseMovePD, x, y);
-
-			if (mouseState == E_MOUSE_STATE_BRUSH) {
-				gw->modifyUnit(&mouseMovePD, E_BRUSH_MOVE);
-			}
-		}
+		
 
 		if (lbDown || rbDown) {
 		    moveObject((float)dx, (float)dy, cameraZoom);
 		}
+		else {
+			if (mouseState == E_MOUSE_STATE_BRUSH  ) {
+				getPixData(&mouseMovePD, x, y);
+				gw->modifyUnit(&mouseMovePD, E_BRUSH_MOVE);
+			}
+		}
+
+
 		if (mbDown) {
 
 		}
@@ -1461,6 +1531,8 @@ public:
 		lastPosX = x;
 		lastPosY = y;
 
+		int res;
+
 		float wheelDelta = 0.0;
 		bool mbClicked = false;
 		bool rbClicked = false;
@@ -1509,73 +1581,109 @@ public:
 
 		}
 		
-		if (rbClicked || lbClicked) {
 
-			mouseEnd.setIXY(x,y);
-
-
-
-			activeObject = E_OBJ_NONE;
-			wsBufferInvalid = true;
-			getPixData(&mouseUpPD, x, y);
-
-			
-			if (mouseDownPD.getFW() == 4.0) {
-
-			}
-			else {
-
-				if ( mouseEnd.distance(&mouseStart) > 30.0 ) {
-					
-				} 
-				else {
-
-					if (mouseState == E_MOUSE_STATE_BRUSH) {
-						if (lbClicked) {
-							gw->modifyUnit(&mouseUpPD, E_BRUSH_ADD);
-						}
-						else {
-							gw->modifyUnit(&mouseUpPD, E_BRUSH_SUB);
-						}
-					}
-
-					
-				}
-
-				
-
-				
-			}
-
-
-			diskOn = 0.0f;
-		}
 		if (rbDown || lbDown) {
 
-			if (rbDown && lbDown) {
+		}
+		else {
+
+		}
+
+		if (rbClicked || lbClicked) {
+
+			
+
+
+			if (rbDown || lbDown) {
 
 			}
 			else {
-				mouseStart.setIXY(x,y);
-				getPixData(&mouseDownPD, x, y);
+				mouseEnd.setIXY(x,y);
 
-				//doTrace("MDPW: ", f__s(mouseDownPD.getFW()));
+				activeObject = E_OBJ_NONE;
+				wsBufferInvalid = true;
+				getPixData(&mouseUpPD, x, y);
 
-				if (mouseDownPD.getFW() == 4.0) {
-					diskOn = 1.0f;
-					activeObject = E_OBJ_LIGHT;
+				
+				tempObj = (E_OBJ) ( (int)mouseDownPD.getFW() );
+
+				switch (tempObj) {
+					case E_OBJ_LIGHT:
+
+					break;
+
+					case E_OBJ_FOG:
+
+					break;
+					default:
+
+
+						if ( mouseEnd.distance(&mouseStart) > 30.0 ) {
+							
+						} 
+						else {
+							
+						}
+
+
+						if (mouseState == E_MOUSE_STATE_BRUSH) {
+							if (lbClicked) {
+								gw->modifyUnit(&mouseUpPD, E_BRUSH_ADD);
+							}
+							else {
+								gw->modifyUnit(&mouseUpPD, E_BRUSH_SUB);
+							}
+						}
+						
+					break;
 				}
-				else {
-					diskOn = 0.0f;
-					activeObject = E_OBJ_CAMERA;
-					//changesMade = true;
-				}
 
-				activeObjPos.setFW( mouseDownPD.getFW() );
+				diskOn = 0.0f;
 			}
 
 			
 		}
+		else {
+			if (rbDown || lbDown) {
+
+				if (rbDown && lbDown) {
+
+				}
+				else {
+
+
+					
+
+					mouseStart.setIXY(x,y);
+					getPixData(&mouseDownPD, x, y);
+					activeObject = (E_OBJ)((int) mouseDownPD.getFW());
+
+					switch (activeObject) {
+						case E_OBJ_LIGHT:
+							diskOn = 1.0f;
+						break;
+
+						case E_OBJ_FOG:
+							diskOn = 1.0f;
+						break;
+						default:
+							
+						break;
+					}
+
+					if (mouseState == E_MOUSE_STATE_BRUSH) {
+						diskOn = 0.0;
+					}
+
+
+				}
+
+				
+			}
+		}
+
+
+		
 
 
 

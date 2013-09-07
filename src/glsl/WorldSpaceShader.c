@@ -1,7 +1,9 @@
 uniform sampler2D Texture0;
 uniform sampler2D Texture1;
+
 uniform sampler2D Texture2;
 uniform sampler2D Texture3;
+
 varying vec2 TexCoord0;
 uniform vec2 mouseCoords;
 uniform vec2 resolution;
@@ -58,7 +60,9 @@ void main() {
     vec4 tex2 = texture2D(Texture2, TexCoord0.xy);
     //vec4 tex3 = texture2D(Texture3, TexCoord0.xy);
 
-    vec4 texFinal = tex0;// mix( tex0, tex2, float(tex2.b > 0.0) );
+    vec4 texFinal = tex0;
+
+    texFinal.b = mix( tex0.b, tex2.b, float(tex2.b > 0.0) );
 
     float newZoom = min(cameraZoom,1.0);
     float baseHeight = unpack16(texFinal.rg);

@@ -8,6 +8,7 @@ uniform vec2 resolution;
 uniform float unitsPerDim;
 uniform vec3 worldMin;
 uniform vec3 worldMax;
+uniform float threshVal;
 
 varying vec2 TexCoord0;
 
@@ -120,8 +121,6 @@ void main() {
 
 
 
-	//gl_FragData[0] = float(tex1.a > 0.5)*(vec4(1.0,0.0,0.0,2.0/255.0));
-
 
 	float terrainAbove = 0.0;
 
@@ -136,7 +135,7 @@ void main() {
 
 
 
-		if (samp.a > 126.0/255.0) {
+		if (samp.a > threshVal/255.0) {
 			terrainAbove += float(COLOR_MASKS[i].z > 0.0);
 		}
 
@@ -164,16 +163,16 @@ void main() {
 
 	}
 
-	terrainAbove = clamp(terrainAbove,0.0,1.0);
+	terrainAbove = float(terrainAbove > 3.0);//clamp(terrainAbove,0.0,1.0);
 
 	float gradVal = clamp(1.0 - (minDis1*2.0/(minDis1+minDis2)),1.0/255.0,1.0);
 	
 	//(bestSamp.r + bestSamp.g*unitsPerDim + bestSamp.b*unitsPerDim*unitsPerDim);
 
 	
-	float rockIsOnTer = float( texture3D(Texture1, bestSamp.rgb).a > 126.0/255.0);
+	float rockIsOnTer = float( texture3D(Texture1, bestSamp.rgb).a > threshVal/255.0);
 	float rockIsInside = rockIsOnTer*float(gradVal > 0.05);
-	float isTerrain = float(tex2.a > 126.0/255.0);
+	float isTerrain = float(tex2.a > threshVal/255.0);
 
 	//vec3 normSamp;
 	

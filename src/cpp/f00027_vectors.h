@@ -146,6 +146,16 @@ public:
         iv4.y = (int)y;
         iv4.z = (int)z;
     }
+
+    void setFXYZRef(FIVector4 * v1) {
+        fv4.x = v1->getFX();
+        fv4.y = v1->getFY();
+        fv4.z = v1->getFZ();
+        iv4.x = (int)fv4.x;
+        iv4.y = (int)fv4.y;
+        iv4.z = (int)fv4.z;
+    }
+
     void setFXY(float x, float y) {
         fv4.x = x;
         fv4.y = y;
