@@ -8,7 +8,7 @@ public:
 	bool wsBufferInvalid;
 
 
-
+	int curBrushRad;
 
 	float diskOn;
 
@@ -37,14 +37,16 @@ public:
 	int baseH;
 
 
+	E_MOUSE_STATE mouseState;
+
 	int scaleFactor;
 
 	int iRSize;
 	int iPageSize;
 	int unitSize;
 	int unitScale;
-
-
+	int bufferMult;
+	int maxHeightInUnits;
 
 	int extraRad;
 
@@ -81,7 +83,8 @@ public:
 	FIVector4 cameraPos;
 	FIVector4 lightPos;
 
-
+	FIVector4 mouseStart;
+	FIVector4 mouseEnd;
 
 
 	uint* lookup2to3;
@@ -122,6 +125,7 @@ public:
 	bool changesMade;
 	bool bufferInvalid;
 	int maxH;
+	int maxW;
 	int screenWidth;
 	int screenHeight;
 	bool mouseLeftDown;
@@ -436,106 +440,60 @@ public:
 
 
     	glBegin(GL_QUADS);
-    	    
-    	    /*
-    	    // front
-    	    glVertex3f(-1.0f, -1.0f, 1.0f);
-    	    glVertex3f(1.0f, -1.0f, 1.0f);
-    	    glVertex3f(1.0f, 1.0f, 1.0f);
-    	    glVertex3f(-1.0f, 1.0f, 1.0f);
-    	    // back
-    	    glVertex3f(-1.0f, -1.0f, -1.0f);
-    	    glVertex3f(1.0f, -1.0f, -1.0f);
-    	    glVertex3f(1.0f, 1.0f, -1.0f);
-    	    glVertex3f(-1.0f, 1.0f, -1.0f);
-    	    // right
-    	    glVertex3f(1.0f, -1.0f, 1.0f);
-    	    glVertex3f(1.0f, -1.0f, -1.0f);
-    	    glVertex3f(1.0f, 1.0f, -1.0f);
-    	    glVertex3f(1.0f, 1.0f, 1.0f);
-    	    // left
-    	    glVertex3f(-1.0f, -1.0f, 1.0f);
-    	    glVertex3f(-1.0f, -1.0f, -1.0f);
-    	    glVertex3f(-1.0f, 1.0f, -1.0f);
-    	    glVertex3f(-1.0f, 1.0f, 1.0f);
-    	    // top
-    	    glVertex3f(-1.0f, 1.0f, 1.0f);
-    	    glVertex3f(1.0f, 1.0f, 1.0f);
-    	    glVertex3f(1.0f, 1.0f, -1.0f);
-    	    glVertex3f(-1.0f, 1.0f, -1.0f);
-    	    // bottom
-    	    glVertex3f(-1.0f, -1.0f, 1.0f);
-    	    glVertex3f(1.0f, -1.0f, 1.0f);
-    	    glVertex3f(1.0f, -1.0f, -1.0f);
-    	    glVertex3f(-1.0f, -1.0f, -1.0f);
-    	    */
-
-
-    	    /*
-    	    // front
-    	        glVertex3f(0.0f, 0.0f, 0.0f);
-    	        glVertex3f(1.0f, 0.0f, 0.0f);
-    	        glVertex3f(1.0f, 1.0f, 0.0f);
-    	        glVertex3f(0.0f, 1.0f, 0.0f);
-    	        // back
-    	        glVertex3f(0.0f, 0.0f, -1.0f);
-    	        glVertex3f(1.0f, 0.0f, -1.0f);
-    	        glVertex3f(1.0f, 1.0f, -1.0f);
-    	        glVertex3f(0.0f, 1.0f, -1.0f);
-    	        // right
-    	        glVertex3f(1.0f, 0.0f, 0.0f);
-    	        glVertex3f(1.0f, 0.0f, -1.0f);
-    	        glVertex3f(1.0f, 1.0f, -1.0f);
-    	        glVertex3f(1.0f, 1.0f, 0.0f);
-    	        // left
-    	        glVertex3f(0.0f, 0.0f, 0.0f);
-    	        glVertex3f(0.0f, 0.0f, -1.0f);
-    	        glVertex3f(0.0f, 1.0f, -1.0f);
-    	        glVertex3f(0.0f, 1.0f, 0.0f);
-    	        // top
-    	        glVertex3f(0.0f, 1.0f, 0.0f);
-    	        glVertex3f(1.0f, 1.0f, 0.0f);
-    	        glVertex3f(1.0f, 1.0f, -1.0f);
-    	        glVertex3f(0.0f, 1.0f, -1.0f);
-    	        // bottom
-    	        glVertex3f(0.0f, 0.0f, 0.0f);
-    	        glVertex3f(1.0f, 0.0f, 0.0f);
-    	        glVertex3f(1.0f, 0.0f, -1.0f);
-    	        glVertex3f(0.0f, 0.0f, -1.0f);
-    	    */
-
-
-
 
     	    // front
+    	    glMultiTexCoord3f(GL_TEXTURE0, -1.0f, -1.0f, 1.0f);
     	    glVertex3f(minX, minY, maxZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, 1.0f, -1.0f, 1.0f);
     	    glVertex3f(maxX, minY, maxZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, 1.0f, 1.0f, 1.0f);
     	    glVertex3f(maxX, maxY, maxZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, -1.0f, 1.0f, 1.0f);
     	    glVertex3f(minX, maxY, maxZ);
     	    // back
+    	    glMultiTexCoord3f(GL_TEXTURE0, -1.0f, -1.0f, -1.0f);
     	    glVertex3f(minX, minY, minZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, 1.0f, -1.0f, -1.0f);
     	    glVertex3f(maxX, minY, minZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, 1.0f, 1.0f, -1.0f);
     	    glVertex3f(maxX, maxY, minZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, -1.0f, 1.0f, -1.0f);
     	    glVertex3f(minX, maxY, minZ);
     	    // right
+    	    glMultiTexCoord3f(GL_TEXTURE0, 1.0f, -1.0f, 1.0f);
     	    glVertex3f(maxX, minY, maxZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, 1.0f, -1.0f, -1.0f);
     	    glVertex3f(maxX, minY, minZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, 1.0f, 1.0f, -1.0f);
     	    glVertex3f(maxX, maxY, minZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, 1.0f, 1.0f, 1.0f);
     	    glVertex3f(maxX, maxY, maxZ);
     	    // left
+    	    glMultiTexCoord3f(GL_TEXTURE0, -1.0f, -1.0f, 1.0f);
     	    glVertex3f(minX, minY, maxZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, -1.0f, -1.0f, -1.0f);
     	    glVertex3f(minX, minY, minZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, -1.0f, 1.0f, -1.0f);
     	    glVertex3f(minX, maxY, minZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, -1.0f, 1.0f, 1.0f);
     	    glVertex3f(minX, maxY, maxZ);
     	    // top
+    	    glMultiTexCoord3f(GL_TEXTURE0, -1.0f, 1.0f, 1.0f);
     	    glVertex3f(minX, maxY, maxZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, 1.0f, 1.0f, 1.0f);
     	    glVertex3f(maxX, maxY, maxZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, 1.0f, 1.0f, -1.0f);
     	    glVertex3f(maxX, maxY, minZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, -1.0f, 1.0f, -1.0f);
     	    glVertex3f(minX, maxY, minZ);
     	    // bottom
+    	    glMultiTexCoord3f(GL_TEXTURE0, -1.0f, -1.0f, 1.0f);
     	    glVertex3f(minX, minY, maxZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, 1.0f, -1.0f, 1.0f);
     	    glVertex3f(maxX, minY, maxZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, 1.0f, -1.0f, -1.0f);
     	    glVertex3f(maxX, minY, minZ);
+    	    glMultiTexCoord3f(GL_TEXTURE0, -1.0f, -1.0f, -1.0f);
     	    glVertex3f(minX, minY, minZ);
 
 
@@ -654,6 +612,8 @@ public:
 
 
 
+	
+
 
 
 
@@ -666,18 +626,25 @@ public:
 		defaultWinH = _defaultWinH/_scaleFactor;
 		scaleFactor = _scaleFactor;
 
+		curBrushRad = 1;
+
+		mouseState = E_MOUSE_STATE_MOVE;
+
 		unitScale = 2;
+		bufferMult = 4;
 		diskOn = 0.0f;
-		iRSize = 128;
+		iRSize = 64;
 		iPageSize = 4;
-		gwSize.setIXYZ(64,64,64);
+		gwSize.setIXYZ(128,128,32);
 		unitSize = (iRSize*unitScale)/iPageSize;
+
+		maxHeightInUnits = (gwSize.getIZ()-1)*(iPageSize);
 
 		minBoundsInPixels.setIXYZ(0,0,0);
 		maxBoundsInPixels.setIXYZ(
-			gwSize.getIX()*unitSize*iPageSize,
-			gwSize.getIY()*unitSize*iPageSize,
-			gwSize.getIZ()*unitSize*iPageSize
+			(gwSize.getIX()-1)*unitSize*iPageSize,
+			(gwSize.getIY()-1)*unitSize*iPageSize,
+			(gwSize.getIZ()-1)*unitSize*iPageSize
 		);
 
 
@@ -720,7 +687,7 @@ public:
 		programState = E_PS_IN_GAME;
 
 		cameraPos.setFXYZ(0.0f,0.0f,0.0f);
-		lightPos.setFXYZ(1024.0f,1024.0f,2048.0f);
+		lightPos.setFXYZ(2024.0f,2024.0f,2048.0f);
 
 	    cameraZoom = 1.0f;
 
@@ -755,8 +722,11 @@ public:
 		gw = new GameWorld();
 
 
+		maxH = 8;
+		maxW = 4;
+
 		gw->init(this);
-		maxH = gw->loadRad;
+		
 
 
 		//gm = new GameMap();
@@ -1090,25 +1060,37 @@ public:
 
 		FIVector4 modXYZ;
 
-		if (lbDown) {
-			modXYZ.setFX( -(dyZoom + dxZoom/2.0f)*2.0f );
-			modXYZ.setFY( -(dyZoom - dxZoom/2.0f)*2.0f );
+		if (lbDown||rbDown) {
+			if (rbDown) {  //rbDown glutGetModifiers()&GLUT_ACTIVE_SHIFT
+				modXYZ.setFZ(  dyZoom*2.0f );
+				modXYZ.setFX( -(0.0f + dxZoom/2.0f)*2.0f );
+				modXYZ.setFY( -(0.0f - dxZoom/2.0f)*2.0f );
+
+			}
+			else {
+				modXYZ.setFX( -(dyZoom + dxZoom/2.0f)*2.0f );
+				modXYZ.setFY( -(dyZoom - dxZoom/2.0f)*2.0f );
+			}
 		}
-		if (rbDown) {
-			modXYZ.setFZ(  dyZoom*2.0f );
-		}
+
 
 		switch (activeObject) {
 
 			case E_OBJ_CAMERA:
 				wsBufferInvalid = true;
 				cameraPos.addXYZRef(&modXYZ);
-				cameraPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
+				//cameraPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
+
+				modXYZ.setFZ(0.0f);
+				lightPos.addXYZRef(&modXYZ, 1.0f);
+				//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
+				activeObjPos.setFXYZ(lightPos.getFX(),lightPos.getFY(),lightPos.getFZ());
+
 			break;
 
 			case E_OBJ_LIGHT:
 				lightPos.addXYZRef(&modXYZ, -1.0f);
-				lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
+				//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
 				activeObjPos.setFXYZ(lightPos.getFX(),lightPos.getFY(),lightPos.getFZ());
 
 			break;
@@ -1235,11 +1217,23 @@ public:
 
 		int enCounter;
 
+		//doTrace(i__s(key) );
 
-		switch(key) {
-			case 'q':
-				doAction(E_PA_QUIT);
+
+
+		switch(key ) {
+			case 'w':
+				changesMade = true;
+				maxW++;
 			break;
+			case 'q':
+				changesMade = true;
+				maxW--;
+				if (maxW < 1) {
+					maxW = 1;
+				}
+			break;
+
 			case 'r':
 				//gm->baseRendered = false;
 
@@ -1290,8 +1284,23 @@ public:
 			    changesMade = true;
 			break;
 
+			case 'b':
+				
+
+				enCounter = (int)mouseState;
+				enCounter++;
+				mouseState = (E_MOUSE_STATE)enCounter;
+
+				if (mouseState == E_MOUSE_STATE_LENGTH) {
+					mouseState = (E_MOUSE_STATE)0;
+				}
+
+				bufferInvalid = true;
+
+			break;
+
 			case 'm':
-				doTrace("TOT GPU MEM USED (MB): ", f__s(TOT_GPU_MEM_USAGE));
+				
 			break;
 
 			case 'a':
@@ -1301,6 +1310,19 @@ public:
 			case 'z':
 				changesMade = true;
 				maxH--;
+				if (maxH < 0) {
+					maxH = 0;
+				}
+			break;
+
+			case 'A':
+				curBrushRad++;
+			break;
+			case 'Z':
+				curBrushRad--;
+				if (curBrushRad<1) {
+					curBrushRad = 1;
+				}
 			break;
 			
 			default:
@@ -1364,22 +1386,25 @@ public:
 		int dx = x - lastPosX;
 		int dy = y - lastPosY;
 
-		
+
+
 
 		mouseXUp = x;
 		mouseYUp = y;
 
+
+		if (activeObject == E_OBJ_CAMERA || activeObject == E_OBJ_LIGHT) { //  || activeObject == E_OBJ_NONE
+
+		}
+		else {
+			getPixData(&mouseMovePD, x, y);
+
+			if (mouseState == E_MOUSE_STATE_BRUSH) {
+				gw->modifyUnit(&mouseMovePD, E_BRUSH_MOVE);
+			}
+		}
+
 		if (lbDown || rbDown) {
-
-			if (activeObject == E_OBJ_CAMERA || activeObject == E_OBJ_NONE) {
-
-			}
-			else {
-				getPixData(&mouseMovePD, x, y);
-			}
-
-			
-
 		    moveObject((float)dx, (float)dy, cameraZoom);
 		}
 		if (mbDown) {
@@ -1388,7 +1413,7 @@ public:
 		lastPosX = x;
 		lastPosY = y;
 
-		if ( (x >= 0) && (y >= 0) && (x < baseW) && (y < baseH) && (rbDown||lbDown||mbDown) ) {
+		if ( (x >= 0) && (y >= 0) && (x < baseW) && (y < baseH) ) { // && (rbDown||lbDown||mbDown)
 			bufferInvalid = true;
 			
 			if (rbDown||lbDown) {
@@ -1440,7 +1465,6 @@ public:
 		bool mbClicked = false;
 		bool rbClicked = false;
 		bool lbClicked = false;
-
 		
 
 
@@ -1487,6 +1511,10 @@ public:
 		
 		if (rbClicked || lbClicked) {
 
+			mouseEnd.setIXY(x,y);
+
+
+
 			activeObject = E_OBJ_NONE;
 			wsBufferInvalid = true;
 			getPixData(&mouseUpPD, x, y);
@@ -1496,28 +1524,57 @@ public:
 
 			}
 			else {
-				gw->modifyUnit(&mouseUpPD, lbClicked);
+
+				if ( mouseEnd.distance(&mouseStart) > 30.0 ) {
+					
+				} 
+				else {
+
+					if (mouseState == E_MOUSE_STATE_BRUSH) {
+						if (lbClicked) {
+							gw->modifyUnit(&mouseUpPD, E_BRUSH_ADD);
+						}
+						else {
+							gw->modifyUnit(&mouseUpPD, E_BRUSH_SUB);
+						}
+					}
+
+					
+				}
+
+				
+
+				
 			}
 
 
 			diskOn = 0.0f;
 		}
 		if (rbDown || lbDown) {
-			getPixData(&mouseDownPD, x, y);
 
-			//doTrace("MDPW: ", f__s(mouseDownPD.w));
+			if (rbDown && lbDown) {
 
-			if (mouseDownPD.getFW() == 4.0) {
-				diskOn = 1.0f;
-				activeObject = E_OBJ_LIGHT;
 			}
 			else {
-				diskOn = 0.0f;
-				activeObject = E_OBJ_CAMERA;
-				//changesMade = true;
+				mouseStart.setIXY(x,y);
+				getPixData(&mouseDownPD, x, y);
+
+				//doTrace("MDPW: ", f__s(mouseDownPD.getFW()));
+
+				if (mouseDownPD.getFW() == 4.0) {
+					diskOn = 1.0f;
+					activeObject = E_OBJ_LIGHT;
+				}
+				else {
+					diskOn = 0.0f;
+					activeObject = E_OBJ_CAMERA;
+					//changesMade = true;
+				}
+
+				activeObjPos.setFW( mouseDownPD.getFW() );
 			}
 
-			activeObjPos.setFW( mouseDownPD.getFW() );
+			
 		}
 
 
@@ -1551,7 +1608,7 @@ public:
 			lastTime = curTime;
 
 			if (shadersAreLoaded) {
-				gw->update(changesMade, bufferInvalid, maxH);
+				gw->update(changesMade, bufferInvalid);
 
 				changesMade = false;
 				bufferInvalid = false;

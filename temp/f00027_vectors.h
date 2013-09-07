@@ -240,6 +240,26 @@ public:
     }
 
 
+    void minXYZ(FIVector4 *v1, FIVector4 *v2) {
+        fv4.x = std::min(v1->getFX(), v2->getFX());
+        fv4.y = std::min(v1->getFY(), v2->getFY());
+        fv4.z = std::min(v1->getFZ(), v2->getFZ());
+
+        iv4.x = (int)fv4.x;
+        iv4.y = (int)fv4.y;
+        iv4.z = (int)fv4.z;
+    }
+
+    void maxXYZ(FIVector4 *v1, FIVector4 *v2) {
+        fv4.x = std::max(v1->getFX(), v2->getFX());
+        fv4.y = std::max(v1->getFY(), v2->getFY());
+        fv4.z = std::max(v1->getFZ(), v2->getFZ());
+
+        iv4.x = (int)fv4.x;
+        iv4.y = (int)fv4.y;
+        iv4.z = (int)fv4.z;
+    }
+
     void clampXYZ(FIVector4 *minV, FIVector4 *maxV) {
         if (fv4.x < minV->getFX()) {
             fv4.x = minV->getFX();
@@ -275,20 +295,27 @@ public:
         if (fv4.z < minV->getFZ()) {
             return false;
         }
-        if (fv4.x > maxV->getFX()) {
+        if (fv4.x >= maxV->getFX()) {
             return false;
         }
-        if (fv4.y > maxV->getFY()) {
+        if (fv4.y >= maxV->getFY()) {
             return false;
         }
-        if (fv4.z > maxV->getFZ()) {
+        if (fv4.z >= maxV->getFZ()) {
             return false;
         }
 
         return true;
     }
 
-    
+    float distance(FIVector4 *otherVec) {
+
+        float dx = fv4.x - otherVec->getFX();
+        float dy = fv4.y - otherVec->getFY();
+        float dz = fv4.z - otherVec->getFZ();
+
+        return sqrt(dx*dx + dy*dy + dz*dz);
+    }
 
 
 

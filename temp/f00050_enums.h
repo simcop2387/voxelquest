@@ -46,6 +46,19 @@ enum E_STATES {
 
 };
 
+enum E_MOUSE_STATE {
+    E_MOUSE_STATE_MOVE,
+    E_MOUSE_STATE_BRUSH,
+    E_MOUSE_STATE_LENGTH
+};
+
+enum E_BRUSH {
+    E_BRUSH_ADD,
+    E_BRUSH_SUB,
+    E_BRUSH_MOVE,
+    E_BRUSH_LENGTH
+};
+
 ////////////////////////////////////////////////////
 
 //    DONT FORGET SEMICOLONS!

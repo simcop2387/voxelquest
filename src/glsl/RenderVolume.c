@@ -9,6 +9,8 @@ varying vec3 TexCoord1;
 uniform vec3 worldMin;
 uniform vec3 worldMax;
 
+uniform float bufferMult;
+
 //const int iNumRaySteps = 2;
 //const float fNumRaySteps = 2.0;
 
@@ -28,8 +30,9 @@ vec4 sampleAtPoint(vec3 point) {
     vec2 texc;
 
     //get rid of this to sample full volume
-    vec3 newPoint = point/2.0 + 0.25;
-
+    
+    //vec3 newPoint = point/2.0 + 0.25;
+    vec3 newPoint = point/bufferMult + (1.0-1.0/bufferMult)/2.0;
     
     vec3 curFace = (newPoint.rgb*255.0+0.5)/256.0;
     float bval = curFace.b*255.0;
@@ -73,7 +76,7 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
     int maxRad;
     float tsize = 255.0;
 
-    vec3 testPoint = tp + 1.0/tsize;
+    vec3 testPoint = tp + 1.0/(tsize); //bufferMult
 
     float fMaxRad;
     float curPower;
@@ -84,8 +87,8 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
     vec3 norm = vec3(0.0,0.0,0.0);
     vec3 norm2 = vec3(0.0,0.0,0.0);
 
-    int rad = 8;
-    int radStep = 2;
+    int rad = 12;
+    int radStep = 3;
     float frad = float(radStep);
 
     float totSteps = 0.0;
@@ -146,10 +149,10 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
         aoVal = 0.0;//curSamp.a;
     }
     else {
-        maxRad = 64;
+        maxRad = 128;
         fMaxRad = float(maxRad);
 
-        for (rad = 16; rad < maxRad; rad *= 2) {
+        for (rad = 32; rad < maxRad; rad *= 2) {
             radStep = rad/2;
             frad = float(rad);
 

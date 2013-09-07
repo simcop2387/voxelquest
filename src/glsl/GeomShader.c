@@ -11,10 +11,14 @@
 //uniform vec3 worldMin;
 //uniform vec3 worldMax;
 
+varying vec3 TexCoord0;
+
 uniform float curTime;
 uniform float cameraZoom;
 uniform vec3 cameraPos;
 uniform vec2 bufferDim;
+
+uniform float matVal;
 
 varying vec3 finalVec;
 
@@ -22,7 +26,7 @@ $
 
 void main() {
 
-    //TexCoord0 = gl_MultiTexCoord0.xyzw;
+    TexCoord0 = gl_MultiTexCoord0.xyz;
     //TexCoord1 = gl_MultiTexCoord1.xyz;
 
     //vec2 newTC = ((TexCoord0.xy)*newZoom+1.0)/2.0;
@@ -44,8 +48,9 @@ void main() {
     finalVec.z = gl_Vertex.z;//(transVert.z);
 
 
+    float hv = mix(0.5,0.0,float(matVal==4.0));
 
-    gl_Position = vec4(finalVec.xy, clamp( 1.0-finalVec.z/(256.0*255.0),0.0,1.0),gl_Vertex.w);
+    gl_Position = vec4(finalVec.xy, clamp( (1.0-finalVec.z/(256.0*255.0))*0.5 + hv ,0.0,1.0),gl_Vertex.w);
 
 }
 
@@ -77,11 +82,28 @@ float unpack16(vec2 num) {
 void main() {
 
     vec2 res = pack16(finalVec.z);
+
+
+    
+    float rad = 0.95;
+    if (matVal == 4.0) {
+
+    }
+    else {
+
+        if (
+            ( (abs(TexCoord0.x) < rad) && (abs(TexCoord0.y) < rad) ) ||
+            ( (abs(TexCoord0.y) < rad) && (abs(TexCoord0.z) < rad) ) ||
+            ( (abs(TexCoord0.x) < rad) && (abs(TexCoord0.z) < rad) )
+        ) {
+            discard;
+        }
+    }
     
     //float bhr = mod(finalVec.z/2.0,256.0);
     //float bhg = floor((finalVec.z)/256.0);
 
-    gl_FragData[0] = vec4(res.rg,4.0/255.0,1.0);//vec4(bhr,bhg,3.0/255.0,tex0.a);
-    gl_FragData[1] = vec4(0.0,0.0,1.0,1.0);//vec4(resNorm.rgb, (TexCoord0.z+tex1.a)/2.0 );
+    gl_FragData[0] = vec4(res.rg,matVal/255.0,1.0);//vec4(bhr,bhg,3.0/255.0,tex0.a);
+    gl_FragData[1] = vec4((TexCoord0.xyz+1.0)/2.0,1.0);//vec4(resNorm.rgb, (TexCoord0.z+tex1.a)/2.0 );
 
 }

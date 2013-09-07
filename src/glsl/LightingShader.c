@@ -109,6 +109,7 @@ void main() {
     //worldPosition.z = 0.0;
 
 
+    
     float isLastUnit =
 
     float(worldPosition.x >= lastUnitPos.x-4.0) *
@@ -219,8 +220,27 @@ void main() {
     lightRes = pow(lightRes,0.8);
     lightRes = clamp(lightRes,0.0,1.0);
 
-    float hfog = clamp( (baseHeight-cameraPos.z)/512.0,0.0,1.0);
+
+
+    vec2 newCam = cameraPos.xy - worldPosition.xy;
+    
+    
+    newCam.x = min(newCam.x,0.0);
+    newCam.y = min(newCam.y,0.0);
+    
+
+    float fogDis = 1.0-clamp(1.0-length(newCam)/4096.0,0.0,1.0);
+    float fogDis2 = clamp((baseHeight-cameraPos.z)/1024.0,0.0,1.0);
+
+
+
+    float hfog = min(fogDis*fogDis2*float(baseHeight != 0.0)*1.5,1.0);
+    //clamp((1.0-clamp(distance(cameraPos.xyz + 2000.0,worldPosition.xyz)/4096.0,0.0,1.0))*1.5,0.0,1.0)*float(baseHeight != 0.0);
+
+    //float hfog = clamp( (baseHeight-cameraPos.z)/512.0,0.0,1.0);
     hfog = pow(hfog, 2.0);
+
+    hfog = 1.0;
 
     lightRes *= hfog;
 
@@ -268,16 +288,19 @@ void main() {
     }
 
     // light
-    if (tex0.b == 4.0/255.0) {
+    if (tex0.b == 4.0/255.0 || tex0.b == 5.0/255.0) {
 
         resCol0 = vec3(255.0/255.0, 255.0/255.0, 255.0/255.0);
         resCol1 = vec3(255.0/255.0, 255.0/255.0, 255.0/255.0);
 
     }
 
+
     if (aoval == 0.0) {
-        resCol0 = vec3(0.0/255.0, 0.0/255.0, 0.0/255.0);
-        resCol1 = vec3(0.0/255.0, 0.0/255.0, 0.0/255.0);
+        //resCol0 = vec3(0.0/255.0, 0.0/255.0, 0.0/255.0);
+        //resCol1 = vec3(0.0/255.0, 0.0/255.0, 0.0/255.0);
+        resCol0 = mod(worldPosition,256.0)/255.0;
+        resCol1 = resCol0;
     }
 
     vec3 resColor = mix(resCol0,resCol1,lightRes);
@@ -288,7 +311,7 @@ void main() {
 
 
     //vec4(lightRes*0.8,lightRes*0.7,lightRes*0.6, lightRes)
-    gl_FragData[0] = vec4(mix( fogColor, resColor+pval, hfog ),1.0)+mval+isLastUnit+isLastPage; //vec4(lightRes,lightRes,lightRes,1.0);//
+    gl_FragData[0] = vec4(mix( fogColor, resColor+pval, hfog ),1.0)+mval+isLastUnit+isLastPage;//+isLastUnit+isLastPage; //vec4(lightRes,lightRes,lightRes,1.0);//
     //gl_FragData[0] = vec4(aoval,aoval,aoval,1.0);
 
     //gl_FragData[0] = vec4(lightRes,lightRes,lightRes,1.0);

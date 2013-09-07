@@ -1,4 +1,4 @@
-﻿Build started 9/6/2013 2:51:15 PM.
+﻿Build started 9/7/2013 3:09:39 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -152,70 +152,1974 @@
          |  |  END          
          |  END          
          END          
-         Extra Radius:  1         
-         Extra Radius:  2         
-         Extra Radius:  3         
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
-         renderWorldSpace()          
+         renderWorldSpace() TOT GPU MEM USED (MB):  136.000000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  136.000000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  151.000000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  176.000000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  176.000000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  191.000000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  191.000000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  206.000000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  206.000000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  217.250000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  217.250000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  222.250000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  227.250000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  248.500000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  248.500000         
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         renderWorldSpace() TOT GPU MEM USED (MB):  254.750000         
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         renderWorldSpace() TOT GPU MEM USED (MB):  268.187500         
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         renderWorldSpace() TOT GPU MEM USED (MB):  273.343750         
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         renderWorldSpace() TOT GPU MEM USED (MB):  273.343750         
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         renderWorldSpace() TOT GPU MEM USED (MB):  278.031250         
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         renderWorldSpace() TOT GPU MEM USED (MB):  279.281250         
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         renderWorldSpace() TOT GPU MEM USED (MB):  280.218750         
+         renderWorldSpace() TOT GPU MEM USED (MB):  316.156250         
+         renderWorldSpace() TOT GPU MEM USED (MB):  316.156250         
+         renderWorldSpace() TOT GPU MEM USED (MB):  316.468750         
+         renderWorldSpace() TOT GPU MEM USED (MB):  316.468750         
+         renderWorldSpace() TOT GPU MEM USED (MB):  316.468750         
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         renderWorldSpace() TOT GPU MEM USED (MB):  316.468750         
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         out of start bounds          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
+         checkbounds failed          
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:02:22.32
+Time Elapsed 00:00:51.63
