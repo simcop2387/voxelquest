@@ -52,7 +52,7 @@ public:
 		singleton = _singleton;
 
 
-		threshVal = 140;
+		threshVal = 160;
 
 
 		threadRunning = false;

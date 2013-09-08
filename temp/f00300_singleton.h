@@ -1124,6 +1124,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 			case 'b':
+				
 
 				enCounter = (int)mouseState;
 				enCounter++;

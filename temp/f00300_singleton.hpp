@@ -1345,6 +1345,7 @@ public:
 			break;
 
 			case 'b':
+				
 
 				enCounter = (int)mouseState;
 				enCounter++;

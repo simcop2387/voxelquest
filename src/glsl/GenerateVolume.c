@@ -163,7 +163,7 @@ void main() {
 
 	}
 
-	terrainAbove = float(terrainAbove > 3.0);//clamp(terrainAbove,0.0,1.0);
+	terrainAbove = clamp(terrainAbove,0.0,1.0);
 
 	float gradVal = clamp(1.0 - (minDis1*2.0/(minDis1+minDis2)),1.0/255.0,1.0);
 	

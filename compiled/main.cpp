@@ -5238,6 +5238,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 			case 'b':
+				
 
 				enCounter = (int)mouseState;
 				enCounter++;
@@ -5676,7 +5677,7 @@ void GamePage::init (Singleton * _singleton, FIVector4 * _offsetInUnits)
 		singleton = _singleton;
 
 
-		threshVal = 140;
+		threshVal = 160;
 
 
 		threadRunning = false;

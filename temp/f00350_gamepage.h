@@ -13,7 +13,7 @@ void GamePage::init (Singleton * _singleton, FIVector4 * _offsetInUnits)
 		singleton = _singleton;
 
 
-		threshVal = 140;
+		threshVal = 160;
 
 
 		threadRunning = false;

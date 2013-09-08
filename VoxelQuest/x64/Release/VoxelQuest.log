@@ -1,4 +1,4 @@
-﻿Build started 9/8/2013 1:59:59 PM.
+﻿Build started 9/8/2013 12:13:52 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -165,29 +165,41 @@
          |  |  END          
          |  END          
          END          
-         renderWorldSpace() TOT GPU MEM USED (MB):  382.687500         
-         renderWorldSpace() TOT GPU MEM USED (MB):  408.718750         
-         renderWorldSpace() TOT GPU MEM USED (MB):  496.375000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  575.531250         
-         renderWorldSpace() TOT GPU MEM USED (MB):  575.531250         
-         renderWorldSpace() TOT GPU MEM USED (MB):  671.687500         
-         renderWorldSpace() TOT GPU MEM USED (MB):  709.406250         
-         renderWorldSpace() TOT GPU MEM USED (MB):  709.406250         
-         renderWorldSpace() TOT GPU MEM USED (MB):  747.656250         
-         renderWorldSpace() TOT GPU MEM USED (MB):  747.656250         
-         renderWorldSpace() TOT GPU MEM USED (MB):  747.656250         
-         renderWorldSpace() TOT GPU MEM USED (MB):  747.656250         
-         renderWorldSpace() TOT GPU MEM USED (MB):  747.656250         
-         renderWorldSpace() TOT GPU MEM USED (MB):  747.656250         
-         renderWorldSpace() TOT GPU MEM USED (MB):  747.656250         
-         renderWorldSpace() TOT GPU MEM USED (MB):  747.656250         
-         renderWorldSpace() TOT GPU MEM USED (MB):  747.656250         
-         Extra Radius:  0         
-         Extra Radius:  0         
-         renderWorldSpace() TOT GPU MEM USED (MB):  747.656250         
-         renderWorldSpace() TOT GPU MEM USED (MB):  804.500000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  278.562500         
+         renderWorldSpace() TOT GPU MEM USED (MB):  312.031250         
+         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  522.937500         
+         renderWorldSpace() TOT GPU MEM USED (MB):  536.750000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  536.750000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  536.750000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  536.750000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  536.750000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  613.250000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  613.250000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  644.593750         
+         renderWorldSpace() TOT GPU MEM USED (MB):  674.875000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  718.968750         
+         renderWorldSpace() TOT GPU MEM USED (MB):  789.093750         
+         renderWorldSpace() TOT GPU MEM USED (MB):  789.093750         
+         renderWorldSpace() TOT GPU MEM USED (MB):  789.093750         
+         renderWorldSpace() TOT GPU MEM USED (MB):  799.718750         
+         renderWorldSpace() TOT GPU MEM USED (MB):  799.718750         
+         renderWorldSpace() TOT GPU MEM USED (MB):  837.968750         
+         renderWorldSpace() TOT GPU MEM USED (MB):  837.968750         
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:55.41
+Time Elapsed 00:01:47.19
