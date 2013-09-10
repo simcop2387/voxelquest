@@ -1,21 +1,25 @@
 
 
-
-
-
 class GamePage: public Poco::Runnable {
 public:
 
+	Singleton* singleton;
+
+	int thisPageId;
+	int usingPoolId;
+	PooledResource* gpuRes;
+
 	int threshVal;
 
-	int iDim;
+	int bufferedPageSizeInUnits;
 	FIVector4 offsetInUnits;
 	int iVolumeSize;
+	
+
 	uint* volData;
-	Singleton* singleton;
-	FBOSet* fboSet;
-	uint volID;
-	uint volIDLinear;
+	uint* volDataLinear;
+	
+	
 
 	int maxHeightInUnits;
 	int totLenO2;
@@ -47,12 +51,16 @@ public:
 
 
 
-	void init(Singleton* _singleton, FIVector4* _offsetInUnits) {
+	void init(Singleton* _singleton, int _thisPageId, FIVector4* _offsetInUnits) {
 		int i;
+
+		thisPageId = _thisPageId;
+
 		singleton = _singleton;
 
+		usingPoolId = -1;
 
-		threshVal = 160;
+		threshVal = 140;
 
 
 		threadRunning = false;
@@ -67,13 +75,11 @@ public:
 		curState = E_STATE_INIT_BEG;
 		nextState = E_STATE_WAIT;
 
-		
-
-		int _iDim = singleton->visPageSizeInUnits;
 
 
 
-		iDim = _iDim * (singleton->bufferMult);
+
+		bufferedPageSizeInUnits = (singleton->visPageSizeInUnits) * (singleton->bufferMult);
 		offsetInUnits.copyFrom(_offsetInUnits);
 
 		unitSizeInPixels = (float)(singleton->unitSizeInPixels);
@@ -83,15 +89,20 @@ public:
 
 
 
-		iVolumeSize = iDim*iDim*iDim;
+		iVolumeSize = bufferedPageSizeInUnits*bufferedPageSizeInUnits*bufferedPageSizeInUnits;
 		volData = new uint[iVolumeSize];
 		for (i = 0; i < iVolumeSize; i++) {
 			volData[i] = 0;
 		}
 
+		volDataLinear = new uint[iVolumeSize];
+		for (i = 0; i < iVolumeSize; i++) {
+			volDataLinear[i] = (255<<24)|(255<<16)|(255<<8)|(0);
+		}
 
-		totLenO2 = iDim/2;
-		totLenVisO2 = iDim/(2*(singleton->bufferMult));
+
+		totLenO2 = bufferedPageSizeInUnits/2;
+		totLenVisO2 = bufferedPageSizeInUnits/(2*(singleton->bufferMult));
 
 
 
@@ -108,9 +119,6 @@ public:
 		worldUnitMin.addXYZ( -totLenO2 );
 		worldUnitMax.addXYZ(  totLenO2 );
 
-		
-
-		fboSet = NULL;
 		
 
 		curState = E_STATE_INIT_END;
@@ -151,7 +159,7 @@ public:
 
 		int i, j, k, m;
 
-		int totLen = iDim;
+		int totLen = bufferedPageSizeInUnits;
 
 		float fTotLen = (float)totLen;
 
@@ -162,7 +170,6 @@ public:
 		float fx, fy, fz;
 
 		uint randOff[3];
-
 		float ijkVals[3];
 
 		const float RAND_MOD[9] = {
@@ -173,7 +180,7 @@ public:
 
 		float totLenO4 = totLen/4;
 		float totLen3O4 = (totLen*3)/4;
-		
+		float fSimp;
 		float heightThresh;
 		float testVal;
 
@@ -203,6 +210,7 @@ public:
 					
 					if (fx < 0.0f || fy < 0.0f || fz < 0.0f ) {
 						volData[ind] = 0;
+						volDataLinear[ind] = (255<<16)|(255<<8)|255;
 					}
 					else {
 
@@ -234,7 +242,7 @@ public:
 							
 
 							
-							tmp = clamp(testVal*255.0*(1.0-heightThresh*heightThresh*heightThresh));
+							tmp = clamp(testVal*255.0f*(1.0f-heightThresh*heightThresh*heightThresh));
 						}
 
 						
@@ -257,7 +265,7 @@ public:
 
 
 						for (m = 0; m < 3; m++) {
-							randOff[m] = clamp((simplexScaledNoise(
+							fSimp = simplexScaledNoise(
 																		1.0f, //octaves
 																		1.0f, //persistence (amount added in each successive generation)
 																		1.0f/4.0, //scale (frequency)
@@ -266,14 +274,25 @@ public:
 																		fx+RAND_MOD[m*3+0],
 																		fy+RAND_MOD[m*3+1],
 																		fz+RAND_MOD[m*3+2]
-																	) + ijkVals[m])*255.0f/fTotLen);
+																	);
+							randOff[m] = clamp( ( fSimp + ijkVals[m])*255.0f/fTotLen);
+							
+
+
 						}
 
-						if ( (tmp%16 > 6) && ( (i+j+k)%2 == 0) ) {
-							volData[ind] = (tmp<<24)|(randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
+						if ( (tmp%16 > 5) && ( (i+j+k)%2 == 0) ) {
+
+							/*if (randOff[0] == 0 && randOff[1] == 0 && randOff[2] == 0) {
+								randOff[1] = 1;
+							} */
+
+							volData[ind] = (0)|(randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
+							volDataLinear[ind] = (tmp<<24)|(255<<16)|(255<<8)|255;
 						}
 						else {
-							volData[ind] = (tmp<<24);
+							volData[ind] = (0);
+							volDataLinear[ind] = (tmp<<24)|(255<<16)|(255<<8)|255;;
 						}
 
 						
@@ -314,87 +333,64 @@ public:
 
 	}
 
+	void unbindGPUResources() {
+		usingPoolId = -1;
+		curState = E_STATE_CREATESIMPLEXNOISE_END;
+	}
 
 	void copyToTexture() {
 
 		curState = E_STATE_COPYTOTEXTURE_BEG;
 
-		if (fboSet == NULL) {
-			
-			fboSet = new FBOSet();
-			fboSet->init(2,(singleton->visPageSizeInPixels)*2,(singleton->visPageSizeInPixels)*2,1,false);
-			glGenTextures(1,&volID);
-			glGenTextures(1,&volIDLinear);
 
-			glBindTexture(GL_TEXTURE_3D,volID);
-			glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, iDim, iDim, iDim, 0, GL_RGBA, GL_UNSIGNED_BYTE, volData);
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_LINEAR
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//GL_NEAREST
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-			glBindTexture(GL_TEXTURE_3D,0);
-
-			glBindTexture(GL_TEXTURE_3D,volIDLinear);
-			glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, iDim, iDim, iDim, 0, GL_RGBA, GL_UNSIGNED_BYTE, volData);
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);//GL_LINEAR
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);//GL_NEAREST
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-			glBindTexture(GL_TEXTURE_3D,0);
-
-			TOT_GPU_MEM_USAGE += ((float)(iDim*iDim*iDim*4*2))/(1024.0f*1024.0f);
-
+		if (usingPoolId == -1) {
+			usingPoolId = singleton->requestPoolId(thisPageId);
+			gpuRes = singleton->pagePoolItems[usingPoolId];
 		}
-		else {
 
+		
 
-			
+		glBindTexture(GL_TEXTURE_3D,gpuRes->volID);
+			glTexSubImage3D(
+				GL_TEXTURE_3D,
+				0,
+				
+				0,
+				0,
+				0,
 
-			glBindTexture(GL_TEXTURE_3D,volID);
-				glTexSubImage3D(
-					GL_TEXTURE_3D,
-					0,
-					
-					0,
-					0,
-					0,
+				bufferedPageSizeInUnits,
+				bufferedPageSizeInUnits,
+				bufferedPageSizeInUnits,
 
-					iDim,
-					iDim,
-					iDim,
+				GL_RGBA,
+				GL_UNSIGNED_BYTE,
 
-					GL_RGBA,
-					GL_UNSIGNED_BYTE,
+				volData
+			);
 
-					volData
-				);
+		glBindTexture(GL_TEXTURE_3D,0);
+		glBindTexture(GL_TEXTURE_3D,gpuRes->volIDLinear);
+			glTexSubImage3D(
+				GL_TEXTURE_3D,
+				0,
+				
+				0,
+				0,
+				0,
 
-			glBindTexture(GL_TEXTURE_3D,0);
-			glBindTexture(GL_TEXTURE_3D,volIDLinear);
-				glTexSubImage3D(
-					GL_TEXTURE_3D,
-					0,
-					
-					0,
-					0,
-					0,
+				bufferedPageSizeInUnits,
+				bufferedPageSizeInUnits,
+				bufferedPageSizeInUnits,
 
-					iDim,
-					iDim,
-					iDim,
+				GL_RGBA,
+				GL_UNSIGNED_BYTE,
 
-					GL_RGBA,
-					GL_UNSIGNED_BYTE,
+				volDataLinear
+			);
+		glBindTexture(GL_TEXTURE_3D,0);
 
-					volData
-				);
-			glBindTexture(GL_TEXTURE_3D,0);
-
-		}
+		
 
 		curState = E_STATE_COPYTOTEXTURE_END;
 
@@ -405,55 +401,56 @@ public:
 		curState = E_STATE_GENERATEVOLUME_BEG;
 		
 		
-		
-		if (singleton->isBare) {
-			singleton->bindShader("GenerateVolumeBare");
+		if (usingPoolId == -1) {
+
 		}
 		else {
-			singleton->bindShader("GenerateVolume");
+			if (singleton->isBare) {
+				singleton->bindShader("GenerateVolumeBare");
+			}
+			else {
+				singleton->bindShader("GenerateVolume");
+			}
+
+
+
+			singleton->bindFBO("volGenFBO");
+			singleton->setShaderTexture3D(gpuRes->volID, 0);
+			singleton->setShaderTexture3D(gpuRes->volIDLinear, 1);
+			singleton->setShaderTexture(singleton->lookup2to3ID, 2);
+
+			singleton->setShaderFloat("bufferedPageSizeInUnits", bufferedPageSizeInUnits);
+			singleton->setShaderFloat("threshVal", (float)threshVal);
+			singleton->setShaderfVec3("worldMin", &(worldMin));
+			singleton->setShaderfVec3("worldMax", &(worldMax));
+
+			singleton->drawFSQuad(1.0f);
+
+			singleton->setShaderTexture3D(0, 0);
+			singleton->setShaderTexture3D(0, 1);
+			singleton->setShaderTexture(0, 2);
+
+			singleton->unbindFBO();
+			singleton->unbindShader();
+
+			//ray trace new texture, generate normals, AO, depth, etc
+			singleton->bindShader("RenderVolume");
+			singleton->bindFBODirect(gpuRes->fboSet);
+			singleton->sampleFBO("volGenFBO");
+			glClearColor(0.0f,0.0f,0.0f,0.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			singleton->setShaderfVec3("worldMin", &(worldMin));
+			singleton->setShaderfVec3("worldMax", &(worldMax));
+
+
+			singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
+			
+
+			glCallList(singleton->volTris);
+			singleton->unsampleFBO("volGenFBO");
+			singleton->unbindFBO();
+			singleton->unbindShader();
 		}
-
-		
-
-
-
-		singleton->bindFBO("volGenFBO");
-		singleton->setShaderTexture3D(volID, 0);
-		singleton->setShaderTexture3D(volIDLinear, 1);
-		singleton->setShaderTexture(singleton->lookup2to3ID, 2);
-
-		singleton->setShaderFloat("unitsPerDim", iDim);
-		singleton->setShaderFloat("threshVal", (float)threshVal);
-		singleton->setShaderfVec3("worldMin", &(worldMin));
-		singleton->setShaderfVec3("worldMax", &(worldMax));
-
-		singleton->drawFSQuad(1.0f);
-
-		singleton->setShaderTexture3D(0, 0);
-		singleton->setShaderTexture3D(0, 1);
-		singleton->setShaderTexture(0, 2);
-
-		singleton->unbindFBO();
-		singleton->unbindShader();
-
-		//ray trace new texture, generate normals, AO, depth, etc
-		singleton->bindShader("RenderVolume");
-		singleton->bindFBODirect(fboSet);
-		singleton->sampleFBO("volGenFBO");
-		glClearColor(0.0f,0.0f,0.0f,0.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		singleton->setShaderfVec3("worldMin", &(worldMin));
-		singleton->setShaderfVec3("worldMax", &(worldMax));
-
-
-		singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
-		
-
-		glCallList(singleton->volTris);
-		singleton->unsampleFBO("volGenFBO");
-		singleton->unbindFBO();
-		singleton->unbindShader();
-		
 
 		curState = E_STATE_GENERATEVOLUME_END;
 	}
@@ -463,12 +460,8 @@ public:
 		if (volData) {
 			delete[] volData;
 		}
-
-		if (volID) {
-			glDeleteTextures(1, &volID);
-		}
-		if (volIDLinear) {
-			glDeleteTextures(1, &volIDLinear);
+		if (volDataLinear) {
+			delete[] volDataLinear;
 		}
 	}
 

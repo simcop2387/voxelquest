@@ -138,7 +138,7 @@ int main(int argc, char* argv[])
     int winWidth;
     int winHeight;
     int scaleFactor;
-    int resMode = 0;
+    int resMode = 3;
 
     switch (resMode) {
         case 0:
@@ -157,6 +157,12 @@ int main(int argc, char* argv[])
             winWidth = 2048;
             winHeight = 1024;
             scaleFactor = 2;
+        break;
+
+        case 3:
+            winWidth = 2048;
+            winHeight = 1280;
+            scaleFactor = 1;
         break;
     }
 

@@ -1,4 +1,4 @@
-﻿Build started 9/8/2013 12:13:52 PM.
+﻿Build started 9/9/2013 11:37:27 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -165,41 +165,14 @@
          |  |  END          
          |  END          
          END          
-         renderWorldSpace() TOT GPU MEM USED (MB):  278.562500         
-         renderWorldSpace() TOT GPU MEM USED (MB):  312.031250         
-         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  498.500000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  522.937500         
-         renderWorldSpace() TOT GPU MEM USED (MB):  536.750000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  536.750000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  536.750000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  536.750000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  536.750000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  613.250000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  613.250000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  644.593750         
-         renderWorldSpace() TOT GPU MEM USED (MB):  674.875000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  718.968750         
-         renderWorldSpace() TOT GPU MEM USED (MB):  789.093750         
-         renderWorldSpace() TOT GPU MEM USED (MB):  789.093750         
-         renderWorldSpace() TOT GPU MEM USED (MB):  789.093750         
-         renderWorldSpace() TOT GPU MEM USED (MB):  799.718750         
-         renderWorldSpace() TOT GPU MEM USED (MB):  799.718750         
-         renderWorldSpace() TOT GPU MEM USED (MB):  837.968750         
-         renderWorldSpace() TOT GPU MEM USED (MB):  837.968750         
+         Rock          
+         Dirt and Grass          
+         Brick          
+         Flat Top Stone          
+         Flat Top Dirt          
+         Brick          
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:01:47.19
+Time Elapsed 00:07:16.22

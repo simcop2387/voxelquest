@@ -13,6 +13,8 @@
 #include <string>
 #include <cstring>
 #include <vector>
+#include <deque>
+#include <list>
 #include <cstddef>
 #include <cassert>
 #include <cstdarg>
@@ -24,7 +26,7 @@
 #include <iomanip>
 #include <map>
 #include <ctime>
-#include <deque>
+
 
 #include <stdlib.h>
 #include <math.h>
@@ -93,7 +95,7 @@ using Poco::Util::HelpFormatter;
 
 //#define DEBUG_MODE 1
 
-
+float MAX_GPU_MEM = 1536.0f;
 float TOT_GPU_MEM_USAGE = 0.0f;
 
 #ifdef WIN32

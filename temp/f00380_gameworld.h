@@ -56,6 +56,8 @@ void GameWorld::init (Singleton * _singleton)
 		int i;
 		int j;
 
+		updatePoolOrder = false;
+
 		pageCount = 0;
 		lastProcResult = true;
 		maxThreads = 7;
@@ -108,9 +110,11 @@ void GameWorld::init (Singleton * _singleton)
 	    popTrace();
 	    #endif
 	}
-void GameWorld::update (bool changesMade, bool bufferInvalid)
-                                                          {
+void GameWorld::update ()
+                      {
 
+		bool changesMade = singleton->changesMade;
+		bool bufferInvalid = singleton->bufferInvalid;
 
 		bool procResult = processPages();
 		bool doRenderGeom = false;
@@ -118,6 +122,9 @@ void GameWorld::update (bool changesMade, bool bufferInvalid)
 
 		if ( (lastProcResult != procResult) && (procResult == false)  ) {
 			singleton->wsBufferInvalid = true;
+
+			updatePoolOrder = true;
+
 		}
 
 		if (procResult || changesMade) {
@@ -163,6 +170,13 @@ void GameWorld::update (bool changesMade, bool bufferInvalid)
 			glFlush();
 			
 		}
+
+		if (singleton->forceGetPD) {
+			singleton->forceGetPD = false;
+			renderWorldSpace();
+		}
+
+		
 
 
 		lastProcResult = procResult;
@@ -275,7 +289,7 @@ bool GameWorld::processPages ()
 							#endif
 
 							worldData[ind] = new GamePage();
-							worldData[ind]->init(singleton, &curPos);
+							worldData[ind]->init(singleton, ind, &curPos);
 
 							pageCount++;
 							changeCount++;
@@ -446,7 +460,7 @@ void GameWorld::renderPages ()
 	    int jj;
 	    int kk;
 
-	    int loadRad = 12;//singleton->maxW;
+	    int loadRad = 8;
 
 	    camPagePos.copyFrom( &(singleton->cameraPos) );
 	    camPagePos.intDivXYZ(visPageSizeInPixels);
@@ -456,11 +470,14 @@ void GameWorld::renderPages ()
 
 	    int m;
 
+	    int drawnPageCount = 0;
+	    int skippedPages = 0;
+
 
 	    singleton->bindShader("BlitShader");
 	    singleton->bindFBO("pagesFBO");
 
-	    
+
 
 		for (k = 0; k < singleton->maxH; k++) {
 			kk = k;//+camPagePos.getIZ();
@@ -476,7 +493,7 @@ void GameWorld::renderPages ()
 
 					
 					
-					
+
 					
 
 					
@@ -492,10 +509,33 @@ void GameWorld::renderPages ()
 						}
 						else {
 
-							if (worldData[ind]->fillState == E_FILL_STATE_PARTIAL) {
+							if (
+								(worldData[ind]->fillState == E_FILL_STATE_PARTIAL)
+								
+							) {
 								switch(curDiagram[worldData[ind]->curState]) {
 									case E_STATE_LENGTH:
-										drawPage(worldData[ind], ii, jj, kk);
+
+										if (worldData[ind]->usingPoolId == -1) {
+											skippedPages++;
+										}
+										else {
+											if (updatePoolOrder) {
+												singleton->sendPoolIdToFront(worldData[ind]->usingPoolId);
+											}
+											drawPage(worldData[ind], ii, jj, kk);
+											drawnPageCount++;
+
+											if (drawnPageCount >= singleton->pagePoolIds.size()-2) {
+
+												//doTrace("BROKE EARLY!!! ", i__s(drawnPageCount), " / ", i__s(singleton->pagePoolIds.size()-2));
+												//singleton->maxW--;
+												goto drawPageExit;
+											}
+
+										}
+
+										
 									break;
 								}
 							}
@@ -509,13 +549,22 @@ void GameWorld::renderPages ()
 					curInd++;
 				}
 			}
-			
 
 			
 		}
 
+		drawPageExit:
+
 		singleton->unbindShader();
 		singleton->unbindFBO();
+
+		updatePoolOrder = false;
+
+		if (singleton->reportPagesDrawn) {
+			singleton->reportPagesDrawn = false;
+
+			doTrace("Pages Drawn: ",i__s(drawnPageCount), " Pages Skipped: ",i__s(skippedPages), " AvailPages: ",i__s(singleton->pagePoolIds.size()-2));
+		}
 	    
 
 		//doTrace( "POSSIBLE ERROR: " , i__s(glGetError()) , "\n" );
@@ -558,7 +607,7 @@ void GameWorld::drawPage (GamePage * gp, int dx, int dy, int dz)
 
 
 
-	    singleton->sampleFBODirect(gp->fboSet);
+	    singleton->sampleFBODirect(gp->gpuRes->fboSet);
 
 
 	    glColor4f(1, 1, 1, 1);
@@ -580,7 +629,7 @@ void GameWorld::drawPage (GamePage * gp, int dx, int dy, int dz)
 	    
 	    glEnd();
 
-	    singleton->unsampleFBODirect(gp->fboSet);
+	    singleton->unsampleFBODirect(gp->gpuRes->fboSet);
 
 
 
@@ -629,50 +678,21 @@ void GameWorld::renderGeom ()
 		//remember 2x radius
 
 
-		/*
-
-		if (singleton->activeObject == E_OBJ_LIGHT) { //  || activeObject == E_OBJ_NONE singleton->activeObject == E_OBJ_CAMERA || 
-
-		}
-		else {
-
-			
-			if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
-				singleton->setShaderFloat("matVal", 5.0f);
-				singleton->drawCubeCentered(lastUnitPos, (singleton->curBrushRad)*(singleton->unitSizeInPixels)  );
-			}
-			
-
-		}
-		*/
-
-		if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
-			singleton->setShaderFloat("matVal", 5.0f);
-			singleton->drawCubeCentered(lastUnitPos, (singleton->curBrushRad)*(singleton->unitSizeInPixels)  );
-		}
-
-		glClear(GL_DEPTH_BUFFER_BIT);
-
-
-
-
-		if (singleton->mouseState == E_MOUSE_STATE_BRUSH) {
-			singleton->setShaderFloat("matVal", 6.0f);
-			singleton->drawCubeCentered(lastUnitPos, (singleton->curBrushRad)*(singleton->unitSizeInPixels)  );
-		}
-		else {
-			if (singleton->showUI) {
+		switch (singleton->mouseState) {
+			case E_MOUSE_STATE_BRUSH:
+				singleton->setShaderFloat("matVal", 6.0f);
+				singleton->drawCubeCentered(lastUnitPos, ((int)singleton->curBrushRad)*(singleton->unitSizeInPixels)  );
+				glClear(GL_DEPTH_BUFFER_BIT);
+			break;
+			case E_MOUSE_STATE_OBJECTS:
 				singleton->setShaderFloat("matVal", 4.0f);
 				singleton->drawCubeCentered(singleton->lightPos,32.0);
 
 				singleton->setShaderFloat("matVal", 5.0f);
 				singleton->drawCubeCentered(singleton->fogPos,32.0);
-			}	
-		}
-
-
+			break;
 			
-
+		}
 		
 
 		glDisable(GL_DEPTH_TEST);
@@ -690,15 +710,10 @@ void GameWorld::renderGeom ()
 void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushAction)
                                                                                {
 
-		int radius = singleton->curBrushRad;
+		int radius = ((int)singleton->curBrushRad);
 
 		FIVector4 fPixelWorldCoords;
 		fPixelWorldCoords.copyFrom(fPixelWorldCoordsBase);
-
-		float selMod;
-
-
-		selMod = 0.0f;
 
 		/*
 		if (brushAction == E_BRUSH_ADD) {
@@ -747,6 +762,22 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 		int newRad = 2 + radius/visPageSizeInUnits;
 
 
+		uint linV;
+		uint nearV;
+
+		uint linR;
+		uint linG;
+		uint linB;
+		uint linA;
+
+		uint nearR;
+		uint nearG;
+		uint nearB;
+		uint nearA;
+
+		bool isInside;
+
+
 		pagePos.copyFrom(&fPixelWorldCoords);
 		unitPos.copyFrom(&fPixelWorldCoords);
 
@@ -757,8 +788,13 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 		unitPosMin.copyFrom(&unitPos);
 		unitPosMax.copyFrom(&unitPos);
 
-		unitPosMin.addXYZ((float)radius, -1.0f);
-		unitPosMax.addXYZ((float)radius, 1.0f);
+		unitPosMin.addXYZ((float)radius-1, -1.0f);
+		unitPosMax.addXYZ((float)radius+1, 1.0f);
+
+		unitPosMinIS.copyFrom(&unitPos);
+		unitPosMaxIS.copyFrom(&unitPos);
+		unitPosMinIS.addXYZ((float)radius+1, -1.0f);
+		unitPosMaxIS.addXYZ((float)radius-1, 1.0f);
 
 
 		if (brushAction == E_BRUSH_MOVE) {
@@ -787,7 +823,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 								curPos.setIXYZ(ii*visPageSizeInUnits,jj*visPageSizeInUnits,kk*visPageSizeInUnits);
 								worldData[ind] = new GamePage();
-								worldData[ind]->init(singleton, &curPos);
+								worldData[ind]->init(singleton, ind, &curPos);
 								worldData[ind]->createSimplexNoise();
 
 								//doTrace("created new page");
@@ -829,6 +865,8 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 											for (p = startBounds.getIZ(); p < endBounds.getIZ(); p++) {
 
 												tempVec.setIXYZ(n,o,p);
+												isInside = tempVec.inBoundsXYZ(&unitPosMinIS,&unitPosMaxIS);
+												
 
 												if (
 													tempVec.inBoundsXYZ(
@@ -847,13 +885,127 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 														if (m == 0) {
 
+															linV = worldData[ind]->volDataLinear[ind2];
+															nearV = worldData[ind]->volData[ind2];
 
-															if (brushAction == E_BRUSH_SUB || p >= singleton->maxHeightInUnits) {
-																worldData[ind]->volData[ind2] &= (255<<16)|(255<<8)|(255);
+															linR = (linV)&255;
+															linG = (linV>>8)&255;
+															linB = (linV>>16)&255;
+															linA = (linV>>24)&255;
+
+															nearR = (nearV)&255;
+															nearG = (nearV>>8)&255;
+															nearB = (nearV>>16)&255;
+															nearA = (nearV>>24)&255;
+
+
+															if (p >= singleton->maxHeightInUnits) {
+
+																linA = 0;
 															}
 															else {
-																worldData[ind]->volData[ind2] |= (255<<24);
+
+																if (brushAction == E_BRUSH_SUB) {
+
+
+																	if (isInside) {
+																		if (singleton->softMode) {
+																			linA = min(linA, linA-8);
+																		}
+																		else {
+																			linA = 0;
+																		}
+																	}
+																	
+																}
+																else {
+
+																	if (isInside) {
+																		if (singleton->softMode) {
+																			linA += 8;
+																			if (linA > 255) {
+																				linA = 255;
+																			}
+																		}
+																		else {
+																			linA = 255;
+																		}
+																	}
+
+																	
+
+																	switch(singleton->activeMode) {
+																		//
+																		case 0:
+
+																		break;
+
+																		// dirt and grass
+																		case 1:
+																			linR = 255;
+																			linG = 255;
+																			linB = 255;
+
+																			nearA = 0;
+																		break;
+
+																		// rock
+																		case 2:
+																			linR = 255;
+																			linG = 255;
+																			linB = 255;
+
+																			nearA = 255;
+																		break;
+																		
+																		// brick
+																		case 3:
+																			linR = 16;
+																			linG = 255;
+																			linB = 16;
+
+																			nearA = 255;
+																		break;
+																			
+																		// flat top
+																		case 4:
+																			linB = 0;
+																			nearA = 255;
+																		break;
+																		
+																		//
+																		case 5:
+																			linB = 0;
+																			nearA = 0;
+																		break;
+																		
+																		//
+																		case 6:
+
+																		break;
+																		
+																		//
+																		case 7:
+
+																		break;
+
+																		//
+																		case 8:
+
+																		break;
+																		
+																		//
+																		case 9:
+
+																		break;
+																		
+																	}
+																}
 															}
+
+															worldData[ind]->volData[ind2] = (nearA<<24)|(nearB<<16)|(nearG<<8)|(nearR);
+															worldData[ind]->volDataLinear[ind2] = (linA<<24)|(linB<<16)|(linG<<8)|(linR);
+															
 
 															worldData[ind]->isDirty = true;
 															changes = true;
@@ -902,6 +1054,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 		if (changes) {
 			singleton->changesMade=true;
+			singleton->wsBufferInvalid=true;
 		}
 
 		
@@ -910,7 +1063,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 	}
 void GameWorld::renderWorldSpace ()
                                 {
-		doTrace("renderWorldSpace() TOT GPU MEM USED (MB): ", f__s(TOT_GPU_MEM_USAGE));
+		//doTrace("renderWorldSpace() TOT GPU MEM USED (MB): ", f__s(TOT_GPU_MEM_USAGE));
 
 		singleton->wsBufferInvalid = false;
 

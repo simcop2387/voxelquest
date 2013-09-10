@@ -5,7 +5,7 @@ uniform sampler3D Texture1; //voro texture linear
 uniform sampler2D Texture2; //2d to 3d coords
 
 uniform vec2 resolution;
-uniform float unitsPerDim;
+uniform float bufferedPageSizeInUnits;
 uniform vec3 worldMin;
 uniform vec3 worldMax;
 uniform float threshVal;
@@ -89,6 +89,12 @@ void main() {
 	vec4 tex1 =  texture3D(Texture0, newCoords);
 	vec4 tex2 =  texture3D(Texture1, newCoords);
 
+	vec4 tex1Clamped = texture3D(Texture0, newCoords+0.5/bufferedPageSizeInUnits);
+	//vec4 tex2Clamped = texture3D(Texture1, newCoords - 1.2/bufferedPageSizeInUnits);
+
+	//vec4 tex2Clamped = texture3D(Texture1, floor(newCoords*bufferedPageSizeInUnits + 0.5)/bufferedPageSizeInUnits );
+
+
 	vec4 res = vec4(0.0,0.0,0.0,0.0);
 
 	int i = 0;
@@ -100,7 +106,7 @@ void main() {
 	float fk = 0.0;
 
 
-	float rad = 1.0/(unitsPerDim);
+	float rad = 1.0/(bufferedPageSizeInUnits);
 	vec4 samp =     vec4(0.0,0.0,0.0,0.0);
 	vec4 bestSamp = vec4(0.0,0.0,0.0,0.0);
 	float curDis = 0.0;
@@ -115,8 +121,12 @@ void main() {
 	const int maxrad = 1;
 
 	vec3 newCoords2 = newCoords;
-	//newCoords2.x *= 0.5;
-	//newCoords2.z *= 0.5;
+	
+
+
+	newCoords2.x *= tex2.r;
+	newCoords2.y *= tex2.g;
+	newCoords2.z *= tex2.b;
 	
 
 
@@ -132,12 +142,7 @@ void main() {
 
 
 		samp = texture3D(Texture0, newCoords + COLOR_MASKS[i]*rad );
-
-
-
-		if (samp.a > threshVal/255.0) {
-			terrainAbove += float(COLOR_MASKS[i].z > 0.0);
-		}
+		terrainAbove += float( (COLOR_MASKS[i].z > 0.0)&&(samp.a > threshVal/255.0) );
 
 		if ((samp.r + samp.g + samp.b) == 0.0) {
 
@@ -163,11 +168,11 @@ void main() {
 
 	}
 
-	terrainAbove = clamp(terrainAbove,0.0,1.0);
+	terrainAbove = float(terrainAbove > 3.0);//clamp(terrainAbove,0.0,1.0);
 
 	float gradVal = clamp(1.0 - (minDis1*2.0/(minDis1+minDis2)),1.0/255.0,1.0);
 	
-	//(bestSamp.r + bestSamp.g*unitsPerDim + bestSamp.b*unitsPerDim*unitsPerDim);
+	//(bestSamp.r + bestSamp.g*bufferedPageSizeInUnits + bestSamp.b*bufferedPageSizeInUnits*bufferedPageSizeInUnits);
 
 	
 	float rockIsOnTer = float( texture3D(Texture1, bestSamp.rgb).a > threshVal/255.0);
@@ -183,7 +188,7 @@ void main() {
 	else {
 		
 
-		if (terrainAbove == 0.0) {
+		if (terrainAbove == 0.0 && tex1Clamped.a < 1.0) {
 			res.a = isTerrain;
 			res.a += float( (rockIsInside+isTerrain) > 0.0);
 			res.rgb = mix(vec3(0.0,0.0,0.0),bestSamp.rgb,res.a);
@@ -193,17 +198,6 @@ void main() {
 			res.a = rockIsOnTer/255.0; //*mix(1.0, 2.0, terrainAbove )
 			res.rgb = bestSamp.rgb;
 		}
-
-		//res.a = isTerrain;
-		//res.a += float( (rockIsInside+isTerrain) > 0.0);
-		//res.rgb = mix(vec3(0.0,0.0,0.0),bestSamp,res.a);
-		//res.a = res.a/255.0;
-		
-		//normSamp = normalize(newCoords2-bestSamp.rgb);
-
-
-
-		
 
 
 	}

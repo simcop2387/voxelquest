@@ -11,11 +11,15 @@ public:
   E_OBJ tempObj;
   bool (keyDownArr) [MAX_KEYS];
   bool wsBufferInvalid;
-  int curBrushRad;
+  list <int> pagePoolIds;
+  vector <PooledResource*> pagePoolItems;
+  int poolItemsCreated;
+  float curBrushRad;
   float diskOn;
   float grassHeight;
-  bool showUI;
+  bool softMode;
   bool isBare;
+  bool reportPagesDrawn;
   GLuint volTris;
   GLuint grassTris;
   vector <string> shaderStrings;
@@ -47,10 +51,9 @@ public:
   float mouseY;
   float mouseXUp;
   float mouseYUp;
-  bool shiftPressed;
-  bool ctrlPressed;
-  bool altPressed;
+  PooledResource * testRes;
   float cameraZoom;
+  int activeMode;
   FIVector4 activeObjectPos;
   FIVector4 minBoundsInPixels;
   FIVector4 maxBoundsInPixels;
@@ -62,16 +65,17 @@ public:
   FIVector4 lightPos;
   FIVector4 mouseStart;
   FIVector4 mouseEnd;
+  FIVector4 worldSeed;
+  FIVector4 fogPos;
+  FIVector4 bufferDim;
+  FIVector4 bufferDimHalf;
   uint * lookup2to3;
   GLuint lookup2to3ID;
   int shadersAreLoaded;
   int readyToRecompile;
-  FIVector4 bufferDim;
-  FIVector4 bufferDimHalf;
   bool lbDown;
   bool rbDown;
   bool mbDown;
-  FIVector4 worldSeed;
   Timer myTimer;
   float curTime;
   float lastTime;
@@ -80,6 +84,7 @@ public:
   int frameCount;
   bool changesMade;
   bool bufferInvalid;
+  bool forceGetPD;
   int maxH;
   int maxW;
   int screenWidth;
@@ -92,7 +97,9 @@ public:
   GameWorld * gw;
   int lastPosX;
   int lastPosY;
-  FIVector4 fogPos;
+  void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
+  void sendPoolIdToFront (int id);
+  int requestPoolId (int requestingPageId);
   static void qNormalizeAngle (int & angle);
   void setupLookups ();
   void perspectiveProjection ();
@@ -107,7 +114,6 @@ public:
   void drawCubeCentered (FIVector4 origin, float radius);
   void drawBox (FIVector4 minVec, FIVector4 maxVec);
   void createVTList ();
-  void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
   void doShaderRefresh ();
   void setMatrices (int w, int h);
   void setWH (int w, int h);
@@ -130,6 +136,9 @@ public:
   void setShaderfVec4 (string paramName, FIVector4 * v);
   void setShaderTexture (uint texID, int multitexNumber);
   void setShaderTexture3D (uint texID, int multitexNumber);
+  bool shiftDown ();
+  bool ctrlDown ();
+  bool altDown ();
   void drawFSQuad (float zoom);
   void drawFSQuadOffset (float xOff, float yOff, float zoom);
   void drawFBO (string fboName, int ind, float zoom);
@@ -162,8 +171,14 @@ public:
 class PooledResource
 {
 public:
+  FBOSet * fboSet;
+  uint volID;
+  uint volIDLinear;
+  int bufferedPageSizeInUnits;
+  int usedByPageId;
+  Singleton * singleton;
   PooledResource ();
-  void init ();
+  void init (Singleton * _singleton);
 };
 #undef LZZ_INLINE
 #endif
@@ -176,15 +191,16 @@ public:
 class GamePage : public Poco::Runnable
 {
 public:
+  Singleton * singleton;
+  int thisPageId;
+  int usingPoolId;
+  PooledResource * gpuRes;
   int threshVal;
-  int iDim;
+  int bufferedPageSizeInUnits;
   FIVector4 offsetInUnits;
   int iVolumeSize;
   uint * volData;
-  Singleton * singleton;
-  FBOSet * fboSet;
-  uint volID;
-  uint volIDLinear;
+  uint * volDataLinear;
   int maxHeightInUnits;
   int totLenO2;
   int totLenVisO2;
@@ -200,10 +216,11 @@ public:
   FIVector4 worldUnitMax;
   E_FILL_STATE fillState;
   GamePage ();
-  void init (Singleton * _singleton, FIVector4 * _offsetInUnits);
+  void init (Singleton * _singleton, int _thisPageId, FIVector4 * _offsetInUnits);
   uint NumberOfSetBits (uint i);
   uint clamp (uint val);
   void createSimplexNoise ();
+  void unbindGPUResources ();
   void copyToTexture ();
   void generateVolume ();
   ~ GamePage ();
@@ -228,6 +245,7 @@ public:
   int renderMethod;
   bool doDrawFBO;
   bool lastProcResult;
+  bool updatePoolOrder;
   vector <int> ocThreads;
   FIVector4 screenCoords;
   FIVector4 worldSizeInPages;
@@ -241,6 +259,8 @@ public:
   FIVector4 tempVec;
   FIVector4 unitPosMin;
   FIVector4 unitPosMax;
+  FIVector4 unitPosMinIS;
+  FIVector4 unitPosMaxIS;
   FIVector4 startBounds;
   FIVector4 endBounds;
   Singleton * singleton;
@@ -254,7 +274,7 @@ public:
   bool checkBounds (int i, int j, int k);
   void resetToState (E_STATES resState);
   void init (Singleton * _singleton);
-  void update (bool changesMade, bool bufferInvalid);
+  void update ();
   bool processPages ();
   void renderPages ();
   void drawPage (GamePage * gp, int dx, int dy, int dz);

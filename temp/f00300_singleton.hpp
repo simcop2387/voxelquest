@@ -8,14 +8,21 @@ public:
 	bool keyDownArr[MAX_KEYS];
 	bool wsBufferInvalid;
 
+	list<int> pagePoolIds;
+	vector<PooledResource*> pagePoolItems;
+	
+	int poolItemsCreated;
 
-	int curBrushRad;
+	float curBrushRad;
+
 
 	float diskOn;
 	float grassHeight;
 
-	bool showUI;
+	bool softMode;
 	bool isBare;
+
+	bool reportPagesDrawn;
 
 
 	GLuint volTris;
@@ -65,13 +72,13 @@ public:
 	float mouseXUp;
 	float mouseYUp;
 
-	bool shiftPressed;
-	bool ctrlPressed;
-	bool altPressed;
-
+	
+	PooledResource* testRes;
 
 	float cameraZoom;
 
+
+	int activeMode;
 
 	FIVector4 activeObjectPos;
 
@@ -89,6 +96,12 @@ public:
 	FIVector4 mouseStart;
 	FIVector4 mouseEnd;
 
+	FIVector4 worldSeed;
+	FIVector4 fogPos;
+
+	FIVector4 bufferDim;
+	FIVector4 bufferDimHalf;
+
 
 	uint* lookup2to3;
 	//uint* lookup3to2;
@@ -98,8 +111,7 @@ public:
 	int shadersAreLoaded;
 	int readyToRecompile;
 
-	FIVector4 bufferDim;
-	FIVector4 bufferDimHalf;
+	
 
 	bool lbDown;
 	bool rbDown;
@@ -107,7 +119,7 @@ public:
 
 
 
-	FIVector4 worldSeed;
+
 
 
 
@@ -126,6 +138,7 @@ public:
 	int frameCount;
 	bool changesMade;
 	bool bufferInvalid;
+	bool forceGetPD;
 	int maxH;
 	int maxW;
 	int screenWidth;
@@ -142,7 +155,316 @@ public:
 	int lastPosX;
 	int lastPosY;
 
-	FIVector4 fogPos;
+
+
+
+	void init(int _defaultWinW, int _defaultWinH, int _scaleFactor) {
+
+		pushTrace("Singleton init");
+
+		poolItemsCreated = 0;
+		activeMode = 1;
+
+		softMode = false;
+		reportPagesDrawn = false;
+		isBare = false;
+		grassHeight = 1.0/128.0;
+
+
+		defaultWinW = _defaultWinW/_scaleFactor;
+		defaultWinH = _defaultWinH/_scaleFactor;
+		scaleFactor = _scaleFactor;
+
+		curBrushRad = 1.0f;
+
+		mouseState = E_MOUSE_STATE_MOVE;
+
+		worldSeed.setFXYZ(
+
+			genRand(5000.0f,500000.0f),
+			genRand(5000.0f,500000.0f),
+			genRand(5000.0f,500000.0f)
+		);
+
+		
+		bufferMult = 2;
+		diskOn = 0.0f;
+		visPageSizeInPixels = 128; // height of one page in pixels
+		visPageSizeInUnits = 8;
+		worldSizeInPages.setIXYZ(128,128,12);
+		unitSizeInPixels = (visPageSizeInPixels)/visPageSizeInUnits;
+		
+
+		maxH = worldSizeInPages.getIZ();
+		maxW = 4;
+
+
+		// //fastMode
+		// if (true) {
+		// 	MAX_GPU_MEM = 512.0;
+		// 	maxW = 2;
+		// }
+
+
+		maxHeightInUnits = (worldSizeInPages.getIZ()-bufferMult)*(visPageSizeInUnits);
+
+		minBoundsInPixels.setIXYZ(0,0,0);
+		maxBoundsInPixels.setIXYZ(
+			(worldSizeInPages.getIX()-1)*unitSizeInPixels*visPageSizeInUnits,
+			(worldSizeInPages.getIY()-1)*unitSizeInPixels*visPageSizeInUnits,
+			(worldSizeInPages.getIZ()-1)*unitSizeInPixels*visPageSizeInUnits
+		);
+
+
+		wsBufferInvalid = true;
+
+		bufferDim.setIXY(defaultWinW,defaultWinH);
+		bufferDimHalf.setIXY(defaultWinW/2,defaultWinH/2);
+		
+
+		myTimer.start();
+
+		grassState = E_GRASS_STATE_OFF;
+
+		activeObject = E_OBJ_NONE;
+
+		extraRad = 0;
+		lastTime = 0.0;
+
+		srand(time(0));
+
+		
+
+
+		int i;
+		mbDown=false;
+		lbDown=false;
+		rbDown=false;
+
+		for (i = 0; i < MAX_KEYS; i++) {
+			keyDownArr[i] = false;
+		}
+		keySetup();
+
+		
+
+		isFullScreen = false;
+	    shadersAreLoaded = 0;
+	    readyToRecompile = 0;
+
+		programState = E_PS_IN_GAME;
+
+
+		cameraPos.setFXYZ(2048.0, 2048.0, maxBoundsInPixels.getFZ()/2.0);
+
+		lightPos.copyFrom(&cameraPos);
+		fogPos.copyFrom(&cameraPos);
+
+		lightPos.setFZ(maxBoundsInPixels.getFZ()*0.6f);
+		//lightPos.addXYZ(0.0f, 0.0f, 0.0f);
+		fogPos.addXYZ(-256.0f);
+
+	    cameraZoom = 1.0f;
+
+	    mouseX = 0.0f;
+	    mouseY = 0.0f;
+	    mouseXUp = 0.0f;
+	    mouseYUp = 0.0f;
+
+		createVTList();
+		createGrassList();
+
+
+		//// GL WIDGET START ////
+		
+		frameCount = 0;
+		changesMade = false;
+		forceGetPD = false;
+		bufferInvalid = false;
+		notQuit = true;
+		timerNotSet = true;
+		screenWidth = 400;
+		screenHeight = 300;
+		mouseLeftDown = mouseRightDown = false;
+		mouseX = mouseY = 0;
+		myDelta = 0.0f;
+		
+		
+		
+
+		
+
+	
+
+
+		//gm = new GameMap();
+		orthographicProjection();
+		//// GL WIDGET END ////
+
+
+
+	    glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // 4-byte pixel alignment
+	    glEnable(GL_TEXTURE_2D);
+	    glDisable(GL_DEPTH_TEST);
+	    glDisable(GL_CULL_FACE);
+	    glDisable(GL_LIGHTING);
+	    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	    glDisable(GL_BLEND);
+	    //glEnable(GL_BLEND);
+
+
+	    
+
+
+	    fboStrings.push_back("worldSpaceFBO");
+
+	    fboStrings.push_back("pagesFBO");
+	    fboStrings.push_back("grassFBO");
+	    fboStrings.push_back("geomFBO");
+	    fboStrings.push_back("combineFBO");
+	    fboStrings.push_back("resultFBO");
+	    fboStrings.push_back("volGenFBO");
+
+
+	    /*
+	    shaderStrings.push_back("Simplex2D");
+	    shaderStrings.push_back("CalcFlow");
+	    shaderStrings.push_back("Erode");
+	    shaderStrings.push_back("DLA");
+	    shaderStrings.push_back("MapShader");
+	    shaderStrings.push_back("shaderWater");
+	    */
+
+
+	    shaderStrings.push_back("WorldSpaceShader");
+	    shaderStrings.push_back("BlitShader");
+	    shaderStrings.push_back("LightingShader");
+	    shaderStrings.push_back("GeomShader");
+	    shaderStrings.push_back("GrassShader");
+	    shaderStrings.push_back("CombineShader");
+	    shaderStrings.push_back("GenerateVolume");
+	    shaderStrings.push_back("GenerateVolumeBare");
+	    shaderStrings.push_back("RenderVolume");
+	    
+
+	    
+
+	    shaderTextureIDs.push_back("Texture0");
+	    shaderTextureIDs.push_back("Texture1");
+	    shaderTextureIDs.push_back("Texture2");
+	    shaderTextureIDs.push_back("Texture3");
+	    shaderTextureIDs.push_back("Texture4");
+	    shaderTextureIDs.push_back("Texture5");
+	    shaderTextureIDs.push_back("Texture6");
+	    shaderTextureIDs.push_back("Texture7");
+
+
+	    setupLookups();
+
+	    for (i = 0; i < shaderStrings.size(); i++) {
+	        shaderMap.insert(  pair<string,Shader*>(shaderStrings[i], NULL)  );
+	    }
+	    doShaderRefresh();
+
+	    //fboSize = 512;
+	    //bufsPerFBO = 2;
+
+	    for (i = 0; i < fboStrings.size(); i++) {
+	        fboMap.insert(  pair<string, FBOSet*>(fboStrings[i], new FBOSet())  );
+	    }
+
+	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel);
+
+	    fboMap["worldSpaceFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false);
+
+	    fboMap["pagesFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+	    fboMap["grassFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+	    fboMap["geomFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, true);
+	    fboMap["combineFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+	    fboMap["volGenFBO"]->init(1, 4096, 4096, 1, false);
+
+
+
+	    
+
+	    //testRes = new PooledResource();
+	    //testRes->init(this);
+
+
+	    gw = new GameWorld();
+	    gw->init(this);
+
+
+	    
+	    popTrace();
+
+
+
+
+	}
+
+	void sendPoolIdToFront(int id) {
+		int i = 0;
+
+		pagePoolIds.remove(id);
+		pagePoolIds.push_front(id);
+
+	}
+
+	int requestPoolId(int requestingPageId) {
+
+		
+		int pageToFreeId;
+		int usedByPageId;
+
+		
+		if (TOT_GPU_MEM_USAGE < MAX_GPU_MEM) {
+			pagePoolItems.push_back( new PooledResource() );
+			pagePoolItems.back()->init(this);
+
+			pageToFreeId = poolItemsCreated;
+			pagePoolIds.push_front(pageToFreeId);
+			poolItemsCreated++;
+
+		}
+		else {
+			pageToFreeId = pagePoolIds.back();
+			usedByPageId = pagePoolItems[pageToFreeId]->usedByPageId;
+
+			GamePage* consumingPage;
+
+			if (usedByPageId == -1) {
+				// this pooledItem is already free 
+
+			}
+			else {
+				// free this pooledItem from the page that is consuming it and give it to the requesting page
+
+				consumingPage = gw->worldData[usedByPageId];
+
+				if (consumingPage == NULL) {
+					// page was deleted already
+				}
+				else {
+					consumingPage->unbindGPUResources();
+				}
+				
+
+			}
+
+			pagePoolIds.pop_back();
+			pagePoolIds.push_front(pageToFreeId);
+		}
+
+
+		pagePoolItems[pageToFreeId]->usedByPageId = requestingPageId;
+
+		return pageToFreeId;
+
+	}
+
+
 
 
 	static void qNormalizeAngle(int &angle)
@@ -616,239 +938,6 @@ public:
 
 
 
-	
-
-
-
-
-    
-	void init(int _defaultWinW, int _defaultWinH, int _scaleFactor) {
-
-		pushTrace("Singleton init");
-
-		showUI = true;
-		isBare = false;
-		grassHeight = 1.0/128.0;
-
-		defaultWinW = _defaultWinW/_scaleFactor;
-		defaultWinH = _defaultWinH/_scaleFactor;
-		scaleFactor = _scaleFactor;
-
-		curBrushRad = 1;
-
-		mouseState = E_MOUSE_STATE_MOVE;
-
-		worldSeed.setFXYZ(
-
-			genRand(5000.0f,500000.0f),
-			genRand(5000.0f,500000.0f),
-			genRand(5000.0f,500000.0f)
-		);
-
-		
-		bufferMult = 2;
-		diskOn = 0.0f;
-		visPageSizeInPixels = 128; // height of one page in pixels
-		visPageSizeInUnits = 8;
-		worldSizeInPages.setIXYZ(128,128,8);
-		unitSizeInPixels = (visPageSizeInPixels)/visPageSizeInUnits;
-		
-
-		maxH = worldSizeInPages.getIZ();
-		maxW = 4;
-
-
-		maxHeightInUnits = (worldSizeInPages.getIZ()-bufferMult)*(visPageSizeInUnits);
-
-		minBoundsInPixels.setIXYZ(0,0,0);
-		maxBoundsInPixels.setIXYZ(
-			(worldSizeInPages.getIX()-1)*unitSizeInPixels*visPageSizeInUnits,
-			(worldSizeInPages.getIY()-1)*unitSizeInPixels*visPageSizeInUnits,
-			(worldSizeInPages.getIZ()-1)*unitSizeInPixels*visPageSizeInUnits
-		);
-
-
-		wsBufferInvalid = true;
-
-		bufferDim.setIXY(defaultWinW,defaultWinH);
-		bufferDimHalf.setIXY(defaultWinW/2,defaultWinH/2);
-		
-
-		myTimer.start();
-
-		grassState = E_GRASS_STATE_OFF;
-
-		activeObject = E_OBJ_NONE;
-
-		extraRad = 0;
-		lastTime = 0.0;
-
-		srand(time(0));
-
-		
-
-
-		int i;
-		mbDown=false;
-		lbDown=false;
-		rbDown=false;
-
-		for (i = 0; i < MAX_KEYS; i++) {
-			keyDownArr[i] = false;
-		}
-		keySetup();
-
-		
-
-		isFullScreen = false;
-	    shadersAreLoaded = 0;
-	    readyToRecompile = 0;
-
-		programState = E_PS_IN_GAME;
-
-
-		cameraPos.setFXYZ(2048.0, 2048.0, 512.0);
-
-		lightPos.copyFrom(&cameraPos);
-		fogPos.copyFrom(&cameraPos);
-
-		lightPos.addXYZ(0.0f, 0.0f, 0.0f);
-		fogPos.addXYZ(0.0f, 0.0f, -256.0f);
-
-	    cameraZoom = 1.0f;
-
-	    mouseX = 0.0f;
-	    mouseY = 0.0f;
-	    mouseXUp = 0.0f;
-	    mouseYUp = 0.0f;
-
-	    shiftPressed = false;
-		ctrlPressed = false;
-		altPressed = false;
-
-		createVTList();
-		createGrassList();
-
-
-		//// GL WIDGET START ////
-		
-		frameCount = 0;
-		changesMade = false;
-		bufferInvalid = false;
-		notQuit = true;
-		timerNotSet = true;
-		screenWidth = 400;
-		screenHeight = 300;
-		mouseLeftDown = mouseRightDown = false;
-		mouseX = mouseY = 0;
-		myDelta = 0.0f;
-		
-		
-
-		gw = new GameWorld();
-
-
-		
-
-		gw->init(this);
-
-	
-
-
-		//gm = new GameMap();
-		orthographicProjection();
-		//// GL WIDGET END ////
-
-
-
-	    glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // 4-byte pixel alignment
-	    glEnable(GL_TEXTURE_2D);
-	    glDisable(GL_DEPTH_TEST);
-	    glDisable(GL_CULL_FACE);
-	    glDisable(GL_LIGHTING);
-	    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	    glDisable(GL_BLEND);
-	    //glEnable(GL_BLEND);
-
-
-	    
-
-
-	    fboStrings.push_back("worldSpaceFBO");
-
-	    fboStrings.push_back("pagesFBO");
-	    fboStrings.push_back("grassFBO");
-	    fboStrings.push_back("geomFBO");
-	    fboStrings.push_back("combineFBO");
-	    fboStrings.push_back("resultFBO");
-	    fboStrings.push_back("volGenFBO");
-
-
-	    /*
-	    shaderStrings.push_back("Simplex2D");
-	    shaderStrings.push_back("CalcFlow");
-	    shaderStrings.push_back("Erode");
-	    shaderStrings.push_back("DLA");
-	    shaderStrings.push_back("MapShader");
-	    shaderStrings.push_back("shaderWater");
-	    */
-
-
-	    shaderStrings.push_back("WorldSpaceShader");
-	    shaderStrings.push_back("BlitShader");
-	    shaderStrings.push_back("LightingShader");
-	    shaderStrings.push_back("GeomShader");
-	    shaderStrings.push_back("GrassShader");
-	    shaderStrings.push_back("CombineShader");
-	    shaderStrings.push_back("GenerateVolume");
-	    shaderStrings.push_back("GenerateVolumeBare");
-	    shaderStrings.push_back("RenderVolume");
-	    
-
-	    
-
-	    shaderTextureIDs.push_back("Texture0");
-	    shaderTextureIDs.push_back("Texture1");
-	    shaderTextureIDs.push_back("Texture2");
-	    shaderTextureIDs.push_back("Texture3");
-	    shaderTextureIDs.push_back("Texture4");
-	    shaderTextureIDs.push_back("Texture5");
-	    shaderTextureIDs.push_back("Texture6");
-	    shaderTextureIDs.push_back("Texture7");
-
-
-	    setupLookups();
-
-	    for (i = 0; i < shaderStrings.size(); i++) {
-	        shaderMap.insert(  pair<string,Shader*>(shaderStrings[i], NULL)  );
-	    }
-	    doShaderRefresh();
-
-	    //fboSize = 512;
-	    //bufsPerFBO = 2;
-
-	    for (i = 0; i < fboStrings.size(); i++) {
-	        fboMap.insert(  pair<string, FBOSet*>(fboStrings[i], new FBOSet())  );
-	    }
-
-	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel);
-
-	    fboMap["worldSpaceFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false);
-
-	    fboMap["pagesFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-	    fboMap["grassFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-	    fboMap["geomFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, true);
-	    fboMap["combineFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-	    fboMap["volGenFBO"]->init(1, 4096, 4096, 1, false);
-	    
-	    popTrace();
-
-
-
-
-	}
-
 	void doShaderRefresh() {
 		pushTrace( "doShaderRefresh" );
 
@@ -1029,6 +1118,20 @@ public:
 	}
 
 
+	bool shiftDown() {
+		return glutGetModifiers()&GLUT_ACTIVE_SHIFT;
+	}
+
+	bool ctrlDown() {
+		return glutGetModifiers()&GLUT_ACTIVE_CTRL;
+	}
+
+	bool altDown() {
+		return glutGetModifiers()&GLUT_ACTIVE_ALT;
+	}
+
+
+
 
 	void drawFSQuad(float zoom) {
 	    drawFSQuadOffset(0.0f,0.0f,zoom);
@@ -1085,10 +1188,12 @@ public:
 		float dxZoom = dx/zoom;
 		float dyZoom = dy/zoom;
 
+		bool doDefault = false;
+
 		FIVector4 modXYZ;
 
 		if (lbDown||rbDown) {
-			if (rbDown || (glutGetModifiers()&GLUT_ACTIVE_SHIFT) ) {
+			if (rbDown || (shiftDown() ) ) {
 				modXYZ.setFZ(  dyZoom );
 				modXYZ.setFX( -(0.0f + dxZoom/2.0f) );
 				modXYZ.setFY( -(0.0f - dxZoom/2.0f) );
@@ -1100,51 +1205,67 @@ public:
 			}
 		}
 
-		if (glutGetModifiers()&GLUT_ACTIVE_SHIFT) {
-			grassHeight -= modXYZ.getFZ()/10000.0f;
+		if (shiftDown()) {
 
-			if (grassHeight < 0.0f) {
-				grassHeight = 0.0f;
+			if (mouseState == E_MOUSE_STATE_BRUSH) {
+				curBrushRad -= modXYZ.getFZ()/50.0f;
+
+				if (curBrushRad < 0.0f) {
+					curBrushRad = 0.0f;
+				}
 			}
+			else {
+				grassHeight -= modXYZ.getFZ()/10000.0f;
+
+				if (grassHeight < 0.0f) {
+					grassHeight = 0.0f;
+				}
+			}
+
+			
 		}
 		else {
-			switch (activeObject) {
-
-				case E_OBJ_LIGHT:
-					lightPos.addXYZRef(&modXYZ, -1.0f);
-					//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-					activeObjectPos.setFXYZRef(&lightPos);
-				break;
-
-				case E_OBJ_FOG:
-					fogPos.addXYZRef(&modXYZ, -1.0f);
-					//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-					activeObjectPos.setFXYZRef(&fogPos);
-				break;
-				default:
-					/*
-					if (glutGetModifiers()&GLUT_ACTIVE_SHIFT) {
-						fogPos.addXYZRef(&modXYZ);
-					}
-					else {
-						
-					}
-					*/
 
 
-					wsBufferInvalid = true;
-					cameraPos.addXYZRef(&modXYZ);
-					//cameraPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-
-					modXYZ.setFZ(0.0f);
-					
-					lightPos.addXYZRef(&modXYZ, 1.0f);
-					fogPos.addXYZRef(&modXYZ, 1.0f);
-					//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-					//activeObjectPos.setFXYZ(lightPos.getFX(),lightPos.getFY(),lightPos.getFZ());
-				break;
-
+			if (mouseState == E_MOUSE_STATE_BRUSH) {
+				doDefault = true;
 			}
+			else {
+				switch (activeObject) {
+
+					case E_OBJ_LIGHT:
+						lightPos.addXYZRef(&modXYZ, -1.0f);
+						//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
+						activeObjectPos.setFXYZRef(&lightPos);
+					break;
+
+					case E_OBJ_FOG:
+						fogPos.addXYZRef(&modXYZ, -1.0f);
+						//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
+						activeObjectPos.setFXYZRef(&fogPos);
+					break;
+					default:
+						doDefault = true;
+					break;
+
+				}
+			}
+
+			if (doDefault) {
+				wsBufferInvalid = true;
+				cameraPos.addXYZRef(&modXYZ);
+				//cameraPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
+
+				modXYZ.setFZ(0.0f);
+				
+				lightPos.addXYZRef(&modXYZ, 1.0f);
+				fogPos.addXYZRef(&modXYZ, 1.0f);
+				//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
+				//activeObjectPos.setFXYZ(lightPos.getFX(),lightPos.getFY(),lightPos.getFZ());
+			}
+
+
+			
 		}
 
 
@@ -1252,20 +1373,6 @@ public:
 
 		changesMade = false;
 
-		int keymod = glutGetModifiers();
-
-		if (keymod&GLUT_ACTIVE_SHIFT) {} else {
-			shiftPressed = false;
-		}
-		if (keymod&GLUT_ACTIVE_CTRL) {} else {
-			ctrlPressed = false;
-		}
-		if (keymod&GLUT_ACTIVE_ALT) {} else {
-			altPressed = false;
-		}
-
-		// TODO: map special keys like ctrl, alt, shift
-
 
 		//doAction(progActionsUp[((int)programState)*256 + key]);
 
@@ -1278,6 +1385,50 @@ public:
 
 
 		switch(key ) {
+
+			
+			case '0':
+				activeMode = 0;
+
+			break;
+			case '1':
+				activeMode = 1;
+				doTrace("Dirt and Grass");
+			break;
+			case '2':
+				activeMode = 2;
+				doTrace("Rock");
+			break;
+			case '3':
+				activeMode = 3;
+				doTrace("Brick");
+			break;
+			case '4':
+				activeMode = 4;
+				doTrace("Flat Top Stone");
+			break;
+			case '5':
+				activeMode = 5;
+				doTrace("Flat Top Dirt");
+			break;
+			case '6':
+				activeMode = 6;
+			break;
+			case '7':
+				activeMode = 7;
+			break;
+			case '8':
+				activeMode = 8;
+			break;
+			case '9':
+				activeMode = 9;
+			break;
+
+			case 's':
+				softMode = !softMode;
+				
+			break;
+
 			case 'w':
 				changesMade = true;
 				maxW++;
@@ -1291,32 +1442,9 @@ public:
 			break;
 
 			case 'r':
-				//gm->baseRendered = false;
-
 				doShaderRefresh();
 				bufferInvalid = true;
 
-
-				
-
-			break;
-
-			case '[':
-				extraRad--;
-				if (extraRad < 0) {
-					extraRad = 0;
-				}
-
-				if (shiftPressed) {
-					extraRad = 0;
-				}
-
-				doTrace("Extra Radius: ", i__s(extraRad));
-			break;
-
-			case ']':
-				extraRad++;
-				doTrace("Extra Radius: ", i__s(extraRad));
 			break;
 
 			case 'g':
@@ -1338,17 +1466,22 @@ public:
 			break;
 
 			case '\t':
-				showUI = !showUI;
-				bufferInvalid = true;
-			    changesMade = true;
 
-			break;
-
-			case 'b':
-				
 
 				enCounter = (int)mouseState;
-				enCounter++;
+				
+				
+
+				if (ctrlDown()) {
+					enCounter--;
+				} 
+				else {
+					enCounter++;
+				}
+				if (enCounter < 0) {
+					enCounter = ((int)E_MOUSE_STATE_LENGTH)-1;
+				}
+
 				mouseState = (E_MOUSE_STATE)enCounter;
 
 				if (mouseState == E_MOUSE_STATE_LENGTH) {
@@ -1357,6 +1490,9 @@ public:
 
 				bufferInvalid = true;
 				changesMade = true;
+				wsBufferInvalid = true;
+				forceGetPD = true;
+
 
 			break;
 
@@ -1366,7 +1502,8 @@ public:
 			break;
 
 			case 'm':
-				doTrace("Avail threads: ", i__s(gw->availThreads));
+				reportPagesDrawn = true;
+				//doTrace("Avail threads: ", i__s(gw->availThreads));
 			break;
 
 			case 'a':
@@ -1378,16 +1515,6 @@ public:
 				maxH--;
 				if (maxH < 0) {
 					maxH = 0;
-				}
-			break;
-
-			case 'A':
-				curBrushRad++;
-			break;
-			case 'Z':
-				curBrushRad--;
-				if (curBrushRad<1) {
-					curBrushRad = 1;
 				}
 			break;
 			
@@ -1410,18 +1537,6 @@ public:
 		int x = _x/scaleFactor;
 		int y = _y/scaleFactor;
 
-		int keymod = glutGetModifiers();
-
-		if (keymod&GLUT_ACTIVE_SHIFT) {
-			shiftPressed = true;
-		}
-		if (keymod&GLUT_ACTIVE_CTRL) {
-			ctrlPressed = true;
-		}
-		if (keymod&GLUT_ACTIVE_ALT) {
-			altPressed = true;
-		}
-
 		//doAction(progActionsDown[((int)programState)*256 + key]);
 	}
 
@@ -1439,13 +1554,29 @@ public:
 	void getPixData(FIVector4* toVector, int xv, int yv) {
 
 		FBOWrapper* fbow;
+		int newX;
+		int newY;
+
+		float newFX;
+		float newFY;
 
 		if (wsBufferInvalid) {
 			gw->renderWorldSpace();
 		}
 
-		int newX = clamp(xv,0,bufferDim.getIX()-1);
-		int newY = clamp(yv,0,bufferDim.getIY()-1);
+		
+
+
+		if (cameraZoom > 1.0) {
+			newX = (int)((  (((float)xv)-bufferDimHalf.getFX()) / cameraZoom)+bufferDimHalf.getFX());
+			newY = (int)((  (((float)yv)-bufferDimHalf.getFY()) / cameraZoom)+bufferDimHalf.getFY());
+		}
+		else {
+			newX = clamp(xv,0,bufferDim.getIX()-1);
+			newY = clamp(yv,0,bufferDim.getIY()-1);
+		}
+
+		
 
 		fbow = getFBOWrapper("worldSpaceFBO",0);
 		fbow->getPixelAtF(toVector, newX, (bufferDim.getIY()-1)-newY);
@@ -1599,47 +1730,87 @@ public:
 
 			}
 			else {
-				mouseEnd.setIXY(x,y);
-
-				activeObject = E_OBJ_NONE;
-				wsBufferInvalid = true;
-				getPixData(&mouseUpPD, x, y);
-
-				
-				tempObj = (E_OBJ) ( (int)mouseDownPD.getFW() );
-
-				switch (tempObj) {
-					case E_OBJ_LIGHT:
-
-					break;
-
-					case E_OBJ_FOG:
-
-					break;
-					default:
 
 
-						if ( mouseEnd.distance(&mouseStart) > 30.0 ) {
-							
-						} 
-						else {
-							
-						}
+				if (shiftDown()) {
 
+				}
+				else {
+					mouseEnd.setIXY(x,y);
 
+					activeObject = E_OBJ_NONE;
+					wsBufferInvalid = true;
+					getPixData(&mouseUpPD, x, y);
+
+					
+
+					if ( mouseEnd.distance(&mouseStart) > 30.0 ) {
+						
+					} 
+					else {
 						if (mouseState == E_MOUSE_STATE_BRUSH) {
+
+
 							if (lbClicked) {
 								gw->modifyUnit(&mouseUpPD, E_BRUSH_ADD);
 							}
 							else {
 								gw->modifyUnit(&mouseUpPD, E_BRUSH_SUB);
 							}
+
+							forceGetPD = true;
+
 						}
-						
-					break;
+					}
+
+
+					
+
+					/*					
+					tempObj = (E_OBJ) ( (int)mouseDownPD.getFW() );
+
+					switch (tempObj) {
+						case E_OBJ_LIGHT:
+
+						break;
+
+						case E_OBJ_FOG:
+
+						break;
+						default:
+
+
+							if ( mouseEnd.distance(&mouseStart) > 30.0 ) {
+								
+							} 
+							else {
+								
+							}
+
+
+							if (mouseState == E_MOUSE_STATE_BRUSH) {
+
+								doTrace("rblbClicked2");
+
+								if (lbClicked) {
+									gw->modifyUnit(&mouseUpPD, E_BRUSH_ADD);
+								}
+								else {
+									gw->modifyUnit(&mouseUpPD, E_BRUSH_SUB);
+								}
+
+								forceGetPD = true;
+
+							}
+							
+						break;
+					}
+					*/
+
+					diskOn = 0.0f;
 				}
 
-				diskOn = 0.0f;
+				
 			}
 
 			
@@ -1717,7 +1888,7 @@ public:
 			lastTime = curTime;
 
 			if (shadersAreLoaded) {
-				gw->update(changesMade, bufferInvalid);
+				gw->update();
 
 				changesMade = false;
 				bufferInvalid = false;

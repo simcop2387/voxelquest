@@ -103,7 +103,7 @@ void main() {
     
 
     float baseHeight2 = unpack16(tex2.rg);
-    float geomMod = float(tex2.b > 0.0)*mix(0.0,1.0,float( baseHeight2 > baseHeight ));
+    float geomMod = float(tex2.b > 0.0)*mix(0.05,1.0,float( baseHeight2 > baseHeight ));
 
 
 
@@ -193,7 +193,8 @@ void main() {
 
     float pval = float(wpDis < 100.0 && wpDis > 75.0) *
         float(abs(sin(theta*8.0 + curTime/100.0)) > 0.75) * 
-        (1.0-clamp(abs(activeObjectPos.z-worldPosition.z)/1024.0,0.1,1.0)) * diskOn * 0.5; //
+        (1.0-clamp(abs(activeObjectPos.z-worldPosition.z)/1024.0,0.1,1.0)) *
+        diskOn * float(activeObjectPos.z > worldPosition.z) * 0.5;
 
     float totHits = 0.0;
     float wasHit = 0.0;
@@ -247,8 +248,8 @@ void main() {
     
     
 
-    vec3 newFog = (fogPos.xyz-worldPosition.xyz)/256.0;
-    newFog.xy /= 4.0;
+    vec3 newFog = (fogPos.xyz-worldPosition.xyz)/512.0;
+    newFog.xy /= 2.0;
 
 
     vec3 fogXYZ = 1.0-clamp( newFog, 0.0, 1.0);
@@ -291,6 +292,22 @@ void main() {
         resCol1 = vec3(145.0/255.0, 192.0/255.0, 62.0/255.0);
     }
 
+
+
+    vec3 resCol2 = vec3(1.0,1.0,1.0);
+
+
+    if (tex2.b == 4.0/255.0) {
+        resCol2 = vec3(1.0,1.0,1.0);
+    }
+    if (tex2.b == 5.0/255.0) {
+        resCol2 = vec3(0.0,0.0,1.0);
+    }
+    if (tex2.b == 6.0/255.0) {
+        resCol2 = vec3(1.0,0.0,0.0);
+    }
+
+
     /*
     // light
     if (tex0.b == 4.0/255.0 || tex0.b == 5.0/255.0) {
@@ -325,8 +342,10 @@ void main() {
     //vec3 resColor = tex1.rgb;
 
 
+    vec3 finalCol = mix( fogColor, resColor, hfog )+resCol2*geomMod*0.8+pval;
+
     //vec4(lightRes*0.8,lightRes*0.7,lightRes*0.6, lightRes)
-    gl_FragData[0] = vec4(mix( fogColor, resColor, hfog ),1.0)+geomMod*0.5+pval;//+geomMod;//+isLastUnit+isLastPage;//+isLastUnit+isLastPage; //vec4(lightRes,lightRes,lightRes,1.0);//
+    gl_FragData[0] = vec4(finalCol,1.0);//+geomMod;//+isLastUnit+isLastPage;//+isLastUnit+isLastPage; //vec4(lightRes,lightRes,lightRes,1.0);//
     //gl_FragData[0] = vec4(aoval,aoval,aoval,1.0);
 
     //gl_FragData[0] = vec4(lightRes,lightRes,lightRes,1.0);
