@@ -8,6 +8,8 @@ public:
 
 	
 
+
+
 	void handleRequest(HTTPServerRequest& request, HTTPServerResponse& response)
 	{
 
@@ -17,7 +19,8 @@ public:
 
 		Application& app = Application::instance();
 
-		/*
+		
+		
 		try
 		{
 
@@ -85,7 +88,8 @@ public:
 				break;
 			}
 		}
-		*/
+
+		
 
 
 		
@@ -139,15 +143,19 @@ class WebSocketServer: public Poco::Util::ServerApplication
 	/// To test the WebSocketServer you can use any web browser (http://localhost:9980/).
 {
 public:
+
+	bool dataReady;
+
 	WebSocketServer(): _helpRequested(false)
 	{
+		dataReady = false;
 	}
 	
 	~WebSocketServer()
 	{
 	}
 
-	int main(const std::vector<std::string>& args);
+	//int main(const std::vector<std::string>& args);
 
 protected:
 	void initialize(Application& self)
@@ -188,9 +196,34 @@ protected:
 		helpFormatter.format(std::cout);
 	}
 
-	/*
+
 	int main(const std::vector<std::string>& args)
 	{
+
+		g_RecBuffer = new char[g_MAX_FRAME_SIZE];
+
+		// get parameters from configuration file
+		unsigned short port = (unsigned short) config().getInt("WebSocketServer.port", 9980);
+		
+		// set-up a server socket
+		ServerSocket svs(port);
+		// set-up a HTTPServer instance
+		HTTPServer srv(new RequestHandlerFactory, svs, new HTTPServerParams);
+		// start the HTTPServer
+		srv.start();
+		// wait for CTRL-C or kill
+		//waitForTerminationRequest();
+		// Stop the HTTPServer
+
+		glutMainLoop();
+		
+		srv.stop();
+
+		delete[] g_RecBuffer;
+
+		return Application::EXIT_OK;
+
+		/*
 		if (_helpRequested)
 		{
 			displayHelp();
@@ -212,8 +245,11 @@ protected:
 			srv.stop();
 		}
 		return Application::EXIT_OK;
+
+		return 0;
+		*/
 	}
-	*/
+	
 	
 private:
 	bool _helpRequested;

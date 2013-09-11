@@ -135,7 +135,6 @@ void main()	{
 	vec4 samp;
 	vec3 tc;
 
-	int i;
 	int j;
 	int k;
 	float fi;
@@ -166,7 +165,7 @@ void main()	{
 	vec3 rayPos;
 	float lastHit = 1.0;
 
-	for (i = 1; i <= loopMax; i ++) {
+	for (int i = 1; i <= loopMax; i ++) {
 
 		fi = float(i);
 

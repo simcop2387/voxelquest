@@ -169,36 +169,46 @@ public:
 		bool changesMade = singleton->changesMade;
 		bool bufferInvalid = singleton->bufferInvalid;
 
-		bool procResult = processPages();
+		bool procResult;
 		bool doRenderGeom = false;
 
 
-		if ( (lastProcResult != procResult) && (procResult == false)  ) {
-			singleton->wsBufferInvalid = true;
-
-			updatePoolOrder = true;
-
+		if (singleton->isZooming || singleton->isPanning ) {
+			
 		}
-
-		if (procResult || changesMade) {
-			renderPages();
-
+		else {
+			procResult = processPages();
 			
-			
-			if ( (singleton->grassState != E_GRASS_STATE_ANIM) ) {
-				renderGrass();
-				doRenderGeom = true;
+			if ( (lastProcResult != procResult) && (procResult == false)  ) {
+				singleton->wsBufferInvalid = true;
+
+				updatePoolOrder = true;
 
 			}
+		}
+
+			if (procResult || changesMade) {
+				renderPages();
+
+				
+				
+				if ( (singleton->grassState != E_GRASS_STATE_ANIM) ) {
+					renderGrass();
+					doRenderGeom = true;
+
+				}
+
+				
+			}
+
+			if (singleton->grassState == E_GRASS_STATE_ANIM) {
+				renderGrass();
+				doRenderGeom = true;
+				bufferInvalid = true;
+			}
+		
 
 			
-		}
-
-		if (singleton->grassState == E_GRASS_STATE_ANIM) {
-			renderGrass();
-			doRenderGeom = true;
-			bufferInvalid = true;
-		}
 
 
 		if (procResult || changesMade || bufferInvalid || singleton->rbDown || singleton->lbDown) {
@@ -228,14 +238,16 @@ public:
 			singleton->forceGetPD = false;
 			renderWorldSpace();
 		}
+	
 
-		
+
+	
 
 
 		lastProcResult = procResult;
-		
-		
 	}
+		
+		
 
 	bool processPages() {
 
@@ -629,23 +641,20 @@ public:
 
 	void drawPage(GamePage* gp, int dx, int dy, int dz) {
 
-		int pitchSrc = (singleton->visPageSizeInPixels*2);
-		int pitchSrc2 = (singleton->visPageSizeInPixels*2)/2;
+		float pitchSrc = (float)((singleton->visPageSizeInPixels*2));
+		float pitchSrc2 = (float)((singleton->visPageSizeInPixels*2)/2);
 
-		int dxmod = dx*pitchSrc2 - singleton->cameraPos.getIX();
-		int dymod = dy*pitchSrc2 - singleton->cameraPos.getIY();
-		int dzmod = dz*pitchSrc2 - singleton->cameraPos.getIZ();
+		float dxmod = dx*pitchSrc2 - singleton->cameraPos.getFX();
+		float dymod = dy*pitchSrc2 - singleton->cameraPos.getFY();
+		float dzmod = dz*pitchSrc2 - singleton->cameraPos.getFZ();
 
 
-		int x1 = (dxmod-dymod) - pitchSrc2;
-		int y1 = (-(dxmod/2) + -(dymod/2) + dzmod) - pitchSrc2;
-		int x2 = x1 + pitchSrc;
-		int y2 = y1 + pitchSrc;
+		float fx1 = (dxmod-dymod) - pitchSrc2;
+		float fy1 = (-(dxmod/2.0f) + -(dymod/2.0f) + dzmod) - pitchSrc2;
+		float fx2 = fx1 + pitchSrc;
+		float fy2 = fy1 + pitchSrc;
 
-		float fx1 = x1;
-		float fy1 = y1;
-		float fx2 = x2;
-		float fy2 = y2;
+
 
 		
 		// TODO: should be baseW/H?
@@ -1212,7 +1221,7 @@ public:
 
 		//singleton->drawFBO("worldSpaceFBO", 0, 1.0 );
 
-		
+		float newZoom;
 
 		singleton->worldToScreen(&screenCoords, &(singleton->lightPos));
 
@@ -1248,7 +1257,9 @@ public:
 		singleton->unbindFBO();
 		singleton->unbindShader();
 
-		float newZoom = std::max(1.0f,singleton->cameraZoom);
+		
+
+		newZoom = std::max(1.0f,singleton->cameraZoom);
 		singleton->drawFBO("resultFBO", 0, newZoom );
 
 		

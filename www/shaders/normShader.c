@@ -52,15 +52,13 @@ void main()	{
 	vec4 samp1;
 	vec2 tc;
 
-	int i;
-	int j;
-	int k;
+
 	float fi;
 	float fj;
 	float fk;
 	float dis;
 
-	int loopMax = 5;
+	const int loopMax = 5;
 	float fLoopMax = float(loopMax);
 
 	float divVal = 2.0*fLoopMax*fLoopMax;
@@ -91,44 +89,12 @@ void main()	{
     float s10 = 0.0;
     float s12 = 0.0;
 	
-    int rad = 1;
+    const int rad = 1;
     float frad = float(rad);
 
 
     
     float totalSamples = 0.0;
-
-    /*
-    for (k = -rad; k <= rad; k++) {
-    	fk = float(k);
-	    for (j = -rad; j <= rad; j++) {
-	    	fj = float(j);
-
-	    	dis = clamp(1.0-sqrt(fi*fi+fj*fj)/frad,0.0,1.0);
-
-    		for (i = 1; i < 4; i++) {
-    			sampDis = float(i);
-
-
-
-    			
-    			off0 = vec2((-sampDis + fj )/u_TexResolution.x,0.0);
-    			off1 = vec2((sampDis + fj)/u_TexResolution.x,0.0);
-    			off2 = vec2(0.0,(-sampDis + fk)/u_TexResolution.y);
-    			off3 = vec2(0.0,(sampDis + fk)/u_TexResolution.y);
-
-    		    s11 += texture2D(u_Texture1, v_TexCoords).b;
-    		    s01 += texture2D(u_Texture1, v_TexCoords + off0).b;
-    		    s21 += texture2D(u_Texture1, v_TexCoords + off1).b;
-    		    s10 += texture2D(u_Texture1, v_TexCoords + off2).b;
-    		    s12 += texture2D(u_Texture1, v_TexCoords + off3).b;
-
-    		    totalSamples += 1.0;
-
-    		}
-    	}
-    }
-    */
 
     vec3 bumpTotal = vec3(0.0,0.0,0.0);
     vec3 u;
@@ -136,13 +102,13 @@ void main()	{
     vec3 bump;
 
 
-    for (k = -rad; k <= rad; k++) {
+    for (int k = -rad; k <= rad; k++) {
         fk = float(k);
-        for (j = -rad; j <= rad; j++) {
+        for (int j = -rad; j <= rad; j++) {
             fj = float(j);
 
 
-            for (i = 1; i < 4; i++) {
+            for (int i = 1; i < 4; i++) {
                 sampDis = float(i);
 
                 

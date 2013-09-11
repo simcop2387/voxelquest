@@ -62,16 +62,13 @@ void main()	{
 
 	float rad;
 
-	const int jMax = 32;
-	const int counterMod = 4;
-
+	const int iMax = 8;
+	const int jMax = 5;
+	const float fiMax = float(iMax);
 	const float fjMax = float(jMax);
 	const float pi = 3.14159;
 
-	int iMax;
-	float fiMax = float(iMax);
-
-
+	
 	
 
 	float totHits = 0.0;
@@ -86,16 +83,15 @@ void main()	{
 
 	
 
-	for (j = 2; j < jMax; j *= 2) {
+	for (int j = 2; j < jMax; j++) {
 
-		fjt = float(j);
+		fjt = pow( 2.0, float(j) );
 
 		hitPower = (fjMax-fjt)/fjMax;
 
-		iMax = counterMod*counter;
-		fiMax = float(iMax);
+		
 
-		for (i = 0; i < iMax; i++) {
+		for (int i = 0; i < iMax; i++) {
 
 			fit = float(i)*pi/fiMax;
 

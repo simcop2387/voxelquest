@@ -327,6 +327,16 @@ public:
         return sqrt(dx*dx + dy*dy + dz*dz);
     }
 
+    void normalize() {
+        float len = sqrt(fv4.x*fv4.x + fv4.y*fv4.y + fv4.z*fv4.z);
+
+        fv4.x = fv4.x/len;
+        fv4.y = fv4.y/len;
+        fv4.z = fv4.z/len;
+
+
+    }
+
 
 
 

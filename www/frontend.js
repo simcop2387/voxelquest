@@ -326,7 +326,7 @@ j$(function() {
 		maxLayers: parseInt(gup('maxheight',20),10),
 		updateBaseRT:true,
 		renderTargets:{},
-		shaderNames:["reflShader","lightingShader","palShader","palFromTexShader","aoShader","aoHighShader","extrudeShader","layerShader","bgShader","textShader","bgIdShader","textIdShader","heightShader","normShader","downscaleShader","upscaleShader","debugShader"],
+		shaderNames:["lightingShader","palShader","palFromTexShader","aoShader","aoHighShader","extrudeShader","layerShader","bgShader","textShader","bgIdShader","textIdShader","heightShader","normShader","downscaleShader","upscaleShader","debugShader"],
 		fontNames:["arial_black_regular_48","arial_black_regular_96","old_london_regular_96"],
 		fontLoaded:{},
 		shaders:{},
@@ -525,7 +525,7 @@ j$(function() {
 
 	});
 	gob.wf("connectionOnError",function(error) {
-		gob.doTraceTab("ERROR: " + error);
+		gob.doTraceTab("ERROR: " + JSON.stringify(error) );
 	});
 	gob.wf("connectionOnMessage",function(message) {
 
@@ -1511,9 +1511,6 @@ j$(function() {
 						case "lightingShader":
 							curShader.transparent = false;
 						break;
-						case "reflShader":
-							curShader.transparent = false;
-						break;
 
 
 					}
@@ -1944,6 +1941,10 @@ j$(function() {
 			}
 			
 		});
+
+
+		gob.sendMessage({x:555});
+
 
 		gob.animate();
 	});

@@ -4,167 +4,127 @@ public:
 
 	E_OBJ activeObject;
 	E_OBJ tempObj;
-
-	bool keyDownArr[MAX_KEYS];
-	bool wsBufferInvalid;
-
-	list<int> pagePoolIds;
-	vector<PooledResource*> pagePoolItems;
-	
-	int poolItemsCreated;
-
-	float curBrushRad;
-
-
-	float diskOn;
-	float grassHeight;
-
-	bool softMode;
-	bool isBare;
-
-	bool reportPagesDrawn;
-
-
-	GLuint volTris;
-	GLuint grassTris;
-
-	vector<string> shaderStrings;
-	vector<string> fboStrings;
-	vector<string> shaderTextureIDs;
-
-	map<string, Shader*> shaderMap;
-	map<string, FBOSet*> fboMap;
-
-	string curShader;
-	string allText;
-
+	E_MOUSE_STATE mouseState;
+	E_GRASS_STATE grassState;
 	eProgramState programState;
-
 	eProgramAction progActionsDown[E_PS_SIZE*256];
 	eProgramAction progActionsUp[E_PS_SIZE*256];
 
 	bool isFullScreen;
+	bool changesMade;
+	bool bufferInvalid;
+	bool forceGetPD;
+	bool mouseLeftDown;
+	bool mouseRightDown;
+	bool pboSupported;
+	bool notQuit;
+	bool timerNotSet;
+	bool lbDown;
+	bool rbDown;
+	bool mbDown;
+	bool isZooming;
+	bool isPanning;
+	bool keyDownArr[MAX_KEYS];
+	bool wsBufferInvalid;
+	bool softMode;
+	bool isBare;
+	bool reportPagesDrawn;
 
+	int poolItemsCreated;
 	int baseW;
 	int baseH;
-
-
-	E_MOUSE_STATE mouseState;
-
 	int scaleFactor;
-
+	int activeMode;
 	int visPageSizeInPixels;
 	int visPageSizeInUnits;
 	int unitSizeInPixels;
 	int bufferMult;
 	int maxHeightInUnits;
-
 	int extraRad;
-
 	int defaultWinW;
 	int defaultWinH;
-
-	float currentFBOResolutionX;
-	float currentFBOResolutionY;
-
-	float mouseX;
-	float mouseY;
-	float mouseXUp;
-	float mouseYUp;
-
-	
-	PooledResource* testRes;
-
-	float cameraZoom;
-
-
-	int activeMode;
-
-	FIVector4 activeObjectPos;
-
-	FIVector4 minBoundsInPixels;
-	FIVector4 maxBoundsInPixels;
-
-	FIVector4 mouseUpPD;
-	FIVector4 mouseDownPD;
-	FIVector4 mouseMovePD;
-
-	FIVector4 worldSizeInPages;
-	FIVector4 cameraPos;
-	FIVector4 lightPos;
-
-	FIVector4 mouseStart;
-	FIVector4 mouseEnd;
-
-	FIVector4 worldSeed;
-	FIVector4 fogPos;
-
-	FIVector4 bufferDim;
-	FIVector4 bufferDimHalf;
-
-
-	uint* lookup2to3;
-	//uint* lookup3to2;
-	GLuint lookup2to3ID;
-	//GLuint lookup3to2ID;
-
 	int shadersAreLoaded;
 	int readyToRecompile;
-
-	
-
-	bool lbDown;
-	bool rbDown;
-	bool mbDown;
-
-
-
-
-
-
-
-	Timer myTimer;
-	float curTime;
-	float lastTime;
-
-
-	E_GRASS_STATE grassState;
-
-	///// GLWIDGET /////////
-
-
-
-	float myDelta;
+	int lastPosX;
+	int lastPosY;
 	int frameCount;
-	bool changesMade;
-	bool bufferInvalid;
-	bool forceGetPD;
 	int maxH;
 	int maxW;
 	int screenWidth;
 	int screenHeight;
-	bool mouseLeftDown;
-	bool mouseRightDown;
-	//float mouseX, mouseY;
-	bool pboSupported;
-	bool notQuit;
-	bool timerNotSet;
+	
+
+	float curBrushRad;
+	float diskOn;
+	float grassHeight;
+	float currentFBOResolutionX;
+	float currentFBOResolutionY;
+	float mouseX;
+	float mouseY;
+	float mouseXUp;
+	float mouseYUp;
+	float cameraZoom;
+	float targetZoom;
+	float curTime;
+	float lastTime;
+	float myDelta;
+	float mdTime;
+	float muTime;
+
+	FIVector4 activeObjectPos;
+	FIVector4 minBoundsInPixels;
+	FIVector4 maxBoundsInPixels;
+	FIVector4 mouseUpPD;
+	FIVector4 mouseDownPD;
+	FIVector4 mouseMovePD;
+	FIVector4 worldSizeInPages;
+	FIVector4 cameraPos;
+	FIVector4 lightPos;
+	FIVector4 mouseStart;
+	FIVector4 mouseEnd;
+	FIVector4 mouseVel;
+	FIVector4 worldSeed;
+	FIVector4 fogPos;
+	FIVector4 bufferDim;
+	FIVector4 bufferDimHalf;
+	FIVector4 origin;
+	FIVector4 lastModXYZ;
+	FIVector4 panMod;
+
+
+	string curShader;
+	string allText;	
+
+	list<int> pagePoolIds;
+	vector<PooledResource*> pagePoolItems;
+	vector<string> shaderStrings;
+	vector<string> fboStrings;
+	vector<string> shaderTextureIDs;
+	map<string, Shader*> shaderMap;
+	map<string, FBOSet*> fboMap;
+
+	GLuint volTris;
+	GLuint grassTris;
+	uint* lookup2to3;
+	GLuint lookup2to3ID;
+
+	WebSocketServer* myWS;
+	Timer myTimer;
 	GameWorld* gw;
-	//GameMap* gm;
-	//QPoint lastPos;
-	int lastPosX;
-	int lastPosY;
 
 
 
-
-	void init(int _defaultWinW, int _defaultWinH, int _scaleFactor) {
+	void init(int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer* _myWS) {
 
 		pushTrace("Singleton init");
+
+		myWS = _myWS;
 
 		poolItemsCreated = 0;
 		activeMode = 1;
 
+		isZooming = false;
+		isPanning = false;
 		softMode = false;
 		reportPagesDrawn = false;
 		isBare = false;
@@ -197,14 +157,6 @@ public:
 
 		maxH = worldSizeInPages.getIZ();
 		maxW = 4;
-
-
-		// //fastMode
-		// if (true) {
-		// 	MAX_GPU_MEM = 512.0;
-		// 	maxW = 2;
-		// }
-
 
 		maxHeightInUnits = (worldSizeInPages.getIZ()-bufferMult)*(visPageSizeInUnits);
 
@@ -265,6 +217,7 @@ public:
 		fogPos.addXYZ(-256.0f);
 
 	    cameraZoom = 1.0f;
+	    targetZoom = 1.0f;
 
 	    mouseX = 0.0f;
 	    mouseY = 0.0f;
@@ -383,13 +336,6 @@ public:
 	    fboMap["combineFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["volGenFBO"]->init(1, 4096, 4096, 1, false);
-
-
-
-	    
-
-	    //testRes = new PooledResource();
-	    //testRes->init(this);
 
 
 	    gw = new GameWorld();
@@ -734,20 +680,20 @@ public:
 		
 	}
 
-	void drawCubeCentered(FIVector4 origin, float radius) {
+	void drawCubeCentered(FIVector4 originVec, float radius) {
 		FIVector4 minV;
 		FIVector4 maxV;
 
 		minV.setFXYZ(
-			origin.getFX()-radius,
-			origin.getFY()-radius,
-			origin.getFZ()-radius
+			originVec.getFX()-radius,
+			originVec.getFY()-radius,
+			originVec.getFZ()-radius
 		);
 
 		maxV.setFXYZ(
-			origin.getFX()+radius,
-			origin.getFY()+radius,
-			origin.getFZ()+radius
+			originVec.getFX()+radius,
+			originVec.getFY()+radius,
+			originVec.getFZ()+radius
 		);
 
 		drawBox(minV,maxV);
@@ -1182,8 +1128,19 @@ public:
 	}
 
 
+	void moveCamera(FIVector4 *modXYZ) {
+		wsBufferInvalid = true;
+		cameraPos.addXYZRef(modXYZ);
+		modXYZ->setFZ(0.0f);
+		lightPos.addXYZRef(modXYZ, 1.0f);
+		fogPos.addXYZRef(modXYZ, 1.0f);
+		isPanning = true;
+	}
+
 	void moveObject(float dx, float dy, float zoom) {
 
+
+		
 
 		float dxZoom = dx/zoom;
 		float dyZoom = dy/zoom;
@@ -1198,12 +1155,27 @@ public:
 				modXYZ.setFX( -(0.0f + dxZoom/2.0f) );
 				modXYZ.setFY( -(0.0f - dxZoom/2.0f) );
 
+
+
 			}
 			else {
 				modXYZ.setFX( -(dyZoom + dxZoom/2.0f) );
 				modXYZ.setFY( -(dyZoom - dxZoom/2.0f) );
 			}
+
+			//modXYZTemp.copyFrom(&modXYZ);
+			//modXYZTemp.normalize();
+			lastModXYZ.addXYZRef(&modXYZ);
+
+
+			
+			
 		}
+		else {
+			
+		}
+
+		
 
 		if (shiftDown()) {
 
@@ -1252,16 +1224,7 @@ public:
 			}
 
 			if (doDefault) {
-				wsBufferInvalid = true;
-				cameraPos.addXYZRef(&modXYZ);
-				//cameraPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-
-				modXYZ.setFZ(0.0f);
-				
-				lightPos.addXYZRef(&modXYZ, 1.0f);
-				fogPos.addXYZRef(&modXYZ, 1.0f);
-				//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-				//activeObjectPos.setFXYZ(lightPos.getFX(),lightPos.getFY(),lightPos.getFZ());
+				moveCamera(&modXYZ);
 			}
 
 
@@ -1550,6 +1513,16 @@ public:
 		return val;
 	}
 
+	float clampf(float val, float min, float max) {
+		if (val > max) {
+			val = max;
+		}
+		if (val < min) {
+			val = min;
+		}
+		return val;
+	}
+
 
 	void getPixData(FIVector4* toVector, int xv, int yv) {
 
@@ -1691,12 +1664,12 @@ public:
 
 			case 3: // wheel up
 				wheelDelta = 1.0/20.0f;
-				changesMade = true;
+				//changesMade = true;
 			break;
 
 			case 4: // wheel down
 				wheelDelta = -1.0/20.0f;
-				changesMade = true;
+				//changesMade = true;
 			break;
 		}
 
@@ -1707,7 +1680,9 @@ public:
 
 
 
-
+		if (state == GLUT_DOWN) {
+			mouseVel.setFXY(0.0f,0.0f);
+		}
 
 		if (mbClicked) {
 
@@ -1715,7 +1690,7 @@ public:
 		
 
 		if (rbDown || lbDown) {
-
+			
 		}
 		else {
 
@@ -1731,18 +1706,32 @@ public:
 			}
 			else {
 
+				muTime = myTimer.getElapsedTimeInMilliSec();
+
+				mouseEnd.setIXY(x,y);
+				mouseVel.copyFrom(&mouseEnd);
+				mouseVel.addXYZRef(&mouseStart, -1.0f);
+
+				
+
+				lastModXYZ.normalize();
+
+				//mouseVel.multXYZ( clampf(1.0f-(muTime-mdTime)/1000.0f, 0.1f, 1.0f)/cameraZoom );
 
 				if (shiftDown()) {
 
 				}
 				else {
-					mouseEnd.setIXY(x,y);
+					
 
 					activeObject = E_OBJ_NONE;
 					wsBufferInvalid = true;
 					getPixData(&mouseUpPD, x, y);
 
 					
+					
+
+
 
 					if ( mouseEnd.distance(&mouseStart) > 30.0 ) {
 						
@@ -1824,8 +1813,9 @@ public:
 				else {
 
 
-					
+					lastModXYZ.setFXYZ(0.0f, 0.0f, 0.0f);
 
+					mdTime = myTimer.getElapsedTimeInMilliSec();
 					mouseStart.setIXY(x,y);
 					getPixData(&mouseDownPD, x, y);
 					activeObject = (E_OBJ)((int) mouseDownPD.getFW());
@@ -1865,12 +1855,15 @@ public:
 
 
 
-		myDelta += wheelDelta;
-		cameraZoom = pow(2.0, myDelta);
+		
+		
 
 		if (button == 3 || button == 4) {
-			wsBufferInvalid = true;
-			//doTrace("Zoom: ", f__s(cameraZoom) );
+
+			myDelta += wheelDelta;
+			targetZoom = pow(2.0, myDelta);
+			isZooming = true;
+
 		}
 
 		if (x >= 0 && y >= 0 && x < baseW && y < baseH) {
@@ -1878,14 +1871,78 @@ public:
 		}
 
 	}
+
+
+	void processData() {
+
+	}
+
 	void display(void) {
 
 		curTime = myTimer.getElapsedTimeInMilliSec();
 
 		float elTime = curTime - lastTime;
+		float dz;
+		float fMouseVel;
 
-		if (elTime >= 16.0) {
+		if (myWS->dataReady) {
+			processData();
+		}
+
+		
+
+
+		if (elTime >= 16.0f) {
 			lastTime = curTime;
+
+			lastModXYZ.multXYZ(0.9f);
+
+			mouseVel.multXYZ(0.95f);
+
+			fMouseVel = mouseVel.distance(&origin);
+
+			if ( fMouseVel < 1.0f ) {
+				mouseVel.setFXY(0.0f,0.0f);
+				isPanning = false;
+			}
+			else {
+				isPanning = true;
+
+
+				panMod.copyFrom(&lastModXYZ);
+				panMod.multXYZ(fMouseVel/16.0f);
+				moveCamera(&panMod);
+			}
+
+
+			dz = (targetZoom-cameraZoom)/(16.0f);
+
+			if (abs(dz) < 0.0001) {
+				dz = 0.0f;
+			}
+
+			if (cameraZoom > 8.0f) {
+				cameraZoom = 8.0f;
+			}
+			if (cameraZoom < 1.0f/8.0f) {
+				cameraZoom = 1.0f/8.0f;
+			}
+			
+			cameraZoom += dz;
+
+			if ((dz == 0.0f) && (isZooming)) {
+				isZooming = false;
+				wsBufferInvalid = true;
+				bufferInvalid = true;
+				changesMade = true;
+			}
+			else {
+				if (isZooming) {
+					bufferInvalid = true;
+					changesMade = true;
+				}
+				
+			}
 
 			if (shadersAreLoaded) {
 				gw->update();

@@ -509,6 +509,16 @@ public:
         return sqrt(dx*dx + dy*dy + dz*dz);
     }
 
+    void normalize() {
+        float len = sqrt(fv4.x*fv4.x + fv4.y*fv4.y + fv4.z*fv4.z);
+
+        fv4.x = fv4.x/len;
+        fv4.y = fv4.y/len;
+        fv4.z = fv4.z/len;
+
+
+    }
+
 
 
 
@@ -2517,6 +2527,8 @@ public:
 
 	
 
+
+
 	void handleRequest(HTTPServerRequest& request, HTTPServerResponse& response)
 	{
 
@@ -2526,7 +2538,8 @@ public:
 
 		Application& app = Application::instance();
 
-		/*
+		
+		
 		try
 		{
 
@@ -2594,7 +2607,8 @@ public:
 				break;
 			}
 		}
-		*/
+
+		
 
 
 		
@@ -2648,15 +2662,19 @@ class WebSocketServer: public Poco::Util::ServerApplication
 	/// To test the WebSocketServer you can use any web browser (http://localhost:9980/).
 {
 public:
+
+	bool dataReady;
+
 	WebSocketServer(): _helpRequested(false)
 	{
+		dataReady = false;
 	}
 	
 	~WebSocketServer()
 	{
 	}
 
-	int main(const std::vector<std::string>& args);
+	//int main(const std::vector<std::string>& args);
 
 protected:
 	void initialize(Application& self)
@@ -2697,9 +2715,34 @@ protected:
 		helpFormatter.format(std::cout);
 	}
 
-	/*
+
 	int main(const std::vector<std::string>& args)
 	{
+
+		g_RecBuffer = new char[g_MAX_FRAME_SIZE];
+
+		// get parameters from configuration file
+		unsigned short port = (unsigned short) config().getInt("WebSocketServer.port", 9980);
+		
+		// set-up a server socket
+		ServerSocket svs(port);
+		// set-up a HTTPServer instance
+		HTTPServer srv(new RequestHandlerFactory, svs, new HTTPServerParams);
+		// start the HTTPServer
+		srv.start();
+		// wait for CTRL-C or kill
+		//waitForTerminationRequest();
+		// Stop the HTTPServer
+
+		glutMainLoop();
+		
+		srv.stop();
+
+		delete[] g_RecBuffer;
+
+		return Application::EXIT_OK;
+
+		/*
 		if (_helpRequested)
 		{
 			displayHelp();
@@ -2721,8 +2764,11 @@ protected:
 			srv.stop();
 		}
 		return Application::EXIT_OK;
+
+		return 0;
+		*/
 	}
-	*/
+	
 	
 private:
 	bool _helpRequested;
@@ -3855,34 +3901,35 @@ class Singleton
 public:
   E_OBJ activeObject;
   E_OBJ tempObj;
-  bool (keyDownArr) [MAX_KEYS];
-  bool wsBufferInvalid;
-  list <int> pagePoolIds;
-  vector <PooledResource*> pagePoolItems;
-  int poolItemsCreated;
-  float curBrushRad;
-  float diskOn;
-  float grassHeight;
-  bool softMode;
-  bool isBare;
-  bool reportPagesDrawn;
-  GLuint volTris;
-  GLuint grassTris;
-  vector <string> shaderStrings;
-  vector <string> fboStrings;
-  vector <string> shaderTextureIDs;
-  map <string, Shader*> shaderMap;
-  map <string, FBOSet*> fboMap;
-  string curShader;
-  string allText;
+  E_MOUSE_STATE mouseState;
+  E_GRASS_STATE grassState;
   eProgramState programState;
   eProgramAction (progActionsDown) [E_PS_SIZE*256];
   eProgramAction (progActionsUp) [E_PS_SIZE*256];
   bool isFullScreen;
+  bool changesMade;
+  bool bufferInvalid;
+  bool forceGetPD;
+  bool mouseLeftDown;
+  bool mouseRightDown;
+  bool pboSupported;
+  bool notQuit;
+  bool timerNotSet;
+  bool lbDown;
+  bool rbDown;
+  bool mbDown;
+  bool isZooming;
+  bool isPanning;
+  bool (keyDownArr) [MAX_KEYS];
+  bool wsBufferInvalid;
+  bool softMode;
+  bool isBare;
+  bool reportPagesDrawn;
+  int poolItemsCreated;
   int baseW;
   int baseH;
-  E_MOUSE_STATE mouseState;
   int scaleFactor;
+  int activeMode;
   int visPageSizeInPixels;
   int visPageSizeInUnits;
   int unitSizeInPixels;
@@ -3891,15 +3938,31 @@ public:
   int extraRad;
   int defaultWinW;
   int defaultWinH;
+  int shadersAreLoaded;
+  int readyToRecompile;
+  int lastPosX;
+  int lastPosY;
+  int frameCount;
+  int maxH;
+  int maxW;
+  int screenWidth;
+  int screenHeight;
+  float curBrushRad;
+  float diskOn;
+  float grassHeight;
   float currentFBOResolutionX;
   float currentFBOResolutionY;
   float mouseX;
   float mouseY;
   float mouseXUp;
   float mouseYUp;
-  PooledResource * testRes;
   float cameraZoom;
-  int activeMode;
+  float targetZoom;
+  float curTime;
+  float lastTime;
+  float myDelta;
+  float mdTime;
+  float muTime;
   FIVector4 activeObjectPos;
   FIVector4 minBoundsInPixels;
   FIVector4 maxBoundsInPixels;
@@ -3911,39 +3974,31 @@ public:
   FIVector4 lightPos;
   FIVector4 mouseStart;
   FIVector4 mouseEnd;
+  FIVector4 mouseVel;
   FIVector4 worldSeed;
   FIVector4 fogPos;
   FIVector4 bufferDim;
   FIVector4 bufferDimHalf;
+  FIVector4 origin;
+  FIVector4 lastModXYZ;
+  FIVector4 panMod;
+  string curShader;
+  string allText;
+  list <int> pagePoolIds;
+  vector <PooledResource*> pagePoolItems;
+  vector <string> shaderStrings;
+  vector <string> fboStrings;
+  vector <string> shaderTextureIDs;
+  map <string, Shader*> shaderMap;
+  map <string, FBOSet*> fboMap;
+  GLuint volTris;
+  GLuint grassTris;
   uint * lookup2to3;
   GLuint lookup2to3ID;
-  int shadersAreLoaded;
-  int readyToRecompile;
-  bool lbDown;
-  bool rbDown;
-  bool mbDown;
+  WebSocketServer * myWS;
   Timer myTimer;
-  float curTime;
-  float lastTime;
-  E_GRASS_STATE grassState;
-  float myDelta;
-  int frameCount;
-  bool changesMade;
-  bool bufferInvalid;
-  bool forceGetPD;
-  int maxH;
-  int maxW;
-  int screenWidth;
-  int screenHeight;
-  bool mouseLeftDown;
-  bool mouseRightDown;
-  bool pboSupported;
-  bool notQuit;
-  bool timerNotSet;
   GameWorld * gw;
-  int lastPosX;
-  int lastPosY;
-  void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
+  void init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer * _myWS);
   void sendPoolIdToFront (int id);
   int requestPoolId (int requestingPageId);
   static void qNormalizeAngle (int & angle);
@@ -3957,7 +4012,7 @@ public:
   void setProgActionAll (unsigned char kc, eProgramAction pa, bool isDown);
   void keySetup ();
   void createGrassList ();
-  void drawCubeCentered (FIVector4 origin, float radius);
+  void drawCubeCentered (FIVector4 originVec, float radius);
   void drawBox (FIVector4 minVec, FIVector4 maxVec);
   void createVTList ();
   void doShaderRefresh ();
@@ -3990,6 +4045,7 @@ public:
   void drawFBO (string fboName, int ind, float zoom);
   void drawFBOOffsetDirect (FBOSet * fbos, int ind, float xOff, float yOff, float zoom);
   void drawFBOOffset (string fboName, int ind, float xOff, float yOff, float zoom);
+  void moveCamera (FIVector4 * modXYZ);
   void moveObject (float dx, float dy, float zoom);
   void doAction (eProgramAction pa);
   void processSpecialKeys (int key, int _x, int _y);
@@ -3997,11 +4053,13 @@ public:
   void keyboardUp (unsigned char key, int _x, int _y);
   void keyboardDown (unsigned char key, int _x, int _y);
   int clamp (int val, int min, int max);
+  float clampf (float val, float min, float max);
   void getPixData (FIVector4 * toVector, int xv, int yv);
   void mouseMove (int _x, int _y);
   void worldToScreen (FIVector4 * sc, FIVector4 * wc);
   void screenToWorld (FIVector4 * tc, FIVector4 * wc);
   void mouseClick (int button, int state, int _x, int _y);
+  void processData ();
   void display ();
   void reshape (int w, int h);
   void idleFunc ();
@@ -4140,14 +4198,18 @@ public:
 
 #include "f00300_singleton.e"
 #define LZZ_INLINE inline
-void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
-                                                                        {
+void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer * _myWS)
+                                                                                                {
 
 		pushTrace("Singleton init");
+
+		myWS = _myWS;
 
 		poolItemsCreated = 0;
 		activeMode = 1;
 
+		isZooming = false;
+		isPanning = false;
 		softMode = false;
 		reportPagesDrawn = false;
 		isBare = false;
@@ -4180,14 +4242,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 		maxH = worldSizeInPages.getIZ();
 		maxW = 4;
-
-
-		// //fastMode
-		// if (true) {
-		// 	MAX_GPU_MEM = 512.0;
-		// 	maxW = 2;
-		// }
-
 
 		maxHeightInUnits = (worldSizeInPages.getIZ()-bufferMult)*(visPageSizeInUnits);
 
@@ -4248,6 +4302,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		fogPos.addXYZ(-256.0f);
 
 	    cameraZoom = 1.0f;
+	    targetZoom = 1.0f;
 
 	    mouseX = 0.0f;
 	    mouseY = 0.0f;
@@ -4366,13 +4421,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 	    fboMap["combineFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["volGenFBO"]->init(1, 4096, 4096, 1, false);
-
-
-
-	    
-
-	    //testRes = new PooledResource();
-	    //testRes->init(this);
 
 
 	    gw = new GameWorld();
@@ -4682,21 +4730,21 @@ void Singleton::createGrassList ()
 		glEndList();
 		
 	}
-void Singleton::drawCubeCentered (FIVector4 origin, float radius)
-                                                              {
+void Singleton::drawCubeCentered (FIVector4 originVec, float radius)
+                                                                 {
 		FIVector4 minV;
 		FIVector4 maxV;
 
 		minV.setFXYZ(
-			origin.getFX()-radius,
-			origin.getFY()-radius,
-			origin.getFZ()-radius
+			originVec.getFX()-radius,
+			originVec.getFY()-radius,
+			originVec.getFZ()-radius
 		);
 
 		maxV.setFXYZ(
-			origin.getFX()+radius,
-			origin.getFY()+radius,
-			origin.getFZ()+radius
+			originVec.getFX()+radius,
+			originVec.getFY()+radius,
+			originVec.getFZ()+radius
 		);
 
 		drawBox(minV,maxV);
@@ -5119,9 +5167,20 @@ void Singleton::drawFBOOffset (string fboName, int ind, float xOff, float yOff, 
 	    FBOSet* fbos = fboMap[fboName];
 	    drawFBOOffsetDirect(fbos, ind, xOff, yOff, zoom);
 	}
+void Singleton::moveCamera (FIVector4 * modXYZ)
+                                           {
+		wsBufferInvalid = true;
+		cameraPos.addXYZRef(modXYZ);
+		modXYZ->setFZ(0.0f);
+		lightPos.addXYZRef(modXYZ, 1.0f);
+		fogPos.addXYZRef(modXYZ, 1.0f);
+		isPanning = true;
+	}
 void Singleton::moveObject (float dx, float dy, float zoom)
                                                         {
 
+
+		
 
 		float dxZoom = dx/zoom;
 		float dyZoom = dy/zoom;
@@ -5136,12 +5195,27 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 				modXYZ.setFX( -(0.0f + dxZoom/2.0f) );
 				modXYZ.setFY( -(0.0f - dxZoom/2.0f) );
 
+
+
 			}
 			else {
 				modXYZ.setFX( -(dyZoom + dxZoom/2.0f) );
 				modXYZ.setFY( -(dyZoom - dxZoom/2.0f) );
 			}
+
+			//modXYZTemp.copyFrom(&modXYZ);
+			//modXYZTemp.normalize();
+			lastModXYZ.addXYZRef(&modXYZ);
+
+
+			
+			
 		}
+		else {
+			
+		}
+
+		
 
 		if (shiftDown()) {
 
@@ -5190,16 +5264,7 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 			}
 
 			if (doDefault) {
-				wsBufferInvalid = true;
-				cameraPos.addXYZRef(&modXYZ);
-				//cameraPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-
-				modXYZ.setFZ(0.0f);
-				
-				lightPos.addXYZRef(&modXYZ, 1.0f);
-				fogPos.addXYZRef(&modXYZ, 1.0f);
-				//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-				//activeObjectPos.setFXYZ(lightPos.getFX(),lightPos.getFY(),lightPos.getFZ());
+				moveCamera(&modXYZ);
 			}
 
 
@@ -5454,6 +5519,16 @@ int Singleton::clamp (int val, int min, int max)
 		}
 		return val;
 	}
+float Singleton::clampf (float val, float min, float max)
+                                                      {
+		if (val > max) {
+			val = max;
+		}
+		if (val < min) {
+			val = min;
+		}
+		return val;
+	}
 void Singleton::getPixData (FIVector4 * toVector, int xv, int yv)
                                                              {
 
@@ -5593,12 +5668,12 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 			case 3: // wheel up
 				wheelDelta = 1.0/20.0f;
-				changesMade = true;
+				//changesMade = true;
 			break;
 
 			case 4: // wheel down
 				wheelDelta = -1.0/20.0f;
-				changesMade = true;
+				//changesMade = true;
 			break;
 		}
 
@@ -5609,7 +5684,9 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 
 
-
+		if (state == GLUT_DOWN) {
+			mouseVel.setFXY(0.0f,0.0f);
+		}
 
 		if (mbClicked) {
 
@@ -5617,7 +5694,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		
 
 		if (rbDown || lbDown) {
-
+			
 		}
 		else {
 
@@ -5633,18 +5710,32 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 			}
 			else {
 
+				muTime = myTimer.getElapsedTimeInMilliSec();
+
+				mouseEnd.setIXY(x,y);
+				mouseVel.copyFrom(&mouseEnd);
+				mouseVel.addXYZRef(&mouseStart, -1.0f);
+
+				
+
+				lastModXYZ.normalize();
+
+				//mouseVel.multXYZ( clampf(1.0f-(muTime-mdTime)/1000.0f, 0.1f, 1.0f)/cameraZoom );
 
 				if (shiftDown()) {
 
 				}
 				else {
-					mouseEnd.setIXY(x,y);
+					
 
 					activeObject = E_OBJ_NONE;
 					wsBufferInvalid = true;
 					getPixData(&mouseUpPD, x, y);
 
 					
+					
+
+
 
 					if ( mouseEnd.distance(&mouseStart) > 30.0 ) {
 						
@@ -5726,8 +5817,9 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 				else {
 
 
-					
+					lastModXYZ.setFXYZ(0.0f, 0.0f, 0.0f);
 
+					mdTime = myTimer.getElapsedTimeInMilliSec();
 					mouseStart.setIXY(x,y);
 					getPixData(&mouseDownPD, x, y);
 					activeObject = (E_OBJ)((int) mouseDownPD.getFW());
@@ -5767,17 +5859,24 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 
 
-		myDelta += wheelDelta;
-		cameraZoom = pow(2.0, myDelta);
+		
+		
 
 		if (button == 3 || button == 4) {
-			wsBufferInvalid = true;
-			//doTrace("Zoom: ", f__s(cameraZoom) );
+
+			myDelta += wheelDelta;
+			targetZoom = pow(2.0, myDelta);
+			isZooming = true;
+
 		}
 
 		if (x >= 0 && y >= 0 && x < baseW && y < baseH) {
 			bufferInvalid = true;
 		}
+
+	}
+void Singleton::processData ()
+                           {
 
 	}
 void Singleton::display ()
@@ -5786,9 +5885,67 @@ void Singleton::display ()
 		curTime = myTimer.getElapsedTimeInMilliSec();
 
 		float elTime = curTime - lastTime;
+		float dz;
+		float fMouseVel;
 
-		if (elTime >= 16.0) {
+		if (myWS->dataReady) {
+			processData();
+		}
+
+		
+
+
+		if (elTime >= 16.0f) {
 			lastTime = curTime;
+
+			lastModXYZ.multXYZ(0.9f);
+
+			mouseVel.multXYZ(0.95f);
+
+			fMouseVel = mouseVel.distance(&origin);
+
+			if ( fMouseVel < 1.0f ) {
+				mouseVel.setFXY(0.0f,0.0f);
+				isPanning = false;
+			}
+			else {
+				isPanning = true;
+
+
+				panMod.copyFrom(&lastModXYZ);
+				panMod.multXYZ(fMouseVel/16.0f);
+				moveCamera(&panMod);
+			}
+
+
+			dz = (targetZoom-cameraZoom)/(16.0f);
+
+			if (abs(dz) < 0.0001) {
+				dz = 0.0f;
+			}
+
+			if (cameraZoom > 8.0f) {
+				cameraZoom = 8.0f;
+			}
+			if (cameraZoom < 1.0f/8.0f) {
+				cameraZoom = 1.0f/8.0f;
+			}
+			
+			cameraZoom += dz;
+
+			if ((dz == 0.0f) && (isZooming)) {
+				isZooming = false;
+				wsBufferInvalid = true;
+				bufferInvalid = true;
+				changesMade = true;
+			}
+			else {
+				if (isZooming) {
+					bufferInvalid = true;
+					changesMade = true;
+				}
+				
+			}
 
 			if (shadersAreLoaded) {
 				gw->update();
@@ -6428,36 +6585,46 @@ void GameWorld::update ()
 		bool changesMade = singleton->changesMade;
 		bool bufferInvalid = singleton->bufferInvalid;
 
-		bool procResult = processPages();
+		bool procResult;
 		bool doRenderGeom = false;
 
 
-		if ( (lastProcResult != procResult) && (procResult == false)  ) {
-			singleton->wsBufferInvalid = true;
-
-			updatePoolOrder = true;
-
+		if (singleton->isZooming || singleton->isPanning ) {
+			
 		}
-
-		if (procResult || changesMade) {
-			renderPages();
-
+		else {
+			procResult = processPages();
 			
-			
-			if ( (singleton->grassState != E_GRASS_STATE_ANIM) ) {
-				renderGrass();
-				doRenderGeom = true;
+			if ( (lastProcResult != procResult) && (procResult == false)  ) {
+				singleton->wsBufferInvalid = true;
+
+				updatePoolOrder = true;
 
 			}
+		}
+
+			if (procResult || changesMade) {
+				renderPages();
+
+				
+				
+				if ( (singleton->grassState != E_GRASS_STATE_ANIM) ) {
+					renderGrass();
+					doRenderGeom = true;
+
+				}
+
+				
+			}
+
+			if (singleton->grassState == E_GRASS_STATE_ANIM) {
+				renderGrass();
+				doRenderGeom = true;
+				bufferInvalid = true;
+			}
+		
 
 			
-		}
-
-		if (singleton->grassState == E_GRASS_STATE_ANIM) {
-			renderGrass();
-			doRenderGeom = true;
-			bufferInvalid = true;
-		}
 
 
 		if (procResult || changesMade || bufferInvalid || singleton->rbDown || singleton->lbDown) {
@@ -6487,13 +6654,13 @@ void GameWorld::update ()
 			singleton->forceGetPD = false;
 			renderWorldSpace();
 		}
+	
 
-		
+
+	
 
 
 		lastProcResult = procResult;
-		
-		
 	}
 bool GameWorld::processPages ()
                             {
@@ -6885,23 +7052,20 @@ void GameWorld::renderPages ()
 void GameWorld::drawPage (GamePage * gp, int dx, int dy, int dz)
                                                             {
 
-		int pitchSrc = (singleton->visPageSizeInPixels*2);
-		int pitchSrc2 = (singleton->visPageSizeInPixels*2)/2;
+		float pitchSrc = (float)((singleton->visPageSizeInPixels*2));
+		float pitchSrc2 = (float)((singleton->visPageSizeInPixels*2)/2);
 
-		int dxmod = dx*pitchSrc2 - singleton->cameraPos.getIX();
-		int dymod = dy*pitchSrc2 - singleton->cameraPos.getIY();
-		int dzmod = dz*pitchSrc2 - singleton->cameraPos.getIZ();
+		float dxmod = dx*pitchSrc2 - singleton->cameraPos.getFX();
+		float dymod = dy*pitchSrc2 - singleton->cameraPos.getFY();
+		float dzmod = dz*pitchSrc2 - singleton->cameraPos.getFZ();
 
 
-		int x1 = (dxmod-dymod) - pitchSrc2;
-		int y1 = (-(dxmod/2) + -(dymod/2) + dzmod) - pitchSrc2;
-		int x2 = x1 + pitchSrc;
-		int y2 = y1 + pitchSrc;
+		float fx1 = (dxmod-dymod) - pitchSrc2;
+		float fy1 = (-(dxmod/2.0f) + -(dymod/2.0f) + dzmod) - pitchSrc2;
+		float fx2 = fx1 + pitchSrc;
+		float fy2 = fy1 + pitchSrc;
 
-		float fx1 = x1;
-		float fy1 = y1;
-		float fx2 = x2;
-		float fy2 = y2;
+
 
 		
 		// TODO: should be baseW/H?
@@ -7465,7 +7629,7 @@ void GameWorld::postProcess ()
 
 		//singleton->drawFBO("worldSpaceFBO", 0, 1.0 );
 
-		
+		float newZoom;
 
 		singleton->worldToScreen(&screenCoords, &(singleton->lightPos));
 
@@ -7501,7 +7665,9 @@ void GameWorld::postProcess ()
 		singleton->unbindFBO();
 		singleton->unbindShader();
 
-		float newZoom = std::max(1.0f,singleton->cameraZoom);
+		
+
+		newZoom = std::max(1.0f,singleton->cameraZoom);
 		singleton->drawFBO("resultFBO", 0, newZoom );
 
 		
@@ -7525,25 +7691,6 @@ GameWorld::~ GameWorld ()
 	}
 #undef LZZ_INLINE
  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -7656,7 +7803,7 @@ void RedirectIOToConsole()
 
 
 
-
+WebSocketServer myWebsocketServer;
 
 
 int main(int argc, char* argv[])
@@ -7665,7 +7812,7 @@ int main(int argc, char* argv[])
     int winWidth;
     int winHeight;
     int scaleFactor;
-    int resMode = 3;
+    int resMode = 0;
 
     switch (resMode) {
         case 0:
@@ -7717,7 +7864,7 @@ int main(int argc, char* argv[])
     
     ////////////
     singleton = new Singleton();
-    singleton->init(winWidth,winHeight, scaleFactor);
+    singleton->init(winWidth, winHeight, scaleFactor, &myWebsocketServer);
     
 
     glutDisplayFunc(display);
@@ -7729,127 +7876,14 @@ int main(int argc, char* argv[])
     glutKeyboardFunc(keyboardDown);
     glutKeyboardUpFunc(keyboardUp);
     glutSpecialFunc(processSpecialKeys);
-    glutMainLoop();
+    
+
+    myWebsocketServer.run(argc, argv);
+
+
+
+
+    
 
     return 0;
-}
-
-
-
-
-/*
-glClearColor(0, 0, 0, 0);
-glDisable(GL_DEPTH_TEST);
-glMatrixMode(GL_PROJECTION);
-glLoadIdentity();
-glOrtho(0.0, WINDOW_WIDTH-1, WINDOW_HEIGHT-1, 0, -1.0, 1.0);
-glMatrixMode(GL_MODELVIEW);
-*/
-////////////
-
-
-
-/*
-int WebSocketServer::main(const std::vector<std::string>& args)
-{
-    int argc = 0;
-    char** argv = NULL;
-
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_SINGLE|GLUT_RGB);
-    glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
-    glutCreateWindow("Main Window");
-    init(); // changed the init function to come directly before display function
-    glutDisplayFunc(display);
-    glutMainLoop();
-
-    return Application::EXIT_OK;
-}
-*/
-
-
-
-
-/*
-int WebSocketServer::main(const std::vector<std::string>& args)
-{
-
-    srand ( time(NULL) );
-    int winW = 1024;
-    int winH = 1024;
-    GLenum err;
-
-    int argCount = 0;
-    char** argStrs = NULL;
-
-    g_RecBuffer = new char[g_MAX_FRAME_SIZE];
-
-    //RedirectIOToConsole();
-
-    if (_helpRequested)
-    {
-        displayHelp();
-    }
-    else
-    {
-
-        doTrace("WebSocketServer::main");
-
-
-        
-        unsigned short port = (unsigned short) config().getInt("WebSocketServer.port", 9980);
-        ServerSocket svs(port);
-        HTTPServer srv(new RequestHandlerFactory, svs, new HTTPServerParams);
-        srv.start();
-        //waitForTerminationRequest();
-        
-
-
-        glutInit(&argCount, argStrs); //&argc, argv
-
-        glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
-        glutInitWindowSize(winW, winH);
-        glutInitWindowPosition(300, 100);
-        glutCreateWindow("Voxel Quest");
-        
-
-        glewExperimental = GL_TRUE;
-        err = glewInit();
-        if (err != GLEW_OK) {
-            doTrace("There was an error with GLEW");
-        }
-        else {
-            doTrace("GLEW_OK");
-        }
-
-        singleton = new Singleton();
-        singleton->init(winW,winH);
-
-        glutDisplayFunc(display);
-        glutIdleFunc(idleFunc);
-        glutReshapeFunc(reshape);
-        glutPassiveMotionFunc(mouseMovementWithoutButton);
-        glutMotionFunc(mouseMovementWithButton);
-        glutMouseFunc(mouseClick);
-        glutKeyboardFunc(keyboardDown);
-        glutKeyboardUpFunc(keyboardUp);
-        glutSpecialFunc(processSpecialKeys);
-
-        
-
-        
-        glutMainLoop();
-
-
-
-        srv.stop();
-    }
-
-    delete[] g_RecBuffer;
-
-    return Application::EXIT_OK;
-}
-*/
-
-
-//POCO_SERVER_MAIN(WebSocketServer) 
+} 

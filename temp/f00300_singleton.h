@@ -3,14 +3,18 @@
 
 #include "f00300_singleton.e"
 #define LZZ_INLINE inline
-void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
-                                                                        {
+void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer * _myWS)
+                                                                                                {
 
 		pushTrace("Singleton init");
+
+		myWS = _myWS;
 
 		poolItemsCreated = 0;
 		activeMode = 1;
 
+		isZooming = false;
+		isPanning = false;
 		softMode = false;
 		reportPagesDrawn = false;
 		isBare = false;
@@ -43,14 +47,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 		maxH = worldSizeInPages.getIZ();
 		maxW = 4;
-
-
-		// //fastMode
-		// if (true) {
-		// 	MAX_GPU_MEM = 512.0;
-		// 	maxW = 2;
-		// }
-
 
 		maxHeightInUnits = (worldSizeInPages.getIZ()-bufferMult)*(visPageSizeInUnits);
 
@@ -111,6 +107,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		fogPos.addXYZ(-256.0f);
 
 	    cameraZoom = 1.0f;
+	    targetZoom = 1.0f;
 
 	    mouseX = 0.0f;
 	    mouseY = 0.0f;
@@ -229,13 +226,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 	    fboMap["combineFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["volGenFBO"]->init(1, 4096, 4096, 1, false);
-
-
-
-	    
-
-	    //testRes = new PooledResource();
-	    //testRes->init(this);
 
 
 	    gw = new GameWorld();
@@ -545,21 +535,21 @@ void Singleton::createGrassList ()
 		glEndList();
 		
 	}
-void Singleton::drawCubeCentered (FIVector4 origin, float radius)
-                                                              {
+void Singleton::drawCubeCentered (FIVector4 originVec, float radius)
+                                                                 {
 		FIVector4 minV;
 		FIVector4 maxV;
 
 		minV.setFXYZ(
-			origin.getFX()-radius,
-			origin.getFY()-radius,
-			origin.getFZ()-radius
+			originVec.getFX()-radius,
+			originVec.getFY()-radius,
+			originVec.getFZ()-radius
 		);
 
 		maxV.setFXYZ(
-			origin.getFX()+radius,
-			origin.getFY()+radius,
-			origin.getFZ()+radius
+			originVec.getFX()+radius,
+			originVec.getFY()+radius,
+			originVec.getFZ()+radius
 		);
 
 		drawBox(minV,maxV);
@@ -982,9 +972,20 @@ void Singleton::drawFBOOffset (string fboName, int ind, float xOff, float yOff, 
 	    FBOSet* fbos = fboMap[fboName];
 	    drawFBOOffsetDirect(fbos, ind, xOff, yOff, zoom);
 	}
+void Singleton::moveCamera (FIVector4 * modXYZ)
+                                           {
+		wsBufferInvalid = true;
+		cameraPos.addXYZRef(modXYZ);
+		modXYZ->setFZ(0.0f);
+		lightPos.addXYZRef(modXYZ, 1.0f);
+		fogPos.addXYZRef(modXYZ, 1.0f);
+		isPanning = true;
+	}
 void Singleton::moveObject (float dx, float dy, float zoom)
                                                         {
 
+
+		
 
 		float dxZoom = dx/zoom;
 		float dyZoom = dy/zoom;
@@ -999,12 +1000,27 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 				modXYZ.setFX( -(0.0f + dxZoom/2.0f) );
 				modXYZ.setFY( -(0.0f - dxZoom/2.0f) );
 
+
+
 			}
 			else {
 				modXYZ.setFX( -(dyZoom + dxZoom/2.0f) );
 				modXYZ.setFY( -(dyZoom - dxZoom/2.0f) );
 			}
+
+			//modXYZTemp.copyFrom(&modXYZ);
+			//modXYZTemp.normalize();
+			lastModXYZ.addXYZRef(&modXYZ);
+
+
+			
+			
 		}
+		else {
+			
+		}
+
+		
 
 		if (shiftDown()) {
 
@@ -1053,16 +1069,7 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 			}
 
 			if (doDefault) {
-				wsBufferInvalid = true;
-				cameraPos.addXYZRef(&modXYZ);
-				//cameraPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-
-				modXYZ.setFZ(0.0f);
-				
-				lightPos.addXYZRef(&modXYZ, 1.0f);
-				fogPos.addXYZRef(&modXYZ, 1.0f);
-				//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-				//activeObjectPos.setFXYZ(lightPos.getFX(),lightPos.getFY(),lightPos.getFZ());
+				moveCamera(&modXYZ);
 			}
 
 
@@ -1317,6 +1324,16 @@ int Singleton::clamp (int val, int min, int max)
 		}
 		return val;
 	}
+float Singleton::clampf (float val, float min, float max)
+                                                      {
+		if (val > max) {
+			val = max;
+		}
+		if (val < min) {
+			val = min;
+		}
+		return val;
+	}
 void Singleton::getPixData (FIVector4 * toVector, int xv, int yv)
                                                              {
 
@@ -1456,12 +1473,12 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 			case 3: // wheel up
 				wheelDelta = 1.0/20.0f;
-				changesMade = true;
+				//changesMade = true;
 			break;
 
 			case 4: // wheel down
 				wheelDelta = -1.0/20.0f;
-				changesMade = true;
+				//changesMade = true;
 			break;
 		}
 
@@ -1472,7 +1489,9 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 
 
-
+		if (state == GLUT_DOWN) {
+			mouseVel.setFXY(0.0f,0.0f);
+		}
 
 		if (mbClicked) {
 
@@ -1480,7 +1499,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		
 
 		if (rbDown || lbDown) {
-
+			
 		}
 		else {
 
@@ -1496,18 +1515,32 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 			}
 			else {
 
+				muTime = myTimer.getElapsedTimeInMilliSec();
+
+				mouseEnd.setIXY(x,y);
+				mouseVel.copyFrom(&mouseEnd);
+				mouseVel.addXYZRef(&mouseStart, -1.0f);
+
+				
+
+				lastModXYZ.normalize();
+
+				//mouseVel.multXYZ( clampf(1.0f-(muTime-mdTime)/1000.0f, 0.1f, 1.0f)/cameraZoom );
 
 				if (shiftDown()) {
 
 				}
 				else {
-					mouseEnd.setIXY(x,y);
+					
 
 					activeObject = E_OBJ_NONE;
 					wsBufferInvalid = true;
 					getPixData(&mouseUpPD, x, y);
 
 					
+					
+
+
 
 					if ( mouseEnd.distance(&mouseStart) > 30.0 ) {
 						
@@ -1589,8 +1622,9 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 				else {
 
 
-					
+					lastModXYZ.setFXYZ(0.0f, 0.0f, 0.0f);
 
+					mdTime = myTimer.getElapsedTimeInMilliSec();
 					mouseStart.setIXY(x,y);
 					getPixData(&mouseDownPD, x, y);
 					activeObject = (E_OBJ)((int) mouseDownPD.getFW());
@@ -1630,17 +1664,24 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 
 
-		myDelta += wheelDelta;
-		cameraZoom = pow(2.0, myDelta);
+		
+		
 
 		if (button == 3 || button == 4) {
-			wsBufferInvalid = true;
-			//doTrace("Zoom: ", f__s(cameraZoom) );
+
+			myDelta += wheelDelta;
+			targetZoom = pow(2.0, myDelta);
+			isZooming = true;
+
 		}
 
 		if (x >= 0 && y >= 0 && x < baseW && y < baseH) {
 			bufferInvalid = true;
 		}
+
+	}
+void Singleton::processData ()
+                           {
 
 	}
 void Singleton::display ()
@@ -1649,9 +1690,67 @@ void Singleton::display ()
 		curTime = myTimer.getElapsedTimeInMilliSec();
 
 		float elTime = curTime - lastTime;
+		float dz;
+		float fMouseVel;
 
-		if (elTime >= 16.0) {
+		if (myWS->dataReady) {
+			processData();
+		}
+
+		
+
+
+		if (elTime >= 16.0f) {
 			lastTime = curTime;
+
+			lastModXYZ.multXYZ(0.9f);
+
+			mouseVel.multXYZ(0.95f);
+
+			fMouseVel = mouseVel.distance(&origin);
+
+			if ( fMouseVel < 1.0f ) {
+				mouseVel.setFXY(0.0f,0.0f);
+				isPanning = false;
+			}
+			else {
+				isPanning = true;
+
+
+				panMod.copyFrom(&lastModXYZ);
+				panMod.multXYZ(fMouseVel/16.0f);
+				moveCamera(&panMod);
+			}
+
+
+			dz = (targetZoom-cameraZoom)/(16.0f);
+
+			if (abs(dz) < 0.0001) {
+				dz = 0.0f;
+			}
+
+			if (cameraZoom > 8.0f) {
+				cameraZoom = 8.0f;
+			}
+			if (cameraZoom < 1.0f/8.0f) {
+				cameraZoom = 1.0f/8.0f;
+			}
+			
+			cameraZoom += dz;
+
+			if ((dz == 0.0f) && (isZooming)) {
+				isZooming = false;
+				wsBufferInvalid = true;
+				bufferInvalid = true;
+				changesMade = true;
+			}
+			else {
+				if (isZooming) {
+					bufferInvalid = true;
+					changesMade = true;
+				}
+				
+			}
 
 			if (shadersAreLoaded) {
 				gw->update();

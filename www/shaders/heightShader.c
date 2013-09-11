@@ -37,13 +37,13 @@ void main()	{
 	vec4 samp;
 	vec2 tc;
 
-	int i;
-	int j;
+	//int i;
+	//int j;
 	float fi;
 	float fj;
 	float dis;
 
-	int loopMax = 8;
+	const int loopMax = 8;
 	float fLoopMax = float(loopMax);
 
 	float divVal = 2.0*fLoopMax*fLoopMax;
@@ -60,8 +60,8 @@ void main()	{
 	vec2 minVec = vec2(0.0,0.0);
 	vec2 totVec = vec2(0.0,0.0);
 
-	for (i = -loopMax; i <= loopMax; i++) {
-		for (j = -loopMax; j <= loopMax; j++) {
+	for (int i = -loopMax; i <= loopMax; i++) {
+		for (int j = -loopMax; j <= loopMax; j++) {
 
 			fi = float(i);
 			fj = float(j);
