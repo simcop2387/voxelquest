@@ -1,4 +1,4 @@
-﻿Build started 9/11/2013 8:00:24 PM.
+﻿Build started 9/13/2013 11:11:32 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -8,26 +8,32 @@
          .\src\cpp\f00025_includes.h
          .\src\cpp\f00027_vectors.h
          .\src\cpp\f00030_json.h
+         .\src\cpp\f00040_png.h
          .\src\cpp\f00050_enums.h
          .\src\cpp\f00215_helperfuncs.h
          .\src\cpp\f00217_helperclasses.h
          .\src\cpp\f00220_timer.h
-         .\src\cpp\f00230_network.h
          .\src\cpp\f00240_simplex.h
          .\src\cpp\f00250_imageloader.h
          .\src\cpp\f00251_fbos.h
          .\src\cpp\f00260_classdefs.h
+         .\src\cpp\f00290_wsrequesthandler.hpp
+         .\src\cpp\f00291_rhfactory.hpp
+         .\src\cpp\f00292_wsserver.hpp
          .\src\cpp\f00300_singleton.hpp
          .\src\cpp\f00310_pooledresource.hpp
          .\src\cpp\f00350_gamepage.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         17 File(s) copied
+         20 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         4
+         7
          copying headers to one file
+         .\f00290_wsrequesthandler.e
+         .\f00291_rhfactory.e
+         .\f00292_wsserver.e
          .\f00300_singleton.e
          .\f00310_pooledresource.e
          .\f00350_gamepage.e
@@ -35,27 +41,33 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         4
+         7
          .
          copying files to compiled
+         .\temp\f00290_wsrequesthandler.e
+         .\temp\f00291_rhfactory.e
+         .\temp\f00292_wsserver.e
          .\temp\f00300_singleton.e
          .\temp\f00310_pooledresource.e
          .\temp\f00350_gamepage.e
          .\temp\f00380_gameworld.e
-         4 File(s) copied
+         7 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00027_vectors.h
          .\temp\f00030_json.h
+         .\temp\f00040_png.h
          .\temp\f00050_enums.h
          .\temp\f00215_helperfuncs.h
          .\temp\f00217_helperclasses.h
          .\temp\f00220_timer.h
-         .\temp\f00230_network.h
          .\temp\f00240_simplex.h
          .\temp\f00250_imageloader.h
          .\temp\f00251_fbos.h
          .\temp\f00260_classdefs.h
          .\temp\f00270_headers.h
+         .\temp\f00290_wsrequesthandler.h
+         .\temp\f00291_rhfactory.h
+         .\temp\f00292_wsserver.h
          .\temp\f00300_singleton.h
          .\temp\f00310_pooledresource.h
          .\temp\f00350_gamepage.h
@@ -65,108 +77,14 @@
        ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W1 /WX- /sdl /Ox /Oi /GL /D WIN32 /D NDEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Release\\" /Fd"x64\Release\vc110.pdb" /Gd /TP /errorReport:prompt ..\compiled\main.cpp
          main.cpp
-       Link:
-         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.exe" /INCREMENTAL:NO /NOLOGO /LIBPATH:C:\wamp\www\voxelquest\glew\lib /LIBPATH:"C:\Program Files (x86)\Windows Kits\8.0\Lib\win8\um\x64" /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\lib\amd64" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.lib" /MACHINE:X64 x64\Release\main.obj
-         Generating code
-         Finished generating code
-         VoxelQuest.vcxproj -> C:\wamp\www\voxelquest\x64\Release\VoxelQuest.exe
-       PostBuildEvent:
-         ../cleanup.bat;
-         :VCEnd
-         Cleanup Started
-         .\x64\Release\VoxelQuest.exe
-         .\x64\Release\VoxelQuest.pdb
-         2 File(s) copied
-         running EXE
-         GLEW_OK          
-         Singleton init          
-         |  setupLookups          
-         |  doShaderRefresh          
-         |  |  Shader( ../src/glsl/WorldSpaceShader.c )        
-         |  |  |  init( ../src/glsl/WorldSpaceShader.c )        
-         |  |  |  |  textFileRead( ../src/glsl/WorldSpaceShader.c )        
-         |  |  |  |  |  READ FILE:  ../src/glsl/WorldSpaceShader.c         
-         |  |  |  |  validateShader( ../src/glsl/WorldSpaceShader.c )        
-         |  |  |  |  validateShader( ../src/glsl/WorldSpaceShader.c )        
-         |  |  |  |  validateProgram()          
-         |  |  |  END          
-         |  |  END          
-         |  |  Shader( ../src/glsl/BlitShader.c )        
-         |  |  |  init( ../src/glsl/BlitShader.c )        
-         |  |  |  |  textFileRead( ../src/glsl/BlitShader.c )        
-         |  |  |  |  |  READ FILE:  ../src/glsl/BlitShader.c         
-         |  |  |  |  validateShader( ../src/glsl/BlitShader.c )        
-         |  |  |  |  validateShader( ../src/glsl/BlitShader.c )        
-         |  |  |  |  validateProgram()          
-         |  |  |  END          
-         |  |  END          
-         |  |  Shader( ../src/glsl/LightingShader.c )        
-         |  |  |  init( ../src/glsl/LightingShader.c )        
-         |  |  |  |  textFileRead( ../src/glsl/LightingShader.c )        
-         |  |  |  |  |  READ FILE:  ../src/glsl/LightingShader.c         
-         |  |  |  |  validateShader( ../src/glsl/LightingShader.c )        
-         |  |  |  |  validateShader( ../src/glsl/LightingShader.c )        
-         |  |  |  |  validateProgram()          
-         |  |  |  END          
-         |  |  END          
-         |  |  Shader( ../src/glsl/GeomShader.c )        
-         |  |  |  init( ../src/glsl/GeomShader.c )        
-         |  |  |  |  textFileRead( ../src/glsl/GeomShader.c )        
-         |  |  |  |  |  READ FILE:  ../src/glsl/GeomShader.c         
-         |  |  |  |  validateShader( ../src/glsl/GeomShader.c )        
-         |  |  |  |  validateShader( ../src/glsl/GeomShader.c )        
-         |  |  |  |  validateProgram()          
-         |  |  |  END          
-         |  |  END          
-         |  |  Shader( ../src/glsl/GrassShader.c )        
-         |  |  |  init( ../src/glsl/GrassShader.c )        
-         |  |  |  |  textFileRead( ../src/glsl/GrassShader.c )        
-         |  |  |  |  |  READ FILE:  ../src/glsl/GrassShader.c         
-         |  |  |  |  validateShader( ../src/glsl/GrassShader.c )        
-         |  |  |  |  validateShader( ../src/glsl/GrassShader.c )        
-         |  |  |  |  validateProgram()          
-         |  |  |  END          
-         |  |  END          
-         |  |  Shader( ../src/glsl/CombineShader.c )        
-         |  |  |  init( ../src/glsl/CombineShader.c )        
-         |  |  |  |  textFileRead( ../src/glsl/CombineShader.c )        
-         |  |  |  |  |  READ FILE:  ../src/glsl/CombineShader.c         
-         |  |  |  |  validateShader( ../src/glsl/CombineShader.c )        
-         |  |  |  |  validateShader( ../src/glsl/CombineShader.c )        
-         |  |  |  |  validateProgram()          
-         |  |  |  END          
-         |  |  END          
-         |  |  Shader( ../src/glsl/GenerateVolume.c )        
-         |  |  |  init( ../src/glsl/GenerateVolume.c )        
-         |  |  |  |  textFileRead( ../src/glsl/GenerateVolume.c )        
-         |  |  |  |  |  READ FILE:  ../src/glsl/GenerateVolume.c         
-         |  |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
-         |  |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
-         |  |  |  |  validateProgram()          
-         |  |  |  END          
-         |  |  END          
-         |  |  Shader( ../src/glsl/GenerateVolumeBare.c )        
-         |  |  |  init( ../src/glsl/GenerateVolumeBare.c )        
-         |  |  |  |  textFileRead( ../src/glsl/GenerateVolumeBare.c )        
-         |  |  |  |  |  READ FILE:  ../src/glsl/GenerateVolumeBare.c         
-         |  |  |  |  validateShader( ../src/glsl/GenerateVolumeBare.c )        
-         |  |  |  |  validateShader( ../src/glsl/GenerateVolumeBare.c )        
-         |  |  |  |  validateProgram()          
-         |  |  |  END          
-         |  |  END          
-         |  |  Shader( ../src/glsl/RenderVolume.c )        
-         |  |  |  init( ../src/glsl/RenderVolume.c )        
-         |  |  |  |  textFileRead( ../src/glsl/RenderVolume.c )        
-         |  |  |  |  |  READ FILE:  ../src/glsl/RenderVolume.c         
-         |  |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
-         |  |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
-         |  |  |  |  validateProgram()          
-         |  |  |  END          
-         |  |  END          
-         |  END          
-         END          
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
+     1>..\compiled\main.cpp(13149): error C2664: 'Poco::Base64Decoder::Base64Decoder(std::basic_istream<_Elem,_Traits> &)' : cannot convert parameter 1 from 'membuf' to 'std::basic_istream<_Elem,_Traits> &'
+                 with
+                 [
+                     _Elem=char,
+                     _Traits=std::char_traits<char>
+                 ]
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
 
-Build succeeded.
+Build FAILED.
 
-Time Elapsed 00:00:35.89
+Time Elapsed 00:00:00.92

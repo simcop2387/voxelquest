@@ -1074,9 +1074,6 @@ void GameWorld::renderWorldSpace ()
 
 		singleton->wsBufferInvalid = false;
 
-		
-		singleton->worldToScreen(&screenCoords, &(singleton->lightPos));
-
 		singleton->bindShader("WorldSpaceShader");
 		
 
@@ -1091,7 +1088,6 @@ void GameWorld::renderWorldSpace ()
 		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
 		singleton->setShaderfVec4("fogPos", &(singleton->fogPos));
 		singleton->setShaderfVec3("lightPosWS", &(singleton->lightPos));
-		singleton->setShaderfVec2("lightPosSS", &screenCoords);
 		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDimHalf) );
 
@@ -1162,15 +1158,18 @@ void GameWorld::postProcess ()
 
 		float newZoom;
 
-		singleton->worldToScreen(&screenCoords, &(singleton->lightPos));
+		singleton->worldToScreen(&lScreenCoords, &(singleton->lightPos));
+		singleton->worldToScreen(&aoScreenCoords, &(singleton->activeObjectPos));
 
 		singleton->bindShader("LightingShader");
 		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
 		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
 		singleton->setShaderfVec3("lightPosWS", &(singleton->lightPos));
+		singleton->setShaderfVec2("lightPosSS", &lScreenCoords);
+		singleton->setShaderfVec2("aoPosSS", &aoScreenCoords);
 		singleton->setShaderfVec4("fogPos", &(singleton->fogPos));
 		singleton->setShaderfVec4("activeObjectPos", &(singleton->activeObjectPos));
-		singleton->setShaderfVec2("lightPosSS", &screenCoords);
+		
 		singleton->setShaderfVec4("lastUnitPos", &(lastUnitPos) );
 		singleton->setShaderfVec4("lastPagePos", &(lastPagePos) );
 

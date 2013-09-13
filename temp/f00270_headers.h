@@ -1,3 +1,65 @@
+// f00290_wsrequesthandler.e
+//
+
+#ifndef LZZ_f00290_wsrequesthandler_e
+#define LZZ_f00290_wsrequesthandler_e
+#define LZZ_INLINE inline
+class WebSocketRequestHandler : public HTTPRequestHandler
+{
+public:
+  WebSocketServer * ws_ptr;
+  WebSocketRequestHandler (WebSocketServer * _ws_ptr);
+  ~ WebSocketRequestHandler ();
+  void handleRequest (HTTPServerRequest & request, HTTPServerResponse & response);
+};
+#undef LZZ_INLINE
+#endif
+// f00291_rhfactory.e
+//
+
+#ifndef LZZ_f00291_rhfactory_e
+#define LZZ_f00291_rhfactory_e
+#define LZZ_INLINE inline
+class RequestHandlerFactory : public HTTPRequestHandlerFactory
+{
+public:
+  WebSocketServer * ws_ptr;
+  RequestHandlerFactory (WebSocketServer * _ws_ptr);
+  HTTPRequestHandler * createRequestHandler (HTTPServerRequest const & request);
+};
+#undef LZZ_INLINE
+#endif
+// f00292_wsserver.e
+//
+
+#ifndef LZZ_f00292_wsserver_e
+#define LZZ_f00292_wsserver_e
+#define LZZ_INLINE inline
+class WebSocketServer : public Poco::Util::ServerApplication
+{
+public:
+  bool dataReady;
+  bool isWorking;
+  bool isJSON;
+  int MAX_FRAME_SIZE;
+  char * recBuffer;
+  char * okBuffer;
+  int recBufferLength;
+  JSONValue * recMessage;
+  WebSocketServer ();
+  ~ WebSocketServer ();
+protected:
+  void initialize (Application & self);
+  void uninitialize ();
+  void defineOptions (OptionSet & options);
+  void handleOption (std::string const & name, std::string const & value);
+  void displayHelp ();
+  int main (std::vector <std::string> const & args);
+private:
+  bool _helpRequested;
+};
+#undef LZZ_INLINE
+#endif
 // f00300_singleton.e
 //
 
@@ -55,6 +117,12 @@ public:
   int maxW;
   int screenWidth;
   int screenHeight;
+  int mouseMovingSize;
+  int mouseMovingLoc;
+  int mouseMovingStepsBack;
+  int mouseCount;
+  int lastMouseX;
+  int lastMouseY;
   float curBrushRad;
   float diskOn;
   float grassHeight;
@@ -82,6 +150,7 @@ public:
   FIVector4 lightPos;
   FIVector4 mouseStart;
   FIVector4 mouseEnd;
+  FIVector4 * mouseMoving;
   FIVector4 mouseVel;
   FIVector4 worldSeed;
   FIVector4 fogPos;
@@ -106,6 +175,7 @@ public:
   WebSocketServer * myWS;
   Timer myTimer;
   GameWorld * gw;
+  Singleton ();
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer * _myWS);
   void sendPoolIdToFront (int id);
   int requestPoolId (int requestingPageId);
@@ -113,7 +183,6 @@ public:
   void setupLookups ();
   void perspectiveProjection ();
   void orthographicProjection ();
-  Singleton ();
   ~ Singleton ();
   float genRand (float LO, float HI);
   void setProgAction (eProgramState ps, unsigned char kc, eProgramAction pa, bool isDown);
@@ -167,7 +236,8 @@ public:
   void worldToScreen (FIVector4 * sc, FIVector4 * wc);
   void screenToWorld (FIVector4 * tc, FIVector4 * wc);
   void mouseClick (int button, int state, int _x, int _y);
-  void processData ();
+  void processB64 ();
+  void processJSON ();
   void display ();
   void reshape (int w, int h);
   void idleFunc ();
@@ -259,7 +329,8 @@ public:
   bool lastProcResult;
   bool updatePoolOrder;
   vector <int> ocThreads;
-  FIVector4 screenCoords;
+  FIVector4 lScreenCoords;
+  FIVector4 aoScreenCoords;
   FIVector4 worldSizeInPages;
   FIVector4 curPos;
   FIVector4 camPagePos;

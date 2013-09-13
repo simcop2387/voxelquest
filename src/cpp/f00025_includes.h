@@ -3,6 +3,8 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
+
+
 #include <SDKDDKVer.h>
 
 
@@ -65,6 +67,8 @@
 #include "Poco/Format.h"
 #include "Poco/Runnable.h"
 #include "Poco/ThreadPool.h"
+#include "Poco/Base64Decoder.h"
+
 
 using Poco::Net::ServerSocket;
 using Poco::Net::WebSocket;
@@ -85,6 +89,8 @@ using Poco::Util::Application;
 using Poco::Util::Option;
 using Poco::Util::OptionSet;
 using Poco::Util::HelpFormatter;
+
+using Poco::Base64Decoder;
 
 
 /*
@@ -172,6 +178,13 @@ static inline bool simplejson_wcsnlen(const wchar_t *s, size_t n) {
 
 	return true;
 }
+
+struct membuf : std::streambuf
+{
+    membuf(char* begin, char* end) {
+        this->setg(begin, begin, end);
+    }
+};
 
 
 

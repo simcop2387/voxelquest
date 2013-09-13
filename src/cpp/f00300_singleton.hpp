@@ -52,6 +52,12 @@ public:
 	int maxW;
 	int screenWidth;
 	int screenHeight;
+	int mouseMovingSize;
+	int mouseMovingLoc;
+	int mouseMovingStepsBack;
+	int mouseCount;
+	int lastMouseX;
+	int	lastMouseY;
 	
 
 	float curBrushRad;
@@ -82,6 +88,9 @@ public:
 	FIVector4 lightPos;
 	FIVector4 mouseStart;
 	FIVector4 mouseEnd;
+
+
+	FIVector4* mouseMoving;
 	FIVector4 mouseVel;
 	FIVector4 worldSeed;
 	FIVector4 fogPos;
@@ -113,10 +122,24 @@ public:
 	GameWorld* gw;
 
 
+	Singleton() {
+		volTris = NULL;
+		gw = NULL;
+		myWS = NULL;
+	}
+
 
 	void init(int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer* _myWS) {
 
 		pushTrace("Singleton init");
+
+
+
+		mouseMovingSize = 100;
+		mouseMovingLoc = 0;
+		mouseCount = 0;
+		mouseMovingStepsBack = 20;
+		mouseMoving = new FIVector4[mouseMovingSize];
 
 		myWS = _myWS;
 
@@ -558,11 +581,7 @@ public:
 
 
 
-	Singleton() {
-		volTris = NULL;
-		gw = NULL;
-    	//gm = NULL;
-	}
+	
 	~Singleton() {
 		if (gw) {
 			delete gw;
@@ -1346,6 +1365,9 @@ public:
 		//doTrace(i__s(key) );
 
 
+		if (key == 17) {
+			glutLeaveMainLoop();
+		}
 
 		switch(key ) {
 
@@ -1423,6 +1445,8 @@ public:
 				bufferInvalid = true;
 				changesMade = true;
 			break;
+
+
 
 			case 't':
 				restartGen = true;
@@ -1564,7 +1588,11 @@ public:
 		int dy = y - lastPosY;
 
 
+		lastMouseX = x;
+		lastMouseY = y;
 
+
+		
 
 		mouseXUp = x;
 		mouseYUp = y;
@@ -1611,8 +1639,8 @@ public:
 		float y1 = (-(dMod.getFX()/2.0f) + -(dMod.getFY()/2.0f) + dMod.getFZ());
 		float myZoom = std::min(1.0f, cameraZoom);
 
-		x1 = x1*(myZoom)/bufferDim.getFX();
-		y1 = y1*(myZoom)/bufferDim.getFY();
+		x1 = x1*(myZoom)/bufferDimHalf.getFX();
+		y1 = y1*(myZoom)/bufferDimHalf.getFY();
 
 		x1 = (x1 + 1.0)/2.0;
 		y1 = (y1 + 1.0)/2.0;
@@ -1642,6 +1670,8 @@ public:
 		bool mbClicked = false;
 		bool rbClicked = false;
 		bool lbClicked = false;
+
+		int mouseMovingStart;
 		
 
 
@@ -1706,15 +1736,41 @@ public:
 			}
 			else {
 
+				doTrace("MOUSE UP");
 				muTime = myTimer.getElapsedTimeInMilliSec();
 
 				mouseEnd.setIXY(x,y);
-				mouseVel.copyFrom(&mouseEnd);
-				mouseVel.addXYZRef(&mouseStart, -1.0f);
+				//mouseVel.copyFrom(&mouseEnd);
+				//mouseVel.addXYZRef(&mouseMoving, -1.0f);
+
+				if (activeObject != E_OBJ_LIGHT && activeObject != E_OBJ_FOG && (muTime-mdTime > 300.0f) ) {
+					mouseMovingStart = (mouseMovingLoc - min(mouseMovingStepsBack, mouseCount) + mouseMovingSize)%mouseMovingSize;
+					
+
+					if (mouseCount > 0) {
+						mouseVel.copyFrom( &(mouseMoving[mouseMovingLoc]) );
+						mouseVel.addXYZRef( &(mouseMoving[mouseMovingStart]), -1.0f);
+					}
+
+					
+				}
 
 				
 
+				
+				/*
+				mouseMovingSize = 100;
+				mouseMovingLoc = 0;
+				mouseCount = 0;
+				mouseMovingStepsBack = 10;
+				*/
+
 				lastModXYZ.normalize();
+
+				//if (activeObject == E_OBJ_LIGHT || activeObject == E_OBJ_CAMERA) {
+					//mouseVel
+				//}
+
 
 				//mouseVel.multXYZ( clampf(1.0f-(muTime-mdTime)/1000.0f, 0.1f, 1.0f)/cameraZoom );
 
@@ -1723,6 +1779,9 @@ public:
 				}
 				else {
 					
+
+
+
 
 					activeObject = E_OBJ_NONE;
 					wsBufferInvalid = true;
@@ -1753,49 +1812,6 @@ public:
 					}
 
 
-					
-
-					/*					
-					tempObj = (E_OBJ) ( (int)mouseDownPD.getFW() );
-
-					switch (tempObj) {
-						case E_OBJ_LIGHT:
-
-						break;
-
-						case E_OBJ_FOG:
-
-						break;
-						default:
-
-
-							if ( mouseEnd.distance(&mouseStart) > 30.0 ) {
-								
-							} 
-							else {
-								
-							}
-
-
-							if (mouseState == E_MOUSE_STATE_BRUSH) {
-
-								doTrace("rblbClicked2");
-
-								if (lbClicked) {
-									gw->modifyUnit(&mouseUpPD, E_BRUSH_ADD);
-								}
-								else {
-									gw->modifyUnit(&mouseUpPD, E_BRUSH_SUB);
-								}
-
-								forceGetPD = true;
-
-							}
-							
-						break;
-					}
-					*/
-
 					diskOn = 0.0f;
 				}
 
@@ -1815,17 +1831,23 @@ public:
 
 					lastModXYZ.setFXYZ(0.0f, 0.0f, 0.0f);
 
+					mouseMovingLoc = 0;
+					mouseCount = 0;
+					doTrace("MOUSE DOWN");
 					mdTime = myTimer.getElapsedTimeInMilliSec();
 					mouseStart.setIXY(x,y);
+
 					getPixData(&mouseDownPD, x, y);
 					activeObject = (E_OBJ)((int) mouseDownPD.getFW());
 
 					switch (activeObject) {
 						case E_OBJ_LIGHT:
+							activeObjectPos.setFXYZRef(&lightPos);
 							diskOn = 1.0f;
 						break;
 
 						case E_OBJ_FOG:
+							activeObjectPos.setFXYZRef(&fogPos);
 							diskOn = 1.0f;
 						break;
 						default:
@@ -1873,11 +1895,39 @@ public:
 	}
 
 
-	void processData() {
+	void processB64() {
+		doTrace("processData() BASE64");
+
+		membuf sbuf(myWS->recBuffer, myWS->recBuffer + myWS->recBufferLength);
+		Poco::Base64Decoder b64in(sbuf);
+
+		//ofBuffer buffer;
+		//b64in >> buffer;
+
+
 
 	}
 
+	void processJSON() {
+		doTrace("processData() JSON");
+
+		JSONValue *jsonVal = myWS->recMessage;
+
+		if (jsonVal == NULL) {
+
+		}
+		else {
+			//doTrace( "JSON VAL", f__s(jsonVal->Child(L"x")->number_value) , "\n\n" );
+		}
+		
+		
+	}
+
 	void display(void) {
+
+
+
+
 
 		curTime = myTimer.getElapsedTimeInMilliSec();
 
@@ -1885,9 +1935,25 @@ public:
 		float dz;
 		float fMouseVel;
 
-		if (myWS->dataReady) {
-			processData();
+		if (myWS == NULL) {
+
 		}
+		else {
+
+			if (myWS->dataReady) {
+
+				if (myWS->isJSON) {
+					processJSON();
+				}
+				else {
+					processB64();
+				}
+
+				myWS->dataReady = false;
+				myWS->isWorking = false;
+			}
+		}
+		
 
 		
 
@@ -1895,10 +1961,18 @@ public:
 		if (elTime >= 16.0f) {
 			lastTime = curTime;
 
-			lastModXYZ.multXYZ(0.9f);
+
+
+			mouseMovingLoc = (mouseMovingLoc+1)%mouseMovingSize;
+			mouseCount++;
+			mouseMoving[mouseMovingLoc].setIXY(lastMouseX,lastMouseY);
+
+
+
+			lastModXYZ.multXYZ(0.95f);
 
 			mouseVel.multXYZ(0.95f);
-
+			
 			fMouseVel = mouseVel.distance(&origin);
 
 			if ( fMouseVel < 1.0f ) {

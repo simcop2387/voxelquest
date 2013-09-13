@@ -9,7 +9,7 @@ uniform vec2 mouseCoords;
 uniform vec2 resolution;
 uniform vec3 cameraPos;
 uniform vec3 lightPosWS;
-uniform vec2 lightPosSS;
+//uniform vec2 lightPosSS;
 uniform vec2 bufferDim;
 uniform float cameraZoom;
 

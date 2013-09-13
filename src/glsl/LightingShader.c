@@ -12,6 +12,7 @@ uniform vec2 resolution;
 uniform vec3 cameraPos;
 uniform vec3 lightPosWS;
 uniform vec2 lightPosSS;
+uniform vec2 aoPosSS;
 uniform vec4 activeObjectPos;
 uniform vec4 lastUnitPos;
 uniform vec4 lastPagePos;
@@ -183,7 +184,7 @@ void main() {
 
 
 
-    //float mval = float( distanceAspect(sStartPos,sEndPos,aspectRatio)/(newZoom3) < 0.1)*0.2;
+    float mval = diskOn*float( distanceAspect(sStartPos,aoPosSS,aspectRatio)/(newZoom3) < 0.1)*0.2;
 
     float wpDis = distance(activeObjectPos.xy,worldPosition.xy);
 
@@ -342,7 +343,7 @@ void main() {
     //vec3 resColor = tex1.rgb;
 
 
-    vec3 finalCol = mix( fogColor, resColor, hfog )+resCol2*geomMod*0.8+pval;
+    vec3 finalCol = mix( fogColor, resColor, hfog )+resCol2*geomMod*0.8+pval+mval;
 
     //vec4(lightRes*0.8,lightRes*0.7,lightRes*0.6, lightRes)
     gl_FragData[0] = vec4(finalCol,1.0);//+geomMod;//+isLastUnit+isLastPage;//+isLastUnit+isLastPage; //vec4(lightRes,lightRes,lightRes,1.0);//
