@@ -123,8 +123,8 @@ int main(int argc, char* argv[])
 
     switch (resMode) {
         case 0:
-            winWidth = 1024;
-            winHeight = 1024;
+            winWidth = 768;
+            winHeight = 768;
             scaleFactor = 1;
         break;
 
@@ -157,7 +157,7 @@ int main(int argc, char* argv[])
 
     glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGB);
     glutInitWindowSize(winWidth, winHeight);
-    glutInitWindowPosition(140, 200);
+    //glutInitWindowPosition(140, 10);
     glutCreateWindow("VoxelQuest");
 
     GLenum err = glewInit();

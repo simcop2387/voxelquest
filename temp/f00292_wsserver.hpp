@@ -27,30 +27,31 @@ public:
 	bool isWorking;
 	bool isJSON;
 	int MAX_FRAME_SIZE;
-	char* recBuffer;
-	char* okBuffer;
-	int recBufferLength;
+	charArr recBuffer;
+	charArr okBuffer;
+	//int recBufferLength;
 	
-	JSONValue* recMessage;
+	//JSONValue* recMessage;
 
 	WebSocketServer(): _helpRequested(false)
 	{
-		recMessage = NULL;
+		//recMessage = NULL;
 		dataReady = false;
 		isWorking = false;
 		isJSON = false;
-		recBufferLength = 0;
+		//recBufferLength = 0;
 		
 		MAX_FRAME_SIZE = 16777216; //16 MB
-		recBuffer = new char[MAX_FRAME_SIZE];
-		okBuffer = "{\"cc\":\"REC__OK\"}";
+		recBuffer.data = new char[MAX_FRAME_SIZE];
+		okBuffer.data = "{\"cc\":\"REC__OK\"}";
+		okBuffer.size = 16;
 		
 	}
 	
 	~WebSocketServer()
 	{
-		if (recBuffer != NULL) {
-			delete[] recBuffer;
+		if (recBuffer.data != NULL) {
+			delete[] recBuffer.data;
 		}
 	}
 

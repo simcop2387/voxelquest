@@ -87,7 +87,7 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
     vec3 norm = vec3(0.0,0.0,0.0);
     vec3 norm2 = vec3(0.0,0.0,0.0);
 
-    int rad = 6;
+    int rad = 8;
     int radStep = 1;
     float frad = float(radStep);
 
@@ -119,7 +119,7 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
                 rval = float(res.a == 0.0);
 
                 rval2 = float( abs(res.r-curSamp.r) + abs(res.g-curSamp.g) + abs(res.b-curSamp.b) != 0.0 );
-                rvMix = rval2;//mix(rval,rval2, isRock);//abs(sin(wp.y)) );//isRock
+                rvMix = mix(rval,rval2,0.5);//mix(rval,rval2, isRock);//abs(sin(wp.y)) );//isRock
                 norm += rvMix*(offVal);
                 //norm2 += res.a*offVal;
 
@@ -239,20 +239,17 @@ void main() {
     vec3 back = TexCoord0.xyz;
 
     
-
-    
-    
-    float curDis = 0.0;
-    int iCurDis = 0;
-    float fRayDis = floor(distance(front,back)*128.0*sqrt(2.0));
     vec4 blackCol = vec4(0.0,0.0,0.0,0.0);
     vec4 samp = vec4(0.0,0.0,0.0,0.0);
     
+    
+    float curDis = 0.0;
+    int iCurDis = 0;  
 
     vec3 curPos = vec3(0.0,0.0,0.0);
+    //vec3 lastGoodPos = vec3(0.0,0.0,0.0);
 
-
-    curDis = fRayDis;
+    curDis = floor(distance(front,back)*128.0*sqrt(2.0));
     iCurDis = int(curDis);
 
     for (i = 0; i < iCurDis; i++) {
@@ -265,6 +262,8 @@ void main() {
         if (samp.a != 0.0) {
             break;
         }
+
+        //lastGoodPos = curPos;
     }
 
 

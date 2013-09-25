@@ -11,8 +11,6 @@ WebSocketRequestHandler::WebSocketRequestHandler (WebSocketServer * _ws_ptr)
 WebSocketRequestHandler::~ WebSocketRequestHandler ()
                                    {
 		
-		
-		
 	}
 void WebSocketRequestHandler::handleRequest (HTTPServerRequest & request, HTTPServerResponse & response)
         {
@@ -31,10 +29,13 @@ void WebSocketRequestHandler::handleRequest (HTTPServerRequest & request, HTTPSe
 
 		ws_ptr->isWorking = true;
 		ws_ptr->dataReady = false;
+		
+		/*
 		if (ws_ptr->recMessage != NULL) {
 			delete ws_ptr->recMessage;
 			ws_ptr->recMessage = NULL;
 		}
+		*/
 
 		Application& app = Application::instance();
 
@@ -52,59 +53,31 @@ void WebSocketRequestHandler::handleRequest (HTTPServerRequest & request, HTTPSe
 			
 			do
 			{
-				n = ws.receiveFrame(ws_ptr->recBuffer, ws_ptr->MAX_FRAME_SIZE, flags);
-				app.logger().information(Poco::format("Frame received (length=%d, flags=0x%x).", n, unsigned(flags)));
+				n = ws.receiveFrame(ws_ptr->recBuffer.data, ws_ptr->MAX_FRAME_SIZE, flags);
+				//app.logger().information(Poco::format("Frame received (length=%d, flags=0x%x).", n, unsigned(flags)));
 				
 
 				if (n > 0) {
 
-					ws_ptr->recBuffer[n+1] = '\0';
-					ws_ptr->recBufferLength = n; 
+					ws_ptr->recBuffer.data[n+1] = '\0';
+					ws_ptr->recBuffer.size = n;
 
-					if (ws_ptr->recBuffer[0] == '{') {
+					if (ws_ptr->recBuffer.data[0] == '{') {
 						ws_ptr->isJSON = true;
-
-						ws_ptr->recMessage = JSON::Parse(ws_ptr->recBuffer);
-
-						if (ws_ptr->recMessage == NULL) {
-							doTrace("Invalid JSON\n\n");
-							ws_ptr->isWorking = false;
-							
-						}
-						else {
-							doTrace("");
-							doTrace("Valid JSON");
-							doTrace("");
-							//ws_ptr->isWorking = false;
-							ws_ptr->dataReady = true;
-						}
-
+						ws_ptr->recBuffer.data[n] = '\0';
 					}
 					else {
 						ws_ptr->isJSON = false;
-						ws_ptr->dataReady = true;
-
 					}
+
+					ws_ptr->dataReady = true;
 
 					
 					
 
 				}
-				//01234567890123
-				//{"cc":"SENDING"
-				
-				/*ws_ptr->recBuffer[7] = 'R';
-				ws_ptr->recBuffer[8] = 'E';
-				ws_ptr->recBuffer[9] = 'C';
-				ws_ptr->recBuffer[10] = '_';
-				ws_ptr->recBuffer[11] = '_';
-				ws_ptr->recBuffer[12] = 'O';
-				ws_ptr->recBuffer[13] = 'K';
-				*/
-				//ws.sendFrame(ws_ptr->recBuffer, n, flags);
-				//1234567890123456
-				//{"cc":"REC__OK"}
-				ws.sendFrame(ws_ptr->okBuffer,16,flags);
+
+				ws.sendFrame(ws_ptr->okBuffer.data,ws_ptr->okBuffer.size,flags);
 
 			}
 			while ( (n > 0 || (flags & WebSocket::FRAME_OP_BITMASK) != WebSocket::FRAME_OP_CLOSE) && PROG_ACTIVE );

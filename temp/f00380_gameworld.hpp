@@ -1216,7 +1216,9 @@ public:
 		// NOTE: ALWAYS UNSAMPLE IN REVERSE ORDER!!!
 
 
-		//singleton->drawFBO("worldSpaceFBO", 0, 1.0 );
+		//singleton->drawFBO("palFBO", 0, 1.0 );
+
+
 
 		float newZoom;
 
@@ -1247,11 +1249,13 @@ public:
 		singleton->bindFBO("resultFBO");
 		singleton->sampleFBO("combineFBO",0);
 		singleton->sampleFBO("geomFBO", 2);
+		singleton->sampleFBO("palFBO", 4);
 
 		//MUST BE CALLED AFTER FBO IS BOUND
 		singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 
 		singleton->drawFSQuad(1.0f);
+		singleton->unsampleFBO("palFBO", 4);
 		singleton->unsampleFBO("geomFBO", 2);
 		singleton->unsampleFBO("combineFBO",0);
 		singleton->unbindFBO();

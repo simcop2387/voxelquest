@@ -104,6 +104,11 @@ using Poco::Base64Decoder;
 float MAX_GPU_MEM = 1536.0f;
 float TOT_GPU_MEM_USAGE = 0.0f;
 
+struct charArr {
+	long size;
+	char* data;
+};
+
 #ifdef WIN32
 #include <windows.h>
 #else

@@ -21,7 +21,7 @@ public:
 
     FBOWrapper() {}
     ~FBOWrapper() {}
-    int init(int _width, int _height, int _bytesPerChannel, int _slot, bool _hasDepth) {
+    int init(int _width, int _height, int _bytesPerChannel, int _slot, bool _hasDepth, int filterEnum) {
 		width = _width;
 		height = _height;
 		bytesPerChannel = _bytesPerChannel;
@@ -69,8 +69,8 @@ public:
 
 		glGenTextures(1, &color_tex);
 		glBindTexture(GL_TEXTURE_2D, color_tex);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_NEAREST);
-	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterEnum);
+	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterEnum);
 	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		
@@ -245,7 +245,7 @@ public:
     	return &(fbos[offset]);
     }
 
-    void init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool _hasDepth) {
+    void init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool _hasDepth, int filterEnum=GL_NEAREST) {
 		int i;
 
 		hasDepth = _hasDepth;
@@ -262,7 +262,7 @@ public:
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
 
 		for (i = 0; i < numBufs; i++) {
-			fbos[i].init(width, height, bytesPerChannel, i, hasDepth);
+			fbos[i].init(width, height, bytesPerChannel, i, hasDepth, filterEnum);
 		}
 
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
@@ -295,15 +295,18 @@ public:
 		glLoadIdentity ();
 	}
 	*/
-    void copyFromMem(int ind, uint* dat) {
+    void copyFromMem(int ind, unsigned char* dat) {
 
 		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
 
 	    glBindTexture(GL_TEXTURE_2D,fbos[ind].color_tex);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dat);
+
+	    //glTexSubImage2D(GLenum target​, GLint level​, GLint xoffset​, GLint yoffset​, GLsizei width​, GLsizei height​, GLenum format​, GLenum type​, const GLvoid * data​);
+
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, dat);
 		//glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbos[ind].slot, GL_TEXTURE_2D, fbos[ind].color_tex, 0);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		//glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		//glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glBindTexture(GL_TEXTURE_2D,0);
 
 		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);

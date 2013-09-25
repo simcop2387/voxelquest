@@ -6,6 +6,9 @@ uniform sampler2D Texture1;
 uniform sampler2D Texture2;
 uniform sampler2D Texture3;
 
+// pal fbo
+uniform sampler2D Texture4;
+
 varying vec2 TexCoord0;
 uniform vec2 mouseCoords;
 uniform vec2 resolution;
@@ -227,10 +230,7 @@ void main() {
         resComp = 1.0;
     }
 
-    vec3 myVec;
-    myVec.x = (tex1.r-0.5)*2.0;
-    myVec.y = (tex1.g-0.5)*2.0;
-    myVec.z = (tex1.b-0.5)*2.0;
+    vec3 myVec = (tex1.rgb-0.5)*2.0;
 
     float lightval = dot(myVec,lightVec);
     lightval = clamp(lightval, 0.0, 1.0);
@@ -337,6 +337,14 @@ void main() {
 
 
     vec3 resColor = mix(resCol0,resCol1,lightRes);
+
+    if (tex0.b == 1.0/255.0) {
+
+        resColor = texture2D( Texture4, vec2(lightRes, (0.0 + 0.5)/255.0 ) ).rgb;
+
+    }
+
+    //resColor = vec3(lightRes,lightRes,lightRes);
     
     //vec3 resColor = mod(worldPosition,256.0)/255.0;
     //vec3 resColor = vec3(lightRes);//mix(resCol0,resCol1,lightRes);//mod(worldPosition,256.0)/255.0;//vec3(lightRes);//mix(resCol0,resCol1,lightRes);

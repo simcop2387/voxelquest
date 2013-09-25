@@ -48,6 +48,30 @@ void main()	{
 
 $
 
+
+int intMod(int lhs, int rhs) {
+    return lhs - ( (lhs/rhs)*rhs );
+}
+
+vec2 pack16(float num) {
+
+    int iz = int(num);
+    int ir = intMod(iz,256);
+    int ig = (iz)/256;
+
+    vec2 res;
+
+    res.r = float(ir)/255.0;
+    res.g = float(ig)/255.0;
+
+    return res;
+
+}
+
+float unpack16(vec2 num) {
+    return num.r*255.0 + num.g*65280.0;
+}
+
 void main()	{
 
 	
@@ -154,12 +178,14 @@ void main()	{
 	vec4 gIdRGBA;
 
 	float groupId = v_Data0.z;
-	gIdRGBA.r = floor(groupId/256.0)/255.0;
-	gIdRGBA.g = mod(groupId,256.0)/255.0;
+	gIdRGBA.rg = pack16(groupId);
+	//gIdRGBA.r = floor(groupId/256.0)/255.0;
+	//gIdRGBA.g = mod(groupId,256.0)/255.0;
 
-	float matId = mix(mix(v_Data0.w,v_Data1.w,isFilled*(1.0-isBorderF)),v_Data1.z,isBorderF);
-	gIdRGBA.b = floor(matId/256.0)/255.0;
-	gIdRGBA.a = mod(matId,256.0)/255.0;
+	float matId = mix(  mix(v_Data0.w,v_Data1.w,isFilled*(1.0-isBorderF)),  v_Data1.z,  isBorderF);
+	gIdRGBA.ba = pack16(matId);
+	//gIdRGBA.b = floor(matId/256.0)/255.0;
+	//gIdRGBA.a = mod(matId,256.0)/255.0;
 
 
 	float aVal = mix(1.0,isOpaque,isBorderF);// *u_AlphaMod;

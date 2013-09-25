@@ -30,6 +30,8 @@ public:
 	bool isBare;
 	bool reportPagesDrawn;
 
+
+
 	int poolItemsCreated;
 	int baseW;
 	int baseH;
@@ -58,6 +60,11 @@ public:
 	int mouseCount;
 	int lastMouseX;
 	int	lastMouseY;
+
+	uint volGenFBOSize;
+	uint slicesPerPitch;
+	uint palWidth;
+	uint palHeight;
 	
 
 	float curBrushRad;
@@ -117,6 +124,15 @@ public:
 	uint* lookup2to3;
 	GLuint lookup2to3ID;
 
+	unsigned char* resultImage;
+	
+	charArr nullBuffer;
+	charArr lastImageBuffer;
+	charArr lastJSONBuffer;
+
+
+	JSONValue *rootObj;
+
 	WebSocketServer* myWS;
 	Timer myTimer;
 	GameWorld* gw;
@@ -133,7 +149,28 @@ public:
 
 		pushTrace("Singleton init");
 
+		rootObj = NULL;
 
+		lastImageBuffer.data = NULL;
+		lastImageBuffer.size = 0;
+		
+		lastJSONBuffer.data = NULL;
+		lastJSONBuffer.size = 0;
+		
+		nullBuffer.data = new char[1];
+		nullBuffer.data[0] = '\0';
+		nullBuffer.size = 0;
+
+		volGenFBOSize = 4096;
+		slicesPerPitch = 16;
+
+		//volGenFBOSize = 512;
+		//slicesPerPitch = 8;
+
+		palWidth = 256;
+		palHeight = 256;
+
+		resultImage = new unsigned char[256*256*4];
 
 		mouseMovingSize = 100;
 		mouseMovingLoc = 0;
@@ -265,13 +302,6 @@ public:
 		mouseX = mouseY = 0;
 		myDelta = 0.0f;
 		
-		
-		
-
-		
-
-	
-
 
 		//gm = new GameMap();
 		orthographicProjection();
@@ -291,15 +321,19 @@ public:
 
 	    
 
-
+	    fboStrings.push_back("palFBO");
 	    fboStrings.push_back("worldSpaceFBO");
 
+	    //fboStrings.push_back("pagesFBOUnfiltered");
 	    fboStrings.push_back("pagesFBO");
+
 	    fboStrings.push_back("grassFBO");
 	    fboStrings.push_back("geomFBO");
 	    fboStrings.push_back("combineFBO");
 	    fboStrings.push_back("resultFBO");
 	    fboStrings.push_back("volGenFBO");
+
+
 
 
 	    /*
@@ -349,16 +383,20 @@ public:
 	        fboMap.insert(  pair<string, FBOSet*>(fboStrings[i], new FBOSet())  );
 	    }
 
-	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel);
+	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool hasDepth, int filterEnum);
 
 	    fboMap["worldSpaceFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false);
+	    fboMap["palFBO"]->init(1, palWidth, palHeight, 1, false, GL_LINEAR);
 
 	    fboMap["pagesFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["grassFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["geomFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, true);
 	    fboMap["combineFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-	    fboMap["volGenFBO"]->init(1, 4096, 4096, 1, false);
+	    fboMap["volGenFBO"]->init(1, volGenFBOSize, volGenFBOSize, 1, false);
+
+
+	    loadAllData();
 
 
 	    gw = new GameWorld();
@@ -452,8 +490,10 @@ public:
 	void setupLookups() {
 		pushTrace("setupLookups");
 
+		doTrace("a");
+
 	    uint i, j, k, m;
-	    uint side = 256;
+	    uint side = volGenFBOSize/slicesPerPitch;
 	    uint totalSize = side*side*side;
 
 	    lookup2to3 = new uint[totalSize];
@@ -466,18 +506,20 @@ public:
 	    uint ind;
 
 	    ind = 0;
-	    for (j = 0; j < 4096; j++) {
-	        for (i = 0; i < 4096; i++) {
-	            ind = i+j*4096;
-	            xpos = i%256;
-	            ypos = j%256;
-	            zpos = i/256 + (j/256)*16;////(ind)/(256*256);
+	    for (j = 0; j < volGenFBOSize; j++) {
+	        for (i = 0; i < volGenFBOSize; i++) {
+	            ind = i+j*volGenFBOSize;
+	            xpos = i%side;
+	            ypos = j%side;
+	            zpos = i/side + (j/side)*slicesPerPitch;
 
 	            //lookup2to3[ind] = ind;
 	            //ind++;
 	            lookup2to3[ind] = (255<<24)|(zpos<<16)|(ypos<<8)|xpos;   
 	        }
 	    }
+
+	    doTrace("b");
 	    
 	    /*
 	    ind = 0;
@@ -518,7 +560,7 @@ public:
 
 	    glGenTextures(1,&lookup2to3ID);
 	    glBindTexture(GL_TEXTURE_2D,lookup2to3ID);
-	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 4096, 4096, 0, GL_RGBA, GL_UNSIGNED_BYTE, lookup2to3);
+	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, volGenFBOSize, volGenFBOSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, lookup2to3);
 	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, 0);
@@ -915,6 +957,7 @@ public:
 	    for (i = 0; i < shaderStrings.size(); i++) {
 	        if (shaderMap[ shaderStrings[i] ]) {
 	            delete shaderMap[ shaderStrings[i] ];
+	            shaderMap[ shaderStrings[i] ] = NULL;
 	        }
 	        shaderMap[ shaderStrings[i] ] = new Shader( ("../src/glsl/"+shaderStrings[i]+".c").c_str() );
 	    }
@@ -1322,7 +1365,7 @@ public:
 
 
 
-
+	
 
 
 
@@ -1362,7 +1405,7 @@ public:
 
 		bool restartGen = false;
 
-		//doTrace(i__s(key) );
+		doTrace(i__s(key) );
 
 
 		if (key == 17) {
@@ -1411,8 +1454,19 @@ public:
 
 			case 's':
 				softMode = !softMode;
+			break;
+
+			case 19: //ctrl-s
+				saveAllData();
+									
+			break;
+
+			case 15: //ctrl-o
+				loadAllData();		
 				
 			break;
+
+
 
 			case 'w':
 				changesMade = true;
@@ -1868,15 +1922,6 @@ public:
 
 
 		
-
-
-
-
-
-
-
-
-
 		
 		
 
@@ -1895,33 +1940,189 @@ public:
 	}
 
 
-	void processB64() {
-		doTrace("processData() BASE64");
+	void processB64(charArr* sourceBuffer, charArr* saveBuffer) {
+		
+		char* buf = sourceBuffer->data;
+		int len = sourceBuffer->size;
 
-		membuf sbuf(myWS->recBuffer, myWS->recBuffer + myWS->recBufferLength);
-		Poco::Base64Decoder b64in(sbuf);
+		if (saveBuffer != &nullBuffer) {
+			if (saveBuffer->data != NULL) {
+				delete[] saveBuffer->data;
+				saveBuffer->data = NULL;
+			}
+			saveBuffer->data = new char[len];
+			strncpy(saveBuffer->data, buf, len);
+			saveBuffer->size = len;
+		}
 
-		//ofBuffer buffer;
-		//b64in >> buffer;
+
+		FBOSet* fbos = fboMap["palFBO"];
 
 
+		//unsigned char* resultImage = new unsigned char[256*256*4];
+
+		membuf inBuffer(sourceBuffer->data, sourceBuffer->data + sourceBuffer->size);
+		std::istream myIS(&inBuffer);
+		Poco::Base64Decoder b64in(myIS);
+
+
+
+		std::ostringstream oss;
+		oss << b64in.rdbuf();
+
+		std::string strConst = oss.str();
+		const char* inString = strConst.c_str();
+
+
+		lodepng_decode32(&resultImage, &palWidth, &palHeight, (unsigned char*)inString, strConst.size() );
+
+		fbos->copyFromMem(0, resultImage);
 
 	}
 
-	void processJSON() {
-		doTrace("processData() JSON");
+	void processJSON(charArr* sourceBuffer, charArr* saveBuffer) {
+		
+		char* buf = sourceBuffer->data;
+		int len = sourceBuffer->size;
 
-		JSONValue *jsonVal = myWS->recMessage;
+
+		if (saveBuffer != &nullBuffer) {
+			if (saveBuffer->data != NULL) {
+				delete[] saveBuffer->data;
+				saveBuffer->data = NULL;
+			}
+			saveBuffer->data = new char[len];
+			strncpy(saveBuffer->data,buf,len);
+			saveBuffer->size = len;
+		}
+		
+
+		//cout << "\n\n" << buf << "\n\n";
+
+		JSONValue *jsonVal = JSON::Parse(buf);
 
 		if (jsonVal == NULL) {
-
+			doTrace("Invalid JSON\n\n");
+			return;	
 		}
 		else {
+			doTrace("");
+			doTrace("Valid JSON");
+			doTrace("");
+
+
+			if (rootObj != NULL) {
+				delete rootObj;
+				rootObj = NULL;
+			}
+
+			rootObj = jsonVal;
+			jsonVal = NULL;
+
 			//doTrace( "JSON VAL", f__s(jsonVal->Child(L"x")->number_value) , "\n\n" );
+
 		}
 		
 		
 	}
+
+
+	void loadAllData() {
+		if ( loadFile("..\\data\\lastJSONBuffer.txt", &lastJSONBuffer) ) {
+			processJSON(&lastJSONBuffer,&nullBuffer);
+		}
+
+		if ( loadFile("..\\data\\lastImageBuffer.txt", &lastImageBuffer) ) {
+			processB64(&lastImageBuffer,&nullBuffer);
+		}
+
+		bufferInvalid = true;
+	}
+
+	void saveAllData() {
+		saveFile("..\\data\\lastJSONBuffer.txt", &lastJSONBuffer);
+		saveFile("..\\data\\lastImageBuffer.txt", &lastImageBuffer);
+	}
+
+
+	bool loadFile(char* fileName, charArr* dest) {
+		
+		if (dest == NULL) {
+			doTrace("Null Data");
+			return false;
+		}
+
+		std::ifstream infile (fileName, std::ifstream::in);
+		
+
+		if ( ! infile.is_open() ){
+			doTrace("Could Not Open File For Loading");
+			return false;
+		}
+
+		// get size of file
+		infile.seekg (0,infile.end);
+		long size = infile.tellg();
+		infile.seekg (0, infile.beg);
+
+
+		dest->size = size;
+
+		if (dest->data != NULL) {
+			delete[] dest->data;
+			dest->data = NULL;
+		}
+
+		dest->data = new char[size];
+
+		// read content of infile
+		infile.read (dest->data,size);
+
+		if ( infile.bad() ){
+			doTrace("Could Not Load From File");
+			infile.close();
+			return false;
+		}
+
+		infile.close();
+
+		doTrace("Load Successful");
+
+		return true;
+	}
+
+	bool saveFile(char* fileName, charArr* source) {
+
+		if (source->data == NULL) {
+			doTrace("Null Data");
+			return false;
+		}
+
+		std::ofstream outfile (fileName, std::ofstream::out);
+		
+		if ( ! outfile.is_open() ){
+			doTrace("Could Not Open File For Saving");
+			return false;
+		}
+
+		outfile.write (source->data,source->size);
+
+		if ( outfile.bad() ){
+			doTrace("Could Not Save To File");
+			outfile.close();
+			return false;
+		}
+
+		outfile.close();
+
+		doTrace("Save Successful");
+
+		return true;
+	}
+
+	
+
+	
 
 	void display(void) {
 
@@ -1943,11 +2144,14 @@ public:
 			if (myWS->dataReady) {
 
 				if (myWS->isJSON) {
-					processJSON();
+					processJSON( &(myWS->recBuffer), &lastJSONBuffer  );
 				}
 				else {
-					processB64();
+					processB64(  &(myWS->recBuffer), &lastImageBuffer  );
+					
 				}
+
+				bufferInvalid = true;
 
 				myWS->dataReady = false;
 				myWS->isWorking = false;

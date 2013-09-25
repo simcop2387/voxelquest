@@ -71,11 +71,8 @@ source files with custom allocators.*/
 #define LODEPNG_COMPILE_ALLOCATORS
 #endif
 /*compile the C++ version (you can disable the C++ wrapper here even when compiling for C++)*/
-#ifdef __cplusplus
-#ifndef LODEPNG_NO_COMPILE_CPP
-#define LODEPNG_COMPILE_CPP
-#endif
-#endif
+
+#define LODEPNG_NO_COMPILE_CPP
 
 #ifdef LODEPNG_COMPILE_PNG
 /*The PNG color types (also used for raw).*/
@@ -186,52 +183,6 @@ unsigned lodepng_encode24_file(const char* filename,
 #endif /*LODEPNG_COMPILE_ENCODER*/
 
 
-#ifdef LODEPNG_COMPILE_CPP
-namespace lodepng
-{
-#ifdef LODEPNG_COMPILE_DECODER
-/*Same as lodepng_decode_memory, but decodes to an std::vector.*/
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h,
-                const unsigned char* in, size_t insize,
-                LodePNGColorType colortype = LCT_RGBA, unsigned bitdepth = 8);
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h,
-                const std::vector<unsigned char>& in,
-                LodePNGColorType colortype = LCT_RGBA, unsigned bitdepth = 8);
-#ifdef LODEPNG_COMPILE_DISK
-/*
-Converts PNG file from disk to raw pixel data in memory.
-Same as the other decode functions, but instead takes a filename as input.
-*/
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h,
-                const std::string& filename,
-                LodePNGColorType colortype = LCT_RGBA, unsigned bitdepth = 8);
-#endif //LODEPNG_COMPILE_DISK
-#endif //LODEPNG_COMPILE_DECODER
-
-#ifdef LODEPNG_COMPILE_ENCODER
-/*Same as lodepng_encode_memory, but encodes to an std::vector.*/
-unsigned encode(std::vector<unsigned char>& out,
-                const unsigned char* in, unsigned w, unsigned h,
-                LodePNGColorType colortype = LCT_RGBA, unsigned bitdepth = 8);
-unsigned encode(std::vector<unsigned char>& out,
-                const std::vector<unsigned char>& in, unsigned w, unsigned h,
-                LodePNGColorType colortype = LCT_RGBA, unsigned bitdepth = 8);
-#ifdef LODEPNG_COMPILE_DISK
-/*
-Converts 32-bit RGBA raw pixel data into a PNG file on disk.
-Same as the other encode functions, but instead takes a filename as output.
-NOTE: This overwrites existing files without warning!
-*/
-unsigned encode(const std::string& filename,
-                const unsigned char* in, unsigned w, unsigned h,
-                LodePNGColorType colortype = LCT_RGBA, unsigned bitdepth = 8);
-unsigned encode(const std::string& filename,
-                const std::vector<unsigned char>& in, unsigned w, unsigned h,
-                LodePNGColorType colortype = LCT_RGBA, unsigned bitdepth = 8);
-#endif //LODEPNG_COMPILE_DISK
-#endif //LODEPNG_COMPILE_ENCODER
-} //namespace lodepng
-#endif /*LODEPNG_COMPILE_CPP*/
 #endif /*LODEPNG_COMPILE_PNG*/
 
 #ifdef LODEPNG_COMPILE_ERROR_TEXT
@@ -624,10 +575,7 @@ typedef struct LodePNGState
   LodePNGColorMode info_raw; /*specifies the format in which you would like to get the raw pixel buffer*/
   LodePNGInfo info_png; /*info of the PNG image obtained after decoding*/
   unsigned error;
-#ifdef LODEPNG_COMPILE_CPP
-  //For the lodepng::State subclass.
-  virtual ~LodePNGState(){}
-#endif
+
 } LodePNGState;
 
 /*init, cleanup and copy functions to use with this struct*/
@@ -802,78 +750,6 @@ return value: error code (0 means ok)
 unsigned lodepng_save_file(const unsigned char* buffer, size_t buffersize, const char* filename);
 #endif /*LODEPNG_COMPILE_DISK*/
 
-#ifdef LODEPNG_COMPILE_CPP
-//The LodePNG C++ wrapper uses std::vectors instead of manually allocated memory buffers.
-namespace lodepng
-{
-#ifdef LODEPNG_COMPILE_PNG
-class State : public LodePNGState
-{
-  public:
-    State();
-    State(const State& other);
-    virtual ~State();
-    State& operator=(const State& other);
-};
-
-#ifdef LODEPNG_COMPILE_DECODER
-//Same as other lodepng::decode, but using a State for more settings and information.
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h,
-                State& state,
-                const unsigned char* in, size_t insize);
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h,
-                State& state,
-                const std::vector<unsigned char>& in);
-#endif /*LODEPNG_COMPILE_DECODER*/
-
-#ifdef LODEPNG_COMPILE_ENCODER
-//Same as other lodepng::encode, but using a State for more settings and information.
-unsigned encode(std::vector<unsigned char>& out,
-                const unsigned char* in, unsigned w, unsigned h,
-                State& state);
-unsigned encode(std::vector<unsigned char>& out,
-                const std::vector<unsigned char>& in, unsigned w, unsigned h,
-                State& state);
-#endif /*LODEPNG_COMPILE_ENCODER*/
-
-#ifdef LODEPNG_COMPILE_DISK
-/*
-Load a file from disk into an std::vector. If the vector is empty, then either
-the file doesn't exist or is an empty file.
-*/
-void load_file(std::vector<unsigned char>& buffer, const std::string& filename);
-
-/*
-Save the binary data in an std::vector to a file on disk. The file is overwritten
-without warning.
-*/
-void save_file(const std::vector<unsigned char>& buffer, const std::string& filename);
-#endif //LODEPNG_COMPILE_DISK
-#endif //LODEPNG_COMPILE_PNG
-
-#ifdef LODEPNG_COMPILE_ZLIB
-#ifdef LODEPNG_COMPILE_DECODER
-//Zlib-decompress an unsigned char buffer
-unsigned decompress(std::vector<unsigned char>& out, const unsigned char* in, size_t insize,
-                    const LodePNGDecompressSettings& settings = lodepng_default_decompress_settings);
-
-//Zlib-decompress an std::vector
-unsigned decompress(std::vector<unsigned char>& out, const std::vector<unsigned char>& in,
-                    const LodePNGDecompressSettings& settings = lodepng_default_decompress_settings);
-#endif //LODEPNG_COMPILE_DECODER
-
-#ifdef LODEPNG_COMPILE_ENCODER
-//Zlib-compress an unsigned char buffer
-unsigned compress(std::vector<unsigned char>& out, const unsigned char* in, size_t insize,
-                  const LodePNGCompressSettings& settings = lodepng_default_compress_settings);
-
-//Zlib-compress an std::vector
-unsigned compress(std::vector<unsigned char>& out, const std::vector<unsigned char>& in,
-                  const LodePNGCompressSettings& settings = lodepng_default_compress_settings);
-#endif //LODEPNG_COMPILE_ENCODER
-#endif //LODEPNG_COMPILE_ZLIB
-} //namespace lodepng
-#endif /*LODEPNG_COMPILE_CPP*/
 
 /*
 TODO:
@@ -923,9 +799,6 @@ Rename this file to lodepng.cpp to use it for C++, or to lodepng.c to use it for
 */
 
 
-#ifdef LODEPNG_COMPILE_CPP
-
-#endif /*LODEPNG_COMPILE_CPP*/
 
 #define VERSION_STRING "20130831"
 
@@ -5472,7 +5345,7 @@ static void decodeGeneric(unsigned char** out, unsigned* w, unsigned* h,
 #endif /*LODEPNG_COMPILE_ANCILLARY_CHUNKS*/
 
   /*provide some proper output values if error will happen*/
-  *out = 0;
+  //*out = 0;
 
   state->error = lodepng_inspect(w, h, state, in, insize); /*reads header and resets other parameters in state->info_png*/
   if(state->error) return;
@@ -5620,12 +5493,20 @@ static void decodeGeneric(unsigned char** out, unsigned* w, unsigned* h,
 
     if(!state->error)
     {
+
+      /*
       ucvector outv;
       ucvector_init(&outv);
       if(!ucvector_resizev(&outv,
-          lodepng_get_raw_size(*w, *h, &state->info_png.color), 0)) state->error = 83; /*alloc fail*/
-      if(!state->error) state->error = postProcessScanlines(outv.data, scanlines.data, *w, *h, &state->info_png);
-      *out = outv.data;
+          lodepng_get_raw_size(*w, *h, &state->info_png.color), 0)  ){
+          state->error = 83; //alloc fail
+      }
+      if(!state->error) {
+        state->error = postProcessScanlines(outv.data, scanlines.data, *w, *h, &state->info_png);
+      }
+      //*out = outv.data;
+      */
+      state->error = postProcessScanlines(*out, scanlines.data, *w, *h, &state->info_png);
     }
     ucvector_cleanup(&scanlines);
   }
@@ -5637,7 +5518,7 @@ unsigned lodepng_decode(unsigned char** out, unsigned* w, unsigned* h,
                         LodePNGState* state,
                         const unsigned char* in, size_t insize)
 {
-  *out = 0;
+  //*out = 0;
   decodeGeneric(out, w, h, state, in, insize);
   if(state->error) return state->error;
   if(!state->decoder.color_convert || lodepng_color_mode_equal(&state->info_raw, &state->info_png.color))
@@ -5666,7 +5547,7 @@ unsigned lodepng_decode(unsigned char** out, unsigned* w, unsigned* h,
     }
 
     outsize = lodepng_get_raw_size(*w, *h, &state->info_raw);
-    *out = (unsigned char*)lodepng_malloc(outsize);
+    //*out = (unsigned char*)lodepng_malloc(outsize);
     if(!(*out))
     {
       state->error = 83; /*alloc fail*/
@@ -6446,7 +6327,7 @@ static unsigned preProcessScanlines(unsigned char** out, size_t* outsize, const 
   if(info_png->interlace_method == 0)
   {
     *outsize = h + (h * ((w * bpp + 7) / 8)); /*image size plus an extra byte per scanline + possible padding bits*/
-    *out = (unsigned char*)lodepng_malloc(*outsize);
+    //*out = (unsigned char*)lodepng_malloc(*outsize);
     if(!(*out) && (*outsize)) error = 83; /*alloc fail*/
 
     if(!error)
@@ -6479,7 +6360,7 @@ static unsigned preProcessScanlines(unsigned char** out, size_t* outsize, const 
     Adam7_getpassvalues(passw, passh, filter_passstart, padded_passstart, passstart, w, h, bpp);
 
     *outsize = filter_passstart[7]; /*image size plus an extra byte per scanline + possible padding bits*/
-    *out = (unsigned char*)lodepng_malloc(*outsize);
+    //*out = (unsigned char*)lodepng_malloc(*outsize);
     if(!(*out)) error = 83; /*alloc fail*/
 
     adam7 = (unsigned char*)lodepng_malloc(passstart[7]);
@@ -6922,239 +6803,6 @@ const char* lodepng_error_text(unsigned code)
   return "unknown error code";
 }
 #endif /*LODEPNG_COMPILE_ERROR_TEXT*/
-
-/* ////////////////////////////////////////////////////////////////////////// */
-/* ////////////////////////////////////////////////////////////////////////// */
-/* // C++ Wrapper                                                          // */
-/* ////////////////////////////////////////////////////////////////////////// */
-/* ////////////////////////////////////////////////////////////////////////// */
-
-
-#ifdef LODEPNG_COMPILE_CPP
-namespace lodepng
-{
-
-#ifdef LODEPNG_COMPILE_DISK
-void load_file(std::vector<unsigned char>& buffer, const std::string& filename)
-{
-  std::ifstream file(filename.c_str(), std::ios::in|std::ios::binary|std::ios::ate);
-
-  /*get filesize*/
-  std::streamsize size = 0;
-  if(file.seekg(0, std::ios::end).good()) size = file.tellg();
-  if(file.seekg(0, std::ios::beg).good()) size -= file.tellg();
-
-  /*read contents of the file into the vector*/
-  buffer.resize(size_t(size));
-  if(size > 0) file.read((char*)(&buffer[0]), size);
-}
-
-/*write given buffer to the file, overwriting the file, it doesn't append to it.*/
-void save_file(const std::vector<unsigned char>& buffer, const std::string& filename)
-{
-  std::ofstream file(filename.c_str(), std::ios::out|std::ios::binary);
-  file.write(buffer.empty() ? 0 : (char*)&buffer[0], std::streamsize(buffer.size()));
-}
-#endif //LODEPNG_COMPILE_DISK
-
-#ifdef LODEPNG_COMPILE_ZLIB
-#ifdef LODEPNG_COMPILE_DECODER
-unsigned decompress(std::vector<unsigned char>& out, const unsigned char* in, size_t insize,
-                    const LodePNGDecompressSettings& settings)
-{
-  unsigned char* buffer = 0;
-  size_t buffersize = 0;
-  unsigned error = zlib_decompress(&buffer, &buffersize, in, insize, &settings);
-  if(buffer)
-  {
-    out.insert(out.end(), &buffer[0], &buffer[buffersize]);
-    lodepng_free(buffer);
-  }
-  return error;
-}
-
-unsigned decompress(std::vector<unsigned char>& out, const std::vector<unsigned char>& in,
-                    const LodePNGDecompressSettings& settings)
-{
-  return decompress(out, in.empty() ? 0 : &in[0], in.size(), settings);
-}
-#endif //LODEPNG_COMPILE_DECODER
-
-#ifdef LODEPNG_COMPILE_ENCODER
-unsigned compress(std::vector<unsigned char>& out, const unsigned char* in, size_t insize,
-                  const LodePNGCompressSettings& settings)
-{
-  unsigned char* buffer = 0;
-  size_t buffersize = 0;
-  unsigned error = zlib_compress(&buffer, &buffersize, in, insize, &settings);
-  if(buffer)
-  {
-    out.insert(out.end(), &buffer[0], &buffer[buffersize]);
-    lodepng_free(buffer);
-  }
-  return error;
-}
-
-unsigned compress(std::vector<unsigned char>& out, const std::vector<unsigned char>& in,
-                  const LodePNGCompressSettings& settings)
-{
-  return compress(out, in.empty() ? 0 : &in[0], in.size(), settings);
-}
-#endif //LODEPNG_COMPILE_ENCODER
-#endif //LODEPNG_COMPILE_ZLIB
-
-
-#ifdef LODEPNG_COMPILE_PNG
-
-State::State()
-{
-  lodepng_state_init(this);
-}
-
-State::State(const State& other)
-{
-  lodepng_state_init(this);
-  lodepng_state_copy(this, &other);
-}
-
-State::~State()
-{
-  lodepng_state_cleanup(this);
-}
-
-State& State::operator=(const State& other)
-{
-  lodepng_state_copy(this, &other);
-  return *this;
-}
-
-#ifdef LODEPNG_COMPILE_DECODER
-
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h, const unsigned char* in,
-                size_t insize, LodePNGColorType colortype, unsigned bitdepth)
-{
-  unsigned char* buffer;
-  unsigned error = lodepng_decode_memory(&buffer, &w, &h, in, insize, colortype, bitdepth);
-  if(buffer && !error)
-  {
-    State state;
-    state.info_raw.colortype = colortype;
-    state.info_raw.bitdepth = bitdepth;
-    size_t buffersize = lodepng_get_raw_size(w, h, &state.info_raw);
-    out.insert(out.end(), &buffer[0], &buffer[buffersize]);
-    lodepng_free(buffer);
-  }
-  return error;
-}
-
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h,
-                const std::vector<unsigned char>& in, LodePNGColorType colortype, unsigned bitdepth)
-{
-  return decode(out, w, h, in.empty() ? 0 : &in[0], (unsigned)in.size(), colortype, bitdepth);
-}
-
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h,
-                State& state,
-                const unsigned char* in, size_t insize)
-{
-  unsigned char* buffer;
-  unsigned error = lodepng_decode(&buffer, &w, &h, &state, in, insize);
-  if(buffer && !error)
-  {
-    size_t buffersize = lodepng_get_raw_size(w, h, &state.info_raw);
-    out.insert(out.end(), &buffer[0], &buffer[buffersize]);
-    lodepng_free(buffer);
-  }
-  return error;
-}
-
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h,
-                State& state,
-                const std::vector<unsigned char>& in)
-{
-  return decode(out, w, h, state, in.empty() ? 0 : &in[0], in.size());
-}
-
-#ifdef LODEPNG_COMPILE_DISK
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h, const std::string& filename,
-                LodePNGColorType colortype, unsigned bitdepth)
-{
-  std::vector<unsigned char> buffer;
-  load_file(buffer, filename);
-  return decode(out, w, h, buffer, colortype, bitdepth);
-}
-#endif //LODEPNG_COMPILE_DECODER
-#endif //LODEPNG_COMPILE_DISK
-
-#ifdef LODEPNG_COMPILE_ENCODER
-unsigned encode(std::vector<unsigned char>& out, const unsigned char* in, unsigned w, unsigned h,
-                LodePNGColorType colortype, unsigned bitdepth)
-{
-  unsigned char* buffer;
-  size_t buffersize;
-  unsigned error = lodepng_encode_memory(&buffer, &buffersize, in, w, h, colortype, bitdepth);
-  if(buffer)
-  {
-    out.insert(out.end(), &buffer[0], &buffer[buffersize]);
-    lodepng_free(buffer);
-  }
-  return error;
-}
-
-unsigned encode(std::vector<unsigned char>& out,
-                const std::vector<unsigned char>& in, unsigned w, unsigned h,
-                LodePNGColorType colortype, unsigned bitdepth)
-{
-  if(lodepng_get_raw_size_lct(w, h, colortype, bitdepth) > in.size()) return 84;
-  return encode(out, in.empty() ? 0 : &in[0], w, h, colortype, bitdepth);
-}
-
-unsigned encode(std::vector<unsigned char>& out,
-                const unsigned char* in, unsigned w, unsigned h,
-                State& state)
-{
-  unsigned char* buffer;
-  size_t buffersize;
-  unsigned error = lodepng_encode(&buffer, &buffersize, in, w, h, &state);
-  if(buffer)
-  {
-    out.insert(out.end(), &buffer[0], &buffer[buffersize]);
-    lodepng_free(buffer);
-  }
-  return error;
-}
-
-unsigned encode(std::vector<unsigned char>& out,
-                const std::vector<unsigned char>& in, unsigned w, unsigned h,
-                State& state)
-{
-  if(lodepng_get_raw_size(w, h, &state.info_raw) > in.size()) return 84;
-  return encode(out, in.empty() ? 0 : &in[0], w, h, state);
-}
-
-#ifdef LODEPNG_COMPILE_DISK
-unsigned encode(const std::string& filename,
-                const unsigned char* in, unsigned w, unsigned h,
-                LodePNGColorType colortype, unsigned bitdepth)
-{
-  std::vector<unsigned char> buffer;
-  unsigned error = encode(buffer, in, w, h, colortype, bitdepth);
-  if(!error) save_file(buffer, filename);
-  return error;
-}
-
-unsigned encode(const std::string& filename,
-                const std::vector<unsigned char>& in, unsigned w, unsigned h,
-                LodePNGColorType colortype, unsigned bitdepth)
-{
-  if(lodepng_get_raw_size_lct(w, h, colortype, bitdepth) > in.size()) return 84;
-  return encode(filename, in.empty() ? 0 : &in[0], w, h, colortype, bitdepth);
-}
-#endif //LODEPNG_COMPILE_DISK
-#endif //LODEPNG_COMPILE_ENCODER
-#endif //LODEPNG_COMPILE_PNG
-} //namespace lodepng
-#endif /*LODEPNG_COMPILE_CPP*/
 
 
 

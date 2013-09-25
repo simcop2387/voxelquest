@@ -2,6 +2,7 @@ uniform sampler2D u_Texture0;
 uniform sampler2D u_Texture1;
 uniform sampler2D u_Texture2;
 uniform sampler2D u_Texture3;
+uniform sampler2D u_Texture4;
 uniform float u_Time;
 uniform float u_Zoom;
 uniform vec2 u_Resolution;
@@ -48,6 +49,29 @@ float rand(vec2 co){
     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
+int intMod(int lhs, int rhs) {
+    return lhs - ( (lhs/rhs)*rhs );
+}
+
+vec2 pack16(float num) {
+
+    int iz = int(num);
+    int ir = intMod(iz,256);
+    int ig = (iz)/256;
+
+    vec2 res;
+
+    res.r = float(ir)/255.0;
+    res.g = float(ig)/255.0;
+
+    return res;
+
+}
+
+float unpack16(vec2 num) {
+    return num.r*255.0 + num.g*65280.0;
+}
+
 void main()	{
 
 	vec4 baseval = texture2D( u_Texture0, v_TexCoords );
@@ -66,8 +90,8 @@ void main()	{
 
 	float lMod = float(idAtMouse.g == baseval3.g) * float(baseval3.g > 0.0);
 
-	//float palInd = baseval3.b;
-	float matInd = baseval3.a;
+	float palInd = unpack16(baseval3.ba);
+	float matInd = baseval3.b;
 
 
 	float matIndU = texture2D( u_Texture2, vec2(v_TexCoords.x,v_TexCoords.y-1.0/u_Resolution.y) ).a;
@@ -190,10 +214,10 @@ void main()	{
 
 	//resVal = clamp(pow(resVal,2.0),0.0,1.0);
 
-
+	float aoVal = baseval.a;
 
 	float lVal = clamp(dot(finalNorm,lightVec),0.0,1.0)*shadVal*disVal;
-	lVal = mix(baseval.a*(0.05+disVal*0.25),lVal,lVal); //(lVal+abs(baseval.a-0.5)*lVal)/1.5
+	lVal = mix(aoVal*(0.05+disVal*0.25),lVal,lVal); //(lVal+abs(aoVal-0.5)*lVal)/1.5
 	lVal *= float(baseval.b > 0.0);
 
 	//lVal = lVal*disVal;
@@ -203,7 +227,7 @@ void main()	{
 
 	//lVal = pow(lVal,0.5)*disVal;
 
-	//lVal = clamp(lVal+abs(baseval.a-0.5),0.0,1.0);
+	//lVal = clamp(lVal+abs(aoVal-0.5),0.0,1.0);
 
 	
 	//float lValOrig = lVal;
@@ -222,10 +246,36 @@ void main()	{
 	lVal = clamp(lVal,0.0,1.0);//pow(clamp(lVal-outMod*lMod,0.0,1.0),1.0-lMod*0.5);// pow(,1.0 - lMod*0.3);
 	
 
-	vec4 matCol = texture2D( u_Texture3, vec2(lVal,matInd + 0.5/255.0) ); //matInd
-	vec4 matColSel = texture2D( u_Texture3, vec2(lVal,1.0/255.0 + 0.5/255.0) ); //matInd
+	vec4 matCol = texture2D( u_Texture3, vec2(lVal, (matInd*255.0 + 0.5)/256.0  ) ); //matInd
+	//vec4 matColSel = texture2D( u_Texture3, vec2(lVal,1.0/255.0 + 0.5/255.0) ); //matInd
+	
+
 	//vec4 iMatCol = 1.0-texture2D( u_Texture3, vec2(1.0-lVal,matInd + 0.5/255.0) );
 	//vec4 palCol = texture2D( u_Texture3, vec2(palInd,0.0) );
+
+	vec4 resCol = matCol;
+
+	int tempInt;
+	int hInt;
+	int sInt;
+	int vInt;
+	vec2 resTC = vec2(0.0,0.0);
+
+	if (palInd >= 32768.0 ) {
+		palInd -= 32768.0;
+
+		tempInt = int(palInd);
+
+		hInt = tempInt / (32 * 32);
+		sInt = (tempInt - (hInt*32*32))/32;
+		vInt = tempInt - ((hInt*32 + sInt)*32);
+
+		resTC.x = (float(vInt*32 + hInt) + 0.5)/1024.0;
+		resTC.y = (float(31-sInt)+0.5)/96.0;
+
+		resCol.rgb = texture2D(u_Texture4, resTC ).rgb;
+
+	}
 
 	//vec4 matCol2 = matCol;
 	//matCol2.r += 0.1;
@@ -233,12 +283,13 @@ void main()	{
 	//matCol2.b += 0.1;
 
 	//vec4(finalNorm,1.0);//
-	//vec4(baseval.aaa,1.0);//
+	//vec4(aoVal,aoVal,aoVal,1.0);//
 
 	//matCol.rgb -= lMod*outMod;
 	//matCol.rgb += lMod*outMod2;
 
-	vec4 resCol = mix(matCol,matColSel,lMod*0.3);
+	//vec4(lVal,lVal,lVal,1.0);//
+	//mix(matCol,matColSel,lMod*0.3);
 	resCol.rgb *= float(baseval.b > 0.0);
 
 	gl_FragColor = resCol;//mix(matCol,matCol2,lMod);//vec4(lVal,lVal,lVal,1.0);//mix(palCol,matCol,float(matInd > 0.0));

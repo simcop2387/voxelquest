@@ -1,8 +1,8 @@
 
 var gob = {};
 
-gob.updatePalCanv = function() {
-    var canvas = document.getElementById('canvas');
+gob.genPicker = function() {
+    var canvas = document.getElementById('canvas2');
     var canvasWidth  = canvas.width;
     var canvasHeight = canvas.height;
     var ctx = canvas.getContext('2d');
@@ -14,75 +14,67 @@ gob.updatePalCanv = function() {
     var o;
     var n;
     var m;
+    var q;
+    var myArr = [0,0,0];
     var lerpVal;
 
+    var xv;
+    var yv;
+
+    var qmodH = [0,1,1];
+    var qmodC = [2,0,2];
+    var qmodL = [1,2,0];
 
     var cl = new CIELCh(0,0,0);
-    var omax;
 
-    var hueVals = [
-
-        10,
-        40,
-        70,
-        110,
-        170,
-        210,
-        250,
-        290
-    ]
-
-    for (n = 0; n < 256; n++) {
-        for (m = 0; m < 256; m++) {
-
-
+    for (n = 0; n < 512; n++) {
+        for (m = 0; m < 1024; m++) {
 
             data[(n) * canvasWidth + m] =
                 (255   << 24) |
-                (m << 16) |
-                (m <<  8) |
-                 m;
+                ((m/4) << 16) |
+                ((m/4) <<  8) |
+                 (m/4);
         }
     }
 
-    for (o = 0; o < 4; o++) {
-        for (n = 0; n < 8; n++) {
-            for (m = 0; m < 8; m++) {
 
-                omax = o*23.0 + 30.0;
-                
-                cl.c = omax;
-                cl.l = Math.floor(n*75.0/7.0 + (12-o*3));
-                cl.h = hueVals[m];
+    for (q = 0; q < 3; q++) {
 
-                /*
-                if (n < 4) {
-                    lerpVal = n/3.0;
-                    cl.h = hueVals[m]*lerpVal + (1.0-lerpVal)*40.0;
+        for (o = 0; o < 32; o++) {
+            myArr[0] = o;
+            for (n = 0; n < 32; n++) {
+                myArr[1] = n;
+                for (m = 0; m < 32; m++) {
+                    myArr[2] = m;
+
+
+                    if (q < 3) {
+                        cl.h = myArr[ qmodH[q] ]*360.0/32.0;
+                        cl.c = myArr[ qmodC[q] ]*100.0/31.0;
+                        cl.l = myArr[ qmodL[q] ]*100.0/31.0;
+                    }
+
+                    value = cl.toRGB();
+
+                    xv = (o)*32+n;
+                    yv = m;
+
+                    data[(yv+q*32) * canvasWidth + xv] =
+                        (255   << 24) |
+                        (value.r << 16) |
+                        (value.g <<  8) |
+                         value.b;
+
                 }
-                else {
-                    lerpVal = ((n-4.0)/3.0)*0.5;
-                    cl.h = (1.0-lerpVal)*hueVals[m] + 250.0*lerpVal;
-                }
-                */
-
-
-                value = cl.toRGB();
-
-                //canvasWidth = 8;
-
-                data[(n+o*8) * canvasWidth + m] =
-                    (255   << 24) |
-                    (value.r << 16) |
-                    (value.g <<  8) |
-                     value.b;
-
             }
         }
     }
+
+    
 
     imageData.data.set(buf8);
     ctx.putImageData(imageData, 0, 0);
 }
 
-gob.updatePalCanv();
+gob.genPicker();

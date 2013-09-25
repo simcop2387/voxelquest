@@ -1,4 +1,4 @@
-﻿Build started 9/13/2013 11:11:32 PM.
+﻿Build started 9/23/2013 10:10:20 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -77,14 +77,152 @@
        ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W1 /WX- /sdl /Ox /Oi /GL /D WIN32 /D NDEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Release\\" /Fd"x64\Release\vc110.pdb" /Gd /TP /errorReport:prompt ..\compiled\main.cpp
          main.cpp
-     1>..\compiled\main.cpp(13149): error C2664: 'Poco::Base64Decoder::Base64Decoder(std::basic_istream<_Elem,_Traits> &)' : cannot convert parameter 1 from 'membuf' to 'std::basic_istream<_Elem,_Traits> &'
-                 with
-                 [
-                     _Elem=char,
-                     _Traits=std::char_traits<char>
-                 ]
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.exe" /INCREMENTAL:NO /NOLOGO /LIBPATH:C:\wamp\www\voxelquest\glew\lib /LIBPATH:"C:\Program Files (x86)\Windows Kits\8.0\Lib\win8\um\x64" /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\lib\amd64" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.lib" /MACHINE:X64 x64\Release\main.obj
+         Generating code
+         Finished generating code
+         VoxelQuest.vcxproj -> C:\wamp\www\voxelquest\x64\Release\VoxelQuest.exe
+       PostBuildEvent:
+         ../cleanup.bat;
+         :VCEnd
+         Cleanup Started
+         .\x64\Release\VoxelQuest.exe
+         .\x64\Release\VoxelQuest.pdb
+         2 File(s) copied
+         running EXE
+         GLEW_OK          
+         Singleton init          
+         |  setupLookups          
+         |  |  a          
+         |  |  b          
+         |  doShaderRefresh          
+         |  |  Shader( ../src/glsl/WorldSpaceShader.c )        
+         |  |  |  init( ../src/glsl/WorldSpaceShader.c )        
+         |  |  |  |  textFileRead( ../src/glsl/WorldSpaceShader.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/WorldSpaceShader.c         
+         |  |  |  |  validateShader( ../src/glsl/WorldSpaceShader.c )        
+         |  |  |  |  validateShader( ../src/glsl/WorldSpaceShader.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  |  Shader( ../src/glsl/BlitShader.c )        
+         |  |  |  init( ../src/glsl/BlitShader.c )        
+         |  |  |  |  textFileRead( ../src/glsl/BlitShader.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/BlitShader.c         
+         |  |  |  |  validateShader( ../src/glsl/BlitShader.c )        
+         |  |  |  |  validateShader( ../src/glsl/BlitShader.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  |  Shader( ../src/glsl/LightingShader.c )        
+         |  |  |  init( ../src/glsl/LightingShader.c )        
+         |  |  |  |  textFileRead( ../src/glsl/LightingShader.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/LightingShader.c         
+         |  |  |  |  validateShader( ../src/glsl/LightingShader.c )        
+         |  |  |  |  validateShader( ../src/glsl/LightingShader.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  |  Shader( ../src/glsl/GeomShader.c )        
+         |  |  |  init( ../src/glsl/GeomShader.c )        
+         |  |  |  |  textFileRead( ../src/glsl/GeomShader.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/GeomShader.c         
+         |  |  |  |  validateShader( ../src/glsl/GeomShader.c )        
+         |  |  |  |  validateShader( ../src/glsl/GeomShader.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  |  Shader( ../src/glsl/GrassShader.c )        
+         |  |  |  init( ../src/glsl/GrassShader.c )        
+         |  |  |  |  textFileRead( ../src/glsl/GrassShader.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/GrassShader.c         
+         |  |  |  |  validateShader( ../src/glsl/GrassShader.c )        
+         |  |  |  |  validateShader( ../src/glsl/GrassShader.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  |  Shader( ../src/glsl/CombineShader.c )        
+         |  |  |  init( ../src/glsl/CombineShader.c )        
+         |  |  |  |  textFileRead( ../src/glsl/CombineShader.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/CombineShader.c         
+         |  |  |  |  validateShader( ../src/glsl/CombineShader.c )        
+         |  |  |  |  validateShader( ../src/glsl/CombineShader.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  |  Shader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  init( ../src/glsl/GenerateVolume.c )        
+         |  |  |  |  textFileRead( ../src/glsl/GenerateVolume.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/GenerateVolume.c         
+         |  |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  |  Shader( ../src/glsl/GenerateVolumeBare.c )        
+         |  |  |  init( ../src/glsl/GenerateVolumeBare.c )        
+         |  |  |  |  textFileRead( ../src/glsl/GenerateVolumeBare.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/GenerateVolumeBare.c         
+         |  |  |  |  validateShader( ../src/glsl/GenerateVolumeBare.c )        
+         |  |  |  |  validateShader( ../src/glsl/GenerateVolumeBare.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  |  Shader( ../src/glsl/RenderVolume.c )        
+         |  |  |  init( ../src/glsl/RenderVolume.c )        
+         |  |  |  |  textFileRead( ../src/glsl/RenderVolume.c )        
+         |  |  |  |  |  READ FILE:  ../src/glsl/RenderVolume.c         
+         |  |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
+         |  |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
+         |  |  |  |  validateProgram()          
+         |  |  |  END          
+         |  |  END          
+         |  END          
+         |  Load Successful          
+         |            
+         |  Valid JSON          
+         |            
+         |  Load Successful          
+         END          
+         Request from 127.0.0.1:54558: GET / HTTP/1.1
+         Cache-Control: no-cache
+         Connection: Upgrade
+         Host: 127.0.0.1:9980
+         Origin: http://localhost:8888
+         Pragma: no-cache
+         Sec-WebSocket-Extensions: x-webkit-deflate-frame
+         Sec-WebSocket-Key: ZrbMskOdFRCGfrqh8RY9Ug==
+         Sec-WebSocket-Version: 13
+         Upgrade: websocket
+         REQUEST HANDLER CREATED          
+         User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/29.0.1547.76 Safari/537.36
+         WebSocket connection established.
+                   
+         Valid JSON          
+                   
+                   
+         Valid JSON          
+                   
+                   
+         Valid JSON          
+                   
+         MOUSE DOWN          
+         MOUSE UP          
+         MOUSE DOWN          
+         MOUSE UP          
+         MOUSE DOWN          
+         MOUSE UP          
+         103          
+         103          
+         103          
+                   
+         Valid JSON          
+                   
+         19          
+         Save Successful          
+         Save Successful          
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
-Build FAILED.
+Build succeeded.
 
-Time Elapsed 00:00:00.92
+Time Elapsed 00:02:17.02

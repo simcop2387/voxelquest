@@ -104,6 +104,11 @@ using Poco::Base64Decoder;
 float MAX_GPU_MEM = 1536.0f;
 float TOT_GPU_MEM_USAGE = 0.0f;
 
+struct charArr {
+	long size;
+	char* data;
+};
+
 #ifdef WIN32
 #include <windows.h>
 #else
@@ -1941,11 +1946,8 @@ source files with custom allocators.*/
 #define LODEPNG_COMPILE_ALLOCATORS
 #endif
 /*compile the C++ version (you can disable the C++ wrapper here even when compiling for C++)*/
-#ifdef __cplusplus
-#ifndef LODEPNG_NO_COMPILE_CPP
-#define LODEPNG_COMPILE_CPP
-#endif
-#endif
+
+#define LODEPNG_NO_COMPILE_CPP
 
 #ifdef LODEPNG_COMPILE_PNG
 /*The PNG color types (also used for raw).*/
@@ -2056,52 +2058,6 @@ unsigned lodepng_encode24_file(const char* filename,
 #endif /*LODEPNG_COMPILE_ENCODER*/
 
 
-#ifdef LODEPNG_COMPILE_CPP
-namespace lodepng
-{
-#ifdef LODEPNG_COMPILE_DECODER
-/*Same as lodepng_decode_memory, but decodes to an std::vector.*/
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h,
-                const unsigned char* in, size_t insize,
-                LodePNGColorType colortype = LCT_RGBA, unsigned bitdepth = 8);
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h,
-                const std::vector<unsigned char>& in,
-                LodePNGColorType colortype = LCT_RGBA, unsigned bitdepth = 8);
-#ifdef LODEPNG_COMPILE_DISK
-/*
-Converts PNG file from disk to raw pixel data in memory.
-Same as the other decode functions, but instead takes a filename as input.
-*/
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h,
-                const std::string& filename,
-                LodePNGColorType colortype = LCT_RGBA, unsigned bitdepth = 8);
-#endif //LODEPNG_COMPILE_DISK
-#endif //LODEPNG_COMPILE_DECODER
-
-#ifdef LODEPNG_COMPILE_ENCODER
-/*Same as lodepng_encode_memory, but encodes to an std::vector.*/
-unsigned encode(std::vector<unsigned char>& out,
-                const unsigned char* in, unsigned w, unsigned h,
-                LodePNGColorType colortype = LCT_RGBA, unsigned bitdepth = 8);
-unsigned encode(std::vector<unsigned char>& out,
-                const std::vector<unsigned char>& in, unsigned w, unsigned h,
-                LodePNGColorType colortype = LCT_RGBA, unsigned bitdepth = 8);
-#ifdef LODEPNG_COMPILE_DISK
-/*
-Converts 32-bit RGBA raw pixel data into a PNG file on disk.
-Same as the other encode functions, but instead takes a filename as output.
-NOTE: This overwrites existing files without warning!
-*/
-unsigned encode(const std::string& filename,
-                const unsigned char* in, unsigned w, unsigned h,
-                LodePNGColorType colortype = LCT_RGBA, unsigned bitdepth = 8);
-unsigned encode(const std::string& filename,
-                const std::vector<unsigned char>& in, unsigned w, unsigned h,
-                LodePNGColorType colortype = LCT_RGBA, unsigned bitdepth = 8);
-#endif //LODEPNG_COMPILE_DISK
-#endif //LODEPNG_COMPILE_ENCODER
-} //namespace lodepng
-#endif /*LODEPNG_COMPILE_CPP*/
 #endif /*LODEPNG_COMPILE_PNG*/
 
 #ifdef LODEPNG_COMPILE_ERROR_TEXT
@@ -2494,10 +2450,7 @@ typedef struct LodePNGState
   LodePNGColorMode info_raw; /*specifies the format in which you would like to get the raw pixel buffer*/
   LodePNGInfo info_png; /*info of the PNG image obtained after decoding*/
   unsigned error;
-#ifdef LODEPNG_COMPILE_CPP
-  //For the lodepng::State subclass.
-  virtual ~LodePNGState(){}
-#endif
+
 } LodePNGState;
 
 /*init, cleanup and copy functions to use with this struct*/
@@ -2672,78 +2625,6 @@ return value: error code (0 means ok)
 unsigned lodepng_save_file(const unsigned char* buffer, size_t buffersize, const char* filename);
 #endif /*LODEPNG_COMPILE_DISK*/
 
-#ifdef LODEPNG_COMPILE_CPP
-//The LodePNG C++ wrapper uses std::vectors instead of manually allocated memory buffers.
-namespace lodepng
-{
-#ifdef LODEPNG_COMPILE_PNG
-class State : public LodePNGState
-{
-  public:
-    State();
-    State(const State& other);
-    virtual ~State();
-    State& operator=(const State& other);
-};
-
-#ifdef LODEPNG_COMPILE_DECODER
-//Same as other lodepng::decode, but using a State for more settings and information.
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h,
-                State& state,
-                const unsigned char* in, size_t insize);
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h,
-                State& state,
-                const std::vector<unsigned char>& in);
-#endif /*LODEPNG_COMPILE_DECODER*/
-
-#ifdef LODEPNG_COMPILE_ENCODER
-//Same as other lodepng::encode, but using a State for more settings and information.
-unsigned encode(std::vector<unsigned char>& out,
-                const unsigned char* in, unsigned w, unsigned h,
-                State& state);
-unsigned encode(std::vector<unsigned char>& out,
-                const std::vector<unsigned char>& in, unsigned w, unsigned h,
-                State& state);
-#endif /*LODEPNG_COMPILE_ENCODER*/
-
-#ifdef LODEPNG_COMPILE_DISK
-/*
-Load a file from disk into an std::vector. If the vector is empty, then either
-the file doesn't exist or is an empty file.
-*/
-void load_file(std::vector<unsigned char>& buffer, const std::string& filename);
-
-/*
-Save the binary data in an std::vector to a file on disk. The file is overwritten
-without warning.
-*/
-void save_file(const std::vector<unsigned char>& buffer, const std::string& filename);
-#endif //LODEPNG_COMPILE_DISK
-#endif //LODEPNG_COMPILE_PNG
-
-#ifdef LODEPNG_COMPILE_ZLIB
-#ifdef LODEPNG_COMPILE_DECODER
-//Zlib-decompress an unsigned char buffer
-unsigned decompress(std::vector<unsigned char>& out, const unsigned char* in, size_t insize,
-                    const LodePNGDecompressSettings& settings = lodepng_default_decompress_settings);
-
-//Zlib-decompress an std::vector
-unsigned decompress(std::vector<unsigned char>& out, const std::vector<unsigned char>& in,
-                    const LodePNGDecompressSettings& settings = lodepng_default_decompress_settings);
-#endif //LODEPNG_COMPILE_DECODER
-
-#ifdef LODEPNG_COMPILE_ENCODER
-//Zlib-compress an unsigned char buffer
-unsigned compress(std::vector<unsigned char>& out, const unsigned char* in, size_t insize,
-                  const LodePNGCompressSettings& settings = lodepng_default_compress_settings);
-
-//Zlib-compress an std::vector
-unsigned compress(std::vector<unsigned char>& out, const std::vector<unsigned char>& in,
-                  const LodePNGCompressSettings& settings = lodepng_default_compress_settings);
-#endif //LODEPNG_COMPILE_ENCODER
-#endif //LODEPNG_COMPILE_ZLIB
-} //namespace lodepng
-#endif /*LODEPNG_COMPILE_CPP*/
 
 /*
 TODO:
@@ -2793,9 +2674,6 @@ Rename this file to lodepng.cpp to use it for C++, or to lodepng.c to use it for
 */
 
 
-#ifdef LODEPNG_COMPILE_CPP
-
-#endif /*LODEPNG_COMPILE_CPP*/
 
 #define VERSION_STRING "20130831"
 
@@ -7342,7 +7220,7 @@ static void decodeGeneric(unsigned char** out, unsigned* w, unsigned* h,
 #endif /*LODEPNG_COMPILE_ANCILLARY_CHUNKS*/
 
   /*provide some proper output values if error will happen*/
-  *out = 0;
+  //*out = 0;
 
   state->error = lodepng_inspect(w, h, state, in, insize); /*reads header and resets other parameters in state->info_png*/
   if(state->error) return;
@@ -7490,12 +7368,20 @@ static void decodeGeneric(unsigned char** out, unsigned* w, unsigned* h,
 
     if(!state->error)
     {
+
+      /*
       ucvector outv;
       ucvector_init(&outv);
       if(!ucvector_resizev(&outv,
-          lodepng_get_raw_size(*w, *h, &state->info_png.color), 0)) state->error = 83; /*alloc fail*/
-      if(!state->error) state->error = postProcessScanlines(outv.data, scanlines.data, *w, *h, &state->info_png);
-      *out = outv.data;
+          lodepng_get_raw_size(*w, *h, &state->info_png.color), 0)  ){
+          state->error = 83; //alloc fail
+      }
+      if(!state->error) {
+        state->error = postProcessScanlines(outv.data, scanlines.data, *w, *h, &state->info_png);
+      }
+      //*out = outv.data;
+      */
+      state->error = postProcessScanlines(*out, scanlines.data, *w, *h, &state->info_png);
     }
     ucvector_cleanup(&scanlines);
   }
@@ -7507,7 +7393,7 @@ unsigned lodepng_decode(unsigned char** out, unsigned* w, unsigned* h,
                         LodePNGState* state,
                         const unsigned char* in, size_t insize)
 {
-  *out = 0;
+  //*out = 0;
   decodeGeneric(out, w, h, state, in, insize);
   if(state->error) return state->error;
   if(!state->decoder.color_convert || lodepng_color_mode_equal(&state->info_raw, &state->info_png.color))
@@ -7536,7 +7422,7 @@ unsigned lodepng_decode(unsigned char** out, unsigned* w, unsigned* h,
     }
 
     outsize = lodepng_get_raw_size(*w, *h, &state->info_raw);
-    *out = (unsigned char*)lodepng_malloc(outsize);
+    //*out = (unsigned char*)lodepng_malloc(outsize);
     if(!(*out))
     {
       state->error = 83; /*alloc fail*/
@@ -8316,7 +8202,7 @@ static unsigned preProcessScanlines(unsigned char** out, size_t* outsize, const 
   if(info_png->interlace_method == 0)
   {
     *outsize = h + (h * ((w * bpp + 7) / 8)); /*image size plus an extra byte per scanline + possible padding bits*/
-    *out = (unsigned char*)lodepng_malloc(*outsize);
+    //*out = (unsigned char*)lodepng_malloc(*outsize);
     if(!(*out) && (*outsize)) error = 83; /*alloc fail*/
 
     if(!error)
@@ -8349,7 +8235,7 @@ static unsigned preProcessScanlines(unsigned char** out, size_t* outsize, const 
     Adam7_getpassvalues(passw, passh, filter_passstart, padded_passstart, passstart, w, h, bpp);
 
     *outsize = filter_passstart[7]; /*image size plus an extra byte per scanline + possible padding bits*/
-    *out = (unsigned char*)lodepng_malloc(*outsize);
+    //*out = (unsigned char*)lodepng_malloc(*outsize);
     if(!(*out)) error = 83; /*alloc fail*/
 
     adam7 = (unsigned char*)lodepng_malloc(passstart[7]);
@@ -8792,239 +8678,6 @@ const char* lodepng_error_text(unsigned code)
   return "unknown error code";
 }
 #endif /*LODEPNG_COMPILE_ERROR_TEXT*/
-
-/* ////////////////////////////////////////////////////////////////////////// */
-/* ////////////////////////////////////////////////////////////////////////// */
-/* // C++ Wrapper                                                          // */
-/* ////////////////////////////////////////////////////////////////////////// */
-/* ////////////////////////////////////////////////////////////////////////// */
-
-
-#ifdef LODEPNG_COMPILE_CPP
-namespace lodepng
-{
-
-#ifdef LODEPNG_COMPILE_DISK
-void load_file(std::vector<unsigned char>& buffer, const std::string& filename)
-{
-  std::ifstream file(filename.c_str(), std::ios::in|std::ios::binary|std::ios::ate);
-
-  /*get filesize*/
-  std::streamsize size = 0;
-  if(file.seekg(0, std::ios::end).good()) size = file.tellg();
-  if(file.seekg(0, std::ios::beg).good()) size -= file.tellg();
-
-  /*read contents of the file into the vector*/
-  buffer.resize(size_t(size));
-  if(size > 0) file.read((char*)(&buffer[0]), size);
-}
-
-/*write given buffer to the file, overwriting the file, it doesn't append to it.*/
-void save_file(const std::vector<unsigned char>& buffer, const std::string& filename)
-{
-  std::ofstream file(filename.c_str(), std::ios::out|std::ios::binary);
-  file.write(buffer.empty() ? 0 : (char*)&buffer[0], std::streamsize(buffer.size()));
-}
-#endif //LODEPNG_COMPILE_DISK
-
-#ifdef LODEPNG_COMPILE_ZLIB
-#ifdef LODEPNG_COMPILE_DECODER
-unsigned decompress(std::vector<unsigned char>& out, const unsigned char* in, size_t insize,
-                    const LodePNGDecompressSettings& settings)
-{
-  unsigned char* buffer = 0;
-  size_t buffersize = 0;
-  unsigned error = zlib_decompress(&buffer, &buffersize, in, insize, &settings);
-  if(buffer)
-  {
-    out.insert(out.end(), &buffer[0], &buffer[buffersize]);
-    lodepng_free(buffer);
-  }
-  return error;
-}
-
-unsigned decompress(std::vector<unsigned char>& out, const std::vector<unsigned char>& in,
-                    const LodePNGDecompressSettings& settings)
-{
-  return decompress(out, in.empty() ? 0 : &in[0], in.size(), settings);
-}
-#endif //LODEPNG_COMPILE_DECODER
-
-#ifdef LODEPNG_COMPILE_ENCODER
-unsigned compress(std::vector<unsigned char>& out, const unsigned char* in, size_t insize,
-                  const LodePNGCompressSettings& settings)
-{
-  unsigned char* buffer = 0;
-  size_t buffersize = 0;
-  unsigned error = zlib_compress(&buffer, &buffersize, in, insize, &settings);
-  if(buffer)
-  {
-    out.insert(out.end(), &buffer[0], &buffer[buffersize]);
-    lodepng_free(buffer);
-  }
-  return error;
-}
-
-unsigned compress(std::vector<unsigned char>& out, const std::vector<unsigned char>& in,
-                  const LodePNGCompressSettings& settings)
-{
-  return compress(out, in.empty() ? 0 : &in[0], in.size(), settings);
-}
-#endif //LODEPNG_COMPILE_ENCODER
-#endif //LODEPNG_COMPILE_ZLIB
-
-
-#ifdef LODEPNG_COMPILE_PNG
-
-State::State()
-{
-  lodepng_state_init(this);
-}
-
-State::State(const State& other)
-{
-  lodepng_state_init(this);
-  lodepng_state_copy(this, &other);
-}
-
-State::~State()
-{
-  lodepng_state_cleanup(this);
-}
-
-State& State::operator=(const State& other)
-{
-  lodepng_state_copy(this, &other);
-  return *this;
-}
-
-#ifdef LODEPNG_COMPILE_DECODER
-
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h, const unsigned char* in,
-                size_t insize, LodePNGColorType colortype, unsigned bitdepth)
-{
-  unsigned char* buffer;
-  unsigned error = lodepng_decode_memory(&buffer, &w, &h, in, insize, colortype, bitdepth);
-  if(buffer && !error)
-  {
-    State state;
-    state.info_raw.colortype = colortype;
-    state.info_raw.bitdepth = bitdepth;
-    size_t buffersize = lodepng_get_raw_size(w, h, &state.info_raw);
-    out.insert(out.end(), &buffer[0], &buffer[buffersize]);
-    lodepng_free(buffer);
-  }
-  return error;
-}
-
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h,
-                const std::vector<unsigned char>& in, LodePNGColorType colortype, unsigned bitdepth)
-{
-  return decode(out, w, h, in.empty() ? 0 : &in[0], (unsigned)in.size(), colortype, bitdepth);
-}
-
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h,
-                State& state,
-                const unsigned char* in, size_t insize)
-{
-  unsigned char* buffer;
-  unsigned error = lodepng_decode(&buffer, &w, &h, &state, in, insize);
-  if(buffer && !error)
-  {
-    size_t buffersize = lodepng_get_raw_size(w, h, &state.info_raw);
-    out.insert(out.end(), &buffer[0], &buffer[buffersize]);
-    lodepng_free(buffer);
-  }
-  return error;
-}
-
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h,
-                State& state,
-                const std::vector<unsigned char>& in)
-{
-  return decode(out, w, h, state, in.empty() ? 0 : &in[0], in.size());
-}
-
-#ifdef LODEPNG_COMPILE_DISK
-unsigned decode(std::vector<unsigned char>& out, unsigned& w, unsigned& h, const std::string& filename,
-                LodePNGColorType colortype, unsigned bitdepth)
-{
-  std::vector<unsigned char> buffer;
-  load_file(buffer, filename);
-  return decode(out, w, h, buffer, colortype, bitdepth);
-}
-#endif //LODEPNG_COMPILE_DECODER
-#endif //LODEPNG_COMPILE_DISK
-
-#ifdef LODEPNG_COMPILE_ENCODER
-unsigned encode(std::vector<unsigned char>& out, const unsigned char* in, unsigned w, unsigned h,
-                LodePNGColorType colortype, unsigned bitdepth)
-{
-  unsigned char* buffer;
-  size_t buffersize;
-  unsigned error = lodepng_encode_memory(&buffer, &buffersize, in, w, h, colortype, bitdepth);
-  if(buffer)
-  {
-    out.insert(out.end(), &buffer[0], &buffer[buffersize]);
-    lodepng_free(buffer);
-  }
-  return error;
-}
-
-unsigned encode(std::vector<unsigned char>& out,
-                const std::vector<unsigned char>& in, unsigned w, unsigned h,
-                LodePNGColorType colortype, unsigned bitdepth)
-{
-  if(lodepng_get_raw_size_lct(w, h, colortype, bitdepth) > in.size()) return 84;
-  return encode(out, in.empty() ? 0 : &in[0], w, h, colortype, bitdepth);
-}
-
-unsigned encode(std::vector<unsigned char>& out,
-                const unsigned char* in, unsigned w, unsigned h,
-                State& state)
-{
-  unsigned char* buffer;
-  size_t buffersize;
-  unsigned error = lodepng_encode(&buffer, &buffersize, in, w, h, &state);
-  if(buffer)
-  {
-    out.insert(out.end(), &buffer[0], &buffer[buffersize]);
-    lodepng_free(buffer);
-  }
-  return error;
-}
-
-unsigned encode(std::vector<unsigned char>& out,
-                const std::vector<unsigned char>& in, unsigned w, unsigned h,
-                State& state)
-{
-  if(lodepng_get_raw_size(w, h, &state.info_raw) > in.size()) return 84;
-  return encode(out, in.empty() ? 0 : &in[0], w, h, state);
-}
-
-#ifdef LODEPNG_COMPILE_DISK
-unsigned encode(const std::string& filename,
-                const unsigned char* in, unsigned w, unsigned h,
-                LodePNGColorType colortype, unsigned bitdepth)
-{
-  std::vector<unsigned char> buffer;
-  unsigned error = encode(buffer, in, w, h, colortype, bitdepth);
-  if(!error) save_file(buffer, filename);
-  return error;
-}
-
-unsigned encode(const std::string& filename,
-                const std::vector<unsigned char>& in, unsigned w, unsigned h,
-                LodePNGColorType colortype, unsigned bitdepth)
-{
-  if(lodepng_get_raw_size_lct(w, h, colortype, bitdepth) > in.size()) return 84;
-  return encode(filename, in.empty() ? 0 : &in[0], w, h, colortype, bitdepth);
-}
-#endif //LODEPNG_COMPILE_DISK
-#endif //LODEPNG_COMPILE_ENCODER
-#endif //LODEPNG_COMPILE_PNG
-} //namespace lodepng
-#endif /*LODEPNG_COMPILE_CPP*/
 
 
 
@@ -10440,7 +10093,7 @@ public:
 
     FBOWrapper() {}
     ~FBOWrapper() {}
-    int init(int _width, int _height, int _bytesPerChannel, int _slot, bool _hasDepth) {
+    int init(int _width, int _height, int _bytesPerChannel, int _slot, bool _hasDepth, int filterEnum) {
 		width = _width;
 		height = _height;
 		bytesPerChannel = _bytesPerChannel;
@@ -10488,8 +10141,8 @@ public:
 
 		glGenTextures(1, &color_tex);
 		glBindTexture(GL_TEXTURE_2D, color_tex);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_NEAREST);
-	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterEnum);
+	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterEnum);
 	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		
@@ -10664,7 +10317,7 @@ public:
     	return &(fbos[offset]);
     }
 
-    void init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool _hasDepth) {
+    void init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool _hasDepth, int filterEnum=GL_NEAREST) {
 		int i;
 
 		hasDepth = _hasDepth;
@@ -10681,7 +10334,7 @@ public:
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
 
 		for (i = 0; i < numBufs; i++) {
-			fbos[i].init(width, height, bytesPerChannel, i, hasDepth);
+			fbos[i].init(width, height, bytesPerChannel, i, hasDepth, filterEnum);
 		}
 
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
@@ -10714,15 +10367,18 @@ public:
 		glLoadIdentity ();
 	}
 	*/
-    void copyFromMem(int ind, uint* dat) {
+    void copyFromMem(int ind, unsigned char* dat) {
 
 		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
 
 	    glBindTexture(GL_TEXTURE_2D,fbos[ind].color_tex);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dat);
+
+	    //glTexSubImage2D(GLenum target​, GLint level​, GLint xoffset​, GLint yoffset​, GLsizei width​, GLsizei height​, GLenum format​, GLenum type​, const GLvoid * data​);
+
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, dat);
 		//glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbos[ind].slot, GL_TEXTURE_2D, fbos[ind].color_tex, 0);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		//glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		//glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glBindTexture(GL_TEXTURE_2D,0);
 
 		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
@@ -10850,10 +10506,8 @@ public:
   bool isWorking;
   bool isJSON;
   int MAX_FRAME_SIZE;
-  char * recBuffer;
-  char * okBuffer;
-  int recBufferLength;
-  JSONValue * recMessage;
+  charArr recBuffer;
+  charArr okBuffer;
   WebSocketServer ();
   ~ WebSocketServer ();
 protected:
@@ -10931,6 +10585,10 @@ public:
   int mouseCount;
   int lastMouseX;
   int lastMouseY;
+  uint volGenFBOSize;
+  uint slicesPerPitch;
+  uint palWidth;
+  uint palHeight;
   float curBrushRad;
   float diskOn;
   float grassHeight;
@@ -10980,6 +10638,11 @@ public:
   GLuint grassTris;
   uint * lookup2to3;
   GLuint lookup2to3ID;
+  unsigned char * resultImage;
+  charArr nullBuffer;
+  charArr lastImageBuffer;
+  charArr lastJSONBuffer;
+  JSONValue * rootObj;
   WebSocketServer * myWS;
   Timer myTimer;
   GameWorld * gw;
@@ -11044,8 +10707,12 @@ public:
   void worldToScreen (FIVector4 * sc, FIVector4 * wc);
   void screenToWorld (FIVector4 * tc, FIVector4 * wc);
   void mouseClick (int button, int state, int _x, int _y);
-  void processB64 ();
-  void processJSON ();
+  void processB64 (charArr * sourceBuffer, charArr * saveBuffer);
+  void processJSON (charArr * sourceBuffer, charArr * saveBuffer);
+  void loadAllData ();
+  void saveAllData ();
+  bool loadFile (char * fileName, charArr * dest);
+  bool saveFile (char * fileName, charArr * source);
   void display ();
   void reshape (int w, int h);
   void idleFunc ();
@@ -11193,8 +10860,6 @@ WebSocketRequestHandler::WebSocketRequestHandler (WebSocketServer * _ws_ptr)
 WebSocketRequestHandler::~ WebSocketRequestHandler ()
                                    {
 		
-		
-		
 	}
 void WebSocketRequestHandler::handleRequest (HTTPServerRequest & request, HTTPServerResponse & response)
         {
@@ -11213,10 +10878,13 @@ void WebSocketRequestHandler::handleRequest (HTTPServerRequest & request, HTTPSe
 
 		ws_ptr->isWorking = true;
 		ws_ptr->dataReady = false;
+		
+		/*
 		if (ws_ptr->recMessage != NULL) {
 			delete ws_ptr->recMessage;
 			ws_ptr->recMessage = NULL;
 		}
+		*/
 
 		Application& app = Application::instance();
 
@@ -11234,59 +10902,31 @@ void WebSocketRequestHandler::handleRequest (HTTPServerRequest & request, HTTPSe
 			
 			do
 			{
-				n = ws.receiveFrame(ws_ptr->recBuffer, ws_ptr->MAX_FRAME_SIZE, flags);
-				app.logger().information(Poco::format("Frame received (length=%d, flags=0x%x).", n, unsigned(flags)));
+				n = ws.receiveFrame(ws_ptr->recBuffer.data, ws_ptr->MAX_FRAME_SIZE, flags);
+				//app.logger().information(Poco::format("Frame received (length=%d, flags=0x%x).", n, unsigned(flags)));
 				
 
 				if (n > 0) {
 
-					ws_ptr->recBuffer[n+1] = '\0';
-					ws_ptr->recBufferLength = n; 
+					ws_ptr->recBuffer.data[n+1] = '\0';
+					ws_ptr->recBuffer.size = n;
 
-					if (ws_ptr->recBuffer[0] == '{') {
+					if (ws_ptr->recBuffer.data[0] == '{') {
 						ws_ptr->isJSON = true;
-
-						ws_ptr->recMessage = JSON::Parse(ws_ptr->recBuffer);
-
-						if (ws_ptr->recMessage == NULL) {
-							doTrace("Invalid JSON\n\n");
-							ws_ptr->isWorking = false;
-							
-						}
-						else {
-							doTrace("");
-							doTrace("Valid JSON");
-							doTrace("");
-							//ws_ptr->isWorking = false;
-							ws_ptr->dataReady = true;
-						}
-
+						ws_ptr->recBuffer.data[n] = '\0';
 					}
 					else {
 						ws_ptr->isJSON = false;
-						ws_ptr->dataReady = true;
-
 					}
+
+					ws_ptr->dataReady = true;
 
 					
 					
 
 				}
-				//01234567890123
-				//{"cc":"SENDING"
-				
-				/*ws_ptr->recBuffer[7] = 'R';
-				ws_ptr->recBuffer[8] = 'E';
-				ws_ptr->recBuffer[9] = 'C';
-				ws_ptr->recBuffer[10] = '_';
-				ws_ptr->recBuffer[11] = '_';
-				ws_ptr->recBuffer[12] = 'O';
-				ws_ptr->recBuffer[13] = 'K';
-				*/
-				//ws.sendFrame(ws_ptr->recBuffer, n, flags);
-				//1234567890123456
-				//{"cc":"REC__OK"}
-				ws.sendFrame(ws_ptr->okBuffer,16,flags);
+
+				ws.sendFrame(ws_ptr->okBuffer.data,ws_ptr->okBuffer.size,flags);
 
 			}
 			while ( (n > 0 || (flags & WebSocket::FRAME_OP_BITMASK) != WebSocket::FRAME_OP_CLOSE) && PROG_ACTIVE );
@@ -11368,21 +11008,22 @@ HTTPRequestHandler * RequestHandlerFactory::createRequestHandler (HTTPServerRequ
 WebSocketServer::WebSocketServer ()
   : _helpRequested (false)
         {
-		recMessage = NULL;
+		//recMessage = NULL;
 		dataReady = false;
 		isWorking = false;
 		isJSON = false;
-		recBufferLength = 0;
+		//recBufferLength = 0;
 		
 		MAX_FRAME_SIZE = 16777216; //16 MB
-		recBuffer = new char[MAX_FRAME_SIZE];
-		okBuffer = "{\"cc\":\"REC__OK\"}";
+		recBuffer.data = new char[MAX_FRAME_SIZE];
+		okBuffer.data = "{\"cc\":\"REC__OK\"}";
+		okBuffer.size = 16;
 		
 	}
 WebSocketServer::~ WebSocketServer ()
         {
-		if (recBuffer != NULL) {
-			delete[] recBuffer;
+		if (recBuffer.data != NULL) {
+			delete[] recBuffer.data;
 		}
 	}
 void WebSocketServer::initialize (Application & self)
@@ -11464,7 +11105,28 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		pushTrace("Singleton init");
 
+		rootObj = NULL;
 
+		lastImageBuffer.data = NULL;
+		lastImageBuffer.size = 0;
+		
+		lastJSONBuffer.data = NULL;
+		lastJSONBuffer.size = 0;
+		
+		nullBuffer.data = new char[1];
+		nullBuffer.data[0] = '\0';
+		nullBuffer.size = 0;
+
+		volGenFBOSize = 4096;
+		slicesPerPitch = 16;
+
+		//volGenFBOSize = 512;
+		//slicesPerPitch = 8;
+
+		palWidth = 256;
+		palHeight = 256;
+
+		resultImage = new unsigned char[256*256*4];
 
 		mouseMovingSize = 100;
 		mouseMovingLoc = 0;
@@ -11596,13 +11258,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		mouseX = mouseY = 0;
 		myDelta = 0.0f;
 		
-		
-		
-
-		
-
-	
-
 
 		//gm = new GameMap();
 		orthographicProjection();
@@ -11622,15 +11277,19 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 	    
 
-
+	    fboStrings.push_back("palFBO");
 	    fboStrings.push_back("worldSpaceFBO");
 
+	    //fboStrings.push_back("pagesFBOUnfiltered");
 	    fboStrings.push_back("pagesFBO");
+
 	    fboStrings.push_back("grassFBO");
 	    fboStrings.push_back("geomFBO");
 	    fboStrings.push_back("combineFBO");
 	    fboStrings.push_back("resultFBO");
 	    fboStrings.push_back("volGenFBO");
+
+
 
 
 	    /*
@@ -11680,16 +11339,20 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	        fboMap.insert(  pair<string, FBOSet*>(fboStrings[i], new FBOSet())  );
 	    }
 
-	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel);
+	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool hasDepth, int filterEnum);
 
 	    fboMap["worldSpaceFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false);
+	    fboMap["palFBO"]->init(1, palWidth, palHeight, 1, false, GL_LINEAR);
 
 	    fboMap["pagesFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["grassFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["geomFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, true);
 	    fboMap["combineFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-	    fboMap["volGenFBO"]->init(1, 4096, 4096, 1, false);
+	    fboMap["volGenFBO"]->init(1, volGenFBOSize, volGenFBOSize, 1, false);
+
+
+	    loadAllData();
 
 
 	    gw = new GameWorld();
@@ -11776,8 +11439,10 @@ void Singleton::setupLookups ()
                             {
 		pushTrace("setupLookups");
 
+		doTrace("a");
+
 	    uint i, j, k, m;
-	    uint side = 256;
+	    uint side = volGenFBOSize/slicesPerPitch;
 	    uint totalSize = side*side*side;
 
 	    lookup2to3 = new uint[totalSize];
@@ -11790,18 +11455,20 @@ void Singleton::setupLookups ()
 	    uint ind;
 
 	    ind = 0;
-	    for (j = 0; j < 4096; j++) {
-	        for (i = 0; i < 4096; i++) {
-	            ind = i+j*4096;
-	            xpos = i%256;
-	            ypos = j%256;
-	            zpos = i/256 + (j/256)*16;////(ind)/(256*256);
+	    for (j = 0; j < volGenFBOSize; j++) {
+	        for (i = 0; i < volGenFBOSize; i++) {
+	            ind = i+j*volGenFBOSize;
+	            xpos = i%side;
+	            ypos = j%side;
+	            zpos = i/side + (j/side)*slicesPerPitch;
 
 	            //lookup2to3[ind] = ind;
 	            //ind++;
 	            lookup2to3[ind] = (255<<24)|(zpos<<16)|(ypos<<8)|xpos;   
 	        }
 	    }
+
+	    doTrace("b");
 	    
 	    /*
 	    ind = 0;
@@ -11842,7 +11509,7 @@ void Singleton::setupLookups ()
 
 	    glGenTextures(1,&lookup2to3ID);
 	    glBindTexture(GL_TEXTURE_2D,lookup2to3ID);
-	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 4096, 4096, 0, GL_RGBA, GL_UNSIGNED_BYTE, lookup2to3);
+	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, volGenFBOSize, volGenFBOSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, lookup2to3);
 	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, 0);
@@ -12207,6 +11874,7 @@ void Singleton::doShaderRefresh ()
 	    for (i = 0; i < shaderStrings.size(); i++) {
 	        if (shaderMap[ shaderStrings[i] ]) {
 	            delete shaderMap[ shaderStrings[i] ];
+	            shaderMap[ shaderStrings[i] ] = NULL;
 	        }
 	        shaderMap[ shaderStrings[i] ] = new Shader( ("../src/glsl/"+shaderStrings[i]+".c").c_str() );
 	    }
@@ -12612,7 +12280,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 
 		bool restartGen = false;
 
-		//doTrace(i__s(key) );
+		doTrace(i__s(key) );
 
 
 		if (key == 17) {
@@ -12661,8 +12329,19 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 
 			case 's':
 				softMode = !softMode;
+			break;
+
+			case 19: //ctrl-s
+				saveAllData();
+									
+			break;
+
+			case 15: //ctrl-o
+				loadAllData();		
 				
 			break;
+
+
 
 			case 'w':
 				changesMade = true;
@@ -13116,15 +12795,6 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 
 		
-
-
-
-
-
-
-
-
-
 		
 		
 
@@ -13141,33 +12811,183 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		}
 
 	}
-void Singleton::processB64 ()
-                          {
-		doTrace("processData() BASE64");
+void Singleton::processB64 (charArr * sourceBuffer, charArr * saveBuffer)
+                                                                    {
+		
+		char* buf = sourceBuffer->data;
+		int len = sourceBuffer->size;
 
-		membuf sbuf(myWS->recBuffer, myWS->recBuffer + myWS->recBufferLength);
-		Poco::Base64Decoder b64in(sbuf);
+		if (saveBuffer != &nullBuffer) {
+			if (saveBuffer->data != NULL) {
+				delete[] saveBuffer->data;
+				saveBuffer->data = NULL;
+			}
+			saveBuffer->data = new char[len];
+			strncpy(saveBuffer->data, buf, len);
+			saveBuffer->size = len;
+		}
 
-		//ofBuffer buffer;
-		//b64in >> buffer;
+
+		FBOSet* fbos = fboMap["palFBO"];
 
 
+		//unsigned char* resultImage = new unsigned char[256*256*4];
+
+		membuf inBuffer(sourceBuffer->data, sourceBuffer->data + sourceBuffer->size);
+		std::istream myIS(&inBuffer);
+		Poco::Base64Decoder b64in(myIS);
+
+
+
+		std::ostringstream oss;
+		oss << b64in.rdbuf();
+
+		std::string strConst = oss.str();
+		const char* inString = strConst.c_str();
+
+
+		lodepng_decode32(&resultImage, &palWidth, &palHeight, (unsigned char*)inString, strConst.size() );
+
+		fbos->copyFromMem(0, resultImage);
 
 	}
-void Singleton::processJSON ()
-                           {
-		doTrace("processData() JSON");
+void Singleton::processJSON (charArr * sourceBuffer, charArr * saveBuffer)
+                                                                     {
+		
+		char* buf = sourceBuffer->data;
+		int len = sourceBuffer->size;
 
-		JSONValue *jsonVal = myWS->recMessage;
+
+		if (saveBuffer != &nullBuffer) {
+			if (saveBuffer->data != NULL) {
+				delete[] saveBuffer->data;
+				saveBuffer->data = NULL;
+			}
+			saveBuffer->data = new char[len];
+			strncpy(saveBuffer->data,buf,len);
+			saveBuffer->size = len;
+		}
+		
+
+		//cout << "\n\n" << buf << "\n\n";
+
+		JSONValue *jsonVal = JSON::Parse(buf);
 
 		if (jsonVal == NULL) {
-
+			doTrace("Invalid JSON\n\n");
+			return;	
 		}
 		else {
+			doTrace("");
+			doTrace("Valid JSON");
+			doTrace("");
+
+
+			if (rootObj != NULL) {
+				delete rootObj;
+				rootObj = NULL;
+			}
+
+			rootObj = jsonVal;
+			jsonVal = NULL;
+
 			//doTrace( "JSON VAL", f__s(jsonVal->Child(L"x")->number_value) , "\n\n" );
+
 		}
 		
 		
+	}
+void Singleton::loadAllData ()
+                           {
+		if ( loadFile("..\\data\\lastJSONBuffer.txt", &lastJSONBuffer) ) {
+			processJSON(&lastJSONBuffer,&nullBuffer);
+		}
+
+		if ( loadFile("..\\data\\lastImageBuffer.txt", &lastImageBuffer) ) {
+			processB64(&lastImageBuffer,&nullBuffer);
+		}
+
+		bufferInvalid = true;
+	}
+void Singleton::saveAllData ()
+                           {
+		saveFile("..\\data\\lastJSONBuffer.txt", &lastJSONBuffer);
+		saveFile("..\\data\\lastImageBuffer.txt", &lastImageBuffer);
+	}
+bool Singleton::loadFile (char * fileName, charArr * dest)
+                                                     {
+		
+		if (dest == NULL) {
+			doTrace("Null Data");
+			return false;
+		}
+
+		std::ifstream infile (fileName, std::ifstream::in);
+		
+
+		if ( ! infile.is_open() ){
+			doTrace("Could Not Open File For Loading");
+			return false;
+		}
+
+		// get size of file
+		infile.seekg (0,infile.end);
+		long size = infile.tellg();
+		infile.seekg (0, infile.beg);
+
+
+		dest->size = size;
+
+		if (dest->data != NULL) {
+			delete[] dest->data;
+			dest->data = NULL;
+		}
+
+		dest->data = new char[size];
+
+		// read content of infile
+		infile.read (dest->data,size);
+
+		if ( infile.bad() ){
+			doTrace("Could Not Load From File");
+			infile.close();
+			return false;
+		}
+
+		infile.close();
+
+		doTrace("Load Successful");
+
+		return true;
+	}
+bool Singleton::saveFile (char * fileName, charArr * source)
+                                                       {
+
+		if (source->data == NULL) {
+			doTrace("Null Data");
+			return false;
+		}
+
+		std::ofstream outfile (fileName, std::ofstream::out);
+		
+		if ( ! outfile.is_open() ){
+			doTrace("Could Not Open File For Saving");
+			return false;
+		}
+
+		outfile.write (source->data,source->size);
+
+		if ( outfile.bad() ){
+			doTrace("Could Not Save To File");
+			outfile.close();
+			return false;
+		}
+
+		outfile.close();
+
+		doTrace("Save Successful");
+
+		return true;
 	}
 void Singleton::display ()
                            {
@@ -13190,11 +13010,14 @@ void Singleton::display ()
 			if (myWS->dataReady) {
 
 				if (myWS->isJSON) {
-					processJSON();
+					processJSON( &(myWS->recBuffer), &lastJSONBuffer  );
 				}
 				else {
-					processB64();
+					processB64(  &(myWS->recBuffer), &lastImageBuffer  );
+					
 				}
+
+				bufferInvalid = true;
 
 				myWS->dataReady = false;
 				myWS->isWorking = false;
@@ -14941,7 +14764,9 @@ void GameWorld::postProcess ()
 		// NOTE: ALWAYS UNSAMPLE IN REVERSE ORDER!!!
 
 
-		//singleton->drawFBO("worldSpaceFBO", 0, 1.0 );
+		//singleton->drawFBO("palFBO", 0, 1.0 );
+
+
 
 		float newZoom;
 
@@ -14972,11 +14797,13 @@ void GameWorld::postProcess ()
 		singleton->bindFBO("resultFBO");
 		singleton->sampleFBO("combineFBO",0);
 		singleton->sampleFBO("geomFBO", 2);
+		singleton->sampleFBO("palFBO", 4);
 
 		//MUST BE CALLED AFTER FBO IS BOUND
 		singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 
 		singleton->drawFSQuad(1.0f);
+		singleton->unsampleFBO("palFBO", 4);
 		singleton->unsampleFBO("geomFBO", 2);
 		singleton->unsampleFBO("combineFBO",0);
 		singleton->unbindFBO();
@@ -15133,8 +14960,8 @@ int main(int argc, char* argv[])
 
     switch (resMode) {
         case 0:
-            winWidth = 1024;
-            winHeight = 1024;
+            winWidth = 768;
+            winHeight = 768;
             scaleFactor = 1;
         break;
 
@@ -15167,7 +14994,7 @@ int main(int argc, char* argv[])
 
     glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGB);
     glutInitWindowSize(winWidth, winHeight);
-    glutInitWindowPosition(140, 200);
+    //glutInitWindowPosition(140, 10);
     glutCreateWindow("VoxelQuest");
 
     GLenum err = glewInit();

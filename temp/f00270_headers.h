@@ -42,10 +42,8 @@ public:
   bool isWorking;
   bool isJSON;
   int MAX_FRAME_SIZE;
-  char * recBuffer;
-  char * okBuffer;
-  int recBufferLength;
-  JSONValue * recMessage;
+  charArr recBuffer;
+  charArr okBuffer;
   WebSocketServer ();
   ~ WebSocketServer ();
 protected:
@@ -123,6 +121,10 @@ public:
   int mouseCount;
   int lastMouseX;
   int lastMouseY;
+  uint volGenFBOSize;
+  uint slicesPerPitch;
+  uint palWidth;
+  uint palHeight;
   float curBrushRad;
   float diskOn;
   float grassHeight;
@@ -172,6 +174,11 @@ public:
   GLuint grassTris;
   uint * lookup2to3;
   GLuint lookup2to3ID;
+  unsigned char * resultImage;
+  charArr nullBuffer;
+  charArr lastImageBuffer;
+  charArr lastJSONBuffer;
+  JSONValue * rootObj;
   WebSocketServer * myWS;
   Timer myTimer;
   GameWorld * gw;
@@ -236,8 +243,12 @@ public:
   void worldToScreen (FIVector4 * sc, FIVector4 * wc);
   void screenToWorld (FIVector4 * tc, FIVector4 * wc);
   void mouseClick (int button, int state, int _x, int _y);
-  void processB64 ();
-  void processJSON ();
+  void processB64 (charArr * sourceBuffer, charArr * saveBuffer);
+  void processJSON (charArr * sourceBuffer, charArr * saveBuffer);
+  void loadAllData ();
+  void saveAllData ();
+  bool loadFile (char * fileName, charArr * dest);
+  bool saveFile (char * fileName, charArr * source);
   void display ();
   void reshape (int w, int h);
   void idleFunc ();

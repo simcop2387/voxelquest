@@ -36,6 +36,9 @@ j$(function() {
 			bottom:5
 		},
 		types: {
+
+			reserved: 0,
+
 			untypedList: 1,
 			untyped: 2,
 			
@@ -61,14 +64,16 @@ j$(function() {
 			gradient: 0
 		},
 		materials: {
-			bluegray: 0,
-			gold: 1,
-			purple: 2,
-			skyblue: 3,
-			silver: 4,
-			lightbluegray: 5
+			BlueGray: 0,
+			Gold: 1,
+			Purple: 2,
+			SkyBlue: 3,
+			Silver: 4,
+			LightBlueGray: 5
 		}
-	}
+	};
+
+	var enumStrings = {};
 
 
 	var gradArr = [];
@@ -181,13 +186,14 @@ j$(function() {
 						obj.props.value = iv;
 					}
 
-					obj.props.actionFunc = "updatePalette";
+					//obj.props.actionFunc = "updatePalette";
 
 				break;
 				case enums.types.colorList:
 
 				break;
 				case enums.types.color:
+					/*
 					obj.childArr.push(
 
 						createNode( {label:"Hue", type:enums.types.number}, [], iv.hue ),
@@ -195,34 +201,42 @@ j$(function() {
 						createNode( {label:"Lightness", type:enums.types.number}, [], iv.lightness )
 
 					);
+					*/
 				break;
 				case enums.types.gradientList:
 					for (i = 0; i < iv.length; i++) {
 						obj.childArr.push(
-							createNode( {label:"Gradient " + i, type:enums.types.gradient, ind:i}, [], iv[i] )
+							createNode( {label:enumStrings.materials[i], type:enums.types.gradientStepList /*, ind:i*/ }, [], iv[i].steps )
 						);
 					}
 				break;
 				case enums.types.gradient:
-					obj.childArr.push(
+					/*obj.childArr.push(
 						createNode( {label:"Steps", type:enums.types.gradientStepList}, [], iv.steps )
 					);
+					*/
 				break;
 				case enums.types.gradientStepList:
+					
 					for (i = 0; i < iv.length; i++) {
 						obj.childArr.push(
-							createNode( {label:"Step " + i, type:enums.types.gradientStep}, [], iv[i] )
+							createNode( {label:"Step" + i, type:enums.types.gradientStep}, [], iv[i] )
 						);
 					}
+					
 				break;
 				case enums.types.gradientStep:
 					obj.childArr.push(
+						/*
 						createNode( {label:"Color", type:enums.types.color}, [], {
 							hue: iv.h,
 							saturation: iv.s,
 							lightness: iv.l
-						} ),
+						} ),*/
 
+						createNode( {label:"Hue", type:enums.types.number}, [], iv.h ),
+						createNode( {label:"Saturation", type:enums.types.number}, [], iv.s ),
+						createNode( {label:"Lightness", type:enums.types.number}, [], iv.l ),
 						createNode( {label:"Power", type:enums.types.number}, [], iv.pow ),
 						createNode( {label:"Position", type:enums.types.number}, [], iv.pos )
 
@@ -290,14 +304,18 @@ j$(function() {
 	var meshBG;
 	var meshFSQ;
 	
-	
+	var invalidValue = -999;
 
 	gob = {
+		palX:1008,
+		palY:48,
+		invalidValue:invalidValue,
+
 		connectionRetryCount:0,
 		messageStack:[],
 		waitingForResponse:false,
 		powMax: 4.0,
-		callbacks:{},
+		//callbacks:{},
 		superSample: false,
 		lastHit: 0,
 		lastParent: 0,
@@ -306,7 +324,7 @@ j$(function() {
 		lastMouseX: null,
 		lastMouseY: null,
 		shiftDown: false,
-		buttonWidth: 256,
+		buttonWidth: 384,
 		isScrolling: 0,
 		scrollX:0.0,
 		scrollY:0.0,
@@ -329,7 +347,7 @@ j$(function() {
 		maxLayers: parseInt(gup('maxheight',20),10),
 		updateBaseRT:true,
 		renderTargets:{},
-		shaderNames:["lightingShader","palShader","palFromTexShader","aoShader","aoHighShader","extrudeShader","layerShader","bgShader","textShader","bgIdShader","textIdShader","heightShader","normShader","downscaleShader","upscaleShader","debugShader"],
+		shaderNames:["lightingShader","palShader","palFromTexShader","palFromTex2Shader","aoShader","aoHighShader","extrudeShader","layerShader","bgShader","textShader","bgIdShader","textIdShader","heightShader","normShader","downscaleShader","upscaleShader", "pickerShader", "debugShader"],
 		fontNames:["arial_black_regular_48","arial_black_regular_96","old_london_regular_96"],
 		fontLoaded:{},
 		shaders:{},
@@ -455,7 +473,7 @@ j$(function() {
 	};
 
 
-	gradArr[enums.materials.bluegray] = {
+	gradArr[enums.materials.BlueGray] = {
 		steps: [
 			{h:0.9, s:0.0, l:0.1, pow:0.5/gob.powMax, pos:0/255.0},
 			{h:0.4, s:0.1, l:1.0, pow:0.3/gob.powMax, pos:255/255.0}
@@ -464,7 +482,7 @@ j$(function() {
 
 	
 
-	gradArr[enums.materials.gold] = {
+	gradArr[enums.materials.Gold] = {
 		steps: [ // gold
 
 			{h:0.8, s:0.0, l:0.0, pow:0.5/gob.powMax, pos:0/255.0},
@@ -478,7 +496,7 @@ j$(function() {
 		]
 	};
 
-	gradArr[enums.materials.purple] = {
+	gradArr[enums.materials.Purple] = {
 		steps: [ // fill
 			{h:0.0, s:0.4, l:0.0, pow:0.5/gob.powMax, pos:0/255.0},
 			{h:0.0, s:0.2, l:0.5, pow:0.3/gob.powMax, pos:192/255.0},
@@ -486,7 +504,7 @@ j$(function() {
 		]
 	};
 
-	gradArr[enums.materials.skyblue] = {
+	gradArr[enums.materials.SkyBlue] = {
 		steps: [ // background
 			{h:0.1, s:0.0, l:0.0, pow:2.0/gob.powMax, pos:0/255.0},
 			{h:0.4, s:0.8, l:1.0, pow:0.5/gob.powMax, pos:128/255.0},
@@ -494,7 +512,7 @@ j$(function() {
 		]
 	};
 
-	gradArr[enums.materials.silver] = {
+	gradArr[enums.materials.Silver] = {
 		steps: [ // background
 			{h:0.0, s:0.0, l:0.0, pow:0.5/gob.powMax, pos:0/255.0},
 			{h:0.0, s:0.1, l:0.2, pow:2.0/gob.powMax, pos:20/255.0},
@@ -507,7 +525,7 @@ j$(function() {
 		]
 	};
 
-	gradArr[enums.materials.lightbluegray] = {
+	gradArr[enums.materials.LightBlueGray] = {
 		steps: [
 			{h:0.1, s:0.1, l:0.1, pow:0.3/gob.powMax, pos:0/255.0},
 			{h:0.4, s:0.2, l:1.0, pow:0.5/gob.powMax, pos:255/255.0}
@@ -535,7 +553,7 @@ j$(function() {
 			//console.log("CONNECTION CODE: " + result.cc);
 
 			switch (result.cc) {
-				case "REC_OK":
+				case "REC__OK":
 					gob.waitingForResponse = false;
 				break;
 				default:
@@ -596,9 +614,21 @@ j$(function() {
 					gob.waitingForResponse = true;
 
 
-					sendStr = JSON.stringify(msg);
-					sendStr = sendStr.substring(1);
-					sendStr = '{"cc":"SENDING",' + sendStr;
+					if (typeof(msg) == "string") {
+						sendStr = msg;
+					}
+					else {
+						sendStr = JSON.stringify(msg, null, "\t");
+
+						//console.log(sendStr);
+
+						/*
+						sendStr = sendStr.substring(1);
+						sendStr = '{"cc":"SENDING",' + sendStr;
+						*/
+					}
+
+					
 
 					
 					if (sendStr.length + 256 >= gob.maxFrameSize) {
@@ -638,9 +668,92 @@ j$(function() {
 	});
 
 
+	gob.unpackData = function(srcObj, resObj, isRoot) {
+		var i;
 
+		var props;
+		var ind;
 
+		for (i in srcObj) {
 
+			if (srcObj.hasOwnProperty(i)) {
+				props = i.split('_');
+				ind = parseInt(props[2],10);
+
+				if (isRoot) {
+					resObj.props = {
+						label:props[1],
+						type:enums.types[ props[0] ],
+						value:0
+					}
+					resObj.childArr = [];
+
+					gob.unpackData(srcObj[i], resObj, false);
+
+					
+				}
+				else {
+
+					resObj.childArr[ind] = {
+						props:{
+							label:props[1],
+							type:enums.types[ props[0] ],
+							value:0
+						},
+						childArr: [
+
+						]
+					}
+
+					if (typeof(srcObj[i]) == "object" ) {
+
+						gob.unpackData(srcObj[i], resObj.childArr[ind], false);
+					}
+					else {
+						resObj.childArr[ind].props.value = srcObj[i];
+					}
+					
+					
+
+				}
+			}
+
+			
+
+			
+
+		}
+	}
+		
+
+	gob.packData = function(srcObj, resObj, ind) {
+		var i;
+		var isList = (srcObj.childArr.length > 0);
+
+		var propName = enumStrings.types[srcObj.props.type] + "_" + srcObj.props.label + "_" + ind;
+
+		if (isList) {
+			resObj[propName] = {};
+			for (i = 0; i < srcObj.childArr.length; i++) {
+				gob.packData(srcObj.childArr[i], resObj[propName], i)
+			}
+		}
+		else {
+			resObj[propName] = srcObj.props.value;
+		}
+
+		
+	}
+
+	gob.loadJSON = function(filePath, callback) {
+		j$.getJSON(filePath, callback);
+
+		/*
+		function(json) {
+		    console.log(json); // this will show the info it in firebug console
+		});
+		*/
+	}
 
 
 	gob.getStringWidth = function(curParentProps) {
@@ -882,7 +995,7 @@ j$(function() {
 				minHeight = gob.curFont.metrics.height*curParentProps.scale;
 			}
 			else {
-				minHeight = gob.drawTextArea(curParentProps, null, true);
+				minHeight = gob.drawTextArea(rootObj, null, true);
 			}
 		}
 		else {
@@ -957,8 +1070,8 @@ j$(function() {
 	gob.wf("addMeshes",function(rootObj) {
 		var i;
 
-		gob.drawTextArea(rootObj.props, meshBG, false);
-		gob.drawTextArea(rootObj.props, meshText, false);
+		gob.drawTextArea(rootObj, meshBG, false);
+		gob.drawTextArea(rootObj, meshText, false);
 
 		for (i = 0; i < rootObj.childArr.length; i++) {
 			gob.addMeshes(rootObj.childArr[i]);
@@ -1106,9 +1219,13 @@ j$(function() {
 					case enums.types.number:
 						gob.activeGUI.props.baseProps.value = Math.min(Math.max(xval-gob.activeGUI.props.x,0),gob.activeGUI.props.resultWidth)/gob.activeGUI.props.resultWidth;
 
+						
+
+						/*
 						if (gob.activeGUI.props.baseProps.actionFunc) {
 							gob.callbacks[gob.activeGUI.props.baseProps.actionFunc](gob.activeGUI.props.baseProps.value);
 						}
+						*/
 
 					break;
 					case enums.types.bool:
@@ -1118,10 +1235,11 @@ j$(function() {
 
 							gob.activeGUI.props.baseProps.value = 1.0-gob.activeGUI.props.baseProps.value;
 
-
+							/*
 							if (gob.activeGUI.props.baseProps.actionFunc) {
 								gob.callbacks[gob.activeGUI.props.baseProps.actionFunc](gob.activeGUI.props.baseProps.value);
 							}
+							*/
 						}
 
 					break;
@@ -1140,6 +1258,9 @@ j$(function() {
 				
 
 			}
+
+			gob.performAction(gob.activeGUI.props.baseProps, mouseUp);
+
 
 			if ( (!gob.lockOn) || (mouseUp) ) {
 				gob.lockOn = true;
@@ -1161,7 +1282,7 @@ j$(function() {
 
 		var i;
 		var res;
-		var isList
+		var isList;
 
 		if (rootObj.childArr.length == 0) {
 			return rootObj.props.value;
@@ -1243,9 +1364,9 @@ j$(function() {
     			iLerpVal = 1.0-lerpVal;
 
 
-    			cl.h = Math.floor(  (iLerpVal*startCol.Color.Hue + lerpVal*endCol.Color.Hue)*360.0  );
-    			cl.c = Math.floor(  (iLerpVal*startCol.Color.Saturation + lerpVal*endCol.Color.Saturation)*100.0  );
-    			cl.l = Math.floor(  (iLerpVal*startCol.Color.Lightness + lerpVal*endCol.Color.Lightness)*100.0  );
+    			cl.h = Math.floor(  (iLerpVal*startCol.Hue + lerpVal*endCol.Hue)*360.0  );
+    			cl.c = Math.floor(  (iLerpVal*startCol.Saturation + lerpVal*endCol.Saturation)*100.0  );
+    			cl.l = Math.floor(  (iLerpVal*startCol.Lightness + lerpVal*endCol.Lightness)*100.0  );
 
 
     			value = cl.toRGB();
@@ -1263,6 +1384,211 @@ j$(function() {
     	
 
     }
+
+
+    gob.genPicker = function() {
+
+
+
+
+
+    	var firstTime = true;
+
+		if (gob.canvData2) {
+			firstTime = false;
+		}
+		else {
+			gob.canvData2 = {}
+			gob.canvData2.canvas = document.getElementById('canvas2');
+			gob.canvData2.canvasWidth = gob.canvData2.canvas.width;
+			gob.canvData2.canvasHeight = gob.canvData2.canvas.height;
+			gob.canvData2.ctx = gob.canvData2.canvas.getContext('2d');
+			gob.canvData2.imageData = gob.canvData2.ctx.getImageData(0, 0, gob.canvData2.canvasWidth, gob.canvData2.canvasHeight);
+			gob.canvData2.buf = new ArrayBuffer(gob.canvData2.imageData.data.length);
+			gob.canvData2.buf8 = new Uint8ClampedArray(gob.canvData2.buf);
+			gob.canvData2.data = new Uint32Array(gob.canvData2.buf);
+		}
+		
+
+	    var canvas = 		gob.canvData2.canvas;
+	    var canvasWidth  = 	gob.canvData2.canvasWidth;
+	    var canvasHeight = 	gob.canvData2.canvasHeight;
+	    var ctx = 			gob.canvData2.ctx;
+	    var imageData = 	gob.canvData2.imageData;
+	    var buf = 			gob.canvData2.buf;
+	    var buf8 = 			gob.canvData2.buf8;
+	    var data = 			gob.canvData2.data;
+
+
+
+
+
+
+
+	    /*
+        var canvas = document.getElementById('canvas2');
+        var canvasWidth  = canvas.width;
+        var canvasHeight = canvas.height;
+        var ctx = canvas.getContext('2d');
+        var imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+        var buf = new ArrayBuffer(imageData.data.length);
+        var buf8 = new Uint8ClampedArray(buf);
+        var data = new Uint32Array(buf);
+        */
+
+        var value;
+        var o;
+        var n;
+        var m;
+        var q;
+        var myArr = [0,0,0];
+        var lerpVal;
+
+        var xv;
+        var yv;
+
+        var xvAbs;
+        var yvAbs;
+
+        var qmodH = [0,1,1];
+        var qmodC = [2,0,2];
+        var qmodL = [1,2,0];
+
+        var cl = new CIELCh(0,0,0);
+
+
+        if (firstTime) {
+        	for (n = 0; n < canvasHeight; n++) {
+        	    for (m = 0; m < canvasWidth; m++) {
+
+        	        data[(n) * canvasWidth + m] =
+        	            (255   << 24) |
+        	            ((m/4) << 16) |
+        	            ((m/4) <<  8) |
+        	             (m/4);
+        	    }
+        	}
+        }
+        
+
+
+        for (q = 0; q < 3; q++) {
+
+            for (o = 0; o < 32; o++) {
+                myArr[0] = o;
+                for (n = 0; n < 32; n++) {
+                    myArr[1] = n;
+                    for (m = 0; m < 32; m++) {
+                        myArr[2] = m;
+
+
+                        if (q < 3) {
+                            cl.h = myArr[ qmodH[q] ]*360.0/32.0;
+                            cl.c = myArr[ qmodC[q] ]*100.0/31.0;
+                            cl.l = myArr[ qmodL[q] ]*100.0/31.0;
+                        }
+
+
+						xv = (o)*32+n;
+						yv = (m+q*32);
+
+						/*
+						xvAbs = Math.abs(xv-gob.palX);
+						yvAbs = Math.abs(yv-gob.palY);
+
+
+						
+						if (xvAbs < 20 && yvAbs < 20) {
+
+							if ((yvAbs > 17) || (xvAbs > 17)) {
+								cl.h = 0.0;
+								cl.c = 0.0;
+								cl.l = 100.0;
+							}
+
+							
+						}
+						*/
+
+						/*
+						if (
+							(
+								(xvAbs > 13) &&
+								(xvAbs < 16)
+							) ||
+							(
+								(yvAbs > 13) &&
+								(yvAbs < 16)
+							)
+							
+
+						) {
+							cl.h = 0.0;
+							cl.c = 0.0;
+							cl.l = 100.0;
+						}
+						*/
+
+
+
+                        value = cl.toRGB();
+
+
+                        data[yv * canvasWidth + xv] =
+                            (255   << 24) |
+                            (value.r << 16) |
+                            (value.g <<  8) |
+                             value.b;
+
+                    }
+                }
+            }
+        }
+
+        
+
+        imageData.data.set(buf8);
+        ctx.putImageData(imageData, 0, 0);
+
+
+
+        if (gob.palTexture2) {
+
+        }
+        else {
+        	gob.palTexture2 = new THREE.Texture(canvas);
+        	gob.palTexture2.minFilter = THREE.LinearFilter;
+        	gob.palTexture2.magFilter = THREE.LinearFilter;
+        }
+
+        gob.palTexture2.needsUpdate = true;
+
+        gob.shaders.palFromTex2Shader.uniforms.u_PalPos.value.x = gob.palX;
+        gob.shaders.palFromTex2Shader.uniforms.u_PalPos.value.y = gob.palY;
+
+        gob.renderToTarget(
+        	"palFromTex2Shader",
+        	gob.renderTargets.pal2RT,
+        	[
+        		gob.palTexture2
+        	]
+        );
+
+        ctx.beginPath();
+        ctx.lineWidth="2";
+        ctx.strokeStyle="magenta";
+        ctx.rect(gob.palX-19,gob.palY-19,38,38); 
+        ctx.stroke();
+
+
+
+        gob.isRendering = true;
+
+
+
+    }
+
+
 
 	gob.updatePalCanv = function() {
 
@@ -1335,8 +1661,7 @@ j$(function() {
 	    
 
 	    for (m = 0; m < grads.childArr.length; m++) {
-
-	    	myobj = gob.objFromNode( gob.findLabel(grads.childArr[m],"Steps") );
+	    	myobj = gob.objFromNode( grads.childArr[m] );//gob.findLabel(grads.childArr[m],"Steps") );
 	    	gob.createGrad(m, myobj, data );
 	    }
 
@@ -1345,30 +1670,30 @@ j$(function() {
 	    ctx.putImageData(imageData, 0, 0);
 
 
-	    if (gob.palTexture) {
+		if (gob.palTexture) {
 
-	    }
-	    else {
-	    	gob.palTexture = new THREE.Texture(canvas);
-	    	gob.palTexture.minFilter = THREE.LinearFilter; 
-	    	gob.palTexture.magFilter = THREE.LinearFilter;
-	    }
+		}
+		else {
+			gob.palTexture = new THREE.Texture(canvas);
+			gob.palTexture.minFilter = THREE.LinearFilter; 
+			gob.palTexture.magFilter = THREE.LinearFilter;
+		}
 
-	    gob.palTexture.needsUpdate = true;
+		gob.palTexture.needsUpdate = true;
 
-	    gob.renderToTarget(
-	    	"palFromTexShader",
-	    	gob.renderTargets.palRT,
-	    	[
-	    		gob.palTexture
-	    	]
-	    );
+		gob.renderToTarget(
+			"palFromTexShader",
+			gob.renderTargets.palRT,
+			[
+				gob.palTexture
+			]
+		);
 
-	    var tempData = gob.canvData.canvas.toDataURL().substring(22);
+	    var tempData = gob.canvData.canvas.toDataURL().split(',')[1];//.substring(22);
 	    //0123456789012345678901
 		//data:image/png;base64,
 
-	    gob.sendMessage({imgData: tempData});
+	    gob.sendMessage(tempData);
 	}
 
 
@@ -1472,7 +1797,7 @@ j$(function() {
 
 		}
 		else {
-			gob.activeGUI.props.outlineMatId = enums.materials.bluegray;
+			gob.activeGUI.props.outlineMatId = enums.materials.BlueGray;
 		}
 
 		gob.activeGUI = res;
@@ -1482,7 +1807,7 @@ j$(function() {
 		}
 		else {
 
-			gob.activeGUI.props.outlineMatId = enums.materials.gold;
+			gob.activeGUI.props.outlineMatId = enums.materials.Gold;
 		}
 
 		if (newParent == 0) {
@@ -1608,7 +1933,7 @@ j$(function() {
 
 		gob.initScene();
 
-		j$(document).mousemove(function(e){
+		j$("#container").mousemove(function(e){
 
 			var x = ((e.pageX/gob.bufferWidth)-0.5)*2.0;
 			var y = -((e.pageY/gob.bufferHeight)-0.5)*2.0;
@@ -1667,6 +1992,9 @@ j$(function() {
 			gob.shaders.lightingShader.uniforms.u_MouseCoords.value.x = x;
 			gob.shaders.lightingShader.uniforms.u_MouseCoords.value.y = y;
 
+			gob.shaders.pickerShader.uniforms.u_MouseCoords.value.x = x;
+			gob.shaders.pickerShader.uniforms.u_MouseCoords.value.y = y;
+
 			//gob.shaders.textShader.uniforms.u_MouseCoords.value.x = e.pageX;
 			//gob.shaders.textShader.uniforms.u_MouseCoords.value.y = e.pageY;
 			//gob.shaders.bgShader.uniforms.u_MouseCoords.value.x = e.pageX;
@@ -1680,7 +2008,33 @@ j$(function() {
 
 
 		});
-		j$(document).mousedown(function(e){
+
+		j$("#canvas2").mouseup(function(e){
+
+			var newX = Math.floor( (e.pageX-this.offsetLeft)/32.0 )*32.0 + 16.0;
+			var newY = Math.floor( (e.pageY-this.offsetTop)/32.0 )*32.0 + 16.0;
+
+			if (gob.palX == newX && gob.palY == newY) {
+				gob.palX = gob.invalidValue;
+				gob.palY = gob.invalidValue;
+			}
+			else {
+				gob.palX = newX;
+				gob.palY = newY;
+			}
+
+			
+
+			gob.genPicker();
+
+			
+
+
+
+			//console.log(gob.palX, gob.palY);
+		});
+
+		j$("#container").mousedown(function(e){
 			
 			var wRatio = e.pageX/gob.bufferWidth;
 			var hRatio = e.pageY/gob.bufferHeight;
@@ -1775,7 +2129,7 @@ j$(function() {
 			
 		});
 
-		j$(document).mouseup(function(e){
+		j$("#container").mouseup(function(e){
 			
 			var wRatio = e.pageX/gob.bufferWidth;
 			var hRatio = e.pageY/gob.bufferHeight;
@@ -1821,21 +2175,45 @@ j$(function() {
 
 		j$(document).mousewheel(function(event, delta, deltaX, deltaY) {
 
-			//gob.scrollX += deltaX;
-			
 
-			//if (gob.shiftDown) {
-				zoom += deltaY/gob.scrollSpeed;
+			if (gob.palX != gob.invalidValue) {
+				
 
-				if (zoom < 0.25) {
-					zoom = 0.25;
+				if (gob.shiftDown) {
+					
+					gob.palY += deltaX*32.0;
+
+
+					if (gob.palY < 16.0) {
+						gob.palY = 16.0;
+					}  
+					if (gob.palY > 80.0) {
+						gob.palY = 80.0;
+					}
 				}
-			/*}
-			else {
-				gob.scrollY += deltaY;
-			}*/
+				else {
+					gob.palX += deltaY*32.0;
 
+					if (gob.palX < 16.0) {
+						gob.palX = 16.0;
+					}  
+					if (gob.palX > 1008.0) {
+						gob.palX = 1008.0;
+					}
+				}
+
+				
+
+				gob.genPicker();
+			}
 			
+
+			/*
+			zoom += deltaY/gob.scrollSpeed;
+
+			if (zoom < 0.25) {
+				zoom = 0.25;
+			}
 
 			if (gob.scrollY > gob.maxLayers) {
 				//gob.scrollY = gob.maxLayers;
@@ -1844,6 +2222,8 @@ j$(function() {
 			gob.isScrolling = 15;
 			gob.updateBaseRT = true;
 			gob.isRendering = true;
+
+			*/
 			
 
 		});
@@ -1867,6 +2247,14 @@ j$(function() {
 			var ind;
 
 			switch (code) {
+
+				case 27: //escape
+					if (gob.palX != gob.invalidValue) {
+						gob.palX = gob.invalidValue;
+						gob.genPicker();
+					}
+				break;
+
 				case 16: //shift
 					gob.shiftDown = false;
 				break;
@@ -2001,8 +2389,6 @@ j$(function() {
 		});
 
 
-		//gob.sendMessage({x:555});
-
 
 		gob.animate();
 	});
@@ -2084,6 +2470,12 @@ j$(function() {
 		gob.renderTargets.palRT = new THREE.WebGLRenderTarget( 256, 256, {
 			minFilter: THREE.LinearFilter,
 			magFilter: THREE.LinearFilter, 
+			format: THREE.RGBAFormat
+		} );
+
+		gob.renderTargets.pal2RT = new THREE.WebGLRenderTarget( 32, 32, {
+			minFilter: THREE.NearestFilter,
+			magFilter: THREE.NearestFilter, 
 			format: THREE.RGBAFormat
 		} );
 
@@ -2244,7 +2636,9 @@ j$(function() {
 		//curMesh.geometry.tangentsNeedUpdate = true;
 	}
 	
-	gob.drawTextArea = function(obj, curMesh, calcHeight) {
+	gob.drawTextArea = function(objB, curMesh, calcHeight) {
+
+		var obj = objB.props;
 
 		var curShaders;
 		var curShader;
@@ -2308,6 +2702,10 @@ j$(function() {
 		var emptyMat;
 		var filledMat;
 		var outMat;
+
+		var tempH;
+		var tempS;
+		var tempL;
 
 		for (i = 0; i < lineArr.length; i++) {
 			wordArr.push(lineArr[i].split(' '));
@@ -2448,7 +2846,7 @@ j$(function() {
 				outMat = obj.outlineMatId;
 				if (  obj.baseProps.value == 1.0 && isNode[obj.baseProps.type] ) {
 					//filledMat = obj.selMatId;
-					outMat = enums.materials.skyblue;
+					outMat = enums.materials.SkyBlue;
 				}
 
 				if (obj.outlineMatId != emptyMat) {
@@ -2457,7 +2855,7 @@ j$(function() {
 
 				
 
-				if (obj.baseProps.type == enums.types.color || obj.baseProps.type == enums.types.gradient) {
+				if (obj.baseProps.type == enums.types.gradientStep || obj.baseProps.type == enums.types.gradientStepList) {
 					tempValue = 1.0;
 
 				}
@@ -2465,8 +2863,17 @@ j$(function() {
 					tempValue = obj.baseProps.value;
 				}
 
-				if (obj.baseProps.type == enums.types.gradient) {
-					filledMat = obj.baseProps.ind;
+				if (obj.baseProps.type == enums.types.gradientStepList) {
+					filledMat = enums.materials[obj.baseProps.label] ;//[obj.baseProps.ind];
+				}
+				if (obj.baseProps.type == enums.types.gradientStep) {
+					
+
+					tempH = Math.floor(objB.props.baseChildArr[0].props.value*31.0);
+					tempS = Math.floor(objB.props.baseChildArr[1].props.value*31.0);
+					tempL = Math.floor(objB.props.baseChildArr[2].props.value*31.0);
+
+					filledMat = (32768)|(tempH<<10)|(tempS<<5)|(tempL);
 				}
 
 
@@ -2475,10 +2882,10 @@ j$(function() {
 			else {
 				
 
-				emptyMat = enums.materials.gold;
+				emptyMat = enums.materials.Gold;
 
 				//if (  obj.baseProps.value == 1.0 && isNode[obj.baseProps.type] ) {	
-				//	emptyMat = enums.materials.gold;
+				//	emptyMat = enums.materials.Gold;
 				//}
 			}
 
@@ -2942,7 +3349,8 @@ j$(function() {
 							gob.renderTargets.aoRT,
 							gob.renderTargets.layerRT,
 							gob.renderTargets.extrudeRT,
-							gob.renderTargets.palRT
+							gob.renderTargets.palRT,
+							gob.palTexture2
 						]
 					);
 
@@ -2975,6 +3383,13 @@ j$(function() {
 
 				//gob.renderTargets.baseRT
 				//renderer.render( scene, camera );
+
+
+				if (gob.palX != gob.invalidValue) {
+					gob.bigPicker();	
+				}
+
+
 			}
 
 			gob.mouseClicked = false;
@@ -3012,6 +3427,12 @@ j$(function() {
 	gob.debugTexture = function() {
 		meshFSQ.material = gob.materials["debugShader"];
 		gob.shaders["debugShader"].uniforms.u_Texture0.value = gob.debugTex;
+		renderer.render( rtScene, camera );
+	}
+
+	gob.bigPicker = function() {
+		meshFSQ.material = gob.materials["pickerShader"];
+		gob.shaders["pickerShader"].uniforms.u_Texture0.value = gob.renderTargets.pal2RT;
 		renderer.render( rtScene, camera );
 	}
 
@@ -3068,6 +3489,9 @@ j$(function() {
 
 	gob.initEnums = function() {
 		var i;
+		var j;
+		var count;
+
 
 		for (i = 0; i < 256; i++) {
 			isNode[i] = true;
@@ -3075,6 +3499,27 @@ j$(function() {
 
 		isNode[enums.types.number] = false;
 		isNode[enums.types.bool] = false;
+
+
+		for (i in enums) {
+
+			if ( enums.hasOwnProperty(i) ) {
+				count = 0;
+				enumStrings[i] = [];
+				for (j in enums[i]) {
+					if ( enums[i].hasOwnProperty(j) ) {
+						enumStrings[i].push(j);
+					}
+
+					
+				}
+			}
+
+			
+		}
+
+		gob.enumStrings = enumStrings;
+
 	}
 	gob.guiFromJSON = function(rootObj, mBG, mText) {
 
@@ -3085,13 +3530,36 @@ j$(function() {
 		var curStr;
 		
 
-		rootObj.guiData = createNode( [gob.styleSheets.defContV, {baseProps: {label:"",type:enums.types.untyped,value:0} }], []);
-		//rootObj.guiData = createNode( [gob.styleSheets.defContV, {baseProps:rootObj.props}], []);
-		//rootObj.guiData = createNode( {doClone:gob.styleSheets.defContV,noClone:{baseProps:rootObj.props}}, []);
+		var myGUIDat = createNode(
+			[
+				gob.styleSheets.defContV,
+				{baseProps: {label:"",type:enums.types.untyped,value:0},baseChildArr:[]}
+			],
+			[
+
+			]
+		);
+
+		Object.defineProperty(
+			rootObj,
+			'guiData',
+			{
+				configurable:true,
+				writeable:true,
+				get: function() {
+					return myGUIDat;
+				}
+			}
+		);
+
+
+		rootObj.guiData = myGUIDat;
+		
 		mBG.maxInd += 8;
 
 
 		for (i = 0; i < rootObj.childArr.length; i++) {
+
 
 			curStr = rootObj.childArr[i].props.label;
 
@@ -3100,7 +3568,13 @@ j$(function() {
 
 
 			rootObj.guiData.childArr.push(
-				createNode( {doClone:[gob.styleSheets.defContHG,{str:curStr}],noClone:{baseProps:rootObj.childArr[i].props} }, [])
+				createNode(
+					{
+						doClone:[gob.styleSheets.defContHG,{str:curStr}],
+						noClone:{baseProps:rootObj.childArr[i].props,
+						baseChildArr:rootObj.childArr[i].childArr}
+					}, []
+				)
 			);
 		}
 
@@ -3241,6 +3715,47 @@ j$(function() {
 
 	}
 
+	gob.performAction = function(baseProps, mouseUp) {
+
+		var val = baseProps.value;
+		var msgVal = {};
+
+		switch(baseProps.label) {
+			case "Hue":
+			case "Saturation":
+			case "Lightness":
+			case "Power":
+			case "Position":
+				gob.updatePalCanv();
+			break;
+
+			case "Down Samp":
+				if (mouseUp) {
+					if (val == 1.0) {
+						gob.superSample = true;
+					}
+					else {
+						gob.superSample = false;
+					}
+				}
+			break;
+		}
+
+		if ( isNode[baseProps.type] ) {
+			
+		}
+		else {
+			if (mouseUp) {
+				gob.packData(gob.mainDat,msgVal,0);
+				gob.sendMessage(msgVal);
+
+				console.log("JSON Sent");
+			}
+			
+			
+		}
+	}
+
 
 	gob.wf("initScene", function() {
 
@@ -3337,11 +3852,11 @@ j$(function() {
 			hTextAlign:		enums.align.left,
 			vTextAlign:		enums.align.top,
 
-			bgMatId: 			enums.materials.bluegray,
-			textMatId: 			enums.materials.gold,
-			fillMatId: 			enums.materials.skyblue,
-			outlineMatId: 		enums.materials.bluegray,
-			selMatId: 			enums.materials.skyblue,
+			bgMatId: 			enums.materials.BlueGray,
+			textMatId: 			enums.materials.Gold,
+			fillMatId: 			enums.materials.SkyBlue,
+			outlineMatId: 		enums.materials.BlueGray,
+			selMatId: 			enums.materials.SkyBlue,
 
 			//curValue: 		0.0,
 
@@ -3386,25 +3901,12 @@ j$(function() {
 		],false);
 		
 
-		gob.callbacks.updatePalette = function(val) {
-			gob.updatePalCanv();
-		}
-		gob.callbacks.superSample = function(val) { 
-						
-			if (val == 1.0) {
-				gob.superSample = true;
-			}
-			else {
-				gob.superSample = false;
-			}
-		}
 
-
-
+		/*
 		gob.mainDat = createNode( 
 
 			{
-				label:"",
+				label:"root",
 				type: enums.types.untypedList,
 				value: 0
 			},
@@ -3417,67 +3919,98 @@ j$(function() {
 
 				createNode( {label:"Settings", type:enums.types.untypedList}, [
 
-					createNode( {label:"Down Samp", type:enums.types.bool, actionFunc:"superSample" }, [])
+					createNode( {label:"Down Samp", type:enums.types.bool }, [])
 
 				])
 
 			]
 		);
+		*/
 
 
+		//var ro = {};
+		//var roup = {};
+		//gob.packData(gob.mainDat,ro,0);
+		///gob.unpackData(ro,roup,true);
 		
-
+		// console.log( JSON.stringify(ro, null, "\t") );
+		// console.log("------------");
+		// console.log("------------");
+		// console.log("------------");
+		// console.log("------------");
 		
-		gob.mainRoot = createNode( 
+		// console.log( JSON.stringify(roup, null, "\t") );
+		// console.log("------------");
+		// console.log("------------");
+		// console.log("------------");
+		// console.log("------------");
+		// console.log( JSON.stringify(gob.mainDat, null, "\t") );
 
 
-			[
-				gob.styleSheets.defContH,
-				{
-					resultWidth:gob.bufferWidth,
-					resultHeight:gob.bufferHeight,
-					x:0,
-					y:0,
-					baseProps:{type:enums.types.untypedList, label: "", value: 0}
-					//,str:"Lorem ipsum dolor sit amet, pro nostrum ullamcorper at\nLorem ipsum dolor sit amet, pro nostrum ullamcorper at"
-				}
-			],
 
-			[]
+
+		gob.loadJSON("../../data/lastJSONBuffer.txt", function(jdat) {
+			gob.mainDat = {};
+
+			gob.unpackData(jdat, gob.mainDat, true);
+
+
+			gob.mainRoot = createNode( 
+
+
+				[
+					gob.styleSheets.defContH,
+					{
+						resultWidth:gob.bufferWidth,
+						resultHeight:gob.bufferHeight,
+						x:0,
+						y:0,
+						baseProps:{type:enums.types.untypedList, label: "", value: 0},
+						baseChildArr:[]
+						//,str:"Lorem ipsum dolor sit amet, pro nostrum ullamcorper at\nLorem ipsum dolor sit amet, pro nostrum ullamcorper at"
+					}
+				],
+
+				[]
+				
+
+			);
+
+			
+			
+			
+			meshBG.maxInd = 0;
+			meshText.maxInd = 0;
+
+			gob.guiFromJSON(gob.mainDat, meshBG, meshText);
+			gob.updateGUIStack();
+			gob.layoutGUI(gob.mainRoot,true);
+
+
+			
+			scene.add( meshText );
+			scene.add( meshBG );
+			
+			
+			container.appendChild( renderer.domElement );
+			//stats = new Stats();
+			//stats.domElement.style.position = 'absolute';
+			//stats.domElement.style.bottom = '0px';
+			//container.appendChild( stats.domElement );
+
+
+			gob.genPicker();
+
+			gob.updatePalCanv();
+
 			
 
-		);
-		
-		
-		meshBG.maxInd = 0;
-		meshText.maxInd = 0;
 
-		gob.guiFromJSON(gob.mainDat, meshBG, meshText);
-		gob.updateGUIStack();
-		gob.layoutGUI(gob.mainRoot,true);
+			gob.onWindowResize();
+			window.addEventListener( 'resize', gob.onWindowResize, false );
 
 
-
-		
-		scene.add( meshText );
-		scene.add( meshBG );
-		
-		
-		container.appendChild( renderer.domElement );
-		//stats = new Stats();
-		//stats.domElement.style.position = 'absolute';
-		//stats.domElement.style.bottom = '0px';
-		//container.appendChild( stats.domElement );
-
-
-		gob.updatePalCanv();
-
-		
-
-
-		gob.onWindowResize();
-		window.addEventListener( 'resize', gob.onWindowResize, false );
-
+		});
 
 	});
 
