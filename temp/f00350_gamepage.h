@@ -9,18 +9,23 @@ GamePage::GamePage ()
 	}
 void GamePage::init (Singleton * _singleton, int _thisPageId, FIVector4 * _offsetInUnits)
                                                                                      {
-		int i;
-
 		thisPageId = _thisPageId;
-
 		singleton = _singleton;
-
 		usingPoolId = -1;
 
+
+		int i;
+
+		
 		threshVal = 140;
-
-
 		threadRunning = false;
+
+		paramsPerEntry = 16;
+		paramArrLen = singleton->gameGeom.size();
+		totParams = paramArrLen*paramsPerEntry;
+		
+
+		paramArr = new float[totParams];
 
 
 		maxHeightInUnits = (singleton->maxHeightInUnits);
@@ -63,12 +68,20 @@ void GamePage::init (Singleton * _singleton, int _thisPageId, FIVector4 * _offse
 
 
 
-		worldMin.copyFrom(&offsetInUnits);
-		worldMax.copyFrom(&offsetInUnits);
-		worldMin.addXYZ( -totLenVisO2 );
-		worldMax.addXYZ(  totLenVisO2 );
-		worldMin.multXYZ((float)unitSizeInPixels);
-		worldMax.multXYZ((float)unitSizeInPixels);
+		worldMinVisInPixels.copyFrom(&offsetInUnits);
+		worldMaxVisInPixels.copyFrom(&offsetInUnits);
+		worldMinVisInPixels.addXYZ( -totLenVisO2 );
+		worldMaxVisInPixels.addXYZ(  totLenVisO2 );
+		worldMinVisInPixels.multXYZ((float)unitSizeInPixels);
+		worldMaxVisInPixels.multXYZ((float)unitSizeInPixels);
+
+		worldMinBufInPixels.copyFrom(&offsetInUnits);
+		worldMaxBufInPixels.copyFrom(&offsetInUnits);
+		worldMinBufInPixels.addXYZ( -totLenO2 );
+		worldMaxBufInPixels.addXYZ(  totLenO2 );
+		worldMinBufInPixels.multXYZ((float)unitSizeInPixels);
+		worldMaxBufInPixels.multXYZ((float)unitSizeInPixels);
+
 
 
 		worldUnitMin.copyFrom(&offsetInUnits);
@@ -259,7 +272,7 @@ void GamePage::createSimplexNoise ()
 
 
 
-		
+		/*
 		if (mustNotBeFull) {
 			isFull = false;
 		}
@@ -275,11 +288,11 @@ void GamePage::createSimplexNoise ()
 
 			curState = E_STATE_LENGTH;
 		}
-		else {
+		else {*/
 
 			fillState = E_FILL_STATE_PARTIAL;
 			curState = E_STATE_CREATESIMPLEXNOISE_END;
-		}
+		//}
 
 		threadRunning = false;
 
@@ -371,10 +384,19 @@ void GamePage::generateVolume ()
 			singleton->setShaderTexture3D(gpuRes->volIDLinear, 1);
 			singleton->setShaderTexture(singleton->lookup2to3ID, 2);
 
+			
 			singleton->setShaderFloat("bufferedPageSizeInUnits", bufferedPageSizeInUnits);
 			singleton->setShaderFloat("threshVal", (float)threshVal);
-			singleton->setShaderfVec3("worldMin", &(worldMin));
-			singleton->setShaderfVec3("worldMax", &(worldMax));
+
+			singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
+			singleton->setShaderfVec3("worldMinVisInPixels", &(worldMinVisInPixels));
+			singleton->setShaderfVec3("worldMaxVisInPixels", &(worldMaxVisInPixels));
+			singleton->setShaderfVec3("worldMinBufInPixels", &(worldMinBufInPixels));
+			singleton->setShaderfVec3("worldMaxBufInPixels", &(worldMaxBufInPixels));
+
+			singleton->setShaderFloat("paramsPerEntry", (float)paramsPerEntry);
+			singleton->setShaderFloat("paramArrLen", (float)paramArrLen);
+			singleton->setShaderArray("paramArr", paramArr, totParams);
 
 			singleton->drawFSQuad(1.0f);
 
@@ -391,11 +413,15 @@ void GamePage::generateVolume ()
 			singleton->sampleFBO("volGenFBO");
 			glClearColor(0.0f,0.0f,0.0f,0.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			singleton->setShaderfVec3("worldMin", &(worldMin));
-			singleton->setShaderfVec3("worldMax", &(worldMax));
-
 
 			singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
+			singleton->setShaderfVec3("worldMinVisInPixels", &(worldMinVisInPixels));
+			singleton->setShaderfVec3("worldMaxVisInPixels", &(worldMaxVisInPixels));
+			singleton->setShaderfVec3("worldMinBufInPixels", &(worldMinBufInPixels));
+			singleton->setShaderfVec3("worldMaxBufInPixels", &(worldMaxBufInPixels));
+
+
+			
 			
 
 			glCallList(singleton->volTris);

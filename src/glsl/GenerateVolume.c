@@ -6,9 +6,13 @@ uniform sampler2D Texture2; //2d to 3d coords
 
 uniform vec2 resolution;
 uniform float bufferedPageSizeInUnits;
-uniform vec3 worldMin;
-uniform vec3 worldMax;
 uniform float threshVal;
+uniform float bufferMult;
+
+uniform vec3 worldMinVisInPixels;
+uniform vec3 worldMaxVisInPixels;
+uniform vec3 worldMinBufInPixels;
+uniform vec3 worldMaxBufInPixels;
 
 varying vec2 TexCoord0;
 

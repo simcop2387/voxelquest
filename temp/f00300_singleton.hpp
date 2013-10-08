@@ -137,6 +137,8 @@ public:
 	Timer myTimer;
 	GameWorld* gw;
 
+	std::vector<GameGeom*> gameGeom;
+
 
 	Singleton() {
 		volTris = NULL;
@@ -148,6 +150,8 @@ public:
 	void init(int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer* _myWS) {
 
 		pushTrace("Singleton init");
+
+		int i;
 
 		rootObj = NULL;
 
@@ -187,7 +191,7 @@ public:
 		isPanning = false;
 		softMode = false;
 		reportPagesDrawn = false;
-		isBare = false;
+		isBare = true;
 		grassHeight = 1.0/128.0;
 
 
@@ -248,7 +252,7 @@ public:
 		
 
 
-		int i;
+		
 		mbDown=false;
 		lbDown=false;
 		rbDown=false;
@@ -283,6 +287,15 @@ public:
 	    mouseY = 0.0f;
 	    mouseXUp = 0.0f;
 	    mouseYUp = 0.0f;
+
+
+
+
+	    for (i = 0; i < 16; i++) {
+	    	gameGeom.push_back(new GameGeom());
+	    	gameGeom.back()->initRand();
+	    }
+
 
 		createVTList();
 		createGrassList();
@@ -1064,49 +1077,30 @@ public:
 	    
 	}
 
+	void setShaderArray(string paramName, float* x, int count) {
+		shaderMap[curShader]->setShaderArray(paramName, x, count);
+	}
 	void setShaderFloat(string paramName, float x) {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x);
-
-	        shaderMap[curShader]->setShaderFloat(paramName, x);
-	    }
+		shaderMap[curShader]->setShaderFloat(paramName, x);
 	}
 	void setShaderfVec2(string paramName, FIVector4* v) {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
-	        shaderMap[curShader]->setShaderfVec2(paramName, v);
-	    }
+		shaderMap[curShader]->setShaderfVec2(paramName, v);
 	}
 	void setShaderVec2(string paramName, float x, float y) {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
-	        shaderMap[curShader]->setShaderVec2(paramName, x, y);
-	    }
+	    shaderMap[curShader]->setShaderVec2(paramName, x, y);
 	}
 	void setShaderVec3(string paramName, float x, float y, float z) {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
-	        shaderMap[curShader]->setShaderVec3(paramName, x, y, z);
-	    }
+	    shaderMap[curShader]->setShaderVec3(paramName, x, y, z);
 	}
 	void setShaderfVec3(string paramName, FIVector4* v) {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
-	        shaderMap[curShader]->setShaderfVec3(paramName, v);
-	    }
+	    shaderMap[curShader]->setShaderfVec3(paramName, v);
 	}
 
 	void setShaderVec4(string paramName, float x, float y, float z, float w) {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y,z,w);
-	        shaderMap[curShader]->setShaderVec4(paramName, x, y, z, w);
-	    }
+	    shaderMap[curShader]->setShaderVec4(paramName, x, y, z, w);
 	}
 	void setShaderfVec4(string paramName, FIVector4* v) {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
-	        shaderMap[curShader]->setShaderfVec4(paramName, v);
-	    }
+	    shaderMap[curShader]->setShaderfVec4(paramName, v);
 	}
 
 	void setShaderTexture(uint texID, int multitexNumber) {

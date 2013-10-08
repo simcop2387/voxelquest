@@ -6,8 +6,10 @@ uniform sampler2D Texture0;
 varying vec3 TexCoord0;
 varying vec3 TexCoord1;
 
-uniform vec3 worldMin;
-uniform vec3 worldMax;
+uniform vec3 worldMinVisInPixels;
+uniform vec3 worldMaxVisInPixels;
+uniform vec3 worldMinBufInPixels;
+uniform vec3 worldMaxBufInPixels;
 
 uniform float bufferMult;
 
@@ -270,9 +272,9 @@ void main() {
 
     vec3 worldPos;
 
-    worldPos.x = mix(worldMin.x, worldMax.x, curPos.x);
-    worldPos.y = mix(worldMin.y, worldMax.y, curPos.y);
-    worldPos.z = mix(worldMin.z, worldMax.z, curPos.z);
+    worldPos.x = mix(worldMinVisInPixels.x, worldMaxVisInPixels.x, curPos.x);
+    worldPos.y = mix(worldMinVisInPixels.y, worldMaxVisInPixels.y, curPos.y);
+    worldPos.z = mix(worldMinVisInPixels.z, worldMaxVisInPixels.z, curPos.z);
 
 
     vec2 heightVals = pack16(worldPos.z);

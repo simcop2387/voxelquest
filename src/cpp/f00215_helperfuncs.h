@@ -82,6 +82,7 @@ void popTrace() {
 	}
 }
 
+/*
 float distance(Vector3* v1, Vector3* v2) {
 	float val1 = v1->e[0] - v2->e[0];
 	float val2 = v1->e[1] - v2->e[1];
@@ -93,3 +94,4 @@ float distance(Vector3* v1, Vector3* v2) {
 	
 	//return length(v1-v2);
 }
+*/

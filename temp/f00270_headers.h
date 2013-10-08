@@ -182,6 +182,7 @@ public:
   WebSocketServer * myWS;
   Timer myTimer;
   GameWorld * gw;
+  std::vector <GameGeom*> gameGeom;
   Singleton ();
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer * _myWS);
   void sendPoolIdToFront (int id);
@@ -212,6 +213,7 @@ public:
   void unbindFBO ();
   void bindShader (string shaderName);
   void unbindShader ();
+  void setShaderArray (string paramName, float * x, int count);
   void setShaderFloat (string paramName, float x);
   void setShaderfVec2 (string paramName, FIVector4 * v);
   void setShaderVec2 (string paramName, float x, float y);
@@ -294,6 +296,10 @@ public:
   int iVolumeSize;
   uint * volData;
   uint * volDataLinear;
+  int paramsPerEntry;
+  int paramArrLen;
+  int totParams;
+  float * paramArr;
   int maxHeightInUnits;
   int totLenO2;
   int totLenVisO2;
@@ -303,8 +309,10 @@ public:
   float unitSizeInPixels;
   E_STATES curState;
   E_STATES nextState;
-  FIVector4 worldMin;
-  FIVector4 worldMax;
+  FIVector4 worldMinVisInPixels;
+  FIVector4 worldMaxVisInPixels;
+  FIVector4 worldMinBufInPixels;
+  FIVector4 worldMaxBufInPixels;
   FIVector4 worldUnitMin;
   FIVector4 worldUnitMax;
   E_FILL_STATE fillState;

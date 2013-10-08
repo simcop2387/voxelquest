@@ -14,6 +14,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		pushTrace("Singleton init");
 
+		int i;
+
 		rootObj = NULL;
 
 		lastImageBuffer.data = NULL;
@@ -52,7 +54,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		isPanning = false;
 		softMode = false;
 		reportPagesDrawn = false;
-		isBare = false;
+		isBare = true;
 		grassHeight = 1.0/128.0;
 
 
@@ -113,7 +115,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		
 
 
-		int i;
+		
 		mbDown=false;
 		lbDown=false;
 		rbDown=false;
@@ -148,6 +150,15 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    mouseY = 0.0f;
 	    mouseXUp = 0.0f;
 	    mouseYUp = 0.0f;
+
+
+
+
+	    for (i = 0; i < 16; i++) {
+	    	gameGeom.push_back(new GameGeom());
+	    	gameGeom.back()->initRand();
+	    }
+
 
 		createVTList();
 		createGrassList();
@@ -881,55 +892,37 @@ void Singleton::unbindShader ()
 	    }
 	    
 	}
+void Singleton::setShaderArray (string paramName, float * x, int count)
+                                                                   {
+		shaderMap[curShader]->setShaderArray(paramName, x, count);
+	}
 void Singleton::setShaderFloat (string paramName, float x)
                                                        {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x);
-
-	        shaderMap[curShader]->setShaderFloat(paramName, x);
-	    }
+		shaderMap[curShader]->setShaderFloat(paramName, x);
 	}
 void Singleton::setShaderfVec2 (string paramName, FIVector4 * v)
                                                             {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
-	        shaderMap[curShader]->setShaderfVec2(paramName, v);
-	    }
+		shaderMap[curShader]->setShaderfVec2(paramName, v);
 	}
 void Singleton::setShaderVec2 (string paramName, float x, float y)
                                                                {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
-	        shaderMap[curShader]->setShaderVec2(paramName, x, y);
-	    }
+	    shaderMap[curShader]->setShaderVec2(paramName, x, y);
 	}
 void Singleton::setShaderVec3 (string paramName, float x, float y, float z)
                                                                         {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
-	        shaderMap[curShader]->setShaderVec3(paramName, x, y, z);
-	    }
+	    shaderMap[curShader]->setShaderVec3(paramName, x, y, z);
 	}
 void Singleton::setShaderfVec3 (string paramName, FIVector4 * v)
                                                             {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
-	        shaderMap[curShader]->setShaderfVec3(paramName, v);
-	    }
+	    shaderMap[curShader]->setShaderfVec3(paramName, v);
 	}
 void Singleton::setShaderVec4 (string paramName, float x, float y, float z, float w)
                                                                                  {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y,z,w);
-	        shaderMap[curShader]->setShaderVec4(paramName, x, y, z, w);
-	    }
+	    shaderMap[curShader]->setShaderVec4(paramName, x, y, z, w);
 	}
 void Singleton::setShaderfVec4 (string paramName, FIVector4 * v)
                                                             {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
-	        shaderMap[curShader]->setShaderfVec4(paramName, v);
-	    }
+	    shaderMap[curShader]->setShaderfVec4(paramName, v);
 	}
 void Singleton::setShaderTexture (uint texID, int multitexNumber)
                                                               {

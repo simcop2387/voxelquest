@@ -1,4 +1,4 @@
-﻿Build started 9/23/2013 10:10:20 AM.
+﻿Build started 10/8/2013 12:18:03 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -184,45 +184,8 @@
          |            
          |  Load Successful          
          END          
-         Request from 127.0.0.1:54558: GET / HTTP/1.1
-         Cache-Control: no-cache
-         Connection: Upgrade
-         Host: 127.0.0.1:9980
-         Origin: http://localhost:8888
-         Pragma: no-cache
-         Sec-WebSocket-Extensions: x-webkit-deflate-frame
-         Sec-WebSocket-Key: ZrbMskOdFRCGfrqh8RY9Ug==
-         Sec-WebSocket-Version: 13
-         Upgrade: websocket
-         REQUEST HANDLER CREATED          
-         User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/29.0.1547.76 Safari/537.36
-         WebSocket connection established.
-                   
-         Valid JSON          
-                   
-                   
-         Valid JSON          
-                   
-                   
-         Valid JSON          
-                   
-         MOUSE DOWN          
-         MOUSE UP          
-         MOUSE DOWN          
-         MOUSE UP          
-         MOUSE DOWN          
-         MOUSE UP          
-         103          
-         103          
-         103          
-                   
-         Valid JSON          
-                   
-         19          
-         Save Successful          
-         Save Successful          
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:02:17.02
+Time Elapsed 00:00:10.23

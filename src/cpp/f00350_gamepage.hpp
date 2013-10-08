@@ -19,7 +19,11 @@ public:
 	uint* volData;
 	uint* volDataLinear;
 	
-	
+
+	int paramsPerEntry;
+	int numEntries;
+	int totParams;
+	float* paramArr;
 
 	int maxHeightInUnits;
 	int totLenO2;
@@ -36,8 +40,11 @@ public:
 	E_STATES curState;
 	E_STATES nextState;
 
-	FIVector4 worldMin;
-	FIVector4 worldMax;
+	FIVector4 worldMinVisInPixels;
+	FIVector4 worldMaxVisInPixels;
+	FIVector4 worldMinBufInPixels;
+	FIVector4 worldMaxBufInPixels;
+
 
 	FIVector4 worldUnitMin;
 	FIVector4 worldUnitMax;
@@ -52,18 +59,23 @@ public:
 
 
 	void init(Singleton* _singleton, int _thisPageId, FIVector4* _offsetInUnits) {
-		int i;
-
 		thisPageId = _thisPageId;
-
 		singleton = _singleton;
-
 		usingPoolId = -1;
 
+
+		int i;
+
+		
 		threshVal = 140;
-
-
 		threadRunning = false;
+
+		paramsPerEntry = 14;
+		numEntries = singleton->gameGeom.size();
+		totParams = numEntries*paramsPerEntry;
+		
+
+		paramArr = new float[totParams];
 
 
 		maxHeightInUnits = (singleton->maxHeightInUnits);
@@ -106,12 +118,20 @@ public:
 
 
 
-		worldMin.copyFrom(&offsetInUnits);
-		worldMax.copyFrom(&offsetInUnits);
-		worldMin.addXYZ( -totLenVisO2 );
-		worldMax.addXYZ(  totLenVisO2 );
-		worldMin.multXYZ((float)unitSizeInPixels);
-		worldMax.multXYZ((float)unitSizeInPixels);
+		worldMinVisInPixels.copyFrom(&offsetInUnits);
+		worldMaxVisInPixels.copyFrom(&offsetInUnits);
+		worldMinVisInPixels.addXYZ( -totLenVisO2 );
+		worldMaxVisInPixels.addXYZ(  totLenVisO2 );
+		worldMinVisInPixels.multXYZ((float)unitSizeInPixels);
+		worldMaxVisInPixels.multXYZ((float)unitSizeInPixels);
+
+		worldMinBufInPixels.copyFrom(&offsetInUnits);
+		worldMaxBufInPixels.copyFrom(&offsetInUnits);
+		worldMinBufInPixels.addXYZ( -totLenO2 );
+		worldMaxBufInPixels.addXYZ(  totLenO2 );
+		worldMinBufInPixels.multXYZ((float)unitSizeInPixels);
+		worldMaxBufInPixels.multXYZ((float)unitSizeInPixels);
+
 
 
 		worldUnitMin.copyFrom(&offsetInUnits);
@@ -307,7 +327,7 @@ public:
 
 
 
-		
+		/*
 		if (mustNotBeFull) {
 			isFull = false;
 		}
@@ -323,11 +343,11 @@ public:
 
 			curState = E_STATE_LENGTH;
 		}
-		else {
+		else {*/
 
 			fillState = E_FILL_STATE_PARTIAL;
 			curState = E_STATE_CREATESIMPLEXNOISE_END;
-		}
+		//}
 
 		threadRunning = false;
 
@@ -398,6 +418,9 @@ public:
 
 	void generateVolume() {
 
+		int i;
+		int baseInd;
+
 		curState = E_STATE_GENERATEVOLUME_BEG;
 		
 		
@@ -405,6 +428,9 @@ public:
 
 		}
 		else {
+
+			// TODO: one shader, set flag
+
 			if (singleton->isBare) {
 				singleton->bindShader("GenerateVolumeBare");
 			}
@@ -414,15 +440,49 @@ public:
 
 
 
+			for (i = 0; i < numEntries; i++) {
+				baseInd = i*paramsPerEntry;
+
+				paramArr[baseInd + 0] = singleton->gameGeom[i]->boundsMinInPixels.getFX();
+				paramArr[baseInd + 1] = singleton->gameGeom[i]->boundsMinInPixels.getFY();
+				paramArr[baseInd + 2] = singleton->gameGeom[i]->boundsMinInPixels.getFZ();
+
+				paramArr[baseInd + 3] = singleton->gameGeom[i]->boundsMaxInPixels.getFX();
+				paramArr[baseInd + 4] = singleton->gameGeom[i]->boundsMaxInPixels.getFY();
+				paramArr[baseInd + 5] = singleton->gameGeom[i]->boundsMaxInPixels.getFZ();
+
+				paramArr[baseInd + 6] = singleton->gameGeom[i]->originInPixels.getFX();
+				paramArr[baseInd + 7] = singleton->gameGeom[i]->originInPixels.getFY();
+				paramArr[baseInd + 8] = singleton->gameGeom[i]->originInPixels.getFZ();
+
+				paramArr[baseInd + 9] = singleton->gameGeom[i]->powerPhi;
+				paramArr[baseInd + 10] = singleton->gameGeom[i]->powerTheta;
+				paramArr[baseInd + 11] = singleton->gameGeom[i]->thickness;
+				paramArr[baseInd + 12] = singleton->gameGeom[i]->upAxis;
+				paramArr[baseInd + 13] = singleton->gameGeom[i]->matId;
+
+				
+			}
+
+
 			singleton->bindFBO("volGenFBO");
 			singleton->setShaderTexture3D(gpuRes->volID, 0);
 			singleton->setShaderTexture3D(gpuRes->volIDLinear, 1);
 			singleton->setShaderTexture(singleton->lookup2to3ID, 2);
 
+			
 			singleton->setShaderFloat("bufferedPageSizeInUnits", bufferedPageSizeInUnits);
 			singleton->setShaderFloat("threshVal", (float)threshVal);
-			singleton->setShaderfVec3("worldMin", &(worldMin));
-			singleton->setShaderfVec3("worldMax", &(worldMax));
+
+			singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
+			singleton->setShaderfVec3("worldMinVisInPixels", &(worldMinVisInPixels));
+			singleton->setShaderfVec3("worldMaxVisInPixels", &(worldMaxVisInPixels));
+			singleton->setShaderfVec3("worldMinBufInPixels", &(worldMinBufInPixels));
+			singleton->setShaderfVec3("worldMaxBufInPixels", &(worldMaxBufInPixels));
+
+			singleton->setShaderFloat("paramsPerEntry", (float)paramsPerEntry);
+			singleton->setShaderFloat("numEntries", (float)numEntries);
+			singleton->setShaderArray("paramArr", paramArr, totParams);
 
 			singleton->drawFSQuad(1.0f);
 
@@ -439,11 +499,15 @@ public:
 			singleton->sampleFBO("volGenFBO");
 			glClearColor(0.0f,0.0f,0.0f,0.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			singleton->setShaderfVec3("worldMin", &(worldMin));
-			singleton->setShaderfVec3("worldMax", &(worldMax));
-
 
 			singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
+			singleton->setShaderfVec3("worldMinVisInPixels", &(worldMinVisInPixels));
+			singleton->setShaderfVec3("worldMaxVisInPixels", &(worldMaxVisInPixels));
+			singleton->setShaderfVec3("worldMinBufInPixels", &(worldMinBufInPixels));
+			singleton->setShaderfVec3("worldMaxBufInPixels", &(worldMaxBufInPixels));
+
+
+			
 			
 
 			glCallList(singleton->volTris);

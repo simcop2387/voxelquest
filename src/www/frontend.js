@@ -64,19 +64,20 @@ j$(function() {
 			gradient: 0
 		},
 		materials: {
-			BlueGray: 0,
+			/*BlueGray: 0,
 			Gold: 1,
 			Purple: 2,
 			SkyBlue: 3,
 			Silver: 4,
 			LightBlueGray: 5
+			*/
 		}
 	};
 
 	var enumStrings = {};
 
 
-	var gradArr = [];
+	//var gradArr = [];
 
 	
 
@@ -307,6 +308,9 @@ j$(function() {
 	var invalidValue = -999;
 
 	gob = {
+
+		lastNode: 0,
+
 		palX:1008,
 		palY:48,
 		invalidValue:invalidValue,
@@ -473,6 +477,7 @@ j$(function() {
 	};
 
 
+	/*
 	gradArr[enums.materials.BlueGray] = {
 		steps: [
 			{h:0.9, s:0.0, l:0.1, pow:0.5/gob.powMax, pos:0/255.0},
@@ -531,6 +536,7 @@ j$(function() {
 			{h:0.4, s:0.2, l:1.0, pow:0.5/gob.powMax, pos:255/255.0}
 		]
 	};
+	*/
 
 
 
@@ -1345,8 +1351,8 @@ j$(function() {
     	for (j = 0; j < baseObj.length; j++) {
 
     		jPrev = Math.max(j-1,0);
-    		prevPos = Math.floor(baseObj[jPrev].Position*255.0);
-    		curPos = Math.floor(baseObj[j].Position*255.0);
+    		prevPos = Math.floor(baseObj[jPrev].Position*256.0);
+    		curPos = Math.floor(baseObj[j].Position*256.0);
 
     		while ( (i < 256) && (i < curPos) ) {
 
@@ -1818,14 +1824,16 @@ j$(function() {
 		}
 
 		
-
+		if ( isNode[gob.activeGUI.props.baseProps.type] ) {
+			gob.lastNode = res;
+		}
 		
 
 		
 	}
 
 
-	gob.wf("initFinal", function() {
+	gob.wf("initScene", function() {
 		var curShader;
 		var i;
 
@@ -1851,53 +1859,6 @@ j$(function() {
 
 					gob.shaders[gob.shaderNames[i]] = {};
 					curShader = gob.shaders[gob.shaderNames[i]];
-
-
-					/*
-					switch (gob.shaderNames[i]) {
-						
-						case "debugShader":
-							curShader.transparent = false;
-						break;
-
-						case "heightShader":
-							curShader.transparent = false;
-						break;
-
-						case "normShader":
-							curShader.transparent = false;
-						break;
-
-						case "downscaleShader":
-							curShader.transparent = false;
-						break;
-
-						case "upscaleShader":
-							curShader.transparent = false;
-						break;
-
-						case "textShader":
-							curShader.transparent = false;
-						break;
-
-						case "bgShader":
-							curShader.transparent = false;
-						break;
-
-						case "layerShader":
-							curShader.transparent = false;
-						break;
-
-						case "aoShader":
-							curShader.transparent = false;
-						break;
-						case "lightingShader":
-							curShader.transparent = false;
-						break;
-
-
-					}
-					*/
 					curShader.transparent = false;
 					
 					
@@ -1927,470 +1888,7 @@ j$(function() {
 		}
 
 
-
-
-
-
-		gob.initScene();
-
-		j$("#container").mousemove(function(e){
-
-			var x = ((e.pageX/gob.bufferWidth)-0.5)*2.0;
-			var y = -((e.pageY/gob.bufferHeight)-0.5)*2.0;
-			var sx;
-			var sy;
-
-
-			var doPan = false;
-
-			if (gob.lastHit === 0) {
-				doPan = true;
-			}
-			else {
-				doPan = isNode[gob.activeGUI.props.baseProps.type];
-			}
-
-
-
-			if (gob.mouseDown && doPan) {
-
-				if (gob.lastMouseX == null) {
-					gob.lastMouseX = e.pageX;
-					gob.lastMouseY = e.pageY;
-					
-				}
-
-				sx = (e.pageX-gob.lastMouseX);// (zoom);
-				sy = (e.pageY-gob.lastMouseY);// (zoom);
-
-				gob.scrollX += sx;
-				gob.scrollY += sy;
-
-				gob.disTraveledX += sx;
-				gob.disTraveledY += sy;
-				
-
-				gob.lastMouseX = e.pageX;
-				gob.lastMouseY = e.pageY;
-
-				gob.targScrollX = gob.scrollX;
-
-				gob.isScrolling = 15;
-				gob.updateBaseRT = true;
-				gob.isRendering = true;
-			}
-			else {
-				gob.lastMouseX = null;
-				gob.lastMouseY = null;
-			}
-
-			gob.isRendering = true;
-
-			//TODO: update rendering on mouse movement instead
-
-
-			gob.shaders.lightingShader.uniforms.u_MouseCoords.value.x = x;
-			gob.shaders.lightingShader.uniforms.u_MouseCoords.value.y = y;
-
-			gob.shaders.pickerShader.uniforms.u_MouseCoords.value.x = x;
-			gob.shaders.pickerShader.uniforms.u_MouseCoords.value.y = y;
-
-			//gob.shaders.textShader.uniforms.u_MouseCoords.value.x = e.pageX;
-			//gob.shaders.textShader.uniforms.u_MouseCoords.value.y = e.pageY;
-			//gob.shaders.bgShader.uniforms.u_MouseCoords.value.x = e.pageX;
-			//gob.shaders.bgShader.uniforms.u_MouseCoords.value.y = e.pageY;
-
-
-			if (gob.mouseDown) {
-
-				gob.updateActiveGUI( (e.pageX - gob.scrollX)/zoom , false);
-			}
-
-
-		});
-
-		j$("#canvas2").mouseup(function(e){
-
-			var newX = Math.floor( (e.pageX-this.offsetLeft)/32.0 )*32.0 + 16.0;
-			var newY = Math.floor( (e.pageY-this.offsetTop)/32.0 )*32.0 + 16.0;
-
-			if (gob.palX == newX && gob.palY == newY) {
-				gob.palX = gob.invalidValue;
-				gob.palY = gob.invalidValue;
-			}
-			else {
-				gob.palX = newX;
-				gob.palY = newY;
-			}
-
-			
-
-			gob.genPicker();
-
-			
-
-
-
-			//console.log(gob.palX, gob.palY);
-		});
-
-		j$("#container").mousedown(function(e){
-			
-			var wRatio = e.pageX/gob.bufferWidth;
-			var hRatio = e.pageY/gob.bufferHeight;
-			var res;
-
-			var mx;
-			var my;
-			var myzoom;
-
-			switch (e.which) {
-				
-				case 1: // left
-					if (gob.debugTex) {
-						if (gob.curDebugSection == 0.0) {
-							if (hRatio < 0.5) {
-								if (wRatio < 0.5) {
-									gob.curDebugSection = 1.0;
-								}
-								else {
-									gob.curDebugSection = 2.0;
-								}
-							}
-							else {
-								if (wRatio < 0.5) {
-									gob.curDebugSection = 3.0;
-								}
-								else {
-									gob.curDebugSection = 4.0;
-								}
-							}
-						}
-						else {
-							gob.curDebugSection = 0.0;
-						}
-
-						if (gob.showFullBuffer) {
-							gob.curDebugSection = 5.0;
-						}
-
-
-						gob.shaders.debugShader.uniforms.u_Section.value = gob.curDebugSection;
-
-					}
-					else {
-
-						myzoom = 1.0/zoom;
-
-
-						mx = (e.pageX - gob.scrollX)*myzoom;
-						my = (e.pageY - gob.scrollY)*myzoom + gob.maxLayers; 
-						res = gob.testHit(0, gob.mainRoot, mx, my );
-
-						
-						if (res === 0) {
-							mx = (e.pageX - gob.scrollX)*myzoom;
-							my = (e.pageY - gob.scrollY)*myzoom; 
-							res = gob.testHit(0, gob.mainRoot, mx, my );
-						}
-						
-
-						if (res === 0) {
-
-						}
-						else {
-							gob.setActiveGUI(res,0);
-						}
-
-						gob.lastHit = res;
-
-						
-						gob.mouseDown = true;
-
-						
-					}
-				break;
-				case 2: // right
-					
-				break;
-				case 3: // middle
-
-				break;
-				default: // unknown
-
-				break;
-
-
-			}
-
-			
-			
-
-			
-		});
-
-		j$("#container").mouseup(function(e){
-			
-			var wRatio = e.pageX/gob.bufferWidth;
-			var hRatio = e.pageY/gob.bufferHeight;
-			var res;
-
-			switch (e.which) {
-				
-				case 1: // left
-					if (gob.debugTex) {
-						
-					}
-					else {
-						gob.mouseDown = false;
-						gob.lockOn = false;						
-
-						if (Math.abs(gob.disTraveledX) + Math.abs(gob.disTraveledY) < 50) {
-							gob.updateActiveGUI( (e.pageX - gob.scrollX)/zoom, true);
-						}
-						else {
-
-						}
-
-						gob.disTraveledX = 0;
-						gob.disTraveledY = 0;
-
-						
-					}
-				break;
-				case 2: // right
-					
-				break;
-				case 3: // middle
-
-				break;
-				default: // unknown
-
-				break;
-
-
-			}
-			
-		});
-
-		j$(document).mousewheel(function(event, delta, deltaX, deltaY) {
-
-
-			if (gob.palX != gob.invalidValue) {
-				
-
-				if (gob.shiftDown) {
-					
-					gob.palY += deltaX*32.0;
-
-
-					if (gob.palY < 16.0) {
-						gob.palY = 16.0;
-					}  
-					if (gob.palY > 80.0) {
-						gob.palY = 80.0;
-					}
-				}
-				else {
-					gob.palX += deltaY*32.0;
-
-					if (gob.palX < 16.0) {
-						gob.palX = 16.0;
-					}  
-					if (gob.palX > 1008.0) {
-						gob.palX = 1008.0;
-					}
-				}
-
-				
-
-				gob.genPicker();
-			}
-			
-
-			/*
-			zoom += deltaY/gob.scrollSpeed;
-
-			if (zoom < 0.25) {
-				zoom = 0.25;
-			}
-
-			if (gob.scrollY > gob.maxLayers) {
-				//gob.scrollY = gob.maxLayers;
-			}
-
-			gob.isScrolling = 15;
-			gob.updateBaseRT = true;
-			gob.isRendering = true;
-
-			*/
-			
-
-		});
-
-
-		j$(document).keydown(function(e) {
-
-			var code = (e.keyCode ? e.keyCode : e.which);
-
-			switch (code) {
-				case 16: //shift
-					gob.shiftDown = true;
-				break;
-			}
-
-		});
-		j$(document).keyup(function(e) {
-
-			var code = (e.keyCode ? e.keyCode : e.which);
-
-			var ind;
-
-			switch (code) {
-
-				case 27: //escape
-					if (gob.palX != gob.invalidValue) {
-						gob.palX = gob.invalidValue;
-						gob.genPicker();
-					}
-				break;
-
-				case 16: //shift
-					gob.shiftDown = false;
-				break;
-				case 37: //left
-
-					//if (isNode[gob.activeGUI.props.baseProps.type]) {
-						
-
-						
-						gob.moveFocus(gob.mainDat,-1);
-						
-
-						if (gob.activeGUI.props.baseProps.value == 1) {
-							gob.selectCurNode();
-						}
-						else {
-							
-						}
-
-						gob.updateGUIStack();
-
-
-						gob.guiInvalidated = true;
-						gob.layoutGUI(gob.mainRoot,false);
-					//}
-
-				break;
-				
-				case 39: //right
-					
-					if (isNode[gob.activeGUI.props.baseProps.type]) {
-						if (gob.activeGUI.props.baseProps.value == 0) {
-							gob.selectCurNode();
-							gob.updateGUIStack();
-							
-						}
-						else {
-							
-						}
-
-												
-						gob.moveFocus(gob.mainDat,1);
-						//gob.updateGUIStack();
-
-
-
-						gob.guiInvalidated = true;
-						gob.layoutGUI(gob.mainRoot,false);
-					}
-					
-				break;
-				case 38: //up
-					ind = 0;
-
-					if (gob.lastParent === 0 || gob.activeGUI == 0) {
-						
-					}
-					else {
-						while (gob.lastParent.childArr[ind] != gob.activeGUI) {
-							ind--;
-							if (ind < 0) {
-								ind = gob.lastParent.childArr.length-1;
-							}
-						}
-						ind--;
-
-						if (ind < 0) {
-							ind = gob.lastParent.childArr.length-1;
-						}
-
-
-						gob.setActiveGUI(gob.lastParent.childArr[ind],gob.lastParent);
-						gob.layoutGUI(gob.mainRoot,false);
-						
-					}
-
-				break;
-				case 40: //down
-					ind = 0;
-
-					if (gob.lastParent === 0 || gob.activeGUI == 0) {
-
-					}
-					else {
-						while (gob.lastParent.childArr[ind] != gob.activeGUI) {
-							ind++;
-							if (ind >= gob.lastParent.childArr.length) {
-								ind = 0;
-							}
-						}
-						ind++;
-
-						if (ind >= gob.lastParent.childArr.length) {
-							ind = 0;
-						}
-
-
-						gob.setActiveGUI(gob.lastParent.childArr[ind],gob.lastParent);
-						gob.layoutGUI(gob.mainRoot,false);
-					}
-
-					
-				break;
-				
-			}
-
-		});
-
-
-		j$(document).keypress(function(e) {
-
-			var code = (e.keyCode ? e.keyCode : e.which);
-
-			
-			if ( code == "a".charCodeAt(0) ) {
-				gob.autoUpdate = !gob.autoUpdate;
-				console.log("Auto Update: " + gob.autoUpdate);
-			}
-
-			if ( code == "d".charCodeAt(0) ) {
-				gob.showFullBuffer = !gob.showFullBuffer;
-				console.log("Show Full Buffer:" + gob.showFullBuffer);
-			}
-
-			if ( code == "z".charCodeAt(0) ) {
-				zoom = 1;
-				gob.updateBaseRT = true;
-				gob.isRendering = true;
-				console.log("Zoom reset");
-			}
-			
-		});
-
-
-
-		gob.animate();
+		gob.initSceneFinal();
 	});
 
 	gob.init = function() {
@@ -2518,7 +2016,7 @@ j$(function() {
 				gob.curFLIndex++;
 
 				if (gob.curFLIndex == gob.fontNames.length) {
-					gob.initFinal();
+					gob.initScene();
 				}
 				else {
 					loadFont();
@@ -3487,7 +2985,7 @@ j$(function() {
 	});
 
 
-	gob.initEnums = function() {
+	gob.initEnums = function(jdat) {
 		var i;
 		var j;
 		var count;
@@ -3499,6 +2997,21 @@ j$(function() {
 
 		isNode[enums.types.number] = false;
 		isNode[enums.types.bool] = false;
+
+		var tempDat = jdat.untypedList_root_0.gradientList_Gradients_0;
+
+		var counter = 0;;
+		var tempSplit;
+
+		for (i in tempDat) {
+			if (tempDat.hasOwnProperty(i)) {
+				tempSplit = i.split("_");
+
+				enums.materials[tempSplit[1]] = counter;
+
+				counter++;
+			}
+		}
 
 
 		for (i in enums) {
@@ -3552,7 +3065,7 @@ j$(function() {
 			}
 		);
 
-
+		
 		rootObj.guiData = myGUIDat;
 		
 		mBG.maxInd += 8;
@@ -3757,7 +3270,7 @@ j$(function() {
 	}
 
 
-	gob.wf("initScene", function() {
+	gob.wf("initSceneFinal", function() {
 
 		var i;
 
@@ -3837,68 +3350,7 @@ j$(function() {
 
 
 
-		gob.initEnums();
-
-
 		
-		gob.setCurFont(g_fonts["arial_black_regular_96"]);
-
-
-		gob.styleSheets.defContH = {
-			str: 			"",
-			drawBG: 		true,
-			scale: 			0.25,
-			//font: 			gob.curFont,
-			hTextAlign:		enums.align.left,
-			vTextAlign:		enums.align.top,
-
-			bgMatId: 			enums.materials.BlueGray,
-			textMatId: 			enums.materials.Gold,
-			fillMatId: 			enums.materials.SkyBlue,
-			outlineMatId: 		enums.materials.BlueGray,
-			selMatId: 			enums.materials.SkyBlue,
-
-			//curValue: 		0.0,
-
-			groupId: 		0,
-
-			isGroup: 		false,
-
-			fillDir: 		enums.fillDir.horizontal,
-			fillRatio: 		1,
-			maxLines: 		1,
-			fitText: 		true,
-			itemsPerLine: 	0,
-
-			cornerRad: 		16,
-			margin: 		0,
-			border: 		4,
-			padding: 		4,
-			
-			baseDepth: 		5
-		};
-
-		
-		gob.styleSheets.defContV = combineObjs([
-			gob.styleSheets.defContH,
-			{
-				fillDir: 		enums.fillDir.vertical
-			}
-		],false);
-
-		
-		gob.styleSheets.defContHG = combineObjs([
-			gob.styleSheets.defContH,
-			{
-				isGroup: true
-			}
-		],false);
-		gob.styleSheets.defContVG = combineObjs([
-			gob.styleSheets.defContV,
-			{
-				isGroup: true
-			}
-		],false);
 		
 
 
@@ -3955,6 +3407,84 @@ j$(function() {
 			gob.unpackData(jdat, gob.mainDat, true);
 
 
+
+
+
+			//////////////
+
+
+			gob.initEnums(jdat);
+
+
+			
+			gob.setCurFont(g_fonts["arial_black_regular_96"]);
+
+
+			gob.styleSheets.defContH = {
+				str: 			"",
+				drawBG: 		true,
+				scale: 			0.25,
+				//font: 			gob.curFont,
+				hTextAlign:		enums.align.left,
+				vTextAlign:		enums.align.top,
+
+				bgMatId: 			enums.materials.BlueGray,
+				textMatId: 			enums.materials.Gold,
+				fillMatId: 			enums.materials.SkyBlue,
+				outlineMatId: 		enums.materials.BlueGray,
+				selMatId: 			enums.materials.SkyBlue,
+
+				//curValue: 		0.0,
+
+				groupId: 		0,
+
+				isGroup: 		false,
+
+				fillDir: 		enums.fillDir.horizontal,
+				fillRatio: 		1,
+				maxLines: 		1,
+				fitText: 		true,
+				itemsPerLine: 	0,
+
+				cornerRad: 		16,
+				margin: 		0,
+				border: 		4,
+				padding: 		4,
+				
+				baseDepth: 		5
+			};
+
+			
+			gob.styleSheets.defContV = combineObjs([
+				gob.styleSheets.defContH,
+				{
+					fillDir: 		enums.fillDir.vertical
+				}
+			],false);
+
+			
+			gob.styleSheets.defContHG = combineObjs([
+				gob.styleSheets.defContH,
+				{
+					isGroup: true
+				}
+			],false);
+			gob.styleSheets.defContVG = combineObjs([
+				gob.styleSheets.defContV,
+				{
+					isGroup: true
+				}
+			],false);
+
+
+
+			//////////////
+
+
+
+
+
+
 			gob.mainRoot = createNode( 
 
 
@@ -4008,6 +3538,560 @@ j$(function() {
 
 			gob.onWindowResize();
 			window.addEventListener( 'resize', gob.onWindowResize, false );
+
+
+
+
+
+
+
+
+
+
+
+
+			j$("#container").mousemove(function(e){
+
+				var x = ((e.pageX/gob.bufferWidth)-0.5)*2.0;
+				var y = -((e.pageY/gob.bufferHeight)-0.5)*2.0;
+				var sx;
+				var sy;
+
+
+				var doPan = false;
+
+				if (gob.lastHit === 0) {
+					doPan = true;
+				}
+				else {
+					doPan = isNode[gob.activeGUI.props.baseProps.type];
+				}
+
+
+
+				if (gob.mouseDown && doPan) {
+
+					if (gob.lastMouseX == null) {
+						gob.lastMouseX = e.pageX;
+						gob.lastMouseY = e.pageY;
+						
+					}
+
+					sx = (e.pageX-gob.lastMouseX);// (zoom);
+					sy = (e.pageY-gob.lastMouseY);// (zoom);
+
+					gob.scrollX += sx;
+					gob.scrollY += sy;
+
+					gob.disTraveledX += sx;
+					gob.disTraveledY += sy;
+					
+
+					gob.lastMouseX = e.pageX;
+					gob.lastMouseY = e.pageY;
+
+					gob.targScrollX = gob.scrollX;
+
+					gob.isScrolling = 15;
+					gob.updateBaseRT = true;
+					gob.isRendering = true;
+				}
+				else {
+					gob.lastMouseX = null;
+					gob.lastMouseY = null;
+				}
+
+				gob.isRendering = true;
+
+				//TODO: update rendering on mouse movement instead
+
+
+				gob.shaders.lightingShader.uniforms.u_MouseCoords.value.x = x;
+				gob.shaders.lightingShader.uniforms.u_MouseCoords.value.y = y;
+
+				gob.shaders.pickerShader.uniforms.u_MouseCoords.value.x = x;
+				gob.shaders.pickerShader.uniforms.u_MouseCoords.value.y = y;
+
+				//gob.shaders.textShader.uniforms.u_MouseCoords.value.x = e.pageX;
+				//gob.shaders.textShader.uniforms.u_MouseCoords.value.y = e.pageY;
+				//gob.shaders.bgShader.uniforms.u_MouseCoords.value.x = e.pageX;
+				//gob.shaders.bgShader.uniforms.u_MouseCoords.value.y = e.pageY;
+
+
+				if (gob.mouseDown) {
+
+					gob.updateActiveGUI( (e.pageX - gob.scrollX)/zoom , false);
+				}
+
+
+			});
+
+			j$("#canvas2").mouseup(function(e){
+
+				var newX = Math.floor( (e.pageX-this.offsetLeft)/32.0 )*32.0 + 16.0;
+				var newY = Math.floor( (e.pageY-this.offsetTop)/32.0 )*32.0 + 16.0;
+
+				if (gob.palX == newX && gob.palY == newY) {
+					gob.palX = gob.invalidValue;
+					gob.palY = gob.invalidValue;
+				}
+				else {
+					gob.palX = newX;
+					gob.palY = newY;
+				}
+
+				
+
+				gob.genPicker();
+
+				
+
+
+
+				//console.log(gob.palX, gob.palY);
+			});
+
+			j$("#container").mousedown(function(e){
+				
+				var wRatio = e.pageX/gob.bufferWidth;
+				var hRatio = e.pageY/gob.bufferHeight;
+				var res;
+
+				var mx;
+				var my;
+				var myzoom;
+
+				var proc;
+
+				switch (e.which) {
+					
+					case 1: // left
+						if (gob.debugTex) {
+							if (gob.curDebugSection == 0.0) {
+								if (hRatio < 0.5) {
+									if (wRatio < 0.5) {
+										gob.curDebugSection = 1.0;
+									}
+									else {
+										gob.curDebugSection = 2.0;
+									}
+								}
+								else {
+									if (wRatio < 0.5) {
+										gob.curDebugSection = 3.0;
+									}
+									else {
+										gob.curDebugSection = 4.0;
+									}
+								}
+							}
+							else {
+								gob.curDebugSection = 0.0;
+							}
+
+							if (gob.showFullBuffer) {
+								gob.curDebugSection = 5.0;
+							}
+
+
+							gob.shaders.debugShader.uniforms.u_Section.value = gob.curDebugSection;
+
+						}
+						else {
+
+							proc = true;
+
+							if (gob.palX != gob.invalidValue) {
+								if (wRatio < 0.5 && hRatio >= 0.5) {
+									proc = false;
+								}
+							}
+
+							if (proc) {
+								myzoom = 1.0/zoom;
+
+								mx = (e.pageX - gob.scrollX)*myzoom;
+								my = (e.pageY - gob.scrollY)*myzoom + gob.maxLayers; 
+								res = gob.testHit(0, gob.mainRoot, mx, my );
+
+								
+								if (res === 0) {
+									mx = (e.pageX - gob.scrollX)*myzoom;
+									my = (e.pageY - gob.scrollY)*myzoom; 
+									res = gob.testHit(0, gob.mainRoot, mx, my );
+								}
+								
+
+								if (res === 0) {
+
+								}
+								else {
+									gob.setActiveGUI(res,0);
+								}
+
+								gob.lastHit = res;
+
+								
+								gob.mouseDown = true;
+							}
+
+							
+
+							
+						}
+					break;
+					case 2: // right
+						
+					break;
+					case 3: // middle
+
+					break;
+					default: // unknown
+
+					break;
+
+
+				}
+
+				
+				
+
+				
+			});
+
+			j$("#container").mouseup(function(e){
+				
+				var wRatio = e.pageX/gob.bufferWidth;
+				var hRatio = e.pageY/gob.bufferHeight;
+				var res;
+				var proc;
+
+				var vx;
+				var vy;
+
+				var myH;
+				var myS;
+				var myL;
+
+				switch (e.which) {
+					
+					case 1: // left
+						if (gob.debugTex) {
+							
+						}
+						else {
+
+							proc = true;
+
+							if (gob.palX != gob.invalidValue) {
+								if (wRatio < 0.5 && hRatio >= 0.5) {
+									proc = false;
+									
+									vx = Math.floor(wRatio*2.0*32.0);
+									vy = Math.floor((hRatio-0.5)*2.0*32.0);
+									
+
+									switch (gob.palY) {
+										case 16:
+											myL = vx;
+											myS = 31-vy;
+											myH = (gob.palX-16)/32;
+										break;
+
+										case 48:
+											myH = vx;
+											myL = 31-vy;
+											myS = (gob.palX-16)/32;
+										break;
+
+										case 80:
+											myH = vx;
+											myS = 31-vy;
+											myL = (gob.palX-16)/32;
+										break;
+									}
+
+
+									console.log(myH,myS,myL);
+
+									if (gob.lastNode != 0) {
+										if (gob.lastNode.props.baseProps.type == enums.types.gradientStep) {
+											gob.lastNode.props.baseChildArr[0].props.value = myH/31.0;
+											gob.lastNode.props.baseChildArr[1].props.value = myS/31.0;
+											gob.lastNode.props.baseChildArr[2].props.value = myL/31.0;
+
+
+											gob.updatePalCanv();
+											gob.layoutGUI(gob.mainRoot,false);
+
+										}
+									}
+									
+
+
+
+								}
+							}
+
+
+
+
+							gob.mouseDown = false;
+							gob.lockOn = false;
+
+							if (proc) {
+								if (Math.abs(gob.disTraveledX) + Math.abs(gob.disTraveledY) < 50) {
+									gob.updateActiveGUI( (e.pageX - gob.scrollX)/zoom, true);
+								}
+							}
+							
+
+							gob.disTraveledX = 0;
+							gob.disTraveledY = 0;
+
+							
+						}
+					break;
+					case 2: // right
+						
+					break;
+					case 3: // middle
+
+					break;
+					default: // unknown
+
+					break;
+
+
+				}
+				
+			});
+
+			j$(document).mousewheel(function(event, delta, deltaX, deltaY) {
+
+
+				if (gob.palX != gob.invalidValue) {
+					
+
+					if (gob.shiftDown) {
+						
+						gob.palY += deltaX*32.0;
+
+
+						if (gob.palY < 16.0) {
+							gob.palY = 16.0;
+						}  
+						if (gob.palY > 80.0) {
+							gob.palY = 80.0;
+						}
+					}
+					else {
+						gob.palX += deltaY*32.0;
+
+						if (gob.palX < 16.0) {
+							gob.palX = 16.0;
+						}  
+						if (gob.palX > 1008.0) {
+							gob.palX = 1008.0;
+						}
+					}
+
+					
+
+					gob.genPicker();
+				}
+				
+
+				/*
+				zoom += deltaY/gob.scrollSpeed;
+
+				if (zoom < 0.25) {
+					zoom = 0.25;
+				}
+
+				if (gob.scrollY > gob.maxLayers) {
+					//gob.scrollY = gob.maxLayers;
+				}
+
+				gob.isScrolling = 15;
+				gob.updateBaseRT = true;
+				gob.isRendering = true;
+
+				*/
+				
+
+			});
+
+
+			j$(document).keydown(function(e) {
+
+				var code = (e.keyCode ? e.keyCode : e.which);
+
+				switch (code) {
+					case 16: //shift
+						gob.shiftDown = true;
+					break;
+				}
+
+			});
+			j$(document).keyup(function(e) {
+
+				var code = (e.keyCode ? e.keyCode : e.which);
+
+				var ind;
+
+				switch (code) {
+
+					case 27: //escape
+						if (gob.palX != gob.invalidValue) {
+							gob.palX = gob.invalidValue;
+							gob.genPicker();
+						}
+					break;
+
+					case 16: //shift
+						gob.shiftDown = false;
+					break;
+					case 37: //left
+
+						//if (isNode[gob.activeGUI.props.baseProps.type]) {
+							
+
+							
+							gob.moveFocus(gob.mainDat,-1);
+							
+
+							if (gob.activeGUI.props.baseProps.value == 1) {
+								gob.selectCurNode();
+							}
+							else {
+								
+							}
+
+							gob.updateGUIStack();
+
+
+							gob.guiInvalidated = true;
+							gob.layoutGUI(gob.mainRoot,false);
+						//}
+
+					break;
+					
+					case 39: //right
+						
+						if (isNode[gob.activeGUI.props.baseProps.type]) {
+							if (gob.activeGUI.props.baseProps.value == 0) {
+								gob.selectCurNode();
+								gob.updateGUIStack();
+								
+							}
+							else {
+								
+							}
+
+													
+							gob.moveFocus(gob.mainDat,1);
+							//gob.updateGUIStack();
+
+
+
+							gob.guiInvalidated = true;
+							gob.layoutGUI(gob.mainRoot,false);
+						}
+						
+					break;
+					case 38: //up
+						ind = 0;
+
+						if (gob.lastParent === 0 || gob.activeGUI == 0) {
+							
+						}
+						else {
+							while (gob.lastParent.childArr[ind] != gob.activeGUI) {
+								ind--;
+								if (ind < 0) {
+									ind = gob.lastParent.childArr.length-1;
+								}
+							}
+							ind--;
+
+							if (ind < 0) {
+								ind = gob.lastParent.childArr.length-1;
+							}
+
+
+							gob.setActiveGUI(gob.lastParent.childArr[ind],gob.lastParent);
+							gob.layoutGUI(gob.mainRoot,false);
+							
+						}
+
+					break;
+					case 40: //down
+						ind = 0;
+
+						if (gob.lastParent === 0 || gob.activeGUI == 0) {
+
+						}
+						else {
+							while (gob.lastParent.childArr[ind] != gob.activeGUI) {
+								ind++;
+								if (ind >= gob.lastParent.childArr.length) {
+									ind = 0;
+								}
+							}
+							ind++;
+
+							if (ind >= gob.lastParent.childArr.length) {
+								ind = 0;
+							}
+
+
+							gob.setActiveGUI(gob.lastParent.childArr[ind],gob.lastParent);
+							gob.layoutGUI(gob.mainRoot,false);
+						}
+
+						
+					break;
+					
+				}
+
+			});
+
+
+			j$(document).keypress(function(e) {
+
+				var code = (e.keyCode ? e.keyCode : e.which);
+
+				
+				if ( code == "a".charCodeAt(0) ) {
+					gob.autoUpdate = !gob.autoUpdate;
+					console.log("Auto Update: " + gob.autoUpdate);
+				}
+
+				if ( code == "d".charCodeAt(0) ) {
+					gob.showFullBuffer = !gob.showFullBuffer;
+					console.log("Show Full Buffer:" + gob.showFullBuffer);
+				}
+
+				if ( code == "z".charCodeAt(0) ) {
+					zoom = 1;
+					gob.updateBaseRT = true;
+					gob.isRendering = true;
+					console.log("Zoom reset");
+				}
+				
+			});
+
+
+
+			gob.animate();
+
+
+
+
+
+
+
 
 
 		});

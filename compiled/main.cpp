@@ -598,12 +598,68 @@ public:
     }
 
 
+};
 
+
+
+
+
+
+
+class GameGeom {
+public:
+
+    FIVector4 boundsMinInPixels;
+    FIVector4 boundsMaxInPixels;
+    FIVector4 originInPixels;
+
+    float thickness;
+    float powerPhi;   // xy
+    float powerTheta; // z
+    float matId;
+    float upAxis; // 0 - x, 1 - y, 2 - z
+
+
+    inline float fGenRand() {
+        return ((float)(rand()%100000))/100000.0f;
+    }
+
+    GameGeom() {
+
+    }
+
+    void init() {
+
+    }
+
+    void initRand() {
+
+        boundsMinInPixels.setFXYZ(2048.0 - fGenRand()*512.0,2048.0 - fGenRand()*512.0,2048.0 - fGenRand()*512.0);
+        boundsMaxInPixels.setFXYZRef(&boundsMinInPixels);
+        boundsMaxInPixels.addXYZ(fGenRand()*1024.0,fGenRand()*1024.0,fGenRand()*1024.0);
+
+        originInPixels.copyFrom(&boundsMinInPixels);
+        originInPixels.addXYZRef(&boundsMaxInPixels);
+        originInPixels.multXYZ(0.5f);
+
+        
+        powerPhi = fGenRand()*3.0f;
+        powerTheta = fGenRand()*3.0f;
+
+        thickness = 16.0f;
+        upAxis = 2.0f;
+        matId = 1.0f;
+
+
+    }
 
 };
 
 
 
+
+
+/*
 class Vector3  {
 public:
 	
@@ -775,6 +831,8 @@ inline Vector3 reflect(const Vector3& in, const Vector3& normal)
   // assumes unit length normal
   return in - normal * (2 * dot(in, normal));
 }
+*/
+
  
 
 
@@ -8865,6 +8923,7 @@ void popTrace() {
 	}
 }
 
+/*
 float distance(Vector3* v1, Vector3* v2) {
 	float val1 = v1->e[0] - v2->e[0];
 	float val2 = v1->e[1] - v2->e[1];
@@ -8875,7 +8934,9 @@ float distance(Vector3* v1, Vector3* v2) {
 	);
 	
 	//return length(v1-v2);
-} 
+}
+*/
+ 
 
 const static int MAX_OG_RAD = 20;
 const static int MAX_OG_DIAM = MAX_OG_RAD*2+1;
@@ -9209,6 +9270,12 @@ public:
 				glUniform4fv(loc, 1, vecData);
 			break;
 		}
+	}
+
+
+	void setShaderArray(string paramName, float* x, int count) {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform1fv(loc, count, x);
 	}
 
 	void setShaderFloat(string paramName, float x) {
@@ -10646,6 +10713,7 @@ public:
   WebSocketServer * myWS;
   Timer myTimer;
   GameWorld * gw;
+  std::vector <GameGeom*> gameGeom;
   Singleton ();
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer * _myWS);
   void sendPoolIdToFront (int id);
@@ -10676,6 +10744,7 @@ public:
   void unbindFBO ();
   void bindShader (string shaderName);
   void unbindShader ();
+  void setShaderArray (string paramName, float * x, int count);
   void setShaderFloat (string paramName, float x);
   void setShaderfVec2 (string paramName, FIVector4 * v);
   void setShaderVec2 (string paramName, float x, float y);
@@ -10758,6 +10827,10 @@ public:
   int iVolumeSize;
   uint * volData;
   uint * volDataLinear;
+  int paramsPerEntry;
+  int paramArrLen;
+  int totParams;
+  float * paramArr;
   int maxHeightInUnits;
   int totLenO2;
   int totLenVisO2;
@@ -10767,8 +10840,10 @@ public:
   float unitSizeInPixels;
   E_STATES curState;
   E_STATES nextState;
-  FIVector4 worldMin;
-  FIVector4 worldMax;
+  FIVector4 worldMinVisInPixels;
+  FIVector4 worldMaxVisInPixels;
+  FIVector4 worldMinBufInPixels;
+  FIVector4 worldMaxBufInPixels;
   FIVector4 worldUnitMin;
   FIVector4 worldUnitMax;
   E_FILL_STATE fillState;
@@ -11105,6 +11180,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		pushTrace("Singleton init");
 
+		int i;
+
 		rootObj = NULL;
 
 		lastImageBuffer.data = NULL;
@@ -11143,7 +11220,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		isPanning = false;
 		softMode = false;
 		reportPagesDrawn = false;
-		isBare = false;
+		isBare = true;
 		grassHeight = 1.0/128.0;
 
 
@@ -11204,7 +11281,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		
 
 
-		int i;
+		
 		mbDown=false;
 		lbDown=false;
 		rbDown=false;
@@ -11239,6 +11316,15 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    mouseY = 0.0f;
 	    mouseXUp = 0.0f;
 	    mouseYUp = 0.0f;
+
+
+
+
+	    for (i = 0; i < 16; i++) {
+	    	gameGeom.push_back(new GameGeom());
+	    	gameGeom.back()->initRand();
+	    }
+
 
 		createVTList();
 		createGrassList();
@@ -11972,55 +12058,37 @@ void Singleton::unbindShader ()
 	    }
 	    
 	}
+void Singleton::setShaderArray (string paramName, float * x, int count)
+                                                                   {
+		shaderMap[curShader]->setShaderArray(paramName, x, count);
+	}
 void Singleton::setShaderFloat (string paramName, float x)
                                                        {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x);
-
-	        shaderMap[curShader]->setShaderFloat(paramName, x);
-	    }
+		shaderMap[curShader]->setShaderFloat(paramName, x);
 	}
 void Singleton::setShaderfVec2 (string paramName, FIVector4 * v)
                                                             {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
-	        shaderMap[curShader]->setShaderfVec2(paramName, v);
-	    }
+		shaderMap[curShader]->setShaderfVec2(paramName, v);
 	}
 void Singleton::setShaderVec2 (string paramName, float x, float y)
                                                                {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
-	        shaderMap[curShader]->setShaderVec2(paramName, x, y);
-	    }
+	    shaderMap[curShader]->setShaderVec2(paramName, x, y);
 	}
 void Singleton::setShaderVec3 (string paramName, float x, float y, float z)
                                                                         {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
-	        shaderMap[curShader]->setShaderVec3(paramName, x, y, z);
-	    }
+	    shaderMap[curShader]->setShaderVec3(paramName, x, y, z);
 	}
 void Singleton::setShaderfVec3 (string paramName, FIVector4 * v)
                                                             {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
-	        shaderMap[curShader]->setShaderfVec3(paramName, v);
-	    }
+	    shaderMap[curShader]->setShaderfVec3(paramName, v);
 	}
 void Singleton::setShaderVec4 (string paramName, float x, float y, float z, float w)
                                                                                  {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y,z,w);
-	        shaderMap[curShader]->setShaderVec4(paramName, x, y, z, w);
-	    }
+	    shaderMap[curShader]->setShaderVec4(paramName, x, y, z, w);
 	}
 void Singleton::setShaderfVec4 (string paramName, FIVector4 * v)
                                                             {
-	    if (shadersAreLoaded) {
-	        //shaderMap[curShader]->setUniformValue(shaderMap[curShader]->uniformLocation(paramName),x,y);
-	        shaderMap[curShader]->setShaderfVec4(paramName, v);
-	    }
+	    shaderMap[curShader]->setShaderfVec4(paramName, v);
 	}
 void Singleton::setShaderTexture (uint texID, int multitexNumber)
                                                               {
@@ -13187,18 +13255,23 @@ GamePage::GamePage ()
 	}
 void GamePage::init (Singleton * _singleton, int _thisPageId, FIVector4 * _offsetInUnits)
                                                                                      {
-		int i;
-
 		thisPageId = _thisPageId;
-
 		singleton = _singleton;
-
 		usingPoolId = -1;
 
+
+		int i;
+
+		
 		threshVal = 140;
-
-
 		threadRunning = false;
+
+		paramsPerEntry = 16;
+		paramArrLen = singleton->gameGeom.size();
+		totParams = paramArrLen*paramsPerEntry;
+		
+
+		paramArr = new float[totParams];
 
 
 		maxHeightInUnits = (singleton->maxHeightInUnits);
@@ -13241,12 +13314,20 @@ void GamePage::init (Singleton * _singleton, int _thisPageId, FIVector4 * _offse
 
 
 
-		worldMin.copyFrom(&offsetInUnits);
-		worldMax.copyFrom(&offsetInUnits);
-		worldMin.addXYZ( -totLenVisO2 );
-		worldMax.addXYZ(  totLenVisO2 );
-		worldMin.multXYZ((float)unitSizeInPixels);
-		worldMax.multXYZ((float)unitSizeInPixels);
+		worldMinVisInPixels.copyFrom(&offsetInUnits);
+		worldMaxVisInPixels.copyFrom(&offsetInUnits);
+		worldMinVisInPixels.addXYZ( -totLenVisO2 );
+		worldMaxVisInPixels.addXYZ(  totLenVisO2 );
+		worldMinVisInPixels.multXYZ((float)unitSizeInPixels);
+		worldMaxVisInPixels.multXYZ((float)unitSizeInPixels);
+
+		worldMinBufInPixels.copyFrom(&offsetInUnits);
+		worldMaxBufInPixels.copyFrom(&offsetInUnits);
+		worldMinBufInPixels.addXYZ( -totLenO2 );
+		worldMaxBufInPixels.addXYZ(  totLenO2 );
+		worldMinBufInPixels.multXYZ((float)unitSizeInPixels);
+		worldMaxBufInPixels.multXYZ((float)unitSizeInPixels);
+
 
 
 		worldUnitMin.copyFrom(&offsetInUnits);
@@ -13437,7 +13518,7 @@ void GamePage::createSimplexNoise ()
 
 
 
-		
+		/*
 		if (mustNotBeFull) {
 			isFull = false;
 		}
@@ -13453,11 +13534,11 @@ void GamePage::createSimplexNoise ()
 
 			curState = E_STATE_LENGTH;
 		}
-		else {
+		else {*/
 
 			fillState = E_FILL_STATE_PARTIAL;
 			curState = E_STATE_CREATESIMPLEXNOISE_END;
-		}
+		//}
 
 		threadRunning = false;
 
@@ -13549,10 +13630,19 @@ void GamePage::generateVolume ()
 			singleton->setShaderTexture3D(gpuRes->volIDLinear, 1);
 			singleton->setShaderTexture(singleton->lookup2to3ID, 2);
 
+			
 			singleton->setShaderFloat("bufferedPageSizeInUnits", bufferedPageSizeInUnits);
 			singleton->setShaderFloat("threshVal", (float)threshVal);
-			singleton->setShaderfVec3("worldMin", &(worldMin));
-			singleton->setShaderfVec3("worldMax", &(worldMax));
+
+			singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
+			singleton->setShaderfVec3("worldMinVisInPixels", &(worldMinVisInPixels));
+			singleton->setShaderfVec3("worldMaxVisInPixels", &(worldMaxVisInPixels));
+			singleton->setShaderfVec3("worldMinBufInPixels", &(worldMinBufInPixels));
+			singleton->setShaderfVec3("worldMaxBufInPixels", &(worldMaxBufInPixels));
+
+			singleton->setShaderFloat("paramsPerEntry", (float)paramsPerEntry);
+			singleton->setShaderFloat("paramArrLen", (float)paramArrLen);
+			singleton->setShaderArray("paramArr", paramArr, totParams);
 
 			singleton->drawFSQuad(1.0f);
 
@@ -13569,11 +13659,15 @@ void GamePage::generateVolume ()
 			singleton->sampleFBO("volGenFBO");
 			glClearColor(0.0f,0.0f,0.0f,0.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			singleton->setShaderfVec3("worldMin", &(worldMin));
-			singleton->setShaderfVec3("worldMax", &(worldMax));
-
 
 			singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
+			singleton->setShaderfVec3("worldMinVisInPixels", &(worldMinVisInPixels));
+			singleton->setShaderfVec3("worldMaxVisInPixels", &(worldMaxVisInPixels));
+			singleton->setShaderfVec3("worldMinBufInPixels", &(worldMinBufInPixels));
+			singleton->setShaderfVec3("worldMaxBufInPixels", &(worldMaxBufInPixels));
+
+
+			
 			
 
 			glCallList(singleton->volTris);

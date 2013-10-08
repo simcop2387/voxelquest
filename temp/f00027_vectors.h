@@ -398,12 +398,68 @@ public:
     }
 
 
+};
 
+
+
+
+
+
+
+class GameGeom {
+public:
+
+    FIVector4 boundsMinInPixels;
+    FIVector4 boundsMaxInPixels;
+    FIVector4 originInPixels;
+
+    float thickness;
+    float powerPhi;   // xy
+    float powerTheta; // z
+    float matId;
+    float upAxis; // 0 - x, 1 - y, 2 - z
+
+
+    inline float fGenRand() {
+        return ((float)(rand()%100000))/100000.0f;
+    }
+
+    GameGeom() {
+
+    }
+
+    void init() {
+
+    }
+
+    void initRand() {
+
+        boundsMinInPixels.setFXYZ(2048.0 - fGenRand()*512.0,2048.0 - fGenRand()*512.0,2048.0 - fGenRand()*512.0);
+        boundsMaxInPixels.setFXYZRef(&boundsMinInPixels);
+        boundsMaxInPixels.addXYZ(fGenRand()*1024.0,fGenRand()*1024.0,fGenRand()*1024.0);
+
+        originInPixels.copyFrom(&boundsMinInPixels);
+        originInPixels.addXYZRef(&boundsMaxInPixels);
+        originInPixels.multXYZ(0.5f);
+
+        
+        powerPhi = fGenRand()*3.0f;
+        powerTheta = fGenRand()*3.0f;
+
+        thickness = 16.0f;
+        upAxis = 2.0f;
+        matId = 1.0f;
+
+
+    }
 
 };
 
 
 
+
+
+/*
 class Vector3  {
 public:
 	
@@ -575,4 +631,6 @@ inline Vector3 reflect(const Vector3& in, const Vector3& normal)
   // assumes unit length normal
   return in - normal * (2 * dot(in, normal));
 }
+*/
+
  
