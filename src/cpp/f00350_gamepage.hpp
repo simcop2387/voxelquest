@@ -70,7 +70,7 @@ public:
 		threshVal = 140;
 		threadRunning = false;
 
-		paramsPerEntry = 14;
+		paramsPerEntry = 18;
 		numEntries = singleton->gameGeom.size();
 		totParams = numEntries*paramsPerEntry;
 		
@@ -455,12 +455,17 @@ public:
 				paramArr[baseInd + 7] = singleton->gameGeom[i]->originInPixels.getFY();
 				paramArr[baseInd + 8] = singleton->gameGeom[i]->originInPixels.getFZ();
 
-				paramArr[baseInd + 9] = singleton->gameGeom[i]->powerPhi;
-				paramArr[baseInd + 10] = singleton->gameGeom[i]->powerTheta;
-				paramArr[baseInd + 11] = singleton->gameGeom[i]->thickness;
-				paramArr[baseInd + 12] = singleton->gameGeom[i]->upAxis;
-				paramArr[baseInd + 13] = singleton->gameGeom[i]->matId;
+				paramArr[baseInd + 9] = singleton->gameGeom[i]->powerVals.getFX();
+				paramArr[baseInd + 10] = singleton->gameGeom[i]->powerVals.getFY();
+				paramArr[baseInd + 11] = singleton->gameGeom[i]->powerVals.getFZ();
 
+				paramArr[baseInd + 12] = singleton->gameGeom[i]->coefficients.getFX();
+				paramArr[baseInd + 13] = singleton->gameGeom[i]->coefficients.getFY();
+				paramArr[baseInd + 14] = singleton->gameGeom[i]->coefficients.getFZ();
+
+				paramArr[baseInd + 15] = singleton->gameGeom[i]->minMaxMat.getFX();
+				paramArr[baseInd + 16] = singleton->gameGeom[i]->minMaxMat.getFY();
+				paramArr[baseInd + 17] = singleton->gameGeom[i]->minMaxMat.getFZ();
 				
 			}
 
@@ -480,9 +485,9 @@ public:
 			singleton->setShaderfVec3("worldMinBufInPixels", &(worldMinBufInPixels));
 			singleton->setShaderfVec3("worldMaxBufInPixels", &(worldMaxBufInPixels));
 
-			singleton->setShaderFloat("paramsPerEntry", (float)paramsPerEntry);
+			singleton->setShaderFloat("paramsPerEntry", (float)(paramsPerEntry/3) );
 			singleton->setShaderFloat("numEntries", (float)numEntries);
-			singleton->setShaderArray("paramArr", paramArr, totParams);
+			singleton->setShaderArrayfVec3("paramArr", paramArr, totParams/3);
 
 			singleton->drawFSQuad(1.0f);
 

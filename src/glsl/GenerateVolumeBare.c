@@ -18,7 +18,7 @@ uniform vec3 worldMaxBufInPixels;
 
 varying vec2 TexCoord0;
 
-uniform float paramArr[256];
+uniform vec3 paramArr[128];
 
 
 $
@@ -32,9 +32,6 @@ $
 
 
 void main() {
-
-	float xx = paramArr[0];
-
 	
 
 	vec3 coords = texture2D(Texture2, TexCoord0.xy).rgb;
@@ -49,54 +46,67 @@ void main() {
 
 
 	int i;
+	int iParamsPerEntry = int(paramsPerEntry);
+	int baseInd;
 
-	vec3 
+	vec3 boundsMinInPixels = vec3(0.0,0.0,0.0);
+	vec3 boundsMaxInPixels = vec3(0.0,0.0,0.0);
+	vec3 originInPixels = vec3(0.0,0.0,0.0);
+	vec3 powerVals = vec3(0.0,0.0,0.0);
+	vec3 coefficients = vec3(0.0,0.0,0.0);
+	vec3 minMaxMat = vec3(0.0,0.0,0.0);
+
+	vec3 dis = vec3(0.0,0.0,0.0);
+	vec3 disNorm = vec3(0.0,0.0,0.0);
+	vec3 absDisNorm = vec3(0.0,0.0,0.0);
+	vec3 normLen = vec3(0.0,0.0,0.0);
+	float tempLen;
+
+	vec4 finalRes = vec4(0.0,0.0,0.0,0.0);
+
+
 
 	for (i = 0; i < numEntries; i++) {
 
-	}
+		baseInd = i*iParamsPerEntry;
 
+		boundsMinInPixels = paramArr[baseInd+0];
+		boundsMaxInPixels = paramArr[baseInd+1];
+		originInPixels = paramArr[baseInd+2];
+		powerVals = paramArr[baseInd+3];
+		coefficients = paramArr[baseInd+4];
+		minMaxMat = paramArr[baseInd+5];
+		
 
+		normLen = (boundsMaxInPixels - boundsMinInPixels)/2.0;
+		dis = (worldPos.xyz - originInPixels.xyz);
+		disNorm.x = dis.x/normLen.x;
+		disNorm.y = dis.y/normLen.y;
+		disNorm.z = dis.z/normLen.z;
+		absDisNorm = abs(disNorm);
 
-	vec3 origin = vec3(2048.0,2048.0,512.0);
+		if (
+			(absDisNorm.x <= 1.0) &&
+			(absDisNorm.y <= 1.0) &&
+			(absDisNorm.z <= 1.0)
+		) {
+			tempLen = 
+				coefficients.x*pow(absDisNorm.x,powerVals.x) +
+				coefficients.y*pow(absDisNorm.y,powerVals.y) +
+				coefficients.z*pow(absDisNorm.z,powerVals.z);
 
-
-	float maxRad = 512.0;
-
-	vec3 dis = (worldPos.xyz - origin.xyz);
-	vec3 disNorm = dis/maxRad;
-	vec3 absDisNorm = abs(disNorm);
-	float disTest = 0.0;
-	float tempLen = 0.0;
-	float tempLen2 = 0.0;
-
-	float powFactor = 2.0;
-
-	if (
-		(absDisNorm.x <= 1.0) &&
-		(absDisNorm.y <= 1.0) &&
-		(absDisNorm.z <= 1.0)
-	) {
-		tempLen = pow(absDisNorm.x,powFactor) + pow(absDisNorm.y,powFactor) + pow(absDisNorm.z,powFactor);
-		tempLen2 = pow(absDisNorm.x,powFactor) + pow(absDisNorm.z,powFactor);
-
-		if (tempLen > 0.5 && tempLen < 1.0 && tempLen2 > 0.25) {
-			disTest = 1.0;
+			if (tempLen > minMaxMat.x && tempLen < minMaxMat.y) {
+				finalRes.a = minMaxMat.z/255.0;
+			}
 		}
+
 	}
 
-	//float dis = distance(worldPos.xy, origin.xy);
-	//float zdis = abs(dis-128.0);
+	if (finalRes.a != 0.0) {
+		finalRes.r = 1.0;
+	}
 
-	// float disTest = float(
-	// 	(dis > 256.0) &&
-	// 	(dis < 512.0) &&
-	// 	(worldPos.z < 512.0) &&
-	// 	(zdis < 512.0-worldPos.z)
-
-	// );
-
-	gl_FragData[0] = disTest * ( vec4(1.0,0.0,0.0,2.0/255.0) );
+	gl_FragData[0] = finalRes;
 
 	//vec4 tex1 =  texture3D(Texture1, newCoords);
 	//gl_FragData[0] = float(tex1.a > threshVal/255.0)*(vec4(1.0,0.0,0.0,2.0/255.0));

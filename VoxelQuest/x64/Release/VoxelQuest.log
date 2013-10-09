@@ -1,4 +1,4 @@
-﻿Build started 10/8/2013 12:18:03 AM.
+﻿Build started 10/9/2013 6:32:37 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -184,8 +184,225 @@
          |            
          |  Load Successful          
          END          
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
+         9          
+         MOUSE DOWN          
+         MOUSE UP          
+         MOUSE DOWN          
+         MOUSE UP          
+         116          
+         doShaderRefresh          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/WorldSpaceShader.c )        
+         |  |  init( ../src/glsl/WorldSpaceShader.c )        
+         |  |  |  textFileRead( ../src/glsl/WorldSpaceShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/WorldSpaceShader.c         
+         |  |  |  validateShader( ../src/glsl/WorldSpaceShader.c )        
+         |  |  |  validateShader( ../src/glsl/WorldSpaceShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/BlitShader.c )        
+         |  |  init( ../src/glsl/BlitShader.c )        
+         |  |  |  textFileRead( ../src/glsl/BlitShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/BlitShader.c         
+         |  |  |  validateShader( ../src/glsl/BlitShader.c )        
+         |  |  |  validateShader( ../src/glsl/BlitShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/LightingShader.c )        
+         |  |  init( ../src/glsl/LightingShader.c )        
+         |  |  |  textFileRead( ../src/glsl/LightingShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/LightingShader.c         
+         |  |  |  validateShader( ../src/glsl/LightingShader.c )        
+         |  |  |  validateShader( ../src/glsl/LightingShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/GeomShader.c )        
+         |  |  init( ../src/glsl/GeomShader.c )        
+         |  |  |  textFileRead( ../src/glsl/GeomShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/GeomShader.c         
+         |  |  |  validateShader( ../src/glsl/GeomShader.c )        
+         |  |  |  validateShader( ../src/glsl/GeomShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/GrassShader.c )        
+         |  |  init( ../src/glsl/GrassShader.c )        
+         |  |  |  textFileRead( ../src/glsl/GrassShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/GrassShader.c         
+         |  |  |  validateShader( ../src/glsl/GrassShader.c )        
+         |  |  |  validateShader( ../src/glsl/GrassShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/CombineShader.c )        
+         |  |  init( ../src/glsl/CombineShader.c )        
+         |  |  |  textFileRead( ../src/glsl/CombineShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/CombineShader.c         
+         |  |  |  validateShader( ../src/glsl/CombineShader.c )        
+         |  |  |  validateShader( ../src/glsl/CombineShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/GenerateVolume.c )        
+         |  |  init( ../src/glsl/GenerateVolume.c )        
+         |  |  |  textFileRead( ../src/glsl/GenerateVolume.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/GenerateVolume.c         
+         |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/GenerateVolumeBare.c )        
+         |  |  init( ../src/glsl/GenerateVolumeBare.c )        
+         |  |  |  textFileRead( ../src/glsl/GenerateVolumeBare.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/GenerateVolumeBare.c         
+         |  |  |  validateShader( ../src/glsl/GenerateVolumeBare.c )        
+         |  |  |  validateShader( ../src/glsl/GenerateVolumeBare.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/RenderVolume.c )        
+         |  |  init( ../src/glsl/RenderVolume.c )        
+         |  |  |  textFileRead( ../src/glsl/RenderVolume.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/RenderVolume.c         
+         |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
+     1>EXEC : |  |  |  |  Shader  25  ( ../src/glsl/RenderVolume.c ) compile error : 0(1) : warning C7022: unrecognized profile specifier "highp"
+     1>0(1): warning C7022: unrecognized profile specifier "precision"
+              
+         |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
+     1>EXEC : |  |  |  |  Shader  26  ( ../src/glsl/RenderVolume.c ) compile error : 0(1) : warning C7022: unrecognized profile specifier "highp"
+     1>0(1): warning C7022: unrecognized profile specifier "precision"
+              
+         |  |  |  validateProgram()          
+     1>EXEC : |  |  |  |  Program  27  link error : Vertex info
+         -----------
+     1>0(1): warning C7022: unrecognized profile specifier "highp"
+     1>0(1): warning C7022: unrecognized profile specifier "precision"
+         
+         Fragment info
+         -------------
+     1>0(1): warning C7022: unrecognized profile specifier "highp"
+     1>0(1): warning C7022: unrecognized profile specifier "precision"
+                
+         |  |  END          
+         |  END          
+         END          
+         MOUSE DOWN          
+         MOUSE UP          
+         116          
+         doShaderRefresh          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/WorldSpaceShader.c )        
+         |  |  init( ../src/glsl/WorldSpaceShader.c )        
+         |  |  |  textFileRead( ../src/glsl/WorldSpaceShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/WorldSpaceShader.c         
+         |  |  |  validateShader( ../src/glsl/WorldSpaceShader.c )        
+         |  |  |  validateShader( ../src/glsl/WorldSpaceShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/BlitShader.c )        
+         |  |  init( ../src/glsl/BlitShader.c )        
+         |  |  |  textFileRead( ../src/glsl/BlitShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/BlitShader.c         
+         |  |  |  validateShader( ../src/glsl/BlitShader.c )        
+         |  |  |  validateShader( ../src/glsl/BlitShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/LightingShader.c )        
+         |  |  init( ../src/glsl/LightingShader.c )        
+         |  |  |  textFileRead( ../src/glsl/LightingShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/LightingShader.c         
+         |  |  |  validateShader( ../src/glsl/LightingShader.c )        
+         |  |  |  validateShader( ../src/glsl/LightingShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/GeomShader.c )        
+         |  |  init( ../src/glsl/GeomShader.c )        
+         |  |  |  textFileRead( ../src/glsl/GeomShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/GeomShader.c         
+         |  |  |  validateShader( ../src/glsl/GeomShader.c )        
+         |  |  |  validateShader( ../src/glsl/GeomShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/GrassShader.c )        
+         |  |  init( ../src/glsl/GrassShader.c )        
+         |  |  |  textFileRead( ../src/glsl/GrassShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/GrassShader.c         
+         |  |  |  validateShader( ../src/glsl/GrassShader.c )        
+         |  |  |  validateShader( ../src/glsl/GrassShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/CombineShader.c )        
+         |  |  init( ../src/glsl/CombineShader.c )        
+         |  |  |  textFileRead( ../src/glsl/CombineShader.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/CombineShader.c         
+         |  |  |  validateShader( ../src/glsl/CombineShader.c )        
+         |  |  |  validateShader( ../src/glsl/CombineShader.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/GenerateVolume.c )        
+         |  |  init( ../src/glsl/GenerateVolume.c )        
+         |  |  |  textFileRead( ../src/glsl/GenerateVolume.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/GenerateVolume.c         
+         |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  validateShader( ../src/glsl/GenerateVolume.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/GenerateVolumeBare.c )        
+         |  |  init( ../src/glsl/GenerateVolumeBare.c )        
+         |  |  |  textFileRead( ../src/glsl/GenerateVolumeBare.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/GenerateVolumeBare.c         
+         |  |  |  validateShader( ../src/glsl/GenerateVolumeBare.c )        
+         |  |  |  validateShader( ../src/glsl/GenerateVolumeBare.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         |  ~Shader()          
+         |  Shader( ../src/glsl/RenderVolume.c )        
+         |  |  init( ../src/glsl/RenderVolume.c )        
+         |  |  |  textFileRead( ../src/glsl/RenderVolume.c )        
+         |  |  |  |  READ FILE:  ../src/glsl/RenderVolume.c         
+         |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
+         |  |  |  validateShader( ../src/glsl/RenderVolume.c )        
+         |  |  |  validateProgram()          
+         |  |  END          
+         |  END          
+         END          
+         MOUSE DOWN          
+         MOUSE UP          
+         MOUSE DOWN          
+         MOUSE UP          
+         MOUSE DOWN          
+         MOUSE UP          
+     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
+C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -1.
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
 
-Build succeeded.
+Build FAILED.
 
-Time Elapsed 00:00:10.23
+Time Elapsed 00:04:18.48

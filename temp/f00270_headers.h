@@ -213,6 +213,7 @@ public:
   void unbindFBO ();
   void bindShader (string shaderName);
   void unbindShader ();
+  void setShaderArrayfVec3 (string paramName, float * x, int count);
   void setShaderArray (string paramName, float * x, int count);
   void setShaderFloat (string paramName, float x);
   void setShaderfVec2 (string paramName, FIVector4 * v);
@@ -297,7 +298,7 @@ public:
   uint * volData;
   uint * volDataLinear;
   int paramsPerEntry;
-  int paramArrLen;
+  int numEntries;
   int totParams;
   float * paramArr;
   int maxHeightInUnits;

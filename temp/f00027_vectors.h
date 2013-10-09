@@ -412,13 +412,14 @@ public:
     FIVector4 boundsMinInPixels;
     FIVector4 boundsMaxInPixels;
     FIVector4 originInPixels;
+    FIVector4 powerVals;
+    FIVector4 coefficients;
+    FIVector4 minMaxMat;
 
-    float thickness;
-    float powerPhi;   // xy
-    float powerTheta; // z
-    float matId;
-    float upAxis; // 0 - x, 1 - y, 2 - z
 
+    //float minRad;
+    //float maxRad;
+    //float matId;
 
     inline float fGenRand() {
         return ((float)(rand()%100000))/100000.0f;
@@ -434,21 +435,28 @@ public:
 
     void initRand() {
 
-        boundsMinInPixels.setFXYZ(2048.0 - fGenRand()*512.0,2048.0 - fGenRand()*512.0,2048.0 - fGenRand()*512.0);
+        boundsMinInPixels.setFXYZ(2048.0 - fGenRand()*1024.0,2048.0 - fGenRand()*1024.0,256.0 + fGenRand()*256.0);
+        
         boundsMaxInPixels.setFXYZRef(&boundsMinInPixels);
-        boundsMaxInPixels.addXYZ(fGenRand()*1024.0,fGenRand()*1024.0,fGenRand()*1024.0);
+        boundsMaxInPixels.addXYZ(fGenRand()*2048.0,fGenRand()*2048.0,fGenRand()*2048.0);
 
         originInPixels.copyFrom(&boundsMinInPixels);
         originInPixels.addXYZRef(&boundsMaxInPixels);
         originInPixels.multXYZ(0.5f);
 
-        
-        powerPhi = fGenRand()*3.0f;
-        powerTheta = fGenRand()*3.0f;
+        powerVals.setFXYZ(2.0f,2.0f,2.0f);
+        coefficients.setFXYZ(1.0,0.0,1.0);
+        minMaxMat.setFXYZ(0.75f,1.0f,2.0f);
 
-        thickness = 16.0f;
-        upAxis = 2.0f;
-        matId = 1.0f;
+        //minRad = 0.75;
+        //maxRad = 1.0;
+        //matId = 1.0f;
+
+        
+        //powerPhi = fGenRand()*3.0f + 1.0f;
+        //powerTheta = fGenRand()*3.0f + 1.0f;
+        //thickness = 16.0f;
+        //upAxis = 2.0f;
 
 
     }

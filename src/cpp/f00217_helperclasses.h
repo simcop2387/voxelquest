@@ -333,6 +333,10 @@ public:
 		}
 	}
 
+	void setShaderArrayfVec3(string paramName, float* x, int count) {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform3fv(loc, count, x);
+	}
 
 	void setShaderArray(string paramName, float* x, int count) {
 		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());

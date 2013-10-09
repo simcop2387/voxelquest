@@ -20,9 +20,9 @@ void GamePage::init (Singleton * _singleton, int _thisPageId, FIVector4 * _offse
 		threshVal = 140;
 		threadRunning = false;
 
-		paramsPerEntry = 16;
-		paramArrLen = singleton->gameGeom.size();
-		totParams = paramArrLen*paramsPerEntry;
+		paramsPerEntry = 18;
+		numEntries = singleton->gameGeom.size();
+		totParams = numEntries*paramsPerEntry;
 		
 
 		paramArr = new float[totParams];
@@ -363,6 +363,9 @@ void GamePage::copyToTexture ()
 void GamePage::generateVolume ()
                               {
 
+		int i;
+		int baseInd;
+
 		curState = E_STATE_GENERATEVOLUME_BEG;
 		
 		
@@ -370,6 +373,9 @@ void GamePage::generateVolume ()
 
 		}
 		else {
+
+			// TODO: one shader, set flag
+
 			if (singleton->isBare) {
 				singleton->bindShader("GenerateVolumeBare");
 			}
@@ -377,6 +383,36 @@ void GamePage::generateVolume ()
 				singleton->bindShader("GenerateVolume");
 			}
 
+
+
+			for (i = 0; i < numEntries; i++) {
+				baseInd = i*paramsPerEntry;
+
+				paramArr[baseInd + 0] = singleton->gameGeom[i]->boundsMinInPixels.getFX();
+				paramArr[baseInd + 1] = singleton->gameGeom[i]->boundsMinInPixels.getFY();
+				paramArr[baseInd + 2] = singleton->gameGeom[i]->boundsMinInPixels.getFZ();
+
+				paramArr[baseInd + 3] = singleton->gameGeom[i]->boundsMaxInPixels.getFX();
+				paramArr[baseInd + 4] = singleton->gameGeom[i]->boundsMaxInPixels.getFY();
+				paramArr[baseInd + 5] = singleton->gameGeom[i]->boundsMaxInPixels.getFZ();
+
+				paramArr[baseInd + 6] = singleton->gameGeom[i]->originInPixels.getFX();
+				paramArr[baseInd + 7] = singleton->gameGeom[i]->originInPixels.getFY();
+				paramArr[baseInd + 8] = singleton->gameGeom[i]->originInPixels.getFZ();
+
+				paramArr[baseInd + 9] = singleton->gameGeom[i]->powerVals.getFX();
+				paramArr[baseInd + 10] = singleton->gameGeom[i]->powerVals.getFY();
+				paramArr[baseInd + 11] = singleton->gameGeom[i]->powerVals.getFZ();
+
+				paramArr[baseInd + 12] = singleton->gameGeom[i]->coefficients.getFX();
+				paramArr[baseInd + 13] = singleton->gameGeom[i]->coefficients.getFY();
+				paramArr[baseInd + 14] = singleton->gameGeom[i]->coefficients.getFZ();
+
+				paramArr[baseInd + 15] = singleton->gameGeom[i]->minMaxMat.getFX();
+				paramArr[baseInd + 16] = singleton->gameGeom[i]->minMaxMat.getFY();
+				paramArr[baseInd + 17] = singleton->gameGeom[i]->minMaxMat.getFZ();
+				
+			}
 
 
 			singleton->bindFBO("volGenFBO");
@@ -394,9 +430,9 @@ void GamePage::generateVolume ()
 			singleton->setShaderfVec3("worldMinBufInPixels", &(worldMinBufInPixels));
 			singleton->setShaderfVec3("worldMaxBufInPixels", &(worldMaxBufInPixels));
 
-			singleton->setShaderFloat("paramsPerEntry", (float)paramsPerEntry);
-			singleton->setShaderFloat("paramArrLen", (float)paramArrLen);
-			singleton->setShaderArray("paramArr", paramArr, totParams);
+			singleton->setShaderFloat("paramsPerEntry", (float)(paramsPerEntry/3) );
+			singleton->setShaderFloat("numEntries", (float)numEntries);
+			singleton->setShaderArrayfVec3("paramArr", paramArr, totParams/3);
 
 			singleton->drawFSQuad(1.0f);
 

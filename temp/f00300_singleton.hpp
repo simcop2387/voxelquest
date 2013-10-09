@@ -1077,6 +1077,10 @@ public:
 	    
 	}
 
+	void setShaderArrayfVec3(string paramName, float* x, int count) {
+		shaderMap[curShader]->setShaderArrayfVec3(paramName, x, count);
+	}
+
 	void setShaderArray(string paramName, float* x, int count) {
 		shaderMap[curShader]->setShaderArray(paramName, x, count);
 	}

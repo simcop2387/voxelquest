@@ -892,6 +892,10 @@ void Singleton::unbindShader ()
 	    }
 	    
 	}
+void Singleton::setShaderArrayfVec3 (string paramName, float * x, int count)
+                                                                        {
+		shaderMap[curShader]->setShaderArrayfVec3(paramName, x, count);
+	}
 void Singleton::setShaderArray (string paramName, float * x, int count)
                                                                    {
 		shaderMap[curShader]->setShaderArray(paramName, x, count);
