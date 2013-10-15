@@ -16,6 +16,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		int i;
 
+
+
+		paramArr = new float[4096];
+
+
 		rootObj = NULL;
 
 		lastImageBuffer.data = NULL;
@@ -57,6 +62,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		isBare = true;
 		grassHeight = 1.0/128.0;
 
+		imageTerrainHM = loadBMP("..\\data\\hmsl.bmp");
+		gluintTerrainHM = loadTexture(imageTerrainHM, GL_LINEAR);
 
 		defaultWinW = _defaultWinW/_scaleFactor;
 		defaultWinH = _defaultWinH/_scaleFactor;
@@ -81,6 +88,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		worldSizeInPages.setIXYZ(128,128,12);
 		unitSizeInPixels = (visPageSizeInPixels)/visPageSizeInUnits;
 		
+		geomPageSizeInPixels = 1024;
+		geomPageSizeInUnits = geomPageSizeInPixels/unitSizeInPixels;
+		worldSizeInGeomPages.setFXYZRef(&worldSizeInPages);
+		worldSizeInGeomPages.intDivXYZ(geomPageSizeInPixels/visPageSizeInPixels);
+
 
 		maxH = worldSizeInPages.getIZ();
 		maxW = 4;
@@ -154,10 +166,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 
 
-	    for (i = 0; i < 16; i++) {
-	    	gameGeom.push_back(new GameGeom());
-	    	gameGeom.back()->initRand();
-	    }
+	    
 
 
 		createVTList();
@@ -278,12 +287,53 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    gw = new GameWorld();
 	    gw->init(this);
 
+	    for (i = 0; i < 512; i++) {
+	    	gameGeom.push_back(new GameGeom());
+	    	gameGeom.back()->initRand(i);
+	    	addGeom(gameGeom.back());
+	    }
 
 	    
 	    popTrace();
 
 
 
+
+	}
+void Singleton::addGeom (GameGeom * geom)
+                                     {
+		
+		int i;
+		int j;
+		int ind;
+
+		int startX;
+		int endX;
+		int startY;
+		int endY;
+
+		int bufSize = (visPageSizeInUnits*bufferMult*unitSizeInPixels);
+
+
+		startX = ( geom->boundsMinInPixels.getIX() - bufSize )/geomPageSizeInPixels;
+		startY = ( geom->boundsMinInPixels.getIY() - bufSize )/geomPageSizeInPixels;
+
+		endX = ( geom->boundsMaxInPixels.getIX() + bufSize )/geomPageSizeInPixels;
+		endY = ( geom->boundsMaxInPixels.getIY() + bufSize )/geomPageSizeInPixels;
+
+		
+		startX = clamp(startX, 0, worldSizeInGeomPages.getIX()-1);
+		startY = clamp(startY, 0, worldSizeInGeomPages.getIY()-1);
+
+
+		for (j = startY; j <= endY; j++) {
+			for (i = startX; i <= endX; i++) {
+				ind = j*worldSizeInGeomPages.getIX() + i;
+				gw->geomData[ind].containsGeomIds.push_back(geom->id);
+			}
+		}
+
+		
 
 	}
 void Singleton::sendPoolIdToFront (int id)
@@ -1778,6 +1828,9 @@ void Singleton::processJSON (charArr * sourceBuffer, charArr * saveBuffer)
 		//cout << "\n\n" << buf << "\n\n";
 
 		JSONValue *jsonVal = JSON::Parse(buf);
+
+
+
 
 		if (jsonVal == NULL) {
 			doTrace("Invalid JSON\n\n");

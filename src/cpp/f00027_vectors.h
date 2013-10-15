@@ -318,6 +318,24 @@ public:
         return true;
     }
 
+    bool inBoundsXY(FIVector4 *minV, FIVector4 *maxV) {
+        if (fv4.x < minV->getFX()) {
+            return false;
+        }
+        if (fv4.y < minV->getFY()) {
+            return false;
+        }
+        if (fv4.x > maxV->getFX()) {
+            return false;
+        }
+        if (fv4.y > maxV->getFY()) {
+            return false;
+        }
+
+        return true;
+    }
+
+
     float distance(FIVector4 *otherVec) {
 
         float dx = fv4.x - otherVec->getFX();
@@ -416,6 +434,7 @@ public:
     FIVector4 coefficients;
     FIVector4 minMaxMat;
 
+    int id;
 
     //float minRad;
     //float maxRad;
@@ -429,23 +448,27 @@ public:
 
     }
 
-    void init() {
-
+    void init(int _id) {
+        id = _id;
     }
 
-    void initRand() {
+    void initRand(int _id) {
+        id = _id;
 
-        boundsMinInPixels.setFXYZ(2048.0 - fGenRand()*1024.0,2048.0 - fGenRand()*1024.0,256.0 + fGenRand()*256.0);
+        float rad = 1024.0f;
+        float diam = 2048.0f;
+
+        boundsMinInPixels.setFXYZ(fGenRand()*8192.0 - fGenRand()*rad, fGenRand()*8192.0 - fGenRand()*rad,rad - fGenRand()*rad);
         
         boundsMaxInPixels.setFXYZRef(&boundsMinInPixels);
-        boundsMaxInPixels.addXYZ(fGenRand()*2048.0,fGenRand()*2048.0,fGenRand()*2048.0);
+        boundsMaxInPixels.addXYZ(fGenRand()*diam,fGenRand()*diam,fGenRand()*diam);
 
         originInPixels.copyFrom(&boundsMinInPixels);
         originInPixels.addXYZRef(&boundsMaxInPixels);
         originInPixels.multXYZ(0.5f);
 
         powerVals.setFXYZ(2.0f,2.0f,2.0f);
-        coefficients.setFXYZ(1.0,0.0,1.0);
+        coefficients.setFXYZ(1.0,1.0,1.0);
         minMaxMat.setFXYZ(0.75f,1.0f,2.0f);
 
         //minRad = 0.75;

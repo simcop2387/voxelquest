@@ -98,6 +98,8 @@ public:
   int baseH;
   int scaleFactor;
   int activeMode;
+  int geomPageSizeInPixels;
+  int geomPageSizeInUnits;
   int visPageSizeInPixels;
   int visPageSizeInUnits;
   int unitSizeInPixels;
@@ -141,6 +143,7 @@ public:
   float myDelta;
   float mdTime;
   float muTime;
+  float * paramArr;
   FIVector4 activeObjectPos;
   FIVector4 minBoundsInPixels;
   FIVector4 maxBoundsInPixels;
@@ -148,6 +151,7 @@ public:
   FIVector4 mouseDownPD;
   FIVector4 mouseMovePD;
   FIVector4 worldSizeInPages;
+  FIVector4 worldSizeInGeomPages;
   FIVector4 cameraPos;
   FIVector4 lightPos;
   FIVector4 mouseStart;
@@ -161,6 +165,8 @@ public:
   FIVector4 origin;
   FIVector4 lastModXYZ;
   FIVector4 panMod;
+  Image * imageTerrainHM;
+  GLuint gluintTerrainHM;
   string curShader;
   string allText;
   list <int> pagePoolIds;
@@ -185,6 +191,7 @@ public:
   std::vector <GameGeom*> gameGeom;
   Singleton ();
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer * _myWS);
+  void addGeom (GameGeom * geom);
   void sendPoolIdToFront (int id);
   int requestPoolId (int requestingPageId);
   static void qNormalizeAngle (int & angle);
@@ -278,6 +285,21 @@ public:
 };
 #undef LZZ_INLINE
 #endif
+// f00345_geompage.e
+//
+
+#ifndef LZZ_f00345_geompage_e
+#define LZZ_f00345_geompage_e
+#define LZZ_INLINE inline
+class GeomPage
+{
+public:
+  std::vector <int> containsGeomIds;
+  GeomPage ();
+  void init ();
+};
+#undef LZZ_INLINE
+#endif
 // f00350_gamepage.e
 //
 
@@ -300,7 +322,7 @@ public:
   int paramsPerEntry;
   int numEntries;
   int totParams;
-  float * paramArr;
+  int maxEntries;
   int maxHeightInUnits;
   int totLenO2;
   int totLenVisO2;
@@ -324,6 +346,7 @@ public:
   void createSimplexNoise ();
   void unbindGPUResources ();
   void copyToTexture ();
+  void addGeom ();
   void generateVolume ();
   ~ GamePage ();
   void run ();
@@ -342,6 +365,7 @@ public:
   int pageCount;
   int visPageSizeInUnits;
   int iVolumeSize;
+  int iGeomVolumeSize;
   int ((diagrams) [E_RENDER_LENGTH]) [E_STATE_LENGTH];
   int * curDiagram;
   int renderMethod;
@@ -352,6 +376,7 @@ public:
   FIVector4 lScreenCoords;
   FIVector4 aoScreenCoords;
   FIVector4 worldSizeInPages;
+  FIVector4 worldSizeInGeomPages;
   FIVector4 curPos;
   FIVector4 camPagePos;
   FIVector4 iPixelWorldCoords;
@@ -368,15 +393,16 @@ public:
   FIVector4 endBounds;
   Singleton * singleton;
   GamePage * * worldData;
+  GeomPage * geomData;
   int iBufferSize;
   Poco::ThreadPool threadpool;
   int maxThreads;
   int availThreads;
   int visPageSizeInPixels;
   GameWorld ();
+  void init (Singleton * _singleton);
   bool checkBounds (int i, int j, int k);
   void resetToState (E_STATES resState);
-  void init (Singleton * _singleton);
   void update ();
   bool processPages ();
   void renderPages ();

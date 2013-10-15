@@ -188,12 +188,12 @@ Image* loadBMP(const char* filename) {
 	return new Image(pixels2.release(), width, height);
 }
 
-GLuint loadTexture(Image* image) {
+GLuint loadTexture(Image* image, GLenum filterType) {
 	GLuint tid;
 	glGenTextures(1, &tid);
 	glBindTexture(GL_TEXTURE_2D, tid);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterType);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterType);
 	glTexImage2D(GL_TEXTURE_2D,
 				 0,
 				 GL_RGB,

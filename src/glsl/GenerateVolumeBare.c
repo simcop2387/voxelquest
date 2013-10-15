@@ -4,6 +4,8 @@ uniform sampler3D Texture0; //volume texture nearest
 uniform sampler3D Texture1; //voro texture linear
 uniform sampler2D Texture2; //2d to 3d coords
 
+uniform sampler2D Texture3; //terrain heightmap
+
 uniform vec2 resolution;
 uniform float bufferedPageSizeInUnits;
 uniform float threshVal;
@@ -106,7 +108,20 @@ void main() {
 		finalRes.r = 1.0;
 	}
 
+
+	vec4 texHM0 =  texture2D(Texture3, worldPos.xy / (32768.0/1.0) );
+	vec4 texHM1 =  texture2D(Texture3, worldPos.xy / (32768.0/4.0) );
+	vec4 texHM2 =  texture2D(Texture3, worldPos.xy / (32768.0/16.0) );
+	vec4 texHM3 =  texture2D(Texture3, worldPos.xy / (32768.0/32.0) );
+
+	float testHeight = texHM0.r*2048.0 + texHM1.r*256.0 + texHM2.r*64.0 + texHM3.r*32.0;
+
+	if (testHeight > worldPos.z ) {
+		finalRes = vec4(1.0,0.0,0.0,2.0/255.0);
+	}
+
 	gl_FragData[0] = finalRes;
+
 
 	//vec4 tex1 =  texture3D(Texture1, newCoords);
 	//gl_FragData[0] = float(tex1.a > threshVal/255.0)*(vec4(1.0,0.0,0.0,2.0/255.0));

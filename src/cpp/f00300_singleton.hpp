@@ -37,6 +37,8 @@ public:
 	int baseH;
 	int scaleFactor;
 	int activeMode;
+	int geomPageSizeInPixels;
+	int geomPageSizeInUnits;
 	int visPageSizeInPixels;
 	int visPageSizeInUnits;
 	int unitSizeInPixels;
@@ -84,6 +86,8 @@ public:
 	float mdTime;
 	float muTime;
 
+	float* paramArr;
+
 	FIVector4 activeObjectPos;
 	FIVector4 minBoundsInPixels;
 	FIVector4 maxBoundsInPixels;
@@ -91,10 +95,15 @@ public:
 	FIVector4 mouseDownPD;
 	FIVector4 mouseMovePD;
 	FIVector4 worldSizeInPages;
+	FIVector4 worldSizeInGeomPages;
 	FIVector4 cameraPos;
 	FIVector4 lightPos;
 	FIVector4 mouseStart;
 	FIVector4 mouseEnd;
+
+
+	
+	
 
 
 	FIVector4* mouseMoving;
@@ -106,6 +115,9 @@ public:
 	FIVector4 origin;
 	FIVector4 lastModXYZ;
 	FIVector4 panMod;
+
+	Image* imageTerrainHM;
+	GLuint gluintTerrainHM;
 
 
 	string curShader;
@@ -153,6 +165,11 @@ public:
 
 		int i;
 
+
+
+		paramArr = new float[4096];
+
+
 		rootObj = NULL;
 
 		lastImageBuffer.data = NULL;
@@ -194,6 +211,8 @@ public:
 		isBare = true;
 		grassHeight = 1.0/128.0;
 
+		imageTerrainHM = loadBMP("..\\data\\hmsl.bmp");
+		gluintTerrainHM = loadTexture(imageTerrainHM, GL_LINEAR);
 
 		defaultWinW = _defaultWinW/_scaleFactor;
 		defaultWinH = _defaultWinH/_scaleFactor;
@@ -218,6 +237,11 @@ public:
 		worldSizeInPages.setIXYZ(128,128,12);
 		unitSizeInPixels = (visPageSizeInPixels)/visPageSizeInUnits;
 		
+		geomPageSizeInPixels = 1024;
+		geomPageSizeInUnits = geomPageSizeInPixels/unitSizeInPixels;
+		worldSizeInGeomPages.setFXYZRef(&worldSizeInPages);
+		worldSizeInGeomPages.intDivXYZ(geomPageSizeInPixels/visPageSizeInPixels);
+
 
 		maxH = worldSizeInPages.getIZ();
 		maxW = 4;
@@ -291,10 +315,7 @@ public:
 
 
 
-	    for (i = 0; i < 16; i++) {
-	    	gameGeom.push_back(new GameGeom());
-	    	gameGeom.back()->initRand();
-	    }
+	    
 
 
 		createVTList();
@@ -415,6 +436,11 @@ public:
 	    gw = new GameWorld();
 	    gw->init(this);
 
+	    for (i = 0; i < 512; i++) {
+	    	gameGeom.push_back(new GameGeom());
+	    	gameGeom.back()->initRand(i);
+	    	addGeom(gameGeom.back());
+	    }
 
 	    
 	    popTrace();
@@ -423,6 +449,45 @@ public:
 
 
 	}
+
+
+
+	void addGeom(GameGeom* geom) {
+		
+		int i;
+		int j;
+		int ind;
+
+		int startX;
+		int endX;
+		int startY;
+		int endY;
+
+		int bufSize = (visPageSizeInUnits*bufferMult*unitSizeInPixels);
+
+
+		startX = ( geom->boundsMinInPixels.getIX() - bufSize )/geomPageSizeInPixels;
+		startY = ( geom->boundsMinInPixels.getIY() - bufSize )/geomPageSizeInPixels;
+
+		endX = ( geom->boundsMaxInPixels.getIX() + bufSize )/geomPageSizeInPixels;
+		endY = ( geom->boundsMaxInPixels.getIY() + bufSize )/geomPageSizeInPixels;
+
+		
+		startX = clamp(startX, 0, worldSizeInGeomPages.getIX()-1);
+		startY = clamp(startY, 0, worldSizeInGeomPages.getIY()-1);
+
+
+		for (j = startY; j <= endY; j++) {
+			for (i = startX; i <= endX; i++) {
+				ind = j*worldSizeInGeomPages.getIX() + i;
+				gw->geomData[ind].containsGeomIds.push_back(geom->id);
+			}
+		}
+
+		
+
+	}
+
 
 	void sendPoolIdToFront(int id) {
 		int i = 0;
@@ -1998,6 +2063,9 @@ public:
 		//cout << "\n\n" << buf << "\n\n";
 
 		JSONValue *jsonVal = JSON::Parse(buf);
+
+
+
 
 		if (jsonVal == NULL) {
 			doTrace("Invalid JSON\n\n");

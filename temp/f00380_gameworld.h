@@ -13,39 +13,6 @@ GameWorld::GameWorld ()
 		// AO val: 8 bits, normal: 24 bits
 
 	}
-bool GameWorld::checkBounds (int i, int j, int k)
-                                              {
-		
-		bool res = true;
-
-		if (i < 0) {res = false;}
-		if (j < 0) {res = false;}
-		if (k < 0) {res = false;}
-		if (i >= worldSizeInPages.getIX()) {res = false;}
-		if (j >= worldSizeInPages.getIY()) {res = false;}
-		if (k >= worldSizeInPages.getIZ()) {res = false;}
-
-		return res;
-	}
-void GameWorld::resetToState (E_STATES resState)
-                                             {
-		int i;
-
-		threadpool.joinAll();
-
-		for (i = 0; i < iVolumeSize; i++) {
-			if (worldData[i]) {
-				if( worldData[i]->curState > resState) {
-
-					if (worldData[i]->fillState == E_FILL_STATE_PARTIAL) {
-						worldData[i]->curState = resState;
-					}
-
-					
-				}
-			}
-		}
-	}
 void GameWorld::init (Singleton * _singleton)
                                          {
 
@@ -82,6 +49,7 @@ void GameWorld::init (Singleton * _singleton)
 		renderMethod = (int)E_RENDER_VOL;
 		singleton = _singleton;
 		worldSizeInPages.copyFrom( &(singleton->worldSizeInPages) );
+		worldSizeInGeomPages.copyFrom( &(singleton->worldSizeInGeomPages) );
 
 		visPageSizeInPixels = singleton->visPageSizeInPixels;
 
@@ -95,9 +63,10 @@ void GameWorld::init (Singleton * _singleton)
 		visPageSizeInUnits = singleton->visPageSizeInUnits;
 
 		iVolumeSize = worldSizeInPages.getIX()*worldSizeInPages.getIY()*worldSizeInPages.getIZ();
+		iGeomVolumeSize = worldSizeInGeomPages.getIX()*worldSizeInGeomPages.getIY();
 		
 	    worldData = new GamePage*[iVolumeSize];
-	    
+	    geomData = new GeomPage[iGeomVolumeSize];
 	      
 
 		
@@ -105,10 +74,47 @@ void GameWorld::init (Singleton * _singleton)
 			worldData[i] = NULL;
 		}
 
+		for (i = 0; i < iGeomVolumeSize; i++) {
+			//geomData[i] = NULL;
+		}
+
 	    
 	    #ifdef DEBUG_MODE
 	    popTrace();
 	    #endif
+	}
+bool GameWorld::checkBounds (int i, int j, int k)
+                                              {
+		
+		bool res = true;
+
+		if (i < 0) {res = false;}
+		if (j < 0) {res = false;}
+		if (k < 0) {res = false;}
+		if (i >= worldSizeInPages.getIX()) {res = false;}
+		if (j >= worldSizeInPages.getIY()) {res = false;}
+		if (k >= worldSizeInPages.getIZ()) {res = false;}
+
+		return res;
+	}
+void GameWorld::resetToState (E_STATES resState)
+                                             {
+		int i;
+
+		threadpool.joinAll();
+
+		for (i = 0; i < iVolumeSize; i++) {
+			if (worldData[i]) {
+				if( worldData[i]->curState > resState) {
+
+					if (worldData[i]->fillState == E_FILL_STATE_PARTIAL) {
+						worldData[i]->curState = resState;
+					}
+
+					
+				}
+			}
+		}
 	}
 void GameWorld::update ()
                       {
