@@ -179,19 +179,54 @@
 					"number_Position_4": 1
 				}
 			},
-			"gradientStepList_LightBlueGray_5": {
+			"gradientStepList_HeightMap_5": {
 				"gradientStep_Step0_0": {
-					"number_Hue_0": 0.1,
-					"number_Saturation_1": 0.1,
-					"number_Lightness_2": 0.1,
-					"number_Power_3": 0.075,
+					"number_Hue_0": 0.06451612903225806,
+					"number_Saturation_1": 0.3225806451612903,
+					"number_Lightness_2": 0.03225806451612903,
+					"number_Power_3": 0.19986850756081526,
 					"number_Position_4": 0
 				},
 				"gradientStep_Step1_1": {
-					"number_Hue_0": 0.4,
-					"number_Saturation_1": 0.2,
+					"number_Hue_0": 0.25806451612903225,
+					"number_Saturation_1": 0.3225806451612903,
+					"number_Lightness_2": 0.9032258064516129,
+					"number_Power_3": 0.168310322156476,
+					"number_Position_4": 0.38132807363576593
+				},
+				"gradientStep_Step2_2": {
+					"number_Hue_0": 0.5806451612903226,
+					"number_Saturation_1": 0.16129032258064516,
+					"number_Lightness_2": 0.8709677419354839,
+					"number_Power_3": 0.21301775147928995,
+					"number_Position_4": 0.41025641025641024
+				},
+				"gradientStep_Step3_3": {
+					"number_Hue_0": 0.41935483870967744,
+					"number_Saturation_1": 0.4838709677419355,
+					"number_Lightness_2": 0.3225806451612903,
+					"number_Power_3": 0.23931623931623933,
+					"number_Position_4": 0.5180802103879028
+				},
+				"gradientStep_Step4_4": {
+					"number_Hue_0": 0.41935483870967744,
+					"number_Saturation_1": 0.40236686390532544,
+					"number_Lightness_2": 0.5838264299802761,
+					"number_Power_3": 0.3576594345825115,
+					"number_Position_4": 0.6995397764628534
+				},
+				"gradientStep_Step5_5": {
+					"number_Hue_0": 0.6129032258064516,
+					"number_Saturation_1": 0.16129032258064516,
+					"number_Lightness_2": 0.62853385930309,
+					"number_Power_3": 0.18408941485864563,
+					"number_Position_4": 0.7468770545693623
+				},
+				"gradientStep_Step6_6": {
+					"number_Hue_0": 0.6451612903225806,
+					"number_Saturation_1": 0.03225806451612903,
 					"number_Lightness_2": 1,
-					"number_Power_3": 0.125,
+					"number_Power_3": 0.1761998685075608,
 					"number_Position_4": 1
 				}
 			}

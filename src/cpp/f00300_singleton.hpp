@@ -12,7 +12,9 @@ public:
 
 	bool isFullScreen;
 	bool changesMade;
+	bool mapInvalid;
 	bool bufferInvalid;
+	bool wsBufferInvalid;
 	bool forceGetPD;
 	bool mouseLeftDown;
 	bool mouseRightDown;
@@ -25,7 +27,6 @@ public:
 	bool isZooming;
 	bool isPanning;
 	bool keyDownArr[MAX_KEYS];
-	bool wsBufferInvalid;
 	bool softMode;
 	bool isBare;
 	bool reportPagesDrawn;
@@ -62,6 +63,7 @@ public:
 	int mouseCount;
 	int lastMouseX;
 	int	lastMouseY;
+	int numProvinces;
 
 	uint volGenFBOSize;
 	uint slicesPerPitch;
@@ -87,6 +89,7 @@ public:
 	float muTime;
 
 	float* paramArr;
+	float* paramArrMap;
 
 	FIVector4 activeObjectPos;
 	FIVector4 minBoundsInPixels;
@@ -168,6 +171,11 @@ public:
 
 
 		paramArr = new float[4096];
+		paramArrMap = new float[4096];
+
+		numProvinces = 64;
+
+		
 
 
 		rootObj = NULL;
@@ -211,7 +219,48 @@ public:
 		isBare = true;
 		grassHeight = 1.0/128.0;
 
+		bool isValid;
+		int xind;
+		int yind;
+
 		imageTerrainHM = loadBMP("..\\data\\hmsl.bmp");
+		imageTerrainHM->setAllValues(1,0);
+		imageTerrainHM->setAllValues(2,0);
+
+		int seaLevel = 90;
+
+		
+		for (i = 0; i < numProvinces; i++) {
+
+			isValid = false;
+
+			do {
+				paramArrMap[i*3+0] = fGenRand();
+				paramArrMap[i*3+1] = fGenRand();
+				paramArrMap[i*3+2] = fGenRand();
+
+				xind = (int)(paramArrMap[i*3+0]*imageTerrainHM->width);
+				yind = (int)(paramArrMap[i*3+1]*imageTerrainHM->height);
+
+				if (imageTerrainHM->getValue(xind,yind,0) > seaLevel ) {
+					if (imageTerrainHM->getValue(xind,yind,1) == 0) {
+						imageTerrainHM->setValue(xind,yind,1,i*2+128);
+						isValid = true;
+					}
+					else {
+						isValid = false;
+					}
+				}
+				else {
+					isValid = false;
+				}
+			}
+			while (!isValid);
+			
+
+		}
+
+
 		gluintTerrainHM = loadTexture(imageTerrainHM, GL_LINEAR);
 
 		defaultWinW = _defaultWinW/_scaleFactor;
@@ -328,6 +377,7 @@ public:
 		changesMade = false;
 		forceGetPD = false;
 		bufferInvalid = false;
+		mapInvalid = true;
 		notQuit = true;
 		timerNotSet = true;
 		screenWidth = 400;
@@ -367,6 +417,9 @@ public:
 	    fboStrings.push_back("resultFBO");
 	    fboStrings.push_back("volGenFBO");
 
+	    fboStrings.push_back("mapFBO0");
+	    fboStrings.push_back("mapFBO1");
+
 
 
 
@@ -379,7 +432,9 @@ public:
 	    shaderStrings.push_back("shaderWater");
 	    */
 
-
+	    shaderStrings.push_back("TopoShader");
+	    shaderStrings.push_back("CopyShader");
+	    shaderStrings.push_back("MapBorderShader");
 	    shaderStrings.push_back("WorldSpaceShader");
 	    shaderStrings.push_back("BlitShader");
 	    shaderStrings.push_back("LightingShader");
@@ -417,7 +472,7 @@ public:
 	        fboMap.insert(  pair<string, FBOSet*>(fboStrings[i], new FBOSet())  );
 	    }
 
-	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool hasDepth, int filterEnum);
+	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool hasDepth, int filterEnum, int clampEnum);
 
 	    fboMap["worldSpaceFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false);
 	    fboMap["palFBO"]->init(1, palWidth, palHeight, 1, false, GL_LINEAR);
@@ -428,6 +483,10 @@ public:
 	    fboMap["combineFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["volGenFBO"]->init(1, volGenFBOSize, volGenFBOSize, 1, false);
+
+	    fboMap["mapFBO0"]->init(1, imageTerrainHM->width, imageTerrainHM->height, 1, false, GL_NEAREST, GL_REPEAT);
+	    fboMap["mapFBO1"]->init(1, imageTerrainHM->width, imageTerrainHM->height, 1, false, GL_NEAREST, GL_REPEAT);
+
 
 
 	    loadAllData();
@@ -441,6 +500,8 @@ public:
 	    	gameGeom.back()->initRand(i);
 	    	addGeom(gameGeom.back());
 	    }
+
+
 
 	    
 	    popTrace();
@@ -1096,15 +1157,58 @@ public:
 
 	////
 
-	void sampleFBO(string fboName, int offset=0) {
-	    FBOSet* fbos = fboMap[fboName];
-	    sampleFBODirect(fbos,offset);
+	void sampleFBO(string fboName, int offset=0, int swapFlag=-1) {
+	    FBOSet* fbos;
+	    
+		if (swapFlag == -1) {
+			fbos = fboMap[fboName];
+		}
+		else {
+
+			if (swapFlag == 0) {
+				fbos = fboMap[fboName + "0"];
+			}
+			else {
+				fbos = fboMap[fboName + "1"];
+			}
+			
+		}
+	    
+	    if (fbos) {
+	    	sampleFBODirect(fbos,offset);
+	    }
+	    else {
+	    	doTrace("sampleFBO: Invalid FBO Name");
+	    }
+
+	    
 	}
 
-	void unsampleFBO(string fboName, int offset=0) {
+	void unsampleFBO(string fboName, int offset=0, int swapFlag=-1) {
 	    
-	    FBOSet* fbos = fboMap[fboName];
-	    unsampleFBODirect(fbos,offset);
+		FBOSet* fbos;
+
+		if (swapFlag == -1) {
+			fbos = fboMap[fboName];
+		}
+		else {
+
+			if (swapFlag == 0) {
+				fbos = fboMap[fboName + "0"];
+			}
+			else {
+				fbos = fboMap[fboName + "1"];
+			}
+			
+		}
+
+		if (fbos) {
+			unsampleFBODirect(fbos,offset);
+		}
+		else {
+			doTrace("unsampleFBO: Invalid FBO Name");
+		}
+	    
 	}
 
 	FBOWrapper* getFBOWrapper (string fboName, int offset) {
@@ -1112,10 +1216,32 @@ public:
 		return fbos->getFBOWrapper(offset);
 	}
 
-	void bindFBO(string fboName) {
+	void bindFBO(string fboName, int swapFlag=-1) {
 	    
-	    FBOSet* fbos = fboMap[fboName];
-	    bindFBODirect(fbos);
+		FBOSet* fbos;
+
+		if (swapFlag == -1) {
+			fbos = fboMap[fboName];
+		}
+		else {
+
+			if (swapFlag == 0) {
+				fbos = fboMap[fboName + "1"];
+			}
+			else {
+				fbos = fboMap[fboName + "0"];
+			}
+			
+		}
+
+		if (fbos) {
+			bindFBODirect(fbos);
+		}
+		else {
+			doTrace("bindFBO: Invalid FBO Name");
+		}
+
+	   
 	}
 
 	void unbindFBO() {
@@ -1233,8 +1359,19 @@ public:
 	    glEnd();
 	}
 
-	void drawFBO(string fboName, int ind, float zoom) {
-	    drawFBOOffset(fboName, ind, 0.0f, 0.0f, zoom);
+	void drawFBO(string fboName, int ind, float zoom, int swapFlag=-1) {
+	    if (swapFlag == -1) {
+	    	drawFBOOffset(fboName, ind, 0.0f, 0.0f, zoom);
+	    }
+	    else {
+	    	if (swapFlag == 0) {
+	    		drawFBOOffset(fboName+"1", ind, 0.0f, 0.0f, zoom);
+	    	}
+	    	else {
+	    		drawFBOOffset(fboName+"0", ind, 0.0f, 0.0f, zoom);
+	    	}
+	    	
+	    }
 	}
 
 	void drawFBOOffsetDirect(FBOSet* fbos, int ind, float xOff, float yOff, float zoom) {
@@ -1249,7 +1386,14 @@ public:
 
 	void drawFBOOffset(string fboName, int ind, float xOff, float yOff, float zoom) {
 	    FBOSet* fbos = fboMap[fboName];
-	    drawFBOOffsetDirect(fbos, ind, xOff, yOff, zoom);
+
+	    if (fbos) {
+	    	drawFBOOffsetDirect(fbos, ind, xOff, yOff, zoom);
+	    }
+	    else {
+	    	doTrace("drawFBOOffsetDirect: Invalid FBO Name");
+	    }
+	    
 	}
 
 
@@ -1546,7 +1690,7 @@ public:
 			case 'r':
 				doShaderRefresh();
 				bufferInvalid = true;
-
+				mapInvalid = true;
 			break;
 
 			case 'g':

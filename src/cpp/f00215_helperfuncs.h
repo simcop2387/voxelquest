@@ -31,7 +31,9 @@ inline float clamp(float val) {
 }
 
 inline float fGenRand() {
-	return ((float)(rand()%100000))/100000.0f;
+	
+	return (float)rand()/(float)RAND_MAX;
+	//return ((float)(rand()%100000))/100000.0f;
 }
 
 inline int iGenRand(int val) {

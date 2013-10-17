@@ -5,6 +5,7 @@ public:
 
 	
 	int pageCount;
+	int mapSwapFlag;
 
 	
 	int visPageSizeInUnits;
@@ -77,6 +78,8 @@ public:
 		int i;
 		int j;
 
+		mapSwapFlag = 0;
+
 		updatePoolOrder = false;
 
 		pageCount = 0;
@@ -88,7 +91,6 @@ public:
 			ocThreads.push_back(-1);
 		}
 
-		
 
 		
 
@@ -173,7 +175,28 @@ public:
 		}
 	}
 
+
 	void update() {
+
+		glClearColor(0.6,0.6,0.7,0.0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		if (singleton->mapInvalid) {
+			initMap();
+			mapSwapFlag = 0;
+		}
+
+
+		drawMap();
+		
+
+
+		glutSwapBuffers();
+		glFlush();
+		
+	}
+
+	void update2() {
 
 		bool changesMade = singleton->changesMade;
 		bool bufferInvalid = singleton->bufferInvalid;
@@ -1219,19 +1242,77 @@ public:
 		
 	}
 
+
+	//singleton->setShaderTexture(singleton->gluintTerrainHM, 1);
+	//singleton->setShaderTexture(0, 1);
+
+	void initMap() {
+		singleton->mapInvalid = false;
+
+		singleton->bindShader("CopyShader");
+		singleton->bindFBO("mapFBO0");
+		singleton->setShaderTexture(singleton->gluintTerrainHM, 0);
+		singleton->drawFSQuad(1.0f);
+		singleton->setShaderTexture(0, 1);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+	}
+
+	void drawMap() {
+
+
+		singleton->bindShader("MapBorderShader");
+		singleton->bindFBO("mapFBO",mapSwapFlag);
+
+		singleton->sampleFBO("palFBO", 0);
+		singleton->sampleFBO("mapFBO",1,mapSwapFlag);
+		
+		singleton->setShaderFloat("curTime", singleton->curTime);
+		//singleton->setShaderArrayfVec3("paramArrMap", singleton->paramArrMap, (float)(singleton->numProvinces) );
+		//singleton->setShaderFloat("numProvinces", (float)(singleton->numProvinces));
+		singleton->drawFSQuad(1.0f);
+
+		singleton->unsampleFBO("mapFBO",1,mapSwapFlag);
+		singleton->unsampleFBO("palFBO",0);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+
+
+
+		singleton->bindShader("TopoShader");
+		singleton->sampleFBO("palFBO", 0);
+		singleton->sampleFBO("mapFBO",1,mapSwapFlag);
+		
+		singleton->drawFSQuad(1.0f);
+
+		singleton->unsampleFBO("mapFBO",1,mapSwapFlag);
+		singleton->unsampleFBO("palFBO",0);
+		singleton->unbindShader();
+
+
+		//singleton->drawFBO("mapFBO", 0, 1.0, mapSwapFlag );
+
+		mapSwapFlag = 1-mapSwapFlag;
+
+
+
+	}
+
+
 	void postProcess() {
-
-		// NOTE: ALWAYS UNSAMPLE IN REVERSE ORDER!!!
-
-
-		//singleton->drawFBO("palFBO", 0, 1.0 );
-
-
 
 		float newZoom;
 
+		// NOTE: ALWAYS UNSAMPLE IN REVERSE ORDER!!!
+
 		singleton->worldToScreen(&lScreenCoords, &(singleton->lightPos));
 		singleton->worldToScreen(&aoScreenCoords, &(singleton->activeObjectPos));
+
+		//singleton->drawFBO("palFBO", 0, 1.0 );
+
+		
+
+
 
 		singleton->bindShader("LightingShader");
 		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
@@ -1244,9 +1325,6 @@ public:
 		
 		singleton->setShaderfVec4("lastUnitPos", &(lastUnitPos) );
 		singleton->setShaderfVec4("lastPagePos", &(lastPagePos) );
-
-
-
 
 		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDimHalf));
@@ -1269,10 +1347,13 @@ public:
 		singleton->unbindFBO();
 		singleton->unbindShader();
 
-		
-
 		newZoom = std::max(1.0f,singleton->cameraZoom);
 		singleton->drawFBO("resultFBO", 0, newZoom );
+	
+
+		
+
+		
 
 		
 		

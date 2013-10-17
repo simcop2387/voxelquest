@@ -76,7 +76,9 @@ public:
   eProgramAction (progActionsUp) [E_PS_SIZE*256];
   bool isFullScreen;
   bool changesMade;
+  bool mapInvalid;
   bool bufferInvalid;
+  bool wsBufferInvalid;
   bool forceGetPD;
   bool mouseLeftDown;
   bool mouseRightDown;
@@ -89,7 +91,6 @@ public:
   bool isZooming;
   bool isPanning;
   bool (keyDownArr) [MAX_KEYS];
-  bool wsBufferInvalid;
   bool softMode;
   bool isBare;
   bool reportPagesDrawn;
@@ -123,6 +124,7 @@ public:
   int mouseCount;
   int lastMouseX;
   int lastMouseY;
+  int numProvinces;
   uint volGenFBOSize;
   uint slicesPerPitch;
   uint palWidth;
@@ -144,6 +146,7 @@ public:
   float mdTime;
   float muTime;
   float * paramArr;
+  float * paramArrMap;
   FIVector4 activeObjectPos;
   FIVector4 minBoundsInPixels;
   FIVector4 maxBoundsInPixels;
@@ -213,10 +216,10 @@ public:
   void sampleFBODirect (FBOSet * fbos, int offset = 0);
   void unsampleFBODirect (FBOSet * fbos, int offset = 0);
   void bindFBODirect (FBOSet * fbos);
-  void sampleFBO (string fboName, int offset = 0);
-  void unsampleFBO (string fboName, int offset = 0);
+  void sampleFBO (string fboName, int offset = 0, int swapFlag = -1);
+  void unsampleFBO (string fboName, int offset = 0, int swapFlag = -1);
   FBOWrapper * getFBOWrapper (string fboName, int offset);
-  void bindFBO (string fboName);
+  void bindFBO (string fboName, int swapFlag = -1);
   void unbindFBO ();
   void bindShader (string shaderName);
   void unbindShader ();
@@ -236,7 +239,7 @@ public:
   bool altDown ();
   void drawFSQuad (float zoom);
   void drawFSQuadOffset (float xOff, float yOff, float zoom);
-  void drawFBO (string fboName, int ind, float zoom);
+  void drawFBO (string fboName, int ind, float zoom, int swapFlag = -1);
   void drawFBOOffsetDirect (FBOSet * fbos, int ind, float xOff, float yOff, float zoom);
   void drawFBOOffset (string fboName, int ind, float xOff, float yOff, float zoom);
   void moveCamera (FIVector4 * modXYZ);
@@ -363,6 +366,7 @@ class GameWorld
 {
 public:
   int pageCount;
+  int mapSwapFlag;
   int visPageSizeInUnits;
   int iVolumeSize;
   int iGeomVolumeSize;
@@ -404,6 +408,7 @@ public:
   bool checkBounds (int i, int j, int k);
   void resetToState (E_STATES resState);
   void update ();
+  void update2 ();
   bool processPages ();
   void renderPages ();
   void drawPage (GamePage * gp, int dx, int dy, int dz);
@@ -412,6 +417,8 @@ public:
   void modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushAction);
   void renderWorldSpace ();
   void renderGrass ();
+  void initMap ();
+  void drawMap ();
   void postProcess ();
   ~ GameWorld ();
 };

@@ -19,6 +19,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 
 		paramArr = new float[4096];
+		paramArrMap = new float[4096];
+
+		numProvinces = 64;
+
+		
 
 
 		rootObj = NULL;
@@ -62,7 +67,48 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		isBare = true;
 		grassHeight = 1.0/128.0;
 
+		bool isValid;
+		int xind;
+		int yind;
+
 		imageTerrainHM = loadBMP("..\\data\\hmsl.bmp");
+		imageTerrainHM->setAllValues(1,0);
+		imageTerrainHM->setAllValues(2,0);
+
+		int seaLevel = 90;
+
+		
+		for (i = 0; i < numProvinces; i++) {
+
+			isValid = false;
+
+			do {
+				paramArrMap[i*3+0] = fGenRand();
+				paramArrMap[i*3+1] = fGenRand();
+				paramArrMap[i*3+2] = fGenRand();
+
+				xind = (int)(paramArrMap[i*3+0]*imageTerrainHM->width);
+				yind = (int)(paramArrMap[i*3+1]*imageTerrainHM->height);
+
+				if (imageTerrainHM->getValue(xind,yind,0) > seaLevel ) {
+					if (imageTerrainHM->getValue(xind,yind,1) == 0) {
+						imageTerrainHM->setValue(xind,yind,1,i*2+128);
+						isValid = true;
+					}
+					else {
+						isValid = false;
+					}
+				}
+				else {
+					isValid = false;
+				}
+			}
+			while (!isValid);
+			
+
+		}
+
+
 		gluintTerrainHM = loadTexture(imageTerrainHM, GL_LINEAR);
 
 		defaultWinW = _defaultWinW/_scaleFactor;
@@ -179,6 +225,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		changesMade = false;
 		forceGetPD = false;
 		bufferInvalid = false;
+		mapInvalid = true;
 		notQuit = true;
 		timerNotSet = true;
 		screenWidth = 400;
@@ -218,6 +265,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    fboStrings.push_back("resultFBO");
 	    fboStrings.push_back("volGenFBO");
 
+	    fboStrings.push_back("mapFBO0");
+	    fboStrings.push_back("mapFBO1");
+
 
 
 
@@ -230,7 +280,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    shaderStrings.push_back("shaderWater");
 	    */
 
-
+	    shaderStrings.push_back("TopoShader");
+	    shaderStrings.push_back("CopyShader");
+	    shaderStrings.push_back("MapBorderShader");
 	    shaderStrings.push_back("WorldSpaceShader");
 	    shaderStrings.push_back("BlitShader");
 	    shaderStrings.push_back("LightingShader");
@@ -268,7 +320,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	        fboMap.insert(  pair<string, FBOSet*>(fboStrings[i], new FBOSet())  );
 	    }
 
-	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool hasDepth, int filterEnum);
+	    //init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool hasDepth, int filterEnum, int clampEnum);
 
 	    fboMap["worldSpaceFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false);
 	    fboMap["palFBO"]->init(1, palWidth, palHeight, 1, false, GL_LINEAR);
@@ -279,6 +331,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    fboMap["combineFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["volGenFBO"]->init(1, volGenFBOSize, volGenFBOSize, 1, false);
+
+	    fboMap["mapFBO0"]->init(1, imageTerrainHM->width, imageTerrainHM->height, 1, false, GL_NEAREST, GL_REPEAT);
+	    fboMap["mapFBO1"]->init(1, imageTerrainHM->width, imageTerrainHM->height, 1, false, GL_NEAREST, GL_REPEAT);
+
 
 
 	    loadAllData();
@@ -292,6 +348,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    	gameGeom.back()->initRand(i);
 	    	addGeom(gameGeom.back());
 	    }
+
+
 
 	    
 	    popTrace();
@@ -898,27 +956,92 @@ void Singleton::bindFBODirect (FBOSet * fbos)
 	    currentFBOResolutionX = fbos->width;
 	    currentFBOResolutionY = fbos->height;
 	}
-void Singleton::sampleFBO (string fboName, int offset)
-                                                     {
-	    FBOSet* fbos = fboMap[fboName];
-	    sampleFBODirect(fbos,offset);
-	}
-void Singleton::unsampleFBO (string fboName, int offset)
-                                                       {
+void Singleton::sampleFBO (string fboName, int offset, int swapFlag)
+                                                                      {
+	    FBOSet* fbos;
 	    
-	    FBOSet* fbos = fboMap[fboName];
-	    unsampleFBODirect(fbos,offset);
+		if (swapFlag == -1) {
+			fbos = fboMap[fboName];
+		}
+		else {
+
+			if (swapFlag == 0) {
+				fbos = fboMap[fboName + "0"];
+			}
+			else {
+				fbos = fboMap[fboName + "1"];
+			}
+			
+		}
+	    
+	    if (fbos) {
+	    	sampleFBODirect(fbos,offset);
+	    }
+	    else {
+	    	doTrace("sampleFBO: Invalid FBO Name");
+	    }
+
+	    
+	}
+void Singleton::unsampleFBO (string fboName, int offset, int swapFlag)
+                                                                        {
+	    
+		FBOSet* fbos;
+
+		if (swapFlag == -1) {
+			fbos = fboMap[fboName];
+		}
+		else {
+
+			if (swapFlag == 0) {
+				fbos = fboMap[fboName + "0"];
+			}
+			else {
+				fbos = fboMap[fboName + "1"];
+			}
+			
+		}
+
+		if (fbos) {
+			unsampleFBODirect(fbos,offset);
+		}
+		else {
+			doTrace("unsampleFBO: Invalid FBO Name");
+		}
+	    
 	}
 FBOWrapper * Singleton::getFBOWrapper (string fboName, int offset)
                                                                {
 		FBOSet* fbos = fboMap[fboName];
 		return fbos->getFBOWrapper(offset);
 	}
-void Singleton::bindFBO (string fboName)
-                                     {
+void Singleton::bindFBO (string fboName, int swapFlag)
+                                                      {
 	    
-	    FBOSet* fbos = fboMap[fboName];
-	    bindFBODirect(fbos);
+		FBOSet* fbos;
+
+		if (swapFlag == -1) {
+			fbos = fboMap[fboName];
+		}
+		else {
+
+			if (swapFlag == 0) {
+				fbos = fboMap[fboName + "1"];
+			}
+			else {
+				fbos = fboMap[fboName + "0"];
+			}
+			
+		}
+
+		if (fbos) {
+			bindFBODirect(fbos);
+		}
+		else {
+			doTrace("bindFBO: Invalid FBO Name");
+		}
+
+	   
 	}
 void Singleton::unbindFBO ()
                          {
@@ -1035,9 +1158,20 @@ void Singleton::drawFSQuadOffset (float xOff, float yOff, float zoom)
 	    
 	    glEnd();
 	}
-void Singleton::drawFBO (string fboName, int ind, float zoom)
-                                                          {
-	    drawFBOOffset(fboName, ind, 0.0f, 0.0f, zoom);
+void Singleton::drawFBO (string fboName, int ind, float zoom, int swapFlag)
+                                                                           {
+	    if (swapFlag == -1) {
+	    	drawFBOOffset(fboName, ind, 0.0f, 0.0f, zoom);
+	    }
+	    else {
+	    	if (swapFlag == 0) {
+	    		drawFBOOffset(fboName+"1", ind, 0.0f, 0.0f, zoom);
+	    	}
+	    	else {
+	    		drawFBOOffset(fboName+"0", ind, 0.0f, 0.0f, zoom);
+	    	}
+	    	
+	    }
 	}
 void Singleton::drawFBOOffsetDirect (FBOSet * fbos, int ind, float xOff, float yOff, float zoom)
                                                                                             {
@@ -1052,7 +1186,14 @@ void Singleton::drawFBOOffsetDirect (FBOSet * fbos, int ind, float xOff, float y
 void Singleton::drawFBOOffset (string fboName, int ind, float xOff, float yOff, float zoom)
                                                                                         {
 	    FBOSet* fbos = fboMap[fboName];
-	    drawFBOOffsetDirect(fbos, ind, xOff, yOff, zoom);
+
+	    if (fbos) {
+	    	drawFBOOffsetDirect(fbos, ind, xOff, yOff, zoom);
+	    }
+	    else {
+	    	doTrace("drawFBOOffsetDirect: Invalid FBO Name");
+	    }
+	    
 	}
 void Singleton::moveCamera (FIVector4 * modXYZ)
                                            {
@@ -1314,7 +1455,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			case 'r':
 				doShaderRefresh();
 				bufferInvalid = true;
-
+				mapInvalid = true;
 			break;
 
 			case 'g':

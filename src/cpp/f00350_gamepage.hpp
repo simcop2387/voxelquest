@@ -64,7 +64,7 @@ public:
 		singleton = _singleton;
 		usingPoolId = -1;
 
-		maxEntries = 16;
+		maxEntries = 32;
 
 
 		int i;
@@ -497,6 +497,7 @@ public:
 
 		if (numEntries > maxEntries) {
 			numEntries = maxEntries;
+			doTrace("limit exceeded");
 		}
 
 
@@ -562,6 +563,7 @@ public:
 			singleton->setShaderTexture3D(0, 0);
 			singleton->setShaderTexture3D(0, 1);
 			singleton->setShaderTexture(0, 2);
+			singleton->setShaderTexture(0, 3);
 
 			singleton->unbindFBO();
 			singleton->unbindShader();

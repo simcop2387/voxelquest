@@ -21,7 +21,7 @@ public:
 
     FBOWrapper() {}
     ~FBOWrapper() {}
-    int init(int _width, int _height, int _bytesPerChannel, int _slot, bool _hasDepth, int filterEnum) {
+    int init(int _width, int _height, int _bytesPerChannel, int _slot, bool _hasDepth, int filterEnum, int clampEnum) {
 		width = _width;
 		height = _height;
 		bytesPerChannel = _bytesPerChannel;
@@ -71,8 +71,8 @@ public:
 		glBindTexture(GL_TEXTURE_2D, color_tex);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterEnum);
 	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterEnum);
-	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, clampEnum);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, clampEnum);
 		
 	    switch (bytesPerChannel) {
 	    	case 1:
@@ -245,7 +245,7 @@ public:
     	return &(fbos[offset]);
     }
 
-    void init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool _hasDepth, int filterEnum=GL_NEAREST) {
+    void init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool _hasDepth, int filterEnum=GL_NEAREST, int clampEnum=GL_CLAMP_TO_EDGE) {
 		int i;
 
 		hasDepth = _hasDepth;
@@ -262,7 +262,7 @@ public:
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
 
 		for (i = 0; i < numBufs; i++) {
-			fbos[i].init(width, height, bytesPerChannel, i, hasDepth, filterEnum);
+			fbos[i].init(width, height, bytesPerChannel, i, hasDepth, filterEnum, clampEnum);
 		}
 
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);

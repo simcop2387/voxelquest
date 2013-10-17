@@ -20,7 +20,7 @@ uniform vec3 worldMaxBufInPixels;
 
 varying vec2 TexCoord0;
 
-uniform vec3 paramArr[128];
+uniform vec3 paramArr[256];
 
 
 $

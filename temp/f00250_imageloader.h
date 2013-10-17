@@ -105,11 +105,32 @@ public:
 	 * of the row, then moves up to the next column, and so on.  This is the
 	 * format in which OpenGL likes images.
 	 */
-	char* pixels;
+	unsigned char* pixels;
 	int width;
 	int height;
 
-	Image(char* ps, int w, int h) : pixels(ps), width(w), height(h) {
+	int getValue(int x, int y, int c) {
+		return pixels[3 * (width * y + x) + c];
+	}
+
+	void setValue(int x, int y, int c, int v) {
+		pixels[3 * (width * y + x) + c] = v;
+	}
+
+	void setAllValues(int c, int v) {
+		
+		int i;
+		int j;
+
+		for (j = 0; j < height; j++) {
+			for (i = 0; i < width; i++) {
+				pixels[3 * (width * j + i) + c] = v;
+			}
+		}
+		
+	}
+
+	Image(unsigned char* ps, int w, int h) : pixels(ps), width(w), height(h) {
 		
 	}
 
@@ -174,7 +195,9 @@ Image* loadBMP(const char* filename) {
 	input.read(pixels.get(), size);
 	
 	//Get the data into the right format
-	auto_array<char> pixels2(new char[width * height * 3]);
+	auto_array<unsigned char> pixels2(new unsigned char[width * height * 3]);
+
+	
 	for(int y = 0; y < height; y++) {
 		for(int x = 0; x < width; x++) {
 			for(int c = 0; c < 3; c++) {
