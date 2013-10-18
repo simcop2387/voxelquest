@@ -71,6 +71,13 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		int xind;
 		int yind;
 
+
+		imageHM0 = loadBMP("..\\data\\hm0.bmp");
+		imageHM1 = loadBMP("..\\data\\hm1.bmp");
+		imageHM0->getTextureId(GL_NEAREST);
+		imageHM1->getTextureId(GL_NEAREST);
+
+
 		imageTerrainHM = loadBMP("..\\data\\hmsl.bmp");
 		imageTerrainHM->setAllValues(1,0);
 		imageTerrainHM->setAllValues(2,0);
@@ -109,7 +116,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		}
 
 
-		gluintTerrainHM = loadTexture(imageTerrainHM, GL_LINEAR);
+		imageTerrainHM->getTextureId(GL_NEAREST);
 
 		defaultWinW = _defaultWinW/_scaleFactor;
 		defaultWinH = _defaultWinH/_scaleFactor;
@@ -265,14 +272,18 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    fboStrings.push_back("resultFBO");
 	    fboStrings.push_back("volGenFBO");
 
+	    //fboStrings.push_back("terrainMixFBO");
+	    fboStrings.push_back("simplexFBO");
 	    fboStrings.push_back("mapFBO0");
 	    fboStrings.push_back("mapFBO1");
 
 
 
 
+
+
 	    /*
-	    shaderStrings.push_back("Simplex2D");
+	    
 	    shaderStrings.push_back("CalcFlow");
 	    shaderStrings.push_back("Erode");
 	    shaderStrings.push_back("DLA");
@@ -280,6 +291,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    shaderStrings.push_back("shaderWater");
 	    */
 
+	    shaderStrings.push_back("TerrainMix");
+	    shaderStrings.push_back("Simplex2D");
 	    shaderStrings.push_back("TopoShader");
 	    shaderStrings.push_back("CopyShader");
 	    shaderStrings.push_back("MapBorderShader");
@@ -332,6 +345,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["volGenFBO"]->init(1, volGenFBOSize, volGenFBOSize, 1, false);
 
+	    fboMap["simplexFBO"]->init(1, imageTerrainHM->width, imageTerrainHM->height, 1, false, GL_NEAREST, GL_REPEAT);
 	    fboMap["mapFBO0"]->init(1, imageTerrainHM->width, imageTerrainHM->height, 1, false, GL_NEAREST, GL_REPEAT);
 	    fboMap["mapFBO1"]->init(1, imageTerrainHM->width, imageTerrainHM->height, 1, false, GL_NEAREST, GL_REPEAT);
 
@@ -936,7 +950,7 @@ void Singleton::sampleFBODirect (FBOSet * fbos, int offset)
 	    int i;
 	    if (shadersAreLoaded) {
 	        for (i = 0; i < fbos->numBufs; i++) {
-	            setShaderTexture(fbos->fbos[i].color_tex, i+offset);
+	            setShaderTexture(i+offset,fbos->fbos[i].color_tex);
 	        }
 	    }
 	}
@@ -945,7 +959,7 @@ void Singleton::unsampleFBODirect (FBOSet * fbos, int offset)
 	    int i;
 	    if (shadersAreLoaded) {
 	        for (i = fbos->numBufs - 1; i >= 0; i--) {
-	            setShaderTexture(0, i+offset);
+	            setShaderTexture(i+offset,0);
 	        }
 	    }
 	}
@@ -1101,7 +1115,7 @@ void Singleton::setShaderfVec4 (string paramName, FIVector4 * v)
                                                             {
 	    shaderMap[curShader]->setShaderfVec4(paramName, v);
 	}
-void Singleton::setShaderTexture (uint texID, int multitexNumber)
+void Singleton::setShaderTexture (int multitexNumber, uint texID)
                                                               {
 	    if (shadersAreLoaded) {
 	        glActiveTexture(GL_TEXTURE0 + multitexNumber);
@@ -1109,8 +1123,8 @@ void Singleton::setShaderTexture (uint texID, int multitexNumber)
 	        shaderMap[curShader]->setShaderInt(shaderTextureIDs[multitexNumber] ,multitexNumber);
 	    }
 	}
-void Singleton::setShaderTexture3D (uint texID, int multitexNumber)
-                                                                {
+void Singleton::setShaderTexture3D (int multitexNumber, uint texID)
+                                                               {
 	    if (shadersAreLoaded) {
 	        glActiveTexture(GL_TEXTURE0 + multitexNumber);
 	        glBindTexture(GL_TEXTURE_3D, texID);

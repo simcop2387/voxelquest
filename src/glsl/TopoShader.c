@@ -4,6 +4,8 @@ uniform sampler2D Texture0;
 uniform sampler2D Texture1;
 varying vec2 TexCoord0;
 
+uniform float curTime;
+
 $
 
 void main() {
@@ -44,7 +46,9 @@ int intMod(int lhs, int rhs) {
 
 void main() {
 
-    vec4 tex1 = texture2D( Texture1, TexCoord0.xy );
+    float newTime = curTime/20000.0;
+
+    vec4 tex1 = texture2D( Texture1, TexCoord0.xy + newTime );
     vec4 tex0 = texture2D( Texture0, vec2(tex1.r, (5.0 + 0.5)/255.0 ) );
 
     
@@ -90,8 +94,7 @@ void main() {
     }
 
 
-    gl_FragData[0] = (tex0)*mod; // + colMod
-
+    gl_FragData[0] = tex0;//1.0-tex1.bbbb;//(tex0)*mod; // + colMod
 
 }
 

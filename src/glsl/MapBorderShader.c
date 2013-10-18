@@ -5,6 +5,7 @@ uniform sampler2D Texture1; // heightmap
 varying vec2 TexCoord0;
 
 uniform float curTime;
+uniform float mapStep;
 //uniform vec3 paramArrMap[256];
 //uniform float numProvinces;
 
@@ -146,7 +147,13 @@ void main() {
             if (tex1r.g > 0.0) {
                 tex1.g = tex1r.g;
             }
+
+            tex1.b = mapStep/256.0;
         }
+
+
+
+
     }
 
 

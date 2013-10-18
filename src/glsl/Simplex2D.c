@@ -3,11 +3,9 @@
 
 
 
-uniform sampler2D Texture0;
-uniform sampler2D Texture1;
 varying vec2 TexCoord0;
 uniform vec2 resolution;
-uniform float time;
+uniform float curTime;
 
 $
 
@@ -18,7 +16,7 @@ void main() {
 
 $
 
-/*
+
 //
 // Description : Array and textureless GLSL 2D simplex noise function.
 //      Author : Ian McEwan, Ashima Arts.
@@ -29,16 +27,33 @@ $
 //               https://github.com/ashima/webgl-noise
 // 
 
-vec3 mod289(vec3 x) {
-    return x - floor(x * (1.0 / 289.0)) * 289.0;
+float rand(vec2 co){
+    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
+
 
 vec2 mod289(vec2 x) {
     return x - floor(x * (1.0 / 289.0)) * 289.0;
 }
+vec3 mod289(vec3 x) {
+  return x - floor(x * (1.0 / 289.0)) * 289.0;
+}
+
+vec4 mod289(vec4 x) {
+  return x - floor(x * (1.0 / 289.0)) * 289.0;
+}
 
 vec3 permute(vec3 x) {
     return mod289(((x*34.0)+1.0)*x);
+}
+
+vec4 permute(vec4 x) {
+     return mod289(((x*34.0)+1.0)*x);
+}
+
+vec4 taylorInvSqrt(vec4 r)
+{
+  return 1.79284291400159 - 0.85373472095314 * r;
 }
 
 float snoise(vec2 v) {
@@ -88,7 +103,7 @@ float snoise(vec2 v) {
     g.yz = a0.yz * x12.xz + h.yz * x12.yw;
     return 130.0 * dot(m, g);
 }
-*/
+
 
 
 
@@ -104,26 +119,7 @@ float snoise(vec2 v) {
 //               https://github.com/ashima/webgl-noise
 // 
 
-float rand(vec2 co){
-    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
-}
 
-vec3 mod289(vec3 x) {
-  return x - floor(x * (1.0 / 289.0)) * 289.0;
-}
-
-vec4 mod289(vec4 x) {
-  return x - floor(x * (1.0 / 289.0)) * 289.0;
-}
-
-vec4 permute(vec4 x) {
-     return mod289(((x*34.0)+1.0)*x);
-}
-
-vec4 taylorInvSqrt(vec4 r)
-{
-  return 1.79284291400159 - 0.85373472095314 * r;
-}
 
 float snoise(vec3 v) { 
     const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
@@ -200,58 +196,111 @@ float snoise(vec3 v) {
 //%%%%%%
 
 
+
+
+
+
+float calcNoise(vec3 uvw) {
+    float baseScale = 2.0;
+    float n = 0.0;
+    n += snoise(uvw * baseScale);
+    n += 0.5 * snoise(uvw * baseScale*2.0);
+    
+    /*
+    n += 0.25 * snoise(uv * baseScale*4.0);
+    n += 0.125 * snoise(uv * baseScale*8.0);
+    n += 0.0625 * snoise(uv * baseScale*16.0);
+    n += 0.03125 * snoise(uv * baseScale*32.0);
+    n += 0.015625 * snoise(uv * baseScale*64.0);
+    n += 0.0078125 * snoise(uv * baseScale*128.0);
+    */    
+
+    //n = (n + 1.0)/2.0;
+
+    return n;
+}
+
+float caclNoiseSL(vec3 uvw) {
+    float w = 1.0;
+    float h = 1.0;
+
+    float x = uvw.x;
+    float y = uvw.y;
+    float z = uvw.z;
+
+    return (
+        calcNoise( vec3(x, y, z) ) * (w - x) * (h - y) +
+        calcNoise( vec3(x - w, y, z) ) * (x) * (h - y) +
+        calcNoise( vec3(x - w, y - h, z) ) * (x) * (y) +
+        calcNoise( vec3(x, y - h, z) ) * (w - x) * (y)
+    ) / (w * h);
+} 
+
+void main() {
+    
+    vec3 v_texCoord3D = vec3(TexCoord0.x,TexCoord0.y,0.5);
+    //float newTime = curTime/5000.0;
+    vec3 uvw = vec3(TexCoord0.xy,curTime);
+
+    
+    float n = 0.0;
+    int i;
+
+    vec4 res = vec4(0.0);
+
+    for (i = 0; i < 3; i++) {
+            
+
+            n = caclNoiseSL(uvw);
+
+            if (i == 0) {
+                uvw.z += 37.0;
+                res.r = n;
+            }
+            if (i == 1) {
+                uvw.z += 21.0;
+                res.g = n;
+            }
+            if (i == 2) {
+                res.b = n;
+            }
+
+
+    }
+
+    res.rgb = (res.rgb + 1.0)/2.0;
+    
+    
+    gl_FragData[0] = res;//vec4(lerpAmount);//res;
+}
+
+/*
 void main() {
     
     vec3 v_texCoord3D = vec3(TexCoord0.x,TexCoord0.y,0.5);
 
-    float newTime = time/5000.0;
+    float newTime = curTime/5000.0;
 
     // Perturb the texcoords with three components of noise
-    vec3 uvw = v_texCoord3D;/* + 0.1*vec3(
-        snoise(v_texCoord3D + vec3(0.0, 0.0, newTime)),
-        snoise(v_texCoord3D + vec3(43.0, 17.0, newTime)),
-        snoise(v_texCoord3D + vec3(-17.0, -43.0, newTime))
-    );*/
-    
+    vec3 uvw = v_texCoord3D;
     float baseScale = 2.0;
+    float n = 0.0;
 
-    // Six components of noise in a fractal sum
-    float n = snoise(uvw - vec3(0.0, 0.0, newTime));
 
-    float n3 = 0.0625 * snoise(uvw * baseScale*16.0 - vec3(0.0, 0.0, newTime*4.0)); 
     
-
+    n += snoise(uvw*baseScale - vec3(0.0, 0.0, newTime));
     n += 0.5 * snoise(uvw * baseScale*2.0 - vec3(0.0, 0.0, newTime*1.4)); 
     n += 0.25 * snoise(uvw * baseScale*4.0 - vec3(0.0, 0.0, newTime*2.0));
     n += 0.125 * snoise(uvw * baseScale*8.0 - vec3(0.0, 0.0, newTime*2.8)); 
-    n += n3;
+    n += 0.0625 * snoise(uvw * baseScale*16.0 - vec3(0.0, 0.0, newTime*4.0)); 
     n += 0.03125 * snoise(uvw * baseScale*32.0 - vec3(0.0, 0.0, newTime*5.6));
     n += 0.015625 * snoise(uvw * baseScale*64.0 - vec3(0.0, 0.0, newTime*7.3));
     n += 0.0078125 * snoise(uvw * baseScale*128.0 - vec3(0.0, 0.0, newTime*8.9)); 
-    //n += 0.00390625 * snoise(uvw * baseScale*256.0 - vec3(0.0, 0.0, newTime*11.2)); 
-    //n += 0.001953125 * snoise(uvw * baseScale*512.0 - vec3(0.0, 0.0, newTime*13.6)); 
-
-    //n = n * 0.7;
-    
-    // A "hot" colormap - cheesy but effective 
-
-
-    //vec4 res = vec4(vec3(1.0, 0.5, 0.0) + vec3(n, n, n), 1.0);
-
-
-    //n = (sin(n*2.0) + 1.0)/2.0;
-    //n = floor(n*8.0)/8.0;
-
-    //n = (n/1.5 + 1.0)/2.0;
-
     
 
-    n = (sin(n*4.0)+1.0)/2.0;//(n+0.8)/2.0;
+    n = (n + 1.0)/2.0;
+    
 
-    float n2 = float(n > 120.0/255.0)*float(n < 128.0/255.0)*float(n3/0.0625 > 0.5);//float(rand(TexCoord0*n) > 0.9996);
-
-    vec4 res = vec4(n,0.0,n2,n2);
-
-    gl_FragData[0] = res;
-    gl_FragData[1] = res;
+    gl_FragData[0] = vec4(n);
 }
+*/

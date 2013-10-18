@@ -25,6 +25,8 @@ void GameWorld::init (Singleton * _singleton)
 
 		mapSwapFlag = 0;
 
+		mapStep = 0.0f;
+
 		updatePoolOrder = false;
 
 		pageCount = 0;
@@ -129,8 +131,40 @@ void GameWorld::update ()
 		}
 
 
-		drawMap();
+		//drawMap();
 		
+		
+		singleton->bindShader("Simplex2D");
+		singleton->bindFBO("simplexFBO");
+		singleton->setShaderFloat("curTime", singleton->paramArrMap[0]*100.0f);//singleton->curTime);
+		singleton->drawFSQuad(1.0f);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		
+		singleton->bindShader("TerrainMix");
+		singleton->bindFBO("mapFBO0");
+		singleton->sampleFBO("simplexFBO", 0);
+		singleton->setShaderTexture(1,singleton->imageHM0->tid);
+		singleton->setShaderTexture(2,singleton->imageHM1->tid);
+		singleton->setShaderArrayfVec3("paramArrMap", singleton->paramArrMap, 16 );
+		singleton->drawFSQuad(1.0f);
+		singleton->setShaderTexture(2,0);
+		singleton->setShaderTexture(1,0);
+		singleton->unsampleFBO("simplexFBO", 0);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+
+		singleton->bindShader("TopoShader");
+		singleton->sampleFBO("palFBO", 0);
+		singleton->sampleFBO("mapFBO",1,mapSwapFlag);
+		singleton->setShaderFloat("curTime", singleton->curTime);
+		singleton->drawFSQuad(1.0f);
+		singleton->unsampleFBO("mapFBO",1,mapSwapFlag);
+		singleton->unsampleFBO("palFBO",0);
+		singleton->unbindShader();
+
+
+
 
 
 		glutSwapBuffers();
@@ -1178,17 +1212,29 @@ void GameWorld::renderGrass ()
 void GameWorld::initMap ()
                        {
 		singleton->mapInvalid = false;
+		mapStep = 0.0f;
+
+		int i;
+
+		for (i = 0; i < 16; i++) {
+			singleton->paramArrMap[i*3+0] = fGenRand();
+			singleton->paramArrMap[i*3+1] = fGenRand();
+			singleton->paramArrMap[i*3+2] = fGenRand();
+		}
+
 
 		singleton->bindShader("CopyShader");
 		singleton->bindFBO("mapFBO0");
-		singleton->setShaderTexture(singleton->gluintTerrainHM, 0);
+		singleton->setShaderTexture(0,singleton->imageTerrainHM->tid);
 		singleton->drawFSQuad(1.0f);
-		singleton->setShaderTexture(0, 1);
+		singleton->setShaderTexture(0, 0);
 		singleton->unbindFBO();
 		singleton->unbindShader();
 	}
 void GameWorld::drawMap ()
                        {
+
+
 
 
 		singleton->bindShader("MapBorderShader");
@@ -1198,6 +1244,7 @@ void GameWorld::drawMap ()
 		singleton->sampleFBO("mapFBO",1,mapSwapFlag);
 		
 		singleton->setShaderFloat("curTime", singleton->curTime);
+		singleton->setShaderFloat("mapStep", mapStep);
 		//singleton->setShaderArrayfVec3("paramArrMap", singleton->paramArrMap, (float)(singleton->numProvinces) );
 		//singleton->setShaderFloat("numProvinces", (float)(singleton->numProvinces));
 		singleton->drawFSQuad(1.0f);
@@ -1212,7 +1259,7 @@ void GameWorld::drawMap ()
 		singleton->bindShader("TopoShader");
 		singleton->sampleFBO("palFBO", 0);
 		singleton->sampleFBO("mapFBO",1,mapSwapFlag);
-		
+		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->drawFSQuad(1.0f);
 
 		singleton->unsampleFBO("mapFBO",1,mapSwapFlag);
@@ -1223,6 +1270,7 @@ void GameWorld::drawMap ()
 		//singleton->drawFBO("mapFBO", 0, 1.0, mapSwapFlag );
 
 		mapSwapFlag = 1-mapSwapFlag;
+		mapStep += 1.0f;
 
 
 

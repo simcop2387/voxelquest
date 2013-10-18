@@ -482,10 +482,10 @@ void GamePage::generateVolume ()
 
 
 			singleton->bindFBO("volGenFBO");
-			singleton->setShaderTexture3D(gpuRes->volID, 0);
-			singleton->setShaderTexture3D(gpuRes->volIDLinear, 1);
-			singleton->setShaderTexture(singleton->lookup2to3ID, 2);
-			singleton->setShaderTexture(singleton->gluintTerrainHM, 3);
+			singleton->setShaderTexture3D(0,gpuRes->volID);
+			singleton->setShaderTexture3D(1,gpuRes->volIDLinear);
+			singleton->setShaderTexture(2,singleton->lookup2to3ID);
+			singleton->setShaderTexture(3,singleton->imageTerrainHM->tid);
 			
 			singleton->setShaderFloat("bufferedPageSizeInUnits", bufferedPageSizeInUnits);
 			singleton->setShaderFloat("threshVal", (float)threshVal);
@@ -503,9 +503,9 @@ void GamePage::generateVolume ()
 			singleton->drawFSQuad(1.0f);
 
 			singleton->setShaderTexture3D(0, 0);
-			singleton->setShaderTexture3D(0, 1);
-			singleton->setShaderTexture(0, 2);
-			singleton->setShaderTexture(0, 3);
+			singleton->setShaderTexture3D(1, 0);
+			singleton->setShaderTexture(2, 0);
+			singleton->setShaderTexture(3, 0);
 
 			singleton->unbindFBO();
 			singleton->unbindShader();

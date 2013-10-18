@@ -108,6 +108,7 @@ public:
 	unsigned char* pixels;
 	int width;
 	int height;
+	GLuint tid;
 
 	int getValue(int x, int y, int c) {
 		return pixels[3 * (width * y + x) + c];
@@ -137,6 +138,23 @@ public:
 	~Image() {
 		delete[] pixels;
 	}
+
+	void getTextureId(GLenum filterType) {
+		
+		glGenTextures(1, &tid);
+		glBindTexture(GL_TEXTURE_2D, tid);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterType);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterType);
+		glTexImage2D(GL_TEXTURE_2D,
+					 0,
+					 GL_RGB,
+					 width, height,
+					 0,
+					 GL_RGB,
+					 GL_UNSIGNED_BYTE,
+					 pixels);
+	}
+
 
 };
 
@@ -211,20 +229,4 @@ Image* loadBMP(const char* filename) {
 	return new Image(pixels2.release(), width, height);
 }
 
-GLuint loadTexture(Image* image, GLenum filterType) {
-	GLuint tid;
-	glGenTextures(1, &tid);
-	glBindTexture(GL_TEXTURE_2D, tid);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterType);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterType);
-	glTexImage2D(GL_TEXTURE_2D,
-				 0,
-				 GL_RGB,
-				 image->width, image->height,
-				 0,
-				 GL_RGB,
-				 GL_UNSIGNED_BYTE,
-				 image->pixels);
-	return tid;
-}
  
