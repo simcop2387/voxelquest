@@ -48,7 +48,7 @@ void main() {
 
     float newTime = curTime/20000.0;
 
-    vec4 tex1 = texture2D( Texture1, TexCoord0.xy + newTime );
+    vec4 tex1 = texture2D( Texture1, TexCoord0.xy);//
     vec4 tex0 = texture2D( Texture0, vec2(tex1.r, (5.0 + 0.5)/255.0 ) );
 
     
@@ -82,7 +82,7 @@ void main() {
         tex1dr.g < tex1.g*/
 
     ) {
-        mod = 0.7;
+        mod = 0.2;
     }
 
 
@@ -94,7 +94,7 @@ void main() {
     }
 
 
-    gl_FragData[0] = tex0;//1.0-tex1.bbbb;//(tex0)*mod; // + colMod
+    gl_FragData[0] = tex0*mod;//1.0-tex1.bbbb;//tex0*mod;//tex0;//1.0-tex1.bbbb;////1.0-tex1.bbbb;//(tex0)*mod; // + colMod
 
 }
 

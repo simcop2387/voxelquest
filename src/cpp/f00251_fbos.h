@@ -117,6 +117,54 @@ public:
 	}
 
 
+	void cpuToGPU() {
+
+		if (pixelsChar == NULL) {
+			doTrace("error: null pointer pixelsChar");
+			return;
+		}
+
+		switch (bytesPerChannel) {
+			case 1:
+
+				glBindTexture(GL_TEXTURE_2D, color_tex);
+				/*
+				glTexSubImage2D(
+					GL_TEXTURE_2D,
+					0,
+
+					0,
+					0,
+					width,
+					height,
+					
+					GL_RGBA,
+					GL_UNSIGNED_BYTE,
+					pixelsChar
+				 );
+				 */
+
+
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixelsChar);
+
+				glBindTexture(GL_TEXTURE_2D, 0);
+				
+			break;
+			case 2:
+				doTrace("TODO: implement 16 bit");
+			break;
+			case 4:
+				doTrace("TODO: implement 32 bit");
+			break;
+		}
+
+		
+
+	}
+
+
 
 	void getPixelAtF(FIVector4* fv, int x, int y) {
 
@@ -144,10 +192,29 @@ public:
 
 	}
 
+	void setAllPixels(int channel, int value) {
+		int i;
+		int j;
+		int x;
+		int y;
+
+		for (j = 0; j < height; j++) {
+			for (i = 0; i < width; i++) {
+				x = i;
+				y = j;
+				pixelsChar[ (x + y*width)*4 + channel ] = value;
+			}
+		}
+	}
+
+	void setPixelAtC(int x, int y, int channel, unsigned char value) {
+		pixelsChar[ (x + y*width)*4 + channel ] = value;
+	}
+
 	unsigned char getPixelAtC(int x, int y, int channel) {
 
-		if (isFloat) {
-			if ( (pixelsFloat == NULL) ) {
+		if (!isFloat) {
+			if ( (pixelsChar == NULL) ) {
 				getPixels();
 			}
 
@@ -156,6 +223,7 @@ public:
 		}
 		else {
 			doTrace("Attempted to call getPixelAtC on float buffer.");
+			return 0;
 		}
 
 	}

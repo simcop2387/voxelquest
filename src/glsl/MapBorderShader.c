@@ -134,7 +134,7 @@ void main() {
         rand1 = rand(TexCoord0.xy + sin(curTime/1000.0));
         rand2 = rand(1.0-TexCoord0.xy + rand1);
 
-        if ( ((rand1 + heightMod)*isGreen*isAboveSea > 0.4+rand2 ) || (tot*isGreen*isAboveSea > 4.0)) { //  || (tot > 4.0)
+        if ( ((rand1 + heightMod)*isGreen*isAboveSea > max(0.4+rand2-mapStep/4096.0, 0.4) ) || (tot*isGreen*isAboveSea > 4.0)) { //  || (tot > 4.0)
             if (tex1u.g > 0.0) {
                 tex1.g = tex1u.g;
             }
@@ -151,6 +151,9 @@ void main() {
             tex1.b = mapStep/256.0;
         }
 
+        if (isAboveSea == 0.0) {
+            tex1.b = 1.0;
+        }
 
 
 

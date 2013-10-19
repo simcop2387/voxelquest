@@ -10318,6 +10318,54 @@ public:
 	}
 
 
+	void cpuToGPU() {
+
+		if (pixelsChar == NULL) {
+			doTrace("error: null pointer pixelsChar");
+			return;
+		}
+
+		switch (bytesPerChannel) {
+			case 1:
+
+				glBindTexture(GL_TEXTURE_2D, color_tex);
+				/*
+				glTexSubImage2D(
+					GL_TEXTURE_2D,
+					0,
+
+					0,
+					0,
+					width,
+					height,
+					
+					GL_RGBA,
+					GL_UNSIGNED_BYTE,
+					pixelsChar
+				 );
+				 */
+
+
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixelsChar);
+
+				glBindTexture(GL_TEXTURE_2D, 0);
+				
+			break;
+			case 2:
+				doTrace("TODO: implement 16 bit");
+			break;
+			case 4:
+				doTrace("TODO: implement 32 bit");
+			break;
+		}
+
+		
+
+	}
+
+
 
 	void getPixelAtF(FIVector4* fv, int x, int y) {
 
@@ -10345,10 +10393,29 @@ public:
 
 	}
 
+	void setAllPixels(int channel, int value) {
+		int i;
+		int j;
+		int x;
+		int y;
+
+		for (j = 0; j < height; j++) {
+			for (i = 0; i < width; i++) {
+				x = i;
+				y = j;
+				pixelsChar[ (x + y*width)*4 + channel ] = value;
+			}
+		}
+	}
+
+	void setPixelAtC(int x, int y, int channel, unsigned char value) {
+		pixelsChar[ (x + y*width)*4 + channel ] = value;
+	}
+
 	unsigned char getPixelAtC(int x, int y, int channel) {
 
-		if (isFloat) {
-			if ( (pixelsFloat == NULL) ) {
+		if (!isFloat) {
+			if ( (pixelsChar == NULL) ) {
 				getPixels();
 			}
 
@@ -10357,6 +10424,7 @@ public:
 		}
 		else {
 			doTrace("Attempted to call getPixelAtC on float buffer.");
+			return 0;
 		}
 
 	}
@@ -10719,6 +10787,7 @@ public:
   int lastMouseX;
   int lastMouseY;
   int numProvinces;
+  int seaLevel;
   uint volGenFBOSize;
   uint slicesPerPitch;
   uint palWidth;
@@ -10762,7 +10831,6 @@ public:
   FIVector4 origin;
   FIVector4 lastModXYZ;
   FIVector4 panMod;
-  Image * imageTerrainHM;
   Image * imageHM0;
   Image * imageHM1;
   string curShader;
@@ -11287,7 +11355,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		paramArrMap = new float[4096];
 
 		numProvinces = 64;
-
+		seaLevel = 90;
 		
 
 
@@ -11332,9 +11400,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		isBare = true;
 		grassHeight = 1.0/128.0;
 
-		bool isValid;
-		int xind;
-		int yind;
+		
 
 
 		imageHM0 = loadBMP("..\\data\\hm0.bmp");
@@ -11342,46 +11408,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		imageHM0->getTextureId(GL_NEAREST);
 		imageHM1->getTextureId(GL_NEAREST);
 
-
-		imageTerrainHM = loadBMP("..\\data\\hmsl.bmp");
-		imageTerrainHM->setAllValues(1,0);
-		imageTerrainHM->setAllValues(2,0);
-
-		int seaLevel = 90;
-
-		
-		for (i = 0; i < numProvinces; i++) {
-
-			isValid = false;
-
-			do {
-				paramArrMap[i*3+0] = fGenRand();
-				paramArrMap[i*3+1] = fGenRand();
-				paramArrMap[i*3+2] = fGenRand();
-
-				xind = (int)(paramArrMap[i*3+0]*imageTerrainHM->width);
-				yind = (int)(paramArrMap[i*3+1]*imageTerrainHM->height);
-
-				if (imageTerrainHM->getValue(xind,yind,0) > seaLevel ) {
-					if (imageTerrainHM->getValue(xind,yind,1) == 0) {
-						imageTerrainHM->setValue(xind,yind,1,i*2+128);
-						isValid = true;
-					}
-					else {
-						isValid = false;
-					}
-				}
-				else {
-					isValid = false;
-				}
-			}
-			while (!isValid);
-			
-
-		}
-
-
-		imageTerrainHM->getTextureId(GL_NEAREST);
 
 		defaultWinW = _defaultWinW/_scaleFactor;
 		defaultWinH = _defaultWinH/_scaleFactor;
@@ -11537,7 +11563,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    fboStrings.push_back("resultFBO");
 	    fboStrings.push_back("volGenFBO");
 
-	    //fboStrings.push_back("terrainMixFBO");
+	    fboStrings.push_back("hmFBO");
 	    fboStrings.push_back("simplexFBO");
 	    fboStrings.push_back("mapFBO0");
 	    fboStrings.push_back("mapFBO1");
@@ -11610,9 +11636,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["volGenFBO"]->init(1, volGenFBOSize, volGenFBOSize, 1, false);
 
-	    fboMap["simplexFBO"]->init(1, imageTerrainHM->width, imageTerrainHM->height, 1, false, GL_NEAREST, GL_REPEAT);
-	    fboMap["mapFBO0"]->init(1, imageTerrainHM->width, imageTerrainHM->height, 1, false, GL_NEAREST, GL_REPEAT);
-	    fboMap["mapFBO1"]->init(1, imageTerrainHM->width, imageTerrainHM->height, 1, false, GL_NEAREST, GL_REPEAT);
+	    fboMap["hmFBO"]->init(1, imageHM0->width, imageHM0->height, 1, false, GL_NEAREST, GL_REPEAT);
+	    fboMap["simplexFBO"]->init(1, imageHM0->width, imageHM0->height, 1, false, GL_NEAREST, GL_REPEAT);
+	    fboMap["mapFBO0"]->init(1, imageHM0->width, imageHM0->height, 1, false, GL_NEAREST, GL_REPEAT);
+	    fboMap["mapFBO1"]->init(1, imageHM0->width, imageHM0->height, 1, false, GL_NEAREST, GL_REPEAT);
 
 
 
@@ -14063,8 +14090,9 @@ void GamePage::generateVolume ()
 			singleton->setShaderTexture3D(0,gpuRes->volID);
 			singleton->setShaderTexture3D(1,gpuRes->volIDLinear);
 			singleton->setShaderTexture(2,singleton->lookup2to3ID);
-			singleton->setShaderTexture(3,singleton->imageTerrainHM->tid);
-			
+			//singleton->setShaderTexture(3,singleton->imageTerrainHM->tid);
+			singleton->sampleFBO("hmFBO",3);
+
 			singleton->setShaderFloat("bufferedPageSizeInUnits", bufferedPageSizeInUnits);
 			singleton->setShaderFloat("threshVal", (float)threshVal);
 
@@ -14080,10 +14108,14 @@ void GamePage::generateVolume ()
 
 			singleton->drawFSQuad(1.0f);
 
-			singleton->setShaderTexture3D(0, 0);
-			singleton->setShaderTexture3D(1, 0);
+			singleton->unsampleFBO("hmFBO",3);
+			//singleton->setShaderTexture(3, 0);
 			singleton->setShaderTexture(2, 0);
-			singleton->setShaderTexture(3, 0);
+			singleton->setShaderTexture3D(1, 0);
+			singleton->setShaderTexture3D(0, 0);
+			
+			
+			
 
 			singleton->unbindFBO();
 			singleton->unbindShader();
@@ -14265,43 +14297,22 @@ void GameWorld::update ()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		if (singleton->mapInvalid) {
+			
 			initMap();
-			mapSwapFlag = 0;
+			
 		}
 
-
-		//drawMap();
-		
-		
-		singleton->bindShader("Simplex2D");
-		singleton->bindFBO("simplexFBO");
-		singleton->setShaderFloat("curTime", singleton->paramArrMap[0]*100.0f);//singleton->curTime);
-		singleton->drawFSQuad(1.0f);
-		singleton->unbindFBO();
-		singleton->unbindShader();
-		
-		singleton->bindShader("TerrainMix");
-		singleton->bindFBO("mapFBO0");
-		singleton->sampleFBO("simplexFBO", 0);
-		singleton->setShaderTexture(1,singleton->imageHM0->tid);
-		singleton->setShaderTexture(2,singleton->imageHM1->tid);
-		singleton->setShaderArrayfVec3("paramArrMap", singleton->paramArrMap, 16 );
-		singleton->drawFSQuad(1.0f);
-		singleton->setShaderTexture(2,0);
-		singleton->setShaderTexture(1,0);
-		singleton->unsampleFBO("simplexFBO", 0);
-		singleton->unbindFBO();
-		singleton->unbindShader();
-
+		drawMap();
+		/*
 		singleton->bindShader("TopoShader");
 		singleton->sampleFBO("palFBO", 0);
-		singleton->sampleFBO("mapFBO",1,mapSwapFlag);
+		singleton->sampleFBO("hmFBO",1);
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->drawFSQuad(1.0f);
-		singleton->unsampleFBO("mapFBO",1,mapSwapFlag);
+		singleton->unsampleFBO("hmFBO",1);
 		singleton->unsampleFBO("palFBO",0);
 		singleton->unbindShader();
-
+		*/
 
 
 
@@ -15350,6 +15361,7 @@ void GameWorld::renderGrass ()
 	}
 void GameWorld::initMap ()
                        {
+		mapSwapFlag = 0;
 		singleton->mapInvalid = false;
 		mapStep = 0.0f;
 
@@ -15362,13 +15374,94 @@ void GameWorld::initMap ()
 		}
 
 
-		singleton->bindShader("CopyShader");
-		singleton->bindFBO("mapFBO0");
-		singleton->setShaderTexture(0,singleton->imageTerrainHM->tid);
+
+		singleton->bindShader("Simplex2D");
+		singleton->bindFBO("simplexFBO");
+		singleton->setShaderFloat("curTime", singleton->paramArrMap[0]*100.0f);//singleton->curTime);
 		singleton->drawFSQuad(1.0f);
-		singleton->setShaderTexture(0, 0);
 		singleton->unbindFBO();
 		singleton->unbindShader();
+		
+		singleton->bindShader("TerrainMix");
+		singleton->bindFBO("hmFBO");
+		singleton->sampleFBO("simplexFBO", 0);
+		singleton->setShaderTexture(1,singleton->imageHM0->tid);
+		singleton->setShaderTexture(2,singleton->imageHM1->tid);
+		singleton->setShaderArrayfVec3("paramArrMap", singleton->paramArrMap, 16 );
+		singleton->drawFSQuad(1.0f);
+		singleton->setShaderTexture(2,0);
+		singleton->setShaderTexture(1,0);
+		singleton->unsampleFBO("simplexFBO", 0);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+
+		FBOWrapper* fbow = singleton->getFBOWrapper("hmFBO",0);
+		fbow->getPixels();
+		fbow->setAllPixels(0,0);
+		fbow->setAllPixels(1,0);
+		//fbow->setAllPixels(2,0);
+		fbow->setAllPixels(3,0);
+		//fbow->setAllPixels(3,0);
+
+		//0 - b
+		//1 - g
+		//2 - r
+		//3 - a
+
+
+		//////////
+		
+		bool isValid;
+		int xind;
+		int yind;
+
+		for (i = 0; i < singleton->numProvinces; i++) {
+
+			isValid = false;
+
+			do {
+
+				xind = (int)(fGenRand()*fbow->width);
+				yind = (int)(fGenRand()*fbow->height);
+
+				if (fbow->getPixelAtC(xind,yind,2) > singleton->seaLevel ) {
+					if (fbow->getPixelAtC(xind,yind,1) == 0) {
+						fbow->setPixelAtC(xind,yind,1,i*2+128);
+						isValid = true;
+					}
+					else {
+						isValid = false;
+					}
+				}
+				else {
+					isValid = false;
+				}
+			}
+			while (!isValid);
+			
+		}
+
+
+
+		fbow->cpuToGPU();
+		
+
+		//////////
+
+
+		
+
+
+
+
+		singleton->bindShader("CopyShader");
+		singleton->bindFBO("mapFBO0");
+		singleton->sampleFBO("hmFBO",0);
+		singleton->drawFSQuad(1.0f);
+		singleton->unsampleFBO("hmFBO",0);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+
 	}
 void GameWorld::drawMap ()
                        {
@@ -15378,29 +15471,21 @@ void GameWorld::drawMap ()
 
 		singleton->bindShader("MapBorderShader");
 		singleton->bindFBO("mapFBO",mapSwapFlag);
-
 		singleton->sampleFBO("palFBO", 0);
 		singleton->sampleFBO("mapFBO",1,mapSwapFlag);
-		
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("mapStep", mapStep);
-		//singleton->setShaderArrayfVec3("paramArrMap", singleton->paramArrMap, (float)(singleton->numProvinces) );
-		//singleton->setShaderFloat("numProvinces", (float)(singleton->numProvinces));
 		singleton->drawFSQuad(1.0f);
-
 		singleton->unsampleFBO("mapFBO",1,mapSwapFlag);
 		singleton->unsampleFBO("palFBO",0);
 		singleton->unbindFBO();
 		singleton->unbindShader();
-
-
 
 		singleton->bindShader("TopoShader");
 		singleton->sampleFBO("palFBO", 0);
 		singleton->sampleFBO("mapFBO",1,mapSwapFlag);
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->drawFSQuad(1.0f);
-
 		singleton->unsampleFBO("mapFBO",1,mapSwapFlag);
 		singleton->unsampleFBO("palFBO",0);
 		singleton->unbindShader();

@@ -125,6 +125,7 @@ public:
   int lastMouseX;
   int lastMouseY;
   int numProvinces;
+  int seaLevel;
   uint volGenFBOSize;
   uint slicesPerPitch;
   uint palWidth;
@@ -168,7 +169,6 @@ public:
   FIVector4 origin;
   FIVector4 lastModXYZ;
   FIVector4 panMod;
-  Image * imageTerrainHM;
   Image * imageHM0;
   Image * imageHM1;
   string curShader;

@@ -22,7 +22,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		paramArrMap = new float[4096];
 
 		numProvinces = 64;
-
+		seaLevel = 90;
 		
 
 
@@ -67,9 +67,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		isBare = true;
 		grassHeight = 1.0/128.0;
 
-		bool isValid;
-		int xind;
-		int yind;
+		
 
 
 		imageHM0 = loadBMP("..\\data\\hm0.bmp");
@@ -77,46 +75,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		imageHM0->getTextureId(GL_NEAREST);
 		imageHM1->getTextureId(GL_NEAREST);
 
-
-		imageTerrainHM = loadBMP("..\\data\\hmsl.bmp");
-		imageTerrainHM->setAllValues(1,0);
-		imageTerrainHM->setAllValues(2,0);
-
-		int seaLevel = 90;
-
-		
-		for (i = 0; i < numProvinces; i++) {
-
-			isValid = false;
-
-			do {
-				paramArrMap[i*3+0] = fGenRand();
-				paramArrMap[i*3+1] = fGenRand();
-				paramArrMap[i*3+2] = fGenRand();
-
-				xind = (int)(paramArrMap[i*3+0]*imageTerrainHM->width);
-				yind = (int)(paramArrMap[i*3+1]*imageTerrainHM->height);
-
-				if (imageTerrainHM->getValue(xind,yind,0) > seaLevel ) {
-					if (imageTerrainHM->getValue(xind,yind,1) == 0) {
-						imageTerrainHM->setValue(xind,yind,1,i*2+128);
-						isValid = true;
-					}
-					else {
-						isValid = false;
-					}
-				}
-				else {
-					isValid = false;
-				}
-			}
-			while (!isValid);
-			
-
-		}
-
-
-		imageTerrainHM->getTextureId(GL_NEAREST);
 
 		defaultWinW = _defaultWinW/_scaleFactor;
 		defaultWinH = _defaultWinH/_scaleFactor;
@@ -272,7 +230,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    fboStrings.push_back("resultFBO");
 	    fboStrings.push_back("volGenFBO");
 
-	    //fboStrings.push_back("terrainMixFBO");
+	    fboStrings.push_back("hmFBO");
 	    fboStrings.push_back("simplexFBO");
 	    fboStrings.push_back("mapFBO0");
 	    fboStrings.push_back("mapFBO1");
@@ -345,9 +303,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["volGenFBO"]->init(1, volGenFBOSize, volGenFBOSize, 1, false);
 
-	    fboMap["simplexFBO"]->init(1, imageTerrainHM->width, imageTerrainHM->height, 1, false, GL_NEAREST, GL_REPEAT);
-	    fboMap["mapFBO0"]->init(1, imageTerrainHM->width, imageTerrainHM->height, 1, false, GL_NEAREST, GL_REPEAT);
-	    fboMap["mapFBO1"]->init(1, imageTerrainHM->width, imageTerrainHM->height, 1, false, GL_NEAREST, GL_REPEAT);
+	    fboMap["hmFBO"]->init(1, imageHM0->width, imageHM0->height, 1, false, GL_NEAREST, GL_REPEAT);
+	    fboMap["simplexFBO"]->init(1, imageHM0->width, imageHM0->height, 1, false, GL_NEAREST, GL_REPEAT);
+	    fboMap["mapFBO0"]->init(1, imageHM0->width, imageHM0->height, 1, false, GL_NEAREST, GL_REPEAT);
+	    fboMap["mapFBO1"]->init(1, imageHM0->width, imageHM0->height, 1, false, GL_NEAREST, GL_REPEAT);
 
 
 
