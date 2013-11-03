@@ -3,7 +3,7 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
-
+bool TRACE_ON = false;
 
 #include <SDKDDKVer.h>
 
@@ -101,7 +101,7 @@ using Poco::Base64Decoder;
 
 //#define DEBUG_MODE 1
 
-float MAX_GPU_MEM = 1536.0f;
+float MAX_GPU_MEM = 2048.0f;
 float TOT_GPU_MEM_USAGE = 0.0f;
 
 struct charArr {

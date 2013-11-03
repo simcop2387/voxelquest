@@ -9,22 +9,29 @@ uniform sampler2D Texture3;
 // pal fbo
 uniform sampler2D Texture4;
 
-varying vec2 TexCoord0;
-uniform vec2 mouseCoords;
-uniform vec2 resolution;
-uniform vec3 cameraPos;
-uniform vec3 lightPosWS;
-uniform vec2 lightPosSS;
-uniform vec2 aoPosSS;
-uniform vec4 activeObjectPos;
-uniform vec4 lastUnitPos;
-uniform vec4 lastPagePos;
-uniform vec2 bufferDim;
+
+uniform float holderSizeInPixels;
+uniform float visPageSizeInPixels;
+uniform float unitSizeInPixels;
+
+uniform float gridOn;
+uniform float heightmapMax;
 uniform float cameraZoom;
 uniform float diskOn;
 uniform float curTime;
-
+uniform vec2 bufferDim;
+uniform vec2 mouseCoords;
+uniform vec2 resolution;
+uniform vec2 lightPosSS;
+uniform vec2 aoPosSS;
+uniform vec3 cameraPos;
+uniform vec3 lightPosWS;
+uniform vec4 activeObjectPos;
+uniform vec4 lastUnitPos;
+uniform vec4 lastPagePos;
 uniform vec4 fogPos;
+
+
 
 //uniform vec4 bgColor;
 
@@ -32,7 +39,7 @@ const int iNumRaySteps = 64;
 const float fNumRaySteps = 64.0;
 const float rayDis = 128.0;
 
-
+varying vec2 TexCoord0;
 
 $
 
@@ -98,16 +105,17 @@ void main() {
     float newZoom3 = mix(newZoom,cameraZoom, float(cameraZoom <= 1.0) );
     
 
-    float tot = tex0.r + tex0.g + tex0.b + tex0.a;
-    //if (tot == 0.0) {
-            //discard;
-    //}
+    float tot = float(tex0.r + tex0.g + tex0.b + tex0.a > 0.0);
+    /*if (tot == 0.0) {
+        discard;
+    }
+    */
     
     float baseHeight = unpack16(tex0.rg);//tex0.r*255.0 + tex0.g*255.0*256.0;
     
 
     float baseHeight2 = unpack16(tex2.rg);
-    float geomMod = float(tex2.b > 0.0)*mix(0.05,1.0,float( baseHeight2 > baseHeight ));
+    float geomMod = float(tex2.b > 0.0)*mix(0.5,1.0,float( baseHeight2 > baseHeight ));
 
 
 
@@ -118,8 +126,8 @@ void main() {
 
 
     tcMod.y -= cameraPos.z;
-    worldPosition.x = tcMod.y + tcMod.x/2.0 + (baseHeight);
-    worldPosition.y = tcMod.y - tcMod.x/2.0 + (baseHeight);
+    worldPosition.x = tcMod.y + tcMod.x/2.0 + (baseHeight);// + visPageSizeInPixels/2.0;
+    worldPosition.y = tcMod.y - tcMod.x/2.0 + (baseHeight);// + visPageSizeInPixels/2.0;
     worldPosition.z = baseHeight;
     worldPosition.x += cameraPos.x;
     worldPosition.y += cameraPos.y;
@@ -264,6 +272,11 @@ void main() {
     hfog *= float(baseHeight > 0.0);
 
     hfog = pow(hfog, 2.0);
+
+
+
+    //hfog = 1.0;
+
     lightRes *= hfog;
 
     vec3 fogColor = vec3(0.6, 0.6, 0.7);
@@ -308,6 +321,12 @@ void main() {
         resCol2 = vec3(1.0,0.0,0.0);
     }
 
+    if (tex2.b == 8.0/255.0) {
+        resCol2 = vec3(1.0,0.0,1.0);
+        geomMod = pow(geomMod,3.0);
+
+    }
+
 
     /*
     // light
@@ -344,17 +363,42 @@ void main() {
 
     }
 
+    if (tex0.b == 7.0/255.0) {
+        hfog = 1.0;
+        resColor = texture2D( Texture4, vec2(clamp(worldPosition.z/heightmapMax,0.0,1.0), (5.0 + 0.5)/255.0 ) ).rgb + lightRes-0.2;
+
+    }
+
+
     //resColor = vec3(lightRes,lightRes,lightRes);
     
-    //vec3 resColor = mod(worldPosition,256.0)/255.0;
+
+    vec3 grid0 = abs(mod(worldPosition, unitSizeInPixels) - unitSizeInPixels/2.0)*2.0;
+    vec3 grid1 = abs(mod(worldPosition,visPageSizeInPixels) - visPageSizeInPixels/2.0)*2.0;
+    vec3 grid2 = abs(mod(worldPosition, holderSizeInPixels) - holderSizeInPixels/2.0)*2.0;
+    
+
+    float notBlank = float(tex1.a != 0.0);
+
+   
+    
+    
+    float gridVal0 = float( (grid0.x >= (unitSizeInPixels-2.0/newZoom)) || (grid0.y >= (unitSizeInPixels-2.0/newZoom)) ) * 0.1 * notBlank;
+    float gridVal1 = float( (grid1.x >= (visPageSizeInPixels-3.0/newZoom)) || (grid1.y >= (visPageSizeInPixels-3.0/newZoom)) ) * 0.2 * notBlank;
+    float gridVal2 = float( (grid2.x >= (holderSizeInPixels-4.0/newZoom)) || (grid2.y >= (holderSizeInPixels-4.0/newZoom)) ) * 0.5 * notBlank;
+
+
+
+    //resColor = mod(worldPosition,256.0)/255.0;
+    //hfog = 1.0;
     //vec3 resColor = vec3(lightRes);//mix(resCol0,resCol1,lightRes);//mod(worldPosition,256.0)/255.0;//vec3(lightRes);//mix(resCol0,resCol1,lightRes);
     //vec3 resColor = tex1.rgb;
 
 
-    vec3 finalCol = mix( fogColor, resColor, hfog )+resCol2*geomMod*0.8+pval+mval;
+    vec3 finalCol = mix( fogColor, resColor, hfog )+resCol2*geomMod*0.8+pval+mval+(gridVal0+gridVal1+gridVal2)*gridOn;
 
     //vec4(lightRes*0.8,lightRes*0.7,lightRes*0.6, lightRes)
-    gl_FragData[0] = vec4(finalCol,1.0);//+geomMod;//+isLastUnit+isLastPage;//+isLastUnit+isLastPage; //vec4(lightRes,lightRes,lightRes,1.0);//
+    gl_FragData[0] = vec4(finalCol,tot);//+geomMod;//+isLastUnit+isLastPage;//+isLastUnit+isLastPage; //vec4(lightRes,lightRes,lightRes,1.0);//
     //gl_FragData[0] = vec4(aoval,aoval,aoval,1.0);
 
     //gl_FragData[0] = vec4(lightRes,lightRes,lightRes,1.0);

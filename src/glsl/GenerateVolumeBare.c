@@ -2,25 +2,30 @@
 
 uniform sampler3D Texture0; //volume texture nearest
 uniform sampler3D Texture1; //voro texture linear
-uniform sampler2D Texture2; //2d to 3d coords
+uniform sampler2D Texture2; //terrain heightmap
 
-uniform sampler2D Texture3; //terrain heightmap
-
-uniform vec2 resolution;
+uniform float slicesPerPitch;
+uniform float heightmapMax;
 uniform float bufferedPageSizeInUnits;
 uniform float threshVal;
 uniform float bufferMult;
 uniform float numEntries;
 uniform float paramsPerEntry;
-
+uniform vec2 resolution;
+uniform vec3 worldSizeInPixels;
 uniform vec3 worldMinVisInPixels;
 uniform vec3 worldMaxVisInPixels;
 uniform vec3 worldMinBufInPixels;
 uniform vec3 worldMaxBufInPixels;
+uniform vec3 paramArr[256];
+
+uniform vec4 mapFreqs;
+uniform vec4 mapAmps;
+
 
 varying vec2 TexCoord0;
 
-uniform vec3 paramArr[256];
+
 
 
 $
@@ -32,12 +37,26 @@ void main() {
 
 $
 
+int intMod(int lhs, int rhs) {
+    return lhs - ( (lhs/rhs)*rhs );
+}
 
 void main() {
 	
+	int iSlicesPerPitch = int(slicesPerPitch);
+	int side = iSlicesPerPitch*iSlicesPerPitch;
+	float fSideM1 = float(side-1);
+	int volGenFBOSize = side*iSlicesPerPitch;
+	int volGenFBOSizeM1 = volGenFBOSize-1;
+	int i = int( float(volGenFBOSizeM1)*TexCoord0.x );
+	int j = int( float(volGenFBOSizeM1)*TexCoord0.y );
+	vec3 newCoords = vec3(0.0);
+	newCoords.x = float(intMod(i,side))/fSideM1;
+	newCoords.y = float(intMod(j,side))/fSideM1;
+	newCoords.z = float(i/side + (j/side)*slicesPerPitch)/fSideM1;
 
-	vec3 coords = texture2D(Texture2, TexCoord0.xy).rgb;
-	vec3 newCoords = coords;
+
+
 	vec3 worldPos = vec3(
 		mix(worldMinBufInPixels.x, worldMaxBufInPixels.x, newCoords.x),
 		mix(worldMinBufInPixels.y, worldMaxBufInPixels.y, newCoords.y),
@@ -47,7 +66,7 @@ void main() {
 
 
 
-	int i;
+	
 	int iParamsPerEntry = int(paramsPerEntry);
 	int baseInd;
 
@@ -104,17 +123,24 @@ void main() {
 
 	}
 
+
 	if (finalRes.a != 0.0) {
 		finalRes.r = 1.0;
 	}
+	
+	
 
 
-	vec4 texHM0 =  texture2D(Texture3, worldPos.xy / (32768.0/1.0) );
-	vec4 texHM1 =  texture2D(Texture3, worldPos.xy / (32768.0/4.0) );
-	vec4 texHM2 =  texture2D(Texture3, worldPos.xy / (32768.0/16.0) );
-	vec4 texHM3 =  texture2D(Texture3, worldPos.xy / (32768.0/32.0) );
+	vec4 texHM0 =  texture2D(Texture2, mapFreqs.x * worldPos.xy / (worldSizeInPixels.x) );
+	vec4 texHM1 =  texture2D(Texture2, mapFreqs.y * worldPos.xy / (worldSizeInPixels.x) );
+	vec4 texHM2 =  texture2D(Texture2, mapFreqs.z * worldPos.xy / (worldSizeInPixels.x) );
+	vec4 texHM3 =  texture2D(Texture2, mapFreqs.w * worldPos.xy / (worldSizeInPixels.x) );
 
-	float testHeight = texHM0.r*2048.0 + texHM1.r*256.0 + texHM2.r*64.0 + texHM3.r*32.0;
+	//float testHeight = texHM0.r*256.0;//(texHM0.r*0.8 + texHM1.r*0.15 + texHM2.r*0.04 + texHM3.r*0.01)*512.0;
+
+	float testHeight = (texHM0.r*mapAmps.x + texHM1.r*mapAmps.y + texHM2.r*mapAmps.z + texHM3*mapAmps.w);// *0.6 + texHM1.r*0.2 + texHM2.r*0.07 + texHM3.r*0.03);
+	//testHeight = pow(testHeight,2.0);
+	testHeight *= heightmapMax;
 
 	if (testHeight > worldPos.z ) {
 		finalRes = vec4(1.0,0.0,0.0,2.0/255.0);

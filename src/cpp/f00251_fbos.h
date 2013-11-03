@@ -3,14 +3,14 @@ class FBOWrapper
 public:
 
 	uint color_tex;
-	uint depth_rb;
+	
 	//uint color_buf;
 	//uint depth_buf;
 	uint slot;
 	int width;
 	int height;
 	int bytesPerChannel;
-	bool hasDepth;
+	//bool hasDepth;
 
 
 	GLint internalFormat;
@@ -21,11 +21,11 @@ public:
 
     FBOWrapper() {}
     ~FBOWrapper() {}
-    int init(int _width, int _height, int _bytesPerChannel, int _slot, bool _hasDepth, int filterEnum, int clampEnum) {
+    int init(int _width, int _height, int _bytesPerChannel, int _slot, /*bool _hasDepth,*/ int filterEnum, int clampEnum) {
 		width = _width;
 		height = _height;
 		bytesPerChannel = _bytesPerChannel;
-		hasDepth = _hasDepth;
+		//hasDepth = _hasDepth;
 
 		int w = width;
 		int h = height;
@@ -97,13 +97,14 @@ public:
 
 
 	    //
-
+	    /*
 	    if (hasDepth) {
 	    	glGenRenderbuffersEXT(1, &depth_rb);
 	    	glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, depth_rb);
 	    	glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, w, h);
 	    	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, depth_rb);
 	    }
+	    */
 
 	    
 	    //
@@ -147,7 +148,7 @@ public:
 
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixelsChar);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelsChar);
 
 				glBindTexture(GL_TEXTURE_2D, 0);
 				
@@ -211,20 +212,95 @@ public:
 		pixelsChar[ (x + y*width)*4 + channel ] = value;
 	}
 
-	unsigned char getPixelAtC(int x, int y, int channel) {
+
+	int getIndex(int xs, int ys) {
+		int x = xs;
+		int y = ys;
+
+		while (x < 0) {
+			x += width;
+		}
+		while (y < 0) {
+			y += height;
+		}
+
+		x = x % width;
+		y = y % height;
+
+		return x + y*width;
+	}
+
+	int getPixelAtIndex(int ind, int channel) {
+		return pixelsChar[ind*4 + channel];
+	}
+	void setPixelAtIndex(int ind, int channel, int val) {
+		pixelsChar[ind*4 + channel] = val;
+	}
+	void orPixelAtIndex(int ind, int channel, int val) {
+		pixelsChar[ind*4 + channel] |= val;
+	}
+	void andPixelAtIndex(int ind, int channel, int val) {
+		pixelsChar[ind*4 + channel] &= val;
+	}
+
+	int getPixelAtC(int x, int y, int channel) {
 
 		if (!isFloat) {
 			if ( (pixelsChar == NULL) ) {
 				getPixels();
 			}
 
-			return pixelsChar[ (x + y*width)*4 + channel ];
+			return (int)pixelsChar[ (x + y*width)*4 + channel ];
 
 		}
 		else {
 			doTrace("Attempted to call getPixelAtC on float buffer.");
 			return 0;
 		}
+
+	}
+
+	float getPixelAtLinear(float xf, float yf, int channel) {
+		int x[2];
+		int y[2];
+
+		x[0] = floor(xf);
+		y[0] = floor(yf);
+		x[1] = x[0] + 1;
+		y[1] = y[0] + 1;
+
+		float percX = xf - x[0];
+		float percY = yf - y[0];
+		float percXI = 1.0f-percX;
+		float percYI = 1.0f-percY;
+
+
+		float v0, v1;
+		float v2, v3;
+
+		int i;
+
+		for (i = 0; i < 2; i++) {
+
+			while (x[i] < 0) {
+				x[i] += width;
+			}
+			while (y[i] < 0) {
+				y[i] += height;
+			}
+
+			x[i] = x[i] % width;
+			y[i] = y[i] % height;
+		}
+
+		v0 = getPixelAtC(x[0],y[0],channel)/255.0f;
+		v1 = getPixelAtC(x[1],y[0],channel)/255.0f;
+		v2 = getPixelAtC(x[0],y[1],channel)/255.0f;
+		v3 = getPixelAtC(x[1],y[1],channel)/255.0f;
+
+		float vFinal = (v0*percXI + v1*percX)*percYI + (v2*percXI + v3*percX)*percY;
+
+		return vFinal;
 
 	}
 
@@ -300,6 +376,8 @@ public:
 	int height;
 	int bytesPerChannel;
 
+	uint depth_rb;
+
 	GLuint mFBO;
 
 	FBOWrapper* fbos;
@@ -330,8 +408,17 @@ public:
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
 
 		for (i = 0; i < numBufs; i++) {
-			fbos[i].init(width, height, bytesPerChannel, i, hasDepth, filterEnum, clampEnum);
+			fbos[i].init(width, height, bytesPerChannel, i, /*hasDepth,*/ filterEnum, clampEnum);
 		}
+
+
+		if (hasDepth) {
+			glGenRenderbuffersEXT(1, &depth_rb);
+			glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, depth_rb);
+			glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, width, height);
+			glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, depth_rb);
+		}
+
 
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 	}
@@ -380,71 +467,3 @@ public:
 		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 	}
 };
-
-
-
-/*
-//RGBA8 2D texture, 24 bit depth texture, 256x256
-   glGenTextures(1, &color_tex);
-   glBindTexture(GL_TEXTURE_2D, color_tex);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-   //NULL means reserve texture memory, but texels are undefined
-   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 256, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
-   //-------------------------
-   glGenFramebuffersEXT(1, &fb);
-   glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fb);
-   //Attach 2D texture to this FBO
-   glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, color_tex, 0);
-   //-------------------------
-   glGenRenderbuffersEXT(1, &depth_rb);
-   glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, depth_rb);
-   glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, 256, 256);
-   //-------------------------
-   //Attach depth buffer to FBO
-   glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, depth_rb);
-   //-------------------------
-   //Does the GPU support current FBO configuration?
-   GLenum status;
-   status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-   switch(status)
-   {
-      case GL_FRAMEBUFFER_COMPLETE_EXT:
-      cout<<"good";
-   default:
-      HANDLE_THE_ERROR;
-   }
-   //-------------------------
-   //and now you can render to GL_TEXTURE_2D
-   glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fb);
-   glClearColor(0.0, 0.0, 0.0, 0.0);
-   glClearDepth(1.0f);
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-   //-------------------------
-   glViewport(0, 0, 256, 256);
-   glMatrixMode(GL_PROJECTION);
-   glLoadIdentity();
-   glOrtho(0.0, 256.0, 0.0, 256.0, -1.0, 1.0); 
-   glMatrixMode(GL_MODELVIEW);
-   glLoadIdentity();
-   //-------------------------
-   glDisable(GL_TEXTURE_2D);
-   glDisable(GL_BLEND);
-   glEnable(GL_DEPTH_TEST);
-   //-------------------------
-   //**************************
-   //RenderATriangle, {0.0, 0.0}, {256.0, 0.0}, {256.0, 256.0}
-   //Read http://www.opengl.org/wiki/VBO_-_just_examples
-   RenderATriangle();
-   //-------------------------
-   GLubyte pixels[4*4*4];
-   glReadPixels(0, 0, 4, 4, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
-   //pixels 0, 1, 2 should be white
-   //pixel 4 should be black
-   //----------------
-   //Bind 0, which means render to back buffer
-   glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-*/
-

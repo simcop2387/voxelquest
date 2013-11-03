@@ -26,24 +26,22 @@ public:
 	bool mbDown;
 	bool isZooming;
 	bool isPanning;
-	bool keyDownArr[MAX_KEYS];
 	bool softMode;
 	bool isBare;
 	bool reportPagesDrawn;
+	bool showMap;
+	bool traceOn;
 
 
-
+	int maxPooledRes;
 	int poolItemsCreated;
 	int baseW;
 	int baseH;
 	int scaleFactor;
 	int activeMode;
-	int geomPageSizeInPixels;
-	int geomPageSizeInUnits;
 	int visPageSizeInPixels;
 	int visPageSizeInUnits;
 	int unitSizeInPixels;
-	int bufferMult;
 	int maxHeightInUnits;
 	int extraRad;
 	int defaultWinW;
@@ -65,6 +63,8 @@ public:
 	int	lastMouseY;
 	int numProvinces;
 	int seaLevel;
+	int holderSizeInPages;
+	int holderSizeInPixels;
 
 	uint volGenFBOSize;
 	uint slicesPerPitch;
@@ -72,6 +72,8 @@ public:
 	uint palHeight;
 	
 
+	float gridOn;
+	float mapSampScale;
 	float curBrushRad;
 	float diskOn;
 	float grassHeight;
@@ -88,6 +90,8 @@ public:
 	float myDelta;
 	float mdTime;
 	float muTime;
+	float heightmapMax;
+	float bufferMult;
 
 	float* paramArr;
 	float* paramArrMap;
@@ -99,15 +103,15 @@ public:
 	FIVector4 mouseDownPD;
 	FIVector4 mouseMovePD;
 	FIVector4 worldSizeInPages;
-	FIVector4 worldSizeInGeomPages;
+	FIVector4 worldSizeInHolders;
+	FIVector4 worldSizeInHoldersM1;
 	FIVector4 cameraPos;
 	FIVector4 lightPos;
 	FIVector4 mouseStart;
 	FIVector4 mouseEnd;
 
-
-	
-	
+	FIVector4 mapFreqs;
+	FIVector4 mapAmps;
 
 
 	FIVector4* mouseMoving;
@@ -128,8 +132,9 @@ public:
 	string curShader;
 	string allText;	
 
-	list<int> pagePoolIds;
-	vector<PooledResource*> pagePoolItems;
+	list<int> holderPoolIds;
+	vector<int> orderedIds;
+	vector<PooledResource*> holderPoolItems;
 	vector<string> shaderStrings;
 	vector<string> fboStrings;
 	vector<string> shaderTextureIDs;
@@ -139,7 +144,7 @@ public:
 	GLuint volTris;
 	GLuint grassTris;
 	uint* lookup2to3;
-	GLuint lookup2to3ID;
+	//GLuint lookup2to3ID;
 
 	unsigned char* resultImage;
 	
@@ -157,6 +162,10 @@ public:
 	std::vector<GameGeom*> gameGeom;
 
 
+	uint volID;
+	uint volIDLinear;
+	int bufferedPageSizeInUnits;
+
 	Singleton() {
 		volTris = NULL;
 		gw = NULL;
@@ -167,18 +176,120 @@ public:
 	void init(int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer* _myWS) {
 
 		pushTrace("Singleton init");
-
 		int i;
 
 
 
+		
+		imageHM0 = loadBMP("..\\data\\hm0.bmp");
+		imageHM1 = loadBMP("..\\data\\hm1.bmp");
+		imageHM0->getTextureId(GL_NEAREST);
+		imageHM1->getTextureId(GL_NEAREST);
+
+
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+
+		mapSampScale = 1.0f;
+		int newPitch = imageHM0->width*mapSampScale;//*2;
+
+
+		
+		mapFreqs.setFXYZW(1.0f, 4.0f, 32.0f, 64.0f);
+		mapAmps.setFXYZW(0.4f, 0.1f, 0.3f, 0.2f);
+		
+		slicesPerPitch = 16;
+		visPageSizeInPixels = 256; // height of one page in pixels
+		holderSizeInPages = 4;
+		bufferMult = 1.25;
+		volGenFBOSize = slicesPerPitch*slicesPerPitch*slicesPerPitch;
+		visPageSizeInUnits = 16;
+		worldSizeInHolders.setIXYZ(newPitch,newPitch,8);
+		worldSizeInHoldersM1.copyFrom(&worldSizeInHolders);
+		worldSizeInHoldersM1.addXYZ(-1);
+		holderSizeInPixels = holderSizeInPages*visPageSizeInPixels;
+		worldSizeInPages.copyFrom(&worldSizeInHolders);
+		worldSizeInPages.multXYZ((float)holderSizeInPages);
+		unitSizeInPixels = (visPageSizeInPixels)/visPageSizeInUnits;
+		
+		//one unit = half meter
+
+
+		maxH = 3;//worldSizeInPages.getIZ();
+
+		maxPooledRes = 512;
+		maxW = 4;
+		
+
+
+		cout << "holderSizeInPixels X2 " << holderSizeInPixels*2 << "\n";
+
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+
+		
+		traceOn = false;
+		gridOn = 1.0f;
+
+
+		// TODO: examine if this variable is necessary
+		maxHeightInUnits = (worldSizeInPages.getIZ()-bufferMult)*(visPageSizeInUnits);
+
+		minBoundsInPixels.setIXYZ(0,0,0);
+		maxBoundsInPixels.setIXYZ(
+			(worldSizeInPages.getIX()-1)*unitSizeInPixels*visPageSizeInUnits,
+			(worldSizeInPages.getIY()-1)*unitSizeInPixels*visPageSizeInUnits,
+			(worldSizeInPages.getIZ()-1)*unitSizeInPixels*visPageSizeInUnits
+		);
+
+		heightmapMax = maxBoundsInPixels.getFZ()/2.0f;
+
+
+
+
+		bufferedPageSizeInUnits = (visPageSizeInUnits) * (bufferMult);
+
+
+		glGenTextures(1,&volID);
+		glGenTextures(1,&volIDLinear);
+
+		glBindTexture(GL_TEXTURE_3D,volID);
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, bufferedPageSizeInUnits, bufferedPageSizeInUnits, bufferedPageSizeInUnits, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_LINEAR
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//GL_NEAREST
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+		glBindTexture(GL_TEXTURE_3D,0);
+
+		glBindTexture(GL_TEXTURE_3D,volIDLinear);
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, bufferedPageSizeInUnits, bufferedPageSizeInUnits, bufferedPageSizeInUnits, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);//GL_LINEAR
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);//GL_NEAREST
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+		glBindTexture(GL_TEXTURE_3D,0);
+
+
+
+
+
+		
 		paramArr = new float[4096];
 		paramArrMap = new float[4096];
 
-		numProvinces = 64;
-		seaLevel = 90;
 		
-
+		numProvinces = 64;
+		seaLevel = 100;
+		
+		showMap = true;
 
 		rootObj = NULL;
 
@@ -192,11 +303,7 @@ public:
 		nullBuffer.data[0] = '\0';
 		nullBuffer.size = 0;
 
-		volGenFBOSize = 4096;
-		slicesPerPitch = 16;
-
-		//volGenFBOSize = 512;
-		//slicesPerPitch = 8;
+		
 
 		palWidth = 256;
 		palHeight = 256;
@@ -220,14 +327,11 @@ public:
 		reportPagesDrawn = false;
 		isBare = true;
 		grassHeight = 1.0/128.0;
-
+		diskOn = 0.0f;
 		
 
 
-		imageHM0 = loadBMP("..\\data\\hm0.bmp");
-		imageHM1 = loadBMP("..\\data\\hm1.bmp");
-		imageHM0->getTextureId(GL_NEAREST);
-		imageHM1->getTextureId(GL_NEAREST);
+		
 
 
 		defaultWinW = _defaultWinW/_scaleFactor;
@@ -245,32 +349,11 @@ public:
 			genRand(5000.0f,500000.0f)
 		);
 
+
+
+
+
 		
-		bufferMult = 2;
-		diskOn = 0.0f;
-		visPageSizeInPixels = 128; // height of one page in pixels
-		visPageSizeInUnits = 8;
-		worldSizeInPages.setIXYZ(128,128,12);
-		unitSizeInPixels = (visPageSizeInPixels)/visPageSizeInUnits;
-		
-		geomPageSizeInPixels = 1024;
-		geomPageSizeInUnits = geomPageSizeInPixels/unitSizeInPixels;
-		worldSizeInGeomPages.setFXYZRef(&worldSizeInPages);
-		worldSizeInGeomPages.intDivXYZ(geomPageSizeInPixels/visPageSizeInPixels);
-
-
-		maxH = worldSizeInPages.getIZ();
-		maxW = 4;
-
-		maxHeightInUnits = (worldSizeInPages.getIZ()-bufferMult)*(visPageSizeInUnits);
-
-		minBoundsInPixels.setIXYZ(0,0,0);
-		maxBoundsInPixels.setIXYZ(
-			(worldSizeInPages.getIX()-1)*unitSizeInPixels*visPageSizeInUnits,
-			(worldSizeInPages.getIY()-1)*unitSizeInPixels*visPageSizeInUnits,
-			(worldSizeInPages.getIZ()-1)*unitSizeInPixels*visPageSizeInUnits
-		);
-
 
 		wsBufferInvalid = true;
 
@@ -297,11 +380,6 @@ public:
 		lbDown=false;
 		rbDown=false;
 
-		for (i = 0; i < MAX_KEYS; i++) {
-			keyDownArr[i] = false;
-		}
-		keySetup();
-
 		
 
 		isFullScreen = false;
@@ -310,8 +388,8 @@ public:
 
 		programState = E_PS_IN_GAME;
 
-
-		cameraPos.setFXYZ(2048.0, 2048.0, maxBoundsInPixels.getFZ()/2.0);
+		//
+		cameraPos.setFXYZ(0.0, 0.0, maxBoundsInPixels.getFZ()/2.0);
 
 		lightPos.copyFrom(&cameraPos);
 		fogPos.copyFrom(&cameraPos);
@@ -354,6 +432,7 @@ public:
 		myDelta = 0.0f;
 		
 
+
 		//gm = new GameMap();
 		orthographicProjection();
 		//// GL WIDGET END ////
@@ -384,10 +463,12 @@ public:
 	    fboStrings.push_back("resultFBO");
 	    fboStrings.push_back("volGenFBO");
 
+	    fboStrings.push_back("cityFBO");
 	    fboStrings.push_back("hmFBO");
+	    fboStrings.push_back("hmFBOLinear");
 	    fboStrings.push_back("simplexFBO");
-	    fboStrings.push_back("mapFBO0");
-	    fboStrings.push_back("mapFBO1");
+	    fboStrings.push_back("swapFBO0");
+	    fboStrings.push_back("swapFBO1");
 
 
 
@@ -431,7 +512,7 @@ public:
 	    shaderTextureIDs.push_back("Texture7");
 
 
-	    setupLookups();
+	    //setupLookups();
 
 	    for (i = 0; i < shaderStrings.size(); i++) {
 	        shaderMap.insert(  pair<string,Shader*>(shaderStrings[i], NULL)  );
@@ -455,12 +536,16 @@ public:
 	    fboMap["geomFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, true);
 	    fboMap["combineFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-	    fboMap["volGenFBO"]->init(1, volGenFBOSize, volGenFBOSize, 1, false);
+	    fboMap["volGenFBO"]->init(1, volGenFBOSize, volGenFBOSize, 1, false, GL_NEAREST);
 
-	    fboMap["hmFBO"]->init(1, imageHM0->width, imageHM0->height, 1, false, GL_NEAREST, GL_REPEAT);
-	    fboMap["simplexFBO"]->init(1, imageHM0->width, imageHM0->height, 1, false, GL_NEAREST, GL_REPEAT);
-	    fboMap["mapFBO0"]->init(1, imageHM0->width, imageHM0->height, 1, false, GL_NEAREST, GL_REPEAT);
-	    fboMap["mapFBO1"]->init(1, imageHM0->width, imageHM0->height, 1, false, GL_NEAREST, GL_REPEAT);
+
+	    
+	    fboMap["cityFBO"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
+	    fboMap["hmFBO"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
+	    fboMap["hmFBOLinear"]->init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
+	    fboMap["simplexFBO"]->init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
+	    fboMap["swapFBO0"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
+	    fboMap["swapFBO1"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 
 
 
@@ -470,118 +555,217 @@ public:
 	    gw = new GameWorld();
 	    gw->init(this);
 
-	    for (i = 0; i < 512; i++) {
-	    	gameGeom.push_back(new GameGeom());
-	    	gameGeom.back()->initRand(i);
-	    	addGeom(gameGeom.back());
-	    }
 
-
-
+	    
+		
+	    
 	    
 	    popTrace();
 
 
 
-
 	}
 
 
 
-	void addGeom(GameGeom* geom) {
-		
+
+	
+
+
+	void reorderIds() {
 		int i;
 		int j;
-		int ind;
 
-		int startX;
-		int endX;
-		int startY;
-		int endY;
+		int oidSize =  orderedIds.size();
+		int oidSizeM1 =  oidSize-1;
 
-		int bufSize = (visPageSizeInUnits*bufferMult*unitSizeInPixels);
+		int id0;
+		int id1;
 
+		int tempId;
 
-		startX = ( geom->boundsMinInPixels.getIX() - bufSize )/geomPageSizeInPixels;
-		startY = ( geom->boundsMinInPixels.getIY() - bufSize )/geomPageSizeInPixels;
+		int tot0;
+		int tot1;
 
-		endX = ( geom->boundsMaxInPixels.getIX() + bufSize )/geomPageSizeInPixels;
-		endY = ( geom->boundsMaxInPixels.getIY() + bufSize )/geomPageSizeInPixels;
+		bool doSwap;
 
+		GamePageHolder* gp0;
+		GamePageHolder* gp1;
+
+		for (i = 0; i < oidSizeM1; i++) {
+			for (j = i + 1; j < oidSize; j++ ) {
+				
+				id0 = orderedIds[i];
+				id1 = orderedIds[j];
+
+				if (id0 == -1 || id1 == -1) {
+
+				}
+				else {
+
+					gp0 = gw->getHolderAtIndex(id0);
+					gp1 = gw->getHolderAtIndex(id1);
+
+					if (gp0 == NULL || gp1 == NULL) {
+
+					}
+					else {
+						tot0 = gp0->trueOffsetInHolders.getFZ();
+						tot1 = gp1->trueOffsetInHolders.getFZ();
+
+						if (tot0 == tot1) {
+							tot0 = gp0->trueOffsetInHolders.getFY();
+							tot1 = gp1->trueOffsetInHolders.getFY();
+
+							if (tot0 == tot1) {
+								tot1 = gp1->trueOffsetInHolders.getFX();
+								tot0 = gp0->trueOffsetInHolders.getFX();
+
+								if (tot0 == tot1) {
+									doSwap = false;
+								}
+								else {
+									doSwap = tot0 > tot1;
+								}
+							}
+							else {
+								doSwap = tot0 > tot1;
+							}
+						}
+						else {
+							doSwap = tot0 > tot1;
+						}
+
+						if (doSwap) {
+							orderedIds[i] = id1;
+							orderedIds[j] = id0;
+						}
+						
+						
+					}
+				}
+
+				
+			}
+		}
+	}
+
+	int findFurthestHolderId() {
 		
-		startX = clamp(startX, 0, worldSizeInGeomPages.getIX()-1);
-		startY = clamp(startY, 0, worldSizeInGeomPages.getIY()-1);
 
+		float longestDis = 0.0f;
+		int longestInd = 0;
 
-		for (j = startY; j <= endY; j++) {
-			for (i = startX; i <= endX; i++) {
-				ind = j*worldSizeInGeomPages.getIX() + i;
-				gw->geomData[ind].containsGeomIds.push_back(geom->id);
+		float testDis;
+		float testDis1;
+		float testDis2;
+		float testDis3;
+
+		int i;
+
+		FIVector4 tempVec;
+		FIVector4 tempVec2;
+
+		GamePageHolder* gp;
+		GamePageHolder* bestGP = NULL;
+
+		for (i = 0; i < holderPoolItems.size(); i++) {
+			gp = gw->getHolderAtIndex(holderPoolItems[i]->usedByHolderId);
+
+			if (gp == NULL) {
+
+			}
+			else {
+
+				tempVec.copyFrom(&(gw->camHolderPos));
+				tempVec.addXYZ( worldSizeInHolders.getIX(), worldSizeInHolders.getIY(), 0.0 );
+
+				tempVec2.copyFrom(&(gw->camHolderPos));
+				tempVec2.addXYZ( -worldSizeInHolders.getIX(), -worldSizeInHolders.getIY(), 0.0 );
+
+				testDis1 = gp->trueOffsetInHolders.distance( &(gw->camHolderPos) );
+				testDis2 = gp->trueOffsetInHolders.distance( &(tempVec) );
+				testDis3 = gp->trueOffsetInHolders.distance( &(tempVec2) );
+
+				testDis = min(min(testDis1,testDis2),testDis3);
+
+				if (testDis > longestDis) {
+					longestDis = testDis;
+					longestInd = i;
+					bestGP = gp;
+				}
 			}
 		}
 
-		
+		//doTraceVecND("bestGP->trueOffsetInHolders", &(bestGP->trueOffsetInHolders) );
+		//doTraceVecND("gw->camHolderPos", &(gw->camHolderPos) );
 
+		return longestInd;
 	}
 
-
-	void sendPoolIdToFront(int id) {
-		int i = 0;
-
-		pagePoolIds.remove(id);
-		pagePoolIds.push_front(id);
-
-	}
-
-	int requestPoolId(int requestingPageId) {
+	int requestPoolId(int requestingHolderId) {
 
 		
-		int pageToFreeId;
-		int usedByPageId;
+		int holderToFreeId;
+		int usedByHolderId;
+		int i;
 
 		
-		if (TOT_GPU_MEM_USAGE < MAX_GPU_MEM) {
-			pagePoolItems.push_back( new PooledResource() );
-			pagePoolItems.back()->init(this);
+		if (TOT_GPU_MEM_USAGE < MAX_GPU_MEM) { // && poolItemsCreated <= maxPooledRes) {
+			holderPoolItems.push_back( new PooledResource() );
+			holderPoolItems.back()->init(this);
 
-			pageToFreeId = poolItemsCreated;
-			pagePoolIds.push_front(pageToFreeId);
+			holderToFreeId = poolItemsCreated;
+			holderPoolIds.push_front(holderToFreeId);
+			orderedIds.push_back(requestingHolderId);
 			poolItemsCreated++;
 
 		}
 		else {
-			pageToFreeId = pagePoolIds.back();
-			usedByPageId = pagePoolItems[pageToFreeId]->usedByPageId;
+			holderToFreeId = findFurthestHolderId();//holderPoolIds.back();
+			usedByHolderId = holderPoolItems[holderToFreeId]->usedByHolderId;
 
-			GamePage* consumingPage;
+			GamePageHolder* consumingHolder;
 
-			if (usedByPageId == -1) {
+			if (usedByHolderId == -1) {
 				// this pooledItem is already free 
 
 			}
 			else {
-				// free this pooledItem from the page that is consuming it and give it to the requesting page
+				// free this pooledItem from the holder that is consuming it and give it to the requesting holder
 
-				consumingPage = gw->worldData[usedByPageId];
+				consumingHolder = gw->getHolderAtIndex(usedByHolderId);
 
-				if (consumingPage == NULL) {
-					// page was deleted already
+				if (consumingHolder == NULL) {
+					// holder was deleted already
 				}
 				else {
-					consumingPage->unbindGPUResources();
+					consumingHolder->unbindGPUResources();
 				}
 				
 
 			}
 
-			pagePoolIds.pop_back();
-			pagePoolIds.push_front(pageToFreeId);
+
+
+			for (i = 0; i < orderedIds.size(); i++) {
+				if (orderedIds[i] == usedByHolderId) {
+					orderedIds[i] = requestingHolderId;
+					break;
+				}
+			}
+
+
+			holderPoolIds.remove(holderToFreeId);
+			holderPoolIds.push_front(holderToFreeId);
 		}
 
 
-		pagePoolItems[pageToFreeId]->usedByPageId = requestingPageId;
+		holderPoolItems[holderToFreeId]->usedByHolderId = requestingHolderId;
 
-		return pageToFreeId;
+		reorderIds();
+
+		return holderToFreeId;
 
 	}
 
@@ -598,102 +782,6 @@ public:
 	    }
 	}
 
-
-
-
-	void setupLookups() {
-		pushTrace("setupLookups");
-
-		doTrace("a");
-
-	    uint i, j, k, m;
-	    uint side = volGenFBOSize/slicesPerPitch;
-	    uint totalSize = side*side*side;
-
-	    lookup2to3 = new uint[totalSize];
-	    //lookup3to2 = new uint[totalSize];
-
-	    uint xpos;
-	    uint ypos;
-	    uint zpos;
-
-	    uint ind;
-
-	    ind = 0;
-	    for (j = 0; j < volGenFBOSize; j++) {
-	        for (i = 0; i < volGenFBOSize; i++) {
-	            ind = i+j*volGenFBOSize;
-	            xpos = i%side;
-	            ypos = j%side;
-	            zpos = i/side + (j/side)*slicesPerPitch;
-
-	            //lookup2to3[ind] = ind;
-	            //ind++;
-	            lookup2to3[ind] = (255<<24)|(zpos<<16)|(ypos<<8)|xpos;   
-	        }
-	    }
-
-	    doTrace("b");
-	    
-	    /*
-	    ind = 0;
-	    for (k = 0; k < side; k++) {
-	        for (j = 0; j < side; j++) {
-	            for (i = 0; i < side; i++) {
-
-	                lookup3to2[ind] = ind;
-	                ind++;
-	            }
-	        }
-	    }
-	    */
-	    
-
-	    /*
-	    glGenTextures(1,&lookup3to2ID);
-	    glBindTexture(GL_TEXTURE_3D,lookup3to2ID);
-	    glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, side, side, side, 0, GL_RGBA, GL_UNSIGNED_BYTE, lookup3to2);
-	    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-	    
-	    
-	    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-	    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-	    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
-	    
-	    glBindTexture(GL_TEXTURE_3D,0);
-	    */
-	    /*
-	    glBindTexture(GL_TEXTURE_2D,texID);
-	        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, iRenderSize, iRenderSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, uTexMap);
-	        glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	        glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	        glBindTexture(GL_TEXTURE_2D,0);
-	    */
-
-	    glGenTextures(1,&lookup2to3ID);
-	    glBindTexture(GL_TEXTURE_2D,lookup2to3ID);
-	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, volGenFBOSize, volGenFBOSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, lookup2to3);
-	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, 0);
-	    /*
-	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-	    */
-	    glBindTexture(GL_TEXTURE_2D,0);
-
-	    //delete[] lookup2to3;
-	    //delete[] lookup3to2;
-
-	    //lookup2to3 = NULL;
-	    //lookup3to2 = NULL;
-
-
-	    popTrace();
-
-	}
 
 	void perspectiveProjection()
 	{
@@ -768,14 +856,6 @@ public:
 		for (i = 0; i < E_PS_SIZE; i++) {
 			setProgAction((eProgramState)i, kc, pa, isDown);
 		}
-
-	}
-
-	void keySetup() {
-
-		setProgActionAll(27,  E_PA_QUIT, false);
-		setProgActionAll('p', E_PA_TOGGLE_FULLSCREEN, false);
-		setProgActionAll('r', E_PA_REFRESH, false);
 
 	}
 
@@ -1123,9 +1203,9 @@ public:
 	    }
 	}
 
-	void bindFBODirect(FBOSet* fbos) {
+	void bindFBODirect(FBOSet* fbos, int doClear = 1) {
 	    setMatrices(fbos->width,fbos->height);
-	    fbos->bind(1);
+	    fbos->bind(doClear);
 	    currentFBOResolutionX = fbos->width;
 	    currentFBOResolutionY = fbos->height;
 	}
@@ -1189,6 +1269,17 @@ public:
 	FBOWrapper* getFBOWrapper (string fboName, int offset) {
 		FBOSet* fbos = fboMap[fboName];
 		return fbos->getFBOWrapper(offset);
+	}
+
+
+	void copyFBO(string src, string dest) {
+		bindShader("CopyShader");
+		bindFBO(dest);
+		sampleFBO(src, 0);
+		drawFSQuad(1.0f);
+		unsampleFBO(src, 0);
+		unbindFBO();
+		unbindShader();
 	}
 
 	void bindFBO(string fboName, int swapFlag=-1) {
@@ -1303,7 +1394,25 @@ public:
 	}
 
 
-
+	void drawQuadBounds(float fx1, float fy1, float fx2, float fy2) {
+		glColor4f(1, 1, 1, 1);
+		glBegin(GL_QUADS);
+		glNormal3f(0, 0, 1);
+		
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex3f(fx1,fy1,0.0f);
+		
+		glTexCoord2f(1.0f, 0.0f);
+		glVertex3f(fx2,fy1,0.0f);
+		
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex3f(fx2,fy2,0.0f);
+		
+		glTexCoord2f(0.0f, 1.0f);
+		glVertex3f(fx1,fy2,0.0f);
+		
+		glEnd();
+	}
 
 	void drawFSQuad(float zoom) {
 	    drawFSQuadOffset(0.0f,0.0f,zoom);
@@ -1371,13 +1480,70 @@ public:
 	    
 	}
 
+	float getHeightAtPixelPos(float x, float y) {
+		FBOWrapper* fbow;
+		float xc;
+		float yc;
+
+		int channel = 0;
+
+		if (mapInvalid) {
+
+			return 0.0f;
+
+		}
+		else {
+			FBOWrapper* fbow = getFBOWrapper("hmFBO",0);
+
+			xc = (x / maxBoundsInPixels.getFX()) * ((float)fbow->width);
+			yc = (y / maxBoundsInPixels.getFY()) * ((float)fbow->height);
+
+			
+			return (
+				fbow->getPixelAtLinear((xc*mapFreqs.getFX()), (yc*mapFreqs.getFX()), channel)*mapAmps.getFX() +
+				fbow->getPixelAtLinear((xc*mapFreqs.getFY()), (yc*mapFreqs.getFY()), channel)*mapAmps.getFY() +
+				fbow->getPixelAtLinear((xc*mapFreqs.getFZ()), (yc*mapFreqs.getFZ()), channel)*mapAmps.getFZ() +
+				fbow->getPixelAtLinear((xc*mapFreqs.getFW()), (yc*mapFreqs.getFW()), channel)*mapAmps.getFW()
+			) * heightmapMax;
+
+		}
+
+		
+
+	}
 
 	void moveCamera(FIVector4 *modXYZ) {
 		wsBufferInvalid = true;
 		cameraPos.addXYZRef(modXYZ);
+
+		//float heightAtPoint = getHeightAtPixelPos(cameraPos.getFX(), cameraPos.getFY());
+		//cameraPos.setFZ( (heightAtPoint + cameraPos.getFZ())/2.0 );
+
 		modXYZ->setFZ(0.0f);
-		lightPos.addXYZRef(modXYZ, 1.0f);
-		fogPos.addXYZRef(modXYZ, 1.0f);
+
+		if (cameraPos.getFX() > maxBoundsInPixels.getFX()/2.0) {
+			cameraPos.setFX( cameraPos.getFX() - maxBoundsInPixels.getFX() );
+		}
+		if (cameraPos.getFX() < -maxBoundsInPixels.getFX()/2.0) {
+			cameraPos.setFX( cameraPos.getFX() + maxBoundsInPixels.getFX() );
+		}
+		if (cameraPos.getFY() > maxBoundsInPixels.getFY()/2.0) {
+			cameraPos.setFY( cameraPos.getFY() - maxBoundsInPixels.getFY() );
+		}
+		if (cameraPos.getFY() < -maxBoundsInPixels.getFY()/2.0) {
+			cameraPos.setFY( cameraPos.getFY() + maxBoundsInPixels.getFY() );
+		}
+		
+
+		//lightPos.addXYZRef(modXYZ, 1.0f);
+		//fogPos.addXYZRef(modXYZ, 1.0f);
+		
+		lightPos.copyFrom(&cameraPos);
+		fogPos.copyFrom(&cameraPos);
+
+		lightPos.addXYZ(1024.0f);
+		fogPos.addXYZ(-2048.0f,-2048.0f, -256.0f);
+
 		isPanning = true;
 	}
 
@@ -1548,7 +1714,12 @@ public:
 
 
 	
-
+	void setCameraToElevation() {
+		cameraPos.setFZ( getHeightAtPixelPos(cameraPos.getFX(), cameraPos.getFY()) );
+		bufferInvalid = true;
+		changesMade = true;
+		wsBufferInvalid = true;
+	}
 
 
 	void processSpecialKeys(int key, int _x, int _y) {
@@ -1594,7 +1765,7 @@ public:
 			glutLeaveMainLoop();
 		}
 
-		switch(key ) {
+		switch(key) {
 
 			
 			case '0':
@@ -1649,6 +1820,9 @@ public:
 			break;
 
 
+			case 'e':
+				setCameraToElevation();
+			break;
 
 			case 'w':
 				changesMade = true;
@@ -1665,7 +1839,14 @@ public:
 			case 'r':
 				doShaderRefresh();
 				bufferInvalid = true;
-				mapInvalid = true;
+				//mapInvalid = true;
+			break;
+
+			case 'G':
+				gridOn = 1.0-gridOn;
+				cout << "Grid On: " << gridOn << "\n";
+				bufferInvalid = true;
+				changesMade = true;
 			break;
 
 			case 'g':
@@ -1678,14 +1859,20 @@ public:
 					grassState = (E_GRASS_STATE)0;
 				}
 
+				
+
 				bufferInvalid = true;
 				changesMade = true;
 			break;
 
 
+			case 'p':
+				cout << "curZoom " << cameraZoom << "\n";
+			break;
+
 
 			case 't':
-				restartGen = true;
+				traceOn = true;
 			break;
 
 			case '\t':
@@ -1725,6 +1912,17 @@ public:
 			break;
 
 			case 'm':
+				
+				/*
+				mapInvalid = true;
+				bufferInvalid = true;
+				changesMade = true;
+				wsBufferInvalid = true;
+				forceGetPD = true;
+				*/
+
+				//showMap = !showMap;
+				
 				reportPagesDrawn = true;
 				//doTrace("Avail threads: ", i__s(gw->availThreads));
 			break;
@@ -2179,8 +2377,6 @@ public:
 		}
 		
 
-		//cout << "\n\n" << buf << "\n\n";
-
 		JSONValue *jsonVal = JSON::Parse(buf);
 
 
@@ -2364,7 +2560,7 @@ public:
 			
 			fMouseVel = mouseVel.distance(&origin);
 
-			if ( fMouseVel < 1.0f ) {
+			if ( fMouseVel < 2.0f ) {
 				mouseVel.setFXY(0.0f,0.0f);
 				isPanning = false;
 			}
@@ -2380,20 +2576,24 @@ public:
 
 			dz = (targetZoom-cameraZoom)/(16.0f);
 
+			/*
 			if (abs(dz) < 0.0001) {
 				dz = 0.0f;
 			}
+			*/
 
+			/*
 			if (cameraZoom > 8.0f) {
 				cameraZoom = 8.0f;
 			}
 			if (cameraZoom < 1.0f/8.0f) {
 				cameraZoom = 1.0f/8.0f;
 			}
+			*/
 			
 			cameraZoom += dz;
 
-			if ((dz == 0.0f) && (isZooming)) {
+			if ( ( abs(dz)/cameraZoom < 0.0001 ) && (isZooming)) {
 				isZooming = false;
 				wsBufferInvalid = true;
 				bufferInvalid = true;
@@ -2408,7 +2608,14 @@ public:
 			}
 
 			if (shadersAreLoaded) {
+
+				if (traceOn) {
+					traceOn = false;
+					TRACE_ON = true;
+				}
 				gw->update();
+
+				TRACE_ON = false;
 
 				changesMade = false;
 				bufferInvalid = false;

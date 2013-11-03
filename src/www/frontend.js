@@ -751,15 +751,31 @@ j$(function() {
 		
 	}
 
+
+	gob.loadJSON = function(filePath, callback) {
+
+	    j$.ajax({
+	        'async': false,
+	        'global': false,
+	        'url': filePath,
+	        'dataType': "json",
+	        'success': function (data) {
+				callback(data);
+			},
+	        'error': function ( jqXHR, textStatus, errorThrown) {
+				console.log("loadJSON failed: ", textStatus, errorThrown);
+			}
+	    });
+	    
+	}; 
+
+	/*
+
 	gob.loadJSON = function(filePath, callback) {
 		j$.getJSON(filePath, callback);
 
-		/*
-		function(json) {
-		    console.log(json); // this will show the info it in firebug console
-		});
-		*/
 	}
+	*/
 
 
 	gob.getStringWidth = function(curParentProps) {
@@ -3397,8 +3413,6 @@ j$(function() {
 		// console.log("------------");
 		// console.log("------------");
 		// console.log( JSON.stringify(gob.mainDat, null, "\t") );
-
-
 
 
 		gob.loadJSON("../../data/lastJSONBuffer.txt", function(jdat) {

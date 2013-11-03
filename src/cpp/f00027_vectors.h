@@ -249,6 +249,48 @@ public:
 
     }
 
+    void modXYZ(int scalar) {
+        iv4.x = iv4.x%scalar;
+        iv4.y = iv4.y%scalar;
+        iv4.z = iv4.z%scalar;
+
+        fv4.x = (float)iv4.x;
+        fv4.y = (float)iv4.y;
+        fv4.z = (float)iv4.z;
+
+    }
+
+    int wrapCoord(int val, int max) {
+        while (val < 0) {
+            val += max;
+        }
+        while (val >= max) {
+            val -= max;
+        }
+
+        return val;
+    }
+
+    void wrapXYZ(int scalar) {
+        iv4.x = wrapCoord(iv4.x,scalar);
+        iv4.y = wrapCoord(iv4.y,scalar);
+        iv4.z = wrapCoord(iv4.z,scalar);
+
+        fv4.x = (float)iv4.x;
+        fv4.y = (float)iv4.y;
+        fv4.z = (float)iv4.z;
+
+    }
+
+    void wrapXY(int scalar) {
+        iv4.x = wrapCoord(iv4.x,scalar);
+        iv4.y = wrapCoord(iv4.y,scalar);
+
+        fv4.x = (float)iv4.x;
+        fv4.y = (float)iv4.y;
+
+    }
+
 
     void minXYZ(FIVector4 *v1, FIVector4 *v2) {
         fv4.x = std::min(v1->getFX(), v2->getFX());
@@ -294,6 +336,50 @@ public:
         iv4.y = (int)fv4.y;
         iv4.z = (int)fv4.z;
     }
+
+    void clampX(FIVector4 *minV, FIVector4 *maxV) {
+        if (fv4.x < minV->getFX()) {
+            fv4.x = minV->getFX();
+        }
+        if (fv4.x > maxV->getFX()) {
+            fv4.x = maxV->getFX();
+        }
+
+        iv4.x = (int)fv4.x;
+        iv4.y = (int)fv4.y;
+        iv4.z = (int)fv4.z;
+    }
+    void clampY(FIVector4 *minV, FIVector4 *maxV) {
+
+        if (fv4.y < minV->getFY()) {
+            fv4.y = minV->getFY();
+        }
+        if (fv4.y > maxV->getFY()) {
+            fv4.y = maxV->getFY();
+        }
+
+        iv4.x = (int)fv4.x;
+        iv4.y = (int)fv4.y;
+        iv4.z = (int)fv4.z;
+    }
+    void clampZ(FIVector4 *minV, FIVector4 *maxV) {
+
+        if (fv4.z < minV->getFZ()) {
+            fv4.z = minV->getFZ();
+        }
+        if (fv4.z > maxV->getFZ()) {
+            fv4.z = maxV->getFZ();
+        }
+
+        iv4.x = (int)fv4.x;
+        iv4.y = (int)fv4.y;
+        iv4.z = (int)fv4.z;
+    }
+
+
+
+
+
 
     bool inBoundsXYZ(FIVector4 *minV, FIVector4 *maxV) {
         if (fv4.x < minV->getFX()) {
@@ -452,22 +538,24 @@ public:
         id = _id;
     }
 
-    void initRand(int _id) {
+    float getRand() {
+        return (fGenRand()+1.0f)/2.0f;
+    }
+
+    void initRand(int _id, float x, float y, float z) {
         id = _id;
 
         float rad = 1024.0f;
-        float diam = 2048.0f;
+        float diam = 2.0f*rad;
 
-        boundsMinInPixels.setFXYZ(fGenRand()*8192.0 - fGenRand()*rad, fGenRand()*8192.0 - fGenRand()*rad,rad - fGenRand()*rad);
-        
-        boundsMaxInPixels.setFXYZRef(&boundsMinInPixels);
-        boundsMaxInPixels.addXYZ(fGenRand()*diam,fGenRand()*diam,fGenRand()*diam);
+        boundsMinInPixels.setFXYZ(x-rad, y-rad, z-rad);
+        boundsMaxInPixels.addXYZ(x+rad, y+rad, z+rad);
 
         originInPixels.copyFrom(&boundsMinInPixels);
         originInPixels.addXYZRef(&boundsMaxInPixels);
         originInPixels.multXYZ(0.5f);
 
-        powerVals.setFXYZ(2.0f,2.0f,2.0f);
+        powerVals.setFXYZ(1.0f,1.0f,1.0f);
         coefficients.setFXYZ(1.0,1.0,1.0);
         minMaxMat.setFXYZ(0.75f,1.0f,2.0f);
 

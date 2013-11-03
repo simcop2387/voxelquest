@@ -2,14 +2,9 @@
 class PooledResource {
 public:
 
+	int usedByHolderId;
+
 	FBOSet* fboSet;
-	uint volID;
-	uint volIDLinear;
-	int bufferedPageSizeInUnits;
-
-	int usedByPageId;
-
-
 	Singleton* singleton;
 
 	PooledResource() {
@@ -19,38 +14,28 @@ public:
 	void init(Singleton* _singleton) {
 
 		singleton = _singleton;
-		usedByPageId = -1;
-
-		
-
-		bufferedPageSizeInUnits = (singleton->visPageSizeInUnits) * (singleton->bufferMult);
+		usedByHolderId = -1;
 
 		fboSet = new FBOSet();
-		fboSet->init(2,(singleton->visPageSizeInPixels)*2,(singleton->visPageSizeInPixels)*2,1,false);
-		glGenTextures(1,&volID);
-		glGenTextures(1,&volIDLinear);
 
-		glBindTexture(GL_TEXTURE_3D,volID);
-		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, bufferedPageSizeInUnits, bufferedPageSizeInUnits, bufferedPageSizeInUnits, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_LINEAR
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//GL_NEAREST
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-		glBindTexture(GL_TEXTURE_3D,0);
-
-		glBindTexture(GL_TEXTURE_3D,volIDLinear);
-		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, bufferedPageSizeInUnits, bufferedPageSizeInUnits, bufferedPageSizeInUnits, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);//GL_LINEAR
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);//GL_NEAREST
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-		glBindTexture(GL_TEXTURE_3D,0);
-
-		TOT_GPU_MEM_USAGE += ((float)(bufferedPageSizeInUnits*bufferedPageSizeInUnits*bufferedPageSizeInUnits*4*2))/(1024.0f*1024.0f);
+		/*
+		void init(
+			int _numBufs,
+			int _width,
+			int _height,
+			int _bytesPerChannel,
+			bool _hasDepth,
+			int filterEnum=GL_NEAREST,
+			int clampEnum=GL_CLAMP_TO_EDGE
+		)
+		*/
+		fboSet->init(
+			2,
+			((singleton->holderSizeInPixels)*2),
+			((singleton->holderSizeInPixels)*2),
+			1,
+			true
+		);
 
 	}
 };

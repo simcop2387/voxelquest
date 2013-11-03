@@ -90,21 +90,20 @@ public:
   bool mbDown;
   bool isZooming;
   bool isPanning;
-  bool (keyDownArr) [MAX_KEYS];
   bool softMode;
   bool isBare;
   bool reportPagesDrawn;
+  bool showMap;
+  bool traceOn;
+  int maxPooledRes;
   int poolItemsCreated;
   int baseW;
   int baseH;
   int scaleFactor;
   int activeMode;
-  int geomPageSizeInPixels;
-  int geomPageSizeInUnits;
   int visPageSizeInPixels;
   int visPageSizeInUnits;
   int unitSizeInPixels;
-  int bufferMult;
   int maxHeightInUnits;
   int extraRad;
   int defaultWinW;
@@ -126,10 +125,14 @@ public:
   int lastMouseY;
   int numProvinces;
   int seaLevel;
+  int holderSizeInPages;
+  int holderSizeInPixels;
   uint volGenFBOSize;
   uint slicesPerPitch;
   uint palWidth;
   uint palHeight;
+  float gridOn;
+  float mapSampScale;
   float curBrushRad;
   float diskOn;
   float grassHeight;
@@ -146,6 +149,8 @@ public:
   float myDelta;
   float mdTime;
   float muTime;
+  float heightmapMax;
+  float bufferMult;
   float * paramArr;
   float * paramArrMap;
   FIVector4 activeObjectPos;
@@ -155,11 +160,14 @@ public:
   FIVector4 mouseDownPD;
   FIVector4 mouseMovePD;
   FIVector4 worldSizeInPages;
-  FIVector4 worldSizeInGeomPages;
+  FIVector4 worldSizeInHolders;
+  FIVector4 worldSizeInHoldersM1;
   FIVector4 cameraPos;
   FIVector4 lightPos;
   FIVector4 mouseStart;
   FIVector4 mouseEnd;
+  FIVector4 mapFreqs;
+  FIVector4 mapAmps;
   FIVector4 * mouseMoving;
   FIVector4 mouseVel;
   FIVector4 worldSeed;
@@ -173,8 +181,9 @@ public:
   Image * imageHM1;
   string curShader;
   string allText;
-  list <int> pagePoolIds;
-  vector <PooledResource*> pagePoolItems;
+  list <int> holderPoolIds;
+  vector <int> orderedIds;
+  vector <PooledResource*> holderPoolItems;
   vector <string> shaderStrings;
   vector <string> fboStrings;
   vector <string> shaderTextureIDs;
@@ -183,7 +192,6 @@ public:
   GLuint volTris;
   GLuint grassTris;
   uint * lookup2to3;
-  GLuint lookup2to3ID;
   unsigned char * resultImage;
   charArr nullBuffer;
   charArr lastImageBuffer;
@@ -193,20 +201,21 @@ public:
   Timer myTimer;
   GameWorld * gw;
   std::vector <GameGeom*> gameGeom;
+  uint volID;
+  uint volIDLinear;
+  int bufferedPageSizeInUnits;
   Singleton ();
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer * _myWS);
-  void addGeom (GameGeom * geom);
-  void sendPoolIdToFront (int id);
-  int requestPoolId (int requestingPageId);
+  void reorderIds ();
+  int findFurthestHolderId ();
+  int requestPoolId (int requestingHolderId);
   static void qNormalizeAngle (int & angle);
-  void setupLookups ();
   void perspectiveProjection ();
   void orthographicProjection ();
   ~ Singleton ();
   float genRand (float LO, float HI);
   void setProgAction (eProgramState ps, unsigned char kc, eProgramAction pa, bool isDown);
   void setProgActionAll (unsigned char kc, eProgramAction pa, bool isDown);
-  void keySetup ();
   void createGrassList ();
   void drawCubeCentered (FIVector4 originVec, float radius);
   void drawBox (FIVector4 minVec, FIVector4 maxVec);
@@ -216,10 +225,11 @@ public:
   void setWH (int w, int h);
   void sampleFBODirect (FBOSet * fbos, int offset = 0);
   void unsampleFBODirect (FBOSet * fbos, int offset = 0);
-  void bindFBODirect (FBOSet * fbos);
+  void bindFBODirect (FBOSet * fbos, int doClear = 1);
   void sampleFBO (string fboName, int offset = 0, int swapFlag = -1);
   void unsampleFBO (string fboName, int offset = 0, int swapFlag = -1);
   FBOWrapper * getFBOWrapper (string fboName, int offset);
+  void copyFBO (string src, string dest);
   void bindFBO (string fboName, int swapFlag = -1);
   void unbindFBO ();
   void bindShader (string shaderName);
@@ -238,14 +248,17 @@ public:
   bool shiftDown ();
   bool ctrlDown ();
   bool altDown ();
+  void drawQuadBounds (float fx1, float fy1, float fx2, float fy2);
   void drawFSQuad (float zoom);
   void drawFSQuadOffset (float xOff, float yOff, float zoom);
   void drawFBO (string fboName, int ind, float zoom, int swapFlag = -1);
   void drawFBOOffsetDirect (FBOSet * fbos, int ind, float xOff, float yOff, float zoom);
   void drawFBOOffset (string fboName, int ind, float xOff, float yOff, float zoom);
+  float getHeightAtPixelPos (float x, float y);
   void moveCamera (FIVector4 * modXYZ);
   void moveObject (float dx, float dy, float zoom);
   void doAction (eProgramAction pa);
+  void setCameraToElevation ();
   void processSpecialKeys (int key, int _x, int _y);
   void processKey (unsigned char key, int _x, int _y, bool isPressed);
   void keyboardUp (unsigned char key, int _x, int _y);
@@ -278,29 +291,11 @@ public:
 class PooledResource
 {
 public:
+  int usedByHolderId;
   FBOSet * fboSet;
-  uint volID;
-  uint volIDLinear;
-  int bufferedPageSizeInUnits;
-  int usedByPageId;
   Singleton * singleton;
   PooledResource ();
   void init (Singleton * _singleton);
-};
-#undef LZZ_INLINE
-#endif
-// f00345_geompage.e
-//
-
-#ifndef LZZ_f00345_geompage_e
-#define LZZ_f00345_geompage_e
-#define LZZ_INLINE inline
-class GeomPage
-{
-public:
-  std::vector <int> containsGeomIds;
-  GeomPage ();
-  void init ();
 };
 #undef LZZ_INLINE
 #endif
@@ -315,21 +310,21 @@ class GamePage : public Poco::Runnable
 public:
   Singleton * singleton;
   int thisPageId;
-  int usingPoolId;
-  PooledResource * gpuRes;
   int threshVal;
   int bufferedPageSizeInUnits;
   FIVector4 offsetInUnits;
+  FIVector4 offsetInPages;
+  FIVector4 offsetInPagesLocal;
+  float pageDepth;
   int iVolumeSize;
   uint * volData;
   uint * volDataLinear;
+  bool isRendering;
   int paramsPerEntry;
   int numEntries;
   int totParams;
   int maxEntries;
   int maxHeightInUnits;
-  int totLenO2;
-  int totLenVisO2;
   FIVector4 worldSeed;
   bool isDirty;
   bool threadRunning;
@@ -340,20 +335,47 @@ public:
   FIVector4 worldMaxVisInPixels;
   FIVector4 worldMinBufInPixels;
   FIVector4 worldMaxBufInPixels;
+  FIVector4 scaleAndOffset;
   FIVector4 worldUnitMin;
   FIVector4 worldUnitMax;
   E_FILL_STATE fillState;
+  GamePageHolder * parentGPH;
   GamePage ();
-  void init (Singleton * _singleton, int _thisPageId, FIVector4 * _offsetInUnits);
+  void init (Singleton * _singleton, GamePageHolder * _parentGPH, int _thisPageId, int offsetX, int offsetY, int offsetZ, int oxLoc, int oyLoc, int ozLoc);
   uint NumberOfSetBits (uint i);
   uint clamp (uint val);
   void createSimplexNoise ();
-  void unbindGPUResources ();
   void copyToTexture ();
-  void addGeom ();
+  bool addGeom (bool justTesting);
   void generateVolume ();
+  void getCoords ();
   ~ GamePage ();
   void run ();
+};
+#undef LZZ_INLINE
+#endif
+// f00351_gamepageholder.e
+//
+
+#ifndef LZZ_f00351_gamepageholder_e
+#define LZZ_f00351_gamepageholder_e
+#define LZZ_INLINE inline
+class GamePageHolder
+{
+public:
+  int iPageDataVolume;
+  int holderSizeInPages;
+  int usingPoolId;
+  int thisHolderId;
+  FIVector4 offsetInHolders;
+  FIVector4 trueOffsetInHolders;
+  PooledResource * gpuRes;
+  Singleton * singleton;
+  std::vector <int> containsGeomIds;
+  GamePage * * pageData;
+  GamePageHolder ();
+  void init (Singleton * _singleton, int _thisHolderId, int trueX, int trueY, int trueZ, int clampedX, int clampedY, int clampedZ);
+  void unbindGPUResources ();
 };
 #undef LZZ_INLINE
 #endif
@@ -370,7 +392,7 @@ public:
   int mapSwapFlag;
   int visPageSizeInUnits;
   int iVolumeSize;
-  int iGeomVolumeSize;
+  int iHolderSize;
   int ((diagrams) [E_RENDER_LENGTH]) [E_STATE_LENGTH];
   int renderMethod;
   int iBufferSize;
@@ -378,22 +400,25 @@ public:
   int availThreads;
   int visPageSizeInPixels;
   int * curDiagram;
+  int holderSizeInPages;
   bool doDrawFBO;
   bool lastProcResult;
-  bool updatePoolOrder;
   float mapStep;
+  std::vector <GameGeom*> gameGeom;
   vector <int> ocThreads;
   FIVector4 lScreenCoords;
   FIVector4 aoScreenCoords;
   FIVector4 worldSizeInPages;
-  FIVector4 worldSizeInGeomPages;
-  FIVector4 curPos;
+  FIVector4 worldSizeInHolders;
   FIVector4 camPagePos;
+  FIVector4 camHolderPos;
   FIVector4 iPixelWorldCoords;
   FIVector4 pagePos;
   FIVector4 unitPos;
   FIVector4 lastUnitPos;
   FIVector4 lastPagePos;
+  FIVector4 minLRInPixels;
+  FIVector4 maxLRInPixels;
   FIVector4 tempVec;
   FIVector4 unitPosMin;
   FIVector4 unitPosMax;
@@ -402,18 +427,23 @@ public:
   FIVector4 startBounds;
   FIVector4 endBounds;
   Singleton * singleton;
-  GamePage * * worldData;
-  GeomPage * geomData;
+  GamePageHolder * * holderData;
   Poco::ThreadPool threadpool;
   GameWorld ();
   void init (Singleton * _singleton);
-  bool checkBounds (int i, int j, int k);
+  int wrapCoord (int val, int mv);
+  GamePageHolder * getHolderAtCoords (int x, int y, int z, bool createOnNull = false);
+  GamePageHolder * getHolderAtIndex (int ind);
+  GamePage * getPageAtIndex (int ind);
+  GamePage * getPageAtCoords (int x, int y, int z, bool createOnNull = false);
+  bool checkBounds (int k);
   void resetToState (E_STATES resState);
-  void update ();
   void update2 ();
+  void addGeom (GameGeom * geom);
+  void update ();
   bool processPages ();
   void renderPages ();
-  void drawPage (GamePage * gp, int dx, int dy, int dz);
+  void drawHolder (GamePageHolder * gp);
   void combineBuffers ();
   void renderGeom ();
   void modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushAction);

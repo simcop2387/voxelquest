@@ -201,21 +201,27 @@ float snoise(vec3 v) {
 
 
 float calcNoise(vec3 uvw) {
-    float baseScale = 2.0;
+    float baseScale = 1.0;
     float n = 0.0;
     n += snoise(uvw * baseScale);
     n += 0.5 * snoise(uvw * baseScale*2.0);
+
+
+    
+    n += 0.25 * snoise(uvw * baseScale*4.0);
+    //n += 0.125 * snoise(uvw * baseScale*8.0);
     
     /*
-    n += 0.25 * snoise(uv * baseScale*4.0);
-    n += 0.125 * snoise(uv * baseScale*8.0);
-    n += 0.0625 * snoise(uv * baseScale*16.0);
-    n += 0.03125 * snoise(uv * baseScale*32.0);
-    n += 0.015625 * snoise(uv * baseScale*64.0);
-    n += 0.0078125 * snoise(uv * baseScale*128.0);
+    n += 0.0625 * snoise(uvw * baseScale*16.0);
+    n += 0.03125 * snoise(uvw * baseScale*32.0);
+    n += 0.015625 * snoise(uvw * baseScale*64.0);
+    n += 0.0078125 * snoise(uvw * baseScale*128.0);
     */    
 
+    
     //n = (n + 1.0)/2.0;
+    //n = clamp(n*1.3,0.0,1.0);
+    //n = pow(n,4.0);
 
     return n;
 }
@@ -264,9 +270,9 @@ void main() {
             if (i == 2) {
                 res.b = n;
             }
-
-
     }
+
+    res.rgb = normalize(res.rgb);
 
     res.rgb = (res.rgb + 1.0)/2.0;
     

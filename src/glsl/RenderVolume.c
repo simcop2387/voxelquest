@@ -11,23 +11,46 @@ uniform vec3 worldMaxVisInPixels;
 uniform vec3 worldMinBufInPixels;
 uniform vec3 worldMaxBufInPixels;
 
+uniform vec4 scaleAndOffset;
+
+//uniform vec3 offsetInPagesLocal;
+
+uniform float pageDepth;
 uniform float bufferMult;
+uniform float visPageSizeInPixels;
 
 //const int iNumRaySteps = 2;
 //const float fNumRaySteps = 2.0;
 
+uniform float slicesPerPitch;// = sqrt(pitch);
+//varying float pitch;// = 256.0;
+//varying float pitchM1;// = pitch-1.0;
+
+
 $
 
 void main() {
-
+    
     TexCoord0 = gl_MultiTexCoord0.xyz;
     TexCoord1 = gl_MultiTexCoord1.xyz;
-    gl_Position = gl_Vertex;
+
+    vec4 newPos = gl_Vertex;
+
+
+    newPos.x *= scaleAndOffset.x;
+    newPos.y *= scaleAndOffset.y;
+    newPos.x += scaleAndOffset.z;
+    newPos.y += scaleAndOffset.w;
+
+    newPos.z = pageDepth;
+
+    gl_Position = newPos;
 
 }
 
 $
 
+/*
 vec4 sampleAtPoint(vec3 point) {
     vec2 texc;
 
@@ -36,18 +59,42 @@ vec4 sampleAtPoint(vec3 point) {
     //vec3 newPoint = point/2.0 + 0.25;
     vec3 newPoint = point/bufferMult + (1.0-1.0/bufferMult)/2.0;
     
-    vec3 curFace = (newPoint.rgb*255.0+0.5)/256.0;
-    float bval = curFace.b*255.0;
-    float xval = floor(mod(bval, 16.0))/16.0;
-    float yval = floor(bval/16.0)/16.0;
+    vec3 curFace = (newPoint.rgb*63.0+0.5)/64.0;
+    float bval = curFace.b*63.0;
+    float xval = floor(mod(bval, 8.0))/8.0;
+    float yval = floor(bval/8.0)/8.0;
     
-    texc.x = curFace.r/(16.0) + xval;
-    texc.y = curFace.g/(16.0) + yval;
+    texc.x = curFace.r/(8.0) + xval;
+    texc.y = curFace.g/(8.0) + yval;
     return texture2D(Texture0, texc.xy);
     
 
     //return texture3D(Texture0, newPoint);
 }
+*/
+
+
+vec4 sampleAtPoint(vec3 point) {
+    vec2 texc;
+
+    float pitch = slicesPerPitch*slicesPerPitch;
+    float pitchM1 = pitch-1.0;
+
+    vec3 newPoint = point/bufferMult + (1.0-1.0/bufferMult)/2.0;
+    
+    vec3 curFace = (newPoint.rgb*pitchM1+0.5)/pitch;
+    float bval = curFace.b*pitchM1;
+    float xval = floor(mod(bval, slicesPerPitch))/slicesPerPitch;
+    float yval = floor(bval/slicesPerPitch)/slicesPerPitch;
+    
+    texc.x = curFace.r/(slicesPerPitch) + xval;
+    texc.y = curFace.g/(slicesPerPitch) + yval;
+    return texture2D(Texture0, texc.xy);
+    
+
+    //return texture3D(Texture0, newPoint);
+}
+
 
 float rand(vec2 co){
     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
@@ -76,7 +123,7 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
     vec4 res;
 
     int maxRad;
-    float tsize = 255.0;
+    float tsize = visPageSizeInPixels;
 
     vec3 testPoint = tp + 1.0/(tsize); //bufferMult
 
@@ -90,7 +137,7 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
     vec3 norm2 = vec3(0.0,0.0,0.0);
 
     int rad = 8;
-    int radStep = 1;
+    int radStep = 2;
     float frad = float(radStep);
 
     float totSteps = 0.0;
@@ -228,6 +275,14 @@ float unpack16(vec2 num) {
     return num.r*255.0 + num.g*65280.0;
 }
 
+/*
+void main() {
+    
+    gl_FragData[0] = vec4(1.0);
+    gl_FragData[1] = vec4(1.0);
+}
+*/
+
 void main() {
 
     int i = 0;
@@ -250,8 +305,8 @@ void main() {
 
     vec3 curPos = vec3(0.0,0.0,0.0);
     //vec3 lastGoodPos = vec3(0.0,0.0,0.0);
-
-    curDis = floor(distance(front,back)*128.0*sqrt(2.0));
+ 
+    curDis = floor(distance(front,back)*visPageSizeInPixels*sqrt(2.0)*0.5); //visPageSizeInPixels
     iCurDis = int(curDis);
 
     for (i = 0; i < iCurDis; i++) {
@@ -283,14 +338,15 @@ void main() {
     vec4 heightMat = blackCol;
 
     if ( i == iCurDis ) {
-        
+        discard;
     }
     else {
         normAO = getAO(curPos, samp, worldPos);
         heightMat = vec4(heightVals.rg, samp.a, 1.0);
     }
     
-    gl_FragData[0] = heightMat;
+
+    gl_FragData[0] = heightMat;//vec4(offsetInPagesLocal/16.0,1.0);// heightMat;
     gl_FragData[1] = normAO;//vec4(curPos,1.0);//normAO;
 
 }

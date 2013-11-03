@@ -18,6 +18,8 @@ uniform float cameraZoom;
 uniform vec3 cameraPos;
 uniform vec2 bufferDim;
 
+uniform float isWire;
+
 uniform float matVal;
 
 varying vec3 finalVec;
@@ -85,9 +87,10 @@ void main() {
     vec2 res = pack16(finalVec.z);
 
 
-    /*
-    float rad = 0.95;
-    if (matVal == 4.0) {
+    
+    float rad = 0.99;
+
+    if (isWire == 0.0) {
 
     }
     else {
@@ -100,7 +103,7 @@ void main() {
             discard;
         }
     }
-    */
+    
     
     //float bhr = mod(finalVec.z/2.0,256.0);
     //float bhg = floor((finalVec.z)/256.0);

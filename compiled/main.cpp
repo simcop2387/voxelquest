@@ -3,7 +3,7 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
-
+bool TRACE_ON = false;
 
 #include <SDKDDKVer.h>
 
@@ -101,7 +101,7 @@ using Poco::Base64Decoder;
 
 //#define DEBUG_MODE 1
 
-float MAX_GPU_MEM = 1536.0f;
+float MAX_GPU_MEM = 2048.0f;
 float TOT_GPU_MEM_USAGE = 0.0f;
 
 struct charArr {
@@ -449,6 +449,48 @@ public:
 
     }
 
+    void modXYZ(int scalar) {
+        iv4.x = iv4.x%scalar;
+        iv4.y = iv4.y%scalar;
+        iv4.z = iv4.z%scalar;
+
+        fv4.x = (float)iv4.x;
+        fv4.y = (float)iv4.y;
+        fv4.z = (float)iv4.z;
+
+    }
+
+    int wrapCoord(int val, int max) {
+        while (val < 0) {
+            val += max;
+        }
+        while (val >= max) {
+            val -= max;
+        }
+
+        return val;
+    }
+
+    void wrapXYZ(int scalar) {
+        iv4.x = wrapCoord(iv4.x,scalar);
+        iv4.y = wrapCoord(iv4.y,scalar);
+        iv4.z = wrapCoord(iv4.z,scalar);
+
+        fv4.x = (float)iv4.x;
+        fv4.y = (float)iv4.y;
+        fv4.z = (float)iv4.z;
+
+    }
+
+    void wrapXY(int scalar) {
+        iv4.x = wrapCoord(iv4.x,scalar);
+        iv4.y = wrapCoord(iv4.y,scalar);
+
+        fv4.x = (float)iv4.x;
+        fv4.y = (float)iv4.y;
+
+    }
+
 
     void minXYZ(FIVector4 *v1, FIVector4 *v2) {
         fv4.x = std::min(v1->getFX(), v2->getFX());
@@ -494,6 +536,50 @@ public:
         iv4.y = (int)fv4.y;
         iv4.z = (int)fv4.z;
     }
+
+    void clampX(FIVector4 *minV, FIVector4 *maxV) {
+        if (fv4.x < minV->getFX()) {
+            fv4.x = minV->getFX();
+        }
+        if (fv4.x > maxV->getFX()) {
+            fv4.x = maxV->getFX();
+        }
+
+        iv4.x = (int)fv4.x;
+        iv4.y = (int)fv4.y;
+        iv4.z = (int)fv4.z;
+    }
+    void clampY(FIVector4 *minV, FIVector4 *maxV) {
+
+        if (fv4.y < minV->getFY()) {
+            fv4.y = minV->getFY();
+        }
+        if (fv4.y > maxV->getFY()) {
+            fv4.y = maxV->getFY();
+        }
+
+        iv4.x = (int)fv4.x;
+        iv4.y = (int)fv4.y;
+        iv4.z = (int)fv4.z;
+    }
+    void clampZ(FIVector4 *minV, FIVector4 *maxV) {
+
+        if (fv4.z < minV->getFZ()) {
+            fv4.z = minV->getFZ();
+        }
+        if (fv4.z > maxV->getFZ()) {
+            fv4.z = maxV->getFZ();
+        }
+
+        iv4.x = (int)fv4.x;
+        iv4.y = (int)fv4.y;
+        iv4.z = (int)fv4.z;
+    }
+
+
+
+
+
 
     bool inBoundsXYZ(FIVector4 *minV, FIVector4 *maxV) {
         if (fv4.x < minV->getFX()) {
@@ -652,22 +738,24 @@ public:
         id = _id;
     }
 
-    void initRand(int _id) {
+    float getRand() {
+        return (fGenRand()+1.0f)/2.0f;
+    }
+
+    void initRand(int _id, float x, float y, float z) {
         id = _id;
 
         float rad = 1024.0f;
-        float diam = 2048.0f;
+        float diam = 2.0f*rad;
 
-        boundsMinInPixels.setFXYZ(fGenRand()*8192.0 - fGenRand()*rad, fGenRand()*8192.0 - fGenRand()*rad,rad - fGenRand()*rad);
-        
-        boundsMaxInPixels.setFXYZRef(&boundsMinInPixels);
-        boundsMaxInPixels.addXYZ(fGenRand()*diam,fGenRand()*diam,fGenRand()*diam);
+        boundsMinInPixels.setFXYZ(x-rad, y-rad, z-rad);
+        boundsMaxInPixels.addXYZ(x+rad, y+rad, z+rad);
 
         originInPixels.copyFrom(&boundsMinInPixels);
         originInPixels.addXYZRef(&boundsMaxInPixels);
         originInPixels.multXYZ(0.5f);
 
-        powerVals.setFXYZ(2.0f,2.0f,2.0f);
+        powerVals.setFXYZ(1.0f,1.0f,1.0f);
         coefficients.setFXYZ(1.0,1.0,1.0);
         minMaxMat.setFXYZ(0.75f,1.0f,2.0f);
 
@@ -8909,8 +8997,12 @@ inline float fGenRand() {
 }
 
 inline int iGenRand(int val) {
-	return rand()%(val+1) - val/2;
+	
+	return abs(rand()%val);
+	//return rand()%(val+1) - val/2;
 }
+
+
 
 std::string intToString(int i) {
 	std::string s;
@@ -8929,7 +9021,14 @@ std::string floatToString(float f) {
 
 
 
-void doTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
+
+
+
+//////////
+
+
+void doTraceND(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
+	
 	int i;
 	
 	for (i = 0; i < traceLevel; i++) {
@@ -8939,36 +9038,120 @@ void doTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string 
 	std::cout << traceVal0 << " " << traceVal1 << " " << traceVal2 << " " << traceVal3 << " " << traceVal4 << " " << traceVal5 << " " << traceVal6 << " " << traceVal7 << " " << traceVal8 << " " << traceVal9 << " " << traceVal10 << "\n" << std::flush;
 	
 }
+void doTraceVecND(std::string traceVal0, FIVector4 *fv) {
+	
+	doTraceND(traceVal0, " ", f__s(fv->getFX()), " ", f__s(fv->getFY()), " ", f__s(fv->getFZ())  );
+	
+}
+
+void pushTraceND(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
+	
+	doTraceND(traceVal0,traceVal1,traceVal2,traceVal3,traceVal4,traceVal5,traceVal6,traceVal7,traceVal8,traceVal9,traceVal10);
+	traceLevel++;
+	popCount=0;
+	
+
+	
+}
+void popTraceND() {
+	
+	traceLevel--;
+	popCount++;
+	if (popCount >= 2) {
+		doTraceND("END");
+	}
+	
+}
+
+//////////
+
+
+
+/*
+void doTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
+	#ifdef DEBUG_MODE
+	int i;
+	
+	for (i = 0; i < traceLevel; i++) {
+		std::cout << "|  ";
+	}
+	
+	std::cout << traceVal0 << " " << traceVal1 << " " << traceVal2 << " " << traceVal3 << " " << traceVal4 << " " << traceVal5 << " " << traceVal6 << " " << traceVal7 << " " << traceVal8 << " " << traceVal9 << " " << traceVal10 << "\n" << std::flush;
+	#endif
+}
 void doTraceVec(std::string traceVal0, FIVector4 *fv) {
+	#ifdef DEBUG_MODE
 	doTrace(traceVal0, " ", f__s(fv->getFX()), " ", f__s(fv->getFY()), " ", f__s(fv->getFZ())  );
+	#endif
 }
 
 void pushTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
+	#ifdef DEBUG_MODE
 	doTrace(traceVal0,traceVal1,traceVal2,traceVal3,traceVal4,traceVal5,traceVal6,traceVal7,traceVal8,traceVal9,traceVal10);
 	traceLevel++;
 	popCount=0;
+	#endif
+
+	
 }
 void popTrace() {
+	#ifdef DEBUG_MODE
 	traceLevel--;
 	popCount++;
 	if (popCount >= 2) {
 		doTrace("END");
 	}
+	#endif
 }
 
-/*
-float distance(Vector3* v1, Vector3* v2) {
-	float val1 = v1->e[0] - v2->e[0];
-	float val2 = v1->e[1] - v2->e[1];
-	float val3 = v1->e[2] - v2->e[2];
-	
-	return sqrt(
-		val1*val1 + val2*val2 + val3*val3
-	);
-	
-	//return length(v1-v2);
-}
 */
+
+void doTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
+	int i;
+
+	if (TRACE_ON) {
+		for (i = 0; i < traceLevel; i++) {
+			std::cout << "|  ";
+		}
+		
+		std::cout << traceVal0 << " " << traceVal1 << " " << traceVal2 << " " << traceVal3 << " " << traceVal4 << " " << traceVal5 << " " << traceVal6 << " " << traceVal7 << " " << traceVal8 << " " << traceVal9 << " " << traceVal10 << "\n" << std::flush;
+	}
+	
+	
+}
+void doTraceVec(std::string traceVal0, FIVector4 *fv) {
+	if (TRACE_ON) {
+		doTrace(traceVal0, " ", f__s(fv->getFX()), " ", f__s(fv->getFY()), " ", f__s(fv->getFZ())  );
+	}
+	
+	
+}
+
+void pushTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
+	
+	if (TRACE_ON) {
+		doTrace(traceVal0,traceVal1,traceVal2,traceVal3,traceVal4,traceVal5,traceVal6,traceVal7,traceVal8,traceVal9,traceVal10);
+			traceLevel++;
+			popCount=0;
+	}
+	
+}
+void popTrace() {
+	
+	if (TRACE_ON) {
+		traceLevel--;
+		popCount++;
+		if (popCount >= 2) {
+			doTrace("END");
+		}
+	}
+
+	
+	
+}
+
+
+
  
 
 const static int MAX_OG_RAD = 20;
@@ -9103,7 +9286,7 @@ public:
 		}
 
 		if (failed) {
-			doTrace("FAILED TO READ FILE: ", fileName);
+			doTraceND("FAILED TO READ FILE: ", fileName);
 		}
 		else {
 			doTrace("READ FILE: ", fileName);
@@ -9124,7 +9307,7 @@ public:
 	    
 		glGetShaderInfoLog(shader, BUFFER_SIZE, &length, buffer);
 		if (length > 0) {
-			doTrace("Shader " , i__s(shader) , " (" , (file?file:"") , ") compile error: " , buffer);
+			doTraceND("Shader " , i__s(shader) , " (" , (file?file:"") , ") compile error: " , buffer);
 		}
 		popTrace();
 	}
@@ -9140,7 +9323,7 @@ public:
 		memset(buffer, 0, BUFFER_SIZE);
 		glGetProgramInfoLog(program, BUFFER_SIZE, &length, buffer);
 		if (length > 0) {
-			doTrace( "Program " , i__s(program) , " link error: " , buffer);
+			doTraceND( "Program " , i__s(program) , " link error: " , buffer);
 			popTrace();
 			return 0;
 		}
@@ -9149,7 +9332,7 @@ public:
 		GLint status;
 		glGetProgramiv(program, GL_VALIDATE_STATUS, &status);
 		if (status == GL_FALSE) {
-			doTrace( "Error validating shader " , i__s(program));
+			doTraceND( "Error validating shader " , i__s(program));
 			popTrace();
 			return 0;
 		}
@@ -9170,7 +9353,7 @@ public:
 
 
 		if (allText == NULL) {
-			doTrace( "Either vertex shader or fragment shader file not found." );
+			doTraceND( "Either vertex shader or fragment shader file not found." );
 	    }
 	    else {
 	    	string allTextString(allText);
@@ -9208,7 +9391,7 @@ public:
 
 			}
 			else {
-				doTrace( "Error: " , shaderFile , "does not contain proper amount of splits ($)\n" );
+				doTraceND( "Error: " , shaderFile , "does not contain proper amount of splits ($)\n" );
 			}
 			
 			
@@ -9265,7 +9448,7 @@ public:
 		
 		switch (vecSize) {
 			case 0:
-				doTrace( "Error: vecSize of 0 in setVec" );
+				doTraceND( "Error: vecSize of 0 in setVec" );
 			break;
 			case 1:
 				glUniform1fv(loc, 1, vecData);
@@ -9288,7 +9471,7 @@ public:
 		
 		switch (vecSize) {
 			case 0:
-				doTrace( "Error: vecSize of 0 in setVec" );
+				doTraceND( "Error: vecSize of 0 in setVec" );
 			break;
 			case 1:
 				glUniform1fv(loc, 1, vecData);
@@ -10204,14 +10387,14 @@ class FBOWrapper
 public:
 
 	uint color_tex;
-	uint depth_rb;
+	
 	//uint color_buf;
 	//uint depth_buf;
 	uint slot;
 	int width;
 	int height;
 	int bytesPerChannel;
-	bool hasDepth;
+	//bool hasDepth;
 
 
 	GLint internalFormat;
@@ -10222,11 +10405,11 @@ public:
 
     FBOWrapper() {}
     ~FBOWrapper() {}
-    int init(int _width, int _height, int _bytesPerChannel, int _slot, bool _hasDepth, int filterEnum, int clampEnum) {
+    int init(int _width, int _height, int _bytesPerChannel, int _slot, /*bool _hasDepth,*/ int filterEnum, int clampEnum) {
 		width = _width;
 		height = _height;
 		bytesPerChannel = _bytesPerChannel;
-		hasDepth = _hasDepth;
+		//hasDepth = _hasDepth;
 
 		int w = width;
 		int h = height;
@@ -10298,13 +10481,14 @@ public:
 
 
 	    //
-
+	    /*
 	    if (hasDepth) {
 	    	glGenRenderbuffersEXT(1, &depth_rb);
 	    	glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, depth_rb);
 	    	glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, w, h);
 	    	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, depth_rb);
 	    }
+	    */
 
 	    
 	    //
@@ -10348,7 +10532,7 @@ public:
 
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixelsChar);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelsChar);
 
 				glBindTexture(GL_TEXTURE_2D, 0);
 				
@@ -10412,20 +10596,95 @@ public:
 		pixelsChar[ (x + y*width)*4 + channel ] = value;
 	}
 
-	unsigned char getPixelAtC(int x, int y, int channel) {
+
+	int getIndex(int xs, int ys) {
+		int x = xs;
+		int y = ys;
+
+		while (x < 0) {
+			x += width;
+		}
+		while (y < 0) {
+			y += height;
+		}
+
+		x = x % width;
+		y = y % height;
+
+		return x + y*width;
+	}
+
+	int getPixelAtIndex(int ind, int channel) {
+		return pixelsChar[ind*4 + channel];
+	}
+	void setPixelAtIndex(int ind, int channel, int val) {
+		pixelsChar[ind*4 + channel] = val;
+	}
+	void orPixelAtIndex(int ind, int channel, int val) {
+		pixelsChar[ind*4 + channel] |= val;
+	}
+	void andPixelAtIndex(int ind, int channel, int val) {
+		pixelsChar[ind*4 + channel] &= val;
+	}
+
+	int getPixelAtC(int x, int y, int channel) {
 
 		if (!isFloat) {
 			if ( (pixelsChar == NULL) ) {
 				getPixels();
 			}
 
-			return pixelsChar[ (x + y*width)*4 + channel ];
+			return (int)pixelsChar[ (x + y*width)*4 + channel ];
 
 		}
 		else {
 			doTrace("Attempted to call getPixelAtC on float buffer.");
 			return 0;
 		}
+
+	}
+
+	float getPixelAtLinear(float xf, float yf, int channel) {
+		int x[2];
+		int y[2];
+
+		x[0] = floor(xf);
+		y[0] = floor(yf);
+		x[1] = x[0] + 1;
+		y[1] = y[0] + 1;
+
+		float percX = xf - x[0];
+		float percY = yf - y[0];
+		float percXI = 1.0f-percX;
+		float percYI = 1.0f-percY;
+
+
+		float v0, v1;
+		float v2, v3;
+
+		int i;
+
+		for (i = 0; i < 2; i++) {
+
+			while (x[i] < 0) {
+				x[i] += width;
+			}
+			while (y[i] < 0) {
+				y[i] += height;
+			}
+
+			x[i] = x[i] % width;
+			y[i] = y[i] % height;
+		}
+
+		v0 = getPixelAtC(x[0],y[0],channel)/255.0f;
+		v1 = getPixelAtC(x[1],y[0],channel)/255.0f;
+		v2 = getPixelAtC(x[0],y[1],channel)/255.0f;
+		v3 = getPixelAtC(x[1],y[1],channel)/255.0f;
+
+		float vFinal = (v0*percXI + v1*percX)*percYI + (v2*percXI + v3*percX)*percY;
+
+		return vFinal;
 
 	}
 
@@ -10501,6 +10760,8 @@ public:
 	int height;
 	int bytesPerChannel;
 
+	uint depth_rb;
+
 	GLuint mFBO;
 
 	FBOWrapper* fbos;
@@ -10531,8 +10792,17 @@ public:
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
 
 		for (i = 0; i < numBufs; i++) {
-			fbos[i].init(width, height, bytesPerChannel, i, hasDepth, filterEnum, clampEnum);
+			fbos[i].init(width, height, bytesPerChannel, i, /*hasDepth,*/ filterEnum, clampEnum);
 		}
+
+
+		if (hasDepth) {
+			glGenRenderbuffersEXT(1, &depth_rb);
+			glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, depth_rb);
+			glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, width, height);
+			glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, depth_rb);
+		}
+
 
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 	}
@@ -10580,82 +10850,13 @@ public:
 
 		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 	}
-};
-
-
-
-/*
-//RGBA8 2D texture, 24 bit depth texture, 256x256
-   glGenTextures(1, &color_tex);
-   glBindTexture(GL_TEXTURE_2D, color_tex);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-   //NULL means reserve texture memory, but texels are undefined
-   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 256, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
-   //-------------------------
-   glGenFramebuffersEXT(1, &fb);
-   glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fb);
-   //Attach 2D texture to this FBO
-   glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, color_tex, 0);
-   //-------------------------
-   glGenRenderbuffersEXT(1, &depth_rb);
-   glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, depth_rb);
-   glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, 256, 256);
-   //-------------------------
-   //Attach depth buffer to FBO
-   glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, depth_rb);
-   //-------------------------
-   //Does the GPU support current FBO configuration?
-   GLenum status;
-   status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-   switch(status)
-   {
-      case GL_FRAMEBUFFER_COMPLETE_EXT:
-      cout<<"good";
-   default:
-      HANDLE_THE_ERROR;
-   }
-   //-------------------------
-   //and now you can render to GL_TEXTURE_2D
-   glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fb);
-   glClearColor(0.0, 0.0, 0.0, 0.0);
-   glClearDepth(1.0f);
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-   //-------------------------
-   glViewport(0, 0, 256, 256);
-   glMatrixMode(GL_PROJECTION);
-   glLoadIdentity();
-   glOrtho(0.0, 256.0, 0.0, 256.0, -1.0, 1.0); 
-   glMatrixMode(GL_MODELVIEW);
-   glLoadIdentity();
-   //-------------------------
-   glDisable(GL_TEXTURE_2D);
-   glDisable(GL_BLEND);
-   glEnable(GL_DEPTH_TEST);
-   //-------------------------
-   //**************************
-   //RenderATriangle, {0.0, 0.0}, {256.0, 0.0}, {256.0, 256.0}
-   //Read http://www.opengl.org/wiki/VBO_-_just_examples
-   RenderATriangle();
-   //-------------------------
-   GLubyte pixels[4*4*4];
-   glReadPixels(0, 0, 4, 4, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
-   //pixels 0, 1, 2 should be white
-   //pixel 4 should be black
-   //----------------
-   //Bind 0, which means render to back buffer
-   glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-*/
-
- 
+}; 
 
 class WebSocketRequestHandler;
 class WebSocketServer;
 class RequestHandlerFactory;
 class Singleton;
-class GeomPage;
+class GamePageHolder;
 class GamePage;
 class GameWorld;
 class PooledResource;
@@ -10752,21 +10953,20 @@ public:
   bool mbDown;
   bool isZooming;
   bool isPanning;
-  bool (keyDownArr) [MAX_KEYS];
   bool softMode;
   bool isBare;
   bool reportPagesDrawn;
+  bool showMap;
+  bool traceOn;
+  int maxPooledRes;
   int poolItemsCreated;
   int baseW;
   int baseH;
   int scaleFactor;
   int activeMode;
-  int geomPageSizeInPixels;
-  int geomPageSizeInUnits;
   int visPageSizeInPixels;
   int visPageSizeInUnits;
   int unitSizeInPixels;
-  int bufferMult;
   int maxHeightInUnits;
   int extraRad;
   int defaultWinW;
@@ -10788,10 +10988,14 @@ public:
   int lastMouseY;
   int numProvinces;
   int seaLevel;
+  int holderSizeInPages;
+  int holderSizeInPixels;
   uint volGenFBOSize;
   uint slicesPerPitch;
   uint palWidth;
   uint palHeight;
+  float gridOn;
+  float mapSampScale;
   float curBrushRad;
   float diskOn;
   float grassHeight;
@@ -10808,6 +11012,8 @@ public:
   float myDelta;
   float mdTime;
   float muTime;
+  float heightmapMax;
+  float bufferMult;
   float * paramArr;
   float * paramArrMap;
   FIVector4 activeObjectPos;
@@ -10817,11 +11023,14 @@ public:
   FIVector4 mouseDownPD;
   FIVector4 mouseMovePD;
   FIVector4 worldSizeInPages;
-  FIVector4 worldSizeInGeomPages;
+  FIVector4 worldSizeInHolders;
+  FIVector4 worldSizeInHoldersM1;
   FIVector4 cameraPos;
   FIVector4 lightPos;
   FIVector4 mouseStart;
   FIVector4 mouseEnd;
+  FIVector4 mapFreqs;
+  FIVector4 mapAmps;
   FIVector4 * mouseMoving;
   FIVector4 mouseVel;
   FIVector4 worldSeed;
@@ -10835,8 +11044,9 @@ public:
   Image * imageHM1;
   string curShader;
   string allText;
-  list <int> pagePoolIds;
-  vector <PooledResource*> pagePoolItems;
+  list <int> holderPoolIds;
+  vector <int> orderedIds;
+  vector <PooledResource*> holderPoolItems;
   vector <string> shaderStrings;
   vector <string> fboStrings;
   vector <string> shaderTextureIDs;
@@ -10845,7 +11055,6 @@ public:
   GLuint volTris;
   GLuint grassTris;
   uint * lookup2to3;
-  GLuint lookup2to3ID;
   unsigned char * resultImage;
   charArr nullBuffer;
   charArr lastImageBuffer;
@@ -10855,20 +11064,21 @@ public:
   Timer myTimer;
   GameWorld * gw;
   std::vector <GameGeom*> gameGeom;
+  uint volID;
+  uint volIDLinear;
+  int bufferedPageSizeInUnits;
   Singleton ();
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer * _myWS);
-  void addGeom (GameGeom * geom);
-  void sendPoolIdToFront (int id);
-  int requestPoolId (int requestingPageId);
+  void reorderIds ();
+  int findFurthestHolderId ();
+  int requestPoolId (int requestingHolderId);
   static void qNormalizeAngle (int & angle);
-  void setupLookups ();
   void perspectiveProjection ();
   void orthographicProjection ();
   ~ Singleton ();
   float genRand (float LO, float HI);
   void setProgAction (eProgramState ps, unsigned char kc, eProgramAction pa, bool isDown);
   void setProgActionAll (unsigned char kc, eProgramAction pa, bool isDown);
-  void keySetup ();
   void createGrassList ();
   void drawCubeCentered (FIVector4 originVec, float radius);
   void drawBox (FIVector4 minVec, FIVector4 maxVec);
@@ -10878,10 +11088,11 @@ public:
   void setWH (int w, int h);
   void sampleFBODirect (FBOSet * fbos, int offset = 0);
   void unsampleFBODirect (FBOSet * fbos, int offset = 0);
-  void bindFBODirect (FBOSet * fbos);
+  void bindFBODirect (FBOSet * fbos, int doClear = 1);
   void sampleFBO (string fboName, int offset = 0, int swapFlag = -1);
   void unsampleFBO (string fboName, int offset = 0, int swapFlag = -1);
   FBOWrapper * getFBOWrapper (string fboName, int offset);
+  void copyFBO (string src, string dest);
   void bindFBO (string fboName, int swapFlag = -1);
   void unbindFBO ();
   void bindShader (string shaderName);
@@ -10900,14 +11111,17 @@ public:
   bool shiftDown ();
   bool ctrlDown ();
   bool altDown ();
+  void drawQuadBounds (float fx1, float fy1, float fx2, float fy2);
   void drawFSQuad (float zoom);
   void drawFSQuadOffset (float xOff, float yOff, float zoom);
   void drawFBO (string fboName, int ind, float zoom, int swapFlag = -1);
   void drawFBOOffsetDirect (FBOSet * fbos, int ind, float xOff, float yOff, float zoom);
   void drawFBOOffset (string fboName, int ind, float xOff, float yOff, float zoom);
+  float getHeightAtPixelPos (float x, float y);
   void moveCamera (FIVector4 * modXYZ);
   void moveObject (float dx, float dy, float zoom);
   void doAction (eProgramAction pa);
+  void setCameraToElevation ();
   void processSpecialKeys (int key, int _x, int _y);
   void processKey (unsigned char key, int _x, int _y, bool isPressed);
   void keyboardUp (unsigned char key, int _x, int _y);
@@ -10940,29 +11154,11 @@ public:
 class PooledResource
 {
 public:
+  int usedByHolderId;
   FBOSet * fboSet;
-  uint volID;
-  uint volIDLinear;
-  int bufferedPageSizeInUnits;
-  int usedByPageId;
   Singleton * singleton;
   PooledResource ();
   void init (Singleton * _singleton);
-};
-#undef LZZ_INLINE
-#endif
-// f00345_geompage.e
-//
-
-#ifndef LZZ_f00345_geompage_e
-#define LZZ_f00345_geompage_e
-#define LZZ_INLINE inline
-class GeomPage
-{
-public:
-  std::vector <int> containsGeomIds;
-  GeomPage ();
-  void init ();
 };
 #undef LZZ_INLINE
 #endif
@@ -10977,21 +11173,21 @@ class GamePage : public Poco::Runnable
 public:
   Singleton * singleton;
   int thisPageId;
-  int usingPoolId;
-  PooledResource * gpuRes;
   int threshVal;
   int bufferedPageSizeInUnits;
   FIVector4 offsetInUnits;
+  FIVector4 offsetInPages;
+  FIVector4 offsetInPagesLocal;
+  float pageDepth;
   int iVolumeSize;
   uint * volData;
   uint * volDataLinear;
+  bool isRendering;
   int paramsPerEntry;
   int numEntries;
   int totParams;
   int maxEntries;
   int maxHeightInUnits;
-  int totLenO2;
-  int totLenVisO2;
   FIVector4 worldSeed;
   bool isDirty;
   bool threadRunning;
@@ -11002,20 +11198,47 @@ public:
   FIVector4 worldMaxVisInPixels;
   FIVector4 worldMinBufInPixels;
   FIVector4 worldMaxBufInPixels;
+  FIVector4 scaleAndOffset;
   FIVector4 worldUnitMin;
   FIVector4 worldUnitMax;
   E_FILL_STATE fillState;
+  GamePageHolder * parentGPH;
   GamePage ();
-  void init (Singleton * _singleton, int _thisPageId, FIVector4 * _offsetInUnits);
+  void init (Singleton * _singleton, GamePageHolder * _parentGPH, int _thisPageId, int offsetX, int offsetY, int offsetZ, int oxLoc, int oyLoc, int ozLoc);
   uint NumberOfSetBits (uint i);
   uint clamp (uint val);
   void createSimplexNoise ();
-  void unbindGPUResources ();
   void copyToTexture ();
-  void addGeom ();
+  bool addGeom (bool justTesting);
   void generateVolume ();
+  void getCoords ();
   ~ GamePage ();
   void run ();
+};
+#undef LZZ_INLINE
+#endif
+// f00351_gamepageholder.e
+//
+
+#ifndef LZZ_f00351_gamepageholder_e
+#define LZZ_f00351_gamepageholder_e
+#define LZZ_INLINE inline
+class GamePageHolder
+{
+public:
+  int iPageDataVolume;
+  int holderSizeInPages;
+  int usingPoolId;
+  int thisHolderId;
+  FIVector4 offsetInHolders;
+  FIVector4 trueOffsetInHolders;
+  PooledResource * gpuRes;
+  Singleton * singleton;
+  std::vector <int> containsGeomIds;
+  GamePage * * pageData;
+  GamePageHolder ();
+  void init (Singleton * _singleton, int _thisHolderId, int trueX, int trueY, int trueZ, int clampedX, int clampedY, int clampedZ);
+  void unbindGPUResources ();
 };
 #undef LZZ_INLINE
 #endif
@@ -11032,7 +11255,7 @@ public:
   int mapSwapFlag;
   int visPageSizeInUnits;
   int iVolumeSize;
-  int iGeomVolumeSize;
+  int iHolderSize;
   int ((diagrams) [E_RENDER_LENGTH]) [E_STATE_LENGTH];
   int renderMethod;
   int iBufferSize;
@@ -11040,22 +11263,25 @@ public:
   int availThreads;
   int visPageSizeInPixels;
   int * curDiagram;
+  int holderSizeInPages;
   bool doDrawFBO;
   bool lastProcResult;
-  bool updatePoolOrder;
   float mapStep;
+  std::vector <GameGeom*> gameGeom;
   vector <int> ocThreads;
   FIVector4 lScreenCoords;
   FIVector4 aoScreenCoords;
   FIVector4 worldSizeInPages;
-  FIVector4 worldSizeInGeomPages;
-  FIVector4 curPos;
+  FIVector4 worldSizeInHolders;
   FIVector4 camPagePos;
+  FIVector4 camHolderPos;
   FIVector4 iPixelWorldCoords;
   FIVector4 pagePos;
   FIVector4 unitPos;
   FIVector4 lastUnitPos;
   FIVector4 lastPagePos;
+  FIVector4 minLRInPixels;
+  FIVector4 maxLRInPixels;
   FIVector4 tempVec;
   FIVector4 unitPosMin;
   FIVector4 unitPosMax;
@@ -11064,18 +11290,23 @@ public:
   FIVector4 startBounds;
   FIVector4 endBounds;
   Singleton * singleton;
-  GamePage * * worldData;
-  GeomPage * geomData;
+  GamePageHolder * * holderData;
   Poco::ThreadPool threadpool;
   GameWorld ();
   void init (Singleton * _singleton);
-  bool checkBounds (int i, int j, int k);
+  int wrapCoord (int val, int mv);
+  GamePageHolder * getHolderAtCoords (int x, int y, int z, bool createOnNull = false);
+  GamePageHolder * getHolderAtIndex (int ind);
+  GamePage * getPageAtIndex (int ind);
+  GamePage * getPageAtCoords (int x, int y, int z, bool createOnNull = false);
+  bool checkBounds (int k);
   void resetToState (E_STATES resState);
-  void update ();
   void update2 ();
+  void addGeom (GameGeom * geom);
+  void update ();
   bool processPages ();
   void renderPages ();
-  void drawPage (GamePage * gp, int dx, int dy, int dz);
+  void drawHolder (GamePageHolder * gp);
   void combineBuffers ();
   void renderGeom ();
   void modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushAction);
@@ -11346,18 +11577,120 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
                                                                                                 {
 
 		pushTrace("Singleton init");
-
 		int i;
 
 
 
+		
+		imageHM0 = loadBMP("..\\data\\hm0.bmp");
+		imageHM1 = loadBMP("..\\data\\hm1.bmp");
+		imageHM0->getTextureId(GL_NEAREST);
+		imageHM1->getTextureId(GL_NEAREST);
+
+
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+
+		mapSampScale = 1.0f;
+		int newPitch = imageHM0->width*mapSampScale;//*2;
+
+
+		
+		mapFreqs.setFXYZW(1.0f, 4.0f, 32.0f, 64.0f);
+		mapAmps.setFXYZW(0.4f, 0.1f, 0.3f, 0.2f);
+		
+		slicesPerPitch = 16;
+		visPageSizeInPixels = 256; // height of one page in pixels
+		holderSizeInPages = 4;
+		bufferMult = 1.25;
+		volGenFBOSize = slicesPerPitch*slicesPerPitch*slicesPerPitch;
+		visPageSizeInUnits = 16;
+		worldSizeInHolders.setIXYZ(newPitch,newPitch,8);
+		worldSizeInHoldersM1.copyFrom(&worldSizeInHolders);
+		worldSizeInHoldersM1.addXYZ(-1);
+		holderSizeInPixels = holderSizeInPages*visPageSizeInPixels;
+		worldSizeInPages.copyFrom(&worldSizeInHolders);
+		worldSizeInPages.multXYZ((float)holderSizeInPages);
+		unitSizeInPixels = (visPageSizeInPixels)/visPageSizeInUnits;
+		
+		//one unit = half meter
+
+
+		maxH = 3;//worldSizeInPages.getIZ();
+
+		maxPooledRes = 512;
+		maxW = 4;
+		
+
+
+		cout << "holderSizeInPixels X2 " << holderSizeInPixels*2 << "\n";
+
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+
+		
+		traceOn = false;
+		gridOn = 1.0f;
+
+
+		// TODO: examine if this variable is necessary
+		maxHeightInUnits = (worldSizeInPages.getIZ()-bufferMult)*(visPageSizeInUnits);
+
+		minBoundsInPixels.setIXYZ(0,0,0);
+		maxBoundsInPixels.setIXYZ(
+			(worldSizeInPages.getIX()-1)*unitSizeInPixels*visPageSizeInUnits,
+			(worldSizeInPages.getIY()-1)*unitSizeInPixels*visPageSizeInUnits,
+			(worldSizeInPages.getIZ()-1)*unitSizeInPixels*visPageSizeInUnits
+		);
+
+		heightmapMax = maxBoundsInPixels.getFZ()/2.0f;
+
+
+
+
+		bufferedPageSizeInUnits = (visPageSizeInUnits) * (bufferMult);
+
+
+		glGenTextures(1,&volID);
+		glGenTextures(1,&volIDLinear);
+
+		glBindTexture(GL_TEXTURE_3D,volID);
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, bufferedPageSizeInUnits, bufferedPageSizeInUnits, bufferedPageSizeInUnits, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_LINEAR
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//GL_NEAREST
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+		glBindTexture(GL_TEXTURE_3D,0);
+
+		glBindTexture(GL_TEXTURE_3D,volIDLinear);
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, bufferedPageSizeInUnits, bufferedPageSizeInUnits, bufferedPageSizeInUnits, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);//GL_LINEAR
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);//GL_NEAREST
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+		glBindTexture(GL_TEXTURE_3D,0);
+
+
+
+
+
+		
 		paramArr = new float[4096];
 		paramArrMap = new float[4096];
 
-		numProvinces = 64;
-		seaLevel = 90;
 		
-
+		numProvinces = 64;
+		seaLevel = 100;
+		
+		showMap = true;
 
 		rootObj = NULL;
 
@@ -11371,11 +11704,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		nullBuffer.data[0] = '\0';
 		nullBuffer.size = 0;
 
-		volGenFBOSize = 4096;
-		slicesPerPitch = 16;
-
-		//volGenFBOSize = 512;
-		//slicesPerPitch = 8;
+		
 
 		palWidth = 256;
 		palHeight = 256;
@@ -11399,14 +11728,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		reportPagesDrawn = false;
 		isBare = true;
 		grassHeight = 1.0/128.0;
-
+		diskOn = 0.0f;
 		
 
 
-		imageHM0 = loadBMP("..\\data\\hm0.bmp");
-		imageHM1 = loadBMP("..\\data\\hm1.bmp");
-		imageHM0->getTextureId(GL_NEAREST);
-		imageHM1->getTextureId(GL_NEAREST);
+		
 
 
 		defaultWinW = _defaultWinW/_scaleFactor;
@@ -11424,32 +11750,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 			genRand(5000.0f,500000.0f)
 		);
 
+
+
+
+
 		
-		bufferMult = 2;
-		diskOn = 0.0f;
-		visPageSizeInPixels = 128; // height of one page in pixels
-		visPageSizeInUnits = 8;
-		worldSizeInPages.setIXYZ(128,128,12);
-		unitSizeInPixels = (visPageSizeInPixels)/visPageSizeInUnits;
-		
-		geomPageSizeInPixels = 1024;
-		geomPageSizeInUnits = geomPageSizeInPixels/unitSizeInPixels;
-		worldSizeInGeomPages.setFXYZRef(&worldSizeInPages);
-		worldSizeInGeomPages.intDivXYZ(geomPageSizeInPixels/visPageSizeInPixels);
-
-
-		maxH = worldSizeInPages.getIZ();
-		maxW = 4;
-
-		maxHeightInUnits = (worldSizeInPages.getIZ()-bufferMult)*(visPageSizeInUnits);
-
-		minBoundsInPixels.setIXYZ(0,0,0);
-		maxBoundsInPixels.setIXYZ(
-			(worldSizeInPages.getIX()-1)*unitSizeInPixels*visPageSizeInUnits,
-			(worldSizeInPages.getIY()-1)*unitSizeInPixels*visPageSizeInUnits,
-			(worldSizeInPages.getIZ()-1)*unitSizeInPixels*visPageSizeInUnits
-		);
-
 
 		wsBufferInvalid = true;
 
@@ -11476,11 +11781,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		lbDown=false;
 		rbDown=false;
 
-		for (i = 0; i < MAX_KEYS; i++) {
-			keyDownArr[i] = false;
-		}
-		keySetup();
-
 		
 
 		isFullScreen = false;
@@ -11489,8 +11789,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		programState = E_PS_IN_GAME;
 
-
-		cameraPos.setFXYZ(2048.0, 2048.0, maxBoundsInPixels.getFZ()/2.0);
+		//
+		cameraPos.setFXYZ(0.0, 0.0, maxBoundsInPixels.getFZ()/2.0);
 
 		lightPos.copyFrom(&cameraPos);
 		fogPos.copyFrom(&cameraPos);
@@ -11533,6 +11833,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		myDelta = 0.0f;
 		
 
+
 		//gm = new GameMap();
 		orthographicProjection();
 		//// GL WIDGET END ////
@@ -11563,10 +11864,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    fboStrings.push_back("resultFBO");
 	    fboStrings.push_back("volGenFBO");
 
+	    fboStrings.push_back("cityFBO");
 	    fboStrings.push_back("hmFBO");
+	    fboStrings.push_back("hmFBOLinear");
 	    fboStrings.push_back("simplexFBO");
-	    fboStrings.push_back("mapFBO0");
-	    fboStrings.push_back("mapFBO1");
+	    fboStrings.push_back("swapFBO0");
+	    fboStrings.push_back("swapFBO1");
 
 
 
@@ -11610,7 +11913,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    shaderTextureIDs.push_back("Texture7");
 
 
-	    setupLookups();
+	    //setupLookups();
 
 	    for (i = 0; i < shaderStrings.size(); i++) {
 	        shaderMap.insert(  pair<string,Shader*>(shaderStrings[i], NULL)  );
@@ -11634,12 +11937,16 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    fboMap["geomFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, true);
 	    fboMap["combineFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-	    fboMap["volGenFBO"]->init(1, volGenFBOSize, volGenFBOSize, 1, false);
+	    fboMap["volGenFBO"]->init(1, volGenFBOSize, volGenFBOSize, 1, false, GL_NEAREST);
 
-	    fboMap["hmFBO"]->init(1, imageHM0->width, imageHM0->height, 1, false, GL_NEAREST, GL_REPEAT);
-	    fboMap["simplexFBO"]->init(1, imageHM0->width, imageHM0->height, 1, false, GL_NEAREST, GL_REPEAT);
-	    fboMap["mapFBO0"]->init(1, imageHM0->width, imageHM0->height, 1, false, GL_NEAREST, GL_REPEAT);
-	    fboMap["mapFBO1"]->init(1, imageHM0->width, imageHM0->height, 1, false, GL_NEAREST, GL_REPEAT);
+
+	    
+	    fboMap["cityFBO"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
+	    fboMap["hmFBO"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
+	    fboMap["hmFBOLinear"]->init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
+	    fboMap["simplexFBO"]->init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
+	    fboMap["swapFBO0"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
+	    fboMap["swapFBO1"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 
 
 
@@ -11649,115 +11956,211 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    gw = new GameWorld();
 	    gw->init(this);
 
-	    for (i = 0; i < 512; i++) {
-	    	gameGeom.push_back(new GameGeom());
-	    	gameGeom.back()->initRand(i);
-	    	addGeom(gameGeom.back());
-	    }
 
-
-
+	    
+		
+	    
 	    
 	    popTrace();
 
 
 
-
 	}
-void Singleton::addGeom (GameGeom * geom)
-                                     {
-		
+void Singleton::reorderIds ()
+                          {
 		int i;
 		int j;
-		int ind;
 
-		int startX;
-		int endX;
-		int startY;
-		int endY;
+		int oidSize =  orderedIds.size();
+		int oidSizeM1 =  oidSize-1;
 
-		int bufSize = (visPageSizeInUnits*bufferMult*unitSizeInPixels);
+		int id0;
+		int id1;
 
+		int tempId;
 
-		startX = ( geom->boundsMinInPixels.getIX() - bufSize )/geomPageSizeInPixels;
-		startY = ( geom->boundsMinInPixels.getIY() - bufSize )/geomPageSizeInPixels;
+		int tot0;
+		int tot1;
 
-		endX = ( geom->boundsMaxInPixels.getIX() + bufSize )/geomPageSizeInPixels;
-		endY = ( geom->boundsMaxInPixels.getIY() + bufSize )/geomPageSizeInPixels;
+		bool doSwap;
 
+		GamePageHolder* gp0;
+		GamePageHolder* gp1;
+
+		for (i = 0; i < oidSizeM1; i++) {
+			for (j = i + 1; j < oidSize; j++ ) {
+				
+				id0 = orderedIds[i];
+				id1 = orderedIds[j];
+
+				if (id0 == -1 || id1 == -1) {
+
+				}
+				else {
+
+					gp0 = gw->getHolderAtIndex(id0);
+					gp1 = gw->getHolderAtIndex(id1);
+
+					if (gp0 == NULL || gp1 == NULL) {
+
+					}
+					else {
+						tot0 = gp0->trueOffsetInHolders.getFZ();
+						tot1 = gp1->trueOffsetInHolders.getFZ();
+
+						if (tot0 == tot1) {
+							tot0 = gp0->trueOffsetInHolders.getFY();
+							tot1 = gp1->trueOffsetInHolders.getFY();
+
+							if (tot0 == tot1) {
+								tot1 = gp1->trueOffsetInHolders.getFX();
+								tot0 = gp0->trueOffsetInHolders.getFX();
+
+								if (tot0 == tot1) {
+									doSwap = false;
+								}
+								else {
+									doSwap = tot0 > tot1;
+								}
+							}
+							else {
+								doSwap = tot0 > tot1;
+							}
+						}
+						else {
+							doSwap = tot0 > tot1;
+						}
+
+						if (doSwap) {
+							orderedIds[i] = id1;
+							orderedIds[j] = id0;
+						}
+						
+						
+					}
+				}
+
+				
+			}
+		}
+	}
+int Singleton::findFurthestHolderId ()
+                                   {
 		
-		startX = clamp(startX, 0, worldSizeInGeomPages.getIX()-1);
-		startY = clamp(startY, 0, worldSizeInGeomPages.getIY()-1);
 
+		float longestDis = 0.0f;
+		int longestInd = 0;
 
-		for (j = startY; j <= endY; j++) {
-			for (i = startX; i <= endX; i++) {
-				ind = j*worldSizeInGeomPages.getIX() + i;
-				gw->geomData[ind].containsGeomIds.push_back(geom->id);
+		float testDis;
+		float testDis1;
+		float testDis2;
+		float testDis3;
+
+		int i;
+
+		FIVector4 tempVec;
+		FIVector4 tempVec2;
+
+		GamePageHolder* gp;
+		GamePageHolder* bestGP = NULL;
+
+		for (i = 0; i < holderPoolItems.size(); i++) {
+			gp = gw->getHolderAtIndex(holderPoolItems[i]->usedByHolderId);
+
+			if (gp == NULL) {
+
+			}
+			else {
+
+				tempVec.copyFrom(&(gw->camHolderPos));
+				tempVec.addXYZ( worldSizeInHolders.getIX(), worldSizeInHolders.getIY(), 0.0 );
+
+				tempVec2.copyFrom(&(gw->camHolderPos));
+				tempVec2.addXYZ( -worldSizeInHolders.getIX(), -worldSizeInHolders.getIY(), 0.0 );
+
+				testDis1 = gp->trueOffsetInHolders.distance( &(gw->camHolderPos) );
+				testDis2 = gp->trueOffsetInHolders.distance( &(tempVec) );
+				testDis3 = gp->trueOffsetInHolders.distance( &(tempVec2) );
+
+				testDis = min(min(testDis1,testDis2),testDis3);
+
+				if (testDis > longestDis) {
+					longestDis = testDis;
+					longestInd = i;
+					bestGP = gp;
+				}
 			}
 		}
 
-		
+		//doTraceVecND("bestGP->trueOffsetInHolders", &(bestGP->trueOffsetInHolders) );
+		//doTraceVecND("gw->camHolderPos", &(gw->camHolderPos) );
 
+		return longestInd;
 	}
-void Singleton::sendPoolIdToFront (int id)
-                                       {
-		int i = 0;
-
-		pagePoolIds.remove(id);
-		pagePoolIds.push_front(id);
-
-	}
-int Singleton::requestPoolId (int requestingPageId)
-                                                {
+int Singleton::requestPoolId (int requestingHolderId)
+                                                  {
 
 		
-		int pageToFreeId;
-		int usedByPageId;
+		int holderToFreeId;
+		int usedByHolderId;
+		int i;
 
 		
-		if (TOT_GPU_MEM_USAGE < MAX_GPU_MEM) {
-			pagePoolItems.push_back( new PooledResource() );
-			pagePoolItems.back()->init(this);
+		if (TOT_GPU_MEM_USAGE < MAX_GPU_MEM) { // && poolItemsCreated <= maxPooledRes) {
+			holderPoolItems.push_back( new PooledResource() );
+			holderPoolItems.back()->init(this);
 
-			pageToFreeId = poolItemsCreated;
-			pagePoolIds.push_front(pageToFreeId);
+			holderToFreeId = poolItemsCreated;
+			holderPoolIds.push_front(holderToFreeId);
+			orderedIds.push_back(requestingHolderId);
 			poolItemsCreated++;
 
 		}
 		else {
-			pageToFreeId = pagePoolIds.back();
-			usedByPageId = pagePoolItems[pageToFreeId]->usedByPageId;
+			holderToFreeId = findFurthestHolderId();//holderPoolIds.back();
+			usedByHolderId = holderPoolItems[holderToFreeId]->usedByHolderId;
 
-			GamePage* consumingPage;
+			GamePageHolder* consumingHolder;
 
-			if (usedByPageId == -1) {
+			if (usedByHolderId == -1) {
 				// this pooledItem is already free 
 
 			}
 			else {
-				// free this pooledItem from the page that is consuming it and give it to the requesting page
+				// free this pooledItem from the holder that is consuming it and give it to the requesting holder
 
-				consumingPage = gw->worldData[usedByPageId];
+				consumingHolder = gw->getHolderAtIndex(usedByHolderId);
 
-				if (consumingPage == NULL) {
-					// page was deleted already
+				if (consumingHolder == NULL) {
+					// holder was deleted already
 				}
 				else {
-					consumingPage->unbindGPUResources();
+					consumingHolder->unbindGPUResources();
 				}
 				
 
 			}
 
-			pagePoolIds.pop_back();
-			pagePoolIds.push_front(pageToFreeId);
+
+
+			for (i = 0; i < orderedIds.size(); i++) {
+				if (orderedIds[i] == usedByHolderId) {
+					orderedIds[i] = requestingHolderId;
+					break;
+				}
+			}
+
+
+			holderPoolIds.remove(holderToFreeId);
+			holderPoolIds.push_front(holderToFreeId);
 		}
 
 
-		pagePoolItems[pageToFreeId]->usedByPageId = requestingPageId;
+		holderPoolItems[holderToFreeId]->usedByHolderId = requestingHolderId;
 
-		return pageToFreeId;
+		reorderIds();
+
+		return holderToFreeId;
 
 	}
 void Singleton::qNormalizeAngle (int & angle)
@@ -11768,100 +12171,6 @@ void Singleton::qNormalizeAngle (int & angle)
 	    while (angle > 360 * 16) {
 	        angle -= 360 * 16;
 	    }
-	}
-void Singleton::setupLookups ()
-                            {
-		pushTrace("setupLookups");
-
-		doTrace("a");
-
-	    uint i, j, k, m;
-	    uint side = volGenFBOSize/slicesPerPitch;
-	    uint totalSize = side*side*side;
-
-	    lookup2to3 = new uint[totalSize];
-	    //lookup3to2 = new uint[totalSize];
-
-	    uint xpos;
-	    uint ypos;
-	    uint zpos;
-
-	    uint ind;
-
-	    ind = 0;
-	    for (j = 0; j < volGenFBOSize; j++) {
-	        for (i = 0; i < volGenFBOSize; i++) {
-	            ind = i+j*volGenFBOSize;
-	            xpos = i%side;
-	            ypos = j%side;
-	            zpos = i/side + (j/side)*slicesPerPitch;
-
-	            //lookup2to3[ind] = ind;
-	            //ind++;
-	            lookup2to3[ind] = (255<<24)|(zpos<<16)|(ypos<<8)|xpos;   
-	        }
-	    }
-
-	    doTrace("b");
-	    
-	    /*
-	    ind = 0;
-	    for (k = 0; k < side; k++) {
-	        for (j = 0; j < side; j++) {
-	            for (i = 0; i < side; i++) {
-
-	                lookup3to2[ind] = ind;
-	                ind++;
-	            }
-	        }
-	    }
-	    */
-	    
-
-	    /*
-	    glGenTextures(1,&lookup3to2ID);
-	    glBindTexture(GL_TEXTURE_3D,lookup3to2ID);
-	    glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, side, side, side, 0, GL_RGBA, GL_UNSIGNED_BYTE, lookup3to2);
-	    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-	    
-	    
-	    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-	    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-	    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
-	    
-	    glBindTexture(GL_TEXTURE_3D,0);
-	    */
-	    /*
-	    glBindTexture(GL_TEXTURE_2D,texID);
-	        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, iRenderSize, iRenderSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, uTexMap);
-	        glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	        glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	        glBindTexture(GL_TEXTURE_2D,0);
-	    */
-
-	    glGenTextures(1,&lookup2to3ID);
-	    glBindTexture(GL_TEXTURE_2D,lookup2to3ID);
-	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, volGenFBOSize, volGenFBOSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, lookup2to3);
-	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, 0);
-	    /*
-	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-	    */
-	    glBindTexture(GL_TEXTURE_2D,0);
-
-	    //delete[] lookup2to3;
-	    //delete[] lookup3to2;
-
-	    //lookup2to3 = NULL;
-	    //lookup3to2 = NULL;
-
-
-	    popTrace();
-
 	}
 void Singleton::perspectiveProjection ()
         {
@@ -11909,14 +12218,6 @@ void Singleton::setProgActionAll (unsigned char kc, eProgramAction pa, bool isDo
 		for (i = 0; i < E_PS_SIZE; i++) {
 			setProgAction((eProgramState)i, kc, pa, isDown);
 		}
-
-	}
-void Singleton::keySetup ()
-                        {
-
-		setProgActionAll(27,  E_PA_QUIT, false);
-		setProgActionAll('p', E_PA_TOGGLE_FULLSCREEN, false);
-		setProgActionAll('r', E_PA_REFRESH, false);
 
 	}
 void Singleton::createGrassList ()
@@ -12255,10 +12556,10 @@ void Singleton::unsampleFBODirect (FBOSet * fbos, int offset)
 	        }
 	    }
 	}
-void Singleton::bindFBODirect (FBOSet * fbos)
-                                         {
+void Singleton::bindFBODirect (FBOSet * fbos, int doClear)
+                                                          {
 	    setMatrices(fbos->width,fbos->height);
-	    fbos->bind(1);
+	    fbos->bind(doClear);
 	    currentFBOResolutionX = fbos->width;
 	    currentFBOResolutionY = fbos->height;
 	}
@@ -12320,6 +12621,16 @@ FBOWrapper * Singleton::getFBOWrapper (string fboName, int offset)
                                                                {
 		FBOSet* fbos = fboMap[fboName];
 		return fbos->getFBOWrapper(offset);
+	}
+void Singleton::copyFBO (string src, string dest)
+                                              {
+		bindShader("CopyShader");
+		bindFBO(dest);
+		sampleFBO(src, 0);
+		drawFSQuad(1.0f);
+		unsampleFBO(src, 0);
+		unbindFBO();
+		unbindShader();
 	}
 void Singleton::bindFBO (string fboName, int swapFlag)
                                                       {
@@ -12435,6 +12746,26 @@ bool Singleton::altDown ()
                        {
 		return glutGetModifiers()&GLUT_ACTIVE_ALT;
 	}
+void Singleton::drawQuadBounds (float fx1, float fy1, float fx2, float fy2)
+                                                                        {
+		glColor4f(1, 1, 1, 1);
+		glBegin(GL_QUADS);
+		glNormal3f(0, 0, 1);
+		
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex3f(fx1,fy1,0.0f);
+		
+		glTexCoord2f(1.0f, 0.0f);
+		glVertex3f(fx2,fy1,0.0f);
+		
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex3f(fx2,fy2,0.0f);
+		
+		glTexCoord2f(0.0f, 1.0f);
+		glVertex3f(fx1,fy2,0.0f);
+		
+		glEnd();
+	}
 void Singleton::drawFSQuad (float zoom)
                                     {
 	    drawFSQuadOffset(0.0f,0.0f,zoom);
@@ -12501,13 +12832,71 @@ void Singleton::drawFBOOffset (string fboName, int ind, float xOff, float yOff, 
 	    }
 	    
 	}
+float Singleton::getHeightAtPixelPos (float x, float y)
+                                                    {
+		FBOWrapper* fbow;
+		float xc;
+		float yc;
+
+		int channel = 0;
+
+		if (mapInvalid) {
+
+			return 0.0f;
+
+		}
+		else {
+			FBOWrapper* fbow = getFBOWrapper("hmFBO",0);
+
+			xc = (x / maxBoundsInPixels.getFX()) * ((float)fbow->width);
+			yc = (y / maxBoundsInPixels.getFY()) * ((float)fbow->height);
+
+			
+			return (
+				fbow->getPixelAtLinear((xc*mapFreqs.getFX()), (yc*mapFreqs.getFX()), channel)*mapAmps.getFX() +
+				fbow->getPixelAtLinear((xc*mapFreqs.getFY()), (yc*mapFreqs.getFY()), channel)*mapAmps.getFY() +
+				fbow->getPixelAtLinear((xc*mapFreqs.getFZ()), (yc*mapFreqs.getFZ()), channel)*mapAmps.getFZ() +
+				fbow->getPixelAtLinear((xc*mapFreqs.getFW()), (yc*mapFreqs.getFW()), channel)*mapAmps.getFW()
+			) * heightmapMax;
+
+		}
+
+		
+
+	}
 void Singleton::moveCamera (FIVector4 * modXYZ)
                                            {
 		wsBufferInvalid = true;
 		cameraPos.addXYZRef(modXYZ);
+
+		//float heightAtPoint = getHeightAtPixelPos(cameraPos.getFX(), cameraPos.getFY());
+		//cameraPos.setFZ( (heightAtPoint + cameraPos.getFZ())/2.0 );
+
 		modXYZ->setFZ(0.0f);
-		lightPos.addXYZRef(modXYZ, 1.0f);
-		fogPos.addXYZRef(modXYZ, 1.0f);
+
+		if (cameraPos.getFX() > maxBoundsInPixels.getFX()/2.0) {
+			cameraPos.setFX( cameraPos.getFX() - maxBoundsInPixels.getFX() );
+		}
+		if (cameraPos.getFX() < -maxBoundsInPixels.getFX()/2.0) {
+			cameraPos.setFX( cameraPos.getFX() + maxBoundsInPixels.getFX() );
+		}
+		if (cameraPos.getFY() > maxBoundsInPixels.getFY()/2.0) {
+			cameraPos.setFY( cameraPos.getFY() - maxBoundsInPixels.getFY() );
+		}
+		if (cameraPos.getFY() < -maxBoundsInPixels.getFY()/2.0) {
+			cameraPos.setFY( cameraPos.getFY() + maxBoundsInPixels.getFY() );
+		}
+		
+
+		//lightPos.addXYZRef(modXYZ, 1.0f);
+		//fogPos.addXYZRef(modXYZ, 1.0f);
+		
+		lightPos.copyFrom(&cameraPos);
+		fogPos.copyFrom(&cameraPos);
+
+		lightPos.addXYZ(1024.0f);
+		fogPos.addXYZ(-2048.0f,-2048.0f, -256.0f);
+
 		isPanning = true;
 	}
 void Singleton::moveObject (float dx, float dy, float zoom)
@@ -12644,6 +13033,13 @@ void Singleton::doAction (eProgramAction pa)
 
 		}
 	}
+void Singleton::setCameraToElevation ()
+                                    {
+		cameraPos.setFZ( getHeightAtPixelPos(cameraPos.getFX(), cameraPos.getFY()) );
+		bufferInvalid = true;
+		changesMade = true;
+		wsBufferInvalid = true;
+	}
 void Singleton::processSpecialKeys (int key, int _x, int _y)
                                                          {
 
@@ -12690,7 +13086,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			glutLeaveMainLoop();
 		}
 
-		switch(key ) {
+		switch(key) {
 
 			
 			case '0':
@@ -12745,6 +13141,9 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 
+			case 'e':
+				setCameraToElevation();
+			break;
 
 			case 'w':
 				changesMade = true;
@@ -12761,7 +13160,14 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			case 'r':
 				doShaderRefresh();
 				bufferInvalid = true;
-				mapInvalid = true;
+				//mapInvalid = true;
+			break;
+
+			case 'G':
+				gridOn = 1.0-gridOn;
+				cout << "Grid On: " << gridOn << "\n";
+				bufferInvalid = true;
+				changesMade = true;
 			break;
 
 			case 'g':
@@ -12774,14 +13180,20 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 					grassState = (E_GRASS_STATE)0;
 				}
 
+				
+
 				bufferInvalid = true;
 				changesMade = true;
 			break;
 
 
+			case 'p':
+				cout << "curZoom " << cameraZoom << "\n";
+			break;
+
 
 			case 't':
-				restartGen = true;
+				traceOn = true;
 			break;
 
 			case '\t':
@@ -12821,6 +13233,17 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 			case 'm':
+				
+				/*
+				mapInvalid = true;
+				bufferInvalid = true;
+				changesMade = true;
+				wsBufferInvalid = true;
+				forceGetPD = true;
+				*/
+
+				//showMap = !showMap;
+				
 				reportPagesDrawn = true;
 				//doTrace("Avail threads: ", i__s(gw->availThreads));
 			break;
@@ -13272,8 +13695,6 @@ void Singleton::processJSON (charArr * sourceBuffer, charArr * saveBuffer)
 		}
 		
 
-		//cout << "\n\n" << buf << "\n\n";
-
 		JSONValue *jsonVal = JSON::Parse(buf);
 
 
@@ -13451,7 +13872,7 @@ void Singleton::display ()
 			
 			fMouseVel = mouseVel.distance(&origin);
 
-			if ( fMouseVel < 1.0f ) {
+			if ( fMouseVel < 2.0f ) {
 				mouseVel.setFXY(0.0f,0.0f);
 				isPanning = false;
 			}
@@ -13467,20 +13888,24 @@ void Singleton::display ()
 
 			dz = (targetZoom-cameraZoom)/(16.0f);
 
+			/*
 			if (abs(dz) < 0.0001) {
 				dz = 0.0f;
 			}
+			*/
 
+			/*
 			if (cameraZoom > 8.0f) {
 				cameraZoom = 8.0f;
 			}
 			if (cameraZoom < 1.0f/8.0f) {
 				cameraZoom = 1.0f/8.0f;
 			}
+			*/
 			
 			cameraZoom += dz;
 
-			if ((dz == 0.0f) && (isZooming)) {
+			if ( ( abs(dz)/cameraZoom < 0.0001 ) && (isZooming)) {
 				isZooming = false;
 				wsBufferInvalid = true;
 				bufferInvalid = true;
@@ -13495,7 +13920,14 @@ void Singleton::display ()
 			}
 
 			if (shadersAreLoaded) {
+
+				if (traceOn) {
+					traceOn = false;
+					TRACE_ON = true;
+				}
 				gw->update();
+
+				TRACE_ON = false;
 
 				changesMade = false;
 				bufferInvalid = false;
@@ -13546,60 +13978,29 @@ void PooledResource::init (Singleton * _singleton)
                                          {
 
 		singleton = _singleton;
-		usedByPageId = -1;
-
-		
-
-		bufferedPageSizeInUnits = (singleton->visPageSizeInUnits) * (singleton->bufferMult);
+		usedByHolderId = -1;
 
 		fboSet = new FBOSet();
-		fboSet->init(2,(singleton->visPageSizeInPixels)*2,(singleton->visPageSizeInPixels)*2,1,false);
-		glGenTextures(1,&volID);
-		glGenTextures(1,&volIDLinear);
-
-		glBindTexture(GL_TEXTURE_3D,volID);
-		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, bufferedPageSizeInUnits, bufferedPageSizeInUnits, bufferedPageSizeInUnits, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_LINEAR
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//GL_NEAREST
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-		glBindTexture(GL_TEXTURE_3D,0);
-
-		glBindTexture(GL_TEXTURE_3D,volIDLinear);
-		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, bufferedPageSizeInUnits, bufferedPageSizeInUnits, bufferedPageSizeInUnits, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);//GL_LINEAR
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);//GL_NEAREST
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-		glBindTexture(GL_TEXTURE_3D,0);
-
-		TOT_GPU_MEM_USAGE += ((float)(bufferedPageSizeInUnits*bufferedPageSizeInUnits*bufferedPageSizeInUnits*4*2))/(1024.0f*1024.0f);
-
-	}
-#undef LZZ_INLINE
- 
-// f00345_geompage.h
-//
-
-#include "f00345_geompage.e"
-#define LZZ_INLINE inline
-GeomPage::GeomPage ()
-                   {
-
-	}
-void GeomPage::init ()
-                    {
 
 		/*
-			for (i = 0; i < 16; i++) {
-				gameGeom.push_back(new GameGeom());
-				gameGeom.back()->initRand();
-			}
+		void init(
+			int _numBufs,
+			int _width,
+			int _height,
+			int _bytesPerChannel,
+			bool _hasDepth,
+			int filterEnum=GL_NEAREST,
+			int clampEnum=GL_CLAMP_TO_EDGE
+		)
 		*/
+		fboSet->init(
+			2,
+			((singleton->holderSizeInPixels)*2),
+			((singleton->holderSizeInPixels)*2),
+			1,
+			true
+		);
+
 	}
 #undef LZZ_INLINE
  
@@ -13612,14 +14013,18 @@ GamePage::GamePage ()
                    {
 
 	}
-void GamePage::init (Singleton * _singleton, int _thisPageId, FIVector4 * _offsetInUnits)
-                                                                                     {
+void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _thisPageId, int offsetX, int offsetY, int offsetZ, int oxLoc, int oyLoc, int ozLoc)
+          {
+
+		pushTrace("GamePage init()");
+
 		thisPageId = _thisPageId;
 		singleton = _singleton;
-		usingPoolId = -1;
+		parentGPH = _parentGPH;
+		//usingPoolId = -1;
 
 		maxEntries = 32;
-
+		isRendering = true;
 
 		int i;
 
@@ -13636,12 +14041,20 @@ void GamePage::init (Singleton * _singleton, int _thisPageId, FIVector4 * _offse
 		curState = E_STATE_INIT_BEG;
 		nextState = E_STATE_WAIT;
 
+		
+		int visPageSizeInUnits = singleton->visPageSizeInUnits;
+		bufferedPageSizeInUnits = (visPageSizeInUnits) * (singleton->bufferMult);
 
+		offsetInPages.setIXYZ(offsetX,offsetY,offsetZ);
+		offsetInUnits.copyFrom(&offsetInPages);
+		offsetInUnits.multXYZ(singleton->visPageSizeInUnits);
 
+		offsetInPagesLocal.setIXYZ(oxLoc,oyLoc,ozLoc);
 
+		float hzp = (float)(singleton->holderSizeInPages);
 
-		bufferedPageSizeInUnits = (singleton->visPageSizeInUnits) * (singleton->bufferMult);
-		offsetInUnits.copyFrom(_offsetInUnits);
+		pageDepth = (1.0f - ( (offsetInPagesLocal.getFZ()*hzp*hzp + offsetInPagesLocal.getFY()*hzp + offsetInPagesLocal.getFX())/(hzp*hzp*hzp) ))*0.9f + 0.05f;
+
 
 		unitSizeInPixels = (float)(singleton->unitSizeInPixels);
 
@@ -13662,35 +14075,99 @@ void GamePage::init (Singleton * _singleton, int _thisPageId, FIVector4 * _offse
 		}
 
 
-		totLenO2 = bufferedPageSizeInUnits/2;
-		totLenVisO2 = bufferedPageSizeInUnits/(2*(singleton->bufferMult));
-
-
 
 		worldMinVisInPixels.copyFrom(&offsetInUnits);
 		worldMaxVisInPixels.copyFrom(&offsetInUnits);
-		worldMinVisInPixels.addXYZ( -totLenVisO2 );
-		worldMaxVisInPixels.addXYZ(  totLenVisO2 );
+		worldMaxVisInPixels.addXYZ(visPageSizeInUnits);
 		worldMinVisInPixels.multXYZ((float)unitSizeInPixels);
 		worldMaxVisInPixels.multXYZ((float)unitSizeInPixels);
 
-		worldMinBufInPixels.copyFrom(&offsetInUnits);
-		worldMaxBufInPixels.copyFrom(&offsetInUnits);
-		worldMinBufInPixels.addXYZ( -totLenO2 );
-		worldMaxBufInPixels.addXYZ(  totLenO2 );
+		worldUnitMin.copyFrom(&offsetInUnits);
+		worldUnitMax.copyFrom(&offsetInUnits);
+		worldUnitMax.addXYZ(visPageSizeInUnits);
+
+		worldUnitMin.addXYZ( -(bufferedPageSizeInUnits-visPageSizeInUnits)/2 );
+		worldUnitMax.addXYZ( (bufferedPageSizeInUnits-visPageSizeInUnits)/2 );
+
+		worldMinBufInPixels.copyFrom(&worldUnitMin);
+		worldMaxBufInPixels.copyFrom(&worldUnitMax);
 		worldMinBufInPixels.multXYZ((float)unitSizeInPixels);
 		worldMaxBufInPixels.multXYZ((float)unitSizeInPixels);
 
 
 
-		worldUnitMin.copyFrom(&offsetInUnits);
-		worldUnitMax.copyFrom(&offsetInUnits);
-		worldUnitMin.addXYZ( -totLenO2 );
-		worldUnitMax.addXYZ(  totLenO2 );
+		float minHeight = 99999.0f;
+		float maxHeight = 0.0f;
+		float avgHeight = 0.0f;
+		float centerHeight = (worldMinVisInPixels.getFZ() + worldMaxVisInPixels.getFZ())/2.0f;
+
+		FBOWrapper* fbow = singleton->getFBOWrapper("hmFBO",0);
+
+		int fbowWidth = fbow->width;
+
+		float testHeight[4];
+
+		testHeight[0] = singleton->getHeightAtPixelPos(worldMinVisInPixels.getIX(),worldMinVisInPixels.getIY());
+		testHeight[1] = singleton->getHeightAtPixelPos(worldMaxVisInPixels.getIX(),worldMinVisInPixels.getIY());
+		testHeight[2] = singleton->getHeightAtPixelPos(worldMinVisInPixels.getIX(),worldMaxVisInPixels.getIY());
+		testHeight[3] = singleton->getHeightAtPixelPos(worldMaxVisInPixels.getIX(),worldMaxVisInPixels.getIY());
+
+
+		for (i = 0; i < 4; i++) {
+			avgHeight += testHeight[i];
+			
+			if (testHeight[i] < minHeight) {
+				minHeight = testHeight[i];
+			}
+			if (testHeight[i] > maxHeight) {
+				maxHeight = testHeight[i];
+			}
+			
+
+		}
+
+		avgHeight /= 4.0;
+
+		maxHeight += singleton->visPageSizeInPixels*2;
+		minHeight -= singleton->visPageSizeInPixels*2;
+
+
+
+		bool hasGeom = addGeom(true);
+
+
 
 		
 
-		curState = E_STATE_INIT_END;
+		if ( abs(centerHeight-avgHeight) > singleton->visPageSizeInPixels*2.0 ) { //(worldMaxVisInPixels.getFZ() < minHeight) ||  (worldMinVisInPixels.getFZ() > maxHeight)  ) {
+			if (hasGeom && (centerHeight > avgHeight)) {
+				fillState = E_FILL_STATE_PARTIAL;
+				curState = E_STATE_INIT_END;
+				
+			}
+			else {
+				fillState = E_FILL_STATE_EMPTY;
+				curState = E_STATE_LENGTH;
+
+				
+			}
+
+		}
+		else {
+			fillState = E_FILL_STATE_PARTIAL;
+			curState = E_STATE_INIT_END;
+
+			
+		}
+
+		//fillState = E_FILL_STATE_PARTIAL;
+		//curState = E_STATE_INIT_END;
+
+
+
+		popTrace();
+
+		//curState = E_STATE_INIT_END;
 	}
 uint GamePage::NumberOfSetBits (uint i)
         {
@@ -13750,23 +14227,25 @@ void GamePage::createSimplexNoise ()
 
 		bool mustNotBeFull = false;
 
+
+
 		for (j = 0; j < totLen; j++) {
 
 			ijkVals[1] = (float)j;
 
-			fy = (j - totLenO2) + offsetInUnits.getFY();
+			fy = (j) + offsetInUnits.getFY();
 
 			for (i = 0; i < totLen; i++) {
 
 				ijkVals[0] = (float)i;
 
-				fx = (i - totLenO2) + offsetInUnits.getFX();
+				fx = (i) + offsetInUnits.getFX();
 				
 				for (k = 0; k < totLen; k++) {
 
 					ijkVals[2] = (float)k;
 
-					fz = (k - totLenO2) + offsetInUnits.getFZ();
+					fz = (k) + offsetInUnits.getFZ();
 
 					ind = k*totLen*totLen + j*totLen + i;
 
@@ -13871,6 +14350,8 @@ void GamePage::createSimplexNoise ()
 
 
 
+
+
 		/*
 		if (mustNotBeFull) {
 			isFull = false;
@@ -13889,32 +14370,27 @@ void GamePage::createSimplexNoise ()
 		}
 		else {*/
 
-			fillState = E_FILL_STATE_PARTIAL;
-			curState = E_STATE_CREATESIMPLEXNOISE_END;
+			//fillState = E_FILL_STATE_PARTIAL;
+			//curState = E_STATE_CREATESIMPLEXNOISE_END;
 		//}
+
+
+		
+
+		fillState = E_FILL_STATE_PARTIAL;
+		curState = E_STATE_CREATESIMPLEXNOISE_END;
+
 
 		threadRunning = false;
 
 	}
-void GamePage::unbindGPUResources ()
-                                  {
-		usingPoolId = -1;
-		curState = E_STATE_CREATESIMPLEXNOISE_END;
-	}
 void GamePage::copyToTexture ()
                              {
 
-		curState = E_STATE_COPYTOTEXTURE_BEG;
-
-
-		if (usingPoolId == -1) {
-			usingPoolId = singleton->requestPoolId(thisPageId);
-			gpuRes = singleton->pagePoolItems[usingPoolId];
-		}
 
 		
 
-		glBindTexture(GL_TEXTURE_3D,gpuRes->volID);
+		glBindTexture(GL_TEXTURE_3D,singleton->volID);
 			glTexSubImage3D(
 				GL_TEXTURE_3D,
 				0,
@@ -13934,7 +14410,7 @@ void GamePage::copyToTexture ()
 			);
 
 		glBindTexture(GL_TEXTURE_3D,0);
-		glBindTexture(GL_TEXTURE_3D,gpuRes->volIDLinear);
+		glBindTexture(GL_TEXTURE_3D,singleton->volIDLinear);
 			glTexSubImage3D(
 				GL_TEXTURE_3D,
 				0,
@@ -13956,194 +14432,313 @@ void GamePage::copyToTexture ()
 
 		
 
-		curState = E_STATE_COPYTOTEXTURE_END;
-
 	}
-void GamePage::addGeom ()
-                       {
-		
+bool GamePage::addGeom (bool justTesting)
+                                       {
+
 		int i;
 		int j;
 		int k;
+		int m;
 		int ind;
-
-		int startX;
-		int endX;
-		int startY;
-		int endY;
-
+		int bufSize = (singleton->visPageSizeInPixels*singleton->bufferMult);
 		int curId;
 		int geomInPage;
 		int baseInd;
 
+		FIVector4 start;
+		FIVector4 end;
+
+		GamePageHolder* gph;
 		GameGeom* gg;
 
 		paramsPerEntry = 18;
-		numEntries = 0;//singleton->gameGeom.size();
+		numEntries = 0;
 
-		startX = ( worldMinBufInPixels.getIX() ) / singleton->geomPageSizeInPixels;
-		startY = ( worldMinBufInPixels.getIY() ) / singleton->geomPageSizeInPixels;
+		start.copyFrom( &worldMinBufInPixels );
+		end.copyFrom( &worldMaxBufInPixels );
 
-		endX = ( worldMaxBufInPixels.getIX() ) / singleton->geomPageSizeInPixels;
-		endY = ( worldMaxBufInPixels.getIY() ) / singleton->geomPageSizeInPixels;
+		start.addXYZ(-bufSize);
+		end.addXYZ(bufSize);
 
+		start.intDivXYZ(singleton->holderSizeInPixels);
+		end.intDivXYZ(singleton->holderSizeInPixels);
 		
-		for (j = startY; j <= endY; j++) {
-			for (i = startX; i <= endX; i++) {
-				ind = j*(singleton->worldSizeInGeomPages.getIX()) + i;
+		start.clampZ( &(singleton->origin), &(singleton->worldSizeInHoldersM1) );
+		end.clampZ( &(singleton->origin), &(singleton->worldSizeInHoldersM1) );
 
 
+		for (k = start.getIZ(); k <= end.getIZ(); k++ ) {
+			for (j = start.getIY(); j <= end.getIY(); j++ ) {
+				for (i = start.getIX(); i <= end.getIX(); i++ ) {
+					gph = singleton->gw->getHolderAtCoords(i,j,k);
 
-				geomInPage = singleton->gw->geomData[ind].containsGeomIds.size();
+					// TODO critical: make sure holders are ready before pages 
 
-				for (k = 0; k < geomInPage; k++) {
-					curId = singleton->gw->geomData[ind].containsGeomIds[k];
-					gg = singleton->gameGeom[curId];
 
-					if (
-						gg->boundsMinInPixels.inBoundsXYZ( &worldMinBufInPixels, &worldMaxBufInPixels ) ||
-						gg->boundsMaxInPixels.inBoundsXYZ( &worldMinBufInPixels, &worldMaxBufInPixels ) ||
-						worldMinBufInPixels.inBoundsXYZ( &(gg->boundsMinInPixels), &(gg->boundsMaxInPixels) ) ||
-						worldMaxBufInPixels.inBoundsXYZ( &(gg->boundsMinInPixels), &(gg->boundsMaxInPixels) )
-					) {
-						
+					if (gph) {
+						geomInPage = gph->containsGeomIds.size();
 
-						baseInd = numEntries*paramsPerEntry;
+						for (m = 0; m < geomInPage; m++) {
+							curId = gph->containsGeomIds[m];
+							gg = singleton->gameGeom[curId];
 
-						singleton->paramArr[baseInd + 0] = gg->boundsMinInPixels.getFX();
-						singleton->paramArr[baseInd + 1] = gg->boundsMinInPixels.getFY();
-						singleton->paramArr[baseInd + 2] = gg->boundsMinInPixels.getFZ();
 
-						singleton->paramArr[baseInd + 3] = gg->boundsMaxInPixels.getFX();
-						singleton->paramArr[baseInd + 4] = gg->boundsMaxInPixels.getFY();
-						singleton->paramArr[baseInd + 5] = gg->boundsMaxInPixels.getFZ();
+							if (
+								true
+								/*
+								gg->boundsMinInPixels.inBoundsXYZ( &worldMinBufInPixels, &worldMaxBufInPixels ) ||
+								gg->boundsMaxInPixels.inBoundsXYZ( &worldMinBufInPixels, &worldMaxBufInPixels ) ||
+								worldMinBufInPixels.inBoundsXYZ( &(gg->boundsMinInPixels), &(gg->boundsMaxInPixels) ) ||
+								worldMaxBufInPixels.inBoundsXYZ( &(gg->boundsMinInPixels), &(gg->boundsMaxInPixels) )
+								*/
+							) {
+								
+								if (justTesting) {
+									return true;
+								}
 
-						singleton->paramArr[baseInd + 6] = gg->originInPixels.getFX();
-						singleton->paramArr[baseInd + 7] = gg->originInPixels.getFY();
-						singleton->paramArr[baseInd + 8] = gg->originInPixels.getFZ();
+								baseInd = numEntries*paramsPerEntry;
 
-						singleton->paramArr[baseInd + 9] = gg->powerVals.getFX();
-						singleton->paramArr[baseInd + 10] = gg->powerVals.getFY();
-						singleton->paramArr[baseInd + 11] = gg->powerVals.getFZ();
+								singleton->paramArr[baseInd + 0] = gg->boundsMinInPixels.getFX();
+								singleton->paramArr[baseInd + 1] = gg->boundsMinInPixels.getFY();
+								singleton->paramArr[baseInd + 2] = gg->boundsMinInPixels.getFZ();
 
-						singleton->paramArr[baseInd + 12] = gg->coefficients.getFX();
-						singleton->paramArr[baseInd + 13] = gg->coefficients.getFY();
-						singleton->paramArr[baseInd + 14] = gg->coefficients.getFZ();
+								singleton->paramArr[baseInd + 3] = gg->boundsMaxInPixels.getFX();
+								singleton->paramArr[baseInd + 4] = gg->boundsMaxInPixels.getFY();
+								singleton->paramArr[baseInd + 5] = gg->boundsMaxInPixels.getFZ();
 
-						singleton->paramArr[baseInd + 15] = gg->minMaxMat.getFX();
-						singleton->paramArr[baseInd + 16] = gg->minMaxMat.getFY();
-						singleton->paramArr[baseInd + 17] = gg->minMaxMat.getFZ();
+								singleton->paramArr[baseInd + 6] = gg->originInPixels.getFX();
+								singleton->paramArr[baseInd + 7] = gg->originInPixels.getFY();
+								singleton->paramArr[baseInd + 8] = gg->originInPixels.getFZ();
 
-						numEntries++;
+								singleton->paramArr[baseInd + 9] = gg->powerVals.getFX();
+								singleton->paramArr[baseInd + 10] = gg->powerVals.getFY();
+								singleton->paramArr[baseInd + 11] = gg->powerVals.getFZ();
 
+								singleton->paramArr[baseInd + 12] = gg->coefficients.getFX();
+								singleton->paramArr[baseInd + 13] = gg->coefficients.getFY();
+								singleton->paramArr[baseInd + 14] = gg->coefficients.getFZ();
+
+								singleton->paramArr[baseInd + 15] = gg->minMaxMat.getFX();
+								singleton->paramArr[baseInd + 16] = gg->minMaxMat.getFY();
+								singleton->paramArr[baseInd + 17] = gg->minMaxMat.getFZ();
+
+								numEntries++;
+
+							}
+
+						}
 					}
+
+					
 
 				}
 			}
 		}
-
 
 		if (numEntries > maxEntries) {
 			numEntries = maxEntries;
 			doTrace("limit exceeded");
 		}
 
-
-
 		totParams = numEntries*paramsPerEntry;
 
+		return false;
 
 
 	}
 void GamePage::generateVolume ()
                               {
 
+
 		int i;
-		
+		isRendering = true;
 		
 		curState = E_STATE_GENERATEVOLUME_BEG;
 		
+		copyToTexture();
+
+
 		
-		if (usingPoolId == -1) {
+		if (parentGPH->usingPoolId == -1) {
+
+
+			parentGPH->usingPoolId = singleton->requestPoolId(parentGPH->thisHolderId);
+			parentGPH->gpuRes = singleton->holderPoolItems[parentGPH->usingPoolId];
+			
+			// clear fbo by binding it with auto flag
+			singleton->bindFBODirect(parentGPH->gpuRes->fboSet);
+			singleton->unbindFBO();
 
 		}
+		
+
+
+
+
+		addGeom(false);
+
+		// TODO: one shader, set flag
+
+		if (singleton->isBare) {
+			singleton->bindShader("GenerateVolumeBare");
+		}
 		else {
+			singleton->bindShader("GenerateVolume");
+		}
+		
 
 
-			addGeom();
+		singleton->bindFBO("volGenFBO");
+		singleton->setShaderTexture3D(0,singleton->volID);
+		singleton->setShaderTexture3D(1,singleton->volIDLinear);
+		singleton->sampleFBO("hmFBOLinear",2);
 
-			// TODO: one shader, set flag
+		singleton->setShaderfVec4("mapFreqs", &(singleton->mapFreqs) );
+		singleton->setShaderfVec4("mapAmps", &(singleton->mapAmps) );
 
-			if (singleton->isBare) {
-				singleton->bindShader("GenerateVolumeBare");
-			}
-			else {
-				singleton->bindShader("GenerateVolume");
-			}
+		singleton->setShaderFloat("slicesPerPitch", (float)( singleton->slicesPerPitch ));
+		singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
+		singleton->setShaderFloat("bufferedPageSizeInUnits", bufferedPageSizeInUnits);
+		singleton->setShaderFloat("threshVal", (float)threshVal);
+		singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
+		singleton->setShaderFloat("paramsPerEntry", (float)(paramsPerEntry/3) );
+		singleton->setShaderFloat("numEntries", (float)numEntries);
+		singleton->setShaderfVec3("worldSizeInPixels", &(singleton->maxBoundsInPixels));
+		singleton->setShaderfVec3("worldMinVisInPixels", &(worldMinVisInPixels));
+		singleton->setShaderfVec3("worldMaxVisInPixels", &(worldMaxVisInPixels));
+		singleton->setShaderfVec3("worldMinBufInPixels", &(worldMinBufInPixels));
+		singleton->setShaderfVec3("worldMaxBufInPixels", &(worldMaxBufInPixels));
+		singleton->setShaderArrayfVec3("paramArr", singleton->paramArr, totParams/3);
+
+		singleton->drawFSQuad(1.0f);
 
 
 
-			
+		singleton->unsampleFBO("hmFBOLinear",2);
+		singleton->setShaderTexture3D(1, 0);
+		singleton->setShaderTexture3D(0, 0);
+		singleton->unbindFBO();
+		singleton->unbindShader();
 
 
-			singleton->bindFBO("volGenFBO");
-			singleton->setShaderTexture3D(0,gpuRes->volID);
-			singleton->setShaderTexture3D(1,gpuRes->volIDLinear);
-			singleton->setShaderTexture(2,singleton->lookup2to3ID);
-			//singleton->setShaderTexture(3,singleton->imageTerrainHM->tid);
-			singleton->sampleFBO("hmFBO",3);
+		if (parentGPH->gpuRes != NULL) {
 
-			singleton->setShaderFloat("bufferedPageSizeInUnits", bufferedPageSizeInUnits);
-			singleton->setShaderFloat("threshVal", (float)threshVal);
 
-			singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
-			singleton->setShaderfVec3("worldMinVisInPixels", &(worldMinVisInPixels));
-			singleton->setShaderfVec3("worldMaxVisInPixels", &(worldMaxVisInPixels));
-			singleton->setShaderfVec3("worldMinBufInPixels", &(worldMinBufInPixels));
-			singleton->setShaderfVec3("worldMaxBufInPixels", &(worldMaxBufInPixels));
-
-			singleton->setShaderFloat("paramsPerEntry", (float)(paramsPerEntry/3) );
-			singleton->setShaderFloat("numEntries", (float)numEntries);
-			singleton->setShaderArrayfVec3("paramArr", singleton->paramArr, totParams/3);
-
-			singleton->drawFSQuad(1.0f);
-
-			singleton->unsampleFBO("hmFBO",3);
-			//singleton->setShaderTexture(3, 0);
-			singleton->setShaderTexture(2, 0);
-			singleton->setShaderTexture3D(1, 0);
-			singleton->setShaderTexture3D(0, 0);
-			
-			
-			
-
-			singleton->unbindFBO();
-			singleton->unbindShader();
+			getCoords();
 
 			//ray trace new texture, generate normals, AO, depth, etc
+			
+			glEnable(GL_DEPTH_TEST);
 			singleton->bindShader("RenderVolume");
-			singleton->bindFBODirect(gpuRes->fboSet);
+			singleton->bindFBODirect(parentGPH->gpuRes->fboSet, 0);
 			singleton->sampleFBO("volGenFBO");
-			glClearColor(0.0f,0.0f,0.0f,0.0f);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			//glClearColor(0.0f,0.0f,0.0f,0.0f);
+			//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+
+			singleton->setShaderFloat("pageDepth", (float)( pageDepth ));
+			singleton->setShaderFloat("slicesPerPitch", (float)( singleton->slicesPerPitch ));
+
+			//singleton->setShaderfVec3("offsetInPagesLocal", &(offsetInPagesLocal));
+
+			singleton->setShaderFloat("slicesPerPitch", (float)( singleton->slicesPerPitch ));
 			singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
+			singleton->setShaderFloat("visPageSizeInPixels", (float)(singleton->visPageSizeInPixels));
 			singleton->setShaderfVec3("worldMinVisInPixels", &(worldMinVisInPixels));
 			singleton->setShaderfVec3("worldMaxVisInPixels", &(worldMaxVisInPixels));
 			singleton->setShaderfVec3("worldMinBufInPixels", &(worldMinBufInPixels));
 			singleton->setShaderfVec3("worldMaxBufInPixels", &(worldMaxBufInPixels));
-
-
-			
-			
+			singleton->setShaderfVec4("scaleAndOffset", &scaleAndOffset);
 
 			glCallList(singleton->volTris);
+
+
 			singleton->unsampleFBO("volGenFBO");
 			singleton->unbindFBO();
 			singleton->unbindShader();
+
+			glDisable(GL_DEPTH_TEST);
 		}
 
+		
+		
+
+
+		isRendering = false;
+
 		curState = E_STATE_GENERATEVOLUME_END;
+	}
+void GamePage::getCoords ()
+                         {
+
+
+
+		int dx = offsetInPagesLocal.getIX();
+		int dy = offsetInPagesLocal.getIY();
+		int dz = offsetInPagesLocal.getIZ();
+
+		float pitchSrc = (float)((singleton->visPageSizeInPixels*2));
+		float pitchSrc2 = (float)((singleton->visPageSizeInPixels*2)/2);
+
+		float dxmod = dx*pitchSrc2;
+		float dymod = dy*pitchSrc2;
+		float dzmod = dz*pitchSrc2;
+
+
+		float fx1 = (dxmod-dymod) - pitchSrc2;
+		float fy1 = (-(dxmod/2.0f) + -(dymod/2.0f) + dzmod) - pitchSrc2;
+		float fx2 = fx1 + pitchSrc;
+		float fy2 = fy1 + pitchSrc;
+
+		float sx = singleton->holderSizeInPixels;
+		float sy = singleton->holderSizeInPixels;
+
+
+		fx1 = fx1/sx;
+		fy1 = fy1/sy;
+		fx2 = fx2/sx;
+		fy2 = fy2/sy;
+
+		scaleAndOffset.setFXYZW(
+			(fx2 - fx1)/2.0,
+			(fy2 - fy1)/2.0,
+			(fx1 + fx2)/2.0f,
+			(fy1 + fy2)/2.0f
+			
+		);
+
+		
+
+		/*
+	    singleton->sampleFBODirect(parentGPH->gpuRes->fboSet);
+
+
+	    glColor4f(1, 1, 1, 1);
+	    glBegin(GL_QUADS);
+	    glNormal3f(0, 0, 1);
+	    
+	    
+	    glTexCoord2f(0.0f, 0.0f);
+	    glVertex3f(fx1,fy1,0.0f);
+	    
+	    glTexCoord2f(1.0f, 0.0f);
+	    glVertex3f(fx2,fy1,0.0f);
+	    
+	    glTexCoord2f(1.0f, 1.0f);
+	    glVertex3f(fx2,fy2,0.0f);
+	    
+	    glTexCoord2f(0.0f, 1.0f);
+	    glVertex3f(fx1,fy2,0.0f);
+	    
+	    glEnd();
+
+	    singleton->unsampleFBODirect(gp->gpuRes->fboSet);
+	    */
+
+
+
 	}
 GamePage::~ GamePage ()
                     {
@@ -14169,6 +14764,74 @@ void GamePage::run ()
 	}
 #undef LZZ_INLINE
  
+// f00351_gamepageholder.h
+//
+
+#include "f00351_gamepageholder.e"
+#define LZZ_INLINE inline
+GamePageHolder::GamePageHolder ()
+                         {
+		usingPoolId = -1;
+	}
+void GamePageHolder::init (Singleton * _singleton, int _thisHolderId, int trueX, int trueY, int trueZ, int clampedX, int clampedY, int clampedZ)
+          {
+
+		pushTrace("GamePageHolder init()");
+
+		int i;
+
+		singleton = _singleton;
+		thisHolderId = _thisHolderId;
+		usingPoolId = -1;
+
+		trueOffsetInHolders.setIXYZ(trueX,trueY,trueZ);
+		offsetInHolders.setIXYZ(clampedX,clampedY,clampedZ);
+
+		
+
+		holderSizeInPages = singleton->holderSizeInPages;
+		iPageDataVolume = holderSizeInPages*holderSizeInPages*holderSizeInPages;
+		pageData = new GamePage*[iPageDataVolume];
+
+		for (i = 0; i < iPageDataVolume; i++) {
+			pageData[i] = NULL;
+		}
+
+
+
+		popTrace();
+
+	}
+void GamePageHolder::unbindGPUResources ()
+                                  {
+		//pushTraceND("unbindGPUResources");
+
+		usingPoolId = -1;
+		gpuRes = NULL;
+
+		singleton->gw->threadpool.joinAll();
+
+		int i;
+		for (i = 0; i < iPageDataVolume; i++) {
+			if (pageData[i] == NULL) {
+
+			}
+			else {
+				if (pageData[i]->curState >= E_STATE_GENERATEVOLUME_LAUNCH) {
+					pageData[i]->curState = E_STATE_CREATESIMPLEXNOISE_END;
+					pageData[i]->nextState = E_STATE_WAIT;
+				}
+			}
+		}
+
+
+		// TODO: clear color/depth buffers on release
+
+		//popTraceND();
+
+	}
+#undef LZZ_INLINE
+ 
 // f00380_gameworld.h
 //
 
@@ -14187,18 +14850,14 @@ GameWorld::GameWorld ()
 void GameWorld::init (Singleton * _singleton)
                                          {
 
-		#ifdef DEBUG_MODE
-		pushTrace("GameWorld init");
-		#endif
+		pushTrace("GameWorld init()");
+
 
 		int i;
 		int j;
 
 		mapSwapFlag = 0;
-
 		mapStep = 0.0f;
-
-		updatePoolOrder = false;
 
 		pageCount = 0;
 		lastProcResult = true;
@@ -14223,115 +14882,367 @@ void GameWorld::init (Singleton * _singleton)
 		renderMethod = (int)E_RENDER_VOL;
 		singleton = _singleton;
 		worldSizeInPages.copyFrom( &(singleton->worldSizeInPages) );
-		worldSizeInGeomPages.copyFrom( &(singleton->worldSizeInGeomPages) );
+		worldSizeInHolders.copyFrom( &(singleton->worldSizeInHolders) );
 
 		visPageSizeInPixels = singleton->visPageSizeInPixels;
 
 	    diagrams[E_RENDER_VOL][E_STATE_INIT_END] = E_STATE_CREATESIMPLEXNOISE_LAUNCH;
-		diagrams[E_RENDER_VOL][E_STATE_CREATESIMPLEXNOISE_END] = E_STATE_COPYTOTEXTURE_LAUNCH;
-	    diagrams[E_RENDER_VOL][E_STATE_COPYTOTEXTURE_END] = E_STATE_GENERATEVOLUME_LAUNCH;
+		diagrams[E_RENDER_VOL][E_STATE_CREATESIMPLEXNOISE_END] = E_STATE_GENERATEVOLUME_LAUNCH;//E_STATE_COPYTOTEXTURE_LAUNCH;
+	    //diagrams[E_RENDER_VOL][E_STATE_COPYTOTEXTURE_END] = E_STATE_GENERATEVOLUME_LAUNCH;
 	    diagrams[E_RENDER_VOL][E_STATE_GENERATEVOLUME_END] = E_STATE_LENGTH;
 
 		curDiagram = diagrams[renderMethod];
 
+		holderSizeInPages = singleton->holderSizeInPages;
 		visPageSizeInUnits = singleton->visPageSizeInUnits;
 
 		iVolumeSize = worldSizeInPages.getIX()*worldSizeInPages.getIY()*worldSizeInPages.getIZ();
-		iGeomVolumeSize = worldSizeInGeomPages.getIX()*worldSizeInGeomPages.getIY();
-		
-	    worldData = new GamePage*[iVolumeSize];
-	    geomData = new GeomPage[iGeomVolumeSize];
-	      
+		iHolderSize = worldSizeInHolders.getIX()*worldSizeInHolders.getIY()*worldSizeInHolders.getIZ();
 
-		
-		for (i = 0; i < iVolumeSize; i++) {
-			worldData[i] = NULL;
+
+		holderData = new GamePageHolder*[iHolderSize];
+		for (i = 0; i < iHolderSize; i++) {
+			holderData[i] = NULL;
 		}
-
-		for (i = 0; i < iGeomVolumeSize; i++) {
-			//geomData[i] = NULL;
-		}
-
 	    
-	    #ifdef DEBUG_MODE
+
+
 	    popTrace();
-	    #endif
 	}
-bool GameWorld::checkBounds (int i, int j, int k)
-                                              {
+int GameWorld::wrapCoord (int val, int mv)
+                                       {
+		while (val < 0) {
+			val += mv;
+		}
+		while (val >= mv) {
+			val -= mv;
+		}
+
+		//val = val % max;
+
+		return val;
+	}
+GamePageHolder * GameWorld::getHolderAtCoords (int x, int y, int z, bool createOnNull)
+                                                                                          {
+		
+
+		int newX = wrapCoord(x,worldSizeInHolders.getIX());
+		int newY = wrapCoord(y,worldSizeInHolders.getIY());
+		int newZ = z;
+
+		int ind =
+			newZ*worldSizeInHolders.getIX()*worldSizeInHolders.getIY() +
+			newY*worldSizeInHolders.getIX() +
+			newX;
+
+		if (holderData[ind]) {
+
+		}
+		else {
+			if (createOnNull) {
+				holderData[ind] = new GamePageHolder();
+				holderData[ind]->init(singleton, ind, x, y, z, x, y, z);
+			}
+		}
+
+		return holderData[ind];
+		
+	}
+GamePageHolder * GameWorld::getHolderAtIndex (int ind)
+                                                  {
+		
+
+		return holderData[ind];
+
+	}
+GamePage * GameWorld::getPageAtIndex (int ind)
+                                          {
+		//pushTrace("getPageAtIndex()");
+
+		int newInd = ind;
+		int x, y, z;
+		GamePage* gp;
+
+		z = newInd / (worldSizeInPages.getIX()*worldSizeInPages.getIY());
+		newInd -= z*(worldSizeInPages.getIX()*worldSizeInPages.getIY());
+
+		y = newInd / (worldSizeInPages.getIX());
+		newInd -= y*(worldSizeInPages.getIX());
+
+		x = newInd;
+
+		gp = getPageAtCoords(x,y,z,false);
+
+		//popTrace();
+
+		return gp;
+		
+	}
+GamePage * GameWorld::getPageAtCoords (int x, int y, int z, bool createOnNull)
+                                                                                  {
+		//pushTrace("getPageAtCoords()");
+		int hx, hy, hz;
+		int px, py, pz;
+		int gpInd;
+		int xmod = 0;
+		int ymod = 0;
+		int newX = wrapCoord(x,worldSizeInPages.getIX());
+		int newY = wrapCoord(y,worldSizeInPages.getIY());
+		int newZ = z;
+		int ind = 
+			newZ*worldSizeInPages.getIX()*worldSizeInPages.getIY() +
+			newY*worldSizeInPages.getIX() +
+			newX;
+
+		GamePage* gp = NULL;
+
+		px = newX%holderSizeInPages;
+		py = newY%holderSizeInPages;
+		pz = newZ%holderSizeInPages;
+
+		
+
+
+		if (x < 0) {
+			if (x%holderSizeInPages == 0) {
+
+			}
+			else {
+				xmod = -1;
+			}
+			
+		}
+		if (y < 0) {
+			if (y%holderSizeInPages == 0) {
+
+			}
+			else {
+				ymod = -1;
+			}
+		}
+		
+
+
+		GamePageHolder* gph = getHolderAtCoords(
+			(x)/holderSizeInPages + xmod,
+			(y)/holderSizeInPages + ymod,
+			z/holderSizeInPages,
+			createOnNull
+		);
+		
+
+		if ( gph ) {
+
+
+			
+			gpInd = pz*holderSizeInPages*holderSizeInPages + py*holderSizeInPages + px;
+			//gph->getPageIndex(px,py,pz);
+
+			if (gpInd == -1) {
+				// prob
+				cout << "Invalid holder index\n";
+			}
+			else {
+				gp = gph->pageData[gpInd];
+
+				if (gp) {
+
+				}
+				else {
+					if (createOnNull) {
+
+
+						//cout << "x: " << x << " y: " << y << " newX: " << newX << " newY: " << newY << " px: " << px << " py: " << py << "\n";
+
+						gph->pageData[gpInd] = new GamePage();
+						gp = gph->pageData[gpInd];
+						gp->init(
+							singleton,
+							gph,
+							ind,
+							x, y, z,//newX, newY, newZ,
+							px, py, pz
+						);
+					}
+				}
+			}
+
+		}
+		else {
+			
+		}
+
+		//popTrace();
+		return gp;
+
+	}
+bool GameWorld::checkBounds (int k)
+                                { //int i, int j, int k) {
+		//pushTrace("checkBounds()");
 		
 		bool res = true;
 
-		if (i < 0) {res = false;}
-		if (j < 0) {res = false;}
+		//if (i < 0) {res = false;}
+		//if (j < 0) {res = false;}
 		if (k < 0) {res = false;}
-		if (i >= worldSizeInPages.getIX()) {res = false;}
-		if (j >= worldSizeInPages.getIY()) {res = false;}
+		//if (i >= worldSizeInPages.getIX()) {res = false;}
+		//if (j >= worldSizeInPages.getIY()) {res = false;}
 		if (k >= worldSizeInPages.getIZ()) {res = false;}
 
+		//popTrace();
 		return res;
+		
 	}
 void GameWorld::resetToState (E_STATES resState)
                                              {
+		pushTrace("resetToState()");
+
 		int i;
+		int j;
 
 		threadpool.joinAll();
 
-		for (i = 0; i < iVolumeSize; i++) {
-			if (worldData[i]) {
-				if( worldData[i]->curState > resState) {
+		GamePage* curPage;
 
-					if (worldData[i]->fillState == E_FILL_STATE_PARTIAL) {
-						worldData[i]->curState = resState;
+		for (i = 0; i < iHolderSize; i++) {
+			if (holderData[i]) {
+
+				for (j = 0; j < singleton->holderSizeInPages; j++) {
+					curPage = holderData[i]->pageData[j];
+
+					if (curPage) {
+						if (curPage->curState > resState) {
+
+							if (curPage->fillState == E_FILL_STATE_PARTIAL) {
+								curPage->curState = resState;
+							}
+
+						}
 					}
-
-					
 				}
+
+				
 			}
 		}
+		popTrace();
 	}
-void GameWorld::update ()
-                      {
+void GameWorld::update2 ()
+                       {
+		pushTrace("update2()");
 
 		glClearColor(0.6,0.6,0.7,0.0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		/*
 		if (singleton->mapInvalid) {
-			
 			initMap();
-			
 		}
 
-		drawMap();
-		/*
-		singleton->bindShader("TopoShader");
-		singleton->sampleFBO("palFBO", 0);
-		singleton->sampleFBO("hmFBO",1);
-		singleton->setShaderFloat("curTime", singleton->curTime);
-		singleton->drawFSQuad(1.0f);
-		singleton->unsampleFBO("hmFBO",1);
-		singleton->unsampleFBO("palFBO",0);
-		singleton->unbindShader();
+		
+		if (singleton->showMap) {
+			drawMap();
+		}
 		*/
+		
 
+		//singleton->drawFBO("simplexFBO", 0, 1.0);
 
-
-
+		/*
+		glBindTexture(GL_TEXTURE_2D, singleton->lookup2to3ID);
+		singleton->drawFSQuadOffset(0.0,0.0,1.0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		*/
 		glutSwapBuffers();
 		glFlush();
-		
+
+
+		popTrace();
 	}
-void GameWorld::update2 ()
-                       {
+void GameWorld::addGeom (GameGeom * geom)
+                                     {
+		
+		int i;
+		int j;
+		int k;
+		int ind;
+		int bufSize = (visPageSizeInPixels*singleton->bufferMult);
+		GamePageHolder* gph;
+		FIVector4 start;
+		FIVector4 end;
+
+		start.copyFrom( &(geom->boundsMinInPixels) );
+		end.copyFrom( &(geom->boundsMaxInPixels) );
+
+		start.addXYZ(-bufSize);
+		end.addXYZ(bufSize);
+
+		start.intDivXYZ(singleton->holderSizeInPixels);
+		end.intDivXYZ(singleton->holderSizeInPixels);
+
+		start.clampZ(&(singleton->origin),&(singleton->worldSizeInHoldersM1));
+		end.clampZ(&(singleton->origin),&(singleton->worldSizeInHoldersM1));
+
+
+		for (k = start.getIZ(); k <= end.getIZ(); k++ ) {
+			for (j = start.getIY(); j <= end.getIY(); j++ ) {
+				for (i = start.getIX(); i <= end.getIX(); i++ ) {
+					gph = getHolderAtCoords(i,j,k,true);
+					gph->containsGeomIds.push_back(geom->id);
+				}
+			}
+		}
+
+		
+
+	}
+void GameWorld::update ()
+                      {
+
+		pushTrace("update()");
+
+		int i;
+
+		float x;
+		float y;
+		float z;
+
+		doTraceVecND("MAX BOUNDS IN PIX ",&singleton->maxBoundsInPixels);
+
+
+		if (singleton->mapInvalid) {
+			initMap();
+
+			for (i = 0; i < 512; i++) {
+				gameGeom.push_back(new GameGeom());
+				
+				x = fGenRand()*8192.0f*8.0f;
+				y = fGenRand()*8192.0f*8.0f;
+				z = singleton->getHeightAtPixelPos(x,y);
+
+				cout << "x: " << x << " y: " << y << " z: " << z << "\n";
+
+				gameGeom.back()->initRand(i,x,y,z);
+
+
+				//addGeom(gameGeom.back());
+			}
+
+
+			popTrace();
+			return;
+		}
+
+
+		doTraceND("yo");
 
 		bool changesMade = singleton->changesMade;
 		bool bufferInvalid = singleton->bufferInvalid;
 
 		bool procResult;
-		bool doRenderGeom = false;
+		bool doRenderGeom = true;
 
 
-		if (singleton->isZooming || singleton->isPanning ) {
+		if (singleton->isZooming || singleton->isPanning ) { //(false) { //
 			
 		}
 		else {
@@ -14339,8 +15250,6 @@ void GameWorld::update2 ()
 			
 			if ( (lastProcResult != procResult) && (procResult == false)  ) {
 				singleton->wsBufferInvalid = true;
-
-				updatePoolOrder = true;
 
 			}
 		}
@@ -14385,8 +15294,15 @@ void GameWorld::update2 ()
 			glClearColor(0.6,0.6,0.7,0.0);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			postProcess();
 			
+			
+			
+
+			postProcess();
+
+			
+
+
 			glutSwapBuffers();
 			glFlush();
 			
@@ -14403,20 +15319,18 @@ void GameWorld::update2 ()
 
 
 		lastProcResult = procResult;
+		popTrace();
 	}
 bool GameWorld::processPages ()
                             {
 
+		pushTrace("processPages()");
 
 		
 		int counter;
 		int i, j, k;
 		int res;
-		int ind;
-
-		int iw = worldSizeInPages.getIX();
-	    int jw = worldSizeInPages.getIY();
-	    int kw = worldSizeInPages.getIZ();
+		
 
 	    int ii;
 	    int jj;
@@ -14424,25 +15338,30 @@ bool GameWorld::processPages ()
 
 	    bool cmade = false;
 
-
+	    float heightAtPoint = singleton->getHeightAtPixelPos(singleton->cameraPos.getFX(), singleton->cameraPos.getFY());
 
 
 	    camPagePos.copyFrom( &(singleton->cameraPos) );
+	    //camPagePos.setFZ(heightAtPoint);
 		camPagePos.intDivXYZ(visPageSizeInPixels);
 
-	    int curInd = 0;
+		camHolderPos.copyFrom(&camPagePos);
+		camHolderPos.intDivXYZ(singleton->holderSizeInPages);
+
 		
+	    GamePage* curPage;
 
 	    int m;
 	    E_STATES nState;
 
 	    int loadRad = singleton->maxW;
+	    int loadRad2 = singleton->maxH;
 
 	    int changeCount = 0;
 	    int maxChanges = 32;
 
 	    if (singleton->lbDown || singleton->rbDown) {
-	    	loadRad = 1;
+	    	//loadRad = 1;
 	    	//return false;
 	    }
 	    
@@ -14455,14 +15374,14 @@ bool GameWorld::processPages ()
 	    			// already freed
 	    		}
 	    		else{
-	    			if ( worldData[ocThreads[i]] == NULL ) {
+	    			if ( getPageAtIndex(ocThreads[i]) == NULL ) {
 	    				// page was destroyed, free thread
 
 	    				ocThreads[i] = -1;
 	    				availThreads++;
 	    			}
 	    			else {
-	    				if (worldData[ocThreads[i]]->threadRunning) {
+	    				if (getPageAtIndex(ocThreads[i])->threadRunning) {
 
 	    				}
 	    				else {
@@ -14475,13 +15394,21 @@ bool GameWorld::processPages ()
 	    }
 
 	    if (availThreads == 0) {
+	    	popTrace();
 	    	return false;
 	    }
 
+	    minLRInPixels.copyFrom(&camPagePos);
+	    maxLRInPixels.copyFrom(&camPagePos);
+	    minLRInPixels.addXYZ(-loadRad,-loadRad,-loadRad2);
+	    maxLRInPixels.addXYZ(loadRad,loadRad,loadRad2);
+	    minLRInPixels.multXYZ(singleton->visPageSizeInPixels);
+	    maxLRInPixels.multXYZ(singleton->visPageSizeInPixels);
 
-		for (k = 0; k < singleton->maxH; k++) {
-	    //for (k = -loadRad; k <= loadRad; k++) {
-	    	kk = k;//+camPagePos.getIZ();
+
+		//for (k = 0; k < singleton->maxH; k++) {
+	    for (k = -loadRad2; k <= loadRad2; k++) {
+	    	kk = k+camPagePos.getIZ();
 
 			for (j = -(loadRad); j <= (loadRad); j++) {
 				jj = j+camPagePos.getIY();
@@ -14492,25 +15419,20 @@ bool GameWorld::processPages ()
 					
 					
 
-					if ( checkBounds(ii,jj,kk) ) {
-
-
-
-						ind = kk*jw*iw + jj*iw + ii;
-
-						curPos.setIXYZ(ii*visPageSizeInUnits,jj*visPageSizeInUnits,kk*visPageSizeInUnits);
+					if ( checkBounds(kk) ) {
 
 						
+						curPage = getPageAtCoords(ii, jj, kk);
 
+						if (curPage == NULL) {
 
-						if (worldData[ind] == NULL) {
-
-							#ifdef DEBUG_MODE
+							
 							doTrace("E_STATE_INIT_LAUNCH");
-							#endif
+							
 
-							worldData[ind] = new GamePage();
-							worldData[ind]->init(singleton, ind, &curPos);
+							curPage = getPageAtCoords(ii, jj, kk, true);
+
+							doTrace("E_STATE_INIT_LAUNCH_END");
 
 							pageCount++;
 							changeCount++;
@@ -14519,37 +15441,17 @@ bool GameWorld::processPages ()
 						}
 						else {
 
-							
-							/*
 
-							if (worldData[ind]->curState == E_STATE_CREATESIMPLEXNOISE_END_NOT_PARTIAL) {
-								availThreads++;
-								if (availThreads > maxThreads) {
-									availThreads = maxThreads;
-								}
-								worldData[ind]->curState = E_STATE_LENGTH;
-							}
 
-							if (worldData[ind]->curState == E_STATE_CREATESIMPLEXNOISE_END_PARTIAL) {
-								availThreads++;
-								if (availThreads > maxThreads) {
-									availThreads = maxThreads;
-								}
-								worldData[ind]->curState = E_STATE_CREATESIMPLEXNOISE_END;
-								
-							}
-
-							*/
-
-							nState = (E_STATES)curDiagram[worldData[ind]->curState];
+							nState = (E_STATES)curDiagram[curPage->curState];
 
 
 							switch(nState) {
 	                            case E_STATE_CREATESIMPLEXNOISE_LAUNCH:
 
-	                            	#ifdef DEBUG_MODE
+	                            	
 	                            	doTrace("E_STATE_CREATESIMPLEXNOISE_LAUNCH");
-	                            	#endif
+	                            	
 
 	                            	
 
@@ -14570,14 +15472,14 @@ bool GameWorld::processPages ()
 	                            		else {
 
 
-	                            			ocThreads[counter] = ind;
+	                            			ocThreads[counter] = curPage->thisPageId;
 	                            			
 	                            			availThreads--;
 
-	                            			worldData[ind]->nextState = nState;
+	                            			curPage->nextState = nState;
 
 	                            			try {
-	                            				threadpool.start(*worldData[ind]);
+	                            				threadpool.start(*curPage);
 	                            			}
 	                            			catch (SystemException & exc) {
 	                            				doTrace("MEM EXCEPTION");
@@ -14591,46 +15493,32 @@ bool GameWorld::processPages ()
 	                            		
 	                            	}
 	                            	else {
+
+	                            		popTrace();
 	                            		return cmade;
 	                            	}
 	                            	
 
-	                            	//worldData[ind]->run();
+	                            	//curPage->run();
 									
 									
-								break;
-								case E_STATE_COPYTOTEXTURE_LAUNCH:
-
-									
-
-									#ifdef DEBUG_MODE
-									doTrace("E_STATE_COPYTOTEXTURE_LAUNCH");
-									#endif
-
-									
-									worldData[ind]->nextState = nState;
-									worldData[ind]->copyToTexture();
-									cmade = true;
-									
-									changeCount++;
-
-									//return cmade;
 								break;
 
 
 								case E_STATE_GENERATEVOLUME_LAUNCH:
 
-									#ifdef DEBUG_MODE
-									doTrace("E_STATE_GENERATE_VOLUME_LAUNCH");
-									#endif
+									
+									doTrace("E_STATE_GENERATEVOLUME_LAUNCH");
+									
 
 									
-									worldData[ind]->nextState = nState;
-									worldData[ind]->generateVolume();
+									curPage->nextState = nState;
+									curPage->generateVolume();
 									cmade = true;
 
 									changeCount++;
 									
+									//popTrace();
 									//return cmade;
 								break;
 
@@ -14649,6 +15537,7 @@ bool GameWorld::processPages ()
 							}
 
 							if (changeCount >= maxChanges) {
+								popTrace();
 								return cmade;
 							}
 							
@@ -14656,146 +15545,82 @@ bool GameWorld::processPages ()
 
 					}
 
-					curInd++;
+					
 				}
 			}
 		}
 
 
 
+		popTrace();
 		
 		return cmade;
 	}
 void GameWorld::renderPages ()
                            {
 
-		int i, j, k;
+		pushTrace("renderPages()");
+
+		int i, j, k, m;
 		int res;
-		int ind;
+		int drawnPageCount = 0;
+		int skippedPages = 0;
+		int cid;
+		int ppSize = singleton->orderedIds.size();
 
-		int iw = worldSizeInPages.getIX();
-	    int jw = worldSizeInPages.getIY();
-	    int kw = worldSizeInPages.getIZ();
+		singleton->bindShader("BlitShader");
+		singleton->bindFBO("pagesFBO");
 
-	    int ii;
-	    int jj;
-	    int kk;
+	    GamePageHolder* gp;
 
-	    int loadRad = 8;
+	    for (i = 0; i < ppSize; i++) {
+	    	cid = singleton->orderedIds[i];
 
-	    camPagePos.copyFrom( &(singleton->cameraPos) );
-	    camPagePos.intDivXYZ(visPageSizeInPixels);
+	    	if (cid == -1) {
 
-	    int curInd = 0;
-		
+	    	}
+	    	else {
+	    		gp = getHolderAtIndex(cid);
 
-	    int m;
+	    		if (gp == NULL) {
 
-	    int drawnPageCount = 0;
-	    int skippedPages = 0;
+	    		}
+	    		else {
 
+	    			//if (gp->isRendering) {
 
-	    singleton->bindShader("BlitShader");
-	    singleton->bindFBO("pagesFBO");
+	    			//}
+	    			//else {
+	    				drawHolder(gp);
+	    			//}
 
-
-
-		for (k = 0; k < singleton->maxH; k++) {
-			kk = k;//+camPagePos.getIZ();
-		//for (k = -loadRad; k <= loadRad; k++) {
-			//kk = k+camPagePos.getIZ();
-
-
-			for (j = -loadRad; j <= loadRad; j++) {
-				jj = j+camPagePos.getIY();
-
-				for (i = -loadRad; i <= loadRad; i++) {
-					ii = i+camPagePos.getIX();
-
-					
-					
-
-					
-
-					
-
-					if ( checkBounds(ii,jj,kk) ) {
+	    			
 
 
+	    		}
+	    	}
+	    	
+	    }
 
-						ind = kk*jw*iw + jj*iw + ii;
-
-						if (worldData[ind] == NULL) {
-
-						}
-						else {
-
-							if (
-								(worldData[ind]->fillState == E_FILL_STATE_PARTIAL)
-								
-							) {
-								switch(curDiagram[worldData[ind]->curState]) {
-									case E_STATE_LENGTH:
-
-										if (worldData[ind]->usingPoolId == -1) {
-											skippedPages++;
-										}
-										else {
-											if (updatePoolOrder) {
-												singleton->sendPoolIdToFront(worldData[ind]->usingPoolId);
-											}
-											drawPage(worldData[ind], ii, jj, kk);
-											drawnPageCount++;
-
-											if (drawnPageCount >= singleton->pagePoolIds.size()-2) {
-
-												//doTrace("BROKE EARLY!!! ", i__s(drawnPageCount), " / ", i__s(singleton->pagePoolIds.size()-2));
-												//singleton->maxW--;
-												goto drawPageExit;
-											}
-
-										}
-
-										
-									break;
-								}
-							}
-
-							
-							
-						}
-
-					}
-
-					curInd++;
-				}
-			}
-
-			
-		}
-
-		drawPageExit:
 
 		singleton->unbindShader();
 		singleton->unbindFBO();
-
-		updatePoolOrder = false;
-
-		if (singleton->reportPagesDrawn) {
-			singleton->reportPagesDrawn = false;
-
-			doTrace("Pages Drawn: ",i__s(drawnPageCount), " Pages Skipped: ",i__s(skippedPages), " AvailPages: ",i__s(singleton->pagePoolIds.size()-2));
-		}
-	    
+  
 
 		//doTrace( "POSSIBLE ERROR: " , i__s(glGetError()) , "\n" );
 
+		popTrace();
 	}
-void GameWorld::drawPage (GamePage * gp, int dx, int dy, int dz)
-                                                            {
+void GameWorld::drawHolder (GamePageHolder * gp)
+                                            {
+		pushTrace("drawHolder()");
 
-		float pitchSrc = (float)((singleton->visPageSizeInPixels*2));
-		float pitchSrc2 = (float)((singleton->visPageSizeInPixels*2)/2);
+		int dx = gp->trueOffsetInHolders.getIX();
+		int dy = gp->trueOffsetInHolders.getIY();
+		int dz = gp->trueOffsetInHolders.getIZ();
+
+		float pitchSrc = (float)((singleton->holderSizeInPixels*2));
+		float pitchSrc2 = (float)((singleton->holderSizeInPixels*2)/2);
 
 		float dxmod = dx*pitchSrc2 - singleton->cameraPos.getFX();
 		float dymod = dy*pitchSrc2 - singleton->cameraPos.getFY();
@@ -14824,36 +15649,41 @@ void GameWorld::drawPage (GamePage * gp, int dx, int dy, int dz)
 		fy2 = fy2*(myZoom)/sy;
 
 
-
-	    singleton->sampleFBODirect(gp->gpuRes->fboSet);
-
-
-	    glColor4f(1, 1, 1, 1);
-	    glBegin(GL_QUADS);
-	    glNormal3f(0, 0, 1);
-	    
-	    
-	    glTexCoord2f(0.0f, 0.0f);
-	    glVertex3f(fx1,fy1,0.0f);
-	    
-	    glTexCoord2f(1.0f, 0.0f);
-	    glVertex3f(fx2,fy1,0.0f);
-	    
-	    glTexCoord2f(1.0f, 1.0f);
-	    glVertex3f(fx2,fy2,0.0f);
-	    
-	    glTexCoord2f(0.0f, 1.0f);
-	    glVertex3f(fx1,fy2,0.0f);
-	    
-	    glEnd();
-
-	    singleton->unsampleFBODirect(gp->gpuRes->fboSet);
+		if (gp->gpuRes != NULL) {
+			singleton->sampleFBODirect(gp->gpuRes->fboSet);
 
 
+			glColor4f(1, 1, 1, 1);
+			glBegin(GL_QUADS);
+			glNormal3f(0, 0, 1);
+			
+			
+			glTexCoord2f(0.0f, 0.0f);
+			glVertex3f(fx1,fy1,0.0f);
+			
+			glTexCoord2f(1.0f, 0.0f);
+			glVertex3f(fx2,fy1,0.0f);
+			
+			glTexCoord2f(1.0f, 1.0f);
+			glVertex3f(fx2,fy2,0.0f);
+			
+			glTexCoord2f(0.0f, 1.0f);
+			glVertex3f(fx1,fy2,0.0f);
+			
+			glEnd();
+
+			singleton->unsampleFBODirect(gp->gpuRes->fboSet);
+		}
+
+	    
+
+
+	    popTrace();
 
 	}
 void GameWorld::combineBuffers ()
                               {
+		pushTrace("combineBuffers()");
 
 		singleton->bindShader("CombineShader");
 
@@ -14873,9 +15703,11 @@ void GameWorld::combineBuffers ()
 		
 		singleton->unbindFBO();
 		singleton->unbindShader();
+		popTrace();
 	}
 void GameWorld::renderGeom ()
                           {
+		pushTrace("renderGeom()");
 
 
 		
@@ -14887,6 +15719,7 @@ void GameWorld::renderGeom ()
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDimHalf));
+		singleton->setShaderFloat("isWire", 0.0);
 		
 		singleton->bindFBO("geomFBO");
 		//singleton->sampleFBO("pagesFBO");
@@ -14897,6 +15730,23 @@ void GameWorld::renderGeom ()
 
 
 		switch (singleton->mouseState) {
+
+			case E_MOUSE_STATE_MOVE:
+
+				if (singleton->gridOn == 1.0f) {
+					singleton->setShaderFloat("matVal", 8.0f);
+					
+					//singleton->drawCubeCentered(singleton->cameraPos,32.0);
+					
+					singleton->setShaderFloat("isWire", 1.0);
+					singleton->drawBox(minLRInPixels, maxLRInPixels);
+				}
+				
+				
+
+
+			break;
+
 			case E_MOUSE_STATE_BRUSH:
 				singleton->setShaderFloat("matVal", 6.0f);
 				singleton->drawCubeCentered(lastUnitPos, ((int)singleton->curBrushRad)*(singleton->unitSizeInPixels)  );
@@ -14923,10 +15773,13 @@ void GameWorld::renderGeom ()
 
 		//glDisable(GL_DEPTH_TEST);
 
+		popTrace();
 		
 	}
 void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushAction)
                                                                                {
+
+		pushTrace("modifyUnit()");
 
 		int radius = ((int)singleton->curBrushRad);
 
@@ -14944,13 +15797,9 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 		
 
-		
+		GamePage* curPage;
 
 
-		int iw = worldSizeInPages.getIX();
-		int jw = worldSizeInPages.getIY();
-		int kw = worldSizeInPages.getIZ();
-		int ind;
 		int ind2;
 		int pageSizeMult = visPageSizeInUnits*(singleton->bufferMult);
 
@@ -15016,6 +15865,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 
 		if (brushAction == E_BRUSH_MOVE) {
+			popTrace();
 			return;
 		}
 
@@ -15034,29 +15884,31 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 						jj = j+pagePos.getIY();
 						kk = k+pagePos.getIZ();
 
-						if (checkBounds(ii,jj,kk)) {
-							ind = kk*jw*iw + jj*iw + ii;
+						if (checkBounds(kk)) {
 
-							if (worldData[ind] == NULL) {
+							//
 
-								curPos.setIXYZ(ii*visPageSizeInUnits,jj*visPageSizeInUnits,kk*visPageSizeInUnits);
-								worldData[ind] = new GamePage();
-								worldData[ind]->init(singleton, ind, &curPos);
-								worldData[ind]->createSimplexNoise();
+							curPage = getPageAtCoords(ii,jj,kk);
+
+							if (curPage == NULL) {
+
+								curPage = getPageAtCoords(ii,jj,kk, true);
+								
+								curPage->createSimplexNoise();
 
 								//doTrace("created new page");
-								//worldData[ind]->curState = E_STATE_LENGTH;
+								//curPage->curState = E_STATE_LENGTH;
 							}
 
 							if (
-								//(worldData[ind]->curState != E_STATE_CREATESIMPLEXNOISE_BEG) // ||
-								//(worldData[ind]->curState == E_STATE_LENGTH)
+								//(curPage->curState != E_STATE_CREATESIMPLEXNOISE_BEG) // ||
+								//(curPage->curState == E_STATE_LENGTH)
 								true
 							) {
 								
 
-								startBounds.maxXYZ(&unitPosMin,&(worldData[ind]->worldUnitMin));
-								endBounds.minXYZ(&unitPosMax,&(worldData[ind]->worldUnitMax));
+								startBounds.maxXYZ(&unitPosMin,&(curPage->worldUnitMin));
+								endBounds.minXYZ(&unitPosMax,&(curPage->worldUnitMax));
 
 								
 
@@ -15085,14 +15937,14 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 												tempVec.setIXYZ(n,o,p);
 												isInside = tempVec.inBoundsXYZ(&unitPosMinIS,&unitPosMaxIS);
 												
-
+												//TODO: fix this to wrap
 												if (
 													tempVec.inBoundsXYZ(
-														&(worldData[ind]->worldUnitMin),
-														&(worldData[ind]->worldUnitMax)
+														&(curPage->worldUnitMin),
+														&(curPage->worldUnitMax)
 													)
 												) {
-													tempVec.addXYZRef( &(worldData[ind]->worldUnitMin), -1.0);
+													tempVec.addXYZRef( &(curPage->worldUnitMin), -1.0);
 
 													ind2 = tempVec.getIZ()*pageSizeMult*pageSizeMult + tempVec.getIY()*pageSizeMult + tempVec.getIX();
 													
@@ -15103,8 +15955,8 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 														if (m == 0) {
 
-															linV = worldData[ind]->volDataLinear[ind2];
-															nearV = worldData[ind]->volData[ind2];
+															linV = curPage->volDataLinear[ind2];
+															nearV = curPage->volData[ind2];
 
 															linR = (linV)&255;
 															linG = (linV>>8)&255;
@@ -15221,18 +16073,18 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 																}
 															}
 
-															worldData[ind]->volData[ind2] = (nearA<<24)|(nearB<<16)|(nearG<<8)|(nearR);
-															worldData[ind]->volDataLinear[ind2] = (linA<<24)|(linB<<16)|(linG<<8)|(linR);
+															curPage->volData[ind2] = (nearA<<24)|(nearB<<16)|(nearG<<8)|(nearR);
+															curPage->volDataLinear[ind2] = (linA<<24)|(linB<<16)|(linG<<8)|(linR);
 															
 
-															worldData[ind]->isDirty = true;
+															curPage->isDirty = true;
 															changes = true;
 														}
 														else {
-															if (worldData[ind]->isDirty) {
-																worldData[ind]->isDirty = false;
-																worldData[ind]->copyToTexture();
-																worldData[ind]->generateVolume();
+															if (curPage->isDirty) {
+																curPage->isDirty = false;
+																//curPage->copyToTexture();
+																curPage->generateVolume();
 															}
 														}
 
@@ -15277,11 +16129,16 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 		
 		
+		popTrace();
 
 	}
 void GameWorld::renderWorldSpace ()
                                 {
-		//doTrace("renderWorldSpace() TOT GPU MEM USED (MB): ", f__s(TOT_GPU_MEM_USAGE));
+
+
+		pushTrace("renderWorldSpace()");
+
+		doTraceND("renderWorldSpace() TOT GPU MEM USED (MB): ", f__s(TOT_GPU_MEM_USAGE));
 
 		singleton->wsBufferInvalid = false;
 
@@ -15320,10 +16177,14 @@ void GameWorld::renderWorldSpace ()
 
 		fbow->getPixels();
 
+
+		popTrace();
 	}
 void GameWorld::renderGrass ()
                            {
 
+
+		pushTrace("renderGrass()");
 
 		float curTime = 0.0;
 
@@ -15358,14 +16219,21 @@ void GameWorld::renderGrass ()
 		//glDisable(GL_DEPTH_TEST);
 
 		
+		popTrace();
 	}
 void GameWorld::initMap ()
                        {
+
+
+		pushTrace("initMap()");
+
 		mapSwapFlag = 0;
-		singleton->mapInvalid = false;
+		
 		mapStep = 0.0f;
 
 		int i;
+		int j;
+		int k;
 
 		for (i = 0; i < 16; i++) {
 			singleton->paramArrMap[i*3+0] = fGenRand();
@@ -15383,11 +16251,12 @@ void GameWorld::initMap ()
 		singleton->unbindShader();
 		
 		singleton->bindShader("TerrainMix");
-		singleton->bindFBO("hmFBO");
+		singleton->bindFBO("hmFBOLinear");
 		singleton->sampleFBO("simplexFBO", 0);
 		singleton->setShaderTexture(1,singleton->imageHM0->tid);
 		singleton->setShaderTexture(2,singleton->imageHM1->tid);
 		singleton->setShaderArrayfVec3("paramArrMap", singleton->paramArrMap, 16 );
+		singleton->setShaderFloat("mapSampScale", singleton->mapSampScale);
 		singleton->drawFSQuad(1.0f);
 		singleton->setShaderTexture(2,0);
 		singleton->setShaderTexture(1,0);
@@ -15395,18 +16264,36 @@ void GameWorld::initMap ()
 		singleton->unbindFBO();
 		singleton->unbindShader();
 
-		FBOWrapper* fbow = singleton->getFBOWrapper("hmFBO",0);
-		fbow->getPixels();
-		fbow->setAllPixels(0,0);
-		fbow->setAllPixels(1,0);
-		//fbow->setAllPixels(2,0);
-		fbow->setAllPixels(3,0);
-		//fbow->setAllPixels(3,0);
 
+		singleton->copyFBO("hmFBOLinear","hmFBO");
+
+		//should be
+		//0:r
+		//1:g
+		//2:b
+		//3:a
+
+		//not this
 		//0 - b
 		//1 - g
 		//2 - r
 		//3 - a
+
+		
+		int stChannel = 0;
+		int btChannel = 1;
+		
+		int hmChannel = 0;
+		int idChannel = 1;
+		int densityChannel = 2;
+
+		FBOWrapper* fbow = singleton->getFBOWrapper("hmFBO",0);
+		fbow->getPixels();
+		fbow->setAllPixels(densityChannel,255);
+		fbow->setAllPixels(idChannel,0);
+
+
+		
 
 
 		//////////
@@ -15414,6 +16301,8 @@ void GameWorld::initMap ()
 		bool isValid;
 		int xind;
 		int yind;
+
+
 
 		for (i = 0; i < singleton->numProvinces; i++) {
 
@@ -15424,9 +16313,10 @@ void GameWorld::initMap ()
 				xind = (int)(fGenRand()*fbow->width);
 				yind = (int)(fGenRand()*fbow->height);
 
-				if (fbow->getPixelAtC(xind,yind,2) > singleton->seaLevel ) {
-					if (fbow->getPixelAtC(xind,yind,1) == 0) {
-						fbow->setPixelAtC(xind,yind,1,i*2+128);
+				if (fbow->getPixelAtC(xind,yind,hmChannel) > singleton->seaLevel ) {
+					if (fbow->getPixelAtC(xind,yind,idChannel) == 0) {
+						fbow->setPixelAtC(xind,yind,idChannel,i+1);
+						fbow->setPixelAtC(xind,yind,densityChannel,0);
 						isValid = true;
 					}
 					else {
@@ -15443,64 +16333,356 @@ void GameWorld::initMap ()
 
 
 
+		// 1 - x+
+		// 2 - x-
+		// 4 - y+
+		// 8 - y-
+
+		FBOWrapper* fbow2 = singleton->getFBOWrapper("cityFBO",0);
+		fbow2->getPixels();
+		fbow2->setAllPixels(btChannel,15);
+		fbow2->setAllPixels(stChannel,0);
+
+
+		int totSize = fbow2->width*fbow2->height;
+		int* btStack = new int[totSize];
+		int btStackInd = 0;
+		int curInd;
+		int curX;
+		int curY;
+		int curXRight;
+		int curXLeft;
+		int curYUp;
+		int curYDown;
+		int testX;
+		int testY;
+		int testInd;
+		int basePix;
+		int basePix2;
+		int testPix;
+		int testPix2;
+		int count;
+
+		int dirFlags[4];
+		int dirFlagsOp[4];
+		int dirFlagsO[4];
+		int dirFlagsOpO[4];
+		int dirModX[4];
+		int dirModY[4];
+		int dirFlagClear;
+		int visFlag = 16;
+		int startDir;
+		int curDir;
+
+		
+		int w = fbow2->width;
+		int h = fbow2->height;
+		
+		bool notFound;
+		bool touchesWater;
+
+		dirFlagsO[0] = 1;
+		dirFlagsO[1] = 2;
+		dirFlagsO[2] = 4;
+		dirFlagsO[3] = 8;
+
+		dirFlagsOpO[0] = 2;
+		dirFlagsOpO[1] = 1;
+		dirFlagsOpO[2] = 8;
+		dirFlagsOpO[3] = 4;
+		
+
+		dirFlags[0] = ~1;
+		dirFlags[1] = ~2;
+		dirFlags[2] = ~4;
+		dirFlags[3] = ~8;
+
+		dirFlagsOp[0] = ~2;
+		dirFlagsOp[1] = ~1;
+		dirFlagsOp[2] = ~8;
+		dirFlagsOp[3] = ~4;
+
+		dirFlagClear = ~15;
+
+		dirModX[0] = 1;
+		dirModX[1] = -1;
+		dirModX[2] = 0;
+		dirModX[3] = 0;
+
+		dirModY[0] = 0;
+		dirModY[1] = 0;
+		dirModY[2] = 1;
+		dirModY[3] = -1;
+		
+
+		btStack[0] = fbow2->getIndex(iGenRand(w), iGenRand(h) );
+
+		
+		while (btStackInd > -1) {
+
+			curInd = btStack[btStackInd];
+			curY = curInd/w;
+			curX = curInd-curY*w;
+
+			fbow2->orPixelAtIndex(curInd, btChannel, visFlag);
+
+			startDir = iGenRand(4);
+			count = 0;
+			notFound = true;
+
+			do {
+				curDir = (startDir + count)%4;
+
+				testX = curX + dirModX[curDir];
+				testY = curY + dirModY[curDir];
+				testInd = fbow2->getIndex(testX,testY);
+
+				testPix = fbow2->getPixelAtIndex(testInd, btChannel);
+
+
+				if ( (testPix & visFlag) == 0) {
+					//not visited, proceed
+					notFound = false;
+				}
+
+				count++;
+			}
+			while (notFound && count < 4);
+
+			if (notFound) {
+				btStackInd--;
+			}
+			else {
+
+				// join the two and remove walls
+				fbow2->andPixelAtIndex(curInd, btChannel, dirFlags[curDir]);
+				fbow2->andPixelAtIndex(testInd, btChannel, dirFlagsOp[curDir]);
+				
+				btStackInd++;
+				btStack[btStackInd] = testInd;
+			}
+
+		}
+
+		int* streetFlagsV = new int[w]; //runs vertical
+		int* streetFlagsH = new int[h]; //runs horizontal
+
+		for (i = 0; i < w; i++) {
+			streetFlagsV[i] = 0;
+		}
+		for (i = 0; i < h; i++) {
+			streetFlagsH[i] = 0;
+		}
+
+		// 1 - x+
+		// 2 - x-
+		// 4 - y+
+		// 8 - y-
+
+		for (i = 0; i < w; i+= (iGenRand(6)+4) ) {
+			streetFlagsV[i] |= 1;
+			streetFlagsV[ (i+1)%w ] |= 2;
+		}
+		for (i = 0; i < h; i+= (iGenRand(6)+4) ) {
+			streetFlagsH[i] |= 4;
+			streetFlagsH[ (i+1)%h ] |= 8;
+		}
+
+
+		
+
+
 		fbow->cpuToGPU();
+
+
+
+
+		singleton->copyFBO("hmFBO","swapFBO0");
+		singleton->bindShader("MapBorderShader");
+		for (i = 0; i < 1024; i++) {
+			
+			singleton->bindFBO("swapFBO",mapSwapFlag);
+			//singleton->sampleFBO("palFBO", 0);
+			singleton->sampleFBO("swapFBO",0,mapSwapFlag);
+			//singleton->setShaderFloat("curTime", mapStep);//singleton->curTime);
+			singleton->setShaderFloat("mapStep", mapStep);
+			singleton->drawFSQuad(1.0f);
+			singleton->unsampleFBO("swapFBO",0,mapSwapFlag);
+			//singleton->unsampleFBO("palFBO",0);
+			singleton->unbindFBO();
+			
+
+			mapSwapFlag = 1-mapSwapFlag;
+			mapStep += 1.0f;
+		}
+		singleton->unbindShader();
+		singleton->copyFBO("swapFBO0","hmFBO");
+		singleton->copyFBO("hmFBO","hmFBOLinear");
+
+		fbow->getPixels();
+
+
+		for (k = 0; k < totSize; k++) {
+			curInd = k;
+			curY = curInd/w;
+			curX = curInd-curY*w;
+
+			fbow2->orPixelAtIndex(curInd, stChannel, streetFlagsH[curY]|streetFlagsV[curX]);
+
+		}
+
+
+
+
+
+		int cityLevel = 0;
+
+		for (k = 0; k < totSize; k++) {
+			curInd = k;
+			curY = curInd/w;
+			curX = curInd-curY*w;
+
+			touchesWater = false;
+
+			for (j = -1; j <= 1; j++) {				
+				for (i = -1; i <= 1; i++) {
+					testX = curX + i;
+					testY = curY + j;
+					testInd = fbow->getIndex(testX,testY);
+					testPix = fbow->getPixelAtIndex(testInd, hmChannel);
+					
+
+					if (testPix < singleton->seaLevel + 10) {
+						touchesWater = true;
+						break;
+					}
+
+				}
+				if (touchesWater) {
+					break;
+				}
+			}
+
+			testPix2 = fbow->getPixelAtIndex(curInd, densityChannel);
+
+
+			if (touchesWater || (testPix2 > 120) ) {
+				fbow2->andPixelAtIndex(curInd, btChannel, dirFlagClear);
+				fbow2->andPixelAtIndex(curInd, stChannel, dirFlagClear);
+				
+				//TODO: repair all broken (half) edges
+			}
+			if (testPix2 > 80) {
+				fbow2->andPixelAtIndex(curInd, stChannel, dirFlagClear);
+			}
+			
+
+		}
+
+
+
+		// fix half streets
+
+		for (k = 0; k < totSize; k++) {
+			curInd = k;
+			curY = curInd/w;
+			curX = curInd-curY*w;
+
+			basePix = fbow2->getPixelAtIndex(curInd, btChannel);
+			basePix2 = fbow2->getPixelAtIndex(curInd, stChannel);
+
+			for (i = 0; i < 4; i++) {
+				
+				
+				
+				curDir = i;
+
+				testX = curX + dirModX[curDir];
+				testY = curY + dirModY[curDir];
+				testInd = fbow2->getIndex(testX,testY);
+				testPix = fbow2->getPixelAtIndex(testInd, btChannel);
+				testPix2 = fbow2->getPixelAtIndex(testInd, stChannel);
+
+
+				if ( (basePix & dirFlagsO[curDir]) != (testPix & dirFlagsOpO[curDir]) ) {
+					fbow2->orPixelAtIndex(curInd, btChannel, dirFlagsO[curDir]);
+					fbow2->orPixelAtIndex(testInd, btChannel, dirFlagsOpO[curDir]);
+				}
+
+				if ( (basePix2 & dirFlagsO[curDir]) != (testPix2 & dirFlagsOpO[curDir]) ) {
+					fbow2->orPixelAtIndex(curInd, stChannel, dirFlagsO[curDir]);
+					fbow2->orPixelAtIndex(testInd, stChannel, dirFlagsOpO[curDir]);
+				}
+
+			}
+
+		}
+
+
+		
+
+
+
+
+		fbow2->cpuToGPU();
+
+		delete[] btStack;
+		delete[] streetFlagsH;
+		delete[] streetFlagsV;
 		
 
 		//////////
 
-
 		
+		
+		singleton->mapInvalid = false;
 
+		singleton->setCameraToElevation();
 
-
-
-		singleton->bindShader("CopyShader");
-		singleton->bindFBO("mapFBO0");
-		singleton->sampleFBO("hmFBO",0);
-		singleton->drawFSQuad(1.0f);
-		singleton->unsampleFBO("hmFBO",0);
-		singleton->unbindFBO();
-		singleton->unbindShader();
-
+		popTrace();
 	}
 void GameWorld::drawMap ()
                        {
 
 
+		pushTrace("drawMap()");
 
+		FBOWrapper* fbow = singleton->getFBOWrapper("hmFBOLinear", 0);
 
-		singleton->bindShader("MapBorderShader");
-		singleton->bindFBO("mapFBO",mapSwapFlag);
-		singleton->sampleFBO("palFBO", 0);
-		singleton->sampleFBO("mapFBO",1,mapSwapFlag);
-		singleton->setShaderFloat("curTime", singleton->curTime);
-		singleton->setShaderFloat("mapStep", mapStep);
-		singleton->drawFSQuad(1.0f);
-		singleton->unsampleFBO("mapFBO",1,mapSwapFlag);
-		singleton->unsampleFBO("palFBO",0);
-		singleton->unbindFBO();
-		singleton->unbindShader();
 
 		singleton->bindShader("TopoShader");
 		singleton->sampleFBO("palFBO", 0);
-		singleton->sampleFBO("mapFBO",1,mapSwapFlag);
+		singleton->sampleFBO("hmFBOLinear",1);
+		singleton->sampleFBO("cityFBO",2);
+
 		singleton->setShaderFloat("curTime", singleton->curTime);
-		singleton->drawFSQuad(1.0f);
-		singleton->unsampleFBO("mapFBO",1,mapSwapFlag);
+		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDimHalf));
+		singleton->setShaderVec2("mapDimInPixels", fbow->width, fbow->height);
+		singleton->setShaderfVec3("maxBoundsInPixels", &(singleton->maxBoundsInPixels) );
+
+		singleton->drawQuadBounds(
+			-singleton->maxBoundsInPixels.getFX()/2.0f,
+			-singleton->maxBoundsInPixels.getFY()/2.0f,
+			singleton->maxBoundsInPixels.getFX()/2.0f,
+			singleton->maxBoundsInPixels.getFY()/2.0f
+		);
+		
+		singleton->unsampleFBO("hmFBO",2);
+		singleton->unsampleFBO("hmFBOLinear",1);
 		singleton->unsampleFBO("palFBO",0);
 		singleton->unbindShader();
 
 
-		//singleton->drawFBO("mapFBO", 0, 1.0, mapSwapFlag );
 
-		mapSwapFlag = 1-mapSwapFlag;
-		mapStep += 1.0f;
-
-
-
+		popTrace();
 	}
 void GameWorld::postProcess ()
                            {
+
+
+		pushTrace("postProcess()");
 
 		float newZoom;
 
@@ -15527,6 +16709,12 @@ void GameWorld::postProcess ()
 		singleton->setShaderfVec4("lastUnitPos", &(lastUnitPos) );
 		singleton->setShaderfVec4("lastPagePos", &(lastPagePos) );
 
+		singleton->setShaderFloat("visPageSizeInPixels", (float)(singleton->visPageSizeInPixels));
+		singleton->setShaderFloat("holderSizeInPixels", (float)(singleton->holderSizeInPixels));
+		singleton->setShaderFloat("unitSizeInPixels", (float)(singleton->unitSizeInPixels));
+
+		singleton->setShaderFloat("gridOn",singleton->gridOn);
+		singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
 		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDimHalf));
 		singleton->setShaderFloat("diskOn",singleton->diskOn);
@@ -15549,13 +16737,20 @@ void GameWorld::postProcess ()
 		singleton->unbindShader();
 
 		newZoom = std::max(1.0f,singleton->cameraZoom);
+		
 		singleton->drawFBO("resultFBO", 0, newZoom );
-	
-
 		
 
 		
+		if (singleton->showMap) {
+			glEnable(GL_BLEND);
+			drawMap();
+			glDisable(GL_BLEND);
+		}
+		
+		
 
+		popTrace();
 		
 		
 	}
@@ -15566,13 +16761,29 @@ GameWorld::~ GameWorld ()
 		threadpool.stopAll();
 
 		int i;
+		int j;
 
-		for (i = 0; i < iVolumeSize; i++) {
-			if (worldData[i]) {
-				delete worldData[i];
+		GamePage* curPage;
+
+		for (i = 0; i < iHolderSize; i++) {
+			if (holderData[i]) {
+
+				for (j = 0; j < singleton->holderSizeInPages; j++) {
+					curPage = holderData[i]->pageData[j];
+
+					if (curPage) {
+
+						delete curPage;
+
+						
+					}
+				}
+
+				
 			}
-			
 		}
+		
+
 		
 	}
 #undef LZZ_INLINE
@@ -15702,8 +16913,8 @@ int main(int argc, char* argv[])
 
     switch (resMode) {
         case 0:
-            winWidth = 768;
-            winHeight = 768;
+            winWidth = 1024;
+            winHeight = 1024;
             scaleFactor = 1;
         break;
 
@@ -15736,7 +16947,7 @@ int main(int argc, char* argv[])
 
     glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGB);
     glutInitWindowSize(winWidth, winHeight);
-    //glutInitWindowPosition(140, 10);
+    glutInitWindowPosition(140, 140);
     glutCreateWindow("VoxelQuest");
 
     GLenum err = glewInit();

@@ -1,9 +1,10 @@
 #version 120
 
-uniform sampler2D Texture0;
-uniform sampler2D Texture1;
-uniform sampler2D Texture2;
+uniform sampler2D Texture0; // simplexFBO
+uniform sampler2D Texture1; // imageHM0
+uniform sampler2D Texture2; // imageHM1
 
+uniform float mapSampScale;
 uniform vec3 paramArrMap[16];
 
 varying vec2 TexCoord0;
@@ -20,9 +21,11 @@ $
 
 void main() {
 
-    vec4 tex0 = texture2D( Texture0, TexCoord0.xy );
-    vec4 tex1 = texture2D( Texture1, TexCoord0.xy + paramArrMap[0].xy );
-    vec4 tex2 = texture2D( Texture2, TexCoord0.xy + paramArrMap[1].xy );
+    
+
+    vec4 tex0 = texture2D( Texture0, (TexCoord0.xy + paramArrMap[2].xy) );
+    vec4 tex1 = texture2D( Texture1, (TexCoord0.xy + paramArrMap[0].xy)*mapSampScale );
+    vec4 tex2 = texture2D( Texture2, (TexCoord0.xy + paramArrMap[1].xy)*mapSampScale );
 
 
     float[3] sv;
@@ -56,24 +59,24 @@ void main() {
     }
 
 
-    float v0 = sv[0]*tex0.r;
-    float v1 = sv[1]*tex0.g;
-    float v2 = sv[2]*tex0.b;
+    float v0 = sv[0]*tex0.r*tex0.r;
+    float v1 = sv[1]*tex0.g*tex0.g;
+    float v2 = sv[2]*tex0.b*tex0.b;
 
-    float h = v0 + v1 + v2;
+    float h = sqrt(v0 + v1 + v2);
+
     //float h = max(max(v0,v1),v2)*2.0;
 
+    /*
     if (h > 1.0) {
         h = 2.0-h;
     }
+    */
 
     h = clamp(h, 0.0, 1.0);
+    h = pow(h,1.5);
 
-    //h = pow(h+0.1,2.0);
-
-    vec4 res = vec4(h);    
-
-    gl_FragData[0] = res;
+    gl_FragData[0] = vec4(h,0.0,0.0,0.0);
 
 }
 

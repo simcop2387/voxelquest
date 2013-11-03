@@ -131,7 +131,7 @@ public:
 		}
 
 		if (failed) {
-			doTrace("FAILED TO READ FILE: ", fileName);
+			doTraceND("FAILED TO READ FILE: ", fileName);
 		}
 		else {
 			doTrace("READ FILE: ", fileName);
@@ -152,7 +152,7 @@ public:
 	    
 		glGetShaderInfoLog(shader, BUFFER_SIZE, &length, buffer);
 		if (length > 0) {
-			doTrace("Shader " , i__s(shader) , " (" , (file?file:"") , ") compile error: " , buffer);
+			doTraceND("Shader " , i__s(shader) , " (" , (file?file:"") , ") compile error: " , buffer);
 		}
 		popTrace();
 	}
@@ -168,7 +168,7 @@ public:
 		memset(buffer, 0, BUFFER_SIZE);
 		glGetProgramInfoLog(program, BUFFER_SIZE, &length, buffer);
 		if (length > 0) {
-			doTrace( "Program " , i__s(program) , " link error: " , buffer);
+			doTraceND( "Program " , i__s(program) , " link error: " , buffer);
 			popTrace();
 			return 0;
 		}
@@ -177,7 +177,7 @@ public:
 		GLint status;
 		glGetProgramiv(program, GL_VALIDATE_STATUS, &status);
 		if (status == GL_FALSE) {
-			doTrace( "Error validating shader " , i__s(program));
+			doTraceND( "Error validating shader " , i__s(program));
 			popTrace();
 			return 0;
 		}
@@ -198,7 +198,7 @@ public:
 
 
 		if (allText == NULL) {
-			doTrace( "Either vertex shader or fragment shader file not found." );
+			doTraceND( "Either vertex shader or fragment shader file not found." );
 	    }
 	    else {
 	    	string allTextString(allText);
@@ -236,7 +236,7 @@ public:
 
 			}
 			else {
-				doTrace( "Error: " , shaderFile , "does not contain proper amount of splits ($)\n" );
+				doTraceND( "Error: " , shaderFile , "does not contain proper amount of splits ($)\n" );
 			}
 			
 			
@@ -293,7 +293,7 @@ public:
 		
 		switch (vecSize) {
 			case 0:
-				doTrace( "Error: vecSize of 0 in setVec" );
+				doTraceND( "Error: vecSize of 0 in setVec" );
 			break;
 			case 1:
 				glUniform1fv(loc, 1, vecData);
@@ -316,7 +316,7 @@ public:
 		
 		switch (vecSize) {
 			case 0:
-				doTrace( "Error: vecSize of 0 in setVec" );
+				doTraceND( "Error: vecSize of 0 in setVec" );
 			break;
 			case 1:
 				glUniform1fv(loc, 1, vecData);
