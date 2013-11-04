@@ -372,7 +372,6 @@ void GameWorld::update ()
 		float y;
 		float z;
 
-		doTraceVecND("MAX BOUNDS IN PIX ",&singleton->maxBoundsInPixels);
 
 
 		if (singleton->mapInvalid) {
@@ -385,12 +384,12 @@ void GameWorld::update ()
 				y = fGenRand()*8192.0f*8.0f;
 				z = singleton->getHeightAtPixelPos(x,y);
 
-				cout << "x: " << x << " y: " << y << " z: " << z << "\n";
+				//cout << "x: " << x << " y: " << y << " z: " << z << "\n";
 
 				gameGeom.back()->initRand(i,x,y,z);
 
 
-				//addGeom(gameGeom.back());
+				addGeom(gameGeom.back());
 			}
 
 
@@ -398,8 +397,6 @@ void GameWorld::update ()
 			return;
 		}
 
-
-		doTraceND("yo");
 
 		bool changesMade = singleton->changesMade;
 		bool bufferInvalid = singleton->bufferInvalid;

@@ -718,6 +718,7 @@ public:
     FIVector4 originInPixels;
     FIVector4 powerVals;
     FIVector4 coefficients;
+    FIVector4 squareVals;
     FIVector4 minMaxMat;
 
     int id;
@@ -745,19 +746,20 @@ public:
     void initRand(int _id, float x, float y, float z) {
         id = _id;
 
-        float rad = 1024.0f;
+        float rad = 512.0f;
         float diam = 2.0f*rad;
 
-        boundsMinInPixels.setFXYZ(x-rad, y-rad, z-rad);
-        boundsMaxInPixels.addXYZ(x+rad, y+rad, z+rad);
+        boundsMinInPixels.setFXYZ(x-rad, y-rad, z+128.0);
+        boundsMaxInPixels.addXYZ(x+rad, y+rad, z+diam+128.0);
 
         originInPixels.copyFrom(&boundsMinInPixels);
         originInPixels.addXYZRef(&boundsMaxInPixels);
         originInPixels.multXYZ(0.5f);
 
-        powerVals.setFXYZ(1.0f,1.0f,1.0f);
+        powerVals.setFXYZ(2.0f,2.0f,2.0f);
         coefficients.setFXYZ(1.0,1.0,1.0);
-        minMaxMat.setFXYZ(0.75f,1.0f,2.0f);
+        squareVals.setFXYZ(1.0,1.0,0.0);
+        minMaxMat.setFXYZ(0.0f,1.0f,2.0f);
 
         //minRad = 0.75;
         //maxRad = 1.0;
@@ -11063,7 +11065,6 @@ public:
   WebSocketServer * myWS;
   Timer myTimer;
   GameWorld * gw;
-  std::vector <GameGeom*> gameGeom;
   uint volID;
   uint volIDLinear;
   int bufferedPageSizeInUnits;
@@ -14452,7 +14453,7 @@ bool GamePage::addGeom (bool justTesting)
 		GamePageHolder* gph;
 		GameGeom* gg;
 
-		paramsPerEntry = 18;
+		paramsPerEntry = 21;
 		numEntries = 0;
 
 		start.copyFrom( &worldMinBufInPixels );
@@ -14481,7 +14482,7 @@ bool GamePage::addGeom (bool justTesting)
 
 						for (m = 0; m < geomInPage; m++) {
 							curId = gph->containsGeomIds[m];
-							gg = singleton->gameGeom[curId];
+							gg = singleton->gw->gameGeom[curId];
 
 
 							if (
@@ -14520,9 +14521,13 @@ bool GamePage::addGeom (bool justTesting)
 								singleton->paramArr[baseInd + 13] = gg->coefficients.getFY();
 								singleton->paramArr[baseInd + 14] = gg->coefficients.getFZ();
 
-								singleton->paramArr[baseInd + 15] = gg->minMaxMat.getFX();
-								singleton->paramArr[baseInd + 16] = gg->minMaxMat.getFY();
-								singleton->paramArr[baseInd + 17] = gg->minMaxMat.getFZ();
+								singleton->paramArr[baseInd + 15] = gg->squareVals.getFX();
+								singleton->paramArr[baseInd + 16] = gg->squareVals.getFY();
+								singleton->paramArr[baseInd + 17] = gg->squareVals.getFZ();
+
+								singleton->paramArr[baseInd + 18] = gg->minMaxMat.getFX();
+								singleton->paramArr[baseInd + 19] = gg->minMaxMat.getFY();
+								singleton->paramArr[baseInd + 20] = gg->minMaxMat.getFZ();
 
 								numEntries++;
 
@@ -15206,7 +15211,6 @@ void GameWorld::update ()
 		float y;
 		float z;
 
-		doTraceVecND("MAX BOUNDS IN PIX ",&singleton->maxBoundsInPixels);
 
 
 		if (singleton->mapInvalid) {
@@ -15219,12 +15223,12 @@ void GameWorld::update ()
 				y = fGenRand()*8192.0f*8.0f;
 				z = singleton->getHeightAtPixelPos(x,y);
 
-				cout << "x: " << x << " y: " << y << " z: " << z << "\n";
+				//cout << "x: " << x << " y: " << y << " z: " << z << "\n";
 
 				gameGeom.back()->initRand(i,x,y,z);
 
 
-				//addGeom(gameGeom.back());
+				addGeom(gameGeom.back());
 			}
 
 
@@ -15232,8 +15236,6 @@ void GameWorld::update ()
 			return;
 		}
 
-
-		doTraceND("yo");
 
 		bool changesMade = singleton->changesMade;
 		bool bufferInvalid = singleton->bufferInvalid;

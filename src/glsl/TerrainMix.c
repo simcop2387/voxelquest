@@ -63,9 +63,9 @@ void main() {
     float v1 = sv[1]*tex0.g*tex0.g;
     float v2 = sv[2]*tex0.b*tex0.b;
 
-    float h = sqrt(v0 + v1 + v2);
+    //float h = sqrt(v0 + v1 + v2);
 
-    //float h = max(max(v0,v1),v2)*2.0;
+    float h = pow(max(max(v0,v1),v2),0.4);
 
     /*
     if (h > 1.0) {

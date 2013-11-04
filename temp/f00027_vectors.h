@@ -518,6 +518,7 @@ public:
     FIVector4 originInPixels;
     FIVector4 powerVals;
     FIVector4 coefficients;
+    FIVector4 squareVals;
     FIVector4 minMaxMat;
 
     int id;
@@ -545,19 +546,20 @@ public:
     void initRand(int _id, float x, float y, float z) {
         id = _id;
 
-        float rad = 1024.0f;
+        float rad = 512.0f;
         float diam = 2.0f*rad;
 
-        boundsMinInPixels.setFXYZ(x-rad, y-rad, z-rad);
-        boundsMaxInPixels.addXYZ(x+rad, y+rad, z+rad);
+        boundsMinInPixels.setFXYZ(x-rad, y-rad, z+128.0);
+        boundsMaxInPixels.addXYZ(x+rad, y+rad, z+diam+128.0);
 
         originInPixels.copyFrom(&boundsMinInPixels);
         originInPixels.addXYZRef(&boundsMaxInPixels);
         originInPixels.multXYZ(0.5f);
 
-        powerVals.setFXYZ(1.0f,1.0f,1.0f);
+        powerVals.setFXYZ(2.0f,2.0f,2.0f);
         coefficients.setFXYZ(1.0,1.0,1.0);
-        minMaxMat.setFXYZ(0.75f,1.0f,2.0f);
+        squareVals.setFXYZ(1.0,1.0,0.0);
+        minMaxMat.setFXYZ(0.0f,1.0f,2.0f);
 
         //minRad = 0.75;
         //maxRad = 1.0;

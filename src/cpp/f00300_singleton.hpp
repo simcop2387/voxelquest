@@ -159,7 +159,7 @@ public:
 	Timer myTimer;
 	GameWorld* gw;
 
-	std::vector<GameGeom*> gameGeom;
+	
 
 
 	uint volID;

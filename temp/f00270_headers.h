@@ -200,7 +200,6 @@ public:
   WebSocketServer * myWS;
   Timer myTimer;
   GameWorld * gw;
-  std::vector <GameGeom*> gameGeom;
   uint volID;
   uint volIDLinear;
   int bufferedPageSizeInUnits;

@@ -520,7 +520,7 @@ public:
 		GamePageHolder* gph;
 		GameGeom* gg;
 
-		paramsPerEntry = 18;
+		paramsPerEntry = 21;
 		numEntries = 0;
 
 		start.copyFrom( &worldMinBufInPixels );
@@ -549,7 +549,7 @@ public:
 
 						for (m = 0; m < geomInPage; m++) {
 							curId = gph->containsGeomIds[m];
-							gg = singleton->gameGeom[curId];
+							gg = singleton->gw->gameGeom[curId];
 
 
 							if (
@@ -588,9 +588,13 @@ public:
 								singleton->paramArr[baseInd + 13] = gg->coefficients.getFY();
 								singleton->paramArr[baseInd + 14] = gg->coefficients.getFZ();
 
-								singleton->paramArr[baseInd + 15] = gg->minMaxMat.getFX();
-								singleton->paramArr[baseInd + 16] = gg->minMaxMat.getFY();
-								singleton->paramArr[baseInd + 17] = gg->minMaxMat.getFZ();
+								singleton->paramArr[baseInd + 15] = gg->squareVals.getFX();
+								singleton->paramArr[baseInd + 16] = gg->squareVals.getFY();
+								singleton->paramArr[baseInd + 17] = gg->squareVals.getFZ();
+
+								singleton->paramArr[baseInd + 18] = gg->minMaxMat.getFX();
+								singleton->paramArr[baseInd + 19] = gg->minMaxMat.getFY();
+								singleton->paramArr[baseInd + 20] = gg->minMaxMat.getFZ();
 
 								numEntries++;
 
