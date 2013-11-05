@@ -41,6 +41,21 @@ int intMod(int lhs, int rhs) {
     return lhs - ( (lhs/rhs)*rhs );
 }
 
+/*
+mat4 rotationMatrix(vec3 axis, float angle)
+{
+    vec3 axis = normalize(axis);
+    float s = sin(angle);
+    float c = cos(angle);
+    float oc = 1.0 - c;
+    
+    return mat4(oc * axis.x * axis.x + c,           oc * axis.x * axis.y - axis.z * s,  oc * axis.z * axis.x + axis.y * s,  0.0,
+                oc * axis.x * axis.y + axis.z * s,  oc * axis.y * axis.y + c,           oc * axis.y * axis.z - axis.x * s,  0.0,
+                oc * axis.z * axis.x - axis.y * s,  oc * axis.y * axis.z + axis.x * s,  oc * axis.z * axis.z + c,           0.0,
+                0.0,                                0.0,                                0.0,                                1.0);
+}
+*/
+
 void main() {
 	
 	vec4 finalRes = vec4(0.0);
@@ -65,8 +80,6 @@ void main() {
 		mix(worldMinBufInPixels.z, worldMaxBufInPixels.z, newCoords.z)
 	);
 
-	
-
 
 	
 	int iParamsPerEntry = int(paramsPerEntry);
@@ -77,6 +90,7 @@ void main() {
 	float curDis = 0.0;
 	float curRadThe = 0.0;
 	float curRadPhi = 0.0;
+	float airVal = 0.0;
 
 	vec3 boundsMinInPixels = vec3(0.0);
 	vec3 boundsMaxInPixels = vec3(0.0);
@@ -85,6 +99,10 @@ void main() {
 	vec3 coefficients = vec3(0.0);
 	vec3 squareVals = vec3(0.0);
 	vec3 minMaxMat = vec3(0.0);
+
+	vec2 curDisXY = vec2(0.0);
+	vec2 curDisYZ = vec2(0.0);
+	vec2 curDisXZ = vec2(0.0);
 	
 	vec3 dis = vec3(0.0);
 	vec3 disNorm = vec3(0.0);
@@ -94,8 +112,12 @@ void main() {
 	vec3 absOriginInPixels = vec3(0.0);
 	vec3 absWorldPosInPixels = vec3(0.0);
 	vec3 eqRes;
-	vec3 cornerDis = vec3(256.0,256.0,256.0);
+	vec3 cornerDis = vec3(0.5,0.5,0.5);
+	vec3 newCornerDis = vec3(0.0);
 	vec3 orig = vec3(0.0);
+
+	bvec3 bLessThanOrig;
+	vec3 lessThanOrig;
 
 	for (i = 0; i < numEntries; i++) {
 
@@ -103,25 +125,6 @@ void main() {
 
 		boundsMinInPixels = paramArr[baseInd+0];
 		boundsMaxInPixels = paramArr[baseInd+1];
-		//originInPixels = paramArr[baseInd+2];
-		powerVals = paramArr[baseInd+3];
-		coefficients = paramArr[baseInd+4];
-		squareVals = paramArr[baseInd+5];
-		minMaxMat = paramArr[baseInd+6];
-
-		orig = (boundsMaxInPixels - boundsMinInPixels)/2.0;
-		absWorldPosInPixels = ((worldPosInPixels)-(orig));
-
-		originInPixels = clamp(worldPosInPixels, boundsMinInPixels + cornerDis, boundsMaxInPixels - cornerDis );
-		absOriginInPixels = ((originInPixels) - (orig));
-
-
-		
-		dis = (absWorldPosInPixels - absOriginInPixels);
-
-		
-
-		absDisNorm = abs( dis.xyz/cornerDis.xyz );
 		
 
 		if (
@@ -131,6 +134,52 @@ void main() {
 		) {
 
 
+			//originInPixels = paramArr[baseInd+2];
+			powerVals = paramArr[baseInd+3];
+			coefficients = paramArr[baseInd+4];
+			squareVals = paramArr[baseInd+5];
+			minMaxMat = paramArr[baseInd+6];
+
+			orig = (boundsMaxInPixels - boundsMinInPixels)/2.0;
+			absWorldPosInPixels = ((worldPosInPixels)-(orig));
+
+			newCornerDis = cornerDis*orig;
+
+			originInPixels = clamp(worldPosInPixels, boundsMinInPixels + newCornerDis, boundsMaxInPixels - newCornerDis );
+			absOriginInPixels = ((originInPixels) - (orig));
+
+			dis = (absWorldPosInPixels - absOriginInPixels);
+			absDisNorm = abs( dis.xyz/newCornerDis.xyz );
+
+			bLessThanOrig = lessThanEqual(absWorldPosInPixels,originInPixels);
+			lessThanOrig = vec3(bLessThanOrig);
+			dis *= lessThanOrig;
+
+			
+
+			// stair-stepping, ribbing, airval
+
+
+			curDisXY.x = max(absDisNorm.x,absDisNorm.y);
+			curDisYZ.x = max(absDisNorm.y,absDisNorm.z);
+			curDisXZ.x = max(absDisNorm.x,absDisNorm.z);
+
+			//curRadPhi = atan(absDisNormalized.y, absDisNormalized.x);
+			//curRadThe = atan(absDisNormalized.z,length(absDisNormalized.xy));
+			// + step(abs(sin(curRadPhi*8.0) ),0.5)*0.1 + step(abs(sin(curRadThe*4.0) ),0.5)*0.1
+
+			if (squareVals.x*squareVals.y*squareVals.z == 1.0) {
+				absDisNorm.xyz = vec3( max(max(absDisNorm.x,absDisNorm.y),absDisNorm.z) );
+			}
+			else {
+				absDisNorm.xy = mix(absDisNorm.xy, curDisXY.xx, squareVals.x*squareVals.y );
+				absDisNorm.yz = mix(absDisNorm.yz, curDisYZ.xx, squareVals.y*squareVals.z );
+				absDisNorm.xz = mix(absDisNorm.xz, curDisXZ.xx, squareVals.z*squareVals.x );
+			}
+
+
+			absDisNorm.z = floor(absDisNorm.z*8.0)/8.0;
+
 			
 			eqRes.x = coefficients.x*pow(absDisNorm.x,powerVals.x);
 			eqRes.y = coefficients.y*pow(absDisNorm.y,powerVals.y);
@@ -139,13 +188,23 @@ void main() {
 
 			tempLen = (eqRes.x + eqRes.y + eqRes.z);
 
-			if ( ( tempLen > minMaxMat.x ) && (tempLen < minMaxMat.y ) ) {
-				finalRes.a = minMaxMat.z/255.0;
-			}
+			if (airVal == 1.0) {
 
-			if ( tempLen < minMaxMat.x ) {
+			}
+			else {
+				if ( ( tempLen >= minMaxMat.x ) && (tempLen <= minMaxMat.y ) ) {
+					finalRes.a = minMaxMat.z/255.0;
+				}
+			}
+			
+
+			if ( tempLen < minMaxMat.x ) { // || abs(sin(worldPosInPixels.x/100.0)) > 0.5
+				airVal = 1.0;
 				finalRes.a = 0.0/255.0;
 			}
+
+			
+			
 
 			
 
@@ -183,59 +242,3 @@ void main() {
 	//gl_FragData[0] = float(tex1.a > threshVal/255.0)*(vec4(1.0,0.0,0.0,2.0/255.0));
 
 }
-
-
-
-		// vec2 curDisXY = vec2(0.0);
-		// vec2 curDisYZ = vec2(0.0);
-		// vec2 curDisXZ = vec2(0.0);
-
-
-		//v1 = (boundsMaxInPixels-abs(originInPixels));
-		//v2 = (boundsMinInPixels-abs(originInPixels));
-
-
-
-		// if (absWorldPosInPixels.x <= originInPixels.x) {
-		// 	dis.x = 0.0;
-		// }
-		// if (absWorldPosInPixels.y <= originInPixels.y) {
-		// 	dis.y = 0.0;
-		// }
-		// if (absWorldPosInPixels.z <= originInPixels.z) {
-		// 	dis.z = 0.0;
-		// }
-		
-		
-
-		// //normLen = (boundsMaxInPixels-originInPixels);
-		// //absDisNormalized = normalize(absDisNorm);
-		
-
-		// //absDisNorm /= curDis;
-
-		// // todo: use bounds min/max instead
-		
-		// (absDisNorm.x <= 1.0) &&
-		// (absDisNorm.y <= 1.0) &&
-		// (absDisNorm.z <= 1.0)
-		
-		// curDisXY.x = max(absDisNorm.x,absDisNorm.y);
-		// curDisYZ.x = max(absDisNorm.y,absDisNorm.z);
-		// curDisXZ.x = max(absDisNorm.x,absDisNorm.z);
-
-		// //curRadPhi = atan(absDisNormalized.y, absDisNormalized.x);
-		// //curRadThe = atan(absDisNormalized.z,length(absDisNormalized.xy));
-		// // + step(abs(sin(curRadPhi*8.0) ),0.5)*0.1 + step(abs(sin(curRadThe*4.0) ),0.5)*0.1
-
-		// if (squareVals.x*squareVals.y*squareVals.z == 1.0) {
-		// 	absDisNorm.xyz = vec3( max(max(absDisNorm.x,absDisNorm.y),absDisNorm.z) );
-		// }
-		// else {
-		// 	absDisNorm.xy = mix(absDisNorm.xy, curDisXY.xx, squareVals.x*squareVals.y );
-		// 	absDisNorm.yz = mix(absDisNorm.yz, curDisYZ.xx, squareVals.y*squareVals.z );
-		// 	absDisNorm.xz = mix(absDisNorm.xz, curDisXZ.xx, squareVals.z*squareVals.x );
-		// }
-		// finalRes.a = minMaxMat.z/255.0;
-
-		// 

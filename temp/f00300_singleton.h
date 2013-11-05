@@ -123,8 +123,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		paramArrMap = new float[4096];
 
 		
-		numProvinces = 64;
-		seaLevel = 100;
+		
 		
 		showMap = true;
 
@@ -1664,7 +1663,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 			case 'c':
-				isBare = !isBare;
+				//isBare = !isBare;
 				restartGen = true;
 			break;
 

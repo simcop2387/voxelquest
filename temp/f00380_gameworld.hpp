@@ -3,7 +3,8 @@ class GameWorld {
 public:
 
 
-	
+	int numProvinces;
+	int seaLevel;
 	int pageCount;
 	int mapSwapFlag;
 	int visPageSizeInUnits;
@@ -15,8 +16,14 @@ public:
 	int maxThreads;
 	int availThreads;
 	int visPageSizeInPixels;
-	int* curDiagram;
 	int holderSizeInPages;
+
+
+
+	int* curDiagram;
+	int* provinceGrid;
+	int* provinceX;
+	int* provinceY;
 
 	bool doDrawFBO;
 	bool lastProcResult;
@@ -82,6 +89,12 @@ public:
 
 		int i;
 		int j;
+
+		numProvinces = 32;
+		provinceGrid = new int[numProvinces*numProvinces];
+		provinceX = new int[numProvinces];
+		provinceY = new int[numProvinces];
+		seaLevel = 100;
 
 		mapSwapFlag = 0;
 		mapStep = 0.0f;
@@ -1541,7 +1554,9 @@ public:
 		int densityChannel = 2;
 
 		FBOWrapper* fbow = singleton->getFBOWrapper("hmFBO",0);
-		fbow->getPixels();
+		fbow->getPixels(true);
+		fbow->updateMips();
+
 		fbow->setAllPixels(densityChannel,255);
 		fbow->setAllPixels(idChannel,0);
 
@@ -1554,10 +1569,11 @@ public:
 		bool isValid;
 		int xind;
 		int yind;
+		int curHeight;
+		int idealHeight = (255-seaLevel)/2 + seaLevel;
 
 
-
-		for (i = 0; i < singleton->numProvinces; i++) {
+		for (i = 0; i < numProvinces; i++) {
 
 			isValid = false;
 
@@ -1566,19 +1582,24 @@ public:
 				xind = (int)(fGenRand()*fbow->width);
 				yind = (int)(fGenRand()*fbow->height);
 
-				if (fbow->getPixelAtC(xind,yind,hmChannel) > singleton->seaLevel ) {
-					if (fbow->getPixelAtC(xind,yind,idChannel) == 0) {
+				if (fbow->getPixelAtC(xind,yind,idChannel) == 0) {
+					curHeight = fbow->getPixelAtC(xind,yind,hmChannel);
+
+					if (
+						(curHeight > seaLevel) &&
+						( abs(curHeight-idealHeight) < 30 )
+					) {
+						
+						provinceX[i] = xind;
+						provinceY[i] = yind;
 						fbow->setPixelAtC(xind,yind,idChannel,i+1);
 						fbow->setPixelAtC(xind,yind,densityChannel,0);
 						isValid = true;
-					}
-					else {
-						isValid = false;
+						
 					}
 				}
-				else {
-					isValid = false;
-				}
+
+				
 			}
 			while (!isValid);
 			
@@ -1627,7 +1648,17 @@ public:
 		int startDir;
 		int curDir;
 
-		
+		int cx1;
+		int cy1;
+		float mult;
+		int cx2;
+		int cy2;
+
+		int delta;
+		int bestDelta;
+		int bestDir;
+		int bestInd;
+
 		int w = fbow2->width;
 		int h = fbow2->height;
 		
@@ -1670,7 +1701,8 @@ public:
 
 		btStack[0] = fbow2->getIndex(iGenRand(w), iGenRand(h) );
 
-		
+		// recursive backtrack
+
 		while (btStackInd > -1) {
 
 			curInd = btStack[btStackInd];
@@ -1679,9 +1711,12 @@ public:
 
 			fbow2->orPixelAtIndex(curInd, btChannel, visFlag);
 
-			startDir = iGenRand(4);
+			startDir = 0;//iGenRand(4);
 			count = 0;
 			notFound = true;
+			bestDelta = INT_MAX;
+
+			curHeight = fbow->getPixelAtIndex(curInd,hmChannel);
 
 			do {
 				curDir = (startDir + count)%4;
@@ -1689,18 +1724,59 @@ public:
 				testX = curX + dirModX[curDir];
 				testY = curY + dirModY[curDir];
 				testInd = fbow2->getIndex(testX,testY);
-
 				testPix = fbow2->getPixelAtIndex(testInd, btChannel);
 
 
 				if ( (testPix & visFlag) == 0) {
 					//not visited, proceed
 					notFound = false;
+
+
+					delta = abs(
+						fbow->getPixelAtIndex(curInd,hmChannel) -
+						fbow->getPixelAtIndex(testInd,hmChannel)
+					);
+
+					mult = 4096.0f;
+					
+					for (i = 1; i < fbow->numMips-6; i++) {
+						delta += floor(abs(
+							fbow->getMipVal(
+								curX,
+								curY,
+								0,
+								0,
+								i,
+								hmChannel
+							) -
+							fbow->getMipVal(
+								curX,
+								curY,
+								dirModX[curDir],
+								dirModY[curDir],
+								i,
+								hmChannel
+							)
+						)*mult);
+
+						mult = mult * 0.25f;
+					}
+					
+						
+
+
+					if (delta < bestDelta) {
+						bestDelta = delta;
+						bestDir = curDir;
+						bestInd = testInd;
+					}
+
 				}
 
 				count++;
 			}
-			while (notFound && count < 4);
+			while (count < 4); //notFound && 
+
 
 			if (notFound) {
 				btStackInd--;
@@ -1708,11 +1784,11 @@ public:
 			else {
 
 				// join the two and remove walls
-				fbow2->andPixelAtIndex(curInd, btChannel, dirFlags[curDir]);
-				fbow2->andPixelAtIndex(testInd, btChannel, dirFlagsOp[curDir]);
+				fbow2->andPixelAtIndex(curInd, btChannel, dirFlags[bestDir]);
+				fbow2->andPixelAtIndex(bestInd, btChannel, dirFlagsOp[bestDir]);
 				
 				btStackInd++;
-				btStack[btStackInd] = testInd;
+				btStack[btStackInd] = bestInd;
 			}
 
 		}
@@ -1775,21 +1851,73 @@ public:
 		fbow->getPixels();
 
 
+		for (i = 0; i < numProvinces*numProvinces; i++) {
+			provinceGrid[i] = 0;
+		}
+
+
+		/*
+
+		// find neighboring cities and add in main streets
+
 		for (k = 0; k < totSize; k++) {
 			curInd = k;
 			curY = curInd/w;
 			curX = curInd-curY*w;
 
+			basePix = fbow->getPixelAtIndex(curInd,idChannel);
+
+			testPix = fbow->getPixelAtIndex(fbow->getIndex(curX+1,curY), idChannel);
+			testPix2 = fbow->getPixelAtIndex(fbow->getIndex(curX,curY+1), idChannel);
+
+
+			if (basePix != 0) {
+				if (testPix != 0) {
+					if (basePix != testPix) {
+
+						provinceGrid[basePix*numProvinces + testPix] = 1;
+						provinceGrid[basePix + testPix*numProvinces] = 1;
+
+					}
+				}
+				if (testPix2 != 0) {
+					if (basePix != testPix2) {
+						provinceGrid[basePix*numProvinces + testPix2] = 1;
+						provinceGrid[basePix + testPix2*numProvinces] = 1;
+					}
+				}
+			}
+
+
 			fbow2->orPixelAtIndex(curInd, stChannel, streetFlagsH[curY]|streetFlagsV[curX]);
 
 		}
 
+		
+		for (i = 0; i < numProvinces-1; i++) {
+			for (j = i + 1; j < numProvinces; j++) {
+				if (provinceGrid[i + j*numProvinces] == 1) {
 
+					k = fbow->numMips-1;
 
+					cx1 = provinceX[i];
+					cy1 = provinceY[i];
+					cx2 = provinceX[j];
+					cy2 = provinceY[j];
 
+					while (getMipInd(cx1,cy1,k) == getMipInd(cx2,cy2,k)) {
+						k--;
+					}
+
+				}
+			}
+		}
+
+*/
+
+		// remove any road that touches water or is out of town
 
 		int cityLevel = 0;
-
 		for (k = 0; k < totSize; k++) {
 			curInd = k;
 			curY = curInd/w;
@@ -1805,7 +1933,7 @@ public:
 					testPix = fbow->getPixelAtIndex(testInd, hmChannel);
 					
 
-					if (testPix < singleton->seaLevel + 10) {
+					if (testPix < seaLevel + 10) {
 						touchesWater = true;
 						break;
 					}
@@ -1819,15 +1947,15 @@ public:
 			testPix2 = fbow->getPixelAtIndex(curInd, densityChannel);
 
 
-			if (touchesWater || (testPix2 > 120) ) {
+			if (touchesWater) { // || (testPix2 > 120) 
 				fbow2->andPixelAtIndex(curInd, btChannel, dirFlagClear);
 				fbow2->andPixelAtIndex(curInd, stChannel, dirFlagClear);
 				
 				//TODO: repair all broken (half) edges
 			}
-			if (testPix2 > 80) {
-				fbow2->andPixelAtIndex(curInd, stChannel, dirFlagClear);
-			}
+			// if (testPix2 > 80) {
+			// 	fbow2->andPixelAtIndex(curInd, stChannel, dirFlagClear);
+			// }
 			
 
 		}

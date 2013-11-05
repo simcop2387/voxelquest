@@ -107,7 +107,7 @@ void popTraceND() {
 
 
 
-/*
+
 void doTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
 	#ifdef DEBUG_MODE
 	int i;
@@ -144,51 +144,51 @@ void popTrace() {
 	#endif
 }
 
-*/
 
-void doTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
-	int i;
 
-	if (TRACE_ON) {
-		for (i = 0; i < traceLevel; i++) {
-			std::cout << "|  ";
-		}
+// void doTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
+// 	int i;
+
+// 	if (TRACE_ON) {
+// 		for (i = 0; i < traceLevel; i++) {
+// 			std::cout << "|  ";
+// 		}
 		
-		std::cout << traceVal0 << " " << traceVal1 << " " << traceVal2 << " " << traceVal3 << " " << traceVal4 << " " << traceVal5 << " " << traceVal6 << " " << traceVal7 << " " << traceVal8 << " " << traceVal9 << " " << traceVal10 << "\n" << std::flush;
-	}
+// 		std::cout << traceVal0 << " " << traceVal1 << " " << traceVal2 << " " << traceVal3 << " " << traceVal4 << " " << traceVal5 << " " << traceVal6 << " " << traceVal7 << " " << traceVal8 << " " << traceVal9 << " " << traceVal10 << "\n" << std::flush;
+// 	}
 	
 	
-}
-void doTraceVec(std::string traceVal0, FIVector4 *fv) {
-	if (TRACE_ON) {
-		doTrace(traceVal0, " ", f__s(fv->getFX()), " ", f__s(fv->getFY()), " ", f__s(fv->getFZ())  );
-	}
+// }
+// void doTraceVec(std::string traceVal0, FIVector4 *fv) {
+// 	if (TRACE_ON) {
+// 		doTrace(traceVal0, " ", f__s(fv->getFX()), " ", f__s(fv->getFY()), " ", f__s(fv->getFZ())  );
+// 	}
 	
 	
-}
+// }
 
-void pushTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
+// void pushTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
 	
-	if (TRACE_ON) {
-		doTrace(traceVal0,traceVal1,traceVal2,traceVal3,traceVal4,traceVal5,traceVal6,traceVal7,traceVal8,traceVal9,traceVal10);
-			traceLevel++;
-			popCount=0;
-	}
+// 	if (TRACE_ON) {
+// 		doTrace(traceVal0,traceVal1,traceVal2,traceVal3,traceVal4,traceVal5,traceVal6,traceVal7,traceVal8,traceVal9,traceVal10);
+// 			traceLevel++;
+// 			popCount=0;
+// 	}
 	
-}
-void popTrace() {
+// }
+// void popTrace() {
 	
-	if (TRACE_ON) {
-		traceLevel--;
-		popCount++;
-		if (popCount >= 2) {
-			doTrace("END");
-		}
-	}
+// 	if (TRACE_ON) {
+// 		traceLevel--;
+// 		popCount++;
+// 		if (popCount >= 2) {
+// 			doTrace("END");
+// 		}
+// 	}
 
 	
 	
-}
+// }
 
 
 

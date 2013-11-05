@@ -123,8 +123,6 @@ public:
   int mouseCount;
   int lastMouseX;
   int lastMouseY;
-  int numProvinces;
-  int seaLevel;
   int holderSizeInPages;
   int holderSizeInPixels;
   uint volGenFBOSize;
@@ -387,6 +385,8 @@ public:
 class GameWorld
 {
 public:
+  int numProvinces;
+  int seaLevel;
   int pageCount;
   int mapSwapFlag;
   int visPageSizeInUnits;
@@ -398,8 +398,11 @@ public:
   int maxThreads;
   int availThreads;
   int visPageSizeInPixels;
-  int * curDiagram;
   int holderSizeInPages;
+  int * curDiagram;
+  int * provinceGrid;
+  int * provinceX;
+  int * provinceY;
   bool doDrawFBO;
   bool lastProcResult;
   float mapStep;

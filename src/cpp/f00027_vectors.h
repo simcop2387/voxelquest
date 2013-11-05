@@ -556,10 +556,10 @@ public:
         originInPixels.addXYZRef(&boundsMaxInPixels);
         originInPixels.multXYZ(0.5f);
 
-        powerVals.setFXYZ(2.0f,2.0f,2.0f);
+        powerVals.setFXYZ(2.0f,2.0f,1.0f);
         coefficients.setFXYZ(1.0,1.0,1.0);
-        squareVals.setFXYZ(1.0,1.0,0.0);
-        minMaxMat.setFXYZ(0.0f,1.0f,2.0f);
+        squareVals.setFXYZ(0.0,0.0,0.0);
+        minMaxMat.setFXYZ(0.5f,1.0f,2.0f);
 
         //minRad = 0.75;
         //maxRad = 1.0;

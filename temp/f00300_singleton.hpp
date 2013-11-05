@@ -61,10 +61,12 @@ public:
 	int mouseCount;
 	int lastMouseX;
 	int	lastMouseY;
-	int numProvinces;
-	int seaLevel;
+	
+	
 	int holderSizeInPages;
 	int holderSizeInPixels;
+
+
 
 	uint volGenFBOSize;
 	uint slicesPerPitch;
@@ -286,8 +288,7 @@ public:
 		paramArrMap = new float[4096];
 
 		
-		numProvinces = 64;
-		seaLevel = 100;
+		
 		
 		showMap = true;
 
@@ -1907,7 +1908,7 @@ public:
 			break;
 
 			case 'c':
-				isBare = !isBare;
+				//isBare = !isBare;
 				restartGen = true;
 			break;
 

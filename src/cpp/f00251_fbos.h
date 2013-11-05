@@ -10,12 +10,19 @@ public:
 	int width;
 	int height;
 	int bytesPerChannel;
+	int numMips;
+	bool hasMipMap;
 	//bool hasDepth;
 
 
 	GLint internalFormat;
 
 	unsigned char *pixelsChar;
+	unsigned char** pixelsCharMippedMin;
+	unsigned char** pixelsCharMippedMax;
+	unsigned char** pixelsCharMippedAvg;
+	int* mipWidths;
+
 	float *pixelsFloat;
 	bool isFloat;
 
@@ -27,8 +34,13 @@ public:
 		bytesPerChannel = _bytesPerChannel;
 		//hasDepth = _hasDepth;
 
+		pixelsCharMippedMin = NULL;
+		pixelsCharMippedMax = NULL;
+		pixelsCharMippedAvg = NULL;
+
 		int w = width;
 		int h = height;
+		numMips = 0;
 
 		isFloat = false;
 
@@ -305,11 +317,128 @@ public:
 	}
 
 
-	void getPixels() {
+	int getMipVal(int x, int y, int xmod, int ymod, int mipLev, int channel) {
+		int w = mipWidths[mipLev];
+		int curWidth = mipWidths[mipLev];
+		int xv = ((x*curWidth)/mipWidths[0] + xmod);
+		int yv = ((y*curWidth)/mipWidths[0] + ymod);
+
+		while (xv < 0) {
+			xv += curWidth;
+		}
+		while (xv > curWidth) {
+			xv -= curWidth;
+		}
+		while (yv < 0) {
+			yv += curWidth;
+		}
+		while (yv > curWidth) {
+			yv -= curWidth;
+		}
+
+		int ind = xv + yv*curWidth;
+
+		return (int) (pixelsCharMippedAvg[mipLev][ (ind)*4 + channel ]);
+
+		//return pixelsCharMippedAvg[mipLev][ind];
+
+
+	}
+
+	int getMipInd(int x, int y, int mipLev) {
+		int w = mipWidths[mipLev];
+
+		return ((x*mipWidths[mipLev])/mipWidths[0]) + ((y*mipWidths[mipLev])/mipWidths[0])*mipWidths[mipLev];
+	}
+
+	void updateMips() {
+		
+		int i;
+		int j;
+		int k;
+		int m;
+
+		int ind, ind0, ind1, ind2, ind3;
+
+		int mRead;
+		int mWrite;
+
+		if (pixelsCharMippedAvg == NULL) {
+			doTrace("Error: no mip maps, first call getPixels()");
+			return;
+		}
+		else {
+			for (m = 0; m < numMips-1; m++) {
+
+				mRead = m;
+				mWrite = m+1;
+
+				for (k = 0; k < 4; k++) {
+
+					for (i = 0; i < mipWidths[mWrite]; i++) {
+						for (j = 0; j < mipWidths[mWrite]; j++) {
+
+							ind = i+j*mipWidths[mWrite];
+							
+							ind0 = (i*2+0) + (j*2+0)*mipWidths[mRead];
+							ind1 = (i*2+1) + (j*2+0)*mipWidths[mRead];
+							ind2 = (i*2+0) + (j*2+1)*mipWidths[mRead];
+							ind3 = (i*2+1) + (j*2+1)*mipWidths[mRead];
+
+							pixelsCharMippedAvg[ mWrite ][ ind ] = (
+								pixelsCharMippedAvg[ mRead ][ind0] + 
+								pixelsCharMippedAvg[ mRead ][ind1] + 
+								pixelsCharMippedAvg[ mRead ][ind2] + 
+								pixelsCharMippedAvg[ mRead ][ind3]
+							)/4;
+
+							pixelsCharMippedMin[ mWrite ][ ind ] = min(
+								min(
+									pixelsCharMippedMin[ mRead ][ind0],
+									pixelsCharMippedMin[ mRead ][ind1]
+								),
+								min(
+									pixelsCharMippedMin[ mRead ][ind2], 
+									pixelsCharMippedMin[ mRead ][ind3]
+								)
+							);
+
+							pixelsCharMippedMax[ mWrite ][ ind ] = max(
+								max(
+									pixelsCharMippedMax[ mRead ][ind0],
+									pixelsCharMippedMax[ mRead ][ind1]
+								),
+								max(
+									pixelsCharMippedMax[ mRead ][ind2], 
+									pixelsCharMippedMax[ mRead ][ind3]
+								)
+							);
+
+
+
+
+						}
+					}
+
+				}
+			}
+		}
+	}
+
+
+	void getPixels(bool _hasMipMap=false) {
+
+		
 
 		glBindTexture(GL_TEXTURE_2D, color_tex);
 		GLint numBytes = 0;
 		
+		int targetlevel = 0;
+		int index;
+		int i;
+		int totalWidth;
+		int curBytes;
+
 		//GLint intForm;
 		//glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPONENTS, &intForm); // get internal format type of GL texture
 
@@ -351,7 +480,55 @@ public:
 			else {
 
 				if (pixelsChar == NULL) {
-					pixelsChar = (unsigned char*)malloc(numBytes);
+					pixelsChar = new unsigned char[numBytes];
+
+
+					if (_hasMipMap) {
+
+						hasMipMap = _hasMipMap;
+
+					}
+
+
+					index = width;
+					if (index == 0) {
+						doTrace("Error: width of 0");
+						return;
+					}
+					else {
+						while (index >>= 1) {++targetlevel;}
+						numMips = targetlevel;
+
+					}
+
+					pixelsCharMippedAvg = new unsigned char*[numMips];
+					pixelsCharMippedMax = new unsigned char*[numMips];
+					pixelsCharMippedMin = new unsigned char*[numMips];
+					mipWidths = new int[numMips];
+
+					
+					pixelsCharMippedAvg[0] = pixelsChar;
+					pixelsCharMippedMax[0] = pixelsChar;
+					pixelsCharMippedMin[0] = pixelsChar;
+
+					mipWidths[0] = width;
+
+					if (hasMipMap) {
+
+						totalWidth = width/2;
+						curBytes = numBytes/2;
+
+						for (i = 1; i < numMips; i++) {
+							pixelsCharMippedMin[i] = new unsigned char[curBytes];
+							pixelsCharMippedMax[i] = new unsigned char[curBytes];
+							pixelsCharMippedAvg[i] = new unsigned char[curBytes];
+							mipWidths[i] = totalWidth;
+
+							totalWidth = totalWidth/2;
+							curBytes = curBytes/2;
+						}
+					}
+
 				}
 				glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelsChar);
 			}

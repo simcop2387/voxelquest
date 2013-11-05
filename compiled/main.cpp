@@ -756,10 +756,10 @@ public:
         originInPixels.addXYZRef(&boundsMaxInPixels);
         originInPixels.multXYZ(0.5f);
 
-        powerVals.setFXYZ(2.0f,2.0f,2.0f);
+        powerVals.setFXYZ(2.0f,2.0f,1.0f);
         coefficients.setFXYZ(1.0,1.0,1.0);
-        squareVals.setFXYZ(1.0,1.0,0.0);
-        minMaxMat.setFXYZ(0.0f,1.0f,2.0f);
+        squareVals.setFXYZ(0.0,0.0,0.0);
+        minMaxMat.setFXYZ(0.5f,1.0f,2.0f);
 
         //minRad = 0.75;
         //maxRad = 1.0;
@@ -9069,7 +9069,7 @@ void popTraceND() {
 
 
 
-/*
+
 void doTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
 	#ifdef DEBUG_MODE
 	int i;
@@ -9106,51 +9106,51 @@ void popTrace() {
 	#endif
 }
 
-*/
 
-void doTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
-	int i;
 
-	if (TRACE_ON) {
-		for (i = 0; i < traceLevel; i++) {
-			std::cout << "|  ";
-		}
+// void doTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
+// 	int i;
+
+// 	if (TRACE_ON) {
+// 		for (i = 0; i < traceLevel; i++) {
+// 			std::cout << "|  ";
+// 		}
 		
-		std::cout << traceVal0 << " " << traceVal1 << " " << traceVal2 << " " << traceVal3 << " " << traceVal4 << " " << traceVal5 << " " << traceVal6 << " " << traceVal7 << " " << traceVal8 << " " << traceVal9 << " " << traceVal10 << "\n" << std::flush;
-	}
+// 		std::cout << traceVal0 << " " << traceVal1 << " " << traceVal2 << " " << traceVal3 << " " << traceVal4 << " " << traceVal5 << " " << traceVal6 << " " << traceVal7 << " " << traceVal8 << " " << traceVal9 << " " << traceVal10 << "\n" << std::flush;
+// 	}
 	
 	
-}
-void doTraceVec(std::string traceVal0, FIVector4 *fv) {
-	if (TRACE_ON) {
-		doTrace(traceVal0, " ", f__s(fv->getFX()), " ", f__s(fv->getFY()), " ", f__s(fv->getFZ())  );
-	}
+// }
+// void doTraceVec(std::string traceVal0, FIVector4 *fv) {
+// 	if (TRACE_ON) {
+// 		doTrace(traceVal0, " ", f__s(fv->getFX()), " ", f__s(fv->getFY()), " ", f__s(fv->getFZ())  );
+// 	}
 	
 	
-}
+// }
 
-void pushTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
+// void pushTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
 	
-	if (TRACE_ON) {
-		doTrace(traceVal0,traceVal1,traceVal2,traceVal3,traceVal4,traceVal5,traceVal6,traceVal7,traceVal8,traceVal9,traceVal10);
-			traceLevel++;
-			popCount=0;
-	}
+// 	if (TRACE_ON) {
+// 		doTrace(traceVal0,traceVal1,traceVal2,traceVal3,traceVal4,traceVal5,traceVal6,traceVal7,traceVal8,traceVal9,traceVal10);
+// 			traceLevel++;
+// 			popCount=0;
+// 	}
 	
-}
-void popTrace() {
+// }
+// void popTrace() {
 	
-	if (TRACE_ON) {
-		traceLevel--;
-		popCount++;
-		if (popCount >= 2) {
-			doTrace("END");
-		}
-	}
+// 	if (TRACE_ON) {
+// 		traceLevel--;
+// 		popCount++;
+// 		if (popCount >= 2) {
+// 			doTrace("END");
+// 		}
+// 	}
 
 	
 	
-}
+// }
 
 
 
@@ -10396,12 +10396,19 @@ public:
 	int width;
 	int height;
 	int bytesPerChannel;
+	int numMips;
+	bool hasMipMap;
 	//bool hasDepth;
 
 
 	GLint internalFormat;
 
 	unsigned char *pixelsChar;
+	unsigned char** pixelsCharMippedMin;
+	unsigned char** pixelsCharMippedMax;
+	unsigned char** pixelsCharMippedAvg;
+	int* mipWidths;
+
 	float *pixelsFloat;
 	bool isFloat;
 
@@ -10413,8 +10420,13 @@ public:
 		bytesPerChannel = _bytesPerChannel;
 		//hasDepth = _hasDepth;
 
+		pixelsCharMippedMin = NULL;
+		pixelsCharMippedMax = NULL;
+		pixelsCharMippedAvg = NULL;
+
 		int w = width;
 		int h = height;
+		numMips = 0;
 
 		isFloat = false;
 
@@ -10691,11 +10703,128 @@ public:
 	}
 
 
-	void getPixels() {
+	int getMipVal(int x, int y, int xmod, int ymod, int mipLev, int channel) {
+		int w = mipWidths[mipLev];
+		int curWidth = mipWidths[mipLev];
+		int xv = ((x*curWidth)/mipWidths[0] + xmod);
+		int yv = ((y*curWidth)/mipWidths[0] + ymod);
+
+		while (xv < 0) {
+			xv += curWidth;
+		}
+		while (xv > curWidth) {
+			xv -= curWidth;
+		}
+		while (yv < 0) {
+			yv += curWidth;
+		}
+		while (yv > curWidth) {
+			yv -= curWidth;
+		}
+
+		int ind = xv + yv*curWidth;
+
+		return (int) (pixelsCharMippedAvg[mipLev][ (ind)*4 + channel ]);
+
+		//return pixelsCharMippedAvg[mipLev][ind];
+
+
+	}
+
+	int getMipInd(int x, int y, int mipLev) {
+		int w = mipWidths[mipLev];
+
+		return ((x*mipWidths[mipLev])/mipWidths[0]) + ((y*mipWidths[mipLev])/mipWidths[0])*mipWidths[mipLev];
+	}
+
+	void updateMips() {
+		
+		int i;
+		int j;
+		int k;
+		int m;
+
+		int ind, ind0, ind1, ind2, ind3;
+
+		int mRead;
+		int mWrite;
+
+		if (pixelsCharMippedAvg == NULL) {
+			doTrace("Error: no mip maps, first call getPixels()");
+			return;
+		}
+		else {
+			for (m = 0; m < numMips-1; m++) {
+
+				mRead = m;
+				mWrite = m+1;
+
+				for (k = 0; k < 4; k++) {
+
+					for (i = 0; i < mipWidths[mWrite]; i++) {
+						for (j = 0; j < mipWidths[mWrite]; j++) {
+
+							ind = i+j*mipWidths[mWrite];
+							
+							ind0 = (i*2+0) + (j*2+0)*mipWidths[mRead];
+							ind1 = (i*2+1) + (j*2+0)*mipWidths[mRead];
+							ind2 = (i*2+0) + (j*2+1)*mipWidths[mRead];
+							ind3 = (i*2+1) + (j*2+1)*mipWidths[mRead];
+
+							pixelsCharMippedAvg[ mWrite ][ ind ] = (
+								pixelsCharMippedAvg[ mRead ][ind0] + 
+								pixelsCharMippedAvg[ mRead ][ind1] + 
+								pixelsCharMippedAvg[ mRead ][ind2] + 
+								pixelsCharMippedAvg[ mRead ][ind3]
+							)/4;
+
+							pixelsCharMippedMin[ mWrite ][ ind ] = min(
+								min(
+									pixelsCharMippedMin[ mRead ][ind0],
+									pixelsCharMippedMin[ mRead ][ind1]
+								),
+								min(
+									pixelsCharMippedMin[ mRead ][ind2], 
+									pixelsCharMippedMin[ mRead ][ind3]
+								)
+							);
+
+							pixelsCharMippedMax[ mWrite ][ ind ] = max(
+								max(
+									pixelsCharMippedMax[ mRead ][ind0],
+									pixelsCharMippedMax[ mRead ][ind1]
+								),
+								max(
+									pixelsCharMippedMax[ mRead ][ind2], 
+									pixelsCharMippedMax[ mRead ][ind3]
+								)
+							);
+
+
+
+
+						}
+					}
+
+				}
+			}
+		}
+	}
+
+
+	void getPixels(bool _hasMipMap=false) {
+
+		
 
 		glBindTexture(GL_TEXTURE_2D, color_tex);
 		GLint numBytes = 0;
 		
+		int targetlevel = 0;
+		int index;
+		int i;
+		int totalWidth;
+		int curBytes;
+
 		//GLint intForm;
 		//glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPONENTS, &intForm); // get internal format type of GL texture
 
@@ -10737,7 +10866,55 @@ public:
 			else {
 
 				if (pixelsChar == NULL) {
-					pixelsChar = (unsigned char*)malloc(numBytes);
+					pixelsChar = new unsigned char[numBytes];
+
+
+					if (_hasMipMap) {
+
+						hasMipMap = _hasMipMap;
+
+					}
+
+
+					index = width;
+					if (index == 0) {
+						doTrace("Error: width of 0");
+						return;
+					}
+					else {
+						while (index >>= 1) {++targetlevel;}
+						numMips = targetlevel;
+
+					}
+
+					pixelsCharMippedAvg = new unsigned char*[numMips];
+					pixelsCharMippedMax = new unsigned char*[numMips];
+					pixelsCharMippedMin = new unsigned char*[numMips];
+					mipWidths = new int[numMips];
+
+					
+					pixelsCharMippedAvg[0] = pixelsChar;
+					pixelsCharMippedMax[0] = pixelsChar;
+					pixelsCharMippedMin[0] = pixelsChar;
+
+					mipWidths[0] = width;
+
+					if (hasMipMap) {
+
+						totalWidth = width/2;
+						curBytes = numBytes/2;
+
+						for (i = 1; i < numMips; i++) {
+							pixelsCharMippedMin[i] = new unsigned char[curBytes];
+							pixelsCharMippedMax[i] = new unsigned char[curBytes];
+							pixelsCharMippedAvg[i] = new unsigned char[curBytes];
+							mipWidths[i] = totalWidth;
+
+							totalWidth = totalWidth/2;
+							curBytes = curBytes/2;
+						}
+					}
+
 				}
 				glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelsChar);
 			}
@@ -10988,8 +11165,6 @@ public:
   int mouseCount;
   int lastMouseX;
   int lastMouseY;
-  int numProvinces;
-  int seaLevel;
   int holderSizeInPages;
   int holderSizeInPixels;
   uint volGenFBOSize;
@@ -11252,6 +11427,8 @@ public:
 class GameWorld
 {
 public:
+  int numProvinces;
+  int seaLevel;
   int pageCount;
   int mapSwapFlag;
   int visPageSizeInUnits;
@@ -11263,8 +11440,11 @@ public:
   int maxThreads;
   int availThreads;
   int visPageSizeInPixels;
-  int * curDiagram;
   int holderSizeInPages;
+  int * curDiagram;
+  int * provinceGrid;
+  int * provinceX;
+  int * provinceY;
   bool doDrawFBO;
   bool lastProcResult;
   float mapStep;
@@ -11688,8 +11868,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		paramArrMap = new float[4096];
 
 		
-		numProvinces = 64;
-		seaLevel = 100;
+		
 		
 		showMap = true;
 
@@ -13229,7 +13408,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 			case 'c':
-				isBare = !isBare;
+				//isBare = !isBare;
 				restartGen = true;
 			break;
 
@@ -14861,6 +15040,12 @@ void GameWorld::init (Singleton * _singleton)
 		int i;
 		int j;
 
+		numProvinces = 32;
+		provinceGrid = new int[numProvinces*numProvinces];
+		provinceX = new int[numProvinces];
+		provinceY = new int[numProvinces];
+		seaLevel = 100;
+
 		mapSwapFlag = 0;
 		mapStep = 0.0f;
 
@@ -16290,7 +16475,9 @@ void GameWorld::initMap ()
 		int densityChannel = 2;
 
 		FBOWrapper* fbow = singleton->getFBOWrapper("hmFBO",0);
-		fbow->getPixels();
+		fbow->getPixels(true);
+		fbow->updateMips();
+
 		fbow->setAllPixels(densityChannel,255);
 		fbow->setAllPixels(idChannel,0);
 
@@ -16303,10 +16490,11 @@ void GameWorld::initMap ()
 		bool isValid;
 		int xind;
 		int yind;
+		int curHeight;
+		int idealHeight = (255-seaLevel)/2 + seaLevel;
 
 
-
-		for (i = 0; i < singleton->numProvinces; i++) {
+		for (i = 0; i < numProvinces; i++) {
 
 			isValid = false;
 
@@ -16315,19 +16503,24 @@ void GameWorld::initMap ()
 				xind = (int)(fGenRand()*fbow->width);
 				yind = (int)(fGenRand()*fbow->height);
 
-				if (fbow->getPixelAtC(xind,yind,hmChannel) > singleton->seaLevel ) {
-					if (fbow->getPixelAtC(xind,yind,idChannel) == 0) {
+				if (fbow->getPixelAtC(xind,yind,idChannel) == 0) {
+					curHeight = fbow->getPixelAtC(xind,yind,hmChannel);
+
+					if (
+						(curHeight > seaLevel) &&
+						( abs(curHeight-idealHeight) < 30 )
+					) {
+						
+						provinceX[i] = xind;
+						provinceY[i] = yind;
 						fbow->setPixelAtC(xind,yind,idChannel,i+1);
 						fbow->setPixelAtC(xind,yind,densityChannel,0);
 						isValid = true;
-					}
-					else {
-						isValid = false;
+						
 					}
 				}
-				else {
-					isValid = false;
-				}
+
+				
 			}
 			while (!isValid);
 			
@@ -16376,7 +16569,17 @@ void GameWorld::initMap ()
 		int startDir;
 		int curDir;
 
-		
+		int cx1;
+		int cy1;
+		float mult;
+		int cx2;
+		int cy2;
+
+		int delta;
+		int bestDelta;
+		int bestDir;
+		int bestInd;
+
 		int w = fbow2->width;
 		int h = fbow2->height;
 		
@@ -16419,7 +16622,8 @@ void GameWorld::initMap ()
 
 		btStack[0] = fbow2->getIndex(iGenRand(w), iGenRand(h) );
 
-		
+		// recursive backtrack
+
 		while (btStackInd > -1) {
 
 			curInd = btStack[btStackInd];
@@ -16428,9 +16632,12 @@ void GameWorld::initMap ()
 
 			fbow2->orPixelAtIndex(curInd, btChannel, visFlag);
 
-			startDir = iGenRand(4);
+			startDir = 0;//iGenRand(4);
 			count = 0;
 			notFound = true;
+			bestDelta = INT_MAX;
+
+			curHeight = fbow->getPixelAtIndex(curInd,hmChannel);
 
 			do {
 				curDir = (startDir + count)%4;
@@ -16438,18 +16645,59 @@ void GameWorld::initMap ()
 				testX = curX + dirModX[curDir];
 				testY = curY + dirModY[curDir];
 				testInd = fbow2->getIndex(testX,testY);
-
 				testPix = fbow2->getPixelAtIndex(testInd, btChannel);
 
 
 				if ( (testPix & visFlag) == 0) {
 					//not visited, proceed
 					notFound = false;
+
+
+					delta = abs(
+						fbow->getPixelAtIndex(curInd,hmChannel) -
+						fbow->getPixelAtIndex(testInd,hmChannel)
+					);
+
+					mult = 4096.0f;
+					
+					for (i = 1; i < fbow->numMips-6; i++) {
+						delta += floor(abs(
+							fbow->getMipVal(
+								curX,
+								curY,
+								0,
+								0,
+								i,
+								hmChannel
+							) -
+							fbow->getMipVal(
+								curX,
+								curY,
+								dirModX[curDir],
+								dirModY[curDir],
+								i,
+								hmChannel
+							)
+						)*mult);
+
+						mult = mult * 0.25f;
+					}
+					
+						
+
+
+					if (delta < bestDelta) {
+						bestDelta = delta;
+						bestDir = curDir;
+						bestInd = testInd;
+					}
+
 				}
 
 				count++;
 			}
-			while (notFound && count < 4);
+			while (count < 4); //notFound && 
+
 
 			if (notFound) {
 				btStackInd--;
@@ -16457,11 +16705,11 @@ void GameWorld::initMap ()
 			else {
 
 				// join the two and remove walls
-				fbow2->andPixelAtIndex(curInd, btChannel, dirFlags[curDir]);
-				fbow2->andPixelAtIndex(testInd, btChannel, dirFlagsOp[curDir]);
+				fbow2->andPixelAtIndex(curInd, btChannel, dirFlags[bestDir]);
+				fbow2->andPixelAtIndex(bestInd, btChannel, dirFlagsOp[bestDir]);
 				
 				btStackInd++;
-				btStack[btStackInd] = testInd;
+				btStack[btStackInd] = bestInd;
 			}
 
 		}
@@ -16524,21 +16772,73 @@ void GameWorld::initMap ()
 		fbow->getPixels();
 
 
+		for (i = 0; i < numProvinces*numProvinces; i++) {
+			provinceGrid[i] = 0;
+		}
+
+
+		/*
+
+		// find neighboring cities and add in main streets
+
 		for (k = 0; k < totSize; k++) {
 			curInd = k;
 			curY = curInd/w;
 			curX = curInd-curY*w;
 
+			basePix = fbow->getPixelAtIndex(curInd,idChannel);
+
+			testPix = fbow->getPixelAtIndex(fbow->getIndex(curX+1,curY), idChannel);
+			testPix2 = fbow->getPixelAtIndex(fbow->getIndex(curX,curY+1), idChannel);
+
+
+			if (basePix != 0) {
+				if (testPix != 0) {
+					if (basePix != testPix) {
+
+						provinceGrid[basePix*numProvinces + testPix] = 1;
+						provinceGrid[basePix + testPix*numProvinces] = 1;
+
+					}
+				}
+				if (testPix2 != 0) {
+					if (basePix != testPix2) {
+						provinceGrid[basePix*numProvinces + testPix2] = 1;
+						provinceGrid[basePix + testPix2*numProvinces] = 1;
+					}
+				}
+			}
+
+
 			fbow2->orPixelAtIndex(curInd, stChannel, streetFlagsH[curY]|streetFlagsV[curX]);
 
 		}
 
+		
+		for (i = 0; i < numProvinces-1; i++) {
+			for (j = i + 1; j < numProvinces; j++) {
+				if (provinceGrid[i + j*numProvinces] == 1) {
 
+					k = fbow->numMips-1;
 
+					cx1 = provinceX[i];
+					cy1 = provinceY[i];
+					cx2 = provinceX[j];
+					cy2 = provinceY[j];
 
+					while (getMipInd(cx1,cy1,k) == getMipInd(cx2,cy2,k)) {
+						k--;
+					}
+
+				}
+			}
+		}
+
+*/
+
+		// remove any road that touches water or is out of town
 
 		int cityLevel = 0;
-
 		for (k = 0; k < totSize; k++) {
 			curInd = k;
 			curY = curInd/w;
@@ -16554,7 +16854,7 @@ void GameWorld::initMap ()
 					testPix = fbow->getPixelAtIndex(testInd, hmChannel);
 					
 
-					if (testPix < singleton->seaLevel + 10) {
+					if (testPix < seaLevel + 10) {
 						touchesWater = true;
 						break;
 					}
@@ -16568,15 +16868,15 @@ void GameWorld::initMap ()
 			testPix2 = fbow->getPixelAtIndex(curInd, densityChannel);
 
 
-			if (touchesWater || (testPix2 > 120) ) {
+			if (touchesWater) { // || (testPix2 > 120) 
 				fbow2->andPixelAtIndex(curInd, btChannel, dirFlagClear);
 				fbow2->andPixelAtIndex(curInd, stChannel, dirFlagClear);
 				
 				//TODO: repair all broken (half) edges
 			}
-			if (testPix2 > 80) {
-				fbow2->andPixelAtIndex(curInd, stChannel, dirFlagClear);
-			}
+			// if (testPix2 > 80) {
+			// 	fbow2->andPixelAtIndex(curInd, stChannel, dirFlagClear);
+			// }
 			
 
 		}
