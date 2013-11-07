@@ -421,6 +421,62 @@ public:
         return true;
     }
 
+    bool iNotEqual(FIVector4 *otherVec) {
+        if (
+            (iv4.x == otherVec->getIX()) &&
+            (iv4.y == otherVec->getIY()) &&
+            (iv4.z == otherVec->getIZ())
+        ) {
+            return false;
+        }
+        else {
+            return true;
+        }
+    }
+
+    void wrapDistance(FIVector4 *otherVec, int maxPitch) {
+        
+        int i;
+        int j;
+
+        int bestI;
+        int bestJ;
+
+        float shortestDis = FLT_MAX;
+        float curDis;
+
+        for (i = -1; i <= 1; i++) {
+            for (j = -1; j <= 1; j++) {
+
+                otherVec->addXYZ(i*maxPitch, j*maxPitch, 0, 1.0f);
+                curDis = distance(otherVec);
+                otherVec->addXYZ(i*maxPitch, j*maxPitch, 0, -1.0f);
+
+                if (curDis < shortestDis) {
+                    shortestDis = curDis;
+                    bestI = i;
+                    bestJ = j;
+                }
+
+            }   
+        }
+
+        otherVec->addXYZ(bestI*maxPitch, bestJ*maxPitch, 0);
+
+
+    }
+
+    /*
+
+    var raw_dx = Math.abs(x2 - x1);
+    var raw_dy = Math.abs(y2 - y1);
+
+    var dx = (raw_dx < (xmax / 2)) ? raw_dx : xmax - raw_dx;
+    var dy = (raw_dy < (ymax / 2)) ? raw_dy : ymax - raw_dy;
+
+    var l2dist = Math.sqrt((dx * dx) + (dy * dy));
+
+    */
 
     float distance(FIVector4 *otherVec) {
 
@@ -556,7 +612,7 @@ public:
         originInPixels.addXYZRef(&boundsMaxInPixels);
         originInPixels.multXYZ(0.5f);
 
-        powerVals.setFXYZ(2.0f,2.0f,1.0f);
+        powerVals.setFXYZ(1.0f,1.0f,1.0f);
         coefficients.setFXYZ(1.0,1.0,1.0);
         squareVals.setFXYZ(0.0,0.0,0.0);
         minMaxMat.setFXYZ(0.5f,1.0f,2.0f);
@@ -575,183 +631,4 @@ public:
     }
 
 };
-
-
-
-
-
-/*
-class Vector3  {
-public:
-	
-	float e[3];
-
-    Vector3() { e[0] = 0; e[1] = 0; e[2] = 0;}
-    Vector3(float e0, float e1, float e2) {e[0]=e0; e[1]=e1; e[2]=e2;}
-    float x() const { return e[0]; }
-    float y() const { return e[1]; }
-    float z() const { return e[2]; }
-    void setX(float a) { e[0] = a; }
-    void setY(float a) { e[1] = a; }
-    void setZ(float a) { e[2] = a; }
-	void setXYZ(float a, float b, float c) {
-		e[0] = a;
-		e[1] = b;
-		e[2] = c;
-	}
-
-    inline Vector3(const Vector3 &v) {
-	 e[0] = v.e[0]; e[1] = v.e[1]; e[2] = v.e[2];
-    }
-
-    const Vector3& operator+() const { return *this; }
-    Vector3 operator-() const { return Vector3(-e[0], -e[1], -e[2]); }
-    float& operator[](int i) {  return e[i]; }
-    float operator[](int i) const { return e[i];}
-
-    Vector3& operator+=(const Vector3 &v2);
-    Vector3& operator-=(const Vector3 &v2);
-    Vector3& operator*=(const float t);
-    Vector3& operator/=(const float t);
-
-
-
-    float length() const { return sqrt(e[0]*e[0] + e[1]*e[1] + e[2]*e[2]); }
-    float squaredLength() const { return e[0]*e[0] + e[1]*e[1] + e[2]*e[2]; }
-
-    void makeUnitVector();
-
-
-
-
-    float minComponent() const { return e[indexOfMinComponent()]; }
-    float maxComponent() const { return e[indexOfMaxComponent()]; }
-    float maxAbsComponent() const { return e[indexOfMaxAbsComponent()]; }
-    float minAbsComponent() const { return e[indexOfMinAbsComponent()]; }
-    int indexOfMinComponent() const {
-	return (e[0]< e[1] && e[0]< e[2]) ? 0 : (e[1] < e[2] ? 1 : 2);
-    }
-
-    int indexOfMinAbsComponent() const {
-	if (fabs(e[0]) < fabs(e[1]) && fabs(e[0]) < fabs(e[2]))
-	    return 0;
-	else if (fabs(e[1]) < fabs(e[2]))
-	    return 1;
-	else
-	    return 2;
-    }
-
-    int indexOfMaxComponent() const {
-	return (e[0]> e[1] && e[0]> e[2]) ? 0 : (e[1] > e[2] ? 1 : 2);
-    }
-
-    int indexOfMaxAbsComponent() const {
-	if (fabs(e[0]) > fabs(e[1]) && fabs(e[0]) > fabs(e[2]))
-	    return 0;
-	else if (fabs(e[1]) > fabs(e[2]))
-	    return 1;
-	else
-	    return 2;
-    }
-
-    
-};
-
-
-
-inline bool operator==(const Vector3 &t1, const Vector3 &t2) {
-   return ((t1[0]==t2[0])&&(t1[1]==t2[1])&&(t1[2]==t2[2]));
-}
-
-inline bool operator!=(const Vector3 &t1, const Vector3 &t2) {
-   return ((t1[0]!=t2[0])||(t1[1]!=t2[1])||(t1[2]!=t2[2]));
-}
-
-inline std::istream &operator>>(std::istream &is, Vector3 &t) {
-   is >> t[0] >> t[1] >> t[2];
-   return is;
-}
-
-inline std::ostream &operator<<(std::ostream &os, const Vector3 &t) {
-   os << t[0] << " " << t[1] << " " << t[2];
-   return os;
-}
-
-inline Vector3 unitVector(const Vector3& v) {
-    float k = 1.0f / sqrt(v.e[0]*v.e[0] + v.e[1]*v.e[1] + v.e[2]*v.e[2]);
-    return Vector3(v.e[0]*k, v.e[1]*k, v.e[2]*k);
-}
-
-inline void Vector3::makeUnitVector() {
-    float k = 1.0f / sqrt(e[0]*e[0] + e[1]*e[1] + e[2]*e[2]);
-    e[0] *= k; e[1] *= k; e[2] *= k;
-}
-
-inline Vector3 operator+(const Vector3 &v1, const Vector3 &v2) {
-    return Vector3( v1.e[0] + v2.e[0], v1.e[1] + v2.e[1], v1.e[2] + v2.e[2]);
-}
-
-inline Vector3 operator-(const Vector3 &v1, const Vector3 &v2) {
-    return Vector3( v1.e[0] - v2.e[0], v1.e[1] - v2.e[1], v1.e[2] - v2.e[2]);
-}
-
-inline Vector3 operator*(float t, const Vector3 &v) {
-    return Vector3(t*v.e[0], t*v.e[1], t*v.e[2]);
-}
-
-inline Vector3 operator*(const Vector3 &v, float t) {
-    return Vector3(t*v.e[0], t*v.e[1], t*v.e[2]);
-}
-
-inline Vector3 operator/(const Vector3 &v, float t) {
-    return Vector3(v.e[0]/t, v.e[1]/t, v.e[2]/t);
-}
-
-
-inline float dot(const Vector3 &v1, const Vector3 &v2) {
-    return v1.e[0] *v2.e[0] + v1.e[1] *v2.e[1]  + v1.e[2] *v2.e[2];
-}
-
-inline Vector3 cross(const Vector3 &v1, const Vector3 &v2) {
-    return Vector3( (v1.e[1]*v2.e[2] - v1.e[2]*v2.e[1]),
-		      (v1.e[2]*v2.e[0] - v1.e[0]*v2.e[2]),
-		      (v1.e[0]*v2.e[1] - v1.e[1]*v2.e[0]));
-}
-
-
-inline Vector3& Vector3::operator+=(const Vector3 &v){
-    e[0]  += v.e[0];
-    e[1]  += v.e[1];
-    e[2]  += v.e[2];
-    return *this;
-}
-
-inline Vector3& Vector3::operator-=(const Vector3& v) {
-    e[0]  -= v.e[0];
-    e[1]  -= v.e[1];
-    e[2]  -= v.e[2];
-    return *this;
-}
-
-inline Vector3& Vector3::operator*=(const float t) {
-    e[0]  *= t;
-    e[1]  *= t;
-    e[2]  *= t;
-    return *this;
-}
-
-inline Vector3& Vector3::operator/=(const float t) {
-    e[0]  /= t;
-    e[1]  /= t;
-    e[2]  /= t;
-    return *this;
-}
-
-inline Vector3 reflect(const Vector3& in, const Vector3& normal)
-{
-  // assumes unit length normal
-  return in - normal * (2 * dot(in, normal));
-}
-*/
-
  

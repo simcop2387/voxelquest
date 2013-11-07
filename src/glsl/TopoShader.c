@@ -9,6 +9,7 @@ varying vec2 TexCoord0;
 
 uniform float curTime;
 uniform float cameraZoom;
+
 uniform vec3 cameraPos;
 uniform vec2 bufferDim;
 uniform vec2 mapDimInPixels;
@@ -141,7 +142,7 @@ void main() {
     */
 
 
-    float offsetAmount = 2.0/2048.0;
+    float offsetAmount = (1.0)/mapDimInPixels.x;
 
     vec4 tex1u = texture2D(Texture1, vec2(newTC.x, newTC.y + offsetAmount) );
     vec4 tex1d = texture2D(Texture1, vec2(newTC.x, newTC.y - offsetAmount) );
@@ -182,7 +183,7 @@ void main() {
 
     
     float gv2 = getGrid( int(tex2.r*255.0), gridVecBase ); //stchannel
-    float gv1 = getGrid( int(tex2.g*255.0) - 16, gridVecBase )*0.5; //btchannel
+    float gv1 = getGrid( int(tex2.g*255.0), gridVecBase )*0.5; //btchannel
     
     
 
@@ -202,7 +203,7 @@ void main() {
 
     float mapTrans = clamp( mix(1.0,0.0,cameraZoom/0.1) ,0.0,1.0);
 
-    gl_FragData[0] = vec4(tex0.rgb + gridMod, mapTrans );//*mod;// + vec4( float(clamp(1.0-tex1.b,0.0,1.0) > 0.6) ,0.0,0.0,0.0);//tex0*mod;//1.0-tex1.bbbb;//tex0*mod;//tex0;//1.0-tex1.bbbb;////1.0-tex1.bbbb;//(tex0)*mod; // + colMod
+    gl_FragData[0] = vec4( (tex0.rgb + gridMod  + tex2.b*0.5)*mod, mapTrans );// + float(tex1.r < 110.0/255.0);//*mod;// + vec4( float(clamp(1.0-tex1.b,0.0,1.0) > 0.6) ,0.0,0.0,0.0);//tex0*mod;//1.0-tex1.bbbb;//tex0*mod;//tex0;//1.0-tex1.bbbb;////1.0-tex1.bbbb;//(tex0)*mod; // + colMod
 
 }
 

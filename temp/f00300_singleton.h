@@ -320,6 +320,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    shaderStrings.push_back("shaderWater");
 	    */
 
+	    shaderStrings.push_back("SkeletonShader");
+	    shaderStrings.push_back("DilateShader");
 	    shaderStrings.push_back("TerrainMix");
 	    shaderStrings.push_back("Simplex2D");
 	    shaderStrings.push_back("TopoShader");
@@ -483,18 +485,13 @@ int Singleton::findFurthestHolderId ()
                                    {
 		
 
-		float longestDis = 0.0f;
 		int longestInd = 0;
-
-		float testDis;
-		float testDis1;
-		float testDis2;
-		float testDis3;
-
 		int i;
 
+		float longestDis = 0.0f;
+		float testDis;
+
 		FIVector4 tempVec;
-		FIVector4 tempVec2;
 
 		GamePageHolder* gp;
 		GamePageHolder* bestGP = NULL;
@@ -507,6 +504,7 @@ int Singleton::findFurthestHolderId ()
 			}
 			else {
 
+				/*
 				tempVec.copyFrom(&(gw->camHolderPos));
 				tempVec.addXYZ( worldSizeInHolders.getIX(), worldSizeInHolders.getIY(), 0.0 );
 
@@ -518,6 +516,12 @@ int Singleton::findFurthestHolderId ()
 				testDis3 = gp->trueOffsetInHolders.distance( &(tempVec2) );
 
 				testDis = min(min(testDis1,testDis2),testDis3);
+
+				*/
+
+				tempVec.copyFrom(&(gw->camHolderPos));
+				gp->trueOffsetInHolders.wrapDistance(&tempVec,worldSizeInHolders.getIX());
+				testDis = gp->trueOffsetInHolders.distance( &(tempVec) );
 
 				if (testDis > longestDis) {
 					longestDis = testDis;
@@ -1684,15 +1688,17 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 			case 'a':
+				gw->dilMap();
 				changesMade = true;
-				maxH++;
+				//maxH++;
 			break;
 			case 'z':
 				changesMade = true;
-				maxH--;
-				if (maxH < 0) {
-					maxH = 0;
-				}
+				gw->skelMap();
+				// maxH--;
+				// if (maxH < 0) {
+				// 	maxH = 0;
+				// }
 			break;
 			
 			default:

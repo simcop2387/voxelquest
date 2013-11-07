@@ -26,7 +26,7 @@ void GameWorld::init (Singleton * _singleton)
 		provinceGrid = new int[numProvinces*numProvinces];
 		provinceX = new int[numProvinces];
 		provinceY = new int[numProvinces];
-		seaLevel = 100;
+		seaLevel = 110;
 
 		mapSwapFlag = 0;
 		mapStep = 0.0f;
@@ -40,7 +40,17 @@ void GameWorld::init (Singleton * _singleton)
 			ocThreads.push_back(-1);
 		}
 
+		stChannel = 0;
+		btChannel = 1;
+		pathChannel = 2;
+		
+		hmChannel = 0;
+		idChannel = 1;
+		densityChannel = 2;
 
+		MIN_MIP = 0;
+		MAX_MIP = 1;
+		AVG_MIP = 2;
 		
 
 		doDrawFBO = false;
@@ -399,8 +409,8 @@ void GameWorld::update ()
 			}
 
 
-			popTrace();
-			return;
+			//popTrace();
+			//return;
 		}
 
 
@@ -1390,6 +1400,238 @@ void GameWorld::renderGrass ()
 		
 		popTrace();
 	}
+float GameWorld::quickDis (float x1, float y1, float x2, float y2)
+                                                               {
+		//return abs(x1-x2) + abs(y1-y2);//
+		return sqrt( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) );
+	}
+float GameWorld::weighPath (float x1, float y1, float x2, float y2, float rad)
+                                                                           {
+		
+		int i;
+		int iMax = (int)min(64.0f, rad*4.0f);
+
+		float fi;
+		float fMax = (float)(iMax-1);
+		float lerp;
+
+		float curX;
+		float curY;
+
+		float lastRes = curFBO->getPixelAtWrapped((int)x1, (int)y1, hmChannel);
+		float curRes;
+		float curRes2;
+		float tempRes;
+		float tot = 0.0f;
+
+		for (i = 1; i < iMax; i++) {
+			fi = (float)i;
+			lerp = fi/fMax;
+
+			curX = (1.0f-lerp)*x1 + (lerp)*x2;
+			curY = (1.0f-lerp)*y1 + (lerp)*y2;
+
+			curRes = curFBO->getPixelAtWrapped((int)curX, (int)curY, hmChannel);
+			
+			
+			tempRes = abs(curRes-lastRes);
+			tempRes = tempRes*tempRes*tempRes;
+			if (curRes < seaLevel) {
+				tempRes += 100000.0f;
+			}
+
+			// curRes2 = curFBO2->getPixelAtWrapped((int)curX, (int)curY, pathChannel);
+			// if (curRes2 > 0) {
+			// 	tempRes += 100000.0f;
+			// }
+
+			tot += tempRes;
+
+			lastRes = curRes;
+
+		}
+
+		tot *=
+			abs(curFBO->getPixelAtWrapped((int)x1, (int)y1, hmChannel) -
+			curFBO->getPixelAtWrapped((int)x2, (int)y2, hmChannel));
+
+
+		return tot;
+	}
+void GameWorld::findBestPath (float x1, float y1, float x2, float y2, int generation)
+                                                                                  {
+		int i;
+		int j;
+
+		float mpx = (x1+x2)/2.0;
+		float mpy = (y1+y2)/2.0;
+		float dis = quickDis(x1,y1,x2,y2);
+		float rad = dis/2.0;
+		float mpxTemp;
+		float mpyTemp;
+		float delta;
+		float bestDelta = FLT_MAX;
+		float bestX;
+		float bestY;
+		float genMod;
+
+		int q;
+		int p;
+
+		int ibx;
+		int iby;
+		int ix2;
+		int iy2;
+		int tot1 = 0;
+		int tot2 = 0;
+		int iRad;
+		int numTries = max((int)(rad*8.0f), 20);
+
+		if (rad < 4.0f) {
+			// do manhattan distance
+
+			//return;
+
+			ibx = x1;
+			iby = y1;
+			ix2 = x2;
+			iy2 = y2;
+
+
+
+
+			while (ibx != ix2) {
+				tot1 += curFBO2->getPixelAtWrapped(ibx, iby, pathChannel);
+				if (ibx < ix2) {
+					ibx++;
+				}
+				else {
+					ibx--;
+				}
+			}
+			while (iby != iy2) {
+				tot1 += curFBO2->getPixelAtWrapped(ibx, iby, pathChannel);
+				if (iby < iy2) {
+					iby++;
+				}
+				else {
+					iby--;
+				}
+			}
+
+			ibx = x1;
+			iby = y1;
+			ix2 = x2;
+			iy2 = y2;
+
+			while (iby != iy2) {
+				tot2 += curFBO2->getPixelAtWrapped(ibx, iby, pathChannel);
+				if (iby < iy2) {
+					iby++;
+				}
+				else {
+					iby--;
+				}
+			}
+			while (ibx != ix2) {
+				tot2 += curFBO2->getPixelAtWrapped(ibx, iby, pathChannel);
+				if (ibx < ix2) {
+					ibx++;
+				}
+				else {
+					ibx--;
+				}
+			}
+
+			ibx = x1;
+			iby = y1;
+			ix2 = x2;
+			iy2 = y2;
+
+
+			if (tot1 < tot2) {
+				while (ibx != ix2) {
+					curFBO2->setPixelAtWrapped(ibx, iby, pathChannel, 255);
+					if (ibx < ix2) {
+						ibx++;
+					}
+					else {
+						ibx--;
+					}
+				}
+				while (iby != iy2) {
+					curFBO2->setPixelAtWrapped(ibx, iby, pathChannel, 255);
+					if (iby < iy2) {
+						iby++;
+					}
+					else {
+						iby--;
+					}
+				}
+			}
+			else {
+				while (iby != iy2) {
+					curFBO2->setPixelAtWrapped(ibx, iby, pathChannel, 255);
+					if (iby < iy2) {
+						iby++;
+					}
+					else {
+						iby--;
+					}
+				}
+				while (ibx != ix2) {
+					curFBO2->setPixelAtWrapped(ibx, iby, pathChannel, 255);
+					if (ibx < ix2) {
+						ibx++;
+					}
+					else {
+						ibx--;
+					}
+				}
+			}
+			
+			curFBO2->setPixelAtWrapped(ibx, iby, pathChannel, 255);
+
+			return;
+			
+		}
+
+		switch (generation) {
+			case 0:
+				genMod = 1.0f;
+			break;
+			case 1:
+				genMod = 1.5f;
+			break;
+			default:
+				genMod = 2.0f;
+			break;
+		}
+
+
+		
+
+		for (i = 0; i < numTries; i++) {
+			mpxTemp = mpx + (fGenRand()*dis-rad)/genMod;
+			mpyTemp = mpy + (fGenRand()*dis-rad)/genMod;
+
+			delta = weighPath(x1,y1,mpxTemp,mpyTemp,rad/2.0f);
+			delta += weighPath(mpxTemp,mpyTemp,x2,y2,rad/2.0f);
+
+			if (delta < bestDelta) {
+				bestDelta = delta;
+				bestX = mpxTemp;
+				bestY = mpyTemp;
+			}
+
+		}
+		
+
+		curFBO2->setPixelAtWrapped((int)bestX, (int)bestY, pathChannel, 255);
+		findBestPath(x1,y1,bestX,bestY,generation+1);
+		findBestPath(bestX,bestY,x2,y2,generation+1);
+
+	}
 void GameWorld::initMap ()
                        {
 
@@ -1400,9 +1642,143 @@ void GameWorld::initMap ()
 		
 		mapStep = 0.0f;
 
+		
+
+		FBOWrapper* fbow = singleton->getFBOWrapper("hmFBO",0);
+		FBOWrapper* fbow2 = singleton->getFBOWrapper("cityFBO",0);
+
+		curFBO = fbow;
+		curFBO2 = fbow2;
+
+		FIVector4 tempVec1;
+		FIVector4 tempVec2;
+		FIVector4 tempVec3;
+
+		FIVector4 startVec;
+		FIVector4 endVec;
+		FIVector4 midPointVec;
+
+		int w = fbow2->width;
+		int h = fbow2->height;
+		
+
+		//0:r
+		//1:g
+		//2:b
+		//3:a
+
+		
+
+
 		int i;
 		int j;
 		int k;
+		int m;
+		int totSize = w*h;
+		int* btStack = new int[totSize];
+		int btStackInd = 0;
+		int curInd;
+		int curX;
+		int curY;
+		int destX;
+		int destY;
+		int lastDir;
+		int curXRight;
+		int curXLeft;
+		int curYUp;
+		int curYDown;
+		int testX;
+		int testY;
+		int testInd;
+		int basePix;
+		int basePix2;
+		int testPix;
+		int testPix2;
+		int testPix3;
+		int testPix4;
+		int count;
+		int p1;
+		int p2;
+
+		int dirFlags[4];
+		int dirFlagsOp[4];
+		int dirFlagsO[4];
+		int dirFlagsOpO[4];
+		int dirModX[4];
+		int dirModY[4];
+		int opDir[4];
+		int dirFlagClear;
+		int visFlag = 16;
+		int visFlagO = ~16;
+		int startDir;
+		int curDir;
+
+		int cx1;
+		int cy1;
+		int cx2;
+		int cy2;
+
+		float delta;
+		float bestDelta;
+		float nextBestDelta;
+
+		int nextBestInd;
+		int bestDir;
+		int nextBestDir;
+
+		int bestInd;
+
+		int xind;
+		int yind;
+		int curHeight;
+		int idealHeight = (255-seaLevel)/2 + seaLevel;
+		
+		bool isValid;
+		bool notFound;
+		bool touchesWater;
+		bool doBreak;
+
+		float mult;
+		float tempDis;
+
+		dirFlagsO[0] = 1;
+		dirFlagsO[1] = 2;
+		dirFlagsO[2] = 4;
+		dirFlagsO[3] = 8;
+
+		dirFlagsOpO[0] = 2;
+		dirFlagsOpO[1] = 1;
+		dirFlagsOpO[2] = 8;
+		dirFlagsOpO[3] = 4;
+		
+		dirFlags[0] = ~1;
+		dirFlags[1] = ~2;
+		dirFlags[2] = ~4;
+		dirFlags[3] = ~8;
+
+		dirFlagsOp[0] = ~2;
+		dirFlagsOp[1] = ~1;
+		dirFlagsOp[2] = ~8;
+		dirFlagsOp[3] = ~4;
+
+		dirFlagClear = ~15;
+
+		dirModX[0] = 1;
+		dirModX[1] = -1;
+		dirModX[2] = 0;
+		dirModX[3] = 0;
+
+		dirModY[0] = 0;
+		dirModY[1] = 0;
+		dirModY[2] = 1;
+		dirModY[3] = -1;
+
+		opDir[0] = 1;
+		opDir[1] = 0;
+		opDir[2] = 3;
+		opDir[3] = 2;
+
+
 
 		for (i = 0; i < 16; i++) {
 			singleton->paramArrMap[i*3+0] = fGenRand();
@@ -1436,47 +1812,14 @@ void GameWorld::initMap ()
 
 		singleton->copyFBO("hmFBOLinear","hmFBO");
 
-		//should be
-		//0:r
-		//1:g
-		//2:b
-		//3:a
-
-		//not this
-		//0 - b
-		//1 - g
-		//2 - r
-		//3 - a
-
 		
-		int stChannel = 0;
-		int btChannel = 1;
-		
-		int hmChannel = 0;
-		int idChannel = 1;
-		int densityChannel = 2;
-
-		FBOWrapper* fbow = singleton->getFBOWrapper("hmFBO",0);
 		fbow->getPixels(true);
-		fbow->updateMips();
-
 		fbow->setAllPixels(densityChannel,255);
 		fbow->setAllPixels(idChannel,0);
 
 
-		
 
-
-		//////////
-		
-		bool isValid;
-		int xind;
-		int yind;
-		int curHeight;
-		int idealHeight = (255-seaLevel)/2 + seaLevel;
-
-
-		for (i = 0; i < numProvinces; i++) {
+		for (i = 1; i < numProvinces; i++) {
 
 			isValid = false;
 
@@ -1489,13 +1832,13 @@ void GameWorld::initMap ()
 					curHeight = fbow->getPixelAtC(xind,yind,hmChannel);
 
 					if (
-						(curHeight > seaLevel) &&
-						( abs(curHeight-idealHeight) < 30 )
+						(curHeight > seaLevel + 10) //&&
+						//( abs(curHeight-idealHeight) < (255-seaLevel)/2 )
 					) {
 						
 						provinceX[i] = xind;
 						provinceY[i] = yind;
-						fbow->setPixelAtC(xind,yind,idChannel,i+1);
+						fbow->setPixelAtC(xind,yind,idChannel,i);
 						fbow->setPixelAtC(xind,yind,densityChannel,0);
 						isValid = true;
 						
@@ -1509,238 +1852,18 @@ void GameWorld::initMap ()
 		}
 
 
-
-		// 1 - x+
-		// 2 - x-
-		// 4 - y+
-		// 8 - y-
-
-		FBOWrapper* fbow2 = singleton->getFBOWrapper("cityFBO",0);
-		fbow2->getPixels();
-		fbow2->setAllPixels(btChannel,15);
-		fbow2->setAllPixels(stChannel,0);
-
-
-		int totSize = fbow2->width*fbow2->height;
-		int* btStack = new int[totSize];
-		int btStackInd = 0;
-		int curInd;
-		int curX;
-		int curY;
-		int curXRight;
-		int curXLeft;
-		int curYUp;
-		int curYDown;
-		int testX;
-		int testY;
-		int testInd;
-		int basePix;
-		int basePix2;
-		int testPix;
-		int testPix2;
-		int count;
-
-		int dirFlags[4];
-		int dirFlagsOp[4];
-		int dirFlagsO[4];
-		int dirFlagsOpO[4];
-		int dirModX[4];
-		int dirModY[4];
-		int dirFlagClear;
-		int visFlag = 16;
-		int startDir;
-		int curDir;
-
-		int cx1;
-		int cy1;
-		float mult;
-		int cx2;
-		int cy2;
-
-		int delta;
-		int bestDelta;
-		int bestDir;
-		int bestInd;
-
-		int w = fbow2->width;
-		int h = fbow2->height;
-		
-		bool notFound;
-		bool touchesWater;
-
-		dirFlagsO[0] = 1;
-		dirFlagsO[1] = 2;
-		dirFlagsO[2] = 4;
-		dirFlagsO[3] = 8;
-
-		dirFlagsOpO[0] = 2;
-		dirFlagsOpO[1] = 1;
-		dirFlagsOpO[2] = 8;
-		dirFlagsOpO[3] = 4;
-		
-
-		dirFlags[0] = ~1;
-		dirFlags[1] = ~2;
-		dirFlags[2] = ~4;
-		dirFlags[3] = ~8;
-
-		dirFlagsOp[0] = ~2;
-		dirFlagsOp[1] = ~1;
-		dirFlagsOp[2] = ~8;
-		dirFlagsOp[3] = ~4;
-
-		dirFlagClear = ~15;
-
-		dirModX[0] = 1;
-		dirModX[1] = -1;
-		dirModX[2] = 0;
-		dirModX[3] = 0;
-
-		dirModY[0] = 0;
-		dirModY[1] = 0;
-		dirModY[2] = 1;
-		dirModY[3] = -1;
-		
-
-		btStack[0] = fbow2->getIndex(iGenRand(w), iGenRand(h) );
-
-		// recursive backtrack
-
-		while (btStackInd > -1) {
-
-			curInd = btStack[btStackInd];
-			curY = curInd/w;
-			curX = curInd-curY*w;
-
-			fbow2->orPixelAtIndex(curInd, btChannel, visFlag);
-
-			startDir = 0;//iGenRand(4);
-			count = 0;
-			notFound = true;
-			bestDelta = INT_MAX;
-
-			curHeight = fbow->getPixelAtIndex(curInd,hmChannel);
-
-			do {
-				curDir = (startDir + count)%4;
-
-				testX = curX + dirModX[curDir];
-				testY = curY + dirModY[curDir];
-				testInd = fbow2->getIndex(testX,testY);
-				testPix = fbow2->getPixelAtIndex(testInd, btChannel);
-
-
-				if ( (testPix & visFlag) == 0) {
-					//not visited, proceed
-					notFound = false;
-
-
-					delta = abs(
-						fbow->getPixelAtIndex(curInd,hmChannel) -
-						fbow->getPixelAtIndex(testInd,hmChannel)
-					);
-
-					mult = 4096.0f;
-					
-					for (i = 1; i < fbow->numMips-6; i++) {
-						delta += floor(abs(
-							fbow->getMipVal(
-								curX,
-								curY,
-								0,
-								0,
-								i,
-								hmChannel
-							) -
-							fbow->getMipVal(
-								curX,
-								curY,
-								dirModX[curDir],
-								dirModY[curDir],
-								i,
-								hmChannel
-							)
-						)*mult);
-
-						mult = mult * 0.25f;
-					}
-					
-						
-
-
-					if (delta < bestDelta) {
-						bestDelta = delta;
-						bestDir = curDir;
-						bestInd = testInd;
-					}
-
-				}
-
-				count++;
-			}
-			while (count < 4); //notFound && 
-
-
-			if (notFound) {
-				btStackInd--;
-			}
-			else {
-
-				// join the two and remove walls
-				fbow2->andPixelAtIndex(curInd, btChannel, dirFlags[bestDir]);
-				fbow2->andPixelAtIndex(bestInd, btChannel, dirFlagsOp[bestDir]);
-				
-				btStackInd++;
-				btStack[btStackInd] = bestInd;
-			}
-
-		}
-
-		int* streetFlagsV = new int[w]; //runs vertical
-		int* streetFlagsH = new int[h]; //runs horizontal
-
-		for (i = 0; i < w; i++) {
-			streetFlagsV[i] = 0;
-		}
-		for (i = 0; i < h; i++) {
-			streetFlagsH[i] = 0;
-		}
-
-		// 1 - x+
-		// 2 - x-
-		// 4 - y+
-		// 8 - y-
-
-		for (i = 0; i < w; i+= (iGenRand(6)+4) ) {
-			streetFlagsV[i] |= 1;
-			streetFlagsV[ (i+1)%w ] |= 2;
-		}
-		for (i = 0; i < h; i+= (iGenRand(6)+4) ) {
-			streetFlagsH[i] |= 4;
-			streetFlagsH[ (i+1)%h ] |= 8;
-		}
-
-
-		
-
-
 		fbow->cpuToGPU();
-
-
-
 
 		singleton->copyFBO("hmFBO","swapFBO0");
 		singleton->bindShader("MapBorderShader");
 		for (i = 0; i < 1024; i++) {
 			
 			singleton->bindFBO("swapFBO",mapSwapFlag);
-			//singleton->sampleFBO("palFBO", 0);
 			singleton->sampleFBO("swapFBO",0,mapSwapFlag);
-			//singleton->setShaderFloat("curTime", mapStep);//singleton->curTime);
 			singleton->setShaderFloat("mapStep", mapStep);
+			singleton->setShaderFloat("texPitch", w);
 			singleton->drawFSQuad(1.0f);
 			singleton->unsampleFBO("swapFBO",0,mapSwapFlag);
-			//singleton->unsampleFBO("palFBO",0);
 			singleton->unbindFBO();
 			
 
@@ -1752,16 +1875,13 @@ void GameWorld::initMap ()
 		singleton->copyFBO("hmFBO","hmFBOLinear");
 
 		fbow->getPixels();
+		fbow->updateMips();
 
 
+		// find neighboring cities 
 		for (i = 0; i < numProvinces*numProvinces; i++) {
 			provinceGrid[i] = 0;
 		}
-
-
-		/*
-
-		// find neighboring cities and add in main streets
 
 		for (k = 0; k < totSize; k++) {
 			curInd = k;
@@ -1792,6 +1912,353 @@ void GameWorld::initMap ()
 			}
 
 
+		}
+
+
+
+		// 1 - x+
+		// 2 - x-
+		// 4 - y+
+		// 8 - y-
+
+
+		fbow2->getPixels(true);
+		fbow2->setAllPixels(btChannel,15);
+		fbow2->setAllPixels(stChannel,0);
+		fbow2->setAllPixels(pathChannel,0);
+
+		
+
+
+		//add in city roads
+
+		for (i = 0; i < numProvinces; i++) {
+			// recursive backtrack
+			btStack[0] = fbow2->getIndex(provinceX[i],provinceY[i]);
+			btStackInd = 0;
+			
+			while (btStackInd > -1) {
+
+				curInd = btStack[btStackInd];
+				curY = curInd/w;
+				curX = curInd-curY*w;
+
+				fbow2->orPixelAtIndex(curInd, btChannel, visFlag);
+
+				startDir = 0;//iGenRand(4);
+				count = 0;
+				notFound = true;
+				bestDelta = FLT_MAX;
+
+
+				testPix2 = fbow->getMipVal(curX,curY,2,densityChannel,AVG_MIP);//avg
+				testPix3 = fbow->getMipVal(curX,curY,2,idChannel,MIN_MIP);//min
+				testPix4 = fbow->getMipVal(curX,curY,2,idChannel,MAX_MIP);//max
+
+				//fbow->getPixelAtIndex(curInd, densityChannel);
+
+				if ( (testPix2 < 120) && (testPix3 == i) && (testPix4 == i) ) {
+					do {
+						curDir = (startDir + count)%4;
+
+						testX = curX + dirModX[curDir];
+						testY = curY + dirModY[curDir];
+						testInd = fbow2->getIndex(testX,testY);
+						testPix = fbow2->getPixelAtIndex(testInd, btChannel);
+
+
+						if ( (testPix & visFlag) == 0) {
+							//not visited, proceed
+							notFound = false;
+
+
+							delta = abs(
+								fbow->getPixelAtIndex(curInd,hmChannel) -
+								fbow->getPixelAtIndex(testInd,hmChannel)
+							);
+
+							if (delta < bestDelta) {
+								bestDelta = delta;
+								bestDir = curDir;
+								bestInd = testInd;
+							}
+
+						}
+
+						count++;
+					}
+					while (count < 4); //notFound && 
+				}
+
+				if (notFound) {
+					btStackInd--;
+				}
+				else {
+
+					// join the two and remove walls
+					fbow2->andPixelAtIndex(curInd, btChannel, dirFlags[bestDir]);
+					fbow2->andPixelAtIndex(bestInd, btChannel, dirFlagsOp[bestDir]);
+					
+					btStackInd++;
+					btStack[btStackInd] = bestInd;
+				}
+
+			}
+		}
+
+		
+
+		// clear visited
+		for (k = 0; k < totSize; k++) {
+			testPix = fbow2->getPixelAtIndex(k, btChannel);
+			if ( (testPix & visFlag) == 0) {
+				//not visited
+				for (i = 0; i < 4; i++) {
+					fbow2->andPixelAtIndex(k, btChannel, dirFlags[i]);
+				}
+			}
+			else {
+				//visited
+			}
+
+			fbow2->andPixelAtIndex(k, btChannel, visFlagO );
+		}
+	
+
+
+
+
+		// link close cities
+
+		for (i = 0; i < numProvinces-1; i++) {
+			for (j = i + 1; j < numProvinces; j++) {
+				if (provinceGrid[i + j*numProvinces] == 1) {
+					p1 = i;
+					p2 = j;
+
+
+
+					tempVec1.setIXYZ(provinceX[p1],provinceY[p1],0);
+					tempVec2.setIXYZ(provinceX[p2],provinceY[p2],0);
+
+					tempVec2.wrapDistance(&tempVec1,w);
+					tempVec3.copyFrom(&tempVec1);
+
+
+					// startVec.copyFrom(&tempVec2);
+					// endVec.copyFrom(&tempVec3);
+					// midPointVec.copyFrom(&startVec);
+
+					findBestPath(
+						tempVec2.getFX(),
+						tempVec2.getFY(),
+						tempVec3.getFX(),
+						tempVec3.getFY(),
+						0
+					);
+
+				}
+
+			}
+		}
+
+
+		// mapSwapFlag = 0;
+		// mapStep = 0.0f;
+
+		// fbow2->cpuToGPU();
+		// singleton->copyFBO("cityFBO","swapFBO0");
+
+
+
+		// for (j = 0; j < 2; j++) {
+
+
+
+		// 	singleton->bindShader("DilateShader");
+		// 	for (i = 0; i < 10; i++) {
+				
+		// 		singleton->bindFBO("swapFBO",mapSwapFlag);
+		// 		singleton->sampleFBO("swapFBO",0,mapSwapFlag);
+		// 		singleton->setShaderFloat("mapStep", 1.0);
+		// 		singleton->setShaderFloat("doDilate", 1.0);
+		// 		singleton->setShaderFloat("texPitch", w);
+		// 		singleton->drawFSQuad(1.0f);
+		// 		singleton->unsampleFBO("swapFBO",0,mapSwapFlag);
+		// 		singleton->unbindFBO();
+
+		// 		mapSwapFlag = 1-mapSwapFlag;
+		// 		mapStep += 1.0f;
+		// 	}
+		// 	singleton->unbindShader();
+
+
+		// 	// singleton->bindShader("DilateShader");
+		// 	// for (i = 0; i < 10; i++) {
+				
+		// 	// 	singleton->bindFBO("swapFBO",mapSwapFlag);
+		// 	// 	singleton->sampleFBO("swapFBO",0,mapSwapFlag);
+		// 	// 	singleton->setShaderFloat("mapStep", 1.0);
+		// 	// 	singleton->setShaderFloat("doDilate", 0.0);
+		// 	// 	singleton->setShaderFloat("texPitch", w);
+		// 	// 	singleton->drawFSQuad(1.0f);
+		// 	// 	singleton->unsampleFBO("swapFBO",0,mapSwapFlag);
+		// 	// 	singleton->unbindFBO();
+
+		// 	// 	mapSwapFlag = 1-mapSwapFlag;
+		// 	// 	mapStep += 1.0f;
+		// 	// }
+		// 	// singleton->unbindShader();
+
+
+
+
+		// 	singleton->bindShader("SkeletonShader");
+		// 	for (i = 0; i < 2; i++) {
+				
+		// 		singleton->bindFBO("swapFBO",mapSwapFlag);
+		// 		singleton->sampleFBO("swapFBO",0,mapSwapFlag);
+		// 		singleton->setShaderFloat("mapStep", (float)(i%2) );
+		// 		//singleton->setShaderFloat("mapOff", (float)(i) );
+		// 		//singleton->setShaderFloat("doDilate", 0.0);
+		// 		singleton->setShaderFloat("texPitch", w);
+		// 		singleton->drawFSQuad(1.0f);
+		// 		singleton->unsampleFBO("swapFBO",0,mapSwapFlag);
+		// 		singleton->unbindFBO();
+
+		// 		mapSwapFlag = 1-mapSwapFlag;
+		// 		mapStep += 1.0f;
+		// 	}
+		// 	singleton->unbindShader();
+
+		// }
+
+
+
+		// singleton->copyFBO("swapFBO0","cityFBO");
+		// fbow2->getPixels();
+		// fbow2->updateMips();
+
+
+
+
+
+
+		
+
+		
+
+
+
+		/*
+		btStack[0] = fbow2->getIndex(provinceX[p1], provinceY[p1] );
+		btStackInd = 0;
+		int targetInd = fbow2->getIndex(provinceX[p2], provinceY[p2] );
+		bool testVal = true;
+
+		// trace from point a to b
+		while (testVal) {
+
+			curInd = btStack[btStackInd];
+			curY = curInd/w;
+			curX = curInd-curY*w;
+
+			fbow2->orPixelAtIndex(curInd, btChannel, visFlag);
+
+			startDir = 0;//iGenRand(4);
+			count = 0;
+			notFound = true;
+
+			do {
+				curDir = (startDir + count)%4;
+
+				testX = curX + dirModX[curDir];
+				testY = curY + dirModY[curDir];
+				testInd = fbow2->getIndex(testX,testY);
+				testPix = fbow2->getPixelAtIndex(testInd, btChannel);
+
+
+				if (
+					( (testPix & visFlag) == 0 ) 
+					&& ( (testPix & dirFlagsOpO[curDir]) == 0 )
+				) {
+					//not visited, proceed
+					notFound = false;
+				}
+
+				count++;
+			}
+			while (notFound && (count < 4) );
+
+
+			if (notFound) {
+				btStackInd--;
+				fbow2->setPixelAtIndex(curInd, pathChannel, 0);
+			}
+			else {
+				fbow2->setPixelAtIndex(testInd, pathChannel, 255);
+				// join the two and remove walls
+				//fbow2->andPixelAtIndex(curInd, btChannel, dirFlags[curDir]);
+				//fbow2->andPixelAtIndex(testInd, btChannel, dirFlagsOp[curDir]);
+				
+				btStackInd++;
+				btStack[btStackInd] = testInd;
+			}
+
+			testVal = (btStackInd > -1) && (curInd != targetInd);
+
+		}
+
+		// clear visited
+		for (k = 0; k < totSize; k++) {
+			fbow2->andPixelAtIndex(k, btChannel, visFlagO );
+		}
+		*/
+
+
+		// generate streets
+
+		int* streetFlagsV = new int[w]; //runs vertical
+		int* streetFlagsH = new int[h]; //runs horizontal
+
+		for (i = 0; i < w; i++) {
+			streetFlagsV[i] = 0;
+		}
+		for (i = 0; i < h; i++) {
+			streetFlagsH[i] = 0;
+		}
+
+		// 1 - x+
+		// 2 - x-
+		// 4 - y+
+		// 8 - y-
+
+		for (i = 0; i < w; i+= (iGenRand(6)+4) ) {
+			streetFlagsV[i] |= 1;
+			streetFlagsV[ (i+1)%w ] |= 2;
+		}
+		for (i = 0; i < h; i+= (iGenRand(6)+4) ) {
+			streetFlagsH[i] |= 4;
+			streetFlagsH[ (i+1)%h ] |= 8;
+		}
+
+
+		
+
+
+		
+
+
+
+		
+
+		/*
+		//add in main streets
+		for (k = 0; k < totSize; k++) {
+			curInd = k;
+			curY = curInd/w;
+			curX = curInd-curY*w;
+
 			fbow2->orPixelAtIndex(curInd, stChannel, streetFlagsH[curY]|streetFlagsV[curX]);
 
 		}
@@ -1816,7 +2283,7 @@ void GameWorld::initMap ()
 			}
 		}
 
-*/
+
 
 		// remove any road that touches water or is out of town
 
@@ -1902,7 +2369,7 @@ void GameWorld::initMap ()
 
 		}
 
-
+*/
 		
 
 
@@ -1922,6 +2389,8 @@ void GameWorld::initMap ()
 		singleton->mapInvalid = false;
 
 		singleton->setCameraToElevation();
+
+		cout << "DONE WITH MAP\n";
 
 		popTrace();
 	}
@@ -1961,6 +2430,120 @@ void GameWorld::drawMap ()
 
 
 		popTrace();
+	}
+void GameWorld::dilMap ()
+                      {
+		int i;
+		int w = 2048;
+		mapSwapFlag = 0;
+		mapStep = 0.0f;
+
+		singleton->copyFBO("cityFBO","swapFBO0");
+		singleton->bindShader("DilateShader");
+		for (i = 0; i < 2; i++) {
+			
+			singleton->bindFBO("swapFBO",mapSwapFlag);
+			singleton->sampleFBO("swapFBO",0,mapSwapFlag);
+			singleton->setShaderFloat("mapStep", 1.0);
+			singleton->setShaderFloat("doDilate", 1.0);
+			singleton->setShaderFloat("texPitch", w);
+			singleton->drawFSQuad(1.0f);
+			singleton->unsampleFBO("swapFBO",0,mapSwapFlag);
+			singleton->unbindFBO();
+
+			mapSwapFlag = 1-mapSwapFlag;
+			mapStep += 1.0f;
+		}
+		singleton->unbindShader();
+		singleton->copyFBO("swapFBO0","cityFBO");
+	}
+void GameWorld::skelMap ()
+                       {
+
+		cout << "skelMap\n";
+
+
+		int i;
+		int j;
+		int k;
+		int w = 2048;
+
+		int p2,p3,p4,p5,p6,p7,p8,p9;
+		int A;
+		int B;
+		int m1;
+		int m2;
+
+		FBOWrapper* fbow = singleton->getFBOWrapper("cityFBO", 0);
+		fbow->getPixels();
+
+		for (k = 0; k < 2; k++) {
+			for (i = 0; i < w; i++) {
+			    for (j = 0; j < w; j++) {
+			        p2 = (255-fbow->getPixelAtWrapped(i-1, j, pathChannel))/255;
+			        p3 = (255-fbow->getPixelAtWrapped(i-1, j+1, pathChannel))/255;
+			        p4 = (255-fbow->getPixelAtWrapped(i, j+1, pathChannel))/255;
+			        p5 = (255-fbow->getPixelAtWrapped(i+1, j+1, pathChannel))/255;
+			        p6 = (255-fbow->getPixelAtWrapped(i+1, j, pathChannel))/255;
+			        p7 = (255-fbow->getPixelAtWrapped(i+1, j-1, pathChannel))/255;
+			        p8 = (255-fbow->getPixelAtWrapped(i, j-1, pathChannel))/255;
+			        p9 = (255-fbow->getPixelAtWrapped(i-1, j-1, pathChannel))/255;
+
+			        A  = (p2 == 0 && p3 == 1) + (p3 == 0 && p4 == 1) + 
+			                 (p4 == 0 && p5 == 1) + (p5 == 0 && p6 == 1) + 
+			                 (p6 == 0 && p7 == 1) + (p7 == 0 && p8 == 1) +
+			                 (p8 == 0 && p9 == 1) + (p9 == 0 && p2 == 1);
+			        B  = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+			        m1 = k == 0 ? (p2 * p4 * p6) : (p2 * p4 * p8);
+			        m2 = k == 0 ? (p4 * p6 * p8) : (p2 * p6 * p8);
+
+			        if (A == 1 && (B >= 2 && B <= 6) && m1 == 0 && m2 == 0) {
+			        	fbow->setPixelAtWrapped(i,j,pathChannel,0);
+			        }
+			            
+			    }
+			}
+		}
+
+		fbow->cpuToGPU();
+
+		
+
+
+	}
+void GameWorld::skelMap2 ()
+                        {
+		int i;
+		int j;
+		int k;
+		int w = 2048;
+		mapSwapFlag = 0;
+		mapStep = 0.0f;
+
+		singleton->copyFBO("cityFBO","swapFBO0");
+		singleton->bindShader("SkeletonShader");
+		for (k = 0; k < 2; k++) {
+			
+			//for (i = 0; i < 2; i++) {
+				//for (j = 0; j < 2; j++) {
+					singleton->bindFBO("swapFBO",mapSwapFlag);
+					singleton->sampleFBO("swapFBO",0,mapSwapFlag);
+					singleton->setShaderFloat("mapStep", 0.0);//(float)(k%2) );
+					singleton->setShaderFloat("texPitch", w);
+					//singleton->setShaderVec2("offVec", i, j);
+					singleton->drawFSQuad(1.0f);
+					singleton->unsampleFBO("swapFBO",0,mapSwapFlag);
+					singleton->unbindFBO();
+
+					mapSwapFlag = 1-mapSwapFlag;
+					mapStep += 1.0f;
+				//}
+			//}
+
+			
+		}
+		singleton->unbindShader();
+		singleton->copyFBO("swapFBO0","cityFBO");
 	}
 void GameWorld::postProcess ()
                            {

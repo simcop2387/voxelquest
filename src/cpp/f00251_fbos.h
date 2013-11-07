@@ -242,6 +242,46 @@ public:
 		return x + y*width;
 	}
 
+	void setPixelAtWrapped(int xs, int ys, int channel, int val) {
+
+		int x = xs;
+		int y = ys;
+
+		while (x < 0) {
+			x += width;
+		}
+		while (y < 0) {
+			y += height;
+		}
+
+		x = x % width;
+		y = y % height;
+
+		int ind = x + y*width;
+
+		pixelsChar[ind*4 + channel] = val;
+	}
+
+	int getPixelAtWrapped(int xs, int ys, int channel) {
+
+		int x = xs;
+		int y = ys;
+
+		while (x < 0) {
+			x += width;
+		}
+		while (y < 0) {
+			y += height;
+		}
+
+		x = x % width;
+		y = y % height;
+
+		int ind = x + y*width;
+
+		return pixelsChar[ind*4 + channel];
+	}
+
 	int getPixelAtIndex(int ind, int channel) {
 		return pixelsChar[ind*4 + channel];
 	}
@@ -317,11 +357,18 @@ public:
 	}
 
 
-	int getMipVal(int x, int y, int xmod, int ymod, int mipLev, int channel) {
+	int getMipVal(
+		int x,
+		int y,
+		int mipLev,
+		int channel,
+		int minMaxAvg,
+		int val = -1
+	) {
 		int w = mipWidths[mipLev];
 		int curWidth = mipWidths[mipLev];
-		int xv = ((x*curWidth)/mipWidths[0] + xmod);
-		int yv = ((y*curWidth)/mipWidths[0] + ymod);
+		int xv = ((x*curWidth)/mipWidths[0]);
+		int yv = ((y*curWidth)/mipWidths[0]);
 
 		while (xv < 0) {
 			xv += curWidth;
@@ -337,11 +384,38 @@ public:
 		}
 
 		int ind = xv + yv*curWidth;
+		int res = 0;
+		int resInd = (ind)*4 + channel;
 
-		return (int) (pixelsCharMippedAvg[mipLev][ (ind)*4 + channel ]);
+		if (val != -1) {
+			switch(minMaxAvg) {
+				case 0:
+					(pixelsCharMippedMin[mipLev][resInd]) = val;
+				break;
+				case 1:
+					(pixelsCharMippedMax[mipLev][resInd]) = val;
+				break;
+				case 2:
+					(pixelsCharMippedAvg[mipLev][resInd]) = val;
+				break;
+			}
+		}
 
-		//return pixelsCharMippedAvg[mipLev][ind];
+		switch(minMaxAvg) {
+			case 0:
+				res = (int) (pixelsCharMippedMin[mipLev][resInd]);
+			break;
+			case 1:
+				res = (int) (pixelsCharMippedMax[mipLev][resInd]);
+			break;
+			case 2:
+				res = (int) (pixelsCharMippedAvg[mipLev][resInd]);
+			break;
+		}
 
+
+		
+		return res;
 
 	}
 
@@ -378,12 +452,12 @@ public:
 					for (i = 0; i < mipWidths[mWrite]; i++) {
 						for (j = 0; j < mipWidths[mWrite]; j++) {
 
-							ind = i+j*mipWidths[mWrite];
+							ind = (i+j*mipWidths[mWrite])*4+k;
 							
-							ind0 = (i*2+0) + (j*2+0)*mipWidths[mRead];
-							ind1 = (i*2+1) + (j*2+0)*mipWidths[mRead];
-							ind2 = (i*2+0) + (j*2+1)*mipWidths[mRead];
-							ind3 = (i*2+1) + (j*2+1)*mipWidths[mRead];
+							ind0 = ( (i*2+0) + (j*2+0)*mipWidths[mRead] )*4+k;//
+							ind1 = ( (i*2+1) + (j*2+0)*mipWidths[mRead] )*4+k;//
+							ind2 = ( (i*2+0) + (j*2+1)*mipWidths[mRead] )*4+k;//
+							ind3 = ( (i*2+1) + (j*2+1)*mipWidths[mRead] )*4+k;//
 
 							pixelsCharMippedAvg[ mWrite ][ ind ] = (
 								pixelsCharMippedAvg[ mRead ][ind0] + 
@@ -614,19 +688,6 @@ public:
 	    }
 
 	}
-	/*
-    void setWH(int w, int h) {
-		glViewport(0,0,w,h);
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(-0.5, +0.5, -0.5, +0.5, 4.0, 15.0);
-		glMatrixMode(GL_MODELVIEW);
-		glMatrixMode (GL_MODELVIEW);
-		glLoadIdentity ();
-		glMatrixMode (GL_PROJECTION);
-		glLoadIdentity ();
-	}
-	*/
     void copyFromMem(int ind, unsigned char* dat) {
 
 		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);

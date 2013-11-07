@@ -1,4 +1,4 @@
-﻿Build started 11/5/2013 3:57:10 PM.
+﻿Build started 11/7/2013 7:27:01 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -95,18 +95,25 @@
          2 File(s) copied
          running EXE
          holderSizeInPixels X2 2048
-         renderWorldSpace() TOT GPU MEM USED (MB):  212.250000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  212.250000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  212.250000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  276.250000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  276.250000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  532.250000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  532.250000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  532.250000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  532.250000         
-         renderWorldSpace() TOT GPU MEM USED (MB):  660.250000         
+         DONE WITH MAP
+         skelMap
+         renderWorldSpace() TOT GPU MEM USED (MB):  788.250000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  1332.250000         
+         skelMap
+         skelMap
+         renderWorldSpace() TOT GPU MEM USED (MB):  1620.250000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  1780.250000         
+         skelMap
+         renderWorldSpace() TOT GPU MEM USED (MB):  1908.250000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  2068.250000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  2068.250000         
+         renderWorldSpace() TOT GPU MEM USED (MB):  2068.250000         
+         skelMap
+         skelMap
+         skelMap
+         skelMap
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:42.81
+Time Elapsed 00:01:49.63

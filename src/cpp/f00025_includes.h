@@ -3,7 +3,7 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
-bool TRACE_ON = false;
+bool TRACE_ON = true;
 
 #include <SDKDDKVer.h>
 

@@ -5,6 +5,7 @@ varying vec2 TexCoord0;
 
 //uniform float curTime;
 uniform float mapStep;
+uniform float texPitch;
 //uniform vec3 paramArrMap[256];
 //uniform float numProvinces;
 
@@ -72,7 +73,7 @@ void main() {
 
     //float res = tex1.g;
 
-    float offsetAmount = 1.0/2048.0;
+    float offsetAmount = 1.0/texPitch;
     float testHeight = 0.0;
     float heightMod = 0.0;
     float tot = 0.0;

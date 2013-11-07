@@ -485,6 +485,8 @@ public:
 	    shaderStrings.push_back("shaderWater");
 	    */
 
+	    shaderStrings.push_back("SkeletonShader");
+	    shaderStrings.push_back("DilateShader");
 	    shaderStrings.push_back("TerrainMix");
 	    shaderStrings.push_back("Simplex2D");
 	    shaderStrings.push_back("TopoShader");
@@ -654,18 +656,13 @@ public:
 	int findFurthestHolderId() {
 		
 
-		float longestDis = 0.0f;
 		int longestInd = 0;
-
-		float testDis;
-		float testDis1;
-		float testDis2;
-		float testDis3;
-
 		int i;
 
+		float longestDis = 0.0f;
+		float testDis;
+
 		FIVector4 tempVec;
-		FIVector4 tempVec2;
 
 		GamePageHolder* gp;
 		GamePageHolder* bestGP = NULL;
@@ -678,6 +675,7 @@ public:
 			}
 			else {
 
+				/*
 				tempVec.copyFrom(&(gw->camHolderPos));
 				tempVec.addXYZ( worldSizeInHolders.getIX(), worldSizeInHolders.getIY(), 0.0 );
 
@@ -689,6 +687,12 @@ public:
 				testDis3 = gp->trueOffsetInHolders.distance( &(tempVec2) );
 
 				testDis = min(min(testDis1,testDis2),testDis3);
+
+				*/
+
+				tempVec.copyFrom(&(gw->camHolderPos));
+				gp->trueOffsetInHolders.wrapDistance(&tempVec,worldSizeInHolders.getIX());
+				testDis = gp->trueOffsetInHolders.distance( &(tempVec) );
 
 				if (testDis > longestDis) {
 					longestDis = testDis;
@@ -1929,15 +1933,17 @@ public:
 			break;
 
 			case 'a':
+				gw->dilMap();
 				changesMade = true;
-				maxH++;
+				//maxH++;
 			break;
 			case 'z':
 				changesMade = true;
-				maxH--;
-				if (maxH < 0) {
-					maxH = 0;
-				}
+				gw->skelMap();
+				// maxH--;
+				// if (maxH < 0) {
+				// 	maxH = 0;
+				// }
 			break;
 			
 			default:
