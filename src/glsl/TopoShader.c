@@ -9,6 +9,7 @@ varying vec2 TexCoord0;
 
 uniform float curTime;
 uniform float cameraZoom;
+uniform float mapTrans;
 
 uniform vec3 cameraPos;
 uniform vec2 bufferDim;
@@ -130,16 +131,8 @@ void main() {
     //testHeight = pow(testHeight,2.0);
 
 
-    vec4 tex0 = texture2D( Texture0, vec2(testHeight, (5.0 + 0.5)/255.0 ) );
-
-
-
-    /*
-
-    if (tex3.a != 0.0) {
-        discard;
-    }
-    */
+    vec4 tex0 = texture2D( Texture0, vec2(testHeight, (5.0 + 0.5)/255.0 ) ); //vec4(testHeight);//
+    tex0.a = 1.0;
 
 
     float offsetAmount = (1.0)/mapDimInPixels.x;
@@ -148,6 +141,11 @@ void main() {
     vec4 tex1d = texture2D(Texture1, vec2(newTC.x, newTC.y - offsetAmount) );
     vec4 tex1l = texture2D(Texture1, vec2(newTC.x - offsetAmount, newTC.y) );
     vec4 tex1r = texture2D(Texture1, vec2(newTC.x + offsetAmount, newTC.y) );
+
+    vec4 tex2u = texture2D(Texture2, vec2(newTC.x, newTC.y + offsetAmount) );
+    vec4 tex2d = texture2D(Texture2, vec2(newTC.x, newTC.y - offsetAmount) );
+    vec4 tex2l = texture2D(Texture2, vec2(newTC.x - offsetAmount, newTC.y) );
+    vec4 tex2r = texture2D(Texture2, vec2(newTC.x + offsetAmount, newTC.y) );
 
     /*
     vec4 tex1ul = texture2D(Texture1, vec2(newTC.x - offsetAmount, newTC.y + offsetAmount) );
@@ -169,41 +167,36 @@ void main() {
         tex1dr.g < tex1.g*/
 
     ) {
-        mod = 0.7;
+        mod = 1.0;
+    }
+
+    float mod2 = 0.0;
+    if (
+        tex2u.b != tex2.b ||
+        tex2d.b != tex2.b ||
+        tex2l.b != tex2.b ||
+        tex2r.b != tex2.b
+
+    ) {
+        mod2 = 0.6;
     }
 
 
+    float isAboveWater = float(testHeight > 110.0/255.0);
 
     vec2 gridVecBase = ( (newTC.xy*mapDimInPixels.xy) - floor(newTC.xy*mapDimInPixels.xy) );
     vec2 gridVec = abs( gridVecBase - 0.5)*2.0;
     float gridTest = float( (gridVec.x >= 0.9) || (gridVec.y >= 0.9) )*0.5;
 
-
-
-
     
     float gv2 = getGrid( int(tex2.r*255.0), gridVecBase ); //stchannel
     float gv1 = getGrid( int(tex2.g*255.0), gridVecBase )*0.5; //btchannel
-    
-    
-
-
     float gridMod = mix( 0.0, max(gv1,gv2), clamp(cameraZoom/0.01,0.0,1.0) );
 
-    //tex1.aaaa*4.0;//
+    vec3 resCol = mix( vec3(testHeight/5.0,testHeight/2.0,testHeight), (tex0.rgb + gridMod)*mod, 1.0);//isAboveWater
+    resCol = mix(resCol, mix(vec3(0.0,0.0,1.0),vec3(1.0,0.0,0.0),isAboveWater) , mod2); // vec3(0.3,0.1,0.0)
 
-
-    /*
-    //int colInd = intMod(int(tex1.g*255.0),16);
-    vec4 colMod = vec4(0.2,0.2,0.2,0.2);//vec4(COLOR_MASKS[colInd],1.0);
-    if (tex1.g == 0) {
-        colMod = vec4(0.0,0.0,0.0,0.0);
-    }
-    */
-
-    float mapTrans = clamp( mix(1.0,0.0,cameraZoom/0.1) ,0.0,1.0);
-
-    gl_FragData[0] = vec4( (tex0.rgb + gridMod  + tex2.b*0.5)*mod, mapTrans );// + float(tex1.r < 110.0/255.0);//*mod;// + vec4( float(clamp(1.0-tex1.b,0.0,1.0) > 0.6) ,0.0,0.0,0.0);//tex0*mod;//1.0-tex1.bbbb;//tex0*mod;//tex0;//1.0-tex1.bbbb;////1.0-tex1.bbbb;//(tex0)*mod; // + colMod
+    gl_FragData[0] = vec4( resCol, mapTrans ) + tex2.a*0.5;// + float(tex1.r < 110.0/255.0);//*mod;// + vec4( float(clamp(1.0-tex1.b,0.0,1.0) > 0.6) ,0.0,0.0,0.0);//tex0*mod;//1.0-tex1.bbbb;//tex0*mod;//tex0;//1.0-tex1.bbbb;////1.0-tex1.bbbb;//(tex0)*mod; // + colMod
 
 }
 

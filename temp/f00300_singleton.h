@@ -40,6 +40,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		slicesPerPitch = 16;
 		visPageSizeInPixels = 256; // height of one page in pixels
 		holderSizeInPages = 4;
+
+
 		bufferMult = 1.25;
 		volGenFBOSize = slicesPerPitch*slicesPerPitch*slicesPerPitch;
 		visPageSizeInUnits = 16;
@@ -47,6 +49,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		worldSizeInHoldersM1.copyFrom(&worldSizeInHolders);
 		worldSizeInHoldersM1.addXYZ(-1);
 		holderSizeInPixels = holderSizeInPages*visPageSizeInPixels;
+
+
+		blockSizeInHolders = 4;
+		blockSizeInPages = blockSizeInHolders*holderSizeInPages;
+		blockSizeInPixels = blockSizeInHolders*holderSizeInPixels;
+
 		worldSizeInPages.copyFrom(&worldSizeInHolders);
 		worldSizeInPages.multXYZ((float)holderSizeInPages);
 		unitSizeInPixels = (visPageSizeInPixels)/visPageSizeInUnits;
@@ -1688,17 +1696,15 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 			case 'a':
-				gw->dilMap();
 				changesMade = true;
-				//maxH++;
+				maxH++;
 			break;
 			case 'z':
 				changesMade = true;
-				gw->skelMap();
-				// maxH--;
-				// if (maxH < 0) {
-				// 	maxH = 0;
-				// }
+				maxH--;
+				if (maxH < 0) {
+					maxH = 0;
+				}
 			break;
 			
 			default:

@@ -1,6 +1,7 @@
 #version 120
 
-uniform sampler2D Texture0;
+uniform sampler2D Texture0; //cityFBO
+//uniform sampler2D Texture1; //hmFBO
 varying vec2 TexCoord0;
 uniform float mapStep;
 uniform float texPitch;
@@ -23,54 +24,148 @@ float rand(vec2 co){
 void main() {
 
     int i;
+    int j;
+
+    float fi;
+    float fj;
 
     vec4 tex1 = texture2D(Texture0, TexCoord0.xy);
+    //vec4 tex2 = texture2D(Texture1, TexCoord0.xy);
 
     float offsetAmount = 1.0/texPitch;
     float tp2 = texPitch/2.0;
 
-    vec2 newTex = TexCoord0.xy;//floor(TexCoord0.xy*tp2)/tp2 + offVec*offsetAmount;
-
-
-    int no = 1-int(texture2D(Texture0, vec2(newTex.x, newTex.y + offsetAmount) ).b);
-    int so = 1-int(texture2D(Texture0, vec2(newTex.x, newTex.y - offsetAmount) ).b);
-    int we = 1-int(texture2D(Texture0, vec2(newTex.x - offsetAmount, newTex.y) ).b);
-    int ea = 1-int(texture2D(Texture0, vec2(newTex.x + offsetAmount, newTex.y) ).b);
-
-    int nw = 1-int(texture2D(Texture0, vec2(newTex.x - offsetAmount, newTex.y + offsetAmount) ).b);
-    int ne = 1-int(texture2D(Texture0, vec2(newTex.x + offsetAmount, newTex.y + offsetAmount) ).b);
-    int sw = 1-int(texture2D(Texture0, vec2(newTex.x - offsetAmount, newTex.y - offsetAmount) ).b);
-    int se = 1-int(texture2D(Texture0, vec2(newTex.x + offsetAmount, newTex.y - offsetAmount) ).b);
-    
+    vec2 newTex = TexCoord0.xy;
 
     
-    int A  = int(no == 0 && ne == 1) + int(ne == 0 && ea == 1) + 
-             int(ea == 0 && se == 1) + int(se == 0 && so == 1) + 
-             int(so == 0 && sw == 1) + int(sw == 0 && we == 1) +
-             int(we == 0 && nw == 1) + int(nw == 0 && no == 1);
-    int B  = no + ne + ea + se + so + sw + we + nw;
-    int m1 = mapStep == 0.0 ? (no * ea * so) : (no * ea * we);
-    int m2 = mapStep == 0.0 ? (ea * so * we) : (no * so * we);
 
-    bool proc = true;
+    float DVAL = 999999.0;
+    float minDis = DVAL;
+    float maxDis = 0.0;
+    float res;
+    float res2;
+    float testDis;
+    
+    vec2 baseCoord = TexCoord0.xy;
+    vec2 testCoord = vec2(0.0);
+    vec2 offsetCoord = vec2(0.0);
 
-    if (A == 1 && (B >= 2 && B <= 6) && m1 == 0 && m2 == 0) {
+    vec2 origin = vec2(0.0);
+
+    float tot = 0.0;
+    float totHit = 0.0;
+
+    float bestRes = 1.0;
+
+    int maxR = 64;
 
 
-        if ( (nw+no+ne+we+ea == 5) ) { // && (sw + so + se == 0)
-            proc = false;
-        }
+    float seaLevel = 110.0/255.0;
 
-        if ( (no+ne+ea+se+so == 5) ) { // && (nw + we + sw == 0)
-            proc = false;
-        }
+   // bool isAbove = tex2.r > seaLevel;
 
-        if (proc) {
-            tex1.b = 0.0;
+    if (tex1.b == 1.0) {
+
+
+        for (i = 0; i <= maxR; i++) {
+            fi = float(i);
+            for (j = 0; j <= maxR; j++) {
+                fj = float(j);
+
+                offsetCoord = vec2(fi,fj)*offsetAmount;//*4.0;
+                testCoord = baseCoord + offsetCoord;
+
+                res = texture2D(Texture0, testCoord ).b;
+                //res2 = texture2D(Texture1, testCoord ).r;
+
+                if (res != 1.0) {
+
+                    //if ((res2 > seaLevel) == isAbove) {
+                        testDis = length(offsetCoord);//,origin);
+
+                        if (testDis < minDis) {
+                            minDis = testDis;
+                            tex1.b = res;
+
+                        }
+                    //}
+
+                    
+
+                    
+                }
+
+                tot += 1.0;
+
+
+            }
         }
         
 
     }
+
+    
+
+
+
+
+    // if (minDis == DVAL) {
+
+    // }
+    // else {
+    //     tex1.b = minDis*12.0*(2.0-totHit/tot);
+
+    // }
+    
+
+/*
+    if (abs(minDis-maxDis) > 2.0) {
+        tex1.b = 0.0;
+    }
+*/
+
+
+
+    // int no = 1-int(texture2D(Texture0, vec2(newTex.x, newTex.y + offsetAmount) ).b);
+    // int so = 1-int(texture2D(Texture0, vec2(newTex.x, newTex.y - offsetAmount) ).b);
+    // int we = 1-int(texture2D(Texture0, vec2(newTex.x - offsetAmount, newTex.y) ).b);
+    // int ea = 1-int(texture2D(Texture0, vec2(newTex.x + offsetAmount, newTex.y) ).b);
+
+    // int nw = 1-int(texture2D(Texture0, vec2(newTex.x - offsetAmount, newTex.y + offsetAmount) ).b);
+    // int ne = 1-int(texture2D(Texture0, vec2(newTex.x + offsetAmount, newTex.y + offsetAmount) ).b);
+    // int sw = 1-int(texture2D(Texture0, vec2(newTex.x - offsetAmount, newTex.y - offsetAmount) ).b);
+    // int se = 1-int(texture2D(Texture0, vec2(newTex.x + offsetAmount, newTex.y - offsetAmount) ).b);
+    
+
+    
+    // int A  = int(no == 0 && ne == 1) + int(ne == 0 && ea == 1) + 
+    //          int(ea == 0 && se == 1) + int(se == 0 && so == 1) + 
+    //          int(so == 0 && sw == 1) + int(sw == 0 && we == 1) +
+    //          int(we == 0 && nw == 1) + int(nw == 0 && no == 1);
+    // int B  = no + ne + ea + se + so + sw + we + nw;
+    // int m1 = mapStep == 0.0 ? (no * ea * so) : (no * ea * we);
+    // int m2 = mapStep == 0.0 ? (ea * so * we) : (no * so * we);
+
+    // bool proc = true;
+
+    // if (A == 1 && (B >= 2 && B <= 6) && m1 == 0 && m2 == 0) {
+
+
+    //     // if ( (nw+no+ne+we+ea == 5) ) { // && (sw + so + se == 0)
+    //     //     proc = false;
+    //     // }
+
+    //     // if ( (no+ne+ea+se+so == 5) ) { // && (nw + we + sw == 0)
+    //     //     proc = false;
+    //     // }
+
+    //     // if (proc) {
+    //     //     tex1.b = 0.0;
+    //     // }
+        
+    //     tex1.b = 0.0;        
+
+    // }
     
 
                 // int p2 = we;//im.at<uchar>(i-1, j);

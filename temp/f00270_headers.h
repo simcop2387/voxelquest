@@ -105,6 +105,9 @@ public:
   int visPageSizeInUnits;
   int unitSizeInPixels;
   int maxHeightInUnits;
+  int blockSizeInHolders;
+  int blockSizeInPages;
+  int blockSizeInPixels;
   int extraRad;
   int defaultWinW;
   int defaultWinH;
@@ -405,9 +408,11 @@ public:
   int stChannel;
   int btChannel;
   int pathChannel;
+  int breadCrumbChannel;
   int hmChannel;
   int idChannel;
   int densityChannel;
+  int blockChannel;
   int * curDiagram;
   int * provinceGrid;
   int * provinceX;
@@ -415,6 +420,7 @@ public:
   bool doDrawFBO;
   bool lastProcResult;
   float mapStep;
+  float mapTrans;
   std::vector <GameGeom*> gameGeom;
   vector <int> ocThreads;
   FIVector4 lScreenCoords;
@@ -464,12 +470,11 @@ public:
   void renderGrass ();
   float quickDis (float x1, float y1, float x2, float y2);
   float weighPath (float x1, float y1, float x2, float y2, float rad);
+  float weighOceanPath (float x1, float y1, float x2, float y2, float rad, bool doSet);
+  float findBestOceanPath (float x1, float y1, float x2, float y2, int generation, bool doSet);
   void findBestPath (float x1, float y1, float x2, float y2, int generation);
   void initMap ();
   void drawMap ();
-  void dilMap ();
-  void skelMap ();
-  void skelMap2 ();
   void postProcess ();
   ~ GameWorld ();
 };

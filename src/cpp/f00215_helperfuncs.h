@@ -22,6 +22,30 @@ std::vector<std::string> split(const std::string &s, char delim) {
 	return split(s, delim, elems);
 }
 
+struct floatAndIndex {
+	float value;
+	int index1;
+	int index2;
+};
+
+void bubbleSortF(floatAndIndex* num, int numLength)
+{
+	int i, j, flag = 1;
+
+	floatAndIndex fiTemp;
+
+	for(i = 1; (i <= numLength) && flag; i++) {
+		flag = 0;
+		for (j=0; j < (numLength -1); j++) {
+			if (num[j+1].value < num[j].value) { // ascending order simply changes to <
+				fiTemp = num[j];
+				num[j] = num[j+1];
+				num[j+1] = fiTemp;
+				flag = 1;
+			}
+		}
+	}
+}
 
 inline float clamp(float val) {
 	float retval = val;
@@ -42,7 +66,14 @@ inline int iGenRand(int val) {
 	//return rand()%(val+1) - val/2;
 }
 
-
+unsigned int intLogB2 (unsigned int val) {
+    unsigned int ret = -1;
+    while (val != 0) {
+        val >>= 1;
+        ret++;
+    }
+    return ret;
+}
 
 std::string intToString(int i) {
 	std::string s;
