@@ -173,6 +173,8 @@ void main() {
 
 
     int i;
+    int j;
+    float fj;
     float fi;
 
     const int iNumSteps = 64;
@@ -234,11 +236,62 @@ void main() {
 
 
 
-    if (tex1.a == 0.0) {
-        resComp = 1.0;
-    }
+    
 
     vec3 myVec = (tex1.rgb-0.5)*2.0;
+
+    // vec2 tcm;
+    // tcm = TexCoord0.xy;
+    // tcm.x *= bufferDim.x/(newZoom);
+    // tcm.y *= bufferDim.y/(newZoom);
+
+    vec4 testTex = vec4(0.0);
+    vec3 bucket = vec3(0.0);//tex1.xyz;
+
+    if (aoval == 0.0) {
+        resComp = 1.0;
+
+        myVec.xyz = vec3(0.0);
+
+        for (i = -1; i <= 1; i += 1) {
+            fi = float(i);
+            for (j = -1; j <= 1; j+= 1) {
+                fj = float(j);
+
+                testTex = texture2D(Texture1, TexCoord0.xy + vec2(fi,fj)/bufferDim );
+
+                if (testTex.x == 1.0) {
+                    bucket.x += 1.0;
+                }
+                if (testTex.y == 1.0) {
+                    bucket.y += 1.0;
+                }
+                if (testTex.z == 1.0) {
+                    bucket.z += 1.0;
+                }
+
+            }
+        }
+
+        if (bucket.x > bucket.y) {
+            if (bucket.x > bucket.z) {
+                myVec.x = 1.0;
+            }
+            else {
+                myVec.z = 1.0;
+            }
+        }
+        else {
+            if (bucket.y > bucket.z) {
+                myVec.y = 1.0;
+            }
+            else {
+                myVec.z = 1.0;
+            }
+        }
+
+    }
+
 
     float lightval = dot(myVec,lightVec);
     lightval = clamp(lightval, 0.0, 1.0);
@@ -327,6 +380,11 @@ void main() {
 
     }
 
+    // if (tex2.b == 9.0/255.0) {
+    //     resCol2 = vec3(0.0,0.0,1.0);
+    //     geomMod = float(geomMod>0.5);
+    // }
+
 
     /*
     // light
@@ -349,8 +407,8 @@ void main() {
         
         
 
-        resCol0 = vec3 (0.0,0.0,0.0);
-        resCol1 = vec3 (0.0,0.0,0.0);
+        //resCol0 = vec3 (0.0,0.0,0.0);
+        //resCol1 = vec3 (0.0,0.0,0.0);
 
     }
 
@@ -378,7 +436,7 @@ void main() {
     vec3 grid2 = abs(mod(worldPosition, holderSizeInPixels) - holderSizeInPixels/2.0)*2.0;
     
 
-    float notBlank = float(tex1.a != 0.0);
+    float notBlank = float(aoval != 0.0);
 
    
     

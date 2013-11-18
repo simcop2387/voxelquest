@@ -208,7 +208,7 @@ float calcNoise(vec3 uvw) {
 
 
     
-    n += 0.25 * snoise(uvw * baseScale*4.0);
+    //n += 0.25 * snoise(uvw * baseScale*4.0);
     //n += 0.125 * snoise(uvw * baseScale*8.0);
     
     /*

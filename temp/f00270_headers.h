@@ -163,6 +163,7 @@ public:
   FIVector4 worldSizeInPages;
   FIVector4 worldSizeInHolders;
   FIVector4 worldSizeInHoldersM1;
+  FIVector4 worldSizeInBlocks;
   FIVector4 cameraPos;
   FIVector4 lightPos;
   FIVector4 mouseStart;
@@ -191,8 +192,11 @@ public:
   map <string, Shader*> shaderMap;
   map <string, FBOSet*> fboMap;
   GLuint volTris;
+  GLuint sliceTris;
   GLuint grassTris;
   uint * lookup2to3;
+  uint * volData;
+  uint * volDataLinear;
   unsigned char * resultImage;
   charArr nullBuffer;
   charArr lastImageBuffer;
@@ -219,6 +223,9 @@ public:
   void createGrassList ();
   void drawCubeCentered (FIVector4 originVec, float radius);
   void drawBox (FIVector4 minVec, FIVector4 maxVec);
+  float glslMod (float x, float y);
+  void sampleAtPoint (FIVector4 * point, FIVector4 * texc);
+  void createSliceList (int numSlices);
   void createVTList ();
   void doShaderRefresh ();
   void setMatrices (int w, int h);
@@ -280,6 +287,45 @@ public:
   void reshape (int w, int h);
   void idleFunc ();
 };
+LZZ_INLINE float Singleton::glslMod (float x, float y)
+                                           {
+		return x - y * floor(x/y);
+    }
+LZZ_INLINE void Singleton::sampleAtPoint (FIVector4 * point, FIVector4 * texc)
+                                                                 {
+
+    	//vec3 point;
+        //vec2 texc;
+
+    	int bmWidth = slicesPerPitch*slicesPerPitch*slicesPerPitch - 1;
+        int squareWidth = slicesPerPitch*slicesPerPitch;
+        int squareWidthM1 = squareWidth-1;
+
+        FIVector4 newPoint;
+        newPoint.copyFrom(point);
+        newPoint.multXYZ(1.0f/bufferMult);
+        newPoint.addXYZ( (1.0f-1.0f/bufferMult)/2.0f );
+        
+
+
+        FIVector4 curFace;
+        curFace.copyFrom(&newPoint);
+        curFace.multXYZ( squareWidthM1 );
+
+
+        int bval = curFace.getIZ();
+        int xval = bval%slicesPerPitch;
+        int yval = bval/slicesPerPitch;
+        
+        texc->setIX( (curFace.getIX() + xval*squareWidth ) );
+        texc->setIY( (curFace.getIY() + yval*squareWidth ) );
+        
+        texc->multXYZ(1.0f / ((float)bmWidth) );
+        
+        
+        //return texc.xy
+        
+    }
 #undef LZZ_INLINE
 #endif
 // f00310_pooledresource.e
@@ -326,7 +372,6 @@ public:
   int maxEntries;
   int maxHeightInUnits;
   FIVector4 worldSeed;
-  bool isDirty;
   bool threadRunning;
   float unitSizeInPixels;
   E_STATES curState;
@@ -342,9 +387,6 @@ public:
   GamePageHolder * parentGPH;
   GamePage ();
   void init (Singleton * _singleton, GamePageHolder * _parentGPH, int _thisPageId, int offsetX, int offsetY, int offsetZ, int oxLoc, int oyLoc, int ozLoc);
-  uint NumberOfSetBits (uint i);
-  uint clamp (uint val);
-  void createSimplexNoise ();
   void copyToTexture ();
   bool addGeom (bool justTesting);
   void generateVolume ();
@@ -367,15 +409,38 @@ public:
   int holderSizeInPages;
   int usingPoolId;
   int thisHolderId;
+  bool isDirty;
   FIVector4 offsetInHolders;
   FIVector4 trueOffsetInHolders;
+  FIVector4 offsetInBlocks;
   PooledResource * gpuRes;
   Singleton * singleton;
-  std::vector <int> containsGeomIds;
+  std::vector <intPair> containsGeomIds;
   GamePage * * pageData;
   GamePageHolder ();
   void init (Singleton * _singleton, int _thisHolderId, int trueX, int trueY, int trueZ, int clampedX, int clampedY, int clampedZ);
+  void refreshChildren ();
+  void fetchGeom ();
   void unbindGPUResources ();
+};
+#undef LZZ_INLINE
+#endif
+// f00352_gameblock.e
+//
+
+#ifndef LZZ_f00352_gameblock_e
+#define LZZ_f00352_gameblock_e
+#define LZZ_INLINE inline
+class GameBlock
+{
+public:
+  Singleton * singleton;
+  int thisIndex;
+  int blockSizeInHolders;
+  FIVector4 offsetInBlocks;
+  std::vector <GameGeom*> gameGeom;
+  GameBlock ();
+  void init (Singleton * _singleton, int ind, int _x, int _y);
 };
 #undef LZZ_INLINE
 #endif
@@ -393,8 +458,8 @@ public:
   int pageCount;
   int mapSwapFlag;
   int visPageSizeInUnits;
-  int iVolumeSize;
   int iHolderSize;
+  int iBlockSize;
   int ((diagrams) [E_RENDER_LENGTH]) [E_STATE_LENGTH];
   int renderMethod;
   int iBufferSize;
@@ -408,7 +473,7 @@ public:
   int stChannel;
   int btChannel;
   int pathChannel;
-  int breadCrumbChannel;
+  int houseChannel;
   int hmChannel;
   int idChannel;
   int densityChannel;
@@ -419,16 +484,19 @@ public:
   int * provinceY;
   bool doDrawFBO;
   bool lastProcResult;
+  bool mapLockOn;
   float mapStep;
   float mapTrans;
-  std::vector <GameGeom*> gameGeom;
+  std::vector <coordAndIndex> roadCoords;
   vector <int> ocThreads;
   FIVector4 lScreenCoords;
   FIVector4 aoScreenCoords;
   FIVector4 worldSizeInPages;
   FIVector4 worldSizeInHolders;
+  FIVector4 worldSizeInBlocks;
   FIVector4 camPagePos;
   FIVector4 camHolderPos;
+  FIVector4 camBlockPos;
   FIVector4 iPixelWorldCoords;
   FIVector4 pagePos;
   FIVector4 unitPos;
@@ -445,20 +513,20 @@ public:
   FIVector4 endBounds;
   Singleton * singleton;
   GamePageHolder * * holderData;
+  GameBlock * * blockData;
   FBOWrapper * curFBO;
   FBOWrapper * curFBO2;
   Poco::ThreadPool threadpool;
   GameWorld ();
   void init (Singleton * _singleton);
   int wrapCoord (int val, int mv);
+  GameBlock * getBlockAtCoords (int xInBlocks, int yInBlocks, bool createOnNull = false);
   GamePageHolder * getHolderAtCoords (int x, int y, int z, bool createOnNull = false);
   GamePageHolder * getHolderAtIndex (int ind);
   GamePage * getPageAtIndex (int ind);
   GamePage * getPageAtCoords (int x, int y, int z, bool createOnNull = false);
   bool checkBounds (int k);
   void resetToState (E_STATES resState);
-  void update2 ();
-  void addGeom (GameGeom * geom);
   void update ();
   bool processPages ();
   void renderPages ();
@@ -468,11 +536,8 @@ public:
   void modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushAction);
   void renderWorldSpace ();
   void renderGrass ();
-  float quickDis (float x1, float y1, float x2, float y2);
-  float weighPath (float x1, float y1, float x2, float y2, float rad);
-  float weighOceanPath (float x1, float y1, float x2, float y2, float rad, bool doSet);
-  float findBestOceanPath (float x1, float y1, float x2, float y2, int generation, bool doSet);
-  void findBestPath (float x1, float y1, float x2, float y2, int generation);
+  float weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean);
+  float findBestPath (float x1, float y1, float x2, float y2, int generation, int roadIndex, bool doSet, bool isOcean);
   void initMap ();
   void drawMap ();
   void postProcess ();

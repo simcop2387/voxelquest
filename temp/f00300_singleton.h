@@ -6,6 +6,7 @@
 Singleton::Singleton ()
                     {
 		volTris = NULL;
+		sliceTris = NULL;
 		gw = NULL;
 		myWS = NULL;
 	}
@@ -16,7 +17,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		int i;
 
 
-
+		srand(time(NULL));
 		
 		imageHM0 = loadBMP("..\\data\\hm0.bmp");
 		imageHM1 = loadBMP("..\\data\\hm1.bmp");
@@ -34,26 +35,30 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 
 		
-		mapFreqs.setFXYZW(1.0f, 4.0f, 32.0f, 64.0f);
-		mapAmps.setFXYZW(0.4f, 0.1f, 0.3f, 0.2f);
+		mapFreqs.setFXYZW(1.0f, 16.0f, 32.0f, 64.0f);
+		mapAmps.setFXYZW(0.4f, 0.3f, 0.2f, 0.1f);
 		
-		slicesPerPitch = 16;
-		visPageSizeInPixels = 256; // height of one page in pixels
+		slicesPerPitch = 8;
+		visPageSizeInPixels = 128; // height of one page in pixels
 		holderSizeInPages = 4;
 
 
 		bufferMult = 1.25;
 		volGenFBOSize = slicesPerPitch*slicesPerPitch*slicesPerPitch;
-		visPageSizeInUnits = 16;
+		visPageSizeInUnits = 8;
 		worldSizeInHolders.setIXYZ(newPitch,newPitch,8);
 		worldSizeInHoldersM1.copyFrom(&worldSizeInHolders);
 		worldSizeInHoldersM1.addXYZ(-1);
 		holderSizeInPixels = holderSizeInPages*visPageSizeInPixels;
 
 
-		blockSizeInHolders = 4;
+
+
+		blockSizeInHolders = 8;
 		blockSizeInPages = blockSizeInHolders*holderSizeInPages;
 		blockSizeInPixels = blockSizeInHolders*holderSizeInPixels;
+		worldSizeInBlocks.copyFrom(&worldSizeInHolders);
+		worldSizeInBlocks.intDivXYZ(blockSizeInHolders);
 
 		worldSizeInPages.copyFrom(&worldSizeInHolders);
 		worldSizeInPages.multXYZ((float)holderSizeInPages);
@@ -93,7 +98,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		heightmapMax = maxBoundsInPixels.getFZ()/2.0f;
 
-
+		doTraceVecND("worldSizeInPixels: ", &maxBoundsInPixels);
 
 
 		bufferedPageSizeInUnits = (visPageSizeInUnits) * (bufferMult);
@@ -214,7 +219,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		extraRad = 0;
 		lastTime = 0.0;
 
-		srand(time(0));
+		
 
 		
 
@@ -255,7 +260,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 	    
 
-
+	    createSliceList(visPageSizeInPixels);
 		createVTList();
 		createGrassList();
 
@@ -317,17 +322,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 
 
-
-
-	    /*
-	    
-	    shaderStrings.push_back("CalcFlow");
-	    shaderStrings.push_back("Erode");
-	    shaderStrings.push_back("DLA");
-	    shaderStrings.push_back("MapShader");
-	    shaderStrings.push_back("shaderWater");
-	    */
-
+	    shaderStrings.push_back("RoadShader");
 	    shaderStrings.push_back("SkeletonShader");
 	    shaderStrings.push_back("DilateShader");
 	    shaderStrings.push_back("TerrainMix");
@@ -344,7 +339,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    shaderStrings.push_back("GenerateVolume");
 	    shaderStrings.push_back("GenerateVolumeBare");
 	    shaderStrings.push_back("RenderVolume");
-	    
+	    shaderStrings.push_back("RenderVolumeSlice");
 
 	    
 
@@ -835,6 +830,89 @@ void Singleton::drawBox (FIVector4 minVec, FIVector4 maxVec)
 
     	glEnd();
     }
+void Singleton::createSliceList (int numSlices)
+                                        {
+
+    	int i;
+
+    	float fx1 = -1.0f;
+    	float fy1 = -1.0f;
+    	float fx2 = 1.0f;
+    	float fy2 = 1.0f;
+    	
+    	FIVector4 vec3In;
+    	FIVector4 vec2Out;
+
+
+    	float centerX = (fx1 + fx2)/2.0f;
+    	float centerY = (fy1 + fy2)/2.0f;
+
+    	float fy25 = fy1*0.75f + fy2*0.25f;
+    	float fy75 = fy1*0.25f + fy2*0.75f;
+
+    	float x[4];
+    	float y[4];
+
+
+    	sliceTris = glGenLists(1);
+
+    	glNewList(sliceTris, GL_COMPILE);
+    	glBegin(GL_QUADS);
+
+    	float zval;
+    	float lerp;
+    	float lerpi;
+    	float fNumSlices = ((float)numSlices) - 1.0f;
+
+    	for (i = 0; i < numSlices; i++) {
+    		lerp = ((float)i)/fNumSlices;
+    		lerpi = 1.0f-lerp;
+
+    		zval = lerp*0.5 + 0.25;
+
+			x[0] = fx1;
+			y[0] = fy75*lerpi + fy25*lerp;
+
+			x[1] = centerX;
+			y[1] = fy2*lerpi + centerY*lerp;
+
+			x[2] = fx2;
+			y[2] = fy75*lerpi + fy25*lerp;
+
+			x[3] = centerX;
+			y[3] = centerY*lerpi + fy1*lerp;
+
+			vec3In.setFXYZ(0.0f,1.0f,lerpi);
+			sampleAtPoint(&vec3In,&vec2Out);
+			glMultiTexCoord3f(GL_TEXTURE0, vec3In.getFX(), vec3In.getFY(), vec3In.getFZ());
+    		glMultiTexCoord3f(GL_TEXTURE1, vec2Out.getFX(), vec2Out.getFY(), 0.0f);
+    		glVertex3f(x[0], y[0], zval);
+
+    		vec3In.setFXYZ(0.0f,0.0f,lerpi);
+    		sampleAtPoint(&vec3In,&vec2Out);
+			glMultiTexCoord3f(GL_TEXTURE0, vec3In.getFX(), vec3In.getFY(), vec3In.getFZ());
+    		glMultiTexCoord3f(GL_TEXTURE1, vec2Out.getFX(), vec2Out.getFY(), 0.0f);
+    		glVertex3f(x[1], y[1], zval);
+
+    		vec3In.setFXYZ(1.0f,0.0f,lerpi);
+    		sampleAtPoint(&vec3In,&vec2Out);
+			glMultiTexCoord3f(GL_TEXTURE0, vec3In.getFX(), vec3In.getFY(), vec3In.getFZ());
+    		glMultiTexCoord3f(GL_TEXTURE1, vec2Out.getFX(), vec2Out.getFY(), 0.0f);
+    		glVertex3f(x[2], y[2], zval);
+
+    		vec3In.setFXYZ(1.0f,1.0f,lerpi);
+    		sampleAtPoint(&vec3In,&vec2Out);
+			glMultiTexCoord3f(GL_TEXTURE0, vec3In.getFX(), vec3In.getFY(), vec3In.getFZ());
+    		glMultiTexCoord3f(GL_TEXTURE1, vec2Out.getFX(), vec2Out.getFY(), 0.0f);
+    		glVertex3f(x[3], y[3], zval);
+    	}
+
+
+
+    	glEnd();
+    	glEndList();
+
+    }
 void Singleton::createVTList ()
                             {
 
@@ -923,7 +1001,7 @@ void Singleton::createVTList ()
 
 		for (i = 0; i < 8; i++) {
 
-			glColor4f(backfaceX[i], backfaceY[i], backfaceZ[i], 1.0f);
+			//glColor4f(backfaceX[i], backfaceY[i], backfaceZ[i], 1.0f);
 
 			glMultiTexCoord3f( GL_TEXTURE0, backfaceX[i], backfaceY[i], backfaceZ[i]);
 			

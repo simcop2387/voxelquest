@@ -42,7 +42,7 @@ void main() {
     newPos.x += scaleAndOffset.z;
     newPos.y += scaleAndOffset.w;
 
-    newPos.z = pageDepth;
+    newPos.z = gl_Vertex.z*0.001+pageDepth;
 
     gl_Position = newPos;
 
@@ -51,25 +51,6 @@ void main() {
 $
 
 vec4 sampleAtPoint(vec3 point) {
-    vec2 texc;
-
-    float pitch = slicesPerPitch*slicesPerPitch;
-    vec3 newPoint = point/bufferMult + (1.0-1.0/bufferMult)/2.0;
-    
-    float bval = newPoint.b*pitch;
-    float xval = floor(mod(bval, slicesPerPitch))/slicesPerPitch;
-    float yval = floor(bval/slicesPerPitch)/slicesPerPitch;
-    
-    texc.x = newPoint.r/(slicesPerPitch) + xval;
-    texc.y = newPoint.g/(slicesPerPitch) + yval;
-    return texture2D(Texture0, texc.xy);
-    
-
-    //return texture3D(Texture0, newPoint);
-}
-
-
-/*vec4 sampleAtPoint(vec3 point) {
     vec2 texc;
 
     float pitch = slicesPerPitch*slicesPerPitch;
@@ -89,7 +70,7 @@ vec4 sampleAtPoint(vec3 point) {
 
     //return texture3D(Texture0, newPoint);
 }
-*/
+
 
 float rand(vec2 co){
     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
@@ -119,8 +100,8 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
 
     int maxRad;
     float tsize = visPageSizeInPixels;
-    float pixMod = 1.0/(tsize);
-    vec3 testPoint = tp + pixMod; //bufferMult
+
+    vec3 testPoint = tp + 1.0/(tsize); //bufferMult
 
     float fMaxRad;
     float curPower;
@@ -144,7 +125,7 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
 
     //float sval = abs(sin(wp.y/30.0));
 
-    //float isRock = float( curSamp.r + curSamp.g + curSamp.b > 0.0);
+    float isRock = float( curSamp.r + curSamp.g + curSamp.b > 0.0);
 
     for (c = -rad; c <= rad; c+=radStep) {
         for (b = -rad; b <= rad; b+=radStep) {
@@ -162,10 +143,10 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
                 res = sampleAtPoint(offVal/tsize + testPoint);
                 rval = float(res.a == 0.0);
 
-                //rval2 = float( abs(res.r-curSamp.r) + abs(res.g-curSamp.g) + abs(res.b-curSamp.b) != 0.0 );
-                //rvMix = mix(rval,rval2,0.5);//mix(rval,rval2, isRock);//abs(sin(wp.y)) );//isRock
-                //norm += rvMix*(offVal);
-                norm += rval*offVal;
+                rval2 = float( abs(res.r-curSamp.r) + abs(res.g-curSamp.g) + abs(res.b-curSamp.b) != 0.0 );
+                rvMix = mix(rval,rval2,0.5);//mix(rval,rval2, isRock);//abs(sin(wp.y)) );//isRock
+                norm += rvMix*(offVal);
+                //norm2 += res.a*offVal;
 
                 totHits += rval;
                 totSteps += 1.0;
@@ -178,34 +159,16 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
     if (totHits == 0.0) {
         norm = vec3(0.0,0.0,0.0);//norm2/totSteps;
 
-        if (tp.x >= tp.y) {
-
-            if (tp.x >= tp.z) {
-                norm.x = 1.0;
-            }
-            else {
-                norm.z = 1.0;
-            }
-        }
-        else {
-            if (tp.y >= tp.z) {
-                norm.y = 1.0;
-            }
-            else {
-                norm.z = 1.0;
-            }
-        }
-
         
-        // if (testPoint.x == 1.0) {
-        //     norm.x = 1.0;
-        // }
-        // if (testPoint.y == 1.0) {
-        //     norm.y = 1.0;
-        // }
-        // if (testPoint.z == 1.0) {
-        //     norm.z = 1.0;
-        // }
+        if (testPoint.x == 1.0) {
+            norm.x = 1.0;
+        }
+        if (testPoint.y == 1.0) {
+            norm.y = 1.0;
+        }
+        if (testPoint.z == 1.0) {
+            norm.z = 1.0;
+        }
         
 
         aoVal = 0.0;//curSamp.a;
@@ -214,7 +177,7 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
         maxRad = 128;
         fMaxRad = float(maxRad);
 
-        for (rad = 8; rad < maxRad; rad *= 2) {
+        for (rad = 32; rad < maxRad; rad *= 2) {
             radStep = rad/2;
             frad = float(rad);
 
@@ -247,6 +210,10 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
 
         aoVal = clamp(1.0 - aoVal/totalAO, 1.0/255.0, 1.0);
     }
+    
+
+
+        
     
 
 
@@ -304,60 +271,49 @@ void main() {
     float fLerp = 0.0;
     
     vec2 newCoords;
-    vec3 front = TexCoord1.xyz;
-    vec3 back = TexCoord0.xyz;
+    //vec3 front = TexCoord1.xyz;
+    //vec3 back = TexCoord0.xyz;
 
     
-    vec4 blackCol = vec4(0.0,0.0,0.0,0.0);
-    vec4 samp = vec4(0.0,0.0,0.0,0.0);
+    //vec4 blackCol = vec4(0.0,0.0,0.0,0.0);
     
     
-    float curDis = 0.0;
-    int iCurDis = 0;  
+    
+    // float curDis = 0.0;
+    // int iCurDis = 0;  
 
-    vec3 curPos = vec3(0.0,0.0,0.0);
-    //vec3 lastGoodPos = vec3(0.0,0.0,0.0);
+    // vec3 curPos = vec3(0.0,0.0,0.0);
+    // //vec3 lastGoodPos = vec3(0.0,0.0,0.0);
  
-    curDis = floor(distance(front,back)*visPageSizeInPixels*0.5); //visPageSizeInPixels
-    iCurDis = int(curDis);
+    // curDis = floor(distance(front,back)*visPageSizeInPixels); //visPageSizeInPixels
+    // iCurDis = int(curDis);
 
-    float q;
+    // float q;
 
-    for (i = 0; i < iCurDis; i++) {
-        fi = float(i);
-        fLerp = fi/curDis;
+    // for (i = 0; i < iCurDis; i++) {
+    //     fi = float(i);
+    //     fLerp = fi/curDis;
 
-        curPos = mix(front,back,fLerp);
+    //     curPos = mix(front,back,fLerp);
 
-        samp = sampleAtPoint(curPos);
+    //     samp = sampleAtPoint(curPos);
 
-        if (samp.a != 0.0) {
-            break;
-        }
+    //     if (samp.a != 0.0) {
+    //         break;
+    //     }
 
-        //lastGoodPos = curPos;
-    }
-    if ( i == iCurDis ) {
+    //     //lastGoodPos = curPos;
+    // }
+    // if ( i == iCurDis ) {
+    //     discard;
+    // }
+
+    vec3 curPos = TexCoord0.xyz;
+    vec4 samp = texture2D(Texture0, TexCoord1.xy);
+
+    if (samp.a == 0.0) {
         discard;
     }
-
-    fi = float(i-1);
-    fi2 = float(i);
-    for (j = 0; j < 20; j++) {
-        fj = float(j);
-        
-        fLerp = mix(fi,fi2,fj/19.0)/curDis;
-
-        curPos = mix(front,back,fLerp);
-
-        samp = sampleAtPoint(curPos);
-
-        if (samp.a != 0.0) {
-            break;
-        }
-    }
-
-
 
     vec3 worldPos;
 
@@ -368,14 +324,8 @@ void main() {
 
     vec2 heightVals = pack16(worldPos.z);
 
-    vec4 normAO = blackCol;
-    vec4 heightMat = blackCol;
-
-    
-    normAO = getAO(curPos, samp, worldPos);
-
-    heightMat = vec4(heightVals.rg, samp.a, 1.0);
-    
+    vec4 normAO = getAO(curPos, samp, worldPos);
+    vec4 heightMat = vec4(heightVals.rg, samp.a, 1.0);
 
     gl_FragData[0] = heightMat;//vec4(offsetInPagesLocal/16.0,1.0);// heightMat;
     gl_FragData[1] = normAO;//vec4(curPos,1.0);//normAO;

@@ -47,6 +47,46 @@ struct fBoundingBox {
 	float yMax;
 };
 
+int intDiv(int v, int s) {
+    float fv = v;
+    float fs = s;
+
+    if (v < 0) {
+        return -ceil(-fv/fs);
+    }
+    else {
+        return v/s;
+    }
+}
+
+inline float clamp(float val) {
+    float retval = val;
+    if (retval < 0.0f) retval = 0.0f;
+    if (retval > 1.0f) retval = 1.0f;
+    return retval;
+}
+
+inline float fGenRand() {
+    
+    return (float)rand()/(float)RAND_MAX;
+    //return ((float)(rand()%100000))/100000.0f;
+}
+
+inline int iGenRand(int val) {
+    
+    return abs(rand()%val);
+    //return rand()%(val+1) - val/2;
+}
+
+unsigned int intLogB2 (unsigned int val) {
+    unsigned int ret = -1;
+    while (val != 0) {
+        val >>= 1;
+        ret++;
+    }
+    return ret;
+}
+
 
 
 class FIVector4 {
@@ -237,11 +277,37 @@ public:
         iv4.z = (int)fv4.z;
     }
 
+    
+
 
     void intDivXYZ(int scalar) {
-        iv4.x /= scalar;
-        iv4.y /= scalar;
-        iv4.z /= scalar;
+
+        float fScalar = (float)scalar;
+
+        iv4.x = intDiv(iv4.x,scalar);
+        iv4.y = intDiv(iv4.y,scalar);
+        iv4.z = intDiv(iv4.z,scalar);
+
+        // if (iv4.x < 0) {
+        //     iv4.x = -ciel(-fv4.x/fScalar);
+        // }
+        // else {
+        //     iv4.x /= scalar;
+        // }
+
+        // if (iv4.y < 0) {
+        //     iv4.y = -ciel(-fv4.y/fScalar);
+        // }
+        // else {
+        //     iv4.y /= scalar;
+        // }
+
+        // if (iv4.z < 0) {
+        //     iv4.z = -ciel(-fv4.z/fScalar);
+        // }
+        // else {
+        //     iv4.z /= scalar;
+        // }
 
         fv4.x = (float)iv4.x;
         fv4.y = (float)iv4.y;
@@ -380,6 +446,29 @@ public:
 
 
 
+    bool inBoundsEqualXYZ(FIVector4 *minV, FIVector4 *maxV) {
+        if (fv4.x < minV->getFX()) {
+            return false;
+        }
+        if (fv4.y < minV->getFY()) {
+            return false;
+        }
+        if (fv4.z < minV->getFZ()) {
+            return false;
+        }
+        if (fv4.x > maxV->getFX()) {
+            return false;
+        }
+        if (fv4.y > maxV->getFY()) {
+            return false;
+        }
+        if (fv4.z > maxV->getFZ()) {
+            return false;
+        }
+
+        return true;
+    }
+
 
     bool inBoundsXYZ(FIVector4 *minV, FIVector4 *maxV) {
         if (fv4.x < minV->getFX()) {
@@ -434,7 +523,9 @@ public:
         }
     }
 
-    void wrapDistance(FIVector4 *otherVec, int maxPitch) {
+
+
+    float wrapDistance(FIVector4 *otherVec, int maxPitch, bool doSet = true) {
         
         int i;
         int j;
@@ -461,8 +552,12 @@ public:
             }   
         }
 
-        otherVec->addXYZ(bestI*maxPitch, bestJ*maxPitch, 0);
+        if (doSet) {
+            otherVec->addXYZ(bestI*maxPitch, bestJ*maxPitch, 0);
+        }
+        
 
+        return shortestDis;
 
     }
 
@@ -485,6 +580,15 @@ public:
         float dz = fv4.z - otherVec->getFZ();
 
         return sqrt(dx*dx + dy*dy + dz*dz);
+    }
+
+    float manhattanDis(FIVector4 *otherVec) {
+
+        float dx = abs(fv4.x - otherVec->getFX());
+        float dy = abs(fv4.y - otherVec->getFY());
+        float dz = abs(fv4.z - otherVec->getFZ());
+
+        return max(max(dx,dy),dz);
     }
 
     void normalize() {
@@ -566,6 +670,8 @@ public:
 
 
 
+
+
 class GameGeom {
 public:
 
@@ -583,10 +689,6 @@ public:
     //float maxRad;
     //float matId;
 
-    inline float fGenRand() {
-        return ((float)(rand()%100000))/100000.0f;
-    }
-
     GameGeom() {
 
     }
@@ -602,17 +704,31 @@ public:
     void initRand(int _id, float x, float y, float z) {
         id = _id;
 
-        float rad = 512.0f;
+        float rad = 256.0f;
         float diam = 2.0f*rad;
+        float zh = 256.0f;
 
-        boundsMinInPixels.setFXYZ(x-rad, y-rad, z+128.0);
-        boundsMaxInPixels.addXYZ(x+rad, y+rad, z+diam+128.0);
+        if (fGenRand() > 0.5) {
+            boundsMinInPixels.setFXYZ(x-rad*3.0, y-rad, z+zh);
+            boundsMaxInPixels.addXYZ(x+rad*3.0, y+rad, z+diam+zh);
+        }
+        else {
+            boundsMinInPixels.setFXYZ(x-rad, y-rad*3.0, z+zh);
+            boundsMaxInPixels.addXYZ(x+rad, y+rad*3.0, z+diam+zh);
+        }
+
+        /*
+        boundsMinInPixels.setFXYZ(x-rad, y-rad, z+zh);
+        boundsMaxInPixels.addXYZ(x+rad, y+rad, z+diam+zh);
+        */
+
+        
 
         originInPixels.copyFrom(&boundsMinInPixels);
         originInPixels.addXYZRef(&boundsMaxInPixels);
         originInPixels.multXYZ(0.5f);
 
-        powerVals.setFXYZ(1.0f,1.0f,1.0f);
+        powerVals.setFXYZ(2.0f,2.0f,2.0f);
         coefficients.setFXYZ(1.0,1.0,1.0);
         squareVals.setFXYZ(0.0,0.0,0.0);
         minMaxMat.setFXYZ(0.5f,1.0f,2.0f);

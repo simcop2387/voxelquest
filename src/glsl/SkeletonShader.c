@@ -5,6 +5,7 @@ uniform sampler2D Texture0; //cityFBO
 varying vec2 TexCoord0;
 uniform float mapStep;
 uniform float texPitch;
+uniform float seaLevel;
 //uniform vec2 offVec;
 
 $
@@ -57,19 +58,16 @@ void main() {
 
     float bestRes = 1.0;
 
-    int maxR = 64;
-
-
-    float seaLevel = 110.0/255.0;
+    int maxR = 32;
 
    // bool isAbove = tex2.r > seaLevel;
 
     if (tex1.b == 1.0) {
 
 
-        for (i = 0; i <= maxR; i++) {
+        for (i = -maxR; i <= maxR; i++) {
             fi = float(i);
-            for (j = 0; j <= maxR; j++) {
+            for (j = -maxR; j <= maxR; j++) {
                 fj = float(j);
 
                 offsetCoord = vec2(fi,fj)*offsetAmount;//*4.0;

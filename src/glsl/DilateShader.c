@@ -6,6 +6,7 @@ varying vec2 TexCoord0;
 uniform float mapStep;
 uniform float texPitch;
 uniform float doDilate;
+uniform float seaLevel;
 
 $
 
@@ -30,14 +31,11 @@ void main() {
     float testHeight = 0.0;
     float heightMod = 0.0;
     float tot = 0.0;
-    float isAboveSea = 0.0;
     float rand1 = 0.0;
     float rand2 = 0.0;
     float v1 = 0.0;
     float v2 = 0.0;
     float v3 = 0.0;
-
-    float seaLevel = 110.0/255.0;
 
 
     vec4 tex1 = texture2D(Texture0, TexCoord0.xy);

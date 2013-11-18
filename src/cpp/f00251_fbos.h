@@ -363,23 +363,58 @@ public:
 		int mipLev,
 		int channel,
 		int minMaxAvg,
-		int val = -1
+		int val = -1,
+		int ox = 0,
+		int oy = 0
 	) {
+
 		int w = mipWidths[mipLev];
 		int curWidth = mipWidths[mipLev];
-		int xv = ((x*curWidth)/mipWidths[0]);
-		int yv = ((y*curWidth)/mipWidths[0]);
+		int mipPitch = 1<<mipLev;
+		int xv;
+		int yv;
+
+		float t1;
+		float t2;
+		float t3;
+
+		xv = intDiv(x*curWidth, mipWidths[0]) + ox;
+		yv = intDiv(y*curWidth, mipWidths[0]) + oy;
+
+		// if (x < 0) {
+		// 	t1 = -x*curWidth;
+		// 	t2 = mipWidths[0];
+		// 	t3 = -ceil(t1/t2);
+		// 	xv = t3 + ox;
+
+		// }
+		// else {
+		// 	xv = ((x*curWidth)/mipWidths[0]) + ox;
+		// }
+
+		// if (y < 0) {
+		// 	t1 = -y*curWidth;
+		// 	t2 = mipWidths[0];
+		// 	t3 = -ceil(t1/t2);
+		// 	yv = t3 + oy;
+		// }
+		// else {
+		// 	yv = ((y*curWidth)/mipWidths[0]) + oy;
+		// }
+
+		
+		
 
 		while (xv < 0) {
 			xv += curWidth;
 		}
-		while (xv > curWidth) {
+		while (xv >= curWidth) {
 			xv -= curWidth;
 		}
 		while (yv < 0) {
 			yv += curWidth;
 		}
-		while (yv > curWidth) {
+		while (yv >= curWidth) {
 			yv -= curWidth;
 		}
 
@@ -417,6 +452,25 @@ public:
 		
 		return res;
 
+	}
+
+	int getMipAtIndex(int ind, int mipLev, int channel, int minMaxAvg) {
+		int res = 0;
+		int resInd = ind*4 + channel;
+
+		switch(minMaxAvg) {
+			case 0:
+				res = (int) (pixelsCharMippedMin[mipLev][resInd]);
+			break;
+			case 1:
+				res = (int) (pixelsCharMippedMax[mipLev][resInd]);
+			break;
+			case 2:
+				res = (int) (pixelsCharMippedAvg[mipLev][resInd]);
+			break;
+		}
+
+		return res;
 	}
 
 	int getMipInd(int x, int y, int mipLev) {

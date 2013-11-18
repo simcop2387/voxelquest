@@ -23,16 +23,12 @@ void main() {
 
     
 
-    vec4 tex0 = texture2D( Texture0, (TexCoord0.xy + paramArrMap[2].xy) );
-    vec4 tex1 = texture2D( Texture1, (TexCoord0.xy + paramArrMap[0].xy)*mapSampScale );
-    vec4 tex2 = texture2D( Texture2, (TexCoord0.xy + paramArrMap[1].xy)*mapSampScale );
+    vec4 tex0 = texture2D( Texture0, (TexCoord0.xy + paramArrMap[8].xy) );
+    vec4 tex1 = texture2D( Texture1, (TexCoord0.xy + paramArrMap[9].xy)*mapSampScale );
+    vec4 tex2 = texture2D( Texture2, (TexCoord0.xy + paramArrMap[10].xy)*mapSampScale );
 
 
-    float[3] sv;
-    sv[0] = 0.0;
-    sv[1] = 0.0;
-    sv[2] = 0.0;
-
+    float[6] sv;
     float[6] vals;
 
     vals[0] = tex1.r;
@@ -46,16 +42,8 @@ void main() {
     int j;
     int curInd = -1;
 
-    for (i = 0; i < 3; i++) {
-        if (paramArrMap[2+i].x < 0.5) {
-            curInd += 1;
-        }
-        else {
-            curInd += 2;
-        }
-
-        sv[i] = vals[curInd];
-
+    for (i = 0; i < 6; i++) {
+        sv[i] = vals[int(paramArrMap[i].x)];
     }
 
 

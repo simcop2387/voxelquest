@@ -29,7 +29,7 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 
 		maxHeightInUnits = (singleton->maxHeightInUnits);
 
-		isDirty = false;
+		//isDirty = false;
 
 		fillState = E_FILL_STATE_PARTIAL;
 		curState = E_STATE_INIT_BEG;
@@ -47,7 +47,7 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 
 		float hzp = (float)(singleton->holderSizeInPages);
 
-		pageDepth = (1.0f - ( (offsetInPagesLocal.getFZ()*hzp*hzp + offsetInPagesLocal.getFY()*hzp + offsetInPagesLocal.getFX())/(hzp*hzp*hzp) ))*0.9f + 0.05f;
+		pageDepth = ((1.0f - ( (offsetInPagesLocal.getFZ()*hzp*hzp + offsetInPagesLocal.getFY()*hzp + offsetInPagesLocal.getFX())/(hzp*hzp*hzp) ))*0.9f + 0.05f)*0.5f;
 
 
 		unitSizeInPixels = (float)(singleton->unitSizeInPixels);
@@ -65,7 +65,7 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 
 		volDataLinear = new uint[iVolumeSize];
 		for (i = 0; i < iVolumeSize; i++) {
-			volDataLinear[i] = (255<<24)|(255<<16)|(255<<8)|(0);
+			volDataLinear[i] = (0<<24)|(0<<16)|(0<<8)|(0);
 		}
 
 
@@ -163,221 +163,6 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 
 		//curState = E_STATE_INIT_END;
 	}
-uint GamePage::NumberOfSetBits (uint i)
-        {
-	    i = i - ((i >> 1) & 0x55555555);
-	    i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
-	    return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
-	}
-uint GamePage::clamp (uint val)
-                             {
-		if (val > 255) {
-			val = 255;
-		}
-		if (val < 0) {
-			val = 0;
-		}
-		return val;
-	}
-void GamePage::createSimplexNoise ()
-                                  {
-
-		threadRunning = true;
-
-		// REMINDER: DO NOT ACCESS EXTERNAL POINTERS INSIDE THREAD
-
-		bool isBlank = false;
-		bool isFull = false;
-		
-
-		curState = E_STATE_CREATESIMPLEXNOISE_BEG;
-
-		int i, j, k, m;
-
-		int totLen = bufferedPageSizeInUnits;
-
-		float fTotLen = (float)totLen;
-
-		int ind = 0;
-
-		uint tmp;
-
-		float fx, fy, fz;
-
-		uint randOff[3];
-		float ijkVals[3];
-
-		const float RAND_MOD[9] = {
-			3456.0f, 5965.0f, 45684.0f,
-			4564.0f, 1234.0f, 6789.0f,
-			4567.0f, 67893.0f, 13245.0f
-		};
-
-		float totLenO4 = totLen/4;
-		float totLen3O4 = (totLen*3)/4;
-		float fSimp;
-		float heightThresh;
-		float testVal;
-
-		bool mustNotBeFull = false;
-
-
-
-		for (j = 0; j < totLen; j++) {
-
-			ijkVals[1] = (float)j;
-
-			fy = (j) + offsetInUnits.getFY();
-
-			for (i = 0; i < totLen; i++) {
-
-				ijkVals[0] = (float)i;
-
-				fx = (i) + offsetInUnits.getFX();
-				
-				for (k = 0; k < totLen; k++) {
-
-					ijkVals[2] = (float)k;
-
-					fz = (k) + offsetInUnits.getFZ();
-
-					ind = k*totLen*totLen + j*totLen + i;
-
-					
-					
-					if (fx < 0.0f || fy < 0.0f || fz < 0.0f ) {
-						volData[ind] = 0;
-						volDataLinear[ind] = (255<<16)|(255<<8)|255;
-					}
-					else {
-
-						heightThresh = (fz/ ((float)maxHeightInUnits) );
-						if (heightThresh > 1.0f) {
-							heightThresh = 1.0f;
-						}
-						if (heightThresh < 0.0f) {
-							heightThresh = 0.0f;
-						}
-
-
-
-						if (k + offsetInUnits.getIZ() >= maxHeightInUnits) {
-							tmp = 0;
-							mustNotBeFull = true;
-						}
-						else {
-							testVal = simplexScaledNoise(
-												4.0f, //octaves
-												0.5f, //persistence (amount added in each successive generation)
-												1.0f/32.0f, //scale (frequency)
-												0.0f,
-												1.0f,
-												fx+worldSeed.getFX(),
-												fy+worldSeed.getFY(),
-												fz+worldSeed.getFZ()
-											);
-							
-
-							
-							tmp = clamp(testVal*255.0f*(1.0f-heightThresh*heightThresh*heightThresh));
-						}
-
-						
-
-						if ( i >= totLenO4 && i <= totLen3O4 ) {
-							if ( j >= totLenO4 && j <= totLen3O4 ) {
-								if ( k >= totLenO4 && k <= totLen3O4 ) {
-									if (tmp > threshVal) {
-										isBlank = false;
-									}
-									else {
-										isFull = false;
-									}
-								}
-							}
-						}
-
-						
-						
-
-
-						for (m = 0; m < 3; m++) {
-							fSimp = simplexScaledNoise(
-																		1.0f, //octaves
-																		1.0f, //persistence (amount added in each successive generation)
-																		1.0f/4.0, //scale (frequency)
-																		0.0f,
-																		1.0f,
-																		fx+RAND_MOD[m*3+0],
-																		fy+RAND_MOD[m*3+1],
-																		fz+RAND_MOD[m*3+2]
-																	);
-							randOff[m] = clamp( ( fSimp + ijkVals[m])*255.0f/fTotLen);
-							
-
-
-						}
-
-						if ( (tmp%16 > 5) && ( (i+j+k)%2 == 0) ) {
-
-							/*if (randOff[0] == 0 && randOff[1] == 0 && randOff[2] == 0) {
-								randOff[1] = 1;
-							} */
-
-							volData[ind] = (0)|(randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
-							volDataLinear[ind] = (tmp<<24)|(255<<16)|(255<<8)|255;
-						}
-						else {
-							volData[ind] = (0);
-							volDataLinear[ind] = (tmp<<24)|(255<<16)|(255<<8)|255;;
-						}
-
-						
-					}
-					
-					
-
-					
-				}
-			}
-		}
-
-
-
-
-
-		/*
-		if (mustNotBeFull) {
-			isFull = false;
-		}
-
-		if (isBlank || isFull ) {
-
-			if (isBlank) {
-				fillState = E_FILL_STATE_EMPTY;
-			}
-			if (isFull) {
-				fillState = E_FILL_STATE_FULL;
-			}
-
-			curState = E_STATE_LENGTH;
-		}
-		else {*/
-
-			//fillState = E_FILL_STATE_PARTIAL;
-			//curState = E_STATE_CREATESIMPLEXNOISE_END;
-		//}
-
-
-		
-
-		fillState = E_FILL_STATE_PARTIAL;
-		curState = E_STATE_CREATESIMPLEXNOISE_END;
-
-
-		threadRunning = false;
-
-	}
 void GamePage::copyToTexture ()
                              {
 
@@ -436,9 +221,11 @@ bool GamePage::addGeom (bool justTesting)
 		int m;
 		int ind;
 		int bufSize = (singleton->visPageSizeInPixels*singleton->bufferMult);
-		int curId;
+		intPair curId;
 		int geomInPage;
 		int baseInd;
+
+		GameWorld* gw = singleton->gw;
 
 		FIVector4 start;
 		FIVector4 end;
@@ -465,7 +252,7 @@ bool GamePage::addGeom (bool justTesting)
 		for (k = start.getIZ(); k <= end.getIZ(); k++ ) {
 			for (j = start.getIY(); j <= end.getIY(); j++ ) {
 				for (i = start.getIX(); i <= end.getIX(); i++ ) {
-					gph = singleton->gw->getHolderAtCoords(i,j,k);
+					gph = gw->getHolderAtCoords(i,j,k);
 
 					// TODO critical: make sure holders are ready before pages 
 
@@ -475,7 +262,7 @@ bool GamePage::addGeom (bool justTesting)
 
 						for (m = 0; m < geomInPage; m++) {
 							curId = gph->containsGeomIds[m];
-							gg = singleton->gw->gameGeom[curId];
+							gg = gw->blockData[curId.v0]->gameGeom[curId.v1];
 
 
 							if (
@@ -596,6 +383,7 @@ void GamePage::generateVolume ()
 		singleton->setShaderfVec4("mapFreqs", &(singleton->mapFreqs) );
 		singleton->setShaderfVec4("mapAmps", &(singleton->mapAmps) );
 
+		singleton->setShaderFloat("seaLevel", ((float)(singleton->gw->seaLevel) )/255.0 );
 		singleton->setShaderFloat("slicesPerPitch", (float)( singleton->slicesPerPitch ));
 		singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
 		singleton->setShaderFloat("bufferedPageSizeInUnits", bufferedPageSizeInUnits);
@@ -620,6 +408,8 @@ void GamePage::generateVolume ()
 		singleton->unbindFBO();
 		singleton->unbindShader();
 
+		bool renderSlice = false;
+
 
 		if (parentGPH->gpuRes != NULL) {
 
@@ -629,7 +419,14 @@ void GamePage::generateVolume ()
 			//ray trace new texture, generate normals, AO, depth, etc
 			
 			glEnable(GL_DEPTH_TEST);
-			singleton->bindShader("RenderVolume");
+
+			if (renderSlice) {
+				singleton->bindShader("RenderVolumeSlice");
+			}
+			else {
+				singleton->bindShader("RenderVolume");
+			}
+			
 			singleton->bindFBODirect(parentGPH->gpuRes->fboSet, 0);
 			singleton->sampleFBO("volGenFBO");
 			//glClearColor(0.0f,0.0f,0.0f,0.0f);
@@ -650,7 +447,14 @@ void GamePage::generateVolume ()
 			singleton->setShaderfVec3("worldMaxBufInPixels", &(worldMaxBufInPixels));
 			singleton->setShaderfVec4("scaleAndOffset", &scaleAndOffset);
 
-			glCallList(singleton->volTris);
+			if (renderSlice) {
+				glCallList(singleton->sliceTris);
+			}
+			else {
+				glCallList(singleton->volTris);
+			}
+			//
+			
 
 
 			singleton->unsampleFBO("volGenFBO");
@@ -752,7 +556,7 @@ void GamePage::run ()
                    {
 		switch (nextState) {
 			case E_STATE_CREATESIMPLEXNOISE_LAUNCH:
-				createSimplexNoise();
+				//createSimplexNoise();
 			break;
 
 			default:

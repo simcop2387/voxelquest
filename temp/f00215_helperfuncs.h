@@ -22,11 +22,38 @@ std::vector<std::string> split(const std::string &s, char delim) {
 	return split(s, delim, elems);
 }
 
+struct intPair {
+	int v0;
+	int v1;
+};
+
 struct floatAndIndex {
 	float value;
 	int index1;
 	int index2;
 };
+
+struct coordAndIndex {
+	float x;
+	float y;
+	float xTen;
+	float yTen;
+	int index;
+};
+
+float quickDis(float x1, float y1, float x2, float y2) {
+	//return abs(x1-x2) + abs(y1-y2);//
+	return sqrt( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) );
+}
+
+float coordDis(coordAndIndex* c1, coordAndIndex* c2) {
+	//return abs(x1-x2) + abs(y1-y2);//
+
+	float d1 = c1->x-c2->x;
+	float d2 = c1->y-c2->y;
+	return sqrt( d1*d1 + d2*d2 );
+}
+
 
 void bubbleSortF(floatAndIndex* num, int numLength)
 {
@@ -47,33 +74,9 @@ void bubbleSortF(floatAndIndex* num, int numLength)
 	}
 }
 
-inline float clamp(float val) {
-	float retval = val;
-	if (retval < 0.0f) retval = 0.0f;
-	if (retval > 1.0f) retval = 1.0f;
-	return retval;
-}
 
-inline float fGenRand() {
-	
-	return (float)rand()/(float)RAND_MAX;
-	//return ((float)(rand()%100000))/100000.0f;
-}
 
-inline int iGenRand(int val) {
-	
-	return abs(rand()%val);
-	//return rand()%(val+1) - val/2;
-}
 
-unsigned int intLogB2 (unsigned int val) {
-    unsigned int ret = -1;
-    while (val != 0) {
-        val >>= 1;
-        ret++;
-    }
-    return ret;
-}
 
 std::string intToString(int i) {
 	std::string s;

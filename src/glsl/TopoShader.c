@@ -11,6 +11,7 @@ uniform float curTime;
 uniform float cameraZoom;
 uniform float mapTrans;
 
+uniform float seaLevel;
 uniform vec3 cameraPos;
 uniform vec2 bufferDim;
 uniform vec2 mapDimInPixels;
@@ -87,7 +88,7 @@ int intMod(int lhs, int rhs) {
     return lhs - ( (lhs/rhs)*rhs );
 }
 
-float getGrid(int val, vec2 gridVecBase) {
+float getGrid(int val, vec2 gridVecBase, float thickness) {
 
     int testVal = val;
 
@@ -102,11 +103,14 @@ float getGrid(int val, vec2 gridVecBase) {
 
     int hasLeft = testVal;
 
+    float maxT = 1.0-thickness;
+    float minT = thickness;
+
     return float(
-        ( (gridVecBase.x >= 0.9) && (hasLeft > 0) ) ||
-        ( (gridVecBase.x <= 0.1) && (hasRight > 0)  ) ||
-        ( (gridVecBase.y >= 0.9) && (hasUp > 0)  ) ||
-        ( (gridVecBase.y <= 0.1) && (hasDown > 0) )
+        ( (gridVecBase.x >= maxT) && (hasLeft > 0) ) ||
+        ( (gridVecBase.x <= minT) && (hasRight > 0)  ) ||
+        ( (gridVecBase.y >= maxT) && (hasUp > 0)  ) ||
+        ( (gridVecBase.y <= minT) && (hasDown > 0) )
     );
 }
 
@@ -130,8 +134,12 @@ void main() {
     float testHeight = (texHM0.r);//*0.7 +  texHM1.r*0.2 + texHM2.r*0.1);//(texHM0.r*0.6 + texHM1.r*0.2 + texHM2.r*0.07 + texHM3.r*0.03);
     //testHeight = pow(testHeight,2.0);
 
+    float isAboveWater = float(testHeight > seaLevel);
+    vec4 landRes = texture2D( Texture0, vec2( (testHeight-seaLevel)/(1.0-seaLevel), (5.0 + 0.5)/255.0 ) ); //vec4(testHeight);//
+    vec4 seaRes = texture2D( Texture0, vec2(testHeight/seaLevel, (6.0 + 0.5)/255.0 ) );
+    vec4 topoRes = mix(seaRes,landRes,isAboveWater);
 
-    vec4 tex0 = texture2D( Texture0, vec2(testHeight, (5.0 + 0.5)/255.0 ) ); //vec4(testHeight);//
+    vec4 tex0 = topoRes;
     tex0.a = 1.0;
 
 
@@ -170,33 +178,57 @@ void main() {
         mod = 1.0;
     }
 
-    float mod2 = 0.0;
-    if (
-        tex2u.b != tex2.b ||
-        tex2d.b != tex2.b ||
-        tex2l.b != tex2.b ||
-        tex2r.b != tex2.b
 
-    ) {
-        mod2 = 0.6;
-    }
+    // float mod2 = 0.0;
+    // if (
+    //     tex2u.b != tex2.b ||
+    //     tex2d.b != tex2.b ||
+    //     tex2l.b != tex2.b ||
+    //     tex2r.b != tex2.b
 
+    // ) {
+    //     mod2 = 0.6;
+    // }
 
-    float isAboveWater = float(testHeight > 110.0/255.0);
+    
+
+    //float isBridge = float( abs(testHeight - seaLevel) < 10.0/255.0 );
 
     vec2 gridVecBase = ( (newTC.xy*mapDimInPixels.xy) - floor(newTC.xy*mapDimInPixels.xy) );
     vec2 gridVec = abs( gridVecBase - 0.5)*2.0;
     float gridTest = float( (gridVec.x >= 0.9) || (gridVec.y >= 0.9) )*0.5;
 
     
-    float gv2 = getGrid( int(tex2.r*255.0), gridVecBase ); //stchannel
-    float gv1 = getGrid( int(tex2.g*255.0), gridVecBase )*0.5; //btchannel
+    float gv3 = getGrid( int(tex2.b*255.0), gridVecBase, 0.4 );
+    float gv2 = getGrid( int(tex2.r*255.0), gridVecBase, 0.2 ); //stchannel
+    float gv1 = getGrid( int(tex2.g*255.0), gridVecBase, 0.1 )*0.5; //btchannel
+    
     float gridMod = mix( 0.0, max(gv1,gv2), clamp(cameraZoom/0.01,0.0,1.0) );
 
-    vec3 resCol = mix( vec3(testHeight/5.0,testHeight/2.0,testHeight), (tex0.rgb + gridMod)*mod, 1.0);//isAboveWater
-    resCol = mix(resCol, mix(vec3(0.0,0.0,1.0),vec3(1.0,0.0,0.0),isAboveWater) , mod2); // vec3(0.3,0.1,0.0)
+    vec3 resCol = (tex0.rgb + gridMod)*mod;
 
-    gl_FragData[0] = vec4( resCol, mapTrans ) + tex2.a*0.5;// + float(tex1.r < 110.0/255.0);//*mod;// + vec4( float(clamp(1.0-tex1.b,0.0,1.0) > 0.6) ,0.0,0.0,0.0);//tex0*mod;//1.0-tex1.bbbb;//tex0*mod;//tex0;//1.0-tex1.bbbb;////1.0-tex1.bbbb;//(tex0)*mod; // + colMod
+    // mix(
+    //     vec3(testHeight/5.0,testHeight/2.0,testHeight),
+    //     (tex0.rgb + gridMod)*mod,
+    //     isAboveWater
+    // );
+    resCol = mix(
+        resCol,
+        
+        mix(
+            resCol+0.5,//vec3(0.0,0.5,1.0),
+            resCol+0.5,//vec3(1.0,1.0,1.0),//vec3(0.3,0.1,0.0),
+            isAboveWater
+        ),
+        
+        gv3
+    );
+
+    //gl_FragData[0] = vec4(tex0.rgb,mapTrans);
+
+    // + tex2.a * 8.0;
+
+    gl_FragData[0] = vec4( resCol, mapTrans );// + float(tex1.a > 0.0)*0.2;// + tex2.a*0.5;// + float(tex1.r < seaLevel);//*mod;// + vec4( float(clamp(1.0-tex1.b,0.0,1.0) > 0.6) ,0.0,0.0,0.0);//tex0*mod;//1.0-tex1.bbbb;//tex0*mod;//tex0;//1.0-tex1.bbbb;////1.0-tex1.bbbb;//(tex0)*mod; // + colMod
 
 }
 

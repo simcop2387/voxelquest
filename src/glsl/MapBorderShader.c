@@ -3,11 +3,9 @@
 uniform sampler2D Texture0; // heightmap
 varying vec2 TexCoord0;
 
-//uniform float curTime;
 uniform float mapStep;
 uniform float texPitch;
-//uniform vec3 paramArrMap[256];
-//uniform float numProvinces;
+uniform float seaLevel;
 
 $
 
@@ -18,24 +16,6 @@ void main() {
 }
 
 $
-
-/*
-// Change these 2 defines to change precision,
-#define vec float
-#define toVec(x) x.g
-
-//#define vec vec4
-//#define toVec(x) x.rgba
-
-#define s2(a, b)                temp = a; a = min(a, b); b = max(temp, b);
-#define mn3(a, b, c)            s2(a, b); s2(a, c);
-#define mx3(a, b, c)            s2(b, c); s2(a, c);
-
-#define mnmx3(a, b, c)          mx3(a, b, c); s2(a, b);                                   // 3 exchanges
-#define mnmx4(a, b, c, d)       s2(a, b); s2(c, d); s2(a, c); s2(b, d);                   // 4 exchanges
-#define mnmx5(a, b, c, d, e)    s2(a, b); s2(c, d); mn3(a, c, e); mx3(b, d, e);           // 6 exchanges
-#define mnmx6(a, b, c, d, e, f) s2(a, d); s2(b, e); s2(c, f); mn3(a, b, c); mx3(d, e, f); // 7 exchanges
-*/
 
 float rand(vec2 co){
     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
@@ -80,6 +60,8 @@ void main() {
     float isAboveSea = 0.0;
     float rand1 = 0.0;
     float rand2 = 0.0;
+    float maxVal = 0.0;
+    float tval;
 
     if (tex1.g == 0.0) {
 
@@ -129,12 +111,23 @@ void main() {
 
 
         isGreen = float(tex1u.g + tex1d.g + tex1l.g + tex1r.g > 0.0);
-        isAboveSea = float(tex1.r > 0.4);
+        isAboveSea = float(tex1.r > seaLevel);
         heightMod = clamp( ( testHeight + -tex1.r )*50.0, -1.0, 1.0)/2.0;
         rand1 = rand(TexCoord0.xy + sin(mapStep/1000.0));
-        rand2 = rand(1.0-TexCoord0.xy + rand1);
+        rand2 = clamp(rand(1.0-TexCoord0.xy + rand1)/2.0,0.0,0.5);
 
-        if ( ((rand1 + heightMod)*isGreen*isAboveSea > max(0.4+rand2-mapStep/256.0, 0.4) ) || (tot*isGreen*isAboveSea > 4.0)) { //  || (tot > 4.0)
+        if (mapStep < 0.0) {
+            maxVal = 0.0;
+            rand2 *= 0.25;
+            tval = 255.0;
+        }
+        else {
+            maxVal = mix(1.0,0.3, abs(mapStep-512.0)/512.0);
+            tval = mapStep/256.0;
+        }
+        
+
+        if ( ((rand1 + heightMod)*isGreen*isAboveSea > maxVal+rand2 ) || (tot*isGreen*isAboveSea > 4.0)) { //  || (tot > 4.0)
             if (tex1u.g > 0.0) {
                 tex1.g = tex1u.g;
             }
@@ -148,7 +141,7 @@ void main() {
                 tex1.g = tex1r.g;
             }
 
-            tex1.b = mapStep/256.0;
+            tex1.b = tval;
         }
 
         if (tex1.g == 1.0) {

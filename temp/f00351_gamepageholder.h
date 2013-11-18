@@ -14,13 +14,16 @@ void GamePageHolder::init (Singleton * _singleton, int _thisHolderId, int trueX,
 
 		int i;
 
+		isDirty = false;
+
 		singleton = _singleton;
 		thisHolderId = _thisHolderId;
 		usingPoolId = -1;
 
 		trueOffsetInHolders.setIXYZ(trueX,trueY,trueZ);
 		offsetInHolders.setIXYZ(clampedX,clampedY,clampedZ);
-
+		offsetInBlocks.copyFrom(&offsetInHolders);
+		offsetInBlocks.intDivXYZ(singleton->blockSizeInHolders);
 		
 
 		holderSizeInPages = singleton->holderSizeInPages;
@@ -33,8 +36,89 @@ void GamePageHolder::init (Singleton * _singleton, int _thisHolderId, int trueX,
 
 
 
+		
+		fetchGeom();
+
+
+
 		popTrace();
 
+	}
+void GamePageHolder::refreshChildren ()
+                               {
+		int i;
+
+		if (usingPoolId == -1) {
+			usingPoolId = singleton->requestPoolId(thisHolderId);
+			gpuRes = singleton->holderPoolItems[usingPoolId];
+		}
+
+		// clear fbo by binding it with auto flag
+		singleton->bindFBODirect(gpuRes->fboSet);
+		singleton->unbindFBO();
+
+		for (i = 0; i < iPageDataVolume; i++) {
+			if (pageData[i] == NULL) {
+
+			}
+			else {
+				pageData[i]->generateVolume();
+			}
+		}
+	}
+void GamePageHolder::fetchGeom ()
+                         {
+		int i;
+		int j;
+		int k;
+		int bufSize = (singleton->visPageSizeInPixels*singleton->bufferMult);
+		
+		GameBlock* curBlock;
+		GamePageHolder* gph;
+		FIVector4 start;
+		FIVector4 end;
+		GameGeom* geom;
+
+		containsGeomIds.clear();
+
+		for (i = -1; i <= 1; i++) {
+			for (j = -1; j <= 1; j++) {
+				curBlock = singleton->gw->getBlockAtCoords(
+					offsetInBlocks.getIX()+i,
+					offsetInBlocks.getIY()+j,
+					true
+				);
+
+				for (k = 0; k < curBlock->gameGeom.size(); k++) {
+
+
+					geom = curBlock->gameGeom[k];
+
+
+					start.copyFrom( &(geom->boundsMinInPixels) );
+					end.copyFrom( &(geom->boundsMaxInPixels) );
+
+					start.addXYZ(-bufSize);
+					end.addXYZ(bufSize);
+
+					start.intDivXYZ(singleton->holderSizeInPixels);
+					end.intDivXYZ(singleton->holderSizeInPixels);
+
+					start.clampZ(&(singleton->origin),&(singleton->worldSizeInHoldersM1));
+					end.clampZ(&(singleton->origin),&(singleton->worldSizeInHoldersM1));
+
+					if (offsetInHolders.inBoundsEqualXYZ(&start,&end)) {
+						containsGeomIds.push_back(intPair());
+						containsGeomIds.back().v0 = curBlock->thisIndex;
+						containsGeomIds.back().v1 = k;
+					}
+
+
+					
+
+				}
+			}			
+		}
 	}
 void GamePageHolder::unbindGPUResources ()
                                   {

@@ -107,9 +107,12 @@ public:
 	FIVector4 mouseUpPD;
 	FIVector4 mouseDownPD;
 	FIVector4 mouseMovePD;
+
 	FIVector4 worldSizeInPages;
 	FIVector4 worldSizeInHolders;
 	FIVector4 worldSizeInHoldersM1;
+	FIVector4 worldSizeInBlocks;
+
 	FIVector4 cameraPos;
 	FIVector4 lightPos;
 	FIVector4 mouseStart;
@@ -147,8 +150,11 @@ public:
 	map<string, FBOSet*> fboMap;
 
 	GLuint volTris;
+	GLuint sliceTris;
 	GLuint grassTris;
 	uint* lookup2to3;
+	uint* volData;
+	uint* volDataLinear;
 	//GLuint lookup2to3ID;
 
 	unsigned char* resultImage;
@@ -173,6 +179,7 @@ public:
 
 	Singleton() {
 		volTris = NULL;
+		sliceTris = NULL;
 		gw = NULL;
 		myWS = NULL;
 	}
@@ -184,7 +191,7 @@ public:
 		int i;
 
 
-
+		srand(time(NULL));
 		
 		imageHM0 = loadBMP("..\\data\\hm0.bmp");
 		imageHM1 = loadBMP("..\\data\\hm1.bmp");
@@ -202,26 +209,30 @@ public:
 
 
 		
-		mapFreqs.setFXYZW(1.0f, 4.0f, 32.0f, 64.0f);
-		mapAmps.setFXYZW(0.4f, 0.1f, 0.3f, 0.2f);
+		mapFreqs.setFXYZW(1.0f, 16.0f, 32.0f, 64.0f);
+		mapAmps.setFXYZW(0.4f, 0.3f, 0.2f, 0.1f);
 		
-		slicesPerPitch = 16;
-		visPageSizeInPixels = 256; // height of one page in pixels
+		slicesPerPitch = 8;
+		visPageSizeInPixels = 128; // height of one page in pixels
 		holderSizeInPages = 4;
 
 
 		bufferMult = 1.25;
 		volGenFBOSize = slicesPerPitch*slicesPerPitch*slicesPerPitch;
-		visPageSizeInUnits = 16;
+		visPageSizeInUnits = 8;
 		worldSizeInHolders.setIXYZ(newPitch,newPitch,8);
 		worldSizeInHoldersM1.copyFrom(&worldSizeInHolders);
 		worldSizeInHoldersM1.addXYZ(-1);
 		holderSizeInPixels = holderSizeInPages*visPageSizeInPixels;
 
 
-		blockSizeInHolders = 4;
+
+
+		blockSizeInHolders = 8;
 		blockSizeInPages = blockSizeInHolders*holderSizeInPages;
 		blockSizeInPixels = blockSizeInHolders*holderSizeInPixels;
+		worldSizeInBlocks.copyFrom(&worldSizeInHolders);
+		worldSizeInBlocks.intDivXYZ(blockSizeInHolders);
 
 		worldSizeInPages.copyFrom(&worldSizeInHolders);
 		worldSizeInPages.multXYZ((float)holderSizeInPages);
@@ -261,7 +272,7 @@ public:
 
 		heightmapMax = maxBoundsInPixels.getFZ()/2.0f;
 
-
+		doTraceVecND("worldSizeInPixels: ", &maxBoundsInPixels);
 
 
 		bufferedPageSizeInUnits = (visPageSizeInUnits) * (bufferMult);
@@ -382,7 +393,7 @@ public:
 		extraRad = 0;
 		lastTime = 0.0;
 
-		srand(time(0));
+		
 
 		
 
@@ -423,7 +434,7 @@ public:
 
 	    
 
-
+	    createSliceList(visPageSizeInPixels);
 		createVTList();
 		createGrassList();
 
@@ -485,17 +496,7 @@ public:
 
 
 
-
-
-	    /*
-	    
-	    shaderStrings.push_back("CalcFlow");
-	    shaderStrings.push_back("Erode");
-	    shaderStrings.push_back("DLA");
-	    shaderStrings.push_back("MapShader");
-	    shaderStrings.push_back("shaderWater");
-	    */
-
+	    shaderStrings.push_back("RoadShader");
 	    shaderStrings.push_back("SkeletonShader");
 	    shaderStrings.push_back("DilateShader");
 	    shaderStrings.push_back("TerrainMix");
@@ -512,7 +513,7 @@ public:
 	    shaderStrings.push_back("GenerateVolume");
 	    shaderStrings.push_back("GenerateVolumeBare");
 	    shaderStrings.push_back("RenderVolume");
-	    
+	    shaderStrings.push_back("RenderVolumeSlice");
 
 	    
 
@@ -584,6 +585,160 @@ public:
 
 
 	
+
+
+	//$$$$$$$$$$$$$$
+
+	// void createSimplexNoise() {
+
+
+		
+
+	// 	int i, j, k, m;
+	// 	int totLen = bufferedPageSizeInUnits;
+	// 	float fTotLen = (float)totLen;
+	// 	int ind = 0;
+	// 	uint tmp;
+	// 	float fx, fy, fz;
+	// 	uint randOff[3];
+	// 	float ijkVals[3];
+
+	// 	const float RAND_MOD[9] = {
+	// 		3456.0f, 5965.0f, 45684.0f,
+	// 		4564.0f, 1234.0f, 6789.0f,
+	// 		4567.0f, 67893.0f, 13245.0f
+	// 	};
+
+	// 	float totLenO4 = totLen/4;
+	// 	float totLen3O4 = (totLen*3)/4;
+	// 	float fSimp;
+	// 	float heightThresh;
+	// 	float testVal;
+
+
+	// 	iVolumeSize = bufferedPageSizeInUnits*bufferedPageSizeInUnits*bufferedPageSizeInUnits;
+	// 	volData = new uint[iVolumeSize];
+	// 	for (i = 0; i < iVolumeSize; i++) {
+	// 		volData[i] = 0;
+	// 	}
+
+	// 	volDataLinear = new uint[iVolumeSize];
+	// 	for (i = 0; i < iVolumeSize; i++) {
+	// 		volDataLinear[i] = (255<<24)|(255<<16)|(255<<8)|(0);
+	// 	}
+
+
+	// 	for (j = 0; j < totLen; j++) {
+
+	// 		ijkVals[1] = (float)j;
+
+	// 		fy = (j) + offsetInUnits.getFY();
+
+	// 		for (i = 0; i < totLen; i++) {
+
+	// 			ijkVals[0] = (float)i;
+
+	// 			fx = (i) + offsetInUnits.getFX();
+				
+	// 			for (k = 0; k < totLen; k++) {
+
+	// 				ijkVals[2] = (float)k;
+	// 				fz = (k) + offsetInUnits.getFZ();
+	// 				ind = k*totLen*totLen + j*totLen + i;
+
+
+	// 				for (m = 0; m < 3; m++) {
+	// 					fSimp = simplexScaledNoise(
+	// 																1.0f, //octaves
+	// 																1.0f, //persistence (amount added in each successive generation)
+	// 																1.0f/4.0, //scale (frequency)
+	// 																0.0f,
+	// 																1.0f,
+	// 																fx+RAND_MOD[m*3+0],
+	// 																fy+RAND_MOD[m*3+1],
+	// 																fz+RAND_MOD[m*3+2]
+	// 															);
+	// 					randOff[m] = clamp( ( fSimp + ijkVals[m])*255.0f/fTotLen);
+						
+
+
+	// 				}
+
+	// 				// if ( (tmp%16 > 5) && ( (i+j+k)%2 == 0) ) {
+
+	// 				// 	volData[ind] = (0)|(randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
+	// 				// 	volDataLinear[ind] = (tmp<<24)|(255<<16)|(255<<8)|255;
+	// 				// }
+	// 				// else {
+	// 				// 	volData[ind] = (0);
+	// 				// 	volDataLinear[ind] = (tmp<<24)|(255<<16)|(255<<8)|255;;
+	// 				// }
+
+	// 				volData[ind] = (0)|(randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
+	// 				volDataLinear[ind] = (tmp<<24)|(255<<16)|(255<<8)|255;
+
+					
+					
+					
+					
+
+					
+	// 			}
+	// 		}
+	// 	}
+
+
+	// 	glBindTexture(GL_TEXTURE_3D,volID);
+	// 		glTexSubImage3D(
+	// 			GL_TEXTURE_3D,
+	// 			0,
+				
+	// 			0,
+	// 			0,
+	// 			0,
+
+	// 			bufferedPageSizeInUnits,
+	// 			bufferedPageSizeInUnits,
+	// 			bufferedPageSizeInUnits,
+
+	// 			GL_RGBA,
+	// 			GL_UNSIGNED_BYTE,
+
+	// 			volData
+	// 		);
+
+	// 	glBindTexture(GL_TEXTURE_3D,0);
+	// 	glBindTexture(GL_TEXTURE_3D,volIDLinear);
+	// 		glTexSubImage3D(
+	// 			GL_TEXTURE_3D,
+	// 			0,
+				
+	// 			0,
+	// 			0,
+	// 			0,
+
+	// 			bufferedPageSizeInUnits,
+	// 			bufferedPageSizeInUnits,
+	// 			bufferedPageSizeInUnits,
+
+	// 			GL_RGBA,
+	// 			GL_UNSIGNED_BYTE,
+
+	// 			volDataLinear
+	// 		);
+	// 	glBindTexture(GL_TEXTURE_3D,0);
+
+	// }
+
+	//$$$$$$$$$$$$$$
+
+
+
+
+
+
+
+
 
 
 	void reorderIds() {
@@ -1044,6 +1199,165 @@ public:
     	glEnd();
     }
 
+    inline float glslMod(float x, float y) {
+		return x - y * floor(x/y);
+    }
+
+
+
+    inline void sampleAtPoint(FIVector4* point, FIVector4* texc) {
+
+    	//vec3 point;
+        //vec2 texc;
+
+    	int bmWidth = slicesPerPitch*slicesPerPitch*slicesPerPitch - 1;
+        int squareWidth = slicesPerPitch*slicesPerPitch;
+        int squareWidthM1 = squareWidth-1;
+
+        FIVector4 newPoint;
+        newPoint.copyFrom(point);
+        newPoint.multXYZ(1.0f/bufferMult);
+        newPoint.addXYZ( (1.0f-1.0f/bufferMult)/2.0f );
+        
+
+
+        FIVector4 curFace;
+        curFace.copyFrom(&newPoint);
+        curFace.multXYZ( squareWidthM1 );
+
+
+        int bval = curFace.getIZ();
+        int xval = bval%slicesPerPitch;
+        int yval = bval/slicesPerPitch;
+        
+        texc->setIX( (curFace.getIX() + xval*squareWidth ) );
+        texc->setIY( (curFace.getIY() + yval*squareWidth ) );
+        
+        texc->multXYZ(1.0f / ((float)bmWidth) );
+        
+        
+        //return texc.xy
+        
+    }
+
+    // inline void sampleAtPoint(FIVector4* point, FIVector4* texc) {
+
+    // 	//vec3 point;
+    //     //vec2 texc;
+
+    //     float pitch = slicesPerPitch*slicesPerPitch;
+    //     float pitchM1 = pitch-1.0;
+
+    //     //vec3 newPoint = point/bufferMult + (1.0-1.0/bufferMult)/2.0;
+    //     FIVector4 newPoint;
+    //     newPoint.copyFrom(point);
+    //     newPoint.multXYZ(1.0f/bufferMult);
+    //     newPoint.addXYZ( (1.0f-1.0f/bufferMult)/2.0f );
+        
+
+
+    //     //vec3 curFace = (newPoint.rgb*pitchM1+0.5)/pitch;
+    //     FIVector4 curFace;
+    //     curFace.copyFrom(&newPoint);
+    //     curFace.multXYZ( (pitchM1+0.5f)/pitch );
+
+
+
+    //     float bval = curFace.getFZ()*pitchM1;
+    //     float xval = floor(glslMod(bval, slicesPerPitch))/slicesPerPitch;
+    //     float yval = floor(bval/slicesPerPitch)/slicesPerPitch;
+        
+    //     texc->setFX( curFace.getFX()/(slicesPerPitch) + xval );
+    //     texc->setFY( curFace.getFY()/(slicesPerPitch) + yval );
+        
+
+
+    //     //return texc.xy
+        
+    // }
+
+    void createSliceList(int numSlices) {
+
+    	int i;
+
+    	float fx1 = -1.0f;
+    	float fy1 = -1.0f;
+    	float fx2 = 1.0f;
+    	float fy2 = 1.0f;
+    	
+    	FIVector4 vec3In;
+    	FIVector4 vec2Out;
+
+
+    	float centerX = (fx1 + fx2)/2.0f;
+    	float centerY = (fy1 + fy2)/2.0f;
+
+    	float fy25 = fy1*0.75f + fy2*0.25f;
+    	float fy75 = fy1*0.25f + fy2*0.75f;
+
+    	float x[4];
+    	float y[4];
+
+
+    	sliceTris = glGenLists(1);
+
+    	glNewList(sliceTris, GL_COMPILE);
+    	glBegin(GL_QUADS);
+
+    	float zval;
+    	float lerp;
+    	float lerpi;
+    	float fNumSlices = ((float)numSlices) - 1.0f;
+
+    	for (i = 0; i < numSlices; i++) {
+    		lerp = ((float)i)/fNumSlices;
+    		lerpi = 1.0f-lerp;
+
+    		zval = lerp*0.5 + 0.25;
+
+			x[0] = fx1;
+			y[0] = fy75*lerpi + fy25*lerp;
+
+			x[1] = centerX;
+			y[1] = fy2*lerpi + centerY*lerp;
+
+			x[2] = fx2;
+			y[2] = fy75*lerpi + fy25*lerp;
+
+			x[3] = centerX;
+			y[3] = centerY*lerpi + fy1*lerp;
+
+			vec3In.setFXYZ(0.0f,1.0f,lerpi);
+			sampleAtPoint(&vec3In,&vec2Out);
+			glMultiTexCoord3f(GL_TEXTURE0, vec3In.getFX(), vec3In.getFY(), vec3In.getFZ());
+    		glMultiTexCoord3f(GL_TEXTURE1, vec2Out.getFX(), vec2Out.getFY(), 0.0f);
+    		glVertex3f(x[0], y[0], zval);
+
+    		vec3In.setFXYZ(0.0f,0.0f,lerpi);
+    		sampleAtPoint(&vec3In,&vec2Out);
+			glMultiTexCoord3f(GL_TEXTURE0, vec3In.getFX(), vec3In.getFY(), vec3In.getFZ());
+    		glMultiTexCoord3f(GL_TEXTURE1, vec2Out.getFX(), vec2Out.getFY(), 0.0f);
+    		glVertex3f(x[1], y[1], zval);
+
+    		vec3In.setFXYZ(1.0f,0.0f,lerpi);
+    		sampleAtPoint(&vec3In,&vec2Out);
+			glMultiTexCoord3f(GL_TEXTURE0, vec3In.getFX(), vec3In.getFY(), vec3In.getFZ());
+    		glMultiTexCoord3f(GL_TEXTURE1, vec2Out.getFX(), vec2Out.getFY(), 0.0f);
+    		glVertex3f(x[2], y[2], zval);
+
+    		vec3In.setFXYZ(1.0f,1.0f,lerpi);
+    		sampleAtPoint(&vec3In,&vec2Out);
+			glMultiTexCoord3f(GL_TEXTURE0, vec3In.getFX(), vec3In.getFY(), vec3In.getFZ());
+    		glMultiTexCoord3f(GL_TEXTURE1, vec2Out.getFX(), vec2Out.getFY(), 0.0f);
+    		glVertex3f(x[3], y[3], zval);
+    	}
+
+
+
+    	glEnd();
+    	glEndList();
+
+    }
 
 	void createVTList() {
 
@@ -1132,7 +1446,7 @@ public:
 
 		for (i = 0; i < 8; i++) {
 
-			glColor4f(backfaceX[i], backfaceY[i], backfaceZ[i], 1.0f);
+			//glColor4f(backfaceX[i], backfaceY[i], backfaceZ[i], 1.0f);
 
 			glMultiTexCoord3f( GL_TEXTURE0, backfaceX[i], backfaceY[i], backfaceZ[i]);
 			

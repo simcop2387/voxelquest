@@ -325,6 +325,7 @@ j$(function() {
 		lastParent: 0,
 		disTraveledX: 0,
 		disTraveledY: 0,
+		timeoutVar: null,
 		lastMouseX: null,
 		lastMouseY: null,
 		shiftDown: false,
@@ -1612,7 +1613,7 @@ j$(function() {
 
 
 
-	gob.updatePalCanv = function() {
+	gob.updatePalCanv = function(mouseUp) {
 
 		var firstTime = true;
 
@@ -1711,11 +1712,25 @@ j$(function() {
 			]
 		);
 
-	    var tempData = gob.canvData.canvas.toDataURL().split(',')[1];//.substring(22);
-	    //0123456789012345678901
-		//data:image/png;base64,
+		if (gob.timeoutVar) {
+			clearTimeout(gob.timeoutVar);
+		}
 
-	    gob.sendMessage(tempData);
+		var to = 500;
+		if (mouseUp) {
+			to = 100;
+		}
+
+		gob.timeoutVar = setTimeout(function(){
+			    var tempData = gob.canvData.canvas.toDataURL().split(',')[1];//.substring(22);
+			    //0123456789012345678901
+				//data:image/png;base64,
+				console.log("img data sent");
+
+			    gob.sendMessage(tempData);
+		},to);
+
+	    
 	}
 
 
@@ -3255,7 +3270,7 @@ j$(function() {
 			case "Lightness":
 			case "Power":
 			case "Position":
-				gob.updatePalCanv();
+				gob.updatePalCanv(mouseUp);
 			break;
 
 			case "Down Samp":
@@ -3545,7 +3560,7 @@ j$(function() {
 
 			gob.genPicker();
 
-			gob.updatePalCanv();
+			gob.updatePalCanv(true);
 
 			
 
@@ -3835,7 +3850,7 @@ j$(function() {
 											gob.lastNode.props.baseChildArr[2].props.value = myL/31.0;
 
 
-											gob.updatePalCanv();
+											gob.updatePalCanv(true);
 											gob.layoutGUI(gob.mainRoot,false);
 
 										}
