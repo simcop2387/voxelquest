@@ -64,7 +64,8 @@ public:
 	int mouseCount;
 	int lastMouseX;
 	int	lastMouseY;
-	
+	int bufferedPageSizeInUnits;
+	int voroSize;
 	
 	int holderSizeInPages;
 	int holderSizeInPixels;
@@ -149,6 +150,11 @@ public:
 	map<string, Shader*> shaderMap;
 	map<string, FBOSet*> fboMap;
 
+
+	GLuint volID;
+	GLuint volIDLinear;
+	GLuint voroID;
+	GLuint voroIDLinear;
 	GLuint volTris;
 	GLuint sliceTris;
 	GLuint grassTris;
@@ -173,9 +179,9 @@ public:
 	
 
 
-	uint volID;
-	uint volIDLinear;
-	int bufferedPageSizeInUnits;
+	
+
+	
 
 	Singleton() {
 		volTris = NULL;
@@ -197,25 +203,21 @@ public:
 		imageHM1 = loadBMP("..\\data\\hm1.bmp");
 		imageHM0->getTextureId(GL_NEAREST);
 		imageHM1->getTextureId(GL_NEAREST);
-
-
-		//////////////////////////////////////////////////////////////
-		//////////////////////////////////////////////////////////////
-		//////////////////////////////////////////////////////////////
-		//////////////////////////////////////////////////////////////
-
 		mapSampScale = 1.0f;
 		int newPitch = imageHM0->width*mapSampScale;//*2;
 
 
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+
 		
-		mapFreqs.setFXYZW(1.0f, 16.0f, 32.0f, 64.0f);
-		mapAmps.setFXYZW(0.4f, 0.3f, 0.2f, 0.1f);
 		
+
 		slicesPerPitch = 8;
 		visPageSizeInPixels = 128; // height of one page in pixels
 		holderSizeInPages = 4;
-
 
 		bufferMult = 1.25;
 		volGenFBOSize = slicesPerPitch*slicesPerPitch*slicesPerPitch;
@@ -225,7 +227,9 @@ public:
 		worldSizeInHoldersM1.addXYZ(-1);
 		holderSizeInPixels = holderSizeInPages*visPageSizeInPixels;
 
-
+		voroSize = 32;
+		mapFreqs.setFXYZW(1.0f, 16.0f, 32.0f, 64.0f);
+		mapAmps.setFXYZW(0.4f, 0.3f, 0.2f, 0.1f);
 
 
 		blockSizeInHolders = 8;
@@ -257,7 +261,7 @@ public:
 
 		
 		traceOn = false;
-		gridOn = 1.0f;
+		gridOn = 0.0f;
 
 
 		// TODO: examine if this variable is necessary
@@ -283,26 +287,51 @@ public:
 
 		glBindTexture(GL_TEXTURE_3D,volID);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, bufferedPageSizeInUnits, bufferedPageSizeInUnits, bufferedPageSizeInUnits, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_LINEAR
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//GL_NEAREST
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 		glBindTexture(GL_TEXTURE_3D,0);
 
 		glBindTexture(GL_TEXTURE_3D,volIDLinear);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, bufferedPageSizeInUnits, bufferedPageSizeInUnits, bufferedPageSizeInUnits, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);//GL_LINEAR
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);//GL_NEAREST
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 		glBindTexture(GL_TEXTURE_3D,0);
 
 
 
+		glGenTextures(1,&voroID);
+		glGenTextures(1,&voroIDLinear);
+
+		glBindTexture(GL_TEXTURE_3D,voroID);
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, voroSize, voroSize, voroSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+		glBindTexture(GL_TEXTURE_3D,0);
+
+		glBindTexture(GL_TEXTURE_3D,voroIDLinear);
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, voroSize, voroSize, voroSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+		glBindTexture(GL_TEXTURE_3D,0);
+
+
+		createVoroVolume();
 
 
 		
@@ -589,93 +618,84 @@ public:
 
 	//$$$$$$$$$$$$$$
 
-	// void createSimplexNoise() {
+	void createVoroVolume() {
 
 
 		
 
-	// 	int i, j, k, m;
-	// 	int totLen = bufferedPageSizeInUnits;
-	// 	float fTotLen = (float)totLen;
-	// 	int ind = 0;
-	// 	uint tmp;
-	// 	float fx, fy, fz;
-	// 	uint randOff[3];
-	// 	float ijkVals[3];
+		int i, j, k, m;
+		int totLen = voroSize;
+		float fTotLen = (float)totLen;
+		int ind = 0;
+		uint tmp;
+		float fx, fy, fz;
+		uint randOff[3];
+		float ijkVals[3];
 
-	// 	const float RAND_MOD[9] = {
-	// 		3456.0f, 5965.0f, 45684.0f,
-	// 		4564.0f, 1234.0f, 6789.0f,
-	// 		4567.0f, 67893.0f, 13245.0f
-	// 	};
+		const float RAND_MOD[9] = {
+			3456.0f, 5965.0f, 45684.0f,
+			4564.0f, 1234.0f, 6789.0f,
+			4567.0f, 67893.0f, 13245.0f
+		};
 
-	// 	float totLenO4 = totLen/4;
-	// 	float totLen3O4 = (totLen*3)/4;
-	// 	float fSimp;
-	// 	float heightThresh;
-	// 	float testVal;
-
-
-	// 	iVolumeSize = bufferedPageSizeInUnits*bufferedPageSizeInUnits*bufferedPageSizeInUnits;
-	// 	volData = new uint[iVolumeSize];
-	// 	for (i = 0; i < iVolumeSize; i++) {
-	// 		volData[i] = 0;
-	// 	}
-
-	// 	volDataLinear = new uint[iVolumeSize];
-	// 	for (i = 0; i < iVolumeSize; i++) {
-	// 		volDataLinear[i] = (255<<24)|(255<<16)|(255<<8)|(0);
-	// 	}
+		float totLenO4 = totLen/4;
+		float totLen3O4 = (totLen*3)/4;
+		float fSimp;
+		float heightThresh;
+		float testVal;
 
 
-	// 	for (j = 0; j < totLen; j++) {
+		int iVolumeSize = voroSize*voroSize*voroSize;
 
-	// 		ijkVals[1] = (float)j;
+		volData = new uint[iVolumeSize];
+		for (i = 0; i < iVolumeSize; i++) {
+			volData[i] = 0;
+		}
 
-	// 		fy = (j) + offsetInUnits.getFY();
+		volDataLinear = new uint[iVolumeSize];
+		for (i = 0; i < iVolumeSize; i++) {
+			volDataLinear[i] = (255<<24)|(255<<16)|(255<<8)|(0);
+		}
 
-	// 		for (i = 0; i < totLen; i++) {
 
-	// 			ijkVals[0] = (float)i;
+		for (j = 0; j < totLen; j++) {
 
-	// 			fx = (i) + offsetInUnits.getFX();
+			ijkVals[1] = (float)j;
+
+			fy = (j);
+
+			for (i = 0; i < totLen; i++) {
+
+				ijkVals[0] = (float)i;
+
+				fx = (i);
 				
-	// 			for (k = 0; k < totLen; k++) {
+				for (k = 0; k < totLen; k++) {
 
-	// 				ijkVals[2] = (float)k;
-	// 				fz = (k) + offsetInUnits.getFZ();
-	// 				ind = k*totLen*totLen + j*totLen + i;
-
-
-	// 				for (m = 0; m < 3; m++) {
-	// 					fSimp = simplexScaledNoise(
-	// 																1.0f, //octaves
-	// 																1.0f, //persistence (amount added in each successive generation)
-	// 																1.0f/4.0, //scale (frequency)
-	// 																0.0f,
-	// 																1.0f,
-	// 																fx+RAND_MOD[m*3+0],
-	// 																fy+RAND_MOD[m*3+1],
-	// 																fz+RAND_MOD[m*3+2]
-	// 															);
-	// 					randOff[m] = clamp( ( fSimp + ijkVals[m])*255.0f/fTotLen);
-						
+					ijkVals[2] = (float)k;
+					fz = (k);
+					ind = k*totLen*totLen + j*totLen + i;
 
 
-	// 				}
+					for (m = 0; m < 3; m++) {
+						fSimp = simplexScaledNoise(
+																	1.0f, //octaves
+																	1.0f, //persistence (amount added in each successive generation)
+																	1.0f/4.0, //scale (frequency)
+																	0.0f,
+																	1.0f,
+																	fx+RAND_MOD[m*3+0],
+																	fy+RAND_MOD[m*3+1],
+																	fz+RAND_MOD[m*3+2]
+																);
 
-	// 				// if ( (tmp%16 > 5) && ( (i+j+k)%2 == 0) ) {
+						fSimp = clampfZO(fSimp)*255.0;
+						randOff[m] = fSimp;
 
-	// 				// 	volData[ind] = (0)|(randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
-	// 				// 	volDataLinear[ind] = (tmp<<24)|(255<<16)|(255<<8)|255;
-	// 				// }
-	// 				// else {
-	// 				// 	volData[ind] = (0);
-	// 				// 	volDataLinear[ind] = (tmp<<24)|(255<<16)|(255<<8)|255;;
-	// 				// }
+					}
 
-	// 				volData[ind] = (0)|(randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
-	// 				volDataLinear[ind] = (tmp<<24)|(255<<16)|(255<<8)|255;
+					volData[ind] = (0)|(randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
+					volDataLinear[ind] = volData[ind];
 
 					
 					
@@ -683,52 +703,52 @@ public:
 					
 
 					
-	// 			}
-	// 		}
-	// 	}
+				}
+			}
+		}
 
 
-	// 	glBindTexture(GL_TEXTURE_3D,volID);
-	// 		glTexSubImage3D(
-	// 			GL_TEXTURE_3D,
-	// 			0,
+		glBindTexture(GL_TEXTURE_3D,voroID);
+			glTexSubImage3D(
+				GL_TEXTURE_3D,
+				0,
 				
-	// 			0,
-	// 			0,
-	// 			0,
+				0,
+				0,
+				0,
 
-	// 			bufferedPageSizeInUnits,
-	// 			bufferedPageSizeInUnits,
-	// 			bufferedPageSizeInUnits,
+				voroSize,
+				voroSize,
+				voroSize,
 
-	// 			GL_RGBA,
-	// 			GL_UNSIGNED_BYTE,
+				GL_RGBA,
+				GL_UNSIGNED_BYTE,
 
-	// 			volData
-	// 		);
+				volData
+			);
 
-	// 	glBindTexture(GL_TEXTURE_3D,0);
-	// 	glBindTexture(GL_TEXTURE_3D,volIDLinear);
-	// 		glTexSubImage3D(
-	// 			GL_TEXTURE_3D,
-	// 			0,
+		glBindTexture(GL_TEXTURE_3D,0);
+		glBindTexture(GL_TEXTURE_3D,voroIDLinear);
+			glTexSubImage3D(
+				GL_TEXTURE_3D,
+				0,
 				
-	// 			0,
-	// 			0,
-	// 			0,
+				0,
+				0,
+				0,
 
-	// 			bufferedPageSizeInUnits,
-	// 			bufferedPageSizeInUnits,
-	// 			bufferedPageSizeInUnits,
+				voroSize,
+				voroSize,
+				voroSize,
 
-	// 			GL_RGBA,
-	// 			GL_UNSIGNED_BYTE,
+				GL_RGBA,
+				GL_UNSIGNED_BYTE,
 
-	// 			volDataLinear
-	// 		);
-	// 	glBindTexture(GL_TEXTURE_3D,0);
+				volDataLinear
+			);
+		glBindTexture(GL_TEXTURE_3D,0);
 
-	// }
+	}
 
 	//$$$$$$$$$$$$$$
 
@@ -2289,26 +2309,6 @@ public:
 		int y = _y/scaleFactor;
 
 		//doAction(progActionsDown[((int)programState)*256 + key]);
-	}
-
-	int clamp(int val, int min, int max) {
-		if (val > max) {
-			val = max;
-		}
-		if (val < min) {
-			val = min;
-		}
-		return val;
-	}
-
-	float clampf(float val, float min, float max) {
-		if (val > max) {
-			val = max;
-		}
-		if (val < min) {
-			val = min;
-		}
-		return val;
 	}
 
 

@@ -310,7 +310,7 @@ void main() {
     
     
 
-    vec3 newFog = (fogPos.xyz-worldPosition.xyz)/512.0;
+    vec3 newFog = (fogPos.xyz-worldPosition.xyz)/1024.0;
     newFog.xy /= 2.0;
 
 

@@ -259,11 +259,29 @@ int intDiv(int v, int s) {
     }
 }
 
-inline float clamp(float val) {
-    float retval = val;
-    if (retval < 0.0f) retval = 0.0f;
-    if (retval > 1.0f) retval = 1.0f;
-    return retval;
+
+int clamp(int val, int min, int max) {
+    if (val > max) {
+        val = max;
+    }
+    if (val < min) {
+        val = min;
+    }
+    return val;
+}
+
+float clampf(float val, float min, float max) {
+    if (val > max) {
+        val = max;
+    }
+    if (val < min) {
+        val = min;
+    }
+    return val;
+}
+
+inline float clampfZO(float val) {
+    return clampf(val,0.0f,1.0f);
 }
 
 inline float fGenRand() {
@@ -931,7 +949,7 @@ public:
         powerVals.setFXYZ(2.0f,2.0f,2.0f);
         coefficients.setFXYZ(1.0,1.0,1.0);
         squareVals.setFXYZ(0.0,0.0,0.0);
-        minMaxMat.setFXYZ(0.5f,1.0f,2.0f);
+        minMaxMat.setFXYZ(0.25f,1.0f,2.0f);
 
         //minRad = 0.75;
         //maxRad = 1.0;
@@ -11311,6 +11329,8 @@ public:
   int mouseCount;
   int lastMouseX;
   int lastMouseY;
+  int bufferedPageSizeInUnits;
+  int voroSize;
   int holderSizeInPages;
   int holderSizeInPixels;
   uint volGenFBOSize;
@@ -11376,6 +11396,10 @@ public:
   vector <string> shaderTextureIDs;
   map <string, Shader*> shaderMap;
   map <string, FBOSet*> fboMap;
+  GLuint volID;
+  GLuint volIDLinear;
+  GLuint voroID;
+  GLuint voroIDLinear;
   GLuint volTris;
   GLuint sliceTris;
   GLuint grassTris;
@@ -11390,11 +11414,9 @@ public:
   WebSocketServer * myWS;
   Timer myTimer;
   GameWorld * gw;
-  uint volID;
-  uint volIDLinear;
-  int bufferedPageSizeInUnits;
   Singleton ();
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer * _myWS);
+  void createVoroVolume ();
   void reorderIds ();
   int findFurthestHolderId ();
   int requestPoolId (int requestingHolderId);
@@ -11455,8 +11477,6 @@ public:
   void processKey (unsigned char key, int _x, int _y, bool isPressed);
   void keyboardUp (unsigned char key, int _x, int _y);
   void keyboardDown (unsigned char key, int _x, int _y);
-  int clamp (int val, int min, int max);
-  float clampf (float val, float min, float max);
   void getPixData (FIVector4 * toVector, int xv, int yv);
   void mouseMove (int _x, int _y);
   void worldToScreen (FIVector4 * sc, FIVector4 * wc);
@@ -11998,25 +12018,21 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		imageHM1 = loadBMP("..\\data\\hm1.bmp");
 		imageHM0->getTextureId(GL_NEAREST);
 		imageHM1->getTextureId(GL_NEAREST);
-
-
-		//////////////////////////////////////////////////////////////
-		//////////////////////////////////////////////////////////////
-		//////////////////////////////////////////////////////////////
-		//////////////////////////////////////////////////////////////
-
 		mapSampScale = 1.0f;
 		int newPitch = imageHM0->width*mapSampScale;//*2;
 
 
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////
+
 		
-		mapFreqs.setFXYZW(1.0f, 16.0f, 32.0f, 64.0f);
-		mapAmps.setFXYZW(0.4f, 0.3f, 0.2f, 0.1f);
 		
+
 		slicesPerPitch = 8;
 		visPageSizeInPixels = 128; // height of one page in pixels
 		holderSizeInPages = 4;
-
 
 		bufferMult = 1.25;
 		volGenFBOSize = slicesPerPitch*slicesPerPitch*slicesPerPitch;
@@ -12026,7 +12042,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		worldSizeInHoldersM1.addXYZ(-1);
 		holderSizeInPixels = holderSizeInPages*visPageSizeInPixels;
 
-
+		voroSize = 32;
+		mapFreqs.setFXYZW(1.0f, 16.0f, 32.0f, 64.0f);
+		mapAmps.setFXYZW(0.4f, 0.3f, 0.2f, 0.1f);
 
 
 		blockSizeInHolders = 8;
@@ -12058,7 +12076,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		
 		traceOn = false;
-		gridOn = 1.0f;
+		gridOn = 0.0f;
 
 
 		// TODO: examine if this variable is necessary
@@ -12084,26 +12102,51 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		glBindTexture(GL_TEXTURE_3D,volID);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, bufferedPageSizeInUnits, bufferedPageSizeInUnits, bufferedPageSizeInUnits, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_LINEAR
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//GL_NEAREST
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 		glBindTexture(GL_TEXTURE_3D,0);
 
 		glBindTexture(GL_TEXTURE_3D,volIDLinear);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, bufferedPageSizeInUnits, bufferedPageSizeInUnits, bufferedPageSizeInUnits, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);//GL_LINEAR
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);//GL_NEAREST
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_CLAMP_TO_BORDER
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 		glBindTexture(GL_TEXTURE_3D,0);
 
 
 
+		glGenTextures(1,&voroID);
+		glGenTextures(1,&voroIDLinear);
+
+		glBindTexture(GL_TEXTURE_3D,voroID);
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, voroSize, voroSize, voroSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+		glBindTexture(GL_TEXTURE_3D,0);
+
+		glBindTexture(GL_TEXTURE_3D,voroIDLinear);
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, voroSize, voroSize, voroSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+		glBindTexture(GL_TEXTURE_3D,0);
+
+
+		createVoroVolume();
 
 
 		
@@ -12379,6 +12422,138 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    popTrace();
 
 
+
+	}
+void Singleton::createVoroVolume ()
+                                {
+
+
+		
+
+		int i, j, k, m;
+		int totLen = voroSize;
+		float fTotLen = (float)totLen;
+		int ind = 0;
+		uint tmp;
+		float fx, fy, fz;
+		uint randOff[3];
+		float ijkVals[3];
+
+		const float RAND_MOD[9] = {
+			3456.0f, 5965.0f, 45684.0f,
+			4564.0f, 1234.0f, 6789.0f,
+			4567.0f, 67893.0f, 13245.0f
+		};
+
+		float totLenO4 = totLen/4;
+		float totLen3O4 = (totLen*3)/4;
+		float fSimp;
+		float heightThresh;
+		float testVal;
+
+
+		int iVolumeSize = voroSize*voroSize*voroSize;
+
+		volData = new uint[iVolumeSize];
+		for (i = 0; i < iVolumeSize; i++) {
+			volData[i] = 0;
+		}
+
+		volDataLinear = new uint[iVolumeSize];
+		for (i = 0; i < iVolumeSize; i++) {
+			volDataLinear[i] = (255<<24)|(255<<16)|(255<<8)|(0);
+		}
+
+
+		for (j = 0; j < totLen; j++) {
+
+			ijkVals[1] = (float)j;
+
+			fy = (j);
+
+			for (i = 0; i < totLen; i++) {
+
+				ijkVals[0] = (float)i;
+
+				fx = (i);
+				
+				for (k = 0; k < totLen; k++) {
+
+					ijkVals[2] = (float)k;
+					fz = (k);
+					ind = k*totLen*totLen + j*totLen + i;
+
+
+					for (m = 0; m < 3; m++) {
+						fSimp = simplexScaledNoise(
+																	1.0f, //octaves
+																	1.0f, //persistence (amount added in each successive generation)
+																	1.0f/4.0, //scale (frequency)
+																	0.0f,
+																	1.0f,
+																	fx+RAND_MOD[m*3+0],
+																	fy+RAND_MOD[m*3+1],
+																	fz+RAND_MOD[m*3+2]
+																);
+
+						fSimp = clampfZO(fSimp)*255.0;
+						randOff[m] = fSimp;
+
+					}
+
+					volData[ind] = (0)|(randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
+					volDataLinear[ind] = volData[ind];
+
+					
+					
+					
+					
+
+					
+				}
+			}
+		}
+
+
+		glBindTexture(GL_TEXTURE_3D,voroID);
+			glTexSubImage3D(
+				GL_TEXTURE_3D,
+				0,
+				
+				0,
+				0,
+				0,
+
+				voroSize,
+				voroSize,
+				voroSize,
+
+				GL_RGBA,
+				GL_UNSIGNED_BYTE,
+
+				volData
+			);
+
+		glBindTexture(GL_TEXTURE_3D,0);
+		glBindTexture(GL_TEXTURE_3D,voroIDLinear);
+			glTexSubImage3D(
+				GL_TEXTURE_3D,
+				0,
+				
+				0,
+				0,
+				0,
+
+				voroSize,
+				voroSize,
+				voroSize,
+
+				GL_RGBA,
+				GL_UNSIGNED_BYTE,
+
+				volDataLinear
+			);
+		glBindTexture(GL_TEXTURE_3D,0);
 
 	}
 void Singleton::reorderIds ()
@@ -13782,26 +13957,6 @@ void Singleton::keyboardDown (unsigned char key, int _x, int _y)
 
 		//doAction(progActionsDown[((int)programState)*256 + key]);
 	}
-int Singleton::clamp (int val, int min, int max)
-                                             {
-		if (val > max) {
-			val = max;
-		}
-		if (val < min) {
-			val = min;
-		}
-		return val;
-	}
-float Singleton::clampf (float val, float min, float max)
-                                                      {
-		if (val > max) {
-			val = max;
-		}
-		if (val < min) {
-			val = min;
-		}
-		return val;
-	}
 void Singleton::getPixData (FIVector4 * toVector, int xv, int yv)
                                                              {
 
@@ -14870,21 +15025,12 @@ void GamePage::generateVolume ()
 
 		addGeom(false);
 
-		// TODO: one shader, set flag
-
-		if (singleton->isBare) {
-			singleton->bindShader("GenerateVolumeBare");
-		}
-		else {
-			singleton->bindShader("GenerateVolume");
-		}
-		
-
-
+		singleton->bindShader("GenerateVolumeBare");
 		singleton->bindFBO("volGenFBO");
 		singleton->setShaderTexture3D(0,singleton->volID);
 		singleton->setShaderTexture3D(1,singleton->volIDLinear);
 		singleton->sampleFBO("hmFBOLinear",2);
+		//singleton->setShaderTexture3D(3,singleton->voroID);
 
 		singleton->setShaderfVec4("mapFreqs", &(singleton->mapFreqs) );
 		singleton->setShaderfVec4("mapAmps", &(singleton->mapAmps) );
@@ -14907,7 +15053,7 @@ void GamePage::generateVolume ()
 		singleton->drawFSQuad(1.0f);
 
 
-
+		//singleton->setShaderTexture3D(3,0);
 		singleton->unsampleFBO("hmFBOLinear",2);
 		singleton->setShaderTexture3D(1, 0);
 		singleton->setShaderTexture3D(0, 0);
@@ -16403,7 +16549,10 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 																		}
 																		else {
 																			linA = 0;
+																			
 																		}
+
+																		linB = 255;
 																	}
 																	
 																}
@@ -16419,6 +16568,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 																		else {
 																			linA = 255;
 																		}
+																		linB = 0;
 																	}
 
 																	
@@ -16431,40 +16581,40 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 																		// dirt and grass
 																		case 1:
-																			linR = 255;
-																			linG = 255;
-																			linB = 255;
+																			// linR = 255;
+																			// linG = 255;
+																			// linB = 255;
 
 																			nearA = 0;
 																		break;
 
 																		// rock
 																		case 2:
-																			linR = 255;
-																			linG = 255;
-																			linB = 255;
+																			// linR = 255;
+																			// linG = 255;
+																			// linB = 255;
 
 																			nearA = 255;
 																		break;
 																		
 																		// brick
 																		case 3:
-																			linR = 16;
-																			linG = 255;
-																			linB = 16;
+																			// linR = 16;
+																			// linG = 255;
+																			// linB = 16;
 
 																			nearA = 255;
 																		break;
 																			
 																		// flat top
 																		case 4:
-																			linB = 0;
+																			//linB = 0;
 																			nearA = 255;
 																		break;
 																		
 																		//
 																		case 5:
-																			linB = 0;
+																			//linB = 0;
 																			nearA = 0;
 																		break;
 																		
@@ -16517,23 +16667,10 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 										}
 									}
 								}
-
-								
-
-
-								
-
 							}
 							
 						}
 
-
-						
-
-
-
-
-						
 
 						
 
@@ -16558,7 +16695,11 @@ void GameWorld::renderWorldSpace ()
 
 		pushTrace("renderWorldSpace()");
 
-		doTraceND("renderWorldSpace() TOT GPU MEM USED (MB): ", f__s(TOT_GPU_MEM_USAGE));
+		if (singleton->reportPagesDrawn) {
+			singleton->reportPagesDrawn = false;
+			doTraceND("renderWorldSpace() TOT GPU MEM USED (MB): ", f__s(TOT_GPU_MEM_USAGE));
+		}
+		
 
 		singleton->wsBufferInvalid = false;
 

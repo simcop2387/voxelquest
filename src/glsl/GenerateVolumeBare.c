@@ -1,8 +1,9 @@
 #version 120
 
 uniform sampler3D Texture0; //volume texture nearest
-uniform sampler3D Texture1; //voro texture linear
+uniform sampler3D Texture1; //volume texture linear
 uniform sampler2D Texture2; //terrain heightmap
+//uniform sampler3D Texture3; //voro nearest
 
 uniform float slicesPerPitch;
 uniform float heightmapMax;
@@ -26,6 +27,48 @@ uniform vec4 mapAmps;
 
 varying vec2 TexCoord0;
 
+vec3 voroOffsets[27] = vec3[](
+	vec3(  -1.0,  -1.0,  -1.0  ),
+	vec3(  -1.0,  -1.0,  0.0  ),
+	vec3(  -1.0,  -1.0,  1.0  ),
+
+	vec3(  -1.0,  0.0,  -1.0  ),
+	vec3(  -1.0,  0.0,  0.0  ),
+	vec3(  -1.0,  0.0,  1.0  ),
+
+	vec3(  -1.0,  1.0,  -1.0  ),
+	vec3(  -1.0,  1.0,  0.0  ),
+	vec3(  -1.0,  1.0,  1.0  ),
+
+
+	
+	vec3(  0.0,  -1.0,  -1.0  ),
+	vec3(  0.0,  -1.0,  0.0  ),
+	vec3(  0.0,  -1.0,  1.0  ),
+
+	vec3(  0.0,  0.0,  -1.0  ),
+	vec3(  0.0,  0.0,  0.0  ),
+	vec3(  0.0,  0.0,  1.0  ),
+
+	vec3(  0.0,  1.0,  -1.0  ),
+	vec3(  0.0,  1.0,  0.0  ),
+	vec3(  0.0,  1.0,  1.0  ),
+
+
+
+	vec3(  1.0,  -1.0,  -1.0  ),
+	vec3(  1.0,  -1.0,  0.0  ),
+	vec3(  1.0,  -1.0,  1.0  ),
+
+	vec3(  1.0,  0.0,  -1.0  ),
+	vec3(  1.0,  0.0,  0.0  ),
+	vec3(  1.0,  0.0,  1.0  ),
+
+	vec3(  1.0,  1.0,  -1.0  ),
+	vec3(  1.0,  1.0,  0.0  ),
+	vec3(  1.0,  1.0,  1.0  )
+
+);
 
 
 
@@ -41,6 +84,15 @@ $
 int intMod(int lhs, int rhs) {
     return lhs - ( (lhs/rhs)*rhs );
 }
+
+vec3 rand(vec3 co) {
+    return vec3(
+    	fract(sin(dot(co.xyz ,vec3(12.989, 78.233, 98.422))) * 43758.8563),
+    	fract(sin(dot(co.zyx ,vec3(93.989, 67.345, 54.256))) * 24634.6345),
+    	fract(sin(dot(co.yxz ,vec3(43.332, 93.532, 43.734))) * 56445.2345)
+    );
+}
+
 
 /*
 mat4 rotationMatrix(vec3 axis, float angle)
@@ -79,7 +131,7 @@ bool brick(vec3 uvw) {
 	vec3 position, useBrick;
 	
 	vec3 bricksize = vec3(64.0,128.0,64.0);
-	vec3 brickPct = vec3(0.9,0.9,0.9);
+	vec3 brickPct = vec3(0.8,0.8,0.8);
 
 	position = uvw.xyz / bricksize.xyz;
 
@@ -128,6 +180,7 @@ void main() {
 	int volGenFBOSizeM1 = volGenFBOSize;
 	int i = int( float(volGenFBOSizeM1)*TexCoord0.x );
 	int j = int( float(volGenFBOSizeM1)*TexCoord0.y );
+	int k;
 	vec3 newCoords = vec3(0.0);
 	newCoords.x = float(intMod(i,side))/fSideM1;
 	newCoords.y = float(intMod(j,side))/fSideM1;
@@ -142,6 +195,7 @@ void main() {
 		mix(worldMinBufInPixels.z, worldMaxBufInPixels.z, newCoords.z)
 	);
 
+	ivec3 iWorldPosInPixels = ivec3(worldPosInPixels);
 
 	
 	int iParamsPerEntry = int(paramsPerEntry);
@@ -167,6 +221,8 @@ void main() {
 	vec2 curDisYZ = vec2(0.0);
 	vec2 curDisXZ = vec2(0.0);
 	
+	vec3 orig = vec3(0.0);
+
 	vec3 dis = vec3(0.0);
 	vec3 disNorm = vec3(0.0);
 	vec3 absDisNorm = vec3(0.0);
@@ -186,11 +242,13 @@ void main() {
 
 	bool doCont = false;
 	float curMat = 0.0;
+	float PIO4 = 0.785398163;
 
 	bvec4 cutBools = bvec4(false);
 
 	bvec3 bLessThanOrig;
 	vec3 lessThanOrig;
+	vec3 iLessThanOrig;
 
 	vec3 zeroVec = vec3(0.0);
 
@@ -201,6 +259,13 @@ void main() {
 	vec3 vecN = vec3(0.0);
 	vec3 vecT = vec3(0.0);
 	vec3 vecB = vec3(0.0);
+
+	float tempMat = 0.0;
+
+	
+	//vec2 isRidge = vec2(0.0);
+	
+
 
 	for (i = 0; i < numEntries; i++) {
 
@@ -224,6 +289,7 @@ void main() {
 			minMaxMat = paramArr[baseInd+6];
 
 			radInPixels = (boundsMaxInPixels - boundsMinInPixels)/2.0;
+			orig = (boundsMaxInPixels + boundsMinInPixels)/2.0;
 			absWorldPosInPixels = ((worldPosInPixels)-(radInPixels));
 
 
@@ -292,9 +358,10 @@ void main() {
 				disNorm = dis.xyz/newCornerDis.xyz;
 				absDisNorm = abs( disNorm );
 
-				bLessThanOrig = lessThanEqual(absWorldPosInPixels,originInPixels);
+				bLessThanOrig = lessThanEqual( abs(worldPosInPixels-orig), abs(originInPixels-orig) );
 				lessThanOrig = vec3(bLessThanOrig);
-				dis *= lessThanOrig;
+				iLessThanOrig = 1.0-lessThanOrig;
+				//dis *= lessThanOrig;
 
 				
 
@@ -323,39 +390,79 @@ void main() {
 				eqRes.y = coefficients.y*pow(absDisNorm.y,powerVals.y);
 				eqRes.z = coefficients.z*pow(absDisNorm.z,powerVals.z);
 
-				curRad = length(disNorm);
-				curPhi = atan(disNorm.y, disNorm.x);
-				curThe = acos(disNorm.z/curRad);
+				curRad = length(absDisNorm);
+				curPhi = atan(absDisNorm.y, absDisNorm.x);
+				curThe = acos(absDisNorm.z/curRad);
 
-				vecN = absDisNorm;
 
-				if (vecN.x > vecN.y) {
-					if (vecN.x > vecN.z) {
-						vecN.yz = zeroVec.xy;
-					}
-					else {
-						vecN.xy = zeroVec.xy;
-					}
+
+
+				// vecN = absDisNorm;
+
+				// if (vecN.x > vecN.y) {
+				// 	if (vecN.x > vecN.z) {
+				// 		vecN.yz = zeroVec.xy;
+				// 	}
+				// 	else {
+				// 		vecN.xy = zeroVec.xy;
+				// 	}
+				// }
+				// else {
+				// 	if (vecN.y > vecN.z) {
+				// 		vecN.xz = zeroVec.xy;
+				// 	}
+				// 	else {
+				// 		vecN.xy = zeroVec.xy;
+				// 	}
+				// }
+				// vecN = normalize(vecN);
+				// newUVW = (vecN.x * worldPosInPixels.zyx) + (vecN.y * worldPosInPixels.xzy) + (vecN.z * worldPosInPixels.xyz);
+				// newUVW.z = curRad*32.0;
+
+				//isRidge.x = float(intMod(int(newUVW.x),256) > 64);
+				//isRidge.y = float(intMod(int(newUVW.y),256) > 64);
+				
+				newUVW = vec3(curPhi,curThe,curRad)*newCornerDis;
+
+
+				tempMat = 2.0/255.0;
+
+				if ( all(bLessThanOrig.xy) ) {
+					newUVW.xy = worldPosInPixels.xy;
 				}
 				else {
-					if (vecN.y > vecN.z) {
-						vecN.xz = zeroVec.xy;
+					if ( all(bLessThanOrig.yz) ) {
+						newUVW.xy = worldPosInPixels.yz;
 					}
 					else {
-						vecN.xy = zeroVec.xy;
+						if ( all(bLessThanOrig.xz) ) {
+							newUVW.xy = worldPosInPixels.xz;
+						}
+						else {
+
+							if (bLessThanOrig.x) {
+								newUVW.x = worldPosInPixels.x;
+							}
+							if (bLessThanOrig.y) {
+								newUVW.x = worldPosInPixels.y;
+							}
+							if (bLessThanOrig.z) {
+								newUVW.y = worldPosInPixels.z;
+							}
+
+						}
 					}
 				}
-				vecN = normalize(vecN);
 
-				newUVW = (vecN.x * worldPosInPixels.zyx) + (vecN.y * worldPosInPixels.xzy) + (vecN.z * worldPosInPixels.xyz);
-				newUVW.z = curRad*32.0;
 
-				if (brick(newUVW)) {
-					curMat = minMaxMat.z/255.0;
+				
+
+				if ( brick(newUVW) ) {
+					curMat = tempMat;
 				}
 				else {
 
-					if (curRad < 0.5 ) {
+					if (curRad < 0.8 ) {
 						curMat = 1.0/255.0;
 					}
 					else {
@@ -386,8 +493,11 @@ void main() {
 
 				}
 				else {
-					if ( ( tempLen >= minMaxMat.x ) && (tempLen <= minMaxMat.y ) ) {
+					if ( ( tempLen >= minMaxMat.x ) && (tempLen <= minMaxMat.y) ) {// - isRidge.x/8.0 - isRidge.y/8.0 ) ) {
 						finalRes.a = curMat;
+
+						
+
 					}
 				}
 				
@@ -441,8 +551,62 @@ void main() {
 
 	vec4 tex2 =  texture3D(Texture1, newCoords);
 	if (tex2.a > 0.5) {
+		
 		finalRes = vec4(0.0,0.0,0.0,1.0/255.0);
 	}
+	else {
+		if (tex2.b > 0.5) {
+			finalRes = vec4(0.0,0.0,0.0,0.0/255.0);
+		}
+	}
+
+
+
+
+	// vec3 curPos;
+	// vec3 bestPos;
+	// float curVoroDis;
+	// float notValid = 999.0;
+	// float minDis1 = notValid;
+	// float minDis2 = notValid;
+	// float gradVal;
+	// float voroSize = 64.0;
+
+	// if (finalRes.a != 0.0) {
+	// 	for (i = 0; i < 27; i++) {
+	// 		curPos = voroOffsets[i] + floor(worldPosInPixels/voroSize);
+	// 		curPos += rand(curPos)*0.5;
+	// 		curPos *= voroSize;
+
+	// 		curVoroDis = distance(curPos, worldPosInPixels);
+
+	// 		if (curVoroDis < minDis1) {
+	// 			bestPos = curPos;
+
+	// 			minDis2 = minDis1;
+	// 			minDis1 = curVoroDis;
+	// 		}
+	// 		else {
+	// 			if (curVoroDis < minDis2) {
+	// 				minDis2 = curVoroDis;
+	// 			}
+	// 		}
+
+	// 	}
+
+
+	// 	gradVal = clamp(1.0 - (minDis1*2.0/(minDis1+minDis2)),1.0/255.0,1.0);
+
+	// 	if (gradVal > 0.05) {
+	// 		finalRes.a = 1.0/255.0;
+	// 	}
+	// 	else {
+	// 		finalRes.a = 2.0/255.0;
+	// 	}
+
+	// }
+
+	
 
 
 	gl_FragData[0] = finalRes;

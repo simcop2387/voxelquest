@@ -59,11 +59,29 @@ int intDiv(int v, int s) {
     }
 }
 
-inline float clamp(float val) {
-    float retval = val;
-    if (retval < 0.0f) retval = 0.0f;
-    if (retval > 1.0f) retval = 1.0f;
-    return retval;
+
+int clamp(int val, int min, int max) {
+    if (val > max) {
+        val = max;
+    }
+    if (val < min) {
+        val = min;
+    }
+    return val;
+}
+
+float clampf(float val, float min, float max) {
+    if (val > max) {
+        val = max;
+    }
+    if (val < min) {
+        val = min;
+    }
+    return val;
+}
+
+inline float clampfZO(float val) {
+    return clampf(val,0.0f,1.0f);
 }
 
 inline float fGenRand() {
@@ -731,7 +749,7 @@ public:
         powerVals.setFXYZ(2.0f,2.0f,2.0f);
         coefficients.setFXYZ(1.0,1.0,1.0);
         squareVals.setFXYZ(0.0,0.0,0.0);
-        minMaxMat.setFXYZ(0.5f,1.0f,2.0f);
+        minMaxMat.setFXYZ(0.25f,1.0f,2.0f);
 
         //minRad = 0.75;
         //maxRad = 1.0;

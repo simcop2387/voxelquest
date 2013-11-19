@@ -126,6 +126,8 @@ public:
   int mouseCount;
   int lastMouseX;
   int lastMouseY;
+  int bufferedPageSizeInUnits;
+  int voroSize;
   int holderSizeInPages;
   int holderSizeInPixels;
   uint volGenFBOSize;
@@ -191,6 +193,10 @@ public:
   vector <string> shaderTextureIDs;
   map <string, Shader*> shaderMap;
   map <string, FBOSet*> fboMap;
+  GLuint volID;
+  GLuint volIDLinear;
+  GLuint voroID;
+  GLuint voroIDLinear;
   GLuint volTris;
   GLuint sliceTris;
   GLuint grassTris;
@@ -205,11 +211,9 @@ public:
   WebSocketServer * myWS;
   Timer myTimer;
   GameWorld * gw;
-  uint volID;
-  uint volIDLinear;
-  int bufferedPageSizeInUnits;
   Singleton ();
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer * _myWS);
+  void createVoroVolume ();
   void reorderIds ();
   int findFurthestHolderId ();
   int requestPoolId (int requestingHolderId);
@@ -270,8 +274,6 @@ public:
   void processKey (unsigned char key, int _x, int _y, bool isPressed);
   void keyboardUp (unsigned char key, int _x, int _y);
   void keyboardDown (unsigned char key, int _x, int _y);
-  int clamp (int val, int min, int max);
-  float clampf (float val, float min, float max);
   void getPixData (FIVector4 * toVector, int xv, int yv);
   void mouseMove (int _x, int _y);
   void worldToScreen (FIVector4 * sc, FIVector4 * wc);

@@ -364,21 +364,12 @@ void GamePage::generateVolume ()
 
 		addGeom(false);
 
-		// TODO: one shader, set flag
-
-		if (singleton->isBare) {
-			singleton->bindShader("GenerateVolumeBare");
-		}
-		else {
-			singleton->bindShader("GenerateVolume");
-		}
-		
-
-
+		singleton->bindShader("GenerateVolumeBare");
 		singleton->bindFBO("volGenFBO");
 		singleton->setShaderTexture3D(0,singleton->volID);
 		singleton->setShaderTexture3D(1,singleton->volIDLinear);
 		singleton->sampleFBO("hmFBOLinear",2);
+		//singleton->setShaderTexture3D(3,singleton->voroID);
 
 		singleton->setShaderfVec4("mapFreqs", &(singleton->mapFreqs) );
 		singleton->setShaderfVec4("mapAmps", &(singleton->mapAmps) );
@@ -401,7 +392,7 @@ void GamePage::generateVolume ()
 		singleton->drawFSQuad(1.0f);
 
 
-
+		//singleton->setShaderTexture3D(3,0);
 		singleton->unsampleFBO("hmFBOLinear",2);
 		singleton->setShaderTexture3D(1, 0);
 		singleton->setShaderTexture3D(0, 0);

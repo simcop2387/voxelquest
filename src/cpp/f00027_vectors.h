@@ -59,11 +59,29 @@ int intDiv(int v, int s) {
     }
 }
 
-inline float clamp(float val) {
-    float retval = val;
-    if (retval < 0.0f) retval = 0.0f;
-    if (retval > 1.0f) retval = 1.0f;
-    return retval;
+
+int clamp(int val, int min, int max) {
+    if (val > max) {
+        val = max;
+    }
+    if (val < min) {
+        val = min;
+    }
+    return val;
+}
+
+float clampf(float val, float min, float max) {
+    if (val > max) {
+        val = max;
+    }
+    if (val < min) {
+        val = min;
+    }
+    return val;
+}
+
+inline float clampfZO(float val) {
+    return clampf(val,0.0f,1.0f);
 }
 
 inline float fGenRand() {

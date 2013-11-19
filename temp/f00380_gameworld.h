@@ -1136,7 +1136,10 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 																		}
 																		else {
 																			linA = 0;
+																			
 																		}
+
+																		linB = 255;
 																	}
 																	
 																}
@@ -1152,6 +1155,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 																		else {
 																			linA = 255;
 																		}
+																		linB = 0;
 																	}
 
 																	
@@ -1164,40 +1168,40 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 																		// dirt and grass
 																		case 1:
-																			linR = 255;
-																			linG = 255;
-																			linB = 255;
+																			// linR = 255;
+																			// linG = 255;
+																			// linB = 255;
 
 																			nearA = 0;
 																		break;
 
 																		// rock
 																		case 2:
-																			linR = 255;
-																			linG = 255;
-																			linB = 255;
+																			// linR = 255;
+																			// linG = 255;
+																			// linB = 255;
 
 																			nearA = 255;
 																		break;
 																		
 																		// brick
 																		case 3:
-																			linR = 16;
-																			linG = 255;
-																			linB = 16;
+																			// linR = 16;
+																			// linG = 255;
+																			// linB = 16;
 
 																			nearA = 255;
 																		break;
 																			
 																		// flat top
 																		case 4:
-																			linB = 0;
+																			//linB = 0;
 																			nearA = 255;
 																		break;
 																		
 																		//
 																		case 5:
-																			linB = 0;
+																			//linB = 0;
 																			nearA = 0;
 																		break;
 																		
@@ -1250,23 +1254,10 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 										}
 									}
 								}
-
-								
-
-
-								
-
 							}
 							
 						}
 
-
-						
-
-
-
-
-						
 
 						
 
@@ -1291,7 +1282,11 @@ void GameWorld::renderWorldSpace ()
 
 		pushTrace("renderWorldSpace()");
 
-		doTraceND("renderWorldSpace() TOT GPU MEM USED (MB): ", f__s(TOT_GPU_MEM_USAGE));
+		if (singleton->reportPagesDrawn) {
+			singleton->reportPagesDrawn = false;
+			doTraceND("renderWorldSpace() TOT GPU MEM USED (MB): ", f__s(TOT_GPU_MEM_USAGE));
+		}
+		
 
 		singleton->wsBufferInvalid = false;
 
