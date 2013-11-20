@@ -695,7 +695,7 @@ public:
 
     FIVector4 boundsMinInPixels;
     FIVector4 boundsMaxInPixels;
-    FIVector4 originInPixels;
+    FIVector4 cornerDisInPixels;
     FIVector4 powerVals;
     FIVector4 coefficients;
     FIVector4 squareVals;
@@ -719,20 +719,20 @@ public:
         return (fGenRand()+1.0f)/2.0f;
     }
 
-    void initRand(int _id, float x, float y, float z) {
+    void initRand(int _id, float x, float y, float z, float uvSize) {
         id = _id;
 
-        float rad = 256.0f;
+        float rad = uvSize*2.0f;
         float diam = 2.0f*rad;
         float zh = 256.0f;
 
         if (fGenRand() > 0.5) {
-            boundsMinInPixels.setFXYZ(x-rad*3.0, y-rad, z+zh);
-            boundsMaxInPixels.addXYZ(x+rad*3.0, y+rad, z+diam+zh);
+            boundsMinInPixels.setFXYZ(x-rad*2.0, y-rad, z+zh);
+            boundsMaxInPixels.addXYZ(x+rad*2.0, y+rad, z+diam+zh);
         }
         else {
-            boundsMinInPixels.setFXYZ(x-rad, y-rad*3.0, z+zh);
-            boundsMaxInPixels.addXYZ(x+rad, y+rad*3.0, z+diam+zh);
+            boundsMinInPixels.setFXYZ(x-rad, y-rad*2.0, z+zh);
+            boundsMaxInPixels.addXYZ(x+rad, y+rad*2.0, z+diam+zh);
         }
 
         /*
@@ -742,14 +742,11 @@ public:
 
         
 
-        originInPixels.copyFrom(&boundsMinInPixels);
-        originInPixels.addXYZRef(&boundsMaxInPixels);
-        originInPixels.multXYZ(0.5f);
-
+        cornerDisInPixels.setFXYZ(uvSize, uvSize, uvSize);
         powerVals.setFXYZ(2.0f,2.0f,2.0f);
         coefficients.setFXYZ(1.0,1.0,1.0);
         squareVals.setFXYZ(0.0,0.0,0.0);
-        minMaxMat.setFXYZ(0.25f,1.0f,2.0f);
+        minMaxMat.setFXYZ(0.01f,1.0f,2.0f);
 
         //minRad = 0.75;
         //maxRad = 1.0;

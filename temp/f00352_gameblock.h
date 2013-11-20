@@ -22,15 +22,21 @@ void GameBlock::init (Singleton * _singleton, int ind, int _x, int _y)
 
 		blockSizeInHolders = singleton->blockSizeInHolders;
 
-
+		float uvSize = 256.0;
 
 		for (i = 0; i < 8; i++) {
 			gameGeom.push_back(new GameGeom());
 			
 			x = (offsetInBlocks.getFX()+fGenRand()) * singleton->blockSizeInPixels;
 			y = (offsetInBlocks.getFY()+fGenRand()) * singleton->blockSizeInPixels;
+
+			x = floor(x/uvSize)*uvSize;
+
 			z = singleton->getHeightAtPixelPos(x,y);
-			gameGeom.back()->initRand(i,x,y,z);
+			z = floor(z/uvSize)*uvSize;
+
+
+			gameGeom.back()->initRand(i,x,y,z,uvSize);
 
 		}
 		

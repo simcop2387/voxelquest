@@ -541,6 +541,7 @@ public:
   float weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean);
   float findBestPath (float x1, float y1, float x2, float y2, int generation, int roadIndex, bool doSet, bool isOcean);
   void initMap ();
+  void drawWater ();
   void drawMap ();
   void postProcess ();
   ~ GameWorld ();

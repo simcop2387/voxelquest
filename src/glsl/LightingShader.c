@@ -29,7 +29,7 @@ uniform vec3 lightPosWS;
 uniform vec4 activeObjectPos;
 uniform vec4 lastUnitPos;
 uniform vec4 lastPagePos;
-uniform vec4 fogPos;
+
 
 
 
@@ -299,40 +299,8 @@ void main() {
     float lightRes = mix(aoval*0.1,lightval,lightval);
     lightRes = pow(lightRes,0.8);
     lightRes = clamp(lightRes,0.0,1.0);
-
-
-
-    vec2 newCam = cameraPos.xy - worldPosition.xy;
-    
-    
-    newCam.x = min(newCam.x,0.0);
-    newCam.y = min(newCam.y,0.0);
-    
-    
-
-    vec3 newFog = (fogPos.xyz-worldPosition.xyz)/1024.0;
-    newFog.xy /= 2.0;
-
-
-    vec3 fogXYZ = 1.0-clamp( newFog, 0.0, 1.0);
-
-    float fogLen = 1.0-clamp(1.0-(fogXYZ.x*fogXYZ.y),0.0,1.0);
-
-    float hfog = min(clamp(sqrt(fogLen),0.0,1.0),fogXYZ.z);//(clamp( distance(newFP.xyz,worldPosition)*float(baseHeight > 0.0)/6000.0, 0.0, 1.0) * fogV);
-
-    //hfog: 0.0 is foggy, 1.0 is clear
-
-    hfog *= float(baseHeight > 0.0);
-
-    hfog = pow(hfog, 2.0);
-
-
-
-    //hfog = 1.0;
-
-    lightRes *= hfog;
-
     vec3 fogColor = vec3(0.6, 0.6, 0.7);
+
     vec3 resCol0 = vec3(0.0,0.0,0.0);
     vec3 resCol1 = vec3(1.0,1.0,1.0);
 
@@ -422,7 +390,6 @@ void main() {
     }
 
     if (tex0.b == 7.0/255.0) {
-        hfog = 1.0;
         resColor = texture2D( Texture4, vec2(clamp(worldPosition.z/heightmapMax,0.0,1.0), (5.0 + 0.5)/255.0 ) ).rgb + lightRes-0.2;
 
     }
@@ -448,12 +415,16 @@ void main() {
 
 
     //resColor = mod(worldPosition,256.0)/255.0;
-    //hfog = 1.0;
     //vec3 resColor = vec3(lightRes);//mix(resCol0,resCol1,lightRes);//mod(worldPosition,256.0)/255.0;//vec3(lightRes);//mix(resCol0,resCol1,lightRes);
     //vec3 resColor = tex1.rgb;
 
 
-    vec3 finalCol = mix( fogColor, resColor, hfog )+resCol2*geomMod*0.8+pval+mval+(gridVal0+gridVal1+gridVal2)*gridOn;
+    vec3 finalCol = resColor+resCol2*geomMod*0.8+pval+mval+(gridVal0+gridVal1+gridVal2)*gridOn;
+
+    if (tot == 0.0) {
+        finalCol = fogColor;
+    }
+        
 
     //vec4(lightRes*0.8,lightRes*0.7,lightRes*0.6, lightRes)
     gl_FragData[0] = vec4(finalCol,tot);//+geomMod;//+isLastUnit+isLastPage;//+isLastUnit+isLastPage; //vec4(lightRes,lightRes,lightRes,1.0);//

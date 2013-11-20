@@ -4,6 +4,7 @@
 #endif
 
 bool TRACE_ON = true;
+//#define DEBUG_MODE 1
 
 #include <SDKDDKVer.h>
 
@@ -99,7 +100,7 @@ using Poco::Base64Decoder;
 #include <olectl.h.>    // for OleLoadPicture() and IPicture COM interface
 */
 
-//#define DEBUG_MODE 1
+
 
 float MAX_GPU_MEM = 2048.0f;
 float TOT_GPU_MEM_USAGE = 0.0f;
@@ -895,7 +896,7 @@ public:
 
     FIVector4 boundsMinInPixels;
     FIVector4 boundsMaxInPixels;
-    FIVector4 originInPixels;
+    FIVector4 cornerDisInPixels;
     FIVector4 powerVals;
     FIVector4 coefficients;
     FIVector4 squareVals;
@@ -919,20 +920,20 @@ public:
         return (fGenRand()+1.0f)/2.0f;
     }
 
-    void initRand(int _id, float x, float y, float z) {
+    void initRand(int _id, float x, float y, float z, float uvSize) {
         id = _id;
 
-        float rad = 256.0f;
+        float rad = uvSize*2.0f;
         float diam = 2.0f*rad;
         float zh = 256.0f;
 
         if (fGenRand() > 0.5) {
-            boundsMinInPixels.setFXYZ(x-rad*3.0, y-rad, z+zh);
-            boundsMaxInPixels.addXYZ(x+rad*3.0, y+rad, z+diam+zh);
+            boundsMinInPixels.setFXYZ(x-rad*2.0, y-rad, z+zh);
+            boundsMaxInPixels.addXYZ(x+rad*2.0, y+rad, z+diam+zh);
         }
         else {
-            boundsMinInPixels.setFXYZ(x-rad, y-rad*3.0, z+zh);
-            boundsMaxInPixels.addXYZ(x+rad, y+rad*3.0, z+diam+zh);
+            boundsMinInPixels.setFXYZ(x-rad, y-rad*2.0, z+zh);
+            boundsMaxInPixels.addXYZ(x+rad, y+rad*2.0, z+diam+zh);
         }
 
         /*
@@ -942,14 +943,11 @@ public:
 
         
 
-        originInPixels.copyFrom(&boundsMinInPixels);
-        originInPixels.addXYZRef(&boundsMaxInPixels);
-        originInPixels.multXYZ(0.5f);
-
+        cornerDisInPixels.setFXYZ(uvSize, uvSize, uvSize);
         powerVals.setFXYZ(2.0f,2.0f,2.0f);
         coefficients.setFXYZ(1.0,1.0,1.0);
         squareVals.setFXYZ(0.0,0.0,0.0);
-        minMaxMat.setFXYZ(0.25f,1.0f,2.0f);
+        minMaxMat.setFXYZ(0.01f,1.0f,2.0f);
 
         //minRad = 0.75;
         //maxRad = 1.0;
@@ -9115,87 +9113,87 @@ void popTraceND() {
 
 
 
-void doTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
-	#ifdef DEBUG_MODE
-	int i;
-	
-	for (i = 0; i < traceLevel; i++) {
-		std::cout << "|  ";
-	}
-	
-	std::cout << traceVal0 << " " << traceVal1 << " " << traceVal2 << " " << traceVal3 << " " << traceVal4 << " " << traceVal5 << " " << traceVal6 << " " << traceVal7 << " " << traceVal8 << " " << traceVal9 << " " << traceVal10 << "\n" << std::flush;
-	#endif
-}
-void doTraceVec(std::string traceVal0, FIVector4 *fv) {
-	#ifdef DEBUG_MODE
-	doTrace(traceVal0, " ", f__s(fv->getFX()), " ", f__s(fv->getFY()), " ", f__s(fv->getFZ())  );
-	#endif
-}
-
-void pushTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
-	#ifdef DEBUG_MODE
-	doTrace(traceVal0,traceVal1,traceVal2,traceVal3,traceVal4,traceVal5,traceVal6,traceVal7,traceVal8,traceVal9,traceVal10);
-	traceLevel++;
-	popCount=0;
-	#endif
-
-	
-}
-void popTrace() {
-	#ifdef DEBUG_MODE
-	traceLevel--;
-	popCount++;
-	if (popCount >= 2) {
-		doTrace("END");
-	}
-	#endif
-}
-
-
-
 // void doTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
+// 	#ifdef DEBUG_MODE
 // 	int i;
-
-// 	if (TRACE_ON) {
-// 		for (i = 0; i < traceLevel; i++) {
-// 			std::cout << "|  ";
-// 		}
-		
-// 		std::cout << traceVal0 << " " << traceVal1 << " " << traceVal2 << " " << traceVal3 << " " << traceVal4 << " " << traceVal5 << " " << traceVal6 << " " << traceVal7 << " " << traceVal8 << " " << traceVal9 << " " << traceVal10 << "\n" << std::flush;
+	
+// 	for (i = 0; i < traceLevel; i++) {
+// 		std::cout << "|  ";
 // 	}
 	
-	
+// 	std::cout << traceVal0 << " " << traceVal1 << " " << traceVal2 << " " << traceVal3 << " " << traceVal4 << " " << traceVal5 << " " << traceVal6 << " " << traceVal7 << " " << traceVal8 << " " << traceVal9 << " " << traceVal10 << "\n" << std::flush;
+// 	#endif
 // }
 // void doTraceVec(std::string traceVal0, FIVector4 *fv) {
-// 	if (TRACE_ON) {
-// 		doTrace(traceVal0, " ", f__s(fv->getFX()), " ", f__s(fv->getFY()), " ", f__s(fv->getFZ())  );
-// 	}
-	
-	
+// 	#ifdef DEBUG_MODE
+// 	doTrace(traceVal0, " ", f__s(fv->getFX()), " ", f__s(fv->getFY()), " ", f__s(fv->getFZ())  );
+// 	#endif
 // }
 
 // void pushTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
-	
-// 	if (TRACE_ON) {
-// 		doTrace(traceVal0,traceVal1,traceVal2,traceVal3,traceVal4,traceVal5,traceVal6,traceVal7,traceVal8,traceVal9,traceVal10);
-// 			traceLevel++;
-// 			popCount=0;
-// 	}
+// 	#ifdef DEBUG_MODE
+// 	doTrace(traceVal0,traceVal1,traceVal2,traceVal3,traceVal4,traceVal5,traceVal6,traceVal7,traceVal8,traceVal9,traceVal10);
+// 	traceLevel++;
+// 	popCount=0;
+// 	#endif
+
 	
 // }
 // void popTrace() {
-	
-// 	if (TRACE_ON) {
-// 		traceLevel--;
-// 		popCount++;
-// 		if (popCount >= 2) {
-// 			doTrace("END");
-// 		}
+// 	#ifdef DEBUG_MODE
+// 	traceLevel--;
+// 	popCount++;
+// 	if (popCount >= 2) {
+// 		doTrace("END");
 // 	}
+// 	#endif
+// }
+
+
+
+void doTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
+	int i;
+
+	if (TRACE_ON) {
+		for (i = 0; i < traceLevel; i++) {
+			std::cout << "|  ";
+		}
+		
+		std::cout << traceVal0 << " " << traceVal1 << " " << traceVal2 << " " << traceVal3 << " " << traceVal4 << " " << traceVal5 << " " << traceVal6 << " " << traceVal7 << " " << traceVal8 << " " << traceVal9 << " " << traceVal10 << "\n" << std::flush;
+	}
+	
+	
+}
+void doTraceVec(std::string traceVal0, FIVector4 *fv) {
+	if (TRACE_ON) {
+		doTrace(traceVal0, " ", f__s(fv->getFX()), " ", f__s(fv->getFY()), " ", f__s(fv->getFZ())  );
+	}
+	
+	
+}
+
+void pushTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
+	
+	if (TRACE_ON) {
+		doTrace(traceVal0,traceVal1,traceVal2,traceVal3,traceVal4,traceVal5,traceVal6,traceVal7,traceVal8,traceVal9,traceVal10);
+			traceLevel++;
+			popCount=0;
+	}
+	
+}
+void popTrace() {
+	
+	if (TRACE_ON) {
+		traceLevel--;
+		popCount++;
+		if (popCount >= 2) {
+			doTrace("END");
+		}
+	}
 
 	
 	
-// }
+}
 
 
 
@@ -11744,6 +11742,7 @@ public:
   float weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean);
   float findBestPath (float x1, float y1, float x2, float y2, int generation, int roadIndex, bool doSet, bool isOcean);
   void initMap ();
+  void drawWater ();
   void drawMap ();
   void postProcess ();
   ~ GameWorld ();
@@ -12031,8 +12030,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		
 
 		slicesPerPitch = 8;
-		visPageSizeInPixels = 128; // height of one page in pixels
-		holderSizeInPages = 4;
+		visPageSizeInPixels = 64; // height of one page in pixels
+		holderSizeInPages = 8;
 
 		bufferMult = 1.25;
 		volGenFBOSize = slicesPerPitch*slicesPerPitch*slicesPerPitch;
@@ -12328,6 +12327,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    fboStrings.push_back("geomFBO");
 	    fboStrings.push_back("combineFBO");
 	    fboStrings.push_back("resultFBO");
+	    fboStrings.push_back("resultFBO2");
 	    fboStrings.push_back("volGenFBO");
 
 	    fboStrings.push_back("cityFBO");
@@ -12346,6 +12346,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    shaderStrings.push_back("TerrainMix");
 	    shaderStrings.push_back("Simplex2D");
 	    shaderStrings.push_back("TopoShader");
+	    shaderStrings.push_back("WaterShader");
 	    shaderStrings.push_back("CopyShader");
 	    shaderStrings.push_back("MapBorderShader");
 	    shaderStrings.push_back("WorldSpaceShader");
@@ -12395,6 +12396,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    fboMap["geomFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, true);
 	    fboMap["combineFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+	    fboMap["resultFBO2"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["volGenFBO"]->init(1, volGenFBOSize, volGenFBOSize, 1, false, GL_NEAREST);
 
 
@@ -14950,9 +14952,9 @@ bool GamePage::addGeom (bool justTesting)
 								singleton->paramArr[baseInd + 4] = gg->boundsMaxInPixels.getFY();
 								singleton->paramArr[baseInd + 5] = gg->boundsMaxInPixels.getFZ();
 
-								singleton->paramArr[baseInd + 6] = gg->originInPixels.getFX();
-								singleton->paramArr[baseInd + 7] = gg->originInPixels.getFY();
-								singleton->paramArr[baseInd + 8] = gg->originInPixels.getFZ();
+								singleton->paramArr[baseInd + 6] = gg->cornerDisInPixels.getFX();
+								singleton->paramArr[baseInd + 7] = gg->cornerDisInPixels.getFY();
+								singleton->paramArr[baseInd + 8] = gg->cornerDisInPixels.getFZ();
 
 								singleton->paramArr[baseInd + 9] = gg->powerVals.getFX();
 								singleton->paramArr[baseInd + 10] = gg->powerVals.getFY();
@@ -15394,15 +15396,21 @@ void GameBlock::init (Singleton * _singleton, int ind, int _x, int _y)
 
 		blockSizeInHolders = singleton->blockSizeInHolders;
 
-
+		float uvSize = 256.0;
 
 		for (i = 0; i < 8; i++) {
 			gameGeom.push_back(new GameGeom());
 			
 			x = (offsetInBlocks.getFX()+fGenRand()) * singleton->blockSizeInPixels;
 			y = (offsetInBlocks.getFY()+fGenRand()) * singleton->blockSizeInPixels;
+
+			x = floor(x/uvSize)*uvSize;
+
 			z = singleton->getHeightAtPixelPos(x,y);
-			gameGeom.back()->initRand(i,x,y,z);
+			z = floor(z/uvSize)*uvSize;
+
+
+			gameGeom.back()->initRand(i,x,y,z,uvSize);
 
 		}
 		
@@ -15843,22 +15851,35 @@ void GameWorld::update ()
 			}
 			
 
-			glClearColor(0.6,0.6,0.7,0.0);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-			
-			
-			
-
 			postProcess();
 
 			
-
-
-			glutSwapBuffers();
-			glFlush();
 			
 		}
+
+
+		////////////
+
+
+		glClearColor(0.6,0.6,0.7,0.0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		if ( mapTrans < 1.0 ) {
+
+			drawWater();
+		}
+		
+		if ( mapTrans > 0.0 ) {
+			glEnable(GL_BLEND);
+			drawMap();
+			glDisable(GL_BLEND);
+		}
+
+		glutSwapBuffers();
+		glFlush();
+
+		////////////
+
 
 		if (singleton->forceGetPD) {
 			singleton->forceGetPD = false;
@@ -16715,7 +16736,6 @@ void GameWorld::renderWorldSpace ()
 		singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
 		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
-		singleton->setShaderfVec4("fogPos", &(singleton->fogPos));
 		singleton->setShaderfVec3("lightPosWS", &(singleton->lightPos));
 		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDimHalf) );
@@ -18275,6 +18295,63 @@ void GameWorld::initMap ()
 
 		popTrace();
 	}
+void GameWorld::drawWater ()
+                         {
+
+
+		pushTrace("drawWater()");
+
+		float newZoom;
+
+		//FBOWrapper* fbow = singleton->getFBOWrapper("hmFBOLinear", 0);
+
+		
+		singleton->worldToScreen(&lScreenCoords, &(singleton->lightPos));
+		singleton->worldToScreen(&aoScreenCoords, &(singleton->activeObjectPos));
+
+		//singleton->drawFBO("palFBO", 0, 1.0 );
+
+		//singleton->setShaderfVec2("lightPosSS", &lScreenCoords);
+
+		singleton->bindShader("WaterShader");
+
+		singleton->bindFBO("resultFBO2");
+		singleton->sampleFBO("combineFBO",0);
+		singleton->sampleFBO("geomFBO", 2);
+		singleton->sampleFBO("resultFBO", 4);
+
+		singleton->setShaderfVec4("fogPos", &(singleton->fogPos));
+		singleton->setShaderfVec3("lightPosWS", &(singleton->lightPos));
+		singleton->setShaderfVec3("worldSizeInPixels", &(singleton->maxBoundsInPixels));
+		singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
+		singleton->setShaderFloat("mapTrans", mapTrans);
+		singleton->setShaderFloat("seaLevel", ((float)seaLevel)/255.0 );
+		singleton->setShaderFloat("curTime", singleton->curTime);
+		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDimHalf));
+		singleton->setShaderfVec3("maxBoundsInPixels", &(singleton->maxBoundsInPixels) );
+
+		singleton->drawQuadBounds(
+			-singleton->maxBoundsInPixels.getFX()/2.0f,
+			-singleton->maxBoundsInPixels.getFY()/2.0f,
+			singleton->maxBoundsInPixels.getFX()/2.0f,
+			singleton->maxBoundsInPixels.getFY()/2.0f
+		);
+		
+		singleton->unsampleFBO("resultFBO", 4);
+		singleton->unsampleFBO("geomFBO",2);
+		singleton->unsampleFBO("combineFBO",0);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+
+		newZoom = max(1.0f,singleton->cameraZoom);
+		singleton->drawFBO("resultFBO2", 0, newZoom );
+
+
+
+		popTrace();
+	}
 void GameWorld::drawMap ()
                        {
 
@@ -18375,18 +18452,16 @@ void GameWorld::postProcess ()
 
 			newZoom = std::max(1.0f,singleton->cameraZoom);
 			
-			singleton->drawFBO("resultFBO", 0, newZoom );
+			//singleton->drawFBO("resultFBO", 0, newZoom );
+
+
+			
+
 		}
 
 		
 		
 
-		
-		if ( mapTrans > 0.0 ) {
-			glEnable(GL_BLEND);
-			drawMap();
-			glDisable(GL_BLEND);
-		}
 		
 		
 

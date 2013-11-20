@@ -358,9 +358,9 @@ public:
 								singleton->paramArr[baseInd + 4] = gg->boundsMaxInPixels.getFY();
 								singleton->paramArr[baseInd + 5] = gg->boundsMaxInPixels.getFZ();
 
-								singleton->paramArr[baseInd + 6] = gg->originInPixels.getFX();
-								singleton->paramArr[baseInd + 7] = gg->originInPixels.getFY();
-								singleton->paramArr[baseInd + 8] = gg->originInPixels.getFZ();
+								singleton->paramArr[baseInd + 6] = gg->cornerDisInPixels.getFX();
+								singleton->paramArr[baseInd + 7] = gg->cornerDisInPixels.getFY();
+								singleton->paramArr[baseInd + 8] = gg->cornerDisInPixels.getFZ();
 
 								singleton->paramArr[baseInd + 9] = gg->powerVals.getFX();
 								singleton->paramArr[baseInd + 10] = gg->powerVals.getFY();

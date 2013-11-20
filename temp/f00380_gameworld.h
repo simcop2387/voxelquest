@@ -430,22 +430,35 @@ void GameWorld::update ()
 			}
 			
 
-			glClearColor(0.6,0.6,0.7,0.0);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-			
-			
-			
-
 			postProcess();
 
 			
-
-
-			glutSwapBuffers();
-			glFlush();
 			
 		}
+
+
+		////////////
+
+
+		glClearColor(0.6,0.6,0.7,0.0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		if ( mapTrans < 1.0 ) {
+
+			drawWater();
+		}
+		
+		if ( mapTrans > 0.0 ) {
+			glEnable(GL_BLEND);
+			drawMap();
+			glDisable(GL_BLEND);
+		}
+
+		glutSwapBuffers();
+		glFlush();
+
+		////////////
+
 
 		if (singleton->forceGetPD) {
 			singleton->forceGetPD = false;
@@ -1302,7 +1315,6 @@ void GameWorld::renderWorldSpace ()
 		singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
 		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
-		singleton->setShaderfVec4("fogPos", &(singleton->fogPos));
 		singleton->setShaderfVec3("lightPosWS", &(singleton->lightPos));
 		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDimHalf) );
@@ -2862,6 +2874,63 @@ void GameWorld::initMap ()
 
 		popTrace();
 	}
+void GameWorld::drawWater ()
+                         {
+
+
+		pushTrace("drawWater()");
+
+		float newZoom;
+
+		//FBOWrapper* fbow = singleton->getFBOWrapper("hmFBOLinear", 0);
+
+		
+		singleton->worldToScreen(&lScreenCoords, &(singleton->lightPos));
+		singleton->worldToScreen(&aoScreenCoords, &(singleton->activeObjectPos));
+
+		//singleton->drawFBO("palFBO", 0, 1.0 );
+
+		//singleton->setShaderfVec2("lightPosSS", &lScreenCoords);
+
+		singleton->bindShader("WaterShader");
+
+		singleton->bindFBO("resultFBO2");
+		singleton->sampleFBO("combineFBO",0);
+		singleton->sampleFBO("geomFBO", 2);
+		singleton->sampleFBO("resultFBO", 4);
+
+		singleton->setShaderfVec4("fogPos", &(singleton->fogPos));
+		singleton->setShaderfVec3("lightPosWS", &(singleton->lightPos));
+		singleton->setShaderfVec3("worldSizeInPixels", &(singleton->maxBoundsInPixels));
+		singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
+		singleton->setShaderFloat("mapTrans", mapTrans);
+		singleton->setShaderFloat("seaLevel", ((float)seaLevel)/255.0 );
+		singleton->setShaderFloat("curTime", singleton->curTime);
+		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+		singleton->setShaderfVec3("cameraPos", &(singleton->cameraPos));
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDimHalf));
+		singleton->setShaderfVec3("maxBoundsInPixels", &(singleton->maxBoundsInPixels) );
+
+		singleton->drawQuadBounds(
+			-singleton->maxBoundsInPixels.getFX()/2.0f,
+			-singleton->maxBoundsInPixels.getFY()/2.0f,
+			singleton->maxBoundsInPixels.getFX()/2.0f,
+			singleton->maxBoundsInPixels.getFY()/2.0f
+		);
+		
+		singleton->unsampleFBO("resultFBO", 4);
+		singleton->unsampleFBO("geomFBO",2);
+		singleton->unsampleFBO("combineFBO",0);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+
+		newZoom = max(1.0f,singleton->cameraZoom);
+		singleton->drawFBO("resultFBO2", 0, newZoom );
+
+
+
+		popTrace();
+	}
 void GameWorld::drawMap ()
                        {
 
@@ -2962,18 +3031,16 @@ void GameWorld::postProcess ()
 
 			newZoom = std::max(1.0f,singleton->cameraZoom);
 			
-			singleton->drawFBO("resultFBO", 0, newZoom );
+			//singleton->drawFBO("resultFBO", 0, newZoom );
+
+
+			
+
 		}
 
 		
 		
 
-		
-		if ( mapTrans > 0.0 ) {
-			glEnable(GL_BLEND);
-			drawMap();
-			glDisable(GL_BLEND);
-		}
 		
 		
 

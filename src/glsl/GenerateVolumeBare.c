@@ -85,6 +85,17 @@ int intMod(int lhs, int rhs) {
     return lhs - ( (lhs/rhs)*rhs );
 }
 
+float intModF(float v1, int rhs) {
+    int lhs = int(v1);
+    return lhs - ( (lhs/rhs)*rhs );
+}
+
+vec3 intModFV(vec3 v1, ivec3 rhs) {
+    ivec3 lhs = ivec3(v1);
+    return vec3(lhs - ( (lhs/rhs)*rhs ));
+}
+
+
 vec3 rand(vec3 co) {
     return vec3(
     	fract(sin(dot(co.xyz ,vec3(12.989, 78.233, 98.422))) * 43758.8563),
@@ -130,13 +141,13 @@ bool brick(vec3 uvw) {
 	vec3 color;
 	vec3 position, useBrick;
 	
-	vec3 bricksize = vec3(64.0,128.0,64.0);
+	vec3 bricksize = vec3(256.0,128.0,256.0);
 	vec3 brickPct = vec3(0.8,0.8,0.8);
 
 	position = uvw.xyz / bricksize.xyz;
 
-	if (fract(position.x * 0.5) > 0.5){
-		position.y += 0.5;
+	if (fract(position.y * 0.5) > 0.5){
+		position.x += 0.5;
         //position.y += 0.5;
 	}
 
@@ -150,7 +161,7 @@ bool brick(vec3 uvw) {
 	// 	position.y += 0.5;
 	// }
     
-	position = fract(position);
+	position = fract(position - 0.1);
 	useBrick = step(position, brickPct.xyz);
 
 	return (useBrick.x * useBrick.y * useBrick.z) > 0.0;
@@ -211,11 +222,13 @@ void main() {
 
 	vec3 boundsMinInPixels = vec3(0.0);
 	vec3 boundsMaxInPixels = vec3(0.0);
-	vec3 originInPixels = vec3(0.0);
+	vec3 cornerDisInPixels = vec3(0.0);
 	vec3 powerVals = vec3(0.0);
 	vec3 coefficients = vec3(0.0);
 	vec3 squareVals = vec3(0.0);
 	vec3 minMaxMat = vec3(0.0);
+
+	vec3 originInPixels = vec3(0.0);
 
 	vec2 curDisXY = vec2(0.0);
 	vec2 curDisYZ = vec2(0.0);
@@ -230,7 +243,7 @@ void main() {
 	vec3 absOriginInPixels = vec3(0.0);
 	vec3 absWorldPosInPixels = vec3(0.0);
 	vec3 eqRes;
-	vec3 cornerDis = vec3(0.75,0.75,0.75);
+	vec3 cornerDis = vec3(0.0);
 	vec3 newCornerDis = vec3(0.0);
 	vec3 radInPixels = vec3(0.0);
 
@@ -242,7 +255,9 @@ void main() {
 
 	bool doCont = false;
 	float curMat = 0.0;
-	float PIO4 = 0.785398163;
+	float PI = 3.14159;
+	float PIO2 = PI/2.0;
+	float PIO4 = PI/4.0;
 
 	bvec4 cutBools = bvec4(false);
 
@@ -260,7 +275,6 @@ void main() {
 	vec3 vecT = vec3(0.0);
 	vec3 vecB = vec3(0.0);
 
-	float tempMat = 0.0;
 
 	
 	//vec2 isRidge = vec2(0.0);
@@ -282,7 +296,7 @@ void main() {
 		) {
 
 
-			//originInPixels = paramArr[baseInd+2];
+			cornerDisInPixels = paramArr[baseInd+2];
 			powerVals = paramArr[baseInd+3];
 			coefficients = paramArr[baseInd+4];
 			squareVals = paramArr[baseInd+5];
@@ -349,7 +363,7 @@ void main() {
 			if (doCont) {
 				
 
-				newCornerDis = cornerDis*radInPixels;
+				newCornerDis = cornerDisInPixels;// *radInPixels;
 
 				originInPixels = clamp(worldPosInPixels, boundsMinInPixels + newCornerDis, boundsMaxInPixels - newCornerDis );
 				absOriginInPixels = ((originInPixels) - (radInPixels));
@@ -390,9 +404,9 @@ void main() {
 				eqRes.y = coefficients.y*pow(absDisNorm.y,powerVals.y);
 				eqRes.z = coefficients.z*pow(absDisNorm.z,powerVals.z);
 
-				curRad = length(absDisNorm);
-				curPhi = atan(absDisNorm.y, absDisNorm.x);
-				curThe = acos(absDisNorm.z/curRad);
+				curRad = length(disNorm);
+				curPhi = atan(disNorm.y, disNorm.x);
+				curThe = acos(disNorm.z/curRad);
 
 
 
@@ -422,32 +436,46 @@ void main() {
 				//isRidge.x = float(intMod(int(newUVW.x),256) > 64);
 				//isRidge.y = float(intMod(int(newUVW.y),256) > 64);
 				
-				newUVW = vec3(curPhi,curThe,curRad)*newCornerDis;
+				newUVW = vec3(curPhi/PIO2,curThe/PIO2,curRad);
 
 
-				tempMat = 2.0/255.0;
+				// magic value
+
+				// if (newUVW.y < 1.0/3.0) {
+				// 	newUVW.x /= 4.0;
+				// }
+
+
+				newUVW.x *= (newCornerDis.x+newCornerDis.y);
+				newUVW.y *= (newCornerDis.z) + (newCornerDis.x+newCornerDis.y)/2.0;
+				newUVW.z *= length(newCornerDis);
+
+
+				//tempMat = 2.0/255.0;
+
+				vecN = worldPosInPixels - boundsMinInPixels;
 
 				if ( all(bLessThanOrig.xy) ) {
-					newUVW.xy = worldPosInPixels.xy;
+					newUVW.xy = vecN.xy;
 				}
 				else {
 					if ( all(bLessThanOrig.yz) ) {
-						newUVW.xy = worldPosInPixels.yz;
+						newUVW.xy = vecN.yz;
 					}
 					else {
 						if ( all(bLessThanOrig.xz) ) {
-							newUVW.xy = worldPosInPixels.xz;
+							newUVW.xy = vecN.xz;
 						}
 						else {
 
 							if (bLessThanOrig.x) {
-								newUVW.x = worldPosInPixels.x;
+								newUVW.x = vecN.x;
 							}
 							if (bLessThanOrig.y) {
-								newUVW.x = worldPosInPixels.y;
+								newUVW.x = vecN.y;
 							}
 							if (bLessThanOrig.z) {
-								newUVW.y = worldPosInPixels.z;
+								newUVW.y = vecN.z;
 							}
 
 						}
@@ -455,14 +483,22 @@ void main() {
 				}
 
 
-				
+				// finalRes.rgb = intModFV(newUVW, ivec3(256) );
+				// if (finalRes.r < 0.0) {
+				// 	finalRes.r = 256.0-finalRes.r;
+				// }
+				// if (finalRes.g < 0.0) {
+				// 	finalRes.g = 256.0-finalRes.g;
+				// }
+				// finalRes.rg /= 255.0;
+
 
 				if ( brick(newUVW) ) {
-					curMat = tempMat;
+					curMat = 2.0/255.0;
 				}
 				else {
 
-					if (curRad < 0.8 ) {
+					if (curRad < 0.9 ) {
 						curMat = 1.0/255.0;
 					}
 					else {
@@ -521,7 +557,7 @@ void main() {
 
 
 	if (finalRes.a != 0.0) {
-		finalRes.r = 1.0;
+		//finalRes.r = 1.0;
 	}
 
 	// ivec2 wpp = ivec2(worldPosInPixels.xy)/64;

@@ -4,6 +4,7 @@
 #endif
 
 bool TRACE_ON = true;
+//#define DEBUG_MODE 1
 
 #include <SDKDDKVer.h>
 
@@ -99,7 +100,7 @@ using Poco::Base64Decoder;
 #include <olectl.h.>    // for OleLoadPicture() and IPicture COM interface
 */
 
-//#define DEBUG_MODE 1
+
 
 float MAX_GPU_MEM = 2048.0f;
 float TOT_GPU_MEM_USAGE = 0.0f;

@@ -36,8 +36,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		
 
 		slicesPerPitch = 8;
-		visPageSizeInPixels = 128; // height of one page in pixels
-		holderSizeInPages = 4;
+		visPageSizeInPixels = 64; // height of one page in pixels
+		holderSizeInPages = 8;
 
 		bufferMult = 1.25;
 		volGenFBOSize = slicesPerPitch*slicesPerPitch*slicesPerPitch;
@@ -333,6 +333,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    fboStrings.push_back("geomFBO");
 	    fboStrings.push_back("combineFBO");
 	    fboStrings.push_back("resultFBO");
+	    fboStrings.push_back("resultFBO2");
 	    fboStrings.push_back("volGenFBO");
 
 	    fboStrings.push_back("cityFBO");
@@ -351,6 +352,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    shaderStrings.push_back("TerrainMix");
 	    shaderStrings.push_back("Simplex2D");
 	    shaderStrings.push_back("TopoShader");
+	    shaderStrings.push_back("WaterShader");
 	    shaderStrings.push_back("CopyShader");
 	    shaderStrings.push_back("MapBorderShader");
 	    shaderStrings.push_back("WorldSpaceShader");
@@ -400,6 +402,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    fboMap["geomFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, true);
 	    fboMap["combineFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+	    fboMap["resultFBO2"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["volGenFBO"]->init(1, volGenFBOSize, volGenFBOSize, 1, false, GL_NEAREST);
 
 
