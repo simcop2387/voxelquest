@@ -41,6 +41,45 @@ struct coordAndIndex {
 	int index;
 };
 
+
+struct BuildingNodeProp {
+	int begHeight;
+	int endHeight;
+	int typeVal;
+};
+
+struct BuildingNode {
+	
+	BuildingNodeProp centerProp;
+	BuildingNodeProp connectionProps[4];
+	BuildingNodeProp shortProps[4*MAX_FLOORS];
+	BuildingNodeProp dynProps[4*MAX_FLOORS];
+
+	int id;
+	float powerVal;
+	float terHeight;
+
+	bool isWingTip;
+
+	// int centerType;
+	// int connectionTypes[4];
+	// int shortTypes[4];
+
+	// int centerHeight;
+	// int connectionHeights[4];
+	// int shortHeights[4];
+
+	
+};
+
+
+bool pairIsEqual(intPair a, intPair b) {
+	return ( (a.v0 == b.v0) && (a.v1 == b.v1)  );
+}
+bool pairIsNeg(intPair a) {
+	return ( (a.v0 == -1) && (a.v1 == -1)  );
+}
+
 float quickDis(float x1, float y1, float x2, float y2) {
 	//return abs(x1-x2) + abs(y1-y2);//
 	return sqrt( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) );

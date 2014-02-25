@@ -17,6 +17,7 @@ public:
 
 	GLint internalFormat;
 
+	uint* pixelsUINT;
 	unsigned char *pixelsChar;
 	unsigned char** pixelsCharMippedMin;
 	unsigned char** pixelsCharMippedMax;
@@ -551,6 +552,29 @@ public:
 				}
 			}
 		}
+	}
+
+
+	void getPixelsFast() {
+
+		
+
+		glBindTexture(GL_TEXTURE_2D, color_tex);
+		GLint numBytes = 0;
+		int totalWidth;
+		int curBytes;
+
+		numBytes = width * height;
+
+		if (pixelsUINT == NULL) {
+			pixelsUINT = new uint[numBytes];
+		}
+		glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelsUINT);
+		
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+
 	}
 
 

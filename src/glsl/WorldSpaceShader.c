@@ -1,17 +1,20 @@
-uniform sampler2D Texture0;
+uniform sampler2D Texture0; // main fbo
 uniform sampler2D Texture1;
 
-uniform sampler2D Texture2;
+uniform sampler2D Texture2; // geom fbo
 uniform sampler2D Texture3;
+
+uniform sampler2D Texture4; // water fbo
+uniform sampler2D Texture5;
 
 varying vec2 TexCoord0;
 uniform vec2 mouseCoords;
 uniform vec2 resolution;
 uniform vec3 cameraPos;
-uniform vec3 lightPosWS;
-//uniform vec2 lightPosSS;
 uniform vec2 bufferDim;
 uniform float cameraZoom;
+
+uniform vec3 process;
 
 
 $
@@ -55,17 +58,20 @@ float unpack16(vec2 num) {
 void main() {
 
     vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
-    //vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
-
     vec4 tex2 = texture2D(Texture2, TexCoord0.xy);
-    //vec4 tex3 = texture2D(Texture3, TexCoord0.xy);
+    vec4 tex4 = texture2D(Texture4, TexCoord0.xy);
 
-    vec4 texFinal = tex0;
+    //vec4 texFinal = tex0;
+    //texFinal.b = mix( tex0.b, tex2.b, float(tex2.a > 0.0) );
 
-    texFinal.b = mix( tex0.b, tex2.b, float(tex2.b > 0.0) );
+    float isObject = float(tex2.a > 0.0);
 
     float newZoom = min(cameraZoom,1.0);
-    float baseHeight = unpack16(texFinal.rg);
+    float baseHeight1 = unpack16(tex0.rg);
+    float baseHeight2 = unpack16(tex2.rg);
+    float baseHeight3 = unpack16(tex4.rg);
+    float baseHeight = max(max(baseHeight1*process.x, baseHeight2*process.y), baseHeight3*process.z);
+    //max(baseHeight1,baseHeight3);
 
     vec3 worldPosition = vec3(0.0,0.0,0.0);
     vec2 tcMod = (vec2(TexCoord0.x,1.0-TexCoord0.y)*2.0-1.0 );
@@ -80,6 +86,6 @@ void main() {
     worldPosition.x += cameraPos.x;
     worldPosition.y += cameraPos.y;
 
-    gl_FragData[0] = vec4( worldPosition.xyz, texFinal.b*255.0 );
+    gl_FragData[0] = vec4( worldPosition.xyz, isObject ); //texFinal.b*255.0
 
 }

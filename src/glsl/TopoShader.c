@@ -35,7 +35,7 @@ void main() {
 
 
 
-    vec3 myVert = gl_Vertex.xyz - vec3(0.0,0.0,cameraPos.z);
+    vec3 myVert = gl_Vertex.xyz;// - vec3(0.0,0.0,cameraPos.z);
     vec3 transVert;
 
     transVert.x = (myVert.x-myVert.y);
@@ -162,7 +162,7 @@ void main() {
     vec4 tex1dr = texture2D(Texture1, vec2(newTC.x + offsetAmount, newTC.y - offsetAmount) );
     */
 
-    float mod = 1.0;
+    float mod1 = 1.0;
     if (
         tex1u.g != tex1.g ||
         tex1d.g != tex1.g ||
@@ -175,7 +175,7 @@ void main() {
         tex1dr.g < tex1.g*/
 
     ) {
-        mod = 1.0;
+        mod1 = 1.0;
     }
 
 
@@ -205,7 +205,7 @@ void main() {
     
     float gridMod = mix( 0.0, max(gv1,gv2), clamp(cameraZoom/0.01,0.0,1.0) );
 
-    vec3 resCol = (tex0.rgb + gridMod)*mod;
+    vec3 resCol = (tex0.rgb + gridMod)*mod1;
 
     // mix(
     //     vec3(testHeight/5.0,testHeight/2.0,testHeight),
@@ -216,13 +216,19 @@ void main() {
         resCol,
         
         mix(
-            resCol+0.5,//vec3(0.0,0.5,1.0),
+            resCol+vec3(0.0,0.125,0.25),
             resCol+0.5,//vec3(1.0,1.0,1.0),//vec3(0.3,0.1,0.0),
             isAboveWater
         ),
         
         gv3
     );
+
+    if (tex2.a > 0.0) {
+        resCol.rgb = resCol.rgb*0.75 + (mod(tex2.a*255.0,16.0)/15.0)*0.25;
+    }
+
+    
 
     //gl_FragData[0] = vec4(tex0.rgb,mapTrans);
 

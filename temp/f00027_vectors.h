@@ -59,6 +59,14 @@ int intDiv(int v, int s) {
     }
 }
 
+int getPackedColor(uint r, uint g, uint b) {
+    return (
+        (1 << 15) |
+        ((b >> 3)<<10) | 
+        ((g >> 3)<<5) | 
+        ((r >> 3))
+    );
+}
 
 int clamp(int val, int min, int max) {
     if (val > max) {
@@ -90,11 +98,17 @@ inline float fGenRand() {
     //return ((float)(rand()%100000))/100000.0f;
 }
 
-inline int iGenRand(int val) {
-    
-    return abs(rand()%val);
-    //return rand()%(val+1) - val/2;
+
+inline int iGenRand(int nMin, int nMax)
+{
+    return nMin + (int)((double)rand() / (RAND_MAX+1) * (nMax-nMin+1));
 }
+
+// inline int iGenRand(int val) {
+    
+//     return abs(rand()%val);
+//     //return rand()%(val+1) - val/2;
+// }
 
 unsigned int intLogB2 (unsigned int val) {
     unsigned int ret = -1;
@@ -130,6 +144,9 @@ public:
         fv4.z = 0.0;
         fv4.w = 0.0;
     }
+
+
+
 
     void setIXYZW(int x, int y, int z, int w) {
         iv4.x = x;
@@ -182,6 +199,34 @@ public:
         fv4.y = cf->getFY();
         fv4.z = cf->getFZ();
         fv4.w = cf->getFW();
+    }
+
+    void copyIntDiv(FIVector4* cf, int val) {
+        iv4.x = cf->getIX();
+        iv4.y = cf->getIY();
+        iv4.z = cf->getIZ();
+        iv4.w = cf->getIW();
+
+        fv4.x = cf->getFX();
+        fv4.y = cf->getFY();
+        fv4.z = cf->getFZ();
+        fv4.w = cf->getFW();
+
+        intDivXYZ(val);
+    }
+
+    void copyIntMult(FIVector4* cf, int val) {
+        iv4.x = cf->getIX();
+        iv4.y = cf->getIY();
+        iv4.z = cf->getIZ();
+        iv4.w = cf->getIW();
+
+        fv4.x = cf->getFX();
+        fv4.y = cf->getFY();
+        fv4.z = cf->getFZ();
+        fv4.w = cf->getFW();
+
+        multXYZ(val);
     }
 
 
@@ -446,25 +491,21 @@ public:
         iv4.y = (int)fv4.y;
         iv4.z = (int)fv4.z;
     }
-    void clampZ(FIVector4 *minV, FIVector4 *maxV) {
+    void clampZ(float minV, float maxV) {
 
-        if (fv4.z < minV->getFZ()) {
-            fv4.z = minV->getFZ();
+        if (fv4.z < minV) {
+            fv4.z = minV;
         }
-        if (fv4.z > maxV->getFZ()) {
-            fv4.z = maxV->getFZ();
+        if (fv4.z > maxV) {
+            fv4.z = maxV;
         }
 
-        iv4.x = (int)fv4.x;
-        iv4.y = (int)fv4.y;
         iv4.z = (int)fv4.z;
     }
 
 
 
-
-
-    bool inBoundsEqualXYZ(FIVector4 *minV, FIVector4 *maxV) {
+    bool inBoundsIsEqualXYZ(FIVector4 *minV, FIVector4 *maxV) {
         if (fv4.x < minV->getFX()) {
             return false;
         }
@@ -486,6 +527,82 @@ public:
 
         return true;
     }
+
+    static void normalizeBounds(FIVector4* minBounds, FIVector4* maxBounds) {
+        float temp;
+
+        if (minBounds->getFX() > maxBounds->getFX()) {
+            temp = maxBounds->getFX();
+            maxBounds->setFX(minBounds->getFX());
+            minBounds->setFX(temp);
+        }
+        if (minBounds->getFY() > maxBounds->getFY()) {
+            temp = maxBounds->getFY();
+            maxBounds->setFY(minBounds->getFY());
+            minBounds->setFY(temp);
+        }
+        if (minBounds->getFZ() > maxBounds->getFZ()) {
+            temp = maxBounds->getFZ();
+            maxBounds->setFZ(minBounds->getFZ());
+            minBounds->setFZ(temp);
+        }
+    }
+
+    static bool intersect(FIVector4* aMin, FIVector4* aMax, FIVector4* bMin, FIVector4* bMax) {
+        
+        float aWidth = aMax->getFX() - aMin->getFX();
+        float aHeight = aMax->getFY() - aMin->getFY();
+        float aDepth = aMax->getFZ() - aMin->getFZ();
+
+        float bWidth = bMax->getFX() - bMin->getFX();
+        float bHeight = bMax->getFY() - bMin->getFY();
+        float bDepth = bMax->getFZ() - bMin->getFZ();
+
+        float aWidthC = (aMax->getFX() + aMin->getFX())/2.0f;
+        float aHeightC = (aMax->getFY() + aMin->getFY())/2.0f;
+        float aDepthC = (aMax->getFZ() + aMin->getFZ())/2.0f;
+
+        float bWidthC = (bMax->getFX() + bMin->getFX())/2.0f;
+        float bHeightC = (bMax->getFY() + bMin->getFY())/2.0f;
+        float bDepthC = (bMax->getFZ() + bMin->getFZ())/2.0f;
+
+
+
+        return  (abs(aWidthC - bWidthC) * 2.0f <= (aWidth + bWidth)) &&
+                (abs(aHeightC - bHeightC) * 2.0f <= (aHeight + bHeight)) &&
+                (abs(aDepthC - bDepthC) * 2.0f <= (aDepth + bDepth));
+
+
+        // return (
+        //     aMin->inBoundsIsEqualXYZ(bMin,bMax) ||
+        //     aMax->inBoundsIsEqualXYZ(bMin,bMax) ||
+        //     bMin->inBoundsIsEqualXYZ(aMin,aMax) ||
+        //     bMax->inBoundsIsEqualXYZ(aMin,aMax)
+        // );
+    }
+
+    static void growBoundary(FIVector4 *minB, FIVector4 *maxB, FIVector4 *minV, FIVector4 *maxV) {
+        if (minB->getFX() > minV->getFX()) {
+            minB->setFX(minV->getFX());
+        }
+        if (minB->getFY() > minV->getFY()) {
+            minB->setFY(minV->getFY());
+        }
+        if (minB->getFZ() > minV->getFZ()) {
+            minB->setFZ(minV->getFZ());
+        }
+        if (maxB->getFX() < maxV->getFX()) {
+            maxB->setFX(maxV->getFX());
+        }
+        if (maxB->getFY() < maxV->getFY()) {
+            maxB->setFY(maxV->getFY());
+        }
+        if (maxB->getFZ() < maxV->getFZ()) {
+            maxB->setFZ(maxV->getFZ());
+        }
+
+    }
+
 
 
     bool inBoundsXYZ(FIVector4 *minV, FIVector4 *maxV) {
@@ -510,6 +627,10 @@ public:
 
         return true;
     }
+
+
+    
+
 
     bool inBoundsXY(FIVector4 *minV, FIVector4 *maxV) {
         if (fv4.x < minV->getFX()) {
@@ -591,6 +712,26 @@ public:
 
     */
 
+    void rotate90(int ind) {
+        switch (ind) {
+            case 0: // 0 deg
+
+            break;
+
+            case 1: // 90 deg
+                setFXY(-fv4.y,fv4.x);
+            break;
+
+            case 2: // 180 deg
+                setFXY(-fv4.x,-fv4.y);
+            break;
+
+            case 3: // 270 deg
+                setFXY(fv4.y,-fv4.x);
+            break;
+        }
+    }
+
     float distance(FIVector4 *otherVec) {
 
         float dx = fv4.x - otherVec->getFX();
@@ -617,6 +758,13 @@ public:
         fv4.z = fv4.z/len;
 
 
+    }
+
+    float dot(FIVector4 *otherVec) {
+
+        return fv4.x * otherVec->getFX() +
+        fv4.y * otherVec->getFY() +
+        fv4.z * otherVec->getFZ();
     }
 
 
@@ -691,17 +839,55 @@ public:
 
 
 class GameGeom {
-public:
+
+private:
+    // passed to GPU, transformed
 
     FIVector4 boundsMinInPixels;
     FIVector4 boundsMaxInPixels;
+    FIVector4 visMinInPixels;
+    FIVector4 visMaxInPixels;
+
+    FIVector4 boundsMinInPixelsT;
+    FIVector4 boundsMaxInPixelsT;
+    FIVector4 visMinInPixelsT;
+    FIVector4 visMaxInPixelsT;
+
+public:
+
+
+    bool visible;
+    bool hasAnchor;
+
+    // passed to GPU
+
     FIVector4 cornerDisInPixels;
     FIVector4 powerVals;
-    FIVector4 coefficients;
-    FIVector4 squareVals;
-    FIVector4 minMaxMat;
+    FIVector4 thickVals;
+    FIVector4 matParams;
+
+    // internal use
+
+    FIVector4 anchorPointInPixels;
+    FIVector4 moveMinInPixels;
+    FIVector4 moveMaxInPixels;
+
+
+    //   1
+    // 2   0
+    //   3
+
+
+    int rotDir;
+
+    int minRot;
+    int maxRot;
+    int curRot;
+    int buildingType;
 
     int id;
+    int globalID;
+    static const int paramsPerEntry = 24;
 
     //float minRad;
     //float maxRad;
@@ -719,47 +905,295 @@ public:
         return (fGenRand()+1.0f)/2.0f;
     }
 
-    void initRand(int _id, float x, float y, float z, float uvSize) {
-        id = _id;
+    /*
+    FIVector4 boundsMinInPixels;
+    FIVector4 boundsMaxInPixels;
+    FIVector4 visMinInPixels;
+    FIVector4 visMaxInPixels;
 
-        float rad = uvSize*2.0f;
-        float diam = 2.0f*rad;
-        float zh = 256.0f;
+    FIVector4 boundsMinInPixelsT;
+    FIVector4 boundsMaxInPixelsT;
+    FIVector4 visMinInPixelsT;
+    FIVector4 visMaxInPixelsT;
+    */
 
-        if (fGenRand() > 0.5) {
-            boundsMinInPixels.setFXYZ(x-rad*2.0, y-rad, z+zh);
-            boundsMaxInPixels.addXYZ(x+rad*2.0, y+rad, z+diam+zh);
+    FIVector4* getBoundsMinInPixels() {
+        return &boundsMinInPixels;
+    }
+    FIVector4* getBoundsMaxInPixels() {
+        return &boundsMaxInPixels;
+    }
+    FIVector4* getVisMinInPixels() {
+        return &visMinInPixels;
+    }
+    FIVector4* getVisMaxInPixels() {
+        return &visMaxInPixels;
+    }
+
+    FIVector4* getBoundsMinInPixelsT() {
+        return &boundsMinInPixelsT;
+    }
+    FIVector4* getBoundsMaxInPixelsT() {
+        return &boundsMaxInPixelsT;
+    }
+    FIVector4* getVisMinInPixelsT() {
+        return &visMinInPixelsT;
+    }
+    FIVector4* getVisMaxInPixelsT() {
+        return &visMaxInPixelsT;
+    }
+
+    int getClampedRot() {
+        int tempRot = curRot;
+        while (tempRot < 0) {
+            tempRot += 4;
+        }
+        while (tempRot > 3) {
+            tempRot -= 4;
+        }
+
+        return tempRot;
+    }
+
+    void rotate(int mod, bool ignoreConstraints) {
+
+        if (hasAnchor) {
+            curRot += mod;
+
+
+            if (ignoreConstraints) {
+                if (curRot > 3) {
+                    curRot = 0;
+                }
+                if (curRot < 0) {
+                    curRot = 3;
+                }
+            }
+            else {
+                if (curRot > maxRot) {
+                    curRot = maxRot-1;
+                    rotDir *= -1;
+                }
+                if (curRot < minRot) {
+                    curRot = minRot+1;
+                    rotDir *= -1;
+
+                }
+
+            }
+
+            
         }
         else {
-            boundsMinInPixels.setFXYZ(x-rad, y-rad*2.0, z+zh);
-            boundsMaxInPixels.addXYZ(x+rad, y+rad*2.0, z+diam+zh);
+            cout << "Attemped to rotate without anchor.\n";
         }
 
-        /*
-        boundsMinInPixels.setFXYZ(x-rad, y-rad, z+zh);
-        boundsMaxInPixels.addXYZ(x+rad, y+rad, z+diam+zh);
-        */
+        
+    }
+
+    void initBounds(
+        int _buildingType,
+        int _id,
+        int _globalID,
+        int alignBottomMiddleTop,
+
+        float _zOffset,
+        
+        FIVector4* p1,
+        FIVector4* p2,
+        FIVector4* rad,
+        FIVector4* _cornerDisInPixels,
+        FIVector4* _visInsetFromMin,
+        FIVector4* _visInsetFromMax,
+        FIVector4* _powerVals,
+        FIVector4* _thickVals,
+        FIVector4* _matParams
+
+        
+        
+    ) {
+        buildingType = _buildingType;
+        id = _id;
+        globalID = _globalID;
+        float temp;
+        float zOffset = _zOffset;
+
+        curRot = 0;
+        rotDir = 1;
+        visible = true;
+        hasAnchor = false;
+
+        anchorPointInPixels.setFXYZ(0.0f,0.0f,0.0f);
+
+
+        boundsMinInPixels.setFXYZRef(p1);
+        boundsMaxInPixels.setFXYZRef(p2);
+
+        FIVector4::normalizeBounds(&boundsMinInPixels,&boundsMaxInPixels);
 
         
 
-        cornerDisInPixels.setFXYZ(uvSize, uvSize, uvSize);
-        powerVals.setFXYZ(2.0f,2.0f,2.0f);
-        coefficients.setFXYZ(1.0,1.0,1.0);
-        squareVals.setFXYZ(0.0,0.0,0.0);
-        minMaxMat.setFXYZ(0.01f,1.0f,2.0f);
 
-        //minRad = 0.75;
-        //maxRad = 1.0;
-        //matId = 1.0f;
+        boundsMinInPixels.addXYZRef(rad,-1.0f);
+        boundsMaxInPixels.addXYZRef(rad,1.0f);
 
-        
-        //powerPhi = fGenRand()*3.0f + 1.0f;
-        //powerTheta = fGenRand()*3.0f + 1.0f;
-        //thickness = 16.0f;
-        //upAxis = 2.0f;
+        // if (thickVals.getFY() == 0.0f) {
+
+        // }
+        // else {
+        //     if (thickVals.getFY() > 0.0f) {
+        //         boundsMaxInPixels.addXYZ(0.0f,0.0f,thickVals.getFY());
+        //     }
+        //     else {
+        //         boundsMinInPixels.addXYZ(0.0f,0.0f,thickVals.getFY());
+        //     }
+        // }
+
+        switch (alignBottomMiddleTop) {
+            
+            case 0: // bottom _@_
+                zOffset += (rad->getFZ()-_visInsetFromMin->getFZ());
+            break;
+            case 1: // middle -@-
+                zOffset += 0.0f;
+            break;
+                    //     ___
+            case 2: // top  @
+                zOffset += -(rad->getFZ()-_visInsetFromMax->getFZ());
+            break;
+            
+
+        }
+
+        boundsMinInPixels.addXYZ(0.0f,0.0f,zOffset); //rad->getFZ()-_cornerDisInPixels->getFZ());
+        boundsMaxInPixels.addXYZ(0.0f,0.0f,zOffset); //rad->getFZ()-_cornerDisInPixels->getFZ()
+
+
+        visMinInPixels.setFXYZRef(&boundsMinInPixels);
+        visMaxInPixels.setFXYZRef(&boundsMaxInPixels);
+
+        visMinInPixels.addXYZRef(_visInsetFromMin, 1.0f);//0.0f,0.0f,_cornerDisInPixels->getFZ());
+        visMaxInPixels.addXYZRef(_visInsetFromMax, -1.0f);
+
+        //visMaxInPixels.setFZ(z2 + rad);
+        cornerDisInPixels.setFXYZRef(_cornerDisInPixels);
+        powerVals.setFXYZRef(_powerVals);
+        thickVals.setFXYZRef(_thickVals);
+        matParams.setFXYZRef(_matParams);
+
+
+
+        //coefficients.setFXYZ(1.0,1.0,1.0);
+        //squareVals.setFXYZ(1.0,1.0,1.0);//1.0,1.0,1.0);
+        //minMaxMat1.setFXYZ(0.0f,1.0f,2.0f);
+        //minMaxMat2.setFXYZ(0.0f,1.0f,2.0f);
+        //dirFlags.setFXYZ(0.0,0.0f,0.0f);
+
+
+        moveMinInPixels.setFXYZRef(&boundsMinInPixels);
+        moveMaxInPixels.setFXYZRef(&boundsMaxInPixels);
+
+        boundsMinInPixelsT.setFXYZRef(&boundsMinInPixels);
+        boundsMaxInPixelsT.setFXYZRef(&boundsMaxInPixels);
+        visMinInPixelsT.setFXYZRef(&visMinInPixels);
+        visMaxInPixelsT.setFXYZRef(&visMaxInPixels);
 
 
     }
 
+    void applyTransform(int rotMod, bool ignoreConstraints) {
+
+        rotate(rotMod,ignoreConstraints);
+
+        boundsMinInPixelsT.setFXYZRef(&boundsMinInPixels);
+        boundsMaxInPixelsT.setFXYZRef(&boundsMaxInPixels);
+        visMinInPixelsT.setFXYZRef(&visMinInPixels);
+        visMaxInPixelsT.setFXYZRef(&visMaxInPixels);
+
+        boundsMinInPixelsT.addXYZRef(&anchorPointInPixels,-1.0f);
+        boundsMaxInPixelsT.addXYZRef(&anchorPointInPixels,-1.0f);
+        visMinInPixelsT.addXYZRef(&anchorPointInPixels,-1.0f);
+        visMaxInPixelsT.addXYZRef(&anchorPointInPixels,-1.0f);
+
+        boundsMinInPixelsT.rotate90(getClampedRot());
+        boundsMaxInPixelsT.rotate90(getClampedRot());
+        visMinInPixelsT.rotate90(getClampedRot());
+        visMaxInPixelsT.rotate90(getClampedRot());
+
+        boundsMinInPixelsT.addXYZRef(&anchorPointInPixels,1.0f);
+        boundsMaxInPixelsT.addXYZRef(&anchorPointInPixels,1.0f);
+        visMinInPixelsT.addXYZRef(&anchorPointInPixels,1.0f);
+        visMaxInPixelsT.addXYZRef(&anchorPointInPixels,1.0f);
+
+        FIVector4::normalizeBounds(&boundsMinInPixelsT,&boundsMaxInPixelsT);
+        FIVector4::normalizeBounds(&visMinInPixelsT,&visMaxInPixelsT);
+
+        FIVector4::growBoundary(&moveMinInPixels, &moveMaxInPixels, &visMinInPixelsT, &visMaxInPixelsT);
+    }
+
+    void initAnchorPoint(FIVector4* _anchorPointInPixels, int _minRot, int _maxRot) {
+
+        int i;
+
+
+        hasAnchor = true;
+        anchorPointInPixels.setFXYZRef(_anchorPointInPixels);        
+        minRot = _minRot;
+        maxRot = _maxRot;
+
+        for (i = 0; i < 4; i++) {
+            applyTransform(1,true);
+        }
+
+    }
+
+    
+
 };
+
+
+class DynObject {
+
+public:
+
+    FIVector4 pos;
+    FIVector4 posRel;
+
+    int r;
+    int g;
+    int b;
+
+    int colPacked;
+    bool isRelative;
+    bool doRender;
+
+
+    DynObject() {
+        
+    }
+
+    void init(int _x, int _y, int _z, int _r, int _g, int _b, bool _doRender, bool _isRelative, FIVector4* _cameraPos) {
+        isRelative = _isRelative;
+        doRender = _doRender;
+
+        if (isRelative) {
+            posRel.setIXYZ(_x,_y,_z);
+            pos.setFXYZRef(_cameraPos);
+            pos.addXYZRef(&posRel);
+        }
+        else {
+            pos.setIXYZ(_x,_y,_z);
+            posRel.setIXYZ(0,0,0);
+        }
+
+        r = _r;
+        g = _g;
+        b = _b;
+
+        colPacked = getPackedColor(r,g,b);
+    }
+
+
+};
+
  

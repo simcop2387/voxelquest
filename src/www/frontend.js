@@ -366,8 +366,19 @@ j$(function() {
 		tracesAtLevel: 0,
 		traceArr: [],
 		maxFrameSize: 16777216,
+		
 		doError: function(str) {
 			console.log(str);
+		},
+		getShader: function(i) {
+			var res = gob.shaders[gob.shaderNames[i]];
+
+			if (res) {
+				return res;
+			}
+			else {
+				gob.doError(gob.shaderNames[i] + " not found");
+			}
 		},
 		pushTrace: function() {
 			gob.traceLevel++;
@@ -593,9 +604,9 @@ j$(function() {
 		var messageSent = false;
 		var doOpenCon = false;
 
-		
 
 		if (gob.hasConnection) {
+
 
 			
 			//gob.doTraceTab("READYSTATE: " + gob.connection.readyState);
@@ -604,8 +615,12 @@ j$(function() {
 				gob.connection.close();
 				gob.hasConnection = false;
 				doOpenCon = true;
+
+				
 			}
 			else {
+
+				
 
 				if (gob.waitingForResponse) {
 
@@ -623,9 +638,14 @@ j$(function() {
 
 					if (typeof(msg) == "string") {
 						sendStr = msg;
+						
 					}
 					else {
 						sendStr = JSON.stringify(msg, null, "\t");
+
+						gob.lastMessage = sendStr;
+
+						
 
 						//console.log(sendStr);
 
@@ -1889,7 +1909,7 @@ j$(function() {
 					}
 
 					gob.shaders[gob.shaderNames[i]] = {};
-					curShader = gob.shaders[gob.shaderNames[i]];
+					curShader = gob.getShader(i);
 					curShader.transparent = false;
 					
 					
@@ -1905,6 +1925,9 @@ j$(function() {
 					gob.materials[gob.shaderNames[i]] = new THREE.ShaderMaterial(curShader);
 
 
+				},
+				error: function() {
+					gob.doError("Invalid Shader: " + gob.shaderNames[i]);
 				},
 				async:   false,
 				dataType:"text"
@@ -1948,8 +1971,10 @@ j$(function() {
 		}
 
 		window.onbeforeunload = function() {
-		    gob.connection.onclose = function () {}; // disable onclose handler first
-		    gob.connection.close()
+
+			// TODO: Why is this not working?
+		    // gob.connection.onclose = function () {}; // disable onclose handler first
+		    // gob.connection.close()
 		};
 
 		//renderer.deallocateRenderTarget(gob.renderTargets.baseRT);
@@ -2687,8 +2712,8 @@ j$(function() {
 		
 		
 		for (i = 0; i < gob.shaderNames.length; i++) {
-			gob.shaders[gob.shaderNames[i]].uniforms.u_Resolution.value.x = gob.bufferWidth;//window.innerWidth;
-			gob.shaders[gob.shaderNames[i]].uniforms.u_Resolution.value.y = gob.bufferHeight;//window.innerHeight;
+			gob.getShader(i).uniforms.u_Resolution.value.x = gob.bufferWidth;//window.innerWidth;
+			gob.getShader(i).uniforms.u_Resolution.value.y = gob.bufferHeight;//window.innerHeight;
 		}
 
 		gob.shaders.downscaleShader.uniforms.u_TexResolution.value.x = Math.floor(gob.bufferWidth/2);
@@ -2776,8 +2801,17 @@ j$(function() {
 
 			
 			for (i = 0; i < gob.shaderNames.length; i++) {
-				gob.shaders[gob.shaderNames[i]].uniforms.u_Zoom.value = zoom;
+				
+				//console.log(gob.getShader(i));
+				//console.log(gob.shaderNames[i]);
+				gob.getShader(i).uniforms.u_Zoom.value = zoom;
+
+				
+
 			}
+			
+
+
 
 			gob.shaders.bgShader.uniforms.u_BorderRad.value = gob.styleSheets.defContH.border;
 			gob.shaders.bgIdShader.uniforms.u_BorderRad.value = gob.styleSheets.defContH.border;
@@ -3262,7 +3296,7 @@ j$(function() {
 	gob.performAction = function(baseProps, mouseUp) {
 
 		var val = baseProps.value;
-		var msgVal = {};
+		
 
 		switch(baseProps.label) {
 			case "Hue":
@@ -3290,10 +3324,7 @@ j$(function() {
 		}
 		else {
 			if (mouseUp) {
-				gob.packData(gob.mainDat,msgVal,0);
-				gob.sendMessage(msgVal);
-
-				console.log("JSON Sent");
+				
 			}
 			
 			
@@ -3430,7 +3461,7 @@ j$(function() {
 		// console.log( JSON.stringify(gob.mainDat, null, "\t") );
 
 
-		gob.loadJSON("../../data/lastJSONBuffer.txt", function(jdat) {
+		gob.loadJSON("../../data/lastJSONBuffer.js", function(jdat) {
 			gob.mainDat = {};
 
 			gob.unpackData(jdat, gob.mainDat, true);
@@ -3899,37 +3930,48 @@ j$(function() {
 			j$(document).mousewheel(function(event, delta, deltaX, deltaY) {
 
 
-				if (gob.palX != gob.invalidValue) {
+				gob.scrollY += deltaY*400.0/gob.scrollSpeed;
+
+				gob.isScrolling = 15;
+				gob.updateBaseRT = true;
+				gob.isRendering = true;
+
+				// if (gob.palX != gob.invalidValue) {
 					
 
-					if (gob.shiftDown) {
+				// 	if (gob.shiftDown) {
 						
-						gob.palY += deltaX*32.0;
+				// 		gob.palY += deltaX*32.0;
 
 
-						if (gob.palY < 16.0) {
-							gob.palY = 16.0;
-						}  
-						if (gob.palY > 80.0) {
-							gob.palY = 80.0;
-						}
-					}
-					else {
-						gob.palX += deltaY*32.0;
+				// 		if (gob.palY < 16.0) {
+				// 			gob.palY = 16.0;
+				// 		}  
+				// 		if (gob.palY > 80.0) {
+				// 			gob.palY = 80.0;
+				// 		}
+				// 	}
+				// 	else {
+				// 		gob.palX += deltaY*32.0;
 
-						if (gob.palX < 16.0) {
-							gob.palX = 16.0;
-						}  
-						if (gob.palX > 1008.0) {
-							gob.palX = 1008.0;
-						}
-					}
+				// 		if (gob.palX < 16.0) {
+				// 			gob.palX = 16.0;
+				// 		}  
+				// 		if (gob.palX > 1008.0) {
+				// 			gob.palX = 1008.0;
+				// 		}
+				// 	}
 
 					
 
-					gob.genPicker();
-				}
+				// 	gob.genPicker();
+				// }
 				
+
+
+
+
+
 
 				/*
 				zoom += deltaY/gob.scrollSpeed;
@@ -4090,7 +4132,7 @@ j$(function() {
 			j$(document).keypress(function(e) {
 
 				var code = (e.keyCode ? e.keyCode : e.which);
-
+				var msgVal = {};
 				
 				if ( code == "a".charCodeAt(0) ) {
 					gob.autoUpdate = !gob.autoUpdate;
@@ -4109,6 +4151,14 @@ j$(function() {
 					console.log("Zoom reset");
 				}
 				
+				if ( code == "s".charCodeAt(0) ) {
+
+					
+					gob.packData(gob.mainDat,msgVal,0);
+					gob.sendMessage(msgVal);
+					console.log("Sent JSON for Save");
+				}
+
 			});
 
 

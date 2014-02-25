@@ -3,12 +3,10 @@ uniform sampler2D u_Texture1;
 uniform sampler2D u_Texture2;
 uniform sampler2D u_Texture3;
 uniform float u_Time;
+uniform float u_Zoom;
 
 uniform vec2 u_Resolution;
 uniform vec2 u_TexResolution;
-uniform float u_Zoom;
-//uniform vec4 u_SourceRect;
-//uniform vec4 u_DestRect;
 
 
 varying vec2 v_TexCoords;

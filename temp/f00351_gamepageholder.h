@@ -6,25 +6,40 @@
 GamePageHolder::GamePageHolder ()
                          {
 		usingPoolId = -1;
+		hasTrans = false;
+		hasSolids = false;
 	}
-void GamePageHolder::init (Singleton * _singleton, int _thisHolderId, int trueX, int trueY, int trueZ, int clampedX, int clampedY, int clampedZ)
+void GamePageHolder::init (Singleton * _singleton, int _blockID, int _holderID, int trueX, int trueY, int trueZ)
           {
 
 		pushTrace("GamePageHolder init()");
 
 		int i;
 
+		
+
+		blockID = _blockID;
+		holderID = _holderID;
+
 		isDirty = false;
 
 		singleton = _singleton;
-		thisHolderId = _thisHolderId;
+		//thisHolderId = _thisHolderId;
 		usingPoolId = -1;
 
-		trueOffsetInHolders.setIXYZ(trueX,trueY,trueZ);
-		offsetInHolders.setIXYZ(clampedX,clampedY,clampedZ);
+		//trueOffsetInHolders.setIXYZ(trueX,trueY,trueZ);
+		offsetInHolders.setIXYZ(trueX,trueY,trueZ);
 		offsetInBlocks.copyFrom(&offsetInHolders);
 		offsetInBlocks.intDivXYZ(singleton->blockSizeInHolders);
 		
+		gphMinInPixels.copyFrom(&offsetInHolders);
+		gphMaxInPixels.copyFrom(&offsetInHolders);
+
+		gphMaxInPixels.addXYZ(1);
+
+		gphMinInPixels.multXYZ(singleton->holderSizeInPixels);
+		gphMaxInPixels.multXYZ(singleton->holderSizeInPixels);
+
 
 		holderSizeInPages = singleton->holderSizeInPages;
 		iPageDataVolume = holderSizeInPages*holderSizeInPages*holderSizeInPages;
@@ -44,25 +59,49 @@ void GamePageHolder::init (Singleton * _singleton, int _thisHolderId, int trueX,
 		popTrace();
 
 	}
-void GamePageHolder::refreshChildren ()
-                               {
+void GamePageHolder::clearSet (bool forceClear)
+                                       {
 		int i;
 
+		bool doClear = forceClear;
+
 		if (usingPoolId == -1) {
-			usingPoolId = singleton->requestPoolId(thisHolderId);
+			usingPoolId = singleton->requestPoolId(blockID,holderID);
 			gpuRes = singleton->holderPoolItems[usingPoolId];
+
+			doClear = true;
 		}
 
-		// clear fbo by binding it with auto flag
-		singleton->bindFBODirect(gpuRes->fboSet);
-		singleton->unbindFBO();
+		if (doClear) {
+			for (i = 0; i < MAX_LAYERS; i++) {
+				// clear fbo by binding it with auto flag
+				singleton->bindFBODirect(gpuRes->getFBOS(i));
+				singleton->unbindFBO();
+			}
+		}
+		
+	}
+void GamePageHolder::refreshChildren (bool refreshImmediate)
+                                                    {
+		int i;
+
+		clearSet(true);
+		
 
 		for (i = 0; i < iPageDataVolume; i++) {
 			if (pageData[i] == NULL) {
 
 			}
 			else {
-				pageData[i]->generateVolume();
+
+				if (refreshImmediate) {
+					pageData[i]->generateVolume();
+				}
+				else {
+					pageData[i]->curState = E_STATE_CREATESIMPLEXNOISE_END;
+				}
+
+				
 			}
 		}
 	}
@@ -71,7 +110,7 @@ void GamePageHolder::fetchGeom ()
 		int i;
 		int j;
 		int k;
-		int bufSize = (singleton->visPageSizeInPixels*singleton->bufferMult);
+		int bufSize = (singleton->visPageSizeInPixels*singleton->bufferMult)*2;
 		
 		GameBlock* curBlock;
 		GamePageHolder* gph;
@@ -95,21 +134,21 @@ void GamePageHolder::fetchGeom ()
 					geom = curBlock->gameGeom[k];
 
 
-					start.copyFrom( &(geom->boundsMinInPixels) );
-					end.copyFrom( &(geom->boundsMaxInPixels) );
+					start.copyFrom( &(geom->moveMinInPixels) );
+					end.copyFrom( &(geom->moveMaxInPixels) );
 
 					start.addXYZ(-bufSize);
 					end.addXYZ(bufSize);
 
-					start.intDivXYZ(singleton->holderSizeInPixels);
-					end.intDivXYZ(singleton->holderSizeInPixels);
+					//start.intDivXYZ(singleton->holderSizeInPixels);
+					//end.intDivXYZ(singleton->holderSizeInPixels);
 
-					start.clampZ(&(singleton->origin),&(singleton->worldSizeInHoldersM1));
-					end.clampZ(&(singleton->origin),&(singleton->worldSizeInHoldersM1));
+					start.clampZ(0.0,singleton->maxBoundsInPixels.getFZ()-1.0f);
+					end.clampZ(0.0,singleton->maxBoundsInPixels.getFZ()-1.0f);
 
-					if (offsetInHolders.inBoundsEqualXYZ(&start,&end)) {
+					if (FIVector4::intersect(&start,&end,&gphMinInPixels,&gphMaxInPixels)) {
 						containsGeomIds.push_back(intPair());
-						containsGeomIds.back().v0 = curBlock->thisIndex;
+						containsGeomIds.back().v0 = curBlock->blockID;
 						containsGeomIds.back().v1 = k;
 					}
 

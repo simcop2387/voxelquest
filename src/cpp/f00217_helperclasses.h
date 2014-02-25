@@ -333,6 +333,11 @@ public:
 		}
 	}
 
+	void setShaderArrayfVec4(string paramName, float* x, int count) {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform4fv(loc, count, x);
+	}
+
 	void setShaderArrayfVec3(string paramName, float* x, int count) {
 		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
 		glUniform3fv(loc, count, x);
@@ -360,9 +365,9 @@ public:
 		glUniform4f(loc,x,y,z,w);
 	}
 
-	void setShaderInt(string paramName, int multitexNumber) {
+	void setShaderInt(string paramName, int x) {
 		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
-		glUniform1i(loc,multitexNumber);
+		glUniform1i(loc,x);
 	}
 
 

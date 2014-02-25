@@ -3,7 +3,21 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
-bool TRACE_ON = true;
+int PAGE_COUNT = 0;
+
+const static int MAX_FLOORS = 5;
+const static int MAX_LIGHTS = 6;
+const static int FLOATS_PER_LIGHT = 16;
+
+const static int DEF_WIN_W = 1920;
+const static int DEF_WIN_H = 1080;
+const static int DEF_SCALE_FACTOR = 1;
+const static int MAX_LAYERS = 1;
+
+float MAX_GPU_MEM = 2048.0f;
+float TOT_GPU_MEM_USAGE = 0.0f;
+
+bool TRACE_ON = false;
 //#define DEBUG_MODE 1
 
 #include <SDKDDKVer.h>
@@ -24,6 +38,7 @@ bool TRACE_ON = true;
 #include <cstdio>
 #include <iostream>
 #include <ios>
+#include <algorithm>
 #include <cstdlib>
 
 #include <iomanip>
@@ -102,8 +117,8 @@ using Poco::Base64Decoder;
 
 
 
-float MAX_GPU_MEM = 2048.0f;
-float TOT_GPU_MEM_USAGE = 0.0f;
+
+
 
 struct charArr {
 	long size;

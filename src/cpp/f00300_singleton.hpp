@@ -10,6 +10,8 @@ public:
 	eProgramAction progActionsDown[E_PS_SIZE*256];
 	eProgramAction progActionsUp[E_PS_SIZE*256];
 
+	bool radiosityOn;
+	bool updateLock;
 	bool isFullScreen;
 	bool changesMade;
 	bool mapInvalid;
@@ -31,8 +33,12 @@ public:
 	bool reportPagesDrawn;
 	bool showMap;
 	bool traceOn;
+	//bool useVolumeTex;
+	bool waterOn;
+	bool firstRun;
 
-
+	int maxLayers;
+	int maxChanges;
 	int maxPooledRes;
 	int poolItemsCreated;
 	int baseW;
@@ -43,9 +49,14 @@ public:
 	int visPageSizeInUnits;
 	int unitSizeInPixels;
 	int maxHeightInUnits;
-	int blockSizeInHolders;
-	int blockSizeInPages;
-	int blockSizeInPixels;
+	int holdersPerLot;
+	int pixelsPerLot;
+
+	int pixelsPerMeter;
+	int pixelsPerUnit;
+	int metersPerLot;
+	int unitsPerMeter;
+	int unitsPerLot;
 	int extraRad;
 	int defaultWinW;
 	int defaultWinH;
@@ -66,23 +77,27 @@ public:
 	int	lastMouseY;
 	int bufferedPageSizeInUnits;
 	int voroSize;
+	int geomCounter;
+	int bufferMultRec;
 	
 	int holderSizeInPages;
 	int holderSizeInPixels;
+	int grassSpacing;
 
-
-
-	uint volGenFBOSize;
-	uint slicesPerPitch;
+	uint volGenFBOX;
+	//uint volGenFBOY;
+	//uint slicesPerPitch;
 	uint palWidth;
 	uint palHeight;
-	
+	uint blockShift;
 
+	float directPass;
+	float fogOn;
 	float gridOn;
 	float mapSampScale;
 	float curBrushRad;
 	float diskOn;
-	float grassHeight;
+	
 	float currentFBOResolutionX;
 	float currentFBOResolutionY;
 	float mouseX;
@@ -98,24 +113,37 @@ public:
 	float muTime;
 	float heightmapMax;
 	float bufferMult;
+	float holderSizeMB;
 
 	float* paramArr;
+	float* matCountArr;
+	int* geomIDArr;
 	float* paramArrMap;
 
-	FIVector4 activeObjectPos;
+	//FIVector4 activeObjectPos;
 	FIVector4 minBoundsInPixels;
 	FIVector4 maxBoundsInPixels;
 	FIVector4 mouseUpPD;
 	FIVector4 mouseDownPD;
 	FIVector4 mouseMovePD;
 
+	FIVector4 grassWH;
+
 	FIVector4 worldSizeInPages;
+	FIVector4 worldSizeInLots;
 	FIVector4 worldSizeInHolders;
-	FIVector4 worldSizeInHoldersM1;
 	FIVector4 worldSizeInBlocks;
 
-	FIVector4 cameraPos;
-	FIVector4 lightPos;
+	std::vector<DynObject*> dynObjects;
+
+	int iNodeDivsPerLot;
+	int blockSizeInLots;
+	int blockSizeInHolders;
+	int blockSizeInPages;
+	int blockSizeInPixels;
+
+	int maxFloors;
+
 	FIVector4 mouseStart;
 	FIVector4 mouseEnd;
 
@@ -126,23 +154,27 @@ public:
 	FIVector4* mouseMoving;
 	FIVector4 mouseVel;
 	FIVector4 worldSeed;
-	FIVector4 fogPos;
+	
 	FIVector4 bufferDim;
 	FIVector4 bufferDimHalf;
 	FIVector4 origin;
 	FIVector4 lastModXYZ;
 	FIVector4 panMod;
 
+	//Image* uvPattern;
 	Image* imageHM0;
 	Image* imageHM1;
+	Image* cloudImage;
 
+	GameGeom* highlightedGeom;
+	GameGeom* selectedGeom;
 
-
+	Shader* curShaderPtr;
 	string curShader;
 	string allText;	
 
 	list<int> holderPoolIds;
-	vector<int> orderedIds;
+	vector<intPair> orderedIds;
 	vector<PooledResource*> holderPoolItems;
 	vector<string> shaderStrings;
 	vector<string> fboStrings;
@@ -150,8 +182,11 @@ public:
 	map<string, Shader*> shaderMap;
 	map<string, FBOSet*> fboMap;
 
+	string curVGString;
 
+	GLuint volGenID;
 	GLuint volID;
+	GLuint terrainID;
 	GLuint volIDLinear;
 	GLuint voroID;
 	GLuint voroIDLinear;
@@ -176,7 +211,8 @@ public:
 	Timer myTimer;
 	GameWorld* gw;
 
-	
+	float lightArr[MAX_LIGHTS*16];
+	int numLights;
 
 
 	
@@ -195,73 +231,144 @@ public:
 
 		pushTrace("Singleton init");
 		int i;
-
+		rootObj = NULL;
+		highlightedGeom = NULL;
+		selectedGeom = NULL;
 
 		srand(time(NULL));
 		
+		//uvPattern = loadBMP("..\\data\\uvpat.bmp");
+		//uvPattern->getTextureId(GL_LINEAR);
 		imageHM0 = loadBMP("..\\data\\hm0.bmp");
 		imageHM1 = loadBMP("..\\data\\hm1.bmp");
+		cloudImage = loadBMP("..\\data\\clouds.bmp");
 		imageHM0->getTextureId(GL_NEAREST);
 		imageHM1->getTextureId(GL_NEAREST);
-		mapSampScale = 1.0f;
-		int newPitch = imageHM0->width*mapSampScale;//*2;
+		cloudImage->getTextureId(GL_LINEAR);
+		mapSampScale = 0.5f;
+		int newPitch = (imageHM0->width)*mapSampScale;//*2;
+
+		numLights = min(MAX_LIGHTS,E_OBJ_LENGTH-E_OBJ_LIGHT0);
 
 
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
+
+		firstRun = true;
+		//useVolumeTex = false;
+		waterOn = false;
+
+		// 256 meters to a block
+		// 32 meters to a lot (10,000 square feet)
+		// 8 lots per block side, 64 lots in a block
+		// 2 units to a meter
+
+		maxLayers = MAX_LAYERS;
+
+		// Resolution Dependent
+		maxChanges = 16; // this number is defined in processPages()
+		volGenFBOX = 128; // MAX OF 128, DO NOT CHANGE THIS VALUE
+		curVGString = "volGenFBO128";
+		//volGenFBOY = volGenFBOX*volGenFBOX;
+		visPageSizeInPixels = 256; // height of one page in pixels
+		holderSizeInPixels = 512; // height of holder in pixels
+		bufferMultRec = 4;
+		bufferMult = 1.0f + 1.0f/((float)bufferMultRec);
+
+
+		// IMPORTANT: Maximum height must be less than 2^16, max world pitch must be less than 2^32
+
+		// World Scale Dependent
+
+		iNodeDivsPerLot = 4;
+
+		metersPerLot = 32; // adjust this to make lots bigger
+		pixelsPerMeter = 256; // when you make pixels per meter larger, you must do the same for units per meter
+		unitsPerMeter = pixelsPerMeter/32;//16;
+		blockSizeInLots = 8;
+
+		maxFloors = MAX_FLOORS;
+
+		pixelsPerUnit = pixelsPerMeter/unitsPerMeter;
+		pixelsPerLot = pixelsPerMeter*metersPerLot;
+		unitsPerLot = unitsPerMeter*metersPerLot;
+		worldSizeInLots.setIXYZ(newPitch,newPitch,blockSizeInLots);
+		holderSizeInPages = holderSizeInPixels/visPageSizeInPixels;
+		holdersPerLot = pixelsPerLot/holderSizeInPixels;
+		visPageSizeInUnits = visPageSizeInPixels/pixelsPerUnit;
 
 		
-		
 
-		slicesPerPitch = 8;
-		visPageSizeInPixels = 64; // height of one page in pixels
-		holderSizeInPages = 8;
-
-		bufferMult = 1.25;
-		volGenFBOSize = slicesPerPitch*slicesPerPitch*slicesPerPitch;
-		visPageSizeInUnits = 8;
-		worldSizeInHolders.setIXYZ(newPitch,newPitch,8);
-		worldSizeInHoldersM1.copyFrom(&worldSizeInHolders);
-		worldSizeInHoldersM1.addXYZ(-1);
-		holderSizeInPixels = holderSizeInPages*visPageSizeInPixels;
-
-		voroSize = 32;
-		mapFreqs.setFXYZW(1.0f, 16.0f, 32.0f, 64.0f);
-		mapAmps.setFXYZW(0.4f, 0.3f, 0.2f, 0.1f);
-
-
-		blockSizeInHolders = 8;
+		worldSizeInHolders.copyIntMult(&worldSizeInLots,holdersPerLot);
+		bufferedPageSizeInUnits = visPageSizeInUnits*bufferMult;
+		blockSizeInHolders = blockSizeInLots*holdersPerLot; // 8*2 = 16
 		blockSizeInPages = blockSizeInHolders*holderSizeInPages;
 		blockSizeInPixels = blockSizeInHolders*holderSizeInPixels;
-		worldSizeInBlocks.copyFrom(&worldSizeInHolders);
-		worldSizeInBlocks.intDivXYZ(blockSizeInHolders);
-
-		worldSizeInPages.copyFrom(&worldSizeInHolders);
-		worldSizeInPages.multXYZ((float)holderSizeInPages);
-		unitSizeInPixels = (visPageSizeInPixels)/visPageSizeInUnits;
+		worldSizeInBlocks.copyIntDiv(&worldSizeInHolders,blockSizeInHolders);
+		worldSizeInPages.copyIntMult(&worldSizeInHolders,holderSizeInPages);
+		unitSizeInPixels = visPageSizeInPixels/visPageSizeInUnits;
 		
-		//one unit = half meter
+		blockShift = intLogB2(blockSizeInHolders*blockSizeInHolders*blockSizeInHolders);
+
+		holderSizeMB = (2.0f*4.0f*(float)(holderSizeInPixels*holderSizeInPixels))/(1024.0f*1024.0f);
+
+		cout << "\n\n\n\n\n\n";
+
+		cout << "maxChanges: " << maxChanges << "\n";
+		cout << "volGenFBOX: " << volGenFBOX << "\n";
+		cout << "volGenFBOY: " << volGenFBOX*volGenFBOX << "\n";
+		cout << "visPageSizeInPixels: " << visPageSizeInPixels << "\n";
+		cout << "holderSizeInPixels: " << holderSizeInPixels << "\n";
+		cout << "bufferMult: " << bufferMult << "\n";
+		cout << "metersPerLot: " << metersPerLot << "\n";
+		cout << "pixelsPerMeter: " << pixelsPerMeter << "\n";
+		cout << "unitsPerMeter: " << unitsPerMeter << "\n";
+		cout << "blockSizeInLots: " << blockSizeInLots << "\n";
+		cout << "pixelsPerUnit: " << pixelsPerUnit << "\n";
+		cout << "unitsPerLot: " << unitsPerLot << "\n";
+		cout << "pixelsPerLot: " << pixelsPerLot << "\n";
+		cout << "holderSizeInPages: " << holderSizeInPages << "\n";
+		cout << "holdersPerLot: " << holdersPerLot << "\n";
+		cout << "visPageSizeInUnits: " << visPageSizeInUnits << "\n";
+		cout << "unitSizeInPixels: " << unitSizeInPixels << "\n";
 
 
-		maxH = 3;//worldSizeInPages.getIZ();
+		doTraceVecND("worldSizeInBlocks: ", &worldSizeInBlocks);
+		doTraceVecND("worldSizeInLots: ", &worldSizeInLots);
+		doTraceVecND("worldSizeInHolders: ", &worldSizeInHolders);
+		doTraceVecND("worldSizeInPages: ", &worldSizeInPages);
 
+		cout << "\n\n\n\n\n\n";
+
+
+		voroSize = 32;
+		mapFreqs.setFXYZW(1.0f, 32.0f, 128.0f, 256.0f);
+		mapAmps.setFXYZW(0.9f, 0.05f, 0.03f, 0.02f);
+		
 		maxPooledRes = 512;
+
+		maxH = 4;
 		maxW = 4;
 		
 
 
-		cout << "holderSizeInPixels X2 " << holderSizeInPixels*2 << "\n";
+		//cout << "holderSizeInPixels X2 " << holderSizeInPixels*2 << "\n";
 
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
-
-		
+		radiosityOn = false;
+		updateLock = false;
 		traceOn = false;
 		gridOn = 0.0f;
+		fogOn = 0.0f;
+		geomCounter = 0;
+
+		grassSpacing = 1;//8/DEF_SCALE_FACTOR;// *2.0;
+		directPass = 0.0f;
 
 
 		// TODO: examine if this variable is necessary
@@ -279,11 +386,30 @@ public:
 		doTraceVecND("worldSizeInPixels: ", &maxBoundsInPixels);
 
 
-		bufferedPageSizeInUnits = (visPageSizeInUnits) * (bufferMult);
+		
 
 
+		
 		glGenTextures(1,&volID);
 		glGenTextures(1,&volIDLinear);
+		glGenTextures(1,&voroID);
+		glGenTextures(1,&voroIDLinear);
+
+
+		// if (useVolumeTex) {
+		// 	glGenTextures(1,&volGenID);
+		// 	glBindTexture(GL_TEXTURE_3D,volGenID);
+		// 	glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, volGenFBOX, volGenFBOX, volGenFBOX, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		// 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		// 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		// 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+		// 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		// 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		// 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+		// 	glBindTexture(GL_TEXTURE_3D,0);
+		// }
+		
+
 
 		glBindTexture(GL_TEXTURE_3D,volID);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, bufferedPageSizeInUnits, bufferedPageSizeInUnits, bufferedPageSizeInUnits, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
@@ -307,8 +433,7 @@ public:
 
 
 
-		glGenTextures(1,&voroID);
-		glGenTextures(1,&voroIDLinear);
+
 
 		glBindTexture(GL_TEXTURE_3D,voroID);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, voroSize, voroSize, voroSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
@@ -334,8 +459,9 @@ public:
 		createVoroVolume();
 
 
-		
+		geomIDArr = new int[1024];
 		paramArr = new float[4096];
+		matCountArr = new float[256];
 		paramArrMap = new float[4096];
 
 		
@@ -343,7 +469,7 @@ public:
 		
 		showMap = true;
 
-		rootObj = NULL;
+		
 
 		lastImageBuffer.data = NULL;
 		lastImageBuffer.size = 0;
@@ -378,7 +504,7 @@ public:
 		softMode = false;
 		reportPagesDrawn = false;
 		isBare = true;
-		grassHeight = 1.0/128.0;
+		grassWH.setFXYZ(1.0/128.0, 1.0/512.0, 0.0);
 		diskOn = 0.0f;
 		
 
@@ -417,7 +543,7 @@ public:
 
 		grassState = E_GRASS_STATE_OFF;
 
-		activeObject = E_OBJ_NONE;
+		activeObject = E_OBJ_CAMERA;
 
 		extraRad = 0;
 		lastTime = 0.0;
@@ -440,15 +566,20 @@ public:
 
 		programState = E_PS_IN_GAME;
 
-		//
-		cameraPos.setFXYZ(0.0, 0.0, maxBoundsInPixels.getFZ()/2.0);
 
-		lightPos.copyFrom(&cameraPos);
-		fogPos.copyFrom(&cameraPos);
+		for (i = 0; i < E_OBJ_LENGTH; i++) {
+			dynObjects.push_back(new DynObject());
+		}
 
-		lightPos.setFZ(maxBoundsInPixels.getFZ()*0.6f);
-		//lightPos.addXYZ(0.0f, 0.0f, 0.0f);
-		fogPos.addXYZ(-256.0f);
+		dynObjects[E_OBJ_CAMERA]->init(0, 0, maxBoundsInPixels.getIZ()/2, 0, 0, 0, false, false, NULL );
+
+		for (i = E_OBJ_LIGHT0; i < E_OBJ_LENGTH; i++) {
+			dynObjects[i]->init(1024+i*256,1024+i*256,2048, 255,255,255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos) );
+		}
+		
+		dynObjects[E_OBJ_FOG]->init(-512,-512,-512,   0,0,255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos) );
+		dynObjects[E_OBJ_CUTAWAY]->init(1024-256,1024-256,2048,   0,255,0,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos) );
+
 
 	    cameraZoom = 1.0f;
 	    targetZoom = 1.0f;
@@ -463,9 +594,9 @@ public:
 
 	    
 
-	    createSliceList(visPageSizeInPixels);
+	    //createSliceList(visPageSizeInPixels);
 		createVTList();
-		createGrassList();
+		createGrassList(grassSpacing);
 
 
 		//// GL WIDGET START ////
@@ -477,8 +608,8 @@ public:
 		mapInvalid = true;
 		notQuit = true;
 		timerNotSet = true;
-		screenWidth = 400;
-		screenHeight = 300;
+		screenWidth = defaultWinW;
+		screenHeight = defaultWinH;
 		mouseLeftDown = mouseRightDown = false;
 		mouseX = mouseY = 0;
 		myDelta = 0.0f;
@@ -506,24 +637,46 @@ public:
 	    fboStrings.push_back("palFBO");
 	    fboStrings.push_back("worldSpaceFBO");
 
-	    //fboStrings.push_back("pagesFBOUnfiltered");
 	    fboStrings.push_back("pagesFBO");
+	    fboStrings.push_back("waterFBO");
 
 	    fboStrings.push_back("grassFBO");
 	    fboStrings.push_back("geomFBO");
 	    fboStrings.push_back("combineFBO");
-	    fboStrings.push_back("resultFBO");
-	    fboStrings.push_back("resultFBO2");
-	    fboStrings.push_back("volGenFBO");
+	    fboStrings.push_back("combineFBOWithWater");
+	    fboStrings.push_back("combineFBOSpare");
+	    fboStrings.push_back("noiseFBO");
+	    fboStrings.push_back("resultFBO0");
+	    fboStrings.push_back("resultFBO1");
+
+	    fboStrings.push_back("volGenFBO128");
+	    fboStrings.push_back("volGenFBO64");
+	    fboStrings.push_back("volGenFBO32");
+	    fboStrings.push_back("volGenFBO16");
+
+	    fboStrings.push_back("waveFBO");
+
+	    fboStrings.push_back("swapFBO0");
+	    fboStrings.push_back("swapFBO1");
+	    fboStrings.push_back("swapFBOLin0");
+	    fboStrings.push_back("swapFBOLin1");
+
+	    fboStrings.push_back("swapFBOBLin0");
+	    fboStrings.push_back("swapFBOBLin1");
+
+	    fboStrings.push_back("swapFBOLinHalf0");
+	    fboStrings.push_back("swapFBOLinHalf1");
+
+	    //fboStrings.push_back("swapFBO32Lin0");
+	    //fboStrings.push_back("swapFBO32Lin1");
+
+	    //fboStrings.push_back("terrainFBO");
 
 	    fboStrings.push_back("cityFBO");
 	    fboStrings.push_back("hmFBO");
 	    fboStrings.push_back("hmFBOLinear");
 	    fboStrings.push_back("simplexFBO");
-	    fboStrings.push_back("swapFBO0");
-	    fboStrings.push_back("swapFBO1");
-
-
+	    
 
 
 	    shaderStrings.push_back("RoadShader");
@@ -532,19 +685,32 @@ public:
 	    shaderStrings.push_back("TerrainMix");
 	    shaderStrings.push_back("Simplex2D");
 	    shaderStrings.push_back("TopoShader");
+	    shaderStrings.push_back("WaveHeightShader");
 	    shaderStrings.push_back("WaterShader");
+	    shaderStrings.push_back("WaterShaderCombine");
 	    shaderStrings.push_back("CopyShader");
+	    shaderStrings.push_back("CopyShader2");
+	    shaderStrings.push_back("NoiseShader");
 	    shaderStrings.push_back("MapBorderShader");
 	    shaderStrings.push_back("WorldSpaceShader");
 	    shaderStrings.push_back("BlitShader");
-	    shaderStrings.push_back("LightingShader");
+	    shaderStrings.push_back("PreLightingShader");
+	    shaderStrings.push_back("HBlurShader");
+	    shaderStrings.push_back("VBlurShader");
+	    shaderStrings.push_back("DownScaleShader");
+	    shaderStrings.push_back("RadiosityShader");
+	    shaderStrings.push_back("RadiosityCombineShader");
+	    shaderStrings.push_back("FogShader");
 	    shaderStrings.push_back("GeomShader");
+	    shaderStrings.push_back("PreGrassShader");
 	    shaderStrings.push_back("GrassShader");
 	    shaderStrings.push_back("CombineShader");
 	    shaderStrings.push_back("GenerateVolume");
-	    shaderStrings.push_back("GenerateVolumeBare");
 	    shaderStrings.push_back("RenderVolume");
-	    shaderStrings.push_back("RenderVolumeSlice");
+	    //shaderStrings.push_back("RenderVolumeSlice");
+	    //shaderStrings.push_back("LightingShader");
+	    //shaderStrings.push_back("OutlineShader");
+	    //shaderStrings.push_back("WaterShaderNormals");
 
 	    
 
@@ -556,7 +722,8 @@ public:
 	    shaderTextureIDs.push_back("Texture5");
 	    shaderTextureIDs.push_back("Texture6");
 	    shaderTextureIDs.push_back("Texture7");
-
+	    shaderTextureIDs.push_back("Texture8");
+	    shaderTextureIDs.push_back("Texture9");
 
 	    //setupLookups();
 
@@ -578,21 +745,78 @@ public:
 	    fboMap["palFBO"]->init(1, palWidth, palHeight, 1, false, GL_LINEAR);
 
 	    fboMap["pagesFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+	    fboMap["waterFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["grassFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 	    fboMap["geomFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, true);
 	    fboMap["combineFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-	    fboMap["resultFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-	    fboMap["resultFBO2"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-	    fboMap["volGenFBO"]->init(1, volGenFBOSize, volGenFBOSize, 1, false, GL_NEAREST);
+	    fboMap["combineFBOWithWater"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+	    fboMap["combineFBOSpare"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+	    fboMap["noiseFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST, GL_REPEAT);
+	    fboMap["resultFBO0"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+	    fboMap["resultFBO1"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+	    //fboMap["resultFBO2"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+	    
+	    
 
+	    fboMap["volGenFBO16"]->init(1, 16, 16*16, 1, false);
+	    fboMap["volGenFBO32"]->init(1, 32, 32*32, 1, false);
+	    fboMap["volGenFBO64"]->init(1, 64, 64*64, 1, false);
+	    fboMap["volGenFBO128"]->init(1, 128, 128*128, 1, false);
+
+	    fboMap["waveFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
+
+	    fboMap["swapFBOLin0"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
+	   	fboMap["swapFBOLin1"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
+
+	   	fboMap["swapFBOBLin0"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
+	   	fboMap["swapFBOBLin1"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
+
+	   	fboMap["swapFBOLinHalf0"]->init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 1, false, GL_LINEAR);
+	   	fboMap["swapFBOLinHalf1"]->init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 1, false, GL_LINEAR);
+
+	   	//fboMap["swapFBO32Lin0"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_LINEAR);
+	   	//fboMap["swapFBO32Lin1"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_LINEAR);
 
 	    
+	   	//fboMap["terrainFBO"]->init(1, newPitch*iNodeDivsPerLot, newPitch*iNodeDivsPerLot, 2, false, GL_NEAREST, GL_REPEAT);
+
 	    fboMap["cityFBO"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 	    fboMap["hmFBO"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 	    fboMap["hmFBOLinear"]->init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
 	    fboMap["simplexFBO"]->init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
 	    fboMap["swapFBO0"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 	    fboMap["swapFBO1"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
+
+
+
+	    
+	    //fboMap["terrainFBO"]->init(1, newPitch*iNodeDivsPerLot, newPitch*iNodeDivsPerLot, 2, false, GL_NEAREST, GL_REPEAT);
+	    /*
+		(	GLenum target,
+		 	GLint level,
+		 	GLint internalFormat,
+		 	GLsizei width,
+		 	GLsizei height,
+		 	GLint border,
+		 	GLenum format,
+		 	GLenum type,
+		 	const GLvoid * data);
+
+	    */
+	    glBindTexture(GL_TEXTURE_2D,terrainID);
+	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, newPitch*iNodeDivsPerLot, newPitch*iNodeDivsPerLot, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, 0);
+	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	    // glClearColor(0.0,0.0,0.0,0.0);
+	    // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	    glBindTexture(GL_TEXTURE_2D,0);
+
+	    
+
 
 
 
@@ -614,8 +838,7 @@ public:
 	}
 
 
-
-
+	
 	
 
 
@@ -771,8 +994,8 @@ public:
 		int oidSize =  orderedIds.size();
 		int oidSizeM1 =  oidSize-1;
 
-		int id0;
-		int id1;
+		intPair id0;
+		intPair id1;
 
 		int tempId;
 
@@ -790,28 +1013,28 @@ public:
 				id0 = orderedIds[i];
 				id1 = orderedIds[j];
 
-				if (id0 == -1 || id1 == -1) {
+				if ( pairIsNeg(id0) || pairIsNeg(id1)) {
 
 				}
 				else {
 
-					gp0 = gw->getHolderAtIndex(id0);
-					gp1 = gw->getHolderAtIndex(id1);
+					gp0 = gw->getHolderAtID(id0);
+					gp1 = gw->getHolderAtID(id1);
 
 					if (gp0 == NULL || gp1 == NULL) {
 
 					}
 					else {
-						tot0 = gp0->trueOffsetInHolders.getFZ();
-						tot1 = gp1->trueOffsetInHolders.getFZ();
+						tot0 = gp0->offsetInHolders.getFZ();
+						tot1 = gp1->offsetInHolders.getFZ();
 
 						if (tot0 == tot1) {
-							tot0 = gp0->trueOffsetInHolders.getFY();
-							tot1 = gp1->trueOffsetInHolders.getFY();
+							tot0 = gp0->offsetInHolders.getFY();
+							tot1 = gp1->offsetInHolders.getFY();
 
 							if (tot0 == tot1) {
-								tot1 = gp1->trueOffsetInHolders.getFX();
-								tot0 = gp0->trueOffsetInHolders.getFX();
+								tot1 = gp1->offsetInHolders.getFX();
+								tot0 = gp0->offsetInHolders.getFX();
 
 								if (tot0 == tot1) {
 									doSwap = false;
@@ -857,7 +1080,7 @@ public:
 		GamePageHolder* bestGP = NULL;
 
 		for (i = 0; i < holderPoolItems.size(); i++) {
-			gp = gw->getHolderAtIndex(holderPoolItems[i]->usedByHolderId);
+			gp = gw->getHolderAtID(holderPoolItems[i]->usedByHolderId);
 
 			if (gp == NULL) {
 
@@ -871,17 +1094,17 @@ public:
 				tempVec2.copyFrom(&(gw->camHolderPos));
 				tempVec2.addXYZ( -worldSizeInHolders.getIX(), -worldSizeInHolders.getIY(), 0.0 );
 
-				testDis1 = gp->trueOffsetInHolders.distance( &(gw->camHolderPos) );
-				testDis2 = gp->trueOffsetInHolders.distance( &(tempVec) );
-				testDis3 = gp->trueOffsetInHolders.distance( &(tempVec2) );
+				testDis1 = gp->offsetInHolders.distance( &(gw->camHolderPos) );
+				testDis2 = gp->offsetInHolders.distance( &(tempVec) );
+				testDis3 = gp->offsetInHolders.distance( &(tempVec2) );
 
 				testDis = min(min(testDis1,testDis2),testDis3);
 
 				*/
 
 				tempVec.copyFrom(&(gw->camHolderPos));
-				gp->trueOffsetInHolders.wrapDistance(&tempVec,worldSizeInHolders.getIX());
-				testDis = gp->trueOffsetInHolders.distance( &(tempVec) );
+				gp->offsetInHolders.wrapDistance(&tempVec,worldSizeInHolders.getIX());
+				testDis = gp->offsetInHolders.distance( &(tempVec) );
 
 				if (testDis > longestDis) {
 					longestDis = testDis;
@@ -891,17 +1114,20 @@ public:
 			}
 		}
 
-		//doTraceVecND("bestGP->trueOffsetInHolders", &(bestGP->trueOffsetInHolders) );
+		//doTraceVecND("bestGP->offsetInHolders", &(bestGP->offsetInHolders) );
 		//doTraceVecND("gw->camHolderPos", &(gw->camHolderPos) );
 
 		return longestInd;
 	}
 
-	int requestPoolId(int requestingHolderId) {
+	
+
+	int requestPoolId(int blockID, int holderID) { //int requestingHolderId
 
 		
 		int holderToFreeId;
-		int usedByHolderId;
+		intPair usedByHolderId;
+		
 		int i;
 
 		
@@ -911,7 +1137,9 @@ public:
 
 			holderToFreeId = poolItemsCreated;
 			holderPoolIds.push_front(holderToFreeId);
-			orderedIds.push_back(requestingHolderId);
+			orderedIds.push_back(intPair());
+			orderedIds.back().v0 = blockID;
+			orderedIds.back().v1 = holderID;
 			poolItemsCreated++;
 
 		}
@@ -921,14 +1149,14 @@ public:
 
 			GamePageHolder* consumingHolder;
 
-			if (usedByHolderId == -1) {
+			if ( pairIsNeg(usedByHolderId) ) {
 				// this pooledItem is already free 
 
 			}
 			else {
 				// free this pooledItem from the holder that is consuming it and give it to the requesting holder
 
-				consumingHolder = gw->getHolderAtIndex(usedByHolderId);
+				consumingHolder = gw->getHolderAtID(usedByHolderId);
 
 				if (consumingHolder == NULL) {
 					// holder was deleted already
@@ -943,8 +1171,9 @@ public:
 
 
 			for (i = 0; i < orderedIds.size(); i++) {
-				if (orderedIds[i] == usedByHolderId) {
-					orderedIds[i] = requestingHolderId;
+				if ( pairIsEqual(orderedIds[i],usedByHolderId) ) {
+					orderedIds[i].v0 = blockID;
+					orderedIds[i].v1 = holderID;
 					break;
 				}
 			}
@@ -955,7 +1184,8 @@ public:
 		}
 
 
-		holderPoolItems[holderToFreeId]->usedByHolderId = requestingHolderId;
+		holderPoolItems[holderToFreeId]->usedByHolderId.v0 = blockID;
+		holderPoolItems[holderToFreeId]->usedByHolderId.v1 = holderID;
 
 		reorderIds();
 
@@ -1054,7 +1284,7 @@ public:
 	}
 
 
-	void createGrassList() {
+	void createGrassList(int spacing) {
 
 		int i;
 		int j;
@@ -1065,10 +1295,9 @@ public:
 		float tcx;
 		float tcy;
 
-		int spacing = 1;
 
-		int iMax = 512;
-		int jMax = 512;
+		int iMax = bufferDim.getIX()/spacing;
+		int jMax = bufferDim.getIY()/spacing;
 
 		float fiMax = (float)iMax;
 		float fjMax = (float)jMax;
@@ -1086,11 +1315,11 @@ public:
 
 		
 
-		for (j = jMax-1; j >= 0; j -= spacing) {
-			fj = ((float)(j*2-jMax) + 1.0f)/fjMax;
+		for (j = jMax-1; j >= 0; j -= 1) {
+			fj = ((float)(j*2-jMax) + 1.0f)*8.0f/fjMax;
 			tcy = fj;//(fj + 1.0f)/2.0f;
-			for (i = 0; i < iMax; i += spacing) {
-				fi = ((float)(i*2-iMax) + 1.0f)/fiMax;
+			for (i = 0; i < iMax; i += 1) {
+				fi = ((float)(i*2-iMax) + 1.0f)*8.0f/fiMax;
 				tcx = fi;//(fi + 1.0f)/2.0f;
 			
 
@@ -1129,6 +1358,56 @@ public:
 		
 	}
 
+	void drawCrossHairs(FIVector4 originVec, float radius) {
+		FIVector4 minV;
+		FIVector4 maxV;
+
+		float xm;
+		float ym;
+		float zm;
+
+		float maxRad = 4096.0f;
+
+		int i;
+		for (i = 0; i < 3; i++) {
+
+			switch (i) {
+				case 0:
+					xm = maxRad;
+					ym = radius;
+					zm = radius;
+				break;
+				case 1:
+					xm = radius;
+					ym = maxRad;
+					zm = radius;
+				break;
+				case 2:
+					xm = radius;
+					ym = radius;
+					zm = maxRad;
+				break;
+			}
+
+			minV.setFXYZ(
+				originVec.getFX()-xm,
+				originVec.getFY()-ym,
+				originVec.getFZ()-zm
+			);
+
+			maxV.setFXYZ(
+				originVec.getFX()+xm,
+				originVec.getFY()+ym,
+				originVec.getFZ()+zm
+			);
+
+			drawBox(&minV,&maxV);
+		}
+
+		
+	}
+
+
 	void drawCubeCentered(FIVector4 originVec, float radius) {
 		FIVector4 minV;
 		FIVector4 maxV;
@@ -1145,19 +1424,39 @@ public:
 			originVec.getFZ()+radius
 		);
 
-		drawBox(minV,maxV);
+		drawBox(&minV,&maxV);
 	}
 
-    void drawBox(FIVector4 minVec, FIVector4 maxVec) {
+	void drawBoxUp(FIVector4 originVec, float radiusX, float radiusY, float diamZ) {
+		FIVector4 minV;
+		FIVector4 maxV;
+
+		minV.setFXYZ(
+			originVec.getFX()-radiusX,
+			originVec.getFY()-radiusY,
+			originVec.getFZ()
+		);
+
+		maxV.setFXYZ(
+			originVec.getFX()+radiusX,
+			originVec.getFY()+radiusY,
+			originVec.getFZ()+diamZ
+		);
+
+		drawBox(&minV,&maxV);
+	}
 
 
-		float minX = minVec.getFX();
-		float minY = minVec.getFY();
-		float minZ = minVec.getFZ();
+    void drawBox(FIVector4* minVec, FIVector4* maxVec) {
 
-		float maxX = maxVec.getFX();
-		float maxY = maxVec.getFY();
-		float maxZ = maxVec.getFZ();
+
+		float minX = minVec->getFX();
+		float minY = minVec->getFY();
+		float minZ = minVec->getFZ();
+
+		float maxX = maxVec->getFX();
+		float maxY = maxVec->getFY();
+		float maxZ = maxVec->getFZ();
 
 
     	glBegin(GL_QUADS);
@@ -1228,40 +1527,40 @@ public:
 
 
 
-    inline void sampleAtPoint(FIVector4* point, FIVector4* texc) {
+    // inline void sampleAtPoint(FIVector4* point, FIVector4* texc) {
 
-    	//vec3 point;
-        //vec2 texc;
+    // 	//vec3 point;
+    //     //vec2 texc;
 
-    	int bmWidth = slicesPerPitch*slicesPerPitch*slicesPerPitch - 1;
-        int squareWidth = slicesPerPitch*slicesPerPitch;
-        int squareWidthM1 = squareWidth-1;
+    // 	int bmWidth = slicesPerPitch*slicesPerPitch*slicesPerPitch - 1;
+    //     int squareWidth = slicesPerPitch*slicesPerPitch;
+    //     int squareWidthM1 = squareWidth-1;
 
-        FIVector4 newPoint;
-        newPoint.copyFrom(point);
-        newPoint.multXYZ(1.0f/bufferMult);
-        newPoint.addXYZ( (1.0f-1.0f/bufferMult)/2.0f );
+    //     FIVector4 newPoint;
+    //     newPoint.copyFrom(point);
+    //     newPoint.multXYZ(1.0f/bufferMult);
+    //     newPoint.addXYZ( (1.0f-1.0f/bufferMult)/2.0f );
         
 
 
-        FIVector4 curFace;
-        curFace.copyFrom(&newPoint);
-        curFace.multXYZ( squareWidthM1 );
+    //     FIVector4 curFace;
+    //     curFace.copyFrom(&newPoint);
+    //     curFace.multXYZ( squareWidthM1 );
 
 
-        int bval = curFace.getIZ();
-        int xval = bval%slicesPerPitch;
-        int yval = bval/slicesPerPitch;
+    //     int bval = curFace.getIZ();
+    //     int xval = bval%slicesPerPitch;
+    //     int yval = bval/slicesPerPitch;
         
-        texc->setIX( (curFace.getIX() + xval*squareWidth ) );
-        texc->setIY( (curFace.getIY() + yval*squareWidth ) );
+    //     texc->setIX( (curFace.getIX() + xval*squareWidth ) );
+    //     texc->setIY( (curFace.getIY() + yval*squareWidth ) );
         
-        texc->multXYZ(1.0f / ((float)bmWidth) );
+    //     texc->multXYZ(1.0f / ((float)bmWidth) );
         
         
-        //return texc.xy
+    //     //return texc.xy
         
-    }
+    // }
 
     // inline void sampleAtPoint(FIVector4* point, FIVector4* texc) {
 
@@ -1299,88 +1598,88 @@ public:
         
     // }
 
-    void createSliceList(int numSlices) {
+   //  void createSliceList(int numSlices) {
 
-    	int i;
+   //  	int i;
 
-    	float fx1 = -1.0f;
-    	float fy1 = -1.0f;
-    	float fx2 = 1.0f;
-    	float fy2 = 1.0f;
+   //  	float fx1 = -1.0f;
+   //  	float fy1 = -1.0f;
+   //  	float fx2 = 1.0f;
+   //  	float fy2 = 1.0f;
     	
-    	FIVector4 vec3In;
-    	FIVector4 vec2Out;
+   //  	FIVector4 vec3In;
+   //  	FIVector4 vec2Out;
 
 
-    	float centerX = (fx1 + fx2)/2.0f;
-    	float centerY = (fy1 + fy2)/2.0f;
+   //  	float centerX = (fx1 + fx2)/2.0f;
+   //  	float centerY = (fy1 + fy2)/2.0f;
 
-    	float fy25 = fy1*0.75f + fy2*0.25f;
-    	float fy75 = fy1*0.25f + fy2*0.75f;
+   //  	float fy25 = fy1*0.75f + fy2*0.25f;
+   //  	float fy75 = fy1*0.25f + fy2*0.75f;
 
-    	float x[4];
-    	float y[4];
-
-
-    	sliceTris = glGenLists(1);
-
-    	glNewList(sliceTris, GL_COMPILE);
-    	glBegin(GL_QUADS);
-
-    	float zval;
-    	float lerp;
-    	float lerpi;
-    	float fNumSlices = ((float)numSlices) - 1.0f;
-
-    	for (i = 0; i < numSlices; i++) {
-    		lerp = ((float)i)/fNumSlices;
-    		lerpi = 1.0f-lerp;
-
-    		zval = lerp*0.5 + 0.25;
-
-			x[0] = fx1;
-			y[0] = fy75*lerpi + fy25*lerp;
-
-			x[1] = centerX;
-			y[1] = fy2*lerpi + centerY*lerp;
-
-			x[2] = fx2;
-			y[2] = fy75*lerpi + fy25*lerp;
-
-			x[3] = centerX;
-			y[3] = centerY*lerpi + fy1*lerp;
-
-			vec3In.setFXYZ(0.0f,1.0f,lerpi);
-			sampleAtPoint(&vec3In,&vec2Out);
-			glMultiTexCoord3f(GL_TEXTURE0, vec3In.getFX(), vec3In.getFY(), vec3In.getFZ());
-    		glMultiTexCoord3f(GL_TEXTURE1, vec2Out.getFX(), vec2Out.getFY(), 0.0f);
-    		glVertex3f(x[0], y[0], zval);
-
-    		vec3In.setFXYZ(0.0f,0.0f,lerpi);
-    		sampleAtPoint(&vec3In,&vec2Out);
-			glMultiTexCoord3f(GL_TEXTURE0, vec3In.getFX(), vec3In.getFY(), vec3In.getFZ());
-    		glMultiTexCoord3f(GL_TEXTURE1, vec2Out.getFX(), vec2Out.getFY(), 0.0f);
-    		glVertex3f(x[1], y[1], zval);
-
-    		vec3In.setFXYZ(1.0f,0.0f,lerpi);
-    		sampleAtPoint(&vec3In,&vec2Out);
-			glMultiTexCoord3f(GL_TEXTURE0, vec3In.getFX(), vec3In.getFY(), vec3In.getFZ());
-    		glMultiTexCoord3f(GL_TEXTURE1, vec2Out.getFX(), vec2Out.getFY(), 0.0f);
-    		glVertex3f(x[2], y[2], zval);
-
-    		vec3In.setFXYZ(1.0f,1.0f,lerpi);
-    		sampleAtPoint(&vec3In,&vec2Out);
-			glMultiTexCoord3f(GL_TEXTURE0, vec3In.getFX(), vec3In.getFY(), vec3In.getFZ());
-    		glMultiTexCoord3f(GL_TEXTURE1, vec2Out.getFX(), vec2Out.getFY(), 0.0f);
-    		glVertex3f(x[3], y[3], zval);
-    	}
+   //  	float x[4];
+   //  	float y[4];
 
 
+   //  	sliceTris = glGenLists(1);
 
-    	glEnd();
-    	glEndList();
+   //  	glNewList(sliceTris, GL_COMPILE);
+   //  	glBegin(GL_QUADS);
 
-    }
+   //  	float zval;
+   //  	float lerp;
+   //  	float lerpi;
+   //  	float fNumSlices = ((float)numSlices) - 1.0f;
+
+   //  	for (i = 0; i < numSlices; i++) {
+   //  		lerp = ((float)i)/fNumSlices;
+   //  		lerpi = 1.0f-lerp;
+
+   //  		zval = lerp*0.5 + 0.25;
+
+			// x[0] = fx1;
+			// y[0] = fy75*lerpi + fy25*lerp;
+
+			// x[1] = centerX;
+			// y[1] = fy2*lerpi + centerY*lerp;
+
+			// x[2] = fx2;
+			// y[2] = fy75*lerpi + fy25*lerp;
+
+			// x[3] = centerX;
+			// y[3] = centerY*lerpi + fy1*lerp;
+
+			// vec3In.setFXYZ(0.0f,1.0f,lerpi);
+			// sampleAtPoint(&vec3In,&vec2Out);
+			// glMultiTexCoord3f(GL_TEXTURE0, vec3In.getFX(), vec3In.getFY(), vec3In.getFZ());
+   //  		glMultiTexCoord3f(GL_TEXTURE1, vec2Out.getFX(), vec2Out.getFY(), 0.0f);
+   //  		glVertex3f(x[0], y[0], zval);
+
+   //  		vec3In.setFXYZ(0.0f,0.0f,lerpi);
+   //  		sampleAtPoint(&vec3In,&vec2Out);
+			// glMultiTexCoord3f(GL_TEXTURE0, vec3In.getFX(), vec3In.getFY(), vec3In.getFZ());
+   //  		glMultiTexCoord3f(GL_TEXTURE1, vec2Out.getFX(), vec2Out.getFY(), 0.0f);
+   //  		glVertex3f(x[1], y[1], zval);
+
+   //  		vec3In.setFXYZ(1.0f,0.0f,lerpi);
+   //  		sampleAtPoint(&vec3In,&vec2Out);
+			// glMultiTexCoord3f(GL_TEXTURE0, vec3In.getFX(), vec3In.getFY(), vec3In.getFZ());
+   //  		glMultiTexCoord3f(GL_TEXTURE1, vec2Out.getFX(), vec2Out.getFY(), 0.0f);
+   //  		glVertex3f(x[2], y[2], zval);
+
+   //  		vec3In.setFXYZ(1.0f,1.0f,lerpi);
+   //  		sampleAtPoint(&vec3In,&vec2Out);
+			// glMultiTexCoord3f(GL_TEXTURE0, vec3In.getFX(), vec3In.getFY(), vec3In.getFZ());
+   //  		glMultiTexCoord3f(GL_TEXTURE1, vec2Out.getFX(), vec2Out.getFY(), 0.0f);
+   //  		glVertex3f(x[3], y[3], zval);
+   //  	}
+
+
+
+   //  	glEnd();
+   //  	glEndList();
+
+   //  }
 
 	void createVTList() {
 
@@ -1619,6 +1918,10 @@ public:
 	    
 	}
 
+	FBOSet* getFBOSet (string fboName) {
+		return fboMap[fboName];
+	}
+
 	FBOWrapper* getFBOWrapper (string fboName, int offset) {
 		FBOSet* fbos = fboMap[fboName];
 		return fbos->getFBOWrapper(offset);
@@ -1627,6 +1930,16 @@ public:
 
 	void copyFBO(string src, string dest) {
 		bindShader("CopyShader");
+		bindFBO(dest);
+		sampleFBO(src, 0);
+		drawFSQuad(1.0f);
+		unsampleFBO(src, 0);
+		unbindFBO();
+		unbindShader();
+	}
+
+	void copyFBO2(string src, string dest) {
+		bindShader("CopyShader2");
 		bindFBO(dest);
 		sampleFBO(src, 0);
 		drawFSQuad(1.0f);
@@ -1675,53 +1988,59 @@ public:
 
 	    if (shadersAreLoaded) {
 	        curShader = shaderName;
-	        shaderMap[curShader]->bind();
+	        curShaderPtr = shaderMap[curShader];
+	        curShaderPtr->bind();
 	    }
 	    
 	}
 
 	void unbindShader() {
 	    if (shadersAreLoaded) {
-	        shaderMap[curShader]->unbind();
+	        curShaderPtr->unbind();
 	    }
-	    
 	}
 
 	void setShaderArrayfVec3(string paramName, float* x, int count) {
-		shaderMap[curShader]->setShaderArrayfVec3(paramName, x, count);
+		curShaderPtr->setShaderArrayfVec3(paramName, x, count);
+	}
+	void setShaderArrayfVec4(string paramName, float* x, int count) {
+		curShaderPtr->setShaderArrayfVec4(paramName, x, count);
 	}
 
 	void setShaderArray(string paramName, float* x, int count) {
-		shaderMap[curShader]->setShaderArray(paramName, x, count);
+		curShaderPtr->setShaderArray(paramName, x, count);
 	}
 	void setShaderFloat(string paramName, float x) {
-		shaderMap[curShader]->setShaderFloat(paramName, x);
+		curShaderPtr->setShaderFloat(paramName, x);
+	}
+	void setShaderInt(string paramName, int x) {
+		curShaderPtr->setShaderInt(paramName, x);
 	}
 	void setShaderfVec2(string paramName, FIVector4* v) {
-		shaderMap[curShader]->setShaderfVec2(paramName, v);
+		curShaderPtr->setShaderfVec2(paramName, v);
 	}
 	void setShaderVec2(string paramName, float x, float y) {
-	    shaderMap[curShader]->setShaderVec2(paramName, x, y);
+	    curShaderPtr->setShaderVec2(paramName, x, y);
 	}
 	void setShaderVec3(string paramName, float x, float y, float z) {
-	    shaderMap[curShader]->setShaderVec3(paramName, x, y, z);
+	    curShaderPtr->setShaderVec3(paramName, x, y, z);
 	}
 	void setShaderfVec3(string paramName, FIVector4* v) {
-	    shaderMap[curShader]->setShaderfVec3(paramName, v);
+	    curShaderPtr->setShaderfVec3(paramName, v);
 	}
 
 	void setShaderVec4(string paramName, float x, float y, float z, float w) {
-	    shaderMap[curShader]->setShaderVec4(paramName, x, y, z, w);
+	    curShaderPtr->setShaderVec4(paramName, x, y, z, w);
 	}
 	void setShaderfVec4(string paramName, FIVector4* v) {
-	    shaderMap[curShader]->setShaderfVec4(paramName, v);
+	    curShaderPtr->setShaderfVec4(paramName, v);
 	}
 
 	void setShaderTexture(int multitexNumber, uint texID) {
 	    if (shadersAreLoaded) {
 	        glActiveTexture(GL_TEXTURE0 + multitexNumber);
 	        glBindTexture(GL_TEXTURE_2D, texID);
-	        shaderMap[curShader]->setShaderInt(shaderTextureIDs[multitexNumber] ,multitexNumber);
+	        curShaderPtr->setShaderInt(shaderTextureIDs[multitexNumber] ,multitexNumber);
 	    }
 	}
 
@@ -1729,7 +2048,7 @@ public:
 	    if (shadersAreLoaded) {
 	        glActiveTexture(GL_TEXTURE0 + multitexNumber);
 	        glBindTexture(GL_TEXTURE_3D, texID);
-	        shaderMap[curShader]->setShaderInt(shaderTextureIDs[multitexNumber],multitexNumber);
+	        curShaderPtr->setShaderInt(shaderTextureIDs[multitexNumber],multitexNumber);
 	    }
 	}
 
@@ -1833,12 +2152,24 @@ public:
 	    
 	}
 
-	float getHeightAtPixelPos(float x, float y) {
+	float getSeaLevelInPixels() {
+		return ( ((float)gw->seaLevel)/255.0)*heightmapMax;
+	}
+
+	float getCityHeight() {
+		return ( ((float)gw->seaLevel + 20.0)/255.0)*heightmapMax;
+	}
+
+	float getHeightAtPixelPos(float x, float y, bool ignoreCity = false) {
 		FBOWrapper* fbow;
 		float xc;
 		float yc;
 
 		int channel = 0;
+
+		float testHeight;
+		float testHeight0;
+		float testHeight1;
 
 		if (mapInvalid) {
 
@@ -1851,13 +2182,33 @@ public:
 			xc = (x / maxBoundsInPixels.getFX()) * ((float)fbow->width);
 			yc = (y / maxBoundsInPixels.getFY()) * ((float)fbow->height);
 
-			
-			return (
+			testHeight0 =
 				fbow->getPixelAtLinear((xc*mapFreqs.getFX()), (yc*mapFreqs.getFX()), channel)*mapAmps.getFX() +
 				fbow->getPixelAtLinear((xc*mapFreqs.getFY()), (yc*mapFreqs.getFY()), channel)*mapAmps.getFY() +
 				fbow->getPixelAtLinear((xc*mapFreqs.getFZ()), (yc*mapFreqs.getFZ()), channel)*mapAmps.getFZ() +
-				fbow->getPixelAtLinear((xc*mapFreqs.getFW()), (yc*mapFreqs.getFW()), channel)*mapAmps.getFW()
-			) * heightmapMax;
+				fbow->getPixelAtLinear((xc*mapFreqs.getFW()), (yc*mapFreqs.getFW()), channel)*mapAmps.getFW();
+
+
+			return testHeight0 * heightmapMax;
+
+
+			// if (ignoreCity) {
+			// 	return testHeight0 * heightmapMax;
+			// }
+
+			// testHeight1 = ((float)gw->seaLevel + 20.0)/255.0;
+
+
+
+			// if ( fbow->getPixelAtLinear((xc*mapFreqs.getFX()), (yc*mapFreqs.getFX()), gw->blockChannel) > 0.0f) {
+			// 	testHeight = testHeight1;
+			// }
+			// else {
+			// 	testHeight = testHeight0;
+			// }
+			
+			
+			// return testHeight * heightmapMax;
 
 		}
 
@@ -1867,35 +2218,39 @@ public:
 
 	void moveCamera(FIVector4 *modXYZ) {
 		wsBufferInvalid = true;
-		cameraPos.addXYZRef(modXYZ);
 
-		//float heightAtPoint = getHeightAtPixelPos(cameraPos.getFX(), cameraPos.getFY());
-		//cameraPos.setFZ( (heightAtPoint + cameraPos.getFZ())/2.0 );
+		int i;
+
+		FIVector4* cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
+
+		cameraPos->addXYZRef(modXYZ);
+
 
 		modXYZ->setFZ(0.0f);
 
-		if (cameraPos.getFX() > maxBoundsInPixels.getFX()/2.0) {
-			cameraPos.setFX( cameraPos.getFX() - maxBoundsInPixels.getFX() );
+		if (cameraPos->getFX() > maxBoundsInPixels.getFX()/2.0) {
+			cameraPos->setFX( cameraPos->getFX() - maxBoundsInPixels.getFX() );
 		}
-		if (cameraPos.getFX() < -maxBoundsInPixels.getFX()/2.0) {
-			cameraPos.setFX( cameraPos.getFX() + maxBoundsInPixels.getFX() );
+		if (cameraPos->getFX() < -maxBoundsInPixels.getFX()/2.0) {
+			cameraPos->setFX( cameraPos->getFX() + maxBoundsInPixels.getFX() );
 		}
-		if (cameraPos.getFY() > maxBoundsInPixels.getFY()/2.0) {
-			cameraPos.setFY( cameraPos.getFY() - maxBoundsInPixels.getFY() );
+		if (cameraPos->getFY() > maxBoundsInPixels.getFY()/2.0) {
+			cameraPos->setFY( cameraPos->getFY() - maxBoundsInPixels.getFY() );
 		}
-		if (cameraPos.getFY() < -maxBoundsInPixels.getFY()/2.0) {
-			cameraPos.setFY( cameraPos.getFY() + maxBoundsInPixels.getFY() );
+		if (cameraPos->getFY() < -maxBoundsInPixels.getFY()/2.0) {
+			cameraPos->setFY( cameraPos->getFY() + maxBoundsInPixels.getFY() );
 		}
 		
 
-		//lightPos.addXYZRef(modXYZ, 1.0f);
-		//fogPos.addXYZRef(modXYZ, 1.0f);
 		
-		lightPos.copyFrom(&cameraPos);
-		fogPos.copyFrom(&cameraPos);
+		for (i = 1; i < E_OBJ_LENGTH; i++) {
 
-		lightPos.addXYZ(1024.0f);
-		fogPos.addXYZ(-2048.0f,-2048.0f, -256.0f);
+			if (dynObjects[i]->isRelative) {
+				dynObjects[i]->pos.copyFrom(cameraPos);
+				dynObjects[i]->pos.addXYZRef( &(dynObjects[i]->posRel) );
+			}
+			
+		}
 
 		isPanning = true;
 	}
@@ -1905,8 +2260,11 @@ public:
 
 		
 
-		float dxZoom = dx/zoom;
-		float dyZoom = dy/zoom;
+		float dxZoom = dx*2.0/zoom;
+		float dyZoom = dy*2.0/zoom;
+
+		float grassWidth;
+		float grassHeight;
 
 		bool doDefault = false;
 
@@ -1950,11 +2308,23 @@ public:
 				}
 			}
 			else {
+				grassWidth = grassWH.getFX();
+				grassHeight = grassWH.getFY();
+				
+
 				grassHeight -= modXYZ.getFZ()/10000.0f;
+				grassWidth -= modXYZ.getFX()/10000.0f;
+
 
 				if (grassHeight < 0.0f) {
 					grassHeight = 0.0f;
 				}
+				if (grassWidth < 0.0f) {
+					grassWidth = 0.0f;
+				}
+
+				grassWH.setFXYZ(grassWidth,grassHeight,0.0);
+
 			}
 
 			
@@ -1966,23 +2336,14 @@ public:
 				doDefault = true;
 			}
 			else {
-				switch (activeObject) {
 
-					case E_OBJ_LIGHT:
-						lightPos.addXYZRef(&modXYZ, -1.0f);
-						//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-						activeObjectPos.setFXYZRef(&lightPos);
-					break;
-
-					case E_OBJ_FOG:
-						fogPos.addXYZRef(&modXYZ, -1.0f);
-						//lightPos.clampXYZ(&minBoundsInPixels,&maxBoundsInPixels);
-						activeObjectPos.setFXYZRef(&fogPos);
-					break;
-					default:
-						doDefault = true;
-					break;
-
+				if (activeObject == E_OBJ_CAMERA) {
+					doDefault = true;
+				}
+				else {
+					dynObjects[activeObject]->posRel.addXYZRef(&modXYZ, -1.0f);
+					dynObjects[activeObject]->pos.addXYZRef(&modXYZ, -1.0f);
+					//activeObjectPos.setFXYZRef( &(dynObjects[activeObject]->pos) );
 				}
 			}
 
@@ -2002,38 +2363,50 @@ public:
 	}
 
 
-	void doAction(eProgramAction pa) {
-		switch (pa) {
-			case E_PA_QUIT:
-				if (isFullScreen) {
-					//glutLeaveGameMode();
-				}
-				PROG_ACTIVE = false;
-				glutLeaveMainLoop();
-			break;
-			case E_PA_TOGGLE_FULLSCREEN:
-				isFullScreen = !isFullScreen;
-
-				if (isFullScreen) {
-					//glutGameModeString( "1280x800:32@75" ); //the settings for fullscreen mode
-					//glutEnterGameMode();
-					//glutFullScreen();
-				}
-				else {
-					//glutReshapeWindow(defaultWinW, defaultWinH);
-					//glutLeaveGameMode();
-				}
-
-			break;
-			case E_PA_REFRESH:
-            	doShaderRefresh();
-			break;
-			case E_PA_SIZE:
-				//unused
-			break;
-
+	void toggleFullScreen() {
+		isFullScreen = !isFullScreen;
+		if (isFullScreen) {
+			glutFullScreen();
+		}
+		else {
+			glutPositionWindow(250,50);
 		}
 	}
+
+
+	// void doAction(eProgramAction pa) {
+	// 	switch (pa) {
+	// 		case E_PA_QUIT:
+	// 			if (isFullScreen) {
+	// 				//glutLeaveGameMode();
+	// 			}
+	// 			PROG_ACTIVE = false;
+	// 			glutLeaveMainLoop();
+	// 		break;
+	// 		case E_PA_TOGGLE_FULLSCREEN:
+	// 			isFullScreen = !isFullScreen;
+
+	// 			if (isFullScreen) {
+	// 				//glutGameModeString( "1280x800:32@75" ); //the settings for fullscreen mode
+	// 				//glutEnterGameMode();
+	// 				//glutFullScreen();
+	// 			}
+	// 			else {
+
+	// 				//glutReshapeWindow(defaultWinW, defaultWinH);
+	// 				//glutLeaveGameMode();
+	// 			}
+
+	// 		break;
+	// 		case E_PA_REFRESH:
+ //            	doShaderRefresh();
+	// 		break;
+	// 		case E_PA_SIZE:
+	// 			//unused
+	// 		break;
+
+	// 	}
+	// }
 
 
 
@@ -2065,10 +2438,43 @@ public:
 		*/
 
 
+	void updateVG() {
+		if (volGenFBOX < 16) {
+			volGenFBOX = 16;
+		}
+		if (volGenFBOX > 128) {
+			volGenFBOX = 128;
+		}
+
+		doTraceND("volGenFBOX: ", i__s(volGenFBOX));
+
+		switch(volGenFBOX) {
+			case 16:
+				curVGString = "volGenFBO16";
+				maxChanges = 32;
+			break;
+			case 32:
+				curVGString = "volGenFBO32";
+				maxChanges = 32;
+			break;
+			case 64:
+				curVGString = "volGenFBO64";
+				maxChanges = 16;
+			break;
+			case 128:
+				curVGString = "volGenFBO128";
+				maxChanges = 16;
+			break;
+
+		}
+	}
 
 	
 	void setCameraToElevation() {
-		cameraPos.setFZ( getHeightAtPixelPos(cameraPos.getFX(), cameraPos.getFY()) );
+
+		FIVector4* cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
+
+		cameraPos->setFZ( getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY()) + maxW*visPageSizeInPixels/2.0f );
 		bufferInvalid = true;
 		changesMade = true;
 		wsBufferInvalid = true;
@@ -2102,10 +2508,10 @@ public:
 		int x = _x/scaleFactor;
 		int y = _y/scaleFactor;
 
+		int holderCount;
+
 		changesMade = false;
 
-
-		//doAction(progActionsUp[((int)programState)*256 + key]);
 
 		int enCounter;
 
@@ -2163,13 +2569,25 @@ public:
 			break;
 
 			case 19: //ctrl-s
-				saveAllData();
-									
+				//saveAllData();
+				cout << "Use s key in web editor to save\n";					
 			break;
 
 			case 15: //ctrl-o
 				loadAllData();		
 				
+			break;
+
+			case '[':
+				volGenFBOX /= 2;
+
+				updateVG();				
+
+			break;
+			case ']':
+				volGenFBOX *= 2;
+
+				updateVG();
 			break;
 
 
@@ -2189,9 +2607,19 @@ public:
 				}
 			break;
 
+			case 27: // esc
+				std::exit(0);
+			break;
+
+			case 'b':
+				radiosityOn = !radiosityOn;
+			break;
+
 			case 'r':
 				doShaderRefresh();
 				bufferInvalid = true;
+
+				cout << "Shaders Refreshed\n";
 				//mapInvalid = true;
 			break;
 
@@ -2220,9 +2648,23 @@ public:
 
 
 			case 'p':
-				cout << "curZoom " << cameraZoom << "\n";
+				//cout << "curZoom " << cameraZoom << "\n";
+				toggleFullScreen();
 			break;
 
+			case 'd':
+				directPass = 1.0f-directPass;
+			break;
+
+			case 'h':
+				waterOn = !waterOn;
+
+				if (MAX_LAYERS == 1) {
+					waterOn = false;
+				}
+
+				cout << "waterOn " << waterOn << "\n";
+			break;
 
 			case 't':
 				traceOn = true;
@@ -2264,6 +2706,11 @@ public:
 				restartGen = true;
 			break;
 
+			case 'f':
+				fogOn = 1.0-fogOn;
+				cout << "fog on " << fogOn << "\n";
+			break;
+
 			case 'm':
 				
 				/*
@@ -2291,6 +2738,28 @@ public:
 					maxH = 0;
 				}
 			break;
+
+
+			case 'v':
+				if (selectedGeom == NULL) {
+
+				}
+				else {
+					selectedGeom->visible = !(selectedGeom->visible);
+					
+					holderCount = gw->getHoldersInGeom(selectedGeom);
+					gw->refreshHoldersInList(true); //holderCount <= 12
+					gw->holdersToRefresh.clear();
+
+					bufferInvalid = true;
+					changesMade = true;
+
+
+
+				}
+			break;
+
+
 			
 			default:
 				
@@ -2299,7 +2768,7 @@ public:
 
 		if (restartGen) {
 			doShaderRefresh();
-			gw->resetToState(E_STATE_CREATESIMPLEXNOISE_END);
+			gw->actionOnHolders(E_HOLDER_ACTION_RESET);
 			bufferInvalid = true;
 			changesMade = true;
 		}
@@ -2310,8 +2779,6 @@ public:
 
 		int x = _x/scaleFactor;
 		int y = _y/scaleFactor;
-
-		//doAction(progActionsDown[((int)programState)*256 + key]);
 	}
 
 
@@ -2346,6 +2813,57 @@ public:
 		fbow->getPixelAtF(toVector, newX, (bufferDim.getIY()-1)-newY);
 	}
 
+	GameGeom* findNearestGeom(FIVector4* testPoint) {
+		GameBlock* curBlock;
+
+		int i;
+		int j;
+		int k;
+		int ii;
+		int jj;
+		float bestDis;
+		float curDis;
+
+		bestDis = 99999.0f;
+		GameGeom* resGeom = NULL;
+		
+		for (j = -1; j <= 1; j++) {
+			for (i = -1; i <= 1; i++) {
+				ii = i + gw->camBlockPos.getIX();
+				jj = j + gw->camBlockPos.getIY();
+
+				curBlock = gw->getBlockAtCoords(ii, jj, false);
+
+				if (curBlock == NULL) {
+
+				}
+				else {
+					for (k = 0; k < curBlock->gameGeom.size(); k++) {
+						if (
+							testPoint->inBoundsXYZ(
+								curBlock->gameGeom[k]->getVisMinInPixelsT(),
+								curBlock->gameGeom[k]->getVisMaxInPixelsT()
+							)
+						) {
+							curDis =
+								curBlock->gameGeom[k]->getVisMinInPixelsT()->distance(testPoint) +
+								curBlock->gameGeom[k]->getVisMaxInPixelsT()->distance(testPoint);
+
+							if (curDis < bestDis) {
+								bestDis = curDis;
+								resGeom = curBlock->gameGeom[k];
+							}
+
+						}
+					}
+				}	
+			}
+		}
+
+		return resGeom;
+	}
+
+
 	void mouseMove(int _x, int _y) {
 
 		int x = _x/scaleFactor;
@@ -2353,6 +2871,9 @@ public:
 
 		int dx = x - lastPosX;
 		int dy = y - lastPosY;
+
+
+
 
 
 		lastMouseX = x;
@@ -2370,10 +2891,25 @@ public:
 		    moveObject((float)dx, (float)dy, cameraZoom);
 		}
 		else {
-			if (mouseState == E_MOUSE_STATE_BRUSH  ) {
-				getPixData(&mouseMovePD, x, y);
+
+			getPixData(&mouseMovePD, x, y);
+
+			if (mouseState == E_MOUSE_STATE_BRUSH || mouseState == E_MOUSE_STATE_MEASURE  ) {
+				
 				gw->modifyUnit(&mouseMovePD, E_BRUSH_MOVE);
 			}
+
+
+			//////////////
+
+
+			
+			highlightedGeom = findNearestGeom(&mouseMovePD);
+
+
+			//////////////
+
+
 		}
 
 
@@ -2399,15 +2935,17 @@ public:
 
 		FIVector4 dMod;
 
+		FIVector4* cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
+
 		dMod.copyFrom(wc);
-		dMod.addXYZRef(&cameraPos, -1.0);
+		dMod.addXYZRef(cameraPos, -1.0);
 
 		float x1 = (dMod.getFX()-dMod.getFY());
 		float y1 = (-(dMod.getFX()/2.0f) + -(dMod.getFY()/2.0f) + dMod.getFZ());
 		float myZoom = std::min(1.0f, cameraZoom);
 
-		x1 = x1*(myZoom)/bufferDimHalf.getFX();
-		y1 = y1*(myZoom)/bufferDimHalf.getFY();
+		x1 = x1*(myZoom)/bufferDim.getFX();
+		y1 = y1*(myZoom)/bufferDim.getFY();
 
 		x1 = (x1 + 1.0)/2.0;
 		y1 = (y1 + 1.0)/2.0;
@@ -2431,7 +2969,17 @@ public:
 		lastPosX = x;
 		lastPosY = y;
 
+		GameBlock* curBlock;
+
 		int res;
+		int i;
+		int j;
+		int k;
+		int ii;
+		int jj;
+		int bestInd;
+		float bestDis;
+		float curDis;
 
 		float wheelDelta = 0.0;
 		bool mbClicked = false;
@@ -2440,6 +2988,10 @@ public:
 
 		int mouseMovingStart;
 		
+		FIVector4 testVec;
+		FIVector4 oneVec;
+		oneVec.setFXYZ(1.0f,1.0f,1.0f);
+		oneVec.normalize();
 
 
 		switch (button) {
@@ -2472,6 +3024,24 @@ public:
 
 
 
+		if (rbClicked) {
+			if (lbDown) {
+
+			}
+			else {
+				isPanning = false;
+			}
+			
+		}
+		if (lbClicked) {
+			if (rbDown) {
+
+			}
+			else {
+				isPanning = false;
+			}
+			
+		}
 
 
 
@@ -2503,14 +3073,13 @@ public:
 			}
 			else {
 
-				doTrace("MOUSE UP");
 				muTime = myTimer.getElapsedTimeInMilliSec();
 
 				mouseEnd.setIXY(x,y);
 				//mouseVel.copyFrom(&mouseEnd);
 				//mouseVel.addXYZRef(&mouseMoving, -1.0f);
 
-				if (activeObject != E_OBJ_LIGHT && activeObject != E_OBJ_FOG && (muTime-mdTime > 300.0f) ) {
+				if ( (activeObject == E_OBJ_CAMERA) && (muTime-mdTime > 300.0f) ) {
 					mouseMovingStart = (mouseMovingLoc - min(mouseMovingStepsBack, mouseCount) + mouseMovingSize)%mouseMovingSize;
 					
 
@@ -2534,10 +3103,6 @@ public:
 
 				lastModXYZ.normalize();
 
-				//if (activeObject == E_OBJ_LIGHT || activeObject == E_OBJ_CAMERA) {
-					//mouseVel
-				//}
-
 
 				//mouseVel.multXYZ( clampf(1.0f-(muTime-mdTime)/1000.0f, 0.1f, 1.0f)/cameraZoom );
 
@@ -2550,13 +3115,38 @@ public:
 
 
 
-					activeObject = E_OBJ_NONE;
+					activeObject = E_OBJ_CAMERA;
 					wsBufferInvalid = true;
 					getPixData(&mouseUpPD, x, y);
 
 					
-					
+					selectedGeom = findNearestGeom(&mouseUpPD);
 
+					if (selectedGeom == NULL) {
+
+					}
+					else {
+						if (
+							(selectedGeom->buildingType == E_BT_DOOR) ||
+							(selectedGeom->buildingType == E_BT_WINDOW) 
+
+						) {
+							gw->getHoldersInGeom(selectedGeom);
+							selectedGeom->applyTransform(selectedGeom->rotDir,false);
+							gw->getHoldersInGeom(selectedGeom);
+							gw->refreshHoldersInList(true); //holderCount <= 12
+							gw->holdersToRefresh.clear();
+
+							bufferInvalid = true;
+							changesMade = true;
+							wsBufferInvalid = true;
+						}
+						
+					}
+
+
+
+					
 
 
 					if ( mouseEnd.distance(&mouseStart) > 30.0 ) {
@@ -2600,26 +3190,67 @@ public:
 
 					mouseMovingLoc = 0;
 					mouseCount = 0;
-					doTrace("MOUSE DOWN");
 					mdTime = myTimer.getElapsedTimeInMilliSec();
 					mouseStart.setIXY(x,y);
 
 					getPixData(&mouseDownPD, x, y);
-					activeObject = (E_OBJ)((int) mouseDownPD.getFW());
 
-					switch (activeObject) {
-						case E_OBJ_LIGHT:
-							activeObjectPos.setFXYZRef(&lightPos);
-							diskOn = 1.0f;
-						break;
 
-						case E_OBJ_FOG:
-							activeObjectPos.setFXYZRef(&fogPos);
-							diskOn = 1.0f;
-						break;
-						default:
+
+
+
+
+					
+
+
+
+
+
+
+					if (mouseDownPD.getIW() == 1) {
+
+						
+
+						bestInd = 0;
+						bestDis = -99999.0f;
+						for (i = 1; i < dynObjects.size(); i++) {
 							
-						break;
+
+							//curDis = dynObjects[i]->pos.distance(&mouseDownPD);
+							
+							testVec.copyFrom( &(dynObjects[i]->pos) );
+							testVec.addXYZRef(&mouseDownPD,-1.0f);
+
+							if (
+								(testVec.getFX() < 0.0f) &&
+								(testVec.getFY() < 0.0f) &&
+								(testVec.getFZ() < 0.0f)
+
+							) {
+								testVec.multXYZ(-1.0f);
+							}
+
+							testVec.normalize();
+
+							curDis = testVec.dot(&oneVec);
+
+
+							if (curDis > bestDis) {
+								bestDis = curDis;
+								bestInd = i;
+							}
+						}
+
+						activeObject = (E_OBJ)(bestInd);
+
+
+
+						diskOn = 1.0f;
+						//activeObjectPos.setFXYZRef(&(dynObjects[activeObject]->pos));
+
+					}
+					else {
+						activeObject = E_OBJ_CAMERA;
 					}
 
 					if (mouseState == E_MOUSE_STATE_BRUSH) {
@@ -2693,11 +3324,13 @@ public:
 
 	}
 
-	void processJSON(charArr* sourceBuffer, charArr* saveBuffer) {
+	bool processJSON(charArr* sourceBuffer, charArr* saveBuffer) {
 		
+		doTraceND("processJSON()");
+
 		char* buf = sourceBuffer->data;
 		int len = sourceBuffer->size;
-
+		JSONValue *jsonVal = NULL;
 
 		if (saveBuffer != &nullBuffer) {
 			if (saveBuffer->data != NULL) {
@@ -2709,20 +3342,29 @@ public:
 			saveBuffer->size = len;
 		}
 		
+		doTraceND("Begin JSON::Parse()");
 
-		JSONValue *jsonVal = JSON::Parse(buf);
+		if (buf == NULL) {
+			doTraceND("buf is NULL");
+			return false;
+		}
+		else {
+			doTraceND("buf is not NULL");
+			jsonVal = JSON::Parse(buf);
+		}
 
 
+		doTraceND("End JSON::Parse()");
 
 
 		if (jsonVal == NULL) {
-			doTrace("Invalid JSON\n\n");
-			return;	
+			doTraceND("Invalid JSON\n\n");
+			return false;	
 		}
 		else {
-			doTrace("");
-			doTrace("Valid JSON");
-			doTrace("");
+			doTraceND("");
+			doTraceND("Valid JSON");
+			doTraceND("");
 
 
 			if (rootObj != NULL) {
@@ -2730,11 +3372,14 @@ public:
 				rootObj = NULL;
 			}
 
+			doTraceND("rootObj is now NULL");
+
+
 			rootObj = jsonVal;
 			jsonVal = NULL;
 
 			//doTrace( "JSON VAL", f__s(jsonVal->Child(L"x")->number_value) , "\n\n" );
-
+			return true;
 		}
 		
 		
@@ -2742,7 +3387,7 @@ public:
 
 
 	void loadAllData() {
-		if ( loadFile("..\\data\\lastJSONBuffer.txt", &lastJSONBuffer) ) {
+		if ( loadFile("..\\data\\lastJSONBuffer.js", &lastJSONBuffer) ) {
 			processJSON(&lastJSONBuffer,&nullBuffer);
 		}
 
@@ -2754,15 +3399,16 @@ public:
 	}
 
 	void saveAllData() {
-		saveFile("..\\data\\lastJSONBuffer.txt", &lastJSONBuffer);
+		saveFile("..\\data\\lastJSONBuffer.js", &lastJSONBuffer);
 		saveFile("..\\data\\lastImageBuffer.txt", &lastImageBuffer);
 	}
 
 
 	bool loadFile(char* fileName, charArr* dest) {
+		doTraceND("Loading: ", fileName);
 		
 		if (dest == NULL) {
-			doTrace("Null Data");
+			doTraceND("Null Data");
 			return false;
 		}
 
@@ -2770,7 +3416,7 @@ public:
 		
 
 		if ( ! infile.is_open() ){
-			doTrace("Could Not Open File For Loading");
+			doTraceND("Could Not Open File For Loading");
 			return false;
 		}
 
@@ -2793,14 +3439,14 @@ public:
 		infile.read (dest->data,size);
 
 		if ( infile.bad() ){
-			doTrace("Could Not Load From File");
+			doTraceND("Could Not Load From File");
 			infile.close();
 			return false;
 		}
 
 		infile.close();
 
-		doTrace("Load Successful");
+		doTraceND("Load Successful");
 
 		return true;
 	}
@@ -2808,28 +3454,28 @@ public:
 	bool saveFile(char* fileName, charArr* source) {
 
 		if (source->data == NULL) {
-			doTrace("Null Data");
+			doTraceND("Null Data");
 			return false;
 		}
 
 		std::ofstream outfile (fileName, std::ofstream::out);
 		
 		if ( ! outfile.is_open() ){
-			doTrace("Could Not Open File For Saving");
+			doTraceND("Could Not Open File For Saving");
 			return false;
 		}
 
 		outfile.write (source->data,source->size);
 
 		if ( outfile.bad() ){
-			doTrace("Could Not Save To File");
+			doTraceND("Could Not Save To File");
 			outfile.close();
 			return false;
 		}
 
 		outfile.close();
 
-		doTrace("Save Successful");
+		doTraceND("Save Successful");
 
 		return true;
 	}
@@ -2858,7 +3504,10 @@ public:
 			if (myWS->dataReady) {
 
 				if (myWS->isJSON) {
-					processJSON( &(myWS->recBuffer), &lastJSONBuffer  );
+					if ( processJSON( &(myWS->recBuffer), &lastJSONBuffer  ) ) {
+						saveAllData();
+
+					}
 				}
 				else {
 					processB64(  &(myWS->recBuffer), &lastImageBuffer  );
@@ -2893,18 +3542,18 @@ public:
 			
 			fMouseVel = mouseVel.distance(&origin);
 
-			if ( fMouseVel < 2.0f ) {
-				mouseVel.setFXY(0.0f,0.0f);
-				isPanning = false;
-			}
-			else {
-				isPanning = true;
+			// if ( fMouseVel < 2.0f ) {
+			// 	mouseVel.setFXY(0.0f,0.0f);
+			// 	isPanning = false;
+			// }
+			// else {
+			// 	isPanning = true;
 
 
-				panMod.copyFrom(&lastModXYZ);
-				panMod.multXYZ(fMouseVel/16.0f);
-				moveCamera(&panMod);
-			}
+			// 	panMod.copyFrom(&lastModXYZ);
+			// 	panMod.multXYZ(fMouseVel/16.0f);
+			// 	moveCamera(&panMod);
+			// }
 
 
 			dz = (targetZoom-cameraZoom)/(16.0f);
@@ -2946,7 +3595,13 @@ public:
 					traceOn = false;
 					TRACE_ON = true;
 				}
-				gw->update();
+				if (updateLock) {
+
+				}
+				else {
+					gw->update();
+				}
+				
 
 				TRACE_ON = false;
 
@@ -2955,9 +3610,11 @@ public:
 			}
 		}
 
-		
+		if (firstRun) {
+			toggleFullScreen();
+		}
 
-		
+		firstRun = false;		
 
 		//doTrace( "POSSIBLE ERROR: " , i__s(glGetError()) , "\n" );
 

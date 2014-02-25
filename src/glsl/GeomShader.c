@@ -29,11 +29,6 @@ $
 void main() {
 
     TexCoord0 = gl_MultiTexCoord0.xyz;
-    //TexCoord1 = gl_MultiTexCoord1.xyz;
-
-    //vec2 newTC = ((TexCoord0.xy)*newZoom+1.0)/2.0;
-
-
 
     vec3 myVert = gl_Vertex.xyz - cameraPos.xyz;
     vec3 transVert;
@@ -47,11 +42,7 @@ void main() {
     
     finalVec.x = (transVert.x)*newZoom/(bufferDim.x);
     finalVec.y = (transVert.y)*newZoom/(bufferDim.y);
-    finalVec.z = gl_Vertex.z;//(transVert.z);
-
-
-    //float hv = mix(0.5,0.0,float(matVal == 4.0));
-    //*0.5 + hv
+    finalVec.z = gl_Vertex.z;
 
     gl_Position = vec4(finalVec.xy, clamp( (1.0-finalVec.z/(256.0*255.0)) ,0.0,1.0),gl_Vertex.w);
 
@@ -84,11 +75,11 @@ float unpack16(vec2 num) {
 
 void main() {
 
-    vec2 res = pack16(finalVec.z);
-
+    vec2 heightPacked = pack16(finalVec.z);
+    vec2 matPacked = pack16(matVal);
 
     
-    float rad = 0.99;
+    float rad = 0.98;
 
     if (isWire == 0.0) {
 
@@ -103,12 +94,8 @@ void main() {
             discard;
         }
     }
-    
-    
-    //float bhr = mod(finalVec.z/2.0,256.0);
-    //float bhg = floor((finalVec.z)/256.0);
 
-    gl_FragData[0] = vec4(res.rg,matVal/255.0,1.0);//vec4(bhr,bhg,3.0/255.0,tex0.a);
+    gl_FragData[0] = vec4(heightPacked.rg,matPacked.rg);//vec4(bhr,bhg,3.0/255.0,tex0.a);
     gl_FragData[1] = vec4((TexCoord0.xyz+1.0)/2.0,1.0);//vec4(resNorm.rgb, (TexCoord0.z+tex1.a)/2.0 );
 
 }

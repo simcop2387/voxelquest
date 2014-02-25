@@ -5,15 +5,29 @@
 #define LZZ_INLINE inline
 PooledResource::PooledResource ()
                          {
-		fboSet = NULL;
+		int i;
+
+		for (i = 0; i < MAX_LAYERS; i++) {
+			fboSet[i] = NULL;
+		}
+		
+	}
+FBOSet * PooledResource::getFBOS (int fboNum)
+                                    {
+		return fboSet[fboNum];
 	}
 void PooledResource::init (Singleton * _singleton)
                                          {
 
 		singleton = _singleton;
-		usedByHolderId = -1;
+		usedByHolderId.v0 = -1;
+		usedByHolderId.v1 = -1;
 
-		fboSet = new FBOSet();
+		int i;
+
+		for (i = 0; i < MAX_LAYERS; i++) {
+			fboSet[i] = new FBOSet();
+		}
 
 		/*
 		void init(
@@ -26,13 +40,18 @@ void PooledResource::init (Singleton * _singleton)
 			int clampEnum=GL_CLAMP_TO_EDGE
 		)
 		*/
-		fboSet->init(
-			2,
-			((singleton->holderSizeInPixels)*2),
-			((singleton->holderSizeInPixels)*2),
-			1,
-			true
-		);
+
+		for (i = 0; i < MAX_LAYERS; i++) {
+			fboSet[i]->init(
+				2,
+				((singleton->holderSizeInPixels)),
+				((singleton->holderSizeInPixels)),
+				1,
+				true
+			);
+		}
+
+		
 
 	}
 #undef LZZ_INLINE
