@@ -848,23 +848,44 @@ private:
     FIVector4 visMinInPixels;
     FIVector4 visMaxInPixels;
 
-    FIVector4 boundsMinInPixelsT;
-    FIVector4 boundsMaxInPixelsT;
-    FIVector4 visMinInPixelsT;
-    FIVector4 visMaxInPixelsT;
-
 public:
-
-
-    bool visible;
-    bool hasAnchor;
 
     // passed to GPU
 
-    FIVector4 cornerDisInPixels;
-    FIVector4 powerVals;
-    FIVector4 thickVals;
-    FIVector4 matParams;
+    FIVector4 geomParams[E_GP_LENGTH];
+
+    // enum E_GEOM_PARAMS {
+    // E_GP_BOUNDSMININPIXELST,
+    // E_GP_BOUNDSMAXINPIXELST,
+    // E_GP_VISMININPIXELST,
+    // E_GP_VISMAXINPIXELST,
+    //     E_GP_CORNERDISINPIXELS,
+    //     E_GP_POWERVALS,
+    //     E_GP_POWERVALS2,
+    //     E_GP_THICKVALS,
+    //     E_GP_MATPARAMS,
+    //     E_GP_LENGTH
+    // }
+
+    // geomParams[E_GP_BOUNDSMININPIXELST]
+    // geomParams[E_GP_BOUNDSMAXINPIXELST]
+    // geomParams[E_GP_VISMININPIXELST]
+    // geomParams[E_GP_VISMAXINPIXELST]
+    // geomParams[E_GP_CORNERDISINPIXELS]
+    // geomParams[E_GP_POWERVALS]
+    // geomParams[E_GP_POWERVALS2]
+    // geomParams[E_GP_THICKVALS]
+    // geomParams[E_GP_MATPARAMS]
+
+    // FIVector4 boundsMinInPixelsT;
+    // FIVector4 boundsMaxInPixelsT;
+    // FIVector4 visMinInPixelsT;
+    // FIVector4 visMaxInPixelsT;
+    // FIVector4 cornerDisInPixels;
+    // FIVector4 powerVals;
+    // FIVector4 powerVals2;
+    // FIVector4 thickVals;
+    // FIVector4 matParams;
 
     // internal use
 
@@ -872,6 +893,10 @@ public:
     FIVector4 moveMinInPixels;
     FIVector4 moveMaxInPixels;
 
+
+
+    bool visible;
+    bool hasAnchor;
 
     //   1
     // 2   0
@@ -887,7 +912,7 @@ public:
 
     int id;
     int globalID;
-    static const int paramsPerEntry = 24;
+    //static const int paramsPerEntry = 27;
 
     //float minRad;
     //float maxRad;
@@ -931,16 +956,16 @@ public:
     }
 
     FIVector4* getBoundsMinInPixelsT() {
-        return &boundsMinInPixelsT;
+        return &geomParams[E_GP_BOUNDSMININPIXELST];
     }
     FIVector4* getBoundsMaxInPixelsT() {
-        return &boundsMaxInPixelsT;
+        return &geomParams[E_GP_BOUNDSMAXINPIXELST];
     }
     FIVector4* getVisMinInPixelsT() {
-        return &visMinInPixelsT;
+        return &geomParams[E_GP_VISMININPIXELST];
     }
     FIVector4* getVisMaxInPixelsT() {
-        return &visMaxInPixelsT;
+        return &geomParams[E_GP_VISMAXINPIXELST];
     }
 
     int getClampedRot() {
@@ -1006,6 +1031,7 @@ public:
         FIVector4* _visInsetFromMin,
         FIVector4* _visInsetFromMax,
         FIVector4* _powerVals,
+        FIVector4* _powerVals2,
         FIVector4* _thickVals,
         FIVector4* _matParams
 
@@ -1037,18 +1063,6 @@ public:
         boundsMinInPixels.addXYZRef(rad,-1.0f);
         boundsMaxInPixels.addXYZRef(rad,1.0f);
 
-        // if (thickVals.getFY() == 0.0f) {
-
-        // }
-        // else {
-        //     if (thickVals.getFY() > 0.0f) {
-        //         boundsMaxInPixels.addXYZ(0.0f,0.0f,thickVals.getFY());
-        //     }
-        //     else {
-        //         boundsMinInPixels.addXYZ(0.0f,0.0f,thickVals.getFY());
-        //     }
-        // }
-
         switch (alignBottomMiddleTop) {
             
             case 0: // bottom _@_
@@ -1065,70 +1079,167 @@ public:
 
         }
 
-        boundsMinInPixels.addXYZ(0.0f,0.0f,zOffset); //rad->getFZ()-_cornerDisInPixels->getFZ());
-        boundsMaxInPixels.addXYZ(0.0f,0.0f,zOffset); //rad->getFZ()-_cornerDisInPixels->getFZ()
+        boundsMinInPixels.addXYZ(0.0f,0.0f,zOffset);
+        boundsMaxInPixels.addXYZ(0.0f,0.0f,zOffset);
 
 
         visMinInPixels.setFXYZRef(&boundsMinInPixels);
         visMaxInPixels.setFXYZRef(&boundsMaxInPixels);
 
-        visMinInPixels.addXYZRef(_visInsetFromMin, 1.0f);//0.0f,0.0f,_cornerDisInPixels->getFZ());
+        visMinInPixels.addXYZRef(_visInsetFromMin, 1.0f);
         visMaxInPixels.addXYZRef(_visInsetFromMax, -1.0f);
 
-        //visMaxInPixels.setFZ(z2 + rad);
-        cornerDisInPixels.setFXYZRef(_cornerDisInPixels);
-        powerVals.setFXYZRef(_powerVals);
-        thickVals.setFXYZRef(_thickVals);
-        matParams.setFXYZRef(_matParams);
-
-
-
-        //coefficients.setFXYZ(1.0,1.0,1.0);
-        //squareVals.setFXYZ(1.0,1.0,1.0);//1.0,1.0,1.0);
-        //minMaxMat1.setFXYZ(0.0f,1.0f,2.0f);
-        //minMaxMat2.setFXYZ(0.0f,1.0f,2.0f);
-        //dirFlags.setFXYZ(0.0,0.0f,0.0f);
+        geomParams[E_GP_CORNERDISINPIXELS].setFXYZRef(_cornerDisInPixels);
+        geomParams[E_GP_POWERVALS].setFXYZRef(_powerVals);
+        geomParams[E_GP_POWERVALS2].setFXYZRef(_powerVals2);
+        geomParams[E_GP_THICKVALS].setFXYZRef(_thickVals);
+        geomParams[E_GP_MATPARAMS].setFXYZRef(_matParams);
 
 
         moveMinInPixels.setFXYZRef(&boundsMinInPixels);
         moveMaxInPixels.setFXYZRef(&boundsMaxInPixels);
 
-        boundsMinInPixelsT.setFXYZRef(&boundsMinInPixels);
-        boundsMaxInPixelsT.setFXYZRef(&boundsMaxInPixels);
-        visMinInPixelsT.setFXYZRef(&visMinInPixels);
-        visMaxInPixelsT.setFXYZRef(&visMaxInPixels);
+        geomParams[E_GP_BOUNDSMININPIXELST].setFXYZRef(&boundsMinInPixels);
+        geomParams[E_GP_BOUNDSMAXINPIXELST].setFXYZRef(&boundsMaxInPixels);
+        geomParams[E_GP_VISMININPIXELST].setFXYZRef(&visMinInPixels);
+        geomParams[E_GP_VISMAXINPIXELST].setFXYZRef(&visMaxInPixels);
 
 
     }
+
+
+    void initTree(
+        int _buildingType,
+        int _id,
+        int _globalID,
+        int alignBottomMiddleTop,
+
+        float _zOffset,
+        
+        FIVector4* p0,
+        FIVector4* p1,
+
+        float radP0,
+        float radP1,
+
+        // FIVector4* rad,
+        // FIVector4* _cornerDisInPixels,
+        FIVector4* _visInsetFromMin,
+        FIVector4* _visInsetFromMax,
+        // FIVector4* _powerVals,
+        // FIVector4* _powerVals2,
+        // FIVector4* _thickVals,
+        FIVector4* _matParams
+
+        
+        
+    ) {
+        buildingType = _buildingType;
+        id = _id;
+        globalID = _globalID;
+        float temp;
+        float zOffset = _zOffset;
+
+        float radMax = max(radP0, radP1);
+
+        curRot = 0;
+        rotDir = 1;
+        visible = true;
+        hasAnchor = false;
+
+        anchorPointInPixels.setFXYZ(0.0f,0.0f,0.0f);
+
+
+        boundsMinInPixels.setFXYZRef(p0);
+        boundsMaxInPixels.setFXYZRef(p1);
+
+        boundsMinInPixels.addXYZ(-radMax);
+        boundsMaxInPixels.addXYZ(radMax);
+
+        FIVector4::normalizeBounds(&boundsMinInPixels,&boundsMaxInPixels);
+
+
+        
+
+        // switch (alignBottomMiddleTop) {
+            
+        //     case 0: // bottom _@_
+        //         zOffset += (radMax-_visInsetFromMin->getFZ());
+        //     break;
+        //     case 1: // middle -@-
+        //         zOffset += 0.0f;
+        //     break;
+        //             //     ___
+        //     case 2: // top  @
+        //         zOffset += -(radMax-_visInsetFromMax->getFZ());
+        //     break;
+
+        // }
+
+        // boundsMinInPixels.addXYZ(0.0f,0.0f,zOffset);
+        // boundsMaxInPixels.addXYZ(0.0f,0.0f,zOffset);
+
+
+        visMinInPixels.setFXYZRef(&boundsMinInPixels);
+        visMaxInPixels.setFXYZRef(&boundsMaxInPixels);
+
+        visMinInPixels.addXYZRef(_visInsetFromMin, 1.0f);
+        visMaxInPixels.addXYZRef(_visInsetFromMax, -1.0f);
+
+        // geomParams[E_GP_CORNERDISINPIXELS].setFXYZRef(_cornerDisInPixels);
+        // geomParams[E_GP_POWERVALS].setFXYZRef(_powerVals);
+        // geomParams[E_GP_POWERVALS2].setFXYZRef(_powerVals2);
+        
+
+        geomParams[E_TP_P0].setFXYZRef(p0);
+        geomParams[E_TP_P1].setFXYZRef(p1);
+        geomParams[E_TP_THICKVALS].setFXYZ(radP0, radP1, 0.0f);
+
+
+        geomParams[E_TP_MATPARAMS].setFXYZRef(_matParams);
+
+
+        moveMinInPixels.setFXYZRef(&boundsMinInPixels);
+        moveMaxInPixels.setFXYZRef(&boundsMaxInPixels);
+
+        // geomParams[E_GP_BOUNDSMININPIXELST].setFXYZRef(&boundsMinInPixels);
+        // geomParams[E_GP_BOUNDSMAXINPIXELST].setFXYZRef(&boundsMaxInPixels);
+        geomParams[E_TP_VISMININPIXELST].setFXYZRef(&visMinInPixels);
+        geomParams[E_TP_VISMAXINPIXELST].setFXYZRef(&visMaxInPixels);
+
+
+    }
+
+
 
     void applyTransform(int rotMod, bool ignoreConstraints) {
 
         rotate(rotMod,ignoreConstraints);
 
-        boundsMinInPixelsT.setFXYZRef(&boundsMinInPixels);
-        boundsMaxInPixelsT.setFXYZRef(&boundsMaxInPixels);
-        visMinInPixelsT.setFXYZRef(&visMinInPixels);
-        visMaxInPixelsT.setFXYZRef(&visMaxInPixels);
+        geomParams[E_GP_BOUNDSMININPIXELST].setFXYZRef(&boundsMinInPixels);
+        geomParams[E_GP_BOUNDSMAXINPIXELST].setFXYZRef(&boundsMaxInPixels);
+        geomParams[E_GP_VISMININPIXELST].setFXYZRef(&visMinInPixels);
+        geomParams[E_GP_VISMAXINPIXELST].setFXYZRef(&visMaxInPixels);
 
-        boundsMinInPixelsT.addXYZRef(&anchorPointInPixels,-1.0f);
-        boundsMaxInPixelsT.addXYZRef(&anchorPointInPixels,-1.0f);
-        visMinInPixelsT.addXYZRef(&anchorPointInPixels,-1.0f);
-        visMaxInPixelsT.addXYZRef(&anchorPointInPixels,-1.0f);
+        geomParams[E_GP_BOUNDSMININPIXELST].addXYZRef(&anchorPointInPixels,-1.0f);
+        geomParams[E_GP_BOUNDSMAXINPIXELST].addXYZRef(&anchorPointInPixels,-1.0f);
+        geomParams[E_GP_VISMININPIXELST].addXYZRef(&anchorPointInPixels,-1.0f);
+        geomParams[E_GP_VISMAXINPIXELST].addXYZRef(&anchorPointInPixels,-1.0f);
 
-        boundsMinInPixelsT.rotate90(getClampedRot());
-        boundsMaxInPixelsT.rotate90(getClampedRot());
-        visMinInPixelsT.rotate90(getClampedRot());
-        visMaxInPixelsT.rotate90(getClampedRot());
+        geomParams[E_GP_BOUNDSMININPIXELST].rotate90(getClampedRot());
+        geomParams[E_GP_BOUNDSMAXINPIXELST].rotate90(getClampedRot());
+        geomParams[E_GP_VISMININPIXELST].rotate90(getClampedRot());
+        geomParams[E_GP_VISMAXINPIXELST].rotate90(getClampedRot());
 
-        boundsMinInPixelsT.addXYZRef(&anchorPointInPixels,1.0f);
-        boundsMaxInPixelsT.addXYZRef(&anchorPointInPixels,1.0f);
-        visMinInPixelsT.addXYZRef(&anchorPointInPixels,1.0f);
-        visMaxInPixelsT.addXYZRef(&anchorPointInPixels,1.0f);
+        geomParams[E_GP_BOUNDSMININPIXELST].addXYZRef(&anchorPointInPixels,1.0f);
+        geomParams[E_GP_BOUNDSMAXINPIXELST].addXYZRef(&anchorPointInPixels,1.0f);
+        geomParams[E_GP_VISMININPIXELST].addXYZRef(&anchorPointInPixels,1.0f);
+        geomParams[E_GP_VISMAXINPIXELST].addXYZRef(&anchorPointInPixels,1.0f);
 
-        FIVector4::normalizeBounds(&boundsMinInPixelsT,&boundsMaxInPixelsT);
-        FIVector4::normalizeBounds(&visMinInPixelsT,&visMaxInPixelsT);
+        FIVector4::normalizeBounds(&geomParams[E_GP_BOUNDSMININPIXELST],&geomParams[E_GP_BOUNDSMAXINPIXELST]);
+        FIVector4::normalizeBounds(&geomParams[E_GP_VISMININPIXELST],&geomParams[E_GP_VISMAXINPIXELST]);
 
-        FIVector4::growBoundary(&moveMinInPixels, &moveMaxInPixels, &visMinInPixelsT, &visMaxInPixelsT);
+        FIVector4::growBoundary(&moveMinInPixels, &moveMaxInPixels, &geomParams[E_GP_VISMININPIXELST], &geomParams[E_GP_VISMAXINPIXELST]);
     }
 
     void initAnchorPoint(FIVector4* _anchorPointInPixels, int _minRot, int _maxRot) {

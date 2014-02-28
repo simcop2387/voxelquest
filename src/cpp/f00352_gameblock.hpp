@@ -42,280 +42,6 @@ public:
 
 	GameBlock() {
 
-	}	
-
-	BuildingNode* getNode(int x, int y) {
-
-		if (x >= 0 && x < iBuildingNodesPerSide && y >= 0 && y < iBuildingNodesPerSide ) {
-			return &(buildingData[x+y*iBuildingNodesPerSide]);
-		}
-		else {
-			cout << "Accessed null node at: " << x << ", " << y << "\n";
-			return &nullNode;
-		}
-
-		
-	}
-
-	BuildingNodeProp* getPropAtLevel(int x, int y, int dir, int lev, int nodeType ) {
-		return getPropAtIndLevel(x+y*iBuildingNodesPerSide, dir, lev, nodeType);//&(buildingData[x+y*iBuildingNodesPerSide].shortProps[dir + lev*4]);
-	}
-	BuildingNodeProp* getPropAtIndLevel(int i, int dir, int lev, int nodeType ) {
-		
-		switch(nodeType) {
-			case E_NT_SHORTPROP:
-				return &(buildingData[i].shortProps[dir + lev*4]);
-			break;
-			case E_NT_DYNPROP:
-				return &(buildingData[i].dynProps[dir + lev*4]);
-			break;
-			default:
-				return &(buildingData[i].shortProps[dir + lev*4]);
-			break;
-		}
-
-
-		
-	}
-
-	int touches(int x, int y, int buildingType) {
-		int i;
-		int tot = 0;
-
-
-		for (i = 0; i < 4; i++) {
-			if (getNode(x,y)->connectionProps[i].typeVal == buildingType) {
-				tot++;
-			}
-		}
-
-		return tot;
-	}
-
-	int touchesHeight(int x, int y, int buildingType) {
-		int i;
-		int tot = 0;
-
-
-		for (i = 0; i < 4; i++) {
-			if (getNode(x,y)->connectionProps[i].typeVal == buildingType) {
-				return getNode(x,y)->connectionProps[i].endHeight;
-			}
-		}
-
-		return -1;
-	}
-
-	int touchDir(int x, int y, int buildingType) {
-		int i;
-
-		for (i = 0; i < 4; i++) {
-			if (getNode(x,y)->connectionProps[i].typeVal == buildingType) {
-				return i;
-			}
-		}
-
-		return -1;
-	}
-
-
-
-	bool testHeight(int _x1, int _y1, int _x2, int _y2, int heightVal) {
-			
-
-		int x[2];
-		int y[2];
-
-		x[0] = _x1;
-		y[0] = _y1;
-		x[1] = _x2;
-		y[1] = _y2;
-
-
-		int boff = 0;
-		int i;
-		int j;
-		int testX;
-		int testY;
-
-		// if (x1 > x2) {
-		// 	std::swap(x1,x2);
-		// }
-		// if (y1 > y2) {
-		// 	std::swap(y1,y2);
-		// }
-
-		bool foundHigher[2];
-		foundHigher[0] = false;
-		foundHigher[1] = false;
-
-
-
-		for (j = 0; j < 2; j++) {
-			for (i = 0; i < 4; i++) {
-
-				if ( (x[j] + gw->dirModX[i] == x[1-j]) && (y[j] + gw->dirModY[i] == y[1-j]) ) {
-					// this is the connecting branch, do nothing
-				}
-				else {
-
-					testX = x[j] + gw->dirModX[i];
-					testY = y[j] + gw->dirModY[i];
-
-					if (getNode(testX,testY)->connectionProps[i].begHeight >= heightVal) {
-						return false;
-					}
-
-					if (getNode(testX,testY)->connectionProps[i].endHeight > heightVal) {
-						foundHigher[j] = true;
-					}
-				}
-
-			}
-		}
-
-		if (foundHigher[0]&&foundHigher[1]) {
-			return true;
-		}
-		else {
-			return false;
-		}
-
-	}
-
-
-	int touchesCenter(int x, int y, int buildingType) {
-		int i;
-		int tot = 0;
-		int testX;
-		int testY;
-
-		for (i = 0; i < 4; i++) {
-
-			testX = x + gw->dirModX[i];
-			testY = y + gw->dirModY[i];
-
-			if (getNode(testX,testY)->centerProp.typeVal == buildingType) {
-				tot++;
-			}
-		}
-
-		return tot;
-	}
-
-
-	int sameHeight(int x, int y) {
-		int i;
-		int curType;
-		int lastHeight = -1;
-
-
-		for (i = 0; i < 4; i++) {
-
-			curType = getNode(x,y)->connectionProps[i].typeVal;
-			if (curType == E_BT_MAINHALL || curType == E_BT_WING) {
-				if (lastHeight == -1) {
-					lastHeight = getNode(x,y)->connectionProps[i].endHeight;
-				}
-				else {
-
-					if (getNode(x,y)->connectionProps[i].endHeight != lastHeight) {
-						return -1;
-					}
-
-					
-				}
-			}
-		}
-
-		return lastHeight;
-	}
-
-
-	int touches2(int x, int y, int buildingType) {
-		int i;
-		int tot = 0;
-		int testX;
-		int testY;
-
-		for (i = 0; i < 4; i++) {
-
-			testX = x + gw->dirModX[i];
-			testY = y + gw->dirModY[i];
-
-			tot += touches(testX,testY,buildingType);
-
-		}
-
-		return tot;
-
-	}
-
-	void connectNodes(int _x1, int _y1, int _x2, int _y2, int buildingType, int id) {
-		
-
-		// 0: x+
-		// 1: x-
-		// 2: y+
-		// 3: y-
-
-		int x1 = _x1;
-		int y1 = _y1;
-		int x2 = _x2;
-		int y2 = _y2;
-
-		int boff = 0;
-
-		int i;
-
-		if (x1 > x2) {
-			std::swap(x1,x2);
-		}
-		if (y1 > y2) {
-			std::swap(y1,y2);
-		}
-
-		BuildingNode* n[2];
-
-		int rNum = iGenRand(2,maxFloors-1);
-
-
-		if (
-			x1 < 0 || x1 >= iBuildingNodesPerSide || 
-			x2 < 0 || x2 >= iBuildingNodesPerSide || 
-			y1 < 0 || y1 >= iBuildingNodesPerSide || 
-			y2 < 0 || y2 >= iBuildingNodesPerSide
-		) {
-			doTraceND("out of range");
-		}
-		else {
-
-			n[0] = getNode(x1,y1);
-			n[1] = getNode(x2,y2);
-
-			if (id >= 0) {
-				n[0]->id = id;
-				n[1]->id = id;
-			}
-
-			if (x1 == x2) { // is vertical
-				boff = 2;
-			}
-			else {
-				boff = 0;
-			}
-
-			for (i = 0; i < 2; i++) {
-				n[i]->connectionProps[i+boff].typeVal = buildingType;
-				n[i]->connectionProps[i+boff].endHeight = rNum;
-				n[i]->connectionProps[i+boff].begHeight = 0;
-			}
-
-
-
-		}
-
-		
 	}
 
 	void init(Singleton* _singleton, int _blockID, int _x, int _y, int _xw, int _yw) {
@@ -327,6 +53,8 @@ public:
 
 
 		//cout << "Init block " << _xw << " " << _yw << "\n";
+
+		//int treeCount = 0;
 
 		int i;
 		int j;
@@ -434,6 +162,8 @@ public:
 		float tempf;
 		float pv1;
 		float pv2;
+		float pv3;
+		float pv4;
 
 		float percs[5];
 		percs[0] = 0.0f;
@@ -471,6 +201,7 @@ public:
 		FIVector4 cornerRad;
 		FIVector4 thickVals;
 		FIVector4 powerVals;
+		FIVector4 powerVals2;
 		FIVector4 matParams;
 
 		FIVector4 tempVec;
@@ -500,7 +231,6 @@ public:
 				
 			}
 
-			
 		}
 
 
@@ -650,21 +380,26 @@ public:
 						if ( touches(testX,testY,E_BT_MAINHALL) >= 1 ) {
 
 							if (touches2(i,j,E_BT_WING) == 0) {
-								connectNodes(i, j, testX, testY, E_BT_WING, getNode(testX,testY)->id );
 
-								testX = i + gw->dirModX[ gw->opDir[k] ];
-								testY = j + gw->dirModY[ gw->opDir[k] ];
+								if (true) {//(fGenRand() > 0.5) {
+									connectNodes(i, j, testX, testY, E_BT_WING, getNode(testX,testY)->id );
 
-								if (touches(testX,testY,E_BT_ROAD) >= 1) {
-									connectNodes(i, j, testX, testY, E_BT_ROAD, -1);
+									testX = i + gw->dirModX[ gw->opDir[k] ];
+									testY = j + gw->dirModY[ gw->opDir[k] ];
 
-									getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_SHORTPROP)->typeVal = E_BT_DOORWAY;
-									getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_DYNPROP)->typeVal = E_BT_DOOR;
-									
+									if (touches(testX,testY,E_BT_ROAD) >= 1) {
+										connectNodes(i, j, testX, testY, E_BT_ROAD, -1);
 
+										getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_SHORTPROP)->typeVal = E_BT_DOORWAY;
+										getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_DYNPROP)->typeVal = E_BT_DOOR;
+										
+
+									}
+
+									notFound = false;
 								}
 
-								notFound = false;
+								
 							}
 
 							
@@ -674,6 +409,15 @@ public:
 				}
 			}
 		}
+
+		for (i = 1; i < iBuildingNodesPerSideM1; i++) {
+			for (j = 1; j < iBuildingNodesPerSideM1; j++) {
+				if ( touches(i,j,E_BT_NULL) == 4 ) {
+					getNode(i,j)->centerProp.typeVal = E_BT_TREE;
+				}
+			}
+		}
+
 
 		// towers
 
@@ -747,7 +491,26 @@ public:
 						}
 					}
 
-					getNode(i,j)->powerVal = pv1;
+					getNode(i,j)->powerValU = pv1;
+
+					// tempf = fGenRand();
+					// if (tempf < 0.5f) {
+					// 	pv2 = 1.0f;
+					// }
+					// else {
+					// 	pv2 = 2.0f;
+					// }
+
+					curId = getNode(i,j)->id;
+					if (curId%16 < 12) {
+						pv2 = 1.0f;
+					}
+					else {
+						pv2 = 2.0f;
+					}
+
+					getNode(i,j)->powerValV = pv2;
+
 				}
 			}
 		}
@@ -765,7 +528,7 @@ public:
 
 					for (m = 1; m < curHeight; m++) {
 						if ( getPropAtLevel(i,j,openDir,m, E_NT_SHORTPROP)->typeVal == E_BT_NULL ) {
-							if (fGenRand() >= 0.5f) {
+							if (fGenRand() >= 0.25f) {
 								getPropAtLevel(i,j,openDir,m, E_NT_SHORTPROP)->typeVal = E_BT_WINDOWFRAME;
 								getPropAtLevel(i,j,openDir,m, E_NT_DYNPROP)->typeVal = E_BT_WINDOW;
 							}
@@ -783,7 +546,7 @@ public:
 		for (i = 1; i < iBuildingNodesPerSideM1; i++) {
 			for (j = 1; j < iBuildingNodesPerSideM1; j++) {
 				
-				if (getNode(i,j)->powerVal != 1.0f) {
+				if (getNode(i,j)->powerValU != 1.0f) {
 					if ( touches(i,j,E_BT_MAINHALL) >= 1 ) {
 						
 						begHeight = 1;
@@ -807,7 +570,7 @@ public:
 						for (m = max(begHeight,1); m < endHeight; m++) {
 							for (k = 0; k < 4; k++) {
 								if (getNode(i,j)->connectionProps[k].typeVal == E_BT_NULL) {
-									if (fGenRand() >= 0.5f) {
+									if (fGenRand() >= 0.25f) {
 										getPropAtLevel(i,j,k,m, E_NT_SHORTPROP)->typeVal = E_BT_WINDOWFRAME;
 										getPropAtLevel(i,j,k,m, E_NT_DYNPROP)->typeVal = E_BT_WINDOW;
 									}
@@ -1103,7 +866,8 @@ public:
 
 									curAlign = E_ALIGN_MIDDLE;
 
-									powerVals.setFXYZ(10.0f,10.0f,10.0);
+									powerVals.setFXYZ(10.0f,10.0f,0.0);
+									powerVals2.setFXYZRef(&powerVals);
 									visInsetFromMin.setFXYZ(0.0f,0.0f,0.0f);
 									visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);//rad.getFZ()*2.0f - 0.625f*pixelsPerMeter);
 									cornerRad.setFXYZ(
@@ -1197,13 +961,17 @@ public:
 
 
 									if (curBT == E_BT_TOWER) {
-										pv1 = getNode(i,j)->powerVal;
+										pv1 = getNode(i,j)->powerValU;
 										pv2 = pv1;
+										pv3 = getNode(i,j)->powerValV;
+										pv4 = pv3;
 									}
 									else {
 
-										pv1 = getNode(i,j)->powerVal;
-										pv2 = getNode(testX,testY)->powerVal;
+										pv1 = getNode(i,j)->powerValU;
+										pv2 = getNode(testX,testY)->powerValU;
+										pv3 = getNode(i,j)->powerValV;
+										pv4 = getNode(testX,testY)->powerValV;
 									}
 
 									baseOffset = -(floorHeight-1.0f)*pixelsPerMeter + floorHeight*(begHeight)*pixelsPerMeter;
@@ -1212,7 +980,9 @@ public:
 
 									
 									thickVals.setFXYZ(0.0f,0.0f,0.0f);
-									powerVals.setFXYZ(pv1, 1.0f, pv2);
+									powerVals.setFXYZ(pv1, pv3, 0.0);
+									powerVals2.setFXYZ(pv2, pv4, 0.0);
+
 									
 
 
@@ -1328,8 +1098,18 @@ public:
 
 									
 									
-									powerVals.setFXYZ(2.0f, 2.0f, 2.0f);
+									powerVals.setFXYZ(2.0f, 2.0f, 0.0f);
+									powerVals2.setFXYZRef(&powerVals);
 
+
+								break;
+
+								case E_BT_TREE:
+									baseOffset = 0.0f;
+									matParams.setFXYZ(E_MAT_PARAM_TREE, 0.0, 0.0f);
+
+									visInsetFromMin.setFXYZ(0.0f,0.0f,0.0f);
+									visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
 
 								break;
 
@@ -1341,125 +1121,173 @@ public:
 
 
 							if (doProc) {
-								
-								if (
-									(curBT == E_BT_DOOR) ||
-									(curBT == E_BT_WINDOW)
-								) {
-									maxLoop = 2;
-								}
-								else {
-									maxLoop = 1;
-								}
-
-								for (n = 0; n < maxLoop; n++) {
-									if (maxLoop == 2) {
-										
-
-										if (n == 0) {
-											if (isVert) {
-												visInsetFromMax.addXYZ( rad.getFX() + 1.0f, 0.0f, 0.0f );
-											}
-											else {
-												visInsetFromMax.addXYZ( 0.0f, rad.getFY() + 1.0f, 0.0f );
-											}
-											
-										}
-										else {
-											if (isVert) {
-												visInsetFromMax.addXYZ( -(rad.getFX() + 1.0f), 0.0f, 0.0f );
-												visInsetFromMin.addXYZ( rad.getFX() + 1.0f, 0.0f, 0.0f );
-											}
-											else {
-												visInsetFromMax.addXYZ( 0.0f, -(rad.getFY() + 1.0f), 0.0f );
-												visInsetFromMin.addXYZ( 0.0f, rad.getFY() + 1.0f, 0.0f );
-											}
-										}
 
 
-										
-									}
-									else {
+								if (curBT == E_BT_TREE) {
 
-									}
+									//treeCount++;
 
+									tempVec.setFXYZRef(&p1);
+									tempVec2.setFXYZRef(&p2);
+
+									tempVec2.addXYZ(
+										0.0f*pixelsPerMeter,
+										0.0f*pixelsPerMeter,
+										3.0f*pixelsPerMeter
+									);
 
 									gameGeom.push_back(new GameGeom());
-									gameGeom.back()->initBounds(
+									gameGeom.back()->initTree(
 										curBT,
 										counter,
 										singleton->geomCounter,
 										curAlign,
 										baseOffset,
-										&p1,
-										&p2,
-										&rad,
-										&cornerRad,
+										
+										&tempVec,
+										&tempVec2,
+
+										2.0f*pixelsPerMeter,
+										1.0f*pixelsPerMeter,
+
+										//&rad,
+										//&cornerRad,
 										&visInsetFromMin,
 										&visInsetFromMax,
-										&powerVals,
-										&thickVals,
+										// &powerVals,
+										// &powerVals2,
+										// &thickVals,
+										
 										&matParams
 									);
 									singleton->geomCounter++;
 									counter++;
 
 
-									if (maxLoop == 2) {
 
-										
-										tempVec2.setFXYZRef( gameGeom.back()->getVisMaxInPixels() );
-										tempVec2.addXYZRef( gameGeom.back()->getVisMinInPixels(), -1.0f );
-										tempVec2.multXYZ(0.5f);
-										tempf = min(min(tempVec2.getFX(), tempVec2.getFY()),tempVec2.getFZ());
+								}
+								else {
 
-										if (n == 0) {
-											tempVec.setFXYZRef( gameGeom.back()->getVisMinInPixels() );
-											tempVec.addXYZ(tempf,tempf,0.0f);
-
-											if (isVert) {
-												tempVec.addXYZ(-tempf*3.0,0.0,0.0f);
-											}
-											else {
-												tempVec.addXYZ(0.0,-tempf*3.0,0.0f);
-											}
-
-											if ( (k == 1) || (k == 2) ) {
-												gameGeom.back()->initAnchorPoint( &tempVec, 0, 1 );
-											}
-											else {
-												gameGeom.back()->initAnchorPoint( &tempVec, -1, 0 );
-											}
-										}
-										else {
-											tempVec.setFXYZRef( gameGeom.back()->getVisMaxInPixels() );
-											tempVec.addXYZ(-tempf,-tempf,0.0f);
-
-											if (isVert) {
-												tempVec.addXYZ(tempf*3.0,0.0,0.0f);
-											}
-											else {
-												tempVec.addXYZ(0.0,tempf*3.0,0.0f);
-											}
-
-											if ( (k == 0) || (k == 3) ) {
-												gameGeom.back()->initAnchorPoint( &tempVec, 0, 1 );
-											}
-											else {
-												gameGeom.back()->initAnchorPoint( &tempVec, -1, 0 );
-											}
-										}
-	
+									
+									if (
+										(curBT == E_BT_DOOR) ||
+										(curBT == E_BT_WINDOW)
+									) {
+										maxLoop = 2;
+									}
+									else {
+										maxLoop = 1;
 									}
 
+									for (n = 0; n < maxLoop; n++) {
+										if (maxLoop == 2) {
+											
+
+											if (n == 0) {
+												if (isVert) {
+													visInsetFromMax.addXYZ( rad.getFX() + 1.0f, 0.0f, 0.0f );
+												}
+												else {
+													visInsetFromMax.addXYZ( 0.0f, rad.getFY() + 1.0f, 0.0f );
+												}
+												
+											}
+											else {
+												if (isVert) {
+													visInsetFromMax.addXYZ( -(rad.getFX() + 1.0f), 0.0f, 0.0f );
+													visInsetFromMin.addXYZ( rad.getFX() + 1.0f, 0.0f, 0.0f );
+												}
+												else {
+													visInsetFromMax.addXYZ( 0.0f, -(rad.getFY() + 1.0f), 0.0f );
+													visInsetFromMin.addXYZ( 0.0f, rad.getFY() + 1.0f, 0.0f );
+												}
+											}
+
+
+											
+										}
+										else {
+
+										}
+
+
+										gameGeom.push_back(new GameGeom());
+										gameGeom.back()->initBounds(
+											curBT,
+											counter,
+											singleton->geomCounter,
+											curAlign,
+											baseOffset,
+											&p1,
+											&p2,
+											&rad,
+											&cornerRad,
+											&visInsetFromMin,
+											&visInsetFromMax,
+											&powerVals,
+											&powerVals2,
+											&thickVals,
+											&matParams
+										);
+										singleton->geomCounter++;
+										counter++;
+
+
+										if (maxLoop == 2) {
+
+											
+											tempVec2.setFXYZRef( gameGeom.back()->getVisMaxInPixels() );
+											tempVec2.addXYZRef( gameGeom.back()->getVisMinInPixels(), -1.0f );
+											tempVec2.multXYZ(0.5f);
+											tempf = min(min(tempVec2.getFX(), tempVec2.getFY()),tempVec2.getFZ());
+
+											if (n == 0) {
+												tempVec.setFXYZRef( gameGeom.back()->getVisMinInPixels() );
+												tempVec.addXYZ(tempf,tempf,0.0f);
+
+												if (isVert) {
+													tempVec.addXYZ(-tempf*3.0,0.0,0.0f);
+												}
+												else {
+													tempVec.addXYZ(0.0,-tempf*3.0,0.0f);
+												}
+
+												if ( (k == 1) || (k == 2) ) {
+													gameGeom.back()->initAnchorPoint( &tempVec, 0, 1 );
+												}
+												else {
+													gameGeom.back()->initAnchorPoint( &tempVec, -1, 0 );
+												}
+											}
+											else {
+												tempVec.setFXYZRef( gameGeom.back()->getVisMaxInPixels() );
+												tempVec.addXYZ(-tempf,-tempf,0.0f);
+
+												if (isVert) {
+													tempVec.addXYZ(tempf*3.0,0.0,0.0f);
+												}
+												else {
+													tempVec.addXYZ(0.0,tempf*3.0,0.0f);
+												}
+
+												if ( (k == 0) || (k == 3) ) {
+													gameGeom.back()->initAnchorPoint( &tempVec, 0, 1 );
+												}
+												else {
+													gameGeom.back()->initAnchorPoint( &tempVec, -1, 0 );
+												}
+											}
+									
+										}
+
+									}
+
+
+
+									
 								}
 
 
-								
-
-								
-
-								
 
 							}
 
@@ -1504,6 +1332,8 @@ public:
 		// fbow->bind(0);
 		// glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
+
+		//doTraceND("treeCount", i__s(treeCount));
 		
 
 		///////////////////////
@@ -1520,6 +1350,280 @@ public:
 
 
 
+	}
+
+	BuildingNode* getNode(int x, int y) {
+
+		if (x >= 0 && x < iBuildingNodesPerSide && y >= 0 && y < iBuildingNodesPerSide ) {
+			return &(buildingData[x+y*iBuildingNodesPerSide]);
+		}
+		else {
+			cout << "Accessed null node at: " << x << ", " << y << "\n";
+			return &nullNode;
+		}
+
+		
+	}
+
+	BuildingNodeProp* getPropAtLevel(int x, int y, int dir, int lev, int nodeType ) {
+		return getPropAtIndLevel(x+y*iBuildingNodesPerSide, dir, lev, nodeType);//&(buildingData[x+y*iBuildingNodesPerSide].shortProps[dir + lev*4]);
+	}
+	BuildingNodeProp* getPropAtIndLevel(int i, int dir, int lev, int nodeType ) {
+		
+		switch(nodeType) {
+			case E_NT_SHORTPROP:
+				return &(buildingData[i].shortProps[dir + lev*4]);
+			break;
+			case E_NT_DYNPROP:
+				return &(buildingData[i].dynProps[dir + lev*4]);
+			break;
+			default:
+				return &(buildingData[i].shortProps[dir + lev*4]);
+			break;
+		}
+
+
+		
+	}
+
+	int touches(int x, int y, int buildingType) {
+		int i;
+		int tot = 0;
+
+
+		for (i = 0; i < 4; i++) {
+			if (getNode(x,y)->connectionProps[i].typeVal == buildingType) {
+				tot++;
+			}
+		}
+
+		return tot;
+	}
+
+	int touchesHeight(int x, int y, int buildingType) {
+		int i;
+		int tot = 0;
+
+
+		for (i = 0; i < 4; i++) {
+			if (getNode(x,y)->connectionProps[i].typeVal == buildingType) {
+				return getNode(x,y)->connectionProps[i].endHeight;
+			}
+		}
+
+		return -1;
+	}
+
+	int touchDir(int x, int y, int buildingType) {
+		int i;
+
+		for (i = 0; i < 4; i++) {
+			if (getNode(x,y)->connectionProps[i].typeVal == buildingType) {
+				return i;
+			}
+		}
+
+		return -1;
+	}
+
+
+
+	bool testHeight(int _x1, int _y1, int _x2, int _y2, int heightVal) {
+			
+
+		int x[2];
+		int y[2];
+
+		x[0] = _x1;
+		y[0] = _y1;
+		x[1] = _x2;
+		y[1] = _y2;
+
+
+		int boff = 0;
+		int i;
+		int j;
+		int testX;
+		int testY;
+
+		// if (x1 > x2) {
+		// 	std::swap(x1,x2);
+		// }
+		// if (y1 > y2) {
+		// 	std::swap(y1,y2);
+		// }
+
+		bool foundHigher[2];
+		foundHigher[0] = false;
+		foundHigher[1] = false;
+
+
+
+		for (j = 0; j < 2; j++) {
+			for (i = 0; i < 4; i++) {
+
+				if ( (x[j] + gw->dirModX[i] == x[1-j]) && (y[j] + gw->dirModY[i] == y[1-j]) ) {
+					// this is the connecting branch, do nothing
+				}
+				else {
+
+					testX = x[j] + gw->dirModX[i];
+					testY = y[j] + gw->dirModY[i];
+
+					if (getNode(testX,testY)->connectionProps[i].begHeight >= heightVal) {
+						return false;
+					}
+
+					if (getNode(testX,testY)->connectionProps[i].endHeight > heightVal) {
+						foundHigher[j] = true;
+					}
+				}
+
+			}
+		}
+
+		if (foundHigher[0]&&foundHigher[1]) {
+			return true;
+		}
+		else {
+			return false;
+		}
+
+	}
+
+
+	int touchesCenter(int x, int y, int buildingType) {
+		int i;
+		int tot = 0;
+		int testX;
+		int testY;
+
+		for (i = 0; i < 4; i++) {
+
+			testX = x + gw->dirModX[i];
+			testY = y + gw->dirModY[i];
+
+			if (getNode(testX,testY)->centerProp.typeVal == buildingType) {
+				tot++;
+			}
+		}
+
+		return tot;
+	}
+
+
+	int sameHeight(int x, int y) {
+		int i;
+		int curType;
+		int lastHeight = -1;
+
+
+		for (i = 0; i < 4; i++) {
+
+			curType = getNode(x,y)->connectionProps[i].typeVal;
+			if (curType == E_BT_MAINHALL || curType == E_BT_WING) {
+				if (lastHeight == -1) {
+					lastHeight = getNode(x,y)->connectionProps[i].endHeight;
+				}
+				else {
+
+					if (getNode(x,y)->connectionProps[i].endHeight != lastHeight) {
+						return -1;
+					}
+
+					
+				}
+			}
+		}
+
+		return lastHeight;
+	}
+
+
+	int touches2(int x, int y, int buildingType) {
+		int i;
+		int tot = 0;
+		int testX;
+		int testY;
+
+		for (i = 0; i < 4; i++) {
+
+			testX = x + gw->dirModX[i];
+			testY = y + gw->dirModY[i];
+
+			tot += touches(testX,testY,buildingType);
+
+		}
+
+		return tot;
+
+	}
+
+	void connectNodes(int _x1, int _y1, int _x2, int _y2, int buildingType, int id) {
+		
+
+		// 0: x+
+		// 1: x-
+		// 2: y+
+		// 3: y-
+
+		int x1 = _x1;
+		int y1 = _y1;
+		int x2 = _x2;
+		int y2 = _y2;
+
+		int boff = 0;
+
+		int i;
+
+		if (x1 > x2) {
+			std::swap(x1,x2);
+		}
+		if (y1 > y2) {
+			std::swap(y1,y2);
+		}
+
+		BuildingNode* n[2];
+
+		int rNum = iGenRand(2,maxFloors-1);
+
+
+		if (
+			x1 < 0 || x1 >= iBuildingNodesPerSide || 
+			x2 < 0 || x2 >= iBuildingNodesPerSide || 
+			y1 < 0 || y1 >= iBuildingNodesPerSide || 
+			y2 < 0 || y2 >= iBuildingNodesPerSide
+		) {
+			doTraceND("out of range");
+		}
+		else {
+
+			n[0] = getNode(x1,y1);
+			n[1] = getNode(x2,y2);
+
+			if (id >= 0) {
+				n[0]->id = id;
+				n[1]->id = id;
+			}
+
+			if (x1 == x2) { // is vertical
+				boff = 2;
+			}
+			else {
+				boff = 0;
+			}
+
+			for (i = 0; i < 2; i++) {
+				n[i]->connectionProps[i+boff].typeVal = buildingType;
+				n[i]->connectionProps[i+boff].endHeight = rNum;
+				n[i]->connectionProps[i+boff].begHeight = 0;
+			}
+
+
+
+		}
+
+		
 	}
 
 

@@ -56,7 +56,8 @@ struct BuildingNode {
 	BuildingNodeProp dynProps[4*MAX_FLOORS];
 
 	int id;
-	float powerVal;
+	float powerValU;
+	float powerValV;
 	float terHeight;
 
 	bool isWingTip;

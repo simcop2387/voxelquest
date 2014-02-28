@@ -9,9 +9,11 @@ const static int MAX_FLOORS = 5;
 const static int MAX_LIGHTS = 6;
 const static int FLOATS_PER_LIGHT = 16;
 
+const static int MAX_GRASS_LEV = 1;
+
 const static int DEF_WIN_W = 1920;
 const static int DEF_WIN_H = 1080;
-const static int DEF_SCALE_FACTOR = 1;
+const static int DEF_SCALE_FACTOR = 2;
 const static int MAX_LAYERS = 1;
 
 float MAX_GPU_MEM = 2048.0f;

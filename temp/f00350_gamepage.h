@@ -3,9 +3,37 @@
 
 #include "f00350_gamepage.e"
 #define LZZ_INLINE inline
+uint * GamePage::getVolData ()
+                           {
+		int i;
+
+		if (volData == NULL) {
+			volData = new uint[iVolumeSize];
+			for (i = 0; i < iVolumeSize; i++) {
+				volData[i] = 0;
+			}
+		}
+
+		return volData;
+		
+	}
+uint * GamePage::getVolDataLinear ()
+                                 {
+		int i;
+
+		if (volDataLinear == NULL) {
+			volDataLinear = new uint[iVolumeSize];
+			for (i = 0; i < iVolumeSize; i++) {
+				volDataLinear[i] = (0<<24)|(0<<16)|(0<<8)|(0);
+			}
+		}
+
+		return volDataLinear;
+	}
 GamePage::GamePage ()
                    {
-
+		volData = NULL;
+		volDataLinear = NULL;
 	}
 void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _thisPageId, int offsetX, int offsetY, int offsetZ, int oxLoc, int oyLoc, int ozLoc)
           {
@@ -24,7 +52,7 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 
 		//fbow = singleton->getFBOWrapper("volGenFBO",0);
 
-		
+		volDataModified = false;
 		threadRunning = false;
 
 
@@ -59,15 +87,7 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 
 
 		iVolumeSize = bufferedPageSizeInUnits*bufferedPageSizeInUnits*bufferedPageSizeInUnits;
-		volData = new uint[iVolumeSize];
-		for (i = 0; i < iVolumeSize; i++) {
-			volData[i] = 0;
-		}
-
-		volDataLinear = new uint[iVolumeSize];
-		for (i = 0; i < iVolumeSize; i++) {
-			volDataLinear[i] = (0<<24)|(0<<16)|(0<<8)|(0);
-		}
+		
 
 
 
@@ -150,8 +170,60 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 		popTrace();
 
 	}
-void GamePage::copyToTexture ()
-                             {
+void GamePage::copyToTexture (bool isForEmptyVD)
+                                              {
+
+
+		int id1 = singleton->volID;
+		int id2 = singleton->volIDLinear;
+
+		if (isForEmptyVD) {
+			id1 = singleton->volIDEmpty;
+			id2 = singleton->volIDEmptyLinear;
+		}
+
+		glBindTexture(GL_TEXTURE_3D,id1);
+			glTexSubImage3D(
+				GL_TEXTURE_3D,
+				0,
+				
+				0,
+				0,
+				0,
+
+				bufferedPageSizeInUnits,
+				bufferedPageSizeInUnits,
+				bufferedPageSizeInUnits,
+
+				GL_RGBA,
+				GL_UNSIGNED_BYTE,
+
+				getVolData()
+			);
+
+		glBindTexture(GL_TEXTURE_3D,0);
+		glBindTexture(GL_TEXTURE_3D,id2);
+			glTexSubImage3D(
+				GL_TEXTURE_3D,
+				0,
+				
+				0,
+				0,
+				0,
+
+				bufferedPageSizeInUnits,
+				bufferedPageSizeInUnits,
+				bufferedPageSizeInUnits,
+
+				GL_RGBA,
+				GL_UNSIGNED_BYTE,
+
+				getVolDataLinear()
+			);
+		glBindTexture(GL_TEXTURE_3D,0);
+
+		
+
 
 
 		/*
@@ -202,49 +274,7 @@ void GamePage::copyToTexture ()
 
 
 		*/
-		
 
-		glBindTexture(GL_TEXTURE_3D,singleton->volID);
-			glTexSubImage3D(
-				GL_TEXTURE_3D,
-				0,
-				
-				0,
-				0,
-				0,
-
-				bufferedPageSizeInUnits,
-				bufferedPageSizeInUnits,
-				bufferedPageSizeInUnits,
-
-				GL_RGBA,
-				GL_UNSIGNED_BYTE,
-
-				volData
-			);
-
-		glBindTexture(GL_TEXTURE_3D,0);
-		glBindTexture(GL_TEXTURE_3D,singleton->volIDLinear);
-			glTexSubImage3D(
-				GL_TEXTURE_3D,
-				0,
-				
-				0,
-				0,
-				0,
-
-				bufferedPageSizeInUnits,
-				bufferedPageSizeInUnits,
-				bufferedPageSizeInUnits,
-
-				GL_RGBA,
-				GL_UNSIGNED_BYTE,
-
-				volDataLinear
-			);
-		glBindTexture(GL_TEXTURE_3D,0);
-
-		
 
 	}
 void GamePage::addGeom (bool justTesting)
@@ -255,6 +285,7 @@ void GamePage::addGeom (bool justTesting)
 		int k;
 		int m;
 		int n;
+		int p;
 		int ind;
 		int bufSize = (singleton->visPageSizeInPixels*singleton->bufferMult);
 		intPair curId;
@@ -269,7 +300,8 @@ void GamePage::addGeom (bool justTesting)
 		GamePageHolder* gph;
 		GameGeom* gg;
 
-		paramsPerEntry = GameGeom::paramsPerEntry;
+		//paramsPerEntry = GameGeom::paramsPerEntry;
+		paramsPerEntry = E_GP_LENGTH*3;
 		numEntries = 0;
 
 		bool doProc;
@@ -291,6 +323,7 @@ void GamePage::addGeom (bool justTesting)
 		}
 
 		if (justTesting) {
+			hasTree = false;
 			hasWindow = false;
 			hasGeom = false;
 		}
@@ -323,6 +356,9 @@ void GamePage::addGeom (bool justTesting)
 									if (gg->buildingType == E_BT_WINDOW) {
 										hasWindow = true;
 									}
+									if (gg->buildingType == E_BT_TREE) {
+										hasTree = true;
+									}
 									hasGeom = true;
 								}
 								else {
@@ -339,43 +375,55 @@ void GamePage::addGeom (bool justTesting)
 
 										singleton->geomIDArr[numEntries] = gg->globalID;
 
-										baseInd = numEntries*paramsPerEntry;
-
 										
 
-										singleton->paramArr[baseInd + 0] = gg->getBoundsMinInPixelsT()->getFX();
-										singleton->paramArr[baseInd + 1] = gg->getBoundsMinInPixelsT()->getFY();
-										singleton->paramArr[baseInd + 2] = gg->getBoundsMinInPixelsT()->getFZ();
+										for (p = 0; p < E_GP_LENGTH; p++) {
 
-										singleton->paramArr[baseInd + 3] = gg->getBoundsMaxInPixelsT()->getFX();
-										singleton->paramArr[baseInd + 4] = gg->getBoundsMaxInPixelsT()->getFY();
-										singleton->paramArr[baseInd + 5] = gg->getBoundsMaxInPixelsT()->getFZ();
+											baseInd = numEntries*paramsPerEntry + p*3;
 
-										singleton->paramArr[baseInd + 6] = gg->getVisMinInPixelsT()->getFX();
-										singleton->paramArr[baseInd + 7] = gg->getVisMinInPixelsT()->getFY();
-										singleton->paramArr[baseInd + 8] = gg->getVisMinInPixelsT()->getFZ();
+											singleton->paramArr[baseInd + 0] = gg->geomParams[p].getFX();
+											singleton->paramArr[baseInd + 1] = gg->geomParams[p].getFY();
+											singleton->paramArr[baseInd + 2] = gg->geomParams[p].getFZ();
+										}
+										
 
-										singleton->paramArr[baseInd + 9] = gg->getVisMaxInPixelsT()->getFX();
-										singleton->paramArr[baseInd + 10] = gg->getVisMaxInPixelsT()->getFY();
-										singleton->paramArr[baseInd + 11] = gg->getVisMaxInPixelsT()->getFZ();
+										// singleton->paramArr[baseInd + 0] = gg->getBoundsMinInPixelsT()->getFX();
+										// singleton->paramArr[baseInd + 1] = gg->getBoundsMinInPixelsT()->getFY();
+										// singleton->paramArr[baseInd + 2] = gg->getBoundsMinInPixelsT()->getFZ();
 
-										singleton->paramArr[baseInd + 12] = gg->cornerDisInPixels.getFX();
-										singleton->paramArr[baseInd + 13] = gg->cornerDisInPixels.getFY();
-										singleton->paramArr[baseInd + 14] = gg->cornerDisInPixels.getFZ();
+										// singleton->paramArr[baseInd + 3] = gg->getBoundsMaxInPixelsT()->getFX();
+										// singleton->paramArr[baseInd + 4] = gg->getBoundsMaxInPixelsT()->getFY();
+										// singleton->paramArr[baseInd + 5] = gg->getBoundsMaxInPixelsT()->getFZ();
 
-										singleton->paramArr[baseInd + 15] = gg->powerVals.getFX();
-										singleton->paramArr[baseInd + 16] = gg->powerVals.getFY();
-										singleton->paramArr[baseInd + 17] = gg->powerVals.getFZ();
+										// singleton->paramArr[baseInd + 6] = gg->getVisMinInPixelsT()->getFX();
+										// singleton->paramArr[baseInd + 7] = gg->getVisMinInPixelsT()->getFY();
+										// singleton->paramArr[baseInd + 8] = gg->getVisMinInPixelsT()->getFZ();
 
-										singleton->paramArr[baseInd + 18] = gg->thickVals.getFX();
-										singleton->paramArr[baseInd + 19] = gg->thickVals.getFY();
-										singleton->paramArr[baseInd + 20] = gg->thickVals.getFZ();
+										// singleton->paramArr[baseInd + 9] = gg->getVisMaxInPixelsT()->getFX();
+										// singleton->paramArr[baseInd + 10] = gg->getVisMaxInPixelsT()->getFY();
+										// singleton->paramArr[baseInd + 11] = gg->getVisMaxInPixelsT()->getFZ();
 
-										singleton->paramArr[baseInd + 21] = gg->matParams.getFX();
-										singleton->paramArr[baseInd + 22] = gg->matParams.getFY();
-										singleton->paramArr[baseInd + 23] = gg->matParams.getFZ();
+										// singleton->paramArr[baseInd + 12] = gg->cornerDisInPixels.getFX();
+										// singleton->paramArr[baseInd + 13] = gg->cornerDisInPixels.getFY();
+										// singleton->paramArr[baseInd + 14] = gg->cornerDisInPixels.getFZ();
 
-										singleton->matCountArr[gg->matParams.getIX()] += 1.0f;
+										// singleton->paramArr[baseInd + 15] = gg->powerVals.getFX();
+										// singleton->paramArr[baseInd + 16] = gg->powerVals.getFY();
+										// singleton->paramArr[baseInd + 17] = gg->powerVals.getFZ();
+
+										// singleton->paramArr[baseInd + 15] = gg->powerVals2.getFX();
+										// singleton->paramArr[baseInd + 16] = gg->powerVals2.getFY();
+										// singleton->paramArr[baseInd + 17] = gg->powerVals2.getFZ();
+
+										// singleton->paramArr[baseInd + 18] = gg->thickVals.getFX();
+										// singleton->paramArr[baseInd + 19] = gg->thickVals.getFY();
+										// singleton->paramArr[baseInd + 20] = gg->thickVals.getFZ();
+
+										// singleton->paramArr[baseInd + 21] = gg->matParams.getFX();
+										// singleton->paramArr[baseInd + 22] = gg->matParams.getFY();
+										// singleton->paramArr[baseInd + 23] = gg->matParams.getFZ();
+
+										singleton->matCountArr[gg->geomParams[E_GP_MATPARAMS].getIX()] += 1.0f;
 
 										numEntries++;
 									}
@@ -418,7 +466,18 @@ void GamePage::generateVolume ()
 		
 		curState = E_STATE_GENERATEVOLUME_BEG;
 		
-		copyToTexture();
+
+
+		if (volDataModified) {
+			copyToTexture(false);
+		}
+		else {
+			if (singleton->emptyVDNotReady) {
+				singleton->emptyVDNotReady = false;
+				copyToTexture(true);
+			}
+		}
+		
 		
 		parentGPH->clearSet(false);
 
@@ -433,13 +492,23 @@ void GamePage::generateVolume ()
 		
 
 		singleton->bindFBO(singleton->curVGString);
-		singleton->setShaderTexture3D(0,singleton->volID);
-		singleton->setShaderTexture3D(1,singleton->volIDLinear);
+
+		if (volDataModified) {
+			singleton->setShaderTexture3D(0,singleton->volID);
+			singleton->setShaderTexture3D(1,singleton->volIDLinear);
+		}
+		else {
+			singleton->setShaderTexture3D(0,singleton->volIDEmpty);
+			singleton->setShaderTexture3D(1,singleton->volIDEmptyLinear);
+		}
+
+		
 		singleton->sampleFBO("hmFBOLinear",2);
 		singleton->setShaderTexture(3,singleton->terrainID);
 		//singleton->setShaderTexture(3,singleton->uvPattern->tid);
 		//singleton->setShaderTexture3D(3,singleton->voroID);
 
+		singleton->setShaderInt("hasTree", (int)hasTree);
 		singleton->setShaderInt("hasGeom", (int)hasGeom);
 		singleton->setShaderInt("hasTerrain", (int)hasTerrain);
 
@@ -467,8 +536,8 @@ void GamePage::generateVolume ()
 		
 
 		if (hasGeom) {
-			singleton->setShaderFloat("paramsPerEntry", (float)(paramsPerEntry/3) );
-			singleton->setShaderFloat("numEntries", (float)numEntries);
+			singleton->setShaderInt("paramsPerEntry", (paramsPerEntry/3) );
+			singleton->setShaderInt("numEntries", numEntries);
 			singleton->setShaderArrayfVec3("paramArr", singleton->paramArr, totParams/3);
 			singleton->setShaderArray("matCountArr", singleton->matCountArr, E_MAT_PARAM_LENGTH);
 		}
@@ -529,7 +598,7 @@ void GamePage::generateVolume ()
 
 			//ray trace new texture, generate normals, AO, depth, etc
 			
-			glEnable(GL_DEPTH_TEST);
+			//glEnable(GL_DEPTH_TEST);
 
 			
 			singleton->bindShader("RenderVolume");
@@ -596,7 +665,7 @@ void GamePage::generateVolume ()
 
 			
 
-			glDisable(GL_DEPTH_TEST);
+			//glDisable(GL_DEPTH_TEST);
 		}
 
 		
@@ -651,10 +720,10 @@ void GamePage::getCoords ()
 GamePage::~ GamePage ()
                     {
 
-		if (volData) {
+		if (volData != NULL) {
 			delete[] volData;
 		}
-		if (volDataLinear) {
+		if (volDataLinear != NULL) {
 			delete[] volDataLinear;
 		}
 	}

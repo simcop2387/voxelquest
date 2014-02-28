@@ -10,6 +10,7 @@ public:
 	eProgramAction progActionsDown[E_PS_SIZE*256];
 	eProgramAction progActionsUp[E_PS_SIZE*256];
 
+	bool emptyVDNotReady;
 	bool radiosityOn;
 	bool updateLock;
 	bool isFullScreen;
@@ -82,7 +83,7 @@ public:
 	
 	int holderSizeInPages;
 	int holderSizeInPixels;
-	int grassSpacing;
+	//int grassSpacing;
 
 	uint volGenFBOX;
 	//uint volGenFBOY;
@@ -184,18 +185,21 @@ public:
 
 	string curVGString;
 
-	GLuint volGenID;
 	GLuint volID;
-	GLuint terrainID;
 	GLuint volIDLinear;
-	GLuint voroID;
-	GLuint voroIDLinear;
+	GLuint volIDEmpty;
+	GLuint volIDEmptyLinear;
+
+	GLuint volGenID;
+	GLuint terrainID;
+	//GLuint voroID;
+	//GLuint voroIDLinear;
 	GLuint volTris;
 	GLuint sliceTris;
-	GLuint grassTris;
+	GLuint grassTris[MAX_GRASS_LEV];
 	uint* lookup2to3;
-	uint* volData;
-	uint* volDataLinear;
+	//uint* volData;
+	//uint* volDataLinear;
 	//GLuint lookup2to3ID;
 
 	unsigned char* resultImage;
@@ -256,6 +260,7 @@ public:
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 
+		emptyVDNotReady = true;
 		firstRun = true;
 		//useVolumeTex = false;
 		waterOn = false;
@@ -285,8 +290,8 @@ public:
 		iNodeDivsPerLot = 4;
 
 		metersPerLot = 32; // adjust this to make lots bigger
-		pixelsPerMeter = 256; // when you make pixels per meter larger, you must do the same for units per meter
-		unitsPerMeter = pixelsPerMeter/32;//16;
+		pixelsPerMeter = 128; // when you make pixels per meter larger, you must do the same for units per meter
+		unitsPerMeter = max(bufferMultRec,pixelsPerMeter/32);//16;
 		blockSizeInLots = 8;
 
 		maxFloors = MAX_FLOORS;
@@ -367,7 +372,7 @@ public:
 		fogOn = 0.0f;
 		geomCounter = 0;
 
-		grassSpacing = 1;//8/DEF_SCALE_FACTOR;// *2.0;
+		//grassSpacing = 1;//8/DEF_SCALE_FACTOR;// *2.0;
 		directPass = 0.0f;
 
 
@@ -392,8 +397,50 @@ public:
 		
 		glGenTextures(1,&volID);
 		glGenTextures(1,&volIDLinear);
-		glGenTextures(1,&voroID);
-		glGenTextures(1,&voroIDLinear);
+		glGenTextures(1,&volIDEmpty);
+		glGenTextures(1,&volIDEmptyLinear);
+
+		//glGenTextures(1,&voroID);
+		//glGenTextures(1,&voroIDLinear);
+		// glBindTexture(GL_TEXTURE_3D,voroID);
+		// 	glTexSubImage3D(
+		// 		GL_TEXTURE_3D,
+		// 		0,
+				
+		// 		0,
+		// 		0,
+		// 		0,
+
+		// 		voroSize,
+		// 		voroSize,
+		// 		voroSize,
+
+		// 		GL_RGBA,
+		// 		GL_UNSIGNED_BYTE,
+
+		// 		volData
+		// 	);
+
+		// glBindTexture(GL_TEXTURE_3D,0);
+		// glBindTexture(GL_TEXTURE_3D,voroIDLinear);
+		// 	glTexSubImage3D(
+		// 		GL_TEXTURE_3D,
+		// 		0,
+				
+		// 		0,
+		// 		0,
+		// 		0,
+
+		// 		voroSize,
+		// 		voroSize,
+		// 		voroSize,
+
+		// 		GL_RGBA,
+		// 		GL_UNSIGNED_BYTE,
+
+		// 		volDataLinear
+		// 	);
+		// glBindTexture(GL_TEXTURE_3D,0);
 
 
 		// if (useVolumeTex) {
@@ -410,53 +457,66 @@ public:
 		// }
 		
 
+		int curFilter;
 
-		glBindTexture(GL_TEXTURE_3D,volID);
-		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, bufferedPageSizeInUnits, bufferedPageSizeInUnits, bufferedPageSizeInUnits, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-		glBindTexture(GL_TEXTURE_3D,0);
+		for (i = 0; i < 4; i++) {
+			switch(i) {
+				case 0:
+					glBindTexture(GL_TEXTURE_3D,volID);
+				break;
+				case 1:
+					glBindTexture(GL_TEXTURE_3D,volIDEmpty);
+				break;
+				case 2:
+					glBindTexture(GL_TEXTURE_3D,volIDLinear);
+				break;
+				case 3:
+					glBindTexture(GL_TEXTURE_3D,volIDEmptyLinear);
+				break;
+			}
+			if (i < 2) {
+				curFilter = GL_NEAREST;
+			}
+			else {
+				curFilter = GL_LINEAR;
+			}
 
-		glBindTexture(GL_TEXTURE_3D,volIDLinear);
-		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, bufferedPageSizeInUnits, bufferedPageSizeInUnits, bufferedPageSizeInUnits, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-		glBindTexture(GL_TEXTURE_3D,0);
-
-
-
-
-
-		glBindTexture(GL_TEXTURE_3D,voroID);
-		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, voroSize, voroSize, voroSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
-		glBindTexture(GL_TEXTURE_3D,0);
-
-		glBindTexture(GL_TEXTURE_3D,voroIDLinear);
-		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, voroSize, voroSize, voroSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
-		glBindTexture(GL_TEXTURE_3D,0);
+			glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, bufferedPageSizeInUnits, bufferedPageSizeInUnits, bufferedPageSizeInUnits, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, curFilter);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, curFilter);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+			glBindTexture(GL_TEXTURE_3D,0);
+		}
 
 
-		createVoroVolume();
+
+
+
+		// glBindTexture(GL_TEXTURE_3D,voroID);
+		// glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, voroSize, voroSize, voroSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		// glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		// glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		// glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+		// glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		// glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		// glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+		// glBindTexture(GL_TEXTURE_3D,0);
+
+		// glBindTexture(GL_TEXTURE_3D,voroIDLinear);
+		// glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, voroSize, voroSize, voroSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		// glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		// glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		// glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+		// glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		// glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		// glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+		// glBindTexture(GL_TEXTURE_3D,0);
+
+
+		// createVoroVolume();
 
 
 		geomIDArr = new int[1024];
@@ -596,7 +656,11 @@ public:
 
 	    //createSliceList(visPageSizeInPixels);
 		createVTList();
-		createGrassList(grassSpacing);
+		
+		for (i = 0; i < MAX_GRASS_LEV; i++) {
+			createGrassList(i); //grassSpacing
+		}
+		
 
 
 		//// GL WIDGET START ////
@@ -844,137 +908,99 @@ public:
 
 	//$$$$$$$$$$$$$$
 
-	void createVoroVolume() {
+	// void createVoroVolume() {
 
 
 		
 
-		int i, j, k, m;
-		int totLen = voroSize;
-		float fTotLen = (float)totLen;
-		int ind = 0;
-		uint tmp;
-		float fx, fy, fz;
-		uint randOff[3];
-		float ijkVals[3];
+	// 	int i, j, k, m;
+	// 	int totLen = voroSize;
+	// 	float fTotLen = (float)totLen;
+	// 	int ind = 0;
+	// 	uint tmp;
+	// 	float fx, fy, fz;
+	// 	uint randOff[3];
+	// 	float ijkVals[3];
 
-		const float RAND_MOD[9] = {
-			3456.0f, 5965.0f, 45684.0f,
-			4564.0f, 1234.0f, 6789.0f,
-			4567.0f, 67893.0f, 13245.0f
-		};
+	// 	const float RAND_MOD[9] = {
+	// 		3456.0f, 5965.0f, 45684.0f,
+	// 		4564.0f, 1234.0f, 6789.0f,
+	// 		4567.0f, 67893.0f, 13245.0f
+	// 	};
 
-		float totLenO4 = totLen/4;
-		float totLen3O4 = (totLen*3)/4;
-		float fSimp;
-		float heightThresh;
-		float testVal;
-
-
-		int iVolumeSize = voroSize*voroSize*voroSize;
-
-		volData = new uint[iVolumeSize];
-		for (i = 0; i < iVolumeSize; i++) {
-			volData[i] = 0;
-		}
-
-		volDataLinear = new uint[iVolumeSize];
-		for (i = 0; i < iVolumeSize; i++) {
-			volDataLinear[i] = (255<<24)|(255<<16)|(255<<8)|(0);
-		}
+	// 	float totLenO4 = totLen/4;
+	// 	float totLen3O4 = (totLen*3)/4;
+	// 	float fSimp;
+	// 	float heightThresh;
+	// 	float testVal;
 
 
-		for (j = 0; j < totLen; j++) {
+	// 	int iVolumeSize = voroSize*voroSize*voroSize;
 
-			ijkVals[1] = (float)j;
+	// 	volData = new uint[iVolumeSize];
+	// 	for (i = 0; i < iVolumeSize; i++) {
+	// 		volData[i] = 0;
+	// 	}
 
-			fy = (j);
+	// 	volDataLinear = new uint[iVolumeSize];
+	// 	for (i = 0; i < iVolumeSize; i++) {
+	// 		volDataLinear[i] = (255<<24)|(255<<16)|(255<<8)|(0);
+	// 	}
 
-			for (i = 0; i < totLen; i++) {
 
-				ijkVals[0] = (float)i;
+	// 	for (j = 0; j < totLen; j++) {
 
-				fx = (i);
+	// 		ijkVals[1] = (float)j;
+
+	// 		fy = (j);
+
+	// 		for (i = 0; i < totLen; i++) {
+
+	// 			ijkVals[0] = (float)i;
+
+	// 			fx = (i);
 				
-				for (k = 0; k < totLen; k++) {
+	// 			for (k = 0; k < totLen; k++) {
 
-					ijkVals[2] = (float)k;
-					fz = (k);
-					ind = k*totLen*totLen + j*totLen + i;
+	// 				ijkVals[2] = (float)k;
+	// 				fz = (k);
+	// 				ind = k*totLen*totLen + j*totLen + i;
 
 
-					for (m = 0; m < 3; m++) {
-						fSimp = simplexScaledNoise(
-																	1.0f, //octaves
-																	1.0f, //persistence (amount added in each successive generation)
-																	1.0f/4.0, //scale (frequency)
-																	0.0f,
-																	1.0f,
-																	fx+RAND_MOD[m*3+0],
-																	fy+RAND_MOD[m*3+1],
-																	fz+RAND_MOD[m*3+2]
-																);
+	// 				for (m = 0; m < 3; m++) {
+	// 					fSimp = simplexScaledNoise(
+	// 																1.0f, //octaves
+	// 																1.0f, //persistence (amount added in each successive generation)
+	// 																1.0f/4.0, //scale (frequency)
+	// 																0.0f,
+	// 																1.0f,
+	// 																fx+RAND_MOD[m*3+0],
+	// 																fy+RAND_MOD[m*3+1],
+	// 																fz+RAND_MOD[m*3+2]
+	// 															);
 
-						fSimp = clampfZO(fSimp)*255.0;
-						randOff[m] = fSimp;
+	// 					fSimp = clampfZO(fSimp)*255.0;
+	// 					randOff[m] = fSimp;
 
-					}
+	// 				}
 
-					volData[ind] = (0)|(randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
-					volDataLinear[ind] = volData[ind];
+	// 				volData[ind] = (0)|(randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
+	// 				volDataLinear[ind] = volData[ind];
 
+					
 					
 					
 					
-					
 
 					
-				}
-			}
-		}
+	// 			}
+	// 		}
+	// 	}
 
 
-		glBindTexture(GL_TEXTURE_3D,voroID);
-			glTexSubImage3D(
-				GL_TEXTURE_3D,
-				0,
-				
-				0,
-				0,
-				0,
+		
 
-				voroSize,
-				voroSize,
-				voroSize,
-
-				GL_RGBA,
-				GL_UNSIGNED_BYTE,
-
-				volData
-			);
-
-		glBindTexture(GL_TEXTURE_3D,0);
-		glBindTexture(GL_TEXTURE_3D,voroIDLinear);
-			glTexSubImage3D(
-				GL_TEXTURE_3D,
-				0,
-				
-				0,
-				0,
-				0,
-
-				voroSize,
-				voroSize,
-				voroSize,
-
-				GL_RGBA,
-				GL_UNSIGNED_BYTE,
-
-				volDataLinear
-			);
-		glBindTexture(GL_TEXTURE_3D,0);
-
-	}
+	// }
 
 	//$$$$$$$$$$$$$$
 
@@ -1284,7 +1310,8 @@ public:
 	}
 
 
-	void createGrassList(int spacing) {
+	void createGrassList(int index) {
+
 
 		int i;
 		int j;
@@ -1292,21 +1319,43 @@ public:
 		float fi;
 		float fj;
 
-		float tcx;
-		float tcy;
+
+		int spacing = 1;
+		float multiplier = 1.0f;
+
+		switch (index) {
+			case 0:
+				spacing = 8;
+				multiplier = 1.0f;
+			break;
+
+			case 1:
+				spacing = 4;
+				multiplier = 2.0f;
+			break;
+
+			case 2:
+				spacing = 2;
+				multiplier = 4.0f;
+			break;
+
+			case 3:
+				spacing = 2;
+				multiplier = 8.0f;
+			break;
+		}
 
 
-		int iMax = bufferDim.getIX()/spacing;
-		int jMax = bufferDim.getIY()/spacing;
+		int iMax = DEF_WIN_W/spacing;//bufferDim.getIX()/spacing;
+		int jMax = DEF_WIN_H/spacing;//bufferDim.getIY()/spacing;
 
 		float fiMax = (float)iMax;
 		float fjMax = (float)jMax;
-		float heightMod;
 
-		grassTris = glGenLists(1);
+		grassTris[index] = glGenLists(1);
 		
 
-		glNewList(grassTris, GL_COMPILE);
+		glNewList(grassTris[index], GL_COMPILE);
 
 		//glBegin(GL_TRIANGLES);
 		glBegin(GL_QUADS);
@@ -1316,33 +1365,23 @@ public:
 		
 
 		for (j = jMax-1; j >= 0; j -= 1) {
-			fj = ((float)(j*2-jMax) + 1.0f)*8.0f/fjMax;
-			tcy = fj;//(fj + 1.0f)/2.0f;
+			fj = ((float)(j*2-jMax) + 1.0f)*multiplier/fjMax;
 			for (i = 0; i < iMax; i += 1) {
-				fi = ((float)(i*2-iMax) + 1.0f)*8.0f/fiMax;
-				tcx = fi;//(fi + 1.0f)/2.0f;
-			
-
-				heightMod = 0.0;//genRand(0.0f,4.0f)/fjMax;
-
-				//glColor4f(backfaceX[i], backfaceY[i], backfaceZ[i], 1.0f);
-
-				//
+				fi = ((float)(i*2-iMax) + 1.0f)*multiplier/fiMax;
 				
-				
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.2f, -1.0);
+				glMultiTexCoord4f( GL_TEXTURE0, fi, fj, 0.2f, -1.0);
 				glVertex3f(fi,fj,0.0);
 				
 
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.0f, 0.0);
+				glMultiTexCoord4f( GL_TEXTURE0, fi, fj, 0.0f, 0.0);
 				glVertex3f(fi,fj,0.0f);
 
 
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 0.2f, 1.0);
+				glMultiTexCoord4f( GL_TEXTURE0, fi, fj, 0.2f, 1.0);
 				glVertex3f(fi,fj,0.0f);
 
 
-				glMultiTexCoord4f( GL_TEXTURE0, tcx, tcy, 1.0f, 0.0);
+				glMultiTexCoord4f( GL_TEXTURE0, fi, fj, 1.0f, 0.0);
 				glVertex3f(fi,fj,0.0f);
 
 				

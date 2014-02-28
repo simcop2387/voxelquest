@@ -1,6 +1,12 @@
 
 
 class GamePage: public Poco::Runnable {
+
+private:
+
+	uint* volData;
+	uint* volDataLinear;
+
 public:
 
 	Singleton* singleton;
@@ -21,12 +27,13 @@ public:
 	bool hasTerrain;
 	bool hasWater;
 	bool hasWindow;
+	bool hasTree;
 
 	//FBOWrapper* fbow;
 
-	uint* volData;
-	uint* volDataLinear;
 	
+	
+	bool volDataModified;
 
 	bool isRendering;
 
@@ -65,8 +72,37 @@ public:
 
 	GamePageHolder* parentGPH;
 
-	GamePage() {
 
+	uint* getVolData() {
+		int i;
+
+		if (volData == NULL) {
+			volData = new uint[iVolumeSize];
+			for (i = 0; i < iVolumeSize; i++) {
+				volData[i] = 0;
+			}
+		}
+
+		return volData;
+		
+	}
+
+	uint* getVolDataLinear() {
+		int i;
+
+		if (volDataLinear == NULL) {
+			volDataLinear = new uint[iVolumeSize];
+			for (i = 0; i < iVolumeSize; i++) {
+				volDataLinear[i] = (0<<24)|(0<<16)|(0<<8)|(0);
+			}
+		}
+
+		return volDataLinear;
+	}
+
+	GamePage() {
+		volData = NULL;
+		volDataLinear = NULL;
 	}
 
 
@@ -97,7 +133,7 @@ public:
 
 		//fbow = singleton->getFBOWrapper("volGenFBO",0);
 
-		
+		volDataModified = false;
 		threadRunning = false;
 
 
@@ -132,15 +168,7 @@ public:
 
 
 		iVolumeSize = bufferedPageSizeInUnits*bufferedPageSizeInUnits*bufferedPageSizeInUnits;
-		volData = new uint[iVolumeSize];
-		for (i = 0; i < iVolumeSize; i++) {
-			volData[i] = 0;
-		}
-
-		volDataLinear = new uint[iVolumeSize];
-		for (i = 0; i < iVolumeSize; i++) {
-			volDataLinear[i] = (0<<24)|(0<<16)|(0<<8)|(0);
-		}
+		
 
 
 
@@ -224,7 +252,59 @@ public:
 
 	}
 
-	void copyToTexture() {
+	void copyToTexture(bool isForEmptyVD) {
+
+
+		int id1 = singleton->volID;
+		int id2 = singleton->volIDLinear;
+
+		if (isForEmptyVD) {
+			id1 = singleton->volIDEmpty;
+			id2 = singleton->volIDEmptyLinear;
+		}
+
+		glBindTexture(GL_TEXTURE_3D,id1);
+			glTexSubImage3D(
+				GL_TEXTURE_3D,
+				0,
+				
+				0,
+				0,
+				0,
+
+				bufferedPageSizeInUnits,
+				bufferedPageSizeInUnits,
+				bufferedPageSizeInUnits,
+
+				GL_RGBA,
+				GL_UNSIGNED_BYTE,
+
+				getVolData()
+			);
+
+		glBindTexture(GL_TEXTURE_3D,0);
+		glBindTexture(GL_TEXTURE_3D,id2);
+			glTexSubImage3D(
+				GL_TEXTURE_3D,
+				0,
+				
+				0,
+				0,
+				0,
+
+				bufferedPageSizeInUnits,
+				bufferedPageSizeInUnits,
+				bufferedPageSizeInUnits,
+
+				GL_RGBA,
+				GL_UNSIGNED_BYTE,
+
+				getVolDataLinear()
+			);
+		glBindTexture(GL_TEXTURE_3D,0);
+
+		
+
 
 
 		/*
@@ -275,49 +355,7 @@ public:
 
 
 		*/
-		
 
-		glBindTexture(GL_TEXTURE_3D,singleton->volID);
-			glTexSubImage3D(
-				GL_TEXTURE_3D,
-				0,
-				
-				0,
-				0,
-				0,
-
-				bufferedPageSizeInUnits,
-				bufferedPageSizeInUnits,
-				bufferedPageSizeInUnits,
-
-				GL_RGBA,
-				GL_UNSIGNED_BYTE,
-
-				volData
-			);
-
-		glBindTexture(GL_TEXTURE_3D,0);
-		glBindTexture(GL_TEXTURE_3D,singleton->volIDLinear);
-			glTexSubImage3D(
-				GL_TEXTURE_3D,
-				0,
-				
-				0,
-				0,
-				0,
-
-				bufferedPageSizeInUnits,
-				bufferedPageSizeInUnits,
-				bufferedPageSizeInUnits,
-
-				GL_RGBA,
-				GL_UNSIGNED_BYTE,
-
-				volDataLinear
-			);
-		glBindTexture(GL_TEXTURE_3D,0);
-
-		
 
 	}
 
@@ -329,6 +367,7 @@ public:
 		int k;
 		int m;
 		int n;
+		int p;
 		int ind;
 		int bufSize = (singleton->visPageSizeInPixels*singleton->bufferMult);
 		intPair curId;
@@ -343,7 +382,8 @@ public:
 		GamePageHolder* gph;
 		GameGeom* gg;
 
-		paramsPerEntry = GameGeom::paramsPerEntry;
+		//paramsPerEntry = GameGeom::paramsPerEntry;
+		paramsPerEntry = E_GP_LENGTH*3;
 		numEntries = 0;
 
 		bool doProc;
@@ -365,6 +405,7 @@ public:
 		}
 
 		if (justTesting) {
+			hasTree = false;
 			hasWindow = false;
 			hasGeom = false;
 		}
@@ -397,6 +438,9 @@ public:
 									if (gg->buildingType == E_BT_WINDOW) {
 										hasWindow = true;
 									}
+									if (gg->buildingType == E_BT_TREE) {
+										hasTree = true;
+									}
 									hasGeom = true;
 								}
 								else {
@@ -413,43 +457,55 @@ public:
 
 										singleton->geomIDArr[numEntries] = gg->globalID;
 
-										baseInd = numEntries*paramsPerEntry;
-
 										
 
-										singleton->paramArr[baseInd + 0] = gg->getBoundsMinInPixelsT()->getFX();
-										singleton->paramArr[baseInd + 1] = gg->getBoundsMinInPixelsT()->getFY();
-										singleton->paramArr[baseInd + 2] = gg->getBoundsMinInPixelsT()->getFZ();
+										for (p = 0; p < E_GP_LENGTH; p++) {
 
-										singleton->paramArr[baseInd + 3] = gg->getBoundsMaxInPixelsT()->getFX();
-										singleton->paramArr[baseInd + 4] = gg->getBoundsMaxInPixelsT()->getFY();
-										singleton->paramArr[baseInd + 5] = gg->getBoundsMaxInPixelsT()->getFZ();
+											baseInd = numEntries*paramsPerEntry + p*3;
 
-										singleton->paramArr[baseInd + 6] = gg->getVisMinInPixelsT()->getFX();
-										singleton->paramArr[baseInd + 7] = gg->getVisMinInPixelsT()->getFY();
-										singleton->paramArr[baseInd + 8] = gg->getVisMinInPixelsT()->getFZ();
+											singleton->paramArr[baseInd + 0] = gg->geomParams[p].getFX();
+											singleton->paramArr[baseInd + 1] = gg->geomParams[p].getFY();
+											singleton->paramArr[baseInd + 2] = gg->geomParams[p].getFZ();
+										}
+										
 
-										singleton->paramArr[baseInd + 9] = gg->getVisMaxInPixelsT()->getFX();
-										singleton->paramArr[baseInd + 10] = gg->getVisMaxInPixelsT()->getFY();
-										singleton->paramArr[baseInd + 11] = gg->getVisMaxInPixelsT()->getFZ();
+										// singleton->paramArr[baseInd + 0] = gg->getBoundsMinInPixelsT()->getFX();
+										// singleton->paramArr[baseInd + 1] = gg->getBoundsMinInPixelsT()->getFY();
+										// singleton->paramArr[baseInd + 2] = gg->getBoundsMinInPixelsT()->getFZ();
 
-										singleton->paramArr[baseInd + 12] = gg->cornerDisInPixels.getFX();
-										singleton->paramArr[baseInd + 13] = gg->cornerDisInPixels.getFY();
-										singleton->paramArr[baseInd + 14] = gg->cornerDisInPixels.getFZ();
+										// singleton->paramArr[baseInd + 3] = gg->getBoundsMaxInPixelsT()->getFX();
+										// singleton->paramArr[baseInd + 4] = gg->getBoundsMaxInPixelsT()->getFY();
+										// singleton->paramArr[baseInd + 5] = gg->getBoundsMaxInPixelsT()->getFZ();
 
-										singleton->paramArr[baseInd + 15] = gg->powerVals.getFX();
-										singleton->paramArr[baseInd + 16] = gg->powerVals.getFY();
-										singleton->paramArr[baseInd + 17] = gg->powerVals.getFZ();
+										// singleton->paramArr[baseInd + 6] = gg->getVisMinInPixelsT()->getFX();
+										// singleton->paramArr[baseInd + 7] = gg->getVisMinInPixelsT()->getFY();
+										// singleton->paramArr[baseInd + 8] = gg->getVisMinInPixelsT()->getFZ();
 
-										singleton->paramArr[baseInd + 18] = gg->thickVals.getFX();
-										singleton->paramArr[baseInd + 19] = gg->thickVals.getFY();
-										singleton->paramArr[baseInd + 20] = gg->thickVals.getFZ();
+										// singleton->paramArr[baseInd + 9] = gg->getVisMaxInPixelsT()->getFX();
+										// singleton->paramArr[baseInd + 10] = gg->getVisMaxInPixelsT()->getFY();
+										// singleton->paramArr[baseInd + 11] = gg->getVisMaxInPixelsT()->getFZ();
 
-										singleton->paramArr[baseInd + 21] = gg->matParams.getFX();
-										singleton->paramArr[baseInd + 22] = gg->matParams.getFY();
-										singleton->paramArr[baseInd + 23] = gg->matParams.getFZ();
+										// singleton->paramArr[baseInd + 12] = gg->cornerDisInPixels.getFX();
+										// singleton->paramArr[baseInd + 13] = gg->cornerDisInPixels.getFY();
+										// singleton->paramArr[baseInd + 14] = gg->cornerDisInPixels.getFZ();
 
-										singleton->matCountArr[gg->matParams.getIX()] += 1.0f;
+										// singleton->paramArr[baseInd + 15] = gg->powerVals.getFX();
+										// singleton->paramArr[baseInd + 16] = gg->powerVals.getFY();
+										// singleton->paramArr[baseInd + 17] = gg->powerVals.getFZ();
+
+										// singleton->paramArr[baseInd + 15] = gg->powerVals2.getFX();
+										// singleton->paramArr[baseInd + 16] = gg->powerVals2.getFY();
+										// singleton->paramArr[baseInd + 17] = gg->powerVals2.getFZ();
+
+										// singleton->paramArr[baseInd + 18] = gg->thickVals.getFX();
+										// singleton->paramArr[baseInd + 19] = gg->thickVals.getFY();
+										// singleton->paramArr[baseInd + 20] = gg->thickVals.getFZ();
+
+										// singleton->paramArr[baseInd + 21] = gg->matParams.getFX();
+										// singleton->paramArr[baseInd + 22] = gg->matParams.getFY();
+										// singleton->paramArr[baseInd + 23] = gg->matParams.getFZ();
+
+										singleton->matCountArr[gg->geomParams[E_GP_MATPARAMS].getIX()] += 1.0f;
 
 										numEntries++;
 									}
@@ -493,7 +549,18 @@ public:
 		
 		curState = E_STATE_GENERATEVOLUME_BEG;
 		
-		copyToTexture();
+
+
+		if (volDataModified) {
+			copyToTexture(false);
+		}
+		else {
+			if (singleton->emptyVDNotReady) {
+				singleton->emptyVDNotReady = false;
+				copyToTexture(true);
+			}
+		}
+		
 		
 		parentGPH->clearSet(false);
 
@@ -508,13 +575,23 @@ public:
 		
 
 		singleton->bindFBO(singleton->curVGString);
-		singleton->setShaderTexture3D(0,singleton->volID);
-		singleton->setShaderTexture3D(1,singleton->volIDLinear);
+
+		if (volDataModified) {
+			singleton->setShaderTexture3D(0,singleton->volID);
+			singleton->setShaderTexture3D(1,singleton->volIDLinear);
+		}
+		else {
+			singleton->setShaderTexture3D(0,singleton->volIDEmpty);
+			singleton->setShaderTexture3D(1,singleton->volIDEmptyLinear);
+		}
+
+		
 		singleton->sampleFBO("hmFBOLinear",2);
 		singleton->setShaderTexture(3,singleton->terrainID);
 		//singleton->setShaderTexture(3,singleton->uvPattern->tid);
 		//singleton->setShaderTexture3D(3,singleton->voroID);
 
+		singleton->setShaderInt("hasTree", (int)hasTree);
 		singleton->setShaderInt("hasGeom", (int)hasGeom);
 		singleton->setShaderInt("hasTerrain", (int)hasTerrain);
 
@@ -542,8 +619,8 @@ public:
 		
 
 		if (hasGeom) {
-			singleton->setShaderFloat("paramsPerEntry", (float)(paramsPerEntry/3) );
-			singleton->setShaderFloat("numEntries", (float)numEntries);
+			singleton->setShaderInt("paramsPerEntry", (paramsPerEntry/3) );
+			singleton->setShaderInt("numEntries", numEntries);
 			singleton->setShaderArrayfVec3("paramArr", singleton->paramArr, totParams/3);
 			singleton->setShaderArray("matCountArr", singleton->matCountArr, E_MAT_PARAM_LENGTH);
 		}
@@ -604,7 +681,7 @@ public:
 
 			//ray trace new texture, generate normals, AO, depth, etc
 			
-			glEnable(GL_DEPTH_TEST);
+			//glEnable(GL_DEPTH_TEST);
 
 			
 			singleton->bindShader("RenderVolume");
@@ -671,7 +748,7 @@ public:
 
 			
 
-			glDisable(GL_DEPTH_TEST);
+			//glDisable(GL_DEPTH_TEST);
 		}
 
 		
@@ -730,10 +807,10 @@ public:
 
 	~GamePage() {
 
-		if (volData) {
+		if (volData != NULL) {
 			delete[] volData;
 		}
-		if (volDataLinear) {
+		if (volDataLinear != NULL) {
 			delete[] volDataLinear;
 		}
 	}
@@ -752,229 +829,5 @@ public:
 			break;
 		}
 	}
-
-
-
-
-
-	// uint NumberOfSetBits(uint i)
-	// {
-	//     i = i - ((i >> 1) & 0x55555555);
-	//     i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
-	//     return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
-	// }
-
-	// uint clamp(uint val) {
-	// 	if (val > 255) {
-	// 		val = 255;
-	// 	}
-	// 	if (val < 0) {
-	// 		val = 0;
-	// 	}
-	// 	return val;
-	// }
-	
-
-
-
-
-	// void createSimplexNoise() {
-
-	// 	threadRunning = true;
-
-	// 	// REMINDER: DO NOT ACCESS EXTERNAL POINTERS INSIDE THREAD
-
-	// 	bool isBlank = false;
-	// 	bool isFull = false;
-		
-
-	// 	curState = E_STATE_CREATESIMPLEXNOISE_BEG;
-
-	// 	int i, j, k, m;
-
-	// 	int totLen = bufferedPageSizeInUnits;
-
-	// 	float fTotLen = (float)totLen;
-
-	// 	int ind = 0;
-
-	// 	uint tmp;
-
-	// 	float fx, fy, fz;
-
-	// 	uint randOff[3];
-	// 	float ijkVals[3];
-
-	// 	const float RAND_MOD[9] = {
-	// 		3456.0f, 5965.0f, 45684.0f,
-	// 		4564.0f, 1234.0f, 6789.0f,
-	// 		4567.0f, 67893.0f, 13245.0f
-	// 	};
-
-	// 	float totLenO4 = totLen/4;
-	// 	float totLen3O4 = (totLen*3)/4;
-	// 	float fSimp;
-	// 	float heightThresh;
-	// 	float testVal;
-
-	// 	bool mustNotBeFull = false;
-
-
-
-	// 	for (j = 0; j < totLen; j++) {
-
-	// 		ijkVals[1] = (float)j;
-
-	// 		fy = (j) + offsetInUnits.getFY();
-
-	// 		for (i = 0; i < totLen; i++) {
-
-	// 			ijkVals[0] = (float)i;
-
-	// 			fx = (i) + offsetInUnits.getFX();
-				
-	// 			for (k = 0; k < totLen; k++) {
-
-	// 				ijkVals[2] = (float)k;
-
-	// 				fz = (k) + offsetInUnits.getFZ();
-
-	// 				ind = k*totLen*totLen + j*totLen + i;
-
-					
-					
-	// 				if (fx < 0.0f || fy < 0.0f || fz < 0.0f ) {
-	// 					volData[ind] = 0;
-	// 					volDataLinear[ind] = (255<<16)|(255<<8)|255;
-	// 				}
-	// 				else {
-
-	// 					heightThresh = (fz/ ((float)maxHeightInUnits) );
-	// 					if (heightThresh > 1.0f) {
-	// 						heightThresh = 1.0f;
-	// 					}
-	// 					if (heightThresh < 0.0f) {
-	// 						heightThresh = 0.0f;
-	// 					}
-
-
-
-	// 					if (k + offsetInUnits.getIZ() >= maxHeightInUnits) {
-	// 						tmp = 0;
-	// 						mustNotBeFull = true;
-	// 					}
-	// 					else {
-	// 						testVal = simplexScaledNoise(
-	// 											4.0f, //octaves
-	// 											0.5f, //persistence (amount added in each successive generation)
-	// 											1.0f/32.0f, //scale (frequency)
-	// 											0.0f,
-	// 											1.0f,
-	// 											fx+worldSeed.getFX(),
-	// 											fy+worldSeed.getFY(),
-	// 											fz+worldSeed.getFZ()
-	// 										);
-							
-
-							
-	// 						tmp = clamp(testVal*255.0f*(1.0f-heightThresh*heightThresh*heightThresh));
-	// 					}
-
-						
-
-	// 					if ( i >= totLenO4 && i <= totLen3O4 ) {
-	// 						if ( j >= totLenO4 && j <= totLen3O4 ) {
-	// 							if ( k >= totLenO4 && k <= totLen3O4 ) {
-	// 								if (tmp > threshVal) {
-	// 									isBlank = false;
-	// 								}
-	// 								else {
-	// 									isFull = false;
-	// 								}
-	// 							}
-	// 						}
-	// 					}
-
-						
-						
-
-
-	// 					for (m = 0; m < 3; m++) {
-	// 						fSimp = simplexScaledNoise(
-	// 																	1.0f, //octaves
-	// 																	1.0f, //persistence (amount added in each successive generation)
-	// 																	1.0f/4.0, //scale (frequency)
-	// 																	0.0f,
-	// 																	1.0f,
-	// 																	fx+RAND_MOD[m*3+0],
-	// 																	fy+RAND_MOD[m*3+1],
-	// 																	fz+RAND_MOD[m*3+2]
-	// 																);
-	// 						randOff[m] = clamp( ( fSimp + ijkVals[m])*255.0f/fTotLen);
-							
-
-
-	// 					}
-
-	// 					if ( (tmp%16 > 5) && ( (i+j+k)%2 == 0) ) {
-
-	// 						/*if (randOff[0] == 0 && randOff[1] == 0 && randOff[2] == 0) {
-	// 							randOff[1] = 1;
-	// 						} */
-
-	// 						volData[ind] = (0)|(randOff[2]<<16)|(randOff[1]<<8)|randOff[0];
-	// 						volDataLinear[ind] = (tmp<<24)|(255<<16)|(255<<8)|255;
-	// 					}
-	// 					else {
-	// 						volData[ind] = (0);
-	// 						volDataLinear[ind] = (tmp<<24)|(255<<16)|(255<<8)|255;;
-	// 					}
-
-						
-	// 				}
-					
-					
-
-					
-	// 			}
-	// 		}
-	// 	}
-
-
-
-
-
-	// 	/*
-	// 	if (mustNotBeFull) {
-	// 		isFull = false;
-	// 	}
-
-	// 	if (isBlank || isFull ) {
-
-	// 		if (isBlank) {
-	// 			fillState = E_FILL_STATE_EMPTY;
-	// 		}
-	// 		if (isFull) {
-	// 			fillState = E_FILL_STATE_FULL;
-	// 		}
-
-	// 		curState = E_STATE_LENGTH;
-	// 	}
-	// 	else {*/
-
-	// 		//fillState = E_FILL_STATE_PARTIAL;
-	// 		//curState = E_STATE_CREATESIMPLEXNOISE_END;
-	// 	//}
-
-
-		
-
-	// 	fillState = E_FILL_STATE_PARTIAL;
-	// 	curState = E_STATE_CREATESIMPLEXNOISE_END;
-
-
-	// 	threadRunning = false;
-
-	// }
 
 };

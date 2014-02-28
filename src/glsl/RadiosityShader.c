@@ -50,6 +50,10 @@ float unpack16(vec2 num) {
     return num.r*255.0 + num.g*65280.0;
 }
 
+float isNotGeom(vec2 num) {
+    return float ( (unpack16(num)) < 32768.0);
+}
+
 
 void main() {
 
@@ -156,7 +160,7 @@ void main() {
             testNormRef = normalize(reflect(lightVec,testNormOrig));
 
 
-
+            
             samp3 = texture2D(Texture0, newTC.xy );
             newTC.z = unpack16(samp3.rg)/bufferDim.x;
             testVec = normalize(baseTC-newTC);
@@ -165,7 +169,7 @@ void main() {
             finalRes = (tex2.a*tex1.a*samp.a*samp2.a) * 
             clamp(dot(testNormOrig,testVec),0.0,1.0) * 
             clamp(dot(baseNormOrig,baseVec),0.0,1.0) * 
-            (1.25-fi); 
+            (1.25-fi)*isNotGeom(samp3.ba); 
             //* float( dot(lightVec,baseVec) > 0.0 );// *(1.0-dot(oneVec,samp.rgb)/3.0);
 
 

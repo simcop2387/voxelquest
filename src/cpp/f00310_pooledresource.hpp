@@ -53,7 +53,7 @@ public:
 				((singleton->holderSizeInPixels)),
 				((singleton->holderSizeInPixels)),
 				1,
-				true
+				false //has depth
 			);
 		}
 

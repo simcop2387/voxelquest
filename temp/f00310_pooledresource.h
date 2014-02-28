@@ -47,7 +47,7 @@ void PooledResource::init (Singleton * _singleton)
 				((singleton->holderSizeInPixels)),
 				((singleton->holderSizeInPixels)),
 				1,
-				true
+				false //has depth
 			);
 		}
 

@@ -46,7 +46,7 @@ void main() {
     newPos.x += scaleAndOffset.z;
     newPos.y += scaleAndOffset.w;
 
-    newPos.z = pageDepth;
+    //newPos.z = pageDepth;
 
     gl_Position = newPos;
 
@@ -305,8 +305,8 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
             break;
         }
         else {
-            rad = 24;
-            radStep = 8;
+            rad = 12;
+            radStep = 4;
         }
 
         

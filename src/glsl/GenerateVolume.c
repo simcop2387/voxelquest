@@ -8,15 +8,19 @@ uniform sampler2D Texture3; //terrainID
 uniform float totLayers;
 uniform float heightmapMax;
 uniform float seaLevel;
-//uniform float slicesPerPitch;
 uniform float volumePitch;
 uniform float bufferedPageSizeInUnits;
 uniform float bufferMult;
-uniform float numEntries;
-uniform float paramsPerEntry;
-//uniform float directPass;
 uniform float pixelsPerMeter;
 
+uniform int numEntries;
+uniform int paramsPerEntry;
+
+
+//uniform float directPass;
+//uniform float slicesPerPitch;
+
+uniform bool hasTree;
 uniform bool hasGeom;
 uniform bool hasTerrain;
 
@@ -37,22 +41,47 @@ varying vec2 TexCoord0;
 int iVolumePitch = int(volumePitch);
 
 
-const float TEX_NULL = 0.0;
-const float TEX_GOLD = 1.0;
-const float TEX_DIRT = 8.0;
-const float TEX_STONE = 10.0;
-const float TEX_GRASS = 12.0;
-const float TEX_SAND = 14.0;
-const float TEX_MORTAR = 16.0;
-const float TEX_WOOD = 18.0;
-const float TEX_BRICK = 20.0;
-const float TEX_SHINGLE = 22.0;
-const float TEX_PLASTER = 28.0;
-const float TEX_DEBUG = 30.0;
-const float TEX_METAL = 32.0;
-const float TEX_WATER = 34.0;
-const float TEX_GLASS = 35.0;
-const float TEX_EARTH = 36.0;
+
+const int E_GP_VISMININPIXELST = 0;
+const int E_GP_VISMAXINPIXELST = 1;
+const int E_GP_BOUNDSMININPIXELST = 2;
+const int E_GP_BOUNDSMAXINPIXELST = 3;
+const int E_GP_CORNERDISINPIXELS = 4;
+const int E_GP_POWERVALS = 5;
+const int E_GP_POWERVALS2 = 6;
+const int E_GP_THICKVALS = 7;
+const int E_GP_MATPARAMS = 8;
+const int E_GP_LENGTH = 9;
+
+
+const int E_TP_VISMININPIXELST = 0;
+const int E_TP_VISMAXINPIXELST = 1;
+const int E_TP_P0 = 2;
+const int E_TP_P1 = 3;
+const int E_TP_P2 = 4;
+const int E_TP_POWERVALS = 5;
+const int E_TP_POWERVALS2 = 6;
+const int E_TP_THICKVALS = 7;
+const int E_TP_MATPARAMS = 8;
+const int E_TP_LENGTH = 9;
+
+
+const float TEX_NULL = 		0.0;
+const float TEX_GOLD = 		1.0;
+const float TEX_DIRT = 		8.0;
+const float TEX_STONE = 	10.0;
+const float TEX_GRASS = 	12.0;
+const float TEX_SAND = 		14.0;
+const float TEX_MORTAR = 	16.0;
+const float TEX_WOOD = 		18.0;
+const float TEX_BRICK = 	20.0;
+const float TEX_SHINGLE = 	22.0;
+const float TEX_PLASTER = 	28.0;
+const float TEX_DEBUG = 	30.0;
+const float TEX_METAL = 	32.0;
+const float TEX_WATER = 	34.0;
+const float TEX_GLASS = 	35.0;
+const float TEX_EARTH = 	36.0;
 
 
 
@@ -63,7 +92,8 @@ const float E_MAT_PARAM_DOORWAY = 	2.0;
 const float E_MAT_PARAM_DOOR = 		3.0;
 const float E_MAT_PARAM_WINDOW = 	4.0;
 const float E_MAT_PARAM_SLATS =		5.0;
-const float E_MAT_PARAM_LENGTH = 	6.0;
+const float E_MAT_PARAM_TREE = 		6.0;
+const float E_MAT_PARAM_LENGTH = 	7.0;
 
 float shingleMod;
 
@@ -430,6 +460,7 @@ vec4 getBuilding(
 		vec3 relPos,
 		bvec3 bLessThanOrig,
 		bool isVert,
+		bool notScaff,
 		float maxDisFromBottomInPixels,
 		float nearestJointXY,
 		float resXY,
@@ -482,7 +513,7 @@ vec4 getBuilding(
 
 	float shingleDepth = 0.25*pixelsPerMeter;
 	bool bIsOuterWallBoards =  (disFromOutsideInPixels < (0.5*pixelsPerMeter)) && (disFromOutsideInPixels > (0.25*pixelsPerMeter));
-	bool bIsShingle = (disFromOutsideInPixels < (shingleDepth)) && (disFromOutsideInPixels > (0.0*pixelsPerMeter));
+	bool bIsShingle = (disFromOutsideInPixels < (shingleDepth));// && (disFromOutsideInPixels > (0.0*pixelsPerMeter));
 
 	
 
@@ -607,7 +638,7 @@ vec4 getBuilding(
 								
 								// diagonal beams
 
-								if (!getInterval(newUVW.x,8.0,4.0) && (notCorner == 1.0)) {
+								if (!getInterval(newUVW.x,8.0,4.0) && (notCorner == 1.0) && (notScaff)) {
 									dirMod = (float(getInterval(newUVW.x,8.0,4.0))-0.5)*2.0;
 
 									if ( getInterval(newUVW.x + dirMod*newUVW.y*0.5, 2.0, 0.25) && bIsOuterWall ) {
@@ -723,7 +754,7 @@ vec4 getBuilding(
 		newUVW.xyz = newUVW.xzy;
 	}
 
-	if ( (bIsOuterWall||bIsBasementFloor) && (myResult.y == TEX_NULL) && doBricks ) {
+	if ( (bIsOuterWall||bIsBasementFloor) && (myResult.y == TEX_NULL) && doBricks && (notScaff||isBasement) ) {
 
 		// myResult.x = 30.0;
 		// myResult.y = TEX_PLASTER;
@@ -1038,6 +1069,115 @@ vec4 getSlats(vec4 newUVW, float thickness, vec3 origin, vec3 worldPosInPixels, 
 	return myResult;
 }
 
+vec2 pointSegDistance(vec3 testPoint, vec3 sp0, vec3 sp1)
+{
+	vec3 v = sp1 - sp0;
+	vec3 w = testPoint - sp0;
+
+	float d0 = distance(testPoint, sp0);
+	float d1 = distance(testPoint, sp1);
+	float d2 = distance(sp0,sp1);
+
+	float c1 = dot(w,v);
+	if ( c1 <= 0 ) {
+		return vec2(d0, 0.0);
+	}
+
+	float c2 = dot(v,v);
+	if ( c2 <= c1 ) {
+		return vec2(d1, 1.0);
+	}
+	
+
+
+
+	float b = c1 / c2;
+	vec3 testPoint2 = sp0 + b * v; // testPoint2 is the nearest point on the line
+	return vec2(distance(testPoint, testPoint2), distance(testPoint2,sp0)/d2 );
+}
+
+
+vec4 getTree(vec3 worldPosInPixels) {
+	
+
+	int i;
+	int j;
+	int k;
+
+	int baseInd;
+	int bestInd[2];
+	bestInd[0] = -1;
+	bestInd[1] = -1;// = int[](-1,-1);
+	
+	float testDis = 0.0;
+	float invalid = 99999.0;
+	float bestDis[2];
+
+
+	bestDis[0] = invalid;
+	bestDis[1] = invalid;
+
+	vec3 visMinInPixels = vec3(0.0);
+	vec3 visMaxInPixels = vec3(0.0);
+	vec3 thickVals = vec3(0.0);
+	vec3 matParams = vec3(0.0);
+
+	vec4 matResult = vec4(0.0);
+
+	vec3 p0;
+	vec3 p1;
+	vec3 p2;
+
+	vec2 dres = vec2(0.0);
+
+
+	for (i = 0; i < numEntries; i++) {
+
+		baseInd = i*paramsPerEntry;
+		matParams = paramArr[baseInd+E_TP_MATPARAMS];
+
+
+		if (matParams.x == E_MAT_PARAM_TREE) {
+			
+			visMinInPixels = paramArr[baseInd+E_TP_VISMININPIXELST];
+			visMaxInPixels = paramArr[baseInd+E_TP_VISMAXINPIXELST];
+			
+
+			if (
+				all( lessThanEqual(worldPosInPixels,visMaxInPixels) ) && //+slack
+				all( greaterThanEqual(worldPosInPixels,visMinInPixels) ) //-slack
+			) {
+
+				p0 = paramArr[baseInd+E_TP_P0];
+				p1 = paramArr[baseInd+E_TP_P1];
+
+				thickVals = paramArr[baseInd+E_TP_THICKVALS];
+
+				p2 = (p0+p1)/2.0;
+
+				// p0 = mix(p0,p2,0.25);
+				// p1 = mix(p1,p2,0.25);
+
+
+				dres = pointSegDistance(worldPosInPixels,p0,p1);
+
+				if (dres.x < mix(thickVals.x,thickVals.y,dres.y)) {
+					matResult.x = 0.0;
+					matResult.y = TEX_STONE;
+				}
+
+				
+			}
+		}
+	}
+
+	// matResult.x = normalUID;
+	// matResult.y = finalMat;
+	// matResult.z = float(isInside[0] || isInside[1]);
+	// matResult.w = finalMod;
+
+	return matResult;
+}
 
 vec4 getGeom(vec3 worldPosInPixels, float curMat, float terHeight) {
 
@@ -1048,7 +1188,6 @@ vec4 getGeom(vec3 worldPosInPixels, float curMat, float terHeight) {
 	int n;
 	int nMax = 1;
 
-	int iParamsPerEntry = int(paramsPerEntry);
 	int baseInd;
 	int bestInd[2];
 	int tallestInd = 0;
@@ -1139,6 +1278,8 @@ vec4 getGeom(vec3 worldPosInPixels, float curMat, float terHeight) {
 	vec3 visMaxInPixels = vec3(0.0);
 	vec3 cornerDisInPixels = vec3(0.0);
 	vec3 powerVals = vec3(0.0);
+	vec3 powerVals1 = vec3(0.0);
+	vec3 powerVals2 = vec3(0.0);
 	vec3 thickVals = vec3(0.0);
 	vec3 matParams = vec3(0.0);
 	//vec3 coefficients = vec3(0.0);
@@ -1204,28 +1345,21 @@ vec4 getGeom(vec3 worldPosInPixels, float curMat, float terHeight) {
 	int visCount = 0;
 	
 
+	
+
+
 	for (i = 0; i < numEntries; i++) {
 
-		baseInd = i*iParamsPerEntry;
-		matParams = paramArr[baseInd+7];
+		baseInd = i*paramsPerEntry;
+		matParams = paramArr[baseInd+E_GP_MATPARAMS];
 
 		if (matParams.x == curMat) {
 			
-			boundsMinInPixels = paramArr[baseInd+0];
-			boundsMaxInPixels = paramArr[baseInd+1];
-			visMinInPixels = paramArr[baseInd+2];
-			visMaxInPixels = paramArr[baseInd+3];
-			thickVals = paramArr[baseInd+6];
-
-
-			// cornerDisInPixels = paramArr[baseInd+4];
-			
-			// radInPixels = (boundsMaxInPixels - boundsMinInPixels)/2.0;
-			// isVert = radInPixels.x < radInPixels.y;
-
-			// boundsMinCorner = boundsMinInPixels + cornerDisInPixels;
-			// boundsMaxCorner = boundsMaxInPixels - cornerDisInPixels;
-
+			boundsMinInPixels = paramArr[baseInd+E_GP_BOUNDSMININPIXELST];
+			boundsMaxInPixels = paramArr[baseInd+E_GP_BOUNDSMAXINPIXELST];
+			visMinInPixels = paramArr[baseInd+E_GP_VISMININPIXELST];
+			visMaxInPixels = paramArr[baseInd+E_GP_VISMAXINPIXELST];
+			thickVals = paramArr[baseInd+E_GP_THICKVALS];
 
 			if (thickVals.y != 0.0) {
 				visMinInPixels.z = terHeight - thickVals.y;
@@ -1369,10 +1503,10 @@ vec4 getGeom(vec3 worldPosInPixels, float curMat, float terHeight) {
 
 
 
-		baseInd = bestInd[n]*iParamsPerEntry;
+		baseInd = bestInd[n]*paramsPerEntry;
 
-		visMinInPixels = paramArr[baseInd+2];
-		visMaxInPixels = paramArr[baseInd+3];
+		visMinInPixels = paramArr[baseInd+E_GP_VISMININPIXELST];
+		visMaxInPixels = paramArr[baseInd+E_GP_VISMAXINPIXELST];
 
 		
 		
@@ -1386,12 +1520,13 @@ vec4 getGeom(vec3 worldPosInPixels, float curMat, float terHeight) {
 
 
 
-		boundsMinInPixels = paramArr[baseInd+0];
-		boundsMaxInPixels = paramArr[baseInd+1];
-		cornerDisInPixels = paramArr[baseInd+4];
-		powerVals = paramArr[baseInd+5];
-		thickVals = paramArr[baseInd+6];
-		matParams = paramArr[baseInd+7];
+		boundsMinInPixels = paramArr[baseInd+E_GP_BOUNDSMININPIXELST];
+		boundsMaxInPixels = paramArr[baseInd+E_GP_BOUNDSMAXINPIXELST];
+		cornerDisInPixels = paramArr[baseInd+E_GP_CORNERDISINPIXELS];
+		powerVals1 = paramArr[baseInd+E_GP_POWERVALS];
+		powerVals2 = paramArr[baseInd+E_GP_POWERVALS2];
+		thickVals = paramArr[baseInd+E_GP_THICKVALS];
+		matParams = paramArr[baseInd+E_GP_MATPARAMS];
 		
 		wThickness = thickVals.x;
 		//thickness = thickVals.x;
@@ -1425,16 +1560,7 @@ vec4 getGeom(vec3 worldPosInPixels, float curMat, float terHeight) {
 		thickness = min(min(radInPixels.x,radInPixels.y),radInPixels.z);
 		
 
-		if (isVert) {
-			if ( worldPosInPixels.y > orig.y ) {
-				powerVals.x = powerVals.z;
-			}
-		}
-		else {
-			if ( worldPosInPixels.x > orig.x ) {
-				powerVals.x = powerVals.z;
-			}
-		}
+		
 
 
 
@@ -1449,55 +1575,6 @@ vec4 getGeom(vec3 worldPosInPixels, float curMat, float terHeight) {
 		radInPixelsTopUV = (boundsMaxInPixels - boundsMinInPixels)*0.5;// - cornerDisInPixels;
 		innerDisInPixels = radInPixels-cornerDisInPixels;
 
-		
-
-		
-
-		// if (dot(thickVals.yz,oneVec.xy) == 0.0) {
-
-		// }
-		// else {
-
-		// 	boundsMinCorner = boundsMinInPixels + cornerDisInPixels;//*4.0;
-		// 	boundsMaxCorner = boundsMaxInPixels - cornerDisInPixels;//*4.0;
-
-			
-
-		// 	tempVec.xy = clamp((worldPosInPixels.xy-boundsMinCorner.xy)/(boundsMaxCorner.xy-boundsMinCorner.xy),0.0,1.0);
-
-		// 	if (isVert) {
-		// 		tempf1 = tempVec.y;
-		// 	}
-		// 	else {
-		// 		tempf1 = tempVec.x;
-		// 	}
-
-		// 	tempf2 = mix(thickVals.y,thickVals.z,tempf1);
-
-		// 	tempf2 += 0.125*pixelsPerMeter;
-
-		// 	if (distance(tempf2,worldPosInPixels.z) > 1.0*pixelsPerMeter) {
-		// 		return matResult;
-		// 	}
-		// 	else {
-
-		// 		worldPosInPixels.z - terHeight
-
-		// 		boundsMaxInPixels.z = terHeight + 1.0*pixelsPerMeter;
-		// 		boundsMinInPixels.z = terHeight - 1.0*pixelsPerMeter;
-
-		// 		orig = (boundsMaxInPixels + boundsMinInPixels)/2.0;
-		// 		radInPixels = (boundsMaxInPixels - boundsMinInPixels)/2.0;
-
-		// 		radInPixelsTopUV = (boundsMaxInPixels - boundsMinInPixels)*0.5;// - cornerDisInPixels;
-		// 		innerDisInPixels = radInPixels-cornerDisInPixels;
-
-				
-
-		// 	}
-
-			
-		// }
 
 		boundsMinCorner = boundsMinInPixels + cornerDisInPixels;
 		boundsMaxCorner = boundsMaxInPixels - cornerDisInPixels;
@@ -1514,6 +1591,25 @@ vec4 getGeom(vec3 worldPosInPixels, float curMat, float terHeight) {
 
 		centerMin = boundsMinInPixels + newCornerDisTopUV;
 		centerMax = boundsMaxInPixels - newCornerDisTopUV;
+
+		if (isVert) {
+
+			tempf1 = clamp( (worldPosInPixels.y-centerMin.y)/(centerMax.y-centerMin.y), 0.0, 1.0);
+
+			// if ( worldPosInPixels.y > orig.y ) {
+			// 	powerVals.x = powerVals.z;
+			// }
+		}
+		else {
+
+			tempf1 = clamp( (worldPosInPixels.x-centerMin.x)/(centerMax.x-centerMin.x), 0.0, 1.0);
+
+			// if ( worldPosInPixels.x > orig.x ) {
+			// 	powerVals.x = powerVals.z;
+			// }
+		}
+
+		powerVals = mix(powerVals1,powerVals2,tempf1);
 
 		originInPixelsTopUV = clamp(worldPosInPixels, centerMin, centerMax );
 		disTopUV = worldPosInPixels - originInPixelsTopUV;
@@ -1776,6 +1872,7 @@ vec4 getGeom(vec3 worldPosInPixels, float curMat, float terHeight) {
 					tempVec3,
 					bLessThanOrig,
 					isVert,
+					true, // notScaff
 					boundsMaxCorner.z-boundsMinCorner.z,
 					nearestJointXY,
 					resXY,
@@ -2013,6 +2110,7 @@ void main() {
 
 	vec4 finalRes = vec4(0.0);
 	vec4 matResultTer = vec4(0.0);
+	vec4 matResultTree = vec4(0.0);
 	vec4 matResultGeom = vec4(0.0);
 	vec4 matResult = vec4(0.0);
 	vec4 tempResult;
@@ -2024,7 +2122,7 @@ void main() {
 
 	if (hasGeom) {
 
-		for (j = 0; j < E_MAT_PARAM_LENGTH; j++) {
+		for (j = 0; j < E_MAT_PARAM_TREE; j++) {
 			fj = float(j);
 
 			iMatCount = int(matCountArr[j]);
@@ -2036,9 +2134,11 @@ void main() {
 				}
 			}
 		}
-
-		
 	}
+
+
+
+
 
 	
 
@@ -2049,6 +2149,15 @@ void main() {
 	else {
 		matResult = matResultGeom;
 	}
+
+	if (hasTree) {
+		matResultTree = getTree(worldPosInPixels);
+		if (matResultTree.y != TEX_NULL) {
+			matResult = matResultTree;
+		}
+
+	}
+
 
 	finalInside = matResult.z;
 	finalNormUID = matResult.x;

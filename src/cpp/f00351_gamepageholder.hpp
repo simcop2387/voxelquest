@@ -192,10 +192,6 @@ public:
 						containsGeomIds.back().v0 = curBlock->blockID;
 						containsGeomIds.back().v1 = k;
 					}
-
-
-					
-
 				}
 			}			
 		}

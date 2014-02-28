@@ -74,6 +74,7 @@ public:
   eProgramState programState;
   eProgramAction (progActionsDown) [E_PS_SIZE*256];
   eProgramAction (progActionsUp) [E_PS_SIZE*256];
+  bool emptyVDNotReady;
   bool radiosityOn;
   bool updateLock;
   bool isFullScreen;
@@ -142,7 +143,6 @@ public:
   int bufferMultRec;
   int holderSizeInPages;
   int holderSizeInPixels;
-  int grassSpacing;
   uint volGenFBOX;
   uint palWidth;
   uint palHeight;
@@ -219,18 +219,16 @@ public:
   map <string, Shader*> shaderMap;
   map <string, FBOSet*> fboMap;
   string curVGString;
-  GLuint volGenID;
   GLuint volID;
-  GLuint terrainID;
   GLuint volIDLinear;
-  GLuint voroID;
-  GLuint voroIDLinear;
+  GLuint volIDEmpty;
+  GLuint volIDEmptyLinear;
+  GLuint volGenID;
+  GLuint terrainID;
   GLuint volTris;
   GLuint sliceTris;
-  GLuint grassTris;
+  GLuint (grassTris) [MAX_GRASS_LEV];
   uint * lookup2to3;
-  uint * volData;
-  uint * volDataLinear;
   unsigned char * resultImage;
   charArr nullBuffer;
   charArr lastImageBuffer;
@@ -243,7 +241,6 @@ public:
   int numLights;
   Singleton ();
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer * _myWS);
-  void createVoroVolume ();
   void reorderIds ();
   int findFurthestHolderId ();
   int requestPoolId (int blockID, int holderID);
@@ -254,7 +251,7 @@ public:
   float genRand (float LO, float HI);
   void setProgAction (eProgramState ps, unsigned char kc, eProgramAction pa, bool isDown);
   void setProgActionAll (unsigned char kc, eProgramAction pa, bool isDown);
-  void createGrassList (int spacing);
+  void createGrassList (int index);
   void drawCrossHairs (FIVector4 originVec, float radius);
   void drawCubeCentered (FIVector4 originVec, float radius);
   void drawBoxUp (FIVector4 originVec, float radiusX, float radiusY, float diamZ);
@@ -360,6 +357,9 @@ public:
 #define LZZ_INLINE inline
 class GamePage : public Poco::Runnable
 {
+private:
+  uint * volData;
+  uint * volDataLinear;
 public:
   Singleton * singleton;
   int thisPageId;
@@ -374,8 +374,8 @@ public:
   bool hasTerrain;
   bool hasWater;
   bool hasWindow;
-  uint * volData;
-  uint * volDataLinear;
+  bool hasTree;
+  bool volDataModified;
   bool isRendering;
   int paramsPerEntry;
   int numEntries;
@@ -396,9 +396,11 @@ public:
   FIVector4 worldUnitMax;
   E_FILL_STATE fillState;
   GamePageHolder * parentGPH;
+  uint * getVolData ();
+  uint * getVolDataLinear ();
   GamePage ();
   void init (Singleton * _singleton, GamePageHolder * _parentGPH, int _thisPageId, int offsetX, int offsetY, int offsetZ, int oxLoc, int oyLoc, int ozLoc);
-  void copyToTexture ();
+  void copyToTexture (bool isForEmptyVD);
   void addGeom (bool justTesting);
   void generateVolume ();
   void getCoords ();
@@ -470,6 +472,7 @@ public:
   GameWorld * gw;
   BuildingNode nullNode;
   GameBlock ();
+  void init (Singleton * _singleton, int _blockID, int _x, int _y, int _xw, int _yw);
   BuildingNode * getNode (int x, int y);
   BuildingNodeProp * getPropAtLevel (int x, int y, int dir, int lev, int nodeType);
   BuildingNodeProp * getPropAtIndLevel (int i, int dir, int lev, int nodeType);
@@ -481,7 +484,6 @@ public:
   int sameHeight (int x, int y);
   int touches2 (int x, int y, int buildingType);
   void connectNodes (int _x1, int _y1, int _x2, int _y2, int buildingType, int id);
-  void init (Singleton * _singleton, int _blockID, int _x, int _y, int _xw, int _yw);
 };
 #undef LZZ_INLINE
 #endif
@@ -576,6 +578,7 @@ public:
   FIVector4 * fogPos;
   FIVector4 * cutPos;
   FIVector4 * lightPos;
+  FIVector4 * globLightPos;
   FIVector4 lightPosBase;
   FIVector4 * cameraPos;
   Singleton * singleton;

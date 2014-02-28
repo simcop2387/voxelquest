@@ -151,10 +151,6 @@ void GamePageHolder::fetchGeom ()
 						containsGeomIds.back().v0 = curBlock->blockID;
 						containsGeomIds.back().v1 = k;
 					}
-
-
-					
-
 				}
 			}			
 		}

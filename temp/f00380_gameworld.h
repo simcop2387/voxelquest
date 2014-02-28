@@ -416,7 +416,7 @@ void GameWorld::update ()
 
 		bool doFinalDraw = false;
 
-		mapTrans = 1.0f-singleton->cameraZoom/0.1f;
+		mapTrans = 1.0f-(singleton->cameraZoom*((float)DEF_SCALE_FACTOR))/0.1f;
 		if (mapTrans > 0.91) {
 			mapTrans = 1.0;
 		}
@@ -530,48 +530,9 @@ void GameWorld::update ()
 					
 				}
 				else {
-
-					//singleton->drawFBO("swapFBOLinHalf0",0,newZoom);
 					postProcess();
-
-
-
-
-					//bindfbo: 0 = write to 1, 1 = write to 0
-					//samplefbo: 0 = read from 0, 1 = read from 1
-					// blur for water and radiosity
-					// if (singleton->waterOn || singleton->radiosityOn) {
-						
-					// }
-
-					// if (singleton->waterOn) {
-
-					//  	//drawWater();
-					// }
-					// else {
-						// singleton->copyFBO("resultFBO0","resultFBO1");
-					//}
-
-					// singleton->bindShader("DownScaleShader");
-					// singleton->bindFBO("resultFBO2");
-					// singleton->sampleFBO("resultFBO1",0);
-					// singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
-					// singleton->drawFSQuad(1.0f);
-					// singleton->unsampleFBO("resultFBO1",0);
-					// singleton->unbindFBO();
-					// singleton->unbindShader();
-
-
-
-
-
 				}
 
-
-				
-
-
-				
 			}
 			
 			if ( mapTrans > 0.0 ) {
@@ -699,6 +660,7 @@ bool GameWorld::processPages ()
 	    minLRInPixels.multXYZ(singleton->visPageSizeInPixels);
 	    maxLRInPixels.multXYZ(singleton->visPageSizeInPixels);
 
+	    // first fetch all the blocks to make sure they get created
 	    int blockRad = 2;
 	    for (j = -blockRad; j <= blockRad; j++) {
 	    	for (i = -blockRad; i <= blockRad; i++) {
@@ -710,16 +672,22 @@ bool GameWorld::processPages ()
 	    	}
 	    }
 
+	    int mink = intDiv(camPagePos.getIZ()-loadRad2, singleton->holderSizeInPages)*singleton->holderSizeInPages;
+	    int maxk = intDiv(camPagePos.getIZ()+loadRad2, singleton->holderSizeInPages)*singleton->holderSizeInPages;
+	    int minj = intDiv(camPagePos.getIY()-loadRad, singleton->holderSizeInPages)*singleton->holderSizeInPages;
+	    int maxj = intDiv(camPagePos.getIY()+loadRad, singleton->holderSizeInPages)*singleton->holderSizeInPages;
+	    int mini = intDiv(camPagePos.getIX()-loadRad, singleton->holderSizeInPages)*singleton->holderSizeInPages;
+	    int maxi = intDiv(camPagePos.getIX()+loadRad, singleton->holderSizeInPages)*singleton->holderSizeInPages;
 
 		//for (k = 0; k < singleton->maxH; k++) {
-	    for (k = -loadRad2; k <= loadRad2; k++) {
-	    	kk = k+camPagePos.getIZ();
+	    for (kk = mink; kk <= maxk; kk++) {
+	    	//kk = k+camPagePos.getIZ();
 
-			for (j = -(loadRad); j <= (loadRad); j++) {
-				jj = j+camPagePos.getIY();
+			for (jj = minj; jj <= maxj; jj++) {
+				//jj = j+camPagePos.getIY();
 
-				for (i = -(loadRad); i <= (loadRad); i++) {
-					ii = i+camPagePos.getIX();
+				for (ii = mini; ii <= maxi; ii++) {
+					//ii = i+camPagePos.getIX();
 
 					
 					
@@ -1260,7 +1228,8 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 		}
 		*/
 
-		
+		uint* vd_ptr;
+		uint* vdl_ptr;
 
 		GamePage* curPage;
 
@@ -1420,8 +1389,11 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 														if (m == 0) {
 
-															linV = curPage->volDataLinear[ind2];
-															nearV = curPage->volData[ind2];
+															vd_ptr = curPage->getVolData();
+															vdl_ptr = curPage->getVolDataLinear();
+
+															linV = vdl_ptr[ind2];
+															nearV = vd_ptr[ind2];
 
 															linR = (linV)&255;
 															linG = (linV>>8)&255;
@@ -1542,9 +1514,9 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 																}
 															}
 
-															curPage->volData[ind2] = (nearA<<24)|(nearB<<16)|(nearG<<8)|(nearR);
-															curPage->volDataLinear[ind2] = (linA<<24)|(linB<<16)|(linG<<8)|(linR);
-															
+															vd_ptr[ind2] = (nearA<<24)|(nearB<<16)|(nearG<<8)|(nearR);
+															vdl_ptr[ind2] = (linA<<24)|(linB<<16)|(linG<<8)|(linR);
+															curPage->volDataModified = true;
 
 															curPage->parentGPH->isDirty = true;
 															changes = true;
@@ -1623,7 +1595,7 @@ void GameWorld::renderWorldSpace ()
 
 		pushTrace("renderWorldSpace()");
 
-		//if (singleton->reportPagesDrawn) {
+		if (singleton->reportPagesDrawn) {
 			singleton->reportPagesDrawn = false;
 			doTraceND("renderWorldSpace() TOT GPU MEM USED (MB): ", f__s(TOT_GPU_MEM_USAGE));
 			//doTraceND("Pages Generated:", i__s(PAGE_COUNT));
@@ -1631,7 +1603,7 @@ void GameWorld::renderWorldSpace ()
 			cout << "Num Holders: " << singleton->holderPoolItems.size() << "\n";
 			cout << "Pooled MB Used: " << ((float)singleton->holderPoolItems.size())*singleton->holderSizeMB << "\n";
 
-		//}
+		}
 		
 
 		renderWorldSpaceGPU(1.0f,0.0f,1.0f);
@@ -1658,6 +1630,8 @@ void GameWorld::renderGrass ()
 		
 		//glEnable(GL_DEPTH_TEST);
 
+		int curInd;
+
 
 		singleton->bindShader("PreGrassShader");
 		singleton->bindFBO("swapFBOLinHalf0");
@@ -1683,13 +1657,14 @@ void GameWorld::renderGrass ()
 		
 		//singleton->setShaderFloat("seaLevel", ((float)(singleton->gw->seaLevel) )/255.0 );
 		//singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
-		singleton->setShaderFloat("grassSpacing", singleton->grassSpacing);
+		singleton->setShaderFloat("scaleFactor", DEF_SCALE_FACTOR);
 		singleton->setShaderFloat("curTime", curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		singleton->setShaderfVec2("grassWH", &(singleton->grassWH) );
 		singleton->setShaderfVec2("cameraPosSS", &cScreenCoords);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 		singleton->setShaderfVec3("cameraPos", cameraPos);
+
 		
 		singleton->bindFBO("grassFBO");
 		singleton->sampleFBO("pagesFBO", 0);
@@ -1697,7 +1672,21 @@ void GameWorld::renderGrass ()
 		singleton->sampleFBO("swapFBOLinHalf0", 3);
 
 		if (singleton->grassState == E_GRASS_STATE_ANIM || singleton->grassState == E_GRASS_STATE_ON) {
-			glCallList(singleton->grassTris);
+
+			if ( (singleton->cameraZoom >= 1.0f) ) {
+				curInd = 0;
+			}
+			if ( (singleton->cameraZoom < 1.0f) && (singleton->cameraZoom >= 0.5f) ) {
+				curInd = 1;
+			}
+			if ( (singleton->cameraZoom < 0.5f) && (singleton->cameraZoom >= 0.25f) ) {
+				curInd = 2;
+			}
+			if ( (singleton->cameraZoom < 0.25f) ) { //&& (singleton->cameraZoom >= 1.0f)
+				curInd = 3;
+			}
+
+			glCallList(singleton->grassTris[0]);
 		}
 		
 		singleton->unsampleFBO("swapFBOLinHalf0", 3);
@@ -3295,6 +3284,17 @@ void GameWorld::postProcess ()
 
 			lightPos = &(singleton->dynObjects[E_OBJ_LIGHT0 + k]->pos);
 
+			// if (k == 0) {
+			// 	globLightPos = lightPos;
+			// }
+			// if (k == 1) {
+			// 	lightPos->setFXYZ(
+			// 		cameraPos->getFX()-(globLightPos->getFX() - cameraPos->getFX()),
+			// 		cameraPos->getFY()-(globLightPos->getFY() - cameraPos->getFY()),
+			// 		globLightPos->getFZ()
+			// 	);
+			// }
+
 			singleton->worldToScreen(&lScreenCoords, lightPos);
 
 			singleton->lightArr[baseInd + 0] = lightPos->getFX();
@@ -3307,8 +3307,14 @@ void GameWorld::postProcess ()
 				singleton->lightArr[baseInd + 3] = 4096.0f*singleton->pixelsPerMeter;
 			}
 			else {
-				// other lights
-				singleton->lightArr[baseInd + 3] = 8.0f*singleton->pixelsPerMeter;
+				// if (k == 1) {
+				// 	singleton->lightArr[baseInd + 3] = 4096.0f*singleton->pixelsPerMeter;
+				// }
+				// else {
+					// other lights
+					singleton->lightArr[baseInd + 3] = 8.0f*singleton->pixelsPerMeter;
+				//}
+				
 			}
 
 			singleton->lightArr[baseInd + 4] = lScreenCoords.getFX();
@@ -3320,46 +3326,59 @@ void GameWorld::postProcess ()
 			// light color
 			switch(k) {
 				case 0:
-					// singleton->lightArr[baseInd + 8] = 0.2f;
-					// singleton->lightArr[baseInd + 9] = 0.3f;
-					// singleton->lightArr[baseInd + 10] = 1.0f;
-					// singleton->lightArr[baseInd + 11] = 0.9f; // global light intensity (must be 0 to 1)
+					singleton->lightArr[baseInd + 8] = 1.0f; // light red
+					singleton->lightArr[baseInd + 9] = 1.0f; // light green
+					singleton->lightArr[baseInd + 10] = 1.0f; // light blue
+					singleton->lightArr[baseInd + 11] = 1.0f; // light intensity (unused?)
 
-					singleton->lightArr[baseInd + 8] = 1.0f;
-					singleton->lightArr[baseInd + 9] = 1.0f;
-					singleton->lightArr[baseInd + 10] = 1.0f;
-					singleton->lightArr[baseInd + 11] = 0.0f; // global light intensity (must be 0 to 1)
+					singleton->lightArr[baseInd + 12] = 0.0f; // light colorization (0-1)
+					singleton->lightArr[baseInd + 13] = 0.0f; // light flooding (colorizes regardless of shadows) (0-1)
 
 				break;
 				case 1:
 					singleton->lightArr[baseInd + 8] = 1.0f;
 					singleton->lightArr[baseInd + 9] = 0.5f;
 					singleton->lightArr[baseInd + 10] = 0.0f;
-					singleton->lightArr[baseInd + 11] = 8.0f; // other light intensity (must be greater than 0)
+					singleton->lightArr[baseInd + 11] = 4.0f;
+
+					singleton->lightArr[baseInd + 12] = 1.0f;
+					singleton->lightArr[baseInd + 13] = 0.0f;
 				break;
 				case 2:
 					singleton->lightArr[baseInd + 8] = 0.5f;
 					singleton->lightArr[baseInd + 9] = 1.0f;
 					singleton->lightArr[baseInd + 10] = 0.0f;
-					singleton->lightArr[baseInd + 11] = 8.0f;
+					singleton->lightArr[baseInd + 11] = 4.0f;
+
+					singleton->lightArr[baseInd + 12] = 1.0f;
+					singleton->lightArr[baseInd + 13] = 0.0f;
 				break;
 				case 3:
 					singleton->lightArr[baseInd + 8] = 0.0f;
 					singleton->lightArr[baseInd + 9] = 1.0f;
 					singleton->lightArr[baseInd + 10] = 0.5f;
-					singleton->lightArr[baseInd + 11] = 8.0f;
+					singleton->lightArr[baseInd + 11] = 4.0f;
+
+					singleton->lightArr[baseInd + 12] = 1.0f;
+					singleton->lightArr[baseInd + 13] = 0.0f;
 				break;
 				case 4:
 					singleton->lightArr[baseInd + 8] = 0.5f;
 					singleton->lightArr[baseInd + 9] = 0.0f;
 					singleton->lightArr[baseInd + 10] = 1.0f;
-					singleton->lightArr[baseInd + 11] = 8.0f;
+					singleton->lightArr[baseInd + 11] = 4.0f;
+
+					singleton->lightArr[baseInd + 12] = 1.0f;
+					singleton->lightArr[baseInd + 13] = 0.0f;
 				break;
 				case 5:
 					singleton->lightArr[baseInd + 8] = 1.0f;
 					singleton->lightArr[baseInd + 9] = 0.0f;
 					singleton->lightArr[baseInd + 10] = 0.5f;
-					singleton->lightArr[baseInd + 11] = 8.0f;
+					singleton->lightArr[baseInd + 11] = 4.0f;
+
+					singleton->lightArr[baseInd + 12] = 1.0f;
+					singleton->lightArr[baseInd + 13] = 0.0f;
 				break;
 				
 			}

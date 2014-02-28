@@ -1,4 +1,4 @@
-﻿Build started 2/25/2014 8:26:38 AM.
+﻿Build started 2/28/2014 10:08:52 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -6,10 +6,10 @@
          cleaning files
          copying files to source
          .\src\cpp\f00025_includes.h
+         .\src\cpp\f00026_enums.h
          .\src\cpp\f00027_vectors.h
          .\src\cpp\f00030_json.h
          .\src\cpp\f00040_png.h
-         .\src\cpp\f00050_enums.h
          .\src\cpp\f00215_helperfuncs.h
          .\src\cpp\f00217_helperclasses.h
          .\src\cpp\f00220_timer.h
@@ -59,10 +59,10 @@
          .\temp\f00380_gameworld.e
          9 File(s) copied
          .\temp\f00025_includes.h
+         .\temp\f00026_enums.h
          .\temp\f00027_vectors.h
          .\temp\f00030_json.h
          .\temp\f00040_png.h
-         .\temp\f00050_enums.h
          .\temp\f00215_helperfuncs.h
          .\temp\f00217_helperclasses.h
          .\temp\f00220_timer.h
@@ -111,27 +111,27 @@
          holderSizeInPixels: 512
          bufferMult: 1.25
          metersPerLot: 32
-         pixelsPerMeter: 256
-         unitsPerMeter: 8
+         pixelsPerMeter: 128
+         unitsPerMeter: 4
          blockSizeInLots: 8
          pixelsPerUnit: 32
-         unitsPerLot: 256
-         pixelsPerLot: 8192
+         unitsPerLot: 128
+         pixelsPerLot: 4096
          holderSizeInPages: 2
-         holdersPerLot: 16
+         holdersPerLot: 8
          visPageSizeInUnits: 8
          unitSizeInPixels: 32
          worldSizeInBlocks:    128.000000   128.000000   1.000000    
          worldSizeInLots:    1024.000000   1024.000000   8.000000    
-         worldSizeInHolders:    16384.000000   16384.000000   128.000000    
-         worldSizeInPages:    32768.000000   32768.000000   256.000000    
+         worldSizeInHolders:    8192.000000   8192.000000   64.000000    
+         worldSizeInPages:    16384.000000   16384.000000   128.000000    
          
          
          
          
          
          
-         worldSizeInPixels:    8388352.000000   8388352.000000   65280.000000    
+         worldSizeInPixels:    4194048.000000   4194048.000000   32512.000000    
          Loading:  ..\data\lastJSONBuffer.js         
          Load Successful          
          processJSON()          
@@ -143,7 +143,7 @@
                    
          Loading:  ..\data\lastImageBuffer.txt         
          Load Successful          
-         Sea Level: 94
+         Sea Level: 87
          start place cities
          end place cities
          start grow provinces
@@ -165,144 +165,23 @@
          start filling houses
          end filling houses
          DONE WITH MAP
-         renderWorldSpace() TOT GPU MEM USED (MB):  443.009766         
-         HolderSize (MB): 2
-         Num Holders: 100
-         Pooled MB Used: 200
-         renderWorldSpace() TOT GPU MEM USED (MB):  493.009766         
-         HolderSize (MB): 2
-         Num Holders: 125
-         Pooled MB Used: 250
-         renderWorldSpace() TOT GPU MEM USED (MB):  493.009766         
-         HolderSize (MB): 2
-         Num Holders: 125
-         Pooled MB Used: 250
-         renderWorldSpace() TOT GPU MEM USED (MB):  793.009766         
-         HolderSize (MB): 2
-         Num Holders: 275
-         Pooled MB Used: 550
-         renderWorldSpace() TOT GPU MEM USED (MB):  793.009766         
-         HolderSize (MB): 2
-         Num Holders: 275
-         Pooled MB Used: 550
-         renderWorldSpace() TOT GPU MEM USED (MB):  993.009766         
-         HolderSize (MB): 2
-         Num Holders: 375
-         Pooled MB Used: 750
-         renderWorldSpace() TOT GPU MEM USED (MB):  1003.009766         
-         HolderSize (MB): 2
-         Num Holders: 380
-         Pooled MB Used: 760
-         renderWorldSpace() TOT GPU MEM USED (MB):  1003.009766         
-         HolderSize (MB): 2
-         Num Holders: 380
-         Pooled MB Used: 760
-         renderWorldSpace() TOT GPU MEM USED (MB):  1003.009766         
-         HolderSize (MB): 2
-         Num Holders: 380
-         Pooled MB Used: 760
-         renderWorldSpace() TOT GPU MEM USED (MB):  1003.009766         
-         HolderSize (MB): 2
-         Num Holders: 380
-         Pooled MB Used: 760
-         renderWorldSpace() TOT GPU MEM USED (MB):  1003.009766         
-         HolderSize (MB): 2
-         Num Holders: 380
-         Pooled MB Used: 760
-         renderWorldSpace() TOT GPU MEM USED (MB):  1003.009766         
-         HolderSize (MB): 2
-         Num Holders: 380
-         Pooled MB Used: 760
-         renderWorldSpace() TOT GPU MEM USED (MB):  1003.009766         
-         HolderSize (MB): 2
-         Num Holders: 380
-         Pooled MB Used: 760
-         renderWorldSpace() TOT GPU MEM USED (MB):  1003.009766         
-         HolderSize (MB): 2
-         Num Holders: 380
-         Pooled MB Used: 760
-         renderWorldSpace() TOT GPU MEM USED (MB):  1003.009766         
-         HolderSize (MB): 2
-         Num Holders: 380
-         Pooled MB Used: 760
-         renderWorldSpace() TOT GPU MEM USED (MB):  1193.009766         
-         HolderSize (MB): 2
-         Num Holders: 475
-         Pooled MB Used: 950
-         renderWorldSpace() TOT GPU MEM USED (MB):  1343.009766         
-         HolderSize (MB): 2
-         Num Holders: 550
-         Pooled MB Used: 1100
-         renderWorldSpace() TOT GPU MEM USED (MB):  1393.009766         
-         HolderSize (MB): 2
-         Num Holders: 575
-         Pooled MB Used: 1150
-         renderWorldSpace() TOT GPU MEM USED (MB):  1471.009766         
-         HolderSize (MB): 2
-         Num Holders: 614
-         Pooled MB Used: 1228
-         renderWorldSpace() TOT GPU MEM USED (MB):  1521.009766         
-         HolderSize (MB): 2
-         Num Holders: 639
-         Pooled MB Used: 1278
-         renderWorldSpace() TOT GPU MEM USED (MB):  1521.009766         
-         HolderSize (MB): 2
-         Num Holders: 639
-         Pooled MB Used: 1278
-         renderWorldSpace() TOT GPU MEM USED (MB):  1549.009766         
-         HolderSize (MB): 2
-         Num Holders: 653
-         Pooled MB Used: 1306
-         renderWorldSpace() TOT GPU MEM USED (MB):  1549.009766         
-         HolderSize (MB): 2
-         Num Holders: 653
-         Pooled MB Used: 1306
-         renderWorldSpace() TOT GPU MEM USED (MB):  1763.009766         
-         HolderSize (MB): 2
-         Num Holders: 760
-         Pooled MB Used: 1520
-         renderWorldSpace() TOT GPU MEM USED (MB):  1763.009766         
-         HolderSize (MB): 2
-         Num Holders: 760
-         Pooled MB Used: 1520
-         renderWorldSpace() TOT GPU MEM USED (MB):  1793.009766         
-         HolderSize (MB): 2
-         Num Holders: 775
-         Pooled MB Used: 1550
-         renderWorldSpace() TOT GPU MEM USED (MB):  1829.009766         
-         HolderSize (MB): 2
-         Num Holders: 793
-         Pooled MB Used: 1586
-         renderWorldSpace() TOT GPU MEM USED (MB):  1829.009766         
-         HolderSize (MB): 2
-         Num Holders: 793
-         Pooled MB Used: 1586
-         renderWorldSpace() TOT GPU MEM USED (MB):  1991.009766         
-         HolderSize (MB): 2
-         Num Holders: 874
-         Pooled MB Used: 1748
-         renderWorldSpace() TOT GPU MEM USED (MB):  1999.009766         
-         HolderSize (MB): 2
-         Num Holders: 878
-         Pooled MB Used: 1756
-         renderWorldSpace() TOT GPU MEM USED (MB):  2049.009766         
-         HolderSize (MB): 2
-         Num Holders: 903
-         Pooled MB Used: 1806
-         renderWorldSpace() TOT GPU MEM USED (MB):  2049.009766         
-         HolderSize (MB): 2
-         Num Holders: 903
-         Pooled MB Used: 1806
-         renderWorldSpace() TOT GPU MEM USED (MB):  2049.009766         
-         HolderSize (MB): 2
-         Num Holders: 903
-         Pooled MB Used: 1806
-         renderWorldSpace() TOT GPU MEM USED (MB):  2049.009766         
-         HolderSize (MB): 2
-         Num Holders: 903
-         Pooled MB Used: 1806
+         Shaders Refreshed
+         volGenFBOX:  64         
+         volGenFBOX:  32         
+         Shaders Refreshed
+         Shaders Refreshed
+         Shaders Refreshed
+         Shaders Refreshed
+         Shaders Refreshed
+         Shaders Refreshed
+         Shaders Refreshed
+         volGenFBOX:  64         
+         volGenFBOX:  128         
+         volGenFBOX:  128         
+         volGenFBOX:  128         
+         volGenFBOX:  128         
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:02:19.24
+Time Elapsed 00:34:35.25

@@ -17,7 +17,7 @@ varying vec4 TexCoord0;
 uniform vec2 grassWH;
 uniform float curTime;
 uniform float cameraZoom;
-uniform float grassSpacing;
+uniform float scaleFactor;
 uniform vec3 cameraPos;
 uniform vec2 cameraPosSS;
 uniform vec2 bufferDim;
@@ -82,8 +82,9 @@ void main() {
     
     //float newZoom = max(cameraZoom,1.0);
     float newZoom = min(cameraZoom,1.0);
+    float newZoom2 = mix( max(cameraZoom,1.0), min(cameraZoom,1.0), float(cameraZoom >= 1.0) );
 
-    vec2 newTC = ((TexCoord0.xy)*newZoom+1.0)/2.0;
+    vec2 newTC = ((TexCoord0.xy)*newZoom2+1.0)/2.0;
     vec3 worldPos = TexCoord0.xyz;
     worldPos.xy -= cameraPosSS.xy;
     vec4 myVert = gl_Vertex;
@@ -136,12 +137,12 @@ void main() {
 
     vec2 resVec = normalize(mix(grassVec,windVec,windAmount));
 
-    myVert.xy = gl_Vertex.xy * newZoom;
+    myVert.xy = gl_Vertex.xy * newZoom2;
 
     float gmod = tex3.g;//pow(tex3.r*tex3.g,2.0);//float(tex3.r>=1.0)*tex3.g;
 
-    myVert.x += ((gl_MultiTexCoord0.w)*grassWH.x  + (resVec.x*2.0 - 0.25)*gl_MultiTexCoord0.z*grassWH.y*2.0*gmod )*isValid*newZoom;
-    myVert.y += ((gl_MultiTexCoord0.z)*grassWH.y + gl_MultiTexCoord0.z*grassWH.y)*isValid*aspectRatio*newZoom*gmod;
+    myVert.x += ((gl_MultiTexCoord0.w)*grassWH.x  + (resVec.x*2.0 - 0.25)*gl_MultiTexCoord0.z*grassWH.y*2.0*mix(newZoom,1.0,0.5) )*isValid*gmod;
+    myVert.y += ((gl_MultiTexCoord0.z)*grassWH.y + gl_MultiTexCoord0.z*grassWH.y*newZoom)*isValid*aspectRatio*gmod;
     myVert.z = gl_MultiTexCoord0.z;
     normMod = normalize(normMod);
 
@@ -159,8 +160,9 @@ $
 void main() {
 
     float newZoom = min(cameraZoom,1.0);
+    float newZoom2 = mix( max(cameraZoom,1.0), min(cameraZoom,1.0), float(cameraZoom >= 1.0) );
 
-    vec2 newTC = (TexCoord0.xy*newZoom+1.0)/2.0;
+    vec2 newTC = (TexCoord0.xy*newZoom2+1.0)/2.0;
     //vec4 tex2 = texture2D(Texture2, newTC );
     vec4 tex0 = texture2D(Texture0, newTC );
     vec4 tex1 = texture2D(Texture1, newTC );

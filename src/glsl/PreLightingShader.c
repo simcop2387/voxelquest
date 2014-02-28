@@ -87,7 +87,7 @@ vec3 unpackColorGeom(vec2 num) {
 }
 
 vec3 unpackColor(vec2 num, float lightVal) {
-    return texture2D( Texture2, vec2(lightVal, (num.g*255.0+num.r*2.0 + 0.5)/255.0 ) ).rgb;
+    return texture2D( Texture2, vec2(lightVal, (num.g*255.0+num.r*2.0 + 0.5)/255.0 ) ).rgb; //vec3(lightVal);//
 }
 
 
@@ -161,7 +161,7 @@ void main() {
     vec3 wEndPos = vec3(0.0);
     vec2 sEndPos = vec2(0.0);
 
-    vec3 globLightCol = vec3(0.0);
+    //vec3 globLightCol = vec3(0.0);
 
     vec3 wCurPos;
     vec2 sCurPos;
@@ -246,7 +246,7 @@ void main() {
         
 
     }
-    float outDif = clamp(bestHeight/maxDif,0.0,1.0)*0.05; //*float(tex0.a != TEX_GRASS/255.0)
+    float outDif = clamp(bestHeight/maxDif,0.0,1.0)*0.05;
 
 
     const int aoRad = 64;
@@ -260,6 +260,8 @@ void main() {
     maxRad[1] = 512.0;
     float curRad = 0.0;
     
+    //float hitCount;
+
     float minRotInc = pi;
     float maxRotInc = 0.01;
     float curRotInc = 0.0;
@@ -268,9 +270,9 @@ void main() {
     vec2 newTC = vec2(2.0);
 
     
-    float globLightColIntensity = 0.0;
-    float lightColIntensity = 0.0;
-    float totLightColInt = 0.0;
+
+    
+    
     float frontLight = 0.0;
     float backLight = 0.0;
     float topLight = 0.0;
@@ -278,12 +280,19 @@ void main() {
     float lightVal = 0.0;
     float newAO = 0.0;
     float lightRes = 0.0;
-    float intensity = 0.0;
-    float totInt = 0.0;
+    float lightFlooding = 0.0;
+    
+    float lightDis = 0.0;
+    float totLightDis = 0.0;
+
+    float lightColorization = 0.0;
+    float totColorization = 0.0;
+
+    float lightIntensity = 0.0;
+    float totLightIntensity = 0.0;
     
     vec3 totLightColor = vec3(0.0);
     vec3 curLightColor = vec3(0.0);
-    vec3 totLightColorNoGlob = vec3(0.0);
 
     
     if (tot == 0.0) {
@@ -334,55 +343,54 @@ void main() {
             lightPosWS = lightArr[baseInd+0];
 
 
-            
-
             if (distance(worldPosition,lightPosWS.xyz) <= lightPosWS.w) {
                 lightPosSS = lightArr[baseInd+1].xy;
                 curLightColor = lightArr[baseInd+2].xyz;
-                intensity = 1.0-clamp(distance(worldPosition,lightPosWS.xyz)/lightPosWS.w,0.0,1.0);
+
+
+
+                lightDis = 1.0-clamp(distance(worldPosition,lightPosWS.xyz)/lightPosWS.w,0.0,1.0);
                 lightVec = normalize(lightPosWS.xyz-worldPosition);
                 wEndPos = lightPosWS.xyz;
                 sEndPos = lightPosSS;
 
-                if (k == 0) {
-                    globLightColIntensity = lightArr[baseInd+2].w;
-                }
-                else {
-                    lightColIntensity = lightArr[baseInd+2].w;
-                }
+                
+                lightIntensity = lightArr[baseInd+2].w;
+                lightColorization = lightArr[baseInd+3].r;
+                lightFlooding = lightArr[baseInd+3].g;
+
+                
+
 
 
                 // shadows
 
                 
-                // if (aoval == 0.0) {
-                //     resComp = 1.0;
-                // }
-                // else {
-                    totHits = 0.0;
-                    totRays = 0.0;
-                    for (i = 0; i < iNumSteps; i++) {
-                        fi = float(i);
-                        flerp = fi/fNumSteps;
+                totHits = 0.0;
+                totRays = 0.0;
+                //hitCount = 0.0;
+                for (i = 0; i < iNumSteps; i++) {
+                    fi = float(i);
+                    flerp = fi/fNumSteps;
 
-                        wCurPos = mix(wStartPos,wEndPos,flerp);
-                        sCurPos = mix(sStartPos,sEndPos,flerp);
+                    wCurPos = mix(wStartPos,wEndPos,flerp);
+                    sCurPos = mix(sStartPos,sEndPos,flerp);
 
-                        samp = texture2D(Texture0, sCurPos);
+                    samp = texture2D(Texture0, sCurPos);
 
-                        curHeight = unpack16(samp.rg);
+                    curHeight = unpack16(samp.rg);
 
-                        if (samp.b*samp.a < 1.0) {
-                            wasHit = float( curHeight > wCurPos.z+2.0 );// *clamp(flerp+0.1,0.0,1.0);
-                            totHits += wasHit;
-                            lastHit = mix(lastHit, flerp, wasHit);
-                        }
-
+                    if (samp.b*samp.a < 1.0) {
+                        wasHit = float( curHeight > wCurPos.z+2.0 );// *clamp(flerp+0.1,0.0,1.0);
+                        totHits += wasHit;
+                        lastHit = mix(lastHit, flerp, wasHit);
+                        //hitCount += 1.0;
                     }
 
-                    resComp = mix(1.0,0.0, totHits*4.0/fNumSteps );
-                    resComp = clamp(resComp,0.0,1.0);
-                //}
+                }
+
+                resComp = mix(1.0,0.0, totHits*4.0/fNumSteps );
+                resComp = clamp(resComp,0.0,1.0);
 
 
                 
@@ -391,24 +399,18 @@ void main() {
                 topLight = clamp(dot(myVec,vec3(0.0,0.0,1.0)),0.0,1.0);
                 bottomLight = clamp(dot(myVec,vec3(0.0,0.0,-1.0)),0.0,1.0);
 
-                if (k == 0) {
-                    globLightCol = curLightColor;
-                    curLightColor = vec3(1.0);
-                    //totLightColorNoGlob += frontLight*resComp*vec3(0.0)*intensity;
-                }
-                else {
-                    totLightColorNoGlob += frontLight*resComp*curLightColor*intensity;
-                    totInt += intensity;
-                    totLightColInt += lightColIntensity*intensity;
-                }
 
-                totLightColor += frontLight*resComp*curLightColor*intensity;
-                totLightColor += vec3(0.0,0.5,1.0)*bottomLight*0.2*intensity;
-                totLightColor += vec3(1.0,0.5,0.0)*topLight*0.025*(1.0-newAO)*intensity;
-                totLightColor += vec3(0.0,0.5,1.0)*backLight*0.05*intensity;
+                totLightDis += lightDis;
+                totColorization += lightColorization*lightDis*clamp(resComp+lightFlooding,0.0,1.0);
+                totLightIntensity += lightIntensity*lightDis*resComp;
 
-                resCompTot += resComp*intensity;
-                frontLightTot += frontLight*intensity;
+                totLightColor += frontLight*resComp*curLightColor*lightDis;
+                totLightColor += vec3(0.0,0.5,1.0)*bottomLight*0.2*lightDis;
+                totLightColor += vec3(1.0,0.5,0.0)*topLight*0.025*(1.0-newAO)*lightDis;
+                totLightColor += vec3(0.0,0.5,1.0)*backLight*0.05*lightDis;
+
+                resCompTot += resComp*lightDis;
+                frontLightTot += frontLight*lightDis;
 
                 
 
@@ -419,7 +421,7 @@ void main() {
 
 
         resCompTot = clamp(resCompTot,0.0,1.0);
-        frontLightTot = clamp(resCompTot,0.0,1.0);
+        frontLightTot = clamp(frontLightTot,0.0,1.0);
         
 
         if (isGeom(tex0.ba)) {
@@ -428,41 +430,40 @@ void main() {
         else {
 
             lightVal = clamp(dot(oneVec.xyz,totLightColor.xyz)/3.0,0.0,1.0);
-            lightRes = mix(newAO*0.5, lightVal, lightVal);
+            //lightRes = mix(newAO*0.4,lightVal, mix(0.4,0.7,lightVal));
+            lightRes = mix(newAO*0.5, lightVal, lightVal) + ((1.0-newAO)-0.5)/2.0;
             lightRes = clamp(lightRes,0.0,1.0);
 
             resColorTemp = unpackColor(tex0.ba,lightRes);
             resColorTemp = mix(resColorTemp,unpackColor(tex0.ba,newAO),0.1);
-            resColorTemp = mix(resColorTemp*vec3(0.4,0.4,1.0)*0.75,resColorTemp, min(frontLightTot+0.5,1.0)*resCompTot );
+            resColorTemp = mix(resColorTemp*vec3(0.4,0.4,1.0)*newAO,resColorTemp, min(frontLightTot+0.5,1.0)*resCompTot );
 
 
 
+            // resColorTemp = mix(
+            //     resColorTemp,
+            //     globLightCol*vec3( clamp(dot(resColorTemp,oneVec.xyz)/3.0,0.0,1.0) ),
+            //     globLightColIntensity
+            // );
             resColorTemp = mix(
                 resColorTemp,
-                globLightCol*vec3( clamp(dot(resColorTemp,oneVec.xyz)/3.0,0.0,1.0) ),
-                globLightColIntensity
-            );
-            resColorTemp = mix(
-                resColorTemp,
-                totLightColorNoGlob*vec3( clamp(dot(resColorTemp,oneVec.xyz)/3.0,0.0,1.0) )*totLightColInt,
-                clamp(totInt,0.0,1.0)
+                totLightColor*(lightRes + clamp(totLightDis,0.0,1.0) ),//vec3( clamp(dot(resColorTemp,oneVec.xyz)/3.0,0.0,1.0) ) + totLightColor*totLightIntensity,
+                clamp(totColorization,0.0,1.0)
             );
 
 
             resColGS = vec3( clamp(dot(resColorTemp,oneVec.xyz)/3.0,0.0,1.0) );
-
-
             resColorTemp = mix(
                 resColGS,
                 resColorTemp,
-                clamp(1.0-distance(resColGS,resColorTemp),0.0,1.0)*1.5//*mix(0.5,1.0,totInt)
+                clamp(1.0-distance(resColGS,resColorTemp),0.0,1.0)*1.5//*mix(0.5,1.0,totLightDis)
             );
 
 
             // resColorTemp = mix(
             //     resColGS,
             //     resColorTemp,
-            //     clamp(1.0-distance(resColGS,resColorTemp),0.0,1.0)*2.0//*mix(2.0,4.0,totInt)
+            //     clamp(1.0-distance(resColGS,resColorTemp),0.0,1.0)*2.0//*mix(2.0,4.0,totLightDis)
             // );
 
             //resColorTemp += mix( (resColorTemp),vec3(0.5),0.5)/5.0;
@@ -474,7 +475,7 @@ void main() {
         
         resColor = resColorTemp;
 
-        //resColor = vec3(totInt);
+        //resColor = vec3(resCompTot);
     }
 
     resColor = clamp(resColor-outDif,0.0,1.0);
