@@ -15,6 +15,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		pushTrace("Singleton init");
 		int i;
+		int j;
 		rootObj = NULL;
 		highlightedGeom = NULL;
 		selectedGeom = NULL;
@@ -44,7 +45,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		firstRun = true;
 		//useVolumeTex = false;
 		waterOn = false;
-
+		treesOn = true;
+		rotOn = false;
 		// 256 meters to a block
 		// 32 meters to a lot (10,000 square feet)
 		// 8 lots per block side, 64 lots in a block
@@ -155,6 +157,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		//grassSpacing = 1;//8/DEF_SCALE_FACTOR;// *2.0;
 		directPass = 0.0f;
 
+		int ccr = 0;
+		int ccg = 0;
+		int ccb = 0;
 
 		// TODO: examine if this variable is necessary
 		maxHeightInUnits = (worldSizeInPages.getIZ()-bufferMult)*(visPageSizeInUnits);
@@ -411,14 +416,66 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 			dynObjects.push_back(new DynObject());
 		}
 
-		dynObjects[E_OBJ_CAMERA]->init(0, 0, maxBoundsInPixels.getIZ()/2, 0, 0, 0, false, false, NULL );
+		dynObjects[E_OBJ_CAMERA]->init(0, 0, maxBoundsInPixels.getIZ()/2, 0, 0, 0, false, false, NULL, 4.0f );
 
 		for (i = E_OBJ_LIGHT0; i < E_OBJ_LENGTH; i++) {
-			dynObjects[i]->init(1024+i*256,1024+i*256,2048, 255,255,255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos) );
+			
+			j = i - E_OBJ_LIGHT0;
+
+			switch (j) {
+				case 0:
+					ccr = 255;
+					ccg = 255;
+					ccb = 255;
+				break;
+
+				case 1:
+					ccr = 255;
+					ccg = 0;
+					ccb = 0;
+
+				break;
+
+				case 2:
+					ccr = 255;
+					ccg = 128;
+					ccb = 0;
+
+				break;
+
+				case 3:
+					ccr = 0;
+					ccg = 255;
+					ccb = 0;
+
+				break;
+
+				case 4:
+					ccr = 0;
+					ccg = 128;
+					ccb = 255;
+
+				break;
+				case 5:
+					ccr = 128;
+					ccg = 0;
+					ccb = 255;
+
+				break;
+			}
+
+			dynObjects[i]->init(1024+i*256,1024+i*256,2048, ccr,ccg,ccb,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 32.0f );
+
+
+
 		}
 		
-		dynObjects[E_OBJ_FOG]->init(-512,-512,-512,   0,0,255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos) );
-		dynObjects[E_OBJ_CUTAWAY]->init(1024-256,1024-256,2048,   0,255,0,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos) );
+		dynObjects[E_OBJ_FOG]->init(-1024,-1024,-512,   0,0,255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+		dynObjects[E_OBJ_CUTAWAY]->init(1024-256,1024-256,2048,   0,255,0,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+
+		// dynObjects[E_OBJ_P0]->init(512-256,1024-256,2048,   128,0,0,    true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+		// dynObjects[E_OBJ_P1]->init(512,1024,2048,   		255,0,0,	true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+		// dynObjects[E_OBJ_P2]->init(1024,512,2048,   		0,255,255,	true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 
 
 	    cameraZoom = 1.0f;
@@ -665,6 +722,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 
 	    loadAllData();
+
+	    GamePlant::initAllPlants(this);
+
 
 
 	    gw = new GameWorld();
@@ -1077,21 +1137,30 @@ void Singleton::drawCrossHairs (FIVector4 originVec, float radius)
 
 		
 	}
-void Singleton::drawCubeCentered (FIVector4 originVec, float radius)
-                                                                 {
+void Singleton::drawLine (FIVector4 * p0, FIVector4 * p1)
+                                                    {
+		glBegin(GL_LINES);
+			glMultiTexCoord3f(GL_TEXTURE0, 0.0f, 0.0f, 0.0f);
+			glVertex3f(p0->getFX(),p0->getFY(),p0->getFZ());
+			glMultiTexCoord3f(GL_TEXTURE0, 0.0f, 0.0f, 1.0f);
+			glVertex3f(p1->getFX(),p1->getFY(),p1->getFZ());
+		glEnd();
+	}
+void Singleton::drawCubeCentered (FIVector4 * originVec, float radius)
+                                                                  {
 		FIVector4 minV;
 		FIVector4 maxV;
 
 		minV.setFXYZ(
-			originVec.getFX()-radius,
-			originVec.getFY()-radius,
-			originVec.getFZ()-radius
+			originVec->getFX()-radius,
+			originVec->getFY()-radius,
+			originVec->getFZ()-radius
 		);
 
 		maxV.setFXYZ(
-			originVec.getFX()+radius,
-			originVec.getFY()+radius,
-			originVec.getFZ()+radius
+			originVec->getFX()+radius,
+			originVec->getFY()+radius,
+			originVec->getFZ()+radius
 		);
 
 		drawBox(&minV,&maxV);
@@ -2105,7 +2174,11 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 			case 't':
-				traceOn = true;
+				treesOn = !treesOn;
+				//traceOn = true;
+			break;
+			case 'o':
+				rotOn = !rotOn;
 			break;
 
 			case '\t':

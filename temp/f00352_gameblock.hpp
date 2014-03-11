@@ -8,13 +8,41 @@ public:
 	int blockID;
 	int blockSizeInHolders;
 	int blockSizeInLots;
+	int counter;
 	
 	FIVector4 offsetInBlocks;
 	FIVector4 offsetInBlocksWrapped;
+	FIVector4 origin;
+
+
+	FIVector4 anchorPointInPixels;
+	FIVector4 moveMinInPixels;
+	FIVector4 moveMaxInPixels;
+	FIVector4 p1;
+	FIVector4 p2;
+	FIVector4 rad;
+	FIVector4 visInsetFromMin;
+	FIVector4 visInsetFromMax;
+	FIVector4 cornerRad;
+	FIVector4 thickVals;
+	FIVector4 powerVals;
+	FIVector4 powerVals2;
+	FIVector4 matParams;
+
+
+	FIVector4 tempVec;
+	FIVector4 tempVec2;
+	FIVector4 tempVec3;
+
+	FIVector4 tempVecB;
+	FIVector4 tempVecB2;
+	FIVector4 tempVecB3;
 
 	std::vector<GameGeom*> gameGeom;
 
 
+
+	GamePlant myPlant;
 
 	///////////////////////
 
@@ -44,13 +72,76 @@ public:
 
 	}
 
+
+	void addPlantNodes(GamePlantNode* curPlantNode, FIVector4* orig ) {
+		int i;
+
+		if (curPlantNode->parent == NULL) {
+
+		}
+		else {
+
+			if (curPlantNode->parent->parent == NULL) {
+				tempVec.setFXYZRef(&(curPlantNode->parent->begPoint));
+			}
+			else {
+				tempVec.setFXYZRef(&(curPlantNode->parent->begPoint));
+				tempVec.addXYZRef(&(curPlantNode->parent->endPoint));
+				tempVec.multXYZ(0.5f);
+			}
+
+
+			
+			
+			tempVec2.setFXYZRef(&(curPlantNode->begPoint));
+			tempVec2.addXYZRef(&(curPlantNode->endPoint));
+			tempVec2.multXYZ(0.5f);
+			
+			tempVec3.setFXYZRef(&(curPlantNode->begPoint));
+
+			tempVec.addXYZRef(orig);
+			tempVec2.addXYZRef(orig);
+			tempVec3.addXYZRef(orig);
+
+			gameGeom.push_back(new GameGeom());
+			gameGeom.back()->initTree(
+				E_BT_TREE,
+				counter,
+				singleton->geomCounter,
+				E_ALIGN_BOTTOM,
+				0.0f,
+				
+				&tempVec,
+				&tempVec2,
+				&tempVec3,
+
+				curPlantNode->begThickness,
+				curPlantNode->endThickness,										
+				&matParams
+			);
+			singleton->geomCounter++;
+			counter++;
+		}
+
+		
+
+		for (i = 0; i < curPlantNode->numChildren; i++) {
+			addPlantNodes( &(curPlantNode->children[i]), orig);
+		}
+	}
+
+
 	void init(Singleton* _singleton, int _blockID, int _x, int _y, int _xw, int _yw) {
 		singleton = _singleton;
 		blockID = _blockID;
 		offsetInBlocks.setIXYZ(_x,_y,0);
 		offsetInBlocksWrapped.setIXYZ(_xw,_yw,0);
 
+		counter = 0;
 
+		origin.setFXYZ(0.0f,0.0f,0.0f);
+
+		
 
 		//cout << "Init block " << _xw << " " << _yw << "\n";
 
@@ -61,6 +152,7 @@ public:
 		int k;
 		int m;
 		int n;
+		int p;
 
 		int curAlign = 0;
 
@@ -127,7 +219,7 @@ public:
 		int baseI = 0;
 		int baseJ = 0;
 
-		int counter = 0;
+		
 		int res;
 		int res2;
 		int res3;
@@ -189,23 +281,9 @@ public:
 		float offsetY = 0.0f;
 
 
-		FIVector4 anchorPointInPixels;
-		FIVector4 moveMinInPixels;
-		FIVector4 moveMaxInPixels;
+		
 
-		FIVector4 p1;
-		FIVector4 p2;
-		FIVector4 rad;
-		FIVector4 visInsetFromMin;
-		FIVector4 visInsetFromMax;
-		FIVector4 cornerRad;
-		FIVector4 thickVals;
-		FIVector4 powerVals;
-		FIVector4 powerVals2;
-		FIVector4 matParams;
-
-		FIVector4 tempVec;
-		FIVector4 tempVec2;
+		
 
 		iNodeDivsPerLot = singleton->iNodeDivsPerLot;
 		iBuildingNodesPerSideM1 = blockSizeInLots*iNodeDivsPerLot;
@@ -306,8 +384,8 @@ public:
 
 		// houses
 
-		for (i = 0; i < blockSizeInLots; i++) {
-			for (j = 0; j < blockSizeInLots; j++) {
+		for (i = 1; i < blockSizeInLots-1; i++) {
+			for (j = 1; j < blockSizeInLots-1; j++) {
 
 				lotX = blockSizeInLots*(offsetInBlocks.getIX()) + i;
 				lotY = blockSizeInLots*(offsetInBlocks.getIY()) + j;
@@ -399,24 +477,40 @@ public:
 									notFound = false;
 								}
 
-								
 							}
-
-							
 						}
-
 					}
 				}
 			}
 		}
 
-		for (i = 1; i < iBuildingNodesPerSideM1; i++) {
-			for (j = 1; j < iBuildingNodesPerSideM1; j++) {
-				if ( touches(i,j,E_BT_NULL) == 4 ) {
-					getNode(i,j)->centerProp.typeVal = E_BT_TREE;
+		if (singleton->treesOn) {
+			for (i = 2; i < iBuildingNodesPerSide - 2; i++) {
+				for (j = 2; j < iBuildingNodesPerSide - 2; j++) {
+					if ( (touches2Center(i,j,E_BT_TREE) == 0) && (touches2(i,j,E_BT_NULL) == 16) ) {
+
+						lotX = blockSizeInPixels*offsetInBlocks.getIX();
+						lotY = blockSizeInPixels*offsetInBlocks.getIY();
+
+						x1 = lotX + (i*blockSizeInPixels)/iBuildingNodesPerSideM1;
+						y1 = lotY + (j*blockSizeInPixels)/iBuildingNodesPerSideM1;
+
+						if (
+							singleton->getHeightAtPixelPos(x1,y1) >
+							singleton->getSeaLevelInPixels() + 2.0f * pixelsPerMeter
+						) {
+							if ( true ) { //fGenRand() > 0.95
+								getNode(i,j)->centerProp.typeVal = E_BT_TREE;
+							}
+						}
+
+						
+					}
 				}
 			}
 		}
+
+		
 
 
 		// towers
@@ -1105,11 +1199,7 @@ public:
 								break;
 
 								case E_BT_TREE:
-									baseOffset = 0.0f;
-									matParams.setFXYZ(E_MAT_PARAM_TREE, 0.0, 0.0f);
-
-									visInsetFromMin.setFXYZ(0.0f,0.0f,0.0f);
-									visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
+									
 
 								break;
 
@@ -1125,43 +1215,146 @@ public:
 
 								if (curBT == E_BT_TREE) {
 
-									//treeCount++;
+									baseOffset = 0.0f;
+									matParams.setFXYZ(E_MAT_PARAM_TREE, 0.0, 0.0f);
 
-									tempVec.setFXYZRef(&p1);
-									tempVec2.setFXYZRef(&p2);
+									visInsetFromMin.setFXYZ(0.0f,0.0f,0.0f);
+									visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
+									
 
-									tempVec2.addXYZ(
-										0.0f*pixelsPerMeter,
-										0.0f*pixelsPerMeter,
-										3.0f*pixelsPerMeter
+									myPlant.init(
+										singleton,
+										&(GamePlant::allPlantRules[E_PT_OAK_TRUNK]),
+										&(GamePlant::allPlantRules[E_PT_OAK_TRUNK]),
+										&origin
 									);
 
-									gameGeom.push_back(new GameGeom());
-									gameGeom.back()->initTree(
-										curBT,
-										counter,
-										singleton->geomCounter,
-										curAlign,
-										baseOffset,
-										
-										&tempVec,
-										&tempVec2,
+									addPlantNodes(myPlant.trunkNode, &p1);
+									
 
-										2.0f*pixelsPerMeter,
-										1.0f*pixelsPerMeter,
+									/*
+									for (n = 0; n < 3; n++) {
 
-										//&rad,
-										//&cornerRad,
-										&visInsetFromMin,
-										&visInsetFromMax,
-										// &powerVals,
-										// &powerVals2,
-										// &thickVals,
+										tempVec.setFXYZRef(&p1);
+										tempVec3.setFXYZRef(&p2);
+
+										// control point
+										tempVec3.addXYZ(
+											(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
+											(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
+											(fGenRand()*1.0f)*3.0f*pixelsPerMeter
+										);
+
+										tempVec2.setFXYZRef(&tempVec3);
+
+										tempVec2.addXYZ(
+											(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
+											(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
+											(fGenRand()*1.0f)*3.0f*pixelsPerMeter
+										);
+
+										gameGeom.push_back(new GameGeom());
+										gameGeom.back()->initTree(
+											curBT,
+											counter,
+											singleton->geomCounter,
+											curAlign,
+											baseOffset,
+											
+											&tempVec,
+											&tempVec2,
+											&tempVec3,
+
+											1.0f*pixelsPerMeter,
+											1.0f*pixelsPerMeter,
+
+											//&rad,
+											//&cornerRad,
+											&visInsetFromMin,
+											&visInsetFromMax,
+											// &powerVals,
+											// &powerVals2,
+											// &thickVals,
+											
+											&matParams
+										);
+										singleton->geomCounter++;
+										counter++;
 										
-										&matParams
-									);
-									singleton->geomCounter++;
-									counter++;
+										for (p = 0; p < 3; p++) {
+											
+
+
+											// 1,2 = start, end
+											// 3 = control point
+
+
+
+
+
+
+											tempVecB.setFXYZRef(&tempVec2);
+											
+
+											tempVecB3.setFXYZRef(&tempVec2);
+											tempVecB3.addXYZRef(&tempVec3,-1.0f);
+											//tempVecB3.multXYZ(2.0f);
+											tempVecB3.addXYZRef(&tempVec2);
+											
+
+											tempVecB2.setFXYZRef(&tempVecB3);
+
+											tempVecB2.addXYZ(
+												(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
+												(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
+												(fGenRand()*1.0f)*3.0f*pixelsPerMeter
+											);
+
+
+											gameGeom.push_back(new GameGeom());
+											gameGeom.back()->initTree(
+												curBT,
+												counter,
+												singleton->geomCounter,
+												curAlign,
+												baseOffset,
+												
+												&tempVecB,
+												&tempVecB2,
+												&tempVecB3,
+
+												1.0f*pixelsPerMeter,
+												0.0f*pixelsPerMeter,
+
+												//&rad,
+												//&cornerRad,
+												&visInsetFromMin,
+												&visInsetFromMax,
+												// &powerVals,
+												// &powerVals2,
+												// &thickVals,
+												
+												&matParams
+											);
+											singleton->geomCounter++;
+											counter++;
+
+
+
+
+
+
+
+
+
+										}
+										
+										
+
+										
+									}
+									*/
+									
 
 
 
@@ -1440,7 +1633,6 @@ public:
 		y[1] = _y2;
 
 
-		int boff = 0;
 		int i;
 		int j;
 		int testX;
@@ -1474,7 +1666,7 @@ public:
 						return false;
 					}
 
-					if (getNode(testX,testY)->connectionProps[i].endHeight > heightVal) {
+					if (getNode(testX,testY)->connectionProps[i].endHeight > heightVal+1) {
 						foundHigher[j] = true;
 					}
 				}
@@ -1552,6 +1744,25 @@ public:
 			testY = y + gw->dirModY[i];
 
 			tot += touches(testX,testY,buildingType);
+
+		}
+
+		return tot;
+
+	}
+
+	int touches2Center(int x, int y, int buildingType) {
+		int i;
+		int tot = 0;
+		int testX;
+		int testY;
+
+		for (i = 0; i < 4; i++) {
+
+			testX = x + gw->dirModX[i];
+			testY = y + gw->dirModY[i];
+
+			tot += touchesCenter(testX,testY,buildingType);
 
 		}
 

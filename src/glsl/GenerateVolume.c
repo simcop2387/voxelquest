@@ -82,6 +82,8 @@ const float TEX_METAL = 	32.0;
 const float TEX_WATER = 	34.0;
 const float TEX_GLASS = 	35.0;
 const float TEX_EARTH = 	36.0;
+const float TEX_BARK =		41.0; 
+const float TEX_TREEWOOD =  43.0;
 
 
 
@@ -246,6 +248,9 @@ vec2 getHeightAtCoords(vec2 coord) {
 	
 	float testHeight1 = unpack16(texLev.rg);// + texHM3.r*1.0*pixelsPerMeter;
 	
+	testHeight0 = mix(testHeight0,testHeight1,0.5);
+	//testHeight0 = mix(testHeight0,testHeight1,0.5);
+
 	float testHeight = mix(testHeight0,testHeight1, texLev.b );
 
 	return vec2(testHeight,testHeight0);
@@ -825,7 +830,7 @@ vec4 getBuilding(
 }
 
 
-vec4 getCobble(vec3 worldPosInPixels, float voroSize, vec3 outDis, float minSpacing, float maxSpacing, bool isVert) {
+vec4 getCobble(vec3 worldPosInPixels, float voroSize, vec3 outDis, float minSpacing, float maxSpacing, bool isVert, bool doClamp, bool isVaried, int startInd, int endInd) {
 
 
 	vec4 myResult = vec4(0.0);
@@ -858,7 +863,7 @@ vec4 getCobble(vec3 worldPosInPixels, float voroSize, vec3 outDis, float minSpac
 		startPos = 1;
 	}
 
-	for (i = startPos+9; i < 18; i += 2) {
+	for (i = startPos+startInd; i < endInd; i += 2) {
 		curPos = voroOffsets[i].zyx + posFloored;
 		randNum = rand(curPos);
 		curPos += randNum*0.75;
@@ -890,36 +895,51 @@ vec4 getCobble(vec3 worldPosInPixels, float voroSize, vec3 outDis, float minSpac
 		myResult.y = TEX_STONE;
 	}
 
-	if (isVert) {
-		if (
-			(distance(bestPos.x,outDis.x) > 1.5*pixelsPerMeter) ||
-			(distance(worldPosInPixels.xz,outDis.xz) > 1.75*pixelsPerMeter)
-		) {
-			myResult.y = TEX_NULL;
+
+	if (doClamp) {
+		if (isVert) {
+			if (
+				(distance(bestPos.x,outDis.x) > 1.5*pixelsPerMeter) ||
+				(distance(worldPosInPixels.xz,outDis.xz) > 1.75*pixelsPerMeter)
+			) {
+				myResult.y = TEX_NULL;
+			}
 		}
+		else {
+			if (
+				( distance(bestPos.y,outDis.y) > 1.5*pixelsPerMeter ) ||
+				( distance(worldPosInPixels.yz,outDis.yz) > 1.75*pixelsPerMeter )
+			) {
+				myResult.y = TEX_NULL;
+			}
+		}
+
+		// if ( distance(bestPos.z,outDis.z) > 1.5*pixelsPerMeter ) {
+		// 	myResult.y = TEX_NULL;
+		// }
+
+		// if ( abs(worldPosInPixels.z-outDis.z) > 0.9*pixelsPerMeter ) {
+		// 	myResult.y = TEX_NULL;
+		// }
+	}
+
+	
+	
+	if (isVaried) {
+		myResult.z = bestRand;
 	}
 	else {
-		if (
-			( distance(bestPos.y,outDis.y) > 1.5*pixelsPerMeter ) ||
-			( distance(worldPosInPixels.yz,outDis.yz) > 1.75*pixelsPerMeter )
-		) {
-			myResult.y = TEX_NULL;
-		}
+		myResult.z = gradVal;
 	}
-
-	// if ( distance(bestPos.z,outDis.z) > 1.5*pixelsPerMeter ) {
-	// 	myResult.y = TEX_NULL;
-	// }
-
-	// if ( abs(worldPosInPixels.z-outDis.z) > 0.9*pixelsPerMeter ) {
-	// 	myResult.y = TEX_NULL;
-	// }
 	
-
-	myResult.z = bestRand;
 
 	myResult.x = floor(myResult.z*16.0)+1.0;
 
+	/*
+	normalUID = matResult.x;
+	finalMat = matResult.y;
+	finalMod = matResult.z;
+	*/
 
 	return myResult;
 	
@@ -932,8 +952,8 @@ vec4 getTerrain(vec3 worldPosInPixels) {
 	vec2 thVec = getHeightAtCoords(worldPosInPixels.xy);
 	float testHeight = thVec.x;
 	//float testHeightNoLevel = thVec.y;
-	float sandEnd = (seaLevel + 128.0);
-	float sandBeg = sandEnd - 64.0;
+	float sandEnd = (seaLevel + 1.0*pixelsPerMeter);
+	float sandBeg = sandEnd - 0.5*pixelsPerMeter;
 	float randVal = randf3(worldPosInPixels);//(testHeight-worldPosInPixels.z)/256.0 + ;
 	float newHeight = 0.0;
 
@@ -982,7 +1002,7 @@ vec4 getTerrain(vec3 worldPosInPixels) {
 			myResult.y = mix(
 							TEX_DIRT,
 							TEX_GRASS,
-							float( (abs(testHeight - worldPosInPixels.z) < 16.0) )
+							float( (abs(testHeight - worldPosInPixels.z) < 0.25*pixelsPerMeter) )
 						);
 		}
 
@@ -1069,6 +1089,10 @@ vec4 getSlats(vec4 newUVW, float thickness, vec3 origin, vec3 worldPosInPixels, 
 	return myResult;
 }
 
+// return vec2
+// x: distance from line sp0->sp1
+// y: percentage between sp0->sp1 (0.0->1.0)
+
 vec2 pointSegDistance(vec3 testPoint, vec3 sp0, vec3 sp1)
 {
 	vec3 v = sp1 - sp0;
@@ -1088,9 +1112,6 @@ vec2 pointSegDistance(vec3 testPoint, vec3 sp0, vec3 sp1)
 		return vec2(d1, 1.0);
 	}
 	
-
-
-
 	float b = c1 / c2;
 	vec3 testPoint2 = sp0 + b * v; // testPoint2 is the nearest point on the line
 	return vec2(distance(testPoint, testPoint2), distance(testPoint2,sp0)/d2 );
@@ -1104,22 +1125,19 @@ vec4 getTree(vec3 worldPosInPixels) {
 	int j;
 	int k;
 
-	int baseInd;
-	int bestInd[2];
-	bestInd[0] = -1;
-	bestInd[1] = -1;// = int[](-1,-1);
+	int curInd = -1;
+
+	int maxCount = 0;
+	int baseInd = 0;
+	
 	
 	float testDis = 0.0;
 	float invalid = 99999.0;
-	float bestDis[2];
+	float t;
 
-
-	bestDis[0] = invalid;
-	bestDis[1] = invalid;
 
 	vec3 visMinInPixels = vec3(0.0);
 	vec3 visMaxInPixels = vec3(0.0);
-	vec3 thickVals = vec3(0.0);
 	vec3 matParams = vec3(0.0);
 
 	vec4 matResult = vec4(0.0);
@@ -1129,6 +1147,32 @@ vec4 getTree(vec3 worldPosInPixels) {
 	vec3 p2;
 
 	vec2 dres = vec2(0.0);
+	vec2 dres1 = vec2(0.0);
+	vec2 dres2 = vec2(0.0);
+
+	
+	
+
+	vec3 bezTanP0;
+	vec3 bezTanP1;
+
+	vec4 tempResult = vec4(0.0);
+
+
+	int bestInd = 0;
+	vec2 bestRes = vec2(invalid);
+	vec2 resArr = vec2(invalid);
+	vec3 thickVals = vec3(0.0);
+
+	float curThickness = 0.0;
+
+	// p0: start point
+	// p1: end point
+	// p2: control point
+	//      p2
+	// p0        p1
+
+	float totCount = 0.0;
 
 
 	for (i = 0; i < numEntries; i++) {
@@ -1150,26 +1194,169 @@ vec4 getTree(vec3 worldPosInPixels) {
 
 				p0 = paramArr[baseInd+E_TP_P0];
 				p1 = paramArr[baseInd+E_TP_P1];
-
+				p2 = paramArr[baseInd+E_TP_P2];
 				thickVals = paramArr[baseInd+E_TP_THICKVALS];
 
-				p2 = (p0+p1)/2.0;
+				dres1 = pointSegDistance(worldPosInPixels,p0,p1);
+				dres2 = pointSegDistance(worldPosInPixels,p0,p2);
 
-				// p0 = mix(p0,p2,0.25);
-				// p1 = mix(p1,p2,0.25);
+				dres = mix(dres2, dres1, mix(dres1.y,dres2.y,0.5) );
+
+				//if (dres.x < bestRes.x) {
+
+					t =  dres.y;
+					bezTanP0 = mix(p0,p2,t);
+					bezTanP1 = mix(p2,p1,t);
+					resArr = pointSegDistance(worldPosInPixels,bezTanP0,bezTanP1);
+
+					curThickness = mix(thickVals.x,thickVals.y,t);
+
+					if (resArr.x < curThickness) {
+
+						if (
+							(abs(resArr.x - curThickness) < 0.125*pixelsPerMeter) &&
+							(matResult.y != TEX_TREEWOOD)
+						) {
+							matResult.y = TEX_BARK;
+						}
+						else {
+							matResult.y = TEX_TREEWOOD;
+						}
+
+						
+						totCount = max( clamp(1.0-(resArr.x/curThickness),0.0,1.0), totCount);//abs( sin(dres.x/(curThickness*0.25)) );
+						
+
+						//totCount += 1.0;
+
+						// bestRes = dres;
+						// bestInd = baseInd;
+					}
+				//}				
+			}
+		}
+	}
 
 
-				dres = pointSegDistance(worldPosInPixels,p0,p1);
+	if (matResult.y == TEX_TREEWOOD) {
+		matResult.w = abs( sin(totCount*8.0) );
+	}
 
-				if (dres.x < mix(thickVals.x,thickVals.y,dres.y)) {
-					matResult.x = 0.0;
-					matResult.y = TEX_STONE;
+
+	// if (matResult.y == TEX_BARK) {
+	// 	tempResult = getCobble(worldPosInPixels*vec3(1.0,1.0,0.125), 0.5*pixelsPerMeter, vec3(0.0), 16000.0, 16000.0, false, false, false, 0, 27);
+		
+	// 	matResult.y = tempResult.y;
+	// 	if (tempResult.y != TEX_NULL) {
+	// 		//matResult.x = tempResult.x;
+	// 		matResult.y = TEX_BARK;
+	// 		matResult.w = tempResult.z;
+	// 	}
+		
+		
+	// }
+
+
+
+
+
+
+	/*
+	for (i = 0; i < numEntries; i++) {
+
+		baseInd = i*paramsPerEntry;
+		matParams = paramArr[baseInd+E_TP_MATPARAMS];
+
+
+		if (matParams.x == E_MAT_PARAM_TREE) {
+			
+			visMinInPixels = paramArr[baseInd+E_TP_VISMININPIXELST];
+			visMaxInPixels = paramArr[baseInd+E_TP_VISMAXINPIXELST];
+			
+
+			if (
+				all( lessThanEqual(worldPosInPixels,visMaxInPixels) ) && //+slack
+				all( greaterThanEqual(worldPosInPixels,visMinInPixels) ) //-slack
+			) {
+
+				p0 = paramArr[baseInd+E_TP_P0];
+				p1 = paramArr[baseInd+E_TP_P1];
+				p2 = paramArr[baseInd+E_TP_P2];
+
+				dres = pointSegDistance(worldPosInPixels,p0,p1);				
+
+				if (dres.x < bestRes[0].x) {
+					bestRes[1] = bestRes[0];
+					bestRes[0] = dres;
+
+					bestInd[1] = bestInd[0];
+					bestInd[0] = baseInd;
+
 				}
-
+				else {
+					if (dres.x < bestRes[1].x) {
+						bestRes[1] = dres;
+						bestInd[1] = baseInd;
+					}
+				}
 				
 			}
 		}
 	}
+
+	maxCount = 2;
+	if (bestRes[0] == invalid) {
+		maxCount = 0;
+	}
+	else {
+		if (bestRes[1] == invalid) {
+			maxCount = 1;
+		}
+	}
+	
+
+
+	for (i = 0; i < maxCount; i++) {
+		baseInd = bestInd[i];
+
+		p0 = paramArr[baseInd+E_TP_P0];
+		p1 = paramArr[baseInd+E_TP_P1];
+		p2 = paramArr[baseInd+E_TP_P2];
+		thickVals[i] = paramArr[baseInd+E_TP_THICKVALS];
+
+
+		t =  bestRes[i].y;
+
+		bezTanP0 = mix(p0,p2,t);
+		bezTanP1 = mix(p2,p1,t);
+
+		resArr[i] = pointSegDistance(worldPosInPixels,bezTanP0,bezTanP1);
+	}
+
+	if (maxCount == 0) {
+		curInd = -1;
+	}
+	if (maxCount == 1) {
+		curInd = 0;
+	}
+	if (maxCount == 2) {
+		if (resArr[0].x < resArr[1].x) {
+			curInd = 0;
+		}
+		else {
+			curInd = 1;
+		}
+	}
+
+	if (resArr[curInd].x < mix(thickVals[curInd].x,thickVals[curInd].y,bestRes[curInd].y)) {
+		matResult.y = TEX_STONE;
+	}
+	*/
+
+
+
+
+
 
 	// matResult.x = normalUID;
 	// matResult.y = finalMat;
@@ -1952,7 +2139,7 @@ vec4 getGeom(vec3 worldPosInPixels, float curMat, float terHeight) {
 
 				//TODO: terCenter = terrain orig
 				
-				matResult = getCobble(worldPosInPixels, 0.5*pixelsPerMeter, orig, 1000.0, 4000.0, isVert);
+				matResult = getCobble(worldPosInPixels, 0.5*pixelsPerMeter, orig, 1000.0, 4000.0, isVert, true, true, 9, 18);
 
 				normalUID = matResult.x;
 				finalMat = matResult.y;

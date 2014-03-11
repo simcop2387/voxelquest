@@ -1,52 +1,4 @@
 
-struct iVector4 {
-	int x;
-	int y;
-	int z;
-	int w;
-};
-struct fVector4 {
-	float x;
-	float y;
-	float z;
-	float w;
-};
-
-struct iVector3 {
-	int x;
-	int y;
-	int z;
-};
-struct fVector3 {
-	float x;
-	float y;
-	float z;
-};
-
-
-struct iVector2 {
-	int x;
-	int y;
-};
-struct fVector2 {
-	float x;
-	float y;
-};
-
-struct iBoundingBox {
-	int xMin;
-	int yMin;
-	int xMax;
-	int yMax;
-};
-
-struct fBoundingBox {
-	float xMin;
-	float yMin;
-	float xMax;
-	float yMax;
-};
-
 int intDiv(int v, int s) {
     float fv = v;
     float fs = s;
@@ -117,6 +69,14 @@ unsigned int intLogB2 (unsigned int val) {
         ret++;
     }
     return ret;
+}
+
+int intPow(int x, int p) {
+    int i = 1;
+    for (int j = 1; j <= p; j++) {
+        i *= x;
+    }
+    return i;
 }
 
 
@@ -712,6 +672,39 @@ public:
 
     */
 
+    void rotate(float a, int plane) {
+
+        float xp = fv4.x;
+        float yp = fv4.y;
+        float zp = fv4.z;
+
+        switch (plane) {
+            case E_PLANE_XY:
+                xp = fv4.x*cos(a)-fv4.y*sin(a);
+                yp = fv4.y*cos(a)+fv4.x*sin(a);
+            break;
+
+            case E_PLANE_YZ:
+                zp = fv4.z*cos(a)-fv4.y*sin(a);
+                yp = fv4.y*cos(a)+fv4.z*sin(a);
+            break;
+
+            case E_PLANE_XZ:
+                xp = fv4.x*cos(a)-fv4.z*sin(a);
+                zp = fv4.z*cos(a)+fv4.x*sin(a);
+            break;
+        }
+
+        fv4.x = xp;
+        fv4.y = yp;
+        fv4.z = zp;
+
+        iv4.x = (int)fv4.x;
+        iv4.y = (int)fv4.y;
+        iv4.z = (int)fv4.z;
+
+    }
+
     void rotate90(int ind) {
         switch (ind) {
             case 0: // 0 deg
@@ -765,6 +758,25 @@ public:
         return fv4.x * otherVec->getFX() +
         fv4.y * otherVec->getFY() +
         fv4.z * otherVec->getFZ();
+    }
+
+    static void cross(FIVector4* outVec, FIVector4* v1, FIVector4* v2) {
+
+
+        float x1 = v1->getFX();
+        float y1 = v1->getFY();
+        float z1 = v1->getFZ();
+
+        float x2 = v2->getFX();
+        float y2 = v2->getFY();
+        float z2 = v2->getFZ();
+
+        outVec->setFXYZ(
+            (y1 * z2) - (y2 * z1),
+            (z1 * x2) - (z2 * x1),
+            (x1 * y2) - (x2 * y1)
+        );
+        
     }
 
 
@@ -830,6 +842,159 @@ public:
 
 };
 
+
+
+
+
+class AxisRotation {
+    
+public:
+
+    float rotationMatrix[4][4];
+    float inputMatrix[4];
+    float outputMatrix[4];
+
+    //FIVector4* quat;
+    FIVector4 tempRes1;
+    FIVector4 tempRes2;
+
+    // glm::vec3 upVec;
+    // AxisRotation() {
+    //     upVec = glm::vec3(0.0f,0.0f,1.0f);
+    // }
+    // glm::quat rotationFromUpVec(glm::vec3 dest) {
+    //     return rotationBetweenVectors(upVec, dest);
+    // }
+    // // the resulting quaternion, when applied to start, results in dest
+    // glm::quat rotationBetweenVectors(glm::vec3 start, glm::vec3 dest){
+
+    //     using namespace glm;
+
+    //     start = normalize(start);
+    //     dest = normalize(dest);
+        
+    //     float cosTheta = dot(start, dest);
+    //     vec3 rotationAxis;
+        
+    //     if (cosTheta < -1 + 0.001f){
+    //         // special case when vectors in opposite directions :
+    //         // there is no "ideal" rotation axis
+    //         // So guess one; any will do as long as it's perpendicular to start
+    //         // This implementation favors a rotation around the Up axis,
+    //         // since it's often what you want to do.
+    //         rotationAxis = cross(vec3(0.0f, 0.0f, 1.0f), start);
+    //         if (length2(rotationAxis) < 0.01 ) // bad luck, they were parallel, try again!
+    //             rotationAxis = cross(vec3(1.0f, 0.0f, 0.0f), start);
+            
+    //         rotationAxis = normalize(rotationAxis);
+    //         return angleAxis(180.0f, rotationAxis);
+    //     }
+
+    //     // Implementation from Stan Melax's Game Programming Gems 1 article
+    //     rotationAxis = cross(start, dest);
+
+    //     float s = std::sqrt( (1+cosTheta)*2 );
+    //     float invs = 1 / s;
+
+    //     return quat(
+    //         s * 0.5f, 
+    //         rotationAxis.x * invs,
+    //         rotationAxis.y * invs,
+    //         rotationAxis.z * invs
+    //     );
+
+    // }
+
+
+    // void quatRotation( FIVector4* output, FIVector4* vec, FIVector4* axis, float angle )
+    // {
+
+    //     x = RotationAxis.x * sin(RotationAngle / 2)
+    //     y = RotationAxis.y * sin(RotationAngle / 2)
+    //     z = RotationAxis.z * sin(RotationAngle / 2)
+    //     w = cos(RotationAngle / 2)
+
+    //     FIVector4::cross( &tempRes1, vec, quat );
+    //     tempRes1.addXYZRef(vec, quat->getFW());
+    //     FIVector4::cross( &tempRes2, &tempRes1, quat );
+    //     output->setFXYZRef(vec);
+    //     output->addXYZRef(&tempRes2, 2.0f);
+    // }
+
+    void doRotation(FIVector4* output, FIVector4* input, FIVector4* axis, float angle)
+    {
+        int i;
+        int j;
+        int k;
+
+        float u = axis->getFX();
+        float v = axis->getFY();
+        float w = axis->getFZ();
+        
+        outputMatrix[0] = 0.0f;
+        outputMatrix[1] = 0.0f;
+        outputMatrix[2] = 0.0f;
+        outputMatrix[3] = 0.0f;
+
+        inputMatrix[0] = input->getFX();
+        inputMatrix[1] = input->getFY();
+        inputMatrix[2] = input->getFZ();
+        inputMatrix[3] = 1.0;
+     
+             
+        float L = (u*u + v * v + w * w);
+        float u2 = u * u;
+        float v2 = v * v;
+        float w2 = w * w;
+
+        float sqrtL = sqrt(L);
+        float ca = cos(angle);
+        float sa = sin(angle);
+        
+        rotationMatrix[0][0] = (u2 + (v2 + w2) * ca) / L;
+        rotationMatrix[0][1] = (u * v * (1 - ca) - w * sqrtL * sa) / L;
+        rotationMatrix[0][2] = (u * w * (1 - ca) + v * sqrtL * sa) / L;
+        rotationMatrix[0][3] = 0.0f; 
+        
+        rotationMatrix[1][0] = (u * v * (1 - ca) + w * sqrtL * sa) / L;
+        rotationMatrix[1][1] = (v2 + (u2 + w2) * ca) / L;
+        rotationMatrix[1][2] = (v * w * (1 - ca) - u * sqrtL * sa) / L;
+        rotationMatrix[1][3] = 0.0f; 
+        
+        rotationMatrix[2][0] = (u * w * (1 - ca) - v * sqrtL * sa) / L;
+        rotationMatrix[2][1] = (v * w * (1 - ca) + u * sqrtL * sa) / L;
+        rotationMatrix[2][2] = (w2 + (u2 + v2) * ca) / L;
+        rotationMatrix[2][3] = 0.0f; 
+        
+        rotationMatrix[3][0] = 0.0f;
+        rotationMatrix[3][1] = 0.0f;
+        rotationMatrix[3][2] = 0.0f;
+        rotationMatrix[3][3] = 1.0f;
+
+
+
+
+        for(i = 0; i < 4; i++ ){
+            for(j = 0; j < 1; j++){
+                outputMatrix[i] = 0;
+                for(k = 0; k < 4; k++){
+                    outputMatrix[i] += rotationMatrix[i][k] * inputMatrix[k];
+                }
+            }
+        }
+
+
+        output->setFXYZW(
+            outputMatrix[0],
+            outputMatrix[1],
+            outputMatrix[2],
+            outputMatrix[3]
+        );
+        
+    }
+
+};
+AxisRotation axisRotationInstance;
 
 
 
@@ -1116,16 +1281,20 @@ public:
 
         float _zOffset,
         
+        // p0, p1 = start, end
+        // p2 = control point or tangent
+
         FIVector4* p0,
         FIVector4* p1,
+        FIVector4* p2,
 
         float radP0,
         float radP1,
 
         // FIVector4* rad,
         // FIVector4* _cornerDisInPixels,
-        FIVector4* _visInsetFromMin,
-        FIVector4* _visInsetFromMax,
+        //FIVector4* _visInsetFromMin,
+        //FIVector4* _visInsetFromMax,
         // FIVector4* _powerVals,
         // FIVector4* _powerVals2,
         // FIVector4* _thickVals,
@@ -1153,12 +1322,15 @@ public:
         boundsMinInPixels.setFXYZRef(p0);
         boundsMaxInPixels.setFXYZRef(p1);
 
-        boundsMinInPixels.addXYZ(-radMax);
-        boundsMaxInPixels.addXYZ(radMax);
+        //boundsMinInPixels.addXYZ(-radMax);
+        //boundsMaxInPixels.addXYZ(radMax);
 
         FIVector4::normalizeBounds(&boundsMinInPixels,&boundsMaxInPixels);
 
+        FIVector4::growBoundary(&boundsMinInPixels, &boundsMaxInPixels, p2, p2);
 
+        boundsMinInPixels.addXYZ(-radMax);
+        boundsMaxInPixels.addXYZ(radMax);
         
 
         // switch (alignBottomMiddleTop) {
@@ -1183,8 +1355,8 @@ public:
         visMinInPixels.setFXYZRef(&boundsMinInPixels);
         visMaxInPixels.setFXYZRef(&boundsMaxInPixels);
 
-        visMinInPixels.addXYZRef(_visInsetFromMin, 1.0f);
-        visMaxInPixels.addXYZRef(_visInsetFromMax, -1.0f);
+        //visMinInPixels.addXYZRef(_visInsetFromMin, 1.0f);
+        //visMaxInPixels.addXYZRef(_visInsetFromMax, -1.0f);
 
         // geomParams[E_GP_CORNERDISINPIXELS].setFXYZRef(_cornerDisInPixels);
         // geomParams[E_GP_POWERVALS].setFXYZRef(_powerVals);
@@ -1193,6 +1365,7 @@ public:
 
         geomParams[E_TP_P0].setFXYZRef(p0);
         geomParams[E_TP_P1].setFXYZRef(p1);
+        geomParams[E_TP_P2].setFXYZRef(p2);
         geomParams[E_TP_THICKVALS].setFXYZ(radP0, radP1, 0.0f);
 
 
@@ -1278,12 +1451,14 @@ public:
     bool isRelative;
     bool doRender;
 
+    float radius;
+
 
     DynObject() {
         
     }
 
-    void init(int _x, int _y, int _z, int _r, int _g, int _b, bool _doRender, bool _isRelative, FIVector4* _cameraPos) {
+    void init(int _x, int _y, int _z, int _r, int _g, int _b, bool _doRender, bool _isRelative, FIVector4* _cameraPos, float _radius) {
         isRelative = _isRelative;
         doRender = _doRender;
 
@@ -1296,6 +1471,8 @@ public:
             pos.setIXYZ(_x,_y,_z);
             posRel.setIXYZ(0,0,0);
         }
+
+        radius = _radius;
 
         r = _r;
         g = _g;

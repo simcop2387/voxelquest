@@ -60,9 +60,10 @@ float unpack16(vec2 num) {
 
 
 
-bool isGeom(vec2 num) {
-    int test = int(unpack16(num));
-    return (test >= 32768);
+bool isGeom(float aVal) {
+    return aVal >= 0.5;
+    // int test = int(unpack16(num));
+    // return (test >= 32768);
 }
 
 
@@ -107,7 +108,7 @@ void main() {
     vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
     vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
 
-    const int iNumSteps = 64;
+    const int iNumSteps = 128;
     const float fNumSteps = float(iNumSteps);
 
     float newZoom = min(cameraZoom,1.0);    
@@ -290,6 +291,8 @@ void main() {
 
     float lightIntensity = 0.0;
     float totLightIntensity = 0.0;
+
+    float totNonColored = 0.0;
     
     vec3 totLightColor = vec3(0.0);
     vec3 curLightColor = vec3(0.0);
@@ -380,7 +383,7 @@ void main() {
 
                     curHeight = unpack16(samp.rg);
 
-                    if (samp.b*samp.a < 1.0) {
+                    if (samp.a < 0.5) {//(samp.b*samp.a < 1.0) { // isGeom
                         wasHit = float( curHeight > wCurPos.z+2.0 );// *clamp(flerp+0.1,0.0,1.0);
                         totHits += wasHit;
                         lastHit = mix(lastHit, flerp, wasHit);
@@ -401,6 +404,9 @@ void main() {
 
 
                 totLightDis += lightDis;
+
+                totNonColored += lightDis*resComp*(1.0-lightColorization);
+
                 totColorization += lightColorization*lightDis*clamp(resComp+lightFlooding,0.0,1.0);
                 totLightIntensity += lightIntensity*lightDis*resComp;
 
@@ -419,12 +425,12 @@ void main() {
         // LIGHT LOOP END
 
 
-
+        totNonColored = clamp(totNonColored, 0.0, 1.0);
         resCompTot = clamp(resCompTot,0.0,1.0);
         frontLightTot = clamp(frontLightTot,0.0,1.0);
         
 
-        if (isGeom(tex0.ba)) {
+        if (isGeom(tex0.a)) {
             resColorTemp = unpackColorGeom(tex0.ba);
         }
         else {
@@ -447,8 +453,8 @@ void main() {
             // );
             resColorTemp = mix(
                 resColorTemp,
-                totLightColor*(lightRes + clamp(totLightDis,0.0,1.0) ),//vec3( clamp(dot(resColorTemp,oneVec.xyz)/3.0,0.0,1.0) ) + totLightColor*totLightIntensity,
-                clamp(totColorization,0.0,1.0)
+                clamp(totLightColor,0.0,1.0)*(lightRes + clamp(totLightDis,0.0,1.0)*totLightIntensity ),//vec3( clamp(dot(resColorTemp,oneVec.xyz)/3.0,0.0,1.0) ) + totLightColor*totLightIntensity,
+                clamp(totColorization*(1.0-totNonColored),0.0,1.0)
             );
 
 

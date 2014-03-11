@@ -64,44 +64,52 @@ void main() {
     float bh3 = unpack16(tex4.rg);//tex4.r+tex4.g*255.0;
 
 
-    /*if (bh1 > bh2) {
-        gl_FragData[0] = tex0;
-        gl_FragData[1] = tex1;
-    }
-    else {
-        gl_FragData[0] = tex2;
-        gl_FragData[1] = tex3;
-    }*/
+    vec4 oneVec = vec4(1.0);
 
     
+
+    bool notGeom = true;
+
+    vec4 res0 = vec4(0.0);
+    vec4 res1 = vec4(0.0);
     
     if (bh2 > bh1) {
         if (bh3 > bh2) {
-            gl_FragData[0] = tex4;
-            gl_FragData[1] = tex5;
+            res0 = tex4;
+            res1 = tex5;
+            notGeom = false;
         }
         else {
-            gl_FragData[0] = tex2;
-            gl_FragData[1] = tex3;
+            res0 = tex2;
+            res1 = tex3;
         }
     }
     else {
         if (bh3 > bh1) {
-            gl_FragData[0] = tex4;
-            gl_FragData[1] = tex5;
+            res0 = tex4;
+            res1 = tex5;
+            notGeom = false;
         }
         else {
-            gl_FragData[0] = tex0;
-            gl_FragData[1] = tex1;
+            res0 = tex0;
+            res1 = tex1;
+        }
+    }
+
+    if (notGeom) {
+        if (dot(oneVec,tex4) == 0.0) {
+
+        }
+        else {
+            res0 = tex4;
+            res1 = tex5;
+            res0.b = 0.0;
+            res0.a = 129.0/255.0;
         }
     }
     
-
-    //gl_FragData[0] = mix(tex0,tex4,isGeom);
-    //gl_FragData[1] = mix(tex1,tex5,isGeom);
-
-    //gl_FragData[0] = mix( mix(tex0,tex2,isGrass), tex4, isGeom );
-    //gl_FragData[1] = mix( mix(tex1,tex3,isGrass), tex5, isGeom );
+    gl_FragData[0] = res0;
+    gl_FragData[1] = res1;
 
 
 }

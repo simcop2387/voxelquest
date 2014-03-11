@@ -99,7 +99,9 @@ public:
   bool showMap;
   bool traceOn;
   bool waterOn;
+  bool treesOn;
   bool firstRun;
+  bool rotOn;
   int maxLayers;
   int maxChanges;
   int maxPooledRes;
@@ -253,7 +255,8 @@ public:
   void setProgActionAll (unsigned char kc, eProgramAction pa, bool isDown);
   void createGrassList (int index);
   void drawCrossHairs (FIVector4 originVec, float radius);
-  void drawCubeCentered (FIVector4 originVec, float radius);
+  void drawLine (FIVector4 * p0, FIVector4 * p1);
+  void drawCubeCentered (FIVector4 * originVec, float radius);
   void drawBoxUp (FIVector4 originVec, float radiusX, float radiusY, float diamZ);
   void drawBox (FIVector4 * minVec, FIVector4 * maxVec);
   float glslMod (float x, float y);
@@ -346,6 +349,62 @@ public:
   PooledResource ();
   FBOSet * getFBOS (int fboNum);
   void init (Singleton * _singleton);
+};
+#undef LZZ_INLINE
+#endif
+// f00340_gameplantnode.e
+//
+
+#ifndef LZZ_f00340_gameplantnode_e
+#define LZZ_f00340_gameplantnode_e
+#define LZZ_INLINE inline
+class GamePlantNode
+{
+public:
+  FIVector4 begPoint;
+  FIVector4 endPoint;
+  FIVector4 tangent;
+  FIVector4 baseShoot;
+  float shootLength;
+  float begThickness;
+  float endThickness;
+  FIVector4 startEndWidth;
+  FIVector4 upVec;
+  GamePlantNode * parent;
+  GamePlantNode * children;
+  int maxChildren;
+  int numChildren;
+  GamePlantNode ();
+  void updateTangent (float angleInRadians);
+  void init (GamePlantNode * _parent, int _maxChildren, int _numChildren);
+};
+#undef LZZ_INLINE
+#endif
+// f00341_gameplant.e
+//
+
+#ifndef LZZ_f00341_gameplant_e
+#define LZZ_f00341_gameplant_e
+#define LZZ_INLINE inline
+class GamePlant
+{
+public:
+  Singleton * singleton;
+  FIVector4 origin;
+  FIVector4 tempv0;
+  FIVector4 tempv1;
+  FIVector4 tempv2;
+  FIVector4 tempv3;
+  GamePlantNode * trunkNode;
+  GamePlantNode * rootsNode;
+  PlantRules * rootRules;
+  PlantRules * trunkRules;
+  static PlantRules (allPlantRules) [E_PT_LENGTH];
+  static void initAllPlants (Singleton * _singleton);
+  float gv (float * vals);
+  GamePlant ();
+  void init (Singleton * _singleton, PlantRules * _rootRules, PlantRules * _trunkRules, FIVector4 * _origin);
+  void applyRules (PlantRules * rules, GamePlantNode * curParent, int curGen, int maxGen, float curLength, float totLength, float maxLength);
 };
 #undef LZZ_INLINE
 #endif
@@ -456,9 +515,31 @@ public:
   int blockID;
   int blockSizeInHolders;
   int blockSizeInLots;
+  int counter;
   FIVector4 offsetInBlocks;
   FIVector4 offsetInBlocksWrapped;
+  FIVector4 origin;
+  FIVector4 anchorPointInPixels;
+  FIVector4 moveMinInPixels;
+  FIVector4 moveMaxInPixels;
+  FIVector4 p1;
+  FIVector4 p2;
+  FIVector4 rad;
+  FIVector4 visInsetFromMin;
+  FIVector4 visInsetFromMax;
+  FIVector4 cornerRad;
+  FIVector4 thickVals;
+  FIVector4 powerVals;
+  FIVector4 powerVals2;
+  FIVector4 matParams;
+  FIVector4 tempVec;
+  FIVector4 tempVec2;
+  FIVector4 tempVec3;
+  FIVector4 tempVecB;
+  FIVector4 tempVecB2;
+  FIVector4 tempVecB3;
   std::vector <GameGeom*> gameGeom;
+  GamePlant myPlant;
   int iHolderSize;
   int maxFloors;
   GamePageHolder * * holderData;
@@ -472,6 +553,7 @@ public:
   GameWorld * gw;
   BuildingNode nullNode;
   GameBlock ();
+  void addPlantNodes (GamePlantNode * curPlantNode, FIVector4 * orig);
   void init (Singleton * _singleton, int _blockID, int _x, int _y, int _xw, int _yw);
   BuildingNode * getNode (int x, int y);
   BuildingNodeProp * getPropAtLevel (int x, int y, int dir, int lev, int nodeType);
@@ -483,6 +565,7 @@ public:
   int touchesCenter (int x, int y, int buildingType);
   int sameHeight (int x, int y);
   int touches2 (int x, int y, int buildingType);
+  int touches2Center (int x, int y, int buildingType);
   void connectNodes (int _x1, int _y1, int _x2, int _y2, int buildingType, int id);
 };
 #undef LZZ_INLINE
@@ -581,6 +664,13 @@ public:
   FIVector4 * globLightPos;
   FIVector4 lightPosBase;
   FIVector4 * cameraPos;
+  FIVector4 * curBoxPos;
+  FIVector4 tv0;
+  FIVector4 tv1;
+  FIVector4 tv2;
+  FIVector4 tv3;
+  FIVector4 tv4;
+  FIVector4 tv5;
   Singleton * singleton;
   GameBlock * * blockData;
   FBOWrapper * curFBO;

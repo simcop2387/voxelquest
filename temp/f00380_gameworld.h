@@ -1132,15 +1132,60 @@ void GameWorld::renderGeom ()
 			break;
 			case E_MOUSE_STATE_BRUSH:
 				singleton->setShaderFloat("matVal", getPackedColor(255,0,0));
-				singleton->drawCubeCentered(lastUnitPos, ((int)singleton->curBrushRad)*(singleton->unitSizeInPixels)  );
+				singleton->drawCubeCentered(&lastUnitPos, ((int)singleton->curBrushRad)*(singleton->unitSizeInPixels)  );
 				glClear(GL_DEPTH_BUFFER_BIT);
 			break;
 			case E_MOUSE_STATE_OBJECTS:
 
+
+				// tv0.setFXYZRef(&(singleton->dynObjects[E_OBJ_P0]->pos));
+				// tv1.setFXYZRef(&(singleton->dynObjects[E_OBJ_P1]->pos));
+				// tv2.setFXYZRef(&(singleton->dynObjects[E_OBJ_P2]->pos));
+
+				// if (singleton->rotOn) {
+				// 	tv3.setFXYZRef(&tv1);
+				// 	tv3.addXYZRef(&tv0,-1.0f);
+				// 	tv3.normalize();
+
+				// 	tv2.addXYZRef(&tv1,-1.0f);
+				// 	axisRotationInstance.doRotation(&tv4,&tv2,&tv3,singleton->curTime/500.0f);
+				// 	tv2.setFXYZRef(&tv4);
+				// 	tv2.addXYZRef(&tv1,1.0f);
+
+				// }
+
+
+				singleton->setShaderFloat("matVal", singleton->dynObjects[E_OBJ_LIGHT0]->colPacked);
+
+				//singleton->drawLine( &tv0, &tv1 );
+				//singleton->drawLine( &tv1, &tv2 );
+
+
+
 				for (i = 1; i < singleton->dynObjects.size(); i++) {
 					if (singleton->dynObjects[i]->doRender) {
 						singleton->setShaderFloat("matVal", singleton->dynObjects[i]->colPacked);
-						singleton->drawCubeCentered(singleton->dynObjects[i]->pos,32.0f);
+						curBoxPos = &(singleton->dynObjects[i]->pos);
+
+
+						// if (
+						// 	(i == E_OBJ_P0) ||
+						// 	(i == E_OBJ_P1) ||
+						// 	(i == E_OBJ_P2)
+						// ) {
+						// 	if (i == E_OBJ_P0) {
+						// 		curBoxPos = &tv0;
+						// 	}
+						// 	if (i == E_OBJ_P1) {
+						// 		curBoxPos = &tv1;
+						// 	}
+						// 	if (i == E_OBJ_P2) {
+						// 		curBoxPos = &tv2;
+						// 	}
+						// }
+						
+						singleton->drawCubeCentered(curBoxPos,singleton->dynObjects[i]->radius);
+
 
 						if (i == singleton->activeObject) {
 							//singleton->drawCrossHairs(singleton->dynObjects[i]->pos,4.0f);
@@ -1148,6 +1193,11 @@ void GameWorld::renderGeom ()
 
 					}
 				}
+
+				
+				
+
+
 
 			break;
 			case E_MOUSE_STATE_MEASURE:
@@ -3263,6 +3313,8 @@ void GameWorld::postProcess ()
 		int k;
 		int baseInd;
 
+		DynObject* curObj;
+
 		pushTrace("postProcess()");
 
 		// NOTE: ALWAYS UNSAMPLE IN REVERSE ORDER!!!
@@ -3282,7 +3334,9 @@ void GameWorld::postProcess ()
 			// );
 			// lightPos = &lightPosBase;
 
-			lightPos = &(singleton->dynObjects[E_OBJ_LIGHT0 + k]->pos);
+			curObj = singleton->dynObjects[E_OBJ_LIGHT0 + k];
+
+			lightPos = &(curObj->pos);
 
 			// if (k == 0) {
 			// 	globLightPos = lightPos;
@@ -3324,59 +3378,19 @@ void GameWorld::postProcess ()
 
 
 			// light color
+
+			singleton->lightArr[baseInd + 8] = ((float)curObj->r)/255.0f; // light red
+			singleton->lightArr[baseInd + 9] = ((float)curObj->g)/255.0f; // light green
+			singleton->lightArr[baseInd + 10] = ((float)curObj->b)/255.0f; // light blue
+
 			switch(k) {
 				case 0:
-					singleton->lightArr[baseInd + 8] = 1.0f; // light red
-					singleton->lightArr[baseInd + 9] = 1.0f; // light green
-					singleton->lightArr[baseInd + 10] = 1.0f; // light blue
-					singleton->lightArr[baseInd + 11] = 1.0f; // light intensity (unused?)
-
+					singleton->lightArr[baseInd + 11] = 0.0f; // light intensity (unused?)
 					singleton->lightArr[baseInd + 12] = 0.0f; // light colorization (0-1)
 					singleton->lightArr[baseInd + 13] = 0.0f; // light flooding (colorizes regardless of shadows) (0-1)
-
 				break;
-				case 1:
-					singleton->lightArr[baseInd + 8] = 1.0f;
-					singleton->lightArr[baseInd + 9] = 0.5f;
-					singleton->lightArr[baseInd + 10] = 0.0f;
-					singleton->lightArr[baseInd + 11] = 4.0f;
-
-					singleton->lightArr[baseInd + 12] = 1.0f;
-					singleton->lightArr[baseInd + 13] = 0.0f;
-				break;
-				case 2:
-					singleton->lightArr[baseInd + 8] = 0.5f;
-					singleton->lightArr[baseInd + 9] = 1.0f;
-					singleton->lightArr[baseInd + 10] = 0.0f;
-					singleton->lightArr[baseInd + 11] = 4.0f;
-
-					singleton->lightArr[baseInd + 12] = 1.0f;
-					singleton->lightArr[baseInd + 13] = 0.0f;
-				break;
-				case 3:
-					singleton->lightArr[baseInd + 8] = 0.0f;
-					singleton->lightArr[baseInd + 9] = 1.0f;
-					singleton->lightArr[baseInd + 10] = 0.5f;
-					singleton->lightArr[baseInd + 11] = 4.0f;
-
-					singleton->lightArr[baseInd + 12] = 1.0f;
-					singleton->lightArr[baseInd + 13] = 0.0f;
-				break;
-				case 4:
-					singleton->lightArr[baseInd + 8] = 0.5f;
-					singleton->lightArr[baseInd + 9] = 0.0f;
-					singleton->lightArr[baseInd + 10] = 1.0f;
-					singleton->lightArr[baseInd + 11] = 4.0f;
-
-					singleton->lightArr[baseInd + 12] = 1.0f;
-					singleton->lightArr[baseInd + 13] = 0.0f;
-				break;
-				case 5:
-					singleton->lightArr[baseInd + 8] = 1.0f;
-					singleton->lightArr[baseInd + 9] = 0.0f;
-					singleton->lightArr[baseInd + 10] = 0.5f;
-					singleton->lightArr[baseInd + 11] = 4.0f;
-
+				default:
+					singleton->lightArr[baseInd + 11] = 1.0f;
 					singleton->lightArr[baseInd + 12] = 1.0f;
 					singleton->lightArr[baseInd + 13] = 0.0f;
 				break;
@@ -3495,6 +3509,7 @@ void GameWorld::postProcess ()
 				singleton->sampleFBO("resultFBO", 4, activeFBO);
 				singleton->sampleFBO("swapFBOLinHalf0", 5);
 				singleton->sampleFBO("noiseFBO", 6);
+				singleton->sampleFBO("waveFBO", 7);
 				singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 				singleton->setShaderfVec3("cameraPos", cameraPos);
 				singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
@@ -3503,6 +3518,7 @@ void GameWorld::postProcess ()
 				singleton->setShaderFloat("seaLevel", ((float)(singleton->gw->seaLevel) )/255.0 );
 				singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
 				singleton->drawFSQuad(1.0f);
+				singleton->unsampleFBO("waveFBO", 7);
 				singleton->unsampleFBO("noiseFBO", 6);
 				singleton->unsampleFBO("swapFBOLinHalf0",5);
 				singleton->unsampleFBO("resultFBO", 4, activeFBO);
@@ -3556,7 +3572,9 @@ void GameWorld::postProcess ()
 				singleton->bindFBO("resultFBO",activeFBO);
 				singleton->sampleFBO("resultFBO",0,activeFBO);
 				singleton->sampleFBO("swapFBOLin0",1);
+				singleton->sampleFBO("combineFBOWithWater",2);
 				singleton->drawFSQuad(1.0f);
+				singleton->unsampleFBO("combineFBOWithWater",2);
 				singleton->unsampleFBO("swapFBOLin0",1);
 				singleton->unsampleFBO("resultFBO",0,activeFBO);
 				singleton->unbindFBO();

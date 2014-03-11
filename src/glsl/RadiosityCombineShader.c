@@ -3,6 +3,10 @@ uniform sampler2D Texture0;
 // result fbo blurred
 uniform sampler2D Texture1;
 
+// pages fbo
+uniform sampler2D Texture2;
+uniform sampler2D Texture3;
+
 varying vec2 TexCoord0;
 
 $
@@ -21,19 +25,26 @@ void main() {
 
     vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
     vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
+    vec4 tex2 = texture2D(Texture2, TexCoord0.xy);
     
     vec3 newRad = pow(tex1.rgb,vec3(1.0) );
 
     vec3 finalCol = mix(tex0.rgb, tex0.rgb+newRad, newRad*0.15);
-
-
-
     vec3 resColGS = vec3( clamp(dot(finalCol,oneVec.xyz)/3.0,0.0,1.0) );
-    finalCol = mix(
-        resColGS,
-        finalCol,
-        clamp(1.0-distance(resColGS,finalCol),0.0,1.0)*1.5//*mix(0.5,1.0,totLightDis)
-    );
+
+    if (tex2.a < 0.5) {
+        finalCol = mix(
+            resColGS,
+            finalCol,
+            clamp(1.0-distance(resColGS,finalCol),0.0,1.0)*1.5//*mix(0.5,1.0,totLightDis)
+        );
+    }
+    else {
+        finalCol = tex0.rgb;
+    }
+
+    
+    
 
     //finalCol = newRad;
     gl_FragData[0] = vec4(finalCol,1.0);

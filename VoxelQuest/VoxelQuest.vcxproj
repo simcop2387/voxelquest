@@ -78,12 +78,12 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\poco\Net\include;C:\poco\Util\include;C:\poco\Foundation\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\poco\Net\include;C:\poco\Util\include;C:\poco\Foundation\include;C:\wamp\www\voxelquest\glm;$(IncludePath)</IncludePath>
     <LibraryPath>opengl32.lib;glu32.lib;C:\poco\lib;C:\glew\lib\Release\Win32;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\poco\Net\include;C:\poco\Util\include;C:\poco\Foundation\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\poco\Net\include;C:\poco\Util\include;C:\poco\Foundation\include;C:\wamp\www\voxelquest\glm;$(IncludePath)</IncludePath>
     <LibraryPath>opengl32.lib;glu32.lib;C:\poco\lib64;C:\glew\lib\Release\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

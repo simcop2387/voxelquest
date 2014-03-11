@@ -1,4 +1,4 @@
-﻿Build started 2/28/2014 10:08:52 AM.
+﻿Build started 3/11/2014 4:11:04 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -22,22 +22,26 @@
          .\src\cpp\f00292_wsserver.hpp
          .\src\cpp\f00300_singleton.hpp
          .\src\cpp\f00310_pooledresource.hpp
+         .\src\cpp\f00340_gameplantnode.hpp
+         .\src\cpp\f00341_gameplant.hpp
          .\src\cpp\f00350_gamepage.hpp
          .\src\cpp\f00351_gamepageholder.hpp
          .\src\cpp\f00352_gameblock.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         22 File(s) copied
+         24 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         9
+         11
          copying headers to one file
          .\f00290_wsrequesthandler.e
          .\f00291_rhfactory.e
          .\f00292_wsserver.e
          .\f00300_singleton.e
          .\f00310_pooledresource.e
+         .\f00340_gameplantnode.e
+         .\f00341_gameplant.e
          .\f00350_gamepage.e
          .\f00351_gamepageholder.e
          .\f00352_gameblock.e
@@ -45,7 +49,7 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         9
+         11
          .
          copying files to compiled
          .\temp\f00290_wsrequesthandler.e
@@ -53,11 +57,13 @@
          .\temp\f00292_wsserver.e
          .\temp\f00300_singleton.e
          .\temp\f00310_pooledresource.e
+         .\temp\f00340_gameplantnode.e
+         .\temp\f00341_gameplant.e
          .\temp\f00350_gamepage.e
          .\temp\f00351_gamepageholder.e
          .\temp\f00352_gameblock.e
          .\temp\f00380_gameworld.e
-         9 File(s) copied
+         11 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_vectors.h
@@ -76,6 +82,8 @@
          .\temp\f00292_wsserver.h
          .\temp\f00300_singleton.h
          .\temp\f00310_pooledresource.h
+         .\temp\f00340_gameplantnode.h
+         .\temp\f00341_gameplant.h
          .\temp\f00350_gamepage.h
          .\temp\f00351_gamepageholder.h
          .\temp\f00352_gameblock.h
@@ -143,7 +151,7 @@
                    
          Loading:  ..\data\lastImageBuffer.txt         
          Load Successful          
-         Sea Level: 87
+         Sea Level: 79
          start place cities
          end place cities
          start grow provinces
@@ -165,23 +173,39 @@
          start filling houses
          end filling houses
          DONE WITH MAP
-         Shaders Refreshed
          volGenFBOX:  64         
          volGenFBOX:  32         
-         Shaders Refreshed
-         Shaders Refreshed
-         Shaders Refreshed
-         Shaders Refreshed
-         Shaders Refreshed
-         Shaders Refreshed
-         Shaders Refreshed
+         volGenFBOX:  16         
+         volGenFBOX:  16         
+         volGenFBOX:  16         
+         volGenFBOX:  16         
+         volGenFBOX:  16         
+         volGenFBOX:  16         
+         volGenFBOX:  16         
+                     
+                     
+         TOT COUNT### 4
+                     
+                     
+                     
+                     
+         TOT COUNT### 0
+                     
+                     
+         volGenFBOX:  32         
          volGenFBOX:  64         
          volGenFBOX:  128         
          volGenFBOX:  128         
          volGenFBOX:  128         
          volGenFBOX:  128         
+         volGenFBOX:  128         
+         volGenFBOX:  128         
+         fog on 1
+         fog on 0
+         fog on 1
+         fog on 0
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:34:35.25
+Time Elapsed 00:09:11.78

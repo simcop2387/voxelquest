@@ -81,14 +81,14 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 
 		unitSizeInPixels = (float)(singleton->unitSizeInPixels);
 
-
+		
 		worldSeed.copyFrom(&(singleton->worldSeed));
-
+		
 
 
 		iVolumeSize = bufferedPageSizeInUnits*bufferedPageSizeInUnits*bufferedPageSizeInUnits;
 		
-
+		
 
 
 		worldMinVisInPixels.copyFrom(&offsetInUnits);
@@ -148,8 +148,9 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 
 
 		
-		hasTerrain = ( avgHeight + singleton->visPageSizeInPixels*4.0f >= worldMinVisInPixels.getFZ() );//(abs(centerHeight-avgHeight) <= singleton->visPageSizeInPixels*4.0);
 		hasWater =  ( seaHeightInPixels >= worldMinVisInPixels.getFZ() );
+		hasTerrain = ( avgHeight + singleton->visPageSizeInPixels*4.0f >= worldMinVisInPixels.getFZ() ) || ( seaHeightInPixels + singleton->visPageSizeInPixels*4.0f >= worldMinVisInPixels.getFZ() );//(abs(centerHeight-avgHeight) <= singleton->visPageSizeInPixels*4.0);
+		
 
 		addGeom(true);
 

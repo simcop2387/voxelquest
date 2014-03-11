@@ -17,6 +17,9 @@ uniform sampler2D Texture5;
 // noise fbo
 uniform sampler2D Texture6;
 
+// wave fbo
+uniform sampler2D Texture7;
+
 
 varying vec2 TexCoord0;
 
@@ -144,6 +147,10 @@ void main() {
     vec4 tex4Ref = vec4(0.0);
     vec4 tex5Ref = vec4(0.0);
 
+    vec4 tex7Ref = vec4(0.0);
+    vec4 tex7Ref2 = vec4(0.0);
+    vec4 tex7Ref3 = vec4(0.0);
+
     float baseHeightRef = 0.0;
 
     int i;
@@ -155,6 +162,7 @@ void main() {
     float lerpValNorm = 0.0;
     float curSeaLev = seaLevel*heightmapMax;
 
+    float totRef;
 
 
     vec3 finalCol = vec3(0.0);
@@ -185,19 +193,28 @@ void main() {
 
         tex5Ref = texture2D(Texture5, newTC.xy);
 
+
         baseHeightRef = unpack16(tex0Ref.rg);
 
-        if (dot(tex0Ref, oneVec) == 0.0) {
+        totRef = float(dot(tex0Ref, oneVec) > 0.0);
+
+        if (totRef == 0.0) {
             baseHeightRef = baseHeightWater-128.0;
         }
 
         heightDif = clamp((baseHeightWater - baseHeightRef), 0.0, distances[maxEntriesM1]);
 
-        lval = dot(oneVec.rgb, tex5Ref.rgb)/3.0;;
+        lval = dot(oneVec.rgb, tex5Ref.rgb)/3.0;
+
+
+        tex7Ref = texture2D(Texture7, newTC.xy);
+        tex7Ref2 = texture2D(Texture7, newTC.xy + tex7Ref.xy - (baseHeightWater - baseHeightRef)/bufferDim.xy );
+        tex7Ref3 = texture2D(Texture7, newTC.xy + 1.0 - (tex7Ref.xy - (baseHeightWater - baseHeightRef)/bufferDim.xy) );
+
 
         // bigger == deeper under water
 
-        colVecs[0] = vec3(1.0,1.0,1.0);
+        colVecs[0] = vec3(0.9,0.9,1.0);
         colVecs[1] = vec3(0.3,1.0,1.0);
         colVecs[2] = vec3(0.2,0.5,1.0);
         colVecs[3] = vec3(0.1,0.3,1.0);
@@ -245,7 +262,7 @@ void main() {
 
                         finalCol += sin(
                             (worldPositionWater.x + worldPositionWater.y + worldPositionWater.z/2.0)/(100.0) + curTime/500.0
-                        )*0.1 * 
+                        )*0.2 * 
                         pow(1.0-clamp((curSeaLev-worldPositionWater.z)/2000.0,0.0,1.0),5.0 );
 
                     }
@@ -266,6 +283,16 @@ void main() {
             }
         }
 
+        finalCol += pow(
+        (
+            //pow(abs(sin(tex7Ref.a*10.0)),4.0) +
+            pow( ( (tex7Ref2.a ) ), 2.0 ) +
+            pow( ( (tex7Ref3.a ) ), 2.0 ) 
+        ) *
+        clamp( 1.0 - ((baseHeightWater - baseHeightRef)/512.0),0.0,1.0 )*
+        totRef
+
+        ,2.0)*0.2;
 
         gl_FragData[0] = vec4(finalCol,1.0);
     }

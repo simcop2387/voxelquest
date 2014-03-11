@@ -22,56 +22,7 @@ std::vector<std::string> split(const std::string &s, char delim) {
 	return split(s, delim, elems);
 }
 
-struct intPair {
-	int v0;
-	int v1;
-};
 
-struct floatAndIndex {
-	float value;
-	int index1;
-	int index2;
-};
-
-struct coordAndIndex {
-	float x;
-	float y;
-	float xTen;
-	float yTen;
-	int index;
-};
-
-
-struct BuildingNodeProp {
-	int begHeight;
-	int endHeight;
-	int typeVal;
-};
-
-struct BuildingNode {
-	
-	BuildingNodeProp centerProp;
-	BuildingNodeProp connectionProps[4];
-	BuildingNodeProp shortProps[4*MAX_FLOORS];
-	BuildingNodeProp dynProps[4*MAX_FLOORS];
-
-	int id;
-	float powerValU;
-	float powerValV;
-	float terHeight;
-
-	bool isWingTip;
-
-	// int centerType;
-	// int connectionTypes[4];
-	// int shortTypes[4];
-
-	// int centerHeight;
-	// int connectionHeights[4];
-	// int shortHeights[4];
-
-	
-};
 
 
 bool pairIsEqual(intPair a, intPair b) {

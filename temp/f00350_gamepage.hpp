@@ -162,14 +162,14 @@ public:
 
 		unitSizeInPixels = (float)(singleton->unitSizeInPixels);
 
-
+		
 		worldSeed.copyFrom(&(singleton->worldSeed));
-
+		
 
 
 		iVolumeSize = bufferedPageSizeInUnits*bufferedPageSizeInUnits*bufferedPageSizeInUnits;
 		
-
+		
 
 
 		worldMinVisInPixels.copyFrom(&offsetInUnits);
@@ -229,8 +229,9 @@ public:
 
 
 		
-		hasTerrain = ( avgHeight + singleton->visPageSizeInPixels*4.0f >= worldMinVisInPixels.getFZ() );//(abs(centerHeight-avgHeight) <= singleton->visPageSizeInPixels*4.0);
 		hasWater =  ( seaHeightInPixels >= worldMinVisInPixels.getFZ() );
+		hasTerrain = ( avgHeight + singleton->visPageSizeInPixels*4.0f >= worldMinVisInPixels.getFZ() ) || ( seaHeightInPixels + singleton->visPageSizeInPixels*4.0f >= worldMinVisInPixels.getFZ() );//(abs(centerHeight-avgHeight) <= singleton->visPageSizeInPixels*4.0);
+		
 
 		addGeom(true);
 

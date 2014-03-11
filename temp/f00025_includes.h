@@ -64,6 +64,20 @@ bool TRACE_ON = false;
 #include <gl/glu.h>
 #include <gl/freeglut.h>
 
+/*
+// Using radians 
+#define GLM_FORCE_RADIANS
+// allow swizzle
+// #define GLM_SWIZZLE 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
+#include <glm/gtx/euler_angles.hpp>
+#include <glm/gtx/norm.hpp>
+//using namespace gtx;
+*/
+
 #pragma comment(lib, "glew32.lib")
 
 

@@ -169,7 +169,7 @@ void main() {
             finalRes = (tex2.a*tex1.a*samp.a*samp2.a) * 
             clamp(dot(testNormOrig,testVec),0.0,1.0) * 
             clamp(dot(baseNormOrig,baseVec),0.0,1.0) * 
-            (1.25-fi)*isNotGeom(samp3.ba); 
+            (1.25-fi)*float(samp3.a < 0.5);  //isNotGeom
             //* float( dot(lightVec,baseVec) > 0.0 );// *(1.0-dot(oneVec,samp.rgb)/3.0);
 
 
