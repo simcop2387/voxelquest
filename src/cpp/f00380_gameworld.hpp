@@ -20,6 +20,9 @@ public:
 	int visPageSizeInPixels;
 	int holderSizeInPages;
 
+	int lightCount;
+	int frameCount;
+
 	int MIN_MIP;
 	int MAX_MIP;
 	int AVG_MIP;
@@ -55,6 +58,9 @@ public:
 	int dirModX[4];
 	int dirModY[4];
 	int opDir[4];
+
+	GameLight globalLight;
+	GameLight* activeLights[MAX_LIGHTS];
 
 	int dirFlagClear;
 	int visFlag;
@@ -95,6 +101,9 @@ public:
 
 	FIVector4 minLRInPixels;
 	FIVector4 maxLRInPixels;
+
+	FIVector4 minLRInHolders;
+	FIVector4 maxLRInHolders;
 	
 	FIVector4 minv;
 	FIVector4 maxv;
@@ -161,6 +170,9 @@ public:
 
 		int i;
 		int j;
+
+		lightCount = 1;
+		frameCount = -1;
 
 		noiseGenerated = false;
 		wavesGenerated = false;
@@ -579,9 +591,9 @@ public:
 		}
 
 		if (singleton->mapInvalid) {
-			initMap();
+			
 
-			//goto DO_RETURN_UPDATE;
+			goto DO_RETURN_UPDATE;
 		}
 
 		if (noiseGenerated) {
@@ -824,12 +836,28 @@ DO_RETURN_UPDATE:
 	    	}
 	    }
 
-	    int mink = intDiv(camPagePos.getIZ()-loadRad2, singleton->holderSizeInPages)*singleton->holderSizeInPages;
-	    int maxk = intDiv(camPagePos.getIZ()+loadRad2, singleton->holderSizeInPages)*singleton->holderSizeInPages;
-	    int minj = intDiv(camPagePos.getIY()-loadRad, singleton->holderSizeInPages)*singleton->holderSizeInPages;
-	    int maxj = intDiv(camPagePos.getIY()+loadRad, singleton->holderSizeInPages)*singleton->holderSizeInPages;
-	    int mini = intDiv(camPagePos.getIX()-loadRad, singleton->holderSizeInPages)*singleton->holderSizeInPages;
-	    int maxi = intDiv(camPagePos.getIX()+loadRad, singleton->holderSizeInPages)*singleton->holderSizeInPages;
+	    int hsip = singleton->holderSizeInPages;
+
+	    int mink = intDiv(camPagePos.getIZ()-loadRad2, hsip);
+	    int maxk = intDiv(camPagePos.getIZ()+loadRad2, hsip);
+	    int minj = intDiv(camPagePos.getIY()-loadRad, hsip);
+	    int maxj = intDiv(camPagePos.getIY()+loadRad, hsip);
+	    int mini = intDiv(camPagePos.getIX()-loadRad, hsip);
+	    int maxi = intDiv(camPagePos.getIX()+loadRad, hsip);
+
+
+		minLRInHolders.setIXYZ(mini+1,minj+1,mink+1);
+	    maxLRInHolders.setIXYZ(maxi-1,maxj-1,maxk-1);
+
+
+	    mink *= hsip;
+	    maxk *= hsip;
+	    minj *= hsip;
+	    maxj *= hsip;
+	    mini *= hsip;
+	    maxi *= hsip;
+
+
 
 		//for (k = 0; k < singleton->maxH; k++) {
 	    for (kk = mink; kk <= maxk; kk++) {
@@ -1109,7 +1137,9 @@ DO_RETURN_UPDATE:
 			    					if (
 			    						(cutHolderPos.getFX()-1.0f < gp->offsetInHolders.getFX()) &&
 			    						(cutHolderPos.getFY()-1.0f < gp->offsetInHolders.getFY()) &&
-			    						(cutHolderPos.getFZ()-1.0f < gp->offsetInHolders.getFZ())
+			    						(cutHolderPos.getFZ()-1.0f < gp->offsetInHolders.getFZ()) 
+
+			    						
 			    						
 			    					) {
 
@@ -1118,7 +1148,13 @@ DO_RETURN_UPDATE:
 			    						//if (gp->offsetInHolders.manhattanDis(&camHolderPos) <= 1.0 ) {
 			    							
 			    						if ( ((j==0)&&gp->hasSolids) || ((j==1)&&gp->hasTrans) ) {
-			    							drawHolder(gp, j);
+			    							
+			    							//cout << "drawHolder\n";
+
+			    							//if ( gp->offsetInHolders.inBoundsXYZ(&minLRInHolders,&maxLRInHolders) ) {
+			    								drawHolder(gp, j);
+			    							//}
+			    							
 			    						}
 			    							
 			    						//}
@@ -1313,7 +1349,7 @@ DO_RETURN_UPDATE:
 				// }
 
 
-				singleton->setShaderFloat("matVal", singleton->dynObjects[E_OBJ_LIGHT0]->colPacked);
+				//singleton->setShaderFloat("matVal", singleton->dynObjects[E_OBJ_LIGHT0]->colPacked);
 
 				//singleton->drawLine( &tv0, &tv1 );
 				//singleton->drawLine( &tv1, &tv2 );
@@ -1402,6 +1438,14 @@ DO_RETURN_UPDATE:
 			break;
 			
 		}
+
+
+		// for (i = 1; i < lightCount; i++) {
+		// 	singleton->setShaderFloat("matVal", activeLights[i]->colPacked);
+		// 	curBoxPos = &(activeLights[i]->pos);				
+		// 	singleton->drawCubeCentered(curBoxPos,0.125f*singleton->pixelsPerMeter);
+		// }
+
 		
 
 		glDisable(GL_DEPTH_TEST);
@@ -1849,8 +1893,7 @@ DO_RETURN_UPDATE:
 		singleton->sampleFBO("pagesFBO", 0);
 		singleton->sampleFBO("noiseFBO", 2);
 
-		singleton->setShaderFloat("seaLevel", ((float)(singleton->gw->seaLevel) )/255.0 );
-		singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
+		singleton->setShaderFloat("seaLevel", singleton->getSeaLevelInPixels());
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 
 		singleton->drawFSQuad(1.0f);
@@ -1866,8 +1909,6 @@ DO_RETURN_UPDATE:
 
 		singleton->bindShader("GrassShader");
 		
-		//singleton->setShaderFloat("seaLevel", ((float)(singleton->gw->seaLevel) )/255.0 );
-		//singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
 		singleton->setShaderFloat("scaleFactor", DEF_SCALE_FACTOR);
 		singleton->setShaderFloat("curTime", curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
@@ -3466,8 +3507,56 @@ DO_RETURN_UPDATE:
 		}
 	}
 
+	void updateLights() {
+
+		int i;
+		int j;
+		int k;
+
+		int ii;
+		int jj;
+
+		int blockRad = 1;
+
+		lightCount = 1;
+		GameLight* curLight;
+		GameBlock* curBlock;
+
+		activeLights[0] = &globalLight;
+
+		for (j = -blockRad; j <= blockRad; j++) {
+			for (i = -blockRad; i <= blockRad; i++) {
+				ii = i + camBlockPos.getIX();
+				jj = j + camBlockPos.getIY();
+
+				curBlock = getBlockAtCoords(ii, jj, true);
+
+
+				for (k = 0; k < curBlock->gameLights.size(); k++) {
+					curLight = curBlock->gameLights[k];
+
+					if ( curLight->pos.distance(cameraPos) < 28.0f*singleton->pixelsPerMeter && curLight->isOn ) {
+						activeLights[lightCount] = curBlock->gameLights[k];
+						lightCount++;
+					}
+
+					if (lightCount >= singleton->numLights) {
+						goto UPDATE_LIGHTS_END;
+					}
+
+				}
+			}
+		}
+
+		UPDATE_LIGHTS_END:
+
+		;
+
+	}
+
 	void postProcess() {
 
+		frameCount++;
 
 		int i;
 		int iMin;
@@ -3475,7 +3564,7 @@ DO_RETURN_UPDATE:
 		int k;
 		int baseInd;
 
-		DynObject* curObj;
+		GameLight* curLight;
 
 		pushTrace("postProcess()");
 
@@ -3484,8 +3573,17 @@ DO_RETURN_UPDATE:
 		
 		//singleton->worldToScreen(&aoScreenCoords, &(singleton->dynObjects[singleton->activeObject]->pos));
 
+		if ( (frameCount % 120) == 0) {
+			updateLights();
+		}
 
-		for (k = 0; k < singleton->numLights; k++) {
+		
+
+
+		globalLight.initFrom( singleton->dynObjects[E_OBJ_LIGHT0] );
+		activeLights[0] = &globalLight;
+
+		for (k = 0; k < lightCount; k++) {
 			baseInd = k*FLOATS_PER_LIGHT;
 			
 			// lightPosBase.copyFrom(&(singleton->dynObjects[E_OBJ_LIGHT0 + k]->pos));
@@ -3496,9 +3594,9 @@ DO_RETURN_UPDATE:
 			// );
 			// lightPos = &lightPosBase;
 
-			curObj = singleton->dynObjects[E_OBJ_LIGHT0 + k];
+			curLight = activeLights[k];
 
-			lightPos = &(curObj->pos);
+			lightPos = &(curLight->pos);
 
 			// if (k == 0) {
 			// 	globLightPos = lightPos;
@@ -3541,13 +3639,13 @@ DO_RETURN_UPDATE:
 
 			// light color
 
-			singleton->lightArr[baseInd + 8] = ((float)curObj->r)/255.0f; // light red
-			singleton->lightArr[baseInd + 9] = ((float)curObj->g)/255.0f; // light green
-			singleton->lightArr[baseInd + 10] = ((float)curObj->b)/255.0f; // light blue
+			singleton->lightArr[baseInd + 8] = curLight->color.getFX(); // light red
+			singleton->lightArr[baseInd + 9] = curLight->color.getFY(); // light green
+			singleton->lightArr[baseInd + 10] = curLight->color.getFZ(); // light blue
 
 			switch(k) {
 				case 0:
-					singleton->lightArr[baseInd + 11] = 0.0f; // light intensity (unused?)
+					singleton->lightArr[baseInd + 11] = 1.0f; // light intensity (unused?)
 					singleton->lightArr[baseInd + 12] = 0.0f; // light colorization (0-1)
 					singleton->lightArr[baseInd + 13] = 0.0f; // light flooding (colorizes regardless of shadows) (0-1)
 				break;
@@ -3602,8 +3700,7 @@ DO_RETURN_UPDATE:
 				singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 				singleton->setShaderFloat("curTime", singleton->curTime);
-				singleton->setShaderFloat("seaLevel", ((float)(singleton->gw->seaLevel) )/255.0 );
-				singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
+				singleton->setShaderFloat("seaLevel", singleton->getSeaLevelInPixels() );
 				singleton->drawFSQuad(1.0f);
 				singleton->unsampleFBO("waveFBO",4);
 				singleton->unsampleFBO("waterFBO",2);
@@ -3640,8 +3737,8 @@ DO_RETURN_UPDATE:
 				singleton->setShaderfVec3("cameraPos", cameraPos);
 				//singleton->setShaderfVec3("lightPosWS", lightPos);
 				//singleton->setShaderfVec2("lightPosSS", &lScreenCoords);
-				singleton->setShaderArrayfVec4("lightArr", singleton->lightArr, (FLOATS_PER_LIGHT*singleton->numLights)/4);
-				singleton->setShaderFloat("numLights",singleton->numLights);
+				singleton->setShaderArrayfVec4("lightArr", singleton->lightArr, (FLOATS_PER_LIGHT*lightCount)/4);
+				singleton->setShaderFloat("lightCount",lightCount);
 				singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 				singleton->drawFSQuad(1.0f);
@@ -3677,8 +3774,7 @@ DO_RETURN_UPDATE:
 				singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 				singleton->setShaderFloat("curTime", singleton->curTime);
-				singleton->setShaderFloat("seaLevel", ((float)(singleton->gw->seaLevel) )/255.0 );
-				singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
+				singleton->setShaderFloat("seaLevel", singleton->getSeaLevelInPixels() );
 				singleton->drawFSQuad(1.0f);
 				singleton->unsampleFBO("waveFBO", 7);
 				singleton->unsampleFBO("noiseFBO", 6);
@@ -3712,10 +3808,9 @@ DO_RETURN_UPDATE:
 
 				singleton->bindShader("RadiosityShader");
 
-				singleton->bindFBO("swapFBOLin0");
+				singleton->bindFBO("swapFBOLinHalf0");
 				singleton->sampleFBO("combineFBOWithWater",0);
 				singleton->sampleFBO("swapFBOBLin0",2);
-				singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
 				singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 				singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
@@ -3728,16 +3823,16 @@ DO_RETURN_UPDATE:
 				singleton->unbindShader();
 
 
-				doBlur("swapFBOLin",2.0f);
+				doBlur("swapFBOLinHalf",2.0f);
 
 				singleton->bindShader("RadiosityCombineShader");
 				singleton->bindFBO("resultFBO",activeFBO);
 				singleton->sampleFBO("resultFBO",0,activeFBO);
-				singleton->sampleFBO("swapFBOLin0",1);
+				singleton->sampleFBO("swapFBOLinHalf0",1);
 				singleton->sampleFBO("combineFBOWithWater",2);
 				singleton->drawFSQuad(1.0f);
 				singleton->unsampleFBO("combineFBOWithWater",2);
-				singleton->unsampleFBO("swapFBOLin0",1);
+				singleton->unsampleFBO("swapFBOLinHalf0",1);
 				singleton->unsampleFBO("resultFBO",0,activeFBO);
 				singleton->unbindFBO();
 				singleton->unbindShader();
@@ -3761,7 +3856,6 @@ DO_RETURN_UPDATE:
 				singleton->sampleFBO("swapFBOBLin0", 3);
 
 
-				singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
 				singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 				singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));

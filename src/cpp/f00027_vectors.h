@@ -106,7 +106,16 @@ public:
     }
 
 
+    void randomize() {
+        fv4.x = fGenRand();
+        fv4.y = fGenRand();
+        fv4.z = fGenRand();
+        this->normalize();
 
+        iv4.x = (int)fv4.x;
+        iv4.y = (int)fv4.y;
+        iv4.z = (int)fv4.z;
+    }
 
     void setIXYZW(int x, int y, int z, int w) {
         iv4.x = x;
@@ -1001,6 +1010,105 @@ AxisRotation axisRotationInstance;
 
 
 
+class DynObject {
+
+public:
+
+    FIVector4 pos;
+    FIVector4 color;
+    FIVector4 posRel;
+
+    int r;
+    int g;
+    int b;
+
+    int colPacked;
+    bool isRelative;
+    bool doRender;
+
+    float radius;
+
+
+    DynObject() {
+        
+    }
+
+    void init(int _x, int _y, int _z, int _r, int _g, int _b, bool _doRender, bool _isRelative, FIVector4* _cameraPos, float _radius) {
+        isRelative = _isRelative;
+        doRender = _doRender;
+
+        if (isRelative) {
+            posRel.setIXYZ(_x,_y,_z);
+            pos.setFXYZRef(_cameraPos);
+            pos.addXYZRef(&posRel);
+        }
+        else {
+            pos.setIXYZ(_x,_y,_z);
+            posRel.setIXYZ(0,0,0);
+        }
+
+        radius = _radius;
+
+        r = _r;
+        g = _g;
+        b = _b;
+
+        color.setFXYZ(
+            ((float)r)/255.0f,
+            ((float)g)/255.0f,
+            ((float)b)/255.0f
+        );
+
+        colPacked = getPackedColor(r,g,b);
+    }
+
+
+};
+
+
+class GameLight {
+public:
+
+    int id;
+    int globalID;
+    int colPacked;
+    FIVector4 pos;
+    FIVector4 color;
+    bool isOn;
+
+    GameLight() {
+        isOn = true;
+    }
+
+    void updateCP() {
+        colPacked = getPackedColor(color.getFX()*255.0f,color.getFY()*255.0f,color.getFZ()*255.0f);
+    }
+
+    void init(
+        int _id,
+        int _globalID,
+        FIVector4* _pos,
+        FIVector4* _color
+    ) {
+        id = _id;
+        globalID = _globalID;
+        pos.setFXYZRef(_pos);
+        color.setFXYZRef(_color);
+        updateCP();
+    }
+
+    void initFrom(DynObject* dyno) {
+        id = -1;
+        globalID = -1;
+
+        pos.setFXYZRef(&(dyno->pos));
+        color.setFXYZRef(&(dyno->color));
+        updateCP();
+    }
+
+};
+
+
 
 
 class GameGeom {
@@ -1058,7 +1166,7 @@ public:
     FIVector4 moveMinInPixels;
     FIVector4 moveMaxInPixels;
 
-
+    GameLight* light;
 
     bool visible;
     bool hasAnchor;
@@ -1084,7 +1192,7 @@ public:
     //float matId;
 
     GameGeom() {
-
+        light = NULL;
     }
 
     void init(int _id) {
@@ -1230,14 +1338,14 @@ public:
 
         switch (alignBottomMiddleTop) {
             
-            case 0: // bottom _@_
+            case E_ALIGN_BOTTOM: // bottom _@_
                 zOffset += (rad->getFZ()-_visInsetFromMin->getFZ());
             break;
-            case 1: // middle -@-
+            case E_ALIGN_MIDDLE: // middle -@-
                 zOffset += 0.0f;
             break;
-                    //     ___
-            case 2: // top  @
+                    //               ___
+            case E_ALIGN_TOP: // top  @
                 zOffset += -(rad->getFZ()-_visInsetFromMax->getFZ());
             break;
             
@@ -1280,6 +1388,8 @@ public:
         int alignBottomMiddleTop,
 
         float _zOffset,
+
+        
         
         // p0, p1 = start, end
         // p2 = control point or tangent
@@ -1290,6 +1400,7 @@ public:
 
         float radP0,
         float radP1,
+        float sphereRad,
 
         // FIVector4* rad,
         // FIVector4* _cornerDisInPixels,
@@ -1309,7 +1420,7 @@ public:
         float temp;
         float zOffset = _zOffset;
 
-        float radMax = max(radP0, radP1);
+        float radMax = max(max(radP0, radP1), sphereRad);
 
         curRot = 0;
         rotDir = 1;
@@ -1366,7 +1477,7 @@ public:
         geomParams[E_TP_P0].setFXYZRef(p0);
         geomParams[E_TP_P1].setFXYZRef(p1);
         geomParams[E_TP_P2].setFXYZRef(p2);
-        geomParams[E_TP_THICKVALS].setFXYZ(radP0, radP1, 0.0f);
+        geomParams[E_TP_THICKVALS].setFXYZ(radP0, radP1, sphereRad);
 
 
         geomParams[E_TP_MATPARAMS].setFXYZRef(_matParams);
@@ -1436,51 +1547,4 @@ public:
 };
 
 
-class DynObject {
-
-public:
-
-    FIVector4 pos;
-    FIVector4 posRel;
-
-    int r;
-    int g;
-    int b;
-
-    int colPacked;
-    bool isRelative;
-    bool doRender;
-
-    float radius;
-
-
-    DynObject() {
-        
-    }
-
-    void init(int _x, int _y, int _z, int _r, int _g, int _b, bool _doRender, bool _isRelative, FIVector4* _cameraPos, float _radius) {
-        isRelative = _isRelative;
-        doRender = _doRender;
-
-        if (isRelative) {
-            posRel.setIXYZ(_x,_y,_z);
-            pos.setFXYZRef(_cameraPos);
-            pos.addXYZRef(&posRel);
-        }
-        else {
-            pos.setIXYZ(_x,_y,_z);
-            posRel.setIXYZ(0,0,0);
-        }
-
-        radius = _radius;
-
-        r = _r;
-        g = _g;
-        b = _b;
-
-        colPacked = getPackedColor(r,g,b);
-    }
-
-
-};
 

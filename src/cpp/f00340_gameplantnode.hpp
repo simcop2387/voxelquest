@@ -19,6 +19,9 @@ public:
 	float shootLength;
 	float begThickness;
 	float endThickness;
+	float midThickness;
+
+	float sphereRad;
 
 	FIVector4 startEndWidth;
 	FIVector4 upVec;
@@ -29,6 +32,7 @@ public:
 	int numChildren;
 
 	GamePlantNode() {
+		sphereRad = 0.0f;
 		parent = NULL;
 		children = NULL;
 		upVec.setFXYZ(0.0f,0.0f,1.0f);
@@ -65,6 +69,8 @@ public:
 		
 		maxChildren = _maxChildren;	
 		numChildren = _numChildren;
+
+		sphereRad = 0.0f;
 
 		if (maxChildren > 0) {
 

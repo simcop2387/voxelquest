@@ -9,7 +9,6 @@ uniform sampler2D Texture2;
 uniform sampler2D Texture3;
 
 
-uniform float heightmapMax;
 uniform float cameraZoom;
 uniform vec2 bufferDim;
 uniform vec2 resolution;

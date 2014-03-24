@@ -11,6 +11,8 @@ public:
 	FIVector4 tempv2;
 	FIVector4 tempv3;
 
+	FIVector4 rootVec;
+	FIVector4 trunkVec;
 
 	GamePlantNode* trunkNode;
 	GamePlantNode* rootsNode;
@@ -38,25 +40,73 @@ public:
 		PlantRules* pr;
 
 		pr = &(allPlantRules[E_PT_OAK_TRUNK]);
-		pr->numChildren[0] = 1.0f;
+		pr->numChildren[0] = 2.0f;
 		pr->numChildren[1] = 5.0f;
-		pr->divergenceAngleV[0] = pi/6.0f;
+		pr->divergenceAngleV[0] = pi/3.0f;
 		pr->divergenceAngleV[1] = pi/6.0f;
 		pr->begThickness = 1.0f;
 		pr->endThickness = 0.0f;
-		pr->baseLength = 4.0f;
-		pr->nodeLengthMultiplier = 0.75f;
-		pr->numGenerations = 5.0f;
-		pr->angleUniformityU = 1.0f;
+		pr->sphereGen = 2.0f;
+		pr->numGenerations = 3.0f;
+		pr->angleUniformityU = 0.75f;
 		pr->isInit = 0.0;
+		
+		//pr->baseLength = 4.0f;
+		//pr->nodeLengthMultiplier = 0.75f;
+		pr->curLength[0] = 2.0f;
+		pr->curLength[1] = 3.5f;
+		pr->curLength[2] = 3.0f;
+		pr->curLength[3] = 2.5f;
+		pr->curLength[4] = 2.5f;
+		pr->curLength[5] = 1.5f;
+		pr->curLength[6] = 1.0f;
+		pr->curLength[7] = 1.0f;
+		pr->curLength[8] = 0.75f;
+		
+		
+		
+
+
+		pr = &(allPlantRules[E_PT_OAK_ROOTS]);
+		pr->numChildren[0] = 2.0f;
+		pr->numChildren[1] = 5.0f;
+		pr->divergenceAngleV[0] = pi/8.0f;
+		pr->divergenceAngleV[1] = pi/8.0f;
+		pr->begThickness = 1.0f;
+		pr->endThickness = 0.0f;
+		pr->sphereGen = -1.0f;
+		pr->numGenerations = 4.0f;
+		pr->angleUniformityU = 0.75f;
+		pr->isInit = 0.0;
+
+		//pr->baseLength = 4.0f;
+		//pr->nodeLengthMultiplier = 0.75f;
+		pr->curLength[0] = 2.0f;
+		pr->curLength[1] = 4.0f;
+		pr->curLength[2] = 3.5f;
+		pr->curLength[3] = 3.0f;
+		pr->curLength[4] = 2.5f;
+		pr->curLength[5] = 2.0f;
+		pr->curLength[6] = 1.5f;
+		pr->curLength[7] = 1.0f;
+		pr->curLength[8] = 0.75f;
+		
+
+		
+
 
 		
 		for (i = 0; i < E_PT_LENGTH; i++) {
 			if (allPlantRules[i].isInit == 0.0f) {
 
+
+
 				allPlantRules[i].begThickness *= _singleton->pixelsPerMeter;
 				allPlantRules[i].endThickness *= _singleton->pixelsPerMeter;
-				allPlantRules[i].baseLength *= _singleton->pixelsPerMeter;
+				for (j = 0; j < MAX_PLANT_GEN; j++) {
+					allPlantRules[i].curLength[j] *= _singleton->pixelsPerMeter;
+				}
+
 				
 
 			}
@@ -74,6 +124,8 @@ public:
 		rootsNode = NULL;
 	}
 
+
+
 	void init(
 		Singleton* _singleton,
 		PlantRules* _rootRules,
@@ -85,54 +137,89 @@ public:
 		trunkRules = _trunkRules;
 		origin.setFXYZRef(_origin);
 
+		trunkVec.setFXYZ(fGenRand()*0.1f,fGenRand()*0.1f,1.0f);
+		trunkVec.normalize();
+		rootVec.setFXYZRef(&trunkVec);
+		rootVec.multXYZ(-1.0f);
+
 		if (trunkNode == NULL) {
 			trunkNode = new GamePlantNode();
 		}
-
-		
-		trunkNode->init(NULL,trunkRules->numChildren[1],gv(trunkRules->numChildren));
-		trunkNode->tangent.setFXYZ(0.0f,0.0f,1.0f);
-		trunkNode->begPoint.setFXYZRef(&origin);
-		trunkNode->endPoint.setFXYZRef(&origin);
-		trunkNode->endPoint.addXYZ(0.0,0.0,trunkRules->baseLength);
-		trunkNode->updateTangent(gv(trunkRules->divergenceAngleV));
-
-		int i;
-		float maxLength = 0.0f;
-		float curMult = 1.0f;
-
-		int maxGen = trunkRules->numGenerations;
-
-		for (i = 0; i < maxGen; i++) {
-			maxLength += trunkRules->baseLength*curMult;
-			curMult *= trunkRules->nodeLengthMultiplier;
+		if (rootsNode == NULL) {
+			rootsNode = new GamePlantNode();
 		}
 
-		float curLerp;
-		
-		curLerp = (0.0f);
-		trunkNode->begThickness = (1.0f-curLerp)*trunkRules->begThickness + curLerp*trunkRules->endThickness;
 
-		curLerp = ((trunkRules->baseLength)/maxLength);
-		trunkNode->endThickness = (1.0f-curLerp)*trunkRules->begThickness + curLerp*trunkRules->endThickness;
+		initBase(rootRules, rootsNode, &rootVec);
+		initBase(trunkRules, trunkNode, &trunkVec);
+
+	}
+
+
+
+
+	void initBase(
+		PlantRules* rules,
+		GamePlantNode* curNode,
+		FIVector4* baseVec
+	) {
+		int i;
+		float curLerp;
+		float maxLength = 0.0f;
+		//float curMult = 1.0f;
+		int maxGen = rules->numGenerations;
+
+		
+		curNode->init(NULL,rules->numChildren[1],gv(rules->numChildren));
+		//curNode->tangent.setFXYZRef(baseVec);
+		curNode->begPoint.setFXYZRef(&origin);
+		curNode->endPoint.setFXYZRef(&origin);
+		curNode->endPoint.addXYZRef(baseVec,rules->curLength[0]);
+		curNode->updateTangent(gv(rules->divergenceAngleV));
+
+		for (i = 1; i < maxGen; i++) {
+			maxLength += rules->curLength[i]; // *curMult;
+			//curMult *= rules->nodeLengthMultiplier;
+		}
+
+		
+
+		// curLerp = rules->curLength[0]/maxLength;
+		// curNode->endThickness = (1.0f-curLerp)*rules->begThickness + curLerp*rules->endThickness;
+
+		// curLerp = 0.0f;
+		// curNode->begThickness = curNode->endThickness;//(1.0f-curLerp)*rules->begThickness + curLerp*rules->endThickness;
+
+		// curNode->midThickness = (curNode->begThickness+curNode->endThickness)*0.5f;
+
+		curNode->begThickness = rules->begThickness;
+		curNode->endThickness = curNode->begThickness;
+		curNode->midThickness = curNode->begThickness;
+
+		// if (rules->sphereGen == 0.0f) {
+		// 	curNode->sphereRad = 1.5f*singleton->pixelsPerMeter;
+		// }
+
 
 		applyRules(
-			trunkRules,
-			trunkNode,
+			rules,
+			curNode,
 			0,
 			maxGen,
-			trunkRules->baseLength*(trunkRules->nodeLengthMultiplier),
-			trunkRules->baseLength,
+			//rules->baseLength*(rules->nodeLengthMultiplier),
+			0.0f,
 			maxLength
 		);
 	}
+
+	
 
 	void applyRules(
 		PlantRules* rules,
 		GamePlantNode* curParent,
 		int curGen,
 		int maxGen,
-		float curLength,
+		//float curLength,
 		float totLength,
 		float maxLength
 	) {
@@ -142,9 +229,11 @@ public:
 
 		int i;
 		float fi;
+		float fCurGen = (float)curGen;
 		float fNumChildren;
 		float curLerp;
-
+		float twoPi = 6.283185307f;
+		float curLength = rules->curLength[curGen];
 
 		GamePlantNode* curChild;
 
@@ -168,7 +257,12 @@ public:
 			curChild->begPoint.setFXYZRef(&(curParent->endPoint));
 			curChild->endPoint.setFXYZRef(&(curParent->endPoint));
 
-			axisRotationInstance.doRotation(&tempv0,&(curParent->baseShoot),&(curParent->tangent),fi*2.0*3.14159);
+			axisRotationInstance.doRotation(
+				&tempv0,
+				&(curParent->baseShoot),
+				&(curParent->tangent),
+				fi*twoPi + (fGenRand()-0.5f)*twoPi*(1.0f-rules->angleUniformityU)/fNumChildren
+			);
 			curChild->endPoint.addXYZRef(&tempv0,curLength);
 			curChild->updateTangent(gv(rules->divergenceAngleV));
 
@@ -178,8 +272,14 @@ public:
 			curLerp = ((totLength+curLength)/maxLength);
 			curChild->endThickness = (1.0f-curLerp)*rules->begThickness + curLerp*rules->endThickness;
 
+			curChild->midThickness = (curChild->begThickness+curChild->endThickness)*0.5f;
+
+			if ( rules->sphereGen == fCurGen ) {
+				curChild->sphereRad = 2.0f*singleton->pixelsPerMeter; //(maxLength-totLength) + 
+			}
+
 			if (curGen < maxGen) {
-				applyRules(rules, curChild, curGen + 1, maxGen, curLength*(trunkRules->nodeLengthMultiplier), totLength+curLength, maxLength);
+				applyRules(rules, curChild, curGen + 1, maxGen, totLength+curLength, maxLength);
 			}
 
 		}

@@ -9,7 +9,6 @@ uniform sampler2D Texture2;
 
 varying vec2 TexCoord0;
 
-uniform float heightmapMax;
 uniform float seaLevel;
 uniform vec2 bufferDim;
 
@@ -38,7 +37,7 @@ void main() {
 
 	float baseHeight = unpack16(tex0.rg);
 
-	float gmod = clamp( (baseHeight - (seaLevel*heightmapMax + 128.0) )/128.0, 0.0, 1.0);
+	float gmod = clamp( (baseHeight - (seaLevel + 128.0) )/128.0, 0.0, 1.0);
 	float isGrass = float(((tex0.a >= TEX_GRASS))&&(tex0.a <= TEX_GRASS2));
 
     gl_FragData[0] = vec4(isGrass,isGrass*gmod*mix(0.5,1.0,tex2.r),0.0,1.0);

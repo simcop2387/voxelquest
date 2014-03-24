@@ -104,7 +104,7 @@ void main() {
             res0 = tex4;
             res1 = tex5;
             res0.b = 0.0;
-            res0.a = 129.0/255.0;
+            res0.a = 128.0/255.0;
         }
     }
     

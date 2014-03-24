@@ -23,7 +23,6 @@ uniform float fogOn;
 uniform float waterOn;
 
 uniform float gridOn;
-uniform float heightmapMax;
 uniform float cameraZoom;
 uniform float diskOn;
 uniform float curTime;

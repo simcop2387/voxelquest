@@ -25,14 +25,13 @@ varying vec2 TexCoord0;
 
 
 uniform float seaLevel;
-uniform float heightmapMax;
 uniform float curTime;
 uniform float cameraZoom;
 uniform vec3 cameraPos;
 uniform vec2 bufferDim;
 
 
-const float TEX_WATER = 34.0/255.0;
+const float TEX_WATER = 32.0/255.0;
 const float TEX_GLASS = 35.0/255.0;
 const float pi = 3.14159;
 
@@ -129,8 +128,10 @@ void main() {
     worldPositionWater.y += cameraPos.y;
     worldPositionWater.z = baseHeightWater;
 
+    float maxDis = distances[maxEntriesM1];
 
     float heightDif = 0.0;
+    float heightDifNoRef = 0.0;
 
     vec3 waterNorm = -normalize((tex3.rgb-0.5)*2.0);
 
@@ -160,7 +161,7 @@ void main() {
 
     float lerpVal;
     float lerpValNorm = 0.0;
-    float curSeaLev = seaLevel*heightmapMax;
+    float curSeaLev = seaLevel;
 
     float totRef;
 
@@ -178,7 +179,8 @@ void main() {
     if (tex2.a == TEX_WATER) {
 
 
-        newTC.xy = TexCoord0.xy + (waterNorm.xy-waterNorm.z)*32.0/(bufferDim/newZoom);
+        heightDifNoRef = clamp((baseHeightWater - baseHeight), 0.0, maxDis);
+        newTC.xy = TexCoord0.xy + (waterNorm.xy-waterNorm.z)*tex3.a*32.0/(bufferDim/newZoom)*heightDifNoRef/maxDis;
 
 
         
@@ -202,7 +204,7 @@ void main() {
             baseHeightRef = baseHeightWater-128.0;
         }
 
-        heightDif = clamp((baseHeightWater - baseHeightRef), 0.0, distances[maxEntriesM1]);
+        heightDif = clamp((baseHeightWater - baseHeightRef), 0.0, maxDis);
 
         lval = dot(oneVec.rgb, tex5Ref.rgb)/3.0;
 
@@ -225,6 +227,7 @@ void main() {
         }
 
         for (i = 0; i < maxEntriesM1; i++) {
+
             if (
                 (heightDif >= distances[i]) &&
                 (heightDif <= distances[i+1]) 
@@ -233,7 +236,7 @@ void main() {
                 
 
                 lerpVal = clamp( (heightDif - distances[i])/(distances[i+1]-distances[i]), 0.0, 1.0);
-                lerpValNorm = heightDif/distances[maxEntriesM1];
+                lerpValNorm = heightDif/maxDis;
 
                 finalCol = mix(
                     mix(colVecs[i], colVecs[i+1], lerpVal)*lval,
@@ -241,9 +244,6 @@ void main() {
                     clamp(dot(oneVec.xyz,-waterNorm.xyz),0.0,0.3)
                 ) + tex4.rgb*vec3(0.1,0.2,0.4);
 
-                if (i == 0) {
-                    finalCol += (rand(TexCoord0.xy*curTime/10000.0)*0.15+0.25)*(1.0-lerpVal);
-                }
 
                 if (tex3.a == 0.0 ) {
 
@@ -251,14 +251,8 @@ void main() {
 
                     }
                     else {
-                        // finalCol += pow(
-                        //     clamp(
-                        //         dot(causNorm,-waterNorm),
-                        //         0.0,
-                        //         1.0
-                        //     )+0.4,
-                        //     4.0
-                        // )*0.1;
+                        
+                        // rays
 
                         finalCol += sin(
                             (worldPositionWater.x + worldPositionWater.y + worldPositionWater.z/2.0)/(100.0) + curTime/500.0
@@ -273,37 +267,63 @@ void main() {
                     
                 }
 
-                finalCol += 
-                pow(
-                    texture2D(Texture6, resTC*vec2(1.0,1.0)-vec2(0.0,(curTime/20000.0))  ).rgb*0.85,
-                    vec3(10.0)
-                ) * 
-                abs(sin(rand(TexCoord0.xy)*1000.0 + curTime/200.0))*(1.0-lerpValNorm);
+                
 
             }
         }
 
-        finalCol += pow(
-        (
-            //pow(abs(sin(tex7Ref.a*10.0)),4.0) +
-            pow( ( (tex7Ref2.a ) ), 2.0 ) +
-            pow( ( (tex7Ref3.a ) ), 2.0 ) 
-        ) *
-        clamp( 1.0 - ((baseHeightWater - baseHeightRef)/512.0),0.0,1.0 )*
-        totRef
+        if (tex3.a == 0.0 ) {
 
-        ,2.0)*0.2;
+            // caustics
+
+            finalCol += pow(
+            (
+                //pow(abs(sin(tex7Ref.a*10.0)),4.0) +
+                pow( ( (tex7Ref2.a ) ), 2.0 ) +
+                pow( ( (tex7Ref3.a ) ), 2.0 ) 
+            ) *
+            clamp( 1.0 - ((baseHeightWater - baseHeightRef)/512.0),0.0,1.0 )*
+            totRef
+            ,2.0)*0.2;
+
+
+            // bubbles
+
+            finalCol += 
+            pow(
+                texture2D(Texture6, resTC*vec2(1.0,1.0)-vec2(0.0,(curTime/20000.0))  ).rgb*0.85,
+                vec3(10.0)
+            ) * 
+            abs(sin(rand(TexCoord0.xy)*1000.0 + curTime/200.0))*(1.0-lerpValNorm);
+
+        }
+        else {
+            if (
+                (heightDifNoRef >= distances[0]) &&
+                (heightDifNoRef <= distances[1]) 
+            ) {
+                // shore foam
+
+                lerpVal = clamp( (heightDifNoRef - distances[0])/(distances[1]-distances[0]), 0.0, 1.0);
+                finalCol += finalCol*(rand(TexCoord0.xy*curTime/10000.0)*0.15+0.25)*(1.0-lerpVal)*4.0;
+            }
+        }
+
+        
+
+        
 
         gl_FragData[0] = vec4(finalCol,1.0);
     }
     else {
 
         if (tex2.a == TEX_GLASS) {
-            gl_FragData[0] = tex4 + tex5;
+            gl_FragData[0] = tex4*0.5 + tex5*1.2;
         }
         else {
             gl_FragData[0] = tex4;
         }
+
 
         
     }

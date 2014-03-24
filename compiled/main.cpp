@@ -6,7 +6,7 @@
 int PAGE_COUNT = 0;
 
 const static int MAX_FLOORS = 5;
-const static int MAX_LIGHTS = 6;
+const static int MAX_LIGHTS = 16;
 const static int FLOATS_PER_LIGHT = 16;
 
 const static int MAX_GRASS_LEV = 1;
@@ -14,7 +14,9 @@ const static int MAX_GRASS_LEV = 1;
 const static int DEF_WIN_W = 1920;
 const static int DEF_WIN_H = 1080;
 const static int DEF_SCALE_FACTOR = 2;
-const static int MAX_LAYERS = 1;
+const static int MAX_LAYERS = 2;
+
+const static int MAX_PLANT_GEN = 16;
 
 float MAX_GPU_MEM = 2048.0f;
 float TOT_GPU_MEM_USAGE = 0.0f;
@@ -330,18 +332,20 @@ enum E_OBJ {
     //E_OBJ_P1,
     //E_OBJ_P2,
     E_OBJ_LIGHT0,
-    E_OBJ_LIGHT1,
-    E_OBJ_LIGHT2,
-    E_OBJ_LIGHT3,
-    E_OBJ_LIGHT4,
-    E_OBJ_LIGHT5,
+    // E_OBJ_LIGHT1,
+    // E_OBJ_LIGHT2,
+    // E_OBJ_LIGHT3,
+    // E_OBJ_LIGHT4,
+    // E_OBJ_LIGHT5,
     E_OBJ_LENGTH // LIGHTS MUST BE LAST ENTRIES
 };
 
 enum E_MAT_PARAM {
     //E_MAT_PARAM_TER,
     E_MAT_PARAM_ROAD,
+    E_MAT_PARAM_DOCK,
     E_MAT_PARAM_BUILDING,
+    E_MAT_PARAM_LANTERN,
     E_MAT_PARAM_DOORWAY,
     E_MAT_PARAM_DOOR,
     E_MAT_PARAM_WINDOW,
@@ -353,10 +357,12 @@ enum E_MAT_PARAM {
 enum E_BUILDING_TYPE {
     E_BT_NULL,
     E_BT_ROAD,
+    E_BT_DOCK,
     E_BT_MAINHALL,
     E_BT_WING,
     E_BT_BALCONY,
     E_BT_TOWER,
+    E_BT_LANTERN,
     E_BT_DOORWAY,
     E_BT_WINDOWFRAME,
     E_BT_DOOR,
@@ -485,14 +491,17 @@ struct PlantRules
     float divergenceAngleV[2];
     float begThickness;
     float endThickness;
-    float baseLength;
-    float nodeLengthMultiplier;
+    float curLength[MAX_PLANT_GEN];
+    float sphereGen;
+    //float baseLength;
+    //float nodeLengthMultiplier;
     float numGenerations;
     float angleUniformityU;
     float isInit;
 
 
 };
+
 
 
 
@@ -644,7 +653,16 @@ public:
     }
 
 
+    void randomize() {
+        fv4.x = fGenRand();
+        fv4.y = fGenRand();
+        fv4.z = fGenRand();
+        this->normalize();
 
+        iv4.x = (int)fv4.x;
+        iv4.y = (int)fv4.y;
+        iv4.z = (int)fv4.z;
+    }
 
     void setIXYZW(int x, int y, int z, int w) {
         iv4.x = x;
@@ -1539,6 +1557,105 @@ AxisRotation axisRotationInstance;
 
 
 
+class DynObject {
+
+public:
+
+    FIVector4 pos;
+    FIVector4 color;
+    FIVector4 posRel;
+
+    int r;
+    int g;
+    int b;
+
+    int colPacked;
+    bool isRelative;
+    bool doRender;
+
+    float radius;
+
+
+    DynObject() {
+        
+    }
+
+    void init(int _x, int _y, int _z, int _r, int _g, int _b, bool _doRender, bool _isRelative, FIVector4* _cameraPos, float _radius) {
+        isRelative = _isRelative;
+        doRender = _doRender;
+
+        if (isRelative) {
+            posRel.setIXYZ(_x,_y,_z);
+            pos.setFXYZRef(_cameraPos);
+            pos.addXYZRef(&posRel);
+        }
+        else {
+            pos.setIXYZ(_x,_y,_z);
+            posRel.setIXYZ(0,0,0);
+        }
+
+        radius = _radius;
+
+        r = _r;
+        g = _g;
+        b = _b;
+
+        color.setFXYZ(
+            ((float)r)/255.0f,
+            ((float)g)/255.0f,
+            ((float)b)/255.0f
+        );
+
+        colPacked = getPackedColor(r,g,b);
+    }
+
+
+};
+
+
+class GameLight {
+public:
+
+    int id;
+    int globalID;
+    int colPacked;
+    FIVector4 pos;
+    FIVector4 color;
+    bool isOn;
+
+    GameLight() {
+        isOn = true;
+    }
+
+    void updateCP() {
+        colPacked = getPackedColor(color.getFX()*255.0f,color.getFY()*255.0f,color.getFZ()*255.0f);
+    }
+
+    void init(
+        int _id,
+        int _globalID,
+        FIVector4* _pos,
+        FIVector4* _color
+    ) {
+        id = _id;
+        globalID = _globalID;
+        pos.setFXYZRef(_pos);
+        color.setFXYZRef(_color);
+        updateCP();
+    }
+
+    void initFrom(DynObject* dyno) {
+        id = -1;
+        globalID = -1;
+
+        pos.setFXYZRef(&(dyno->pos));
+        color.setFXYZRef(&(dyno->color));
+        updateCP();
+    }
+
+};
+
+
 
 
 class GameGeom {
@@ -1596,7 +1713,7 @@ public:
     FIVector4 moveMinInPixels;
     FIVector4 moveMaxInPixels;
 
-
+    GameLight* light;
 
     bool visible;
     bool hasAnchor;
@@ -1622,7 +1739,7 @@ public:
     //float matId;
 
     GameGeom() {
-
+        light = NULL;
     }
 
     void init(int _id) {
@@ -1768,14 +1885,14 @@ public:
 
         switch (alignBottomMiddleTop) {
             
-            case 0: // bottom _@_
+            case E_ALIGN_BOTTOM: // bottom _@_
                 zOffset += (rad->getFZ()-_visInsetFromMin->getFZ());
             break;
-            case 1: // middle -@-
+            case E_ALIGN_MIDDLE: // middle -@-
                 zOffset += 0.0f;
             break;
-                    //     ___
-            case 2: // top  @
+                    //               ___
+            case E_ALIGN_TOP: // top  @
                 zOffset += -(rad->getFZ()-_visInsetFromMax->getFZ());
             break;
             
@@ -1818,6 +1935,8 @@ public:
         int alignBottomMiddleTop,
 
         float _zOffset,
+
+        
         
         // p0, p1 = start, end
         // p2 = control point or tangent
@@ -1828,6 +1947,7 @@ public:
 
         float radP0,
         float radP1,
+        float sphereRad,
 
         // FIVector4* rad,
         // FIVector4* _cornerDisInPixels,
@@ -1847,7 +1967,7 @@ public:
         float temp;
         float zOffset = _zOffset;
 
-        float radMax = max(radP0, radP1);
+        float radMax = max(max(radP0, radP1), sphereRad);
 
         curRot = 0;
         rotDir = 1;
@@ -1904,7 +2024,7 @@ public:
         geomParams[E_TP_P0].setFXYZRef(p0);
         geomParams[E_TP_P1].setFXYZRef(p1);
         geomParams[E_TP_P2].setFXYZRef(p2);
-        geomParams[E_TP_THICKVALS].setFXYZ(radP0, radP1, 0.0f);
+        geomParams[E_TP_THICKVALS].setFXYZ(radP0, radP1, sphereRad);
 
 
         geomParams[E_TP_MATPARAMS].setFXYZRef(_matParams);
@@ -1974,53 +2094,6 @@ public:
 };
 
 
-class DynObject {
-
-public:
-
-    FIVector4 pos;
-    FIVector4 posRel;
-
-    int r;
-    int g;
-    int b;
-
-    int colPacked;
-    bool isRelative;
-    bool doRender;
-
-    float radius;
-
-
-    DynObject() {
-        
-    }
-
-    void init(int _x, int _y, int _z, int _r, int _g, int _b, bool _doRender, bool _isRelative, FIVector4* _cameraPos, float _radius) {
-        isRelative = _isRelative;
-        doRender = _doRender;
-
-        if (isRelative) {
-            posRel.setIXYZ(_x,_y,_z);
-            pos.setFXYZRef(_cameraPos);
-            pos.addXYZRef(&posRel);
-        }
-        else {
-            pos.setIXYZ(_x,_y,_z);
-            posRel.setIXYZ(0,0,0);
-        }
-
-        radius = _radius;
-
-        r = _r;
-        g = _g;
-        b = _b;
-
-        colPacked = getPackedColor(r,g,b);
-    }
-
-
-};
 
  
 
@@ -12328,6 +12401,7 @@ public:
   int bufferedPageSizeInUnits;
   int voroSize;
   int geomCounter;
+  int lightCounter;
   int bufferMultRec;
   int holderSizeInPages;
   int holderSizeInPixels;
@@ -12341,6 +12415,7 @@ public:
   float mapSampScale;
   float curBrushRad;
   float diskOn;
+  float maxSeaDepth;
   float currentFBOResolutionX;
   float currentFBOResolutionY;
   float mouseX;
@@ -12355,6 +12430,7 @@ public:
   float mdTime;
   float muTime;
   float heightmapMax;
+  float heightmapMin;
   float bufferMult;
   float holderSizeMB;
   float * paramArr;
@@ -12485,6 +12561,7 @@ public:
   void drawFBO (string fboName, int ind, float zoom, int swapFlag = -1);
   void drawFBOOffsetDirect (FBOSet * fbos, int ind, float xOff, float yOff, float zoom);
   void drawFBOOffset (string fboName, int ind, float xOff, float yOff, float zoom);
+  float getMinMaxHeight (float val);
   float getSeaLevelInPixels ();
   float getCityHeight ();
   float getHeightAtPixelPos (float x, float y, bool ignoreCity = false);
@@ -12554,6 +12631,8 @@ public:
   float shootLength;
   float begThickness;
   float endThickness;
+  float midThickness;
+  float sphereRad;
   FIVector4 startEndWidth;
   FIVector4 upVec;
   GamePlantNode * parent;
@@ -12581,6 +12660,8 @@ public:
   FIVector4 tempv1;
   FIVector4 tempv2;
   FIVector4 tempv3;
+  FIVector4 rootVec;
+  FIVector4 trunkVec;
   GamePlantNode * trunkNode;
   GamePlantNode * rootsNode;
   PlantRules * rootRules;
@@ -12590,7 +12671,8 @@ public:
   float gv (float * vals);
   GamePlant ();
   void init (Singleton * _singleton, PlantRules * _rootRules, PlantRules * _trunkRules, FIVector4 * _origin);
-  void applyRules (PlantRules * rules, GamePlantNode * curParent, int curGen, int maxGen, float curLength, float totLength, float maxLength);
+  void initBase (PlantRules * rules, GamePlantNode * curNode, FIVector4 * baseVec);
+  void applyRules (PlantRules * rules, GamePlantNode * curParent, int curGen, int maxGen, float totLength, float maxLength);
 };
 #undef LZZ_INLINE
 #endif
@@ -12702,6 +12784,8 @@ public:
   int blockSizeInHolders;
   int blockSizeInLots;
   int counter;
+  int lightCounter;
+  FIVector4 lightVec;
   FIVector4 offsetInBlocks;
   FIVector4 offsetInBlocksWrapped;
   FIVector4 origin;
@@ -12710,6 +12794,8 @@ public:
   FIVector4 moveMaxInPixels;
   FIVector4 p1;
   FIVector4 p2;
+  FIVector4 newP1;
+  FIVector4 newP2;
   FIVector4 rad;
   FIVector4 visInsetFromMin;
   FIVector4 visInsetFromMax;
@@ -12721,10 +12807,12 @@ public:
   FIVector4 tempVec;
   FIVector4 tempVec2;
   FIVector4 tempVec3;
+  FIVector4 tempVec4;
   FIVector4 tempVecB;
   FIVector4 tempVecB2;
   FIVector4 tempVecB3;
   std::vector <GameGeom*> gameGeom;
+  std::vector <GameLight*> gameLights;
   GamePlant myPlant;
   int iHolderSize;
   int maxFloors;
@@ -12749,9 +12837,9 @@ public:
   int touchDir (int x, int y, int buildingType);
   bool testHeight (int _x1, int _y1, int _x2, int _y2, int heightVal);
   int touchesCenter (int x, int y, int buildingType);
+  int touches2Center (int x, int y, int buildingType);
   int sameHeight (int x, int y);
   int touches2 (int x, int y, int buildingType);
-  int touches2Center (int x, int y, int buildingType);
   void connectNodes (int _x1, int _y1, int _x2, int _y2, int buildingType, int id);
 };
 #undef LZZ_INLINE
@@ -12780,6 +12868,8 @@ public:
   int availThreads;
   int visPageSizeInPixels;
   int holderSizeInPages;
+  int lightCount;
+  int frameCount;
   int MIN_MIP;
   int MAX_MIP;
   int AVG_MIP;
@@ -12808,6 +12898,8 @@ public:
   int (dirModX) [4];
   int (dirModY) [4];
   int (opDir) [4];
+  GameLight globalLight;
+  GameLight * (activeLights) [MAX_LIGHTS];
   int dirFlagClear;
   int visFlag;
   int visFlagO;
@@ -12835,6 +12927,8 @@ public:
   FIVector4 lastPagePos;
   FIVector4 minLRInPixels;
   FIVector4 maxLRInPixels;
+  FIVector4 minLRInHolders;
+  FIVector4 maxLRInHolders;
   FIVector4 minv;
   FIVector4 maxv;
   FIVector4 tempVec;
@@ -12889,6 +12983,7 @@ public:
   void initMap ();
   void drawMap ();
   void doBlur (string fboName, float blurAmount);
+  void updateLights ();
   void postProcess ();
   ~ GameWorld ();
 };
@@ -13172,7 +13267,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		mapSampScale = 0.5f;
 		int newPitch = (imageHM0->width)*mapSampScale;//*2;
 
-		numLights = min(MAX_LIGHTS,E_OBJ_LENGTH-E_OBJ_LIGHT0);
+		numLights = MAX_LIGHTS;//min(MAX_LIGHTS,E_OBJ_LENGTH-E_OBJ_LIGHT0);
 
 
 		//////////////////////////////////////////////////////////////
@@ -13194,14 +13289,26 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		maxLayers = MAX_LAYERS;
 
 		// Resolution Dependent
-		maxChanges = 16; // this number is defined in processPages()
+		maxChanges = 16; // this number is defined here // not in processPages()
 		volGenFBOX = 128; // MAX OF 128, DO NOT CHANGE THIS VALUE
 		curVGString = "volGenFBO128";
 		//volGenFBOY = volGenFBOX*volGenFBOX;
+		
+
+
 		visPageSizeInPixels = 256; // height of one page in pixels
 		holderSizeInPixels = 512; // height of holder in pixels
+		pixelsPerMeter = 128; // when you make pixels per meter larger, you must do the same for units per meter
+		unitsPerMeter = 4;//max(bufferMultRec,pixelsPerMeter/32);//16;
+
+
+
+
 		bufferMultRec = 4;
 		bufferMult = 1.0f + 1.0f/((float)bufferMultRec);
+
+		maxH = 4;
+		maxW = 4;
 
 
 		// IMPORTANT: Maximum height must be less than 2^16, max world pitch must be less than 2^32
@@ -13209,10 +13316,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		// World Scale Dependent
 
 		iNodeDivsPerLot = 4;
-
 		metersPerLot = 32; // adjust this to make lots bigger
-		pixelsPerMeter = 128; // when you make pixels per meter larger, you must do the same for units per meter
-		unitsPerMeter = max(bufferMultRec,pixelsPerMeter/32);//16;
 		blockSizeInLots = 8;
 
 		maxFloors = MAX_FLOORS;
@@ -13275,8 +13379,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		
 		maxPooledRes = 512;
 
-		maxH = 4;
-		maxW = 4;
+		
 		
 
 
@@ -13292,6 +13395,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		gridOn = 0.0f;
 		fogOn = 0.0f;
 		geomCounter = 0;
+		lightCounter = 0;
 
 		//grassSpacing = 1;//8/DEF_SCALE_FACTOR;// *2.0;
 		directPass = 0.0f;
@@ -13311,10 +13415,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		);
 
 		heightmapMax = maxBoundsInPixels.getFZ()/2.0f;
+		heightmapMin = 0.0f;
+		maxSeaDepth = 8.0f*pixelsPerMeter;
 
 		doTraceVecND("worldSizeInPixels: ", &maxBoundsInPixels);
 
-
+		
 		
 
 
@@ -13808,8 +13914,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    fboMap["swapFBOLin0"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
 	   	fboMap["swapFBOLin1"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
 
-	   	fboMap["swapFBOBLin0"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
-	   	fboMap["swapFBOBLin1"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
+	   	fboMap["swapFBOBLin0"]->init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 1, false, GL_LINEAR);
+	   	fboMap["swapFBOBLin1"]->init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 1, false, GL_LINEAR);
 
 	   	fboMap["swapFBOLinHalf0"]->init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 1, false, GL_LINEAR);
 	   	fboMap["swapFBOLinHalf1"]->init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 1, false, GL_LINEAR);
@@ -13868,10 +13974,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 	    gw = new GameWorld();
 	    gw->init(this);
+	    gw->initMap();
 
+	    //heightmapMin = (((float)gw->seaLevel)/255.0)*heightmapMax - 4.0f*pixelsPerMeter;
 
-	    
-		
+		//heightmapMin = getSeaLevelInPixels() - 4.0f*pixelsPerMeter;
+
 	    
 	    
 	    popTrace();
@@ -14863,13 +14971,19 @@ void Singleton::drawFBOOffset (string fboName, int ind, float xOff, float yOff, 
 	    }
 	    
 	}
+float Singleton::getMinMaxHeight (float val)
+                                         {
+		return val*heightmapMax + (1.0f-val)*heightmapMin;
+	}
 float Singleton::getSeaLevelInPixels ()
                                     {
-		return ( ((float)gw->seaLevel)/255.0)*heightmapMax;
+		// float floorHeight = 4.0*pixelsPerMeter;
+		// return floor( ( ((float)gw->seaLevel)/255.0 )*heightmapMax/floorHeight)*floorHeight + 2.0f*pixelsPerMeter;
+		return getMinMaxHeight( ((float)gw->seaLevel)/255.0);
 	}
 float Singleton::getCityHeight ()
                               {
-		return ( ((float)gw->seaLevel + 20.0)/255.0)*heightmapMax;
+		return getMinMaxHeight( ((float)gw->seaLevel + 20.0)/255.0);
 	}
 float Singleton::getHeightAtPixelPos (float x, float y, bool ignoreCity)
                                                                              {
@@ -14882,6 +14996,8 @@ float Singleton::getHeightAtPixelPos (float x, float y, bool ignoreCity)
 		float testHeight;
 		float testHeight0;
 		float testHeight1;
+
+		float sl = getSeaLevelInPixels()-maxSeaDepth/2.0f;
 
 		if (mapInvalid) {
 
@@ -14901,7 +15017,13 @@ float Singleton::getHeightAtPixelPos (float x, float y, bool ignoreCity)
 				fbow->getPixelAtLinear((xc*mapFreqs.getFW()), (yc*mapFreqs.getFW()), channel)*mapAmps.getFW();
 
 
-			return testHeight0 * heightmapMax;
+			testHeight0 = getMinMaxHeight(testHeight0);
+
+			if (testHeight0 < sl) {
+				testHeight0 = sl - ((sl-testHeight0)/sl)*maxSeaDepth;
+			}
+
+			return testHeight0;
 
 
 			// if (ignoreCity) {
@@ -15773,20 +15895,26 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 					}
 					else {
-						if (
-							(selectedGeom->buildingType == E_BT_DOOR) ||
-							(selectedGeom->buildingType == E_BT_WINDOW) 
 
-						) {
-							gw->getHoldersInGeom(selectedGeom);
-							selectedGeom->applyTransform(selectedGeom->rotDir,false);
-							gw->getHoldersInGeom(selectedGeom);
-							gw->refreshHoldersInList(true); //holderCount <= 12
-							gw->holdersToRefresh.clear();
+						switch (selectedGeom->buildingType) {
+							case E_BT_DOOR:
+							case E_BT_WINDOW:
+								gw->getHoldersInGeom(selectedGeom);
+								selectedGeom->applyTransform(selectedGeom->rotDir,false);
+								gw->getHoldersInGeom(selectedGeom);
+								gw->refreshHoldersInList(true); //holderCount <= 12
+								gw->holdersToRefresh.clear();
 
-							bufferInvalid = true;
-							changesMade = true;
-							wsBufferInvalid = true;
+								bufferInvalid = true;
+								changesMade = true;
+								wsBufferInvalid = true;
+							break;
+
+							case E_BT_LANTERN:
+								selectedGeom->light->isOn = !(selectedGeom->light->isOn);
+								gw->updateLights();
+							break;
+
 						}
 						
 					}
@@ -16348,6 +16476,7 @@ void PooledResource::init (Singleton * _singleton)
 #define LZZ_INLINE inline
 GamePlantNode::GamePlantNode ()
                         {
+		sphereRad = 0.0f;
 		parent = NULL;
 		children = NULL;
 		upVec.setFXYZ(0.0f,0.0f,1.0f);
@@ -16381,6 +16510,8 @@ void GamePlantNode::init (GamePlantNode * _parent, int _maxChildren, int _numChi
 		maxChildren = _maxChildren;	
 		numChildren = _numChildren;
 
+		sphereRad = 0.0f;
+
 		if (maxChildren > 0) {
 
 			if (children == NULL) {
@@ -16413,25 +16544,73 @@ void GamePlant::initAllPlants (Singleton * _singleton)
 		PlantRules* pr;
 
 		pr = &(allPlantRules[E_PT_OAK_TRUNK]);
-		pr->numChildren[0] = 1.0f;
+		pr->numChildren[0] = 2.0f;
 		pr->numChildren[1] = 5.0f;
-		pr->divergenceAngleV[0] = pi/6.0f;
+		pr->divergenceAngleV[0] = pi/3.0f;
 		pr->divergenceAngleV[1] = pi/6.0f;
 		pr->begThickness = 1.0f;
 		pr->endThickness = 0.0f;
-		pr->baseLength = 4.0f;
-		pr->nodeLengthMultiplier = 0.75f;
-		pr->numGenerations = 5.0f;
-		pr->angleUniformityU = 1.0f;
+		pr->sphereGen = 2.0f;
+		pr->numGenerations = 3.0f;
+		pr->angleUniformityU = 0.75f;
 		pr->isInit = 0.0;
+		
+		//pr->baseLength = 4.0f;
+		//pr->nodeLengthMultiplier = 0.75f;
+		pr->curLength[0] = 2.0f;
+		pr->curLength[1] = 3.5f;
+		pr->curLength[2] = 3.0f;
+		pr->curLength[3] = 2.5f;
+		pr->curLength[4] = 2.5f;
+		pr->curLength[5] = 1.5f;
+		pr->curLength[6] = 1.0f;
+		pr->curLength[7] = 1.0f;
+		pr->curLength[8] = 0.75f;
+		
+		
+		
+
+
+		pr = &(allPlantRules[E_PT_OAK_ROOTS]);
+		pr->numChildren[0] = 2.0f;
+		pr->numChildren[1] = 5.0f;
+		pr->divergenceAngleV[0] = pi/8.0f;
+		pr->divergenceAngleV[1] = pi/8.0f;
+		pr->begThickness = 1.0f;
+		pr->endThickness = 0.0f;
+		pr->sphereGen = -1.0f;
+		pr->numGenerations = 4.0f;
+		pr->angleUniformityU = 0.75f;
+		pr->isInit = 0.0;
+
+		//pr->baseLength = 4.0f;
+		//pr->nodeLengthMultiplier = 0.75f;
+		pr->curLength[0] = 2.0f;
+		pr->curLength[1] = 4.0f;
+		pr->curLength[2] = 3.5f;
+		pr->curLength[3] = 3.0f;
+		pr->curLength[4] = 2.5f;
+		pr->curLength[5] = 2.0f;
+		pr->curLength[6] = 1.5f;
+		pr->curLength[7] = 1.0f;
+		pr->curLength[8] = 0.75f;
+		
+
+		
+
 
 		
 		for (i = 0; i < E_PT_LENGTH; i++) {
 			if (allPlantRules[i].isInit == 0.0f) {
 
+
+
 				allPlantRules[i].begThickness *= _singleton->pixelsPerMeter;
 				allPlantRules[i].endThickness *= _singleton->pixelsPerMeter;
-				allPlantRules[i].baseLength *= _singleton->pixelsPerMeter;
+				for (j = 0; j < MAX_PLANT_GEN; j++) {
+					allPlantRules[i].curLength[j] *= _singleton->pixelsPerMeter;
+				}
+
 				
 
 			}
@@ -16454,48 +16633,74 @@ void GamePlant::init (Singleton * _singleton, PlantRules * _rootRules, PlantRule
 		trunkRules = _trunkRules;
 		origin.setFXYZRef(_origin);
 
+		trunkVec.setFXYZ(fGenRand()*0.1f,fGenRand()*0.1f,1.0f);
+		trunkVec.normalize();
+		rootVec.setFXYZRef(&trunkVec);
+		rootVec.multXYZ(-1.0f);
+
 		if (trunkNode == NULL) {
 			trunkNode = new GamePlantNode();
 		}
-
-		
-		trunkNode->init(NULL,trunkRules->numChildren[1],gv(trunkRules->numChildren));
-		trunkNode->tangent.setFXYZ(0.0f,0.0f,1.0f);
-		trunkNode->begPoint.setFXYZRef(&origin);
-		trunkNode->endPoint.setFXYZRef(&origin);
-		trunkNode->endPoint.addXYZ(0.0,0.0,trunkRules->baseLength);
-		trunkNode->updateTangent(gv(trunkRules->divergenceAngleV));
-
-		int i;
-		float maxLength = 0.0f;
-		float curMult = 1.0f;
-
-		int maxGen = trunkRules->numGenerations;
-
-		for (i = 0; i < maxGen; i++) {
-			maxLength += trunkRules->baseLength*curMult;
-			curMult *= trunkRules->nodeLengthMultiplier;
+		if (rootsNode == NULL) {
+			rootsNode = new GamePlantNode();
 		}
 
-		float curLerp;
-		
-		curLerp = (0.0f);
-		trunkNode->begThickness = (1.0f-curLerp)*trunkRules->begThickness + curLerp*trunkRules->endThickness;
 
-		curLerp = ((trunkRules->baseLength)/maxLength);
-		trunkNode->endThickness = (1.0f-curLerp)*trunkRules->begThickness + curLerp*trunkRules->endThickness;
+		initBase(rootRules, rootsNode, &rootVec);
+		initBase(trunkRules, trunkNode, &trunkVec);
+
+	}
+void GamePlant::initBase (PlantRules * rules, GamePlantNode * curNode, FIVector4 * baseVec)
+          {
+		int i;
+		float curLerp;
+		float maxLength = 0.0f;
+		//float curMult = 1.0f;
+		int maxGen = rules->numGenerations;
+
+		
+		curNode->init(NULL,rules->numChildren[1],gv(rules->numChildren));
+		//curNode->tangent.setFXYZRef(baseVec);
+		curNode->begPoint.setFXYZRef(&origin);
+		curNode->endPoint.setFXYZRef(&origin);
+		curNode->endPoint.addXYZRef(baseVec,rules->curLength[0]);
+		curNode->updateTangent(gv(rules->divergenceAngleV));
+
+		for (i = 1; i < maxGen; i++) {
+			maxLength += rules->curLength[i]; // *curMult;
+			//curMult *= rules->nodeLengthMultiplier;
+		}
+
+		
+
+		// curLerp = rules->curLength[0]/maxLength;
+		// curNode->endThickness = (1.0f-curLerp)*rules->begThickness + curLerp*rules->endThickness;
+
+		// curLerp = 0.0f;
+		// curNode->begThickness = curNode->endThickness;//(1.0f-curLerp)*rules->begThickness + curLerp*rules->endThickness;
+
+		// curNode->midThickness = (curNode->begThickness+curNode->endThickness)*0.5f;
+
+		curNode->begThickness = rules->begThickness;
+		curNode->endThickness = curNode->begThickness;
+		curNode->midThickness = curNode->begThickness;
+
+		// if (rules->sphereGen == 0.0f) {
+		// 	curNode->sphereRad = 1.5f*singleton->pixelsPerMeter;
+		// }
+
 
 		applyRules(
-			trunkRules,
-			trunkNode,
+			rules,
+			curNode,
 			0,
 			maxGen,
-			trunkRules->baseLength*(trunkRules->nodeLengthMultiplier),
-			trunkRules->baseLength,
+			//rules->baseLength*(rules->nodeLengthMultiplier),
+			0.0f,
 			maxLength
 		);
 	}
-void GamePlant::applyRules (PlantRules * rules, GamePlantNode * curParent, int curGen, int maxGen, float curLength, float totLength, float maxLength)
+void GamePlant::applyRules (PlantRules * rules, GamePlantNode * curParent, int curGen, int maxGen, float totLength, float maxLength)
           {
 
 
@@ -16503,9 +16708,11 @@ void GamePlant::applyRules (PlantRules * rules, GamePlantNode * curParent, int c
 
 		int i;
 		float fi;
+		float fCurGen = (float)curGen;
 		float fNumChildren;
 		float curLerp;
-
+		float twoPi = 6.283185307f;
+		float curLength = rules->curLength[curGen];
 
 		GamePlantNode* curChild;
 
@@ -16529,7 +16736,12 @@ void GamePlant::applyRules (PlantRules * rules, GamePlantNode * curParent, int c
 			curChild->begPoint.setFXYZRef(&(curParent->endPoint));
 			curChild->endPoint.setFXYZRef(&(curParent->endPoint));
 
-			axisRotationInstance.doRotation(&tempv0,&(curParent->baseShoot),&(curParent->tangent),fi*2.0*3.14159);
+			axisRotationInstance.doRotation(
+				&tempv0,
+				&(curParent->baseShoot),
+				&(curParent->tangent),
+				fi*twoPi + (fGenRand()-0.5f)*twoPi*(1.0f-rules->angleUniformityU)/fNumChildren
+			);
 			curChild->endPoint.addXYZRef(&tempv0,curLength);
 			curChild->updateTangent(gv(rules->divergenceAngleV));
 
@@ -16539,8 +16751,14 @@ void GamePlant::applyRules (PlantRules * rules, GamePlantNode * curParent, int c
 			curLerp = ((totLength+curLength)/maxLength);
 			curChild->endThickness = (1.0f-curLerp)*rules->begThickness + curLerp*rules->endThickness;
 
+			curChild->midThickness = (curChild->begThickness+curChild->endThickness)*0.5f;
+
+			if ( rules->sphereGen == fCurGen ) {
+				curChild->sphereRad = 2.0f*singleton->pixelsPerMeter; //(maxLength-totLength) + 
+			}
+
 			if (curGen < maxGen) {
-				applyRules(rules, curChild, curGen + 1, maxGen, curLength*(trunkRules->nodeLengthMultiplier), totLength+curLength, maxLength);
+				applyRules(rules, curChild, curGen + 1, maxGen, totLength+curLength, maxLength);
 			}
 
 		}
@@ -16665,7 +16883,7 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 		float avgHeight = 0.0f;
 		float centerHeight = (worldMinVisInPixels.getFZ() + worldMaxVisInPixels.getFZ())/2.0f;
 		GameWorld* gw = singleton->gw;
-		seaHeightInPixels = ( ( ((float)gw->seaLevel)*singleton->heightmapMax )/255.0 );
+		seaHeightInPixels = ( singleton->getSeaLevelInPixels() );
 		
 
 		float testHeight[4];
@@ -16694,11 +16912,15 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 		maxHeight += singleton->visPageSizeInPixels*2;
 		minHeight -= singleton->visPageSizeInPixels*2;
 
-
+		if (worldMinVisInPixels.getFZ() <  (singleton->getSeaLevelInPixels() - singleton->maxSeaDepth - 1.0f*singleton->pixelsPerMeter ) ) {
+			fillState = E_FILL_STATE_EMPTY;
+			curState = E_STATE_LENGTH;
+			return;
+		}
 
 		
 		hasWater =  ( seaHeightInPixels >= worldMinVisInPixels.getFZ() );
-		hasTerrain = ( avgHeight + singleton->visPageSizeInPixels*4.0f >= worldMinVisInPixels.getFZ() ) || ( seaHeightInPixels + singleton->visPageSizeInPixels*4.0f >= worldMinVisInPixels.getFZ() );//(abs(centerHeight-avgHeight) <= singleton->visPageSizeInPixels*4.0);
+		hasTerrain = ( avgHeight + singleton->visPageSizeInPixels*4.0f >= worldMinVisInPixels.getFZ() ) || ( seaHeightInPixels + singleton->visPageSizeInPixels*1.0f >= worldMinVisInPixels.getFZ() );//(abs(centerHeight-avgHeight) <= singleton->visPageSizeInPixels*4.0);
 		
 
 		addGeom(true);
@@ -16903,7 +17125,7 @@ void GamePage::addGeom (bool justTesting)
 							) {
 								
 								if (justTesting) {
-									if (gg->buildingType == E_BT_WINDOW) {
+									if ( (gg->buildingType == E_BT_WINDOW) || (gg->buildingType == E_BT_LANTERN)) {
 										hasWindow = true;
 									}
 									if (gg->buildingType == E_BT_TREE) {
@@ -17069,6 +17291,8 @@ void GamePage::generateVolume ()
 		singleton->setShaderFloat("pixelsPerMeter", singleton->pixelsPerMeter);
 		//singleton->setShaderFloat("directPass", singleton->directPass);
 		singleton->setShaderFloat("seaLevel", seaHeightInPixels );
+		singleton->setShaderFloat("maxSeaDepth", singleton->maxSeaDepth );
+		singleton->setShaderFloat("heightmapMin",singleton->heightmapMin);
 		singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
 		//singleton->setShaderFloat("slicesPerPitch", (float)( singleton->slicesPerPitch ));
 		
@@ -17491,20 +17715,34 @@ void GameBlock::addPlantNodes (GamePlantNode * curPlantNode, FIVector4 * orig)
                                                                           {
 		int i;
 
+		float begThickness;
+		float endThickness;
+
 		if (curPlantNode->parent == NULL) {
 
 		}
 		else {
 
 			if (curPlantNode->parent->parent == NULL) {
-				tempVec.setFXYZRef(&(curPlantNode->parent->begPoint));
+				tempVec.setFXYZ(0.0f,0.0f,0.0f); //Ref(&(curPlantNode->parent->begPoint));
+
+				begThickness = curPlantNode->midThickness;
+				endThickness = curPlantNode->midThickness;
+
 			}
 			else {
 				tempVec.setFXYZRef(&(curPlantNode->parent->begPoint));
 				tempVec.addXYZRef(&(curPlantNode->parent->endPoint));
 				tempVec.multXYZ(0.5f);
+
+				begThickness = curPlantNode->parent->midThickness;
+				endThickness = curPlantNode->midThickness;
 			}
 
+
+			// if (curPlantNode->numChildren == 0) {
+			// 	endThickness = 0.5f*singleton->pixelsPerMeter;
+			// }
 
 			
 			
@@ -17530,8 +17768,9 @@ void GameBlock::addPlantNodes (GamePlantNode * curPlantNode, FIVector4 * orig)
 				&tempVec2,
 				&tempVec3,
 
-				curPlantNode->begThickness,
-				curPlantNode->endThickness,										
+				begThickness,//curPlantNode->begThickness,
+				endThickness,//curPlantNode->endThickness,	
+				curPlantNode->sphereRad,									
 				&matParams
 			);
 			singleton->geomCounter++;
@@ -17552,6 +17791,7 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 		offsetInBlocksWrapped.setIXYZ(_xw,_yw,0);
 
 		counter = 0;
+		lightCounter = 0;
 
 		origin.setFXYZ(0.0f,0.0f,0.0f);
 
@@ -17578,6 +17818,8 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 
 		float z;
 
+		float zmax;
+
 		maxFloors = singleton->maxFloors;
 
 		blockSizeInHolders = singleton->blockSizeInHolders;
@@ -17597,6 +17839,8 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 
 		bool isTopOfWing;
 		bool isWingTip;
+
+		float hm = 0.0f;
 
 		float cr1;
 		float cr2;
@@ -17694,7 +17938,7 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 		float offsetX = 0.0f;
 		float offsetY = 0.0f;
 
-
+		int curType;
 		
 
 		
@@ -17738,6 +17982,7 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 			
 		}
 
+		// roads
 
 		for (i = 0; i < blockSizeInLots; i++) {
 			for (j = 0; j < blockSizeInLots; j++) {
@@ -17762,6 +18007,20 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 					lotY = blockSizeInLots*(offsetInBlocks.getIY()) + j;
 					res = fbow2->getPixelAtWrapped(lotX, lotY, curChannel);
 
+
+					if (
+						singleton->getHeightAtPixelPos(lotX*singleton->pixelsPerLot,lotY*singleton->pixelsPerLot) <= 
+						singleton->getSeaLevelInPixels()  + 1.0f * pixelsPerMeter
+					) {
+						curType = E_BT_DOCK;
+					}
+					else {
+						curType = E_BT_ROAD;
+					}
+					
+					
+
+
 					// roads
 					for (k = 0; k < 4; k++) {
 
@@ -17773,16 +18032,16 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 							for (m = 0; m < iNodeDivsPerLot; m++) {
 								switch (k) {
 									case 0: // x+
-										connectNodes(baseI+iNodeDivsPerLot,baseJ+m,baseI+iNodeDivsPerLot,baseJ+m+1,E_BT_ROAD,-1);
+										connectNodes(baseI+iNodeDivsPerLot,baseJ+m,baseI+iNodeDivsPerLot,baseJ+m+1,curType,-1);
 									break;
 									case 1: // x-
-										connectNodes(baseI,baseJ+m,baseI,baseJ+m+1,E_BT_ROAD,-1);
+										connectNodes(baseI,baseJ+m,baseI,baseJ+m+1,curType,-1);
 									break;
 									case 2: // y+
-										connectNodes(baseI+m,baseJ+iNodeDivsPerLot,baseI+m+1,baseJ+iNodeDivsPerLot,E_BT_ROAD,-1);
+										connectNodes(baseI+m,baseJ+iNodeDivsPerLot,baseI+m+1,baseJ+iNodeDivsPerLot,curType,-1);
 									break;
 									case 3: // y-
-										connectNodes(baseI+m,baseJ,baseI+m+1,baseJ,E_BT_ROAD,-1);
+										connectNodes(baseI+m,baseJ,baseI+m+1,baseJ,curType,-1);
 									break;
 
 								}
@@ -17885,7 +18144,15 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 										getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_SHORTPROP)->typeVal = E_BT_DOORWAY;
 										getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_DYNPROP)->typeVal = E_BT_DOOR;
 										
+									}
+									else {
+										if (touches(testX,testY,E_BT_DOCK) >= 1) {
+											connectNodes(i, j, testX, testY, E_BT_DOCK, -1);
 
+											getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_SHORTPROP)->typeVal = E_BT_DOORWAY;
+											getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_DYNPROP)->typeVal = E_BT_DOOR;
+											
+										}
 									}
 
 									notFound = false;
@@ -17913,9 +18180,9 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 							singleton->getHeightAtPixelPos(x1,y1) >
 							singleton->getSeaLevelInPixels() + 2.0f * pixelsPerMeter
 						) {
-							if ( true ) { //fGenRand() > 0.95
+							//if ( fGenRand() > 0.9 ) {
 								getNode(i,j)->centerProp.typeVal = E_BT_TREE;
-							}
+							//}
 						}
 
 						
@@ -18113,11 +18380,12 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 
 		// get terrain heights
 
+		// TODO: touches() is going out of bounds?
+
 		floorHeight = 4.0*pixelsPerMeter;
 
 		for (i = 0; i < iBuildingNodesPerSide; i++) {
 			for (j = 0; j < iBuildingNodesPerSide; j++) {
-					
 				
 
 				lotX = blockSizeInPixels*offsetInBlocks.getIX();
@@ -18127,15 +18395,15 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 				y1 = lotY + (j*blockSizeInPixels)/iBuildingNodesPerSideM1;
 
 
+
 				getNode(i,j)->terHeight = max(
 					singleton->getHeightAtPixelPos(x1,y1),
 					singleton->getSeaLevelInPixels() + 2.0f*pixelsPerMeter
 				);
 
-				if ( ( touches(i,j,E_BT_WING) + touches(i,j,E_BT_MAINHALL) ) >= 1) {
+				if ( ( touches(i,j,E_BT_WING) + touches(i,j,E_BT_MAINHALL) + touches(i,j,E_BT_DOCK) ) >= 1) {
 					getNode(i,j)->terHeight = floor( getNode(i,j)->terHeight/floorHeight)*floorHeight + floorHeight*0.25f;
 				}
-
 			}
 		}
 
@@ -18173,11 +18441,24 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 
 				curHeight = getNode(i,j)->terHeight;
 
+				// if (touches(i,j,E_BT_DOCK) >= 1) {
+				// 	curHeight -= 3.0f*pixelsPerMeter;
+				// }
+
 				terrainHeights[ (i + j*iBuildingNodesPerSideM1)*4 + 0 ] = curHeight%256;
 				terrainHeights[ (i + j*iBuildingNodesPerSideM1)*4 + 1 ] = curHeight/256;
 
-				if (touches(i,j,E_BT_ROAD) + touches(i,j,E_BT_WING) + touches(i,j,E_BT_MAINHALL) >= 1) {
-					terrainHeights[ (i + j*iBuildingNodesPerSideM1)*4 + 2 ] = 255;
+				p = touches(i,j,E_BT_DOCK);
+				m = touches(i,j,E_BT_ROAD) +  touches(i,j,E_BT_WING) + touches(i,j,E_BT_MAINHALL);
+				if (p + m >= 1) {
+					
+					if ( (p > 0) && (m == 0) ) {
+						terrainHeights[ (i + j*iBuildingNodesPerSideM1)*4 + 2 ] = 128;
+					}
+					else {
+						terrainHeights[ (i + j*iBuildingNodesPerSideM1)*4 + 2 ] = 255;
+					}
+					
 				}
 				else {
 					terrainHeights[ (i + j*iBuildingNodesPerSideM1)*4 + 2 ] = 0;
@@ -18386,6 +18667,7 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 									thickVals.setFXYZ(0.0f,1.0f*pixelsPerMeter,0.0);//getNode(i,j)->terHeight,getNode(testX,testY)->terHeight);//getNode(testX,testY)->terHeight-z
 									
 								break;
+								case E_BT_DOCK:
 								case E_BT_MAINHALL:
 								case E_BT_WING:
 								case E_BT_TOWER:
@@ -18418,7 +18700,20 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 									roofHeight = 4.0f;
 
 									houseColor = curId%6;
-									matParams.setFXYZ(E_MAT_PARAM_BUILDING, houseColor, 0.0f);
+
+									if (curBT == E_BT_DOCK) {
+										matParams.setFXYZ(E_MAT_PARAM_DOCK, houseColor, 0.0f);
+										begHeight = 0;
+										nFloors = 3;
+										zmax = roofHeight*pixelsPerMeter + floorHeight*pixelsPerMeter/2.0f;
+										hm = 2.0f;
+									}
+									else {
+										matParams.setFXYZ(E_MAT_PARAM_BUILDING, houseColor, 0.0f);
+										zmax = 0.0f;
+										hm = 1.0f;
+									}
+									
 
 
 									
@@ -18482,9 +18777,16 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 										pv4 = getNode(testX,testY)->powerValV;
 									}
 
-									baseOffset = -(floorHeight-1.0f)*pixelsPerMeter + floorHeight*(begHeight)*pixelsPerMeter;
+									if (curBT == E_BT_DOCK) {
+										pv1 = 2.0f;
+										pv2 = 2.0f;
+										pv3 = 2.0f;
+										pv4 = 2.0f;
+									}
+
+									baseOffset = -(floorHeight*hm-1.0f)*pixelsPerMeter + floorHeight*(begHeight)*pixelsPerMeter;
 									visInsetFromMin.setFXYZ(cr1,cr3,cornerRad.getFZ() + floorHeight*(begHeight)*pixelsPerMeter);
-									visInsetFromMax.setFXYZ(cr2,cr4,0.0f);
+									visInsetFromMax.setFXYZ(cr2,cr4,zmax);
 
 									
 									thickVals.setFXYZ(0.0f,0.0f,0.0f);
@@ -18638,183 +18940,130 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 
 									myPlant.init(
 										singleton,
-										&(GamePlant::allPlantRules[E_PT_OAK_TRUNK]),
+										&(GamePlant::allPlantRules[E_PT_OAK_ROOTS]),
 										&(GamePlant::allPlantRules[E_PT_OAK_TRUNK]),
 										&origin
 									);
 
-									addPlantNodes(myPlant.trunkNode, &p1);
-									
-
-									/*
-									for (n = 0; n < 3; n++) {
-
-										tempVec.setFXYZRef(&p1);
-										tempVec3.setFXYZRef(&p2);
-
-										// control point
-										tempVec3.addXYZ(
-											(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
-											(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
-											(fGenRand()*1.0f)*3.0f*pixelsPerMeter
-										);
-
-										tempVec2.setFXYZRef(&tempVec3);
-
-										tempVec2.addXYZ(
-											(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
-											(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
-											(fGenRand()*1.0f)*3.0f*pixelsPerMeter
-										);
-
-										gameGeom.push_back(new GameGeom());
-										gameGeom.back()->initTree(
-											curBT,
-											counter,
-											singleton->geomCounter,
-											curAlign,
-											baseOffset,
-											
-											&tempVec,
-											&tempVec2,
-											&tempVec3,
-
-											1.0f*pixelsPerMeter,
-											1.0f*pixelsPerMeter,
-
-											//&rad,
-											//&cornerRad,
-											&visInsetFromMin,
-											&visInsetFromMax,
-											// &powerVals,
-											// &powerVals2,
-											// &thickVals,
-											
-											&matParams
-										);
-										singleton->geomCounter++;
-										counter++;
-										
-										for (p = 0; p < 3; p++) {
-											
+									tempVec4.setFXYZRef(&p1);
+									tempVec4.addXYZ(0.0f,0.0f,4.0f*pixelsPerMeter);
 
 
-											// 1,2 = start, end
-											// 3 = control point
-
-
-
-
-
-
-											tempVecB.setFXYZRef(&tempVec2);
-											
-
-											tempVecB3.setFXYZRef(&tempVec2);
-											tempVecB3.addXYZRef(&tempVec3,-1.0f);
-											//tempVecB3.multXYZ(2.0f);
-											tempVecB3.addXYZRef(&tempVec2);
-											
-
-											tempVecB2.setFXYZRef(&tempVecB3);
-
-											tempVecB2.addXYZ(
-												(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
-												(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
-												(fGenRand()*1.0f)*3.0f*pixelsPerMeter
-											);
-
-
-											gameGeom.push_back(new GameGeom());
-											gameGeom.back()->initTree(
-												curBT,
-												counter,
-												singleton->geomCounter,
-												curAlign,
-												baseOffset,
-												
-												&tempVecB,
-												&tempVecB2,
-												&tempVecB3,
-
-												1.0f*pixelsPerMeter,
-												0.0f*pixelsPerMeter,
-
-												//&rad,
-												//&cornerRad,
-												&visInsetFromMin,
-												&visInsetFromMax,
-												// &powerVals,
-												// &powerVals2,
-												// &thickVals,
-												
-												&matParams
-											);
-											singleton->geomCounter++;
-											counter++;
-
-
-
-
-
-
-
-
-
-										}
-										
-										
-
-										
-									}
-									*/
-									
-
-
+									addPlantNodes(myPlant.rootsNode, &tempVec4);
+									addPlantNodes(myPlant.trunkNode, &tempVec4);
 
 								}
 								else {
 
+									switch (curBT) {
+										case E_BT_DOOR:
+										case E_BT_WINDOW:
+										case E_BT_DOORWAY:
+											maxLoop = 2;
+										break;
+										default:
+											maxLoop = 1;
+										break;
+									}
+
+									// if (curBT == E_BT_DOORWAY) {
+
+									// }
 									
-									if (
-										(curBT == E_BT_DOOR) ||
-										(curBT == E_BT_WINDOW)
-									) {
-										maxLoop = 2;
-									}
-									else {
-										maxLoop = 1;
-									}
+									// if (
+									// 	(curBT == E_BT_DOOR) ||
+									// 	(curBT == E_BT_WINDOW)
+									// ) {
+									// 	maxLoop = 2;
+									// }
+									// else {
+									// 	maxLoop = 1;
+									// }
 
 									for (n = 0; n < maxLoop; n++) {
-										if (maxLoop == 2) {
-											
 
-											if (n == 0) {
-												if (isVert) {
-													visInsetFromMax.addXYZ( rad.getFX() + 1.0f, 0.0f, 0.0f );
+										newP1.setFXYZRef(&p1);
+										newP2.setFXYZRef(&p2);
+										
+										switch (curBT) {
+											case E_BT_DOOR:
+											case E_BT_WINDOW:
+												if (n == 0) {
+													if (isVert) {
+														visInsetFromMax.addXYZ( rad.getFX() + 1.0f, 0.0f, 0.0f );
+													}
+													else {
+														visInsetFromMax.addXYZ( 0.0f, rad.getFY() + 1.0f, 0.0f );
+													}
+													
 												}
 												else {
-													visInsetFromMax.addXYZ( 0.0f, rad.getFY() + 1.0f, 0.0f );
+													if (isVert) {
+														visInsetFromMax.addXYZ( -(rad.getFX() + 1.0f), 0.0f, 0.0f );
+														visInsetFromMin.addXYZ( rad.getFX() + 1.0f, 0.0f, 0.0f );
+													}
+													else {
+														visInsetFromMax.addXYZ( 0.0f, -(rad.getFY() + 1.0f), 0.0f );
+														visInsetFromMin.addXYZ( 0.0f, rad.getFY() + 1.0f, 0.0f );
+													}
 												}
-												
-											}
-											else {
-												if (isVert) {
-													visInsetFromMax.addXYZ( -(rad.getFX() + 1.0f), 0.0f, 0.0f );
-													visInsetFromMin.addXYZ( rad.getFX() + 1.0f, 0.0f, 0.0f );
+											break;
+											case E_BT_DOORWAY:
+												if (n == 0) { // is doorway
+
 												}
-												else {
-													visInsetFromMax.addXYZ( 0.0f, -(rad.getFY() + 1.0f), 0.0f );
-													visInsetFromMin.addXYZ( 0.0f, rad.getFY() + 1.0f, 0.0f );
-												}
-											}
+												else { // is lantern
+													matParams.setFXYZ(E_MAT_PARAM_LANTERN, 0.0, 0.0f);
+													curBT = E_BT_LANTERN;
+													curAlign = E_ALIGN_MIDDLE;
+													
+													floorHeight = 0.5f;
+													roofHeight = 0.25f;
+													baseOffset = 0.0f;//(0.25f)*pixelsPerMeter;
+													rad.setFXYZ(
+														(0.25f)*pixelsPerMeter,
+														(0.25f)*pixelsPerMeter,
+														(nFloors*floorHeight*0.5 + roofHeight)*pixelsPerMeter
+													);
+													cornerRad.setFXYZ(
+														(0.0625f)*pixelsPerMeter,
+														(0.0625f)*pixelsPerMeter,
+														(0.25f)*pixelsPerMeter
+													);
+													thickVals.setFXYZ(0.25f*pixelsPerMeter, 0.0f, 0.0f);
+
+													newP1.addXYZRef(&newP2);
+													newP1.multXYZ(0.5f);
 
 
-											
-										}
-										else {
+													newP1.addXYZ(
+														(gw->dirModX[k]*0.5f - gw->dirModY[k]*2.0f)*pixelsPerMeter,
+														(gw->dirModY[k]*0.5f - gw->dirModX[k]*2.0f)*pixelsPerMeter,
+														3.0f*pixelsPerMeter
+													);
+													newP2.setFXYZRef(&newP1);
 
+													lightVec.randomize();
+													gameLights.push_back(new GameLight());
+													gameLights.back()->init(
+														lightCounter,
+														singleton->lightCounter,
+														&newP1,
+														&lightVec
+													);
+													singleton->lightCounter++;
+													lightCounter++;
+
+													visInsetFromMin.setFXYZ(0.0f,0.0f,cornerRad.getFZ() - 0.0625*pixelsPerMeter);
+													visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
+													
+													powerVals.setFXYZ(2.0f, 1.0f, 0.0f);
+													powerVals2.setFXYZRef(&powerVals);
+												}
+											break;
+											default:
+
+											break;
 										}
 
 
@@ -18825,8 +19074,8 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 											singleton->geomCounter,
 											curAlign,
 											baseOffset,
-											&p1,
-											&p2,
+											&newP1,
+											&newP2,
 											&rad,
 											&cornerRad,
 											&visInsetFromMin,
@@ -18839,52 +19088,64 @@ void GameBlock::init (Singleton * _singleton, int _blockID, int _x, int _y, int 
 										singleton->geomCounter++;
 										counter++;
 
+										if (curBT == E_BT_LANTERN) {
+											gameGeom.back()->light = gameLights.back();
+										}
 
-										if (maxLoop == 2) {
+										switch (curBT) {
+											case E_BT_DOOR:
+											case E_BT_WINDOW:
+												
+												tempVec2.setFXYZRef( gameGeom.back()->getVisMaxInPixels() );
+												tempVec2.addXYZRef( gameGeom.back()->getVisMinInPixels(), -1.0f );
+												tempVec2.multXYZ(0.5f);
+												tempf = min(min(tempVec2.getFX(), tempVec2.getFY()),tempVec2.getFZ());
 
-											
-											tempVec2.setFXYZRef( gameGeom.back()->getVisMaxInPixels() );
-											tempVec2.addXYZRef( gameGeom.back()->getVisMinInPixels(), -1.0f );
-											tempVec2.multXYZ(0.5f);
-											tempf = min(min(tempVec2.getFX(), tempVec2.getFY()),tempVec2.getFZ());
+												if (n == 0) {
+													tempVec.setFXYZRef( gameGeom.back()->getVisMinInPixels() );
+													tempVec.addXYZ(tempf,tempf,0.0f);
 
-											if (n == 0) {
-												tempVec.setFXYZRef( gameGeom.back()->getVisMinInPixels() );
-												tempVec.addXYZ(tempf,tempf,0.0f);
+													if (isVert) {
+														tempVec.addXYZ(-tempf*3.0,0.0,0.0f);
+													}
+													else {
+														tempVec.addXYZ(0.0,-tempf*3.0,0.0f);
+													}
 
-												if (isVert) {
-													tempVec.addXYZ(-tempf*3.0,0.0,0.0f);
+													if ( (k == 1) || (k == 2) ) {
+														gameGeom.back()->initAnchorPoint( &tempVec, 0, 1 );
+													}
+													else {
+														gameGeom.back()->initAnchorPoint( &tempVec, -1, 0 );
+													}
 												}
 												else {
-													tempVec.addXYZ(0.0,-tempf*3.0,0.0f);
-												}
+													tempVec.setFXYZRef( gameGeom.back()->getVisMaxInPixels() );
+													tempVec.addXYZ(-tempf,-tempf,0.0f);
 
-												if ( (k == 1) || (k == 2) ) {
-													gameGeom.back()->initAnchorPoint( &tempVec, 0, 1 );
-												}
-												else {
-													gameGeom.back()->initAnchorPoint( &tempVec, -1, 0 );
-												}
-											}
-											else {
-												tempVec.setFXYZRef( gameGeom.back()->getVisMaxInPixels() );
-												tempVec.addXYZ(-tempf,-tempf,0.0f);
+													if (isVert) {
+														tempVec.addXYZ(tempf*3.0,0.0,0.0f);
+													}
+													else {
+														tempVec.addXYZ(0.0,tempf*3.0,0.0f);
+													}
 
-												if (isVert) {
-													tempVec.addXYZ(tempf*3.0,0.0,0.0f);
+													if ( (k == 0) || (k == 3) ) {
+														gameGeom.back()->initAnchorPoint( &tempVec, 0, 1 );
+													}
+													else {
+														gameGeom.back()->initAnchorPoint( &tempVec, -1, 0 );
+													}
 												}
-												else {
-													tempVec.addXYZ(0.0,tempf*3.0,0.0f);
-												}
+												
+												
+											break;
+											case E_BT_DOORWAY:
+												
+											break;
+											default:
 
-												if ( (k == 0) || (k == 3) ) {
-													gameGeom.back()->initAnchorPoint( &tempVec, 0, 1 );
-												}
-												else {
-													gameGeom.back()->initAnchorPoint( &tempVec, -1, 0 );
-												}
-											}
-									
+											break;
 										}
 
 									}
@@ -19112,7 +19373,30 @@ int GameBlock::touchesCenter (int x, int y, int buildingType)
 			}
 		}
 
+
+
 		return tot;
+	}
+int GameBlock::touches2Center (int x, int y, int buildingType)
+                                                           {
+		int i;
+		int tot = 0;
+		int testX;
+		int testY;
+
+		for (i = 0; i < 4; i++) {
+
+			testX = x + gw->dirModX[i];
+			testY = y + gw->dirModY[i];
+
+			tot += touchesCenter(testX,testY,buildingType);
+
+		}
+
+		tot += touchesCenter(x,y,buildingType);
+
+		return tot;
+
 	}
 int GameBlock::sameHeight (int x, int y)
                                      {
@@ -19154,25 +19438,6 @@ int GameBlock::touches2 (int x, int y, int buildingType)
 			testY = y + gw->dirModY[i];
 
 			tot += touches(testX,testY,buildingType);
-
-		}
-
-		return tot;
-
-	}
-int GameBlock::touches2Center (int x, int y, int buildingType)
-                                                           {
-		int i;
-		int tot = 0;
-		int testX;
-		int testY;
-
-		for (i = 0; i < 4; i++) {
-
-			testX = x + gw->dirModX[i];
-			testY = y + gw->dirModY[i];
-
-			tot += touchesCenter(testX,testY,buildingType);
 
 		}
 
@@ -19273,6 +19538,9 @@ void GameWorld::init (Singleton * _singleton)
 
 		int i;
 		int j;
+
+		lightCount = 1;
+		frameCount = -1;
 
 		noiseGenerated = false;
 		wavesGenerated = false;
@@ -19679,9 +19947,9 @@ void GameWorld::update ()
 		}
 
 		if (singleton->mapInvalid) {
-			initMap();
+			
 
-			//goto DO_RETURN_UPDATE;
+			goto DO_RETURN_UPDATE;
 		}
 
 		if (noiseGenerated) {
@@ -19922,12 +20190,28 @@ bool GameWorld::processPages ()
 	    	}
 	    }
 
-	    int mink = intDiv(camPagePos.getIZ()-loadRad2, singleton->holderSizeInPages)*singleton->holderSizeInPages;
-	    int maxk = intDiv(camPagePos.getIZ()+loadRad2, singleton->holderSizeInPages)*singleton->holderSizeInPages;
-	    int minj = intDiv(camPagePos.getIY()-loadRad, singleton->holderSizeInPages)*singleton->holderSizeInPages;
-	    int maxj = intDiv(camPagePos.getIY()+loadRad, singleton->holderSizeInPages)*singleton->holderSizeInPages;
-	    int mini = intDiv(camPagePos.getIX()-loadRad, singleton->holderSizeInPages)*singleton->holderSizeInPages;
-	    int maxi = intDiv(camPagePos.getIX()+loadRad, singleton->holderSizeInPages)*singleton->holderSizeInPages;
+	    int hsip = singleton->holderSizeInPages;
+
+	    int mink = intDiv(camPagePos.getIZ()-loadRad2, hsip);
+	    int maxk = intDiv(camPagePos.getIZ()+loadRad2, hsip);
+	    int minj = intDiv(camPagePos.getIY()-loadRad, hsip);
+	    int maxj = intDiv(camPagePos.getIY()+loadRad, hsip);
+	    int mini = intDiv(camPagePos.getIX()-loadRad, hsip);
+	    int maxi = intDiv(camPagePos.getIX()+loadRad, hsip);
+
+
+		minLRInHolders.setIXYZ(mini+1,minj+1,mink+1);
+	    maxLRInHolders.setIXYZ(maxi-1,maxj-1,maxk-1);
+
+
+	    mink *= hsip;
+	    maxk *= hsip;
+	    minj *= hsip;
+	    maxj *= hsip;
+	    mini *= hsip;
+	    maxi *= hsip;
+
+
 
 		//for (k = 0; k < singleton->maxH; k++) {
 	    for (kk = mink; kk <= maxk; kk++) {
@@ -20206,7 +20490,9 @@ void GameWorld::actionOnHolders (int action)
 			    					if (
 			    						(cutHolderPos.getFX()-1.0f < gp->offsetInHolders.getFX()) &&
 			    						(cutHolderPos.getFY()-1.0f < gp->offsetInHolders.getFY()) &&
-			    						(cutHolderPos.getFZ()-1.0f < gp->offsetInHolders.getFZ())
+			    						(cutHolderPos.getFZ()-1.0f < gp->offsetInHolders.getFZ()) 
+
+			    						
 			    						
 			    					) {
 
@@ -20215,7 +20501,13 @@ void GameWorld::actionOnHolders (int action)
 			    						//if (gp->offsetInHolders.manhattanDis(&camHolderPos) <= 1.0 ) {
 			    							
 			    						if ( ((j==0)&&gp->hasSolids) || ((j==1)&&gp->hasTrans) ) {
-			    							drawHolder(gp, j);
+			    							
+			    							//cout << "drawHolder\n";
+
+			    							//if ( gp->offsetInHolders.inBoundsXYZ(&minLRInHolders,&maxLRInHolders) ) {
+			    								drawHolder(gp, j);
+			    							//}
+			    							
 			    						}
 			    							
 			    						//}
@@ -20405,7 +20697,7 @@ void GameWorld::renderGeom ()
 				// }
 
 
-				singleton->setShaderFloat("matVal", singleton->dynObjects[E_OBJ_LIGHT0]->colPacked);
+				//singleton->setShaderFloat("matVal", singleton->dynObjects[E_OBJ_LIGHT0]->colPacked);
 
 				//singleton->drawLine( &tv0, &tv1 );
 				//singleton->drawLine( &tv1, &tv2 );
@@ -20494,6 +20786,14 @@ void GameWorld::renderGeom ()
 			break;
 			
 		}
+
+
+		// for (i = 1; i < lightCount; i++) {
+		// 	singleton->setShaderFloat("matVal", activeLights[i]->colPacked);
+		// 	curBoxPos = &(activeLights[i]->pos);				
+		// 	singleton->drawCubeCentered(curBoxPos,0.125f*singleton->pixelsPerMeter);
+		// }
+
 		
 
 		glDisable(GL_DEPTH_TEST);
@@ -20938,8 +21238,7 @@ void GameWorld::renderGrass ()
 		singleton->sampleFBO("pagesFBO", 0);
 		singleton->sampleFBO("noiseFBO", 2);
 
-		singleton->setShaderFloat("seaLevel", ((float)(singleton->gw->seaLevel) )/255.0 );
-		singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
+		singleton->setShaderFloat("seaLevel", singleton->getSeaLevelInPixels());
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 
 		singleton->drawFSQuad(1.0f);
@@ -20955,8 +21254,6 @@ void GameWorld::renderGrass ()
 
 		singleton->bindShader("GrassShader");
 		
-		//singleton->setShaderFloat("seaLevel", ((float)(singleton->gw->seaLevel) )/255.0 );
-		//singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
 		singleton->setShaderFloat("scaleFactor", DEF_SCALE_FACTOR);
 		singleton->setShaderFloat("curTime", curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
@@ -22553,9 +22850,57 @@ void GameWorld::doBlur (string fboName, float blurAmount)
 			
 		}
 	}
+void GameWorld::updateLights ()
+                            {
+
+		int i;
+		int j;
+		int k;
+
+		int ii;
+		int jj;
+
+		int blockRad = 1;
+
+		lightCount = 1;
+		GameLight* curLight;
+		GameBlock* curBlock;
+
+		activeLights[0] = &globalLight;
+
+		for (j = -blockRad; j <= blockRad; j++) {
+			for (i = -blockRad; i <= blockRad; i++) {
+				ii = i + camBlockPos.getIX();
+				jj = j + camBlockPos.getIY();
+
+				curBlock = getBlockAtCoords(ii, jj, true);
+
+
+				for (k = 0; k < curBlock->gameLights.size(); k++) {
+					curLight = curBlock->gameLights[k];
+
+					if ( curLight->pos.distance(cameraPos) < 28.0f*singleton->pixelsPerMeter && curLight->isOn ) {
+						activeLights[lightCount] = curBlock->gameLights[k];
+						lightCount++;
+					}
+
+					if (lightCount >= singleton->numLights) {
+						goto UPDATE_LIGHTS_END;
+					}
+
+				}
+			}
+		}
+
+		UPDATE_LIGHTS_END:
+
+		;
+
+	}
 void GameWorld::postProcess ()
                            {
 
+		frameCount++;
 
 		int i;
 		int iMin;
@@ -22563,7 +22908,7 @@ void GameWorld::postProcess ()
 		int k;
 		int baseInd;
 
-		DynObject* curObj;
+		GameLight* curLight;
 
 		pushTrace("postProcess()");
 
@@ -22572,8 +22917,17 @@ void GameWorld::postProcess ()
 		
 		//singleton->worldToScreen(&aoScreenCoords, &(singleton->dynObjects[singleton->activeObject]->pos));
 
+		if ( (frameCount % 120) == 0) {
+			updateLights();
+		}
 
-		for (k = 0; k < singleton->numLights; k++) {
+		
+
+
+		globalLight.initFrom( singleton->dynObjects[E_OBJ_LIGHT0] );
+		activeLights[0] = &globalLight;
+
+		for (k = 0; k < lightCount; k++) {
 			baseInd = k*FLOATS_PER_LIGHT;
 			
 			// lightPosBase.copyFrom(&(singleton->dynObjects[E_OBJ_LIGHT0 + k]->pos));
@@ -22584,9 +22938,9 @@ void GameWorld::postProcess ()
 			// );
 			// lightPos = &lightPosBase;
 
-			curObj = singleton->dynObjects[E_OBJ_LIGHT0 + k];
+			curLight = activeLights[k];
 
-			lightPos = &(curObj->pos);
+			lightPos = &(curLight->pos);
 
 			// if (k == 0) {
 			// 	globLightPos = lightPos;
@@ -22629,13 +22983,13 @@ void GameWorld::postProcess ()
 
 			// light color
 
-			singleton->lightArr[baseInd + 8] = ((float)curObj->r)/255.0f; // light red
-			singleton->lightArr[baseInd + 9] = ((float)curObj->g)/255.0f; // light green
-			singleton->lightArr[baseInd + 10] = ((float)curObj->b)/255.0f; // light blue
+			singleton->lightArr[baseInd + 8] = curLight->color.getFX(); // light red
+			singleton->lightArr[baseInd + 9] = curLight->color.getFY(); // light green
+			singleton->lightArr[baseInd + 10] = curLight->color.getFZ(); // light blue
 
 			switch(k) {
 				case 0:
-					singleton->lightArr[baseInd + 11] = 0.0f; // light intensity (unused?)
+					singleton->lightArr[baseInd + 11] = 1.0f; // light intensity (unused?)
 					singleton->lightArr[baseInd + 12] = 0.0f; // light colorization (0-1)
 					singleton->lightArr[baseInd + 13] = 0.0f; // light flooding (colorizes regardless of shadows) (0-1)
 				break;
@@ -22690,8 +23044,7 @@ void GameWorld::postProcess ()
 				singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 				singleton->setShaderFloat("curTime", singleton->curTime);
-				singleton->setShaderFloat("seaLevel", ((float)(singleton->gw->seaLevel) )/255.0 );
-				singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
+				singleton->setShaderFloat("seaLevel", singleton->getSeaLevelInPixels() );
 				singleton->drawFSQuad(1.0f);
 				singleton->unsampleFBO("waveFBO",4);
 				singleton->unsampleFBO("waterFBO",2);
@@ -22728,8 +23081,8 @@ void GameWorld::postProcess ()
 				singleton->setShaderfVec3("cameraPos", cameraPos);
 				//singleton->setShaderfVec3("lightPosWS", lightPos);
 				//singleton->setShaderfVec2("lightPosSS", &lScreenCoords);
-				singleton->setShaderArrayfVec4("lightArr", singleton->lightArr, (FLOATS_PER_LIGHT*singleton->numLights)/4);
-				singleton->setShaderFloat("numLights",singleton->numLights);
+				singleton->setShaderArrayfVec4("lightArr", singleton->lightArr, (FLOATS_PER_LIGHT*lightCount)/4);
+				singleton->setShaderFloat("lightCount",lightCount);
 				singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 				singleton->drawFSQuad(1.0f);
@@ -22765,8 +23118,7 @@ void GameWorld::postProcess ()
 				singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 				singleton->setShaderFloat("curTime", singleton->curTime);
-				singleton->setShaderFloat("seaLevel", ((float)(singleton->gw->seaLevel) )/255.0 );
-				singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
+				singleton->setShaderFloat("seaLevel", singleton->getSeaLevelInPixels() );
 				singleton->drawFSQuad(1.0f);
 				singleton->unsampleFBO("waveFBO", 7);
 				singleton->unsampleFBO("noiseFBO", 6);
@@ -22800,10 +23152,9 @@ void GameWorld::postProcess ()
 
 				singleton->bindShader("RadiosityShader");
 
-				singleton->bindFBO("swapFBOLin0");
+				singleton->bindFBO("swapFBOLinHalf0");
 				singleton->sampleFBO("combineFBOWithWater",0);
 				singleton->sampleFBO("swapFBOBLin0",2);
-				singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
 				singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 				singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
@@ -22816,16 +23167,16 @@ void GameWorld::postProcess ()
 				singleton->unbindShader();
 
 
-				doBlur("swapFBOLin",2.0f);
+				doBlur("swapFBOLinHalf",2.0f);
 
 				singleton->bindShader("RadiosityCombineShader");
 				singleton->bindFBO("resultFBO",activeFBO);
 				singleton->sampleFBO("resultFBO",0,activeFBO);
-				singleton->sampleFBO("swapFBOLin0",1);
+				singleton->sampleFBO("swapFBOLinHalf0",1);
 				singleton->sampleFBO("combineFBOWithWater",2);
 				singleton->drawFSQuad(1.0f);
 				singleton->unsampleFBO("combineFBOWithWater",2);
-				singleton->unsampleFBO("swapFBOLin0",1);
+				singleton->unsampleFBO("swapFBOLinHalf0",1);
 				singleton->unsampleFBO("resultFBO",0,activeFBO);
 				singleton->unbindFBO();
 				singleton->unbindShader();
@@ -22849,7 +23200,6 @@ void GameWorld::postProcess ()
 				singleton->sampleFBO("swapFBOBLin0", 3);
 
 
-				singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
 				singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
 				singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));

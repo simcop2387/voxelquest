@@ -7,7 +7,9 @@ uniform sampler2D Texture3; //terrainID
 
 uniform float totLayers;
 uniform float heightmapMax;
+uniform float heightmapMin;
 uniform float seaLevel;
+uniform float maxSeaDepth;
 uniform float volumePitch;
 uniform float bufferedPageSizeInUnits;
 uniform float bufferMult;
@@ -40,7 +42,10 @@ uniform vec4 mapAmps;
 varying vec2 TexCoord0;
 int iVolumePitch = int(volumePitch);
 
-
+const float PI = 3.14159;
+const float PIO2 = PI/2.0;
+const float PIO4 = PI/4.0;
+const float invalid = 99999.0;
 
 const int E_GP_VISMININPIXELST = 0;
 const int E_GP_VISMAXINPIXELST = 1;
@@ -78,27 +83,28 @@ const float TEX_BRICK = 	20.0;
 const float TEX_SHINGLE = 	22.0;
 const float TEX_PLASTER = 	28.0;
 const float TEX_DEBUG = 	30.0;
-const float TEX_METAL = 	32.0;
-const float TEX_WATER = 	34.0;
+const float TEX_WATER = 	32.0;
+const float TEX_METAL = 	33.0;
 const float TEX_GLASS = 	35.0;
 const float TEX_EARTH = 	36.0;
 const float TEX_BARK =		41.0; 
 const float TEX_TREEWOOD =  43.0;
-
+const float TEX_LEAF =  	45.0;
 
 
 
 const float E_MAT_PARAM_ROAD = 		0.0;
-const float E_MAT_PARAM_BUILDING = 	1.0;
-const float E_MAT_PARAM_DOORWAY = 	2.0;
-const float E_MAT_PARAM_DOOR = 		3.0;
-const float E_MAT_PARAM_WINDOW = 	4.0;
-const float E_MAT_PARAM_SLATS =		5.0;
-const float E_MAT_PARAM_TREE = 		6.0;
-const float E_MAT_PARAM_LENGTH = 	7.0;
+const float E_MAT_PARAM_DOCK = 		1.0;
+const float E_MAT_PARAM_BUILDING = 	2.0;
+const float E_MAT_PARAM_LANTERN = 	3.0;
+const float E_MAT_PARAM_DOORWAY = 	4.0;
+const float E_MAT_PARAM_DOOR = 		5.0;
+const float E_MAT_PARAM_WINDOW = 	6.0;
+const float E_MAT_PARAM_SLATS =		7.0;
+const float E_MAT_PARAM_TREE = 		8.0;
+const float E_MAT_PARAM_LENGTH = 	9.0;
 
 float shingleMod;
-
 vec2 dirVecs[4] = vec2[](
 	vec2( 1.0,  0.0 ), // right
 	vec2( -1.0,  0.0 ), // left
@@ -217,7 +223,7 @@ vec3 rand(vec3 co) {
     );
 }
 
-vec2 getHeightAtCoords(vec2 coord) {
+float getHeightAtCoords(vec2 coord) {
 	
 	float terLerp = 0.0;
 	float terMod = 0.0;
@@ -244,16 +250,26 @@ vec2 getHeightAtCoords(vec2 coord) {
 
 	
 
-	float testHeight0 = (texHM0.r*mapAmps.x + texHM1.r*mapAmps.y + texHM2.r*mapAmps.z + texHM3.r*mapAmps.w)*heightmapMax;
+	float testHeight0 = 
+	mix(
+		heightmapMin,
+		heightmapMax,
+		texHM0.r*mapAmps.x + texHM1.r*mapAmps.y + texHM2.r*mapAmps.z + texHM3.r*mapAmps.w
+	);
 	
-	float testHeight1 = unpack16(texLev.rg);// + texHM3.r*1.0*pixelsPerMeter;
+	float testHeight1 = unpack16(texLev.rg);// + texHM3.r*3.0*pixelsPerMeter;
 	
-	testHeight0 = mix(testHeight0,testHeight1,0.5);
 	//testHeight0 = mix(testHeight0,testHeight1,0.5);
 
-	float testHeight = mix(testHeight0,testHeight1, texLev.b );
+	float testHeightFinal = mix(testHeight0, testHeight1, texLev.b);
+	float sl = seaLevel-maxSeaDepth/2.0f;
 
-	return vec2(testHeight,testHeight0);
+	if (testHeightFinal < sl) {
+		testHeightFinal = sl - ((sl-testHeightFinal)/sl)*maxSeaDepth;
+	}
+	return testHeightFinal;
+
+	//return testHeight;//vec2(testHeight,testHeight0);
 }
 
 // float getNoiseAtCoords(vec2 coord) {
@@ -264,7 +280,7 @@ vec2 getHeightAtCoords(vec2 coord) {
 // 	return texHM3.r;
 // }
 
-vec3 getShingle(vec4 uvwBase, float uvscale, float baseDepth, float maxDepth) {
+vec3 getShingle(vec3 uvwBase, float uvscale, float baseDepth, float maxDepth) {
 	vec3 color;
 	vec3 position, useBrick;
 	vec3 brickDim;
@@ -301,6 +317,7 @@ vec3 getShingle(vec4 uvwBase, float uvscale, float baseDepth, float maxDepth) {
 	}
 
 	shingleMod = finalDis;//+abs(sin( (uvwBase.x+uvwBase.y)/(2.0*pixelsPerMeter) ));//randf(vec2(finalDis,finalDis));
+
 
 	if ( baseDepth > ( finalDis*maxDepth ) ) {
 		myResult.y = TEX_SHINGLE;
@@ -495,7 +512,7 @@ vec4 getBuilding(
 
 	float floorNumber = floor(disFromBottomInPixels/floorHeightInPixels);//floor((disFromBottomInPixels+topMod)/floorHeightInPixels);
 
-	bool isBasement = (floorNumber <= 0.0);
+	bool isBasement = (floorNumber <= 0.0)&&(notScaff);
 	bool notBasement = !isBasement;
 
 	float wallThickness = (0.5+0.5*float(isBasement))*pixelsPerMeter;
@@ -506,7 +523,7 @@ vec4 getBuilding(
 	float shingleOffset = 16.0;
 	float vertMod = 50.0*float(isVert);
 	float offsetPerFloor = 0.25;
-	float floorOffset = offsetPerFloor*(maxFloors-floorNumber) - float(isBasement)*offsetPerFloor*(2.0);
+	float floorOffset = offsetPerFloor*(maxFloors-floorNumber) - float(isBasement)*offsetPerFloor*(2.0) + float(!notScaff)*1.0;
 
 	bool bIsRoof = !bLessThanOrig.z;
 	float fIsRoof = float(bIsRoof);
@@ -584,10 +601,26 @@ vec4 getBuilding(
 
 	if (notBasement) {
 		
-		if ( getInterval(newUVW.y - (horzBoardThickness*0.5 + 0.25)*pixelsPerMeter, 4.0, 0.125) && bLessThanOrig.z && (!bIsOuterWall) ) {
+		if (
+			getInterval(newUVW.y - (horzBoardThickness*0.5 + 0.25)*pixelsPerMeter, 4.0, 0.125) &&
+			bLessThanOrig.z &&
+			(!bIsOuterWall)
+			
+		) {
 			
 			// floor boards
-			myResult.x = 6.0 + getBoard(newUVW.xz, 0.375, 2.0);
+			if (notScaff) {
+				myResult.x = 6.0 + getBoard(newUVW.xz, 0.375, 2.0);
+			}
+			else {
+				if (floorNumber > 1.0) {
+					myResult.x = 6.0 + getBoard(newUVW.zx, 0.5, 4.0);
+				}
+			}
+
+
+			
+			
 			
 		}
 		else {
@@ -599,7 +632,7 @@ vec4 getBuilding(
 			isVertBoard = getInterval( newUVW.x, 2.0, mix(boardThickness/pow(resXY*0.7+0.3,2.0),boardThickness,notCorner) );
 			isHorzBoard = getInterval( newUVW.y + topMod*horzBoardThickness*pixelsPerMeter/2.0, 4.0, horzBoardThickness);
 
-			if ( isHorzBoard && isVertBoard && bLessThanOrig.z ) {
+			if ( isHorzBoard && isVertBoard && bLessThanOrig.z && (floorNumber > 0.0) ) {
 									
 				// joists and rafters
 				myResult.w = 1.0-fVert;
@@ -673,13 +706,14 @@ vec4 getBuilding(
 	
 
 	// inner pillars / beams
-	if ( (!bIsOuterWallOrig) && ( notBasement || (isBasement&&(!bIsCapWall)) ) ) {
+	if ( (!bIsOuterWallOrig) && ( notBasement || (isBasement&&(!bIsCapWall)) ) && (notScaff || ((!notScaff)&&(floorNumber <= 1.0))) ) {
 		if (resXY*thickness < 0.25*pixelsPerMeter) {
 
 			if ( getInterval(disCenterMinMax, 8.0, 0.25 ) ) {
 				myResult.x = 5.0;
 				myResult.w = 2.0;
 			}
+
 		}
 	}
 
@@ -725,7 +759,7 @@ vec4 getBuilding(
 			////////////////////////////////////
 
 			//disFromOutsideInPixels
-			myResult.xyz = getShingle(newUVW, 1.0*pixelsPerMeter, disFromOutsideInPixels, shingleDepth );
+			myResult.xyz = getShingle(newUVW.xyz, 1.0*pixelsPerMeter, disFromOutsideInPixels, shingleDepth );
 			myResult.x += shingleOffset;
 
 			myResult.z = float(myResult.y != TEX_NULL);
@@ -812,7 +846,7 @@ vec4 getBuilding(
 
 	}
 
-	if (disFromOutsideInPixels < wallThickness*0.5 && myResult.y == TEX_NULL) {
+	if ( ((disFromOutsideInPixels < wallThickness*0.5)||(!notScaff)) && myResult.y == TEX_NULL) {
 		myResult.z = 0.0;
 	}
 
@@ -949,8 +983,8 @@ vec4 getTerrain(vec3 worldPosInPixels) {
 
 
 
-	vec2 thVec = getHeightAtCoords(worldPosInPixels.xy);
-	float testHeight = thVec.x;
+	float testHeight = getHeightAtCoords(worldPosInPixels.xy);
+	//float testHeight = thVec.x;
 	//float testHeightNoLevel = thVec.y;
 	float sandEnd = (seaLevel + 1.0*pixelsPerMeter);
 	float sandBeg = sandEnd - 0.5*pixelsPerMeter;
@@ -1049,15 +1083,7 @@ vec4 getSlats(vec4 newUVW, float thickness, vec3 origin, vec3 worldPosInPixels, 
 	thickMod = mix(0.1875,0.1875/2.0,isWindow);
 	bDis2 = distance(worldPosInPixels.x,origin.x) < thickMod*pixelsPerMeter;
 
-	if (
-		(distance(worldPosInPixels.y,orig.y) < rad.y/2.0) &&
-		(!bDis2)
-	) {
-		myResult.y = mix(TEX_WOOD,TEX_GLASS,isWindow);
-		myResult.w = 2.0;
-		myResult.x = (1.0 + floor(distance(worldPosInPixels.x,visMinInPixels.x)/(0.375*pixelsPerMeter) ))*(1.0-isWindow);
-	}
-	else {
+
 
 		
 
@@ -1074,11 +1100,24 @@ vec4 getSlats(vec4 newUVW, float thickness, vec3 origin, vec3 worldPosInPixels, 
 			myResult.x = 20.0 + float(bDis2);
 		}
 		else {
-			myResult.y = TEX_NULL;
+
+			if (
+				(distance(worldPosInPixels.y,orig.y) < rad.y/2.0) &&
+				(!bDis2)
+			) {
+				myResult.y = mix(TEX_WOOD,TEX_GLASS,isWindow);
+				myResult.w = 2.0;
+				myResult.x = (1.0 + floor(distance(worldPosInPixels.x,visMinInPixels.x)/(0.375*pixelsPerMeter) ))*(1.0-isWindow);
+			}
+			else {
+				myResult.y = TEX_NULL;
+			}
+			
+			
 		}
 
 		
-	}
+	
 
 	if (myResult.x != 0.0) {
 		myResult.x += float(worldPosInPixels.x > origin.x)*10.0;
@@ -1132,7 +1171,6 @@ vec4 getTree(vec3 worldPosInPixels) {
 	
 	
 	float testDis = 0.0;
-	float invalid = 99999.0;
 	float t;
 
 
@@ -1151,7 +1189,11 @@ vec4 getTree(vec3 worldPosInPixels) {
 	vec2 dres2 = vec2(0.0);
 
 	
-	
+	vec3 tempv = vec3(0.0);
+
+	vec3 roThetaPhi = vec3(0.0);
+	vec3 roThetaPhi2 = vec3(0.0);
+
 
 	vec3 bezTanP0;
 	vec3 bezTanP1;
@@ -1165,6 +1207,7 @@ vec4 getTree(vec3 worldPosInPixels) {
 	vec3 thickVals = vec3(0.0);
 
 	float curThickness = 0.0;
+	float sphereRad = 0.0;
 
 	// p0: start point
 	// p1: end point
@@ -1174,6 +1217,11 @@ vec4 getTree(vec3 worldPosInPixels) {
 
 	float totCount = 0.0;
 
+	float leafRad = 8.0f;//0.5*pixelsPerMeter;
+
+	vec3 maxv = vec3(invalid);
+
+	vec3 newWP = vec3(0.0);
 
 	for (i = 0; i < numEntries; i++) {
 
@@ -1197,10 +1245,11 @@ vec4 getTree(vec3 worldPosInPixels) {
 				p2 = paramArr[baseInd+E_TP_P2];
 				thickVals = paramArr[baseInd+E_TP_THICKVALS];
 
-				dres1 = pointSegDistance(worldPosInPixels,p0,p1);
-				dres2 = pointSegDistance(worldPosInPixels,p0,p2);
+				sphereRad = thickVals.z;
 
-				dres = mix(dres2, dres1, mix(dres1.y,dres2.y,0.5) );
+				dres = pointSegDistance(worldPosInPixels,p0,p1);
+				//dres2 = pointSegDistance(worldPosInPixels,p0,p2);
+				//dres = mix(dres2, dres1, mix(dres1.y,dres2.y,0.5) );
 
 				//if (dres.x < bestRes.x) {
 
@@ -1211,7 +1260,7 @@ vec4 getTree(vec3 worldPosInPixels) {
 
 					curThickness = mix(thickVals.x,thickVals.y,t);
 
-					if (resArr.x < curThickness) {
+					if (resArr.x < curThickness + 0.0625*0.25*pixelsPerMeter*sin( (worldPosInPixels.x + worldPosInPixels.z +worldPosInPixels.y)/(0.125*pixelsPerMeter) ) ) {
 
 						if (
 							(abs(resArr.x - curThickness) < 0.125*pixelsPerMeter) &&
@@ -1224,6 +1273,8 @@ vec4 getTree(vec3 worldPosInPixels) {
 						}
 
 						
+
+						
 						totCount = max( clamp(1.0-(resArr.x/curThickness),0.0,1.0), totCount);//abs( sin(dres.x/(curThickness*0.25)) );
 						
 
@@ -1232,10 +1283,56 @@ vec4 getTree(vec3 worldPosInPixels) {
 						// bestRes = dres;
 						// bestInd = baseInd;
 					}
+
+					
+					
+
+
+					//roThetaPhi2 = += roThetaPhi;
+
+
+					
+					
+					if ( (distance(worldPosInPixels,p1) < sphereRad)&&(p1.z < maxv.z) ) { //
+
+						// newWP = floor((worldPosInPixels)/leafRad)*leafRad + leafRad*0.5;
+						// if (distance(worldPosInPixels.xy,newWP.xy) < leafRad*0.4 ) {
+						// 	matResult.y = TEX_GRASS;
+						// }
+
+						maxv = p1;
+						
+						// if (distance(roThetaPhi.yz,roThetaPhi2.yz) < 0.3/leafRad ) {
+						// 	matResult.y = TEX_GRASS;
+
+						// }
+
+						
+
+						
+					}
+
 				//}				
 			}
 		}
 	}
+
+	if (maxv.z != invalid) {
+		tempv = worldPosInPixels-maxv;
+
+		roThetaPhi.z = sphereRad-length(tempv);
+		roThetaPhi.x = atan(tempv.y,tempv.x);
+		roThetaPhi.y = mix(-0.35,-0.5,randf(maxv.xy))*acos(tempv.z/length(tempv));
+
+		tempv = getShingle(roThetaPhi*1024.0/PI, 1.0*pixelsPerMeter, roThetaPhi.z, 1.0*pixelsPerMeter*( (0.95-normalize(tempv).z) ) );
+
+		if ( (matResult.y == TEX_NULL) && (tempv.y != TEX_NULL) ) {
+			matResult.y = TEX_LEAF;
+			matResult.w = (1.0-shingleMod); // *(1.0-abs(sin(roThetaPhi.z*PI*4.0/sphereRad)));
+		}
+	}
+
+	
 
 
 	if (matResult.y == TEX_TREEWOOD) {
@@ -1386,7 +1483,7 @@ vec4 getGeom(vec3 worldPosInPixels, float curMat, float terHeight) {
 	bestHeight[0] = 0.0;
 	bestHeight[1] = 0.0;
 
-	float invalid = 99999.0;
+	
 	float counter = 0.0;
 	float m = 0.0;
 	float resXY = 0.0;
@@ -1425,9 +1522,7 @@ vec4 getGeom(vec3 worldPosInPixels, float curMat, float terHeight) {
 
 	float finalMod = 0.0;
 	float finalMat = TEX_NULL;
-	float PI = 3.14159;
-	float PIO2 = PI/2.0;
-	float PIO4 = PI/4.0;
+	
 	float maxDisInPixels = 0.0;
 	float disInPixels = 0.0;
 	float sqrt3 = sqrt(3.0);
@@ -1649,7 +1744,7 @@ vec4 getGeom(vec3 worldPosInPixels, float curMat, float terHeight) {
 			}
 		}
 
-		if (curMat == E_MAT_PARAM_ROAD) {
+		if (curMat == E_MAT_PARAM_ROAD || curMat == E_MAT_PARAM_DOCK) {
 			nMax = 1;
 		}
 
@@ -2033,7 +2128,7 @@ vec4 getGeom(vec3 worldPosInPixels, float curMat, float terHeight) {
 
 			
 
-			if (matParams.x == E_MAT_PARAM_BUILDING) {
+			if ( (matParams.x == E_MAT_PARAM_BUILDING) || (matParams.x == E_MAT_PARAM_DOCK) ) {
 
 				
 
@@ -2059,7 +2154,7 @@ vec4 getGeom(vec3 worldPosInPixels, float curMat, float terHeight) {
 					tempVec3,
 					bLessThanOrig,
 					isVert,
-					true, // notScaff
+					(matParams.x == E_MAT_PARAM_BUILDING), // notScaff
 					boundsMaxCorner.z-boundsMinCorner.z,
 					nearestJointXY,
 					resXY,
@@ -2212,6 +2307,19 @@ vec4 getGeom(vec3 worldPosInPixels, float curMat, float terHeight) {
 					}
 				}
 				
+				
+			}
+
+			if (matParams.x == E_MAT_PARAM_LANTERN) {
+
+				if (  all(bLessThanOrig.xz) || all(bLessThanOrig.yz) ) {
+					finalMat = TEX_GLASS;
+				}
+				else {
+					finalMat = TEX_METAL;
+					normalUID = 20.0;
+				}
+
 				
 			}
 
@@ -2414,6 +2522,13 @@ void main() {
 		finalNormUID = 254.0;
 		finalMod = 0.0;
 	}
+
+	// if ((finalMat == TEX_NULL)) {
+	// 	finalMat = TEX_STONE;
+	// 	finalNormUID = 254.0;
+	// 	finalMod = 0.0;
+	// }
+
 
 	if (finalMat == TEX_GLASS) {
 		finalLayer = 1.0;

@@ -793,123 +793,7 @@
 					"number_Position_4": 0.5
 				}
 			},
-			"gradientStepList_Metal_32": {
-				"gradientStep_Step0_0": {
-					"number_Hue_0": 0.8,
-					"number_Saturation_1": 0,
-					"number_Lightness_2": 0,
-					"number_Power_3": 0.125,
-					"number_Position_4": 0
-				},
-				"gradientStep_Step1_1": {
-					"number_Hue_0": 0.75,
-					"number_Saturation_1": 0.16042077580539119,
-					"number_Lightness_2": 0.2,
-					"number_Power_3": 0.5,
-					"number_Position_4": 0.0784313725490196
-				},
-				"gradientStep_Step2_2": {
-					"number_Hue_0": 0.75,
-					"number_Saturation_1": 0.1393819855358317,
-					"number_Lightness_2": 0.1,
-					"number_Power_3": 0.125,
-					"number_Position_4": 0.10980392156862745
-				},
-				"gradientStep_Step3_3": {
-					"number_Hue_0": 0.75,
-					"number_Saturation_1": 0.11045364891518737,
-					"number_Lightness_2": 0.2,
-					"number_Power_3": 0.125,
-					"number_Position_4": 0.1568627450980392
-				},
-				"gradientStep_Step4_4": {
-					"number_Hue_0": 0.75,
-					"number_Saturation_1": 0.1525312294543064,
-					"number_Lightness_2": 0.7205785667324129,
-					"number_Power_3": 0.5,
-					"number_Position_4": 0.47058823529411764
-				},
-				"gradientStep_Step5_5": {
-					"number_Hue_0": 0.8,
-					"number_Saturation_1": 0.14464168310322156,
-					"number_Lightness_2": 0.4,
-					"number_Power_3": 0.125,
-					"number_Position_4": 0.5019607843137255
-				},
-				"gradientStep_Step6_6": {
-					"number_Hue_0": 0.75,
-					"number_Saturation_1": 0.12886259040105194,
-					"number_Lightness_2": 0.9,
-					"number_Power_3": 0.125,
-					"number_Position_4": 0.7529411764705882
-				},
-				"gradientStep_Step7_7": {
-					"number_Hue_0": 0.75,
-					"number_Saturation_1": 0.0631163708086785,
-					"number_Lightness_2": 1,
-					"number_Power_3": 0.5,
-					"number_Position_4": 1
-				}
-			},
-			"gradientStepList_Metal2_33": {
-				"gradientStep_Step0_0": {
-					"number_Hue_0": 0.8,
-					"number_Saturation_1": 0,
-					"number_Lightness_2": 0,
-					"number_Power_3": 0.125,
-					"number_Position_4": 0
-				},
-				"gradientStep_Step1_1": {
-					"number_Hue_0": 0.75,
-					"number_Saturation_1": 0.1472715318869165,
-					"number_Lightness_2": 0.2,
-					"number_Power_3": 0.5,
-					"number_Position_4": 0.0784313725490196
-				},
-				"gradientStep_Step2_2": {
-					"number_Hue_0": 0.75,
-					"number_Saturation_1": 0.1525312294543064,
-					"number_Lightness_2": 0.1,
-					"number_Power_3": 0.125,
-					"number_Position_4": 0.10980392156862745
-				},
-				"gradientStep_Step3_3": {
-					"number_Hue_0": 0.75,
-					"number_Saturation_1": 0.12360289283366206,
-					"number_Lightness_2": 0.2,
-					"number_Power_3": 0.125,
-					"number_Position_4": 0.1568627450980392
-				},
-				"gradientStep_Step4_4": {
-					"number_Hue_0": 0.75,
-					"number_Saturation_1": 0.2866535174227482,
-					"number_Lightness_2": 0.6995397764628534,
-					"number_Power_3": 0.5,
-					"number_Position_4": 0.47058823529411764
-				},
-				"gradientStep_Step5_5": {
-					"number_Hue_0": 0.8,
-					"number_Saturation_1": 0.2866535174227482,
-					"number_Lightness_2": 0.4,
-					"number_Power_3": 0.125,
-					"number_Position_4": 0.5019607843137255
-				},
-				"gradientStep_Step6_6": {
-					"number_Hue_0": 0.75,
-					"number_Saturation_1": 0.3339907955292571,
-					"number_Lightness_2": 0.9,
-					"number_Power_3": 0.125,
-					"number_Position_4": 0.7529411764705882
-				},
-				"gradientStep_Step7_7": {
-					"number_Hue_0": 0.75,
-					"number_Saturation_1": 0.07889546351084813,
-					"number_Lightness_2": 1,
-					"number_Power_3": 0.5,
-					"number_Position_4": 1
-				}
-			},
-			"gradientStepList_Water_34": {
+			"gradientStepList_Water_32": {
 				"gradientStep_Step0_0": {
 					"number_Hue_0": 0.1893491124260355,
 					"number_Saturation_1": 0.5443786982248521,
@@ -932,6 +816,122 @@
 					"number_Position_4": 1
 				}
 			},
+			"gradientStepList_Metal_33": {
+				"gradientStep_Step0_0": {
+					"number_Hue_0": 0.8,
+					"number_Saturation_1": 0,
+					"number_Lightness_2": 0,
+					"number_Power_3": 0.125,
+					"number_Position_4": 0
+				},
+				"gradientStep_Step1_1": {
+					"number_Hue_0": 0.75,
+					"number_Saturation_1": 0.16042077580539119,
+					"number_Lightness_2": 0.0495703899537343,
+					"number_Power_3": 0.5,
+					"number_Position_4": 0.0784313725490196
+				},
+				"gradientStep_Step2_2": {
+					"number_Hue_0": 0.75,
+					"number_Saturation_1": 0.1393819855358317,
+					"number_Lightness_2": 0.05750165234633179,
+					"number_Power_3": 0.125,
+					"number_Position_4": 0.10980392156862745
+				},
+				"gradientStep_Step3_3": {
+					"number_Hue_0": 0.75,
+					"number_Saturation_1": 0.11045364891518737,
+					"number_Lightness_2": 0.06014540647719762,
+					"number_Power_3": 0.125,
+					"number_Position_4": 0.1568627450980392
+				},
+				"gradientStep_Step4_4": {
+					"number_Hue_0": 0.75,
+					"number_Saturation_1": 0.1525312294543064,
+					"number_Lightness_2": 0.06278916060806344,
+					"number_Power_3": 0.5,
+					"number_Position_4": 0.47058823529411764
+				},
+				"gradientStep_Step5_5": {
+					"number_Hue_0": 0.8,
+					"number_Saturation_1": 0.14464168310322156,
+					"number_Lightness_2": 0.08922670191672175,
+					"number_Power_3": 0.125,
+					"number_Position_4": 0.5019607843137255
+				},
+				"gradientStep_Step6_6": {
+					"number_Hue_0": 0.75,
+					"number_Saturation_1": 0.12886259040105194,
+					"number_Lightness_2": 0.23727693324520818,
+					"number_Power_3": 0.125,
+					"number_Position_4": 0.7529411764705882
+				},
+				"gradientStep_Step7_7": {
+					"number_Hue_0": 0.75,
+					"number_Saturation_1": 0.0631163708086785,
+					"number_Lightness_2": 0.6787838730998017,
+					"number_Power_3": 0.5,
+					"number_Position_4": 1
+				}
+			},
+			"gradientStepList_Metal2_34": {
+				"gradientStep_Step0_0": {
+					"number_Hue_0": 0.8,
+					"number_Saturation_1": 0,
+					"number_Lightness_2": 0,
+					"number_Power_3": 0.125,
+					"number_Position_4": 0
+				},
+				"gradientStep_Step1_1": {
+					"number_Hue_0": 0.75,
+					"number_Saturation_1": 0.1472715318869165,
+					"number_Lightness_2": 0.0495703899537343,
+					"number_Power_3": 0.5,
+					"number_Position_4": 0.0784313725490196
+				},
+				"gradientStep_Step2_2": {
+					"number_Hue_0": 0.75,
+					"number_Saturation_1": 0.1525312294543064,
+					"number_Lightness_2": 0.05485789821546596,
+					"number_Power_3": 0.125,
+					"number_Position_4": 0.10980392156862745
+				},
+				"gradientStep_Step3_3": {
+					"number_Hue_0": 0.75,
+					"number_Saturation_1": 0.12360289283366206,
+					"number_Lightness_2": 0.06543291473892927,
+					"number_Power_3": 0.125,
+					"number_Position_4": 0.1568627450980392
+				},
+				"gradientStep_Step4_4": {
+					"number_Hue_0": 0.75,
+					"number_Saturation_1": 0.0945142101784534,
+					"number_Lightness_2": 0.05750165234633179,
+					"number_Power_3": 0.5,
+					"number_Position_4": 0.47058823529411764
+				},
+				"gradientStep_Step5_5": {
+					"number_Hue_0": 0.8,
+					"number_Saturation_1": 0.09187045604758758,
+					"number_Lightness_2": 0.06278916060806344,
+					"number_Power_3": 0.125,
+					"number_Position_4": 0.5019607843137255
+				},
+				"gradientStep_Step6_6": {
+					"number_Hue_0": 0.75,
+					"number_Saturation_1": 0.1130204890945142,
+					"number_Lightness_2": 0.20819563780568406,
+					"number_Power_3": 0.125,
+					"number_Position_4": 0.7529411764705882
+				},
+				"gradientStep_Step7_7": {
+					"number_Hue_0": 0.75,
+					"number_Saturation_1": 0.07889546351084813,
+					"number_Lightness_2": 0.6867151354923992,
+					"number_Power_3": 0.5,
+					"number_Position_4": 1
+				}
+			},
 			"gradientStepList_Glass_35": {
 				"gradientStep_Step0_0": {
 					"number_Hue_0": 0.22616699539776464,
@@ -942,49 +942,49 @@
 				},
 				"gradientStep_Step1_1": {
 					"number_Hue_0": 0.16568047337278108,
-					"number_Saturation_1": 0.5,
+					"number_Saturation_1": 0.1553205551883675,
 					"number_Lightness_2": 0.2,
 					"number_Power_3": 0.5,
 					"number_Position_4": 0.0784313725490196
 				},
 				"gradientStep_Step2_2": {
 					"number_Hue_0": 0.1814595660749507,
-					"number_Saturation_1": 0.3,
+					"number_Saturation_1": 0.13681427627230666,
 					"number_Lightness_2": 0.1,
 					"number_Power_3": 0.125,
 					"number_Position_4": 0.10980392156862745
 				},
 				"gradientStep_Step3_3": {
 					"number_Hue_0": 0.0762656147271532,
-					"number_Saturation_1": 0.2,
+					"number_Saturation_1": 0.16060806345009915,
 					"number_Lightness_2": 0.2,
 					"number_Power_3": 0.125,
 					"number_Position_4": 0.1568627450980392
 				},
 				"gradientStep_Step4_4": {
 					"number_Hue_0": 0.22090729783037474,
-					"number_Saturation_1": 0.8,
+					"number_Saturation_1": 0.2267019167217449,
 					"number_Lightness_2": 0.8,
 					"number_Power_3": 0.5,
 					"number_Position_4": 0.47058823529411764
 				},
 				"gradientStep_Step5_5": {
 					"number_Hue_0": 0.14464168310322156,
-					"number_Saturation_1": 0.5,
+					"number_Saturation_1": 0.19233311302048908,
 					"number_Lightness_2": 0.4,
 					"number_Power_3": 0.125,
 					"number_Position_4": 0.5019607843137255
 				},
 				"gradientStep_Step6_6": {
 					"number_Hue_0": 0.1525312294543064,
-					"number_Saturation_1": 0.8,
+					"number_Saturation_1": 0.18704560475875742,
 					"number_Lightness_2": 0.9,
 					"number_Power_3": 0.125,
 					"number_Position_4": 0.7529411764705882
 				},
 				"gradientStep_Step7_7": {
 					"number_Hue_0": 0.21564760026298488,
-					"number_Saturation_1": 0.1,
+					"number_Saturation_1": 0.13681427627230666,
 					"number_Lightness_2": 1,
 					"number_Power_3": 0.5,
 					"number_Position_4": 1
@@ -1193,6 +1193,52 @@
 					"number_Hue_0": 0.7096774193548387,
 					"number_Saturation_1": 0.06451612903225806,
 					"number_Lightness_2": 0.9354838709677419,
+					"number_Power_3": 0.09467455621301775,
+					"number_Position_4": 1
+				}
+			},
+			"gradientStepList_Leaf_45": {
+				"gradientStep_Step0_0": {
+					"number_Hue_0": 0.3548387096774194,
+					"number_Saturation_1": 0,
+					"number_Lightness_2": 0,
+					"number_Power_3": 0.1472715318869165,
+					"number_Position_4": 0
+				},
+				"gradientStep_Step1_1": {
+					"number_Hue_0": 0.3870967741935484,
+					"number_Saturation_1": 0.06451612903225806,
+					"number_Lightness_2": 0.06451612903225806,
+					"number_Power_3": 0.14990138067061143,
+					"number_Position_4": 0.5470085470085471
+				},
+				"gradientStep_Step2_2": {
+					"number_Hue_0": 0.41935483870967744,
+					"number_Saturation_1": 0.16129032258064516,
+					"number_Lightness_2": 0.12903225806451613,
+					"number_Power_3": 0.09467455621301775,
+					"number_Position_4": 1
+				}
+			},
+			"gradientStepList_Leaf2_46": {
+				"gradientStep_Step0_0": {
+					"number_Hue_0": 0.41935483870967744,
+					"number_Saturation_1": 0.45161290322580644,
+					"number_Lightness_2": 0.03225806451612903,
+					"number_Power_3": 0.1472715318869165,
+					"number_Position_4": 0
+				},
+				"gradientStep_Step1_1": {
+					"number_Hue_0": 0.45161290322580644,
+					"number_Saturation_1": 0.45161290322580644,
+					"number_Lightness_2": 0.3870967741935484,
+					"number_Power_3": 0.14990138067061143,
+					"number_Position_4": 0.715318869165023
+				},
+				"gradientStep_Step2_2": {
+					"number_Hue_0": 0.4838709677419355,
+					"number_Saturation_1": 0.45161290322580644,
+					"number_Lightness_2": 0.6774193548387096,
 					"number_Power_3": 0.09467455621301775,
 					"number_Position_4": 1
 				}

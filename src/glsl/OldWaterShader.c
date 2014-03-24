@@ -37,7 +37,7 @@ varying vec3 finalVec;
 const float timeScale = 0.0002;
 
 
-const float TEX_WATER = 34.0/255.0;
+const float TEX_WATER = 32.0/255.0;
 const float TEX_GLASS = 35.0/255.0;
 
 const float pi = 3.14159;

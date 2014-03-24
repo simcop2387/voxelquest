@@ -14,14 +14,13 @@ uniform sampler2D Texture4;
 varying vec2 TexCoord0;
 
 uniform float seaLevel;
-uniform float heightmapMax;
 uniform float curTime;
 uniform float cameraZoom;
 uniform vec3 cameraPos;
 uniform vec2 bufferDim;
 
 
-const float TEX_WATER = 34.0/255.0;
+const float TEX_WATER = 32.0/255.0;
 const float TEX_GLASS = 35.0/255.0;
 const float pi = 3.14159;
 
@@ -58,12 +57,20 @@ vec2 pack16(float num) {
     return res;
 
 }
+bool isGeom(float aVal) {
+    return aVal >= 0.5;
+    // int test = int(unpack16(num));
+    // return (test >= 32768);
+}
 
 
 void main() {
 
     vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
     vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
+
+    bool isGeometry = isGeom(tex0.a);
+    bool outOfWater = true;
 
     vec4 tex2 = texture2D(Texture2, TexCoord0.xy);
     vec4 tex3 = texture2D(Texture3, TexCoord0.xy);
@@ -98,7 +105,7 @@ void main() {
     worldPositionWater.z = baseHeightWater;
 
 
-    float seaLev = seaLevel*heightmapMax;
+    float seaLev = seaLevel;
 
     int i;
     float fi;
@@ -200,6 +207,7 @@ void main() {
         if (hitLand || (!hitWater) || isTopOfWater ) {
             gl_FragData[0] = tex0;
             gl_FragData[1] = tex1;
+            
         }
         else {
 
@@ -214,6 +222,8 @@ void main() {
 
             gl_FragData[0] = tex2;
             gl_FragData[1] = tex3;
+
+            outOfWater = false;
 
             if (tex3.a == 0.0) {
                 gl_FragData[1].rgb = tex3Orig.rgb;
@@ -233,12 +243,31 @@ void main() {
         else {
             gl_FragData[0] = tex2;
             gl_FragData[1] = tex3;
+            outOfWater = false;
         }
     }
 
+    if (isGeometry) {
+        if (outOfWater) {
 
+        }
+        else {
+            tex0.b = 0.0/255.0;
+            tex0.a = 140.0/255.0;
+            
+        }
 
+        gl_FragData[0] = tex0;
+        gl_FragData[1] = tex1;
+        
+    }
 
+    // if (
+    //     (tex2.a == TEX_WATER) || 
+    //     (tex2.a == TEX_GLASS)
+    // ) {
+    //     gl_FragData[0].rg = tex0.rg;
+    // }
 
 
     

@@ -12,7 +12,7 @@ uniform vec2 bufferDim;
 uniform vec2 mapDimInPixels;
 
 
-const float TEX_WATER = 34.0/255.0;
+const float TEX_WATER = 32.0/255.0;
 const float TEX_GLASS = 35.0/255.0;
 
 

@@ -12,8 +12,6 @@ uniform sampler2D Texture3;
 
 varying vec4 TexCoord0;
 
-//uniform float heightmapMax;
-//uniform float seaLevel;
 uniform vec2 grassWH;
 uniform float curTime;
 uniform float cameraZoom;
@@ -178,7 +176,7 @@ void main() {
     }
 
     
-    float newHeight = baseHeight + TexCoord0.z*50.0/newZoom + grassWH.y*512.0;// + TexCoord0.z*grassWH.y*bufferDim.y;
+    float newHeight = baseHeight + TexCoord0.z*grassWH.y + 30.0; // *50.0/newZoom + grassWH.y*512.0;// + TexCoord0.z*grassWH.y*bufferDim.y;
 
    
 

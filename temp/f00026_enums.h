@@ -98,18 +98,20 @@ enum E_OBJ {
     //E_OBJ_P1,
     //E_OBJ_P2,
     E_OBJ_LIGHT0,
-    E_OBJ_LIGHT1,
-    E_OBJ_LIGHT2,
-    E_OBJ_LIGHT3,
-    E_OBJ_LIGHT4,
-    E_OBJ_LIGHT5,
+    // E_OBJ_LIGHT1,
+    // E_OBJ_LIGHT2,
+    // E_OBJ_LIGHT3,
+    // E_OBJ_LIGHT4,
+    // E_OBJ_LIGHT5,
     E_OBJ_LENGTH // LIGHTS MUST BE LAST ENTRIES
 };
 
 enum E_MAT_PARAM {
     //E_MAT_PARAM_TER,
     E_MAT_PARAM_ROAD,
+    E_MAT_PARAM_DOCK,
     E_MAT_PARAM_BUILDING,
+    E_MAT_PARAM_LANTERN,
     E_MAT_PARAM_DOORWAY,
     E_MAT_PARAM_DOOR,
     E_MAT_PARAM_WINDOW,
@@ -121,10 +123,12 @@ enum E_MAT_PARAM {
 enum E_BUILDING_TYPE {
     E_BT_NULL,
     E_BT_ROAD,
+    E_BT_DOCK,
     E_BT_MAINHALL,
     E_BT_WING,
     E_BT_BALCONY,
     E_BT_TOWER,
+    E_BT_LANTERN,
     E_BT_DOORWAY,
     E_BT_WINDOWFRAME,
     E_BT_DOOR,
@@ -253,14 +257,17 @@ struct PlantRules
     float divergenceAngleV[2];
     float begThickness;
     float endThickness;
-    float baseLength;
-    float nodeLengthMultiplier;
+    float curLength[MAX_PLANT_GEN];
+    float sphereGen;
+    //float baseLength;
+    //float nodeLengthMultiplier;
     float numGenerations;
     float angleUniformityU;
     float isInit;
 
 
 };
+
 
 
 

@@ -14,12 +14,16 @@ uniform vec2 resolution;
 
 uniform vec3 cameraPos;
 
-uniform float numLights;
+uniform float lightCount;
 uniform vec4 lightArr[4*6];
 
 const float TEX_GRASS = 12.0/255.0;
 const float TEX_GRASS2 = 13.0/255.0;
 const int VECS_PER_LIGHT = 4;
+
+const float TEX_WATER =     32.0/255.0;
+const float TEX_METAL =     33.0/255.0;
+const float TEX_GLASS =     35.0/255.0;
 
 varying vec2 TexCoord0;
 
@@ -150,6 +154,7 @@ void main() {
     float flerp = 0.0;
     float curHeight = 0.0;
     float totHits = 0.0;
+    float totHits2 = 0.0;
     float wasHit = 0.0;
     float lastHit = 0.0;
 
@@ -295,6 +300,7 @@ void main() {
     float totNonColored = 0.0;
     
     vec3 totLightColor = vec3(0.0);
+    vec3 totLightColorNoShadow = vec3(0.0);
     vec3 curLightColor = vec3(0.0);
 
     
@@ -341,7 +347,7 @@ void main() {
 
 
         // LIGHT LOOP START
-        for (k = 0; k < numLights; k++) {
+        for (k = 0; k < lightCount; k++) {
             baseInd = k*VECS_PER_LIGHT;
             lightPosWS = lightArr[baseInd+0];
 
@@ -362,7 +368,12 @@ void main() {
                 lightColorization = lightArr[baseInd+3].r;
                 lightFlooding = lightArr[baseInd+3].g;
 
-                
+                // if (k == 0) {
+                //     curLightColor = vec3(0.1,0.2,1.0);
+                //     lightIntensity = 0.3;
+                //     lightColorization = 0.7;
+                //     lightFlooding = 1.0;
+                // }
 
 
 
@@ -370,6 +381,7 @@ void main() {
 
                 
                 totHits = 0.0;
+                totHits2 = 0.0;
                 totRays = 0.0;
                 //hitCount = 0.0;
                 for (i = 0; i < iNumSteps; i++) {
@@ -383,17 +395,22 @@ void main() {
 
                     curHeight = unpack16(samp.rg);
 
-                    if (samp.a < 0.5) {//(samp.b*samp.a < 1.0) { // isGeom
-                        wasHit = float( curHeight > wCurPos.z+2.0 );// *clamp(flerp+0.1,0.0,1.0);
-                        totHits += wasHit;
-                        lastHit = mix(lastHit, flerp, wasHit);
-                        //hitCount += 1.0;
-                    }
+                    
+                        if ( (samp.a < 0.5) && ((samp.a < TEX_METAL) || (samp.a > TEX_GLASS)) ) {//(samp.b*samp.a < 1.0) { // isGeom
+                            wasHit = float( curHeight > wCurPos.z+2.0 );// *clamp(flerp+0.1,0.0,1.0);
+                            totHits += wasHit;
+                            //totHits2 += wasHit*float(abs(curHeight - wCurPos.z) <= 64.0);
+                            lastHit = mix(lastHit, flerp, wasHit);
+                            //hitCount += 1.0;
+                        }
+                    
+
+                    
 
                 }
 
-                resComp = mix(1.0,0.0, totHits*4.0/fNumSteps );
-                resComp = clamp(resComp,0.0,1.0);
+                resComp = mix(1.0, 0.0, totHits*4.0/fNumSteps);// mix(totHits2*16.0/fNumSteps, totHits*4.0/fNumSteps, 1.0));// clamp(distance(sStartPos,sEndPos)*4.0,0.0,1.0)) );
+                resComp = clamp(resComp,0.3,1.0);
 
 
                 
@@ -418,7 +435,9 @@ void main() {
                 resCompTot += resComp*lightDis;
                 frontLightTot += frontLight*lightDis;
 
-                
+                if ( (tex0.a == TEX_GLASS) && (k != 0) ) {
+                    totLightColorNoShadow += (backLight+frontLight)*curLightColor*min(lightDis*4.0,1.0);
+                }
 
             }
         }
@@ -438,50 +457,50 @@ void main() {
             lightVal = clamp(dot(oneVec.xyz,totLightColor.xyz)/3.0,0.0,1.0);
             //lightRes = mix(newAO*0.4,lightVal, mix(0.4,0.7,lightVal));
             lightRes = mix(newAO*0.5, lightVal, lightVal) + ((1.0-newAO)-0.5)/2.0;
-            lightRes = clamp(lightRes,0.0,1.0);
+            lightRes = clamp(
+                //mix(lightRes*resCompTot,lightRes,clamp(totNonColored,0.0,1.0)),
+                lightRes,
+                0.0,
+                1.0
+            );
 
             resColorTemp = unpackColor(tex0.ba,lightRes);
             resColorTemp = mix(resColorTemp,unpackColor(tex0.ba,newAO),0.1);
-            resColorTemp = mix(resColorTemp*vec3(0.4,0.4,1.0)*newAO,resColorTemp, min(frontLightTot+0.5,1.0)*resCompTot );
+            resColorTemp = mix(resColorTemp*vec3(0.2,0.2,0.2)*newAO*totLightColor + vec3(0.0,0.0,0.02),resColorTemp, min(frontLightTot+0.5,1.0)*resCompTot ) + totLightColorNoShadow;
 
 
 
-            // resColorTemp = mix(
-            //     resColorTemp,
-            //     globLightCol*vec3( clamp(dot(resColorTemp,oneVec.xyz)/3.0,0.0,1.0) ),
-            //     globLightColIntensity
-            // );
+
+            totHits2 = clamp((totColorization + newAO )*(1.0-totNonColored),0.0,1.0);
+           
             resColorTemp = mix(
                 resColorTemp,
-                clamp(totLightColor,0.0,1.0)*(lightRes + clamp(totLightDis,0.0,1.0)*totLightIntensity ),//vec3( clamp(dot(resColorTemp,oneVec.xyz)/3.0,0.0,1.0) ) + totLightColor*totLightIntensity,
-                clamp(totColorization*(1.0-totNonColored),0.0,1.0)
-            );
+                
+
+                mix(
+                    resColorTemp + clamp(totLightColor,0.0,1.0)*(lightRes),
+                    clamp(totLightColor,0.0,1.0)*(lightRes + clamp(totLightDis,0.0,1.0) ), //*totLightIntensity
+                    totHits2
+                ),
+
+                totHits2
+            )*clamp(totLightIntensity,0.0,1.0)+totLightColor*0.2;
 
 
-            resColGS = vec3( clamp(dot(resColorTemp,oneVec.xyz)/3.0,0.0,1.0) );
+
+            resColGS = vec3( dot(resColorTemp,oneVec.xyz)/3.0 );
+
             resColorTemp = mix(
                 resColGS,
                 resColorTemp,
                 clamp(1.0-distance(resColGS,resColorTemp),0.0,1.0)*1.5//*mix(0.5,1.0,totLightDis)
             );
 
-
-            // resColorTemp = mix(
-            //     resColGS,
-            //     resColorTemp,
-            //     clamp(1.0-distance(resColGS,resColorTemp),0.0,1.0)*2.0//*mix(2.0,4.0,totLightDis)
-            // );
-
-            //resColorTemp += mix( (resColorTemp),vec3(0.5),0.5)/5.0;
-
-            //resColorTemp = vec3(lightVal);
         }
 
 
         
         resColor = resColorTemp;
-
-        //resColor = vec3(resCompTot);
     }
 
     resColor = clamp(resColor-outDif,0.0,1.0);

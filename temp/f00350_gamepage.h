@@ -116,7 +116,7 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 		float avgHeight = 0.0f;
 		float centerHeight = (worldMinVisInPixels.getFZ() + worldMaxVisInPixels.getFZ())/2.0f;
 		GameWorld* gw = singleton->gw;
-		seaHeightInPixels = ( ( ((float)gw->seaLevel)*singleton->heightmapMax )/255.0 );
+		seaHeightInPixels = ( singleton->getSeaLevelInPixels() );
 		
 
 		float testHeight[4];
@@ -145,11 +145,15 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 		maxHeight += singleton->visPageSizeInPixels*2;
 		minHeight -= singleton->visPageSizeInPixels*2;
 
-
+		if (worldMinVisInPixels.getFZ() <  (singleton->getSeaLevelInPixels() - singleton->maxSeaDepth - 1.0f*singleton->pixelsPerMeter ) ) {
+			fillState = E_FILL_STATE_EMPTY;
+			curState = E_STATE_LENGTH;
+			return;
+		}
 
 		
 		hasWater =  ( seaHeightInPixels >= worldMinVisInPixels.getFZ() );
-		hasTerrain = ( avgHeight + singleton->visPageSizeInPixels*4.0f >= worldMinVisInPixels.getFZ() ) || ( seaHeightInPixels + singleton->visPageSizeInPixels*4.0f >= worldMinVisInPixels.getFZ() );//(abs(centerHeight-avgHeight) <= singleton->visPageSizeInPixels*4.0);
+		hasTerrain = ( avgHeight + singleton->visPageSizeInPixels*4.0f >= worldMinVisInPixels.getFZ() ) || ( seaHeightInPixels + singleton->visPageSizeInPixels*1.0f >= worldMinVisInPixels.getFZ() );//(abs(centerHeight-avgHeight) <= singleton->visPageSizeInPixels*4.0);
 		
 
 		addGeom(true);
@@ -354,7 +358,7 @@ void GamePage::addGeom (bool justTesting)
 							) {
 								
 								if (justTesting) {
-									if (gg->buildingType == E_BT_WINDOW) {
+									if ( (gg->buildingType == E_BT_WINDOW) || (gg->buildingType == E_BT_LANTERN)) {
 										hasWindow = true;
 									}
 									if (gg->buildingType == E_BT_TREE) {
@@ -520,6 +524,8 @@ void GamePage::generateVolume ()
 		singleton->setShaderFloat("pixelsPerMeter", singleton->pixelsPerMeter);
 		//singleton->setShaderFloat("directPass", singleton->directPass);
 		singleton->setShaderFloat("seaLevel", seaHeightInPixels );
+		singleton->setShaderFloat("maxSeaDepth", singleton->maxSeaDepth );
+		singleton->setShaderFloat("heightmapMin",singleton->heightmapMin);
 		singleton->setShaderFloat("heightmapMax",singleton->heightmapMax);
 		//singleton->setShaderFloat("slicesPerPitch", (float)( singleton->slicesPerPitch ));
 		

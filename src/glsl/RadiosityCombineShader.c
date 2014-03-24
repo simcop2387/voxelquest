@@ -29,7 +29,7 @@ void main() {
     
     vec3 newRad = pow(tex1.rgb,vec3(1.0) );
 
-    vec3 finalCol = mix(tex0.rgb, tex0.rgb+newRad, newRad*0.15);
+    vec3 finalCol = mix(tex0.rgb, tex0.rgb+newRad, newRad*0.1);
     vec3 resColGS = vec3( clamp(dot(finalCol,oneVec.xyz)/3.0,0.0,1.0) );
 
     if (tex2.a < 0.5) {

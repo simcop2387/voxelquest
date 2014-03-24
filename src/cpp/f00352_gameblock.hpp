@@ -9,7 +9,10 @@ public:
 	int blockSizeInHolders;
 	int blockSizeInLots;
 	int counter;
+	int lightCounter;
 	
+	FIVector4 lightVec;
+
 	FIVector4 offsetInBlocks;
 	FIVector4 offsetInBlocksWrapped;
 	FIVector4 origin;
@@ -20,6 +23,8 @@ public:
 	FIVector4 moveMaxInPixels;
 	FIVector4 p1;
 	FIVector4 p2;
+	FIVector4 newP1;
+	FIVector4 newP2;
 	FIVector4 rad;
 	FIVector4 visInsetFromMin;
 	FIVector4 visInsetFromMax;
@@ -34,12 +39,14 @@ public:
 	FIVector4 tempVec2;
 	FIVector4 tempVec3;
 
+	FIVector4 tempVec4;
+
 	FIVector4 tempVecB;
 	FIVector4 tempVecB2;
 	FIVector4 tempVecB3;
 
 	std::vector<GameGeom*> gameGeom;
-
+	std::vector<GameLight*> gameLights;
 
 
 	GamePlant myPlant;
@@ -76,20 +83,34 @@ public:
 	void addPlantNodes(GamePlantNode* curPlantNode, FIVector4* orig ) {
 		int i;
 
+		float begThickness;
+		float endThickness;
+
 		if (curPlantNode->parent == NULL) {
 
 		}
 		else {
 
 			if (curPlantNode->parent->parent == NULL) {
-				tempVec.setFXYZRef(&(curPlantNode->parent->begPoint));
+				tempVec.setFXYZ(0.0f,0.0f,0.0f); //Ref(&(curPlantNode->parent->begPoint));
+
+				begThickness = curPlantNode->midThickness;
+				endThickness = curPlantNode->midThickness;
+
 			}
 			else {
 				tempVec.setFXYZRef(&(curPlantNode->parent->begPoint));
 				tempVec.addXYZRef(&(curPlantNode->parent->endPoint));
 				tempVec.multXYZ(0.5f);
+
+				begThickness = curPlantNode->parent->midThickness;
+				endThickness = curPlantNode->midThickness;
 			}
 
+
+			// if (curPlantNode->numChildren == 0) {
+			// 	endThickness = 0.5f*singleton->pixelsPerMeter;
+			// }
 
 			
 			
@@ -115,8 +136,9 @@ public:
 				&tempVec2,
 				&tempVec3,
 
-				curPlantNode->begThickness,
-				curPlantNode->endThickness,										
+				begThickness,//curPlantNode->begThickness,
+				endThickness,//curPlantNode->endThickness,	
+				curPlantNode->sphereRad,									
 				&matParams
 			);
 			singleton->geomCounter++;
@@ -138,6 +160,7 @@ public:
 		offsetInBlocksWrapped.setIXYZ(_xw,_yw,0);
 
 		counter = 0;
+		lightCounter = 0;
 
 		origin.setFXYZ(0.0f,0.0f,0.0f);
 
@@ -164,6 +187,8 @@ public:
 
 		float z;
 
+		float zmax;
+
 		maxFloors = singleton->maxFloors;
 
 		blockSizeInHolders = singleton->blockSizeInHolders;
@@ -183,6 +208,8 @@ public:
 
 		bool isTopOfWing;
 		bool isWingTip;
+
+		float hm = 0.0f;
 
 		float cr1;
 		float cr2;
@@ -280,7 +307,7 @@ public:
 		float offsetX = 0.0f;
 		float offsetY = 0.0f;
 
-
+		int curType;
 		
 
 		
@@ -324,6 +351,7 @@ public:
 			
 		}
 
+		// roads
 
 		for (i = 0; i < blockSizeInLots; i++) {
 			for (j = 0; j < blockSizeInLots; j++) {
@@ -348,6 +376,20 @@ public:
 					lotY = blockSizeInLots*(offsetInBlocks.getIY()) + j;
 					res = fbow2->getPixelAtWrapped(lotX, lotY, curChannel);
 
+
+					if (
+						singleton->getHeightAtPixelPos(lotX*singleton->pixelsPerLot,lotY*singleton->pixelsPerLot) <= 
+						singleton->getSeaLevelInPixels()  + 1.0f * pixelsPerMeter
+					) {
+						curType = E_BT_DOCK;
+					}
+					else {
+						curType = E_BT_ROAD;
+					}
+					
+					
+
+
 					// roads
 					for (k = 0; k < 4; k++) {
 
@@ -359,16 +401,16 @@ public:
 							for (m = 0; m < iNodeDivsPerLot; m++) {
 								switch (k) {
 									case 0: // x+
-										connectNodes(baseI+iNodeDivsPerLot,baseJ+m,baseI+iNodeDivsPerLot,baseJ+m+1,E_BT_ROAD,-1);
+										connectNodes(baseI+iNodeDivsPerLot,baseJ+m,baseI+iNodeDivsPerLot,baseJ+m+1,curType,-1);
 									break;
 									case 1: // x-
-										connectNodes(baseI,baseJ+m,baseI,baseJ+m+1,E_BT_ROAD,-1);
+										connectNodes(baseI,baseJ+m,baseI,baseJ+m+1,curType,-1);
 									break;
 									case 2: // y+
-										connectNodes(baseI+m,baseJ+iNodeDivsPerLot,baseI+m+1,baseJ+iNodeDivsPerLot,E_BT_ROAD,-1);
+										connectNodes(baseI+m,baseJ+iNodeDivsPerLot,baseI+m+1,baseJ+iNodeDivsPerLot,curType,-1);
 									break;
 									case 3: // y-
-										connectNodes(baseI+m,baseJ,baseI+m+1,baseJ,E_BT_ROAD,-1);
+										connectNodes(baseI+m,baseJ,baseI+m+1,baseJ,curType,-1);
 									break;
 
 								}
@@ -471,7 +513,15 @@ public:
 										getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_SHORTPROP)->typeVal = E_BT_DOORWAY;
 										getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_DYNPROP)->typeVal = E_BT_DOOR;
 										
+									}
+									else {
+										if (touches(testX,testY,E_BT_DOCK) >= 1) {
+											connectNodes(i, j, testX, testY, E_BT_DOCK, -1);
 
+											getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_SHORTPROP)->typeVal = E_BT_DOORWAY;
+											getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_DYNPROP)->typeVal = E_BT_DOOR;
+											
+										}
 									}
 
 									notFound = false;
@@ -499,9 +549,9 @@ public:
 							singleton->getHeightAtPixelPos(x1,y1) >
 							singleton->getSeaLevelInPixels() + 2.0f * pixelsPerMeter
 						) {
-							if ( true ) { //fGenRand() > 0.95
+							//if ( fGenRand() > 0.9 ) {
 								getNode(i,j)->centerProp.typeVal = E_BT_TREE;
-							}
+							//}
 						}
 
 						
@@ -699,11 +749,12 @@ public:
 
 		// get terrain heights
 
+		// TODO: touches() is going out of bounds?
+
 		floorHeight = 4.0*pixelsPerMeter;
 
 		for (i = 0; i < iBuildingNodesPerSide; i++) {
 			for (j = 0; j < iBuildingNodesPerSide; j++) {
-					
 				
 
 				lotX = blockSizeInPixels*offsetInBlocks.getIX();
@@ -713,15 +764,15 @@ public:
 				y1 = lotY + (j*blockSizeInPixels)/iBuildingNodesPerSideM1;
 
 
+
 				getNode(i,j)->terHeight = max(
 					singleton->getHeightAtPixelPos(x1,y1),
 					singleton->getSeaLevelInPixels() + 2.0f*pixelsPerMeter
 				);
 
-				if ( ( touches(i,j,E_BT_WING) + touches(i,j,E_BT_MAINHALL) ) >= 1) {
+				if ( ( touches(i,j,E_BT_WING) + touches(i,j,E_BT_MAINHALL) + touches(i,j,E_BT_DOCK) ) >= 1) {
 					getNode(i,j)->terHeight = floor( getNode(i,j)->terHeight/floorHeight)*floorHeight + floorHeight*0.25f;
 				}
-
 			}
 		}
 
@@ -759,11 +810,24 @@ public:
 
 				curHeight = getNode(i,j)->terHeight;
 
+				// if (touches(i,j,E_BT_DOCK) >= 1) {
+				// 	curHeight -= 3.0f*pixelsPerMeter;
+				// }
+
 				terrainHeights[ (i + j*iBuildingNodesPerSideM1)*4 + 0 ] = curHeight%256;
 				terrainHeights[ (i + j*iBuildingNodesPerSideM1)*4 + 1 ] = curHeight/256;
 
-				if (touches(i,j,E_BT_ROAD) + touches(i,j,E_BT_WING) + touches(i,j,E_BT_MAINHALL) >= 1) {
-					terrainHeights[ (i + j*iBuildingNodesPerSideM1)*4 + 2 ] = 255;
+				p = touches(i,j,E_BT_DOCK);
+				m = touches(i,j,E_BT_ROAD) +  touches(i,j,E_BT_WING) + touches(i,j,E_BT_MAINHALL);
+				if (p + m >= 1) {
+					
+					if ( (p > 0) && (m == 0) ) {
+						terrainHeights[ (i + j*iBuildingNodesPerSideM1)*4 + 2 ] = 128;
+					}
+					else {
+						terrainHeights[ (i + j*iBuildingNodesPerSideM1)*4 + 2 ] = 255;
+					}
+					
 				}
 				else {
 					terrainHeights[ (i + j*iBuildingNodesPerSideM1)*4 + 2 ] = 0;
@@ -972,6 +1036,7 @@ public:
 									thickVals.setFXYZ(0.0f,1.0f*pixelsPerMeter,0.0);//getNode(i,j)->terHeight,getNode(testX,testY)->terHeight);//getNode(testX,testY)->terHeight-z
 									
 								break;
+								case E_BT_DOCK:
 								case E_BT_MAINHALL:
 								case E_BT_WING:
 								case E_BT_TOWER:
@@ -1004,7 +1069,20 @@ public:
 									roofHeight = 4.0f;
 
 									houseColor = curId%6;
-									matParams.setFXYZ(E_MAT_PARAM_BUILDING, houseColor, 0.0f);
+
+									if (curBT == E_BT_DOCK) {
+										matParams.setFXYZ(E_MAT_PARAM_DOCK, houseColor, 0.0f);
+										begHeight = 0;
+										nFloors = 3;
+										zmax = roofHeight*pixelsPerMeter + floorHeight*pixelsPerMeter/2.0f;
+										hm = 2.0f;
+									}
+									else {
+										matParams.setFXYZ(E_MAT_PARAM_BUILDING, houseColor, 0.0f);
+										zmax = 0.0f;
+										hm = 1.0f;
+									}
+									
 
 
 									
@@ -1068,9 +1146,16 @@ public:
 										pv4 = getNode(testX,testY)->powerValV;
 									}
 
-									baseOffset = -(floorHeight-1.0f)*pixelsPerMeter + floorHeight*(begHeight)*pixelsPerMeter;
+									if (curBT == E_BT_DOCK) {
+										pv1 = 2.0f;
+										pv2 = 2.0f;
+										pv3 = 2.0f;
+										pv4 = 2.0f;
+									}
+
+									baseOffset = -(floorHeight*hm-1.0f)*pixelsPerMeter + floorHeight*(begHeight)*pixelsPerMeter;
 									visInsetFromMin.setFXYZ(cr1,cr3,cornerRad.getFZ() + floorHeight*(begHeight)*pixelsPerMeter);
-									visInsetFromMax.setFXYZ(cr2,cr4,0.0f);
+									visInsetFromMax.setFXYZ(cr2,cr4,zmax);
 
 									
 									thickVals.setFXYZ(0.0f,0.0f,0.0f);
@@ -1224,183 +1309,130 @@ public:
 
 									myPlant.init(
 										singleton,
-										&(GamePlant::allPlantRules[E_PT_OAK_TRUNK]),
+										&(GamePlant::allPlantRules[E_PT_OAK_ROOTS]),
 										&(GamePlant::allPlantRules[E_PT_OAK_TRUNK]),
 										&origin
 									);
 
-									addPlantNodes(myPlant.trunkNode, &p1);
-									
-
-									/*
-									for (n = 0; n < 3; n++) {
-
-										tempVec.setFXYZRef(&p1);
-										tempVec3.setFXYZRef(&p2);
-
-										// control point
-										tempVec3.addXYZ(
-											(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
-											(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
-											(fGenRand()*1.0f)*3.0f*pixelsPerMeter
-										);
-
-										tempVec2.setFXYZRef(&tempVec3);
-
-										tempVec2.addXYZ(
-											(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
-											(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
-											(fGenRand()*1.0f)*3.0f*pixelsPerMeter
-										);
-
-										gameGeom.push_back(new GameGeom());
-										gameGeom.back()->initTree(
-											curBT,
-											counter,
-											singleton->geomCounter,
-											curAlign,
-											baseOffset,
-											
-											&tempVec,
-											&tempVec2,
-											&tempVec3,
-
-											1.0f*pixelsPerMeter,
-											1.0f*pixelsPerMeter,
-
-											//&rad,
-											//&cornerRad,
-											&visInsetFromMin,
-											&visInsetFromMax,
-											// &powerVals,
-											// &powerVals2,
-											// &thickVals,
-											
-											&matParams
-										);
-										singleton->geomCounter++;
-										counter++;
-										
-										for (p = 0; p < 3; p++) {
-											
+									tempVec4.setFXYZRef(&p1);
+									tempVec4.addXYZ(0.0f,0.0f,4.0f*pixelsPerMeter);
 
 
-											// 1,2 = start, end
-											// 3 = control point
-
-
-
-
-
-
-											tempVecB.setFXYZRef(&tempVec2);
-											
-
-											tempVecB3.setFXYZRef(&tempVec2);
-											tempVecB3.addXYZRef(&tempVec3,-1.0f);
-											//tempVecB3.multXYZ(2.0f);
-											tempVecB3.addXYZRef(&tempVec2);
-											
-
-											tempVecB2.setFXYZRef(&tempVecB3);
-
-											tempVecB2.addXYZ(
-												(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
-												(fGenRand()*2.0f-1.0f)*3.0f*pixelsPerMeter,
-												(fGenRand()*1.0f)*3.0f*pixelsPerMeter
-											);
-
-
-											gameGeom.push_back(new GameGeom());
-											gameGeom.back()->initTree(
-												curBT,
-												counter,
-												singleton->geomCounter,
-												curAlign,
-												baseOffset,
-												
-												&tempVecB,
-												&tempVecB2,
-												&tempVecB3,
-
-												1.0f*pixelsPerMeter,
-												0.0f*pixelsPerMeter,
-
-												//&rad,
-												//&cornerRad,
-												&visInsetFromMin,
-												&visInsetFromMax,
-												// &powerVals,
-												// &powerVals2,
-												// &thickVals,
-												
-												&matParams
-											);
-											singleton->geomCounter++;
-											counter++;
-
-
-
-
-
-
-
-
-
-										}
-										
-										
-
-										
-									}
-									*/
-									
-
-
+									addPlantNodes(myPlant.rootsNode, &tempVec4);
+									addPlantNodes(myPlant.trunkNode, &tempVec4);
 
 								}
 								else {
 
+									switch (curBT) {
+										case E_BT_DOOR:
+										case E_BT_WINDOW:
+										case E_BT_DOORWAY:
+											maxLoop = 2;
+										break;
+										default:
+											maxLoop = 1;
+										break;
+									}
+
+									// if (curBT == E_BT_DOORWAY) {
+
+									// }
 									
-									if (
-										(curBT == E_BT_DOOR) ||
-										(curBT == E_BT_WINDOW)
-									) {
-										maxLoop = 2;
-									}
-									else {
-										maxLoop = 1;
-									}
+									// if (
+									// 	(curBT == E_BT_DOOR) ||
+									// 	(curBT == E_BT_WINDOW)
+									// ) {
+									// 	maxLoop = 2;
+									// }
+									// else {
+									// 	maxLoop = 1;
+									// }
 
 									for (n = 0; n < maxLoop; n++) {
-										if (maxLoop == 2) {
-											
 
-											if (n == 0) {
-												if (isVert) {
-													visInsetFromMax.addXYZ( rad.getFX() + 1.0f, 0.0f, 0.0f );
+										newP1.setFXYZRef(&p1);
+										newP2.setFXYZRef(&p2);
+										
+										switch (curBT) {
+											case E_BT_DOOR:
+											case E_BT_WINDOW:
+												if (n == 0) {
+													if (isVert) {
+														visInsetFromMax.addXYZ( rad.getFX() + 1.0f, 0.0f, 0.0f );
+													}
+													else {
+														visInsetFromMax.addXYZ( 0.0f, rad.getFY() + 1.0f, 0.0f );
+													}
+													
 												}
 												else {
-													visInsetFromMax.addXYZ( 0.0f, rad.getFY() + 1.0f, 0.0f );
+													if (isVert) {
+														visInsetFromMax.addXYZ( -(rad.getFX() + 1.0f), 0.0f, 0.0f );
+														visInsetFromMin.addXYZ( rad.getFX() + 1.0f, 0.0f, 0.0f );
+													}
+													else {
+														visInsetFromMax.addXYZ( 0.0f, -(rad.getFY() + 1.0f), 0.0f );
+														visInsetFromMin.addXYZ( 0.0f, rad.getFY() + 1.0f, 0.0f );
+													}
 												}
-												
-											}
-											else {
-												if (isVert) {
-													visInsetFromMax.addXYZ( -(rad.getFX() + 1.0f), 0.0f, 0.0f );
-													visInsetFromMin.addXYZ( rad.getFX() + 1.0f, 0.0f, 0.0f );
+											break;
+											case E_BT_DOORWAY:
+												if (n == 0) { // is doorway
+
 												}
-												else {
-													visInsetFromMax.addXYZ( 0.0f, -(rad.getFY() + 1.0f), 0.0f );
-													visInsetFromMin.addXYZ( 0.0f, rad.getFY() + 1.0f, 0.0f );
-												}
-											}
+												else { // is lantern
+													matParams.setFXYZ(E_MAT_PARAM_LANTERN, 0.0, 0.0f);
+													curBT = E_BT_LANTERN;
+													curAlign = E_ALIGN_MIDDLE;
+													
+													floorHeight = 0.5f;
+													roofHeight = 0.25f;
+													baseOffset = 0.0f;//(0.25f)*pixelsPerMeter;
+													rad.setFXYZ(
+														(0.25f)*pixelsPerMeter,
+														(0.25f)*pixelsPerMeter,
+														(nFloors*floorHeight*0.5 + roofHeight)*pixelsPerMeter
+													);
+													cornerRad.setFXYZ(
+														(0.0625f)*pixelsPerMeter,
+														(0.0625f)*pixelsPerMeter,
+														(0.25f)*pixelsPerMeter
+													);
+													thickVals.setFXYZ(0.25f*pixelsPerMeter, 0.0f, 0.0f);
+
+													newP1.addXYZRef(&newP2);
+													newP1.multXYZ(0.5f);
 
 
-											
-										}
-										else {
+													newP1.addXYZ(
+														(gw->dirModX[k]*0.5f - gw->dirModY[k]*2.0f)*pixelsPerMeter,
+														(gw->dirModY[k]*0.5f - gw->dirModX[k]*2.0f)*pixelsPerMeter,
+														3.0f*pixelsPerMeter
+													);
+													newP2.setFXYZRef(&newP1);
 
+													lightVec.randomize();
+													gameLights.push_back(new GameLight());
+													gameLights.back()->init(
+														lightCounter,
+														singleton->lightCounter,
+														&newP1,
+														&lightVec
+													);
+													singleton->lightCounter++;
+													lightCounter++;
+
+													visInsetFromMin.setFXYZ(0.0f,0.0f,cornerRad.getFZ() - 0.0625*pixelsPerMeter);
+													visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
+													
+													powerVals.setFXYZ(2.0f, 1.0f, 0.0f);
+													powerVals2.setFXYZRef(&powerVals);
+												}
+											break;
+											default:
+
+											break;
 										}
 
 
@@ -1411,8 +1443,8 @@ public:
 											singleton->geomCounter,
 											curAlign,
 											baseOffset,
-											&p1,
-											&p2,
+											&newP1,
+											&newP2,
 											&rad,
 											&cornerRad,
 											&visInsetFromMin,
@@ -1425,52 +1457,64 @@ public:
 										singleton->geomCounter++;
 										counter++;
 
+										if (curBT == E_BT_LANTERN) {
+											gameGeom.back()->light = gameLights.back();
+										}
 
-										if (maxLoop == 2) {
+										switch (curBT) {
+											case E_BT_DOOR:
+											case E_BT_WINDOW:
+												
+												tempVec2.setFXYZRef( gameGeom.back()->getVisMaxInPixels() );
+												tempVec2.addXYZRef( gameGeom.back()->getVisMinInPixels(), -1.0f );
+												tempVec2.multXYZ(0.5f);
+												tempf = min(min(tempVec2.getFX(), tempVec2.getFY()),tempVec2.getFZ());
 
-											
-											tempVec2.setFXYZRef( gameGeom.back()->getVisMaxInPixels() );
-											tempVec2.addXYZRef( gameGeom.back()->getVisMinInPixels(), -1.0f );
-											tempVec2.multXYZ(0.5f);
-											tempf = min(min(tempVec2.getFX(), tempVec2.getFY()),tempVec2.getFZ());
+												if (n == 0) {
+													tempVec.setFXYZRef( gameGeom.back()->getVisMinInPixels() );
+													tempVec.addXYZ(tempf,tempf,0.0f);
 
-											if (n == 0) {
-												tempVec.setFXYZRef( gameGeom.back()->getVisMinInPixels() );
-												tempVec.addXYZ(tempf,tempf,0.0f);
+													if (isVert) {
+														tempVec.addXYZ(-tempf*3.0,0.0,0.0f);
+													}
+													else {
+														tempVec.addXYZ(0.0,-tempf*3.0,0.0f);
+													}
 
-												if (isVert) {
-													tempVec.addXYZ(-tempf*3.0,0.0,0.0f);
+													if ( (k == 1) || (k == 2) ) {
+														gameGeom.back()->initAnchorPoint( &tempVec, 0, 1 );
+													}
+													else {
+														gameGeom.back()->initAnchorPoint( &tempVec, -1, 0 );
+													}
 												}
 												else {
-													tempVec.addXYZ(0.0,-tempf*3.0,0.0f);
-												}
+													tempVec.setFXYZRef( gameGeom.back()->getVisMaxInPixels() );
+													tempVec.addXYZ(-tempf,-tempf,0.0f);
 
-												if ( (k == 1) || (k == 2) ) {
-													gameGeom.back()->initAnchorPoint( &tempVec, 0, 1 );
-												}
-												else {
-													gameGeom.back()->initAnchorPoint( &tempVec, -1, 0 );
-												}
-											}
-											else {
-												tempVec.setFXYZRef( gameGeom.back()->getVisMaxInPixels() );
-												tempVec.addXYZ(-tempf,-tempf,0.0f);
+													if (isVert) {
+														tempVec.addXYZ(tempf*3.0,0.0,0.0f);
+													}
+													else {
+														tempVec.addXYZ(0.0,tempf*3.0,0.0f);
+													}
 
-												if (isVert) {
-													tempVec.addXYZ(tempf*3.0,0.0,0.0f);
+													if ( (k == 0) || (k == 3) ) {
+														gameGeom.back()->initAnchorPoint( &tempVec, 0, 1 );
+													}
+													else {
+														gameGeom.back()->initAnchorPoint( &tempVec, -1, 0 );
+													}
 												}
-												else {
-													tempVec.addXYZ(0.0,tempf*3.0,0.0f);
-												}
+												
+												
+											break;
+											case E_BT_DOORWAY:
+												
+											break;
+											default:
 
-												if ( (k == 0) || (k == 3) ) {
-													gameGeom.back()->initAnchorPoint( &tempVec, 0, 1 );
-												}
-												else {
-													gameGeom.back()->initAnchorPoint( &tempVec, -1, 0 );
-												}
-											}
-									
+											break;
 										}
 
 									}
@@ -1700,7 +1744,30 @@ public:
 			}
 		}
 
+
+
 		return tot;
+	}
+
+	int touches2Center(int x, int y, int buildingType) {
+		int i;
+		int tot = 0;
+		int testX;
+		int testY;
+
+		for (i = 0; i < 4; i++) {
+
+			testX = x + gw->dirModX[i];
+			testY = y + gw->dirModY[i];
+
+			tot += touchesCenter(testX,testY,buildingType);
+
+		}
+
+		tot += touchesCenter(x,y,buildingType);
+
+		return tot;
+
 	}
 
 
@@ -1751,24 +1818,7 @@ public:
 
 	}
 
-	int touches2Center(int x, int y, int buildingType) {
-		int i;
-		int tot = 0;
-		int testX;
-		int testY;
-
-		for (i = 0; i < 4; i++) {
-
-			testX = x + gw->dirModX[i];
-			testY = y + gw->dirModY[i];
-
-			tot += touchesCenter(testX,testY,buildingType);
-
-		}
-
-		return tot;
-
-	}
+	
 
 	void connectNodes(int _x1, int _y1, int _x2, int _y2, int buildingType, int id) {
 		

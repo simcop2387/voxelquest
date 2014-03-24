@@ -33,7 +33,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		mapSampScale = 0.5f;
 		int newPitch = (imageHM0->width)*mapSampScale;//*2;
 
-		numLights = min(MAX_LIGHTS,E_OBJ_LENGTH-E_OBJ_LIGHT0);
+		numLights = MAX_LIGHTS;//min(MAX_LIGHTS,E_OBJ_LENGTH-E_OBJ_LIGHT0);
 
 
 		//////////////////////////////////////////////////////////////
@@ -55,14 +55,26 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		maxLayers = MAX_LAYERS;
 
 		// Resolution Dependent
-		maxChanges = 16; // this number is defined in processPages()
+		maxChanges = 16; // this number is defined here // not in processPages()
 		volGenFBOX = 128; // MAX OF 128, DO NOT CHANGE THIS VALUE
 		curVGString = "volGenFBO128";
 		//volGenFBOY = volGenFBOX*volGenFBOX;
+		
+
+
 		visPageSizeInPixels = 256; // height of one page in pixels
 		holderSizeInPixels = 512; // height of holder in pixels
+		pixelsPerMeter = 128; // when you make pixels per meter larger, you must do the same for units per meter
+		unitsPerMeter = 4;//max(bufferMultRec,pixelsPerMeter/32);//16;
+
+
+
+
 		bufferMultRec = 4;
 		bufferMult = 1.0f + 1.0f/((float)bufferMultRec);
+
+		maxH = 4;
+		maxW = 4;
 
 
 		// IMPORTANT: Maximum height must be less than 2^16, max world pitch must be less than 2^32
@@ -70,10 +82,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		// World Scale Dependent
 
 		iNodeDivsPerLot = 4;
-
 		metersPerLot = 32; // adjust this to make lots bigger
-		pixelsPerMeter = 128; // when you make pixels per meter larger, you must do the same for units per meter
-		unitsPerMeter = max(bufferMultRec,pixelsPerMeter/32);//16;
 		blockSizeInLots = 8;
 
 		maxFloors = MAX_FLOORS;
@@ -136,8 +145,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		
 		maxPooledRes = 512;
 
-		maxH = 4;
-		maxW = 4;
+		
 		
 
 
@@ -153,6 +161,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		gridOn = 0.0f;
 		fogOn = 0.0f;
 		geomCounter = 0;
+		lightCounter = 0;
 
 		//grassSpacing = 1;//8/DEF_SCALE_FACTOR;// *2.0;
 		directPass = 0.0f;
@@ -172,10 +181,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		);
 
 		heightmapMax = maxBoundsInPixels.getFZ()/2.0f;
+		heightmapMin = 0.0f;
+		maxSeaDepth = 8.0f*pixelsPerMeter;
 
 		doTraceVecND("worldSizeInPixels: ", &maxBoundsInPixels);
 
-
+		
 		
 
 
@@ -669,8 +680,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 	    fboMap["swapFBOLin0"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
 	   	fboMap["swapFBOLin1"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
 
-	   	fboMap["swapFBOBLin0"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
-	   	fboMap["swapFBOBLin1"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
+	   	fboMap["swapFBOBLin0"]->init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 1, false, GL_LINEAR);
+	   	fboMap["swapFBOBLin1"]->init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 1, false, GL_LINEAR);
 
 	   	fboMap["swapFBOLinHalf0"]->init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 1, false, GL_LINEAR);
 	   	fboMap["swapFBOLinHalf1"]->init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 1, false, GL_LINEAR);
@@ -729,10 +740,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 	    gw = new GameWorld();
 	    gw->init(this);
+	    gw->initMap();
 
+	    //heightmapMin = (((float)gw->seaLevel)/255.0)*heightmapMax - 4.0f*pixelsPerMeter;
 
-	    
-		
+		//heightmapMin = getSeaLevelInPixels() - 4.0f*pixelsPerMeter;
+
 	    
 	    
 	    popTrace();
@@ -1724,13 +1737,19 @@ void Singleton::drawFBOOffset (string fboName, int ind, float xOff, float yOff, 
 	    }
 	    
 	}
+float Singleton::getMinMaxHeight (float val)
+                                         {
+		return val*heightmapMax + (1.0f-val)*heightmapMin;
+	}
 float Singleton::getSeaLevelInPixels ()
                                     {
-		return ( ((float)gw->seaLevel)/255.0)*heightmapMax;
+		// float floorHeight = 4.0*pixelsPerMeter;
+		// return floor( ( ((float)gw->seaLevel)/255.0 )*heightmapMax/floorHeight)*floorHeight + 2.0f*pixelsPerMeter;
+		return getMinMaxHeight( ((float)gw->seaLevel)/255.0);
 	}
 float Singleton::getCityHeight ()
                               {
-		return ( ((float)gw->seaLevel + 20.0)/255.0)*heightmapMax;
+		return getMinMaxHeight( ((float)gw->seaLevel + 20.0)/255.0);
 	}
 float Singleton::getHeightAtPixelPos (float x, float y, bool ignoreCity)
                                                                              {
@@ -1743,6 +1762,8 @@ float Singleton::getHeightAtPixelPos (float x, float y, bool ignoreCity)
 		float testHeight;
 		float testHeight0;
 		float testHeight1;
+
+		float sl = getSeaLevelInPixels()-maxSeaDepth/2.0f;
 
 		if (mapInvalid) {
 
@@ -1762,7 +1783,13 @@ float Singleton::getHeightAtPixelPos (float x, float y, bool ignoreCity)
 				fbow->getPixelAtLinear((xc*mapFreqs.getFW()), (yc*mapFreqs.getFW()), channel)*mapAmps.getFW();
 
 
-			return testHeight0 * heightmapMax;
+			testHeight0 = getMinMaxHeight(testHeight0);
+
+			if (testHeight0 < sl) {
+				testHeight0 = sl - ((sl-testHeight0)/sl)*maxSeaDepth;
+			}
+
+			return testHeight0;
 
 
 			// if (ignoreCity) {
@@ -2634,20 +2661,26 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 					}
 					else {
-						if (
-							(selectedGeom->buildingType == E_BT_DOOR) ||
-							(selectedGeom->buildingType == E_BT_WINDOW) 
 
-						) {
-							gw->getHoldersInGeom(selectedGeom);
-							selectedGeom->applyTransform(selectedGeom->rotDir,false);
-							gw->getHoldersInGeom(selectedGeom);
-							gw->refreshHoldersInList(true); //holderCount <= 12
-							gw->holdersToRefresh.clear();
+						switch (selectedGeom->buildingType) {
+							case E_BT_DOOR:
+							case E_BT_WINDOW:
+								gw->getHoldersInGeom(selectedGeom);
+								selectedGeom->applyTransform(selectedGeom->rotDir,false);
+								gw->getHoldersInGeom(selectedGeom);
+								gw->refreshHoldersInList(true); //holderCount <= 12
+								gw->holdersToRefresh.clear();
 
-							bufferInvalid = true;
-							changesMade = true;
-							wsBufferInvalid = true;
+								bufferInvalid = true;
+								changesMade = true;
+								wsBufferInvalid = true;
+							break;
+
+							case E_BT_LANTERN:
+								selectedGeom->light->isOn = !(selectedGeom->light->isOn);
+								gw->updateLights();
+							break;
+
 						}
 						
 					}

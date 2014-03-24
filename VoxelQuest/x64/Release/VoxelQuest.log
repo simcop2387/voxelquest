@@ -1,4 +1,4 @@
-﻿Build started 3/11/2014 4:11:04 AM.
+﻿Build started 3/24/2014 2:47:01 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -146,12 +146,13 @@
          Begin JSON::Parse()          
          buf is not NULL          
          End JSON::Parse()          
-         Invalid JSON
-         
                    
+         Valid JSON          
+                   
+         rootObj is now NULL          
          Loading:  ..\data\lastImageBuffer.txt         
          Load Successful          
-         Sea Level: 79
+         Sea Level: 100
          start place cities
          end place cities
          start grow provinces
@@ -173,15 +174,7 @@
          start filling houses
          end filling houses
          DONE WITH MAP
-         volGenFBOX:  64         
-         volGenFBOX:  32         
-         volGenFBOX:  16         
-         volGenFBOX:  16         
-         volGenFBOX:  16         
-         volGenFBOX:  16         
-         volGenFBOX:  16         
-         volGenFBOX:  16         
-         volGenFBOX:  16         
+         waterOn 1
                      
                      
          TOT COUNT### 4
@@ -192,20 +185,59 @@
          TOT COUNT### 0
                      
                      
-         volGenFBOX:  32         
-         volGenFBOX:  64         
-         volGenFBOX:  128         
-         volGenFBOX:  128         
-         volGenFBOX:  128         
-         volGenFBOX:  128         
-         volGenFBOX:  128         
-         volGenFBOX:  128         
+                     
+                     
+         TOT COUNT### 2
+                     
+                     
+                     
+                     
+         TOT COUNT### 2
+                     
+                     
+                     
+                     
+         TOT COUNT### 4
+                     
+                     
+                     
+                     
+         TOT COUNT### 0
+                     
+                     
+                     
+                     
+         TOT COUNT### 2
+                     
+                     
+                     
+                     
+         TOT COUNT### 2
+                     
+                     
+                     
+                     
+         TOT COUNT### 4
+                     
+                     
+                     
+                     
+         TOT COUNT### 0
+                     
+                     
+                     
+                     
+         TOT COUNT### 2
+                     
+                     
+                     
+                     
+         TOT COUNT### 2
+                     
+                     
          fog on 1
-         fog on 0
-         fog on 1
-         fog on 0
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:09:11.78
+Time Elapsed 00:04:38.25

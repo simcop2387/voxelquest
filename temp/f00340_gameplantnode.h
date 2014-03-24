@@ -5,6 +5,7 @@
 #define LZZ_INLINE inline
 GamePlantNode::GamePlantNode ()
                         {
+		sphereRad = 0.0f;
 		parent = NULL;
 		children = NULL;
 		upVec.setFXYZ(0.0f,0.0f,1.0f);
@@ -37,6 +38,8 @@ void GamePlantNode::init (GamePlantNode * _parent, int _maxChildren, int _numChi
 		
 		maxChildren = _maxChildren;	
 		numChildren = _numChildren;
+
+		sphereRad = 0.0f;
 
 		if (maxChildren > 0) {
 

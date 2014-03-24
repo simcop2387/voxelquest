@@ -142,6 +142,7 @@ public:
   int bufferedPageSizeInUnits;
   int voroSize;
   int geomCounter;
+  int lightCounter;
   int bufferMultRec;
   int holderSizeInPages;
   int holderSizeInPixels;
@@ -155,6 +156,7 @@ public:
   float mapSampScale;
   float curBrushRad;
   float diskOn;
+  float maxSeaDepth;
   float currentFBOResolutionX;
   float currentFBOResolutionY;
   float mouseX;
@@ -169,6 +171,7 @@ public:
   float mdTime;
   float muTime;
   float heightmapMax;
+  float heightmapMin;
   float bufferMult;
   float holderSizeMB;
   float * paramArr;
@@ -299,6 +302,7 @@ public:
   void drawFBO (string fboName, int ind, float zoom, int swapFlag = -1);
   void drawFBOOffsetDirect (FBOSet * fbos, int ind, float xOff, float yOff, float zoom);
   void drawFBOOffset (string fboName, int ind, float xOff, float yOff, float zoom);
+  float getMinMaxHeight (float val);
   float getSeaLevelInPixels ();
   float getCityHeight ();
   float getHeightAtPixelPos (float x, float y, bool ignoreCity = false);
@@ -368,6 +372,8 @@ public:
   float shootLength;
   float begThickness;
   float endThickness;
+  float midThickness;
+  float sphereRad;
   FIVector4 startEndWidth;
   FIVector4 upVec;
   GamePlantNode * parent;
@@ -395,6 +401,8 @@ public:
   FIVector4 tempv1;
   FIVector4 tempv2;
   FIVector4 tempv3;
+  FIVector4 rootVec;
+  FIVector4 trunkVec;
   GamePlantNode * trunkNode;
   GamePlantNode * rootsNode;
   PlantRules * rootRules;
@@ -404,7 +412,8 @@ public:
   float gv (float * vals);
   GamePlant ();
   void init (Singleton * _singleton, PlantRules * _rootRules, PlantRules * _trunkRules, FIVector4 * _origin);
-  void applyRules (PlantRules * rules, GamePlantNode * curParent, int curGen, int maxGen, float curLength, float totLength, float maxLength);
+  void initBase (PlantRules * rules, GamePlantNode * curNode, FIVector4 * baseVec);
+  void applyRules (PlantRules * rules, GamePlantNode * curParent, int curGen, int maxGen, float totLength, float maxLength);
 };
 #undef LZZ_INLINE
 #endif
@@ -516,6 +525,8 @@ public:
   int blockSizeInHolders;
   int blockSizeInLots;
   int counter;
+  int lightCounter;
+  FIVector4 lightVec;
   FIVector4 offsetInBlocks;
   FIVector4 offsetInBlocksWrapped;
   FIVector4 origin;
@@ -524,6 +535,8 @@ public:
   FIVector4 moveMaxInPixels;
   FIVector4 p1;
   FIVector4 p2;
+  FIVector4 newP1;
+  FIVector4 newP2;
   FIVector4 rad;
   FIVector4 visInsetFromMin;
   FIVector4 visInsetFromMax;
@@ -535,10 +548,12 @@ public:
   FIVector4 tempVec;
   FIVector4 tempVec2;
   FIVector4 tempVec3;
+  FIVector4 tempVec4;
   FIVector4 tempVecB;
   FIVector4 tempVecB2;
   FIVector4 tempVecB3;
   std::vector <GameGeom*> gameGeom;
+  std::vector <GameLight*> gameLights;
   GamePlant myPlant;
   int iHolderSize;
   int maxFloors;
@@ -563,9 +578,9 @@ public:
   int touchDir (int x, int y, int buildingType);
   bool testHeight (int _x1, int _y1, int _x2, int _y2, int heightVal);
   int touchesCenter (int x, int y, int buildingType);
+  int touches2Center (int x, int y, int buildingType);
   int sameHeight (int x, int y);
   int touches2 (int x, int y, int buildingType);
-  int touches2Center (int x, int y, int buildingType);
   void connectNodes (int _x1, int _y1, int _x2, int _y2, int buildingType, int id);
 };
 #undef LZZ_INLINE
@@ -594,6 +609,8 @@ public:
   int availThreads;
   int visPageSizeInPixels;
   int holderSizeInPages;
+  int lightCount;
+  int frameCount;
   int MIN_MIP;
   int MAX_MIP;
   int AVG_MIP;
@@ -622,6 +639,8 @@ public:
   int (dirModX) [4];
   int (dirModY) [4];
   int (opDir) [4];
+  GameLight globalLight;
+  GameLight * (activeLights) [MAX_LIGHTS];
   int dirFlagClear;
   int visFlag;
   int visFlagO;
@@ -649,6 +668,8 @@ public:
   FIVector4 lastPagePos;
   FIVector4 minLRInPixels;
   FIVector4 maxLRInPixels;
+  FIVector4 minLRInHolders;
+  FIVector4 maxLRInHolders;
   FIVector4 minv;
   FIVector4 maxv;
   FIVector4 tempVec;
@@ -703,6 +724,7 @@ public:
   void initMap ();
   void drawMap ();
   void doBlur (string fboName, float blurAmount);
+  void updateLights ();
   void postProcess ();
   ~ GameWorld ();
 };
