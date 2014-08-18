@@ -19,13 +19,14 @@ uniform vec3 cameraPos;
 uniform vec2 bufferDim;
 
 uniform float isWire;
-
 uniform float matVal;
+uniform float tiltAmount;
 
 varying vec3 finalVec;
 
 $
 
+/*
 void main() {
 
     TexCoord0 = gl_MultiTexCoord0.xyz;
@@ -44,6 +45,38 @@ void main() {
     finalVec.y = (transVert.y)*newZoom/(bufferDim.y);
     finalVec.z = gl_Vertex.z;
 
+    gl_Position = vec4(finalVec.xy, clamp( (1.0-finalVec.z/(256.0*255.0)) ,0.0,1.0),gl_Vertex.w);
+
+}
+*/
+
+vec3 worldToScreen(vec3 worldCoords, float zVal, bool forceZ) {
+    vec3 resVec;
+    vec3 transVert;
+    float newZoom = min(cameraZoom,1.0);
+    float tilt = tiltAmount;
+    float itilt = 1.0-tiltAmount;
+    
+    transVert.x = (worldCoords.x-worldCoords.y);
+    transVert.y = (-(worldCoords.x*itilt) + -(worldCoords.y*itilt) + worldCoords.z*tilt*2.0);
+    transVert.z = worldCoords.z;
+    
+    resVec.x = (transVert.x)*newZoom/(bufferDim.x);
+    resVec.y = (transVert.y)*newZoom/(bufferDim.y);
+    resVec.z = worldCoords.z;
+    
+    if (forceZ) {
+        resVec.z = zVal;
+    }
+    
+    return resVec;
+}
+
+
+void main() {
+
+    TexCoord0 = gl_MultiTexCoord0.xyz;
+    finalVec = worldToScreen(gl_Vertex.xyz-cameraPos.xyz, gl_Vertex.z, true);
     gl_Position = vec4(finalVec.xy, clamp( (1.0-finalVec.z/(256.0*255.0)) ,0.0,1.0),gl_Vertex.w);
 
 }

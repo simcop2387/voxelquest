@@ -862,26 +862,74 @@ JSON::JSON()
 
 JSONValue *JSON::Parse(const char *data)
 {
-	size_t length = strlen(data) + 1;
-	wchar_t *w_data = (wchar_t*)malloc(length * sizeof(wchar_t));
-	
+
+	cout << "JSON::Parse a\n";
+
+	size_t length = strlen(data) + 4096;
+	cout << "length: " << length << "\n";
+
+	if (length == 0) {
+		cout << "JSON::Parse Length 0\n";
+		return NULL;
+	}
+
+	wchar_t *w_data = new wchar_t[length];
+	size_t ret_value = 0;
+
+	errno_t myError;
+
+	cout << "JSON::Parse b\n";
+
 	#if defined(WIN32) && !defined(__GNUC__)
-		size_t ret_value = 0;
-		if (mbstowcs_s(&ret_value, w_data, length, data, length) != 0)
+		cout << "JSON::Parse c\n";
+		
+
+		// if (data) {
+
+		// }
+		// else {
+		// 	cout << "JSON::Parse Data Null\n";
+		// 	return NULL;
+		// }
+
+		// if (w_data) {
+
+		// }
+		// else {
+		// 	cout << "JSON::Parse w_data Null\n";
+		// 	return NULL;
+		// }
+		
+		myError = mbstowcs_s(&ret_value, w_data, length, data, length);
+
+		cout << "JSON::Parse c0\n";
+
+		if (myError != 0)
 		{
-			free(w_data);
+			cout << "JSON::Parse c2\n";
+
+			delete[] w_data;
+
+			cout << "JSON::Parse c3\n";
+
 			return NULL;
 		}
+		cout << "JSON::Parse d\n";
 	#else
+		cout << "JSON::Parse e\n";
 		if (mbstowcs(w_data, data, length) == (size_t)-1)
 		{
-			free(w_data);
+			delete[] w_data;
 			return NULL;
 		}
+		cout << "JSON::Parse f\n";
 	#endif
 	
 	JSONValue *value = JSON::Parse(w_data);
-	free(w_data);
+	delete[] w_data;
+
+	cout << "JSON::Parse g\n";
+
 	return value;
 }
 

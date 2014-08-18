@@ -3,23 +3,76 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
-int PAGE_COUNT = 0;
+bool LAST_COMPILE_ERROR = false;
 
-const static int MAX_FLOORS = 5;
-const static int MAX_LIGHTS = 16;
+
+//const static int MAX_FLOORS = 6;
+const static int MAX_LIGHTS = 24;
+const static int MAX_EVAL_LIGHTS = 256;
 const static int FLOATS_PER_LIGHT = 16;
 
-const static int MAX_GRASS_LEV = 1;
+//const static int MAX_GRASS_LEV = 1;
 
 const static int DEF_WIN_W = 1920;
 const static int DEF_WIN_H = 1080;
 const static int DEF_SCALE_FACTOR = 2;
+
+const static int PIXELS_PER_METER = 64;
 const static int MAX_LAYERS = 2;
 
 const static int MAX_PLANT_GEN = 16;
 
-float MAX_GPU_MEM = 2048.0f;
+const static int MAX_TER_TEX = 9;
+
+const static int MAX_NODE_DIRS = 6;
+const static int MAX_NODE_VALS = 3;
+const static int TOT_NODE_VALS = 
+	MAX_NODE_DIRS * MAX_NODE_VALS;
+
+const static int TOT_MAP_DIRS = 4;
+
+const static int MAX_BLOCK_STACK = 10;
+
+int giGUI_IDS;
+
+char *BUF_NAMES[] =
+{
+	"ublock0",
+	"ublock1",
+	"ublock2",
+	"ublock3",
+	"ublock4",
+	"ublock5",
+	"ublock6",
+	"ublock7",
+	"ublock8",
+	"ublock9",
+	"ublock10",
+	"ublock11",
+	"ublock12",
+	"ublock13"
+};
+
+// char* VOLGEN_NAMES[] =
+// {
+//  "volGenFBO1",
+//  "volGenFBO2",
+//  "volGenFBO4",
+//  "volGenFBO8",
+//  "volGenFBO16",
+//  "volGenFBO32",
+//  "volGenFBO64",
+//  "volGenFBO128"
+// };
+// const static int VOLGEN_NAMES_LEN = 8;
+
+
+
+float MAX_GPU_MEM = 2560.0f;
 float TOT_GPU_MEM_USAGE = 0.0f;
+
+float MAX_CPU_MEM = 4096.0f;
+float TOT_CPU_MEM_USAGE = 0.0f;
 
 bool TRACE_ON = false;
 //#define DEBUG_MODE 1
@@ -67,10 +120,10 @@ bool TRACE_ON = false;
 #include <gl/freeglut.h>
 
 /*
-// Using radians 
+// Using radians
 #define GLM_FORCE_RADIANS
 // allow swizzle
-// #define GLM_SWIZZLE 
+// #define GLM_SWIZZLE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -140,7 +193,7 @@ using Poco::Base64Decoder;
 
 struct charArr {
 	long size;
-	char* data;
+	char *data;
 };
 
 #ifdef WIN32
@@ -164,44 +217,48 @@ typedef unsigned int uint;
 
 // Win32 incompatibilities
 #if defined(WIN32) && !defined(__GNUC__)
-	#define wcsncasecmp _wcsnicmp
-	static inline bool isnan(double x) { return x != x; }
-	static inline bool isinf(double x) { return !isnan(x) && isnan(x - x); }
+#define wcsncasecmp _wcsnicmp
+static inline bool isnan(double x) {
+	return x != x;
+}
+static inline bool isinf(double x) {
+	return !isnan(x) && isnan(x - x);
+}
 #endif
 
 // Linux compile fix - from quaker66
 #ifdef __GNUC__
-	// #include <cstring>
-	// #include <cstdlib>
+// #include <cstring>
+// #include <cstdlib>
 #endif
 
 // Mac compile fixes - from quaker66, Lion fix by dabrahams
 #if defined(__APPLE__) && __DARWIN_C_LEVEL < 200809L || (defined(WIN32) && defined(__GNUC__))
-	#include <wctype.h>
-	#include <wchar.h>
-	
-	static inline int wcsncasecmp(const wchar_t *s1, const wchar_t *s2, size_t n)
+#include <wctype.h>
+#include <wchar.h>
+
+static inline int wcsncasecmp(const wchar_t *s1, const wchar_t *s2, size_t n)
+{
+	int lc1  = 0;
+	int lc2  = 0;
+
+	while (n--)
 	{
-		int lc1  = 0;
-		int lc2  = 0;
+		lc1 = towlower (*s1);
+		lc2 = towlower (*s2);
 
-		while (n--)
-		{
-			lc1 = towlower (*s1);
-			lc2 = towlower (*s2);
+		if (lc1 != lc2)
+			return (lc1 - lc2);
 
-			if (lc1 != lc2)
-				return (lc1 - lc2);
+		if (!lc1)
+			return 0;
 
-			if (!lc1)
-				return 0;
-
-			++s1;
-			++s2;
-		}
-
-		return 0;
+		++s1;
+		++s2;
 	}
+
+	return 0;
+}
 #endif
 
 // Simple function to check a string 's' has at least 'n' characters
@@ -220,14 +277,26 @@ static inline bool simplejson_wcsnlen(const wchar_t *s, size_t n) {
 
 struct membuf : std::streambuf
 {
-    membuf(char* begin, char* end) {
-        this->setg(begin, begin, end);
-    }
+	membuf(char *begin, char *end) {
+		this->setg(begin, begin, end);
+	}
 };
 
 
 
 bool PROG_ACTIVE = true;
+
+#define glError() { \
+		GLenum err = glGetError(); \
+		while (err != GL_NO_ERROR) { \
+			printf("glError: %s caught at %s:%u", \
+						 (char*)gluErrorString(err), __FILE__, __LINE__); \
+			err = glGetError(); \
+			exit(-1); \
+		} \
+	}
+
+
 
 
 

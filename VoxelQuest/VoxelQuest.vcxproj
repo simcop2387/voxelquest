@@ -73,7 +73,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\poco\Net\include;C:\poco\Util\include;C:\poco\Foundation\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\poco\Net\include;C:\poco\Util\include;C:\poco\Foundation\include;$(IncludePath);C:\ftgl\src</IncludePath>
     <LibraryPath>opengl32.lib;glu32.lib;C:\poco\lib64;C:\glew\lib\Release\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -111,7 +111,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level1</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
@@ -127,7 +127,8 @@
       <Command>../combine.bat</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>../debug_cleanup.bat;</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -180,6 +181,7 @@
       <AdditionalLibraryDirectories>C:\wamp\www\voxelquest\glew\lib;C:\Program Files %28x86%29\Windows Kits\8.0\Lib\win8\um\x64;C:\Program Files %28x86%29\Microsoft Visual Studio 11.0\VC\lib\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <StackReserveSize>
       </StackReserveSize>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>../combine.bat</Command>
@@ -187,6 +189,9 @@
     <PostBuildEvent>
       <Command>../cleanup.bat;</Command>
     </PostBuildEvent>
+    <ProjectReference>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
+    </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\compiled\main.cpp" />

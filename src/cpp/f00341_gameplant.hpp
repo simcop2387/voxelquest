@@ -50,9 +50,6 @@ public:
 		pr->numGenerations = 3.0f;
 		pr->angleUniformityU = 0.75f;
 		pr->isInit = 0.0;
-		
-		//pr->baseLength = 4.0f;
-		//pr->nodeLengthMultiplier = 0.75f;
 		pr->curLength[0] = 2.0f;
 		pr->curLength[1] = 3.5f;
 		pr->curLength[2] = 3.0f;
@@ -62,10 +59,6 @@ public:
 		pr->curLength[6] = 1.0f;
 		pr->curLength[7] = 1.0f;
 		pr->curLength[8] = 0.75f;
-		
-		
-		
-
 
 		pr = &(allPlantRules[E_PT_OAK_ROOTS]);
 		pr->numChildren[0] = 2.0f;
@@ -78,9 +71,52 @@ public:
 		pr->numGenerations = 4.0f;
 		pr->angleUniformityU = 0.75f;
 		pr->isInit = 0.0;
+		pr->curLength[0] = 2.0f;
+		pr->curLength[1] = 4.0f;
+		pr->curLength[2] = 3.5f;
+		pr->curLength[3] = 3.0f;
+		pr->curLength[4] = 2.5f;
+		pr->curLength[5] = 2.0f;
+		pr->curLength[6] = 1.5f;
+		pr->curLength[7] = 1.0f;
+		pr->curLength[8] = 0.75f;
 
-		//pr->baseLength = 4.0f;
-		//pr->nodeLengthMultiplier = 0.75f;
+
+
+
+
+		pr = &(allPlantRules[E_PT_BARE_OAK_TRUNK]);
+		pr->numChildren[0] = 2.0f;
+		pr->numChildren[1] = 5.0f;
+		pr->divergenceAngleV[0] = pi/3.0f;
+		pr->divergenceAngleV[1] = pi/4.0f;
+		pr->begThickness = 1.0f;
+		pr->endThickness = 0.0f;
+		pr->sphereGen = -1.0f;
+		pr->numGenerations = 4.0f;
+		pr->angleUniformityU = 0.75f;
+		pr->isInit = 0.0;
+		pr->curLength[0] = 3.0f;
+		pr->curLength[1] = 3.5f;
+		pr->curLength[2] = 3.0f;
+		pr->curLength[3] = 4.0f;
+		pr->curLength[4] = 4.0f;
+		pr->curLength[5] = 1.5f;
+		pr->curLength[6] = 1.0f;
+		pr->curLength[7] = 1.0f;
+		pr->curLength[8] = 0.75f;
+
+		pr = &(allPlantRules[E_PT_BARE_OAK_ROOTS]);
+		pr->numChildren[0] = 2.0f;
+		pr->numChildren[1] = 5.0f;
+		pr->divergenceAngleV[0] = pi/8.0f;
+		pr->divergenceAngleV[1] = pi/8.0f;
+		pr->begThickness = 1.0f;
+		pr->endThickness = 0.0f;
+		pr->sphereGen = -1.0f;
+		pr->numGenerations = 4.0f;
+		pr->angleUniformityU = 0.75f;
+		pr->isInit = 0.0;
 		pr->curLength[0] = 2.0f;
 		pr->curLength[1] = 4.0f;
 		pr->curLength[2] = 3.5f;

@@ -87,14 +87,198 @@ public:
 
 
 
+
+class UniformBuffer {
+public:
+
+	
+
+	UniformBuffer() {
+		wasInit = false;
+	}
+
+	// GLchar* names[] =
+	// {
+	// 	"SurfaceColor",
+	// 	"WarmColor",
+	// 	"CoolColor",
+	// 	"DiffuseWarm",
+	// 	"DiffuseCool"
+	// };
+
+	int uniPosition;
+
+	GLuint bufferId, uniformBlockIndex, index, progId;
+	GLsizei uniformBlockSize;
+	GLint singleSize, offset;
+	GLfloat* uniData;
+
+	// GLfloat colors[] = 
+	// {
+	// 	0.45,0.45,1,1,
+	// 	0.45,0.45,1,1,
+	// 	0.75,0.75,0.75,1,
+	// 	0.0,0.0,1.0,1,
+	// 	0.0,1.0,0.0,1
+	// };
+
+
+	bool wasUpdated;
+	bool wasInit;
+
+	void init(GLuint _progId, int bufNameInd)
+	{
+
+		wasInit = true;
+		uniPosition = 0;
+		wasUpdated = false;
+		progId = _progId;
+		uniData = NULL;
+
+
+		//Update the uniforms using ARB_uniform_buffer_object
+		glGenBuffers(1, &bufferId);
+
+
+		
+		//There's only one uniform block here, the 'colors0' uniform block. 
+		//It contains the color info for the gooch shader.
+		uniformBlockIndex = glGetUniformBlockIndex(
+			progId,
+			BUF_NAMES[bufNameInd]//bufName.c_str()//"colors0"
+		);
+
+		
+		//We need to get the uniform block's size in order to back it with the
+		//appropriate buffer
+		glGetActiveUniformBlockiv(
+			progId,
+			uniformBlockIndex,
+			GL_UNIFORM_BLOCK_DATA_SIZE,
+			&uniformBlockSize
+		);
+
+		doTraceND("uniformBlockSize: ", i__s(uniformBlockSize));
+
+
+
+		uniData = new GLfloat[uniformBlockSize/4];
+
+
+		
+		//Create UBO.
+		glBindBuffer(
+			GL_UNIFORM_BUFFER,
+			bufferId
+		);
+		glBufferData(
+			GL_UNIFORM_BUFFER,
+			uniformBlockSize,
+			NULL,
+			GL_STATIC_DRAW//GL_DYNAMIC_DRAW
+		);
+
+		//Now we attach the buffer to UBO binding point 0...
+		glBindBufferBase(
+			GL_UNIFORM_BUFFER,
+			0,
+			bufferId
+		);
+		//And associate the uniform block to this binding point.
+		glUniformBlockBinding(
+			progId,
+			uniformBlockIndex,
+			0
+		);
+
+
+		//To update a single uniform in a uniform block, we need to get its
+		//offset into the buffer.
+		
+		//glGetUniformIndices(progId, 1, &names[2], &index);
+		//glGetActiveUniformsiv(progId, 1, &index, GL_UNIFORM_OFFSET, &offset);
+		//glGetActiveUniformsiv(progId, 1, &index, GL_UNIFORM_SIZE, &singleSize);
+
+	    
+	}
+
+	void updateUniformBlock(int numFloats) {
+
+		int datSize = uniformBlockSize;
+
+		if (numFloats < 0) {
+
+		}
+		else {
+			datSize = numFloats*4;
+		}
+
+
+
+		if (wasUpdated) {
+
+		}
+		else {
+			glBindBuffer(GL_UNIFORM_BUFFER, bufferId);
+			//We can use BufferData to upload our data to the shader,
+			//since we know it's in the std140 layout
+			//each float is 4 bytes
+			glBufferData(GL_UNIFORM_BUFFER, datSize, uniData, GL_DYNAMIC_DRAW);
+			//With a non-standard layout, we'd use BufferSubData for each uniform.
+			//glBufferSubData(GL_UNIFORM_BUFFER, offset, singleSize, &uniData[8]);
+			
+			wasUpdated = true;
+		}
+
+		
+
+	}
+
+	void beginUniformBlock() {
+		uniPosition = 0;
+	}
+
+	void invalidateUniformBlock() {
+		wasUpdated = false;
+	}
+	bool wasUpdatedUniformBlock() {
+		return wasUpdated;
+	}
+
+	~UniformBuffer() {
+
+		if (wasInit) {
+			if (uniData) {
+				delete[] uniData;
+				uniData = NULL;
+			}
+			glDeleteBuffers(1,&bufferId);
+		}
+		
+
+	}
+
+
+};
+
+
+
 class Shader {
 private:
 	unsigned int shader_id;
 	unsigned int shader_vp;
 	unsigned int shader_fp;
 public:
+
+	int curUBIndex;
+
+	vector<UniformBuffer> uniVec;
+
 	
 	Shader() {
+
+		curUBIndex = 0;
+
 		pushTrace("Shader()");
 		popTrace();
 	}
@@ -121,7 +305,8 @@ public:
 	            rewind(file);
 	            
 				if (count > 0) {
-					text = (char*)malloc(sizeof(char) * (count + 1));
+					text = new char[(count + 1)];
+					//(char*)malloc(sizeof(char) * (count + 1));
 					count = fread(text, sizeof(char), count, file);
 					text[count] = '\0';
 					failed = false;
@@ -153,8 +338,11 @@ public:
 		glGetShaderInfoLog(shader, BUFFER_SIZE, &length, buffer);
 		if (length > 0) {
 			doTraceND("Shader " , i__s(shader) , " (" , (file?file:"") , ") compile error: " , buffer);
+			LAST_COMPILE_ERROR = true;
 		}
 		popTrace();
+
+
 	}
 
 	static int validateProgram(GLuint program) {
@@ -169,6 +357,7 @@ public:
 		glGetProgramInfoLog(program, BUFFER_SIZE, &length, buffer);
 		if (length > 0) {
 			doTraceND( "Program " , i__s(program) , " link error: " , buffer);
+			LAST_COMPILE_ERROR = true;
 			popTrace();
 			return 0;
 		}
@@ -178,6 +367,7 @@ public:
 		glGetProgramiv(program, GL_VALIDATE_STATUS, &status);
 		if (status == GL_FALSE) {
 			doTraceND( "Error validating shader " , i__s(program));
+			LAST_COMPILE_ERROR = true;
 			popTrace();
 			return 0;
 		}
@@ -194,6 +384,15 @@ public:
 		shader_fp = glCreateShader(GL_FRAGMENT_SHADER);
 	    
 	    
+		std::size_t found;
+
+		int baseIndex;
+		int totCount;
+
+		bool doCont;
+
+		int i;
+
 		const char* allText = textFileRead(shaderFile);
 
 
@@ -202,6 +401,26 @@ public:
 	    }
 	    else {
 	    	string allTextString(allText);
+
+	    	baseIndex = 0;
+	    	doCont = true;
+	    	totCount = 0;
+
+
+
+	    	while (doCont) {
+	    		found = allTextString.find("ublock", baseIndex);
+	    		if (found != std::string::npos) {
+	    			baseIndex = found+1;
+	    			doCont = true;
+	    			totCount++;
+	    		}
+	    		else {
+	    			doCont = false;
+	    		}
+	    	}
+			
+
 
 			vector<string> allTextStringSplit = split(allTextString, '$');
 
@@ -224,7 +443,9 @@ public:
 				validateShader(shader_vp, shaderFile);
 				glCompileShader(shader_fp);
 				validateShader(shader_fp, shaderFile);
-			    
+
+
+
 				shader_id = glCreateProgram();
 				glAttachShader(shader_id, shader_fp);
 				glAttachShader(shader_id, shader_vp);
@@ -234,12 +455,21 @@ public:
 				delete [] vertCS;
 				delete [] fragCS;
 
+
+				for (i = 0; i < totCount; i++) {
+					uniVec.push_back(UniformBuffer());
+					uniVec.back().init(shader_id, i);
+				}
+
+
 			}
 			else {
+				LAST_COMPILE_ERROR = true;
 				doTraceND( "Error: " , shaderFile , "does not contain proper amount of splits ($)\n" );
 			}
 			
 			
+			delete[] allText;
 	    }
 		
 		
@@ -247,11 +477,14 @@ public:
 		
 	}
 
+
 	~Shader() {
+
+		uniVec.clear();
+
 		pushTrace("~Shader()");
 		glDetachShader(shader_id, shader_fp);
 		glDetachShader(shader_id, shader_vp);
-	    
 		glDeleteShader(shader_fp);
 		glDeleteShader(shader_vp);
 		glDeleteProgram(shader_id);
@@ -270,20 +503,42 @@ public:
 		//popTrace();
 	}
 
+	void updateUniformBlock(int ubIndex, int ubDataSize) {
+		uniVec[ubIndex].updateUniformBlock(ubDataSize);
+	}
+	void invalidateUniformBlock(int ubIndex) {
+		uniVec[ubIndex].invalidateUniformBlock();
+	}
+	void beginUniformBlock(int ubIndex) {
+		curUBIndex = ubIndex;
+		uniVec[ubIndex].beginUniformBlock();
+	}
+	bool wasUpdatedUniformBlock(int ubIndex) {
+
+		if (uniVec.size() > ubIndex) {
+			return uniVec[ubIndex].wasUpdatedUniformBlock();
+		}
+		else {
+			return true;
+		}
+
+		
+	}
+
 	void unbind() {
 		//pushTrace("unbind()");
 		glUseProgram(0);
 		//popTrace();
 	}
 
-	void setTexture(const GLchar* name, int texUnit, int texID) {
+	void setTexture(const GLchar* name, int texUnit, int texId) {
 		GLint baseImageLoc = glGetUniformLocation(shader_id, name);
 
 		glUniform1i(baseImageLoc, texUnit); //Texture unit 0 is for base images.
 		
 		//When rendering an objectwith this program.
 		glActiveTexture(GL_TEXTURE0 + texUnit);
-		glBindTexture(GL_TEXTURE_2D, texID);
+		glBindTexture(GL_TEXTURE_2D, texId);
 	}
 
 	
@@ -383,6 +638,23 @@ public:
 	void setShaderfVec4(string paramName, FIVector4* f) {
 		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
 		glUniform4f(loc,f->getFX(),f->getFY(),f->getFZ(),f->getFW());
+	}
+
+	void setShaderFloatUB(string paramName, float x) {
+		int cp = uniVec[curUBIndex].uniPosition;
+
+		uniVec[curUBIndex].uniData[cp] = x;
+		uniVec[curUBIndex].uniPosition += 1;
+	}
+	void setShaderfVec4UB(string paramName, FIVector4* f) {
+
+		int cp = uniVec[curUBIndex].uniPosition;
+
+		uniVec[curUBIndex].uniData[cp+0] = f->getFX();
+		uniVec[curUBIndex].uniData[cp+1] = f->getFY();
+		uniVec[curUBIndex].uniData[cp+2] = f->getFZ();
+		uniVec[curUBIndex].uniData[cp+3] = f->getFW();
+		uniVec[curUBIndex].uniPosition += 4;
 	}
 
 	

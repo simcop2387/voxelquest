@@ -47,22 +47,27 @@ void main() {
     }
 
 
-    float v0 = sv[0]*tex0.r*tex0.r;
-    float v1 = sv[1]*tex0.g*tex0.g;
-    float v2 = sv[2]*tex0.b*tex0.b;
+    float v0 = sv[0]*tex0.r;//*tex0.r;
+    float v1 = sv[1]*tex0.g;//*tex0.g;
+    float v2 = sv[2]*tex0.b;//*tex0.b;
 
     //float h = sqrt(v0 + v1 + v2);
 
     float h = pow(max(max(v0,v1),v2),0.4);
 
-    /*
-    if (h > 1.0) {
-        h = 2.0-h;
-    }
-    */
+    //h *= 2.0;
+
+    //(v0*v1*v2)*0.75+0.25;//
+    
+    
+    // if (h > 1.0) {
+    //     h = 2.0-h;
+    // }
+
+    h = pow(h,1.5);
 
     h = clamp(h, 0.0, 1.0);
-    h = pow(h,1.5);
+    
 
     gl_FragData[0] = vec4(h,0.0,0.0,0.0);
 

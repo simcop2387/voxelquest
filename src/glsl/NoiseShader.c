@@ -33,29 +33,6 @@ float rand(vec2 co){
 
 void main() {
     float newZoom = min(cameraZoom,1.0);
-
-    // vec2 tcMod = (vec2(TexCoord0.x,1.0-TexCoord0.y)*2.0-1.0 );
-    // tcMod.x *= bufferDim.x/(newZoom);
-    // tcMod.y *= bufferDim.y/(newZoom);
-    // tcMod.y -= cameraPos.z;
-
-    // vec4 oneVec = vec4(1.0);
-
-    // vec3 worldPosition = vec3(0.0,0.0,0.0);
-    // worldPosition.x = tcMod.y + tcMod.x/2.0 + (baseHeight);
-    // worldPosition.y = tcMod.y - tcMod.x/2.0 + (baseHeight);
-    // worldPosition.x += cameraPos.x;
-    // worldPosition.y += cameraPos.y;
-    // worldPosition.z = baseHeight;
-
-    // vec3 worldPositionWater = vec3(0.0,0.0,0.0);
-    // worldPositionWater.x = tcMod.y + tcMod.x/2.0 + (baseHeightWater);
-    // worldPositionWater.y = tcMod.y - tcMod.x/2.0 + (baseHeightWater);
-    // worldPositionWater.x += cameraPos.x;
-    // worldPositionWater.y += cameraPos.y;
-    // worldPositionWater.z = baseHeightWater;
-
-
     gl_FragData[0] = vec4(randv(TexCoord0.xy),1.0);
 
 

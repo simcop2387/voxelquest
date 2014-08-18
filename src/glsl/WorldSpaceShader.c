@@ -1,20 +1,22 @@
 uniform sampler2D Texture0; // main fbo
 uniform sampler2D Texture1;
 
-uniform sampler2D Texture2; // geom fbo
+uniform sampler2D Texture2; // water fbo
 uniform sampler2D Texture3;
 
-uniform sampler2D Texture4; // water fbo
+uniform sampler2D Texture4; // geom fbo
 uniform sampler2D Texture5;
 
 varying vec2 TexCoord0;
-uniform vec2 mouseCoords;
 uniform vec2 resolution;
+uniform vec3 process;
+uniform vec2 mouseCoords;
 uniform vec3 cameraPos;
 uniform vec2 bufferDim;
 uniform float cameraZoom;
+uniform float tiltAmount;
 
-uniform vec3 process;
+
 
 
 $
@@ -54,6 +56,14 @@ float unpack16(vec2 num) {
     return num.r*255.0 + num.g*65280.0;
 }
 
+// vec3 randV3(vec3 co) {
+//     return vec3(
+//                      fract(sin(dot(co.xyz , vec3(12.989, 78.233, 98.422))) * 43758.8563),
+//                      fract(sin(dot(co.zyx , vec3(93.989, 67.345, 54.256))) * 24634.6345),
+//                      fract(sin(dot(co.yxz , vec3(43.332, 93.532, 43.734))) * 56445.2345)
+//                  );
+// }
+
 
 void main() {
 
@@ -64,28 +74,43 @@ void main() {
     //vec4 texFinal = tex0;
     //texFinal.b = mix( tex0.b, tex2.b, float(tex2.a > 0.0) );
 
-    float isObject = float(tex2.a > 0.0);
-
+    float isObject = float(tex4.a > 0.0);
     float newZoom = min(cameraZoom,1.0);
-    float baseHeight1 = unpack16(tex0.rg);
-    float baseHeight2 = unpack16(tex2.rg);
-    float baseHeight3 = unpack16(tex4.rg);
-    float baseHeight = max(max(baseHeight1*process.x, baseHeight2*process.y), baseHeight3*process.z);
+    float baseHeight[4];
+    
+    baseHeight[0] = unpack16(tex0.rg);
+    baseHeight[1] = unpack16(tex2.rg);
+    baseHeight[2] = unpack16(tex4.rg);
+    baseHeight[3] = max(baseHeight[0], baseHeight[1]);//max(max(baseHeight[0], baseHeight[1]), baseHeight[2]);
     //max(baseHeight1,baseHeight3);
+    
+    float tilt = tiltAmount;
+    float itilt = 1.0-tiltAmount;
 
     vec3 worldPosition = vec3(0.0,0.0,0.0);
-    vec2 tcMod = (vec2(TexCoord0.x,1.0-TexCoord0.y)*2.0-1.0 );
+    vec2 ssCoord = vec2(0.0);
+    
+    int i;
 
-    tcMod.x *= bufferDim.x/(newZoom);
-    tcMod.y *= bufferDim.y/(newZoom);
+    for (i = 0; i < 4; i++) {
+        ssCoord = vec2(TexCoord0.x,1.0-TexCoord0.y)*2.0-1.0;
+        ssCoord.x *= bufferDim.x/(newZoom);
+        ssCoord.y *= bufferDim.y/(newZoom);
 
-    tcMod.y -= cameraPos.z;
-    worldPosition.x = tcMod.y + tcMod.x/2.0 + (baseHeight);
-    worldPosition.y = tcMod.y - tcMod.x/2.0 + (baseHeight);
-    worldPosition.z = baseHeight;
-    worldPosition.x += cameraPos.x;
-    worldPosition.y += cameraPos.y;
+        ssCoord.y -= cameraPos.z*tilt*2.0;
+        ssCoord.y += baseHeight[i]*tilt*2.0;
 
-    gl_FragData[0] = vec4( worldPosition.xyz, isObject ); //texFinal.b*255.0
+        worldPosition.x = (ssCoord.y*0.5/itilt + ssCoord.x*0.5);
+        worldPosition.y = (ssCoord.y*0.5/itilt - ssCoord.x*0.5);
+        worldPosition.z = baseHeight[i];
+        worldPosition.x += cameraPos.x;
+        worldPosition.y += cameraPos.y;
+        
+        //worldPosition += randV3(worldPosition)*10.0;
 
+        gl_FragData[i] = vec4( worldPosition.xyz, isObject );
+    }
+
+    
+    
 }

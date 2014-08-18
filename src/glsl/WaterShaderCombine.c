@@ -11,8 +11,17 @@ uniform sampler2D Texture3;
 // water height
 uniform sampler2D Texture4;
 
+
+
+uniform sampler2D Texture5; // solid
+uniform sampler2D Texture6; // transparent
+uniform sampler2D Texture7; // object
+uniform sampler2D Texture8; // all
+
+
 varying vec2 TexCoord0;
 
+uniform float maxWaveHeight;
 uniform float seaLevel;
 uniform float curTime;
 uniform float cameraZoom;
@@ -77,32 +86,51 @@ void main() {
     vec4 tex3Orig = tex3;
 
     vec4 tex4 = texture2D(Texture4, TexCoord0.xy);
+    
+    
+    vec4 tex5 = texture2D(Texture5, TexCoord0.xy);
+    vec4 tex6 = texture2D(Texture6, TexCoord0.xy);
+    vec4 tex7 = texture2D(Texture7, TexCoord0.xy);
+    vec4 tex8 = texture2D(Texture8, TexCoord0.xy);
+    
+    
+    
+    
 
     float newZoom = min(cameraZoom,1.0);    
     float tot = float(tex0.r + tex0.g + tex0.b + tex0.a > 0.0);    
-    float baseHeight = unpack16(tex0.rg);
-    float baseHeightWater = unpack16(tex2.rg);
-
-    vec2 tcMod = (vec2(TexCoord0.x,1.0-TexCoord0.y)*2.0-1.0 );
-    tcMod.x *= bufferDim.x/(newZoom);
-    tcMod.y *= bufferDim.y/(newZoom);
-    tcMod.y -= cameraPos.z;
-
+    
     vec4 oneVec = vec4(1.0);
+    
+    
+    
+    float baseHeight = tex5.z;
+    float baseHeightWater = tex6.z;
+    vec3 worldPosition = tex5.xyz;
+    vec3 worldPositionWater = tex6.xyz;
+    
+    
+    // float baseHeight = unpack16(tex0.rg);
+    // float baseHeightWater = unpack16(tex2.rg);
 
-    vec3 worldPosition = vec3(0.0,0.0,0.0);
-    worldPosition.x = tcMod.y + tcMod.x/2.0 + (baseHeight);
-    worldPosition.y = tcMod.y - tcMod.x/2.0 + (baseHeight);
-    worldPosition.x += cameraPos.x;
-    worldPosition.y += cameraPos.y;
-    worldPosition.z = baseHeight;
+    // vec2 tcMod = (vec2(TexCoord0.x,1.0-TexCoord0.y)*2.0-1.0 );
+    // tcMod.x *= bufferDim.x/(newZoom);
+    // tcMod.y *= bufferDim.y/(newZoom);
+    // tcMod.y -= cameraPos.z;
 
-    vec3 worldPositionWater = vec3(0.0,0.0,0.0);
-    worldPositionWater.x = tcMod.y + tcMod.x/2.0 + (baseHeightWater);
-    worldPositionWater.y = tcMod.y - tcMod.x/2.0 + (baseHeightWater);
-    worldPositionWater.x += cameraPos.x;
-    worldPositionWater.y += cameraPos.y;
-    worldPositionWater.z = baseHeightWater;
+    // vec3 worldPosition = vec3(0.0,0.0,0.0);
+    // worldPosition.x = tcMod.y + tcMod.x/2.0 + (baseHeight);
+    // worldPosition.y = tcMod.y - tcMod.x/2.0 + (baseHeight);
+    // worldPosition.x += cameraPos.x;
+    // worldPosition.y += cameraPos.y;
+    // worldPosition.z = baseHeight;
+
+    // vec3 worldPositionWater = vec3(0.0,0.0,0.0);
+    // worldPositionWater.x = tcMod.y + tcMod.x/2.0 + (baseHeightWater);
+    // worldPositionWater.y = tcMod.y - tcMod.x/2.0 + (baseHeightWater);
+    // worldPositionWater.x += cameraPos.x;
+    // worldPositionWater.y += cameraPos.y;
+    // worldPositionWater.z = baseHeightWater;
 
 
     float seaLev = seaLevel;
@@ -113,7 +141,7 @@ void main() {
     const float fNumSteps = float(numSteps);
     float flerp = 0.0;
 
-    const float maxWaveHeight = 256.0;
+    
 
     //float tallestHeight = seaLev;
     //float lowestHeight = seaLev-maxWaveHeight;
@@ -148,6 +176,7 @@ void main() {
 
     bool hitSideWater = (tex3Orig.a == 0.0)&&(dot(tex3Orig.rgb,oneVec.rgb) != 0.0)&&(baseHeightWater>=baseHeight);
 
+    float endRes = 0.0;
 
 
     if (tex2.a == TEX_WATER) {
@@ -172,6 +201,13 @@ void main() {
                 break;
             }
 
+        }
+
+        if (hitLand||hitWater) {
+
+        }
+        else {
+            hitWater = true;
         }
 
         for (i2 = 0; i2 < numSteps2; i2++) {
@@ -205,8 +241,7 @@ void main() {
         }
 
         if (hitLand || (!hitWater) || isTopOfWater ) {
-            gl_FragData[0] = tex0;
-            gl_FragData[1] = tex1;
+            endRes = 0.0;
             
         }
         else {
@@ -220,8 +255,7 @@ void main() {
                 }
             }
 
-            gl_FragData[0] = tex2;
-            gl_FragData[1] = tex3;
+            endRes = 1.0;
 
             outOfWater = false;
 
@@ -237,12 +271,10 @@ void main() {
     }
     else {
         if (baseHeight > baseHeightWater) {
-            gl_FragData[0] = tex0;
-            gl_FragData[1] = tex1;
+            endRes = 0.0;
         }
         else {
-            gl_FragData[0] = tex2;
-            gl_FragData[1] = tex3;
+            endRes = 1.0;
             outOfWater = false;
         }
     }
@@ -252,13 +284,13 @@ void main() {
 
         }
         else {
-            tex0.b = 0.0/255.0;
-            tex0.a = 140.0/255.0;
+            //tex0.b = 0.0/255.0;
+            //tex0.a = 140.0/255.0;
             
         }
 
-        gl_FragData[0] = tex0;
-        gl_FragData[1] = tex1;
+        endRes = 0.0;
+        
         
     }
 
@@ -270,6 +302,41 @@ void main() {
     // }
 
 
+    
+    
+    vec3 normWater = normalize( (tex3.rgb-0.5)*2.0 );
+    vec3 normSolid = vec3(0.0,0.0,-1.0);
+    
+    // TODO: use pixels per meter instead of constant
+    float waterDepth = clamp((worldPositionWater-worldPosition)/(128.0),0.0,1.0);
+
+
+    if (tex7.z > tex5.z) {
+        if (tex7.z < curHeight ) {
+            tex0.b = 0.0/255.0;
+            tex0.a = 140.0/255.0;
+        }
+    }    
+
+    if (endRes == 0.0) {
+        
+        // solid
+        
+        gl_FragData[0] = tex0;
+        gl_FragData[1] = tex1;
+    }
+    else {
+        
+        // water
+        
+        gl_FragData[0] = tex2;
+        gl_FragData[1] = tex3;
+        
+        //gl_FragData[1].rgb = (normalize( mix(normSolid, normWater, waterDepth) )+1.0)/2.0;
+        
+    }
+
+    
     
 
     

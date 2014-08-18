@@ -176,7 +176,7 @@ void main() {
     }
 
     
-    float newHeight = baseHeight + TexCoord0.z*grassWH.y + 30.0; // *50.0/newZoom + grassWH.y*512.0;// + TexCoord0.z*grassWH.y*bufferDim.y;
+    float newHeight = baseHeight + TexCoord0.z*grassWH.y + 50.0; // *50.0/newZoom + grassWH.y*512.0;// + TexCoord0.z*grassWH.y*bufferDim.y;
 
    
 

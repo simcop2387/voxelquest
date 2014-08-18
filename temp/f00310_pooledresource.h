@@ -16,40 +16,41 @@ FBOSet * PooledResource::getFBOS (int fboNum)
                                     {
 		return fboSet[fboNum];
 	}
-void PooledResource::init (Singleton * _singleton)
-                                         {
+void PooledResource::init (Singleton * _singleton, bool _isCPU)
+                                                      {
 
 		singleton = _singleton;
+		isCPU = _isCPU;
 		usedByHolderId.v0 = -1;
 		usedByHolderId.v1 = -1;
 
 		int i;
 
-		for (i = 0; i < MAX_LAYERS; i++) {
-			fboSet[i] = new FBOSet();
+		if (isCPU) {
+			for (i = 0; i < MAX_LAYERS; i++) {
+				cpuSet[i] = new uint[
+					(singleton->holderSizeInPixels) *
+					(singleton->holderSizeInPixels)	
+				];
+			}
+		}
+		else {
+			for (i = 0; i < MAX_LAYERS; i++) {
+				fboSet[i] = new FBOSet();
+			}
+
+			for (i = 0; i < MAX_LAYERS; i++) {
+				fboSet[i]->init(
+					2,
+					((singleton->holderSizeInPixels)),
+					((singleton->holderSizeInPixels)),
+					1,
+					false //has depth
+				);
+			}
 		}
 
-		/*
-		void init(
-			int _numBufs,
-			int _width,
-			int _height,
-			int _bytesPerChannel,
-			bool _hasDepth,
-			int filterEnum=GL_NEAREST,
-			int clampEnum=GL_CLAMP_TO_EDGE
-		)
-		*/
-
-		for (i = 0; i < MAX_LAYERS; i++) {
-			fboSet[i]->init(
-				2,
-				((singleton->holderSizeInPixels)),
-				((singleton->holderSizeInPixels)),
-				1,
-				false //has depth
-			);
-		}
+		
 
 		
 

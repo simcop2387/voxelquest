@@ -3,7 +3,7 @@ class FBOWrapper
 public:
 
 	uint color_tex;
-	
+
 	//uint color_buf;
 	//uint depth_buf;
 	uint slot;
@@ -17,19 +17,19 @@ public:
 
 	GLint internalFormat;
 
-	uint* pixelsUINT;
+	uint *pixelsUINT;
 	unsigned char *pixelsChar;
-	unsigned char** pixelsCharMippedMin;
-	unsigned char** pixelsCharMippedMax;
-	unsigned char** pixelsCharMippedAvg;
-	int* mipWidths;
+	unsigned char **pixelsCharMippedMin;
+	unsigned char **pixelsCharMippedMax;
+	unsigned char **pixelsCharMippedAvg;
+	int *mipWidths;
 
 	float *pixelsFloat;
 	bool isFloat;
 
-    FBOWrapper() {}
-    ~FBOWrapper() {}
-    int init(int _width, int _height, int _bytesPerChannel, int _slot, /*bool _hasDepth,*/ int filterEnum, int clampEnum) {
+	FBOWrapper() {}
+	~FBOWrapper() {}
+	int init(int _width, int _height, int _bytesPerChannel, int _slot, /*bool _hasDepth,*/ int filterEnum, int clampEnum) {
 		width = _width;
 		height = _height;
 		bytesPerChannel = _bytesPerChannel;
@@ -52,81 +52,81 @@ public:
 		slot = GL_COLOR_ATTACHMENT0_EXT;
 
 		switch (_slot) {
-			case 0:
-				slot = GL_COLOR_ATTACHMENT0_EXT;
+		case 0:
+			slot = GL_COLOR_ATTACHMENT0_EXT;
 			break;
-			case 1:
-				slot = GL_COLOR_ATTACHMENT1_EXT;
+		case 1:
+			slot = GL_COLOR_ATTACHMENT1_EXT;
 			break;
-			case 2:
-				slot = GL_COLOR_ATTACHMENT2_EXT;
+		case 2:
+			slot = GL_COLOR_ATTACHMENT2_EXT;
 			break;
-			case 3:
-				slot = GL_COLOR_ATTACHMENT3_EXT;
+		case 3:
+			slot = GL_COLOR_ATTACHMENT3_EXT;
 			break;
-			case 4:
-				slot = GL_COLOR_ATTACHMENT4_EXT;
+		case 4:
+			slot = GL_COLOR_ATTACHMENT4_EXT;
 			break;
-			case 5:
-				slot = GL_COLOR_ATTACHMENT5_EXT;
+		case 5:
+			slot = GL_COLOR_ATTACHMENT5_EXT;
 			break;
-			case 6:
-				slot = GL_COLOR_ATTACHMENT6_EXT;
+		case 6:
+			slot = GL_COLOR_ATTACHMENT6_EXT;
 			break;
-			case 7:
-				slot = GL_COLOR_ATTACHMENT7_EXT;
+		case 7:
+			slot = GL_COLOR_ATTACHMENT7_EXT;
 			break;
 		}
 
-	    
+
 
 		glGenTextures(1, &color_tex);
 		glBindTexture(GL_TEXTURE_2D, color_tex);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterEnum);
-	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterEnum);
-	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, clampEnum);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterEnum);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, clampEnum);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, clampEnum);
-		
-	    switch (bytesPerChannel) {
-	    	case 1:
-	    		internalFormat = GL_RGBA8;
-	    		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-	    		
-	    	break;
-	    	case 2:
-	    		internalFormat = GL_RGBA16;
-	            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_UNSIGNED_SHORT, 0);
 
-	    	break;
-	    	case 4:
-	    		internalFormat = GL_RGBA32F;
-	            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_FLOAT, 0);
-	            isFloat = true;
+		switch (bytesPerChannel) {
+		case 1:
+			internalFormat = GL_RGBA8;
+			glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
-	    	break;
-	    }
+			break;
+		case 2:
+			internalFormat = GL_RGBA16;
+			glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_UNSIGNED_SHORT, 0);
 
-	    TOT_GPU_MEM_USAGE += ((float)(w*h*bytesPerChannel*4))/(1024.0f*1024.0f);
+			break;
+		case 4:
+			internalFormat = GL_RGBA32F;
+			glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_FLOAT, 0);
+			isFloat = true;
+
+			break;
+		}
+
+		TOT_GPU_MEM_USAGE += ((float)(w * h * bytesPerChannel * 4)) / (1024.0f * 1024.0f);
 
 
-	    //
-	    /*
-	    if (hasDepth) {
-	    	glGenRenderbuffersEXT(1, &depth_rb);
-	    	glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, depth_rb);
-	    	glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, w, h);
-	    	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, depth_rb);
-	    }
-	    */
+		//
+		/*
+		if (hasDepth) {
+		  glGenRenderbuffersEXT(1, &depth_rb);
+		  glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, depth_rb);
+		  glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, w, h);
+		  glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, depth_rb);
+		}
+		*/
 
-	    
-	    //
 
-		
+		//
+
+
 		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, slot, GL_TEXTURE_2D, color_tex, 0);
 		glBindTexture(GL_TEXTURE_2D, 0);
 
-	    return 1;
+		return 1;
 
 	}
 
@@ -139,48 +139,48 @@ public:
 		}
 
 		switch (bytesPerChannel) {
-			case 1:
+		case 1:
 
-				glBindTexture(GL_TEXTURE_2D, color_tex);
-				/*
-				glTexSubImage2D(
-					GL_TEXTURE_2D,
-					0,
+			glBindTexture(GL_TEXTURE_2D, color_tex);
+			/*
+			glTexSubImage2D(
+			  GL_TEXTURE_2D,
+			  0,
 
-					0,
-					0,
-					width,
-					height,
-					
-					GL_RGBA,
-					GL_UNSIGNED_BYTE,
-					pixelsChar
-				 );
-				 */
+			  0,
+			  0,
+			  width,
+			  height,
+
+			  GL_RGBA,
+			  GL_UNSIGNED_BYTE,
+			  pixelsChar
+			 );
+			 */
 
 
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelsChar);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelsChar);
 
-				glBindTexture(GL_TEXTURE_2D, 0);
-				
+			glBindTexture(GL_TEXTURE_2D, 0);
+
 			break;
-			case 2:
-				doTrace("TODO: implement 16 bit");
+		case 2:
+			doTrace("TODO: implement 16 bit");
 			break;
-			case 4:
-				doTrace("TODO: implement 32 bit");
+		case 4:
+			doTrace("TODO: implement 32 bit");
 			break;
 		}
 
-		
+
 
 	}
 
 
 
-	void getPixelAtF(FIVector4* fv, int x, int y) {
+	void getPixelAtF(FIVector4 *fv, int x, int y) {
 
 		if (isFloat) {
 
@@ -194,10 +194,10 @@ public:
 			//g
 			//r
 
-			fv->setFX(pixelsFloat[ (x + y*width)*4 + 0 ]);
-			fv->setFY(pixelsFloat[ (x + y*width)*4 + 1 ]);
-			fv->setFZ(pixelsFloat[ (x + y*width)*4 + 2 ]);
-			fv->setFW(pixelsFloat[ (x + y*width)*4 + 3 ]);
+			fv->setFX(pixelsFloat[ (x + y * width) * 4 + 0 ]);
+			fv->setFY(pixelsFloat[ (x + y * width) * 4 + 1 ]);
+			fv->setFZ(pixelsFloat[ (x + y * width) * 4 + 2 ]);
+			fv->setFW(pixelsFloat[ (x + y * width) * 4 + 3 ]);
 
 		}
 		else {
@@ -216,13 +216,13 @@ public:
 			for (i = 0; i < width; i++) {
 				x = i;
 				y = j;
-				pixelsChar[ (x + y*width)*4 + channel ] = value;
+				pixelsChar[ (x + y * width) * 4 + channel ] = value;
 			}
 		}
 	}
 
 	void setPixelAtC(int x, int y, int channel, unsigned char value) {
-		pixelsChar[ (x + y*width)*4 + channel ] = value;
+		pixelsChar[ (x + y * width) * 4 + channel ] = value;
 	}
 
 
@@ -240,7 +240,7 @@ public:
 		x = x % width;
 		y = y % height;
 
-		return x + y*width;
+		return x + y * width;
 	}
 
 	void setPixelAtWrapped(int xs, int ys, int channel, int val) {
@@ -258,9 +258,9 @@ public:
 		x = x % width;
 		y = y % height;
 
-		int ind = x + y*width;
+		int ind = x + y * width;
 
-		pixelsChar[ind*4 + channel] = val;
+		pixelsChar[ind * 4 + channel] = val;
 	}
 
 	int getPixelAtWrapped(int xs, int ys, int channel) {
@@ -278,22 +278,22 @@ public:
 		x = x % width;
 		y = y % height;
 
-		int ind = x + y*width;
+		int ind = x + y * width;
 
-		return pixelsChar[ind*4 + channel];
+		return pixelsChar[ind * 4 + channel];
 	}
 
 	int getPixelAtIndex(int ind, int channel) {
-		return pixelsChar[ind*4 + channel];
+		return pixelsChar[ind * 4 + channel];
 	}
 	void setPixelAtIndex(int ind, int channel, int val) {
-		pixelsChar[ind*4 + channel] = val;
+		pixelsChar[ind * 4 + channel] = val;
 	}
 	void orPixelAtIndex(int ind, int channel, int val) {
-		pixelsChar[ind*4 + channel] |= val;
+		pixelsChar[ind * 4 + channel] |= val;
 	}
 	void andPixelAtIndex(int ind, int channel, int val) {
-		pixelsChar[ind*4 + channel] &= val;
+		pixelsChar[ind * 4 + channel] &= val;
 	}
 
 	int getPixelAtC(int x, int y, int channel) {
@@ -303,7 +303,7 @@ public:
 				getPixels();
 			}
 
-			return (int)pixelsChar[ (x + y*width)*4 + channel ];
+			return (int)pixelsChar[ (x + y * width) * 4 + channel ];
 
 		}
 		else {
@@ -324,8 +324,8 @@ public:
 
 		float percX = xf - x[0];
 		float percY = yf - y[0];
-		float percXI = 1.0f-percX;
-		float percYI = 1.0f-percY;
+		float percXI = 1.0f - percX;
+		float percYI = 1.0f - percY;
 
 
 		float v0, v1;
@@ -346,12 +346,12 @@ public:
 			y[i] = y[i] % height;
 		}
 
-		v0 = getPixelAtC(x[0],y[0],channel)/255.0f;
-		v1 = getPixelAtC(x[1],y[0],channel)/255.0f;
-		v2 = getPixelAtC(x[0],y[1],channel)/255.0f;
-		v3 = getPixelAtC(x[1],y[1],channel)/255.0f;
+		v0 = getPixelAtC(x[0], y[0], channel) / 255.0f;
+		v1 = getPixelAtC(x[1], y[0], channel) / 255.0f;
+		v2 = getPixelAtC(x[0], y[1], channel) / 255.0f;
+		v3 = getPixelAtC(x[1], y[1], channel) / 255.0f;
 
-		float vFinal = (v0*percXI + v1*percX)*percYI + (v2*percXI + v3*percX)*percY;
+		float vFinal = (v0 * percXI + v1 * percX) * percYI + (v2 * percXI + v3 * percX) * percY;
 
 		return vFinal;
 
@@ -371,7 +371,7 @@ public:
 
 		int w = mipWidths[mipLev];
 		int curWidth = mipWidths[mipLev];
-		int mipPitch = 1<<mipLev;
+		int mipPitch = 1 << mipLev;
 		int xv;
 		int yv;
 
@@ -379,32 +379,32 @@ public:
 		float t2;
 		float t3;
 
-		xv = intDiv(x*curWidth, mipWidths[0]) + ox;
-		yv = intDiv(y*curWidth, mipWidths[0]) + oy;
+		xv = intDiv(x * curWidth, mipWidths[0]) + ox;
+		yv = intDiv(y * curWidth, mipWidths[0]) + oy;
 
 		// if (x < 0) {
-		// 	t1 = -x*curWidth;
-		// 	t2 = mipWidths[0];
-		// 	t3 = -ceil(t1/t2);
-		// 	xv = t3 + ox;
+		//  t1 = -x*curWidth;
+		//  t2 = mipWidths[0];
+		//  t3 = -ceil(t1/t2);
+		//  xv = t3 + ox;
 
 		// }
 		// else {
-		// 	xv = ((x*curWidth)/mipWidths[0]) + ox;
+		//  xv = ((x*curWidth)/mipWidths[0]) + ox;
 		// }
 
 		// if (y < 0) {
-		// 	t1 = -y*curWidth;
-		// 	t2 = mipWidths[0];
-		// 	t3 = -ceil(t1/t2);
-		// 	yv = t3 + oy;
+		//  t1 = -y*curWidth;
+		//  t2 = mipWidths[0];
+		//  t3 = -ceil(t1/t2);
+		//  yv = t3 + oy;
 		// }
 		// else {
-		// 	yv = ((y*curWidth)/mipWidths[0]) + oy;
+		//  yv = ((y*curWidth)/mipWidths[0]) + oy;
 		// }
 
-		
-		
+
+
 
 		while (xv < 0) {
 			xv += curWidth;
@@ -419,55 +419,55 @@ public:
 			yv -= curWidth;
 		}
 
-		int ind = xv + yv*curWidth;
+		int ind = xv + yv * curWidth;
 		int res = 0;
-		int resInd = (ind)*4 + channel;
+		int resInd = (ind) * 4 + channel;
 
 		if (val != -1) {
-			switch(minMaxAvg) {
-				case 0:
-					(pixelsCharMippedMin[mipLev][resInd]) = val;
+			switch (minMaxAvg) {
+			case 0:
+				(pixelsCharMippedMin[mipLev][resInd]) = val;
 				break;
-				case 1:
-					(pixelsCharMippedMax[mipLev][resInd]) = val;
+			case 1:
+				(pixelsCharMippedMax[mipLev][resInd]) = val;
 				break;
-				case 2:
-					(pixelsCharMippedAvg[mipLev][resInd]) = val;
+			case 2:
+				(pixelsCharMippedAvg[mipLev][resInd]) = val;
 				break;
 			}
 		}
 
-		switch(minMaxAvg) {
-			case 0:
-				res = (int) (pixelsCharMippedMin[mipLev][resInd]);
+		switch (minMaxAvg) {
+		case 0:
+			res = (int) (pixelsCharMippedMin[mipLev][resInd]);
 			break;
-			case 1:
-				res = (int) (pixelsCharMippedMax[mipLev][resInd]);
+		case 1:
+			res = (int) (pixelsCharMippedMax[mipLev][resInd]);
 			break;
-			case 2:
-				res = (int) (pixelsCharMippedAvg[mipLev][resInd]);
+		case 2:
+			res = (int) (pixelsCharMippedAvg[mipLev][resInd]);
 			break;
 		}
 
 
-		
+
 		return res;
 
 	}
 
 	int getMipAtIndex(int ind, int mipLev, int channel, int minMaxAvg) {
 		int res = 0;
-		int resInd = ind*4 + channel;
+		int resInd = ind * 4 + channel;
 
-		switch(minMaxAvg) {
-			case 0:
-				res = (int) (pixelsCharMippedMin[mipLev][resInd]);
+		switch (minMaxAvg) {
+		case 0:
+			res = (int) (pixelsCharMippedMin[mipLev][resInd]);
 			break;
-			case 1:
-				res = (int) (pixelsCharMippedMax[mipLev][resInd]);
+		case 1:
+			res = (int) (pixelsCharMippedMax[mipLev][resInd]);
 			break;
-			case 2:
-				res = (int) (pixelsCharMippedAvg[mipLev][resInd]);
+		case 2:
+			res = (int) (pixelsCharMippedAvg[mipLev][resInd]);
 			break;
 		}
 
@@ -477,11 +477,11 @@ public:
 	int getMipInd(int x, int y, int mipLev) {
 		int w = mipWidths[mipLev];
 
-		return ((x*mipWidths[mipLev])/mipWidths[0]) + ((y*mipWidths[mipLev])/mipWidths[0])*mipWidths[mipLev];
+		return ((x * mipWidths[mipLev]) / mipWidths[0]) + ((y * mipWidths[mipLev]) / mipWidths[0]) * mipWidths[mipLev];
 	}
 
 	void updateMips() {
-		
+
 		int i;
 		int j;
 		int k;
@@ -497,51 +497,51 @@ public:
 			return;
 		}
 		else {
-			for (m = 0; m < numMips-1; m++) {
+			for (m = 0; m < numMips - 1; m++) {
 
 				mRead = m;
-				mWrite = m+1;
+				mWrite = m + 1;
 
 				for (k = 0; k < 4; k++) {
 
 					for (i = 0; i < mipWidths[mWrite]; i++) {
 						for (j = 0; j < mipWidths[mWrite]; j++) {
 
-							ind = (i+j*mipWidths[mWrite])*4+k;
-							
-							ind0 = ( (i*2+0) + (j*2+0)*mipWidths[mRead] )*4+k;//
-							ind1 = ( (i*2+1) + (j*2+0)*mipWidths[mRead] )*4+k;//
-							ind2 = ( (i*2+0) + (j*2+1)*mipWidths[mRead] )*4+k;//
-							ind3 = ( (i*2+1) + (j*2+1)*mipWidths[mRead] )*4+k;//
+							ind = (i + j * mipWidths[mWrite]) * 4 + k;
+
+							ind0 = ( (i * 2 + 0) + (j * 2 + 0) * mipWidths[mRead] ) * 4 + k; //
+							ind1 = ( (i * 2 + 1) + (j * 2 + 0) * mipWidths[mRead] ) * 4 + k; //
+							ind2 = ( (i * 2 + 0) + (j * 2 + 1) * mipWidths[mRead] ) * 4 + k; //
+							ind3 = ( (i * 2 + 1) + (j * 2 + 1) * mipWidths[mRead] ) * 4 + k; //
 
 							pixelsCharMippedAvg[ mWrite ][ ind ] = (
-								pixelsCharMippedAvg[ mRead ][ind0] + 
-								pixelsCharMippedAvg[ mRead ][ind1] + 
-								pixelsCharMippedAvg[ mRead ][ind2] + 
-								pixelsCharMippedAvg[ mRead ][ind3]
-							)/4;
+									pixelsCharMippedAvg[ mRead ][ind0] +
+									pixelsCharMippedAvg[ mRead ][ind1] +
+									pixelsCharMippedAvg[ mRead ][ind2] +
+									pixelsCharMippedAvg[ mRead ][ind3]
+																										 ) / 4;
 
 							pixelsCharMippedMin[ mWrite ][ ind ] = min(
-								min(
-									pixelsCharMippedMin[ mRead ][ind0],
-									pixelsCharMippedMin[ mRead ][ind1]
-								),
-								min(
-									pixelsCharMippedMin[ mRead ][ind2], 
-									pixelsCharMippedMin[ mRead ][ind3]
-								)
-							);
+									min(
+										pixelsCharMippedMin[ mRead ][ind0],
+										pixelsCharMippedMin[ mRead ][ind1]
+									),
+									min(
+										pixelsCharMippedMin[ mRead ][ind2],
+										pixelsCharMippedMin[ mRead ][ind3]
+									)
+																										 );
 
 							pixelsCharMippedMax[ mWrite ][ ind ] = max(
-								max(
-									pixelsCharMippedMax[ mRead ][ind0],
-									pixelsCharMippedMax[ mRead ][ind1]
-								),
-								max(
-									pixelsCharMippedMax[ mRead ][ind2], 
-									pixelsCharMippedMax[ mRead ][ind3]
-								)
-							);
+									max(
+										pixelsCharMippedMax[ mRead ][ind0],
+										pixelsCharMippedMax[ mRead ][ind1]
+									),
+									max(
+										pixelsCharMippedMax[ mRead ][ind2],
+										pixelsCharMippedMax[ mRead ][ind3]
+									)
+																										 );
 
 
 
@@ -557,7 +557,7 @@ public:
 
 	void getPixelsFast() {
 
-		
+
 
 		glBindTexture(GL_TEXTURE_2D, color_tex);
 		GLint numBytes = 0;
@@ -570,21 +570,32 @@ public:
 			pixelsUINT = new uint[numBytes];
 		}
 		glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelsUINT);
-		
-
 		glBindTexture(GL_TEXTURE_2D, 0);
 
+	}
+	
+	// assumed that remoteBuffer is allocated
+	void getPixelsFastRemote(uint* remoteBuffer) {
+
+
+		glBindTexture(GL_TEXTURE_2D, color_tex);
+		GLint numBytes = 0;
+		int totalWidth;
+		int curBytes;
+		numBytes = width * height;
+		glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, remoteBuffer);
+		glBindTexture(GL_TEXTURE_2D, 0);
 
 	}
 
 
-	void getPixels(bool _hasMipMap=false) {
+	void getPixels(bool _hasMipMap = false) {
 
-		
+
 
 		glBindTexture(GL_TEXTURE_2D, color_tex);
 		GLint numBytes = 0;
-		
+
 		int targetlevel = 0;
 		int index;
 		int i;
@@ -595,27 +606,27 @@ public:
 		//glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPONENTS, &intForm); // get internal format type of GL texture
 
 
-		switch(internalFormat) // determine what type GL texture has...
+		switch (internalFormat) // determine what type GL texture has...
 		{
-			case GL_RGB:
-				numBytes = width * height * 3;
+		case GL_RGB:
+			numBytes = width * height * 3;
 			break;
-			case GL_RGBA:
-				numBytes = width * height * 4;
+		case GL_RGBA:
+			numBytes = width * height * 4;
 			break;
-			case GL_RGBA8:
-				numBytes = width * height * 4;
+		case GL_RGBA8:
+			numBytes = width * height * 4;
 			break;
 			//case GL_RGBA16:
 			//
 			//break;
-			case GL_RGBA32F:
-				numBytes = width * height * 4 * 4;
+		case GL_RGBA32F:
+			numBytes = width * height * 4 * 4;
 			break;
 
-			default:
-				doTrace("Unsupported Format Type");
-				return;
+		default:
+			doTrace("Unsupported Format Type");
+			return;
 			break;
 		}
 
@@ -624,9 +635,9 @@ public:
 			if (isFloat) {
 
 				if (pixelsFloat == NULL) {
-					pixelsFloat = (float*)malloc(numBytes);
+					pixelsFloat = new float[numBytes];//(float*)malloc(numBytes);
 				}
-				
+
 				glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pixelsFloat);
 			}
 			else {
@@ -648,7 +659,9 @@ public:
 						return;
 					}
 					else {
-						while (index >>= 1) {++targetlevel;}
+						while (index >>= 1) {
+							++targetlevel;
+						}
 						numMips = targetlevel;
 
 					}
@@ -658,7 +671,7 @@ public:
 					pixelsCharMippedMin = new unsigned char*[numMips];
 					mipWidths = new int[numMips];
 
-					
+
 					pixelsCharMippedAvg[0] = pixelsChar;
 					pixelsCharMippedMax[0] = pixelsChar;
 					pixelsCharMippedMin[0] = pixelsChar;
@@ -667,8 +680,8 @@ public:
 
 					if (hasMipMap) {
 
-						totalWidth = width/2;
-						curBytes = numBytes/2;
+						totalWidth = width / 2;
+						curBytes = numBytes / 2;
 
 						for (i = 1; i < numMips; i++) {
 							pixelsCharMippedMin[i] = new unsigned char[curBytes];
@@ -676,8 +689,8 @@ public:
 							pixelsCharMippedAvg[i] = new unsigned char[curBytes];
 							mipWidths[i] = totalWidth;
 
-							totalWidth = totalWidth/2;
-							curBytes = curBytes/2;
+							totalWidth = totalWidth / 2;
+							curBytes = curBytes / 2;
 						}
 					}
 
@@ -685,7 +698,7 @@ public:
 				glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelsChar);
 			}
 
-			
+
 		}
 
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -709,18 +722,18 @@ public:
 
 	GLuint mFBO;
 
-	FBOWrapper* fbos;
+	FBOWrapper *fbos;
 
 	bool hasDepth;
 
-    FBOSet() {}
-    ~FBOSet() {}
+	FBOSet() {}
+	~FBOSet() {}
 
-    FBOWrapper* getFBOWrapper(int offset) {
-    	return &(fbos[offset]);
-    }
+	FBOWrapper *getFBOWrapper(int offset) {
+		return &(fbos[offset]);
+	}
 
-    void init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool _hasDepth, int filterEnum=GL_NEAREST, int clampEnum=GL_CLAMP_TO_EDGE) {
+	void init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool _hasDepth, int filterEnum = GL_NEAREST, int clampEnum = GL_CLAMP_TO_EDGE) {
 		int i;
 
 		hasDepth = _hasDepth;
@@ -751,7 +764,7 @@ public:
 
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 	}
-    void bind(int doClear) {
+	void bind(int doClear) {
 
 		//setWH(width, height);
 
@@ -761,25 +774,27 @@ public:
 		glDrawBuffers(numBufs, buffers);
 
 		if (doClear) {
-	    	glClearColor(0.0,0.0,0.0,0.0);
-	    	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	    }
+			glClearColor(0.0, 0.0, 0.0, 0.0);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		}
 
 	}
-    void copyFromMem(int ind, unsigned char* dat) {
+	void copyFromMem(int ind, unsigned char *dat) {
 
 		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
 
-	    glBindTexture(GL_TEXTURE_2D,fbos[ind].color_tex);
+		glBindTexture(GL_TEXTURE_2D, fbos[ind].color_tex);
 
-	    //glTexSubImage2D(GLenum target​, GLint level​, GLint xoffset​, GLint yoffset​, GLsizei width​, GLsizei height​, GLenum format​, GLenum type​, const GLvoid * data​);
+		//glTexSubImage2D(GLenum target​, GLint level​, GLint xoffset​, GLint yoffset​, GLsizei width​, GLsizei height​, GLenum format​, GLenum type​, const GLvoid * data​);
 
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, dat);
 		//glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbos[ind].slot, GL_TEXTURE_2D, fbos[ind].color_tex, 0);
 		//glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		//glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glBindTexture(GL_TEXTURE_2D,0);
+		glBindTexture(GL_TEXTURE_2D, 0);
 
 		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 	}
-}; 
+};
+
+ 

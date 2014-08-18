@@ -2,12 +2,22 @@
 
 varying vec2 TexCoord0;
 
+uniform float waveSpacing;
 uniform float curTime;
 uniform float cameraZoom;
 
 uniform vec3 cameraPos;
 uniform vec2 bufferDim;
 uniform vec2 mapDimInPixels;
+
+// world space fbo
+uniform sampler2D Texture4;
+uniform sampler2D Texture5;
+uniform sampler2D Texture6;
+uniform sampler2D Texture7;
+
+
+uniform float tiltAmount;
 
 const float timeScale = 0.0002;
 const float pi = 3.14159;
@@ -50,7 +60,7 @@ float unpack16(vec2 num) {
 
 
 float wave(int i, float x, float y) {
-    float frequency = 2*pi/wavelength[i];
+    float frequency = 2.0*pi/(wavelength[i]);// + (sin( (TexCoord0.x + TexCoord0.y)*4.0 + curTime/1000.0 ))*0.001 ;
     float phase = speed[i] * frequency;
     float theta = dot(direction[i], vec2(x, y));
     return amplitude[i] * sin(theta * frequency + curTime*timeScale * phase);
@@ -62,8 +72,9 @@ float waveHeight(vec2 param) {
     float y = param.y;
 
     float height = 0.0;
-    for (int i = 0; i < numWaves; ++i)
+    for (int i = 0; i < numWaves; ++i) {
         height += wave(i, x, y);
+    }
     return height;
 }
 
@@ -104,22 +115,74 @@ void main() {
 
 
     float newZoom = min(cameraZoom,1.0);
+    
+    
+    
+    // vec4 tex4 = texture2D(Texture4, TexCoord0.xy);
+    // vec4 tex5 = texture2D(Texture5, TexCoord0.xy);
+    // vec4 tex6 = texture2D(Texture6, TexCoord0.xy);
+    
+    vec4 tex7 = texture2D(Texture7, TexCoord0.xy);
+    vec3 worldPosition = tex7.xyz;
+    
 
-    vec2 tcMod = (vec2(TexCoord0.x,1.0-TexCoord0.y)*2.0-1.0 );
-    tcMod.x *= bufferDim.x/(newZoom);
-    tcMod.y *= bufferDim.y/(newZoom);
-    tcMod.y -= cameraPos.z;
 
 
-    vec3 worldPosition = vec3(0.0,0.0,0.0);
-    worldPosition.x = tcMod.y + tcMod.x/2.0;
-    worldPosition.y = tcMod.y - tcMod.x/2.0;
-    worldPosition.x += cameraPos.x;
-    worldPosition.y += cameraPos.y;
-    worldPosition.z = 0.0;
 
-    float waveh = (waveHeight(  vec2(worldPosition.xy)/256.0 ) )*0.5+0.5;
-    vec3 waven = (normalize( waveNormal(vec2(worldPosition.xy)/256.0) )+1.0)/2.0;
+
+
+
+
+    // vec2 tcMod = (vec2(TexCoord0.x,1.0-TexCoord0.y)*2.0-1.0 );
+    // tcMod.x *= bufferDim.x/(newZoom);
+    // tcMod.y *= bufferDim.y/(newZoom);
+    // tcMod.y -= cameraPos.z;
+    
+    // vec3 worldPosition = vec3(0.0,0.0,0.0);
+    // worldPosition.x = tcMod.y + tcMod.x/2.0;
+    // worldPosition.y = tcMod.y - tcMod.x/2.0;
+    // worldPosition.x += cameraPos.x;
+    // worldPosition.y += cameraPos.y;
+    // worldPosition.z = 0.0;
+    
+    
+    
+    // float tilt = tiltAmount;
+    // float itilt = 1.0-tiltAmount;
+    // float baseHeight = 0.0;
+
+    // vec3 worldPosition = vec3(0.0,0.0,0.0);
+    // vec2 ssCoord = vec2(0.0);
+    
+    // ssCoord = vec2(TexCoord0.x,1.0-TexCoord0.y)*2.0-1.0;
+    // ssCoord.x *= bufferDim.x/(newZoom);
+    // ssCoord.y *= bufferDim.y/(newZoom);
+    // ssCoord.y -= cameraPos.z*tilt*2.0;
+    // ssCoord.y += baseHeight*tilt*2.0;
+
+    // worldPosition.x = (ssCoord.y*0.5/itilt + ssCoord.x*0.5);
+    // worldPosition.y = (ssCoord.y*0.5/itilt - ssCoord.x*0.5);
+    // worldPosition.z = baseHeight;
+    // worldPosition.x += cameraPos.x;
+    // worldPosition.y += cameraPos.y;
+    
+    
+    
+
+    vec2 newPos = worldPosition.xy/waveSpacing;
+
+    // float wm = mix(
+    //     abs( 
+    //         sin(
+    //             (curTime)/500.0 + (TexCoord0.x + TexCoord0.y) * 12.0
+    //         )
+    //     ),
+    //     0.25,
+    //     1.0
+    // )*2.0;
+
+    float waveh = (waveHeight(newPos) )*0.5+0.5;
+    vec3 waven = (normalize( waveNormal(newPos) )+1.0)/2.0;
 
     gl_FragData[0] = vec4(waven,waveh);
 

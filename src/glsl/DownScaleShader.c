@@ -1,5 +1,3 @@
-// credit: http://xissburg.com/faster-gaussian-blur-in-glsl/
-
 // result fbo
 uniform sampler2D Texture0;
 uniform vec2 bufferDim;

@@ -100,7 +100,7 @@ void doTraceND(std::string traceVal0 = "", std::string traceVal1 = "",std::strin
 		std::cout << "|  ";
 	}
 	
-	std::cout << traceVal0 << " " << traceVal1 << " " << traceVal2 << " " << traceVal3 << " " << traceVal4 << " " << traceVal5 << " " << traceVal6 << " " << traceVal7 << " " << traceVal8 << " " << traceVal9 << " " << traceVal10 << "\n" << std::flush;
+	std::cout << traceVal0 << " " << traceVal1 << " " << traceVal2 << " " << traceVal3 << " " << traceVal4 << " " << traceVal5 << " " << traceVal6 << " " << traceVal7 << " " << traceVal8 << " " << traceVal9 << " " << traceVal10 << std::endl << std::flush;
 	
 }
 void doTraceVecND(std::string traceVal0, FIVector4 *fv) {
@@ -141,7 +141,7 @@ void popTraceND() {
 // 		std::cout << "|  ";
 // 	}
 	
-// 	std::cout << traceVal0 << " " << traceVal1 << " " << traceVal2 << " " << traceVal3 << " " << traceVal4 << " " << traceVal5 << " " << traceVal6 << " " << traceVal7 << " " << traceVal8 << " " << traceVal9 << " " << traceVal10 << "\n" << std::flush;
+// 	std::cout << traceVal0 << " " << traceVal1 << " " << traceVal2 << " " << traceVal3 << " " << traceVal4 << " " << traceVal5 << " " << traceVal6 << " " << traceVal7 << " " << traceVal8 << " " << traceVal9 << " " << traceVal10 << std::endl << std::flush;
 // 	#endif
 // }
 // void doTraceVec(std::string traceVal0, FIVector4 *fv) {
@@ -179,7 +179,7 @@ void doTrace(std::string traceVal0 = "", std::string traceVal1 = "",std::string 
 			std::cout << "|  ";
 		}
 		
-		std::cout << traceVal0 << " " << traceVal1 << " " << traceVal2 << " " << traceVal3 << " " << traceVal4 << " " << traceVal5 << " " << traceVal6 << " " << traceVal7 << " " << traceVal8 << " " << traceVal9 << " " << traceVal10 << "\n" << std::flush;
+		std::cout << traceVal0 << " " << traceVal1 << " " << traceVal2 << " " << traceVal3 << " " << traceVal4 << " " << traceVal5 << " " << traceVal6 << " " << traceVal7 << " " << traceVal8 << " " << traceVal9 << " " << traceVal10 << std::endl << std::flush;
 	}
 	
 	

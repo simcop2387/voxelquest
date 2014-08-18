@@ -1,4 +1,4 @@
-﻿Build started 3/24/2014 2:47:01 AM.
+﻿Build started 8/18/2014 5:19:01 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -20,8 +20,13 @@
          .\src\cpp\f00290_wsrequesthandler.hpp
          .\src\cpp\f00291_rhfactory.hpp
          .\src\cpp\f00292_wsserver.hpp
+         .\src\cpp\f00295_gamegeom.hpp
+         .\src\cpp\f00297_gameent.hpp
          .\src\cpp\f00300_singleton.hpp
          .\src\cpp\f00310_pooledresource.hpp
+         .\src\cpp\f00315_poolmanager.hpp
+         .\src\cpp\f00325_uicomponent.hpp
+         .\src\cpp\f00330_gamegui.hpp
          .\src\cpp\f00340_gameplantnode.hpp
          .\src\cpp\f00341_gameplant.hpp
          .\src\cpp\f00350_gamepage.hpp
@@ -29,17 +34,22 @@
          .\src\cpp\f00352_gameblock.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         24 File(s) copied
+         29 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         11
+         16
          copying headers to one file
          .\f00290_wsrequesthandler.e
          .\f00291_rhfactory.e
          .\f00292_wsserver.e
+         .\f00295_gamegeom.e
+         .\f00297_gameent.e
          .\f00300_singleton.e
          .\f00310_pooledresource.e
+         .\f00315_poolmanager.e
+         .\f00325_uicomponent.e
+         .\f00330_gamegui.e
          .\f00340_gameplantnode.e
          .\f00341_gameplant.e
          .\f00350_gamepage.e
@@ -49,21 +59,26 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         11
+         16
          .
          copying files to compiled
          .\temp\f00290_wsrequesthandler.e
          .\temp\f00291_rhfactory.e
          .\temp\f00292_wsserver.e
+         .\temp\f00295_gamegeom.e
+         .\temp\f00297_gameent.e
          .\temp\f00300_singleton.e
          .\temp\f00310_pooledresource.e
+         .\temp\f00315_poolmanager.e
+         .\temp\f00325_uicomponent.e
+         .\temp\f00330_gamegui.e
          .\temp\f00340_gameplantnode.e
          .\temp\f00341_gameplant.e
          .\temp\f00350_gamepage.e
          .\temp\f00351_gamepageholder.e
          .\temp\f00352_gameblock.e
          .\temp\f00380_gameworld.e
-         11 File(s) copied
+         16 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_vectors.h
@@ -80,8 +95,13 @@
          .\temp\f00290_wsrequesthandler.h
          .\temp\f00291_rhfactory.h
          .\temp\f00292_wsserver.h
+         .\temp\f00295_gamegeom.h
+         .\temp\f00297_gameent.h
          .\temp\f00300_singleton.h
          .\temp\f00310_pooledresource.h
+         .\temp\f00315_poolmanager.h
+         .\temp\f00325_uicomponent.h
+         .\temp\f00330_gamegui.h
          .\temp\f00340_gameplantnode.h
          .\temp\f00341_gameplant.h
          .\temp\f00350_gamepage.h
@@ -112,39 +132,49 @@
          
          
          
-         maxChanges: 16
+         blockSizeInHolders: 64
+         blockSizeInPixels: 32768
+         terDataBufPitchScaledXY 40
+         maxChangesInHolders: 4
          volGenFBOX: 128
          volGenFBOY: 16384
-         visPageSizeInPixels: 256
+         visPageSizeInPixels: 512
          holderSizeInPixels: 512
          bufferMult: 1.25
-         metersPerLot: 32
-         pixelsPerMeter: 128
+         metersPerLot: 64
+         pixelsPerMeter: 64
          unitsPerMeter: 4
          blockSizeInLots: 8
-         pixelsPerUnit: 32
-         unitsPerLot: 128
+         pixelsPerUnit: 16
+         unitsPerLot: 256
          pixelsPerLot: 4096
-         holderSizeInPages: 2
+         holderSizeInPages: 1
          holdersPerLot: 8
-         visPageSizeInUnits: 8
-         unitSizeInPixels: 32
+         visPageSizeInUnits: 32
+         unitSizeInPixels: 16
          worldSizeInBlocks:    128.000000   128.000000   1.000000    
          worldSizeInLots:    1024.000000   1024.000000   8.000000    
          worldSizeInHolders:    8192.000000   8192.000000   64.000000    
-         worldSizeInPages:    16384.000000   16384.000000   128.000000    
+         worldSizeInPages:    8192.000000   8192.000000   64.000000    
          
          
          
          
          
          
-         worldSizeInPixels:    4194048.000000   4194048.000000   32512.000000    
+         worldSizeInPixels:    4194304.000000   4194304.000000   32768.000000    
          Loading:  ..\data\lastJSONBuffer.js         
          Load Successful          
          processJSON()          
          Begin JSON::Parse()          
          buf is not NULL          
+         JSON::Parse a
+         length: 44544
+         JSON::Parse b
+         JSON::Parse c
+         JSON::Parse c0
+         JSON::Parse d
+         JSON::Parse g
          End JSON::Parse()          
                    
          Valid JSON          
@@ -152,7 +182,7 @@
          rootObj is now NULL          
          Loading:  ..\data\lastImageBuffer.txt         
          Load Successful          
-         Sea Level: 100
+         Sea Level: 128
          start place cities
          end place cities
          start grow provinces
@@ -174,70 +204,15 @@
          start filling houses
          end filling houses
          DONE WITH MAP
+         GW DONE          
+         copyTerToTexture resIndex:  0         
+         copyTerToTexture resIndex:  1         
+         copyTerToTexture resIndex:  2         
+         copyTerToTexture resIndex:  3         
+         ent refreshed
          waterOn 1
-                     
-                     
-         TOT COUNT### 4
-                     
-                     
-                     
-                     
-         TOT COUNT### 0
-                     
-                     
-                     
-                     
-         TOT COUNT### 2
-                     
-                     
-                     
-                     
-         TOT COUNT### 2
-                     
-                     
-                     
-                     
-         TOT COUNT### 4
-                     
-                     
-                     
-                     
-         TOT COUNT### 0
-                     
-                     
-                     
-                     
-         TOT COUNT### 2
-                     
-                     
-                     
-                     
-         TOT COUNT### 2
-                     
-                     
-                     
-                     
-         TOT COUNT### 4
-                     
-                     
-                     
-                     
-         TOT COUNT### 0
-                     
-                     
-                     
-                     
-         TOT COUNT### 2
-                     
-                     
-                     
-                     
-         TOT COUNT### 2
-                     
-                     
-         fog on 1
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:04:38.25
+Time Elapsed 00:04:25.08

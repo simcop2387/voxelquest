@@ -12,4 +12,8 @@ libjson
 cat *.txt > all.txt
 cat file1 file2 file3 file4 file5 file6 > out.txt
 
+
+
 For debug, capture just one frame of output, then disable debug.
+
+To Debug In VC++, swithc to Debug Build.  Press ctrl-e twice, then ctrl-r, then start local windows debugger

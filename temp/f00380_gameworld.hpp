@@ -1,5 +1,6 @@
 
-class GameWorld {
+class GameWorld
+{
 public:
 
 
@@ -10,9 +11,9 @@ public:
 	int mapSwapFlag;
 	int visPageSizeInUnits;
 	int blockSizeInHolders;
-	
+
 	int iBlockSize;
-	int diagrams[E_RENDER_LENGTH][E_STATE_LENGTH];
+	//int diagrams[E_RENDER_LENGTH][E_STATE_LENGTH];
 	int renderMethod;
 	int iBufferSize;
 	int maxThreads;
@@ -21,12 +22,14 @@ public:
 	int holderSizeInPages;
 
 	int lightCount;
-	int frameCount;
+	//int frameCount;
 
 	int MIN_MIP;
 	int MAX_MIP;
 	int AVG_MIP;
-	
+
+	int blockMip;
+
 	int hmChannel;
 	int idChannel;
 	int densityChannel;
@@ -37,14 +40,15 @@ public:
 	int pathChannel;
 	int houseChannel;
 
-	int* curDiagram;
-	int* provinceGrid;
-	int* provinceX;
-	int* provinceY;
+	int *curDiagram;
+	int *provinceGrid;
+	int *provinceX;
+	int *provinceY;
 
 	bool doDrawFBO;
 	bool lastProcResult;
 	bool mapLockOn;
+	bool foundPath;
 
 	float mapStep;
 	float mapTrans;
@@ -55,12 +59,13 @@ public:
 	int dirFlagsOp[4];
 	int dirFlagsO[4];
 	int dirFlagsOpO[4];
-	int dirModX[4];
-	int dirModY[4];
+	int dirModX[6];
+	int dirModY[6];
+	int dirModZ[6];
 	int opDir[4];
 
-	GameLight globalLight;
-	GameLight* activeLights[MAX_LIGHTS];
+	//GameLight globalLight;
+	GameLight *activeLights[MAX_EVAL_LIGHTS];
 
 	int dirFlagClear;
 	int visFlag;
@@ -74,10 +79,14 @@ public:
 
 	std::vector<coordAndIndex> roadCoords;
 
-	std::vector<GamePageHolder*> holdersToRefresh;
-	
+	std::vector<GamePageHolder *> holdersToRefresh;
+
+
+	GamePageHolder entHolders[E_ET_LENGTH];
+	std::vector<GameEnt> entList;
 
 	vector<int> ocThreads;
+
 	
 	FIVector4 lScreenCoords;
 	FIVector4 cScreenCoords;
@@ -98,55 +107,74 @@ public:
 	FIVector4 unitPos;
 	FIVector4 lastUnitPos;
 	FIVector4 lastPagePos;
+	
+	FIVector4 tempVec1;
+	FIVector4 tempVec2;
+	FIVector4 tempVec3;
+	
+	FIVector4 blockPos[2];
+	FIVector4 nodePos[2];
+	FIVector4 nodePosInPixels[2];
+	PathNode blockAndIndexPath[2];
+	PathNode blockAndIndexSplitPath[2];
+	FIVector4 lineSeg[2];
+	PathHolder* finalPath;
+	
+	int nodeInd[2];
+	//int finalInd;
+	
+	GameBlock* blockRef[2];
+	
+	
 
 	FIVector4 minLRInPixels;
 	FIVector4 maxLRInPixels;
 
 	FIVector4 minLRInHolders;
 	FIVector4 maxLRInHolders;
-	
+
 	FIVector4 minv;
 	FIVector4 maxv;
 
 	FIVector4 tempVec;
 	FIVector4 unitPosMin;
 	FIVector4 unitPosMax;
-	FIVector4 unitPosMinIS;
-	FIVector4 unitPosMaxIS;
+	//FIVector4 unitPosMinIS;
+	//FIVector4 unitPosMaxIS;
 
 	FIVector4 startBounds;
 	FIVector4 endBounds;
 
-	FIVector4* fogPos;
-	FIVector4* cutPos;
-	FIVector4* lightPos;
-	FIVector4* globLightPos;
+	FIVector4 *fogPos;
+	FIVector4 *cutPos;
+	FIVector4 *lightPos;
+	FIVector4 *globLightPos;
 	FIVector4 lightPosBase;
-	FIVector4* cameraPos;
+	FIVector4 *cameraPos;
 
-	FIVector4* curBoxPos;
+	FIVector4 *curBoxPos;
 	FIVector4 tv0;
 	FIVector4 tv1;
 	FIVector4 tv2;
 	FIVector4 tv3;
 	FIVector4 tv4;
 	FIVector4 tv5;
-	
+
 	//glm::quat myQuat;
 	//glm::vec3 paramVec;
 	//glm::vec3 spinVec;
 
-	Singleton* singleton;
-	
-	GameBlock** blockData;
+	Singleton *singleton;
 
-	FBOWrapper* curFBO;
-	FBOWrapper* curFBO2;
-	
-	
-	Poco::ThreadPool threadpool;
+	GameBlock **blockData;
 
-	
+	FBOWrapper *curFBO;
+	FBOWrapper *curFBO2;
+
+
+	//Poco::ThreadPool threadpool;
+
+
 
 
 	GameWorld()
@@ -161,7 +189,8 @@ public:
 	}
 
 
-	void init(Singleton* _singleton) {
+	void init(Singleton *_singleton)
+	{
 
 		pushTrace("GameWorld init()");
 
@@ -170,12 +199,16 @@ public:
 
 		int i;
 		int j;
+		
+		//finalInd = -1;
 
 		lightCount = 1;
-		frameCount = -1;
+		//frameCount = -1;
 
 		noiseGenerated = false;
 		wavesGenerated = false;
+
+		finalPath = NULL;
 
 		blockSizeInHolders = singleton->blockSizeInHolders;
 
@@ -188,7 +221,7 @@ public:
 		dirFlagsOpO[1] = 1;
 		dirFlagsOpO[2] = 8;
 		dirFlagsOpO[3] = 4;
-		
+
 		dirFlags[0] = ~1;
 		dirFlags[1] = ~2;
 		dirFlags[2] = ~4;
@@ -203,11 +236,22 @@ public:
 		dirModX[1] = -1;
 		dirModX[2] = 0;
 		dirModX[3] = 0;
+		dirModX[4] = 0;
+		dirModX[5] = 0;
 
 		dirModY[0] = 0;
 		dirModY[1] = 0;
 		dirModY[2] = 1;
 		dirModY[3] = -1;
+		dirModY[4] = 0;
+		dirModY[5] = 0;
+
+		dirModZ[0] = 0;
+		dirModZ[1] = 0;
+		dirModZ[2] = 0;
+		dirModZ[3] = 0;
+		dirModZ[4] = 1;
+		dirModZ[5] = -1;
 
 		opDir[0] = 1;
 		opDir[1] = 0;
@@ -218,11 +262,13 @@ public:
 		visFlag = 16;
 		visFlagO = ~16;
 
+		foundPath = false;
+
 		activeFBO = 0;
 		mapLockOn = false;
 
 		numProvinces = 32;
-		provinceGrid = new int[numProvinces*numProvinces];
+		provinceGrid = new int[numProvinces * numProvinces];
 		provinceX = new int[numProvinces];
 		provinceY = new int[numProvinces];
 
@@ -234,7 +280,8 @@ public:
 		maxThreads = 7;
 		availThreads = maxThreads;
 
-		for (i = 0; i < maxThreads; i++) {
+		for (i = 0; i < maxThreads; i++)
+		{
 			ocThreads.push_back(-1);
 		}
 
@@ -247,203 +294,259 @@ public:
 		btChannel = 1;
 		pathChannel = 2;
 		houseChannel = 3;
-		
+
 
 
 
 		MIN_MIP = 0;
 		MAX_MIP = 1;
 		AVG_MIP = 2;
-		
+
 
 		doDrawFBO = false;
 
-		for (j = 0; j < E_RENDER_LENGTH; j++) {
-			for (i = 0; i < E_STATE_LENGTH; i++) {
-				diagrams[j][i] = E_STATE_WAIT;
-			}
-		}
+		// for (j = 0; j < E_RENDER_LENGTH; j++)
+		// {
+		// 	for (i = 0; i < E_STATE_LENGTH; i++)
+		// 	{
+		// 		diagrams[j][i] = E_STATE_WAIT;
+		// 	}
+		// }
 
 		cutPos = &(singleton->dynObjects[E_OBJ_CUTAWAY]->pos);
 		fogPos = &(singleton->dynObjects[E_OBJ_FOG]->pos);
 		cameraPos = &(singleton->dynObjects[E_OBJ_CAMERA]->pos);
 
 		renderMethod = (int)E_RENDER_VOL;
-		
+
 		worldSizeInPages.copyFrom( &(singleton->worldSizeInPages) );
 		worldSizeInHolders.copyFrom( &(singleton->worldSizeInHolders) );
 		worldSizeInBlocks.copyFrom( &(singleton->worldSizeInBlocks) );
 
 		visPageSizeInPixels = singleton->visPageSizeInPixels;
 
-	    diagrams[E_RENDER_VOL][E_STATE_INIT_END] = E_STATE_GENERATEVOLUME_LAUNCH;//E_STATE_CREATESIMPLEXNOISE_LAUNCH;
-		diagrams[E_RENDER_VOL][E_STATE_CREATESIMPLEXNOISE_END] = E_STATE_GENERATEVOLUME_LAUNCH;//E_STATE_COPYTOTEXTURE_LAUNCH;
-	    //diagrams[E_RENDER_VOL][E_STATE_COPYTOTEXTURE_END] = E_STATE_GENERATEVOLUME_LAUNCH;
-	    diagrams[E_RENDER_VOL][E_STATE_GENERATEVOLUME_END] = E_STATE_LENGTH;
-
-		curDiagram = diagrams[renderMethod];
+		// diagrams[E_RENDER_VOL][E_STATE_INIT_END] = E_STATE_GENERATEVOLUME_LAUNCH;
+		// diagrams[E_RENDER_VOL][E_STATE_GENERATEVOLUME_END] = E_STATE_LENGTH;
+		// curDiagram = diagrams[renderMethod];
 
 		holderSizeInPages = singleton->holderSizeInPages;
 		visPageSizeInUnits = singleton->visPageSizeInUnits;
 
-		iBlockSize = worldSizeInBlocks.getIX()*worldSizeInBlocks.getIY();
+		iBlockSize = worldSizeInBlocks.getIX() * worldSizeInBlocks.getIY();
 
-		
+
 
 		blockData = new GameBlock*[iBlockSize];
-		for (i = 0; i < iBlockSize; i++) {
+		for (i = 0; i < iBlockSize; i++)
+		{
 			blockData[i] = NULL;
 		}
-	    
+
+		
+		for (i = 0; i < E_ET_LENGTH; i++) {
+			/*
+			Singleton* _singleton,
+			int _blockId,
+			int _holderId,
+			
+			int trueX,
+			int trueY,
+			int trueZ,
+			
+			bool _isEntity = false,
+			bool _entType = E_ET_TEST
+			*/
+			entHolders[i].init(
+				singleton,
+				
+				i,
+				0,
+				
+				0,
+				0,
+				0,
+				
+				true,
+				i
+			);
+		}
 
 
-	    popTrace();
+		popTrace();
 	}
 
 
-
-	int wrapCoord(int val, int mv) {
-		while (val < 0) {
-			val += mv;
-		}
-		while (val >= mv) {
-			val -= mv;
-		}
-
-		//val = val % max;
-
-		return val;
-	}
-
+	
+	
 	// x, y, and z are measured in blocks
-	GameBlock* getBlockAtCoords(int xInBlocks, int yInBlocks, bool createOnNull = false) {
+	GameBlock *getBlockAtCoords(int xInBlocks, int yInBlocks, bool createOnNull = false)
+	{
 
 
 
 
 
-		int newX = wrapCoord(xInBlocks,worldSizeInBlocks.getIX());
-		int newY = wrapCoord(yInBlocks,worldSizeInBlocks.getIY());
+		int newX = wrapCoord(xInBlocks, worldSizeInBlocks.getIX());
+		int newY = wrapCoord(yInBlocks, worldSizeInBlocks.getIY());
 
 		//cout << "xy " << newX << " " << newY << "\n";
 
 		int ind =
-			newY*worldSizeInBlocks.getIX() +
+			newY * worldSizeInBlocks.getIX() +
 			newX;
 
-		if (blockData[ind]) {
+		if (blockData[ind] == NULL)
+		{
 
-		}
-		else {
-			if (createOnNull) {
+			if (createOnNull)
+			{
 				blockData[ind] = new GameBlock();
 				blockData[ind]->init(singleton, ind, xInBlocks, yInBlocks, newX, newY);
 			}
 		}
+		else
+		{
+
+		}
 
 
 		return blockData[ind];
-		
+
 	}
 
 	// x, y, and z are measured in holders
-	GamePageHolder* getHolderAtCoords(int x, int y, int z, bool createOnNull = false) {
-		
-		GamePageHolder** holderData;
-		
-		int newX = wrapCoord(x,worldSizeInHolders.getIX());
-		int newY = wrapCoord(y,worldSizeInHolders.getIY());
+	GamePageHolder *getHolderAtCoords(int x, int y, int z, bool createOnNull = false)
+	{
+
+		GamePageHolder **holderData;
+
+		int newX = wrapCoord(x, worldSizeInHolders.getIX());
+		int newY = wrapCoord(y, worldSizeInHolders.getIY());
 		int newZ = z;
 
 
 
 		//  int ind =
 		//
-		// 	newZ*worldSizeInHolders.getIX()*worldSizeInHolders.getIY() +
-		// 	newY*worldSizeInHolders.getIX() +
-		// 	newX;
+		//  newZ*worldSizeInHolders.getIX()*worldSizeInHolders.getIY() +
+		//  newY*worldSizeInHolders.getIX() +
+		//  newX;
 
-		int holderX = newX - intDiv(newX,blockSizeInHolders)*blockSizeInHolders;
-		int holderY = newY - intDiv(newY,blockSizeInHolders)*blockSizeInHolders;
-		int holderZ = newZ - intDiv(newZ,blockSizeInHolders)*blockSizeInHolders;
+		int holderX = newX - intDiv(newX, blockSizeInHolders) * blockSizeInHolders;
+		int holderY = newY - intDiv(newY, blockSizeInHolders) * blockSizeInHolders;
+		int holderZ = newZ - intDiv(newZ, blockSizeInHolders) * blockSizeInHolders;
 
-		int holderID = holderZ*blockSizeInHolders*blockSizeInHolders + holderY*blockSizeInHolders + holderX;
+		int holderId = holderZ * blockSizeInHolders * blockSizeInHolders + holderY * blockSizeInHolders + holderX;
 
 
-		GameBlock* curBlock = getBlockAtCoords(
-			intDiv(x,blockSizeInHolders),
-			intDiv(y,blockSizeInHolders),
-			createOnNull
-		);
+		GameBlock *curBlock = getBlockAtCoords(
+														intDiv(x, blockSizeInHolders),
+														intDiv(y, blockSizeInHolders),
+														createOnNull
+													);
 
-		if (curBlock == NULL) {
+		if (curBlock == NULL)
+		{
 			return NULL;
 		}
-		else {
+		else
+		{
 			holderData = curBlock->holderData;
 
 
-			if (holderData[holderID]) {
+			if (holderData[holderId])
+			{
 
 			}
-			else {
-				if (createOnNull) {
-					holderData[holderID] = new GamePageHolder();
-					holderData[holderID]->init(singleton, curBlock->blockID, holderID, x, y, z); //, x, y, z
+			else
+			{
+				if (createOnNull)
+				{
+					holderData[holderId] = new GamePageHolder();
+					holderData[holderId]->init(singleton, curBlock->blockId, holderId, x, y, z); //, x, y, z
 				}
 			}
 
-			return holderData[holderID];
+			return holderData[holderId];
 
 
 		}
 
 
-		
+
 	}
 
 	// assumed that holder exists when calling this
-	GamePageHolder* getHolderAtID(intPair id) {
-		
-		if (blockData[id.v0] == NULL) {
+	GamePageHolder *getHolderAtId(intPair id)
+	{
+
+		if (blockData[id.v0] == NULL)
+		{
 			return NULL;
 		}
-		else {
+		else
+		{
 			return blockData[id.v0]->holderData[id.v1];
 		}
+	}
 
-		
+	// assumed that block exists when calling this
+	GameBlock *getBlockAtId(int id)
+	{
+
+
+		if ((id < 0) || (id >= iBlockSize))
+		{
+			doTraceND("BLOCK INDEX OUT OF RANGE");
+			return NULL;
+		}
+		else
+		{
+			if (blockData[id] == NULL)
+			{
+				doTraceND("BLOCK DATA IS NULL");
+				return NULL;
+			}
+			else
+			{
+				return blockData[id];
+			}
+		}
+
+
 
 	}
 
 
 	// assumed that page exists when calling this
-	GamePage* getPageAtIndex(int ind) {
+	GamePage *getPageAtIndex(int ind)
+	{
 		//pushTrace("getPageAtIndex()");
 
 		int newInd = ind;
 		int x, y, z;
-		GamePage* gp;
+		GamePage *gp;
 
-		z = newInd / (worldSizeInPages.getIX()*worldSizeInPages.getIY());
-		newInd -= z*(worldSizeInPages.getIX()*worldSizeInPages.getIY());
+		z = newInd / (worldSizeInPages.getIX() * worldSizeInPages.getIY());
+		newInd -= z * (worldSizeInPages.getIX() * worldSizeInPages.getIY());
 
 		y = newInd / (worldSizeInPages.getIX());
-		newInd -= y*(worldSizeInPages.getIX());
+		newInd -= y * (worldSizeInPages.getIX());
 
 		x = newInd;
 
-		gp = getPageAtCoords(x,y,z,false);
+		gp = getPageAtCoords(x, y, z, false);
 
 		//popTrace();
 
 		return gp;
-		
+
 	}
-	
+
 
 	// x, y, and z are measured in pages
-	GamePage* getPageAtCoords(int x, int y, int z, bool createOnNull = false) {
+	GamePage *getPageAtCoords(int x, int y, int z, bool createOnNull = false)
+	{
 
 		//pushTrace("getPageAtCoords()");
 		int hx, hy, hz;
@@ -451,70 +554,76 @@ public:
 		int gpInd;
 		//int xmod = 0;
 		//int ymod = 0;
-		int newX = wrapCoord(x,worldSizeInPages.getIX());
-		int newY = wrapCoord(y,worldSizeInPages.getIY());
+		int newX = wrapCoord(x, worldSizeInPages.getIX());
+		int newY = wrapCoord(y, worldSizeInPages.getIY());
 		int newZ = z;
-		int ind = 
-			newZ*worldSizeInPages.getIX()*worldSizeInPages.getIY() +
-			newY*worldSizeInPages.getIX() +
+		int ind =
+			newZ * worldSizeInPages.getIX() * worldSizeInPages.getIY() +
+			newY * worldSizeInPages.getIX() +
 			newX;
 
-		GamePage* gp = NULL;
+		GamePage *gp = NULL;
 
-		px = newX%holderSizeInPages;
-		py = newY%holderSizeInPages;
-		pz = newZ%holderSizeInPages;
+		px = newX % holderSizeInPages;
+		py = newY % holderSizeInPages;
+		pz = newZ % holderSizeInPages;
 
-		
+
 
 
 		// if (x < 0) {
-		// 	if (x%holderSizeInPages == 0) {
+		//  if (x%holderSizeInPages == 0) {
 
-		// 	}
-		// 	else {
-		// 		xmod = -1;
-		// 	}
-			
+		//  }
+		//  else {
+		//      xmod = -1;
+		//  }
+
 		// }
 		// if (y < 0) {
-		// 	if (y%holderSizeInPages == 0) {
+		//  if (y%holderSizeInPages == 0) {
 
-		// 	}
-		// 	else {
-		// 		ymod = -1;
-		// 	}
+		//  }
+		//  else {
+		//      ymod = -1;
+		//  }
 		// }
-		
 
 
-		GamePageHolder* gph = getHolderAtCoords(
-			intDiv(x,holderSizeInPages),
-			intDiv(y,holderSizeInPages),
-			intDiv(z,holderSizeInPages),
-			createOnNull
-		);
-		
 
-		if ( gph ) {
+		GamePageHolder *gph = getHolderAtCoords(
+														intDiv(x, holderSizeInPages),
+														intDiv(y, holderSizeInPages),
+														intDiv(z, holderSizeInPages),
+														createOnNull
+													);
 
 
-			
-			gpInd = pz*holderSizeInPages*holderSizeInPages + py*holderSizeInPages + px;
+		if ( gph )
+		{
+
+
+
+			gpInd = pz * holderSizeInPages * holderSizeInPages + py * holderSizeInPages + px;
 			//gph->getPageIndex(px,py,pz);
 
-			if (gpInd == -1) {
+			if (gpInd == -1)
+			{
 				// prob
 				cout << "Invalid holder index\n";
 			}
-			else {
+			else
+			{
 				gp = gph->pageData[gpInd];
 
-				if (gp) {
+				if (gp)
+				{
 
 				}
-				else {
-					if (createOnNull) {
+				else
+				{
+					if (createOnNull)
+					{
 
 
 						//cout << "x: " << x << " y: " << y << " newX: " << newX << " newY: " << newY << " px: " << px << " py: " << py << "\n";
@@ -533,8 +642,9 @@ public:
 			}
 
 		}
-		else {
-			
+		else
+		{
+
 		}
 
 		//popTrace();
@@ -544,25 +654,33 @@ public:
 
 
 
-	bool checkBounds(int k) { //int i, int j, int k) {
+	bool checkBounds(int k)   //int i, int j, int k) {
+	{
 		//pushTrace("checkBounds()");
-		
+
 		bool res = true;
 
 		//if (i < 0) {res = false;}
 		//if (j < 0) {res = false;}
-		if (k < 0) {res = false;}
+		if (k < 0)
+		{
+			res = false;
+		}
 		//if (i >= worldSizeInPages.getIX()) {res = false;}
 		//if (j >= worldSizeInPages.getIY()) {res = false;}
-		if (k >= worldSizeInPages.getIZ()) {res = false;}
+		if (k >= worldSizeInPages.getIZ())
+		{
+			res = false;
+		}
 
 		//popTrace();
 		return res;
-		
+
 	}
 
 
-	void update() {
+	void update()
+	{
 
 		pushTrace("update()");
 
@@ -574,38 +692,45 @@ public:
 		float y;
 		float z;
 
-		newZoom = max(1.0f,singleton->cameraZoom);
+		newZoom = max(1.0f, singleton->cameraZoom);
 
 		bool doFinalDraw = false;
 
-		mapTrans = 1.0f-(singleton->cameraZoom*((float)DEF_SCALE_FACTOR))/0.1f;
-		if (mapTrans > 0.91) {
+		mapTrans = 1.0f - (singleton->cameraZoom * ((float)DEF_SCALE_FACTOR)) / 0.1f;
+		if (mapTrans > 0.91)
+		{
 			mapTrans = 1.0;
 		}
-		if (mapTrans < 0.1) {
+		if (mapTrans < 0.1)
+		{
 			mapTrans = 0.0;
 		}
+		
 
-		if (mapLockOn) {
+		if (mapLockOn)
+		{
 			goto DO_RETURN_UPDATE;
 		}
 
-		if (singleton->mapInvalid) {
-			
+		if (singleton->mapInvalid)
+		{
+
 
 			goto DO_RETURN_UPDATE;
 		}
 
-		if (noiseGenerated) {
+		if (noiseGenerated)
+		{
 
 		}
-		else {
+		else
+		{
 			noiseGenerated = true;
 			singleton->bindShader("NoiseShader");
 			singleton->bindFBO("noiseFBO");
-			singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 			singleton->setShaderfVec3("cameraPos", cameraPos);
-			singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
+			singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 			singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 			singleton->setShaderFloat("curTime", singleton->curTime);
 			singleton->drawFSQuad(1.0f);
@@ -617,141 +742,150 @@ public:
 		bool changesMade = singleton->changesMade;
 		bool bufferInvalid = singleton->bufferInvalid;
 
-		bool procResult;
-		bool doRenderGeom = true;
+		bool procResult = false;
 
 
-		if (mapTrans < 1.0f) {
+		if (mapTrans < 1.0f)
+		{
 
-			if ( singleton->isZooming) { //(false) { //  || singleton->isPanning 
-				
+			if ( singleton->isZooming)   //(false) { //  || singleton->isPanning
+			{
+
 			}
-			else {
+			else
+			{
 				procResult = processPages();
-				
-				if ( (lastProcResult != procResult) && (procResult == false)  ) {
+
+				if ( (lastProcResult != procResult) && (procResult == false)  )
+				{
 					singleton->wsBufferInvalid = true;
 
 				}
 			}
 
-			if (procResult || changesMade) {
+			if (procResult || changesMade || (singleton->mouseState == E_MOUSE_STATE_ENTS) )
+			{
 				actionOnHolders(E_HOLDER_ACTION_RENDER);
 
-				
-				
-				if ( (singleton->grassState != E_GRASS_STATE_ANIM) ) {
-					renderGrass();
-					doRenderGeom = true;
 
-				}
 
-				
+				// if ( (singleton->grassState != E_GRASS_STATE_ANIM) ) {
+				//  //renderGrass();
+				// }
+
+
 			}
 
-			if (singleton->grassState == E_GRASS_STATE_ANIM) {
-				renderGrass();
-				doRenderGeom = true;
-				bufferInvalid = true;
-			}
+			// if (singleton->grassState == E_GRASS_STATE_ANIM) {
+			//  //renderGrass();
+			//  bufferInvalid = true;
+			// }
 		}
 
-		if (procResult || changesMade || bufferInvalid || singleton->rbDown || singleton->lbDown) {
+		if (
+			procResult ||
+			changesMade ||
+			bufferInvalid ||
+			singleton->rbDown ||
+			singleton->lbDown
+			
+		)	{
 
 			doFinalDraw = true;
 
-			if (singleton->mouseState == E_MOUSE_STATE_BRUSH || singleton->mouseState == E_MOUSE_STATE_MEASURE) {
-				doRenderGeom = true;
-			}
+			renderGeom();
+			combineBuffers();
+			renderWorldSpaceGPU(1.0f, 0.0f, 1.0f);
 
-			if (doRenderGeom) {
-				renderGeom();
-				combineBuffers();
-			}
-			
 
-			
-
-						
 		}
 
-		
+
 
 
 		////////////
 
 
-		if (doFinalDraw || singleton->waterOn) {
-			glClearColor(0.6,0.6,0.7,0.0);
+		if (doFinalDraw || singleton->waterOn || (mapTrans > 0.0))
+		{
+			glClearColor(0.6f, 0.6f, 0.7f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
-			if ( mapTrans < 1.0 ) {
+			if ( mapTrans < 1.0 )
+			{
 
-				if (singleton->directPass) {
-					
+				if (singleton->directPass)
+				{
+
 				}
-				else {
+				else
+				{
 					postProcess();
 				}
 
 			}
-			
-			if ( mapTrans > 0.0 ) {
-				glEnable(GL_BLEND);
+
+			if ( mapTrans > 0.0 )
+			{
+				if (doFinalDraw) {
+					singleton->createVTListTilt();
+				}
+				
+				
 				drawMap();
-				glDisable(GL_BLEND);
 			}
 
 			glutSwapBuffers();
 			glFlush();
 		}
 
-		
+
 
 		////////////
 
 
-		if (singleton->forceGetPD) {
+		if (singleton->forceGetPD)
+		{
 			singleton->forceGetPD = false;
-			renderWorldSpace();
+			getWorldSpaceBuffer();
 		}
-	
 
 
-	
+
+
 DO_RETURN_UPDATE:
 
 		lastProcResult = procResult;
 		singleton->updateLock = false;
 		popTrace();
-		
+
 
 	}
-		
-		
 
-	bool processPages() {
+
+
+	bool processPages()
+	{
 
 		pushTrace("processPages()");
 
-		
+
 		int counter;
 		int i, j, k;
 		int res;
-		
-
-	    int ii;
-	    int jj;
-	    int kk;
-
-	    bool cmade = false;
-
-	    float heightAtPoint = singleton->getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY());
 
 
-	    camPagePos.copyFrom( cameraPos );
-	    //camPagePos.setFZ(heightAtPoint);
+		int ii;
+		int jj;
+		int kk;
+
+		//float heightAtPoint = singleton->getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY());
+
+		bool cmade = false;
+
+		camPagePos.copyFrom( cameraPos );
+		//camPagePos.setFZ(heightAtPoint);
 		camPagePos.intDivXYZ(visPageSizeInPixels);
 
 		camHolderPos.copyFrom(&camPagePos);
@@ -763,284 +897,183 @@ DO_RETURN_UPDATE:
 		camBlockPos.copyFrom( cameraPos );
 		camBlockPos.intDivXYZ(singleton->blockSizeInPixels);
 
-		
-	    GamePage* curPage;
-	    GameBlock* curBlock;
 
-	    int m;
-	    E_STATES nState;
+		GamePageHolder* curHolder;
+		GameBlock *curBlock;
 
-	    int loadRad = singleton->maxW;
-	    int loadRad2 = singleton->maxH;
+		int m;
+		//E_STATES nState;
 
-	    int changeCount = 0;
-	    
-	    int maxChanges = singleton->maxChanges;
-	 //    if (singleton->lbDown || singleton->rbDown || singleton->isZooming) {
-	 //    	maxChanges = 8;
-		// }
+		int loadRad = singleton->maxWInPages;
+		int loadRad2 = singleton->maxHInPages;
+		int changeCount = 0;
+
+		int maxChangesInHolders = singleton->maxChangesInHolders;
+		if (singleton->lbDown || singleton->rbDown || singleton->isZooming) {
+			maxChangesInHolders = 2;
+		}
 		// else {
-		// 	maxChanges = 32;
+		//  maxChangesInHolders = 32;
 		// }
-	    
-
-
-	    // check for threads to free
-	    if (availThreads < maxThreads) {
-	    	for (i = 0; i < ocThreads.size(); i++) {
-	    		if ( ocThreads[i] == -1) {
-	    			// already freed
-	    		}
-	    		else{
-	    			if ( getPageAtIndex(ocThreads[i]) == NULL ) {
-	    				// page was destroyed, free thread
-
-	    				ocThreads[i] = -1;
-	    				availThreads++;
-	    			}
-	    			else {
-	    				if (getPageAtIndex(ocThreads[i])->threadRunning) {
-
-	    				}
-	    				else {
-	    					ocThreads[i] = -1;
-	    					availThreads++;
-	    				}
-	    			}
-	    		}
-	    	}
-	    }
-
-
-	    if (availThreads == 0) {
-	    	goto DO_RETURN_PP;
-	    }
-
-
-	    minLRInPixels.copyFrom(&camPagePos);
-	    maxLRInPixels.copyFrom(&camPagePos);
-	    minLRInPixels.addXYZ(-loadRad,-loadRad,-loadRad2);
-	    maxLRInPixels.addXYZ(loadRad,loadRad,loadRad2);
-	    minLRInPixels.multXYZ(singleton->visPageSizeInPixels);
-	    maxLRInPixels.multXYZ(singleton->visPageSizeInPixels);
-
-	    // first fetch all the blocks to make sure they get created
-	    int blockRad = 2;
-	    for (j = -blockRad; j <= blockRad; j++) {
-	    	for (i = -blockRad; i <= blockRad; i++) {
-	    		ii = i + camBlockPos.getIX();
-	    		jj = j + camBlockPos.getIY();
-
-	    		curBlock = getBlockAtCoords(ii, jj, true);
-
-	    	}
-	    }
-
-	    int hsip = singleton->holderSizeInPages;
-
-	    int mink = intDiv(camPagePos.getIZ()-loadRad2, hsip);
-	    int maxk = intDiv(camPagePos.getIZ()+loadRad2, hsip);
-	    int minj = intDiv(camPagePos.getIY()-loadRad, hsip);
-	    int maxj = intDiv(camPagePos.getIY()+loadRad, hsip);
-	    int mini = intDiv(camPagePos.getIX()-loadRad, hsip);
-	    int maxi = intDiv(camPagePos.getIX()+loadRad, hsip);
-
-
-		minLRInHolders.setIXYZ(mini+1,minj+1,mink+1);
-	    maxLRInHolders.setIXYZ(maxi-1,maxj-1,maxk-1);
-
-
-	    mink *= hsip;
-	    maxk *= hsip;
-	    minj *= hsip;
-	    maxj *= hsip;
-	    mini *= hsip;
-	    maxi *= hsip;
 
 
 
-		//for (k = 0; k < singleton->maxH; k++) {
-	    for (kk = mink; kk <= maxk; kk++) {
-	    	//kk = k+camPagePos.getIZ();
+		// check for threads to free
+		if (availThreads < maxThreads)
+		{
+			for (i = 0; i < ocThreads.size(); i++)
+			{
+				if ( ocThreads[i] == -1)
+				{
+					// already freed
+				}
+				else
+				{
+					if ( getPageAtIndex(ocThreads[i]) == NULL )
+					{
+						// page was destroyed, free thread
 
-			for (jj = minj; jj <= maxj; jj++) {
-				//jj = j+camPagePos.getIY();
-
-				for (ii = mini; ii <= maxi; ii++) {
-					//ii = i+camPagePos.getIX();
-
-					
-					
-
-					if ( checkBounds(kk) ) {
-
-						
-						curPage = getPageAtCoords(ii, jj, kk);
-
-						if (curPage == NULL) {
-
-							
-							doTrace("E_STATE_INIT_LAUNCH");
-							
-
-							curPage = getPageAtCoords(ii, jj, kk, true);
-
-							doTrace("E_STATE_INIT_LAUNCH_END");
-
-							pageCount++;
-							changeCount++;
-
-
-						}
-						else {
-
-
-
-							nState = (E_STATES)curDiagram[curPage->curState];
-
-
-							switch(nState) {
-	                            case E_STATE_CREATESIMPLEXNOISE_LAUNCH:
-
-	                            	
-	                            	doTrace("E_STATE_CREATESIMPLEXNOISE_LAUNCH");
-	                            	
-
-	                            	
-
-	                            	if ( availThreads > 0 ) {
-
-	                            		
-
-	                            		counter = 0;
-	                            		while (ocThreads[counter] != -1) {
-	                            			counter++;
-	                            			if (counter >= maxThreads) {
-	                            				break;
-	                            			}
-	                            		}
-	                            		if (counter >= maxThreads) {
-	                            			
-	                            		}
-	                            		else {
-
-
-	                            			ocThreads[counter] = curPage->thisPageId;
-	                            			
-	                            			availThreads--;
-
-	                            			curPage->nextState = nState;
-
-	                            			try {
-	                            				threadpool.start(*curPage);
-	                            			}
-	                            			catch (SystemException & exc) {
-	                            				doTrace("MEM EXCEPTION");
-	                            			}
-
-	                            			changeCount++;
-
-	                            		}
-
-
-	                            		
-	                            	}
-	                            	else {
-
-	                            		goto DO_RETURN_PP;
-	                            	}
-	                            	
-
-	                            	//curPage->run();
-									
-									
-								break;
-
-
-								case E_STATE_GENERATEVOLUME_LAUNCH:
-
-									
-									doTrace("E_STATE_GENERATEVOLUME_LAUNCH");
-									
-
-									
-									curPage->nextState = nState;
-									curPage->generateVolume();
-									cmade = true;
-
-									changeCount++;
-									
-									//goto DO_RETURN_PP;
-								break;
-
-								
-								case E_STATE_WAIT:
-
-									//do nothing
-								break;
-								case E_STATE_LENGTH:
-	                            	
-								break;
-								default:
-	                                
-								break;
-
-							}
-
-							if (changeCount >= maxChanges) {
-								goto DO_RETURN_PP;
-							}
-							
-						}
-
+						ocThreads[i] = -1;
+						availThreads++;
 					}
+					else
+					{
+						if (getPageAtIndex(ocThreads[i])->threadRunning)
+						{
 
-					
+						}
+						else
+						{
+							ocThreads[i] = -1;
+							availThreads++;
+						}
+					}
 				}
 			}
 		}
 
 
-		DO_RETURN_PP:
+		if (availThreads == 0)
+		{
+			goto DO_RETURN_PP;
+		}
+
+
+		minLRInPixels.copyFrom(&camHolderPos);
+		maxLRInPixels.copyFrom(&camHolderPos);
+		minLRInPixels.addXYZ(-loadRad, -loadRad, -loadRad2);
+		maxLRInPixels.addXYZ(loadRad, loadRad, loadRad2);
 		
+		minLRInPixels.addXYZ(-0.5f);
+		maxLRInPixels.addXYZ(0.5f);
+		
+		minLRInPixels.multXYZ(singleton->holderSizeInPixels);
+		maxLRInPixels.multXYZ(singleton->holderSizeInPixels);
+
+		// first fetch all the blocks to make sure they get created
+		int blockRad = 1;
+		for (j = -blockRad; j <= blockRad; j++)
+		{
+			for (i = -blockRad; i <= blockRad; i++)
+			{
+				ii = i + camBlockPos.getIX();
+				jj = j + camBlockPos.getIY();
+
+				curBlock = getBlockAtCoords(ii, jj, true);
+
+			}
+		}
+
+
+		
+
+		int mink = camHolderPos.getIZ() - loadRad2;
+		int maxk = camHolderPos.getIZ() + loadRad2;
+		int minj = camHolderPos.getIY() - loadRad;
+		int maxj = camHolderPos.getIY() + loadRad;
+		int mini = camHolderPos.getIX() - loadRad;
+		int maxi = camHolderPos.getIX() + loadRad;
+
+
+		minLRInHolders.setIXYZ(mini + 1, minj + 1, mink + 1);
+		maxLRInHolders.setIXYZ(maxi - 1, maxj - 1, maxk - 1);
+
+
+		for (kk = mink; kk <= maxk; kk++) {
+			for (jj = minj; jj <= maxj; jj++) {
+				for (ii = mini; ii <= maxi; ii++) {
+					if ( checkBounds(kk) ) {
+						
+						
+						
+						
+
+						curHolder = getHolderAtCoords(ii, jj, kk, true);
+						
+						if (curHolder->isDirty) {
+							curHolder->refreshChildren(true);
+							changeCount++;
+							cmade = true;
+						}
+						
+						if (changeCount >= maxChangesInHolders)
+						{
+							goto DO_RETURN_PP;
+						}
+						
+						
+						
+						
+					}
+				}
+			}
+		}
+
+
+DO_RETURN_PP:
+
 		doTrace("ProcessPages End");
 
 		popTrace();
 		return cmade;
 	}
 
-	bool addHolderToRefresh(GamePageHolder* toAdd) {
+	bool addHolderToRefresh(GamePageHolder *toAdd)
+	{
 		int i;
 
 		bool wasFound = false;
 
-		if (toAdd == NULL) {
+		if (toAdd == NULL)
+		{
 			return false;
 		}
 
-		for (i = 0; i < holdersToRefresh.size(); i++) {
-			if (holdersToRefresh[i] == toAdd) {
+		for (i = 0; i < holdersToRefresh.size(); i++)
+		{
+			if (holdersToRefresh[i] == toAdd)
+			{
 				wasFound = true;
 			}
 		}
 
-		if (wasFound) {
+		if (wasFound)
+		{
 			return false;
 		}
-		else {
+		else
+		{
 			holdersToRefresh.push_back(toAdd);
 			return true;
 		}
 	}
 
-	int getHoldersInGeom(GameGeom* gg) {
+	int getHoldersInGeom(GameGeom *gg)
+	{
 
 		int i;
 		int j;
 		int k;
-
-		doTraceND("  ");
-		doTraceND("  ");
 
 		geomMin.copyFrom(gg->getVisMinInPixelsT());
 		geomMin.intDivXYZ(singleton->holderSizeInPixels);
@@ -1048,8 +1081,8 @@ DO_RETURN_UPDATE:
 		geomMax.copyFrom(gg->getVisMaxInPixelsT());
 		geomMax.intDivXYZ(singleton->holderSizeInPixels);
 
-		GamePageHolder* gphMin = getHolderAtCoords(geomMin.getIX(),geomMin.getIY(),geomMin.getIZ(), true);
-		GamePageHolder* gphMax = getHolderAtCoords(geomMax.getIX(),geomMax.getIY(),geomMax.getIZ(), true);
+		GamePageHolder *gphMin = getHolderAtCoords(geomMin.getIX(), geomMin.getIY(), geomMin.getIZ(), true);
+		GamePageHolder *gphMax = getHolderAtCoords(geomMax.getIX(), geomMax.getIY(), geomMax.getIZ(), true);
 
 		//doTraceVecND("min: ", &(gphMin->offsetInHolders));
 		//doTraceVecND("max: ", &(gphMax->offsetInHolders));
@@ -1058,39 +1091,40 @@ DO_RETURN_UPDATE:
 
 		bool wasAdded;
 
-		
-		for (i = gphMin->offsetInHolders.getIX(); i <= gphMax->offsetInHolders.getIX(); i++) {
-			for (j = gphMin->offsetInHolders.getIY(); j <= gphMax->offsetInHolders.getIY(); j++) {
-				for (k = gphMin->offsetInHolders.getIZ(); k <= gphMax->offsetInHolders.getIZ(); k++) {
-					wasAdded = addHolderToRefresh(getHolderAtCoords(i,j,k,false));
-					if (wasAdded) {
+
+		for (i = gphMin->offsetInHolders.getIX(); i <= gphMax->offsetInHolders.getIX(); i++)
+		{
+			for (j = gphMin->offsetInHolders.getIY(); j <= gphMax->offsetInHolders.getIY(); j++)
+			{
+				for (k = gphMin->offsetInHolders.getIZ(); k <= gphMax->offsetInHolders.getIZ(); k++)
+				{
+					wasAdded = addHolderToRefresh(getHolderAtCoords(i, j, k, false));
+					if (wasAdded)
+					{
 						totCount++;
 					}
-					
-				}	
+
+				}
 			}
 		}
-
-		cout << "TOT COUNT### " << totCount << "\n";
-
-
-		doTraceND("  ");
-		doTraceND("  ");
 
 		return totCount;
 
 	}
 
-	void refreshHoldersInList(bool doImmediate) {
+	void refreshHoldersInList(bool doImmediate)
+	{
 		int i;
 
-		for (i = 0; i < holdersToRefresh.size(); i++) {
+		for (i = 0; i < holdersToRefresh.size(); i++)
+		{
 			holdersToRefresh[i]->refreshChildren(doImmediate);
 		}
 	}
 
 
-	void actionOnHolders(int action) {
+	void actionOnHolders(int action)
+	{
 
 		pushTrace("renderHolders()");
 
@@ -1099,84 +1133,141 @@ DO_RETURN_UPDATE:
 		int drawnPageCount = 0;
 		int skippedPages = 0;
 		intPair cid;
-		int ppSize = singleton->orderedIds.size();
+		int ppSize = singleton->gpuPool->orderedIds.size();
+		GamePageHolder* gp;
+		
+		float zOffR = 0.0f;
+		float zOffG = 0.0f;
+		
+		GamePageHolder* gpEnt = &(entHolders[E_ET_TEST]);
 
-
-
+		if (singleton->mouseState == E_MOUSE_STATE_ENTS) {
+			
+			if (gpEnt->isDirty) {
+				gpEnt->refreshChildren(true);
+				
+				cout << "ent refreshed\n";
+				
+			}
+		}
+		
 
 		singleton->bindShader("BlitShader");
-		
-		for (j = 0; j < MAX_LAYERS; j++) {
-				
-				if (j == 0) {
-					singleton->bindFBO("pagesFBO");
+
+		for (j = 0; j < MAX_LAYERS; j++)
+		{
+
+			if (j == 0)
+			{
+				singleton->bindFBO("pagesFBO");
+			}
+			else
+			{
+				singleton->bindFBO("waterFBO");
+			}
+
+
+			singleton->setShaderFloat("zOffset",0.0f);
+
+			for (i = 0; i < ppSize; i++)
+			{
+				cid = singleton->gpuPool->orderedIds[i];
+
+				if ( pairIsNeg(cid) )
+				{
+
 				}
-				else {
-					singleton->bindFBO("waterFBO");
+				else
+				{
+					gp = getHolderAtId(cid);
+
+					if (gp == NULL)
+					{
+
+					}
+					else
+					{
+
+						switch (action)
+						{
+						case E_HOLDER_ACTION_RENDER:
+							if (
+								(cutHolderPos.getFX() - 1.0f < gp->offsetInHolders.getFX()) &&
+								(cutHolderPos.getFY() - 1.0f < gp->offsetInHolders.getFY()) &&
+								(cutHolderPos.getFZ() - 1.0f < gp->offsetInHolders.getFZ())
+
+
+							)
+							{
+
+							}
+							else
+							{
+								if (gp->underground) {
+									
+								}
+								else {
+									if ( ((j == 0) && gp->hasSolids) || ((j == 1) && gp->hasTrans) )
+									{
+
+										//cout << "drawHolder\n";
+
+										//if ( gp->offsetInHolders.inBoundsXYZ(&minLRInHolders,&maxLRInHolders) ) {
+										drawHolder(gp, j, 0.0f, 0.0f, 0.0f);
+										//}
+
+									}
+								}
+								
+								
+							}
+							break;
+						case E_HOLDER_ACTION_RESET:
+							gp->refreshChildren(false);
+							break;
+						}
+
+
+					}
+				}
+			}
+			
+			
+			if (singleton->mouseState == E_MOUSE_STATE_ENTS) {	
+				
+				
+				switch (action)
+				{
+				case E_HOLDER_ACTION_RENDER:
+					
+					singleton->setShaderFloat("zOffset",lastUnitPos.getFZ());
+					
+					drawHolder(
+						gpEnt,
+						j,
+						lastUnitPos.getFX(),
+						lastUnitPos.getFY(),
+						lastUnitPos.getFZ()
+					);
+					break;
+				case E_HOLDER_ACTION_RESET:
+					gpEnt->refreshChildren(true);
+					break;
 				}
 				
-
-			    GamePageHolder* gp;
-
-			    for (i = 0; i < ppSize; i++) {
-			    	cid = singleton->orderedIds[i];
-
-			    	if ( pairIsNeg(cid) ) {
-
-			    	}
-			    	else {
-			    		gp = getHolderAtID(cid);
-
-			    		if (gp == NULL) {
-
-			    		}
-			    		else {
-
-			    			switch(action) {
-			    				case E_HOLDER_ACTION_RENDER:
-			    					if (
-			    						(cutHolderPos.getFX()-1.0f < gp->offsetInHolders.getFX()) &&
-			    						(cutHolderPos.getFY()-1.0f < gp->offsetInHolders.getFY()) &&
-			    						(cutHolderPos.getFZ()-1.0f < gp->offsetInHolders.getFZ()) 
-
-			    						
-			    						
-			    					) {
-
-			    					}
-			    					else {
-			    						//if (gp->offsetInHolders.manhattanDis(&camHolderPos) <= 1.0 ) {
-			    							
-			    						if ( ((j==0)&&gp->hasSolids) || ((j==1)&&gp->hasTrans) ) {
-			    							
-			    							//cout << "drawHolder\n";
-
-			    							//if ( gp->offsetInHolders.inBoundsXYZ(&minLRInHolders,&maxLRInHolders) ) {
-			    								drawHolder(gp, j);
-			    							//}
-			    							
-			    						}
-			    							
-			    						//}
-			    					}
-			    				break;
-			    				case E_HOLDER_ACTION_RESET:
-			    					gp->refreshChildren(false);
-			    				break;
-			    			}
-			    			
-
-			    		}
-			    	}
-			    }
-
-
 				
-				singleton->unbindFBO();
+				
+				
+				
+			}
+
+
+
+			singleton->unbindFBO();
 		}
 
 		singleton->unbindShader();
-  
+
 
 		//doTrace( "POSSIBLE ERROR: " , i__s(glGetError()) , "\n" );
 
@@ -1185,8 +1276,17 @@ DO_RETURN_UPDATE:
 
 
 
-	void drawHolder(GamePageHolder* gp, int curLayer) {
-		pushTrace("drawHolder()");
+	// todo: render with display list
+
+	void drawHolder(
+		GamePageHolder *gp,
+		int curLayer,
+		float xoff,
+		float yoff,
+		float zoff
+	)
+	{
+		//pushTrace("drawHolder()");
 
 
 
@@ -1194,115 +1294,562 @@ DO_RETURN_UPDATE:
 		float dy = gp->offsetInHolders.getFY();
 		float dz = gp->offsetInHolders.getFZ();
 
-		float pitchSrc = (float)((singleton->holderSizeInPixels*2.0f));
-		float pitchSrc2 = pitchSrc/2.0f;
+		float pitchSrc = (float)((singleton->holderSizeInPixels * 2.0f));
+		float pitchSrc2 = pitchSrc / 2.0f;
 
-		float dxmod = dx*pitchSrc2 - cameraPos->getFX();
-		float dymod = dy*pitchSrc2 - cameraPos->getFY();
-		float dzmod = dz*pitchSrc2 - cameraPos->getFZ();
+		float itilt = 1.0-singleton->tiltAmount;
+		float tilt = singleton->tiltAmount;
+
+		float dxmod = dx * pitchSrc2 + xoff - cameraPos->getFX();
+		float dymod = dy * pitchSrc2 + yoff - cameraPos->getFY();
+		float dzmod = dz * pitchSrc2 + zoff - cameraPos->getFZ();
 
 
-		float fx1 = (dxmod-dymod) - pitchSrc2;
-		float fy1 = (-(dxmod/2.0f) + -(dymod/2.0f) + dzmod) - pitchSrc2;
+		// float tilt = 1.0-singleton->tiltAmount;
+		
+		// float fx1 = (dxmod - dymod);
+		// //float fy1 = (-(dxmod / 2.0f) + -(dymod / 2.0f) + dzmod) - pitchSrc2;
+		// float fy1 = (-tilt*dxmod + -tilt*dymod + (1.0-tilt)*2.0f*dzmod);
 
 
+		tempVec2.setFXYZ(dxmod,dymod,dzmod);
+		singleton->worldToScreenBase(&tempVec1,&tempVec2);
+		float fx1 = tempVec1.getFX();
+		float fy1 = tempVec1.getFY();
+
+		fy1 -= (0.5-tilt)*pitchSrc;
+
+		fx1 -= pitchSrc2;
+		fy1 -= pitchSrc2;
 		float fx2 = fx1 + pitchSrc;
 		float fy2 = fy1 + pitchSrc;
 
 
 
-		
+
 		// TODO: should be baseW/H?
 
 		float sx = singleton->bufferDim.getFX();
 		float sy = singleton->bufferDim.getFY();
 
-		float myZoom = std::min(1.0f,singleton->cameraZoom);
+		float myZoom = std::min(1.0f, singleton->cameraZoom);
 
 
-		fx1 = fx1*(myZoom)/sx;
-		fy1 = fy1*(myZoom)/sy;
-		fx2 = fx2*(myZoom)/sx;
-		fy2 = fy2*(myZoom)/sy;
+		fx1 = fx1 * (myZoom) / sx;
+		fy1 = fy1 * (myZoom) / sy;
+		fx2 = fx2 * (myZoom) / sx;
+		fy2 = fy2 * (myZoom) / sy;
 
 
-		if (gp->gpuRes != NULL) {
+		if (gp->gpuRes != NULL)
+		{
 			singleton->sampleFBODirect(gp->gpuRes->getFBOS(curLayer));
 
 
 			glColor4f(1, 1, 1, 1);
 			glBegin(GL_QUADS);
 			glNormal3f(0, 0, 1);
-			
-			
+
+
 			glTexCoord2f(0.0f, 0.0f);
-			glVertex3f(fx1,fy1,0.0f);
-			
+			glVertex3f(fx1, fy1, 0.0f);
+
 			glTexCoord2f(1.0f, 0.0f);
-			glVertex3f(fx2,fy1,0.0f);
-			
+			glVertex3f(fx2, fy1, 0.0f);
+
 			glTexCoord2f(1.0f, 1.0f);
-			glVertex3f(fx2,fy2,0.0f);
-			
+			glVertex3f(fx2, fy2, 0.0f);
+
 			glTexCoord2f(0.0f, 1.0f);
-			glVertex3f(fx1,fy2,0.0f);
-			
+			glVertex3f(fx1, fy2, 0.0f);
+
 			glEnd();
 
 			singleton->unsampleFBODirect(gp->gpuRes->getFBOS(curLayer));
 		}
 
-	    
 
 
-	    popTrace();
+
+		//popTrace();
 
 	}
 
 
 
-	void combineBuffers() {
+	void combineBuffers()
+	{
 		pushTrace("combineBuffers()");
 
 		singleton->bindShader("CombineShader");
 		singleton->bindFBO("combineFBO");
 
-		singleton->sampleFBO("pagesFBO",0);
-		singleton->sampleFBO("grassFBO",2);
-		singleton->sampleFBO("geomFBO",4);
+		singleton->sampleFBO("pagesFBO", 0);
+		//singleton->sampleFBO("grassFBO",2);
+		singleton->sampleFBO("geomFBO", 4);
 
 
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
-		
+
 		singleton->drawFSQuad(1.0f);
 
-		singleton->unsampleFBO("geomFBO",4);
-		singleton->unsampleFBO("grassFBO",2);
-		singleton->unsampleFBO("pagesFBO",0);
-		
+		singleton->unsampleFBO("geomFBO", 4);
+		//singleton->unsampleFBO("grassFBO",2);
+		singleton->unsampleFBO("pagesFBO", 0);
+
 		singleton->unbindFBO();
 		singleton->unbindShader();
 		popTrace();
 	}
 
 
-	void renderGeom() {
+
+
+	void clearVisitedPaths(PathHolder* pathHolder) {
+		while (pathHolder->visitedList.size() > 0) {
+			blockData[
+				pathHolder->visitedList.back().blockId
+			]->buildingData[
+				pathHolder->visitedList.back().index
+			].visited = 0;
+			pathHolder->visitedList.pop_back();
+		}
+	}
+
+	
+	
+	void clearPathList(PathHolder* pathHolder) {
+		pathHolder->pathList.clear();
+	}
+	
+	float getIdealPathLength(PathNode* blockAndIndex) {
+		return 		
+			abs(blockAndIndex[0].x-blockAndIndex[1].x) +
+			abs(blockAndIndex[0].y-blockAndIndex[1].y) +
+			abs(blockAndIndex[0].z-blockAndIndex[1].z);
+	}
+
+	int findAIPathRBT(
+		PathHolder* pathHolder,
+		PathNode* blockAndIndex,
+		float _pathSlack
+	) {
+
+
+		//int begInd, int endInd
+
+		float pathSlack = _pathSlack;
+
+		int i;
+		//int rbInd = 0;
+		PathNode curInd;
+
+		int testX = 0;
+		int testY = 0;
+		int testZ = 0;
+		
+		int wrappedX;
+		int wrappedY;
+		int wrappedZ;
+
+		int curX = 0;
+		int curY = 0;
+		int curZ = 0;
+		
+		float idealPathLength = getIdealPathLength(blockAndIndex);
+		
+		int bestBlockId;
+		int bestX;
+		int bestY;
+		int bestZ;
+		int bestInd = 0;
+
+		int testInd = 0;
+		int curDir = 0;
+		
+
+		int endZ = blockAndIndex[1].z;
+		int endY = blockAndIndex[1].y;
+		int endX = blockAndIndex[1].x;
+		
+		int terDataVisPitchXY = singleton->terDataVisPitchXY;
+		
+		int conType;
+		
+		int pathCost;
+		int bestCost;
+		int invalidCost = 1<<30;
+
+		int maxPops;
+
+		PathNode tempNode;
+
+		
+		
+		
+		int numPathSteps = 0;
+		
+		
+		
+		//cout << "\n\n\nSTART COORD " << blockAndIndex[0].x << " " << blockAndIndex[0].y << " " << blockAndIndex[0].z << "\n";
+		//cout << "END COORD " << blockAndIndex[1].x << " " << blockAndIndex[1].y << " " << blockAndIndex[1].z << "\n";
+		
+
+		BuildingNode* curBuildingData;
+		GameBlock* testBlock;
+
+		while ( (pathHolder->pathList.size() > 0) ) { // && (numPathSteps < 10)
+			
+			numPathSteps++;
+			bestInd = -1;
+			bestCost = invalidCost;
+
+			curInd = pathHolder->pathList.back();
+			
+			
+			
+			if (curInd == blockAndIndex[1]) {
+				goto DONE_FINDING_PATH;
+			}
+			
+			//cout << "curBlockId " << curInd.blockId << "\n";
+			
+			curBuildingData = &(blockData[curInd.blockId]->buildingData[curInd.index]); 
+			curBuildingData->visited = 1;
+			pathHolder->visitedList.push_back(curInd);
+			
+			
+			if (pathHolder->pathList.size() > idealPathLength*pathSlack) {
+				cout << "Exceeded Path Slack\n";
+				return false;
+			}
+				
+			// 	maxPops = pathHolder->pathList.size() / 2;
+			// 	pathSlack *= 1.1f;
+				
+			// 	if (pathSlack > 5.0f) {
+			// 		cout << "Exceeded max path length\n";
+			// 		return false;
+			// 	}
+				
+			// 	for (i = 0; i < maxPops; i++) {
+					
+			// 		if (i < maxPops/2) {
+			// 			blockData[
+			// 				pathHolder->pathList.back().blockId
+			// 			]->buildingData[
+			// 				pathHolder->pathList.back().index
+			// 			].visited = 0;
+			// 		}
+					
+					
+			// 		pathHolder->pathList.pop_back();
+			// 	}
+				
+			// 	goto SKIP_PATH;
+			
+			
+
+			curZ = curInd.z;
+			curY = curInd.y;
+			curX = curInd.x;
+
+			
+			for (curDir = 0; curDir < 4; curDir++) {
+
+
+				testX = curX + dirModX[curDir];
+				testY = curY + dirModY[curDir];
+				testZ = curZ + dirModZ[curDir] + curBuildingData->con[curDir].heightDelta;
+				
+				
+				wrappedX = (wrapCoord(testX,terDataVisPitchXY*worldSizeInBlocks.getIX())%terDataVisPitchXY)+singleton->terDataBufAmount;
+				wrappedY = (wrapCoord(testY,terDataVisPitchXY*worldSizeInBlocks.getIY())%terDataVisPitchXY)+singleton->terDataBufAmount;
+				wrappedZ = testZ+singleton->terDataBufAmount;
+				
+				testBlock = getBlockAtCoords(
+					intDiv(testX,terDataVisPitchXY),
+					intDiv(testY,terDataVisPitchXY),
+					true
+				);
+				
+				
+				if (testBlock != NULL) {
+					testInd = testBlock->getNodeIndex(wrappedX, wrappedY, wrappedZ, 0);
+
+					if (testInd >= 0) {
+
+						conType = curBuildingData->con[curDir].conType;
+						
+						//cout << "conType " << conType << " visited " << testBlock->buildingData[testInd].visited << "\n";
+						
+						if (
+							( testBlock->isTraversable[conType] ) &&
+							( testBlock->buildingData[testInd].visited == 0 )
+						) {
+							
+							
+							pathCost = abs(testX-endX) + abs(testY-endY) + abs(testZ-endZ);
+
+							//cout << "pathCost " << pathCost << " bestCost " << bestCost << "\n";
+
+							if (pathCost < bestCost) {
+								bestInd = testInd;
+								bestBlockId = testBlock->blockId;
+								bestCost = pathCost;
+								bestX = testX;
+								bestY = testY;
+								bestZ = testZ;
+							}
+						}
+					}
+				}
+				
+				
+			}
+
+
+			
+			if (bestInd == -1) { // dead end, back up
+				pathHolder->pathList.pop_back();
+				
+				//cout << "pop_back\n";
+				//cout << "new length: " << pathHolder->pathList.size() << "\n\n";
+			} else {
+				tempNode.index = bestInd;
+				tempNode.blockId = bestBlockId;
+				tempNode.x = bestX;
+				tempNode.y = bestY;
+				tempNode.z = bestZ;
+				pathHolder->pathList.push_back(tempNode);
+				
+				//cout << bestInd << " " << bestBlockId << " " << bestX << " " << bestY << " " << bestZ << "\n\n";
+				
+			}
+
+SKIP_PATH:
+			;
+			
+			
+
+		}
+		
+DONE_FINDING_PATH:
+		;
+		
+		return pathHolder->pathList.size() > 0;
+
+	}
+
+
+	void drawPathLine(PathHolder* curPath, int r, int g, int b, float lw, float zoff) {
+		// IMPORTANT: size is a uint, do not let underflow happen!
+		int totSize = curPath->pathList.size();
+		totSize -= 1;
+		int i;
+		
+		glLineWidth(lw);
+		
+		singleton->setShaderFloat("matVal", getPackedColor(r,g,b));
+		for (i = 0; i < totSize; i++) {
+			blockData[curPath->pathList[i].blockId]->nodeIndexToWorldSpaceInPixels(curPath->pathList[i].index, &(lineSeg[0]));
+			blockData[curPath->pathList[i+1].blockId]->nodeIndexToWorldSpaceInPixels(curPath->pathList[i+1].index, &(lineSeg[1]));
+			lineSeg[0].addXYZ(0.0f,0.0f,zoff);
+			lineSeg[1].addXYZ(0.0f,0.0f,zoff);
+			singleton->drawLine(&(lineSeg[0]),&(lineSeg[1]));
+		}
+	}
+
+	void drawAIPath(PathHolder* pathHolder, PathHolder* splitPathHolder) {
+		
+		
+		
+		
+		int i;
+		int curStep = singleton->currentStep;
+		int curInd;
+		int totSize;
+		bool pathResult;
+		bool doCont;
+		
+		float maxSlack = 8.0f;
+		
+		int numDivisions;
+		int splitSize = 100;
+		
+		//int terDataBufPitchXY2 = singleton->terDataBufPitchXY*singleton->terDataBufPitchXY;
+		//int endSegInd;
+		
+		// 0 - nothing
+		// 1 - first marker placed
+		// 2 - second marker placed
+		// 3 - clear markers
+		
+		
+		singleton->setShaderFloat("isWire", 0.0f);
+		for (i = 0; i < curStep; i++) {
+			
+			blockPos[i].copyFrom(&(singleton->moveNodes[i]));
+			blockPos[i].intDivXYZ(singleton->blockSizeInPixels);
+			blockRef[i] = getBlockAtCoords(blockPos[i].getIX(), blockPos[i].getIY(), true);
+			nodeInd[i] = blockRef[i]->findNearestNode(
+				&(singleton->moveNodes[i]),
+				&(nodePos[i]),
+				&(nodePosInPixels[i])
+			);
+			blockAndIndexPath[i].index = nodeInd[i];
+			blockAndIndexPath[i].blockId = blockRef[i]->blockId;
+			blockAndIndexPath[i].x = nodePos[i].getIX();
+			blockAndIndexPath[i].y = nodePos[i].getIY();
+			blockAndIndexPath[i].z = nodePos[i].getIZ();
+			
+			singleton->setShaderFloat("matVal", getPackedColor(i*255, (1-i)*255, 0));
+			singleton->drawCubeCentered(
+				&(nodePosInPixels[i]),
+				1.0f * singleton->pixelsPerMeter
+			);
+		}
+		
+		
+		
+		if (curStep == 2) {
+			
+			if (!foundPath) {
+				
+				finalPath = NULL;
+				foundPath = true;
+				
+				if (
+					//(blockRef[0] == blockRef[1]) &&
+					(nodeInd[0] != -1) &&
+					(nodeInd[1] != -1)
+				) {
+					
+					clearVisitedPaths( pathHolder );
+					clearPathList( pathHolder );
+					clearVisitedPaths( splitPathHolder );
+					clearPathList( splitPathHolder );
+					
+					
+					pathHolder->pathList.push_back(blockAndIndexPath[0]);
+					
+					pathResult = findAIPathRBT(
+						pathHolder,
+						blockAndIndexPath,
+						maxSlack
+					);
+					
+					clearVisitedPaths( pathHolder );
+					if (pathResult) {
+						finalPath = pathHolder;
+					}
+					
+					
+					
+					// if (pathResult) {	
+					// 	numDivisions = pathHolder->pathList.size()/splitSize;
+					// 	if (
+					// 		(numDivisions >= 2) &&
+					// 		(pathHolder->pathList.size() > getIdealPathLength(blockAndIndexPath)*1.5f)
+					// 	) {
+							
+					// 		cout << "splitting path " << numDivisions << " times\n";
+					// 		cout << "total path size is " << pathHolder->pathList.size() << "\n";
+							
+							
+					// 		splitPathHolder->pathList.push_back(blockAndIndexPath[0]);
+							
+							
+					// 		i = 0;
+					// 		doCont = true;
+					// 		while (doCont) {
+					// 			blockAndIndexSplitPath[0] = pathHolder->pathList[i*splitSize];
+								
+								
+					// 			cout << "split number " << i << "\n";
+								
+					// 			if ( (i+1)*splitSize >= pathHolder->pathList.size() ) {
+					// 				blockAndIndexSplitPath[1] = pathHolder->pathList.back();
+					// 				doCont = false;
+					// 			}
+					// 			else {
+					// 				blockAndIndexSplitPath[1] = pathHolder->pathList[(i+1)*splitSize];
+					// 			}
+								
+									
+					// 			pathResult = findAIPathRBT(
+					// 				splitPathHolder,
+					// 				blockAndIndexSplitPath,
+					// 				maxSlack
+					// 			);
+								
+					// 			if (pathResult) {
+									
+					// 			}
+					// 			else {
+					// 				doCont = false;
+					// 				cout << "Failed to find path at split #" << i << "\n";
+					// 			}
+								
+					// 			i++;
+								
+					// 		}
+							
+					// 		finalPath = splitPathHolder;
+							
+					// 	}
+						
+					// }
+					
+				
+					cout << "DONE FINDING PATH\n";
+					
+					//finalInd = blockRef[0]->findPath(nodeInd[0],nodeInd[1]);
+					//doTraceND("finalInd ", i__s(finalInd), " nodeInd ", i__s(nodeInd[0]), " ", i__s(nodeInd[1]));
+				}
+				else {
+					// doTraceND("Different Blocks");
+				}
+				
+			}
+			
+		}
+		else {
+			foundPath = false;
+			//finalInd = -1;
+		}
+		
+		
+		if ( (finalPath != NULL) && foundPath) {
+			drawPathLine(pathHolder, 255, 255, 0, 2.0f, 0.0f);
+			drawPathLine(splitPathHolder, 255, 0, 0, 2.0f, 4.0f*((float)singleton->pixelsPerMeter));
+		}
+		
+		
+		
+		
+	}
+
+	void renderGeom()
+	{
 		pushTrace("renderGeom()");
 
 		int i;
+		bool doProc;
 
-		
-		
+
 		//glEnable(GL_DEPTH_TEST);
 
 		singleton->bindShader("GeomShader");
+
 		
+		singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		singleton->setShaderfVec3("cameraPos", cameraPos);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
-		singleton->setShaderFloat("isWire", 0.0);
 		
+
 		singleton->bindFBO("geomFBO");
 		//singleton->sampleFBO("pagesFBO");
 
@@ -1310,147 +1857,209 @@ DO_RETURN_UPDATE:
 		glEnable(GL_DEPTH_TEST);
 		//remember 2x radius
 
+		
 
-		switch (singleton->mouseState) {
 
-			case E_MOUSE_STATE_MOVE:
+		if (singleton->bShift) {
+			singleton->setShaderFloat("isWire", 1.0);
+			singleton->setShaderFloat("matVal", getPackedColor(255,0,255));
+			
+			singleton->drawBox(&minLRInPixels,&maxLRInPixels);
+		}
+		
+		singleton->setShaderFloat("isWire", 0.0);
 
-				if (singleton->gridOn == 1.0f) {
-					singleton->setShaderFloat("matVal", getPackedColor(255,0,255));
-					singleton->setShaderFloat("isWire", 1.0);
-					singleton->drawBox(&minLRInPixels, &maxLRInPixels);
-				}
+		switch (singleton->mouseState)
+		{
 
+		case E_MOUSE_STATE_MOVE:
+
+			if (singleton->gridOn == 1.0f)
+			{
+				// singleton->setShaderFloat("matVal", getPackedColor(255, 0, 255));
+				// singleton->setShaderFloat("isWire", 1.0f);
+				// singleton->drawBox(&minLRInPixels, &maxLRInPixels);
+			}
+
+			break;
+		case E_MOUSE_STATE_ENTS:
+
+			// tempVec.copyFrom(&(singleton->mouseMovePD));
+			// tempVec.intDivXYZ((int)(singleton->gridSizeInPixels));
+			// tempVec.multXYZ(singleton->gridSizeInPixels);
+			// tempVec.addXYZ(singleton->gridSizeInPixels * 0.5f);
+			// tempVec.setFZ(singleton->mouseMovePD.getFZ());
+			// tempVec.addXYZ(0.0f, 0.0f, singleton->gridSizeInPixels * 0.125f);
+
+			// singleton->setShaderFloat("matVal", getPackedColor(255,0,255));
+			// singleton->setShaderFloat("isWire", 0.0f);
+			// singleton->drawCubeCentered( &tempVec, 0.125f*singleton->pixelsPerMeter);
+
+
+
+			// tempVec.copyFrom(cameraPos);
+			// tempVec.setFZ(0.0);
+			
+			// singleton->setShaderFloat("matVal", getPackedColor(0, 128, 128));
+			// singleton->drawCubeCentered(cameraPos, 3.0*singleton->pixelsPerMeter );
+			
+			// // water height
+			// singleton->setShaderFloat("matVal", getPackedColor(0, 255, 255));
+			// singleton->drawBoxUp(
+			// 	tempVec,
+			// 	2.0f * singleton->pixelsPerMeter,
+			// 	2.0f * singleton->pixelsPerMeter,
+			// 	singleton->getSLInPixels()
+			// );
+			
+			// // total height
+			// singleton->setShaderFloat("matVal", getPackedColor(0, 255, 0));
+			// singleton->drawBoxUp(
+			// 	tempVec,
+			// 	1.0f * singleton->pixelsPerMeter,
+			// 	1.0f * singleton->pixelsPerMeter,
+			// 	singleton->worldSizeInPixels.getFZ()
+			// );
+
+			
+			
+			
+			
+			// singleton->setShaderFloat("matVal", getPackedColor(0, 0, 255));
+			// singleton->drawBoxUp(
+			// 	lastUnitPos,
+			// 	0.5f * singleton->pixelsPerMeter,
+			// 	0.5f * singleton->pixelsPerMeter,
+			// 	2.0f * singleton->pixelsPerMeter
+			// );
+			
+			
+			
+			
+
+
+			
+			drawAIPath( &(singleton->charPathHolder), &(singleton->splitPathHolder) );
+
+			
+			
+			
 
 
 			break;
-			case E_MOUSE_STATE_BRUSH:
-				singleton->setShaderFloat("matVal", getPackedColor(255,0,0));
-				singleton->drawCubeCentered(&lastUnitPos, ((int)singleton->curBrushRad)*(singleton->unitSizeInPixels)  );
-				glClear(GL_DEPTH_BUFFER_BIT);
+		case E_MOUSE_STATE_BRUSH:
+			singleton->setShaderFloat("matVal", getPackedColor(255, 0, 0));
+			singleton->drawCubeCentered(&lastUnitPos, ((int)singleton->curBrushRad) * (singleton->unitSizeInPixels)  );
+			glClear(GL_DEPTH_BUFFER_BIT);
 			break;
-			case E_MOUSE_STATE_OBJECTS:
-
-
-				// tv0.setFXYZRef(&(singleton->dynObjects[E_OBJ_P0]->pos));
-				// tv1.setFXYZRef(&(singleton->dynObjects[E_OBJ_P1]->pos));
-				// tv2.setFXYZRef(&(singleton->dynObjects[E_OBJ_P2]->pos));
-
-				// if (singleton->rotOn) {
-				// 	tv3.setFXYZRef(&tv1);
-				// 	tv3.addXYZRef(&tv0,-1.0f);
-				// 	tv3.normalize();
-
-				// 	tv2.addXYZRef(&tv1,-1.0f);
-				// 	axisRotationInstance.doRotation(&tv4,&tv2,&tv3,singleton->curTime/500.0f);
-				// 	tv2.setFXYZRef(&tv4);
-				// 	tv2.addXYZRef(&tv1,1.0f);
-
-				// }
-
-
-				//singleton->setShaderFloat("matVal", singleton->dynObjects[E_OBJ_LIGHT0]->colPacked);
-
-				//singleton->drawLine( &tv0, &tv1 );
-				//singleton->drawLine( &tv1, &tv2 );
+		case E_MOUSE_STATE_OBJECTS:
 
 
 
-				for (i = 1; i < singleton->dynObjects.size(); i++) {
-					if (singleton->dynObjects[i]->doRender) {
+			for (i = 1; i < singleton->dynObjects.size(); i++)
+			{
+				if (singleton->dynObjects[i]->doRender)
+				{
+
+					doProc = false;
+
+					if (i >= E_OBJ_LIGHT0)
+					{
+						if (i - E_OBJ_LIGHT0 < singleton->numDynLights)
+						{
+							doProc = true;
+						}
+					}
+					else
+					{
+						doProc = true;
+					}
+
+					if (doProc)
+					{
 						singleton->setShaderFloat("matVal", singleton->dynObjects[i]->colPacked);
 						curBoxPos = &(singleton->dynObjects[i]->pos);
+						singleton->drawCubeCentered(curBoxPos, singleton->dynObjects[i]->radius);
 
 
-						// if (
-						// 	(i == E_OBJ_P0) ||
-						// 	(i == E_OBJ_P1) ||
-						// 	(i == E_OBJ_P2)
-						// ) {
-						// 	if (i == E_OBJ_P0) {
-						// 		curBoxPos = &tv0;
-						// 	}
-						// 	if (i == E_OBJ_P1) {
-						// 		curBoxPos = &tv1;
-						// 	}
-						// 	if (i == E_OBJ_P2) {
-						// 		curBoxPos = &tv2;
-						// 	}
-						// }
-						
-						singleton->drawCubeCentered(curBoxPos,singleton->dynObjects[i]->radius);
-
-
-						if (i == singleton->activeObject) {
+						if (i == singleton->activeObject)
+						{
 							//singleton->drawCrossHairs(singleton->dynObjects[i]->pos,4.0f);
 						}
-
 					}
-				}
 
-				
-				
+
+				}
+			}
 
 
 
 			break;
-			case E_MOUSE_STATE_MEASURE:
-				// singleton->setShaderFloat("matVal", getPackedColor(0,255,0));
-				// singleton->drawBoxUp(lastUnitPos, 0.25f*singleton->pixelsPerMeter, 0.25f*singleton->pixelsPerMeter, 2.0f*singleton->pixelsPerMeter);
+		case E_MOUSE_STATE_PICKING:
+			// singleton->setShaderFloat("matVal", getPackedColor(0,255,0));
+			// singleton->drawBoxUp(lastUnitPos, 0.25f*singleton->pixelsPerMeter, 0.25f*singleton->pixelsPerMeter, 2.0f*singleton->pixelsPerMeter);
 
 
-				
-				if (singleton->highlightedGeom == NULL) {
 
-				}
-				else {
-					singleton->setShaderFloat("matVal", getPackedColor(254,254,254));
-					singleton->setShaderFloat("isWire", 1.0);
+			if (singleton->highlightedGeom == NULL)
+			{
 
-					minv.setFXYZRef(singleton->highlightedGeom->getVisMinInPixelsT());
-					maxv.setFXYZRef(singleton->highlightedGeom->getVisMaxInPixelsT());
+			}
+			else
+			{
+				singleton->setShaderFloat("matVal", getPackedColor(254, 254, 254));
+				singleton->setShaderFloat("isWire", 1.0);
 
-					minv.addXYZ(-0.25*singleton->pixelsPerMeter);
-					maxv.addXYZ(0.25*singleton->pixelsPerMeter);
+				minv.setFXYZRef(singleton->highlightedGeom->getVisMinInPixelsT());
+				maxv.setFXYZRef(singleton->highlightedGeom->getVisMaxInPixelsT());
 
-
-					singleton->drawBox(&minv,&maxv);
-				}
-				
-				if (singleton->selectedGeom == NULL) {
-
-				}
-				else {
-					singleton->setShaderFloat("matVal", getPackedColor(255,255,0));
-					singleton->setShaderFloat("isWire", 1.0);
-
-					minv.setFXYZRef(singleton->selectedGeom->getVisMinInPixelsT());
-					maxv.setFXYZRef(singleton->selectedGeom->getVisMaxInPixelsT());
-
-					minv.addXYZ(-0.25*singleton->pixelsPerMeter);
-					maxv.addXYZ(0.25*singleton->pixelsPerMeter);
+				minv.addXYZ(-0.25 * singleton->pixelsPerMeter);
+				maxv.addXYZ(0.25 * singleton->pixelsPerMeter);
 
 
-					singleton->drawBox(&minv,&maxv);
-				}
+				singleton->drawBox(&minv, &maxv);
+			}
+
+			if (singleton->selectedGeom == NULL)
+			{
+
+			}
+			else
+			{
+				singleton->setShaderFloat("matVal", getPackedColor(255, 255, 0));
+				singleton->setShaderFloat("isWire", 1.0);
+
+				minv.setFXYZRef(singleton->selectedGeom->getVisMinInPixelsT());
+				maxv.setFXYZRef(singleton->selectedGeom->getVisMaxInPixelsT());
+
+				// minv.addXYZ(-0.25 * singleton->pixelsPerMeter);
+				// maxv.addXYZ(0.25 * singleton->pixelsPerMeter);
+
+
+				singleton->drawBox(&minv, &maxv);
+			}
 
 
 			break;
-			
+
 		}
 
 
+		
+		
+
+
 		// for (i = 1; i < lightCount; i++) {
-		// 	singleton->setShaderFloat("matVal", activeLights[i]->colPacked);
-		// 	curBoxPos = &(activeLights[i]->pos);				
-		// 	singleton->drawCubeCentered(curBoxPos,0.125f*singleton->pixelsPerMeter);
+		//  singleton->setShaderFloat("matVal", activeLights[i]->colPacked);
+		//  curBoxPos = &(activeLights[i]->pos);
+		//  singleton->drawCubeCentered(curBoxPos,0.125f*singleton->pixelsPerMeter);
 		// }
 
-		
+
 
 		glDisable(GL_DEPTH_TEST);
 
-		
+
 
 		//singleton->unsampleFBO("pagesFBO");
 		singleton->unbindFBO();
@@ -1459,11 +2068,12 @@ DO_RETURN_UPDATE:
 		//glDisable(GL_DEPTH_TEST);
 
 		popTrace();
-		
+
 	}
 
 
-	void modifyUnit(FIVector4 *fPixelWorldCoordsBase, E_BRUSH brushAction) {
+	void modifyUnit(FIVector4 *fPixelWorldCoordsBase, E_BRUSH brushAction)
+	{
 
 		pushTrace("modifyUnit()");
 
@@ -1474,21 +2084,21 @@ DO_RETURN_UPDATE:
 
 		/*
 		if (brushAction == E_BRUSH_ADD) {
-			fPixelWorldCoords.addXYZ(0.0,0.0,radius*singleton->unitSizeInPixels);
+		    fPixelWorldCoords.addXYZ(0.0,0.0,radius*singleton->unitSizeInPixels);
 		}
 		if (brushAction == E_BRUSH_SUB) {
-			fPixelWorldCoords.addXYZ(0.0,0.0,-radius*singleton->unitSizeInPixels);
+		    fPixelWorldCoords.addXYZ(0.0,0.0,-radius*singleton->unitSizeInPixels);
 		}
 		*/
 
-		uint* vd_ptr;
-		uint* vdl_ptr;
+		uint *vd_ptr;
+		uint *vdl_ptr;
 
-		GamePage* curPage;
+		GamePage *curPage;
 
 
 		int ind2;
-		int pageSizeMult = visPageSizeInUnits*(singleton->bufferMult);
+		int pageSizeMult = visPageSizeInUnits * (singleton->bufferMult);
 
 
 		int i, j, k, m, n, o, p;
@@ -1497,7 +2107,7 @@ DO_RETURN_UPDATE:
 		int jj;
 		int kk;
 
-		int pixelPS = (singleton->unitSizeInPixels*singleton->visPageSizeInUnits);
+		int pixelPS = (singleton->unitSizeInPixels * singleton->visPageSizeInUnits);
 
 
 
@@ -1513,7 +2123,7 @@ DO_RETURN_UPDATE:
 
 		bool changes = false;
 
-		int newRad = 2 + radius/visPageSizeInUnits;
+		int newRad = 2 + radius / visPageSizeInUnits;
 
 
 		uint linV;
@@ -1541,106 +2151,116 @@ DO_RETURN_UPDATE:
 
 		unitPosMin.copyFrom(&unitPos);
 		unitPosMax.copyFrom(&unitPos);
-
-		unitPosMin.addXYZ((float)radius-1, -1.0f);
-		unitPosMax.addXYZ((float)radius+1, 1.0f);
-
-		unitPosMinIS.copyFrom(&unitPos);
-		unitPosMaxIS.copyFrom(&unitPos);
-		unitPosMinIS.addXYZ((float)radius+1, -1.0f);
-		unitPosMaxIS.addXYZ((float)radius-1, 1.0f);
+		unitPosMin.addXYZ((float)radius, -1.0f);
+		unitPosMax.addXYZ((float)radius, 1.0f);
 
 
-		if (brushAction == E_BRUSH_MOVE) {
+		// unitPosMinIS.copyFrom(&unitPos);
+		// unitPosMaxIS.copyFrom(&unitPos);
+		// unitPosMinIS.addXYZ((float)radius+1, -1.0f);
+		// unitPosMaxIS.addXYZ((float)radius-1, 1.0f);
+
+
+		if (brushAction == E_BRUSH_MOVE)
+		{
 			popTrace();
 			return;
 		}
 
 
 
-		
-		for (m = 0; m < 2; m++) {
-			for (i = -newRad; i <= newRad; i++) {
-				for (j = -newRad; j <= newRad; j++) {
-					for (k = -newRad; k <= newRad; k++) {
+
+		for (m = 0; m < 2; m++)
+		{
+			for (i = -newRad; i <= newRad; i++)
+			{
+				for (j = -newRad; j <= newRad; j++)
+				{
+					for (k = -newRad; k <= newRad; k++)
+					{
 
 
 
 
-						ii = i+pagePos.getIX();
-						jj = j+pagePos.getIY();
-						kk = k+pagePos.getIZ();
+						ii = i + pagePos.getIX();
+						jj = j + pagePos.getIY();
+						kk = k + pagePos.getIZ();
 
-						if (checkBounds(kk)) {
+						if (checkBounds(kk))
+						{
 
 							//
 
-							curPage = getPageAtCoords(ii,jj,kk);
+							curPage = getPageAtCoords(ii, jj, kk);
 
-							if (curPage == NULL) {
+							if (curPage == NULL)
+							{
 
-								curPage = getPageAtCoords(ii,jj,kk, true);
-								
-								//curPage->createSimplexNoise();
-
-								//doTrace("created new page");
-								//curPage->curState = E_STATE_LENGTH;
+								curPage = getPageAtCoords(ii, jj, kk, true);
 							}
 
 							if (
-								//(curPage->curState != E_STATE_CREATESIMPLEXNOISE_BEG) // ||
-								//(curPage->curState == E_STATE_LENGTH)
 								true
-							) {
-								
+							)
+							{
 
-								startBounds.maxXYZ(&unitPosMin,&(curPage->worldUnitMin));
-								endBounds.minXYZ(&unitPosMax,&(curPage->worldUnitMax));
 
-								
+								startBounds.maxXYZ(&unitPosMin, &(curPage->worldUnitMin));
+								endBounds.minXYZ(&unitPosMax, &(curPage->worldUnitMax));
 
-								
 
-								
+
+
+
+
 
 
 
 								if (
-									(startBounds.getFX() > endBounds.getFX()) || 
+									(startBounds.getFX() > endBounds.getFX()) ||
 									(startBounds.getFY() > endBounds.getFY()) ||
 									(startBounds.getFZ() > endBounds.getFZ())
-								) {
-									
+								)
+								{
+
 								}
-								else {
+								else
+								{
 
-									
 
 
-									for (n = startBounds.getIX(); n < endBounds.getIX(); n++) {
-										for (o = startBounds.getIY(); o < endBounds.getIY(); o++) {
-											for (p = startBounds.getIZ(); p < endBounds.getIZ(); p++) {
 
-												tempVec.setIXYZ(n,o,p);
-												isInside = tempVec.inBoundsXYZ(&unitPosMinIS,&unitPosMaxIS);
-												
+									for (n = startBounds.getIX(); n < endBounds.getIX(); n++)
+									{
+										for (o = startBounds.getIY(); o < endBounds.getIY(); o++)
+										{
+											for (p = startBounds.getIZ(); p < endBounds.getIZ(); p++)
+											{
+
+												tempVec.setIXYZ(n, o, p);
+												isInside = tempVec.inBoundsXYZ(&unitPosMin, &unitPosMax);
+
 												//TODO: fix this to wrap
 												if (
 													tempVec.inBoundsXYZ(
 														&(curPage->worldUnitMin),
 														&(curPage->worldUnitMax)
 													)
-												) {
+												)
+												{
 													tempVec.addXYZRef( &(curPage->worldUnitMin), -1.0);
 
-													ind2 = tempVec.getIZ()*pageSizeMult*pageSizeMult + tempVec.getIY()*pageSizeMult + tempVec.getIX();
-													
-													if (ind2 < 0 || ind2 >= pageSizeMult*pageSizeMult*pageSizeMult) {
+													ind2 = tempVec.getIZ() * pageSizeMult * pageSizeMult + tempVec.getIY() * pageSizeMult + tempVec.getIX();
+
+													if (ind2 < 0 || ind2 >= pageSizeMult * pageSizeMult * pageSizeMult)
+													{
 														//doTrace("ind2 out of range ", i__s(ind2), " of ", i__s(pageSizeMult*pageSizeMult*pageSizeMult));
 													}
-													else {
+													else
+													{
 
-														if (m == 0) {
+														if (m == 0)
+														{
 
 															vd_ptr = curPage->getVolData();
 															vdl_ptr = curPage->getVolDataLinear();
@@ -1648,136 +2268,144 @@ DO_RETURN_UPDATE:
 															linV = vdl_ptr[ind2];
 															nearV = vd_ptr[ind2];
 
-															linR = (linV)&255;
-															linG = (linV>>8)&255;
-															linB = (linV>>16)&255;
-															linA = (linV>>24)&255;
+															linR = (linV) & 255;
+															linG = (linV >> 8) & 255;
+															linB = (linV >> 16) & 255;
+															linA = (linV >> 24) & 255;
 
-															nearR = (nearV)&255;
-															nearG = (nearV>>8)&255;
-															nearB = (nearV>>16)&255;
-															nearA = (nearV>>24)&255;
+															nearR = (nearV) & 255;
+															nearG = (nearV >> 8) & 255;
+															nearB = (nearV >> 16) & 255;
+															nearA = (nearV >> 24) & 255;
 
 
-															if (p >= singleton->maxHeightInUnits) {
+															if (p >= singleton->maxHeightInUnits)
+															{
 
 																linA = 0;
 															}
-															else {
+															else
+															{
 
-																if (brushAction == E_BRUSH_SUB) {
+																if (brushAction == E_BRUSH_SUB)
+																{
 
 
-																	if (isInside) {
-																		if (singleton->softMode) {
-																			linA = min(linA, linA-8);
-																		}
-																		else {
-																			linA = 0;
-																			
-																		}
+																	if (isInside)
+																	{
+																		// if (singleton->softMode) {
+																		//  linA = min(linA, linA-8);
+																		// }
+																		// else {
+																		linA = 0;
+																		//}
 
 																		linB = 255;
 																	}
-																	
-																}
-																else {
 
-																	if (isInside) {
-																		if (singleton->softMode) {
-																			linA += 8;
-																			if (linA > 255) {
-																				linA = 255;
-																			}
-																		}
-																		else {
-																			linA = 255;
-																		}
+																}
+																else
+																{
+
+																	if (isInside)
+																	{
+																		// if (singleton->softMode) {
+																		//  linA += 8;
+																		//  if (linA > 255) {
+																		//      linA = 255;
+																		//  }
+																		// }
+																		// else {
+																		linA = 255;
+																		//}
 																		linB = 0;
 																	}
 
-																	
 
-																	switch(singleton->activeMode) {
+
+																	switch (singleton->activeMode)
+																	{
 																		//
-																		case 0:
+																	case 0:
 
 																		break;
 
 																		// dirt and grass
-																		case 1:
-																			// linR = 255;
-																			// linG = 255;
-																			// linB = 255;
+																	case 1:
+																		// linR = 255;
+																		// linG = 255;
+																		// linB = 255;
 
-																			nearA = 0;
+																		nearA = 0;
 																		break;
 
 																		// rock
-																		case 2:
-																			// linR = 255;
-																			// linG = 255;
-																			// linB = 255;
+																	case 2:
+																		// linR = 255;
+																		// linG = 255;
+																		// linB = 255;
 
-																			nearA = 255;
+																		nearA = 255;
 																		break;
-																		
+
 																		// brick
-																		case 3:
-																			// linR = 16;
-																			// linG = 255;
-																			// linB = 16;
+																	case 3:
+																		// linR = 16;
+																		// linG = 255;
+																		// linB = 16;
 
-																			nearA = 255;
+																		nearA = 255;
 																		break;
-																			
+
 																		// flat top
-																		case 4:
-																			//linB = 0;
-																			nearA = 255;
+																	case 4:
+																		//linB = 0;
+																		nearA = 255;
 																		break;
-																		
-																		//
-																		case 5:
-																			//linB = 0;
-																			nearA = 0;
-																		break;
-																		
-																		//
-																		case 6:
 
-																		break;
-																		
 																		//
-																		case 7:
+																	case 5:
+																		//linB = 0;
+																		nearA = 0;
+																		break;
+
+																		//
+																	case 6:
 
 																		break;
 
 																		//
-																		case 8:
+																	case 7:
 
 																		break;
-																		
+
 																		//
-																		case 9:
+																	case 8:
 
 																		break;
-																		
+
+																		//
+																	case 9:
+
+																		break;
+
 																	}
 																}
 															}
 
-															vd_ptr[ind2] = (nearA<<24)|(nearB<<16)|(nearG<<8)|(nearR);
-															vdl_ptr[ind2] = (linA<<24)|(linB<<16)|(linG<<8)|(linR);
+															vd_ptr[ind2] = (nearA << 24) | (nearB << 16) | (nearG << 8) | (nearR);
+															vdl_ptr[ind2] = (linA << 24) | (linB << 16) | (linG << 8) | (linR);
 															curPage->volDataModified = true;
 
 															curPage->parentGPH->isDirty = true;
 															changes = true;
 														}
-														else {
-															if (curPage->parentGPH->isDirty) {
-																curPage->parentGPH->isDirty = false;
-																
+														else
+														{
+															if (curPage->parentGPH->isDirty)
+															{
+																//curPage->parentGPH->isDirty = false;
+
 																//curPage->generateVolume();
 																curPage->parentGPH->refreshChildren(true);
 															}
@@ -1793,76 +2421,81 @@ DO_RETURN_UPDATE:
 									}
 								}
 							}
-							
+
 						}
 
 
-						
+
 
 					}
 				}
 			}
 		}
 
-		if (changes) {
-			singleton->changesMade=true;
-			singleton->wsBufferInvalid=true;
+		if (changes)
+		{
+			singleton->changesMade = true;
+			singleton->wsBufferInvalid = true;
 		}
 
-		
-		
+
+
 		popTrace();
 
 	}
 
 
-	void renderWorldSpaceGPU( float processPagesFBO, float processGeomFBO, float processWaterFBO ) {
+	void renderWorldSpaceGPU( float processPagesFBO, float processGeomFBO, float processWaterFBO )
+	{
 		singleton->bindShader("WorldSpaceShader");
-		
-		singleton->bindFBO("worldSpaceFBO");
-		singleton->sampleFBO("pagesFBO",0);
-		singleton->sampleFBO("geomFBO",2);
-		singleton->sampleFBO("waterFBO",4);
-		
-		//MUST BE CALLED AFTER FBO IS BOUND
-		singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-		singleton->setShaderVec3("process", processPagesFBO, processGeomFBO, processWaterFBO);
-		singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
-		singleton->setShaderfVec3("cameraPos", cameraPos);
-		singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim) );
 
+		singleton->bindFBO("worldSpaceFBO");
+		singleton->sampleFBO("pagesFBO", 0);
+		singleton->sampleFBO("waterFBO", 2);
+		singleton->sampleFBO("geomFBO", 4);
+
+		//MUST BE CALLED AFTER FBO IS BOUND
+		singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+		singleton->setShaderVec3("process", processPagesFBO, processGeomFBO, processWaterFBO);
+		singleton->setShaderVec2("mouseCoords", singleton->mouseX, singleton->mouseY);
+		singleton->setShaderfVec3("cameraPos", cameraPos);
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim) );
+		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+		singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
 
 		singleton->drawFSQuad(1.0f);
 
-		singleton->unsampleFBO("waterFBO",4);
-		singleton->unsampleFBO("geomFBO",2);
-		singleton->unsampleFBO("pagesFBO",0);
 		
+		singleton->unsampleFBO("geomFBO", 4);
+		singleton->unsampleFBO("waterFBO", 2);
+		singleton->unsampleFBO("pagesFBO", 0);
+
 
 		singleton->unbindFBO();
 		singleton->unbindShader();
 	}
 
-	void renderWorldSpace() {
+	void getWorldSpaceBuffer()
+	{
 
 
-		pushTrace("renderWorldSpace()");
+		pushTrace("getWorldSpaceBuffer()");
 
-		if (singleton->reportPagesDrawn) {
+		if (singleton->reportPagesDrawn)
+		{
 			singleton->reportPagesDrawn = false;
-			doTraceND("renderWorldSpace() TOT GPU MEM USED (MB): ", f__s(TOT_GPU_MEM_USAGE));
-			//doTraceND("Pages Generated:", i__s(PAGE_COUNT));
+			doTraceND("lightCount: ", i__s(lightCount));
+			doTraceND("TOT GPU MEM USED (MB): ", f__s(TOT_GPU_MEM_USAGE));
 			cout << "HolderSize (MB): " << singleton->holderSizeMB << "\n";
-			cout << "Num Holders: " << singleton->holderPoolItems.size() << "\n";
-			cout << "Pooled MB Used: " << ((float)singleton->holderPoolItems.size())*singleton->holderSizeMB << "\n";
+			cout << "Num GPU Holders: " << singleton->gpuPool->holderPoolItems.size() << "\n";
+			cout << "GPU Pooled MB Used: " << ((float)singleton->gpuPool->holderPoolItems.size())*singleton->holderSizeMB << "\n";
 
 		}
-		
 
-		renderWorldSpaceGPU(1.0f,0.0f,1.0f);
+
+
 		singleton->wsBufferInvalid = false;
-		FBOWrapper* fbow = singleton->getFBOWrapper("worldSpaceFBO",0);
+		FBOWrapper *fbow = singleton->getFBOWrapper("worldSpaceFBO", 0);
 		fbow->getPixels();
 
 
@@ -1870,96 +2503,97 @@ DO_RETURN_UPDATE:
 	}
 
 
-	void renderGrass() {
+	// void renderGrass() {
 
 
-		pushTrace("renderGrass()");
+	//  pushTrace("renderGrass()");
 
-		singleton->worldToScreen(&cScreenCoords, cameraPos);
-		float curTime = 0.0;
+	//  singleton->worldToScreen(&cScreenCoords, cameraPos);
+	//  float curTime = 0.0;
 
-		if (singleton->grassState == E_GRASS_STATE_ANIM) {
-			curTime = singleton->curTime;
-		}
-
-		
-		//glEnable(GL_DEPTH_TEST);
-
-		int curInd;
+	//  if (singleton->grassState == E_GRASS_STATE_ANIM) {
+	//      curTime = singleton->curTime;
+	//  }
 
 
-		singleton->bindShader("PreGrassShader");
-		singleton->bindFBO("swapFBOLinHalf0");
-		singleton->sampleFBO("pagesFBO", 0);
-		singleton->sampleFBO("noiseFBO", 2);
+	//  //glEnable(GL_DEPTH_TEST);
 
-		singleton->setShaderFloat("seaLevel", singleton->getSeaLevelInPixels());
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
-
-		singleton->drawFSQuad(1.0f);
-
-		singleton->unsampleFBO("noiseFBO", 2);
-		singleton->unsampleFBO("pagesFBO", 0);
-		singleton->unbindFBO();
-		singleton->unbindShader();
-
-		doBlur("swapFBOLinHalf",2.0f);
+	//  int curInd;
 
 
+	//  singleton->bindShader("PreGrassShader");
+	//  singleton->bindFBO("swapFBOLinHalf0");
+	//  singleton->sampleFBO("pagesFBO", 0);
+	//  singleton->sampleFBO("noiseFBO", 2);
 
-		singleton->bindShader("GrassShader");
-		
-		singleton->setShaderFloat("scaleFactor", DEF_SCALE_FACTOR);
-		singleton->setShaderFloat("curTime", curTime);
-		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
-		singleton->setShaderfVec2("grassWH", &(singleton->grassWH) );
-		singleton->setShaderfVec2("cameraPosSS", &cScreenCoords);
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
-		singleton->setShaderfVec3("cameraPos", cameraPos);
+	//  singleton->setShaderFloat("seaLevel", singleton->getSLInPixels());
+	//  singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 
-		
-		singleton->bindFBO("grassFBO");
-		singleton->sampleFBO("pagesFBO", 0);
-		singleton->sampleFBO("noiseFBO", 2);
-		singleton->sampleFBO("swapFBOLinHalf0", 3);
+	//  singleton->drawFSQuad(1.0f);
 
-		if (singleton->grassState == E_GRASS_STATE_ANIM || singleton->grassState == E_GRASS_STATE_ON) {
+	//  singleton->unsampleFBO("noiseFBO", 2);
+	//  singleton->unsampleFBO("pagesFBO", 0);
+	//  singleton->unbindFBO();
+	//  singleton->unbindShader();
 
-			if ( (singleton->cameraZoom >= 1.0f) ) {
-				curInd = 0;
-			}
-			if ( (singleton->cameraZoom < 1.0f) && (singleton->cameraZoom >= 0.5f) ) {
-				curInd = 1;
-			}
-			if ( (singleton->cameraZoom < 0.5f) && (singleton->cameraZoom >= 0.25f) ) {
-				curInd = 2;
-			}
-			if ( (singleton->cameraZoom < 0.25f) ) { //&& (singleton->cameraZoom >= 1.0f)
-				curInd = 3;
-			}
+	//  doBlur("swapFBOLinHalf",2.0f);
 
-			glCallList(singleton->grassTris[0]);
-		}
-		
-		singleton->unsampleFBO("swapFBOLinHalf0", 3);
-		singleton->unsampleFBO("noiseFBO", 2);
-		singleton->unsampleFBO("pagesFBO", 0);
-		singleton->unbindFBO();
-		singleton->unbindShader();
 
-		//glDisable(GL_DEPTH_TEST);
 
-		
-		popTrace();
-	}
+	//  singleton->bindShader("GrassShader");
 
-	float weighPath(float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean) {
-		
+	//  singleton->setShaderFloat("scaleFactor", DEF_SCALE_FACTOR);
+	//  singleton->setShaderFloat("curTime", curTime);
+	//  singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+	//  singleton->setShaderfVec2("grassWH", &(singleton->grassWH) );
+	//  singleton->setShaderfVec2("cameraPosSS", &cScreenCoords);
+	//  singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+	//  singleton->setShaderfVec3("cameraPos", cameraPos);
+
+
+	//  singleton->bindFBO("grassFBO");
+	//  singleton->sampleFBO("pagesFBO", 0);
+	//  singleton->sampleFBO("noiseFBO", 2);
+	//  singleton->sampleFBO("swapFBOLinHalf0", 3);
+
+	//  if (singleton->grassState == E_GRASS_STATE_ANIM || singleton->grassState == E_GRASS_STATE_ON) {
+
+	//      if ( (singleton->cameraZoom >= 1.0f) ) {
+	//          curInd = 0;
+	//      }
+	//      if ( (singleton->cameraZoom < 1.0f) && (singleton->cameraZoom >= 0.5f) ) {
+	//          curInd = 1;
+	//      }
+	//      if ( (singleton->cameraZoom < 0.5f) && (singleton->cameraZoom >= 0.25f) ) {
+	//          curInd = 2;
+	//      }
+	//      if ( (singleton->cameraZoom < 0.25f) ) { //&& (singleton->cameraZoom >= 1.0f)
+	//          curInd = 3;
+	//      }
+
+	//      glCallList(singleton->grassTris[0]);
+	//  }
+
+	//  singleton->unsampleFBO("swapFBOLinHalf0", 3);
+	//  singleton->unsampleFBO("noiseFBO", 2);
+	//  singleton->unsampleFBO("pagesFBO", 0);
+	//  singleton->unbindFBO();
+	//  singleton->unbindShader();
+
+	//  //glDisable(GL_DEPTH_TEST);
+
+
+	//  popTrace();
+	// }
+
+	float weighPath(float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean)
+	{
+
 		int i;
-		int iMax = (int)min(64.0f, rad*4.0f);
+		int iMax = (int)min(64.0f, rad * 4.0f);
 
 		float fi;
-		float fMax = (float)(iMax-1);
+		float fMax = (float)(iMax - 1);
 		float lerp;
 
 		float curX;
@@ -1975,61 +2609,73 @@ DO_RETURN_UPDATE:
 
 		bool startsInWater = startVal <= seaLevel;
 
-		for (i = 1; i < iMax; i++) {
+		for (i = 1; i < iMax; i++)
+		{
 			fi = (float)i;
-			lerp = fi/fMax;
-			curX = (1.0f-lerp)*x1 + (lerp)*x2;
-			curY = (1.0f-lerp)*y1 + (lerp)*y2;
+			lerp = fi / fMax;
+			curX = (1.0f - lerp) * x1 + (lerp) * x2;
+			curY = (1.0f - lerp) * y1 + (lerp) * y2;
 			curRes = curFBO->getPixelAtWrapped((int)curX, (int)curY, hmChannel);
-			
-			if (isOcean) {
-				if (doSet) {
 
-					if (curRes > seaLevel) {
+			if (isOcean)
+			{
+				if (doSet)
+				{
 
-						tempRes = abs(curRes-lastRes);
-						tempRes = tempRes*tempRes*tempRes;
+					if (curRes > seaLevel)
+					{
+
+						tempRes = abs(curRes - lastRes);
+						tempRes = tempRes * tempRes * tempRes;
 						//tempRes = 255-curRes;
 					}
-					else {
+					else
+					{
 						tempRes = curRes;
 					}
 
-					
+
 					//tempRes = abs(curRes-lastRes);
 					//tempRes = tempRes*tempRes*tempRes;
-					if ((curRes > seaLevel) != (lastRes > seaLevel)) {
+					if ((curRes > seaLevel) != (lastRes > seaLevel))
+					{
 						tempRes += 100000.0f;
 					}
 
 					// if (startsInWater) {
-					// 	if (curRes > seaLevel) {
-					// 		tempRes += 1000000.0f;
-					// 	}
+					//  if (curRes > seaLevel) {
+					//      tempRes += 1000000.0f;
+					//  }
 					// }
 
 				}
-				else {
+				else
+				{
 					tempRes = 0.0;
-					if (curRes > seaLevel) {
+					if (curRes > seaLevel)
+					{
 						tempRes = 1.0f;
 					}
-					else {
+					else
+					{
 						tempRes = -1.0f;
 					}
 				}
 			}
-			else {
-				tempRes = abs(curRes-lastRes)*10.0 + curRes;
+			else
+			{
+				tempRes = abs(curRes - lastRes) * 10.0 + curRes;
 				//tempRes = tempRes;
-				if (curRes <= seaLevel-20.0f) {
+				if (curRes <= seaLevel - 20.0f)
+				{
 					tempRes += 100000.0f;
 				}
-				if ((curRes > seaLevel) != (lastRes > seaLevel)) {
+				if ((curRes > seaLevel) != (lastRes > seaLevel))
+				{
 					tempRes += 100000.0f;
 				}
 			}
-			
+
 
 			tot += tempRes;
 			lastRes = curRes;
@@ -2039,7 +2685,8 @@ DO_RETURN_UPDATE:
 		return tot;
 	}
 
-	float findBestPath(float x1, float y1, float x2, float y2, int generation, int roadIndex, bool doSet, bool isOcean) {
+	float findBestPath(float x1, float y1, float x2, float y2, int generation, int roadIndex, bool doSet, bool isOcean)
+	{
 		int i;
 		int j;
 
@@ -2047,10 +2694,10 @@ DO_RETURN_UPDATE:
 		coordAndIndex bestCoord;
 		coordAndIndex testCoord;
 
-		float mpx = (x1+x2)/2.0;
-		float mpy = (y1+y2)/2.0;
-		float dis = quickDis(x1,y1,x2,y2);
-		float rad = dis/2.0;
+		float mpx = (x1 + x2) / 2.0;
+		float mpy = (y1 + y2) / 2.0;
+		float dis = quickDis(x1, y1, x2, y2);
+		float rad = dis / 2.0;
 		float mpxTemp;
 		float mpyTemp;
 		float delta;
@@ -2073,43 +2720,52 @@ DO_RETURN_UPDATE:
 		int iRad;
 		int numTries = max((int)(rad), 20);
 
-		if ( (rad < 2.0f) || (generation > 1024) ) {
+		if ( (rad < 2.0f) || (generation > 1024) )
+		{
 			// do manhattan distance
 
-			if (doSet) {
+			if (doSet)
+			{
 				ibx = x1;
 				iby = y1;
 				ix2 = x2;
 				iy2 = y2;
 
 
-				while (ibx != ix2) {
+				while (ibx != ix2)
+				{
 					curFBO2->setPixelAtWrapped(ibx, iby, pathChannel, 255);
-					if (ibx < ix2) {
+					if (ibx < ix2)
+					{
 						ibx++;
 					}
-					else {
+					else
+					{
 						ibx--;
 					}
 				}
-				while (iby != iy2) {
+				while (iby != iy2)
+				{
 					curFBO2->setPixelAtWrapped(ibx, iby, pathChannel, 255);
-					if (iby < iy2) {
+					if (iby < iy2)
+					{
 						iby++;
 					}
-					else {
+					else
+					{
 						iby--;
 					}
 				}
-				
+
 				curFBO2->setPixelAtWrapped(ibx, iby, pathChannel, 255);
 			}
-			else {
+			else
+			{
 
 			}
 
 			return 0.0f;
-			
+
 		}
 
 
@@ -2117,20 +2773,22 @@ DO_RETURN_UPDATE:
 		genMod = 2.0f;
 
 		// if (generation > 32) {
-		// 	return 0.0f;
+		//  return 0.0f;
 		// }
-		
 
-		
 
-		for (i = 0; i < numTries; i++) {
-			mpxTemp = mpx + (fGenRand()*dis-rad)/genMod;
-			mpyTemp = mpy + (fGenRand()*dis-rad)/genMod;
 
-			delta = weighPath(x1,y1,mpxTemp,mpyTemp,rad/2.0f, doSet, isOcean);
-			delta += weighPath(mpxTemp,mpyTemp,x2,y2,rad/2.0f, doSet, isOcean);
 
-			if (delta < bestDelta) {
+		for (i = 0; i < numTries; i++)
+		{
+			mpxTemp = mpx + (fGenRand() * dis - rad) / genMod;
+			mpyTemp = mpy + (fGenRand() * dis - rad) / genMod;
+
+			delta = weighPath(x1, y1, mpxTemp, mpyTemp, rad / 2.0f, doSet, isOcean);
+			delta += weighPath(mpxTemp, mpyTemp, x2, y2, rad / 2.0f, doSet, isOcean);
+
+			if (delta < bestDelta)
+			{
 				bestDelta = delta;
 				bestX = mpxTemp;
 				bestY = mpyTemp;
@@ -2140,11 +2798,13 @@ DO_RETURN_UPDATE:
 
 
 
-		if (doSet) {
-			
+		if (doSet)
+		{
 
-			
-			if (generation < 8) {
+
+
+			if (generation < 8)
+			{
 
 				baseCoord.x = bestX;
 				baseCoord.y = bestY;
@@ -2152,29 +2812,35 @@ DO_RETURN_UPDATE:
 				//roadCoords.push_back(baseCoord);
 
 				bestDis = FLT_MAX;
-				for (i = 0; i < roadCoords.size(); i++) {
+				for (i = 0; i < roadCoords.size(); i++)
+				{
 					testCoord = roadCoords[i];
 
 
-					if (baseCoord.index == testCoord.index) {
+					if (baseCoord.index == testCoord.index)
+					{
 
 					}
-					else {
-						curDis = coordDis(&baseCoord,&testCoord);
+					else
+					{
+						curDis = coordDis(&baseCoord, &testCoord);
 
-						if (curDis < bestDis) {
+						if (curDis < bestDis)
+						{
 							bestDis = curDis;
 							bestCoord = roadCoords[i];
 						}
 					}
-					
-					
+
+
 				}
 
-				if (bestDis != FLT_MAX) {
-					curDis = coordDis(&bestCoord,&baseCoord);
+				if (bestDis != FLT_MAX)
+				{
+					curDis = coordDis(&bestCoord, &baseCoord);
 
-					if (curDis < min(400.0f, rad) ) { //
+					if (curDis < min(400.0f, rad) )   //
+					{
 						baseCoord = bestCoord;
 						baseCoord.index = roadIndex;
 					}
@@ -2185,44 +2851,37 @@ DO_RETURN_UPDATE:
 
 				roadCoords.push_back(baseCoord);
 			}
-			
-
-			
-
-
-			
 
 
 			//curFBO2->setPixelAtWrapped((int)bestX, (int)bestY, pathChannel, 255);
 			//curFBO2->setPixelAtWrapped((int)bestX, (int)bestY, breadCrumbChannel, 255);
-			findBestPath(x1,y1,bestX,bestY,generation+1,roadIndex, doSet, isOcean);
-			findBestPath(bestX,bestY,x2,y2,generation+1,roadIndex, doSet, isOcean);
+			findBestPath(x1, y1, bestX, bestY, generation + 1, roadIndex, doSet, isOcean);
+			findBestPath(bestX, bestY, x2, y2, generation + 1, roadIndex, doSet, isOcean);
 		}
 
 		return bestDelta;
 
 	}
 
-	void initMap() {
+	void initMap()
+	{
 		mapLockOn = true;
 
 		pushTrace("initMap()");
 
 		mapSwapFlag = 0;
-		
+
 		mapStep = 0.0f;
 
-		
 
-		FBOWrapper* fbow = singleton->getFBOWrapper("hmFBO",0);
-		FBOWrapper* fbow2 = singleton->getFBOWrapper("cityFBO",0);
+
+		FBOWrapper *fbow = singleton->getFBOWrapper("hmFBO", 0);
+		FBOWrapper *fbow2 = singleton->getFBOWrapper("cityFBO", 0);
 
 		curFBO = fbow;
 		curFBO2 = fbow2;
 
-		FIVector4 tempVec1;
-		FIVector4 tempVec2;
-		FIVector4 tempVec3;
+		
 
 		FIVector4 startVec;
 		FIVector4 endVec;
@@ -2230,22 +2889,22 @@ DO_RETURN_UPDATE:
 
 		int w = fbow2->width;
 		int h = fbow2->height;
-		
+
 
 		//0:r
 		//1:g
 		//2:b
 		//3:a
 
-		
+
 
 
 		int i;
 		int j;
 		int k;
 		int m;
-		int totSize = w*h;
-		int* btStack = new int[totSize];
+		int totSize = w * h;
+		int *btStack = new int[totSize];
 		int btStackInd = 0;
 		int curInd;
 		int curX;
@@ -2271,15 +2930,15 @@ DO_RETURN_UPDATE:
 		int p1;
 		int p2;
 
-		
-		
+
+
 		// int alleyFlag = 32;
 		// int streetFlag = 64;
 		// int highwayFlag = 128;
-		
+
 		int startDir;
 		int curDir;
-		int blockMip = intLogB2(singleton->blockSizeInLots);
+		blockMip = intLogB2(singleton->blockSizeInLots);
 
 		int cx1;
 		int cy1;
@@ -2302,7 +2961,7 @@ DO_RETURN_UPDATE:
 		int xind;
 		int yind;
 		int curHeight;
-		
+
 		bool isValid;
 		bool notFound;
 		bool touchesWater;
@@ -2315,21 +2974,25 @@ DO_RETURN_UPDATE:
 
 
 
-		for (i = 0; i < 16; i++) {
-			singleton->paramArrMap[i*3+0] = fGenRand();
-			singleton->paramArrMap[i*3+1] = fGenRand();
-			singleton->paramArrMap[i*3+2] = fGenRand();
+		for (i = 0; i < 16; i++)
+		{
+			singleton->paramArrMap[i * 3 + 0] = fGenRand();
+			singleton->paramArrMap[i * 3 + 1] = fGenRand();
+			singleton->paramArrMap[i * 3 + 2] = fGenRand();
 		}
 
-		for (i = 0; i < 6; i++) {
-			singleton->paramArrMap[i*3+0] = i;
+		for (i = 0; i < 6; i++)
+		{
+			singleton->paramArrMap[i * 3 + 0] = i;
 		}
 
-		for (i = 0; i < 30; i++) {
-			p1 = iGenRand(0,5);
-			p2 = iGenRand(0,5);
+		for (i = 0; i < 30; i++)
+		{
+			p1 = iGenRand(0, 5);
+			p2 = iGenRand(0, 5);
 
-			if (p1 != p2) {
+			if (p1 != p2)
+			{
 				tempVal = singleton->paramArrMap[p1];
 				singleton->paramArrMap[p1] = singleton->paramArrMap[p2];
 				singleton->paramArrMap[p2] = tempVal;
@@ -2340,132 +3003,161 @@ DO_RETURN_UPDATE:
 
 		singleton->bindShader("Simplex2D");
 		singleton->bindFBO("simplexFBO");
-		singleton->setShaderFloat("curTime", fGenRand()*100.0f);//singleton->curTime);
+		singleton->setShaderFloat("curTime", fGenRand() * 100.0f); //singleton->curTime);
 		singleton->drawFSQuad(1.0f);
 		singleton->unbindFBO();
 		singleton->unbindShader();
-		
+
 		singleton->bindShader("TerrainMix");
 		singleton->bindFBO("hmFBOLinear");
 		singleton->sampleFBO("simplexFBO", 0);
-		singleton->setShaderTexture(1,singleton->imageHM0->tid);
-		singleton->setShaderTexture(2,singleton->imageHM1->tid);
+		singleton->setShaderTexture(1, singleton->imageHM0->tid);
+		singleton->setShaderTexture(2, singleton->imageHM1->tid);
 		singleton->setShaderArrayfVec3("paramArrMap", singleton->paramArrMap, 16 );
 		singleton->setShaderFloat("mapSampScale", 1.0f); //singleton->mapSampScale
 		singleton->drawFSQuad(1.0f);
-		singleton->setShaderTexture(2,0);
-		singleton->setShaderTexture(1,0);
+		singleton->setShaderTexture(2, 0);
+		singleton->setShaderTexture(1, 0);
 		singleton->unsampleFBO("simplexFBO", 0);
 		singleton->unbindFBO();
 		singleton->unbindShader();
 
-		singleton->copyFBO("hmFBOLinear","hmFBO");
+		singleton->copyFBO("hmFBOLinear", "hmFBO");
 
-		
+
 		fbow->getPixels(true);
-		fbow->setAllPixels(densityChannel,255);
-		fbow->setAllPixels(idChannel,0);
-		fbow->setAllPixels(blockChannel,0);
+		fbow->setAllPixels(densityChannel, 255);
+		fbow->setAllPixels(idChannel, 0);
+		fbow->setAllPixels(blockChannel, 0);
 
 
 		// determine sea level
 
-		for (i = 0; i < 256; i++) {
+		for (i = 0; i < 256; i++)
+		{
 			histogram[i] = 0;
 		}
-		for (i = 0; i < totSize; i++) {
-			histogram[fbow->getPixelAtIndex(i,hmChannel)]++;
+		
+		int minSL = 0;
+		int maxSL = 0;
+		int curSL = 0;
+		int avgSL = 0;
+		
+		for (i = 0; i < totSize; i++)
+		{
+			curSL = fbow->getPixelAtIndex(i, hmChannel);
+			
+			if (curSL < minSL) {
+				minSL = curSL;
+			}
+			if (curSL > maxSL) {
+				maxSL = curSL;
+			}
+			
+			histogram[curSL]++;
 		}
 
 		int totFilled = 0;
 		i = 0;
-		while (totFilled < (totSize*40)/100 ) {
+		while (totFilled < (totSize * 40) / 100 )
+		{
 			totFilled += histogram[i];
 			i++;
 		}
-
 		
-		seaLevel = i;
-		seaSlack = seaLevel-1;
+		avgSL = (minSL*3+maxSL*1)/4;
+
+
+		seaLevel = i; //avgSL;//
+		seaSlack = seaLevel - 1;
 		cout << "Sea Level: " << seaLevel << "\n";
 
 
 
 		cout << "start place cities\n";
 
-		for (i = 1; i < numProvinces; i++) {
+		for (i = 1; i < numProvinces; i++)
+		{
 
 			isValid = false;
 
-			do {
+			do
+			{
 
-				xind = (int)(fGenRand()*fbow->width);
-				yind = (int)(fGenRand()*fbow->height);
+				xind = (int)(fGenRand() * fbow->width);
+				yind = (int)(fGenRand() * fbow->height);
 
-				tempVec1.setFXYZ(xind,yind,0.0f);
+				tempVec1.setFXYZ(xind, yind, 0.0f);
 
 				notFound = false;
-				for (j = 1; j < i; j++) {
+				for (j = 1; j < i; j++)
+				{
 					tempVec2.setFXYZ(provinceX[j], provinceY[j], 0.0f);
 					tempDis = tempVec2.wrapDistance(&tempVec1, w, false);
 
-					if (tempDis < 200.0f*singleton->mapSampScale) {
+					if (tempDis < 200.0f * singleton->mapSampScale)
+					{
 						notFound = true;
 					}
 
 				}
 
-				if (notFound) {
+				if (notFound)
+				{
 
 				}
-				else {
-					if (fbow->getPixelAtC(xind,yind,idChannel) == 0) {
-						curHeight = fbow->getPixelAtC(xind,yind,hmChannel);
+				else
+				{
+					if (fbow->getPixelAtC(xind, yind, idChannel) == 0)
+					{
+						curHeight = fbow->getPixelAtC(xind, yind, hmChannel);
 
 						if (
 							(curHeight > seaLevel + 10)
-						) {
-							
+						)
+						{
+
 							provinceX[i] = xind;
 							provinceY[i] = yind;
-							fbow->setPixelAtC(xind,yind,idChannel,i);
-							fbow->setPixelAtC(xind,yind,densityChannel,0);
+							fbow->setPixelAtC(xind, yind, idChannel, i);
+							fbow->setPixelAtC(xind, yind, densityChannel, 0);
 							isValid = true;
-							
+
 						}
 					}
 				}
 
 
-				
+
 			}
 			while (!isValid);
-			
+
 		}
 
 		cout << "end place cities\n";
 
-		
+
 		cout << "start grow provinces\n";
 
 		fbow->cpuToGPU();
 
-		singleton->copyFBO("hmFBO","swapFBO0");
+		singleton->copyFBO("hmFBO", "swapFBO0");
 		singleton->bindShader("MapBorderShader");
 		mapStep = 0.0f;
-		for (i = 0; i < 1024; i++) {
-			
-			singleton->bindFBO("swapFBO",mapSwapFlag);
-			singleton->sampleFBO("swapFBO",0,mapSwapFlag);
-			singleton->setShaderFloat("seaSlack", ((float)seaSlack)/255.0 );
+		for (i = 0; i < 1024; i++)
+		{
+
+			singleton->bindFBO("swapFBO", mapSwapFlag);
+			singleton->sampleFBO("swapFBO", 0, mapSwapFlag);
+			singleton->setShaderFloat("seaSlack", ((float)seaSlack) / 255.0 );
 			singleton->setShaderFloat("mapStep", mapStep);
 			singleton->setShaderFloat("texPitch", w);
 			singleton->drawFSQuad(1.0f);
-			singleton->unsampleFBO("swapFBO",0,mapSwapFlag);
+			singleton->unsampleFBO("swapFBO", 0, mapSwapFlag);
 			singleton->unbindFBO();
-			
 
-			mapSwapFlag = 1-mapSwapFlag;
+
+			mapSwapFlag = 1 - mapSwapFlag;
 			mapStep += 1.0f;
 		}
 		singleton->unbindShader();
@@ -2473,26 +3165,27 @@ DO_RETURN_UPDATE:
 
 		singleton->bindShader("MapBorderShader");
 		mapStep = 1.0f;
-		for (i = 0; i < 256; i++) {
-			
-			singleton->bindFBO("swapFBO",mapSwapFlag);
-			singleton->sampleFBO("swapFBO",0,mapSwapFlag);
-			singleton->setShaderFloat("seaSlack", ((float)seaSlack)/255.0 );
+		for (i = 0; i < 256; i++)
+		{
+
+			singleton->bindFBO("swapFBO", mapSwapFlag);
+			singleton->sampleFBO("swapFBO", 0, mapSwapFlag);
+			singleton->setShaderFloat("seaSlack", ((float)seaSlack) / 255.0 );
 			singleton->setShaderFloat("mapStep", -mapStep);
 			singleton->setShaderFloat("texPitch", w);
 			singleton->drawFSQuad(1.0f);
-			singleton->unsampleFBO("swapFBO",0,mapSwapFlag);
+			singleton->unsampleFBO("swapFBO", 0, mapSwapFlag);
 			singleton->unbindFBO();
-			
 
-			mapSwapFlag = 1-mapSwapFlag;
+
+			mapSwapFlag = 1 - mapSwapFlag;
 			mapStep += 1.0f;
 		}
 		singleton->unbindShader();
 
 
-		singleton->copyFBO("swapFBO0","hmFBO");
-		
+		singleton->copyFBO("swapFBO0", "hmFBO");
+
 
 		fbow->getPixels();
 		fbow->updateMips();
@@ -2502,34 +3195,41 @@ DO_RETURN_UPDATE:
 
 		cout << "start find neighboring cities\n";
 
-		for (i = 0; i < numProvinces*numProvinces; i++) {
+		for (i = 0; i < numProvinces * numProvinces; i++)
+		{
 			provinceGrid[i] = 0;
 		}
 
-		for (k = 0; k < totSize; k++) {
+		for (k = 0; k < totSize; k++)
+		{
 			curInd = k;
-			curY = curInd/w;
-			curX = curInd-curY*w;
+			curY = curInd / w;
+			curX = curInd - curY * w;
 
-			basePix = fbow->getPixelAtIndex(curInd,idChannel);
+			basePix = fbow->getPixelAtIndex(curInd, idChannel);
 
-			testPix = fbow->getPixelAtIndex(fbow->getIndex(curX+1,curY), idChannel);
-			testPix2 = fbow->getPixelAtIndex(fbow->getIndex(curX,curY+1), idChannel);
+			testPix = fbow->getPixelAtIndex(fbow->getIndex(curX + 1, curY), idChannel);
+			testPix2 = fbow->getPixelAtIndex(fbow->getIndex(curX, curY + 1), idChannel);
 
 
-			if (basePix != 0) {
-				if (testPix != 0) {
-					if (basePix != testPix) {
+			if (basePix != 0)
+			{
+				if (testPix != 0)
+				{
+					if (basePix != testPix)
+					{
 
-						provinceGrid[basePix*numProvinces + testPix] = 1;
-						provinceGrid[basePix + testPix*numProvinces] = 1;
+						provinceGrid[basePix * numProvinces + testPix] = 1;
+						provinceGrid[basePix + testPix * numProvinces] = 1;
 
 					}
 				}
-				if (testPix2 != 0) {
-					if (basePix != testPix2) {
-						provinceGrid[basePix*numProvinces + testPix2] = 1;
-						provinceGrid[basePix + testPix2*numProvinces] = 1;
+				if (testPix2 != 0)
+				{
+					if (basePix != testPix2)
+					{
+						provinceGrid[basePix * numProvinces + testPix2] = 1;
+						provinceGrid[basePix + testPix2 * numProvinces] = 1;
 					}
 				}
 			}
@@ -2552,56 +3252,61 @@ DO_RETURN_UPDATE:
 
 
 		fbow2->getPixels(true);
-		fbow2->setAllPixels(btChannel,15);
-		fbow2->setAllPixels(stChannel,0);
-		fbow2->setAllPixels(pathChannel,0);
-		fbow2->setAllPixels(houseChannel,0);
+		fbow2->setAllPixels(btChannel, 15);
+		fbow2->setAllPixels(stChannel, 0);
+		fbow2->setAllPixels(pathChannel, 0);
+		fbow2->setAllPixels(houseChannel, 0);
 
-		
+
 		int blockMod = singleton->blockSizeInLots;
-		for (k = 0; k < totSize; k++) {
+		for (k = 0; k < totSize; k++)
+		{
 			curInd = k;
-			curY = curInd/w;
-			curX = curInd-curY*w;
+			curY = curInd / w;
+			curX = curInd - curY * w;
 
-			basePix = fbow->getMipVal(curX,curY,blockMip,idChannel,MAX_MIP);
-			testPix = fbow->getMipVal(curX,curY,blockMip,densityChannel,AVG_MIP);
+			basePix = fbow->getMipVal(curX, curY, blockMip, idChannel, MAX_MIP);
+			testPix = fbow->getMipVal(curX, curY, blockMip, densityChannel, AVG_MIP);
 
-			testPix1 = fbow->getMipVal(curX,curY,blockMip,idChannel,MAX_MIP,-1,-1,0);
-			testPix2 = fbow->getMipVal(curX,curY,blockMip,idChannel,MAX_MIP,-1,1,0);
-			testPix3 = fbow->getMipVal(curX,curY,blockMip,idChannel,MAX_MIP,-1,0,-1);
-			testPix4 = fbow->getMipVal(curX,curY,blockMip,idChannel,MAX_MIP,-1,0,1);
+			testPix1 = fbow->getMipVal(curX, curY, blockMip, idChannel, MAX_MIP, -1, -1, 0);
+			testPix2 = fbow->getMipVal(curX, curY, blockMip, idChannel, MAX_MIP, -1, 1, 0);
+			testPix3 = fbow->getMipVal(curX, curY, blockMip, idChannel, MAX_MIP, -1, 0, -1);
+			testPix4 = fbow->getMipVal(curX, curY, blockMip, idChannel, MAX_MIP, -1, 0, 1);
 
-			
 
-			if (testPix1 != testPix2 || testPix3 != testPix4 || testPix > 120 ) {
-				fbow->setPixelAtIndex(curInd,blockChannel,0);
+
+			if (testPix1 != testPix2 || testPix3 != testPix4 || testPix > 120 )
+			{
+				fbow->setPixelAtIndex(curInd, blockChannel, 0);
 			}
-			else {
-				fbow->setPixelAtIndex(curInd,blockChannel,basePix);
+			else
+			{
+				fbow->setPixelAtIndex(curInd, blockChannel, basePix);
 			}
 
 		}
 
 		fbow->cpuToGPU();
-		singleton->copyFBO("hmFBO","hmFBOLinear");
+		singleton->copyFBO("hmFBO", "hmFBOLinear");
 
 		cout << "end find city blocks\n";
-		
+
 
 		cout << "start add in city roads\n";
 		//add in city roads
 
-		for (i = 0; i < numProvinces; i++) {
+		for (i = 0; i < numProvinces; i++)
+		{
 			// recursive backtrack
-			btStack[0] = fbow2->getIndex(provinceX[i],provinceY[i]);
+			btStack[0] = fbow2->getIndex(provinceX[i], provinceY[i]);
 			btStackInd = 0;
-			
-			while (btStackInd > -1) {
+
+			while (btStackInd > -1)
+			{
 
 				curInd = btStack[btStackInd];
-				curY = curInd/w;
-				curX = curInd-curY*w;
+				curY = curInd / w;
+				curX = curInd - curY * w;
 
 				fbow2->orPixelAtIndex(curInd, btChannel, visFlag);
 
@@ -2611,34 +3316,38 @@ DO_RETURN_UPDATE:
 				bestDelta = FLT_MAX;
 
 
-				testPix2 = fbow->getPixelAtIndex(curInd,blockChannel);
+				testPix2 = fbow->getPixelAtIndex(curInd, blockChannel);
 
 				//testPix2 = fbow->getMipVal(curX,curY,blockMip,densityChannel,AVG_MIP);
 				//testPix3 = fbow->getMipVal(curX,curY,blockMip,idChannel,MIN_MIP);
 				//testPix4 = fbow->getMipVal(curX,curY,blockMip,idChannel,MAX_MIP);
 
 
-				if ( testPix2 != 0 ) {
-					do {
-						curDir = (startDir + count)%4;
+				if ( testPix2 != 0 )
+				{
+					do
+					{
+						curDir = (startDir + count) % 4;
 
 						testX = curX + dirModX[curDir];
 						testY = curY + dirModY[curDir];
-						testInd = fbow2->getIndex(testX,testY);
+						testInd = fbow2->getIndex(testX, testY);
 						testPix = fbow2->getPixelAtIndex(testInd, btChannel);
 						testPix3 = fbow->getPixelAtIndex(testInd, blockChannel);
 
-						if ( (testPix & visFlag) == 0 && (testPix3 != 0)) {
+						if ( (testPix & visFlag) == 0 && (testPix3 != 0))
+						{
 							//not visited, proceed
 							notFound = false;
 
 
 							delta = abs(
-								fbow->getPixelAtIndex(curInd,hmChannel) -
-								fbow->getPixelAtIndex(testInd,hmChannel)
-							);
+												fbow->getPixelAtIndex(curInd, hmChannel) -
+												fbow->getPixelAtIndex(testInd, hmChannel)
+											);
 
-							if (delta < bestDelta) {
+							if (delta < bestDelta)
+							{
 								bestDelta = delta;
 								bestDir = curDir;
 								bestInd = testInd;
@@ -2648,18 +3357,20 @@ DO_RETURN_UPDATE:
 
 						count++;
 					}
-					while (count < 4); //notFound && 
+					while (count < 4); //notFound &&
 				}
 
-				if (notFound) {
+				if (notFound)
+				{
 					btStackInd--;
 				}
-				else {
+				else
+				{
 
 					// join the two and remove walls
 					fbow2->andPixelAtIndex(curInd, btChannel, dirFlags[bestDir]);
 					fbow2->andPixelAtIndex(bestInd, btChannel, dirFlagsOp[bestDir]);
-					
+
 					btStackInd++;
 					btStack[btStackInd] = bestInd;
 				}
@@ -2669,45 +3380,52 @@ DO_RETURN_UPDATE:
 
 		cout << "end add in city roads\n";
 
-		
+
 
 		// clear visited
-		for (k = 0; k < totSize; k++) {
+		for (k = 0; k < totSize; k++)
+		{
 			testPix = fbow2->getPixelAtIndex(k, btChannel);
-			if ( (testPix & visFlag) == 0) {
+			if ( (testPix & visFlag) == 0)
+			{
 				//not visited
-				for (i = 0; i < 4; i++) {
+				for (i = 0; i < 4; i++)
+				{
 					fbow2->andPixelAtIndex(k, btChannel, dirFlags[i]);
 				}
 			}
-			else {
+			else
+			{
 				//visited
 			}
 
 			fbow2->andPixelAtIndex(k, btChannel, visFlagO );
 		}
-	
+
 
 
 		cout << "start link close cities\n";
 
 		// link close cities
 
-		for (i = 1; i < numProvinces-1; i++) {
-			for (j = i + 1; j < numProvinces; j++) {
+		for (i = 1; i < numProvinces - 1; i++)
+		{
+			for (j = i + 1; j < numProvinces; j++)
+			{
 
-				curInd = i + j*numProvinces;
+				curInd = i + j * numProvinces;
 
-				if (provinceGrid[curInd] == 1) {
+				if (provinceGrid[curInd] == 1)
+				{
 					p1 = i;
 					p2 = j;
 
 
 
-					tempVec1.setIXYZ(provinceX[p1],provinceY[p1],0);
-					tempVec2.setIXYZ(provinceX[p2],provinceY[p2],0);
+					tempVec1.setIXYZ(provinceX[p1], provinceY[p1], 0);
+					tempVec2.setIXYZ(provinceX[p2], provinceY[p2], 0);
 
-					tempVec2.wrapDistance(&tempVec1,w);
+					tempVec2.wrapDistance(&tempVec1, w);
 					tempVec3.copyFrom(&tempVec1);
 
 					findBestPath(
@@ -2732,9 +3450,10 @@ DO_RETURN_UPDATE:
 
 
 
-		floatAndIndex* oceanRes = new floatAndIndex[numProvinces*numProvinces];
+		floatAndIndex *oceanRes = new floatAndIndex[numProvinces * numProvinces];
 
-		for (i = 0; i < numProvinces*numProvinces; i++) {
+		for (i = 0; i < numProvinces * numProvinces; i++)
+		{
 			oceanRes[i].value = FLT_MAX;
 			oceanRes[i].index1 = 0;
 			oceanRes[i].index2 = 0;
@@ -2743,39 +3462,44 @@ DO_RETURN_UPDATE:
 		cout << "start find biggest ocean gaps\n";
 
 
-		for (k = 0; k < 2; k++) {
+		for (k = 0; k < 2; k++)
+		{
 
 			cout << "iteration: " << k << "\n";
 
 			count = 0;
 
-			if (k == 0) {
-				for (i = 1; i < numProvinces-1; i++) {
-					for (j = i + 1; j < numProvinces; j++) {
-						curInd = i + j*numProvinces;
-						if (provinceGrid[curInd] != 1) {
+			if (k == 0)
+			{
+				for (i = 1; i < numProvinces - 1; i++)
+				{
+					for (j = i + 1; j < numProvinces; j++)
+					{
+						curInd = i + j * numProvinces;
+						if (provinceGrid[curInd] != 1)
+						{
 							p1 = i;
 							p2 = j;
 
 
 
-							tempVec1.setIXYZ(provinceX[p1],provinceY[p1],0);
-							tempVec2.setIXYZ(provinceX[p2],provinceY[p2],0);
+							tempVec1.setIXYZ(provinceX[p1], provinceY[p1], 0);
+							tempVec2.setIXYZ(provinceX[p2], provinceY[p2], 0);
 
-							tempVec2.wrapDistance(&tempVec1,w);
+							tempVec2.wrapDistance(&tempVec1, w);
 							tempVec3.copyFrom(&tempVec1);
 
 
 							oceanRes[count].value = findBestPath(
-								tempVec2.getFX(),
-								tempVec2.getFY(),
-								tempVec3.getFX(),
-								tempVec3.getFY(),
-								0,
-								curInd,
-								false,
-								true
-							);
+																				tempVec2.getFX(),
+																				tempVec2.getFY(),
+																				tempVec3.getFX(),
+																				tempVec3.getFY(),
+																				0,
+																				curInd,
+																				false,
+																				true
+																			);
 							oceanRes[count].index1 = i;
 							oceanRes[count].index2 = j;
 
@@ -2786,21 +3510,23 @@ DO_RETURN_UPDATE:
 					}
 				}
 			}
-			else {
-				bubbleSortF(oceanRes,numProvinces*numProvinces);
+			else
+			{
+				bubbleSortF(oceanRes, numProvinces * numProvinces);
 
 
-				for (i = 0; i < 30; i++) {
-					
+				for (i = 0; i < 30; i++)
+				{
+
 					p1 = oceanRes[i].index1;
 					p2 = oceanRes[i].index2;
 
-					curInd = p1 + p2*numProvinces;
+					curInd = p1 + p2 * numProvinces;
 
-					tempVec1.setIXYZ(provinceX[p1],provinceY[p1],0);
-					tempVec2.setIXYZ(provinceX[p2],provinceY[p2],0);
+					tempVec1.setIXYZ(provinceX[p1], provinceY[p1], 0);
+					tempVec2.setIXYZ(provinceX[p2], provinceY[p2], 0);
 
-					tempVec2.wrapDistance(&tempVec1,w);
+					tempVec2.wrapDistance(&tempVec1, w);
 					tempVec3.copyFrom(&tempVec1);
 
 					findBestPath(
@@ -2817,45 +3543,46 @@ DO_RETURN_UPDATE:
 
 			}
 
-			
+
 		}
 
-		
+
 
 		cout << "end find biggest ocean gaps\n";
 
 
-		
 
-		
-		
+
+
+
 
 
 		mapSwapFlag = 0;
 		mapStep = 0.0f;
 
 		fbow2->cpuToGPU();
-		singleton->copyFBO("cityFBO","swapFBO0");
+		singleton->copyFBO("cityFBO", "swapFBO0");
 		singleton->bindShader("DilateShader");
-		for (i = 0; i < 2; i++) {
-			
-			singleton->bindFBO("swapFBO",mapSwapFlag);
-			singleton->sampleFBO("swapFBO",0,mapSwapFlag);
-			singleton->sampleFBO("hmFBO",1);
-			singleton->setShaderFloat("seaLevel", ((float)seaLevel)/255.0 );
+		for (i = 0; i < 2; i++)
+		{
+
+			singleton->bindFBO("swapFBO", mapSwapFlag);
+			singleton->sampleFBO("swapFBO", 0, mapSwapFlag);
+			singleton->sampleFBO("hmFBO", 1);
+			singleton->setShaderFloat("seaLevel", singleton->getSLNormalized() );
 			singleton->setShaderFloat("mapStep", 1.0);
 			singleton->setShaderFloat("doDilate", 1.0);
 			singleton->setShaderFloat("texPitch", w);
 			singleton->drawFSQuad(1.0f);
-			singleton->unsampleFBO("hmFBO",1);
-			singleton->unsampleFBO("swapFBO",0,mapSwapFlag);
+			singleton->unsampleFBO("hmFBO", 1);
+			singleton->unsampleFBO("swapFBO", 0, mapSwapFlag);
 			singleton->unbindFBO();
 
-			mapSwapFlag = 1-mapSwapFlag;
+			mapSwapFlag = 1 - mapSwapFlag;
 			mapStep += 1.0f;
 		}
 		singleton->unbindShader();
-		singleton->copyFBO("swapFBO0","cityFBO");
+		singleton->copyFBO("swapFBO0", "cityFBO");
 		fbow2->getPixels();
 		//fbow2->updateMips();
 
@@ -2872,87 +3599,102 @@ DO_RETURN_UPDATE:
 
 		cout << "start road regions\n";
 
-		for (i = 0; i < totSize; i++) {
+		for (i = 0; i < totSize; i++)
+		{
 
-			if (fbow2->getPixelAtIndex(i,pathChannel) == 0) {
+			if (fbow2->getPixelAtIndex(i, pathChannel) == 0)
+			{
 
 
 
-				for (j = 0; j < 2; j++) {
+				for (j = 0; j < 2; j++)
+				{
 					btStack[0] = i;
 					btStackInd = 0;
 					totCount = 0;
 
-					if (j == 0) {
+					if (j == 0)
+					{
 						fillColor = id;
 					}
-					else {
+					else
+					{
 						fillColor = 255;
 					}
 
 
-					while (btStackInd > -1) {
+					while (btStackInd > -1)
+					{
 
 						curInd = btStack[btStackInd];
-						curY = curInd/w;
-						curX = curInd-curY*w;
+						curY = curInd / w;
+						curX = curInd - curY * w;
 
-						if (j == 0) {
+						if (j == 0)
+						{
 							fbow2->orPixelAtIndex(curInd, btChannel, visFlag);
 						}
-						else {
+						else
+						{
 							fbow2->andPixelAtIndex(curInd, btChannel, visFlagO );
 						}
-						
+
 
 						fbow2->setPixelAtIndex(curInd, pathChannel, fillColor );
-						
+
 
 						count = 0;
 						notFound = true;
 
 
-						
-						do {
+
+						do
+						{
 							curDir = count;
 
 							testX = curX + dirModX[curDir];
 							testY = curY + dirModY[curDir];
-							testInd = fbow2->getIndex(testX,testY);
+							testInd = fbow2->getIndex(testX, testY);
 							testPix = fbow2->getPixelAtIndex(testInd, btChannel);
 							testPix2 = fbow2->getPixelAtIndex(testInd, pathChannel);
 
 
-							if (j == 0) {
-								if ( ( (testPix & visFlag) == 0 ) && (testPix2 == 0)) {
+							if (j == 0)
+							{
+								if ( ( (testPix & visFlag) == 0 ) && (testPix2 == 0))
+								{
 									notFound = false;
 									totCount++;
-									
+
 								}
 							}
-							else {
-								if ( ( (testPix & visFlag) > 0) && (testPix2 == id)) {
+							else
+							{
+								if ( ( (testPix & visFlag) > 0) && (testPix2 == id))
+								{
 									notFound = false;
 									totCount++;
 								}
 							}
 
 
-							
+
 
 							count++;
 						}
 						while (notFound && count < 4);
-						
-						if (notFound) {
+
+						if (notFound)
+						{
 							btStackInd--;
 						}
-						else {
+						else
+						{
 
 							// join the two and remove walls
 							//fbow2->andPixelAtIndex(curInd, btChannel, dirFlags[bestDir]);
 							//fbow2->andPixelAtIndex(bestInd, btChannel, dirFlagsOp[bestDir]);
-							
+
 
 							btStackInd++;
 							btStack[btStackInd] = testInd;
@@ -2962,31 +3704,34 @@ DO_RETURN_UPDATE:
 
 					incId = false;
 
-					if (j == 0) {
-						if (totCount < 1000) {
+					if (j == 0)
+					{
+						if (totCount < 1000)
+						{
 							//cout << "Too Small\n";
 						}
-						else {
+						else
+						{
 							incId = true;
 							j++;
 						}
 					}
-					else {
+					else
+					{
 						incId = true;
 					}
 
-					if (incId) {
-						//cout << "ID: " << id << "\n";
+					if (incId)
+					{
+						//cout << "Id: " << id << "\n";
 						id++;
-						if (id > 254) {
+						if (id > 254)
+						{
 							id = 1;
 						}
 					}
-					
-
-					
 				}
-				
+
 
 
 
@@ -2998,7 +3743,8 @@ DO_RETURN_UPDATE:
 		cout << "end road regions\n";
 
 		// clear visited
-		for (k = 0; k < totSize; k++) {
+		for (k = 0; k < totSize; k++)
+		{
 			fbow2->andPixelAtIndex(k, btChannel, visFlagO );
 		}
 
@@ -3007,51 +3753,53 @@ DO_RETURN_UPDATE:
 
 		mapSwapFlag = 0;
 		mapStep = 0.0f;
-		singleton->copyFBO("cityFBO","swapFBO0");
-		
+		singleton->copyFBO("cityFBO", "swapFBO0");
+
 
 
 		singleton->bindShader("SkeletonShader");
-		for (k = 0; k < 19; k++) {
-			
-			singleton->bindFBO("swapFBO",mapSwapFlag);
-			singleton->sampleFBO("swapFBO",0,mapSwapFlag);
+		for (k = 0; k < 19; k++)
+		{
+
+			singleton->bindFBO("swapFBO", mapSwapFlag);
+			singleton->sampleFBO("swapFBO", 0, mapSwapFlag);
 			//singleton->sampleFBO("hmFBO",1);
-			singleton->setShaderFloat("seaLevel", ((float)seaLevel)/255.0 );
+			singleton->setShaderFloat("seaLevel", singleton->getSLNormalized() );
 			singleton->setShaderFloat("mapStep", 0.0);
 			singleton->setShaderFloat("texPitch", w);
 			singleton->drawFSQuad(1.0f);
 			//singleton->unsampleFBO("hmFBO",1);
-			singleton->unsampleFBO("swapFBO",0,mapSwapFlag);
+			singleton->unsampleFBO("swapFBO", 0, mapSwapFlag);
 			singleton->unbindFBO();
-			mapSwapFlag = 1-mapSwapFlag;
+			mapSwapFlag = 1 - mapSwapFlag;
 			mapStep += 1.0f;
-			
+
 		}
 		singleton->unbindShader();
 
 
 		singleton->bindShader("RoadShader");
-		for (k = 0; k < 1; k++) {
-			
-			singleton->bindFBO("swapFBO",mapSwapFlag);
-			singleton->sampleFBO("swapFBO",0,mapSwapFlag);
+		for (k = 0; k < 1; k++)
+		{
+
+			singleton->bindFBO("swapFBO", mapSwapFlag);
+			singleton->sampleFBO("swapFBO", 0, mapSwapFlag);
 			//singleton->sampleFBO("hmFBO",1);
-			singleton->setShaderFloat("seaLevel", ((float)seaLevel)/255.0 );
+			singleton->setShaderFloat("seaLevel", singleton->getSLNormalized() );
 			singleton->setShaderFloat("mapStep", 0.0);
 			singleton->setShaderFloat("texPitch", w);
 			singleton->drawFSQuad(1.0f);
 			//singleton->unsampleFBO("hmFBO",1);
-			singleton->unsampleFBO("swapFBO",0,mapSwapFlag);
+			singleton->unsampleFBO("swapFBO", 0, mapSwapFlag);
 			singleton->unbindFBO();
-			mapSwapFlag = 1-mapSwapFlag;
+			mapSwapFlag = 1 - mapSwapFlag;
 			mapStep += 1.0f;
-			
+
 		}
 		singleton->unbindShader();
 
 
-		singleton->copyFBO("swapFBO0","cityFBO");
+		singleton->copyFBO("swapFBO0", "cityFBO");
 		fbow2->getPixels();
 
 
@@ -3062,13 +3810,15 @@ DO_RETURN_UPDATE:
 
 		// generate streets
 
-		int* streetFlagsV = new int[w]; //runs vertical
-		int* streetFlagsH = new int[h]; //runs horizontal
+		int *streetFlagsV = new int[w]; //runs vertical
+		int *streetFlagsH = new int[h]; //runs horizontal
 
-		for (i = 0; i < w; i++) {
+		for (i = 0; i < w; i++)
+		{
 			streetFlagsV[i] = 0;
 		}
-		for (i = 0; i < h; i++) {
+		for (i = 0; i < h; i++)
+		{
 			streetFlagsH[i] = 0;
 		}
 
@@ -3077,23 +3827,27 @@ DO_RETURN_UPDATE:
 		// 4 - y+
 		// 8 - y-
 
-		for (i = 0; i < w; i+= singleton->blockSizeInLots ) {
+		for (i = 0; i < w; i += singleton->blockSizeInLots )
+		{
 
-			curInd = i-1;
+			curInd = i - 1;
 
-			while (curInd<0) {
-				curInd+=w;
+			while (curInd < 0)
+			{
+				curInd += w;
 			}
 
 			streetFlagsV[curInd] |= 1;
 			streetFlagsV[i] |= 2;
 		}
-		for (i = 0; i < h; i+= singleton->blockSizeInLots ) {
+		for (i = 0; i < h; i += singleton->blockSizeInLots )
+		{
 
-			curInd = i-1;
+			curInd = i - 1;
 
-			while (curInd<0) {
-				curInd+=h;
+			while (curInd < 0)
+			{
+				curInd += h;
 			}
 
 			streetFlagsH[curInd] |= 4;
@@ -3101,26 +3855,29 @@ DO_RETURN_UPDATE:
 		}
 
 
-		
-
-
-		
 
 
 
-		
 
-		
+
+
+
+
+
+
 		//add in main streets
-		for (k = 0; k < totSize; k++) {
+		for (k = 0; k < totSize; k++)
+		{
 			curInd = k;
-			curY = curInd/w;
-			curX = curInd-curY*w;
+			curY = curInd / w;
+			curX = curInd - curY * w;
 
-			testPix = fbow->getPixelAtIndex(curInd,blockChannel);
+			testPix = fbow->getPixelAtIndex(curInd, blockChannel);
 
-			if (testPix != 0) {
-				fbow2->orPixelAtIndex(curInd, stChannel, streetFlagsH[curY]|streetFlagsV[curX]);
+			if (testPix != 0)
+			{
+				fbow2->orPixelAtIndex(curInd, btChannel, streetFlagsH[curY] | streetFlagsV[curX]);
+				fbow2->orPixelAtIndex(curInd, stChannel, streetFlagsH[curY] | streetFlagsV[curX]); //stChannel
 			}
 
 
@@ -3129,37 +3886,37 @@ DO_RETURN_UPDATE:
 
 		// for (k = 0; k < totSize; k++) {
 
-		// 	// int stChannel;
-		// 	// int btChannel;
-		// 	// int pathChannel;
-		// 	// int houseChannel;
+		//  // int stChannel;
+		//  // int btChannel;
+		//  // int pathChannel;
+		//  // int houseChannel;
 
-		// 	testPix = fbow2->getPixelAtIndex(k, stChannel);
-		// 	fbow2->orPixelAtIndex(k, btChannel, testPix );
+		//  testPix = fbow2->getPixelAtIndex(k, stChannel);
+		//  fbow2->orPixelAtIndex(k, btChannel, testPix );
 
-		// 	testPix = fbow2->getPixelAtIndex(k, pathChannel);
-		// 	fbow2->orPixelAtIndex(k, btChannel, testPix );
+		//  testPix = fbow2->getPixelAtIndex(k, pathChannel);
+		//  fbow2->orPixelAtIndex(k, btChannel, testPix );
 		// }
 
 
 		/*
 		for (i = 0; i < numProvinces-1; i++) {
-			for (j = i + 1; j < numProvinces; j++) {
-				if (provinceGrid[i + j*numProvinces] == 1) {
+		    for (j = i + 1; j < numProvinces; j++) {
+		        if (provinceGrid[i + j*numProvinces] == 1) {
 
-					k = fbow->numMips-1;
+		            k = fbow->numMips-1;
 
-					cx1 = provinceX[i];
-					cy1 = provinceY[i];
-					cx2 = provinceX[j];
-					cy2 = provinceY[j];
+		            cx1 = provinceX[i];
+		            cy1 = provinceY[i];
+		            cx2 = provinceX[j];
+		            cy2 = provinceY[j];
 
-					while (getMipInd(cx1,cy1,k) == getMipInd(cx2,cy2,k)) {
-						k--;
-					}
+		            while (getMipInd(cx1,cy1,k) == getMipInd(cx2,cy2,k)) {
+		                k--;
+		            }
 
-				}
-			}
+		        }
+		    }
 		}
 
 
@@ -3168,44 +3925,44 @@ DO_RETURN_UPDATE:
 
 		int cityLevel = 0;
 		for (k = 0; k < totSize; k++) {
-			curInd = k;
-			curY = curInd/w;
-			curX = curInd-curY*w;
+		    curInd = k;
+		    curY = curInd/w;
+		    curX = curInd-curY*w;
 
-			touchesWater = false;
+		    touchesWater = false;
 
-			for (j = -1; j <= 1; j++) {				
-				for (i = -1; i <= 1; i++) {
-					testX = curX + i;
-					testY = curY + j;
-					testInd = fbow->getIndex(testX,testY);
-					testPix = fbow->getPixelAtIndex(testInd, hmChannel);
-					
-
-					if (testPix < seaLevel + 10) {
-						touchesWater = true;
-						break;
-					}
-
-				}
-				if (touchesWater) {
-					break;
-				}
-			}
-
-			testPix2 = fbow->getPixelAtIndex(curInd, densityChannel);
+		    for (j = -1; j <= 1; j++) {
+		        for (i = -1; i <= 1; i++) {
+		            testX = curX + i;
+		            testY = curY + j;
+		            testInd = fbow->getIndex(testX,testY);
+		            testPix = fbow->getPixelAtIndex(testInd, hmChannel);
 
 
-			if (touchesWater) { // || (testPix2 > 120) 
-				fbow2->andPixelAtIndex(curInd, btChannel, dirFlagClear);
-				fbow2->andPixelAtIndex(curInd, stChannel, dirFlagClear);
-				
-				//TODO: repair all broken (half) edges
-			}
-			// if (testPix2 > 80) {
-			// 	fbow2->andPixelAtIndex(curInd, stChannel, dirFlagClear);
-			// }
-			
+		            if (testPix < seaLevel + 10) {
+		                touchesWater = true;
+		                break;
+		            }
+
+		        }
+		        if (touchesWater) {
+		            break;
+		        }
+		    }
+
+		    testPix2 = fbow->getPixelAtIndex(curInd, densityChannel);
+
+
+		    if (touchesWater) { // || (testPix2 > 120)
+		        fbow2->andPixelAtIndex(curInd, btChannel, dirFlagClear);
+		        fbow2->andPixelAtIndex(curInd, stChannel, dirFlagClear);
+
+		        //TODO: repair all broken (half) edges
+		    }
+		    // if (testPix2 > 80) {
+		    //  fbow2->andPixelAtIndex(curInd, stChannel, dirFlagClear);
+		    // }
+
 
 		}
 
@@ -3214,42 +3971,42 @@ DO_RETURN_UPDATE:
 		// fix half streets
 
 		for (k = 0; k < totSize; k++) {
-			curInd = k;
-			curY = curInd/w;
-			curX = curInd-curY*w;
+		    curInd = k;
+		    curY = curInd/w;
+		    curX = curInd-curY*w;
 
-			basePix = fbow2->getPixelAtIndex(curInd, btChannel);
-			basePix2 = fbow2->getPixelAtIndex(curInd, stChannel);
+		    basePix = fbow2->getPixelAtIndex(curInd, btChannel);
+		    basePix2 = fbow2->getPixelAtIndex(curInd, stChannel);
 
-			for (i = 0; i < 4; i++) {
-				
-				
-				
-				curDir = i;
-
-				testX = curX + dirModX[curDir];
-				testY = curY + dirModY[curDir];
-				testInd = fbow2->getIndex(testX,testY);
-				testPix = fbow2->getPixelAtIndex(testInd, btChannel);
-				testPix2 = fbow2->getPixelAtIndex(testInd, stChannel);
+		    for (i = 0; i < 4; i++) {
 
 
-				if ( (basePix & dirFlagsO[curDir]) != (testPix & dirFlagsOpO[curDir]) ) {
-					fbow2->orPixelAtIndex(curInd, btChannel, dirFlagsO[curDir]);
-					fbow2->orPixelAtIndex(testInd, btChannel, dirFlagsOpO[curDir]);
-				}
 
-				if ( (basePix2 & dirFlagsO[curDir]) != (testPix2 & dirFlagsOpO[curDir]) ) {
-					fbow2->orPixelAtIndex(curInd, stChannel, dirFlagsO[curDir]);
-					fbow2->orPixelAtIndex(testInd, stChannel, dirFlagsOpO[curDir]);
-				}
+		        curDir = i;
 
-			}
+		        testX = curX + dirModX[curDir];
+		        testY = curY + dirModY[curDir];
+		        testInd = fbow2->getIndex(testX,testY);
+		        testPix = fbow2->getPixelAtIndex(testInd, btChannel);
+		        testPix2 = fbow2->getPixelAtIndex(testInd, stChannel);
+
+
+		        if ( (basePix & dirFlagsO[curDir]) != (testPix & dirFlagsOpO[curDir]) ) {
+		            fbow2->orPixelAtIndex(curInd, btChannel, dirFlagsO[curDir]);
+		            fbow2->orPixelAtIndex(testInd, btChannel, dirFlagsOpO[curDir]);
+		        }
+
+		        if ( (basePix2 & dirFlagsO[curDir]) != (testPix2 & dirFlagsOpO[curDir]) ) {
+		            fbow2->orPixelAtIndex(curInd, stChannel, dirFlagsO[curDir]);
+		            fbow2->orPixelAtIndex(testInd, stChannel, dirFlagsOpO[curDir]);
+		        }
+
+		    }
 
 		}
 
-*/
-		
+		*/
+
 
 
 
@@ -3270,12 +4027,13 @@ DO_RETURN_UPDATE:
 		// ?????
 
 
-		
+
 
 		cout << "start filling houses\n";
 
 		// clear visited
-		for (k = 0; k < totSize; k++) {
+		for (k = 0; k < totSize; k++)
+		{
 			fbow2->andPixelAtIndex(k, btChannel, visFlagO );
 		}
 
@@ -3288,88 +4046,100 @@ DO_RETURN_UPDATE:
 		int hb = worldSizeInBlocks.getIY();
 		int blockInd;
 
-		for (i = 0; i < wb; i++) {
-			for (j = 0; j < hb; j++) {
-				blockInd = i + j*wb;
+		for (i = 0; i < wb; i++)
+		{
+			for (j = 0; j < hb; j++)
+			{
+				blockInd = i + j * wb;
 
 				testPix = fbow->getMipAtIndex(blockInd, blockMip, blockChannel, MIN_MIP);
 
-				if (testPix != 0) {
+				if (testPix != 0)
+				{
 
 
 
 					id = 1;
 
-					for (k = i*blockMod; k < (i+1)*blockMod; k++) {
-						for (m = j*blockMod; m < (j+1)*blockMod; m++) {
-							curInd = k + m*w;
+					for (k = i * blockMod; k < (i + 1)*blockMod; k++)
+					{
+						for (m = j * blockMod; m < (j + 1)*blockMod; m++)
+						{
+							curInd = k + m * w;
 							curX = k;
 							curY = m;
 
-							
+
 							testPix = fbow2->getPixelAtIndex(curInd, btChannel);
 
-							if (testPix & visFlag) {
+							if (testPix & visFlag)
+							{
 
 							}
-							else {
+							else
+							{
 								btStack[0] = curInd;
 								btStackInd = 0;
 								totCount = 0;
 
 
-								while ( (btStackInd > -1) && (totCount < 3) ) {
+								while ( (btStackInd > -1) && (totCount < 3) )
+								{
 
 									curInd = btStack[btStackInd];
-									curY = curInd/w;
-									curX = curInd-curY*w;
+									curY = curInd / w;
+									curX = curInd - curY * w;
 
 									fbow2->orPixelAtIndex(curInd, btChannel, visFlag);
 									fbow2->setPixelAtIndex(curInd, houseChannel, id );
-									
+
 
 									count = 0;
 									notFound = true;
 
 									testPix2 = fbow2->getPixelAtIndex(curInd, btChannel);
-									testPix3 = fbow2->getPixelAtIndex(curInd, stChannel);
+									//testPix3 = fbow2->getPixelAtIndex(curInd, stChannel);
 									testPix4 = fbow2->getPixelAtIndex(curInd, pathChannel);
-									
-									do {
+
+									do
+									{
 										curDir = count;
 
 										testX = curX + dirModX[curDir];
 										testY = curY + dirModY[curDir];
 
-										testInd = fbow2->getIndex(testX,testY);
+										testInd = fbow2->getIndex(testX, testY);
 
 										testPix = fbow2->getPixelAtIndex(testInd, btChannel);
 
 										if (
 											( (testPix & visFlag) == 0 ) &&
 											( (testPix2 & dirFlagsO[curDir]) == 0) &&
-											( (testPix3 & dirFlagsO[curDir]) == 0) &&
+											//( (testPix3 & dirFlagsO[curDir]) == 0) &&
 											( (testPix4 & dirFlagsO[curDir]) == 0)
-										) {
+										)
+										{
 											notFound = false;
 											totCount++;
-											
+
 										}
-										
+
 
 										count++;
 									}
 									while (notFound && count < 4);
-									
-									if (notFound) {
+
+									if (notFound)
+									{
 										btStackInd--;
 									}
-									else {
+									else
+									{
 
 										// join the two and remove walls
 										//fbow2->andPixelAtIndex(curInd, btChannel, dirFlags[bestDir]);
 										//fbow2->andPixelAtIndex(bestInd, btChannel, dirFlagsOp[bestDir]);
-										
+
 
 										btStackInd++;
 										btStack[btStackInd] = testInd;
@@ -3378,7 +4148,8 @@ DO_RETURN_UPDATE:
 								}
 
 								id++;
-								if (id > 254) {
+								if (id > 254)
+								{
 									id = 1;
 								}
 
@@ -3387,7 +4158,7 @@ DO_RETURN_UPDATE:
 
 							}
 
-							
+
 						}
 					}
 
@@ -3400,7 +4171,8 @@ DO_RETURN_UPDATE:
 		cout << "end filling houses\n";
 
 		// clear visited
-		for (k = 0; k < totSize; k++) {
+		for (k = 0; k < totSize; k++)
+		{
 			fbow2->andPixelAtIndex(k, btChannel, visFlagO );
 		}
 
@@ -3409,7 +4181,7 @@ DO_RETURN_UPDATE:
 		// ?????
 
 
-		
+
 
 
 
@@ -3426,8 +4198,8 @@ DO_RETURN_UPDATE:
 
 		//////////
 
-		
-		
+
+
 		singleton->mapInvalid = false;
 
 		singleton->setCameraToElevation();
@@ -3440,123 +4212,200 @@ DO_RETURN_UPDATE:
 	}
 
 
-	void drawMap() {
+	void drawMap()
+	{
 
 
 		pushTrace("drawMap()");
 
-		FBOWrapper* fbow = singleton->getFBOWrapper("hmFBOLinear", 0);
+		FBOWrapper *fbow = singleton->getFBOWrapper("hmFBOLinear", 0);
 
 		
+		singleton->setCameraToElevationBase();
 
 
 		singleton->bindShader("TopoShader");
-		singleton->sampleFBO("palFBO", 0);
-		singleton->sampleFBO("hmFBO",1); //Linear
-		singleton->sampleFBO("cityFBO",2);
-
-		singleton->setShaderFloat("mapTrans", mapTrans);
-		singleton->setShaderFloat("seaLevel", ((float)seaLevel)/255.0 );
-		singleton->setShaderFloat("curTime", singleton->curTime);
-		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
-		singleton->setShaderfVec3("cameraPos", cameraPos);
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
-		singleton->setShaderVec2("mapDimInPixels", fbow->width, fbow->height);
-		singleton->setShaderfVec3("maxBoundsInPixels", &(singleton->maxBoundsInPixels) );
-
-		singleton->drawQuadBounds(
-			-singleton->maxBoundsInPixels.getFX()/2.0f,
-			-singleton->maxBoundsInPixels.getFY()/2.0f,
-			singleton->maxBoundsInPixels.getFX()/2.0f,
-			singleton->maxBoundsInPixels.getFY()/2.0f
-		);
 		
-		singleton->unsampleFBO("hmFBO",2);
-		singleton->unsampleFBO("hmFBOLinear",1);
-		singleton->unsampleFBO("palFBO",0);
+		singleton->bindFBO("resultFBO0");
+		
+		singleton->sampleFBO("palFBO", 0);
+		singleton->sampleFBO("hmFBO", 1); //Linear
+		singleton->sampleFBO("cityFBO", 2);
+		singleton->sampleFBO("backFaceMapFBO",3);
+		singleton->sampleFBO("frontFaceMapFBO",4);
+
+		
+		singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
+		singleton->setShaderfVec4("mapFreqs", &(singleton->mapFreqs) );
+		singleton->setShaderfVec4("mapAmps", &(singleton->mapAmps) );
+		singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
+		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+		singleton->setShaderfVec3("cameraPos", cameraPos);
+		singleton->setShaderFloat("mapTrans", mapTrans);
+		singleton->setShaderFloat("seaLevel", singleton->getSLNormalized() );
+		singleton->setShaderFloat("curTime", singleton->curTime);
+		singleton->setShaderVec2("mapDimInPixels", fbow->width, fbow->height);
+		singleton->setShaderfVec3("worldSizeInPixels", &(singleton->worldSizeInPixels) );
+
+		// singleton->drawQuadBounds(
+		// 	-singleton->worldSizeInPixels.getFX() / 2.0f,// + cameraPos->getFX(),
+		// 	-singleton->worldSizeInPixels.getFY() / 2.0f,// + cameraPos->getFY(),
+		// 	singleton->worldSizeInPixels.getFX() / 2.0f,// + cameraPos->getFX(),
+		// 	singleton->worldSizeInPixels.getFY() / 2.0f,// + cameraPos->getFY(),
+		// 	0.0f//cameraPos->getFZ()//singleton->getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY()) //0.0f// + cameraPos->getFZ()
+		// );
+
+		
+		singleton->drawFSQuad(1.0f);
+
+		
+		singleton->unsampleFBO("frontFaceMapFBO",4);
+		singleton->unsampleFBO("backFaceMapFBO",3);
+		singleton->unsampleFBO("cityFBO", 2);
+		singleton->unsampleFBO("hmFBO", 1);
+		singleton->unsampleFBO("palFBO", 0);
+		
+		
+		singleton->unbindFBO();
+		
 		singleton->unbindShader();
 
+		
+		//singleton->drawFBO("resultFBO", 0, newZoom, 1 - activeFBO);
+		
+		glEnable(GL_BLEND);
+		singleton->drawFBO("resultFBO0",0,1.0f);
+		glDisable(GL_BLEND);
 
 
 		popTrace();
 	}
 
-	void doBlur(string fboName, float blurAmount) {
+	void doBlur(string fboName, float blurAmount)
+	{
 		int i;
 		mapSwapFlag = 0;
-		for (i = 0; i < 2; i++) {
-			
-			if (i%2 == 0) {
+		for (i = 0; i < 2; i++)
+		{
+
+			if (i % 2 == 0)
+			{
 				singleton->bindShader("HBlurShader");
 			}
-			else {
+			else
+			{
 				singleton->bindShader("VBlurShader");
 			}
 
-			singleton->bindFBO(fboName,mapSwapFlag);
-			singleton->sampleFBO(fboName,0,mapSwapFlag);
+			singleton->bindFBO(fboName, mapSwapFlag);
+			singleton->sampleFBO(fboName, 0, mapSwapFlag);
 			singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 			singleton->setShaderFloat("blurAmount", blurAmount);
 			singleton->drawFSQuad(1.0f);
-			singleton->unsampleFBO(fboName,0,mapSwapFlag);
+			singleton->unsampleFBO(fboName, 0, mapSwapFlag);
 			singleton->unbindFBO();
 			singleton->unbindShader();
 
-			mapSwapFlag = 1-mapSwapFlag;
-			
+			mapSwapFlag = 1 - mapSwapFlag;
+
 		}
 	}
 
-	void updateLights() {
+	void updateLights()
+	{
 
 		int i;
 		int j;
 		int k;
+
+		int flag = 1;
+
+		GameLight *tempLight;
+
+
 
 		int ii;
 		int jj;
 
 		int blockRad = 1;
 
-		lightCount = 1;
-		GameLight* curLight;
-		GameBlock* curBlock;
+		lightCount = singleton->numDynLights;
+		GameLight *curLight;
+		GameBlock *curBlock;
 
-		activeLights[0] = &globalLight;
+		//activeLights[0] = &globalLight;
 
-		for (j = -blockRad; j <= blockRad; j++) {
-			for (i = -blockRad; i <= blockRad; i++) {
-				ii = i + camBlockPos.getIX();
-				jj = j + camBlockPos.getIY();
+		if (singleton->targetTimeOfDay <= 0.5)
+		{
+			for (j = -blockRad; j <= blockRad; j++)
+			{
+				for (i = -blockRad; i <= blockRad; i++)
+				{
+					ii = i + camBlockPos.getIX();
+					jj = j + camBlockPos.getIY();
 
-				curBlock = getBlockAtCoords(ii, jj, true);
+					curBlock = getBlockAtCoords(ii, jj, true);
 
 
-				for (k = 0; k < curBlock->gameLights.size(); k++) {
-					curLight = curBlock->gameLights[k];
+					for (k = 0; k < curBlock->gameLights.size(); k++)
+					{
+						curLight = curBlock->gameLights[k];
 
-					if ( curLight->pos.distance(cameraPos) < 28.0f*singleton->pixelsPerMeter && curLight->isOn ) {
-						activeLights[lightCount] = curBlock->gameLights[k];
-						lightCount++;
+						// TODO: cache screen coords
+
+						singleton->worldToScreen(&lScreenCoords, &(curLight->pos), true);
+
+						curLight->screenDistance = lScreenCoords.length();
+
+						if ( (curLight->screenDistance < 2.0f) && (curLight->isOn) )
+						{
+
+							// if (lightCount == singleton->numLights) {
+
+							// }
+
+							activeLights[lightCount] = curBlock->gameLights[k];
+							lightCount++;
+						}
+
+						if (lightCount >= MAX_EVAL_LIGHTS)
+						{
+							goto UPDATE_LIGHTS_END;
+						}
+
 					}
-
-					if (lightCount >= singleton->numLights) {
-						goto UPDATE_LIGHTS_END;
-					}
-
 				}
 			}
+
+UPDATE_LIGHTS_END:
+
+			for (i = singleton->numDynLights + 1; (i <= lightCount) && flag; i++)
+			{
+				flag = 0;
+				for (j = singleton->numDynLights; j < (lightCount - 1); j++)
+				{
+					if (activeLights[j + 1]->screenDistance < activeLights[j]->screenDistance) // ascending order simply changes to <
+					{
+						tempLight = activeLights[j];
+						activeLights[j] = activeLights[j + 1];
+						activeLights[j + 1] = tempLight;
+						flag = 1;
+					}
+				}
+			}
+
+			lightCount = min(lightCount, MAX_LIGHTS);
 		}
 
-		UPDATE_LIGHTS_END:
 
-		;
 
 	}
 
-	void postProcess() {
+	void postProcess()
+	{
 
-		frameCount++;
+		//frameCount++;
 
 		int i;
 		int iMin;
@@ -3564,33 +4413,36 @@ DO_RETURN_UPDATE:
 		int k;
 		int baseInd;
 
-		GameLight* curLight;
+		GameLight *curLight;
 
 		pushTrace("postProcess()");
 
 		// NOTE: ALWAYS UNSAMPLE IN REVERSE ORDER!!!
 
-		
+
 		//singleton->worldToScreen(&aoScreenCoords, &(singleton->dynObjects[singleton->activeObject]->pos));
 
-		if ( (frameCount % 120) == 0) {
-			updateLights();
+
+
+
+		//globalLight.initFrom( singleton->dynObjects[E_OBJ_LIGHT0] );
+		//activeLights[0] = &globalLight;
+
+		for (i = 0; i < singleton->numDynLights; i++)
+		{
+			activeLights[i] = singleton->dynObjects[E_OBJ_LIGHT0 + i]->getLight();
 		}
 
-		
 
+		for (k = 0; k < lightCount; k++)
+		{
+			baseInd = k * FLOATS_PER_LIGHT;
 
-		globalLight.initFrom( singleton->dynObjects[E_OBJ_LIGHT0] );
-		activeLights[0] = &globalLight;
-
-		for (k = 0; k < lightCount; k++) {
-			baseInd = k*FLOATS_PER_LIGHT;
-			
 			// lightPosBase.copyFrom(&(singleton->dynObjects[E_OBJ_LIGHT0 + k]->pos));
 			// lightPosBase.addXYZ(
-			// 	sin(singleton->curTime/1300.0)*4.0f*singleton->pixelsPerMeter,
-			// 	sin(singleton->curTime/700.0)*4.0f*singleton->pixelsPerMeter,
-			// 	sin(singleton->curTime/1100.0)*4.0f*singleton->pixelsPerMeter
+			//  sin(singleton->curTime/1300.0)*4.0f*singleton->pixelsPerMeter,
+			//  sin(singleton->curTime/700.0)*4.0f*singleton->pixelsPerMeter,
+			//  sin(singleton->curTime/1100.0)*4.0f*singleton->pixelsPerMeter
 			// );
 			// lightPos = &lightPosBase;
 
@@ -3599,14 +4451,14 @@ DO_RETURN_UPDATE:
 			lightPos = &(curLight->pos);
 
 			// if (k == 0) {
-			// 	globLightPos = lightPos;
+			//  globLightPos = lightPos;
 			// }
 			// if (k == 1) {
-			// 	lightPos->setFXYZ(
-			// 		cameraPos->getFX()-(globLightPos->getFX() - cameraPos->getFX()),
-			// 		cameraPos->getFY()-(globLightPos->getFY() - cameraPos->getFY()),
-			// 		globLightPos->getFZ()
-			// 	);
+			//  lightPos->setFXYZ(
+			//      cameraPos->getFX()-(globLightPos->getFX() - cameraPos->getFX()),
+			//      cameraPos->getFY()-(globLightPos->getFY() - cameraPos->getFY()),
+			//      globLightPos->getFZ()
+			//  );
 			// }
 
 			singleton->worldToScreen(&lScreenCoords, lightPos);
@@ -3616,19 +4468,21 @@ DO_RETURN_UPDATE:
 			singleton->lightArr[baseInd + 2] = lightPos->getFZ();
 
 			// light radius
-			if (k == 0) {
+			if (k == 0)
+			{
 				// global light
-				singleton->lightArr[baseInd + 3] = 4096.0f*singleton->pixelsPerMeter;
+				singleton->lightArr[baseInd + 3] = 4096.0f * singleton->pixelsPerMeter;
 			}
-			else {
+			else
+			{
 				// if (k == 1) {
-				// 	singleton->lightArr[baseInd + 3] = 4096.0f*singleton->pixelsPerMeter;
+				//  singleton->lightArr[baseInd + 3] = 4096.0f*singleton->pixelsPerMeter;
 				// }
 				// else {
-					// other lights
-					singleton->lightArr[baseInd + 3] = 8.0f*singleton->pixelsPerMeter;
+				// other lights
+				singleton->lightArr[baseInd + 3] = 12.0f * singleton->pixelsPerMeter;
 				//}
-				
+
 			}
 
 			singleton->lightArr[baseInd + 4] = lScreenCoords.getFX();
@@ -3643,258 +4497,346 @@ DO_RETURN_UPDATE:
 			singleton->lightArr[baseInd + 9] = curLight->color.getFY(); // light green
 			singleton->lightArr[baseInd + 10] = curLight->color.getFZ(); // light blue
 
-			switch(k) {
-				case 0:
-					singleton->lightArr[baseInd + 11] = 1.0f; // light intensity (unused?)
-					singleton->lightArr[baseInd + 12] = 0.0f; // light colorization (0-1)
-					singleton->lightArr[baseInd + 13] = 0.0f; // light flooding (colorizes regardless of shadows) (0-1)
+			switch (k)
+			{
+			case 0:
+				singleton->lightArr[baseInd + 11] = 1.0f; // light intensity (unused?)
+				singleton->lightArr[baseInd + 12] = 0.0f; // light colorization (0-1)
+				singleton->lightArr[baseInd + 13] = 0.0f; // light flooding (colorizes regardless of shadows) (0-1)
 				break;
-				default:
-					singleton->lightArr[baseInd + 11] = 1.0f;
-					singleton->lightArr[baseInd + 12] = 1.0f;
-					singleton->lightArr[baseInd + 13] = 0.0f;
+			default:
+				singleton->lightArr[baseInd + 11] = 1.0f;
+				singleton->lightArr[baseInd + 12] = 1.0f;
+				singleton->lightArr[baseInd + 13] = 0.0f;
 				break;
-				
+
 			}
 
 
 		}
 
-		lightPos = &(singleton->dynObjects[E_OBJ_LIGHT0]->pos);
-		singleton->worldToScreen(&lScreenCoords, lightPos);
+		// lightPos = &(singleton->dynObjects[E_OBJ_LIGHT0]->pos);
+		// singleton->worldToScreen(&lScreenCoords, lightPos);
 
-		if ( mapTrans < 1.0 ) {
+		if ( mapTrans < 1.0 )
+		{
 
 
-			
-			
+
+
 			activeFBO = 0;
 
-			
-			if (singleton->waterOn || (!wavesGenerated) ) { //(singleton->grassState == E_GRASS_STATE_ANIM) ||
-				
+
+			if (singleton->waterOn || (!wavesGenerated) )   //(singleton->grassState == E_GRASS_STATE_ANIM) ||
+			{
+
 
 				singleton->bindShader("WaveHeightShader");
 				singleton->bindFBO("waveFBO");
-				singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+				singleton->sampleFBO("worldSpaceFBO", 4);
+				
+				singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
+				singleton->setShaderFloat("waveSpacing", singleton->pixelsPerMeter * 2.0f);
+				singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 				singleton->setShaderfVec3("cameraPos", cameraPos);
-				singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
+				singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 				singleton->setShaderFloat("curTime", singleton->curTime);
 				singleton->drawFSQuad(1.0f);
+				
+				
+				singleton->unsampleFBO("worldSpaceFBO", 4);
 				singleton->unbindFBO();
 				singleton->unbindShader();
 			}
 
-			if (singleton->waterOn) {
+			if (singleton->waterOn)
+			{
 
 				iMin = 0;
 
 				singleton->bindShader("WaterShaderCombine");
 				singleton->bindFBO("combineFBOWithWater");
-				singleton->sampleFBO("combineFBO",0);
-				singleton->sampleFBO("waterFBO",2);
+				singleton->sampleFBO("combineFBO", 0);
+				singleton->sampleFBO("waterFBO", 2);
 				singleton->sampleFBO("waveFBO", 4);
-				singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+				singleton->sampleFBO("worldSpaceFBO", 5);
+				
+				singleton->setShaderFloat("maxWaveHeight", singleton->pixelsPerMeter * 2.0f);
+				singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 				singleton->setShaderfVec3("cameraPos", cameraPos);
-				singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
+				singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 				singleton->setShaderFloat("curTime", singleton->curTime);
-				singleton->setShaderFloat("seaLevel", singleton->getSeaLevelInPixels() );
+				singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
 				singleton->drawFSQuad(1.0f);
-				singleton->unsampleFBO("waveFBO",4);
-				singleton->unsampleFBO("waterFBO",2);
-				singleton->unsampleFBO("combineFBO",0);
+				
+				singleton->unsampleFBO("worldSpaceFBO", 5);
+				singleton->unsampleFBO("waveFBO", 4);
+				singleton->unsampleFBO("waterFBO", 2);
+				singleton->unsampleFBO("combineFBO", 0);
 				singleton->unbindFBO();
 				singleton->unbindShader();
 			}
-			else {
+			else
+			{
 
-				singleton->copyFBO2("combineFBO","combineFBOWithWater");
+				singleton->copyFBO2("combineFBO", "combineFBOWithWater");
 
 				iMin = 1;
 			}
-			
 
 
-			
+
+
 
 			singleton->bindShader("PreLightingShader");
-			
-			for (i = iMin; i < 2; i++) {
-				if (i == 0) {
+
+			for (i = iMin; i < 2; i++)
+			{
+				if (i == 0)
+				{
 					singleton->bindFBO("swapFBOLinHalf0");
-					singleton->sampleFBO("combineFBO",0);
+					singleton->sampleFBO("combineFBO", 0);
+				}
+				else
+				{
+					
+					
+					
+					singleton->bindFBO("resultFBO", activeFBO);
+					singleton->sampleFBO("combineFBOWithWater", 0);
+				}
+
+				singleton->sampleFBO("palFBO", 2);
+				
+				
+				
+				if ((i==1)&&(singleton->waterOn)) {
+					singleton->setShaderTexture(3, singleton->getFBOWrapper("worldSpaceFBO",3)->color_tex);
 				}
 				else {
-					singleton->bindFBO("resultFBO",activeFBO);
-					singleton->sampleFBO("combineFBOWithWater",0);
+					singleton->setShaderTexture(3, singleton->getFBOWrapper("worldSpaceFBO",0)->color_tex);
 				}
 				
-				singleton->sampleFBO("palFBO", 2);
-				singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
-				singleton->setShaderVec2("mouseCoords",singleton->mouseX,singleton->mouseY);
+				singleton->setShaderTexture(4, singleton->getFBOWrapper("worldSpaceFBO",0)->color_tex);
+				
+				
+				singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
+				singleton->setShaderVec2("mouseCoords", singleton->mouseX, singleton->mouseY);
 				singleton->setShaderfVec3("cameraPos", cameraPos);
-				//singleton->setShaderfVec3("lightPosWS", lightPos);
-				//singleton->setShaderfVec2("lightPosSS", &lScreenCoords);
-				singleton->setShaderArrayfVec4("lightArr", singleton->lightArr, (FLOATS_PER_LIGHT*lightCount)/4);
-				singleton->setShaderFloat("lightCount",lightCount);
-				singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
+				
+				singleton->setShaderInt("gridOn", (int)(singleton->gridOn));
+				singleton->setShaderInt("testOn", (int)(singleton->testOn));
+				singleton->setShaderFloat("curTime", singleton->curTime);
+				singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
+				singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
+
+
+				singleton->setShaderArrayfVec4("lightArr", singleton->lightArr, (FLOATS_PER_LIGHT * lightCount) / 4);
+				singleton->setShaderFloat("pixelsPerMeter", singleton->pixelsPerMeter);
+				singleton->setShaderFloat("blockSizeInMeters", singleton->blockSizeInMeters);
+				singleton->setShaderFloat("lightCount", lightCount);
+				singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+				singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 				singleton->drawFSQuad(1.0f);
+
+				singleton->setShaderTexture(4,0);
+				singleton->setShaderTexture(3,0);
 				singleton->unsampleFBO("palFBO", 2);
 
-				if (i == 0) {
-					singleton->unsampleFBO("combineFBO",0);
+				if (i == 0)
+				{
+					singleton->unsampleFBO("combineFBO", 0);
 				}
-				else {
-					singleton->unsampleFBO("combineFBOWithWater",0);
+				else
+				{
+					singleton->unsampleFBO("combineFBOWithWater", 0);
 				}
-				
+
 				singleton->unbindFBO();
 			}
 
 			singleton->unbindShader();
 
-			activeFBO = 1-activeFBO;
+			activeFBO = 1 - activeFBO;
 
 
-			if (singleton->waterOn) {
-				doBlur("swapFBOLinHalf",0.1f);
+			if (singleton->waterOn)
+			{
+				doBlur("swapFBOLinHalf", 0.1f);
 				singleton->bindShader("WaterShader");
 				singleton->bindFBO("resultFBO", activeFBO);
-				singleton->sampleFBO("combineFBO",0);
-				singleton->sampleFBO("combineFBOWithWater",2);
+				singleton->sampleFBO("combineFBO", 0);
+				singleton->sampleFBO("combineFBOWithWater", 2);
 				singleton->sampleFBO("resultFBO", 4, activeFBO);
 				singleton->sampleFBO("swapFBOLinHalf0", 5);
 				singleton->sampleFBO("noiseFBO", 6);
 				singleton->sampleFBO("waveFBO", 7);
-				singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+				singleton->sampleFBO("worldSpaceFBO", 8);
+				
+				singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
+				singleton->setShaderFloat("pixelsPerMeter", singleton->pixelsPerMeter);
+				singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
+				singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 				singleton->setShaderfVec3("cameraPos", cameraPos);
-				singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
+				singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 				singleton->setShaderFloat("curTime", singleton->curTime);
-				singleton->setShaderFloat("seaLevel", singleton->getSeaLevelInPixels() );
+				singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
 				singleton->drawFSQuad(1.0f);
+				
+				singleton->unsampleFBO("worldSpaceFBO", 8);
 				singleton->unsampleFBO("waveFBO", 7);
 				singleton->unsampleFBO("noiseFBO", 6);
-				singleton->unsampleFBO("swapFBOLinHalf0",5);
+				singleton->unsampleFBO("swapFBOLinHalf0", 5);
 				singleton->unsampleFBO("resultFBO", 4, activeFBO);
-				singleton->unsampleFBO("waterFBO",2);
-				singleton->unsampleFBO("combineFBO",0);
+				singleton->unsampleFBO("waterFBO", 2);
+				singleton->unsampleFBO("combineFBO", 0);
 				singleton->unbindFBO();
 				singleton->unbindShader();
 
-				activeFBO = 1-activeFBO;
+				activeFBO = 1 - activeFBO;
 			}
-			
 
-			if (singleton->radiosityOn || singleton->fogOn) {
 
-				if (activeFBO == 0) {
-					singleton->copyFBO("resultFBO0","swapFBOBLin0");
+			if (singleton->radiosityOn || singleton->fogOn)
+			{
+
+				if (activeFBO == 0)
+				{
+					singleton->copyFBO("resultFBO0", "swapFBOBLin0");
 				}
-				else {
-					singleton->copyFBO("resultFBO1","swapFBOBLin0");
+				else
+				{
+					singleton->copyFBO("resultFBO1", "swapFBOBLin0");
 				}
 
-				
-				doBlur("swapFBOBLin",2.0f);
+
+				doBlur("swapFBOBLin", 2.0f);
 			}
-			
 
 
-			if (singleton->radiosityOn) {
+
+			if (singleton->radiosityOn)
+			{
 
 				singleton->bindShader("RadiosityShader");
 
 				singleton->bindFBO("swapFBOLinHalf0");
-				singleton->sampleFBO("combineFBOWithWater",0);
-				singleton->sampleFBO("swapFBOBLin0",2);
-				singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
-				singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
+				singleton->sampleFBO("combineFBOWithWater", 0);
+				singleton->sampleFBO("swapFBOBLin0", 2);
+				singleton->sampleFBO("worldSpaceFBO", 4);
+				singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+				singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 				singleton->setShaderfVec3("cameraPos", cameraPos);
 				singleton->setShaderfVec3("lightPosWS", lightPos);
+				singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
 				singleton->drawFSQuad(1.0f);
-				singleton->unsampleFBO("swapFBOBLin0",2);
-				singleton->unsampleFBO("combineFBOWithWater",0);
+				singleton->unsampleFBO("worldSpaceFBO", 4);
+				singleton->unsampleFBO("swapFBOBLin0", 2);
+				singleton->unsampleFBO("combineFBOWithWater", 0);
 				singleton->unbindFBO();
 				singleton->unbindShader();
 
 
-				doBlur("swapFBOLinHalf",2.0f);
+				doBlur("swapFBOLinHalf", 2.0f);
 
 				singleton->bindShader("RadiosityCombineShader");
-				singleton->bindFBO("resultFBO",activeFBO);
-				singleton->sampleFBO("resultFBO",0,activeFBO);
-				singleton->sampleFBO("swapFBOLinHalf0",1);
-				singleton->sampleFBO("combineFBOWithWater",2);
+				singleton->bindFBO("resultFBO", activeFBO);
+				singleton->sampleFBO("resultFBO", 0, activeFBO);
+				singleton->sampleFBO("swapFBOLinHalf0", 1);
+				singleton->sampleFBO("combineFBOWithWater", 2);
 				singleton->drawFSQuad(1.0f);
-				singleton->unsampleFBO("combineFBOWithWater",2);
-				singleton->unsampleFBO("swapFBOLinHalf0",1);
-				singleton->unsampleFBO("resultFBO",0,activeFBO);
+				singleton->unsampleFBO("combineFBOWithWater", 2);
+				singleton->unsampleFBO("swapFBOLinHalf0", 1);
+				singleton->unsampleFBO("resultFBO", 0, activeFBO);
 				singleton->unbindFBO();
 				singleton->unbindShader();
 
-				activeFBO = 1-activeFBO;
+				activeFBO = 1 - activeFBO;
 
 
 			}
 
-			if (singleton->fogOn == 1.0f) {
+			if (singleton->fogOn == 1.0f)
+			{
 				mapSwapFlag = 0;
 
 				singleton->bindShader("FogShader");
-				
-				
 
-				singleton->bindFBO("resultFBO",activeFBO);
 
-				singleton->sampleFBO("combineFBOWithWater",0);
-				singleton->sampleFBO("resultFBO",2,activeFBO);
+
+				singleton->bindFBO("resultFBO", activeFBO);
+
+				singleton->sampleFBO("combineFBOWithWater", 0);
+				singleton->sampleFBO("resultFBO", 2, activeFBO);
 				singleton->sampleFBO("swapFBOBLin0", 3);
+				singleton->sampleFBO("worldSpaceFBO", 4);
 
-
-				singleton->setShaderFloat("cameraZoom",singleton->cameraZoom);
-				singleton->setShaderVec2("resolution",singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
+				
+				singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
+				singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
+				singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+				singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 				singleton->setShaderfVec3("cameraPos", cameraPos);
 				singleton->setShaderfVec4("fogPos", fogPos);
 
 				singleton->drawFSQuad(1.0f);
 
+				singleton->unsampleFBO("worldSpaceFBO", 4);
 				singleton->unsampleFBO("swapFBOBLin0", 3);
-				singleton->unsampleFBO("resultFBO",2,activeFBO);
-				singleton->unsampleFBO("combineFBOWithWater",0);
+				singleton->unsampleFBO("resultFBO", 2, activeFBO);
+				singleton->unsampleFBO("combineFBOWithWater", 0);
 
 				singleton->unbindFBO();
 				singleton->unbindShader();
 
 
-				activeFBO = 1-activeFBO;
-				
+				activeFBO = 1 - activeFBO;
+
 			}
 
-			singleton->drawFBO("resultFBO",0,newZoom,1-activeFBO);
+			singleton->drawFBO("resultFBO", 0, newZoom, 1 - activeFBO);
+
+			//singleton->drawFBO("frontFaceFBO", 0, 1.0f);
+
+			//singleton->mainGUI->renderGUI(true);
+
+
+
+
+
+
+			// singleton->bindShader("CopyShader");
+			// singleton->setShaderTexture(0,singleton->testPat->tid);
+			// singleton->drawFSQuad(0.25f);
+			// singleton->setShaderTexture(0,0);
+			// singleton->unbindShader();
+
+
 
 
 
 		}
 
-		
+
 		popTrace();
-		
-		
+
+
 	}
 
-	~GameWorld() {
+	~GameWorld()
+	{
 
-		threadpool.stopAll();
+		//threadpool.stopAll();
 
 		int i;
 		int j;
-		
+
 	}
 
 
