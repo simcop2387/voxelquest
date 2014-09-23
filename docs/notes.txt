@@ -17,3 +17,9 @@ cat file1 file2 file3 file4 file5 file6 > out.txt
 For debug, capture just one frame of output, then disable debug.
 
 To Debug In VC++, swithc to Debug Build.  Press ctrl-e twice, then ctrl-r, then start local windows debugger
+
+Make sure that all SFML dlls are in the x64 Release and Debug directories
+
+Due to an odd quirk of OpenGL, writing to the depth buffer is always inactive if GL_DEPTH_TEST is disabled, regardless of the depth mask. If you just want to write to the depth buffer, without actually doing a test, you must enable GL_DEPTH_TEST and use the depth function of GL_ALWAYS.
+
+http://www.arcsynthesis.org/gltut/Positioning/Tut05%20Overlap%20and%20Depth%20Buffering.html

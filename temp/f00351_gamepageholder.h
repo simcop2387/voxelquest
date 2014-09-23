@@ -11,16 +11,17 @@ GamePageHolder::GamePageHolder ()
 		hasSolids = false;
 		underground = false;
 	}
-void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isEntity, bool _entType)
+void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isEntity)
           {
 
-		entType = _entType;
 		entityGeomCounter = 0;
 
 		int i;
 		int j;
 		int k;
 		int ind;
+		
+		readyForClear = true;
 
 		isEntity = _isEntity;
 
@@ -31,6 +32,11 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 
 		singleton = _singleton;
 		usingPoolId = -1;
+
+		holderSizeInPixels = singleton->holderSizeInPixels;
+		halfHolderSizeInPixels = holderSizeInPixels*0.5f;
+		
+		origOffset.setFXYZ(halfHolderSizeInPixels,halfHolderSizeInPixels,halfHolderSizeInPixels);
 
 		offsetInHolders.setIXYZ(trueX,trueY,trueZ);
 		offsetInBlocks.copyFrom(&offsetInHolders);
@@ -44,7 +50,10 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		gphMinInPixels.multXYZ(singleton->holderSizeInPixels);
 		gphMaxInPixels.multXYZ(singleton->holderSizeInPixels);
 
-
+		gphCenInPixels.copyFrom(&gphMaxInPixels);
+		gphCenInPixels.addXYZRef(&gphMinInPixels);
+		gphCenInPixels.multXYZ(0.5f);
+		
 		holderSizeInPages = singleton->holderSizeInPages;
 		iPageDataVolume = holderSizeInPages*holderSizeInPages*holderSizeInPages;
 		pageData = new GamePage*[iPageDataVolume];
@@ -56,12 +65,7 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		}
 		
 		
-		if (isEntity) {
-			fetchEntityGeom();
-		}
-		else {
-			fetchGeom();
-		}
+		refreshGeom();
 		
 		for (k = 0; k < holderSizeInPages; k++) {
 			for (j = 0; j < holderSizeInPages; j++) {
@@ -158,11 +162,23 @@ GamePage * GamePageHolder::getPageAtCoordsLocal (int x, int y, int z, bool creat
 
 		
 	}
-void GamePageHolder::clearSet (bool forceClear)
-                                       {
+void GamePageHolder::refreshGeom ()
+                           {
+		if (isEntity) {
+			entityGeomCounter = 0;
+			//fetchEntityGeom();
+			addNewLinesGeom(singleton->testHuman->baseNode, singleton->pixelsPerMeter);
+		}
+		else {
+			fetchGeom();
+		}
+	}
+void GamePageHolder::clearSet ()
+                        { //bool forceClear
 		int i;
+		
 
-		bool doClear = forceClear;
+		//bool doClear = forceClear;
 
 		if (usingPoolId == -1) {
 			
@@ -176,10 +192,12 @@ void GamePageHolder::clearSet (bool forceClear)
 			}
 			
 
-			doClear = true;
+			readyForClear = true;
 		}
 
-		if (doClear) {
+		if (readyForClear) {
+			readyForClear = false;
+			
 			for (i = 0; i < MAX_LAYERS; i++) {
 				// clear fbo by binding it with auto flag
 				singleton->bindFBODirect(gpuRes->getFBOS(i));
@@ -188,12 +206,15 @@ void GamePageHolder::clearSet (bool forceClear)
 		}
 		
 	}
-void GamePageHolder::refreshChildren (bool refreshImmediate)
-                                                    {
+void GamePageHolder::refreshChildren (bool refreshImmediate, bool clearEverything)
+                                                                                  {
 		int i;
 
-		clearSet(true);
-		
+		//clearSet(true);
+		readyForClear = true;
+		if (clearEverything) {
+			clearSet();
+		}
 
 		for (i = 0; i < iPageDataVolume; i++) {
 			if (pageData[i] == NULL) {
@@ -227,8 +248,13 @@ void GamePageHolder::refreshChildren (bool refreshImmediate)
 	}
 void GamePageHolder::addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVector4 * _p1, FIVector4 * _p2, FIVector4 * _rad, FIVector4 * _cornerRad, FIVector4 * _visInsetFromMin, FIVector4 * _visInsetFromMax, FIVector4 * _powerVals, FIVector4 * _powerVals2, FIVector4 * _thickVals, FIVector4 * _matParams, FIVector4 * _centerPoint, FIVector4 * _anchorPoint, int _minRot, int _maxRot)
           {
-		entityGeom.push_back(new GameGeom());
-		entityGeom.back()->initBounds(
+		
+		if (entityGeomCounter >= entityGeom.size()) {
+			entityGeom.push_back(new GameGeom());
+		}
+		
+		
+		entityGeom[entityGeomCounter]->initBounds(
 			_curBT,
 			entityGeomCounter,
 			entityGeomCounter,
@@ -250,6 +276,62 @@ void GamePageHolder::addNewGeom (int _curBT, int _curAlign, float _baseOffset, F
 			_maxRot
 		);
 		entityGeomCounter++;
+	}
+void GamePageHolder::addNewLinesGeom (GameEntNode * curNode, float scale)
+          {
+		
+		int i;
+		
+		
+		if (curNode->parent == NULL) {
+			
+		}
+		else {
+			
+			if (curNode == singleton->selectedNode) {
+				tempVec.setFXYZ(E_ENT_PARAM_LINES,10.0f,entityGeomCounter);
+			}
+			else {
+				tempVec.setFXYZ(E_ENT_PARAM_LINES,curNode->material,entityGeomCounter);
+			}
+			
+			tempVec2.copyFrom(&(curNode->tbnRotC[0]));
+			tempVec2.multXYZ(curNode->boneLengthHalf*scale);
+			
+			
+			if (entityGeomCounter >= entityGeom.size()) {
+				entityGeom.push_back(new GameGeom());
+			}
+			
+			entityGeom[entityGeomCounter]->initLines(
+				E_CT_LINES,
+				entityGeomCounter,
+				entityGeomCounter,
+				scale,
+				
+				&origOffset,
+				
+				&(curNode->orgTrans[1]),
+				&(tempVec2),
+				&(curNode->tbnRotC[1]),
+				&(curNode->tbnRotC[2]),
+				&(curNode->tbnRadInMeters0),
+				&(curNode->tbnRadInMeters1),
+				&(curNode->tbnRadScale0),
+				&(curNode->tbnRadScale1),
+				&tempVec
+				
+			);
+			entityGeomCounter++;
+		}
+		
+		
+		
+		for (i = 0; i < curNode->children.size(); i++) {
+			addNewLinesGeom(curNode->children[i],scale);
+		}
+		
+		
 	}
 void GamePageHolder::fetchEntityGeom ()
                                {
@@ -281,7 +363,7 @@ void GamePageHolder::fetchEntityGeom ()
 		
 		
 		
-		float halfHolderSize = singleton->holderSizeInPixels*0.5f;
+		
 		
 		
 		curBT = E_CT_OBJECT;
@@ -290,30 +372,25 @@ void GamePageHolder::fetchEntityGeom ()
 		p1.setFXYZRef(&orig);
 		p2.setFXYZRef(&orig);
 		rad.setFXYZ(
-			halfHolderSize,
-			halfHolderSize,
-			halfHolderSize	
+			halfHolderSizeInPixels,
+			halfHolderSizeInPixels,
+			halfHolderSizeInPixels	
 		);
 		cornerRad.setFXYZ(
-			halfHolderSize,
-			halfHolderSize,
-			halfHolderSize	
+			halfHolderSizeInPixels,
+			halfHolderSizeInPixels,
+			halfHolderSizeInPixels	
 		);
 		visInsetFromMin.setFXYZ(0.0f,0.0f,0.0f);
 		visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
-		
 		powerVals.setFXYZ(2.0f,2.0f,0.0f);
 		powerVals2.setFXYZ(2.0f,2.0f,0.0f);
 		thickVals.setFXYZ(0.0f,0.0f,0.0f);
-		matParams.setFXYZ(E_MAT_PARAM_OBJECT,0.0f,0.0f);
+		matParams.setFXYZ(E_ENT_PARAM_GEOM,0.0f,0.0f);
 		centerPoint.setFXYZRef(&orig);
 		anchorPoint.setFXYZRef(&orig);
 		minRot = 0;
-		maxRot = 0;
-		
-		
-		
-		
+		maxRot = 0;		
 		addNewGeom(
 			curBT,
 			curAlign,

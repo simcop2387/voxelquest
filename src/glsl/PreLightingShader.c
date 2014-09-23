@@ -40,17 +40,24 @@ const float TEX_WATER =     32.0 / 255.0;
 const float TEX_METAL =     33.0 / 255.0;
 const float TEX_GLASS =     35.0 / 255.0;
 
+const float TEX_PLASTER =   28.0 / 255.0;
+const float TEX_MORTAR =  	16.0 / 255.0;
 
 uniform int iNumSteps;
 
+float offV[2] = float[](
+	0.03125,
+	0.125
+);
+
 float minRad[2] = float[](
-										1.0,
-										61.0
-									);
+	1.0,
+	29.0
+);
 float maxRad[2] = float[](
-										23.0,
-										259.0
-									);
+	32.0,
+	255.0
+);
 
 varying vec2 TexCoord0;
 
@@ -270,7 +277,7 @@ void main()
 	float aoval = tex1.a;
 	float notBlank = 1.0;//float(aoval != 0.0);
 
-	float colAmount = 0.5;//0.65;
+	float colAmount = 0.25;//0.65;
 
 
 	int i;
@@ -469,10 +476,13 @@ void main()
 	float totLightIntensity = 0.0;
 
 	float totNonColored = 0.0;
+	float curAO = 0.0;
+	float curOff = 0.0;
 
 	vec3 totLightColor = vec3(0.0);
 	vec3 totLightColorNoShadow = vec3(0.0);
 	vec3 curLightColor = vec3(0.0);
+	vec3 testVec = vec3(0.0);
 
 	vec3 globDayColor = getGlobLightCol();
 
@@ -492,6 +502,7 @@ void main()
 
 			curMin = minRad[j];
 			curMax = maxRad[j];
+			curOff = offV[j]*pixelsPerMeter;
 
 			for (i = 0; i < iNumSteps; i++)
 			{
@@ -513,34 +524,56 @@ void main()
 
 				samp = texture2D(Texture3, newTC );
 
-				totHits += (clamp(( dot(samp.xyz - (worldPosition.xyz + myVec * 16.0), myVec) ) / (curRad), -1.0, 1.0) + 1.0) / 2.0; // - length(offsetCoord)
+				testVec = normalize(samp.xyz - (worldPosition.xyz + myVec * curOff));
+
+				curAO = 
+				
+				clamp ( clamp(  ( dot(testVec, myVec) ), 0.0, 1.0), 0.0, 1.0);
+				//clamp(  ( dot(testVec, myVec) + 0.5 ), 0.0, 1.0);
+				
+				//curAO += pow(curAO,4.0);
+				
+				totHits += curAO;
+				
+				
+				
+				
+				// (
+				// 	(
+				// 		(clamp(  ( dot(testVec, myVec) ), -1.0, 1.0  ) + 1.0) / 2.0
+				// 	) 
+				// )
+				
+				
+				
+				; // - length(offsetCoord)
+				
 				totRays += 1.0;
 
 				curRot += curRotInc;
 			}
-			ssao *= clamp((1.0 - totHits / totRays), 0.0, 1.0);
+			
+			// if (j == 1) {
+			// 	ssao = clamp( 1.0 - ( totHits / totRays ), 0.0, 1.0) * 2.0 - 1.0;
+			// }
+			
+			curAO = clamp(1.0-( totHits / totRays), 0.0, 1.0);
+			//curAO = mix(0.0,1.0,curAO);
+			
+			ssao *= curAO;
+			
+			
+			
 		}
-		newAO = clamp(ssao, 0.0, 1.0);
-
-		// if (abs(newAO-0.4) <= 0.05) {
-		//     newAO += 1.0;
-		// }
-
-		//newAO = mix(1.0,newAO,abs(newAO-0.4)*(1.0/0.6))*0.4+newAO;//clamp(newAO+mix(0.0,1.0,abs(newAO-0.4))*4.0,0.0,1.0);
-
-		//newAO = sqrt(newAO);
-		//newAO = clamp((newAO-0.5)*2.0,0.0,1.0);
-
-		// if (newAO < 0.5) {
-		//     newAO = 1.0;
-		// }
-
-		//newAO = clamp(newAO+clamp(newAO-0.2,0.0,1.0),0.0,1.0);
-
-		// if ( (tex0.a >= TEX_GRASS) && (tex0.a <= TEX_GRASS2) ) {
-		//     newAO *= aoval;
-		// }
-
+		
+		
+		newAO = clamp(
+			ssao
+			//(sqrt(ssao)-0.5)*2.0
+			
+		, 0.0, 1.0);
+		
+		//newAO = pow(newAO,_x_aoVal_x_*10.0);
 
 
 
@@ -662,8 +695,6 @@ void main()
 				totLightColor += vec3(0.0, 1.0, 1.0) * colAmount * (bottomLight) * 0.5 * lightDis;
 				totLightColor += vec3(0.9, 0.5, 0.2) * colAmount * (timeOfDay * 0.5 + 0.5) * behindLight * 0.5 * lightDis * (1.0 - frontLight);
 
-				// totLightColor += vec3(1.0,0.5,0.0)*topLight*0.025*(1.0-newAO)*lightDis;
-				//totLightColor += vec3(0.0,0.5,1.0)*backLight*0.05*lightDis*(1.0-frontLight);
 
 				resCompTot += resComp * lightDis;
 				frontLightTot += frontLight * lightDis;
@@ -691,11 +722,8 @@ void main()
 		{
 
 			lightVal = clamp(sqrt(dot(oneVec.xyz, totLightColor.xyz) / 3.0), 0.0, 1.0);
-			//lightRes = mix(newAO*0.4,lightVal, mix(0.4,0.7,lightVal));
 
-			//lightVal = sqrt(lightVal);
-
-			lightRes = mix(newAO * 0.3, clamp((lightVal + newAO * 0.4) / 1.2, 0.0, 1.0), lightVal); // + ((1.0-newAO)-0.5)/2.0;
+			lightRes = mix(lightVal * newAO * 0.3, lightVal*newAO, lightVal);
 			lightRes = clamp(
 									 //mix(lightRes*resCompTot,lightRes,clamp(totNonColored,0.0,1.0)),
 									 lightRes,
@@ -703,10 +731,9 @@ void main()
 									 1.0
 								 );
 
-			lightRes *= 0.75;
+			//lightRes *= 0.75;
 
 			resColorTemp = unpackColor(tex0.ba, lightRes);
-			//resColorTemp = mix(resColorTemp,unpackColor(tex0.ba,newAO),0.1);
 			resColorTemp = mix(
 											 mix(
 												 resColorTemp * vec3(0.2) * newAO * totLightColor + vec3(0.0, 0.0, 0.02),
@@ -733,10 +760,10 @@ void main()
 											 totHits2
 										 ) * clamp(totLightIntensity, 0.0, 1.0) + totLightColor * 0.2;
 
-			hsvVal = rgb2hsv(resColorTemp);
-			hsvVal.g = mix(hsvVal.g, hsvVal.g * 0.5, lightRes);
-			hsvVal.b = mix(hsvVal.b, min(hsvVal.b * 2.0, 1.0), lightRes);
-			resColorTemp = hsv2rgb(hsvVal);
+			// hsvVal = rgb2hsv(resColorTemp);
+			// hsvVal.g = mix(hsvVal.g, hsvVal.g * 0.5, lightRes);
+			// hsvVal.b = mix(hsvVal.b, min(hsvVal.b * 2.0, 1.0), lightRes);
+			// resColorTemp = hsv2rgb(hsvVal);
 
 			resColorTemp = clamp(resColorTemp, 0.0, 1.0);
 
@@ -778,33 +805,49 @@ void main()
 		tempVec2.g = abs(sin( (tempVec.r * 0.0 + tempVec.g * 0.25 + tempVec.b * 0.5) * 4.0 ));
 		tempVec2.b = abs(sin( (tempVec.r * 0.5 + tempVec.g * 0.0 + tempVec.b * 0.25) * 4.0 ));
 
-		resColorTemp += tempVec2 * colAmount * (newAO) * 0.1 * (1.0 - timeOfDay); //mix(resColorTemp, resColorTemp*tempVec2*newAO, 0.5);
+		
+
+		resColorTemp += tempVec2 * 0.5 * (newAO) * 0.1 * (1.0 - timeOfDay); //mix(resColorTemp, resColorTemp*tempVec2*newAO, 0.5);
 
 		tempv = 1.0 - dot(resColorTemp.xyz, oneVec.xyz) / 3.0;
-		resColorTemp.r = mix(resColorTemp.r * (newAO + tempv * 0.25), resColorTemp.r + newAO * 0.5 * tempv, resColorTemp.r * newAO);
-		resColorTemp.g = mix(resColorTemp.g * (newAO + tempv * 0.25), resColorTemp.g + newAO * 0.5 * tempv, resColorTemp.g * newAO);
-		resColorTemp.b = mix(resColorTemp.b * (newAO + tempv * 0.25), resColorTemp.b + newAO * 0.5 * tempv, resColorTemp.b * newAO);
+		
+		
+			resColorTemp.r = mix(resColorTemp.r * (newAO + tempv * 0.25), resColorTemp.r, resColorTemp.r * newAO);
+			resColorTemp.g = mix(resColorTemp.g * (newAO + tempv * 0.25), resColorTemp.g, resColorTemp.g * newAO);
+			resColorTemp.b = mix(resColorTemp.b * (newAO + tempv * 0.25), resColorTemp.b, resColorTemp.b * newAO);
 
+		// resColorTemp.r = mix(resColorTemp.r * newAO, resColorTemp.r, resColorTemp.r * newAO);
+		// resColorTemp.g = mix(resColorTemp.g * newAO, resColorTemp.g, resColorTemp.g * newAO);
+		// resColorTemp.b = mix(resColorTemp.b * newAO, resColorTemp.b, resColorTemp.b * newAO);
+
+		
+		
 		hsvVal = rgb2hsv(resColorTemp);
-		hsvVal.b += (lightRes + newAO) * 0.1 * timeOfDay;
-		hsvVal.g = hsvVal.g + 0.5 * (1.0 - lightRes);
-		hsvVal.b *= mix(resCompTot * 0.5 + 0.5, 1.0, timeOfDay);
+		hsvVal.b += (lightRes + newAO*0.5) * 0.1 * timeOfDay;
+		//hsvVal.b += lightRes*(1.0-timeOfDay);
+		//hsvVal.g -= resCompTot*(1.0-timeOfDay)*0.25;
+		hsvVal.g = hsvVal.g + 0.6 * (1.0 - lightRes);
+		hsvVal.b *= mix(resCompTot * 0.25 + 0.25, 1.0, timeOfDay);
+
+		
+
+		// if (
+		// 	(tex0.a == TEX_PLASTER)	
+		// ) {
+		// 	hsvVal.g *= 0.5;
+		
+		// }
+		
 		hsvVal = clamp(hsvVal, 0.0, 1.0);
 		resColorTemp = hsv2rgb(hsvVal);
-
+		
+		//resColorTemp += pow(lightRes*1.4,10.0)*(1.0-timeOfDay)*0.5;
 
 		resColorTemp += pow( clamp(totDirLight, 0.0, 1.0), 2.0) * 0.5;
 		resColor = resColorTemp;
 
 
 	}
-
-
-	
-	if (tot > 0.0) {
-		resColor = mix(resColor*0.5,resColor,resComp3);//(1.0-resComp3)*0.05;//resColor = mix(vec3(0.0),resColor,resComp3);
-	}
-	//resColor += pow(newAO,4.0)*0.1;
 
 
 	//TODO: make this based on gridSize
@@ -819,6 +862,11 @@ void main()
 	{
 		gridVal0 = 0.0;
 	}
+		
+	// if (testOn) {
+	// 	resColor = vec3(newAO);
+	// }
+	
 	
 	
 
@@ -833,8 +881,9 @@ void main()
 	//gl_FragData[0].rgb = vec3(texture2D(Texture0, TexCoord0).a*4.0);
 	
 	float gridAmount = 512.0;
-	// gl_FragData[0].rgb = (worldPosition.xyz-floor(worldPosition.xyz/gridAmount)*gridAmount)/gridAmount;
-	// gl_FragData[0].b = 0.0;
+	//gl_FragData[0].rgb = (worldPosition.xyz-floor(worldPosition.xyz/gridAmount)*gridAmount)/gridAmount;
+	//gl_FragData[0].b = 0.0;
+	
 	
 	gl_FragData[0].a = tot;
 

@@ -34,8 +34,8 @@ public:
 		if (isCPU) {
 			for (i = 0; i < MAX_LAYERS; i++) {
 				cpuSet[i] = new uint[
-					(singleton->holderSizeInPixels) *
-					(singleton->holderSizeInPixels)	
+					(singleton->holderSizeInPixelsMod) *
+					(singleton->holderSizeInPixelsMod)	
 				];
 			}
 		}
@@ -47,8 +47,8 @@ public:
 			for (i = 0; i < MAX_LAYERS; i++) {
 				fboSet[i]->init(
 					2,
-					((singleton->holderSizeInPixels)),
-					((singleton->holderSizeInPixels)),
+					((singleton->holderSizeInPixelsMod)),
+					((singleton->holderSizeInPixelsMod)),
 					1,
 					false //has depth
 				);

@@ -162,7 +162,8 @@ public:
 };
 
 
-Image* loadBMP(const char* filename) {
+Image* loadBMP(string fnString) {
+	const char* filename = fnString.c_str();
 	ifstream input;
 	input.open(filename, ifstream::binary);
 	assert(!input.fail() || !"Could not find file");

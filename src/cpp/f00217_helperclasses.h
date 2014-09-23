@@ -272,6 +272,8 @@ public:
 
 	int curUBIndex;
 
+	map<string, float> paramMap;
+	vector<string> paramVec;
 	vector<UniformBuffer> uniVec;
 
 	
@@ -380,16 +382,24 @@ public:
 
 	void init(const char *shaderFile) {
 		pushTrace("init(", shaderFile, ")");
+		
+		
+		paramVec.clear();
+		paramMap.clear();
+		
 		shader_vp = glCreateShader(GL_VERTEX_SHADER);
 		shader_fp = glCreateShader(GL_FRAGMENT_SHADER);
 	    
 	    
 		std::size_t found;
+		std::size_t found2;
 
 		int baseIndex;
 		int totCount;
 
 		bool doCont;
+		
+		string paramName;
 
 		int i;
 
@@ -397,80 +407,133 @@ public:
 
 
 		if (allText == NULL) {
-			doTraceND( "Either vertex shader or fragment shader file not found." );
-	    }
-	    else {
-	    	string allTextString(allText);
-
-	    	baseIndex = 0;
-	    	doCont = true;
-	    	totCount = 0;
-
-
-
-	    	while (doCont) {
-	    		found = allTextString.find("ublock", baseIndex);
-	    		if (found != std::string::npos) {
-	    			baseIndex = found+1;
-	    			doCont = true;
-	    			totCount++;
-	    		}
-	    		else {
-	    			doCont = false;
-	    		}
-	    	}
+			doTraceND( "Error: Either vertex shader or fragment shader file not found." );
+			LAST_COMPILE_ERROR = true;
+		}
+		else {
 			
+				string allTextString(allText);
 
-
-			vector<string> allTextStringSplit = split(allTextString, '$');
-
-			if (allTextStringSplit.size() == 3) {
-
-				string vertStr = allTextStringSplit[0] + allTextStringSplit[1];
-				string fragStr = allTextStringSplit[0] + allTextStringSplit[2];
-
-				const GLchar* vertCS = new char[vertStr.length() + 1];
-				const GLchar* fragCS = new char[fragStr.length() + 1];
-
-				std::strcpy((GLchar*)vertCS,vertStr.c_str());
-				std::strcpy((GLchar*)fragCS,fragStr.c_str());
-
-
-		    	glShaderSource(shader_vp, 1, &(vertCS), 0);
-				glShaderSource(shader_fp, 1, &(fragCS), 0);
-			    
-				glCompileShader(shader_vp);
-				validateShader(shader_vp, shaderFile);
-				glCompileShader(shader_fp);
-				validateShader(shader_fp, shaderFile);
+				
+				totCount = 0;
 
 
 
-				shader_id = glCreateProgram();
-				glAttachShader(shader_id, shader_fp);
-				glAttachShader(shader_id, shader_vp);
-				glLinkProgram(shader_id);
-				validateProgram(shader_id);
 
-				delete [] vertCS;
-				delete [] fragCS;
+				
+				
 
 
-				for (i = 0; i < totCount; i++) {
-					uniVec.push_back(UniformBuffer());
-					uniVec.back().init(shader_id, i);
+				vector<string> allTextStringSplit = split(allTextString, '$');
+
+				if (allTextStringSplit.size() == 3) {
+					
+					
+					
+					baseIndex = 0;
+					doCont = true;
+					while (doCont) {
+						found = allTextString.find("ublock", baseIndex);
+						if (found != std::string::npos) {
+							baseIndex = found+1;
+							doCont = true;
+							totCount++;
+						}
+						else {
+							doCont = false;
+						}
+					}
+					
+
+					baseIndex = 0;
+					doCont = true;
+					while (doCont) {
+						found = allTextString.find("_x_", baseIndex);
+						if (found != std::string::npos) {
+							baseIndex = found+1;
+							
+							found2 = allTextString.find("_x_", baseIndex);
+							if (found2 != std::string::npos) {
+								baseIndex = found2+1;
+								paramName = allTextString.substr(found, 3 + (found2-found));
+								
+								if (paramMap.find( paramName ) == paramMap.end()) {
+									paramMap[paramName] = 0.0f;
+									paramVec.push_back(paramName);
+									//cout << "AAAAAAAA " << paramName << "\n";
+								}
+								
+								//paramMap.insert( pair<string, int>(paramName, 1) );
+								// cout << "AAAAAAAA " << 
+								// allTextString.substr(found, 2 + (found2-found)) << "\n\n";
+								
+								
+								doCont = true;
+							}
+							else {
+								doCont = false;
+							}
+							
+							
+						}
+						else {
+							doCont = false;
+						}
+					}
+					
+					allTextStringSplit[0] += "\n";
+					
+					for (i = 0; i < paramVec.size(); i++) {
+						allTextStringSplit[0] += "uniform float " + paramVec[i] + ";\n";
+					}
+					
+
+					string vertStr = allTextStringSplit[0] + allTextStringSplit[1];
+					string fragStr = allTextStringSplit[0] + allTextStringSplit[2];
+
+					const GLchar* vertCS = new char[vertStr.length() + 1];
+					const GLchar* fragCS = new char[fragStr.length() + 1];
+
+					std::strcpy((GLchar*)vertCS,vertStr.c_str());
+					std::strcpy((GLchar*)fragCS,fragStr.c_str());
+
+
+			    	glShaderSource(shader_vp, 1, &(vertCS), 0);
+					glShaderSource(shader_fp, 1, &(fragCS), 0);
+				    
+					glCompileShader(shader_vp);
+					validateShader(shader_vp, shaderFile);
+					glCompileShader(shader_fp);
+					validateShader(shader_fp, shaderFile);
+
+
+
+					shader_id = glCreateProgram();
+					glAttachShader(shader_id, shader_fp);
+					glAttachShader(shader_id, shader_vp);
+					glLinkProgram(shader_id);
+					validateProgram(shader_id);
+
+					delete [] vertCS;
+					delete [] fragCS;
+
+
+					for (i = 0; i < totCount; i++) {
+						uniVec.push_back(UniformBuffer());
+						uniVec.back().init(shader_id, i);
+					}
+
+
 				}
-
-
-			}
-			else {
-				LAST_COMPILE_ERROR = true;
-				doTraceND( "Error: " , shaderFile , "does not contain proper amount of splits ($)\n" );
-			}
-			
-			
-			delete[] allText;
-	    }
+				else {
+					LAST_COMPILE_ERROR = true;
+					doTraceND( "Error: " , shaderFile , "does not contain proper amount of splits ($)\n" );
+				}
+				
+				
+				delete[] allText;
+			  
+		}
 		
 		
 		popTrace();

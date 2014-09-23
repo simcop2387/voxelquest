@@ -29,8 +29,8 @@ void PooledResource::init (Singleton * _singleton, bool _isCPU)
 		if (isCPU) {
 			for (i = 0; i < MAX_LAYERS; i++) {
 				cpuSet[i] = new uint[
-					(singleton->holderSizeInPixels) *
-					(singleton->holderSizeInPixels)	
+					(singleton->holderSizeInPixelsMod) *
+					(singleton->holderSizeInPixelsMod)	
 				];
 			}
 		}
@@ -42,8 +42,8 @@ void PooledResource::init (Singleton * _singleton, bool _isCPU)
 			for (i = 0; i < MAX_LAYERS; i++) {
 				fboSet[i]->init(
 					2,
-					((singleton->holderSizeInPixels)),
-					((singleton->holderSizeInPixels)),
+					((singleton->holderSizeInPixelsMod)),
+					((singleton->holderSizeInPixelsMod)),
 					1,
 					false //has depth
 				);

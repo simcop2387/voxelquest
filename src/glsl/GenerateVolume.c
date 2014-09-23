@@ -35,12 +35,11 @@ uniform	float maxSeaDepthDeprecated;
 //uniform	float heightmapMin;
 //uniform	float heightmapMax;
 //uniform	float maxFloors;
-uniform	float terDataTexScale;
+//uniform	float terDataTexScale;
 
 uniform	vec4 worldSizeInPixels;
 //uniform	vec4 mapFreqs;
 //uniform	vec4 mapAmps;
-	
 
 
 
@@ -61,6 +60,7 @@ uniform int paramsPerEntry;
 uniform bool hasTree;
 uniform bool hasGeom;
 uniform bool hasTerrain;
+uniform bool hasLines;
 
 
 uniform int voroCount;
@@ -92,8 +92,8 @@ const int E_GP_CORNERDISINPIXELS = 4;
 const int E_GP_POWERVALS = 5;
 const int E_GP_POWERVALS2 = 6;
 const int E_GP_THICKVALS = 7;
-const int E_GP_MATPARAMS = 8;
-const int E_GP_CENTERPOINT = 9;
+const int E_GP_CENTERPOINT = 8;
+const int E_GP_MATPARAMS = 9; // must be last
 const int E_GP_LENGTH = 10;
 
 
@@ -105,8 +105,8 @@ const int E_TP_P2 = 4;
 const int E_TP_POWERVALS = 5;
 const int E_TP_POWERVALS2 = 6;
 const int E_TP_THICKVALS = 7;
-const int E_TP_MATPARAMS = 8;
-const int E_TP_UNUSED = 9;
+const int E_TP_UNUSED = 8;
+const int E_TP_MATPARAMS = 9; // must be last
 const int E_TP_LENGTH = 10;
 
 
@@ -134,22 +134,18 @@ const float TEX_LEAF =    45.0;
 const float E_MAT_SUBPARAM_NONE =       0.0;
 const float E_MAT_SUBPARAM_TUDOR =      1.0;
 const float E_MAT_SUBPARAM_BRICK =      2.0;
-const float E_MAT_SUBPARAM_BRICK_ARCH =   3.0;
+const float E_MAT_SUBPARAM_BRICK_ARCH = 3.0;
 const float E_MAT_SUBPARAM_LENGTH =     4.0;
 
 const float E_MAT_PARAM_FOUNDATION =    0.0;
 const float E_MAT_PARAM_ROOF =        	1.0;
-//const float E_MAT_PARAM_WALKWAY_TOP =   2.0;
 const float E_MAT_PARAM_DOCK =        	2.0;
 const float E_MAT_PARAM_BUILDING =      3.0;
-//const float E_MAT_PARAM_WALKWAY =       5.0;
 const float E_MAT_PARAM_LANTERN =       4.0;
 const float E_MAT_PARAM_DOORWAY =       5.0;
 const float E_MAT_PARAM_DOOR =        	6.0;
-//const float E_MAT_PARAM_STAIRS =      	9.0;
-const float E_MAT_PARAM_OBJECT = 				7.0;
-const float E_MAT_PARAM_TREE =        	8.0; // TREES MUST BE LAST ENTRY
-const float E_MAT_PARAM_LENGTH =      	9.0;
+const float E_MAT_PARAM_TREE =        	7.0; // TREES MUST BE LAST ENTRY
+const float E_MAT_PARAM_LENGTH =      	8.0;
 
 
 
@@ -305,7 +301,7 @@ vec3 getShingle(vec3 uvwBase, float uvscale, float baseDepth, float maxDepth) {
 
 	myMod = float(intMod(iUV.y, 2));
 
-	if (length(dis) < 1.0) { //(dis.x+dis.y)
+	if (length(dis) < 1.0) { //(dis.x+dis.y) length(dis) //max(dis.x,dis.y)
 
 		myResult.x = myMod;
 		finalDis = 1.0 - (dis.y * 0.5 + 0.5);
@@ -929,7 +925,7 @@ vec4 getBuilding(
 				// }
 
 				plasterMod = texture2D(
-					Texture2, 64.0 * (
+					Texture2, pixelsPerMeter * (
 						(worldPosInPixels.xy + worldPosInPixels.yz) / worldSizeInPixels.x	
 					)
 				).r;
@@ -1259,6 +1255,13 @@ void getCobble(vec3 worldPosInPixels) {//, float minSpacing, float maxSpacing) {
 	float bestRand;
 
 	int i;
+	
+	
+	vec2 roughPos = (worldPosInPixels.xy + worldPosInPixels.yz) / worldSizeInPixels.x;
+	float roughVoro = abs(texture2D(Texture2, 256.0 * roughPos ).r);
+
+	vec3 newWP = worldPosInPixels.xyz;
+	newWP.xyz += clamp((roughVoro-0.5)*8.0,-1.0,1.0)*1.0*pixelsPerMeter;
 
 	//vec3 modVec = vec3(2.0,2.0,1.0);
 
@@ -1266,8 +1269,9 @@ void getCobble(vec3 worldPosInPixels) {//, float minSpacing, float maxSpacing) {
 
 	for (i = 0; i < 27; i++) { //voroCount
 		curPos = voroArr[i];
+		
 
-		curVoroDis = distance(curPos.xyz, worldPosInPixels);// *wpz;
+		curVoroDis = distance(curPos.xyz, newWP);// *wpz;
 
 		if (curVoroDis < minDis1) {
 			nextBestPos = bestPos;
@@ -1356,15 +1360,19 @@ vec4 getTerrain(vec3 worldPosInPixels) {
 
 	vec4 matResult = vec4(0.0);
 
+	float newMult = pixelsPerMeter/128.0;
+
 	float finalMat = 0.0;
 	float finalNormUID = 0.0;
 	float finalMod = 0.0;
 
+	float rockSize = distance(worldMinBufInPixels.xyz,worldMaxBufInPixels.xyz)/2.0;
+
 	float baseRand = randf(worldPosInPixels.xy);
 
-	float grassMod = float(worldPosInPixels.z >= (seaLevel + (4.0)*pixelsPerMeter) );
+	float grassMod = float(worldPosInPixels.z >= (seaLevel + (0.0)*pixelsPerMeter) );
 
-	
+	float resMod = 0.25;//(32.0/pixelsPerMeter);
 
 	float randv = baseRand;//mix(0.0,baseRand,grassMod);
 	vec3 newBlockSizeInPixels = blockMaxBufInPixels.xyz - blockMinBufInPixels.xyz;
@@ -1374,7 +1382,7 @@ vec4 getTerrain(vec3 worldPosInPixels) {
 	vec3 wCoords = (worldPosInPixels - blockMinBufInPixels.xyz) / newBlockSizeInPixels;
 	vec4 texW = texture3D(Texture4, wCoords); //texture3D //tex3DBiLinear
 	
-	//texW.a = mix(log(texW.a), texW.a, texW.a);
+	
 	
 	
 	vec3 wCoords2 = (worldPosInPixels +
@@ -1384,11 +1392,16 @@ vec4 getTerrain(vec3 worldPosInPixels) {
 										 -randv
 									 ) * pixelsPerMeter - blockMinBufInPixels.xyz) / newBlockSizeInPixels;
 	vec4 texW2 = texture3D(Texture4, wCoords2);
+	vec4 texW3 = texture3D(Texture4, 
+		(worldPosInPixels +	vec3(0.5,0.5,-0.5) * pixelsPerMeter - blockMinBufInPixels.xyz) / newBlockSizeInPixels	
+	);
+	
 	vec2 roughPos = (worldPosInPixels.xy + worldPosInPixels.yz) / worldSizeInPixels.x;
 	vec2 roughVal = vec2(
-										abs(texture2D(Texture2, 128.0 * terDataTexScale * roughPos+0.01*randVoro*voroGrad ).r),
-										abs(texture2D(Texture2, 64.0 * terDataTexScale * roughPos+0.015*randVoro*voroGrad ).r)
+										abs(texture2D(Texture2, 512.0 * roughPos+0.01*randVoro*voroGrad ).r),
+										abs(texture2D(Texture2, 256.0 * roughPos+0.015*randVoro*voroGrad ).r)
 									);
+	
 	
 	
 	
@@ -1397,70 +1410,131 @@ vec4 getTerrain(vec3 worldPosInPixels) {
 	//roughVal = mix(roughVal*roughVal*roughVal,roughVal,0.5);
 
 
-	float tempRand = randf3(voroPos);
-	float voroJut = 1.0 - clamp(
-										(worldPosInPixels.z - (voroPos.z - 4.0 * pixelsPerMeter) ) / (8.0 * pixelsPerMeter),
-										0.0,
-										1.0
-									);
-
-	roughVal = mix(
-							 roughVal * clamp( (1.0 - voroGrad), 0.0, 1.0),
-							 roughVal,
-							 randVoro * 0.25 + 0.75
-						 );
-
-
+	float smoothVal = texture2D(Texture2, 512.0 * worldPosInPixels.xy/worldSizeInPixels.xy ).r;//roughVal.x;
+	float hardVal = clamp((smoothVal-0.5)*4.0, 0.0, 1.0);
 	
+	//smoothVal = clamp(mix(-2.0,2.0,smoothVal),0.0,1.0);
 
-	float threshVal = tempRand * 0.05 + 0.2 * voroJut + 0.4;
-	float threshVal2 = tempRand * 0.01 + 0.5;
-	float compVal = texW2.a * 0.87 + roughVal.x*0.4 - ((1.0 - voroGrad) * 0.25 + roughVal.y) * 0.1;
+	float tempRand = randf3(voroPos);
+	float jutDis = clamp(
+			( distance(worldPosInPixels.xyz,vec3(voroPos.xy,voroPos.z-rockSize)) ) / (2.0 * rockSize), //worldPosInPixels.z - (voroPos.z - rockSize)
+			0.0,
+			1.0
+		);
+	//float voroJut = 1.0-jutDis;
+	
+	float voroJut = mix(
+		1.0 - jutDis,
+		0.0,
+		roughVal.y	
+	);
 
-	float smoothRocks = 0.0;//texture2D(Texture2, 16.0 * roughPos ).r*0.5;
+	roughVal = 
+			mix(
+			roughVal * clamp( (1.0 - voroGrad), 0.0, 1.0),
+			roughVal,
+			randVoro * 0.25 + 0.75
+		);
+	
+	
+	roughVal *= resMod;
+	voroJut *= resMod;
+	
+	//voroJut*=smoothVal;
+	
+	//roughVal = vec2(0.0);
+	
+	//resMod = 1.0;
 
-	if (
-		((texW.a + roughVal.x*0.2) > (0.6+0.2*smoothRocks)) //(texW.a > 0.9) || 
-	) {
-		finalNormUID = 2.0;
-		finalMat = TEX_SAND;
-		finalMod = 0.0;
-	}
-	else {
-		if (grassMod == 1.0) {
-			if (
-				compVal > threshVal2
-			) {
-				finalNormUID = 2.0;
-				finalMat = TEX_GRASS;
-				finalMod = clamp((compVal - threshVal2) * 10.0, 0.0, 1.0) * 0.25 + 0.5;
-			}
+	float newTWA = pow(texW.a, 0.3)*0.6;
+	float newTWA2 = pow(texW2.a, 0.3)*0.6;
+	float newTWA3 = pow(texW3.a, 0.3)*0.6;
+	float newMedian = 0.5;//pow(0.5, 1.1);
+	float compScale = 0.4;
+
+	float threshVal = 
+		newMedian +
+		(tempRand * 0.05 + 0.6 * voroJut)*compScale;
+	
+	
+	float threshVal2 = 
+		newMedian +
+		(
+			(tempRand * 0.01) -
+			(roughVal.x*0.8 - ((1.0 - voroGrad) * 0.25 + roughVal.y) * 0.1)
+		)*compScale;
+	
+	float threshVal3 = newMedian +
+		(
+		(voroJut*0.5) - //tempRand * 0.05 + 
+		(roughVal.x * (0.4 + roughVal.y*0.2)) -
+		smoothVal * 0.1
+		)*compScale;
+	
+	float threshVal4 = newMedian +
+		(-roughVal.x*0.4)*compScale;
+		
+	
+	
+	
+	
+	if (grassMod == 1.0) {
+		if (
+			// + (1.0-voroGrad)*0.05
+			(newTWA2 - threshVal2) > mix(-0.5,0.05,newMult)*compScale		// GRASS 
+		) {
+			finalNormUID = 2.0;
+			finalMat = TEX_GRASS;
+			finalMod = clamp((newTWA2 - threshVal2) * 10.0, 0.0, 1.0) * 0.25 + 0.5;
 		}
 	}
-
 	
-	
-
 	if (
-		(texVoro.a > threshVal)
-		&& (texW.a + roughVal.x * 0.4 > threshVal)
-		//&& (voroGrad > smoothstep() ) //mix(0.2,0.02,texW.a)
-		// && ( smoothStep(0.0,0.2,voroGrad) > smoothstep(0.4,0.7,texW.a) )
+		(newTWA3 - threshVal4) > (mix(
+			mix(-0.5,0.12,newMult)
+			,0.0,hardVal)*compScale ) ||
+		(newTWA - threshVal4) > mix(-0.5,0.12,newMult)*compScale
 		
-		//&& ( ( (voroGrad) > ((1.0-texW.a)*smoothRocks) ) )//(1.0-voroGrad)/( 1.0+texW.a ) < 0.95 )
+		 		// SAND
+	) {
+		finalNormUID = 2.0;
+		finalMat = TEX_DIRT;
+		finalMod = 0.0;
+	}
+
+	
+
+	// ROCKS
+	if (
+		( texVoro.a > 0.0 ) &&
+		(
+			( (newTWA - threshVal3) > mix(-0.2,0.0,newMult) )
+			
+			&&
+			
+			( voroGrad > (roughVal.y*0.1 + mix(0.2*newMult,-0.2,randVoro)*abs(jutDis-0.5)*2.0 ) ) //
+			
+		// 	// (voroGrad > mix(
+		// 	// 		(roughVal.y*0.2 - smoothstep(0.9,0.99,newTWA)*0.1 ),
+		// 	// 		(roughVal.y*0.1 + mix(0.2,0.0,randVoro) ),
+		// 	// 		hardVal
+		// 	// ))
+			
+			//
+			
+		)
 		
-		&& (voroGrad + smoothstep(0.9,0.99,texW.a)*0.1 > 0.1 ) //
 		
 	) {
 		finalNormUID = voroId;
-		finalMat = TEX_STONE;
+		finalMat = TEX_DIRT;
 		finalMod = voroGrad;
 	}
 
 
 	matResult.x = finalNormUID;
 	matResult.y = finalMat;
-	matResult.z = 0.0;//float(isInside);//[0] || isInside[1]);
+	matResult.z = 0.0;
 	matResult.w = finalMod;
 
 	return matResult;
@@ -1470,81 +1544,6 @@ vec4 getTerrain(vec3 worldPosInPixels) {
 
 
 
-
-// vec4 getOldTerrain(vec3 worldPosInPixels) {
-
-
-
-//  float testHeight = getHeightAtCoords(worldPosInPixels.xy);
-//  //float testHeight = thVec.x;
-//  //float testHeightNoLevel = thVec.y;
-//  float sandEnd = (seaLevel + 1.0*pixelsPerMeter);
-//  float sandBeg = sandEnd - 0.5*pixelsPerMeter;
-//  float randVal = randf3(worldPosInPixels);//(testHeight-worldPosInPixels.z)/256.0 + ;
-//  float newHeight = 0.0;
-
-
-//  vec4 myResult = vec4(0.0);
-
-
-
-
-//  ////////////////////////////////////
-//  // TERRAIN MAT
-//  ////////////////////////////////////
-
-//  if (testHeight > worldPosInPixels.z ) {
-
-
-//    // sandBeg < sandEnd
-
-//    newHeight = 1.0-clamp( ((clamp(testHeight + (testHeight-worldPosInPixels.z) - randVal*(sandEnd-sandBeg),sandBeg,sandEnd)-sandBeg)/(sandEnd-sandBeg)), 0.0, 1.0);
-
-//    myResult.y = mix(TEX_DIRT,TEX_SAND,float(newHeight > 0.5));
-
-
-//    // if (testHeight > sandStart ) {
-//    //  myResult.y = TEX_DIRT;
-
-//    // }
-//    // else {
-
-//    //  if (testHeight > sandEnd) {
-
-//    //    if (((testHeight-sandEnd)/(sandStart-sandEnd)) + randVal > 1.0) {
-//    //      myResult.y = TEX_DIRT;
-//    //    }
-//    //    else {
-//    //      myResult.y = TEX_SAND;
-//    //    }
-
-//    //  }
-//    //  else {
-//    //    myResult.y = TEX_SAND;
-//    //  }
-//    // }
-
-//    if (myResult.y == TEX_DIRT) {
-//      myResult.y = mix(
-//              TEX_DIRT,
-//              TEX_GRASS,
-//              float( (abs(testHeight - worldPosInPixels.z) < 0.25*pixelsPerMeter) )
-//            );
-//    }
-
-//    /*if ( (myResult.y != TEX_NULL) && (testHeightNoLevel + randVal*(sandEnd-sandBeg) < seaLevel) ) {
-//      myResult.y = TEX_SAND;
-//    }*/
-
-
-
-//  }
-
-//  myResult.w = testHeight;
-
-//  return myResult;
-
-// }
 
 vec4 getSlats(vec4 newUVW, float thickness, vec3 origin, vec3 worldPosInPixels, vec3 visMinInPixels, vec3 visMaxInPixels, bool isVert, float isWindow) {
 
@@ -2751,18 +2750,6 @@ vec4 getGeom(vec3 worldPosInPixels, int iCurMat) {//, float terHeight) {
 			tempf1 = floor (   (tempVec3.z - float(newUVW.z < (thickness-1.0*pixelsPerMeter))*pixelsPerMeter) / pixelsPerMeter) / floorHeight;
 
 
-			// isInside = true;
-			// normalUID = 1.0;
-			// finalMat = TEX_DIRT;
-			// finalMod = 0.0;
-
-			// if (tempf1 > stairVal) {
-			// 	finalMat = TEX_DIRT;
-			// }
-			// else {
-			// 	finalMat = TEX_STONE;
-			// }
-			
 			
 			
 			
@@ -2896,38 +2883,6 @@ vec4 getGeom(vec3 worldPosInPixels, int iCurMat) {//, float terHeight) {
 		}
 
 
-		// if (matParams.x == E_MAT_PARAM_TER) {
-		//  //hasCobble = true;
-
-		//  normalUID = 1.0;
-		//  finalMat = TEX_DIRT;
-		//  finalMod = 1.0;
-		//  isInside = true;
-
-		//  // if (distance(voroPos, originInPixelsVoro) > 3.0*pixelsPerMeter) { //*(1.0+(1.0-voroGrad)*(resNoRef/4.0) )
-
-		//  // }
-		//  // else {
-
-		//  //  tempf1 = clamp((voroPos.z-worldPosInPixels.z)/(2.0*pixelsPerMeter),0.0,1.0);
-
-		//  //  if (
-		//  //    resNoRef +
-		//  //    abs(texture2D(Texture2, 256.0*(worldPosInPixels.xy + worldPosInPixels.yz)/worldSizeInPixels.x ).r-0.5)*2.0*0.4
-		//  //    >
-		//  //    1.1 - tempf1*0.2
-		//  //  ) {
-
-		//  //  }
-		//  //  else {
-		//  //    normalUID = voroId;
-		//  //    finalMat = TEX_STONE;
-		//  //    finalMod = voroGrad;
-		//  //  }
-
-		//  // }
-
-		// }
 
 
 		//resNoRefVisDis = max(resNoRef, visDisXY);
@@ -3105,7 +3060,7 @@ void main() {
 
 	if (hasTerrain) {
 		getCobble(worldPosInPixels);
-		matResultTer = getTerrain(worldPosInPixels);//vec4(1.0,TEX_DIRT,1.0,1.0);//getTerrain(worldPosInPixels);
+		matResultTer = getTerrain(worldPosInPixels);
 	}
 
 	if (hasGeom) {
@@ -3126,7 +3081,7 @@ void main() {
 
 
 	if ( (matResultTer.y != TEX_NULL) && (matResultGeom.z != 1.0) ) {
-		finalBlend = 0.5;
+		finalBlend = 0.75;
 		matResult = matResultTer;
 	}
 	else {
@@ -3178,21 +3133,25 @@ void main() {
 	}
 
 
+	if (finalMat == TEX_BRICK) {
+		finalMat = TEX_DIRT;
+	}
+	
+	//
+
 	if (finalMat == TEX_DIRT) {
-		fj = clamp((matResultTer.w - worldPosInPixels.z) / 512.0, 0.0, 3.0);
+		fj = clamp(
+			(
+				abs(sin(worldPosInPixels.z / (4.0*pixelsPerMeter))) + 
+				texture2D(Texture2, 256.0 * worldPosInPixels.xy/worldSizeInPixels.xy ).r*3.0
+				+ matResultTer.w*2.0 
+			),
+			0.0,
+			5.0
+		);
 		finalMat = TEX_EARTH + floor(fj);
 		finalMod = fj - floor(fj);
 	}
-
-
-	// if (hasTerrain) {
-	// 		finalLayer = 0.0;
-	// 		finalMat = TEX_DIRT;
-	// 		finalNormUID = 1.0;
-	// 		finalMod = 0.0;
-	// }
-
-
 
 	//TODO: ADD BACK IN FOR WATER
 	if (
@@ -3234,23 +3193,29 @@ void main() {
 		finalMod = 0.0;
 	}
 
+	/////////////////////////
+	//blendAmount deprecated
+	/////////////////////////
 
+	//finalMod = voroGrad;
 
 	finalLayer = min(finalLayer, totLayers - 1.0);
 
 	finalRes.a = finalMat / 255.0;
 	finalRes.r = finalLayer;
-	finalRes.b = finalBlend; // blend amount
+	finalRes.b = (finalMod * 127.0) / 255.0; //finalMod
+	//0.75; // blend amount
 	finalRes.g = finalNormUID / 255.0;
 
 	//finalMod = abs(sin(worldPosInPixels.z/(1.0*pixelsPerMeter)));
 	//finalMod = matResult.w;
 
-	finalRes2.b = (finalMod * 127.0) / 255.0; //finalMod
+
+	//finalRes2.b = (finalMod * 127.0) / 255.0; //finalMod
 
 
 	gl_FragData[0] = finalRes;
-	gl_FragData[1] = finalRes2;
+	//gl_FragData[1] = finalRes2;
 
 }
 

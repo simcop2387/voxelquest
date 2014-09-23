@@ -4,7 +4,12 @@ uniform vec2 windowSize;
 //uniform vec4 fgColor;
 //uniform vec4 bgColor;
 
-uniform sampler2D Texture0;
+uniform sampler2D Texture0; // chars
+uniform sampler2D Texture1; // icons
+uniform sampler2D Texture2; // background
+
+uniform float passNum;
+uniform float zoom;
 
 //tex coords, position
 varying vec4 TexCoord0;
@@ -77,8 +82,34 @@ void main() {
 
 	resVal = mix(resVal,resVal2,roundness);
 
+	vec4 oneVec = vec4(1.0);
 
 	vec4 texel0 = texture2D(Texture0, TexCoord0.xy);
+	vec4 texel1 = texture2D(Texture1, TexCoord0.xy);
+	
+	bool isIcon = TexCoord5.x != 0.0;
+	bool isShadow = TexCoord5.y != 0.0;
+	
+	vec4 shadowCol = vec4(0.0,0.0,0.0,0.5);
+	
+	if (isIcon) {
+		
+		if (dot(texel1.rgb,oneVec.rgb) == 0.0) {
+			discard;
+		}
+		
+		if (isShadow) {
+			gl_FragColor = shadowCol;
+		}
+		else {
+			gl_FragColor = texel1;
+		}
+		
+		
+		
+		
+		return;
+	}
 	
 	vec4 bgcol = TexCoord2;//mix(TexCoord2, TexCoord3, TexCoord0.w);
 	vec4 fgcol = TexCoord3;//mix(TexCoord4, TexCoord5, TexCoord0.w);
@@ -104,10 +135,27 @@ void main() {
 
 
 	vec4 resultCol = mix(bgcol,fgcol,texel0.x);
-
+	vec2 bgCoords = (wp.xy+1.0)/2.0;
 	
 
+	if (passNum == 0.0) {
+		bgCoords += (pow(TexCoord0.zw-vec2(0.5,0.25),vec2(3.0)) )*0.05;
+		resultCol = texture2D(Texture2,
+			((bgCoords-0.5)*2.0/max(1.0,zoom)+1.0)/2.0
+		);
+		resultCol.w = 1.0;
+	}
+	else {
+		//resultCol.xyz += pow(clamp( 1.0-distance(TexCoord0.w,0.25), 0.0, 1.0),3.0)*0.3;
+	}
 	
+
+	if (isShadow) {
+		resultCol.rgb = shadowCol.rgb;
+		if (resultCol.a > 0.0) {
+			resultCol.a = shadowCol.a;
+		}
+	}
 
 	gl_FragColor = resultCol;
 

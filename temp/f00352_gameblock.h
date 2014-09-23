@@ -694,7 +694,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 		counter = 0;
 		
-		int newSeaLev = seaLev+2;
+		int newSeaLev = seaLev+1;
 		
 		do {
 
@@ -1423,7 +1423,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 										if (testInd > -1) {
 											testVal = terData[testInd];
-											if (touchesBaseOnLevel(i, j, k, 2) || (testVal != 0)) {
+											if (touchesBaseOnLevel(i, j, k+1, 2) || (testVal != 0)) {
 												uiSimp = 255;//fGenRand()*32.0f+223.0f;
 												terData[curInd] = (uiSimp << 24) | (uiSimp << 16) | (uiSimp << 8) | uiSimp;
 											}
@@ -1441,6 +1441,15 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 			}
 		}
 		
+		int minRad = -1;
+		int minRadZ = -1;
+		if (pixelsPerMeter <= 32) {
+			minRad = -2;
+		}
+		if (pixelsPerMeter <= 64) {
+			minRadZ = -2;
+		}
+		
 		
 		bool nearAir = false;
 		
@@ -1455,9 +1464,11 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 					if (curInd > -1) {
 						nearAir = false;
 						
-						for (ko = -1; ko <= 1; ko++) {
-							for (jo = -1; jo <= 1; jo++) {
-								for (io = -1; io <= 1; io++) {
+						
+						
+						for (ko = minRadZ; ko <= 0; ko++) {
+							for (jo = minRad; jo <= 1; jo++) {
+								for (io = minRad; io <= 1; io++) {
 									testInd = getNodeIndex(i + io, j + jo, k + ko, 0);
 
 									if (testInd > -1) {
@@ -2950,7 +2961,7 @@ int GameBlock::copyTerToTexture ()
 								
 								// TODO: rand num should be hashed based on location
 								
-								uiSimp = fGenRand()*32.0f+223.0f;
+								uiSimp = fGenRand()*55.0f+200.0f;
 							}
 							else {
 								uiSimp = 255;

@@ -58,6 +58,7 @@ public:
 
 	bool visible;
 	bool hasAnchor;
+	bool isToggled;
 
 	//   1
 	// 2   0
@@ -93,6 +94,7 @@ public:
 
 	FIVector4 tempVec1;
 	FIVector4 tempVec2;
+	FIVector4 tempVec3;
 
 
 	FIVector4 *getBoundsMinInPixels() {
@@ -204,6 +206,8 @@ public:
 		globalId = _globalId;
 		float temp;
 		float zOffset = _zOffset;
+		
+		isToggled = false;
 
 		curRot = 0;
 		rotDir = 1;
@@ -273,13 +277,101 @@ public:
 	}
 
 
+	void initLines(
+		int _buildingType,
+		int _id,
+		int _globalId,
+		float scale,
+		
+		FIVector4 *_offset,
+
+		FIVector4 *_orgVec,
+		FIVector4 *_tanVec, // already scaled
+		FIVector4 *_bitVec,
+		FIVector4 *_norVec,
+		FIVector4 *_radVec0,
+		FIVector4 *_radVec1,
+		FIVector4 *_radVecScale0,
+		FIVector4 *_radVecScale1,
+		FIVector4 *_matParams
+
+
+
+	) {
+		buildingType = _buildingType;
+		id = _id;
+		globalId = _globalId;
+		float temp;
+		float radMax;
+		
+		
+
+		curRot = 0;
+		rotDir = 1;
+		visible = true;
+		hasAnchor = false;
+
+		anchorPointInPixels.setFXYZ(0.0f, 0.0f, 0.0f);
+
+		tempVec1.setFXYZRef(_orgVec);
+		tempVec2.setFXYZRef(_radVec0);
+		tempVec3.setFXYZRef(_radVec1);
+		
+		tempVec2.multXYZ(_radVecScale0);
+		tempVec3.multXYZ(_radVecScale1);
+		
+		tempVec1.multXYZ(scale);
+		tempVec2.multXYZ(scale);
+		tempVec3.multXYZ(scale);
+		
+		tempVec1.addXYZRef(_offset);
+		
+
+		boundsMinInPixels.setFXYZRef(&tempVec1);
+		boundsMaxInPixels.setFXYZRef(&tempVec1);
+
+		radMax = max(
+			max(
+				max(tempVec2[0], tempVec2[1]),
+				max(tempVec3[0], tempVec3[1])
+			),
+			max(
+				max(tempVec2[2], tempVec3[2]),
+				_tanVec->length()
+			)
+			
+		);
+		
+		boundsMinInPixels.addXYZ(-radMax);
+		boundsMaxInPixels.addXYZ(radMax);
+
+		visMinInPixels.setFXYZRef(&boundsMinInPixels);
+		visMaxInPixels.setFXYZRef(&boundsMaxInPixels);
+
+		moveMinInPixels.setFXYZRef(&boundsMinInPixels);
+		moveMaxInPixels.setFXYZRef(&boundsMaxInPixels);
+
+
+
+
+		geomParams[E_AP_ORG].setFXYZRef(&tempVec1);
+		geomParams[E_AP_TAN].setFXYZRef(_tanVec);
+		geomParams[E_AP_BIT].setFXYZRef(_bitVec);
+		geomParams[E_AP_NOR].setFXYZRef(_norVec);
+		geomParams[E_AP_RAD0].setFXYZRef(&tempVec2);
+		geomParams[E_AP_RAD1].setFXYZRef(&tempVec3);
+		geomParams[E_AP_MATPARAMS].setFXYZRef(_matParams);
+		geomParams[E_AP_VISMININPIXELST].setFXYZRef(&visMinInPixels);
+		geomParams[E_AP_VISMAXINPIXELST].setFXYZRef(&visMaxInPixels);
+
+
+	}
+
+
 	void initTree(
 		int _buildingType,
 		int _id,
 		int _globalId,
-		int alignBottomMiddleTop,
-
-		float _zOffset,
 
 
 
@@ -310,7 +402,6 @@ public:
 		id = _id;
 		globalId = _globalId;
 		float temp;
-		float zOffset = _zOffset;
 
 		float radMax = max(max(radP0, radP1), sphereRad);
 
@@ -335,24 +426,6 @@ public:
 		boundsMinInPixels.addXYZ(-radMax);
 		boundsMaxInPixels.addXYZ(radMax);
 
-
-		// switch (alignBottomMiddleTop) {
-
-		//     case 0: // bottom _@_
-		//         zOffset += (radMax-_visInsetFromMin->getFZ());
-		//     break;
-		//     case 1: // middle -@-
-		//         zOffset += 0.0f;
-		//     break;
-		//             //     ___
-		//     case 2: // top  @
-		//         zOffset += -(radMax-_visInsetFromMax->getFZ());
-		//     break;
-
-		// }
-
-		// boundsMinInPixels.addXYZ(0.0f,0.0f,zOffset);
-		// boundsMaxInPixels.addXYZ(0.0f,0.0f,zOffset);
 
 
 		visMinInPixels.setFXYZRef(&boundsMinInPixels);
@@ -387,6 +460,10 @@ public:
 	}
 
 
+	void toggleTransform() {
+		isToggled = !isToggled;
+		applyTransform(rotDir, false);
+	}
 
 	void applyTransform(int rotMod, bool ignoreConstraints) {
 

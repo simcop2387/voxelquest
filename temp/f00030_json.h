@@ -5,15 +5,15 @@ enum JSONType { JSONType_Null, JSONType_String, JSONType_Bool, JSONType_Number, 
 class JSONValue;
 
 typedef std::vector<JSONValue*> JSONArray;
-typedef std::map<std::wstring, JSONValue*> JSONObject;
+typedef std::map<std::string, JSONValue*> JSONObject;
 
 class JSONValue
 {
 	
 	public:
 		JSONValue(/*NULL*/);
-		JSONValue(const wchar_t *m_char_value);
-		JSONValue(const std::wstring &m_string_value);
+		JSONValue(const char *m_char_value);
+		JSONValue(const std::string &m_string_value);
 		JSONValue(bool m_bool_value);
 		JSONValue(double m_number_value);
 		JSONValue(const JSONArray &m_array_value);
@@ -27,26 +27,33 @@ class JSONValue
 		bool IsArray() const;
 		bool IsObject() const;
 		
-		const std::wstring &AsString() const;
+		const std::string &AsString() const;
 		bool AsBool() const;
 		double AsNumber() const;
 		const JSONArray &AsArray() const;
 		const JSONObject &AsObject() const;
 
-		std::size_t CountChildren() const;
-		bool HasChild(std::size_t index) const;
-		JSONValue *Child(std::size_t index);
-		bool HasChild(const wchar_t* name) const;
-		JSONValue *Child(const wchar_t* name);
+		int CountChildren() const;
+		
+		bool HasChild(int index) const;
+		JSONValue *Child(int index);
+		
+		bool HasChild(const char* name) const;
+		JSONValue *Child(const char* name);
+		
+		bool HasChild(string name) const;
+		JSONValue *Child(string name);
 
-		std::wstring Stringify() const;
+		std::string Stringify() const;
 
-		static JSONValue *Parse(const wchar_t **data);
+		static JSONValue *Parse(const char **data);
 
-		static std::wstring StringifyString(const std::wstring &str);
+		static std::string StringifyString(const std::string &str);
+	
+		//JSONValue* insertValue(string name, JSONValue* val);
 	
 		JSONType type;
-		std::wstring string_value;
+		std::string string_value;
 		bool bool_value;
 		double number_value;
 		JSONArray array_value;
@@ -60,13 +67,12 @@ class JSON
 	
 	public:
 		static JSONValue* Parse(const char *data);
-		static JSONValue* Parse(const wchar_t *data);
-		static std::wstring Stringify(const JSONValue *value);
+		static std::string Stringify(const JSONValue *value);
 
-		static bool SkipWhitespace(const wchar_t **data);
-		static bool ExtractString(const wchar_t **data, std::wstring &str);
-		static double ParseInt(const wchar_t **data);
-		static double ParseDecimal(const wchar_t **data);
+		static bool SkipWhitespace(const char **data);
+		static bool ExtractString(const char **data, std::string &str);
+		static double ParseInt(const char **data);
+		static double ParseDecimal(const char **data);
 
 		JSON();
 };
@@ -78,21 +84,35 @@ class JSON
 #define FREE_ARRAY(x) { JSONArray::iterator iter; for (iter = x.begin(); iter != x.end(); iter++) { delete *iter; } }
 #define FREE_OBJECT(x) { JSONObject::iterator iter; for (iter = x.begin(); iter != x.end(); iter++) { delete (*iter).second; } }
 
+
+// JSONValue* JSONValue::insertValue(string name, JSONValue* value) {
+// 	if (object_value.find(name) != object_value.end()) {
+// 		delete object_value[name];
+// 	}
+
+// 	if (value == NULL) {
+// 		cout << name << " parsed to NULL\n";
+// 	}
+// 	object_value[name] = value;
+// 	return object_value[name];
+// }
+
+
 /**
  * Parses a JSON encoded value to a JSONValue object
  *
  * @access protected
  *
- * @param wchar_t** data Pointer to a wchar_t* that contains the data
+ * @param char** data Pointer to a char* that contains the data
  *
  * @return JSONValue* Returns a pointer to a JSONValue object on success, NULL on error
  */
-JSONValue *JSONValue::Parse(const wchar_t **data)
+JSONValue *JSONValue::Parse(const char **data)
 {
 	// Is it a string?
 	if (**data == '"')
 	{
-		std::wstring str;
+		std::string str;
 		if (!JSON::ExtractString(&(++(*data)), str))
 			return NULL;
 		else
@@ -100,33 +120,33 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 	}
 	
 	// Is it a boolean?
-	else if ((simplejson_wcsnlen(*data, 4) && wcsncasecmp(*data, L"true", 4) == 0) || (simplejson_wcsnlen(*data, 5) && wcsncasecmp(*data, L"false", 5) == 0))
+	else if ((simplejson_wcsnlen(*data, 4) && newcasecmp(*data, "true", 4) == 0) || (simplejson_wcsnlen(*data, 5) && newcasecmp(*data, "false", 5) == 0))
 	{
-		bool value = wcsncasecmp(*data, L"true", 4) == 0;
+		bool value = newcasecmp(*data, "true", 4) == 0;
 		(*data) += value ? 4 : 5;
 		return new JSONValue(value);
 	}
 	
 	// Is it a null?
-	else if (simplejson_wcsnlen(*data, 4) && wcsncasecmp(*data, L"null", 4) == 0)
+	else if (simplejson_wcsnlen(*data, 4) && newcasecmp(*data, "null", 4) == 0)
 	{
 		(*data) += 4;
 		return new JSONValue();
 	}
 	
 	// Is it a number?
-	else if (**data == L'-' || (**data >= L'0' && **data <= L'9'))
+	else if (**data == '-' || (**data >= '0' && **data <= '9'))
 	{
 		// Negative?
-		bool neg = **data == L'-';
+		bool neg = **data == '-';
 		if (neg) (*data)++;
 
 		double number = 0.0;
 
 		// Parse the whole part of the number - only if it wasn't 0
-		if (**data == L'0')
+		if (**data == '0')
 			(*data)++;
-		else if (**data >= L'1' && **data <= L'9')
+		else if (**data >= '1' && **data <= '9')
 			number = JSON::ParseInt(data);
 		else
 			return NULL;
@@ -137,7 +157,7 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 			(*data)++;
 
 			// Not get any digits?
-			if (!(**data >= L'0' && **data <= L'9'))
+			if (!(**data >= '0' && **data <= '9'))
 				return NULL;
 			
 			// Find the decimal and sort the decimal place out
@@ -150,20 +170,20 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 		}
 
 		// Could be an exponent now...
-		if (**data == L'E' || **data == L'e')
+		if (**data == 'E' || **data == 'e')
 		{
 			(*data)++;
 
 			// Check signage of expo
 			bool neg_expo = false;
-			if (**data == L'-' || **data == L'+')
+			if (**data == '-' || **data == '+')
 			{
-				neg_expo = **data == L'-';
+				neg_expo = **data == '-';
 				(*data)++;
 			}
 			
 			// Not get any digits?
-			if (!(**data >= L'0' && **data <= L'9'))
+			if (!(**data >= '0' && **data <= '9'))
 				return NULL;
 
 			// Sort the expo out
@@ -179,7 +199,7 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 	}
 
 	// An object?
-	else if (**data == L'{')
+	else if (**data == '{')
 	{
 		JSONObject object;
 		
@@ -195,14 +215,14 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 			}
 			
 			// Special case - empty object
-			if (object.size() == 0 && **data == L'}')
+			if (object.size() == 0 && **data == '}')
 			{
 				(*data)++;
 				return new JSONValue(object);
 			}
 			
 			// We want a string now...
-			std::wstring name;
+			std::string name;
 			if (!JSON::ExtractString(&(++(*data)), name))
 			{
 				FREE_OBJECT(object);
@@ -217,7 +237,7 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 			}
 			
 			// Need a : now
-			if (*((*data)++) != L':')
+			if (*((*data)++) != ':')
 			{
 				FREE_OBJECT(object);
 				return NULL;
@@ -230,7 +250,7 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 				return NULL;
 			}
 			
-			// The value is here			
+			// The value is here
 			JSONValue *value = Parse(data);
 			if (value == NULL)
 			{
@@ -251,14 +271,14 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 			}
 			
 			// End of object?
-			if (**data == L'}')
+			if (**data == '}')
 			{
 				(*data)++;
 				return new JSONValue(object);
 			}
 			
 			// Want a , now
-			if (**data != L',')
+			if (**data != ',')
 			{
 				FREE_OBJECT(object);
 				return NULL;
@@ -273,7 +293,7 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 	}
 	
 	// An array?
-	else if (**data == L'[')
+	else if (**data == '[')
 	{
 		JSONArray array;
 		
@@ -289,7 +309,7 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 			}
 			
 			// Special case - empty array
-			if (array.size() == 0 && **data == L']')
+			if (array.size() == 0 && **data == ']')
 			{
 				(*data)++;
 				return new JSONValue(array);
@@ -314,14 +334,14 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 			}
 			
 			// End of array?
-			if (**data == L']')
+			if (**data == ']')
 			{
 				(*data)++;
 				return new JSONValue(array);
 			}
 			
 			// Want a , now
-			if (**data != L',')
+			if (**data != ',')
 			{
 				FREE_ARRAY(array);
 				return NULL;
@@ -357,12 +377,12 @@ JSONValue::JSONValue(/*NULL*/)
  *
  * @access public
  *
- * @param wchar_t* m_char_value The string to use as the value
+ * @param char* m_char_value The string to use as the value
  */
-JSONValue::JSONValue(const wchar_t *m_char_value)
+JSONValue::JSONValue(const char *m_char_value)
 {
 	type = JSONType_String;
-	string_value = std::wstring(m_char_value);
+	string_value = std::string(m_char_value);
 }
 
 /**
@@ -370,9 +390,9 @@ JSONValue::JSONValue(const wchar_t *m_char_value)
  *
  * @access public
  *
- * @param std::wstring m_string_value The string to use as the value
+ * @param std::string m_string_value The string to use as the value
  */
-JSONValue::JSONValue(const std::wstring &m_string_value)
+JSONValue::JSONValue(const std::string &m_string_value)
 {
 	type = JSONType_String;
 	string_value = m_string_value;
@@ -532,9 +552,9 @@ bool JSONValue::IsObject() const
  *
  * @access public
  *
- * @return std::wstring Returns the string value
+ * @return std::string Returns the string value
  */
-const std::wstring &JSONValue::AsString() const
+const std::string &JSONValue::AsString() const
 {
 	return string_value;
 }
@@ -600,7 +620,7 @@ const JSONObject &JSONValue::AsObject() const
  *
  * @return The number of children.
  */
-std::size_t JSONValue::CountChildren() const
+int JSONValue::CountChildren() const
 {
 	switch (type)
 	{
@@ -621,7 +641,7 @@ std::size_t JSONValue::CountChildren() const
  *
  * @return bool Returns true if the array has a value at the given index.
  */
-bool JSONValue::HasChild(std::size_t index) const
+bool JSONValue::HasChild(int index) const
 {
 	if (type == JSONType_Array)
 	{
@@ -642,7 +662,7 @@ bool JSONValue::HasChild(std::size_t index) const
  * @return JSONValue* Returns JSONValue at the given index or NULL
  *                    if it doesn't exist.
  */
-JSONValue *JSONValue::Child(std::size_t index)
+JSONValue *JSONValue::Child(int index)
 {
 	if (index < array_value.size())
 	{
@@ -662,11 +682,23 @@ JSONValue *JSONValue::Child(std::size_t index)
  *
  * @return bool Returns true if the object has a value at the given key.
  */
-bool JSONValue::HasChild(const wchar_t* name) const
+bool JSONValue::HasChild(const char* name) const
 {
 	if (type == JSONType_Object)
 	{
 		return object_value.find(name) != object_value.end();
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool JSONValue::HasChild(string name) const
+{
+	if (type == JSONType_Object)
+	{
+		return object_value.find(name.c_str()) != object_value.end();
 	}
 	else
 	{
@@ -683,9 +715,22 @@ bool JSONValue::HasChild(const wchar_t* name) const
  * @return JSONValue* Returns JSONValue for the given key in the object
  *                    or NULL if it doesn't exist.
  */
-JSONValue* JSONValue::Child(const wchar_t* name)
+JSONValue* JSONValue::Child(const char* name)
 {
 	JSONObject::const_iterator it = object_value.find(name);
+	if (it != object_value.end())
+	{
+		return it->second;
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
+JSONValue* JSONValue::Child(string name)
+{
+	JSONObject::const_iterator it = object_value.find(name.c_str());
 	if (it != object_value.end())
 	{
 		return it->second;
@@ -701,16 +746,16 @@ JSONValue* JSONValue::Child(const wchar_t* name)
  *
  * @access public
  *
- * @return std::wstring Returns the JSON string
+ * @return std::string Returns the JSON string
  */
-std::wstring JSONValue::Stringify() const
+std::string JSONValue::Stringify() const
 {
-	std::wstring ret_string;
+	std::string ret_string;
 	
 	switch (type)
 	{
 		case JSONType_Null:
-			ret_string = L"null";
+			ret_string = "null";
 			break;
 		
 		case JSONType_String:
@@ -718,16 +763,16 @@ std::wstring JSONValue::Stringify() const
 			break;
 		
 		case JSONType_Bool:
-			ret_string = bool_value ? L"true" : L"false";
+			ret_string = bool_value ? "true" : "false";
 			break;
 		
 		case JSONType_Number:
 		{
 			if (isinf(number_value) || isnan(number_value))
-				ret_string = L"null";
+				ret_string = "null";
 			else
 			{
-				std::wstringstream ss;
+				std::stringstream ss;
 				ss.precision(15);
 				ss << number_value;
 				ret_string = ss.str();
@@ -737,7 +782,7 @@ std::wstring JSONValue::Stringify() const
 		
 		case JSONType_Array:
 		{
-			ret_string = L"[";
+			ret_string = "[";
 			JSONArray::const_iterator iter = array_value.begin();
 			while (iter != array_value.end())
 			{
@@ -745,27 +790,27 @@ std::wstring JSONValue::Stringify() const
 				
 				// Not at the end - add a separator
 				if (++iter != array_value.end())
-					ret_string += L",";
+					ret_string += ",";
 			}
-			ret_string += L"]";
+			ret_string += "]";
 			break;
 		}
 		
 		case JSONType_Object:
 		{
-			ret_string = L"{";
+			ret_string = "{";
 			JSONObject::const_iterator iter = object_value.begin();
 			while (iter != object_value.end())
 			{
 				ret_string += StringifyString((*iter).first);
-				ret_string += L":";
+				ret_string += ":";
 				ret_string += (*iter).second->Stringify();
 				
 				// Not at the end - add a separator
 				if (++iter != object_value.end())
-					ret_string += L",";
+					ret_string += ",";
 			}
-			ret_string += L"}";
+			ret_string += "}";
 			break;
 		}
 	}
@@ -780,66 +825,68 @@ std::wstring JSONValue::Stringify() const
  *
  * @access private
  *
- * @param std::wstring str The string that needs to have the characters escaped
+ * @param std::string str The string that needs to have the characters escaped
  *
- * @return std::wstring Returns the JSON string
+ * @return std::string Returns the JSON string
  */
-std::wstring JSONValue::StringifyString(const std::wstring &str)
+std::string JSONValue::StringifyString(const std::string &str)
 {
-	std::wstring str_out = L"\"";
+	std::string str_out = "\"";
+	str_out += str;
 	
-	std::wstring::const_iterator iter = str.begin();
-	while (iter != str.end())
-	{
-		wchar_t chr = *iter;
+	// std::string::const_iterator iter = str.begin();
+	// while (iter != str.end())
+	// {
+	// 	char chr = *iter;
 
-		if (chr == L'"' || chr == L'\\' || chr == L'/')
-		{
-			str_out += L'\\';
-			str_out += chr;
-		}
-		else if (chr == L'\b')
-		{
-			str_out += L"\\b";
-		}
-		else if (chr == L'\f')
-		{
-			str_out += L"\\f";
-		}
-		else if (chr == L'\n')
-		{
-			str_out += L"\\n";
-		}
-		else if (chr == L'\r')
-		{
-			str_out += L"\\r";
-		}
-		else if (chr == L'\t')
-		{
-			str_out += L"\\t";
-		}
-		else if (chr < L' ')
-		{
-			str_out += L"\\u";
-			for (int i = 0; i < 4; i++)
-			{
-				int value = (chr >> 12) & 0xf;
-				if (value >= 0 && value <= 9)
-					str_out += (wchar_t)('0' + value);
-				else if (value >= 10 && value <= 15)
-					str_out += (wchar_t)('A' + (value - 10));
-				chr <<= 4;
-			}
-		}
-		else
-		{
-			str_out += chr;
-		}
+	// 	if (chr == '"' || chr == '\\' || chr == '/')
+	// 	{
+	// 		str_out += '\\';
+	// 		str_out += chr;
+	// 	}
+	// 	else if (chr == '\b')
+	// 	{
+	// 		str_out += "\\b";
+	// 	}
+	// 	else if (chr == '\f')
+	// 	{
+	// 		str_out += "\\f";
+	// 	}
+	// 	else if (chr == '\n')
+	// 	{
+	// 		str_out += "\\n";
+	// 	}
+	// 	else if (chr == '\r')
+	// 	{
+	// 		str_out += "\\r";
+	// 	}
+	// 	else if (chr == '\t')
+	// 	{
+	// 		str_out += "\\t";
+	// 	}
+	// 	else if (chr < ' ')
+	// 	{
+	// 		str_out += "\\u";
+	// 		for (int i = 0; i < 4; i++)
+	// 		{
+	// 			int value = (chr >> 12) & 0xf;
+	// 			if (value >= 0 && value <= 9)
+	// 				str_out += (char)('0' + value);
+	// 			else if (value >= 10 && value <= 15)
+	// 				str_out += (char)('A' + (value - 10));
+	// 			chr <<= 4;
+	// 		}
+	// 	}
+	// 	else
+	// 	{
+	// 		str_out += chr;
+	// 	}
 		
-		iter++;
-	}
+	// 	iter++;
+	// }
 	
-	str_out += L"\"";
+	
+	str_out += "\"";
 	return str_out;
 }
 
@@ -850,8 +897,7 @@ JSON::JSON()
 }
 
 /**
- * Parses a complete JSON encoded string
- * This is just a wrapper around the UNICODE Parse().
+ * Parses a complete JSON encoded string (UNICODE input version)
  *
  * @access public
  *
@@ -859,106 +905,33 @@ JSON::JSON()
  *
  * @return JSONValue* Returns a JSON Value representing the root, or NULL on error
  */
-
 JSONValue *JSON::Parse(const char *data)
 {
-
-	cout << "JSON::Parse a\n";
-
-	size_t length = strlen(data) + 4096;
-	cout << "length: " << length << "\n";
-
-	if (length == 0) {
-		cout << "JSON::Parse Length 0\n";
+	// Skip any preceding whitespace, end of data = no JSON = fail
+	if (!SkipWhitespace(&data)) {
+		//cout << "jp a\n";
 		return NULL;
 	}
-
-	wchar_t *w_data = new wchar_t[length];
-	size_t ret_value = 0;
-
-	errno_t myError;
-
-	cout << "JSON::Parse b\n";
-
-	#if defined(WIN32) && !defined(__GNUC__)
-		cout << "JSON::Parse c\n";
-		
-
-		// if (data) {
-
-		// }
-		// else {
-		// 	cout << "JSON::Parse Data Null\n";
-		// 	return NULL;
-		// }
-
-		// if (w_data) {
-
-		// }
-		// else {
-		// 	cout << "JSON::Parse w_data Null\n";
-		// 	return NULL;
-		// }
-		
-		myError = mbstowcs_s(&ret_value, w_data, length, data, length);
-
-		cout << "JSON::Parse c0\n";
-
-		if (myError != 0)
-		{
-			cout << "JSON::Parse c2\n";
-
-			delete[] w_data;
-
-			cout << "JSON::Parse c3\n";
-
-			return NULL;
-		}
-		cout << "JSON::Parse d\n";
-	#else
-		cout << "JSON::Parse e\n";
-		if (mbstowcs(w_data, data, length) == (size_t)-1)
-		{
-			delete[] w_data;
-			return NULL;
-		}
-		cout << "JSON::Parse f\n";
-	#endif
 	
-	JSONValue *value = JSON::Parse(w_data);
-	delete[] w_data;
-
-	cout << "JSON::Parse g\n";
-
-	return value;
-}
-
-/**
- * Parses a complete JSON encoded string (UNICODE input version)
- *
- * @access public
- *
- * @param wchar_t* data The JSON text
- *
- * @return JSONValue* Returns a JSON Value representing the root, or NULL on error
- */
-JSONValue *JSON::Parse(const wchar_t *data)
-{
-	// Skip any preceding whitespace, end of data = no JSON = fail
-	if (!SkipWhitespace(&data))
-		return NULL;
 
 	// We need the start of a value here now...
 	JSONValue *value = JSONValue::Parse(&data);
-	if (value == NULL)
-		return NULL;
-	
-	// Can be white space now and should be at the end of the string then...
-	if (SkipWhitespace(&data))
-	{
-		delete value;
+	if (value == NULL) {
+		//cout << "jp b\n";
 		return NULL;
 	}
+	
+	// Can be white space now and should be at the end of the string then...
+	// if (SkipWhitespace(&data))
+	// {
+		
+	// 	cout << "jp c\n";
+	// 	delete value;
+	// 	return NULL;
+	// }
+	
+	
+	//cout << "jp d\n";
 	
 	// We're now at the end of the string
 	return value;
@@ -971,14 +944,14 @@ JSONValue *JSON::Parse(const wchar_t *data)
  *
  * @param JSONValue* value The root value
  *
- * @return std::wstring Returns a JSON encoded string representation of the given value
+ * @return std::string Returns a JSON encoded string representation of the given value
  */
-std::wstring JSON::Stringify(const JSONValue *value)
+std::string JSON::Stringify(const JSONValue *value)
 {
 	if (value != NULL)
 		return value->Stringify();
 	else
-		return L"";
+		return "";
 }
 
 /**
@@ -986,13 +959,13 @@ std::wstring JSON::Stringify(const JSONValue *value)
  *
  * @access protected
  *
- * @param wchar_t** data Pointer to a wchar_t* that contains the JSON text
+ * @param char** data Pointer to a char* that contains the JSON text
  *
  * @return bool Returns true if there is more data, or false if the end of the text was reached
  */
-bool JSON::SkipWhitespace(const wchar_t **data)
+bool JSON::SkipWhitespace(const char **data)
 {
-	while (**data != 0 && (**data == L' ' || **data == L'\t' || **data == L'\r' || **data == L'\n'))
+	while (**data != 0 && (**data == ' ' || **data == '\t' || **data == '\r' || **data == '\n'))
 		(*data)++;
 	
 	return **data != 0;
@@ -1004,22 +977,22 @@ bool JSON::SkipWhitespace(const wchar_t **data)
  *
  * @access protected
  *
- * @param wchar_t** data Pointer to a wchar_t* that contains the JSON text
- * @param std::wstring& str Reference to a std::wstring to receive the extracted string
+ * @param char** data Pointer to a char* that contains the JSON text
+ * @param std::string& str Reference to a std::string to receive the extracted string
  *
  * @return bool Returns true on success, false on failure
  */
-bool JSON::ExtractString(const wchar_t **data, std::wstring &str)
+bool JSON::ExtractString(const char **data, std::string &str)
 {
-	str = L"";
+	str = "";
 	
 	while (**data != 0)
 	{
 		// Save the char so we can change it if need be
-		wchar_t next_char = **data;
+		char next_char = **data;
 		
 		// Escaping something?
-		if (next_char == L'\\')
+		if (next_char == '\\')
 		{
 			// Move over the escape char
 			(*data)++;
@@ -1027,15 +1000,15 @@ bool JSON::ExtractString(const wchar_t **data, std::wstring &str)
 			// Deal with the escaped char
 			switch (**data)
 			{
-				case L'"': next_char = L'"'; break;
-				case L'\\': next_char = L'\\'; break;
-				case L'/': next_char = L'/'; break;
-				case L'b': next_char = L'\b'; break;
-				case L'f': next_char = L'\f'; break;
-				case L'n': next_char = L'\n'; break;
-				case L'r': next_char = L'\r'; break;
-				case L't': next_char = L'\t'; break;
-				case L'u':
+				case '"': next_char = '"'; break;
+				case '\\': next_char = '\\'; break;
+				case '/': next_char = '/'; break;
+				case 'b': next_char = '\b'; break;
+				case 'f': next_char = '\f'; break;
+				case 'n': next_char = '\n'; break;
+				case 'r': next_char = '\r'; break;
+				case 't': next_char = '\t'; break;
+				case 'u':
 				{
 					// We need 5 chars (4 hex + the 'u') or its not valid
 					if (!simplejson_wcsnlen(*data, 5))
@@ -1074,7 +1047,7 @@ bool JSON::ExtractString(const wchar_t **data, std::wstring &str)
 		}
 		
 		// End of the string?
-		else if (next_char == L'"')
+		else if (next_char == '"')
 		{
 			(*data)++;
 			str.reserve(); // Remove unused capacity
@@ -1082,7 +1055,7 @@ bool JSON::ExtractString(const wchar_t **data, std::wstring &str)
 		}
 		
 		// Disallowed char?
-		else if (next_char < L' ' && next_char != L'\t')
+		else if (next_char < ' ' && next_char != '\t')
 		{
 			// SPEC Violation: Allow tabs due to real world cases
 			return false;
@@ -1104,11 +1077,11 @@ bool JSON::ExtractString(const wchar_t **data, std::wstring &str)
  *
  * @access protected
  *
- * @param wchar_t** data Pointer to a wchar_t* that contains the JSON text
+ * @param char** data Pointer to a char* that contains the JSON text
  *
  * @return double Returns the double value of the number found
  */
-double JSON::ParseInt(const wchar_t **data)
+double JSON::ParseInt(const char **data)
 {
 	double integer = 0;
 	while (**data != 0 && **data >= '0' && **data <= '9')
@@ -1122,11 +1095,11 @@ double JSON::ParseInt(const wchar_t **data)
  *
  * @access protected
  *
- * @param wchar_t** data Pointer to a wchar_t* that contains the JSON text
+ * @param char** data Pointer to a char* that contains the JSON text
  *
  * @return double Returns the double value of the decimal found
  */
-double JSON::ParseDecimal(const wchar_t **data)
+double JSON::ParseDecimal(const char **data)
 {
 	double decimal = 0.0;
   double factor = 0.1;

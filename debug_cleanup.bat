@@ -8,7 +8,9 @@ cd c:\wamp\www\voxelquest
 
 del /q .\bin\*.*
 xcopy /s /y .\x64\Debug .\bin
-del /q .\x64\Debug\*.*
+del /q .\x64\Debug\*.exe
+del /q .\x64\Debug\*.ilk
+del /q .\x64\Debug\*.pdb
 
 ECHO running EXE
 cd c:\wamp\www\voxelquest\bin

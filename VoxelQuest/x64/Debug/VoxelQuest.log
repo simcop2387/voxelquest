@@ -1,5 +1,156 @@
-﻿Build started 7/17/2014 7:41:30 PM.
+﻿Build started 9/22/2014 8:33:58 PM.
+     1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
+     1>PreBuildEvent:
+         ../combine.bat
+         :VCEnd
+         cleaning files
+         copying files to source
+         .\src\cpp\f00025_includes.h
+         .\src\cpp\f00026_enums.h
+         .\src\cpp\f00027_vectors.h
+         .\src\cpp\f00030_json.h
+         .\src\cpp\f00040_png.h
+         .\src\cpp\f00215_helperfuncs.h
+         .\src\cpp\f00217_helperclasses.h
+         .\src\cpp\f00220_timer.h
+         .\src\cpp\f00240_simplex.h
+         .\src\cpp\f00250_imageloader.h
+         .\src\cpp\f00251_fbos.h
+         .\src\cpp\f00260_classdefs.h
+         .\src\cpp\f00290_wsrequesthandler.hpp
+         .\src\cpp\f00291_rhfactory.hpp
+         .\src\cpp\f00292_wsserver.hpp
+         .\src\cpp\f00293_gamesound.hpp
+         .\src\cpp\f00294_gamemusic.hpp
+         .\src\cpp\f00295_gamegeom.hpp
+         .\src\cpp\f00300_singleton.hpp
+         .\src\cpp\f00310_pooledresource.hpp
+         .\src\cpp\f00315_poolmanager.hpp
+         .\src\cpp\f00320_fontwrapper.hpp
+         .\src\cpp\f00325_uicomponent.hpp
+         .\src\cpp\f00330_gamegui.hpp
+         .\src\cpp\f00338_gameentnode.hpp
+         .\src\cpp\f00339_gameent.hpp
+         .\src\cpp\f00340_gameplantnode.hpp
+         .\src\cpp\f00341_gameplant.hpp
+         .\src\cpp\f00350_gamepage.hpp
+         .\src\cpp\f00351_gamepageholder.hpp
+         .\src\cpp\f00352_gameblock.hpp
+         .\src\cpp\f00380_gameworld.hpp
+         .\src\cpp\f00500_mainfuncs.h
+         33 File(s) copied
+         running lzz
+         Missing operator.
+         tot hpp
+         20
+         copying headers to one file
+         .\f00290_wsrequesthandler.e
+         .\f00291_rhfactory.e
+         .\f00292_wsserver.e
+         .\f00293_gamesound.e
+         .\f00294_gamemusic.e
+         .\f00295_gamegeom.e
+         .\f00300_singleton.e
+         .\f00310_pooledresource.e
+         .\f00315_poolmanager.e
+         .\f00320_fontwrapper.e
+         .\f00325_uicomponent.e
+         .\f00330_gamegui.e
+         .\f00338_gameentnode.e
+         .\f00339_gameent.e
+         .\f00340_gameplantnode.e
+         .\f00341_gameplant.e
+         .\f00350_gamepage.e
+         .\f00351_gamepageholder.e
+         .\f00352_gameblock.e
+         .\f00380_gameworld.e
+                 1 file(s) copied.
+         Missing operator.
+         tot e
+         20
+         .
+         copying files to compiled
+         .\temp\f00290_wsrequesthandler.e
+         .\temp\f00291_rhfactory.e
+         .\temp\f00292_wsserver.e
+         .\temp\f00293_gamesound.e
+         .\temp\f00294_gamemusic.e
+         .\temp\f00295_gamegeom.e
+         .\temp\f00300_singleton.e
+         .\temp\f00310_pooledresource.e
+         .\temp\f00315_poolmanager.e
+         .\temp\f00320_fontwrapper.e
+         .\temp\f00325_uicomponent.e
+         .\temp\f00330_gamegui.e
+         .\temp\f00338_gameentnode.e
+         .\temp\f00339_gameent.e
+         .\temp\f00340_gameplantnode.e
+         .\temp\f00341_gameplant.e
+         .\temp\f00350_gamepage.e
+         .\temp\f00351_gamepageholder.e
+         .\temp\f00352_gameblock.e
+         .\temp\f00380_gameworld.e
+         20 File(s) copied
+         .\temp\f00025_includes.h
+         .\temp\f00026_enums.h
+         .\temp\f00027_vectors.h
+         .\temp\f00030_json.h
+         .\temp\f00040_png.h
+         .\temp\f00215_helperfuncs.h
+         .\temp\f00217_helperclasses.h
+         .\temp\f00220_timer.h
+         .\temp\f00240_simplex.h
+         .\temp\f00250_imageloader.h
+         .\temp\f00251_fbos.h
+         .\temp\f00260_classdefs.h
+         .\temp\f00270_headers.h
+         .\temp\f00290_wsrequesthandler.h
+         .\temp\f00291_rhfactory.h
+         .\temp\f00292_wsserver.h
+         .\temp\f00293_gamesound.h
+         .\temp\f00294_gamemusic.h
+         .\temp\f00295_gamegeom.h
+         .\temp\f00300_singleton.h
+         .\temp\f00310_pooledresource.h
+         .\temp\f00315_poolmanager.h
+         .\temp\f00320_fontwrapper.h
+         .\temp\f00325_uicomponent.h
+         .\temp\f00330_gamegui.h
+         .\temp\f00338_gameentnode.h
+         .\temp\f00339_gameent.h
+         .\temp\f00340_gameplantnode.h
+         .\temp\f00341_gameplant.h
+         .\temp\f00350_gamepage.h
+         .\temp\f00351_gamepageholder.h
+         .\temp\f00352_gameblock.h
+         .\temp\f00380_gameworld.h
+         .\temp\f00500_mainfuncs.h
+                 1 file(s) copied.
+       ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\CL.exe /c /I"C:\SFML-2.1\include" /Zi /nologo /W1 /WX- /sdl /Od /D SFML_STATIC /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc110.pdb" /Gd /TP /errorReport:prompt ..\compiled\main.cpp
+         main.cpp
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.exe" /INCREMENTAL /NOLOGO /LIBPATH:C:\wamp\www\voxelquest\glew\lib /LIBPATH:"C:\Program Files (x86)\Windows Kits\8.0\Lib\win8\um\x64" /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\lib\amd64" /LIBPATH:"C:\SFML-2.1\lib" "sfml-system-s-d.lib" "sfml-audio-s-d.lib" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.lib" /MACHINE:X64 x64\Debug\main.obj
+     1>sfml-system-s-d.lib(Err.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(Err.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
+     1>sfml-system-s-d.lib(Lock.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(Lock.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
+     1>sfml-system-s-d.lib(Mutex.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(Mutex.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
+     1>sfml-system-s-d.lib(Sleep.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(Sleep.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
+     1>sfml-system-s-d.lib(Thread.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(Thread.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
+     1>sfml-system-s-d.lib(Time.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(Time.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
+     1>sfml-system-s-d.lib(MutexImpl.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(MutexImpl.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
+     1>sfml-system-s-d.lib(SleepImpl.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(SleepImpl.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
+     1>sfml-system-s-d.lib(ThreadImpl.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(ThreadImpl.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
+     1>sfml-audio-s-d.lib(ALCheck.cpp.obj) : warning LNK4099: PDB 'sfml-audio-s-d.pdb' was not found with 'sfml-audio-s-d.lib(ALCheck.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-audio-s-d.pdb'; linking object as if no debug info
+     1>sfml-audio-s-d.lib(AudioDevice.cpp.obj) : warning LNK4099: PDB 'sfml-audio-s-d.pdb' was not found with 'sfml-audio-s-d.lib(AudioDevice.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-audio-s-d.pdb'; linking object as if no debug info
+     1>sfml-audio-s-d.lib(Music.cpp.obj) : warning LNK4099: PDB 'sfml-audio-s-d.pdb' was not found with 'sfml-audio-s-d.lib(Music.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-audio-s-d.pdb'; linking object as if no debug info
+     1>sfml-audio-s-d.lib(Sound.cpp.obj) : warning LNK4099: PDB 'sfml-audio-s-d.pdb' was not found with 'sfml-audio-s-d.lib(Sound.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-audio-s-d.pdb'; linking object as if no debug info
+     1>sfml-audio-s-d.lib(SoundBuffer.cpp.obj) : warning LNK4099: PDB 'sfml-audio-s-d.pdb' was not found with 'sfml-audio-s-d.lib(SoundBuffer.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-audio-s-d.pdb'; linking object as if no debug info
+     1>sfml-audio-s-d.lib(SoundFile.cpp.obj) : warning LNK4099: PDB 'sfml-audio-s-d.pdb' was not found with 'sfml-audio-s-d.lib(SoundFile.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-audio-s-d.pdb'; linking object as if no debug info
+     1>sfml-audio-s-d.lib(SoundSource.cpp.obj) : warning LNK4099: PDB 'sfml-audio-s-d.pdb' was not found with 'sfml-audio-s-d.lib(SoundSource.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-audio-s-d.pdb'; linking object as if no debug info
+     1>sfml-audio-s-d.lib(SoundStream.cpp.obj) : warning LNK4099: PDB 'sfml-audio-s-d.pdb' was not found with 'sfml-audio-s-d.lib(SoundStream.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-audio-s-d.pdb'; linking object as if no debug info
+         VoxelQuest.vcxproj -> C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.exe
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:00.01
+Time Elapsed 00:00:03.28

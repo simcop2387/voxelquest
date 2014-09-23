@@ -35,7 +35,7 @@ uniform	float maxSeaDepthDeprecated;
 //uniform	float heightmapMin;
 //uniform	float heightmapMax;
 //uniform	float maxFloors;
-uniform	float terDataTexScale;
+//uniform	float terDataTexScale;
 
 uniform	vec4 worldSizeInPixels;
 //uniform	vec4 mapFreqs;
@@ -61,6 +61,7 @@ uniform int paramsPerEntry;
 uniform bool hasTree;
 uniform bool hasGeom;
 uniform bool hasTerrain;
+uniform bool hasLines;
 
 
 uniform int voroCount;
@@ -92,22 +93,21 @@ const int E_GP_CORNERDISINPIXELS = 4;
 const int E_GP_POWERVALS = 5;
 const int E_GP_POWERVALS2 = 6;
 const int E_GP_THICKVALS = 7;
-const int E_GP_MATPARAMS = 8;
-const int E_GP_CENTERPOINT = 9;
+const int E_GP_CENTERPOINT = 8;
+const int E_GP_MATPARAMS = 9; // must be last
 const int E_GP_LENGTH = 10;
 
-
-const int E_TP_VISMININPIXELST = 0;
-const int E_TP_VISMAXINPIXELST = 1;
-const int E_TP_P0 = 2;
-const int E_TP_P1 = 3;
-const int E_TP_P2 = 4;
-const int E_TP_POWERVALS = 5;
-const int E_TP_POWERVALS2 = 6;
-const int E_TP_THICKVALS = 7;
-const int E_TP_MATPARAMS = 8;
-const int E_TP_UNUSED = 9;
-const int E_TP_LENGTH = 10;
+const int E_AP_VISMININPIXELST = 			0;
+const int E_AP_VISMAXINPIXELST = 			1;
+const int E_AP_ORG = 						2; // origin
+const int E_AP_TAN = 						3; // tangent (normalized)
+const int E_AP_BIT = 						4; // bitangent (normalized)
+const int E_AP_NOR = 						5; // normal (normalized)
+const int E_AP_RAD0 = 						6; // radius
+const int E_AP_RAD1 = 						7;
+const int E_AP_UNUSED1 = 					8;
+const int E_AP_MATPARAMS = 					9; // must be last
+const int E_AP_LENGTH = 					10;
 
 
 const float TEX_NULL =    0.0;
@@ -131,22 +131,14 @@ const float TEX_TREEWOOD =  43.0;
 const float TEX_LEAF =    45.0;
 
 
-const float E_MAT_SUBPARAM_NONE =       0.0;
-const float E_MAT_SUBPARAM_TUDOR =      1.0;
-const float E_MAT_SUBPARAM_BRICK =      2.0;
-const float E_MAT_SUBPARAM_BRICK_ARCH =   3.0;
-const float E_MAT_SUBPARAM_LENGTH =     4.0;
+const float E_ENT_SUBPARAM_NOT_SEL = 		0.0;
+const float E_ENT_SUBPARAM_SEL = 			1.0;
+const float E_ENT_SUBPARAM_LENGTH = 		2.0;
 
-const float E_MAT_PARAM_FOUNDATION =    0.0;
-const float E_MAT_PARAM_ROOF =        	1.0;
-const float E_MAT_PARAM_DOCK =        	2.0;
-const float E_MAT_PARAM_BUILDING =      3.0;
-const float E_MAT_PARAM_LANTERN =       4.0;
-const float E_MAT_PARAM_DOORWAY =       5.0;
-const float E_MAT_PARAM_DOOR =        	6.0;
-const float E_MAT_PARAM_OBJECT = 		7.0;
-const float E_MAT_PARAM_TREE =        	8.0; // TREES MUST BE LAST ENTRY
-const float E_MAT_PARAM_LENGTH =      	9.0;
+
+const float E_ENT_PARAM_GEOM =		0.0;
+const float E_ENT_PARAM_LINES =		1.0; // must be last
+const float E_ENT_PARAM_LENGTH =      	2.0;
 
 
 
@@ -546,7 +538,7 @@ float cell3D(vec3 P) {
 // x: distance from line sp0->sp1
 // y: percentage between sp0->sp1 (0.0->1.0)
 
-vec2 pointSegDistance(vec3 testPoint, vec3 sp0, vec3 sp1)
+vec4 pointSegDistance(vec3 testPoint, vec3 sp0, vec3 sp1)
 {
 	vec3 v = sp1 - sp0;
 	vec3 w = testPoint - sp0;
@@ -555,19 +547,21 @@ vec2 pointSegDistance(vec3 testPoint, vec3 sp0, vec3 sp1)
 	float d1 = distance(testPoint, sp1);
 	float d2 = distance(sp0, sp1);
 
+	float newVal = -1.0;
+
 	float c1 = dot(w, v);
 	if ( c1 <= 0 ) {
-		return vec2(d0, 0.0);
+		return vec4(sp0, 0.0);
 	}
 
 	float c2 = dot(v, v);
 	if ( c2 <= c1 ) {
-		return vec2(d1, 1.0);
+		return vec4(sp1, 1.0);
 	}
 
 	float b = c1 / c2;
 	vec3 testPoint2 = sp0 + b * v; // testPoint2 is the nearest point on the line
-	return vec2(distance(testPoint, testPoint2), distance(testPoint2, sp0) / d2 );
+	return vec4(testPoint2, distance(testPoint2, sp0) / d2 );
 }
 
 
@@ -696,186 +690,115 @@ vec4 getSlats(vec4 newUVW, float thickness, vec3 origin, vec3 worldPosInPixels, 
 
 
 
-vec4 getTree(vec3 worldPosInPixels) {
+vec4 getLines(vec3 worldPosInPixels) {
 
 
 	int i;
-	int j;
-	int k;
-
-	int curInd = -1;
-
-	int maxCount = 0;
 	int baseInd = 0;
 
-
-	float testDis = 0.0;
-	float t;
-
+	vec4 matResult = vec4(0.0);
 
 	vec3 visMinInPixels = vec3(0.0);
 	vec3 visMaxInPixels = vec3(0.0);
 	vec3 matParams = vec3(0.0);
-
-	vec4 matResult = vec4(0.0);
-
-	vec3 p0;
-	vec3 p1;
-	vec3 p2;
-
-	vec2 dres = vec2(0.0);
-	vec2 dres1 = vec2(0.0);
-	vec2 dres2 = vec2(0.0);
-
-
-	vec3 tempv = vec3(0.0);
-
-	vec3 roThetaPhi = vec3(0.0);
-	vec3 roThetaPhi2 = vec3(0.0);
-
-
-	vec3 bezTanP0;
-	vec3 bezTanP1;
-
-	vec4 tempResult = vec4(0.0);
-
-
-	int bestInd = 0;
-	vec2 bestRes = vec2(invalid);
-	vec2 resArr = vec2(invalid);
-	vec3 thickVals = vec3(0.0);
-
+	vec3 p0 = vec3(0.0);
+	vec3 p1 = vec3(0.0);
+	vec3 tbnRad0 = vec3(0.0);
+	vec3 tbnRad1 = vec3(0.0);
+	vec3 tanVec = vec3(0.0);
+	vec3 tanVecNoNorm = vec3(0.0);
+	vec3 bitVec = vec3(0.0);
+	vec3 norVec = vec3(0.0);
+	
+	float curDis = 0.0;
+	
+	vec4 dres = vec4(0.0);
 	float curThickness = 0.0;
-	float sphereRad = 0.0;
-
-	// p0: start point
-	// p1: end point
-	// p2: control point
-	//      p2
-	// p0        p1
-
-	float totCount = 0.0;
-
-	float leafRad = 8.0f;//0.5*pixelsPerMeter;
-
-	vec3 maxv = vec3(invalid);
-
-	vec3 newWP = vec3(0.0);
+	
+	vec3 perpVec = vec3(0.0);
+	
+	
+	float bitOrNor = 0.0;
+	float tanOrBN = 0.0;
 
 	for (i = 0; i < numEntries; i++) {
 
 		baseInd = i * paramsPerEntry;
-		matParams = paramArr[baseInd + E_TP_MATPARAMS];
+		matParams = paramArr[baseInd + E_AP_MATPARAMS];
 
 
-		if (matParams.x == E_MAT_PARAM_TREE) {
+		if (matParams.x == E_ENT_PARAM_LINES) {
 
-			visMinInPixels = paramArr[baseInd + E_TP_VISMININPIXELST];
-			visMaxInPixels = paramArr[baseInd + E_TP_VISMAXINPIXELST];
+			visMinInPixels = paramArr[baseInd + E_AP_VISMININPIXELST];
+			visMaxInPixels = paramArr[baseInd + E_AP_VISMAXINPIXELST];
 
 
 			if (
-				all( lessThanEqual(worldPosInPixels, visMaxInPixels) ) && //+slack
-				all( greaterThanEqual(worldPosInPixels, visMinInPixels) ) //-slack
+				all( lessThanEqual(worldPosInPixels, visMaxInPixels) ) &&
+				all( greaterThanEqual(worldPosInPixels, visMinInPixels) )
 			) {
 
-				p0 = paramArr[baseInd + E_TP_P0];
-				p1 = paramArr[baseInd + E_TP_P1];
-				p2 = paramArr[baseInd + E_TP_P2];
-				thickVals = paramArr[baseInd + E_TP_THICKVALS];
-
-				sphereRad = thickVals.z;
+				p0 = paramArr[baseInd + E_AP_ORG];
+				p1 = paramArr[baseInd + E_AP_ORG];
+				
+				
+				tanVecNoNorm = paramArr[baseInd + E_AP_TAN];
+				
+				tanVec = normalize(tanVecNoNorm);
+				bitVec = paramArr[baseInd + E_AP_BIT];
+				norVec = paramArr[baseInd + E_AP_NOR];
+				tbnRad0 = paramArr[baseInd + E_AP_RAD0];
+				tbnRad1 = paramArr[baseInd + E_AP_RAD1];
+				
+				p0 -= tanVecNoNorm;
+				p1 += tanVecNoNorm;
+				
 
 				dres = pointSegDistance(worldPosInPixels, p0, p1);
-				//dres2 = pointSegDistance(worldPosInPixels,p0,p2);
-				//dres = mix(dres2, dres1, mix(dres1.y,dres2.y,0.5) );
+				curDis = distance(worldPosInPixels,dres.xyz);
+				
+				perpVec = normalize(worldPosInPixels.xyz-dres.xyz);
+				
+				bitOrNor = clamp(abs(dot(perpVec,norVec)),0.0,1.0);
+				tanOrBN = clamp(abs(dot(perpVec,tanVec)),0.0,1.0);
+				
+				
+				curThickness =
+					
+					
+					mix(
+						mix( tbnRad0.y, tbnRad0.z, bitOrNor ),
+						mix( tbnRad1.y, tbnRad1.z, bitOrNor ),
+						dres.w
+					);
+					
+					// mix(
+					// 	mix(
+					// 		mix( tbnRad0.y, tbnRad0.z, bitOrNor ),
+					// 		mix( tbnRad1.y, tbnRad1.z, bitOrNor ),
+					// 		dres.w
+					// 	),
+					// 	mix(tbnRad0.x,tbnRad1.x,dres.w),
+					// 	abs(dres.w-0.5)*2.0	
+					// );
+					
+					
 
-				//if (dres.x < bestRes.x) {
-
-				t =  dres.y;
-				bezTanP0 = mix(p0, p2, t);
-				bezTanP1 = mix(p2, p1, t);
-				resArr = pointSegDistance(worldPosInPixels, bezTanP0, bezTanP1);
-
-				curThickness = mix(thickVals.x, thickVals.y, t);
-
-				if (resArr.x < curThickness + 0.0625 * 0.125 * pixelsPerMeter * sin( (worldPosInPixels.x + worldPosInPixels.z + worldPosInPixels.y) / (0.125 * pixelsPerMeter) ) ) {
-
-					if (
-						(abs(resArr.x - curThickness) < 0.125 * pixelsPerMeter) &&
-						(matResult.y != TEX_TREEWOOD)
-					) {
-						matResult.y = TEX_BARK;
-					}
-					else {
-						matResult.y = TEX_TREEWOOD;
-					}
-
-
-
-
-					totCount = max( clamp(1.0 - (resArr.x / curThickness), 0.0, 1.0), totCount); //abs( sin(dres.x/(curThickness*0.25)) );
-
-
-					//totCount += 1.0;
-
-					// bestRes = dres;
-					// bestInd = baseInd;
+				if (curDis < curThickness) {
+					
+					matResult.x = 2.0+matParams.z;
+					
+					matResult.y = matParams.y;
+					
+					
+					matResult.z = 1.0;
+					matResult.w = 1.0;
 				}
+				
+				
 
-
-
-
-
-				//roThetaPhi2 = += roThetaPhi;
-
-
-
-
-				if ( (distance(worldPosInPixels, p1) < sphereRad) && (p1.z < maxv.z) ) { //
-
-					// newWP = floor((worldPosInPixels)/leafRad)*leafRad + leafRad*0.5;
-					// if (distance(worldPosInPixels.xy,newWP.xy) < leafRad*0.4 ) {
-					//  matResult.y = TEX_GRASS;
-					// }
-
-					maxv = p1;
-
-					// if (distance(roThetaPhi.yz,roThetaPhi2.yz) < 0.3/leafRad ) {
-					//  matResult.y = TEX_GRASS;
-
-					// }
-
-
-
-
-				}
-
-				//}
 			}
 		}
-	}
-
-	if (maxv.z != invalid) {
-		tempv = worldPosInPixels - maxv;
-
-		roThetaPhi.z = sphereRad - length(tempv);
-		roThetaPhi.x = atan(tempv.y, tempv.x);
-		roThetaPhi.y = mix(-0.35, -0.5, randf(maxv.xy)) * acos(tempv.z / length(tempv));
-
-		tempv = getShingle(roThetaPhi * pixelsPerMeter * 8.0 / PI, 1.0 * pixelsPerMeter, roThetaPhi.z, 1.0 * pixelsPerMeter * ( (0.95 - normalize(tempv).z) ) );
-
-		if ( (matResult.y == TEX_NULL) && (tempv.y != TEX_NULL) ) {
-			matResult.y = TEX_LEAF;
-			matResult.w = (1.0 - shingleMod); // *(1.0-abs(sin(roThetaPhi.z*PI*4.0/sphereRad)));
-		}
-	}
-
-
-
-
-	if (matResult.y == TEX_TREEWOOD) {
-		matResult.w = abs( sin(totCount * 8.0) );
 	}
 
 	return matResult;
@@ -1601,15 +1524,22 @@ void main() {
 
 
 
+	
+
 
 	// if (hasTerrain) {
 	// 	getCobble(worldPosInPixels);
 	// 	matResultTer = getTerrain(worldPosInPixels);//vec4(1.0,TEX_DIRT,1.0,1.0);//getTerrain(worldPosInPixels);
 	// }
 
+
+
+
+
+
 	if (hasGeom) {
 
-		for (j = 0; j < E_MAT_PARAM_TREE; j++) {
+		for (j = 0; j < E_ENT_PARAM_LINES; j++) {
 
 			iMatCount = int(matCountArr[j]);
 
@@ -1621,6 +1551,16 @@ void main() {
 			}
 		}
 	}
+	matResult = matResultGeom;
+
+	
+	if (hasLines) {
+		matResult = getLines(worldPosInPixels);
+	}
+
+
+
+
 
 
 
@@ -1629,7 +1569,7 @@ void main() {
 	// 	matResult = matResultTer;
 	// }
 	// else {
-		matResult = matResultGeom;
+	//	matResult = matResultGeom;
 	// }
 
 	// if (hasTree) {
@@ -1714,17 +1654,17 @@ void main() {
 
 	finalRes.a = finalMat / 255.0;
 	finalRes.r = finalLayer;
-	finalRes.b = finalBlend; // blend amount
+	finalRes.b = (finalMod * 127.0) / 255.0; //finalMod         0.0; // blend amount
 	finalRes.g = finalNormUID / 255.0;
 
 	//finalMod = abs(sin(worldPosInPixels.z/(1.0*pixelsPerMeter)));
 	//finalMod = matResult.w;
 
-	finalRes2.b = (finalMod * 127.0) / 255.0; //finalMod
+	//finalRes2.b = (finalMod * 127.0) / 255.0; //finalMod
 
 
 	gl_FragData[0] = finalRes;
-	gl_FragData[1] = finalRes2;
+	//gl_FragData[1] = finalRes2;
 
 }
 

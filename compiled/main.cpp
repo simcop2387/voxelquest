@@ -16,9 +16,11 @@ const static int FLOATS_PER_LIGHT = 16;
 const static int DEF_WIN_W = 1920;
 const static int DEF_WIN_H = 1080;
 const static int DEF_SCALE_FACTOR = 2;
+const static float UI_SCALE_FACTOR = 1.0f;
 
-const static int PIXELS_PER_METER = 64;
-const static int MAX_LAYERS = 2;
+const static bool ENT_ON = false;
+const static int PIXELS_PER_METER = 128;
+const static int MAX_LAYERS = 1;
 
 const static int MAX_PLANT_GEN = 16;
 
@@ -32,8 +34,7 @@ const static int TOT_NODE_VALS =
 const static int TOT_MAP_DIRS = 4;
 
 const static int MAX_BLOCK_STACK = 10;
-
-int giGUI_IDS;
+const static int MAX_UI_LAYERS = 4;
 
 char *BUF_NAMES[] =
 {
@@ -112,28 +113,16 @@ bool TRACE_ON = false;
 #include <io.h>
 #include <conio.h>
 
-
+#include <SFML/Audio/SoundBuffer.hpp>
+#include <SFML/Audio/Sound.hpp>
+#include <SFML/Audio/Music.hpp>
 
 #include <gl/glew.h>
 #include <gl/gl.h>
 #include <gl/glu.h>
 #include <gl/freeglut.h>
-
-/*
-// Using radians
-#define GLM_FORCE_RADIANS
-// allow swizzle
-// #define GLM_SWIZZLE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <glm/gtx/euler_angles.hpp>
-#include <glm/gtx/norm.hpp>
-//using namespace gtx;
-*/
-
 #pragma comment(lib, "glew32.lib")
+
 
 
 
@@ -215,29 +204,7 @@ using namespace std;
 typedef unsigned int uint;
 
 
-// Win32 incompatibilities
-#if defined(WIN32) && !defined(__GNUC__)
-#define wcsncasecmp _wcsnicmp
-static inline bool isnan(double x) {
-	return x != x;
-}
-static inline bool isinf(double x) {
-	return !isnan(x) && isnan(x - x);
-}
-#endif
-
-// Linux compile fix - from quaker66
-#ifdef __GNUC__
-// #include <cstring>
-// #include <cstdlib>
-#endif
-
-// Mac compile fixes - from quaker66, Lion fix by dabrahams
-#if defined(__APPLE__) && __DARWIN_C_LEVEL < 200809L || (defined(WIN32) && defined(__GNUC__))
-#include <wctype.h>
-#include <wchar.h>
-
-static inline int wcsncasecmp(const wchar_t *s1, const wchar_t *s2, size_t n)
+static inline int newcasecmp(const char *s1, const char *s2, size_t n)
 {
 	int lc1  = 0;
 	int lc2  = 0;
@@ -259,14 +226,38 @@ static inline int wcsncasecmp(const wchar_t *s1, const wchar_t *s2, size_t n)
 
 	return 0;
 }
+
+// todo: this define of wcsncasecmp should not be here
+
+//Win32 incompatibilities
+#if defined(WIN32) && !defined(__GNUC__)
+static inline bool isnan(double x) {
+	return x != x;
+}
+static inline bool isinf(double x) {
+	return !isnan(x) && isnan(x - x);
+}
+#endif
+
+// Linux compile fix - from quaker66
+#ifdef __GNUC__
+// #include <cstring>
+// #include <cstdlib>
+#endif
+
+// Mac compile fixes - from quaker66, Lion fix by dabrahams
+#if defined(__APPLE__) && __DARWIN_C_LEVEL < 200809L || (defined(WIN32) && defined(__GNUC__))
+#include <wctype.h>
+#include <wchar.h>
+
 #endif
 
 // Simple function to check a string 's' has at least 'n' characters
-static inline bool simplejson_wcsnlen(const wchar_t *s, size_t n) {
+static inline bool simplejson_wcsnlen(const char *s, size_t n) {
 	if (s == 0)
 		return false;
 
-	const wchar_t *save = s;
+	const char *save = s;
 	while (n-- > 0)
 	{
 		if (*(save++) == 0) return false;
@@ -310,6 +301,25 @@ enum E_VOCAB {
 	vLength
 };
 
+enum E_GUI_DATA_STRINGS {
+	E_GDS_DATA_SOURCE,
+	E_GDS_DATA_FILE,
+	E_GDS_CHILD_TYPE,
+	E_GDS_CHILD_NAME,
+	E_GDS_LENGTH
+};
+
+enum E_GUI_CHILD_TYPES {
+	E_GCT_INV_ITEM,
+	E_GCT_SHADER_PARAM,
+	E_GCT_LENGTH
+};
+
+enum E_FONT_WRAPPERS {
+	EFW_TEXT,
+	EFW_ICONS,
+	EFW_LENGTH
+};
 
 enum eProgramState {
 	E_PS_MENU,
@@ -355,13 +365,29 @@ enum E_STATES {
 
 };
 
+enum E_CHAR_STATE {
+	E_CHAR_STATE_NONE,
+	E_CHAR_STATE_SKEL,
+	E_CHAR_STATE_RENDERED
+};
+
 enum E_MOUSE_STATE {
 	E_MOUSE_STATE_MOVE,
+	E_MOUSE_STATE_POSE,
 	E_MOUSE_STATE_ENTS,
-	E_MOUSE_STATE_OBJECTS,
+	//E_MOUSE_STATE_OBJECTS,
 	E_MOUSE_STATE_BRUSH,
 	E_MOUSE_STATE_PICKING,
 	E_MOUSE_STATE_LENGTH
+};
+string mouseStateStrings[] = {
+	"E_MOUSE_STATE_MOVE",
+	"E_MOUSE_STATE_POSE",
+	"E_MOUSE_STATE_ENTS",
+	//"E_MOUSE_STATE_OBJECTS",
+	"E_MOUSE_STATE_BRUSH",
+	"E_MOUSE_STATE_PICKING",
+	"E_MOUSE_STATE_LENGTH"
 };
 
 enum E_BRUSH {
@@ -409,6 +435,7 @@ enum E_OBJ {
 	E_OBJ_CAMERA,
 	E_OBJ_FOG,
 	E_OBJ_CUTAWAY,
+	E_OBJ_HUMAN,
 	//E_OBJ_P0,
 	//E_OBJ_P1,
 	//E_OBJ_P2,
@@ -441,10 +468,23 @@ enum E_MAT_PARAM {
 	E_MAT_PARAM_DOORWAY,
 	E_MAT_PARAM_DOOR,
 	//E_MAT_PARAM_STAIRS,
-	E_MAT_PARAM_OBJECT,
 	E_MAT_PARAM_TREE, // TREES MUST BE LAST ENTRY
 	E_MAT_PARAM_LENGTH
 };
+
+
+enum E_ENT_SUBPARAM {
+	E_ENT_SUBPARAM_NOT_SEL,
+	E_ENT_SUBPARAM_SEL,
+	E_ENT_SUBPARAM_LENGTH
+};
+
+enum E_ENT_PARAM {
+	E_ENT_PARAM_GEOM,
+	E_ENT_PARAM_LINES,
+	E_ENT_PARAM_LENGTH
+};
+
 
 // enum E_CONNECTION_SUBTYPES {
 //     E_CST_NULL,
@@ -494,6 +534,7 @@ enum E_CONNECTION_TYPES {
 	E_CT_DOORWAY,
 	E_CT_DOOR,
 	E_CT_OBJECT,
+	E_CT_LINES,
 	E_CT_TREE,
 	E_CT_LENGTH
 };
@@ -524,6 +565,190 @@ enum E_CONNECTION_TYPES {
 // };
 
 
+enum E_BONES_HUMAN {
+	
+	E_BONE_L_BEG, ///////////////
+	E_BONE_L_SHOULDER,
+	E_BONE_L_UPPERARM,
+	E_BONE_L_LOWERARM,
+	E_BONE_L_METACARPALS,
+	E_BONE_L_PROXIMAL0, // pinky
+	E_BONE_L_PROXIMAL1, // ring
+	E_BONE_L_PROXIMAL2, // middle
+	E_BONE_L_PROXIMAL3, // index
+	E_BONE_L_PROXIMAL4, // thumb
+	E_BONE_L_INTER0, // pinky
+	E_BONE_L_INTER1, // ring
+	E_BONE_L_INTER2, // middle
+	E_BONE_L_INTER3, // index
+	E_BONE_L_INTER4, // thumb
+	E_BONE_L_DISTAL0, // pinky
+	E_BONE_L_DISTAL1, // ring
+	E_BONE_L_DISTAL2, // middle
+	E_BONE_L_DISTAL3, // index
+	E_BONE_L_DISTAL4, // thumb
+	E_BONE_L_HIP,
+	E_BONE_L_UPPERLEG,
+	E_BONE_L_LOWERLEG,
+	E_BONE_L_TALUS,
+	E_BONE_L_PHALANGE,
+	E_BONE_L_END, //////////////
+	E_BONE_R_BEG, //////////////
+	E_BONE_R_SHOULDER,
+	E_BONE_R_UPPERARM,
+	E_BONE_R_LOWERARM,
+	E_BONE_R_METACARPALS,
+	E_BONE_R_PROXIMAL0, // pinky
+	E_BONE_R_PROXIMAL1, // ring
+	E_BONE_R_PROXIMAL2, // middle
+	E_BONE_R_PROXIMAL3, // index
+	E_BONE_R_PROXIMAL4, // thumb
+	E_BONE_R_INTER0, // pinky
+	E_BONE_R_INTER1, // ring
+	E_BONE_R_INTER2, // middle
+	E_BONE_R_INTER3, // index
+	E_BONE_R_INTER4, // thumb
+	E_BONE_R_DISTAL0, // pinky
+	E_BONE_R_DISTAL1, // ring
+	E_BONE_R_DISTAL2, // middle
+	E_BONE_R_DISTAL3, // index
+	E_BONE_R_DISTAL4, // thumb
+	E_BONE_R_HIP,
+	E_BONE_R_UPPERLEG,
+	E_BONE_R_LOWERLEG,
+	E_BONE_R_TALUS,
+	E_BONE_R_PHALANGE,
+	E_BONE_R_END, /////////////////
+	E_BONE_C_BEG, /////////////////
+	E_BONE_C_BASE,
+	E_BONE_C_SPINE0, // tail
+	E_BONE_C_SPINE1,
+	E_BONE_C_SPINE2,
+	E_BONE_C_SPINE3,
+	E_BONE_C_SPINE4, // neck
+	E_BONE_C_SKULL,
+	E_BONE_C_END //////////////////
+	
+};
+
+enum E_GUI {
+	E_GUI_LENGTH
+};
+
+enum eAlignH {
+	E_ALIGNH_LEFT,
+	E_ALIGNH_CENTER,
+	E_ALIGNH_RIGHT,
+};
+
+enum eAlignV {
+	E_ALIGNV_TOP,
+	E_ALIGNV_MIDDLE,
+	E_ALIGNV_BOTTOM	
+};
+
+enum eFillDir {
+	E_FILL_HORIZONTAL,
+	E_FILL_VERTICAL
+}; 
+
+
+string boneStrings[] = {
+	
+	"E_BONE_L_BEG", ///////////////
+	"E_BONE_L_SHOULDER",
+	"E_BONE_L_UPPERARM",
+	"E_BONE_L_LOWERARM",
+	"E_BONE_L_METACARPALS",
+	"E_BONE_L_PROXIMAL0", // pinky
+	"E_BONE_L_PROXIMAL1", // ring
+	"E_BONE_L_PROXIMAL2", // middle
+	"E_BONE_L_PROXIMAL3", // index
+	"E_BONE_L_PROXIMAL4", // thumb
+	"E_BONE_L_INTER0", // pinky
+	"E_BONE_L_INTER1", // ring
+	"E_BONE_L_INTER2", // middle
+	"E_BONE_L_INTER3", // index
+	"E_BONE_L_INTER4", // thumb
+	"E_BONE_L_DISTAL0", // pinky
+	"E_BONE_L_DISTAL1", // ring
+	"E_BONE_L_DISTAL2", // middle
+	"E_BONE_L_DISTAL3", // index
+	"E_BONE_L_DISTAL4", // thumb
+	"E_BONE_L_HIP",
+	"E_BONE_L_UPPERLEG",
+	"E_BONE_L_LOWERLEG",
+	"E_BONE_L_TALUS",
+	"E_BONE_L_PHALANGE",
+	"E_BONE_L_END", //////////////
+	"E_BONE_R_BEG", //////////////
+	"E_BONE_R_SHOULDER",
+	"E_BONE_R_UPPERARM",
+	"E_BONE_R_LOWERARM",
+	"E_BONE_R_METACARPALS",
+	"E_BONE_R_PROXIMAL0", // pinky
+	"E_BONE_R_PROXIMAL1", // ring
+	"E_BONE_R_PROXIMAL2", // middle
+	"E_BONE_R_PROXIMAL3", // index
+	"E_BONE_R_PROXIMAL4", // thumb
+	"E_BONE_R_INTER0", // pinky
+	"E_BONE_R_INTER1", // ring
+	"E_BONE_R_INTER2", // middle
+	"E_BONE_R_INTER3", // index
+	"E_BONE_R_INTER4", // thumb
+	"E_BONE_R_DISTAL0", // pinky
+	"E_BONE_R_DISTAL1", // ring
+	"E_BONE_R_DISTAL2", // middle
+	"E_BONE_R_DISTAL3", // index
+	"E_BONE_R_DISTAL4", // thumb
+	"E_BONE_R_HIP",
+	"E_BONE_R_UPPERLEG",
+	"E_BONE_R_LOWERLEG",
+	"E_BONE_R_TALUS",
+	"E_BONE_R_PHALANGE",
+	"E_BONE_R_END", /////////////////
+	"E_BONE_C_BEG", /////////////////
+	"E_BONE_C_BASE",
+	"E_BONE_C_SPINE0", // tail
+	"E_BONE_C_SPINE1",
+	"E_BONE_C_SPINE2",
+	"E_BONE_C_SPINE3",
+	"E_BONE_C_SPINE4",
+	"E_BONE_C_SPINE5",
+	"E_BONE_C_SPINE6", // neck
+	"E_BONE_C_SKULL",
+	"E_BONE_C_END" //////////////////
+	
+	
+	
+};
+
+
+// NEVER REORDER
+enum E_EQUIPMENT_SLOTS {
+	E_ES_HELMET,	// 0
+	E_ES_NECKLACE,	// 1
+	E_ES_CLOAK,		// 2
+	E_ES_ARMOR,		// 3
+	E_ES_GLOVES,	// 4
+	E_ES_PRIMARY,	// 5
+	E_ES_SECONDARY,	// 6
+	E_ES_BOOTS,		// 7
+	E_ES_LENGTH 	// 8
+};
+
+// // NEVER REORDER
+
+// enum E_ITEM_IDS {
+// 	E_II_IRON_LONG_SWORD,
+// 	E_II_IRON_KITE_SHIELD,
+// 	E_II_IRON_PLATED_MAIL,
+// 	E_II_LENGTH
+	
+// }
+
+
+
 enum E_TREE_PARAMS {
 	E_TP_VISMININPIXELST,
 	E_TP_VISMAXINPIXELST,
@@ -533,9 +758,23 @@ enum E_TREE_PARAMS {
 	E_TP_POWERVALS,
 	E_TP_POWERVALS2,
 	E_TP_THICKVALS,
-	E_TP_MATPARAMS,
 	E_TP_UNUSED,
+	E_TP_MATPARAMS, // must be last
 	E_TP_LENGTH
+};
+
+enum E_LINES_PARAMS {
+	E_AP_VISMININPIXELST,
+	E_AP_VISMAXINPIXELST,
+	E_AP_ORG, // origin
+	E_AP_TAN, // tangent (not normalized)
+	E_AP_BIT, // bitangent (normalized)
+	E_AP_NOR, // normal (normalized)
+	E_AP_RAD0, // radius
+	E_AP_RAD1,
+	E_AP_UNUSED1,
+	E_AP_MATPARAMS, // must be last
+	E_AP_LENGTH
 };
 
 enum E_GEOM_PARAMS {
@@ -547,22 +786,15 @@ enum E_GEOM_PARAMS {
 	E_GP_POWERVALS,
 	E_GP_POWERVALS2,
 	E_GP_THICKVALS,
-	E_GP_MATPARAMS,
 	E_GP_CENTERPOINT,
+	E_GP_MATPARAMS, // must be last
 	E_GP_LENGTH
 };
 
-// enum E_ENT_PARAMS {
-//     E_EP_POSITION,
-//     E_EP_RADIUS,
-//     E_EP_IS_ALIVE,
-//     E_EP_LENGTH
+// enum E_ENT_TYPES {
+// 	E_ET_TEST,
+// 	E_ET_LENGTH
 // };
-
-enum E_ENT_TYPES {
-	E_ET_TEST,
-	E_ET_LENGTH
-};
 
 
 enum E_NODE_TYPE {
@@ -629,6 +861,7 @@ struct fBoundingBox {
 	float xMax;
 	float yMax;
 };
+
 
 
 
@@ -746,6 +979,89 @@ struct BuildingNode {
 
 };
 
+
+
+const int GLUT_NO_BUTTON = 99;
+const int GLUT_OVER = 8;
+const int GLUT_OUT = 9;
+const int GLUT_CHANGING = 10;
+
+
+enum E_MUSIC_LIST {
+	EML_BIRDSONG0,
+	EML_CRICKETS0,
+	EML_OCEANWAVES0,
+	EML_LENGTH
+};
+
+string musicStrings[] = {
+	"birdsong0",
+	"crickets0",
+	"oceanwaves0"
+};
+
+
+enum GUI_TYPES {
+	E_GT_HOLDER,
+	E_GT_SLIDER, // also a toggle if 1 division
+	E_GT_BUTTON,
+	E_GT_RADIO,
+	E_GT_LENGTH
+};
+
+enum GUI_STRING_TYPES {
+	E_GST_LABEL,
+	E_GST_UID,
+	E_GST_SS,
+	E_GST_LENGTH
+};
+char* guiStringTypes[] = {
+	"label",
+	"uid",
+	"ss"
+};
+
+enum E_HOVER_TYPES {
+	E_HT_NORMAL,
+	E_HT_TOOLTIP,
+	E_HT_ONSELECTED,
+	E_HT_TOOLTIP_VALUE,
+	E_HT_LENGTH
+};
+
+enum GUI_FLOAT_TYPES {
+	E_GFT_TYPE,
+	E_GFT_DIVISIONS,
+	E_GFT_VALUE,
+	E_GFT_HASBACKGROUND,
+	E_GFT_SINGLELINE,
+	E_GFT_FILLRATIOX,
+	E_GFT_FILLRATIOY,
+	E_GFT_FILLDIR,
+	E_GFT_ALIGNX,
+	E_GFT_ALIGNY,
+	E_GFT_LAYER,
+	E_GFT_HOVERTYPE, // 0: normal, 1: tooltip, 2: show when parent is selected
+	E_GFT_LENGTH
+};
+char* guiFloatTypes[] = {
+	"type",
+	"divisions",
+	"value",
+	"hasBackground",
+	"singleLine",
+	"fillRatioX",
+	"fillRatioY",
+	"fillDir",
+	"alignX",
+	"alignY",
+	"layer",
+	"hoverType"
+};
+
+string guiStringValues[E_GST_LENGTH];
+float guiFloatValues[E_GFT_LENGTH];
+
 enum E_DIR_SPECS {
 	E_DIR_X,
 	E_DIR_Y,
@@ -826,6 +1142,21 @@ enum eCompStates {
 	E_COMP_TOTAL
 };
 
+struct CharStruct {
+	float consumedW;
+	float consumedH;
+	
+	float offsetX;
+	float offsetY;
+	
+	float sampX;
+	float sampY;
+	float sampW;
+	float sampH;
+};
+
+
+
 class StyleSheetState {
 private:
 
@@ -873,6 +1204,12 @@ public:
 
 	StyleSheet() {
 
+	}
+
+	void copyFrom(StyleSheet* fromSS) {
+		compStates[E_COMP_UP].copyFrom(&(fromSS->compStates[E_COMP_UP]));
+		compStates[E_COMP_OVER].copyFrom(&(fromSS->compStates[E_COMP_OVER]));
+		compStates[E_COMP_DOWN].copyFrom(&(fromSS->compStates[E_COMP_DOWN]));
 	}
 
 	void init() {
@@ -1129,6 +1466,27 @@ public:
 		fv4.y = 0.0;
 		fv4.z = 0.0;
 		fv4.w = 0.0;
+	}
+
+	float operator[] (int ind) { //float&
+		
+		switch (ind) {
+			case 0:
+				return fv4.x;
+			break;
+			case 1:
+				return fv4.y;
+			break;
+			case 2:
+				return fv4.z;
+			break;
+			case 3:
+				return fv4.w;
+			break;
+		}
+		
+		cout << "invalid vector index";
+		return -1.0f;
 	}
 
 
@@ -1968,72 +2326,9 @@ public:
 	float inputMatrix[4];
 	float outputMatrix[4];
 
-	//FIVector4* quat;
 	FIVector4 tempRes1;
 	FIVector4 tempRes2;
-
-	// glm::vec3 upVec;
-	// AxisRotation() {
-	//     upVec = glm::vec3(0.0f,0.0f,1.0f);
-	// }
-	// glm::quat rotationFromUpVec(glm::vec3 dest) {
-	//     return rotationBetweenVectors(upVec, dest);
-	// }
-	// // the resulting quaternion, when applied to start, results in dest
-	// glm::quat rotationBetweenVectors(glm::vec3 start, glm::vec3 dest){
-
-	//     using namespace glm;
-
-	//     start = normalize(start);
-	//     dest = normalize(dest);
-
-	//     float cosTheta = dot(start, dest);
-	//     vec3 rotationAxis;
-
-	//     if (cosTheta < -1 + 0.001f){
-	//         // special case when vectors in opposite directions :
-	//         // there is no "ideal" rotation axis
-	//         // So guess one; any will do as long as it's perpendicular to start
-	//         // This implementation favors a rotation around the Up axis,
-	//         // since it's often what you want to do.
-	//         rotationAxis = cross(vec3(0.0f, 0.0f, 1.0f), start);
-	//         if (length2(rotationAxis) < 0.01 ) // bad luck, they were parallel, try again!
-	//             rotationAxis = cross(vec3(1.0f, 0.0f, 0.0f), start);
-
-	//         rotationAxis = normalize(rotationAxis);
-	//         return angleAxis(180.0f, rotationAxis);
-	//     }
-
-	//     // Implementation from Stan Melax's Game Programming Gems 1 article
-	//     rotationAxis = cross(start, dest);
-
-	//     float s = std::sqrt( (1+cosTheta)*2 );
-	//     float invs = 1 / s;
-
-	//     return quat(
-	//         s * 0.5f,
-	//         rotationAxis.x * invs,
-	//         rotationAxis.y * invs,
-	//         rotationAxis.z * invs
-	//     );
-
-	// }
-
-
-	// void quatRotation( FIVector4* output, FIVector4* vec, FIVector4* axis, float angle )
-	// {
-
-	//     x = RotationAxis.x * sin(RotationAngle / 2)
-	//     y = RotationAxis.y * sin(RotationAngle / 2)
-	//     z = RotationAxis.z * sin(RotationAngle / 2)
-	//     w = cos(RotationAngle / 2)
-
-	//     FIVector4::cross( &tempRes1, vec, quat );
-	//     tempRes1.addXYZRef(vec, quat->getFW());
-	//     FIVector4::cross( &tempRes2, &tempRes1, quat );
-	//     output->setFXYZRef(vec);
-	//     output->addXYZRef(&tempRes2, 2.0f);
-	// }
+	FIVector4 tempRes3;
 
 	void doRotation(FIVector4 *output, FIVector4 *input, FIVector4 *axis, float angle)
 	{
@@ -2044,17 +2339,6 @@ public:
 		float u = axis->getFX();
 		float v = axis->getFY();
 		float w = axis->getFZ();
-
-		outputMatrix[0] = 0.0f;
-		outputMatrix[1] = 0.0f;
-		outputMatrix[2] = 0.0f;
-		outputMatrix[3] = 0.0f;
-
-		inputMatrix[0] = input->getFX();
-		inputMatrix[1] = input->getFY();
-		inputMatrix[2] = input->getFZ();
-		inputMatrix[3] = 1.0;
-
 
 		float L = (u * u + v * v + w * w);
 		float u2 = u * u;
@@ -2087,6 +2371,16 @@ public:
 
 
 
+		outputMatrix[0] = 0.0f;
+		outputMatrix[1] = 0.0f;
+		outputMatrix[2] = 0.0f;
+		outputMatrix[3] = 0.0f;
+
+		inputMatrix[0] = input->getFX();
+		inputMatrix[1] = input->getFY();
+		inputMatrix[2] = input->getFZ();
+		inputMatrix[3] = 1.0;
+
 
 		for (i = 0; i < 4; i++ ) {
 			for (j = 0; j < 1; j++) {
@@ -2097,7 +2391,6 @@ public:
 			}
 		}
 
-
 		output->setFXYZW(
 			outputMatrix[0],
 			outputMatrix[1],
@@ -2106,6 +2399,96 @@ public:
 		);
 
 	}
+	
+	
+	
+	void doRotationTBN(
+		FIVector4 *output,
+		FIVector4 *input,
+		FIVector4 *axisAngle,
+		FIVector4 *parentOffset,
+		FIVector4 *baseOffset
+			
+	)
+	{
+		int i;
+		int j;
+		int k;
+		int m;
+		
+		tempRes3.copyFrom(baseOffset);
+		tempRes3.addXYZRef(parentOffset,-1.0f);
+
+		float u = axisAngle->getFX();
+		float v = axisAngle->getFY();
+		float w = axisAngle->getFZ();
+		float angle = axisAngle->getFW();
+
+		float L = (u * u + v * v + w * w);
+		float u2 = u * u;
+		float v2 = v * v;
+		float w2 = w * w;
+
+		float sqrtL = sqrt(L);
+		float ca = cos(angle);
+		float sa = sin(angle);
+
+		rotationMatrix[0][0] = (u2 + (v2 + w2) * ca) / L;
+		rotationMatrix[0][1] = (u * v * (1 - ca) - w * sqrtL * sa) / L;
+		rotationMatrix[0][2] = (u * w * (1 - ca) + v * sqrtL * sa) / L;
+		rotationMatrix[0][3] = 0.0f;
+
+		rotationMatrix[1][0] = (u * v * (1 - ca) + w * sqrtL * sa) / L;
+		rotationMatrix[1][1] = (v2 + (u2 + w2) * ca) / L;
+		rotationMatrix[1][2] = (v * w * (1 - ca) - u * sqrtL * sa) / L;
+		rotationMatrix[1][3] = 0.0f;
+
+		rotationMatrix[2][0] = (u * w * (1 - ca) - v * sqrtL * sa) / L;
+		rotationMatrix[2][1] = (v * w * (1 - ca) + u * sqrtL * sa) / L;
+		rotationMatrix[2][2] = (w2 + (u2 + v2) * ca) / L;
+		rotationMatrix[2][3] = 0.0f;
+
+		rotationMatrix[3][0] = 0.0f;
+		rotationMatrix[3][1] = 0.0f;
+		rotationMatrix[3][2] = 0.0f;
+		rotationMatrix[3][3] = 1.0f;
+
+
+
+		for (m = 0; m < 3; m++) {
+			outputMatrix[0] = 0.0f;
+			outputMatrix[1] = 0.0f;
+			outputMatrix[2] = 0.0f;
+			outputMatrix[3] = 0.0f;
+
+			inputMatrix[0] = input[m].getFX() + (tempRes3[0]);
+			inputMatrix[1] = input[m].getFY() + (tempRes3[1]);
+			inputMatrix[2] = input[m].getFZ() + (tempRes3[2]);
+			inputMatrix[3] = 1.0;
+
+
+			for (i = 0; i < 4; i++ ) {
+				for (j = 0; j < 1; j++) {
+					outputMatrix[i] = 0;
+					for (k = 0; k < 4; k++) {
+						outputMatrix[i] += rotationMatrix[i][k] * inputMatrix[k];
+					}
+				}
+			}
+
+			output[m].setFXYZW(
+				outputMatrix[0] - (tempRes3[0]),
+				outputMatrix[1] - (tempRes3[1]),
+				outputMatrix[2] - (tempRes3[2]),
+				outputMatrix[3]
+			);
+			output[m].normalize();
+		}
+
+		
+
+	}
+	
 
 };
 AxisRotation axisRotationInstance;
@@ -2237,15 +2620,15 @@ enum JSONType { JSONType_Null, JSONType_String, JSONType_Bool, JSONType_Number, 
 class JSONValue;
 
 typedef std::vector<JSONValue*> JSONArray;
-typedef std::map<std::wstring, JSONValue*> JSONObject;
+typedef std::map<std::string, JSONValue*> JSONObject;
 
 class JSONValue
 {
 	
 	public:
 		JSONValue(/*NULL*/);
-		JSONValue(const wchar_t *m_char_value);
-		JSONValue(const std::wstring &m_string_value);
+		JSONValue(const char *m_char_value);
+		JSONValue(const std::string &m_string_value);
 		JSONValue(bool m_bool_value);
 		JSONValue(double m_number_value);
 		JSONValue(const JSONArray &m_array_value);
@@ -2259,26 +2642,33 @@ class JSONValue
 		bool IsArray() const;
 		bool IsObject() const;
 		
-		const std::wstring &AsString() const;
+		const std::string &AsString() const;
 		bool AsBool() const;
 		double AsNumber() const;
 		const JSONArray &AsArray() const;
 		const JSONObject &AsObject() const;
 
-		std::size_t CountChildren() const;
-		bool HasChild(std::size_t index) const;
-		JSONValue *Child(std::size_t index);
-		bool HasChild(const wchar_t* name) const;
-		JSONValue *Child(const wchar_t* name);
+		int CountChildren() const;
+		
+		bool HasChild(int index) const;
+		JSONValue *Child(int index);
+		
+		bool HasChild(const char* name) const;
+		JSONValue *Child(const char* name);
+		
+		bool HasChild(string name) const;
+		JSONValue *Child(string name);
 
-		std::wstring Stringify() const;
+		std::string Stringify() const;
 
-		static JSONValue *Parse(const wchar_t **data);
+		static JSONValue *Parse(const char **data);
 
-		static std::wstring StringifyString(const std::wstring &str);
+		static std::string StringifyString(const std::string &str);
+	
+		//JSONValue* insertValue(string name, JSONValue* val);
 	
 		JSONType type;
-		std::wstring string_value;
+		std::string string_value;
 		bool bool_value;
 		double number_value;
 		JSONArray array_value;
@@ -2292,13 +2682,12 @@ class JSON
 	
 	public:
 		static JSONValue* Parse(const char *data);
-		static JSONValue* Parse(const wchar_t *data);
-		static std::wstring Stringify(const JSONValue *value);
+		static std::string Stringify(const JSONValue *value);
 
-		static bool SkipWhitespace(const wchar_t **data);
-		static bool ExtractString(const wchar_t **data, std::wstring &str);
-		static double ParseInt(const wchar_t **data);
-		static double ParseDecimal(const wchar_t **data);
+		static bool SkipWhitespace(const char **data);
+		static bool ExtractString(const char **data, std::string &str);
+		static double ParseInt(const char **data);
+		static double ParseDecimal(const char **data);
 
 		JSON();
 };
@@ -2310,21 +2699,35 @@ class JSON
 #define FREE_ARRAY(x) { JSONArray::iterator iter; for (iter = x.begin(); iter != x.end(); iter++) { delete *iter; } }
 #define FREE_OBJECT(x) { JSONObject::iterator iter; for (iter = x.begin(); iter != x.end(); iter++) { delete (*iter).second; } }
 
+
+// JSONValue* JSONValue::insertValue(string name, JSONValue* value) {
+// 	if (object_value.find(name) != object_value.end()) {
+// 		delete object_value[name];
+// 	}
+
+// 	if (value == NULL) {
+// 		cout << name << " parsed to NULL\n";
+// 	}
+// 	object_value[name] = value;
+// 	return object_value[name];
+// }
+
+
 /**
  * Parses a JSON encoded value to a JSONValue object
  *
  * @access protected
  *
- * @param wchar_t** data Pointer to a wchar_t* that contains the data
+ * @param char** data Pointer to a char* that contains the data
  *
  * @return JSONValue* Returns a pointer to a JSONValue object on success, NULL on error
  */
-JSONValue *JSONValue::Parse(const wchar_t **data)
+JSONValue *JSONValue::Parse(const char **data)
 {
 	// Is it a string?
 	if (**data == '"')
 	{
-		std::wstring str;
+		std::string str;
 		if (!JSON::ExtractString(&(++(*data)), str))
 			return NULL;
 		else
@@ -2332,33 +2735,33 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 	}
 	
 	// Is it a boolean?
-	else if ((simplejson_wcsnlen(*data, 4) && wcsncasecmp(*data, L"true", 4) == 0) || (simplejson_wcsnlen(*data, 5) && wcsncasecmp(*data, L"false", 5) == 0))
+	else if ((simplejson_wcsnlen(*data, 4) && newcasecmp(*data, "true", 4) == 0) || (simplejson_wcsnlen(*data, 5) && newcasecmp(*data, "false", 5) == 0))
 	{
-		bool value = wcsncasecmp(*data, L"true", 4) == 0;
+		bool value = newcasecmp(*data, "true", 4) == 0;
 		(*data) += value ? 4 : 5;
 		return new JSONValue(value);
 	}
 	
 	// Is it a null?
-	else if (simplejson_wcsnlen(*data, 4) && wcsncasecmp(*data, L"null", 4) == 0)
+	else if (simplejson_wcsnlen(*data, 4) && newcasecmp(*data, "null", 4) == 0)
 	{
 		(*data) += 4;
 		return new JSONValue();
 	}
 	
 	// Is it a number?
-	else if (**data == L'-' || (**data >= L'0' && **data <= L'9'))
+	else if (**data == '-' || (**data >= '0' && **data <= '9'))
 	{
 		// Negative?
-		bool neg = **data == L'-';
+		bool neg = **data == '-';
 		if (neg) (*data)++;
 
 		double number = 0.0;
 
 		// Parse the whole part of the number - only if it wasn't 0
-		if (**data == L'0')
+		if (**data == '0')
 			(*data)++;
-		else if (**data >= L'1' && **data <= L'9')
+		else if (**data >= '1' && **data <= '9')
 			number = JSON::ParseInt(data);
 		else
 			return NULL;
@@ -2369,7 +2772,7 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 			(*data)++;
 
 			// Not get any digits?
-			if (!(**data >= L'0' && **data <= L'9'))
+			if (!(**data >= '0' && **data <= '9'))
 				return NULL;
 			
 			// Find the decimal and sort the decimal place out
@@ -2382,20 +2785,20 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 		}
 
 		// Could be an exponent now...
-		if (**data == L'E' || **data == L'e')
+		if (**data == 'E' || **data == 'e')
 		{
 			(*data)++;
 
 			// Check signage of expo
 			bool neg_expo = false;
-			if (**data == L'-' || **data == L'+')
+			if (**data == '-' || **data == '+')
 			{
-				neg_expo = **data == L'-';
+				neg_expo = **data == '-';
 				(*data)++;
 			}
 			
 			// Not get any digits?
-			if (!(**data >= L'0' && **data <= L'9'))
+			if (!(**data >= '0' && **data <= '9'))
 				return NULL;
 
 			// Sort the expo out
@@ -2411,7 +2814,7 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 	}
 
 	// An object?
-	else if (**data == L'{')
+	else if (**data == '{')
 	{
 		JSONObject object;
 		
@@ -2427,14 +2830,14 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 			}
 			
 			// Special case - empty object
-			if (object.size() == 0 && **data == L'}')
+			if (object.size() == 0 && **data == '}')
 			{
 				(*data)++;
 				return new JSONValue(object);
 			}
 			
 			// We want a string now...
-			std::wstring name;
+			std::string name;
 			if (!JSON::ExtractString(&(++(*data)), name))
 			{
 				FREE_OBJECT(object);
@@ -2449,7 +2852,7 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 			}
 			
 			// Need a : now
-			if (*((*data)++) != L':')
+			if (*((*data)++) != ':')
 			{
 				FREE_OBJECT(object);
 				return NULL;
@@ -2462,7 +2865,7 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 				return NULL;
 			}
 			
-			// The value is here			
+			// The value is here
 			JSONValue *value = Parse(data);
 			if (value == NULL)
 			{
@@ -2483,14 +2886,14 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 			}
 			
 			// End of object?
-			if (**data == L'}')
+			if (**data == '}')
 			{
 				(*data)++;
 				return new JSONValue(object);
 			}
 			
 			// Want a , now
-			if (**data != L',')
+			if (**data != ',')
 			{
 				FREE_OBJECT(object);
 				return NULL;
@@ -2505,7 +2908,7 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 	}
 	
 	// An array?
-	else if (**data == L'[')
+	else if (**data == '[')
 	{
 		JSONArray array;
 		
@@ -2521,7 +2924,7 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 			}
 			
 			// Special case - empty array
-			if (array.size() == 0 && **data == L']')
+			if (array.size() == 0 && **data == ']')
 			{
 				(*data)++;
 				return new JSONValue(array);
@@ -2546,14 +2949,14 @@ JSONValue *JSONValue::Parse(const wchar_t **data)
 			}
 			
 			// End of array?
-			if (**data == L']')
+			if (**data == ']')
 			{
 				(*data)++;
 				return new JSONValue(array);
 			}
 			
 			// Want a , now
-			if (**data != L',')
+			if (**data != ',')
 			{
 				FREE_ARRAY(array);
 				return NULL;
@@ -2589,12 +2992,12 @@ JSONValue::JSONValue(/*NULL*/)
  *
  * @access public
  *
- * @param wchar_t* m_char_value The string to use as the value
+ * @param char* m_char_value The string to use as the value
  */
-JSONValue::JSONValue(const wchar_t *m_char_value)
+JSONValue::JSONValue(const char *m_char_value)
 {
 	type = JSONType_String;
-	string_value = std::wstring(m_char_value);
+	string_value = std::string(m_char_value);
 }
 
 /**
@@ -2602,9 +3005,9 @@ JSONValue::JSONValue(const wchar_t *m_char_value)
  *
  * @access public
  *
- * @param std::wstring m_string_value The string to use as the value
+ * @param std::string m_string_value The string to use as the value
  */
-JSONValue::JSONValue(const std::wstring &m_string_value)
+JSONValue::JSONValue(const std::string &m_string_value)
 {
 	type = JSONType_String;
 	string_value = m_string_value;
@@ -2764,9 +3167,9 @@ bool JSONValue::IsObject() const
  *
  * @access public
  *
- * @return std::wstring Returns the string value
+ * @return std::string Returns the string value
  */
-const std::wstring &JSONValue::AsString() const
+const std::string &JSONValue::AsString() const
 {
 	return string_value;
 }
@@ -2832,7 +3235,7 @@ const JSONObject &JSONValue::AsObject() const
  *
  * @return The number of children.
  */
-std::size_t JSONValue::CountChildren() const
+int JSONValue::CountChildren() const
 {
 	switch (type)
 	{
@@ -2853,7 +3256,7 @@ std::size_t JSONValue::CountChildren() const
  *
  * @return bool Returns true if the array has a value at the given index.
  */
-bool JSONValue::HasChild(std::size_t index) const
+bool JSONValue::HasChild(int index) const
 {
 	if (type == JSONType_Array)
 	{
@@ -2874,7 +3277,7 @@ bool JSONValue::HasChild(std::size_t index) const
  * @return JSONValue* Returns JSONValue at the given index or NULL
  *                    if it doesn't exist.
  */
-JSONValue *JSONValue::Child(std::size_t index)
+JSONValue *JSONValue::Child(int index)
 {
 	if (index < array_value.size())
 	{
@@ -2894,11 +3297,23 @@ JSONValue *JSONValue::Child(std::size_t index)
  *
  * @return bool Returns true if the object has a value at the given key.
  */
-bool JSONValue::HasChild(const wchar_t* name) const
+bool JSONValue::HasChild(const char* name) const
 {
 	if (type == JSONType_Object)
 	{
 		return object_value.find(name) != object_value.end();
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool JSONValue::HasChild(string name) const
+{
+	if (type == JSONType_Object)
+	{
+		return object_value.find(name.c_str()) != object_value.end();
 	}
 	else
 	{
@@ -2915,9 +3330,22 @@ bool JSONValue::HasChild(const wchar_t* name) const
  * @return JSONValue* Returns JSONValue for the given key in the object
  *                    or NULL if it doesn't exist.
  */
-JSONValue* JSONValue::Child(const wchar_t* name)
+JSONValue* JSONValue::Child(const char* name)
 {
 	JSONObject::const_iterator it = object_value.find(name);
+	if (it != object_value.end())
+	{
+		return it->second;
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
+JSONValue* JSONValue::Child(string name)
+{
+	JSONObject::const_iterator it = object_value.find(name.c_str());
 	if (it != object_value.end())
 	{
 		return it->second;
@@ -2933,16 +3361,16 @@ JSONValue* JSONValue::Child(const wchar_t* name)
  *
  * @access public
  *
- * @return std::wstring Returns the JSON string
+ * @return std::string Returns the JSON string
  */
-std::wstring JSONValue::Stringify() const
+std::string JSONValue::Stringify() const
 {
-	std::wstring ret_string;
+	std::string ret_string;
 	
 	switch (type)
 	{
 		case JSONType_Null:
-			ret_string = L"null";
+			ret_string = "null";
 			break;
 		
 		case JSONType_String:
@@ -2950,16 +3378,16 @@ std::wstring JSONValue::Stringify() const
 			break;
 		
 		case JSONType_Bool:
-			ret_string = bool_value ? L"true" : L"false";
+			ret_string = bool_value ? "true" : "false";
 			break;
 		
 		case JSONType_Number:
 		{
 			if (isinf(number_value) || isnan(number_value))
-				ret_string = L"null";
+				ret_string = "null";
 			else
 			{
-				std::wstringstream ss;
+				std::stringstream ss;
 				ss.precision(15);
 				ss << number_value;
 				ret_string = ss.str();
@@ -2969,7 +3397,7 @@ std::wstring JSONValue::Stringify() const
 		
 		case JSONType_Array:
 		{
-			ret_string = L"[";
+			ret_string = "[";
 			JSONArray::const_iterator iter = array_value.begin();
 			while (iter != array_value.end())
 			{
@@ -2977,27 +3405,27 @@ std::wstring JSONValue::Stringify() const
 				
 				// Not at the end - add a separator
 				if (++iter != array_value.end())
-					ret_string += L",";
+					ret_string += ",";
 			}
-			ret_string += L"]";
+			ret_string += "]";
 			break;
 		}
 		
 		case JSONType_Object:
 		{
-			ret_string = L"{";
+			ret_string = "{";
 			JSONObject::const_iterator iter = object_value.begin();
 			while (iter != object_value.end())
 			{
 				ret_string += StringifyString((*iter).first);
-				ret_string += L":";
+				ret_string += ":";
 				ret_string += (*iter).second->Stringify();
 				
 				// Not at the end - add a separator
 				if (++iter != object_value.end())
-					ret_string += L",";
+					ret_string += ",";
 			}
-			ret_string += L"}";
+			ret_string += "}";
 			break;
 		}
 	}
@@ -3012,66 +3440,68 @@ std::wstring JSONValue::Stringify() const
  *
  * @access private
  *
- * @param std::wstring str The string that needs to have the characters escaped
+ * @param std::string str The string that needs to have the characters escaped
  *
- * @return std::wstring Returns the JSON string
+ * @return std::string Returns the JSON string
  */
-std::wstring JSONValue::StringifyString(const std::wstring &str)
+std::string JSONValue::StringifyString(const std::string &str)
 {
-	std::wstring str_out = L"\"";
+	std::string str_out = "\"";
+	str_out += str;
 	
-	std::wstring::const_iterator iter = str.begin();
-	while (iter != str.end())
-	{
-		wchar_t chr = *iter;
+	// std::string::const_iterator iter = str.begin();
+	// while (iter != str.end())
+	// {
+	// 	char chr = *iter;
 
-		if (chr == L'"' || chr == L'\\' || chr == L'/')
-		{
-			str_out += L'\\';
-			str_out += chr;
-		}
-		else if (chr == L'\b')
-		{
-			str_out += L"\\b";
-		}
-		else if (chr == L'\f')
-		{
-			str_out += L"\\f";
-		}
-		else if (chr == L'\n')
-		{
-			str_out += L"\\n";
-		}
-		else if (chr == L'\r')
-		{
-			str_out += L"\\r";
-		}
-		else if (chr == L'\t')
-		{
-			str_out += L"\\t";
-		}
-		else if (chr < L' ')
-		{
-			str_out += L"\\u";
-			for (int i = 0; i < 4; i++)
-			{
-				int value = (chr >> 12) & 0xf;
-				if (value >= 0 && value <= 9)
-					str_out += (wchar_t)('0' + value);
-				else if (value >= 10 && value <= 15)
-					str_out += (wchar_t)('A' + (value - 10));
-				chr <<= 4;
-			}
-		}
-		else
-		{
-			str_out += chr;
-		}
+	// 	if (chr == '"' || chr == '\\' || chr == '/')
+	// 	{
+	// 		str_out += '\\';
+	// 		str_out += chr;
+	// 	}
+	// 	else if (chr == '\b')
+	// 	{
+	// 		str_out += "\\b";
+	// 	}
+	// 	else if (chr == '\f')
+	// 	{
+	// 		str_out += "\\f";
+	// 	}
+	// 	else if (chr == '\n')
+	// 	{
+	// 		str_out += "\\n";
+	// 	}
+	// 	else if (chr == '\r')
+	// 	{
+	// 		str_out += "\\r";
+	// 	}
+	// 	else if (chr == '\t')
+	// 	{
+	// 		str_out += "\\t";
+	// 	}
+	// 	else if (chr < ' ')
+	// 	{
+	// 		str_out += "\\u";
+	// 		for (int i = 0; i < 4; i++)
+	// 		{
+	// 			int value = (chr >> 12) & 0xf;
+	// 			if (value >= 0 && value <= 9)
+	// 				str_out += (char)('0' + value);
+	// 			else if (value >= 10 && value <= 15)
+	// 				str_out += (char)('A' + (value - 10));
+	// 			chr <<= 4;
+	// 		}
+	// 	}
+	// 	else
+	// 	{
+	// 		str_out += chr;
+	// 	}
 		
-		iter++;
-	}
+	// 	iter++;
+	// }
 	
-	str_out += L"\"";
+	
+	str_out += "\"";
 	return str_out;
 }
 
@@ -3082,8 +3512,7 @@ JSON::JSON()
 }
 
 /**
- * Parses a complete JSON encoded string
- * This is just a wrapper around the UNICODE Parse().
+ * Parses a complete JSON encoded string (UNICODE input version)
  *
  * @access public
  *
@@ -3091,106 +3520,33 @@ JSON::JSON()
  *
  * @return JSONValue* Returns a JSON Value representing the root, or NULL on error
  */
-
 JSONValue *JSON::Parse(const char *data)
 {
-
-	cout << "JSON::Parse a\n";
-
-	size_t length = strlen(data) + 4096;
-	cout << "length: " << length << "\n";
-
-	if (length == 0) {
-		cout << "JSON::Parse Length 0\n";
+	// Skip any preceding whitespace, end of data = no JSON = fail
+	if (!SkipWhitespace(&data)) {
+		//cout << "jp a\n";
 		return NULL;
 	}
-
-	wchar_t *w_data = new wchar_t[length];
-	size_t ret_value = 0;
-
-	errno_t myError;
-
-	cout << "JSON::Parse b\n";
-
-	#if defined(WIN32) && !defined(__GNUC__)
-		cout << "JSON::Parse c\n";
-		
-
-		// if (data) {
-
-		// }
-		// else {
-		// 	cout << "JSON::Parse Data Null\n";
-		// 	return NULL;
-		// }
-
-		// if (w_data) {
-
-		// }
-		// else {
-		// 	cout << "JSON::Parse w_data Null\n";
-		// 	return NULL;
-		// }
-		
-		myError = mbstowcs_s(&ret_value, w_data, length, data, length);
-
-		cout << "JSON::Parse c0\n";
-
-		if (myError != 0)
-		{
-			cout << "JSON::Parse c2\n";
-
-			delete[] w_data;
-
-			cout << "JSON::Parse c3\n";
-
-			return NULL;
-		}
-		cout << "JSON::Parse d\n";
-	#else
-		cout << "JSON::Parse e\n";
-		if (mbstowcs(w_data, data, length) == (size_t)-1)
-		{
-			delete[] w_data;
-			return NULL;
-		}
-		cout << "JSON::Parse f\n";
-	#endif
 	
-	JSONValue *value = JSON::Parse(w_data);
-	delete[] w_data;
-
-	cout << "JSON::Parse g\n";
-
-	return value;
-}
-
-/**
- * Parses a complete JSON encoded string (UNICODE input version)
- *
- * @access public
- *
- * @param wchar_t* data The JSON text
- *
- * @return JSONValue* Returns a JSON Value representing the root, or NULL on error
- */
-JSONValue *JSON::Parse(const wchar_t *data)
-{
-	// Skip any preceding whitespace, end of data = no JSON = fail
-	if (!SkipWhitespace(&data))
-		return NULL;
 
 	// We need the start of a value here now...
 	JSONValue *value = JSONValue::Parse(&data);
-	if (value == NULL)
-		return NULL;
-	
-	// Can be white space now and should be at the end of the string then...
-	if (SkipWhitespace(&data))
-	{
-		delete value;
+	if (value == NULL) {
+		//cout << "jp b\n";
 		return NULL;
 	}
+	
+	// Can be white space now and should be at the end of the string then...
+	// if (SkipWhitespace(&data))
+	// {
+		
+	// 	cout << "jp c\n";
+	// 	delete value;
+	// 	return NULL;
+	// }
+	
+	
+	//cout << "jp d\n";
 	
 	// We're now at the end of the string
 	return value;
@@ -3203,14 +3559,14 @@ JSONValue *JSON::Parse(const wchar_t *data)
  *
  * @param JSONValue* value The root value
  *
- * @return std::wstring Returns a JSON encoded string representation of the given value
+ * @return std::string Returns a JSON encoded string representation of the given value
  */
-std::wstring JSON::Stringify(const JSONValue *value)
+std::string JSON::Stringify(const JSONValue *value)
 {
 	if (value != NULL)
 		return value->Stringify();
 	else
-		return L"";
+		return "";
 }
 
 /**
@@ -3218,13 +3574,13 @@ std::wstring JSON::Stringify(const JSONValue *value)
  *
  * @access protected
  *
- * @param wchar_t** data Pointer to a wchar_t* that contains the JSON text
+ * @param char** data Pointer to a char* that contains the JSON text
  *
  * @return bool Returns true if there is more data, or false if the end of the text was reached
  */
-bool JSON::SkipWhitespace(const wchar_t **data)
+bool JSON::SkipWhitespace(const char **data)
 {
-	while (**data != 0 && (**data == L' ' || **data == L'\t' || **data == L'\r' || **data == L'\n'))
+	while (**data != 0 && (**data == ' ' || **data == '\t' || **data == '\r' || **data == '\n'))
 		(*data)++;
 	
 	return **data != 0;
@@ -3236,22 +3592,22 @@ bool JSON::SkipWhitespace(const wchar_t **data)
  *
  * @access protected
  *
- * @param wchar_t** data Pointer to a wchar_t* that contains the JSON text
- * @param std::wstring& str Reference to a std::wstring to receive the extracted string
+ * @param char** data Pointer to a char* that contains the JSON text
+ * @param std::string& str Reference to a std::string to receive the extracted string
  *
  * @return bool Returns true on success, false on failure
  */
-bool JSON::ExtractString(const wchar_t **data, std::wstring &str)
+bool JSON::ExtractString(const char **data, std::string &str)
 {
-	str = L"";
+	str = "";
 	
 	while (**data != 0)
 	{
 		// Save the char so we can change it if need be
-		wchar_t next_char = **data;
+		char next_char = **data;
 		
 		// Escaping something?
-		if (next_char == L'\\')
+		if (next_char == '\\')
 		{
 			// Move over the escape char
 			(*data)++;
@@ -3259,15 +3615,15 @@ bool JSON::ExtractString(const wchar_t **data, std::wstring &str)
 			// Deal with the escaped char
 			switch (**data)
 			{
-				case L'"': next_char = L'"'; break;
-				case L'\\': next_char = L'\\'; break;
-				case L'/': next_char = L'/'; break;
-				case L'b': next_char = L'\b'; break;
-				case L'f': next_char = L'\f'; break;
-				case L'n': next_char = L'\n'; break;
-				case L'r': next_char = L'\r'; break;
-				case L't': next_char = L'\t'; break;
-				case L'u':
+				case '"': next_char = '"'; break;
+				case '\\': next_char = '\\'; break;
+				case '/': next_char = '/'; break;
+				case 'b': next_char = '\b'; break;
+				case 'f': next_char = '\f'; break;
+				case 'n': next_char = '\n'; break;
+				case 'r': next_char = '\r'; break;
+				case 't': next_char = '\t'; break;
+				case 'u':
 				{
 					// We need 5 chars (4 hex + the 'u') or its not valid
 					if (!simplejson_wcsnlen(*data, 5))
@@ -3306,7 +3662,7 @@ bool JSON::ExtractString(const wchar_t **data, std::wstring &str)
 		}
 		
 		// End of the string?
-		else if (next_char == L'"')
+		else if (next_char == '"')
 		{
 			(*data)++;
 			str.reserve(); // Remove unused capacity
@@ -3314,7 +3670,7 @@ bool JSON::ExtractString(const wchar_t **data, std::wstring &str)
 		}
 		
 		// Disallowed char?
-		else if (next_char < L' ' && next_char != L'\t')
+		else if (next_char < ' ' && next_char != '\t')
 		{
 			// SPEC Violation: Allow tabs due to real world cases
 			return false;
@@ -3336,11 +3692,11 @@ bool JSON::ExtractString(const wchar_t **data, std::wstring &str)
  *
  * @access protected
  *
- * @param wchar_t** data Pointer to a wchar_t* that contains the JSON text
+ * @param char** data Pointer to a char* that contains the JSON text
  *
  * @return double Returns the double value of the number found
  */
-double JSON::ParseInt(const wchar_t **data)
+double JSON::ParseInt(const char **data)
 {
 	double integer = 0;
 	while (**data != 0 && **data >= '0' && **data <= '9')
@@ -3354,11 +3710,11 @@ double JSON::ParseInt(const wchar_t **data)
  *
  * @access protected
  *
- * @param wchar_t** data Pointer to a wchar_t* that contains the JSON text
+ * @param char** data Pointer to a char* that contains the JSON text
  *
  * @return double Returns the double value of the decimal found
  */
-double JSON::ParseDecimal(const wchar_t **data)
+double JSON::ParseDecimal(const char **data)
 {
 	double decimal = 0.0;
   double factor = 0.1;
@@ -10201,8 +10557,6 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
 	}
 	return elems;
 }
-
-
 std::vector<std::string> split(const std::string &s, char delim) {
 	std::vector<std::string> elems;
 	return split(s, delim, elems);
@@ -10678,6 +11032,8 @@ public:
 
 	int curUBIndex;
 
+	map<string, float> paramMap;
+	vector<string> paramVec;
 	vector<UniformBuffer> uniVec;
 
 	
@@ -10786,16 +11142,24 @@ public:
 
 	void init(const char *shaderFile) {
 		pushTrace("init(", shaderFile, ")");
+		
+		
+		paramVec.clear();
+		paramMap.clear();
+		
 		shader_vp = glCreateShader(GL_VERTEX_SHADER);
 		shader_fp = glCreateShader(GL_FRAGMENT_SHADER);
 	    
 	    
 		std::size_t found;
+		std::size_t found2;
 
 		int baseIndex;
 		int totCount;
 
 		bool doCont;
+		
+		string paramName;
 
 		int i;
 
@@ -10803,80 +11167,133 @@ public:
 
 
 		if (allText == NULL) {
-			doTraceND( "Either vertex shader or fragment shader file not found." );
-	    }
-	    else {
-	    	string allTextString(allText);
-
-	    	baseIndex = 0;
-	    	doCont = true;
-	    	totCount = 0;
-
-
-
-	    	while (doCont) {
-	    		found = allTextString.find("ublock", baseIndex);
-	    		if (found != std::string::npos) {
-	    			baseIndex = found+1;
-	    			doCont = true;
-	    			totCount++;
-	    		}
-	    		else {
-	    			doCont = false;
-	    		}
-	    	}
+			doTraceND( "Error: Either vertex shader or fragment shader file not found." );
+			LAST_COMPILE_ERROR = true;
+		}
+		else {
 			
+				string allTextString(allText);
 
-
-			vector<string> allTextStringSplit = split(allTextString, '$');
-
-			if (allTextStringSplit.size() == 3) {
-
-				string vertStr = allTextStringSplit[0] + allTextStringSplit[1];
-				string fragStr = allTextStringSplit[0] + allTextStringSplit[2];
-
-				const GLchar* vertCS = new char[vertStr.length() + 1];
-				const GLchar* fragCS = new char[fragStr.length() + 1];
-
-				std::strcpy((GLchar*)vertCS,vertStr.c_str());
-				std::strcpy((GLchar*)fragCS,fragStr.c_str());
-
-
-		    	glShaderSource(shader_vp, 1, &(vertCS), 0);
-				glShaderSource(shader_fp, 1, &(fragCS), 0);
-			    
-				glCompileShader(shader_vp);
-				validateShader(shader_vp, shaderFile);
-				glCompileShader(shader_fp);
-				validateShader(shader_fp, shaderFile);
+				
+				totCount = 0;
 
 
 
-				shader_id = glCreateProgram();
-				glAttachShader(shader_id, shader_fp);
-				glAttachShader(shader_id, shader_vp);
-				glLinkProgram(shader_id);
-				validateProgram(shader_id);
 
-				delete [] vertCS;
-				delete [] fragCS;
+				
+				
 
 
-				for (i = 0; i < totCount; i++) {
-					uniVec.push_back(UniformBuffer());
-					uniVec.back().init(shader_id, i);
+				vector<string> allTextStringSplit = split(allTextString, '$');
+
+				if (allTextStringSplit.size() == 3) {
+					
+					
+					
+					baseIndex = 0;
+					doCont = true;
+					while (doCont) {
+						found = allTextString.find("ublock", baseIndex);
+						if (found != std::string::npos) {
+							baseIndex = found+1;
+							doCont = true;
+							totCount++;
+						}
+						else {
+							doCont = false;
+						}
+					}
+					
+
+					baseIndex = 0;
+					doCont = true;
+					while (doCont) {
+						found = allTextString.find("_x_", baseIndex);
+						if (found != std::string::npos) {
+							baseIndex = found+1;
+							
+							found2 = allTextString.find("_x_", baseIndex);
+							if (found2 != std::string::npos) {
+								baseIndex = found2+1;
+								paramName = allTextString.substr(found, 3 + (found2-found));
+								
+								if (paramMap.find( paramName ) == paramMap.end()) {
+									paramMap[paramName] = 0.0f;
+									paramVec.push_back(paramName);
+									//cout << "AAAAAAAA " << paramName << "\n";
+								}
+								
+								//paramMap.insert( pair<string, int>(paramName, 1) );
+								// cout << "AAAAAAAA " << 
+								// allTextString.substr(found, 2 + (found2-found)) << "\n\n";
+								
+								
+								doCont = true;
+							}
+							else {
+								doCont = false;
+							}
+							
+							
+						}
+						else {
+							doCont = false;
+						}
+					}
+					
+					allTextStringSplit[0] += "\n";
+					
+					for (i = 0; i < paramVec.size(); i++) {
+						allTextStringSplit[0] += "uniform float " + paramVec[i] + ";\n";
+					}
+					
+
+					string vertStr = allTextStringSplit[0] + allTextStringSplit[1];
+					string fragStr = allTextStringSplit[0] + allTextStringSplit[2];
+
+					const GLchar* vertCS = new char[vertStr.length() + 1];
+					const GLchar* fragCS = new char[fragStr.length() + 1];
+
+					std::strcpy((GLchar*)vertCS,vertStr.c_str());
+					std::strcpy((GLchar*)fragCS,fragStr.c_str());
+
+
+			    	glShaderSource(shader_vp, 1, &(vertCS), 0);
+					glShaderSource(shader_fp, 1, &(fragCS), 0);
+				    
+					glCompileShader(shader_vp);
+					validateShader(shader_vp, shaderFile);
+					glCompileShader(shader_fp);
+					validateShader(shader_fp, shaderFile);
+
+
+
+					shader_id = glCreateProgram();
+					glAttachShader(shader_id, shader_fp);
+					glAttachShader(shader_id, shader_vp);
+					glLinkProgram(shader_id);
+					validateProgram(shader_id);
+
+					delete [] vertCS;
+					delete [] fragCS;
+
+
+					for (i = 0; i < totCount; i++) {
+						uniVec.push_back(UniformBuffer());
+						uniVec.back().init(shader_id, i);
+					}
+
+
 				}
-
-
-			}
-			else {
-				LAST_COMPILE_ERROR = true;
-				doTraceND( "Error: " , shaderFile , "does not contain proper amount of splits ($)\n" );
-			}
-			
-			
-			delete[] allText;
-	    }
+				else {
+					LAST_COMPILE_ERROR = true;
+					doTraceND( "Error: " , shaderFile , "does not contain proper amount of splits ($)\n" );
+				}
+				
+				
+				delete[] allText;
+			  
+		}
 		
 		
 		popTrace();
@@ -11842,7 +12259,8 @@ public:
 };
 
 
-Image* loadBMP(const char* filename) {
+Image* loadBMP(string fnString) {
+	const char* filename = fnString.c_str();
 	ifstream input;
 	input.open(filename, ifstream::binary);
 	assert(!input.fail() || !"Could not find file");
@@ -12718,10 +13136,14 @@ class WebSocketRequestHandler;
 class WebSocketServer;
 class RequestHandlerFactory;
 class GameGeom;
-class GameEnt;
 class Singleton;
+class GameSound;
+class GameMusic;
+class FontWrapper;
 class UIComponent;
 class GameGUI;
+class GameEntNode;
+class GameEnt;
 class GamePlantNode;
 class GamePlant;
 class GameBlock;
@@ -12791,6 +13213,47 @@ private:
 };
 #undef LZZ_INLINE
 #endif
+// f00293_gamesound.e
+//
+
+#ifndef LZZ_f00293_gamesound_e
+#define LZZ_f00293_gamesound_e
+#define LZZ_INLINE inline
+class GameSound
+{
+public:
+  sf::SoundBuffer buffer;
+  sf::Sound sound;
+  GameSound ();
+  void init (string path);
+  void setPitch (float val);
+  void setPositionAndMinDis (float x, float y, float z, float w);
+  void setLoop (bool val);
+  void stop ();
+  void play (float volume = 1.0f);
+};
+#undef LZZ_INLINE
+#endif
+// f00294_gamemusic.e
+//
+
+#ifndef LZZ_f00294_gamemusic_e
+#define LZZ_f00294_gamemusic_e
+#define LZZ_INLINE inline
+class GameMusic
+{
+public:
+  sf::Music sound;
+  float volume;
+  GameMusic ();
+  void init (string path);
+  void setLoop (bool val);
+  void stop ();
+  void setVolume (float _volume = 1.0f);
+  void play (float _volume = 1.0f);
+};
+#undef LZZ_INLINE
+#endif
 // f00295_gamegeom.e
 //
 
@@ -12812,6 +13275,7 @@ public:
   GameLight * light;
   bool visible;
   bool hasAnchor;
+  bool isToggled;
   int rotDir;
   int minRot;
   int maxRot;
@@ -12824,6 +13288,7 @@ public:
   float getRand ();
   FIVector4 tempVec1;
   FIVector4 tempVec2;
+  FIVector4 tempVec3;
   FIVector4 * getBoundsMinInPixels ();
   FIVector4 * getBoundsMaxInPixels ();
   FIVector4 * getVisMinInPixels ();
@@ -12835,24 +13300,11 @@ public:
   int getClampedRot ();
   void rotate (int mod, bool ignoreConstraints);
   void initBounds (int _buildingType, int _id, int _globalId, int alignBottomMiddleTop, float _zOffset, FIVector4 * p1, FIVector4 * p2, FIVector4 * rad, FIVector4 * _cornerDisInPixels, FIVector4 * _visInsetFromMin, FIVector4 * _visInsetFromMax, FIVector4 * _powerVals, FIVector4 * _powerVals2, FIVector4 * _thickVals, FIVector4 * _matParams, FIVector4 * _centerPoint, FIVector4 * _anchorPoint, int _minRot, int _maxRot);
-  void initTree (int _buildingType, int _id, int _globalId, int alignBottomMiddleTop, float _zOffset, FIVector4 * p0, FIVector4 * p1, FIVector4 * p2, float radP0, float radP1, float sphereRad, FIVector4 * _matParams);
+  void initLines (int _buildingType, int _id, int _globalId, float scale, FIVector4 * _offset, FIVector4 * _orgVec, FIVector4 * _tanVec, FIVector4 * _bitVec, FIVector4 * _norVec, FIVector4 * _radVec0, FIVector4 * _radVec1, FIVector4 * _radVecScale0, FIVector4 * _radVecScale1, FIVector4 * _matParams);
+  void initTree (int _buildingType, int _id, int _globalId, FIVector4 * p0, FIVector4 * p1, FIVector4 * p2, float radP0, float radP1, float sphereRad, FIVector4 * _matParams);
+  void toggleTransform ();
   void applyTransform (int rotMod, bool ignoreConstraints);
   void initAnchorPoint (FIVector4 * _anchorPointInPixels, int _minRot, int _maxRot);
-};
-#undef LZZ_INLINE
-#endif
-// f00297_gameent.e
-//
-
-#ifndef LZZ_f00297_gameent_e
-#define LZZ_f00297_gameent_e
-#define LZZ_INLINE inline
-class GameEnt
-{
-private:
-public:
-  FIVector4 (entParams) [vLength];
-  GameEnt ();
 };
 #undef LZZ_INLINE
 #endif
@@ -12865,12 +13317,37 @@ public:
 class Singleton
 {
 public:
+  struct UIQuad
+  {
+    fBoundingBox hitBounds;
+    CharStruct * cs;
+    int fontId;
+  };
+  struct UICont
+  {
+    UIComponent * uiComp;
+    UIQuad bg;
+    std::vector <UIQuad> charVec;
+  };
+  struct JSONStruct
+  {
+    JSONValue * jv;
+  };
+  UIComponent * testTT;
   E_OBJ activeObject;
   E_OBJ tempObj;
-  E_MOUSE_STATE mouseState;
+  int mouseState;
   eProgramState programState;
   eProgramAction (progActionsDown) [E_PS_SIZE * 256];
   eProgramAction (progActionsUp) [E_PS_SIZE * 256];
+  float ambVolume;
+  float guiVolume;
+  bool hitGUI;
+  bool guiLock;
+  bool guiDirty;
+  bool guiOn;
+  bool mirrorOn;
+  bool bCtrl;
   bool bShift;
   bool tiltChanged;
   bool testOn;
@@ -12889,18 +13366,19 @@ public:
   bool notQuit;
   bool timerNotSet;
   bool lbDown;
+  bool abDown;
   bool rbDown;
   bool mbDown;
   bool isZooming;
   bool isPanning;
   bool isBare;
-  bool reportPagesDrawn;
   bool showMap;
   bool traceOn;
   bool waterOn;
   bool treesOn;
   bool firstRun;
   bool rotOn;
+  int maxLayerOver;
   int currentStep;
   int maxLayers;
   int maxChangesInHolders;
@@ -12916,6 +13394,7 @@ public:
   int pixelsPerLot;
   int numDynLights;
   int iNumSteps;
+  int curEntId;
   int pixelsPerMeter;
   int pixelsPerUnit;
   int metersPerLot;
@@ -12924,6 +13403,8 @@ public:
   int extraRad;
   int defaultWinW;
   int defaultWinH;
+  int guiWinW;
+  int guiWinH;
   int shadersAreLoaded;
   int readyToRecompile;
   int lastPosX;
@@ -12943,6 +13424,7 @@ public:
   int voroSize;
   int geomCounter;
   int lightCounter;
+  int charState;
   int metersPerNodeXY;
   int terDataVisPitchXY;
   int terDataBufPitchXY;
@@ -12970,12 +13452,13 @@ public:
   float gridOn;
   float mapSampScale;
   float curBrushRad;
-  float diskOn;
   float timeOfDay;
   float targetTimeOfDay;
   float gridSizeInPixels;
   float origWinW;
   float origWinH;
+  float guiX;
+  float guiY;
   double curMS;
   float tiltAmount;
   float currentFBOResolutionX;
@@ -12998,17 +13481,25 @@ public:
   float * matCountArr;
   int * geomIdArr;
   float * paramArrMap;
+  GameEntNode * bestNode;
+  GameEntNode * selectedNode;
+  GameEntNode * lastSelNode;
+  GameEntNode * activeNode;
+  float bestNodeDis;
   FIVector4 worldSizeInPixels;
   FIVector4 mouseUpPD;
   FIVector4 mouseDownPD;
   FIVector4 mouseMovePD;
   FIVector4 tempVec1;
   FIVector4 tempVec2;
+  FIVector4 tempVec3;
   FIVector4 worldSizeInPages;
   FIVector4 worldSizeInLots;
   FIVector4 worldSizeInHolders;
   FIVector4 worldSizeInBlocks;
   FIVector4 (moveNodes) [2];
+  FIVector4 (voroVecArr) [125];
+  floatAndIndex (indexArr) [125];
   FIVector4 mouseStart;
   FIVector4 mouseEnd;
   FIVector4 mapFreqs;
@@ -13023,6 +13514,9 @@ public:
   FIVector4 panMod;
   FIVector4 dMod;
   FIVector4 modXYZ;
+  std::vector <UICont*> (guiLayers) [MAX_UI_LAYERS];
+  std::vector <FIVector4> rotStack;
+  std::vector <FIVector4> transStack;
   std::vector <DynObject *> dynObjects;
   std::vector <GameGeom *> selGeomList;
   PathHolder charPathHolder;
@@ -13030,12 +13524,13 @@ public:
   float floorHeightInMeters;
   float roofHeightInMeters;
   float wallRadInMeters;
+  int holderSizeMod;
+  int holderSizeInPixelsMod;
   int blockSizeInLots;
   int blockSizeInMeters;
   int blockSizeInHolders;
   int blockSizeInPages;
   int blockSizeInPixels;
-  Image * basicFont;
   Image * imageHM0;
   Image * imageHM1;
   Image * cloudImage;
@@ -13044,13 +13539,15 @@ public:
   Shader * curShaderPtr;
   string curShader;
   string allText;
+  string stringBuf;
+  string curCallback;
+  string (cbDataStrings) [10];
   PoolManager * gpuPool;
   PoolManager * entityPool;
   vector <string> shaderStrings;
-  vector <string> fboStrings;
   vector <string> shaderTextureIds;
   map <string, Shader *> shaderMap;
-  map <string, FBOSet *> fboMap;
+  map <string, FBOSet> fboMap;
   GLuint volId;
   GLuint volIdLinear;
   GLuint volIdEmpty;
@@ -13063,7 +13560,9 @@ public:
   charArr nullBuffer;
   charArr lastImageBuffer;
   charArr lastJSONBuffer;
-  JSONValue * rootObj;
+  charArr lastJSONBufferGUI;
+  JSONValue * rootObjJS;
+  JSONValue * guiRootJS;
   WebSocketServer * myWS;
   Timer myTimer;
   GameWorld * gw;
@@ -13072,9 +13571,22 @@ public:
   bool multiLights;
   int * rbHeightStack;
   TerTexture (terTextures) [MAX_TER_TEX];
+  GameEnt * testHuman;
   GameGUI * mainGUI;
+  FontWrapper * (fontWrappers) [EFW_LENGTH];
+  GameMusic * (music) [EML_LENGTH];
+  map <string, GameSound> soundMap;
+  map <string, StyleSheet> styleSheetMap;
+  map <string, JSONStruct> internalJSON;
   Singleton ();
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer * _myWS);
+  void prepSound (string soundName);
+  void playSoundPosAndPitch (string soundName, FIVector4 * listenerPos, FIVector4 * soundPos, float variance = 0.0f, float volume = 1.0f);
+  void playSound (string soundName, float volume = 1.0f);
+  void playSoundEvent (char const * eventName);
+  void dispatchEvent (int button, int state, float x, float y, UIComponent * comp);
+  StyleSheet * getNewStyleSheet (string ssName);
+  void initStyleSheet ();
   int requestTerIndex (int requestingBlockId);
   static void qNormalizeAngle (int & angle);
   void perspectiveProjection ();
@@ -13140,28 +13652,40 @@ public:
   float getSLInPixels ();
   float getHeightAtPixelPos (float x, float y, bool dd = false);
   void moveCamera (FIVector4 * pModXYZ);
+  GameEntNode * getMirroredNode (GameEntNode * curNode);
   void moveObject (float dx, float dy, float zoom);
   void updateMultiLights ();
   void toggleFullScreen ();
+  void restartGen (bool instantRefresh, bool clearEverything);
   void setCameraToElevationBase ();
   void setCameraToElevation ();
   void processSpecialKeys (int key, int _x, int _y);
   void processKey (unsigned char key, int _x, int _y, bool isPressed);
   void keyboardUp (unsigned char key, int _x, int _y);
   void keyboardDown (unsigned char key, int _x, int _y);
+  void runReport ();
   void getPixData (FIVector4 * toVector, int xv, int yv);
   GameGeom * findNearestGeom (FIVector4 * testPoint, bool createList = false);
   void mouseMove (int _x, int _y);
+  void makeDirty ();
+  void setSelNode (GameEntNode * newNode);
   void screenToWorldBase (FIVector4 * tc, FIVector4 * wc);
   void worldToScreenBase (FIVector4 * sc, FIVector4 * wc);
   void worldToScreen (FIVector4 * sc, FIVector4 * wc, bool centerIsOrigin = false);
   void mouseClick (int button, int state, int _x, int _y);
+  void resetActiveNode ();
+  void updateNearestEntNode (bool setActive, FIVector4 * mousePosWS);
+  void findNearestEntNode (GameEntNode * curNode, FIVector4 * mousePosSS);
   void processB64 (charArr * sourceBuffer, charArr * saveBuffer);
-  bool processJSON (charArr * sourceBuffer, charArr * saveBuffer);
+  bool processJSONFromString (string * sourceBuffer, JSONValue * * destObj);
+  bool processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONValue * * destObj);
+  bool loadJSON (string path, JSONValue * * destObj);
+  void loadGUI ();
   void loadAllData ();
   void saveAllData ();
-  bool loadFile (char * fileName, charArr * dest);
+  bool loadFile (string fnString, charArr * dest);
   bool saveFile (char * fileName, charArr * source);
+  void updateAmbientSounds ();
   void display ();
   void reshape (int w, int h);
   void idleFunc ();
@@ -13209,13 +13733,40 @@ public:
   vector <PooledResource *> holderPoolItems;
   Singleton * singleton;
   GameWorld * gw;
+  bool isEntity;
   PoolManager ();
-  void init (Singleton * _singleton, bool _isCPU);
+  void init (Singleton * _singleton, bool _isEntity, bool _isCPU);
   float getMaxMem ();
   float getTotMemUsed ();
   void reorderIds ();
   int findFurthestHolderId ();
   int requestPoolId (int blockId, int holderId);
+};
+#undef LZZ_INLINE
+#endif
+// f00320_fontwrapper.e
+//
+
+#ifndef LZZ_f00320_fontwrapper_e
+#define LZZ_f00320_fontwrapper_e
+#define LZZ_INLINE inline
+class FontWrapper
+{
+public:
+  Singleton * singleton;
+  charArr lastJSONBuffer;
+  JSONValue * jsRoot;
+  Image * fontImage;
+  float ascender;
+  float descender;
+  float fontHeight;
+  float maxWidth;
+  float fontScale;
+  float additionalOffset;
+  bool isIcons;
+  CharStruct (charVals) [4096];
+  FontWrapper ();
+  void init (Singleton * _singleton, string fontName, bool _isIcons, float _fontScale, float _additionalOffset = 0.0f);
 };
 #undef LZZ_INLINE
 #endif
@@ -13228,178 +13779,89 @@ public:
 class UIComponent
 {
 private:
+  UIComponent * parent;
 public:
   Singleton * singleton;
-  int uid;
+  Singleton::UIQuad thisUIQuad;
+  Singleton::UICont thisUICont;
+  string uid;
+  string ss;
+  string text;
+  int parentId;
+  int nodeId;
+  int index;
+  int fillDir;
+  int layer;
+  int hoverType;
+  int guiClass;
+  Singleton::UIQuad * curQuad;
+  bool foundParent;
+  bool visible;
+  iVector2 align;
+  JSONValue * jvNodeNoTemplate;
+  fVector2 floatOffset;
+  fVector2 originPos;
+  fVector2 resultDimInPixels;
+  fVector2 textDimInPixels;
+  fVector2 minDimInPixels;
+  fVector2 maxAvailDimInPixels;
+  fVector2 fillRatioDim;
+  FontWrapper * curFont;
+  FontWrapper * curFontIcons;
+  bool contOnStack;
+  bool overChild;
+  bool overSelf;
+  bool singleLine;
+  bool hasBackground;
   bool mouseOver;
   bool mouseDown;
   bool wasHit;
+  bool isDirty;
+  bool isFloating;
   float value;
   float divisions;
-  iVector2 align;
-  int fillDir;
-  iVector2 originPos;
-  iVector2 resultDim;
-  string text;
-  int charScale;
-  int charsPerLine;
-  int maxLines;
-  iVector2 charDim;
+  float paddingInPixels;
+  float borderInPixels;
+  float marginInPixels;
+  float spaceForCharsInPixels;
   iVector2 spacing;
   std::vector <string> lineVec;
   std::vector < std::vector<string> > wordVec;
-  iBoundingBox hitBounds;
-  StyleSheet * mainSS;
+  std::vector <float> linePitchVec;
+  fBoundingBox hitBounds;
   StyleSheetResult resSS;
-  enum eAlignH
-  {
-    E_ALIGN_LEFT,
-    E_ALIGN_RIGHT,
-    E_ALIGN_CENTER
-  };
-  enum eAlignV
-  {
-    E_ALIGN_TOP,
-    E_ALIGN_MIDDLE,
-    E_ALIGN_BOTTOM
-  };
-  enum eFillDir
-  {
-    E_FILL_HORIZONTAL,
-    E_FILL_VERTICAL
-  };
+  std::vector <UIComponent> children;
+  std::vector <UIComponent> floatingChildren;
+  UIComponent * curComp;
   UIComponent ();
-  void init (Singleton * _singleton, StyleSheet * _mainSS, string _text, int _originPosX, int _originPosY, int _charsPerLine = 40, int _maxLines = 5, int _alignX = E_ALIGN_LEFT, int _alignY = E_ALIGN_TOP, int _fillDir = E_FILL_HORIZONTAL, int _charScale = 1, int _spacingX = 0, int _spacingY = 0);
-  void updateValue (int x, int y);
-  void testOver (int x, int y);
-  bool testHit (int button, int state, int x, int y);
+  void init (Singleton * _singleton, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, string _text, string _uid, string _ss, int _guiClass = E_GT_HOLDER, float _divisions = 0.0f, bool _hasBackground = true, bool _singleLine = true, float _fillRatioX = 0.0f, float _fillRatioY = 0.0f, int _fillDir = E_FILL_HORIZONTAL, int _alignX = E_ALIGNH_LEFT, int _alignY = E_ALIGNV_TOP, float _value = 0.0f, int _layer = 0, int _hoverType = E_HT_NORMAL, bool _isFloating = false);
+  UIComponent * getParent ();
+  UIComponent * findNodeByString (string _uid);
+  UIComponent * findNodeById (int id);
+  float getMinWidth ();
+  float getMinHeight ();
+  UIComponent * addChild (int _parentId, int _nodeId, string * stringVals, float * floatVals, bool _isFloating, JSONValue * _jvNodeNoTemplate);
+  void setOrigPos ();
+  void applyHeight ();
+  void applyWidth ();
+  void gatherDirty (vector <UIComponent*> * dirtyVec);
+  void clearDirty ();
+  void layout ();
+  void updateValue (float x, float y);
+  void runReport ();
+  void clearOver ();
+  bool findMaxLayer (float x, float y);
+  void testOver (float x, float y);
+  bool testHit (int button, int state, float x, float y);
   void setText (string _text);
-  void refresh ();
-  void renderCharAt (int c, int px, int py);
-  void renderQuad (int ix0, int iy0, int ix1, int iy1);
-  void render (bool visible);
+  void updateVecs ();
+  void renderAll ();
+  void updateSS ();
+  float getLineOffset (int lineCount);
+  float lengthOfWord (int i, int j, bool isIcon);
+  int maxCharsForWord (int i, int j);
+  void renderText (bool getDimensions);
 };
-LZZ_INLINE void UIComponent::renderCharAt (int c, int px, int py)
-                                                        {
-		
-		iBoundingBox ibbPos;
-		fBoundingBox fbbPos;
-
-		fBoundingBox fbbSamplePos;
-
-		ibbPos.xMin = px;
-		ibbPos.yMin = py;
-		ibbPos.xMax = px+charDim.x*charScale;
-		ibbPos.yMax = py+charDim.y*charScale;
-
-		if (c > 32 && c < 126) {
-			fbbSamplePos.xMin = ((float)((c-32)*charDim.x - 1))/656.0;
-		}
-		else {
-			fbbSamplePos.xMin = 0.0f;
-		}
-
-		fbbSamplePos.xMax = ((float)((c+1-32)*charDim.x - 1))/656.0;
-		fbbSamplePos.yMin = 0.0f;
-		fbbSamplePos.yMax = 1.0f;
-
-		float x0 = ((float)ibbPos.xMin)/singleton->origWinW;
-		float x1 = ((float)ibbPos.xMax)/singleton->origWinW;
-		float y0 = ((float)ibbPos.yMin)/singleton->origWinH;
-		float y1 = ((float)ibbPos.yMax)/singleton->origWinH;
-
-		x0 = (x0-0.5f)*2.0f;
-		x1 = (x1-0.5f)*2.0f;
-		y0 = ((1.0f-y0) - 0.5f)*2.0f;
-		y1 = ((1.0f-y1) - 0.5f)*2.0f;
-
-		
-		//dimensions
-		glMultiTexCoord4f(1, charDim.x*charScale, charDim.y*charScale, 0.0f, 0.0f);
-
-		glMultiTexCoord4f(4, 1.0f, 1.0f, 1.0f, 1.0f);
-		glMultiTexCoord4f(5, 1.0f, 1.0f, 1.0f, 1.0f);
-		//border color
-		glMultiTexCoord4f(6, 1.0f, 1.0f, 1.0f, 1.0f);
-		//misc
-		glMultiTexCoord4f(7, 0.0f, 0.0f, 0.0f, 0.0f);
-		
-
-		glMultiTexCoord4f(2, resSS.props[E_SS_BGCOLTEXT1_R], resSS.props[E_SS_BGCOLTEXT1_G], resSS.props[E_SS_BGCOLTEXT1_B], resSS.props[E_SS_BGCOLTEXT1_A]);
-		glMultiTexCoord4f(3, resSS.props[E_SS_FGCOLTEXT1_R], resSS.props[E_SS_FGCOLTEXT1_G], resSS.props[E_SS_FGCOLTEXT1_B], resSS.props[E_SS_FGCOLTEXT1_A]);
-		
-		
-		glMultiTexCoord4f(0, fbbSamplePos.xMin, fbbSamplePos.yMin, 0.0f, 1.0f);
-		glVertex3f (  x0, y1, -1.0f );
-		glMultiTexCoord4f(0, fbbSamplePos.xMax, fbbSamplePos.yMin, 1.0f, 1.0f);
-		glVertex3f (  x1, y1, -1.0f );
-
-		glMultiTexCoord4f(2, resSS.props[E_SS_BGCOLTEXT0_R], resSS.props[E_SS_BGCOLTEXT0_G], resSS.props[E_SS_BGCOLTEXT0_B], resSS.props[E_SS_BGCOLTEXT0_A]);
-		glMultiTexCoord4f(3, resSS.props[E_SS_FGCOLTEXT0_R], resSS.props[E_SS_FGCOLTEXT0_G], resSS.props[E_SS_FGCOLTEXT0_B], resSS.props[E_SS_FGCOLTEXT0_A]);		
-
-		glMultiTexCoord4f(0, fbbSamplePos.xMax, fbbSamplePos.yMax, 1.0f, 0.0f);
-		glVertex3f (  x1, y0, -1.0f );
-		glMultiTexCoord4f(0, fbbSamplePos.xMin, fbbSamplePos.yMax, 0.0f, 0.0f);
-		glVertex3f (  x0, y0, -1.0f );
-
-	}
-LZZ_INLINE void UIComponent::renderQuad (int ix0, int iy0, int ix1, int iy1)
-                                                                   {
-
-
-		
-
-
-		float x0 = ((float)ix0)/singleton->origWinW;
-		float x1 = ((float)ix1)/singleton->origWinW;
-		float y0 = ((float)iy0)/singleton->origWinH;
-		float y1 = ((float)iy1)/singleton->origWinH;
-
-		x0 = (x0-0.5f)*2.0f;
-		x1 = (x1-0.5f)*2.0f;
-		y0 = ((1.0f-y0) - 0.5f)*2.0f;
-		y1 = ((1.0f-y1) - 0.5f)*2.0f;
-
-		
-		//dimensions
-		glMultiTexCoord4f(1, ix1-ix0, iy1-iy0, resSS.props[E_SS_BORDER], resSS.props[E_SS_CORNERRAD]);
-
-		//glMultiTexCoord4f(4, 1.0f, 1.0f, 1.0f, 1.0f);
-		glMultiTexCoord4f(5, 1.0f, 1.0f, 1.0f, 1.0f);
-		
-		//border color
-		glMultiTexCoord4f(6, resSS.props[E_SS_BDCOL_R], resSS.props[E_SS_BDCOL_G], resSS.props[E_SS_BDCOL_B], resSS.props[E_SS_BDCOL_A]);
-		//misc
-		glMultiTexCoord4f(7, resSS.props[E_SS_ROUNDNESS], value, 1.0f, 1.0f);
-
-
-		//bg
-		glMultiTexCoord4f(2, resSS.props[E_SS_BGCOL1_R], resSS.props[E_SS_BGCOL1_G], resSS.props[E_SS_BGCOL1_B], resSS.props[E_SS_BGCOL1_A]);
-		//fg
-		glMultiTexCoord4f(3, resSS.props[E_SS_FGCOL1_R], resSS.props[E_SS_FGCOL1_G], resSS.props[E_SS_FGCOL1_B], resSS.props[E_SS_FGCOL1_A]);
-		//tg
-		glMultiTexCoord4f(4, resSS.props[E_SS_TGCOL1_R], resSS.props[E_SS_TGCOL1_G], resSS.props[E_SS_TGCOL1_B], resSS.props[E_SS_TGCOL1_A]);
-		
-		
-		glMultiTexCoord4f(0, 0.0f, 0.0f, 0.0f, 1.0f);
-		glVertex3f (  x0, y1, -1.0f );
-		glMultiTexCoord4f(0, 0.0f, 0.0f, 1.0f, 1.0f);
-		glVertex3f (  x1, y1, -1.0f );
-
-		//bg
-		glMultiTexCoord4f(2, resSS.props[E_SS_BGCOL0_R], resSS.props[E_SS_BGCOL0_G], resSS.props[E_SS_BGCOL0_B], resSS.props[E_SS_BGCOL0_A]);
-		//fg
-		glMultiTexCoord4f(3, resSS.props[E_SS_FGCOL0_R], resSS.props[E_SS_FGCOL0_G], resSS.props[E_SS_FGCOL0_B], resSS.props[E_SS_FGCOL0_A]);
-		//tg
-		glMultiTexCoord4f(4, resSS.props[E_SS_TGCOL0_R], resSS.props[E_SS_TGCOL0_G], resSS.props[E_SS_TGCOL0_B], resSS.props[E_SS_TGCOL0_A]);
-
-		glMultiTexCoord4f(0, 0.0f, 0.0f, 1.0f, 0.0f);
-		glVertex3f (  x1, y0, -1.0f );
-		glMultiTexCoord4f(0, 0.0f, 0.0f, 0.0f, 0.0f);
-		glVertex3f (  x0, y0, -1.0f );
-
-
-	}
 #undef LZZ_INLINE
 #endif
 // f00330_gamegui.e
@@ -13413,14 +13875,147 @@ class GameGUI
 private:
 public:
   Singleton * singleton;
-  UIComponent frameRateTB;
-  UIComponent testTB;
-  StyleSheet mainSS;
+  UIComponent * baseComp;
+  JSONValue * jvRoot;
+  JSONValue * jvTemplates;
+  JSONValue * jvSounds;
+  bool isReady;
+  int nodeCount;
+  vector <UIComponent*> dirtyVec;
+  string (tempStrings) [10];
   GameGUI ();
   void init (Singleton * _singleton);
+  void getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit);
+  bool compChildStr (string childStr);
+  void addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool isFloating = false);
+  void guiFromJSON (JSONValue * jv);
+  void doRefresh ();
   void testOver (int x, int y);
   bool testHit (int button, int state, int x, int y);
-  void renderGUI (bool showGUI);
+  UIComponent * findNodeByString (string _uid);
+  void renderCharAt (UIComponent * uiComp, CharStruct * cs, FontWrapper * activeFont, float px, float py, float shadowOffset);
+  void renderQuad (UIComponent * uiComp, fBoundingBox fbb, float shadowOffset);
+  void runReport ();
+  void renderGUI (float newZoom, int activeFBO);
+};
+LZZ_INLINE bool GameGUI::compChildStr (string childStr)
+                                                  {
+		return tempStrings[E_GDS_CHILD_TYPE].compare(childStr) == 0;
+	}
+LZZ_INLINE void GameGUI::renderQuad (UIComponent * uiComp, fBoundingBox fbb, float shadowOffset)
+          {
+
+		StyleSheetResult* resSS = &(uiComp->resSS);
+
+		
+		
+
+		float x0 = (fbb.xMin+uiComp->floatOffset.x)/singleton->guiWinW;
+		float x1 = (fbb.xMax+uiComp->floatOffset.x)/singleton->guiWinW;
+		float y0 = (fbb.yMin+uiComp->floatOffset.y+shadowOffset)/singleton->guiWinH;
+		float y1 = (fbb.yMax+uiComp->floatOffset.y+shadowOffset)/singleton->guiWinH;
+
+		x0 = (x0-0.5f)*2.0f;
+		x1 = (x1-0.5f)*2.0f;
+		y0 = ((1.0f-y0) - 0.5f)*2.0f;
+		y1 = ((1.0f-y1) - 0.5f)*2.0f;
+
+		
+		//dimensions
+		glMultiTexCoord4f(1, fbb.xMax-fbb.xMin, fbb.yMax-fbb.yMin, resSS->props[E_SS_BORDER], resSS->props[E_SS_CORNERRAD]);
+
+		glMultiTexCoord4f(5, 0.0f, shadowOffset, 1.0f, 1.0f);
+		
+		//border color
+		glMultiTexCoord4f(6, resSS->props[E_SS_BDCOL_R], resSS->props[E_SS_BDCOL_G], resSS->props[E_SS_BDCOL_B], resSS->props[E_SS_BDCOL_A]);
+		//misc
+		glMultiTexCoord4f(7, resSS->props[E_SS_ROUNDNESS], uiComp->value, 1.0f, 1.0f);
+
+
+		//bg
+		glMultiTexCoord4f(2, resSS->props[E_SS_BGCOL1_R], resSS->props[E_SS_BGCOL1_G], resSS->props[E_SS_BGCOL1_B], resSS->props[E_SS_BGCOL1_A]);
+		//fg
+		glMultiTexCoord4f(3, resSS->props[E_SS_FGCOL1_R], resSS->props[E_SS_FGCOL1_G], resSS->props[E_SS_FGCOL1_B], resSS->props[E_SS_FGCOL1_A]);
+		//tg
+		glMultiTexCoord4f(4, resSS->props[E_SS_TGCOL1_R], resSS->props[E_SS_TGCOL1_G], resSS->props[E_SS_TGCOL1_B], resSS->props[E_SS_TGCOL1_A]);
+		
+		
+		glMultiTexCoord4f(0, 0.0f, 0.0f, 0.0f, 1.0f);
+		glVertex3f (  x0, y1, -1.0f );
+		glMultiTexCoord4f(0, 0.0f, 0.0f, 1.0f, 1.0f);
+		glVertex3f (  x1, y1, -1.0f );
+
+		//bg
+		glMultiTexCoord4f(2, resSS->props[E_SS_BGCOL0_R], resSS->props[E_SS_BGCOL0_G], resSS->props[E_SS_BGCOL0_B], resSS->props[E_SS_BGCOL0_A]);
+		//fg
+		glMultiTexCoord4f(3, resSS->props[E_SS_FGCOL0_R], resSS->props[E_SS_FGCOL0_G], resSS->props[E_SS_FGCOL0_B], resSS->props[E_SS_FGCOL0_A]);
+		//tg
+		glMultiTexCoord4f(4, resSS->props[E_SS_TGCOL0_R], resSS->props[E_SS_TGCOL0_G], resSS->props[E_SS_TGCOL0_B], resSS->props[E_SS_TGCOL0_A]);
+
+		glMultiTexCoord4f(0, 0.0f, 0.0f, 1.0f, 0.0f);
+		glVertex3f (  x1, y0, -1.0f );
+		glMultiTexCoord4f(0, 0.0f, 0.0f, 0.0f, 0.0f);
+		glVertex3f (  x0, y0, -1.0f );
+
+
+	}
+#undef LZZ_INLINE
+#endif
+// f00338_gameentnode.e
+//
+
+#ifndef LZZ_f00338_gameentnode_e
+#define LZZ_f00338_gameentnode_e
+#define LZZ_INLINE inline
+class GameEntNode
+{
+private:
+public:
+  float rotThe;
+  float rotPhi;
+  float rotRho;
+  float material;
+  float boneLengthHalf;
+  FIVector4 * readTBN;
+  FIVector4 * writeTBN;
+  FIVector4 (tbnBase) [3];
+  FIVector4 (tbnRotA) [3];
+  FIVector4 (tbnRotB) [3];
+  FIVector4 (tbnRotC) [3];
+  FIVector4 (tbnTrans) [3];
+  FIVector4 tbnRadInMeters0;
+  FIVector4 tbnRadInMeters1;
+  FIVector4 tbnRadScale0;
+  FIVector4 tbnRadScale1;
+  FIVector4 (orgTrans) [3];
+  int nodeName;
+  GameEntNode * parent;
+  std::vector <GameEntNode*> children;
+  GameEntNode (GameEntNode * _parent, int _nodeName, float _boneLength, float _tanLengthInMeters, float _bitLengthInMeters, float _norLengthInMeters, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
+  GameEntNode * addChild (int _nodeName, float _boneLength, float _tanLengthInMeters, float _bitLengthInMeters, float _norLengthInMeters, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
+  GameEntNode * getNode (int _nodeName);
+  void doTransform (Singleton * singleton);
+};
+#undef LZZ_INLINE
+#endif
+// f00339_gameent.e
+//
+
+#ifndef LZZ_f00339_gameent_e
+#define LZZ_f00339_gameent_e
+#define LZZ_INLINE inline
+class GameEnt
+{
+public:
+  Singleton * singleton;
+  GamePageHolder * gph;
+  GameEntNode * baseNode;
+  FIVector4 basePosition;
+  float defVecLength;
+  float gv (float * vals);
+  GameEnt ();
+  void init (Singleton * _singleton);
+  void initHuman ();
 };
 #undef LZZ_INLINE
 #endif
@@ -13506,6 +14101,7 @@ public:
   float pageDepth;
   int iVolumeSize;
   bool hasGeom;
+  bool hasLines;
   bool hasTerrain;
   bool hasWater;
   bool hasWindow;
@@ -13535,7 +14131,6 @@ public:
   FIVector4 worldUnitMax;
   FIVector4 voroSize;
   FIVector4 curPos;
-  FIVector4 posFloored;
   FIVector4 randNum;
   FIVector4 testNum;
   FIVector4 newPos;
@@ -13577,22 +14172,30 @@ public:
   bool underground;
   std::vector <GameGeom *> entityGeom;
   int entityGeomCounter;
-  int entType;
   FIVector4 offsetInHolders;
   FIVector4 gphMinInPixels;
   FIVector4 gphMaxInPixels;
+  FIVector4 gphCenInPixels;
   FIVector4 offsetInBlocks;
+  FIVector4 origOffset;
+  FIVector4 tempVec;
+  FIVector4 tempVec2;
   PooledResource * gpuRes;
   Singleton * singleton;
   std::vector <intPair> containsGeomIds;
   GamePage * * pageData;
+  bool readyForClear;
   bool isEntity;
+  float holderSizeInPixels;
+  float halfHolderSizeInPixels;
   GamePageHolder ();
-  void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isEntity = false, bool _entType = E_ET_TEST);
+  void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isEntity = false);
   GamePage * getPageAtCoordsLocal (int x, int y, int z, bool createOnNull = false);
-  void clearSet (bool forceClear);
-  void refreshChildren (bool refreshImmediate);
+  void refreshGeom ();
+  void clearSet ();
+  void refreshChildren (bool refreshImmediate, bool clearEverything = false);
   void addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVector4 * _p1, FIVector4 * _p2, FIVector4 * _rad, FIVector4 * _cornerRad, FIVector4 * _visInsetFromMin, FIVector4 * _visInsetFromMax, FIVector4 * _powerVals, FIVector4 * _powerVals2, FIVector4 * _thickVals, FIVector4 * _matParams, FIVector4 * _centerPoint, FIVector4 * _anchorPoint, int _minRot, int _maxRot);
+  void addNewLinesGeom (GameEntNode * curNode, float scale);
   void fetchEntityGeom ();
   void fetchGeom ();
   void unbindGPUResources ();
@@ -13676,7 +14279,6 @@ public:
   FIVector4 tempVecB3;
   std::vector <GameGeom *> gameGeom;
   std::vector <GameLight *> gameLights;
-  std::vector <GameEnt *> gameEnts;
   GamePlant oakTree;
   GamePlant bareTree;
   GameWorld * gw;
@@ -13775,8 +14377,6 @@ public:
   bool wavesGenerated;
   std::vector <coordAndIndex> roadCoords;
   std::vector <GamePageHolder *> holdersToRefresh;
-  GamePageHolder (entHolders) [E_ET_LENGTH];
-  std::vector <GameEnt> entList;
   vector <int> ocThreads;
   FIVector4 lScreenCoords;
   FIVector4 cScreenCoords;
@@ -13848,9 +14448,13 @@ public:
   bool addHolderToRefresh (GamePageHolder * toAdd);
   int getHoldersInGeom (GameGeom * gg);
   void refreshHoldersInList (bool doImmediate);
-  void actionOnHolders (int action);
+  void actionOnHolders (int action, bool instantRefresh = false, bool clearEverything = false);
   void drawHolder (GamePageHolder * gp, int curLayer, float xoff, float yoff, float zoff);
+  void combineHolders ();
   void combineBuffers ();
+  void transformEnt (GameEnt * curEnt);
+  void drawEnt (GameEnt * curEnt, bool drawAll);
+  void drawNodeEnt (GameEntNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void clearVisitedPaths (PathHolder * pathHolder);
   void clearPathList (PathHolder * pathHolder);
   float getIdealPathLength (PathNode * blockAndIndex);
@@ -14115,6 +14719,90 @@ int WebSocketServer::main (std::vector <std::string> const & args)
 	}
 #undef LZZ_INLINE
  
+// f00293_gamesound.h
+//
+
+#include "f00293_gamesound.e"
+#define LZZ_INLINE inline
+GameSound::GameSound ()
+                            {
+			
+		}
+void GameSound::init (string path)
+                                       {
+			if (!buffer.loadFromFile(path)) {
+				cout << "error loading sound";
+				return;
+			}
+			
+			sound.setBuffer(buffer);
+			
+		}
+void GameSound::setPitch (float val)
+                                         {
+			sound.setPitch(val);
+		}
+void GameSound::setPositionAndMinDis (float x, float y, float z, float w)
+                  {
+			sound.setMinDistance(w);
+			sound.setPosition(x,y,z);
+		}
+void GameSound::setLoop (bool val)
+                                       {
+			sound.setLoop(val);
+		}
+void GameSound::stop ()
+                            {
+			
+		}
+void GameSound::play (float volume)
+                {
+			int intVol = volume*100.0f;
+			
+			sound.setVolume(intVol);
+			sound.play();
+			
+		}
+#undef LZZ_INLINE
+ 
+// f00294_gamemusic.h
+//
+
+#include "f00294_gamemusic.e"
+#define LZZ_INLINE inline
+GameMusic::GameMusic ()
+                            {
+			
+		}
+void GameMusic::init (string path)
+                                       {
+			if ( !sound.openFromFile(path) ) {
+				cout << "error loading music";
+				return;
+			}
+			
+		}
+void GameMusic::setLoop (bool val)
+                                       {
+			sound.setLoop(val);
+		}
+void GameMusic::stop ()
+                            {
+			sound.stop();
+		}
+void GameMusic::setVolume (float _volume)
+                                                   {
+			volume = _volume;
+			int intVol = _volume*100.0f;
+			sound.setVolume(intVol);
+		}
+void GameMusic::play (float _volume)
+                {
+			setVolume(_volume);
+			sound.play();
+		}
+#undef LZZ_INLINE
+ 
 // f00295_gamegeom.h
 //
 
@@ -14225,6 +14913,8 @@ void GameGeom::initBounds (int _buildingType, int _id, int _globalId, int alignB
 		globalId = _globalId;
 		float temp;
 		float zOffset = _zOffset;
+		
+		isToggled = false;
 
 		curRot = 0;
 		rotDir = 1;
@@ -14292,13 +14982,82 @@ void GameGeom::initBounds (int _buildingType, int _id, int _globalId, int alignB
 		}
 
 	}
-void GameGeom::initTree (int _buildingType, int _id, int _globalId, int alignBottomMiddleTop, float _zOffset, FIVector4 * p0, FIVector4 * p1, FIVector4 * p2, float radP0, float radP1, float sphereRad, FIVector4 * _matParams)
+void GameGeom::initLines (int _buildingType, int _id, int _globalId, float scale, FIVector4 * _offset, FIVector4 * _orgVec, FIVector4 * _tanVec, FIVector4 * _bitVec, FIVector4 * _norVec, FIVector4 * _radVec0, FIVector4 * _radVec1, FIVector4 * _radVecScale0, FIVector4 * _radVecScale1, FIVector4 * _matParams)
           {
 		buildingType = _buildingType;
 		id = _id;
 		globalId = _globalId;
 		float temp;
-		float zOffset = _zOffset;
+		float radMax;
+		
+		
+
+		curRot = 0;
+		rotDir = 1;
+		visible = true;
+		hasAnchor = false;
+
+		anchorPointInPixels.setFXYZ(0.0f, 0.0f, 0.0f);
+
+		tempVec1.setFXYZRef(_orgVec);
+		tempVec2.setFXYZRef(_radVec0);
+		tempVec3.setFXYZRef(_radVec1);
+		
+		tempVec2.multXYZ(_radVecScale0);
+		tempVec3.multXYZ(_radVecScale1);
+		
+		tempVec1.multXYZ(scale);
+		tempVec2.multXYZ(scale);
+		tempVec3.multXYZ(scale);
+		
+		tempVec1.addXYZRef(_offset);
+		
+
+		boundsMinInPixels.setFXYZRef(&tempVec1);
+		boundsMaxInPixels.setFXYZRef(&tempVec1);
+
+		radMax = max(
+			max(
+				max(tempVec2[0], tempVec2[1]),
+				max(tempVec3[0], tempVec3[1])
+			),
+			max(
+				max(tempVec2[2], tempVec3[2]),
+				_tanVec->length()
+			)
+			
+		);
+		
+		boundsMinInPixels.addXYZ(-radMax);
+		boundsMaxInPixels.addXYZ(radMax);
+
+		visMinInPixels.setFXYZRef(&boundsMinInPixels);
+		visMaxInPixels.setFXYZRef(&boundsMaxInPixels);
+
+		moveMinInPixels.setFXYZRef(&boundsMinInPixels);
+		moveMaxInPixels.setFXYZRef(&boundsMaxInPixels);
+
+
+
+
+		geomParams[E_AP_ORG].setFXYZRef(&tempVec1);
+		geomParams[E_AP_TAN].setFXYZRef(_tanVec);
+		geomParams[E_AP_BIT].setFXYZRef(_bitVec);
+		geomParams[E_AP_NOR].setFXYZRef(_norVec);
+		geomParams[E_AP_RAD0].setFXYZRef(&tempVec2);
+		geomParams[E_AP_RAD1].setFXYZRef(&tempVec3);
+		geomParams[E_AP_MATPARAMS].setFXYZRef(_matParams);
+		geomParams[E_AP_VISMININPIXELST].setFXYZRef(&visMinInPixels);
+		geomParams[E_AP_VISMAXINPIXELST].setFXYZRef(&visMaxInPixels);
+
+
+	}
+void GameGeom::initTree (int _buildingType, int _id, int _globalId, FIVector4 * p0, FIVector4 * p1, FIVector4 * p2, float radP0, float radP1, float sphereRad, FIVector4 * _matParams)
+          {
+		buildingType = _buildingType;
+		id = _id;
+		globalId = _globalId;
+		float temp;
 
 		float radMax = max(max(radP0, radP1), sphereRad);
 
@@ -14323,24 +15082,6 @@ void GameGeom::initTree (int _buildingType, int _id, int _globalId, int alignBot
 		boundsMinInPixels.addXYZ(-radMax);
 		boundsMaxInPixels.addXYZ(radMax);
 
-
-		// switch (alignBottomMiddleTop) {
-
-		//     case 0: // bottom _@_
-		//         zOffset += (radMax-_visInsetFromMin->getFZ());
-		//     break;
-		//     case 1: // middle -@-
-		//         zOffset += 0.0f;
-		//     break;
-		//             //     ___
-		//     case 2: // top  @
-		//         zOffset += -(radMax-_visInsetFromMax->getFZ());
-		//     break;
-
-		// }
-
-		// boundsMinInPixels.addXYZ(0.0f,0.0f,zOffset);
-		// boundsMaxInPixels.addXYZ(0.0f,0.0f,zOffset);
 
 
 		visMinInPixels.setFXYZRef(&boundsMinInPixels);
@@ -14372,6 +15113,11 @@ void GameGeom::initTree (int _buildingType, int _id, int _globalId, int alignBot
 		geomParams[E_TP_VISMAXINPIXELST].setFXYZRef(&visMaxInPixels);
 
 
+	}
+void GameGeom::toggleTransform ()
+                               {
+		isToggled = !isToggled;
+		applyTransform(rotDir, false);
 	}
 void GameGeom::applyTransform (int rotMod, bool ignoreConstraints)
                                                                 {
@@ -14421,17 +15167,6 @@ void GameGeom::initAnchorPoint (FIVector4 * _anchorPointInPixels, int _minRot, i
 	}
 #undef LZZ_INLINE
  
-// f00297_gameent.h
-//
-
-#include "f00297_gameent.e"
-#define LZZ_INLINE inline
-GameEnt::GameEnt ()
-                  {
-		
-	}
-#undef LZZ_INLINE
- 
 // f00300_singleton.h
 //
 
@@ -14439,6 +15174,15 @@ GameEnt::GameEnt ()
 #define LZZ_INLINE inline
 Singleton::Singleton ()
         {
+		
+		fboMap.clear();
+		shaderMap.clear();
+		soundMap.clear();
+		styleSheetMap.clear();
+		
+		
+		
+		mainGUI = NULL;
 		volTris = NULL;
 		sliceTris = NULL;
 		gw = NULL;
@@ -14450,7 +15194,30 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		pushTrace("Singleton init");
 		int i;
 		int j;
-		rootObj = NULL;
+		
+		internalJSON["shaderParams"].jv = NULL;
+		
+		for (i = 0; i < EML_LENGTH; i++) {
+			music[i] = new GameMusic();
+			music[i]->init("..\\data\\music\\"+musicStrings[i]+".ogg");
+			music[i]->setLoop(true);
+		}
+		
+		hitGUI = false;
+		guiLock = false;
+		guiDirty = true;
+		
+		testTT = NULL;
+		
+		activeNode = NULL;
+		selectedNode = NULL;
+		lastSelNode = NULL;
+		
+		curEntId = 0;
+		charState = E_CHAR_STATE_RENDERED;
+		
+		rootObjJS = NULL;
+		guiRootJS = NULL;
 		highlightedGeom = NULL;
 		selectedGeom = NULL;
 		//rbStack = NULL;
@@ -14460,6 +15227,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		numDynLights = E_OBJ_LENGTH - E_OBJ_LIGHT0;
 		updateMultiLights();
 
+		maxLayerOver = -1;
+
 		iNumSteps = 64;
 		currentStep = 0;
 
@@ -14468,16 +15237,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		timeOfDay = 1.0f;
 		targetTimeOfDay = 1.0f;
 
-		//uvPattern = loadBMP("..\\data\\uvpat.bmp");
-		//uvPattern->getTextureId(GL_LINEAR);
-		//testPat = loadBMP("..\\data\\testpat.bmp");
-		basicFont = loadBMP("..\\data\\basicfont.bmp");
+		//invItems = loadBMP("..\\data\\invitems.bmp");
 		imageHM0 = loadBMP("..\\data\\hm0.bmp");
 		imageHM1 = loadBMP("..\\data\\hm1.bmp");
 		cloudImage = loadBMP("..\\data\\clouds.bmp");
 
-		//testPat->getTextureId(GL_LINEAR);
-		basicFont->getTextureId(GL_NEAREST);
+		//invItems->getTextureId(GL_NEAREST);
 		imageHM0->getTextureId(GL_NEAREST);
 		imageHM1->getTextureId(GL_NEAREST);
 		cloudImage->getTextureId(GL_LINEAR);
@@ -14491,21 +15256,21 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		numLights = MAX_LIGHTS;//min(MAX_LIGHTS,E_OBJ_LENGTH-E_OBJ_LIGHT0);
 
-		// myFont = new FTGLPixmapFont("..\\data\\arial.ttf");
-		// if(myFont->Error()) {
-		//  doTraceND("Error Loading Font");
-		// }
-		// else {
-		//  myFont->FaceSize(72);
-		// }
-
-
 
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 
+
+		initStyleSheet();
+
+		ambVolume = 0.5f;
+		guiVolume = 1.0f;
+
+		mirrorOn = true;
+		guiOn = false;
+		bCtrl = false;
 		bShift = false;
 		tiltChanged = false;
 		emptyVDNotReady = true;
@@ -14529,6 +15294,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		visPageSizeInPixels = 512; // height of one page in pixels
 		holderSizeInPixels = 512; // height of holder in pixels
+		holderSizeMod = 4;
+		holderSizeInPixelsMod = holderSizeInPixels/holderSizeMod;
+		
 		pixelsPerMeter = PIXELS_PER_METER; // when you make pixels per meter larger, you must do the same for units per meter
 		unitsPerMeter = 4;
 		bufferMult = 1.25f;
@@ -14613,7 +15381,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		blockShift = intLogB2(blockSizeInHolders * blockSizeInHolders * blockSizeInHolders);
 
-		holderSizeMB = ( ((float)MAX_LAYERS) * 2.0f * 4.0f * (float)(holderSizeInPixels * holderSizeInPixels)) / (1024.0f * 1024.0f);
+		holderSizeMB = ( ((float)MAX_LAYERS) * 2.0f * 4.0f * (float)(holderSizeInPixelsMod * holderSizeInPixelsMod)) / (1024.0f * 1024.0f);
 
 
 
@@ -14650,12 +15418,16 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		doTraceVecND("worldSizeInHolders: ", &worldSizeInHolders);
 		doTraceVecND("worldSizeInPages: ", &worldSizeInPages);
 
+		GLint glQuery;
+		glGetIntegerv(GL_MAX_UNIFORM_LOCATIONS, &glQuery);
+		cout << "MAX_UNIFORMS: " << glQuery << "\n";
+
 		cout << "\n\n\n\n\n\n";
 
 
 		voroSize = 32;
-		mapFreqs.setFXYZW(1.0f, 32.0f, 128.0f, 256.0f);
-		mapAmps.setFXYZW(1.0f, 4.0f/16.0f, 2.0f/16.0f, 1.0f/16.0f); //0.0f, 0.0f, 0.0f);//
+		mapFreqs.setFXYZW(1.0f, 16.0f, 32.0f, 64.0f);
+		mapAmps.setFXYZW(1.0f, 8.0f/16.0f, 2.0f/16.0f, 1.0f/16.0f); //0.0f, 0.0f, 0.0f);//
 
 
 		gridSizeInPixels = pixelsPerMeter;
@@ -14803,6 +15575,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		lastJSONBuffer.data = NULL;
 		lastJSONBuffer.size = 0;
+		
+		lastJSONBufferGUI.data = NULL;
+		lastJSONBufferGUI.size = 0;
+		
 
 		nullBuffer.data = new char[1];
 		nullBuffer.data[0] = '\0';
@@ -14828,12 +15604,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		isZooming = false;
 		isPanning = false;
-		reportPagesDrawn = false;
 		isBare = true;
-		//grassWH.setFXYZ(1.0/128.0, 1.0/512.0, 0.0);
-		diskOn = 0.0f;
-
-
 
 
 
@@ -14841,6 +15612,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		defaultWinW = _defaultWinW / _scaleFactor;
 		defaultWinH = _defaultWinH / _scaleFactor;
 		scaleFactor = _scaleFactor;
+		
+		guiWinW = _defaultWinW / UI_SCALE_FACTOR;
+		guiWinH = _defaultWinH / UI_SCALE_FACTOR;
 
 		origWinW = _defaultWinW;
 		origWinH = _defaultWinH;
@@ -14886,6 +15660,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		mbDown = false;
 		lbDown = false;
 		rbDown = false;
+		abDown = false;
 
 
 
@@ -14959,6 +15734,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		dynObjects[E_OBJ_FOG]->init(-1024, -1024, -512,   0, 0, 255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 		dynObjects[E_OBJ_CUTAWAY]->init(1024 - 256, 1024 - 256, 2048,   0, 255, 0,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+		dynObjects[E_OBJ_HUMAN]->init(0, 0, 0,   0, 255, 255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 
 		// dynObjects[E_OBJ_P0]->init(512-256,1024-256,2048,   128,0,0,    true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 		// dynObjects[E_OBJ_P1]->init(512,1024,2048,      255,0,0,  true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
@@ -15022,59 +15798,42 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 
 
-		fboStrings.push_back("palFBO");
-		fboStrings.push_back("worldSpaceFBO");
+		// fboStrings.push_back("palFBO");
+		// fboStrings.push_back("worldSpaceFBO");
+		// fboStrings.push_back("frontFaceFBO");
+		// fboStrings.push_back("backFaceFBO");
+		// fboStrings.push_back("frontFaceMapFBO");
+		// fboStrings.push_back("backFaceMapFBO");
+		// fboStrings.push_back("pagesFBO");
+		// fboStrings.push_back("waterFBO");
+		// fboStrings.push_back("pages2FBO");
+		// fboStrings.push_back("water2FBO");
+		// fboStrings.push_back("pages3FBO");
+		// fboStrings.push_back("water3FBO");
+		// fboStrings.push_back("geomFBO");
+		// fboStrings.push_back("combineFBO");
+		// fboStrings.push_back("combineFBOWithWater");
+		// fboStrings.push_back("noiseFBO");
+		// fboStrings.push_back("guiFBO");
+		// fboStrings.push_back("resultFBO0");
+		// fboStrings.push_back("resultFBO1");
+		// fboStrings.push_back("volGenFBO0");
+		// fboStrings.push_back("volGenFBO1");
+		// fboStrings.push_back("waveFBO");
+		// fboStrings.push_back("swapFBO0");
+		// fboStrings.push_back("swapFBO1");
+		// fboStrings.push_back("swapFBOLin0");
+		// fboStrings.push_back("swapFBOLin1");
+		// fboStrings.push_back("swapFBOBLin0");
+		// fboStrings.push_back("swapFBOBLin1");
+		// fboStrings.push_back("swapFBOLinHalf0");
+		// fboStrings.push_back("swapFBOLinHalf1");
+		// fboStrings.push_back("cityFBO");
+		// fboStrings.push_back("hmFBO");
+		// fboStrings.push_back("hmFBOLinear");
+		// fboStrings.push_back("simplexFBO");
 		
-		fboStrings.push_back("frontFaceFBO");
-		fboStrings.push_back("backFaceFBO");
 		
-		fboStrings.push_back("frontFaceMapFBO");
-		fboStrings.push_back("backFaceMapFBO");
-
-		fboStrings.push_back("pagesFBO");
-		fboStrings.push_back("waterFBO");
-
-		//fboStrings.push_back("grassFBO");
-		fboStrings.push_back("geomFBO");
-		fboStrings.push_back("combineFBO");
-		fboStrings.push_back("combineFBOWithWater");
-		fboStrings.push_back("combineFBOSpare");
-		fboStrings.push_back("noiseFBO");
-		fboStrings.push_back("resultFBO0");
-		fboStrings.push_back("resultFBO1");
-		fboStrings.push_back("volGenFBO0");
-		fboStrings.push_back("volGenFBO1");
-
-		// for (i = 0; i < VOLGEN_NAMES_LEN; i++) {
-		//  fboStrings.push_back(VOLGEN_NAMES[i]);
-		// }
-
-
-		fboStrings.push_back("waveFBO");
-
-		fboStrings.push_back("swapFBO0");
-		fboStrings.push_back("swapFBO1");
-		fboStrings.push_back("swapFBOLin0");
-		fboStrings.push_back("swapFBOLin1");
-
-		fboStrings.push_back("swapFBOBLin0");
-		fboStrings.push_back("swapFBOBLin1");
-
-		fboStrings.push_back("swapFBOLinHalf0");
-		fboStrings.push_back("swapFBOLinHalf1");
-
-		//fboStrings.push_back("swapFBO32Lin0");
-		//fboStrings.push_back("swapFBO32Lin1");
-
-		//fboStrings.push_back("terrainFBO");
-
-		fboStrings.push_back("cityFBO");
-		fboStrings.push_back("hmFBO");
-		fboStrings.push_back("hmFBOLinear");
-		fboStrings.push_back("simplexFBO");
-
-
-
 		shaderStrings.push_back("GUIShader");
 		shaderStrings.push_back("RoadShader");
 		shaderStrings.push_back("SkeletonShader");
@@ -15096,23 +15855,15 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		shaderStrings.push_back("PreLightingShader");
 		shaderStrings.push_back("HBlurShader");
 		shaderStrings.push_back("VBlurShader");
-		//shaderStrings.push_back("DownSampleShader");
 		shaderStrings.push_back("DownScaleShader");
 		shaderStrings.push_back("RadiosityShader");
 		shaderStrings.push_back("RadiosityCombineShader");
 		shaderStrings.push_back("FogShader");
 		shaderStrings.push_back("GeomShader");
-		//shaderStrings.push_back("PreGrassShader");
-		//shaderStrings.push_back("GrassShader");
 		shaderStrings.push_back("CombineShader");
-		//shaderStrings.push_back("DepositShader");
 		shaderStrings.push_back("GenerateVolume");
 		shaderStrings.push_back("GenerateVolumeEnt");
 		shaderStrings.push_back("RenderVolume");
-		//shaderStrings.push_back("RenderVolumeSlice");
-		//shaderStrings.push_back("LightingShader");
-		//shaderStrings.push_back("OutlineShader");
-		//shaderStrings.push_back("WaterShaderNormals");
 
 
 
@@ -15140,107 +15891,59 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 			shaderMap.insert(  pair<string, Shader *>(shaderStrings[i], NULL)  );
 		}
 		doShaderRefresh();
-
-		//fboSize = 512;
-		//bufsPerFBO = 2;
-
-		for (i = 0; i < fboStrings.size(); i++)
-		{
-			fboMap.insert(  pair<string, FBOSet *>(fboStrings[i], new FBOSet())  );
-		}
-
-		//init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool hasDepth, int filterEnum, int clampEnum);
-
-		fboMap["worldSpaceFBO"]->init(4, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_LINEAR);
 		
 		int faceDim = 256;
 		
-		fboMap["frontFaceFBO"]->init(1, faceDim, faceDim, 4, false, GL_NEAREST);
-		fboMap["backFaceFBO"]->init(1, faceDim, faceDim, 4, false, GL_NEAREST);
-		fboMap["frontFaceMapFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
-		fboMap["backFaceMapFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
+		//GL_LINEAR
+		fboMap["worldSpaceFBO"].init(4, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
+		//fboMap["worldSpaceBlurFBO0"].init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 4, false, GL_LINEAR);
+		//fboMap["worldSpaceBlurFBO1"].init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 4, false, GL_LINEAR);
 		
-		fboMap["palFBO"]->init(1, palWidth, palHeight, 1, false, GL_LINEAR);
-
-		fboMap["pagesFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["waterFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		//fboMap["grassFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["geomFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, true);
-		fboMap["combineFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["combineFBOWithWater"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["combineFBOSpare"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["noiseFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST, GL_REPEAT);
-		fboMap["resultFBO0"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["resultFBO1"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		//fboMap["resultFBO2"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-
-
-		// j = 1;
-		// for (i = 0; i < VOLGEN_NAMES_LEN; i++) {
-		//  fboMap[VOLGEN_NAMES[i]]->init(2, j, j*j, 1, false);
-		//  j *= 2;
-		// }
-
-		fboMap["volGenFBO0"]->init(2, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
-		fboMap["volGenFBO1"]->init(2, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
-
-
-
-		fboMap["waveFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
-
-		fboMap["swapFBOLin0"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
-		fboMap["swapFBOLin1"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
-
-		fboMap["swapFBOBLin0"]->init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
-		fboMap["swapFBOBLin1"]->init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
-
-		fboMap["swapFBOLinHalf0"]->init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
-		fboMap["swapFBOLinHalf1"]->init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
-
-		//fboMap["swapFBO32Lin0"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_LINEAR);
-		//fboMap["swapFBO32Lin1"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_LINEAR);
-
-
-		//fboMap["terrainFBO"]->init(1, newPitch*iNodeDivsPerLot, newPitch*iNodeDivsPerLot, 2, false, GL_NEAREST, GL_REPEAT);
-
-		fboMap["cityFBO"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
-		fboMap["hmFBO"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
-		fboMap["hmFBOLinear"]->init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
-		fboMap["simplexFBO"]->init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
-		fboMap["swapFBO0"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
-		fboMap["swapFBO1"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
+		fboMap["frontFaceFBO"].init(1, faceDim, faceDim, 4, false, GL_NEAREST);
+		fboMap["backFaceFBO"].init(1, faceDim, faceDim, 4, false, GL_NEAREST);
+		fboMap["frontFaceMapFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
+		fboMap["backFaceMapFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
+		fboMap["palFBO"].init(1, palWidth, palHeight, 1, false, GL_LINEAR);
+		fboMap["pagesFBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["waterFBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["pages2FBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["water2FBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["pages3FBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["water3FBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["geomFBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, true);
+		fboMap["combineFBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["combineFBOWithWater"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["noiseFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST, GL_REPEAT);
+		fboMap["guiFBO"].init(1, guiWinW, guiWinH, 1, false);
+		fboMap["resultFBO0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["resultFBO1"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["volGenFBO0"].init(1, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
+		//fboMap["volGenFBO1"].init(1, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
+		fboMap["waveFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
+		fboMap["swapFBOLin0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
+		fboMap["swapFBOLin1"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
+		fboMap["swapFBOBLin0"].init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
+		fboMap["swapFBOBLin1"].init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
+		fboMap["swapFBOLinHalf0"].init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
+		fboMap["swapFBOLinHalf1"].init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
+		fboMap["cityFBO"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
+		fboMap["hmFBO"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
+		fboMap["hmFBOLinear"].init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
+		fboMap["simplexFBO"].init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
+		fboMap["swapFBO0"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
+		fboMap["swapFBO1"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 
 
 		
 		createVTListTilt();
 
 
-		//fboMap["terrainFBO"]->init(1, newPitch*iNodeDivsPerLot, newPitch*iNodeDivsPerLot, 2, false, GL_NEAREST, GL_REPEAT);
-		/*
-		(  GLenum target,
-		GLint level,
-		GLint internalFormat,
-		GLsizei width,
-		GLsizei height,
-		GLint border,
-		GLenum format,
-		GLenum type,
-		const GLvoid * data);
 
-		*/
-		// glBindTexture(GL_TEXTURE_2D,terrainId);
-		// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, newPitch*iNodeDivsPerLot, newPitch*iNodeDivsPerLot, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-		// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, 0);
-		// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);
-		// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		// // glClearColor(0.0,0.0,0.0,0.0);
-		// // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		// glBindTexture(GL_TEXTURE_2D,0);
-
-
+		fontWrappers[EFW_ICONS] = new FontWrapper();
+		fontWrappers[EFW_ICONS]->init(this, "icons", true, 2.0f, 0.0f);
+		
+		fontWrappers[EFW_TEXT] = new FontWrapper();
+		fontWrappers[EFW_TEXT]->init(this, "arial_regular_24", false, 1.0f);
 
 		mainGUI = new GameGUI();
 		mainGUI->init(this);
@@ -15255,15 +15958,24 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		gw = new GameWorld();
 		
 		gpuPool = new PoolManager();
-		gpuPool->init(this,false);
+		gpuPool->init(this,false,false);
 		
 		entityPool = new PoolManager();
-		entityPool->init(this,false);
+		entityPool->init(this,true,false);
 		
 		
+		testHuman = new GameEnt();
+		testHuman->init(this);
 		
 		gw->init(this);
 		gw->initMap();
+			
+		
+		music[EML_BIRDSONG0]->play();
+		music[EML_CRICKETS0]->play();
+		music[EML_OCEANWAVES0]->play();
+		
+		
 
 		doTraceND("GW DONE");
 
@@ -15272,6 +15984,265 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 
 
+	}
+void Singleton::prepSound (string soundName)
+                                         {
+		if (soundMap.find( soundName ) == soundMap.end()) {
+			soundMap.insert( pair<string, GameSound>(soundName, GameSound()) );
+			soundMap[soundName].init("..\\data\\sounds\\"+soundName+".wav");
+		}
+	}
+void Singleton::playSoundPosAndPitch (string soundName, FIVector4 * listenerPos, FIVector4 * soundPos, float variance, float volume)
+          {
+		
+		
+		FIVector4 res;
+		
+		prepSound(soundName);
+		
+		res.setFXYZRef(soundPos);
+		res.addXYZRef(listenerPos,-1.0f);
+		
+		soundMap[soundName].setPitch(
+			(fGenRand()-0.5f)*2.0*variance + 1.0f
+		);
+		
+		soundMap[soundName].setPositionAndMinDis(
+			res.getFX(),
+			res.getFY(),
+			res.getFZ(),
+			2.0f*pixelsPerMeter
+		);
+		soundMap[soundName].play(volume);
+	}
+void Singleton::playSound (string soundName, float volume)
+                                                            {
+		prepSound(soundName);
+		soundMap[soundName].play(volume);
+	}
+void Singleton::playSoundEvent (char const * eventName)
+                                                   {
+		
+		string tempString;
+		float volume;
+		
+		if (mainGUI != NULL) {
+			if (mainGUI->isReady) {
+				tempString = mainGUI->jvSounds->Child(eventName)->Child("name")->string_value;
+				volume = mainGUI->jvSounds->Child(eventName)->Child("vol")->number_value;
+				
+				if (tempString.size() > 0) {
+					playSound( tempString, volume*guiVolume );
+				}
+			}
+		}
+		
+		
+		
+		
+		
+		
+	}
+void Singleton::dispatchEvent (int button, int state, float x, float y, UIComponent * comp)
+          {
+		
+		if (guiLock) {
+			return;
+		}
+		
+		int i;
+		int cbDataCount;
+		JSONValue* cbData = NULL;
+		
+		bool doSPUpdate = false;
+		
+		switch (comp->guiClass) {
+			case E_GT_SLIDER:
+			case E_GT_BUTTON:
+			case E_GT_RADIO:
+			
+				switch(button) {
+					case GLUT_NO_BUTTON:
+					
+						
+						
+						switch(state) {
+							case GLUT_OVER:
+								playSoundEvent("mouseOver");
+							break;
+							case GLUT_OUT:
+								playSoundEvent("mouseOut");
+							break;
+							case GLUT_CHANGING:
+								doSPUpdate = true;
+							break;
+						}
+						
+					break;
+					case GLUT_LEFT_BUTTON:
+						if (state == GLUT_DOWN) {
+							playSoundEvent("mouseDown");
+						}
+						else {
+							playSoundEvent("mouseUp");
+						}
+					break;
+					
+				}
+			
+				
+			break;	
+		}
+		
+		if (comp->jvNodeNoTemplate != NULL) {
+			if (comp->jvNodeNoTemplate->HasChild("callback")) {
+				curCallback = comp->jvNodeNoTemplate->Child("callback")->string_value;
+				
+				if (comp->jvNodeNoTemplate->HasChild("callbackData")) {
+					
+					cbData = comp->jvNodeNoTemplate->Child("callbackData");
+				
+					// cbDataCount = cbData->CountChildren();
+					// for (i = 0; i < cbDataCount; i++) {
+					// 	cbDataStrings[i] = cbData->Child(i)->string_value;
+					// }
+				
+				}
+				
+				if (doSPUpdate) {
+					if (curCallback.compare("updateShaderParam") == 0) {
+						
+						if (cbData != NULL) {
+							cbDataStrings[0] = cbData->Child("shaderName")->string_value;
+							cbDataStrings[1] = cbData->Child("paramName")->string_value;
+							
+							
+							
+							shaderMap[cbDataStrings[0]]->paramMap[cbDataStrings[1]] = comp->value;
+							
+							if (
+								(cbDataStrings[0].compare("GenerateVolume") == 0)	||
+								(cbDataStrings[0].compare("RenderVolume") == 0)
+							) {
+								
+								
+								guiLock = true;
+								restartGen(false, false);
+								guiLock = false;
+								
+								
+								
+							}
+							
+							
+						}
+					}
+				}
+				
+				
+			}
+		}
+		
+		
+		//cout << "GUICLASS " << comp->guiClass << "\n";
+	}
+StyleSheet * Singleton::getNewStyleSheet (string ssName)
+                                                    {
+		styleSheetMap[ssName].init();
+		return &(styleSheetMap[ssName]);
+	}
+void Singleton::initStyleSheet ()
+                              {
+		
+		
+		StyleSheet* mainSS = getNewStyleSheet("defaultSS");
+		StyleSheetState* curState = &(mainSS->compStates[E_COMP_UP]);
+		
+		
+		
+		curState->setVal(E_SS_BGCOL0_R, 0.2f, 0.15f, 0.1f, 1.0f);
+		curState->setVal(E_SS_BGCOL1_R, 0.1f, 0.075f, 0.05f, 0.5f);
+		curState->setVal(E_SS_FGCOL0_R, 0.0f, 0.0f, 0.0f, 0.0f);
+		curState->setVal(E_SS_FGCOL1_R, 0.0f, 0.0f, 0.0f, 0.0f);
+		curState->setVal(E_SS_TGCOL0_R, 1.0f, 0.75f, 0.0f, 1.0f);
+		curState->setVal(E_SS_TGCOL1_R, 1.0f, 0.25f, 0.0f, 0.5f);
+		curState->setVal(E_SS_BGCOLTEXT0_R, 0.0f, 0.0f, 0.0f, 0.0f);
+		curState->setVal(E_SS_BGCOLTEXT1_R, 0.0f, 0.0f, 0.0f, 0.0f);
+		curState->setVal(E_SS_FGCOLTEXT0_R, 1.0f, 1.0f, 1.0f, 1.0f);
+		curState->setVal(E_SS_FGCOLTEXT1_R, 1.0f, 0.8f, 0.7f, 1.0f);
+		curState->setVal(E_SS_BDCOL_R, 1.0f, 1.0f, 1.0f, 0.5f);
+
+		curState->props[E_SS_PADDING] = 4.0f;
+		curState->props[E_SS_BORDER] = 1.0f;
+		curState->props[E_SS_MARGIN] = 4.0f;
+		curState->props[E_SS_CORNERRAD] = 4.0f;
+		curState->props[E_SS_ROUNDNESS] = 1.0f;
+
+		mainSS->compStates[E_COMP_OVER].copyFrom(& (mainSS->compStates[E_COMP_UP]) );
+		mainSS->compStates[E_COMP_DOWN].copyFrom(& (mainSS->compStates[E_COMP_UP]) );
+
+		
+		
+		curState = &(mainSS->compStates[E_COMP_OVER]);
+		
+		
+		curState->setVal(E_SS_FGCOLTEXT0_R, 1.0f, 1.0f, 1.0f, 1.0f);
+		curState->setVal(E_SS_FGCOLTEXT1_R, 1.0f, 1.0f, 1.0f, 1.0f);
+		curState->props[E_SS_BDCOL_A] = 1.0f;
+		
+		curState->setVal(E_SS_BGCOL0_R, 0.1f, 0.075f, 0.05f, 1.0);
+		curState->setVal(E_SS_BGCOL1_R, 0.05f, 0.025f, 0.0125f, 0.5);
+		
+		
+		
+		curState = &(mainSS->compStates[E_COMP_DOWN]);
+		
+		
+		curState->setVal(E_SS_FGCOLTEXT0_R, 1.0f, 0.8f, 0.7f, 1.0f);
+		curState->setVal(E_SS_FGCOLTEXT1_R, 1.0f, 1.0f, 1.0f, 1.0f);
+		curState->props[E_SS_BDCOL_A] = 1.0f;
+		curState->props[E_SS_BORDER] = 2.0f;
+
+		curState->setVal(E_SS_BGCOL0_R, 0.05f, 0.025f, 0.0125f, 0.5f);	
+		curState->setVal(E_SS_BGCOL1_R, 0.1f, 0.075f, 0.05f, 1.0f);	
+		
+		
+		
+		StyleSheet* tooltipSS = getNewStyleSheet("tooltipSS");
+		tooltipSS->copyFrom(mainSS);
+		
+		curState = &(tooltipSS->compStates[E_COMP_UP]);
+		curState->setVal(E_SS_BGCOL0_R, 0.0f, 0.0f, 0.0f, 1.0f);
+		curState->setVal(E_SS_BGCOL1_R, 0.0f, 0.0f, 0.0f, 1.0f);
+		curState->setVal(E_SS_FGCOLTEXT0_R, 1.0f, 0.75f, 0.0f, 1.0f);
+		curState->setVal(E_SS_FGCOLTEXT1_R, 1.0f, 0.75f, 0.0f, 1.0f);
+		curState->setVal(E_SS_BDCOL_R, 1.0f, 0.75f, 0.0f, 1.0f);
+		tooltipSS->compStates[E_COMP_OVER].copyFrom(& (tooltipSS->compStates[E_COMP_UP]) );
+		tooltipSS->compStates[E_COMP_DOWN].copyFrom(& (tooltipSS->compStates[E_COMP_UP]) );
+
+		curState = &(tooltipSS->compStates[E_COMP_OVER]);
+		curState = &(tooltipSS->compStates[E_COMP_DOWN]);
+		
+		
+		
+		
+		StyleSheet* headerSS = getNewStyleSheet("headerSS");
+		headerSS->copyFrom(mainSS);
+		
+		curState = &(headerSS->compStates[E_COMP_UP]);
+		curState->setVal(E_SS_BGCOL0_R, 0.0f, 0.2f, 0.5f, 1.0f);
+		curState->setVal(E_SS_BGCOL1_R, 0.0f, 0.4f, 0.8f, 0.5f);
+		curState->setVal(E_SS_FGCOLTEXT0_R, 1.0f, 0.75f, 0.0f, 1.0f);
+		curState->setVal(E_SS_FGCOLTEXT1_R, 1.0f, 0.75f, 0.0f, 1.0f);
+		curState->setVal(E_SS_BDCOL_R, 1.0f, 0.75f, 0.0f, 1.0f);
+		headerSS->compStates[E_COMP_OVER].copyFrom(& (headerSS->compStates[E_COMP_UP]) );
+		headerSS->compStates[E_COMP_DOWN].copyFrom(& (headerSS->compStates[E_COMP_UP]) );
+
+		curState = &(headerSS->compStates[E_COMP_OVER]);
+		curState = &(headerSS->compStates[E_COMP_DOWN]);
+		
+		
+		
 	}
 int Singleton::requestTerIndex (int requestingBlockId)
         {
@@ -15912,12 +16883,12 @@ void Singleton::doShaderRefresh ()
 
 		int i;
 		int j;
+		
+		Shader* curShader;
 
 
-		for (i = 0; i < shaderStrings.size(); i++)
-		{
-			if (shaderMap[ shaderStrings[i] ])
-			{
+		for (i = 0; i < shaderStrings.size(); i++) {
+			if (shaderMap[ shaderStrings[i] ]) {
 
 				// TODO: Memory leak?
 
@@ -15926,11 +16897,53 @@ void Singleton::doShaderRefresh ()
 			}
 			shaderMap[ shaderStrings[i] ] = new Shader( ("../src/glsl/" + shaderStrings[i] + ".c").c_str() );
 
-
-
 		}
 		shadersAreLoaded = 1;
 		readyToRecompile = 1;
+		
+		if (LAST_COMPILE_ERROR) {
+			
+		}
+		else {
+			
+			
+			stringBuf = "{\n\t\"params\":[\n";
+			
+			
+			
+			for (i = 0; i < shaderStrings.size(); i++) {
+				curShader = shaderMap[ shaderStrings[i] ];
+				if (curShader) {
+					
+					for (j = 0; j < curShader->paramVec.size(); j++) {
+						stringBuf += "\t\t{";
+						stringBuf += "\"shaderName\":\""+shaderStrings[i]+"\",";
+						stringBuf += "\"paramName\":\""+curShader->paramVec[j]+"\"";
+						stringBuf += "},\n";
+					}
+				}
+			}
+			
+			stringBuf[stringBuf.size()-2] = ' ';
+			
+			
+			stringBuf += "\t]\n}\n\n";
+			
+			// this should automatically clear the key
+			// and deallocate existing entries
+			//internalJSON.insertValue("shaderParams", JSON::Parse(stringBuf.c_str()));
+			
+			processJSONFromString(
+				&stringBuf,
+				&(internalJSON["shaderParams"].jv)
+			);
+			
+			//cout << "stringBuf:\n\n";
+			//cout << stringBuf;
+			
+			
+		}
+		
 
 		popTrace();
 
@@ -15989,18 +17002,18 @@ void Singleton::sampleFBO (string fboName, int offset, int swapFlag)
 
 		if (swapFlag == -1)
 		{
-			fbos = fboMap[fboName];
+			fbos = &(fboMap[fboName]);
 		}
 		else
 		{
 
 			if (swapFlag == 0)
 			{
-				fbos = fboMap[fboName + "0"];
+				fbos = &(fboMap[fboName + "0"]);
 			}
 			else
 			{
-				fbos = fboMap[fboName + "1"];
+				fbos = &(fboMap[fboName + "1"]);
 			}
 
 		}
@@ -16023,18 +17036,18 @@ void Singleton::unsampleFBO (string fboName, int offset, int swapFlag)
 
 		if (swapFlag == -1)
 		{
-			fbos = fboMap[fboName];
+			fbos = &(fboMap[fboName]);
 		}
 		else
 		{
 
 			if (swapFlag == 0)
 			{
-				fbos = fboMap[fboName + "0"];
+				fbos = &(fboMap[fboName + "0"]);
 			}
 			else
 			{
-				fbos = fboMap[fboName + "1"];
+				fbos = &(fboMap[fboName + "1"]);
 			}
 
 		}
@@ -16051,11 +17064,11 @@ void Singleton::unsampleFBO (string fboName, int offset, int swapFlag)
 	}
 FBOSet * Singleton::getFBOSet (string fboName)
         {
-		return fboMap[fboName];
+		return &(fboMap[fboName]);
 	}
 FBOWrapper * Singleton::getFBOWrapper (string fboName, int offset)
         {
-		FBOSet *fbos = fboMap[fboName];
+		FBOSet *fbos = &(fboMap[fboName]);
 		return fbos->getFBOWrapper(offset);
 	}
 void Singleton::copyFBO (string src, string dest)
@@ -16085,18 +17098,18 @@ void Singleton::bindFBO (string fboName, int swapFlag)
 
 		if (swapFlag == -1)
 		{
-			fbos = fboMap[fboName];
+			fbos = &(fboMap[fboName]);
 		}
 		else
 		{
 
 			if (swapFlag == 0)
 			{
-				fbos = fboMap[fboName + "1"];
+				fbos = &(fboMap[fboName + "1"]);
 			}
 			else
 			{
-				fbos = fboMap[fboName + "0"];
+				fbos = &(fboMap[fboName + "0"]);
 			}
 
 		}
@@ -16120,12 +17133,24 @@ void Singleton::unbindFBO ()
 	}
 void Singleton::bindShader (string shaderName)
         {
+		
+		int i;
+		int totSize;
 
 		if (shadersAreLoaded)
 		{
 			curShader = shaderName;
 			curShaderPtr = shaderMap[curShader];
 			curShaderPtr->bind();
+			
+			totSize = curShaderPtr->paramVec.size();
+			
+			for (i = 0; i < totSize; i++) {
+				setShaderFloat(
+					curShaderPtr->paramVec[i],
+					curShaderPtr->paramMap[curShaderPtr->paramVec[i]]
+				);
+			}
 		}
 
 	}
@@ -16316,7 +17341,7 @@ void Singleton::drawFBOOffsetDirect (FBOSet * fbos, int ind, float xOff, float y
 	}
 void Singleton::drawFBOOffset (string fboName, int ind, float xOff, float yOff, float zoom)
         {
-		FBOSet *fbos = fboMap[fboName];
+		FBOSet *fbos = &(fboMap[fboName]);
 
 		if (fbos)
 		{
@@ -16457,9 +17482,34 @@ void Singleton::moveCamera (FIVector4 * pModXYZ)
 
 		isPanning = true;
 	}
+GameEntNode * Singleton::getMirroredNode (GameEntNode * curNode)
+                                                           {
+		if ((curNode->nodeName < E_BONE_C_BEG)&&mirrorOn) {
+			if (curNode->nodeName <= E_BONE_L_END) {
+				return testHuman->baseNode->getNode(
+					curNode->nodeName+(E_BONE_R_BEG-E_BONE_L_BEG)
+				);
+			}
+			else {
+				return testHuman->baseNode->getNode(
+					curNode->nodeName-(E_BONE_R_BEG-E_BONE_L_BEG)
+				);
+			}
+		}
+		else {
+			return NULL;
+		}
+		
+	}
 void Singleton::moveObject (float dx, float dy, float zoom)
         {
 
+		int i;
+		int j;
+		
+		float dirMod = 1.0f;
+		
+		GameEntNode* curNode;
 
 		float tilt = tiltAmount;
 		float itilt = (1.0-tiltAmount);
@@ -16468,6 +17518,10 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 
 		float dxZoom = dx * 1.0 / zoom;
 		float dyZoom = dy * 1.0 / zoom;
+
+		float xm = 0.0f;
+		float ym = 0.0f;
+		float zm = 0.0f;
 
 		//float grassWidth;
 		//float grassHeight;
@@ -16484,7 +17538,7 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 
 
 
-		if (lbDown || rbDown)
+		if (abDown)
 		{
 			// if (rbDown || (shiftDown() ) )
 			// {
@@ -16528,91 +17582,141 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 
 
 		}
-		else
-		{
-
+		
+		
+		if (
+			(mouseState == E_MOUSE_STATE_POSE) && 
+			(activeNode != NULL)
+		) {
+			
+			
+			curNode = activeNode;
+		
+			if (
+				(curNode->nodeName < E_BONE_C_BEG) &&
+				(mirrorOn)
+			) {
+				j = 2;
+			}
+			else {
+				j = 1;
+			}
+			
+			for (i = 0; i < j; i++) {
+				
+				
+				if (i == 1) {
+					curNode = getMirroredNode(curNode);
+					
+					dirMod = -1.0f;
+				}
+				
+				if (shiftDown() || altDown()) {
+					if (mbDown) {
+						xm = dy/50.0f;
+						makeDirty();
+					}
+					if (lbDown) {
+						ym = dy/50.0f;
+						makeDirty();
+					}
+					if (rbDown) {
+						zm = dy/50.0f;
+						makeDirty();
+					}
+					
+					if (shiftDown()) {
+						curNode->tbnRadScale1.addXYZ(xm,ym,zm);
+					}
+					if (altDown()) {
+						curNode->tbnRadScale0.addXYZ(xm,ym,zm);
+					}
+				}
+				else {
+					if (mbDown) {
+						curNode->rotRho += dirMod*dy/50.0f;
+						makeDirty();
+					}
+					if (lbDown) {
+						curNode->rotPhi += dirMod*dy/50.0f;
+						makeDirty();
+					}
+					if (rbDown) {
+						curNode->rotThe += dirMod*dy/50.0f;
+						makeDirty();
+					}
+				}
+				
+				
+				
+			}
+			
+			
+			
+				
 		}
-
-
-
-		if (shiftDown())
-		{
-
-			if ((mouseState == E_MOUSE_STATE_BRUSH)&&lbDown)
+		else {
+			if (shiftDown())
 			{
-				curBrushRad -= modXYZ.getFZ() / 50.0f;
-
-				if (curBrushRad < 0.0f)
+				
+				
+				if ((mouseState == E_MOUSE_STATE_BRUSH)&&lbDown)
 				{
-					curBrushRad = 0.0f;
+					curBrushRad -= modXYZ.getFZ() / 50.0f;
+
+					if (curBrushRad < 0.0f)
+					{
+						curBrushRad = 0.0f;
+					}
 				}
+				else
+				{
+					
+					if (rbDown) {
+						tiltAmount -=  modXYZ.getFZ()*zoom / 500.0f;
+						
+						tiltAmount = clampf(tiltAmount, 0.125f, 0.75f);
+						
+						tiltChanged = true;
+						changesMade = true;
+					}
+					
+				}
+
 			}
 			else
 			{
-				
-				if (rbDown) {
-					tiltAmount -=  modXYZ.getFZ()*zoom / 500.0f;
-					
-					tiltAmount = clampf(tiltAmount, 0.125f, 0.75f);
-					
-					tiltChanged = true;
-					changesMade = true;
-				}
-				
-				
-				
-				// grassWidth = grassWH.getFX();
-				// grassHeight = grassWH.getFY();
-
-
-				// grassHeight -= modXYZ.getFZ()/10000.0f;
-				// grassWidth -= modXYZ.getFX()/10000.0f;
-
-
-				// if (grassHeight < 0.0f) {
-				//  grassHeight = 0.0f;
-				// }
-				// if (grassWidth < 0.0f) {
-				//  grassWidth = 0.0f;
-				// }
-
-				// grassWH.setFXYZ(grassWidth,grassHeight,0.0);
-
-			}
-
-
-		}
-		else
-		{
-
-
-			if (mouseState == E_MOUSE_STATE_BRUSH)
-			{
-				doDefault = true;
-			}
-			else
-			{
-
-				if (activeObject == E_OBJ_CAMERA)
+				if (mouseState == E_MOUSE_STATE_BRUSH)
 				{
 					doDefault = true;
 				}
 				else
 				{
-					dynObjects[activeObject]->posRel.addXYZRef(&modXYZ, -1.0f);
-					dynObjects[activeObject]->pos.addXYZRef(&modXYZ, -1.0f);
-					//activeObjectPos.setFXYZRef( &(dynObjects[activeObject]->pos) );
+
+					if (activeObject == E_OBJ_CAMERA)
+					{
+						doDefault = true;
+					}
+					else
+					{
+						dynObjects[activeObject]->posRel.addXYZRef(&modXYZ, -1.0f);
+						dynObjects[activeObject]->pos.addXYZRef(&modXYZ, -1.0f);
+					}
 				}
+
+				if (doDefault)
+				{
+					moveCamera(&modXYZ);
+				}
+				
+
+
 			}
-
-			if (doDefault)
-			{
-				moveCamera(&modXYZ);
-			}
-
-
-
 		}
+		
+
+
+		
 
 
 
@@ -16642,6 +17746,19 @@ void Singleton::toggleFullScreen ()
 		{
 			glutPositionWindow(250, 50);
 		}
+	}
+void Singleton::restartGen (bool instantRefresh, bool clearEverything)
+                                                                   {
+		
+		if (
+			(!(gw->lastProcResult))||clearEverything	
+		) {
+			gw->actionOnHolders(E_HOLDER_ACTION_RESET, instantRefresh, clearEverything);
+			bufferInvalid = true;
+			changesMade = true;
+		}
+		
+		
 	}
 void Singleton::setCameraToElevationBase ()
                                         {
@@ -16690,6 +17807,8 @@ void Singleton::processKey (unsigned char key, int _x, int _y, bool isPressed)
 void Singleton::keyboardUp (unsigned char key, int _x, int _y)
         {
 
+		GameEntNode* curNode;
+		
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
 
@@ -16700,9 +17819,10 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 
 		int enCounter;
 
-		bool restartGen = false;
 
-		doTrace(i__s(key) );
+		
+		bShift = shiftDown();
+		bCtrl = ctrlDown();
 
 
 		if (key == 17)
@@ -16752,7 +17872,8 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 		case 's':
-
+				mirrorOn = !mirrorOn;
+				cout << "mirrorOn: " << mirrorOn << "\n";
 			break;
 
 		case 19: //ctrl-s
@@ -16788,12 +17909,26 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 		case 'e':
 			setCameraToElevation();
 			break;
+			
+		case 'q':
+			// charState++;
+			// if (charState > E_CHAR_STATE_RENDERED) {
+			// 	charState = 0;
+			// }
+		
+			
+			
+			
+			break;
 
 		case 'w':
+			resetActiveNode();
+		break;
+		case 'W':
 			changesMade = true;
 			maxWInPages++;
 			break;
-		case 'q':
+		case 'Q':
 			changesMade = true;
 			maxWInPages--;
 			if (maxWInPages < 1)
@@ -16810,8 +17945,13 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			radiosityOn = !radiosityOn;
 			break;
 
+
+		case 'R':
+			
+		break;
 		case 'r':
 			doShaderRefresh();
+			loadGUI();
 			bufferInvalid = true;
 
 			cout << "Shaders Refreshed\n";
@@ -16832,7 +17972,28 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			changesMade = true;
 			break;
 
+
 		case 'g':
+		
+			enCounter = (int)mouseState;
+			mouseState++;
+
+			if (mouseState == E_MOUSE_STATE_LENGTH)
+			{
+				mouseState = 0;
+			}
+			
+			cout << mouseStateStrings[mouseState] << "\n";
+
+			bufferInvalid = true;
+			changesMade = true;
+			wsBufferInvalid = true;
+			forceGetPD = true;
+		
+			
+		break;
+		
+		case 'l':
 
 			multiLights = !multiLights;
 			updateMultiLights();
@@ -16842,14 +18003,6 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			changesMade = true;
 			forceGetPD = true;
 
-			// enCounter = (int)grassState;
-			// enCounter++;
-			// grassState = (E_GRASS_STATE)enCounter;
-			// if (grassState == E_GRASS_STATE_LENGTH) {
-			//  grassState = (E_GRASS_STATE)0;
-			// }
-			// bufferInvalid = true;
-			// changesMade = true;
 			break;
 
 
@@ -16859,11 +18012,12 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 		case 'd':
-			targetTimeOfDay += 0.5;
+			targetTimeOfDay = 1.0f-targetTimeOfDay;
+			// targetTimeOfDay += 0.5;
 			
-			if (targetTimeOfDay > 1.0) {
-				targetTimeOfDay = 0.0;
-			}
+			// if (targetTimeOfDay > 1.0) {
+			// 	targetTimeOfDay = 0.0;
+			// }
 			
 			break;
 
@@ -16882,24 +18036,22 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			cout << "waterOn " << waterOn << "\n";
 			break;
 
-		case 'l':
-
-			break;
-
 		case 't':
 
-			tiltAmount += 0.25f;
+			// tiltAmount += 0.25f;
 			
-			if (tiltAmount > 0.75f) {
-				tiltAmount = 0.25f;
-			}
+			// if (tiltAmount > 0.75f) {
+			// 	tiltAmount = 0.25f;
+			// }
 			
-			createVTListTilt();
+			// createVTListTilt();
 			
-			cout << "tiltAmount: " << tiltAmount << "\n";
+			// cout << "tiltAmount: " << tiltAmount << "\n";
 			
-			restartGen = true;
+			// restartGen(false, true);
 
+
+			testOn = !testOn;
 
 			//testOn = !testOn;
 			//cout << "testOn " << testOn << "\n";
@@ -16912,38 +18064,25 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 		case '\t':
-
-
-			enCounter = (int)mouseState;
-
-
-
-			if (ctrlDown())
-			{
-				enCounter--;
+		
+			if (guiOn) {
+				playSoundEvent("hideGUI");
 			}
-			else
-			{
-				enCounter++;
+		
+			if (!guiOn) {
+				
+				// todo: in the future don't reload the gui every time
+				// just for testing right now
+				
+				loadGUI();
 			}
-			if (enCounter < 0)
-			{
-				enCounter = ((int)E_MOUSE_STATE_LENGTH) - 1;
+			guiOn = !guiOn;
+			
+			if (guiOn) {
+				playSoundEvent("showGUI");
 			}
-
-			mouseState = (E_MOUSE_STATE)enCounter;
-
-			if (mouseState == E_MOUSE_STATE_LENGTH)
-			{
-				mouseState = (E_MOUSE_STATE)0;
-			}
-
+			
 			bufferInvalid = true;
-			changesMade = true;
-			wsBufferInvalid = true;
-			forceGetPD = true;
-
-
 			break;
 
 		case ' ':
@@ -16958,9 +18097,10 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 		break;
 
 		case 'c':
-			//isBare = !isBare;
-			restartGen = true;
+			doShaderRefresh();
+			restartGen(false, true);
 			break;
+		
 
 		case 'f':
 			fogOn = 1.0 - fogOn;
@@ -16971,27 +18111,16 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 
 		case 'm':
 
-			/*
-			mapInvalid = true;
-			bufferInvalid = true;
-			changesMade = true;
-			wsBufferInvalid = true;
-			forceGetPD = true;
-			*/
+			runReport();
+			
 
-			//showMap = !showMap;
-
-			cout << "zoom " << cameraZoom << "\n";
-
-			reportPagesDrawn = true;
-			//doTrace("Avail threads: ", i__s(gw->availThreads));
 			break;
 
-		case 'a':
+		case 'A':
 			changesMade = true;
 			maxHInPages++;
 			break;
-		case 'z':
+		case 'Z':
 			changesMade = true;
 			maxHInPages--;
 			if (maxHInPages < 0)
@@ -17000,6 +18129,23 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			}
 			break;
 
+		case 'a':
+			selectedNode->material += 1.0f;
+			curNode = getMirroredNode(selectedNode);
+			if (curNode != NULL) {
+				curNode->material += 1.0f;
+			}
+			makeDirty();
+		break;
+		case 'z':
+			selectedNode->material -= 1.0f;
+			curNode = getMirroredNode(selectedNode);
+			if (curNode != NULL) {
+				curNode->material -= 1.0f;
+			}
+			makeDirty();
+			
+		break;
 
 		case 'v':
 			if (selectedGeom == NULL)
@@ -17029,13 +18175,6 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 		}
 
-		if (restartGen)
-		{
-			doShaderRefresh();
-			gw->actionOnHolders(E_HOLDER_ACTION_RESET);
-			bufferInvalid = true;
-			changesMade = true;
-		}
 
 	}
 void Singleton::keyboardDown (unsigned char key, int _x, int _y)
@@ -17044,6 +18183,17 @@ void Singleton::keyboardDown (unsigned char key, int _x, int _y)
 
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
+	}
+void Singleton::runReport ()
+                         {
+		
+		mainGUI->runReport();
+		cout << "zoom " << cameraZoom << "\n";
+		cout << "lightCount: " << gw->lightCount << "\n";
+		cout << "TOT GPU MEM USED (MB): " << TOT_GPU_MEM_USAGE << "\n";
+		cout << "HolderSize (MB): " << holderSizeMB << "\n";
+		cout << "Num GPU Holders: " << gpuPool->holderPoolItems.size() << "\n";
+		cout << "GPU Pooled MB Used: " << ((float)gpuPool->holderPoolItems.size())*holderSizeMB << "\n";
 	}
 void Singleton::getPixData (FIVector4 * toVector, int xv, int yv)
         {
@@ -17137,9 +18287,13 @@ GameGeom * Singleton::findNearestGeom (FIVector4 * testPoint, bool createList)
 								curInd++;
 							}
 							
-							curDis =
-								curBlock->gameGeom[k]->getVisMinInPixelsT()->distance(testPoint) +
-								curBlock->gameGeom[k]->getVisMaxInPixelsT()->distance(testPoint);
+							curDis = 
+							abs(curBlock->gameGeom[k]->getVisMaxInPixelsT()->getFX()-testPoint->getFX()) +
+							abs(curBlock->gameGeom[k]->getVisMaxInPixelsT()->getFY()-testPoint->getFY()) +
+							abs(curBlock->gameGeom[k]->getVisMaxInPixelsT()->getFZ()-testPoint->getFZ());
+							
+							//curBlock->gameGeom[k]->getVisMinInPixelsT()->distance(testPoint) +
+							//curBlock->gameGeom[k]->getVisMaxInPixelsT()->distance(testPoint);
 
 							if (curBlock->gameGeom[k]->visible) {
 								
@@ -17172,25 +18326,33 @@ void Singleton::mouseMove (int _x, int _y)
 		int dx = x - lastPosX;
 		int dy = y - lastPosY;
 
+		guiX = _x/UI_SCALE_FACTOR;
+		guiY = _y/UI_SCALE_FACTOR;
 
 		bShift = shiftDown();
-
+		bCtrl = ctrlDown();
 
 		lastMouseX = x;
 		lastMouseY = y;
 
-
-
+		
+		if (testTT != NULL) {
+			//testTT->setText(i__s(_x) + ", " + i__s(_y));
+		}
 
 		mouseXUp = x;
 		mouseYUp = y;
 
+		
 
-		//mainGUI->testOver(_x, _y);
+		
+		if (tiltChanged) {
+			tiltChanged = false;
+			createVTListTilt();
+			restartGen(false, false);
+		}
 
-
-
-		if (lbDown || rbDown)
+		if (abDown)
 		{
 			moveObject((float)dx, (float)dy, cameraZoom);
 		}
@@ -17199,11 +18361,12 @@ void Singleton::mouseMove (int _x, int _y)
 
 			getPixData(&mouseMovePD, x, y);
 
+
+			
+
 			if (
-				mouseState == E_MOUSE_STATE_BRUSH ||
-				mouseState == E_MOUSE_STATE_PICKING ||
-				mouseState == E_MOUSE_STATE_ENTS  )
-			{
+				mouseState != E_MOUSE_STATE_MOVE
+			)	{
 
 				gw->modifyUnit(&mouseMovePD, E_BRUSH_MOVE);
 			}
@@ -17213,9 +18376,17 @@ void Singleton::mouseMove (int _x, int _y)
 
 			//////////////
 
-
+			if (mouseState == E_MOUSE_STATE_POSE) {
+				updateNearestEntNode(false, &mouseMovePD);
+			}
+			else {
+				activeNode = NULL;
+				setSelNode(NULL);
+			}
+			
 
 			highlightedGeom = findNearestGeom(&mouseMovePD);
+			
 
 
 			//////////////
@@ -17223,23 +18394,32 @@ void Singleton::mouseMove (int _x, int _y)
 
 		}
 
-
-		if (mbDown)
-		{
-
-		}
 		lastPosX = x;
 		lastPosY = y;
 
-		if ( (x >= 0) && (y >= 0) && (x < baseW) && (y < baseH) )   // && (rbDown||lbDown||mbDown)
+		if ( (x >= 0) && (y >= 0) && (x < baseW) && (y < baseH) )
 		{
 			bufferInvalid = true;
 
-			if (rbDown || lbDown)
+			if (abDown)
 			{
 				changesMade = true;
 			}
 		}
+	}
+void Singleton::makeDirty ()
+                         {
+		testHuman->gph->isDirty = true;
+	}
+void Singleton::setSelNode (GameEntNode * newNode)
+                                              {
+		
+		selectedNode = newNode;
+		if (selectedNode != lastSelNode) {
+			makeDirty();
+		}
+		lastSelNode = newNode;
+		
 	}
 void Singleton::screenToWorldBase (FIVector4 * tc, FIVector4 * wc)
         {
@@ -17308,11 +18488,16 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
         {
 
 
+		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
+
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
 
 		lastPosX = x;
 		lastPosY = y;
+		
+		guiX = _x/UI_SCALE_FACTOR;
+		guiY = _y/UI_SCALE_FACTOR;
 
 		GameBlock *curBlock;
 
@@ -17338,13 +18523,22 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		oneVec.setFXYZ(1.0f, 1.0f, 1.0f);
 		oneVec.normalize();
 
-		bool hitGUI = false;//mainGUI->testHit(button, state, _x, _y);
+		
+		
+		if ((mainGUI != NULL)&&guiOn) {
+			if (mainGUI->isReady) {
+				hitGUI = mainGUI->testHit(button, state, guiX, guiY);
+			}
+			
+		}
+		
 
 		if (hitGUI)
 		{
 			bufferInvalid = true;
 			return;
 		}
+		
 
 		switch (button)
 		{
@@ -17375,6 +18569,8 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 			break;
 		}
 
+		abDown = lbDown || rbDown || mbDown;
+		
 
 
 		if (rbClicked)
@@ -17383,9 +18579,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 			if (tiltChanged) {
 				tiltChanged = false;
 				createVTListTilt();
-				gw->actionOnHolders(E_HOLDER_ACTION_RESET);
-				bufferInvalid = true;
-				changesMade = true;
+				restartGen(false, true);
 			}
 			
 			if (lbDown)
@@ -17423,28 +18617,13 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 			mouseVel.setFXY(0.0f, 0.0f);
 		}
 
-		if (mbClicked)
-		{
-
-		}
-
-
-		if (rbDown || lbDown)
-		{
-
-		}
-		else
-		{
-
-		}
-
 		if (rbClicked || lbClicked)
 		{
 
 
 
 
-			if (rbDown || lbDown)
+			if (abDown)
 			{
 
 			}
@@ -17518,12 +18697,62 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 						case E_CT_DOOR:
 						case E_CT_WINDOW:
 						
+							
+						
+							
 						
 							gw->getHoldersInGeom(selectedGeom);
-							selectedGeom->applyTransform(selectedGeom->rotDir, false);
+							selectedGeom->toggleTransform();
 							gw->getHoldersInGeom(selectedGeom);
 							gw->refreshHoldersInList(true); //holderCount <= 12
 							gw->holdersToRefresh.clear();
+							
+							if (selectedGeom->isToggled) {
+								// open
+								switch (selectedGeom->buildingType)
+								{
+									case E_CT_DOOR:
+										playSoundPosAndPitch(
+											"open3",
+											cameraPos,
+											selectedGeom->getVisMinInPixelsT(),
+											0.3f
+										);
+									break;
+									case E_CT_WINDOW:
+										playSoundPosAndPitch(
+											"open1",
+											cameraPos,
+											selectedGeom->getVisMinInPixelsT(),
+											0.3f
+										);
+									break;
+								}
+							}
+							else {
+								// close
+								
+								switch (selectedGeom->buildingType)
+								{
+									case E_CT_DOOR:
+										playSoundPosAndPitch(
+											"close2",
+											cameraPos,
+											selectedGeom->getVisMinInPixelsT(),
+											0.3f
+										);
+									break;
+									case E_CT_WINDOW:
+										playSoundPosAndPitch(
+											"close1",
+											cameraPos,
+											selectedGeom->getVisMinInPixelsT(),
+											0.3f
+										);
+									break;
+								}
+							}
+							
 
 							bufferInvalid = true;
 							changesMade = true;
@@ -17609,8 +18838,6 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 						{}
 					}
 
-
-					diskOn = 0.0f;
 				}
 
 
@@ -17620,7 +18847,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		}
 		else
 		{
-			if (rbDown || lbDown)
+			if (abDown)
 			{
 
 				if (rbDown && lbDown)
@@ -17649,56 +18876,52 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 
 
+					activeObject = E_OBJ_CAMERA;
+					
+					
+					
+					
+					if (bCtrl) {
+						if (mouseDownPD.getIW() == 1) {
+							// find nearest dyn object
 
-
-
-					if (mouseDownPD.getIW() == 1)
-					{
-
-						
-
-						// find nearest dyn object
-
-						bestInd = 0;
-						bestDis = 99999.0f;
-						
-						worldToScreenBase(&tempVec1, &mouseDownPD);
-						
-						for (i = 1; i < dynObjects.size(); i++)
-						{
-
-
-							worldToScreenBase(&tempVec2, &(dynObjects[i]->pos));
-
-							curDis = tempVec1.distanceXY(&tempVec2);
-
-
-							if (curDis < bestDis)
+							bestInd = 0;
+							bestDis = 99999.0f;
+							
+							worldToScreenBase(&tempVec1, &mouseDownPD);
+							
+							for (i = 1; i < dynObjects.size(); i++)
 							{
-								bestDis = curDis;
-								bestInd = i;
+
+
+								worldToScreenBase(&tempVec2, &(dynObjects[i]->pos));
+
+								curDis = tempVec1.distanceXY(&tempVec2);
+
+
+								if (curDis < bestDis)
+								{
+									bestDis = curDis;
+									bestInd = i;
+								}
 							}
+
+							activeObject = (E_OBJ)(bestInd);
 						}
-
-						activeObject = (E_OBJ)(bestInd);
-
-
-						diskOn = 1.0f;
-						//activeObjectPos.setFXYZRef(&(dynObjects[activeObject]->pos));
-
 					}
-					else
-					{
-						
-						activeObject = E_OBJ_CAMERA;
+					else {
+						switch(mouseState) {
+							
+							case E_MOUSE_STATE_POSE:
+								
+								updateNearestEntNode(true, &mouseDownPD);
+								
+							break;
+						}	
 					}
-
-					if (mouseState == E_MOUSE_STATE_BRUSH)
-					{
-						diskOn = 0.0;
-					}
-
-
+					
+					
+					
 				}
 
 
@@ -17725,6 +18948,78 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		}
 
 	}
+void Singleton::resetActiveNode ()
+                               {
+		
+		GameEntNode* curNode = NULL;
+		
+		if (selectedNode == NULL) {
+			curNode = lastSelNode;
+		}
+		else {
+			curNode = selectedNode;
+		}
+		
+		if (curNode != NULL) {
+			curNode->rotThe = 0.0f;
+			curNode->rotPhi = 0.0f;
+			curNode->rotRho = 0.0f;
+			
+			curNode->tbnRadScale0.setFXYZ(1.0f,1.0f,1.0f);
+			curNode->tbnRadScale1.setFXYZ(1.0f,1.0f,1.0f);
+			makeDirty();
+		}
+	}
+void Singleton::updateNearestEntNode (bool setActive, FIVector4 * mousePosWS)
+                                                                         {
+		// tempVec3.setFXYZRef(mousePosWS);
+		// tempVec3.addXYZRef(&(testHuman->basePosition),-1.0f);
+		
+		worldToScreenBase(&tempVec1, mousePosWS);
+		
+		bestNode = NULL;
+		bestNodeDis = 99999.0f;
+		findNearestEntNode(
+			testHuman->baseNode,
+			&tempVec1
+		);
+		
+		if (bestNodeDis >= 1.0f*pixelsPerMeter) {
+			bestNode = NULL;
+			activeNode = NULL;
+			setSelNode(NULL);
+		}
+		
+		if (bestNode != NULL) {
+			
+			setSelNode(bestNode);
+			if (setActive) {
+				activeNode = bestNode;				
+			}
+		}
+	}
+void Singleton::findNearestEntNode (GameEntNode * curNode, FIVector4 * mousePosSS)
+          {
+		
+		tempVec3.setFXYZRef(&(curNode->orgTrans[1]));
+		tempVec3.multXYZ(pixelsPerMeter);
+		tempVec3.addXYZRef(&(testHuman->basePosition));
+		
+		worldToScreenBase(&tempVec2, &tempVec3);
+		float curDis = mousePosSS->distanceXY(&tempVec2);
+		
+		if (curDis < bestNodeDis) {
+			bestNodeDis = curDis;
+			bestNode = curNode;
+		}
+		
+		int i;
+		
+		for (i = 0; i < curNode->children.size(); i++) {
+			findNearestEntNode(curNode->children[i],mousePosSS);
+		}
+		
+	}
 void Singleton::processB64 (charArr * sourceBuffer, charArr * saveBuffer)
         {
 
@@ -17744,7 +19039,7 @@ void Singleton::processB64 (charArr * sourceBuffer, charArr * saveBuffer)
 		}
 
 
-		FBOSet *fbos = fboMap["palFBO"];
+		FBOSet *fbos = &(fboMap["palFBO"]);
 
 
 		//unsigned char* resultImage = new unsigned char[256*256*4];
@@ -17767,14 +19062,46 @@ void Singleton::processB64 (charArr * sourceBuffer, charArr * saveBuffer)
 		fbos->copyFromMem(0, resultImage);
 
 	}
-bool Singleton::processJSON (charArr * sourceBuffer, charArr * saveBuffer)
-        {
+bool Singleton::processJSONFromString (string * sourceBuffer, JSONValue * * destObj)
+          {
+		if (*destObj != NULL)
+		{
+			delete *destObj;
+			*destObj = NULL;
+		}
+		
+		*destObj = JSON::Parse(sourceBuffer->c_str());
 
-		doTraceND("processJSON()");
+		if (*destObj == NULL)
+		{
+			doTraceND("Invalid JSON\n\n");
+			cout << sourceBuffer << "\n\n";
+			return false;
+		}
+		else
+		{
+			doTraceND("\nValid JSON\n");
+			return true;
+		}
+		
+	}
+bool Singleton::processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONValue * * destObj)
+          {
+		
+		if (*destObj != NULL)
+		{
+			delete *destObj;
+			*destObj = NULL;
+		}
+
+		//doTraceND("destObj is now NULL");
+		
+
+		//doTraceND("processJSON()");
 
 		char *buf = sourceBuffer->data;
 		int len = sourceBuffer->size;
-		JSONValue *jsonVal = NULL;
+		//JSONValue *jsonVal = NULL;
 
 		if (saveBuffer != &nullBuffer)
 		{
@@ -17788,58 +19115,100 @@ bool Singleton::processJSON (charArr * sourceBuffer, charArr * saveBuffer)
 			saveBuffer->size = len;
 		}
 
-		doTraceND("Begin JSON::Parse()");
+		//doTraceND("Begin JSON::Parse()");
 
 		if (buf == NULL)
 		{
-			doTraceND("buf is NULL");
+			//doTraceND("buf is NULL");
 			return false;
 		}
 		else
 		{
-			doTraceND("buf is not NULL");
-			jsonVal = JSON::Parse(buf);
+			//doTraceND("buf is not NULL");
+			*destObj = JSON::Parse(buf);
 		}
 
 
-		doTraceND("End JSON::Parse()");
+		//doTraceND("End JSON::Parse()");
 
 
-		if (jsonVal == NULL)
+		if (*destObj == NULL)
 		{
 			doTraceND("Invalid JSON\n\n");
 			return false;
 		}
 		else
 		{
-			doTraceND("");
-			doTraceND("Valid JSON");
-			doTraceND("");
-
-
-			if (rootObj != NULL)
-			{
-				delete rootObj;
-				rootObj = NULL;
-			}
-
-			doTraceND("rootObj is now NULL");
-
-
-			rootObj = jsonVal;
-			jsonVal = NULL;
-
-			//doTrace( "JSON VAL", f__s(jsonVal->Child(L"x")->number_value) , "\n\n" );
+			doTraceND("\nValid JSON\n");
 			return true;
 		}
 
 
 	}
+bool Singleton::loadJSON (string path, JSONValue * * destObj)
+          {
+		
+		bool res = false;
+		
+		charArr dest;
+		dest.data = NULL;
+		dest.size = 0;
+		
+		if ( loadFile(path, &dest) )
+		{
+			if (processJSON(&dest, &nullBuffer, destObj)) {
+				res = true;
+			}
+			else {
+				res = false;
+			}
+		}
+		else {
+			res = false;
+		}
+		
+		
+		if (dest.data != NULL)
+		{
+			delete[] dest.data;
+			dest.data = NULL;
+		}
+		
+		return res;
+		
+	}
+void Singleton::loadGUI ()
+                       {
+		
+		testTT = NULL;
+		
+		
+		// if ( loadFile("..\\data\\lastJSONBufferGUI.js", &lastJSONBufferGUI) )
+		// {
+		// 	if (processJSON(&lastJSONBufferGUI, &nullBuffer, &guiRootJS)) {
+		// 		mainGUI->guiFromJSON(
+		// 			guiRootJS
+		// 		);
+		// 	}
+		// }
+		
+		if (
+			loadJSON("..\\data\\lastJSONBufferGUI.js", &guiRootJS)
+		) {
+			mainGUI->guiFromJSON(
+				guiRootJS
+			);
+		}
+		
+		//testTT = mainGUI->findNodeByString("testTT");
+		
+		bufferInvalid = true;
+	}
 void Singleton::loadAllData ()
         {
 		if ( loadFile("..\\data\\lastJSONBuffer.js", &lastJSONBuffer) )
 		{
-			processJSON(&lastJSONBuffer, &nullBuffer);
+			processJSON(&lastJSONBuffer, &nullBuffer, &rootObjJS);
 		}
 
 		if ( loadFile("..\\data\\lastImageBuffer.txt", &lastImageBuffer) )
@@ -17854,8 +19223,11 @@ void Singleton::saveAllData ()
 		saveFile("..\\data\\lastJSONBuffer.js", &lastJSONBuffer);
 		saveFile("..\\data\\lastImageBuffer.txt", &lastImageBuffer);
 	}
-bool Singleton::loadFile (char * fileName, charArr * dest)
+bool Singleton::loadFile (string fnString, charArr * dest)
         {
+		
+		const char* fileName = fnString.c_str();
+		
 		doTraceND("Loading: ", fileName);
 
 		if (dest == NULL)
@@ -17937,12 +19309,41 @@ bool Singleton::saveFile (char * fileName, charArr * source)
 
 		return true;
 	}
+void Singleton::updateAmbientSounds ()
+                                   {
+		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
+		
+		int i;
+		int j;
+		
+		int maxRad = 2.0f;
+		
+		float avgHeight = 0.0f;
+		float tot = 0.0f;
+		
+		for (i = -maxRad; i <= maxRad; i++) {
+			for (j = -maxRad; j <= maxRad; j++) {
+				avgHeight += getHeightAtPixelPos(
+					cameraPos->getFX() + i*32.0f*pixelsPerMeter,
+					cameraPos->getFY() + j*32.0f*pixelsPerMeter
+				);
+				tot += 1.0f;
+			}
+		}
+		
+		float terHeight = avgHeight/tot;
+		
+		float seaHeight = getSLInPixels();
+		
+		float heightDif = clampf((terHeight-seaHeight)/(16.0*pixelsPerMeter), 0.0, 1.0);
+		
+		music[EML_BIRDSONG0]->setVolume(ambVolume*timeOfDay*heightDif);
+		music[EML_CRICKETS0]->setVolume(ambVolume*(1.0f-timeOfDay)*heightDif);
+		music[EML_OCEANWAVES0]->setVolume(ambVolume*(1.0f-heightDif));
+		
+	}
 void Singleton::display ()
         {
-
-
-
-
 
 		curTime = myTimer.getElapsedTimeInMilliSec();
 
@@ -17962,7 +19363,7 @@ void Singleton::display ()
 
 				if (myWS->isJSON)
 				{
-					if ( processJSON( &(myWS->recBuffer), &lastJSONBuffer  ) )
+					if ( processJSON( &(myWS->recBuffer), &lastJSONBuffer, &rootObjJS ) )
 					{
 						saveAllData();
 
@@ -17970,7 +19371,7 @@ void Singleton::display ()
 				}
 				else
 				{
-					processB64(  &(myWS->recBuffer), &lastImageBuffer  );
+					processB64(  &(myWS->recBuffer), &lastImageBuffer );
 
 				}
 
@@ -18041,7 +19442,7 @@ void Singleton::display ()
 			// }
 
 
-			dz = (targetZoom - cameraZoom) / (16.0f);
+			dz = (targetZoom - cameraZoom) / (4.0f);
 
 			/*
 			if (abs(dz) < 0.0001) {
@@ -18063,7 +19464,7 @@ void Singleton::display ()
 			cameraZoom += dz;
 			
 
-			if ( ( abs(dz) / cameraZoom < 0.0001 ) && (isZooming))
+			if ( ( abs(dz) / cameraZoom < 0.001 ) && (isZooming))
 			{
 				isZooming = false;
 				wsBufferInvalid = true;
@@ -18095,6 +19496,13 @@ void Singleton::display ()
 				}
 				else
 				{
+					updateAmbientSounds();
+					if ((mainGUI != NULL)&&guiOn) {
+						if (mainGUI->isReady) {
+							//mainGUI->testOver(guiX, guiY);
+						}
+						
+					}
 					gw->update();
 					//renderCount += 1.0;
 				}
@@ -18174,8 +19582,8 @@ void PooledResource::init (Singleton * _singleton, bool _isCPU)
 		if (isCPU) {
 			for (i = 0; i < MAX_LAYERS; i++) {
 				cpuSet[i] = new uint[
-					(singleton->holderSizeInPixels) *
-					(singleton->holderSizeInPixels)	
+					(singleton->holderSizeInPixelsMod) *
+					(singleton->holderSizeInPixelsMod)	
 				];
 			}
 		}
@@ -18187,8 +19595,8 @@ void PooledResource::init (Singleton * _singleton, bool _isCPU)
 			for (i = 0; i < MAX_LAYERS; i++) {
 				fboSet[i]->init(
 					2,
-					((singleton->holderSizeInPixels)),
-					((singleton->holderSizeInPixels)),
+					((singleton->holderSizeInPixelsMod)),
+					((singleton->holderSizeInPixelsMod)),
 					1,
 					false //has depth
 				);
@@ -18211,8 +19619,9 @@ PoolManager::PoolManager ()
                       {
 		
 	}
-void PoolManager::init (Singleton * _singleton, bool _isCPU)
-                                                      {
+void PoolManager::init (Singleton * _singleton, bool _isEntity, bool _isCPU)
+                                                                      {
+		isEntity = _isEntity;
 		poolItemsCreated = 0;
 		isCPU = _isCPU;
 		singleton = _singleton;
@@ -18225,7 +19634,16 @@ float PoolManager::getMaxMem ()
 			return MAX_CPU_MEM;
 		}
 		else {
-			return MAX_GPU_MEM;
+			
+			if (isEntity) {
+				// TODO: FIX THIS
+				return MAX_GPU_MEM*20.0f;
+			}
+			else {
+				return MAX_GPU_MEM;
+			}
+			
+			
 		}
 	}
 float PoolManager::getTotMemUsed ()
@@ -18450,6 +19868,115 @@ int PoolManager::requestPoolId (int blockId, int holderId)
 	}
 #undef LZZ_INLINE
  
+// f00320_fontwrapper.h
+//
+
+#include "f00320_fontwrapper.e"
+#define LZZ_INLINE inline
+FontWrapper::FontWrapper ()
+                      {
+		
+	}
+void FontWrapper::init (Singleton * _singleton, string fontName, bool _isIcons, float _fontScale, float _additionalOffset)
+          {
+		
+		int counter;
+		int i;
+		int j;
+		int ind;
+		
+		additionalOffset = _additionalOffset;
+		fontScale = _fontScale;
+		isIcons = _isIcons;
+		
+		JSONValue *cn;
+		JSONValue *cc;
+		
+		singleton = _singleton;
+		lastJSONBuffer.data = NULL;
+		lastJSONBuffer.size = 0;
+		
+		cout << "\n\n\nFONT LOAD\n\n\n";
+		
+		fontImage = loadBMP("..\\data\\fonts\\"+fontName+".bmp");
+		if (isIcons) {
+			fontImage->getTextureId(GL_NEAREST);
+		}
+		else {
+			fontImage->getTextureId(GL_LINEAR);
+		}
+		
+		
+		maxWidth = 0.0f;
+		counter = 0;
+		
+		if (isIcons) {
+			maxWidth = 16.0f;
+			ascender = 0.0f;
+			descender = -15.0f+additionalOffset;
+			fontHeight = 16.0f;
+			
+			
+			for (j = 0; j < fontImage->height/16; j++) {
+				for (i = 0; i < fontImage->width/16; i++) {
+					charVals[counter].consumedW = 16.0f;
+					charVals[counter].consumedH = 16.0f;
+					charVals[counter].offsetX = 0.0f;
+					charVals[counter].offsetY = 0.0f;
+					charVals[counter].sampX = i*16;
+					charVals[counter].sampY = j*16;
+					charVals[counter].sampW = 16.0f;
+					charVals[counter].sampH = 16.0f;
+					
+					counter++;
+				}
+			}
+			
+		}
+		else {
+			if ( singleton->loadFile("..\\data\\fonts\\"+fontName+".js", &lastJSONBuffer) )
+			{
+				if (singleton->processJSON(&lastJSONBuffer, &(singleton->nullBuffer), &jsRoot)) {
+					
+					ascender = jsRoot->Child("metrics")->Child("ascender")->number_value;
+					descender = jsRoot->Child("metrics")->Child("descender")->number_value;
+					fontHeight = jsRoot->Child("metrics")->Child("height")->number_value;
+					
+					cn = jsRoot->Child("chars");
+					
+					
+					for (i = 32; i <= 126; i++) {
+						ind = i-32;
+						cc = cn->Child(ind);
+						
+						charVals[i].consumedH = fontHeight;
+						charVals[i].consumedW = cc->Child("width")->number_value;
+						
+						charVals[i].offsetX = cc->Child("ox")->number_value;
+						charVals[i].offsetY = cc->Child("oy")->number_value;
+						
+						charVals[i].sampX = cc->Child("x")->number_value;
+						charVals[i].sampY = cc->Child("y")->number_value;
+						charVals[i].sampW = cc->Child("w")->number_value;
+						charVals[i].sampH = cc->Child("h")->number_value;
+						
+						if (charVals[i].consumedW > maxWidth) {
+							maxWidth = charVals[i].consumedW;
+						}
+					}
+					
+					
+					
+				}
+			}
+		}
+		
+		
+		
+		
+	}
+#undef LZZ_INLINE
+ 
 // f00325_uicomponent.h
 //
 
@@ -18459,98 +19986,809 @@ UIComponent::UIComponent ()
                       {
 		
 	}
-void UIComponent::init (Singleton * _singleton, StyleSheet * _mainSS, string _text, int _originPosX, int _originPosY, int _charsPerLine, int _maxLines, int _alignX, int _alignY, int _fillDir, int _charScale, int _spacingX, int _spacingY)
+void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, string _text, string _uid, string _ss, int _guiClass, float _divisions, bool _hasBackground, bool _singleLine, float _fillRatioX, float _fillRatioY, int _fillDir, int _alignX, int _alignY, float _value, int _layer, int _hoverType, bool _isFloating)
           {
 
+		parent = NULL;
+		foundParent = false;
+		contOnStack = false;
+
 		singleton = _singleton;
+		parentId = _parentId;
+		nodeId = _nodeId;
+		
+		jvNodeNoTemplate = _jvNodeNoTemplate;
+		
+		layer = _layer;
+		hoverType = _hoverType;
+		isFloating = _isFloating;
+		
+		ss = _ss;
+		text = _text;
+		uid = _uid;
+		index = _index;
+		
+		guiClass = _guiClass;
+		//guiId = _guiId;
+		
+		overSelf = false;
+		overChild = false;
+		isDirty = true;
+		visible = (hoverType == E_HT_NORMAL);
+		
+		hasBackground = _hasBackground;
+		fillRatioDim.x = _fillRatioX;
+		fillRatioDim.y = _fillRatioY;
 
+		singleLine = _singleLine;
+		
+		
+		curFont = singleton->fontWrappers[EFW_TEXT];
+		curFontIcons = singleton->fontWrappers[EFW_ICONS];
+		
 		wasHit = false;
-		value = 0.0f;
-		divisions = 0.0f;
-
-		uid = giGUI_IDS;
-		giGUI_IDS++;
+		value = _value;
+		divisions = _divisions;
 
 		mouseDown = false;
 		mouseOver = false;
 
-		mainSS = _mainSS;
-		resSS.init(mainSS);
-		originPos.x = _originPosX;
-		originPos.y = _originPosY;
+		resSS.init(&(singleton->styleSheetMap[ss]));
+		
+		
+		paddingInPixels = resSS.baseSS->compStates[E_COMP_UP].props[E_SS_PADDING];
+		borderInPixels = resSS.baseSS->compStates[E_COMP_UP].props[E_SS_BORDER];
+		marginInPixels = resSS.baseSS->compStates[E_COMP_UP].props[E_SS_MARGIN];
+		
+		
+		/////////////////
+		
+		floatOffset.x = 0.0f;
+		floatOffset.y = 0.0f;
+		
+		originPos.x = 0.0f;
+		originPos.y = 0.0f;
+		spaceForCharsInPixels = 200.0f;
+		
+		/////////////////
 
-		hitBounds.xMin = 0;
-		hitBounds.xMax = 0;
-		hitBounds.yMin = 0;
-		hitBounds.yMax = 0;
+
+		hitBounds.xMin = 0.0f;
+		hitBounds.xMax = 0.0f;
+		hitBounds.yMin = 0.0f;
+		hitBounds.yMax = 0.0f;
 
 
 		align.x = _alignX;
 		align.y = _alignY;
 		fillDir = _fillDir;
-		charScale = _charScale;
+		
+		spacing.x = 0.0f;
+		spacing.y = 0.0f;
 
-		spacing.x = _spacingX;
-		spacing.y = _spacingY;
-
-		text = _text;
+		
+		if (isFloating) {
+			resultDimInPixels.x = singleton->guiWinW;
+			resultDimInPixels.y = singleton->guiWinH;
+			originPos.x = 0.0;
+			originPos.y = 0.0;
+		}
 		
 		
-
-		charsPerLine = _charsPerLine;
-		maxLines = _maxLines;
-		
-		charDim.x = 7;
-		charDim.y = 12;
-
-		refresh();
 	}
-void UIComponent::updateValue (int x, int y)
-                                       {
-		if (wasHit) {
-			if (divisions == 0.0f) {
-				value = ((float)(x-hitBounds.xMin))/((float)(hitBounds.xMax-hitBounds.xMin));
+UIComponent * UIComponent::getParent ()
+                                 {
+		if (foundParent) {
+			
+		}
+		else {
+			// todo: replace with root or id
+			parent = singleton->mainGUI->baseComp->findNodeById(parentId);
+			foundParent = true;
+		}
+		
+		return parent;
+	}
+UIComponent * UIComponent::findNodeByString (string _uid)
+                                                   {
+		int i;
+		
+		if (_uid.compare(uid) == 0) {
+			return this;
+		}
+		
+		for (i = 0; i < children.size(); i++) {
+			if (children[i].findNodeByString(_uid) != NULL) {
+				return children[i].findNodeByString(_uid);
+			}
+		}
+		
+		for (i = 0; i < floatingChildren.size(); i++) {
+			if (floatingChildren[i].findNodeByString(_uid) != NULL) {
+				return floatingChildren[i].findNodeByString(_uid);
+			}
+		}
+		
+		return NULL;
+	}
+UIComponent * UIComponent::findNodeById (int id)
+                                          {
+		int i;
+		
+		if (nodeId == id) {
+			return this;
+		}
+		
+		for (i = 0; i < children.size(); i++) {
+			if (children[i].findNodeById(id) != NULL) {
+				return children[i].findNodeById(id);
+			}
+		}
+		
+		for (i = 0; i < floatingChildren.size(); i++) {
+			if (floatingChildren[i].findNodeById(id) != NULL) {
+				return floatingChildren[i].findNodeById(id);
+			}
+		}
+		
+		return NULL;
+	}
+float UIComponent::getMinWidth ()
+                            {
+		int i;
+		
+		updateVecs();
+		
+		if (singleLine) {
+			spaceForCharsInPixels = 99999.0f;
+			renderText(true);
+			
+		}
+		else {
+			textDimInPixels.x = 0;
+			textDimInPixels.y = 0;
+		}
+		
+		
+		
+		float curMW = (marginInPixels+borderInPixels+paddingInPixels)*2.0f + 
+			textDimInPixels.x;
+		
+		
+		float totMW = 0.0f;
+		float tempMW = 0.0f;
+		
+		for (i = 0; i < children.size(); i++) {
+			
+			tempMW = children[i].getMinWidth();
+			
+			if (fillDir == E_FILL_HORIZONTAL) {
+				totMW += tempMW;
 			}
 			else {
-				if (divisions == 1.0f) {
-					
+				totMW = max(totMW,tempMW);
+			}
+		}
+		
+		for (i = 0; i < floatingChildren.size(); i++) {
+			floatingChildren[i].getMinWidth();
+		}
+		
+		
+		curMW += totMW;
+		
+		minDimInPixels.x = curMW;
+		
+		return curMW;
+		
+	}
+float UIComponent::getMinHeight ()
+                             {
+		int i;
+		
+		if (!singleLine) {
+			spaceForCharsInPixels = resultDimInPixels.x;
+			renderText(true);
+		}
+		else {
+			// already determined
+		}
+		
+		
+		
+		float curMH = (marginInPixels+borderInPixels+paddingInPixels)*2.0f + 
+			textDimInPixels.y;
+		
+		float totMH = 0.0f;
+		float tempMH = 0.0f;
+		
+		
+		for (i = 0; i < children.size(); i++) {
+			
+			tempMH = children[i].getMinHeight();
+			
+			if (fillDir == E_FILL_HORIZONTAL) {
+				
+				totMH = max(totMH,tempMH);
+			}
+			else {
+				totMH += tempMH;
+			}
+		}
+		
+		
+		for (i = 0; i < floatingChildren.size(); i++) {
+			floatingChildren[i].getMinHeight();
+		}
+		
+		curMH += totMH;
+		
+		minDimInPixels.y = curMH;
+		
+		return curMH;
+		
+	}
+UIComponent * UIComponent::addChild (int _parentId, int _nodeId, string * stringVals, float * floatVals, bool _isFloating, JSONValue * _jvNodeNoTemplate)
+          {
+		
+		UIComponent tempComp;
+		
+		int childCount = 0;
+		
+		if (_isFloating) {
+			floatingChildren.push_back(tempComp);
+			curComp = &(floatingChildren.back());
+			childCount = floatingChildren.size()-1;
+			
+			
+		}
+		else {
+			children.push_back(tempComp);
+			curComp = &(children.back());
+			childCount = children.size()-1;
+		}
+		
+		curComp->init(
+			singleton,
+			_parentId,
+			_nodeId,
+			childCount,
+			
+			_jvNodeNoTemplate,
+			
+			stringVals[E_GST_LABEL],
+			stringVals[E_GST_UID],
+			stringVals[E_GST_SS],
+			
+			floatVals[E_GFT_TYPE],
+			floatVals[E_GFT_DIVISIONS],
+			floatVals[E_GFT_HASBACKGROUND],
+			floatVals[E_GFT_SINGLELINE],
+			floatVals[E_GFT_FILLRATIOX],
+			floatVals[E_GFT_FILLRATIOY],
+			floatVals[E_GFT_FILLDIR],
+			floatVals[E_GFT_ALIGNX],
+			floatVals[E_GFT_ALIGNY],
+			floatVals[E_GFT_VALUE],
+			floatVals[E_GFT_LAYER],
+			floatVals[E_GFT_HOVERTYPE],
+			_isFloating
+		);
+		
+		//return curComp;
+		
+		if (_isFloating) {
+			return &(floatingChildren.back());
+		}
+		else {
+			return &(children.back());
+		}
+		
+	}
+void UIComponent::setOrigPos ()
+                          {
+		
+		int i;
+		
+		fVector2 curPos = originPos;
+		
+		
+		
+		
+		fVector2 availSpaceDim = resultDimInPixels;
+		fVector2 totVals;
+		
+		totVals.x = 0.0f;
+		totVals.y = 0.0f;
+		
+		for (i = 0; i < children.size(); i++) {
+			
+			if (fillDir == E_FILL_HORIZONTAL) {
+				totVals.x += children[i].resultDimInPixels.x;
+				totVals.y = max(totVals.y,children[i].resultDimInPixels.y);
+			}
+			else {
+				totVals.y += children[i].resultDimInPixels.y;
+				totVals.x = max(totVals.x,children[i].resultDimInPixels.x);
+			}
+			
+			
+		}
+		
+		availSpaceDim.x -= totVals.x;
+		availSpaceDim.y -= totVals.y;
+		
+		switch (align.x) {
+			case E_ALIGNH_LEFT:
+				curPos.x += marginInPixels + borderInPixels + paddingInPixels;
+			break;
+			case E_ALIGNH_CENTER:
+				curPos.x += availSpaceDim.x/2.0f;
+			break;
+			case E_ALIGNH_RIGHT:
+				curPos.x += availSpaceDim.x;
+				curPos.x -= marginInPixels + borderInPixels + paddingInPixels;
+			break;
+		}
+		
+		switch (align.y) {
+			case E_ALIGNV_TOP:
+				curPos.y += marginInPixels + borderInPixels + paddingInPixels;
+			break;
+			case E_ALIGNV_MIDDLE:
+				curPos.y += availSpaceDim.y/2.0f;
+			break;
+			case E_ALIGNV_BOTTOM:
+				curPos.y += availSpaceDim.y;
+				curPos.y -= marginInPixels + borderInPixels + paddingInPixels;
+			break;
+		}
+		
+		if (fillDir == E_FILL_HORIZONTAL) {
+			for (i = 0; i < children.size(); i++) {
+				children[i].originPos.x = curPos.x;
+				children[i].originPos.y = curPos.y;
+				curPos.x += children[i].resultDimInPixels.x;
+			}
+		}
+		else {
+			for (i = 0; i < children.size(); i++) {
+				children[i].originPos.x = curPos.x;
+				children[i].originPos.y = curPos.y;
+				curPos.y += children[i].resultDimInPixels.y;
+			}
+		}
+		
+		
+		for (i = 0; i < children.size(); i++) {
+			children[i].setOrigPos();
+		}
+		
+		
+		for (i = 0; i < floatingChildren.size(); i++) {
+			floatingChildren[i].setOrigPos();
+		}
+		
+	}
+void UIComponent::applyHeight ()
+                           {
+		fVector2 totalRatios;
+		totalRatios.x = 0.0f;
+		totalRatios.y = 0.0f;
+		float availSpace = resultDimInPixels.y - (marginInPixels+borderInPixels+paddingInPixels)*2.0f;
+		int i;
+		
+		
+		//float totVal = 0.0f;
+		for (i = 0; i < children.size(); i++) {
+			totalRatios.y += children[i].fillRatioDim.y;
+			if (fillDir == E_FILL_HORIZONTAL) {
+				//totVal = max(totVal,children[i].minDimInPixels.y);
+			}
+			else {
+				availSpace -= children[i].minDimInPixels.y;
+			}
+		}
+		//availSpace -= totVal;
+		
+		
+		if (totalRatios.y == 0.0f) {
+			totalRatios.y = 1.0f;
+		}
+		
+		
+		for (i = 0; i < children.size(); i++) {
+			
+			if (fillDir == E_FILL_HORIZONTAL) {
+				
+				if (children[i].fillRatioDim.y == 0.0f) {
+					children[i].resultDimInPixels.y = children[i].minDimInPixels.y;
 				}
 				else {
-					value = floor(((float)(x-hitBounds.xMin))/((float)(hitBounds.xMax-hitBounds.xMin))*divisions)/divisions;
+					
+					// SHOULD BE: 
+					// children[i].resultDimInPixels.y = availSpace;
+					// ?
+					children[i].resultDimInPixels.y = availSpace;
 				}
+			}
+			else {
+				children[i].resultDimInPixels.y =
+					children[i].minDimInPixels.y +
+					(availSpace*children[i].fillRatioDim.y)/totalRatios.y;	
+				
+			}
+		}
+		
+		for (i = 0; i < children.size(); i++) {
+			children[i].applyHeight();	
+		}
+		
+		for (i = 0; i < floatingChildren.size(); i++) {
+			floatingChildren[i].applyHeight();
+		}
+		
+	}
+void UIComponent::applyWidth ()
+                          {
+		
+		fVector2 totalRatios;
+		totalRatios.x = 0.0f;
+		totalRatios.y = 0.0f;
+		float availSpace = resultDimInPixels.x - (marginInPixels+borderInPixels+paddingInPixels)*2.0f;
+		int i;
+		
+		//float totVal = 0.0f;
+		for (i = 0; i < children.size(); i++) {
+			totalRatios.x += children[i].fillRatioDim.x;
+			if (fillDir == E_FILL_HORIZONTAL) {
+				availSpace -= children[i].minDimInPixels.x;
+			}
+			else {
+				//totVal = max(totVal,children[i].minDimInPixels.x);
+			}
+		}		
+		//availSpace -= totVal;
+		
+		if (totalRatios.x == 0.0f) {
+			totalRatios.x = 1.0f;
+		}
+		
+		
+		for (i = 0; i < children.size(); i++) {
+			
+			if (fillDir == E_FILL_HORIZONTAL) {
+				
+				
+				
+				children[i].resultDimInPixels.x =
+					children[i].minDimInPixels.x +
+					(availSpace*children[i].fillRatioDim.x)/totalRatios.x;	
+			}
+			else {
+				
+				if (children[i].fillRatioDim.x == 0.0f) {
+					children[i].resultDimInPixels.x = children[i].minDimInPixels.x;
+				}
+				else {
+					children[i].resultDimInPixels.x = availSpace;
+				}
+			}
+					
+		}
+		
+		
+		for (i = 0; i < children.size(); i++) {
+			children[i].applyWidth();	
+		}
+		
+		for (i = 0; i < floatingChildren.size(); i++) {
+			floatingChildren[i].applyWidth();
+		}
+		
+	}
+void UIComponent::gatherDirty (vector <UIComponent*> * dirtyVec)
+                                                          {
+		
+		int i;
+		
+		if (isDirty) {
+			dirtyVec->push_back(this);
+		}
+		else {
+			for (i = 0; i < children.size(); i++) {
+				children[i].gatherDirty(dirtyVec);
+			}
+			for (i = 0; i < floatingChildren.size(); i++) {
+				floatingChildren[i].gatherDirty(dirtyVec);
+			}
+		}
+		
+	}
+void UIComponent::clearDirty ()
+                          {
+		
+		int i;
+		
+		isDirty = false;
+		
+		for (i = 0; i < children.size(); i++) {
+			children[i].clearDirty();
+		}
+		for (i = 0; i < floatingChildren.size(); i++) {
+			floatingChildren[i].clearDirty();
+		}
+	}
+void UIComponent::layout ()
+                      {
+		
+		int i;
+		
+		
+		// if (isDirty) {
+		// 	isDirty = false;
+		// }
+		// else {
+		// 	return;
+		// }
+		
+		
+		
+		getMinWidth();
+		applyWidth();
+		getMinHeight();
+		applyHeight();
+		setOrigPos();
+		
+		
+		
+	}
+void UIComponent::updateValue (float x, float y)
+                                           {
+		
+		float hoverBuffer = 8.0f;
+		
+		UIComponent* curParent = getParent();
+		
+		switch (hoverType) {
+			case E_HT_NORMAL:
+				if (curParent != NULL) {
+					floatOffset = curParent->floatOffset;
+					visible = curParent->visible;
+					
+					
+				}
+			break;
+			case E_HT_TOOLTIP:
+			case E_HT_TOOLTIP_VALUE:
+				floatOffset.x = x + hoverBuffer;
+				floatOffset.y = parent->originPos.y + parent->resultDimInPixels.y + hoverBuffer;
+				visible = curParent->overSelf;
+				
+				if ((hoverType == E_HT_TOOLTIP_VALUE)&&visible) {
+					
+					children[0].setText(f__s(curParent->value));
+				}
+				
+			break;
+			case E_HT_ONSELECTED:
+				floatOffset.x = parent->originPos.x + parent->resultDimInPixels.x;
+				floatOffset.y = parent->originPos.y;
+				visible = (curParent->value == 1.0f);
+			break;
+						
+		}
+		
+		
+		
+		
+		if (wasHit&&(guiClass == E_GT_SLIDER)) {
+			
+			if (divisions == 1.0f) {
+				// toggle button, do nothing
+			}
+			else {
+				if (divisions == 0.0f) {
+					value = clampfZO((x-hitBounds.xMin)/(hitBounds.xMax-hitBounds.xMin));
+				}
+				else {
+					value = clampfZO(floor((x-hitBounds.xMin)/(hitBounds.xMax-hitBounds.xMin)*divisions)/divisions);
+				}
+				
 			}
 		}
 	}
-void UIComponent::testOver (int x, int y)
-                                    {
-		mouseOver = false;
-
-		if (x < hitBounds.xMax && x > hitBounds.xMin && y < hitBounds.yMax && y > hitBounds.yMin) {
-			mouseOver = true;
+void UIComponent::runReport ()
+                         {
+		
+		int i;
+		
+		//cout << overSelf << " " << text << "\n";
+				
+		for (i = 0; i < children.size(); i++) {
+			children[i].runReport();
 		}
+		for (i = 0; i < floatingChildren.size(); i++) {
+			floatingChildren[i].runReport();
+		}
+	}
+void UIComponent::clearOver ()
+                         {
+		int i;
+		overSelf = false;
+		
+		for (i = 0; i < children.size(); i++) {
+			children[i].clearOver();
+		}
+		for (i = 0; i < floatingChildren.size(); i++) {
+			floatingChildren[i].clearOver();
+		}
+		
+	}
+bool UIComponent::findMaxLayer (float x, float y)
+                                            {
+		
+		
+		int i;
 
+		overSelf = (
+			(x < (hitBounds.xMax+floatOffset.x)) &&
+			(x > (hitBounds.xMin+floatOffset.x)) &&
+			(y < (hitBounds.yMax+floatOffset.y)) &&
+			(y > (hitBounds.yMin+floatOffset.y))
+		);
+		
+		overChild = false;
+		
+		for (i = 0; i < children.size(); i++) {
+			overChild = overChild||children[i].findMaxLayer(x,y);
+		}
+		for (i = 0; i < floatingChildren.size(); i++) {
+			overChild = overChild||floatingChildren[i].findMaxLayer(x,y);
+		}
+		
+			
+		if (
+			overSelf &&
+			visible &&
+			hasBackground &&
+			(!overChild) &&
+			(layer >= singleton->maxLayerOver)
+		) {
+			singleton->maxLayerOver = layer;
+		}
+		
+		return overSelf;
+	}
+void UIComponent::testOver (float x, float y)
+                                        {
+		
+		int i;
+		
+		bool lastOver = mouseOver;
+		
+		for (i = 0; i < children.size(); i++) {
+			children[i].testOver(x,y);
+		}
+		for (i = 0; i < floatingChildren.size(); i++) {
+			floatingChildren[i].testOver(x,y);
+		}
+		
+		mouseOver = 
+			overSelf &&
+			visible &&
+			hasBackground &&
+			(!overChild) &&
+			(layer >= singleton->maxLayerOver);
+		
+		
+		if (mouseOver != lastOver) {
+			if (mouseOver) {
+				singleton->dispatchEvent(
+					GLUT_NO_BUTTON,
+					GLUT_OVER,
+					x,
+					y,
+					this
+				);
+				
+				
+			}
+			else {
+				singleton->dispatchEvent(
+					GLUT_NO_BUTTON,
+					GLUT_OUT,
+					x,
+					y,
+					this
+				);
+			}
+		}
+		else {
+			if (wasHit&&(guiClass == E_GT_SLIDER)) {
+				
+				if (divisions == 1.0f) {
+					// toggle button, do nothing
+				}
+				else {
+					singleton->dispatchEvent(
+						GLUT_NO_BUTTON,
+						GLUT_CHANGING,
+						x,
+						y,
+						this
+					);
+				}
+			}
+		}
+		
+		
+		
 		updateValue(x, y);
 
 	}
-bool UIComponent::testHit (int button, int state, int x, int y)
-                                                          {
-		wasHit = false;
-
-		testOver(x,y);
-
+bool UIComponent::testHit (int button, int state, float x, float y)
+                                                              {
+		
+		
+		
+		UIComponent* curParent = getParent();
+		
+		int i;
+		bool hitChild = false;
+		float lastValue = value;
+		float tempValue;
+		
 		if (button == GLUT_LEFT_BUTTON) {
-			if (state == GLUT_DOWN) {
+			if (state == GLUT_DOWN) { // MOUSE DOWN
 				if (mouseOver) {
-					wasHit = true;
+					
+					if (
+						// (guiClass == E_GT_SLIDER) ||
+						// (guiClass == E_GT_BUTTON)
+						(guiClass != E_GT_HOLDER) && visible
+						
+					) {
+						wasHit = true;
+					}
+					
+					
 				}
 
 				mouseDown = true;
 			}
-			else {
-				if (mouseOver) {
-					if (divisions == 1.0f) {
-						value = 1.0f-value;
+			else { // MOUSE UP
+				if (mouseOver&&wasHit) {
+					
+					switch (guiClass) {
+						case E_GT_HOLDER:
+							
+						break;
+						case E_GT_SLIDER:
+							if (divisions == 1.0f) {
+								value = 1.0f-value;
+							}
+						break;
+						case E_GT_BUTTON:
+							
+						break;
+						case E_GT_RADIO:
+							
+							tempValue = 1.0f-value;
+							
+							if (tempValue == 1.0f) {
+								for (i = 0; i < curParent->children.size(); i++) {
+									if (curParent->children[i].guiClass == E_GT_RADIO) {
+										curParent->children[i].value = 0.0f;
+									}
+								}
+							}
+							
+							value = tempValue;
+							
+						break;
 					}
+					
 				}
 
 
@@ -18562,18 +20800,61 @@ bool UIComponent::testHit (int button, int state, int x, int y)
 		}
 
 		updateValue(x, y);
+		
+		for (i = 0; i < children.size(); i++) {
+			hitChild = hitChild||children[i].testHit(button, state, x, y);
+		}
+		
+		for (i = 0; i < floatingChildren.size(); i++) {
+			hitChild = hitChild||floatingChildren[i].testHit(button, state, x, y);
+		}
+		
+		
+		if ( (!hitChild)&&(mouseOver) ) {
+			// deepest node
+			
+			singleton->dispatchEvent(button, state, x, y, this);
+		}
+		
+		bool finalRes = wasHit||hitChild;
+		if (state == GLUT_UP) {
+			wasHit = false;
+		}
+		
 
-		return wasHit;
+		return finalRes;
 	}
 void UIComponent::setText (string _text)
                                    {
-		text = _text;
+		
+		UIComponent* curParent = getParent();
+		
+		if (_text.compare(text) == 0) {
+			// text unchanged, do nothing
+		}
+		else {
+			text = _text;
+			//isDirty = true;
+			
+			if (curParent != NULL) {
+				curParent->isDirty = true;
+				singleton->guiDirty = true;
+			}
+			
+			//thisUICont.locked = true;
 
-		refresh();
+			//layout();
+			//renderAll();
+			//thisUICont.locked = false;
+		}
+		
+		
 	}
-void UIComponent::refresh ()
-                       {
-
+void UIComponent::updateVecs ()
+                          {
+		
+		
+		
 		lineVec.clear();
 		wordVec.clear();
 
@@ -18586,89 +20867,330 @@ void UIComponent::refresh ()
 			wordVec.push_back(std::vector<string>());
 			wordVec[i] = split(lineVec[i], ' ');
 		}
-
-		render(false);
+		
 	}
-void UIComponent::render (bool visible)
-                                  {
+void UIComponent::renderAll ()
+                         {
+		int i;
+		
+		renderText(false);
+		
+		for (i = 0; i < children.size(); i++) {
+			children[i].renderAll();
+		}
+		for (i = 0; i < floatingChildren.size(); i++) {
+			floatingChildren[i].renderAll();
+		}
+	}
+void UIComponent::updateSS ()
+                        {
+		int i;
+		
+		resSS.update(mouseOver, mouseDown);
+		
+		for (i = 0; i < children.size(); i++) {
+			children[i].updateSS();
+		}
+		for (i = 0; i < floatingChildren.size(); i++) {
+			floatingChildren[i].updateSS();
+		}
+		
+	}
+float UIComponent::getLineOffset (int lineCount)
+                                           {
+		
+		switch (align.x) {
+			case E_ALIGNH_LEFT:
+				return 0.0f;
+			break;
+			case E_ALIGNH_CENTER:
+				return (resultDimInPixels.x - (linePitchVec[lineCount]+(marginInPixels+borderInPixels+paddingInPixels)*2.0f) )/2.0f;
+			break;
+			case E_ALIGNH_RIGHT:
+				return (
+					resultDimInPixels.x -
+					(
+						(linePitchVec[lineCount]) +
+						(marginInPixels+borderInPixels+paddingInPixels)
+					)
+				);
+			break;
+			default:
+				return 0.0f;
+			break;
+		}
 		
 		
-
+	}
+float UIComponent::lengthOfWord (int i, int j, bool isIcon)
+                                                      {
+		int numChars = wordVec[i][j].size();
+		int k;
+		float tot = 0.0f;
+		
+		if (isIcon) {
+			return curFontIcons->maxWidth;
+		}
+		
+		for (k = 0; k < numChars; k++) {
+			tot += curFont->charVals[ wordVec[i][j][k] ].consumedW*curFont->fontScale;
+		}
+		
+		return tot;
+		
+	}
+int UIComponent::maxCharsForWord (int i, int j)
+                                          {
+		int numChars = wordVec[i][j].size();
+		
+		float tot = 0.0f;
+		
+		int k = 0;
+		while (
+			(tot < spaceForCharsInPixels) &&
+			(k < wordVec[i][j].size())
+		) {
+			tot += curFont->charVals[ wordVec[i][j][k] ].consumedW;
+			k++;
+		}
+		
+		return k;
+	}
+void UIComponent::renderText (bool getDimensions)
+                                            {
+		
+		
+		
+		int curSize = 0;
 		int i;
 		int j;
 		int k;
 		int curChar;
-
-		iVector3 caretPos;
+		int lineCount = 0;
 		
-		if (visible) {
-			resSS.update(mouseOver, mouseDown);
+		bool isRendering = !getDimensions;
+		bool isIcon = false;
+
+		fVector2 caretPos;
+		fVector2 offsetPos;
+		
+		float vspace = resultDimInPixels.y - textDimInPixels.y;
+		
+		
+		
+		caretPos.x = 0.0f;
+		caretPos.y = 0.0f;
+		
+		if (getDimensions) {
+			linePitchVec.clear();
+		}
+		else {
+			offsetPos.x = originPos.x + marginInPixels + borderInPixels + paddingInPixels;
+			
+			switch (align.y) {
+				case E_ALIGNV_TOP:
+					offsetPos.y = originPos.y + marginInPixels + borderInPixels + paddingInPixels;
+				break;
+				case E_ALIGNV_MIDDLE:
+					offsetPos.y = originPos.y + vspace/2.0f;
+					
+				break;
+				case E_ALIGNV_BOTTOM:
+					offsetPos.y = originPos.y + vspace - (marginInPixels + borderInPixels + paddingInPixels);
+				break;
+			}
 		}
 		
-		int carriage = originPos.x + resSS.props[E_SS_MARGIN] + resSS.props[E_SS_BORDER] + resSS.props[E_SS_PADDING];
+		
+		float maxCaretPos = 0;
 
-		caretPos.x = carriage;
-		caretPos.y = originPos.y + resSS.props[E_SS_MARGIN] + resSS.props[E_SS_BORDER] + resSS.props[E_SS_PADDING];
+		//float charCount = 0;
 
-		int charCount = 0;
+		float maxSize;
 
-		int maxSize;
-
-		int bufVal = resSS.props[E_SS_BORDER] + resSS.props[E_SS_PADDING];
-
-		if (visible) {
-			hitBounds.xMin = originPos.x - bufVal;
-			hitBounds.xMax = resultDim.x + bufVal*2;
-			hitBounds.yMin = originPos.y - bufVal;
-			hitBounds.yMax = resultDim.y + bufVal*2;
-			renderQuad(hitBounds.xMin, hitBounds.yMin, hitBounds.xMax, hitBounds.yMax);
+		if (isRendering) {
+			hitBounds.xMin = originPos.x + marginInPixels;
+			hitBounds.xMax = originPos.x + resultDimInPixels.x - marginInPixels;
+			hitBounds.yMin = originPos.y + marginInPixels;
+			hitBounds.yMax = originPos.y + resultDimInPixels.y - marginInPixels;
+			
+			
+			if (contOnStack) {
+				
+			}
+			else {
+				contOnStack = true;
+				singleton->guiLayers[layer].push_back(&thisUICont);
+				//thisUICont.locked = false;
+			}
+			
+			
+			if (thisUICont.charVec.size() > 0) {
+				thisUICont.charVec.clear();
+			}
+			
+			
+			
+			thisUICont.uiComp = this;
+			thisUICont.bg.hitBounds = hitBounds;
+			thisUICont.bg.cs = NULL;
+			thisUICont.bg.fontId = -1;
+			
+			if (hasBackground) {
+				thisUICont.bg.fontId = 0;
+			}
+			
 		}
 
 		//lines
 		for (i = 0; i < wordVec.size(); i++) {
+			
+			caretPos.x = 0.0f;
+			if (isRendering) {
+				caretPos.x += getLineOffset(lineCount);
+			}
+			lineCount++;
 
 			//words in line
 			for (j = 0; j < wordVec[i].size(); j++) {
-
+				curSize = wordVec[i][j].size();
+				isIcon = (wordVec[i][j][curSize-1] == '&') && (curSize >= 2);
+				
 				//if word won't fit, increment line
-				if ( (charCount + wordVec[i][j].size()) > charsPerLine ) {
-					charCount = 0;
-					caretPos.x = carriage;
-					caretPos.y += (charDim.y + spacing.y)*charScale;
-				}
-				//if word won't fit on line, limit chars
-				maxSize = min ( (int)wordVec[i][j].size() , charsPerLine);
-				
-				//chars in word
-				for (k = 0; k < maxSize; k++) {
-					curChar = wordVec[i][j][k];
-					if (visible) {
-						renderCharAt(curChar, caretPos.x, caretPos.y);
+				if ( (caretPos.x + lengthOfWord(i,j,isIcon)) + curFont->maxWidth >= spaceForCharsInPixels ) {
+					//charCount = 0;
+					
+					if (getDimensions) {
+						linePitchVec.push_back(caretPos.x);
 					}
-					caretPos.x += (charDim.x + spacing.x)*charScale;
-					charCount++;
+					maxCaretPos = max(caretPos.x, maxCaretPos);
+					caretPos.x = 0.0f;
+					if (isRendering) {
+						caretPos.x += getLineOffset(lineCount);
+					}
+					
+					lineCount++;
+					caretPos.y += (curFont->fontHeight*curFont->fontScale + spacing.y);
 				}
-
 				
-				curChar = ' ';
-				if (visible) {
-					if (charCount+1 < charsPerLine) {
-						renderCharAt(curChar, caretPos.x, caretPos.y);
-					} 
+				
+				
+				
+				if (isIcon) {
+					// is an icon
+					
+					curChar = atoi(wordVec[i][j].c_str());
+					
+					if (isRendering) {
+						thisUICont.charVec.push_back(Singleton::UIQuad());
+						curQuad = &(thisUICont.charVec.back());
+						curQuad->cs = &(curFontIcons->charVals[ curChar ]);
+						curQuad->fontId = EFW_ICONS;
+						curQuad->hitBounds.xMin = caretPos.x+offsetPos.x;
+						curQuad->hitBounds.yMin = caretPos.y+offsetPos.y;
+					}
+					
+					
+					
+					caretPos.x += curFontIcons->maxWidth*curFontIcons->fontScale;
+					
+					
+					
+					// renderCharAt(
+					// 	&(curFontIcons->charVals[ curChar ]),
+					// 	curFontIcons,
+					// 	caretPos.x+offsetPos.x,
+					// 	caretPos.y+offsetPos.y
+					// );
 					
 				}
-				caretPos.x += (charDim.x + spacing.x)*charScale;
-				charCount++;
+				else {
+					// is characters
+					
+					//if word won't fit on line, limit chars
+					maxSize = maxCharsForWord(i,j);
+					
+					for (k = 0; k < maxSize; k++) {
+						curChar = wordVec[i][j][k];
+						if (isRendering) {
+							
+							thisUICont.charVec.push_back(Singleton::UIQuad());
+							curQuad = &(thisUICont.charVec.back());
+							curQuad->fontId = EFW_TEXT;
+							curQuad->cs = &(curFont->charVals[ curChar ]);
+							curQuad->hitBounds.xMin = caretPos.x+offsetPos.x;
+							curQuad->hitBounds.yMin = caretPos.y+offsetPos.y;
+							
+							// renderCharAt(
+							// 	&(curFont->charVals[ curChar ]),
+							// 	curFont,
+							// 	caretPos.x+offsetPos.x,
+							// 	caretPos.y+offsetPos.y
+							// );
+						}
+						caretPos.x += (curFont->charVals[ curChar ].consumedW*curFont->fontScale + spacing.x);
+						//charCount++;
+					}
+	
+				}
+				
+				//chars in word
+				
+				
+				
+				// render a space
+				
+				curChar = ' ';
+				if (
+					//(i == wordVec.size()-1) && 
+					(j == wordVec[i].size()-1)
+				) {
+					//end of line, no space
+				}
+				else {
+					if (caretPos.x + curFont->maxWidth*curFont->fontScale < spaceForCharsInPixels) {
+						
+						if (isRendering) {
+							
+							thisUICont.charVec.push_back(Singleton::UIQuad());
+							curQuad = &(thisUICont.charVec.back());
+							curQuad->fontId = EFW_TEXT;
+							curQuad->cs = &(curFont->charVals[ curChar ]);
+							curQuad->hitBounds.xMin = caretPos.x+offsetPos.x;
+							curQuad->hitBounds.yMin = caretPos.y+offsetPos.y;
+							
+							// renderCharAt(
+							// 	&(curFont->charVals[ curChar ]),
+							// 	curFont,
+							// 	caretPos.x+offsetPos.x,
+							// 	caretPos.y+offsetPos.y
+							// );
+						}
+						
+						caretPos.x += (curFont->charVals[ curChar ].consumedW*curFont->fontScale + spacing.x);
+						// /charCount++;
+						
+					} 
+				}
+				
 
 			}
-			charCount = 0;
-			caretPos.x = carriage;
-			caretPos.y += (charDim.y + spacing.y)*charScale;
+			//charCount = 0;
+			
+			if (getDimensions) {
+				linePitchVec.push_back(caretPos.x);
+			}
+			
+			maxCaretPos = max(caretPos.x, maxCaretPos);
+			caretPos.y += (curFont->fontHeight*curFont->fontScale + spacing.y);
 
 		}
 
-		resultDim.x = carriage + charsPerLine*(charDim.x + spacing.x)*charScale;
-		resultDim.y = caretPos.y-( (spacing.y)*charScale );
+		if (getDimensions) {
+			textDimInPixels.x = maxCaretPos - spacing.x;
+			textDimInPixels.y = caretPos.y - spacing.y;
+		}
+		
 
 	}
 #undef LZZ_INLINE
@@ -18686,164 +21208,1033 @@ void GameGUI::init (Singleton * _singleton)
                                          {
 
 		singleton = _singleton;
-
-		//textImage = loadBMP("basicFont.bmp");
-		//guiTextureId = loadTexture(textImage);
-	    //shaderGUI.init( "shaderGUI.c");
-	    mainSS.init();
-
-
-
-
-
-		mainSS.compStates[E_COMP_UP].props[E_SS_BGCOL0_R] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_BGCOL0_G] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_BGCOL0_B] = 0.7f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_BGCOL0_A] = 1.0f;
-
-		mainSS.compStates[E_COMP_UP].props[E_SS_BGCOL1_R] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_BGCOL1_G] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_BGCOL1_B] = 0.7f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_BGCOL1_A] = 0.5f;
-
-		mainSS.compStates[E_COMP_UP].props[E_SS_FGCOL0_R] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_FGCOL0_G] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_FGCOL0_B] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_FGCOL0_A] = 0.0f;
-
-		mainSS.compStates[E_COMP_UP].props[E_SS_FGCOL1_R] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_FGCOL1_G] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_FGCOL1_B] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_FGCOL1_A] = 0.0f;
-
-
-
-		mainSS.compStates[E_COMP_UP].props[E_SS_TGCOL0_R] = 1.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_TGCOL0_G] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_TGCOL0_B] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_TGCOL0_A] = 1.0f;
-
-		mainSS.compStates[E_COMP_UP].props[E_SS_TGCOL1_R] = 1.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_TGCOL1_G] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_TGCOL1_B] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_TGCOL1_A] = 0.5f;
-
+		isReady = false;
 		
-
-		mainSS.compStates[E_COMP_UP].props[E_SS_BGCOLTEXT0_R] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_BGCOLTEXT0_G] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_BGCOLTEXT0_B] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_BGCOLTEXT0_A] = 0.0f;
-
-		mainSS.compStates[E_COMP_UP].props[E_SS_BGCOLTEXT1_R] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_BGCOLTEXT1_G] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_BGCOLTEXT1_B] = 0.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_BGCOLTEXT1_A] = 0.0f;
-
-		mainSS.compStates[E_COMP_UP].props[E_SS_FGCOLTEXT0_R] = 1.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_FGCOLTEXT0_G] = 1.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_FGCOLTEXT0_B] = 1.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_FGCOLTEXT0_A] = 1.0f;
-
-		mainSS.compStates[E_COMP_UP].props[E_SS_FGCOLTEXT1_R] = 1.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_FGCOLTEXT1_G] = 1.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_FGCOLTEXT1_B] = 1.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_FGCOLTEXT1_A] = 1.0f;
-
-		mainSS.compStates[E_COMP_UP].props[E_SS_BDCOL_R] = 1.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_BDCOL_G] = 1.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_BDCOL_B] = 1.0f;
-		mainSS.compStates[E_COMP_UP].props[E_SS_BDCOL_A] = 1.0f;
-
-
-
-	    mainSS.compStates[E_COMP_UP].props[E_SS_PADDING] = 2.0f;
-	    mainSS.compStates[E_COMP_UP].props[E_SS_BORDER] = 1.0f;
-	    mainSS.compStates[E_COMP_UP].props[E_SS_MARGIN] = 2.0f;
-	    mainSS.compStates[E_COMP_UP].props[E_SS_CORNERRAD] = 8.0f;
-	    mainSS.compStates[E_COMP_UP].props[E_SS_ROUNDNESS] = 1.0f;
-
-	    mainSS.compStates[E_COMP_OVER].copyFrom(& (mainSS.compStates[E_COMP_UP]) );
-	    mainSS.compStates[E_COMP_DOWN].copyFrom(& (mainSS.compStates[E_COMP_UP]) );
-
-	    
-	    mainSS.compStates[E_COMP_OVER].props[E_SS_BGCOL0_R] = 0.0f;
-		mainSS.compStates[E_COMP_OVER].props[E_SS_BGCOL0_G] = 0.0f;
-		mainSS.compStates[E_COMP_OVER].props[E_SS_BGCOL0_B] = 1.0f;
-		mainSS.compStates[E_COMP_OVER].props[E_SS_BGCOL0_A] = 1.0f;
-
-		mainSS.compStates[E_COMP_OVER].props[E_SS_BGCOL1_R] = 0.0f;
-		mainSS.compStates[E_COMP_OVER].props[E_SS_BGCOL1_G] = 0.0f;
-		mainSS.compStates[E_COMP_OVER].props[E_SS_BGCOL1_B] = 1.0f;
-		mainSS.compStates[E_COMP_OVER].props[E_SS_BGCOL1_A] = 0.7f;
-
-
-		mainSS.compStates[E_COMP_DOWN].props[E_SS_BGCOL0_R] = 0.2f;
-		mainSS.compStates[E_COMP_DOWN].props[E_SS_BGCOL0_G] = 0.2f;
-		mainSS.compStates[E_COMP_DOWN].props[E_SS_BGCOL0_B] = 1.0f;
-		mainSS.compStates[E_COMP_DOWN].props[E_SS_BGCOL0_A] = 1.0f;
-
-		mainSS.compStates[E_COMP_DOWN].props[E_SS_BGCOL1_R] = 0.2f;
-		mainSS.compStates[E_COMP_DOWN].props[E_SS_BGCOL1_G] = 0.2f;
-		mainSS.compStates[E_COMP_DOWN].props[E_SS_BGCOL1_B] = 1.0f;
-		mainSS.compStates[E_COMP_DOWN].props[E_SS_BGCOL1_A] = 0.5f;
-
-
-
-
-	    frameRateTB.init(
-	    	singleton,
-	    	&mainSS,
-	    	"0.0f",
-	    	20,
-	    	20
-	    );
-		testTB.init(
+		nodeCount = 0;
+		baseComp = new UIComponent();
+		baseComp->init(
 			singleton,
-			&mainSS,
-			"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi nec ligula ac massa consectetur consectetur. Sed vel malesuada arcu. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque laoreet lorem sed nisi blandit malesuada. Donec consequat urna et metus feugiat faucibus vulputate tortor blandit.\n\nCras dignissim, sapien ut tristique faucibus, enim augue venenatis neque, vel condimentum lacus est vitae urna...",
-			20,
-			80
+			-1,
+			nodeCount,
+			0,
+			
+			NULL,
+			
+			"",
+			"",
+			"defaultSS",
+
+			E_GT_HOLDER,
+			0.0f,
+			false
 		);
+		nodeCount++;
+		
+		
+		baseComp->resultDimInPixels.x = singleton->guiWinW;
+		baseComp->resultDimInPixels.y = singleton->guiWinH;
+		
+		
+	}
+void GameGUI::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit)
+                                                                                                  {
+		cout << "getJVNodeByString(" << stringToSplit <<  ")\n";
+			
+		int i;
+		*resultNode = rootNode;
+		
+		
+		vector<string> splitStrings = split(stringToSplit, '.');
+		
+		for (i = 0; i < splitStrings.size(); i++) {
+			cout << splitStrings[i] << "\n";
+			
+			if ( (*resultNode)->HasChild(splitStrings[i]) ) {
+				*resultNode = (*resultNode)->Child(splitStrings[i]);
+			}
+			else {
+				*resultNode = NULL;
+				return;
+			}
+			
+		}
+		
+	}
+void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool isFloating)
+          {
+		int i;
+		int j;
+		int curIcon = 0;
+		
+		JSONValue* curTempl = NULL;
+		
+		
+	
+		if (
+			jv->HasChild("template")
+		) {
+			if (
+				jvTemplates->HasChild(jv->Child("template")->string_value)
+			) {
+				
+				curTempl = jvTemplates->Child(jv->Child("template")->string_value);
+			}
+			else {
+				cout << "invalid template \n";// << jv->Child("template")->string_value << "\n";
+			}
+		}
+		
+		
+		for (i = 0; i < E_GST_LENGTH; i++) {
+			guiStringValues[i] = "";
+		}
+		for (i = 0; i < E_GFT_LENGTH; i++) {
+			guiFloatValues[i] = 0.0f;
+		}
+		
+		guiFloatValues[E_GFT_HASBACKGROUND] = 1.0;
+		guiFloatValues[E_GFT_SINGLELINE] = 1.0;
+		guiStringValues[E_GST_SS] = "defaultSS";
+		
+		
+		for (j = 0; j < 2; j++) {
+			if (curTempl != NULL) {
+				for (i = 0; i < E_GST_LENGTH; i++) {
+					if (
+						curTempl->HasChild(guiStringTypes[i])
+					) {
+						guiStringValues[i] = curTempl->Child(guiStringTypes[i])->string_value;
+					}
+				}
+				for (i = 0; i < E_GFT_LENGTH; i++) {
+					if (
+						curTempl->HasChild(guiFloatTypes[i])
+					) {
+						guiFloatValues[i] = curTempl->Child(guiFloatTypes[i])->number_value;
+					}
+				}
+			}
+			curTempl = jv;
+		}
+		
+		
+		guiFloatValues[E_GFT_LAYER] = max(guiFloatValues[E_GFT_LAYER],(float)(curParent->layer));
+		
+		UIComponent* newParent = curParent->addChild(
+			curParent->nodeId,
+			nodeCount,
+			guiStringValues,
+			guiFloatValues,
+			isFloating,
+			jv
+		);
+		nodeCount++;
+		
+		
+		int numChildren = 0;
+		int numFloatingChildren = 0;
+		int numDataChildren = 0;
+		JSONValue* jvChildren = NULL;
+		JSONValue* jvFloatingChildren = NULL;
+		JSONValue* jvChildTemplate = NULL;
+		
+		JSONValue* jvData = NULL;
+		JSONValue* jvDataRoot = NULL;
+		JSONValue* curData = NULL;
+		
+		
+		if (jv->HasChild("children")) {
+			jvChildren = jv->Child("children");
+			numChildren = jvChildren->CountChildren();
+		}
+		for (i = 0; i < numChildren; i++) {
+			addChildFromJSON(jvChildren->Child(i),newParent, false);
+		}
+		
+		
+		if (jv->HasChild("floatingChildren")) {
+			jvFloatingChildren = jv->Child("floatingChildren");
+			numFloatingChildren = jvFloatingChildren->CountChildren();
+		}
+		for (i = 0; i < numFloatingChildren; i++) {
+			addChildFromJSON(jvFloatingChildren->Child(i),newParent,true);
+		}
+		
+		
+		
+		bool isInternal = false;
+		E_GUI_CHILD_TYPES curCT = E_GCT_LENGTH;;
+		
+		
+		if (jv->HasChild("childType")) {
+			tempStrings[E_GDS_CHILD_TYPE] = jv->Child("childType")->string_value;
+			
+			
+			if (jv->HasChild("isInternal")) {
+				if (jv->Child("isInternal")->number_value != 0 ) {
+					// use an internally generated JSON node
+					isInternal = true;
+				}
+				else {
+					// todo: load JSON file
+				}
+			}
+			
+			
+			
+			
+			if (jv->HasChild("dataSource")) {
+				tempStrings[E_GDS_DATA_SOURCE] = jv->Child("dataSource")->string_value;
+				
+				if (isInternal) {
+					if (jv->HasChild("dataFile")) {
+						tempStrings[E_GDS_DATA_FILE] = jv->Child("dataFile")->string_value;
+						jvDataRoot = (singleton->internalJSON[tempStrings[E_GDS_DATA_FILE]]).jv;
+					}
+					
+					
+				}
+				else {
+					jvDataRoot = jvRoot;
+				}
+				
+				if (jvDataRoot != NULL) {
+					getJVNodeByString(jvDataRoot, &jvData, tempStrings[E_GDS_DATA_SOURCE]);
+					
+					numDataChildren = jvData->CountChildren();
+					if (jv->HasChild("childTemplate")) {
+						jvChildTemplate = jv->Child("childTemplate");
+					}
+				}
+			}
+			
+			
+			if ((jvData != NULL)&&(jvChildTemplate != NULL)) {
+				
+				
+				if (compChildStr("inventoryItem")) {
+					curCT = E_GCT_INV_ITEM;
+				}
+				if (compChildStr("shaderParams")) {
+					curCT = E_GCT_SHADER_PARAM;
+				}
+				
+				//////////////////////////////////////////////////////////////////////
+				//////////////////////////////////////////////////////////////////////
+				
+				
+				
+				
+				for (i = 0; i < numDataChildren; i++) {
+					
+					curData = jvData->Child(i);
+					
+					switch (curCT) {
+						case E_GCT_INV_ITEM:
+							tempStrings[E_GDS_CHILD_NAME] = curData->Child("name")->string_value;
+							
+							curIcon = jvRoot->
+								Child("itemDefs")->
+								Child(tempStrings[E_GDS_CHILD_NAME])->
+								Child("iconNum")->
+								number_value;
+							
+							jvChildTemplate->
+								Child("floatingChildren")->
+								Child(0)->
+								Child("children")->
+								Child(0)->
+								Child("label")->
+								string_value = 
+									jvRoot->
+									Child("itemDefs")->
+									Child(tempStrings[E_GDS_CHILD_NAME])->
+									Child("class")->
+									string_value;
+								
+							jvChildTemplate->Child("label")->string_value = 
+								i__s(curIcon) +
+								"& " +
+								curData->Child("mat")->string_value +
+								" " +
+								tempStrings[E_GDS_CHILD_NAME];
+						break;
+						case E_GCT_SHADER_PARAM:
+								
+							jvChildTemplate->Child("label")->string_value = 
+								curData->Child("shaderName")->string_value +
+								"." +
+								curData->Child("paramName")->string_value;
+								
+							jvChildTemplate->Child("callbackData")->Child("shaderName")->string_value = 
+								curData->Child("shaderName")->string_value;
+							jvChildTemplate->Child("callbackData")->Child("paramName")->string_value = 
+								curData->Child("paramName")->string_value;
+								
+						break;
+						case E_GCT_LENGTH:
+							
+						break;
+					}
+					
+					
+					
+					
+					
+					// copy template to new child
+					jv->Child("children")->array_value.push_back(
+						JSON::Parse(jvChildTemplate->Stringify().c_str())
+					);
+					
+					
+					addChildFromJSON(jv->Child("children")->Child(i),newParent,false); //jvChildTemplate //jv->Child("children")->Child(i)
+				}
+			}
+			
+			
+			
+			
+			
+			
+		}
+		
+		
+	}
+void GameGUI::guiFromJSON (JSONValue * jv)
+                                        {
+		
+		isReady = false;
+		
+		
+		int i;
+		
+		nodeCount = 1;
+		baseComp->children.clear();
+		baseComp->floatingChildren.clear();
+		
+		
+		for (i = 0; i < MAX_UI_LAYERS; i++) {
+			singleton->guiLayers[i].clear();
+		}
+		
+		jvRoot = jv;
+		jvTemplates = jv->Child("templates");
+		jvSounds = jv->Child("sounds");
+		
+		
+		addChildFromJSON(
+			jv->Child(jv->Child("curMenu")->string_value), //"inventoryMenu" "shaderParamMenu"
+			baseComp,
+			false
+		);
+		
+		baseComp->isDirty = true;
+		isReady = true;
+	}
+void GameGUI::doRefresh ()
+                         {
+		
+		int i;
+		
+		//if (singleton->guiDirty) {
+			
+			//cout << "guiDirty\n";
+			
+			singleton->guiDirty = false;
+			dirtyVec.clear();
+			baseComp->gatherDirty(&dirtyVec);
+			baseComp->clearDirty();
+			
+			for (i = 0; i < dirtyVec.size(); i++) {
+				dirtyVec[i]->layout();
+			}
+			
+			//dirtyVec.clear();
+			baseComp->renderAll();
+		//}
+		
+		
 	}
 void GameGUI::testOver (int x, int y)
                                     {
-		testTB.testOver(x, y);
+		singleton->maxLayerOver = -1;
+		
+		baseComp->clearOver();
+		baseComp->findMaxLayer(x, y);
+		baseComp->testOver(x, y);
 	}
 bool GameGUI::testHit (int button, int state, int x, int y)
                                                           {
-		return testTB.testHit(button, state, x, y);
+		return baseComp->testHit(button, state, x, y);
 	}
-void GameGUI::renderGUI (bool showGUI)
-                                     {
+UIComponent * GameGUI::findNodeByString (string _uid)
+                                                   {
+		return baseComp->findNodeByString(_uid);
+	}
+void GameGUI::renderCharAt (UIComponent * uiComp, CharStruct * cs, FontWrapper * activeFont, float px, float py, float shadowOffset)
+          {
+		
+		StyleSheetResult* resSS = &(uiComp->resSS);
+		
+		float sampX = cs->sampX;
+		float sampY = cs->sampY;
+		float sampW = cs->sampW;
+		float sampH = cs->sampH;
+		float offsetX = (cs->offsetX)*activeFont->fontScale;
+		float offsetY = ((activeFont->fontHeight - cs->offsetY) + activeFont->descender)*activeFont->fontScale;
+		float sourceW = activeFont->fontImage->width;
+		float sourceH = activeFont->fontImage->height;
+		
+		fBoundingBox destPos;
+		fBoundingBox srcPos;
 
-		glEnable (GL_BLEND);
+		destPos.xMin = (px+offsetX)+uiComp->floatOffset.x;
+		destPos.yMin = (py+offsetY)+uiComp->floatOffset.y+shadowOffset;
+		destPos.xMax = (px+offsetX+sampW*activeFont->fontScale)+uiComp->floatOffset.x;
+		destPos.yMax = (py+offsetY+sampH*activeFont->fontScale)+uiComp->floatOffset.y+shadowOffset;
+		
+		srcPos.xMin = (sampX)/sourceW;
+		srcPos.yMin = (sourceH-(sampY+sampH))/sourceH;
+		srcPos.xMax = (sampX+sampW)/sourceW;
+		srcPos.yMax = ( sourceH-sampY )/sourceH;
+		
+		
 
-		if (singleton->frameCount % 60 == 0) {
-			string s1 = floatToString(1000.0f/singleton->curMS);//curFPS
-			string s2 = " FPS; ";
-			string s3 = floatToString(singleton->curMS);
-			string s4 = " MS ";
-			frameRateTB.setText(s1+s2+s3+s4);
+		float x0 = destPos.xMin/singleton->guiWinW;
+		float x1 = destPos.xMax/singleton->guiWinW;
+		float y0 = destPos.yMin/singleton->guiWinH;
+		float y1 = destPos.yMax/singleton->guiWinH;
+
+		x0 = (x0-0.5f)*2.0f;
+		x1 = (x1-0.5f)*2.0f;
+		y0 = ((1.0f-y0) - 0.5f)*2.0f;
+		y1 = ((1.0f-y1) - 0.5f)*2.0f;
+
+		float iconVal = 0.0;
+		if (activeFont->isIcons) {
+			iconVal = 1.0f;
 		}
 		
+		//dimensions
+		glMultiTexCoord4f(1, sampW, sampH, 0.0f, 0.0f);
+
+		glMultiTexCoord4f(4, 1.0f, 1.0f, 1.0f, 1.0f);
+		glMultiTexCoord4f(5, iconVal, shadowOffset, 1.0f, 1.0f);
+		//border color
+		glMultiTexCoord4f(6, 1.0f, 1.0f, 1.0f, 1.0f);
+		//misc
+		glMultiTexCoord4f(7, 0.0f, 0.0f, 0.0f, 0.0f);
+		
+
+		glMultiTexCoord4f(2, resSS->props[E_SS_BGCOLTEXT1_R], resSS->props[E_SS_BGCOLTEXT1_G], resSS->props[E_SS_BGCOLTEXT1_B], resSS->props[E_SS_BGCOLTEXT1_A]);
+		glMultiTexCoord4f(3, resSS->props[E_SS_FGCOLTEXT1_R], resSS->props[E_SS_FGCOLTEXT1_G], resSS->props[E_SS_FGCOLTEXT1_B], resSS->props[E_SS_FGCOLTEXT1_A]);
+		
+		
+		glMultiTexCoord4f(0, srcPos.xMin, srcPos.yMin, 0.0f, 1.0f);
+		glVertex3f (  x0, y1, -1.0f );
+		glMultiTexCoord4f(0, srcPos.xMax, srcPos.yMin, 1.0f, 1.0f);
+		glVertex3f (  x1, y1, -1.0f );
+
+		glMultiTexCoord4f(2, resSS->props[E_SS_BGCOLTEXT0_R], resSS->props[E_SS_BGCOLTEXT0_G], resSS->props[E_SS_BGCOLTEXT0_B], resSS->props[E_SS_BGCOLTEXT0_A]);
+		glMultiTexCoord4f(3, resSS->props[E_SS_FGCOLTEXT0_R], resSS->props[E_SS_FGCOLTEXT0_G], resSS->props[E_SS_FGCOLTEXT0_B], resSS->props[E_SS_FGCOLTEXT0_A]);		
+
+		glMultiTexCoord4f(0, srcPos.xMax, srcPos.yMax, 1.0f, 0.0f);
+		glVertex3f (  x1, y0, -1.0f );
+		glMultiTexCoord4f(0, srcPos.xMin, srcPos.yMax, 0.0f, 0.0f);
+		glVertex3f (  x0, y0, -1.0f );
+
+	}
+void GameGUI::runReport ()
+                         {
+		baseComp->runReport();
+	}
+void GameGUI::renderGUI (float newZoom, int activeFBO)
+                                                     {
+		
+		
+		int i;
+		
+		int j;
+		int k;
+		int m;
+		int n;
+		
+		int maxLoop = 0;
+		
+		float shadowOffset = 0.0;
+		
+		testOver(singleton->guiX,singleton->guiY);
+		doRefresh();
+		
+
+		Singleton::UICont* curCont = NULL;
+		
+		
+		
+		baseComp->updateSS();
+		
+
+		singleton->bindFBO("guiFBO");
+		singleton->drawFBO("resultFBO", 0, newZoom, activeFBO);
+		
+		glEnable (GL_BLEND);
 
 		singleton->bindShader("GUIShader");
-		singleton->setShaderTexture(0,singleton->basicFont->tid);
+		singleton->setShaderTexture(0,singleton->fontWrappers[EFW_TEXT]->fontImage->tid);
+		singleton->setShaderTexture(1,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
+		singleton->sampleFBO("swapFBOBLin0", 2);
 		
-		glBegin (GL_QUADS);
-			if (showGUI) {
-				//testTB.render(true);
-				frameRateTB.render(true);
+		for (i = 0; i < 2; i++) {
+			
+			
+			if (i == 0) {
+				maxLoop = 1;
 			}
-		glEnd ();
-
-		//shaderGUI.unbind();
+			else {
+				maxLoop = 2;
+			}
+			
+			singleton->setShaderFloat("passNum", i);
+			singleton->setShaderFloat("zoom", singleton->cameraZoom);
+			glBegin (GL_QUADS);
+				//baseComp->renderAll(i == 0);
+			
+				for (j = 0; j < MAX_UI_LAYERS; j++) {
+					for (k = 0; k < singleton->guiLayers[j].size(); k++) {
+						
+						curCont = (singleton->guiLayers[j][k]);
+						
+						if (curCont->uiComp->visible) {
+							
+							for (m = 0; m < maxLoop; m++) {
+								
+								shadowOffset = ((1-m)*i)*4.0f;
+								
+								
+								// only shadow text
+								if (shadowOffset == 0.0f) {
+									
+									
+									if (curCont->bg.fontId > -1) {
+										renderQuad(
+											curCont->uiComp,
+											curCont->bg.hitBounds,
+											shadowOffset
+										);
+									}
+									
+									
+								}
+								
+								if (i == 0) {
+									// don't render text in first pass
+								}
+								else {
+								
+									if (false) { //curCont->locked) {
+										// busy updating characters
+									}
+									else {
+										for (n = 0; n < curCont->charVec.size(); n++) {
+											renderCharAt(
+												curCont->uiComp,
+												curCont->charVec[n].cs,
+												singleton->fontWrappers[curCont->charVec[n].fontId],
+												curCont->charVec[n].hitBounds.xMin,
+												curCont->charVec[n].hitBounds.yMin,
+												shadowOffset
+											);
+										}
+									}
+									
+									
+									
+									
+								}	
+								
+								
+								
+							}
+							
+							
+							
+							
+							
+						}
+						
+						
+						
+						
+						
+					}
+				}
+			
+			glEnd ();
+		}
+		
+		
+		singleton->unsampleFBO("swapFBOBLin0", 2);
+		singleton->setShaderTexture(1,0);
 		singleton->setShaderTexture(0,0);
 		singleton->unbindShader();
-
-
+		
+		singleton->unbindFBO();
+		
 		glDisable(GL_BLEND);
+		
+		singleton->drawFBO("guiFBO", 0, 1.0f);
+		
+	}
+#undef LZZ_INLINE
+ 
+// f00338_gameentnode.h
+//
+
+#include "f00338_gameentnode.e"
+#define LZZ_INLINE inline
+GameEntNode::GameEntNode (GameEntNode * _parent, int _nodeName, float _boneLength, float _tanLengthInMeters, float _bitLengthInMeters, float _norLengthInMeters, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ)
+          {
+		material = 8.0;
+		
+		parent = _parent;
+		nodeName = _nodeName;
+		
+		rotThe = 0.0f;
+		rotPhi = 0.0f;
+		rotRho = 0.0f;
+
+		boneLengthHalf = _boneLength*0.5f;
+
+		tbnRadInMeters0.setFXYZ(
+			_tanLengthInMeters,
+			_bitLengthInMeters,
+			_norLengthInMeters
+		);
+		tbnRadInMeters1.setFXYZRef(&tbnRadInMeters0);
+		tbnRadScale0.setFXYZ(1.0f,1.0f,1.0f);
+		tbnRadScale1.setFXYZ(1.0f,1.0f,1.0f);
+		
+		
+		(tbnBase[0]).setFXYZ(_tanX,_tanY,_tanZ);
+		(tbnBase[1]).setFXYZ(_bitX,_bitY,_bitZ);
+		(tbnBase[2]).setFXYZ(_norX,_norY,_norZ);
+		(tbnBase[0]).normalize();
+		(tbnBase[1]).normalize();
+		(tbnBase[2]).normalize();
+		
+		// FIVector4::cross(&(tbnBase[2]),&(tbnBase[0]),&(tbnBase[1]));
+		// (tbnBase[2]).normalize();
+	}
+GameEntNode * GameEntNode::addChild (int _nodeName, float _boneLength, float _tanLengthInMeters, float _bitLengthInMeters, float _norLengthInMeters, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ)
+          {
+		
+		//if (_nodeName >= E_BONE_C_END) {
+		//	cout << "nodeName: " << _nodeName << "\n";
+		//}
+		
+		children.push_back(
+			new GameEntNode(
+				this,
+				
+				_nodeName,
+				_boneLength,
+				_tanLengthInMeters,
+				_bitLengthInMeters,
+				_norLengthInMeters,
+				
+				_tanX, _tanY, _tanZ,
+				_bitX, _bitY, _bitZ,
+				_norX, _norY, _norZ
+			)
+		);
+		
+		return children.back();
+	}
+GameEntNode * GameEntNode::getNode (int _nodeName)
+                                            {
+		int i;
+		
+		// cout << "getNode("<< _nodeName << "): " << nodeName << "\n";
+		
+		
+		if (nodeName == _nodeName) {
+			return this;
+		}
+		
+		for (i = 0; i < children.size(); i++) {
+			
+			if (children[i]->getNode(_nodeName) != NULL) {
+				return children[i]->getNode(_nodeName);
+			}
+		}
+		
+		return NULL;
+	}
+void GameEntNode::doTransform (Singleton * singleton)
+          {
+		
+		int i;
+		int j;
+		int popCount = 0;
+		
+		//cout << "doTransform: " << boneStrings[nodeName] << "\n"; 
+		
+		
+		// void doRotation(
+		// 	FIVector4 *output,
+		// 	FIVector4 *input,
+		// 	FIVector4 *axis,
+		// 	float angle
+		// )
+		
+		
+		// start
+		if (parent == NULL) {
+			orgTrans[0].setFXYZ(0.0f,0.0f,0.0f);
+		}
+		else {
+			orgTrans[0].setFXYZRef(&(parent->orgTrans[2]));
+		}
+		
+		
+		
+		
+		
+		
+		readTBN = tbnBase;
+		writeTBN = tbnRotA;
+		
+		
+		// if (rotPhi != 0.0f) {
+		// 	singleton->rotStack.push_back(readTBN[0]);
+		// 	singleton->rotStack.back().setFW(rotPhi);
+		// 	singleton->transStack.push_back(orgTrans[0]);			
+		// 	popCount++;
+		// }
+		// if (rotThe != 0.0f) {
+		// 	singleton->rotStack.push_back(readTBN[1]);
+		// 	singleton->rotStack.back().setFW(rotThe);
+		// 	singleton->transStack.push_back(orgTrans[0]);
+		// 	popCount++;
+		// }
+		// if (rotRho != 0.0f) {
+		// 	singleton->rotStack.push_back(readTBN[2]);
+		// 	singleton->rotStack.back().setFW(rotRho);
+		// 	singleton->transStack.push_back(orgTrans[0]);
+		// 	popCount++;
+		// }
+		
+		
+		
+		for (i = 0; i < singleton->rotStack.size(); i++) {
+			
+			axisRotationInstance.doRotationTBN(
+				writeTBN, // write
+				readTBN, // read
+				&(singleton->rotStack[i]),
+				&(singleton->transStack[i]),
+				&(orgTrans[0])
+			);
+			
+			if ((i%2) == 0) {
+				readTBN = tbnRotA;
+				writeTBN = tbnRotB;
+			}
+			else {
+				readTBN = tbnRotB;
+				writeTBN = tbnRotA;
+			}
+			
+		}
+		
+		
+		if (rotPhi != 0.0f) {
+			singleton->rotStack.push_back(readTBN[0]);
+			singleton->rotStack.back().setFW(rotPhi);
+			singleton->transStack.push_back(orgTrans[0]);
+			
+			axisRotationInstance.doRotationTBN(
+				writeTBN, // write
+				readTBN, // read
+				&(singleton->rotStack.back()),
+				&(singleton->transStack.back()),
+				&(orgTrans[0])
+			);
+			if ((i%2) == 0) {
+				readTBN = tbnRotA;
+				writeTBN = tbnRotB;
+			}
+			else {
+				readTBN = tbnRotB;
+				writeTBN = tbnRotA;
+			}
+			i++;
+			
+			popCount++;
+		}
+		if (rotThe != 0.0f) {
+			singleton->rotStack.push_back(readTBN[1]);
+			singleton->rotStack.back().setFW(rotThe);
+			singleton->transStack.push_back(orgTrans[0]);
+			
+			axisRotationInstance.doRotationTBN(
+				writeTBN, // write
+				readTBN, // read
+				&(singleton->rotStack.back()),
+				&(singleton->transStack.back()),
+				&(orgTrans[0])
+			);
+			if ((i%2) == 0) {
+				readTBN = tbnRotA;
+				writeTBN = tbnRotB;
+			}
+			else {
+				readTBN = tbnRotB;
+				writeTBN = tbnRotA;
+			}
+			i++;
+			
+			popCount++;
+		}
+		if (rotRho != 0.0f) {
+			singleton->rotStack.push_back(readTBN[2]);
+			singleton->rotStack.back().setFW(rotRho);
+			singleton->transStack.push_back(orgTrans[0]);
+			
+			axisRotationInstance.doRotationTBN(
+				writeTBN, // write
+				readTBN, // read
+				&(singleton->rotStack.back()),
+				&(singleton->transStack.back()),
+				&(orgTrans[0])
+			);
+			if ((i%2) == 0) {
+				readTBN = tbnRotA;
+				writeTBN = tbnRotB;
+			}
+			else {
+				readTBN = tbnRotB;
+				writeTBN = tbnRotA;
+			}
+			i++;
+			
+			popCount++;
+		}
+		
+		
+		
+		for (j = 0; j < 3; j++) {
+			tbnRotC[j].setFXYZRef(&( readTBN[j] ));
+		}
+		
+		
+		// middle
+		orgTrans[1].setFXYZRef(&(tbnRotC[0]));
+		orgTrans[1].multXYZ(boneLengthHalf);
+		orgTrans[1].addXYZRef(&(orgTrans[0]));
+		
+		// end
+		orgTrans[2].setFXYZRef(&(tbnRotC[0]));
+		orgTrans[2].multXYZ(boneLengthHalf*2.0f);
+		orgTrans[2].addXYZRef(&(orgTrans[0]));
+		
+		for (i = 0; i < 3; i++) {
+			(tbnTrans[i]).setFXYZRef(&(tbnRotC[i]));
+			(tbnTrans[i]).multXYZ(tbnRadInMeters0[i]*tbnRadScale0[i]);
+			(tbnTrans[i]).addXYZRef(&(orgTrans[1]));
+		}
+		
+		
+		
+		for (i = 0; i < children.size(); i++) {
+			children[i]->doTransform(singleton);
+		}
+		
+		
+		for (i = 0; i < popCount; i++) {
+			
+			singleton->transStack.pop_back();
+			singleton->rotStack.pop_back();
+		}
+		
+	}
+#undef LZZ_INLINE
+ 
+// f00339_gameent.h
+//
+
+#include "f00339_gameent.e"
+#define LZZ_INLINE inline
+float GameEnt::gv (float * vals)
+                              {
+		float lerp = fGenRand();
+		return vals[0]*lerp + vals[1]*(1.0f-lerp);
+	}
+GameEnt::GameEnt ()
+                  {
+		defVecLength = 0.05f;
+	}
+void GameEnt::init (Singleton * _singleton)
+          {
+		singleton = _singleton;
+
+		baseNode = new GameEntNode(
+			NULL,
+			E_BONE_C_BASE,
+			0.5f,
+			defVecLength, defVecLength, defVecLength,
+			
+			0.0f, 1.0f, 0.0f,			
+			1.0f, 0.0f, 0.0f,
+			0.0f,0.0f,1.0f
+		);
+		
+		initHuman();
+		
+		gph = new GamePageHolder();
+		gph->init(
+			singleton,
+			
+			singleton->curEntId,
+			0,
+			
+			0,
+			0,
+			0,
+			
+			true
+		);
+		
+		singleton->curEntId++;
+		
+		
+	}
+void GameEnt::initHuman ()
+                         {
+		
+		int i;
+		int j;
+		int lrMod;
+		
+		float dirMod = 1.0f;
+		
+		GameEntNode* curNode;
+		curNode = baseNode;
+		
+		
+
+		float numSpineSegs = E_BONE_C_SKULL-E_BONE_C_SPINE0;
+		
+		for (i = E_BONE_C_SPINE0; i < E_BONE_C_SKULL; i++) {
+			curNode = curNode->addChild(
+				i,
+				0.75f/numSpineSegs,
+				defVecLength, defVecLength, defVecLength,
+				0.0f,0.0f,1.0f,
+				0.0f,1.0f,0.0f,
+				1.0f,0.0f,0.0f
+				
+			);
+		}
+		
+		curNode = curNode->addChild(
+			E_BONE_C_SKULL,
+			0.25f, 
+			defVecLength, defVecLength, defVecLength,
+			0.0f,0.0f,1.0f,
+			0.0f,1.0f,0.0f,
+			1.0f,0.0f,0.0f
+		);
+		
+		
+		for (j = 0; j < 2; j++) {
+			
+			if (j == 0) { // left limbs
+				lrMod = 0;
+				dirMod = 1.0f;
+			}
+			else { // right limbs
+				lrMod = E_BONE_R_BEG - E_BONE_L_BEG;
+				dirMod = -1.0f;
+			}
+			
+			curNode = baseNode->getNode(E_BONE_C_SKULL-2);
+			
+			
+			curNode = curNode->addChild(
+				E_BONE_L_SHOULDER + lrMod,
+				0.20f, 
+				defVecLength, defVecLength, defVecLength,
+				dirMod*1.0f,0.0f,0.0f,
+				0.0f,1.0f,0.0f,
+				0.0f,0.0f,1.0f
+			);
+			curNode = curNode->addChild(
+				E_BONE_L_UPPERARM + lrMod,
+				0.25f, 
+				defVecLength, defVecLength, defVecLength,
+				dirMod*1.0f,0.0f,0.0f,
+				0.0f,1.0f,0.0f,
+				0.0f,0.0f,1.0f
+			);
+			curNode = curNode->addChild(
+				E_BONE_L_LOWERARM + lrMod,
+				0.25f, 
+				defVecLength, defVecLength, defVecLength,
+				dirMod*1.0f,0.0f,0.0f,
+				0.0f,1.0f,0.0f,
+				0.0f,0.0f,1.0f
+			);
+			curNode = curNode->addChild(
+				E_BONE_L_METACARPALS + lrMod,
+				0.1f, 
+				defVecLength, defVecLength, defVecLength,
+				dirMod*1.0f,0.0f,0.0f,
+				0.0f,1.0f,0.0f,
+				0.0f,0.0f,1.0f
+			);
+			
+			
+			curNode = baseNode;
+			
+			curNode = curNode->addChild(
+				E_BONE_L_HIP + lrMod,
+				0.1f, 
+				defVecLength, defVecLength, defVecLength,
+				dirMod*1.0f,0.0f,0.0f,
+				0.0f,1.0f,0.0f,
+				0.0f,0.0f,1.0f
+			);
+			curNode = curNode->addChild(
+				E_BONE_L_UPPERLEG + lrMod,
+				0.45f, 
+				defVecLength, defVecLength, defVecLength,
+				0.0f,0.0f,-1.0f,
+				0.0f,1.0f,0.0f,
+				1.0f,0.0f,0.0f
+			);
+			curNode = curNode->addChild(
+				E_BONE_L_LOWERLEG + lrMod,
+				0.45f, 
+				defVecLength, defVecLength, defVecLength,
+				0.0f,0.0f,-1.0f,
+				0.0f,1.0f,0.0f,
+				1.0f,0.0f,0.0f
+			);
+			curNode = curNode->addChild(
+				E_BONE_L_TALUS + lrMod,
+				0.2f, 
+				defVecLength, defVecLength, defVecLength,
+				0.0f,1.0f,0.0f,
+				1.0f,0.0f,0.0f,
+				0.0f,0.0f,1.0f
+			);
+			
+		}
+		
+		
+		baseNode->doTransform(singleton);
+		
 	}
 #undef LZZ_INLINE
  
@@ -19221,6 +22612,8 @@ GamePage::GamePage ()
 void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _thisPageId, int offsetX, int offsetY, int offsetZ, int oxLoc, int oyLoc, int ozLoc, bool _isEntity)
           {
 
+		hasLines = false;
+
 		isEntity = _isEntity;
 
 		thisPageId = _thisPageId;
@@ -19454,11 +22847,14 @@ void GamePage::addEntityGeom (bool justTesting)
 			singleton->matCountArr[i] = 0.0f;
 		}
 
+		
+
 
 		if (justTesting) {
-			// hasTree = false;
-			// hasWindow = false;
-			// hasGeom = false;
+			hasTree = false;
+			hasWindow = false;
+			hasGeom = false;
+			hasLines = false;
 		}
 
 		
@@ -19466,6 +22862,7 @@ void GamePage::addEntityGeom (bool justTesting)
 
 		if (gph) {
 			geomInPage = gph->entityGeom.size();
+			
 
 			for (m = 0; m < geomInPage; m++) {
 				
@@ -19479,7 +22876,16 @@ void GamePage::addEntityGeom (bool justTesting)
 				) {
 
 					if (justTesting) {
-						hasGeom = true;
+						
+						
+						if (gg->buildingType == E_CT_LINES) {
+							hasLines = true;
+						}
+						else {
+							hasGeom = true;
+						}
+						
+						
 					}
 					else {
 						for (p = 0; p < E_GP_LENGTH; p++) {
@@ -19498,10 +22904,11 @@ void GamePage::addEntityGeom (bool justTesting)
 			}
 		}
 		
+		
 
 		if (justTesting) {
 			parentGPH->hasTrans = false;
-			if (hasGeom) {
+			if (hasGeom||hasLines) {
 				parentGPH->hasSolids = true;
 			}
 		}
@@ -19673,25 +23080,35 @@ void GamePage::getVoroPoints ()
 		int i, j, k;
 
 		int counter = 0;
-		int rad = 1;
-		int iMaxPoints = 27;
+		int rad = 2;
+		int tempi = 0;
+		
+		//int iMaxPoints = 27;
+		//float fMaxPoints = (float)iMaxPoints;
 
 		float fi, fj, fk;
 
-
+		
+		FIVector4 posFloored;
+		FIVector4 posFlooredInPixels;
+		
 		// posFloored.copyFrom(&worldMaxVisInPixels);
 		// posFloored.addXYZRef(&worldMinVisInPixels);
 		// posFloored.multXYZ(0.5f);
 
 		posFloored.copyFrom(&offsetInPages);
+		posFloored.addXYZ(0.5f);
+		
+		posFlooredInPixels.copyFrom(&posFloored);
+		posFlooredInPixels.multXYZ(&voroSize);
 
 		// posFloored.divXYZ(&voroSize);
 		// posFloored.floorXYZ();
 
 
-
-		float fMaxPoints = (float)iMaxPoints;
-
+		int totVoro = 27;
+		
+		
 
 		for (i = -rad; i <= rad; i++) {
 			fi = (float)i;
@@ -19715,26 +23132,26 @@ void GamePage::getVoroPoints ()
 					//if (curPos.getIZ()%3 == 0) {
 
 					randNum.setRand(&curPos);
-					randNum.multXYZ(0.5f);
+					//randNum.multXYZ(1.0f);
 
-					newPos.copyFrom(&curPos);
-					newPos.addXYZRef(&randNum);
-					newPos.multXYZ(&voroSize);
+					singleton->voroVecArr[counter].copyFrom(&curPos);
+					singleton->voroVecArr[counter].addXYZRef(&randNum);
+					singleton->voroVecArr[counter].multXYZ(&voroSize);
 
-					testNum.setRand(&curPos);
+					//testNum.setRand(&curPos);
 
 					//if (testNum.getFX() > 1.0f - (fMaxPoints/125.0f) ) { //true) {//
-					singleton->voroArr[counter * 4 + 0] = newPos.getFX();
-					singleton->voroArr[counter * 4 + 1] = newPos.getFY();
-					singleton->voroArr[counter * 4 + 2] = newPos.getFZ();
-					singleton->voroArr[counter * 4 + 3] = (testNum.getFX()) * 0.5 + 0.5;
+					// singleton->voroArr[counter * 4 + 0] = newPos.getFX();
+					// singleton->voroArr[counter * 4 + 1] = newPos.getFY();
+					// singleton->voroArr[counter * 4 + 2] = newPos.getFZ();
+					//singleton->voroArr[counter * 4 + 3] = (testNum.getFX()) * 0.5 + 0.5;
 					counter++;
 					//}
 
-					if (counter >= iMaxPoints) {
-						counter = iMaxPoints;
-						goto VORO_DONE;
-					}
+					// if (counter >= iMaxPoints) {
+					// 	counter = iMaxPoints;
+					// 	goto VORO_DONE;
+					// }
 					//}
 
 
@@ -19743,11 +23160,30 @@ void GamePage::getVoroPoints ()
 			}
 		}
 
-VORO_DONE:
-		voroCount = counter;
+// VORO_DONE:
+// 		voroCount = counter;
 
-		//cout << "counter " << counter << "\n";
 
+		
+
+
+		for (i = 0; i < 125; i++){
+			singleton->indexArr[i].index1 = i;
+			singleton->indexArr[i].value = singleton->voroVecArr[i].distance(&posFlooredInPixels);
+		}
+		
+		bubbleSortF(singleton->indexArr, 125);
+		
+		int curInd = 0;
+		for (i = 0; i < 27; i++) {
+			curInd = singleton->indexArr[i].index1;
+			singleton->voroArr[i * 4 + 0] = singleton->voroVecArr[curInd].getFX();
+			singleton->voroArr[i * 4 + 1] = singleton->voroVecArr[curInd].getFY();
+			singleton->voroArr[i * 4 + 2] = singleton->voroVecArr[curInd].getFZ();
+		}
+
+		
+		voroCount = 27;
 	}
 void GamePage::generateVolume ()
                               {
@@ -19757,6 +23193,15 @@ void GamePage::generateVolume ()
 		int i;
 		isRendering = true;
 		
+		if (volDataModified) {
+			copyToTexture(false);
+		}
+		else {
+			if (singleton->emptyVDNotReady) {
+				singleton->emptyVDNotReady = false;
+				copyToTexture(true);
+			}
+		}
 		
 		if (isEntity) {
 			addEntityGeom(true);
@@ -19764,23 +23209,13 @@ void GamePage::generateVolume ()
 		}
 		else {
 			resIndex = parentBlock->copyTerToTexture();
-			
-			if (volDataModified) {
-				copyToTexture(false);
-			}
-			else {
-				if (singleton->emptyVDNotReady) {
-					singleton->emptyVDNotReady = false;
-					copyToTexture(true);
-				}
-			}
 			addGeom(true);
 			addGeom(false);
 			
 		}
 		
 
-		parentGPH->clearSet(false);
+		parentGPH->clearSet(); //false
 		getVoroPoints();
 
 
@@ -19801,7 +23236,7 @@ void GamePage::generateVolume ()
 
 		
 
-		singleton->bindFBO("volGenFBO1");
+		singleton->bindFBO("volGenFBO0");
 
 		if (volDataModified) {
 			singleton->setShaderTexture3D(0, singleton->volId);
@@ -19863,7 +23298,7 @@ void GamePage::generateVolume ()
 		//singleton->setShaderFloat("heightmapMin", 0.0);//singleton->heightmapMin);
 		//singleton->setShaderFloat("heightmapMax", 0.0);// singleton->heightmapMax);
 		//singleton->setShaderFloat("maxFloors", 1.0f); //singleton->maxFloors
-		singleton->setShaderFloat("terDataTexScale", singleton->terDataTexScale);
+		//singleton->setShaderFloat("terDataTexScale", singleton->terDataTexScale);
 
 		singleton->setShaderfVec4("worldSizeInPixels", &(singleton->worldSizeInPixels));
 		//singleton->setShaderfVec4("mapFreqs", &(singleton->mapFreqs) );
@@ -19889,8 +23324,9 @@ void GamePage::generateVolume ()
 		singleton->setShaderInt("hasTree", (int)hasTree);
 		singleton->setShaderInt("hasGeom", (int)hasGeom);
 		singleton->setShaderInt("hasTerrain", (int)hasTerrain);
+		singleton->setShaderInt("hasLines", (int)hasLines);
 
-		if (hasGeom) {
+		if (hasGeom||hasTree||hasLines) {
 			singleton->setShaderInt("paramsPerEntry", (paramsPerEntry / 3) );
 			singleton->setShaderInt("numEntries", numEntries);
 			singleton->setShaderArrayfVec3("paramArr", singleton->paramArr, totParams / 3);
@@ -19941,14 +23377,14 @@ void GamePage::generateVolume ()
 					(
 						(i == 0) &&
 						(
-							(hasTerrain || hasGeom) ||
+							(hasTerrain || hasGeom || hasLines) ||
 							((MAX_LAYERS < 2)&&(hasWater))
 						)
 					) ||
 					((i == 1) && (hasWater || hasWindow))
 				) {
 					singleton->bindFBODirect(parentGPH->gpuRes->getFBOS(i), 0);
-					singleton->sampleFBO("volGenFBO1", 0);
+					singleton->sampleFBO("volGenFBO0", 0);
 					singleton->sampleFBO("frontFaceFBO", 2);
 					singleton->sampleFBO("backFaceFBO", 3);
 
@@ -19970,7 +23406,7 @@ void GamePage::generateVolume ()
 					
 					singleton->unsampleFBO("backFaceFBO",3);
 					singleton->unsampleFBO("frontFaceFBO",2);
-					singleton->unsampleFBO("volGenFBO1",0);
+					singleton->unsampleFBO("volGenFBO0",0);
 					singleton->unbindFBO();
 				}
 
@@ -20070,16 +23506,17 @@ GamePageHolder::GamePageHolder ()
 		hasSolids = false;
 		underground = false;
 	}
-void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isEntity, bool _entType)
+void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isEntity)
           {
 
-		entType = _entType;
 		entityGeomCounter = 0;
 
 		int i;
 		int j;
 		int k;
 		int ind;
+		
+		readyForClear = true;
 
 		isEntity = _isEntity;
 
@@ -20090,6 +23527,11 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 
 		singleton = _singleton;
 		usingPoolId = -1;
+
+		holderSizeInPixels = singleton->holderSizeInPixels;
+		halfHolderSizeInPixels = holderSizeInPixels*0.5f;
+		
+		origOffset.setFXYZ(halfHolderSizeInPixels,halfHolderSizeInPixels,halfHolderSizeInPixels);
 
 		offsetInHolders.setIXYZ(trueX,trueY,trueZ);
 		offsetInBlocks.copyFrom(&offsetInHolders);
@@ -20103,7 +23545,10 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		gphMinInPixels.multXYZ(singleton->holderSizeInPixels);
 		gphMaxInPixels.multXYZ(singleton->holderSizeInPixels);
 
-
+		gphCenInPixels.copyFrom(&gphMaxInPixels);
+		gphCenInPixels.addXYZRef(&gphMinInPixels);
+		gphCenInPixels.multXYZ(0.5f);
+		
 		holderSizeInPages = singleton->holderSizeInPages;
 		iPageDataVolume = holderSizeInPages*holderSizeInPages*holderSizeInPages;
 		pageData = new GamePage*[iPageDataVolume];
@@ -20115,12 +23560,7 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		}
 		
 		
-		if (isEntity) {
-			fetchEntityGeom();
-		}
-		else {
-			fetchGeom();
-		}
+		refreshGeom();
 		
 		for (k = 0; k < holderSizeInPages; k++) {
 			for (j = 0; j < holderSizeInPages; j++) {
@@ -20217,11 +23657,23 @@ GamePage * GamePageHolder::getPageAtCoordsLocal (int x, int y, int z, bool creat
 
 		
 	}
-void GamePageHolder::clearSet (bool forceClear)
-                                       {
+void GamePageHolder::refreshGeom ()
+                           {
+		if (isEntity) {
+			entityGeomCounter = 0;
+			//fetchEntityGeom();
+			addNewLinesGeom(singleton->testHuman->baseNode, singleton->pixelsPerMeter);
+		}
+		else {
+			fetchGeom();
+		}
+	}
+void GamePageHolder::clearSet ()
+                        { //bool forceClear
 		int i;
+		
 
-		bool doClear = forceClear;
+		//bool doClear = forceClear;
 
 		if (usingPoolId == -1) {
 			
@@ -20235,10 +23687,12 @@ void GamePageHolder::clearSet (bool forceClear)
 			}
 			
 
-			doClear = true;
+			readyForClear = true;
 		}
 
-		if (doClear) {
+		if (readyForClear) {
+			readyForClear = false;
+			
 			for (i = 0; i < MAX_LAYERS; i++) {
 				// clear fbo by binding it with auto flag
 				singleton->bindFBODirect(gpuRes->getFBOS(i));
@@ -20247,12 +23701,15 @@ void GamePageHolder::clearSet (bool forceClear)
 		}
 		
 	}
-void GamePageHolder::refreshChildren (bool refreshImmediate)
-                                                    {
+void GamePageHolder::refreshChildren (bool refreshImmediate, bool clearEverything)
+                                                                                  {
 		int i;
 
-		clearSet(true);
-		
+		//clearSet(true);
+		readyForClear = true;
+		if (clearEverything) {
+			clearSet();
+		}
 
 		for (i = 0; i < iPageDataVolume; i++) {
 			if (pageData[i] == NULL) {
@@ -20286,8 +23743,13 @@ void GamePageHolder::refreshChildren (bool refreshImmediate)
 	}
 void GamePageHolder::addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVector4 * _p1, FIVector4 * _p2, FIVector4 * _rad, FIVector4 * _cornerRad, FIVector4 * _visInsetFromMin, FIVector4 * _visInsetFromMax, FIVector4 * _powerVals, FIVector4 * _powerVals2, FIVector4 * _thickVals, FIVector4 * _matParams, FIVector4 * _centerPoint, FIVector4 * _anchorPoint, int _minRot, int _maxRot)
           {
-		entityGeom.push_back(new GameGeom());
-		entityGeom.back()->initBounds(
+		
+		if (entityGeomCounter >= entityGeom.size()) {
+			entityGeom.push_back(new GameGeom());
+		}
+		
+		
+		entityGeom[entityGeomCounter]->initBounds(
 			_curBT,
 			entityGeomCounter,
 			entityGeomCounter,
@@ -20309,6 +23771,62 @@ void GamePageHolder::addNewGeom (int _curBT, int _curAlign, float _baseOffset, F
 			_maxRot
 		);
 		entityGeomCounter++;
+	}
+void GamePageHolder::addNewLinesGeom (GameEntNode * curNode, float scale)
+          {
+		
+		int i;
+		
+		
+		if (curNode->parent == NULL) {
+			
+		}
+		else {
+			
+			if (curNode == singleton->selectedNode) {
+				tempVec.setFXYZ(E_ENT_PARAM_LINES,10.0f,entityGeomCounter);
+			}
+			else {
+				tempVec.setFXYZ(E_ENT_PARAM_LINES,curNode->material,entityGeomCounter);
+			}
+			
+			tempVec2.copyFrom(&(curNode->tbnRotC[0]));
+			tempVec2.multXYZ(curNode->boneLengthHalf*scale);
+			
+			
+			if (entityGeomCounter >= entityGeom.size()) {
+				entityGeom.push_back(new GameGeom());
+			}
+			
+			entityGeom[entityGeomCounter]->initLines(
+				E_CT_LINES,
+				entityGeomCounter,
+				entityGeomCounter,
+				scale,
+				
+				&origOffset,
+				
+				&(curNode->orgTrans[1]),
+				&(tempVec2),
+				&(curNode->tbnRotC[1]),
+				&(curNode->tbnRotC[2]),
+				&(curNode->tbnRadInMeters0),
+				&(curNode->tbnRadInMeters1),
+				&(curNode->tbnRadScale0),
+				&(curNode->tbnRadScale1),
+				&tempVec
+				
+			);
+			entityGeomCounter++;
+		}
+		
+		
+		
+		for (i = 0; i < curNode->children.size(); i++) {
+			addNewLinesGeom(curNode->children[i],scale);
+		}
+		
+		
 	}
 void GamePageHolder::fetchEntityGeom ()
                                {
@@ -20340,7 +23858,7 @@ void GamePageHolder::fetchEntityGeom ()
 		
 		
 		
-		float halfHolderSize = singleton->holderSizeInPixels*0.5f;
+		
 		
 		
 		curBT = E_CT_OBJECT;
@@ -20349,30 +23867,25 @@ void GamePageHolder::fetchEntityGeom ()
 		p1.setFXYZRef(&orig);
 		p2.setFXYZRef(&orig);
 		rad.setFXYZ(
-			halfHolderSize,
-			halfHolderSize,
-			halfHolderSize	
+			halfHolderSizeInPixels,
+			halfHolderSizeInPixels,
+			halfHolderSizeInPixels	
 		);
 		cornerRad.setFXYZ(
-			halfHolderSize,
-			halfHolderSize,
-			halfHolderSize	
+			halfHolderSizeInPixels,
+			halfHolderSizeInPixels,
+			halfHolderSizeInPixels	
 		);
 		visInsetFromMin.setFXYZ(0.0f,0.0f,0.0f);
 		visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
-		
 		powerVals.setFXYZ(2.0f,2.0f,0.0f);
 		powerVals2.setFXYZ(2.0f,2.0f,0.0f);
 		thickVals.setFXYZ(0.0f,0.0f,0.0f);
-		matParams.setFXYZ(E_MAT_PARAM_OBJECT,0.0f,0.0f);
+		matParams.setFXYZ(E_ENT_PARAM_GEOM,0.0f,0.0f);
 		centerPoint.setFXYZRef(&orig);
 		anchorPoint.setFXYZRef(&orig);
 		minRot = 0;
-		maxRot = 0;
-		
-		
-		
-		
+		maxRot = 0;		
 		addNewGeom(
 			curBT,
 			curAlign,
@@ -21151,7 +24664,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 		counter = 0;
 		
-		int newSeaLev = seaLev+2;
+		int newSeaLev = seaLev+1;
 		
 		do {
 
@@ -21880,7 +25393,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 										if (testInd > -1) {
 											testVal = terData[testInd];
-											if (touchesBaseOnLevel(i, j, k, 2) || (testVal != 0)) {
+											if (touchesBaseOnLevel(i, j, k+1, 2) || (testVal != 0)) {
 												uiSimp = 255;//fGenRand()*32.0f+223.0f;
 												terData[curInd] = (uiSimp << 24) | (uiSimp << 16) | (uiSimp << 8) | uiSimp;
 											}
@@ -21898,6 +25411,15 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 			}
 		}
 		
+		int minRad = -1;
+		int minRadZ = -1;
+		if (pixelsPerMeter <= 32) {
+			minRad = -2;
+		}
+		if (pixelsPerMeter <= 64) {
+			minRadZ = -2;
+		}
+		
 		
 		bool nearAir = false;
 		
@@ -21912,9 +25434,11 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 					if (curInd > -1) {
 						nearAir = false;
 						
-						for (ko = -1; ko <= 1; ko++) {
-							for (jo = -1; jo <= 1; jo++) {
-								for (io = -1; io <= 1; io++) {
+						
+						
+						for (ko = minRadZ; ko <= 0; ko++) {
+							for (jo = minRad; jo <= 1; jo++) {
+								for (io = minRad; io <= 1; io++) {
 									testInd = getNodeIndex(i + io, j + jo, k + ko, 0);
 
 									if (testInd > -1) {
@@ -23407,7 +26931,7 @@ int GameBlock::copyTerToTexture ()
 								
 								// TODO: rand num should be hashed based on location
 								
-								uiSimp = fGenRand()*32.0f+223.0f;
+								uiSimp = fGenRand()*55.0f+200.0f;
 							}
 							else {
 								uiSimp = 255;
@@ -23621,33 +27145,8 @@ void GameWorld::init (Singleton * _singleton)
 		}
 
 		
-		for (i = 0; i < E_ET_LENGTH; i++) {
-			/*
-			Singleton* _singleton,
-			int _blockId,
-			int _holderId,
-			
-			int trueX,
-			int trueY,
-			int trueZ,
-			
-			bool _isEntity = false,
-			bool _entType = E_ET_TEST
-			*/
-			entHolders[i].init(
-				singleton,
-				
-				i,
-				0,
-				
-				0,
-				0,
-				0,
-				
-				true,
-				i
-			);
-		}
+		
+		
 
 
 		popTrace();
@@ -23951,6 +27450,9 @@ void GameWorld::update ()
 		newZoom = max(1.0f, singleton->cameraZoom);
 
 		bool doFinalDraw = false;
+		
+		singleton->testHuman->basePosition.copyFrom(&(singleton->dynObjects[E_OBJ_HUMAN]->pos));
+		transformEnt(singleton->testHuman);
 
 		mapTrans = 1.0f - (singleton->cameraZoom * ((float)DEF_SCALE_FACTOR)) / 0.1f;
 		if (mapTrans > 0.91)
@@ -23994,17 +27496,14 @@ void GameWorld::update ()
 			singleton->unbindShader();
 		}
 
-
 		bool changesMade = singleton->changesMade;
 		bool bufferInvalid = singleton->bufferInvalid;
-
 		bool procResult = false;
-
 
 		if (mapTrans < 1.0f)
 		{
 
-			if ( singleton->isZooming)   //(false) { //  || singleton->isPanning
+			if ( false ) //singleton->isZooming)
 			{
 
 			}
@@ -24019,31 +27518,28 @@ void GameWorld::update ()
 				}
 			}
 
-			if (procResult || changesMade || (singleton->mouseState == E_MOUSE_STATE_ENTS) )
+			if (
+				procResult ||
+				changesMade ||
+				(singleton->charState == E_CHAR_STATE_RENDERED) ||
+				(singleton->tiltChanged)
+			)
 			{
 				actionOnHolders(E_HOLDER_ACTION_RENDER);
-
-
-
-				// if ( (singleton->grassState != E_GRASS_STATE_ANIM) ) {
-				//  //renderGrass();
-				// }
-
+				combineHolders();
 
 			}
 
-			// if (singleton->grassState == E_GRASS_STATE_ANIM) {
-			//  //renderGrass();
-			//  bufferInvalid = true;
-			// }
 		}
 
 		if (
 			procResult ||
 			changesMade ||
 			bufferInvalid ||
-			singleton->rbDown ||
-			singleton->lbDown
+			singleton->abDown || 
+			//(singleton->charState == E_CHAR_STATE_SKEL) ||
+			(singleton->charState == E_CHAR_STATE_RENDERED) ||
+			(singleton->tiltChanged)
 			
 		)	{
 
@@ -24162,13 +27658,21 @@ bool GameWorld::processPages ()
 		int changeCount = 0;
 
 		int maxChangesInHolders = singleton->maxChangesInHolders;
-		if (singleton->lbDown || singleton->rbDown || singleton->isZooming) {
-			maxChangesInHolders = 2;
+		
+		
+		if (
+			(singleton->hitGUI) ||
+			(singleton->rbDown && singleton->bShift)
+		) {
+			
 		}
-		// else {
-		//  maxChangesInHolders = 32;
-		// }
-
+		else {
+			if (
+				(singleton->abDown || singleton->isZooming)
+			) {
+				maxChangesInHolders = 1;
+			}
+		}
 
 
 		// check for threads to free
@@ -24371,7 +27875,7 @@ void GameWorld::refreshHoldersInList (bool doImmediate)
 			holdersToRefresh[i]->refreshChildren(doImmediate);
 		}
 	}
-void GameWorld::actionOnHolders (int action)
+void GameWorld::actionOnHolders (int action, bool instantRefresh, bool clearEverything)
         {
 
 		pushTrace("renderHolders()");
@@ -24384,17 +27888,28 @@ void GameWorld::actionOnHolders (int action)
 		int ppSize = singleton->gpuPool->orderedIds.size();
 		GamePageHolder* gp;
 		
+		bool entPass = false;
+		
 		float zOffR = 0.0f;
 		float zOffG = 0.0f;
 		
-		GamePageHolder* gpEnt = &(entHolders[E_ET_TEST]);
+		GameEnt* activeEnt = singleton->testHuman;
+		GamePageHolder* gphEnt = activeEnt->gph;
 
-		if (singleton->mouseState == E_MOUSE_STATE_ENTS) {
+		if (singleton->charState == E_CHAR_STATE_RENDERED) {
 			
-			if (gpEnt->isDirty) {
-				gpEnt->refreshChildren(true);
+			
+			
+			
+			if (  (gphEnt->isDirty)&&(ENT_ON)  ) {
 				
-				cout << "ent refreshed\n";
+				// TOOD: this must be called before other pages or potential crash from lack of memory to alloc
+				//transformEnt(singleton->testHuman);
+				
+				
+				gphEnt->refreshGeom();
+				gphEnt->refreshChildren(true);
+				
 				
 			}
 		}
@@ -24402,17 +27917,35 @@ void GameWorld::actionOnHolders (int action)
 
 		singleton->bindShader("BlitShader");
 
-		for (j = 0; j < MAX_LAYERS; j++)
+		for (k = 0; k < MAX_LAYERS*2; k++)
 		{
+			
+			
+			j = k % MAX_LAYERS;
+			entPass = k >= MAX_LAYERS;
 
-			if (j == 0)
-			{
-				singleton->bindFBO("pagesFBO");
+			if (entPass) {
+				if (j == 0)
+				{
+					singleton->bindFBO("pages3FBO");
+				}
+				else
+				{
+					singleton->bindFBO("water3FBO");
+				}
 			}
-			else
-			{
-				singleton->bindFBO("waterFBO");
+			else {
+				if (j == 0)
+				{
+					singleton->bindFBO("pages2FBO");
+				}
+				else
+				{
+					singleton->bindFBO("water2FBO");
+				}
 			}
+
+			
 
 
 			singleton->setShaderFloat("zOffset",0.0f);
@@ -24471,7 +28004,10 @@ void GameWorld::actionOnHolders (int action)
 							}
 							break;
 						case E_HOLDER_ACTION_RESET:
-							gp->refreshChildren(false);
+						
+							gp->refreshChildren(instantRefresh, clearEverything);
+						
+							
 							break;
 						}
 
@@ -24481,31 +28017,44 @@ void GameWorld::actionOnHolders (int action)
 			}
 			
 			
-			if (singleton->mouseState == E_MOUSE_STATE_ENTS) {	
+			if (singleton->charState == E_CHAR_STATE_RENDERED) {
 				
 				
-				switch (action)
-				{
-				case E_HOLDER_ACTION_RENDER:
+				if (entPass) {
+					switch (action)
+					{
+					case E_HOLDER_ACTION_RENDER:
+						
+						singleton->setShaderFloat("zOffset",activeEnt->basePosition[2]);
+						
+						
+						if ( ((j == 0) && gphEnt->hasSolids) || ((j == 1) && gphEnt->hasTrans) )
+						{
+							
+							if (ENT_ON) {
+								drawHolder(
+									gphEnt,
+									j,
+									activeEnt->basePosition[0],
+									activeEnt->basePosition[1],
+									activeEnt->basePosition[2]
+								);
+							}
+							
+
+						}
+						
+						
+						break;
+					case E_HOLDER_ACTION_RESET:
+						if (ENT_ON) {
+							gphEnt->refreshChildren(true);							
+						}
+						break;
+					}
 					
-					singleton->setShaderFloat("zOffset",lastUnitPos.getFZ());
 					
-					drawHolder(
-						gpEnt,
-						j,
-						lastUnitPos.getFX(),
-						lastUnitPos.getFY(),
-						lastUnitPos.getFZ()
-					);
-					break;
-				case E_HOLDER_ACTION_RESET:
-					gpEnt->refreshChildren(true);
-					break;
 				}
-				
-				
-				
-				
 				
 			}
 
@@ -24611,29 +28160,184 @@ void GameWorld::drawHolder (GamePageHolder * gp, int curLayer, float xoff, float
 		//popTrace();
 
 	}
+void GameWorld::combineHolders ()
+        {
+		
+		int i;
+		
+		
+		bool entOff = false;
+		
+		
+		if (entOff) {
+			singleton->copyFBO("pages2FBO", "pagesFBO");
+			singleton->copyFBO("water2FBO", "waterFBO");
+		}
+		else {
+			singleton->bindShader("CombineShader");
+			for (i = 0; i < 2; i++) {
+
+				if (i == 0) {
+					singleton->bindFBO("pagesFBO");
+					singleton->sampleFBO("pages2FBO", 0);
+					singleton->sampleFBO("pages3FBO", 2);
+				}
+				else {
+					singleton->bindFBO("waterFBO");
+					singleton->sampleFBO("water2FBO", 0);
+					singleton->sampleFBO("water3FBO", 2);
+				}
+				
+
+				singleton->drawFSQuad(1.0f);
+
+				if (i == 0) {
+					singleton->unsampleFBO("pages3FBO", 2);
+					singleton->unsampleFBO("pages2FBO", 0);
+				}
+				else {
+					singleton->unsampleFBO("water3FBO", 2);
+					singleton->unsampleFBO("water2FBO", 0);
+				}
+
+				singleton->unbindFBO();
+				
+				
+			}
+			singleton->unbindShader();
+		}
+		
+		
+		
+		
+		
+	}
 void GameWorld::combineBuffers ()
         {
-		pushTrace("combineBuffers()");
 
 		singleton->bindShader("CombineShader");
 		singleton->bindFBO("combineFBO");
 
 		singleton->sampleFBO("pagesFBO", 0);
-		//singleton->sampleFBO("grassFBO",2);
-		singleton->sampleFBO("geomFBO", 4);
-
-
-		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+		singleton->sampleFBO("geomFBO", 2);
 
 		singleton->drawFSQuad(1.0f);
 
-		singleton->unsampleFBO("geomFBO", 4);
-		//singleton->unsampleFBO("grassFBO",2);
+		singleton->unsampleFBO("geomFBO", 2);
 		singleton->unsampleFBO("pagesFBO", 0);
 
 		singleton->unbindFBO();
 		singleton->unbindShader();
-		popTrace();
+	}
+void GameWorld::transformEnt (GameEnt * curEnt)
+                                           {
+		
+		// GameEntNode* curNode = NULL;
+		
+		// curNode = curEnt->baseNode->getNode(E_BONE_L_UPPERARM);
+		// curNode->rotThe = sin(singleton->curTime/1000.0f)*3.14159f * 0.25f;
+		
+		// curNode = curNode->getNode(E_BONE_L_LOWERARM);
+		// curNode->rotThe = sin(singleton->curTime/1000.0f)*3.14159f * 0.25f;
+		// curNode->rotPhi = sin(singleton->curTime/1000.0f)*3.14159f * 2.0f;
+		
+		curEnt->baseNode->doTransform(singleton);
+	}
+void GameWorld::drawEnt (GameEnt * curEnt, bool drawAll)
+                                                    {
+		
+		
+		float scale = 1.0f*((float)(singleton->pixelsPerMeter));
+		
+		
+		glLineWidth(0);
+		
+		
+		
+		// tangents
+		singleton->setShaderFloat("matVal", getPackedColor(255, 0, 0));
+		drawNodeEnt((curEnt->baseNode),&(curEnt->basePosition), scale, 0, drawAll);
+		
+		// bitangents
+		singleton->setShaderFloat("matVal", getPackedColor(0, 255, 0));
+		drawNodeEnt((curEnt->baseNode),&(curEnt->basePosition), scale, 1, drawAll);
+		
+		// normals
+		singleton->setShaderFloat("matVal", getPackedColor(0, 0, 255));
+		drawNodeEnt((curEnt->baseNode),&(curEnt->basePosition), scale, 2, drawAll);
+		
+		if (drawAll) {
+			// nodes
+			singleton->setShaderFloat("matVal", getPackedColor(254, 254, 254));
+			drawNodeEnt((curEnt->baseNode),&(curEnt->basePosition), scale, 3, drawAll);
+		}
+		
+		
+		
+	}
+void GameWorld::drawNodeEnt (GameEntNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll)
+          {
+		
+		// if (curNode == singleton->selectedNode) {
+		// 	glLineWidth(3);
+		// }
+		// else {
+		// 	glLineWidth(0);
+		// }
+		
+		bool doProc = false;
+		
+		if (drawAll) {
+			doProc = true;
+		}
+		else {
+			if (curNode == singleton->selectedNode) {
+				doProc = true;
+			}
+		}
+		
+		int i;
+		
+		
+		if (doProc) {
+			lineSeg[0].setFXYZRef(&(curNode->orgTrans[0]));
+			lineSeg[0].multXYZ(  scale  );
+			
+			if (drawAll) {
+				lineSeg[1].setFXYZRef(&(curNode->tbnTrans[drawMode%3]));
+				lineSeg[1].multXYZ(  scale  );
+			}
+			else {
+				lineSeg[1].setFXYZRef(&(curNode->tbnRotC[drawMode%3]));
+				lineSeg[1].multXYZ(  (curNode->tbnRadInMeters0[drawMode%3]*scale*16.0f)  );
+				lineSeg[1].multXYZ(&(curNode->tbnRadScale0));
+				lineSeg[1].addXYZRef(&(lineSeg[0]));
+			}
+			
+			
+			lineSeg[0].addXYZRef(basePosition);
+			lineSeg[1].addXYZRef(basePosition);
+			
+			
+			
+			switch(drawMode) {
+				case 0: // tangents
+				case 1: // bitangents
+				case 2: // normals
+					singleton->drawLine(&(lineSeg[0]),&(lineSeg[1]));
+				break;
+				case 3: // nodes
+					singleton->drawCubeCentered(&(lineSeg[1]),0.0125f*scale);
+				break;
+				
+			}
+		}
+		
+		
+		for (i = 0; i < curNode->children.size(); i++) {
+			drawNodeEnt(curNode->children[i], basePosition, scale, drawMode, drawAll);
+		}
+		
 	}
 void GameWorld::clearVisitedPaths (PathHolder * pathHolder)
                                                        {
@@ -25082,13 +28786,15 @@ void GameWorld::renderGeom ()
 
 		
 
-
-		if (singleton->bShift) {
-			singleton->setShaderFloat("isWire", 1.0);
-			singleton->setShaderFloat("matVal", getPackedColor(255,0,255));
-			
-			singleton->drawBox(&minLRInPixels,&maxLRInPixels);
+		if (singleton->mouseState != E_MOUSE_STATE_POSE) {
+			if (singleton->bShift) {
+				singleton->setShaderFloat("isWire", 1.0);
+				singleton->setShaderFloat("matVal", getPackedColor(255,0,255));
+				
+				singleton->drawBox(&minLRInPixels,&maxLRInPixels);
+			}
 		}
+		
 		
 		singleton->setShaderFloat("isWire", 0.0);
 
@@ -25103,8 +28809,12 @@ void GameWorld::renderGeom ()
 				// singleton->setShaderFloat("isWire", 1.0f);
 				// singleton->drawBox(&minLRInPixels, &maxLRInPixels);
 			}
+			
+			
+			
 
 			break;
+		
 		case E_MOUSE_STATE_ENTS:
 
 			// tempVec.copyFrom(&(singleton->mouseMovePD));
@@ -25159,6 +28869,7 @@ void GameWorld::renderGeom ()
 			
 			
 			
+			
 
 
 			
@@ -25174,50 +28885,16 @@ void GameWorld::renderGeom ()
 			singleton->setShaderFloat("matVal", getPackedColor(255, 0, 0));
 			singleton->drawCubeCentered(&lastUnitPos, ((int)singleton->curBrushRad) * (singleton->unitSizeInPixels)  );
 			glClear(GL_DEPTH_BUFFER_BIT);
-			break;
-		case E_MOUSE_STATE_OBJECTS:
+		break;
+		// case E_MOUSE_STATE_OBJECTS:
 
 
 
-			for (i = 1; i < singleton->dynObjects.size(); i++)
-			{
-				if (singleton->dynObjects[i]->doRender)
-				{
-
-					doProc = false;
-
-					if (i >= E_OBJ_LIGHT0)
-					{
-						if (i - E_OBJ_LIGHT0 < singleton->numDynLights)
-						{
-							doProc = true;
-						}
-					}
-					else
-					{
-						doProc = true;
-					}
-
-					if (doProc)
-					{
-						singleton->setShaderFloat("matVal", singleton->dynObjects[i]->colPacked);
-						curBoxPos = &(singleton->dynObjects[i]->pos);
-						singleton->drawCubeCentered(curBoxPos, singleton->dynObjects[i]->radius);
-
-
-						if (i == singleton->activeObject)
-						{
-							//singleton->drawCrossHairs(singleton->dynObjects[i]->pos,4.0f);
-						}
-					}
-
-
-				}
-			}
+			
 
 
 
-			break;
+		// 	break;
 		case E_MOUSE_STATE_PICKING:
 			// singleton->setShaderFloat("matVal", getPackedColor(0,255,0));
 			// singleton->drawBoxUp(lastUnitPos, 0.25f*singleton->pixelsPerMeter, 0.25f*singleton->pixelsPerMeter, 2.0f*singleton->pixelsPerMeter);
@@ -25266,9 +28943,50 @@ void GameWorld::renderGeom ()
 			break;
 
 		}
-
-
 		
+		if (singleton->bCtrl) {
+			for (i = 1; i < singleton->dynObjects.size(); i++)
+			{
+				if (singleton->dynObjects[i]->doRender)
+				{
+
+					doProc = false;
+
+					if (i >= E_OBJ_LIGHT0)
+					{
+						if (i - E_OBJ_LIGHT0 < singleton->numDynLights)
+						{
+							doProc = true;
+						}
+					}
+					else
+					{
+						doProc = true;
+					}
+
+					if (doProc)
+					{
+						singleton->setShaderFloat("matVal", singleton->dynObjects[i]->colPacked);
+						curBoxPos = &(singleton->dynObjects[i]->pos);
+						singleton->drawCubeCentered(curBoxPos, singleton->dynObjects[i]->radius);
+
+
+						if (i == singleton->activeObject)
+						{
+							//singleton->drawCrossHairs(singleton->dynObjects[i]->pos,4.0f);
+						}
+					}
+
+
+				}
+			}
+		}
+
+
+		if (singleton->charState == E_CHAR_STATE_RENDERED) { //E_CHAR_STATE_SKEL
+			//transformEnt(singleton->testHuman);
+			drawEnt(singleton->testHuman, false);
+		}
 		
 
 
@@ -25336,6 +29054,9 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 		lastUnitPos.intDivXYZ(singleton->unitSizeInPixels);
 		lastUnitPos.multXYZ(singleton->unitSizeInPixels);
 		lastUnitPos.setFW(singleton->unitSizeInPixels);
+		
+		
+		
 
 		lastPagePos.copyFrom(&fPixelWorldCoords);
 		lastPagePos.intDivXYZ(pixelPS);
@@ -25692,6 +29413,10 @@ void GameWorld::renderWorldSpaceGPU (float processPagesFBO, float processGeomFBO
 
 		singleton->unbindFBO();
 		singleton->unbindShader();
+		
+		//singleton->copyFBO("worldSpaceFBO","worldSpaceBlurFBO0");
+		//doBlur("worldSpaceBlurFBO",2.0f);
+		
 	}
 void GameWorld::getWorldSpaceBuffer ()
         {
@@ -25699,16 +29424,7 @@ void GameWorld::getWorldSpaceBuffer ()
 
 		pushTrace("getWorldSpaceBuffer()");
 
-		if (singleton->reportPagesDrawn)
-		{
-			singleton->reportPagesDrawn = false;
-			doTraceND("lightCount: ", i__s(lightCount));
-			doTraceND("TOT GPU MEM USED (MB): ", f__s(TOT_GPU_MEM_USAGE));
-			cout << "HolderSize (MB): " << singleton->holderSizeMB << "\n";
-			cout << "Num GPU Holders: " << singleton->gpuPool->holderPoolItems.size() << "\n";
-			cout << "GPU Pooled MB Used: " << ((float)singleton->gpuPool->holderPoolItems.size())*singleton->holderSizeMB << "\n";
-
-		}
+		
 
 
 
@@ -26199,7 +29915,7 @@ void GameWorld::initMap ()
 		avgSL = (minSL*3+maxSL*1)/4;
 
 
-		seaLevel = i; //avgSL;//
+		seaLevel = i+5; //avgSL;//
 		seaSlack = seaLevel - 1;
 		cout << "Sea Level: " << seaLevel << "\n";
 
@@ -26244,7 +29960,7 @@ void GameWorld::initMap ()
 						curHeight = fbow->getPixelAtC(xind, yind, hmChannel);
 
 						if (
-							(curHeight > seaLevel + 10)
+							(curHeight > seaLevel)
 						)
 						{
 
@@ -27742,10 +31458,12 @@ void GameWorld::postProcess ()
 					singleton->setShaderTexture(3, singleton->getFBOWrapper("worldSpaceFBO",3)->color_tex);
 				}
 				else {
+					//worldSpaceFBO
 					singleton->setShaderTexture(3, singleton->getFBOWrapper("worldSpaceFBO",0)->color_tex);
 				}
 				
-				singleton->setShaderTexture(4, singleton->getFBOWrapper("worldSpaceFBO",0)->color_tex);
+				//worldSpaceFBO
+				//singleton->setShaderTexture(4, singleton->getFBOWrapper("worldSpaceBlurFBO0",0)->color_tex);
 				
 				
 				singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
@@ -27768,7 +31486,7 @@ void GameWorld::postProcess ()
 				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 				singleton->drawFSQuad(1.0f);
 
-				singleton->setShaderTexture(4,0);
+				//singleton->setShaderTexture(4,0);
 				singleton->setShaderTexture(3,0);
 				singleton->unsampleFBO("palFBO", 2);
 
@@ -27926,11 +31644,23 @@ void GameWorld::postProcess ()
 
 			}
 
-			singleton->drawFBO("resultFBO", 0, newZoom, 1 - activeFBO);
-
+			//singleton->drawFBO("swapFBOBLin0", 0, newZoom);
+			
+			
 			//singleton->drawFBO("frontFaceFBO", 0, 1.0f);
 
-			//singleton->mainGUI->renderGUI(true);
+			
+
+			if (singleton->guiOn) {
+				if (singleton->mainGUI->isReady) {
+					singleton->mainGUI->renderGUI(newZoom, 1 - activeFBO);
+				}
+				
+			}
+			else {
+				singleton->drawFBO("resultFBO", 0, newZoom, 1 - activeFBO);
+			}
+			
 
 
 
@@ -28160,4 +31890,5 @@ int main(int argc, char* argv[])
     
 
     return 0;
-} 
+}
+ 

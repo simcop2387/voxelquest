@@ -143,7 +143,7 @@ void main() {
 
 
     newFog = (fogPos.xyz-worldPosition.xyz);
-    newFog /= 1024.0;
+    newFog /= 2048.0;
     newFog.xy /= 2.0;
     fogXYZ = 1.0-clamp( newFog, 0.0, 1.0);
     fogLen = 1.0-clamp(1.0-(fogXYZ.x*fogXYZ.y),0.0,1.0);

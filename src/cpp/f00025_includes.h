@@ -16,9 +16,11 @@ const static int FLOATS_PER_LIGHT = 16;
 const static int DEF_WIN_W = 1920;
 const static int DEF_WIN_H = 1080;
 const static int DEF_SCALE_FACTOR = 2;
+const static float UI_SCALE_FACTOR = 1.0f;
 
-const static int PIXELS_PER_METER = 64;
-const static int MAX_LAYERS = 2;
+const static bool ENT_ON = false;
+const static int PIXELS_PER_METER = 128;
+const static int MAX_LAYERS = 1;
 
 const static int MAX_PLANT_GEN = 16;
 
@@ -32,8 +34,7 @@ const static int TOT_NODE_VALS =
 const static int TOT_MAP_DIRS = 4;
 
 const static int MAX_BLOCK_STACK = 10;
-
-int giGUI_IDS;
+const static int MAX_UI_LAYERS = 4;
 
 char *BUF_NAMES[] =
 {
@@ -112,28 +113,16 @@ bool TRACE_ON = false;
 #include <io.h>
 #include <conio.h>
 
-
+#include <SFML/Audio/SoundBuffer.hpp>
+#include <SFML/Audio/Sound.hpp>
+#include <SFML/Audio/Music.hpp>
 
 #include <gl/glew.h>
 #include <gl/gl.h>
 #include <gl/glu.h>
 #include <gl/freeglut.h>
-
-/*
-// Using radians
-#define GLM_FORCE_RADIANS
-// allow swizzle
-// #define GLM_SWIZZLE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <glm/gtx/euler_angles.hpp>
-#include <glm/gtx/norm.hpp>
-//using namespace gtx;
-*/
-
 #pragma comment(lib, "glew32.lib")
+
 
 
 
@@ -215,29 +204,7 @@ using namespace std;
 typedef unsigned int uint;
 
 
-// Win32 incompatibilities
-#if defined(WIN32) && !defined(__GNUC__)
-#define wcsncasecmp _wcsnicmp
-static inline bool isnan(double x) {
-	return x != x;
-}
-static inline bool isinf(double x) {
-	return !isnan(x) && isnan(x - x);
-}
-#endif
-
-// Linux compile fix - from quaker66
-#ifdef __GNUC__
-// #include <cstring>
-// #include <cstdlib>
-#endif
-
-// Mac compile fixes - from quaker66, Lion fix by dabrahams
-#if defined(__APPLE__) && __DARWIN_C_LEVEL < 200809L || (defined(WIN32) && defined(__GNUC__))
-#include <wctype.h>
-#include <wchar.h>
-
-static inline int wcsncasecmp(const wchar_t *s1, const wchar_t *s2, size_t n)
+static inline int newcasecmp(const char *s1, const char *s2, size_t n)
 {
 	int lc1  = 0;
 	int lc2  = 0;
@@ -259,14 +226,38 @@ static inline int wcsncasecmp(const wchar_t *s1, const wchar_t *s2, size_t n)
 
 	return 0;
 }
+
+// todo: this define of wcsncasecmp should not be here
+
+//Win32 incompatibilities
+#if defined(WIN32) && !defined(__GNUC__)
+static inline bool isnan(double x) {
+	return x != x;
+}
+static inline bool isinf(double x) {
+	return !isnan(x) && isnan(x - x);
+}
+#endif
+
+// Linux compile fix - from quaker66
+#ifdef __GNUC__
+// #include <cstring>
+// #include <cstdlib>
+#endif
+
+// Mac compile fixes - from quaker66, Lion fix by dabrahams
+#if defined(__APPLE__) && __DARWIN_C_LEVEL < 200809L || (defined(WIN32) && defined(__GNUC__))
+#include <wctype.h>
+#include <wchar.h>
+
 #endif
 
 // Simple function to check a string 's' has at least 'n' characters
-static inline bool simplejson_wcsnlen(const wchar_t *s, size_t n) {
+static inline bool simplejson_wcsnlen(const char *s, size_t n) {
 	if (s == 0)
 		return false;
 
-	const wchar_t *save = s;
+	const char *save = s;
 	while (n-- > 0)
 	{
 		if (*(save++) == 0) return false;

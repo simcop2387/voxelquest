@@ -7,6 +7,25 @@ enum E_VOCAB {
 	vLength
 };
 
+enum E_GUI_DATA_STRINGS {
+	E_GDS_DATA_SOURCE,
+	E_GDS_DATA_FILE,
+	E_GDS_CHILD_TYPE,
+	E_GDS_CHILD_NAME,
+	E_GDS_LENGTH
+};
+
+enum E_GUI_CHILD_TYPES {
+	E_GCT_INV_ITEM,
+	E_GCT_SHADER_PARAM,
+	E_GCT_LENGTH
+};
+
+enum E_FONT_WRAPPERS {
+	EFW_TEXT,
+	EFW_ICONS,
+	EFW_LENGTH
+};
 
 enum eProgramState {
 	E_PS_MENU,
@@ -52,13 +71,29 @@ enum E_STATES {
 
 };
 
+enum E_CHAR_STATE {
+	E_CHAR_STATE_NONE,
+	E_CHAR_STATE_SKEL,
+	E_CHAR_STATE_RENDERED
+};
+
 enum E_MOUSE_STATE {
 	E_MOUSE_STATE_MOVE,
+	E_MOUSE_STATE_POSE,
 	E_MOUSE_STATE_ENTS,
-	E_MOUSE_STATE_OBJECTS,
+	//E_MOUSE_STATE_OBJECTS,
 	E_MOUSE_STATE_BRUSH,
 	E_MOUSE_STATE_PICKING,
 	E_MOUSE_STATE_LENGTH
+};
+string mouseStateStrings[] = {
+	"E_MOUSE_STATE_MOVE",
+	"E_MOUSE_STATE_POSE",
+	"E_MOUSE_STATE_ENTS",
+	//"E_MOUSE_STATE_OBJECTS",
+	"E_MOUSE_STATE_BRUSH",
+	"E_MOUSE_STATE_PICKING",
+	"E_MOUSE_STATE_LENGTH"
 };
 
 enum E_BRUSH {
@@ -106,6 +141,7 @@ enum E_OBJ {
 	E_OBJ_CAMERA,
 	E_OBJ_FOG,
 	E_OBJ_CUTAWAY,
+	E_OBJ_HUMAN,
 	//E_OBJ_P0,
 	//E_OBJ_P1,
 	//E_OBJ_P2,
@@ -138,10 +174,23 @@ enum E_MAT_PARAM {
 	E_MAT_PARAM_DOORWAY,
 	E_MAT_PARAM_DOOR,
 	//E_MAT_PARAM_STAIRS,
-	E_MAT_PARAM_OBJECT,
 	E_MAT_PARAM_TREE, // TREES MUST BE LAST ENTRY
 	E_MAT_PARAM_LENGTH
 };
+
+
+enum E_ENT_SUBPARAM {
+	E_ENT_SUBPARAM_NOT_SEL,
+	E_ENT_SUBPARAM_SEL,
+	E_ENT_SUBPARAM_LENGTH
+};
+
+enum E_ENT_PARAM {
+	E_ENT_PARAM_GEOM,
+	E_ENT_PARAM_LINES,
+	E_ENT_PARAM_LENGTH
+};
+
 
 // enum E_CONNECTION_SUBTYPES {
 //     E_CST_NULL,
@@ -191,6 +240,7 @@ enum E_CONNECTION_TYPES {
 	E_CT_DOORWAY,
 	E_CT_DOOR,
 	E_CT_OBJECT,
+	E_CT_LINES,
 	E_CT_TREE,
 	E_CT_LENGTH
 };
@@ -221,6 +271,190 @@ enum E_CONNECTION_TYPES {
 // };
 
 
+enum E_BONES_HUMAN {
+	
+	E_BONE_L_BEG, ///////////////
+	E_BONE_L_SHOULDER,
+	E_BONE_L_UPPERARM,
+	E_BONE_L_LOWERARM,
+	E_BONE_L_METACARPALS,
+	E_BONE_L_PROXIMAL0, // pinky
+	E_BONE_L_PROXIMAL1, // ring
+	E_BONE_L_PROXIMAL2, // middle
+	E_BONE_L_PROXIMAL3, // index
+	E_BONE_L_PROXIMAL4, // thumb
+	E_BONE_L_INTER0, // pinky
+	E_BONE_L_INTER1, // ring
+	E_BONE_L_INTER2, // middle
+	E_BONE_L_INTER3, // index
+	E_BONE_L_INTER4, // thumb
+	E_BONE_L_DISTAL0, // pinky
+	E_BONE_L_DISTAL1, // ring
+	E_BONE_L_DISTAL2, // middle
+	E_BONE_L_DISTAL3, // index
+	E_BONE_L_DISTAL4, // thumb
+	E_BONE_L_HIP,
+	E_BONE_L_UPPERLEG,
+	E_BONE_L_LOWERLEG,
+	E_BONE_L_TALUS,
+	E_BONE_L_PHALANGE,
+	E_BONE_L_END, //////////////
+	E_BONE_R_BEG, //////////////
+	E_BONE_R_SHOULDER,
+	E_BONE_R_UPPERARM,
+	E_BONE_R_LOWERARM,
+	E_BONE_R_METACARPALS,
+	E_BONE_R_PROXIMAL0, // pinky
+	E_BONE_R_PROXIMAL1, // ring
+	E_BONE_R_PROXIMAL2, // middle
+	E_BONE_R_PROXIMAL3, // index
+	E_BONE_R_PROXIMAL4, // thumb
+	E_BONE_R_INTER0, // pinky
+	E_BONE_R_INTER1, // ring
+	E_BONE_R_INTER2, // middle
+	E_BONE_R_INTER3, // index
+	E_BONE_R_INTER4, // thumb
+	E_BONE_R_DISTAL0, // pinky
+	E_BONE_R_DISTAL1, // ring
+	E_BONE_R_DISTAL2, // middle
+	E_BONE_R_DISTAL3, // index
+	E_BONE_R_DISTAL4, // thumb
+	E_BONE_R_HIP,
+	E_BONE_R_UPPERLEG,
+	E_BONE_R_LOWERLEG,
+	E_BONE_R_TALUS,
+	E_BONE_R_PHALANGE,
+	E_BONE_R_END, /////////////////
+	E_BONE_C_BEG, /////////////////
+	E_BONE_C_BASE,
+	E_BONE_C_SPINE0, // tail
+	E_BONE_C_SPINE1,
+	E_BONE_C_SPINE2,
+	E_BONE_C_SPINE3,
+	E_BONE_C_SPINE4, // neck
+	E_BONE_C_SKULL,
+	E_BONE_C_END //////////////////
+	
+};
+
+enum E_GUI {
+	E_GUI_LENGTH
+};
+
+enum eAlignH {
+	E_ALIGNH_LEFT,
+	E_ALIGNH_CENTER,
+	E_ALIGNH_RIGHT,
+};
+
+enum eAlignV {
+	E_ALIGNV_TOP,
+	E_ALIGNV_MIDDLE,
+	E_ALIGNV_BOTTOM	
+};
+
+enum eFillDir {
+	E_FILL_HORIZONTAL,
+	E_FILL_VERTICAL
+}; 
+
+
+string boneStrings[] = {
+	
+	"E_BONE_L_BEG", ///////////////
+	"E_BONE_L_SHOULDER",
+	"E_BONE_L_UPPERARM",
+	"E_BONE_L_LOWERARM",
+	"E_BONE_L_METACARPALS",
+	"E_BONE_L_PROXIMAL0", // pinky
+	"E_BONE_L_PROXIMAL1", // ring
+	"E_BONE_L_PROXIMAL2", // middle
+	"E_BONE_L_PROXIMAL3", // index
+	"E_BONE_L_PROXIMAL4", // thumb
+	"E_BONE_L_INTER0", // pinky
+	"E_BONE_L_INTER1", // ring
+	"E_BONE_L_INTER2", // middle
+	"E_BONE_L_INTER3", // index
+	"E_BONE_L_INTER4", // thumb
+	"E_BONE_L_DISTAL0", // pinky
+	"E_BONE_L_DISTAL1", // ring
+	"E_BONE_L_DISTAL2", // middle
+	"E_BONE_L_DISTAL3", // index
+	"E_BONE_L_DISTAL4", // thumb
+	"E_BONE_L_HIP",
+	"E_BONE_L_UPPERLEG",
+	"E_BONE_L_LOWERLEG",
+	"E_BONE_L_TALUS",
+	"E_BONE_L_PHALANGE",
+	"E_BONE_L_END", //////////////
+	"E_BONE_R_BEG", //////////////
+	"E_BONE_R_SHOULDER",
+	"E_BONE_R_UPPERARM",
+	"E_BONE_R_LOWERARM",
+	"E_BONE_R_METACARPALS",
+	"E_BONE_R_PROXIMAL0", // pinky
+	"E_BONE_R_PROXIMAL1", // ring
+	"E_BONE_R_PROXIMAL2", // middle
+	"E_BONE_R_PROXIMAL3", // index
+	"E_BONE_R_PROXIMAL4", // thumb
+	"E_BONE_R_INTER0", // pinky
+	"E_BONE_R_INTER1", // ring
+	"E_BONE_R_INTER2", // middle
+	"E_BONE_R_INTER3", // index
+	"E_BONE_R_INTER4", // thumb
+	"E_BONE_R_DISTAL0", // pinky
+	"E_BONE_R_DISTAL1", // ring
+	"E_BONE_R_DISTAL2", // middle
+	"E_BONE_R_DISTAL3", // index
+	"E_BONE_R_DISTAL4", // thumb
+	"E_BONE_R_HIP",
+	"E_BONE_R_UPPERLEG",
+	"E_BONE_R_LOWERLEG",
+	"E_BONE_R_TALUS",
+	"E_BONE_R_PHALANGE",
+	"E_BONE_R_END", /////////////////
+	"E_BONE_C_BEG", /////////////////
+	"E_BONE_C_BASE",
+	"E_BONE_C_SPINE0", // tail
+	"E_BONE_C_SPINE1",
+	"E_BONE_C_SPINE2",
+	"E_BONE_C_SPINE3",
+	"E_BONE_C_SPINE4",
+	"E_BONE_C_SPINE5",
+	"E_BONE_C_SPINE6", // neck
+	"E_BONE_C_SKULL",
+	"E_BONE_C_END" //////////////////
+	
+	
+	
+};
+
+
+// NEVER REORDER
+enum E_EQUIPMENT_SLOTS {
+	E_ES_HELMET,	// 0
+	E_ES_NECKLACE,	// 1
+	E_ES_CLOAK,		// 2
+	E_ES_ARMOR,		// 3
+	E_ES_GLOVES,	// 4
+	E_ES_PRIMARY,	// 5
+	E_ES_SECONDARY,	// 6
+	E_ES_BOOTS,		// 7
+	E_ES_LENGTH 	// 8
+};
+
+// // NEVER REORDER
+
+// enum E_ITEM_IDS {
+// 	E_II_IRON_LONG_SWORD,
+// 	E_II_IRON_KITE_SHIELD,
+// 	E_II_IRON_PLATED_MAIL,
+// 	E_II_LENGTH
+	
+// }
+
+
+
 enum E_TREE_PARAMS {
 	E_TP_VISMININPIXELST,
 	E_TP_VISMAXINPIXELST,
@@ -230,9 +464,23 @@ enum E_TREE_PARAMS {
 	E_TP_POWERVALS,
 	E_TP_POWERVALS2,
 	E_TP_THICKVALS,
-	E_TP_MATPARAMS,
 	E_TP_UNUSED,
+	E_TP_MATPARAMS, // must be last
 	E_TP_LENGTH
+};
+
+enum E_LINES_PARAMS {
+	E_AP_VISMININPIXELST,
+	E_AP_VISMAXINPIXELST,
+	E_AP_ORG, // origin
+	E_AP_TAN, // tangent (not normalized)
+	E_AP_BIT, // bitangent (normalized)
+	E_AP_NOR, // normal (normalized)
+	E_AP_RAD0, // radius
+	E_AP_RAD1,
+	E_AP_UNUSED1,
+	E_AP_MATPARAMS, // must be last
+	E_AP_LENGTH
 };
 
 enum E_GEOM_PARAMS {
@@ -244,22 +492,15 @@ enum E_GEOM_PARAMS {
 	E_GP_POWERVALS,
 	E_GP_POWERVALS2,
 	E_GP_THICKVALS,
-	E_GP_MATPARAMS,
 	E_GP_CENTERPOINT,
+	E_GP_MATPARAMS, // must be last
 	E_GP_LENGTH
 };
 
-// enum E_ENT_PARAMS {
-//     E_EP_POSITION,
-//     E_EP_RADIUS,
-//     E_EP_IS_ALIVE,
-//     E_EP_LENGTH
+// enum E_ENT_TYPES {
+// 	E_ET_TEST,
+// 	E_ET_LENGTH
 // };
-
-enum E_ENT_TYPES {
-	E_ET_TEST,
-	E_ET_LENGTH
-};
 
 
 enum E_NODE_TYPE {
@@ -326,6 +567,7 @@ struct fBoundingBox {
 	float xMax;
 	float yMax;
 };
+
 
 
 
@@ -443,6 +685,89 @@ struct BuildingNode {
 
 };
 
+
+
+const int GLUT_NO_BUTTON = 99;
+const int GLUT_OVER = 8;
+const int GLUT_OUT = 9;
+const int GLUT_CHANGING = 10;
+
+
+enum E_MUSIC_LIST {
+	EML_BIRDSONG0,
+	EML_CRICKETS0,
+	EML_OCEANWAVES0,
+	EML_LENGTH
+};
+
+string musicStrings[] = {
+	"birdsong0",
+	"crickets0",
+	"oceanwaves0"
+};
+
+
+enum GUI_TYPES {
+	E_GT_HOLDER,
+	E_GT_SLIDER, // also a toggle if 1 division
+	E_GT_BUTTON,
+	E_GT_RADIO,
+	E_GT_LENGTH
+};
+
+enum GUI_STRING_TYPES {
+	E_GST_LABEL,
+	E_GST_UID,
+	E_GST_SS,
+	E_GST_LENGTH
+};
+char* guiStringTypes[] = {
+	"label",
+	"uid",
+	"ss"
+};
+
+enum E_HOVER_TYPES {
+	E_HT_NORMAL,
+	E_HT_TOOLTIP,
+	E_HT_ONSELECTED,
+	E_HT_TOOLTIP_VALUE,
+	E_HT_LENGTH
+};
+
+enum GUI_FLOAT_TYPES {
+	E_GFT_TYPE,
+	E_GFT_DIVISIONS,
+	E_GFT_VALUE,
+	E_GFT_HASBACKGROUND,
+	E_GFT_SINGLELINE,
+	E_GFT_FILLRATIOX,
+	E_GFT_FILLRATIOY,
+	E_GFT_FILLDIR,
+	E_GFT_ALIGNX,
+	E_GFT_ALIGNY,
+	E_GFT_LAYER,
+	E_GFT_HOVERTYPE, // 0: normal, 1: tooltip, 2: show when parent is selected
+	E_GFT_LENGTH
+};
+char* guiFloatTypes[] = {
+	"type",
+	"divisions",
+	"value",
+	"hasBackground",
+	"singleLine",
+	"fillRatioX",
+	"fillRatioY",
+	"fillDir",
+	"alignX",
+	"alignY",
+	"layer",
+	"hoverType"
+};
+
+string guiStringValues[E_GST_LENGTH];
+float guiFloatValues[E_GFT_LENGTH];
+
 enum E_DIR_SPECS {
 	E_DIR_X,
 	E_DIR_Y,
@@ -523,6 +848,21 @@ enum eCompStates {
 	E_COMP_TOTAL
 };
 
+struct CharStruct {
+	float consumedW;
+	float consumedH;
+	
+	float offsetX;
+	float offsetY;
+	
+	float sampX;
+	float sampY;
+	float sampW;
+	float sampH;
+};
+
+
+
 class StyleSheetState {
 private:
 
@@ -570,6 +910,12 @@ public:
 
 	StyleSheet() {
 
+	}
+
+	void copyFrom(StyleSheet* fromSS) {
+		compStates[E_COMP_UP].copyFrom(&(fromSS->compStates[E_COMP_UP]));
+		compStates[E_COMP_OVER].copyFrom(&(fromSS->compStates[E_COMP_OVER]));
+		compStates[E_COMP_DOWN].copyFrom(&(fromSS->compStates[E_COMP_DOWN]));
 	}
 
 	void init() {

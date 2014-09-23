@@ -1,6 +1,6 @@
 //uniform sampler3D Texture0; //volume texture
 uniform sampler2D Texture0; // volume layer 0
-uniform sampler2D Texture1; // volume layer 1
+uniform sampler2D Texture1; // volume layer 1 (unused now)
 uniform sampler2D Texture2; // front face
 uniform sampler2D Texture3; // back face
 
@@ -96,17 +96,17 @@ vec4 sampleAtPoint(vec3 point) {
 	return texture2D(Texture0, texc.xy);
 }
 
-vec4 sampleAtPoint2(vec3 point) {
-	vec2 texc;
-	vec3 newPoint = point / bufferMult + (1.0 - 1.0 / bufferMult) / 2.0;
+// vec4 sampleAtPoint2(vec3 point) {
+// 	vec2 texc;
+// 	vec3 newPoint = point / bufferMult + (1.0 - 1.0 / bufferMult) / 2.0;
 
-	newPoint.y = clamp(newPoint.y, 0.5 / volumePitch, (volumePitch - 0.5) / volumePitch);
+// 	newPoint.y = clamp(newPoint.y, 0.5 / volumePitch, (volumePitch - 0.5) / volumePitch);
 
-	texc.x = newPoint.x;
-	texc.y = newPoint.y / volumePitch + floor(newPoint.z * volumePitch) / volumePitch;
+// 	texc.x = newPoint.x;
+// 	texc.y = newPoint.y / volumePitch + floor(newPoint.z * volumePitch) / volumePitch;
 
-	return texture2D(Texture1, texc.xy);
-}
+// 	return texture2D(Texture1, texc.xy);
+// }
 
 
 
@@ -267,7 +267,7 @@ vec4 getAO(vec3 tp, vec4 curSamp, vec3 wp) {
 	float isAir = 0.0;
 	//
 
-	float blendAmount = (1.0 - curSamp.b) * 0.75 + 0.25;
+	float blendAmount = 0.5;//(1.0 - curSamp.b) * 0.75 + 0.25;
 
 	//float sval = abs(sin(wp.y/30.0));
 
@@ -530,7 +530,7 @@ void main() {
 	vec4 samp = vec4(0.0);
 
 	vec4 sampNearest = vec4(0.0);
-	vec4 sampNearest2 = vec4(0.0);
+	//vec4 sampNearest2 = vec4(0.0);
 
 	float curDis = 0.0;
 	int iCurDis = 0;
@@ -569,7 +569,7 @@ void main() {
 
 
 	sampNearest = sampleAtPoint(curPos);
-	sampNearest2 = sampleAtPoint2(curPos);
+	//sampNearest2 = sampleAtPoint2(curPos);
 
 	vec3 worldPos;
 
@@ -587,7 +587,7 @@ void main() {
 
 
 
-	heightMat = vec4(heightVals.rg, sampNearest2.b, sampNearest.a);
+	heightMat = vec4(heightVals.rg, sampNearest.ba);
 	normAO = getAO(curPos, samp, worldPos); //vec4(1.0,0.0,0.0,0.0);//
 
 

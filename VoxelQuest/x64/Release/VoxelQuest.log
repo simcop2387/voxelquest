@@ -1,4 +1,4 @@
-﻿Build started 8/18/2014 5:19:01 AM.
+﻿Build started 9/23/2014 2:43:11 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -20,13 +20,17 @@
          .\src\cpp\f00290_wsrequesthandler.hpp
          .\src\cpp\f00291_rhfactory.hpp
          .\src\cpp\f00292_wsserver.hpp
+         .\src\cpp\f00293_gamesound.hpp
+         .\src\cpp\f00294_gamemusic.hpp
          .\src\cpp\f00295_gamegeom.hpp
-         .\src\cpp\f00297_gameent.hpp
          .\src\cpp\f00300_singleton.hpp
          .\src\cpp\f00310_pooledresource.hpp
          .\src\cpp\f00315_poolmanager.hpp
+         .\src\cpp\f00320_fontwrapper.hpp
          .\src\cpp\f00325_uicomponent.hpp
          .\src\cpp\f00330_gamegui.hpp
+         .\src\cpp\f00338_gameentnode.hpp
+         .\src\cpp\f00339_gameent.hpp
          .\src\cpp\f00340_gameplantnode.hpp
          .\src\cpp\f00341_gameplant.hpp
          .\src\cpp\f00350_gamepage.hpp
@@ -34,22 +38,26 @@
          .\src\cpp\f00352_gameblock.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         29 File(s) copied
+         33 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         16
+         20
          copying headers to one file
          .\f00290_wsrequesthandler.e
          .\f00291_rhfactory.e
          .\f00292_wsserver.e
+         .\f00293_gamesound.e
+         .\f00294_gamemusic.e
          .\f00295_gamegeom.e
-         .\f00297_gameent.e
          .\f00300_singleton.e
          .\f00310_pooledresource.e
          .\f00315_poolmanager.e
+         .\f00320_fontwrapper.e
          .\f00325_uicomponent.e
          .\f00330_gamegui.e
+         .\f00338_gameentnode.e
+         .\f00339_gameent.e
          .\f00340_gameplantnode.e
          .\f00341_gameplant.e
          .\f00350_gamepage.e
@@ -59,26 +67,30 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         16
+         20
          .
          copying files to compiled
          .\temp\f00290_wsrequesthandler.e
          .\temp\f00291_rhfactory.e
          .\temp\f00292_wsserver.e
+         .\temp\f00293_gamesound.e
+         .\temp\f00294_gamemusic.e
          .\temp\f00295_gamegeom.e
-         .\temp\f00297_gameent.e
          .\temp\f00300_singleton.e
          .\temp\f00310_pooledresource.e
          .\temp\f00315_poolmanager.e
+         .\temp\f00320_fontwrapper.e
          .\temp\f00325_uicomponent.e
          .\temp\f00330_gamegui.e
+         .\temp\f00338_gameentnode.e
+         .\temp\f00339_gameent.e
          .\temp\f00340_gameplantnode.e
          .\temp\f00341_gameplant.e
          .\temp\f00350_gamepage.e
          .\temp\f00351_gamepageholder.e
          .\temp\f00352_gameblock.e
          .\temp\f00380_gameworld.e
-         16 File(s) copied
+         20 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_vectors.h
@@ -95,13 +107,17 @@
          .\temp\f00290_wsrequesthandler.h
          .\temp\f00291_rhfactory.h
          .\temp\f00292_wsserver.h
+         .\temp\f00293_gamesound.h
+         .\temp\f00294_gamemusic.h
          .\temp\f00295_gamegeom.h
-         .\temp\f00297_gameent.h
          .\temp\f00300_singleton.h
          .\temp\f00310_pooledresource.h
          .\temp\f00315_poolmanager.h
+         .\temp\f00320_fontwrapper.h
          .\temp\f00325_uicomponent.h
          .\temp\f00330_gamegui.h
+         .\temp\f00338_gameentnode.h
+         .\temp\f00339_gameent.h
          .\temp\f00340_gameplantnode.h
          .\temp\f00341_gameplant.h
          .\temp\f00350_gamepage.h
@@ -111,10 +127,10 @@
          .\temp\f00500_mainfuncs.h
                  1 file(s) copied.
        ClCompile:
-         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W1 /WX- /sdl /Ox /Oi /GL /D WIN32 /D NDEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Release\\" /Fd"x64\Release\vc110.pdb" /Gd /TP /errorReport:prompt ..\compiled\main.cpp
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W1 /WX- /sdl /Ox /Oi /GL /D SFML_STATIC /D WIN32 /D NDEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Release\\" /Fd"x64\Release\vc110.pdb" /Gd /TP /errorReport:prompt ..\compiled\main.cpp
          main.cpp
        Link:
-         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.exe" /INCREMENTAL:NO /NOLOGO /LIBPATH:C:\wamp\www\voxelquest\glew\lib /LIBPATH:"C:\Program Files (x86)\Windows Kits\8.0\Lib\win8\um\x64" /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\lib\amd64" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.lib" /MACHINE:X64 x64\Release\main.obj
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.exe" /INCREMENTAL:NO /NOLOGO /LIBPATH:C:\wamp\www\voxelquest\glew\lib /LIBPATH:"C:\Program Files (x86)\Windows Kits\8.0\Lib\win8\um\x64" /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\lib\amd64" /LIBPATH:"C:\SFML-2.1\lib" "sfml-system-s.lib" "sfml-audio-s.lib" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.lib" /MACHINE:X64 x64\Release\main.obj
          Generating code
          Finished generating code
          VoxelQuest.vcxproj -> C:\wamp\www\voxelquest\x64\Release\VoxelQuest.exe
@@ -122,9 +138,17 @@
          ../cleanup.bat;
          :VCEnd
          Cleanup Started
+         .\x64\Release\libsndfile-1.dll
+         .\x64\Release\openal32.dll
+         .\x64\Release\sfml-audio-2.dll
+         .\x64\Release\sfml-graphics-2.dll
+         .\x64\Release\sfml-network-2.dll
+         .\x64\Release\sfml-system-2.dll
+         .\x64\Release\sfml-window-2.dll
          .\x64\Release\VoxelQuest.exe
          .\x64\Release\VoxelQuest.pdb
-         2 File(s) copied
+         9 File(s) copied
+         Could Not Find c:\wamp\www\voxelquest\x64\Release\*.ilk
          running EXE
          
          
@@ -132,9 +156,9 @@
          
          
          
-         blockSizeInHolders: 64
-         blockSizeInPixels: 32768
-         terDataBufPitchScaledXY 40
+         blockSizeInHolders: 128
+         blockSizeInPixels: 65536
+         terDataBufPitchScaledXY 80
          maxChangesInHolders: 4
          volGenFBOX: 128
          volGenFBOY: 16384
@@ -142,47 +166,56 @@
          holderSizeInPixels: 512
          bufferMult: 1.25
          metersPerLot: 64
-         pixelsPerMeter: 64
+         pixelsPerMeter: 128
          unitsPerMeter: 4
          blockSizeInLots: 8
-         pixelsPerUnit: 16
+         pixelsPerUnit: 32
          unitsPerLot: 256
-         pixelsPerLot: 4096
+         pixelsPerLot: 8192
          holderSizeInPages: 1
-         holdersPerLot: 8
-         visPageSizeInUnits: 32
-         unitSizeInPixels: 16
+         holdersPerLot: 16
+         visPageSizeInUnits: 16
+         unitSizeInPixels: 32
          worldSizeInBlocks:    128.000000   128.000000   1.000000    
          worldSizeInLots:    1024.000000   1024.000000   8.000000    
-         worldSizeInHolders:    8192.000000   8192.000000   64.000000    
-         worldSizeInPages:    8192.000000   8192.000000   64.000000    
+         worldSizeInHolders:    16384.000000   16384.000000   128.000000    
+         worldSizeInPages:    16384.000000   16384.000000   128.000000    
+         MAX_UNIFORMS: 65536
          
          
          
          
          
          
-         worldSizeInPixels:    4194304.000000   4194304.000000   32768.000000    
+         worldSizeInPixels:    8388608.000000   8388608.000000   65536.000000    
+         
+         Valid JSON
+                   
+         
+         
+         
+         FONT LOAD
+         
+         
+         
+         
+         
+         FONT LOAD
+         
+         
+         Loading:  ..\data\fonts\arial_regular_24.js         
+         Load Successful          
+         
+         Valid JSON
+                   
          Loading:  ..\data\lastJSONBuffer.js         
          Load Successful          
-         processJSON()          
-         Begin JSON::Parse()          
-         buf is not NULL          
-         JSON::Parse a
-         length: 44544
-         JSON::Parse b
-         JSON::Parse c
-         JSON::Parse c0
-         JSON::Parse d
-         JSON::Parse g
-         End JSON::Parse()          
+         
+         Valid JSON
                    
-         Valid JSON          
-                   
-         rootObj is now NULL          
          Loading:  ..\data\lastImageBuffer.txt         
          Load Successful          
-         Sea Level: 128
+         Sea Level: 115
          start place cities
          end place cities
          start grow provinces
@@ -209,10 +242,142 @@
          copyTerToTexture resIndex:  1         
          copyTerToTexture resIndex:  2         
          copyTerToTexture resIndex:  3         
-         ent refreshed
-         waterOn 1
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
+         copyTerToTexture resIndex:  4         
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         getJVNodeByString(params)
+         params
+         Shaders Refreshed
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         getJVNodeByString(params)
+         params
+         Shaders Refreshed
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         getJVNodeByString(params)
+         params
+         Shaders Refreshed
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         getJVNodeByString(params)
+         params
+     1>EXEC : Shader  55  ( ../src/glsl/PreLightingShader.c ) compile error : 0(70) : error C0000: syntax error, unexpected ';', expecting ',' or ')' at token ";"
+              
+     1>EXEC : Program  57  link error : Vertex info
+         -----------
+     1>0(70): error C0000: syntax error, unexpected ';', expecting ',' or ')' at token ";"
+                
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         getJVNodeByString(params)
+         params
+         Shaders Refreshed
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         getJVNodeByString(params)
+         params
+         Shaders Refreshed
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         getJVNodeByString(params)
+         params
+         Shaders Refreshed
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         getJVNodeByString(params)
+         params
+         Shaders Refreshed
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         getJVNodeByString(params)
+         params
+         Shaders Refreshed
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         getJVNodeByString(params)
+         params
+         Shaders Refreshed
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         getJVNodeByString(params)
+         params
+         Shaders Refreshed
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         getJVNodeByString(params)
+         params
+         Shaders Refreshed
+     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
+C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -1.
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
 
-Build succeeded.
+Build FAILED.
 
-Time Elapsed 00:04:25.08
+Time Elapsed 00:10:41.65

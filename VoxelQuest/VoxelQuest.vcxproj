@@ -73,8 +73,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\poco\Net\include;C:\poco\Util\include;C:\poco\Foundation\include;$(IncludePath);C:\ftgl\src</IncludePath>
-    <LibraryPath>opengl32.lib;glu32.lib;C:\poco\lib64;C:\glew\lib\Release\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\poco\Net\include;C:\poco\Util\include;C:\poco\Foundation\include;C:\SFML-2.1\include;$(IncludePath)</IncludePath>
+    <LibraryPath>opengl32.lib;glu32.lib;C:\poco\lib64;C:\glew\lib\Release\x64;C:\SFML-2.1\lib\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -83,8 +83,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\poco\Net\include;C:\poco\Util\include;C:\poco\Foundation\include;C:\wamp\www\voxelquest\glm;$(IncludePath)</IncludePath>
-    <LibraryPath>opengl32.lib;glu32.lib;C:\poco\lib64;C:\glew\lib\Release\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\poco\Net\include;C:\poco\Util\include;C:\poco\Foundation\include;C:\SFML-2.1\include;$(IncludePath)</IncludePath>
+    <LibraryPath>opengl32.lib;glu32.lib;C:\poco\lib64;C:\glew\lib\Release\x64;C:\SFML-2.1\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -113,15 +113,17 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level1</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>SFML_STATIC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>C:\SFML-2.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\wamp\www\voxelquest\glew\lib;C:\Program Files %28x86%29\Windows Kits\8.0\Lib\win8\um\x64;C:\Program Files %28x86%29\Microsoft Visual Studio 11.0\VC\lib\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\wamp\www\voxelquest\glew\lib;C:\Program Files %28x86%29\Windows Kits\8.0\Lib\win8\um\x64;C:\Program Files %28x86%29\Microsoft Visual Studio 11.0\VC\lib\amd64;C:\SFML-2.1\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <StackReserveSize>
       </StackReserveSize>
+      <AdditionalDependencies>sfml-system-s-d.lib;sfml-audio-s-d.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>../combine.bat</Command>
@@ -166,7 +168,7 @@
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>SFML_STATIC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
@@ -178,10 +180,10 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>C:\wamp\www\voxelquest\glew\lib;C:\Program Files %28x86%29\Windows Kits\8.0\Lib\win8\um\x64;C:\Program Files %28x86%29\Microsoft Visual Studio 11.0\VC\lib\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\wamp\www\voxelquest\glew\lib;C:\Program Files %28x86%29\Windows Kits\8.0\Lib\win8\um\x64;C:\Program Files %28x86%29\Microsoft Visual Studio 11.0\VC\lib\amd64;C:\SFML-2.1\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <StackReserveSize>
       </StackReserveSize>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>sfml-system-s.lib;sfml-audio-s.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>../combine.bat</Command>

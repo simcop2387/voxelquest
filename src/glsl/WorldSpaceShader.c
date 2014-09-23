@@ -106,6 +106,8 @@ void main() {
         worldPosition.x += cameraPos.x;
         worldPosition.y += cameraPos.y;
         
+        worldPosition.xy = floor(worldPosition.xy/4.0 + 3.0)*4.0;
+        
         //worldPosition += randV3(worldPosition)*10.0;
 
         gl_FragData[i] = vec4( worldPosition.xyz, isObject );

@@ -5,6 +5,15 @@
 #define LZZ_INLINE inline
 Singleton::Singleton ()
         {
+		
+		fboMap.clear();
+		shaderMap.clear();
+		soundMap.clear();
+		styleSheetMap.clear();
+		
+		
+		
+		mainGUI = NULL;
 		volTris = NULL;
 		sliceTris = NULL;
 		gw = NULL;
@@ -16,7 +25,30 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		pushTrace("Singleton init");
 		int i;
 		int j;
-		rootObj = NULL;
+		
+		internalJSON["shaderParams"].jv = NULL;
+		
+		for (i = 0; i < EML_LENGTH; i++) {
+			music[i] = new GameMusic();
+			music[i]->init("..\\data\\music\\"+musicStrings[i]+".ogg");
+			music[i]->setLoop(true);
+		}
+		
+		hitGUI = false;
+		guiLock = false;
+		guiDirty = true;
+		
+		testTT = NULL;
+		
+		activeNode = NULL;
+		selectedNode = NULL;
+		lastSelNode = NULL;
+		
+		curEntId = 0;
+		charState = E_CHAR_STATE_RENDERED;
+		
+		rootObjJS = NULL;
+		guiRootJS = NULL;
 		highlightedGeom = NULL;
 		selectedGeom = NULL;
 		//rbStack = NULL;
@@ -26,6 +58,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		numDynLights = E_OBJ_LENGTH - E_OBJ_LIGHT0;
 		updateMultiLights();
 
+		maxLayerOver = -1;
+
 		iNumSteps = 64;
 		currentStep = 0;
 
@@ -34,16 +68,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		timeOfDay = 1.0f;
 		targetTimeOfDay = 1.0f;
 
-		//uvPattern = loadBMP("..\\data\\uvpat.bmp");
-		//uvPattern->getTextureId(GL_LINEAR);
-		//testPat = loadBMP("..\\data\\testpat.bmp");
-		basicFont = loadBMP("..\\data\\basicfont.bmp");
+		//invItems = loadBMP("..\\data\\invitems.bmp");
 		imageHM0 = loadBMP("..\\data\\hm0.bmp");
 		imageHM1 = loadBMP("..\\data\\hm1.bmp");
 		cloudImage = loadBMP("..\\data\\clouds.bmp");
 
-		//testPat->getTextureId(GL_LINEAR);
-		basicFont->getTextureId(GL_NEAREST);
+		//invItems->getTextureId(GL_NEAREST);
 		imageHM0->getTextureId(GL_NEAREST);
 		imageHM1->getTextureId(GL_NEAREST);
 		cloudImage->getTextureId(GL_LINEAR);
@@ -57,21 +87,21 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		numLights = MAX_LIGHTS;//min(MAX_LIGHTS,E_OBJ_LENGTH-E_OBJ_LIGHT0);
 
-		// myFont = new FTGLPixmapFont("..\\data\\arial.ttf");
-		// if(myFont->Error()) {
-		//  doTraceND("Error Loading Font");
-		// }
-		// else {
-		//  myFont->FaceSize(72);
-		// }
-
-
 
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 
+
+		initStyleSheet();
+
+		ambVolume = 0.5f;
+		guiVolume = 1.0f;
+
+		mirrorOn = true;
+		guiOn = false;
+		bCtrl = false;
 		bShift = false;
 		tiltChanged = false;
 		emptyVDNotReady = true;
@@ -95,6 +125,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		visPageSizeInPixels = 512; // height of one page in pixels
 		holderSizeInPixels = 512; // height of holder in pixels
+		holderSizeMod = 4;
+		holderSizeInPixelsMod = holderSizeInPixels/holderSizeMod;
+		
 		pixelsPerMeter = PIXELS_PER_METER; // when you make pixels per meter larger, you must do the same for units per meter
 		unitsPerMeter = 4;
 		bufferMult = 1.25f;
@@ -179,7 +212,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		blockShift = intLogB2(blockSizeInHolders * blockSizeInHolders * blockSizeInHolders);
 
-		holderSizeMB = ( ((float)MAX_LAYERS) * 2.0f * 4.0f * (float)(holderSizeInPixels * holderSizeInPixels)) / (1024.0f * 1024.0f);
+		holderSizeMB = ( ((float)MAX_LAYERS) * 2.0f * 4.0f * (float)(holderSizeInPixelsMod * holderSizeInPixelsMod)) / (1024.0f * 1024.0f);
 
 
 
@@ -216,12 +249,16 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		doTraceVecND("worldSizeInHolders: ", &worldSizeInHolders);
 		doTraceVecND("worldSizeInPages: ", &worldSizeInPages);
 
+		GLint glQuery;
+		glGetIntegerv(GL_MAX_UNIFORM_LOCATIONS, &glQuery);
+		cout << "MAX_UNIFORMS: " << glQuery << "\n";
+
 		cout << "\n\n\n\n\n\n";
 
 
 		voroSize = 32;
-		mapFreqs.setFXYZW(1.0f, 32.0f, 128.0f, 256.0f);
-		mapAmps.setFXYZW(1.0f, 4.0f/16.0f, 2.0f/16.0f, 1.0f/16.0f); //0.0f, 0.0f, 0.0f);//
+		mapFreqs.setFXYZW(1.0f, 16.0f, 32.0f, 64.0f);
+		mapAmps.setFXYZW(1.0f, 8.0f/16.0f, 2.0f/16.0f, 1.0f/16.0f); //0.0f, 0.0f, 0.0f);//
 
 
 		gridSizeInPixels = pixelsPerMeter;
@@ -369,6 +406,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		lastJSONBuffer.data = NULL;
 		lastJSONBuffer.size = 0;
+		
+		lastJSONBufferGUI.data = NULL;
+		lastJSONBufferGUI.size = 0;
+		
 
 		nullBuffer.data = new char[1];
 		nullBuffer.data[0] = '\0';
@@ -394,12 +435,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		isZooming = false;
 		isPanning = false;
-		reportPagesDrawn = false;
 		isBare = true;
-		//grassWH.setFXYZ(1.0/128.0, 1.0/512.0, 0.0);
-		diskOn = 0.0f;
-
-
 
 
 
@@ -407,6 +443,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		defaultWinW = _defaultWinW / _scaleFactor;
 		defaultWinH = _defaultWinH / _scaleFactor;
 		scaleFactor = _scaleFactor;
+		
+		guiWinW = _defaultWinW / UI_SCALE_FACTOR;
+		guiWinH = _defaultWinH / UI_SCALE_FACTOR;
 
 		origWinW = _defaultWinW;
 		origWinH = _defaultWinH;
@@ -452,6 +491,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		mbDown = false;
 		lbDown = false;
 		rbDown = false;
+		abDown = false;
 
 
 
@@ -525,6 +565,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		dynObjects[E_OBJ_FOG]->init(-1024, -1024, -512,   0, 0, 255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 		dynObjects[E_OBJ_CUTAWAY]->init(1024 - 256, 1024 - 256, 2048,   0, 255, 0,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+		dynObjects[E_OBJ_HUMAN]->init(0, 0, 0,   0, 255, 255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 
 		// dynObjects[E_OBJ_P0]->init(512-256,1024-256,2048,   128,0,0,    true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 		// dynObjects[E_OBJ_P1]->init(512,1024,2048,      255,0,0,  true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
@@ -588,59 +629,42 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 
 
-		fboStrings.push_back("palFBO");
-		fboStrings.push_back("worldSpaceFBO");
+		// fboStrings.push_back("palFBO");
+		// fboStrings.push_back("worldSpaceFBO");
+		// fboStrings.push_back("frontFaceFBO");
+		// fboStrings.push_back("backFaceFBO");
+		// fboStrings.push_back("frontFaceMapFBO");
+		// fboStrings.push_back("backFaceMapFBO");
+		// fboStrings.push_back("pagesFBO");
+		// fboStrings.push_back("waterFBO");
+		// fboStrings.push_back("pages2FBO");
+		// fboStrings.push_back("water2FBO");
+		// fboStrings.push_back("pages3FBO");
+		// fboStrings.push_back("water3FBO");
+		// fboStrings.push_back("geomFBO");
+		// fboStrings.push_back("combineFBO");
+		// fboStrings.push_back("combineFBOWithWater");
+		// fboStrings.push_back("noiseFBO");
+		// fboStrings.push_back("guiFBO");
+		// fboStrings.push_back("resultFBO0");
+		// fboStrings.push_back("resultFBO1");
+		// fboStrings.push_back("volGenFBO0");
+		// fboStrings.push_back("volGenFBO1");
+		// fboStrings.push_back("waveFBO");
+		// fboStrings.push_back("swapFBO0");
+		// fboStrings.push_back("swapFBO1");
+		// fboStrings.push_back("swapFBOLin0");
+		// fboStrings.push_back("swapFBOLin1");
+		// fboStrings.push_back("swapFBOBLin0");
+		// fboStrings.push_back("swapFBOBLin1");
+		// fboStrings.push_back("swapFBOLinHalf0");
+		// fboStrings.push_back("swapFBOLinHalf1");
+		// fboStrings.push_back("cityFBO");
+		// fboStrings.push_back("hmFBO");
+		// fboStrings.push_back("hmFBOLinear");
+		// fboStrings.push_back("simplexFBO");
 		
-		fboStrings.push_back("frontFaceFBO");
-		fboStrings.push_back("backFaceFBO");
 		
-		fboStrings.push_back("frontFaceMapFBO");
-		fboStrings.push_back("backFaceMapFBO");
-
-		fboStrings.push_back("pagesFBO");
-		fboStrings.push_back("waterFBO");
-
-		//fboStrings.push_back("grassFBO");
-		fboStrings.push_back("geomFBO");
-		fboStrings.push_back("combineFBO");
-		fboStrings.push_back("combineFBOWithWater");
-		fboStrings.push_back("combineFBOSpare");
-		fboStrings.push_back("noiseFBO");
-		fboStrings.push_back("resultFBO0");
-		fboStrings.push_back("resultFBO1");
-		fboStrings.push_back("volGenFBO0");
-		fboStrings.push_back("volGenFBO1");
-
-		// for (i = 0; i < VOLGEN_NAMES_LEN; i++) {
-		//  fboStrings.push_back(VOLGEN_NAMES[i]);
-		// }
-
-
-		fboStrings.push_back("waveFBO");
-
-		fboStrings.push_back("swapFBO0");
-		fboStrings.push_back("swapFBO1");
-		fboStrings.push_back("swapFBOLin0");
-		fboStrings.push_back("swapFBOLin1");
-
-		fboStrings.push_back("swapFBOBLin0");
-		fboStrings.push_back("swapFBOBLin1");
-
-		fboStrings.push_back("swapFBOLinHalf0");
-		fboStrings.push_back("swapFBOLinHalf1");
-
-		//fboStrings.push_back("swapFBO32Lin0");
-		//fboStrings.push_back("swapFBO32Lin1");
-
-		//fboStrings.push_back("terrainFBO");
-
-		fboStrings.push_back("cityFBO");
-		fboStrings.push_back("hmFBO");
-		fboStrings.push_back("hmFBOLinear");
-		fboStrings.push_back("simplexFBO");
-
-
-
 		shaderStrings.push_back("GUIShader");
 		shaderStrings.push_back("RoadShader");
 		shaderStrings.push_back("SkeletonShader");
@@ -662,23 +686,15 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		shaderStrings.push_back("PreLightingShader");
 		shaderStrings.push_back("HBlurShader");
 		shaderStrings.push_back("VBlurShader");
-		//shaderStrings.push_back("DownSampleShader");
 		shaderStrings.push_back("DownScaleShader");
 		shaderStrings.push_back("RadiosityShader");
 		shaderStrings.push_back("RadiosityCombineShader");
 		shaderStrings.push_back("FogShader");
 		shaderStrings.push_back("GeomShader");
-		//shaderStrings.push_back("PreGrassShader");
-		//shaderStrings.push_back("GrassShader");
 		shaderStrings.push_back("CombineShader");
-		//shaderStrings.push_back("DepositShader");
 		shaderStrings.push_back("GenerateVolume");
 		shaderStrings.push_back("GenerateVolumeEnt");
 		shaderStrings.push_back("RenderVolume");
-		//shaderStrings.push_back("RenderVolumeSlice");
-		//shaderStrings.push_back("LightingShader");
-		//shaderStrings.push_back("OutlineShader");
-		//shaderStrings.push_back("WaterShaderNormals");
 
 
 
@@ -706,107 +722,59 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 			shaderMap.insert(  pair<string, Shader *>(shaderStrings[i], NULL)  );
 		}
 		doShaderRefresh();
-
-		//fboSize = 512;
-		//bufsPerFBO = 2;
-
-		for (i = 0; i < fboStrings.size(); i++)
-		{
-			fboMap.insert(  pair<string, FBOSet *>(fboStrings[i], new FBOSet())  );
-		}
-
-		//init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool hasDepth, int filterEnum, int clampEnum);
-
-		fboMap["worldSpaceFBO"]->init(4, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_LINEAR);
 		
 		int faceDim = 256;
 		
-		fboMap["frontFaceFBO"]->init(1, faceDim, faceDim, 4, false, GL_NEAREST);
-		fboMap["backFaceFBO"]->init(1, faceDim, faceDim, 4, false, GL_NEAREST);
-		fboMap["frontFaceMapFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
-		fboMap["backFaceMapFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
+		//GL_LINEAR
+		fboMap["worldSpaceFBO"].init(4, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
+		//fboMap["worldSpaceBlurFBO0"].init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 4, false, GL_LINEAR);
+		//fboMap["worldSpaceBlurFBO1"].init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 4, false, GL_LINEAR);
 		
-		fboMap["palFBO"]->init(1, palWidth, palHeight, 1, false, GL_LINEAR);
-
-		fboMap["pagesFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["waterFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		//fboMap["grassFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["geomFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, true);
-		fboMap["combineFBO"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["combineFBOWithWater"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["combineFBOSpare"]->init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["noiseFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST, GL_REPEAT);
-		fboMap["resultFBO0"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["resultFBO1"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		//fboMap["resultFBO2"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-
-
-		// j = 1;
-		// for (i = 0; i < VOLGEN_NAMES_LEN; i++) {
-		//  fboMap[VOLGEN_NAMES[i]]->init(2, j, j*j, 1, false);
-		//  j *= 2;
-		// }
-
-		fboMap["volGenFBO0"]->init(2, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
-		fboMap["volGenFBO1"]->init(2, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
-
-
-
-		fboMap["waveFBO"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
-
-		fboMap["swapFBOLin0"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
-		fboMap["swapFBOLin1"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
-
-		fboMap["swapFBOBLin0"]->init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
-		fboMap["swapFBOBLin1"]->init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
-
-		fboMap["swapFBOLinHalf0"]->init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
-		fboMap["swapFBOLinHalf1"]->init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
-
-		//fboMap["swapFBO32Lin0"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_LINEAR);
-		//fboMap["swapFBO32Lin1"]->init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_LINEAR);
-
-
-		//fboMap["terrainFBO"]->init(1, newPitch*iNodeDivsPerLot, newPitch*iNodeDivsPerLot, 2, false, GL_NEAREST, GL_REPEAT);
-
-		fboMap["cityFBO"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
-		fboMap["hmFBO"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
-		fboMap["hmFBOLinear"]->init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
-		fboMap["simplexFBO"]->init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
-		fboMap["swapFBO0"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
-		fboMap["swapFBO1"]->init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
+		fboMap["frontFaceFBO"].init(1, faceDim, faceDim, 4, false, GL_NEAREST);
+		fboMap["backFaceFBO"].init(1, faceDim, faceDim, 4, false, GL_NEAREST);
+		fboMap["frontFaceMapFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
+		fboMap["backFaceMapFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
+		fboMap["palFBO"].init(1, palWidth, palHeight, 1, false, GL_LINEAR);
+		fboMap["pagesFBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["waterFBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["pages2FBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["water2FBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["pages3FBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["water3FBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["geomFBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, true);
+		fboMap["combineFBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["combineFBOWithWater"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["noiseFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST, GL_REPEAT);
+		fboMap["guiFBO"].init(1, guiWinW, guiWinH, 1, false);
+		fboMap["resultFBO0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["resultFBO1"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		fboMap["volGenFBO0"].init(1, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
+		//fboMap["volGenFBO1"].init(1, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
+		fboMap["waveFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
+		fboMap["swapFBOLin0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
+		fboMap["swapFBOLin1"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
+		fboMap["swapFBOBLin0"].init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
+		fboMap["swapFBOBLin1"].init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
+		fboMap["swapFBOLinHalf0"].init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
+		fboMap["swapFBOLinHalf1"].init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
+		fboMap["cityFBO"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
+		fboMap["hmFBO"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
+		fboMap["hmFBOLinear"].init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
+		fboMap["simplexFBO"].init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
+		fboMap["swapFBO0"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
+		fboMap["swapFBO1"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 
 
 		
 		createVTListTilt();
 
 
-		//fboMap["terrainFBO"]->init(1, newPitch*iNodeDivsPerLot, newPitch*iNodeDivsPerLot, 2, false, GL_NEAREST, GL_REPEAT);
-		/*
-		(  GLenum target,
-		GLint level,
-		GLint internalFormat,
-		GLsizei width,
-		GLsizei height,
-		GLint border,
-		GLenum format,
-		GLenum type,
-		const GLvoid * data);
 
-		*/
-		// glBindTexture(GL_TEXTURE_2D,terrainId);
-		// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, newPitch*iNodeDivsPerLot, newPitch*iNodeDivsPerLot, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-		// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, 0);
-		// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);
-		// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		// // glClearColor(0.0,0.0,0.0,0.0);
-		// // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		// glBindTexture(GL_TEXTURE_2D,0);
-
-
+		fontWrappers[EFW_ICONS] = new FontWrapper();
+		fontWrappers[EFW_ICONS]->init(this, "icons", true, 2.0f, 0.0f);
+		
+		fontWrappers[EFW_TEXT] = new FontWrapper();
+		fontWrappers[EFW_TEXT]->init(this, "arial_regular_24", false, 1.0f);
 
 		mainGUI = new GameGUI();
 		mainGUI->init(this);
@@ -821,15 +789,24 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		gw = new GameWorld();
 		
 		gpuPool = new PoolManager();
-		gpuPool->init(this,false);
+		gpuPool->init(this,false,false);
 		
 		entityPool = new PoolManager();
-		entityPool->init(this,false);
+		entityPool->init(this,true,false);
 		
 		
+		testHuman = new GameEnt();
+		testHuman->init(this);
 		
 		gw->init(this);
 		gw->initMap();
+			
+		
+		music[EML_BIRDSONG0]->play();
+		music[EML_CRICKETS0]->play();
+		music[EML_OCEANWAVES0]->play();
+		
+		
 
 		doTraceND("GW DONE");
 
@@ -838,6 +815,265 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 
 
+	}
+void Singleton::prepSound (string soundName)
+                                         {
+		if (soundMap.find( soundName ) == soundMap.end()) {
+			soundMap.insert( pair<string, GameSound>(soundName, GameSound()) );
+			soundMap[soundName].init("..\\data\\sounds\\"+soundName+".wav");
+		}
+	}
+void Singleton::playSoundPosAndPitch (string soundName, FIVector4 * listenerPos, FIVector4 * soundPos, float variance, float volume)
+          {
+		
+		
+		FIVector4 res;
+		
+		prepSound(soundName);
+		
+		res.setFXYZRef(soundPos);
+		res.addXYZRef(listenerPos,-1.0f);
+		
+		soundMap[soundName].setPitch(
+			(fGenRand()-0.5f)*2.0*variance + 1.0f
+		);
+		
+		soundMap[soundName].setPositionAndMinDis(
+			res.getFX(),
+			res.getFY(),
+			res.getFZ(),
+			2.0f*pixelsPerMeter
+		);
+		soundMap[soundName].play(volume);
+	}
+void Singleton::playSound (string soundName, float volume)
+                                                            {
+		prepSound(soundName);
+		soundMap[soundName].play(volume);
+	}
+void Singleton::playSoundEvent (char const * eventName)
+                                                   {
+		
+		string tempString;
+		float volume;
+		
+		if (mainGUI != NULL) {
+			if (mainGUI->isReady) {
+				tempString = mainGUI->jvSounds->Child(eventName)->Child("name")->string_value;
+				volume = mainGUI->jvSounds->Child(eventName)->Child("vol")->number_value;
+				
+				if (tempString.size() > 0) {
+					playSound( tempString, volume*guiVolume );
+				}
+			}
+		}
+		
+		
+		
+		
+		
+		
+	}
+void Singleton::dispatchEvent (int button, int state, float x, float y, UIComponent * comp)
+          {
+		
+		if (guiLock) {
+			return;
+		}
+		
+		int i;
+		int cbDataCount;
+		JSONValue* cbData = NULL;
+		
+		bool doSPUpdate = false;
+		
+		switch (comp->guiClass) {
+			case E_GT_SLIDER:
+			case E_GT_BUTTON:
+			case E_GT_RADIO:
+			
+				switch(button) {
+					case GLUT_NO_BUTTON:
+					
+						
+						
+						switch(state) {
+							case GLUT_OVER:
+								playSoundEvent("mouseOver");
+							break;
+							case GLUT_OUT:
+								playSoundEvent("mouseOut");
+							break;
+							case GLUT_CHANGING:
+								doSPUpdate = true;
+							break;
+						}
+						
+					break;
+					case GLUT_LEFT_BUTTON:
+						if (state == GLUT_DOWN) {
+							playSoundEvent("mouseDown");
+						}
+						else {
+							playSoundEvent("mouseUp");
+						}
+					break;
+					
+				}
+			
+				
+			break;	
+		}
+		
+		if (comp->jvNodeNoTemplate != NULL) {
+			if (comp->jvNodeNoTemplate->HasChild("callback")) {
+				curCallback = comp->jvNodeNoTemplate->Child("callback")->string_value;
+				
+				if (comp->jvNodeNoTemplate->HasChild("callbackData")) {
+					
+					cbData = comp->jvNodeNoTemplate->Child("callbackData");
+				
+					// cbDataCount = cbData->CountChildren();
+					// for (i = 0; i < cbDataCount; i++) {
+					// 	cbDataStrings[i] = cbData->Child(i)->string_value;
+					// }
+				
+				}
+				
+				if (doSPUpdate) {
+					if (curCallback.compare("updateShaderParam") == 0) {
+						
+						if (cbData != NULL) {
+							cbDataStrings[0] = cbData->Child("shaderName")->string_value;
+							cbDataStrings[1] = cbData->Child("paramName")->string_value;
+							
+							
+							
+							shaderMap[cbDataStrings[0]]->paramMap[cbDataStrings[1]] = comp->value;
+							
+							if (
+								(cbDataStrings[0].compare("GenerateVolume") == 0)	||
+								(cbDataStrings[0].compare("RenderVolume") == 0)
+							) {
+								
+								
+								guiLock = true;
+								restartGen(false, false);
+								guiLock = false;
+								
+								
+								
+							}
+							
+							
+						}
+					}
+				}
+				
+				
+			}
+		}
+		
+		
+		//cout << "GUICLASS " << comp->guiClass << "\n";
+	}
+StyleSheet * Singleton::getNewStyleSheet (string ssName)
+                                                    {
+		styleSheetMap[ssName].init();
+		return &(styleSheetMap[ssName]);
+	}
+void Singleton::initStyleSheet ()
+                              {
+		
+		
+		StyleSheet* mainSS = getNewStyleSheet("defaultSS");
+		StyleSheetState* curState = &(mainSS->compStates[E_COMP_UP]);
+		
+		
+		
+		curState->setVal(E_SS_BGCOL0_R, 0.2f, 0.15f, 0.1f, 1.0f);
+		curState->setVal(E_SS_BGCOL1_R, 0.1f, 0.075f, 0.05f, 0.5f);
+		curState->setVal(E_SS_FGCOL0_R, 0.0f, 0.0f, 0.0f, 0.0f);
+		curState->setVal(E_SS_FGCOL1_R, 0.0f, 0.0f, 0.0f, 0.0f);
+		curState->setVal(E_SS_TGCOL0_R, 1.0f, 0.75f, 0.0f, 1.0f);
+		curState->setVal(E_SS_TGCOL1_R, 1.0f, 0.25f, 0.0f, 0.5f);
+		curState->setVal(E_SS_BGCOLTEXT0_R, 0.0f, 0.0f, 0.0f, 0.0f);
+		curState->setVal(E_SS_BGCOLTEXT1_R, 0.0f, 0.0f, 0.0f, 0.0f);
+		curState->setVal(E_SS_FGCOLTEXT0_R, 1.0f, 1.0f, 1.0f, 1.0f);
+		curState->setVal(E_SS_FGCOLTEXT1_R, 1.0f, 0.8f, 0.7f, 1.0f);
+		curState->setVal(E_SS_BDCOL_R, 1.0f, 1.0f, 1.0f, 0.5f);
+
+		curState->props[E_SS_PADDING] = 4.0f;
+		curState->props[E_SS_BORDER] = 1.0f;
+		curState->props[E_SS_MARGIN] = 4.0f;
+		curState->props[E_SS_CORNERRAD] = 4.0f;
+		curState->props[E_SS_ROUNDNESS] = 1.0f;
+
+		mainSS->compStates[E_COMP_OVER].copyFrom(& (mainSS->compStates[E_COMP_UP]) );
+		mainSS->compStates[E_COMP_DOWN].copyFrom(& (mainSS->compStates[E_COMP_UP]) );
+
+		
+		
+		curState = &(mainSS->compStates[E_COMP_OVER]);
+		
+		
+		curState->setVal(E_SS_FGCOLTEXT0_R, 1.0f, 1.0f, 1.0f, 1.0f);
+		curState->setVal(E_SS_FGCOLTEXT1_R, 1.0f, 1.0f, 1.0f, 1.0f);
+		curState->props[E_SS_BDCOL_A] = 1.0f;
+		
+		curState->setVal(E_SS_BGCOL0_R, 0.1f, 0.075f, 0.05f, 1.0);
+		curState->setVal(E_SS_BGCOL1_R, 0.05f, 0.025f, 0.0125f, 0.5);
+		
+		
+		
+		curState = &(mainSS->compStates[E_COMP_DOWN]);
+		
+		
+		curState->setVal(E_SS_FGCOLTEXT0_R, 1.0f, 0.8f, 0.7f, 1.0f);
+		curState->setVal(E_SS_FGCOLTEXT1_R, 1.0f, 1.0f, 1.0f, 1.0f);
+		curState->props[E_SS_BDCOL_A] = 1.0f;
+		curState->props[E_SS_BORDER] = 2.0f;
+
+		curState->setVal(E_SS_BGCOL0_R, 0.05f, 0.025f, 0.0125f, 0.5f);	
+		curState->setVal(E_SS_BGCOL1_R, 0.1f, 0.075f, 0.05f, 1.0f);	
+		
+		
+		
+		StyleSheet* tooltipSS = getNewStyleSheet("tooltipSS");
+		tooltipSS->copyFrom(mainSS);
+		
+		curState = &(tooltipSS->compStates[E_COMP_UP]);
+		curState->setVal(E_SS_BGCOL0_R, 0.0f, 0.0f, 0.0f, 1.0f);
+		curState->setVal(E_SS_BGCOL1_R, 0.0f, 0.0f, 0.0f, 1.0f);
+		curState->setVal(E_SS_FGCOLTEXT0_R, 1.0f, 0.75f, 0.0f, 1.0f);
+		curState->setVal(E_SS_FGCOLTEXT1_R, 1.0f, 0.75f, 0.0f, 1.0f);
+		curState->setVal(E_SS_BDCOL_R, 1.0f, 0.75f, 0.0f, 1.0f);
+		tooltipSS->compStates[E_COMP_OVER].copyFrom(& (tooltipSS->compStates[E_COMP_UP]) );
+		tooltipSS->compStates[E_COMP_DOWN].copyFrom(& (tooltipSS->compStates[E_COMP_UP]) );
+
+		curState = &(tooltipSS->compStates[E_COMP_OVER]);
+		curState = &(tooltipSS->compStates[E_COMP_DOWN]);
+		
+		
+		
+		
+		StyleSheet* headerSS = getNewStyleSheet("headerSS");
+		headerSS->copyFrom(mainSS);
+		
+		curState = &(headerSS->compStates[E_COMP_UP]);
+		curState->setVal(E_SS_BGCOL0_R, 0.0f, 0.2f, 0.5f, 1.0f);
+		curState->setVal(E_SS_BGCOL1_R, 0.0f, 0.4f, 0.8f, 0.5f);
+		curState->setVal(E_SS_FGCOLTEXT0_R, 1.0f, 0.75f, 0.0f, 1.0f);
+		curState->setVal(E_SS_FGCOLTEXT1_R, 1.0f, 0.75f, 0.0f, 1.0f);
+		curState->setVal(E_SS_BDCOL_R, 1.0f, 0.75f, 0.0f, 1.0f);
+		headerSS->compStates[E_COMP_OVER].copyFrom(& (headerSS->compStates[E_COMP_UP]) );
+		headerSS->compStates[E_COMP_DOWN].copyFrom(& (headerSS->compStates[E_COMP_UP]) );
+
+		curState = &(headerSS->compStates[E_COMP_OVER]);
+		curState = &(headerSS->compStates[E_COMP_DOWN]);
+		
+		
+		
 	}
 int Singleton::requestTerIndex (int requestingBlockId)
         {
@@ -1478,12 +1714,12 @@ void Singleton::doShaderRefresh ()
 
 		int i;
 		int j;
+		
+		Shader* curShader;
 
 
-		for (i = 0; i < shaderStrings.size(); i++)
-		{
-			if (shaderMap[ shaderStrings[i] ])
-			{
+		for (i = 0; i < shaderStrings.size(); i++) {
+			if (shaderMap[ shaderStrings[i] ]) {
 
 				// TODO: Memory leak?
 
@@ -1492,11 +1728,53 @@ void Singleton::doShaderRefresh ()
 			}
 			shaderMap[ shaderStrings[i] ] = new Shader( ("../src/glsl/" + shaderStrings[i] + ".c").c_str() );
 
-
-
 		}
 		shadersAreLoaded = 1;
 		readyToRecompile = 1;
+		
+		if (LAST_COMPILE_ERROR) {
+			
+		}
+		else {
+			
+			
+			stringBuf = "{\n\t\"params\":[\n";
+			
+			
+			
+			for (i = 0; i < shaderStrings.size(); i++) {
+				curShader = shaderMap[ shaderStrings[i] ];
+				if (curShader) {
+					
+					for (j = 0; j < curShader->paramVec.size(); j++) {
+						stringBuf += "\t\t{";
+						stringBuf += "\"shaderName\":\""+shaderStrings[i]+"\",";
+						stringBuf += "\"paramName\":\""+curShader->paramVec[j]+"\"";
+						stringBuf += "},\n";
+					}
+				}
+			}
+			
+			stringBuf[stringBuf.size()-2] = ' ';
+			
+			
+			stringBuf += "\t]\n}\n\n";
+			
+			// this should automatically clear the key
+			// and deallocate existing entries
+			//internalJSON.insertValue("shaderParams", JSON::Parse(stringBuf.c_str()));
+			
+			processJSONFromString(
+				&stringBuf,
+				&(internalJSON["shaderParams"].jv)
+			);
+			
+			//cout << "stringBuf:\n\n";
+			//cout << stringBuf;
+			
+			
+		}
+		
 
 		popTrace();
 
@@ -1555,18 +1833,18 @@ void Singleton::sampleFBO (string fboName, int offset, int swapFlag)
 
 		if (swapFlag == -1)
 		{
-			fbos = fboMap[fboName];
+			fbos = &(fboMap[fboName]);
 		}
 		else
 		{
 
 			if (swapFlag == 0)
 			{
-				fbos = fboMap[fboName + "0"];
+				fbos = &(fboMap[fboName + "0"]);
 			}
 			else
 			{
-				fbos = fboMap[fboName + "1"];
+				fbos = &(fboMap[fboName + "1"]);
 			}
 
 		}
@@ -1589,18 +1867,18 @@ void Singleton::unsampleFBO (string fboName, int offset, int swapFlag)
 
 		if (swapFlag == -1)
 		{
-			fbos = fboMap[fboName];
+			fbos = &(fboMap[fboName]);
 		}
 		else
 		{
 
 			if (swapFlag == 0)
 			{
-				fbos = fboMap[fboName + "0"];
+				fbos = &(fboMap[fboName + "0"]);
 			}
 			else
 			{
-				fbos = fboMap[fboName + "1"];
+				fbos = &(fboMap[fboName + "1"]);
 			}
 
 		}
@@ -1617,11 +1895,11 @@ void Singleton::unsampleFBO (string fboName, int offset, int swapFlag)
 	}
 FBOSet * Singleton::getFBOSet (string fboName)
         {
-		return fboMap[fboName];
+		return &(fboMap[fboName]);
 	}
 FBOWrapper * Singleton::getFBOWrapper (string fboName, int offset)
         {
-		FBOSet *fbos = fboMap[fboName];
+		FBOSet *fbos = &(fboMap[fboName]);
 		return fbos->getFBOWrapper(offset);
 	}
 void Singleton::copyFBO (string src, string dest)
@@ -1651,18 +1929,18 @@ void Singleton::bindFBO (string fboName, int swapFlag)
 
 		if (swapFlag == -1)
 		{
-			fbos = fboMap[fboName];
+			fbos = &(fboMap[fboName]);
 		}
 		else
 		{
 
 			if (swapFlag == 0)
 			{
-				fbos = fboMap[fboName + "1"];
+				fbos = &(fboMap[fboName + "1"]);
 			}
 			else
 			{
-				fbos = fboMap[fboName + "0"];
+				fbos = &(fboMap[fboName + "0"]);
 			}
 
 		}
@@ -1686,12 +1964,24 @@ void Singleton::unbindFBO ()
 	}
 void Singleton::bindShader (string shaderName)
         {
+		
+		int i;
+		int totSize;
 
 		if (shadersAreLoaded)
 		{
 			curShader = shaderName;
 			curShaderPtr = shaderMap[curShader];
 			curShaderPtr->bind();
+			
+			totSize = curShaderPtr->paramVec.size();
+			
+			for (i = 0; i < totSize; i++) {
+				setShaderFloat(
+					curShaderPtr->paramVec[i],
+					curShaderPtr->paramMap[curShaderPtr->paramVec[i]]
+				);
+			}
 		}
 
 	}
@@ -1882,7 +2172,7 @@ void Singleton::drawFBOOffsetDirect (FBOSet * fbos, int ind, float xOff, float y
 	}
 void Singleton::drawFBOOffset (string fboName, int ind, float xOff, float yOff, float zoom)
         {
-		FBOSet *fbos = fboMap[fboName];
+		FBOSet *fbos = &(fboMap[fboName]);
 
 		if (fbos)
 		{
@@ -2023,9 +2313,34 @@ void Singleton::moveCamera (FIVector4 * pModXYZ)
 
 		isPanning = true;
 	}
+GameEntNode * Singleton::getMirroredNode (GameEntNode * curNode)
+                                                           {
+		if ((curNode->nodeName < E_BONE_C_BEG)&&mirrorOn) {
+			if (curNode->nodeName <= E_BONE_L_END) {
+				return testHuman->baseNode->getNode(
+					curNode->nodeName+(E_BONE_R_BEG-E_BONE_L_BEG)
+				);
+			}
+			else {
+				return testHuman->baseNode->getNode(
+					curNode->nodeName-(E_BONE_R_BEG-E_BONE_L_BEG)
+				);
+			}
+		}
+		else {
+			return NULL;
+		}
+		
+	}
 void Singleton::moveObject (float dx, float dy, float zoom)
         {
 
+		int i;
+		int j;
+		
+		float dirMod = 1.0f;
+		
+		GameEntNode* curNode;
 
 		float tilt = tiltAmount;
 		float itilt = (1.0-tiltAmount);
@@ -2034,6 +2349,10 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 
 		float dxZoom = dx * 1.0 / zoom;
 		float dyZoom = dy * 1.0 / zoom;
+
+		float xm = 0.0f;
+		float ym = 0.0f;
+		float zm = 0.0f;
 
 		//float grassWidth;
 		//float grassHeight;
@@ -2050,7 +2369,7 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 
 
 
-		if (lbDown || rbDown)
+		if (abDown)
 		{
 			// if (rbDown || (shiftDown() ) )
 			// {
@@ -2094,91 +2413,141 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 
 
 		}
-		else
-		{
-
+		
+		
+		if (
+			(mouseState == E_MOUSE_STATE_POSE) && 
+			(activeNode != NULL)
+		) {
+			
+			
+			curNode = activeNode;
+		
+			if (
+				(curNode->nodeName < E_BONE_C_BEG) &&
+				(mirrorOn)
+			) {
+				j = 2;
+			}
+			else {
+				j = 1;
+			}
+			
+			for (i = 0; i < j; i++) {
+				
+				
+				if (i == 1) {
+					curNode = getMirroredNode(curNode);
+					
+					dirMod = -1.0f;
+				}
+				
+				if (shiftDown() || altDown()) {
+					if (mbDown) {
+						xm = dy/50.0f;
+						makeDirty();
+					}
+					if (lbDown) {
+						ym = dy/50.0f;
+						makeDirty();
+					}
+					if (rbDown) {
+						zm = dy/50.0f;
+						makeDirty();
+					}
+					
+					if (shiftDown()) {
+						curNode->tbnRadScale1.addXYZ(xm,ym,zm);
+					}
+					if (altDown()) {
+						curNode->tbnRadScale0.addXYZ(xm,ym,zm);
+					}
+				}
+				else {
+					if (mbDown) {
+						curNode->rotRho += dirMod*dy/50.0f;
+						makeDirty();
+					}
+					if (lbDown) {
+						curNode->rotPhi += dirMod*dy/50.0f;
+						makeDirty();
+					}
+					if (rbDown) {
+						curNode->rotThe += dirMod*dy/50.0f;
+						makeDirty();
+					}
+				}
+				
+				
+				
+			}
+			
+			
+			
+				
 		}
-
-
-
-		if (shiftDown())
-		{
-
-			if ((mouseState == E_MOUSE_STATE_BRUSH)&&lbDown)
+		else {
+			if (shiftDown())
 			{
-				curBrushRad -= modXYZ.getFZ() / 50.0f;
-
-				if (curBrushRad < 0.0f)
+				
+				
+				if ((mouseState == E_MOUSE_STATE_BRUSH)&&lbDown)
 				{
-					curBrushRad = 0.0f;
+					curBrushRad -= modXYZ.getFZ() / 50.0f;
+
+					if (curBrushRad < 0.0f)
+					{
+						curBrushRad = 0.0f;
+					}
 				}
+				else
+				{
+					
+					if (rbDown) {
+						tiltAmount -=  modXYZ.getFZ()*zoom / 500.0f;
+						
+						tiltAmount = clampf(tiltAmount, 0.125f, 0.75f);
+						
+						tiltChanged = true;
+						changesMade = true;
+					}
+					
+				}
+
 			}
 			else
 			{
-				
-				if (rbDown) {
-					tiltAmount -=  modXYZ.getFZ()*zoom / 500.0f;
-					
-					tiltAmount = clampf(tiltAmount, 0.125f, 0.75f);
-					
-					tiltChanged = true;
-					changesMade = true;
-				}
-				
-				
-				
-				// grassWidth = grassWH.getFX();
-				// grassHeight = grassWH.getFY();
-
-
-				// grassHeight -= modXYZ.getFZ()/10000.0f;
-				// grassWidth -= modXYZ.getFX()/10000.0f;
-
-
-				// if (grassHeight < 0.0f) {
-				//  grassHeight = 0.0f;
-				// }
-				// if (grassWidth < 0.0f) {
-				//  grassWidth = 0.0f;
-				// }
-
-				// grassWH.setFXYZ(grassWidth,grassHeight,0.0);
-
-			}
-
-
-		}
-		else
-		{
-
-
-			if (mouseState == E_MOUSE_STATE_BRUSH)
-			{
-				doDefault = true;
-			}
-			else
-			{
-
-				if (activeObject == E_OBJ_CAMERA)
+				if (mouseState == E_MOUSE_STATE_BRUSH)
 				{
 					doDefault = true;
 				}
 				else
 				{
-					dynObjects[activeObject]->posRel.addXYZRef(&modXYZ, -1.0f);
-					dynObjects[activeObject]->pos.addXYZRef(&modXYZ, -1.0f);
-					//activeObjectPos.setFXYZRef( &(dynObjects[activeObject]->pos) );
+
+					if (activeObject == E_OBJ_CAMERA)
+					{
+						doDefault = true;
+					}
+					else
+					{
+						dynObjects[activeObject]->posRel.addXYZRef(&modXYZ, -1.0f);
+						dynObjects[activeObject]->pos.addXYZRef(&modXYZ, -1.0f);
+					}
 				}
+
+				if (doDefault)
+				{
+					moveCamera(&modXYZ);
+				}
+				
+
+
 			}
-
-			if (doDefault)
-			{
-				moveCamera(&modXYZ);
-			}
-
-
-
 		}
+		
+
+
+		
 
 
 
@@ -2208,6 +2577,19 @@ void Singleton::toggleFullScreen ()
 		{
 			glutPositionWindow(250, 50);
 		}
+	}
+void Singleton::restartGen (bool instantRefresh, bool clearEverything)
+                                                                   {
+		
+		if (
+			(!(gw->lastProcResult))||clearEverything	
+		) {
+			gw->actionOnHolders(E_HOLDER_ACTION_RESET, instantRefresh, clearEverything);
+			bufferInvalid = true;
+			changesMade = true;
+		}
+		
+		
 	}
 void Singleton::setCameraToElevationBase ()
                                         {
@@ -2256,6 +2638,8 @@ void Singleton::processKey (unsigned char key, int _x, int _y, bool isPressed)
 void Singleton::keyboardUp (unsigned char key, int _x, int _y)
         {
 
+		GameEntNode* curNode;
+		
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
 
@@ -2266,9 +2650,10 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 
 		int enCounter;
 
-		bool restartGen = false;
 
-		doTrace(i__s(key) );
+		
+		bShift = shiftDown();
+		bCtrl = ctrlDown();
 
 
 		if (key == 17)
@@ -2318,7 +2703,8 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 		case 's':
-
+				mirrorOn = !mirrorOn;
+				cout << "mirrorOn: " << mirrorOn << "\n";
 			break;
 
 		case 19: //ctrl-s
@@ -2354,12 +2740,26 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 		case 'e':
 			setCameraToElevation();
 			break;
+			
+		case 'q':
+			// charState++;
+			// if (charState > E_CHAR_STATE_RENDERED) {
+			// 	charState = 0;
+			// }
+		
+			
+			
+			
+			break;
 
 		case 'w':
+			resetActiveNode();
+		break;
+		case 'W':
 			changesMade = true;
 			maxWInPages++;
 			break;
-		case 'q':
+		case 'Q':
 			changesMade = true;
 			maxWInPages--;
 			if (maxWInPages < 1)
@@ -2376,8 +2776,13 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			radiosityOn = !radiosityOn;
 			break;
 
+
+		case 'R':
+			
+		break;
 		case 'r':
 			doShaderRefresh();
+			loadGUI();
 			bufferInvalid = true;
 
 			cout << "Shaders Refreshed\n";
@@ -2398,7 +2803,28 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			changesMade = true;
 			break;
 
+
 		case 'g':
+		
+			enCounter = (int)mouseState;
+			mouseState++;
+
+			if (mouseState == E_MOUSE_STATE_LENGTH)
+			{
+				mouseState = 0;
+			}
+			
+			cout << mouseStateStrings[mouseState] << "\n";
+
+			bufferInvalid = true;
+			changesMade = true;
+			wsBufferInvalid = true;
+			forceGetPD = true;
+		
+			
+		break;
+		
+		case 'l':
 
 			multiLights = !multiLights;
 			updateMultiLights();
@@ -2408,14 +2834,6 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			changesMade = true;
 			forceGetPD = true;
 
-			// enCounter = (int)grassState;
-			// enCounter++;
-			// grassState = (E_GRASS_STATE)enCounter;
-			// if (grassState == E_GRASS_STATE_LENGTH) {
-			//  grassState = (E_GRASS_STATE)0;
-			// }
-			// bufferInvalid = true;
-			// changesMade = true;
 			break;
 
 
@@ -2425,11 +2843,12 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 		case 'd':
-			targetTimeOfDay += 0.5;
+			targetTimeOfDay = 1.0f-targetTimeOfDay;
+			// targetTimeOfDay += 0.5;
 			
-			if (targetTimeOfDay > 1.0) {
-				targetTimeOfDay = 0.0;
-			}
+			// if (targetTimeOfDay > 1.0) {
+			// 	targetTimeOfDay = 0.0;
+			// }
 			
 			break;
 
@@ -2448,24 +2867,22 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			cout << "waterOn " << waterOn << "\n";
 			break;
 
-		case 'l':
-
-			break;
-
 		case 't':
 
-			tiltAmount += 0.25f;
+			// tiltAmount += 0.25f;
 			
-			if (tiltAmount > 0.75f) {
-				tiltAmount = 0.25f;
-			}
+			// if (tiltAmount > 0.75f) {
+			// 	tiltAmount = 0.25f;
+			// }
 			
-			createVTListTilt();
+			// createVTListTilt();
 			
-			cout << "tiltAmount: " << tiltAmount << "\n";
+			// cout << "tiltAmount: " << tiltAmount << "\n";
 			
-			restartGen = true;
+			// restartGen(false, true);
 
+
+			testOn = !testOn;
 
 			//testOn = !testOn;
 			//cout << "testOn " << testOn << "\n";
@@ -2478,38 +2895,25 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 		case '\t':
-
-
-			enCounter = (int)mouseState;
-
-
-
-			if (ctrlDown())
-			{
-				enCounter--;
+		
+			if (guiOn) {
+				playSoundEvent("hideGUI");
 			}
-			else
-			{
-				enCounter++;
+		
+			if (!guiOn) {
+				
+				// todo: in the future don't reload the gui every time
+				// just for testing right now
+				
+				loadGUI();
 			}
-			if (enCounter < 0)
-			{
-				enCounter = ((int)E_MOUSE_STATE_LENGTH) - 1;
+			guiOn = !guiOn;
+			
+			if (guiOn) {
+				playSoundEvent("showGUI");
 			}
-
-			mouseState = (E_MOUSE_STATE)enCounter;
-
-			if (mouseState == E_MOUSE_STATE_LENGTH)
-			{
-				mouseState = (E_MOUSE_STATE)0;
-			}
-
+			
 			bufferInvalid = true;
-			changesMade = true;
-			wsBufferInvalid = true;
-			forceGetPD = true;
-
-
 			break;
 
 		case ' ':
@@ -2524,9 +2928,10 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 		break;
 
 		case 'c':
-			//isBare = !isBare;
-			restartGen = true;
+			doShaderRefresh();
+			restartGen(false, true);
 			break;
+		
 
 		case 'f':
 			fogOn = 1.0 - fogOn;
@@ -2537,27 +2942,16 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 
 		case 'm':
 
-			/*
-			mapInvalid = true;
-			bufferInvalid = true;
-			changesMade = true;
-			wsBufferInvalid = true;
-			forceGetPD = true;
-			*/
+			runReport();
+			
 
-			//showMap = !showMap;
-
-			cout << "zoom " << cameraZoom << "\n";
-
-			reportPagesDrawn = true;
-			//doTrace("Avail threads: ", i__s(gw->availThreads));
 			break;
 
-		case 'a':
+		case 'A':
 			changesMade = true;
 			maxHInPages++;
 			break;
-		case 'z':
+		case 'Z':
 			changesMade = true;
 			maxHInPages--;
 			if (maxHInPages < 0)
@@ -2566,6 +2960,23 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			}
 			break;
 
+		case 'a':
+			selectedNode->material += 1.0f;
+			curNode = getMirroredNode(selectedNode);
+			if (curNode != NULL) {
+				curNode->material += 1.0f;
+			}
+			makeDirty();
+		break;
+		case 'z':
+			selectedNode->material -= 1.0f;
+			curNode = getMirroredNode(selectedNode);
+			if (curNode != NULL) {
+				curNode->material -= 1.0f;
+			}
+			makeDirty();
+			
+		break;
 
 		case 'v':
 			if (selectedGeom == NULL)
@@ -2595,13 +3006,6 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 		}
 
-		if (restartGen)
-		{
-			doShaderRefresh();
-			gw->actionOnHolders(E_HOLDER_ACTION_RESET);
-			bufferInvalid = true;
-			changesMade = true;
-		}
 
 	}
 void Singleton::keyboardDown (unsigned char key, int _x, int _y)
@@ -2610,6 +3014,17 @@ void Singleton::keyboardDown (unsigned char key, int _x, int _y)
 
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
+	}
+void Singleton::runReport ()
+                         {
+		
+		mainGUI->runReport();
+		cout << "zoom " << cameraZoom << "\n";
+		cout << "lightCount: " << gw->lightCount << "\n";
+		cout << "TOT GPU MEM USED (MB): " << TOT_GPU_MEM_USAGE << "\n";
+		cout << "HolderSize (MB): " << holderSizeMB << "\n";
+		cout << "Num GPU Holders: " << gpuPool->holderPoolItems.size() << "\n";
+		cout << "GPU Pooled MB Used: " << ((float)gpuPool->holderPoolItems.size())*holderSizeMB << "\n";
 	}
 void Singleton::getPixData (FIVector4 * toVector, int xv, int yv)
         {
@@ -2703,9 +3118,13 @@ GameGeom * Singleton::findNearestGeom (FIVector4 * testPoint, bool createList)
 								curInd++;
 							}
 							
-							curDis =
-								curBlock->gameGeom[k]->getVisMinInPixelsT()->distance(testPoint) +
-								curBlock->gameGeom[k]->getVisMaxInPixelsT()->distance(testPoint);
+							curDis = 
+							abs(curBlock->gameGeom[k]->getVisMaxInPixelsT()->getFX()-testPoint->getFX()) +
+							abs(curBlock->gameGeom[k]->getVisMaxInPixelsT()->getFY()-testPoint->getFY()) +
+							abs(curBlock->gameGeom[k]->getVisMaxInPixelsT()->getFZ()-testPoint->getFZ());
+							
+							//curBlock->gameGeom[k]->getVisMinInPixelsT()->distance(testPoint) +
+							//curBlock->gameGeom[k]->getVisMaxInPixelsT()->distance(testPoint);
 
 							if (curBlock->gameGeom[k]->visible) {
 								
@@ -2738,25 +3157,33 @@ void Singleton::mouseMove (int _x, int _y)
 		int dx = x - lastPosX;
 		int dy = y - lastPosY;
 
+		guiX = _x/UI_SCALE_FACTOR;
+		guiY = _y/UI_SCALE_FACTOR;
 
 		bShift = shiftDown();
-
+		bCtrl = ctrlDown();
 
 		lastMouseX = x;
 		lastMouseY = y;
 
-
-
+		
+		if (testTT != NULL) {
+			//testTT->setText(i__s(_x) + ", " + i__s(_y));
+		}
 
 		mouseXUp = x;
 		mouseYUp = y;
 
+		
 
-		//mainGUI->testOver(_x, _y);
+		
+		if (tiltChanged) {
+			tiltChanged = false;
+			createVTListTilt();
+			restartGen(false, false);
+		}
 
-
-
-		if (lbDown || rbDown)
+		if (abDown)
 		{
 			moveObject((float)dx, (float)dy, cameraZoom);
 		}
@@ -2765,11 +3192,12 @@ void Singleton::mouseMove (int _x, int _y)
 
 			getPixData(&mouseMovePD, x, y);
 
+
+			
+
 			if (
-				mouseState == E_MOUSE_STATE_BRUSH ||
-				mouseState == E_MOUSE_STATE_PICKING ||
-				mouseState == E_MOUSE_STATE_ENTS  )
-			{
+				mouseState != E_MOUSE_STATE_MOVE
+			)	{
 
 				gw->modifyUnit(&mouseMovePD, E_BRUSH_MOVE);
 			}
@@ -2779,9 +3207,17 @@ void Singleton::mouseMove (int _x, int _y)
 
 			//////////////
 
-
+			if (mouseState == E_MOUSE_STATE_POSE) {
+				updateNearestEntNode(false, &mouseMovePD);
+			}
+			else {
+				activeNode = NULL;
+				setSelNode(NULL);
+			}
+			
 
 			highlightedGeom = findNearestGeom(&mouseMovePD);
+			
 
 
 			//////////////
@@ -2789,23 +3225,32 @@ void Singleton::mouseMove (int _x, int _y)
 
 		}
 
-
-		if (mbDown)
-		{
-
-		}
 		lastPosX = x;
 		lastPosY = y;
 
-		if ( (x >= 0) && (y >= 0) && (x < baseW) && (y < baseH) )   // && (rbDown||lbDown||mbDown)
+		if ( (x >= 0) && (y >= 0) && (x < baseW) && (y < baseH) )
 		{
 			bufferInvalid = true;
 
-			if (rbDown || lbDown)
+			if (abDown)
 			{
 				changesMade = true;
 			}
 		}
+	}
+void Singleton::makeDirty ()
+                         {
+		testHuman->gph->isDirty = true;
+	}
+void Singleton::setSelNode (GameEntNode * newNode)
+                                              {
+		
+		selectedNode = newNode;
+		if (selectedNode != lastSelNode) {
+			makeDirty();
+		}
+		lastSelNode = newNode;
+		
 	}
 void Singleton::screenToWorldBase (FIVector4 * tc, FIVector4 * wc)
         {
@@ -2874,11 +3319,16 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
         {
 
 
+		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
+
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
 
 		lastPosX = x;
 		lastPosY = y;
+		
+		guiX = _x/UI_SCALE_FACTOR;
+		guiY = _y/UI_SCALE_FACTOR;
 
 		GameBlock *curBlock;
 
@@ -2904,13 +3354,22 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		oneVec.setFXYZ(1.0f, 1.0f, 1.0f);
 		oneVec.normalize();
 
-		bool hitGUI = false;//mainGUI->testHit(button, state, _x, _y);
+		
+		
+		if ((mainGUI != NULL)&&guiOn) {
+			if (mainGUI->isReady) {
+				hitGUI = mainGUI->testHit(button, state, guiX, guiY);
+			}
+			
+		}
+		
 
 		if (hitGUI)
 		{
 			bufferInvalid = true;
 			return;
 		}
+		
 
 		switch (button)
 		{
@@ -2941,6 +3400,8 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 			break;
 		}
 
+		abDown = lbDown || rbDown || mbDown;
+		
 
 
 		if (rbClicked)
@@ -2949,9 +3410,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 			if (tiltChanged) {
 				tiltChanged = false;
 				createVTListTilt();
-				gw->actionOnHolders(E_HOLDER_ACTION_RESET);
-				bufferInvalid = true;
-				changesMade = true;
+				restartGen(false, true);
 			}
 			
 			if (lbDown)
@@ -2989,28 +3448,13 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 			mouseVel.setFXY(0.0f, 0.0f);
 		}
 
-		if (mbClicked)
-		{
-
-		}
-
-
-		if (rbDown || lbDown)
-		{
-
-		}
-		else
-		{
-
-		}
-
 		if (rbClicked || lbClicked)
 		{
 
 
 
 
-			if (rbDown || lbDown)
+			if (abDown)
 			{
 
 			}
@@ -3084,12 +3528,62 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 						case E_CT_DOOR:
 						case E_CT_WINDOW:
 						
+							
+						
+							
 						
 							gw->getHoldersInGeom(selectedGeom);
-							selectedGeom->applyTransform(selectedGeom->rotDir, false);
+							selectedGeom->toggleTransform();
 							gw->getHoldersInGeom(selectedGeom);
 							gw->refreshHoldersInList(true); //holderCount <= 12
 							gw->holdersToRefresh.clear();
+							
+							if (selectedGeom->isToggled) {
+								// open
+								switch (selectedGeom->buildingType)
+								{
+									case E_CT_DOOR:
+										playSoundPosAndPitch(
+											"open3",
+											cameraPos,
+											selectedGeom->getVisMinInPixelsT(),
+											0.3f
+										);
+									break;
+									case E_CT_WINDOW:
+										playSoundPosAndPitch(
+											"open1",
+											cameraPos,
+											selectedGeom->getVisMinInPixelsT(),
+											0.3f
+										);
+									break;
+								}
+							}
+							else {
+								// close
+								
+								switch (selectedGeom->buildingType)
+								{
+									case E_CT_DOOR:
+										playSoundPosAndPitch(
+											"close2",
+											cameraPos,
+											selectedGeom->getVisMinInPixelsT(),
+											0.3f
+										);
+									break;
+									case E_CT_WINDOW:
+										playSoundPosAndPitch(
+											"close1",
+											cameraPos,
+											selectedGeom->getVisMinInPixelsT(),
+											0.3f
+										);
+									break;
+								}
+							}
+							
 
 							bufferInvalid = true;
 							changesMade = true;
@@ -3175,8 +3669,6 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 						{}
 					}
 
-
-					diskOn = 0.0f;
 				}
 
 
@@ -3186,7 +3678,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		}
 		else
 		{
-			if (rbDown || lbDown)
+			if (abDown)
 			{
 
 				if (rbDown && lbDown)
@@ -3215,56 +3707,52 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 
 
+					activeObject = E_OBJ_CAMERA;
+					
+					
+					
+					
+					if (bCtrl) {
+						if (mouseDownPD.getIW() == 1) {
+							// find nearest dyn object
 
-
-
-					if (mouseDownPD.getIW() == 1)
-					{
-
-						
-
-						// find nearest dyn object
-
-						bestInd = 0;
-						bestDis = 99999.0f;
-						
-						worldToScreenBase(&tempVec1, &mouseDownPD);
-						
-						for (i = 1; i < dynObjects.size(); i++)
-						{
-
-
-							worldToScreenBase(&tempVec2, &(dynObjects[i]->pos));
-
-							curDis = tempVec1.distanceXY(&tempVec2);
-
-
-							if (curDis < bestDis)
+							bestInd = 0;
+							bestDis = 99999.0f;
+							
+							worldToScreenBase(&tempVec1, &mouseDownPD);
+							
+							for (i = 1; i < dynObjects.size(); i++)
 							{
-								bestDis = curDis;
-								bestInd = i;
+
+
+								worldToScreenBase(&tempVec2, &(dynObjects[i]->pos));
+
+								curDis = tempVec1.distanceXY(&tempVec2);
+
+
+								if (curDis < bestDis)
+								{
+									bestDis = curDis;
+									bestInd = i;
+								}
 							}
+
+							activeObject = (E_OBJ)(bestInd);
 						}
-
-						activeObject = (E_OBJ)(bestInd);
-
-
-						diskOn = 1.0f;
-						//activeObjectPos.setFXYZRef(&(dynObjects[activeObject]->pos));
-
 					}
-					else
-					{
-						
-						activeObject = E_OBJ_CAMERA;
+					else {
+						switch(mouseState) {
+							
+							case E_MOUSE_STATE_POSE:
+								
+								updateNearestEntNode(true, &mouseDownPD);
+								
+							break;
+						}	
 					}
-
-					if (mouseState == E_MOUSE_STATE_BRUSH)
-					{
-						diskOn = 0.0;
-					}
-
-
+					
+					
+					
 				}
 
 
@@ -3291,6 +3779,78 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		}
 
 	}
+void Singleton::resetActiveNode ()
+                               {
+		
+		GameEntNode* curNode = NULL;
+		
+		if (selectedNode == NULL) {
+			curNode = lastSelNode;
+		}
+		else {
+			curNode = selectedNode;
+		}
+		
+		if (curNode != NULL) {
+			curNode->rotThe = 0.0f;
+			curNode->rotPhi = 0.0f;
+			curNode->rotRho = 0.0f;
+			
+			curNode->tbnRadScale0.setFXYZ(1.0f,1.0f,1.0f);
+			curNode->tbnRadScale1.setFXYZ(1.0f,1.0f,1.0f);
+			makeDirty();
+		}
+	}
+void Singleton::updateNearestEntNode (bool setActive, FIVector4 * mousePosWS)
+                                                                         {
+		// tempVec3.setFXYZRef(mousePosWS);
+		// tempVec3.addXYZRef(&(testHuman->basePosition),-1.0f);
+		
+		worldToScreenBase(&tempVec1, mousePosWS);
+		
+		bestNode = NULL;
+		bestNodeDis = 99999.0f;
+		findNearestEntNode(
+			testHuman->baseNode,
+			&tempVec1
+		);
+		
+		if (bestNodeDis >= 1.0f*pixelsPerMeter) {
+			bestNode = NULL;
+			activeNode = NULL;
+			setSelNode(NULL);
+		}
+		
+		if (bestNode != NULL) {
+			
+			setSelNode(bestNode);
+			if (setActive) {
+				activeNode = bestNode;				
+			}
+		}
+	}
+void Singleton::findNearestEntNode (GameEntNode * curNode, FIVector4 * mousePosSS)
+          {
+		
+		tempVec3.setFXYZRef(&(curNode->orgTrans[1]));
+		tempVec3.multXYZ(pixelsPerMeter);
+		tempVec3.addXYZRef(&(testHuman->basePosition));
+		
+		worldToScreenBase(&tempVec2, &tempVec3);
+		float curDis = mousePosSS->distanceXY(&tempVec2);
+		
+		if (curDis < bestNodeDis) {
+			bestNodeDis = curDis;
+			bestNode = curNode;
+		}
+		
+		int i;
+		
+		for (i = 0; i < curNode->children.size(); i++) {
+			findNearestEntNode(curNode->children[i],mousePosSS);
+		}
+		
+	}
 void Singleton::processB64 (charArr * sourceBuffer, charArr * saveBuffer)
         {
 
@@ -3310,7 +3870,7 @@ void Singleton::processB64 (charArr * sourceBuffer, charArr * saveBuffer)
 		}
 
 
-		FBOSet *fbos = fboMap["palFBO"];
+		FBOSet *fbos = &(fboMap["palFBO"]);
 
 
 		//unsigned char* resultImage = new unsigned char[256*256*4];
@@ -3333,14 +3893,46 @@ void Singleton::processB64 (charArr * sourceBuffer, charArr * saveBuffer)
 		fbos->copyFromMem(0, resultImage);
 
 	}
-bool Singleton::processJSON (charArr * sourceBuffer, charArr * saveBuffer)
-        {
+bool Singleton::processJSONFromString (string * sourceBuffer, JSONValue * * destObj)
+          {
+		if (*destObj != NULL)
+		{
+			delete *destObj;
+			*destObj = NULL;
+		}
+		
+		*destObj = JSON::Parse(sourceBuffer->c_str());
 
-		doTraceND("processJSON()");
+		if (*destObj == NULL)
+		{
+			doTraceND("Invalid JSON\n\n");
+			cout << sourceBuffer << "\n\n";
+			return false;
+		}
+		else
+		{
+			doTraceND("\nValid JSON\n");
+			return true;
+		}
+		
+	}
+bool Singleton::processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONValue * * destObj)
+          {
+		
+		if (*destObj != NULL)
+		{
+			delete *destObj;
+			*destObj = NULL;
+		}
+
+		//doTraceND("destObj is now NULL");
+		
+
+		//doTraceND("processJSON()");
 
 		char *buf = sourceBuffer->data;
 		int len = sourceBuffer->size;
-		JSONValue *jsonVal = NULL;
+		//JSONValue *jsonVal = NULL;
 
 		if (saveBuffer != &nullBuffer)
 		{
@@ -3354,58 +3946,100 @@ bool Singleton::processJSON (charArr * sourceBuffer, charArr * saveBuffer)
 			saveBuffer->size = len;
 		}
 
-		doTraceND("Begin JSON::Parse()");
+		//doTraceND("Begin JSON::Parse()");
 
 		if (buf == NULL)
 		{
-			doTraceND("buf is NULL");
+			//doTraceND("buf is NULL");
 			return false;
 		}
 		else
 		{
-			doTraceND("buf is not NULL");
-			jsonVal = JSON::Parse(buf);
+			//doTraceND("buf is not NULL");
+			*destObj = JSON::Parse(buf);
 		}
 
 
-		doTraceND("End JSON::Parse()");
+		//doTraceND("End JSON::Parse()");
 
 
-		if (jsonVal == NULL)
+		if (*destObj == NULL)
 		{
 			doTraceND("Invalid JSON\n\n");
 			return false;
 		}
 		else
 		{
-			doTraceND("");
-			doTraceND("Valid JSON");
-			doTraceND("");
-
-
-			if (rootObj != NULL)
-			{
-				delete rootObj;
-				rootObj = NULL;
-			}
-
-			doTraceND("rootObj is now NULL");
-
-
-			rootObj = jsonVal;
-			jsonVal = NULL;
-
-			//doTrace( "JSON VAL", f__s(jsonVal->Child(L"x")->number_value) , "\n\n" );
+			doTraceND("\nValid JSON\n");
 			return true;
 		}
 
 
 	}
+bool Singleton::loadJSON (string path, JSONValue * * destObj)
+          {
+		
+		bool res = false;
+		
+		charArr dest;
+		dest.data = NULL;
+		dest.size = 0;
+		
+		if ( loadFile(path, &dest) )
+		{
+			if (processJSON(&dest, &nullBuffer, destObj)) {
+				res = true;
+			}
+			else {
+				res = false;
+			}
+		}
+		else {
+			res = false;
+		}
+		
+		
+		if (dest.data != NULL)
+		{
+			delete[] dest.data;
+			dest.data = NULL;
+		}
+		
+		return res;
+		
+	}
+void Singleton::loadGUI ()
+                       {
+		
+		testTT = NULL;
+		
+		
+		// if ( loadFile("..\\data\\lastJSONBufferGUI.js", &lastJSONBufferGUI) )
+		// {
+		// 	if (processJSON(&lastJSONBufferGUI, &nullBuffer, &guiRootJS)) {
+		// 		mainGUI->guiFromJSON(
+		// 			guiRootJS
+		// 		);
+		// 	}
+		// }
+		
+		if (
+			loadJSON("..\\data\\lastJSONBufferGUI.js", &guiRootJS)
+		) {
+			mainGUI->guiFromJSON(
+				guiRootJS
+			);
+		}
+		
+		//testTT = mainGUI->findNodeByString("testTT");
+		
+		bufferInvalid = true;
+	}
 void Singleton::loadAllData ()
         {
 		if ( loadFile("..\\data\\lastJSONBuffer.js", &lastJSONBuffer) )
 		{
-			processJSON(&lastJSONBuffer, &nullBuffer);
+			processJSON(&lastJSONBuffer, &nullBuffer, &rootObjJS);
 		}
 
 		if ( loadFile("..\\data\\lastImageBuffer.txt", &lastImageBuffer) )
@@ -3420,8 +4054,11 @@ void Singleton::saveAllData ()
 		saveFile("..\\data\\lastJSONBuffer.js", &lastJSONBuffer);
 		saveFile("..\\data\\lastImageBuffer.txt", &lastImageBuffer);
 	}
-bool Singleton::loadFile (char * fileName, charArr * dest)
+bool Singleton::loadFile (string fnString, charArr * dest)
         {
+		
+		const char* fileName = fnString.c_str();
+		
 		doTraceND("Loading: ", fileName);
 
 		if (dest == NULL)
@@ -3503,12 +4140,41 @@ bool Singleton::saveFile (char * fileName, charArr * source)
 
 		return true;
 	}
+void Singleton::updateAmbientSounds ()
+                                   {
+		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
+		
+		int i;
+		int j;
+		
+		int maxRad = 2.0f;
+		
+		float avgHeight = 0.0f;
+		float tot = 0.0f;
+		
+		for (i = -maxRad; i <= maxRad; i++) {
+			for (j = -maxRad; j <= maxRad; j++) {
+				avgHeight += getHeightAtPixelPos(
+					cameraPos->getFX() + i*32.0f*pixelsPerMeter,
+					cameraPos->getFY() + j*32.0f*pixelsPerMeter
+				);
+				tot += 1.0f;
+			}
+		}
+		
+		float terHeight = avgHeight/tot;
+		
+		float seaHeight = getSLInPixels();
+		
+		float heightDif = clampf((terHeight-seaHeight)/(16.0*pixelsPerMeter), 0.0, 1.0);
+		
+		music[EML_BIRDSONG0]->setVolume(ambVolume*timeOfDay*heightDif);
+		music[EML_CRICKETS0]->setVolume(ambVolume*(1.0f-timeOfDay)*heightDif);
+		music[EML_OCEANWAVES0]->setVolume(ambVolume*(1.0f-heightDif));
+		
+	}
 void Singleton::display ()
         {
-
-
-
-
 
 		curTime = myTimer.getElapsedTimeInMilliSec();
 
@@ -3528,7 +4194,7 @@ void Singleton::display ()
 
 				if (myWS->isJSON)
 				{
-					if ( processJSON( &(myWS->recBuffer), &lastJSONBuffer  ) )
+					if ( processJSON( &(myWS->recBuffer), &lastJSONBuffer, &rootObjJS ) )
 					{
 						saveAllData();
 
@@ -3536,7 +4202,7 @@ void Singleton::display ()
 				}
 				else
 				{
-					processB64(  &(myWS->recBuffer), &lastImageBuffer  );
+					processB64(  &(myWS->recBuffer), &lastImageBuffer );
 
 				}
 
@@ -3607,7 +4273,7 @@ void Singleton::display ()
 			// }
 
 
-			dz = (targetZoom - cameraZoom) / (16.0f);
+			dz = (targetZoom - cameraZoom) / (4.0f);
 
 			/*
 			if (abs(dz) < 0.0001) {
@@ -3629,7 +4295,7 @@ void Singleton::display ()
 			cameraZoom += dz;
 			
 
-			if ( ( abs(dz) / cameraZoom < 0.0001 ) && (isZooming))
+			if ( ( abs(dz) / cameraZoom < 0.001 ) && (isZooming))
 			{
 				isZooming = false;
 				wsBufferInvalid = true;
@@ -3661,6 +4327,13 @@ void Singleton::display ()
 				}
 				else
 				{
+					updateAmbientSounds();
+					if ((mainGUI != NULL)&&guiOn) {
+						if (mainGUI->isReady) {
+							//mainGUI->testOver(guiX, guiY);
+						}
+						
+					}
 					gw->update();
 					//renderCount += 1.0;
 				}

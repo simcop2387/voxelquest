@@ -126,7 +126,10 @@ void main() {
 	float pi = 3.14159;
 
 	float minRad = 2.0;
-	float maxRad = bufferDim.y / 1.0;
+	
+	float divVal = 1.0-clamp( distance(TexCoord0.xy,vec2(0.5,0.5))/0.5 ,0.0,1.0);
+	
+	float maxRad = bufferDim.y / 2.0;//mix(1.0,4.0,divVal);
 	float curRad = 0.0;
 
 	float minRotInc = pi;
@@ -195,7 +198,7 @@ void main() {
 
 	newRes = clamp(newRes / (totRays / 256.0), 0.0, 1.0);
 	newRes = pow(newRes, vec3(2.0));
-	gl_FragData[0] = vec4(newRes, 1.0);
+	gl_FragData[0] = vec4(newRes*divVal, 1.0);
 
 
 

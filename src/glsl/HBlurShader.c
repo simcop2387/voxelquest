@@ -15,7 +15,7 @@ void main()
     gl_Position = gl_Vertex;
     v_texCoord = gl_MultiTexCoord0.xy;
 
-    float newZoom = blurAmount*min(cameraZoom,1.0);
+    float newZoom = blurAmount*0.25;
 
     v_blurTexCoords[ 0] = v_texCoord + vec2(-0.028, 0.0)*newZoom;
     v_blurTexCoords[ 1] = v_texCoord + vec2(-0.024, 0.0)*newZoom;

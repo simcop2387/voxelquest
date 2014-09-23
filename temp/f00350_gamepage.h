@@ -40,6 +40,8 @@ GamePage::GamePage ()
 void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _thisPageId, int offsetX, int offsetY, int offsetZ, int oxLoc, int oyLoc, int ozLoc, bool _isEntity)
           {
 
+		hasLines = false;
+
 		isEntity = _isEntity;
 
 		thisPageId = _thisPageId;
@@ -273,11 +275,14 @@ void GamePage::addEntityGeom (bool justTesting)
 			singleton->matCountArr[i] = 0.0f;
 		}
 
+		
+
 
 		if (justTesting) {
-			// hasTree = false;
-			// hasWindow = false;
-			// hasGeom = false;
+			hasTree = false;
+			hasWindow = false;
+			hasGeom = false;
+			hasLines = false;
 		}
 
 		
@@ -285,6 +290,7 @@ void GamePage::addEntityGeom (bool justTesting)
 
 		if (gph) {
 			geomInPage = gph->entityGeom.size();
+			
 
 			for (m = 0; m < geomInPage; m++) {
 				
@@ -298,7 +304,16 @@ void GamePage::addEntityGeom (bool justTesting)
 				) {
 
 					if (justTesting) {
-						hasGeom = true;
+						
+						
+						if (gg->buildingType == E_CT_LINES) {
+							hasLines = true;
+						}
+						else {
+							hasGeom = true;
+						}
+						
+						
 					}
 					else {
 						for (p = 0; p < E_GP_LENGTH; p++) {
@@ -317,10 +332,11 @@ void GamePage::addEntityGeom (bool justTesting)
 			}
 		}
 		
+		
 
 		if (justTesting) {
 			parentGPH->hasTrans = false;
-			if (hasGeom) {
+			if (hasGeom||hasLines) {
 				parentGPH->hasSolids = true;
 			}
 		}
@@ -492,25 +508,35 @@ void GamePage::getVoroPoints ()
 		int i, j, k;
 
 		int counter = 0;
-		int rad = 1;
-		int iMaxPoints = 27;
+		int rad = 2;
+		int tempi = 0;
+		
+		//int iMaxPoints = 27;
+		//float fMaxPoints = (float)iMaxPoints;
 
 		float fi, fj, fk;
 
-
+		
+		FIVector4 posFloored;
+		FIVector4 posFlooredInPixels;
+		
 		// posFloored.copyFrom(&worldMaxVisInPixels);
 		// posFloored.addXYZRef(&worldMinVisInPixels);
 		// posFloored.multXYZ(0.5f);
 
 		posFloored.copyFrom(&offsetInPages);
+		posFloored.addXYZ(0.5f);
+		
+		posFlooredInPixels.copyFrom(&posFloored);
+		posFlooredInPixels.multXYZ(&voroSize);
 
 		// posFloored.divXYZ(&voroSize);
 		// posFloored.floorXYZ();
 
 
-
-		float fMaxPoints = (float)iMaxPoints;
-
+		int totVoro = 27;
+		
+		
 
 		for (i = -rad; i <= rad; i++) {
 			fi = (float)i;
@@ -534,26 +560,26 @@ void GamePage::getVoroPoints ()
 					//if (curPos.getIZ()%3 == 0) {
 
 					randNum.setRand(&curPos);
-					randNum.multXYZ(0.5f);
+					//randNum.multXYZ(1.0f);
 
-					newPos.copyFrom(&curPos);
-					newPos.addXYZRef(&randNum);
-					newPos.multXYZ(&voroSize);
+					singleton->voroVecArr[counter].copyFrom(&curPos);
+					singleton->voroVecArr[counter].addXYZRef(&randNum);
+					singleton->voroVecArr[counter].multXYZ(&voroSize);
 
-					testNum.setRand(&curPos);
+					//testNum.setRand(&curPos);
 
 					//if (testNum.getFX() > 1.0f - (fMaxPoints/125.0f) ) { //true) {//
-					singleton->voroArr[counter * 4 + 0] = newPos.getFX();
-					singleton->voroArr[counter * 4 + 1] = newPos.getFY();
-					singleton->voroArr[counter * 4 + 2] = newPos.getFZ();
-					singleton->voroArr[counter * 4 + 3] = (testNum.getFX()) * 0.5 + 0.5;
+					// singleton->voroArr[counter * 4 + 0] = newPos.getFX();
+					// singleton->voroArr[counter * 4 + 1] = newPos.getFY();
+					// singleton->voroArr[counter * 4 + 2] = newPos.getFZ();
+					//singleton->voroArr[counter * 4 + 3] = (testNum.getFX()) * 0.5 + 0.5;
 					counter++;
 					//}
 
-					if (counter >= iMaxPoints) {
-						counter = iMaxPoints;
-						goto VORO_DONE;
-					}
+					// if (counter >= iMaxPoints) {
+					// 	counter = iMaxPoints;
+					// 	goto VORO_DONE;
+					// }
 					//}
 
 
@@ -562,11 +588,30 @@ void GamePage::getVoroPoints ()
 			}
 		}
 
-VORO_DONE:
-		voroCount = counter;
+// VORO_DONE:
+// 		voroCount = counter;
 
-		//cout << "counter " << counter << "\n";
 
+		
+
+
+		for (i = 0; i < 125; i++){
+			singleton->indexArr[i].index1 = i;
+			singleton->indexArr[i].value = singleton->voroVecArr[i].distance(&posFlooredInPixels);
+		}
+		
+		bubbleSortF(singleton->indexArr, 125);
+		
+		int curInd = 0;
+		for (i = 0; i < 27; i++) {
+			curInd = singleton->indexArr[i].index1;
+			singleton->voroArr[i * 4 + 0] = singleton->voroVecArr[curInd].getFX();
+			singleton->voroArr[i * 4 + 1] = singleton->voroVecArr[curInd].getFY();
+			singleton->voroArr[i * 4 + 2] = singleton->voroVecArr[curInd].getFZ();
+		}
+
+		
+		voroCount = 27;
 	}
 void GamePage::generateVolume ()
                               {
@@ -576,6 +621,15 @@ void GamePage::generateVolume ()
 		int i;
 		isRendering = true;
 		
+		if (volDataModified) {
+			copyToTexture(false);
+		}
+		else {
+			if (singleton->emptyVDNotReady) {
+				singleton->emptyVDNotReady = false;
+				copyToTexture(true);
+			}
+		}
 		
 		if (isEntity) {
 			addEntityGeom(true);
@@ -583,23 +637,13 @@ void GamePage::generateVolume ()
 		}
 		else {
 			resIndex = parentBlock->copyTerToTexture();
-			
-			if (volDataModified) {
-				copyToTexture(false);
-			}
-			else {
-				if (singleton->emptyVDNotReady) {
-					singleton->emptyVDNotReady = false;
-					copyToTexture(true);
-				}
-			}
 			addGeom(true);
 			addGeom(false);
 			
 		}
 		
 
-		parentGPH->clearSet(false);
+		parentGPH->clearSet(); //false
 		getVoroPoints();
 
 
@@ -620,7 +664,7 @@ void GamePage::generateVolume ()
 
 		
 
-		singleton->bindFBO("volGenFBO1");
+		singleton->bindFBO("volGenFBO0");
 
 		if (volDataModified) {
 			singleton->setShaderTexture3D(0, singleton->volId);
@@ -682,7 +726,7 @@ void GamePage::generateVolume ()
 		//singleton->setShaderFloat("heightmapMin", 0.0);//singleton->heightmapMin);
 		//singleton->setShaderFloat("heightmapMax", 0.0);// singleton->heightmapMax);
 		//singleton->setShaderFloat("maxFloors", 1.0f); //singleton->maxFloors
-		singleton->setShaderFloat("terDataTexScale", singleton->terDataTexScale);
+		//singleton->setShaderFloat("terDataTexScale", singleton->terDataTexScale);
 
 		singleton->setShaderfVec4("worldSizeInPixels", &(singleton->worldSizeInPixels));
 		//singleton->setShaderfVec4("mapFreqs", &(singleton->mapFreqs) );
@@ -708,8 +752,9 @@ void GamePage::generateVolume ()
 		singleton->setShaderInt("hasTree", (int)hasTree);
 		singleton->setShaderInt("hasGeom", (int)hasGeom);
 		singleton->setShaderInt("hasTerrain", (int)hasTerrain);
+		singleton->setShaderInt("hasLines", (int)hasLines);
 
-		if (hasGeom) {
+		if (hasGeom||hasTree||hasLines) {
 			singleton->setShaderInt("paramsPerEntry", (paramsPerEntry / 3) );
 			singleton->setShaderInt("numEntries", numEntries);
 			singleton->setShaderArrayfVec3("paramArr", singleton->paramArr, totParams / 3);
@@ -760,14 +805,14 @@ void GamePage::generateVolume ()
 					(
 						(i == 0) &&
 						(
-							(hasTerrain || hasGeom) ||
+							(hasTerrain || hasGeom || hasLines) ||
 							((MAX_LAYERS < 2)&&(hasWater))
 						)
 					) ||
 					((i == 1) && (hasWater || hasWindow))
 				) {
 					singleton->bindFBODirect(parentGPH->gpuRes->getFBOS(i), 0);
-					singleton->sampleFBO("volGenFBO1", 0);
+					singleton->sampleFBO("volGenFBO0", 0);
 					singleton->sampleFBO("frontFaceFBO", 2);
 					singleton->sampleFBO("backFaceFBO", 3);
 
@@ -789,7 +834,7 @@ void GamePage::generateVolume ()
 					
 					singleton->unsampleFBO("backFaceFBO",3);
 					singleton->unsampleFBO("frontFaceFBO",2);
-					singleton->unsampleFBO("volGenFBO1",0);
+					singleton->unsampleFBO("volGenFBO0",0);
 					singleton->unbindFBO();
 				}
 

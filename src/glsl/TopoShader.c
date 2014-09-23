@@ -86,9 +86,12 @@ float getHeightAtCoords(vec2 mapCoord) {
         + (texHM1.r*mapAmps.y 
         + texHM2.r*mapAmps.z 
         + texHM3.r*mapAmps.w
-        - texHM1.r*mapAmps.y * 0.5 
-        - texHM2.r*mapAmps.z * 0.5 
-        - texHM3.r*mapAmps.w * 0.5)*detailAmount
+        -
+        ( texHM1.r*mapAmps.y * 0.5 
+        + texHM2.r*mapAmps.z * 0.5 
+        + texHM3.r*mapAmps.w * 0.5)
+        
+        )*detailAmount
     ;
     
     res = mix(0.125f,0.875f,res);

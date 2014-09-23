@@ -19,12 +19,15 @@ public:
 	Singleton* singleton;
 	GameWorld* gw;
 	
+	bool isEntity;
+	
 	
 	PoolManager() {
 		
 	}
 	
-	void init(Singleton* _singleton, bool _isCPU) {
+	void init(Singleton* _singleton, bool _isEntity, bool _isCPU) {
+		isEntity = _isEntity;
 		poolItemsCreated = 0;
 		isCPU = _isCPU;
 		singleton = _singleton;
@@ -38,7 +41,16 @@ public:
 			return MAX_CPU_MEM;
 		}
 		else {
-			return MAX_GPU_MEM;
+			
+			if (isEntity) {
+				// TODO: FIX THIS
+				return MAX_GPU_MEM*20.0f;
+			}
+			else {
+				return MAX_GPU_MEM;
+			}
+			
+			
 		}
 	}
 	float getTotMemUsed() {

@@ -141,6 +141,27 @@ public:
 		fv4.w = 0.0;
 	}
 
+	float operator[] (int ind) { //float&
+		
+		switch (ind) {
+			case 0:
+				return fv4.x;
+			break;
+			case 1:
+				return fv4.y;
+			break;
+			case 2:
+				return fv4.z;
+			break;
+			case 3:
+				return fv4.w;
+			break;
+		}
+		
+		cout << "invalid vector index";
+		return -1.0f;
+	}
+
 
 	void randomize() {
 		fv4.x = fGenRand();
@@ -978,72 +999,9 @@ public:
 	float inputMatrix[4];
 	float outputMatrix[4];
 
-	//FIVector4* quat;
 	FIVector4 tempRes1;
 	FIVector4 tempRes2;
-
-	// glm::vec3 upVec;
-	// AxisRotation() {
-	//     upVec = glm::vec3(0.0f,0.0f,1.0f);
-	// }
-	// glm::quat rotationFromUpVec(glm::vec3 dest) {
-	//     return rotationBetweenVectors(upVec, dest);
-	// }
-	// // the resulting quaternion, when applied to start, results in dest
-	// glm::quat rotationBetweenVectors(glm::vec3 start, glm::vec3 dest){
-
-	//     using namespace glm;
-
-	//     start = normalize(start);
-	//     dest = normalize(dest);
-
-	//     float cosTheta = dot(start, dest);
-	//     vec3 rotationAxis;
-
-	//     if (cosTheta < -1 + 0.001f){
-	//         // special case when vectors in opposite directions :
-	//         // there is no "ideal" rotation axis
-	//         // So guess one; any will do as long as it's perpendicular to start
-	//         // This implementation favors a rotation around the Up axis,
-	//         // since it's often what you want to do.
-	//         rotationAxis = cross(vec3(0.0f, 0.0f, 1.0f), start);
-	//         if (length2(rotationAxis) < 0.01 ) // bad luck, they were parallel, try again!
-	//             rotationAxis = cross(vec3(1.0f, 0.0f, 0.0f), start);
-
-	//         rotationAxis = normalize(rotationAxis);
-	//         return angleAxis(180.0f, rotationAxis);
-	//     }
-
-	//     // Implementation from Stan Melax's Game Programming Gems 1 article
-	//     rotationAxis = cross(start, dest);
-
-	//     float s = std::sqrt( (1+cosTheta)*2 );
-	//     float invs = 1 / s;
-
-	//     return quat(
-	//         s * 0.5f,
-	//         rotationAxis.x * invs,
-	//         rotationAxis.y * invs,
-	//         rotationAxis.z * invs
-	//     );
-
-	// }
-
-
-	// void quatRotation( FIVector4* output, FIVector4* vec, FIVector4* axis, float angle )
-	// {
-
-	//     x = RotationAxis.x * sin(RotationAngle / 2)
-	//     y = RotationAxis.y * sin(RotationAngle / 2)
-	//     z = RotationAxis.z * sin(RotationAngle / 2)
-	//     w = cos(RotationAngle / 2)
-
-	//     FIVector4::cross( &tempRes1, vec, quat );
-	//     tempRes1.addXYZRef(vec, quat->getFW());
-	//     FIVector4::cross( &tempRes2, &tempRes1, quat );
-	//     output->setFXYZRef(vec);
-	//     output->addXYZRef(&tempRes2, 2.0f);
-	// }
+	FIVector4 tempRes3;
 
 	void doRotation(FIVector4 *output, FIVector4 *input, FIVector4 *axis, float angle)
 	{
@@ -1054,17 +1012,6 @@ public:
 		float u = axis->getFX();
 		float v = axis->getFY();
 		float w = axis->getFZ();
-
-		outputMatrix[0] = 0.0f;
-		outputMatrix[1] = 0.0f;
-		outputMatrix[2] = 0.0f;
-		outputMatrix[3] = 0.0f;
-
-		inputMatrix[0] = input->getFX();
-		inputMatrix[1] = input->getFY();
-		inputMatrix[2] = input->getFZ();
-		inputMatrix[3] = 1.0;
-
 
 		float L = (u * u + v * v + w * w);
 		float u2 = u * u;
@@ -1097,6 +1044,16 @@ public:
 
 
 
+		outputMatrix[0] = 0.0f;
+		outputMatrix[1] = 0.0f;
+		outputMatrix[2] = 0.0f;
+		outputMatrix[3] = 0.0f;
+
+		inputMatrix[0] = input->getFX();
+		inputMatrix[1] = input->getFY();
+		inputMatrix[2] = input->getFZ();
+		inputMatrix[3] = 1.0;
+
 
 		for (i = 0; i < 4; i++ ) {
 			for (j = 0; j < 1; j++) {
@@ -1107,7 +1064,6 @@ public:
 			}
 		}
 
-
 		output->setFXYZW(
 			outputMatrix[0],
 			outputMatrix[1],
@@ -1116,6 +1072,96 @@ public:
 		);
 
 	}
+	
+	
+	
+	void doRotationTBN(
+		FIVector4 *output,
+		FIVector4 *input,
+		FIVector4 *axisAngle,
+		FIVector4 *parentOffset,
+		FIVector4 *baseOffset
+			
+	)
+	{
+		int i;
+		int j;
+		int k;
+		int m;
+		
+		tempRes3.copyFrom(baseOffset);
+		tempRes3.addXYZRef(parentOffset,-1.0f);
+
+		float u = axisAngle->getFX();
+		float v = axisAngle->getFY();
+		float w = axisAngle->getFZ();
+		float angle = axisAngle->getFW();
+
+		float L = (u * u + v * v + w * w);
+		float u2 = u * u;
+		float v2 = v * v;
+		float w2 = w * w;
+
+		float sqrtL = sqrt(L);
+		float ca = cos(angle);
+		float sa = sin(angle);
+
+		rotationMatrix[0][0] = (u2 + (v2 + w2) * ca) / L;
+		rotationMatrix[0][1] = (u * v * (1 - ca) - w * sqrtL * sa) / L;
+		rotationMatrix[0][2] = (u * w * (1 - ca) + v * sqrtL * sa) / L;
+		rotationMatrix[0][3] = 0.0f;
+
+		rotationMatrix[1][0] = (u * v * (1 - ca) + w * sqrtL * sa) / L;
+		rotationMatrix[1][1] = (v2 + (u2 + w2) * ca) / L;
+		rotationMatrix[1][2] = (v * w * (1 - ca) - u * sqrtL * sa) / L;
+		rotationMatrix[1][3] = 0.0f;
+
+		rotationMatrix[2][0] = (u * w * (1 - ca) - v * sqrtL * sa) / L;
+		rotationMatrix[2][1] = (v * w * (1 - ca) + u * sqrtL * sa) / L;
+		rotationMatrix[2][2] = (w2 + (u2 + v2) * ca) / L;
+		rotationMatrix[2][3] = 0.0f;
+
+		rotationMatrix[3][0] = 0.0f;
+		rotationMatrix[3][1] = 0.0f;
+		rotationMatrix[3][2] = 0.0f;
+		rotationMatrix[3][3] = 1.0f;
+
+
+
+		for (m = 0; m < 3; m++) {
+			outputMatrix[0] = 0.0f;
+			outputMatrix[1] = 0.0f;
+			outputMatrix[2] = 0.0f;
+			outputMatrix[3] = 0.0f;
+
+			inputMatrix[0] = input[m].getFX() + (tempRes3[0]);
+			inputMatrix[1] = input[m].getFY() + (tempRes3[1]);
+			inputMatrix[2] = input[m].getFZ() + (tempRes3[2]);
+			inputMatrix[3] = 1.0;
+
+
+			for (i = 0; i < 4; i++ ) {
+				for (j = 0; j < 1; j++) {
+					outputMatrix[i] = 0;
+					for (k = 0; k < 4; k++) {
+						outputMatrix[i] += rotationMatrix[i][k] * inputMatrix[k];
+					}
+				}
+			}
+
+			output[m].setFXYZW(
+				outputMatrix[0] - (tempRes3[0]),
+				outputMatrix[1] - (tempRes3[1]),
+				outputMatrix[2] - (tempRes3[2]),
+				outputMatrix[3]
+			);
+			output[m].normalize();
+		}
+
+		
+
+	}
+	
 
 };
 AxisRotation axisRotationInstance;
