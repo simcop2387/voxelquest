@@ -2,6 +2,8 @@
 class UIComponent {
 private:
 	UIComponent* parent;
+	float value;
+	
 public:
 
 	Singleton* singleton;
@@ -11,7 +13,8 @@ public:
 
 	string uid;
 	string ss;
-	string text;
+	string text; // resulting text
+	string label; // base label
 	
 	int parentId;
 	int nodeId;
@@ -54,7 +57,7 @@ public:
 	bool isDirty;
 	bool isFloating;
 	
-	float value;
+	
 	float divisions;
 	float paddingInPixels; // inner
 	float borderInPixels;
@@ -93,7 +96,7 @@ public:
 		
 		JSONValue* _jvNodeNoTemplate, // original node without template applied to it
 		
-		string _text,
+		string _label,
 		string _uid,
 		string _ss,
 		
@@ -122,6 +125,8 @@ public:
 		parentId = _parentId;
 		nodeId = _nodeId;
 		
+		
+		
 		jvNodeNoTemplate = _jvNodeNoTemplate;
 		
 		layer = _layer;
@@ -129,9 +134,16 @@ public:
 		isFloating = _isFloating;
 		
 		ss = _ss;
-		text = _text;
+		label = _label;
+		text = label;
+		
 		uid = _uid;
 		index = _index;
+		
+		if (uid.size() > 0) {
+			singleton->compMap[uid].nodeId = nodeId;
+		}
+		
 		
 		guiClass = _guiClass;
 		//guiId = _guiId;
@@ -201,6 +213,17 @@ public:
 		
 		
 	}
+	
+	void setValue(float _value, bool doEventDispatch = false, bool preventRefresh = false) {
+		value = _value;
+		if (doEventDispatch) {
+			singleton->dispatchEvent(GLUT_LEFT_BUTTON, GLUT_UP, 0, 0, this, true, preventRefresh);
+		}
+	}
+	float getValue() {
+		return value;
+	}
+	
 	
 	// use this function to avoid pointer out-of-scope issues
 	// better solutions exist but it works for now
@@ -383,6 +406,10 @@ public:
 			curComp = &(children.back());
 			childCount = children.size()-1;
 		}
+		
+		
+		
+		
 		
 		curComp->init(
 			singleton,
@@ -682,7 +709,8 @@ public:
 
 	void updateValue(float x, float y) {
 		
-		float hoverBuffer = 8.0f;
+		float hoverBuffer = 4.0f;
+		float tempValue;
 		
 		UIComponent* curParent = getParent();
 		
@@ -697,8 +725,9 @@ public:
 			break;
 			case E_HT_TOOLTIP:
 			case E_HT_TOOLTIP_VALUE:
-				floatOffset.x = x + hoverBuffer;
-				floatOffset.y = parent->originPos.y + parent->resultDimInPixels.y + hoverBuffer;
+				//curParent->floatOffset.x + 
+				floatOffset.x = x + hoverBuffer; 
+				floatOffset.y = curParent->floatOffset.y + curParent->originPos.y + curParent->resultDimInPixels.y + hoverBuffer;
 				visible = curParent->overSelf;
 				
 				if ((hoverType == E_HT_TOOLTIP_VALUE)&&visible) {
@@ -708,15 +737,17 @@ public:
 				
 			break;
 			case E_HT_ONSELECTED:
-				floatOffset.x = parent->originPos.x + parent->resultDimInPixels.x;
-				floatOffset.y = parent->originPos.y;
+				//curParent->floatOffset.x + 
+				floatOffset.x = curParent->originPos.x + curParent->resultDimInPixels.x;
+				floatOffset.y = curParent->floatOffset.y + curParent->originPos.y;
 				visible = (curParent->value == 1.0f);
 			break;
 						
 		}
 		
 		
-		
+		float hbxMin = hitBounds.xMin + floatOffset.x;
+		float hbxMax = hitBounds.xMax + floatOffset.x;
 		
 		if (wasHit&&(guiClass == E_GT_SLIDER)) {
 			
@@ -724,11 +755,17 @@ public:
 				// toggle button, do nothing
 			}
 			else {
+				tempValue = clampfZO((x-hbxMin)/(hbxMax-hbxMin));
 				if (divisions == 0.0f) {
-					value = clampfZO((x-hitBounds.xMin)/(hitBounds.xMax-hitBounds.xMin));
+					setValue(
+						tempValue
+					);
 				}
 				else {
-					value = clampfZO(floor((x-hitBounds.xMin)/(hitBounds.xMax-hitBounds.xMin)*divisions)/divisions);
+					
+					setValue(
+						floor(tempValue*divisions)/divisions
+					);
 				}
 				
 			}
@@ -775,7 +812,7 @@ public:
 			(x > (hitBounds.xMin+floatOffset.x)) &&
 			(y < (hitBounds.yMax+floatOffset.y)) &&
 			(y > (hitBounds.yMin+floatOffset.y))
-		);
+		) && visible;
 		
 		overChild = false;
 		
@@ -907,7 +944,7 @@ public:
 						break;
 						case E_GT_SLIDER:
 							if (divisions == 1.0f) {
-								value = 1.0f-value;
+								setValue(1.0f-value);
 							}
 						break;
 						case E_GT_BUTTON:
@@ -920,12 +957,12 @@ public:
 							if (tempValue == 1.0f) {
 								for (i = 0; i < curParent->children.size(); i++) {
 									if (curParent->children[i].guiClass == E_GT_RADIO) {
-										curParent->children[i].value = 0.0f;
+										curParent->children[i].setValue(0.0f);
 									}
 								}
 							}
 							
-							value = tempValue;
+							setValue(tempValue);
 							
 						break;
 					}
@@ -970,6 +1007,7 @@ public:
 	void setText(string _text) {
 		
 		UIComponent* curParent = getParent();
+		UIComponent* curParentParent;
 		
 		if (_text.compare(text) == 0) {
 			// text unchanged, do nothing
@@ -979,7 +1017,17 @@ public:
 			//isDirty = true;
 			
 			if (curParent != NULL) {
-				curParent->isDirty = true;
+				
+				curParentParent = curParent->getParent();
+				
+				if (curParentParent != NULL) {
+					curParentParent->isDirty = true;
+				}
+				else {
+					curParent->isDirty = true;
+				}
+				
+				
 				singleton->guiDirty = true;
 			}
 			

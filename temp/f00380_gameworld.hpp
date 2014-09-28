@@ -22,7 +22,6 @@ public:
 	int holderSizeInPages;
 
 	int lightCount;
-	//int frameCount;
 
 	int MIN_MIP;
 	int MAX_MIP;
@@ -34,6 +33,8 @@ public:
 	int idChannel;
 	int densityChannel;
 	int blockChannel;
+	
+	int curLoadRadius;
 
 	int stChannel;
 	int btChannel;
@@ -45,6 +46,7 @@ public:
 	int *provinceX;
 	int *provinceY;
 
+	bool procResultAccum;
 	bool doDrawFBO;
 	bool lastProcResult;
 	bool mapLockOn;
@@ -192,10 +194,13 @@ public:
 	void init(Singleton *_singleton)
 	{
 
-		pushTrace("GameWorld init()");
+		//pushTrace("GameWorld init()");
 
+		
 
 		singleton = _singleton;
+		
+		curLoadRadius = singleton->minWInPages;
 
 		int i;
 		int j;
@@ -203,7 +208,6 @@ public:
 		//finalInd = -1;
 
 		lightCount = 1;
-		//frameCount = -1;
 
 		noiseGenerated = false;
 		wavesGenerated = false;
@@ -276,6 +280,7 @@ public:
 		mapStep = 0.0f;
 
 		pageCount = 0;
+		procResultAccum = false;
 		lastProcResult = true;
 		maxThreads = 7;
 		availThreads = maxThreads;
@@ -347,7 +352,7 @@ public:
 		
 
 
-		popTrace();
+		//popTrace();
 	}
 
 
@@ -656,8 +661,11 @@ public:
 
 	void update()
 	{
+		
+		bool procResult = false;
+		
 
-		pushTrace("update()");
+		//pushTrace("update()");
 
 		singleton->updateLock = true;
 
@@ -666,6 +674,8 @@ public:
 		float x;
 		float y;
 		float z;
+		
+		
 
 		newZoom = max(1.0f, singleton->cameraZoom);
 
@@ -674,7 +684,8 @@ public:
 		singleton->testHuman->basePosition.copyFrom(&(singleton->dynObjects[E_OBJ_HUMAN]->pos));
 		transformEnt(singleton->testHuman);
 
-		mapTrans = 1.0f - (singleton->cameraZoom * ((float)DEF_SCALE_FACTOR)) / 0.1f;
+		mapTrans = 1.0f-smoothstep(1.0f/512.0f,1.0f/128.0f,singleton->cameraZoom);
+		//1.0f - (singleton->cameraZoom * ((float)DEF_SCALE_FACTOR)) / 0.01f;
 		if (mapTrans > 0.91)
 		{
 			mapTrans = 1.0;
@@ -718,28 +729,40 @@ public:
 
 		bool changesMade = singleton->changesMade;
 		bool bufferInvalid = singleton->bufferInvalid;
-		bool procResult = false;
+		
 
 		if (mapTrans < 1.0f)
 		{
 
-			if ( false ) //singleton->isZooming)
+			if ( singleton->isZooming ) //
 			{
 
 			}
 			else
 			{
-				procResult = processPages();
+				procResult = procPages();
+				
+				procResultAccum = procResultAccum || procResult;
+				
+				if (singleton->skipFrames > 1) {
+					if ( (singleton->frameCount % singleton->skipFrames) != 0) {
+						doFinalDraw = true;
+						goto FINAL_DRAW;
+					}
+				}
+				
+				
+				procResultAccum = false;
+				
 
-				if ( (lastProcResult != procResult) && (procResult == false)  )
+				if ( (lastProcResult != procResultAccum)  ) // && (procResultAccum == false)
 				{
 					singleton->wsBufferInvalid = true;
-
 				}
 			}
 
 			if (
-				procResult ||
+				procResultAccum ||
 				changesMade ||
 				(singleton->charState == E_CHAR_STATE_RENDERED) ||
 				(singleton->tiltChanged)
@@ -753,7 +776,7 @@ public:
 		}
 
 		if (
-			procResult ||
+			procResultAccum ||
 			changesMade ||
 			bufferInvalid ||
 			singleton->abDown || 
@@ -787,14 +810,7 @@ public:
 			if ( mapTrans < 1.0 )
 			{
 
-				if (singleton->directPass)
-				{
-
-				}
-				else
-				{
-					postProcess();
-				}
+				postProcess();
 
 			}
 
@@ -802,14 +818,14 @@ public:
 			{
 				if (doFinalDraw) {
 					singleton->createVTListTilt();
-				}
-				
-				
+				}				
 				drawMap();
 			}
 
+			
+
 			glutSwapBuffers();
-			glFlush();
+			//glFlush();
 		}
 
 
@@ -823,24 +839,38 @@ public:
 			getWorldSpaceBuffer();
 		}
 
-
+FINAL_DRAW:
 
 
 DO_RETURN_UPDATE:
 
-		lastProcResult = procResult;
+		if (
+			(singleton->skipFrames <= 1) ||
+			((singleton->frameCount % singleton->skipFrames) == 0)
+		) {
+			lastProcResult = procResultAccum;
+		}
+		
+		if (procResult) {
+			
+		}
+		else {
+			curLoadRadius++;
+			curLoadRadius = min(curLoadRadius,singleton->maxWInPages);
+		}
+		
+		
 		singleton->updateLock = false;
-		popTrace();
+		//popTrace();
 
 
 	}
 
 
 
-	bool processPages()
+	bool procPages()
 	{
 
-		pushTrace("processPages()");
 
 
 		int counter;
@@ -854,17 +884,24 @@ DO_RETURN_UPDATE:
 
 		//float heightAtPoint = singleton->getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY());
 
+		int incVal;
+
 		bool cmade = false;
 
 		camPagePos.copyFrom( cameraPos );
 		//camPagePos.setFZ(heightAtPoint);
 		camPagePos.intDivXYZ(visPageSizeInPixels);
+		camPagePos.addXYZ(1.0f,1.0f,1.0f);
 
 		camHolderPos.copyFrom(&camPagePos);
 		camHolderPos.intDivXYZ(singleton->holderSizeInPages);
 
+		camHolderPos.addXYZ(1.0f,1.0f,1.0f);
+
 		cutHolderPos.copyFrom(cutPos);
 		cutHolderPos.intDivXYZ(singleton->holderSizeInPixels);
+		
+		
 
 		camBlockPos.copyFrom( cameraPos );
 		camBlockPos.intDivXYZ(singleton->blockSizeInPixels);
@@ -876,8 +913,13 @@ DO_RETURN_UPDATE:
 		int m;
 		//E_STATES nState;
 
-		int loadRad = singleton->maxWInPages;
-		int loadRad2 = singleton->maxHInPages;
+		int loadRad = curLoadRadius; //singleton->maxWInPages;
+		int loadRad2 = singleton->maxHInPages; //curLoadRadius; //
+		
+		if (singleton->changingGenVal) {
+			loadRad2 = 1;
+		}
+		
 		int changeCount = 0;
 
 		int maxChangesInHolders = singleton->maxChangesInHolders;
@@ -898,51 +940,52 @@ DO_RETURN_UPDATE:
 		}
 
 
-		// check for threads to free
-		if (availThreads < maxThreads)
-		{
-			for (i = 0; i < ocThreads.size(); i++)
-			{
-				if ( ocThreads[i] == -1)
-				{
-					// already freed
-				}
-				else
-				{
-					if ( getPageAtIndex(ocThreads[i]) == NULL )
-					{
-						// page was destroyed, free thread
+		// // check for threads to free
+		// if (availThreads < maxThreads)
+		// {
+		// 	for (i = 0; i < ocThreads.size(); i++)
+		// 	{
+		// 		if ( ocThreads[i] == -1)
+		// 		{
+		// 			// already freed
+		// 		}
+		// 		else
+		// 		{
+		// 			if ( getPageAtIndex(ocThreads[i]) == NULL )
+		// 			{
+		// 				// page was destroyed, free thread
 
-						ocThreads[i] = -1;
-						availThreads++;
-					}
-					else
-					{
-						if (getPageAtIndex(ocThreads[i])->threadRunning)
-						{
+		// 				ocThreads[i] = -1;
+		// 				availThreads++;
+		// 			}
+		// 			else
+		// 			{
+		// 				if (getPageAtIndex(ocThreads[i])->threadRunning)
+		// 				{
 
-						}
-						else
-						{
-							ocThreads[i] = -1;
-							availThreads++;
-						}
-					}
-				}
-			}
-		}
+		// 				}
+		// 				else
+		// 				{
+		// 					ocThreads[i] = -1;
+		// 					availThreads++;
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+		// }
 
 
-		if (availThreads == 0)
-		{
-			goto DO_RETURN_PP;
-		}
+		// if (availThreads == 0)
+		// {
+		// 	goto DO_RETURN_PP;
+		// }
 
+		
 
 		minLRInPixels.copyFrom(&camHolderPos);
 		maxLRInPixels.copyFrom(&camHolderPos);
-		minLRInPixels.addXYZ(-loadRad, -loadRad, -loadRad2);
-		maxLRInPixels.addXYZ(loadRad, loadRad, loadRad2);
+		minLRInPixels.addXYZ(-singleton->minWInPages, -singleton->minWInPages, -loadRad2);
+		maxLRInPixels.addXYZ(singleton->minWInPages, singleton->minWInPages, loadRad2);
 		
 		minLRInPixels.addXYZ(-0.5f);
 		maxLRInPixels.addXYZ(0.5f);
@@ -963,8 +1006,8 @@ DO_RETURN_UPDATE:
 
 			}
 		}
-
-
+		
+		int tempVal = 0;
 		
 
 		int mink = camHolderPos.getIZ() - loadRad2;
@@ -973,48 +1016,60 @@ DO_RETURN_UPDATE:
 		int maxj = camHolderPos.getIY() + loadRad;
 		int mini = camHolderPos.getIX() - loadRad;
 		int maxi = camHolderPos.getIX() + loadRad;
-
+		int curHeight = 0;
 
 		minLRInHolders.setIXYZ(mini + 1, minj + 1, mink + 1);
 		maxLRInHolders.setIXYZ(maxi - 1, maxj - 1, maxk - 1);
 
-
-		for (kk = mink; kk <= maxk; kk++) {
-			for (jj = minj; jj <= maxj; jj++) {
-				for (ii = mini; ii <= maxi; ii++) {
+		
+		
+		for (jj = minj; jj <= maxj; jj++) {
+			
+			if (curLoadRadius == singleton->minWInPages) {
+				incVal = 1;
+			}
+			else {
+				if ( (jj == minj) || (jj == maxj) ) {
+					incVal = 1;
+				}
+				else {
+					incVal = maxi - mini;
+				}
+			}
+			
+			for (ii = mini; ii <= maxi; ii += incVal) {
+				
+				
+				for (kk = mink; kk <= maxk; kk++) {
 					if ( checkBounds(kk) ) {
-						
-						
-						
-						
-
 						curHolder = getHolderAtCoords(ii, jj, kk, true);
 						
-						if (curHolder->isDirty) {
-							curHolder->refreshChildren(true);
-							changeCount++;
-							cmade = true;
+						if (curHolder->childrenDirty) {
+							
+							tempVal = curHolder->passiveRefresh();
+							changeCount += tempVal;
+							
+							if (tempVal > 0) {
+								cmade = true;
+							}
+							
 						}
 						
 						if (changeCount >= maxChangesInHolders)
 						{
 							goto DO_RETURN_PP;
 						}
-						
-						
-						
-						
 					}
 				}
+				
 			}
 		}
+		
 
 
 DO_RETURN_PP:
 
-		doTrace("ProcessPages End");
-
-		popTrace();
+		//popTrace();
 		return cmade;
 	}
 
@@ -1092,13 +1147,13 @@ DO_RETURN_PP:
 
 	}
 
-	void refreshHoldersInList(bool doImmediate)
+	void refreshHoldersInList(bool doImmediate, bool clearEverything)
 	{
 		int i;
 
 		for (i = 0; i < holdersToRefresh.size(); i++)
 		{
-			holdersToRefresh[i]->refreshChildren(doImmediate);
+			holdersToRefresh[i]->refreshChildren(doImmediate, clearEverything);
 		}
 	}
 
@@ -1106,7 +1161,7 @@ DO_RETURN_PP:
 	void actionOnHolders(int action, bool instantRefresh = false, bool clearEverything = false)
 	{
 
-		pushTrace("renderHolders()");
+		//pushTrace("renderHolders()");
 
 		int i, j, k, m;
 		int res;
@@ -1129,7 +1184,7 @@ DO_RETURN_PP:
 			
 			
 			
-			if (  (gphEnt->isDirty)&&(ENT_ON)  ) {
+			if (  (gphEnt->childrenDirty)&&(ENT_ON)  ) {
 				
 				// TOOD: this must be called before other pages or potential crash from lack of memory to alloc
 				//transformEnt(singleton->testHuman);
@@ -1296,7 +1351,7 @@ DO_RETURN_PP:
 
 		//doTrace( "POSSIBLE ERROR: " , i__s(glGetError()) , "\n" );
 
-		popTrace();
+		//popTrace();
 	}
 
 
@@ -1312,7 +1367,6 @@ DO_RETURN_PP:
 	)
 	{
 		//pushTrace("drawHolder()");
-
 
 
 		float dx = gp->offsetInHolders.getFX();
@@ -1341,6 +1395,9 @@ DO_RETURN_PP:
 		singleton->worldToScreenBase(&tempVec1,&tempVec2);
 		float fx1 = tempVec1.getFX();
 		float fy1 = tempVec1.getFY();
+		
+		pitchSrc /= singleton->fHolderMod;
+		pitchSrc2 /= singleton->fHolderMod;
 
 		fy1 -= (0.5-tilt)*pitchSrc;
 
@@ -2034,7 +2091,7 @@ DONE_FINDING_PATH:
 
 	void renderGeom()
 	{
-		pushTrace("renderGeom()");
+		//pushTrace("renderGeom()");
 
 		int i;
 		bool doProc;
@@ -2044,7 +2101,8 @@ DONE_FINDING_PATH:
 
 		singleton->bindShader("GeomShader");
 
-		
+		singleton->setShaderFloat("objectId",0.0);
+		singleton->setShaderFloat("fHolderMod", singleton->fHolderMod);
 		singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
@@ -2062,7 +2120,7 @@ DONE_FINDING_PATH:
 		
 
 		if (singleton->mouseState != E_MOUSE_STATE_POSE) {
-			if (singleton->bShift) {
+			if (singleton->bShift) { // || singleton->hitGUI
 				singleton->setShaderFloat("isWire", 1.0);
 				singleton->setShaderFloat("matVal", getPackedColor(255,0,255));
 				
@@ -2220,8 +2278,7 @@ DONE_FINDING_PATH:
 		}
 		
 		if (singleton->bCtrl) {
-			for (i = 1; i < singleton->dynObjects.size(); i++)
-			{
+			for (i = 1; i < singleton->dynObjects.size(); i++) {
 				if (singleton->dynObjects[i]->doRender)
 				{
 
@@ -2241,6 +2298,7 @@ DONE_FINDING_PATH:
 
 					if (doProc)
 					{
+						singleton->setShaderFloat("objectId",i);
 						singleton->setShaderFloat("matVal", singleton->dynObjects[i]->colPacked);
 						curBoxPos = &(singleton->dynObjects[i]->pos);
 						singleton->drawCubeCentered(curBoxPos, singleton->dynObjects[i]->radius);
@@ -2257,6 +2315,7 @@ DONE_FINDING_PATH:
 			}
 		}
 
+		singleton->setShaderFloat("objectId",0.0);
 
 		if (singleton->charState == E_CHAR_STATE_RENDERED) { //E_CHAR_STATE_SKEL
 			//transformEnt(singleton->testHuman);
@@ -2283,7 +2342,7 @@ DONE_FINDING_PATH:
 
 		//glDisable(GL_DEPTH_TEST);
 
-		popTrace();
+		//popTrace();
 
 	}
 
@@ -2291,7 +2350,7 @@ DONE_FINDING_PATH:
 	void modifyUnit(FIVector4 *fPixelWorldCoordsBase, E_BRUSH brushAction)
 	{
 
-		pushTrace("modifyUnit()");
+		//pushTrace("modifyUnit()");
 
 		int radius = ((int)singleton->curBrushRad);
 
@@ -2382,7 +2441,7 @@ DONE_FINDING_PATH:
 
 		if (brushAction == E_BRUSH_MOVE)
 		{
-			popTrace();
+			//popTrace();
 			return;
 		}
 
@@ -2498,7 +2557,7 @@ DONE_FINDING_PATH:
 															nearA = (nearV >> 24) & 255;
 
 
-															if (p >= singleton->maxHeightInUnits)
+															if (p >= singleton->worldSizeInUnits.getFZ())
 															{
 
 																linA = 0;
@@ -2616,16 +2675,14 @@ DONE_FINDING_PATH:
 															vdl_ptr[ind2] = (linA << 24) | (linB << 16) | (linG << 8) | (linR);
 															curPage->volDataModified = true;
 
-															curPage->parentGPH->isDirty = true;
+															curPage->parentGPH->childrenDirty = true;
+															curPage->isDirty = true;
 															changes = true;
 														}
 														else
 														{
-															if (curPage->parentGPH->isDirty)
+															if (curPage->parentGPH->childrenDirty)
 															{
-																//curPage->parentGPH->isDirty = false;
-
-																//curPage->generateVolume();
 																curPage->parentGPH->refreshChildren(true);
 															}
 														}
@@ -2659,7 +2716,7 @@ DONE_FINDING_PATH:
 
 
 
-		popTrace();
+		//popTrace();
 
 	}
 
@@ -2681,6 +2738,7 @@ DONE_FINDING_PATH:
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim) );
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
+		singleton->setShaderFloat("fHolderMod", singleton->fHolderMod);
 
 		singleton->drawFSQuad(1.0f);
 
@@ -2698,22 +2756,14 @@ DONE_FINDING_PATH:
 		
 	}
 
-	void getWorldSpaceBuffer()
+	void getWorldSpaceBuffer(int bufNum = 0)
 	{
 
-
-		pushTrace("getWorldSpaceBuffer()");
-
-		
-
-
-
 		singleton->wsBufferInvalid = false;
-		FBOWrapper *fbow = singleton->getFBOWrapper("worldSpaceFBO", 0);
+		FBOWrapper *fbow = singleton->getFBOWrapper("worldSpaceFBO", bufNum);
 		fbow->getPixels();
 
 
-		popTrace();
 	}
 
 	float weighPath(float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean)
@@ -2997,7 +3047,7 @@ DONE_FINDING_PATH:
 	{
 		mapLockOn = true;
 
-		pushTrace("initMap()");
+		//pushTrace("initMap()");
 
 		mapSwapFlag = 0;
 
@@ -4338,7 +4388,7 @@ DONE_FINDING_PATH:
 
 		mapLockOn = false;
 
-		popTrace();
+		//popTrace();
 	}
 
 
@@ -4346,12 +4396,12 @@ DONE_FINDING_PATH:
 	{
 
 
-		pushTrace("drawMap()");
+		//pushTrace("drawMap()");
 
 		FBOWrapper *fbow = singleton->getFBOWrapper("hmFBOLinear", 0);
 
 		
-		singleton->setCameraToElevationBase();
+		//singleton->setCameraToElevationBase();
 
 
 		singleton->bindShader("TopoShader");
@@ -4409,7 +4459,7 @@ DONE_FINDING_PATH:
 		glDisable(GL_BLEND);
 
 
-		popTrace();
+		//popTrace();
 	}
 
 	void doBlur(string fboName, float blurAmount)
@@ -4535,7 +4585,7 @@ UPDATE_LIGHTS_END:
 	void postProcess()
 	{
 
-		//frameCount++;
+		
 
 		int i;
 		int iMin;
@@ -4545,7 +4595,7 @@ UPDATE_LIGHTS_END:
 
 		GameLight *curLight;
 
-		pushTrace("postProcess()");
+		//pushTrace("postProcess()");
 
 		// NOTE: ALWAYS UNSAMPLE IN REVERSE ORDER!!!
 
@@ -4766,6 +4816,8 @@ UPDATE_LIGHTS_END:
 
 
 				singleton->setShaderArrayfVec4("lightArr", singleton->lightArr, (FLOATS_PER_LIGHT * lightCount) / 4);
+				
+				singleton->setShaderFloat("fHolderMod", singleton->fHolderMod);
 				singleton->setShaderFloat("pixelsPerMeter", singleton->pixelsPerMeter);
 				singleton->setShaderFloat("blockSizeInMeters", singleton->blockSizeInMeters);
 				singleton->setShaderFloat("lightCount", lightCount);
@@ -4968,7 +5020,7 @@ UPDATE_LIGHTS_END:
 		}
 
 
-		popTrace();
+		//popTrace();
 
 
 	}

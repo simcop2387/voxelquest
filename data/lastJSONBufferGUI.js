@@ -3,6 +3,17 @@
 		"cont": {
 			"type":0
 		},
+		"fillLabel": {
+			"type":0,
+			"label":" ",
+			"fillRatioX":1
+		},
+		"statSlider": {
+			"type":1,
+			"label":" ",
+			"fillRatioX":1,
+			"divisions":10
+		},
 		"tooltip": {
 			"type":0,
 			"hoverType":1,
@@ -33,6 +44,11 @@
 		},
 		"radio": {
 			"type":3
+		},
+		"radioFillCenter": {
+			"type":3,
+			"fillRatioX":1,
+			"alignX":1
 		}
 	},
 	
@@ -143,200 +159,212 @@
 	
 	
 	
-	"curMenu":"shaderParamMenu",
+	"curMenu":"baseMenu",
 	
 	
 	
-	
-	
-	"shaderParamMenu": {
+	"baseMenu": {
 		"template":"cont",
-		"fillRatioX":1,
-		"children": [
+		"fillDir":1,
+		"children":[
+			
 			{
-				"template":"cont",
-				"fillDir":1,
-				"isInternal":1,
-				"dataFile":"shaderParams",
-				"dataSource":"params",
-				"childType":"shaderParams",
-				"children": [],
-				"childTemplate":{
+				"template":"radioFillCenter",
+				"label":"Inventory",
+				"floatingChildren": [{
+					"template":"popout",
 					"fillRatioX":1,
-					"template":"slider",
-					"label":"",
-					
-					"callback":"updateShaderParam",
-					"callbackData":{
-						"shaderName":"",
-						"paramName":""
-					},
-					
-					"floatingChildren":[
+					"children": [
 						{
-							"template":"tooltipValue",
-							"children":[
+							"template":"cont",
+							"fillDir":1,
+							"children": [
+							
 								{
 									"template":"cont",
-									"label":"",
-									"ss":"tooltipSS"
+									"label":"Equipped",
+									"alignX":1,
+									"fillRatioX":1,
+									"ss":"headerSS"
+									
+								},
+								{
+									"template":"cont",
+									"fillDir":1,
+									"dataFile":"",
+									"dataSource":"inventoryData.items",
+									"whereAllEqual":[
+										["eq",1]
+									],
+									"whereAnyEqual":[
+									
+									],
+									"childType":"inventoryItem",
+									"childTemplate":{
+										"fillRatioX":1,
+										"template":"radio",
+										"label":"",
+										"floatingChildren":[
+											{
+												"template":"tooltip",
+												"children":[
+													{
+														"template":"cont",
+														"label":"",
+														"ss":"tooltipSS"
+													}
+												]
+											}
+										]
+																	
+									},
+									"children": []
 								}
+							
 							]
 						}
 					]
-				}
-			}
-		]
-	},
-	
-	"inventoryMenu": {
-		"template":"cont",
-		"fillRatioX":1,
-		"children": [
+				}]
+			},
 			{
-				"template":"cont",
-				"fillDir":1,
-				"children": [
-				
-					{
-						"template":"cont",
-						"label":"Equipped",
-						"alignX":1,
-						"fillRatioX":1,
-						"ss":"headerSS"
+				"template":"radioFillCenter",
+				"label":"Character Stats",
+				"floatingChildren": [{
+					"template":"popout",
+					"fillRatioX":1,
+					"children": [
 						
-					},
-					{
-						"template":"cont",
-						"fillDir":1,
-						"dataFile":"",
-						"dataSource":"inventoryData.items",
-						"whereAllEqual":[
-							["eq",1]
-						],
-						"whereAnyEqual":[
-						
-						],
-						"childType":"inventoryItem",
-						"childTemplate":{
-							"fillRatioX":1,
-							"template":"radio",
-							"label":"",
-							"floatingChildren":[
+						{
+							"template":"cont",
+							"fillDir":1,
+							"children":[
 								{
-									"template":"tooltip",
-									"children":[
-										{
-											"template":"cont",
-											"label":"",
-											"ss":"tooltipSS"
-										}
-									]
+									"template":"statSlider",
+									"label":"Strength"
+								},
+								{
+									"template":"statSlider",
+									"label":"Dexterity"
+								},
+								{
+									"template":"statSlider",
+									"label":"Celerity"
+								},
+								{
+									"template":"statSlider",
+									"label":"Vitality"
+								},
+								{
+									"template":"statSlider",
+									"label":"Intelligence"
+								},
+								{
+									"template":"statSlider",
+									"label":"Charisma"
+								},
+								{
+									"template":"statSlider",
+									"label":"Perception"
+								},
+								{
+									"template":"statSlider",
+									"label":"Discipline"
 								}
 							]
-														
-						},
-						"children": []
-					}
+						}
+						
+					]
+				}]
 				
-				]
-			}
-		]
-	},	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	"testMenu2": {
-		"template":"cont",
-		"fillRatioX":1,
-		"children": [
-			
+			},
 			{
-				"template":"cont",
-				"fillDir":1,
-				"children": [
-					{
-						"template":"radio",
-						"label":"Lorem 32& 45& 74& 22& 84& 66& ipsum dolor sit amet 0",
-						"floatingChildren":[
-							{
-								"template":"tooltip",
-								"children":[
-									{
-										"template":"cont",
-										"label":"I am a tooltip",
-										"uid":"testTT",
-										"ss":"tooltipSS"
-									}
-								]
-							}
-						]
+				"template":"radioFillCenter",
+				"label":"Options"
+			},
+			{
+				"template":"radioFillCenter",
+				"label":"Debug Info",
+				"floatingChildren": [{
+					"template":"popout",
+					"fillRatioX":1,
+					"children": [
 						
-					},
-					{
-						"template":"radio",
-						"label":"Lorem ipsum dolor 120& 37& sit amet 1",
+						{
+							"template":"cont",
+							"fillDir":1,
+							"children":[
+								{
+									"template":"fillLabel",
+									"uid":"debug.fbMem"
+								},
+								{
+									"template":"fillLabel",
+									"uid":"debug.chunkMem"
+								},
+								{
+									"template":"fillLabel",
+									"uid":"debug.totMem"
+								},
+								{
+									"template":"fillLabel",
+									"uid":"debug.chunksGen"
+								}
+							]
+						}
 						
-						"floatingChildren":[
-							{
-								"template":"popout",
+					]
+				}]
+			},
+			{
+				"template":"radioFillCenter",
+				"label":"Shader Parameters",
+				"floatingChildren": [{
+					"template":"popout",
+					"fillRatioX":1,
+					"children": [
+					
+						{
+							"template":"cont",
+							"fillDir":1,
+							"isInternal":1,
+							"dataFile":"shaderParams",
+							"dataSource":"params",
+							"childType":"shaderParams",
+							"children": [],
+							"childTemplate":{
+								"fillRatioX":1,
+								"template":"slider",
+								"label":"",
+								"uid":"",
 								
-								"children":[
+								"callback":"updateShaderParam",
+								"callbackData":{
+									"shaderName":"",
+									"paramName":""
+								},
+								
+								"floatingChildren":[
 									{
-										"template":"cont",
-										"fillDir":1,
+										"template":"tooltipValue",
 										"children":[
-											
 											{
-												"template":"radio",
-												"label":"Lorem 32& 45& 74& 22& 84& 66& ipsum dolor sit amet 0"
-												
-											},
-											{
-												"template":"radio",
-												"label":"Lorem ipsum dolor 120& 37& sit amet 1"
-																						
-											},
-											{
-												"template":"radio",
-												"label":"44& Lorem ipsum dolor sit amet 2"
+												"template":"cont",
+												"label":"",
+												"ss":"tooltipSS"
 											}
-											
 										]
 									}
 								]
-								
-								
 							}
-						]
+						}
 						
-					},
-					{
-						"template":"radio",
-						"label":"44& Lorem ipsum dolor sit amet 2"
-					}
-				]
+					]
+				}]
+				
 			}
+			
+			
+			
 		]
 	}
 	

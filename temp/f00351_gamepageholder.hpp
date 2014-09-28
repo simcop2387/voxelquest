@@ -10,10 +10,10 @@ public:
 	int blockId;
 	int holderId;
 
-	bool isDirty;
 	bool hasTrans;
 	bool hasSolids;
 	bool underground;
+	bool childrenDirty;
 	
 	std::vector<GameGeom *> entityGeom;
 	int entityGeomCounter;
@@ -76,7 +76,7 @@ public:
 		blockId = _blockId;
 		holderId = _holderId;
 
-		isDirty = true;
+		childrenDirty = true;
 
 		singleton = _singleton;
 		usingPoolId = -1;
@@ -115,6 +115,8 @@ public:
 		
 		refreshGeom();
 		
+		underground = true;
+		
 		for (k = 0; k < holderSizeInPages; k++) {
 			for (j = 0; j < holderSizeInPages; j++) {
 				for (i = 0; i < holderSizeInPages; i++) {
@@ -139,7 +141,7 @@ public:
 							);
 						}
 						
-						
+						underground = underground && pageData[ind]->underground;
 						
 					}
 				}
@@ -258,44 +260,85 @@ public:
 		
 	}
 
+	int passiveRefresh() {
+		int i;
+		int changeCount;
+		
+		childrenDirty = false;
+		changeCount = 0;
+
+		for (i = 0; i < iPageDataVolume; i++) {
+			
+			if (changeCount >= singleton->maxChangesInPages) {
+				childrenDirty = true;
+				goto TOO_MANY_HOLDER_CHANGES;
+			}
+			
+			if (pageData[i] == NULL) {
+				
+			}
+			else {
+				if (
+					(pageData[i]->hasSolids || pageData[i]->hasTrans) &&
+					(!(pageData[i]->underground))
+				) {
+					if (pageData[i]->isDirty) {
+						pageData[i]->generateVolume();
+						changeCount++;
+					}
+				}
+				
+				
+				
+			}
+		}
+
+		TOO_MANY_HOLDER_CHANGES:
+
+		return changeCount;
+
+	}
+
 	void refreshChildren(bool refreshImmediate, bool clearEverything = false) {
 		int i;
-
-		//clearSet(true);
+		
+		
 		readyForClear = true;
 		if (clearEverything) {
 			clearSet();
 		}
-
+		
 		for (i = 0; i < iPageDataVolume; i++) {
 			if (pageData[i] == NULL) {
 
 			}
 			else {
-
+				
+				
 				if (refreshImmediate) {
-					
-					if (underground) {
-						
+					if (
+						(pageData[i]->hasSolids || pageData[i]->hasTrans) &&
+						(!(pageData[i]->underground))	
+					) {
+						pageData[i]->generateVolume();
 					}
-					else {
-						if (hasSolids || hasTrans) {
-							pageData[i]->generateVolume();
-						}
-					}
-					
-					
-					
-					isDirty = false;
-					
+					childrenDirty = false;
 				}
 				else {
-					isDirty = true;
+					childrenDirty = true;
+					pageData[i]->isDirty = true;
 				}
-
+				
+				
 				
 			}
 		}
+		
+		
+		
+		
+
+		
 	}
 
 
@@ -544,7 +587,7 @@ public:
 
 		usingPoolId = -1;
 		gpuRes = NULL;
-		isDirty = true;
+		childrenDirty = true;
 
 	}
 

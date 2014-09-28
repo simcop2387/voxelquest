@@ -119,34 +119,10 @@ int main(int argc, char* argv[])
     int winWidth;
     int winHeight;
     int scaleFactor;
-    int resMode = 0;
-
-    switch (resMode) {
-        case 0:
-            winWidth = DEF_WIN_W;
-            winHeight = DEF_WIN_H;
-            scaleFactor = DEF_SCALE_FACTOR;
-        break;
-
-        case 1:
-            winWidth = 1024;
-            winHeight = 512;
-            scaleFactor = 1;
-        break;
-
-        case 2:
-            winWidth = 2048;
-            winHeight = 1024;
-            scaleFactor = 2;
-        break;
-
-        case 3:
-            winWidth = 2048;
-            winHeight = 1280;
-            scaleFactor = 1;
-        break;
-    }
-
+    
+    winWidth = DEF_WIN_W;
+    winHeight = DEF_WIN_H;
+    scaleFactor = DEF_SCALE_FACTOR;
 
     RedirectIOToConsole();
 
@@ -155,7 +131,7 @@ int main(int argc, char* argv[])
 
     //glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);  //GLUT_SINGLE
 
-    glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGB);
+    glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGB); //|GLUT_MULTISAMPLE
     glutInitWindowSize(winWidth, winHeight);
     glutInitWindowPosition(250, 50);
     glutCreateWindow("VoxelQuest");

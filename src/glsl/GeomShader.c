@@ -13,6 +13,8 @@
 
 varying vec3 TexCoord0;
 
+uniform float objectId;
+uniform float fHolderMod;
 uniform float curTime;
 uniform float cameraZoom;
 uniform vec3 cameraPos;
@@ -64,6 +66,8 @@ vec3 worldToScreen(vec3 worldCoords, float zVal, bool forceZ) {
     resVec.x = (transVert.x)*newZoom/(bufferDim.x);
     resVec.y = (transVert.y)*newZoom/(bufferDim.y);
     resVec.z = worldCoords.z;
+    
+    resVec.xy /= fHolderMod;
     
     if (forceZ) {
         resVec.z = zVal;
@@ -129,6 +133,6 @@ void main() {
     }
 
     gl_FragData[0] = vec4(heightPacked.rg,matPacked.rg);//vec4(bhr,bhg,3.0/255.0,tex0.a);
-    gl_FragData[1] = vec4((TexCoord0.xyz+1.0)/2.0,1.0);//vec4(resNorm.rgb, (TexCoord0.z+tex1.a)/2.0 );
+    gl_FragData[1] = vec4(pack16(objectId),0.0,1.0);//vec4(resNorm.rgb, (TexCoord0.z+tex1.a)/2.0 ); //(TexCoord0.xyz+1.0)/2.0
 
 }

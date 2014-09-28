@@ -1,6 +1,7 @@
 varying vec3 TexCoord0;
 
 
+uniform float fHolderMod;
 uniform float tiltAmount;
 uniform float cameraZoom;
 uniform vec2 bufferDim;
@@ -25,6 +26,8 @@ vec3 worldToScreen(vec3 worldCoords, float zVal, bool forceZ) {
     resVec.x = (transVert.x)*newZoom/(bufferDim.x);
     resVec.y = (transVert.y)*newZoom/(bufferDim.y);
     resVec.z = worldCoords.z;
+    
+    resVec.xy /= fHolderMod;
     
     if (forceZ) {
         resVec.z = zVal;

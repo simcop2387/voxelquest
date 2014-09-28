@@ -10,8 +10,8 @@ $
 
 void main() {
 
-        TexCoord0 = gl_MultiTexCoord0.xy;// = ;//TexCoord0 = gl_MultiTexCoord0;
-        gl_Position = gl_Vertex;
+    TexCoord0 = gl_MultiTexCoord0.xy;// = ;//TexCoord0 = gl_MultiTexCoord0;
+    gl_Position = gl_Vertex;
 
 }
 

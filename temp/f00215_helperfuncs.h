@@ -3,9 +3,57 @@ int traceLevel = 0; int popCount = 0;
 std::string i__s(int i) {
 	return std::to_string(i);
 }
+std::string fi__s(float f) {
+	int i = f;
+	return std::to_string(i);
+}
 std::string f__s(float f) {
 	return std::to_string(f);
 }
+
+
+union hex_converter{
+	float f_val;
+	unsigned int u_val;
+};
+float hexToFloat(std::string* s) {
+	union hex_converter hc;
+	hc.u_val = (uint)strtoul(s->c_str(), NULL, 16);
+	return hc.f_val;
+}
+
+
+
+
+
+
+std::string floatToHex( float f )
+{
+	// static_assert( std::numeric_limits<float>::is_iec559,
+	// "native float must be an IEEE float" ) ;
+
+	union {
+		float fval;
+		uint ival;
+	};
+	fval = f;
+
+	std::ostringstream stm;
+	stm << std::hex << std::uppercase << ival;
+
+	return stm.str();
+}
+
+// // return 1 on error
+// char FLOAT_TO_HEX_BUF[32];
+// string floatToHex(float x) {
+//   sprintf(FLOAT_TO_HEX_BUF, "0x%lx", (unsigned long) x);
+  
+//   return string(FLOAT_TO_HEX_BUF);
+  
+// }
+
+
 
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
 	std::stringstream ss(s);

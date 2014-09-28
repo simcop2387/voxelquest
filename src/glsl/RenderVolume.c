@@ -23,7 +23,6 @@ uniform vec4 scaleAndOffset;
 
 uniform float curLayer;
 uniform float pageDepth;
-//uniform float directPass;
 uniform float bufferMult;
 uniform float visPageSizeInPixels;
 
@@ -33,6 +32,7 @@ uniform float visPageSizeInPixels;
 //uniform float slicesPerPitch;
 uniform float volumePitch;
 uniform float tiltAmount;
+uniform float holderSizeInPagesLog;
 //varying float pitch;// = 256.0;
 //varying float pitchM1;// = pitch-1.0;
 
@@ -54,8 +54,7 @@ void main() {
 	newPos.x += scaleAndOffset.z;
 	newPos.y += scaleAndOffset.w;
 	
-	//newPos.y += (0.5-tiltAmount);
-
+	newPos.y += (0.5-tiltAmount)*holderSizeInPagesLog;
 	//newPos.z = pageDepth;
 
 	gl_Position = newPos;
@@ -63,23 +62,6 @@ void main() {
 }
 
 $
-
-
-
-
-
-
-
-
-
-// vec4 sampleAtPoint(vec3 point) {
-//     vec2 texc;
-//     vec3 newPoint = point/bufferMult + (1.0-1.0/bufferMult)/2.0;
-//     vec4 texVal = texture3D(Texture0, newPoint);
-//     //texVal.r *= texVal.r;
-//     return texVal;
-// }
-
 
 
 
@@ -96,112 +78,6 @@ vec4 sampleAtPoint(vec3 point) {
 	return texture2D(Texture0, texc.xy);
 }
 
-// vec4 sampleAtPoint2(vec3 point) {
-// 	vec2 texc;
-// 	vec3 newPoint = point / bufferMult + (1.0 - 1.0 / bufferMult) / 2.0;
-
-// 	newPoint.y = clamp(newPoint.y, 0.5 / volumePitch, (volumePitch - 0.5) / volumePitch);
-
-// 	texc.x = newPoint.x;
-// 	texc.y = newPoint.y / volumePitch + floor(newPoint.z * volumePitch) / volumePitch;
-
-// 	return texture2D(Texture1, texc.xy);
-// }
-
-
-
-
-// vec4 sampleAtPoint(vec3 point) {
-//     vec2 texc;
-//     vec3 newPoint = point/bufferMult + (1.0-1.0/bufferMult)/2.0;
-//     vec4 t1;
-//     vec4 t2;
-
-//     newPoint.y = clamp(newPoint.y,0.5/volumePitch,(volumePitch-0.5)/volumePitch);
-
-//     float vp2 = volumePitch*volumePitch;
-//     float zfloor = floor(newPoint.z*volumePitch); // 0 to 64
-//     float zmod = (newPoint.z*volumePitch - zfloor); // 0 to 1
-
-//     texc.x = newPoint.x;
-//     texc.y = newPoint.y/volumePitch + (zfloor)/volumePitch;
-//     //texc.y = floor(texc.y*vp2)/vp2 + 0.5/vp2;
-
-//     texc.y -= float(zmod < 0.5)/volumePitch;
-//     //texc.y = floor(texc.y*vp2)/vp2 + 0.5/vp2;
-//     t1 = texture2D(Texture0, texc.xy);
-//     texc.y += 1.0/volumePitch;
-//     //texc.y = floor(texc.y*vp2)/vp2 + 0.5/vp2;
-//     t2 = texture2D(Texture0, texc.xy);
-
-//     return mix(t1,t2,zmod);
-
-//     return texture3D(Texture0, newPoint);
-// }
-
-// vec4 sampleAtPointN(vec3 point) {
-//     vec2 texc;
-//     vec3 newPoint = point/bufferMult + (1.0-1.0/bufferMult)/2.0;
-
-//     return texture3D(Texture0, newPoint);
-
-//     // float vp2 = volumePitch*volumePitch;
-//     // newPoint.y = clamp(newPoint.y,0.5/volumePitch,(volumePitch-0.5)/volumePitch);
-
-//     // texc.x = floor(newPoint.x*volumePitch)/volumePitch + 0.5/volumePitch;
-//     // texc.y = newPoint.y/volumePitch + floor(newPoint.z*volumePitch)/volumePitch;
-//     // texc.y = floor(texc.y*vp2)/vp2 + 0.5/vp2;
-
-
-//     // return texture2D(Texture0, texc.xy);
-
-
-//     //return texture3D(Texture0, newPoint);
-// }
-
-
-// vec4 sampleAtPoint(vec3 point) {
-//     vec2 texc;
-
-//     float pitch = slicesPerPitch*slicesPerPitch;
-//     vec3 newPoint = point/bufferMult + (1.0-1.0/bufferMult)/2.0;
-
-//     newPoint = clamp(newPoint,)
-
-//     float bval = newPoint.b*pitch;
-//     float xval = floor(mod(bval, slicesPerPitch))/slicesPerPitch;
-//     float yval = floor(bval/slicesPerPitch)/slicesPerPitch;
-
-//     texc.x = newPoint.r/(slicesPerPitch) + xval;
-//     texc.y = newPoint.g/(slicesPerPitch) + yval;
-//     return texture2D(Texture0, texc.xy);
-
-
-//     //return texture3D(Texture0, newPoint);
-// }
-
-
-/*vec4 sampleAtPoint(vec3 point) {
-    vec2 texc;
-
-    float pitch = slicesPerPitch*slicesPerPitch;
-    float pitchM1 = pitch-1.0;
-
-    vec3 newPoint = point/bufferMult + (1.0-1.0/bufferMult)/2.0;
-
-    vec3 curFace = (newPoint.rgb*pitchM1+0.5)/pitch;
-    float bval = curFace.b*pitchM1;
-    float xval = floor(mod(bval, slicesPerPitch))/slicesPerPitch;
-    float yval = floor(bval/slicesPerPitch)/slicesPerPitch;
-
-    texc.x = curFace.r/(slicesPerPitch) + xval;
-    texc.y = curFace.g/(slicesPerPitch) + yval;
-    return texture2D(Texture0, texc.xy);
-
-
-    //return texture3D(Texture0, newPoint);
-}
-*/
 
 float rand(vec2 co) {
 	return fract(sin(dot(co.xy , vec2(12.9898, 78.233))) * 43758.5453);

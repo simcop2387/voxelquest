@@ -13,6 +13,7 @@ uniform sampler2D Texture3;
 // uniform sampler2D Texture5;
 // uniform sampler2D Texture6;
 
+uniform float fHolderMod;
 uniform float cameraZoom;
 uniform float timeOfDay;
 uniform float pixelsPerMeter;
@@ -46,17 +47,17 @@ const float TEX_MORTAR =  	16.0 / 255.0;
 uniform int iNumSteps;
 
 float offV[2] = float[](
-	0.03125,
-	0.125
+	0.03125*fHolderMod,
+	0.125*fHolderMod
 );
 
 float minRad[2] = float[](
-	1.0,
-	29.0
+	1.0*fHolderMod,
+	29.0*fHolderMod
 );
 float maxRad[2] = float[](
-	32.0,
-	255.0
+	32.0*fHolderMod,
+	255.0*fHolderMod
 );
 
 varying vec2 TexCoord0;
@@ -255,7 +256,7 @@ void main()
 	vec4 tex3 = texture2D(Texture3, TexCoord0.xy);
 
 
-	float newZoom = min(cameraZoom, 1.0);
+	float newZoom = min(cameraZoom/fHolderMod, 1.0);
 	float tot = float(tex0.r + tex0.g + tex0.b + tex0.a > 0.0);
 
 
@@ -277,7 +278,8 @@ void main()
 	float aoval = tex1.a;
 	float notBlank = 1.0;//float(aoval != 0.0);
 
-	float colAmount = 0.25;//0.65;
+	float colAmount = 0.5;//0.65;
+
 
 
 	int i;
@@ -567,13 +569,14 @@ void main()
 		}
 		
 		
+		
 		newAO = clamp(
 			ssao
 			//(sqrt(ssao)-0.5)*2.0
 			
 		, 0.0, 1.0);
 		
-		//newAO = pow(newAO,_x_aoVal_x_*10.0);
+		//newAO = pow(newAO,@aoParam@ * 10.0);
 
 
 
@@ -639,7 +642,8 @@ void main()
 					//if ( (samp.a < 0.5) && ((samp.a < TEX_METAL) || (samp.a > TEX_GLASS)) ) {//(samp.b*samp.a < 1.0) { // isGeom
 					wasHit = float( curHeight > wCurPos.z + 2.0 ); // *clamp(flerp+0.1,0.0,1.0);
 					
-					waterMod = float(samp.a != TEX_WATER);
+					waterMod = float((samp.a < TEX_WATER) || (samp.a > TEX_GLASS));
+						//float(samp.a != TEX_WATER);
 					
 					totHits += wasHit*waterMod;
 					hitCount += waterMod;
@@ -655,7 +659,7 @@ void main()
 
 				}
 				// * 4.0 / fNumSteps
-				resComp = mix(1.0, 0.0, clamp(totHits/hitCount,0.0,1.0)); // mix(totHits2*16.0/fNumSteps, totHits*4.0/fNumSteps, 1.0));// clamp(distance(sStartPos,sEndPos)*4.0,0.0,1.0)) );
+				resComp = mix(1.0, 0.0, clamp(totHits*2.0/hitCount,0.0,1.0)); // mix(totHits2*16.0/fNumSteps, totHits*4.0/fNumSteps, 1.0));// clamp(distance(sStartPos,sEndPos)*4.0,0.0,1.0)) );
 				
 				if (k == 0) {
 					resComp3 = mix(1.0, 0.0, clamp(totHits*4.0/hitCount,0.0,1.0));
@@ -863,9 +867,9 @@ void main()
 		gridVal0 = 0.0;
 	}
 		
-	// if (testOn) {
-	// 	resColor = vec3(newAO);
-	// }
+	if (testOn) {
+		resColor = vec3(resCompTot); //newAO //
+	}
 	
 	
 	

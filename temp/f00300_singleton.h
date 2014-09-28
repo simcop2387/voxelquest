@@ -34,11 +34,16 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 			music[i]->setLoop(true);
 		}
 		
+		
+		
+		mouseMoved = false;
+		forceRestart = false;
+		changingGenVal = false;
+		readyForRestart = false;
 		hitGUI = false;
 		guiLock = false;
 		guiDirty = true;
 		
-		testTT = NULL;
 		
 		activeNode = NULL;
 		selectedNode = NULL;
@@ -67,6 +72,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		timeOfDay = 1.0f;
 		targetTimeOfDay = 1.0f;
+		
+		guiSaveLoc = "..\\data\\saves\\save0\\compMap.txt";
 
 		//invItems = loadBMP("..\\data\\invitems.bmp");
 		imageHM0 = loadBMP("..\\data\\hm0.bmp");
@@ -101,6 +108,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		mirrorOn = true;
 		guiOn = false;
+		bCtrlOld = false;
+		bShiftOld = false;
 		bCtrl = false;
 		bShift = false;
 		tiltChanged = false;
@@ -116,35 +125,91 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		volGenFBOX = 128; // MAX OF 128, DO NOT CHANGE THIS VALUE
 
-
-
-		maxChangesInHolders = 4; // this number is defined here // not in processPages()
-		maxHInPages = 2;
-		maxWInPages = 2;
-
-
-		visPageSizeInPixels = 512; // height of one page in pixels
-		holderSizeInPixels = 512; // height of holder in pixels
-		holderSizeMod = 4;
-		holderSizeInPixelsMod = holderSizeInPixels/holderSizeMod;
 		
-		pixelsPerMeter = PIXELS_PER_METER; // when you make pixels per meter larger, you must do the same for units per meter
-		unitsPerMeter = 4;
-		bufferMult = 1.25f;
-
-		tiltAmount = 0.5f;
-
-
+		
+		
+		
+		/////////////////////////////////////////////////////////////////
+		/////////////////////////////////////////////////////////////////
+		
+		
+		
+		
 		// IMPORTANT: Maximum height must be less than 2^16, max world pitch must be less than 2^32
+			
+		
 
-		// World Scale Dependent
 
+		skipFrames = 2;
+		maxChangesInPages = 2;
+		maxChangesInHolders = 4; // this number is defined here // not in processPages()
+		
+		maxHInPages = 2;
+		maxWInPages = 4;
+		minWInPages = 1;
+
+
+		pixelsPerMeter = 128;
+		metersPerPage = 2;
+		metersPerHolder = 16;
+
+		
+
+		
+		holderMod = 8;
+		fHolderMod = (float)holderMod;
+
+		
+		
 		metersPerNodeXY = 16;
 		metersPerNodeZ = 8;
-		
 		metersPerLot = 64; // adjust this to make lots bigger
 		blockSizeInLots = 8;
+		unitsPerMeter = 4; // ONE UNIT == ONE METER
+		
+
+		worldSizeInLots.setIXYZ(newPitch, newPitch, blockSizeInLots);
+		worldSizeInMeters.copyIntMult(&worldSizeInLots, metersPerLot);
 		blockSizeInMeters = blockSizeInLots * metersPerLot;
+		holderSizeInPages = metersPerHolder / metersPerPage;
+		holdersPerLot = metersPerLot / metersPerHolder;
+		visPageSizeInUnits = metersPerPage * unitsPerMeter;
+		bufferMult = 1.25f;
+		bufferedPageSizeInUnits = visPageSizeInUnits * bufferMult;
+		worldSizeInHolders.copyIntMult(&worldSizeInLots, holdersPerLot);
+		blockSizeInHolders = blockSizeInLots * holdersPerLot;
+		blockSizeInPages = blockSizeInHolders * holderSizeInPages;
+		worldSizeInBlocks.copyIntDiv(&worldSizeInHolders, blockSizeInHolders);
+		worldSizeInPages.copyIntMult(&worldSizeInHolders, holderSizeInPages);
+		worldSizeInUnits.copyIntMult(&worldSizeInPages, visPageSizeInUnits);
+		
+		
+		
+		
+
+		pixelsPerLot = pixelsPerMeter * metersPerLot;
+		unitSizeInPixels = pixelsPerMeter / unitsPerMeter;
+		blockSizeInPixels = pixelsPerMeter * blockSizeInMeters;
+		worldSizeInPixels.copyIntMult(&worldSizeInMeters, pixelsPerMeter);
+		
+		visPageSizeInPixels = pixelsPerMeter * metersPerPage;
+		holderSizeInPixels = pixelsPerMeter * metersPerHolder;
+		
+		
+		// pageResolution = visPageSizeInPixels;//512; // height of one page in pixels
+		
+		
+		holderResolution = holderSizeInPixels/holderMod;
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		
 		terDataTexScale = 1;
 		if (pixelsPerMeter >= 128) {
@@ -152,23 +217,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		}
 		
 		terDataVisPitchXY = blockSizeInMeters / metersPerNodeXY;
-		
 		iNodeDivsPerLot = terDataVisPitchXY / blockSizeInLots;
-		
-		
 		terDataBufAmount = iNodeDivsPerLot; // pad with one extra lot
 		
 		floorHeightInMeters = (float)metersPerNodeZ;
 		roofHeightInMeters = ((float)metersPerNodeXY)/4.0f;
 		wallRadInMeters = ((float)metersPerNodeXY)/4.0f;
-		
-		
-
-
-		
-	
-		
-		
 		
 		
 		terDataBufPitchXY = terDataVisPitchXY + terDataBufAmount * 2;
@@ -187,32 +241,17 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		//rbStack = new PathNode[terDataBufSize* MAX_BLOCK_STACK];
 		rbHeightStack = new int[terDataBufSize];
 
-		//maxFloors = MAX_FLOORS;
-
-		pixelsPerUnit = pixelsPerMeter / unitsPerMeter;
-		pixelsPerLot = pixelsPerMeter * metersPerLot;
-		unitsPerLot = unitsPerMeter * metersPerLot;
-		worldSizeInLots.setIXYZ(newPitch, newPitch, blockSizeInLots);
-		holderSizeInPages = holderSizeInPixels / visPageSizeInPixels;
-		holdersPerLot = pixelsPerLot / holderSizeInPixels;
-		visPageSizeInUnits = visPageSizeInPixels / pixelsPerUnit;
 
 
 
-		worldSizeInHolders.copyIntMult(&worldSizeInLots, holdersPerLot);
-		bufferedPageSizeInUnits = visPageSizeInUnits * bufferMult;
-		blockSizeInHolders = blockSizeInLots * holdersPerLot; // 8*2 = 16
-		blockSizeInPages = blockSizeInHolders * holderSizeInPages;
-		blockSizeInPixels = blockSizeInHolders * holderSizeInPixels;
-		worldSizeInBlocks.copyIntDiv(&worldSizeInHolders, blockSizeInHolders);
-		worldSizeInPages.copyIntMult(&worldSizeInHolders, holderSizeInPages);
-		unitSizeInPixels = visPageSizeInPixels / visPageSizeInUnits;
 
-		worldSizeInPixels.copyIntMult(&worldSizeInHolders, holderSizeInPixels);
+		
+		tiltAmount = 0.5f;
 
+
+		
 		blockShift = intLogB2(blockSizeInHolders * blockSizeInHolders * blockSizeInHolders);
-
-		holderSizeMB = ( ((float)MAX_LAYERS) * 2.0f * 4.0f * (float)(holderSizeInPixelsMod * holderSizeInPixelsMod)) / (1024.0f * 1024.0f);
+		holderSizeMB = ( ((float)MAX_LAYERS) * 2.0f * 4.0f * (float)(holderResolution * holderResolution)) / (1024.0f * 1024.0f);
 
 
 
@@ -223,6 +262,14 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		cout << "\n\n\n\n\n\n";
 
+
+
+		// cout << "terDataBufPitchXY: " << terDataBufPitchXY << "\n";
+		// cout << "terDataBufPitchZ: " << terDataBufPitchXY << "\n";
+		// cout << "terDataVisPitchXY: " << terDataBufPitchXY << "\n";
+		// cout << "terDataVisPitchZ: " << terDataBufPitchXY << "\n";
+		
+		
 		cout << "blockSizeInHolders: " << blockSizeInHolders << "\n";
 		cout << "blockSizeInPixels: " << blockSizeInPixels << "\n";
 		cout << "terDataBufPitchScaledXY " << terDataBufPitchScaledXY << "\n";
@@ -236,8 +283,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		cout << "pixelsPerMeter: " << pixelsPerMeter << "\n";
 		cout << "unitsPerMeter: " << unitsPerMeter << "\n";
 		cout << "blockSizeInLots: " << blockSizeInLots << "\n";
-		cout << "pixelsPerUnit: " << pixelsPerUnit << "\n";
-		cout << "unitsPerLot: " << unitsPerLot << "\n";
+		cout << "pixelsPerUnit: " << unitSizeInPixels << "\n";
+		cout << "unitsPerLot: " << metersPerLot*unitsPerMeter << "\n";
 		cout << "pixelsPerLot: " << pixelsPerLot << "\n";
 		cout << "holderSizeInPages: " << holderSizeInPages << "\n";
 		cout << "holdersPerLot: " << holdersPerLot << "\n";
@@ -264,14 +311,13 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		gridSizeInPixels = pixelsPerMeter;
 
 
-		//cout << "holderSizeInPixels X2 " << holderSizeInPixels*2 << "\n";
 
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 		radiosityOn = true;
-		testOn = true;
+		testOn = false;
 		updateLock = false;
 		traceOn = false;
 		gridOn = 0.0f;
@@ -279,27 +325,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		geomCounter = 0;
 		lightCounter = 0;
 
-		//grassSpacing = 1;//8/DEF_SCALE_FACTOR;// *2.0;
-		directPass = 0.0f;
+
 
 		int ccr = 0;
 		int ccg = 0;
 		int ccb = 0;
-
-		// TODO: examine if this variable is necessary
-		maxHeightInUnits = (worldSizeInPages.getIZ() - bufferMult) * (visPageSizeInUnits);
-
-		// minBoundsInPixels.setIXYZ(0, 0, 0);
-		// maxBoundsInPixels.setIXYZ(
-		// 	(worldSizeInPages.getIX() - 1)*unitSizeInPixels * visPageSizeInUnits,
-		// 	(worldSizeInPages.getIY() - 1)*unitSizeInPixels * visPageSizeInUnits,
-		// 	(worldSizeInPages.getIZ() - 1)*unitSizeInPixels * visPageSizeInUnits
-		// );
-
-		//heightmapMax = maxBoundsInPixels.getFZ() * 0.75f;
-		//heightmapMin = 0.0f;
-		//maxSeaDepth = 8.0f * pixelsPerMeter;
-		
 
 		doTraceVecND("worldSizeInPixels: ", &worldSizeInPixels);
 
@@ -420,7 +450,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		palWidth = 256;
 		palHeight = 256;
 
-		resultImage = new unsigned char[256 * 256 * 4];
+		resultImage = new unsigned char[palWidth * palHeight * 4];
 
 		mouseMovingSize = 100;
 		mouseMovingLoc = 0;
@@ -557,15 +587,15 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 				break;
 			}
 
-			dynObjects[i]->init(1024 + i * 256, 1024 + i * 256, 2048, ccr, ccg, ccb,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 32.0f );
+			dynObjects[i]->init(1024*2 + i * 256, 1024*2 + i * 256, 2048, ccr, ccg, ccb,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 
 
 
 		}
 
-		dynObjects[E_OBJ_FOG]->init(-1024, -1024, -512,   0, 0, 255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
-		dynObjects[E_OBJ_CUTAWAY]->init(1024 - 256, 1024 - 256, 2048,   0, 255, 0,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
-		dynObjects[E_OBJ_HUMAN]->init(0, 0, 0,   0, 255, 255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+		dynObjects[E_OBJ_FOG]->init(-1024*2, -1024*2, -1024/2,   0, 0, 255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+		dynObjects[E_OBJ_CUTAWAY]->init(1024*2 - 256, 1024*4 - 256 + 2048, 1024*4,   0, 255, 0,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+		dynObjects[E_OBJ_HUMAN]->init(0, 1024/2, 0,   0, 255, 255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 
 		// dynObjects[E_OBJ_P0]->init(512-256,1024-256,2048,   128,0,0,    true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 		// dynObjects[E_OBJ_P1]->init(512,1024,2048,      255,0,0,  true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
@@ -585,18 +615,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 
 
-		//createSliceList(visPageSizeInPixels);
-		//createVTList();
-
-		// for (i = 0; i < MAX_GRASS_LEV; i++) {
-		//  createGrassList(i); //grassSpacing
-		// }
-
-
-
 		//// GL WIDGET START ////
 
-		frameCount = -1;
+		frameCount = 0;
 		changesMade = false;
 		forceGetPD = false;
 		bufferInvalid = false;
@@ -626,43 +647,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		glDisable(GL_BLEND);
 		//glEnable(GL_BLEND);
 
-
-
-
-		// fboStrings.push_back("palFBO");
-		// fboStrings.push_back("worldSpaceFBO");
-		// fboStrings.push_back("frontFaceFBO");
-		// fboStrings.push_back("backFaceFBO");
-		// fboStrings.push_back("frontFaceMapFBO");
-		// fboStrings.push_back("backFaceMapFBO");
-		// fboStrings.push_back("pagesFBO");
-		// fboStrings.push_back("waterFBO");
-		// fboStrings.push_back("pages2FBO");
-		// fboStrings.push_back("water2FBO");
-		// fboStrings.push_back("pages3FBO");
-		// fboStrings.push_back("water3FBO");
-		// fboStrings.push_back("geomFBO");
-		// fboStrings.push_back("combineFBO");
-		// fboStrings.push_back("combineFBOWithWater");
-		// fboStrings.push_back("noiseFBO");
-		// fboStrings.push_back("guiFBO");
-		// fboStrings.push_back("resultFBO0");
-		// fboStrings.push_back("resultFBO1");
-		// fboStrings.push_back("volGenFBO0");
-		// fboStrings.push_back("volGenFBO1");
-		// fboStrings.push_back("waveFBO");
-		// fboStrings.push_back("swapFBO0");
-		// fboStrings.push_back("swapFBO1");
-		// fboStrings.push_back("swapFBOLin0");
-		// fboStrings.push_back("swapFBOLin1");
-		// fboStrings.push_back("swapFBOBLin0");
-		// fboStrings.push_back("swapFBOBLin1");
-		// fboStrings.push_back("swapFBOLinHalf0");
-		// fboStrings.push_back("swapFBOLinHalf1");
-		// fboStrings.push_back("cityFBO");
-		// fboStrings.push_back("hmFBO");
-		// fboStrings.push_back("hmFBOLinear");
-		// fboStrings.push_back("simplexFBO");
+		
 		
 		
 		shaderStrings.push_back("GUIShader");
@@ -683,6 +668,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		shaderStrings.push_back("MapBorderShader");
 		shaderStrings.push_back("WorldSpaceShader");
 		shaderStrings.push_back("BlitShader");
+		shaderStrings.push_back("BlitParentShader");
 		shaderStrings.push_back("PreLightingShader");
 		shaderStrings.push_back("HBlurShader");
 		shaderStrings.push_back("VBlurShader");
@@ -719,11 +705,33 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		for (i = 0; i < shaderStrings.size(); i++)
 		{
-			shaderMap.insert(  pair<string, Shader *>(shaderStrings[i], NULL)  );
+			shaderMap.insert(  pair<string, Shader>(shaderStrings[i], Shader())  );
 		}
 		doShaderRefresh();
 		
 		int faceDim = 256;
+		
+		
+		for (i = 0; i < MAX_VG_FBOS; i++) {
+			vgFBOArr[i].init(1, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
+		}
+		
+		
+		
+		
+		/* (
+				int _numBufs,
+				int _width,
+				int _height,
+				int _bytesPerChannel,
+				bool _hasDepth,
+				int filterEnum = GL_NEAREST,
+				int clampEnum = GL_CLAMP_TO_EDGE,
+				bool isMultisample = false
+		)*/
+		
+		
+		
 		
 		//GL_LINEAR
 		fboMap["worldSpaceFBO"].init(4, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
@@ -745,10 +753,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		fboMap["combineFBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 		fboMap["combineFBOWithWater"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 		fboMap["noiseFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST, GL_REPEAT);
-		fboMap["guiFBO"].init(1, guiWinW, guiWinH, 1, false);
-		fboMap["resultFBO0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["resultFBO1"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["volGenFBO0"].init(1, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
+		fboMap["guiFBO"].init(1, guiWinW, guiWinH, 1, false, GL_LINEAR);
+		fboMap["resultFBO0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);
+		fboMap["resultFBO1"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);
+		//fboMap["volGenFBO0"].init(1, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
 		//fboMap["volGenFBO1"].init(1, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
 		fboMap["waveFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
 		fboMap["swapFBOLin0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
@@ -783,16 +791,22 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		loadAllData();
 
 		GamePlant::initAllPlants(this);
-
+		for (i = 0; i < E_PT_LENGTH/2; i++) {
+			gamePlants[i] = new GamePlant();
+		}
 
 
 		gw = new GameWorld();
 		
 		gpuPool = new PoolManager();
-		gpuPool->init(this,false,false);
-		
 		entityPool = new PoolManager();
-		entityPool->init(this,true,false);
+		//gpuPagePool = new PoolPageManager();
+		//entityPagePool = new PoolPageManager();
+		
+		
+		gpuPool->init(this,false,false,holderResolution,holderResolution);
+		entityPool->init(this,true,false,holderResolution,holderResolution);
+		
 		
 		
 		testHuman = new GameEnt();
@@ -806,6 +820,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		music[EML_CRICKETS0]->play();
 		music[EML_OCEANWAVES0]->play();
 		
+		
+		loadGUI();
+		loadGUIValues();
 		
 
 		doTraceND("GW DONE");
@@ -842,7 +859,7 @@ void Singleton::playSoundPosAndPitch (string soundName, FIVector4 * listenerPos,
 			res.getFX(),
 			res.getFY(),
 			res.getFZ(),
-			2.0f*pixelsPerMeter
+			32.0f*pixelsPerMeter
 		);
 		soundMap[soundName].play(volume);
 	}
@@ -851,8 +868,12 @@ void Singleton::playSound (string soundName, float volume)
 		prepSound(soundName);
 		soundMap[soundName].play(volume);
 	}
-void Singleton::playSoundEvent (char const * eventName)
-                                                   {
+void Singleton::playSoundEvent (char const * eventName, bool suppress)
+                                                                          {
+		
+		if (suppress) {
+			return;
+		}
 		
 		string tempString;
 		float volume;
@@ -874,18 +895,21 @@ void Singleton::playSoundEvent (char const * eventName)
 		
 		
 	}
-void Singleton::dispatchEvent (int button, int state, float x, float y, UIComponent * comp)
+void Singleton::dispatchEvent (int button, int state, float x, float y, UIComponent * comp, bool automated, bool preventRefresh)
           {
 		
-		if (guiLock) {
-			return;
-		}
+		changingGenVal = false;
+		
+		// if (guiLock) {
+		// 	return;
+		// }
 		
 		int i;
 		int cbDataCount;
 		JSONValue* cbData = NULL;
 		
 		bool doSPUpdate = false;
+		bool mouseUpEvent = false;
 		
 		switch (comp->guiClass) {
 			case E_GT_SLIDER:
@@ -899,12 +923,13 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 						
 						switch(state) {
 							case GLUT_OVER:
-								playSoundEvent("mouseOver");
+								playSoundEvent("mouseOver",automated);
 							break;
 							case GLUT_OUT:
-								playSoundEvent("mouseOut");
+								playSoundEvent("mouseOut",automated);
 							break;
 							case GLUT_CHANGING:
+								
 								doSPUpdate = true;
 							break;
 						}
@@ -912,10 +937,12 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 					break;
 					case GLUT_LEFT_BUTTON:
 						if (state == GLUT_DOWN) {
-							playSoundEvent("mouseDown");
+							playSoundEvent("mouseDown",automated);
 						}
 						else {
-							playSoundEvent("mouseUp");
+							playSoundEvent("mouseUp",automated);
+							doSPUpdate = true;
+							mouseUpEvent = true;
 						}
 					break;
 					
@@ -949,17 +976,29 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 							
 							
 							
-							shaderMap[cbDataStrings[0]]->paramMap[cbDataStrings[1]] = comp->value;
+							shaderMap[cbDataStrings[0]].paramMap[cbDataStrings[1]] = comp->getValue();
 							
 							if (
 								(cbDataStrings[0].compare("GenerateVolume") == 0)	||
 								(cbDataStrings[0].compare("RenderVolume") == 0)
 							) {
 								
-								
-								guiLock = true;
-								restartGen(false, false);
-								guiLock = false;
+								if (preventRefresh) {
+									
+								}
+								else {
+									if (mouseUpEvent) {
+										forceRestart = true;
+										readyForRestart = true;
+									}
+									else {
+										changingGenVal = true;
+										if (mouseMoved) {
+											
+											readyForRestart = true;
+										}
+									}
+								}
 								
 								
 								
@@ -975,7 +1014,9 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		}
 		
 		
-		//cout << "GUICLASS " << comp->guiClass << "\n";
+		if (mouseMoved) {
+			mouseMoved = false;
+		}
 	}
 StyleSheet * Singleton::getNewStyleSheet (string ssName)
                                                     {
@@ -1503,6 +1544,12 @@ void Singleton::createVTListTilt ()
 		//glNewList(volTris, GL_COMPILE);
 		
 		
+		// string s = floatToHex(64.33f);
+		// float tempv = hexToFloat(s.c_str());
+		// cout << "\n\n\nfloatToHex: " << s << "\n";
+		// cout << "\n\n\nhexToFloat: " << tempv << "\n";
+		
+		
 
 		for (j = 0; j < 2; j++) {
 			
@@ -1573,6 +1620,7 @@ void Singleton::createVTListTilt ()
 				bindFBO("frontFaceMapFBO");
 			}
 			
+			setShaderFloat("fHolderMod", fHolderMod);
 			setShaderFloat("tiltAmount", tiltAmount);
 			setShaderFloat("cameraZoom", cameraZoom);
 			setShaderfVec2("bufferDim", &(bufferDim));
@@ -1719,14 +1767,14 @@ void Singleton::doShaderRefresh ()
 
 
 		for (i = 0; i < shaderStrings.size(); i++) {
-			if (shaderMap[ shaderStrings[i] ]) {
+			// if (shaderMap[ shaderStrings[i] ]) {
 
-				// TODO: Memory leak?
+			// 	// TODO: Memory leak?
 
-				delete shaderMap[ shaderStrings[i] ];
-				shaderMap[ shaderStrings[i] ] = NULL;
-			}
-			shaderMap[ shaderStrings[i] ] = new Shader( ("../src/glsl/" + shaderStrings[i] + ".c").c_str() );
+			// 	delete shaderMap[ shaderStrings[i] ];
+			// 	shaderMap[ shaderStrings[i] ] = NULL;
+			// }
+			shaderMap[ shaderStrings[i] ].init( "../src/glsl/" + shaderStrings[i] + ".c" );
 
 		}
 		shadersAreLoaded = 1;
@@ -1737,21 +1785,23 @@ void Singleton::doShaderRefresh ()
 		}
 		else {
 			
+			// load saved data (if exists)
+			// merge saved data with existing data (if exists)
+			// save merged data to saved data
+			
 			
 			stringBuf = "{\n\t\"params\":[\n";
 			
 			
 			
 			for (i = 0; i < shaderStrings.size(); i++) {
-				curShader = shaderMap[ shaderStrings[i] ];
-				if (curShader) {
-					
-					for (j = 0; j < curShader->paramVec.size(); j++) {
-						stringBuf += "\t\t{";
-						stringBuf += "\"shaderName\":\""+shaderStrings[i]+"\",";
-						stringBuf += "\"paramName\":\""+curShader->paramVec[j]+"\"";
-						stringBuf += "},\n";
-					}
+				curShader = &(shaderMap[ shaderStrings[i] ]);
+				for (j = 0; j < curShader->paramVec.size(); j++) {
+					stringBuf += "\t\t{";
+					stringBuf += "\"shaderName\":\""+shaderStrings[i]+"\",";
+					stringBuf += "\"paramName\":\""+curShader->paramVec[j]+"\",";
+					stringBuf += "\"uid\":\"$shaderParams."+shaderStrings[i]+"."+curShader->paramVec[j]+"\"";
+					stringBuf += "},\n";
 				}
 			}
 			
@@ -1971,7 +2021,7 @@ void Singleton::bindShader (string shaderName)
 		if (shadersAreLoaded)
 		{
 			curShader = shaderName;
-			curShaderPtr = shaderMap[curShader];
+			curShaderPtr = &(shaderMap[curShader]);
 			curShaderPtr->bind();
 			
 			totSize = curShaderPtr->paramVec.size();
@@ -2270,6 +2320,8 @@ void Singleton::moveCamera (FIVector4 * pModXYZ)
 		int i;
 		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 		
+		gw->curLoadRadius = minWInPages;
+		
 		// cout << "curHeight: " <<
 		// 	getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY(), true)/worldSizeInPixels.getFZ() << "\n";
 		
@@ -2347,8 +2399,8 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 
 		modXYZ.setFXYZ(0.0f,0.0f,0.0f);
 
-		float dxZoom = dx * 1.0 / zoom;
-		float dyZoom = dy * 1.0 / zoom;
+		float dxZoom = dx * fHolderMod / zoom;
+		float dyZoom = dy * fHolderMod / zoom;
 
 		float xm = 0.0f;
 		float ym = 0.0f;
@@ -2581,13 +2633,12 @@ void Singleton::toggleFullScreen ()
 void Singleton::restartGen (bool instantRefresh, bool clearEverything)
                                                                    {
 		
-		if (
-			(!(gw->lastProcResult))||clearEverything	
-		) {
-			gw->actionOnHolders(E_HOLDER_ACTION_RESET, instantRefresh, clearEverything);
-			bufferInvalid = true;
-			changesMade = true;
-		}
+		
+	
+		gw->curLoadRadius = minWInPages;
+		gw->actionOnHolders(E_HOLDER_ACTION_RESET, instantRefresh, clearEverything);
+		bufferInvalid = true;
+		changesMade = true;
 		
 		
 	}
@@ -2597,8 +2648,6 @@ void Singleton::setCameraToElevationBase ()
 
 		cameraPos->setFZ(
 			getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY())
-			// + maxWInPages * visPageSizeInPixels
-			// + floorHeightInMeters*1.0f*pixelsPerMeter
 		);
 
 	}
@@ -2629,6 +2678,20 @@ void Singleton::processSpecialKeys (int key, int _x, int _y)
 			break;
 		}
 	}
+void Singleton::updateCS ()
+                        {
+		if (
+			(bCtrl != bCtrlOld) ||
+			(bShift != bShiftOld)
+		) {
+			forceGetPD = true;
+			wsBufferInvalid = true;
+			bufferInvalid = true;
+			changesMade = true;
+		}
+		bCtrlOld = bCtrl;
+		bShiftOld = bShift;
+	}
 void Singleton::processKey (unsigned char key, int _x, int _y, bool isPressed)
         {
 
@@ -2654,6 +2717,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 		
 		bShift = shiftDown();
 		bCtrl = ctrlDown();
+		updateCS();
 
 
 		if (key == 17)
@@ -2708,12 +2772,13 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 		case 19: //ctrl-s
-			//saveAllData();
-			cout << "Use s key in web editor to save\n";
+			saveGUIValues();
+			//cout << "Use s key in web editor to save\n";
 			break;
 
 		case 15: //ctrl-o
-			loadAllData();
+			//loadAllData();
+			loadGUIValues();
 
 			break;
 
@@ -2778,11 +2843,15 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 
 
 		case 'R':
-			
+			doShaderRefresh();
+			loadGUI();
+			loadGUIValues();
+			//doShaderRefresh();
+			bufferInvalid = true;
 		break;
 		case 'r':
 			doShaderRefresh();
-			loadGUI();
+			
 			bufferInvalid = true;
 
 			cout << "Shaders Refreshed\n";
@@ -2904,8 +2973,13 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 				
 				// todo: in the future don't reload the gui every time
 				// just for testing right now
+				// if (mainGUI->isLoaded) {
+				// 
+				// }
+				// else {
+				// 	loadGUI()
+				// }
 				
-				loadGUI();
 			}
 			guiOn = !guiOn;
 			
@@ -2947,6 +3021,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 
 			break;
 
+		
 		case 'A':
 			changesMade = true;
 			maxHInPages++;
@@ -2961,20 +3036,20 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 		case 'a':
-			selectedNode->material += 1.0f;
-			curNode = getMirroredNode(selectedNode);
-			if (curNode != NULL) {
-				curNode->material += 1.0f;
-			}
-			makeDirty();
+			// selectedNode->material += 1.0f;
+			// curNode = getMirroredNode(selectedNode);
+			// if (curNode != NULL) {
+			// 	curNode->material += 1.0f;
+			// }
+			// makeDirty();
 		break;
 		case 'z':
-			selectedNode->material -= 1.0f;
-			curNode = getMirroredNode(selectedNode);
-			if (curNode != NULL) {
-				curNode->material -= 1.0f;
-			}
-			makeDirty();
+			// selectedNode->material -= 1.0f;
+			// curNode = getMirroredNode(selectedNode);
+			// if (curNode != NULL) {
+			// 	curNode->material -= 1.0f;
+			// }
+			// makeDirty();
 			
 		break;
 
@@ -2988,7 +3063,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 				selectedGeom->visible = !(selectedGeom->visible);
 
 				holderCount = gw->getHoldersInGeom(selectedGeom);
-				gw->refreshHoldersInList(true); //holderCount <= 12
+				gw->refreshHoldersInList(true, true); //holderCount <= 12
 				gw->holdersToRefresh.clear();
 
 				bufferInvalid = true;
@@ -3010,7 +3085,11 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 	}
 void Singleton::keyboardDown (unsigned char key, int _x, int _y)
         {
-
+		
+		
+		bShift = shiftDown();
+		bCtrl = ctrlDown();
+		updateCS();
 
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
@@ -3026,33 +3105,30 @@ void Singleton::runReport ()
 		cout << "Num GPU Holders: " << gpuPool->holderPoolItems.size() << "\n";
 		cout << "GPU Pooled MB Used: " << ((float)gpuPool->holderPoolItems.size())*holderSizeMB << "\n";
 	}
-void Singleton::getPixData (FIVector4 * toVector, int xv, int yv)
+void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, int bufNum, bool forceGet)
         {
 
 		FBOWrapper *fbow;
 		int newX;
 		int newY;
+		
+		float xv = _xv;
+		float yv = _yv;
 
-		float newFX;
-		float newFY;
 
-		if (wsBufferInvalid)
+		if (wsBufferInvalid || forceGet)
 		{
-			gw->getWorldSpaceBuffer();
+			gw->getWorldSpaceBuffer(bufNum);
 		}
 
-
-
+		
+		//xv = (xv - bufferDimHalf.getFX());
+		//yv = (yv - bufferDimHalf.getFY());
 
 		if (cameraZoom > 1.0)
 		{
-			newX = (int)(
-				(  (((float)xv) - bufferDimHalf.getFX()) / cameraZoom) + bufferDimHalf.getFX()
-			);
-			newY = (int)(
-				(  (((float)yv) - bufferDimHalf.getFY()) / cameraZoom) + bufferDimHalf.getFY()
-				// * tiltAmount*2.0f
-			);
+			newX = bufferDimHalf.getFX() + (xv - bufferDimHalf.getFX())/cameraZoom;
+			newY = bufferDimHalf.getFY() + (yv - bufferDimHalf.getFY())/cameraZoom;
 		}
 		else
 		{
@@ -3062,7 +3138,7 @@ void Singleton::getPixData (FIVector4 * toVector, int xv, int yv)
 
 
 
-		fbow = getFBOWrapper("worldSpaceFBO", 0);
+		fbow = getFBOWrapper("worldSpaceFBO", bufNum);
 		fbow->getPixelAtF(toVector, newX, (bufferDim.getIY() - 1) - newY);
 	}
 GameGeom * Singleton::findNearestGeom (FIVector4 * testPoint, bool createList)
@@ -3151,6 +3227,8 @@ GameGeom * Singleton::findNearestGeom (FIVector4 * testPoint, bool createList)
 void Singleton::mouseMove (int _x, int _y)
         {
 
+		mouseMoved = true;
+
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
 
@@ -3162,14 +3240,13 @@ void Singleton::mouseMove (int _x, int _y)
 
 		bShift = shiftDown();
 		bCtrl = ctrlDown();
+		updateCS();
 
 		lastMouseX = x;
 		lastMouseY = y;
 
 		
-		if (testTT != NULL) {
-			//testTT->setText(i__s(_x) + ", " + i__s(_y));
-		}
+		
 
 		mouseXUp = x;
 		mouseYUp = y;
@@ -3180,7 +3257,8 @@ void Singleton::mouseMove (int _x, int _y)
 		if (tiltChanged) {
 			tiltChanged = false;
 			createVTListTilt();
-			restartGen(false, false);
+			readyForRestart = true;
+			//restartGen(false, false);
 		}
 
 		if (abDown)
@@ -3240,7 +3318,7 @@ void Singleton::mouseMove (int _x, int _y)
 	}
 void Singleton::makeDirty ()
                          {
-		testHuman->gph->isDirty = true;
+		testHuman->gph->childrenDirty = true;
 	}
 void Singleton::setSelNode (GameEntNode * newNode)
                                               {
@@ -3250,10 +3328,6 @@ void Singleton::setSelNode (GameEntNode * newNode)
 			makeDirty();
 		}
 		lastSelNode = newNode;
-		
-	}
-void Singleton::screenToWorldBase (FIVector4 * tc, FIVector4 * wc)
-        {
 		
 	}
 void Singleton::worldToScreenBase (FIVector4 * sc, FIVector4 * wc)
@@ -3281,6 +3355,9 @@ void Singleton::worldToScreenBase (FIVector4 * sc, FIVector4 * wc)
 		float x1 = (wc->getFX() - wc->getFY());
 		//float y1 = (-(wc->getFX() / 2.0f) + -(wc->getFY() / 2.0f) + wc->getFZ());
 		float y1 = (-itilt*wc->getFX() + -itilt*wc->getFY() + (tilt)*2.0f*wc->getFZ());
+		
+		x1 /= fHolderMod;
+		y1 /= fHolderMod;
 		
 		sc->setFX(x1);
 		sc->setFY(y1);
@@ -3310,6 +3387,8 @@ void Singleton::worldToScreen (FIVector4 * sc, FIVector4 * wc, bool centerIsOrig
 			x1 = (x1 + 1.0) / 2.0;
 			y1 = (y1 + 1.0) / 2.0;
 		}
+		
+		
 
 
 		sc->setFX(x1);
@@ -3355,6 +3434,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		oneVec.normalize();
 
 		
+		hitGUI = false;
 		
 		if ((mainGUI != NULL)&&guiOn) {
 			if (mainGUI->isReady) {
@@ -3411,6 +3491,8 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 				tiltChanged = false;
 				createVTListTilt();
 				restartGen(false, true);
+				
+				//readyForRestart = true;
 			}
 			
 			if (lbDown)
@@ -3535,7 +3617,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 							gw->getHoldersInGeom(selectedGeom);
 							selectedGeom->toggleTransform();
 							gw->getHoldersInGeom(selectedGeom);
-							gw->refreshHoldersInList(true); //holderCount <= 12
+							gw->refreshHoldersInList(true, true); //holderCount <= 12
 							gw->holdersToRefresh.clear();
 							
 							if (selectedGeom->isToggled) {
@@ -3592,15 +3674,19 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 						case E_CT_LANTERN:
 							selectedGeom->light->isOn = !(selectedGeom->light->isOn);
+							playSoundPosAndPitch(
+								"castinet0",
+								cameraPos,
+								selectedGeom->getVisMinInPixelsT(),
+								0.3f
+							);
+							
 							doTraceND("");
 							doTraceND("CUR LIGHT DIS ", f__s(selectedGeom->light->screenDistance));
 							doTraceND("");
-
 							for (i = 0; i < gw->lightCount; i++)
 							{
-
-								doTraceND("LIGHT DIS ", f__s(gw->activeLights[i]->screenDistance));
-
+							 	doTraceND("LIGHT DIS ", f__s(gw->activeLights[i]->screenDistance));
 							}
 							doTraceND("");
 							doTraceND("");
@@ -3713,31 +3799,45 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 					
 					
 					if (bCtrl) {
-						if (mouseDownPD.getIW() == 1) {
+						if (mouseDownPD.getFW() != 0.0) {
 							// find nearest dyn object
-
-							bestInd = 0;
-							bestDis = 99999.0f;
 							
-							worldToScreenBase(&tempVec1, &mouseDownPD);
+							cout << "OBJECT ID " << mouseDownPD.getFW() << "\n";
 							
-							for (i = 1; i < dynObjects.size(); i++)
-							{
 
-
-								worldToScreenBase(&tempVec2, &(dynObjects[i]->pos));
-
-								curDis = tempVec1.distanceXY(&tempVec2);
-
-
-								if (curDis < bestDis)
-								{
-									bestDis = curDis;
-									bestInd = i;
-								}
+							bestInd = mouseDownPD.getFW();
+							
+							if ((bestInd >= E_OBJ_LENGTH)||(bestInd <= 0)) {
+								
 							}
+							else {
+								activeObject = (E_OBJ)(bestInd);
+							}
+							
+							//bestDis = 99999.0f;
+							
+							//getPixData(&geomPD, x, y, 2, true);
+							//doTraceVecND("GEOM PD ", &geomPD);
+							
+							//worldToScreenBase(&tempVec1, &mouseDownPD);
+							
+							// for (i = 1; i < dynObjects.size(); i++)
+							// {
 
-							activeObject = (E_OBJ)(bestInd);
+
+							// 	//worldToScreenBase(&tempVec2, &(dynObjects[i]->pos));
+
+							// 	curDis = geomPD.distance(&(dynObjects[i]->pos));
+
+
+							// 	if (curDis < bestDis)
+							// 	{
+							// 		bestDis = curDis;
+							// 		bestInd = i;
+							// 	}
+							// }
+
+							
 						}
 					}
 					else {
@@ -4008,20 +4108,162 @@ bool Singleton::loadJSON (string path, JSONValue * * destObj)
 		return res;
 		
 	}
+void Singleton::setGUIText (string key, string stringValue, float floatValue, bool applyVal, bool applyString)
+          {
+		UICStruct* curComp;
+		if (compMap.find( key ) == compMap.end()) {
+			// invalid key
+		}
+		else {
+			curComp = &(compMap[key]);
+			
+			if (
+				(curComp->uic == NULL) ||
+				(curComp->nodeId < 0)	
+			) {
+				// component was deleted
+			}
+			else {
+				if (applyString) {
+					curComp->uic->setText(stringValue);
+				}
+				if (applyVal) {
+					curComp->uic->setValue(floatValue);
+				}
+				
+			}
+		}
+	}
+void Singleton::setGUIValue (string key, float floatValue, bool dispatchEvent, bool preventRefresh)
+          {
+		UICStruct* curComp;
+		
+		if (compMap.find( key ) == compMap.end()) {
+			// invalid key
+		}
+		else {
+			curComp = &(compMap[key]);
+			
+			if (
+				(curComp->uic == NULL) ||
+				(curComp->nodeId < 0)	
+			) {
+				// component was deleted
+			}
+			else {
+				curComp->uic->setValue(floatValue,dispatchEvent,preventRefresh);
+			}
+		}
+	}
+void Singleton::loadGUIValues ()
+                             {
+		
+		cout << "Loading GUI Values\n";
+		
+		int i;
+		
+		charArr dest;
+		dest.data = NULL;
+		dest.size = 0;
+		
+		UICStruct* curComp;
+		
+		string loadBuf;
+		vector<string> splitStrings;
+		if ( loadFile(guiSaveLoc, &dest) )
+		{
+			loadBuf = string(dest.data);
+			splitStrings = split(loadBuf, '^');
+			
+			for (i = 0; i < splitStrings.size(); i += 2) {
+				setGUIValue(
+					splitStrings[i],
+					hexToFloat( &(splitStrings[i+1]) ),
+					true,
+					true
+				);
+			}
+			
+		}
+		else {
+			cout << "Unable to load GUI Values\n";
+			
+		}
+		
+		if (dest.data != NULL)
+		{
+			delete[] dest.data;
+			dest.data = NULL;
+		}
+		
+		cout << "End Loading GUI Values\n";
+	}
+void Singleton::saveGUIValues ()
+                             {
+		
+		cout << "Saving GUI Values\n";
+		
+		stringBuf = "";
+		
+		for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
+				
+				if (
+					(iterator->second.uic == NULL) ||
+					(iterator->second.nodeId < 0)
+				) {
+					
+				}
+				else {
+					if (iterator->first[0] ==  '$') {
+						stringBuf += iterator->first + "^" + floatToHex(iterator->second.uic->getValue()) + "^";
+					}
+					
+					
+				}
+				
+		    // iterator->first = key
+		    // iterator->second = value
+		}
+		
+		saveFileString(guiSaveLoc,&stringBuf);
+		
+		cout << "End Saving GUI Values\n";
+	}
+void Singleton::updateGUI ()
+                         {
+		
+		float chunkMem;
+		float fbMem;
+		
+		float voxelsGen = PAGE_COUNT*2;
+		
+		string maxGPUMString = " / " + fi__s(MAX_GPU_MEM);
+		
+		if (frameCount%120 == 0) {
+			
+			chunkMem = ((float)gpuPool->holderPoolItems.size())*holderSizeMB;
+			fbMem = TOT_GPU_MEM_USAGE - chunkMem;
+			
+			
+			setGUIText("debug.fbMem", "Frame Buffer Mem Used: " + fi__s(fbMem) + maxGPUMString, fbMem/MAX_GPU_MEM, true );
+			setGUIText("debug.chunkMem", "Chunk Mem Used: " + fi__s(chunkMem) + maxGPUMString, chunkMem/MAX_GPU_MEM, true );
+			setGUIText("debug.totMem", "Total Mem Used: " + fi__s(TOT_GPU_MEM_USAGE) + maxGPUMString, TOT_GPU_MEM_USAGE/MAX_GPU_MEM, true );
+			setGUIText("debug.chunksGen", "Voxels Generated (In Millions!): " + fi__s(voxelsGen) );
+			 
+		}
+		
+	}
 void Singleton::loadGUI ()
                        {
 		
-		testTT = NULL;
 		
+		for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
+				iterator->second.uic = NULL;
+				iterator->second.nodeId = -1;
+		    // iterator->first = key
+		    // iterator->second = value
+		}
 		
-		// if ( loadFile("..\\data\\lastJSONBufferGUI.js", &lastJSONBufferGUI) )
-		// {
-		// 	if (processJSON(&lastJSONBufferGUI, &nullBuffer, &guiRootJS)) {
-		// 		mainGUI->guiFromJSON(
-		// 			guiRootJS
-		// 		);
-		// 	}
-		// }
 		
 		if (
 			loadJSON("..\\data\\lastJSONBufferGUI.js", &guiRootJS)
@@ -4029,7 +4271,18 @@ void Singleton::loadGUI ()
 			mainGUI->guiFromJSON(
 				guiRootJS
 			);
+		
+			for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
+					
+					
+					if (iterator->second.nodeId != -1) {
+						iterator->second.uic = mainGUI->findNodeById(iterator->second.nodeId);
+					}
+			}
+		
 		}
+		
+		
 		
 		//testTT = mainGUI->findNodeByString("testTT");
 		
@@ -4051,8 +4304,12 @@ void Singleton::loadAllData ()
 	}
 void Singleton::saveAllData ()
         {
+		
+		
 		saveFile("..\\data\\lastJSONBuffer.js", &lastJSONBuffer);
 		saveFile("..\\data\\lastImageBuffer.txt", &lastImageBuffer);
+		
+		cout << "All Data Saved\n";
 	}
 bool Singleton::loadFile (string fnString, charArr * dest)
         {
@@ -4090,7 +4347,7 @@ bool Singleton::loadFile (string fnString, charArr * dest)
 			dest->data = NULL;
 		}
 
-		dest->data = new char[size];
+		dest->data = new char[size+1];
 
 		// read content of infile
 		infile.read (dest->data, size);
@@ -4103,8 +4360,42 @@ bool Singleton::loadFile (string fnString, charArr * dest)
 		}
 
 		infile.close();
+		
+		dest->data[size] = '\0';
 
 		doTraceND("Load Successful");
+
+		return true;
+	}
+bool Singleton::saveFileString (string fileName, string * source)
+        {
+
+		if (source == NULL)
+		{
+			doTraceND("Null Data");
+			return false;
+		}
+
+		std::ofstream outfile (fileName.c_str(), std::ofstream::out);
+
+		if ( ! outfile.is_open() )
+		{
+			doTraceND("Could Not Open File For Saving");
+			return false;
+		}
+
+		outfile.write(source->c_str(), source->size());
+
+		if ( outfile.bad() )
+		{
+			doTraceND("Could Not Save To File");
+			outfile.close();
+			return false;
+		}
+
+		outfile.close();
+
+		doTraceND("Save Successful");
 
 		return true;
 	}
@@ -4173,6 +4464,52 @@ void Singleton::updateAmbientSounds ()
 		music[EML_OCEANWAVES0]->setVolume(ambVolume*(1.0f-heightDif));
 		
 	}
+void Singleton::frameUpdate ()
+                           {
+		
+		
+		updateAmbientSounds();
+		if ((mainGUI != NULL)&&guiOn) {
+			if (mainGUI->isReady) {
+				//mainGUI->testOver(guiX, guiY);
+			}
+			
+		}
+		
+		if (
+			(
+				readyForRestart &&
+				(guiLock == false) &&
+				(gw->curLoadRadius > minWInPages)	
+			)
+			||
+			forceRestart
+		) {
+			
+			if (forceRestart) {
+				forceRestart = false;			
+			}
+			readyForRestart = false;
+			guiLock = true;
+			restartGen(false, false);
+			guiLock = false;
+			
+		}
+		
+		updateGUI();
+		
+		
+		gw->update();
+		
+		
+		
+		
+		TRACE_ON = false;
+		changesMade = false;
+		bufferInvalid = false;
+		
+		frameCount++;
+	}
 void Singleton::display ()
         {
 
@@ -4222,11 +4559,11 @@ void Singleton::display ()
 		}
 
 
-		if (elTime >= 8.0f) {
+		if (elTime >= ( 8.0f  )  ) { // / ((float)skipFrames)
 
 			if (firstRun)
 			{
-
+				
 			}
 			else
 			{
@@ -4327,25 +4664,11 @@ void Singleton::display ()
 				}
 				else
 				{
-					updateAmbientSounds();
-					if ((mainGUI != NULL)&&guiOn) {
-						if (mainGUI->isReady) {
-							//mainGUI->testOver(guiX, guiY);
-						}
-						
-					}
-					gw->update();
-					//renderCount += 1.0;
+					frameUpdate();
 				}
-
-
-				TRACE_ON = false;
-
-				changesMade = false;
-				bufferInvalid = false;
 			}
 
-			frameCount++;
+			
 		}
 
 		if (firstRun)

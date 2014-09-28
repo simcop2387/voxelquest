@@ -16,21 +16,21 @@ FBOSet * PooledResource::getFBOS (int fboNum)
                                     {
 		return fboSet[fboNum];
 	}
-void PooledResource::init (Singleton * _singleton, bool _isCPU)
-                                                      {
+void PooledResource::init (Singleton * _singleton, bool _isCPU, int _sizeX, int _sizeY)
+          {
 
 		singleton = _singleton;
 		isCPU = _isCPU;
-		usedByHolderId.v0 = -1;
-		usedByHolderId.v1 = -1;
+		usedById.v0 = -1;
+		usedById.v1 = -1;
 
 		int i;
 
 		if (isCPU) {
 			for (i = 0; i < MAX_LAYERS; i++) {
 				cpuSet[i] = new uint[
-					(singleton->holderSizeInPixelsMod) *
-					(singleton->holderSizeInPixelsMod)	
+					_sizeX *
+					_sizeY
 				];
 			}
 		}
@@ -42,8 +42,8 @@ void PooledResource::init (Singleton * _singleton, bool _isCPU)
 			for (i = 0; i < MAX_LAYERS; i++) {
 				fboSet[i]->init(
 					2,
-					((singleton->holderSizeInPixelsMod)),
-					((singleton->holderSizeInPixelsMod)),
+					_sizeX,
+					_sizeY,
 					1,
 					false //has depth
 				);

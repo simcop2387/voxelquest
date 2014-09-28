@@ -19,7 +19,6 @@ const static int DEF_SCALE_FACTOR = 2;
 const static float UI_SCALE_FACTOR = 1.0f;
 
 const static bool ENT_ON = false;
-const static int PIXELS_PER_METER = 128;
 const static int MAX_LAYERS = 1;
 
 const static int MAX_PLANT_GEN = 16;
@@ -27,7 +26,7 @@ const static int MAX_PLANT_GEN = 16;
 const static int MAX_TER_TEX = 9;
 
 const static int MAX_NODE_DIRS = 6;
-const static int MAX_NODE_VALS = 3;
+const static int MAX_NODE_VALS = 4;
 const static int TOT_NODE_VALS = 
 	MAX_NODE_DIRS * MAX_NODE_VALS;
 
@@ -54,19 +53,14 @@ char *BUF_NAMES[] =
 	"ublock13"
 };
 
-// char* VOLGEN_NAMES[] =
-// {
-//  "volGenFBO1",
-//  "volGenFBO2",
-//  "volGenFBO4",
-//  "volGenFBO8",
-//  "volGenFBO16",
-//  "volGenFBO32",
-//  "volGenFBO64",
-//  "volGenFBO128"
-// };
-// const static int VOLGEN_NAMES_LEN = 8;
 
+const static int MAX_VG_FBOS = 1;
+int CUR_VG_FBO = 0;
+int PAGE_COUNT = 0;
+
+
+// set to 0 to disable
+int MAX_HOLDERS = 1024;
 
 
 float MAX_GPU_MEM = 2560.0f;
@@ -365,6 +359,21 @@ enum E_STATES {
 
 };
 
+
+// enum E_UI_LIST {
+// 	E_UL_FB_MEM,
+// 	E_UL_CHUNK_MEM,
+// 	E_UL_TOT_MEM,
+// 	E_UL_LENGTH
+// };
+
+// enum E_UI_LIST {
+// 	E_UL_FB_MEM,
+// 	E_UL_CHUNK_MEM,
+// 	E_UL_TOT_MEM,
+// 	E_UL_LENGTH
+// };
+
 enum E_CHAR_STATE {
 	E_CHAR_STATE_NONE,
 	E_CHAR_STATE_SKEL,
@@ -399,6 +408,7 @@ enum E_BRUSH {
 
 enum E_HOLDER_ACTION {
 	E_HOLDER_ACTION_RENDER,
+	E_HOLDER_ACTION_REDRAW_CHILDREN,
 	E_HOLDER_ACTION_RESET,
 	E_HOLDER_ACTION_LENGTH
 };
@@ -426,6 +436,8 @@ enum E_FILL_STATE {
 enum E_PLANT_TYPES {
 	E_PT_OAK_TRUNK,
 	E_PT_OAK_ROOTS,
+	E_PT_OAK2_TRUNK,
+	E_PT_OAK2_ROOTS,
 	E_PT_BARE_OAK_TRUNK,
 	E_PT_BARE_OAK_ROOTS,
 	E_PT_LENGTH
@@ -893,6 +905,7 @@ struct PlantRules
 	float endThickness;
 	float curLength[MAX_PLANT_GEN];
 	float sphereGen;
+	float sphereRad;
 	//float baseLength;
 	//float nodeLengthMultiplier;
 	float numGenerations;
@@ -934,10 +947,15 @@ struct MapNode {
 	int id;
 };
 
+const static unsigned int BC_FLAG_INSIDE = 1;
+const static unsigned int BC_FLAG_WING_BEG = 2;
+const static unsigned int BC_FLAG_WING_END = 4;
+
 struct BuildingCon {
 	int conType;
-	bool isWingBeg;
-	bool isWingEnd;
+	unsigned int nodeFlags;
+	//bool isWingBeg;
+	//bool isWingEnd;
 	float wingMult;
 	float wallRadInMeters;
 	int heightDelta;
@@ -1372,6 +1390,9 @@ float mixf(float v1, float v2, float lerpVal) {
 	return v1*(1.0f-lerpVal) + v2*lerpVal;
 }
 
+
+
+
 float clampf(float val, float min, float max) {
 	if (val > max) {
 		val = max;
@@ -1380,6 +1401,13 @@ float clampf(float val, float min, float max) {
 		val = min;
 	}
 	return val;
+}
+
+float smoothstep(float edge0, float edge1, float x) {
+    // Scale, bias and saturate x to 0..1 range
+    x = clampf((x - edge0)/(edge1 - edge0), 0.0f, 1.0f); 
+    // Evaluate polynomial
+    return x*x*(3.0f - 2.0f*x);
 }
 
 inline float clampfZO(float val) {
@@ -1634,7 +1662,10 @@ public:
 		fv4.w = w;
 		iv4.w = (int)w;
 	}
-
+	
+	
+	
+	
 	void setRand(FIVector4 *seedPos) {
 
 		FIVector4 r0;
@@ -2313,6 +2344,11 @@ public:
 
 
 };
+
+float getRandSeeded(FIVector4 *seedPos, FIVector4 *seedVals) {
+	float intPart;		
+	return modf(sin(seedPos->dot(seedVals)) * 43758.8563f, &intPart);
+}
 
 
 
@@ -10545,9 +10581,57 @@ int traceLevel = 0; int popCount = 0;
 std::string i__s(int i) {
 	return std::to_string(i);
 }
+std::string fi__s(float f) {
+	int i = f;
+	return std::to_string(i);
+}
 std::string f__s(float f) {
 	return std::to_string(f);
 }
+
+
+union hex_converter{
+	float f_val;
+	unsigned int u_val;
+};
+float hexToFloat(std::string* s) {
+	union hex_converter hc;
+	hc.u_val = (uint)strtoul(s->c_str(), NULL, 16);
+	return hc.f_val;
+}
+
+
+
+
+
+
+std::string floatToHex( float f )
+{
+	// static_assert( std::numeric_limits<float>::is_iec559,
+	// "native float must be an IEEE float" ) ;
+
+	union {
+		float fval;
+		uint ival;
+	};
+	fval = f;
+
+	std::ostringstream stm;
+	stm << std::hex << std::uppercase << ival;
+
+	return stm.str();
+}
+
+// // return 1 on error
+// char FLOAT_TO_HEX_BUF[32];
+// string floatToHex(float x) {
+//   sprintf(FLOAT_TO_HEX_BUF, "0x%lx", (unsigned long) x);
+  
+//   return string(FLOAT_TO_HEX_BUF);
+  
+// }
+
+
 
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
 	std::stringstream ss(s);
@@ -10853,9 +10937,7 @@ public:
 
 	
 
-	UniformBuffer() {
-		wasInit = false;
-	}
+	
 
 	// GLchar* names[] =
 	// {
@@ -10885,6 +10967,11 @@ public:
 
 	bool wasUpdated;
 	bool wasInit;
+	
+	UniformBuffer() {
+		wasInit = false;
+		uniData = NULL;
+	}
 
 	void init(GLuint _progId, int bufNameInd)
 	{
@@ -10921,6 +11008,10 @@ public:
 		doTraceND("uniformBlockSize: ", i__s(uniformBlockSize));
 
 
+		if (uniData != NULL) {
+			delete[] uniData;
+			uniData = NULL;
+		}
 
 		uniData = new GLfloat[uniformBlockSize/4];
 
@@ -11033,27 +11124,22 @@ public:
 	int curUBIndex;
 
 	map<string, float> paramMap;
+	map<string, float> paramMapTemp;
 	vector<string> paramVec;
 	vector<UniformBuffer> uniVec;
 
 	
-	Shader() {
+	Shader() { //const char *shaderFile
+		//pushTrace("Shader(", shaderFile, ")");
+		//init(shaderFile);
+		//popTrace();
 
 		curUBIndex = 0;
 
-		pushTrace("Shader()");
-		popTrace();
-	}
-
-	Shader(const char *shaderFile) {
-		pushTrace("Shader(", shaderFile, ")");
-		init(shaderFile);
-		popTrace();
 	}
 
 
 	static char* textFileRead(const char *fileName) {
-		pushTrace("textFileRead(",  fileName, ")");
 		
 		char* text = "";
 		bool failed = true;
@@ -11081,16 +11167,15 @@ public:
 			doTraceND("FAILED TO READ FILE: ", fileName);
 		}
 		else {
-			doTrace("READ FILE: ", fileName);
+			//doTrace("READ FILE: ", fileName);
 		}
 		
-		popTrace();
 		
 		return text;
 	}
 
 	static void validateShader(GLuint shader, const char* file = 0) {
-		pushTrace("validateShader(", file, ")");
+		//pushTrace("validateShader(", file, ")");
 		
 		const unsigned int BUFFER_SIZE = 512;
 		char buffer[BUFFER_SIZE];
@@ -11102,13 +11187,13 @@ public:
 			doTraceND("Shader " , i__s(shader) , " (" , (file?file:"") , ") compile error: " , buffer);
 			LAST_COMPILE_ERROR = true;
 		}
-		popTrace();
+		//popTrace();
 
 
 	}
 
 	static int validateProgram(GLuint program) {
-		pushTrace("validateProgram()");
+		//pushTrace("validateProgram()");
 		
 		const unsigned int BUFFER_SIZE = 512;
 		char buffer[BUFFER_SIZE];
@@ -11120,7 +11205,7 @@ public:
 		if (length > 0) {
 			doTraceND( "Program " , i__s(program) , " link error: " , buffer);
 			LAST_COMPILE_ERROR = true;
-			popTrace();
+			//popTrace();
 			return 0;
 		}
 	    
@@ -11130,22 +11215,44 @@ public:
 		if (status == GL_FALSE) {
 			doTraceND( "Error validating shader " , i__s(program));
 			LAST_COMPILE_ERROR = true;
-			popTrace();
+			//popTrace();
 			return 0;
 		}
 		
-		popTrace();
+		//popTrace();
 		return 1;
 		
 	}
 	
+	int countOc(string* src, string testStr) {
+		int totCount = 0;
+		int bInd = 0;
+		bool dc = true;
+		int fnd = 0;
+		
+		while (dc) {
+			fnd = src->find(testStr, bInd);
+			if (fnd != std::string::npos) {
+				bInd = fnd+1;
+				dc = true;
+				totCount++;
+			}
+			else {
+				dc = false;
+			}
+		}
+		
+		return totCount;
+	}
 
-	void init(const char *shaderFile) {
-		pushTrace("init(", shaderFile, ")");
+	void init(string _shaderFile) {
+		//pushTrace("init(", shaderFile, ")");
 		
+		const char* shaderFile = _shaderFile.c_str();
 		
+		uniVec.clear();
 		paramVec.clear();
-		paramMap.clear();
+		paramMapTemp.clear();
 		
 		shader_vp = glCreateShader(GL_VERTEX_SHADER);
 		shader_fp = glCreateShader(GL_FRAGMENT_SHADER);
@@ -11153,9 +11260,14 @@ public:
 	    
 		std::size_t found;
 		std::size_t found2;
+		std::size_t found3;
 
 		int baseIndex;
-		int totCount;
+		int uniCount = 0;
+		int dolCount = 0;
+		
+		
+		vector<string> allTextStringSplit;
 
 		bool doCont;
 		
@@ -11173,59 +11285,59 @@ public:
 		else {
 			
 				string allTextString(allText);
-
-				
-				totCount = 0;
-
-
-
-
 				
 				
 
 
-				vector<string> allTextStringSplit = split(allTextString, '$');
+				//
+				
+				dolCount = countOc(&allTextString,"$");
 
-				if (allTextStringSplit.size() == 3) {
+				if (dolCount == 2) {
 					
-					
-					
-					baseIndex = 0;
-					doCont = true;
-					while (doCont) {
-						found = allTextString.find("ublock", baseIndex);
-						if (found != std::string::npos) {
-							baseIndex = found+1;
-							doCont = true;
-							totCount++;
-						}
-						else {
-							doCont = false;
-						}
-					}
-					
+					uniCount = countOc(&allTextString,"ublock");
+
 
 					baseIndex = 0;
 					doCont = true;
 					while (doCont) {
-						found = allTextString.find("_x_", baseIndex);
+						found = allTextString.find('@', baseIndex);
 						if (found != std::string::npos) {
-							baseIndex = found+1;
 							
-							found2 = allTextString.find("_x_", baseIndex);
+							
+							baseIndex = found+1;
+							allTextString[found] = ' ';
+							
+							found3 = allTextString.find(' ', baseIndex);
+							found2 = allTextString.find('@', baseIndex);
+							
 							if (found2 != std::string::npos) {
-								baseIndex = found2+1;
-								paramName = allTextString.substr(found, 3 + (found2-found));
 								
-								if (paramMap.find( paramName ) == paramMap.end()) {
-									paramMap[paramName] = 0.0f;
-									paramVec.push_back(paramName);
-									//cout << "AAAAAAAA " << paramName << "\n";
+								if ( 
+									((found2-found) > 32) || // max var length of 32
+									(found3 < found2) // found a space between the delimitters
+								) { 
+									//baseIndex = found+1; // already set
+								}
+								else {
+									baseIndex = found2+1;
+									allTextString[found2] = ' ';
+									
+									paramName = allTextString.substr(found + 1, (found2-found)-1);
+									
+									if (paramMapTemp.find( paramName ) == paramMapTemp.end()) {
+										paramMapTemp[paramName] = 0.0f;
+										paramVec.push_back(paramName);
+										
+										if (paramMap.find( paramName ) == paramMap.end()) {
+											paramMap[paramName] = 0.0f;
+										}
+										
+										cout << "paramName --" << paramName << "--\n";
+										
+									}
 								}
 								
-								//paramMap.insert( pair<string, int>(paramName, 1) );
-								// cout << "AAAAAAAA " << 
-								// allTextString.substr(found, 2 + (found2-found)) << "\n\n";
 								
 								
 								doCont = true;
@@ -11240,6 +11352,10 @@ public:
 							doCont = false;
 						}
 					}
+					
+					
+					
+					allTextStringSplit = split(allTextString, '$');
 					
 					allTextStringSplit[0] += "\n";
 					
@@ -11278,7 +11394,7 @@ public:
 					delete [] fragCS;
 
 
-					for (i = 0; i < totCount; i++) {
+					for (i = 0; i < uniCount; i++) {
 						uniVec.push_back(UniformBuffer());
 						uniVec.back().init(shader_id, i);
 					}
@@ -11296,7 +11412,7 @@ public:
 		}
 		
 		
-		popTrace();
+		//popTrace();
 		
 	}
 
@@ -11305,19 +11421,19 @@ public:
 
 		uniVec.clear();
 
-		pushTrace("~Shader()");
+		//pushTrace("~Shader()");
 		glDetachShader(shader_id, shader_fp);
 		glDetachShader(shader_id, shader_vp);
 		glDeleteShader(shader_fp);
 		glDeleteShader(shader_vp);
 		glDeleteProgram(shader_id);
-		popTrace();
+		//popTrace();
 	}
 
 	unsigned int id() {
-		pushTrace("id()");
+		//pushTrace("id()");
 		return shader_id;
-		popTrace();
+		//popTrace();
 	}
 
 	void bind() {
@@ -11483,6 +11599,12 @@ public:
 	
 
 };
+
+
+
+
+
+
 
 
 
@@ -12362,7 +12484,15 @@ public:
 
 	FBOWrapper() {}
 	~FBOWrapper() {}
-	int init(int _width, int _height, int _bytesPerChannel, int _slot, /*bool _hasDepth,*/ int filterEnum, int clampEnum) {
+	int init(
+		int _width,
+		int _height,
+		int _bytesPerChannel,
+		int _slot,
+		int filterEnum,
+		int clampEnum,
+		bool isMultisample = false
+	) {
 		width = _width;
 		height = _height;
 		bytesPerChannel = _bytesPerChannel;
@@ -12374,6 +12504,7 @@ public:
 
 		int w = width;
 		int h = height;
+		int num_samples = 4;
 		numMips = 0;
 
 		isFloat = false;
@@ -12412,34 +12543,76 @@ public:
 		}
 
 
+		if (isMultisample) {
+			glGenTextures(1, &color_tex);
+			glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_tex);
+			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, filterEnum);
+			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, filterEnum);
+			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, clampEnum);
+			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, clampEnum);
 
-		glGenTextures(1, &color_tex);
-		glBindTexture(GL_TEXTURE_2D, color_tex);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterEnum);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterEnum);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, clampEnum);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, clampEnum);
+			switch (bytesPerChannel) {
+			case 1:
+				internalFormat = GL_RGBA8;
+				
+				break;
+			case 2:
+				internalFormat = GL_RGBA16;
+				
+				break;
+			case 4:
+				internalFormat = GL_RGBA32F;
+				isFloat = true;
 
-		switch (bytesPerChannel) {
-		case 1:
-			internalFormat = GL_RGBA8;
-			glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+				break;
+			}
+			
+			glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, num_samples, internalFormat, w, h, false );
+			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, slot, GL_TEXTURE_2D_MULTISAMPLE, color_tex, 0);
+			glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+		}
+		else {
+			glGenTextures(1, &color_tex);
+			glBindTexture(GL_TEXTURE_2D, color_tex);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterEnum);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterEnum);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, clampEnum);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, clampEnum);
 
-			break;
-		case 2:
-			internalFormat = GL_RGBA16;
-			glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_UNSIGNED_SHORT, 0);
+			switch (bytesPerChannel) {
+			case 1:
+				internalFormat = GL_RGBA8;
+				glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
-			break;
-		case 4:
-			internalFormat = GL_RGBA32F;
-			glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_FLOAT, 0);
-			isFloat = true;
+				break;
+			case 2:
+				internalFormat = GL_RGBA16;
+				glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_UNSIGNED_SHORT, 0);
 
-			break;
+				break;
+			case 4:
+				internalFormat = GL_RGBA32F;
+				glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_FLOAT, 0);
+				isFloat = true;
+
+				break;
+			}
+
+			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, slot, GL_TEXTURE_2D, color_tex, 0);
+			glBindTexture(GL_TEXTURE_2D, 0);
 		}
 
-		TOT_GPU_MEM_USAGE += ((float)(w * h * bytesPerChannel * 4)) / (1024.0f * 1024.0f);
+		
+		
+		
+		
+		
+	TOT_GPU_MEM_USAGE += ((float)(w * h * bytesPerChannel * 4)) / (1024.0f * 1024.0f);
+
+	return 1;
+
+
+
 
 
 		//
@@ -12454,12 +12627,6 @@ public:
 
 
 		//
-
-
-		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, slot, GL_TEXTURE_2D, color_tex, 0);
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		return 1;
 
 	}
 
@@ -13066,7 +13233,16 @@ public:
 		return &(fbos[offset]);
 	}
 
-	void init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool _hasDepth, int filterEnum = GL_NEAREST, int clampEnum = GL_CLAMP_TO_EDGE) {
+	void init(
+		int _numBufs,
+		int _width,
+		int _height,
+		int _bytesPerChannel,
+		bool _hasDepth,
+		int filterEnum = GL_NEAREST,
+		int clampEnum = GL_CLAMP_TO_EDGE,
+		bool isMultisample = false
+	) {
 		int i;
 
 		hasDepth = _hasDepth;
@@ -13083,7 +13259,7 @@ public:
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
 
 		for (i = 0; i < numBufs; i++) {
-			fbos[i].init(width, height, bytesPerChannel, i, /*hasDepth,*/ filterEnum, clampEnum);
+			fbos[i].init(width, height, bytesPerChannel, i, filterEnum, clampEnum, isMultisample);
 		}
 
 
@@ -13152,6 +13328,7 @@ class GamePage;
 class GameWorld;
 class PooledResource;
 class PoolManager;
+class PoolPageManager;
  
 // f00290_wsrequesthandler.e
 //
@@ -13333,7 +13510,12 @@ public:
   {
     JSONValue * jv;
   };
-  UIComponent * testTT;
+  struct UICStruct
+  {
+    UIComponent * uic;
+    int nodeId;
+  };
+  typedef map <string, UICStruct>::iterator itUICStruct;
   E_OBJ activeObject;
   E_OBJ tempObj;
   int mouseState;
@@ -13342,11 +13524,17 @@ public:
   eProgramAction (progActionsUp) [E_PS_SIZE * 256];
   float ambVolume;
   float guiVolume;
+  bool mouseMoved;
+  bool changingGenVal;
+  bool readyForRestart;
+  bool forceRestart;
   bool hitGUI;
   bool guiLock;
   bool guiDirty;
   bool guiOn;
   bool mirrorOn;
+  bool bShiftOld;
+  bool bCtrlOld;
   bool bCtrl;
   bool bShift;
   bool tiltChanged;
@@ -13379,27 +13567,29 @@ public:
   bool firstRun;
   bool rotOn;
   int maxLayerOver;
+  int holderMod;
+  float fHolderMod;
+  int holderResolution;
+  int visPageSizeInUnits;
+  int bufferedPageSizeInUnits;
+  int unitSizeInPixels;
+  int holdersPerLot;
+  int pixelsPerLot;
+  int pixelsPerMeter;
+  int visPageSizeInPixels;
+  int holderSizeInPixels;
   int currentStep;
   int maxLayers;
+  int maxChangesInPages;
   int maxChangesInHolders;
   int baseW;
   int baseH;
   int scaleFactor;
   int activeMode;
-  int visPageSizeInPixels;
-  int visPageSizeInUnits;
-  int unitSizeInPixels;
-  int maxHeightInUnits;
-  int holdersPerLot;
-  int pixelsPerLot;
   int numDynLights;
   int iNumSteps;
   int curEntId;
-  int pixelsPerMeter;
-  int pixelsPerUnit;
   int metersPerLot;
-  int unitsPerMeter;
-  int unitsPerLot;
   int extraRad;
   int defaultWinW;
   int defaultWinH;
@@ -13412,6 +13602,7 @@ public:
   int frameCount;
   int maxHInPages;
   int maxWInPages;
+  int minWInPages;
   int screenWidth;
   int screenHeight;
   int mouseMovingSize;
@@ -13420,11 +13611,11 @@ public:
   int mouseCount;
   int lastMouseX;
   int lastMouseY;
-  int bufferedPageSizeInUnits;
   int voroSize;
   int geomCounter;
   int lightCounter;
   int charState;
+  int skipFrames;
   int metersPerNodeXY;
   int terDataVisPitchXY;
   int terDataBufPitchXY;
@@ -13442,12 +13633,10 @@ public:
   int iNodeDivsPerLot;
   int selGeomListInd;
   int holderSizeInPages;
-  int holderSizeInPixels;
   uint volGenFBOX;
   uint palWidth;
   uint palHeight;
   uint blockShift;
-  float directPass;
   float fogOn;
   float gridOn;
   float mapSampScale;
@@ -13459,7 +13648,6 @@ public:
   float origWinH;
   float guiX;
   float guiY;
-  double curMS;
   float tiltAmount;
   float currentFBOResolutionX;
   float currentFBOResolutionY;
@@ -13476,25 +13664,29 @@ public:
   float muTime;
   float bufferMult;
   float holderSizeMB;
+  float bestNodeDis;
   float * paramArr;
   float * voroArr;
   float * matCountArr;
-  int * geomIdArr;
   float * paramArrMap;
+  int * geomIdArr;
+  double curMS;
   GameEntNode * bestNode;
   GameEntNode * selectedNode;
   GameEntNode * lastSelNode;
   GameEntNode * activeNode;
-  float bestNodeDis;
   FIVector4 worldSizeInPixels;
   FIVector4 mouseUpPD;
   FIVector4 mouseDownPD;
   FIVector4 mouseMovePD;
+  FIVector4 geomPD;
   FIVector4 tempVec1;
   FIVector4 tempVec2;
   FIVector4 tempVec3;
+  FIVector4 worldSizeInUnits;
   FIVector4 worldSizeInPages;
   FIVector4 worldSizeInLots;
+  FIVector4 worldSizeInMeters;
   FIVector4 worldSizeInHolders;
   FIVector4 worldSizeInBlocks;
   FIVector4 (moveNodes) [2];
@@ -13524,8 +13716,9 @@ public:
   float floorHeightInMeters;
   float roofHeightInMeters;
   float wallRadInMeters;
-  int holderSizeMod;
-  int holderSizeInPixelsMod;
+  int metersPerHolder;
+  int metersPerPage;
+  int unitsPerMeter;
   int blockSizeInLots;
   int blockSizeInMeters;
   int blockSizeInHolders;
@@ -13536,18 +13729,22 @@ public:
   Image * cloudImage;
   GameGeom * highlightedGeom;
   GameGeom * selectedGeom;
+  GamePlant * (gamePlants) [E_PT_LENGTH/2];
   Shader * curShaderPtr;
   string curShader;
   string allText;
   string stringBuf;
   string curCallback;
   string (cbDataStrings) [10];
+  string guiSaveLoc;
   PoolManager * gpuPool;
   PoolManager * entityPool;
   vector <string> shaderStrings;
   vector <string> shaderTextureIds;
-  map <string, Shader *> shaderMap;
+  map <string, Shader> shaderMap;
+  map <string, UICStruct> compMap;
   map <string, FBOSet> fboMap;
+  FBOSet (vgFBOArr) [MAX_VG_FBOS];
   GLuint volId;
   GLuint volIdLinear;
   GLuint volIdEmpty;
@@ -13583,8 +13780,8 @@ public:
   void prepSound (string soundName);
   void playSoundPosAndPitch (string soundName, FIVector4 * listenerPos, FIVector4 * soundPos, float variance = 0.0f, float volume = 1.0f);
   void playSound (string soundName, float volume = 1.0f);
-  void playSoundEvent (char const * eventName);
-  void dispatchEvent (int button, int state, float x, float y, UIComponent * comp);
+  void playSoundEvent (char const * eventName, bool suppress = false);
+  void dispatchEvent (int button, int state, float x, float y, UIComponent * comp, bool automated = false, bool preventRefresh = false);
   StyleSheet * getNewStyleSheet (string ssName);
   void initStyleSheet ();
   int requestTerIndex (int requestingBlockId);
@@ -13660,16 +13857,16 @@ public:
   void setCameraToElevationBase ();
   void setCameraToElevation ();
   void processSpecialKeys (int key, int _x, int _y);
+  void updateCS ();
   void processKey (unsigned char key, int _x, int _y, bool isPressed);
   void keyboardUp (unsigned char key, int _x, int _y);
   void keyboardDown (unsigned char key, int _x, int _y);
   void runReport ();
-  void getPixData (FIVector4 * toVector, int xv, int yv);
+  void getPixData (FIVector4 * toVector, int _xv, int _yv, int bufNum = 0, bool forceGet = false);
   GameGeom * findNearestGeom (FIVector4 * testPoint, bool createList = false);
   void mouseMove (int _x, int _y);
   void makeDirty ();
   void setSelNode (GameEntNode * newNode);
-  void screenToWorldBase (FIVector4 * tc, FIVector4 * wc);
   void worldToScreenBase (FIVector4 * sc, FIVector4 * wc);
   void worldToScreen (FIVector4 * sc, FIVector4 * wc, bool centerIsOrigin = false);
   void mouseClick (int button, int state, int _x, int _y);
@@ -13680,12 +13877,19 @@ public:
   bool processJSONFromString (string * sourceBuffer, JSONValue * * destObj);
   bool processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONValue * * destObj);
   bool loadJSON (string path, JSONValue * * destObj);
+  void setGUIText (string key, string stringValue, float floatValue = 0.0f, bool applyVal = false, bool applyString = true);
+  void setGUIValue (string key, float floatValue, bool dispatchEvent = false, bool preventRefresh = false);
+  void loadGUIValues ();
+  void saveGUIValues ();
+  void updateGUI ();
   void loadGUI ();
   void loadAllData ();
   void saveAllData ();
   bool loadFile (string fnString, charArr * dest);
+  bool saveFileString (string fileName, string * source);
   bool saveFile (char * fileName, charArr * source);
   void updateAmbientSounds ();
+  void frameUpdate ();
   void display ();
   void reshape (int w, int h);
   void idleFunc ();
@@ -13708,12 +13912,12 @@ private:
   FBOSet * (fboSet) [MAX_LAYERS];
   uint * (cpuSet) [MAX_LAYERS];
 public:
-  intPair usedByHolderId;
+  intPair usedById;
   bool isCPU;
   Singleton * singleton;
   PooledResource ();
   FBOSet * getFBOS (int fboNum);
-  void init (Singleton * _singleton, bool _isCPU);
+  void init (Singleton * _singleton, bool _isCPU, int _sizeX, int _sizeY);
 };
 #undef LZZ_INLINE
 #endif
@@ -13734,13 +13938,28 @@ public:
   Singleton * singleton;
   GameWorld * gw;
   bool isEntity;
+  int sizeX;
+  int sizeY;
   PoolManager ();
-  void init (Singleton * _singleton, bool _isEntity, bool _isCPU);
+  void init (Singleton * _singleton, bool _isEntity, bool _isCPU, int _sizeX, int _sizeY);
   float getMaxMem ();
   float getTotMemUsed ();
   void reorderIds ();
   int findFurthestHolderId ();
   int requestPoolId (int blockId, int holderId);
+};
+#undef LZZ_INLINE
+#endif
+// f00316_poolpagemanager.e
+//
+
+#ifndef LZZ_f00316_poolpagemanager_e
+#define LZZ_f00316_poolpagemanager_e
+#define LZZ_INLINE inline
+class PoolPageManager
+{
+public:
+  PoolPageManager ();
 };
 #undef LZZ_INLINE
 #endif
@@ -13780,6 +13999,7 @@ class UIComponent
 {
 private:
   UIComponent * parent;
+  float value;
 public:
   Singleton * singleton;
   Singleton::UIQuad thisUIQuad;
@@ -13787,6 +14007,7 @@ public:
   string uid;
   string ss;
   string text;
+  string label;
   int parentId;
   int nodeId;
   int index;
@@ -13818,7 +14039,6 @@ public:
   bool wasHit;
   bool isDirty;
   bool isFloating;
-  float value;
   float divisions;
   float paddingInPixels;
   float borderInPixels;
@@ -13834,7 +14054,9 @@ public:
   std::vector <UIComponent> floatingChildren;
   UIComponent * curComp;
   UIComponent ();
-  void init (Singleton * _singleton, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, string _text, string _uid, string _ss, int _guiClass = E_GT_HOLDER, float _divisions = 0.0f, bool _hasBackground = true, bool _singleLine = true, float _fillRatioX = 0.0f, float _fillRatioY = 0.0f, int _fillDir = E_FILL_HORIZONTAL, int _alignX = E_ALIGNH_LEFT, int _alignY = E_ALIGNV_TOP, float _value = 0.0f, int _layer = 0, int _hoverType = E_HT_NORMAL, bool _isFloating = false);
+  void init (Singleton * _singleton, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, string _label, string _uid, string _ss, int _guiClass = E_GT_HOLDER, float _divisions = 0.0f, bool _hasBackground = true, bool _singleLine = true, float _fillRatioX = 0.0f, float _fillRatioY = 0.0f, int _fillDir = E_FILL_HORIZONTAL, int _alignX = E_ALIGNH_LEFT, int _alignY = E_ALIGNV_TOP, float _value = 0.0f, int _layer = 0, int _hoverType = E_HT_NORMAL, bool _isFloating = false);
+  void setValue (float _value, bool doEventDispatch = false, bool preventRefresh = false);
+  float getValue ();
   UIComponent * getParent ();
   UIComponent * findNodeByString (string _uid);
   UIComponent * findNodeById (int id);
@@ -13880,12 +14102,14 @@ public:
   JSONValue * jvTemplates;
   JSONValue * jvSounds;
   bool isReady;
+  bool isLoaded;
   int nodeCount;
   vector <UIComponent*> dirtyVec;
   string (tempStrings) [10];
   GameGUI ();
   void init (Singleton * _singleton);
   void getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit);
+  UIComponent * findNodeById (int _id);
   bool compChildStr (string childStr);
   void addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool isFloating = false);
   void guiFromJSON (JSONValue * jv);
@@ -13929,7 +14153,7 @@ LZZ_INLINE void GameGUI::renderQuad (UIComponent * uiComp, fBoundingBox fbb, flo
 		//border color
 		glMultiTexCoord4f(6, resSS->props[E_SS_BDCOL_R], resSS->props[E_SS_BDCOL_G], resSS->props[E_SS_BDCOL_B], resSS->props[E_SS_BDCOL_A]);
 		//misc
-		glMultiTexCoord4f(7, resSS->props[E_SS_ROUNDNESS], uiComp->value, 1.0f, 1.0f);
+		glMultiTexCoord4f(7, resSS->props[E_SS_ROUNDNESS], uiComp->getValue(), 1.0f, 1.0f);
 
 
 		//bg
@@ -14100,6 +14324,9 @@ public:
   FIVector4 offsetInPagesLocal;
   float pageDepth;
   int iVolumeSize;
+  bool underground;
+  bool hasSolids;
+  bool hasTrans;
   bool hasGeom;
   bool hasLines;
   bool hasTerrain;
@@ -14108,6 +14335,7 @@ public:
   bool hasTree;
   bool nearTerrain;
   bool nearAir;
+  bool isDirty;
   int voroCount;
   bool volDataModified;
   bool isRendering;
@@ -14116,7 +14344,6 @@ public:
   int numEntries;
   int totParams;
   int maxEntries;
-  int maxHeightInUnits;
   FIVector4 worldSeed;
   bool threadRunning;
   float unitSizeInPixels;
@@ -14166,10 +14393,10 @@ public:
   int usingPoolId;
   int blockId;
   int holderId;
-  bool isDirty;
   bool hasTrans;
   bool hasSolids;
   bool underground;
+  bool childrenDirty;
   std::vector <GameGeom *> entityGeom;
   int entityGeomCounter;
   FIVector4 offsetInHolders;
@@ -14193,6 +14420,7 @@ public:
   GamePage * getPageAtCoordsLocal (int x, int y, int z, bool createOnNull = false);
   void refreshGeom ();
   void clearSet ();
+  int passiveRefresh ();
   void refreshChildren (bool refreshImmediate, bool clearEverything = false);
   void addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVector4 * _p1, FIVector4 * _p2, FIVector4 * _rad, FIVector4 * _cornerRad, FIVector4 * _visInsetFromMin, FIVector4 * _visInsetFromMax, FIVector4 * _powerVals, FIVector4 * _powerVals2, FIVector4 * _thickVals, FIVector4 * _matParams, FIVector4 * _centerPoint, FIVector4 * _anchorPoint, int _minRot, int _maxRot);
   void addNewLinesGeom (GameEntNode * curNode, float scale);
@@ -14218,6 +14446,7 @@ public:
   int localGeomCounter;
   int lightCounter;
   int terDataBufAmount;
+  float (trilin) [8];
   int terDataVisPitchXY;
   float fTerDataVisPitchXY;
   int terDataBufPitchXY;
@@ -14279,8 +14508,6 @@ public:
   FIVector4 tempVecB3;
   std::vector <GameGeom *> gameGeom;
   std::vector <GameLight *> gameLights;
-  GamePlant oakTree;
-  GamePlant bareTree;
   GameWorld * gw;
   GamePageHolder * * holderData;
   BuildingNode * buildingData;
@@ -14289,18 +14516,23 @@ public:
   BuildingCon * curCon;
   GameBlock ();
   void init (Singleton * _singleton, int _blockId, int _x, int _y, int _xw, int _yw);
+  int getNodeIndexClamped (int _x, int _y, int _z);
   int getNodeIndex (int x, int y, int z, int bufAmount);
   int touchesPlanarBN (int x, int y, int z, int buildingType, int bufAmount);
   int touchesPlanarClass (int x, int y, int z, int classType, int bufAmount);
   bool isLCorner (int x, int y, int z, int classType, bool includeSingle);
   void applyWingValues (int _x1, int _y1, int _z1, int _x2, int _y2, int _z2, int cnum, bool isWingBeg, bool isWingEnd, float multiplier);
+  void addPlantNodes (GamePlantNode * curPlantNode, FIVector4 * orig, float scale);
   void addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVector4 * _p1, FIVector4 * _p2, FIVector4 * _rad, FIVector4 * _cornerRad, FIVector4 * _visInsetFromMin, FIVector4 * _visInsetFromMax, FIVector4 * _powerVals, FIVector4 * _powerVals2, FIVector4 * _thickVals, FIVector4 * _matParams, FIVector4 * _centerPoint, FIVector4 * _anchorPoint, int _minRot, int _maxRot);
-  void connectNodes (int _x1, int _y1, int _z1, int _x2, int _y2, int _z2, int ct, int id = -1, int _heightDelta = 0, int _direction = 0, float _wallRadInMeters = -1.0f);
+  void connectNodes (int _x1, int _y1, int _z1, int _x2, int _y2, int _z2, int ct, int id = -1, int _heightDelta = 0, int _direction = 0, float _wallRadInMeters = -1.0f, unsigned int _nodeFlags = 0);
   int getMapNodeIndex (int x, int y, int bufAmount);
   int touchesMap (int x, int y, int buildingType, int bufAmount);
+  int touchesWithinRadMap (int x, int y, int buildingType, int rad, int bufAmount);
   int touches2Map (int x, int y, int buildingType, int bufAmount);
   void connectMapNodes (int _x1, int _y1, int _x2, int _y2, int buildingType, int id, int bufAmount);
-  void isNearTerrain (FIVector4 * worldPositionInPixels, bool & nearT, bool & nearA);
+  int getAdjustedHeightInHolders (int xInHolders, int yInHolders);
+  float fIsNearTerrain (FIVector4 * worldMinVisInPixels);
+  void isNearTerrain (FIVector4 * worldMinVisInPixels, FIVector4 * worldMaxVisInPixels, bool & nearT, bool & nearA);
   int findNearestNode (FIVector4 * worldPositionInPixelsIn, FIVector4 * posInNodesOut, FIVector4 * posInPixelsOut);
   void nodeIndexToWorldSpaceInPixels (int ind, FIVector4 * posInPixelsOut);
   bool hasTerrainBelow (int i, int j, int k, int conDir, bool bothEnds);
@@ -14345,6 +14577,7 @@ public:
   int idChannel;
   int densityChannel;
   int blockChannel;
+  int curLoadRadius;
   int stChannel;
   int btChannel;
   int pathChannel;
@@ -14353,6 +14586,7 @@ public:
   int * provinceGrid;
   int * provinceX;
   int * provinceY;
+  bool procResultAccum;
   bool doDrawFBO;
   bool lastProcResult;
   bool mapLockOn;
@@ -14444,10 +14678,10 @@ public:
   GamePage * getPageAtCoords (int x, int y, int z, bool createOnNull = false);
   bool checkBounds (int k);
   void update ();
-  bool processPages ();
+  bool procPages ();
   bool addHolderToRefresh (GamePageHolder * toAdd);
   int getHoldersInGeom (GameGeom * gg);
-  void refreshHoldersInList (bool doImmediate);
+  void refreshHoldersInList (bool doImmediate, bool clearEverything);
   void actionOnHolders (int action, bool instantRefresh = false, bool clearEverything = false);
   void drawHolder (GamePageHolder * gp, int curLayer, float xoff, float yoff, float zoff);
   void combineHolders ();
@@ -14464,7 +14698,7 @@ public:
   void renderGeom ();
   void modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushAction);
   void renderWorldSpaceGPU (float processPagesFBO, float processGeomFBO, float processWaterFBO);
-  void getWorldSpaceBuffer ();
+  void getWorldSpaceBuffer (int bufNum = 0);
   float weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean);
   float findBestPath (float x1, float y1, float x2, float y2, int generation, int roadIndex, bool doSet, bool isOcean);
   void initMap ();
@@ -15203,11 +15437,16 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 			music[i]->setLoop(true);
 		}
 		
+		
+		
+		mouseMoved = false;
+		forceRestart = false;
+		changingGenVal = false;
+		readyForRestart = false;
 		hitGUI = false;
 		guiLock = false;
 		guiDirty = true;
 		
-		testTT = NULL;
 		
 		activeNode = NULL;
 		selectedNode = NULL;
@@ -15236,6 +15475,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		timeOfDay = 1.0f;
 		targetTimeOfDay = 1.0f;
+		
+		guiSaveLoc = "..\\data\\saves\\save0\\compMap.txt";
 
 		//invItems = loadBMP("..\\data\\invitems.bmp");
 		imageHM0 = loadBMP("..\\data\\hm0.bmp");
@@ -15270,6 +15511,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		mirrorOn = true;
 		guiOn = false;
+		bCtrlOld = false;
+		bShiftOld = false;
 		bCtrl = false;
 		bShift = false;
 		tiltChanged = false;
@@ -15285,35 +15528,91 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		volGenFBOX = 128; // MAX OF 128, DO NOT CHANGE THIS VALUE
 
-
-
-		maxChangesInHolders = 4; // this number is defined here // not in processPages()
-		maxHInPages = 2;
-		maxWInPages = 2;
-
-
-		visPageSizeInPixels = 512; // height of one page in pixels
-		holderSizeInPixels = 512; // height of holder in pixels
-		holderSizeMod = 4;
-		holderSizeInPixelsMod = holderSizeInPixels/holderSizeMod;
 		
-		pixelsPerMeter = PIXELS_PER_METER; // when you make pixels per meter larger, you must do the same for units per meter
-		unitsPerMeter = 4;
-		bufferMult = 1.25f;
-
-		tiltAmount = 0.5f;
-
-
+		
+		
+		
+		/////////////////////////////////////////////////////////////////
+		/////////////////////////////////////////////////////////////////
+		
+		
+		
+		
 		// IMPORTANT: Maximum height must be less than 2^16, max world pitch must be less than 2^32
+			
+		
 
-		// World Scale Dependent
 
+		skipFrames = 2;
+		maxChangesInPages = 2;
+		maxChangesInHolders = 4; // this number is defined here // not in processPages()
+		
+		maxHInPages = 2;
+		maxWInPages = 4;
+		minWInPages = 1;
+
+
+		pixelsPerMeter = 128;
+		metersPerPage = 2;
+		metersPerHolder = 16;
+
+		
+
+		
+		holderMod = 8;
+		fHolderMod = (float)holderMod;
+
+		
+		
 		metersPerNodeXY = 16;
 		metersPerNodeZ = 8;
-		
 		metersPerLot = 64; // adjust this to make lots bigger
 		blockSizeInLots = 8;
+		unitsPerMeter = 4; // ONE UNIT == ONE METER
+		
+
+		worldSizeInLots.setIXYZ(newPitch, newPitch, blockSizeInLots);
+		worldSizeInMeters.copyIntMult(&worldSizeInLots, metersPerLot);
 		blockSizeInMeters = blockSizeInLots * metersPerLot;
+		holderSizeInPages = metersPerHolder / metersPerPage;
+		holdersPerLot = metersPerLot / metersPerHolder;
+		visPageSizeInUnits = metersPerPage * unitsPerMeter;
+		bufferMult = 1.25f;
+		bufferedPageSizeInUnits = visPageSizeInUnits * bufferMult;
+		worldSizeInHolders.copyIntMult(&worldSizeInLots, holdersPerLot);
+		blockSizeInHolders = blockSizeInLots * holdersPerLot;
+		blockSizeInPages = blockSizeInHolders * holderSizeInPages;
+		worldSizeInBlocks.copyIntDiv(&worldSizeInHolders, blockSizeInHolders);
+		worldSizeInPages.copyIntMult(&worldSizeInHolders, holderSizeInPages);
+		worldSizeInUnits.copyIntMult(&worldSizeInPages, visPageSizeInUnits);
+		
+		
+		
+		
+
+		pixelsPerLot = pixelsPerMeter * metersPerLot;
+		unitSizeInPixels = pixelsPerMeter / unitsPerMeter;
+		blockSizeInPixels = pixelsPerMeter * blockSizeInMeters;
+		worldSizeInPixels.copyIntMult(&worldSizeInMeters, pixelsPerMeter);
+		
+		visPageSizeInPixels = pixelsPerMeter * metersPerPage;
+		holderSizeInPixels = pixelsPerMeter * metersPerHolder;
+		
+		
+		// pageResolution = visPageSizeInPixels;//512; // height of one page in pixels
+		
+		
+		holderResolution = holderSizeInPixels/holderMod;
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		
 		terDataTexScale = 1;
 		if (pixelsPerMeter >= 128) {
@@ -15321,23 +15620,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		}
 		
 		terDataVisPitchXY = blockSizeInMeters / metersPerNodeXY;
-		
 		iNodeDivsPerLot = terDataVisPitchXY / blockSizeInLots;
-		
-		
 		terDataBufAmount = iNodeDivsPerLot; // pad with one extra lot
 		
 		floorHeightInMeters = (float)metersPerNodeZ;
 		roofHeightInMeters = ((float)metersPerNodeXY)/4.0f;
 		wallRadInMeters = ((float)metersPerNodeXY)/4.0f;
-		
-		
-
-
-		
-	
-		
-		
 		
 		
 		terDataBufPitchXY = terDataVisPitchXY + terDataBufAmount * 2;
@@ -15356,32 +15644,17 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		//rbStack = new PathNode[terDataBufSize* MAX_BLOCK_STACK];
 		rbHeightStack = new int[terDataBufSize];
 
-		//maxFloors = MAX_FLOORS;
-
-		pixelsPerUnit = pixelsPerMeter / unitsPerMeter;
-		pixelsPerLot = pixelsPerMeter * metersPerLot;
-		unitsPerLot = unitsPerMeter * metersPerLot;
-		worldSizeInLots.setIXYZ(newPitch, newPitch, blockSizeInLots);
-		holderSizeInPages = holderSizeInPixels / visPageSizeInPixels;
-		holdersPerLot = pixelsPerLot / holderSizeInPixels;
-		visPageSizeInUnits = visPageSizeInPixels / pixelsPerUnit;
 
 
 
-		worldSizeInHolders.copyIntMult(&worldSizeInLots, holdersPerLot);
-		bufferedPageSizeInUnits = visPageSizeInUnits * bufferMult;
-		blockSizeInHolders = blockSizeInLots * holdersPerLot; // 8*2 = 16
-		blockSizeInPages = blockSizeInHolders * holderSizeInPages;
-		blockSizeInPixels = blockSizeInHolders * holderSizeInPixels;
-		worldSizeInBlocks.copyIntDiv(&worldSizeInHolders, blockSizeInHolders);
-		worldSizeInPages.copyIntMult(&worldSizeInHolders, holderSizeInPages);
-		unitSizeInPixels = visPageSizeInPixels / visPageSizeInUnits;
 
-		worldSizeInPixels.copyIntMult(&worldSizeInHolders, holderSizeInPixels);
+		
+		tiltAmount = 0.5f;
 
+
+		
 		blockShift = intLogB2(blockSizeInHolders * blockSizeInHolders * blockSizeInHolders);
-
-		holderSizeMB = ( ((float)MAX_LAYERS) * 2.0f * 4.0f * (float)(holderSizeInPixelsMod * holderSizeInPixelsMod)) / (1024.0f * 1024.0f);
+		holderSizeMB = ( ((float)MAX_LAYERS) * 2.0f * 4.0f * (float)(holderResolution * holderResolution)) / (1024.0f * 1024.0f);
 
 
 
@@ -15392,6 +15665,14 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		cout << "\n\n\n\n\n\n";
 
+
+
+		// cout << "terDataBufPitchXY: " << terDataBufPitchXY << "\n";
+		// cout << "terDataBufPitchZ: " << terDataBufPitchXY << "\n";
+		// cout << "terDataVisPitchXY: " << terDataBufPitchXY << "\n";
+		// cout << "terDataVisPitchZ: " << terDataBufPitchXY << "\n";
+		
+		
 		cout << "blockSizeInHolders: " << blockSizeInHolders << "\n";
 		cout << "blockSizeInPixels: " << blockSizeInPixels << "\n";
 		cout << "terDataBufPitchScaledXY " << terDataBufPitchScaledXY << "\n";
@@ -15405,8 +15686,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		cout << "pixelsPerMeter: " << pixelsPerMeter << "\n";
 		cout << "unitsPerMeter: " << unitsPerMeter << "\n";
 		cout << "blockSizeInLots: " << blockSizeInLots << "\n";
-		cout << "pixelsPerUnit: " << pixelsPerUnit << "\n";
-		cout << "unitsPerLot: " << unitsPerLot << "\n";
+		cout << "pixelsPerUnit: " << unitSizeInPixels << "\n";
+		cout << "unitsPerLot: " << metersPerLot*unitsPerMeter << "\n";
 		cout << "pixelsPerLot: " << pixelsPerLot << "\n";
 		cout << "holderSizeInPages: " << holderSizeInPages << "\n";
 		cout << "holdersPerLot: " << holdersPerLot << "\n";
@@ -15433,14 +15714,13 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		gridSizeInPixels = pixelsPerMeter;
 
 
-		//cout << "holderSizeInPixels X2 " << holderSizeInPixels*2 << "\n";
 
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 		radiosityOn = true;
-		testOn = true;
+		testOn = false;
 		updateLock = false;
 		traceOn = false;
 		gridOn = 0.0f;
@@ -15448,27 +15728,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		geomCounter = 0;
 		lightCounter = 0;
 
-		//grassSpacing = 1;//8/DEF_SCALE_FACTOR;// *2.0;
-		directPass = 0.0f;
+
 
 		int ccr = 0;
 		int ccg = 0;
 		int ccb = 0;
-
-		// TODO: examine if this variable is necessary
-		maxHeightInUnits = (worldSizeInPages.getIZ() - bufferMult) * (visPageSizeInUnits);
-
-		// minBoundsInPixels.setIXYZ(0, 0, 0);
-		// maxBoundsInPixels.setIXYZ(
-		// 	(worldSizeInPages.getIX() - 1)*unitSizeInPixels * visPageSizeInUnits,
-		// 	(worldSizeInPages.getIY() - 1)*unitSizeInPixels * visPageSizeInUnits,
-		// 	(worldSizeInPages.getIZ() - 1)*unitSizeInPixels * visPageSizeInUnits
-		// );
-
-		//heightmapMax = maxBoundsInPixels.getFZ() * 0.75f;
-		//heightmapMin = 0.0f;
-		//maxSeaDepth = 8.0f * pixelsPerMeter;
-		
 
 		doTraceVecND("worldSizeInPixels: ", &worldSizeInPixels);
 
@@ -15589,7 +15853,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		palWidth = 256;
 		palHeight = 256;
 
-		resultImage = new unsigned char[256 * 256 * 4];
+		resultImage = new unsigned char[palWidth * palHeight * 4];
 
 		mouseMovingSize = 100;
 		mouseMovingLoc = 0;
@@ -15726,15 +15990,15 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 				break;
 			}
 
-			dynObjects[i]->init(1024 + i * 256, 1024 + i * 256, 2048, ccr, ccg, ccb,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 32.0f );
+			dynObjects[i]->init(1024*2 + i * 256, 1024*2 + i * 256, 2048, ccr, ccg, ccb,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 
 
 
 		}
 
-		dynObjects[E_OBJ_FOG]->init(-1024, -1024, -512,   0, 0, 255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
-		dynObjects[E_OBJ_CUTAWAY]->init(1024 - 256, 1024 - 256, 2048,   0, 255, 0,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
-		dynObjects[E_OBJ_HUMAN]->init(0, 0, 0,   0, 255, 255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+		dynObjects[E_OBJ_FOG]->init(-1024*2, -1024*2, -1024/2,   0, 0, 255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+		dynObjects[E_OBJ_CUTAWAY]->init(1024*2 - 256, 1024*4 - 256 + 2048, 1024*4,   0, 255, 0,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+		dynObjects[E_OBJ_HUMAN]->init(0, 1024/2, 0,   0, 255, 255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 
 		// dynObjects[E_OBJ_P0]->init(512-256,1024-256,2048,   128,0,0,    true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 		// dynObjects[E_OBJ_P1]->init(512,1024,2048,      255,0,0,  true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
@@ -15754,18 +16018,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 
 
-		//createSliceList(visPageSizeInPixels);
-		//createVTList();
-
-		// for (i = 0; i < MAX_GRASS_LEV; i++) {
-		//  createGrassList(i); //grassSpacing
-		// }
-
-
-
 		//// GL WIDGET START ////
 
-		frameCount = -1;
+		frameCount = 0;
 		changesMade = false;
 		forceGetPD = false;
 		bufferInvalid = false;
@@ -15795,43 +16050,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		glDisable(GL_BLEND);
 		//glEnable(GL_BLEND);
 
-
-
-
-		// fboStrings.push_back("palFBO");
-		// fboStrings.push_back("worldSpaceFBO");
-		// fboStrings.push_back("frontFaceFBO");
-		// fboStrings.push_back("backFaceFBO");
-		// fboStrings.push_back("frontFaceMapFBO");
-		// fboStrings.push_back("backFaceMapFBO");
-		// fboStrings.push_back("pagesFBO");
-		// fboStrings.push_back("waterFBO");
-		// fboStrings.push_back("pages2FBO");
-		// fboStrings.push_back("water2FBO");
-		// fboStrings.push_back("pages3FBO");
-		// fboStrings.push_back("water3FBO");
-		// fboStrings.push_back("geomFBO");
-		// fboStrings.push_back("combineFBO");
-		// fboStrings.push_back("combineFBOWithWater");
-		// fboStrings.push_back("noiseFBO");
-		// fboStrings.push_back("guiFBO");
-		// fboStrings.push_back("resultFBO0");
-		// fboStrings.push_back("resultFBO1");
-		// fboStrings.push_back("volGenFBO0");
-		// fboStrings.push_back("volGenFBO1");
-		// fboStrings.push_back("waveFBO");
-		// fboStrings.push_back("swapFBO0");
-		// fboStrings.push_back("swapFBO1");
-		// fboStrings.push_back("swapFBOLin0");
-		// fboStrings.push_back("swapFBOLin1");
-		// fboStrings.push_back("swapFBOBLin0");
-		// fboStrings.push_back("swapFBOBLin1");
-		// fboStrings.push_back("swapFBOLinHalf0");
-		// fboStrings.push_back("swapFBOLinHalf1");
-		// fboStrings.push_back("cityFBO");
-		// fboStrings.push_back("hmFBO");
-		// fboStrings.push_back("hmFBOLinear");
-		// fboStrings.push_back("simplexFBO");
+		
 		
 		
 		shaderStrings.push_back("GUIShader");
@@ -15852,6 +16071,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		shaderStrings.push_back("MapBorderShader");
 		shaderStrings.push_back("WorldSpaceShader");
 		shaderStrings.push_back("BlitShader");
+		shaderStrings.push_back("BlitParentShader");
 		shaderStrings.push_back("PreLightingShader");
 		shaderStrings.push_back("HBlurShader");
 		shaderStrings.push_back("VBlurShader");
@@ -15888,11 +16108,33 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		for (i = 0; i < shaderStrings.size(); i++)
 		{
-			shaderMap.insert(  pair<string, Shader *>(shaderStrings[i], NULL)  );
+			shaderMap.insert(  pair<string, Shader>(shaderStrings[i], Shader())  );
 		}
 		doShaderRefresh();
 		
 		int faceDim = 256;
+		
+		
+		for (i = 0; i < MAX_VG_FBOS; i++) {
+			vgFBOArr[i].init(1, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
+		}
+		
+		
+		
+		
+		/* (
+				int _numBufs,
+				int _width,
+				int _height,
+				int _bytesPerChannel,
+				bool _hasDepth,
+				int filterEnum = GL_NEAREST,
+				int clampEnum = GL_CLAMP_TO_EDGE,
+				bool isMultisample = false
+		)*/
+		
+		
+		
 		
 		//GL_LINEAR
 		fboMap["worldSpaceFBO"].init(4, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
@@ -15914,10 +16156,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		fboMap["combineFBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 		fboMap["combineFBOWithWater"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
 		fboMap["noiseFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST, GL_REPEAT);
-		fboMap["guiFBO"].init(1, guiWinW, guiWinH, 1, false);
-		fboMap["resultFBO0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["resultFBO1"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["volGenFBO0"].init(1, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
+		fboMap["guiFBO"].init(1, guiWinW, guiWinH, 1, false, GL_LINEAR);
+		fboMap["resultFBO0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);
+		fboMap["resultFBO1"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);
+		//fboMap["volGenFBO0"].init(1, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
 		//fboMap["volGenFBO1"].init(1, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
 		fboMap["waveFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
 		fboMap["swapFBOLin0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
@@ -15952,16 +16194,22 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		loadAllData();
 
 		GamePlant::initAllPlants(this);
-
+		for (i = 0; i < E_PT_LENGTH/2; i++) {
+			gamePlants[i] = new GamePlant();
+		}
 
 
 		gw = new GameWorld();
 		
 		gpuPool = new PoolManager();
-		gpuPool->init(this,false,false);
-		
 		entityPool = new PoolManager();
-		entityPool->init(this,true,false);
+		//gpuPagePool = new PoolPageManager();
+		//entityPagePool = new PoolPageManager();
+		
+		
+		gpuPool->init(this,false,false,holderResolution,holderResolution);
+		entityPool->init(this,true,false,holderResolution,holderResolution);
+		
 		
 		
 		testHuman = new GameEnt();
@@ -15975,6 +16223,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		music[EML_CRICKETS0]->play();
 		music[EML_OCEANWAVES0]->play();
 		
+		
+		loadGUI();
+		loadGUIValues();
 		
 
 		doTraceND("GW DONE");
@@ -16011,7 +16262,7 @@ void Singleton::playSoundPosAndPitch (string soundName, FIVector4 * listenerPos,
 			res.getFX(),
 			res.getFY(),
 			res.getFZ(),
-			2.0f*pixelsPerMeter
+			32.0f*pixelsPerMeter
 		);
 		soundMap[soundName].play(volume);
 	}
@@ -16020,8 +16271,12 @@ void Singleton::playSound (string soundName, float volume)
 		prepSound(soundName);
 		soundMap[soundName].play(volume);
 	}
-void Singleton::playSoundEvent (char const * eventName)
-                                                   {
+void Singleton::playSoundEvent (char const * eventName, bool suppress)
+                                                                          {
+		
+		if (suppress) {
+			return;
+		}
 		
 		string tempString;
 		float volume;
@@ -16043,18 +16298,21 @@ void Singleton::playSoundEvent (char const * eventName)
 		
 		
 	}
-void Singleton::dispatchEvent (int button, int state, float x, float y, UIComponent * comp)
+void Singleton::dispatchEvent (int button, int state, float x, float y, UIComponent * comp, bool automated, bool preventRefresh)
           {
 		
-		if (guiLock) {
-			return;
-		}
+		changingGenVal = false;
+		
+		// if (guiLock) {
+		// 	return;
+		// }
 		
 		int i;
 		int cbDataCount;
 		JSONValue* cbData = NULL;
 		
 		bool doSPUpdate = false;
+		bool mouseUpEvent = false;
 		
 		switch (comp->guiClass) {
 			case E_GT_SLIDER:
@@ -16068,12 +16326,13 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 						
 						switch(state) {
 							case GLUT_OVER:
-								playSoundEvent("mouseOver");
+								playSoundEvent("mouseOver",automated);
 							break;
 							case GLUT_OUT:
-								playSoundEvent("mouseOut");
+								playSoundEvent("mouseOut",automated);
 							break;
 							case GLUT_CHANGING:
+								
 								doSPUpdate = true;
 							break;
 						}
@@ -16081,10 +16340,12 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 					break;
 					case GLUT_LEFT_BUTTON:
 						if (state == GLUT_DOWN) {
-							playSoundEvent("mouseDown");
+							playSoundEvent("mouseDown",automated);
 						}
 						else {
-							playSoundEvent("mouseUp");
+							playSoundEvent("mouseUp",automated);
+							doSPUpdate = true;
+							mouseUpEvent = true;
 						}
 					break;
 					
@@ -16118,17 +16379,29 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 							
 							
 							
-							shaderMap[cbDataStrings[0]]->paramMap[cbDataStrings[1]] = comp->value;
+							shaderMap[cbDataStrings[0]].paramMap[cbDataStrings[1]] = comp->getValue();
 							
 							if (
 								(cbDataStrings[0].compare("GenerateVolume") == 0)	||
 								(cbDataStrings[0].compare("RenderVolume") == 0)
 							) {
 								
-								
-								guiLock = true;
-								restartGen(false, false);
-								guiLock = false;
+								if (preventRefresh) {
+									
+								}
+								else {
+									if (mouseUpEvent) {
+										forceRestart = true;
+										readyForRestart = true;
+									}
+									else {
+										changingGenVal = true;
+										if (mouseMoved) {
+											
+											readyForRestart = true;
+										}
+									}
+								}
 								
 								
 								
@@ -16144,7 +16417,9 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		}
 		
 		
-		//cout << "GUICLASS " << comp->guiClass << "\n";
+		if (mouseMoved) {
+			mouseMoved = false;
+		}
 	}
 StyleSheet * Singleton::getNewStyleSheet (string ssName)
                                                     {
@@ -16672,6 +16947,12 @@ void Singleton::createVTListTilt ()
 		//glNewList(volTris, GL_COMPILE);
 		
 		
+		// string s = floatToHex(64.33f);
+		// float tempv = hexToFloat(s.c_str());
+		// cout << "\n\n\nfloatToHex: " << s << "\n";
+		// cout << "\n\n\nhexToFloat: " << tempv << "\n";
+		
+		
 
 		for (j = 0; j < 2; j++) {
 			
@@ -16742,6 +17023,7 @@ void Singleton::createVTListTilt ()
 				bindFBO("frontFaceMapFBO");
 			}
 			
+			setShaderFloat("fHolderMod", fHolderMod);
 			setShaderFloat("tiltAmount", tiltAmount);
 			setShaderFloat("cameraZoom", cameraZoom);
 			setShaderfVec2("bufferDim", &(bufferDim));
@@ -16888,14 +17170,14 @@ void Singleton::doShaderRefresh ()
 
 
 		for (i = 0; i < shaderStrings.size(); i++) {
-			if (shaderMap[ shaderStrings[i] ]) {
+			// if (shaderMap[ shaderStrings[i] ]) {
 
-				// TODO: Memory leak?
+			// 	// TODO: Memory leak?
 
-				delete shaderMap[ shaderStrings[i] ];
-				shaderMap[ shaderStrings[i] ] = NULL;
-			}
-			shaderMap[ shaderStrings[i] ] = new Shader( ("../src/glsl/" + shaderStrings[i] + ".c").c_str() );
+			// 	delete shaderMap[ shaderStrings[i] ];
+			// 	shaderMap[ shaderStrings[i] ] = NULL;
+			// }
+			shaderMap[ shaderStrings[i] ].init( "../src/glsl/" + shaderStrings[i] + ".c" );
 
 		}
 		shadersAreLoaded = 1;
@@ -16906,21 +17188,23 @@ void Singleton::doShaderRefresh ()
 		}
 		else {
 			
+			// load saved data (if exists)
+			// merge saved data with existing data (if exists)
+			// save merged data to saved data
+			
 			
 			stringBuf = "{\n\t\"params\":[\n";
 			
 			
 			
 			for (i = 0; i < shaderStrings.size(); i++) {
-				curShader = shaderMap[ shaderStrings[i] ];
-				if (curShader) {
-					
-					for (j = 0; j < curShader->paramVec.size(); j++) {
-						stringBuf += "\t\t{";
-						stringBuf += "\"shaderName\":\""+shaderStrings[i]+"\",";
-						stringBuf += "\"paramName\":\""+curShader->paramVec[j]+"\"";
-						stringBuf += "},\n";
-					}
+				curShader = &(shaderMap[ shaderStrings[i] ]);
+				for (j = 0; j < curShader->paramVec.size(); j++) {
+					stringBuf += "\t\t{";
+					stringBuf += "\"shaderName\":\""+shaderStrings[i]+"\",";
+					stringBuf += "\"paramName\":\""+curShader->paramVec[j]+"\",";
+					stringBuf += "\"uid\":\"$shaderParams."+shaderStrings[i]+"."+curShader->paramVec[j]+"\"";
+					stringBuf += "},\n";
 				}
 			}
 			
@@ -17140,7 +17424,7 @@ void Singleton::bindShader (string shaderName)
 		if (shadersAreLoaded)
 		{
 			curShader = shaderName;
-			curShaderPtr = shaderMap[curShader];
+			curShaderPtr = &(shaderMap[curShader]);
 			curShaderPtr->bind();
 			
 			totSize = curShaderPtr->paramVec.size();
@@ -17439,6 +17723,8 @@ void Singleton::moveCamera (FIVector4 * pModXYZ)
 		int i;
 		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 		
+		gw->curLoadRadius = minWInPages;
+		
 		// cout << "curHeight: " <<
 		// 	getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY(), true)/worldSizeInPixels.getFZ() << "\n";
 		
@@ -17516,8 +17802,8 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 
 		modXYZ.setFXYZ(0.0f,0.0f,0.0f);
 
-		float dxZoom = dx * 1.0 / zoom;
-		float dyZoom = dy * 1.0 / zoom;
+		float dxZoom = dx * fHolderMod / zoom;
+		float dyZoom = dy * fHolderMod / zoom;
 
 		float xm = 0.0f;
 		float ym = 0.0f;
@@ -17750,13 +18036,12 @@ void Singleton::toggleFullScreen ()
 void Singleton::restartGen (bool instantRefresh, bool clearEverything)
                                                                    {
 		
-		if (
-			(!(gw->lastProcResult))||clearEverything	
-		) {
-			gw->actionOnHolders(E_HOLDER_ACTION_RESET, instantRefresh, clearEverything);
-			bufferInvalid = true;
-			changesMade = true;
-		}
+		
+	
+		gw->curLoadRadius = minWInPages;
+		gw->actionOnHolders(E_HOLDER_ACTION_RESET, instantRefresh, clearEverything);
+		bufferInvalid = true;
+		changesMade = true;
 		
 		
 	}
@@ -17766,8 +18051,6 @@ void Singleton::setCameraToElevationBase ()
 
 		cameraPos->setFZ(
 			getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY())
-			// + maxWInPages * visPageSizeInPixels
-			// + floorHeightInMeters*1.0f*pixelsPerMeter
 		);
 
 	}
@@ -17798,6 +18081,20 @@ void Singleton::processSpecialKeys (int key, int _x, int _y)
 			break;
 		}
 	}
+void Singleton::updateCS ()
+                        {
+		if (
+			(bCtrl != bCtrlOld) ||
+			(bShift != bShiftOld)
+		) {
+			forceGetPD = true;
+			wsBufferInvalid = true;
+			bufferInvalid = true;
+			changesMade = true;
+		}
+		bCtrlOld = bCtrl;
+		bShiftOld = bShift;
+	}
 void Singleton::processKey (unsigned char key, int _x, int _y, bool isPressed)
         {
 
@@ -17823,6 +18120,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 		
 		bShift = shiftDown();
 		bCtrl = ctrlDown();
+		updateCS();
 
 
 		if (key == 17)
@@ -17877,12 +18175,13 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 		case 19: //ctrl-s
-			//saveAllData();
-			cout << "Use s key in web editor to save\n";
+			saveGUIValues();
+			//cout << "Use s key in web editor to save\n";
 			break;
 
 		case 15: //ctrl-o
-			loadAllData();
+			//loadAllData();
+			loadGUIValues();
 
 			break;
 
@@ -17947,11 +18246,15 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 
 
 		case 'R':
-			
+			doShaderRefresh();
+			loadGUI();
+			loadGUIValues();
+			//doShaderRefresh();
+			bufferInvalid = true;
 		break;
 		case 'r':
 			doShaderRefresh();
-			loadGUI();
+			
 			bufferInvalid = true;
 
 			cout << "Shaders Refreshed\n";
@@ -18073,8 +18376,13 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 				
 				// todo: in the future don't reload the gui every time
 				// just for testing right now
+				// if (mainGUI->isLoaded) {
+				// 
+				// }
+				// else {
+				// 	loadGUI()
+				// }
 				
-				loadGUI();
 			}
 			guiOn = !guiOn;
 			
@@ -18116,6 +18424,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 
 			break;
 
+		
 		case 'A':
 			changesMade = true;
 			maxHInPages++;
@@ -18130,20 +18439,20 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 		case 'a':
-			selectedNode->material += 1.0f;
-			curNode = getMirroredNode(selectedNode);
-			if (curNode != NULL) {
-				curNode->material += 1.0f;
-			}
-			makeDirty();
+			// selectedNode->material += 1.0f;
+			// curNode = getMirroredNode(selectedNode);
+			// if (curNode != NULL) {
+			// 	curNode->material += 1.0f;
+			// }
+			// makeDirty();
 		break;
 		case 'z':
-			selectedNode->material -= 1.0f;
-			curNode = getMirroredNode(selectedNode);
-			if (curNode != NULL) {
-				curNode->material -= 1.0f;
-			}
-			makeDirty();
+			// selectedNode->material -= 1.0f;
+			// curNode = getMirroredNode(selectedNode);
+			// if (curNode != NULL) {
+			// 	curNode->material -= 1.0f;
+			// }
+			// makeDirty();
 			
 		break;
 
@@ -18157,7 +18466,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 				selectedGeom->visible = !(selectedGeom->visible);
 
 				holderCount = gw->getHoldersInGeom(selectedGeom);
-				gw->refreshHoldersInList(true); //holderCount <= 12
+				gw->refreshHoldersInList(true, true); //holderCount <= 12
 				gw->holdersToRefresh.clear();
 
 				bufferInvalid = true;
@@ -18179,7 +18488,11 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 	}
 void Singleton::keyboardDown (unsigned char key, int _x, int _y)
         {
-
+		
+		
+		bShift = shiftDown();
+		bCtrl = ctrlDown();
+		updateCS();
 
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
@@ -18195,33 +18508,30 @@ void Singleton::runReport ()
 		cout << "Num GPU Holders: " << gpuPool->holderPoolItems.size() << "\n";
 		cout << "GPU Pooled MB Used: " << ((float)gpuPool->holderPoolItems.size())*holderSizeMB << "\n";
 	}
-void Singleton::getPixData (FIVector4 * toVector, int xv, int yv)
+void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, int bufNum, bool forceGet)
         {
 
 		FBOWrapper *fbow;
 		int newX;
 		int newY;
+		
+		float xv = _xv;
+		float yv = _yv;
 
-		float newFX;
-		float newFY;
 
-		if (wsBufferInvalid)
+		if (wsBufferInvalid || forceGet)
 		{
-			gw->getWorldSpaceBuffer();
+			gw->getWorldSpaceBuffer(bufNum);
 		}
 
-
-
+		
+		//xv = (xv - bufferDimHalf.getFX());
+		//yv = (yv - bufferDimHalf.getFY());
 
 		if (cameraZoom > 1.0)
 		{
-			newX = (int)(
-				(  (((float)xv) - bufferDimHalf.getFX()) / cameraZoom) + bufferDimHalf.getFX()
-			);
-			newY = (int)(
-				(  (((float)yv) - bufferDimHalf.getFY()) / cameraZoom) + bufferDimHalf.getFY()
-				// * tiltAmount*2.0f
-			);
+			newX = bufferDimHalf.getFX() + (xv - bufferDimHalf.getFX())/cameraZoom;
+			newY = bufferDimHalf.getFY() + (yv - bufferDimHalf.getFY())/cameraZoom;
 		}
 		else
 		{
@@ -18231,7 +18541,7 @@ void Singleton::getPixData (FIVector4 * toVector, int xv, int yv)
 
 
 
-		fbow = getFBOWrapper("worldSpaceFBO", 0);
+		fbow = getFBOWrapper("worldSpaceFBO", bufNum);
 		fbow->getPixelAtF(toVector, newX, (bufferDim.getIY() - 1) - newY);
 	}
 GameGeom * Singleton::findNearestGeom (FIVector4 * testPoint, bool createList)
@@ -18320,6 +18630,8 @@ GameGeom * Singleton::findNearestGeom (FIVector4 * testPoint, bool createList)
 void Singleton::mouseMove (int _x, int _y)
         {
 
+		mouseMoved = true;
+
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
 
@@ -18331,14 +18643,13 @@ void Singleton::mouseMove (int _x, int _y)
 
 		bShift = shiftDown();
 		bCtrl = ctrlDown();
+		updateCS();
 
 		lastMouseX = x;
 		lastMouseY = y;
 
 		
-		if (testTT != NULL) {
-			//testTT->setText(i__s(_x) + ", " + i__s(_y));
-		}
+		
 
 		mouseXUp = x;
 		mouseYUp = y;
@@ -18349,7 +18660,8 @@ void Singleton::mouseMove (int _x, int _y)
 		if (tiltChanged) {
 			tiltChanged = false;
 			createVTListTilt();
-			restartGen(false, false);
+			readyForRestart = true;
+			//restartGen(false, false);
 		}
 
 		if (abDown)
@@ -18409,7 +18721,7 @@ void Singleton::mouseMove (int _x, int _y)
 	}
 void Singleton::makeDirty ()
                          {
-		testHuman->gph->isDirty = true;
+		testHuman->gph->childrenDirty = true;
 	}
 void Singleton::setSelNode (GameEntNode * newNode)
                                               {
@@ -18419,10 +18731,6 @@ void Singleton::setSelNode (GameEntNode * newNode)
 			makeDirty();
 		}
 		lastSelNode = newNode;
-		
-	}
-void Singleton::screenToWorldBase (FIVector4 * tc, FIVector4 * wc)
-        {
 		
 	}
 void Singleton::worldToScreenBase (FIVector4 * sc, FIVector4 * wc)
@@ -18450,6 +18758,9 @@ void Singleton::worldToScreenBase (FIVector4 * sc, FIVector4 * wc)
 		float x1 = (wc->getFX() - wc->getFY());
 		//float y1 = (-(wc->getFX() / 2.0f) + -(wc->getFY() / 2.0f) + wc->getFZ());
 		float y1 = (-itilt*wc->getFX() + -itilt*wc->getFY() + (tilt)*2.0f*wc->getFZ());
+		
+		x1 /= fHolderMod;
+		y1 /= fHolderMod;
 		
 		sc->setFX(x1);
 		sc->setFY(y1);
@@ -18479,6 +18790,8 @@ void Singleton::worldToScreen (FIVector4 * sc, FIVector4 * wc, bool centerIsOrig
 			x1 = (x1 + 1.0) / 2.0;
 			y1 = (y1 + 1.0) / 2.0;
 		}
+		
+		
 
 
 		sc->setFX(x1);
@@ -18524,6 +18837,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		oneVec.normalize();
 
 		
+		hitGUI = false;
 		
 		if ((mainGUI != NULL)&&guiOn) {
 			if (mainGUI->isReady) {
@@ -18580,6 +18894,8 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 				tiltChanged = false;
 				createVTListTilt();
 				restartGen(false, true);
+				
+				//readyForRestart = true;
 			}
 			
 			if (lbDown)
@@ -18704,7 +19020,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 							gw->getHoldersInGeom(selectedGeom);
 							selectedGeom->toggleTransform();
 							gw->getHoldersInGeom(selectedGeom);
-							gw->refreshHoldersInList(true); //holderCount <= 12
+							gw->refreshHoldersInList(true, true); //holderCount <= 12
 							gw->holdersToRefresh.clear();
 							
 							if (selectedGeom->isToggled) {
@@ -18761,15 +19077,19 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 						case E_CT_LANTERN:
 							selectedGeom->light->isOn = !(selectedGeom->light->isOn);
+							playSoundPosAndPitch(
+								"castinet0",
+								cameraPos,
+								selectedGeom->getVisMinInPixelsT(),
+								0.3f
+							);
+							
 							doTraceND("");
 							doTraceND("CUR LIGHT DIS ", f__s(selectedGeom->light->screenDistance));
 							doTraceND("");
-
 							for (i = 0; i < gw->lightCount; i++)
 							{
-
-								doTraceND("LIGHT DIS ", f__s(gw->activeLights[i]->screenDistance));
-
+							 	doTraceND("LIGHT DIS ", f__s(gw->activeLights[i]->screenDistance));
 							}
 							doTraceND("");
 							doTraceND("");
@@ -18882,31 +19202,45 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 					
 					
 					if (bCtrl) {
-						if (mouseDownPD.getIW() == 1) {
+						if (mouseDownPD.getFW() != 0.0) {
 							// find nearest dyn object
-
-							bestInd = 0;
-							bestDis = 99999.0f;
 							
-							worldToScreenBase(&tempVec1, &mouseDownPD);
+							cout << "OBJECT ID " << mouseDownPD.getFW() << "\n";
 							
-							for (i = 1; i < dynObjects.size(); i++)
-							{
 
-
-								worldToScreenBase(&tempVec2, &(dynObjects[i]->pos));
-
-								curDis = tempVec1.distanceXY(&tempVec2);
-
-
-								if (curDis < bestDis)
-								{
-									bestDis = curDis;
-									bestInd = i;
-								}
+							bestInd = mouseDownPD.getFW();
+							
+							if ((bestInd >= E_OBJ_LENGTH)||(bestInd <= 0)) {
+								
 							}
+							else {
+								activeObject = (E_OBJ)(bestInd);
+							}
+							
+							//bestDis = 99999.0f;
+							
+							//getPixData(&geomPD, x, y, 2, true);
+							//doTraceVecND("GEOM PD ", &geomPD);
+							
+							//worldToScreenBase(&tempVec1, &mouseDownPD);
+							
+							// for (i = 1; i < dynObjects.size(); i++)
+							// {
 
-							activeObject = (E_OBJ)(bestInd);
+
+							// 	//worldToScreenBase(&tempVec2, &(dynObjects[i]->pos));
+
+							// 	curDis = geomPD.distance(&(dynObjects[i]->pos));
+
+
+							// 	if (curDis < bestDis)
+							// 	{
+							// 		bestDis = curDis;
+							// 		bestInd = i;
+							// 	}
+							// }
+
+							
 						}
 					}
 					else {
@@ -19177,20 +19511,162 @@ bool Singleton::loadJSON (string path, JSONValue * * destObj)
 		return res;
 		
 	}
+void Singleton::setGUIText (string key, string stringValue, float floatValue, bool applyVal, bool applyString)
+          {
+		UICStruct* curComp;
+		if (compMap.find( key ) == compMap.end()) {
+			// invalid key
+		}
+		else {
+			curComp = &(compMap[key]);
+			
+			if (
+				(curComp->uic == NULL) ||
+				(curComp->nodeId < 0)	
+			) {
+				// component was deleted
+			}
+			else {
+				if (applyString) {
+					curComp->uic->setText(stringValue);
+				}
+				if (applyVal) {
+					curComp->uic->setValue(floatValue);
+				}
+				
+			}
+		}
+	}
+void Singleton::setGUIValue (string key, float floatValue, bool dispatchEvent, bool preventRefresh)
+          {
+		UICStruct* curComp;
+		
+		if (compMap.find( key ) == compMap.end()) {
+			// invalid key
+		}
+		else {
+			curComp = &(compMap[key]);
+			
+			if (
+				(curComp->uic == NULL) ||
+				(curComp->nodeId < 0)	
+			) {
+				// component was deleted
+			}
+			else {
+				curComp->uic->setValue(floatValue,dispatchEvent,preventRefresh);
+			}
+		}
+	}
+void Singleton::loadGUIValues ()
+                             {
+		
+		cout << "Loading GUI Values\n";
+		
+		int i;
+		
+		charArr dest;
+		dest.data = NULL;
+		dest.size = 0;
+		
+		UICStruct* curComp;
+		
+		string loadBuf;
+		vector<string> splitStrings;
+		if ( loadFile(guiSaveLoc, &dest) )
+		{
+			loadBuf = string(dest.data);
+			splitStrings = split(loadBuf, '^');
+			
+			for (i = 0; i < splitStrings.size(); i += 2) {
+				setGUIValue(
+					splitStrings[i],
+					hexToFloat( &(splitStrings[i+1]) ),
+					true,
+					true
+				);
+			}
+			
+		}
+		else {
+			cout << "Unable to load GUI Values\n";
+			
+		}
+		
+		if (dest.data != NULL)
+		{
+			delete[] dest.data;
+			dest.data = NULL;
+		}
+		
+		cout << "End Loading GUI Values\n";
+	}
+void Singleton::saveGUIValues ()
+                             {
+		
+		cout << "Saving GUI Values\n";
+		
+		stringBuf = "";
+		
+		for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
+				
+				if (
+					(iterator->second.uic == NULL) ||
+					(iterator->second.nodeId < 0)
+				) {
+					
+				}
+				else {
+					if (iterator->first[0] ==  '$') {
+						stringBuf += iterator->first + "^" + floatToHex(iterator->second.uic->getValue()) + "^";
+					}
+					
+					
+				}
+				
+		    // iterator->first = key
+		    // iterator->second = value
+		}
+		
+		saveFileString(guiSaveLoc,&stringBuf);
+		
+		cout << "End Saving GUI Values\n";
+	}
+void Singleton::updateGUI ()
+                         {
+		
+		float chunkMem;
+		float fbMem;
+		
+		float voxelsGen = PAGE_COUNT*2;
+		
+		string maxGPUMString = " / " + fi__s(MAX_GPU_MEM);
+		
+		if (frameCount%120 == 0) {
+			
+			chunkMem = ((float)gpuPool->holderPoolItems.size())*holderSizeMB;
+			fbMem = TOT_GPU_MEM_USAGE - chunkMem;
+			
+			
+			setGUIText("debug.fbMem", "Frame Buffer Mem Used: " + fi__s(fbMem) + maxGPUMString, fbMem/MAX_GPU_MEM, true );
+			setGUIText("debug.chunkMem", "Chunk Mem Used: " + fi__s(chunkMem) + maxGPUMString, chunkMem/MAX_GPU_MEM, true );
+			setGUIText("debug.totMem", "Total Mem Used: " + fi__s(TOT_GPU_MEM_USAGE) + maxGPUMString, TOT_GPU_MEM_USAGE/MAX_GPU_MEM, true );
+			setGUIText("debug.chunksGen", "Voxels Generated (In Millions!): " + fi__s(voxelsGen) );
+			 
+		}
+		
+	}
 void Singleton::loadGUI ()
                        {
 		
-		testTT = NULL;
 		
+		for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
+				iterator->second.uic = NULL;
+				iterator->second.nodeId = -1;
+		    // iterator->first = key
+		    // iterator->second = value
+		}
 		
-		// if ( loadFile("..\\data\\lastJSONBufferGUI.js", &lastJSONBufferGUI) )
-		// {
-		// 	if (processJSON(&lastJSONBufferGUI, &nullBuffer, &guiRootJS)) {
-		// 		mainGUI->guiFromJSON(
-		// 			guiRootJS
-		// 		);
-		// 	}
-		// }
 		
 		if (
 			loadJSON("..\\data\\lastJSONBufferGUI.js", &guiRootJS)
@@ -19198,7 +19674,18 @@ void Singleton::loadGUI ()
 			mainGUI->guiFromJSON(
 				guiRootJS
 			);
+		
+			for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
+					
+					
+					if (iterator->second.nodeId != -1) {
+						iterator->second.uic = mainGUI->findNodeById(iterator->second.nodeId);
+					}
+			}
+		
 		}
+		
+		
 		
 		//testTT = mainGUI->findNodeByString("testTT");
 		
@@ -19220,8 +19707,12 @@ void Singleton::loadAllData ()
 	}
 void Singleton::saveAllData ()
         {
+		
+		
 		saveFile("..\\data\\lastJSONBuffer.js", &lastJSONBuffer);
 		saveFile("..\\data\\lastImageBuffer.txt", &lastImageBuffer);
+		
+		cout << "All Data Saved\n";
 	}
 bool Singleton::loadFile (string fnString, charArr * dest)
         {
@@ -19259,7 +19750,7 @@ bool Singleton::loadFile (string fnString, charArr * dest)
 			dest->data = NULL;
 		}
 
-		dest->data = new char[size];
+		dest->data = new char[size+1];
 
 		// read content of infile
 		infile.read (dest->data, size);
@@ -19272,8 +19763,42 @@ bool Singleton::loadFile (string fnString, charArr * dest)
 		}
 
 		infile.close();
+		
+		dest->data[size] = '\0';
 
 		doTraceND("Load Successful");
+
+		return true;
+	}
+bool Singleton::saveFileString (string fileName, string * source)
+        {
+
+		if (source == NULL)
+		{
+			doTraceND("Null Data");
+			return false;
+		}
+
+		std::ofstream outfile (fileName.c_str(), std::ofstream::out);
+
+		if ( ! outfile.is_open() )
+		{
+			doTraceND("Could Not Open File For Saving");
+			return false;
+		}
+
+		outfile.write(source->c_str(), source->size());
+
+		if ( outfile.bad() )
+		{
+			doTraceND("Could Not Save To File");
+			outfile.close();
+			return false;
+		}
+
+		outfile.close();
+
+		doTraceND("Save Successful");
 
 		return true;
 	}
@@ -19342,6 +19867,52 @@ void Singleton::updateAmbientSounds ()
 		music[EML_OCEANWAVES0]->setVolume(ambVolume*(1.0f-heightDif));
 		
 	}
+void Singleton::frameUpdate ()
+                           {
+		
+		
+		updateAmbientSounds();
+		if ((mainGUI != NULL)&&guiOn) {
+			if (mainGUI->isReady) {
+				//mainGUI->testOver(guiX, guiY);
+			}
+			
+		}
+		
+		if (
+			(
+				readyForRestart &&
+				(guiLock == false) &&
+				(gw->curLoadRadius > minWInPages)	
+			)
+			||
+			forceRestart
+		) {
+			
+			if (forceRestart) {
+				forceRestart = false;			
+			}
+			readyForRestart = false;
+			guiLock = true;
+			restartGen(false, false);
+			guiLock = false;
+			
+		}
+		
+		updateGUI();
+		
+		
+		gw->update();
+		
+		
+		
+		
+		TRACE_ON = false;
+		changesMade = false;
+		bufferInvalid = false;
+		
+		frameCount++;
+	}
 void Singleton::display ()
         {
 
@@ -19391,11 +19962,11 @@ void Singleton::display ()
 		}
 
 
-		if (elTime >= 8.0f) {
+		if (elTime >= ( 8.0f  )  ) { // / ((float)skipFrames)
 
 			if (firstRun)
 			{
-
+				
 			}
 			else
 			{
@@ -19496,25 +20067,11 @@ void Singleton::display ()
 				}
 				else
 				{
-					updateAmbientSounds();
-					if ((mainGUI != NULL)&&guiOn) {
-						if (mainGUI->isReady) {
-							//mainGUI->testOver(guiX, guiY);
-						}
-						
-					}
-					gw->update();
-					//renderCount += 1.0;
+					frameUpdate();
 				}
-
-
-				TRACE_ON = false;
-
-				changesMade = false;
-				bufferInvalid = false;
 			}
 
-			frameCount++;
+			
 		}
 
 		if (firstRun)
@@ -19569,21 +20126,21 @@ FBOSet * PooledResource::getFBOS (int fboNum)
                                     {
 		return fboSet[fboNum];
 	}
-void PooledResource::init (Singleton * _singleton, bool _isCPU)
-                                                      {
+void PooledResource::init (Singleton * _singleton, bool _isCPU, int _sizeX, int _sizeY)
+          {
 
 		singleton = _singleton;
 		isCPU = _isCPU;
-		usedByHolderId.v0 = -1;
-		usedByHolderId.v1 = -1;
+		usedById.v0 = -1;
+		usedById.v1 = -1;
 
 		int i;
 
 		if (isCPU) {
 			for (i = 0; i < MAX_LAYERS; i++) {
 				cpuSet[i] = new uint[
-					(singleton->holderSizeInPixelsMod) *
-					(singleton->holderSizeInPixelsMod)	
+					_sizeX *
+					_sizeY
 				];
 			}
 		}
@@ -19595,8 +20152,8 @@ void PooledResource::init (Singleton * _singleton, bool _isCPU)
 			for (i = 0; i < MAX_LAYERS; i++) {
 				fboSet[i]->init(
 					2,
-					((singleton->holderSizeInPixelsMod)),
-					((singleton->holderSizeInPixelsMod)),
+					_sizeX,
+					_sizeY,
 					1,
 					false //has depth
 				);
@@ -19619,14 +20176,15 @@ PoolManager::PoolManager ()
                       {
 		
 	}
-void PoolManager::init (Singleton * _singleton, bool _isEntity, bool _isCPU)
-                                                                      {
+void PoolManager::init (Singleton * _singleton, bool _isEntity, bool _isCPU, int _sizeX, int _sizeY)
+          {
 		isEntity = _isEntity;
 		poolItemsCreated = 0;
 		isCPU = _isCPU;
 		singleton = _singleton;
 		gw = singleton->gw;
-		
+		sizeX = _sizeX;
+		sizeY = _sizeY;
 	}
 float PoolManager::getMaxMem ()
                           {
@@ -19763,7 +20321,7 @@ int PoolManager::findFurthestHolderId ()
 
 		for (i = 0; i < holderPoolItems.size(); i++)
 		{
-			gp = gw->getHolderAtId(holderPoolItems[i]->usedByHolderId);
+			gp = gw->getHolderAtId(holderPoolItems[i]->usedById);
 
 			if (gp == NULL)
 			{
@@ -19791,19 +20349,25 @@ int PoolManager::requestPoolId (int blockId, int holderId)
         {
 
 
-		int holderToFreeId;
-		intPair usedByHolderId;
+		int toFreeId;
+		intPair usedById;
 
 		int i;
 
 
-		if (getTotMemUsed() < getMaxMem())
+		if (
+			(getTotMemUsed() < getMaxMem()) &&
+			(
+				(orderedIds.size() < MAX_HOLDERS) ||
+				(MAX_HOLDERS <= 0)
+			)
+		)
 		{
 			holderPoolItems.push_back( new PooledResource() );
-			holderPoolItems.back()->init(singleton, isCPU);
+			holderPoolItems.back()->init(singleton, isCPU, sizeX, sizeY);
 
-			holderToFreeId = poolItemsCreated;
-			holderPoolIds.push_front(holderToFreeId);
+			toFreeId = poolItemsCreated;
+			holderPoolIds.push_front(toFreeId);
 			orderedIds.push_back(intPair());
 			orderedIds.back().v0 = blockId;
 			orderedIds.back().v1 = holderId;
@@ -19812,12 +20376,12 @@ int PoolManager::requestPoolId (int blockId, int holderId)
 		}
 		else
 		{
-			holderToFreeId = findFurthestHolderId();//holderPoolIds.back();
-			usedByHolderId = holderPoolItems[holderToFreeId]->usedByHolderId;
+			toFreeId = findFurthestHolderId();//holderPoolIds.back();
+			usedById = holderPoolItems[toFreeId]->usedById;
 
 			GamePageHolder *consumingHolder;
 
-			if ( pairIsNeg(usedByHolderId) )
+			if ( pairIsNeg(usedById) )
 			{
 				// this pooledItem is already free
 
@@ -19826,7 +20390,7 @@ int PoolManager::requestPoolId (int blockId, int holderId)
 			{
 				// free this pooledItem from the holder that is consuming it and give it to the requesting holder
 
-				consumingHolder = gw->getHolderAtId(usedByHolderId);
+				consumingHolder = gw->getHolderAtId(usedById);
 
 				if (consumingHolder == NULL)
 				{
@@ -19844,7 +20408,7 @@ int PoolManager::requestPoolId (int blockId, int holderId)
 
 			for (i = 0; i < orderedIds.size(); i++)
 			{
-				if ( pairIsEqual(orderedIds[i], usedByHolderId) )
+				if ( pairIsEqual(orderedIds[i], usedById) )
 				{
 					orderedIds[i].v0 = blockId;
 					orderedIds[i].v1 = holderId;
@@ -19853,18 +20417,29 @@ int PoolManager::requestPoolId (int blockId, int holderId)
 			}
 
 
-			holderPoolIds.remove(holderToFreeId);
-			holderPoolIds.push_front(holderToFreeId);
+			holderPoolIds.remove(toFreeId);
+			holderPoolIds.push_front(toFreeId);
 		}
 
 
-		holderPoolItems[holderToFreeId]->usedByHolderId.v0 = blockId;
-		holderPoolItems[holderToFreeId]->usedByHolderId.v1 = holderId;
+		holderPoolItems[toFreeId]->usedById.v0 = blockId;
+		holderPoolItems[toFreeId]->usedById.v1 = holderId;
 
 		reorderIds();
 
-		return holderToFreeId;
+		return toFreeId;
 
+	}
+#undef LZZ_INLINE
+ 
+// f00316_poolpagemanager.h
+//
+
+#include "f00316_poolpagemanager.e"
+#define LZZ_INLINE inline
+PoolPageManager::PoolPageManager ()
+                          {
+		
 	}
 #undef LZZ_INLINE
  
@@ -19986,7 +20561,7 @@ UIComponent::UIComponent ()
                       {
 		
 	}
-void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, string _text, string _uid, string _ss, int _guiClass, float _divisions, bool _hasBackground, bool _singleLine, float _fillRatioX, float _fillRatioY, int _fillDir, int _alignX, int _alignY, float _value, int _layer, int _hoverType, bool _isFloating)
+void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, string _label, string _uid, string _ss, int _guiClass, float _divisions, bool _hasBackground, bool _singleLine, float _fillRatioX, float _fillRatioY, int _fillDir, int _alignX, int _alignY, float _value, int _layer, int _hoverType, bool _isFloating)
           {
 
 		parent = NULL;
@@ -19997,6 +20572,8 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		parentId = _parentId;
 		nodeId = _nodeId;
 		
+		
+		
 		jvNodeNoTemplate = _jvNodeNoTemplate;
 		
 		layer = _layer;
@@ -20004,9 +20581,16 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		isFloating = _isFloating;
 		
 		ss = _ss;
-		text = _text;
+		label = _label;
+		text = label;
+		
 		uid = _uid;
 		index = _index;
+		
+		if (uid.size() > 0) {
+			singleton->compMap[uid].nodeId = nodeId;
+		}
+		
 		
 		guiClass = _guiClass;
 		//guiId = _guiId;
@@ -20075,6 +20659,17 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		}
 		
 		
+	}
+void UIComponent::setValue (float _value, bool doEventDispatch, bool preventRefresh)
+                                                                                               {
+		value = _value;
+		if (doEventDispatch) {
+			singleton->dispatchEvent(GLUT_LEFT_BUTTON, GLUT_UP, 0, 0, this, true, preventRefresh);
+		}
+	}
+float UIComponent::getValue ()
+                         {
+		return value;
 	}
 UIComponent * UIComponent::getParent ()
                                  {
@@ -20247,6 +20842,10 @@ UIComponent * UIComponent::addChild (int _parentId, int _nodeId, string * string
 			curComp = &(children.back());
 			childCount = children.size()-1;
 		}
+		
+		
+		
+		
 		
 		curComp->init(
 			singleton,
@@ -20546,7 +21145,8 @@ void UIComponent::layout ()
 void UIComponent::updateValue (float x, float y)
                                            {
 		
-		float hoverBuffer = 8.0f;
+		float hoverBuffer = 4.0f;
+		float tempValue;
 		
 		UIComponent* curParent = getParent();
 		
@@ -20561,8 +21161,9 @@ void UIComponent::updateValue (float x, float y)
 			break;
 			case E_HT_TOOLTIP:
 			case E_HT_TOOLTIP_VALUE:
-				floatOffset.x = x + hoverBuffer;
-				floatOffset.y = parent->originPos.y + parent->resultDimInPixels.y + hoverBuffer;
+				//curParent->floatOffset.x + 
+				floatOffset.x = x + hoverBuffer; 
+				floatOffset.y = curParent->floatOffset.y + curParent->originPos.y + curParent->resultDimInPixels.y + hoverBuffer;
 				visible = curParent->overSelf;
 				
 				if ((hoverType == E_HT_TOOLTIP_VALUE)&&visible) {
@@ -20572,15 +21173,17 @@ void UIComponent::updateValue (float x, float y)
 				
 			break;
 			case E_HT_ONSELECTED:
-				floatOffset.x = parent->originPos.x + parent->resultDimInPixels.x;
-				floatOffset.y = parent->originPos.y;
+				//curParent->floatOffset.x + 
+				floatOffset.x = curParent->originPos.x + curParent->resultDimInPixels.x;
+				floatOffset.y = curParent->floatOffset.y + curParent->originPos.y;
 				visible = (curParent->value == 1.0f);
 			break;
 						
 		}
 		
 		
-		
+		float hbxMin = hitBounds.xMin + floatOffset.x;
+		float hbxMax = hitBounds.xMax + floatOffset.x;
 		
 		if (wasHit&&(guiClass == E_GT_SLIDER)) {
 			
@@ -20588,11 +21191,17 @@ void UIComponent::updateValue (float x, float y)
 				// toggle button, do nothing
 			}
 			else {
+				tempValue = clampfZO((x-hbxMin)/(hbxMax-hbxMin));
 				if (divisions == 0.0f) {
-					value = clampfZO((x-hitBounds.xMin)/(hitBounds.xMax-hitBounds.xMin));
+					setValue(
+						tempValue
+					);
 				}
 				else {
-					value = clampfZO(floor((x-hitBounds.xMin)/(hitBounds.xMax-hitBounds.xMin)*divisions)/divisions);
+					
+					setValue(
+						floor(tempValue*divisions)/divisions
+					);
 				}
 				
 			}
@@ -20636,7 +21245,7 @@ bool UIComponent::findMaxLayer (float x, float y)
 			(x > (hitBounds.xMin+floatOffset.x)) &&
 			(y < (hitBounds.yMax+floatOffset.y)) &&
 			(y > (hitBounds.yMin+floatOffset.y))
-		);
+		) && visible;
 		
 		overChild = false;
 		
@@ -20766,7 +21375,7 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 						break;
 						case E_GT_SLIDER:
 							if (divisions == 1.0f) {
-								value = 1.0f-value;
+								setValue(1.0f-value);
 							}
 						break;
 						case E_GT_BUTTON:
@@ -20779,12 +21388,12 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 							if (tempValue == 1.0f) {
 								for (i = 0; i < curParent->children.size(); i++) {
 									if (curParent->children[i].guiClass == E_GT_RADIO) {
-										curParent->children[i].value = 0.0f;
+										curParent->children[i].setValue(0.0f);
 									}
 								}
 							}
 							
-							value = tempValue;
+							setValue(tempValue);
 							
 						break;
 					}
@@ -20828,6 +21437,7 @@ void UIComponent::setText (string _text)
                                    {
 		
 		UIComponent* curParent = getParent();
+		UIComponent* curParentParent;
 		
 		if (_text.compare(text) == 0) {
 			// text unchanged, do nothing
@@ -20837,7 +21447,17 @@ void UIComponent::setText (string _text)
 			//isDirty = true;
 			
 			if (curParent != NULL) {
-				curParent->isDirty = true;
+				
+				curParentParent = curParent->getParent();
+				
+				if (curParentParent != NULL) {
+					curParentParent->isDirty = true;
+				}
+				else {
+					curParent->isDirty = true;
+				}
+				
+				
 				singleton->guiDirty = true;
 			}
 			
@@ -21209,6 +21829,7 @@ void GameGUI::init (Singleton * _singleton)
 
 		singleton = _singleton;
 		isReady = false;
+		isLoaded = false;
 		
 		nodeCount = 0;
 		baseComp = new UIComponent();
@@ -21259,6 +21880,10 @@ void GameGUI::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode,
 			
 		}
 		
+	}
+UIComponent * GameGUI::findNodeById (int _id)
+                                           {
+		return baseComp->findNodeById(_id);
 	}
 void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool isFloating)
           {
@@ -21465,6 +22090,8 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 								curData->Child("shaderName")->string_value +
 								"." +
 								curData->Child("paramName")->string_value;
+							
+							jvChildTemplate->Child("uid")->string_value = curData->Child("uid")->string_value;
 								
 							jvChildTemplate->Child("callbackData")->Child("shaderName")->string_value = 
 								curData->Child("shaderName")->string_value;
@@ -21503,6 +22130,7 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 void GameGUI::guiFromJSON (JSONValue * jv)
                                         {
 		
+		isLoaded = false;
 		isReady = false;
 		
 		
@@ -21530,6 +22158,7 @@ void GameGUI::guiFromJSON (JSONValue * jv)
 		
 		baseComp->isDirty = true;
 		isReady = true;
+		isLoaded = true;
 	}
 void GameGUI::doRefresh ()
                          {
@@ -21794,6 +22423,9 @@ void GameGUI::renderGUI (float newZoom, int activeFBO)
 #define LZZ_INLINE inline
 GameEntNode::GameEntNode (GameEntNode * _parent, int _nodeName, float _boneLength, float _tanLengthInMeters, float _bitLengthInMeters, float _norLengthInMeters, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ)
           {
+		
+		
+		
 		material = 8.0;
 		
 		parent = _parent;
@@ -21803,7 +22435,9 @@ GameEntNode::GameEntNode (GameEntNode * _parent, int _nodeName, float _boneLengt
 		rotPhi = 0.0f;
 		rotRho = 0.0f;
 
-		boneLengthHalf = _boneLength*0.5f;
+		float multiplier = 2.0;
+
+		boneLengthHalf = _boneLength*0.5f*multiplier;
 
 		tbnRadInMeters0.setFXYZ(
 			_tanLengthInMeters,
@@ -22318,16 +22952,17 @@ void GamePlant::initAllPlants (Singleton * _singleton)
 		pr->divergenceAngleV[0] = pi/3.0f;
 		pr->divergenceAngleV[1] = pi/6.0f;
 		pr->begThickness = 1.0f;
-		pr->endThickness = 0.0f;
+		pr->endThickness = 0.4f;
 		pr->sphereGen = 2.0f;
-		pr->numGenerations = 3.0f;
+		pr->sphereRad = 6.0f;
+		pr->numGenerations = 2.0f;
 		pr->angleUniformityU = 0.75f;
 		pr->isInit = 0.0;
-		pr->curLength[0] = 2.0f;
-		pr->curLength[1] = 3.5f;
-		pr->curLength[2] = 3.0f;
-		pr->curLength[3] = 2.5f;
-		pr->curLength[4] = 2.5f;
+		pr->curLength[0] = 6.0f;
+		pr->curLength[1] = 8.0f;
+		pr->curLength[2] = 8.0f;
+		pr->curLength[3] = 8.5f;
+		pr->curLength[4] = 8.5f;
 		pr->curLength[5] = 1.5f;
 		pr->curLength[6] = 1.0f;
 		pr->curLength[7] = 1.0f;
@@ -22341,6 +22976,7 @@ void GamePlant::initAllPlants (Singleton * _singleton)
 		pr->begThickness = 1.0f;
 		pr->endThickness = 0.0f;
 		pr->sphereGen = -1.0f;
+		pr->sphereRad = 0.0f;		
 		pr->numGenerations = 4.0f;
 		pr->angleUniformityU = 0.75f;
 		pr->isInit = 0.0;
@@ -22349,6 +22985,51 @@ void GamePlant::initAllPlants (Singleton * _singleton)
 		pr->curLength[2] = 3.5f;
 		pr->curLength[3] = 3.0f;
 		pr->curLength[4] = 2.5f;
+		pr->curLength[5] = 2.0f;
+		pr->curLength[6] = 1.5f;
+		pr->curLength[7] = 1.0f;
+		pr->curLength[8] = 0.75f;
+		
+		
+		pr = &(allPlantRules[E_PT_OAK2_TRUNK]);
+		pr->numChildren[0] = 2.0f;
+		pr->numChildren[1] = 5.0f;
+		pr->divergenceAngleV[0] = pi/3.0f;
+		pr->divergenceAngleV[1] = pi/4.0f;
+		pr->begThickness = 1.0f;
+		pr->endThickness = 0.2f;
+		pr->sphereGen = 2.0f;
+		pr->sphereRad = 4.0f;
+		pr->numGenerations = 2.0f;
+		pr->angleUniformityU = 0.75f;
+		pr->isInit = 0.0;
+		pr->curLength[0] = 6.0f;
+		pr->curLength[1] = 8.0f;
+		pr->curLength[2] = 8.0f;
+		pr->curLength[3] = 8.5f;
+		pr->curLength[4] = 8.5f;
+		pr->curLength[5] = 1.5f;
+		pr->curLength[6] = 1.0f;
+		pr->curLength[7] = 1.0f;
+		pr->curLength[8] = 0.75f;
+
+		pr = &(allPlantRules[E_PT_OAK2_ROOTS]);
+		pr->numChildren[0] = 2.0f;
+		pr->numChildren[1] = 3.0f;
+		pr->divergenceAngleV[0] = pi/8.0f;
+		pr->divergenceAngleV[1] = pi/8.0f;
+		pr->begThickness = 1.0f;
+		pr->endThickness = 0.0f;
+		pr->sphereGen = -1.0f;
+		pr->sphereRad = 0.0f;
+		pr->numGenerations = 2.0f;
+		pr->angleUniformityU = 0.75f;
+		pr->isInit = 0.0;
+		pr->curLength[0] = 6.0f;
+		pr->curLength[1] = 8.0f;
+		pr->curLength[2] = 8.0f;
+		pr->curLength[3] = 8.5f;
+		pr->curLength[4] = 8.5f;
 		pr->curLength[5] = 2.0f;
 		pr->curLength[6] = 1.5f;
 		pr->curLength[7] = 1.0f;
@@ -22364,16 +23045,17 @@ void GamePlant::initAllPlants (Singleton * _singleton)
 		pr->divergenceAngleV[0] = pi/3.0f;
 		pr->divergenceAngleV[1] = pi/4.0f;
 		pr->begThickness = 1.0f;
-		pr->endThickness = 0.0f;
+		pr->endThickness = 0.2f;
 		pr->sphereGen = -1.0f;
+		pr->sphereRad = 0.0f;
 		pr->numGenerations = 4.0f;
 		pr->angleUniformityU = 0.75f;
 		pr->isInit = 0.0;
-		pr->curLength[0] = 3.0f;
-		pr->curLength[1] = 3.5f;
-		pr->curLength[2] = 3.0f;
-		pr->curLength[3] = 4.0f;
-		pr->curLength[4] = 4.0f;
+		pr->curLength[0] = 6.0f;
+		pr->curLength[1] = 4.0f;
+		pr->curLength[2] = 6.0f;
+		pr->curLength[3] = 4.5f;
+		pr->curLength[4] = 4.5f;
 		pr->curLength[5] = 1.5f;
 		pr->curLength[6] = 1.0f;
 		pr->curLength[7] = 1.0f;
@@ -22387,6 +23069,7 @@ void GamePlant::initAllPlants (Singleton * _singleton)
 		pr->begThickness = 1.0f;
 		pr->endThickness = 0.0f;
 		pr->sphereGen = -1.0f;
+		pr->sphereRad = 0.0f;
 		pr->numGenerations = 4.0f;
 		pr->angleUniformityU = 0.75f;
 		pr->isInit = 0.0;
@@ -22471,7 +23154,7 @@ void GamePlant::initBase (PlantRules * rules, GamePlantNode * curNode, FIVector4
 		curNode->endPoint.addXYZRef(baseVec,rules->curLength[0]);
 		curNode->updateTangent(gv(rules->divergenceAngleV));
 
-		for (i = 1; i < maxGen; i++) {
+		for (i = 1; i <= maxGen; i++) {
 			maxLength += rules->curLength[i]; // *curMult;
 			//curMult *= rules->nodeLengthMultiplier;
 		}
@@ -22490,9 +23173,7 @@ void GamePlant::initBase (PlantRules * rules, GamePlantNode * curNode, FIVector4
 		curNode->endThickness = curNode->begThickness;
 		curNode->midThickness = curNode->begThickness;
 
-		// if (rules->sphereGen == 0.0f) {
-		// 	curNode->sphereRad = 1.5f*singleton->pixelsPerMeter;
-		// }
+		
 
 
 		applyRules(
@@ -22530,7 +23211,7 @@ void GamePlant::applyRules (PlantRules * rules, GamePlantNode * curParent, int c
 			curChild = &(curParent->children[i]);
 
 
-			if (curGen == maxGen-1) {
+			if (curGen == maxGen) {
 				curChild->init(curParent,0,0);
 			}
 			else {
@@ -22559,7 +23240,7 @@ void GamePlant::applyRules (PlantRules * rules, GamePlantNode * curParent, int c
 			curChild->midThickness = (curChild->begThickness+curChild->endThickness)*0.5f;
 
 			if ( rules->sphereGen == fCurGen ) {
-				curChild->sphereRad = 2.0f*singleton->pixelsPerMeter; //(maxLength-totLength) + 
+				curChild->sphereRad = rules->sphereRad*singleton->pixelsPerMeter; //(maxLength-totLength) + 
 			}
 
 			if (curGen < maxGen) {
@@ -22612,7 +23293,10 @@ GamePage::GamePage ()
 void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _thisPageId, int offsetX, int offsetY, int offsetZ, int oxLoc, int oyLoc, int ozLoc, bool _isEntity)
           {
 
+		isDirty = true;
 		hasLines = false;
+		hasSolids = false;
+		hasTrans = false;
 
 		isEntity = _isEntity;
 
@@ -22636,7 +23320,7 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 		threadRunning = false;
 
 
-		maxHeightInUnits = (singleton->maxHeightInUnits);
+		//maxHeightInUnits = (singleton->maxHeightInUnits);
 
 
 
@@ -22695,16 +23379,23 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 		centerPosition.addXYZRef(&worldMaxVisInPixels);
 		centerPosition.multXYZ(0.5f);
 
+		underground = false;
 		nearTerrain = false;
 		nearAir = false;
 		
 		hasWater = ( singleton->getSLInPixels() >= worldMinVisInPixels.getFZ() );
 		
+		
 		if (isEntity) {
 			addEntityGeom(true);
 		}
 		else {
-			parentBlock->isNearTerrain(&centerPosition,nearTerrain,nearAir);
+			parentBlock->isNearTerrain(&centerPosition,&centerPosition,nearTerrain,nearAir); //&worldMinVisInPixels,&worldMaxVisInPixels
+			
+			//terVal = parentBlock->fIsNearTerrain(&centerPosition);
+			
+			
+			
 			hasTerrain = nearTerrain&&nearAir;
 			addGeom(true);
 		}
@@ -22855,6 +23546,8 @@ void GamePage::addEntityGeom (bool justTesting)
 			hasWindow = false;
 			hasGeom = false;
 			hasLines = false;
+			hasSolids = false;
+			hasTrans = false;
 		}
 
 		
@@ -22908,8 +23601,10 @@ void GamePage::addEntityGeom (bool justTesting)
 
 		if (justTesting) {
 			parentGPH->hasTrans = false;
+			hasTrans = true;
 			if (hasGeom||hasLines) {
 				parentGPH->hasSolids = true;
+				hasSolids = true;
 			}
 		}
 		else {
@@ -23046,24 +23741,25 @@ void GamePage::addGeom (bool justTesting)
 			
 			if (hasWindow || hasWater) {
 				parentGPH->hasTrans = true;
+				hasTrans = true;
 				if (MAX_LAYERS < 2) {
 					parentGPH->hasSolids = true;
+					hasSolids = true;
 				}
 			}
 
 			if (hasTerrain || hasGeom) {
 				parentGPH->hasSolids = true;
+				hasSolids = true;
 			}
 			
-			if ( nearTerrain&&(!nearAir)&&(!isEntity) ) {
-				parentGPH->underground = true;
-			}
+			underground = ( nearTerrain&&(!nearAir)&&(!isEntity) );
 			
 		}
 		else {
 			if (numEntries > maxEntries) {
 				numEntries = maxEntries;
-				doTraceND("limit exceeded");
+				cout << "limit exceeded " << numEntries << " / " << maxEntries << "\n";
 			}
 
 			totParams = numEntries * paramsPerEntry;
@@ -23187,7 +23883,33 @@ void GamePage::getVoroPoints ()
 	}
 void GamePage::generateVolume ()
                               {
+		PAGE_COUNT++;
 
+		int curVGFBO = CUR_VG_FBO;
+		CUR_VG_FBO++;
+		if (CUR_VG_FBO >= MAX_VG_FBOS) {
+			CUR_VG_FBO = 0;
+		}
+		
+		// 1 = 0
+		// 2 = 1
+		// 4 = 2
+		// 8 = 2
+		
+		
+
+		int hspLog = 2;
+		
+		switch (singleton->holderSizeInPages) {
+			case 1:
+				hspLog = 0;
+			break;
+			case 2:
+				hspLog = 1;
+			break;
+		}
+		
+		
 		
 		int resIndex = 0;
 		int i;
@@ -23236,7 +23958,8 @@ void GamePage::generateVolume ()
 
 		
 
-		singleton->bindFBO("volGenFBO0");
+		//singleton->bindFBO("volGenFBO0");
+		singleton->bindFBODirect(&(singleton->vgFBOArr[curVGFBO]), 0);
 
 		if (volDataModified) {
 			singleton->setShaderTexture3D(0, singleton->volId);
@@ -23304,7 +24027,6 @@ void GamePage::generateVolume ()
 		//singleton->setShaderfVec4("mapFreqs", &(singleton->mapFreqs) );
 		//singleton->setShaderfVec4("mapAmps", &(singleton->mapAmps) );
 		
-
 		singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
 		singleton->setShaderFloat("volumePitch", (float)( singleton->volGenFBOX ));
 		//singleton->setShaderVec3("terPitch", singleton->terDataVisPitchXY, singleton->terDataVisPitchXY, singleton->terDataVisPitchZ);
@@ -23384,7 +24106,8 @@ void GamePage::generateVolume ()
 					((i == 1) && (hasWater || hasWindow))
 				) {
 					singleton->bindFBODirect(parentGPH->gpuRes->getFBOS(i), 0);
-					singleton->sampleFBO("volGenFBO0", 0);
+					//singleton->sampleFBO("volGenFBO0", 0);
+					singleton->sampleFBODirect(&(singleton->vgFBOArr[curVGFBO]),0);
 					singleton->sampleFBO("frontFaceFBO", 2);
 					singleton->sampleFBO("backFaceFBO", 3);
 
@@ -23392,6 +24115,7 @@ void GamePage::generateVolume ()
 					singleton->setShaderFloat("pageDepth", (float)( pageDepth ));
 					singleton->setShaderFloat("volumePitch", (float)( singleton->volGenFBOX ));
 					singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
+					singleton->setShaderFloat("holderSizeInPagesLog", hspLog);
 					singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
 					singleton->setShaderFloat("visPageSizeInPixels", (float)(singleton->visPageSizeInPixels));
 					singleton->setShaderfVec3("worldMinVisInPixels", &(worldMinVisInPixels));
@@ -23406,7 +24130,8 @@ void GamePage::generateVolume ()
 					
 					singleton->unsampleFBO("backFaceFBO",3);
 					singleton->unsampleFBO("frontFaceFBO",2);
-					singleton->unsampleFBO("volGenFBO0",0);
+					//singleton->unsampleFBO("volGenFBO0",0);
+					singleton->unsampleFBODirect(&(singleton->vgFBOArr[curVGFBO]),0);
 					singleton->unbindFBO();
 				}
 
@@ -23423,7 +24148,7 @@ void GamePage::generateVolume ()
 
 
 
-
+		isDirty = false;
 		isRendering = false;
 
 	}
@@ -23454,8 +24179,12 @@ void GamePage::getCoords ()
 		
 		tempVec2.setFXYZ(dxmod,dymod,dzmod);
 		singleton->worldToScreenBase(&tempVec1,&tempVec2);
-		float fx1 = tempVec1.getFX();
-		float fy1 = tempVec1.getFY();
+		float fx1 = tempVec1.getFX()*(singleton->fHolderMod);
+		float fy1 = tempVec1.getFY()*(singleton->fHolderMod);
+		
+		
+		
+		
 		fx1 -= pitchSrc2;
 		fy1 -= pitchSrc2;
 		
@@ -23523,7 +24252,7 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		blockId = _blockId;
 		holderId = _holderId;
 
-		isDirty = true;
+		childrenDirty = true;
 
 		singleton = _singleton;
 		usingPoolId = -1;
@@ -23562,6 +24291,8 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		
 		refreshGeom();
 		
+		underground = true;
+		
 		for (k = 0; k < holderSizeInPages; k++) {
 			for (j = 0; j < holderSizeInPages; j++) {
 				for (i = 0; i < holderSizeInPages; i++) {
@@ -23586,7 +24317,7 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 							);
 						}
 						
-						
+						underground = underground && pageData[ind]->underground;
 						
 					}
 				}
@@ -23701,45 +24432,86 @@ void GamePageHolder::clearSet ()
 		}
 		
 	}
+int GamePageHolder::passiveRefresh ()
+                             {
+		int i;
+		int changeCount;
+		
+		childrenDirty = false;
+		changeCount = 0;
+
+		for (i = 0; i < iPageDataVolume; i++) {
+			
+			if (changeCount >= singleton->maxChangesInPages) {
+				childrenDirty = true;
+				goto TOO_MANY_HOLDER_CHANGES;
+			}
+			
+			if (pageData[i] == NULL) {
+				
+			}
+			else {
+				if (
+					(pageData[i]->hasSolids || pageData[i]->hasTrans) &&
+					(!(pageData[i]->underground))
+				) {
+					if (pageData[i]->isDirty) {
+						pageData[i]->generateVolume();
+						changeCount++;
+					}
+				}
+				
+				
+				
+			}
+		}
+
+		TOO_MANY_HOLDER_CHANGES:
+
+		return changeCount;
+
+	}
 void GamePageHolder::refreshChildren (bool refreshImmediate, bool clearEverything)
                                                                                   {
 		int i;
-
-		//clearSet(true);
+		
+		
 		readyForClear = true;
 		if (clearEverything) {
 			clearSet();
 		}
-
+		
 		for (i = 0; i < iPageDataVolume; i++) {
 			if (pageData[i] == NULL) {
 
 			}
 			else {
-
+				
+				
 				if (refreshImmediate) {
-					
-					if (underground) {
-						
+					if (
+						(pageData[i]->hasSolids || pageData[i]->hasTrans) &&
+						(!(pageData[i]->underground))	
+					) {
+						pageData[i]->generateVolume();
 					}
-					else {
-						if (hasSolids || hasTrans) {
-							pageData[i]->generateVolume();
-						}
-					}
-					
-					
-					
-					isDirty = false;
-					
+					childrenDirty = false;
 				}
 				else {
-					isDirty = true;
+					childrenDirty = true;
+					pageData[i]->isDirty = true;
 				}
-
+				
+				
 				
 			}
 		}
+		
+		
+		
+		
+
+		
 	}
 void GamePageHolder::addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVector4 * _p1, FIVector4 * _p2, FIVector4 * _rad, FIVector4 * _cornerRad, FIVector4 * _visInsetFromMin, FIVector4 * _visInsetFromMax, FIVector4 * _powerVals, FIVector4 * _powerVals2, FIVector4 * _thickVals, FIVector4 * _matParams, FIVector4 * _centerPoint, FIVector4 * _anchorPoint, int _minRot, int _maxRot)
           {
@@ -23963,7 +24735,7 @@ void GamePageHolder::unbindGPUResources ()
 
 		usingPoolId = -1;
 		gpuRes = NULL;
-		isDirty = true;
+		childrenDirty = true;
 
 	}
 #undef LZZ_INLINE
@@ -24053,7 +24825,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		
 		layerHash[E_CT_FOUNDATION] = 2;
 		
-		layerHash[E_CT_LANTERN] = 1;
+		layerHash[E_CT_LANTERN] = 3;
 		layerHash[E_CT_WINDOWFRAME] = 1;
 		layerHash[E_CT_WINDOW] = 1;
 		layerHash[E_CT_DOORWAY] = 1;
@@ -24121,7 +24893,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		blockSizeInHolders = singleton->blockSizeInHolders;
 		blockSizeInLots = singleton->blockSizeInLots;
 
-		blockSizeInPixels = blockSizeInLots * singleton->pixelsPerLot;
+		blockSizeInPixels = singleton->blockSizeInPixels;
 		fBlockSizeInPixels = (float)blockSizeInPixels;
 
 		pixelsPerMeter = singleton->pixelsPerMeter;
@@ -24138,6 +24910,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		bool foundB;
 		bool foundC;
 		
+		bool isInside;
 		bool isWingBeg;
 		bool isWingEnd;
 		bool isWingBeg2;
@@ -24195,6 +24968,8 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		int res2;
 		int res3;
 
+		unsigned int nodeFlags = 0;
+
 		int counter;
 
 		int houseColor = 0;
@@ -24215,7 +24990,6 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 		int wingDir;
 
-		float nFloors;
 		floorHeightInMeters = singleton->floorHeightInMeters;
 		float roofHeightInMeters;// = singleton->roofHeightInMeters;
 		float wallRadInMeters;
@@ -24256,6 +25030,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		int io, jo, ko;
 		
 		float doorThickness = 0.0625f;
+		float lanternOffset = 0.1875f;
 		float doorInset = 0.0f;
 		float doorScale = 0.625f;
 		
@@ -24318,8 +25093,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 			for (j = 0; j < TOT_NODE_VALS; j++) {
 				curCon = &(buildingData[i].con[j]);
 				curCon->conType = E_CT_NULL;
-				curCon->isWingBeg = false;
-				curCon->isWingEnd = false;
+				curCon->nodeFlags = 0;
 				curCon->heightDelta = 0;
 				curCon->wingMult = 1.0f;
 				curCon->wallRadInMeters = singleton->wallRadInMeters;
@@ -24656,6 +25430,41 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 				}
 			}
 		}
+		
+		
+		
+		tempVec2.setFXYZ(93.989f, 67.345f, 54.256f);
+		
+		if (singleton->treesOn) {
+			for (i = terDataBufAmount; i < terDataBufPitchXY-terDataBufAmount; i++) {
+				for (j = terDataBufAmount; j < terDataBufPitchXY-terDataBufAmount; j++) {
+					if ( (touchesWithinRadMap(i,j,E_CT_TREE, 3, 0) == 0) && (touches2Map(i,j,E_CT_NULL,0) == 16) ) {
+
+						lotX = blockSizeInLots * (offsetInBlocks.getIX()) + i;
+						lotY = blockSizeInLots * (offsetInBlocks.getIY()) + j;
+
+						x1 = lotX + (i*blockSizeInPixels)/terDataBufPitchXY;
+						y1 = lotY + (j*blockSizeInPixels)/terDataBufPitchXY;
+
+						testInd = getMapNodeIndex(i, j, 0);
+						
+						tempVec.setFXYZ(i,j,15.0);
+
+						if (
+							true
+							//singleton->getHeightAtPixelPos(x1,y1) >
+							//singleton->getSLInPixels() + 2.0f * pixelsPerMeter
+						) {
+							if ( getRandSeeded(&tempVec,&tempVec2) > 0.2f ) {
+								mapData[testInd].connectionProps[0] = E_CT_TREE;
+							}
+						}
+
+						
+					}
+				}
+			}
+		}
 
 
 
@@ -24771,7 +25580,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 
 								conType = buildingData[curInd].con[m].conType;
-
+								nodeFlags = 0;
 
 								switch (n) {
 
@@ -24815,7 +25624,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 												case E_CT_ROAD:
 												case E_CT_MAINHALL:
 												case E_CT_WING:
-																									
+													
 													
 													if (
 														testVal == (k+1)
@@ -24861,7 +25670,26 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 												break;
 
 
+											case E_CT_TREE:
 
+												if (
+													testVal == k
+												) {
+													connectNodes(
+														i,
+														j,
+														k,
+														i + dirModX[m],
+														j + dirModY[m],
+														k + dirModZ[m],
+
+														E_CT_TREE,
+														-1,
+														0 // heightDelta
+													);
+												}
+
+												break;
 
 
 											
@@ -25194,59 +26022,28 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 										}
 										
 										
-										for (q = 0; q < 2; q++) {
-											applyWingValues(
-												i,
-												j,
-												k,
-												i + dirModX[m],
-												j + dirModY[m],
-												k + dirModZ[m],
-												q,
-												foundA,
-												foundB,
-												tempf
-												
-											);
+										for (q = 0; q < MAX_NODE_VALS; q++) {
+											
+											if (q != layerHash[E_CT_FOUNDATION]) {
+												applyWingValues(
+													i,
+													j,
+													k,
+													i + dirModX[m],
+													j + dirModY[m],
+													k + dirModZ[m],
+													q,
+													foundA,
+													foundB,
+													tempf
+													
+												);
+											}
+											
+											
 										}
 										
 
-										/*
-										foundA =
-											(touchesPlanarBN(i, j, k, conType, 0) == 1) &&
-											(touchesPlanarBN(i, j, k + 1, conType, 0) == 0) &&
-											(touchesPlanarBN(i, j, k - 1, conType, 0) <= 1);
-										foundB =
-											(touchesPlanarBN(i + dirModX[m], j + dirModY[m], k, conType, 0) == 1) &&
-											(touchesPlanarBN(i + dirModX[m], j + dirModY[m], k + 1, conType, 0) == 0) &&
-											(touchesPlanarBN(i + dirModX[m], j + dirModY[m], k - 1, conType, 0) <= 1);
-
-
-										tempf = 1.0f;
-										if (isBuilding[conType]) {
-											tempf = 0.75f;
-										}
-										if (isRoad[conType]) {
-											tempf = 1.25f;
-										}
-
-
-										for (q = 0; q < 2; q++) {
-											applyWingValues(
-												i,
-												j,
-												k,
-												i + dirModX[m],
-												j + dirModY[m],
-												k + dirModZ[m],
-												q,
-												foundA,
-												foundB,
-												tempf
-												
-											);
-										}
-										*/
 										
 									}
 									break;
@@ -25257,8 +26054,8 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 									if (m < 4) {
 										
 										
-										isWingBeg = buildingData[curInd].con[m].isWingBeg;
-										isWingEnd = buildingData[curInd].con[m].isWingEnd;
+										isWingBeg = (buildingData[curInd].con[m].nodeFlags & BC_FLAG_WING_BEG)>0;
+										isWingEnd = (buildingData[curInd].con[m].nodeFlags & BC_FLAG_WING_END)>0;
 										
 										//if ( (m%2) == 0 ) {}
 										
@@ -25267,9 +26064,8 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 										
 										if (
 											(ctClasses[conType] == E_CTC_ROOM) &&
-											(isWingEnd) //isWingBeg||
-										) { //touchesPlanarClass(i, j, k, E_CTC_ROOM, 0) == 1
-											
+											(isWingEnd)
+										) {
 											
 											curBT = E_CT_WINDOWFRAME;
 											
@@ -25282,15 +26078,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 												}
 											}
 											
-											
-											curDir = 0;
-											
-											/*if (isWingBeg) {
-												curDir = -1;
-											}
-											if (isWingEnd) {
-												curDir = 1;
-											}*/
+										
 											
 											if ( (m%2) == 0 ) {
 												curDir = 1;
@@ -25298,8 +26086,52 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											else {
 												curDir = -1;
 											}
+											
+											connectNodes(
+												i,
+												j,
+												k,
+												i + dirModX[m],
+												j + dirModY[m],
+												k + dirModZ[m],
+												curBT,
+												-1,
+												0,
+												curDir
+
+											);
+											
+											
+											
+											if ( (curDir==1) ) { // 
 												
-											if (curDir != 0) {
+												if (curBT == E_CT_DOORWAY) {
+													
+												}
+												else {
+													nodeFlags |= BC_FLAG_INSIDE;
+												}
+												
+												/*
+												void connectNodes(
+													int _x1,
+													int _y1,
+													int _z1,
+													int _x2,
+													int _y2,
+													int _z2,
+													
+													int ct,
+													int id = -1,
+													
+													int _heightDelta = 0,
+													int _direction = 0,
+													
+													float _wallRadInMeters = -1.0f,
+													unsigned int _nodeFlags = 0
+												)
+												*/
+												
 												connectNodes(
 													i,
 													j,
@@ -25307,13 +26139,20 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 													i + dirModX[m],
 													j + dirModY[m],
 													k + dirModZ[m],
-													curBT,
+													
+													E_CT_LANTERN,
 													-1,
+													
 													0,
-													curDir
+													curDir,
+													
+													-1.0f,
+													nodeFlags
 
 												);
 											}
+											
+											
 											
 										}
 										
@@ -25332,14 +26171,9 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											for (q = 0; q < 4; q++) {
 												if (
 													
-													// (
-													// 	( (q%2) == 1 ) &&
-													// 	(buildingData[curInd].con[q].isWingBeg)
-													// )
-													// ||
 													(
 														( (q%2) == 1 ) &&
-														(buildingData[curInd].con[q].isWingBeg)
+														( (buildingData[curInd].con[q].nodeFlags&BC_FLAG_WING_BEG) > 0)
 													)
 												) {
 													doProc = false;
@@ -25370,6 +26204,30 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 														curDir
 
 													);
+													
+													if (curDir == 1) {
+														nodeFlags |= BC_FLAG_INSIDE;
+														connectNodes(
+															i,
+															j,
+															k,
+															i + dirModX[m],
+															j + dirModY[m],
+															k + dirModZ[m],
+															
+															E_CT_LANTERN,
+															-1,
+															
+															0,
+															curDir,
+															
+															-1.0f,
+															nodeFlags
+
+														);
+													}
+													
+													
 												}
 											}
 											
@@ -25413,12 +26271,12 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		
 		int minRad = -1;
 		int minRadZ = -1;
-		if (pixelsPerMeter <= 32) {
-			minRad = -2;
-		}
-		if (pixelsPerMeter <= 64) {
-			minRadZ = -2;
-		}
+		// if (pixelsPerMeter <= 32) {
+		// 	minRad = -2;
+		// }
+		// if (pixelsPerMeter <= 64) {
+		// 	minRadZ = -2;
+		// }
 		
 		
 		bool nearAir = false;
@@ -25436,7 +26294,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 						
 						
 						
-						for (ko = minRadZ; ko <= 0; ko++) {
+						for (ko = minRadZ; ko <= 1; ko++) {
 							for (jo = minRad; jo <= 1; jo++) {
 								for (io = minRad; io <= 1; io++) {
 									testInd = getNodeIndex(i + io, j + jo, k + ko, 0);
@@ -25523,9 +26381,9 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 								
 								
 								
-								
-								isWingBeg = buildingData[curInd].con[q].isWingBeg;
-								isWingEnd = buildingData[curInd].con[q].isWingEnd;
+								isInside = (buildingData[curInd].con[q].nodeFlags & BC_FLAG_INSIDE) > 0;
+								isWingBeg = (buildingData[curInd].con[q].nodeFlags & BC_FLAG_WING_BEG) > 0;
+								isWingEnd = (buildingData[curInd].con[q].nodeFlags & BC_FLAG_WING_END) > 0;
 								wingMult = buildingData[curInd].con[q].wingMult;
 								newWingMult = (wingMult - 1.0f);
 								nDir = buildingData[curInd].con[q].direction;
@@ -25561,7 +26419,8 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 										
 										if (
 											(conType == E_CT_DOORWAY) ||
-											(conType == E_CT_WINDOWFRAME)	
+											(conType == E_CT_WINDOWFRAME) ||
+											(conType == E_CT_LANTERN)
 										) {
 											
 											
@@ -25575,13 +26434,6 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 															xmod1 = xmod2;
 														}
 														
-														// if (nDir == 1.0f) {
-														// 	xmod1 -= doorThickness;
-														// }
-														// else {
-														// 	xmod2 += doorThickness;
-														// }
-														
 													}
 													if (curDir == E_DIR_Y) {
 														if (isWingBeg) {
@@ -25590,13 +26442,6 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 														if (isWingEnd) {
 															ymod1 = ymod2;
 														}
-														
-														// if (nDir == 1.0f) {
-														// 	ymod1 -= doorThickness;
-														// }
-														// else {
-														// 	ymod2 += doorThickness;
-														// }
 														
 													}
 													
@@ -25607,15 +26452,49 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 														tempf = 1.0f;
 													}
 													
+													if (conType == E_CT_LANTERN) {
+														
+														if (isInside) {
+															tempf *= 2.0f;	
+														}
+														else {
+															tempf *= -2.0f;	
+														}
+														
+														
+													}
+													
+													
+													
 													xmod1 += tempf*doorThickness*dirModX[m]*0.5f;
 													ymod1 += tempf*doorThickness*dirModY[m]*0.5f;
 													xmod2 += tempf*doorThickness*dirModX[m]*0.5f;
 													ymod2 += tempf*doorThickness*dirModY[m]*0.5f;
 													
-													xmod1 -= doorThickness*dirModX[m]*0.5f;
-													ymod1 -= doorThickness*dirModY[m]*0.5f;
-													xmod2 += doorThickness*dirModX[m]*0.5f;
-													ymod2 += doorThickness*dirModY[m]*0.5f;
+													
+													
+													if (conType == E_CT_LANTERN) {
+														
+															if (isInside) {
+																zmod1 += 0.125f;
+																zmod2 += 0.125f;
+															}
+															else {
+																xmod1 += lanternOffset*dirModY[m];
+																ymod1 += lanternOffset*dirModX[m];
+																xmod2 += lanternOffset*dirModY[m];
+																ymod2 += lanternOffset*dirModX[m];
+															}
+														
+															
+													}
+													else {
+														xmod1 -= doorThickness*dirModX[m]*0.5f;
+														ymod1 -= doorThickness*dirModY[m]*0.5f;
+														xmod2 += doorThickness*dirModX[m]*0.5f;
+														ymod2 += doorThickness*dirModY[m]*0.5f;
+													}
+													
 													
 												}
 												else {
@@ -25631,15 +26510,40 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 													xmod2 = xmod1;
 													ymod2 = ymod1;
 													
-													
-													if (nDir == 1.0f) {
-														xmod1 -= doorThickness*dirModX[m];
-														ymod1 -= doorThickness*dirModY[m];
+													if (conType == E_CT_LANTERN) {
+														if (nDir == 1.0f) {
+															tempf = -1.0f;
+														}
+														else {
+															tempf = 1.0f;
+														}
+														
+														if (isInside) {
+															tempf *= 2.0f;	
+														}
+														else {
+															tempf *= -2.0f;	
+														}
+														
+														xmod1 += tempf*doorThickness*dirModX[m]*0.5f;
+														ymod1 += tempf*doorThickness*dirModY[m]*0.5f;
+														xmod2 += tempf*doorThickness*dirModX[m]*0.5f;
+														ymod2 += tempf*doorThickness*dirModY[m]*0.5f;
+														
+														
 													}
 													else {
-														xmod2 += doorThickness*dirModX[m];
-														ymod2 += doorThickness*dirModY[m];
+														if (nDir == 1.0f) {
+															xmod1 -= doorThickness*dirModX[m];
+															ymod1 -= doorThickness*dirModY[m];
+														}
+														else {
+															xmod2 += doorThickness*dirModX[m];
+															ymod2 += doorThickness*dirModY[m];
+														}
 													}
+													
+													
 												}
 											
 										}
@@ -25696,80 +26600,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 
 
-/*
- 													// is lantern
- 													
- 													newP1.setFXYZRef(&p1);
- 													newP2.setFXYZRef(&p2);
- 													
-													matParams.setFXYZ(E_MAT_PARAM_LANTERN, 0.0, 0.0f);
-													
-													curAlign = E_ALIGN_MIDDLE;
-													
-													floorHeight = 0.5f;
-													roofHeight = 0.25f;
-													baseOffset = 0.0f;//(0.25f)*pixelsPerMeter;
-													rad.setFXYZ(
-														(0.25f)*pixelsPerMeter,
-														(0.25f)*pixelsPerMeter,
-														(nFloors*floorHeight*0.5 + roofHeight)*pixelsPerMeter
-													);
-													cornerRad.setFXYZ(
-														(0.0625f)*pixelsPerMeter,
-														(0.0625f)*pixelsPerMeter,
-														(0.25f)*pixelsPerMeter
-													);
-													thickVals.setFXYZ(0.25f*pixelsPerMeter, 0.0f, 0.0f);
 
-													newP1.addXYZRef(&newP2);
-													newP1.multXYZ(0.5f);
-
-
-													if (curBT == E_BT_DOORWAY) {
-														newP1.addXYZ(
-															(gw->dirModX[k]*0.5f - gw->dirModY[k]*2.0f)*pixelsPerMeter,
-															(gw->dirModY[k]*0.5f - gw->dirModX[k]*2.0f)*pixelsPerMeter,
-															3.0f*pixelsPerMeter
-														);
-													}
-													else {
-														newP1.addXYZ(
-															(-gw->dirModX[k]*2.0f)*pixelsPerMeter,
-															(-gw->dirModY[k]*2.0f)*pixelsPerMeter,
-															2.0f*pixelsPerMeter + (2.25f + (curLev-1.0)*4.0)*pixelsPerMeter
-														);
-													}
-
-													newP2.setFXYZRef(&newP1);
-
-													lightVec.setFXYZ(1.0f,0.5f,0.1f); //randomize();
-													gameLights.push_back(new GameLight());
-													gameLights.back()->init(
-														lightCounter,
-														singleton->lightCounter,
-														&newP1,
-														&lightVec
-													);
-													singleton->lightCounter++;
-													lightCounter++;
-
-													visInsetFromMin.setFXYZ(0.0f,0.0f,cornerRad.getFZ() - 0.0625*pixelsPerMeter);
-													visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
-													
-													powerVals.setFXYZ(2.0f, 1.0f, 0.0f);
-													powerVals2.setFXYZRef(&powerVals);
-
-													curBT = E_BT_LANTERN;
-													
-													
-													
-													
-													if (curBT == E_BT_LANTERN) {
-														gameGeom.back()->light = gameLights.back();
-													}
-
-												
-*/
 
 								
 
@@ -25827,7 +26658,113 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 										case E_CT_NULL:
 												
 											break;
+										
+										
+										case E_CT_TREE:
+											baseOffset = 0.0f;
+											matParams.setFXYZ(E_MAT_PARAM_TREE, 0.0, 0.0f);
+
+											visInsetFromMin.setFXYZ(0.0f,0.0f,0.0f);
+											visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
 											
+											tempVec4.setFXYZRef(&p1);
+											tempVec4.addXYZ(0.0f,0.0f,2.0f*pixelsPerMeter);
+
+											tempVec.setIXYZ(i,j,k);
+											tempVec2.setFXYZ(93.989f, 67.345f, 54.256f);
+											tempInt = clampf(getRandSeeded(&tempVec,&tempVec2)*3.0f,0.0,2.0f);
+											
+											
+											singleton->gamePlants[tempInt]->init(
+												singleton,
+												&(GamePlant::allPlantRules[tempInt*2+1]),
+												&(GamePlant::allPlantRules[tempInt*2]),
+												&origin
+											);
+											matParams.setFY(tempInt*2+1);
+											addPlantNodes(singleton->gamePlants[tempInt]->rootsNode, &tempVec4, 1.0f);
+											matParams.setFY(tempInt*2);
+											addPlantNodes(singleton->gamePlants[tempInt]->trunkNode, &tempVec4, 1.0f);
+											
+											
+											
+											// if (tempf > 0.66) {
+											// 	bareTree.init(
+											// 		singleton,
+											// 		&(GamePlant::allPlantRules[E_PT_BARE_OAK_ROOTS]),
+											// 		&(GamePlant::allPlantRules[E_PT_BARE_OAK_TRUNK]),
+											// 		&origin
+											// 	);
+											// 	matParams.setFY()
+											// 	addPlantNodes(bareTree.rootsNode, &tempVec4, 1.0f);
+											// 	addPlantNodes(bareTree.trunkNode, &tempVec4, 1.0f);
+											// }
+											// else if (tempf > 0.33) {
+											// 	oakTree2.init(
+											// 		singleton,
+											// 		&(GamePlant::allPlantRules[E_PT_OAK2_ROOTS]),
+											// 		&(GamePlant::allPlantRules[E_PT_OAK2_TRUNK]),
+											// 		&origin
+											// 	);
+
+											// 	addPlantNodes(oakTree2.rootsNode, &tempVec4, 1.0f);
+											// 	addPlantNodes(oakTree2.trunkNode, &tempVec4, 1.0f);
+											// }
+											// else {
+											// 	oakTree.init(
+											// 		singleton,
+											// 		&(GamePlant::allPlantRules[E_PT_OAK_ROOTS]),
+											// 		&(GamePlant::allPlantRules[E_PT_OAK_TRUNK]),
+											// 		&origin
+											// 	);
+
+											// 	addPlantNodes(oakTree.rootsNode, &tempVec4, 1.0f);
+											// 	addPlantNodes(oakTree.trunkNode, &tempVec4, 1.0f);
+											// }
+
+											
+											
+											goto SKIP_ADD_GEOM;
+											
+										break;
+										
+										
+										case E_CT_LANTERN:
+										
+
+											matParams.setFXYZ(E_MAT_PARAM_LANTERN, 0.0, 0.0f);
+
+											curAlign = E_ALIGN_MIDDLE;
+
+											// floorHeight = 0.5f;
+											// roofHeight = 0.25f;
+											// baseOffset = 0.0f;
+											rad.setFXYZ(
+												(0.25f)*pixelsPerMeter,
+												(0.25f)*pixelsPerMeter,
+												(0.5f)*pixelsPerMeter
+											);
+											cornerRad.setFXYZ(
+												(0.0625f)*pixelsPerMeter,
+												(0.0625f)*pixelsPerMeter,
+												(0.25f)*pixelsPerMeter
+											);
+											thickVals.setFXYZ(0.25f*pixelsPerMeter, 0.0f, 0.0f);											
+
+											visInsetFromMin.setFXYZ(0.0f,0.0f,cornerRad.getFZ() - 0.0625*pixelsPerMeter);
+											visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
+
+											powerVals.setFXYZ(2.0f, 1.0f, 0.0f);
+											powerVals2.setFXYZRef(&powerVals);
+
+											curBT = E_CT_LANTERN;
+
+
+
+
+											
+										break;
+										
 										case E_CT_DOORWAY:
 										case E_CT_WINDOWFRAME:
 										
@@ -26150,6 +27087,10 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 										minRot,
 										maxRot
 									);
+									
+SKIP_ADD_GEOM:
+									
+									;
 
 								}
 
@@ -26166,6 +27107,17 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 
 
+	}
+int GameBlock::getNodeIndexClamped (int _x, int _y, int _z)
+                                                        {
+
+	
+			int x = clamp(_x,0,terDataBufPitchXY-1);
+			int y = clamp(_y,0,terDataBufPitchXY-1);
+			int z = clamp(_z,0,terDataBufPitchZ-1);
+		
+			return x + y * terDataBufPitchXY + z * terDataBufPitchXY * terDataBufPitchXY;
+		
 	}
 int GameBlock::getNodeIndex (int x, int y, int z, int bufAmount)
                                                              {
@@ -26260,7 +27212,7 @@ bool GameBlock::isLCorner (int x, int y, int z, int classType, bool includeSingl
 		return false;
 	}
 void GameBlock::applyWingValues (int _x1, int _y1, int _z1, int _x2, int _y2, int _z2, int cnum, bool isWingBeg, bool isWingEnd, float multiplier)
-                                                                                                                                               {
+          {
 
 
 		// 0: x+
@@ -26294,6 +27246,8 @@ void GameBlock::applyWingValues (int _x1, int _y1, int _z1, int _x2, int _y2, in
 		
 		int finalInd1;
 		int finalInd2;
+		
+		uint tempFlags;
 
 		if ((ind1 < 0) || (ind2 < 0)) {
 			// invalid connection
@@ -26315,21 +27269,124 @@ void GameBlock::applyWingValues (int _x1, int _y1, int _z1, int _x2, int _y2, in
 
 			finalInd1 = baseDir + cnum * MAX_NODE_DIRS;
 			finalInd2 = baseDir + 1 + cnum * MAX_NODE_DIRS;
-
-			buildingData[ind1].con[finalInd1].isWingBeg = isWingBeg;
-			buildingData[ind1].con[finalInd1].isWingEnd = isWingEnd;
+			
+			
+			
+			// WAS DOING: MAKE SURE TO SET FLAGS EXPLICITLY, NO OR "|" operator
+			
+			
+			tempFlags = 0;
+			if (isWingBeg) {
+				tempFlags |= BC_FLAG_WING_BEG;
+			}
+			if (isWingEnd) {
+				tempFlags |= BC_FLAG_WING_END;
+			}
+			
+			buildingData[ind1].con[finalInd1].nodeFlags &= ~(BC_FLAG_WING_BEG|BC_FLAG_WING_END);
+			buildingData[ind2].con[finalInd2].nodeFlags &= ~(BC_FLAG_WING_BEG|BC_FLAG_WING_END);
+			
+			buildingData[ind1].con[finalInd1].nodeFlags |= tempFlags;
 			buildingData[ind1].con[finalInd1].wingMult = multiplier;
 
-			buildingData[ind2].con[finalInd2].isWingBeg = isWingEnd;
-			buildingData[ind2].con[finalInd2].isWingEnd = isWingBeg;
+			tempFlags = 0;
+			if (isWingEnd) {
+				tempFlags |= BC_FLAG_WING_BEG;
+			}
+			if (isWingBeg) {
+				tempFlags |= BC_FLAG_WING_END;
+			}
+
+			buildingData[ind2].con[finalInd2].nodeFlags |= tempFlags;
 			//buildingData[ind2].con[finalInd2].wingMult = 2.0f-multiplier;
 			
 			
 
 		}
 	}
+void GameBlock::addPlantNodes (GamePlantNode * curPlantNode, FIVector4 * orig, float scale)
+                                                                                       {
+		int i;
+
+		float begThickness;
+		float endThickness;
+
+		if (curPlantNode->parent == NULL) {
+
+		}
+		else {
+
+			if (curPlantNode->parent->parent == NULL) {
+				tempVec.setFXYZ(0.0f,0.0f,0.0f); //Ref(&(curPlantNode->parent->begPoint));
+
+				begThickness = curPlantNode->midThickness;
+				endThickness = curPlantNode->midThickness;
+
+			}
+			else {
+				tempVec.setFXYZRef(&(curPlantNode->parent->begPoint));
+				tempVec.addXYZRef(&(curPlantNode->parent->endPoint));
+				tempVec.multXYZ(0.5f);
+
+				begThickness = curPlantNode->parent->midThickness;
+				endThickness = curPlantNode->midThickness;
+			}
+
+
+			// if (curPlantNode->numChildren == 0) {
+			// 	endThickness = 0.5f*singleton->pixelsPerMeter;
+			// }
+
+			
+			
+			tempVec2.setFXYZRef(&(curPlantNode->begPoint));
+			tempVec2.addXYZRef(&(curPlantNode->endPoint));
+			tempVec2.multXYZ(0.5f);
+			
+			tempVec3.setFXYZRef(&(curPlantNode->begPoint));
+
+			tempVec.multXYZ(scale);
+			tempVec2.multXYZ(scale);
+			tempVec3.multXYZ(scale);
+
+			tempVec.addXYZRef(orig);
+			tempVec2.addXYZRef(orig);
+			tempVec3.addXYZRef(orig);
+
+			gameGeom.push_back(new GameGeom());
+			gameGeom.back()->initTree(
+				
+				E_CT_TREE,
+				localGeomCounter,
+				singleton->geomCounter,
+								
+				&tempVec,
+				&tempVec2,
+				&tempVec3,
+
+				begThickness*scale,//curPlantNode->begThickness,
+				endThickness*scale,//curPlantNode->endThickness,	
+				curPlantNode->sphereRad*scale,			
+										
+				&matParams
+			);
+			singleton->geomCounter++;
+			localGeomCounter++;
+		}
+
+		
+
+		for (i = 0; i < curPlantNode->numChildren; i++) {
+			addPlantNodes( &(curPlantNode->children[i]), orig, scale);
+		}
+	}
 void GameBlock::addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVector4 * _p1, FIVector4 * _p2, FIVector4 * _rad, FIVector4 * _cornerRad, FIVector4 * _visInsetFromMin, FIVector4 * _visInsetFromMax, FIVector4 * _powerVals, FIVector4 * _powerVals2, FIVector4 * _thickVals, FIVector4 * _matParams, FIVector4 * _centerPoint, FIVector4 * _anchorPoint, int _minRot, int _maxRot)
           {
+		
+		
+		
+		
+		
 		gameGeom.push_back(new GameGeom());
 		gameGeom.back()->initBounds(
 			_curBT,
@@ -26352,10 +27409,27 @@ void GameBlock::addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVect
 			_minRot,
 			_maxRot
 		);
+		
+		if (_curBT == E_CT_LANTERN) {
+			lightVec.setFXYZ(1.0f,0.5f,0.1f); //randomize();
+			gameLights.push_back(new GameLight());
+			gameLights.back()->init(
+				lightCounter,
+				singleton->lightCounter,
+				_p1,
+				&lightVec
+			);
+			singleton->lightCounter++;
+			lightCounter++;
+			gameGeom.back()->light = gameLights.back();
+		}
+		
+		
+		
 		singleton->geomCounter++;
 		localGeomCounter++;
 	}
-void GameBlock::connectNodes (int _x1, int _y1, int _z1, int _x2, int _y2, int _z2, int ct, int id, int _heightDelta, int _direction, float _wallRadInMeters)
+void GameBlock::connectNodes (int _x1, int _y1, int _z1, int _x2, int _y2, int _z2, int ct, int id, int _heightDelta, int _direction, float _wallRadInMeters, unsigned int _nodeFlags)
           {
 
 
@@ -26433,6 +27507,9 @@ void GameBlock::connectNodes (int _x1, int _y1, int _z1, int _x2, int _y2, int _
 			buildingData[ind1].con[resInd1].direction = _direction;
 			buildingData[ind2].con[resInd2].direction = -_direction;
 			
+			buildingData[ind1].con[resInd1].nodeFlags |= _nodeFlags;
+			buildingData[ind2].con[resInd2].nodeFlags |= _nodeFlags;
+			
 			buildingData[ind1].con[resInd1].wallRadInMeters = wallRad;
 			buildingData[ind2].con[resInd2].wallRadInMeters = wallRad;
 			
@@ -26471,6 +27548,28 @@ int GameBlock::touchesMap (int x, int y, int buildingType, int bufAmount)
 		}
 
 		return tot;
+	}
+int GameBlock::touchesWithinRadMap (int x, int y, int buildingType, int rad, int bufAmount)
+                                                                                        {
+		int i;
+		int j;
+		
+		int tot = 0;
+		int testX;
+		int testY;
+		
+
+		for (i = -rad; i <= rad; i++) {
+			for (j = -rad; j <= rad; j++) {
+				testX = x + i;
+				testY = y + j;
+
+				tot += touchesMap(testX, testY, buildingType, bufAmount);
+			}
+		}
+
+		return tot;
+
 	}
 int GameBlock::touches2Map (int x, int y, int buildingType, int bufAmount)
                                                                        {
@@ -26551,10 +27650,12 @@ void GameBlock::connectMapNodes (int _x1, int _y1, int _x2, int _y2, int buildin
 
 
 	}
-void GameBlock::isNearTerrain (FIVector4 * worldPositionInPixels, bool & nearT, bool & nearA)
-                                                                                       {
+int GameBlock::getAdjustedHeightInHolders (int xInHolders, int yInHolders)
+                                                                       {
 
-		tempVec.copyFrom(worldPositionInPixels);
+		float holderSizeInPixels = singleton->holderSizeInPixels;
+
+		tempVec.setFXYZ(xInHolders*holderSizeInPixels, yInHolders*holderSizeInPixels, 0.0f);
 
 		tempVec.addXYZ(
 			-fBlockSizeInPixels * offsetInBlocks.getFX(),
@@ -26572,17 +27673,160 @@ void GameBlock::isNearTerrain (FIVector4 * worldPositionInPixels, bool & nearT, 
 		tempVec.addXYZ(0.5f);
 
 
-		int ind = getNodeIndex(tempVec.getIX(), tempVec.getIY(), tempVec.getIZ(), 0);
+		
+		int ind = getMapNodeIndex(tempVec.getIX(), tempVec.getIY(), 0);
+		int res = 0;
+		float fres = 0.0f;
 
 		if (ind > -1) {
-			//cout << "VALID " << tempVec.getIX() << " " << tempVec.getIY() << " " << tempVec.getIZ() << " ISNEAR: " << buildingData[ind].nearTerrain << "\n";
-			nearT = buildingData[ind].nearTerrain;
-			nearA = buildingData[ind].nearAir;
+			fres = ((float)(mapData[ind].terHeight))/fTerDataVisPitchZ; //adjustedHeight
+			
+			res = fres*singleton->worldSizeInHolders.getFZ();
+			
 		} else {
-			//cout << "NOTVALID " << tempVec.getIX() << " " << tempVec.getIY() << " " << tempVec.getIZ() << "\n";
-			nearT = false;
-			nearA = false;
+			res = 0;
 		}
+		
+		return res;
+
+	}
+float GameBlock::fIsNearTerrain (FIVector4 * worldMinVisInPixels)
+          {
+
+		int ind;
+		int ind2;
+		
+		int i;
+		int j;
+		int k;
+		
+		tempVec.copyFrom(worldMinVisInPixels);
+
+		tempVec.addXYZ(
+			-fBlockSizeInPixels * offsetInBlocks.getFX(),
+			-fBlockSizeInPixels * offsetInBlocks.getFY(),
+			0.0f
+		);
+
+		tempVec.multXYZ(
+			fTerDataVisPitchXY / fBlockSizeInPixels,
+			fTerDataVisPitchXY / fBlockSizeInPixels,
+			fTerDataVisPitchZ / fBlockSizeInPixels
+		);
+		tempVec.addXYZ((float)terDataBufAmount);
+		// tempVec2.copyFrom(&tempVec);
+		// tempVec2.addXYZ(1.0f,1.0f,1.0f);
+
+		//tempVec.addXYZ(0.5f); // gets negated anyway
+
+
+		for (i = 0; i <= 1; i++) {
+			for (j = 0; j <= 1; j++) {
+				for (k = 0; k <= 1; k++) {
+					ind = getNodeIndexClamped(
+						tempVec.getIX() + i,
+						tempVec.getIY() + j,
+						tempVec.getIZ() + k
+					);
+					ind2 = k*4 + j*2 + i;
+					if (terData[ind] > 0) {
+						trilin[ind2] = 1.0f;
+					}
+					else {
+						trilin[ind2] = 0.0f;
+					}
+				}
+				
+			}
+		}
+		
+		// 0 1
+		// 2 3
+		
+		// 4 5
+		// 6 7
+
+		float lerpX = tempVec.getFX() - tempVec.getIX();
+		float lerpY = tempVec.getFY() - tempVec.getIY();
+		float lerpZ = tempVec.getFZ() - tempVec.getIZ();
+		float ilerpX = 1.0f - lerpX;
+		float ilerpY = 1.0f - lerpY;
+		float ilerpZ = 1.0f - lerpZ;
+		
+		trilin[0] = trilin[0]*ilerpX + trilin[1]*lerpX;
+		trilin[2] = trilin[2]*ilerpX + trilin[3]*lerpX;
+		trilin[4] = trilin[4]*ilerpX + trilin[5]*lerpX;
+		trilin[6] = trilin[6]*ilerpX + trilin[7]*lerpX;
+		
+		trilin[0] = trilin[0]*ilerpY + trilin[2]*lerpY;
+		trilin[4] = trilin[4]*ilerpY + trilin[6]*lerpY;
+		
+		trilin[0] = trilin[0]*ilerpZ + trilin[4]*lerpZ;
+
+		return trilin[0];
+	}
+void GameBlock::isNearTerrain (FIVector4 * worldMinVisInPixels, FIVector4 * worldMaxVisInPixels, bool & nearT, bool & nearA)
+          {
+
+		int ind;
+		
+		int i;
+		int j;
+		int k;
+		
+		for (i = 0; i < 2; i++) {
+			if (i == 0) {
+				tempVec.copyFrom(worldMinVisInPixels);
+			}
+			else {
+				tempVec.copyFrom(worldMaxVisInPixels);
+			}
+			
+
+			tempVec.addXYZ(
+				-fBlockSizeInPixels * offsetInBlocks.getFX(),
+				-fBlockSizeInPixels * offsetInBlocks.getFY(),
+				0.0f
+			);
+
+			tempVec.multXYZ(
+				fTerDataVisPitchXY / fBlockSizeInPixels,
+				fTerDataVisPitchXY / fBlockSizeInPixels,
+				fTerDataVisPitchZ / fBlockSizeInPixels
+			);
+			tempVec.addXYZ((float)terDataBufAmount);
+
+			tempVec.addXYZ(0.5f);
+			
+			if (i == 0) {
+				tempVec2.copyFrom(&tempVec);
+			}
+		}
+
+		
+
+
+		
+		
+
+		nearT = false;
+		nearA = false;
+
+		
+		for (i = tempVec2.getIX(); i <= tempVec.getIX(); i++) {
+			for (j = tempVec2.getIY(); j <= tempVec.getIY(); j++) {
+				for (k = tempVec2.getIZ(); k <= tempVec.getIZ(); k++) {
+					ind = getNodeIndex(i, j, k-1, 0);
+					if (ind > -1) {
+						nearT = nearT||buildingData[ind].nearTerrain;
+						nearA = nearA||buildingData[ind].nearAir;
+					}
+				}
+				
+			}
+		}
+
+		
 
 	}
 int GameBlock::findNearestNode (FIVector4 * worldPositionInPixelsIn, FIVector4 * posInNodesOut, FIVector4 * posInPixelsOut)
@@ -26914,6 +28158,7 @@ int GameBlock::copyTerToTexture ()
 			// }
 			
 			
+			
 			for (k = 0; k < terDataBufPitchScaledZ; k++) {
 				for (j = 0; j < terDataBufPitchScaledXY; j++) {
 					for (i = 0; i < terDataBufPitchScaledXY; i++) {
@@ -26931,7 +28176,28 @@ int GameBlock::copyTerToTexture ()
 								
 								// TODO: rand num should be hashed based on location
 								
-								uiSimp = fGenRand()*55.0f+200.0f;
+								
+								
+								// tempVec.setIXYZ(
+								// 	i + offsetInBlocks.getIX()*terDataVisPitchXY - terDataBufAmount,
+								// 	j + offsetInBlocks.getIY()*terDataVisPitchXY - terDataBufAmount,
+								// 	k + offsetInBlocks.getIZ()*terDataVisPitchZ - terDataBufAmount
+								// );
+								
+								//uiSimp = getRandSeeded(&tempVec,&tempVec2)*55.0f+200.0f; //fGenRand()
+								
+								if (
+									(i >= terDataBufPitchScaledXY-terDataBufAmount*4) ||
+									(i <= terDataBufAmount*4) ||
+									(j >= terDataBufPitchScaledXY-terDataBufAmount*4) ||
+									(j <= terDataBufAmount*4)
+								) {
+									uiSimp = 255; // make sure block borders match up
+								}
+								else {
+									uiSimp = fGenRand()*63.0f+192.0f;
+								}
+								
 							}
 							else {
 								uiSimp = 255;
@@ -26994,10 +28260,13 @@ GameWorld::GameWorld ()
 void GameWorld::init (Singleton * _singleton)
         {
 
-		pushTrace("GameWorld init()");
+		//pushTrace("GameWorld init()");
 
+		
 
 		singleton = _singleton;
+		
+		curLoadRadius = singleton->minWInPages;
 
 		int i;
 		int j;
@@ -27005,7 +28274,6 @@ void GameWorld::init (Singleton * _singleton)
 		//finalInd = -1;
 
 		lightCount = 1;
-		//frameCount = -1;
 
 		noiseGenerated = false;
 		wavesGenerated = false;
@@ -27078,6 +28346,7 @@ void GameWorld::init (Singleton * _singleton)
 		mapStep = 0.0f;
 
 		pageCount = 0;
+		procResultAccum = false;
 		lastProcResult = true;
 		maxThreads = 7;
 		availThreads = maxThreads;
@@ -27149,7 +28418,7 @@ void GameWorld::init (Singleton * _singleton)
 		
 
 
-		popTrace();
+		//popTrace();
 	}
 GameBlock * GameWorld::getBlockAtCoords (int xInBlocks, int yInBlocks, bool createOnNull)
         {
@@ -27436,8 +28705,11 @@ bool GameWorld::checkBounds (int k)
 	}
 void GameWorld::update ()
         {
+		
+		bool procResult = false;
+		
 
-		pushTrace("update()");
+		//pushTrace("update()");
 
 		singleton->updateLock = true;
 
@@ -27446,6 +28718,8 @@ void GameWorld::update ()
 		float x;
 		float y;
 		float z;
+		
+		
 
 		newZoom = max(1.0f, singleton->cameraZoom);
 
@@ -27454,7 +28728,8 @@ void GameWorld::update ()
 		singleton->testHuman->basePosition.copyFrom(&(singleton->dynObjects[E_OBJ_HUMAN]->pos));
 		transformEnt(singleton->testHuman);
 
-		mapTrans = 1.0f - (singleton->cameraZoom * ((float)DEF_SCALE_FACTOR)) / 0.1f;
+		mapTrans = 1.0f-smoothstep(1.0f/512.0f,1.0f/128.0f,singleton->cameraZoom);
+		//1.0f - (singleton->cameraZoom * ((float)DEF_SCALE_FACTOR)) / 0.01f;
 		if (mapTrans > 0.91)
 		{
 			mapTrans = 1.0;
@@ -27498,28 +28773,40 @@ void GameWorld::update ()
 
 		bool changesMade = singleton->changesMade;
 		bool bufferInvalid = singleton->bufferInvalid;
-		bool procResult = false;
+		
 
 		if (mapTrans < 1.0f)
 		{
 
-			if ( false ) //singleton->isZooming)
+			if ( singleton->isZooming ) //
 			{
 
 			}
 			else
 			{
-				procResult = processPages();
+				procResult = procPages();
+				
+				procResultAccum = procResultAccum || procResult;
+				
+				if (singleton->skipFrames > 1) {
+					if ( (singleton->frameCount % singleton->skipFrames) != 0) {
+						doFinalDraw = true;
+						goto FINAL_DRAW;
+					}
+				}
+				
+				
+				procResultAccum = false;
+				
 
-				if ( (lastProcResult != procResult) && (procResult == false)  )
+				if ( (lastProcResult != procResultAccum)  ) // && (procResultAccum == false)
 				{
 					singleton->wsBufferInvalid = true;
-
 				}
 			}
 
 			if (
-				procResult ||
+				procResultAccum ||
 				changesMade ||
 				(singleton->charState == E_CHAR_STATE_RENDERED) ||
 				(singleton->tiltChanged)
@@ -27533,7 +28820,7 @@ void GameWorld::update ()
 		}
 
 		if (
-			procResult ||
+			procResultAccum ||
 			changesMade ||
 			bufferInvalid ||
 			singleton->abDown || 
@@ -27567,14 +28854,7 @@ void GameWorld::update ()
 			if ( mapTrans < 1.0 )
 			{
 
-				if (singleton->directPass)
-				{
-
-				}
-				else
-				{
-					postProcess();
-				}
+				postProcess();
 
 			}
 
@@ -27582,14 +28862,14 @@ void GameWorld::update ()
 			{
 				if (doFinalDraw) {
 					singleton->createVTListTilt();
-				}
-				
-				
+				}				
 				drawMap();
 			}
 
+			
+
 			glutSwapBuffers();
-			glFlush();
+			//glFlush();
 		}
 
 
@@ -27603,21 +28883,35 @@ void GameWorld::update ()
 			getWorldSpaceBuffer();
 		}
 
-
+FINAL_DRAW:
 
 
 DO_RETURN_UPDATE:
 
-		lastProcResult = procResult;
+		if (
+			(singleton->skipFrames <= 1) ||
+			((singleton->frameCount % singleton->skipFrames) == 0)
+		) {
+			lastProcResult = procResultAccum;
+		}
+		
+		if (procResult) {
+			
+		}
+		else {
+			curLoadRadius++;
+			curLoadRadius = min(curLoadRadius,singleton->maxWInPages);
+		}
+		
+		
 		singleton->updateLock = false;
-		popTrace();
+		//popTrace();
 
 
 	}
-bool GameWorld::processPages ()
+bool GameWorld::procPages ()
         {
 
-		pushTrace("processPages()");
 
 
 		int counter;
@@ -27631,17 +28925,24 @@ bool GameWorld::processPages ()
 
 		//float heightAtPoint = singleton->getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY());
 
+		int incVal;
+
 		bool cmade = false;
 
 		camPagePos.copyFrom( cameraPos );
 		//camPagePos.setFZ(heightAtPoint);
 		camPagePos.intDivXYZ(visPageSizeInPixels);
+		camPagePos.addXYZ(1.0f,1.0f,1.0f);
 
 		camHolderPos.copyFrom(&camPagePos);
 		camHolderPos.intDivXYZ(singleton->holderSizeInPages);
 
+		camHolderPos.addXYZ(1.0f,1.0f,1.0f);
+
 		cutHolderPos.copyFrom(cutPos);
 		cutHolderPos.intDivXYZ(singleton->holderSizeInPixels);
+		
+		
 
 		camBlockPos.copyFrom( cameraPos );
 		camBlockPos.intDivXYZ(singleton->blockSizeInPixels);
@@ -27653,8 +28954,13 @@ bool GameWorld::processPages ()
 		int m;
 		//E_STATES nState;
 
-		int loadRad = singleton->maxWInPages;
-		int loadRad2 = singleton->maxHInPages;
+		int loadRad = curLoadRadius; //singleton->maxWInPages;
+		int loadRad2 = singleton->maxHInPages; //curLoadRadius; //
+		
+		if (singleton->changingGenVal) {
+			loadRad2 = 1;
+		}
+		
 		int changeCount = 0;
 
 		int maxChangesInHolders = singleton->maxChangesInHolders;
@@ -27675,51 +28981,52 @@ bool GameWorld::processPages ()
 		}
 
 
-		// check for threads to free
-		if (availThreads < maxThreads)
-		{
-			for (i = 0; i < ocThreads.size(); i++)
-			{
-				if ( ocThreads[i] == -1)
-				{
-					// already freed
-				}
-				else
-				{
-					if ( getPageAtIndex(ocThreads[i]) == NULL )
-					{
-						// page was destroyed, free thread
+		// // check for threads to free
+		// if (availThreads < maxThreads)
+		// {
+		// 	for (i = 0; i < ocThreads.size(); i++)
+		// 	{
+		// 		if ( ocThreads[i] == -1)
+		// 		{
+		// 			// already freed
+		// 		}
+		// 		else
+		// 		{
+		// 			if ( getPageAtIndex(ocThreads[i]) == NULL )
+		// 			{
+		// 				// page was destroyed, free thread
 
-						ocThreads[i] = -1;
-						availThreads++;
-					}
-					else
-					{
-						if (getPageAtIndex(ocThreads[i])->threadRunning)
-						{
+		// 				ocThreads[i] = -1;
+		// 				availThreads++;
+		// 			}
+		// 			else
+		// 			{
+		// 				if (getPageAtIndex(ocThreads[i])->threadRunning)
+		// 				{
 
-						}
-						else
-						{
-							ocThreads[i] = -1;
-							availThreads++;
-						}
-					}
-				}
-			}
-		}
+		// 				}
+		// 				else
+		// 				{
+		// 					ocThreads[i] = -1;
+		// 					availThreads++;
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+		// }
 
 
-		if (availThreads == 0)
-		{
-			goto DO_RETURN_PP;
-		}
+		// if (availThreads == 0)
+		// {
+		// 	goto DO_RETURN_PP;
+		// }
 
+		
 
 		minLRInPixels.copyFrom(&camHolderPos);
 		maxLRInPixels.copyFrom(&camHolderPos);
-		minLRInPixels.addXYZ(-loadRad, -loadRad, -loadRad2);
-		maxLRInPixels.addXYZ(loadRad, loadRad, loadRad2);
+		minLRInPixels.addXYZ(-singleton->minWInPages, -singleton->minWInPages, -loadRad2);
+		maxLRInPixels.addXYZ(singleton->minWInPages, singleton->minWInPages, loadRad2);
 		
 		minLRInPixels.addXYZ(-0.5f);
 		maxLRInPixels.addXYZ(0.5f);
@@ -27740,8 +29047,8 @@ bool GameWorld::processPages ()
 
 			}
 		}
-
-
+		
+		int tempVal = 0;
 		
 
 		int mink = camHolderPos.getIZ() - loadRad2;
@@ -27750,48 +29057,60 @@ bool GameWorld::processPages ()
 		int maxj = camHolderPos.getIY() + loadRad;
 		int mini = camHolderPos.getIX() - loadRad;
 		int maxi = camHolderPos.getIX() + loadRad;
-
+		int curHeight = 0;
 
 		minLRInHolders.setIXYZ(mini + 1, minj + 1, mink + 1);
 		maxLRInHolders.setIXYZ(maxi - 1, maxj - 1, maxk - 1);
 
-
-		for (kk = mink; kk <= maxk; kk++) {
-			for (jj = minj; jj <= maxj; jj++) {
-				for (ii = mini; ii <= maxi; ii++) {
+		
+		
+		for (jj = minj; jj <= maxj; jj++) {
+			
+			if (curLoadRadius == singleton->minWInPages) {
+				incVal = 1;
+			}
+			else {
+				if ( (jj == minj) || (jj == maxj) ) {
+					incVal = 1;
+				}
+				else {
+					incVal = maxi - mini;
+				}
+			}
+			
+			for (ii = mini; ii <= maxi; ii += incVal) {
+				
+				
+				for (kk = mink; kk <= maxk; kk++) {
 					if ( checkBounds(kk) ) {
-						
-						
-						
-						
-
 						curHolder = getHolderAtCoords(ii, jj, kk, true);
 						
-						if (curHolder->isDirty) {
-							curHolder->refreshChildren(true);
-							changeCount++;
-							cmade = true;
+						if (curHolder->childrenDirty) {
+							
+							tempVal = curHolder->passiveRefresh();
+							changeCount += tempVal;
+							
+							if (tempVal > 0) {
+								cmade = true;
+							}
+							
 						}
 						
 						if (changeCount >= maxChangesInHolders)
 						{
 							goto DO_RETURN_PP;
 						}
-						
-						
-						
-						
 					}
 				}
+				
 			}
 		}
+		
 
 
 DO_RETURN_PP:
 
-		doTrace("ProcessPages End");
-
-		popTrace();
+		//popTrace();
 		return cmade;
 	}
 bool GameWorld::addHolderToRefresh (GamePageHolder * toAdd)
@@ -27866,19 +29185,19 @@ int GameWorld::getHoldersInGeom (GameGeom * gg)
 		return totCount;
 
 	}
-void GameWorld::refreshHoldersInList (bool doImmediate)
+void GameWorld::refreshHoldersInList (bool doImmediate, bool clearEverything)
         {
 		int i;
 
 		for (i = 0; i < holdersToRefresh.size(); i++)
 		{
-			holdersToRefresh[i]->refreshChildren(doImmediate);
+			holdersToRefresh[i]->refreshChildren(doImmediate, clearEverything);
 		}
 	}
 void GameWorld::actionOnHolders (int action, bool instantRefresh, bool clearEverything)
         {
 
-		pushTrace("renderHolders()");
+		//pushTrace("renderHolders()");
 
 		int i, j, k, m;
 		int res;
@@ -27901,7 +29220,7 @@ void GameWorld::actionOnHolders (int action, bool instantRefresh, bool clearEver
 			
 			
 			
-			if (  (gphEnt->isDirty)&&(ENT_ON)  ) {
+			if (  (gphEnt->childrenDirty)&&(ENT_ON)  ) {
 				
 				// TOOD: this must be called before other pages or potential crash from lack of memory to alloc
 				//transformEnt(singleton->testHuman);
@@ -28068,12 +29387,11 @@ void GameWorld::actionOnHolders (int action, bool instantRefresh, bool clearEver
 
 		//doTrace( "POSSIBLE ERROR: " , i__s(glGetError()) , "\n" );
 
-		popTrace();
+		//popTrace();
 	}
 void GameWorld::drawHolder (GamePageHolder * gp, int curLayer, float xoff, float yoff, float zoff)
         {
 		//pushTrace("drawHolder()");
-
 
 
 		float dx = gp->offsetInHolders.getFX();
@@ -28102,6 +29420,9 @@ void GameWorld::drawHolder (GamePageHolder * gp, int curLayer, float xoff, float
 		singleton->worldToScreenBase(&tempVec1,&tempVec2);
 		float fx1 = tempVec1.getFX();
 		float fy1 = tempVec1.getFY();
+		
+		pitchSrc /= singleton->fHolderMod;
+		pitchSrc2 /= singleton->fHolderMod;
 
 		fy1 -= (0.5-tilt)*pitchSrc;
 
@@ -28759,7 +30080,7 @@ void GameWorld::drawAIPath (PathHolder * pathHolder, PathHolder * splitPathHolde
 	}
 void GameWorld::renderGeom ()
         {
-		pushTrace("renderGeom()");
+		//pushTrace("renderGeom()");
 
 		int i;
 		bool doProc;
@@ -28769,7 +30090,8 @@ void GameWorld::renderGeom ()
 
 		singleton->bindShader("GeomShader");
 
-		
+		singleton->setShaderFloat("objectId",0.0);
+		singleton->setShaderFloat("fHolderMod", singleton->fHolderMod);
 		singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
@@ -28787,7 +30109,7 @@ void GameWorld::renderGeom ()
 		
 
 		if (singleton->mouseState != E_MOUSE_STATE_POSE) {
-			if (singleton->bShift) {
+			if (singleton->bShift) { // || singleton->hitGUI
 				singleton->setShaderFloat("isWire", 1.0);
 				singleton->setShaderFloat("matVal", getPackedColor(255,0,255));
 				
@@ -28945,8 +30267,7 @@ void GameWorld::renderGeom ()
 		}
 		
 		if (singleton->bCtrl) {
-			for (i = 1; i < singleton->dynObjects.size(); i++)
-			{
+			for (i = 1; i < singleton->dynObjects.size(); i++) {
 				if (singleton->dynObjects[i]->doRender)
 				{
 
@@ -28966,6 +30287,7 @@ void GameWorld::renderGeom ()
 
 					if (doProc)
 					{
+						singleton->setShaderFloat("objectId",i);
 						singleton->setShaderFloat("matVal", singleton->dynObjects[i]->colPacked);
 						curBoxPos = &(singleton->dynObjects[i]->pos);
 						singleton->drawCubeCentered(curBoxPos, singleton->dynObjects[i]->radius);
@@ -28982,6 +30304,7 @@ void GameWorld::renderGeom ()
 			}
 		}
 
+		singleton->setShaderFloat("objectId",0.0);
 
 		if (singleton->charState == E_CHAR_STATE_RENDERED) { //E_CHAR_STATE_SKEL
 			//transformEnt(singleton->testHuman);
@@ -29008,13 +30331,13 @@ void GameWorld::renderGeom ()
 
 		//glDisable(GL_DEPTH_TEST);
 
-		popTrace();
+		//popTrace();
 
 	}
 void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushAction)
         {
 
-		pushTrace("modifyUnit()");
+		//pushTrace("modifyUnit()");
 
 		int radius = ((int)singleton->curBrushRad);
 
@@ -29105,7 +30428,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 		if (brushAction == E_BRUSH_MOVE)
 		{
-			popTrace();
+			//popTrace();
 			return;
 		}
 
@@ -29221,7 +30544,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 															nearA = (nearV >> 24) & 255;
 
 
-															if (p >= singleton->maxHeightInUnits)
+															if (p >= singleton->worldSizeInUnits.getFZ())
 															{
 
 																linA = 0;
@@ -29339,16 +30662,14 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 															vdl_ptr[ind2] = (linA << 24) | (linB << 16) | (linG << 8) | (linR);
 															curPage->volDataModified = true;
 
-															curPage->parentGPH->isDirty = true;
+															curPage->parentGPH->childrenDirty = true;
+															curPage->isDirty = true;
 															changes = true;
 														}
 														else
 														{
-															if (curPage->parentGPH->isDirty)
+															if (curPage->parentGPH->childrenDirty)
 															{
-																//curPage->parentGPH->isDirty = false;
-
-																//curPage->generateVolume();
 																curPage->parentGPH->refreshChildren(true);
 															}
 														}
@@ -29382,7 +30703,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 
 
-		popTrace();
+		//popTrace();
 
 	}
 void GameWorld::renderWorldSpaceGPU (float processPagesFBO, float processGeomFBO, float processWaterFBO)
@@ -29402,6 +30723,7 @@ void GameWorld::renderWorldSpaceGPU (float processPagesFBO, float processGeomFBO
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim) );
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
+		singleton->setShaderFloat("fHolderMod", singleton->fHolderMod);
 
 		singleton->drawFSQuad(1.0f);
 
@@ -29418,22 +30740,14 @@ void GameWorld::renderWorldSpaceGPU (float processPagesFBO, float processGeomFBO
 		//doBlur("worldSpaceBlurFBO",2.0f);
 		
 	}
-void GameWorld::getWorldSpaceBuffer ()
+void GameWorld::getWorldSpaceBuffer (int bufNum)
         {
 
-
-		pushTrace("getWorldSpaceBuffer()");
-
-		
-
-
-
 		singleton->wsBufferInvalid = false;
-		FBOWrapper *fbow = singleton->getFBOWrapper("worldSpaceFBO", 0);
+		FBOWrapper *fbow = singleton->getFBOWrapper("worldSpaceFBO", bufNum);
 		fbow->getPixels();
 
 
-		popTrace();
 	}
 float GameWorld::weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean)
         {
@@ -29714,7 +31028,7 @@ void GameWorld::initMap ()
         {
 		mapLockOn = true;
 
-		pushTrace("initMap()");
+		//pushTrace("initMap()");
 
 		mapSwapFlag = 0;
 
@@ -31055,18 +32369,18 @@ void GameWorld::initMap ()
 
 		mapLockOn = false;
 
-		popTrace();
+		//popTrace();
 	}
 void GameWorld::drawMap ()
         {
 
 
-		pushTrace("drawMap()");
+		//pushTrace("drawMap()");
 
 		FBOWrapper *fbow = singleton->getFBOWrapper("hmFBOLinear", 0);
 
 		
-		singleton->setCameraToElevationBase();
+		//singleton->setCameraToElevationBase();
 
 
 		singleton->bindShader("TopoShader");
@@ -31124,7 +32438,7 @@ void GameWorld::drawMap ()
 		glDisable(GL_BLEND);
 
 
-		popTrace();
+		//popTrace();
 	}
 void GameWorld::doBlur (string fboName, float blurAmount)
         {
@@ -31247,7 +32561,7 @@ UPDATE_LIGHTS_END:
 void GameWorld::postProcess ()
         {
 
-		//frameCount++;
+		
 
 		int i;
 		int iMin;
@@ -31257,7 +32571,7 @@ void GameWorld::postProcess ()
 
 		GameLight *curLight;
 
-		pushTrace("postProcess()");
+		//pushTrace("postProcess()");
 
 		// NOTE: ALWAYS UNSAMPLE IN REVERSE ORDER!!!
 
@@ -31478,6 +32792,8 @@ void GameWorld::postProcess ()
 
 
 				singleton->setShaderArrayfVec4("lightArr", singleton->lightArr, (FLOATS_PER_LIGHT * lightCount) / 4);
+				
+				singleton->setShaderFloat("fHolderMod", singleton->fHolderMod);
 				singleton->setShaderFloat("pixelsPerMeter", singleton->pixelsPerMeter);
 				singleton->setShaderFloat("blockSizeInMeters", singleton->blockSizeInMeters);
 				singleton->setShaderFloat("lightCount", lightCount);
@@ -31680,7 +32996,7 @@ void GameWorld::postProcess ()
 		}
 
 
-		popTrace();
+		//popTrace();
 
 
 	}
@@ -31816,34 +33132,10 @@ int main(int argc, char* argv[])
     int winWidth;
     int winHeight;
     int scaleFactor;
-    int resMode = 0;
-
-    switch (resMode) {
-        case 0:
-            winWidth = DEF_WIN_W;
-            winHeight = DEF_WIN_H;
-            scaleFactor = DEF_SCALE_FACTOR;
-        break;
-
-        case 1:
-            winWidth = 1024;
-            winHeight = 512;
-            scaleFactor = 1;
-        break;
-
-        case 2:
-            winWidth = 2048;
-            winHeight = 1024;
-            scaleFactor = 2;
-        break;
-
-        case 3:
-            winWidth = 2048;
-            winHeight = 1280;
-            scaleFactor = 1;
-        break;
-    }
-
+    
+    winWidth = DEF_WIN_W;
+    winHeight = DEF_WIN_H;
+    scaleFactor = DEF_SCALE_FACTOR;
 
     RedirectIOToConsole();
 
@@ -31852,7 +33144,7 @@ int main(int argc, char* argv[])
 
     //glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);  //GLUT_SINGLE
 
-    glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGB);
+    glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGB); //|GLUT_MULTISAMPLE
     glutInitWindowSize(winWidth, winHeight);
     glutInitWindowPosition(250, 50);
     glutCreateWindow("VoxelQuest");

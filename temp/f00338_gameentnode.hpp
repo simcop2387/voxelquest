@@ -65,6 +65,9 @@ public:
 		
 		
 	) {
+		
+		
+		
 		material = 8.0;
 		
 		parent = _parent;
@@ -74,7 +77,9 @@ public:
 		rotPhi = 0.0f;
 		rotRho = 0.0f;
 
-		boneLengthHalf = _boneLength*0.5f;
+		float multiplier = 2.0;
+
+		boneLengthHalf = _boneLength*0.5f*multiplier;
 
 		tbnRadInMeters0.setFXYZ(
 			_tanLengthInMeters,

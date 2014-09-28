@@ -13,6 +13,7 @@ public:
 	int lightCounter;
 	int terDataBufAmount;
 
+	float trilin[8];
 
 	int terDataVisPitchXY;
 	float fTerDataVisPitchXY;
@@ -88,8 +89,9 @@ public:
 	std::vector<GameLight *> gameLights;
 	//std::vector<GameEnt *> gameEnts; // only one instance per block
 
-	GamePlant oakTree;
-	GamePlant bareTree;
+	//GamePlant oakTree2;
+	//GamePlant oakTree;
+	//GamePlant bareTree;
 	GameWorld *gw;
 	GamePageHolder **holderData;
 
@@ -179,7 +181,7 @@ public:
 		
 		layerHash[E_CT_FOUNDATION] = 2;
 		
-		layerHash[E_CT_LANTERN] = 1;
+		layerHash[E_CT_LANTERN] = 3;
 		layerHash[E_CT_WINDOWFRAME] = 1;
 		layerHash[E_CT_WINDOW] = 1;
 		layerHash[E_CT_DOORWAY] = 1;
@@ -247,7 +249,7 @@ public:
 		blockSizeInHolders = singleton->blockSizeInHolders;
 		blockSizeInLots = singleton->blockSizeInLots;
 
-		blockSizeInPixels = blockSizeInLots * singleton->pixelsPerLot;
+		blockSizeInPixels = singleton->blockSizeInPixels;
 		fBlockSizeInPixels = (float)blockSizeInPixels;
 
 		pixelsPerMeter = singleton->pixelsPerMeter;
@@ -264,6 +266,7 @@ public:
 		bool foundB;
 		bool foundC;
 		
+		bool isInside;
 		bool isWingBeg;
 		bool isWingEnd;
 		bool isWingBeg2;
@@ -321,6 +324,8 @@ public:
 		int res2;
 		int res3;
 
+		unsigned int nodeFlags = 0;
+
 		int counter;
 
 		int houseColor = 0;
@@ -341,7 +346,6 @@ public:
 
 		int wingDir;
 
-		float nFloors;
 		floorHeightInMeters = singleton->floorHeightInMeters;
 		float roofHeightInMeters;// = singleton->roofHeightInMeters;
 		float wallRadInMeters;
@@ -382,6 +386,7 @@ public:
 		int io, jo, ko;
 		
 		float doorThickness = 0.0625f;
+		float lanternOffset = 0.1875f;
 		float doorInset = 0.0f;
 		float doorScale = 0.625f;
 		
@@ -444,8 +449,7 @@ public:
 			for (j = 0; j < TOT_NODE_VALS; j++) {
 				curCon = &(buildingData[i].con[j]);
 				curCon->conType = E_CT_NULL;
-				curCon->isWingBeg = false;
-				curCon->isWingEnd = false;
+				curCon->nodeFlags = 0;
 				curCon->heightDelta = 0;
 				curCon->wingMult = 1.0f;
 				curCon->wallRadInMeters = singleton->wallRadInMeters;
@@ -782,6 +786,41 @@ public:
 				}
 			}
 		}
+		
+		
+		
+		tempVec2.setFXYZ(93.989f, 67.345f, 54.256f);
+		
+		if (singleton->treesOn) {
+			for (i = terDataBufAmount; i < terDataBufPitchXY-terDataBufAmount; i++) {
+				for (j = terDataBufAmount; j < terDataBufPitchXY-terDataBufAmount; j++) {
+					if ( (touchesWithinRadMap(i,j,E_CT_TREE, 3, 0) == 0) && (touches2Map(i,j,E_CT_NULL,0) == 16) ) {
+
+						lotX = blockSizeInLots * (offsetInBlocks.getIX()) + i;
+						lotY = blockSizeInLots * (offsetInBlocks.getIY()) + j;
+
+						x1 = lotX + (i*blockSizeInPixels)/terDataBufPitchXY;
+						y1 = lotY + (j*blockSizeInPixels)/terDataBufPitchXY;
+
+						testInd = getMapNodeIndex(i, j, 0);
+						
+						tempVec.setFXYZ(i,j,15.0);
+
+						if (
+							true
+							//singleton->getHeightAtPixelPos(x1,y1) >
+							//singleton->getSLInPixels() + 2.0f * pixelsPerMeter
+						) {
+							if ( getRandSeeded(&tempVec,&tempVec2) > 0.2f ) {
+								mapData[testInd].connectionProps[0] = E_CT_TREE;
+							}
+						}
+
+						
+					}
+				}
+			}
+		}
 
 
 
@@ -897,7 +936,7 @@ public:
 
 
 								conType = buildingData[curInd].con[m].conType;
-
+								nodeFlags = 0;
 
 								switch (n) {
 
@@ -941,7 +980,7 @@ public:
 												case E_CT_ROAD:
 												case E_CT_MAINHALL:
 												case E_CT_WING:
-																									
+													
 													
 													if (
 														testVal == (k+1)
@@ -987,7 +1026,26 @@ public:
 												break;
 
 
+											case E_CT_TREE:
 
+												if (
+													testVal == k
+												) {
+													connectNodes(
+														i,
+														j,
+														k,
+														i + dirModX[m],
+														j + dirModY[m],
+														k + dirModZ[m],
+
+														E_CT_TREE,
+														-1,
+														0 // heightDelta
+													);
+												}
+
+												break;
 
 
 											
@@ -1320,59 +1378,28 @@ public:
 										}
 										
 										
-										for (q = 0; q < 2; q++) {
-											applyWingValues(
-												i,
-												j,
-												k,
-												i + dirModX[m],
-												j + dirModY[m],
-												k + dirModZ[m],
-												q,
-												foundA,
-												foundB,
-												tempf
-												
-											);
+										for (q = 0; q < MAX_NODE_VALS; q++) {
+											
+											if (q != layerHash[E_CT_FOUNDATION]) {
+												applyWingValues(
+													i,
+													j,
+													k,
+													i + dirModX[m],
+													j + dirModY[m],
+													k + dirModZ[m],
+													q,
+													foundA,
+													foundB,
+													tempf
+													
+												);
+											}
+											
+											
 										}
 										
 
-										/*
-										foundA =
-											(touchesPlanarBN(i, j, k, conType, 0) == 1) &&
-											(touchesPlanarBN(i, j, k + 1, conType, 0) == 0) &&
-											(touchesPlanarBN(i, j, k - 1, conType, 0) <= 1);
-										foundB =
-											(touchesPlanarBN(i + dirModX[m], j + dirModY[m], k, conType, 0) == 1) &&
-											(touchesPlanarBN(i + dirModX[m], j + dirModY[m], k + 1, conType, 0) == 0) &&
-											(touchesPlanarBN(i + dirModX[m], j + dirModY[m], k - 1, conType, 0) <= 1);
-
-
-										tempf = 1.0f;
-										if (isBuilding[conType]) {
-											tempf = 0.75f;
-										}
-										if (isRoad[conType]) {
-											tempf = 1.25f;
-										}
-
-
-										for (q = 0; q < 2; q++) {
-											applyWingValues(
-												i,
-												j,
-												k,
-												i + dirModX[m],
-												j + dirModY[m],
-												k + dirModZ[m],
-												q,
-												foundA,
-												foundB,
-												tempf
-												
-											);
-										}
-										*/
 										
 									}
 									break;
@@ -1383,8 +1410,8 @@ public:
 									if (m < 4) {
 										
 										
-										isWingBeg = buildingData[curInd].con[m].isWingBeg;
-										isWingEnd = buildingData[curInd].con[m].isWingEnd;
+										isWingBeg = (buildingData[curInd].con[m].nodeFlags & BC_FLAG_WING_BEG)>0;
+										isWingEnd = (buildingData[curInd].con[m].nodeFlags & BC_FLAG_WING_END)>0;
 										
 										//if ( (m%2) == 0 ) {}
 										
@@ -1393,9 +1420,8 @@ public:
 										
 										if (
 											(ctClasses[conType] == E_CTC_ROOM) &&
-											(isWingEnd) //isWingBeg||
-										) { //touchesPlanarClass(i, j, k, E_CTC_ROOM, 0) == 1
-											
+											(isWingEnd)
+										) {
 											
 											curBT = E_CT_WINDOWFRAME;
 											
@@ -1408,15 +1434,7 @@ public:
 												}
 											}
 											
-											
-											curDir = 0;
-											
-											/*if (isWingBeg) {
-												curDir = -1;
-											}
-											if (isWingEnd) {
-												curDir = 1;
-											}*/
+										
 											
 											if ( (m%2) == 0 ) {
 												curDir = 1;
@@ -1424,8 +1442,52 @@ public:
 											else {
 												curDir = -1;
 											}
+											
+											connectNodes(
+												i,
+												j,
+												k,
+												i + dirModX[m],
+												j + dirModY[m],
+												k + dirModZ[m],
+												curBT,
+												-1,
+												0,
+												curDir
+
+											);
+											
+											
+											
+											if ( (curDir==1) ) { // 
 												
-											if (curDir != 0) {
+												if (curBT == E_CT_DOORWAY) {
+													
+												}
+												else {
+													nodeFlags |= BC_FLAG_INSIDE;
+												}
+												
+												/*
+												void connectNodes(
+													int _x1,
+													int _y1,
+													int _z1,
+													int _x2,
+													int _y2,
+													int _z2,
+													
+													int ct,
+													int id = -1,
+													
+													int _heightDelta = 0,
+													int _direction = 0,
+													
+													float _wallRadInMeters = -1.0f,
+													unsigned int _nodeFlags = 0
+												)
+												*/
+												
 												connectNodes(
 													i,
 													j,
@@ -1433,13 +1495,20 @@ public:
 													i + dirModX[m],
 													j + dirModY[m],
 													k + dirModZ[m],
-													curBT,
+													
+													E_CT_LANTERN,
 													-1,
+													
 													0,
-													curDir
+													curDir,
+													
+													-1.0f,
+													nodeFlags
 
 												);
 											}
+											
+											
 											
 										}
 										
@@ -1458,14 +1527,9 @@ public:
 											for (q = 0; q < 4; q++) {
 												if (
 													
-													// (
-													// 	( (q%2) == 1 ) &&
-													// 	(buildingData[curInd].con[q].isWingBeg)
-													// )
-													// ||
 													(
 														( (q%2) == 1 ) &&
-														(buildingData[curInd].con[q].isWingBeg)
+														( (buildingData[curInd].con[q].nodeFlags&BC_FLAG_WING_BEG) > 0)
 													)
 												) {
 													doProc = false;
@@ -1496,6 +1560,30 @@ public:
 														curDir
 
 													);
+													
+													if (curDir == 1) {
+														nodeFlags |= BC_FLAG_INSIDE;
+														connectNodes(
+															i,
+															j,
+															k,
+															i + dirModX[m],
+															j + dirModY[m],
+															k + dirModZ[m],
+															
+															E_CT_LANTERN,
+															-1,
+															
+															0,
+															curDir,
+															
+															-1.0f,
+															nodeFlags
+
+														);
+													}
+													
+													
 												}
 											}
 											
@@ -1539,12 +1627,12 @@ public:
 		
 		int minRad = -1;
 		int minRadZ = -1;
-		if (pixelsPerMeter <= 32) {
-			minRad = -2;
-		}
-		if (pixelsPerMeter <= 64) {
-			minRadZ = -2;
-		}
+		// if (pixelsPerMeter <= 32) {
+		// 	minRad = -2;
+		// }
+		// if (pixelsPerMeter <= 64) {
+		// 	minRadZ = -2;
+		// }
 		
 		
 		bool nearAir = false;
@@ -1562,7 +1650,7 @@ public:
 						
 						
 						
-						for (ko = minRadZ; ko <= 0; ko++) {
+						for (ko = minRadZ; ko <= 1; ko++) {
 							for (jo = minRad; jo <= 1; jo++) {
 								for (io = minRad; io <= 1; io++) {
 									testInd = getNodeIndex(i + io, j + jo, k + ko, 0);
@@ -1649,9 +1737,9 @@ public:
 								
 								
 								
-								
-								isWingBeg = buildingData[curInd].con[q].isWingBeg;
-								isWingEnd = buildingData[curInd].con[q].isWingEnd;
+								isInside = (buildingData[curInd].con[q].nodeFlags & BC_FLAG_INSIDE) > 0;
+								isWingBeg = (buildingData[curInd].con[q].nodeFlags & BC_FLAG_WING_BEG) > 0;
+								isWingEnd = (buildingData[curInd].con[q].nodeFlags & BC_FLAG_WING_END) > 0;
 								wingMult = buildingData[curInd].con[q].wingMult;
 								newWingMult = (wingMult - 1.0f);
 								nDir = buildingData[curInd].con[q].direction;
@@ -1687,7 +1775,8 @@ public:
 										
 										if (
 											(conType == E_CT_DOORWAY) ||
-											(conType == E_CT_WINDOWFRAME)	
+											(conType == E_CT_WINDOWFRAME) ||
+											(conType == E_CT_LANTERN)
 										) {
 											
 											
@@ -1701,13 +1790,6 @@ public:
 															xmod1 = xmod2;
 														}
 														
-														// if (nDir == 1.0f) {
-														// 	xmod1 -= doorThickness;
-														// }
-														// else {
-														// 	xmod2 += doorThickness;
-														// }
-														
 													}
 													if (curDir == E_DIR_Y) {
 														if (isWingBeg) {
@@ -1716,13 +1798,6 @@ public:
 														if (isWingEnd) {
 															ymod1 = ymod2;
 														}
-														
-														// if (nDir == 1.0f) {
-														// 	ymod1 -= doorThickness;
-														// }
-														// else {
-														// 	ymod2 += doorThickness;
-														// }
 														
 													}
 													
@@ -1733,15 +1808,49 @@ public:
 														tempf = 1.0f;
 													}
 													
+													if (conType == E_CT_LANTERN) {
+														
+														if (isInside) {
+															tempf *= 2.0f;	
+														}
+														else {
+															tempf *= -2.0f;	
+														}
+														
+														
+													}
+													
+													
+													
 													xmod1 += tempf*doorThickness*dirModX[m]*0.5f;
 													ymod1 += tempf*doorThickness*dirModY[m]*0.5f;
 													xmod2 += tempf*doorThickness*dirModX[m]*0.5f;
 													ymod2 += tempf*doorThickness*dirModY[m]*0.5f;
 													
-													xmod1 -= doorThickness*dirModX[m]*0.5f;
-													ymod1 -= doorThickness*dirModY[m]*0.5f;
-													xmod2 += doorThickness*dirModX[m]*0.5f;
-													ymod2 += doorThickness*dirModY[m]*0.5f;
+													
+													
+													if (conType == E_CT_LANTERN) {
+														
+															if (isInside) {
+																zmod1 += 0.125f;
+																zmod2 += 0.125f;
+															}
+															else {
+																xmod1 += lanternOffset*dirModY[m];
+																ymod1 += lanternOffset*dirModX[m];
+																xmod2 += lanternOffset*dirModY[m];
+																ymod2 += lanternOffset*dirModX[m];
+															}
+														
+															
+													}
+													else {
+														xmod1 -= doorThickness*dirModX[m]*0.5f;
+														ymod1 -= doorThickness*dirModY[m]*0.5f;
+														xmod2 += doorThickness*dirModX[m]*0.5f;
+														ymod2 += doorThickness*dirModY[m]*0.5f;
+													}
+													
 													
 												}
 												else {
@@ -1757,15 +1866,40 @@ public:
 													xmod2 = xmod1;
 													ymod2 = ymod1;
 													
-													
-													if (nDir == 1.0f) {
-														xmod1 -= doorThickness*dirModX[m];
-														ymod1 -= doorThickness*dirModY[m];
+													if (conType == E_CT_LANTERN) {
+														if (nDir == 1.0f) {
+															tempf = -1.0f;
+														}
+														else {
+															tempf = 1.0f;
+														}
+														
+														if (isInside) {
+															tempf *= 2.0f;	
+														}
+														else {
+															tempf *= -2.0f;	
+														}
+														
+														xmod1 += tempf*doorThickness*dirModX[m]*0.5f;
+														ymod1 += tempf*doorThickness*dirModY[m]*0.5f;
+														xmod2 += tempf*doorThickness*dirModX[m]*0.5f;
+														ymod2 += tempf*doorThickness*dirModY[m]*0.5f;
+														
+														
 													}
 													else {
-														xmod2 += doorThickness*dirModX[m];
-														ymod2 += doorThickness*dirModY[m];
+														if (nDir == 1.0f) {
+															xmod1 -= doorThickness*dirModX[m];
+															ymod1 -= doorThickness*dirModY[m];
+														}
+														else {
+															xmod2 += doorThickness*dirModX[m];
+															ymod2 += doorThickness*dirModY[m];
+														}
 													}
+													
+													
 												}
 											
 										}
@@ -1822,80 +1956,7 @@ public:
 
 
 
-/*
- 													// is lantern
- 													
- 													newP1.setFXYZRef(&p1);
- 													newP2.setFXYZRef(&p2);
- 													
-													matParams.setFXYZ(E_MAT_PARAM_LANTERN, 0.0, 0.0f);
-													
-													curAlign = E_ALIGN_MIDDLE;
-													
-													floorHeight = 0.5f;
-													roofHeight = 0.25f;
-													baseOffset = 0.0f;//(0.25f)*pixelsPerMeter;
-													rad.setFXYZ(
-														(0.25f)*pixelsPerMeter,
-														(0.25f)*pixelsPerMeter,
-														(nFloors*floorHeight*0.5 + roofHeight)*pixelsPerMeter
-													);
-													cornerRad.setFXYZ(
-														(0.0625f)*pixelsPerMeter,
-														(0.0625f)*pixelsPerMeter,
-														(0.25f)*pixelsPerMeter
-													);
-													thickVals.setFXYZ(0.25f*pixelsPerMeter, 0.0f, 0.0f);
 
-													newP1.addXYZRef(&newP2);
-													newP1.multXYZ(0.5f);
-
-
-													if (curBT == E_BT_DOORWAY) {
-														newP1.addXYZ(
-															(gw->dirModX[k]*0.5f - gw->dirModY[k]*2.0f)*pixelsPerMeter,
-															(gw->dirModY[k]*0.5f - gw->dirModX[k]*2.0f)*pixelsPerMeter,
-															3.0f*pixelsPerMeter
-														);
-													}
-													else {
-														newP1.addXYZ(
-															(-gw->dirModX[k]*2.0f)*pixelsPerMeter,
-															(-gw->dirModY[k]*2.0f)*pixelsPerMeter,
-															2.0f*pixelsPerMeter + (2.25f + (curLev-1.0)*4.0)*pixelsPerMeter
-														);
-													}
-
-													newP2.setFXYZRef(&newP1);
-
-													lightVec.setFXYZ(1.0f,0.5f,0.1f); //randomize();
-													gameLights.push_back(new GameLight());
-													gameLights.back()->init(
-														lightCounter,
-														singleton->lightCounter,
-														&newP1,
-														&lightVec
-													);
-													singleton->lightCounter++;
-													lightCounter++;
-
-													visInsetFromMin.setFXYZ(0.0f,0.0f,cornerRad.getFZ() - 0.0625*pixelsPerMeter);
-													visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
-													
-													powerVals.setFXYZ(2.0f, 1.0f, 0.0f);
-													powerVals2.setFXYZRef(&powerVals);
-
-													curBT = E_BT_LANTERN;
-													
-													
-													
-													
-													if (curBT == E_BT_LANTERN) {
-														gameGeom.back()->light = gameLights.back();
-													}
-
-												
-*/
 
 								
 
@@ -1953,7 +2014,113 @@ public:
 										case E_CT_NULL:
 												
 											break;
+										
+										
+										case E_CT_TREE:
+											baseOffset = 0.0f;
+											matParams.setFXYZ(E_MAT_PARAM_TREE, 0.0, 0.0f);
+
+											visInsetFromMin.setFXYZ(0.0f,0.0f,0.0f);
+											visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
 											
+											tempVec4.setFXYZRef(&p1);
+											tempVec4.addXYZ(0.0f,0.0f,2.0f*pixelsPerMeter);
+
+											tempVec.setIXYZ(i,j,k);
+											tempVec2.setFXYZ(93.989f, 67.345f, 54.256f);
+											tempInt = clampf(getRandSeeded(&tempVec,&tempVec2)*3.0f,0.0,2.0f);
+											
+											
+											singleton->gamePlants[tempInt]->init(
+												singleton,
+												&(GamePlant::allPlantRules[tempInt*2+1]),
+												&(GamePlant::allPlantRules[tempInt*2]),
+												&origin
+											);
+											matParams.setFY(tempInt*2+1);
+											addPlantNodes(singleton->gamePlants[tempInt]->rootsNode, &tempVec4, 1.0f);
+											matParams.setFY(tempInt*2);
+											addPlantNodes(singleton->gamePlants[tempInt]->trunkNode, &tempVec4, 1.0f);
+											
+											
+											
+											// if (tempf > 0.66) {
+											// 	bareTree.init(
+											// 		singleton,
+											// 		&(GamePlant::allPlantRules[E_PT_BARE_OAK_ROOTS]),
+											// 		&(GamePlant::allPlantRules[E_PT_BARE_OAK_TRUNK]),
+											// 		&origin
+											// 	);
+											// 	matParams.setFY()
+											// 	addPlantNodes(bareTree.rootsNode, &tempVec4, 1.0f);
+											// 	addPlantNodes(bareTree.trunkNode, &tempVec4, 1.0f);
+											// }
+											// else if (tempf > 0.33) {
+											// 	oakTree2.init(
+											// 		singleton,
+											// 		&(GamePlant::allPlantRules[E_PT_OAK2_ROOTS]),
+											// 		&(GamePlant::allPlantRules[E_PT_OAK2_TRUNK]),
+											// 		&origin
+											// 	);
+
+											// 	addPlantNodes(oakTree2.rootsNode, &tempVec4, 1.0f);
+											// 	addPlantNodes(oakTree2.trunkNode, &tempVec4, 1.0f);
+											// }
+											// else {
+											// 	oakTree.init(
+											// 		singleton,
+											// 		&(GamePlant::allPlantRules[E_PT_OAK_ROOTS]),
+											// 		&(GamePlant::allPlantRules[E_PT_OAK_TRUNK]),
+											// 		&origin
+											// 	);
+
+											// 	addPlantNodes(oakTree.rootsNode, &tempVec4, 1.0f);
+											// 	addPlantNodes(oakTree.trunkNode, &tempVec4, 1.0f);
+											// }
+
+											
+											
+											goto SKIP_ADD_GEOM;
+											
+										break;
+										
+										
+										case E_CT_LANTERN:
+										
+
+											matParams.setFXYZ(E_MAT_PARAM_LANTERN, 0.0, 0.0f);
+
+											curAlign = E_ALIGN_MIDDLE;
+
+											// floorHeight = 0.5f;
+											// roofHeight = 0.25f;
+											// baseOffset = 0.0f;
+											rad.setFXYZ(
+												(0.25f)*pixelsPerMeter,
+												(0.25f)*pixelsPerMeter,
+												(0.5f)*pixelsPerMeter
+											);
+											cornerRad.setFXYZ(
+												(0.0625f)*pixelsPerMeter,
+												(0.0625f)*pixelsPerMeter,
+												(0.25f)*pixelsPerMeter
+											);
+											thickVals.setFXYZ(0.25f*pixelsPerMeter, 0.0f, 0.0f);											
+
+											visInsetFromMin.setFXYZ(0.0f,0.0f,cornerRad.getFZ() - 0.0625*pixelsPerMeter);
+											visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
+
+											powerVals.setFXYZ(2.0f, 1.0f, 0.0f);
+											powerVals2.setFXYZRef(&powerVals);
+
+											curBT = E_CT_LANTERN;
+
+
+
+
+											
+										break;
+										
 										case E_CT_DOORWAY:
 										case E_CT_WINDOWFRAME:
 										
@@ -2276,6 +2443,10 @@ public:
 										minRot,
 										maxRot
 									);
+									
+SKIP_ADD_GEOM:
+									
+									;
 
 								}
 
@@ -2292,6 +2463,21 @@ public:
 
 
 
+	}
+	
+	
+	
+	
+	
+	int getNodeIndexClamped(int _x, int _y, int _z) {
+
+	
+			int x = clamp(_x,0,terDataBufPitchXY-1);
+			int y = clamp(_y,0,terDataBufPitchXY-1);
+			int z = clamp(_z,0,terDataBufPitchZ-1);
+		
+			return x + y * terDataBufPitchXY + z * terDataBufPitchXY * terDataBufPitchXY;
+		
 	}
 
 	int getNodeIndex(int x, int y, int z, int bufAmount) {
@@ -2386,7 +2572,14 @@ public:
 	}
 	
 
-	void applyWingValues(int _x1, int _y1, int _z1, int _x2, int _y2, int _z2, int cnum, bool isWingBeg, bool isWingEnd, float multiplier) {
+	void applyWingValues(
+		int _x1, int _y1, int _z1,
+		int _x2, int _y2, int _z2,
+		int cnum,
+		bool isWingBeg,
+		bool isWingEnd,
+		float multiplier
+	) {
 
 
 		// 0: x+
@@ -2420,6 +2613,8 @@ public:
 		
 		int finalInd1;
 		int finalInd2;
+		
+		uint tempFlags;
 
 		if ((ind1 < 0) || (ind2 < 0)) {
 			// invalid connection
@@ -2441,13 +2636,35 @@ public:
 
 			finalInd1 = baseDir + cnum * MAX_NODE_DIRS;
 			finalInd2 = baseDir + 1 + cnum * MAX_NODE_DIRS;
-
-			buildingData[ind1].con[finalInd1].isWingBeg = isWingBeg;
-			buildingData[ind1].con[finalInd1].isWingEnd = isWingEnd;
+			
+			
+			
+			// WAS DOING: MAKE SURE TO SET FLAGS EXPLICITLY, NO OR "|" operator
+			
+			
+			tempFlags = 0;
+			if (isWingBeg) {
+				tempFlags |= BC_FLAG_WING_BEG;
+			}
+			if (isWingEnd) {
+				tempFlags |= BC_FLAG_WING_END;
+			}
+			
+			buildingData[ind1].con[finalInd1].nodeFlags &= ~(BC_FLAG_WING_BEG|BC_FLAG_WING_END);
+			buildingData[ind2].con[finalInd2].nodeFlags &= ~(BC_FLAG_WING_BEG|BC_FLAG_WING_END);
+			
+			buildingData[ind1].con[finalInd1].nodeFlags |= tempFlags;
 			buildingData[ind1].con[finalInd1].wingMult = multiplier;
 
-			buildingData[ind2].con[finalInd2].isWingBeg = isWingEnd;
-			buildingData[ind2].con[finalInd2].isWingEnd = isWingBeg;
+			tempFlags = 0;
+			if (isWingEnd) {
+				tempFlags |= BC_FLAG_WING_BEG;
+			}
+			if (isWingBeg) {
+				tempFlags |= BC_FLAG_WING_END;
+			}
+
+			buildingData[ind2].con[finalInd2].nodeFlags |= tempFlags;
 			//buildingData[ind2].con[finalInd2].wingMult = 2.0f-multiplier;
 			
 			
@@ -2455,6 +2672,82 @@ public:
 		}
 	}
 	
+	
+	void addPlantNodes(GamePlantNode* curPlantNode, FIVector4* orig, float scale ) {
+		int i;
+
+		float begThickness;
+		float endThickness;
+
+		if (curPlantNode->parent == NULL) {
+
+		}
+		else {
+
+			if (curPlantNode->parent->parent == NULL) {
+				tempVec.setFXYZ(0.0f,0.0f,0.0f); //Ref(&(curPlantNode->parent->begPoint));
+
+				begThickness = curPlantNode->midThickness;
+				endThickness = curPlantNode->midThickness;
+
+			}
+			else {
+				tempVec.setFXYZRef(&(curPlantNode->parent->begPoint));
+				tempVec.addXYZRef(&(curPlantNode->parent->endPoint));
+				tempVec.multXYZ(0.5f);
+
+				begThickness = curPlantNode->parent->midThickness;
+				endThickness = curPlantNode->midThickness;
+			}
+
+
+			// if (curPlantNode->numChildren == 0) {
+			// 	endThickness = 0.5f*singleton->pixelsPerMeter;
+			// }
+
+			
+			
+			tempVec2.setFXYZRef(&(curPlantNode->begPoint));
+			tempVec2.addXYZRef(&(curPlantNode->endPoint));
+			tempVec2.multXYZ(0.5f);
+			
+			tempVec3.setFXYZRef(&(curPlantNode->begPoint));
+
+			tempVec.multXYZ(scale);
+			tempVec2.multXYZ(scale);
+			tempVec3.multXYZ(scale);
+
+			tempVec.addXYZRef(orig);
+			tempVec2.addXYZRef(orig);
+			tempVec3.addXYZRef(orig);
+
+			gameGeom.push_back(new GameGeom());
+			gameGeom.back()->initTree(
+				
+				E_CT_TREE,
+				localGeomCounter,
+				singleton->geomCounter,
+								
+				&tempVec,
+				&tempVec2,
+				&tempVec3,
+
+				begThickness*scale,//curPlantNode->begThickness,
+				endThickness*scale,//curPlantNode->endThickness,	
+				curPlantNode->sphereRad*scale,			
+										
+				&matParams
+			);
+			singleton->geomCounter++;
+			localGeomCounter++;
+		}
+
+		
+
+		for (i = 0; i < curPlantNode->numChildren; i++) {
+			addPlantNodes( &(curPlantNode->children[i]), orig, scale);
+		}
+	}
 	
 	void addNewGeom(
 		int _curBT,
@@ -2476,6 +2769,11 @@ public:
 		int _maxRot
 		
 	) {
+		
+		
+		
+		
+		
 		gameGeom.push_back(new GameGeom());
 		gameGeom.back()->initBounds(
 			_curBT,
@@ -2498,6 +2796,23 @@ public:
 			_minRot,
 			_maxRot
 		);
+		
+		if (_curBT == E_CT_LANTERN) {
+			lightVec.setFXYZ(1.0f,0.5f,0.1f); //randomize();
+			gameLights.push_back(new GameLight());
+			gameLights.back()->init(
+				lightCounter,
+				singleton->lightCounter,
+				_p1,
+				&lightVec
+			);
+			singleton->lightCounter++;
+			lightCounter++;
+			gameGeom.back()->light = gameLights.back();
+		}
+		
+		
+		
 		singleton->geomCounter++;
 		localGeomCounter++;
 	}
@@ -2510,11 +2825,13 @@ public:
 		int _x2,
 		int _y2,
 		int _z2,
+		
 		int ct,
 		int id = -1,
 		int _heightDelta = 0,
 		int _direction = 0,
-		float _wallRadInMeters = -1.0f
+		float _wallRadInMeters = -1.0f,
+		unsigned int _nodeFlags = 0
 	) {
 
 
@@ -2592,6 +2909,9 @@ public:
 			buildingData[ind1].con[resInd1].direction = _direction;
 			buildingData[ind2].con[resInd2].direction = -_direction;
 			
+			buildingData[ind1].con[resInd1].nodeFlags |= _nodeFlags;
+			buildingData[ind2].con[resInd2].nodeFlags |= _nodeFlags;
+			
 			buildingData[ind1].con[resInd1].wallRadInMeters = wallRad;
 			buildingData[ind2].con[resInd2].wallRadInMeters = wallRad;
 			
@@ -2634,6 +2954,29 @@ public:
 		}
 
 		return tot;
+	}
+
+
+	int touchesWithinRadMap(int x, int y, int buildingType, int rad, int bufAmount) {
+		int i;
+		int j;
+		
+		int tot = 0;
+		int testX;
+		int testY;
+		
+
+		for (i = -rad; i <= rad; i++) {
+			for (j = -rad; j <= rad; j++) {
+				testX = x + i;
+				testY = y + j;
+
+				tot += touchesMap(testX, testY, buildingType, bufAmount);
+			}
+		}
+
+		return tot;
+
 	}
 
 	int touches2Map(int x, int y, int buildingType, int bufAmount) {
@@ -2716,9 +3059,11 @@ public:
 	}
 
 
-	void isNearTerrain(FIVector4 *worldPositionInPixels, bool &nearT, bool &nearA) {
+	int getAdjustedHeightInHolders(int xInHolders, int yInHolders) {
 
-		tempVec.copyFrom(worldPositionInPixels);
+		float holderSizeInPixels = singleton->holderSizeInPixels;
+
+		tempVec.setFXYZ(xInHolders*holderSizeInPixels, yInHolders*holderSizeInPixels, 0.0f);
 
 		tempVec.addXYZ(
 			-fBlockSizeInPixels * offsetInBlocks.getFX(),
@@ -2736,17 +3081,170 @@ public:
 		tempVec.addXYZ(0.5f);
 
 
-		int ind = getNodeIndex(tempVec.getIX(), tempVec.getIY(), tempVec.getIZ(), 0);
+		
+		int ind = getMapNodeIndex(tempVec.getIX(), tempVec.getIY(), 0);
+		int res = 0;
+		float fres = 0.0f;
 
 		if (ind > -1) {
-			//cout << "VALID " << tempVec.getIX() << " " << tempVec.getIY() << " " << tempVec.getIZ() << " ISNEAR: " << buildingData[ind].nearTerrain << "\n";
-			nearT = buildingData[ind].nearTerrain;
-			nearA = buildingData[ind].nearAir;
+			fres = ((float)(mapData[ind].terHeight))/fTerDataVisPitchZ; //adjustedHeight
+			
+			res = fres*singleton->worldSizeInHolders.getFZ();
+			
 		} else {
-			//cout << "NOTVALID " << tempVec.getIX() << " " << tempVec.getIY() << " " << tempVec.getIZ() << "\n";
-			nearT = false;
-			nearA = false;
+			res = 0;
 		}
+		
+		return res;
+
+	}
+
+
+
+	float fIsNearTerrain(
+		FIVector4 *worldMinVisInPixels
+	) {
+
+		int ind;
+		int ind2;
+		
+		int i;
+		int j;
+		int k;
+		
+		tempVec.copyFrom(worldMinVisInPixels);
+
+		tempVec.addXYZ(
+			-fBlockSizeInPixels * offsetInBlocks.getFX(),
+			-fBlockSizeInPixels * offsetInBlocks.getFY(),
+			0.0f
+		);
+
+		tempVec.multXYZ(
+			fTerDataVisPitchXY / fBlockSizeInPixels,
+			fTerDataVisPitchXY / fBlockSizeInPixels,
+			fTerDataVisPitchZ / fBlockSizeInPixels
+		);
+		tempVec.addXYZ((float)terDataBufAmount);
+		// tempVec2.copyFrom(&tempVec);
+		// tempVec2.addXYZ(1.0f,1.0f,1.0f);
+
+		//tempVec.addXYZ(0.5f); // gets negated anyway
+
+
+		for (i = 0; i <= 1; i++) {
+			for (j = 0; j <= 1; j++) {
+				for (k = 0; k <= 1; k++) {
+					ind = getNodeIndexClamped(
+						tempVec.getIX() + i,
+						tempVec.getIY() + j,
+						tempVec.getIZ() + k
+					);
+					ind2 = k*4 + j*2 + i;
+					if (terData[ind] > 0) {
+						trilin[ind2] = 1.0f;
+					}
+					else {
+						trilin[ind2] = 0.0f;
+					}
+				}
+				
+			}
+		}
+		
+		// 0 1
+		// 2 3
+		
+		// 4 5
+		// 6 7
+
+		float lerpX = tempVec.getFX() - tempVec.getIX();
+		float lerpY = tempVec.getFY() - tempVec.getIY();
+		float lerpZ = tempVec.getFZ() - tempVec.getIZ();
+		float ilerpX = 1.0f - lerpX;
+		float ilerpY = 1.0f - lerpY;
+		float ilerpZ = 1.0f - lerpZ;
+		
+		trilin[0] = trilin[0]*ilerpX + trilin[1]*lerpX;
+		trilin[2] = trilin[2]*ilerpX + trilin[3]*lerpX;
+		trilin[4] = trilin[4]*ilerpX + trilin[5]*lerpX;
+		trilin[6] = trilin[6]*ilerpX + trilin[7]*lerpX;
+		
+		trilin[0] = trilin[0]*ilerpY + trilin[2]*lerpY;
+		trilin[4] = trilin[4]*ilerpY + trilin[6]*lerpY;
+		
+		trilin[0] = trilin[0]*ilerpZ + trilin[4]*lerpZ;
+
+		return trilin[0];
+	}
+
+
+	void isNearTerrain(
+		FIVector4 *worldMinVisInPixels,
+		FIVector4 *worldMaxVisInPixels,
+		bool &nearT,
+		bool &nearA
+	) {
+
+		int ind;
+		
+		int i;
+		int j;
+		int k;
+		
+		for (i = 0; i < 2; i++) {
+			if (i == 0) {
+				tempVec.copyFrom(worldMinVisInPixels);
+			}
+			else {
+				tempVec.copyFrom(worldMaxVisInPixels);
+			}
+			
+
+			tempVec.addXYZ(
+				-fBlockSizeInPixels * offsetInBlocks.getFX(),
+				-fBlockSizeInPixels * offsetInBlocks.getFY(),
+				0.0f
+			);
+
+			tempVec.multXYZ(
+				fTerDataVisPitchXY / fBlockSizeInPixels,
+				fTerDataVisPitchXY / fBlockSizeInPixels,
+				fTerDataVisPitchZ / fBlockSizeInPixels
+			);
+			tempVec.addXYZ((float)terDataBufAmount);
+
+			tempVec.addXYZ(0.5f);
+			
+			if (i == 0) {
+				tempVec2.copyFrom(&tempVec);
+			}
+		}
+
+		
+
+
+		
+		
+
+		nearT = false;
+		nearA = false;
+
+		
+		for (i = tempVec2.getIX(); i <= tempVec.getIX(); i++) {
+			for (j = tempVec2.getIY(); j <= tempVec.getIY(); j++) {
+				for (k = tempVec2.getIZ(); k <= tempVec.getIZ(); k++) {
+					ind = getNodeIndex(i, j, k-1, 0);
+					if (ind > -1) {
+						nearT = nearT||buildingData[ind].nearTerrain;
+						nearA = nearA||buildingData[ind].nearAir;
+					}
+				}
+				
+			}
+		}
+
+		
 
 	}
 	
@@ -3085,6 +3583,7 @@ public:
 			// }
 			
 			
+			
 			for (k = 0; k < terDataBufPitchScaledZ; k++) {
 				for (j = 0; j < terDataBufPitchScaledXY; j++) {
 					for (i = 0; i < terDataBufPitchScaledXY; i++) {
@@ -3102,7 +3601,28 @@ public:
 								
 								// TODO: rand num should be hashed based on location
 								
-								uiSimp = fGenRand()*55.0f+200.0f;
+								
+								
+								// tempVec.setIXYZ(
+								// 	i + offsetInBlocks.getIX()*terDataVisPitchXY - terDataBufAmount,
+								// 	j + offsetInBlocks.getIY()*terDataVisPitchXY - terDataBufAmount,
+								// 	k + offsetInBlocks.getIZ()*terDataVisPitchZ - terDataBufAmount
+								// );
+								
+								//uiSimp = getRandSeeded(&tempVec,&tempVec2)*55.0f+200.0f; //fGenRand()
+								
+								if (
+									(i >= terDataBufPitchScaledXY-terDataBufAmount*4) ||
+									(i <= terDataBufAmount*4) ||
+									(j >= terDataBufPitchScaledXY-terDataBufAmount*4) ||
+									(j <= terDataBufAmount*4)
+								) {
+									uiSimp = 255; // make sure block borders match up
+								}
+								else {
+									uiSimp = fGenRand()*63.0f+192.0f;
+								}
+								
 							}
 							else {
 								uiSimp = 255;

@@ -5,6 +5,9 @@
 #define LZZ_INLINE inline
 GameEntNode::GameEntNode (GameEntNode * _parent, int _nodeName, float _boneLength, float _tanLengthInMeters, float _bitLengthInMeters, float _norLengthInMeters, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ)
           {
+		
+		
+		
 		material = 8.0;
 		
 		parent = _parent;
@@ -14,7 +17,9 @@ GameEntNode::GameEntNode (GameEntNode * _parent, int _nodeName, float _boneLengt
 		rotPhi = 0.0f;
 		rotRho = 0.0f;
 
-		boneLengthHalf = _boneLength*0.5f;
+		float multiplier = 2.0;
+
+		boneLengthHalf = _boneLength*0.5f*multiplier;
 
 		tbnRadInMeters0.setFXYZ(
 			_tanLengthInMeters,

@@ -12,6 +12,7 @@ void GameGUI::init (Singleton * _singleton)
 
 		singleton = _singleton;
 		isReady = false;
+		isLoaded = false;
 		
 		nodeCount = 0;
 		baseComp = new UIComponent();
@@ -62,6 +63,10 @@ void GameGUI::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode,
 			
 		}
 		
+	}
+UIComponent * GameGUI::findNodeById (int _id)
+                                           {
+		return baseComp->findNodeById(_id);
 	}
 void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool isFloating)
           {
@@ -268,6 +273,8 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 								curData->Child("shaderName")->string_value +
 								"." +
 								curData->Child("paramName")->string_value;
+							
+							jvChildTemplate->Child("uid")->string_value = curData->Child("uid")->string_value;
 								
 							jvChildTemplate->Child("callbackData")->Child("shaderName")->string_value = 
 								curData->Child("shaderName")->string_value;
@@ -306,6 +313,7 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 void GameGUI::guiFromJSON (JSONValue * jv)
                                         {
 		
+		isLoaded = false;
 		isReady = false;
 		
 		
@@ -333,6 +341,7 @@ void GameGUI::guiFromJSON (JSONValue * jv)
 		
 		baseComp->isDirty = true;
 		isReady = true;
+		isLoaded = true;
 	}
 void GameGUI::doRefresh ()
                          {

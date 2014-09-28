@@ -93,9 +93,7 @@ public:
 
 	
 
-	UniformBuffer() {
-		wasInit = false;
-	}
+	
 
 	// GLchar* names[] =
 	// {
@@ -125,6 +123,11 @@ public:
 
 	bool wasUpdated;
 	bool wasInit;
+	
+	UniformBuffer() {
+		wasInit = false;
+		uniData = NULL;
+	}
 
 	void init(GLuint _progId, int bufNameInd)
 	{
@@ -161,6 +164,10 @@ public:
 		doTraceND("uniformBlockSize: ", i__s(uniformBlockSize));
 
 
+		if (uniData != NULL) {
+			delete[] uniData;
+			uniData = NULL;
+		}
 
 		uniData = new GLfloat[uniformBlockSize/4];
 
@@ -273,27 +280,22 @@ public:
 	int curUBIndex;
 
 	map<string, float> paramMap;
+	map<string, float> paramMapTemp;
 	vector<string> paramVec;
 	vector<UniformBuffer> uniVec;
 
 	
-	Shader() {
+	Shader() { //const char *shaderFile
+		//pushTrace("Shader(", shaderFile, ")");
+		//init(shaderFile);
+		//popTrace();
 
 		curUBIndex = 0;
 
-		pushTrace("Shader()");
-		popTrace();
-	}
-
-	Shader(const char *shaderFile) {
-		pushTrace("Shader(", shaderFile, ")");
-		init(shaderFile);
-		popTrace();
 	}
 
 
 	static char* textFileRead(const char *fileName) {
-		pushTrace("textFileRead(",  fileName, ")");
 		
 		char* text = "";
 		bool failed = true;
@@ -321,16 +323,15 @@ public:
 			doTraceND("FAILED TO READ FILE: ", fileName);
 		}
 		else {
-			doTrace("READ FILE: ", fileName);
+			//doTrace("READ FILE: ", fileName);
 		}
 		
-		popTrace();
 		
 		return text;
 	}
 
 	static void validateShader(GLuint shader, const char* file = 0) {
-		pushTrace("validateShader(", file, ")");
+		//pushTrace("validateShader(", file, ")");
 		
 		const unsigned int BUFFER_SIZE = 512;
 		char buffer[BUFFER_SIZE];
@@ -342,13 +343,13 @@ public:
 			doTraceND("Shader " , i__s(shader) , " (" , (file?file:"") , ") compile error: " , buffer);
 			LAST_COMPILE_ERROR = true;
 		}
-		popTrace();
+		//popTrace();
 
 
 	}
 
 	static int validateProgram(GLuint program) {
-		pushTrace("validateProgram()");
+		//pushTrace("validateProgram()");
 		
 		const unsigned int BUFFER_SIZE = 512;
 		char buffer[BUFFER_SIZE];
@@ -360,7 +361,7 @@ public:
 		if (length > 0) {
 			doTraceND( "Program " , i__s(program) , " link error: " , buffer);
 			LAST_COMPILE_ERROR = true;
-			popTrace();
+			//popTrace();
 			return 0;
 		}
 	    
@@ -370,22 +371,44 @@ public:
 		if (status == GL_FALSE) {
 			doTraceND( "Error validating shader " , i__s(program));
 			LAST_COMPILE_ERROR = true;
-			popTrace();
+			//popTrace();
 			return 0;
 		}
 		
-		popTrace();
+		//popTrace();
 		return 1;
 		
 	}
 	
+	int countOc(string* src, string testStr) {
+		int totCount = 0;
+		int bInd = 0;
+		bool dc = true;
+		int fnd = 0;
+		
+		while (dc) {
+			fnd = src->find(testStr, bInd);
+			if (fnd != std::string::npos) {
+				bInd = fnd+1;
+				dc = true;
+				totCount++;
+			}
+			else {
+				dc = false;
+			}
+		}
+		
+		return totCount;
+	}
 
-	void init(const char *shaderFile) {
-		pushTrace("init(", shaderFile, ")");
+	void init(string _shaderFile) {
+		//pushTrace("init(", shaderFile, ")");
 		
+		const char* shaderFile = _shaderFile.c_str();
 		
+		uniVec.clear();
 		paramVec.clear();
-		paramMap.clear();
+		paramMapTemp.clear();
 		
 		shader_vp = glCreateShader(GL_VERTEX_SHADER);
 		shader_fp = glCreateShader(GL_FRAGMENT_SHADER);
@@ -393,9 +416,14 @@ public:
 	    
 		std::size_t found;
 		std::size_t found2;
+		std::size_t found3;
 
 		int baseIndex;
-		int totCount;
+		int uniCount = 0;
+		int dolCount = 0;
+		
+		
+		vector<string> allTextStringSplit;
 
 		bool doCont;
 		
@@ -413,59 +441,59 @@ public:
 		else {
 			
 				string allTextString(allText);
-
-				
-				totCount = 0;
-
-
-
-
 				
 				
 
 
-				vector<string> allTextStringSplit = split(allTextString, '$');
+				//
+				
+				dolCount = countOc(&allTextString,"$");
 
-				if (allTextStringSplit.size() == 3) {
+				if (dolCount == 2) {
 					
-					
-					
-					baseIndex = 0;
-					doCont = true;
-					while (doCont) {
-						found = allTextString.find("ublock", baseIndex);
-						if (found != std::string::npos) {
-							baseIndex = found+1;
-							doCont = true;
-							totCount++;
-						}
-						else {
-							doCont = false;
-						}
-					}
-					
+					uniCount = countOc(&allTextString,"ublock");
+
 
 					baseIndex = 0;
 					doCont = true;
 					while (doCont) {
-						found = allTextString.find("_x_", baseIndex);
+						found = allTextString.find('@', baseIndex);
 						if (found != std::string::npos) {
-							baseIndex = found+1;
 							
-							found2 = allTextString.find("_x_", baseIndex);
+							
+							baseIndex = found+1;
+							allTextString[found] = ' ';
+							
+							found3 = allTextString.find(' ', baseIndex);
+							found2 = allTextString.find('@', baseIndex);
+							
 							if (found2 != std::string::npos) {
-								baseIndex = found2+1;
-								paramName = allTextString.substr(found, 3 + (found2-found));
 								
-								if (paramMap.find( paramName ) == paramMap.end()) {
-									paramMap[paramName] = 0.0f;
-									paramVec.push_back(paramName);
-									//cout << "AAAAAAAA " << paramName << "\n";
+								if ( 
+									((found2-found) > 32) || // max var length of 32
+									(found3 < found2) // found a space between the delimitters
+								) { 
+									//baseIndex = found+1; // already set
+								}
+								else {
+									baseIndex = found2+1;
+									allTextString[found2] = ' ';
+									
+									paramName = allTextString.substr(found + 1, (found2-found)-1);
+									
+									if (paramMapTemp.find( paramName ) == paramMapTemp.end()) {
+										paramMapTemp[paramName] = 0.0f;
+										paramVec.push_back(paramName);
+										
+										if (paramMap.find( paramName ) == paramMap.end()) {
+											paramMap[paramName] = 0.0f;
+										}
+										
+										cout << "paramName --" << paramName << "--\n";
+										
+									}
 								}
 								
-								//paramMap.insert( pair<string, int>(paramName, 1) );
-								// cout << "AAAAAAAA " << 
-								// allTextString.substr(found, 2 + (found2-found)) << "\n\n";
 								
 								
 								doCont = true;
@@ -480,6 +508,10 @@ public:
 							doCont = false;
 						}
 					}
+					
+					
+					
+					allTextStringSplit = split(allTextString, '$');
 					
 					allTextStringSplit[0] += "\n";
 					
@@ -518,7 +550,7 @@ public:
 					delete [] fragCS;
 
 
-					for (i = 0; i < totCount; i++) {
+					for (i = 0; i < uniCount; i++) {
 						uniVec.push_back(UniformBuffer());
 						uniVec.back().init(shader_id, i);
 					}
@@ -536,7 +568,7 @@ public:
 		}
 		
 		
-		popTrace();
+		//popTrace();
 		
 	}
 
@@ -545,19 +577,19 @@ public:
 
 		uniVec.clear();
 
-		pushTrace("~Shader()");
+		//pushTrace("~Shader()");
 		glDetachShader(shader_id, shader_fp);
 		glDetachShader(shader_id, shader_vp);
 		glDeleteShader(shader_fp);
 		glDeleteShader(shader_vp);
 		glDeleteProgram(shader_id);
-		popTrace();
+		//popTrace();
 	}
 
 	unsigned int id() {
-		pushTrace("id()");
+		//pushTrace("id()");
 		return shader_id;
-		popTrace();
+		//popTrace();
 	}
 
 	void bind() {
@@ -723,6 +755,12 @@ public:
 	
 
 };
+
+
+
+
+
+
 
 
 

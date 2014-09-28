@@ -17,6 +17,7 @@ public:
 	JSONValue* jvSounds;
 	
 	bool isReady;
+	bool isLoaded;
 	
 	int nodeCount;
 	vector<UIComponent*> dirtyVec;
@@ -32,6 +33,7 @@ public:
 
 		singleton = _singleton;
 		isReady = false;
+		isLoaded = false;
 		
 		nodeCount = 0;
 		baseComp = new UIComponent();
@@ -82,6 +84,10 @@ public:
 			
 		}
 		
+	}
+	
+	UIComponent* findNodeById(int _id) {
+		return baseComp->findNodeById(_id);
 	}
 	
 	inline bool compChildStr(string childStr) {
@@ -296,6 +302,8 @@ public:
 								curData->Child("shaderName")->string_value +
 								"." +
 								curData->Child("paramName")->string_value;
+							
+							jvChildTemplate->Child("uid")->string_value = curData->Child("uid")->string_value;
 								
 							jvChildTemplate->Child("callbackData")->Child("shaderName")->string_value = 
 								curData->Child("shaderName")->string_value;
@@ -334,6 +342,7 @@ public:
 	
 	void guiFromJSON(JSONValue* jv) {
 		
+		isLoaded = false;
 		isReady = false;
 		
 		
@@ -361,6 +370,7 @@ public:
 		
 		baseComp->isDirty = true;
 		isReady = true;
+		isLoaded = true;
 	}
 	
 	
@@ -517,7 +527,7 @@ public:
 		//border color
 		glMultiTexCoord4f(6, resSS->props[E_SS_BDCOL_R], resSS->props[E_SS_BDCOL_G], resSS->props[E_SS_BDCOL_B], resSS->props[E_SS_BDCOL_A]);
 		//misc
-		glMultiTexCoord4f(7, resSS->props[E_SS_ROUNDNESS], uiComp->value, 1.0f, 1.0f);
+		glMultiTexCoord4f(7, resSS->props[E_SS_ROUNDNESS], uiComp->getValue(), 1.0f, 1.0f);
 
 
 		//bg

@@ -8,6 +8,8 @@ uniform sampler2D Texture4; // geom fbo
 uniform sampler2D Texture5;
 
 varying vec2 TexCoord0;
+
+
 uniform vec2 resolution;
 uniform vec3 process;
 uniform vec2 mouseCoords;
@@ -15,6 +17,7 @@ uniform vec3 cameraPos;
 uniform vec2 bufferDim;
 uniform float cameraZoom;
 uniform float tiltAmount;
+uniform float fHolderMod;
 
 
 
@@ -70,11 +73,12 @@ void main() {
     vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
     vec4 tex2 = texture2D(Texture2, TexCoord0.xy);
     vec4 tex4 = texture2D(Texture4, TexCoord0.xy);
+    vec4 tex5 = texture2D(Texture5, TexCoord0.xy);
 
     //vec4 texFinal = tex0;
     //texFinal.b = mix( tex0.b, tex2.b, float(tex2.a > 0.0) );
 
-    float isObject = float(tex4.a > 0.0);
+    float objectId = unpack16(tex5.rg);//float(tex4.a > 0.0);
     float newZoom = min(cameraZoom,1.0);
     float baseHeight[4];
     
@@ -94,8 +98,11 @@ void main() {
 
     for (i = 0; i < 4; i++) {
         ssCoord = vec2(TexCoord0.x,1.0-TexCoord0.y)*2.0-1.0;
-        ssCoord.x *= bufferDim.x/(newZoom);
-        ssCoord.y *= bufferDim.y/(newZoom);
+        
+        //ssCoord.x *= bufferDim.x/(newZoom);
+        //ssCoord.y *= bufferDim.y/(newZoom);
+        
+        ssCoord.xy *= bufferDim.xy*fHolderMod/(newZoom);
 
         ssCoord.y -= cameraPos.z*tilt*2.0;
         ssCoord.y += baseHeight[i]*tilt*2.0;
@@ -106,11 +113,13 @@ void main() {
         worldPosition.x += cameraPos.x;
         worldPosition.y += cameraPos.y;
         
-        worldPosition.xy = floor(worldPosition.xy/4.0 + 3.0)*4.0;
+        //worldPosition.xy = floor(worldPosition.xy/4.0 + 3.0)*4.0;
+        
+        //worldPosition.xyz = floor(worldPosition.xyz/8.0)*8.0;
         
         //worldPosition += randV3(worldPosition)*10.0;
 
-        gl_FragData[i] = vec4( worldPosition.xyz, isObject );
+        gl_FragData[i] = vec4( worldPosition.xyz, objectId );
     }
 
     

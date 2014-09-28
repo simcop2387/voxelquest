@@ -45,6 +45,9 @@ float mixf(float v1, float v2, float lerpVal) {
 	return v1*(1.0f-lerpVal) + v2*lerpVal;
 }
 
+
+
+
 float clampf(float val, float min, float max) {
 	if (val > max) {
 		val = max;
@@ -53,6 +56,13 @@ float clampf(float val, float min, float max) {
 		val = min;
 	}
 	return val;
+}
+
+float smoothstep(float edge0, float edge1, float x) {
+    // Scale, bias and saturate x to 0..1 range
+    x = clampf((x - edge0)/(edge1 - edge0), 0.0f, 1.0f); 
+    // Evaluate polynomial
+    return x*x*(3.0f - 2.0f*x);
 }
 
 inline float clampfZO(float val) {
@@ -307,7 +317,10 @@ public:
 		fv4.w = w;
 		iv4.w = (int)w;
 	}
-
+	
+	
+	
+	
 	void setRand(FIVector4 *seedPos) {
 
 		FIVector4 r0;
@@ -986,6 +999,11 @@ public:
 
 
 };
+
+float getRandSeeded(FIVector4 *seedPos, FIVector4 *seedVals) {
+	float intPart;		
+	return modf(sin(seedPos->dot(seedVals)) * 43758.8563f, &intPart);
+}
 
 
 

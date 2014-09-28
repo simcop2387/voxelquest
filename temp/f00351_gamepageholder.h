@@ -28,7 +28,7 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		blockId = _blockId;
 		holderId = _holderId;
 
-		isDirty = true;
+		childrenDirty = true;
 
 		singleton = _singleton;
 		usingPoolId = -1;
@@ -67,6 +67,8 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		
 		refreshGeom();
 		
+		underground = true;
+		
 		for (k = 0; k < holderSizeInPages; k++) {
 			for (j = 0; j < holderSizeInPages; j++) {
 				for (i = 0; i < holderSizeInPages; i++) {
@@ -91,7 +93,7 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 							);
 						}
 						
-						
+						underground = underground && pageData[ind]->underground;
 						
 					}
 				}
@@ -206,45 +208,86 @@ void GamePageHolder::clearSet ()
 		}
 		
 	}
+int GamePageHolder::passiveRefresh ()
+                             {
+		int i;
+		int changeCount;
+		
+		childrenDirty = false;
+		changeCount = 0;
+
+		for (i = 0; i < iPageDataVolume; i++) {
+			
+			if (changeCount >= singleton->maxChangesInPages) {
+				childrenDirty = true;
+				goto TOO_MANY_HOLDER_CHANGES;
+			}
+			
+			if (pageData[i] == NULL) {
+				
+			}
+			else {
+				if (
+					(pageData[i]->hasSolids || pageData[i]->hasTrans) &&
+					(!(pageData[i]->underground))
+				) {
+					if (pageData[i]->isDirty) {
+						pageData[i]->generateVolume();
+						changeCount++;
+					}
+				}
+				
+				
+				
+			}
+		}
+
+		TOO_MANY_HOLDER_CHANGES:
+
+		return changeCount;
+
+	}
 void GamePageHolder::refreshChildren (bool refreshImmediate, bool clearEverything)
                                                                                   {
 		int i;
-
-		//clearSet(true);
+		
+		
 		readyForClear = true;
 		if (clearEverything) {
 			clearSet();
 		}
-
+		
 		for (i = 0; i < iPageDataVolume; i++) {
 			if (pageData[i] == NULL) {
 
 			}
 			else {
-
+				
+				
 				if (refreshImmediate) {
-					
-					if (underground) {
-						
+					if (
+						(pageData[i]->hasSolids || pageData[i]->hasTrans) &&
+						(!(pageData[i]->underground))	
+					) {
+						pageData[i]->generateVolume();
 					}
-					else {
-						if (hasSolids || hasTrans) {
-							pageData[i]->generateVolume();
-						}
-					}
-					
-					
-					
-					isDirty = false;
-					
+					childrenDirty = false;
 				}
 				else {
-					isDirty = true;
+					childrenDirty = true;
+					pageData[i]->isDirty = true;
 				}
-
+				
+				
 				
 			}
 		}
+		
+		
+		
+		
+
+		
 	}
 void GamePageHolder::addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVector4 * _p1, FIVector4 * _p2, FIVector4 * _rad, FIVector4 * _cornerRad, FIVector4 * _visInsetFromMin, FIVector4 * _visInsetFromMax, FIVector4 * _powerVals, FIVector4 * _powerVals2, FIVector4 * _thickVals, FIVector4 * _matParams, FIVector4 * _centerPoint, FIVector4 * _anchorPoint, int _minRot, int _maxRot)
           {
@@ -468,7 +511,7 @@ void GamePageHolder::unbindGPUResources ()
 
 		usingPoolId = -1;
 		gpuRes = NULL;
-		isDirty = true;
+		childrenDirty = true;
 
 	}
 #undef LZZ_INLINE

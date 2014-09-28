@@ -40,7 +40,10 @@ GamePage::GamePage ()
 void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _thisPageId, int offsetX, int offsetY, int offsetZ, int oxLoc, int oyLoc, int ozLoc, bool _isEntity)
           {
 
+		isDirty = true;
 		hasLines = false;
+		hasSolids = false;
+		hasTrans = false;
 
 		isEntity = _isEntity;
 
@@ -64,7 +67,7 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 		threadRunning = false;
 
 
-		maxHeightInUnits = (singleton->maxHeightInUnits);
+		//maxHeightInUnits = (singleton->maxHeightInUnits);
 
 
 
@@ -123,16 +126,23 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 		centerPosition.addXYZRef(&worldMaxVisInPixels);
 		centerPosition.multXYZ(0.5f);
 
+		underground = false;
 		nearTerrain = false;
 		nearAir = false;
 		
 		hasWater = ( singleton->getSLInPixels() >= worldMinVisInPixels.getFZ() );
 		
+		
 		if (isEntity) {
 			addEntityGeom(true);
 		}
 		else {
-			parentBlock->isNearTerrain(&centerPosition,nearTerrain,nearAir);
+			parentBlock->isNearTerrain(&centerPosition,&centerPosition,nearTerrain,nearAir); //&worldMinVisInPixels,&worldMaxVisInPixels
+			
+			//terVal = parentBlock->fIsNearTerrain(&centerPosition);
+			
+			
+			
 			hasTerrain = nearTerrain&&nearAir;
 			addGeom(true);
 		}
@@ -283,6 +293,8 @@ void GamePage::addEntityGeom (bool justTesting)
 			hasWindow = false;
 			hasGeom = false;
 			hasLines = false;
+			hasSolids = false;
+			hasTrans = false;
 		}
 
 		
@@ -336,8 +348,10 @@ void GamePage::addEntityGeom (bool justTesting)
 
 		if (justTesting) {
 			parentGPH->hasTrans = false;
+			hasTrans = true;
 			if (hasGeom||hasLines) {
 				parentGPH->hasSolids = true;
+				hasSolids = true;
 			}
 		}
 		else {
@@ -474,24 +488,25 @@ void GamePage::addGeom (bool justTesting)
 			
 			if (hasWindow || hasWater) {
 				parentGPH->hasTrans = true;
+				hasTrans = true;
 				if (MAX_LAYERS < 2) {
 					parentGPH->hasSolids = true;
+					hasSolids = true;
 				}
 			}
 
 			if (hasTerrain || hasGeom) {
 				parentGPH->hasSolids = true;
+				hasSolids = true;
 			}
 			
-			if ( nearTerrain&&(!nearAir)&&(!isEntity) ) {
-				parentGPH->underground = true;
-			}
+			underground = ( nearTerrain&&(!nearAir)&&(!isEntity) );
 			
 		}
 		else {
 			if (numEntries > maxEntries) {
 				numEntries = maxEntries;
-				doTraceND("limit exceeded");
+				cout << "limit exceeded " << numEntries << " / " << maxEntries << "\n";
 			}
 
 			totParams = numEntries * paramsPerEntry;
@@ -615,7 +630,33 @@ void GamePage::getVoroPoints ()
 	}
 void GamePage::generateVolume ()
                               {
+		PAGE_COUNT++;
 
+		int curVGFBO = CUR_VG_FBO;
+		CUR_VG_FBO++;
+		if (CUR_VG_FBO >= MAX_VG_FBOS) {
+			CUR_VG_FBO = 0;
+		}
+		
+		// 1 = 0
+		// 2 = 1
+		// 4 = 2
+		// 8 = 2
+		
+		
+
+		int hspLog = 2;
+		
+		switch (singleton->holderSizeInPages) {
+			case 1:
+				hspLog = 0;
+			break;
+			case 2:
+				hspLog = 1;
+			break;
+		}
+		
+		
 		
 		int resIndex = 0;
 		int i;
@@ -664,7 +705,8 @@ void GamePage::generateVolume ()
 
 		
 
-		singleton->bindFBO("volGenFBO0");
+		//singleton->bindFBO("volGenFBO0");
+		singleton->bindFBODirect(&(singleton->vgFBOArr[curVGFBO]), 0);
 
 		if (volDataModified) {
 			singleton->setShaderTexture3D(0, singleton->volId);
@@ -732,7 +774,6 @@ void GamePage::generateVolume ()
 		//singleton->setShaderfVec4("mapFreqs", &(singleton->mapFreqs) );
 		//singleton->setShaderfVec4("mapAmps", &(singleton->mapAmps) );
 		
-
 		singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
 		singleton->setShaderFloat("volumePitch", (float)( singleton->volGenFBOX ));
 		//singleton->setShaderVec3("terPitch", singleton->terDataVisPitchXY, singleton->terDataVisPitchXY, singleton->terDataVisPitchZ);
@@ -812,7 +853,8 @@ void GamePage::generateVolume ()
 					((i == 1) && (hasWater || hasWindow))
 				) {
 					singleton->bindFBODirect(parentGPH->gpuRes->getFBOS(i), 0);
-					singleton->sampleFBO("volGenFBO0", 0);
+					//singleton->sampleFBO("volGenFBO0", 0);
+					singleton->sampleFBODirect(&(singleton->vgFBOArr[curVGFBO]),0);
 					singleton->sampleFBO("frontFaceFBO", 2);
 					singleton->sampleFBO("backFaceFBO", 3);
 
@@ -820,6 +862,7 @@ void GamePage::generateVolume ()
 					singleton->setShaderFloat("pageDepth", (float)( pageDepth ));
 					singleton->setShaderFloat("volumePitch", (float)( singleton->volGenFBOX ));
 					singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
+					singleton->setShaderFloat("holderSizeInPagesLog", hspLog);
 					singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
 					singleton->setShaderFloat("visPageSizeInPixels", (float)(singleton->visPageSizeInPixels));
 					singleton->setShaderfVec3("worldMinVisInPixels", &(worldMinVisInPixels));
@@ -834,7 +877,8 @@ void GamePage::generateVolume ()
 					
 					singleton->unsampleFBO("backFaceFBO",3);
 					singleton->unsampleFBO("frontFaceFBO",2);
-					singleton->unsampleFBO("volGenFBO0",0);
+					//singleton->unsampleFBO("volGenFBO0",0);
+					singleton->unsampleFBODirect(&(singleton->vgFBOArr[curVGFBO]),0);
 					singleton->unbindFBO();
 				}
 
@@ -851,7 +895,7 @@ void GamePage::generateVolume ()
 
 
 
-
+		isDirty = false;
 		isRendering = false;
 
 	}
@@ -882,8 +926,12 @@ void GamePage::getCoords ()
 		
 		tempVec2.setFXYZ(dxmod,dymod,dzmod);
 		singleton->worldToScreenBase(&tempVec1,&tempVec2);
-		float fx1 = tempVec1.getFX();
-		float fy1 = tempVec1.getFY();
+		float fx1 = tempVec1.getFX()*(singleton->fHolderMod);
+		float fy1 = tempVec1.getFY()*(singleton->fHolderMod);
+		
+		
+		
+		
 		fx1 -= pitchSrc2;
 		fy1 -= pitchSrc2;
 		

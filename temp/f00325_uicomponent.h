@@ -7,7 +7,7 @@ UIComponent::UIComponent ()
                       {
 		
 	}
-void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, string _text, string _uid, string _ss, int _guiClass, float _divisions, bool _hasBackground, bool _singleLine, float _fillRatioX, float _fillRatioY, int _fillDir, int _alignX, int _alignY, float _value, int _layer, int _hoverType, bool _isFloating)
+void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, string _label, string _uid, string _ss, int _guiClass, float _divisions, bool _hasBackground, bool _singleLine, float _fillRatioX, float _fillRatioY, int _fillDir, int _alignX, int _alignY, float _value, int _layer, int _hoverType, bool _isFloating)
           {
 
 		parent = NULL;
@@ -18,6 +18,8 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		parentId = _parentId;
 		nodeId = _nodeId;
 		
+		
+		
 		jvNodeNoTemplate = _jvNodeNoTemplate;
 		
 		layer = _layer;
@@ -25,9 +27,16 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		isFloating = _isFloating;
 		
 		ss = _ss;
-		text = _text;
+		label = _label;
+		text = label;
+		
 		uid = _uid;
 		index = _index;
+		
+		if (uid.size() > 0) {
+			singleton->compMap[uid].nodeId = nodeId;
+		}
+		
 		
 		guiClass = _guiClass;
 		//guiId = _guiId;
@@ -96,6 +105,17 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		}
 		
 		
+	}
+void UIComponent::setValue (float _value, bool doEventDispatch, bool preventRefresh)
+                                                                                               {
+		value = _value;
+		if (doEventDispatch) {
+			singleton->dispatchEvent(GLUT_LEFT_BUTTON, GLUT_UP, 0, 0, this, true, preventRefresh);
+		}
+	}
+float UIComponent::getValue ()
+                         {
+		return value;
 	}
 UIComponent * UIComponent::getParent ()
                                  {
@@ -268,6 +288,10 @@ UIComponent * UIComponent::addChild (int _parentId, int _nodeId, string * string
 			curComp = &(children.back());
 			childCount = children.size()-1;
 		}
+		
+		
+		
+		
 		
 		curComp->init(
 			singleton,
@@ -567,7 +591,8 @@ void UIComponent::layout ()
 void UIComponent::updateValue (float x, float y)
                                            {
 		
-		float hoverBuffer = 8.0f;
+		float hoverBuffer = 4.0f;
+		float tempValue;
 		
 		UIComponent* curParent = getParent();
 		
@@ -582,8 +607,9 @@ void UIComponent::updateValue (float x, float y)
 			break;
 			case E_HT_TOOLTIP:
 			case E_HT_TOOLTIP_VALUE:
-				floatOffset.x = x + hoverBuffer;
-				floatOffset.y = parent->originPos.y + parent->resultDimInPixels.y + hoverBuffer;
+				//curParent->floatOffset.x + 
+				floatOffset.x = x + hoverBuffer; 
+				floatOffset.y = curParent->floatOffset.y + curParent->originPos.y + curParent->resultDimInPixels.y + hoverBuffer;
 				visible = curParent->overSelf;
 				
 				if ((hoverType == E_HT_TOOLTIP_VALUE)&&visible) {
@@ -593,15 +619,17 @@ void UIComponent::updateValue (float x, float y)
 				
 			break;
 			case E_HT_ONSELECTED:
-				floatOffset.x = parent->originPos.x + parent->resultDimInPixels.x;
-				floatOffset.y = parent->originPos.y;
+				//curParent->floatOffset.x + 
+				floatOffset.x = curParent->originPos.x + curParent->resultDimInPixels.x;
+				floatOffset.y = curParent->floatOffset.y + curParent->originPos.y;
 				visible = (curParent->value == 1.0f);
 			break;
 						
 		}
 		
 		
-		
+		float hbxMin = hitBounds.xMin + floatOffset.x;
+		float hbxMax = hitBounds.xMax + floatOffset.x;
 		
 		if (wasHit&&(guiClass == E_GT_SLIDER)) {
 			
@@ -609,11 +637,17 @@ void UIComponent::updateValue (float x, float y)
 				// toggle button, do nothing
 			}
 			else {
+				tempValue = clampfZO((x-hbxMin)/(hbxMax-hbxMin));
 				if (divisions == 0.0f) {
-					value = clampfZO((x-hitBounds.xMin)/(hitBounds.xMax-hitBounds.xMin));
+					setValue(
+						tempValue
+					);
 				}
 				else {
-					value = clampfZO(floor((x-hitBounds.xMin)/(hitBounds.xMax-hitBounds.xMin)*divisions)/divisions);
+					
+					setValue(
+						floor(tempValue*divisions)/divisions
+					);
 				}
 				
 			}
@@ -657,7 +691,7 @@ bool UIComponent::findMaxLayer (float x, float y)
 			(x > (hitBounds.xMin+floatOffset.x)) &&
 			(y < (hitBounds.yMax+floatOffset.y)) &&
 			(y > (hitBounds.yMin+floatOffset.y))
-		);
+		) && visible;
 		
 		overChild = false;
 		
@@ -787,7 +821,7 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 						break;
 						case E_GT_SLIDER:
 							if (divisions == 1.0f) {
-								value = 1.0f-value;
+								setValue(1.0f-value);
 							}
 						break;
 						case E_GT_BUTTON:
@@ -800,12 +834,12 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 							if (tempValue == 1.0f) {
 								for (i = 0; i < curParent->children.size(); i++) {
 									if (curParent->children[i].guiClass == E_GT_RADIO) {
-										curParent->children[i].value = 0.0f;
+										curParent->children[i].setValue(0.0f);
 									}
 								}
 							}
 							
-							value = tempValue;
+							setValue(tempValue);
 							
 						break;
 					}
@@ -849,6 +883,7 @@ void UIComponent::setText (string _text)
                                    {
 		
 		UIComponent* curParent = getParent();
+		UIComponent* curParentParent;
 		
 		if (_text.compare(text) == 0) {
 			// text unchanged, do nothing
@@ -858,7 +893,17 @@ void UIComponent::setText (string _text)
 			//isDirty = true;
 			
 			if (curParent != NULL) {
-				curParent->isDirty = true;
+				
+				curParentParent = curParent->getParent();
+				
+				if (curParentParent != NULL) {
+					curParentParent->isDirty = true;
+				}
+				else {
+					curParent->isDirty = true;
+				}
+				
+				
 				singleton->guiDirty = true;
 			}
 			

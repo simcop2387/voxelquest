@@ -1,4 +1,4 @@
-﻿Build started 9/23/2014 2:43:11 AM.
+﻿Build started 9/28/2014 1:56:56 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -26,6 +26,7 @@
          .\src\cpp\f00300_singleton.hpp
          .\src\cpp\f00310_pooledresource.hpp
          .\src\cpp\f00315_poolmanager.hpp
+         .\src\cpp\f00316_poolpagemanager.hpp
          .\src\cpp\f00320_fontwrapper.hpp
          .\src\cpp\f00325_uicomponent.hpp
          .\src\cpp\f00330_gamegui.hpp
@@ -38,11 +39,11 @@
          .\src\cpp\f00352_gameblock.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         33 File(s) copied
+         34 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         20
+         21
          copying headers to one file
          .\f00290_wsrequesthandler.e
          .\f00291_rhfactory.e
@@ -53,6 +54,7 @@
          .\f00300_singleton.e
          .\f00310_pooledresource.e
          .\f00315_poolmanager.e
+         .\f00316_poolpagemanager.e
          .\f00320_fontwrapper.e
          .\f00325_uicomponent.e
          .\f00330_gamegui.e
@@ -67,7 +69,7 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         20
+         21
          .
          copying files to compiled
          .\temp\f00290_wsrequesthandler.e
@@ -79,6 +81,7 @@
          .\temp\f00300_singleton.e
          .\temp\f00310_pooledresource.e
          .\temp\f00315_poolmanager.e
+         .\temp\f00316_poolpagemanager.e
          .\temp\f00320_fontwrapper.e
          .\temp\f00325_uicomponent.e
          .\temp\f00330_gamegui.e
@@ -90,7 +93,7 @@
          .\temp\f00351_gamepageholder.e
          .\temp\f00352_gameblock.e
          .\temp\f00380_gameworld.e
-         20 File(s) copied
+         21 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_vectors.h
@@ -113,6 +116,7 @@
          .\temp\f00300_singleton.h
          .\temp\f00310_pooledresource.h
          .\temp\f00315_poolmanager.h
+         .\temp\f00316_poolpagemanager.h
          .\temp\f00320_fontwrapper.h
          .\temp\f00325_uicomponent.h
          .\temp\f00330_gamegui.h
@@ -156,14 +160,14 @@
          
          
          
-         blockSizeInHolders: 128
+         blockSizeInHolders: 32
          blockSizeInPixels: 65536
          terDataBufPitchScaledXY 80
          maxChangesInHolders: 4
          volGenFBOX: 128
          volGenFBOY: 16384
-         visPageSizeInPixels: 512
-         holderSizeInPixels: 512
+         visPageSizeInPixels: 256
+         holderSizeInPixels: 2048
          bufferMult: 1.25
          metersPerLot: 64
          pixelsPerMeter: 128
@@ -172,14 +176,14 @@
          pixelsPerUnit: 32
          unitsPerLot: 256
          pixelsPerLot: 8192
-         holderSizeInPages: 1
-         holdersPerLot: 16
-         visPageSizeInUnits: 16
+         holderSizeInPages: 8
+         holdersPerLot: 4
+         visPageSizeInUnits: 8
          unitSizeInPixels: 32
          worldSizeInBlocks:    128.000000   128.000000   1.000000    
          worldSizeInLots:    1024.000000   1024.000000   8.000000    
-         worldSizeInHolders:    16384.000000   16384.000000   128.000000    
-         worldSizeInPages:    16384.000000   16384.000000   128.000000    
+         worldSizeInHolders:    4096.000000   4096.000000   32.000000    
+         worldSizeInPages:    32768.000000   32768.000000   256.000000    
          MAX_UNIFORMS: 65536
          
          
@@ -188,6 +192,19 @@
          
          
          worldSizeInPixels:    8388608.000000   8388608.000000   65536.000000    
+         paramName --aoParam--
+         paramName --pvParam--
+         paramName --pPowValThresh--
+         paramName --pNumDivsY--
+         paramName --pNumDivsX--
+         paramName --pFalloff--
+         paramName --pMinRad--
+         paramName --pMaxRad--
+         paramName --pPowVal--
+         paramName --pMaxClamp--
+         paramName --pScaleParamX--
+         paramName --pScaleParamY--
+         paramName --pMetaThresh--
          
          Valid JSON
                    
@@ -215,7 +232,7 @@
                    
          Loading:  ..\data\lastImageBuffer.txt         
          Load Successful          
-         Sea Level: 115
+         Sea Level: 139
          start place cities
          end place cities
          start grow provinces
@@ -237,147 +254,27 @@
          start filling houses
          end filling houses
          DONE WITH MAP
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         getJVNodeByString(inventoryData.items)
+         inventoryData
+         items
+         getJVNodeByString(params)
+         params
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
          GW DONE          
          copyTerToTexture resIndex:  0         
          copyTerToTexture resIndex:  1         
          copyTerToTexture resIndex:  2         
-         copyTerToTexture resIndex:  3         
-         copyTerToTexture resIndex:  4         
-         
-         Valid JSON
-                   
-         Loading:  ..\data\lastJSONBufferGUI.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         getJVNodeByString(params)
-         params
-         Shaders Refreshed
-         
-         Valid JSON
-                   
-         Loading:  ..\data\lastJSONBufferGUI.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         getJVNodeByString(params)
-         params
-         Shaders Refreshed
-         
-         Valid JSON
-                   
-         Loading:  ..\data\lastJSONBufferGUI.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         getJVNodeByString(params)
-         params
-         Shaders Refreshed
-         Loading:  ..\data\lastJSONBufferGUI.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         getJVNodeByString(params)
-         params
-     1>EXEC : Shader  55  ( ../src/glsl/PreLightingShader.c ) compile error : 0(70) : error C0000: syntax error, unexpected ';', expecting ',' or ')' at token ";"
-              
-     1>EXEC : Program  57  link error : Vertex info
-         -----------
-     1>0(70): error C0000: syntax error, unexpected ';', expecting ',' or ')' at token ";"
-                
-         Loading:  ..\data\lastJSONBufferGUI.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         getJVNodeByString(params)
-         params
-         Shaders Refreshed
-         
-         Valid JSON
-                   
-         Loading:  ..\data\lastJSONBufferGUI.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         getJVNodeByString(params)
-         params
-         Shaders Refreshed
-         
-         Valid JSON
-                   
-         Loading:  ..\data\lastJSONBufferGUI.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         getJVNodeByString(params)
-         params
-         Shaders Refreshed
-         
-         Valid JSON
-                   
-         Loading:  ..\data\lastJSONBufferGUI.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         getJVNodeByString(params)
-         params
-         Shaders Refreshed
-         
-         Valid JSON
-                   
-         Loading:  ..\data\lastJSONBufferGUI.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         getJVNodeByString(params)
-         params
-         Shaders Refreshed
-         
-         Valid JSON
-                   
-         Loading:  ..\data\lastJSONBufferGUI.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         getJVNodeByString(params)
-         params
-         Shaders Refreshed
-         
-         Valid JSON
-                   
-         Loading:  ..\data\lastJSONBufferGUI.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         getJVNodeByString(params)
-         params
-         Shaders Refreshed
-         
-         Valid JSON
-                   
-         Loading:  ..\data\lastJSONBufferGUI.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         getJVNodeByString(params)
-         params
-         Shaders Refreshed
-     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
-C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -1.
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
+         limit exceeded 32 / 32
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
-Build FAILED.
+Build succeeded.
 
-Time Elapsed 00:10:41.65
+Time Elapsed 00:01:01.77

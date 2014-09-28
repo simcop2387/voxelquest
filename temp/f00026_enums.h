@@ -71,6 +71,21 @@ enum E_STATES {
 
 };
 
+
+// enum E_UI_LIST {
+// 	E_UL_FB_MEM,
+// 	E_UL_CHUNK_MEM,
+// 	E_UL_TOT_MEM,
+// 	E_UL_LENGTH
+// };
+
+// enum E_UI_LIST {
+// 	E_UL_FB_MEM,
+// 	E_UL_CHUNK_MEM,
+// 	E_UL_TOT_MEM,
+// 	E_UL_LENGTH
+// };
+
 enum E_CHAR_STATE {
 	E_CHAR_STATE_NONE,
 	E_CHAR_STATE_SKEL,
@@ -105,6 +120,7 @@ enum E_BRUSH {
 
 enum E_HOLDER_ACTION {
 	E_HOLDER_ACTION_RENDER,
+	E_HOLDER_ACTION_REDRAW_CHILDREN,
 	E_HOLDER_ACTION_RESET,
 	E_HOLDER_ACTION_LENGTH
 };
@@ -132,6 +148,8 @@ enum E_FILL_STATE {
 enum E_PLANT_TYPES {
 	E_PT_OAK_TRUNK,
 	E_PT_OAK_ROOTS,
+	E_PT_OAK2_TRUNK,
+	E_PT_OAK2_ROOTS,
 	E_PT_BARE_OAK_TRUNK,
 	E_PT_BARE_OAK_ROOTS,
 	E_PT_LENGTH
@@ -599,6 +617,7 @@ struct PlantRules
 	float endThickness;
 	float curLength[MAX_PLANT_GEN];
 	float sphereGen;
+	float sphereRad;
 	//float baseLength;
 	//float nodeLengthMultiplier;
 	float numGenerations;
@@ -640,10 +659,15 @@ struct MapNode {
 	int id;
 };
 
+const static unsigned int BC_FLAG_INSIDE = 1;
+const static unsigned int BC_FLAG_WING_BEG = 2;
+const static unsigned int BC_FLAG_WING_END = 4;
+
 struct BuildingCon {
 	int conType;
-	bool isWingBeg;
-	bool isWingEnd;
+	unsigned int nodeFlags;
+	//bool isWingBeg;
+	//bool isWingEnd;
 	float wingMult;
 	float wallRadInMeters;
 	int heightDelta;

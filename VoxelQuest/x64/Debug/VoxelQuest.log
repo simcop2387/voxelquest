@@ -1,4 +1,4 @@
-﻿Build started 9/22/2014 8:33:58 PM.
+﻿Build started 9/27/2014 9:28:19 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -26,6 +26,7 @@
          .\src\cpp\f00300_singleton.hpp
          .\src\cpp\f00310_pooledresource.hpp
          .\src\cpp\f00315_poolmanager.hpp
+         .\src\cpp\f00316_poolpagemanager.hpp
          .\src\cpp\f00320_fontwrapper.hpp
          .\src\cpp\f00325_uicomponent.hpp
          .\src\cpp\f00330_gamegui.hpp
@@ -38,11 +39,11 @@
          .\src\cpp\f00352_gameblock.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         33 File(s) copied
+         34 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         20
+         21
          copying headers to one file
          .\f00290_wsrequesthandler.e
          .\f00291_rhfactory.e
@@ -53,6 +54,7 @@
          .\f00300_singleton.e
          .\f00310_pooledresource.e
          .\f00315_poolmanager.e
+         .\f00316_poolpagemanager.e
          .\f00320_fontwrapper.e
          .\f00325_uicomponent.e
          .\f00330_gamegui.e
@@ -67,7 +69,7 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         20
+         21
          .
          copying files to compiled
          .\temp\f00290_wsrequesthandler.e
@@ -79,6 +81,7 @@
          .\temp\f00300_singleton.e
          .\temp\f00310_pooledresource.e
          .\temp\f00315_poolmanager.e
+         .\temp\f00316_poolpagemanager.e
          .\temp\f00320_fontwrapper.e
          .\temp\f00325_uicomponent.e
          .\temp\f00330_gamegui.e
@@ -90,7 +93,7 @@
          .\temp\f00351_gamepageholder.e
          .\temp\f00352_gameblock.e
          .\temp\f00380_gameworld.e
-         20 File(s) copied
+         21 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_vectors.h
@@ -113,6 +116,7 @@
          .\temp\f00300_singleton.h
          .\temp\f00310_pooledresource.h
          .\temp\f00315_poolmanager.h
+         .\temp\f00316_poolpagemanager.h
          .\temp\f00320_fontwrapper.h
          .\temp\f00325_uicomponent.h
          .\temp\f00330_gamegui.h
@@ -153,4 +157,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:03.28
+Time Elapsed 00:00:03.89

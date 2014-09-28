@@ -29,7 +29,15 @@ public:
 
 	FBOWrapper() {}
 	~FBOWrapper() {}
-	int init(int _width, int _height, int _bytesPerChannel, int _slot, /*bool _hasDepth,*/ int filterEnum, int clampEnum) {
+	int init(
+		int _width,
+		int _height,
+		int _bytesPerChannel,
+		int _slot,
+		int filterEnum,
+		int clampEnum,
+		bool isMultisample = false
+	) {
 		width = _width;
 		height = _height;
 		bytesPerChannel = _bytesPerChannel;
@@ -41,6 +49,7 @@ public:
 
 		int w = width;
 		int h = height;
+		int num_samples = 4;
 		numMips = 0;
 
 		isFloat = false;
@@ -79,34 +88,76 @@ public:
 		}
 
 
+		if (isMultisample) {
+			glGenTextures(1, &color_tex);
+			glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_tex);
+			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, filterEnum);
+			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, filterEnum);
+			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, clampEnum);
+			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, clampEnum);
 
-		glGenTextures(1, &color_tex);
-		glBindTexture(GL_TEXTURE_2D, color_tex);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterEnum);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterEnum);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, clampEnum);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, clampEnum);
+			switch (bytesPerChannel) {
+			case 1:
+				internalFormat = GL_RGBA8;
+				
+				break;
+			case 2:
+				internalFormat = GL_RGBA16;
+				
+				break;
+			case 4:
+				internalFormat = GL_RGBA32F;
+				isFloat = true;
 
-		switch (bytesPerChannel) {
-		case 1:
-			internalFormat = GL_RGBA8;
-			glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+				break;
+			}
+			
+			glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, num_samples, internalFormat, w, h, false );
+			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, slot, GL_TEXTURE_2D_MULTISAMPLE, color_tex, 0);
+			glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+		}
+		else {
+			glGenTextures(1, &color_tex);
+			glBindTexture(GL_TEXTURE_2D, color_tex);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterEnum);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterEnum);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, clampEnum);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, clampEnum);
 
-			break;
-		case 2:
-			internalFormat = GL_RGBA16;
-			glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_UNSIGNED_SHORT, 0);
+			switch (bytesPerChannel) {
+			case 1:
+				internalFormat = GL_RGBA8;
+				glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
-			break;
-		case 4:
-			internalFormat = GL_RGBA32F;
-			glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_FLOAT, 0);
-			isFloat = true;
+				break;
+			case 2:
+				internalFormat = GL_RGBA16;
+				glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_UNSIGNED_SHORT, 0);
 
-			break;
+				break;
+			case 4:
+				internalFormat = GL_RGBA32F;
+				glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_FLOAT, 0);
+				isFloat = true;
+
+				break;
+			}
+
+			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, slot, GL_TEXTURE_2D, color_tex, 0);
+			glBindTexture(GL_TEXTURE_2D, 0);
 		}
 
-		TOT_GPU_MEM_USAGE += ((float)(w * h * bytesPerChannel * 4)) / (1024.0f * 1024.0f);
+		
+		
+		
+		
+		
+	TOT_GPU_MEM_USAGE += ((float)(w * h * bytesPerChannel * 4)) / (1024.0f * 1024.0f);
+
+	return 1;
+
+
+
 
 
 		//
@@ -121,12 +172,6 @@ public:
 
 
 		//
-
-
-		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, slot, GL_TEXTURE_2D, color_tex, 0);
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		return 1;
 
 	}
 
@@ -733,7 +778,16 @@ public:
 		return &(fbos[offset]);
 	}
 
-	void init(int _numBufs, int _width, int _height, int _bytesPerChannel, bool _hasDepth, int filterEnum = GL_NEAREST, int clampEnum = GL_CLAMP_TO_EDGE) {
+	void init(
+		int _numBufs,
+		int _width,
+		int _height,
+		int _bytesPerChannel,
+		bool _hasDepth,
+		int filterEnum = GL_NEAREST,
+		int clampEnum = GL_CLAMP_TO_EDGE,
+		bool isMultisample = false
+	) {
 		int i;
 
 		hasDepth = _hasDepth;
@@ -750,7 +804,7 @@ public:
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
 
 		for (i = 0; i < numBufs; i++) {
-			fbos[i].init(width, height, bytesPerChannel, i, /*hasDepth,*/ filterEnum, clampEnum);
+			fbos[i].init(width, height, bytesPerChannel, i, filterEnum, clampEnum, isMultisample);
 		}
 
 

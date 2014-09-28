@@ -1,11 +1,4 @@
 
-
-// list<int> cachedPoolIds;
-// vector<intPair> cachedOrderedIds;
-// vector<PooledResource *> cachedPoolItems;
-
-
-
 class PoolManager {
 public:
 	
@@ -21,18 +14,27 @@ public:
 	
 	bool isEntity;
 	
+	int sizeX;
+	int sizeY;
 	
 	PoolManager() {
 		
 	}
 	
-	void init(Singleton* _singleton, bool _isEntity, bool _isCPU) {
+	void init(
+		Singleton* _singleton,
+		bool _isEntity,
+		bool _isCPU,
+		int _sizeX,
+		int _sizeY
+	) {
 		isEntity = _isEntity;
 		poolItemsCreated = 0;
 		isCPU = _isCPU;
 		singleton = _singleton;
 		gw = singleton->gw;
-		
+		sizeX = _sizeX;
+		sizeY = _sizeY;
 	}
 	
 	
@@ -173,7 +175,7 @@ public:
 
 		for (i = 0; i < holderPoolItems.size(); i++)
 		{
-			gp = gw->getHolderAtId(holderPoolItems[i]->usedByHolderId);
+			gp = gw->getHolderAtId(holderPoolItems[i]->usedById);
 
 			if (gp == NULL)
 			{
@@ -204,19 +206,25 @@ public:
 	{
 
 
-		int holderToFreeId;
-		intPair usedByHolderId;
+		int toFreeId;
+		intPair usedById;
 
 		int i;
 
 
-		if (getTotMemUsed() < getMaxMem())
+		if (
+			(getTotMemUsed() < getMaxMem()) &&
+			(
+				(orderedIds.size() < MAX_HOLDERS) ||
+				(MAX_HOLDERS <= 0)
+			)
+		)
 		{
 			holderPoolItems.push_back( new PooledResource() );
-			holderPoolItems.back()->init(singleton, isCPU);
+			holderPoolItems.back()->init(singleton, isCPU, sizeX, sizeY);
 
-			holderToFreeId = poolItemsCreated;
-			holderPoolIds.push_front(holderToFreeId);
+			toFreeId = poolItemsCreated;
+			holderPoolIds.push_front(toFreeId);
 			orderedIds.push_back(intPair());
 			orderedIds.back().v0 = blockId;
 			orderedIds.back().v1 = holderId;
@@ -225,12 +233,12 @@ public:
 		}
 		else
 		{
-			holderToFreeId = findFurthestHolderId();//holderPoolIds.back();
-			usedByHolderId = holderPoolItems[holderToFreeId]->usedByHolderId;
+			toFreeId = findFurthestHolderId();//holderPoolIds.back();
+			usedById = holderPoolItems[toFreeId]->usedById;
 
 			GamePageHolder *consumingHolder;
 
-			if ( pairIsNeg(usedByHolderId) )
+			if ( pairIsNeg(usedById) )
 			{
 				// this pooledItem is already free
 
@@ -239,7 +247,7 @@ public:
 			{
 				// free this pooledItem from the holder that is consuming it and give it to the requesting holder
 
-				consumingHolder = gw->getHolderAtId(usedByHolderId);
+				consumingHolder = gw->getHolderAtId(usedById);
 
 				if (consumingHolder == NULL)
 				{
@@ -257,7 +265,7 @@ public:
 
 			for (i = 0; i < orderedIds.size(); i++)
 			{
-				if ( pairIsEqual(orderedIds[i], usedByHolderId) )
+				if ( pairIsEqual(orderedIds[i], usedById) )
 				{
 					orderedIds[i].v0 = blockId;
 					orderedIds[i].v1 = holderId;
@@ -266,17 +274,17 @@ public:
 			}
 
 
-			holderPoolIds.remove(holderToFreeId);
-			holderPoolIds.push_front(holderToFreeId);
+			holderPoolIds.remove(toFreeId);
+			holderPoolIds.push_front(toFreeId);
 		}
 
 
-		holderPoolItems[holderToFreeId]->usedByHolderId.v0 = blockId;
-		holderPoolItems[holderToFreeId]->usedByHolderId.v1 = holderId;
+		holderPoolItems[toFreeId]->usedById.v0 = blockId;
+		holderPoolItems[toFreeId]->usedById.v1 = holderId;
 
 		reorderIds();
 
-		return holderToFreeId;
+		return toFreeId;
 
 	}
 

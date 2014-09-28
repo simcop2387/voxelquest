@@ -19,7 +19,6 @@ const static int DEF_SCALE_FACTOR = 2;
 const static float UI_SCALE_FACTOR = 1.0f;
 
 const static bool ENT_ON = false;
-const static int PIXELS_PER_METER = 128;
 const static int MAX_LAYERS = 1;
 
 const static int MAX_PLANT_GEN = 16;
@@ -27,7 +26,7 @@ const static int MAX_PLANT_GEN = 16;
 const static int MAX_TER_TEX = 9;
 
 const static int MAX_NODE_DIRS = 6;
-const static int MAX_NODE_VALS = 3;
+const static int MAX_NODE_VALS = 4;
 const static int TOT_NODE_VALS = 
 	MAX_NODE_DIRS * MAX_NODE_VALS;
 
@@ -54,19 +53,14 @@ char *BUF_NAMES[] =
 	"ublock13"
 };
 
-// char* VOLGEN_NAMES[] =
-// {
-//  "volGenFBO1",
-//  "volGenFBO2",
-//  "volGenFBO4",
-//  "volGenFBO8",
-//  "volGenFBO16",
-//  "volGenFBO32",
-//  "volGenFBO64",
-//  "volGenFBO128"
-// };
-// const static int VOLGEN_NAMES_LEN = 8;
 
+const static int MAX_VG_FBOS = 1;
+int CUR_VG_FBO = 0;
+int PAGE_COUNT = 0;
+
+
+// set to 0 to disable
+int MAX_HOLDERS = 1024;
 
 
 float MAX_GPU_MEM = 2560.0f;

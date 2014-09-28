@@ -373,8 +373,6 @@ public:
 		int _id,
 		int _globalId,
 
-
-
 		// p0, p1 = start, end
 		// p2 = control point or tangent
 

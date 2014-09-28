@@ -16,10 +16,13 @@ GameWorld::GameWorld ()
 void GameWorld::init (Singleton * _singleton)
         {
 
-		pushTrace("GameWorld init()");
+		//pushTrace("GameWorld init()");
 
+		
 
 		singleton = _singleton;
+		
+		curLoadRadius = singleton->minWInPages;
 
 		int i;
 		int j;
@@ -27,7 +30,6 @@ void GameWorld::init (Singleton * _singleton)
 		//finalInd = -1;
 
 		lightCount = 1;
-		//frameCount = -1;
 
 		noiseGenerated = false;
 		wavesGenerated = false;
@@ -100,6 +102,7 @@ void GameWorld::init (Singleton * _singleton)
 		mapStep = 0.0f;
 
 		pageCount = 0;
+		procResultAccum = false;
 		lastProcResult = true;
 		maxThreads = 7;
 		availThreads = maxThreads;
@@ -171,7 +174,7 @@ void GameWorld::init (Singleton * _singleton)
 		
 
 
-		popTrace();
+		//popTrace();
 	}
 GameBlock * GameWorld::getBlockAtCoords (int xInBlocks, int yInBlocks, bool createOnNull)
         {
@@ -458,8 +461,11 @@ bool GameWorld::checkBounds (int k)
 	}
 void GameWorld::update ()
         {
+		
+		bool procResult = false;
+		
 
-		pushTrace("update()");
+		//pushTrace("update()");
 
 		singleton->updateLock = true;
 
@@ -468,6 +474,8 @@ void GameWorld::update ()
 		float x;
 		float y;
 		float z;
+		
+		
 
 		newZoom = max(1.0f, singleton->cameraZoom);
 
@@ -476,7 +484,8 @@ void GameWorld::update ()
 		singleton->testHuman->basePosition.copyFrom(&(singleton->dynObjects[E_OBJ_HUMAN]->pos));
 		transformEnt(singleton->testHuman);
 
-		mapTrans = 1.0f - (singleton->cameraZoom * ((float)DEF_SCALE_FACTOR)) / 0.1f;
+		mapTrans = 1.0f-smoothstep(1.0f/512.0f,1.0f/128.0f,singleton->cameraZoom);
+		//1.0f - (singleton->cameraZoom * ((float)DEF_SCALE_FACTOR)) / 0.01f;
 		if (mapTrans > 0.91)
 		{
 			mapTrans = 1.0;
@@ -520,28 +529,40 @@ void GameWorld::update ()
 
 		bool changesMade = singleton->changesMade;
 		bool bufferInvalid = singleton->bufferInvalid;
-		bool procResult = false;
+		
 
 		if (mapTrans < 1.0f)
 		{
 
-			if ( false ) //singleton->isZooming)
+			if ( singleton->isZooming ) //
 			{
 
 			}
 			else
 			{
-				procResult = processPages();
+				procResult = procPages();
+				
+				procResultAccum = procResultAccum || procResult;
+				
+				if (singleton->skipFrames > 1) {
+					if ( (singleton->frameCount % singleton->skipFrames) != 0) {
+						doFinalDraw = true;
+						goto FINAL_DRAW;
+					}
+				}
+				
+				
+				procResultAccum = false;
+				
 
-				if ( (lastProcResult != procResult) && (procResult == false)  )
+				if ( (lastProcResult != procResultAccum)  ) // && (procResultAccum == false)
 				{
 					singleton->wsBufferInvalid = true;
-
 				}
 			}
 
 			if (
-				procResult ||
+				procResultAccum ||
 				changesMade ||
 				(singleton->charState == E_CHAR_STATE_RENDERED) ||
 				(singleton->tiltChanged)
@@ -555,7 +576,7 @@ void GameWorld::update ()
 		}
 
 		if (
-			procResult ||
+			procResultAccum ||
 			changesMade ||
 			bufferInvalid ||
 			singleton->abDown || 
@@ -589,14 +610,7 @@ void GameWorld::update ()
 			if ( mapTrans < 1.0 )
 			{
 
-				if (singleton->directPass)
-				{
-
-				}
-				else
-				{
-					postProcess();
-				}
+				postProcess();
 
 			}
 
@@ -604,14 +618,14 @@ void GameWorld::update ()
 			{
 				if (doFinalDraw) {
 					singleton->createVTListTilt();
-				}
-				
-				
+				}				
 				drawMap();
 			}
 
+			
+
 			glutSwapBuffers();
-			glFlush();
+			//glFlush();
 		}
 
 
@@ -625,21 +639,35 @@ void GameWorld::update ()
 			getWorldSpaceBuffer();
 		}
 
-
+FINAL_DRAW:
 
 
 DO_RETURN_UPDATE:
 
-		lastProcResult = procResult;
+		if (
+			(singleton->skipFrames <= 1) ||
+			((singleton->frameCount % singleton->skipFrames) == 0)
+		) {
+			lastProcResult = procResultAccum;
+		}
+		
+		if (procResult) {
+			
+		}
+		else {
+			curLoadRadius++;
+			curLoadRadius = min(curLoadRadius,singleton->maxWInPages);
+		}
+		
+		
 		singleton->updateLock = false;
-		popTrace();
+		//popTrace();
 
 
 	}
-bool GameWorld::processPages ()
+bool GameWorld::procPages ()
         {
 
-		pushTrace("processPages()");
 
 
 		int counter;
@@ -653,17 +681,24 @@ bool GameWorld::processPages ()
 
 		//float heightAtPoint = singleton->getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY());
 
+		int incVal;
+
 		bool cmade = false;
 
 		camPagePos.copyFrom( cameraPos );
 		//camPagePos.setFZ(heightAtPoint);
 		camPagePos.intDivXYZ(visPageSizeInPixels);
+		camPagePos.addXYZ(1.0f,1.0f,1.0f);
 
 		camHolderPos.copyFrom(&camPagePos);
 		camHolderPos.intDivXYZ(singleton->holderSizeInPages);
 
+		camHolderPos.addXYZ(1.0f,1.0f,1.0f);
+
 		cutHolderPos.copyFrom(cutPos);
 		cutHolderPos.intDivXYZ(singleton->holderSizeInPixels);
+		
+		
 
 		camBlockPos.copyFrom( cameraPos );
 		camBlockPos.intDivXYZ(singleton->blockSizeInPixels);
@@ -675,8 +710,13 @@ bool GameWorld::processPages ()
 		int m;
 		//E_STATES nState;
 
-		int loadRad = singleton->maxWInPages;
-		int loadRad2 = singleton->maxHInPages;
+		int loadRad = curLoadRadius; //singleton->maxWInPages;
+		int loadRad2 = singleton->maxHInPages; //curLoadRadius; //
+		
+		if (singleton->changingGenVal) {
+			loadRad2 = 1;
+		}
+		
 		int changeCount = 0;
 
 		int maxChangesInHolders = singleton->maxChangesInHolders;
@@ -697,51 +737,52 @@ bool GameWorld::processPages ()
 		}
 
 
-		// check for threads to free
-		if (availThreads < maxThreads)
-		{
-			for (i = 0; i < ocThreads.size(); i++)
-			{
-				if ( ocThreads[i] == -1)
-				{
-					// already freed
-				}
-				else
-				{
-					if ( getPageAtIndex(ocThreads[i]) == NULL )
-					{
-						// page was destroyed, free thread
+		// // check for threads to free
+		// if (availThreads < maxThreads)
+		// {
+		// 	for (i = 0; i < ocThreads.size(); i++)
+		// 	{
+		// 		if ( ocThreads[i] == -1)
+		// 		{
+		// 			// already freed
+		// 		}
+		// 		else
+		// 		{
+		// 			if ( getPageAtIndex(ocThreads[i]) == NULL )
+		// 			{
+		// 				// page was destroyed, free thread
 
-						ocThreads[i] = -1;
-						availThreads++;
-					}
-					else
-					{
-						if (getPageAtIndex(ocThreads[i])->threadRunning)
-						{
+		// 				ocThreads[i] = -1;
+		// 				availThreads++;
+		// 			}
+		// 			else
+		// 			{
+		// 				if (getPageAtIndex(ocThreads[i])->threadRunning)
+		// 				{
 
-						}
-						else
-						{
-							ocThreads[i] = -1;
-							availThreads++;
-						}
-					}
-				}
-			}
-		}
+		// 				}
+		// 				else
+		// 				{
+		// 					ocThreads[i] = -1;
+		// 					availThreads++;
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+		// }
 
 
-		if (availThreads == 0)
-		{
-			goto DO_RETURN_PP;
-		}
+		// if (availThreads == 0)
+		// {
+		// 	goto DO_RETURN_PP;
+		// }
 
+		
 
 		minLRInPixels.copyFrom(&camHolderPos);
 		maxLRInPixels.copyFrom(&camHolderPos);
-		minLRInPixels.addXYZ(-loadRad, -loadRad, -loadRad2);
-		maxLRInPixels.addXYZ(loadRad, loadRad, loadRad2);
+		minLRInPixels.addXYZ(-singleton->minWInPages, -singleton->minWInPages, -loadRad2);
+		maxLRInPixels.addXYZ(singleton->minWInPages, singleton->minWInPages, loadRad2);
 		
 		minLRInPixels.addXYZ(-0.5f);
 		maxLRInPixels.addXYZ(0.5f);
@@ -762,8 +803,8 @@ bool GameWorld::processPages ()
 
 			}
 		}
-
-
+		
+		int tempVal = 0;
 		
 
 		int mink = camHolderPos.getIZ() - loadRad2;
@@ -772,48 +813,60 @@ bool GameWorld::processPages ()
 		int maxj = camHolderPos.getIY() + loadRad;
 		int mini = camHolderPos.getIX() - loadRad;
 		int maxi = camHolderPos.getIX() + loadRad;
-
+		int curHeight = 0;
 
 		minLRInHolders.setIXYZ(mini + 1, minj + 1, mink + 1);
 		maxLRInHolders.setIXYZ(maxi - 1, maxj - 1, maxk - 1);
 
-
-		for (kk = mink; kk <= maxk; kk++) {
-			for (jj = minj; jj <= maxj; jj++) {
-				for (ii = mini; ii <= maxi; ii++) {
+		
+		
+		for (jj = minj; jj <= maxj; jj++) {
+			
+			if (curLoadRadius == singleton->minWInPages) {
+				incVal = 1;
+			}
+			else {
+				if ( (jj == minj) || (jj == maxj) ) {
+					incVal = 1;
+				}
+				else {
+					incVal = maxi - mini;
+				}
+			}
+			
+			for (ii = mini; ii <= maxi; ii += incVal) {
+				
+				
+				for (kk = mink; kk <= maxk; kk++) {
 					if ( checkBounds(kk) ) {
-						
-						
-						
-						
-
 						curHolder = getHolderAtCoords(ii, jj, kk, true);
 						
-						if (curHolder->isDirty) {
-							curHolder->refreshChildren(true);
-							changeCount++;
-							cmade = true;
+						if (curHolder->childrenDirty) {
+							
+							tempVal = curHolder->passiveRefresh();
+							changeCount += tempVal;
+							
+							if (tempVal > 0) {
+								cmade = true;
+							}
+							
 						}
 						
 						if (changeCount >= maxChangesInHolders)
 						{
 							goto DO_RETURN_PP;
 						}
-						
-						
-						
-						
 					}
 				}
+				
 			}
 		}
+		
 
 
 DO_RETURN_PP:
 
-		doTrace("ProcessPages End");
-
-		popTrace();
+		//popTrace();
 		return cmade;
 	}
 bool GameWorld::addHolderToRefresh (GamePageHolder * toAdd)
@@ -888,19 +941,19 @@ int GameWorld::getHoldersInGeom (GameGeom * gg)
 		return totCount;
 
 	}
-void GameWorld::refreshHoldersInList (bool doImmediate)
+void GameWorld::refreshHoldersInList (bool doImmediate, bool clearEverything)
         {
 		int i;
 
 		for (i = 0; i < holdersToRefresh.size(); i++)
 		{
-			holdersToRefresh[i]->refreshChildren(doImmediate);
+			holdersToRefresh[i]->refreshChildren(doImmediate, clearEverything);
 		}
 	}
 void GameWorld::actionOnHolders (int action, bool instantRefresh, bool clearEverything)
         {
 
-		pushTrace("renderHolders()");
+		//pushTrace("renderHolders()");
 
 		int i, j, k, m;
 		int res;
@@ -923,7 +976,7 @@ void GameWorld::actionOnHolders (int action, bool instantRefresh, bool clearEver
 			
 			
 			
-			if (  (gphEnt->isDirty)&&(ENT_ON)  ) {
+			if (  (gphEnt->childrenDirty)&&(ENT_ON)  ) {
 				
 				// TOOD: this must be called before other pages or potential crash from lack of memory to alloc
 				//transformEnt(singleton->testHuman);
@@ -1090,12 +1143,11 @@ void GameWorld::actionOnHolders (int action, bool instantRefresh, bool clearEver
 
 		//doTrace( "POSSIBLE ERROR: " , i__s(glGetError()) , "\n" );
 
-		popTrace();
+		//popTrace();
 	}
 void GameWorld::drawHolder (GamePageHolder * gp, int curLayer, float xoff, float yoff, float zoff)
         {
 		//pushTrace("drawHolder()");
-
 
 
 		float dx = gp->offsetInHolders.getFX();
@@ -1124,6 +1176,9 @@ void GameWorld::drawHolder (GamePageHolder * gp, int curLayer, float xoff, float
 		singleton->worldToScreenBase(&tempVec1,&tempVec2);
 		float fx1 = tempVec1.getFX();
 		float fy1 = tempVec1.getFY();
+		
+		pitchSrc /= singleton->fHolderMod;
+		pitchSrc2 /= singleton->fHolderMod;
 
 		fy1 -= (0.5-tilt)*pitchSrc;
 
@@ -1781,7 +1836,7 @@ void GameWorld::drawAIPath (PathHolder * pathHolder, PathHolder * splitPathHolde
 	}
 void GameWorld::renderGeom ()
         {
-		pushTrace("renderGeom()");
+		//pushTrace("renderGeom()");
 
 		int i;
 		bool doProc;
@@ -1791,7 +1846,8 @@ void GameWorld::renderGeom ()
 
 		singleton->bindShader("GeomShader");
 
-		
+		singleton->setShaderFloat("objectId",0.0);
+		singleton->setShaderFloat("fHolderMod", singleton->fHolderMod);
 		singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
@@ -1809,7 +1865,7 @@ void GameWorld::renderGeom ()
 		
 
 		if (singleton->mouseState != E_MOUSE_STATE_POSE) {
-			if (singleton->bShift) {
+			if (singleton->bShift) { // || singleton->hitGUI
 				singleton->setShaderFloat("isWire", 1.0);
 				singleton->setShaderFloat("matVal", getPackedColor(255,0,255));
 				
@@ -1967,8 +2023,7 @@ void GameWorld::renderGeom ()
 		}
 		
 		if (singleton->bCtrl) {
-			for (i = 1; i < singleton->dynObjects.size(); i++)
-			{
+			for (i = 1; i < singleton->dynObjects.size(); i++) {
 				if (singleton->dynObjects[i]->doRender)
 				{
 
@@ -1988,6 +2043,7 @@ void GameWorld::renderGeom ()
 
 					if (doProc)
 					{
+						singleton->setShaderFloat("objectId",i);
 						singleton->setShaderFloat("matVal", singleton->dynObjects[i]->colPacked);
 						curBoxPos = &(singleton->dynObjects[i]->pos);
 						singleton->drawCubeCentered(curBoxPos, singleton->dynObjects[i]->radius);
@@ -2004,6 +2060,7 @@ void GameWorld::renderGeom ()
 			}
 		}
 
+		singleton->setShaderFloat("objectId",0.0);
 
 		if (singleton->charState == E_CHAR_STATE_RENDERED) { //E_CHAR_STATE_SKEL
 			//transformEnt(singleton->testHuman);
@@ -2030,13 +2087,13 @@ void GameWorld::renderGeom ()
 
 		//glDisable(GL_DEPTH_TEST);
 
-		popTrace();
+		//popTrace();
 
 	}
 void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushAction)
         {
 
-		pushTrace("modifyUnit()");
+		//pushTrace("modifyUnit()");
 
 		int radius = ((int)singleton->curBrushRad);
 
@@ -2127,7 +2184,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 		if (brushAction == E_BRUSH_MOVE)
 		{
-			popTrace();
+			//popTrace();
 			return;
 		}
 
@@ -2243,7 +2300,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 															nearA = (nearV >> 24) & 255;
 
 
-															if (p >= singleton->maxHeightInUnits)
+															if (p >= singleton->worldSizeInUnits.getFZ())
 															{
 
 																linA = 0;
@@ -2361,16 +2418,14 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 															vdl_ptr[ind2] = (linA << 24) | (linB << 16) | (linG << 8) | (linR);
 															curPage->volDataModified = true;
 
-															curPage->parentGPH->isDirty = true;
+															curPage->parentGPH->childrenDirty = true;
+															curPage->isDirty = true;
 															changes = true;
 														}
 														else
 														{
-															if (curPage->parentGPH->isDirty)
+															if (curPage->parentGPH->childrenDirty)
 															{
-																//curPage->parentGPH->isDirty = false;
-
-																//curPage->generateVolume();
 																curPage->parentGPH->refreshChildren(true);
 															}
 														}
@@ -2404,7 +2459,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 
 
-		popTrace();
+		//popTrace();
 
 	}
 void GameWorld::renderWorldSpaceGPU (float processPagesFBO, float processGeomFBO, float processWaterFBO)
@@ -2424,6 +2479,7 @@ void GameWorld::renderWorldSpaceGPU (float processPagesFBO, float processGeomFBO
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim) );
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
+		singleton->setShaderFloat("fHolderMod", singleton->fHolderMod);
 
 		singleton->drawFSQuad(1.0f);
 
@@ -2440,22 +2496,14 @@ void GameWorld::renderWorldSpaceGPU (float processPagesFBO, float processGeomFBO
 		//doBlur("worldSpaceBlurFBO",2.0f);
 		
 	}
-void GameWorld::getWorldSpaceBuffer ()
+void GameWorld::getWorldSpaceBuffer (int bufNum)
         {
 
-
-		pushTrace("getWorldSpaceBuffer()");
-
-		
-
-
-
 		singleton->wsBufferInvalid = false;
-		FBOWrapper *fbow = singleton->getFBOWrapper("worldSpaceFBO", 0);
+		FBOWrapper *fbow = singleton->getFBOWrapper("worldSpaceFBO", bufNum);
 		fbow->getPixels();
 
 
-		popTrace();
 	}
 float GameWorld::weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean)
         {
@@ -2736,7 +2784,7 @@ void GameWorld::initMap ()
         {
 		mapLockOn = true;
 
-		pushTrace("initMap()");
+		//pushTrace("initMap()");
 
 		mapSwapFlag = 0;
 
@@ -4077,18 +4125,18 @@ void GameWorld::initMap ()
 
 		mapLockOn = false;
 
-		popTrace();
+		//popTrace();
 	}
 void GameWorld::drawMap ()
         {
 
 
-		pushTrace("drawMap()");
+		//pushTrace("drawMap()");
 
 		FBOWrapper *fbow = singleton->getFBOWrapper("hmFBOLinear", 0);
 
 		
-		singleton->setCameraToElevationBase();
+		//singleton->setCameraToElevationBase();
 
 
 		singleton->bindShader("TopoShader");
@@ -4146,7 +4194,7 @@ void GameWorld::drawMap ()
 		glDisable(GL_BLEND);
 
 
-		popTrace();
+		//popTrace();
 	}
 void GameWorld::doBlur (string fboName, float blurAmount)
         {
@@ -4269,7 +4317,7 @@ UPDATE_LIGHTS_END:
 void GameWorld::postProcess ()
         {
 
-		//frameCount++;
+		
 
 		int i;
 		int iMin;
@@ -4279,7 +4327,7 @@ void GameWorld::postProcess ()
 
 		GameLight *curLight;
 
-		pushTrace("postProcess()");
+		//pushTrace("postProcess()");
 
 		// NOTE: ALWAYS UNSAMPLE IN REVERSE ORDER!!!
 
@@ -4500,6 +4548,8 @@ void GameWorld::postProcess ()
 
 
 				singleton->setShaderArrayfVec4("lightArr", singleton->lightArr, (FLOATS_PER_LIGHT * lightCount) / 4);
+				
+				singleton->setShaderFloat("fHolderMod", singleton->fHolderMod);
 				singleton->setShaderFloat("pixelsPerMeter", singleton->pixelsPerMeter);
 				singleton->setShaderFloat("blockSizeInMeters", singleton->blockSizeInMeters);
 				singleton->setShaderFloat("lightCount", lightCount);
@@ -4702,7 +4752,7 @@ void GameWorld::postProcess ()
 		}
 
 
-		popTrace();
+		//popTrace();
 
 
 	}

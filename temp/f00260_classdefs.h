@@ -19,4 +19,5 @@ class GamePage;
 class GameWorld;
 class PooledResource;
 class PoolManager;
+class PoolPageManager;
  
