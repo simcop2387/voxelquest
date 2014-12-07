@@ -3,23 +3,31 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
-bool LAST_COMPILE_ERROR = false;
 
 
-//const static int MAX_FLOORS = 6;
-const static int MAX_LIGHTS = 24;
-const static int MAX_EVAL_LIGHTS = 256;
-const static int FLOATS_PER_LIGHT = 16;
 
-//const static int MAX_GRASS_LEV = 1;
+
+const static int DEF_SCALE_FACTOR = 2;
+const static int MAX_LAYERS = 2;
+
+
+
+
+
 
 const static int DEF_WIN_W = 1920;
 const static int DEF_WIN_H = 1080;
-const static int DEF_SCALE_FACTOR = 2;
-const static float UI_SCALE_FACTOR = 1.0f;
 
-const static bool ENT_ON = false;
-const static int MAX_LAYERS = 1;
+
+const static int MAX_LIGHTS = 24;
+const static int MAX_EVAL_LIGHTS = 1024;
+const static int FLOATS_PER_LIGHT = 16;
+
+
+const static int MAX_MIP_LEV = 1; // min of 1
+const static bool FILL_POINTS = false;
+
+const static float UI_SCALE_FACTOR = 1.0f;
 
 const static int MAX_PLANT_GEN = 16;
 
@@ -27,13 +35,18 @@ const static int MAX_TER_TEX = 9;
 
 const static int MAX_NODE_DIRS = 6;
 const static int MAX_NODE_VALS = 4;
-const static int TOT_NODE_VALS = 
+const static int TOT_NODE_VALS =
 	MAX_NODE_DIRS * MAX_NODE_VALS;
 
 const static int TOT_MAP_DIRS = 4;
 
 const static int MAX_BLOCK_STACK = 10;
 const static int MAX_UI_LAYERS = 4;
+
+int totalPointCount;
+
+
+bool LAST_COMPILE_ERROR = false;
 
 char *BUF_NAMES[] =
 {
@@ -53,14 +66,22 @@ char *BUF_NAMES[] =
 	"ublock13"
 };
 
+const static int R_CHANNEL = 0;
+const static int G_CHANNEL = 1;
+const static int B_CHANNEL = 2;
+const static int A_CHANNEL = 3;
 
-const static int MAX_VG_FBOS = 1;
+const static int MAX_VG_FBOS = 2;
 int CUR_VG_FBO = 0;
+
+const static int MAX_VGT_FBOS = 2;
+int CUR_VGT_FBO = 0;
+
+const static float M_PI = 3.14159;
+
 int PAGE_COUNT = 0;
-
-
 // set to 0 to disable
-int MAX_HOLDERS = 1024;
+int MAX_HOLDERS = 2048;
 
 
 float MAX_GPU_MEM = 2560.0f;
@@ -116,7 +137,6 @@ bool TRACE_ON = false;
 #include <gl/glu.h>
 #include <gl/freeglut.h>
 #pragma comment(lib, "glew32.lib")
-
 
 
 
@@ -300,7 +320,18 @@ enum E_GUI_DATA_STRINGS {
 	E_GDS_DATA_FILE,
 	E_GDS_CHILD_TYPE,
 	E_GDS_CHILD_NAME,
+	E_GDS_MATERIAL,
 	E_GDS_LENGTH
+};
+
+enum E_PERFORMANCE_PROFILE {
+	E_PP_FAST_LOWRES,
+	E_PP_SCROLLING,
+	E_PP_HIGHQUALITY,
+	E_PP_FAST_MODIFICATION,
+	E_PP_TERRAIN_MODIFICATION,
+	E_PP_ENTITY,
+	E_PP_LENGTH
 };
 
 enum E_GUI_CHILD_TYPES {
@@ -313,6 +344,13 @@ enum E_FONT_WRAPPERS {
 	EFW_TEXT,
 	EFW_ICONS,
 	EFW_LENGTH
+};
+
+enum E_MOVE_TYPES {
+	E_MT_NONE,
+	E_MT_RELATIVE,
+	E_MT_TRACKBALL,
+	E_MT_LENGTH
 };
 
 enum eProgramState {
@@ -336,6 +374,15 @@ enum E_RENDER_METHODS {
 	E_RENDER_NONE,
 	E_RENDER_VOL,
 	E_RENDER_LENGTH
+};
+
+enum E_KEYMAP {
+	KEYMAP_UP,
+	KEYMAP_DOWN,
+	KEYMAP_FORWARD,
+	KEYMAP_BACKWARD,
+	KEYMAP_LEFT,
+	KEYMAP_RIGHT
 };
 
 enum E_STATES {
@@ -374,26 +421,22 @@ enum E_STATES {
 // 	E_UL_LENGTH
 // };
 
-enum E_CHAR_STATE {
-	E_CHAR_STATE_NONE,
-	E_CHAR_STATE_SKEL,
-	E_CHAR_STATE_RENDERED
+enum E_TER_TYPE {
+	E_TER_GROUNDLEVEL,
+	E_TER_UNDERGROUND,
+	E_TER_AIR,
+	E_TER_LENGTH
 };
+
 
 enum E_MOUSE_STATE {
 	E_MOUSE_STATE_MOVE,
-	E_MOUSE_STATE_POSE,
-	E_MOUSE_STATE_ENTS,
-	//E_MOUSE_STATE_OBJECTS,
 	E_MOUSE_STATE_BRUSH,
 	E_MOUSE_STATE_PICKING,
 	E_MOUSE_STATE_LENGTH
 };
 string mouseStateStrings[] = {
 	"E_MOUSE_STATE_MOVE",
-	"E_MOUSE_STATE_POSE",
-	"E_MOUSE_STATE_ENTS",
-	//"E_MOUSE_STATE_OBJECTS",
 	"E_MOUSE_STATE_BRUSH",
 	"E_MOUSE_STATE_PICKING",
 	"E_MOUSE_STATE_LENGTH"
@@ -463,6 +506,7 @@ enum E_OBJ {
 enum E_MAT_SUBPARAM {
 	E_MAT_SUBPARAM_NONE,
 	E_MAT_SUBPARAM_TUDOR,
+	E_MAT_SUBPARAM_DOCK,
 	E_MAT_SUBPARAM_BRICK,
 	E_MAT_SUBPARAM_BRICK_ARCH,
 	E_MAT_SUBPARAM_LENGTH
@@ -473,7 +517,7 @@ enum E_MAT_PARAM {
 	E_MAT_PARAM_FOUNDATION,
 	E_MAT_PARAM_ROOF,
 	//E_MAT_PARAM_WALKWAY_TOP,
-	E_MAT_PARAM_DOCK,
+	//E_MAT_PARAM_DOCK,
 	E_MAT_PARAM_BUILDING,
 	//E_MAT_PARAM_WALKWAY,
 	E_MAT_PARAM_LANTERN,
@@ -915,6 +959,10 @@ struct PlantRules
 
 };
 
+struct FloatVec {
+	std::vector<float> data;	
+};
+
 struct TerTexture {
 	int usedByBlockId;
 	GLuint texId;
@@ -944,6 +992,7 @@ struct MapNode {
 	int connectionProps[TOT_MAP_DIRS];
 	int terHeight;
 	int adjustedHeight;
+	int houseHeight;
 	int id;
 };
 
@@ -957,7 +1006,7 @@ struct BuildingCon {
 	//bool isWingBeg;
 	//bool isWingEnd;
 	float wingMult;
-	float wallRadInMeters;
+	float wallRadInCells;
 	int heightDelta;
 	int direction; 	// -1: negative,
 					//  0: neutral,
@@ -1009,21 +1058,40 @@ enum E_MUSIC_LIST {
 	EML_BIRDSONG0,
 	EML_CRICKETS0,
 	EML_OCEANWAVES0,
+	EML_UNDERWATER0,
 	EML_LENGTH
 };
 
 string musicStrings[] = {
 	"birdsong0",
 	"crickets0",
-	"oceanwaves0"
+	"oceanwaves0",
+	"underwater0"
 };
 
 
+enum E_CELL_DATA {
+	E_CD_EMPTY,
+	E_CD_SOLID,
+	E_CD_WATER,
+	//E_CD_PORTAL,
+	E_CD_LENGTH	
+};
+
+// enum E_GUI_SECTIONS {
+// 	E_GS_MAINMENU,
+// 	E_GS_CONTEXTMENU,
+// 	E_GS_LENGTH
+// };
+
+// do not reorder!
 enum GUI_TYPES {
-	E_GT_HOLDER,
-	E_GT_SLIDER, // also a toggle if 1 division
-	E_GT_BUTTON,
-	E_GT_RADIO,
+	E_GT_HOLDER,  // 0
+	E_GT_SLIDER,  // 1 also a toggle if 1 division
+	E_GT_BUTTON,  // 2
+	E_GT_RADIO,   // 3
+	E_GT_MENUBAR, // 4
+	E_GT_DRAGPAD, // 5
 	E_GT_LENGTH
 };
 
@@ -1033,6 +1101,7 @@ enum GUI_STRING_TYPES {
 	E_GST_SS,
 	E_GST_LENGTH
 };
+
 char* guiStringTypes[] = {
 	"label",
 	"uid",
@@ -1040,10 +1109,11 @@ char* guiStringTypes[] = {
 };
 
 enum E_HOVER_TYPES {
-	E_HT_NORMAL,
-	E_HT_TOOLTIP,
-	E_HT_ONSELECTED,
-	E_HT_TOOLTIP_VALUE,
+	E_HT_NORMAL,		// 0
+	E_HT_TOOLTIP,		// 1
+	E_HT_ONSELECTED,	// 2
+	E_HT_TOOLTIP_VALUE, // 3
+	E_HT_ROOT,			// 4
 	E_HT_LENGTH
 };
 
@@ -1060,6 +1130,10 @@ enum GUI_FLOAT_TYPES {
 	E_GFT_ALIGNY,
 	E_GFT_LAYER,
 	E_GFT_HOVERTYPE, // 0: normal, 1: tooltip, 2: show when parent is selected
+	E_GFT_MAXDIMX,
+	E_GFT_MAXDIMY,
+	E_GFT_MINDIMX,
+	E_GFT_MINDIMY,
 	E_GFT_LENGTH
 };
 char* guiFloatTypes[] = {
@@ -1074,7 +1148,12 @@ char* guiFloatTypes[] = {
 	"alignX",
 	"alignY",
 	"layer",
-	"hoverType"
+	"hoverType",
+	"maxDimX",
+	"maxDimY",
+	"minDimX",
+	"minDimY"
+	
 };
 
 string guiStringValues[E_GST_LENGTH];
@@ -1343,6 +1422,2023 @@ public:
 
 ////////////////////////////////////////////////////
  
+///////////////////////////////////////////////////////////////////////////////
+// Matrice.h
+// =========
+// NxN Matrix Math classes
+//
+// The elements of the matrix are stored as column major order.
+// | 0 2 |    | 0 3 6 |    |  0  4  8 12 |
+// | 1 3 |    | 1 4 7 |    |  1  5  9 13 |
+//            | 2 5 8 |    |  2  6 10 14 |
+//                         |  3  7 11 15 |
+//
+//  AUTHOR: Song Ho Ahn (song.ahn@gmail.com)
+// CREATED: 2005-06-24
+// UPDATED: 2013-09-30
+//
+// Copyright (C) 2005 Song Ho Ahn
+///////////////////////////////////////////////////////////////////////////////
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Vectors.h
+// =========
+// 2D/3D/4D vectors
+//
+//  AUTHOR: Song Ho Ahn (song.ahn@gmail.com)
+// CREATED: 2007-02-14
+// UPDATED: 2013-01-20
+//
+// Copyright (C) 2007-2013 Song Ho Ahn
+///////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// 2D vector
+///////////////////////////////////////////////////////////////////////////////
+struct Vector2
+{
+    float x;
+    float y;
+
+    // ctors
+    Vector2() : x(0), y(0) {};
+    Vector2(float x, float y) : x(x), y(y) {};
+
+    // utils functions
+    void        set(float x, float y);
+    float       length() const;                         //
+    float       distance(const Vector2& vec) const;     // distance between two vectors
+    Vector2&    normalize();                            //
+    float       dot(const Vector2& vec) const;          // dot product
+    bool        equal(const Vector2& vec, float e) const; // compare with epsilon
+
+    // operators
+    Vector2     operator-() const;                      // unary operator (negate)
+    Vector2     operator+(const Vector2& rhs) const;    // add rhs
+    Vector2     operator-(const Vector2& rhs) const;    // subtract rhs
+    Vector2&    operator+=(const Vector2& rhs);         // add rhs and update this object
+    Vector2&    operator-=(const Vector2& rhs);         // subtract rhs and update this object
+    Vector2     operator*(const float scale) const;     // scale
+    Vector2     operator*(const Vector2& rhs) const;    // multiply each element
+    Vector2&    operator*=(const float scale);          // scale and update this object
+    Vector2&    operator*=(const Vector2& rhs);         // multiply each element and update this object
+    Vector2     operator/(const float scale) const;     // inverse scale
+    Vector2&    operator/=(const float scale);          // scale and update this object
+    bool        operator==(const Vector2& rhs) const;   // exact compare, no epsilon
+    bool        operator!=(const Vector2& rhs) const;   // exact compare, no epsilon
+    bool        operator<(const Vector2& rhs) const;    // comparison for sort
+    float       operator[](int index) const;            // subscript operator v[0], v[1]
+    float&      operator[](int index);                  // subscript operator v[0], v[1]
+
+    friend Vector2 operator*(const float a, const Vector2 vec);
+    friend std::ostream& operator<<(std::ostream& os, const Vector2& vec);
+};
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// 3D vector
+///////////////////////////////////////////////////////////////////////////////
+struct Vector3
+{
+    float x;
+    float y;
+    float z;
+
+    // ctors
+    Vector3() : x(0), y(0), z(0) {};
+    Vector3(float x, float y, float z) : x(x), y(y), z(z) {};
+
+    // utils functions
+    void        set(float x, float y, float z);
+    float       length() const;                         //
+    float       distance(const Vector3& vec) const;     // distance between two vectors
+    Vector3&    normalize();                            //
+    float       dot(const Vector3& vec) const;          // dot product
+    Vector3     cross(const Vector3& vec) const;        // cross product
+    bool        equal(const Vector3& vec, float e) const; // compare with epsilon
+
+    // operators
+    Vector3     operator-() const;                      // unary operator (negate)
+    Vector3     operator+(const Vector3& rhs) const;    // add rhs
+    Vector3     operator-(const Vector3& rhs) const;    // subtract rhs
+    Vector3&    operator+=(const Vector3& rhs);         // add rhs and update this object
+    Vector3&    operator-=(const Vector3& rhs);         // subtract rhs and update this object
+    Vector3     operator*(const float scale) const;     // scale
+    Vector3     operator*(const Vector3& rhs) const;    // multiplay each element
+    Vector3&    operator*=(const float scale);          // scale and update this object
+    Vector3&    operator*=(const Vector3& rhs);         // product each element and update this object
+    Vector3     operator/(const float scale) const;     // inverse scale
+    Vector3&    operator/=(const float scale);          // scale and update this object
+    bool        operator==(const Vector3& rhs) const;   // exact compare, no epsilon
+    bool        operator!=(const Vector3& rhs) const;   // exact compare, no epsilon
+    bool        operator<(const Vector3& rhs) const;    // comparison for sort
+    float       operator[](int index) const;            // subscript operator v[0], v[1]
+    float&      operator[](int index);                  // subscript operator v[0], v[1]
+
+    friend Vector3 operator*(const float a, const Vector3 vec);
+    friend std::ostream& operator<<(std::ostream& os, const Vector3& vec);
+};
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// 4D vector
+///////////////////////////////////////////////////////////////////////////////
+struct Vector4
+{
+    float x;
+    float y;
+    float z;
+    float w;
+
+    // ctors
+    Vector4() : x(0), y(0), z(0), w(0) {};
+    Vector4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {};
+
+    // utils functions
+    void        set(float x, float y, float z, float w);
+    float       length() const;                         //
+    float       distance(const Vector4& vec) const;     // distance between two vectors
+    Vector4&    normalize();                            //
+    float       dot(const Vector4& vec) const;          // dot product
+    bool        equal(const Vector4& vec, float e) const; // compare with epsilon
+
+    // operators
+    Vector4     operator-() const;                      // unary operator (negate)
+    Vector4     operator+(const Vector4& rhs) const;    // add rhs
+    Vector4     operator-(const Vector4& rhs) const;    // subtract rhs
+    Vector4&    operator+=(const Vector4& rhs);         // add rhs and update this object
+    Vector4&    operator-=(const Vector4& rhs);         // subtract rhs and update this object
+    Vector4     operator*(const float scale) const;     // scale
+    Vector4     operator*(const Vector4& rhs) const;    // multiply each element
+    Vector4&    operator*=(const float scale);          // scale and update this object
+    Vector4&    operator*=(const Vector4& rhs);         // multiply each element and update this object
+    Vector4     operator/(const float scale) const;     // inverse scale
+    Vector4&    operator/=(const float scale);          // scale and update this object
+    bool        operator==(const Vector4& rhs) const;   // exact compare, no epsilon
+    bool        operator!=(const Vector4& rhs) const;   // exact compare, no epsilon
+    bool        operator<(const Vector4& rhs) const;    // comparison for sort
+    float       operator[](int index) const;            // subscript operator v[0], v[1]
+    float&      operator[](int index);                  // subscript operator v[0], v[1]
+
+    friend Vector4 operator*(const float a, const Vector4 vec);
+    friend std::ostream& operator<<(std::ostream& os, const Vector4& vec);
+};
+
+
+
+// fast math routines from Doom3 SDK
+inline float invSqrt(float x)
+{
+    float xhalf = 0.5f * x;
+    int i = *(int*)&x;          // get bits for floating value
+    i = 0x5f3759df - (i>>1);    // gives initial guess
+    x = *(float*)&i;            // convert bits back to float
+    x = x * (1.5f - xhalf*x*x); // Newton step
+    return x;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// inline functions for Vector2
+///////////////////////////////////////////////////////////////////////////////
+inline Vector2 Vector2::operator-() const {
+    return Vector2(-x, -y);
+}
+
+inline Vector2 Vector2::operator+(const Vector2& rhs) const {
+    return Vector2(x+rhs.x, y+rhs.y);
+}
+
+inline Vector2 Vector2::operator-(const Vector2& rhs) const {
+    return Vector2(x-rhs.x, y-rhs.y);
+}
+
+inline Vector2& Vector2::operator+=(const Vector2& rhs) {
+    x += rhs.x; y += rhs.y; return *this;
+}
+
+inline Vector2& Vector2::operator-=(const Vector2& rhs) {
+    x -= rhs.x; y -= rhs.y; return *this;
+}
+
+inline Vector2 Vector2::operator*(const float a) const {
+    return Vector2(x*a, y*a);
+}
+
+inline Vector2 Vector2::operator*(const Vector2& rhs) const {
+    return Vector2(x*rhs.x, y*rhs.y);
+}
+
+inline Vector2& Vector2::operator*=(const float a) {
+    x *= a; y *= a; return *this;
+}
+
+inline Vector2& Vector2::operator*=(const Vector2& rhs) {
+    x *= rhs.x; y *= rhs.y; return *this;
+}
+
+inline Vector2 Vector2::operator/(const float a) const {
+    return Vector2(x/a, y/a);
+}
+
+inline Vector2& Vector2::operator/=(const float a) {
+    x /= a; y /= a; return *this;
+}
+
+inline bool Vector2::operator==(const Vector2& rhs) const {
+    return (x == rhs.x) && (y == rhs.y);
+}
+
+inline bool Vector2::operator!=(const Vector2& rhs) const {
+    return (x != rhs.x) || (y != rhs.y);
+}
+
+inline bool Vector2::operator<(const Vector2& rhs) const {
+    if(x < rhs.x) return true;
+    if(x > rhs.x) return false;
+    if(y < rhs.y) return true;
+    if(y > rhs.y) return false;
+    return false;
+}
+
+inline float Vector2::operator[](int index) const {
+    return (&x)[index];
+}
+
+inline float& Vector2::operator[](int index) {
+    return (&x)[index];
+}
+
+inline void Vector2::set(float x, float y) {
+    this->x = x; this->y = y;
+}
+
+inline float Vector2::length() const {
+    return sqrtf(x*x + y*y);
+}
+
+inline float Vector2::distance(const Vector2& vec) const {
+    return sqrtf((vec.x-x)*(vec.x-x) + (vec.y-y)*(vec.y-y));
+}
+
+inline Vector2& Vector2::normalize() {
+    //@@const float EPSILON = 0.000001f;
+    float xxyy = x*x + y*y;
+    //@@if(xxyy < EPSILON)
+    //@@    return *this;
+
+    //float invLength = invSqrt(xxyy);
+    float invLength = 1.0f / sqrtf(xxyy);
+    x *= invLength;
+    y *= invLength;
+    return *this;
+}
+
+inline float Vector2::dot(const Vector2& rhs) const {
+    return (x*rhs.x + y*rhs.y);
+}
+
+inline bool Vector2::equal(const Vector2& rhs, float epsilon) const {
+    return fabs(x - rhs.x) < epsilon && fabs(y - rhs.y) < epsilon;
+}
+
+inline Vector2 operator*(const float a, const Vector2 vec) {
+    return Vector2(a*vec.x, a*vec.y);
+}
+
+inline std::ostream& operator<<(std::ostream& os, const Vector2& vec) {
+    os << "(" << vec.x << ", " << vec.y << ")";
+    return os;
+}
+// END OF VECTOR2 /////////////////////////////////////////////////////////////
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// inline functions for Vector3
+///////////////////////////////////////////////////////////////////////////////
+inline Vector3 Vector3::operator-() const {
+    return Vector3(-x, -y, -z);
+}
+
+inline Vector3 Vector3::operator+(const Vector3& rhs) const {
+    return Vector3(x+rhs.x, y+rhs.y, z+rhs.z);
+}
+
+inline Vector3 Vector3::operator-(const Vector3& rhs) const {
+    return Vector3(x-rhs.x, y-rhs.y, z-rhs.z);
+}
+
+inline Vector3& Vector3::operator+=(const Vector3& rhs) {
+    x += rhs.x; y += rhs.y; z += rhs.z; return *this;
+}
+
+inline Vector3& Vector3::operator-=(const Vector3& rhs) {
+    x -= rhs.x; y -= rhs.y; z -= rhs.z; return *this;
+}
+
+inline Vector3 Vector3::operator*(const float a) const {
+    return Vector3(x*a, y*a, z*a);
+}
+
+inline Vector3 Vector3::operator*(const Vector3& rhs) const {
+    return Vector3(x*rhs.x, y*rhs.y, z*rhs.z);
+}
+
+inline Vector3& Vector3::operator*=(const float a) {
+    x *= a; y *= a; z *= a; return *this;
+}
+
+inline Vector3& Vector3::operator*=(const Vector3& rhs) {
+    x *= rhs.x; y *= rhs.y; z *= rhs.z; return *this;
+}
+
+inline Vector3 Vector3::operator/(const float a) const {
+    return Vector3(x/a, y/a, z/a);
+}
+
+inline Vector3& Vector3::operator/=(const float a) {
+    x /= a; y /= a; z /= a; return *this;
+}
+
+inline bool Vector3::operator==(const Vector3& rhs) const {
+    return (x == rhs.x) && (y == rhs.y) && (z == rhs.z);
+}
+
+inline bool Vector3::operator!=(const Vector3& rhs) const {
+    return (x != rhs.x) || (y != rhs.y) || (z != rhs.z);
+}
+
+inline bool Vector3::operator<(const Vector3& rhs) const {
+    if(x < rhs.x) return true;
+    if(x > rhs.x) return false;
+    if(y < rhs.y) return true;
+    if(y > rhs.y) return false;
+    if(z < rhs.z) return true;
+    if(z > rhs.z) return false;
+    return false;
+}
+
+inline float Vector3::operator[](int index) const {
+    return (&x)[index];
+}
+
+inline float& Vector3::operator[](int index) {
+    return (&x)[index];
+}
+
+inline void Vector3::set(float x, float y, float z) {
+    this->x = x; this->y = y; this->z = z;
+}
+
+inline float Vector3::length() const {
+    return sqrtf(x*x + y*y + z*z);
+}
+
+inline float Vector3::distance(const Vector3& vec) const {
+    return sqrtf((vec.x-x)*(vec.x-x) + (vec.y-y)*(vec.y-y) + (vec.z-z)*(vec.z-z));
+}
+
+inline Vector3& Vector3::normalize() {
+    //@@const float EPSILON = 0.000001f;
+    float xxyyzz = x*x + y*y + z*z;
+    //@@if(xxyyzz < EPSILON)
+    //@@    return *this; // do nothing if it is ~zero vector
+
+    //float invLength = invSqrt(xxyyzz);
+    float invLength = 1.0f / sqrtf(xxyyzz);
+    x *= invLength;
+    y *= invLength;
+    z *= invLength;
+    return *this;
+}
+
+inline float Vector3::dot(const Vector3& rhs) const {
+    return (x*rhs.x + y*rhs.y + z*rhs.z);
+}
+
+inline Vector3 Vector3::cross(const Vector3& rhs) const {
+    return Vector3(y*rhs.z - z*rhs.y, z*rhs.x - x*rhs.z, x*rhs.y - y*rhs.x);
+}
+
+inline bool Vector3::equal(const Vector3& rhs, float epsilon) const {
+    return fabs(x - rhs.x) < epsilon && fabs(y - rhs.y) < epsilon && fabs(z - rhs.z) < epsilon;
+}
+
+inline Vector3 operator*(const float a, const Vector3 vec) {
+    return Vector3(a*vec.x, a*vec.y, a*vec.z);
+}
+
+inline std::ostream& operator<<(std::ostream& os, const Vector3& vec) {
+    os << "(" << vec.x << ", " << vec.y << ", " << vec.z << ")";
+    return os;
+}
+// END OF VECTOR3 /////////////////////////////////////////////////////////////
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// inline functions for Vector4
+///////////////////////////////////////////////////////////////////////////////
+inline Vector4 Vector4::operator-() const {
+    return Vector4(-x, -y, -z, -w);
+}
+
+inline Vector4 Vector4::operator+(const Vector4& rhs) const {
+    return Vector4(x+rhs.x, y+rhs.y, z+rhs.z, w+rhs.w);
+}
+
+inline Vector4 Vector4::operator-(const Vector4& rhs) const {
+    return Vector4(x-rhs.x, y-rhs.y, z-rhs.z, w-rhs.w);
+}
+
+inline Vector4& Vector4::operator+=(const Vector4& rhs) {
+    x += rhs.x; y += rhs.y; z += rhs.z; w += rhs.w; return *this;
+}
+
+inline Vector4& Vector4::operator-=(const Vector4& rhs) {
+    x -= rhs.x; y -= rhs.y; z -= rhs.z; w -= rhs.w; return *this;
+}
+
+inline Vector4 Vector4::operator*(const float a) const {
+    return Vector4(x*a, y*a, z*a, w*a);
+}
+
+inline Vector4 Vector4::operator*(const Vector4& rhs) const {
+    return Vector4(x*rhs.x, y*rhs.y, z*rhs.z, w*rhs.w);
+}
+
+inline Vector4& Vector4::operator*=(const float a) {
+    x *= a; y *= a; z *= a; w *= a; return *this;
+}
+
+inline Vector4& Vector4::operator*=(const Vector4& rhs) {
+    x *= rhs.x; y *= rhs.y; z *= rhs.z; w *= rhs.w; return *this;
+}
+
+inline Vector4 Vector4::operator/(const float a) const {
+    return Vector4(x/a, y/a, z/a, w/a);
+}
+
+inline Vector4& Vector4::operator/=(const float a) {
+    x /= a; y /= a; z /= a; w /= a; return *this;
+}
+
+inline bool Vector4::operator==(const Vector4& rhs) const {
+    return (x == rhs.x) && (y == rhs.y) && (z == rhs.z) && (w == rhs.w);
+}
+
+inline bool Vector4::operator!=(const Vector4& rhs) const {
+    return (x != rhs.x) || (y != rhs.y) || (z != rhs.z) || (w != rhs.w);
+}
+
+inline bool Vector4::operator<(const Vector4& rhs) const {
+    if(x < rhs.x) return true;
+    if(x > rhs.x) return false;
+    if(y < rhs.y) return true;
+    if(y > rhs.y) return false;
+    if(z < rhs.z) return true;
+    if(z > rhs.z) return false;
+    if(w < rhs.w) return true;
+    if(w > rhs.w) return false;
+    return false;
+}
+
+inline float Vector4::operator[](int index) const {
+    return (&x)[index];
+}
+
+inline float& Vector4::operator[](int index) {
+    return (&x)[index];
+}
+
+inline void Vector4::set(float x, float y, float z, float w) {
+    this->x = x; this->y = y; this->z = z; this->w = w;
+}
+
+inline float Vector4::length() const {
+    return sqrtf(x*x + y*y + z*z + w*w);
+}
+
+inline float Vector4::distance(const Vector4& vec) const {
+    return sqrtf((vec.x-x)*(vec.x-x) + (vec.y-y)*(vec.y-y) + (vec.z-z)*(vec.z-z) + (vec.w-w)*(vec.w-w));
+}
+
+inline Vector4& Vector4::normalize() {
+    //NOTE: leave w-component untouched
+    //@@const float EPSILON = 0.000001f;
+    float xxyyzz = x*x + y*y + z*z;
+    //@@if(xxyyzz < EPSILON)
+    //@@    return *this; // do nothing if it is zero vector
+
+    //float invLength = invSqrt(xxyyzz);
+    float invLength = 1.0f / sqrtf(xxyyzz);
+    x *= invLength;
+    y *= invLength;
+    z *= invLength;
+    return *this;
+}
+
+inline float Vector4::dot(const Vector4& rhs) const {
+    return (x*rhs.x + y*rhs.y + z*rhs.z + w*rhs.w);
+}
+
+inline bool Vector4::equal(const Vector4& rhs, float epsilon) const {
+    return fabs(x - rhs.x) < epsilon && fabs(y - rhs.y) < epsilon &&
+           fabs(z - rhs.z) < epsilon && fabs(w - rhs.w) < epsilon;
+}
+
+inline Vector4 operator*(const float a, const Vector4 vec) {
+    return Vector4(a*vec.x, a*vec.y, a*vec.z, a*vec.w);
+}
+
+inline std::ostream& operator<<(std::ostream& os, const Vector4& vec) {
+    os << "(" << vec.x << ", " << vec.y << ", " << vec.z << ", " << vec.w << ")";
+    return os;
+}
+// END OF VECTOR4 /////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////
+// 2x2 matrix
+///////////////////////////////////////////////////////////////////////////
+class Matrix2
+{
+public:
+    // constructors
+    Matrix2();  // init with identity
+    Matrix2(const float src[4]);
+    Matrix2(float m0, float m1, float m2, float m3);
+
+    void        set(const float src[4]);
+    void        set(float m0, float m1, float m2, float m3);
+    void        setRow(int index, const float row[2]);
+    void        setRow(int index, const Vector2& v);
+    void        setColumn(int index, const float col[2]);
+    void        setColumn(int index, const Vector2& v);
+
+    float* get();
+    float       getDeterminant();
+
+    Matrix2&    identity();
+    Matrix2&    transpose();                            // transpose itself and return reference
+    Matrix2&    invert();
+
+    // operators
+    Matrix2     operator+(const Matrix2& rhs) const;    // add rhs
+    Matrix2     operator-(const Matrix2& rhs) const;    // subtract rhs
+    Matrix2&    operator+=(const Matrix2& rhs);         // add rhs and update this object
+    Matrix2&    operator-=(const Matrix2& rhs);         // subtract rhs and update this object
+    Vector2     operator*(const Vector2& rhs) const;    // multiplication: v' = M * v
+    Matrix2     operator*(const Matrix2& rhs) const;    // multiplication: M3 = M1 * M2
+    Matrix2&    operator*=(const Matrix2& rhs);         // multiplication: M1' = M1 * M2
+    bool        operator==(const Matrix2& rhs) const;   // exact compare, no epsilon
+    bool        operator!=(const Matrix2& rhs) const;   // exact compare, no epsilon
+    float       operator[](int index) const;            // subscript operator v[0], v[1]
+    float&      operator[](int index);                  // subscript operator v[0], v[1]
+
+    friend Matrix2 operator-(const Matrix2& m);                     // unary operator (-)
+    friend Matrix2 operator*(float scalar, const Matrix2& m);       // pre-multiplication
+    friend Vector2 operator*(const Vector2& vec, const Matrix2& m); // pre-multiplication
+    friend std::ostream& operator<<(std::ostream& os, const Matrix2& m);
+
+protected:
+
+private:
+    float m[4];
+
+};
+
+
+
+///////////////////////////////////////////////////////////////////////////
+// 3x3 matrix
+///////////////////////////////////////////////////////////////////////////
+class Matrix3
+{
+public:
+    // constructors
+    Matrix3();  // init with identity
+    Matrix3(const float src[9]);
+    Matrix3(float m0, float m1, float m2,           // 1st column
+            float m3, float m4, float m5,           // 2nd column
+            float m6, float m7, float m8);          // 3rd column
+
+    void        set(const float src[9]);
+    void        set(float m0, float m1, float m2,   // 1st column
+                    float m3, float m4, float m5,   // 2nd column
+                    float m6, float m7, float m8);  // 3rd column
+    void        setRow(int index, const float row[3]);
+    void        setRow(int index, const Vector3& v);
+    void        setColumn(int index, const float col[3]);
+    void        setColumn(int index, const Vector3& v);
+
+    float* get();
+    float       getDeterminant();
+
+    Matrix3&    identity();
+    Matrix3&    transpose();                            // transpose itself and return reference
+    Matrix3&    invert();
+
+    // operators
+    Matrix3     operator+(const Matrix3& rhs) const;    // add rhs
+    Matrix3     operator-(const Matrix3& rhs) const;    // subtract rhs
+    Matrix3&    operator+=(const Matrix3& rhs);         // add rhs and update this object
+    Matrix3&    operator-=(const Matrix3& rhs);         // subtract rhs and update this object
+    Vector3     operator*(const Vector3& rhs) const;    // multiplication: v' = M * v
+    Matrix3     operator*(const Matrix3& rhs) const;    // multiplication: M3 = M1 * M2
+    Matrix3&    operator*=(const Matrix3& rhs);         // multiplication: M1' = M1 * M2
+    bool        operator==(const Matrix3& rhs) const;   // exact compare, no epsilon
+    bool        operator!=(const Matrix3& rhs) const;   // exact compare, no epsilon
+    float       operator[](int index) const;            // subscript operator v[0], v[1]
+    float&      operator[](int index);                  // subscript operator v[0], v[1]
+
+    friend Matrix3 operator-(const Matrix3& m);                     // unary operator (-)
+    friend Matrix3 operator*(float scalar, const Matrix3& m);       // pre-multiplication
+    friend Vector3 operator*(const Vector3& vec, const Matrix3& m); // pre-multiplication
+    friend std::ostream& operator<<(std::ostream& os, const Matrix3& m);
+
+protected:
+
+private:
+    float m[9];
+
+};
+
+
+
+///////////////////////////////////////////////////////////////////////////
+// 4x4 matrix
+///////////////////////////////////////////////////////////////////////////
+class Matrix4
+{
+public:
+    // constructors
+    Matrix4();  // init with identity
+    Matrix4(const float src[16]);
+    Matrix4(float m00, float m01, float m02, float m03, // 1st column
+            float m04, float m05, float m06, float m07, // 2nd column
+            float m08, float m09, float m10, float m11, // 3rd column
+            float m12, float m13, float m14, float m15);// 4th column
+
+    void        set(const float src[16]);
+    void        set(float m00, float m01, float m02, float m03, // 1st column
+                    float m04, float m05, float m06, float m07, // 2nd column
+                    float m08, float m09, float m10, float m11, // 3rd column
+                    float m12, float m13, float m14, float m15);// 4th column
+    void        setRow(int index, const float row[4]);
+    void        setRow(int index, const Vector4& v);
+    void        setRow(int index, const Vector3& v);
+    void        setColumn(int index, const float col[4]);
+    void        setColumn(int index, const Vector4& v);
+    void        setColumn(int index, const Vector3& v);
+
+    float* get();
+    const float* getTranspose();                        // return transposed matrix
+    float        getDeterminant();
+
+    Matrix4&    identity();
+    Matrix4&    transpose();                            // transpose itself and return reference
+    Matrix4&    invert();                               // check best inverse method before inverse
+    Matrix4&    invertEuclidean();                      // inverse of Euclidean transform matrix
+    Matrix4&    invertAffine();                         // inverse of affine transform matrix
+    Matrix4&    invertProjective();                     // inverse of projective matrix using partitioning
+    Matrix4&    invertGeneral();                        // inverse of generic matrix
+
+    // transform matrix
+    Matrix4&    translate(float x, float y, float z);   // translation by (x,y,z)
+    Matrix4&    translate(const Vector3& v);            //
+    Matrix4&    rotate(float angle, const Vector3& axis); // rotate angle(degree) along the given axix
+    Matrix4&    rotate(float angle, float x, float y, float z);
+    Matrix4&    rotateX(float angle);                   // rotate on X-axis with degree
+    Matrix4&    rotateY(float angle);                   // rotate on Y-axis with degree
+    Matrix4&    rotateZ(float angle);                   // rotate on Z-axis with degree
+    Matrix4&    scale(float scale);                     // uniform scale
+    Matrix4&    scale(float sx, float sy, float sz);    // scale by (sx, sy, sz) on each axis
+
+    // operators
+    Matrix4     operator+(const Matrix4& rhs) const;    // add rhs
+    Matrix4     operator-(const Matrix4& rhs) const;    // subtract rhs
+    Matrix4&    operator+=(const Matrix4& rhs);         // add rhs and update this object
+    Matrix4&    operator-=(const Matrix4& rhs);         // subtract rhs and update this object
+    Vector4     operator*(const Vector4& rhs) const;    // multiplication: v' = M * v
+    Vector3     operator*(const Vector3& rhs) const;    // multiplication: v' = M * v
+    Matrix4     operator*(const Matrix4& rhs) const;    // multiplication: M3 = M1 * M2
+    Matrix4&    operator*=(const Matrix4& rhs);         // multiplication: M1' = M1 * M2
+    bool        operator==(const Matrix4& rhs) const;   // exact compare, no epsilon
+    bool        operator!=(const Matrix4& rhs) const;   // exact compare, no epsilon
+    float       operator[](int index) const;            // subscript operator v[0], v[1]
+    float&      operator[](int index);                  // subscript operator v[0], v[1]
+
+    friend Matrix4 operator-(const Matrix4& m);                     // unary operator (-)
+    friend Matrix4 operator*(float scalar, const Matrix4& m);       // pre-multiplication
+    friend Vector3 operator*(const Vector3& vec, const Matrix4& m); // pre-multiplication
+    friend Vector4 operator*(const Vector4& vec, const Matrix4& m); // pre-multiplication
+    friend std::ostream& operator<<(std::ostream& os, const Matrix4& m);
+
+protected:
+
+private:
+    float       getCofactor(float m0, float m1, float m2,
+                            float m3, float m4, float m5,
+                            float m6, float m7, float m8);
+
+    float m[16];
+    float tm[16];                                       // transpose m
+
+};
+
+
+
+///////////////////////////////////////////////////////////////////////////
+// inline functions for Matrix2
+///////////////////////////////////////////////////////////////////////////
+inline Matrix2::Matrix2()
+{
+    // initially identity matrix
+    identity();
+}
+
+
+
+inline Matrix2::Matrix2(const float src[4])
+{
+    set(src);
+}
+
+
+
+inline Matrix2::Matrix2(float m0, float m1, float m2, float m3)
+{
+    set(m0, m1, m2, m3);
+}
+
+
+
+inline void Matrix2::set(const float src[4])
+{
+    m[0] = src[0];  m[1] = src[1];  m[2] = src[2];  m[3] = src[3];
+}
+
+
+
+inline void Matrix2::set(float m0, float m1, float m2, float m3)
+{
+    m[0]= m0;  m[1] = m1;  m[2] = m2;  m[3]= m3;
+}
+
+
+
+inline void Matrix2::setRow(int index, const float row[2])
+{
+    m[index] = row[0];  m[index + 2] = row[1];
+}
+
+
+
+inline void Matrix2::setRow(int index, const Vector2& v)
+{
+    m[index] = v.x;  m[index + 2] = v.y;
+}
+
+
+
+inline void Matrix2::setColumn(int index, const float col[2])
+{
+    m[index*2] = col[0];  m[index*2 + 1] = col[1];
+}
+
+
+
+inline void Matrix2::setColumn(int index, const Vector2& v)
+{
+    m[index*2] = v.x;  m[index*2 + 1] = v.y;
+}
+
+
+
+inline float* Matrix2::get()
+{
+    return m;
+}
+
+
+
+inline Matrix2& Matrix2::identity()
+{
+    m[0] = m[3] = 1.0f;
+    m[1] = m[2] = 0.0f;
+    return *this;
+}
+
+
+
+inline Matrix2 Matrix2::operator+(const Matrix2& rhs) const
+{
+    return Matrix2(m[0]+rhs[0], m[1]+rhs[1], m[2]+rhs[2], m[3]+rhs[3]);
+}
+
+
+
+inline Matrix2 Matrix2::operator-(const Matrix2& rhs) const
+{
+    return Matrix2(m[0]-rhs[0], m[1]-rhs[1], m[2]-rhs[2], m[3]-rhs[3]);
+}
+
+
+
+inline Matrix2& Matrix2::operator+=(const Matrix2& rhs)
+{
+    m[0] += rhs[0];  m[1] += rhs[1];  m[2] += rhs[2];  m[3] += rhs[3];
+    return *this;
+}
+
+
+
+inline Matrix2& Matrix2::operator-=(const Matrix2& rhs)
+{
+    m[0] -= rhs[0];  m[1] -= rhs[1];  m[2] -= rhs[2];  m[3] -= rhs[3];
+    return *this;
+}
+
+
+
+inline Vector2 Matrix2::operator*(const Vector2& rhs) const
+{
+    return Vector2(m[0]*rhs.x + m[2]*rhs.y,  m[1]*rhs.x + m[3]*rhs.y);
+}
+
+
+
+inline Matrix2 Matrix2::operator*(const Matrix2& rhs) const
+{
+    return Matrix2(m[0]*rhs[0] + m[2]*rhs[1],  m[1]*rhs[0] + m[3]*rhs[1],
+                   m[0]*rhs[2] + m[2]*rhs[3],  m[1]*rhs[2] + m[3]*rhs[3]);
+}
+
+
+
+inline Matrix2& Matrix2::operator*=(const Matrix2& rhs)
+{
+    *this = *this * rhs;
+    return *this;
+}
+
+
+
+inline bool Matrix2::operator==(const Matrix2& rhs) const
+{
+    return (m[0] == rhs[0]) && (m[1] == rhs[1]) && (m[2] == rhs[2]) && (m[3] == rhs[3]);
+}
+
+
+
+inline bool Matrix2::operator!=(const Matrix2& rhs) const
+{
+    return (m[0] != rhs[0]) || (m[1] != rhs[1]) || (m[2] != rhs[2]) || (m[3] != rhs[3]);
+}
+
+
+
+inline float Matrix2::operator[](int index) const
+{
+    return m[index];
+}
+
+
+
+inline float& Matrix2::operator[](int index)
+{
+    return m[index];
+}
+
+
+
+inline Matrix2 operator-(const Matrix2& rhs)
+{
+    return Matrix2(-rhs[0], -rhs[1], -rhs[2], -rhs[3]);
+}
+
+
+
+inline Matrix2 operator*(float s, const Matrix2& rhs)
+{
+    return Matrix2(s*rhs[0], s*rhs[1], s*rhs[2], s*rhs[3]);
+}
+
+
+
+inline Vector2 operator*(const Vector2& v, const Matrix2& rhs)
+{
+    return Vector2(v.x*rhs[0] + v.y*rhs[1],  v.x*rhs[2] + v.y*rhs[3]);
+}
+
+
+
+inline std::ostream& operator<<(std::ostream& os, const Matrix2& m)
+{
+    os << std::fixed << std::setprecision(5);
+    os << "[" << std::setw(10) << m[0] << " " << std::setw(10) << m[2] << "]\n"
+       << "[" << std::setw(10) << m[1] << " " << std::setw(10) << m[3] << "]\n";
+    os << std::resetiosflags(std::ios_base::fixed | std::ios_base::floatfield);
+    return os;
+}
+// END OF MATRIX2 INLINE //////////////////////////////////////////////////////
+
+
+
+
+///////////////////////////////////////////////////////////////////////////
+// inline functions for Matrix3
+///////////////////////////////////////////////////////////////////////////
+inline Matrix3::Matrix3()
+{
+    // initially identity matrix
+    identity();
+}
+
+
+
+inline Matrix3::Matrix3(const float src[9])
+{
+    set(src);
+}
+
+
+
+inline Matrix3::Matrix3(float m0, float m1, float m2,
+                        float m3, float m4, float m5,
+                        float m6, float m7, float m8)
+{
+    set(m0, m1, m2,  m3, m4, m5,  m6, m7, m8);
+}
+
+
+
+inline void Matrix3::set(const float src[9])
+{
+    m[0] = src[0];  m[1] = src[1];  m[2] = src[2];
+    m[3] = src[3];  m[4] = src[4];  m[5] = src[5];
+    m[6] = src[6];  m[7] = src[7];  m[8] = src[8];
+}
+
+
+
+inline void Matrix3::set(float m0, float m1, float m2,
+                         float m3, float m4, float m5,
+                         float m6, float m7, float m8)
+{
+    m[0] = m0;  m[1] = m1;  m[2] = m2;
+    m[3] = m3;  m[4] = m4;  m[5] = m5;
+    m[6] = m6;  m[7] = m7;  m[8] = m8;
+}
+
+
+
+inline void Matrix3::setRow(int index, const float row[3])
+{
+    m[index] = row[0];  m[index + 3] = row[1];  m[index + 6] = row[2];
+}
+
+
+
+inline void Matrix3::setRow(int index, const Vector3& v)
+{
+    m[index] = v.x;  m[index + 3] = v.y;  m[index + 6] = v.z;
+}
+
+
+
+inline void Matrix3::setColumn(int index, const float col[3])
+{
+    m[index*3] = col[0];  m[index*3 + 1] = col[1];  m[index*3 + 2] = col[2];
+}
+
+
+
+inline void Matrix3::setColumn(int index, const Vector3& v)
+{
+    m[index*3] = v.x;  m[index*3 + 1] = v.y;  m[index*3 + 2] = v.z;
+}
+
+
+
+inline float* Matrix3::get()
+{
+    return m;
+}
+
+
+
+inline Matrix3& Matrix3::identity()
+{
+    m[0] = m[4] = m[8] = 1.0f;
+    m[1] = m[2] = m[3] = m[5] = m[6] = m[7] = 0.0f;
+    return *this;
+}
+
+
+
+inline Matrix3 Matrix3::operator+(const Matrix3& rhs) const
+{
+    return Matrix3(m[0]+rhs[0], m[1]+rhs[1], m[2]+rhs[2],
+                   m[3]+rhs[3], m[4]+rhs[4], m[5]+rhs[5],
+                   m[6]+rhs[6], m[7]+rhs[7], m[8]+rhs[8]);
+}
+
+
+
+inline Matrix3 Matrix3::operator-(const Matrix3& rhs) const
+{
+    return Matrix3(m[0]-rhs[0], m[1]-rhs[1], m[2]-rhs[2],
+                   m[3]-rhs[3], m[4]-rhs[4], m[5]-rhs[5],
+                   m[6]-rhs[6], m[7]-rhs[7], m[8]-rhs[8]);
+}
+
+
+
+inline Matrix3& Matrix3::operator+=(const Matrix3& rhs)
+{
+    m[0] += rhs[0];  m[1] += rhs[1];  m[2] += rhs[2];
+    m[3] += rhs[3];  m[4] += rhs[4];  m[5] += rhs[5];
+    m[6] += rhs[6];  m[7] += rhs[7];  m[8] += rhs[8];
+    return *this;
+}
+
+
+
+inline Matrix3& Matrix3::operator-=(const Matrix3& rhs)
+{
+    m[0] -= rhs[0];  m[1] -= rhs[1];  m[2] -= rhs[2];
+    m[3] -= rhs[3];  m[4] -= rhs[4];  m[5] -= rhs[5];
+    m[6] -= rhs[6];  m[7] -= rhs[7];  m[8] -= rhs[8];
+    return *this;
+}
+
+
+
+inline Vector3 Matrix3::operator*(const Vector3& rhs) const
+{
+    return Vector3(m[0]*rhs.x + m[3]*rhs.y + m[6]*rhs.z,
+                   m[1]*rhs.x + m[4]*rhs.y + m[7]*rhs.z,
+                   m[2]*rhs.x + m[5]*rhs.y + m[8]*rhs.z);
+}
+
+
+
+inline Matrix3 Matrix3::operator*(const Matrix3& rhs) const
+{
+    return Matrix3(m[0]*rhs[0] + m[3]*rhs[1] + m[6]*rhs[2],  m[1]*rhs[0] + m[4]*rhs[1] + m[7]*rhs[2],  m[2]*rhs[0] + m[5]*rhs[1] + m[8]*rhs[2],
+                   m[0]*rhs[3] + m[3]*rhs[4] + m[6]*rhs[5],  m[1]*rhs[3] + m[4]*rhs[4] + m[7]*rhs[5],  m[2]*rhs[3] + m[5]*rhs[4] + m[8]*rhs[5],
+                   m[0]*rhs[6] + m[3]*rhs[7] + m[6]*rhs[8],  m[1]*rhs[6] + m[4]*rhs[7] + m[7]*rhs[8],  m[2]*rhs[6] + m[5]*rhs[7] + m[8]*rhs[8]);
+}
+
+
+
+inline Matrix3& Matrix3::operator*=(const Matrix3& rhs)
+{
+    *this = *this * rhs;
+    return *this;
+}
+
+
+
+inline bool Matrix3::operator==(const Matrix3& rhs) const
+{
+    return (m[0] == rhs[0]) && (m[1] == rhs[1]) && (m[2] == rhs[2]) &&
+           (m[3] == rhs[3]) && (m[4] == rhs[4]) && (m[5] == rhs[5]) &&
+           (m[6] == rhs[6]) && (m[7] == rhs[7]) && (m[8] == rhs[8]);
+}
+
+
+
+inline bool Matrix3::operator!=(const Matrix3& rhs) const
+{
+    return (m[0] != rhs[0]) || (m[1] != rhs[1]) || (m[2] != rhs[2]) ||
+           (m[3] != rhs[3]) || (m[4] != rhs[4]) || (m[5] != rhs[5]) ||
+           (m[6] != rhs[6]) || (m[7] != rhs[7]) || (m[8] != rhs[8]);
+}
+
+
+
+inline float Matrix3::operator[](int index) const
+{
+    return m[index];
+}
+
+
+
+inline float& Matrix3::operator[](int index)
+{
+    return m[index];
+}
+
+
+
+inline Matrix3 operator-(const Matrix3& rhs)
+{
+    return Matrix3(-rhs[0], -rhs[1], -rhs[2], -rhs[3], -rhs[4], -rhs[5], -rhs[6], -rhs[7], -rhs[8]);
+}
+
+
+
+inline Matrix3 operator*(float s, const Matrix3& rhs)
+{
+    return Matrix3(s*rhs[0], s*rhs[1], s*rhs[2], s*rhs[3], s*rhs[4], s*rhs[5], s*rhs[6], s*rhs[7], s*rhs[8]);
+}
+
+
+
+inline Vector3 operator*(const Vector3& v, const Matrix3& m)
+{
+    return Vector3(v.x*m[0] + v.y*m[1] + v.z*m[2],  v.x*m[3] + v.y*m[4] + v.z*m[5],  v.x*m[6] + v.y*m[7] + v.z*m[8]);
+}
+
+
+
+inline std::ostream& operator<<(std::ostream& os, const Matrix3& m)
+{
+    os << std::fixed << std::setprecision(5);
+    os << "[" << std::setw(10) << m[0] << " " << std::setw(10) << m[3] << " " << std::setw(10) << m[6] << "]\n"
+       << "[" << std::setw(10) << m[1] << " " << std::setw(10) << m[4] << " " << std::setw(10) << m[7] << "]\n"
+       << "[" << std::setw(10) << m[2] << " " << std::setw(10) << m[5] << " " << std::setw(10) << m[8] << "]\n";
+    os << std::resetiosflags(std::ios_base::fixed | std::ios_base::floatfield);
+    return os;
+}
+// END OF MATRIX3 INLINE //////////////////////////////////////////////////////
+
+
+
+
+///////////////////////////////////////////////////////////////////////////
+// inline functions for Matrix4
+///////////////////////////////////////////////////////////////////////////
+inline Matrix4::Matrix4()
+{
+    // initially identity matrix
+    identity();
+}
+
+
+
+inline Matrix4::Matrix4(const float src[16])
+{
+    set(src);
+}
+
+
+
+inline Matrix4::Matrix4(float m00, float m01, float m02, float m03,
+                        float m04, float m05, float m06, float m07,
+                        float m08, float m09, float m10, float m11,
+                        float m12, float m13, float m14, float m15)
+{
+    set(m00, m01, m02, m03,  m04, m05, m06, m07,  m08, m09, m10, m11,  m12, m13, m14, m15);
+}
+
+
+
+inline void Matrix4::set(const float src[16])
+{
+    m[0] = src[0];  m[1] = src[1];  m[2] = src[2];  m[3] = src[3];
+    m[4] = src[4];  m[5] = src[5];  m[6] = src[6];  m[7] = src[7];
+    m[8] = src[8];  m[9] = src[9];  m[10]= src[10]; m[11]= src[11];
+    m[12]= src[12]; m[13]= src[13]; m[14]= src[14]; m[15]= src[15];
+}
+
+
+
+inline void Matrix4::set(float m00, float m01, float m02, float m03,
+                         float m04, float m05, float m06, float m07,
+                         float m08, float m09, float m10, float m11,
+                         float m12, float m13, float m14, float m15)
+{
+    m[0] = m00;  m[1] = m01;  m[2] = m02;  m[3] = m03;
+    m[4] = m04;  m[5] = m05;  m[6] = m06;  m[7] = m07;
+    m[8] = m08;  m[9] = m09;  m[10]= m10;  m[11]= m11;
+    m[12]= m12;  m[13]= m13;  m[14]= m14;  m[15]= m15;
+}
+
+
+
+inline void Matrix4::setRow(int index, const float row[4])
+{
+    m[index] = row[0];  m[index + 4] = row[1];  m[index + 8] = row[2];  m[index + 12] = row[3];
+}
+
+
+
+inline void Matrix4::setRow(int index, const Vector4& v)
+{
+    m[index] = v.x;  m[index + 4] = v.y;  m[index + 8] = v.z;  m[index + 12] = v.w;
+}
+
+
+
+inline void Matrix4::setRow(int index, const Vector3& v)
+{
+    m[index] = v.x;  m[index + 4] = v.y;  m[index + 8] = v.z;
+}
+
+
+
+inline void Matrix4::setColumn(int index, const float col[4])
+{
+    m[index*4] = col[0];  m[index*4 + 1] = col[1];  m[index*4 + 2] = col[2];  m[index*4 + 3] = col[3];
+}
+
+
+
+inline void Matrix4::setColumn(int index, const Vector4& v)
+{
+    m[index*4] = v.x;  m[index*4 + 1] = v.y;  m[index*4 + 2] = v.z;  m[index*4 + 3] = v.w;
+}
+
+
+
+inline void Matrix4::setColumn(int index, const Vector3& v)
+{
+    m[index*4] = v.x;  m[index*4 + 1] = v.y;  m[index*4 + 2] = v.z;
+}
+
+
+
+inline float* Matrix4::get()
+{
+    return m;
+}
+
+
+
+inline const float* Matrix4::getTranspose()
+{
+    tm[0] = m[0];   tm[1] = m[4];   tm[2] = m[8];   tm[3] = m[12];
+    tm[4] = m[1];   tm[5] = m[5];   tm[6] = m[9];   tm[7] = m[13];
+    tm[8] = m[2];   tm[9] = m[6];   tm[10]= m[10];  tm[11]= m[14];
+    tm[12]= m[3];   tm[13]= m[7];   tm[14]= m[11];  tm[15]= m[15];
+    return tm;
+}
+
+
+
+inline Matrix4& Matrix4::identity()
+{
+    m[0] = m[5] = m[10] = m[15] = 1.0f;
+    m[1] = m[2] = m[3] = m[4] = m[6] = m[7] = m[8] = m[9] = m[11] = m[12] = m[13] = m[14] = 0.0f;
+    return *this;
+}
+
+
+
+inline Matrix4 Matrix4::operator+(const Matrix4& rhs) const
+{
+    return Matrix4(m[0]+rhs[0],   m[1]+rhs[1],   m[2]+rhs[2],   m[3]+rhs[3],
+                   m[4]+rhs[4],   m[5]+rhs[5],   m[6]+rhs[6],   m[7]+rhs[7],
+                   m[8]+rhs[8],   m[9]+rhs[9],   m[10]+rhs[10], m[11]+rhs[11],
+                   m[12]+rhs[12], m[13]+rhs[13], m[14]+rhs[14], m[15]+rhs[15]);
+}
+
+
+
+inline Matrix4 Matrix4::operator-(const Matrix4& rhs) const
+{
+    return Matrix4(m[0]-rhs[0],   m[1]-rhs[1],   m[2]-rhs[2],   m[3]-rhs[3],
+                   m[4]-rhs[4],   m[5]-rhs[5],   m[6]-rhs[6],   m[7]-rhs[7],
+                   m[8]-rhs[8],   m[9]-rhs[9],   m[10]-rhs[10], m[11]-rhs[11],
+                   m[12]-rhs[12], m[13]-rhs[13], m[14]-rhs[14], m[15]-rhs[15]);
+}
+
+
+
+inline Matrix4& Matrix4::operator+=(const Matrix4& rhs)
+{
+    m[0] += rhs[0];   m[1] += rhs[1];   m[2] += rhs[2];   m[3] += rhs[3];
+    m[4] += rhs[4];   m[5] += rhs[5];   m[6] += rhs[6];   m[7] += rhs[7];
+    m[8] += rhs[8];   m[9] += rhs[9];   m[10]+= rhs[10];  m[11]+= rhs[11];
+    m[12]+= rhs[12];  m[13]+= rhs[13];  m[14]+= rhs[14];  m[15]+= rhs[15];
+    return *this;
+}
+
+
+
+inline Matrix4& Matrix4::operator-=(const Matrix4& rhs)
+{
+    m[0] -= rhs[0];   m[1] -= rhs[1];   m[2] -= rhs[2];   m[3] -= rhs[3];
+    m[4] -= rhs[4];   m[5] -= rhs[5];   m[6] -= rhs[6];   m[7] -= rhs[7];
+    m[8] -= rhs[8];   m[9] -= rhs[9];   m[10]-= rhs[10];  m[11]-= rhs[11];
+    m[12]-= rhs[12];  m[13]-= rhs[13];  m[14]-= rhs[14];  m[15]-= rhs[15];
+    return *this;
+}
+
+
+
+inline Vector4 Matrix4::operator*(const Vector4& rhs) const
+{
+    return Vector4(m[0]*rhs.x + m[4]*rhs.y + m[8]*rhs.z  + m[12]*rhs.w,
+                   m[1]*rhs.x + m[5]*rhs.y + m[9]*rhs.z  + m[13]*rhs.w,
+                   m[2]*rhs.x + m[6]*rhs.y + m[10]*rhs.z + m[14]*rhs.w,
+                   m[3]*rhs.x + m[7]*rhs.y + m[11]*rhs.z + m[15]*rhs.w);
+}
+
+
+
+inline Vector3 Matrix4::operator*(const Vector3& rhs) const
+{
+    return Vector3(m[0]*rhs.x + m[4]*rhs.y + m[8]*rhs.z,
+                   m[1]*rhs.x + m[5]*rhs.y + m[9]*rhs.z,
+                   m[2]*rhs.x + m[6]*rhs.y + m[10]*rhs.z);
+}
+
+
+
+inline Matrix4 Matrix4::operator*(const Matrix4& n) const
+{
+    return Matrix4(m[0]*n[0]  + m[4]*n[1]  + m[8]*n[2]  + m[12]*n[3],   m[1]*n[0]  + m[5]*n[1]  + m[9]*n[2]  + m[13]*n[3],   m[2]*n[0]  + m[6]*n[1]  + m[10]*n[2]  + m[14]*n[3],   m[3]*n[0]  + m[7]*n[1]  + m[11]*n[2]  + m[15]*n[3],
+                   m[0]*n[4]  + m[4]*n[5]  + m[8]*n[6]  + m[12]*n[7],   m[1]*n[4]  + m[5]*n[5]  + m[9]*n[6]  + m[13]*n[7],   m[2]*n[4]  + m[6]*n[5]  + m[10]*n[6]  + m[14]*n[7],   m[3]*n[4]  + m[7]*n[5]  + m[11]*n[6]  + m[15]*n[7],
+                   m[0]*n[8]  + m[4]*n[9]  + m[8]*n[10] + m[12]*n[11],  m[1]*n[8]  + m[5]*n[9]  + m[9]*n[10] + m[13]*n[11],  m[2]*n[8]  + m[6]*n[9]  + m[10]*n[10] + m[14]*n[11],  m[3]*n[8]  + m[7]*n[9]  + m[11]*n[10] + m[15]*n[11],
+                   m[0]*n[12] + m[4]*n[13] + m[8]*n[14] + m[12]*n[15],  m[1]*n[12] + m[5]*n[13] + m[9]*n[14] + m[13]*n[15],  m[2]*n[12] + m[6]*n[13] + m[10]*n[14] + m[14]*n[15],  m[3]*n[12] + m[7]*n[13] + m[11]*n[14] + m[15]*n[15]);
+}
+
+
+
+inline Matrix4& Matrix4::operator*=(const Matrix4& rhs)
+{
+    *this = *this * rhs;
+    return *this;
+}
+
+
+
+inline bool Matrix4::operator==(const Matrix4& n) const
+{
+    return (m[0] == n[0])  && (m[1] == n[1])  && (m[2] == n[2])  && (m[3] == n[3])  &&
+           (m[4] == n[4])  && (m[5] == n[5])  && (m[6] == n[6])  && (m[7] == n[7])  &&
+           (m[8] == n[8])  && (m[9] == n[9])  && (m[10]== n[10]) && (m[11]== n[11]) &&
+           (m[12]== n[12]) && (m[13]== n[13]) && (m[14]== n[14]) && (m[15]== n[15]);
+}
+
+
+
+inline bool Matrix4::operator!=(const Matrix4& n) const
+{
+    return (m[0] != n[0])  || (m[1] != n[1])  || (m[2] != n[2])  || (m[3] != n[3])  ||
+           (m[4] != n[4])  || (m[5] != n[5])  || (m[6] != n[6])  || (m[7] != n[7])  ||
+           (m[8] != n[8])  || (m[9] != n[9])  || (m[10]!= n[10]) || (m[11]!= n[11]) ||
+           (m[12]!= n[12]) || (m[13]!= n[13]) || (m[14]!= n[14]) || (m[15]!= n[15]);
+}
+
+
+
+inline float Matrix4::operator[](int index) const
+{
+    return m[index];
+}
+
+
+
+inline float& Matrix4::operator[](int index)
+{
+    return m[index];
+}
+
+
+
+inline Matrix4 operator-(const Matrix4& rhs)
+{
+    return Matrix4(-rhs[0], -rhs[1], -rhs[2], -rhs[3], -rhs[4], -rhs[5], -rhs[6], -rhs[7], -rhs[8], -rhs[9], -rhs[10], -rhs[11], -rhs[12], -rhs[13], -rhs[14], -rhs[15]);
+}
+
+
+
+inline Matrix4 operator*(float s, const Matrix4& rhs)
+{
+    return Matrix4(s*rhs[0], s*rhs[1], s*rhs[2], s*rhs[3], s*rhs[4], s*rhs[5], s*rhs[6], s*rhs[7], s*rhs[8], s*rhs[9], s*rhs[10], s*rhs[11], s*rhs[12], s*rhs[13], s*rhs[14], s*rhs[15]);
+}
+
+
+
+inline Vector4 operator*(const Vector4& v, const Matrix4& m)
+{
+    return Vector4(v.x*m[0] + v.y*m[1] + v.z*m[2] + v.w*m[3],  v.x*m[4] + v.y*m[5] + v.z*m[6] + v.w*m[7],  v.x*m[8] + v.y*m[9] + v.z*m[10] + v.w*m[11], v.x*m[12] + v.y*m[13] + v.z*m[14] + v.w*m[15]);
+}
+
+
+
+inline Vector3 operator*(const Vector3& v, const Matrix4& m)
+{
+    return Vector3(v.x*m[0] + v.y*m[1] + v.z*m[2],  v.x*m[4] + v.y*m[5] + v.z*m[6],  v.x*m[8] + v.y*m[9] + v.z*m[10]);
+}
+
+
+
+inline std::ostream& operator<<(std::ostream& os, const Matrix4& m)
+{
+    os << std::fixed << std::setprecision(5);
+    os << "[" << std::setw(10) << m[0] << " " << std::setw(10) << m[4] << " " << std::setw(10) << m[8]  <<  " " << std::setw(10) << m[12] << "]\n"
+       << "[" << std::setw(10) << m[1] << " " << std::setw(10) << m[5] << " " << std::setw(10) << m[9]  <<  " " << std::setw(10) << m[13] << "]\n"
+       << "[" << std::setw(10) << m[2] << " " << std::setw(10) << m[6] << " " << std::setw(10) << m[10] <<  " " << std::setw(10) << m[14] << "]\n"
+       << "[" << std::setw(10) << m[3] << " " << std::setw(10) << m[7] << " " << std::setw(10) << m[11] <<  " " << std::setw(10) << m[15] << "]\n";
+    os << std::resetiosflags(std::ios_base::fixed | std::ios_base::floatfield);
+    return os;
+}
+
+
+
+
+
+
+//###
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Matrice.cpp
+// ===========
+// NxN Matrix Math classes
+//
+// The elements of the matrix are stored as column major order.
+// | 0 2 |    | 0 3 6 |    |  0  4  8 12 |
+// | 1 3 |    | 1 4 7 |    |  1  5  9 13 |
+//            | 2 5 8 |    |  2  6 10 14 |
+//                         |  3  7 11 15 |
+//
+//  AUTHOR: Song Ho Ahn (song.ahn@gmail.com)
+// CREATED: 2005-06-24
+// UPDATED: 2014-09-21
+//
+// Copyright (C) 2005 Song Ho Ahn
+///////////////////////////////////////////////////////////////////////////////
+
+
+const float DEG2RAD = 3.141593f / 180;
+const float EPSILON = 0.00001f;
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// transpose 2x2 matrix
+///////////////////////////////////////////////////////////////////////////////
+Matrix2& Matrix2::transpose()
+{
+    std::swap(m[1],  m[2]);
+    return *this;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// return the determinant of 2x2 matrix
+///////////////////////////////////////////////////////////////////////////////
+float Matrix2::getDeterminant()
+{
+    return m[0] * m[3] - m[1] * m[2];
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// inverse of 2x2 matrix
+// If cannot find inverse, set identity matrix
+///////////////////////////////////////////////////////////////////////////////
+Matrix2& Matrix2::invert()
+{
+    float determinant = getDeterminant();
+    if(fabs(determinant) <= EPSILON)
+    {
+        return identity();
+    }
+
+    float tmp = m[0];   // copy the first element
+    float invDeterminant = 1.0f / determinant;
+    m[0] =  invDeterminant * m[3];
+    m[1] = -invDeterminant * m[1];
+    m[2] = -invDeterminant * m[2];
+    m[3] =  invDeterminant * tmp;
+
+    return *this;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// transpose 3x3 matrix
+///////////////////////////////////////////////////////////////////////////////
+Matrix3& Matrix3::transpose()
+{
+    std::swap(m[1],  m[3]);
+    std::swap(m[2],  m[6]);
+    std::swap(m[5],  m[7]);
+
+    return *this;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// return determinant of 3x3 matrix
+///////////////////////////////////////////////////////////////////////////////
+float Matrix3::getDeterminant()
+{
+    return m[0] * (m[4] * m[8] - m[5] * m[7]) -
+           m[1] * (m[3] * m[8] - m[5] * m[6]) +
+           m[2] * (m[3] * m[7] - m[4] * m[6]);
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// inverse 3x3 matrix
+// If cannot find inverse, set identity matrix
+///////////////////////////////////////////////////////////////////////////////
+Matrix3& Matrix3::invert()
+{
+    float determinant, invDeterminant;
+    float tmp[9];
+
+    tmp[0] = m[4] * m[8] - m[5] * m[7];
+    tmp[1] = m[2] * m[7] - m[1] * m[8];
+    tmp[2] = m[1] * m[5] - m[2] * m[4];
+    tmp[3] = m[5] * m[6] - m[3] * m[8];
+    tmp[4] = m[0] * m[8] - m[2] * m[6];
+    tmp[5] = m[2] * m[3] - m[0] * m[5];
+    tmp[6] = m[3] * m[7] - m[4] * m[6];
+    tmp[7] = m[1] * m[6] - m[0] * m[7];
+    tmp[8] = m[0] * m[4] - m[1] * m[3];
+
+    // check determinant if it is 0
+    determinant = m[0] * tmp[0] + m[1] * tmp[3] + m[2] * tmp[6];
+    if(fabs(determinant) <= EPSILON)
+    {
+        return identity(); // cannot inverse, make it idenety matrix
+    }
+
+    // divide by the determinant
+    invDeterminant = 1.0f / determinant;
+    m[0] = invDeterminant * tmp[0];
+    m[1] = invDeterminant * tmp[1];
+    m[2] = invDeterminant * tmp[2];
+    m[3] = invDeterminant * tmp[3];
+    m[4] = invDeterminant * tmp[4];
+    m[5] = invDeterminant * tmp[5];
+    m[6] = invDeterminant * tmp[6];
+    m[7] = invDeterminant * tmp[7];
+    m[8] = invDeterminant * tmp[8];
+
+    return *this;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// transpose 4x4 matrix
+///////////////////////////////////////////////////////////////////////////////
+Matrix4& Matrix4::transpose()
+{
+    std::swap(m[1],  m[4]);
+    std::swap(m[2],  m[8]);
+    std::swap(m[3],  m[12]);
+    std::swap(m[6],  m[9]);
+    std::swap(m[7],  m[13]);
+    std::swap(m[11], m[14]);
+
+    return *this;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// inverse 4x4 matrix
+///////////////////////////////////////////////////////////////////////////////
+Matrix4& Matrix4::invert()
+{
+    // If the 4th row is [0,0,0,1] then it is affine matrix and
+    // it has no projective transformation.
+    if(m[3] == 0 && m[7] == 0 && m[11] == 0 && m[15] == 1)
+        this->invertAffine();
+    else
+    {
+        this->invertGeneral();
+        /*@@ invertProjective() is not optimized (slower than generic one)
+        if(fabs(m[0]*m[5] - m[1]*m[4]) > EPSILON)
+            this->invertProjective();   // inverse using matrix partition
+        else
+            this->invertGeneral();      // generalized inverse
+        */
+    }
+
+    return *this;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// compute the inverse of 4x4 Euclidean transformation matrix
+//
+// Euclidean transformation is translation, rotation, and reflection.
+// With Euclidean transform, only the position and orientation of the object
+// will be changed. Euclidean transform does not change the shape of an object
+// (no scaling). Length and angle are reserved.
+//
+// Use inverseAffine() if the matrix has scale and shear transformation.
+//
+// M = [ R | T ]
+//     [ --+-- ]    (R denotes 3x3 rotation/reflection matrix)
+//     [ 0 | 1 ]    (T denotes 1x3 translation matrix)
+//
+// y = M*x  ->  y = R*x + T  ->  x = R^-1*(y - T)  ->  x = R^T*y - R^T*T
+// (R is orthogonal,  R^-1 = R^T)
+//
+//  [ R | T ]-1    [ R^T | -R^T * T ]    (R denotes 3x3 rotation matrix)
+//  [ --+-- ]   =  [ ----+--------- ]    (T denotes 1x3 translation)
+//  [ 0 | 1 ]      [  0  |     1    ]    (R^T denotes R-transpose)
+///////////////////////////////////////////////////////////////////////////////
+Matrix4& Matrix4::invertEuclidean()
+{
+    // transpose 3x3 rotation matrix part
+    // | R^T | 0 |
+    // | ----+-- |
+    // |  0  | 1 |
+    float tmp;
+    tmp = m[1];  m[1] = m[4];  m[4] = tmp;
+    tmp = m[2];  m[2] = m[8];  m[8] = tmp;
+    tmp = m[6];  m[6] = m[9];  m[9] = tmp;
+
+    // compute translation part -R^T * T
+    // | 0 | -R^T x |
+    // | --+------- |
+    // | 0 |   0    |
+    float x = m[12];
+    float y = m[13];
+    float z = m[14];
+    m[12] = -(m[0] * x + m[4] * y + m[8] * z);
+    m[13] = -(m[1] * x + m[5] * y + m[9] * z);
+    m[14] = -(m[2] * x + m[6] * y + m[10]* z);
+
+    // last row should be unchanged (0,0,0,1)
+
+    return *this;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// compute the inverse of a 4x4 affine transformation matrix
+//
+// Affine transformations are generalizations of Euclidean transformations.
+// Affine transformation includes translation, rotation, reflection, scaling,
+// and shearing. Length and angle are NOT preserved.
+// M = [ R | T ]
+//     [ --+-- ]    (R denotes 3x3 rotation/scale/shear matrix)
+//     [ 0 | 1 ]    (T denotes 1x3 translation matrix)
+//
+// y = M*x  ->  y = R*x + T  ->  x = R^-1*(y - T)  ->  x = R^-1*y - R^-1*T
+//
+//  [ R | T ]-1   [ R^-1 | -R^-1 * T ]
+//  [ --+-- ]   = [ -----+---------- ]
+//  [ 0 | 1 ]     [  0   +     1     ]
+///////////////////////////////////////////////////////////////////////////////
+Matrix4& Matrix4::invertAffine()
+{
+    // R^-1
+    Matrix3 r(m[0],m[1],m[2], m[4],m[5],m[6], m[8],m[9],m[10]);
+    r.invert();
+    m[0] = r[0];  m[1] = r[1];  m[2] = r[2];
+    m[4] = r[3];  m[5] = r[4];  m[6] = r[5];
+    m[8] = r[6];  m[9] = r[7];  m[10]= r[8];
+
+    // -R^-1 * T
+    float x = m[12];
+    float y = m[13];
+    float z = m[14];
+    m[12] = -(r[0] * x + r[3] * y + r[6] * z);
+    m[13] = -(r[1] * x + r[4] * y + r[7] * z);
+    m[14] = -(r[2] * x + r[5] * y + r[8] * z);
+
+    // last row should be unchanged (0,0,0,1)
+    //m[3] = m[7] = m[11] = 0.0f;
+    //m[15] = 1.0f;
+
+    return * this;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// inverse matrix using matrix partitioning (blockwise inverse)
+// It devides a 4x4 matrix into 4 of 2x2 matrices. It works in case of where
+// det(A) != 0. If not, use the generic inverse method
+// inverse formula.
+// M = [ A | B ]    A, B, C, D are 2x2 matrix blocks
+//     [ --+-- ]    det(M) = |A| * |D - ((C * A^-1) * B)|
+//     [ C | D ]
+//
+// M^-1 = [ A' | B' ]   A' = A^-1 - (A^-1 * B) * C'
+//        [ ---+--- ]   B' = (A^-1 * B) * -D'
+//        [ C' | D' ]   C' = -D' * (C * A^-1)
+//                      D' = (D - ((C * A^-1) * B))^-1
+//
+// NOTE: I wrap with () if it it used more than once.
+//       The matrix is invertable even if det(A)=0, so must check det(A) before
+//       calling this function, and use invertGeneric() instead.
+///////////////////////////////////////////////////////////////////////////////
+Matrix4& Matrix4::invertProjective()
+{
+    // partition
+    Matrix2 a(m[0], m[1], m[4], m[5]);
+    Matrix2 b(m[8], m[9], m[12], m[13]);
+    Matrix2 c(m[2], m[3], m[6], m[7]);
+    Matrix2 d(m[10], m[11], m[14], m[15]);
+
+    // pre-compute repeated parts
+    a.invert();             // A^-1
+    Matrix2 ab = a * b;     // A^-1 * B
+    Matrix2 ca = c * a;     // C * A^-1
+    Matrix2 cab = ca * b;   // C * A^-1 * B
+    Matrix2 dcab = d - cab; // D - C * A^-1 * B
+
+    // check determinant if |D - C * A^-1 * B| = 0
+    //NOTE: this function assumes det(A) is already checked. if |A|=0 then,
+    //      cannot use this function.
+    float determinant = dcab[0] * dcab[3] - dcab[1] * dcab[2];
+    if(fabs(determinant) <= EPSILON)
+    {
+        return identity();
+    }
+
+    // compute D' and -D'
+    Matrix2 d1 = dcab;      //  (D - C * A^-1 * B)
+    d1.invert();            //  (D - C * A^-1 * B)^-1
+    Matrix2 d2 = -d1;       // -(D - C * A^-1 * B)^-1
+
+    // compute C'
+    Matrix2 c1 = d2 * ca;   // -D' * (C * A^-1)
+
+    // compute B'
+    Matrix2 b1 = ab * d2;   // (A^-1 * B) * -D'
+
+    // compute A'
+    Matrix2 a1 = a - (ab * c1); // A^-1 - (A^-1 * B) * C'
+
+    // assemble inverse matrix
+    m[0] = a1[0];  m[4] = a1[2]; /*|*/ m[8] = b1[0];  m[12]= b1[2];
+    m[1] = a1[1];  m[5] = a1[3]; /*|*/ m[9] = b1[1];  m[13]= b1[3];
+    /*-----------------------------+-----------------------------*/
+    m[2] = c1[0];  m[6] = c1[2]; /*|*/ m[10]= d1[0];  m[14]= d1[2];
+    m[3] = c1[1];  m[7] = c1[3]; /*|*/ m[11]= d1[1];  m[15]= d1[3];
+
+    return *this;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// compute the inverse of a general 4x4 matrix using Cramer's Rule
+// If cannot find inverse, return indentity matrix
+// M^-1 = adj(M) / det(M)
+///////////////////////////////////////////////////////////////////////////////
+Matrix4& Matrix4::invertGeneral()
+{
+    // get cofactors of minor matrices
+    float cofactor0 = getCofactor(m[5],m[6],m[7], m[9],m[10],m[11], m[13],m[14],m[15]);
+    float cofactor1 = getCofactor(m[4],m[6],m[7], m[8],m[10],m[11], m[12],m[14],m[15]);
+    float cofactor2 = getCofactor(m[4],m[5],m[7], m[8],m[9], m[11], m[12],m[13],m[15]);
+    float cofactor3 = getCofactor(m[4],m[5],m[6], m[8],m[9], m[10], m[12],m[13],m[14]);
+
+    // get determinant
+    float determinant = m[0] * cofactor0 - m[1] * cofactor1 + m[2] * cofactor2 - m[3] * cofactor3;
+    if(fabs(determinant) <= EPSILON)
+    {
+        return identity();
+    }
+
+    // get rest of cofactors for adj(M)
+    float cofactor4 = getCofactor(m[1],m[2],m[3], m[9],m[10],m[11], m[13],m[14],m[15]);
+    float cofactor5 = getCofactor(m[0],m[2],m[3], m[8],m[10],m[11], m[12],m[14],m[15]);
+    float cofactor6 = getCofactor(m[0],m[1],m[3], m[8],m[9], m[11], m[12],m[13],m[15]);
+    float cofactor7 = getCofactor(m[0],m[1],m[2], m[8],m[9], m[10], m[12],m[13],m[14]);
+
+    float cofactor8 = getCofactor(m[1],m[2],m[3], m[5],m[6], m[7],  m[13],m[14],m[15]);
+    float cofactor9 = getCofactor(m[0],m[2],m[3], m[4],m[6], m[7],  m[12],m[14],m[15]);
+    float cofactor10= getCofactor(m[0],m[1],m[3], m[4],m[5], m[7],  m[12],m[13],m[15]);
+    float cofactor11= getCofactor(m[0],m[1],m[2], m[4],m[5], m[6],  m[12],m[13],m[14]);
+
+    float cofactor12= getCofactor(m[1],m[2],m[3], m[5],m[6], m[7],  m[9], m[10],m[11]);
+    float cofactor13= getCofactor(m[0],m[2],m[3], m[4],m[6], m[7],  m[8], m[10],m[11]);
+    float cofactor14= getCofactor(m[0],m[1],m[3], m[4],m[5], m[7],  m[8], m[9], m[11]);
+    float cofactor15= getCofactor(m[0],m[1],m[2], m[4],m[5], m[6],  m[8], m[9], m[10]);
+
+    // build inverse matrix = adj(M) / det(M)
+    // adjugate of M is the transpose of the cofactor matrix of M
+    float invDeterminant = 1.0f / determinant;
+    m[0] =  invDeterminant * cofactor0;
+    m[1] = -invDeterminant * cofactor4;
+    m[2] =  invDeterminant * cofactor8;
+    m[3] = -invDeterminant * cofactor12;
+
+    m[4] = -invDeterminant * cofactor1;
+    m[5] =  invDeterminant * cofactor5;
+    m[6] = -invDeterminant * cofactor9;
+    m[7] =  invDeterminant * cofactor13;
+
+    m[8] =  invDeterminant * cofactor2;
+    m[9] = -invDeterminant * cofactor6;
+    m[10]=  invDeterminant * cofactor10;
+    m[11]= -invDeterminant * cofactor14;
+
+    m[12]= -invDeterminant * cofactor3;
+    m[13]=  invDeterminant * cofactor7;
+    m[14]= -invDeterminant * cofactor11;
+    m[15]=  invDeterminant * cofactor15;
+
+    return *this;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// return determinant of 4x4 matrix
+///////////////////////////////////////////////////////////////////////////////
+float Matrix4::getDeterminant()
+{
+    return m[0] * getCofactor(m[5],m[6],m[7], m[9],m[10],m[11], m[13],m[14],m[15]) -
+           m[1] * getCofactor(m[4],m[6],m[7], m[8],m[10],m[11], m[12],m[14],m[15]) +
+           m[2] * getCofactor(m[4],m[5],m[7], m[8],m[9], m[11], m[12],m[13],m[15]) -
+           m[3] * getCofactor(m[4],m[5],m[6], m[8],m[9], m[10], m[12],m[13],m[14]);
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// compute cofactor of 3x3 minor matrix without sign
+// input params are 9 elements of the minor matrix
+// NOTE: The caller must know its sign.
+///////////////////////////////////////////////////////////////////////////////
+float Matrix4::getCofactor(float m0, float m1, float m2,
+                           float m3, float m4, float m5,
+                           float m6, float m7, float m8)
+{
+    return m0 * (m4 * m8 - m5 * m7) -
+           m1 * (m3 * m8 - m5 * m6) +
+           m2 * (m3 * m7 - m4 * m6);
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// translate this matrix by (x, y, z)
+///////////////////////////////////////////////////////////////////////////////
+Matrix4& Matrix4::translate(const Vector3& v)
+{
+    return translate(v.x, v.y, v.z);
+}
+
+Matrix4& Matrix4::translate(float x, float y, float z)
+{
+    m[0] += m[3] * x;   m[4] += m[7] * x;   m[8] += m[11]* x;   m[12]+= m[15]* x;
+    m[1] += m[3] * y;   m[5] += m[7] * y;   m[9] += m[11]* y;   m[13]+= m[15]* y;
+    m[2] += m[3] * z;   m[6] += m[7] * z;   m[10]+= m[11]* z;   m[14]+= m[15]* z;
+
+    return *this;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// uniform scale
+///////////////////////////////////////////////////////////////////////////////
+Matrix4& Matrix4::scale(float s)
+{
+    return scale(s, s, s);
+}
+
+Matrix4& Matrix4::scale(float x, float y, float z)
+{
+    m[0] *= x;   m[4] *= x;   m[8] *= x;   m[12] *= x;
+    m[1] *= y;   m[5] *= y;   m[9] *= y;   m[13] *= y;
+    m[2] *= z;   m[6] *= z;   m[10]*= z;   m[14] *= z;
+    return *this;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// build a rotation matrix with given angle(degree) and rotation axis, then
+// multiply it with this object
+///////////////////////////////////////////////////////////////////////////////
+Matrix4& Matrix4::rotate(float angle, const Vector3& axis)
+{
+    return rotate(angle, axis.x, axis.y, axis.z);
+}
+
+Matrix4& Matrix4::rotate(float angle, float x, float y, float z)
+{
+    float c = cosf(angle * DEG2RAD);    // cosine
+    float s = sinf(angle * DEG2RAD);    // sine
+    float c1 = 1.0f - c;                // 1 - c
+    float m0 = m[0],  m4 = m[4],  m8 = m[8],  m12= m[12],
+          m1 = m[1],  m5 = m[5],  m9 = m[9],  m13= m[13],
+          m2 = m[2],  m6 = m[6],  m10= m[10], m14= m[14];
+
+    // build rotation matrix
+    float r0 = x * x * c1 + c;
+    float r1 = x * y * c1 + z * s;
+    float r2 = x * z * c1 - y * s;
+    float r4 = x * y * c1 - z * s;
+    float r5 = y * y * c1 + c;
+    float r6 = y * z * c1 + x * s;
+    float r8 = x * z * c1 + y * s;
+    float r9 = y * z * c1 - x * s;
+    float r10= z * z * c1 + c;
+
+    // multiply rotation matrix
+    m[0] = r0 * m0 + r4 * m1 + r8 * m2;
+    m[1] = r1 * m0 + r5 * m1 + r9 * m2;
+    m[2] = r2 * m0 + r6 * m1 + r10* m2;
+    m[4] = r0 * m4 + r4 * m5 + r8 * m6;
+    m[5] = r1 * m4 + r5 * m5 + r9 * m6;
+    m[6] = r2 * m4 + r6 * m5 + r10* m6;
+    m[8] = r0 * m8 + r4 * m9 + r8 * m10;
+    m[9] = r1 * m8 + r5 * m9 + r9 * m10;
+    m[10]= r2 * m8 + r6 * m9 + r10* m10;
+    m[12]= r0 * m12+ r4 * m13+ r8 * m14;
+    m[13]= r1 * m12+ r5 * m13+ r9 * m14;
+    m[14]= r2 * m12+ r6 * m13+ r10* m14;
+
+    return *this;
+}
+
+Matrix4& Matrix4::rotateX(float angle)
+{
+    float c = cosf(angle * DEG2RAD);
+    float s = sinf(angle * DEG2RAD);
+    float m1 = m[1],  m2 = m[2],
+          m5 = m[5],  m6 = m[6],
+          m9 = m[9],  m10= m[10],
+          m13= m[13], m14= m[14];
+
+    m[1] = m1 * c + m2 *-s;
+    m[2] = m1 * s + m2 * c;
+    m[5] = m5 * c + m6 *-s;
+    m[6] = m5 * s + m6 * c;
+    m[9] = m9 * c + m10*-s;
+    m[10]= m9 * s + m10* c;
+    m[13]= m13* c + m14*-s;
+    m[14]= m13* s + m14* c;
+
+    return *this;
+}
+
+Matrix4& Matrix4::rotateY(float angle)
+{
+    float c = cosf(angle * DEG2RAD);
+    float s = sinf(angle * DEG2RAD);
+    float m0 = m[0],  m2 = m[2],
+          m4 = m[4],  m6 = m[6],
+          m8 = m[8],  m10= m[10],
+          m12= m[12], m14= m[14];
+
+    m[0] = m0 * c + m2 * s;
+    m[2] = m0 *-s + m2 * c;
+    m[4] = m4 * c + m6 * s;
+    m[6] = m4 *-s + m6 * c;
+    m[8] = m8 * c + m10* s;
+    m[10]= m8 *-s + m10* c;
+    m[12]= m12* c + m14* s;
+    m[14]= m12*-s + m14* c;
+
+    return *this;
+}
+
+Matrix4& Matrix4::rotateZ(float angle)
+{
+    float c = cosf(angle * DEG2RAD);
+    float s = sinf(angle * DEG2RAD);
+    float m0 = m[0],  m1 = m[1],
+          m4 = m[4],  m5 = m[5],
+          m8 = m[8],  m9 = m[9],
+          m12= m[12], m13= m[13];
+
+    m[0] = m0 * c + m1 *-s;
+    m[1] = m0 * s + m1 * c;
+    m[4] = m4 * c + m5 *-s;
+    m[5] = m4 * s + m5 * c;
+    m[8] = m8 * c + m9 *-s;
+    m[9] = m8 * s + m9 * c;
+    m[12]= m12* c + m13*-s;
+    m[13]= m12* s + m13* c;
+
+    return *this;
+}
+ 
 
 int intDiv(int v, int s) {
 	float fv = v;
@@ -1367,14 +3463,6 @@ void pack16(float num, float &outR, float &outG) {
 
 }
 
-int getPackedColor(uint r, uint g, uint b) {
-	return (
-					 (1 << 15) |
-					 ((b >> 3) << 10) |
-					 ((g >> 3) << 5) |
-					 ((r >> 3))
-				 );
-}
 
 int clamp(int val, int min, int max) {
 	if (val > max) {
@@ -1414,6 +3502,13 @@ inline float clampfZO(float val) {
 	return clampf(val, 0.0f, 1.0f);
 }
 
+
+// float genRand(float LO, float HI)
+// {
+
+// 	return LO + (float)rand() / ((float)RAND_MAX / (HI - LO));
+// }
+
 inline float fGenRand() {
 
 	return (float)rand() / (float)RAND_MAX;
@@ -1435,12 +3530,6 @@ inline int iGenRand(int nMin, int nMax)
 {
 	return nMin + (int)((double)rand() / (RAND_MAX + 1) * (nMax - nMin + 1));
 }
-
-// inline int iGenRand(int val) {
-
-//     return abs(rand()%val);
-//     //return rand()%(val+1) - val/2;
-// }
 
 unsigned int intLogB2 (unsigned int val) {
 	unsigned int ret = -1;
@@ -1518,16 +3607,6 @@ public:
 	}
 
 
-	void randomize() {
-		fv4.x = fGenRand();
-		fv4.y = fGenRand();
-		fv4.z = fGenRand();
-		this->normalize();
-
-		iv4.x = (int)fv4.x;
-		iv4.y = (int)fv4.y;
-		iv4.z = (int)fv4.z;
-	}
 
 	void setIXYZW(int x, int y, int z, int w) {
 		iv4.x = x;
@@ -1734,6 +3813,16 @@ public:
 		iv4.y = (int)fv4.y;
 		iv4.z = (int)fv4.z;
 	}
+	
+	void multXYZRef(FIVector4 *scalar) {
+		fv4.x *= scalar->getFX();
+		fv4.y *= scalar->getFY();
+		fv4.z *= scalar->getFZ();
+
+		iv4.x = (int)fv4.x;
+		iv4.y = (int)fv4.y;
+		iv4.z = (int)fv4.z;
+	}
 
 
 
@@ -1790,32 +3879,22 @@ public:
 
 	void intDivXYZ(int scalar) {
 
-		float fScalar = (float)scalar;
-
 		iv4.x = intDiv(iv4.x, scalar);
 		iv4.y = intDiv(iv4.y, scalar);
 		iv4.z = intDiv(iv4.z, scalar);
 
-		// if (iv4.x < 0) {
-		//     iv4.x = -ciel(-fv4.x/fScalar);
-		// }
-		// else {
-		//     iv4.x /= scalar;
-		// }
+		fv4.x = (float)iv4.x;
+		fv4.y = (float)iv4.y;
+		fv4.z = (float)iv4.z;
 
-		// if (iv4.y < 0) {
-		//     iv4.y = -ciel(-fv4.y/fScalar);
-		// }
-		// else {
-		//     iv4.y /= scalar;
-		// }
+	}
+	
+	void intDivXYZ(int scalarX, int scalarY, int scalarZ) {
 
-		// if (iv4.z < 0) {
-		//     iv4.z = -ciel(-fv4.z/fScalar);
-		// }
-		// else {
-		//     iv4.z /= scalar;
-		// }
+
+		iv4.x = intDiv(iv4.x, scalarX);
+		iv4.y = intDiv(iv4.y, scalarY);
+		iv4.z = intDiv(iv4.z, scalarZ);
 
 		fv4.x = (float)iv4.x;
 		fv4.y = (float)iv4.y;
@@ -2345,11 +4424,31 @@ public:
 
 };
 
+struct RotationInfo {
+	float rotMatrix[16];
+	FIVector4 basePoint;
+	FIVector4 axisAngle;
+		
+};
+
+
 float getRandSeeded(FIVector4 *seedPos, FIVector4 *seedVals) {
 	float intPart;		
-	return modf(sin(seedPos->dot(seedVals)) * 43758.8563f, &intPart);
+	return abs ( modf(sin(seedPos->dot(seedVals)) * 43758.8563f, &intPart) );
 }
 
+int iGetRandSeeded(
+	FIVector4 *seedPos,
+	FIVector4 *seedVals,
+	int minV,
+	int maxV
+) {
+	float intPart = 0.0f;		
+	int res = abs( modf(sin(seedPos->dot(seedVals)) * 43758.8563f, &intPart) )*1000000.0f;
+	res = (res % (maxV + 1 - minV)) + minV;
+	
+	return res;
+}
 
 
 
@@ -2358,7 +4457,7 @@ class AxisRotation {
 
 public:
 
-	float rotationMatrix[4][4];
+	float rotationMatrix[16];
 	float inputMatrix[4];
 	float outputMatrix[4];
 
@@ -2385,25 +4484,25 @@ public:
 		float ca = cos(angle);
 		float sa = sin(angle);
 
-		rotationMatrix[0][0] = (u2 + (v2 + w2) * ca) / L;
-		rotationMatrix[0][1] = (u * v * (1 - ca) - w * sqrtL * sa) / L;
-		rotationMatrix[0][2] = (u * w * (1 - ca) + v * sqrtL * sa) / L;
-		rotationMatrix[0][3] = 0.0f;
+		rotationMatrix[0] = (u2 + (v2 + w2) * ca) / L;
+		rotationMatrix[1] = (u * v * (1 - ca) - w * sqrtL * sa) / L;
+		rotationMatrix[2] = (u * w * (1 - ca) + v * sqrtL * sa) / L;
+		rotationMatrix[3] = 0.0f;
 
-		rotationMatrix[1][0] = (u * v * (1 - ca) + w * sqrtL * sa) / L;
-		rotationMatrix[1][1] = (v2 + (u2 + w2) * ca) / L;
-		rotationMatrix[1][2] = (v * w * (1 - ca) - u * sqrtL * sa) / L;
-		rotationMatrix[1][3] = 0.0f;
+		rotationMatrix[4] = (u * v * (1 - ca) + w * sqrtL * sa) / L;
+		rotationMatrix[5] = (v2 + (u2 + w2) * ca) / L;
+		rotationMatrix[6] = (v * w * (1 - ca) - u * sqrtL * sa) / L;
+		rotationMatrix[7] = 0.0f;
 
-		rotationMatrix[2][0] = (u * w * (1 - ca) - v * sqrtL * sa) / L;
-		rotationMatrix[2][1] = (v * w * (1 - ca) + u * sqrtL * sa) / L;
-		rotationMatrix[2][2] = (w2 + (u2 + v2) * ca) / L;
-		rotationMatrix[2][3] = 0.0f;
+		rotationMatrix[8] = (u * w * (1 - ca) - v * sqrtL * sa) / L;
+		rotationMatrix[9] = (v * w * (1 - ca) + u * sqrtL * sa) / L;
+		rotationMatrix[10] = (w2 + (u2 + v2) * ca) / L;
+		rotationMatrix[11] = 0.0f;
 
-		rotationMatrix[3][0] = 0.0f;
-		rotationMatrix[3][1] = 0.0f;
-		rotationMatrix[3][2] = 0.0f;
-		rotationMatrix[3][3] = 1.0f;
+		rotationMatrix[12] = 0.0f;
+		rotationMatrix[13] = 0.0f;
+		rotationMatrix[14] = 0.0f;
+		rotationMatrix[15] = 1.0f;
 
 
 
@@ -2422,7 +4521,7 @@ public:
 			for (j = 0; j < 1; j++) {
 				outputMatrix[i] = 0;
 				for (k = 0; k < 4; k++) {
-					outputMatrix[i] += rotationMatrix[i][k] * inputMatrix[k];
+					outputMatrix[i] += rotationMatrix[i*4+k] * inputMatrix[k];
 				}
 			}
 		}
@@ -2438,13 +4537,118 @@ public:
 	
 	
 	
+	void buildRotMatrix(
+		RotationInfo* rotInfo
+	) {
+		
+		float u = rotInfo->axisAngle.getFX();
+		float v = rotInfo->axisAngle.getFY();
+		float w = rotInfo->axisAngle.getFZ();
+		float angle = rotInfo->axisAngle.getFW();
+
+		float L = (u * u + v * v + w * w);
+		float u2 = u * u;
+		float v2 = v * v;
+		float w2 = w * w;
+
+		float sqrtL = sqrt(L);
+		float ca = cos(angle);
+		float sa = sin(angle);
+
+		rotInfo->rotMatrix[0] = (u2 + (v2 + w2) * ca) / L;
+		rotInfo->rotMatrix[1] = (u * v * (1 - ca) - w * sqrtL * sa) / L;
+		rotInfo->rotMatrix[2] = (u * w * (1 - ca) + v * sqrtL * sa) / L;
+		rotInfo->rotMatrix[3] = 0.0f;
+
+		rotInfo->rotMatrix[4] = (u * v * (1 - ca) + w * sqrtL * sa) / L;
+		rotInfo->rotMatrix[5] = (v2 + (u2 + w2) * ca) / L;
+		rotInfo->rotMatrix[6] = (v * w * (1 - ca) - u * sqrtL * sa) / L;
+		rotInfo->rotMatrix[7] = 0.0f;
+
+		rotInfo->rotMatrix[8] = (u * w * (1 - ca) - v * sqrtL * sa) / L;
+		rotInfo->rotMatrix[9] = (v * w * (1 - ca) + u * sqrtL * sa) / L;
+		rotInfo->rotMatrix[10] = (w2 + (u2 + v2) * ca) / L;
+		rotInfo->rotMatrix[11] = 0.0f;
+
+		rotInfo->rotMatrix[12] = 0.0f;
+		rotInfo->rotMatrix[13] = 0.0f;
+		rotInfo->rotMatrix[14] = 0.0f;
+		rotInfo->rotMatrix[15] = 1.0f;
+
+	}
+	
+	
+	void applyRotation(
+		FIVector4 *output,
+		FIVector4 *input,
+		RotationInfo* rotInfo
+	) {
+		int i;
+		int j;
+		int k;
+		int m;
+		
+		//tempRes3.copyFrom(baseOffset);
+		//tempRes3.addXYZRef(parentOffset,-1.0f);
+
+		float u = rotInfo->axisAngle.getFX();
+		float v = rotInfo->axisAngle.getFY();
+		float w = rotInfo->axisAngle.getFZ();
+		float angle = rotInfo->axisAngle.getFW();
+
+		float L = (u * u + v * v + w * w);
+		float u2 = u * u;
+		float v2 = v * v;
+		float w2 = w * w;
+
+		float sqrtL = sqrt(L);
+		float ca = cos(angle);
+		float sa = sin(angle);
+
+		
+
+
+		for (m = 0; m < 3; m++) {
+			outputMatrix[0] = 0.0f;
+			outputMatrix[1] = 0.0f;
+			outputMatrix[2] = 0.0f;
+			outputMatrix[3] = 0.0f;
+
+			inputMatrix[0] = input[m].getFX();// - (rotInfo->basePoint[0]);
+			inputMatrix[1] = input[m].getFY();// - (rotInfo->basePoint[1]);
+			inputMatrix[2] = input[m].getFZ();// - (rotInfo->basePoint[2]);
+			inputMatrix[3] = 1.0;
+
+
+			for (i = 0; i < 4; i++ ) {
+				for (j = 0; j < 1; j++) {
+					outputMatrix[i] = 0;
+					for (k = 0; k < 4; k++) {
+						outputMatrix[i] += rotInfo->rotMatrix[i*4+k] * inputMatrix[k];
+					}
+				}
+			}
+
+			output[m].setFXYZW(
+				outputMatrix[0],// + (rotInfo->basePoint[0]),
+				outputMatrix[1],// + (rotInfo->basePoint[1]),
+				outputMatrix[2],// + (rotInfo->basePoint[2]),
+				outputMatrix[3]
+			);
+			//output[m].normalize();
+		}
+
+		
+
+	}
+	
+	
 	void doRotationTBN(
 		FIVector4 *output,
 		FIVector4 *input,
 		FIVector4 *axisAngle,
 		FIVector4 *parentOffset,
 		FIVector4 *baseOffset
-			
 	)
 	{
 		int i;
@@ -2469,25 +4673,25 @@ public:
 		float ca = cos(angle);
 		float sa = sin(angle);
 
-		rotationMatrix[0][0] = (u2 + (v2 + w2) * ca) / L;
-		rotationMatrix[0][1] = (u * v * (1 - ca) - w * sqrtL * sa) / L;
-		rotationMatrix[0][2] = (u * w * (1 - ca) + v * sqrtL * sa) / L;
-		rotationMatrix[0][3] = 0.0f;
+		rotationMatrix[0] = (u2 + (v2 + w2) * ca) / L;
+		rotationMatrix[1] = (u * v * (1 - ca) - w * sqrtL * sa) / L;
+		rotationMatrix[2] = (u * w * (1 - ca) + v * sqrtL * sa) / L;
+		rotationMatrix[3] = 0.0f;
 
-		rotationMatrix[1][0] = (u * v * (1 - ca) + w * sqrtL * sa) / L;
-		rotationMatrix[1][1] = (v2 + (u2 + w2) * ca) / L;
-		rotationMatrix[1][2] = (v * w * (1 - ca) - u * sqrtL * sa) / L;
-		rotationMatrix[1][3] = 0.0f;
+		rotationMatrix[4] = (u * v * (1 - ca) + w * sqrtL * sa) / L;
+		rotationMatrix[5] = (v2 + (u2 + w2) * ca) / L;
+		rotationMatrix[6] = (v * w * (1 - ca) - u * sqrtL * sa) / L;
+		rotationMatrix[7] = 0.0f;
 
-		rotationMatrix[2][0] = (u * w * (1 - ca) - v * sqrtL * sa) / L;
-		rotationMatrix[2][1] = (v * w * (1 - ca) + u * sqrtL * sa) / L;
-		rotationMatrix[2][2] = (w2 + (u2 + v2) * ca) / L;
-		rotationMatrix[2][3] = 0.0f;
+		rotationMatrix[8] = (u * w * (1 - ca) - v * sqrtL * sa) / L;
+		rotationMatrix[9] = (v * w * (1 - ca) + u * sqrtL * sa) / L;
+		rotationMatrix[10] = (w2 + (u2 + v2) * ca) / L;
+		rotationMatrix[11] = 0.0f;
 
-		rotationMatrix[3][0] = 0.0f;
-		rotationMatrix[3][1] = 0.0f;
-		rotationMatrix[3][2] = 0.0f;
-		rotationMatrix[3][3] = 1.0f;
+		rotationMatrix[12] = 0.0f;
+		rotationMatrix[13] = 0.0f;
+		rotationMatrix[14] = 0.0f;
+		rotationMatrix[15] = 1.0f;
 
 
 
@@ -2507,7 +4711,7 @@ public:
 				for (j = 0; j < 1; j++) {
 					outputMatrix[i] = 0;
 					for (k = 0; k < 4; k++) {
-						outputMatrix[i] += rotationMatrix[i][k] * inputMatrix[k];
+						outputMatrix[i] += rotationMatrix[i*4+k] * inputMatrix[k];
 					}
 				}
 			}
@@ -2537,7 +4741,6 @@ public:
 
 	int id;
 	int globalId;
-	int colPacked;
 	FIVector4 pos;
 	FIVector4 color;
 	float screenDistance;
@@ -2547,9 +4750,6 @@ public:
 		isOn = true;
 	}
 
-	void updateCP() {
-		colPacked = getPackedColor(color.getFX() * 255.0f, color.getFY() * 255.0f, color.getFZ() * 255.0f);
-	}
 
 	void init(
 		int _id,
@@ -2561,17 +4761,7 @@ public:
 		globalId = _globalId;
 		pos.setFXYZRef(_pos);
 		color.setFXYZRef(_color);
-		updateCP();
 	}
-
-	// void initFrom(DynObject* dyno) {
-	//     id = -1;
-	//     globalId = -1;
-
-	//     pos.setFXYZRef(&(dyno->pos));
-	//     color.setFXYZRef(&(dyno->color));
-	//     updateCP();
-	// }
 
 };
 
@@ -2583,13 +4773,15 @@ public:
 	FIVector4 pos;
 	FIVector4 color;
 	FIVector4 posRel;
+	FIVector4 posTrackball;
 
 	int r;
 	int g;
 	int b;
 
-	int colPacked;
-	bool isRelative;
+	//bool isTrackball;
+	//bool isRelative;
+	int moveType;
 	bool doRender;
 
 	float radius;
@@ -2607,15 +4799,21 @@ public:
 
 		childLight.pos.setFXYZRef(&pos);
 		childLight.color.setFXYZRef(&color);
-		childLight.updateCP();
 		return &childLight;
 	}
 
-	void init(int _x, int _y, int _z, int _r, int _g, int _b, bool _doRender, bool _isRelative, FIVector4 *_cameraPos, float _radius) {
-		isRelative = _isRelative;
+	void init(
+		int _x, int _y, int _z,
+		int _r, int _g, int _b,
+		bool _doRender, int _moveType,//bool _isRelative, bool _isTrackball,
+		FIVector4 *_cameraPos, float _radius
+	) {
+		//isRelative = _isRelative;
+		//isTrackball = _isTrackball;
 		doRender = _doRender;
+		moveType = _moveType;
 
-		if (isRelative) {
+		if (moveType == E_MT_RELATIVE) {
 			posRel.setIXYZ(_x, _y, _z);
 			pos.setFXYZRef(_cameraPos);
 			pos.addXYZRef(&posRel);
@@ -2632,12 +4830,12 @@ public:
 		b = _b;
 
 		color.setFXYZ(
-			((float)r) / 255.0f,
-			((float)g) / 255.0f,
-			((float)b) / 255.0f
+			((float)r),
+			((float)g),
+			((float)b)
 		);
 
-		colPacked = getPackedColor(r, g, b);
+		
 	}
 
 
@@ -10843,94 +13041,6 @@ void popTrace() {
 
  
 
-const static int MAX_OG_RAD = 20;
-const static int MAX_OG_DIAM = MAX_OG_RAD*2+1;
-const static int MAX_OG_SIZE = MAX_OG_DIAM * MAX_OG_DIAM * MAX_OG_DIAM;
-const static int OG_NULL_VAL = 9999;
-
-class OffsetGrid {
-private:
-	
-public:
-	iVector3 offsetGrid[MAX_OG_RAD+1][MAX_OG_SIZE];
-	iVector3 offsetGridCum[(MAX_OG_RAD+1)*(MAX_OG_SIZE)];
-
-	int offsetGridCounters[MAX_OG_RAD+1];
-	int offsetGridCumCounters[MAX_OG_RAD+1];
-
-	
-	
-	OffsetGrid() {
-		int i;
-		int j;
-		int k;
-		int curCount;
-		
-		for (j = 0; j < MAX_OG_RAD+1; j++) {
-			offsetGridCounters[j] = 0;
-			for (i = 0; i < MAX_OG_SIZE; i++) {
-				offsetGrid[j][i].x = OG_NULL_VAL;
-				offsetGrid[j][i].y = OG_NULL_VAL;
-				offsetGrid[j][i].z = OG_NULL_VAL;
-			}
-		}
-		
-		
-		int xdis;
-		int ydis;
-		int zdis;
-		
-		int max1;
-		int max2;
-		int ind;
-
-		
-		
-		for (i = 0; i < MAX_OG_DIAM; i++) {
-			for (j = 0; j < MAX_OG_DIAM; j++) {
-				for (k = 0; k < MAX_OG_DIAM; k++) {
-					xdis = i-MAX_OG_RAD;
-					ydis = j-MAX_OG_RAD;
-					zdis = k-MAX_OG_RAD;
-					
-					max1 = max(abs(xdis),abs(ydis));
-					max2 = max(max1,abs(zdis));
-					
-					ind = offsetGridCounters[max2];
-					
-					offsetGrid[max2][ind].x = xdis;
-					offsetGrid[max2][ind].y = ydis;
-					offsetGrid[max2][ind].z = zdis;
-					
-
-					offsetGridCounters[max2]++;
-					
-					
-					
-				}
-			}
-		}
-
-		curCount = 0;
-		
-
-		for (j = 0; j <= MAX_OG_RAD; j++) {
-			for (i = 0; i < offsetGridCounters[j]; i++) {
-				offsetGridCum[curCount].x = offsetGrid[j][i].x;
-				offsetGridCum[curCount].y = offsetGrid[j][i].y;
-				offsetGridCum[curCount].z = offsetGrid[j][i].z;
-
-				curCount++;
-			}
-			offsetGridCumCounters[j] = curCount;
-
-		}
-
-	}
-};
-
-
-
 
 class UniformBuffer {
 public:
@@ -11111,497 +13221,6 @@ public:
 
 
 };
-
-
-
-class Shader {
-private:
-	unsigned int shader_id;
-	unsigned int shader_vp;
-	unsigned int shader_fp;
-public:
-
-	int curUBIndex;
-
-	map<string, float> paramMap;
-	map<string, float> paramMapTemp;
-	vector<string> paramVec;
-	vector<UniformBuffer> uniVec;
-
-	
-	Shader() { //const char *shaderFile
-		//pushTrace("Shader(", shaderFile, ")");
-		//init(shaderFile);
-		//popTrace();
-
-		curUBIndex = 0;
-
-	}
-
-
-	static char* textFileRead(const char *fileName) {
-		
-		char* text = "";
-		bool failed = true;
-	    
-		if (fileName != NULL) {
-	        FILE *file = fopen(fileName, "rt");
-	        
-			if (file != NULL) {
-	            fseek(file, 0, SEEK_END);
-	            int count = ftell(file);
-	            rewind(file);
-	            
-				if (count > 0) {
-					text = new char[(count + 1)];
-					//(char*)malloc(sizeof(char) * (count + 1));
-					count = fread(text, sizeof(char), count, file);
-					text[count] = '\0';
-					failed = false;
-				}
-				fclose(file);
-			}
-		}
-
-		if (failed) {
-			doTraceND("FAILED TO READ FILE: ", fileName);
-		}
-		else {
-			//doTrace("READ FILE: ", fileName);
-		}
-		
-		
-		return text;
-	}
-
-	static void validateShader(GLuint shader, const char* file = 0) {
-		//pushTrace("validateShader(", file, ")");
-		
-		const unsigned int BUFFER_SIZE = 512;
-		char buffer[BUFFER_SIZE];
-		memset(buffer, 0, BUFFER_SIZE);
-		GLsizei length = 0;
-	    
-		glGetShaderInfoLog(shader, BUFFER_SIZE, &length, buffer);
-		if (length > 0) {
-			doTraceND("Shader " , i__s(shader) , " (" , (file?file:"") , ") compile error: " , buffer);
-			LAST_COMPILE_ERROR = true;
-		}
-		//popTrace();
-
-
-	}
-
-	static int validateProgram(GLuint program) {
-		//pushTrace("validateProgram()");
-		
-		const unsigned int BUFFER_SIZE = 512;
-		char buffer[BUFFER_SIZE];
-		memset(buffer, 0, BUFFER_SIZE);
-		GLsizei length = 0;
-	    
-		memset(buffer, 0, BUFFER_SIZE);
-		glGetProgramInfoLog(program, BUFFER_SIZE, &length, buffer);
-		if (length > 0) {
-			doTraceND( "Program " , i__s(program) , " link error: " , buffer);
-			LAST_COMPILE_ERROR = true;
-			//popTrace();
-			return 0;
-		}
-	    
-		glValidateProgram(program);
-		GLint status;
-		glGetProgramiv(program, GL_VALIDATE_STATUS, &status);
-		if (status == GL_FALSE) {
-			doTraceND( "Error validating shader " , i__s(program));
-			LAST_COMPILE_ERROR = true;
-			//popTrace();
-			return 0;
-		}
-		
-		//popTrace();
-		return 1;
-		
-	}
-	
-	int countOc(string* src, string testStr) {
-		int totCount = 0;
-		int bInd = 0;
-		bool dc = true;
-		int fnd = 0;
-		
-		while (dc) {
-			fnd = src->find(testStr, bInd);
-			if (fnd != std::string::npos) {
-				bInd = fnd+1;
-				dc = true;
-				totCount++;
-			}
-			else {
-				dc = false;
-			}
-		}
-		
-		return totCount;
-	}
-
-	void init(string _shaderFile) {
-		//pushTrace("init(", shaderFile, ")");
-		
-		const char* shaderFile = _shaderFile.c_str();
-		
-		uniVec.clear();
-		paramVec.clear();
-		paramMapTemp.clear();
-		
-		shader_vp = glCreateShader(GL_VERTEX_SHADER);
-		shader_fp = glCreateShader(GL_FRAGMENT_SHADER);
-	    
-	    
-		std::size_t found;
-		std::size_t found2;
-		std::size_t found3;
-
-		int baseIndex;
-		int uniCount = 0;
-		int dolCount = 0;
-		
-		
-		vector<string> allTextStringSplit;
-
-		bool doCont;
-		
-		string paramName;
-
-		int i;
-
-		const char* allText = textFileRead(shaderFile);
-
-
-		if (allText == NULL) {
-			doTraceND( "Error: Either vertex shader or fragment shader file not found." );
-			LAST_COMPILE_ERROR = true;
-		}
-		else {
-			
-				string allTextString(allText);
-				
-				
-
-
-				//
-				
-				dolCount = countOc(&allTextString,"$");
-
-				if (dolCount == 2) {
-					
-					uniCount = countOc(&allTextString,"ublock");
-
-
-					baseIndex = 0;
-					doCont = true;
-					while (doCont) {
-						found = allTextString.find('@', baseIndex);
-						if (found != std::string::npos) {
-							
-							
-							baseIndex = found+1;
-							allTextString[found] = ' ';
-							
-							found3 = allTextString.find(' ', baseIndex);
-							found2 = allTextString.find('@', baseIndex);
-							
-							if (found2 != std::string::npos) {
-								
-								if ( 
-									((found2-found) > 32) || // max var length of 32
-									(found3 < found2) // found a space between the delimitters
-								) { 
-									//baseIndex = found+1; // already set
-								}
-								else {
-									baseIndex = found2+1;
-									allTextString[found2] = ' ';
-									
-									paramName = allTextString.substr(found + 1, (found2-found)-1);
-									
-									if (paramMapTemp.find( paramName ) == paramMapTemp.end()) {
-										paramMapTemp[paramName] = 0.0f;
-										paramVec.push_back(paramName);
-										
-										if (paramMap.find( paramName ) == paramMap.end()) {
-											paramMap[paramName] = 0.0f;
-										}
-										
-										cout << "paramName --" << paramName << "--\n";
-										
-									}
-								}
-								
-								
-								
-								doCont = true;
-							}
-							else {
-								doCont = false;
-							}
-							
-							
-						}
-						else {
-							doCont = false;
-						}
-					}
-					
-					
-					
-					allTextStringSplit = split(allTextString, '$');
-					
-					allTextStringSplit[0] += "\n";
-					
-					for (i = 0; i < paramVec.size(); i++) {
-						allTextStringSplit[0] += "uniform float " + paramVec[i] + ";\n";
-					}
-					
-
-					string vertStr = allTextStringSplit[0] + allTextStringSplit[1];
-					string fragStr = allTextStringSplit[0] + allTextStringSplit[2];
-
-					const GLchar* vertCS = new char[vertStr.length() + 1];
-					const GLchar* fragCS = new char[fragStr.length() + 1];
-
-					std::strcpy((GLchar*)vertCS,vertStr.c_str());
-					std::strcpy((GLchar*)fragCS,fragStr.c_str());
-
-
-			    	glShaderSource(shader_vp, 1, &(vertCS), 0);
-					glShaderSource(shader_fp, 1, &(fragCS), 0);
-				    
-					glCompileShader(shader_vp);
-					validateShader(shader_vp, shaderFile);
-					glCompileShader(shader_fp);
-					validateShader(shader_fp, shaderFile);
-
-
-
-					shader_id = glCreateProgram();
-					glAttachShader(shader_id, shader_fp);
-					glAttachShader(shader_id, shader_vp);
-					glLinkProgram(shader_id);
-					validateProgram(shader_id);
-
-					delete [] vertCS;
-					delete [] fragCS;
-
-
-					for (i = 0; i < uniCount; i++) {
-						uniVec.push_back(UniformBuffer());
-						uniVec.back().init(shader_id, i);
-					}
-
-
-				}
-				else {
-					LAST_COMPILE_ERROR = true;
-					doTraceND( "Error: " , shaderFile , "does not contain proper amount of splits ($)\n" );
-				}
-				
-				
-				delete[] allText;
-			  
-		}
-		
-		
-		//popTrace();
-		
-	}
-
-
-	~Shader() {
-
-		uniVec.clear();
-
-		//pushTrace("~Shader()");
-		glDetachShader(shader_id, shader_fp);
-		glDetachShader(shader_id, shader_vp);
-		glDeleteShader(shader_fp);
-		glDeleteShader(shader_vp);
-		glDeleteProgram(shader_id);
-		//popTrace();
-	}
-
-	unsigned int id() {
-		//pushTrace("id()");
-		return shader_id;
-		//popTrace();
-	}
-
-	void bind() {
-		//pushTrace("bind()");
-		glUseProgram(shader_id);
-		//popTrace();
-	}
-
-	void updateUniformBlock(int ubIndex, int ubDataSize) {
-		uniVec[ubIndex].updateUniformBlock(ubDataSize);
-	}
-	void invalidateUniformBlock(int ubIndex) {
-		uniVec[ubIndex].invalidateUniformBlock();
-	}
-	void beginUniformBlock(int ubIndex) {
-		curUBIndex = ubIndex;
-		uniVec[ubIndex].beginUniformBlock();
-	}
-	bool wasUpdatedUniformBlock(int ubIndex) {
-
-		if (uniVec.size() > ubIndex) {
-			return uniVec[ubIndex].wasUpdatedUniformBlock();
-		}
-		else {
-			return true;
-		}
-
-		
-	}
-
-	void unbind() {
-		//pushTrace("unbind()");
-		glUseProgram(0);
-		//popTrace();
-	}
-
-	void setTexture(const GLchar* name, int texUnit, int texId) {
-		GLint baseImageLoc = glGetUniformLocation(shader_id, name);
-
-		glUniform1i(baseImageLoc, texUnit); //Texture unit 0 is for base images.
-		
-		//When rendering an objectwith this program.
-		glActiveTexture(GL_TEXTURE0 + texUnit);
-		glBindTexture(GL_TEXTURE_2D, texId);
-	}
-
-	
-	void setVec(const GLchar* name, const GLfloat* vecData, int vecSize) {
-		
-		GLint loc = glGetUniformLocation(shader_id, name);
-		
-		switch (vecSize) {
-			case 0:
-				doTraceND( "Error: vecSize of 0 in setVec" );
-			break;
-			case 1:
-				glUniform1fv(loc, 1, vecData);
-			break;
-			case 2:
-				glUniform2fv(loc, 1, vecData);
-			break;
-			case 3:
-				glUniform3fv(loc, 1, vecData);
-			break;
-			case 4:
-				glUniform4fv(loc, 1, vecData);
-			break;
-		}
-	}
-
-	void setVecString(string name, const GLfloat* vecData, int vecSize) {
-		
-		GLint loc = glGetUniformLocation(shader_id, name.c_str());
-		
-		switch (vecSize) {
-			case 0:
-				doTraceND( "Error: vecSize of 0 in setVec" );
-			break;
-			case 1:
-				glUniform1fv(loc, 1, vecData);
-			break;
-			case 2:
-				glUniform2fv(loc, 1, vecData);
-			break;
-			case 3:
-				glUniform3fv(loc, 1, vecData);
-			break;
-			case 4:
-				glUniform4fv(loc, 1, vecData);
-			break;
-		}
-	}
-
-	void setShaderArrayfVec4(string paramName, float* x, int count) {
-		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
-		glUniform4fv(loc, count, x);
-	}
-
-	void setShaderArrayfVec3(string paramName, float* x, int count) {
-		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
-		glUniform3fv(loc, count, x);
-	}
-
-	void setShaderArray(string paramName, float* x, int count) {
-		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
-		glUniform1fv(loc, count, x);
-	}
-
-	void setShaderFloat(string paramName, float x) {
-		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
-		glUniform1f(loc,x);
-	}
-	void setShaderVec2(string paramName, float x, float y) {
-		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
-		glUniform2f(loc,x,y);
-	}
-	void setShaderVec3(string paramName, float x, float y, float z) {
-		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
-		glUniform3f(loc,x,y,z);
-	}
-	void setShaderVec4(string paramName, float x, float y, float z, float w) {
-		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
-		glUniform4f(loc,x,y,z,w);
-	}
-
-	void setShaderInt(string paramName, int x) {
-		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
-		glUniform1i(loc,x);
-	}
-
-
-
-	void setShaderfVec2(string paramName, FIVector4* f) {
-		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
-		glUniform2f(loc,f->getFX(),f->getFY());
-	}
-	void setShaderfVec3(string paramName, FIVector4* f) {
-		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
-		glUniform3f(loc,f->getFX(),f->getFY(),f->getFZ());
-	}
-	void setShaderfVec4(string paramName, FIVector4* f) {
-		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
-		glUniform4f(loc,f->getFX(),f->getFY(),f->getFZ(),f->getFW());
-	}
-
-	void setShaderFloatUB(string paramName, float x) {
-		int cp = uniVec[curUBIndex].uniPosition;
-
-		uniVec[curUBIndex].uniData[cp] = x;
-		uniVec[curUBIndex].uniPosition += 1;
-	}
-	void setShaderfVec4UB(string paramName, FIVector4* f) {
-
-		int cp = uniVec[curUBIndex].uniPosition;
-
-		uniVec[curUBIndex].uniData[cp+0] = f->getFX();
-		uniVec[curUBIndex].uniData[cp+1] = f->getFY();
-		uniVec[curUBIndex].uniData[cp+2] = f->getFZ();
-		uniVec[curUBIndex].uniData[cp+3] = f->getFW();
-		uniVec[curUBIndex].uniPosition += 4;
-	}
-
-	
-
-};
-
-
-
 
 
 
@@ -12469,7 +14088,7 @@ public:
 	bool hasMipMap;
 	//bool hasDepth;
 
-
+	GLint numBytes;
 	GLint internalFormat;
 
 	uint *pixelsUINT;
@@ -12493,6 +14112,9 @@ public:
 		int clampEnum,
 		bool isMultisample = false
 	) {
+		numBytes = 0;
+		pixelsUINT = NULL;
+		
 		width = _width;
 		height = _height;
 		bytesPerChannel = _bytesPerChannel;
@@ -12783,8 +14405,13 @@ public:
 		return pixelsChar[ind * 4 + channel];
 	}
 
+
+	
+
 	int getPixelAtIndex(int ind, int channel) {
+		
 		return pixelsChar[ind * 4 + channel];
+		
 	}
 	void setPixelAtIndex(int ind, int channel, int val) {
 		pixelsChar[ind * 4 + channel] = val;
@@ -12881,29 +14508,6 @@ public:
 
 		xv = intDiv(x * curWidth, mipWidths[0]) + ox;
 		yv = intDiv(y * curWidth, mipWidths[0]) + oy;
-
-		// if (x < 0) {
-		//  t1 = -x*curWidth;
-		//  t2 = mipWidths[0];
-		//  t3 = -ceil(t1/t2);
-		//  xv = t3 + ox;
-
-		// }
-		// else {
-		//  xv = ((x*curWidth)/mipWidths[0]) + ox;
-		// }
-
-		// if (y < 0) {
-		//  t1 = -y*curWidth;
-		//  t2 = mipWidths[0];
-		//  t3 = -ceil(t1/t2);
-		//  yv = t3 + oy;
-		// }
-		// else {
-		//  yv = ((y*curWidth)/mipWidths[0]) + oy;
-		// }
-
-
 
 
 		while (xv < 0) {
@@ -13002,7 +14606,7 @@ public:
 				mRead = m;
 				mWrite = m + 1;
 
-				for (k = 0; k < 4; k++) {
+				for (k = 0; k < 4; k++) { // channels
 
 					for (i = 0; i < mipWidths[mWrite]; i++) {
 						for (j = 0; j < mipWidths[mWrite]; j++) {
@@ -13053,6 +14657,190 @@ public:
 			}
 		}
 	}
+	
+	
+
+	int getPixelAtIndex3DMip(int ind, int channel, int mval, int mipLev) {
+		
+		int newInd = ind * 4 + channel;
+		
+		switch (mval) {
+			case 0: // min
+				return pixelsCharMippedMax[mipLev][newInd];
+			break;
+			
+			case 1: // max
+				return pixelsCharMippedMax[mipLev][newInd];
+			break;
+			
+			case 2: // avg
+				return pixelsCharMippedMax[mipLev][newInd];
+			break;
+			
+			case 3: // no mip
+				return pixelsChar[newInd];
+			break;
+		}
+		
+		return 0;
+	}
+		
+	void updateMips3D(int basePitch) {
+
+		int i;
+		int j;
+		int k;
+		int m;
+		
+		int c;
+
+		int dest, ind0, ind1, ind2, ind3, ind4, ind5, ind6, ind7;
+
+		int mRead;
+		int mWrite;
+		
+		
+		int mrPitch = basePitch;
+		int mwPitch = basePitch/2;
+		
+		int mrPitch2;
+		
+		pixelsCharMippedAvg[0] = pixelsChar;
+		pixelsCharMippedMax[0] = pixelsChar;
+		pixelsCharMippedMin[0] = pixelsChar;
+		
+
+		if (pixelsCharMippedAvg == NULL) {
+			doTrace("Error: no mip maps, first call getPixels()");
+			return;
+		}
+		else {
+			
+			for (m = 0; m < (MAX_MIP_LEV-1); m++) { //m < numMips - 1
+
+				mRead = m;
+				mWrite = m + 1;
+				
+				
+				
+				 // channels
+
+				for (k = 0; k < mwPitch; k++) {
+					for (j = 0; j < mwPitch; j++) {
+						for (i = 0; i < mwPitch; i++) {
+						
+
+							for (c = 0; c < 4; c++) {
+								dest = (i + j * mwPitch + k*mwPitch*mwPitch) * 4 + c;
+								
+								mrPitch2 = mrPitch*mrPitch;
+
+								ind0 = ( (i * 2 + 0) + (j * 2 + 0) * mrPitch + (k * 2 + 0) * mrPitch2) * 4 + c;
+								ind1 = ( (i * 2 + 1) + (j * 2 + 0) * mrPitch + (k * 2 + 0) * mrPitch2) * 4 + c;
+								ind2 = ( (i * 2 + 0) + (j * 2 + 1) * mrPitch + (k * 2 + 0) * mrPitch2) * 4 + c;
+								ind3 = ( (i * 2 + 1) + (j * 2 + 1) * mrPitch + (k * 2 + 0) * mrPitch2) * 4 + c;
+								ind4 = ( (i * 2 + 0) + (j * 2 + 0) * mrPitch + (k * 2 + 1) * mrPitch2) * 4 + c;
+								ind5 = ( (i * 2 + 1) + (j * 2 + 0) * mrPitch + (k * 2 + 1) * mrPitch2) * 4 + c;
+								ind6 = ( (i * 2 + 0) + (j * 2 + 1) * mrPitch + (k * 2 + 1) * mrPitch2) * 4 + c;
+								ind7 = ( (i * 2 + 1) + (j * 2 + 1) * mrPitch + (k * 2 + 1) * mrPitch2) * 4 + c;
+
+								
+
+								
+								
+								// pixelsCharMippedMin[ mWrite ][ dest ] = pixelsCharMippedMin[ mRead ][ind0];
+								// pixelsCharMippedMax[ mWrite ][ dest ] = pixelsCharMippedMax[ mRead ][ind0];
+								// pixelsCharMippedAvg[ mWrite ][ dest ] = pixelsCharMippedAvg[ mRead ][ind0];
+								
+								
+								pixelsCharMippedAvg[ mWrite ][ dest ] = (
+										pixelsCharMippedAvg[ mRead ][ind0] +
+										pixelsCharMippedAvg[ mRead ][ind1] +
+										pixelsCharMippedAvg[ mRead ][ind2] +
+										pixelsCharMippedAvg[ mRead ][ind3] + 
+										pixelsCharMippedAvg[ mRead ][ind4] + 
+										pixelsCharMippedAvg[ mRead ][ind5] + 
+										pixelsCharMippedAvg[ mRead ][ind6] + 
+										pixelsCharMippedAvg[ mRead ][ind7]
+								) / 8;
+
+								pixelsCharMippedMax[ mWrite ][ dest ] =
+								
+								max(
+										max(
+											max(
+												pixelsCharMippedMax[ mRead ][ind0],
+												pixelsCharMippedMax[ mRead ][ind1]
+											),
+											max(
+												pixelsCharMippedMax[ mRead ][ind2],
+												pixelsCharMippedMax[ mRead ][ind3]
+											)
+										),
+										max(
+											max(
+												pixelsCharMippedMax[ mRead ][ind4],
+												pixelsCharMippedMax[ mRead ][ind5]
+											),
+											max(
+												pixelsCharMippedMax[ mRead ][ind6],
+												pixelsCharMippedMax[ mRead ][ind7]
+											)							
+										)
+								);
+								
+								
+								// pixelsCharMippedMin[ mWrite ][ dest ] = min(
+								// 		min(
+								// 			min(
+								// 				pixelsCharMippedMax[ mRead ][ind0],
+								// 				pixelsCharMippedMax[ mRead ][ind1]
+								// 			),
+								// 			min(
+								// 				pixelsCharMippedMax[ mRead ][ind2],
+								// 				pixelsCharMippedMax[ mRead ][ind3]
+								// 			)
+								// 		),
+								// 		min(
+								// 			min(
+								// 				pixelsCharMippedMax[ mRead ][ind4],
+								// 				pixelsCharMippedMax[ mRead ][ind5]
+								// 			),
+								// 			min(
+								// 				pixelsCharMippedMax[ mRead ][ind6],
+								// 				pixelsCharMippedMax[ mRead ][ind7]
+								// 			)							
+								// 		)
+								// );
+								
+								
+								
+								
+							}							
+
+							
+						}
+					}
+				}
+
+								
+				
+
+				
+				
+				
+				mrPitch = mrPitch/2;
+				mwPitch = mwPitch/2;
+				
+				
+			}
+			
+			
+			
+			
+		}
+	}
+	
 
 
 	void getPixelsFast() {
@@ -13060,7 +14848,6 @@ public:
 
 
 		glBindTexture(GL_TEXTURE_2D, color_tex);
-		GLint numBytes = 0;
 		int totalWidth;
 		int curBytes;
 
@@ -13079,7 +14866,6 @@ public:
 
 
 		glBindTexture(GL_TEXTURE_2D, color_tex);
-		GLint numBytes = 0;
 		int totalWidth;
 		int curBytes;
 		numBytes = width * height;
@@ -13094,7 +14880,7 @@ public:
 
 
 		glBindTexture(GL_TEXTURE_2D, color_tex);
-		GLint numBytes = 0;
+		
 
 		int targetlevel = 0;
 		int index;
@@ -13149,7 +14935,7 @@ public:
 					if (_hasMipMap) {
 
 						hasMipMap = _hasMipMap;
-
+						
 					}
 
 
@@ -13224,6 +15010,7 @@ public:
 
 	FBOWrapper *fbos;
 
+	bool isReady;
 	bool hasDepth;
 
 	FBOSet() {}
@@ -13250,10 +15037,14 @@ public:
 		numBufs = _numBufs;
 		height = _height;
 		width = _width;
+		
+		cout << width << "," << height <<"\n";
+		
 		bytesPerChannel = _bytesPerChannel;
 
 		fbos = new FBOWrapper[numBufs];
-
+		
+		isReady = true;
 
 		glGenFramebuffersEXT(1, &mFBO);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
@@ -13313,6 +15104,7 @@ class WebSocketServer;
 class RequestHandlerFactory;
 class GameGeom;
 class Singleton;
+class Shader;
 class GameSound;
 class GameMusic;
 class FontWrapper;
@@ -13462,7 +15254,6 @@ public:
   int globalId;
   GameGeom ();
   void init (int _id);
-  float getRand ();
   FIVector4 tempVec1;
   FIVector4 tempVec2;
   FIVector4 tempVec3;
@@ -13482,6 +15273,36 @@ public:
   void toggleTransform ();
   void applyTransform (int rotMod, bool ignoreConstraints);
   void initAnchorPoint (FIVector4 * _anchorPointInPixels, int _minRot, int _maxRot);
+};
+#undef LZZ_INLINE
+#endif
+// f00297_gamecamera.e
+//
+
+#ifndef LZZ_f00297_gamecamera_e
+#define LZZ_f00297_gamecamera_e
+#define LZZ_INLINE inline
+class GameCamera
+{
+private:
+public:
+  GLfloat (unitPos) [3];
+  float (accel) [3];
+  float accelA;
+  float accelB;
+  float lastAccelA;
+  float lastAccelB;
+  GLfloat (rotation) [2];
+  GLfloat (clipDist) [2];
+  GameCamera ();
+  void focusOn (int entID);
+  void setClipDist (float n, float f);
+  void testCollision (float oldX, float oldY, float oldZ, float newX, float newY, float newZ, bool skipTest);
+  void setUnitPosition (float x, float y, float z);
+  void addUnitPosition (float x, float y, float z);
+  void setRotation (float a, float b);
+  void addRotation (float a, float b);
+  void init ();
 };
 #undef LZZ_INLINE
 #endif
@@ -13515,37 +15336,66 @@ public:
     UIComponent * uic;
     int nodeId;
   };
+  struct CompareStruct
+  {
+    bool operator () (string const & first, string const & second);
+  };
+  CompareStruct compareStruct;
   typedef map <string, UICStruct>::iterator itUICStruct;
+  int lastW;
+  int lastH;
+  int (cdMap) [256];
+  GameCamera * mainCamera;
+  float fogRed;
+  float fogGreen;
+  float fogBlue;
+  GLfloat lastx;
+  GLfloat lasty;
+  bool isMoving;
+  bool (keysPressed) [256];
+  bool perspectiveOn;
+  unsigned char (keyMap) [256];
+  float FOV;
+  float focalLength;
+  GLdouble (viewMatrixD) [16];
+  GLdouble (projMatrixD) [16];
+  Matrix4 viewMatrix;
+  Matrix4 projMatrix;
+  GLint (viewport) [4];
   E_OBJ activeObject;
   E_OBJ tempObj;
   int mouseState;
   eProgramState programState;
   eProgramAction (progActionsDown) [E_PS_SIZE * 256];
   eProgramAction (progActionsUp) [E_PS_SIZE * 256];
-  float ambVolume;
-  float guiVolume;
+  bool (isInteractiveGeom) [E_CT_LENGTH];
+  bool pathfindingOn;
+  bool isMacro;
+  bool entOn;
+  bool autoScroll;
+  bool cavesOn;
+  bool bakeParamsOn;
+  bool dragging;
   bool mouseMoved;
   bool changingGenVal;
   bool readyForRestart;
   bool forceRestart;
   bool hitGUI;
+  bool draggingMap;
   bool guiLock;
   bool guiDirty;
-  bool guiOn;
   bool mirrorOn;
+  bool applyToChildren;
   bool bShiftOld;
   bool bCtrlOld;
   bool bCtrl;
   bool bShift;
-  bool tiltChanged;
   bool testOn;
   bool emptyVDNotReady;
   bool radiosityOn;
   bool updateLock;
   bool isFullScreen;
-  bool changesMade;
   bool mapInvalid;
-  bool bufferInvalid;
   bool wsBufferInvalid;
   bool forceGetPD;
   bool mouseLeftDown;
@@ -13557,8 +15407,6 @@ public:
   bool abDown;
   bool rbDown;
   bool mbDown;
-  bool isZooming;
-  bool isPanning;
   bool isBare;
   bool showMap;
   bool traceOn;
@@ -13566,30 +15414,28 @@ public:
   bool treesOn;
   bool firstRun;
   bool rotOn;
+  bool doPageRender;
+  bool markerFound;
   int maxLayerOver;
-  int holderMod;
-  float fHolderMod;
   int holderResolution;
   int visPageSizeInUnits;
   int bufferedPageSizeInUnits;
   int unitSizeInPixels;
   int holdersPerLot;
   int pixelsPerLot;
-  int pixelsPerMeter;
+  int pixelsPerCell;
   int visPageSizeInPixels;
   int holderSizeInPixels;
   int currentStep;
-  int maxLayers;
   int maxChangesInPages;
   int maxChangesInHolders;
   int baseW;
   int baseH;
   int scaleFactor;
-  int activeMode;
   int numDynLights;
   int iNumSteps;
   int curEntId;
-  int metersPerLot;
+  int cellsPerLot;
   int extraRad;
   int defaultWinW;
   int defaultWinH;
@@ -13602,7 +15448,6 @@ public:
   int frameCount;
   int maxHInPages;
   int maxWInPages;
-  int minWInPages;
   int screenWidth;
   int screenHeight;
   int mouseMovingSize;
@@ -13611,16 +15456,13 @@ public:
   int mouseCount;
   int lastMouseX;
   int lastMouseY;
-  int voroSize;
   int geomCounter;
   int lightCounter;
-  int charState;
-  int skipFrames;
-  int metersPerNodeXY;
+  int cellsPerNodeXY;
   int terDataVisPitchXY;
   int terDataBufPitchXY;
   int terDataBufPitchScaledXY;
-  int metersPerNodeZ;
+  int cellsPerNodeZ;
   int terDataVisPitchZ;
   int terDataBufPitchZ;
   int terDataBufPitchScaledZ;
@@ -13634,9 +15476,15 @@ public:
   int selGeomListInd;
   int holderSizeInPages;
   uint volGenFBOX;
+  int volGenSuperMod;
+  int volGenSuperRes;
   uint palWidth;
   uint palHeight;
   uint blockShift;
+  float voxelSizeInWC;
+  float msPerFrame;
+  float cameraZoom;
+  float targetZoom;
   float fogOn;
   float gridOn;
   float mapSampScale;
@@ -13648,45 +15496,60 @@ public:
   float origWinH;
   float guiX;
   float guiY;
-  float tiltAmount;
+  float aspectRatio;
   float currentFBOResolutionX;
   float currentFBOResolutionY;
   float mouseX;
   float mouseY;
   float mouseXUp;
   float mouseYUp;
-  float cameraZoom;
-  float targetZoom;
-  float curTime;
-  float lastTime;
   float myDelta;
-  float mdTime;
-  float muTime;
   float bufferMult;
   float holderSizeMB;
   float bestNodeDis;
+  float heightOfNearPlane;
+  float scrollDiv;
+  float curMoveSpeed;
+  float curMoveAccel;
+  float masterVolume;
+  float ambientVolume;
+  float guiVolume;
+  float musicVolume;
+  float fxVolume;
   float * paramArr;
   float * voroArr;
   float * matCountArr;
   float * paramArrMap;
   int * geomIdArr;
-  double curMS;
+  int * cdBuffer;
+  double lastMoveTime;
+  double curTime;
+  double lastTime;
+  double mdTime;
+  double muTime;
   GameEntNode * bestNode;
   GameEntNode * selectedNode;
   GameEntNode * lastSelNode;
   GameEntNode * activeNode;
+  FIVector4 worldMarker;
+  FIVector4 lookAtVec;
+  FIVector4 baseCameraPos;
+  FIVector4 cameraPosAdjusted;
+  FIVector4 baseScrollPos;
   FIVector4 worldSizeInPixels;
   FIVector4 mouseUpPD;
   FIVector4 mouseDownPD;
+  FIVector4 mouseObjPD;
   FIVector4 mouseMovePD;
   FIVector4 geomPD;
   FIVector4 tempVec1;
   FIVector4 tempVec2;
   FIVector4 tempVec3;
+  FIVector4 worldSizeInTerData;
   FIVector4 worldSizeInUnits;
   FIVector4 worldSizeInPages;
   FIVector4 worldSizeInLots;
-  FIVector4 worldSizeInMeters;
+  FIVector4 worldSizeInCells;
   FIVector4 worldSizeInHolders;
   FIVector4 worldSizeInBlocks;
   FIVector4 (moveNodes) [2];
@@ -13698,29 +15561,29 @@ public:
   FIVector4 mapAmps;
   FIVector4 * mouseMoving;
   FIVector4 mouseVel;
-  FIVector4 worldSeed;
   FIVector4 bufferDim;
+  FIVector4 bufferDimTarg;
   FIVector4 bufferDimHalf;
+  FIVector4 bufferModDim;
   FIVector4 origin;
   FIVector4 lastModXYZ;
   FIVector4 panMod;
   FIVector4 dMod;
   FIVector4 modXYZ;
   std::vector <UICont*> (guiLayers) [MAX_UI_LAYERS];
-  std::vector <FIVector4> rotStack;
-  std::vector <FIVector4> transStack;
+  std::vector <RotationInfo> rotMatStack;
   std::vector <DynObject *> dynObjects;
   std::vector <GameGeom *> selGeomList;
   PathHolder charPathHolder;
   PathHolder splitPathHolder;
-  float floorHeightInMeters;
-  float roofHeightInMeters;
-  float wallRadInMeters;
-  int metersPerHolder;
-  int metersPerPage;
-  int unitsPerMeter;
+  float floorHeightInCells;
+  float roofHeightInCells;
+  float wallRadInCells;
+  int cellsPerHolder;
+  int cellsPerPage;
+  int unitsPerCell;
   int blockSizeInLots;
-  int blockSizeInMeters;
+  int blockSizeInCells;
   int blockSizeInHolders;
   int blockSizeInPages;
   int blockSizeInPixels;
@@ -13729,6 +15592,7 @@ public:
   Image * cloudImage;
   GameGeom * highlightedGeom;
   GameGeom * selectedGeom;
+  GameGeom * curGeom;
   GamePlant * (gamePlants) [E_PT_LENGTH/2];
   Shader * curShaderPtr;
   string curShader;
@@ -13741,17 +15605,17 @@ public:
   PoolManager * entityPool;
   vector <string> shaderStrings;
   vector <string> shaderTextureIds;
-  map <string, Shader> shaderMap;
+  map <string, Shader*> shaderMap;
   map <string, UICStruct> compMap;
   map <string, FBOSet> fboMap;
   FBOSet (vgFBOArr) [MAX_VG_FBOS];
+  FBOSet (vgtFBOArr) [MAX_VGT_FBOS];
+  GLuint fsqDL;
   GLuint volId;
   GLuint volIdLinear;
   GLuint volIdEmpty;
   GLuint volIdEmptyLinear;
   GLuint volGenId;
-  GLuint volTris;
-  GLuint sliceTris;
   uint * lookup2to3;
   unsigned char * resultImage;
   charArr nullBuffer;
@@ -13762,14 +15626,20 @@ public:
   JSONValue * guiRootJS;
   WebSocketServer * myWS;
   Timer myTimer;
+  Timer scrollTimer;
+  Timer moveTimer;
   GameWorld * gw;
   float (lightArr) [MAX_LIGHTS * 16];
   int numLights;
   bool multiLights;
+  int * rbStack;
   int * rbHeightStack;
   TerTexture (terTextures) [MAX_TER_TEX];
   GameEnt * testHuman;
   GameGUI * mainGUI;
+  UIComponent * mapComp;
+  UIComponent * mainMenu;
+  UIComponent * ddMenu;
   FontWrapper * (fontWrappers) [EFW_LENGTH];
   GameMusic * (music) [EML_LENGTH];
   map <string, GameSound> soundMap;
@@ -13786,10 +15656,7 @@ public:
   void initStyleSheet ();
   int requestTerIndex (int requestingBlockId);
   static void qNormalizeAngle (int & angle);
-  void perspectiveProjection ();
-  void orthographicProjection ();
   ~ Singleton ();
-  float genRand (float LO, float HI);
   void setProgAction (eProgramState ps, unsigned char kc, eProgramAction pa, bool isDown);
   void setProgActionAll (unsigned char kc, eProgramAction pa, bool isDown);
   void drawCrossHairs (FIVector4 originVec, float radius);
@@ -13797,20 +15664,17 @@ public:
   void drawCubeCentered (FIVector4 * originVec, float radius);
   void drawBoxUp (FIVector4 originVec, float radiusX, float radiusY, float diamZ);
   void drawBox (FIVector4 * minVec, FIVector4 * maxVec, int faceFlag = 2);
-  float glslMod (float x, float y);
-  void createVTListTilt ();
-  void createVTList ();
-  void doShaderRefresh ();
-  void setMatrices (int w, int h);
+  void doShaderRefresh (bool doBake);
   void setWH (int w, int h);
   void sampleFBODirect (FBOSet * fbos, int offset = 0);
   void unsampleFBODirect (FBOSet * fbos, int offset = 0);
   void bindFBODirect (FBOSet * fbos, int doClear = 1);
+  FBOSet * getFBOByName (string & fboName);
   void sampleFBO (string fboName, int offset = 0, int swapFlag = -1);
   void unsampleFBO (string fboName, int offset = 0, int swapFlag = -1);
   FBOSet * getFBOSet (string fboName);
   FBOWrapper * getFBOWrapper (string fboName, int offset);
-  void copyFBO (string src, string dest);
+  void copyFBO (string src, string dest, int num = 0);
   void copyFBO2 (string src, string dest);
   void bindFBO (string fboName, int swapFlag = -1);
   void unbindFBO ();
@@ -13818,7 +15682,9 @@ public:
   void unbindShader ();
   void setShaderArrayfVec3 (string paramName, float * x, int count);
   void setShaderArrayfVec4 (string paramName, float * x, int count);
+  void setShaderMatrix4x4 (string paramName, float * x, int count);
   void setShaderArray (string paramName, float * x, int count);
+  GLint getShaderLoc (string paramName);
   void setShaderFloat (string paramName, float x);
   void setShaderInt (string paramName, int x);
   void setShaderfVec2 (string paramName, FIVector4 * v);
@@ -13839,47 +15705,55 @@ public:
   bool ctrlDown ();
   bool altDown ();
   void drawQuadBounds (float fx1, float fy1, float fx2, float fy2, float fz);
-  void drawFSQuad (float zoom);
-  void drawFSQuadOffset (float xOff, float yOff, float zoom);
-  void drawFBO (string fboName, int ind, float zoom, int swapFlag = -1);
-  void drawFBOOffsetDirect (FBOSet * fbos, int ind, float xOff, float yOff, float zoom);
-  void drawFBOOffset (string fboName, int ind, float xOff, float yOff, float zoom);
+  void drawFSQuad ();
+  void drawFSQuadOffset (float xOff, float yOff, float zm);
+  void drawFBO (string fboName, int ind, float zm, int swapFlag = -1);
+  void drawFBOOffsetDirect (FBOSet * fbos, int ind, float xOff, float yOff, float zm);
+  void drawFBOOffset (string fboName, int ind, float xOff, float yOff, float zm);
   float getTerHeightScaled (float val);
   float getSLNormalized ();
   float getSLInPixels ();
   float getHeightAtPixelPos (float x, float y, bool dd = false);
+  void transformEnt (GameEnt * curEnt);
+  void angleToVec (FIVector4 * fv, float xr, float yr);
+  void syncObjects (FIVector4 * bp);
   void moveCamera (FIVector4 * pModXYZ);
   GameEntNode * getMirroredNode (GameEntNode * curNode);
-  void moveObject (float dx, float dy, float zoom);
+  void applyNodeChanges (GameEntNode * _curNode, float dx, float dy);
+  void moveObject (float dx, float dy);
   void updateMultiLights ();
   void toggleFullScreen ();
   void restartGen (bool instantRefresh, bool clearEverything);
+  void setObjToElevationBase (FIVector4 * obj);
   void setCameraToElevationBase ();
   void setCameraToElevation ();
+  void moveCameraToTown ();
   void processSpecialKeys (int key, int _x, int _y);
   void updateCS ();
-  void processKey (unsigned char key, int _x, int _y, bool isPressed);
   void keyboardUp (unsigned char key, int _x, int _y);
+  void processKey (unsigned char key, int x, int y, bool isPressed);
   void keyboardDown (unsigned char key, int _x, int _y);
   void runReport ();
-  void getPixData (FIVector4 * toVector, int _xv, int _yv, int bufNum = 0, bool forceGet = false);
-  GameGeom * findNearestGeom (FIVector4 * testPoint, bool createList = false);
+  void getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj);
+  GameGeom * findNearestGeom (FIVector4 * testPoint, bool createList = false, bool onlyInteractive = false);
   void mouseMove (int _x, int _y);
   void makeDirty ();
   void setSelNode (GameEntNode * newNode);
   void worldToScreenBase (FIVector4 * sc, FIVector4 * wc);
-  void worldToScreen (FIVector4 * sc, FIVector4 * wc, bool centerIsOrigin = false);
+  void handleMovement ();
   void mouseClick (int button, int state, int _x, int _y);
   void resetActiveNode ();
   void updateNearestEntNode (bool setActive, FIVector4 * mousePosWS);
-  void findNearestEntNode (GameEntNode * curNode, FIVector4 * mousePosSS);
+  void findNearestEntNode (GameEntNode * curNode, FIVector4 * mousePosWS);
   void processB64 (charArr * sourceBuffer, charArr * saveBuffer);
   bool processJSONFromString (string * sourceBuffer, JSONValue * * destObj);
   bool processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONValue * * destObj);
   bool loadJSON (string path, JSONValue * * destObj);
   void setGUIText (string key, string stringValue, float floatValue = 0.0f, bool applyVal = false, bool applyString = true);
+  float getGUIValue (string key);
+  UIComponent * getGUIComp (string key);
   void setGUIValue (string key, float floatValue, bool dispatchEvent = false, bool preventRefresh = false);
-  void loadGUIValues ();
+  void loadGUIValues (bool applyValues = false);
   void saveGUIValues ();
   void updateGUI ();
   void loadGUI ();
@@ -13891,13 +15765,64 @@ public:
   void updateAmbientSounds ();
   void frameUpdate ();
   void display ();
+  void setMatrices (int w, int h);
   void reshape (int w, int h);
   void idleFunc ();
 };
-LZZ_INLINE float Singleton::glslMod (float x, float y)
-        {
-		return x - y * floor(x / y);
-	}
+#undef LZZ_INLINE
+#endif
+// f00305_shader.e
+//
+
+#ifndef LZZ_f00305_shader_e
+#define LZZ_f00305_shader_e
+#define LZZ_INLINE inline
+class Shader
+{
+private:
+  unsigned int shader_id;
+  unsigned int shader_vp;
+  unsigned int shader_fp;
+public:
+  int curUBIndex;
+  map <string, float> paramMap;
+  map <string, float> paramMapTemp;
+  vector <string> paramVec;
+  vector <UniformBuffer> uniVec;
+  Singleton * singleton;
+  Shader (Singleton * _singleton);
+  static char * textFileRead (char const * fileName);
+  static void validateShader (GLuint shader, char const * file = 0);
+  static int validateProgram (GLuint program);
+  int countOc (string * src, string testStr);
+  void init (string _shaderFile, bool doBake);
+  ~ Shader ();
+  unsigned int id ();
+  void bind ();
+  void updateUniformBlock (int ubIndex, int ubDataSize);
+  void invalidateUniformBlock (int ubIndex);
+  void beginUniformBlock (int ubIndex);
+  bool wasUpdatedUniformBlock (int ubIndex);
+  void unbind ();
+  void setTexture (GLchar const * name, int texUnit, int texId);
+  void setVec (GLchar const * name, GLfloat const * vecData, int vecSize);
+  void setVecString (string name, GLfloat const * vecData, int vecSize);
+  void setShaderMatrix4x4 (string paramName, float * x, int count);
+  void setShaderArrayfVec4 (string paramName, float * x, int count);
+  void setShaderArrayfVec3 (string paramName, float * x, int count);
+  void setShaderArray (string paramName, float * x, int count);
+  GLint getShaderLoc (string paramName);
+  void setShaderFloat (string paramName, float x);
+  void setShaderVec2 (string paramName, float x, float y);
+  void setShaderVec3 (string paramName, float x, float y, float z);
+  void setShaderVec4 (string paramName, float x, float y, float z, float w);
+  void setShaderInt (string paramName, int x);
+  void setShaderfVec2 (string paramName, FIVector4 * f);
+  void setShaderfVec3 (string paramName, FIVector4 * f);
+  void setShaderfVec4 (string paramName, FIVector4 * f);
+  void setShaderFloatUB (string paramName, float x);
+  void setShaderfVec4UB (string paramName, FIVector4 * f);
+};
 #undef LZZ_INLINE
 #endif
 // f00310_pooledresource.e
@@ -13915,9 +15840,13 @@ public:
   intPair usedById;
   bool isCPU;
   Singleton * singleton;
+  GLuint (holderDL) [MAX_MIP_LEV*MAX_LAYERS];
+  bool listGenerated;
   PooledResource ();
   FBOSet * getFBOS (int fboNum);
   void init (Singleton * _singleton, bool _isCPU, int _sizeX, int _sizeY);
+  void bindHolderDL (int mipLev, int layer);
+  void unbindHolderDL (int mipLev, int layer);
 };
 #undef LZZ_INLINE
 #endif
@@ -14020,15 +15949,24 @@ public:
   bool visible;
   iVector2 align;
   JSONValue * jvNodeNoTemplate;
+  fVector2 scrollMaskY;
+  fVector2 dragStart;
+  fVector2 lastDrag;
+  fVector2 dragOffset;
+  fVector2 totOffset;
+  fVector2 targScrollOffset;
+  fVector2 scrollOffset;
   fVector2 floatOffset;
   fVector2 originPos;
   fVector2 resultDimInPixels;
   fVector2 textDimInPixels;
+  fVector2 rmDimInPixels;
   fVector2 minDimInPixels;
-  fVector2 maxAvailDimInPixels;
+  fVector2 maxDimInPixels;
   fVector2 fillRatioDim;
   FontWrapper * curFont;
   FontWrapper * curFontIcons;
+  bool dragging;
   bool contOnStack;
   bool overChild;
   bool overSelf;
@@ -14053,8 +15991,11 @@ public:
   std::vector <UIComponent> children;
   std::vector <UIComponent> floatingChildren;
   UIComponent * curComp;
+  UIComponent * baseComp;
   UIComponent ();
-  void init (Singleton * _singleton, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, string _label, string _uid, string _ss, int _guiClass = E_GT_HOLDER, float _divisions = 0.0f, bool _hasBackground = true, bool _singleLine = true, float _fillRatioX = 0.0f, float _fillRatioY = 0.0f, int _fillDir = E_FILL_HORIZONTAL, int _alignX = E_ALIGNH_LEFT, int _alignY = E_ALIGNV_TOP, float _value = 0.0f, int _layer = 0, int _hoverType = E_HT_NORMAL, bool _isFloating = false);
+  void init (Singleton * _singleton, UIComponent * _baseComp, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, string _label, string _uid, string _ss, int _guiClass = E_GT_HOLDER, float _divisions = 0.0f, bool _hasBackground = true, bool _singleLine = true, float _fillRatioX = 0.0f, float _fillRatioY = 0.0f, int _fillDir = E_FILL_HORIZONTAL, int _alignX = E_ALIGNH_LEFT, int _alignY = E_ALIGNV_TOP, float _value = 0.0f, int _layer = 0, int _hoverType = E_HT_NORMAL, float _maxDimInPixelsX = 0.0f, float _maxDimInPixelsY = 0.0f, float _minDimInPixelsX = 0.0f, float _minDimInPixelsY = 0.0f, bool _isFloating = false);
+  float getDimYClamped (float val);
+  float getResultDimYClamped ();
   void setValue (float _value, bool doEventDispatch = false, bool preventRefresh = false);
   float getValue ();
   UIComponent * getParent ();
@@ -14069,12 +16010,14 @@ public:
   void gatherDirty (vector <UIComponent*> * dirtyVec);
   void clearDirty ();
   void layout ();
+  void updateOffset ();
   void updateValue (float x, float y);
   void runReport ();
   void clearOver ();
-  bool findMaxLayer (float x, float y);
+  bool findMaxLayer (float x, float y, float xTransformed, float yTransformed);
   void testOver (float x, float y);
   bool testHit (int button, int state, float x, float y);
+  UIComponent * getHighestCont (UIComponent * curNode, int genCount);
   void setText (string _text);
   void updateVecs ();
   void renderAll ();
@@ -14103,6 +16046,7 @@ public:
   JSONValue * jvSounds;
   bool isReady;
   bool isLoaded;
+  fVector2 mouseTrans;
   int nodeCount;
   vector <UIComponent*> dirtyVec;
   string (tempStrings) [10];
@@ -14119,69 +16063,13 @@ public:
   UIComponent * findNodeByString (string _uid);
   void renderCharAt (UIComponent * uiComp, CharStruct * cs, FontWrapper * activeFont, float px, float py, float shadowOffset);
   void renderQuad (UIComponent * uiComp, fBoundingBox fbb, float shadowOffset);
+  void renderQuadDirect (UIComponent * uiComp);
   void runReport ();
-  void renderGUI (float newZoom, int activeFBO);
+  void renderGUI (int activeFBO);
 };
 LZZ_INLINE bool GameGUI::compChildStr (string childStr)
                                                   {
 		return tempStrings[E_GDS_CHILD_TYPE].compare(childStr) == 0;
-	}
-LZZ_INLINE void GameGUI::renderQuad (UIComponent * uiComp, fBoundingBox fbb, float shadowOffset)
-          {
-
-		StyleSheetResult* resSS = &(uiComp->resSS);
-
-		
-		
-
-		float x0 = (fbb.xMin+uiComp->floatOffset.x)/singleton->guiWinW;
-		float x1 = (fbb.xMax+uiComp->floatOffset.x)/singleton->guiWinW;
-		float y0 = (fbb.yMin+uiComp->floatOffset.y+shadowOffset)/singleton->guiWinH;
-		float y1 = (fbb.yMax+uiComp->floatOffset.y+shadowOffset)/singleton->guiWinH;
-
-		x0 = (x0-0.5f)*2.0f;
-		x1 = (x1-0.5f)*2.0f;
-		y0 = ((1.0f-y0) - 0.5f)*2.0f;
-		y1 = ((1.0f-y1) - 0.5f)*2.0f;
-
-		
-		//dimensions
-		glMultiTexCoord4f(1, fbb.xMax-fbb.xMin, fbb.yMax-fbb.yMin, resSS->props[E_SS_BORDER], resSS->props[E_SS_CORNERRAD]);
-
-		glMultiTexCoord4f(5, 0.0f, shadowOffset, 1.0f, 1.0f);
-		
-		//border color
-		glMultiTexCoord4f(6, resSS->props[E_SS_BDCOL_R], resSS->props[E_SS_BDCOL_G], resSS->props[E_SS_BDCOL_B], resSS->props[E_SS_BDCOL_A]);
-		//misc
-		glMultiTexCoord4f(7, resSS->props[E_SS_ROUNDNESS], uiComp->getValue(), 1.0f, 1.0f);
-
-
-		//bg
-		glMultiTexCoord4f(2, resSS->props[E_SS_BGCOL1_R], resSS->props[E_SS_BGCOL1_G], resSS->props[E_SS_BGCOL1_B], resSS->props[E_SS_BGCOL1_A]);
-		//fg
-		glMultiTexCoord4f(3, resSS->props[E_SS_FGCOL1_R], resSS->props[E_SS_FGCOL1_G], resSS->props[E_SS_FGCOL1_B], resSS->props[E_SS_FGCOL1_A]);
-		//tg
-		glMultiTexCoord4f(4, resSS->props[E_SS_TGCOL1_R], resSS->props[E_SS_TGCOL1_G], resSS->props[E_SS_TGCOL1_B], resSS->props[E_SS_TGCOL1_A]);
-		
-		
-		glMultiTexCoord4f(0, 0.0f, 0.0f, 0.0f, 1.0f);
-		glVertex3f (  x0, y1, -1.0f );
-		glMultiTexCoord4f(0, 0.0f, 0.0f, 1.0f, 1.0f);
-		glVertex3f (  x1, y1, -1.0f );
-
-		//bg
-		glMultiTexCoord4f(2, resSS->props[E_SS_BGCOL0_R], resSS->props[E_SS_BGCOL0_G], resSS->props[E_SS_BGCOL0_B], resSS->props[E_SS_BGCOL0_A]);
-		//fg
-		glMultiTexCoord4f(3, resSS->props[E_SS_FGCOL0_R], resSS->props[E_SS_FGCOL0_G], resSS->props[E_SS_FGCOL0_B], resSS->props[E_SS_FGCOL0_A]);
-		//tg
-		glMultiTexCoord4f(4, resSS->props[E_SS_TGCOL0_R], resSS->props[E_SS_TGCOL0_G], resSS->props[E_SS_TGCOL0_B], resSS->props[E_SS_TGCOL0_A]);
-
-		glMultiTexCoord4f(0, 0.0f, 0.0f, 1.0f, 0.0f);
-		glVertex3f (  x1, y0, -1.0f );
-		glMultiTexCoord4f(0, 0.0f, 0.0f, 0.0f, 0.0f);
-		glVertex3f (  x0, y0, -1.0f );
-
-
 	}
 #undef LZZ_INLINE
 #endif
@@ -14200,23 +16088,26 @@ public:
   float rotRho;
   float material;
   float boneLengthHalf;
+  static float const multiplier;
   FIVector4 * readTBN;
   FIVector4 * writeTBN;
   FIVector4 (tbnBase) [3];
+  FIVector4 (tbnBaseTrans) [3];
   FIVector4 (tbnRotA) [3];
   FIVector4 (tbnRotB) [3];
   FIVector4 (tbnRotC) [3];
   FIVector4 (tbnTrans) [3];
-  FIVector4 tbnRadInMeters0;
-  FIVector4 tbnRadInMeters1;
+  FIVector4 tbnRadInCells0;
+  FIVector4 tbnRadInCells1;
   FIVector4 tbnRadScale0;
   FIVector4 tbnRadScale1;
+  float boneLengthScale;
   FIVector4 (orgTrans) [3];
   int nodeName;
   GameEntNode * parent;
   std::vector <GameEntNode*> children;
-  GameEntNode (GameEntNode * _parent, int _nodeName, float _boneLength, float _tanLengthInMeters, float _bitLengthInMeters, float _norLengthInMeters, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
-  GameEntNode * addChild (int _nodeName, float _boneLength, float _tanLengthInMeters, float _bitLengthInMeters, float _norLengthInMeters, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
+  GameEntNode (GameEntNode * _parent, int _nodeName, float _boneLength, float _tanLengthInCells, float _bitLengthInCells, float _norLengthInCells, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
+  GameEntNode * addChild (int _nodeName, float _boneLength, float _tanLengthInCells, float _bitLengthInCells, float _norLengthInCells, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
   GameEntNode * getNode (int _nodeName);
   void doTransform (Singleton * singleton);
 };
@@ -14318,13 +16209,14 @@ private:
 public:
   Singleton * singleton;
   int thisPageId;
+  int terRes;
   int bufferedPageSizeInUnits;
   FIVector4 offsetInUnits;
   FIVector4 offsetInPages;
   FIVector4 offsetInPagesLocal;
   float pageDepth;
   int iVolumeSize;
-  bool underground;
+  int * cellData;
   bool hasSolids;
   bool hasTrans;
   bool hasGeom;
@@ -14333,8 +16225,6 @@ public:
   bool hasWater;
   bool hasWindow;
   bool hasTree;
-  bool nearTerrain;
-  bool nearAir;
   bool isDirty;
   int voroCount;
   bool volDataModified;
@@ -14344,7 +16234,7 @@ public:
   int numEntries;
   int totParams;
   int maxEntries;
-  FIVector4 worldSeed;
+  FloatVec (vertices) [MAX_MIP_LEV*MAX_LAYERS];
   bool threadRunning;
   float unitSizeInPixels;
   GameWorld * gw;
@@ -14353,7 +16243,6 @@ public:
   FIVector4 worldMinBufInPixels;
   FIVector4 worldMaxBufInPixels;
   FIVector4 centerPosition;
-  FIVector4 scaleAndOffset;
   FIVector4 worldUnitMin;
   FIVector4 worldUnitMax;
   FIVector4 voroSize;
@@ -14365,16 +16254,20 @@ public:
   FIVector4 tempVec2;
   GamePageHolder * parentGPH;
   GameBlock * parentBlock;
-  uint * getVolData ();
-  uint * getVolDataLinear ();
   GamePage ();
   void init (Singleton * _singleton, GamePageHolder * _parentGPH, int _thisPageId, int offsetX, int offsetY, int offsetZ, int oxLoc, int oyLoc, int ozLoc, bool _isEntity = false);
+  uint * getVolData ();
+  uint * getVolDataLinear ();
   void copyToTexture (bool isForEmptyVD);
+  void setFalse ();
   void addEntityGeom (bool justTesting);
   void addGeom (bool justTesting);
   void getVoroPoints ();
-  void generateVolume ();
-  void getCoords ();
+  void addAllGeom ();
+  void generateVolume (bool dd = false);
+  int getIndex (int i, int j, int k, int p);
+  bool isAir ();
+  void getPoints (int fboNum);
   ~ GamePage ();
 };
 #undef LZZ_INLINE
@@ -14393,10 +16286,12 @@ public:
   int usingPoolId;
   int blockId;
   int holderId;
+  int sres;
   bool hasTrans;
   bool hasSolids;
-  bool underground;
   bool childrenDirty;
+  bool (hasVerts) [MAX_LAYERS];
+  bool refreshDL;
   std::vector <GameGeom *> entityGeom;
   int entityGeomCounter;
   FIVector4 offsetInHolders;
@@ -14417,11 +16312,12 @@ public:
   float halfHolderSizeInPixels;
   GamePageHolder ();
   void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isEntity = false);
+  void doRefreshDL ();
   GamePage * getPageAtCoordsLocal (int x, int y, int z, bool createOnNull = false);
   void refreshGeom ();
   void clearSet ();
   int passiveRefresh ();
-  void refreshChildren (bool refreshImmediate, bool clearEverything = false);
+  void refreshChildren (bool refreshImmediate, bool clearEverything = false, bool refreshUnderground = false);
   void addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVector4 * _p1, FIVector4 * _p2, FIVector4 * _rad, FIVector4 * _cornerRad, FIVector4 * _visInsetFromMin, FIVector4 * _visInsetFromMax, FIVector4 * _powerVals, FIVector4 * _powerVals2, FIVector4 * _thickVals, FIVector4 * _matParams, FIVector4 * _centerPoint, FIVector4 * _anchorPoint, int _minRot, int _maxRot);
   void addNewLinesGeom (GameEntNode * curNode, float scale);
   void fetchEntityGeom ();
@@ -14446,6 +16342,7 @@ public:
   int localGeomCounter;
   int lightCounter;
   int terDataBufAmount;
+  bool forceUpdate;
   float (trilin) [8];
   int terDataVisPitchXY;
   float fTerDataVisPitchXY;
@@ -14466,8 +16363,8 @@ public:
   int (dirModY) [6];
   int (dirModZ) [6];
   int (opDir) [6];
-  float pixelsPerMeter;
-  float floorHeightInMeters;
+  float pixelsPerCell;
+  float floorHeightInCells;
   float floorHeight;
   float roofHeight;
   bool (isBuilding) [E_CT_LENGTH];
@@ -14524,7 +16421,7 @@ public:
   void applyWingValues (int _x1, int _y1, int _z1, int _x2, int _y2, int _z2, int cnum, bool isWingBeg, bool isWingEnd, float multiplier);
   void addPlantNodes (GamePlantNode * curPlantNode, FIVector4 * orig, float scale);
   void addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVector4 * _p1, FIVector4 * _p2, FIVector4 * _rad, FIVector4 * _cornerRad, FIVector4 * _visInsetFromMin, FIVector4 * _visInsetFromMax, FIVector4 * _powerVals, FIVector4 * _powerVals2, FIVector4 * _thickVals, FIVector4 * _matParams, FIVector4 * _centerPoint, FIVector4 * _anchorPoint, int _minRot, int _maxRot);
-  void connectNodes (int _x1, int _y1, int _z1, int _x2, int _y2, int _z2, int ct, int id = -1, int _heightDelta = 0, int _direction = 0, float _wallRadInMeters = -1.0f, unsigned int _nodeFlags = 0);
+  void connectNodes (int _x1, int _y1, int _z1, int _x2, int _y2, int _z2, int ct, int id = -1, int _heightDelta = 0, int _direction = 0, float _wallRadInCells = -1.0f, unsigned int _nodeFlags = 0);
   int getMapNodeIndex (int x, int y, int bufAmount);
   int touchesMap (int x, int y, int buildingType, int bufAmount);
   int touchesWithinRadMap (int x, int y, int buildingType, int rad, int bufAmount);
@@ -14532,7 +16429,9 @@ public:
   void connectMapNodes (int _x1, int _y1, int _x2, int _y2, int buildingType, int id, int bufAmount);
   int getAdjustedHeightInHolders (int xInHolders, int yInHolders);
   float fIsNearTerrain (FIVector4 * worldMinVisInPixels);
-  void isNearTerrain (FIVector4 * worldMinVisInPixels, FIVector4 * worldMaxVisInPixels, bool & nearT, bool & nearA);
+  void refreshHoldersInArea (FIVector4 * worldPos);
+  void modifyTerrain (FIVector4 * worldPos, bool doSub);
+  int isNearTerrain (FIVector4 * worldPosInPix);
   int findNearestNode (FIVector4 * worldPositionInPixelsIn, FIVector4 * posInNodesOut, FIVector4 * posInPixelsOut);
   void nodeIndexToWorldSpaceInPixels (int ind, FIVector4 * posInPixelsOut);
   bool hasTerrainBelow (int i, int j, int k, int conDir, bool bothEnds);
@@ -14542,6 +16441,7 @@ public:
   bool touchesBaseOnLevel (int i, int j, int k, int layer);
   bool buildingAbove (int x, int y, int z);
   int copyTerToTexture ();
+  void makeMazeUG ();
 };
 #undef LZZ_INLINE
 #endif
@@ -14577,23 +16477,21 @@ public:
   int idChannel;
   int densityChannel;
   int blockChannel;
-  int curLoadRadius;
   int stChannel;
   int btChannel;
   int pathChannel;
   int houseChannel;
+  float mapWidth;
+  float mapHeight;
   int * curDiagram;
   int * provinceGrid;
   int * provinceX;
   int * provinceY;
-  bool procResultAccum;
   bool doDrawFBO;
   bool lastProcResult;
   bool mapLockOn;
   bool foundPath;
   float mapStep;
-  float mapTrans;
-  float newZoom;
   int (dirFlags) [4];
   int (dirFlagsOp) [4];
   int (dirFlagsO) [4];
@@ -14608,7 +16506,6 @@ public:
   int visFlagO;
   int activeFBO;
   bool noiseGenerated;
-  bool wavesGenerated;
   std::vector <coordAndIndex> roadCoords;
   std::vector <GamePageHolder *> holdersToRefresh;
   vector <int> ocThreads;
@@ -14628,6 +16525,7 @@ public:
   FIVector4 unitPos;
   FIVector4 lastUnitPos;
   FIVector4 lastPagePos;
+  FIVector4 lastCellPos;
   FIVector4 tempVec1;
   FIVector4 tempVec2;
   FIVector4 tempVec3;
@@ -14649,6 +16547,7 @@ public:
   FIVector4 tempVec;
   FIVector4 unitPosMin;
   FIVector4 unitPosMax;
+  FIVector4 unitPosCenter;
   FIVector4 startBounds;
   FIVector4 endBounds;
   FIVector4 * fogPos;
@@ -14672,21 +16571,20 @@ public:
   void init (Singleton * _singleton);
   GameBlock * getBlockAtCoords (int xInBlocks, int yInBlocks, bool createOnNull = false);
   GamePageHolder * getHolderAtCoords (int x, int y, int z, bool createOnNull = false);
+  uint getTerDataAtCoords (int x, int y, int z);
   GamePageHolder * getHolderAtId (intPair id);
   GameBlock * getBlockAtId (int id);
   GamePage * getPageAtIndex (int ind);
+  int getCellAtCoords (FIVector4 * coords);
   GamePage * getPageAtCoords (int x, int y, int z, bool createOnNull = false);
-  bool checkBounds (int k);
+  bool checkBounds (int k, int km);
   void update ();
   bool procPages ();
   bool addHolderToRefresh (GamePageHolder * toAdd);
   int getHoldersInGeom (GameGeom * gg);
   void refreshHoldersInList (bool doImmediate, bool clearEverything);
   void actionOnHolders (int action, bool instantRefresh = false, bool clearEverything = false);
-  void drawHolder (GamePageHolder * gp, int curLayer, float xoff, float yoff, float zoff);
   void combineHolders ();
-  void combineBuffers ();
-  void transformEnt (GameEnt * curEnt);
   void drawEnt (GameEnt * curEnt, bool drawAll);
   void drawNodeEnt (GameEntNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void clearVisitedPaths (PathHolder * pathHolder);
@@ -14697,13 +16595,11 @@ public:
   void drawAIPath (PathHolder * pathHolder, PathHolder * splitPathHolder);
   void renderGeom ();
   void modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushAction);
-  void renderWorldSpaceGPU (float processPagesFBO, float processGeomFBO, float processWaterFBO);
-  void getWorldSpaceBuffer (int bufNum = 0);
   float weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean);
   float findBestPath (float x1, float y1, float x2, float y2, int generation, int roadIndex, bool doSet, bool isOcean);
   void initMap ();
   void drawMap ();
-  void doBlur (string fboName, float blurAmount);
+  void doBlur (string fboName, int _baseFBO = 0);
   void updateLights ();
   void postProcess ();
   ~ GameWorld ();
@@ -15050,10 +16946,6 @@ void GameGeom::init (int _id)
                            {
 		id = _id;
 	}
-float GameGeom::getRand ()
-                        {
-		return (fGenRand() + 1.0f) / 2.0f;
-	}
 FIVector4 * GameGeom::getBoundsMinInPixels ()
                                           {
 		return &boundsMinInPixels;
@@ -15080,10 +16972,10 @@ FIVector4 * GameGeom::getBoundsMaxInPixelsT ()
 	}
 FIVector4 * GameGeom::getVisMinInPixelsT ()
                                         {
-		// TODO: make this more efficient and use pixelsPerMeter
+		// TODO: make this more efficient and use pixelsPerCell
 
 		// tempVec1.copyFrom(&geomParams[E_GP_VISMININPIXELST]);
-		// tempVec1.addXYZ(pixelsPerMeter);
+		// tempVec1.addXYZ(pixelsPerCell);
 		// return &tempVec1;
 
 		return &geomParams[E_GP_VISMININPIXELST];
@@ -15249,17 +17141,18 @@ void GameGeom::initLines (int _buildingType, int _id, int _globalId, float scale
 
 		boundsMinInPixels.setFXYZRef(&tempVec1);
 		boundsMaxInPixels.setFXYZRef(&tempVec1);
+		
+		boundsMinInPixels.addXYZRef(_tanVec,-1.0);
+		boundsMaxInPixels.addXYZRef(_tanVec);
+		
+		FIVector4::normalizeBounds(&boundsMinInPixels, &boundsMaxInPixels);
 
 		radMax = max(
 			max(
 				max(tempVec2[0], tempVec2[1]),
 				max(tempVec3[0], tempVec3[1])
 			),
-			max(
-				max(tempVec2[2], tempVec3[2]),
-				_tanVec->length()
-			)
-			
+			max(tempVec2[2], tempVec3[2])
 		);
 		
 		boundsMinInPixels.addXYZ(-radMax);
@@ -15401,11 +17294,109 @@ void GameGeom::initAnchorPoint (FIVector4 * _anchorPointInPixels, int _minRot, i
 	}
 #undef LZZ_INLINE
  
+// f00297_gamecamera.h
+//
+
+#include "f00297_gamecamera.e"
+#define LZZ_INLINE inline
+GameCamera::GameCamera ()
+                 {}
+void GameCamera::focusOn (int entID)
+                            {}
+void GameCamera::setClipDist (float n, float f)
+                                       {
+        clipDist[0] = n;
+        clipDist[1] = f;
+    }
+void GameCamera::testCollision (float oldX, float oldY, float oldZ, float newX, float newY, float newZ, bool skipTest)
+                                                                                                              {
+        float oldPos[3] = {oldX,oldY,oldZ};
+        float testPos[3] = {newX,newY,newZ};
+        int i;
+        
+        
+        if (skipTest) {
+            for (i = 0; i < 3; i++) {
+                
+                accel[i] += (testPos[i]-oldPos[i])/4.0;
+                
+                accel[i] = accel[i]/1.1;
+                
+                unitPos[i] += accel[i];
+            }
+        }
+    }
+void GameCamera::setUnitPosition (float x, float y, float z)
+                                                    {
+        
+        unitPos[0] = x;
+        unitPos[1] = y;
+        unitPos[2] = z;
+    }
+void GameCamera::addUnitPosition (float x, float y, float z)
+                                                    {
+        
+        float oldX = unitPos[0];
+        float oldY = unitPos[1];
+        float oldZ = unitPos[2];
+        
+        float newX = unitPos[0]+x;// *timeValSec;
+        float newY = unitPos[1]+y;// *timeValSec;
+        float newZ = unitPos[2]+z;// *timeValSec;
+        
+        testCollision(oldX, oldY, oldZ, newX, newY, newZ, true);
+        
+    }
+void GameCamera::setRotation (float a, float b)
+                                       {
+        rotation[0] = a;
+        rotation[1] = b;
+        
+        accelA = 0.0f;
+        accelB = 0.0f;
+        lastAccelA = 0.0f;
+        lastAccelB = 0.0f;
+    }
+void GameCamera::addRotation (float a, float b)
+                                       {
+        
+        
+        accelA += a;
+        accelB += b;
+        
+        accelA = accelA / 1.5f;
+        accelB = accelB / 1.5f;
+        
+        rotation[0] += accelA;
+        rotation[1] += accelB;
+    }
+void GameCamera::init ()
+                {
+        
+        accel[0] = 0.0f;
+        accel[1] = 0.0f;
+        accel[2] = 0.0f;
+        
+        setRotation(0.0f, 180.0f);
+        setClipDist(
+            0.1f,
+            65536.0f
+            //16384.0f
+        ); //16384.0
+        setUnitPosition(200.0f,200.0f,200.0f);
+        
+    }
+#undef LZZ_INLINE
+ 
 // f00300_singleton.h
 //
 
 #include "f00300_singleton.e"
 #define LZZ_INLINE inline
+bool Singleton::CompareStruct::operator () (string const & first, string const & second)
+                                                                       {
+	        return first.compare(second) < 0;//first.size() < second.size();
+	    }
 Singleton::Singleton ()
         {
 		
@@ -15414,11 +17405,7 @@ Singleton::Singleton ()
 		soundMap.clear();
 		styleSheetMap.clear();
 		
-		
-		
 		mainGUI = NULL;
-		volTris = NULL;
-		sliceTris = NULL;
 		gw = NULL;
 		myWS = NULL;
 	}
@@ -15438,7 +17425,28 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		}
 		
 		
+		for (i = 0; i < E_CT_LENGTH; i++) {
+			isInteractiveGeom[i] = false;
+		}
 		
+		
+		cdMap[0] = E_CD_EMPTY;
+		for (i = 1; i < 256; i++) {
+			cdMap[i] = E_CD_SOLID;
+		}
+		cdMap[32] = E_CD_WATER;
+		
+		isInteractiveGeom[E_CT_WINDOW] = true;
+		isInteractiveGeom[E_CT_DOOR] = true;
+		isInteractiveGeom[E_CT_LANTERN] = true;
+		
+		pathfindingOn = false;
+		isMacro = false;
+		entOn = false;
+		autoScroll = false;
+		cavesOn = false;
+		bakeParamsOn = true;
+		dragging = false;
 		mouseMoved = false;
 		forceRestart = false;
 		changingGenVal = false;
@@ -15446,20 +17454,27 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		hitGUI = false;
 		guiLock = false;
 		guiDirty = true;
+		mapComp = NULL;
+		mainMenu = NULL;
+		ddMenu = NULL;
+		draggingMap = false;
 		
+		FOV = 45.0f;
+		float focalLength = 1.0f / tan(FOV / 2.0f);
+
+		totalPointCount = 0;
 		
 		activeNode = NULL;
 		selectedNode = NULL;
 		lastSelNode = NULL;
 		
 		curEntId = 0;
-		charState = E_CHAR_STATE_RENDERED;
 		
 		rootObjJS = NULL;
 		guiRootJS = NULL;
 		highlightedGeom = NULL;
 		selectedGeom = NULL;
-		//rbStack = NULL;
+		rbStack = NULL;
 		rbHeightStack = NULL;
 
 		multiLights = false;
@@ -15468,7 +17483,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		maxLayerOver = -1;
 
-		iNumSteps = 64;
+		iNumSteps = 16;
 		currentStep = 0;
 
 		srand(time(NULL));
@@ -15491,7 +17506,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		selGeomListInd = 0;
 
 		mapSampScale = 0.5f;
-		curMS = 0.0;
 		//renderCount = 1.0;
 		int newPitch = (imageHM0->width) * mapSampScale; //*2;
 
@@ -15506,77 +17520,125 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		initStyleSheet();
 
-		ambVolume = 0.5f;
-		guiVolume = 1.0f;
+		curMoveSpeed = 0.0f;
+		curMoveAccel = 0.0f;
+		
+		masterVolume = 0.0f;
+		ambientVolume = 0.0f;
+		guiVolume = 0.0f;
+		musicVolume = 0.0f;
+		fxVolume = 0.0f;
 
+		applyToChildren = false;
 		mirrorOn = true;
-		guiOn = false;
+		//guiOn = false;
 		bCtrlOld = false;
 		bShiftOld = false;
 		bCtrl = false;
 		bShift = false;
-		tiltChanged = false;
 		emptyVDNotReady = true;
 		firstRun = true;
-		waterOn = false;
+		waterOn = (MAX_LAYERS == 2);
 		treesOn = true;
 		rotOn = false;
-
-		maxLayers = MAX_LAYERS;
-
-		// Resolution Dependent
-
-		volGenFBOX = 128; // MAX OF 128, DO NOT CHANGE THIS VALUE
-
-		
+		markerFound = false;
+		doPageRender = true;
 		
 		
 		
 		/////////////////////////////////////////////////////////////////
 		/////////////////////////////////////////////////////////////////
 		
-		
-		
-		
+				
 		// IMPORTANT: Maximum height must be less than 2^16, max world pitch must be less than 2^32
-			
 		
-
-
-		skipFrames = 2;
-		maxChangesInPages = 2;
-		maxChangesInHolders = 4; // this number is defined here // not in processPages()
+		// todo:
 		
-		maxHInPages = 2;
+		// realtime cutaway based on green cube position
+		// character editor load from json
+		// floating trees
+		// stacked lots?
+		// WAS DOING:
+		// replace worldspace fbo make xFBO have 3 targets instead of 2
+		// edit: pack normal in 16, only use 2 targets
+		
+		// adjust camera for better loading, ray cast from cam pos to find nearest
+		// chunk to load
+		// flood fill from there until it hits blank chunk and stop
+		
+		
+		
+		
+		
+		moveTimer.start();
+		
+		
+		
+		
+		
+		// qqqqqq
+		
+		
+		// TODO:
+		// render chunks with offset to save precision
+		// add in adjacent voxel information into rvvcubemap
+		// fix lighting
+		// load chunks better
+		// cache chunks properly
+		// transparency
+		// clearing holders
+		// move objects
+		
+		int bufferDiv = 2;
+		int curProfile;
+		heightOfNearPlane = 1.0f;
+		scrollDiv = 2.0;
+		
+		msPerFrame = 8.0;
+		
+		
+		volGenFBOX = 128; // MAX OF 128, DO NOT CHANGE THIS VALUE
+		
+		
+		
+		maxChangesInPages = 4;
+		maxChangesInHolders = 1; 
+		maxHInPages = 4;
 		maxWInPages = 4;
-		minWInPages = 1;
-
-
-		pixelsPerMeter = 128;
-		metersPerPage = 2;
-		metersPerHolder = 16;
-
+		pixelsPerCell = 128;
+		volGenSuperMod = 2;
+		cellsPerPage = 4;
+		cellsPerHolder = 8;
+		volGenSuperRes = (volGenFBOX/volGenSuperMod);
 		
-
-		
-		holderMod = 8;
-		fHolderMod = (float)holderMod;
-
+		glEnable(GL_POINT_SPRITE);
+		glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 		
 		
-		metersPerNodeXY = 16;
-		metersPerNodeZ = 8;
-		metersPerLot = 64; // adjust this to make lots bigger
-		blockSizeInLots = 8;
-		unitsPerMeter = 4; // ONE UNIT == ONE METER
+		//glPointSize(2.0);
+		
+		
+		
+		cdBuffer = new int[cellsPerPage*cellsPerPage*cellsPerPage*E_CD_LENGTH];
+
+		
+		// This var determines how high the z val can go,
+		// but also increases load times for each block
+		
+		cellsPerLot = 64; // adjust this to make lots bigger
+		
+		cellsPerNodeXY = 16;
+		cellsPerNodeZ = 8;
+		blockSizeInLots = 4;
+		unitsPerCell = 4; // ONE UNIT == ONE METER
 		
 
 		worldSizeInLots.setIXYZ(newPitch, newPitch, blockSizeInLots);
-		worldSizeInMeters.copyIntMult(&worldSizeInLots, metersPerLot);
-		blockSizeInMeters = blockSizeInLots * metersPerLot;
-		holderSizeInPages = metersPerHolder / metersPerPage;
-		holdersPerLot = metersPerLot / metersPerHolder;
-		visPageSizeInUnits = metersPerPage * unitsPerMeter;
+		worldSizeInCells.copyIntMult(&worldSizeInLots, cellsPerLot);
+		blockSizeInCells = blockSizeInLots * cellsPerLot;
+		holderSizeInPages = cellsPerHolder / cellsPerPage;
+		holdersPerLot = cellsPerLot / cellsPerHolder;
+		visPageSizeInUnits = cellsPerPage * unitsPerCell;
 		bufferMult = 1.25f;
 		bufferedPageSizeInUnits = visPageSizeInUnits * bufferMult;
 		worldSizeInHolders.copyIntMult(&worldSizeInLots, holdersPerLot);
@@ -15588,50 +17650,48 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		
 		
 		
-		
 
-		pixelsPerLot = pixelsPerMeter * metersPerLot;
-		unitSizeInPixels = pixelsPerMeter / unitsPerMeter;
-		blockSizeInPixels = pixelsPerMeter * blockSizeInMeters;
-		worldSizeInPixels.copyIntMult(&worldSizeInMeters, pixelsPerMeter);
+		pixelsPerLot = pixelsPerCell * cellsPerLot;
+		unitSizeInPixels = pixelsPerCell / unitsPerCell;
+		blockSizeInPixels = pixelsPerCell * blockSizeInCells;
+		worldSizeInPixels.copyIntMult(&worldSizeInCells, pixelsPerCell);
 		
-		visPageSizeInPixels = pixelsPerMeter * metersPerPage;
-		holderSizeInPixels = pixelsPerMeter * metersPerHolder;
+		visPageSizeInPixels = pixelsPerCell * cellsPerPage;
+		holderSizeInPixels = pixelsPerCell * cellsPerHolder;
 		
 		
 		// pageResolution = visPageSizeInPixels;//512; // height of one page in pixels
 		
 		
-		holderResolution = holderSizeInPixels/holderMod;
+		holderResolution = holderSizeInPixels;
+		
+		
+		voxelSizeInWC = ((float)visPageSizeInPixels)/((float)volGenSuperRes);
 		
 		
 		
 		
 		
-		
-		
-		
-		
-		
+		lastMoveTime = 0.0;
 		
 		terDataTexScale = 1;
-		if (pixelsPerMeter >= 128) {
+		//if (pixelsPerCell >= 128) {
 			terDataTexScale = 2;
-		}
+		//}
 		
-		terDataVisPitchXY = blockSizeInMeters / metersPerNodeXY;
+		terDataVisPitchXY = blockSizeInCells / cellsPerNodeXY;
 		iNodeDivsPerLot = terDataVisPitchXY / blockSizeInLots;
 		terDataBufAmount = iNodeDivsPerLot; // pad with one extra lot
 		
-		floorHeightInMeters = (float)metersPerNodeZ;
-		roofHeightInMeters = ((float)metersPerNodeXY)/4.0f;
-		wallRadInMeters = ((float)metersPerNodeXY)/4.0f;
+		floorHeightInCells = (float)cellsPerNodeZ;
+		roofHeightInCells = ((float)cellsPerNodeXY)/4.0f;
+		wallRadInCells = ((float)cellsPerNodeXY)/4.0f;
 		
 		
 		terDataBufPitchXY = terDataVisPitchXY + terDataBufAmount * 2;
 		terDataBufPitchScaledXY = terDataBufPitchXY * terDataTexScale;
 		
-		terDataVisPitchZ = blockSizeInMeters / metersPerNodeZ;
+		terDataVisPitchZ = blockSizeInCells / cellsPerNodeZ;
 		terDataBufPitchZ = terDataVisPitchZ + terDataBufAmount * 2;
 		terDataBufPitchScaledZ = terDataBufPitchZ * terDataTexScale;
 
@@ -15641,15 +17701,19 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 
 		terDataScaled = new uint[terDataBufSizeScaled];
-		//rbStack = new PathNode[terDataBufSize* MAX_BLOCK_STACK];
+		rbStack = new int[terDataBufSize];
 		rbHeightStack = new int[terDataBufSize];
 
 
-
+		worldSizeInTerData.setIXYZ(
+			worldSizeInBlocks.getIX()*terDataVisPitchXY,
+			worldSizeInBlocks.getIY()*terDataVisPitchXY,
+			worldSizeInBlocks.getIZ()*terDataVisPitchZ
+		);
+		
 
 
 		
-		tiltAmount = 0.5f;
 
 
 		
@@ -15672,6 +17736,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		// cout << "terDataVisPitchXY: " << terDataBufPitchXY << "\n";
 		// cout << "terDataVisPitchZ: " << terDataBufPitchXY << "\n";
 		
+		cout << "cellsPerNodeXY: " << cellsPerNodeXY << "\n";
+		cout << "cellsPerNodeZ: " << cellsPerNodeZ << "\n";
 		
 		cout << "blockSizeInHolders: " << blockSizeInHolders << "\n";
 		cout << "blockSizeInPixels: " << blockSizeInPixels << "\n";
@@ -15682,22 +17748,24 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		cout << "visPageSizeInPixels: " << visPageSizeInPixels << "\n";
 		cout << "holderSizeInPixels: " << holderSizeInPixels << "\n";
 		cout << "bufferMult: " << bufferMult << "\n";
-		cout << "metersPerLot: " << metersPerLot << "\n";
-		cout << "pixelsPerMeter: " << pixelsPerMeter << "\n";
-		cout << "unitsPerMeter: " << unitsPerMeter << "\n";
+		cout << "cellsPerLot: " << cellsPerLot << "\n";
+		cout << "pixelsPerCell: " << pixelsPerCell << "\n";
+		cout << "unitsPerCell: " << unitsPerCell << "\n";
 		cout << "blockSizeInLots: " << blockSizeInLots << "\n";
 		cout << "pixelsPerUnit: " << unitSizeInPixels << "\n";
-		cout << "unitsPerLot: " << metersPerLot*unitsPerMeter << "\n";
+		cout << "unitsPerLot: " << cellsPerLot*unitsPerCell << "\n";
 		cout << "pixelsPerLot: " << pixelsPerLot << "\n";
 		cout << "holderSizeInPages: " << holderSizeInPages << "\n";
 		cout << "holdersPerLot: " << holdersPerLot << "\n";
 		cout << "visPageSizeInUnits: " << visPageSizeInUnits << "\n";
 		cout << "unitSizeInPixels: " << unitSizeInPixels << "\n";
 
+
 		doTraceVecND("worldSizeInBlocks: ", &worldSizeInBlocks);
 		doTraceVecND("worldSizeInLots: ", &worldSizeInLots);
 		doTraceVecND("worldSizeInHolders: ", &worldSizeInHolders);
 		doTraceVecND("worldSizeInPages: ", &worldSizeInPages);
+		doTraceVecND("worldSizeInTerData: ", &worldSizeInTerData);
 
 		GLint glQuery;
 		glGetIntegerv(GL_MAX_UNIFORM_LOCATIONS, &glQuery);
@@ -15706,12 +17774,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		cout << "\n\n\n\n\n\n";
 
 
-		voroSize = 32;
-		mapFreqs.setFXYZW(1.0f, 16.0f, 32.0f, 64.0f);
-		mapAmps.setFXYZW(1.0f, 8.0f/16.0f, 2.0f/16.0f, 1.0f/16.0f); //0.0f, 0.0f, 0.0f);//
+		mapFreqs.setFXYZW(1.0f, 15.0f, 37.0f, 83.0f);
+		mapAmps.setFXYZW(8.0f/16.0f, 8.0f/16.0f, 8.0f/16.0f, 8.0f/16.0f); //0.0f, 0.0f, 0.0f);//
 
 
-		gridSizeInPixels = pixelsPerMeter;
+		gridSizeInPixels = pixelsPerCell;
 
 
 
@@ -15724,7 +17791,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		updateLock = false;
 		traceOn = false;
 		gridOn = 0.0f;
-		fogOn = 0.0f;
+		fogOn = 1.0f;
+		cameraZoom = 1.0f;
+		targetZoom = cameraZoom;
+		
 		geomCounter = 0;
 		lightCounter = 0;
 
@@ -15820,6 +17890,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 			glBindTexture(GL_TEXTURE_3D, 0);
 		}
 
+		
 
 		geomIdArr = new int[1024];
 		paramArr = new float[4096];
@@ -15864,10 +17935,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		myWS = _myWS;
 
 		
-		activeMode = 1;
 
-		isZooming = false;
-		isPanning = false;
 		isBare = true;
 
 
@@ -15876,6 +17944,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		defaultWinW = _defaultWinW / _scaleFactor;
 		defaultWinH = _defaultWinH / _scaleFactor;
 		scaleFactor = _scaleFactor;
+		aspectRatio = ((float)_defaultWinW)/((float)_defaultWinH);
 		
 		guiWinW = _defaultWinW / UI_SCALE_FACTOR;
 		guiWinH = _defaultWinH / UI_SCALE_FACTOR;
@@ -15883,15 +17952,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		origWinW = _defaultWinW;
 		origWinH = _defaultWinH;
 
-		curBrushRad = 1.0f;
+		curBrushRad = 4.0f;
 
 		mouseState = E_MOUSE_STATE_MOVE;
 
-		worldSeed.setFXYZ(
-			genRand(5000.0f, 500000.0f),
-			genRand(5000.0f, 500000.0f),
-			genRand(5000.0f, 500000.0f)
-		);
 
 
 
@@ -15902,13 +17966,14 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		wsBufferInvalid = true;
 
 		bufferDim.setIXY(defaultWinW, defaultWinH);
+		bufferDimTarg.setIXY(defaultWinW, defaultWinH);
+		
 		bufferDimHalf.setIXY(defaultWinW / 2, defaultWinH / 2);
-
+		bufferModDim.copyIntMult(&bufferDim,1);
 
 		myTimer.start();
 		//fpsTimer.start();
 
-		//grassState = E_GRASS_STATE_OFF;
 
 		activeObject = E_OBJ_CAMERA;
 
@@ -15940,7 +18005,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 			dynObjects.push_back(new DynObject());
 		}
 
-		dynObjects[E_OBJ_CAMERA]->init(0, 0, worldSizeInPixels.getIZ() / 2, 0, 0, 0, false, false, NULL, 4.0f );
+		dynObjects[E_OBJ_CAMERA]->init(0, 0, worldSizeInPixels.getIZ() / 2, 0, 0, 0, false, E_MT_NONE, NULL, 4.0f );
 
 		for (i = E_OBJ_LIGHT0; i < E_OBJ_LENGTH; i++)
 		{
@@ -15990,23 +18055,32 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 				break;
 			}
 
-			dynObjects[i]->init(1024*2 + i * 256, 1024*2 + i * 256, 2048, ccr, ccg, ccb,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+			dynObjects[i]->init(
+				-2048 + i * 256,
+				-2048 + i * 256,
+				1024/2,
+				ccr, ccg, ccb,
+				true,
+				E_MT_RELATIVE,
+				&(dynObjects[E_OBJ_CAMERA]->pos),
+				64.0f
+			);
 
 
 
 		}
+		
+		dynObjects[E_OBJ_LIGHT0]->moveType = E_MT_TRACKBALL;
 
-		dynObjects[E_OBJ_FOG]->init(-1024*2, -1024*2, -1024/2,   0, 0, 255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
-		dynObjects[E_OBJ_CUTAWAY]->init(1024*2 - 256, 1024*4 - 256 + 2048, 1024*4,   0, 255, 0,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
-		dynObjects[E_OBJ_HUMAN]->init(0, 1024/2, 0,   0, 255, 255,     true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+		dynObjects[E_OBJ_FOG]->init(-1024*2, -1024*2, -1024/2,   0, 0, 255,     true, E_MT_RELATIVE, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+		dynObjects[E_OBJ_CUTAWAY]->init(4096*4 - 256, 4096*4 - 256 + 2048, 4096*4,   0, 255, 0,     true, E_MT_RELATIVE, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+		dynObjects[E_OBJ_HUMAN]->init(2048, 2048, -1024,   0, 255, 255,     true, E_MT_TRACKBALL, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 
 		// dynObjects[E_OBJ_P0]->init(512-256,1024-256,2048,   128,0,0,    true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 		// dynObjects[E_OBJ_P1]->init(512,1024,2048,      255,0,0,  true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 		// dynObjects[E_OBJ_P2]->init(1024,512,2048,      0,255,255,  true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 
 
-		cameraZoom = 1.0f;
-		targetZoom = 1.0f;
 
 		mouseX = 0.0f;
 		mouseY = 0.0f;
@@ -16021,9 +18095,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		//// GL WIDGET START ////
 
 		frameCount = 0;
-		changesMade = false;
 		forceGetPD = false;
-		bufferInvalid = false;
 		mapInvalid = true;
 		notQuit = true;
 		timerNotSet = true;
@@ -16035,24 +18107,29 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 
 
-		//gm = new GameMap();
-		orthographicProjection();
-		//// GL WIDGET END ////
+		
+		glDepthFunc(GL_LESS);
+		
+		glCullFace(GL_BACK);
 
-
-
-		glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // 4-byte pixel alignment
+		
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 		glEnable(GL_TEXTURE_2D);
 		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_LIGHTING);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glDisable(GL_BLEND);
-		//glEnable(GL_BLEND);
+		
+		
+		fsqDL = glGenLists(1);
+		glNewList(fsqDL, GL_COMPILE);
+		drawFSQuadOffset(0.0f, 0.0f, 1.0f);
+		glEndList();
+		
+		
 
-		
-		
-		
+		shaderStrings.push_back("PointShader");
 		shaderStrings.push_back("GUIShader");
 		shaderStrings.push_back("RoadShader");
 		shaderStrings.push_back("SkeletonShader");
@@ -16060,8 +18137,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		shaderStrings.push_back("TerrainMix");
 		shaderStrings.push_back("Simplex2D");
 		shaderStrings.push_back("TopoShader");
-		shaderStrings.push_back("TCShader");
-		shaderStrings.push_back("TCShader2");
 		shaderStrings.push_back("WaveHeightShader");
 		shaderStrings.push_back("WaterShader");
 		shaderStrings.push_back("WaterShaderCombine");
@@ -16069,12 +18144,13 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		shaderStrings.push_back("CopyShader2");
 		shaderStrings.push_back("NoiseShader");
 		shaderStrings.push_back("MapBorderShader");
-		shaderStrings.push_back("WorldSpaceShader");
-		shaderStrings.push_back("BlitShader");
-		shaderStrings.push_back("BlitParentShader");
+		//shaderStrings.push_back("WorldSpaceShader");
+		shaderStrings.push_back("BlitPointShader");
+		
 		shaderStrings.push_back("PreLightingShader");
-		shaderStrings.push_back("HBlurShader");
-		shaderStrings.push_back("VBlurShader");
+		shaderStrings.push_back("HDRShader");
+		shaderStrings.push_back("PostLightingShader");
+		shaderStrings.push_back("BlurShader");
 		shaderStrings.push_back("DownScaleShader");
 		shaderStrings.push_back("RadiosityShader");
 		shaderStrings.push_back("RadiosityCombineShader");
@@ -16085,6 +18161,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		shaderStrings.push_back("GenerateVolumeEnt");
 		shaderStrings.push_back("RenderVolume");
 
+		std::sort(shaderStrings.begin(), shaderStrings.end(), compareStruct);
+		stringBuf.reserve(shaderStrings.size()*256);
 
 
 		shaderTextureIds.push_back("Texture0");
@@ -16108,16 +18186,77 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 
 		for (i = 0; i < shaderStrings.size(); i++)
 		{
-			shaderMap.insert(  pair<string, Shader>(shaderStrings[i], Shader())  );
+			shaderMap.insert(  pair<string, Shader*>(shaderStrings[i], new Shader(this))  );
 		}
-		doShaderRefresh();
+		doShaderRefresh(false);
 		
 		int faceDim = 256;
 		
 		
+		/*
+		void init(
+			int _numBufs,
+			int _width,
+			int _height,
+			int _bytesPerChannel,
+			bool _hasDepth,
+			int filterEnum = GL_NEAREST,
+			int clampEnum = GL_CLAMP_TO_EDGE,
+			bool isMultisample = false
+		) {
+		*/
+		
 		for (i = 0; i < MAX_VG_FBOS; i++) {
-			vgFBOArr[i].init(1, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
+			vgFBOArr[i].init(
+				1,
+				volGenFBOX,
+				volGenFBOX * volGenFBOX,
+				1,
+				false
+			);
 		}
+		
+		for (i = 0; i < MAX_VGT_FBOS; i++) {
+			vgtFBOArr[i].init(
+				2,
+				volGenSuperRes,
+				volGenSuperRes * volGenSuperRes,
+				1,
+				false
+			);
+		}
+		
+		
+		
+		
+		/////////////////////////
+		/////////////////////////
+		
+		fogRed = 135.0f/255.0f;
+		fogGreen = 160.0f/255.0f;
+		fogBlue = 1.0f;
+		lastx = 0;
+		lasty = 0;
+		isMoving = false;
+		perspectiveOn = false;
+
+		mainCamera = new GameCamera();
+		mainCamera->init();
+
+		for (i = 0; i < 256; i++) {
+			keysPressed[i] = false;
+		}
+
+		keyMap[KEYMAP_UP] = 'a';
+		keyMap[KEYMAP_DOWN] = 'z';
+		keyMap[KEYMAP_FORWARD] = 'e';
+		keyMap[KEYMAP_BACKWARD] = 'd';
+		keyMap[KEYMAP_LEFT] = 's';
+		keyMap[KEYMAP_RIGHT] = 'f';
+		
+		/////////////////////////
+		/////////////////////////
+		
 		
 		
 		
@@ -16135,9 +18274,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		
 		
 		
-		
+			
+		//TODO: get rid of these
 		//GL_LINEAR
-		fboMap["worldSpaceFBO"].init(4, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
+		//fboMap["worldSpaceFBO"].init(4, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
+		//fboMap["wavesWorldSpaceFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
+		
 		//fboMap["worldSpaceBlurFBO0"].init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 4, false, GL_LINEAR);
 		//fboMap["worldSpaceBlurFBO1"].init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 4, false, GL_LINEAR);
 		
@@ -16146,38 +18288,50 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		fboMap["frontFaceMapFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
 		fboMap["backFaceMapFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
 		fboMap["palFBO"].init(1, palWidth, palHeight, 1, false, GL_LINEAR);
-		fboMap["pagesFBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["waterFBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["pages2FBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["water2FBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["pages3FBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["water3FBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["geomFBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, true);
-		fboMap["combineFBO"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
-		fboMap["combineFBOWithWater"].init(2, bufferDim.getIX(), bufferDim.getIY(), 1, false);
+		
+		bool fboHasDepth = true;
+		int numChannels = 4;
+		int numMaps = 2;
+		
+		
+		//fboMap["prelightFBO0"].init(1, bufferDimTarg.getIX()/4, bufferDimTarg.getIY()/4, 1, false, GL_LINEAR);
+		//fboMap["prelightFBO1"].init(1, bufferDimTarg.getIX()/4, bufferDimTarg.getIY()/4, 1, false, GL_LINEAR);
+		
+		fboMap["prelightFBO"].init(2, bufferDimTarg.getIX(), bufferDimTarg.getIY(), 1, false, GL_LINEAR);
+		
+		
+		fboMap["pagesTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
+		fboMap["waterTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
+		
+		if (FILL_POINTS) {
+			fboMap["pages2TargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
+			fboMap["water2TargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
+			
+		}
+		//fboMap["pages3TargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
+		//fboMap["water3TargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
+		fboMap["geomTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
+		fboMap["combineWithWaterTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
+		
 		fboMap["noiseFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST, GL_REPEAT);
-		fboMap["guiFBO"].init(1, guiWinW, guiWinH, 1, false, GL_LINEAR);
+		//fboMap["guiFBO"].init(1, guiWinW, guiWinH, 1, false, GL_LINEAR);
 		fboMap["resultFBO0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);
 		fboMap["resultFBO1"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);
 		//fboMap["volGenFBO0"].init(1, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
 		//fboMap["volGenFBO1"].init(1, volGenFBOX, volGenFBOX * volGenFBOX, 1, false);
-		fboMap["waveFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
+		fboMap["waveFBO"].init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 1, false, GL_LINEAR, GL_MIRRORED_REPEAT);
 		fboMap["swapFBOLin0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
 		fboMap["swapFBOLin1"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
-		fboMap["swapFBOBLin0"].init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
-		fboMap["swapFBOBLin1"].init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
-		fboMap["swapFBOLinHalf0"].init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
-		fboMap["swapFBOLinHalf1"].init(1, bufferDim.getIX() / 2, bufferDim.getIY() / 2, 1, false, GL_LINEAR);
+		fboMap["swapFBOBLin0"].init(1, bufferDim.getIX() / bufferDiv, bufferDim.getIY() / bufferDiv, 1, false, GL_LINEAR);
+		fboMap["swapFBOBLin1"].init(1, bufferDim.getIX() / bufferDiv, bufferDim.getIY() / bufferDiv, 1, false, GL_LINEAR);
+		fboMap["swapFBOLinHalf0"].init(1, bufferDim.getIX() / bufferDiv, bufferDim.getIY() / bufferDiv, 1, false, GL_LINEAR);
+		fboMap["swapFBOLinHalf1"].init(1, bufferDim.getIX() / bufferDiv, bufferDim.getIY() / bufferDiv, 1, false, GL_LINEAR);
 		fboMap["cityFBO"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 		fboMap["hmFBO"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 		fboMap["hmFBOLinear"].init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
 		fboMap["simplexFBO"].init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
 		fboMap["swapFBO0"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 		fboMap["swapFBO1"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
-
-
-		
-		createVTListTilt();
 
 
 
@@ -16206,14 +18360,19 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		//gpuPagePool = new PoolPageManager();
 		//entityPagePool = new PoolPageManager();
 		
+		int cmMod = 1;
 		
-		gpuPool->init(this,false,false,holderResolution,holderResolution);
-		entityPool->init(this,true,false,holderResolution,holderResolution);
+		
+		gpuPool->init(this,false,false,holderResolution,holderResolution*cmMod);
+		entityPool->init(this,true,false,holderResolution,holderResolution*cmMod);
 		
 		
 		
 		testHuman = new GameEnt();
 		testHuman->init(this);
+		
+		
+		
 		
 		gw->init(this);
 		gw->initMap();
@@ -16222,10 +18381,14 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		music[EML_BIRDSONG0]->play();
 		music[EML_CRICKETS0]->play();
 		music[EML_OCEANWAVES0]->play();
-		
+		music[EML_UNDERWATER0]->play();
 		
 		loadGUI();
 		loadGUIValues();
+		
+		if (bakeParamsOn) {
+			doShaderRefresh(true);
+		}
 		
 
 		doTraceND("GW DONE");
@@ -16262,9 +18425,9 @@ void Singleton::playSoundPosAndPitch (string soundName, FIVector4 * listenerPos,
 			res.getFX(),
 			res.getFY(),
 			res.getFZ(),
-			32.0f*pixelsPerMeter
+			32.0f*pixelsPerCell
 		);
-		soundMap[soundName].play(volume);
+		soundMap[soundName].play(volume*fxVolume*masterVolume);
 	}
 void Singleton::playSound (string soundName, float volume)
                                                             {
@@ -16287,7 +18450,7 @@ void Singleton::playSoundEvent (char const * eventName, bool suppress)
 				volume = mainGUI->jvSounds->Child(eventName)->Child("vol")->number_value;
 				
 				if (tempString.size() > 0) {
-					playSound( tempString, volume*guiVolume );
+					playSound( tempString, masterVolume*volume*guiVolume );
 				}
 			}
 		}
@@ -16300,6 +18463,8 @@ void Singleton::playSoundEvent (char const * eventName, bool suppress)
 	}
 void Singleton::dispatchEvent (int button, int state, float x, float y, UIComponent * comp, bool automated, bool preventRefresh)
           {
+		
+		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 		
 		changingGenVal = false;
 		
@@ -16314,10 +18479,15 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		bool doSPUpdate = false;
 		bool mouseUpEvent = false;
 		
+		float curValue = comp->getValue();
+		
+		draggingMap = false;
+		
 		switch (comp->guiClass) {
 			case E_GT_SLIDER:
 			case E_GT_BUTTON:
 			case E_GT_RADIO:
+			case E_GT_DRAGPAD:
 			
 				switch(button) {
 					case GLUT_NO_BUTTON:
@@ -16332,8 +18502,23 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 								playSoundEvent("mouseOut",automated);
 							break;
 							case GLUT_CHANGING:
+								if (comp->guiClass == E_GT_DRAGPAD) {
+									
+									if (comp->uid.compare("map.mapHolder") == 0) {
+										cameraPos->setFXYZRef(&baseCameraPos);
+										cameraPos->addXYZ(
+											-(x - comp->dragStart.x)*worldSizeInPixels.getFX()/(cameraZoom*comp->resultDimInPixels.x),
+											-(y - comp->dragStart.y)*worldSizeInPixels.getFY()/(cameraZoom*comp->resultDimInPixels.y),
+											0.0f
+										);
+										draggingMap = true;
+									}
+									
+								}
+								else {
+									doSPUpdate = true;
+								}
 								
-								doSPUpdate = true;
 							break;
 						}
 						
@@ -16341,11 +18526,23 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 					case GLUT_LEFT_BUTTON:
 						if (state == GLUT_DOWN) {
 							playSoundEvent("mouseDown",automated);
+							
+							if (comp->uid.compare("map.mapHolder") == 0) {
+								baseCameraPos.setFXYZRef(cameraPos);
+							}
 						}
 						else {
 							playSoundEvent("mouseUp",automated);
-							doSPUpdate = true;
-							mouseUpEvent = true;
+							
+							if (comp->guiClass == E_GT_DRAGPAD) {
+								
+							}
+							else {
+								doSPUpdate = true;
+								mouseUpEvent = true;
+							}
+							
+							
 						}
 					break;
 					
@@ -16354,6 +18551,56 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 				
 			break;	
 		}
+		
+		
+		if (
+			(state == GLUT_UP) &&
+			(button == GLUT_LEFT_BUTTON) &&
+			(comp->floatingChildren.size() == 0)
+		) {
+			ddMenu->visible = false;	
+		}
+		
+		if (comp->uid.compare("placeEntity.actor") == 0) {
+			cout << "placeActor\n";
+		}		
+		else if (comp->uid.compare("$options.sound.masterVolume") == 0) {
+			masterVolume = curValue;
+		}
+		else if (comp->uid.compare("$options.sound.ambientVolume") == 0) {
+			ambientVolume = curValue;
+		}
+		else if (comp->uid.compare("$options.sound.guiVolume") == 0) {
+			guiVolume = curValue;
+		}
+		else if (comp->uid.compare("$options.sound.musicVolume") == 0) {
+			musicVolume = curValue;
+		}
+		else if (comp->uid.compare("$options.sound.fxVolume") == 0) {
+			fxVolume = curValue;
+		}
+		else if (comp->uid.compare("$charEdit.entOn") == 0) {
+			entOn = curValue != 0.0f;
+		}
+		else if (comp->uid.compare("$charEdit.pathfindingOn") == 0) {
+			pathfindingOn = curValue != 0.0f;
+		}
+		else if (comp->uid.compare("$charEdit.lockPosition") == 0) {
+			//pathfindingOn = curValue != 0.0f;
+			if (curValue == 0.0f) {
+				dynObjects[E_OBJ_HUMAN]->moveType = E_MT_TRACKBALL;
+			}
+			else {
+				dynObjects[E_OBJ_HUMAN]->moveType = E_MT_NONE;
+			}
+		}
+		else if (comp->uid.compare("$charEdit.mirrorOn") == 0) {
+			mirrorOn = curValue != 0.0f;
+		}
+		else if (comp->uid.compare("$charEdit.applyToChildren") == 0) {
+			applyToChildren = curValue != 0.0f;
+		}
+		
 		
 		if (comp->jvNodeNoTemplate != NULL) {
 			if (comp->jvNodeNoTemplate->HasChild("callback")) {
@@ -16374,16 +18621,22 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 					if (curCallback.compare("updateShaderParam") == 0) {
 						
 						if (cbData != NULL) {
+							
+							// cout <<
+							// 	cbData->Child("paramName")->string_value <<
+							// 	"\n";
+							
 							cbDataStrings[0] = cbData->Child("shaderName")->string_value;
 							cbDataStrings[1] = cbData->Child("paramName")->string_value;
 							
 							
 							
-							shaderMap[cbDataStrings[0]].paramMap[cbDataStrings[1]] = comp->getValue();
+							shaderMap[cbDataStrings[0]]->paramMap[cbDataStrings[1]] = curValue;
 							
 							if (
 								(cbDataStrings[0].compare("GenerateVolume") == 0)	||
-								(cbDataStrings[0].compare("RenderVolume") == 0)
+								(cbDataStrings[0].compare("RenderVolume") == 0) ||
+								(cbDataStrings[0].compare("RenderVolumeCubeMap") == 0)
 							) {
 								
 								if (preventRefresh) {
@@ -16602,35 +18855,12 @@ void Singleton::qNormalizeAngle (int & angle)
 			angle -= 360 * 16;
 		}
 	}
-void Singleton::perspectiveProjection ()
-        {
-		float aspect = 1.0;
-
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glFrustum(-aspect, +aspect, -1.0, +1.0, 4.0, 15.0);
-		glMatrixMode(GL_MODELVIEW);
-	}
-void Singleton::orthographicProjection ()
-        {
-
-		glMatrixMode (GL_MODELVIEW);
-		glLoadIdentity ();
-		glMatrixMode (GL_PROJECTION);
-		glLoadIdentity ();
-
-	}
 Singleton::~ Singleton ()
         {
 		if (gw)
 		{
 			delete gw;
 		}
-	}
-float Singleton::genRand (float LO, float HI)
-        {
-
-		return LO + (float)rand() / ((float)RAND_MAX / (HI - LO));
 	}
 void Singleton::setProgAction (eProgramState ps, unsigned char kc, eProgramAction pa, bool isDown)
         {
@@ -16755,7 +18985,7 @@ void Singleton::drawBoxUp (FIVector4 originVec, float radiusX, float radiusY, fl
 		drawBox(&minV, &maxV);
 	}
 void Singleton::drawBox (FIVector4 * minVec, FIVector4 * maxVec, int faceFlag)
-        {
+          {
 
 
 		float minX = minVec->getFX();
@@ -16848,318 +19078,13 @@ void Singleton::drawBox (FIVector4 * minVec, FIVector4 * maxVec, int faceFlag)
 		}
 		
 		
-		
-		
-		
-
-
 
 		glEnd();
 	}
-void Singleton::createVTListTilt ()
-        {
-
-		int i;
-		int j;
-
-		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
-
-		//volTris = glGenLists(1);
-
-		float halfTilt = tiltAmount/2.0f;
-		
-		float halfTiltUp = 0.5f + halfTilt;
-		float halfTiltDn = 0.5f - halfTilt;
-
-		float texMin = 0.0f;
-		float texMax = 1.0f;
-
-		float fx1 = -1.0f;
-		float fy2 = -1.0f;
-		float fx2 = 1.0f;
-		float fy1 = 1.0f;
-
-		float centerX = (fx1 + fx2) / 2.0f;
-		//float centerY = (fy1 + fy2) / 2.0f;
-
-		float fy25 = fy1 * halfTiltUp + fy2 * halfTiltDn;
-		float fy75 = fy1 * halfTiltDn + fy2 * halfTiltUp;
-
-		float coordsX[8];
-		float coordsY[8];
-
-		coordsX[0] = centerX;
-		coordsY[0] = fy1 * tiltAmount + fy2 * (1.0-tiltAmount);//centerY; // back face center
-
-		coordsX[1] = centerX;
-		coordsY[1] = fy1;
-
-		coordsX[2] = fx2;
-		coordsY[2] = fy25;
-
-		coordsX[3] = fx2;
-		coordsY[3] = fy75;
-
-		coordsX[4] = centerX;
-		coordsY[4] = fy2;
-
-		coordsX[5] = fx1;
-		coordsY[5] = fy75;
-
-		coordsX[6] = fx1;
-		coordsY[6] = fy25;
-
-		coordsX[7] = coordsX[1];
-		coordsY[7] = coordsY[1];
-
-		float backfaceX[8];
-		float backfaceY[8];
-		float backfaceZ[8];
-
-
-
-		backfaceX[0] = texMin;
-		backfaceY[0] = texMin;
-		backfaceZ[0] = texMin;
-		backfaceX[1] = texMin;
-		backfaceY[1] = texMin;
-		backfaceZ[1] = texMax;
-		backfaceX[2] = texMax;
-		backfaceY[2] = texMin;
-		backfaceZ[2] = texMax;
-		backfaceX[3] = texMax;
-		backfaceY[3] = texMin;
-		backfaceZ[3] = texMin;
-		backfaceX[4] = texMax;
-		backfaceY[4] = texMax;
-		backfaceZ[4] = texMin;
-		backfaceX[5] = texMin;
-		backfaceY[5] = texMax;
-		backfaceZ[5] = texMin;
-		backfaceX[6] = texMin;
-		backfaceY[6] = texMax;
-		backfaceZ[6] = texMax;
-		backfaceX[7] = backfaceX[1];
-		backfaceY[7] = backfaceY[1];
-		backfaceZ[7] = backfaceZ[1];
-
-
-		//glNewList(volTris, GL_COMPILE);
-		
-		
-		// string s = floatToHex(64.33f);
-		// float tempv = hexToFloat(s.c_str());
-		// cout << "\n\n\nfloatToHex: " << s << "\n";
-		// cout << "\n\n\nhexToFloat: " << tempv << "\n";
-		
-		
-
-		for (j = 0; j < 2; j++) {
-			
-			bindShader("TCShader");
-			
-			if (j == 0) {
-				bindFBO("frontFaceFBO");
-			}
-			else {
-				coordsY[0] = fy2 * tiltAmount + fy1 * (1.0-tiltAmount);
-				bindFBO("backFaceFBO");
-			}
-			
-			
-			
-			glBegin(GL_TRIANGLE_FAN);
-			glNormal3f(0, 0, 1);
-			for (i = 0; i < 8; i++)
-			{
-
-				if (j == 0) { // front faces
-					if (i == 0)
-					{
-						glMultiTexCoord3f( GL_TEXTURE0, 1.0f, 1.0f, 1.0f);
-					}
-					else
-					{
-						glMultiTexCoord3f( GL_TEXTURE0, backfaceX[i], backfaceY[i], backfaceZ[i]);
-					}
-				}
-				else { // back faces
-					glMultiTexCoord3f( GL_TEXTURE0, backfaceX[i], backfaceY[i], backfaceZ[i]);
-				}
-				
-
-				glVertex3f(coordsX[i], coordsY[i], 0.0f);
-			}
-			glEnd();
-			
-			
-			
-			unbindFBO();
-			unbindShader();
-			
-		}
-		
-		
-		
-		tempVec1.setFXYZ(
-			cameraPos->getFX() - worldSizeInPixels.getFX() / 2.0f,
-			cameraPos->getFY() - worldSizeInPixels.getFY() / 2.0f,
-			0.0f
-		);
-		tempVec2.setFXYZ(
-			cameraPos->getFX() + worldSizeInPixels.getFX() / 2.0f,
-			cameraPos->getFY() + worldSizeInPixels.getFY() / 2.0f,
-			worldSizeInPixels.getFZ()*4.0f // TODO: SHOULD BE NO MULTIPLER HERE
-		);
-		
-		for (j = 0; j < 2; j++) {
-			
-			bindShader("TCShader2");
-			
-			if (j == 0) {
-				bindFBO("backFaceMapFBO");
-			}
-			else {
-				bindFBO("frontFaceMapFBO");
-			}
-			
-			setShaderFloat("fHolderMod", fHolderMod);
-			setShaderFloat("tiltAmount", tiltAmount);
-			setShaderFloat("cameraZoom", cameraZoom);
-			setShaderfVec2("bufferDim", &(bufferDim));
-			setShaderfVec3("cameraPos", cameraPos);
-			
-			drawBox(&tempVec1,&tempVec2,j);
-
-			unbindFBO();
-			unbindShader();
-			
-		}
-		
-		
-
-		
-
-
-		//glEndList();
-	}
-void Singleton::createVTList ()
-        {
-
-		volTris = glGenLists(1);
-
-
-		float texMin = 0.0f;
-		float texMax = 1.0f;
-
-		float fx1 = -1.0f;
-		float fy2 = -1.0f;
-		float fx2 = 1.0f;
-		float fy1 = 1.0f;
-
-		float centerX = (fx1 + fx2) / 2.0f;
-		float centerY = (fy1 + fy2) / 2.0f;
-
-		float fy25 = fy1 * 0.75f + fy2 * 0.25f;
-		float fy75 = fy1 * 0.25f + fy2 * 0.75f;
-
-		float coordsX[8];
-		float coordsY[8];
-
-		coordsX[0] = centerX;
-		coordsY[0] = centerY;
-
-		coordsX[1] = centerX;
-		coordsY[1] = fy1;
-
-		coordsX[2] = fx2;
-		coordsY[2] = fy25;
-
-		coordsX[3] = fx2;
-		coordsY[3] = fy75;
-
-		coordsX[4] = centerX;
-		coordsY[4] = fy2;
-
-		coordsX[5] = fx1;
-		coordsY[5] = fy75;
-
-		coordsX[6] = fx1;
-		coordsY[6] = fy25;
-
-		coordsX[7] = coordsX[1];
-		coordsY[7] = coordsY[1];
-
-		float backfaceX[8];
-		float backfaceY[8];
-		float backfaceZ[8];
-
-
-
-		backfaceX[0] = texMin;
-		backfaceY[0] = texMin;
-		backfaceZ[0] = texMin;
-		backfaceX[1] = texMin;
-		backfaceY[1] = texMin;
-		backfaceZ[1] = texMax;
-		backfaceX[2] = texMax;
-		backfaceY[2] = texMin;
-		backfaceZ[2] = texMax;
-		backfaceX[3] = texMax;
-		backfaceY[3] = texMin;
-		backfaceZ[3] = texMin;
-		backfaceX[4] = texMax;
-		backfaceY[4] = texMax;
-		backfaceZ[4] = texMin;
-		backfaceX[5] = texMin;
-		backfaceY[5] = texMax;
-		backfaceZ[5] = texMin;
-		backfaceX[6] = texMin;
-		backfaceY[6] = texMax;
-		backfaceZ[6] = texMax;
-		backfaceX[7] = backfaceX[1];
-		backfaceY[7] = backfaceY[1];
-		backfaceZ[7] = backfaceZ[1];
-
-
-		glNewList(volTris, GL_COMPILE);
-
-		glBegin(GL_TRIANGLE_FAN);
-		glNormal3f(0, 0, 1);
-
-		int i;
-
-		for (i = 0; i < 8; i++)
-		{
-
-			//glColor4f(backfaceX[i], backfaceY[i], backfaceZ[i], 1.0f);
-
-			glMultiTexCoord3f( GL_TEXTURE0, backfaceX[i], backfaceY[i], backfaceZ[i]);
-
-			if (i == 0)
-			{
-				//glColor4f((backfaceX[i]+1.0f)/2.0f, (backfaceY[i]+1.0f)/2.0f, (backfaceZ[i]+1.0f)/2.0f, 1.0f);
-				glMultiTexCoord3f( GL_TEXTURE1, 1.0f, 1.0f, 1.0f);
-			}
-			else
-			{
-				glMultiTexCoord3f( GL_TEXTURE1, backfaceX[i], backfaceY[i], backfaceZ[i]);
-			}
-
-			glVertex3f(coordsX[i], coordsY[i], 0.0f);
-		}
-
-		glEnd();
-
-
-		glEndList();
-	}
-void Singleton::doShaderRefresh ()
+void Singleton::doShaderRefresh (bool doBake)
         {
 
 		LAST_COMPILE_ERROR = false;
-
-		pushTrace( "doShaderRefresh" );
 
 		readyToRecompile = 0;
 
@@ -17170,15 +19095,7 @@ void Singleton::doShaderRefresh ()
 
 
 		for (i = 0; i < shaderStrings.size(); i++) {
-			// if (shaderMap[ shaderStrings[i] ]) {
-
-			// 	// TODO: Memory leak?
-
-			// 	delete shaderMap[ shaderStrings[i] ];
-			// 	shaderMap[ shaderStrings[i] ] = NULL;
-			// }
-			shaderMap[ shaderStrings[i] ].init( "../src/glsl/" + shaderStrings[i] + ".c" );
-
+			shaderMap[ shaderStrings[i] ]->init( "../src/glsl/" + shaderStrings[i] + ".c", doBake);
 		}
 		shadersAreLoaded = 1;
 		readyToRecompile = 1;
@@ -17198,20 +19115,23 @@ void Singleton::doShaderRefresh ()
 			
 			
 			for (i = 0; i < shaderStrings.size(); i++) {
-				curShader = &(shaderMap[ shaderStrings[i] ]);
+				curShader = shaderMap[ shaderStrings[i] ];
+				
+				std::sort(curShader->paramVec.begin(), curShader->paramVec.end(), compareStruct);
+				
 				for (j = 0; j < curShader->paramVec.size(); j++) {
-					stringBuf += "\t\t{";
-					stringBuf += "\"shaderName\":\""+shaderStrings[i]+"\",";
-					stringBuf += "\"paramName\":\""+curShader->paramVec[j]+"\",";
-					stringBuf += "\"uid\":\"$shaderParams."+shaderStrings[i]+"."+curShader->paramVec[j]+"\"";
-					stringBuf += "},\n";
+					stringBuf.append("\t\t{");
+					stringBuf.append("\"shaderName\":\""+shaderStrings[i]+"\",");
+					stringBuf.append("\"paramName\":\""+curShader->paramVec[j]+"\",");
+					stringBuf.append("\"uid\":\"$shaderParams."+shaderStrings[i]+"."+curShader->paramVec[j]+"\"");
+					stringBuf.append("},\n");
 				}
 			}
 			
 			stringBuf[stringBuf.size()-2] = ' ';
 			
 			
-			stringBuf += "\t]\n}\n\n";
+			stringBuf.append("\t]\n}\n\n");
 			
 			// this should automatically clear the key
 			// and deallocate existing entries
@@ -17222,27 +19142,12 @@ void Singleton::doShaderRefresh ()
 				&(internalJSON["shaderParams"].jv)
 			);
 			
-			//cout << "stringBuf:\n\n";
-			//cout << stringBuf;
+			// cout << "stringBuf:\n\n";
+			// cout << stringBuf;
 			
 			
 		}
 		
-
-		popTrace();
-
-	}
-void Singleton::setMatrices (int w, int h)
-        {
-
-		glViewport(0, 0, w, h);
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(-0.5, +0.5, -0.5, +0.5, 4.0, 15.0);
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity ();
-		glMatrixMode (GL_PROJECTION);
-		glLoadIdentity ();
 
 	}
 void Singleton::setWH (int w, int h)
@@ -17276,9 +19181,20 @@ void Singleton::unsampleFBODirect (FBOSet * fbos, int offset)
 void Singleton::bindFBODirect (FBOSet * fbos, int doClear)
         {
 		setMatrices(fbos->width, fbos->height);
+		
 		fbos->bind(doClear);
 		currentFBOResolutionX = fbos->width;
 		currentFBOResolutionY = fbos->height;
+	}
+FBOSet * Singleton::getFBOByName (string & fboName)
+                                              {
+		
+		if (fboMap.find( fboName ) == fboMap.end()) {
+			cout << "invalid key" << fboName << "\n";
+			exit(0);
+		}
+		
+		return &(fboMap[fboName]);
 	}
 void Singleton::sampleFBO (string fboName, int offset, int swapFlag)
         {
@@ -17286,18 +19202,18 @@ void Singleton::sampleFBO (string fboName, int offset, int swapFlag)
 
 		if (swapFlag == -1)
 		{
-			fbos = &(fboMap[fboName]);
+			fbos = getFBOByName(fboName);//&(fboMap[fboName]);
 		}
 		else
 		{
 
 			if (swapFlag == 0)
 			{
-				fbos = &(fboMap[fboName + "0"]);
+				fbos = getFBOByName(fboName + "0");
 			}
 			else
 			{
-				fbos = &(fboMap[fboName + "1"]);
+				fbos = getFBOByName(fboName + "1");
 			}
 
 		}
@@ -17320,18 +19236,18 @@ void Singleton::unsampleFBO (string fboName, int offset, int swapFlag)
 
 		if (swapFlag == -1)
 		{
-			fbos = &(fboMap[fboName]);
+			fbos = getFBOByName(fboName);
 		}
 		else
 		{
 
 			if (swapFlag == 0)
 			{
-				fbos = &(fboMap[fboName + "0"]);
+				fbos = getFBOByName(fboName + "0");
 			}
 			else
 			{
-				fbos = &(fboMap[fboName + "1"]);
+				fbos = getFBOByName(fboName + "1");
 			}
 
 		}
@@ -17348,19 +19264,20 @@ void Singleton::unsampleFBO (string fboName, int offset, int swapFlag)
 	}
 FBOSet * Singleton::getFBOSet (string fboName)
         {
-		return &(fboMap[fboName]);
+		return getFBOByName(fboName);
 	}
 FBOWrapper * Singleton::getFBOWrapper (string fboName, int offset)
         {
-		FBOSet *fbos = &(fboMap[fboName]);
+		FBOSet *fbos = getFBOByName(fboName);
 		return fbos->getFBOWrapper(offset);
 	}
-void Singleton::copyFBO (string src, string dest)
+void Singleton::copyFBO (string src, string dest, int num)
         {
 		bindShader("CopyShader");
 		bindFBO(dest);
-		sampleFBO(src, 0);
-		drawFSQuad(1.0f);
+		//sampleFBO(src, 0);
+		setShaderTexture(0, getFBOWrapper(src,num)->color_tex);
+		drawFSQuad();
 		unsampleFBO(src, 0);
 		unbindFBO();
 		unbindShader();
@@ -17370,7 +19287,7 @@ void Singleton::copyFBO2 (string src, string dest)
 		bindShader("CopyShader2");
 		bindFBO(dest);
 		sampleFBO(src, 0);
-		drawFSQuad(1.0f);
+		drawFSQuad();
 		unsampleFBO(src, 0);
 		unbindFBO();
 		unbindShader();
@@ -17382,18 +19299,18 @@ void Singleton::bindFBO (string fboName, int swapFlag)
 
 		if (swapFlag == -1)
 		{
-			fbos = &(fboMap[fboName]);
+			fbos = getFBOByName(fboName);
 		}
 		else
 		{
 
 			if (swapFlag == 0)
 			{
-				fbos = &(fboMap[fboName + "1"]);
+				fbos = getFBOByName(fboName + "1");
 			}
 			else
 			{
-				fbos = &(fboMap[fboName + "0"]);
+				fbos = getFBOByName(fboName + "0");
 			}
 
 		}
@@ -17411,6 +19328,7 @@ void Singleton::bindFBO (string fboName, int swapFlag)
 	}
 void Singleton::unbindFBO ()
         {
+		
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 		setMatrices(baseW, baseH);
 
@@ -17424,17 +19342,28 @@ void Singleton::bindShader (string shaderName)
 		if (shadersAreLoaded)
 		{
 			curShader = shaderName;
-			curShaderPtr = &(shaderMap[curShader]);
+			curShaderPtr = shaderMap[curShader];
 			curShaderPtr->bind();
 			
 			totSize = curShaderPtr->paramVec.size();
 			
-			for (i = 0; i < totSize; i++) {
-				setShaderFloat(
-					curShaderPtr->paramVec[i],
-					curShaderPtr->paramMap[curShaderPtr->paramVec[i]]
-				);
+			if (bakeParamsOn) {
+				
 			}
+			else {
+				for (i = 0; i < totSize; i++) {
+					
+					// if (curShaderPtr->paramVec[i].compare("lightColBNight")) {
+					// 	cout << curShaderPtr->paramMap[curShaderPtr->paramVec[i]] << "\n";
+					// }
+					
+					setShaderFloat(
+						curShaderPtr->paramVec[i],
+						curShaderPtr->paramMap[curShaderPtr->paramVec[i]]
+					);
+				}
+			}
+			
 		}
 
 	}
@@ -17453,9 +19382,17 @@ void Singleton::setShaderArrayfVec4 (string paramName, float * x, int count)
         {
 		curShaderPtr->setShaderArrayfVec4(paramName, x, count);
 	}
+void Singleton::setShaderMatrix4x4 (string paramName, float * x, int count)
+        {
+		curShaderPtr->setShaderMatrix4x4(paramName, x, count);
+	}
 void Singleton::setShaderArray (string paramName, float * x, int count)
         {
 		curShaderPtr->setShaderArray(paramName, x, count);
+	}
+GLint Singleton::getShaderLoc (string paramName)
+                                             {
+		return curShaderPtr->getShaderLoc(paramName);
 	}
 void Singleton::setShaderFloat (string paramName, float x)
         {
@@ -17546,10 +19483,11 @@ bool Singleton::altDown ()
 		return (bool)(glutGetModifiers()&GLUT_ACTIVE_ALT);
 	}
 void Singleton::drawQuadBounds (float fx1, float fy1, float fx2, float fy2, float fz)
-        {
-		glColor4f(1, 1, 1, 1);
+          {
+		//glColor4f(1, 1, 1, 1);
+		//glNormal3f(0, 0, 1);
+		
 		glBegin(GL_QUADS);
-		glNormal3f(0, 0, 1);
 
 		glTexCoord2f(0.0f, 0.0f);
 		glVertex3f(fx1, fy1, fz);
@@ -17565,20 +19503,20 @@ void Singleton::drawQuadBounds (float fx1, float fy1, float fx2, float fy2, floa
 
 		glEnd();
 	}
-void Singleton::drawFSQuad (float zoom)
+void Singleton::drawFSQuad ()
         {
-		drawFSQuadOffset(0.0f, 0.0f, zoom);
+		glCallList(fsqDL);
 	}
-void Singleton::drawFSQuadOffset (float xOff, float yOff, float zoom)
+void Singleton::drawFSQuadOffset (float xOff, float yOff, float zm)
         {
-		float fx1 = (xOff - 1.0f) * zoom;
-		float fy1 = (yOff - 1.0f) * zoom;
-		float fx2 = (xOff + 1.0f) * zoom;
-		float fy2 = (yOff + 1.0f) * zoom;
+		float fx1 = (xOff - 1.0f) * zm;
+		float fy1 = (yOff - 1.0f) * zm;
+		float fx2 = (xOff + 1.0f) * zm;
+		float fy2 = (yOff + 1.0f) * zm;
 
-		glColor4f(1, 1, 1, 1);
 		glBegin(GL_QUADS);
-		glNormal3f(0, 0, 1);
+		//glColor4f(1, 1, 1, 1);
+		//glNormal3f(0, 0, 1);
 
 		glTexCoord2f(0.0f, 0.0f);
 		glVertex3f(fx1, fy1, 0.0f);
@@ -17594,42 +19532,42 @@ void Singleton::drawFSQuadOffset (float xOff, float yOff, float zoom)
 
 		glEnd();
 	}
-void Singleton::drawFBO (string fboName, int ind, float zoom, int swapFlag)
+void Singleton::drawFBO (string fboName, int ind, float zm, int swapFlag)
         {
 		if (swapFlag == -1)
 		{
-			drawFBOOffset(fboName, ind, 0.0f, 0.0f, zoom);
+			drawFBOOffset(fboName, ind, 0.0f, 0.0f, zm);
 		}
 		else
 		{
 			if (swapFlag == 0)
 			{
-				drawFBOOffset(fboName + "1", ind, 0.0f, 0.0f, zoom);
+				drawFBOOffset(fboName + "1", ind, 0.0f, 0.0f, zm);
 			}
 			else
 			{
-				drawFBOOffset(fboName + "0", ind, 0.0f, 0.0f, zoom);
+				drawFBOOffset(fboName + "0", ind, 0.0f, 0.0f, zm);
 			}
 
 		}
 	}
-void Singleton::drawFBOOffsetDirect (FBOSet * fbos, int ind, float xOff, float yOff, float zoom)
+void Singleton::drawFBOOffsetDirect (FBOSet * fbos, int ind, float xOff, float yOff, float zm)
         {
 
 		glBindTexture(GL_TEXTURE_2D, fbos->fbos[ind].color_tex);
 		//glClearColor(0.2,0.2,0.2,0.0);
 		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		drawFSQuadOffset(xOff, yOff, zoom);
+		drawFSQuadOffset(xOff, yOff, zm);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
-void Singleton::drawFBOOffset (string fboName, int ind, float xOff, float yOff, float zoom)
+void Singleton::drawFBOOffset (string fboName, int ind, float xOff, float yOff, float zm)
         {
-		FBOSet *fbos = &(fboMap[fboName]);
+		FBOSet *fbos = getFBOByName(fboName);
 
 		if (fbos)
 		{
-			drawFBOOffsetDirect(fbos, ind, xOff, yOff, zoom);
+			drawFBOOffsetDirect(fbos, ind, xOff, yOff, zm);
 		}
 		else
 		{
@@ -17648,7 +19586,7 @@ float Singleton::getSLNormalized ()
 	}
 float Singleton::getSLInPixels ()
         {
-		return getSLNormalized()*worldSizeInPixels.getFZ();
+		return getSLNormalized()*worldSizeInPixels.getFZ() + 2.5f*pixelsPerCell;
 	}
 float Singleton::getHeightAtPixelPos (float x, float y, bool dd)
         {
@@ -17717,19 +19655,77 @@ float Singleton::getHeightAtPixelPos (float x, float y, bool dd)
 
 
 	}
+void Singleton::transformEnt (GameEnt * curEnt)
+                                           {
+		curEnt->baseNode->doTransform(this);
+	}
+void Singleton::angleToVec (FIVector4 * fv, float xr, float yr)
+                                                           {
+		fv->setFXYZ(
+			 -sin(xr)*sin(yr),
+			 -cos(xr)*sin(yr),
+			 -cos(yr)
+		);
+		fv->normalize();
+	}
+void Singleton::syncObjects (FIVector4 * bp)
+                                        {
+		int i;
+				
+		float xrp;
+		float yrp;
+		
+		float xrotrad = (mainCamera->rotation[0] / 180 * M_PI);
+		float yrotrad = (mainCamera->rotation[1] / 180 * M_PI);
+		
+		
+		
+		
+		
+		
+		for (i = 1; i < E_OBJ_LENGTH; i++)
+		{
+
+			if (dynObjects[i]->moveType == E_MT_TRACKBALL) {
+				
+				xrp = xrotrad +	dynObjects[i]->posTrackball.getFX()/200.0f;
+				yrp = yrotrad + dynObjects[i]->posTrackball.getFY()/200.0f;
+				
+				angleToVec(&tempVec1,xrp,yrp);
+				tempVec1.multXYZ(dynObjects[i]->posTrackball.getFZ()*10.0f + 8.0f*pixelsPerCell);
+				
+				
+				dynObjects[i]->pos.copyFrom(bp);
+				dynObjects[i]->pos.addXYZRef( &(tempVec1) );
+				
+			}
+			else {
+				if (dynObjects[i]->moveType == E_MT_RELATIVE) {
+					dynObjects[i]->pos.copyFrom(bp);
+					dynObjects[i]->pos.addXYZRef( &(dynObjects[i]->posRel) );
+				}
+			}
+
+		}
+		
+		testHuman->basePosition.copyFrom(&(dynObjects[E_OBJ_HUMAN]->pos));
+		transformEnt(testHuman);
+	}
 void Singleton::moveCamera (FIVector4 * pModXYZ)
         {
 		
 		int i;
 		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 		
-		gw->curLoadRadius = minWInPages;
+		if (
+				(pModXYZ->getFX() != 0.0) ||
+				(pModXYZ->getFY() != 0.0) ||
+				(pModXYZ->getFZ() != 0.0)
+		) {
+			wsBufferInvalid = true;
+		}
 		
-		// cout << "curHeight: " <<
-		// 	getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY(), true)/worldSizeInPixels.getFZ() << "\n";
 		
-		
-		wsBufferInvalid = true;
 
 		cameraPos->addXYZRef(pModXYZ);
 
@@ -17755,18 +19751,13 @@ void Singleton::moveCamera (FIVector4 * pModXYZ)
 
 
 
-		for (i = 1; i < E_OBJ_LENGTH; i++)
-		{
+		//syncObjects(cameraPos);
 
-			if (dynObjects[i]->isRelative)
-			{
-				dynObjects[i]->pos.copyFrom(cameraPos);
-				dynObjects[i]->pos.addXYZRef( &(dynObjects[i]->posRel) );
-			}
-
-		}
-
-		isPanning = true;
+		
+		mainCamera->unitPos[0] = dynObjects[E_OBJ_CAMERA]->pos.getFX();
+		mainCamera->unitPos[1] = dynObjects[E_OBJ_CAMERA]->pos.getFY();
+		mainCamera->unitPos[2] = dynObjects[E_OBJ_CAMERA]->pos.getFZ();
+		
 	}
 GameEntNode * Singleton::getMirroredNode (GameEntNode * curNode)
                                                            {
@@ -17787,79 +19778,156 @@ GameEntNode * Singleton::getMirroredNode (GameEntNode * curNode)
 		}
 		
 	}
-void Singleton::moveObject (float dx, float dy, float zoom)
+void Singleton::applyNodeChanges (GameEntNode * _curNode, float dx, float dy)
+                                                                         {
+		
+		GameEntNode* curNode = _curNode;
+		
+		int i;
+		int j;
+		int k;
+		
+		float xm = 0.0f;
+		float ym = 0.0f;
+		float zm = 0.0f;
+		
+		float dirMod = 1.0f;
+		
+		if (
+			(curNode->nodeName < E_BONE_C_BEG) &&
+			(mirrorOn)
+		) {
+			j = 2;
+		}
+		else {
+			j = 1;
+		}
+		
+		for (i = 0; i < j; i++) {
+			
+			
+			if (i == 1) {
+				curNode = getMirroredNode(curNode);
+				
+				dirMod = -1.0f;
+			}
+			
+			
+			if (abDown) {
+				makeDirty();
+			}
+			
+			xm = dx/50.0f;
+			ym = dy/50.0f;
+			
+			if (shiftDown()) { // || altDown()
+								
+				if (lbDown) {
+					curNode->tbnRadScale0.addXYZ(0.0f,xm,ym);
+				}
+				if (rbDown) {
+					curNode->tbnRadScale1.addXYZ(0.0f,xm,ym);
+				}
+				if (mbDown) {
+					curNode->boneLengthScale += ym;
+				}
+			}
+			else {
+				
+				if (lbDown) {
+					curNode->rotThe += dirMod*ym;
+				}
+				if (rbDown) {
+					curNode->rotRho += dirMod*ym;
+				}
+				if (mbDown) {
+					curNode->rotPhi += dirMod*ym;
+				}
+				
+				
+			}
+			
+			if (applyToChildren) {
+				for (k = 0; k < curNode->children.size(); k++) {
+					applyNodeChanges(curNode->children[k], dx, dy);
+				}
+			}
+			
+			
+		}
+			
+		
+	}
+void Singleton::moveObject (float dx, float dy)
         {
 
 		int i;
 		int j;
+		int diffx;
+		int diffy;
 		
-		float dirMod = 1.0f;
 		
 		GameEntNode* curNode;
 
-		float tilt = tiltAmount;
-		float itilt = (1.0-tiltAmount);
-
+		
 		modXYZ.setFXYZ(0.0f,0.0f,0.0f);
 
-		float dxZoom = dx * fHolderMod / zoom;
-		float dyZoom = dy * fHolderMod / zoom;
-
-		float xm = 0.0f;
-		float ym = 0.0f;
-		float zm = 0.0f;
-
-		//float grassWidth;
-		//float grassHeight;
+		float dxZM = dx;
+		float dyZM = dy;
 
 		bool doDefault = false;
 		
 		
 		
 		
-		float tileWidth = 1.0;
-		float tileHeight = itilt;
-
+		//////////
+		
+		
+		float xmod = 0.0f;
+		float ymod = 0.0f;
+		float zmod = 0.0f;
+		float xrotrad = (mainCamera->rotation[0] / 180 * M_PI);
+		float yrotrad = (mainCamera->rotation[1] / 180 * M_PI);
+		
 		
 
-
+		
+		
+		
+		
+		//////////
+		
+		
+		
+		
+		
+		
 
 		if (abDown)
 		{
-			// if (rbDown || (shiftDown() ) )
-			// {
-			// 	modXYZ.setFZ(  dyZoom );
-			// 	modXYZ.setFX( -(0.0f + dxZoom / 2.0f) );
-			// 	modXYZ.setFY( -(0.0f - dxZoom / 2.0f) );
-
-			// }
-			// else
-			// {
-			// 	modXYZ.setFX( -(dyZoom + dxZoom / 2.0f) );
-			// 	modXYZ.setFY( -(dyZoom - dxZoom / 2.0f) );
-			// }
-			
-			
-			// screen to world
 			
 			if (rbDown || (shiftDown() ) )
 			{
-				modXYZ.setFZ(  dyZoom*1.0/tilt );
-				modXYZ.setFX( -(0.0f + dxZoom) );
-				modXYZ.setFY( -(0.0f - dxZoom) );
+				zmod += dy;
 
 			}
 			else
 			{
 				
-				//iX = (((ScreenX) / tileWidth) - ((ScreenY) / tileHeight));
-				//iY = (((ScreenX) / tileWidth) + ((ScreenY) / tileHeight));
-				
-				
-				modXYZ.setFX( -(dyZoom*1.0/itilt + 1.0*dxZoom) );
-				modXYZ.setFY( -(dyZoom*1.0/itilt - 1.0*dxZoom) );
+				xmod += float(sin(yrotrad))*dy;
+				ymod += float(cos(yrotrad))*dy;
+				//zmod -= float(cos(xrotrad))*dy;
+
+				xmod += float(cos(yrotrad))*(-dx);
+				ymod -= float(sin(yrotrad))*(-dx);
 				
 			}
+			
+			modXYZ.setFXYZ(
+				xmod*4.0f,
+				ymod*4.0f,
+				zmod*4.0f
+			);
 			
 
 			lastModXYZ.addXYZRef(&modXYZ);
@@ -17871,75 +19939,16 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 		
 		
 		if (
-			(mouseState == E_MOUSE_STATE_POSE) && 
+			(entOn) && 
 			(activeNode != NULL)
+			
+			// todo: remove this
+			//&& false
+			
 		) {
+				
+			applyNodeChanges(activeNode, dx, dy);
 			
-			
-			curNode = activeNode;
-		
-			if (
-				(curNode->nodeName < E_BONE_C_BEG) &&
-				(mirrorOn)
-			) {
-				j = 2;
-			}
-			else {
-				j = 1;
-			}
-			
-			for (i = 0; i < j; i++) {
-				
-				
-				if (i == 1) {
-					curNode = getMirroredNode(curNode);
-					
-					dirMod = -1.0f;
-				}
-				
-				if (shiftDown() || altDown()) {
-					if (mbDown) {
-						xm = dy/50.0f;
-						makeDirty();
-					}
-					if (lbDown) {
-						ym = dy/50.0f;
-						makeDirty();
-					}
-					if (rbDown) {
-						zm = dy/50.0f;
-						makeDirty();
-					}
-					
-					if (shiftDown()) {
-						curNode->tbnRadScale1.addXYZ(xm,ym,zm);
-					}
-					if (altDown()) {
-						curNode->tbnRadScale0.addXYZ(xm,ym,zm);
-					}
-				}
-				else {
-					if (mbDown) {
-						curNode->rotRho += dirMod*dy/50.0f;
-						makeDirty();
-					}
-					if (lbDown) {
-						curNode->rotPhi += dirMod*dy/50.0f;
-						makeDirty();
-					}
-					if (rbDown) {
-						curNode->rotThe += dirMod*dy/50.0f;
-						makeDirty();
-					}
-				}
-				
-				
-				
-			}
-			
-			
-			
-				
 		}
 		else {
 			if (shiftDown())
@@ -17958,14 +19967,7 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 				else
 				{
 					
-					if (rbDown) {
-						tiltAmount -=  modXYZ.getFZ()*zoom / 500.0f;
-						
-						tiltAmount = clampf(tiltAmount, 0.125f, 0.75f);
-						
-						tiltChanged = true;
-						changesMade = true;
-					}
+					
 					
 				}
 
@@ -17985,14 +19987,39 @@ void Singleton::moveObject (float dx, float dy, float zoom)
 					}
 					else
 					{
-						dynObjects[activeObject]->posRel.addXYZRef(&modXYZ, -1.0f);
-						dynObjects[activeObject]->pos.addXYZRef(&modXYZ, -1.0f);
+						
+						if (dynObjects[activeObject]->moveType == E_MT_TRACKBALL) {
+							if (rbDown) {
+								dynObjects[activeObject]->posTrackball.addXYZ(0.0f,0.0f,dy);
+							}
+							else {
+								dynObjects[activeObject]->posTrackball.addXYZ(dx,dy,0.0f);
+							}
+							
+						}
+						else {
+							if (dynObjects[activeObject]->moveType == E_MT_RELATIVE) {
+								dynObjects[activeObject]->posRel.addXYZRef(&modXYZ, -1.0f);
+							}
+							else {
+								dynObjects[activeObject]->pos.addXYZRef(&modXYZ, -1.0f);
+							}
+						}
+						
+						
+						
 					}
 				}
 
 				if (doDefault)
 				{
-					moveCamera(&modXYZ);
+					
+					
+					if (lbDown) {
+						mainCamera->addRotation(dx*0.25f, dy*0.25f);
+					}
+					
+					//moveCamera(&modXYZ);
 				}
 				
 
@@ -18037,30 +20064,47 @@ void Singleton::restartGen (bool instantRefresh, bool clearEverything)
                                                                    {
 		
 		
-	
-		gw->curLoadRadius = minWInPages;
 		gw->actionOnHolders(E_HOLDER_ACTION_RESET, instantRefresh, clearEverything);
-		bufferInvalid = true;
-		changesMade = true;
+
 		
 		
+	}
+void Singleton::setObjToElevationBase (FIVector4 * obj)
+                                                   {
+		
+		obj->setFZ(
+			getHeightAtPixelPos(obj->getFX(), obj->getFY())
+		);
+
 	}
 void Singleton::setCameraToElevationBase ()
                                         {
 		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 
-		cameraPos->setFZ(
-			getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY())
-		);
-
+		setObjToElevationBase(cameraPos);
 	}
 void Singleton::setCameraToElevation ()
         {
 		setCameraToElevationBase();
 		
-		bufferInvalid = true;
-		changesMade = true;
 		wsBufferInvalid = true;
+	}
+void Singleton::moveCameraToTown ()
+                                {
+		
+		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
+		FIVector4 townPos;
+		townPos.setFXYZ(
+			(gw->provinceX[15]/gw->mapWidth),
+			(gw->provinceY[15]/gw->mapHeight),
+			0.0f
+		);
+		
+		townPos.multXYZRef(&worldSizeInPixels);
+		
+		townPos.addXYZRef(cameraPos,-1.0f);
+		moveCamera(&townPos);
+		setCameraToElevation();
 	}
 void Singleton::processSpecialKeys (int key, int _x, int _y)
         {
@@ -18089,32 +20133,36 @@ void Singleton::updateCS ()
 		) {
 			forceGetPD = true;
 			wsBufferInvalid = true;
-			bufferInvalid = true;
-			changesMade = true;
 		}
 		bCtrlOld = bCtrl;
 		bShiftOld = bShift;
 	}
-void Singleton::processKey (unsigned char key, int _x, int _y, bool isPressed)
-        {
-
-		int x = _x / scaleFactor;
-		int y = _y / scaleFactor;
-	}
 void Singleton::keyboardUp (unsigned char key, int _x, int _y)
         {
+		int x = _x / scaleFactor;
+		int y = _y / scaleFactor;
+		int holderCount;
+		
+		
+		
+
+		processKey(key,x,y,false);
+		
+		switch(key) {
+			case 'a':
+			case 'z':
+			case 'e':
+			case 'd':
+			case 's':
+			case 'f':
+				return;
+			break;
+			
+		}
 
 		GameEntNode* curNode;
 		
-		int x = _x / scaleFactor;
-		int y = _y / scaleFactor;
-
-		int holderCount;
-
-		changesMade = false;
-
-
-		int enCounter;
+		
 
 
 		
@@ -18123,57 +20171,25 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 		updateCS();
 
 
-		if (key == 17)
-		{
+		if (key == 17) {
 			glutLeaveMainLoop();
 		}
 
-		switch (key)
-		{
+		switch (key) {
+
+		case 'i':
+				isMacro = !isMacro;
+				
+				//mirrorOn = !mirrorOn;
+				cout << "isMacro: " << isMacro << "\n";
+			break;
 
 
-		case '0':
-			activeMode = 0;
-
-			break;
-		case '1':
-			activeMode = 1;
-			//doTrace("Dirt and Grass");
-			break;
-		case '2':
-			activeMode = 2;
-			//doTrace("Rock");
-			break;
-		case '3':
-			activeMode = 3;
-			//doTrace("Brick");
-			break;
-		case '4':
-			activeMode = 4;
-			//doTrace("Flat Top Stone");
-			break;
-		case '5':
-			activeMode = 5;
-			//doTrace("Flat Top Dirt");
-			break;
-		case '6':
-			activeMode = 6;
-			break;
-		case '7':
-			activeMode = 7;
-			break;
-		case '8':
-			activeMode = 8;
-			break;
-		case '9':
-			activeMode = 9;
-			break;
-
-		case 's':
-				mirrorOn = !mirrorOn;
-				cout << "mirrorOn: " << mirrorOn << "\n";
-			break;
-
+		// case '9':
+		// 	saveAllData();
+		// 	cout << "data saved\n";
+		// break;
+		
 		case 19: //ctrl-s
 			saveGUIValues();
 			//cout << "Use s key in web editor to save\n";
@@ -18192,7 +20208,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 				iNumSteps = 16;
 			}
 			doTraceND("iNumSteps: ", i__s(iNumSteps));
-			bufferInvalid = true;
+
 			break;
 		case ']':
 			iNumSteps *= 2;
@@ -18201,21 +20217,22 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 				iNumSteps = 256;
 			}
 			doTraceND("iNumSteps: ", i__s(iNumSteps));
-			bufferInvalid = true;
+
 			break;
 
 
-		case 'e':
-			setCameraToElevation();
+		case 'u':
+			moveCameraToTown();
 			break;
 			
 		case 'q':
-			// charState++;
-			// if (charState > E_CHAR_STATE_RENDERED) {
-			// 	charState = 0;
-			// }
 		
+			autoScroll = !autoScroll;
 			
+			if (autoScroll) {
+				scrollTimer.start();
+				baseScrollPos.copyFrom(&(dynObjects[E_OBJ_CAMERA]->pos));
+			}
 			
 			
 			break;
@@ -18224,11 +20241,9 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			resetActiveNode();
 		break;
 		case 'W':
-			changesMade = true;
 			maxWInPages++;
 			break;
 		case 'Q':
-			changesMade = true;
 			maxWInPages--;
 			if (maxWInPages < 1)
 			{
@@ -18241,29 +20256,36 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 		case 'b':
-			radiosityOn = !radiosityOn;
+		
+			bakeParamsOn = !bakeParamsOn;
+			cout << "bakeParamsOn: " << bakeParamsOn << "\n";
+			doShaderRefresh(bakeParamsOn);
+			
+			
+			
+		
+			//radiosityOn = !radiosityOn;
 			break;
 
 
 		case 'R':
-			doShaderRefresh();
+		
+			//loadGUIValues(false);
+			doShaderRefresh(bakeParamsOn);
 			loadGUI();
 			loadGUIValues();
-			//doShaderRefresh();
-			bufferInvalid = true;
 		break;
 		case 'r':
-			doShaderRefresh();
+			doShaderRefresh(bakeParamsOn);
 			
-			bufferInvalid = true;
 
 			cout << "Shaders Refreshed\n";
 			
 			break;
 			
 		case 'j':
-			doShaderRefresh();
-			bufferInvalid = true;			
+			doShaderRefresh(bakeParamsOn);
+		
 			mapInvalid = true;
 			gw->initMap();
 		break;
@@ -18271,14 +20293,12 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 		case 'G':
 			gridOn = 1.0 - gridOn;
 			cout << "Grid On: " << gridOn << "\n";
-			bufferInvalid = true;
-			changesMade = true;
+
 			break;
 
 
 		case 'g':
 		
-			enCounter = (int)mouseState;
 			mouseState++;
 
 			if (mouseState == E_MOUSE_STATE_LENGTH)
@@ -18288,8 +20308,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			
 			cout << mouseStateStrings[mouseState] << "\n";
 
-			bufferInvalid = true;
-			changesMade = true;
+
 			wsBufferInvalid = true;
 			forceGetPD = true;
 		
@@ -18302,19 +20321,19 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			updateMultiLights();
 
 
-			bufferInvalid = true;
-			changesMade = true;
 			forceGetPD = true;
 
 			break;
 
-
+		case ';':
+			doPageRender = !doPageRender;
+			cout << "doPageRender: " << doPageRender << "\n";
+		break;
 		case 'p':
-			//cout << "curZoom " << cameraZoom << "\n";
 			toggleFullScreen();
 			break;
 
-		case 'd':
+		case 'o':
 			targetTimeOfDay = 1.0f-targetTimeOfDay;
 			// targetTimeOfDay += 0.5;
 			
@@ -18333,64 +20352,40 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			}
 
 
-			bufferInvalid = true;
-			changesMade = true;
 
 			cout << "waterOn " << waterOn << "\n";
 			break;
 
 		case 't':
-
-			// tiltAmount += 0.25f;
-			
-			// if (tiltAmount > 0.75f) {
-			// 	tiltAmount = 0.25f;
-			// }
-			
-			// createVTListTilt();
-			
-			// cout << "tiltAmount: " << tiltAmount << "\n";
-			
-			// restartGen(false, true);
-
-
 			testOn = !testOn;
-
-			//testOn = !testOn;
-			//cout << "testOn " << testOn << "\n";
-
-			//treesOn = !treesOn;
-			//traceOn = true;
+			
 			break;
-		case 'o':
-			rotOn = !rotOn;
-			break;
+		// case 'o':
+		// 	//rotOn = !rotOn;
+		// 	break;
 
 		case '\t':
 		
-			if (guiOn) {
-				playSoundEvent("hideGUI");
+			if (mainGUI->isReady) {
+				if (mainMenu == NULL) {
+					
+				}
+				else {
+					if (mainMenu->visible) {
+						playSoundEvent("hideGUI");
+					}
+					
+					mainMenu->visible = !(mainMenu->visible);
+					
+					if (mainMenu->visible) {
+						playSoundEvent("showGUI");
+					}
+				}
 			}
+			
 		
-			if (!guiOn) {
-				
-				// todo: in the future don't reload the gui every time
-				// just for testing right now
-				// if (mainGUI->isLoaded) {
-				// 
-				// }
-				// else {
-				// 	loadGUI()
-				// }
-				
-			}
-			guiOn = !guiOn;
 			
-			if (guiOn) {
-				playSoundEvent("showGUI");
-			}
 			
-			bufferInvalid = true;
 			break;
 
 		case ' ':
@@ -18405,20 +20400,19 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 		break;
 
 		case 'c':
-			doShaderRefresh();
+			doShaderRefresh(bakeParamsOn);
 			restartGen(false, true);
 			break;
 		
 
-		case 'f':
+		case 'x':
 			fogOn = 1.0 - fogOn;
-			bufferInvalid = true;
-			changesMade = true;
 			cout << "fog on " << fogOn << "\n";
 			break;
 
 		case 'm':
 
+			
 			runReport();
 			
 
@@ -18426,15 +20420,13 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 
 		
 		case 'A':
-			changesMade = true;
 			maxHInPages++;
 			break;
 		case 'Z':
-			changesMade = true;
 			maxHInPages--;
-			if (maxHInPages < 0)
+			if (maxHInPages < 1)
 			{
-				maxHInPages = 0;
+				maxHInPages = 1;
 			}
 			break;
 
@@ -18469,8 +20461,6 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 				gw->refreshHoldersInList(true, true); //holderCount <= 12
 				gw->holdersToRefresh.clear();
 
-				bufferInvalid = true;
-				changesMade = true;
 
 
 
@@ -18486,29 +20476,38 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 
 
 	}
+void Singleton::processKey (unsigned char key, int x, int y, bool isPressed)
+                                                                         {
+
+		
+		keysPressed[key] = isPressed;
+	}
 void Singleton::keyboardDown (unsigned char key, int _x, int _y)
         {
+		int x = _x / scaleFactor;
+		int y = _y / scaleFactor;
+		
+		processKey(key,x,y,true);
 		
 		
 		bShift = shiftDown();
 		bCtrl = ctrlDown();
 		updateCS();
 
-		int x = _x / scaleFactor;
-		int y = _y / scaleFactor;
+		
 	}
 void Singleton::runReport ()
                          {
 		
 		mainGUI->runReport();
-		cout << "zoom " << cameraZoom << "\n";
 		cout << "lightCount: " << gw->lightCount << "\n";
 		cout << "TOT GPU MEM USED (MB): " << TOT_GPU_MEM_USAGE << "\n";
 		cout << "HolderSize (MB): " << holderSizeMB << "\n";
 		cout << "Num GPU Holders: " << gpuPool->holderPoolItems.size() << "\n";
 		cout << "GPU Pooled MB Used: " << ((float)gpuPool->holderPoolItems.size())*holderSizeMB << "\n";
+		cout << "totalPointCount: " << totalPointCount << "\n";
 	}
-void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, int bufNum, bool forceGet)
+void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj)
         {
 
 		FBOWrapper *fbow;
@@ -18519,32 +20518,39 @@ void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, int bufNum, 
 		float yv = _yv;
 
 
-		if (wsBufferInvalid || forceGet)
+		if (wsBufferInvalid || forceUpdate || forceGetPD)
 		{
-			gw->getWorldSpaceBuffer(bufNum);
+			if (isObj) {
+				getFBOWrapper("geomTargFBO", 1)->getPixels();
+			}
+			else {
+				getFBOWrapper("pagesTargFBO", 0)->getPixels();
+			}
+			
+			//cout << "getBuf\n";
+			
 		}
 
 		
-		//xv = (xv - bufferDimHalf.getFX());
-		//yv = (yv - bufferDimHalf.getFY());
+		
+		newX = clamp(xv, 0, bufferDim.getIX() - 1);
+		newY = clamp(yv, 0, bufferDim.getIY() - 1);
 
-		if (cameraZoom > 1.0)
-		{
-			newX = bufferDimHalf.getFX() + (xv - bufferDimHalf.getFX())/cameraZoom;
-			newY = bufferDimHalf.getFY() + (yv - bufferDimHalf.getFY())/cameraZoom;
+
+		if (isObj) {
+			fbow = getFBOWrapper("geomTargFBO", 1);
+			fbow->getPixelAtF(toVector, newX, (bufferDim.getIY() - 1) - newY);
 		}
-		else
-		{
-			newX = clamp(xv, 0, bufferDim.getIX() - 1);
-			newY = clamp(yv, 0, bufferDim.getIY() - 1);
+		else {
+			fbow = getFBOWrapper("pagesTargFBO", 0);
+			fbow->getPixelAtF(toVector, newX, (bufferDim.getIY() - 1) - newY);
 		}
 
-
-
-		fbow = getFBOWrapper("worldSpaceFBO", bufNum);
-		fbow->getPixelAtF(toVector, newX, (bufferDim.getIY() - 1) - newY);
+		wsBufferInvalid = false;
+		forceGetPD = false;
+		
 	}
-GameGeom * Singleton::findNearestGeom (FIVector4 * testPoint, bool createList)
+GameGeom * Singleton::findNearestGeom (FIVector4 * testPoint, bool createList, bool onlyInteractive)
         {
 		GameBlock *curBlock;
 
@@ -18557,6 +20563,8 @@ GameGeom * Singleton::findNearestGeom (FIVector4 * testPoint, bool createList)
 		int curInd = 0;
 		float bestDis;
 		float curDis;
+		
+		bool doProc = false;
 		
 		if (createList) {
 			selGeomList.clear();
@@ -18587,7 +20595,7 @@ GameGeom * Singleton::findNearestGeom (FIVector4 * testPoint, bool createList)
 							testPoint->inBoundsXYZSlack(
 								curBlock->gameGeom[k]->getVisMinInPixelsT(),
 								curBlock->gameGeom[k]->getVisMaxInPixelsT(),
-								0.0625*pixelsPerMeter
+								0.0625*pixelsPerCell
 							)
 						)
 						{
@@ -18612,7 +20620,17 @@ GameGeom * Singleton::findNearestGeom (FIVector4 * testPoint, bool createList)
 								curDis *= 16.0f;
 							}
 
-							if (curDis < bestDis)
+							if (onlyInteractive) {
+								doProc = isInteractiveGeom[curBlock->gameGeom[k]->buildingType];
+							}
+							else {
+								doProc = true;
+							}
+
+							if (
+								(curDis < bestDis) &&
+								doProc
+							)
 							{
 								bestDis = curDis;
 								resGeom = curBlock->gameGeom[k];
@@ -18648,47 +20666,44 @@ void Singleton::mouseMove (int _x, int _y)
 		lastMouseX = x;
 		lastMouseY = y;
 
-		
-		
-
 		mouseXUp = x;
 		mouseYUp = y;
 
-		
 
 		
-		if (tiltChanged) {
-			tiltChanged = false;
-			createVTListTilt();
-			readyForRestart = true;
-			//restartGen(false, false);
-		}
+			
+
+		
 
 		if (abDown)
 		{
-			moveObject((float)dx, (float)dy, cameraZoom);
+			moveObject((float)dx, (float)dy);
 		}
 		else
 		{
 
-			getPixData(&mouseMovePD, x, y);
+			if (entOn||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
+				getPixData(&mouseMovePD, x, y, false, false);
+			}
+
+			
 
 
 			
 
-			if (
-				mouseState != E_MOUSE_STATE_MOVE
-			)	{
+			// if (
+			// 	mouseState != E_MOUSE_STATE_MOVE
+			// )	{
 
 				gw->modifyUnit(&mouseMovePD, E_BRUSH_MOVE);
-			}
+			//}
 			
 			
 
 
 			//////////////
 
-			if (mouseState == E_MOUSE_STATE_POSE) {
+			if (entOn) {
 				updateNearestEntNode(false, &mouseMovePD);
 			}
 			else {
@@ -18711,12 +20726,8 @@ void Singleton::mouseMove (int _x, int _y)
 
 		if ( (x >= 0) && (y >= 0) && (x < baseW) && (y < baseH) )
 		{
-			bufferInvalid = true;
 
-			if (abDown)
-			{
-				changesMade = true;
-			}
+			
 		}
 	}
 void Singleton::makeDirty ()
@@ -18735,67 +20746,147 @@ void Singleton::setSelNode (GameEntNode * newNode)
 	}
 void Singleton::worldToScreenBase (FIVector4 * sc, FIVector4 * wc)
                                                              {
-		/*
-		Screen -> Isometric space equations
-		iX = (((ScreenX) / tileWidth) - ((ScreenY) / tileHeight));
-		iY = (((ScreenX) / tileWidth) + ((ScreenY) / tileHeight));
+		
+		
+		
+		
+		
+		
+		
+		Vector4 v;
+		v.x = wc->getFX();
+		v.y = wc->getFY();
+		v.z = wc->getFZ();
+		v.w = 1.0;
+		
 
-		Isometric -> Screen space equations
-		ScreenX = (iX + iY) * tileWidth / 2;
-		ScreenY = (iY - iX) * tileHeight / 2;
+		
+		
+		
+		
+		GLdouble winX;
+		GLdouble winY;
+		GLdouble winZ;
+		
+		
+		gluProject(
+			v.x,// GLdouble  	objX,
+			v.y,// GLdouble  	objY,
+			v.z, // GLdouble  	objZ,
+			viewMatrixD, // const GLdouble *  	model,
+			projMatrixD, // const GLdouble *  	proj,
+			viewport, // const GLint *  	view,
+			&winX,
+			&winY,
+			&winZ
+		);
+		
+		sc->setFXYZ(
+			(winX/bufferDim.getFX())/((float)DEF_SCALE_FACTOR),
+			(winY/bufferDim.getFY())/((float)DEF_SCALE_FACTOR),
+			1.0f - winZ/mainCamera->clipDist[1]
+		);
+		
 
-		Assuming the isometric coordinating system goes as this: http://i.imgur.com/aUM4g.png
-
-		*/
-		
-		float tilt = tiltAmount;
-		float itilt = 1.0-tiltAmount;
-		
-		// float x1 = (wc->getFX() - wc->getFY())/2.0;
-		// float y1 = (-wc->getFX() + -wc->getFY() + wc->getFZ());
-		
-				
-		float x1 = (wc->getFX() - wc->getFY());
-		//float y1 = (-(wc->getFX() / 2.0f) + -(wc->getFY() / 2.0f) + wc->getFZ());
-		float y1 = (-itilt*wc->getFX() + -itilt*wc->getFY() + (tilt)*2.0f*wc->getFZ());
-		
-		x1 /= fHolderMod;
-		y1 /= fHolderMod;
-		
-		sc->setFX(x1);
-		sc->setFY(y1);
 	}
-void Singleton::worldToScreen (FIVector4 * sc, FIVector4 * wc, bool centerIsOrigin)
-        {
-		
-		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
-		dMod.copyFrom(wc);
-		dMod.addXYZRef(cameraPos, -1.0);
-		
-		worldToScreenBase(sc,&dMod);
-		float x1 = sc->getFX();
-		float y1 = sc->getFY();
-		
-		
-		float myZoom = std::min(1.0f, cameraZoom);
-		x1 = x1 * (myZoom) / bufferDim.getFX();
-		y1 = y1 * (myZoom) / bufferDim.getFY();
+void Singleton::handleMovement ()
+                                  {
 
-		if (centerIsOrigin)
-		{
+		
+		
+		
+		float xrotrad = (mainCamera->rotation[0] / 180 * M_PI);
+		float yrotrad = (mainCamera->rotation[1] / 180 * M_PI);
+		
+		
+		
+		angleToVec(&lookAtVec,xrotrad,yrotrad);
+		
+		
+		
+		double curMoveTime = moveTimer.getElapsedTimeInMilliSec();
+		
+		
 
+		float xmod = 0.0f;
+		float ymod = 0.0f;
+		float zmod = 0.0f;
+		
+
+		if (keysPressed[keyMap[KEYMAP_UP]]) {
+			zmod += 1.0f;
 		}
-		else
-		{
-			x1 = (x1 + 1.0) / 2.0;
-			y1 = (y1 + 1.0) / 2.0;
+
+		if (keysPressed[keyMap[KEYMAP_DOWN]]) {
+			zmod -= 1.0f;
+		}
+
+		if (keysPressed[keyMap[KEYMAP_FORWARD]]) {
+
+			
+			xmod += float(sin(xrotrad));
+			ymod += float(cos(xrotrad));
+			zmod -= float(cos(yrotrad));
+		}
+
+		if (keysPressed[keyMap[KEYMAP_BACKWARD]]) {
+			
+			xmod -= float(sin(xrotrad));
+			ymod -= float(cos(xrotrad));
+			zmod += float(cos(yrotrad));
+		}
+
+		if (keysPressed[keyMap[KEYMAP_RIGHT]]) {
+			
+			xmod += float(cos(xrotrad));
+			ymod -= float(sin(xrotrad));
+		}
+
+		if (keysPressed[keyMap[KEYMAP_LEFT]]) {
+			
+			xmod -= float(cos(xrotrad));
+			ymod += float(sin(xrotrad));
+		}
+
+		
+		
+		
+		curMoveAccel = (curMoveTime-lastMoveTime)*0.5;
+		curMoveSpeed += curMoveAccel;
+		
+		if (curMoveSpeed > 128.0f) {
+			curMoveSpeed = 128.0f;
 		}
 		
+		lastMoveTime = curMoveTime;
 		
-
-
-		sc->setFX(x1);
-		sc->setFY(y1);
+		modXYZ.setFXYZ(
+			xmod*curMoveSpeed,
+			ymod*curMoveSpeed,
+			zmod*curMoveSpeed
+		);
+		moveCamera(&modXYZ);
+		
+		
+		if (
+			(xmod != 0.0f) ||
+			(ymod != 0.0f) ||
+			(zmod != 0.0f)
+		) {
+			wsBufferInvalid = true;
+		
+		}
+		else {
+			
+			curMoveAccel = 0.0f;
+			curMoveSpeed *= 0.95f;
+		}
+		
+		isMoving = (curMoveSpeed >= 1.0);
+		
+		
+		
+		
 	}
 void Singleton::mouseClick (int button, int state, int _x, int _y)
         {
@@ -18836,22 +20927,38 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		oneVec.setFXYZ(1.0f, 1.0f, 1.0f);
 		oneVec.normalize();
 
+		bool doProc = false;
+		bool noTravel = false;
+		bool abClicked = false;
 		
 		hitGUI = false;
 		
-		if ((mainGUI != NULL)&&guiOn) {
+		if ((mainGUI != NULL)) {
 			if (mainGUI->isReady) {
-				hitGUI = mainGUI->testHit(button, state, guiX, guiY);
+				if (mainMenu != NULL) {
+					if (mainMenu->visible){
+							doProc = true;
+					}
+				}
+				if (ddMenu != NULL) {
+					if (ddMenu->visible){
+							doProc = true;
+					}
+				}
+				if (doProc) {
+					hitGUI = mainGUI->testHit(button, state, guiX, guiY);
+				}
+				
 			}
-			
 		}
 		
 
-		if (hitGUI)
-		{
-			bufferInvalid = true;
+		if (hitGUI) {
 			return;
 		}
+		
+		
+		
 		
 
 		switch (button)
@@ -18874,69 +20981,68 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 		case 3: // wheel up
 			wheelDelta = 1.0f / 20.0f;
-			//changesMade = true;
 			break;
 
 		case 4: // wheel down
 			wheelDelta = -1.0f / 20.0f;
-			//changesMade = true;
 			break;
 		}
 
 		abDown = lbDown || rbDown || mbDown;
+		abClicked = lbClicked || rbClicked || mbClicked;
 		
-
-
-		if (rbClicked)
-		{
-			
-			if (tiltChanged) {
-				tiltChanged = false;
-				createVTListTilt();
-				restartGen(false, true);
-				
-				//readyForRestart = true;
-			}
-			
-			if (lbDown)
-			{
-
-			}
-			else
-			{
-				isPanning = false;
-			}
-
+		wsBufferInvalid = true;
+		
+		if (abDown) {
+			getPixData(&mouseDownPD, x, y, true, false);
 		}
-		if (lbClicked)
-		{
-			
-			
-			
-			if (rbDown)
-			{
-
-			}
-			else
-			{
-				isPanning = false;
-			}
-
+		else {
+			getPixData(&mouseUpPD, x, y, true, false);
 		}
-
-
-
-
+		
+		if (abClicked) {
+			mouseEnd.setIXY(x, y);
+			noTravel = mouseEnd.distance(&mouseStart) < 30.0;
+			
+		}
+		
 
 		if (state == GLUT_DOWN)
 		{
 			mouseVel.setFXY(0.0f, 0.0f);
 		}
 
-		if (rbClicked || lbClicked)
+		if (abClicked)
 		{
 
 
+			if (ddMenu != NULL) {
+				if (rbClicked) {
+					ddMenu->visible = true;
+					
+					ddMenu->floatOffset.x = (guiX);
+					ddMenu->floatOffset.y = (guiY);
+					// ddMenu->dragStart.x = 0.0f;
+					// ddMenu->dragStart.y = 0.0f;
+					// ddMenu->dragOffset.x = 0.0f;
+					// ddMenu->dragOffset.y = 0.0f;
+					// ddMenu->lastDrag.x = 0.0f;
+					// ddMenu->lastDrag.y = 0.0f;
+					// ddMenu->updateValue(guiX,guiY);
+					
+					worldMarker.copyFrom(&mouseUpPD);
+					markerFound = true;
+					
+				}
+				else {
+					if (noTravel) {
+						ddMenu->visible = false;
+						markerFound = false;
+					}
+					
+				}
+			}
+			
 
 
 			if (abDown)
@@ -18948,9 +21054,6 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 				muTime = myTimer.getElapsedTimeInMilliSec();
 
-				mouseEnd.setIXY(x, y);
-				//mouseVel.copyFrom(&mouseEnd);
-				//mouseVel.addXYZRef(&mouseMoving, -1.0f);
 
 				if ( (activeObject == E_OBJ_CAMERA) && (muTime - mdTime > 300.0f) )
 				{
@@ -18968,18 +21071,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 
 
-
-				/*
-				mouseMovingSize = 100;
-				mouseMovingLoc = 0;
-				mouseCount = 0;
-				mouseMovingStepsBack = 10;
-				*/
-
 				lastModXYZ.normalize();
-
-
-				//mouseVel.multXYZ( clampf(1.0f-(muTime-mdTime)/1000.0f, 0.1f, 1.0f)/cameraZoom );
 
 				if (shiftDown())
 				{
@@ -18992,17 +21084,32 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 
 					activeObject = E_OBJ_CAMERA;
-					wsBufferInvalid = true;
-					getPixData(&mouseUpPD, x, y);
+					
 
 
-					selectedGeom = findNearestGeom(&mouseUpPD, true);
+					
+					
+					
+					if (mouseState == E_MOUSE_STATE_PICKING) {
+						selectedGeom = findNearestGeom(
+							&mouseUpPD,
+							true,
+							false
+						);
+					}
+					else {
+						selectedGeom = findNearestGeom(
+							&mouseUpPD,
+							false,
+							true
+						);
+					}
 
 					if (
 						(selectedGeom == NULL) ||
-						(mouseState == E_MOUSE_STATE_PICKING)
-					)
-					{
+						(mouseState == E_MOUSE_STATE_PICKING) ||
+						(mouseState == E_MOUSE_STATE_BRUSH)
+					)	{
 
 					}
 					else
@@ -19012,10 +21119,9 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 						{
 						case E_CT_DOOR:
 						case E_CT_WINDOW:
-						
 							
-						
 							
+
 						
 							gw->getHoldersInGeom(selectedGeom);
 							selectedGeom->toggleTransform();
@@ -19070,8 +21176,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 							}
 							
 
-							bufferInvalid = true;
-							changesMade = true;
+							
 							wsBufferInvalid = true;
 							break;
 
@@ -19106,56 +21211,43 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 
 
-					if ( mouseEnd.distance(&mouseStart) > 30.0 )
-					{
-
-					}
-					else
-					{
+					if ( noTravel ) {
 						
-						switch (mouseState) {
-							case E_MOUSE_STATE_BRUSH:
+						if (pathfindingOn) {
+							if (lbClicked) {
 								
-								if (lbClicked)
-								{
-									gw->modifyUnit(&mouseUpPD, E_BRUSH_ADD);
+								if (currentStep == 2) {
+									currentStep = 0;
+									moveNodes[0].setFXYZ(0.0,0.0,0.0);
+									moveNodes[1].setFXYZ(0.0,0.0,0.0);
 								}
-								else
-								{
-									gw->modifyUnit(&mouseUpPD, E_BRUSH_SUB);
+								else {
+									moveNodes[currentStep].copyFrom(&(gw->lastUnitPos));
+									currentStep++;
 								}
-
-								forceGetPD = true;
-
-								
-							break;
-							case E_MOUSE_STATE_ENTS:
-								if (lbClicked)
-								{
+							}
+						}
+						else {
+							switch (mouseState) {
+								case E_MOUSE_STATE_BRUSH:
 									
-									if (currentStep == 2) {
-										currentStep = 0;
-										moveNodes[0].setFXYZ(0.0,0.0,0.0);
-										moveNodes[1].setFXYZ(0.0,0.0,0.0);
+									if (lbClicked)
+									{
+										gw->modifyUnit(&mouseUpPD, E_BRUSH_ADD);
 									}
-									else {
-										moveNodes[currentStep].copyFrom(&(gw->lastUnitPos));
-										currentStep++;
+									else
+									{
+										gw->modifyUnit(&mouseUpPD, E_BRUSH_SUB);
 									}
-									
-									
-									
-									
-								}
-								else
-								{
-									
-								}
-							break;
+
+									forceGetPD = true;
+
+								break;
+							}
 						}
 						
-						if (mouseState == E_MOUSE_STATE_BRUSH)
-						{}
+						
+						
 					}
 
 				}
@@ -19185,7 +21277,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 					mdTime = myTimer.getElapsedTimeInMilliSec();
 					mouseStart.setIXY(x, y);
 
-					getPixData(&mouseDownPD, x, y);
+					
 
 
 
@@ -19202,13 +21294,16 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 					
 					
 					if (bCtrl) {
-						if (mouseDownPD.getFW() != 0.0) {
+						
+						getPixData(&mouseObjPD, x, y, true, true);
+						
+						if (mouseObjPD.getFW() != 0.0) {
 							// find nearest dyn object
 							
-							cout << "OBJECT ID " << mouseDownPD.getFW() << "\n";
+							cout << "OBJECT ID " << mouseObjPD.getFW() << "\n";
 							
 
-							bestInd = mouseDownPD.getFW();
+							bestInd = mouseObjPD.getFW();
 							
 							if ((bestInd >= E_OBJ_LENGTH)||(bestInd <= 0)) {
 								
@@ -19217,41 +21312,18 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 								activeObject = (E_OBJ)(bestInd);
 							}
 							
-							//bestDis = 99999.0f;
-							
-							//getPixData(&geomPD, x, y, 2, true);
-							//doTraceVecND("GEOM PD ", &geomPD);
-							
-							//worldToScreenBase(&tempVec1, &mouseDownPD);
-							
-							// for (i = 1; i < dynObjects.size(); i++)
-							// {
-
-
-							// 	//worldToScreenBase(&tempVec2, &(dynObjects[i]->pos));
-
-							// 	curDis = geomPD.distance(&(dynObjects[i]->pos));
-
-
-							// 	if (curDis < bestDis)
-							// 	{
-							// 		bestDis = curDis;
-							// 		bestInd = i;
-							// 	}
-							// }
 
 							
 						}
 					}
 					else {
-						switch(mouseState) {
-							
-							case E_MOUSE_STATE_POSE:
-								
-								updateNearestEntNode(true, &mouseDownPD);
-								
-							break;
-						}	
+						
+						
+						
+						if (entOn) {
+							updateNearestEntNode(true, &mouseDownPD);
+						}
+						
 					}
 					
 					
@@ -19264,22 +21336,17 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 
 
+		
 
 
-
-		if (button == 3 || button == 4)
-		{
-
+		if ( (button == 3) || (button == 4) ) {
+			
 			myDelta += wheelDelta;
 			targetZoom = pow(2.0, myDelta);
-			isZooming = true;
 
 		}
 
-		if (x >= 0 && y >= 0 && x < baseW && y < baseH)
-		{
-			bufferInvalid = true;
-		}
+		
 
 	}
 void Singleton::resetActiveNode ()
@@ -19309,16 +21376,18 @@ void Singleton::updateNearestEntNode (bool setActive, FIVector4 * mousePosWS)
 		// tempVec3.setFXYZRef(mousePosWS);
 		// tempVec3.addXYZRef(&(testHuman->basePosition),-1.0f);
 		
-		worldToScreenBase(&tempVec1, mousePosWS);
+		//worldToScreenBase(&tempVec1, mousePosWS);
 		
 		bestNode = NULL;
 		bestNodeDis = 99999.0f;
 		findNearestEntNode(
 			testHuman->baseNode,
-			&tempVec1
+			mousePosWS//&tempVec1
 		);
 		
-		if (bestNodeDis >= 1.0f*pixelsPerMeter) {
+		//cout << "bestNodeDis " << bestNodeDis << "\n";
+		
+		if (bestNodeDis >= 3.0f*pixelsPerCell) {
 			bestNode = NULL;
 			activeNode = NULL;
 			setSelNode(NULL);
@@ -19332,15 +21401,15 @@ void Singleton::updateNearestEntNode (bool setActive, FIVector4 * mousePosWS)
 			}
 		}
 	}
-void Singleton::findNearestEntNode (GameEntNode * curNode, FIVector4 * mousePosSS)
+void Singleton::findNearestEntNode (GameEntNode * curNode, FIVector4 * mousePosWS)
           {
 		
 		tempVec3.setFXYZRef(&(curNode->orgTrans[1]));
-		tempVec3.multXYZ(pixelsPerMeter);
+		tempVec3.multXYZ(pixelsPerCell);
 		tempVec3.addXYZRef(&(testHuman->basePosition));
 		
-		worldToScreenBase(&tempVec2, &tempVec3);
-		float curDis = mousePosSS->distanceXY(&tempVec2);
+		//worldToScreenBase(&tempVec2, &tempVec3);
+		float curDis = mousePosWS->distance(&tempVec3);//&tempVec2);
 		
 		if (curDis < bestNodeDis) {
 			bestNodeDis = curDis;
@@ -19350,7 +21419,7 @@ void Singleton::findNearestEntNode (GameEntNode * curNode, FIVector4 * mousePosS
 		int i;
 		
 		for (i = 0; i < curNode->children.size(); i++) {
-			findNearestEntNode(curNode->children[i],mousePosSS);
+			findNearestEntNode(curNode->children[i],mousePosWS);
 		}
 		
 	}
@@ -19372,8 +21441,9 @@ void Singleton::processB64 (charArr * sourceBuffer, charArr * saveBuffer)
 			saveBuffer->size = len;
 		}
 
+		string palString = "palFBO";
 
-		FBOSet *fbos = &(fboMap["palFBO"]);
+		FBOSet *fbos = getFBOByName(palString);
 
 
 		//unsigned char* resultImage = new unsigned char[256*256*4];
@@ -19537,6 +21607,50 @@ void Singleton::setGUIText (string key, string stringValue, float floatValue, bo
 			}
 		}
 	}
+float Singleton::getGUIValue (string key)
+                                      {
+		UICStruct* curComp;
+		if (compMap.find( key ) == compMap.end()) {
+			// invalid key
+		}
+		else {
+			curComp = &(compMap[key]);
+			
+			if (
+				(curComp->uic == NULL) ||
+				(curComp->nodeId < 0)	
+			) {
+				// component was deleted
+			}
+			else {
+				return curComp->uic->getValue();
+			}
+		}
+		
+		return 0.0;
+	}
+UIComponent * Singleton::getGUIComp (string key)
+                                            {
+		UICStruct* curComp;
+		if (compMap.find( key ) == compMap.end()) {
+			// invalid key
+		}
+		else {
+			curComp = &(compMap[key]);
+			
+			if (
+				(curComp->uic == NULL) ||
+				(curComp->nodeId < 0)	
+			) {
+				// component was deleted
+			}
+			else {
+				return curComp->uic;
+			}
+		}
+		
+		return NULL;
+	}
 void Singleton::setGUIValue (string key, float floatValue, bool dispatchEvent, bool preventRefresh)
           {
 		UICStruct* curComp;
@@ -19558,8 +21672,8 @@ void Singleton::setGUIValue (string key, float floatValue, bool dispatchEvent, b
 			}
 		}
 	}
-void Singleton::loadGUIValues ()
-                             {
+void Singleton::loadGUIValues (bool applyValues)
+                                                     {
 		
 		cout << "Loading GUI Values\n";
 		
@@ -19579,12 +21693,21 @@ void Singleton::loadGUIValues ()
 			splitStrings = split(loadBuf, '^');
 			
 			for (i = 0; i < splitStrings.size(); i += 2) {
+				
 				setGUIValue(
 					splitStrings[i],
 					hexToFloat( &(splitStrings[i+1]) ),
 					true,
 					true
 				);
+				
+				if (applyValues) {
+					
+				}
+				else {
+					
+				}
+				
 			}
 			
 		}
@@ -19618,7 +21741,9 @@ void Singleton::saveGUIValues ()
 				}
 				else {
 					if (iterator->first[0] ==  '$') {
-						stringBuf += iterator->first + "^" + floatToHex(iterator->second.uic->getValue()) + "^";
+						stringBuf.append(
+							iterator->first + "^" + floatToHex(iterator->second.uic->getValue()) + "^"
+						);
 					}
 					
 					
@@ -19638,7 +21763,11 @@ void Singleton::updateGUI ()
 		float chunkMem;
 		float fbMem;
 		
-		float voxelsGen = PAGE_COUNT*2;
+		
+		
+		int mvPerPage = (volGenFBOX*volGenFBOX*volGenFBOX)/(1024*1024);
+		
+		float voxelsGen = PAGE_COUNT*mvPerPage;
 		
 		string maxGPUMString = " / " + fi__s(MAX_GPU_MEM);
 		
@@ -19685,11 +21814,18 @@ void Singleton::loadGUI ()
 		
 		}
 		
+		mapComp = getGUIComp("map.mapHolder");
+		mainMenu = getGUIComp("guiHandles.mainMenu");
+		ddMenu = getGUIComp("guiHandles.ddMenu");
+		
+		if (mainMenu != NULL) {
+			mainMenu->visible = false;
+		}
+		if (ddMenu != NULL) {
+			ddMenu->visible = false;
+		}
 		
 		
-		//testTT = mainGUI->findNodeByString("testTT");
-		
-		bufferInvalid = true;
 	}
 void Singleton::loadAllData ()
         {
@@ -19703,7 +21839,6 @@ void Singleton::loadAllData ()
 			processB64(&lastImageBuffer, &nullBuffer);
 		}
 
-		bufferInvalid = true;
 	}
 void Singleton::saveAllData ()
         {
@@ -19849,8 +21984,8 @@ void Singleton::updateAmbientSounds ()
 		for (i = -maxRad; i <= maxRad; i++) {
 			for (j = -maxRad; j <= maxRad; j++) {
 				avgHeight += getHeightAtPixelPos(
-					cameraPos->getFX() + i*32.0f*pixelsPerMeter,
-					cameraPos->getFY() + j*32.0f*pixelsPerMeter
+					cameraPos->getFX() + i*32.0f*pixelsPerCell,
+					cameraPos->getFY() + j*32.0f*pixelsPerCell
 				);
 				tot += 1.0f;
 			}
@@ -19860,56 +21995,105 @@ void Singleton::updateAmbientSounds ()
 		
 		float seaHeight = getSLInPixels();
 		
-		float heightDif = clampf((terHeight-seaHeight)/(16.0*pixelsPerMeter), 0.0, 1.0);
+		float heightDif = clampf((terHeight-seaHeight)/(16.0*pixelsPerCell), 0.0, 1.0);
 		
-		music[EML_BIRDSONG0]->setVolume(ambVolume*timeOfDay*heightDif);
-		music[EML_CRICKETS0]->setVolume(ambVolume*(1.0f-timeOfDay)*heightDif);
-		music[EML_OCEANWAVES0]->setVolume(ambVolume*(1.0f-heightDif));
+		float isUnderWater = 0.0f;
+		
+		if (cameraPos->getFZ() < seaHeight) {
+			isUnderWater = 1.0f;	
+		}
+		
+		
+		
+		music[EML_BIRDSONG0]->setVolume(masterVolume*ambientVolume*timeOfDay*heightDif*(1.0-isUnderWater));
+		music[EML_CRICKETS0]->setVolume(masterVolume*ambientVolume*(1.0f-timeOfDay)*heightDif*(1.0-isUnderWater));
+		music[EML_OCEANWAVES0]->setVolume(masterVolume*ambientVolume*(1.0f-heightDif)*(1.0-isUnderWater));
+		music[EML_UNDERWATER0]->setVolume(masterVolume*ambientVolume*(isUnderWater));
+		
 		
 	}
 void Singleton::frameUpdate ()
                            {
 		
+		cameraZoom += (targetZoom - cameraZoom) / (4.0f);
+		
+		if (cameraZoom < 1.0f) {
+			cameraZoom = 1.0f;
+		}
+		
+		float hs = holderSizeInPixels;
+		
+		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
+		float scrollAmount = 0.0f;
 		
 		updateAmbientSounds();
-		if ((mainGUI != NULL)&&guiOn) {
+		if ((mainGUI != NULL)) {
 			if (mainGUI->isReady) {
 				//mainGUI->testOver(guiX, guiY);
 			}
 			
 		}
 		
-		if (
-			(
-				readyForRestart &&
-				(guiLock == false) &&
-				(gw->curLoadRadius > minWInPages)	
-			)
-			||
-			forceRestart
-		) {
+		
+		if (autoScroll) {
+			cameraPos->copyFrom(&baseScrollPos);
+			scrollAmount = scrollTimer.getElapsedTimeInMilliSec()/scrollDiv;
+			cameraPos->addXYZ(-scrollAmount,-scrollAmount,0.0f);
 			
-			if (forceRestart) {
-				forceRestart = false;			
-			}
-			readyForRestart = false;
-			guiLock = true;
-			restartGen(false, false);
-			guiLock = false;
+			// cameraPosAdjusted.copyFrom(cameraPos);
+			// setObjToElevationBase(&cameraPosAdjusted);
+			// cameraPos->addXYZ(16.0*pixelsPerCell,16.0*pixelsPerCell,0.0f);
+			//syncObjects(&cameraPosAdjusted);
+			
+			//syncObjects(cameraPos);
+			
+			
+			
 			
 		}
+		else {
+			if (
+				(
+					readyForRestart &&
+					(guiLock == false)
+					//&& (gw->curLoadRadius > minWInPages)	
+				)
+				||
+				forceRestart
+			) {
+				
+				if (forceRestart) {
+					forceRestart = false;			
+				}
+				readyForRestart = false;
+				guiLock = true;
+				restartGen(false, false);
+				guiLock = false;
+				
+			}
+			
+			updateGUI();
+		}
 		
-		updateGUI();
+		handleMovement();
 		
 		
-		gw->update();
+		if (
+			(gw->mapLockOn) ||
+			(mapInvalid)
+		) {
+			
+		}
+		else {
+			gw->update();
+		}
 		
 		
+		syncObjects(cameraPos);
 		
 		
 		TRACE_ON = false;
-		changesMade = false;
-		bufferInvalid = false;
+		
 		
 		frameCount++;
 	}
@@ -19919,7 +22103,7 @@ void Singleton::display ()
 		curTime = myTimer.getElapsedTimeInMilliSec();
 
 		float elTime = curTime - lastTime;
-		float dz;
+		
 		float fMouseVel;
 
 		if (myWS == NULL)
@@ -19946,7 +22130,7 @@ void Singleton::display ()
 
 				}
 
-				bufferInvalid = true;
+				
 
 				myWS->dataReady = false;
 				myWS->isWorking = false;
@@ -19955,14 +22139,8 @@ void Singleton::display ()
 
 
 
-		if (abs(timeOfDay - targetTimeOfDay) > 0.001)
-		{
-			bufferInvalid = true;
-			changesMade = true;
-		}
 
-
-		if (elTime >= ( 8.0f  )  ) { // / ((float)skipFrames)
+		if (elTime >= ( msPerFrame  )  ) {
 
 			if (firstRun)
 			{
@@ -19970,11 +22148,9 @@ void Singleton::display ()
 			}
 			else
 			{
-				if ( (frameCount % 60) == 0)
+				if ( (frameCount % 120) == 0)
 				{
 					gw->updateLights();
-					bufferInvalid = true;
-					changesMade = true;
 				}
 			}
 
@@ -19992,65 +22168,12 @@ void Singleton::display ()
 			mouseMoving[mouseMovingLoc].setIXY(lastMouseX, lastMouseY);
 
 
-
 			lastModXYZ.multXYZ(0.95f);
-
 			mouseVel.multXYZ(0.95f);
-
 			fMouseVel = mouseVel.distance(&origin);
 
-			// if ( fMouseVel < 2.0f ) {
-			//  mouseVel.setFXY(0.0f,0.0f);
-			//  isPanning = false;
-			// }
-			// else {
-			//  isPanning = true;
 
 
-			//  panMod.copyFrom(&lastModXYZ);
-			//  panMod.multXYZ(fMouseVel/16.0f);
-			//  moveCamera(&panMod);
-			// }
-
-
-			dz = (targetZoom - cameraZoom) / (4.0f);
-
-			/*
-			if (abs(dz) < 0.0001) {
-			  dz = 0.0f;
-			}
-			*/
-
-			/*
-			if (cameraZoom > 8.0f) {
-			  cameraZoom = 8.0f;
-			}
-			if (cameraZoom < 1.0f/8.0f) {
-			  cameraZoom = 1.0f/8.0f;
-			}
-			*/
-
-			//curMS = fpsTimer.getElapsedTimeInMilliSec() / renderCount;
-
-			cameraZoom += dz;
-			
-
-			if ( ( abs(dz) / cameraZoom < 0.001 ) && (isZooming))
-			{
-				isZooming = false;
-				wsBufferInvalid = true;
-				bufferInvalid = true;
-				changesMade = true;
-			}
-			else
-			{
-				if (isZooming)
-				{
-					bufferInvalid = true;
-					changesMade = true;
-				}
-
-			}
 			
 
 			if (shadersAreLoaded)
@@ -20084,6 +22207,92 @@ void Singleton::display ()
 		//doTrace( "POSSIBLE ERROR: " , i__s(glGetError()) , "\n" );
 
 	}
+void Singleton::setMatrices (int w, int h)
+        {
+		int i;
+		float* ptr1;
+		float* ptr2;
+		
+		if (perspectiveOn) {
+			glViewport (0, 0, (GLsizei)w, (GLsizei)h); //set the viewport to the current window specifications
+			glMatrixMode (GL_PROJECTION); //set the matrix to projection
+			glLoadIdentity ();
+			
+			gluPerspective (
+				FOV,
+				(GLfloat)w / (GLfloat)h,
+				mainCamera->clipDist[0],
+				mainCamera->clipDist[1]
+			); //set the perspective (angle of sight, width, height, , depth)
+			glMatrixMode (GL_MODELVIEW); //set the matrix back to model
+			
+			
+			glLoadIdentity();
+			glRotatef(mainCamera->rotation[1],1.0,0.0,0.0);
+			glRotatef(mainCamera->rotation[0],0.0,0.0,1.0);
+			glTranslated(
+				-mainCamera->unitPos[0],
+				-mainCamera->unitPos[1],
+				-mainCamera->unitPos[2]
+			);
+			
+			
+			
+			glGetFloatv(GL_MODELVIEW_MATRIX, viewMatrix.get());
+			glGetFloatv(GL_PROJECTION_MATRIX, projMatrix.get());
+			
+			ptr1 = viewMatrix.get();
+			ptr2 = projMatrix.get();
+			
+			
+			for (i = 0; i < 16; i++) {
+				viewMatrixD[i] = ptr1[i];
+				projMatrixD[i] = ptr2[i];
+			}
+			
+			glGetIntegerv(GL_VIEWPORT, viewport);
+			
+			
+			heightOfNearPlane =
+				(
+					((float)abs(viewport[3]-viewport[1])) /
+			    	(2.0f*tan(0.5f*FOV*M_PI/180.0f))
+			    ) *
+			    (
+			    	2.0f*voxelSizeInWC / ((float)scaleFactor)	
+			    );
+			    
+			
+			
+			// lastW = -1; 
+			// lastH = -1;
+			
+		}
+		else {
+			if (
+				(lastW == w) && 
+				(lastH == h)
+			) {
+				
+			}
+			else {
+				glViewport(0, 0, w, h);
+				glMatrixMode(GL_PROJECTION);
+				glLoadIdentity();
+				glOrtho(-0.5, +0.5, -0.5, +0.5, 4.0, 15.0);
+				glMatrixMode(GL_MODELVIEW);
+				glLoadIdentity ();
+				glMatrixMode (GL_PROJECTION);
+				glLoadIdentity ();
+				
+				lastW = w;
+				lastH = h;
+			}
+		}
+		
+		
+
+	}
 void Singleton::reshape (int w, int h)
         {
 
@@ -20091,20 +22300,516 @@ void Singleton::reshape (int w, int h)
 
 		screenWidth = w;
 		screenHeight = h;
-
-		glViewport(0, 0, w, h);
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(-0.5, +0.5, -0.5, +0.5, 4.0, 15.0);
-		glMatrixMode(GL_MODELVIEW);
-		orthographicProjection();
-
-
+		
 		setMatrices(baseW, baseH);
 	}
 void Singleton::idleFunc ()
         {
 
+	}
+#undef LZZ_INLINE
+ 
+// f00305_shader.h
+//
+
+#include "f00305_shader.e"
+#define LZZ_INLINE inline
+Shader::Shader (Singleton * _singleton)
+                                      {
+		singleton = _singleton;
+		curUBIndex = 0;
+	}
+char * Shader::textFileRead (char const * fileName)
+                                                        {
+		
+		char* text = "";
+		bool failed = true;
+	    
+		if (fileName != NULL) {
+	        FILE *file = fopen(fileName, "rt");
+	        
+			if (file != NULL) {
+	            fseek(file, 0, SEEK_END);
+	            int count = ftell(file);
+	            rewind(file);
+	            
+				if (count > 0) {
+					text = new char[(count + 1)];
+					//(char*)malloc(sizeof(char) * (count + 1));
+					count = fread(text, sizeof(char), count, file);
+					text[count] = '\0';
+					failed = false;
+				}
+				fclose(file);
+			}
+		}
+
+		if (failed) {
+			doTraceND("FAILED TO READ FILE: ", fileName);
+		}
+		else {
+			//doTrace("READ FILE: ", fileName);
+		}
+		
+		
+		return text;
+	}
+void Shader::validateShader (GLuint shader, char const * file)
+                                                                        {
+		//pushTrace("validateShader(", file, ")");
+		
+		const unsigned int BUFFER_SIZE = 512;
+		char buffer[BUFFER_SIZE];
+		memset(buffer, 0, BUFFER_SIZE);
+		GLsizei length = 0;
+	    
+		glGetShaderInfoLog(shader, BUFFER_SIZE, &length, buffer);
+		if (length > 0) {
+			doTraceND("Shader " , i__s(shader) , " (" , (file?file:"") , ") compile error: " , buffer);
+			LAST_COMPILE_ERROR = true;
+		}
+		//popTrace();
+
+
+	}
+int Shader::validateProgram (GLuint program)
+                                                   {
+		//pushTrace("validateProgram()");
+		
+		const unsigned int BUFFER_SIZE = 512;
+		char buffer[BUFFER_SIZE];
+		memset(buffer, 0, BUFFER_SIZE);
+		GLsizei length = 0;
+	    
+		memset(buffer, 0, BUFFER_SIZE);
+		glGetProgramInfoLog(program, BUFFER_SIZE, &length, buffer);
+		if (length > 0) {
+			doTraceND( "Program " , i__s(program) , " link error: " , buffer);
+			LAST_COMPILE_ERROR = true;
+			//popTrace();
+			return 0;
+		}
+	    
+		glValidateProgram(program);
+		GLint status;
+		glGetProgramiv(program, GL_VALIDATE_STATUS, &status);
+		if (status == GL_FALSE) {
+			doTraceND( "Error validating shader " , i__s(program));
+			LAST_COMPILE_ERROR = true;
+			//popTrace();
+			return 0;
+		}
+		
+		//popTrace();
+		return 1;
+		
+	}
+int Shader::countOc (string * src, string testStr)
+                                                 {
+		int totCount = 0;
+		int bInd = 0;
+		bool dc = true;
+		int fnd = 0;
+		
+		while (dc) {
+			fnd = src->find(testStr, bInd);
+			if (fnd != std::string::npos) {
+				bInd = fnd+1;
+				dc = true;
+				totCount++;
+			}
+			else {
+				dc = false;
+			}
+		}
+		
+		return totCount;
+	}
+void Shader::init (string _shaderFile, bool doBake)
+                                                   {
+		
+		
+		
+		const char* shaderFile = _shaderFile.c_str();
+		
+		uniVec.clear();
+		paramVec.clear();
+		paramMapTemp.clear();
+		
+		shader_vp = glCreateShader(GL_VERTEX_SHADER);
+		shader_fp = glCreateShader(GL_FRAGMENT_SHADER);
+	    
+	    
+		std::size_t found;
+		std::size_t found2;
+		std::size_t found3;
+
+		int baseIndex;
+		int uniCount = 0;
+		int dolCount = 0;
+		
+		
+		vector<string> allTextStringSplit;
+
+		bool doCont;
+		
+		string paramName;
+
+		int i;
+
+		const char* allText = textFileRead(shaderFile);
+
+
+		if (allText == NULL) {
+			doTraceND( "Error: Either vertex shader or fragment shader file not found." );
+			LAST_COMPILE_ERROR = true;
+		}
+		else {
+			
+				string allTextString(allText);
+				
+				
+				
+
+				//
+				
+				dolCount = countOc(&allTextString,"$");
+
+				if (dolCount == 2) {
+					
+					uniCount = countOc(&allTextString,"ublock");
+
+
+					baseIndex = 0;
+					doCont = true;
+					while (doCont) {
+						found = allTextString.find('@', baseIndex);
+						if (found != std::string::npos) {
+							
+							
+							baseIndex = found+1;
+							allTextString[found] = ' ';
+							
+							found3 = allTextString.find(' ', baseIndex);
+							found2 = allTextString.find('@', baseIndex);
+							
+							if (found2 != std::string::npos) {
+								
+								if ( 
+									((found2-found) > 32) || // max var length of 32
+									(found3 < found2) // found a space between the delimitters
+								) { 
+									//baseIndex = found+1; // already set
+								}
+								else {
+									baseIndex = found2+1;
+									allTextString[found2] = ' ';
+									
+									paramName = allTextString.substr(found + 1, (found2-found)-1);
+									
+									if (paramMapTemp.find( paramName ) == paramMapTemp.end()) {
+										paramMapTemp[paramName] = 0.0f;
+										paramVec.push_back(paramName);
+										
+										if (paramMap.find( paramName ) == paramMap.end()) {
+											paramMap[paramName] = 0.0f;
+										}
+										
+										//cout << "paramName --" << paramName << "--\n";
+										
+									}
+								}
+								
+								
+								
+								doCont = true;
+							}
+							else {
+								doCont = false;
+							}
+							
+							
+						}
+						else {
+							doCont = false;
+						}
+					}
+					
+					
+					
+					allTextStringSplit = split(allTextString, '$');
+					
+					allTextStringSplit[0].append("\n");
+					
+					if (doBake) {
+						for (i = 0; i < paramVec.size(); i++) {
+							allTextStringSplit[0].append("const float ");
+							allTextStringSplit[0].append(paramVec[i]);
+							allTextStringSplit[0].append("=");
+							allTextStringSplit[0].append(f__s(paramMap[paramVec[i]]));
+							allTextStringSplit[0].append(";\n");
+						}
+					}
+					else {
+						for (i = 0; i < paramVec.size(); i++) {
+							allTextStringSplit[0].append("uniform float ");
+							allTextStringSplit[0].append(paramVec[i]);
+							allTextStringSplit[0].append(";\n");
+						}
+					}
+					
+					
+
+					string vertStr = allTextStringSplit[0] + allTextStringSplit[1];
+					string fragStr = allTextStringSplit[0] + allTextStringSplit[2];
+
+					const GLchar* vertCS = new char[vertStr.length() + 1];
+					const GLchar* fragCS = new char[fragStr.length() + 1];
+
+					std::strcpy((GLchar*)vertCS,vertStr.c_str());
+					std::strcpy((GLchar*)fragCS,fragStr.c_str());
+
+
+			    	glShaderSource(shader_vp, 1, &(vertCS), 0);
+					glShaderSource(shader_fp, 1, &(fragCS), 0);
+				    
+					glCompileShader(shader_vp);
+					validateShader(shader_vp, shaderFile);
+					glCompileShader(shader_fp);
+					validateShader(shader_fp, shaderFile);
+
+
+
+					shader_id = glCreateProgram();
+					glAttachShader(shader_id, shader_fp);
+					glAttachShader(shader_id, shader_vp);
+					glLinkProgram(shader_id);
+					validateProgram(shader_id);
+
+					delete [] vertCS;
+					delete [] fragCS;
+
+
+					for (i = 0; i < uniCount; i++) {
+						uniVec.push_back(UniformBuffer());
+						uniVec.back().init(shader_id, i);
+					}
+
+
+				}
+				else {
+					LAST_COMPILE_ERROR = true;
+					doTraceND( "Error: " , shaderFile , "does not contain proper amount of splits ($)\n" );
+				}
+				
+				
+				delete[] allText;
+			  
+		}
+		
+		
+		//popTrace();
+		
+	}
+Shader::~ Shader ()
+                  {
+
+		uniVec.clear();
+
+		//pushTrace("~Shader()");
+		glDetachShader(shader_id, shader_fp);
+		glDetachShader(shader_id, shader_vp);
+		glDeleteShader(shader_fp);
+		glDeleteShader(shader_vp);
+		glDeleteProgram(shader_id);
+		//popTrace();
+	}
+unsigned int Shader::id ()
+                          {
+		//pushTrace("id()");
+		return shader_id;
+		//popTrace();
+	}
+void Shader::bind ()
+                    {
+		//pushTrace("bind()");
+		glUseProgram(shader_id);
+		//popTrace();
+	}
+void Shader::updateUniformBlock (int ubIndex, int ubDataSize)
+                                                             {
+		uniVec[ubIndex].updateUniformBlock(ubDataSize);
+	}
+void Shader::invalidateUniformBlock (int ubIndex)
+                                                 {
+		uniVec[ubIndex].invalidateUniformBlock();
+	}
+void Shader::beginUniformBlock (int ubIndex)
+                                            {
+		curUBIndex = ubIndex;
+		uniVec[ubIndex].beginUniformBlock();
+	}
+bool Shader::wasUpdatedUniformBlock (int ubIndex)
+                                                 {
+
+		if (uniVec.size() > ubIndex) {
+			return uniVec[ubIndex].wasUpdatedUniformBlock();
+		}
+		else {
+			return true;
+		}
+
+		
+	}
+void Shader::unbind ()
+                      {
+		//pushTrace("unbind()");
+		glUseProgram(0);
+		//popTrace();
+	}
+void Shader::setTexture (GLchar const * name, int texUnit, int texId)
+                                                                    {
+		GLint baseImageLoc = glGetUniformLocation(shader_id, name);
+
+		glUniform1i(baseImageLoc, texUnit); //Texture unit 0 is for base images.
+		
+		//When rendering an objectwith this program.
+		glActiveTexture(GL_TEXTURE0 + texUnit);
+		glBindTexture(GL_TEXTURE_2D, texId);
+	}
+void Shader::setVec (GLchar const * name, GLfloat const * vecData, int vecSize)
+                                                                             {
+		
+		GLint loc = glGetUniformLocation(shader_id, name);
+		
+		switch (vecSize) {
+			case 0:
+				doTraceND( "Error: vecSize of 0 in setVec" );
+			break;
+			case 1:
+				glUniform1fv(loc, 1, vecData);
+			break;
+			case 2:
+				glUniform2fv(loc, 1, vecData);
+			break;
+			case 3:
+				glUniform3fv(loc, 1, vecData);
+			break;
+			case 4:
+				glUniform4fv(loc, 1, vecData);
+			break;
+		}
+	}
+void Shader::setVecString (string name, GLfloat const * vecData, int vecSize)
+                                                                            {
+		
+		GLint loc = glGetUniformLocation(shader_id, name.c_str());
+		
+		switch (vecSize) {
+			case 0:
+				doTraceND( "Error: vecSize of 0 in setVec" );
+			break;
+			case 1:
+				glUniform1fv(loc, 1, vecData);
+			break;
+			case 2:
+				glUniform2fv(loc, 1, vecData);
+			break;
+			case 3:
+				glUniform3fv(loc, 1, vecData);
+			break;
+			case 4:
+				glUniform4fv(loc, 1, vecData);
+			break;
+		}
+	}
+void Shader::setShaderMatrix4x4 (string paramName, float * x, int count)
+                                                                       {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		
+		glUniformMatrix4fv(
+			loc,//GLint location,
+			count,//GLsizei count,
+			false,//GLboolean transpose,
+			x//const GLfloat *value
+		);
+	}
+void Shader::setShaderArrayfVec4 (string paramName, float * x, int count)
+                                                                        {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform4fv(loc, count, x);
+	}
+void Shader::setShaderArrayfVec3 (string paramName, float * x, int count)
+                                                                        {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform3fv(loc, count, x);
+	}
+void Shader::setShaderArray (string paramName, float * x, int count)
+                                                                   {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform1fv(loc, count, x);
+	}
+GLint Shader::getShaderLoc (string paramName)
+                                             {
+		return glGetUniformLocation(shader_id, paramName.c_str());
+	}
+void Shader::setShaderFloat (string paramName, float x)
+                                                       {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform1f(loc,x);
+	}
+void Shader::setShaderVec2 (string paramName, float x, float y)
+                                                               {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform2f(loc,x,y);
+	}
+void Shader::setShaderVec3 (string paramName, float x, float y, float z)
+                                                                        {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform3f(loc,x,y,z);
+	}
+void Shader::setShaderVec4 (string paramName, float x, float y, float z, float w)
+                                                                                 {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform4f(loc,x,y,z,w);
+	}
+void Shader::setShaderInt (string paramName, int x)
+                                                   {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform1i(loc,x);
+	}
+void Shader::setShaderfVec2 (string paramName, FIVector4 * f)
+                                                            {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform2f(loc,f->getFX(),f->getFY());
+	}
+void Shader::setShaderfVec3 (string paramName, FIVector4 * f)
+                                                            {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform3f(loc,f->getFX(),f->getFY(),f->getFZ());
+	}
+void Shader::setShaderfVec4 (string paramName, FIVector4 * f)
+                                                            {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform4f(loc,f->getFX(),f->getFY(),f->getFZ(),f->getFW());
+	}
+void Shader::setShaderFloatUB (string paramName, float x)
+                                                         {
+		int cp = uniVec[curUBIndex].uniPosition;
+
+		uniVec[curUBIndex].uniData[cp] = x;
+		uniVec[curUBIndex].uniPosition += 1;
+	}
+void Shader::setShaderfVec4UB (string paramName, FIVector4 * f)
+                                                              {
+
+		int cp = uniVec[curUBIndex].uniPosition;
+
+		uniVec[curUBIndex].uniData[cp+0] = f->getFX();
+		uniVec[curUBIndex].uniData[cp+1] = f->getFY();
+		uniVec[curUBIndex].uniData[cp+2] = f->getFZ();
+		uniVec[curUBIndex].uniData[cp+3] = f->getFW();
+		uniVec[curUBIndex].uniPosition += 4;
 	}
 #undef LZZ_INLINE
  
@@ -20128,42 +22833,62 @@ FBOSet * PooledResource::getFBOS (int fboNum)
 	}
 void PooledResource::init (Singleton * _singleton, bool _isCPU, int _sizeX, int _sizeY)
           {
-
+		listGenerated = false;
 		singleton = _singleton;
 		isCPU = _isCPU;
 		usedById.v0 = -1;
 		usedById.v1 = -1;
 
+
 		int i;
 
-		if (isCPU) {
-			for (i = 0; i < MAX_LAYERS; i++) {
-				cpuSet[i] = new uint[
-					_sizeX *
-					_sizeY
-				];
-			}
+
+		//if (freeCam) {
+			return;
+		//}
+
+		// if (isCPU) {
+		// 	for (i = 0; i < MAX_LAYERS; i++) {
+		// 		cpuSet[i] = new uint[
+		// 			_sizeX *
+		// 			_sizeY
+		// 		];
+		// 	}
+		// }
+		// else {
+		// 	for (i = 0; i < MAX_LAYERS; i++) {
+		// 		fboSet[i] = new FBOSet();
+		// 	}
+
+		// 	for (i = 0; i < MAX_LAYERS; i++) {
+		// 		fboSet[i]->init(
+		// 			2,
+		// 			_sizeX,
+		// 			_sizeY,
+		// 			1,
+		// 			false //has depth
+		// 		);
+		// 	}
+		// }
+	}
+void PooledResource::bindHolderDL (int mipLev, int layer)
+                                                 {
+		int ci = mipLev*MAX_LAYERS + layer;
+		if (listGenerated) {
+			glDeleteLists(holderDL[ci], 1);
 		}
-		else {
-			for (i = 0; i < MAX_LAYERS; i++) {
-				fboSet[i] = new FBOSet();
-			}
-
-			for (i = 0; i < MAX_LAYERS; i++) {
-				fboSet[i]->init(
-					2,
-					_sizeX,
-					_sizeY,
-					1,
-					false //has depth
-				);
-			}
+		
+		holderDL[ci] = glGenLists(1);
+		glNewList(holderDL[ci], GL_COMPILE);
+	}
+void PooledResource::unbindHolderDL (int mipLev, int layer)
+                                                   {
+		glEndList();
+		
+		if (mipLev*MAX_LAYERS+layer == (MAX_MIP_LEV*MAX_LAYERS-1)) {
+			listGenerated = true;
 		}
-
 		
-
-		
-
 	}
 #undef LZZ_INLINE
  
@@ -20561,7 +23286,7 @@ UIComponent::UIComponent ()
                       {
 		
 	}
-void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, string _label, string _uid, string _ss, int _guiClass, float _divisions, bool _hasBackground, bool _singleLine, float _fillRatioX, float _fillRatioY, int _fillDir, int _alignX, int _alignY, float _value, int _layer, int _hoverType, bool _isFloating)
+void UIComponent::init (Singleton * _singleton, UIComponent * _baseComp, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, string _label, string _uid, string _ss, int _guiClass, float _divisions, bool _hasBackground, bool _singleLine, float _fillRatioX, float _fillRatioY, int _fillDir, int _alignX, int _alignY, float _value, int _layer, int _hoverType, float _maxDimInPixelsX, float _maxDimInPixelsY, float _minDimInPixelsX, float _minDimInPixelsY, bool _isFloating)
           {
 
 		parent = NULL;
@@ -20569,6 +23294,7 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		contOnStack = false;
 
 		singleton = _singleton;
+		baseComp = _baseComp;
 		parentId = _parentId;
 		nodeId = _nodeId;
 		
@@ -20592,9 +23318,19 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		}
 		
 		
+		
+		maxDimInPixels.x = _maxDimInPixelsX;
+		maxDimInPixels.y = _maxDimInPixelsY;
+		
+		minDimInPixels.x = _minDimInPixelsX;
+		minDimInPixels.y = _minDimInPixelsY;
+		
+		
 		guiClass = _guiClass;
 		//guiId = _guiId;
 		
+		
+		dragging = false;
 		overSelf = false;
 		overChild = false;
 		isDirty = true;
@@ -20626,6 +23362,28 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		
 		
 		/////////////////
+		
+		totOffset.x = 0.0f;
+		totOffset.y = 0.0f;
+		
+		
+		targScrollOffset.x = 0.0f;
+		targScrollOffset.y = 0.0f;
+		
+		scrollOffset.x = 0.0f;
+		scrollOffset.y = 0.0f;
+		
+		scrollMaskY.x = 0.0;
+		scrollMaskY.y = 0.0;
+		
+		dragStart.x = 0.0f;
+		dragStart.y = 0.0f;
+		
+		lastDrag.x = 0.0f;
+		lastDrag.y = 0.0f;
+		
+		dragOffset.x = 0.0f;
+		dragOffset.y = 0.0f;
 		
 		floatOffset.x = 0.0f;
 		floatOffset.y = 0.0f;
@@ -20660,6 +23418,24 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		
 		
 	}
+float UIComponent::getDimYClamped (float val)
+                                        {
+		if (maxDimInPixels.y == 0) {
+			return max(val,minDimInPixels.y);
+		}
+		else {
+			return max(min(maxDimInPixels.y, val),minDimInPixels.y);
+		}
+	}
+float UIComponent::getResultDimYClamped ()
+                                     {
+		if (maxDimInPixels.y == 0) {
+			return max(resultDimInPixels.y,minDimInPixels.y);
+		}
+		else {
+			return max(min(maxDimInPixels.y, resultDimInPixels.y),minDimInPixels.y);
+		}
+	}
 void UIComponent::setValue (float _value, bool doEventDispatch, bool preventRefresh)
                                                                                                {
 		value = _value;
@@ -20678,7 +23454,7 @@ UIComponent * UIComponent::getParent ()
 		}
 		else {
 			// todo: replace with root or id
-			parent = singleton->mainGUI->baseComp->findNodeById(parentId);
+			parent = baseComp->findNodeById(parentId);
 			foundParent = true;
 		}
 		
@@ -20772,9 +23548,9 @@ float UIComponent::getMinWidth ()
 		
 		curMW += totMW;
 		
-		minDimInPixels.x = curMW;
+		rmDimInPixels.x = max(curMW,minDimInPixels.x);
 		
-		return curMW;
+		return rmDimInPixels.x;
 		
 	}
 float UIComponent::getMinHeight ()
@@ -20818,9 +23594,9 @@ float UIComponent::getMinHeight ()
 		
 		curMH += totMH;
 		
-		minDimInPixels.y = curMH;
+		rmDimInPixels.y = max(curMH,minDimInPixels.y);
 		
-		return curMH;
+		return getDimYClamped(curMH);
 		
 	}
 UIComponent * UIComponent::addChild (int _parentId, int _nodeId, string * stringVals, float * floatVals, bool _isFloating, JSONValue * _jvNodeNoTemplate)
@@ -20849,6 +23625,7 @@ UIComponent * UIComponent::addChild (int _parentId, int _nodeId, string * string
 		
 		curComp->init(
 			singleton,
+			baseComp,
 			_parentId,
 			_nodeId,
 			childCount,
@@ -20871,6 +23648,10 @@ UIComponent * UIComponent::addChild (int _parentId, int _nodeId, string * string
 			floatVals[E_GFT_VALUE],
 			floatVals[E_GFT_LAYER],
 			floatVals[E_GFT_HOVERTYPE],
+			floatVals[E_GFT_MAXDIMX],
+			floatVals[E_GFT_MAXDIMY],
+			floatVals[E_GFT_MINDIMX],
+			floatVals[E_GFT_MINDIMY],
 			_isFloating
 		);
 		
@@ -20978,17 +23759,18 @@ void UIComponent::applyHeight ()
 		int i;
 		
 		
-		//float totVal = 0.0f;
+
 		for (i = 0; i < children.size(); i++) {
 			totalRatios.y += children[i].fillRatioDim.y;
 			if (fillDir == E_FILL_HORIZONTAL) {
-				//totVal = max(totVal,children[i].minDimInPixels.y);
+				
 			}
 			else {
-				availSpace -= children[i].minDimInPixels.y;
+				availSpace -= children[i].rmDimInPixels.y;
 			}
 		}
-		//availSpace -= totVal;
+		
+		availSpace = max(availSpace,0.0f);
 		
 		
 		if (totalRatios.y == 0.0f) {
@@ -21001,19 +23783,17 @@ void UIComponent::applyHeight ()
 			if (fillDir == E_FILL_HORIZONTAL) {
 				
 				if (children[i].fillRatioDim.y == 0.0f) {
-					children[i].resultDimInPixels.y = children[i].minDimInPixels.y;
+					children[i].resultDimInPixels.y = children[i].rmDimInPixels.y;
 				}
 				else {
 					
-					// SHOULD BE: 
-					// children[i].resultDimInPixels.y = availSpace;
-					// ?
+					
 					children[i].resultDimInPixels.y = availSpace;
 				}
 			}
 			else {
 				children[i].resultDimInPixels.y =
-					children[i].minDimInPixels.y +
+					children[i].rmDimInPixels.y + 
 					(availSpace*children[i].fillRatioDim.y)/totalRatios.y;	
 				
 			}
@@ -21037,17 +23817,17 @@ void UIComponent::applyWidth ()
 		float availSpace = resultDimInPixels.x - (marginInPixels+borderInPixels+paddingInPixels)*2.0f;
 		int i;
 		
-		//float totVal = 0.0f;
+
 		for (i = 0; i < children.size(); i++) {
 			totalRatios.x += children[i].fillRatioDim.x;
 			if (fillDir == E_FILL_HORIZONTAL) {
-				availSpace -= children[i].minDimInPixels.x;
+				availSpace -= children[i].rmDimInPixels.x;
 			}
 			else {
-				//totVal = max(totVal,children[i].minDimInPixels.x);
+				
 			}
 		}		
-		//availSpace -= totVal;
+		availSpace = max(availSpace,0.0f);
 		
 		if (totalRatios.x == 0.0f) {
 			totalRatios.x = 1.0f;
@@ -21061,16 +23841,30 @@ void UIComponent::applyWidth ()
 				
 				
 				children[i].resultDimInPixels.x =
-					children[i].minDimInPixels.x +
-					(availSpace*children[i].fillRatioDim.x)/totalRatios.x;	
+					max(
+						children[i].rmDimInPixels.x +
+						(availSpace*children[i].fillRatioDim.x)/totalRatios.x,
+						children[i].minDimInPixels.x
+					);
+					
 			}
 			else {
 				
 				if (children[i].fillRatioDim.x == 0.0f) {
-					children[i].resultDimInPixels.x = children[i].minDimInPixels.x;
+					children[i].resultDimInPixels.x =
+						max(
+							children[i].rmDimInPixels.x,
+							children[i].minDimInPixels.x
+						);
+					
 				}
 				else {
-					children[i].resultDimInPixels.x = availSpace;
+					children[i].resultDimInPixels.x =
+						max(
+							availSpace,
+							children[i].minDimInPixels.x
+						);
+					
 				}
 			}
 					
@@ -21142,19 +23936,87 @@ void UIComponent::layout ()
 		
 		
 	}
+void UIComponent::updateOffset ()
+                            {
+		totOffset.x = floatOffset.x + dragOffset.x + scrollOffset.x;
+		totOffset.y = floatOffset.y + dragOffset.y + scrollOffset.y;
+		return;
+	}
 void UIComponent::updateValue (float x, float y)
                                            {
+		
+		
 		
 		float hoverBuffer = 4.0f;
 		float tempValue;
 		
 		UIComponent* curParent = getParent();
 		
+		
+		UIComponent* highestCont;
+		
+		if (dragging) {
+			highestCont = getHighestCont(this, 0);
+			
+			// if (highestCont->floatingChildren.size() > 0) {
+			// 	highestCont = &(highestCont->floatingChildren[0]);
+			// }
+			
+			highestCont->dragOffset.x = lastDrag.x + (x - dragStart.x); //
+			highestCont->dragOffset.y = lastDrag.y + (y - dragStart.y); //
+			
+		}
+		
+		if (curParent == NULL) {
+			
+		}
+		else {
+			if (
+				//(hoverType == E_HT_ONSELECTED) ||
+				//(guiClass == E_GT_ROOTCONT) ||
+				(curParent->floatingChildren.size() > 0)
+				
+			) {
+				
+			}
+			else {
+				if (curParent->hoverType != E_HT_ROOT) {
+					dragOffset = curParent->dragOffset;
+				}			
+			}
+		}
+		
+		
+		
+		
+		if ((maxDimInPixels.y == 0)&&(curParent != NULL)) {
+			scrollOffset.y = curParent->scrollOffset.y;
+		}
+		else {
+			scrollOffset.y += (targScrollOffset.y-scrollOffset.y)/16.0f;
+			
+		}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		switch (hoverType) {
 			case E_HT_NORMAL:
+			case E_HT_ROOT:
 				if (curParent != NULL) {
-					floatOffset = curParent->floatOffset;
-					visible = curParent->visible;
+					
+					
+					if (curParent->hoverType != E_HT_ROOT) {
+						floatOffset = curParent->floatOffset;
+						visible = curParent->visible;
+					}
+					
 					
 					
 				}
@@ -21162,8 +24024,8 @@ void UIComponent::updateValue (float x, float y)
 			case E_HT_TOOLTIP:
 			case E_HT_TOOLTIP_VALUE:
 				//curParent->floatOffset.x + 
-				floatOffset.x = x + hoverBuffer; 
-				floatOffset.y = curParent->floatOffset.y + curParent->originPos.y + curParent->resultDimInPixels.y + hoverBuffer;
+				floatOffset.x = x + hoverBuffer - dragOffset.x; 
+				floatOffset.y = curParent->totOffset.y + curParent->originPos.y + curParent->resultDimInPixels.y + hoverBuffer;
 				visible = curParent->overSelf;
 				
 				if ((hoverType == E_HT_TOOLTIP_VALUE)&&visible) {
@@ -21174,16 +24036,40 @@ void UIComponent::updateValue (float x, float y)
 			break;
 			case E_HT_ONSELECTED:
 				//curParent->floatOffset.x + 
-				floatOffset.x = curParent->originPos.x + curParent->resultDimInPixels.x;
-				floatOffset.y = curParent->floatOffset.y + curParent->originPos.y;
-				visible = (curParent->value == 1.0f);
+				floatOffset.x = curParent->totOffset.x + curParent->originPos.x + curParent->resultDimInPixels.x;
+				floatOffset.y = curParent->totOffset.y + curParent->originPos.y;
+				visible = (curParent->value == 1.0f)&&(curParent->visible);
 			break;
 						
 		}
 		
+		updateOffset();
 		
-		float hbxMin = hitBounds.xMin + floatOffset.x;
-		float hbxMax = hitBounds.xMax + floatOffset.x;
+		
+		
+		
+		if ((maxDimInPixels.y == 0)&&(curParent != NULL)) {
+			scrollMaskY = curParent->scrollMaskY;
+		}
+		else {
+			scrollMaskY.x = originPos.y + marginInPixels;
+			scrollMaskY.y = originPos.y +  getResultDimYClamped() - marginInPixels;
+			
+			scrollMaskY.x += totOffset.y-scrollOffset.y;
+			scrollMaskY.y += totOffset.y-scrollOffset.y;
+			
+			scrollMaskY.x /= singleton->guiWinH;
+			scrollMaskY.y /= singleton->guiWinH;
+			scrollMaskY.x = ((1.0f-scrollMaskY.x) - 0.5f)*2.0f;
+			scrollMaskY.y = ((1.0f-scrollMaskY.y) - 0.5f)*2.0f;			
+		}
+		
+		
+		
+		
+		
+		float hbxMin = hitBounds.xMin + totOffset.x;
+		float hbxMax = hitBounds.xMax + totOffset.x;
 		
 		if (wasHit&&(guiClass == E_GT_SLIDER)) {
 			
@@ -21234,29 +24120,49 @@ void UIComponent::clearOver ()
 		}
 		
 	}
-bool UIComponent::findMaxLayer (float x, float y)
-                                            {
+bool UIComponent::findMaxLayer (float x, float y, float xTransformed, float yTransformed)
+                                                                                    {
 		
 		
 		int i;
 
 		overSelf = (
-			(x < (hitBounds.xMax+floatOffset.x)) &&
-			(x > (hitBounds.xMin+floatOffset.x)) &&
-			(y < (hitBounds.yMax+floatOffset.y)) &&
-			(y > (hitBounds.yMin+floatOffset.y))
+			(x < (hitBounds.xMax+totOffset.x)) &&
+			(x > (hitBounds.xMin+totOffset.x)) &&
+			(y < (hitBounds.yMax+totOffset.y)) &&
+			(y > (hitBounds.yMin+totOffset.y))
 		) && visible;
+		
+		
+		if (maxDimInPixels.y == 0) {
+			
+		}
+		else {
+			if (
+				(yTransformed > scrollMaskY.x) || 
+				(yTransformed < scrollMaskY.y)
+			) {
+				overSelf = false;
+				overChild = false;
+				return false;
+			}
+		}
+		
+		
+		
+		
+		
+		
 		
 		overChild = false;
 		
 		for (i = 0; i < children.size(); i++) {
-			overChild = overChild||children[i].findMaxLayer(x,y);
+			overChild = overChild||children[i].findMaxLayer(x,y,xTransformed,yTransformed);
 		}
 		for (i = 0; i < floatingChildren.size(); i++) {
-			overChild = overChild||floatingChildren[i].findMaxLayer(x,y);
+			overChild = overChild||floatingChildren[i].findMaxLayer(x,y,xTransformed,yTransformed);
 		}
 		
-			
 		if (
 			overSelf &&
 			visible &&
@@ -21286,12 +24192,12 @@ void UIComponent::testOver (float x, float y)
 		mouseOver = 
 			overSelf &&
 			visible &&
-			hasBackground &&
+			(hasBackground) && //||(guiClass == E_GT_DRAGPAD)
 			(!overChild) &&
 			(layer >= singleton->maxLayerOver);
 		
 		
-		if (mouseOver != lastOver) {
+		if ((mouseOver != lastOver)&&(!(singleton->dragging))) {
 			if (mouseOver) {
 				singleton->dispatchEvent(
 					GLUT_NO_BUTTON,
@@ -21314,7 +24220,14 @@ void UIComponent::testOver (float x, float y)
 			}
 		}
 		else {
-			if (wasHit&&(guiClass == E_GT_SLIDER)) {
+			if (
+				wasHit && 
+				(
+					(guiClass == E_GT_SLIDER) ||
+					(guiClass == E_GT_DRAGPAD)	
+				)
+				
+			) {
 				
 				if (divisions == 1.0f) {
 					// toggle button, do nothing
@@ -21339,6 +24252,7 @@ void UIComponent::testOver (float x, float y)
 bool UIComponent::testHit (int button, int state, float x, float y)
                                                               {
 		
+		float wheelDelta = 0.0f;
 		
 		
 		UIComponent* curParent = getParent();
@@ -21348,17 +24262,35 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 		float lastValue = value;
 		float tempValue;
 		
+		
+		
+		
 		if (button == GLUT_LEFT_BUTTON) {
 			if (state == GLUT_DOWN) { // MOUSE DOWN
 				if (mouseOver) {
 					
-					if (
-						// (guiClass == E_GT_SLIDER) ||
-						// (guiClass == E_GT_BUTTON)
-						(guiClass != E_GT_HOLDER) && visible
+					if (visible) {
 						
-					) {
-						wasHit = true;
+						
+					
+						
+						if (
+							(guiClass != E_GT_HOLDER)
+						) {
+							wasHit = true;
+						}
+						
+						dragging = (guiClass == E_GT_MENUBAR);
+						if (dragging) {
+							singleton->dragging = true;
+							
+							dragStart.x = x;
+							dragStart.y = y;
+						}
+						
+						
+						
+						
 					}
 					
 					
@@ -21367,6 +24299,19 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 				mouseDown = true;
 			}
 			else { // MOUSE UP
+				
+				
+				if (dragging) {
+					lastDrag.x += (x - dragStart.x);
+					lastDrag.y += (y - dragStart.y);
+					dragStart.x = 0.0f;
+					dragStart.y = 0.0f;
+					
+					
+				}
+				dragging = false;
+				singleton->dragging = false;
+				
 				if (mouseOver&&wasHit) {
 					
 					switch (guiClass) {
@@ -21385,7 +24330,10 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 							
 							tempValue = 1.0f-value;
 							
-							if (tempValue == 1.0f) {
+							if (singleton->bShift) {
+								
+							}
+							else {
 								for (i = 0; i < curParent->children.size(); i++) {
 									if (curParent->children[i].guiClass == E_GT_RADIO) {
 										curParent->children[i].setValue(0.0f);
@@ -21405,7 +24353,32 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 			}
 		}
 		else {
-				
+				if ( (button == 3) || (button == 4) ) {
+					
+					
+					if (visible && overSelf) {
+						if (maxDimInPixels.y != 0) {
+							
+							if (button == 3) {
+								wheelDelta = 1.0f;
+								// wheel up
+							}
+							else {
+								wheelDelta = -1.0f;
+								// wheel down
+							}
+							
+							
+							targScrollOffset.y += wheelDelta*20.0f;
+							
+							targScrollOffset.y = clampf(targScrollOffset.y, -(resultDimInPixels.y-maxDimInPixels.y), 0.0f);
+							
+							return true;
+						}	
+					}
+					
+					
+				}
 		}
 
 		updateValue(x, y);
@@ -21426,46 +24399,47 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 		}
 		
 		bool finalRes = wasHit||hitChild;
-		if (state == GLUT_UP) {
+		if ((state == GLUT_UP)) { //&&(wheelDelta==0.0f)
 			wasHit = false;
 		}
 		
 
 		return finalRes;
 	}
+UIComponent * UIComponent::getHighestCont (UIComponent * curNode, int genCount)
+                                                                        {
+		UIComponent* curParent = curNode->getParent();
+		
+		if (curParent == NULL) {
+			return curNode;
+		}
+		else {
+			if (curParent->floatingChildren.size() > 0) {
+				return curNode;
+			}
+			else {
+				return getHighestCont(curParent, genCount+1);
+			}
+		}
+		
+		
+		
+	}
 void UIComponent::setText (string _text)
                                    {
 		
-		UIComponent* curParent = getParent();
-		UIComponent* curParentParent;
+		UIComponent* highestCont;
 		
 		if (_text.compare(text) == 0) {
 			// text unchanged, do nothing
 		}
 		else {
 			text = _text;
-			//isDirty = true;
 			
-			if (curParent != NULL) {
-				
-				curParentParent = curParent->getParent();
-				
-				if (curParentParent != NULL) {
-					curParentParent->isDirty = true;
-				}
-				else {
-					curParent->isDirty = true;
-				}
-				
-				
-				singleton->guiDirty = true;
-			}
+			highestCont = getHighestCont(this, 0);
+			highestCont->isDirty = true;
+			singleton->guiDirty = true;
 			
-			//thisUICont.locked = true;
-
-			//layout();
-			//renderAll();
-			//thisUICont.locked = false;
 		}
 		
 		
@@ -21835,6 +24809,7 @@ void GameGUI::init (Singleton * _singleton)
 		baseComp = new UIComponent();
 		baseComp->init(
 			singleton,
+			baseComp,
 			-1,
 			nodeCount,
 			0,
@@ -21959,9 +24934,12 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 		int numChildren = 0;
 		int numFloatingChildren = 0;
 		int numDataChildren = 0;
+		int numFilters = 0;
 		JSONValue* jvChildren = NULL;
 		JSONValue* jvFloatingChildren = NULL;
 		JSONValue* jvChildTemplate = NULL;
+		JSONValue* jvFilter = NULL;
+		JSONValue* curFilter = NULL;
 		
 		JSONValue* jvData = NULL;
 		JSONValue* jvDataRoot = NULL;
@@ -21986,8 +24964,9 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 		}
 		
 		
-		
+		bool doProc = false;
 		bool isInternal = false;
+		int totCount = 0;
 		E_GUI_CHILD_TYPES curCT = E_GCT_LENGTH;;
 		
 		
@@ -22005,7 +24984,15 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 				}
 			}
 			
-			
+			if (jv->HasChild("whereAllEqual")) {
+				jvFilter = jv->Child("whereAllEqual");
+				numFilters = jvFilter->CountChildren();
+			}
+			else {
+				jvFilter = NULL;
+				numFilters = 0;
+			}
+				
 			
 			
 			if (jv->HasChild("dataSource")) {
@@ -22054,74 +25041,108 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 					
 					curData = jvData->Child(i);
 					
-					switch (curCT) {
-						case E_GCT_INV_ITEM:
-							tempStrings[E_GDS_CHILD_NAME] = curData->Child("name")->string_value;
+					doProc = true;
+					if (jvFilter != NULL) {
+						
+						
+						for (j = 0; j < numFilters; j++) {
+							curFilter = jvFilter->Child(j);
 							
-							curIcon = jvRoot->
-								Child("itemDefs")->
-								Child(tempStrings[E_GDS_CHILD_NAME])->
-								Child("iconNum")->
-								number_value;
-							
-							jvChildTemplate->
-								Child("floatingChildren")->
-								Child(0)->
-								Child("children")->
-								Child(0)->
-								Child("label")->
-								string_value = 
-									jvRoot->
+							if ( curData->Child(curFilter->Child(0)->string_value)->IsNumber() ) {
+								if (
+									curData->Child(curFilter->Child(0)->string_value)->number_value !=
+									curFilter->Child(1)->number_value
+								) {
+									doProc = false;
+								}
+							}
+							else {
+								// todo: string support
+							}
+						}
+						
+						
+					}
+					
+					if (doProc) {
+						switch (curCT) {
+							case E_GCT_INV_ITEM:
+								tempStrings[E_GDS_CHILD_NAME] = curData->Child("name")->string_value;
+								
+								curIcon = jvRoot->
 									Child("itemDefs")->
 									Child(tempStrings[E_GDS_CHILD_NAME])->
-									Child("class")->
-									string_value;
+									Child("iconNum")->
+									number_value;
 								
-							jvChildTemplate->Child("label")->string_value = 
-								i__s(curIcon) +
-								"& " +
-								curData->Child("mat")->string_value +
-								" " +
-								tempStrings[E_GDS_CHILD_NAME];
-						break;
-						case E_GCT_SHADER_PARAM:
+								jvChildTemplate->
+									Child("floatingChildren")->
+									Child(0)->
+									Child("children")->
+									Child(0)->
+									Child("label")->
+									string_value = 
+										jvRoot->
+										Child("itemDefs")->
+										Child(tempStrings[E_GDS_CHILD_NAME])->
+										Child("class")->
+										string_value;
 								
-							jvChildTemplate->Child("label")->string_value = 
-								curData->Child("shaderName")->string_value +
-								"." +
-								curData->Child("paramName")->string_value;
-							
-							jvChildTemplate->Child("uid")->string_value = curData->Child("uid")->string_value;
+								tempStrings[E_GDS_MATERIAL] = curData->Child("mat")->string_value;
+								if (tempStrings[E_GDS_MATERIAL].compare("none") == 0) {
+									tempStrings[E_GDS_MATERIAL] = "";
+								}
 								
-							jvChildTemplate->Child("callbackData")->Child("shaderName")->string_value = 
-								curData->Child("shaderName")->string_value;
-							jvChildTemplate->Child("callbackData")->Child("paramName")->string_value = 
-								curData->Child("paramName")->string_value;
+								jvChildTemplate->Child("label")->string_value = 
+									i__s(curIcon) +
+									"& " +
+									tempStrings[E_GDS_MATERIAL] +
+									" " +
+									tempStrings[E_GDS_CHILD_NAME];
+							break;
+							case E_GCT_SHADER_PARAM:
+									
+								jvChildTemplate->Child("label")->string_value = 
+									curData->Child("shaderName")->string_value +
+									"." +
+									curData->Child("paramName")->string_value;
 								
-						break;
-						case E_GCT_LENGTH:
-							
-						break;
+								jvChildTemplate->Child("uid")->string_value = curData->Child("uid")->string_value;
+									
+								jvChildTemplate->Child("callbackData")->Child("shaderName")->string_value = 
+									curData->Child("shaderName")->string_value;
+								jvChildTemplate->Child("callbackData")->Child("paramName")->string_value = 
+									curData->Child("paramName")->string_value;
+									
+							break;
+							case E_GCT_LENGTH:
+								
+							break;
+						}
+						
+						
+						
+						
+						
+						// copy template to new child
+						jv->Child("children")->array_value.push_back(
+							JSON::Parse(jvChildTemplate->Stringify().c_str())
+						);
+						
+						
+						//PROBLEM
+						
+						addChildFromJSON(jv->Child("children")->Child(totCount),newParent,false); //jvChildTemplate //jv->Child("children")->Child(i)
+						
+						totCount++;
+						
+						
 					}
 					
 					
-					
-					
-					
-					// copy template to new child
-					jv->Child("children")->array_value.push_back(
-						JSON::Parse(jvChildTemplate->Stringify().c_str())
-					);
-					
-					
-					addChildFromJSON(jv->Child("children")->Child(i),newParent,false); //jvChildTemplate //jv->Child("children")->Child(i)
+				
 				}
 			}
-			
-			
-			
-			
-			
 			
 		}
 		
@@ -22151,7 +25172,7 @@ void GameGUI::guiFromJSON (JSONValue * jv)
 		
 		
 		addChildFromJSON(
-			jv->Child(jv->Child("curMenu")->string_value), //"inventoryMenu" "shaderParamMenu"
+			jv->Child("baseGUI"),  //jv->Child("curMenu")->string_value
 			baseComp,
 			false
 		);
@@ -22165,22 +25186,16 @@ void GameGUI::doRefresh ()
 		
 		int i;
 		
-		//if (singleton->guiDirty) {
-			
-			//cout << "guiDirty\n";
-			
-			singleton->guiDirty = false;
-			dirtyVec.clear();
-			baseComp->gatherDirty(&dirtyVec);
-			baseComp->clearDirty();
-			
-			for (i = 0; i < dirtyVec.size(); i++) {
-				dirtyVec[i]->layout();
-			}
-			
-			//dirtyVec.clear();
-			baseComp->renderAll();
-		//}
+		singleton->guiDirty = false;
+		dirtyVec.clear();
+		baseComp->gatherDirty(&dirtyVec);
+		baseComp->clearDirty();
+		
+		for (i = 0; i < dirtyVec.size(); i++) {
+			dirtyVec[i]->layout();
+		}
+		
+		baseComp->renderAll();
 		
 		
 	}
@@ -22188,8 +25203,17 @@ void GameGUI::testOver (int x, int y)
                                     {
 		singleton->maxLayerOver = -1;
 		
+		
+		mouseTrans.x = x;
+		mouseTrans.y = y;
+		mouseTrans.x /= singleton->guiWinW;
+		mouseTrans.y /= singleton->guiWinH;
+		mouseTrans.x = ((1.0f-mouseTrans.x) - 0.5f)*2.0f;
+		mouseTrans.y = ((1.0f-mouseTrans.y) - 0.5f)*2.0f;		
+		
+		
 		baseComp->clearOver();
-		baseComp->findMaxLayer(x, y);
+		baseComp->findMaxLayer(x, y, mouseTrans.x, mouseTrans.y);
 		baseComp->testOver(x, y);
 	}
 bool GameGUI::testHit (int button, int state, int x, int y)
@@ -22216,11 +25240,13 @@ void GameGUI::renderCharAt (UIComponent * uiComp, CharStruct * cs, FontWrapper *
 		
 		fBoundingBox destPos;
 		fBoundingBox srcPos;
+		
+		
 
-		destPos.xMin = (px+offsetX)+uiComp->floatOffset.x;
-		destPos.yMin = (py+offsetY)+uiComp->floatOffset.y+shadowOffset;
-		destPos.xMax = (px+offsetX+sampW*activeFont->fontScale)+uiComp->floatOffset.x;
-		destPos.yMax = (py+offsetY+sampH*activeFont->fontScale)+uiComp->floatOffset.y+shadowOffset;
+		destPos.xMin = (px+offsetX)+uiComp->totOffset.x;
+		destPos.yMin = (py+offsetY)+uiComp->totOffset.y+shadowOffset;
+		destPos.xMax = (px+offsetX+sampW*activeFont->fontScale)+uiComp->totOffset.x;
+		destPos.yMax = (py+offsetY+sampH*activeFont->fontScale)+uiComp->totOffset.y+shadowOffset;
 		
 		srcPos.xMin = (sampX)/sourceW;
 		srcPos.yMin = (sourceH-(sampY+sampH))/sourceH;
@@ -22244,11 +25270,14 @@ void GameGUI::renderCharAt (UIComponent * uiComp, CharStruct * cs, FontWrapper *
 			iconVal = 1.0f;
 		}
 		
+		
+		
+		
 		//dimensions
 		glMultiTexCoord4f(1, sampW, sampH, 0.0f, 0.0f);
 
 		glMultiTexCoord4f(4, 1.0f, 1.0f, 1.0f, 1.0f);
-		glMultiTexCoord4f(5, iconVal, shadowOffset, 1.0f, 1.0f);
+		glMultiTexCoord4f(5, iconVal, shadowOffset, uiComp->scrollMaskY.x, uiComp->scrollMaskY.y);
 		//border color
 		glMultiTexCoord4f(6, 1.0f, 1.0f, 1.0f, 1.0f);
 		//misc
@@ -22273,12 +25302,113 @@ void GameGUI::renderCharAt (UIComponent * uiComp, CharStruct * cs, FontWrapper *
 		glVertex3f (  x0, y0, -1.0f );
 
 	}
+void GameGUI::renderQuad (UIComponent * uiComp, fBoundingBox fbb, float shadowOffset)
+          {
+
+		StyleSheetResult* resSS = &(uiComp->resSS);
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		float x0 = (fbb.xMin+uiComp->totOffset.x)/singleton->guiWinW;
+		float x1 = (fbb.xMax+uiComp->totOffset.x)/singleton->guiWinW;
+		float y0 = (fbb.yMin+uiComp->totOffset.y+shadowOffset)/singleton->guiWinH;
+		float y1 = (fbb.yMax+uiComp->totOffset.y+shadowOffset)/singleton->guiWinH;
+
+		x0 = (x0-0.5f)*2.0f;
+		x1 = (x1-0.5f)*2.0f;
+		y0 = ((1.0f-y0) - 0.5f)*2.0f;
+		y1 = ((1.0f-y1) - 0.5f)*2.0f;
+
+		
+		//dimensions
+		glMultiTexCoord4f(1, fbb.xMax-fbb.xMin, fbb.yMax-fbb.yMin, resSS->props[E_SS_BORDER], resSS->props[E_SS_CORNERRAD]);
+
+		glMultiTexCoord4f(5, 0.0f, shadowOffset, uiComp->scrollMaskY.x, uiComp->scrollMaskY.y);
+		
+		//border color
+		glMultiTexCoord4f(6, resSS->props[E_SS_BDCOL_R], resSS->props[E_SS_BDCOL_G], resSS->props[E_SS_BDCOL_B], resSS->props[E_SS_BDCOL_A]);
+		//misc
+		glMultiTexCoord4f(7, resSS->props[E_SS_ROUNDNESS], uiComp->getValue(), 1.0f, 1.0f);
+
+
+		//bg
+		glMultiTexCoord4f(2, resSS->props[E_SS_BGCOL1_R], resSS->props[E_SS_BGCOL1_G], resSS->props[E_SS_BGCOL1_B], resSS->props[E_SS_BGCOL1_A]);
+		//fg
+		glMultiTexCoord4f(3, resSS->props[E_SS_FGCOL1_R], resSS->props[E_SS_FGCOL1_G], resSS->props[E_SS_FGCOL1_B], resSS->props[E_SS_FGCOL1_A]);
+		//tg
+		glMultiTexCoord4f(4, resSS->props[E_SS_TGCOL1_R], resSS->props[E_SS_TGCOL1_G], resSS->props[E_SS_TGCOL1_B], resSS->props[E_SS_TGCOL1_A]);
+		
+		
+		glMultiTexCoord4f(0, 0.0f, 0.0f, 0.0f, 1.0f);
+		glVertex3f (  x0, y1, -1.0f );
+		glMultiTexCoord4f(0, 0.0f, 0.0f, 1.0f, 1.0f);
+		glVertex3f (  x1, y1, -1.0f );
+
+		//bg
+		glMultiTexCoord4f(2, resSS->props[E_SS_BGCOL0_R], resSS->props[E_SS_BGCOL0_G], resSS->props[E_SS_BGCOL0_B], resSS->props[E_SS_BGCOL0_A]);
+		//fg
+		glMultiTexCoord4f(3, resSS->props[E_SS_FGCOL0_R], resSS->props[E_SS_FGCOL0_G], resSS->props[E_SS_FGCOL0_B], resSS->props[E_SS_FGCOL0_A]);
+		//tg
+		glMultiTexCoord4f(4, resSS->props[E_SS_TGCOL0_R], resSS->props[E_SS_TGCOL0_G], resSS->props[E_SS_TGCOL0_B], resSS->props[E_SS_TGCOL0_A]);
+
+		glMultiTexCoord4f(0, 0.0f, 0.0f, 1.0f, 0.0f);
+		glVertex3f (  x1, y0, -1.0f );
+		glMultiTexCoord4f(0, 0.0f, 0.0f, 0.0f, 0.0f);
+		glVertex3f (  x0, y0, -1.0f );
+
+
+	}
+void GameGUI::renderQuadDirect (UIComponent * uiComp)
+          {
+		
+		if (uiComp == NULL) {
+			return;
+		}
+		if (uiComp->visible) {
+			
+		}
+		else {
+			return;
+		}
+		
+		
+		
+		float x0 = (uiComp->hitBounds.xMin + uiComp->totOffset.x)/singleton->guiWinW;
+		float x1 = (uiComp->hitBounds.xMax + uiComp->totOffset.x)/singleton->guiWinW;
+		float y0 = (uiComp->hitBounds.yMin + uiComp->totOffset.y)/singleton->guiWinH;
+		float y1 = (uiComp->hitBounds.yMax + uiComp->totOffset.y)/singleton->guiWinH;
+
+		x0 = (x0-0.5f)*2.0f;
+		x1 = (x1-0.5f)*2.0f;
+		y0 = ((1.0f-y0) - 0.5f)*2.0f;
+		y1 = ((1.0f-y1) - 0.5f)*2.0f;
+
+		glBegin(GL_QUADS);
+
+		glTexCoord2f(0.0f, 1.0f);
+		glVertex3f (  x0, y1, -1.0f );
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex3f (  x1, y1, -1.0f );
+		glTexCoord2f(1.0f, 0.0f);
+		glVertex3f (  x1, y0, -1.0f );
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex3f (  x0, y0, -1.0f );
+
+		glEnd();
+
+	}
 void GameGUI::runReport ()
                          {
 		baseComp->runReport();
 	}
-void GameGUI::renderGUI (float newZoom, int activeFBO)
-                                                     {
+void GameGUI::renderGUI (int activeFBO)
+                                      {
 		
 		
 		int i;
@@ -22303,15 +25433,7 @@ void GameGUI::renderGUI (float newZoom, int activeFBO)
 		baseComp->updateSS();
 		
 
-		singleton->bindFBO("guiFBO");
-		singleton->drawFBO("resultFBO", 0, newZoom, activeFBO);
 		
-		glEnable (GL_BLEND);
-
-		singleton->bindShader("GUIShader");
-		singleton->setShaderTexture(0,singleton->fontWrappers[EFW_TEXT]->fontImage->tid);
-		singleton->setShaderTexture(1,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
-		singleton->sampleFBO("swapFBOBLin0", 2);
 		
 		for (i = 0; i < 2; i++) {
 			
@@ -22324,9 +25446,9 @@ void GameGUI::renderGUI (float newZoom, int activeFBO)
 			}
 			
 			singleton->setShaderFloat("passNum", i);
-			singleton->setShaderFloat("zoom", singleton->cameraZoom);
+			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			
 			glBegin (GL_QUADS);
-				//baseComp->renderAll(i == 0);
 			
 				for (j = 0; j < MAX_UI_LAYERS; j++) {
 					for (k = 0; k < singleton->guiLayers[j].size(); k++) {
@@ -22402,16 +25524,7 @@ void GameGUI::renderGUI (float newZoom, int activeFBO)
 		}
 		
 		
-		singleton->unsampleFBO("swapFBOBLin0", 2);
-		singleton->setShaderTexture(1,0);
-		singleton->setShaderTexture(0,0);
-		singleton->unbindShader();
 		
-		singleton->unbindFBO();
-		
-		glDisable(GL_BLEND);
-		
-		singleton->drawFBO("guiFBO", 0, 1.0f);
 		
 	}
 #undef LZZ_INLINE
@@ -22421,7 +25534,8 @@ void GameGUI::renderGUI (float newZoom, int activeFBO)
 
 #include "f00338_gameentnode.e"
 #define LZZ_INLINE inline
-GameEntNode::GameEntNode (GameEntNode * _parent, int _nodeName, float _boneLength, float _tanLengthInMeters, float _bitLengthInMeters, float _norLengthInMeters, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ)
+float const GameEntNode::multiplier = 2.0f;
+GameEntNode::GameEntNode (GameEntNode * _parent, int _nodeName, float _boneLength, float _tanLengthInCells, float _bitLengthInCells, float _norLengthInCells, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ)
           {
 		
 		
@@ -22435,18 +25549,19 @@ GameEntNode::GameEntNode (GameEntNode * _parent, int _nodeName, float _boneLengt
 		rotPhi = 0.0f;
 		rotRho = 0.0f;
 
-		float multiplier = 2.0;
+		
 
 		boneLengthHalf = _boneLength*0.5f*multiplier;
 
-		tbnRadInMeters0.setFXYZ(
-			_tanLengthInMeters,
-			_bitLengthInMeters,
-			_norLengthInMeters
+		tbnRadInCells0.setFXYZ(
+			_tanLengthInCells*multiplier,
+			_bitLengthInCells*multiplier,
+			_norLengthInCells*multiplier
 		);
-		tbnRadInMeters1.setFXYZRef(&tbnRadInMeters0);
+		tbnRadInCells1.setFXYZRef(&tbnRadInCells0);
 		tbnRadScale0.setFXYZ(1.0f,1.0f,1.0f);
 		tbnRadScale1.setFXYZ(1.0f,1.0f,1.0f);
+		boneLengthScale = 1.0f;
 		
 		
 		(tbnBase[0]).setFXYZ(_tanX,_tanY,_tanZ);
@@ -22459,7 +25574,7 @@ GameEntNode::GameEntNode (GameEntNode * _parent, int _nodeName, float _boneLengt
 		// FIVector4::cross(&(tbnBase[2]),&(tbnBase[0]),&(tbnBase[1]));
 		// (tbnBase[2]).normalize();
 	}
-GameEntNode * GameEntNode::addChild (int _nodeName, float _boneLength, float _tanLengthInMeters, float _bitLengthInMeters, float _norLengthInMeters, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ)
+GameEntNode * GameEntNode::addChild (int _nodeName, float _boneLength, float _tanLengthInCells, float _bitLengthInCells, float _norLengthInCells, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ)
           {
 		
 		//if (_nodeName >= E_BONE_C_END) {
@@ -22472,9 +25587,9 @@ GameEntNode * GameEntNode::addChild (int _nodeName, float _boneLength, float _ta
 				
 				_nodeName,
 				_boneLength,
-				_tanLengthInMeters,
-				_bitLengthInMeters,
-				_norLengthInMeters,
+				_tanLengthInCells,
+				_bitLengthInCells,
+				_norLengthInCells,
 				
 				_tanX, _tanY, _tanZ,
 				_bitX, _bitY, _bitZ,
@@ -22510,6 +25625,7 @@ void GameEntNode::doTransform (Singleton * singleton)
 		int i;
 		int j;
 		int popCount = 0;
+		int modCount;
 		
 		//cout << "doTransform: " << boneStrings[nodeName] << "\n"; 
 		
@@ -22532,17 +25648,20 @@ void GameEntNode::doTransform (Singleton * singleton)
 		
 		
 		
+		for (i = 0; i < 3; i++) {
+			tbnBaseTrans[i].copyFrom(&(tbnBase[i]));
+			//tbnBaseTrans[i].addXYZRef(&(orgTrans[0]));
+		}
 		
 		
-		
-		readTBN = tbnBase;
+		readTBN = tbnBaseTrans;
 		writeTBN = tbnRotA;
 		
 		
-		// if (rotPhi != 0.0f) {
-		// 	singleton->rotStack.push_back(readTBN[0]);
-		// 	singleton->rotStack.back().setFW(rotPhi);
-		// 	singleton->transStack.push_back(orgTrans[0]);			
+		// if (rotRho != 0.0f) {
+		// 	singleton->rotStack.push_back(readTBN[2]);
+		// 	singleton->rotStack.back().setFW(rotRho);
+		// 	singleton->transStack.push_back(orgTrans[0]);
 		// 	popCount++;
 		// }
 		// if (rotThe != 0.0f) {
@@ -22551,130 +25670,201 @@ void GameEntNode::doTransform (Singleton * singleton)
 		// 	singleton->transStack.push_back(orgTrans[0]);
 		// 	popCount++;
 		// }
+		// if (rotPhi != 0.0f) {
+		// 	singleton->rotStack.push_back(readTBN[0]);
+		// 	singleton->rotStack.back().setFW(rotPhi);
+		// 	singleton->transStack.push_back(orgTrans[0]);			
+		// 	popCount++;
+		// }
+		
+		
+		/*
+		void doRotationTBN(
+			FIVector4 *output,
+			FIVector4 *input,
+			FIVector4 *axisAngle,
+			FIVector4 *parentOffset,
+			FIVector4 *baseOffset
+		)
+		*/
+		
+		
+		
+		
+		
+		
+		modCount = 0;
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		// if (rotRho != 0.0f) {
 		// 	singleton->rotStack.push_back(readTBN[2]);
 		// 	singleton->rotStack.back().setFW(rotRho);
 		// 	singleton->transStack.push_back(orgTrans[0]);
+			
+			
+			
+		// 	axisRotationInstance.doRotationTBN(
+		// 		writeTBN, // write
+		// 		readTBN, // read
+		// 		&(singleton->rotStack.back()),
+		// 		&(singleton->transStack.back()),
+		// 		&(orgTrans[0])
+		// 	);
+		// 	if ((modCount%2) == 0) {
+		// 		readTBN = tbnRotA;
+		// 		writeTBN = tbnRotB;
+		// 	}
+		// 	else {
+		// 		readTBN = tbnRotB;
+		// 		writeTBN = tbnRotA;
+		// 	}
+		// 	modCount++;
+			
+		// 	popCount++;
+		// }
+		// if (rotThe != 0.0f) {
+		// 	singleton->rotStack.push_back(readTBN[1]);
+		// 	singleton->rotStack.back().setFW(rotThe);
+		// 	singleton->transStack.push_back(orgTrans[0]);
+			
+		// 	axisRotationInstance.doRotationTBN(
+		// 		writeTBN, // write
+		// 		readTBN, // read
+		// 		&(singleton->rotStack.back()),
+		// 		&(singleton->transStack.back()),
+		// 		&(orgTrans[0])
+		// 	);
+		// 	if ((modCount%2) == 0) {
+		// 		readTBN = tbnRotA;
+		// 		writeTBN = tbnRotB;
+		// 	}
+		// 	else {
+		// 		readTBN = tbnRotB;
+		// 		writeTBN = tbnRotA;
+		// 	}
+		// 	modCount++;
+			
+		// 	popCount++;
+		// }
+		// if (rotPhi != 0.0f) {
+		// 	singleton->rotStack.push_back(readTBN[0]);
+		// 	singleton->rotStack.back().setFW(rotPhi);
+		// 	singleton->transStack.push_back(orgTrans[0]);
+			
+		// 	axisRotationInstance.doRotationTBN(
+		// 		writeTBN, // write
+		// 		readTBN, // read
+		// 		&(singleton->rotStack.back()),
+		// 		&(singleton->transStack.back()),
+		// 		&(orgTrans[0])
+		// 	);
+		// 	if ((modCount%2) == 0) {
+		// 		readTBN = tbnRotA;
+		// 		writeTBN = tbnRotB;
+		// 	}
+		// 	else {
+		// 		readTBN = tbnRotB;
+		// 		writeTBN = tbnRotA;
+		// 	}
+		// 	modCount++;
+			
 		// 	popCount++;
 		// }
 		
 		
 		
-		for (i = 0; i < singleton->rotStack.size(); i++) {
-			
-			axisRotationInstance.doRotationTBN(
-				writeTBN, // write
-				readTBN, // read
-				&(singleton->rotStack[i]),
-				&(singleton->transStack[i]),
-				&(orgTrans[0])
-			);
-			
-			if ((i%2) == 0) {
-				readTBN = tbnRotA;
-				writeTBN = tbnRotB;
-			}
-			else {
-				readTBN = tbnRotB;
-				writeTBN = tbnRotA;
-			}
-			
-		}
 		
 		
-		if (rotPhi != 0.0f) {
-			singleton->rotStack.push_back(readTBN[0]);
-			singleton->rotStack.back().setFW(rotPhi);
-			singleton->transStack.push_back(orgTrans[0]);
-			
-			axisRotationInstance.doRotationTBN(
-				writeTBN, // write
-				readTBN, // read
-				&(singleton->rotStack.back()),
-				&(singleton->transStack.back()),
-				&(orgTrans[0])
-			);
-			if ((i%2) == 0) {
-				readTBN = tbnRotA;
-				writeTBN = tbnRotB;
-			}
-			else {
-				readTBN = tbnRotB;
-				writeTBN = tbnRotA;
-			}
-			i++;
+		if (rotRho != 0.0f) {
+			singleton->rotMatStack.push_back(RotationInfo());
+			singleton->rotMatStack.back().basePoint.copyFrom(&(orgTrans[0]));
+			singleton->rotMatStack.back().axisAngle.copyFrom(&(readTBN[2]));
+			singleton->rotMatStack.back().axisAngle.setFW(rotRho);
+			axisRotationInstance.buildRotMatrix(&(singleton->rotMatStack.back()));
 			
 			popCount++;
 		}
 		if (rotThe != 0.0f) {
-			singleton->rotStack.push_back(readTBN[1]);
-			singleton->rotStack.back().setFW(rotThe);
-			singleton->transStack.push_back(orgTrans[0]);
-			
-			axisRotationInstance.doRotationTBN(
-				writeTBN, // write
-				readTBN, // read
-				&(singleton->rotStack.back()),
-				&(singleton->transStack.back()),
-				&(orgTrans[0])
-			);
-			if ((i%2) == 0) {
-				readTBN = tbnRotA;
-				writeTBN = tbnRotB;
-			}
-			else {
-				readTBN = tbnRotB;
-				writeTBN = tbnRotA;
-			}
-			i++;
-			
+			singleton->rotMatStack.push_back(RotationInfo());
+			singleton->rotMatStack.back().basePoint.copyFrom(&(orgTrans[0]));
+			singleton->rotMatStack.back().axisAngle.copyFrom(&(readTBN[1]));
+			singleton->rotMatStack.back().axisAngle.setFW(rotThe);
+			axisRotationInstance.buildRotMatrix(&(singleton->rotMatStack.back()));
 			popCount++;
 		}
-		if (rotRho != 0.0f) {
-			singleton->rotStack.push_back(readTBN[2]);
-			singleton->rotStack.back().setFW(rotRho);
-			singleton->transStack.push_back(orgTrans[0]);
-			
-			axisRotationInstance.doRotationTBN(
-				writeTBN, // write
-				readTBN, // read
-				&(singleton->rotStack.back()),
-				&(singleton->transStack.back()),
-				&(orgTrans[0])
-			);
-			if ((i%2) == 0) {
-				readTBN = tbnRotA;
-				writeTBN = tbnRotB;
-			}
-			else {
-				readTBN = tbnRotB;
-				writeTBN = tbnRotA;
-			}
-			i++;
-			
+		if (rotPhi != 0.0f) {
+			singleton->rotMatStack.push_back(RotationInfo());
+			singleton->rotMatStack.back().basePoint.copyFrom(&(orgTrans[0]));
+			singleton->rotMatStack.back().axisAngle.copyFrom(&(readTBN[0]));
+			singleton->rotMatStack.back().axisAngle.setFW(rotPhi);
+			axisRotationInstance.buildRotMatrix(&(singleton->rotMatStack.back()));
 			popCount++;
 		}
 		
+		
+		for (i = singleton->rotMatStack.size()-(1); i >= 0; i--) {
+			
+			// axisRotationInstance.doRotationTBN(
+			// 	writeTBN, // write
+			// 	readTBN, // read
+			// 	&(singleton->rotStack[i]), //axisAngle
+			// 	&(singleton->transStack[i]), //parentOffset
+			// 	&(orgTrans[0]) //baseOffset
+			// );
+			
+			
+			
+			axisRotationInstance.applyRotation(
+				writeTBN,
+				readTBN,
+				&(singleton->rotMatStack[i])
+			);
+			
+			if ((modCount%2) == 0) {
+				readTBN = tbnRotA;
+				writeTBN = tbnRotB;
+			}
+			else {
+				readTBN = tbnRotB;
+				writeTBN = tbnRotA;
+			}
+			
+			
+			modCount++;
+			
+		}
 		
 		
 		for (j = 0; j < 3; j++) {
 			tbnRotC[j].setFXYZRef(&( readTBN[j] ));
+			//tbnRotC[j].addXYZRef(&(orgTrans[0]),-1.0f);
+			tbnRotC[j].normalize();
 		}
 		
 		
 		// middle
 		orgTrans[1].setFXYZRef(&(tbnRotC[0]));
-		orgTrans[1].multXYZ(boneLengthHalf);
+		orgTrans[1].multXYZ(boneLengthHalf*boneLengthScale);
 		orgTrans[1].addXYZRef(&(orgTrans[0]));
 		
 		// end
 		orgTrans[2].setFXYZRef(&(tbnRotC[0]));
-		orgTrans[2].multXYZ(boneLengthHalf*2.0f);
+		orgTrans[2].multXYZ(boneLengthHalf*boneLengthScale*2.0f);
 		orgTrans[2].addXYZRef(&(orgTrans[0]));
 		
 		for (i = 0; i < 3; i++) {
 			(tbnTrans[i]).setFXYZRef(&(tbnRotC[i]));
-			(tbnTrans[i]).multXYZ(tbnRadInMeters0[i]*tbnRadScale0[i]);
+			(tbnTrans[i]).multXYZ(tbnRadInCells0[i]*tbnRadScale0[i]);
 			(tbnTrans[i]).addXYZRef(&(orgTrans[1]));
 		}
 		
@@ -22686,9 +25876,9 @@ void GameEntNode::doTransform (Singleton * singleton)
 		
 		
 		for (i = 0; i < popCount; i++) {
-			
-			singleton->transStack.pop_back();
-			singleton->rotStack.pop_back();
+			singleton->rotMatStack.pop_back();
+			//singleton->transStack.pop_back();
+			//singleton->rotStack.pop_back();
 		}
 		
 	}
@@ -22845,7 +26035,7 @@ void GameEnt::initHuman ()
 				defVecLength, defVecLength, defVecLength,
 				0.0f,0.0f,-1.0f,
 				0.0f,1.0f,0.0f,
-				1.0f,0.0f,0.0f
+				dirMod*1.0f,0.0f,0.0f
 			);
 			curNode = curNode->addChild(
 				E_BONE_L_LOWERLEG + lrMod,
@@ -22853,14 +26043,14 @@ void GameEnt::initHuman ()
 				defVecLength, defVecLength, defVecLength,
 				0.0f,0.0f,-1.0f,
 				0.0f,1.0f,0.0f,
-				1.0f,0.0f,0.0f
+				dirMod*1.0f,0.0f,0.0f
 			);
 			curNode = curNode->addChild(
 				E_BONE_L_TALUS + lrMod,
 				0.2f, 
 				defVecLength, defVecLength, defVecLength,
 				0.0f,1.0f,0.0f,
-				1.0f,0.0f,0.0f,
+				dirMod*1.0f,0.0f,0.0f,
 				0.0f,0.0f,1.0f
 			);
 			
@@ -22963,7 +26153,7 @@ void GamePlant::initAllPlants (Singleton * _singleton)
 		pr->curLength[2] = 8.0f;
 		pr->curLength[3] = 8.5f;
 		pr->curLength[4] = 8.5f;
-		pr->curLength[5] = 1.5f;
+		pr->curLength[5] = 8.5f;
 		pr->curLength[6] = 1.0f;
 		pr->curLength[7] = 1.0f;
 		pr->curLength[8] = 0.75f;
@@ -22980,12 +26170,12 @@ void GamePlant::initAllPlants (Singleton * _singleton)
 		pr->numGenerations = 4.0f;
 		pr->angleUniformityU = 0.75f;
 		pr->isInit = 0.0;
-		pr->curLength[0] = 2.0f;
-		pr->curLength[1] = 4.0f;
-		pr->curLength[2] = 3.5f;
-		pr->curLength[3] = 3.0f;
-		pr->curLength[4] = 2.5f;
-		pr->curLength[5] = 2.0f;
+		pr->curLength[0] = 6.0f;
+		pr->curLength[1] = 8.0f;
+		pr->curLength[2] = 8.0f;
+		pr->curLength[3] = 8.5f;
+		pr->curLength[4] = 8.5f;
+		pr->curLength[5] = 8.5f;
 		pr->curLength[6] = 1.5f;
 		pr->curLength[7] = 1.0f;
 		pr->curLength[8] = 0.75f;
@@ -22999,7 +26189,7 @@ void GamePlant::initAllPlants (Singleton * _singleton)
 		pr->begThickness = 1.0f;
 		pr->endThickness = 0.2f;
 		pr->sphereGen = 2.0f;
-		pr->sphereRad = 4.0f;
+		pr->sphereRad = 6.0f;
 		pr->numGenerations = 2.0f;
 		pr->angleUniformityU = 0.75f;
 		pr->isInit = 0.0;
@@ -23073,12 +26263,12 @@ void GamePlant::initAllPlants (Singleton * _singleton)
 		pr->numGenerations = 4.0f;
 		pr->angleUniformityU = 0.75f;
 		pr->isInit = 0.0;
-		pr->curLength[0] = 2.0f;
-		pr->curLength[1] = 4.0f;
-		pr->curLength[2] = 3.5f;
-		pr->curLength[3] = 3.0f;
-		pr->curLength[4] = 2.5f;
-		pr->curLength[5] = 2.0f;
+		pr->curLength[0] = 6.0f;
+		pr->curLength[1] = 8.0f;
+		pr->curLength[2] = 8.0f;
+		pr->curLength[3] = 8.5f;
+		pr->curLength[4] = 8.5f;
+		pr->curLength[5] = 8.5f;
 		pr->curLength[6] = 1.5f;
 		pr->curLength[7] = 1.0f;
 		pr->curLength[8] = 0.75f;
@@ -23093,10 +26283,10 @@ void GamePlant::initAllPlants (Singleton * _singleton)
 
 
 
-				allPlantRules[i].begThickness *= _singleton->pixelsPerMeter;
-				allPlantRules[i].endThickness *= _singleton->pixelsPerMeter;
+				allPlantRules[i].begThickness *= _singleton->pixelsPerCell;
+				allPlantRules[i].endThickness *= _singleton->pixelsPerCell;
 				for (j = 0; j < MAX_PLANT_GEN; j++) {
-					allPlantRules[i].curLength[j] *= _singleton->pixelsPerMeter;
+					allPlantRules[i].curLength[j] *= _singleton->pixelsPerCell;
 				}
 
 				
@@ -23240,7 +26430,7 @@ void GamePlant::applyRules (PlantRules * rules, GamePlantNode * curParent, int c
 			curChild->midThickness = (curChild->begThickness+curChild->endThickness)*0.5f;
 
 			if ( rules->sphereGen == fCurGen ) {
-				curChild->sphereRad = rules->sphereRad*singleton->pixelsPerMeter; //(maxLength-totLength) + 
+				curChild->sphereRad = rules->sphereRad*singleton->pixelsPerCell; //(maxLength-totLength) + 
 			}
 
 			if (curGen < maxGen) {
@@ -23256,47 +26446,25 @@ void GamePlant::applyRules (PlantRules * rules, GamePlantNode * curParent, int c
 
 #include "f00350_gamepage.e"
 #define LZZ_INLINE inline
-uint * GamePage::getVolData ()
-                           {
-		int i;
-
-		if (volData == NULL) {
-			volData = new uint[iVolumeSize];
-			for (i = 0; i < iVolumeSize; i++) {
-				volData[i] = 0;
-			}
-		}
-
-		return volData;
-
-	}
-uint * GamePage::getVolDataLinear ()
-                                 {
-		int i;
-
-		if (volDataLinear == NULL) {
-			volDataLinear = new uint[iVolumeSize];
-			for (i = 0; i < iVolumeSize; i++) {
-				volDataLinear[i] = (0 << 24) | (0 << 16) | (0 << 8) | (0);
-			}
-		}
-
-		return volDataLinear;
-	}
 GamePage::GamePage ()
                    {
-		isEntity = false;
+		terRes = -1;
 		parentBlock = NULL;
 		volData = NULL;
 		volDataLinear = NULL;
+		cellData = NULL;
 	}
 void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _thisPageId, int offsetX, int offsetY, int offsetZ, int oxLoc, int oyLoc, int ozLoc, bool _isEntity)
           {
 
-		isDirty = true;
+		
+
+		isEntity = false;
 		hasLines = false;
 		hasSolids = false;
 		hasTrans = false;
+		isDirty = true;
+		
 
 		isEntity = _isEntity;
 
@@ -23308,6 +26476,7 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 		if (!isEntity) {
 			parentBlock = gw->getBlockAtId(parentGPH->blockId);
 		}
+		
 		
 		
 
@@ -23339,9 +26508,6 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 
 
 		unitSizeInPixels = (float)(singleton->unitSizeInPixels);
-
-
-		worldSeed.copyFrom(&(singleton->worldSeed));
 
 
 
@@ -23379,9 +26545,7 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 		centerPosition.addXYZRef(&worldMaxVisInPixels);
 		centerPosition.multXYZ(0.5f);
 
-		underground = false;
-		nearTerrain = false;
-		nearAir = false;
+		
 		
 		hasWater = ( singleton->getSLInPixels() >= worldMinVisInPixels.getFZ() );
 		
@@ -23389,14 +26553,7 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 		if (isEntity) {
 			addEntityGeom(true);
 		}
-		else {
-			parentBlock->isNearTerrain(&centerPosition,&centerPosition,nearTerrain,nearAir); //&worldMinVisInPixels,&worldMaxVisInPixels
-			
-			//terVal = parentBlock->fIsNearTerrain(&centerPosition);
-			
-			
-			
-			hasTerrain = nearTerrain&&nearAir;
+		else {			
 			addGeom(true);
 		}
 		
@@ -23404,6 +26561,33 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 
 
 
+	}
+uint * GamePage::getVolData ()
+                           {
+		int i;
+
+		if (volData == NULL) {
+			volData = new uint[iVolumeSize];
+			for (i = 0; i < iVolumeSize; i++) {
+				volData[i] = 0;
+			}
+		}
+
+		return volData;
+
+	}
+uint * GamePage::getVolDataLinear ()
+                                 {
+		int i;
+
+		if (volDataLinear == NULL) {
+			volDataLinear = new uint[iVolumeSize];
+			for (i = 0; i < iVolumeSize; i++) {
+				volDataLinear[i] = (0 << 24) | (0 << 16) | (0 << 8) | (0);
+			}
+		}
+
+		return volDataLinear;
 	}
 void GamePage::copyToTexture (bool isForEmptyVD)
                                               {
@@ -23512,6 +26696,16 @@ void GamePage::copyToTexture (bool isForEmptyVD)
 
 
 	}
+void GamePage::setFalse ()
+                        {
+		hasLines = false;
+		hasSolids = false;
+		hasTrans = false;
+		hasTree = false;
+		hasWindow = false;
+		hasGeom = false;
+		hasTerrain = false;
+	}
 void GamePage::addEntityGeom (bool justTesting)
                                              {
 		
@@ -23542,12 +26736,7 @@ void GamePage::addEntityGeom (bool justTesting)
 
 
 		if (justTesting) {
-			hasTree = false;
-			hasWindow = false;
-			hasGeom = false;
-			hasLines = false;
-			hasSolids = false;
-			hasTrans = false;
+			setFalse();
 		}
 
 		
@@ -23601,7 +26790,7 @@ void GamePage::addEntityGeom (bool justTesting)
 
 		if (justTesting) {
 			parentGPH->hasTrans = false;
-			hasTrans = true;
+			hasTrans = false;
 			if (hasGeom||hasLines) {
 				parentGPH->hasSolids = true;
 				hasSolids = true;
@@ -23661,9 +26850,7 @@ void GamePage::addGeom (bool justTesting)
 		}
 
 		if (justTesting) {
-			hasTree = false;
-			hasWindow = false;
-			hasGeom = false;
+			setFalse();
 		}
 
 
@@ -23739,21 +26926,31 @@ void GamePage::addGeom (bool justTesting)
 
 		if (justTesting) {
 			
-			if (hasWindow || hasWater) {
-				parentGPH->hasTrans = true;
-				hasTrans = true;
-				if (MAX_LAYERS < 2) {
+			terRes = parentBlock->isNearTerrain(&centerPosition);
+			
+			hasTerrain = (terRes == E_TER_GROUNDLEVEL);
+			
+			if (terRes == E_TER_UNDERGROUND) {
+				
+			}
+			else {
+				if (hasWindow || hasWater) {
+					parentGPH->hasTrans = true;
+					hasTrans = true;
+					if (MAX_LAYERS < 2) {
+						parentGPH->hasSolids = true;
+						hasSolids = true;
+					}
+				}
+
+				if (hasTerrain || hasGeom || volDataModified) {
 					parentGPH->hasSolids = true;
 					hasSolids = true;
 				}
 			}
-
-			if (hasTerrain || hasGeom) {
-				parentGPH->hasSolids = true;
-				hasSolids = true;
-			}
 			
-			underground = ( nearTerrain&&(!nearAir)&&(!isEntity) );
+			
+						
 			
 		}
 		else {
@@ -23881,8 +27078,22 @@ void GamePage::getVoroPoints ()
 		
 		voroCount = 27;
 	}
-void GamePage::generateVolume ()
-                              {
+void GamePage::addAllGeom ()
+                          {
+		if (isEntity) {
+			
+			addEntityGeom(true);
+			addEntityGeom(false);
+		}
+		else {
+			
+			addGeom(true);
+			addGeom(false);
+			
+		}
+	}
+void GamePage::generateVolume (bool dd)
+                                             {
 		PAGE_COUNT++;
 
 		int curVGFBO = CUR_VG_FBO;
@@ -23891,28 +27102,36 @@ void GamePage::generateVolume ()
 			CUR_VG_FBO = 0;
 		}
 		
+		int curVGTFBO = CUR_VGT_FBO;
+		CUR_VGT_FBO++;
+		if (CUR_VGT_FBO >= MAX_VGT_FBOS) {
+			CUR_VGT_FBO = 0;
+		}
+		
 		// 1 = 0
 		// 2 = 1
 		// 4 = 2
 		// 8 = 2
 		
+		float curBlendAmount = 0.5f;
 		
 
-		int hspLog = 2;
+		// int hspLog = 2;
 		
-		switch (singleton->holderSizeInPages) {
-			case 1:
-				hspLog = 0;
-			break;
-			case 2:
-				hspLog = 1;
-			break;
-		}
-		
+		// switch (singleton->holderSizeInPages) {
+		// 	case 1:
+		// 		hspLog = 0;
+		// 	break;
+		// 	case 2:
+		// 		hspLog = 1;
+		// 	break;
+		// }
 		
 		
 		int resIndex = 0;
 		int i;
+		int mLayers = 1;
+		bool didRender = false;
 		isRendering = true;
 		
 		if (volDataModified) {
@@ -23925,23 +27144,20 @@ void GamePage::generateVolume ()
 			}
 		}
 		
-		if (isEntity) {
-			addEntityGeom(true);
-			addEntityGeom(false);
-		}
-		else {
-			resIndex = parentBlock->copyTerToTexture();
-			addGeom(true);
-			addGeom(false);
-			
-		}
+		
 		
 
 		parentGPH->clearSet(); //false
 		getVoroPoints();
 
 
-
+		if (dd) {
+			
+			hasTerrain = true;
+			hasSolids = true;
+			parentGPH->hasSolids = true;
+			
+		}
 
 
 		/////////////////////////////////////////
@@ -23950,6 +27166,7 @@ void GamePage::generateVolume ()
 
 
 		if (isEntity) {
+			curBlendAmount = 1.0f;
 			singleton->bindShader("GenerateVolumeEnt");
 		}
 		else {
@@ -23958,7 +27175,6 @@ void GamePage::generateVolume ()
 
 		
 
-		//singleton->bindFBO("volGenFBO0");
 		singleton->bindFBODirect(&(singleton->vgFBOArr[curVGFBO]), 0);
 
 		if (volDataModified) {
@@ -23971,76 +27187,30 @@ void GamePage::generateVolume ()
 		}
 
 		singleton->sampleFBO("hmFBOLinear", 2);
-		//singleton->setShaderTexture(3,singleton->terrainId);
 		
 		if (!isEntity) {
+			resIndex = parentBlock->copyTerToTexture();
 			singleton->setShaderTexture3D(4, singleton->terTextures[resIndex].texId);
 		}
-
-		// if (LAST_COMPILE_ERROR) {
-			
-		// }
-		// else {
-		// 	if (singleton->wasUpdatedUniformBlock(0)) {
-
-		// 	}
-		// 	else {
-
-		// 		doTraceND("UPDATING UNIFORM DATA");
-
-		// 		// MUST BE IN ORDER AND MATCH SHADER!
-
-		// 		singleton->beginUniformBlock(0);
-
-		// 		singleton->setShaderFloatUB("totLayers", MAX_LAYERS);
-		// 		singleton->setShaderFloatUB("pixelsPerMeter", singleton->pixelsPerMeter);
-		// 		singleton->setShaderFloatUB("seaLevel", singleton->getSLInPixels() );
-		// 		singleton->setShaderFloatUB("maxSeaDepthDeprecated", 0.0f );
-
-		// 		singleton->setShaderFloatUB("heightmapMin", 0.0);//singleton->heightmapMin);
-		// 		singleton->setShaderFloatUB("heightmapMax", 0.0);// singleton->heightmapMax);
-		// 		singleton->setShaderFloatUB("maxFloors", 1.0f); //singleton->maxFloors
-		// 		singleton->setShaderFloatUB("terDataTexScale", singleton->terDataTexScale);
-
-		// 		singleton->setShaderfVec4UB("worldSizeInPixels", &(singleton->worldSizeInPixels));
-		// 		singleton->setShaderfVec4UB("mapFreqs", &(singleton->mapFreqs) );
-		// 		singleton->setShaderfVec4UB("mapAmps", &(singleton->mapAmps) );
-
-		// 		singleton->updateUniformBlock(0);
-				
-		// 		doTraceND("END UPDATING UNIFORM DATA");
-		// 	}
-		// }
 		
 		
 		singleton->setShaderFloat("totLayers", MAX_LAYERS);
-		singleton->setShaderFloat("pixelsPerMeter", singleton->pixelsPerMeter);
-		singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
-		singleton->setShaderFloat("maxSeaDepthDeprecated", 0.0f );
-
-		//singleton->setShaderFloat("heightmapMin", 0.0);//singleton->heightmapMin);
-		//singleton->setShaderFloat("heightmapMax", 0.0);// singleton->heightmapMax);
-		//singleton->setShaderFloat("maxFloors", 1.0f); //singleton->maxFloors
-		//singleton->setShaderFloat("terDataTexScale", singleton->terDataTexScale);
-
-		singleton->setShaderfVec4("worldSizeInPixels", &(singleton->worldSizeInPixels));
-		//singleton->setShaderfVec4("mapFreqs", &(singleton->mapFreqs) );
-		//singleton->setShaderfVec4("mapAmps", &(singleton->mapAmps) );
-		
-		singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
+		singleton->setShaderFloat("pixelsPerCell", singleton->pixelsPerCell);	
 		singleton->setShaderFloat("volumePitch", (float)( singleton->volGenFBOX ));
-		//singleton->setShaderVec3("terPitch", singleton->terDataVisPitchXY, singleton->terDataVisPitchXY, singleton->terDataVisPitchZ);
-
 		singleton->setShaderfVec4("worldMinBufInPixels", &(worldMinBufInPixels));
 		singleton->setShaderfVec4("worldMaxBufInPixels", &(worldMaxBufInPixels));
 
-		if (!isEntity) {
+		if (isEntity) {
+			
+		}
+		else {
+			singleton->setShaderfVec4("worldSizeInPixels", &(singleton->worldSizeInPixels));	
+			singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
 			singleton->setShaderfVec4("blockMinBufInPixels", &(parentBlock->blockMinBufInPixels));
 			singleton->setShaderfVec4("blockMaxBufInPixels", &(parentBlock->blockMaxBufInPixels));
 		}
 		
 		
-		singleton->setShaderFloat("blockSizeInPixels", singleton->blockSizeInPixels);
 
 
 		singleton->setShaderInt("hasTree", (int)hasTree);
@@ -24055,10 +27225,10 @@ void GamePage::generateVolume ()
 			singleton->setShaderArray("matCountArr", singleton->matCountArr, E_MAT_PARAM_LENGTH);
 		}
 
-		singleton->setShaderInt("voroCount", voroCount);
+		//singleton->setShaderInt("voroCount", voroCount);
 		singleton->setShaderArrayfVec4("voroArr", singleton->voroArr, voroCount);
 
-		singleton->drawFSQuad(1.0f);
+		singleton->drawFSQuad();
 
 		if (!isEntity) {
 			singleton->setShaderTexture3D(4, 0);
@@ -24088,57 +27258,55 @@ void GamePage::generateVolume ()
 		/////////////////////////////////////////
 
 
+		
+
 		if (parentGPH->gpuRes != NULL) {
-			getCoords();
 			singleton->bindShader("RenderVolume");
+			
 
+			
 
-			for (i = 0; i < MAX_LAYERS; i++) {
+			if (
+				
+				(hasTerrain || hasGeom || hasLines || hasWater || hasWindow)
+				
+			) {
+				
+				
+				
+				didRender = true;
+				
+				singleton->bindFBODirect(&(singleton->vgtFBOArr[curVGTFBO]), 1);	
 
-				if (
-					(
-						(i == 0) &&
-						(
-							(hasTerrain || hasGeom || hasLines) ||
-							((MAX_LAYERS < 2)&&(hasWater))
-						)
-					) ||
-					((i == 1) && (hasWater || hasWindow))
-				) {
-					singleton->bindFBODirect(parentGPH->gpuRes->getFBOS(i), 0);
-					//singleton->sampleFBO("volGenFBO0", 0);
-					singleton->sampleFBODirect(&(singleton->vgFBOArr[curVGFBO]),0);
-					singleton->sampleFBO("frontFaceFBO", 2);
-					singleton->sampleFBO("backFaceFBO", 3);
+				singleton->sampleFBODirect(&(singleton->vgFBOArr[curVGFBO]),0);
+				//singleton->sampleFBO("frontFaceFBO", 2);
+				//singleton->sampleFBO("backFaceFBO", 3);
 
-					singleton->setShaderFloat("curLayer", i);
-					singleton->setShaderFloat("pageDepth", (float)( pageDepth ));
-					singleton->setShaderFloat("volumePitch", (float)( singleton->volGenFBOX ));
-					singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
-					singleton->setShaderFloat("holderSizeInPagesLog", hspLog);
-					singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
-					singleton->setShaderFloat("visPageSizeInPixels", (float)(singleton->visPageSizeInPixels));
-					singleton->setShaderfVec3("worldMinVisInPixels", &(worldMinVisInPixels));
-					singleton->setShaderfVec3("worldMaxVisInPixels", &(worldMaxVisInPixels));
-					singleton->setShaderfVec3("worldMinBufInPixels", &(worldMinBufInPixels));
-					singleton->setShaderfVec3("worldMaxBufInPixels", &(worldMaxBufInPixels));
-					singleton->setShaderfVec4("scaleAndOffset", &scaleAndOffset);
+				singleton->setShaderFloat("blendAmount",curBlendAmount);
+				//singleton->setShaderFloat("curLayer", i);
+				singleton->setShaderFloat("volGenSuperMod", singleton->volGenSuperMod);
+				singleton->setShaderFloat("volumePitch", (float)( singleton->volGenFBOX ));
+				//singleton->setShaderFloat("holderSizeInPagesLog", hspLog);
+				singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
+				singleton->setShaderFloat("visPageSizeInPixels", (float)(singleton->visPageSizeInPixels));
+				singleton->setShaderfVec3("worldMinVisInPixels", &(worldMinVisInPixels));
+				singleton->setShaderfVec3("worldMaxVisInPixels", &(worldMaxVisInPixels));
+				
+				singleton->drawFSQuad();
 
-					//glCallList(singleton->volTris);
-					singleton->drawFSQuad(1.0f);
-
-					
-					singleton->unsampleFBO("backFaceFBO",3);
-					singleton->unsampleFBO("frontFaceFBO",2);
-					//singleton->unsampleFBO("volGenFBO0",0);
-					singleton->unsampleFBODirect(&(singleton->vgFBOArr[curVGFBO]),0);
-					singleton->unbindFBO();
-				}
-
+				
+				//singleton->unsampleFBO("backFaceFBO",3);
+				//singleton->unsampleFBO("frontFaceFBO",2);
+				singleton->unsampleFBODirect(&(singleton->vgFBOArr[curVGFBO]),0);
+				singleton->unbindFBO();
 			}
+
+			
 
 			singleton->unbindShader();
 		}
+		
+		
 
 
 		/////////////////////////////////////////
@@ -24148,67 +27316,406 @@ void GamePage::generateVolume ()
 
 
 
+		
+		
+		if (didRender) {
+			
+			getPoints(curVGTFBO);
+			
+		}
+		
 		isDirty = false;
 		isRendering = false;
 
 	}
-void GamePage::getCoords ()
-                         {
-
-
-
-		float dx = offsetInPagesLocal.getFX();
-		float dy = offsetInPagesLocal.getFY();
-		float dz = offsetInPagesLocal.getFZ();
-
-		float pitchSrc = (float)((singleton->visPageSizeInPixels * 2.0f));
-		float pitchSrc2 = (pitchSrc) / 2.0f;
-
-		float dxmod = dx * pitchSrc2;
-		float dymod = dy * pitchSrc2;
-		float dzmod = dz * pitchSrc2;
-
-
-		// float fx1 = (dxmod - dymod) - pitchSrc2;
-		// //float fy1 = (-(dxmod / 2.0f) + -(dymod / 2.0f) + dzmod) - pitchSrc2;
-		// float tilt = 1.0-singleton->tiltAmount;
-		// float fy1 = (-tilt*dxmod + -tilt*dymod + (1.0-tilt)*2.0f*dzmod) - pitchSrc2;
+int GamePage::getIndex (int i, int j, int k, int p)
+                                                 {
+		return (i + j*p + k*p*p);
+	}
+bool GamePage::isAir ()
+                     {
+		// WAS DOING
+	}
+void GamePage::getPoints (int fboNum)
+                                   {
 		
-		float tilt = singleton->tiltAmount;
-		float itilt = 1.0f-singleton->tiltAmount;
-		
-		tempVec2.setFXYZ(dxmod,dymod,dzmod);
-		singleton->worldToScreenBase(&tempVec1,&tempVec2);
-		float fx1 = tempVec1.getFX()*(singleton->fHolderMod);
-		float fy1 = tempVec1.getFY()*(singleton->fHolderMod);
+		int sres = singleton->volGenSuperRes;
+		int sresM1 = sres-1;
+		float fres = sres;
 		
 		
 		
 		
-		fx1 -= pitchSrc2;
-		fy1 -= pitchSrc2;
+		int cellsPerPage = singleton->cellsPerPage;
+		int cellDataSize = cellsPerPage*cellsPerPage*cellsPerPage;
+		int cdBufferSize = cellDataSize*E_CD_LENGTH;
+		int ci;
+		
+		float fVisPageSizeInPixels = singleton->visPageSizeInPixels;
+		
+		int i, j, k, m, n, p, q;
+		
+		int ni;
+		int nj;
+		int nk;
+		
+		int ind = 0;
+		int ind2 = 0;
 		
 		
-		float fx2 = fx1 + pitchSrc;
-		float fy2 = fy1 + pitchSrc + 2.0;// + 2.0; // TODO: THIS "+ 2.0" is a hack used to cover cracks between pages, it should not be used
+		bool doMip = MAX_MIP_LEV > 1;
+		singleton->vgtFBOArr[fboNum].fbos[0].getPixels(doMip);
+		singleton->vgtFBOArr[fboNum].fbos[1].getPixels(doMip);
+		
+		if (doMip) {
+			singleton->vgtFBOArr[fboNum].fbos[0].updateMips3D(sres);
+			singleton->vgtFBOArr[fboNum].fbos[1].updateMips3D(sres);
+		}
+		
+		
+		int procCount[MAX_LAYERS];
+		
+		bool edgeK;
+		bool edgeJ;
+		bool edgeI;
+		
+		
+		//float iv0 = 0.0f;
+		//float iv1 = singleton->voxelSizeInWC;
+		
+		int mval;
 
-		float sx = singleton->holderSizeInPixels;
-		float sy = singleton->holderSizeInPixels;
+		
+		int MIN_MIP = 0;
+		int MAX_MIP = 1;
+		int AVG_MIP = 2;
+		
+		float fi = 0.0f;
+		float fj = 0.0f;
+		float fk = 0.0f;
+		
+		
+		float bpX = 0.0f;
+		float bpY = 0.0f;
+		float bpZ = 0.0f;
+		
+		//uint dirFlags;
+		bool isCand;
+		
+		uint flagVals[6];
+		flagVals[0] = 1;
+		flagVals[1] = 2;
+		flagVals[2] = 4;
+		flagVals[3] = 8;
+		flagVals[4] = 16;
+		flagVals[5] = 32;
+		
+		const uint AIR_VAL = 0;
+		
+		FBOWrapper* fbow0 = &(singleton->vgtFBOArr[fboNum].fbos[0]);
+		FBOWrapper* fbow1 = &(singleton->vgtFBOArr[fboNum].fbos[1]);
+		
+		bool doProc;
+		bool hasAir = false;
+		bool hasSolid = false;
+		bool hasSolidAndAir = false;
+		
+		
+		
+		for (i = 0; i < sres*sres*sres; i++) {
+			
+			if (fbow0->getPixelAtIndex(i,A_CHANNEL) == 0) {
+				hasAir = true;
+			}
+			else {
+				hasSolid = true;
+			}
+			
+			if (fbow0->getPixelAtIndex(i,G_CHANNEL) != 0) {
+				hasSolidAndAir = true;
+			}
+		}
+		
+		
+		
+		for (p = 0; p < MAX_MIP_LEV*MAX_LAYERS; p++) {
+			vertices[p].data.clear();
+		}
+		
+		
+		
+		
+		
+		
+		
+		// determine collision matrix
+		if (hasSolid||hasSolidAndAir) {
+			if (cellData == NULL) {
+				cellData = new int[cellDataSize];
+			}
+			
+			for (i = 0; i < cellDataSize; i++) {
+				cellData[i] = E_CD_EMPTY;
+			}
+			for (i = 0; i < cdBufferSize; i++) {
+				singleton->cdBuffer[i] = 0;
+			}
+			
+			
+			for (k = 0; k < sres; k++) {
+				nk = ((k*cellsPerPage)/sres)*cellsPerPage*cellsPerPage;
+				for (j = 0; j < sres; j++) {
+					nj = ((j*cellsPerPage)/sres)*cellsPerPage;
+					for (i = 0; i < sres; i++) {
+						ni = ((i*cellsPerPage)/sres);
+						ind = getIndex(i,j,k,sres);
+						ind2 = nk + nj + ni;
+						
+						q = fbow0->getPixelAtIndex(ind,A_CHANNEL);
+						p = singleton->cdMap[q];
+						
+						
+						
+						singleton->cdBuffer[p*cellDataSize + ind2] += 1;
+						
+					}
+				}
+			}
+			
+			
+			for (i = 0; i < cellDataSize; i++) {
+				
+				m = 0;
+				p = E_CD_EMPTY;
+				
+				for (j = 1; j < E_CD_LENGTH; j++) {
+					q = singleton->cdBuffer[j*cellDataSize + i];
+					if (q >= m) {
+						m = q;
+						p = j;
+					}
+				}
+				
+				cellData[i] = p;
+				
+				
+			}
+			
+		}
+		
+		
+		
+		
+		if ( (hasAir&&hasSolid)||(hasSolidAndAir) ) {
+			
+		}
+		else {
+			
+			goto DO_CLEANUP;
+		}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		for (p = 0; p < MAX_MIP_LEV; p++) {
+			
+			for (q = 0; q < MAX_LAYERS; q++) {
+				procCount[q] = 0;
+			}
+			
+			
+			
+			if (p == 0) {
+				mval = 3;
+			}
+			else {
+				mval = MAX_MIP;
+			}
+			
+			
+			for (n = 0; n < 2; n++) {
+				
+				
+				
+				for (k = 0; k < sres; k++) {
+					fk = k;
+					
+					for (j = 0; j < sres; j++) {
+						fj = j;
+						
+						for (i = 0; i < sres; i++) {
+							fi = i;
+							
+							ind = getIndex(i,j,k,sres);
+							
+							
+							
+							
+							
+							if (
+								(fbow0->getPixelAtIndex3DMip(ind,A_CHANNEL,mval,p) == 0)
+							) {
+								// is air
+							}
+							else {
+								
+								q = fbow0->getPixelAtIndex3DMip(ind,R_CHANNEL,mval,p);
+								
+								isCand = fbow0->getPixelAtIndex3DMip(ind,G_CHANNEL,mval,p) != 0;
+								
+								
+								
+								
+								// front facing: counter clock wise
+								
+								doProc = false;
+								
+								
+								
+								// x + 
+								if (i != sresM1) {
+									ind2 = getIndex(i+1,j,k,sres);
+									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+								}
+								else {
+									doProc = doProc||isCand;
+								}
+								
+								// x - 
+								if (i != 0) {
+									ind2 = getIndex(i-1,j,k,sres);
+									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+								}
+								else {
+									doProc = doProc||isCand;
+								}
+								
+								// y + 
+								if (j != sresM1) {
+									ind2 = getIndex(i,j+1,k,sres);
+									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+								}
+								else {
+									doProc = doProc||isCand;
+								}
+								
+								// y - 
+								if (j != 0) {
+									ind2 = getIndex(i,j-1,k,sres);
+									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+								}
+								else {
+									doProc = doProc||isCand;
+								}
+								
+								// z + 
+								if (k != sresM1) {
+									ind2 = getIndex(i,j,k+1,sres);
+									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+								}
+								else {
+									doProc = doProc||isCand;
+								}
+								
+								// z- 
+								if (k != 0) {
+									ind2 = getIndex(i,j,k-1,sres);
+									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+								}
+								else {
+									doProc = doProc||isCand;
+								}
+								
+								
+								if (doProc) {
+									if (n == 0) {
+										procCount[q]++;
+									}
+									else {
+										bpX = worldMinVisInPixels.getFX() + ((fi)/fres)*fVisPageSizeInPixels;
+										bpY = worldMinVisInPixels.getFY() + ((fj)/fres)*fVisPageSizeInPixels;
+										bpZ = worldMinVisInPixels.getFZ() + ((fk)/fres)*fVisPageSizeInPixels;
+										
+										ci = p*MAX_LAYERS+q;
+										
+										vertices[ci].data.push_back(fbow1->getPixelAtIndex3DMip(ind,R_CHANNEL,mval,p)*2.0f/255.0f - 1.0f);
+										vertices[ci].data.push_back(fbow1->getPixelAtIndex3DMip(ind,G_CHANNEL,mval,p)*2.0f/255.0f - 1.0f);
+										vertices[ci].data.push_back(fbow1->getPixelAtIndex3DMip(ind,B_CHANNEL,mval,p)*2.0f/255.0f - 1.0f);
+										vertices[ci].data.push_back(
+											fbow0->getPixelAtIndex3DMip(ind,B_CHANNEL,mval,p) +
+											fbow0->getPixelAtIndex3DMip(ind,A_CHANNEL,mval,p)*256
+										);
+										
+										vertices[ci].data.push_back(bpX);
+										vertices[ci].data.push_back(bpY);
+										vertices[ci].data.push_back(bpZ);
+										vertices[ci].data.push_back(1.0f);
+										
+										//totalPointCount++;
+										
+										//getPixVal(fbow0,fbow1,ind, bpX,bpY,bpZ, iv0,iv0,iv0);
+										
+									}
+								}
+								
+							}
+						}	
+					}
+				}
+				
+				if (n==0) {
+					for (q = 0; q < 2; q++) {
+						ci = p*MAX_LAYERS+q;
+						if (procCount[q] > 0) {
+							vertices[ci].data.reserve((procCount[q]+1)*8);
+						}
+					}
+					
+					
+				}
+				
+				
+			}
+			
+			
+			
+			
+			
+			
+			
+			sres = sres/2;
+			sresM1 = sres-1;
+			fres = sres;
+			
+		}
+		
+		
+		
+		
+		
+DO_CLEANUP:
 
-
-		fx1 = fx1 / sx;
-		fy1 = fy1 / sy;
-		fx2 = fx2 / sx;
-		fy2 = fy2 / sy;
-
-		scaleAndOffset.setFXYZW(
-			(fx2 - fx1) / 2.0f,
-			(fy2 - fy1) / 2.0f,
-			(fx1 + fx2) / 2.0f,
-			(fy1 + fy2) / 2.0f
-
-		);
-
+	;
+	
+	
+	// if (vertices[0].data.size() > 0) {
+	// 	if (isEntity) {
+	// 		cout << "RENDER ENT\n";
+	// 	}
+	// }
+	
+		
 	}
 GamePage::~ GamePage ()
                     {
@@ -24233,17 +27740,23 @@ GamePageHolder::GamePageHolder ()
 		usingPoolId = -1;
 		hasTrans = false;
 		hasSolids = false;
-		underground = false;
 	}
 void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isEntity)
           {
 
+		
+		refreshDL = true;
 		entityGeomCounter = 0;
 
 		int i;
 		int j;
 		int k;
 		int ind;
+		
+		for (i = 0; i < MAX_LAYERS; i++) {
+			hasVerts[i] = false;
+		}
+		
 		
 		readyForClear = true;
 
@@ -24256,6 +27769,8 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 
 		singleton = _singleton;
 		usingPoolId = -1;
+
+		sres = singleton->volGenSuperRes;
 
 		holderSizeInPixels = singleton->holderSizeInPixels;
 		halfHolderSizeInPixels = holderSizeInPixels*0.5f;
@@ -24291,7 +27806,6 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		
 		refreshGeom();
 		
-		underground = true;
 		
 		for (k = 0; k < holderSizeInPages; k++) {
 			for (j = 0; j < holderSizeInPages; j++) {
@@ -24317,11 +27831,87 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 							);
 						}
 						
-						underground = underground && pageData[ind]->underground;
 						
 					}
 				}
 			}
+		}
+		
+	}
+void GamePageHolder::doRefreshDL ()
+                           {
+		
+		refreshDL = false;
+		
+		int i;
+		int j;
+		int ind;
+		int numVert = 8;
+		int maxVal;
+		
+		int p;
+		int q;
+		int ci;
+		
+		
+		// TODO: if the holder was cleared entirely, must make sure to clear all displaylists
+		
+		
+		if (gpuRes != NULL) {
+			
+			for (q = 0; q < MAX_LAYERS; q++) {
+				for (p = 0; p < MAX_MIP_LEV; p++) {
+					
+					ci = p*MAX_LAYERS+q;
+					
+					gpuRes->bindHolderDL(p,q);
+					glBegin(GL_POINTS);
+					
+					
+					for (j = 0; j < iPageDataVolume; j++) {
+						ind = j;
+						
+						if (pageData[ind] != NULL) {
+							
+							
+							hasVerts[q] = hasVerts[q] || (pageData[ind]->vertices[ci].data.size() > 0);
+							
+							maxVal = (pageData[ind]->vertices[ci].data.size())/numVert;
+							
+							for (i = 0; i < maxVal; i++ ) {
+								
+								glMultiTexCoord4f(
+									GL_TEXTURE0,
+									pageData[ind]->vertices[ci].data[i*numVert + 0],
+									pageData[ind]->vertices[ci].data[i*numVert + 1],
+									pageData[ind]->vertices[ci].data[i*numVert + 2],
+									pageData[ind]->vertices[ci].data[i*numVert + 3]
+									
+								);
+								
+								glVertex3f(
+									pageData[ind]->vertices[ci].data[i*numVert + 4],
+									pageData[ind]->vertices[ci].data[i*numVert + 5],
+									pageData[ind]->vertices[ci].data[i*numVert + 6]	
+								);
+								
+								
+							}
+						}
+					}
+					
+					
+					
+					
+					glEnd();
+					gpuRes->unbindHolderDL(p,q);
+				}
+			}
+			
+			
+			
+			
+			
 		}
 		
 	}
@@ -24393,7 +27983,7 @@ void GamePageHolder::refreshGeom ()
 		if (isEntity) {
 			entityGeomCounter = 0;
 			//fetchEntityGeom();
-			addNewLinesGeom(singleton->testHuman->baseNode, singleton->pixelsPerMeter);
+			addNewLinesGeom(singleton->testHuman->baseNode, singleton->pixelsPerCell);
 		}
 		else {
 			fetchGeom();
@@ -24402,6 +27992,8 @@ void GamePageHolder::refreshGeom ()
 void GamePageHolder::clearSet ()
                         { //bool forceClear
 		int i;
+		
+
 		
 
 		//bool doClear = forceClear;
@@ -24424,11 +28016,17 @@ void GamePageHolder::clearSet ()
 		if (readyForClear) {
 			readyForClear = false;
 			
-			for (i = 0; i < MAX_LAYERS; i++) {
-				// clear fbo by binding it with auto flag
-				singleton->bindFBODirect(gpuRes->getFBOS(i));
-				singleton->unbindFBO();
-			}
+			// if (true) { //freeCam
+				
+			// }
+			// else {
+			// 	for (i = 0; i < MAX_LAYERS; i++) {
+			// 		// clear fbo by binding it with auto flag
+			// 		singleton->bindFBODirect(gpuRes->getFBOS(i));
+			// 		singleton->unbindFBO();
+			// 	}
+			// }
+			
 		}
 		
 	}
@@ -24440,20 +28038,24 @@ int GamePageHolder::passiveRefresh ()
 		childrenDirty = false;
 		changeCount = 0;
 
+		//bool finished = true;
+				
+
 		for (i = 0; i < iPageDataVolume; i++) {
 			
 			if (changeCount >= singleton->maxChangesInPages) {
 				childrenDirty = true;
-				goto TOO_MANY_HOLDER_CHANGES;
+				//finished = false;
+				break;
 			}
 			
 			if (pageData[i] == NULL) {
 				
 			}
 			else {
+				pageData[i]->addAllGeom();
 				if (
-					(pageData[i]->hasSolids || pageData[i]->hasTrans) &&
-					(!(pageData[i]->underground))
+					(pageData[i]->hasSolids || pageData[i]->hasTrans)
 				) {
 					if (pageData[i]->isDirty) {
 						pageData[i]->generateVolume();
@@ -24465,15 +28067,24 @@ int GamePageHolder::passiveRefresh ()
 				
 			}
 		}
-
-		TOO_MANY_HOLDER_CHANGES:
-
-		return changeCount;
+		
+		if (refreshDL&&(!childrenDirty)) {
+			doRefreshDL();
+		}
+		
+		
+		
+		
+		return changeCount;	
 
 	}
-void GamePageHolder::refreshChildren (bool refreshImmediate, bool clearEverything)
-                                                                                  {
+void GamePageHolder::refreshChildren (bool refreshImmediate, bool clearEverything, bool refreshUnderground)
+          {
 		int i;
+		
+		
+		
+		
 		
 		
 		readyForClear = true;
@@ -24489,11 +28100,20 @@ void GamePageHolder::refreshChildren (bool refreshImmediate, bool clearEverythin
 				
 				
 				if (refreshImmediate) {
+					
+					pageData[i]->addAllGeom();
+					
 					if (
-						(pageData[i]->hasSolids || pageData[i]->hasTrans) &&
-						(!(pageData[i]->underground))	
+						(
+							(pageData[i]->hasSolids || pageData[i]->hasTrans)
+						) ||
+						refreshUnderground ||
+						isEntity
 					) {
-						pageData[i]->generateVolume();
+						if (refreshUnderground) {
+							pageData[i]->isDirty = true;
+						}
+						pageData[i]->generateVolume(refreshUnderground);
 					}
 					childrenDirty = false;
 				}
@@ -24507,8 +28127,9 @@ void GamePageHolder::refreshChildren (bool refreshImmediate, bool clearEverythin
 			}
 		}
 		
-		
-		
+		if (refreshImmediate) {
+			doRefreshDL();
+		}
 		
 
 		
@@ -24563,7 +28184,7 @@ void GamePageHolder::addNewLinesGeom (GameEntNode * curNode, float scale)
 			}
 			
 			tempVec2.copyFrom(&(curNode->tbnRotC[0]));
-			tempVec2.multXYZ(curNode->boneLengthHalf*scale);
+			tempVec2.multXYZ(curNode->boneLengthHalf*scale*curNode->boneLengthScale);
 			
 			
 			if (entityGeomCounter >= entityGeom.size()) {
@@ -24582,8 +28203,8 @@ void GamePageHolder::addNewLinesGeom (GameEntNode * curNode, float scale)
 				&(tempVec2),
 				&(curNode->tbnRotC[1]),
 				&(curNode->tbnRotC[2]),
-				&(curNode->tbnRadInMeters0),
-				&(curNode->tbnRadInMeters1),
+				&(curNode->tbnRadInCells0),
+				&(curNode->tbnRadInCells1),
 				&(curNode->tbnRadScale0),
 				&(curNode->tbnRadScale1),
 				&tempVec
@@ -24782,7 +28403,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		opDir[4] = 5;
 		opDir[5] = 4;
 
-
+		forceUpdate = false;
 
 		singleton = _singleton;
 		blockId = _blockId;
@@ -24896,11 +28517,11 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		blockSizeInPixels = singleton->blockSizeInPixels;
 		fBlockSizeInPixels = (float)blockSizeInPixels;
 
-		pixelsPerMeter = singleton->pixelsPerMeter;
+		pixelsPerCell = singleton->pixelsPerCell;
 
 
-		float uvSizeInMeters = 1.0;
-		float uvSizeInPixels = uvSizeInMeters * pixelsPerMeter; // 64
+		float uvSizeInCells = 1.0;
+		float uvSizeInPixels = uvSizeInCells * pixelsPerCell; // 64
 
 		float offsetPerFloor = 0.25;
 		float floorOffset;
@@ -24990,9 +28611,10 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 		int wingDir;
 
-		floorHeightInMeters = singleton->floorHeightInMeters;
-		float roofHeightInMeters;// = singleton->roofHeightInMeters;
-		float wallRadInMeters;
+		floorHeightInCells = singleton->floorHeightInCells;
+		float roofHeightInCells;// = singleton->roofHeightInCells;
+		float wallRadInCells;
+		float flushRadInCells;
 		float fi;
 		float fj;
 		float fk;
@@ -25096,7 +28718,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 				curCon->nodeFlags = 0;
 				curCon->heightDelta = 0;
 				curCon->wingMult = 1.0f;
-				curCon->wallRadInMeters = singleton->wallRadInMeters;
+				curCon->wallRadInCells = singleton->wallRadInCells;
 			}
 
 
@@ -25162,8 +28784,8 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 					tempf = singleton->getHeightAtPixelPos(tempVec.getFX(), tempVec.getFY());
 
-					if ( tempVec.getFZ() < tempf) {//tempVec.getFZ() < singleton->getSLInPixels() + 4.0*pixelsPerMeter ) {//
-						uiSimp = 255;//fGenRand()*32.0f+223.0f;
+					if ( tempVec.getFZ() < tempf) {//tempVec.getFZ() < singleton->getSLInPixels() + 4.0*pixelsPerCell ) {//
+						uiSimp = 255;
 					} else {
 						uiSimp = 0;
 					}
@@ -25214,6 +28836,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 					}
 				}
 
+				
 
 				mapData[getMapNodeIndex(i, j, 0)].terHeight = testInd2;
 				mapData[getMapNodeIndex(i, j, 0)].adjustedHeight = testInd2;
@@ -25259,13 +28882,13 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 
 					// if (
-					//  singleton->getHeightAtPixelPos(lotX*singleton->pixelsPerLot,lotY*singleton->pixelsPerLot) <=
-					//  singleton->getSLInPixels()  + 1.0f * pixelsPerMeter
+					// 	singleton->getHeightAtPixelPos(lotX*singleton->pixelsPerLot,lotY*singleton->pixelsPerLot) <=
+					// 	singleton->getSLInPixels()  + 1.0f * pixelsPerCell
 					// ) {
-					//  curType = E_CT_DOCK;
+					// 	curType = E_CT_DOCK;
 					// }
 					// else {
-					curType = E_CT_ROAD;
+						curType = E_CT_ROAD;
 					//}
 
 
@@ -25332,7 +28955,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 							for (m = 0; m < iNodeDivsPerLot / 2; m++) {
 
-								//if ( fGenRand() > 0.25f ) {
+								
 								switch (k) {
 								case 0: // x+
 									connectMapNodes(baseI + m, baseJ, baseI + m + 1, baseJ, E_CT_MAINHALL, res % 6, terDataBufAmount+1);
@@ -25349,8 +28972,6 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 								}
 
-
-								//}
 
 							}
 
@@ -25382,7 +29003,6 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 							if (
 								(touches2Map(i, j, E_CT_WING, 0) == 0)
-								// || (fGenRand() > 0.5f)
 								
 								// TODO: must ensure any random number
 								// is persistent across the world with iSeedRand2
@@ -25407,20 +29027,10 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 									if (touchesMap(testX, testY, E_CT_ROAD, 0) >= 1) {
 										connectMapNodes(i, j, testX, testY, E_CT_ROAD, -1, 0);
 
-										//getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_SHORTPROP)->typeVal = E_CT_DOORWAY;
-										//getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_DYNPROP)->typeVal = E_CT_DOOR;
+										
 
 									}
-									// else {
-									//  if (touches(testX,testY,E_CT_DOCK) >= 1) {
-									//    connectMapNodes(i, j, testX, testY, E_CT_DOCK, -1);
-
-									//    //getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_SHORTPROP)->typeVal = E_CT_DOORWAY;
-									//    //getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_DYNPROP)->typeVal = E_CT_DOOR;
-
-									//  }
-									// }
-
+									
 									notFound = false;
 								}
 
@@ -25432,12 +29042,28 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		}
 		
 		
-		
 		tempVec2.setFXYZ(93.989f, 67.345f, 54.256f);
 		
+		
+		for (i = 0; i < terDataBufPitchXY; i++) {
+			for (j = 0; j < terDataBufPitchXY; j++) {
+				testInd = getMapNodeIndex(i, j, 0);
+				tempVec.setFXYZ(i*2.132f,j*4.10523f,15.23523f);
+
+				mapData[testInd].houseHeight = iGetRandSeeded(&tempVec,&tempVec2, 0, 1);
+			}
+		}
+		
+		
+		
+		
+		
+		
+		
+		
 		if (singleton->treesOn) {
-			for (i = terDataBufAmount; i < terDataBufPitchXY-terDataBufAmount; i++) {
-				for (j = terDataBufAmount; j < terDataBufPitchXY-terDataBufAmount; j++) {
+			for (i = terDataBufAmount*2; i < terDataBufPitchXY-terDataBufAmount*2; i++) {
+				for (j = terDataBufAmount*2; j < terDataBufPitchXY-terDataBufAmount*2; j++) {
 					if ( (touchesWithinRadMap(i,j,E_CT_TREE, 3, 0) == 0) && (touches2Map(i,j,E_CT_NULL,0) == 16) ) {
 
 						lotX = blockSizeInLots * (offsetInBlocks.getIX()) + i;
@@ -25451,11 +29077,18 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 						tempVec.setFXYZ(i,j,15.0);
 
 						if (
-							true
+							
 							//singleton->getHeightAtPixelPos(x1,y1) >
-							//singleton->getSLInPixels() + 2.0f * pixelsPerMeter
+							//singleton->getSLInPixels() + 2.0f * pixelsPerCell
+							
+							( ((float)(mapData[testInd].terHeight))/fTerDataVisPitchZ ) >
+							(singleton->getSLNormalized() + 1.0f/255.0f)
+							
 						) {
-							if ( getRandSeeded(&tempVec,&tempVec2) > 0.2f ) {
+							
+							
+							
+							if ( iGetRandSeeded(&tempVec,&tempVec2, 0, 100) > 20 ) {
 								mapData[testInd].connectionProps[0] = E_CT_TREE;
 							}
 						}
@@ -25500,7 +29133,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 						}
 
 						if (p - m > 1) {
-							mapData[curInd].adjustedHeight = p - 1;//max(p - 1,seaLev+8); //p - 1;//
+							mapData[curInd].adjustedHeight = p - 1;
 							notFound = true;
 						}
 						
@@ -25616,7 +29249,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											int id = -1,
 											int _heightDelta = 0,
 											int _direction = 0,
-											float _wallRadInMeters = -1.0f
+											float _wallRadInCells = -1.0f
 											*/
 
 
@@ -25641,7 +29274,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 															-1,
 															testVal2 - testVal, // heightDelta,
 															0,
-															singleton->wallRadInMeters + 1.0f
+															singleton->wallRadInCells + 1.0f
 														);
 													}												
 												break;
@@ -25695,7 +29328,21 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											
 
 
-
+											/*
+											int _x1,
+											int _y1,
+											int _z1,
+											int _x2,
+											int _y2,
+											int _z2,
+											
+											int ct,
+											int id = -1,
+											int _heightDelta = 0,
+											int _direction = 0,
+											float _wallRadInCells = -1.0f,
+											unsigned int _nodeFlags = 0
+											*/
 
 
 												
@@ -25708,9 +29355,25 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 													// )
 													// == k
 													
-													(mapData[testInd].adjustedHeight == k) ||
-													(mapData[testInd2].adjustedHeight == k)
+													(
+														(k >= mapData[testInd].adjustedHeight) &&
+														(k <= mapData[testInd].adjustedHeight + mapData[testInd].houseHeight)
+													)
+													||
+													(
+														(k >= mapData[testInd2].adjustedHeight) &&
+														(k <= mapData[testInd2].adjustedHeight)
+													)
 												) {
+
+													tempf = -1.0f;
+												
+													// if (
+													// 	((mapData[testInd].adjustedHeight + mapData[testInd].houseHeight - k) == 0) &&
+													// 	(mapData[testInd].houseHeight == 1)
+													// ) {
+													// 	tempf = singleton->wallRadInCells + 1.0;
+													// }
 
 													connectNodes(
 														i,
@@ -25721,7 +29384,10 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 														k + dirModZ[m],
 
 														E_CT_ROOM_TUDOR,
-														mapData[testInd].id
+														mapData[testInd].id,
+														0,
+														0,
+														tempf
 													);
 
 
@@ -25887,7 +29553,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 														
 														0,
 														0,
-														singleton->wallRadInMeters + 0.5f
+														singleton->wallRadInCells + 0.5f
 
 													);
 												}
@@ -25945,7 +29611,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 								// 				-1,
 								// 				buildingData[curInd].con[m].heightDelta,
 								// 				0,
-								// 				singleton->wallRadInMeters - 1.0f
+								// 				singleton->wallRadInCells - 1.0f
 								// 			);
 								// 		}
 
@@ -26078,7 +29744,6 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 												}
 											}
 											
-										
 											
 											if ( (m%2) == 0 ) {
 												curDir = 1;
@@ -26127,7 +29792,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 													int _heightDelta = 0,
 													int _direction = 0,
 													
-													float _wallRadInMeters = -1.0f,
+													float _wallRadInCells = -1.0f,
 													unsigned int _nodeFlags = 0
 												)
 												*/
@@ -26205,7 +29870,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 													);
 													
-													if (curDir == 1) {
+													//if (curDir == 1) {
 														nodeFlags |= BC_FLAG_INSIDE;
 														connectNodes(
 															i,
@@ -26225,7 +29890,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 															nodeFlags
 
 														);
-													}
+													//}
 													
 													
 												}
@@ -26252,7 +29917,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 										if (testInd > -1) {
 											testVal = terData[testInd];
 											if (touchesBaseOnLevel(i, j, k+1, 2) || (testVal != 0)) {
-												uiSimp = 255;//fGenRand()*32.0f+223.0f;
+												uiSimp = 255;
 												terData[curInd] = (uiSimp << 24) | (uiSimp << 16) | (uiSimp << 8) | uiSimp;
 											}
 										}
@@ -26269,12 +29934,34 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 			}
 		}
 		
+		
+		
+		
+		if (singleton->cavesOn) {
+			makeMazeUG();
+		}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		int minRad = -1;
 		int minRadZ = -1;
-		// if (pixelsPerMeter <= 32) {
+		// if (pixelsPerCell <= 32) {
 		// 	minRad = -2;
 		// }
-		// if (pixelsPerMeter <= 64) {
+		// if (pixelsPerCell <= 64) {
 		// 	minRadZ = -2;
 		// }
 		
@@ -26311,10 +29998,6 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 								}
 							}
 						}
-						
-						
-						
-						
 					}
 				}
 			}
@@ -26387,8 +30070,27 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 								wingMult = buildingData[curInd].con[q].wingMult;
 								newWingMult = (wingMult - 1.0f);
 								nDir = buildingData[curInd].con[q].direction;
-								wallRadInMeters = buildingData[curInd].con[q].wallRadInMeters;
-								roofHeightInMeters = wallRadInMeters;
+								
+								
+								
+								// todo: fix this!
+								wallRadInCells = buildingData[curInd].con[q].wallRadInCells;
+								flushRadInCells = wallRadInCells;
+								for (n = 0; n < 4; n++) {
+									
+									if (
+										ctClasses[buildingData[curInd].con[ n ].conType] == E_CTC_ROOM
+									) {
+										flushRadInCells = max(
+											flushRadInCells,
+											buildingData[curInd].con[ n ].wallRadInCells
+										);
+									}
+									
+									
+								}
+									
+								
 								
 								
 								for (n = 0; n < 2; n++) {
@@ -26455,7 +30157,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 													if (conType == E_CT_LANTERN) {
 														
 														if (isInside) {
-															tempf *= 2.0f;	
+															tempf *= 7.0f;	
 														}
 														else {
 															tempf *= -2.0f;	
@@ -26478,6 +30180,8 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 															if (isInside) {
 																zmod1 += 0.125f;
 																zmod2 += 0.125f;
+																
+																
 															}
 															else {
 																xmod1 += lanternOffset*dirModY[m];
@@ -26499,10 +30203,10 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 												}
 												else {
 													if (nDir == 1.0f) {
-														tempf = (wallRadInMeters*pixelsPerMeter)/(fBlockSizeInPixels / fTerDataVisPitchXY);
+														tempf = (flushRadInCells*pixelsPerCell)/(fBlockSizeInPixels / fTerDataVisPitchXY);
 													}
 													else {
-														tempf = 1.0f-(wallRadInMeters*pixelsPerMeter)/(fBlockSizeInPixels / fTerDataVisPitchXY);
+														tempf = 1.0f-(flushRadInCells*pixelsPerCell)/(fBlockSizeInPixels / fTerDataVisPitchXY);
 													}
 													
 													xmod1 = tempf*dirModX[m];
@@ -26519,7 +30223,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 														}
 														
 														if (isInside) {
-															tempf *= 2.0f;	
+															tempf *= 7.0f;	
 														}
 														else {
 															tempf *= -2.0f;	
@@ -26598,7 +30302,14 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 								}
 
 
-
+								// todo: fix this
+								if (ctClasses[conType] == E_CTC_ROOM) {
+									roofHeightInCells = singleton->wallRadInCells;
+								}
+								else {
+									roofHeightInCells = wallRadInCells;
+									
+								}
 
 
 
@@ -26608,14 +30319,14 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 									
 									curBT = conType;
 									rad.setFXYZ(
-										wallRadInMeters * pixelsPerMeter,
-										wallRadInMeters * pixelsPerMeter,
-										(floorHeightInMeters * 0.5f + roofHeightInMeters)*pixelsPerMeter
+										wallRadInCells * pixelsPerCell,
+										wallRadInCells * pixelsPerCell,
+										(floorHeightInCells * 0.5f + roofHeightInCells)*pixelsPerCell
 									);
 									cornerRad.setFXYZ(
-										wallRadInMeters * pixelsPerMeter,
-										wallRadInMeters * pixelsPerMeter,
-										roofHeightInMeters * pixelsPerMeter
+										wallRadInCells * pixelsPerCell,
+										wallRadInCells * pixelsPerCell,
+										roofHeightInCells * pixelsPerCell
 									);
 									powerVals.setFXYZ(2.0f, 1.0f, 0.0f);
 									powerVals2.setFXYZ(2.0f, 1.0f, 0.0f);
@@ -26646,7 +30357,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 									
 									
 									
-									thickVals.setFXYZ(0.0f, floorHeightInMeters, 0.0f);
+									thickVals.setFXYZ(0.0f, floorHeightInCells, 0.0f);
 									baseOffset = 0.0f;
 									curAlign = E_ALIGN_MIDDLE;
 									minRot = 0;
@@ -26668,11 +30379,13 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
 											
 											tempVec4.setFXYZRef(&p1);
-											tempVec4.addXYZ(0.0f,0.0f,2.0f*pixelsPerMeter);
+											tempVec4.addXYZ(0.0f,0.0f,2.0f*pixelsPerCell);
 
 											tempVec.setIXYZ(i,j,k);
+											tempVec.multXYZ(102.33,305.44,609.121);
 											tempVec2.setFXYZ(93.989f, 67.345f, 54.256f);
-											tempInt = clampf(getRandSeeded(&tempVec,&tempVec2)*3.0f,0.0,2.0f);
+											tempInt = iGetRandSeeded(&tempVec,&tempVec2,0,E_PT_LENGTH/2 - 1);
+											
 											
 											
 											singleton->gamePlants[tempInt]->init(
@@ -26686,42 +30399,6 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											matParams.setFY(tempInt*2);
 											addPlantNodes(singleton->gamePlants[tempInt]->trunkNode, &tempVec4, 1.0f);
 											
-											
-											
-											// if (tempf > 0.66) {
-											// 	bareTree.init(
-											// 		singleton,
-											// 		&(GamePlant::allPlantRules[E_PT_BARE_OAK_ROOTS]),
-											// 		&(GamePlant::allPlantRules[E_PT_BARE_OAK_TRUNK]),
-											// 		&origin
-											// 	);
-											// 	matParams.setFY()
-											// 	addPlantNodes(bareTree.rootsNode, &tempVec4, 1.0f);
-											// 	addPlantNodes(bareTree.trunkNode, &tempVec4, 1.0f);
-											// }
-											// else if (tempf > 0.33) {
-											// 	oakTree2.init(
-											// 		singleton,
-											// 		&(GamePlant::allPlantRules[E_PT_OAK2_ROOTS]),
-											// 		&(GamePlant::allPlantRules[E_PT_OAK2_TRUNK]),
-											// 		&origin
-											// 	);
-
-											// 	addPlantNodes(oakTree2.rootsNode, &tempVec4, 1.0f);
-											// 	addPlantNodes(oakTree2.trunkNode, &tempVec4, 1.0f);
-											// }
-											// else {
-											// 	oakTree.init(
-											// 		singleton,
-											// 		&(GamePlant::allPlantRules[E_PT_OAK_ROOTS]),
-											// 		&(GamePlant::allPlantRules[E_PT_OAK_TRUNK]),
-											// 		&origin
-											// 	);
-
-											// 	addPlantNodes(oakTree.rootsNode, &tempVec4, 1.0f);
-											// 	addPlantNodes(oakTree.trunkNode, &tempVec4, 1.0f);
-											// }
-
 											
 											
 											goto SKIP_ADD_GEOM;
@@ -26740,18 +30417,18 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											// roofHeight = 0.25f;
 											// baseOffset = 0.0f;
 											rad.setFXYZ(
-												(0.25f)*pixelsPerMeter,
-												(0.25f)*pixelsPerMeter,
-												(0.5f)*pixelsPerMeter
+												(0.25f)*pixelsPerCell,
+												(0.25f)*pixelsPerCell,
+												(0.5f)*pixelsPerCell
 											);
 											cornerRad.setFXYZ(
-												(0.0625f)*pixelsPerMeter,
-												(0.0625f)*pixelsPerMeter,
-												(0.25f)*pixelsPerMeter
+												(0.0625f)*pixelsPerCell,
+												(0.0625f)*pixelsPerCell,
+												(0.25f)*pixelsPerCell
 											);
-											thickVals.setFXYZ(0.25f*pixelsPerMeter, 0.0f, 0.0f);											
+											thickVals.setFX(0.25f*pixelsPerCell);											
 
-											visInsetFromMin.setFXYZ(0.0f,0.0f,cornerRad.getFZ() - 0.0625*pixelsPerMeter);
+											visInsetFromMin.setFXYZ(0.0f,0.0f,cornerRad.getFZ() - 0.0625*pixelsPerCell);
 											visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
 
 											powerVals.setFXYZ(2.0f, 1.0f, 0.0f);
@@ -26786,26 +30463,26 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											}
 											
 											curAlign = E_ALIGN_BOTTOM;
-											baseOffset = -(rad.getFZ() - (cornerRad.getFZ()+(0.25+doorMod)*pixelsPerMeter) ) + tempf*2.0f*pixelsPerMeter;
+											baseOffset = -(rad.getFZ() - (cornerRad.getFZ()+(0.25+doorMod)*pixelsPerCell) ) + tempf*2.0f*pixelsPerCell;
 											
 
 											
 											floorHeight = 2.0f-doorMod;
-											roofHeight = 1.5f-doorMod;
+											roofHeight = 2.25f-doorMod;
 											
 											rad.setFXYZ(
-												(1.5f - doorMod)*pixelsPerMeter,
-												(1.5f - doorMod)*pixelsPerMeter,
-												(floorHeight*0.5f + roofHeight + tempf*0.5f)*pixelsPerMeter
+												(roofHeight)*pixelsPerCell,
+												(roofHeight)*pixelsPerCell,
+												(floorHeight*0.5f + roofHeight + tempf*0.5f)*pixelsPerCell
 											);
 											cornerRad.setFXYZ(
-												(1.5f - doorMod)*pixelsPerMeter,
-												(1.5f - doorMod)*pixelsPerMeter,
-												roofHeight*pixelsPerMeter
+												(roofHeight)*pixelsPerCell,
+												(roofHeight)*pixelsPerCell,
+												roofHeight*pixelsPerCell
 											);
-											thickVals.setFXYZ(0.25f*pixelsPerMeter, floorHeightInMeters, 0.0f);	
+											thickVals.setFX(0.25f*pixelsPerCell);	
 										
-											doorInset = doorMod*pixelsPerMeter*1.25f;
+											doorInset = doorMod*pixelsPerCell*1.25f;
 											
 											
 											anchorPoint.copyFrom(&p1);
@@ -26931,58 +30608,76 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											//testInd = getMapNodeIndex(i, j, 0);
 											//testInd2 = getMapNodeIndex(i + dirModX[m], j + dirModY[m], 0);
 
-											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
-											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
+											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
+											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
 											
 											
-											baseOffset = 0.0f;// -(floorHeightInMeters)*pixelsPerMeter;
+											baseOffset = 0.0f;// -(floorHeightInCells)*pixelsPerCell;
 											rad.addXYZ(
 												0.0f,
 												0.0f,
-												(floorHeightInMeters+1.0f)*pixelsPerMeter
+												(floorHeightInCells+1.0f)*pixelsPerCell
 											);
 
-											matParams.setFXYZ(E_MAT_PARAM_FOUNDATION, 0.0f, 0.0f);
+											
+											if (
+												singleton->getHeightAtPixelPos(p1.getFX(), p1.getFY()) <=
+												singleton->getSLInPixels()  + 2.0f * pixelsPerCell
+											) {
+												rad.addXYZ(
+													0.0f,
+													0.0f,
+													(2.0f)*pixelsPerCell
+												);
+												matParams.setFXYZ(E_MAT_PARAM_FOUNDATION, E_MAT_SUBPARAM_DOCK, 0.0f);
+											}
+											else {
+												matParams.setFXYZ(E_MAT_PARAM_FOUNDATION, E_MAT_SUBPARAM_BRICK, 0.0f);
+											}
+
+											
+
+											
 
 											break;
 										case E_CT_ROOM_BRICK:
 											matParams.setFXYZ(E_MAT_PARAM_BUILDING, E_MAT_SUBPARAM_BRICK, 0.0f);
-											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
-											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
+											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
+											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
 											break;
 										case E_CT_ROOM_TUDOR:
 
-											//rad.addXYZ(-0.5f*pixelsPerMeter,-0.5f*pixelsPerMeter,0.0f);
-											//cornerRad.addXYZ(-0.5f*pixelsPerMeter);
+											//rad.addXYZ(-0.5f*pixelsPerCell,-0.5f*pixelsPerCell,0.0f);
+											//cornerRad.addXYZ(-0.5f*pixelsPerCell);
 
 											matParams.setFXYZ(E_MAT_PARAM_BUILDING, E_MAT_SUBPARAM_TUDOR, 0.0f);
-											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
-											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
+											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
+											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
 											break;
 
 										// case E_CT_WALKWAY:
 
 										// 	matParams.setFXYZ(E_MAT_PARAM_WALKWAY, E_MAT_SUBPARAM_BRICK_ARCH, 0.0f);
-										// 	visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
-										// 	visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
+										// 	visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
+										// 	visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
 
 										// 	break;
 
 										// case E_CT_WALKWAY_TOP:
 										// 	matParams.setFXYZ(E_MAT_PARAM_WALKWAY_TOP, E_MAT_SUBPARAM_BRICK_ARCH, 0.0f);
-										// 	visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
-										// 	visInsetFromMax.setFXYZ(0.0f, 0.0f, (roofHeightInMeters + (floorHeightInMeters * 0.75))*pixelsPerMeter);
+										// 	visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
+										// 	visInsetFromMax.setFXYZ(0.0f, 0.0f, (roofHeightInCells + (floorHeightInCells * 0.75))*pixelsPerCell);
 
 										// 	break;
 
 										case E_CT_ROOF:
-											baseOffset = -floorHeightInMeters * pixelsPerMeter;
+											baseOffset = -floorHeightInCells * pixelsPerCell;
 											matParams.setFXYZ(E_MAT_PARAM_ROOF, E_MAT_SUBPARAM_TUDOR, buildingData[curInd].id);
 
 											if (curDir == E_DIR_Z) {
-												visInsetFromMin.setFXYZ(0.0f, 0.0f, (roofHeightInMeters + floorHeightInMeters * 2.0f)*pixelsPerMeter);
+												visInsetFromMin.setFXYZ(0.0f, 0.0f, (roofHeightInCells + floorHeightInCells * 2.0f)*pixelsPerCell);
 											} else {
-												visInsetFromMin.setFXYZ(0.0f, 0.0f, (roofHeightInMeters + floorHeightInMeters)*pixelsPerMeter);
+												visInsetFromMin.setFXYZ(0.0f, 0.0f, (roofHeightInCells + floorHeightInCells)*pixelsPerCell);
 											}
 											visInsetFromMax.setFXYZ(0.0f, 0.0f, 0.0f);
 											break;
@@ -26995,11 +30690,11 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 										// 		cornerRad.multXYZ(0.5f, 0.5f, 1.0f);
 
 										// 		if ((k % 2) == 0) {
-										// 			visInsetFromMin.setFXYZ(cornerRad.getFX(), rad.getFY(), roofHeightInMeters * pixelsPerMeter);
-										// 			visInsetFromMax.setFXYZ(cornerRad.getFX(), 0.0f, roofHeightInMeters * pixelsPerMeter);
+										// 			visInsetFromMin.setFXYZ(cornerRad.getFX(), rad.getFY(), roofHeightInCells * pixelsPerCell);
+										// 			visInsetFromMax.setFXYZ(cornerRad.getFX(), 0.0f, roofHeightInCells * pixelsPerCell);
 										// 		} else {
-										// 			visInsetFromMin.setFXYZ(cornerRad.getFX(), 0.0f, roofHeightInMeters * pixelsPerMeter);
-										// 			visInsetFromMax.setFXYZ(cornerRad.getFX(), rad.getFY(), roofHeightInMeters * pixelsPerMeter);
+										// 			visInsetFromMin.setFXYZ(cornerRad.getFX(), 0.0f, roofHeightInCells * pixelsPerCell);
+										// 			visInsetFromMax.setFXYZ(cornerRad.getFX(), rad.getFY(), roofHeightInCells * pixelsPerCell);
 										// 		}
 										// 		break;
 
@@ -27008,11 +30703,11 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 										// 		cornerRad.multXYZ(0.5f, 0.5f, 1.0f);
 
 										// 		if ((k % 2) == 0) {
-										// 			visInsetFromMin.setFXYZ(rad.getFX(), cornerRad.getFY(), roofHeightInMeters * pixelsPerMeter);
-										// 			visInsetFromMax.setFXYZ(0.0f, cornerRad.getFY(), roofHeightInMeters * pixelsPerMeter);
+										// 			visInsetFromMin.setFXYZ(rad.getFX(), cornerRad.getFY(), roofHeightInCells * pixelsPerCell);
+										// 			visInsetFromMax.setFXYZ(0.0f, cornerRad.getFY(), roofHeightInCells * pixelsPerCell);
 										// 		} else {
-										// 			visInsetFromMin.setFXYZ(0.0f, cornerRad.getFY(), roofHeightInMeters * pixelsPerMeter);
-										// 			visInsetFromMax.setFXYZ(rad.getFX(), cornerRad.getFY(), roofHeightInMeters * pixelsPerMeter);
+										// 			visInsetFromMin.setFXYZ(0.0f, cornerRad.getFY(), roofHeightInCells * pixelsPerCell);
+										// 			visInsetFromMax.setFXYZ(rad.getFX(), cornerRad.getFY(), roofHeightInCells * pixelsPerCell);
 										// 		}
 
 										// 		break;
@@ -27020,14 +30715,14 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 										// 	case E_DIR_Z:
 										// 		rad.multXYZ(0.75f, 0.75f, 1.0f);
 										// 		cornerRad.multXYZ(0.75f, 0.75f, 1.0f);
-										// 		visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
-										// 		visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
+										// 		visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
+										// 		visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
 
 										// 		break;
 										// 	}
 
 										// 	matParams.setFXYZ(E_MAT_PARAM_STAIRS, E_MAT_SUBPARAM_NONE, (float)(k % 2));
-										// 	baseOffset = 1.0f * pixelsPerMeter;
+										// 	baseOffset = 1.0f * pixelsPerCell;
 
 										// 	break;
 
@@ -27334,7 +31029,7 @@ void GameBlock::addPlantNodes (GamePlantNode * curPlantNode, FIVector4 * orig, f
 
 
 			// if (curPlantNode->numChildren == 0) {
-			// 	endThickness = 0.5f*singleton->pixelsPerMeter;
+			// 	endThickness = 0.5f*singleton->pixelsPerCell;
 			// }
 
 			
@@ -27411,7 +31106,7 @@ void GameBlock::addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVect
 		);
 		
 		if (_curBT == E_CT_LANTERN) {
-			lightVec.setFXYZ(1.0f,0.5f,0.1f); //randomize();
+			lightVec.setFXYZ(1.0f,0.5f,0.1f);
 			gameLights.push_back(new GameLight());
 			gameLights.back()->init(
 				lightCounter,
@@ -27429,7 +31124,7 @@ void GameBlock::addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVect
 		singleton->geomCounter++;
 		localGeomCounter++;
 	}
-void GameBlock::connectNodes (int _x1, int _y1, int _z1, int _x2, int _y2, int _z2, int ct, int id, int _heightDelta, int _direction, float _wallRadInMeters, unsigned int _nodeFlags)
+void GameBlock::connectNodes (int _x1, int _y1, int _z1, int _x2, int _y2, int _z2, int ct, int id, int _heightDelta, int _direction, float _wallRadInCells, unsigned int _nodeFlags)
           {
 
 
@@ -27440,9 +31135,9 @@ void GameBlock::connectNodes (int _x1, int _y1, int _z1, int _x2, int _y2, int _
 		// 4: z+
 		// 5: z-
 
-		float wallRad = _wallRadInMeters;
+		float wallRad = _wallRadInCells;
 		if (wallRad == -1.0f) {
-			wallRad = singleton->wallRadInMeters;
+			wallRad = singleton->wallRadInCells;
 		}
 
 		int x1 = _x1;
@@ -27510,8 +31205,8 @@ void GameBlock::connectNodes (int _x1, int _y1, int _z1, int _x2, int _y2, int _
 			buildingData[ind1].con[resInd1].nodeFlags |= _nodeFlags;
 			buildingData[ind2].con[resInd2].nodeFlags |= _nodeFlags;
 			
-			buildingData[ind1].con[resInd1].wallRadInMeters = wallRad;
-			buildingData[ind2].con[resInd2].wallRadInMeters = wallRad;
+			buildingData[ind1].con[resInd1].wallRadInCells = wallRad;
+			buildingData[ind2].con[resInd2].wallRadInCells = wallRad;
 			
 			
 		}
@@ -27714,11 +31409,6 @@ float GameBlock::fIsNearTerrain (FIVector4 * worldMinVisInPixels)
 			fTerDataVisPitchZ / fBlockSizeInPixels
 		);
 		tempVec.addXYZ((float)terDataBufAmount);
-		// tempVec2.copyFrom(&tempVec);
-		// tempVec2.addXYZ(1.0f,1.0f,1.0f);
-
-		//tempVec.addXYZ(0.5f); // gets negated anyway
-
 
 		for (i = 0; i <= 1; i++) {
 			for (j = 0; j <= 1; j++) {
@@ -27765,8 +31455,231 @@ float GameBlock::fIsNearTerrain (FIVector4 * worldMinVisInPixels)
 
 		return trilin[0];
 	}
-void GameBlock::isNearTerrain (FIVector4 * worldMinVisInPixels, FIVector4 * worldMaxVisInPixels, bool & nearT, bool & nearA)
+void GameBlock::refreshHoldersInArea (FIVector4 * worldPos)
           {
+
+
+		int ind;
+		int curInd;
+		int testInd;
+		int i;
+		int j;
+		int k;
+		
+		int holderSizeInPixels = singleton->holderSizeInPixels;
+	
+		float bsih = blockSizeInHolders;
+	
+		tempVec.copyFrom(worldPos);
+		tempVec.intDivXYZ(holderSizeInPixels);
+		
+		
+		doTraceVecND("refreshHoldersInArea", &tempVec);
+		
+		
+		int rad = 2;
+		
+		for (i = -rad; i <= rad; i++) {
+			for (j = -rad; j <= rad; j++) {
+				for (k = -rad; k <= rad; k++) {
+					
+					
+					
+					gw->getHolderAtCoords(
+						tempVec.getIX()+i,
+						tempVec.getIY()+j,
+						tempVec.getIZ()+k,
+						true
+					)->refreshChildren(true,true,true);
+				}
+			}
+		}
+		
+
+
+	}
+void GameBlock::modifyTerrain (FIVector4 * worldPos, bool doSub)
+          {
+
+		int ind;
+		int curInd;
+		int testInd;
+		int i;
+		int j;
+		int k;
+		int n;
+		
+		int io;
+		int jo;
+		int ko;
+		
+		uint newValue = 255;
+		if (doSub) {
+			newValue = 0;
+		}
+		
+		
+		tempVec.copyFrom(worldPos);
+		
+
+		tempVec.addXYZ(
+			-fBlockSizeInPixels * offsetInBlocks.getFX(),
+			-fBlockSizeInPixels * offsetInBlocks.getFY(),
+			0.0f
+		);
+
+		tempVec.multXYZ(
+			fTerDataVisPitchXY / fBlockSizeInPixels,
+			fTerDataVisPitchXY / fBlockSizeInPixels,
+			fTerDataVisPitchZ / fBlockSizeInPixels
+		);
+		tempVec.addXYZ((float)terDataBufAmount);
+
+		//tempVec.addXYZ(0.5f);
+		
+		
+		
+		i = tempVec.getIX();
+		j = tempVec.getIY();
+		k = tempVec.getIZ();
+		
+		float xm = tempVec.getFX() - tempVec.getIX();
+		float ym = tempVec.getFY() - tempVec.getIY();
+		float zm = tempVec.getFZ() - tempVec.getIZ();
+		
+		
+		if ((xm >= ym) && (xm >= zm)) {
+			n = 0;
+		}
+		if ((ym >= xm) && (ym >= zm)) {
+			n = 1;
+		}
+		if ((zm >= xm) && (zm >= ym)) {
+			n = 2;
+		}
+		
+		
+		int counterMod = 1;
+		
+		if (doSub) {
+			counterMod = -1;
+		}
+		
+		int counterK = 0;
+		while (true) {
+			
+			
+			
+			switch(n) {
+				case 0:
+					i = tempVec.getIX()+counterK*counterMod;
+					j = tempVec.getIY();
+					k = tempVec.getIZ();
+				break;
+				case 1:
+					i = tempVec.getIX();
+					j = tempVec.getIY()+counterK*counterMod;
+					k = tempVec.getIZ();
+				break;
+				case 2:
+					i = tempVec.getIX();
+					j = tempVec.getIY();
+					k = tempVec.getIZ()+counterK*counterMod;
+				break;
+			}
+			
+			
+			ind = getNodeIndex(i, j, k, 0);
+			if (ind > -1) {
+				if ( (!doSub) && (terData[ind] == 0) ) {
+					// found a place to add
+					goto FOUND_ADD_SUB;
+				}
+				
+				if ( (doSub) && (terData[ind] != 0) ) {
+					// found a place to sub
+					goto FOUND_ADD_SUB;
+				}
+			}
+			else {				
+				return;
+			}
+			
+			
+			
+			counterK++;
+		}
+		
+		
+		FOUND_ADD_SUB:
+		
+		
+		
+		
+		terData[ind] = (newValue << 24) | (newValue << 16) | (newValue << 8) | newValue;
+
+		
+		
+		
+		int rad2 = 3;
+		int rad = 2;
+		
+		
+		
+		for (i = -rad2; i <= rad2; i++) {
+			for (j = -rad2; j <= rad2; j++) {
+				for (k = -rad2; k <= rad2; k++) {
+					curInd = getNodeIndex(i, j, k, 0);
+
+					if (curInd > -1) {
+						buildingData[curInd].nearAir = false;
+						buildingData[curInd].nearTerrain = false;
+					}
+					
+				}
+			}
+		}
+		
+		for (i = -rad2; i <= rad2; i++) {
+			for (j = -rad2; j <= rad2; j++) {
+				for (k = -rad2; k <= rad2; k++) {
+					curInd = getNodeIndex(i, j, k, 0);
+
+					
+
+					if (curInd > -1) {
+						
+						for (ko = -rad; ko <= rad; ko++) {
+							for (jo = -rad; jo <= rad; jo++) {
+								for (io = -rad; io <= rad; io++) {
+									testInd = getNodeIndex(i + io, j + jo, k + ko, 0);
+
+									if (testInd > -1) {
+										if (terData[testInd] == 0) {
+											buildingData[curInd].nearAir = true;
+										}
+										else {
+											buildingData[curInd].nearTerrain = true;
+										}
+									}
+								}
+							}
+						}
+					}
+					
+				}
+			}
+		}
+		
+		forceUpdate = true;
+
+		//copyTerToTexture(true);
+		
+		//refreshHoldersInArea(worldPos);
+
+	}
+int GameBlock::isNearTerrain (FIVector4 * worldPosInPix)
+                                                    {
 
 		int ind;
 		
@@ -27774,59 +31687,45 @@ void GameBlock::isNearTerrain (FIVector4 * worldMinVisInPixels, FIVector4 * worl
 		int j;
 		int k;
 		
-		for (i = 0; i < 2; i++) {
-			if (i == 0) {
-				tempVec.copyFrom(worldMinVisInPixels);
+		tempVec.copyFrom(worldPosInPix);
+		tempVec.addXYZ(
+			-fBlockSizeInPixels * offsetInBlocks.getFX(),
+			-fBlockSizeInPixels * offsetInBlocks.getFY(),
+			0.0f
+		);
+
+		tempVec.multXYZ(
+			fTerDataVisPitchXY / fBlockSizeInPixels,
+			fTerDataVisPitchXY / fBlockSizeInPixels,
+			fTerDataVisPitchZ / fBlockSizeInPixels
+		);
+		tempVec.addXYZ((float)terDataBufAmount);
+
+		tempVec.addXYZ(0.5f);
+
+		bool nearT = false;
+		bool nearA = false;
+
+		
+		i = tempVec.getIX();
+		j = tempVec.getIY();
+		k = tempVec.getIZ();
+		ind = getNodeIndex(i, j, k, 0);
+		if (ind > -1) {
+			nearT = buildingData[ind].nearTerrain;
+			nearA = buildingData[ind].nearAir;
+		}
+
+		if (nearT) {
+			if (nearA) {
+				return E_TER_GROUNDLEVEL;
 			}
 			else {
-				tempVec.copyFrom(worldMaxVisInPixels);
-			}
-			
-
-			tempVec.addXYZ(
-				-fBlockSizeInPixels * offsetInBlocks.getFX(),
-				-fBlockSizeInPixels * offsetInBlocks.getFY(),
-				0.0f
-			);
-
-			tempVec.multXYZ(
-				fTerDataVisPitchXY / fBlockSizeInPixels,
-				fTerDataVisPitchXY / fBlockSizeInPixels,
-				fTerDataVisPitchZ / fBlockSizeInPixels
-			);
-			tempVec.addXYZ((float)terDataBufAmount);
-
-			tempVec.addXYZ(0.5f);
-			
-			if (i == 0) {
-				tempVec2.copyFrom(&tempVec);
+				return E_TER_UNDERGROUND;
 			}
 		}
-
 		
-
-
-		
-		
-
-		nearT = false;
-		nearA = false;
-
-		
-		for (i = tempVec2.getIX(); i <= tempVec.getIX(); i++) {
-			for (j = tempVec2.getIY(); j <= tempVec.getIY(); j++) {
-				for (k = tempVec2.getIZ(); k <= tempVec.getIZ(); k++) {
-					ind = getNodeIndex(i, j, k-1, 0);
-					if (ind > -1) {
-						nearT = nearT||buildingData[ind].nearTerrain;
-						nearA = nearA||buildingData[ind].nearAir;
-					}
-				}
-				
-			}
-		}
-
-		
+		return E_TER_AIR;
 
 	}
 int GameBlock::findNearestNode (FIVector4 * worldPositionInPixelsIn, FIVector4 * posInNodesOut, FIVector4 * posInPixelsOut)
@@ -27840,7 +31739,7 @@ int GameBlock::findNearestNode (FIVector4 * worldPositionInPixelsIn, FIVector4 *
 		int offset;
 		int bestInd = -1;
 		
-		float zBias = floorHeightInMeters*pixelsPerMeter*0.5f;
+		float zBias = floorHeightInCells*pixelsPerCell*0.5f;
 
 		bool notFound = true;
 		
@@ -28142,9 +32041,11 @@ int GameBlock::copyTerToTexture ()
 
 		uint *finalTex;
 
-		if (singleton->terTextures[resIndex].alreadyBound) {
-
+		if (singleton->terTextures[resIndex].alreadyBound && (!forceUpdate)) {
+			
 		} else {
+			
+			forceUpdate = false;
 
 			doTraceND("copyTerToTexture resIndex: ", i__s(resIndex));
 
@@ -28157,6 +32058,7 @@ int GameBlock::copyTerToTexture ()
 				
 			// }
 			
+			tempVec2.setFXYZ(93.989f, 67.345f, 54.256f);
 			
 			
 			for (k = 0; k < terDataBufPitchScaledZ; k++) {
@@ -28178,13 +32080,7 @@ int GameBlock::copyTerToTexture ()
 								
 								
 								
-								// tempVec.setIXYZ(
-								// 	i + offsetInBlocks.getIX()*terDataVisPitchXY - terDataBufAmount,
-								// 	j + offsetInBlocks.getIY()*terDataVisPitchXY - terDataBufAmount,
-								// 	k + offsetInBlocks.getIZ()*terDataVisPitchZ - terDataBufAmount
-								// );
 								
-								//uiSimp = getRandSeeded(&tempVec,&tempVec2)*55.0f+200.0f; //fGenRand()
 								
 								if (
 									(i >= terDataBufPitchScaledXY-terDataBufAmount*4) ||
@@ -28195,7 +32091,14 @@ int GameBlock::copyTerToTexture ()
 									uiSimp = 255; // make sure block borders match up
 								}
 								else {
-									uiSimp = fGenRand()*63.0f+192.0f;
+									
+									tempVec.setIXYZ(
+										i + offsetInBlocks.getIX()*terDataVisPitchXY - terDataBufAmount,
+										j + offsetInBlocks.getIY()*terDataVisPitchXY - terDataBufAmount,
+										k + offsetInBlocks.getIZ()*terDataVisPitchZ - terDataBufAmount
+									);
+									
+									uiSimp = iGetRandSeeded(&tempVec,&tempVec2,200,255);
 								}
 								
 							}
@@ -28240,6 +32143,187 @@ int GameBlock::copyTerToTexture ()
 		return resIndex;
 
 	}
+void GameBlock::makeMazeUG ()
+                                  {
+
+			//cout << "q\n";
+
+			int i;
+			int rbInd = 0;
+			int curInd = 0;
+			int startDir = 0;
+			int count = 0;
+
+			int testX = 0;
+			int testY = 0;
+			int testZ = 0;
+
+			int curX = 0;
+			int curY = 0;
+			int curZ = 0;
+			
+			int ind1;
+			int ind2;
+
+			int testInd = 0;
+			int bestInd = 0;
+			int bestDir = 0;
+			int curDir = 0;
+			int blockOffset = offsetInBlocks.getIX() + offsetInBlocks.getIY();
+
+			int ct;
+
+			bool isOddX, isOddY, isOddZ;
+			bool doProc;
+
+			int divSize = 4;
+			int tunnelCount = 0;
+
+			rbInd = 0;
+			
+
+
+			//ind1 = getMapNodeIndex(terDataBufSize/2,terDataBufSize/2, 0);
+			
+			singleton->rbStack[0] = getNodeIndex(
+				terDataBufPitchXY/2,
+				terDataBufPitchXY/2,
+				terDataBufPitchZ/2,
+				0
+			);
+
+
+			while (rbInd > -1) {
+
+
+
+				curInd = singleton->rbStack[rbInd];
+				buildingData[curInd].visited = 1;
+				buildingData[curInd].mazeIndex = rbInd;
+
+				curZ = curInd / (terDataBufPitchXY * terDataBufPitchXY);
+				curY = (curInd - curZ * terDataBufPitchXY * terDataBufPitchXY) / terDataBufPitchXY;
+				curX = curInd - (curZ * terDataBufPitchXY * terDataBufPitchXY + curY * terDataBufPitchXY);
+
+				startDir = rbInd * 37 + blockOffset;
+				count = 0;
+
+				isOddX = ((curX + terDataBufAmount) % divSize) != 0;
+				isOddY = ((curY + terDataBufAmount) % divSize) != 0;
+				isOddZ = ((curZ + terDataBufAmount) % divSize) != 0;
+
+				do {
+
+					curDir = (startDir + count) % 6;
+
+					testX = curX + dirModX[curDir];
+					testY = curY + dirModY[curDir];
+					testZ = curZ + dirModZ[curDir];
+
+					testInd = getNodeIndex(testX, testY, testZ, 0);
+
+
+
+					if (testInd >= 0) {
+						
+						//cout << "b\n";
+
+						if ( true ) { // terData[testInd] != 0
+							if ( buildingData[testInd].visited == 0 ) {
+
+								
+
+								doProc = false;
+
+								if (isOddX) {
+									if (curDir <= 1) {
+										doProc = true;
+									}
+								}
+								else {
+									if (isOddY) {
+										if ((curDir == 2) || (curDir == 3)) {
+											doProc = true;
+										}
+									}
+									else {
+										if (isOddZ) {
+											if (curDir >= 4) {
+												doProc = true;
+											}
+										}
+										else {
+											doProc = true;
+										}
+									}
+								}
+								if (doProc) {
+									//not visited, proceed
+
+									
+
+									bestDir = curDir;
+									bestInd = testInd;
+									goto DONE_SEARCHING;
+								}
+
+
+
+							}
+						}
+
+
+					}
+
+
+
+					count++;
+
+
+				} while (count < 6);
+
+	DONE_SEARCHING:
+
+				if (count >= 6) { // dead end, back up
+					rbInd--;
+				} else {
+
+					//ct = E_CT_CONNECTED;//iGenRand(E_CT_ROAD,E_CT_ROOM_TUDOR);
+					//connectNodes( curX, curY, curZ, testX, testY, testZ, E_CT_CONNECTED);
+					
+					//cout << "a\n";
+					
+					ind1 = getNodeIndex(curX,curY,curZ, 0);
+					ind2 = getNodeIndex(testX,testY,testZ, 0);
+					
+					if (ind1 > -1) {
+						terData[ind1] = 0;
+					}
+					if (ind2 > -1) {
+						terData[ind2] = 0;
+					}
+
+					rbInd++;
+
+					
+
+
+					singleton->rbStack[rbInd] = bestInd;
+					
+					
+					tunnelCount++;
+					
+					if (tunnelCount >= terDataBufSize/16) {
+						return;
+					}
+					
+				}
+
+
+
+			}
+
+		}
 #undef LZZ_INLINE
  
 // f00380_gameworld.h
@@ -28266,7 +32350,7 @@ void GameWorld::init (Singleton * _singleton)
 
 		singleton = _singleton;
 		
-		curLoadRadius = singleton->minWInPages;
+		//curLoadRadius = singleton->minWInPages;
 
 		int i;
 		int j;
@@ -28276,7 +32360,6 @@ void GameWorld::init (Singleton * _singleton)
 		lightCount = 1;
 
 		noiseGenerated = false;
-		wavesGenerated = false;
 
 		finalPath = NULL;
 
@@ -28346,7 +32429,6 @@ void GameWorld::init (Singleton * _singleton)
 		mapStep = 0.0f;
 
 		pageCount = 0;
-		procResultAccum = false;
 		lastProcResult = true;
 		maxThreads = 7;
 		availThreads = maxThreads;
@@ -28436,20 +32518,12 @@ GameBlock * GameWorld::getBlockAtCoords (int xInBlocks, int yInBlocks, bool crea
 			newY * worldSizeInBlocks.getIX() +
 			newX;
 
-		if (blockData[ind] == NULL)
-		{
-
-			if (createOnNull)
-			{
+		if (blockData[ind] == NULL) {
+			if (createOnNull) {
 				blockData[ind] = new GameBlock();
 				blockData[ind]->init(singleton, ind, xInBlocks, yInBlocks, newX, newY);
 			}
 		}
-		else
-		{
-
-		}
-
 
 		return blockData[ind];
 
@@ -28462,14 +32536,6 @@ GamePageHolder * GameWorld::getHolderAtCoords (int x, int y, int z, bool createO
 		int newX = wrapCoord(x, worldSizeInHolders.getIX());
 		int newY = wrapCoord(y, worldSizeInHolders.getIY());
 		int newZ = z;
-
-
-
-		//  int ind =
-		//
-		//  newZ*worldSizeInHolders.getIX()*worldSizeInHolders.getIY() +
-		//  newY*worldSizeInHolders.getIX() +
-		//  newX;
 
 		int holderX = newX - intDiv(newX, blockSizeInHolders) * blockSizeInHolders;
 		int holderY = newY - intDiv(newY, blockSizeInHolders) * blockSizeInHolders;
@@ -28493,11 +32559,7 @@ GamePageHolder * GameWorld::getHolderAtCoords (int x, int y, int z, bool createO
 			holderData = curBlock->holderData;
 
 
-			if (holderData[holderId])
-			{
-
-			}
-			else
+			if (holderData[holderId] == NULL)
 			{
 				if (createOnNull)
 				{
@@ -28511,6 +32573,34 @@ GamePageHolder * GameWorld::getHolderAtCoords (int x, int y, int z, bool createO
 
 		}
 
+
+
+	}
+uint GameWorld::getTerDataAtCoords (int x, int y, int z)
+        {
+
+		int tdvpXY = singleton->terDataVisPitchXY;
+		int tdvpZ = singleton->terDataVisPitchZ;
+
+		int newX = wrapCoord(x, singleton->worldSizeInTerData.getIX());
+		int newY = wrapCoord(y, singleton->worldSizeInTerData.getIY());
+		int newZ = z;
+
+
+		int holderX = newX - intDiv(newX, tdvpXY) * tdvpXY;
+		int holderY = newY - intDiv(newY, tdvpXY) * tdvpXY;
+		int holderZ = newZ - intDiv(newZ, tdvpZ) * tdvpZ;
+
+		int holderId = holderZ * tdvpXY * tdvpXY + holderY * tdvpXY + holderX;
+
+
+		GameBlock *curBlock = getBlockAtCoords(
+														intDiv(x, tdvpXY),
+														intDiv(y, tdvpXY),
+														true
+													);
+
+		return curBlock->terData[holderId];
 
 
 	}
@@ -28553,7 +32643,6 @@ GameBlock * GameWorld::getBlockAtId (int id)
 	}
 GamePage * GameWorld::getPageAtIndex (int ind)
         {
-		//pushTrace("getPageAtIndex()");
 
 		int newInd = ind;
 		int x, y, z;
@@ -28569,15 +32658,48 @@ GamePage * GameWorld::getPageAtIndex (int ind)
 
 		gp = getPageAtCoords(x, y, z, false);
 
-		//popTrace();
 
 		return gp;
 
 	}
+int GameWorld::getCellAtCoords (FIVector4 * coords)
+                                               {
+		
+		int cellsPerPage = singleton->cellsPerPage;
+		
+		int newX = wrapCoord(coords->getIX(),singleton->worldSizeInPixels.getIX());
+		int newY = wrapCoord(coords->getIY(),singleton->worldSizeInPixels.getIY());
+		int newZ = coords->getIZ();
+		
+		int x2 = intDiv(newX,visPageSizeInPixels);
+		int y2 = intDiv(newY,visPageSizeInPixels);
+		int z2 = intDiv(newZ,visPageSizeInPixels);
+		
+		GamePage* gp = getPageAtCoords(x2, y2, z2, false);
+		
+		int xr = newX - x2*visPageSizeInPixels;
+		int yr = newY - y2*visPageSizeInPixels;
+		int zr = newZ - z2*visPageSizeInPixels;
+		
+		int xl = xr/singleton->pixelsPerCell;
+		int yl = yr/singleton->pixelsPerCell;
+		int zl = zr/singleton->pixelsPerCell;
+		
+		if (gp == NULL) {
+			return E_CD_EMPTY;
+		}
+		else {
+			if (gp->cellData == NULL) {
+				return E_CD_EMPTY;
+			}
+			else {
+				return gp->cellData[zl*cellsPerPage*cellsPerPage + yl*cellsPerPage + xl];
+			}
+		}
+	}
 GamePage * GameWorld::getPageAtCoords (int x, int y, int z, bool createOnNull)
         {
 
-		//pushTrace("getPageAtCoords()");
 		int hx, hy, hz;
 		int px, py, pz;
 		int gpInd;
@@ -28597,26 +32719,6 @@ GamePage * GameWorld::getPageAtCoords (int x, int y, int z, bool createOnNull)
 		py = newY % holderSizeInPages;
 		pz = newZ % holderSizeInPages;
 
-
-
-
-		// if (x < 0) {
-		//  if (x%holderSizeInPages == 0) {
-
-		//  }
-		//  else {
-		//      xmod = -1;
-		//  }
-
-		// }
-		// if (y < 0) {
-		//  if (y%holderSizeInPages == 0) {
-
-		//  }
-		//  else {
-		//      ymod = -1;
-		//  }
-		// }
 
 
 
@@ -28645,17 +32747,8 @@ GamePage * GameWorld::getPageAtCoords (int x, int y, int z, bool createOnNull)
 			{
 				gp = gph->pageData[gpInd];
 
-				if (gp)
-				{
-
-				}
-				else
-				{
-					if (createOnNull)
-					{
-
-
-						//cout << "x: " << x << " y: " << y << " newX: " << newX << " newY: " << newY << " px: " << px << " py: " << py << "\n";
+				if (gp == NULL) {
+					if (createOnNull) {
 
 						gph->pageData[gpInd] = new GamePage();
 						gp = gph->pageData[gpInd];
@@ -28671,46 +32764,20 @@ GamePage * GameWorld::getPageAtCoords (int x, int y, int z, bool createOnNull)
 			}
 
 		}
-		else
-		{
 
-		}
-
-		//popTrace();
 		return gp;
 
 	}
-bool GameWorld::checkBounds (int k)
-        {
-		//pushTrace("checkBounds()");
-
-		bool res = true;
-
-		//if (i < 0) {res = false;}
-		//if (j < 0) {res = false;}
-		if (k < 0)
-		{
-			res = false;
-		}
-		//if (i >= worldSizeInPages.getIX()) {res = false;}
-		//if (j >= worldSizeInPages.getIY()) {res = false;}
-		if (k >= worldSizeInPages.getIZ())
-		{
-			res = false;
-		}
-
-		//popTrace();
-		return res;
+bool GameWorld::checkBounds (int k, int km)
+                                        {
+		
+		return ((k >= 0)&&(k<km));
 
 	}
 void GameWorld::update ()
         {
 		
 		bool procResult = false;
-		
-
-		//pushTrace("update()");
-
 		singleton->updateLock = true;
 
 		int i;
@@ -28720,193 +32787,69 @@ void GameWorld::update ()
 		float z;
 		
 		
-
-		newZoom = max(1.0f, singleton->cameraZoom);
-
-		bool doFinalDraw = false;
-		
-		singleton->testHuman->basePosition.copyFrom(&(singleton->dynObjects[E_OBJ_HUMAN]->pos));
-		transformEnt(singleton->testHuman);
-
-		mapTrans = 1.0f-smoothstep(1.0f/512.0f,1.0f/128.0f,singleton->cameraZoom);
-		//1.0f - (singleton->cameraZoom * ((float)DEF_SCALE_FACTOR)) / 0.01f;
-		if (mapTrans > 0.91)
-		{
-			mapTrans = 1.0;
-		}
-		if (mapTrans < 0.1)
-		{
-			mapTrans = 0.0;
-		}
 		
 
-		if (mapLockOn)
-		{
-			goto DO_RETURN_UPDATE;
-		}
 
-		if (singleton->mapInvalid)
-		{
+		
 
+		
 
-			goto DO_RETURN_UPDATE;
-		}
-
-		if (noiseGenerated)
-		{
+		if (noiseGenerated) {
 
 		}
-		else
-		{
+		else {
 			noiseGenerated = true;
 			singleton->bindShader("NoiseShader");
 			singleton->bindFBO("noiseFBO");
-			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-			singleton->setShaderfVec3("cameraPos", cameraPos);
-			singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
-			singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
-			singleton->setShaderFloat("curTime", singleton->curTime);
-			singleton->drawFSQuad(1.0f);
+			singleton->drawFSQuad();
 			singleton->unbindFBO();
 			singleton->unbindShader();
 		}
 
-		bool changesMade = singleton->changesMade;
-		bool bufferInvalid = singleton->bufferInvalid;
-		
-
-		if (mapTrans < 1.0f)
-		{
-
-			if ( singleton->isZooming ) //
-			{
-
-			}
-			else
-			{
-				procResult = procPages();
-				
-				procResultAccum = procResultAccum || procResult;
-				
-				if (singleton->skipFrames > 1) {
-					if ( (singleton->frameCount % singleton->skipFrames) != 0) {
-						doFinalDraw = true;
-						goto FINAL_DRAW;
-					}
-				}
-				
-				
-				procResultAccum = false;
-				
-
-				if ( (lastProcResult != procResultAccum)  ) // && (procResultAccum == false)
-				{
-					singleton->wsBufferInvalid = true;
-				}
-			}
-
-			if (
-				procResultAccum ||
-				changesMade ||
-				(singleton->charState == E_CHAR_STATE_RENDERED) ||
-				(singleton->tiltChanged)
-			)
-			{
-				actionOnHolders(E_HOLDER_ACTION_RENDER);
-				combineHolders();
-
-			}
-
-		}
-
-		if (
-			procResultAccum ||
-			changesMade ||
-			bufferInvalid ||
-			singleton->abDown || 
-			//(singleton->charState == E_CHAR_STATE_SKEL) ||
-			(singleton->charState == E_CHAR_STATE_RENDERED) ||
-			(singleton->tiltChanged)
-			
-		)	{
-
-			doFinalDraw = true;
-
-			renderGeom();
-			combineBuffers();
-			renderWorldSpaceGPU(1.0f, 0.0f, 1.0f);
-
-
-		}
-
-
-
-
-		////////////
-
-
-		if (doFinalDraw || singleton->waterOn || (mapTrans > 0.0))
-		{
-			glClearColor(0.6f, 0.6f, 0.7f, 0.0f);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-
-			if ( mapTrans < 1.0 )
-			{
-
-				postProcess();
-
-			}
-
-			if ( mapTrans > 0.0 )
-			{
-				if (doFinalDraw) {
-					singleton->createVTListTilt();
-				}				
-				drawMap();
-			}
-
-			
-
-			glutSwapBuffers();
-			//glFlush();
-		}
-
-
-
-		////////////
-
-
-		if (singleton->forceGetPD)
-		{
-			singleton->forceGetPD = false;
-			getWorldSpaceBuffer();
-		}
-
-FINAL_DRAW:
-
-
-DO_RETURN_UPDATE:
-
-		if (
-			(singleton->skipFrames <= 1) ||
-			((singleton->frameCount % singleton->skipFrames) == 0)
-		) {
-			lastProcResult = procResultAccum;
+		if (singleton->doPageRender && (!(singleton->draggingMap)) ) {
+			procResult = procPages();
 		}
 		
-		if (procResult) {
-			
-		}
-		else {
-			curLoadRadius++;
-			curLoadRadius = min(curLoadRadius,singleton->maxWInPages);
+		
+		
+		
+		singleton->perspectiveOn = true;
+		
+		glEnable(GL_DEPTH_TEST);
+
+		
+		
+		actionOnHolders(E_HOLDER_ACTION_RENDER);
+		renderGeom();
+		
+		
+		glDisable(GL_DEPTH_TEST);
+		singleton->perspectiveOn = false;
+		
+		
+		if (FILL_POINTS) {
+			combineHolders();
 		}
 		
+
+		//glClearColor(0.6f, 0.6f, 0.7f, 0.0f);
+		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		postProcess();
+		
+		drawMap();
+		
+		glutSwapBuffers();
+		glFlush();
+
+
+
+
+		// if (singleton->forceGetPD)
+		// {
+		// 	getWorldSpaceBuffer();
+		// }
 		
 		singleton->updateLock = false;
-		//popTrace();
-
 
 	}
 bool GameWorld::procPages ()
@@ -28923,13 +32866,15 @@ bool GameWorld::procPages ()
 		int jj;
 		int kk;
 
-		//float heightAtPoint = singleton->getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY());
-
 		int incVal;
 
 		bool cmade = false;
 
+		
 		camPagePos.copyFrom( cameraPos );
+		camBlockPos.copyFrom( cameraPos );
+
+		
 		//camPagePos.setFZ(heightAtPoint);
 		camPagePos.intDivXYZ(visPageSizeInPixels);
 		camPagePos.addXYZ(1.0f,1.0f,1.0f);
@@ -28937,14 +32882,14 @@ bool GameWorld::procPages ()
 		camHolderPos.copyFrom(&camPagePos);
 		camHolderPos.intDivXYZ(singleton->holderSizeInPages);
 
-		camHolderPos.addXYZ(1.0f,1.0f,1.0f);
+		camHolderPos.addXYZRef(&(singleton->lookAtVec),4.0);
 
 		cutHolderPos.copyFrom(cutPos);
 		cutHolderPos.intDivXYZ(singleton->holderSizeInPixels);
 		
 		
 
-		camBlockPos.copyFrom( cameraPos );
+		
 		camBlockPos.intDivXYZ(singleton->blockSizeInPixels);
 
 
@@ -28952,14 +32897,6 @@ bool GameWorld::procPages ()
 		GameBlock *curBlock;
 
 		int m;
-		//E_STATES nState;
-
-		int loadRad = curLoadRadius; //singleton->maxWInPages;
-		int loadRad2 = singleton->maxHInPages; //curLoadRadius; //
-		
-		if (singleton->changingGenVal) {
-			loadRad2 = 1;
-		}
 		
 		int changeCount = 0;
 
@@ -28974,67 +32911,15 @@ bool GameWorld::procPages ()
 		}
 		else {
 			if (
-				(singleton->abDown || singleton->isZooming)
+				(singleton->abDown)
 			) {
 				maxChangesInHolders = 1;
 			}
 		}
 
-
-		// // check for threads to free
-		// if (availThreads < maxThreads)
-		// {
-		// 	for (i = 0; i < ocThreads.size(); i++)
-		// 	{
-		// 		if ( ocThreads[i] == -1)
-		// 		{
-		// 			// already freed
-		// 		}
-		// 		else
-		// 		{
-		// 			if ( getPageAtIndex(ocThreads[i]) == NULL )
-		// 			{
-		// 				// page was destroyed, free thread
-
-		// 				ocThreads[i] = -1;
-		// 				availThreads++;
-		// 			}
-		// 			else
-		// 			{
-		// 				if (getPageAtIndex(ocThreads[i])->threadRunning)
-		// 				{
-
-		// 				}
-		// 				else
-		// 				{
-		// 					ocThreads[i] = -1;
-		// 					availThreads++;
-		// 				}
-		// 			}
-		// 		}
-		// 	}
-		// }
-
-
-		// if (availThreads == 0)
-		// {
-		// 	goto DO_RETURN_PP;
-		// }
-
-		
-
-		minLRInPixels.copyFrom(&camHolderPos);
-		maxLRInPixels.copyFrom(&camHolderPos);
-		minLRInPixels.addXYZ(-singleton->minWInPages, -singleton->minWInPages, -loadRad2);
-		maxLRInPixels.addXYZ(singleton->minWInPages, singleton->minWInPages, loadRad2);
-		
-		minLRInPixels.addXYZ(-0.5f);
-		maxLRInPixels.addXYZ(0.5f);
-		
-		minLRInPixels.multXYZ(singleton->holderSizeInPixels);
-		maxLRInPixels.multXYZ(singleton->holderSizeInPixels);
-
 		// first fetch all the blocks to make sure they get created
+		// don't remove this, necessary for overlapping geom
+		
 		int blockRad = 1;
 		for (j = -blockRad; j <= blockRad; j++)
 		{
@@ -29048,63 +32933,90 @@ bool GameWorld::procPages ()
 			}
 		}
 		
+		
+		minLRInPixels.copyFrom(&camHolderPos);
+		maxLRInPixels.copyFrom(&camHolderPos);
+		minLRInPixels.addXYZ(-singleton->maxWInPages, -singleton->maxWInPages, -singleton->maxHInPages);
+		maxLRInPixels.addXYZ(singleton->maxWInPages, singleton->maxWInPages, singleton->maxHInPages);
+		
+		minLRInPixels.addXYZ(-0.5f);
+		maxLRInPixels.addXYZ(0.5f);
+		
+		minLRInPixels.multXYZ(singleton->holderSizeInPixels);
+		maxLRInPixels.multXYZ(singleton->holderSizeInPixels);
+		
+		
+		
+		
 		int tempVal = 0;
-		
 
-		int mink = camHolderPos.getIZ() - loadRad2;
-		int maxk = camHolderPos.getIZ() + loadRad2;
-		int minj = camHolderPos.getIY() - loadRad;
-		int maxj = camHolderPos.getIY() + loadRad;
-		int mini = camHolderPos.getIX() - loadRad;
-		int maxi = camHolderPos.getIX() + loadRad;
-		int curHeight = 0;
-
-		minLRInHolders.setIXYZ(mini + 1, minj + 1, mink + 1);
-		maxLRInHolders.setIXYZ(maxi - 1, maxj - 1, maxk - 1);
-
+		int mink;
+		int maxk;
+		int minj;
+		int maxj;
+		int mini;
+		int maxi;
+		int curLoadRadius;
 		
 		
-		for (jj = minj; jj <= maxj; jj++) {
+
+		for (curLoadRadius = 2; curLoadRadius < singleton->maxWInPages; curLoadRadius++) {
 			
-			if (curLoadRadius == singleton->minWInPages) {
-				incVal = 1;
-			}
-			else {
-				if ( (jj == minj) || (jj == maxj) ) {
+			mink = camHolderPos.getIZ() - curLoadRadius;
+			maxk = camHolderPos.getIZ() + curLoadRadius;
+			minj = camHolderPos.getIY() - curLoadRadius;
+			maxj = camHolderPos.getIY() + curLoadRadius;
+			mini = camHolderPos.getIX() - curLoadRadius;
+			maxi = camHolderPos.getIX() + curLoadRadius;
+			minLRInHolders.setIXYZ(mini + 1, minj + 1, mink + 1);
+			maxLRInHolders.setIXYZ(maxi - 1, maxj - 1, maxk - 1);
+			
+			for (jj = maxj; jj >= minj; jj--) {
+				
+				if (curLoadRadius <= 2) {
 					incVal = 1;
 				}
 				else {
-					incVal = maxi - mini;
-				}
-			}
-			
-			for (ii = mini; ii <= maxi; ii += incVal) {
-				
-				
-				for (kk = mink; kk <= maxk; kk++) {
-					if ( checkBounds(kk) ) {
-						curHolder = getHolderAtCoords(ii, jj, kk, true);
-						
-						if (curHolder->childrenDirty) {
-							
-							tempVal = curHolder->passiveRefresh();
-							changeCount += tempVal;
-							
-							if (tempVal > 0) {
-								cmade = true;
-							}
-							
-						}
-						
-						if (changeCount >= maxChangesInHolders)
-						{
-							goto DO_RETURN_PP;
-						}
+					if ( (jj == minj) || (jj == maxj) ) {
+						incVal = 1;
+					}
+					else {
+						incVal = maxi - mini;
 					}
 				}
 				
+				for (ii = maxi; ii >= mini; ii -= incVal) {
+					
+					
+					for (kk = maxk; kk >= mink; kk--) {
+						if ( checkBounds(kk, worldSizeInHolders.getIZ()) ) {
+							
+							curHolder = getHolderAtCoords(ii, jj, kk, true);
+							
+							if (curHolder->childrenDirty) {
+								
+								tempVal = curHolder->passiveRefresh();
+								changeCount += tempVal;
+								
+								if (tempVal > 0) {
+									cmade = true;
+								}
+								
+							}
+							
+							if (changeCount >= maxChangesInHolders)
+							{
+								goto DO_RETURN_PP;	
+							}
+						}
+					}
+					
+				}
 			}
+			
 		}
+		
+		
 		
 
 
@@ -29199,6 +33111,7 @@ void GameWorld::actionOnHolders (int action, bool instantRefresh, bool clearEver
 
 		//pushTrace("renderHolders()");
 
+		int curMipLev = 0;
 		int i, j, k, m;
 		int res;
 		int drawnPageCount = 0;
@@ -29207,67 +33120,65 @@ void GameWorld::actionOnHolders (int action, bool instantRefresh, bool clearEver
 		int ppSize = singleton->gpuPool->orderedIds.size();
 		GamePageHolder* gp;
 		
-		bool entPass = false;
+		
+		float chunkDis = 0.0f;
 		
 		float zOffR = 0.0f;
 		float zOffG = 0.0f;
 		
 		GameEnt* activeEnt = singleton->testHuman;
 		GamePageHolder* gphEnt = activeEnt->gph;
-
-		if (singleton->charState == E_CHAR_STATE_RENDERED) {
-			
-			
-			
-			
-			if (  (gphEnt->childrenDirty)&&(ENT_ON)  ) {
-				
-				// TOOD: this must be called before other pages or potential crash from lack of memory to alloc
-				//transformEnt(singleton->testHuman);
-				
-				
-				gphEnt->refreshGeom();
-				gphEnt->refreshChildren(true);
-				
-				
-			}
-		}
+		
 		
 
-		singleton->bindShader("BlitShader");
+		if (  (gphEnt->childrenDirty)&&(singleton->entOn)  ) {
+			
+			// TOOD: this must be called before other pages or potential crash from lack of memory to alloc
+			
+			
+			gphEnt->refreshGeom();
+			gphEnt->refreshChildren(true,true);
+			
+			
+		}
+		
+		singleton->bindShader("BlitPointShader");
+		
+		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec) );
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
+		singleton->setShaderFloat("holderSizeInPixels",singleton->holderSizeInPixels);
+		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+		singleton->setShaderFloat("clipDist",singleton->mainCamera->clipDist[1]);
+		singleton->setShaderfVec3("cameraPos", cameraPos);
+		
+		
+		//GLint loc = singleton->getShaderLoc("heightOfNearPlane");
+		
+		
+		
+		
 
-		for (k = 0; k < MAX_LAYERS*2; k++)
+		for (k = 0; k < MAX_LAYERS; k++)
 		{
 			
-			
-			j = k % MAX_LAYERS;
-			entPass = k >= MAX_LAYERS;
-
-			if (entPass) {
-				if (j == 0)
-				{
-					singleton->bindFBO("pages3FBO");
+			singleton->setShaderVec3("offsetPos", 0.0f,0.0f,0.0f);
+			if (FILL_POINTS) {
+				if (k == 0) {
+					singleton->bindFBO("pages2TargFBO");
 				}
-				else
-				{
-					singleton->bindFBO("water3FBO");
+				else {
+					singleton->bindFBO("water2TargFBO");
 				}
 			}
 			else {
-				if (j == 0)
-				{
-					singleton->bindFBO("pages2FBO");
+				if (k == 0) {
+					singleton->bindFBO("pagesTargFBO");
 				}
-				else
-				{
-					singleton->bindFBO("water2FBO");
+				else {
+					singleton->bindFBO("waterTargFBO");
 				}
 			}
-
 			
-
-
-			singleton->setShaderFloat("zOffset",0.0f);
 
 			for (i = 0; i < ppSize; i++)
 			{
@@ -29295,29 +33206,49 @@ void GameWorld::actionOnHolders (int action, bool instantRefresh, bool clearEver
 								(cutHolderPos.getFX() - 1.0f < gp->offsetInHolders.getFX()) &&
 								(cutHolderPos.getFY() - 1.0f < gp->offsetInHolders.getFY()) &&
 								(cutHolderPos.getFZ() - 1.0f < gp->offsetInHolders.getFZ())
-
-
-							)
-							{
+							) {
 
 							}
-							else
-							{
-								if (gp->underground) {
+							else {
+								
+								if ( ((k == 0) && gp->hasSolids) || ((k == 1) && gp->hasTrans) ) {
 									
-								}
-								else {
-									if ( ((j == 0) && gp->hasSolids) || ((j == 1) && gp->hasTrans) )
-									{
-
-										//cout << "drawHolder\n";
-
-										//if ( gp->offsetInHolders.inBoundsXYZ(&minLRInHolders,&maxLRInHolders) ) {
-										drawHolder(gp, j, 0.0f, 0.0f, 0.0f);
-										//}
-
+									tempVec.copyFrom(&gp->gphCenInPixels);
+									tempVec.addXYZRef(cameraPos,-1.0f);
+									tempVec.normalize();
+									
+									chunkDis = cameraPos->distance(&gp->gphCenInPixels);
+									
+									
+									
+									if (
+										(
+											(tempVec.dot(&(singleton->lookAtVec)) > 0.5f) ||
+											(chunkDis < gp->holderSizeInPixels*2.0f)
+										) &&
+										(chunkDis < singleton->mainCamera->clipDist[1])
+									) {
+										
+										curMipLev = clampf(cameraPos->distance(&gp->gphCenInPixels)/4096.0f,0.0,MAX_MIP_LEV-1);
+										
+										// if (MAX_MIP_LEV > 1) {
+										// 	glUniform1f(loc,
+										// 		singleton->heightOfNearPlane * 
+												
+										// 		( 1<<(curMipLev+1) )
+												
+										// 	);
+										// }
+										
+										if (gp->hasVerts[k] && gp->gpuRes->listGenerated) {
+											glCallList(gp->gpuRes->holderDL[curMipLev*MAX_LAYERS+k]);
+											
+										}
 									}
+									
+
 								}
+								
 								
 								
 							}
@@ -29336,46 +33267,47 @@ void GameWorld::actionOnHolders (int action, bool instantRefresh, bool clearEver
 			}
 			
 			
-			if (singleton->charState == E_CHAR_STATE_RENDERED) {
-				
-				
-				if (entPass) {
-					switch (action)
+			
+			
+			
+			if (singleton->entOn) {
+				switch (action)
+				{
+				case E_HOLDER_ACTION_RENDER:
+					
+					
+					
+					if ( ((k == 0) && gphEnt->hasSolids) || ((k == 1) && gphEnt->hasTrans) )
 					{
-					case E_HOLDER_ACTION_RENDER:
 						
-						singleton->setShaderFloat("zOffset",activeEnt->basePosition[2]);
-						
-						
-						if ( ((j == 0) && gphEnt->hasSolids) || ((j == 1) && gphEnt->hasTrans) )
-						{
 							
-							if (ENT_ON) {
-								drawHolder(
-									gphEnt,
-									j,
-									activeEnt->basePosition[0],
-									activeEnt->basePosition[1],
-									activeEnt->basePosition[2]
-								);
+						
+							
+							if (gphEnt->hasVerts[k] && gphEnt->gpuRes->listGenerated) {
+								
+								curMipLev = 0;
+								tempVec.copyFrom(&(activeEnt->basePosition));
+								tempVec.addXYZRef(&gphEnt->gphCenInPixels,-1.0f);
+								singleton->setShaderfVec3("offsetPos",&tempVec);
+								
+								//activeEnt->gph
+								
+								glCallList(gphEnt->gpuRes->holderDL[curMipLev*MAX_LAYERS+k]);
 							}
-							
-
-						}
 						
-						
-						break;
-					case E_HOLDER_ACTION_RESET:
-						if (ENT_ON) {
-							gphEnt->refreshChildren(true);							
-						}
-						break;
 					}
 					
 					
+					break;
+				case E_HOLDER_ACTION_RESET:
+					gphEnt->refreshChildren(true);
+					break;
 				}
 				
+				
 			}
+			
+			
 
 
 
@@ -29385,190 +33317,61 @@ void GameWorld::actionOnHolders (int action, bool instantRefresh, bool clearEver
 		singleton->unbindShader();
 
 
-		//doTrace( "POSSIBLE ERROR: " , i__s(glGetError()) , "\n" );
-
-		//popTrace();
-	}
-void GameWorld::drawHolder (GamePageHolder * gp, int curLayer, float xoff, float yoff, float zoff)
-        {
-		//pushTrace("drawHolder()");
-
-
-		float dx = gp->offsetInHolders.getFX();
-		float dy = gp->offsetInHolders.getFY();
-		float dz = gp->offsetInHolders.getFZ();
-
-		float pitchSrc = (float)((singleton->holderSizeInPixels * 2.0f));
-		float pitchSrc2 = pitchSrc / 2.0f;
-
-		float itilt = 1.0-singleton->tiltAmount;
-		float tilt = singleton->tiltAmount;
-
-		float dxmod = dx * pitchSrc2 + xoff - cameraPos->getFX();
-		float dymod = dy * pitchSrc2 + yoff - cameraPos->getFY();
-		float dzmod = dz * pitchSrc2 + zoff - cameraPos->getFZ();
-
-
-		// float tilt = 1.0-singleton->tiltAmount;
 		
-		// float fx1 = (dxmod - dymod);
-		// //float fy1 = (-(dxmod / 2.0f) + -(dymod / 2.0f) + dzmod) - pitchSrc2;
-		// float fy1 = (-tilt*dxmod + -tilt*dymod + (1.0-tilt)*2.0f*dzmod);
-
-
-		tempVec2.setFXYZ(dxmod,dymod,dzmod);
-		singleton->worldToScreenBase(&tempVec1,&tempVec2);
-		float fx1 = tempVec1.getFX();
-		float fy1 = tempVec1.getFY();
-		
-		pitchSrc /= singleton->fHolderMod;
-		pitchSrc2 /= singleton->fHolderMod;
-
-		fy1 -= (0.5-tilt)*pitchSrc;
-
-		fx1 -= pitchSrc2;
-		fy1 -= pitchSrc2;
-		float fx2 = fx1 + pitchSrc;
-		float fy2 = fy1 + pitchSrc;
-
-
-
-
-		// TODO: should be baseW/H?
-
-		float sx = singleton->bufferDim.getFX();
-		float sy = singleton->bufferDim.getFY();
-
-		float myZoom = std::min(1.0f, singleton->cameraZoom);
-
-
-		fx1 = fx1 * (myZoom) / sx;
-		fy1 = fy1 * (myZoom) / sy;
-		fx2 = fx2 * (myZoom) / sx;
-		fy2 = fy2 * (myZoom) / sy;
-
-
-		if (gp->gpuRes != NULL)
-		{
-			singleton->sampleFBODirect(gp->gpuRes->getFBOS(curLayer));
-
-
-			glColor4f(1, 1, 1, 1);
-			glBegin(GL_QUADS);
-			glNormal3f(0, 0, 1);
-
-
-			glTexCoord2f(0.0f, 0.0f);
-			glVertex3f(fx1, fy1, 0.0f);
-
-			glTexCoord2f(1.0f, 0.0f);
-			glVertex3f(fx2, fy1, 0.0f);
-
-			glTexCoord2f(1.0f, 1.0f);
-			glVertex3f(fx2, fy2, 0.0f);
-
-			glTexCoord2f(0.0f, 1.0f);
-			glVertex3f(fx1, fy2, 0.0f);
-
-			glEnd();
-
-			singleton->unsampleFBODirect(gp->gpuRes->getFBOS(curLayer));
-		}
-
-
-
-
-		//popTrace();
 
 	}
 void GameWorld::combineHolders ()
         {
 		
+		
 		int i;
 		
 		
-		bool entOff = false;
-		
-		
-		if (entOff) {
-			singleton->copyFBO("pages2FBO", "pagesFBO");
-			singleton->copyFBO("water2FBO", "waterFBO");
-		}
-		else {
-			singleton->bindShader("CombineShader");
-			for (i = 0; i < 2; i++) {
+		singleton->bindShader("PointShader");
+		for (i = 0; i < MAX_LAYERS; i++) {
 
-				if (i == 0) {
-					singleton->bindFBO("pagesFBO");
-					singleton->sampleFBO("pages2FBO", 0);
-					singleton->sampleFBO("pages3FBO", 2);
-				}
-				else {
-					singleton->bindFBO("waterFBO");
-					singleton->sampleFBO("water2FBO", 0);
-					singleton->sampleFBO("water3FBO", 2);
-				}
-				
-
-				singleton->drawFSQuad(1.0f);
-
-				if (i == 0) {
-					singleton->unsampleFBO("pages3FBO", 2);
-					singleton->unsampleFBO("pages2FBO", 0);
-				}
-				else {
-					singleton->unsampleFBO("water3FBO", 2);
-					singleton->unsampleFBO("water2FBO", 0);
-				}
-
-				singleton->unbindFBO();
-				
-				
+			if (i == 0) {
+				singleton->bindFBO("pagesTargFBO");
+				singleton->sampleFBO("pages2TargFBO",0);
 			}
-			singleton->unbindShader();
+			else {
+				singleton->bindFBO("waterTargFBO");
+				singleton->sampleFBO("water2TargFBO",0);
+			}
+			
+			singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
+			singleton->setShaderFloat("focalLength",singleton->focalLength);
+			singleton->setShaderFloat("boxDiam",singleton->voxelSizeInWC);
+			singleton->setShaderfVec3("cameraPos", cameraPos);
+			
+			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
+			singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+			
+			singleton->drawFSQuad();
+
+			if (i == 0) {
+				singleton->unsampleFBO("pages2TargFBO",0);
+			}
+			else {
+				singleton->unsampleFBO("water2TargFBO",0);
+			}
+
+			singleton->unbindFBO();
+			
+			
 		}
-		
-		
-		
-		
-		
-	}
-void GameWorld::combineBuffers ()
-        {
-
-		singleton->bindShader("CombineShader");
-		singleton->bindFBO("combineFBO");
-
-		singleton->sampleFBO("pagesFBO", 0);
-		singleton->sampleFBO("geomFBO", 2);
-
-		singleton->drawFSQuad(1.0f);
-
-		singleton->unsampleFBO("geomFBO", 2);
-		singleton->unsampleFBO("pagesFBO", 0);
-
-		singleton->unbindFBO();
 		singleton->unbindShader();
-	}
-void GameWorld::transformEnt (GameEnt * curEnt)
-                                           {
 		
-		// GameEntNode* curNode = NULL;
 		
-		// curNode = curEnt->baseNode->getNode(E_BONE_L_UPPERARM);
-		// curNode->rotThe = sin(singleton->curTime/1000.0f)*3.14159f * 0.25f;
 		
-		// curNode = curNode->getNode(E_BONE_L_LOWERARM);
-		// curNode->rotThe = sin(singleton->curTime/1000.0f)*3.14159f * 0.25f;
-		// curNode->rotPhi = sin(singleton->curTime/1000.0f)*3.14159f * 2.0f;
 		
-		curEnt->baseNode->doTransform(singleton);
+		
 	}
 void GameWorld::drawEnt (GameEnt * curEnt, bool drawAll)
                                                     {
 		
 		
-		float scale = 1.0f*((float)(singleton->pixelsPerMeter));
+		float scale = 1.0f*((float)(singleton->pixelsPerCell));
 		
 		
 		glLineWidth(0);
@@ -29576,20 +33379,20 @@ void GameWorld::drawEnt (GameEnt * curEnt, bool drawAll)
 		
 		
 		// tangents
-		singleton->setShaderFloat("matVal", getPackedColor(255, 0, 0));
+		singleton->setShaderVec3("matVal", 255, 0, 0 );
 		drawNodeEnt((curEnt->baseNode),&(curEnt->basePosition), scale, 0, drawAll);
 		
 		// bitangents
-		singleton->setShaderFloat("matVal", getPackedColor(0, 255, 0));
+		singleton->setShaderVec3("matVal", 0, 255, 0);
 		drawNodeEnt((curEnt->baseNode),&(curEnt->basePosition), scale, 1, drawAll);
 		
 		// normals
-		singleton->setShaderFloat("matVal", getPackedColor(0, 0, 255));
+		singleton->setShaderVec3("matVal", 0, 0, 255);
 		drawNodeEnt((curEnt->baseNode),&(curEnt->basePosition), scale, 2, drawAll);
 		
 		if (drawAll) {
 			// nodes
-			singleton->setShaderFloat("matVal", getPackedColor(254, 254, 254));
+			singleton->setShaderVec3("matVal", 254, 254, 254);
 			drawNodeEnt((curEnt->baseNode),&(curEnt->basePosition), scale, 3, drawAll);
 		}
 		
@@ -29630,7 +33433,7 @@ void GameWorld::drawNodeEnt (GameEntNode * curNode, FIVector4 * basePosition, fl
 			}
 			else {
 				lineSeg[1].setFXYZRef(&(curNode->tbnRotC[drawMode%3]));
-				lineSeg[1].multXYZ(  (curNode->tbnRadInMeters0[drawMode%3]*scale*16.0f)  );
+				lineSeg[1].multXYZ(  (curNode->tbnRadInCells0[drawMode%3]*scale*16.0f)  );
 				lineSeg[1].multXYZ(&(curNode->tbnRadScale0));
 				lineSeg[1].addXYZRef(&(lineSeg[0]));
 			}
@@ -29899,7 +33702,7 @@ void GameWorld::drawPathLine (PathHolder * curPath, int r, int g, int b, float l
 		
 		glLineWidth(lw);
 		
-		singleton->setShaderFloat("matVal", getPackedColor(r,g,b));
+		singleton->setShaderVec3("matVal", r,g,b);
 		for (i = 0; i < totSize; i++) {
 			blockData[curPath->pathList[i].blockId]->nodeIndexToWorldSpaceInPixels(curPath->pathList[i].index, &(lineSeg[0]));
 			blockData[curPath->pathList[i+1].blockId]->nodeIndexToWorldSpaceInPixels(curPath->pathList[i+1].index, &(lineSeg[1]));
@@ -29952,10 +33755,10 @@ void GameWorld::drawAIPath (PathHolder * pathHolder, PathHolder * splitPathHolde
 			blockAndIndexPath[i].y = nodePos[i].getIY();
 			blockAndIndexPath[i].z = nodePos[i].getIZ();
 			
-			singleton->setShaderFloat("matVal", getPackedColor(i*255, (1-i)*255, 0));
+			singleton->setShaderVec3("matVal", i*255, (1-i)*255, 0);
 			singleton->drawCubeCentered(
 				&(nodePosInPixels[i]),
-				1.0f * singleton->pixelsPerMeter
+				1.0f * singleton->pixelsPerCell
 			);
 		}
 		
@@ -30071,7 +33874,7 @@ void GameWorld::drawAIPath (PathHolder * pathHolder, PathHolder * splitPathHolde
 		
 		if ( (finalPath != NULL) && foundPath) {
 			drawPathLine(pathHolder, 255, 255, 0, 2.0f, 0.0f);
-			drawPathLine(splitPathHolder, 255, 0, 0, 2.0f, 4.0f*((float)singleton->pixelsPerMeter));
+			drawPathLine(splitPathHolder, 255, 0, 0, 2.0f, 4.0f*((float)singleton->pixelsPerCell));
 		}
 		
 		
@@ -30080,148 +33883,77 @@ void GameWorld::drawAIPath (PathHolder * pathHolder, PathHolder * splitPathHolde
 	}
 void GameWorld::renderGeom ()
         {
-		//pushTrace("renderGeom()");
 
 		int i;
 		bool doProc;
+		int cellVal;
 
-
-		//glEnable(GL_DEPTH_TEST);
 
 		singleton->bindShader("GeomShader");
-
 		singleton->setShaderFloat("objectId",0.0);
-		singleton->setShaderFloat("fHolderMod", singleton->fHolderMod);
-		singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
-		singleton->setShaderFloat("curTime", singleton->curTime);
-		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		singleton->setShaderfVec3("cameraPos", cameraPos);
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+		singleton->setShaderFloat("isWire", 0.0);
+		singleton->setShaderFloat("clipDist",singleton->mainCamera->clipDist[1]);
+		singleton->setShaderfVec3("offsetPos",&(singleton->origin));
 		
-
-		singleton->bindFBO("geomFBO");
-		//singleton->sampleFBO("pagesFBO");
-
-
-		glEnable(GL_DEPTH_TEST);
-		//remember 2x radius
-
-		
-
-		if (singleton->mouseState != E_MOUSE_STATE_POSE) {
-			if (singleton->bShift) { // || singleton->hitGUI
-				singleton->setShaderFloat("isWire", 1.0);
-				singleton->setShaderFloat("matVal", getPackedColor(255,0,255));
-				
-				singleton->drawBox(&minLRInPixels,&maxLRInPixels);
-			}
+		if (MAX_LAYERS == 2) {
+			
+		}
+		else {
+			
 		}
 		
+		singleton->bindFBO("geomTargFBO");
 		
-		singleton->setShaderFloat("isWire", 0.0);
 
 		switch (singleton->mouseState)
 		{
 
 		case E_MOUSE_STATE_MOVE:
 
-			if (singleton->gridOn == 1.0f)
-			{
-				// singleton->setShaderFloat("matVal", getPackedColor(255, 0, 255));
-				// singleton->setShaderFloat("isWire", 1.0f);
-				// singleton->drawBox(&minLRInPixels, &maxLRInPixels);
+			if (singleton->markerFound) {
+				cellVal = getCellAtCoords(&(singleton->worldMarker));
+				
+				lastCellPos.copyFrom(&(singleton->worldMarker));
+				lastCellPos.intDivXYZ(singleton->pixelsPerCell);
+				lastCellPos.multXYZ(singleton->pixelsPerCell);
+				
+				tempVec.copyFrom(&lastCellPos);
+				tempVec.addXYZ(singleton->pixelsPerCell);
+				
+				switch(cellVal) {
+					case E_CD_EMPTY:
+						singleton->setShaderVec3("matVal", 0, 255, 0);
+					break;
+					case E_CD_SOLID:
+						singleton->setShaderVec3("matVal", 255, 0, 0);
+					break;
+					case E_CD_WATER:
+						singleton->setShaderVec3("matVal", 0, 0, 255);
+					break;
+					
+				}
+				
+				singleton->setShaderFloat("isWire", 0.0);
+				singleton->drawBox(&lastCellPos,&tempVec);
+				
 			}
-			
-			
-			
-
+		
 			break;
 		
-		case E_MOUSE_STATE_ENTS:
-
-			// tempVec.copyFrom(&(singleton->mouseMovePD));
-			// tempVec.intDivXYZ((int)(singleton->gridSizeInPixels));
-			// tempVec.multXYZ(singleton->gridSizeInPixels);
-			// tempVec.addXYZ(singleton->gridSizeInPixels * 0.5f);
-			// tempVec.setFZ(singleton->mouseMovePD.getFZ());
-			// tempVec.addXYZ(0.0f, 0.0f, singleton->gridSizeInPixels * 0.125f);
-
-			// singleton->setShaderFloat("matVal", getPackedColor(255,0,255));
-			// singleton->setShaderFloat("isWire", 0.0f);
-			// singleton->drawCubeCentered( &tempVec, 0.125f*singleton->pixelsPerMeter);
-
-
-
-			// tempVec.copyFrom(cameraPos);
-			// tempVec.setFZ(0.0);
-			
-			// singleton->setShaderFloat("matVal", getPackedColor(0, 128, 128));
-			// singleton->drawCubeCentered(cameraPos, 3.0*singleton->pixelsPerMeter );
-			
-			// // water height
-			// singleton->setShaderFloat("matVal", getPackedColor(0, 255, 255));
-			// singleton->drawBoxUp(
-			// 	tempVec,
-			// 	2.0f * singleton->pixelsPerMeter,
-			// 	2.0f * singleton->pixelsPerMeter,
-			// 	singleton->getSLInPixels()
-			// );
-			
-			// // total height
-			// singleton->setShaderFloat("matVal", getPackedColor(0, 255, 0));
-			// singleton->drawBoxUp(
-			// 	tempVec,
-			// 	1.0f * singleton->pixelsPerMeter,
-			// 	1.0f * singleton->pixelsPerMeter,
-			// 	singleton->worldSizeInPixels.getFZ()
-			// );
-
-			
-			
-			
-			
-			// singleton->setShaderFloat("matVal", getPackedColor(0, 0, 255));
-			// singleton->drawBoxUp(
-			// 	lastUnitPos,
-			// 	0.5f * singleton->pixelsPerMeter,
-			// 	0.5f * singleton->pixelsPerMeter,
-			// 	2.0f * singleton->pixelsPerMeter
-			// );
-			
-			
-			
-			
-			
-
-
-			
-			drawAIPath( &(singleton->charPathHolder), &(singleton->splitPathHolder) );
-
-			
-			
-			
-
-
-			break;
 		case E_MOUSE_STATE_BRUSH:
-			singleton->setShaderFloat("matVal", getPackedColor(255, 0, 0));
-			singleton->drawCubeCentered(&lastUnitPos, ((int)singleton->curBrushRad) * (singleton->unitSizeInPixels)  );
-			glClear(GL_DEPTH_BUFFER_BIT);
-		break;
-		// case E_MOUSE_STATE_OBJECTS:
-
-
-
 			
-
-
-
-		// 	break;
+			singleton->setShaderVec3("matVal", 255, 0, 0);
+			singleton->setShaderFloat("isWire", 1.0);
+			singleton->drawCubeCentered(
+				&lastUnitPos,
+				((int)singleton->curBrushRad) * (singleton->unitSizeInPixels)
+			);
+			
+			
+			//glClear(GL_DEPTH_BUFFER_BIT);
+		break;
 		case E_MOUSE_STATE_PICKING:
-			// singleton->setShaderFloat("matVal", getPackedColor(0,255,0));
-			// singleton->drawBoxUp(lastUnitPos, 0.25f*singleton->pixelsPerMeter, 0.25f*singleton->pixelsPerMeter, 2.0f*singleton->pixelsPerMeter);
-
-
 
 			if (singleton->highlightedGeom == NULL)
 			{
@@ -30229,14 +33961,14 @@ void GameWorld::renderGeom ()
 			}
 			else
 			{
-				singleton->setShaderFloat("matVal", getPackedColor(254, 254, 254));
+				singleton->setShaderVec3("matVal", 254, 254, 254);
 				singleton->setShaderFloat("isWire", 1.0);
 
 				minv.setFXYZRef(singleton->highlightedGeom->getVisMinInPixelsT());
 				maxv.setFXYZRef(singleton->highlightedGeom->getVisMaxInPixelsT());
 
-				minv.addXYZ(-0.25 * singleton->pixelsPerMeter);
-				maxv.addXYZ(0.25 * singleton->pixelsPerMeter);
+				minv.addXYZ(-0.25 * singleton->pixelsPerCell);
+				maxv.addXYZ(0.25 * singleton->pixelsPerCell);
 
 
 				singleton->drawBox(&minv, &maxv);
@@ -30248,15 +33980,11 @@ void GameWorld::renderGeom ()
 			}
 			else
 			{
-				singleton->setShaderFloat("matVal", getPackedColor(255, 255, 0));
+				singleton->setShaderVec3("matVal", 255, 255, 0);
 				singleton->setShaderFloat("isWire", 1.0);
 
 				minv.setFXYZRef(singleton->selectedGeom->getVisMinInPixelsT());
 				maxv.setFXYZRef(singleton->selectedGeom->getVisMaxInPixelsT());
-
-				// minv.addXYZ(-0.25 * singleton->pixelsPerMeter);
-				// maxv.addXYZ(0.25 * singleton->pixelsPerMeter);
-
 
 				singleton->drawBox(&minv, &maxv);
 			}
@@ -30264,6 +33992,10 @@ void GameWorld::renderGeom ()
 
 			break;
 
+		}
+		
+		if (singleton->pathfindingOn) {
+			drawAIPath( &(singleton->charPathHolder), &(singleton->splitPathHolder) );
 		}
 		
 		if (singleton->bCtrl) {
@@ -30288,7 +34020,7 @@ void GameWorld::renderGeom ()
 					if (doProc)
 					{
 						singleton->setShaderFloat("objectId",i);
-						singleton->setShaderFloat("matVal", singleton->dynObjects[i]->colPacked);
+						singleton->setShaderfVec3("matVal", &(singleton->dynObjects[i]->color) );
 						curBoxPos = &(singleton->dynObjects[i]->pos);
 						singleton->drawCubeCentered(curBoxPos, singleton->dynObjects[i]->radius);
 
@@ -30304,34 +34036,34 @@ void GameWorld::renderGeom ()
 			}
 		}
 
-		singleton->setShaderFloat("objectId",0.0);
 
-		if (singleton->charState == E_CHAR_STATE_RENDERED) { //E_CHAR_STATE_SKEL
-			//transformEnt(singleton->testHuman);
+		GameEnt* activeEnt = singleton->testHuman;
+		GamePageHolder* gphEnt = activeEnt->gph;
+		
+		if (singleton->entOn) {
+			
+			
+			
+			singleton->setShaderFloat("objectId",0.0);
 			drawEnt(singleton->testHuman, false);
+			
+			tempVec.copyFrom(&(activeEnt->basePosition));
+			tempVec.addXYZRef(&gphEnt->gphCenInPixels,-1.0f);
+			singleton->setShaderfVec3("offsetPos",&tempVec);
+			
+			singleton->setShaderFloat("isWire", 1.0);
+			singleton->setShaderVec3("matVal", 255, 0, 0 );
+			
+			singleton->drawBox( &(gphEnt->gphMinInPixels), &(gphEnt->gphMaxInPixels) );
+			
 		}
+
 		
 
 
-		// for (i = 1; i < lightCount; i++) {
-		//  singleton->setShaderFloat("matVal", activeLights[i]->colPacked);
-		//  curBoxPos = &(activeLights[i]->pos);
-		//  singleton->drawCubeCentered(curBoxPos,0.125f*singleton->pixelsPerMeter);
-		// }
-
-
-
-		glDisable(GL_DEPTH_TEST);
-
-
-
-		//singleton->unsampleFBO("pagesFBO");
 		singleton->unbindFBO();
 		singleton->unbindShader();
 
-		//glDisable(GL_DEPTH_TEST);
-
-		//popTrace();
 
 	}
 void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushAction)
@@ -30344,14 +34076,6 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 		FIVector4 fPixelWorldCoords;
 		fPixelWorldCoords.copyFrom(fPixelWorldCoordsBase);
 
-		/*
-		if (brushAction == E_BRUSH_ADD) {
-		    fPixelWorldCoords.addXYZ(0.0,0.0,radius*singleton->unitSizeInPixels);
-		}
-		if (brushAction == E_BRUSH_SUB) {
-		    fPixelWorldCoords.addXYZ(0.0,0.0,-radius*singleton->unitSizeInPixels);
-		}
-		*/
 
 		uint *vd_ptr;
 		uint *vdl_ptr;
@@ -30405,6 +34129,11 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 		uint nearA;
 
 		bool isInside;
+		
+		
+		
+		
+		
 
 
 		pagePos.copyFrom(&fPixelWorldCoords);
@@ -30419,6 +34148,19 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 		unitPosMin.addXYZ((float)radius, -1.0f);
 		unitPosMax.addXYZ((float)radius, 1.0f);
 
+		unitPosCenter.copyFrom(&unitPosMin);
+		unitPosCenter.addXYZRef(&unitPosMax);
+		unitPosCenter.multXYZ(0.5f);
+		
+		
+		float unitPosRad = (unitPosMax.getFX()-unitPosMin.getFX())*0.5f;
+		float unitPosCurDis = 0.0f;
+		
+		FIVector4 blockPos;
+		blockPos.copyFrom(&pagePos);
+		blockPos.intDivXYZ(singleton->blockSizeInPages);
+		GameBlock *curBlock = getBlockAtCoords(blockPos.getIX(),blockPos.getIY(),true);
+
 
 		// unitPosMinIS.copyFrom(&unitPos);
 		// unitPosMaxIS.copyFrom(&unitPos);
@@ -30432,7 +34174,16 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 			return;
 		}
 
+		if (singleton->isMacro) {
+			
+			curBlock->modifyTerrain(
+				&fPixelWorldCoords,
+				brushAction == E_BRUSH_SUB
+			);
+			
+		}
 
+		
 
 
 		for (m = 0; m < 2; m++)
@@ -30450,24 +34201,21 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 						ii = i + pagePos.getIX();
 						jj = j + pagePos.getIY();
 						kk = k + pagePos.getIZ();
+						
+						
 
-						if (checkBounds(kk))
+						if (
+							checkBounds(kk,worldSizeInPages.getIZ())
+							
+						)
 						{
 
 							//
 
-							curPage = getPageAtCoords(ii, jj, kk);
+							curPage = getPageAtCoords(ii, jj, kk, true);
 
-							if (curPage == NULL)
-							{
 
-								curPage = getPageAtCoords(ii, jj, kk, true);
-							}
-
-							if (
-								true
-							)
-							{
+							if (true) {
 
 
 								startBounds.maxXYZ(&unitPosMin, &(curPage->worldUnitMin));
@@ -30476,7 +34224,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 
 
-
+								
 
 
 
@@ -30501,15 +34249,23 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 										{
 											for (p = startBounds.getIZ(); p < endBounds.getIZ(); p++)
 											{
+												
+												
+												
 
 												tempVec.setIXYZ(n, o, p);
 												isInside = tempVec.inBoundsXYZ(&unitPosMin, &unitPosMax);
+
+												unitPosCurDis = unitPosCenter.distance(&tempVec);
 
 												//TODO: fix this to wrap
 												if (
 													tempVec.inBoundsXYZ(
 														&(curPage->worldUnitMin),
 														&(curPage->worldUnitMax)
+													) &&
+													(
+														unitPosCurDis < unitPosRad
 													)
 												)
 												{
@@ -30517,9 +34273,12 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 
 													ind2 = tempVec.getIZ() * pageSizeMult * pageSizeMult + tempVec.getIY() * pageSizeMult + tempVec.getIX();
 
-													if (ind2 < 0 || ind2 >= pageSizeMult * pageSizeMult * pageSizeMult)
-													{
-														//doTrace("ind2 out of range ", i__s(ind2), " of ", i__s(pageSizeMult*pageSizeMult*pageSizeMult));
+													if (
+														(ind2 < 0) ||
+														(ind2 >= pageSizeMult * pageSizeMult * pageSizeMult)
+													)	{
+														// index out of range	
+														cout << "index out of range\n";
 													}
 													else
 													{
@@ -30527,140 +34286,81 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 														if (m == 0)
 														{
 
-															vd_ptr = curPage->getVolData();
-															vdl_ptr = curPage->getVolDataLinear();
-
-															linV = vdl_ptr[ind2];
-															nearV = vd_ptr[ind2];
-
-															linR = (linV) & 255;
-															linG = (linV >> 8) & 255;
-															linB = (linV >> 16) & 255;
-															linA = (linV >> 24) & 255;
-
-															nearR = (nearV) & 255;
-															nearG = (nearV >> 8) & 255;
-															nearB = (nearV >> 16) & 255;
-															nearA = (nearV >> 24) & 255;
-
-
-															if (p >= singleton->worldSizeInUnits.getFZ())
-															{
-
-																linA = 0;
+															
+															
+															if (singleton->isMacro) {
+																
 															}
-															else
-															{
+															else {
+																vd_ptr = curPage->getVolData();
+																vdl_ptr = curPage->getVolDataLinear();
 
-																if (brushAction == E_BRUSH_SUB)
-																{
+																linV = vdl_ptr[ind2];
+																nearV = vd_ptr[ind2];
+
+																linR = (linV) & 255;
+																linG = (linV >> 8) & 255;
+																linB = (linV >> 16) & 255; // used for subtraction
+																linA = (linV >> 24) & 255; // used for addition
+
+																nearR = (nearV) & 255;
+																nearG = (nearV >> 8) & 255;
+																nearB = (nearV >> 16) & 255;
+																nearA = (nearV >> 24) & 255;
 
 
-																	if (isInside)
-																	{
-																		// if (singleton->softMode) {
-																		//  linA = min(linA, linA-8);
-																		// }
-																		// else {
-																		linA = 0;
-																		//}
+																if (p >= singleton->worldSizeInUnits.getFZ()) {
 
-																		linB = 255;
-																	}
-
+																	linA = 0;
 																}
 																else
 																{
 
-																	if (isInside)
-																	{
-																		// if (singleton->softMode) {
-																		//  linA += 8;
-																		//  if (linA > 255) {
-																		//      linA = 255;
-																		//  }
-																		// }
-																		// else {
-																		linA = 255;
-																		//}
-																		linB = 0;
+																	if (brushAction == E_BRUSH_SUB) {
+																		if (isInside)
+																		{
+																			linA = 0;
+																			//linB = 255;
+																			
+																			linB += 20;
+																			if (linB > 255) {
+																				linB = 255;
+																			}
+																			
+																			// (tex2.b > 0.5)
+																			// 1.0 = nothing
+																			// 0.0 = solid
+																			// linB = clampf(
+																				
+																			// 	(unitPosCurDis/unitPosRad - unitPosCurDis/(unitPosRad+1)),
+																			// 	0.0f,
+																			// 	1.0f
+																			// )*255.0f;
+																		}
+
 																	}
-
-
-
-																	switch (singleton->activeMode)
+																	else
 																	{
-																		//
-																	case 0:
 
-																		break;
-
-																		// dirt and grass
-																	case 1:
-																		// linR = 255;
-																		// linG = 255;
-																		// linB = 255;
+																		if (isInside)
+																		{
+																			//linA = 255;
+																			linA += 20;
+																			if (linA > 255) {
+																				linA = 255;
+																			}
+																			linB = 0;
+																		}
 
 																		nearA = 0;
-																		break;
-
-																		// rock
-																	case 2:
-																		// linR = 255;
-																		// linG = 255;
-																		// linB = 255;
-
-																		nearA = 255;
-																		break;
-
-																		// brick
-																	case 3:
-																		// linR = 16;
-																		// linG = 255;
-																		// linB = 16;
-
-																		nearA = 255;
-																		break;
-
-																		// flat top
-																	case 4:
-																		//linB = 0;
-																		nearA = 255;
-																		break;
-
-																		//
-																	case 5:
-																		//linB = 0;
-																		nearA = 0;
-																		break;
-
-																		//
-																	case 6:
-
-																		break;
-
-																		//
-																	case 7:
-
-																		break;
-
-																		//
-																	case 8:
-
-																		break;
-
-																		//
-																	case 9:
-
-																		break;
 
 																	}
 																}
-															}
 
-															vd_ptr[ind2] = (nearA << 24) | (nearB << 16) | (nearG << 8) | (nearR);
-															vdl_ptr[ind2] = (linA << 24) | (linB << 16) | (linG << 8) | (linR);
-															curPage->volDataModified = true;
+																vd_ptr[ind2] = (nearA << 24) | (nearB << 16) | (nearG << 8) | (nearR);
+																vdl_ptr[ind2] = (linA << 24) | (linB << 16) | (linG << 8) | (linR);
+																curPage->volDataModified = true;	
+															}
 
 															curPage->parentGPH->childrenDirty = true;
 															curPage->isDirty = true;
@@ -30670,7 +34370,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 														{
 															if (curPage->parentGPH->childrenDirty)
 															{
-																curPage->parentGPH->refreshChildren(true);
+																curPage->parentGPH->refreshChildren(true,true,true);
 															}
 														}
 
@@ -30694,59 +34394,9 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 				}
 			}
 		}
-
-		if (changes)
-		{
-			singleton->changesMade = true;
-			singleton->wsBufferInvalid = true;
-		}
-
-
+		
 
 		//popTrace();
-
-	}
-void GameWorld::renderWorldSpaceGPU (float processPagesFBO, float processGeomFBO, float processWaterFBO)
-        {
-		singleton->bindShader("WorldSpaceShader");
-
-		singleton->bindFBO("worldSpaceFBO");
-		singleton->sampleFBO("pagesFBO", 0);
-		singleton->sampleFBO("waterFBO", 2);
-		singleton->sampleFBO("geomFBO", 4);
-
-		//MUST BE CALLED AFTER FBO IS BOUND
-		singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-		singleton->setShaderVec3("process", processPagesFBO, processGeomFBO, processWaterFBO);
-		singleton->setShaderVec2("mouseCoords", singleton->mouseX, singleton->mouseY);
-		singleton->setShaderfVec3("cameraPos", cameraPos);
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim) );
-		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
-		singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
-		singleton->setShaderFloat("fHolderMod", singleton->fHolderMod);
-
-		singleton->drawFSQuad(1.0f);
-
-		
-		singleton->unsampleFBO("geomFBO", 4);
-		singleton->unsampleFBO("waterFBO", 2);
-		singleton->unsampleFBO("pagesFBO", 0);
-
-
-		singleton->unbindFBO();
-		singleton->unbindShader();
-		
-		//singleton->copyFBO("worldSpaceFBO","worldSpaceBlurFBO0");
-		//doBlur("worldSpaceBlurFBO",2.0f);
-		
-	}
-void GameWorld::getWorldSpaceBuffer (int bufNum)
-        {
-
-		singleton->wsBufferInvalid = false;
-		FBOWrapper *fbow = singleton->getFBOWrapper("worldSpaceFBO", bufNum);
-		fbow->getPixels();
-
 
 	}
 float GameWorld::weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean)
@@ -31028,8 +34678,6 @@ void GameWorld::initMap ()
         {
 		mapLockOn = true;
 
-		//pushTrace("initMap()");
-
 		mapSwapFlag = 0;
 
 		mapStep = 0.0f;
@@ -31165,7 +34813,7 @@ void GameWorld::initMap ()
 		singleton->bindShader("Simplex2D");
 		singleton->bindFBO("simplexFBO");
 		singleton->setShaderFloat("curTime", fGenRand() * 100.0f); //singleton->curTime);
-		singleton->drawFSQuad(1.0f);
+		singleton->drawFSQuad();
 		singleton->unbindFBO();
 		singleton->unbindShader();
 
@@ -31176,7 +34824,7 @@ void GameWorld::initMap ()
 		singleton->setShaderTexture(2, singleton->imageHM1->tid);
 		singleton->setShaderArrayfVec3("paramArrMap", singleton->paramArrMap, 16 );
 		singleton->setShaderFloat("mapSampScale", 1.0f); //singleton->mapSampScale
-		singleton->drawFSQuad(1.0f);
+		singleton->drawFSQuad();
 		singleton->setShaderTexture(2, 0);
 		singleton->setShaderTexture(1, 0);
 		singleton->unsampleFBO("simplexFBO", 0);
@@ -31228,12 +34876,14 @@ void GameWorld::initMap ()
 		
 		avgSL = (minSL*3+maxSL*1)/4;
 
-
-		seaLevel = i+5; //avgSL;//
+		
+		// TODO: FIX SEA LEVEL
+		seaLevel = i+20; //avgSL;//1
 		seaSlack = seaLevel - 1;
 		cout << "Sea Level: " << seaLevel << "\n";
 
-
+		mapWidth = fbow->width;
+		mapHeight = fbow->height;
 
 		cout << "start place cities\n";
 
@@ -31313,7 +34963,7 @@ void GameWorld::initMap ()
 			singleton->setShaderFloat("seaSlack", ((float)seaSlack) / 255.0 );
 			singleton->setShaderFloat("mapStep", mapStep);
 			singleton->setShaderFloat("texPitch", w);
-			singleton->drawFSQuad(1.0f);
+			singleton->drawFSQuad();
 			singleton->unsampleFBO("swapFBO", 0, mapSwapFlag);
 			singleton->unbindFBO();
 
@@ -31334,7 +34984,7 @@ void GameWorld::initMap ()
 			singleton->setShaderFloat("seaSlack", ((float)seaSlack) / 255.0 );
 			singleton->setShaderFloat("mapStep", -mapStep);
 			singleton->setShaderFloat("texPitch", w);
-			singleton->drawFSQuad(1.0f);
+			singleton->drawFSQuad();
 			singleton->unsampleFBO("swapFBO", 0, mapSwapFlag);
 			singleton->unbindFBO();
 
@@ -31435,8 +35085,9 @@ void GameWorld::initMap ()
 			testPix4 = fbow->getMipVal(curX, curY, blockMip, idChannel, MAX_MIP, -1, 0, 1);
 
 
+			// TODO: EDIT CITY
 
-			if (testPix1 != testPix2 || testPix3 != testPix4 || testPix > 120 )
+			if ( testPix1 != testPix2 || testPix3 != testPix4 || testPix > 220 )
 			{
 				fbow->setPixelAtIndex(curInd, blockChannel, 0);
 			}
@@ -31734,7 +35385,7 @@ void GameWorld::initMap ()
 			singleton->setShaderFloat("mapStep", 1.0);
 			singleton->setShaderFloat("doDilate", 1.0);
 			singleton->setShaderFloat("texPitch", w);
-			singleton->drawFSQuad(1.0f);
+			singleton->drawFSQuad();
 			singleton->unsampleFBO("hmFBO", 1);
 			singleton->unsampleFBO("swapFBO", 0, mapSwapFlag);
 			singleton->unbindFBO();
@@ -31928,7 +35579,7 @@ void GameWorld::initMap ()
 			singleton->setShaderFloat("seaLevel", singleton->getSLNormalized() );
 			singleton->setShaderFloat("mapStep", 0.0);
 			singleton->setShaderFloat("texPitch", w);
-			singleton->drawFSQuad(1.0f);
+			singleton->drawFSQuad();
 			//singleton->unsampleFBO("hmFBO",1);
 			singleton->unsampleFBO("swapFBO", 0, mapSwapFlag);
 			singleton->unbindFBO();
@@ -31949,7 +35600,7 @@ void GameWorld::initMap ()
 			singleton->setShaderFloat("seaLevel", singleton->getSLNormalized() );
 			singleton->setShaderFloat("mapStep", 0.0);
 			singleton->setShaderFloat("texPitch", w);
-			singleton->drawFSQuad(1.0f);
+			singleton->drawFSQuad();
 			//singleton->unsampleFBO("hmFBO",1);
 			singleton->unsampleFBO("swapFBO", 0, mapSwapFlag);
 			singleton->unbindFBO();
@@ -32374,100 +36025,125 @@ void GameWorld::initMap ()
 void GameWorld::drawMap ()
         {
 
+		if (singleton->mainMenu == NULL) {
+			return;
+		}
+		if (singleton->mainMenu->visible){
+			
+		}
+		else {
+			return;
+		}
+		if (singleton->mapComp == NULL) {
+			return;
+		}
+		if (singleton->mapComp->visible) {
+			
+		}
+		else {
+			return;
+		}
 
-		//pushTrace("drawMap()");
 
 		FBOWrapper *fbow = singleton->getFBOWrapper("hmFBOLinear", 0);
 
 		
-		//singleton->setCameraToElevationBase();
 
 
 		singleton->bindShader("TopoShader");
 		
-		singleton->bindFBO("resultFBO0");
+		//singleton->bindFBO("resultFBO0");
 		
 		singleton->sampleFBO("palFBO", 0);
 		singleton->sampleFBO("hmFBO", 1); //Linear
 		singleton->sampleFBO("cityFBO", 2);
-		singleton->sampleFBO("backFaceMapFBO",3);
-		singleton->sampleFBO("frontFaceMapFBO",4);
+		//singleton->sampleFBO("backFaceMapFBO",3);
+		//singleton->sampleFBO("frontFaceMapFBO",4);
 
 		
 		singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 		singleton->setShaderfVec4("mapFreqs", &(singleton->mapFreqs) );
 		singleton->setShaderfVec4("mapAmps", &(singleton->mapAmps) );
-		singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
-		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 		singleton->setShaderfVec3("cameraPos", cameraPos);
-		singleton->setShaderFloat("mapTrans", mapTrans);
+		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
+		
+		singleton->setShaderfVec3("maxBoundsInPixels", &(singleton->worldSizeInPixels));
+		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
+		//singleton->setShaderFloat("mapTrans", mapTrans);
 		singleton->setShaderFloat("seaLevel", singleton->getSLNormalized() );
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderVec2("mapDimInPixels", fbow->width, fbow->height);
 		singleton->setShaderfVec3("worldSizeInPixels", &(singleton->worldSizeInPixels) );
 
-		// singleton->drawQuadBounds(
-		// 	-singleton->worldSizeInPixels.getFX() / 2.0f,// + cameraPos->getFX(),
-		// 	-singleton->worldSizeInPixels.getFY() / 2.0f,// + cameraPos->getFY(),
-		// 	singleton->worldSizeInPixels.getFX() / 2.0f,// + cameraPos->getFX(),
-		// 	singleton->worldSizeInPixels.getFY() / 2.0f,// + cameraPos->getFY(),
-		// 	0.0f//cameraPos->getFZ()//singleton->getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY()) //0.0f// + cameraPos->getFZ()
-		// );
+		
+		
+		
+		singleton->mainGUI->renderQuadDirect(singleton->mapComp);
+		
+
+		//singleton->drawQuadBounds
+
+		//singleton->drawFSQuadOffset(0.75f,0.75f,0.5f,1.0f/singleton->aspectRatio);
+		//singleton->drawFSQuad();
 
 		
-		singleton->drawFSQuad(1.0f);
-
-		
-		singleton->unsampleFBO("frontFaceMapFBO",4);
-		singleton->unsampleFBO("backFaceMapFBO",3);
+		//singleton->unsampleFBO("frontFaceMapFBO",4);
+		//singleton->unsampleFBO("backFaceMapFBO",3);
 		singleton->unsampleFBO("cityFBO", 2);
 		singleton->unsampleFBO("hmFBO", 1);
 		singleton->unsampleFBO("palFBO", 0);
 		
 		
-		singleton->unbindFBO();
+		//singleton->unbindFBO();
 		
 		singleton->unbindShader();
 
 		
-		//singleton->drawFBO("resultFBO", 0, newZoom, 1 - activeFBO);
 		
-		glEnable(GL_BLEND);
-		singleton->drawFBO("resultFBO0",0,1.0f);
-		glDisable(GL_BLEND);
+		//glEnable(GL_BLEND);
+		//singleton->drawFBO("resultFBO0",0,1.0f);
+		//glDisable(GL_BLEND);
 
 
-		//popTrace();
 	}
-void GameWorld::doBlur (string fboName, float blurAmount)
+void GameWorld::doBlur (string fboName, int _baseFBO)
         {
 		int i;
-		mapSwapFlag = 0;
+		int baseFBO = _baseFBO;
+		
+		singleton->bindShader("BlurShader");
+		singleton->setShaderFloat("numBlurPixelsPerSide", 4.0); // value of 4 is a 9x9 kernel (4*2+1)
+		singleton->setShaderFloat("sigma", 4.0);
+		
 		for (i = 0; i < 2; i++)
 		{
-
-			if (i % 2 == 0)
-			{
-				singleton->bindShader("HBlurShader");
+			
+			singleton->bindFBO(fboName, baseFBO);
+			singleton->sampleFBO(fboName, 0, baseFBO);
+			
+			if (i == 0) { // horizontal
+				singleton->setShaderFloat("blurSize", 1.0f/(singleton->currentFBOResolutionX));
+				singleton->setShaderVec2("blurMultiplyVec", 1.0f, 0.0f);
 			}
-			else
-			{
-				singleton->bindShader("VBlurShader");
+			else { // vertical
+				singleton->setShaderFloat("blurSize", 1.0f/(singleton->currentFBOResolutionY));
+				singleton->setShaderVec2("blurMultiplyVec", 0.0f, 1.0f);
 			}
 
-			singleton->bindFBO(fboName, mapSwapFlag);
-			singleton->sampleFBO(fboName, 0, mapSwapFlag);
-			singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
-			singleton->setShaderFloat("blurAmount", blurAmount);
-			singleton->drawFSQuad(1.0f);
-			singleton->unsampleFBO(fboName, 0, mapSwapFlag);
+			
+			singleton->drawFSQuad();
+			
+			singleton->unsampleFBO(fboName, 0, baseFBO);
 			singleton->unbindFBO();
-			singleton->unbindShader();
+			
 
-			mapSwapFlag = 1 - mapSwapFlag;
+			baseFBO = 1 - baseFBO;
 
 		}
+		
+		
+		singleton->unbindShader();
+		
 	}
 void GameWorld::updateLights ()
         {
@@ -32511,11 +36187,12 @@ void GameWorld::updateLights ()
 
 						// TODO: cache screen coords
 
-						singleton->worldToScreen(&lScreenCoords, &(curLight->pos), true);
+						
+						
 
-						curLight->screenDistance = lScreenCoords.length();
+						curLight->screenDistance = cameraPos->distance(&(curLight->pos));
 
-						if ( (curLight->screenDistance < 2.0f) && (curLight->isOn) )
+						if ( (curLight->screenDistance < 64.0*singleton->pixelsPerCell ) && (curLight->isOn) )
 						{
 
 							// if (lightCount == singleton->numLights) {
@@ -32564,19 +36241,17 @@ void GameWorld::postProcess ()
 		
 
 		int i;
-		int iMin;
 
 		int k;
 		int baseInd;
+
+		bool doProc = false;
 
 		GameLight *curLight;
 
 		//pushTrace("postProcess()");
 
 		// NOTE: ALWAYS UNSAMPLE IN REVERSE ORDER!!!
-
-
-		//singleton->worldToScreen(&aoScreenCoords, &(singleton->dynObjects[singleton->activeObject]->pos));
 
 
 
@@ -32596,9 +36271,9 @@ void GameWorld::postProcess ()
 
 			// lightPosBase.copyFrom(&(singleton->dynObjects[E_OBJ_LIGHT0 + k]->pos));
 			// lightPosBase.addXYZ(
-			//  sin(singleton->curTime/1300.0)*4.0f*singleton->pixelsPerMeter,
-			//  sin(singleton->curTime/700.0)*4.0f*singleton->pixelsPerMeter,
-			//  sin(singleton->curTime/1100.0)*4.0f*singleton->pixelsPerMeter
+			//  sin(singleton->curTime/1300.0)*4.0f*singleton->pixelsPerCell,
+			//  sin(singleton->curTime/700.0)*4.0f*singleton->pixelsPerCell,
+			//  sin(singleton->curTime/1100.0)*4.0f*singleton->pixelsPerCell
 			// );
 			// lightPos = &lightPosBase;
 
@@ -32617,34 +36292,37 @@ void GameWorld::postProcess ()
 			//  );
 			// }
 
-			singleton->worldToScreen(&lScreenCoords, lightPos);
+			singleton->worldToScreenBase(&lScreenCoords, lightPos);
 
 			singleton->lightArr[baseInd + 0] = lightPos->getFX();
 			singleton->lightArr[baseInd + 1] = lightPos->getFY();
 			singleton->lightArr[baseInd + 2] = lightPos->getFZ();
+			singleton->lightArr[baseInd + 3] = lScreenCoords.getFZ();
 
+			
+
+			singleton->lightArr[baseInd + 4] = lScreenCoords.getFX();
+			singleton->lightArr[baseInd + 5] = lScreenCoords.getFY();
+			singleton->lightArr[baseInd + 6] = lScreenCoords.getFZ();
+			//singleton->lightArr[baseInd + 7] = 0.0f;
+			
 			// light radius
 			if (k == 0)
 			{
 				// global light
-				singleton->lightArr[baseInd + 3] = 4096.0f * singleton->pixelsPerMeter;
+				singleton->lightArr[baseInd + 7] = 4096.0f * singleton->pixelsPerCell;
 			}
 			else
 			{
 				// if (k == 1) {
-				//  singleton->lightArr[baseInd + 3] = 4096.0f*singleton->pixelsPerMeter;
+				//  singleton->lightArr[baseInd + 3] = 4096.0f*singleton->pixelsPerCell;
 				// }
 				// else {
 				// other lights
-				singleton->lightArr[baseInd + 3] = 12.0f * singleton->pixelsPerMeter;
+				singleton->lightArr[baseInd + 7] = 16.0f * singleton->pixelsPerCell;
 				//}
 
 			}
-
-			singleton->lightArr[baseInd + 4] = lScreenCoords.getFX();
-			singleton->lightArr[baseInd + 5] = lScreenCoords.getFY();
-			singleton->lightArr[baseInd + 6] = 0.0f;
-			singleton->lightArr[baseInd + 7] = 0.0f;
 
 
 			// light color
@@ -32671,329 +36349,335 @@ void GameWorld::postProcess ()
 
 		}
 
-		// lightPos = &(singleton->dynObjects[E_OBJ_LIGHT0]->pos);
-		// singleton->worldToScreen(&lScreenCoords, lightPos);
+		
 
-		if ( mapTrans < 1.0 )
+
+
+
+		activeFBO = 0;
+
+
+		if (singleton->waterOn)	{
+
+
+			singleton->bindShader("WaveHeightShader");
+			singleton->bindFBO("waveFBO");
+			
+			singleton->sampleFBO("pagesTargFBO",0);
+			singleton->sampleFBO("waterTargFBO",2);
+			
+			singleton->setShaderFloat("waveSpacing", singleton->pixelsPerCell * 4.0f);
+			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			singleton->setShaderFloat("curTime", singleton->curTime);
+			singleton->drawFSQuad();
+			
+			
+			singleton->unsampleFBO("waterTargFBO",2);
+			singleton->unsampleFBO("pagesTargFBO",0);
+			
+			singleton->unbindFBO();
+			singleton->unbindShader();
+
+
+			singleton->bindShader("WaterShaderCombine");
+			singleton->bindFBO("combineWithWaterTargFBO");
+			singleton->sampleFBO("pagesTargFBO",0);
+			singleton->sampleFBO("waterTargFBO",2);
+			singleton->sampleFBO("waveFBO", 4);
+			
+			//singleton->setShaderFloat("maxWaveHeight", singleton->pixelsPerCell * 2.0f);
+			singleton->setShaderFloat("clipDist",singleton->mainCamera->clipDist[1]);
+			singleton->setShaderFloat("pixelsPerCell", singleton->pixelsPerCell);
+			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			singleton->setShaderfVec3("cameraPos", cameraPos);
+			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
+			singleton->setShaderFloat("curTime", singleton->curTime);
+			//singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
+			singleton->drawFSQuad();
+			
+			singleton->unsampleFBO("waveFBO", 4);
+			singleton->unsampleFBO("waterTargFBO",2);
+			singleton->unsampleFBO("pagesTargFBO",0);
+			singleton->unbindFBO();
+			singleton->unbindShader();
+			
+			
+			
+		}
+		else
+		{
+			// TODO: copy over any necessary buffers when water is off
+			
+			singleton->copyFBO2("pagesTargFBO","combineWithWaterTargFBO");
+			
+		}
+
+
+
+
+		singleton->bindShader("PreLightingShader");
+		singleton->bindFBO("prelightFBO");
+		singleton->sampleFBO("pagesTargFBO",0);
+		singleton->sampleFBO("combineWithWaterTargFBO",2);
+		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
+		singleton->setShaderfVec3("cameraPos", cameraPos);
+		singleton->setShaderInt("testOn", (int)(singleton->testOn));
+		singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
+		singleton->setShaderArrayfVec4("lightArr", singleton->lightArr, (FLOATS_PER_LIGHT * lightCount) / 4);
+		singleton->setShaderFloat("pixelsPerCell", singleton->pixelsPerCell);
+		singleton->setShaderFloat("lightCount", lightCount);
+		singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
+		singleton->drawFSQuad();
+		singleton->unsampleFBO("combineWithWaterTargFBO",2);
+		singleton->unsampleFBO("pagesTargFBO",0);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		
+		
+		
+		// singleton->copyFBO("prelightFBO","prelightFBO0");
+		// doBlur("prelightFBO",0);
+		
+		// singleton->bindShader("HDRShader");
+		// singleton->bindFBO("resultFBO",activeFBO);
+		// singleton->sampleFBO("pagesTargFBO",0);
+		// singleton->sampleFBO("prelightFBO0", 2);
+		// singleton->sampleFBO("prelightFBO", 3);
+		// singleton->setShaderFloat("clipDist",singleton->mainCamera->clipDist[1]);
+		// singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
+		// singleton->setShaderfVec3("cameraPos", cameraPos);
+		// singleton->setShaderInt("testOn", (int)(singleton->testOn));
+		// singleton->setShaderFloat("curTime", singleton->curTime);
+		// singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
+		// singleton->setShaderFloat("pixelsPerCell", singleton->pixelsPerCell);
+		// singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
+		// singleton->drawFSQuad();
+		// singleton->unsampleFBO("prelightFBO", 3);
+		// singleton->unsampleFBO("prelightFBO0", 2);
+		// singleton->unsampleFBO("pagesTargFBO",0);
+		// singleton->unbindFBO();
+		// singleton->unbindShader();
+		// activeFBO = 1 - activeFBO;
+		
+		
+		
+		
+		
+		singleton->bindShader("PostLightingShader");
+		singleton->bindFBO("resultFBO", activeFBO);
+		
+		singleton->sampleFBO("pagesTargFBO",0);
+		singleton->sampleFBO("prelightFBO", 2);
+		singleton->sampleFBO("geomTargFBO", 4);
+		singleton->sampleFBO("palFBO", 6);
+		
+		singleton->setShaderfVec4("worldMarker",&(singleton->worldMarker));
+		singleton->setShaderInt("markerFound", (int)(singleton->markerFound));
+		
+		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
+		singleton->setShaderfVec3("cameraPos", cameraPos);
+		singleton->setShaderInt("gridOn", (int)(singleton->gridOn));
+		singleton->setShaderInt("testOn", (int)(singleton->testOn));
+		singleton->setShaderFloat("curTime", singleton->curTime);
+		singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
+		singleton->setShaderFloat("pixelsPerCell", singleton->pixelsPerCell);
+		singleton->setShaderFloat("blockSizeInCells", singleton->blockSizeInCells);
+		singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
+		singleton->drawFSQuad();
+		
+		singleton->unsampleFBO("palFBO", 6);
+		singleton->unsampleFBO("geomTargFBO", 4);
+		singleton->unsampleFBO("prelightFBO", 2);
+		singleton->unsampleFBO("pagesTargFBO",0);
+		
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		
+		activeFBO = 1 - activeFBO;
+		
+		
+
+		if (singleton->waterOn)
+		{
+			singleton->copyFBO("resultFBO1", "swapFBOLinHalf0");
+			doBlur("swapFBOLinHalf");
+			
+			singleton->bindShader("WaterShader");
+			singleton->bindFBO("resultFBO", activeFBO);
+			singleton->sampleFBO("pagesTargFBO",0);
+			singleton->sampleFBO("combineWithWaterTargFBO",2);
+			singleton->sampleFBO("resultFBO", 4, activeFBO);
+			singleton->sampleFBO("swapFBOLinHalf0", 5);
+			singleton->sampleFBO("noiseFBO", 6);
+			singleton->sampleFBO("waveFBO", 7);
+			singleton->sampleFBO("palFBO", 8);
+			singleton->sampleFBO("prelightFBO", 9);
+			
+			singleton->setShaderFloat("clipDist",singleton->mainCamera->clipDist[1]);
+			singleton->setShaderFloat("pixelsPerCell", singleton->pixelsPerCell);
+			singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
+			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			singleton->setShaderfVec3("cameraPos", cameraPos);
+			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
+			singleton->setShaderFloat("curTime", singleton->curTime);
+			singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
+			singleton->drawFSQuad();
+			
+			singleton->unsampleFBO("prelightFBO", 9);
+			singleton->unsampleFBO("palFBO", 8);
+			singleton->unsampleFBO("waveFBO", 7);
+			singleton->unsampleFBO("noiseFBO", 6);
+			singleton->unsampleFBO("swapFBOLinHalf0", 5);
+			singleton->unsampleFBO("resultFBO", 4, activeFBO);
+			singleton->unsampleFBO("waterTargFBO",2);
+			singleton->unsampleFBO("pagesTargFBO",0);
+			singleton->unbindFBO();
+			singleton->unbindShader();
+
+			activeFBO = 1 - activeFBO;
+		}
+
+
+		if (singleton->radiosityOn || singleton->fogOn)
 		{
 
-
-
-
-			activeFBO = 0;
-
-
-			if (singleton->waterOn || (!wavesGenerated) )   //(singleton->grassState == E_GRASS_STATE_ANIM) ||
+			if (activeFBO == 0)
 			{
-
-
-				singleton->bindShader("WaveHeightShader");
-				singleton->bindFBO("waveFBO");
-				singleton->sampleFBO("worldSpaceFBO", 4);
-				
-				singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
-				singleton->setShaderFloat("waveSpacing", singleton->pixelsPerMeter * 2.0f);
-				singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-				singleton->setShaderfVec3("cameraPos", cameraPos);
-				singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
-				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
-				singleton->setShaderFloat("curTime", singleton->curTime);
-				singleton->drawFSQuad(1.0f);
-				
-				
-				singleton->unsampleFBO("worldSpaceFBO", 4);
-				singleton->unbindFBO();
-				singleton->unbindShader();
-			}
-
-			if (singleton->waterOn)
-			{
-
-				iMin = 0;
-
-				singleton->bindShader("WaterShaderCombine");
-				singleton->bindFBO("combineFBOWithWater");
-				singleton->sampleFBO("combineFBO", 0);
-				singleton->sampleFBO("waterFBO", 2);
-				singleton->sampleFBO("waveFBO", 4);
-				singleton->sampleFBO("worldSpaceFBO", 5);
-				
-				singleton->setShaderFloat("maxWaveHeight", singleton->pixelsPerMeter * 2.0f);
-				singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-				singleton->setShaderfVec3("cameraPos", cameraPos);
-				singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
-				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
-				singleton->setShaderFloat("curTime", singleton->curTime);
-				singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
-				singleton->drawFSQuad(1.0f);
-				
-				singleton->unsampleFBO("worldSpaceFBO", 5);
-				singleton->unsampleFBO("waveFBO", 4);
-				singleton->unsampleFBO("waterFBO", 2);
-				singleton->unsampleFBO("combineFBO", 0);
-				singleton->unbindFBO();
-				singleton->unbindShader();
+				singleton->copyFBO("resultFBO0", "swapFBOBLin0");
 			}
 			else
 			{
-
-				singleton->copyFBO2("combineFBO", "combineFBOWithWater");
-
-				iMin = 1;
+				singleton->copyFBO("resultFBO1", "swapFBOBLin0");
 			}
 
 
+			doBlur("swapFBOBLin");
+		}
 
 
 
-			singleton->bindShader("PreLightingShader");
+		if (singleton->radiosityOn)
+		{
 
-			for (i = iMin; i < 2; i++)
-			{
-				if (i == 0)
-				{
-					singleton->bindFBO("swapFBOLinHalf0");
-					singleton->sampleFBO("combineFBO", 0);
-				}
-				else
-				{
-					
-					
-					
-					singleton->bindFBO("resultFBO", activeFBO);
-					singleton->sampleFBO("combineFBOWithWater", 0);
-				}
+			singleton->bindShader("RadiosityShader");
 
-				singleton->sampleFBO("palFBO", 2);
-				
-				
-				
-				if ((i==1)&&(singleton->waterOn)) {
-					singleton->setShaderTexture(3, singleton->getFBOWrapper("worldSpaceFBO",3)->color_tex);
-				}
-				else {
-					//worldSpaceFBO
-					singleton->setShaderTexture(3, singleton->getFBOWrapper("worldSpaceFBO",0)->color_tex);
-				}
-				
-				//worldSpaceFBO
-				//singleton->setShaderTexture(4, singleton->getFBOWrapper("worldSpaceBlurFBO0",0)->color_tex);
-				
-				
-				singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
-				singleton->setShaderVec2("mouseCoords", singleton->mouseX, singleton->mouseY);
-				singleton->setShaderfVec3("cameraPos", cameraPos);
-				
-				singleton->setShaderInt("gridOn", (int)(singleton->gridOn));
-				singleton->setShaderInt("testOn", (int)(singleton->testOn));
-				singleton->setShaderFloat("curTime", singleton->curTime);
-				singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
-				singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
+			singleton->bindFBO("swapFBOLinHalf0");
+			singleton->sampleFBO("combineWithWaterTargFBO",0);
+			singleton->sampleFBO("swapFBOBLin0", 2);
+			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
+			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
+			singleton->setShaderfVec3("cameraPos", cameraPos);
+			singleton->setShaderfVec3("lightPosWS", lightPos);
+			singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
+			singleton->drawFSQuad();
+			singleton->unsampleFBO("swapFBOBLin0", 2);
+			singleton->unsampleFBO("combineWithWaterTargFBO",0);
+			singleton->unbindFBO();
+			singleton->unbindShader();
 
 
-				singleton->setShaderArrayfVec4("lightArr", singleton->lightArr, (FLOATS_PER_LIGHT * lightCount) / 4);
-				
-				singleton->setShaderFloat("fHolderMod", singleton->fHolderMod);
-				singleton->setShaderFloat("pixelsPerMeter", singleton->pixelsPerMeter);
-				singleton->setShaderFloat("blockSizeInMeters", singleton->blockSizeInMeters);
-				singleton->setShaderFloat("lightCount", lightCount);
-				singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
-				singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
-				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
-				singleton->drawFSQuad(1.0f);
+			doBlur("swapFBOLinHalf");
 
-				//singleton->setShaderTexture(4,0);
-				singleton->setShaderTexture(3,0);
-				singleton->unsampleFBO("palFBO", 2);
-
-				if (i == 0)
-				{
-					singleton->unsampleFBO("combineFBO", 0);
-				}
-				else
-				{
-					singleton->unsampleFBO("combineFBOWithWater", 0);
-				}
-
-				singleton->unbindFBO();
-			}
-
+			singleton->bindShader("RadiosityCombineShader");
+			singleton->bindFBO("resultFBO", activeFBO);
+			singleton->sampleFBO("resultFBO", 0, activeFBO);
+			singleton->sampleFBO("swapFBOLinHalf0", 1);
+			singleton->sampleFBO("combineWithWaterTargFBO",2);
+			singleton->setShaderInt("testOn", (int)(singleton->testOn));
+			singleton->drawFSQuad();
+			singleton->unsampleFBO("combineWithWaterTargFBO",2);
+			singleton->unsampleFBO("swapFBOLinHalf0", 1);
+			singleton->unsampleFBO("resultFBO", 0, activeFBO);
+			singleton->unbindFBO();
 			singleton->unbindShader();
 
 			activeFBO = 1 - activeFBO;
 
 
-			if (singleton->waterOn)
-			{
-				doBlur("swapFBOLinHalf", 0.1f);
-				singleton->bindShader("WaterShader");
-				singleton->bindFBO("resultFBO", activeFBO);
-				singleton->sampleFBO("combineFBO", 0);
-				singleton->sampleFBO("combineFBOWithWater", 2);
-				singleton->sampleFBO("resultFBO", 4, activeFBO);
-				singleton->sampleFBO("swapFBOLinHalf0", 5);
-				singleton->sampleFBO("noiseFBO", 6);
-				singleton->sampleFBO("waveFBO", 7);
-				singleton->sampleFBO("worldSpaceFBO", 8);
-				
-				singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
-				singleton->setShaderFloat("pixelsPerMeter", singleton->pixelsPerMeter);
-				singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
-				singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-				singleton->setShaderfVec3("cameraPos", cameraPos);
-				singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
-				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
-				singleton->setShaderFloat("curTime", singleton->curTime);
-				singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
-				singleton->drawFSQuad(1.0f);
-				
-				singleton->unsampleFBO("worldSpaceFBO", 8);
-				singleton->unsampleFBO("waveFBO", 7);
-				singleton->unsampleFBO("noiseFBO", 6);
-				singleton->unsampleFBO("swapFBOLinHalf0", 5);
-				singleton->unsampleFBO("resultFBO", 4, activeFBO);
-				singleton->unsampleFBO("waterFBO", 2);
-				singleton->unsampleFBO("combineFBO", 0);
-				singleton->unbindFBO();
-				singleton->unbindShader();
+		}
 
-				activeFBO = 1 - activeFBO;
-			}
+		if (singleton->fogOn == 1.0f)
+		{
 
+			singleton->bindShader("FogShader");
+			singleton->bindFBO("resultFBO", activeFBO);
 
-			if (singleton->radiosityOn || singleton->fogOn)
-			{
-
-				if (activeFBO == 0)
-				{
-					singleton->copyFBO("resultFBO0", "swapFBOBLin0");
-				}
-				else
-				{
-					singleton->copyFBO("resultFBO1", "swapFBOBLin0");
-				}
-
-
-				doBlur("swapFBOBLin", 2.0f);
-			}
-
-
-
-			if (singleton->radiosityOn)
-			{
-
-				singleton->bindShader("RadiosityShader");
-
-				singleton->bindFBO("swapFBOLinHalf0");
-				singleton->sampleFBO("combineFBOWithWater", 0);
-				singleton->sampleFBO("swapFBOBLin0", 2);
-				singleton->sampleFBO("worldSpaceFBO", 4);
-				singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
-				singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
-				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
-				singleton->setShaderfVec3("cameraPos", cameraPos);
-				singleton->setShaderfVec3("lightPosWS", lightPos);
-				singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
-				singleton->drawFSQuad(1.0f);
-				singleton->unsampleFBO("worldSpaceFBO", 4);
-				singleton->unsampleFBO("swapFBOBLin0", 2);
-				singleton->unsampleFBO("combineFBOWithWater", 0);
-				singleton->unbindFBO();
-				singleton->unbindShader();
-
-
-				doBlur("swapFBOLinHalf", 2.0f);
-
-				singleton->bindShader("RadiosityCombineShader");
-				singleton->bindFBO("resultFBO", activeFBO);
-				singleton->sampleFBO("resultFBO", 0, activeFBO);
-				singleton->sampleFBO("swapFBOLinHalf0", 1);
-				singleton->sampleFBO("combineFBOWithWater", 2);
-				singleton->drawFSQuad(1.0f);
-				singleton->unsampleFBO("combineFBOWithWater", 2);
-				singleton->unsampleFBO("swapFBOLinHalf0", 1);
-				singleton->unsampleFBO("resultFBO", 0, activeFBO);
-				singleton->unbindFBO();
-				singleton->unbindShader();
-
-				activeFBO = 1 - activeFBO;
-
-
-			}
-
-			if (singleton->fogOn == 1.0f)
-			{
-				mapSwapFlag = 0;
-
-				singleton->bindShader("FogShader");
-
-
-
-				singleton->bindFBO("resultFBO", activeFBO);
-
-				singleton->sampleFBO("combineFBOWithWater", 0);
-				singleton->sampleFBO("resultFBO", 2, activeFBO);
-				singleton->sampleFBO("swapFBOBLin0", 3);
-				singleton->sampleFBO("worldSpaceFBO", 4);
-
-				
-				singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
-				singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
-				singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
-				singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
-				singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
-				singleton->setShaderfVec3("cameraPos", cameraPos);
-				singleton->setShaderfVec4("fogPos", fogPos);
-
-				singleton->drawFSQuad(1.0f);
-
-				singleton->unsampleFBO("worldSpaceFBO", 4);
-				singleton->unsampleFBO("swapFBOBLin0", 3);
-				singleton->unsampleFBO("resultFBO", 2, activeFBO);
-				singleton->unsampleFBO("combineFBOWithWater", 0);
-
-				singleton->unbindFBO();
-				singleton->unbindShader();
-
-
-				activeFBO = 1 - activeFBO;
-
-			}
-
-			//singleton->drawFBO("swapFBOBLin0", 0, newZoom);
+			singleton->sampleFBO("combineWithWaterTargFBO",0);
+			singleton->sampleFBO("resultFBO", 2, activeFBO);
+			singleton->sampleFBO("swapFBOBLin0", 3);
+			singleton->sampleFBO("geomTargFBO", 4);
 			
-			
-			//singleton->drawFBO("frontFaceFBO", 0, 1.0f);
+			singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
+			singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
+			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
+			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
+			singleton->setShaderfVec3("cameraPos", cameraPos);
+			singleton->setShaderfVec4("fogPos", fogPos);
+
+			singleton->drawFSQuad();
 
 			
+			singleton->unsampleFBO("geomTargFBO", 4);
+			singleton->unsampleFBO("swapFBOBLin0", 3);
+			singleton->unsampleFBO("resultFBO", 2, activeFBO);
+			singleton->unsampleFBO("combineWithWaterTargFBO",0);
 
-			if (singleton->guiOn) {
-				if (singleton->mainGUI->isReady) {
-					singleton->mainGUI->renderGUI(newZoom, 1 - activeFBO);
-				}
-				
-			}
-			else {
-				singleton->drawFBO("resultFBO", 0, newZoom, 1 - activeFBO);
-			}
-			
+			singleton->unbindFBO();
+			singleton->unbindShader();
 
 
-
-
-
-
-			// singleton->bindShader("CopyShader");
-			// singleton->setShaderTexture(0,singleton->testPat->tid);
-			// singleton->drawFSQuad(0.25f);
-			// singleton->setShaderTexture(0,0);
-			// singleton->unbindShader();
-
-
-
-
+			activeFBO = 1 - activeFBO;
 
 		}
+
+
+		//singleton->drawFBO("resultFBO", 0, 1.0f, activeFBO);
+		singleton->drawFBO("resultFBO", 0, 1.0f, 1 - activeFBO);
+
+
+		if (singleton->mainGUI->isReady) {
+
+			if (singleton->mainMenu != NULL) {
+				if (singleton->mainMenu->visible){
+						doProc = true;
+				}
+			}
+			if (singleton->ddMenu != NULL) {
+				if (singleton->ddMenu->visible){
+						doProc = true;
+				}
+			}
+
+			if (doProc) {
+				glEnable (GL_BLEND);
+
+				singleton->bindShader("GUIShader");
+				singleton->setShaderTexture(0,singleton->fontWrappers[EFW_TEXT]->fontImage->tid);
+				singleton->setShaderTexture(1,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
+				singleton->sampleFBO("swapFBOBLin0", 2);
+				
+				singleton->mainGUI->renderGUI(1 - activeFBO);
+				
+				singleton->unsampleFBO("swapFBOBLin0", 2);
+				singleton->setShaderTexture(1,0);
+				singleton->setShaderTexture(0,0);
+				singleton->unbindShader();
+				
+				glDisable(GL_BLEND);
+			}
+
+			
+			
+		}
+		
+		
+		
+
+
+
+
+
+		
 
 
 		//popTrace();
@@ -33020,9 +36704,9 @@ Singleton* singleton;
 void processSpecialKeys(int key, int x, int y) {
     singleton->processSpecialKeys(key,x,y);
 }
-void processKey(unsigned char key, int x, int y, bool isPressed) {
-    singleton->processKey(key,x,y,isPressed);
-}
+// void processKey(unsigned char key, int x, int y, bool isPressed) {
+//     singleton->processKey(key,x,y,isPressed);
+// }
 void keyboardUp(unsigned char key, int x, int y) {
     singleton->keyboardUp(key,x,y);
 }
@@ -33142,11 +36826,11 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
 
 
-    //glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);  //GLUT_SINGLE
+    glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);  //GLUT_SINGLE
 
-    glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGB); //|GLUT_MULTISAMPLE
+    //glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGB); //|GLUT_MULTISAMPLE
     glutInitWindowSize(winWidth, winHeight);
-    glutInitWindowPosition(250, 50);
+    glutInitWindowPosition(400, 50);
     glutCreateWindow("VoxelQuest");
 
     GLenum err = glewInit();

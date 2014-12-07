@@ -9,14 +9,7 @@ uniform sampler2D Texture2;
 //uniform sampler2D Texture3;
 
 
-// world space fbo
-uniform sampler2D Texture4;
-uniform sampler2D Texture5;
-uniform sampler2D Texture6;
-uniform sampler2D Texture7;
 
-
-uniform float cameraZoom;
 uniform vec2 bufferDim;
 uniform vec2 resolution;
 uniform vec3 cameraPos;
@@ -67,36 +60,17 @@ vec2 pack16(float num) {
 void main() {
 
 	float fNumSteps = float(iNumSteps);
-
+	
 	vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
 	vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
 	vec4 tex2 = texture2D(Texture2, TexCoord0.xy);
 	vec3 oneVec = vec3(1.0);
 	
-	vec4 tex7 = texture2D(Texture7, TexCoord0.xy);
+	vec4 worldPosition = tex0;//texture2D(Texture4, TexCoord0.xy);
 
-	float newZoom = min(cameraZoom, 1.0);
 	
-	
-	vec3 worldPosition = tex7.xyz;
-	float baseHeight = tex7.z;
-	
-	// vec3 worldPosition = vec3(0.0, 0.0, 0.0);
-	// float baseHeight = unpack16(tex0.rg);
-	// vec2 tcMod = (vec2(TexCoord0.x, 1.0 - TexCoord0.y) * 2.0 - 1.0 );
-	// tcMod.x *= bufferDim.x / (newZoom);
-	// tcMod.y *= bufferDim.y / (newZoom);
-	// tcMod.y -= cameraPos.z;
-	// worldPosition.x = tcMod.y + tcMod.x / 2.0 + (baseHeight);
-	// worldPosition.y = tcMod.y - tcMod.x / 2.0 + (baseHeight);
-	// worldPosition.z = baseHeight;
-	// worldPosition.x += cameraPos.x;
-	// worldPosition.y += cameraPos.y;
 
-
-
-
-	vec3 lightVec = normalize(lightPosWS - worldPosition);
+	vec3 lightVec = normalize(lightPosWS.xyz - worldPosition.xyz);
 
 
 
@@ -111,15 +85,14 @@ void main() {
 
 	float curHeight;
 	vec2 offsetCoord = vec2(0.0);
-	vec4 samp = vec4(0.0);
+	vec4 samp0 = vec4(0.0);
+	vec4 samp1 = vec4(0.0);
 	vec4 samp2 = vec4(0.0);
-	vec4 samp3 = vec4(0.0);
 	vec3 newTC = vec3(0.0);
-	vec3 baseTC = vec3(0.0);
 	vec3 newRes = vec3(0.0);
 
-	vec3 baseNormOrig = normalize((tex1.rgb - 0.5) * 2.0);
-	vec3 baseNormRef = normalize(reflect(lightVec, baseNormOrig));
+	vec3 baseNormOrig = tex1.xyz;//normalize((tex1.rgb - 0.5) * 2.0);
+	//vec3 baseNormRef = normalize(reflect(lightVec, baseNormOrig));
 	vec3 testNormOrig = vec3(0.0);
 	vec3 testNormRef = vec3(0.0);
 
@@ -129,7 +102,7 @@ void main() {
 	
 	float divVal = 1.0-clamp( distance(TexCoord0.xy,vec2(0.5,0.5))/0.5 ,0.0,1.0);
 	
-	float maxRad = bufferDim.y / 2.0;//mix(1.0,4.0,divVal);
+	float maxRad = bufferDim.y / mix(32.0,4.0,tex0.w);//mix(1.0,4.0,divVal);
 	float curRad = 0.0;
 
 	float minRotInc = pi;
@@ -148,8 +121,6 @@ void main() {
 	vec3 minMaxCur = vec3(0.0);
 	vec3 avgVec = vec3(0.0);
 
-	baseTC.xy = TexCoord0.xy;
-	baseTC.z = baseHeight / bufferDim.x;
 
 	vec3 baseVec = vec3(0.0);
 	vec3 testVec = vec3(0.0);
@@ -157,6 +128,7 @@ void main() {
 
 
 	float finalRes = 0.0;
+	float disMult = 0.0;
 
 	for (i = 0; i < iNumSteps; i++) {
 
@@ -169,35 +141,39 @@ void main() {
 		offsetCoord.x = cos(curRot) * curRad;
 		offsetCoord.y = sin(curRot) * curRad;
 
-		newTC.xy = TexCoord0.xy + offsetCoord / (bufferDim / newZoom);
-		samp = texture2D(Texture2, newTC.xy );
-		samp2 = texture2D(Texture1, newTC.xy );
+		newTC.xy = TexCoord0.xy + offsetCoord / (bufferDim);
+		samp0 = texture2D(Texture0, newTC.xy );
+		samp1 = texture2D(Texture1, newTC.xy );
+		samp2 = texture2D(Texture2, newTC.xy );
+		
 
-		testNormOrig = normalize( (samp2.rgb - 0.5) * 2.0 );
+		testNormOrig = samp1.xyz;//normalize( (samp1.rgb - 0.5) * 2.0 );
 		testNormRef = normalize(reflect(lightVec, testNormOrig));
 
+		disMult = clamp(
+			(samp0.w - worldPosition.w)/256.0,
+			0.0,
+			1.0
+		);
+
+		
 
 
-		samp3 = texture2D(Texture7, newTC.xy );
-		newTC.z = samp3.z / bufferDim.x;//unpack16(samp3.rg) / bufferDim.x;
-		testVec = normalize(baseTC - newTC);
-		baseVec = -testVec;
-
-		finalRes = (tex2.a * tex1.a * samp.a * samp2.a) *
-							 clamp(dot(testNormOrig, testVec), 0.0, 1.0) *
-							 clamp(dot(baseNormOrig, baseVec), 0.0, 1.0) *
-							 (1.25 - fi);// * float(samp3.a < 0.5); //isNotGeom
-		//* float( dot(lightVec,baseVec) > 0.0 );// *(1.0-dot(oneVec,samp.rgb)/3.0);
-
-
-		newRes += finalRes * samp.rgb * clamp(max(dot(baseNormOrig, testNormRef), dot(baseNormRef, -testNormRef)), 0.0, 1.0); // *(1.25-fi); //
-		totRays += mix(finalRes, 1.0, 0.5); // *(1.25-fi);
+		newRes += 
+			float((tex1.a*samp1.a) != 0.0) *
+			//tex2.a * tex1.a * samp2.a * // samp1.a *
+			samp2.rgb *
+			// disMult *
+			clamp(dot(testNormRef, baseNormOrig), 0.0, 1.0);
+		
+		totRays += 1.0;
 
 		curRot += curRotInc;
 	}
 
-	newRes = clamp(newRes / (totRays / 256.0), 0.0, 1.0);
+	newRes = clamp(newRes / (totRays / 8.0), 0.0, 1.0);
 	newRes = pow(newRes, vec3(2.0));
+	//newRes = min(newRes,normalize(newRes));
 	gl_FragData[0] = vec4(newRes*divVal, 1.0);
 
 

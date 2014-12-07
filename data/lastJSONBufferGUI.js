@@ -1,11 +1,31 @@
 {
 	"templates": {
+		"dragPad": {
+			"type":5
+		},
+		"menuBar": {
+			"type":4,
+			"ss":"headerSS"
+		},
 		"cont": {
 			"type":0
+		},
+		"fillToggle": {
+			"type":1,
+			"fillRatioX":1,
+			"divisions":1
+		},
+		"fillSlider": {
+			"type":1,
+			"fillRatioX":1
 		},
 		"fillLabel": {
 			"type":0,
 			"label":" ",
+			"fillRatioX":1
+		},
+		"fillButton": {
+			"type":2,
 			"fillRatioX":1
 		},
 		"statSlider": {
@@ -139,7 +159,63 @@
 		"Boots":{
 			"iconNum":130,
 			"class":"Boots"
+		},
+		
+		
+		
+		"Bow":{
+			"iconNum":1274,
+			"class":"Primary"
+		},
+		"Sceptre":{
+			"iconNum":1197,
+			"class":"Primary"
+		},
+		"Axe":{
+			"iconNum":1329,
+			"class":"Primary"
+		},
+		"Spellbook":{
+			"iconNum":782,
+			"class":"Primary"
+		},
+		"Hammer":{
+			"iconNum":1180,
+			"class":"Primary"
+		},
+		"Spear":{
+			"iconNum":1342,
+			"class":"Primary"
+		},
+		
+		
+		
+		
+		"Green Potion":{
+			"iconNum":555,
+			"class":"Consumable"
+		},
+		"Watermelon":{
+			"iconNum":239,
+			"class":"Consumable"
+		},
+		"Banana":{
+			"iconNum":237,
+			"class":"Consumable"
+		},
+		"Cheese":{
+			"iconNum":256,
+			"class":"Consumable"
+		},
+		"Pie":{
+			"iconNum":251,
+			"class":"Consumable"
+		},
+		"Mutton":{
+			"iconNum":257,
+			"class":"Consumable"
 		}
+		
 	},
 	
 	"inventoryData":{
@@ -151,7 +227,20 @@
 			{"eq":1, "quant":"1", "name":"Ring", "mat":"Ruby"},
 			{"eq":1, "quant":"1", "name":"Long Sword", "mat":"Iron"},
 			{"eq":1, "quant":"1", "name":"Kite Shield", "mat":"Iron"},
-			{"eq":1, "quant":"1", "name":"Boots", "mat":"Leather"}
+			{"eq":1, "quant":"1", "name":"Boots", "mat":"Leather"},
+			
+			{"eq":0, "quant":"1", "name":"Bow", "mat":"Yew"},
+			{"eq":0, "quant":"1", "name":"Sceptre", "mat":"Iron"},
+			{"eq":0, "quant":"1", "name":"Axe", "mat":"Iron"},
+			{"eq":0, "quant":"1", "name":"Spellbook", "mat":"Leather"},
+			{"eq":0, "quant":"1", "name":"Hammer", "mat":"Iron"},
+			{"eq":0, "quant":"1", "name":"Spear", "mat":"Iron"},
+			{"eq":0, "quant":"1", "name":"Green Potion", "mat":"none"},
+			{"eq":0, "quant":"1", "name":"Watermelon", "mat":"none"},
+			{"eq":0, "quant":"1", "name":"Banana", "mat":"none"},
+			{"eq":0, "quant":"1", "name":"Cheese", "mat":"none"},
+			{"eq":0, "quant":"1", "name":"Pie", "mat":"none"},
+			{"eq":0, "quant":"1", "name":"Mutton", "mat":"none"}
 		]
 	},
 	
@@ -159,214 +248,707 @@
 	
 	
 	
-	"curMenu":"baseMenu",
 	
 	
 	
-	"baseMenu": {
+	
+	"baseGUI":{
 		"template":"cont",
-		"fillDir":1,
-		"children":[
+		"hasBackground":0,
+		"hoverType":4,
+		"floatingChildren":[
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+
+
+
+
+			
+
+			
+			
 			
 			{
-				"template":"radioFillCenter",
-				"label":"Inventory",
-				"floatingChildren": [{
-					"template":"popout",
-					"fillRatioX":1,
-					"children": [
-						{
-							"template":"cont",
-							"fillDir":1,
-							"children": [
+				"uid":"guiHandles.ddMenu",
+				"template":"cont",
+				"hasBackground":0,
+				"children":[
+					{
+						"template":"cont",
+						"fillDir":1,
+						"children": [
+						
 							
-								{
-									"template":"cont",
-									"label":"Equipped",
-									"alignX":1,
-									"fillRatioX":1,
-									"ss":"headerSS"
-									
-								},
-								{
-									"template":"cont",
-									"fillDir":1,
-									"dataFile":"",
-									"dataSource":"inventoryData.items",
-									"whereAllEqual":[
-										["eq",1]
-									],
-									"whereAnyEqual":[
-									
-									],
-									"childType":"inventoryItem",
-									"childTemplate":{
-										"fillRatioX":1,
-										"template":"radio",
-										"label":"",
-										"floatingChildren":[
-											{
-												"template":"tooltip",
-												"children":[
-													{
-														"template":"cont",
-														"label":"",
-														"ss":"tooltipSS"
-													}
-												]
-											}
-										]
-																	
-									},
-									"children": []
-								}
-							
-							]
-						}
-					]
-				}]
-			},
-			{
-				"template":"radioFillCenter",
-				"label":"Character Stats",
-				"floatingChildren": [{
-					"template":"popout",
-					"fillRatioX":1,
-					"children": [
-						
-						{
-							"template":"cont",
-							"fillDir":1,
-							"children":[
-								{
-									"template":"statSlider",
-									"label":"Strength"
-								},
-								{
-									"template":"statSlider",
-									"label":"Dexterity"
-								},
-								{
-									"template":"statSlider",
-									"label":"Celerity"
-								},
-								{
-									"template":"statSlider",
-									"label":"Vitality"
-								},
-								{
-									"template":"statSlider",
-									"label":"Intelligence"
-								},
-								{
-									"template":"statSlider",
-									"label":"Charisma"
-								},
-								{
-									"template":"statSlider",
-									"label":"Perception"
-								},
-								{
-									"template":"statSlider",
-									"label":"Discipline"
-								}
-							]
-						}
-						
-					]
-				}]
-				
-			},
-			{
-				"template":"radioFillCenter",
-				"label":"Options"
-			},
-			{
-				"template":"radioFillCenter",
-				"label":"Debug Info",
-				"floatingChildren": [{
-					"template":"popout",
-					"fillRatioX":1,
-					"children": [
-						
-						{
-							"template":"cont",
-							"fillDir":1,
-							"children":[
-								{
-									"template":"fillLabel",
-									"uid":"debug.fbMem"
-								},
-								{
-									"template":"fillLabel",
-									"uid":"debug.chunkMem"
-								},
-								{
-									"template":"fillLabel",
-									"uid":"debug.totMem"
-								},
-								{
-									"template":"fillLabel",
-									"uid":"debug.chunksGen"
-								}
-							]
-						}
-						
-					]
-				}]
-			},
-			{
-				"template":"radioFillCenter",
-				"label":"Shader Parameters",
-				"floatingChildren": [{
-					"template":"popout",
-					"fillRatioX":1,
-					"children": [
-					
-						{
-							"template":"cont",
-							"fillDir":1,
-							"isInternal":1,
-							"dataFile":"shaderParams",
-							"dataSource":"params",
-							"childType":"shaderParams",
-							"children": [],
-							"childTemplate":{
+							{
+								"template":"cont",
+								"fillDir":1,
 								"fillRatioX":1,
-								"template":"slider",
-								"label":"",
-								"uid":"",
-								
-								"callback":"updateShaderParam",
-								"callbackData":{
-									"shaderName":"",
-									"paramName":""
-								},
-								
-								"floatingChildren":[
+								"children":[
+									
 									{
-										"template":"tooltipValue",
-										"children":[
-											{
-												"template":"cont",
-												"label":"",
-												"ss":"tooltipSS"
-											}
-										]
+										"template":"radioFillCenter",
+										"label":"Place Entity",
+										"floatingChildren": [{
+											"template":"popout",
+											"fillRatioX":1,
+											"children": [
+												
+												{
+													"template":"cont",
+													"fillDir":1,
+													"children": [
+													
+														{
+															"template":"cont",
+															"fillDir":1,
+															"fillRatioX":1,
+															"children":[
+																{
+																	"template":"fillButton",
+																	"label":"Actor",
+																	"uid":"placeEntity.actor"
+																},
+																{
+																	"template":"fillButton",
+																	"label":"Object",
+																	"uid":"placeEntity.object"
+																},
+																{
+																	"template":"fillButton",
+																	"label":"Building",
+																	"uid":"placeEntity.building"
+																}
+															]
+														}
+													]
+												}
+												
+											]
+										}]
+									},
+									{
+										"template":"radioFillCenter",
+										"label":"Test 2"
+										
+									},
+									{
+										"template":"radioFillCenter",
+										"label":"Test 3"
+										
+									},
+									{
+										"template":"radioFillCenter",
+										"label":"Test 4"
+										
 									}
+									
+									
+									
 								]
 							}
-						}
+						]
+					}
+				]
+			},
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			{
+				"uid":"guiHandles.mainMenu",
+				"template":"cont",
+				"hasBackground":0,
+				"children":[
+					{
+						"template":"cont",
+						"fillDir":1,
+						"children": [
 						
-					]
-				}]
-				
+							{
+								"template":"menuBar",
+								"label":"Main Menu",
+								"alignX":1,
+								"fillRatioX":1
+								
+							},
+							{
+								"template":"cont",
+								"fillDir":1,
+								"children":[
+									
+									{
+										"template":"radioFillCenter",
+										"label":"Inventory",
+										"floatingChildren": [{
+											"template":"popout",
+											"fillRatioX":1,
+											"children": [
+												{
+													"template":"cont",
+													"fillDir":1,
+													"children": [
+													
+														{
+															"template":"menuBar",
+															"label":"Equipped",
+															"alignX":1,
+															"fillRatioX":1
+															
+														},
+														{
+															"template":"cont",
+															"fillDir":1,
+															"fillRatioX":1,
+															"dataFile":"",
+															"dataSource":"inventoryData.items",
+															"whereAllEqual":[
+																["eq",1]
+															],
+															"whereAnyEqual":[
+															
+															],
+															"childType":"inventoryItem",
+															"childTemplate":{
+																"fillRatioX":1,
+																"template":"radio",
+																"label":"",
+																"floatingChildren":[
+																	{
+																		"template":"tooltip",
+																		"children":[
+																			{
+																				"template":"cont",
+																				"label":"",
+																				"ss":"tooltipSS"
+																			}
+																		]
+																	}
+																]
+																
+															},
+															"children": []
+														},
+														{
+															"template":"menuBar",
+															"label":"Inventory",
+															"alignX":1,
+															"fillRatioX":1
+															
+														},
+														{
+															"template":"cont",
+															"fillDir":1,
+															"dataFile":"",
+															"dataSource":"inventoryData.items",
+															"fillRatioX":1,
+															"maxDimY":384,
+															"whereAllEqual":[
+																["eq",0]
+															],
+															"whereAnyEqual":[
+															
+															],
+															"childType":"inventoryItem",
+															"childTemplate":{
+																"fillRatioX":1,
+																"template":"radio",
+																"label":"",
+																"floatingChildren":[
+																	{
+																		"template":"tooltip",
+																		"children":[
+																			{
+																				"template":"cont",
+																				"label":"",
+																				"ss":"tooltipSS"
+																			}
+																		]
+																	}
+																]
+																							
+															},
+															"children": []
+														}
+													
+													]
+												}
+											]
+										}]
+									},
+									{
+										"template":"radioFillCenter",
+										"label":"Character Stats",
+										"floatingChildren": [{
+											"template":"popout",
+											"fillRatioX":1,
+											"children": [
+												
+												{
+													"template":"cont",
+													"fillDir":1,
+													"children": [
+													
+														{
+															"template":"menuBar",
+															"label":"Stats",
+															"alignX":1,
+															"fillRatioX":1
+															
+														},
+														{
+															"template":"cont",
+															"fillDir":1,
+															"fillRatioX":1,
+															"children":[
+																{
+																	"template":"statSlider",
+																	"label":"Strength",
+																	"uid":"$stats.strength"
+																},
+																{
+																	"template":"statSlider",
+																	"label":"Dexterity",
+																	"uid":"$stats.dexterity"
+																},
+																{
+																	"template":"statSlider",
+																	"label":"Celerity",
+																	"uid":"$stats.celerity"
+																},
+																{
+																	"template":"statSlider",
+																	"label":"Vitality",
+																	"uid":"$stats.vitality"
+																},
+																{
+																	"template":"statSlider",
+																	"label":"Intelligence",
+																	"uid":"$stats.intelligence"
+																},
+																{
+																	"template":"statSlider",
+																	"label":"Charisma",
+																	"uid":"$stats.charisma"
+																},
+																{
+																	"template":"statSlider",
+																	"label":"Perception",
+																	"uid":"$stats.perception"
+																},
+																{
+																	"template":"statSlider",
+																	"label":"Discipline",
+																	"uid":"$stats.discipline"
+																}
+															]
+														}
+													]
+												}
+												
+											]
+										}]
+										
+									},
+									{
+										"template":"radioFillCenter",
+										"label":"Options",
+										"floatingChildren": [{
+											"template":"popout",
+											"fillRatioX":1,
+											"children": [
+												
+												
+												{
+													"template":"cont",
+													"fillDir":1,
+													"children": [
+														{
+															"template":"menuBar",
+															"label":"Options",
+															"alignX":1,
+															"fillRatioX":1
+															
+														},
+														{
+															"template":"cont",
+															"fillDir":1,
+															"children":[
+																{
+																	"template":"radioFillCenter",
+																	"label":"Graphics Options",
+																	"floatingChildren": [{
+																		"template":"popout",
+																		"fillRatioX":1,
+																		"children": [
+																		
+																		]
+																	}]
+																},
+																{
+																	"template":"radioFillCenter",
+																	"label":"Sound Options",
+																	"floatingChildren": [{
+																		"template":"popout",
+																		"fillRatioX":1,
+																		"children": [
+																			{
+																				"template":"cont",
+																				"fillDir":1,
+																				"children": [
+																				
+																					{
+																						"template":"menuBar",
+																						"label":"Sound Options",
+																						"alignX":1,
+																						"fillRatioX":1
+																						
+																					},
+																					{
+																						"template":"cont",
+																						"fillDir":1,
+																						"children":[
+																							{
+																								"template":"fillSlider",
+																								"label":"Master Volume",
+																								"uid":"$options.sound.masterVolume"
+																							},
+																							{
+																								"template":"fillSlider",
+																								"label":"Ambient Volume",
+																								"uid":"$options.sound.ambientVolume"
+																							},
+																							{
+																								"template":"fillSlider",
+																								"label":"GUI Volume",
+																								"uid":"$options.sound.guiVolume"
+																							},
+																							{
+																								"template":"fillSlider",
+																								"label":"Music Volume",
+																								"uid":"$options.sound.musicVolume"
+																							},
+																							{
+																								"template":"fillSlider",
+																								"label":"Sound FX Volume",
+																								"uid":"$options.sound.fxVolume"
+																							}
+																						]
+																					}
+																				]
+																			}
+																		]
+																	}]
+																},
+																{
+																	"template":"radioFillCenter",
+																	"label":"Input Options",
+																	"floatingChildren": [{
+																		"template":"popout",
+																		"fillRatioX":1,
+																		"children": [
+																		
+																		]
+																	}]
+																}
+																
+															]
+														}
+													]
+												}
+												
+												
+												
+												
+												
+												
+												
+												
+												
+												
+												
+											]
+										}]
+									},
+									{
+										"template":"radioFillCenter",
+										"label":"Debug Info",
+										"floatingChildren": [{
+											"template":"popout",
+											"fillRatioX":1,
+											"children": [
+											
+												{
+													"template":"cont",
+													"fillDir":1,
+													
+													"children": [
+													
+														{
+															"template":"menuBar",
+															"label":"Debug Info",
+															"alignX":1,
+															"fillRatioX":1
+															
+														},
+														{
+															"template":"cont",
+															"fillDir":1,
+															"fillRatioX":1,
+															"children":[
+																{
+																	"template":"fillLabel",
+																	"uid":"debug.fbMem"
+																},
+																{
+																	"template":"fillLabel",
+																	"uid":"debug.chunkMem"
+																},
+																{
+																	"template":"fillLabel",
+																	"uid":"debug.totMem"
+																},
+																{
+																	"template":"fillLabel",
+																	"uid":"debug.chunksGen"
+																}
+															]
+														}
+													]
+												}								
+												
+											]
+										}]
+									},
+									{
+										"template":"radioFillCenter",
+										"label":"Character Editor",
+										"floatingChildren": [{
+											"template":"popout",
+											"fillRatioX":1,
+											"children": [
+											
+												{
+													"template":"cont",
+													"fillDir":1,
+													
+													"children": [
+													
+														{
+															"template":"menuBar",
+															"label":"Character Editor",
+															"alignX":1,
+															"fillRatioX":1
+															
+														},
+														{
+															"template":"cont",
+															"fillDir":1,
+															"fillRatioX":1,
+															"children":[
+																{
+																	"template":"fillToggle",
+																	"label":"Test Pathfinding",
+																	"uid":"$charEdit.pathfindingOn"
+																},
+																{
+																	"template":"fillToggle",
+																	"label":"Lock Position",
+																	"uid":"$charEdit.lockPosition"
+																},
+																{
+																	"template":"fillToggle",
+																	"label":"Render Entities",
+																	"uid":"$charEdit.entOn"
+																},
+																{
+																	"template":"fillToggle",
+																	"label":"Mirror Changes",
+																	"uid":"$charEdit.mirrorOn"
+																},
+																{
+																	"template":"fillToggle",
+																	"label":"Apply to Children",
+																	"uid":"$charEdit.applyToChildren"
+																}
+															]
+														}
+													]
+												}								
+												
+											]
+										}]
+									},
+									{
+										"template":"radioFillCenter",
+										"label":"Shader Parameters",
+										"floatingChildren": [{
+											"template":"popout",
+											"fillRatioX":1,
+											"children": [
+											
+												{
+													"template":"cont",
+													"fillDir":1,
+													"children": [
+													
+														{
+															"template":"menuBar",
+															"label":"Shader Parameters",
+															"alignX":1,
+															"fillRatioX":1
+															
+														},
+														{
+															"template":"cont",
+															"maxDimY": 512,
+															"fillDir":1,
+															"isInternal":1,
+															"dataFile":"shaderParams",
+															"dataSource":"params",
+															"childType":"shaderParams",
+															"children": [],
+															"childTemplate":{
+																"fillRatioX":1,
+																"template":"slider",
+																"label":"",
+																"uid":"",
+																
+																"callback":"updateShaderParam",
+																"callbackData":{
+																	"shaderName":"",
+																	"paramName":""
+																},
+																
+																"floatingChildren":[
+																	{
+																		"template":"tooltipValue",
+																		"children":[
+																			{
+																				"template":"cont",
+																				"label":"",
+																				"ss":"tooltipSS"
+																			}
+																		]
+																	}
+																]
+															}
+														}
+													]
+												}
+											
+
+											]
+										}]
+										
+									},
+									{
+										"template":"radioFillCenter",
+										"label":"Map",
+										"value":1.0,
+										"floatingChildren": [{
+											"template":"popout",
+											"fillRatioX":1,
+											"children": [
+											
+												{
+													"template":"cont",
+													"fillDir":1,
+													"children": [
+													
+														{
+															"template":"menuBar",
+															"label":"Map",
+															"alignX":1,
+															"fillRatioX":1
+															
+														},
+														{
+															"template":"dragPad",
+															"hasBackground":1,
+															"uid":"map.mapHolder",
+															"minDimX": 512,
+															"minDimY": 512,
+															"fillDir":1,
+															"children": [
+																
+															]
+														}
+													]
+												}
+											
+											
+												
+												
+											]
+										}]
+										
+									}
+									
+									
+									
+								]
+							}
+						]
+					}
+				]
 			}
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
 			
 			
 			
 		]
 	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 }
 

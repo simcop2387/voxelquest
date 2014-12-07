@@ -87,10 +87,6 @@ public:
 		id = _id;
 	}
 
-	float getRand() {
-		return (fGenRand() + 1.0f) / 2.0f;
-	}
-
 
 	FIVector4 tempVec1;
 	FIVector4 tempVec2;
@@ -117,10 +113,10 @@ public:
 		return &geomParams[E_GP_BOUNDSMAXINPIXELST];
 	}
 	FIVector4 *getVisMinInPixelsT() {
-		// TODO: make this more efficient and use pixelsPerMeter
+		// TODO: make this more efficient and use pixelsPerCell
 
 		// tempVec1.copyFrom(&geomParams[E_GP_VISMININPIXELST]);
-		// tempVec1.addXYZ(pixelsPerMeter);
+		// tempVec1.addXYZ(pixelsPerCell);
 		// return &tempVec1;
 
 		return &geomParams[E_GP_VISMININPIXELST];
@@ -329,17 +325,18 @@ public:
 
 		boundsMinInPixels.setFXYZRef(&tempVec1);
 		boundsMaxInPixels.setFXYZRef(&tempVec1);
+		
+		boundsMinInPixels.addXYZRef(_tanVec,-1.0);
+		boundsMaxInPixels.addXYZRef(_tanVec);
+		
+		FIVector4::normalizeBounds(&boundsMinInPixels, &boundsMaxInPixels);
 
 		radMax = max(
 			max(
 				max(tempVec2[0], tempVec2[1]),
 				max(tempVec3[0], tempVec3[1])
 			),
-			max(
-				max(tempVec2[2], tempVec3[2]),
-				_tanVec->length()
-			)
-			
+			max(tempVec2[2], tempVec3[2])
 		);
 		
 		boundsMinInPixels.addXYZ(-radMax);

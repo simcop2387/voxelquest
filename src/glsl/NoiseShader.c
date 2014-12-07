@@ -3,11 +3,6 @@
 
 varying vec2 TexCoord0;
 
-uniform float curTime;
-uniform float cameraZoom;
-uniform vec3 cameraPos;
-uniform vec2 bufferDim;
-
 
 $
 
@@ -32,7 +27,6 @@ float rand(vec2 co){
 }
 
 void main() {
-    float newZoom = min(cameraZoom,1.0);
     gl_FragData[0] = vec4(randv(TexCoord0.xy),1.0);
 
 

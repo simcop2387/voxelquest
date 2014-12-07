@@ -40,7 +40,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		opDir[4] = 5;
 		opDir[5] = 4;
 
-
+		forceUpdate = false;
 
 		singleton = _singleton;
 		blockId = _blockId;
@@ -154,11 +154,11 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		blockSizeInPixels = singleton->blockSizeInPixels;
 		fBlockSizeInPixels = (float)blockSizeInPixels;
 
-		pixelsPerMeter = singleton->pixelsPerMeter;
+		pixelsPerCell = singleton->pixelsPerCell;
 
 
-		float uvSizeInMeters = 1.0;
-		float uvSizeInPixels = uvSizeInMeters * pixelsPerMeter; // 64
+		float uvSizeInCells = 1.0;
+		float uvSizeInPixels = uvSizeInCells * pixelsPerCell; // 64
 
 		float offsetPerFloor = 0.25;
 		float floorOffset;
@@ -248,9 +248,10 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 		int wingDir;
 
-		floorHeightInMeters = singleton->floorHeightInMeters;
-		float roofHeightInMeters;// = singleton->roofHeightInMeters;
-		float wallRadInMeters;
+		floorHeightInCells = singleton->floorHeightInCells;
+		float roofHeightInCells;// = singleton->roofHeightInCells;
+		float wallRadInCells;
+		float flushRadInCells;
 		float fi;
 		float fj;
 		float fk;
@@ -354,7 +355,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 				curCon->nodeFlags = 0;
 				curCon->heightDelta = 0;
 				curCon->wingMult = 1.0f;
-				curCon->wallRadInMeters = singleton->wallRadInMeters;
+				curCon->wallRadInCells = singleton->wallRadInCells;
 			}
 
 
@@ -420,8 +421,8 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 					tempf = singleton->getHeightAtPixelPos(tempVec.getFX(), tempVec.getFY());
 
-					if ( tempVec.getFZ() < tempf) {//tempVec.getFZ() < singleton->getSLInPixels() + 4.0*pixelsPerMeter ) {//
-						uiSimp = 255;//fGenRand()*32.0f+223.0f;
+					if ( tempVec.getFZ() < tempf) {//tempVec.getFZ() < singleton->getSLInPixels() + 4.0*pixelsPerCell ) {//
+						uiSimp = 255;
 					} else {
 						uiSimp = 0;
 					}
@@ -472,6 +473,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 					}
 				}
 
+				
 
 				mapData[getMapNodeIndex(i, j, 0)].terHeight = testInd2;
 				mapData[getMapNodeIndex(i, j, 0)].adjustedHeight = testInd2;
@@ -517,13 +519,13 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 
 					// if (
-					//  singleton->getHeightAtPixelPos(lotX*singleton->pixelsPerLot,lotY*singleton->pixelsPerLot) <=
-					//  singleton->getSLInPixels()  + 1.0f * pixelsPerMeter
+					// 	singleton->getHeightAtPixelPos(lotX*singleton->pixelsPerLot,lotY*singleton->pixelsPerLot) <=
+					// 	singleton->getSLInPixels()  + 1.0f * pixelsPerCell
 					// ) {
-					//  curType = E_CT_DOCK;
+					// 	curType = E_CT_DOCK;
 					// }
 					// else {
-					curType = E_CT_ROAD;
+						curType = E_CT_ROAD;
 					//}
 
 
@@ -590,7 +592,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 							for (m = 0; m < iNodeDivsPerLot / 2; m++) {
 
-								//if ( fGenRand() > 0.25f ) {
+								
 								switch (k) {
 								case 0: // x+
 									connectMapNodes(baseI + m, baseJ, baseI + m + 1, baseJ, E_CT_MAINHALL, res % 6, terDataBufAmount+1);
@@ -607,8 +609,6 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 								}
 
-
-								//}
 
 							}
 
@@ -640,7 +640,6 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 							if (
 								(touches2Map(i, j, E_CT_WING, 0) == 0)
-								// || (fGenRand() > 0.5f)
 								
 								// TODO: must ensure any random number
 								// is persistent across the world with iSeedRand2
@@ -665,20 +664,10 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 									if (touchesMap(testX, testY, E_CT_ROAD, 0) >= 1) {
 										connectMapNodes(i, j, testX, testY, E_CT_ROAD, -1, 0);
 
-										//getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_SHORTPROP)->typeVal = E_CT_DOORWAY;
-										//getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_DYNPROP)->typeVal = E_CT_DOOR;
+										
 
 									}
-									// else {
-									//  if (touches(testX,testY,E_CT_DOCK) >= 1) {
-									//    connectMapNodes(i, j, testX, testY, E_CT_DOCK, -1);
-
-									//    //getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_SHORTPROP)->typeVal = E_CT_DOORWAY;
-									//    //getPropAtLevel(i,j, gw->opDir[k], 1, E_NT_DYNPROP)->typeVal = E_CT_DOOR;
-
-									//  }
-									// }
-
+									
 									notFound = false;
 								}
 
@@ -690,12 +679,28 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		}
 		
 		
-		
 		tempVec2.setFXYZ(93.989f, 67.345f, 54.256f);
 		
+		
+		for (i = 0; i < terDataBufPitchXY; i++) {
+			for (j = 0; j < terDataBufPitchXY; j++) {
+				testInd = getMapNodeIndex(i, j, 0);
+				tempVec.setFXYZ(i*2.132f,j*4.10523f,15.23523f);
+
+				mapData[testInd].houseHeight = iGetRandSeeded(&tempVec,&tempVec2, 0, 1);
+			}
+		}
+		
+		
+		
+		
+		
+		
+		
+		
 		if (singleton->treesOn) {
-			for (i = terDataBufAmount; i < terDataBufPitchXY-terDataBufAmount; i++) {
-				for (j = terDataBufAmount; j < terDataBufPitchXY-terDataBufAmount; j++) {
+			for (i = terDataBufAmount*2; i < terDataBufPitchXY-terDataBufAmount*2; i++) {
+				for (j = terDataBufAmount*2; j < terDataBufPitchXY-terDataBufAmount*2; j++) {
 					if ( (touchesWithinRadMap(i,j,E_CT_TREE, 3, 0) == 0) && (touches2Map(i,j,E_CT_NULL,0) == 16) ) {
 
 						lotX = blockSizeInLots * (offsetInBlocks.getIX()) + i;
@@ -709,11 +714,18 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 						tempVec.setFXYZ(i,j,15.0);
 
 						if (
-							true
+							
 							//singleton->getHeightAtPixelPos(x1,y1) >
-							//singleton->getSLInPixels() + 2.0f * pixelsPerMeter
+							//singleton->getSLInPixels() + 2.0f * pixelsPerCell
+							
+							( ((float)(mapData[testInd].terHeight))/fTerDataVisPitchZ ) >
+							(singleton->getSLNormalized() + 1.0f/255.0f)
+							
 						) {
-							if ( getRandSeeded(&tempVec,&tempVec2) > 0.2f ) {
+							
+							
+							
+							if ( iGetRandSeeded(&tempVec,&tempVec2, 0, 100) > 20 ) {
 								mapData[testInd].connectionProps[0] = E_CT_TREE;
 							}
 						}
@@ -758,7 +770,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 						}
 
 						if (p - m > 1) {
-							mapData[curInd].adjustedHeight = p - 1;//max(p - 1,seaLev+8); //p - 1;//
+							mapData[curInd].adjustedHeight = p - 1;
 							notFound = true;
 						}
 						
@@ -874,7 +886,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											int id = -1,
 											int _heightDelta = 0,
 											int _direction = 0,
-											float _wallRadInMeters = -1.0f
+											float _wallRadInCells = -1.0f
 											*/
 
 
@@ -899,7 +911,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 															-1,
 															testVal2 - testVal, // heightDelta,
 															0,
-															singleton->wallRadInMeters + 1.0f
+															singleton->wallRadInCells + 1.0f
 														);
 													}												
 												break;
@@ -953,7 +965,21 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											
 
 
-
+											/*
+											int _x1,
+											int _y1,
+											int _z1,
+											int _x2,
+											int _y2,
+											int _z2,
+											
+											int ct,
+											int id = -1,
+											int _heightDelta = 0,
+											int _direction = 0,
+											float _wallRadInCells = -1.0f,
+											unsigned int _nodeFlags = 0
+											*/
 
 
 												
@@ -966,9 +992,25 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 													// )
 													// == k
 													
-													(mapData[testInd].adjustedHeight == k) ||
-													(mapData[testInd2].adjustedHeight == k)
+													(
+														(k >= mapData[testInd].adjustedHeight) &&
+														(k <= mapData[testInd].adjustedHeight + mapData[testInd].houseHeight)
+													)
+													||
+													(
+														(k >= mapData[testInd2].adjustedHeight) &&
+														(k <= mapData[testInd2].adjustedHeight)
+													)
 												) {
+
+													tempf = -1.0f;
+												
+													// if (
+													// 	((mapData[testInd].adjustedHeight + mapData[testInd].houseHeight - k) == 0) &&
+													// 	(mapData[testInd].houseHeight == 1)
+													// ) {
+													// 	tempf = singleton->wallRadInCells + 1.0;
+													// }
 
 													connectNodes(
 														i,
@@ -979,7 +1021,10 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 														k + dirModZ[m],
 
 														E_CT_ROOM_TUDOR,
-														mapData[testInd].id
+														mapData[testInd].id,
+														0,
+														0,
+														tempf
 													);
 
 
@@ -1145,7 +1190,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 														
 														0,
 														0,
-														singleton->wallRadInMeters + 0.5f
+														singleton->wallRadInCells + 0.5f
 
 													);
 												}
@@ -1203,7 +1248,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 								// 				-1,
 								// 				buildingData[curInd].con[m].heightDelta,
 								// 				0,
-								// 				singleton->wallRadInMeters - 1.0f
+								// 				singleton->wallRadInCells - 1.0f
 								// 			);
 								// 		}
 
@@ -1336,7 +1381,6 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 												}
 											}
 											
-										
 											
 											if ( (m%2) == 0 ) {
 												curDir = 1;
@@ -1385,7 +1429,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 													int _heightDelta = 0,
 													int _direction = 0,
 													
-													float _wallRadInMeters = -1.0f,
+													float _wallRadInCells = -1.0f,
 													unsigned int _nodeFlags = 0
 												)
 												*/
@@ -1463,7 +1507,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 													);
 													
-													if (curDir == 1) {
+													//if (curDir == 1) {
 														nodeFlags |= BC_FLAG_INSIDE;
 														connectNodes(
 															i,
@@ -1483,7 +1527,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 															nodeFlags
 
 														);
-													}
+													//}
 													
 													
 												}
@@ -1510,7 +1554,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 										if (testInd > -1) {
 											testVal = terData[testInd];
 											if (touchesBaseOnLevel(i, j, k+1, 2) || (testVal != 0)) {
-												uiSimp = 255;//fGenRand()*32.0f+223.0f;
+												uiSimp = 255;
 												terData[curInd] = (uiSimp << 24) | (uiSimp << 16) | (uiSimp << 8) | uiSimp;
 											}
 										}
@@ -1527,12 +1571,34 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 			}
 		}
 		
+		
+		
+		
+		if (singleton->cavesOn) {
+			makeMazeUG();
+		}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		int minRad = -1;
 		int minRadZ = -1;
-		// if (pixelsPerMeter <= 32) {
+		// if (pixelsPerCell <= 32) {
 		// 	minRad = -2;
 		// }
-		// if (pixelsPerMeter <= 64) {
+		// if (pixelsPerCell <= 64) {
 		// 	minRadZ = -2;
 		// }
 		
@@ -1569,10 +1635,6 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 								}
 							}
 						}
-						
-						
-						
-						
 					}
 				}
 			}
@@ -1645,8 +1707,27 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 								wingMult = buildingData[curInd].con[q].wingMult;
 								newWingMult = (wingMult - 1.0f);
 								nDir = buildingData[curInd].con[q].direction;
-								wallRadInMeters = buildingData[curInd].con[q].wallRadInMeters;
-								roofHeightInMeters = wallRadInMeters;
+								
+								
+								
+								// todo: fix this!
+								wallRadInCells = buildingData[curInd].con[q].wallRadInCells;
+								flushRadInCells = wallRadInCells;
+								for (n = 0; n < 4; n++) {
+									
+									if (
+										ctClasses[buildingData[curInd].con[ n ].conType] == E_CTC_ROOM
+									) {
+										flushRadInCells = max(
+											flushRadInCells,
+											buildingData[curInd].con[ n ].wallRadInCells
+										);
+									}
+									
+									
+								}
+									
+								
 								
 								
 								for (n = 0; n < 2; n++) {
@@ -1713,7 +1794,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 													if (conType == E_CT_LANTERN) {
 														
 														if (isInside) {
-															tempf *= 2.0f;	
+															tempf *= 7.0f;	
 														}
 														else {
 															tempf *= -2.0f;	
@@ -1736,6 +1817,8 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 															if (isInside) {
 																zmod1 += 0.125f;
 																zmod2 += 0.125f;
+																
+																
 															}
 															else {
 																xmod1 += lanternOffset*dirModY[m];
@@ -1757,10 +1840,10 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 												}
 												else {
 													if (nDir == 1.0f) {
-														tempf = (wallRadInMeters*pixelsPerMeter)/(fBlockSizeInPixels / fTerDataVisPitchXY);
+														tempf = (flushRadInCells*pixelsPerCell)/(fBlockSizeInPixels / fTerDataVisPitchXY);
 													}
 													else {
-														tempf = 1.0f-(wallRadInMeters*pixelsPerMeter)/(fBlockSizeInPixels / fTerDataVisPitchXY);
+														tempf = 1.0f-(flushRadInCells*pixelsPerCell)/(fBlockSizeInPixels / fTerDataVisPitchXY);
 													}
 													
 													xmod1 = tempf*dirModX[m];
@@ -1777,7 +1860,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 														}
 														
 														if (isInside) {
-															tempf *= 2.0f;	
+															tempf *= 7.0f;	
 														}
 														else {
 															tempf *= -2.0f;	
@@ -1856,7 +1939,14 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 								}
 
 
-
+								// todo: fix this
+								if (ctClasses[conType] == E_CTC_ROOM) {
+									roofHeightInCells = singleton->wallRadInCells;
+								}
+								else {
+									roofHeightInCells = wallRadInCells;
+									
+								}
 
 
 
@@ -1866,14 +1956,14 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 									
 									curBT = conType;
 									rad.setFXYZ(
-										wallRadInMeters * pixelsPerMeter,
-										wallRadInMeters * pixelsPerMeter,
-										(floorHeightInMeters * 0.5f + roofHeightInMeters)*pixelsPerMeter
+										wallRadInCells * pixelsPerCell,
+										wallRadInCells * pixelsPerCell,
+										(floorHeightInCells * 0.5f + roofHeightInCells)*pixelsPerCell
 									);
 									cornerRad.setFXYZ(
-										wallRadInMeters * pixelsPerMeter,
-										wallRadInMeters * pixelsPerMeter,
-										roofHeightInMeters * pixelsPerMeter
+										wallRadInCells * pixelsPerCell,
+										wallRadInCells * pixelsPerCell,
+										roofHeightInCells * pixelsPerCell
 									);
 									powerVals.setFXYZ(2.0f, 1.0f, 0.0f);
 									powerVals2.setFXYZ(2.0f, 1.0f, 0.0f);
@@ -1904,7 +1994,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 									
 									
 									
-									thickVals.setFXYZ(0.0f, floorHeightInMeters, 0.0f);
+									thickVals.setFXYZ(0.0f, floorHeightInCells, 0.0f);
 									baseOffset = 0.0f;
 									curAlign = E_ALIGN_MIDDLE;
 									minRot = 0;
@@ -1926,11 +2016,13 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
 											
 											tempVec4.setFXYZRef(&p1);
-											tempVec4.addXYZ(0.0f,0.0f,2.0f*pixelsPerMeter);
+											tempVec4.addXYZ(0.0f,0.0f,2.0f*pixelsPerCell);
 
 											tempVec.setIXYZ(i,j,k);
+											tempVec.multXYZ(102.33,305.44,609.121);
 											tempVec2.setFXYZ(93.989f, 67.345f, 54.256f);
-											tempInt = clampf(getRandSeeded(&tempVec,&tempVec2)*3.0f,0.0,2.0f);
+											tempInt = iGetRandSeeded(&tempVec,&tempVec2,0,E_PT_LENGTH/2 - 1);
+											
 											
 											
 											singleton->gamePlants[tempInt]->init(
@@ -1944,42 +2036,6 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											matParams.setFY(tempInt*2);
 											addPlantNodes(singleton->gamePlants[tempInt]->trunkNode, &tempVec4, 1.0f);
 											
-											
-											
-											// if (tempf > 0.66) {
-											// 	bareTree.init(
-											// 		singleton,
-											// 		&(GamePlant::allPlantRules[E_PT_BARE_OAK_ROOTS]),
-											// 		&(GamePlant::allPlantRules[E_PT_BARE_OAK_TRUNK]),
-											// 		&origin
-											// 	);
-											// 	matParams.setFY()
-											// 	addPlantNodes(bareTree.rootsNode, &tempVec4, 1.0f);
-											// 	addPlantNodes(bareTree.trunkNode, &tempVec4, 1.0f);
-											// }
-											// else if (tempf > 0.33) {
-											// 	oakTree2.init(
-											// 		singleton,
-											// 		&(GamePlant::allPlantRules[E_PT_OAK2_ROOTS]),
-											// 		&(GamePlant::allPlantRules[E_PT_OAK2_TRUNK]),
-											// 		&origin
-											// 	);
-
-											// 	addPlantNodes(oakTree2.rootsNode, &tempVec4, 1.0f);
-											// 	addPlantNodes(oakTree2.trunkNode, &tempVec4, 1.0f);
-											// }
-											// else {
-											// 	oakTree.init(
-											// 		singleton,
-											// 		&(GamePlant::allPlantRules[E_PT_OAK_ROOTS]),
-											// 		&(GamePlant::allPlantRules[E_PT_OAK_TRUNK]),
-											// 		&origin
-											// 	);
-
-											// 	addPlantNodes(oakTree.rootsNode, &tempVec4, 1.0f);
-											// 	addPlantNodes(oakTree.trunkNode, &tempVec4, 1.0f);
-											// }
-
 											
 											
 											goto SKIP_ADD_GEOM;
@@ -1998,18 +2054,18 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											// roofHeight = 0.25f;
 											// baseOffset = 0.0f;
 											rad.setFXYZ(
-												(0.25f)*pixelsPerMeter,
-												(0.25f)*pixelsPerMeter,
-												(0.5f)*pixelsPerMeter
+												(0.25f)*pixelsPerCell,
+												(0.25f)*pixelsPerCell,
+												(0.5f)*pixelsPerCell
 											);
 											cornerRad.setFXYZ(
-												(0.0625f)*pixelsPerMeter,
-												(0.0625f)*pixelsPerMeter,
-												(0.25f)*pixelsPerMeter
+												(0.0625f)*pixelsPerCell,
+												(0.0625f)*pixelsPerCell,
+												(0.25f)*pixelsPerCell
 											);
-											thickVals.setFXYZ(0.25f*pixelsPerMeter, 0.0f, 0.0f);											
+											thickVals.setFX(0.25f*pixelsPerCell);											
 
-											visInsetFromMin.setFXYZ(0.0f,0.0f,cornerRad.getFZ() - 0.0625*pixelsPerMeter);
+											visInsetFromMin.setFXYZ(0.0f,0.0f,cornerRad.getFZ() - 0.0625*pixelsPerCell);
 											visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
 
 											powerVals.setFXYZ(2.0f, 1.0f, 0.0f);
@@ -2044,26 +2100,26 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											}
 											
 											curAlign = E_ALIGN_BOTTOM;
-											baseOffset = -(rad.getFZ() - (cornerRad.getFZ()+(0.25+doorMod)*pixelsPerMeter) ) + tempf*2.0f*pixelsPerMeter;
+											baseOffset = -(rad.getFZ() - (cornerRad.getFZ()+(0.25+doorMod)*pixelsPerCell) ) + tempf*2.0f*pixelsPerCell;
 											
 
 											
 											floorHeight = 2.0f-doorMod;
-											roofHeight = 1.5f-doorMod;
+											roofHeight = 2.25f-doorMod;
 											
 											rad.setFXYZ(
-												(1.5f - doorMod)*pixelsPerMeter,
-												(1.5f - doorMod)*pixelsPerMeter,
-												(floorHeight*0.5f + roofHeight + tempf*0.5f)*pixelsPerMeter
+												(roofHeight)*pixelsPerCell,
+												(roofHeight)*pixelsPerCell,
+												(floorHeight*0.5f + roofHeight + tempf*0.5f)*pixelsPerCell
 											);
 											cornerRad.setFXYZ(
-												(1.5f - doorMod)*pixelsPerMeter,
-												(1.5f - doorMod)*pixelsPerMeter,
-												roofHeight*pixelsPerMeter
+												(roofHeight)*pixelsPerCell,
+												(roofHeight)*pixelsPerCell,
+												roofHeight*pixelsPerCell
 											);
-											thickVals.setFXYZ(0.25f*pixelsPerMeter, floorHeightInMeters, 0.0f);	
+											thickVals.setFX(0.25f*pixelsPerCell);	
 										
-											doorInset = doorMod*pixelsPerMeter*1.25f;
+											doorInset = doorMod*pixelsPerCell*1.25f;
 											
 											
 											anchorPoint.copyFrom(&p1);
@@ -2189,58 +2245,76 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											//testInd = getMapNodeIndex(i, j, 0);
 											//testInd2 = getMapNodeIndex(i + dirModX[m], j + dirModY[m], 0);
 
-											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
-											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
+											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
+											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
 											
 											
-											baseOffset = 0.0f;// -(floorHeightInMeters)*pixelsPerMeter;
+											baseOffset = 0.0f;// -(floorHeightInCells)*pixelsPerCell;
 											rad.addXYZ(
 												0.0f,
 												0.0f,
-												(floorHeightInMeters+1.0f)*pixelsPerMeter
+												(floorHeightInCells+1.0f)*pixelsPerCell
 											);
 
-											matParams.setFXYZ(E_MAT_PARAM_FOUNDATION, 0.0f, 0.0f);
+											
+											if (
+												singleton->getHeightAtPixelPos(p1.getFX(), p1.getFY()) <=
+												singleton->getSLInPixels()  + 2.0f * pixelsPerCell
+											) {
+												rad.addXYZ(
+													0.0f,
+													0.0f,
+													(2.0f)*pixelsPerCell
+												);
+												matParams.setFXYZ(E_MAT_PARAM_FOUNDATION, E_MAT_SUBPARAM_DOCK, 0.0f);
+											}
+											else {
+												matParams.setFXYZ(E_MAT_PARAM_FOUNDATION, E_MAT_SUBPARAM_BRICK, 0.0f);
+											}
+
+											
+
+											
 
 											break;
 										case E_CT_ROOM_BRICK:
 											matParams.setFXYZ(E_MAT_PARAM_BUILDING, E_MAT_SUBPARAM_BRICK, 0.0f);
-											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
-											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
+											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
+											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
 											break;
 										case E_CT_ROOM_TUDOR:
 
-											//rad.addXYZ(-0.5f*pixelsPerMeter,-0.5f*pixelsPerMeter,0.0f);
-											//cornerRad.addXYZ(-0.5f*pixelsPerMeter);
+											//rad.addXYZ(-0.5f*pixelsPerCell,-0.5f*pixelsPerCell,0.0f);
+											//cornerRad.addXYZ(-0.5f*pixelsPerCell);
 
 											matParams.setFXYZ(E_MAT_PARAM_BUILDING, E_MAT_SUBPARAM_TUDOR, 0.0f);
-											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
-											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
+											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
+											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
 											break;
 
 										// case E_CT_WALKWAY:
 
 										// 	matParams.setFXYZ(E_MAT_PARAM_WALKWAY, E_MAT_SUBPARAM_BRICK_ARCH, 0.0f);
-										// 	visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
-										// 	visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
+										// 	visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
+										// 	visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
 
 										// 	break;
 
 										// case E_CT_WALKWAY_TOP:
 										// 	matParams.setFXYZ(E_MAT_PARAM_WALKWAY_TOP, E_MAT_SUBPARAM_BRICK_ARCH, 0.0f);
-										// 	visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
-										// 	visInsetFromMax.setFXYZ(0.0f, 0.0f, (roofHeightInMeters + (floorHeightInMeters * 0.75))*pixelsPerMeter);
+										// 	visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
+										// 	visInsetFromMax.setFXYZ(0.0f, 0.0f, (roofHeightInCells + (floorHeightInCells * 0.75))*pixelsPerCell);
 
 										// 	break;
 
 										case E_CT_ROOF:
-											baseOffset = -floorHeightInMeters * pixelsPerMeter;
+											baseOffset = -floorHeightInCells * pixelsPerCell;
 											matParams.setFXYZ(E_MAT_PARAM_ROOF, E_MAT_SUBPARAM_TUDOR, buildingData[curInd].id);
 
 											if (curDir == E_DIR_Z) {
-												visInsetFromMin.setFXYZ(0.0f, 0.0f, (roofHeightInMeters + floorHeightInMeters * 2.0f)*pixelsPerMeter);
+												visInsetFromMin.setFXYZ(0.0f, 0.0f, (roofHeightInCells + floorHeightInCells * 2.0f)*pixelsPerCell);
 											} else {
-												visInsetFromMin.setFXYZ(0.0f, 0.0f, (roofHeightInMeters + floorHeightInMeters)*pixelsPerMeter);
+												visInsetFromMin.setFXYZ(0.0f, 0.0f, (roofHeightInCells + floorHeightInCells)*pixelsPerCell);
 											}
 											visInsetFromMax.setFXYZ(0.0f, 0.0f, 0.0f);
 											break;
@@ -2253,11 +2327,11 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 										// 		cornerRad.multXYZ(0.5f, 0.5f, 1.0f);
 
 										// 		if ((k % 2) == 0) {
-										// 			visInsetFromMin.setFXYZ(cornerRad.getFX(), rad.getFY(), roofHeightInMeters * pixelsPerMeter);
-										// 			visInsetFromMax.setFXYZ(cornerRad.getFX(), 0.0f, roofHeightInMeters * pixelsPerMeter);
+										// 			visInsetFromMin.setFXYZ(cornerRad.getFX(), rad.getFY(), roofHeightInCells * pixelsPerCell);
+										// 			visInsetFromMax.setFXYZ(cornerRad.getFX(), 0.0f, roofHeightInCells * pixelsPerCell);
 										// 		} else {
-										// 			visInsetFromMin.setFXYZ(cornerRad.getFX(), 0.0f, roofHeightInMeters * pixelsPerMeter);
-										// 			visInsetFromMax.setFXYZ(cornerRad.getFX(), rad.getFY(), roofHeightInMeters * pixelsPerMeter);
+										// 			visInsetFromMin.setFXYZ(cornerRad.getFX(), 0.0f, roofHeightInCells * pixelsPerCell);
+										// 			visInsetFromMax.setFXYZ(cornerRad.getFX(), rad.getFY(), roofHeightInCells * pixelsPerCell);
 										// 		}
 										// 		break;
 
@@ -2266,11 +2340,11 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 										// 		cornerRad.multXYZ(0.5f, 0.5f, 1.0f);
 
 										// 		if ((k % 2) == 0) {
-										// 			visInsetFromMin.setFXYZ(rad.getFX(), cornerRad.getFY(), roofHeightInMeters * pixelsPerMeter);
-										// 			visInsetFromMax.setFXYZ(0.0f, cornerRad.getFY(), roofHeightInMeters * pixelsPerMeter);
+										// 			visInsetFromMin.setFXYZ(rad.getFX(), cornerRad.getFY(), roofHeightInCells * pixelsPerCell);
+										// 			visInsetFromMax.setFXYZ(0.0f, cornerRad.getFY(), roofHeightInCells * pixelsPerCell);
 										// 		} else {
-										// 			visInsetFromMin.setFXYZ(0.0f, cornerRad.getFY(), roofHeightInMeters * pixelsPerMeter);
-										// 			visInsetFromMax.setFXYZ(rad.getFX(), cornerRad.getFY(), roofHeightInMeters * pixelsPerMeter);
+										// 			visInsetFromMin.setFXYZ(0.0f, cornerRad.getFY(), roofHeightInCells * pixelsPerCell);
+										// 			visInsetFromMax.setFXYZ(rad.getFX(), cornerRad.getFY(), roofHeightInCells * pixelsPerCell);
 										// 		}
 
 										// 		break;
@@ -2278,14 +2352,14 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 										// 	case E_DIR_Z:
 										// 		rad.multXYZ(0.75f, 0.75f, 1.0f);
 										// 		cornerRad.multXYZ(0.75f, 0.75f, 1.0f);
-										// 		visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
-										// 		visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInMeters * pixelsPerMeter);
+										// 		visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
+										// 		visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
 
 										// 		break;
 										// 	}
 
 										// 	matParams.setFXYZ(E_MAT_PARAM_STAIRS, E_MAT_SUBPARAM_NONE, (float)(k % 2));
-										// 	baseOffset = 1.0f * pixelsPerMeter;
+										// 	baseOffset = 1.0f * pixelsPerCell;
 
 										// 	break;
 
@@ -2592,7 +2666,7 @@ void GameBlock::addPlantNodes (GamePlantNode * curPlantNode, FIVector4 * orig, f
 
 
 			// if (curPlantNode->numChildren == 0) {
-			// 	endThickness = 0.5f*singleton->pixelsPerMeter;
+			// 	endThickness = 0.5f*singleton->pixelsPerCell;
 			// }
 
 			
@@ -2669,7 +2743,7 @@ void GameBlock::addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVect
 		);
 		
 		if (_curBT == E_CT_LANTERN) {
-			lightVec.setFXYZ(1.0f,0.5f,0.1f); //randomize();
+			lightVec.setFXYZ(1.0f,0.5f,0.1f);
 			gameLights.push_back(new GameLight());
 			gameLights.back()->init(
 				lightCounter,
@@ -2687,7 +2761,7 @@ void GameBlock::addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVect
 		singleton->geomCounter++;
 		localGeomCounter++;
 	}
-void GameBlock::connectNodes (int _x1, int _y1, int _z1, int _x2, int _y2, int _z2, int ct, int id, int _heightDelta, int _direction, float _wallRadInMeters, unsigned int _nodeFlags)
+void GameBlock::connectNodes (int _x1, int _y1, int _z1, int _x2, int _y2, int _z2, int ct, int id, int _heightDelta, int _direction, float _wallRadInCells, unsigned int _nodeFlags)
           {
 
 
@@ -2698,9 +2772,9 @@ void GameBlock::connectNodes (int _x1, int _y1, int _z1, int _x2, int _y2, int _
 		// 4: z+
 		// 5: z-
 
-		float wallRad = _wallRadInMeters;
+		float wallRad = _wallRadInCells;
 		if (wallRad == -1.0f) {
-			wallRad = singleton->wallRadInMeters;
+			wallRad = singleton->wallRadInCells;
 		}
 
 		int x1 = _x1;
@@ -2768,8 +2842,8 @@ void GameBlock::connectNodes (int _x1, int _y1, int _z1, int _x2, int _y2, int _
 			buildingData[ind1].con[resInd1].nodeFlags |= _nodeFlags;
 			buildingData[ind2].con[resInd2].nodeFlags |= _nodeFlags;
 			
-			buildingData[ind1].con[resInd1].wallRadInMeters = wallRad;
-			buildingData[ind2].con[resInd2].wallRadInMeters = wallRad;
+			buildingData[ind1].con[resInd1].wallRadInCells = wallRad;
+			buildingData[ind2].con[resInd2].wallRadInCells = wallRad;
 			
 			
 		}
@@ -2972,11 +3046,6 @@ float GameBlock::fIsNearTerrain (FIVector4 * worldMinVisInPixels)
 			fTerDataVisPitchZ / fBlockSizeInPixels
 		);
 		tempVec.addXYZ((float)terDataBufAmount);
-		// tempVec2.copyFrom(&tempVec);
-		// tempVec2.addXYZ(1.0f,1.0f,1.0f);
-
-		//tempVec.addXYZ(0.5f); // gets negated anyway
-
 
 		for (i = 0; i <= 1; i++) {
 			for (j = 0; j <= 1; j++) {
@@ -3023,8 +3092,231 @@ float GameBlock::fIsNearTerrain (FIVector4 * worldMinVisInPixels)
 
 		return trilin[0];
 	}
-void GameBlock::isNearTerrain (FIVector4 * worldMinVisInPixels, FIVector4 * worldMaxVisInPixels, bool & nearT, bool & nearA)
+void GameBlock::refreshHoldersInArea (FIVector4 * worldPos)
           {
+
+
+		int ind;
+		int curInd;
+		int testInd;
+		int i;
+		int j;
+		int k;
+		
+		int holderSizeInPixels = singleton->holderSizeInPixels;
+	
+		float bsih = blockSizeInHolders;
+	
+		tempVec.copyFrom(worldPos);
+		tempVec.intDivXYZ(holderSizeInPixels);
+		
+		
+		doTraceVecND("refreshHoldersInArea", &tempVec);
+		
+		
+		int rad = 2;
+		
+		for (i = -rad; i <= rad; i++) {
+			for (j = -rad; j <= rad; j++) {
+				for (k = -rad; k <= rad; k++) {
+					
+					
+					
+					gw->getHolderAtCoords(
+						tempVec.getIX()+i,
+						tempVec.getIY()+j,
+						tempVec.getIZ()+k,
+						true
+					)->refreshChildren(true,true,true);
+				}
+			}
+		}
+		
+
+
+	}
+void GameBlock::modifyTerrain (FIVector4 * worldPos, bool doSub)
+          {
+
+		int ind;
+		int curInd;
+		int testInd;
+		int i;
+		int j;
+		int k;
+		int n;
+		
+		int io;
+		int jo;
+		int ko;
+		
+		uint newValue = 255;
+		if (doSub) {
+			newValue = 0;
+		}
+		
+		
+		tempVec.copyFrom(worldPos);
+		
+
+		tempVec.addXYZ(
+			-fBlockSizeInPixels * offsetInBlocks.getFX(),
+			-fBlockSizeInPixels * offsetInBlocks.getFY(),
+			0.0f
+		);
+
+		tempVec.multXYZ(
+			fTerDataVisPitchXY / fBlockSizeInPixels,
+			fTerDataVisPitchXY / fBlockSizeInPixels,
+			fTerDataVisPitchZ / fBlockSizeInPixels
+		);
+		tempVec.addXYZ((float)terDataBufAmount);
+
+		//tempVec.addXYZ(0.5f);
+		
+		
+		
+		i = tempVec.getIX();
+		j = tempVec.getIY();
+		k = tempVec.getIZ();
+		
+		float xm = tempVec.getFX() - tempVec.getIX();
+		float ym = tempVec.getFY() - tempVec.getIY();
+		float zm = tempVec.getFZ() - tempVec.getIZ();
+		
+		
+		if ((xm >= ym) && (xm >= zm)) {
+			n = 0;
+		}
+		if ((ym >= xm) && (ym >= zm)) {
+			n = 1;
+		}
+		if ((zm >= xm) && (zm >= ym)) {
+			n = 2;
+		}
+		
+		
+		int counterMod = 1;
+		
+		if (doSub) {
+			counterMod = -1;
+		}
+		
+		int counterK = 0;
+		while (true) {
+			
+			
+			
+			switch(n) {
+				case 0:
+					i = tempVec.getIX()+counterK*counterMod;
+					j = tempVec.getIY();
+					k = tempVec.getIZ();
+				break;
+				case 1:
+					i = tempVec.getIX();
+					j = tempVec.getIY()+counterK*counterMod;
+					k = tempVec.getIZ();
+				break;
+				case 2:
+					i = tempVec.getIX();
+					j = tempVec.getIY();
+					k = tempVec.getIZ()+counterK*counterMod;
+				break;
+			}
+			
+			
+			ind = getNodeIndex(i, j, k, 0);
+			if (ind > -1) {
+				if ( (!doSub) && (terData[ind] == 0) ) {
+					// found a place to add
+					goto FOUND_ADD_SUB;
+				}
+				
+				if ( (doSub) && (terData[ind] != 0) ) {
+					// found a place to sub
+					goto FOUND_ADD_SUB;
+				}
+			}
+			else {				
+				return;
+			}
+			
+			
+			
+			counterK++;
+		}
+		
+		
+		FOUND_ADD_SUB:
+		
+		
+		
+		
+		terData[ind] = (newValue << 24) | (newValue << 16) | (newValue << 8) | newValue;
+
+		
+		
+		
+		int rad2 = 3;
+		int rad = 2;
+		
+		
+		
+		for (i = -rad2; i <= rad2; i++) {
+			for (j = -rad2; j <= rad2; j++) {
+				for (k = -rad2; k <= rad2; k++) {
+					curInd = getNodeIndex(i, j, k, 0);
+
+					if (curInd > -1) {
+						buildingData[curInd].nearAir = false;
+						buildingData[curInd].nearTerrain = false;
+					}
+					
+				}
+			}
+		}
+		
+		for (i = -rad2; i <= rad2; i++) {
+			for (j = -rad2; j <= rad2; j++) {
+				for (k = -rad2; k <= rad2; k++) {
+					curInd = getNodeIndex(i, j, k, 0);
+
+					
+
+					if (curInd > -1) {
+						
+						for (ko = -rad; ko <= rad; ko++) {
+							for (jo = -rad; jo <= rad; jo++) {
+								for (io = -rad; io <= rad; io++) {
+									testInd = getNodeIndex(i + io, j + jo, k + ko, 0);
+
+									if (testInd > -1) {
+										if (terData[testInd] == 0) {
+											buildingData[curInd].nearAir = true;
+										}
+										else {
+											buildingData[curInd].nearTerrain = true;
+										}
+									}
+								}
+							}
+						}
+					}
+					
+				}
+			}
+		}
+		
+		forceUpdate = true;
+
+		//copyTerToTexture(true);
+		
+		//refreshHoldersInArea(worldPos);
+
+	}
+int GameBlock::isNearTerrain (FIVector4 * worldPosInPix)
+                                                    {
 
 		int ind;
 		
@@ -3032,59 +3324,45 @@ void GameBlock::isNearTerrain (FIVector4 * worldMinVisInPixels, FIVector4 * worl
 		int j;
 		int k;
 		
-		for (i = 0; i < 2; i++) {
-			if (i == 0) {
-				tempVec.copyFrom(worldMinVisInPixels);
+		tempVec.copyFrom(worldPosInPix);
+		tempVec.addXYZ(
+			-fBlockSizeInPixels * offsetInBlocks.getFX(),
+			-fBlockSizeInPixels * offsetInBlocks.getFY(),
+			0.0f
+		);
+
+		tempVec.multXYZ(
+			fTerDataVisPitchXY / fBlockSizeInPixels,
+			fTerDataVisPitchXY / fBlockSizeInPixels,
+			fTerDataVisPitchZ / fBlockSizeInPixels
+		);
+		tempVec.addXYZ((float)terDataBufAmount);
+
+		tempVec.addXYZ(0.5f);
+
+		bool nearT = false;
+		bool nearA = false;
+
+		
+		i = tempVec.getIX();
+		j = tempVec.getIY();
+		k = tempVec.getIZ();
+		ind = getNodeIndex(i, j, k, 0);
+		if (ind > -1) {
+			nearT = buildingData[ind].nearTerrain;
+			nearA = buildingData[ind].nearAir;
+		}
+
+		if (nearT) {
+			if (nearA) {
+				return E_TER_GROUNDLEVEL;
 			}
 			else {
-				tempVec.copyFrom(worldMaxVisInPixels);
-			}
-			
-
-			tempVec.addXYZ(
-				-fBlockSizeInPixels * offsetInBlocks.getFX(),
-				-fBlockSizeInPixels * offsetInBlocks.getFY(),
-				0.0f
-			);
-
-			tempVec.multXYZ(
-				fTerDataVisPitchXY / fBlockSizeInPixels,
-				fTerDataVisPitchXY / fBlockSizeInPixels,
-				fTerDataVisPitchZ / fBlockSizeInPixels
-			);
-			tempVec.addXYZ((float)terDataBufAmount);
-
-			tempVec.addXYZ(0.5f);
-			
-			if (i == 0) {
-				tempVec2.copyFrom(&tempVec);
+				return E_TER_UNDERGROUND;
 			}
 		}
-
 		
-
-
-		
-		
-
-		nearT = false;
-		nearA = false;
-
-		
-		for (i = tempVec2.getIX(); i <= tempVec.getIX(); i++) {
-			for (j = tempVec2.getIY(); j <= tempVec.getIY(); j++) {
-				for (k = tempVec2.getIZ(); k <= tempVec.getIZ(); k++) {
-					ind = getNodeIndex(i, j, k-1, 0);
-					if (ind > -1) {
-						nearT = nearT||buildingData[ind].nearTerrain;
-						nearA = nearA||buildingData[ind].nearAir;
-					}
-				}
-				
-			}
-		}
-
-		
+		return E_TER_AIR;
 
 	}
 int GameBlock::findNearestNode (FIVector4 * worldPositionInPixelsIn, FIVector4 * posInNodesOut, FIVector4 * posInPixelsOut)
@@ -3098,7 +3376,7 @@ int GameBlock::findNearestNode (FIVector4 * worldPositionInPixelsIn, FIVector4 *
 		int offset;
 		int bestInd = -1;
 		
-		float zBias = floorHeightInMeters*pixelsPerMeter*0.5f;
+		float zBias = floorHeightInCells*pixelsPerCell*0.5f;
 
 		bool notFound = true;
 		
@@ -3400,9 +3678,11 @@ int GameBlock::copyTerToTexture ()
 
 		uint *finalTex;
 
-		if (singleton->terTextures[resIndex].alreadyBound) {
-
+		if (singleton->terTextures[resIndex].alreadyBound && (!forceUpdate)) {
+			
 		} else {
+			
+			forceUpdate = false;
 
 			doTraceND("copyTerToTexture resIndex: ", i__s(resIndex));
 
@@ -3415,6 +3695,7 @@ int GameBlock::copyTerToTexture ()
 				
 			// }
 			
+			tempVec2.setFXYZ(93.989f, 67.345f, 54.256f);
 			
 			
 			for (k = 0; k < terDataBufPitchScaledZ; k++) {
@@ -3436,13 +3717,7 @@ int GameBlock::copyTerToTexture ()
 								
 								
 								
-								// tempVec.setIXYZ(
-								// 	i + offsetInBlocks.getIX()*terDataVisPitchXY - terDataBufAmount,
-								// 	j + offsetInBlocks.getIY()*terDataVisPitchXY - terDataBufAmount,
-								// 	k + offsetInBlocks.getIZ()*terDataVisPitchZ - terDataBufAmount
-								// );
 								
-								//uiSimp = getRandSeeded(&tempVec,&tempVec2)*55.0f+200.0f; //fGenRand()
 								
 								if (
 									(i >= terDataBufPitchScaledXY-terDataBufAmount*4) ||
@@ -3453,7 +3728,14 @@ int GameBlock::copyTerToTexture ()
 									uiSimp = 255; // make sure block borders match up
 								}
 								else {
-									uiSimp = fGenRand()*63.0f+192.0f;
+									
+									tempVec.setIXYZ(
+										i + offsetInBlocks.getIX()*terDataVisPitchXY - terDataBufAmount,
+										j + offsetInBlocks.getIY()*terDataVisPitchXY - terDataBufAmount,
+										k + offsetInBlocks.getIZ()*terDataVisPitchZ - terDataBufAmount
+									);
+									
+									uiSimp = iGetRandSeeded(&tempVec,&tempVec2,200,255);
 								}
 								
 							}
@@ -3498,5 +3780,186 @@ int GameBlock::copyTerToTexture ()
 		return resIndex;
 
 	}
+void GameBlock::makeMazeUG ()
+                                  {
+
+			//cout << "q\n";
+
+			int i;
+			int rbInd = 0;
+			int curInd = 0;
+			int startDir = 0;
+			int count = 0;
+
+			int testX = 0;
+			int testY = 0;
+			int testZ = 0;
+
+			int curX = 0;
+			int curY = 0;
+			int curZ = 0;
+			
+			int ind1;
+			int ind2;
+
+			int testInd = 0;
+			int bestInd = 0;
+			int bestDir = 0;
+			int curDir = 0;
+			int blockOffset = offsetInBlocks.getIX() + offsetInBlocks.getIY();
+
+			int ct;
+
+			bool isOddX, isOddY, isOddZ;
+			bool doProc;
+
+			int divSize = 4;
+			int tunnelCount = 0;
+
+			rbInd = 0;
+			
+
+
+			//ind1 = getMapNodeIndex(terDataBufSize/2,terDataBufSize/2, 0);
+			
+			singleton->rbStack[0] = getNodeIndex(
+				terDataBufPitchXY/2,
+				terDataBufPitchXY/2,
+				terDataBufPitchZ/2,
+				0
+			);
+
+
+			while (rbInd > -1) {
+
+
+
+				curInd = singleton->rbStack[rbInd];
+				buildingData[curInd].visited = 1;
+				buildingData[curInd].mazeIndex = rbInd;
+
+				curZ = curInd / (terDataBufPitchXY * terDataBufPitchXY);
+				curY = (curInd - curZ * terDataBufPitchXY * terDataBufPitchXY) / terDataBufPitchXY;
+				curX = curInd - (curZ * terDataBufPitchXY * terDataBufPitchXY + curY * terDataBufPitchXY);
+
+				startDir = rbInd * 37 + blockOffset;
+				count = 0;
+
+				isOddX = ((curX + terDataBufAmount) % divSize) != 0;
+				isOddY = ((curY + terDataBufAmount) % divSize) != 0;
+				isOddZ = ((curZ + terDataBufAmount) % divSize) != 0;
+
+				do {
+
+					curDir = (startDir + count) % 6;
+
+					testX = curX + dirModX[curDir];
+					testY = curY + dirModY[curDir];
+					testZ = curZ + dirModZ[curDir];
+
+					testInd = getNodeIndex(testX, testY, testZ, 0);
+
+
+
+					if (testInd >= 0) {
+						
+						//cout << "b\n";
+
+						if ( true ) { // terData[testInd] != 0
+							if ( buildingData[testInd].visited == 0 ) {
+
+								
+
+								doProc = false;
+
+								if (isOddX) {
+									if (curDir <= 1) {
+										doProc = true;
+									}
+								}
+								else {
+									if (isOddY) {
+										if ((curDir == 2) || (curDir == 3)) {
+											doProc = true;
+										}
+									}
+									else {
+										if (isOddZ) {
+											if (curDir >= 4) {
+												doProc = true;
+											}
+										}
+										else {
+											doProc = true;
+										}
+									}
+								}
+								if (doProc) {
+									//not visited, proceed
+
+									
+
+									bestDir = curDir;
+									bestInd = testInd;
+									goto DONE_SEARCHING;
+								}
+
+
+
+							}
+						}
+
+
+					}
+
+
+
+					count++;
+
+
+				} while (count < 6);
+
+	DONE_SEARCHING:
+
+				if (count >= 6) { // dead end, back up
+					rbInd--;
+				} else {
+
+					//ct = E_CT_CONNECTED;//iGenRand(E_CT_ROAD,E_CT_ROOM_TUDOR);
+					//connectNodes( curX, curY, curZ, testX, testY, testZ, E_CT_CONNECTED);
+					
+					//cout << "a\n";
+					
+					ind1 = getNodeIndex(curX,curY,curZ, 0);
+					ind2 = getNodeIndex(testX,testY,testZ, 0);
+					
+					if (ind1 > -1) {
+						terData[ind1] = 0;
+					}
+					if (ind2 > -1) {
+						terData[ind2] = 0;
+					}
+
+					rbInd++;
+
+					
+
+
+					singleton->rbStack[rbInd] = bestInd;
+					
+					
+					tunnelCount++;
+					
+					if (tunnelCount >= terDataBufSize/16) {
+						return;
+					}
+					
+				}
+
+
+
+			}
+
+		}
 #undef LZZ_INLINE
  

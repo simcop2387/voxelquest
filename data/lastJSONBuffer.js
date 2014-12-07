@@ -1242,6 +1242,52 @@
 					"number_Power_3": 0.09467455621301775,
 					"number_Position_4": 1
 				}
+			},
+			"gradientStepList_Snow_47": {
+				"gradientStep_Step0_0": {
+					"number_Hue_0": 0.17911434236615995,
+					"number_Saturation_1": 0.19497686715135493,
+					"number_Lightness_2": 0.03225806451612903,
+					"number_Power_3": 0.1472715318869165,
+					"number_Position_4": 0
+				},
+				"gradientStep_Step1_1": {
+					"number_Hue_0": 0.11037673496364839,
+					"number_Saturation_1": 0.13152676801057503,
+					"number_Lightness_2": 0.8321216126900198,
+					"number_Power_3": 0.14990138067061143,
+					"number_Position_4": 0.715318869165023
+				},
+				"gradientStep_Step2_2": {
+					"number_Hue_0": 0.21612690019828157,
+					"number_Saturation_1": 0.06278916060806344,
+					"number_Lightness_2": 1,
+					"number_Power_3": 0.09467455621301775,
+					"number_Position_4": 1
+				}
+			},
+			"gradientStepList_Snow2_48": {
+				"gradientStep_Step0_0": {
+					"number_Hue_0": 0.16853932584269662,
+					"number_Saturation_1": 0.2108393919365499,
+					"number_Lightness_2": 0.29015201586252476,
+					"number_Power_3": 0.1472715318869165,
+					"number_Position_4": 0
+				},
+				"gradientStep_Step1_1": {
+					"number_Hue_0": 0.20819563780568406,
+					"number_Saturation_1": 0.16325181758096496,
+					"number_Lightness_2": 0.6972901520158625,
+					"number_Power_3": 0.14990138067061143,
+					"number_Position_4": 0.715318869165023
+				},
+				"gradientStep_Step2_2": {
+					"number_Hue_0": 0.19762062128222074,
+					"number_Saturation_1": 0,
+					"number_Lightness_2": 1,
+					"number_Power_3": 0.09467455621301775,
+					"number_Position_4": 1
+				}
 			}
 		},
 		"untypedList_Settings_1": {

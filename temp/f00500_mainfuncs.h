@@ -7,9 +7,9 @@ Singleton* singleton;
 void processSpecialKeys(int key, int x, int y) {
     singleton->processSpecialKeys(key,x,y);
 }
-void processKey(unsigned char key, int x, int y, bool isPressed) {
-    singleton->processKey(key,x,y,isPressed);
-}
+// void processKey(unsigned char key, int x, int y, bool isPressed) {
+//     singleton->processKey(key,x,y,isPressed);
+// }
 void keyboardUp(unsigned char key, int x, int y) {
     singleton->keyboardUp(key,x,y);
 }
@@ -129,11 +129,11 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
 
 
-    //glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);  //GLUT_SINGLE
+    glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);  //GLUT_SINGLE
 
-    glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGB); //|GLUT_MULTISAMPLE
+    //glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGB); //|GLUT_MULTISAMPLE
     glutInitWindowSize(winWidth, winHeight);
-    glutInitWindowPosition(250, 50);
+    glutInitWindowPosition(400, 50);
     glutCreateWindow("VoxelQuest");
 
     GLenum err = glewInit();

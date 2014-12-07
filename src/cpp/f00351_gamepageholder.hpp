@@ -9,11 +9,17 @@ public:
 	
 	int blockId;
 	int holderId;
+	
+
+	int sres;
 
 	bool hasTrans;
 	bool hasSolids;
-	bool underground;
 	bool childrenDirty;
+	
+	bool hasVerts[MAX_LAYERS];
+	bool refreshDL;
+	
 	
 	std::vector<GameGeom *> entityGeom;
 	int entityGeomCounter;
@@ -45,7 +51,6 @@ public:
 		usingPoolId = -1;
 		hasTrans = false;
 		hasSolids = false;
-		underground = false;
 	}
 	
 
@@ -62,12 +67,19 @@ public:
 
 	) {
 
+		
+		refreshDL = true;
 		entityGeomCounter = 0;
 
 		int i;
 		int j;
 		int k;
 		int ind;
+		
+		for (i = 0; i < MAX_LAYERS; i++) {
+			hasVerts[i] = false;
+		}
+		
 		
 		readyForClear = true;
 
@@ -80,6 +92,8 @@ public:
 
 		singleton = _singleton;
 		usingPoolId = -1;
+
+		sres = singleton->volGenSuperRes;
 
 		holderSizeInPixels = singleton->holderSizeInPixels;
 		halfHolderSizeInPixels = holderSizeInPixels*0.5f;
@@ -115,7 +129,6 @@ public:
 		
 		refreshGeom();
 		
-		underground = true;
 		
 		for (k = 0; k < holderSizeInPages; k++) {
 			for (j = 0; j < holderSizeInPages; j++) {
@@ -141,7 +154,6 @@ public:
 							);
 						}
 						
-						underground = underground && pageData[ind]->underground;
 						
 					}
 				}
@@ -150,6 +162,85 @@ public:
 		
 	}
 	
+
+	void doRefreshDL() {
+		
+		refreshDL = false;
+		
+		int i;
+		int j;
+		int ind;
+		int numVert = 8;
+		int maxVal;
+		
+		int p;
+		int q;
+		int ci;
+		
+		
+		// TODO: if the holder was cleared entirely, must make sure to clear all displaylists
+		
+		
+		if (gpuRes != NULL) {
+			
+			for (q = 0; q < MAX_LAYERS; q++) {
+				for (p = 0; p < MAX_MIP_LEV; p++) {
+					
+					ci = p*MAX_LAYERS+q;
+					
+					gpuRes->bindHolderDL(p,q);
+					glBegin(GL_POINTS);
+					
+					
+					for (j = 0; j < iPageDataVolume; j++) {
+						ind = j;
+						
+						if (pageData[ind] != NULL) {
+							
+							
+							hasVerts[q] = hasVerts[q] || (pageData[ind]->vertices[ci].data.size() > 0);
+							
+							maxVal = (pageData[ind]->vertices[ci].data.size())/numVert;
+							
+							for (i = 0; i < maxVal; i++ ) {
+								
+								glMultiTexCoord4f(
+									GL_TEXTURE0,
+									pageData[ind]->vertices[ci].data[i*numVert + 0],
+									pageData[ind]->vertices[ci].data[i*numVert + 1],
+									pageData[ind]->vertices[ci].data[i*numVert + 2],
+									pageData[ind]->vertices[ci].data[i*numVert + 3]
+									
+								);
+								
+								glVertex3f(
+									pageData[ind]->vertices[ci].data[i*numVert + 4],
+									pageData[ind]->vertices[ci].data[i*numVert + 5],
+									pageData[ind]->vertices[ci].data[i*numVert + 6]	
+								);
+								
+								
+							}
+						}
+					}
+					
+					
+					
+					
+					glEnd();
+					gpuRes->unbindHolderDL(p,q);
+				}
+			}
+			
+			
+			
+			
+			
+		}
+		
+	}
+
+
 	
 	GamePage* getPageAtCoordsLocal(int x, int y, int z, bool createOnNull = false) {
 		
@@ -219,7 +310,7 @@ public:
 		if (isEntity) {
 			entityGeomCounter = 0;
 			//fetchEntityGeom();
-			addNewLinesGeom(singleton->testHuman->baseNode, singleton->pixelsPerMeter);
+			addNewLinesGeom(singleton->testHuman->baseNode, singleton->pixelsPerCell);
 		}
 		else {
 			fetchGeom();
@@ -229,6 +320,8 @@ public:
 
 	void clearSet() { //bool forceClear
 		int i;
+		
+
 		
 
 		//bool doClear = forceClear;
@@ -251,11 +344,17 @@ public:
 		if (readyForClear) {
 			readyForClear = false;
 			
-			for (i = 0; i < MAX_LAYERS; i++) {
-				// clear fbo by binding it with auto flag
-				singleton->bindFBODirect(gpuRes->getFBOS(i));
-				singleton->unbindFBO();
-			}
+			// if (true) { //freeCam
+				
+			// }
+			// else {
+			// 	for (i = 0; i < MAX_LAYERS; i++) {
+			// 		// clear fbo by binding it with auto flag
+			// 		singleton->bindFBODirect(gpuRes->getFBOS(i));
+			// 		singleton->unbindFBO();
+			// 	}
+			// }
+			
 		}
 		
 	}
@@ -267,20 +366,24 @@ public:
 		childrenDirty = false;
 		changeCount = 0;
 
+		//bool finished = true;
+				
+
 		for (i = 0; i < iPageDataVolume; i++) {
 			
 			if (changeCount >= singleton->maxChangesInPages) {
 				childrenDirty = true;
-				goto TOO_MANY_HOLDER_CHANGES;
+				//finished = false;
+				break;
 			}
 			
 			if (pageData[i] == NULL) {
 				
 			}
 			else {
+				pageData[i]->addAllGeom();
 				if (
-					(pageData[i]->hasSolids || pageData[i]->hasTrans) &&
-					(!(pageData[i]->underground))
+					(pageData[i]->hasSolids || pageData[i]->hasTrans)
 				) {
 					if (pageData[i]->isDirty) {
 						pageData[i]->generateVolume();
@@ -292,15 +395,28 @@ public:
 				
 			}
 		}
-
-		TOO_MANY_HOLDER_CHANGES:
-
-		return changeCount;
+		
+		if (refreshDL&&(!childrenDirty)) {
+			doRefreshDL();
+		}
+		
+		
+		
+		
+		return changeCount;	
 
 	}
 
-	void refreshChildren(bool refreshImmediate, bool clearEverything = false) {
+	void refreshChildren(
+		bool refreshImmediate,
+		bool clearEverything = false,
+		bool refreshUnderground = false
+	) {
 		int i;
+		
+		
+		
+		
 		
 		
 		readyForClear = true;
@@ -316,11 +432,20 @@ public:
 				
 				
 				if (refreshImmediate) {
+					
+					pageData[i]->addAllGeom();
+					
 					if (
-						(pageData[i]->hasSolids || pageData[i]->hasTrans) &&
-						(!(pageData[i]->underground))	
+						(
+							(pageData[i]->hasSolids || pageData[i]->hasTrans)
+						) ||
+						refreshUnderground ||
+						isEntity
 					) {
-						pageData[i]->generateVolume();
+						if (refreshUnderground) {
+							pageData[i]->isDirty = true;
+						}
+						pageData[i]->generateVolume(refreshUnderground);
 					}
 					childrenDirty = false;
 				}
@@ -334,8 +459,9 @@ public:
 			}
 		}
 		
-		
-		
+		if (refreshImmediate) {
+			doRefreshDL();
+		}
 		
 
 		
@@ -414,7 +540,7 @@ public:
 			}
 			
 			tempVec2.copyFrom(&(curNode->tbnRotC[0]));
-			tempVec2.multXYZ(curNode->boneLengthHalf*scale);
+			tempVec2.multXYZ(curNode->boneLengthHalf*scale*curNode->boneLengthScale);
 			
 			
 			if (entityGeomCounter >= entityGeom.size()) {
@@ -433,8 +559,8 @@ public:
 				&(tempVec2),
 				&(curNode->tbnRotC[1]),
 				&(curNode->tbnRotC[2]),
-				&(curNode->tbnRadInMeters0),
-				&(curNode->tbnRadInMeters1),
+				&(curNode->tbnRadInCells0),
+				&(curNode->tbnRadInCells1),
 				&(curNode->tbnRadScale0),
 				&(curNode->tbnRadScale1),
 				&tempVec

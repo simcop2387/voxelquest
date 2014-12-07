@@ -4,6 +4,7 @@ class WebSocketServer;
 class RequestHandlerFactory;
 class GameGeom;
 class Singleton;
+class Shader;
 class GameSound;
 class GameMusic;
 class FontWrapper;

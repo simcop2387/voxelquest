@@ -36,16 +36,27 @@ public:
 
 	JSONValue* jvNodeNoTemplate;
 
+	fVector2 scrollMaskY;
+	fVector2 dragStart;
+	fVector2 lastDrag;
+	fVector2 dragOffset;
+	
+	
+	fVector2 totOffset;
+	fVector2 targScrollOffset;
+	fVector2 scrollOffset;
 	fVector2 floatOffset;
 	fVector2 originPos;
 	fVector2 resultDimInPixels;
 	fVector2 textDimInPixels;
+	fVector2 rmDimInPixels; // resulting minimum dim
 	fVector2 minDimInPixels;
-	fVector2 maxAvailDimInPixels;
+	fVector2 maxDimInPixels;
 	fVector2 fillRatioDim;
 	FontWrapper* curFont;
 	FontWrapper* curFontIcons;
 
+	bool dragging;
 	bool contOnStack;
 	bool overChild;
 	bool overSelf;
@@ -76,7 +87,7 @@ public:
 	std::vector<UIComponent> children;
 	std::vector<UIComponent> floatingChildren;
 	UIComponent* curComp;
-
+	UIComponent* baseComp;
 	
 
 
@@ -90,6 +101,8 @@ public:
 	void init(
 
 		Singleton* _singleton,
+		UIComponent* _baseComp,
+		
 		int _parentId,
 		int _nodeId,
 		int _index,
@@ -113,6 +126,10 @@ public:
 		float _value = 0.0f,
 		int _layer = 0,
 		int _hoverType = E_HT_NORMAL,
+		float _maxDimInPixelsX = 0.0f,
+		float _maxDimInPixelsY = 0.0f,
+		float _minDimInPixelsX = 0.0f,
+		float _minDimInPixelsY = 0.0f,
 		bool _isFloating = false
 
 	) {
@@ -122,6 +139,7 @@ public:
 		contOnStack = false;
 
 		singleton = _singleton;
+		baseComp = _baseComp;
 		parentId = _parentId;
 		nodeId = _nodeId;
 		
@@ -145,9 +163,19 @@ public:
 		}
 		
 		
+		
+		maxDimInPixels.x = _maxDimInPixelsX;
+		maxDimInPixels.y = _maxDimInPixelsY;
+		
+		minDimInPixels.x = _minDimInPixelsX;
+		minDimInPixels.y = _minDimInPixelsY;
+		
+		
 		guiClass = _guiClass;
 		//guiId = _guiId;
 		
+		
+		dragging = false;
 		overSelf = false;
 		overChild = false;
 		isDirty = true;
@@ -179,6 +207,28 @@ public:
 		
 		
 		/////////////////
+		
+		totOffset.x = 0.0f;
+		totOffset.y = 0.0f;
+		
+		
+		targScrollOffset.x = 0.0f;
+		targScrollOffset.y = 0.0f;
+		
+		scrollOffset.x = 0.0f;
+		scrollOffset.y = 0.0f;
+		
+		scrollMaskY.x = 0.0;
+		scrollMaskY.y = 0.0;
+		
+		dragStart.x = 0.0f;
+		dragStart.y = 0.0f;
+		
+		lastDrag.x = 0.0f;
+		lastDrag.y = 0.0f;
+		
+		dragOffset.x = 0.0f;
+		dragOffset.y = 0.0f;
 		
 		floatOffset.x = 0.0f;
 		floatOffset.y = 0.0f;
@@ -214,6 +264,33 @@ public:
 		
 	}
 	
+	float getDimYClamped(float val) {
+		if (maxDimInPixels.y == 0) {
+			return max(val,minDimInPixels.y);
+		}
+		else {
+			return max(min(maxDimInPixels.y, val),minDimInPixels.y);
+		}
+	}
+	
+	float getResultDimYClamped() {
+		if (maxDimInPixels.y == 0) {
+			return max(resultDimInPixels.y,minDimInPixels.y);
+		}
+		else {
+			return max(min(maxDimInPixels.y, resultDimInPixels.y),minDimInPixels.y);
+		}
+	}
+	
+	// float getMinDimYClamped() {
+	// 	if (maxDimInPixels.y == 0) {
+	// 		return minDimInPixels.y;
+	// 	}
+	// 	else {
+	// 		return min(maxDimInPixels.y, minDimInPixels.y);
+	// 	}
+	// }
+	
 	void setValue(float _value, bool doEventDispatch = false, bool preventRefresh = false) {
 		value = _value;
 		if (doEventDispatch) {
@@ -233,7 +310,7 @@ public:
 		}
 		else {
 			// todo: replace with root or id
-			parent = singleton->mainGUI->baseComp->findNodeById(parentId);
+			parent = baseComp->findNodeById(parentId);
 			foundParent = true;
 		}
 		
@@ -327,9 +404,9 @@ public:
 		
 		curMW += totMW;
 		
-		minDimInPixels.x = curMW;
+		rmDimInPixels.x = max(curMW,minDimInPixels.x);
 		
-		return curMW;
+		return rmDimInPixels.x;
 		
 	}
 	
@@ -374,9 +451,9 @@ public:
 		
 		curMH += totMH;
 		
-		minDimInPixels.y = curMH;
+		rmDimInPixels.y = max(curMH,minDimInPixels.y);
 		
-		return curMH;
+		return getDimYClamped(curMH);
 		
 	}
 	
@@ -413,6 +490,7 @@ public:
 		
 		curComp->init(
 			singleton,
+			baseComp,
 			_parentId,
 			_nodeId,
 			childCount,
@@ -435,6 +513,10 @@ public:
 			floatVals[E_GFT_VALUE],
 			floatVals[E_GFT_LAYER],
 			floatVals[E_GFT_HOVERTYPE],
+			floatVals[E_GFT_MAXDIMX],
+			floatVals[E_GFT_MAXDIMY],
+			floatVals[E_GFT_MINDIMX],
+			floatVals[E_GFT_MINDIMY],
 			_isFloating
 		);
 		
@@ -542,17 +624,18 @@ public:
 		int i;
 		
 		
-		//float totVal = 0.0f;
+
 		for (i = 0; i < children.size(); i++) {
 			totalRatios.y += children[i].fillRatioDim.y;
 			if (fillDir == E_FILL_HORIZONTAL) {
-				//totVal = max(totVal,children[i].minDimInPixels.y);
+				
 			}
 			else {
-				availSpace -= children[i].minDimInPixels.y;
+				availSpace -= children[i].rmDimInPixels.y;
 			}
 		}
-		//availSpace -= totVal;
+		
+		availSpace = max(availSpace,0.0f);
 		
 		
 		if (totalRatios.y == 0.0f) {
@@ -565,19 +648,17 @@ public:
 			if (fillDir == E_FILL_HORIZONTAL) {
 				
 				if (children[i].fillRatioDim.y == 0.0f) {
-					children[i].resultDimInPixels.y = children[i].minDimInPixels.y;
+					children[i].resultDimInPixels.y = children[i].rmDimInPixels.y;
 				}
 				else {
 					
-					// SHOULD BE: 
-					// children[i].resultDimInPixels.y = availSpace;
-					// ?
+					
 					children[i].resultDimInPixels.y = availSpace;
 				}
 			}
 			else {
 				children[i].resultDimInPixels.y =
-					children[i].minDimInPixels.y +
+					children[i].rmDimInPixels.y + 
 					(availSpace*children[i].fillRatioDim.y)/totalRatios.y;	
 				
 			}
@@ -601,17 +682,17 @@ public:
 		float availSpace = resultDimInPixels.x - (marginInPixels+borderInPixels+paddingInPixels)*2.0f;
 		int i;
 		
-		//float totVal = 0.0f;
+
 		for (i = 0; i < children.size(); i++) {
 			totalRatios.x += children[i].fillRatioDim.x;
 			if (fillDir == E_FILL_HORIZONTAL) {
-				availSpace -= children[i].minDimInPixels.x;
+				availSpace -= children[i].rmDimInPixels.x;
 			}
 			else {
-				//totVal = max(totVal,children[i].minDimInPixels.x);
+				
 			}
 		}		
-		//availSpace -= totVal;
+		availSpace = max(availSpace,0.0f);
 		
 		if (totalRatios.x == 0.0f) {
 			totalRatios.x = 1.0f;
@@ -625,16 +706,30 @@ public:
 				
 				
 				children[i].resultDimInPixels.x =
-					children[i].minDimInPixels.x +
-					(availSpace*children[i].fillRatioDim.x)/totalRatios.x;	
+					max(
+						children[i].rmDimInPixels.x +
+						(availSpace*children[i].fillRatioDim.x)/totalRatios.x,
+						children[i].minDimInPixels.x
+					);
+					
 			}
 			else {
 				
 				if (children[i].fillRatioDim.x == 0.0f) {
-					children[i].resultDimInPixels.x = children[i].minDimInPixels.x;
+					children[i].resultDimInPixels.x =
+						max(
+							children[i].rmDimInPixels.x,
+							children[i].minDimInPixels.x
+						);
+					
 				}
 				else {
-					children[i].resultDimInPixels.x = availSpace;
+					children[i].resultDimInPixels.x =
+						max(
+							availSpace,
+							children[i].minDimInPixels.x
+						);
+					
 				}
 			}
 					
@@ -706,19 +801,87 @@ public:
 		
 		
 	}
+	
+	void updateOffset() {
+		totOffset.x = floatOffset.x + dragOffset.x + scrollOffset.x;
+		totOffset.y = floatOffset.y + dragOffset.y + scrollOffset.y;
+		return;
+	}
 
 	void updateValue(float x, float y) {
+		
+		
 		
 		float hoverBuffer = 4.0f;
 		float tempValue;
 		
 		UIComponent* curParent = getParent();
 		
+		
+		UIComponent* highestCont;
+		
+		if (dragging) {
+			highestCont = getHighestCont(this, 0);
+			
+			// if (highestCont->floatingChildren.size() > 0) {
+			// 	highestCont = &(highestCont->floatingChildren[0]);
+			// }
+			
+			highestCont->dragOffset.x = lastDrag.x + (x - dragStart.x); //
+			highestCont->dragOffset.y = lastDrag.y + (y - dragStart.y); //
+			
+		}
+		
+		if (curParent == NULL) {
+			
+		}
+		else {
+			if (
+				//(hoverType == E_HT_ONSELECTED) ||
+				//(guiClass == E_GT_ROOTCONT) ||
+				(curParent->floatingChildren.size() > 0)
+				
+			) {
+				
+			}
+			else {
+				if (curParent->hoverType != E_HT_ROOT) {
+					dragOffset = curParent->dragOffset;
+				}			
+			}
+		}
+		
+		
+		
+		
+		if ((maxDimInPixels.y == 0)&&(curParent != NULL)) {
+			scrollOffset.y = curParent->scrollOffset.y;
+		}
+		else {
+			scrollOffset.y += (targScrollOffset.y-scrollOffset.y)/16.0f;
+			
+		}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		switch (hoverType) {
 			case E_HT_NORMAL:
+			case E_HT_ROOT:
 				if (curParent != NULL) {
-					floatOffset = curParent->floatOffset;
-					visible = curParent->visible;
+					
+					
+					if (curParent->hoverType != E_HT_ROOT) {
+						floatOffset = curParent->floatOffset;
+						visible = curParent->visible;
+					}
+					
 					
 					
 				}
@@ -726,8 +889,8 @@ public:
 			case E_HT_TOOLTIP:
 			case E_HT_TOOLTIP_VALUE:
 				//curParent->floatOffset.x + 
-				floatOffset.x = x + hoverBuffer; 
-				floatOffset.y = curParent->floatOffset.y + curParent->originPos.y + curParent->resultDimInPixels.y + hoverBuffer;
+				floatOffset.x = x + hoverBuffer - dragOffset.x; 
+				floatOffset.y = curParent->totOffset.y + curParent->originPos.y + curParent->resultDimInPixels.y + hoverBuffer;
 				visible = curParent->overSelf;
 				
 				if ((hoverType == E_HT_TOOLTIP_VALUE)&&visible) {
@@ -738,16 +901,40 @@ public:
 			break;
 			case E_HT_ONSELECTED:
 				//curParent->floatOffset.x + 
-				floatOffset.x = curParent->originPos.x + curParent->resultDimInPixels.x;
-				floatOffset.y = curParent->floatOffset.y + curParent->originPos.y;
-				visible = (curParent->value == 1.0f);
+				floatOffset.x = curParent->totOffset.x + curParent->originPos.x + curParent->resultDimInPixels.x;
+				floatOffset.y = curParent->totOffset.y + curParent->originPos.y;
+				visible = (curParent->value == 1.0f)&&(curParent->visible);
 			break;
 						
 		}
 		
+		updateOffset();
 		
-		float hbxMin = hitBounds.xMin + floatOffset.x;
-		float hbxMax = hitBounds.xMax + floatOffset.x;
+		
+		
+		
+		if ((maxDimInPixels.y == 0)&&(curParent != NULL)) {
+			scrollMaskY = curParent->scrollMaskY;
+		}
+		else {
+			scrollMaskY.x = originPos.y + marginInPixels;
+			scrollMaskY.y = originPos.y +  getResultDimYClamped() - marginInPixels;
+			
+			scrollMaskY.x += totOffset.y-scrollOffset.y;
+			scrollMaskY.y += totOffset.y-scrollOffset.y;
+			
+			scrollMaskY.x /= singleton->guiWinH;
+			scrollMaskY.y /= singleton->guiWinH;
+			scrollMaskY.x = ((1.0f-scrollMaskY.x) - 0.5f)*2.0f;
+			scrollMaskY.y = ((1.0f-scrollMaskY.y) - 0.5f)*2.0f;			
+		}
+		
+		
+		
+		
+		
+		float hbxMin = hitBounds.xMin + totOffset.x;
+		float hbxMax = hitBounds.xMax + totOffset.x;
 		
 		if (wasHit&&(guiClass == E_GT_SLIDER)) {
 			
@@ -802,28 +989,48 @@ public:
 		
 	}
 
-	bool findMaxLayer(float x, float y) {
+	bool findMaxLayer(float x, float y, float xTransformed, float yTransformed) {
 		
 		
 		int i;
 
 		overSelf = (
-			(x < (hitBounds.xMax+floatOffset.x)) &&
-			(x > (hitBounds.xMin+floatOffset.x)) &&
-			(y < (hitBounds.yMax+floatOffset.y)) &&
-			(y > (hitBounds.yMin+floatOffset.y))
+			(x < (hitBounds.xMax+totOffset.x)) &&
+			(x > (hitBounds.xMin+totOffset.x)) &&
+			(y < (hitBounds.yMax+totOffset.y)) &&
+			(y > (hitBounds.yMin+totOffset.y))
 		) && visible;
+		
+		
+		if (maxDimInPixels.y == 0) {
+			
+		}
+		else {
+			if (
+				(yTransformed > scrollMaskY.x) || 
+				(yTransformed < scrollMaskY.y)
+			) {
+				overSelf = false;
+				overChild = false;
+				return false;
+			}
+		}
+		
+		
+		
+		
+		
+		
 		
 		overChild = false;
 		
 		for (i = 0; i < children.size(); i++) {
-			overChild = overChild||children[i].findMaxLayer(x,y);
+			overChild = overChild||children[i].findMaxLayer(x,y,xTransformed,yTransformed);
 		}
 		for (i = 0; i < floatingChildren.size(); i++) {
-			overChild = overChild||floatingChildren[i].findMaxLayer(x,y);
+			overChild = overChild||floatingChildren[i].findMaxLayer(x,y,xTransformed,yTransformed);
 		}
 		
-			
 		if (
 			overSelf &&
 			visible &&
@@ -855,12 +1062,12 @@ public:
 		mouseOver = 
 			overSelf &&
 			visible &&
-			hasBackground &&
+			(hasBackground) && //||(guiClass == E_GT_DRAGPAD)
 			(!overChild) &&
 			(layer >= singleton->maxLayerOver);
 		
 		
-		if (mouseOver != lastOver) {
+		if ((mouseOver != lastOver)&&(!(singleton->dragging))) {
 			if (mouseOver) {
 				singleton->dispatchEvent(
 					GLUT_NO_BUTTON,
@@ -883,7 +1090,14 @@ public:
 			}
 		}
 		else {
-			if (wasHit&&(guiClass == E_GT_SLIDER)) {
+			if (
+				wasHit && 
+				(
+					(guiClass == E_GT_SLIDER) ||
+					(guiClass == E_GT_DRAGPAD)	
+				)
+				
+			) {
 				
 				if (divisions == 1.0f) {
 					// toggle button, do nothing
@@ -908,6 +1122,7 @@ public:
 
 	bool testHit(int button, int state, float x, float y) {
 		
+		float wheelDelta = 0.0f;
 		
 		
 		UIComponent* curParent = getParent();
@@ -917,17 +1132,35 @@ public:
 		float lastValue = value;
 		float tempValue;
 		
+		
+		
+		
 		if (button == GLUT_LEFT_BUTTON) {
 			if (state == GLUT_DOWN) { // MOUSE DOWN
 				if (mouseOver) {
 					
-					if (
-						// (guiClass == E_GT_SLIDER) ||
-						// (guiClass == E_GT_BUTTON)
-						(guiClass != E_GT_HOLDER) && visible
+					if (visible) {
 						
-					) {
-						wasHit = true;
+						
+					
+						
+						if (
+							(guiClass != E_GT_HOLDER)
+						) {
+							wasHit = true;
+						}
+						
+						dragging = (guiClass == E_GT_MENUBAR);
+						if (dragging) {
+							singleton->dragging = true;
+							
+							dragStart.x = x;
+							dragStart.y = y;
+						}
+						
+						
+						
+						
 					}
 					
 					
@@ -936,6 +1169,19 @@ public:
 				mouseDown = true;
 			}
 			else { // MOUSE UP
+				
+				
+				if (dragging) {
+					lastDrag.x += (x - dragStart.x);
+					lastDrag.y += (y - dragStart.y);
+					dragStart.x = 0.0f;
+					dragStart.y = 0.0f;
+					
+					
+				}
+				dragging = false;
+				singleton->dragging = false;
+				
 				if (mouseOver&&wasHit) {
 					
 					switch (guiClass) {
@@ -954,7 +1200,10 @@ public:
 							
 							tempValue = 1.0f-value;
 							
-							if (tempValue == 1.0f) {
+							if (singleton->bShift) {
+								
+							}
+							else {
 								for (i = 0; i < curParent->children.size(); i++) {
 									if (curParent->children[i].guiClass == E_GT_RADIO) {
 										curParent->children[i].setValue(0.0f);
@@ -974,7 +1223,32 @@ public:
 			}
 		}
 		else {
-				
+				if ( (button == 3) || (button == 4) ) {
+					
+					
+					if (visible && overSelf) {
+						if (maxDimInPixels.y != 0) {
+							
+							if (button == 3) {
+								wheelDelta = 1.0f;
+								// wheel up
+							}
+							else {
+								wheelDelta = -1.0f;
+								// wheel down
+							}
+							
+							
+							targScrollOffset.y += wheelDelta*20.0f;
+							
+							targScrollOffset.y = clampf(targScrollOffset.y, -(resultDimInPixels.y-maxDimInPixels.y), 0.0f);
+							
+							return true;
+						}	
+					}
+					
+					
+				}
 		}
 
 		updateValue(x, y);
@@ -995,7 +1269,7 @@ public:
 		}
 		
 		bool finalRes = wasHit||hitChild;
-		if (state == GLUT_UP) {
+		if ((state == GLUT_UP)) { //&&(wheelDelta==0.0f)
 			wasHit = false;
 		}
 		
@@ -1003,39 +1277,40 @@ public:
 		return finalRes;
 	}
 	
+	
+	UIComponent* getHighestCont(UIComponent* curNode, int genCount) {
+		UIComponent* curParent = curNode->getParent();
+		
+		if (curParent == NULL) {
+			return curNode;
+		}
+		else {
+			if (curParent->floatingChildren.size() > 0) {
+				return curNode;
+			}
+			else {
+				return getHighestCont(curParent, genCount+1);
+			}
+		}
+		
+		
+		
+	}
 
 	void setText(string _text) {
 		
-		UIComponent* curParent = getParent();
-		UIComponent* curParentParent;
+		UIComponent* highestCont;
 		
 		if (_text.compare(text) == 0) {
 			// text unchanged, do nothing
 		}
 		else {
 			text = _text;
-			//isDirty = true;
 			
-			if (curParent != NULL) {
-				
-				curParentParent = curParent->getParent();
-				
-				if (curParentParent != NULL) {
-					curParentParent->isDirty = true;
-				}
-				else {
-					curParent->isDirty = true;
-				}
-				
-				
-				singleton->guiDirty = true;
-			}
+			highestCont = getHighestCont(this, 0);
+			highestCont->isDirty = true;
+			singleton->guiDirty = true;
 			
-			//thisUICont.locked = true;
-
-			//layout();
-			//renderAll();
-			//thisUICont.locked = false;
 		}
 		
 		

@@ -3,7 +3,6 @@ uniform sampler2D u_Texture1;
 uniform sampler2D u_Texture2;
 uniform sampler2D u_Texture3;
 uniform float u_Time;
-uniform float u_Zoom;
 uniform vec2 u_Resolution;
 
 uniform vec4 u_PalPos;

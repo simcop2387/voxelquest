@@ -56,7 +56,7 @@ public:
 		pr->curLength[2] = 8.0f;
 		pr->curLength[3] = 8.5f;
 		pr->curLength[4] = 8.5f;
-		pr->curLength[5] = 1.5f;
+		pr->curLength[5] = 8.5f;
 		pr->curLength[6] = 1.0f;
 		pr->curLength[7] = 1.0f;
 		pr->curLength[8] = 0.75f;
@@ -73,12 +73,12 @@ public:
 		pr->numGenerations = 4.0f;
 		pr->angleUniformityU = 0.75f;
 		pr->isInit = 0.0;
-		pr->curLength[0] = 2.0f;
-		pr->curLength[1] = 4.0f;
-		pr->curLength[2] = 3.5f;
-		pr->curLength[3] = 3.0f;
-		pr->curLength[4] = 2.5f;
-		pr->curLength[5] = 2.0f;
+		pr->curLength[0] = 6.0f;
+		pr->curLength[1] = 8.0f;
+		pr->curLength[2] = 8.0f;
+		pr->curLength[3] = 8.5f;
+		pr->curLength[4] = 8.5f;
+		pr->curLength[5] = 8.5f;
 		pr->curLength[6] = 1.5f;
 		pr->curLength[7] = 1.0f;
 		pr->curLength[8] = 0.75f;
@@ -92,7 +92,7 @@ public:
 		pr->begThickness = 1.0f;
 		pr->endThickness = 0.2f;
 		pr->sphereGen = 2.0f;
-		pr->sphereRad = 4.0f;
+		pr->sphereRad = 6.0f;
 		pr->numGenerations = 2.0f;
 		pr->angleUniformityU = 0.75f;
 		pr->isInit = 0.0;
@@ -166,12 +166,12 @@ public:
 		pr->numGenerations = 4.0f;
 		pr->angleUniformityU = 0.75f;
 		pr->isInit = 0.0;
-		pr->curLength[0] = 2.0f;
-		pr->curLength[1] = 4.0f;
-		pr->curLength[2] = 3.5f;
-		pr->curLength[3] = 3.0f;
-		pr->curLength[4] = 2.5f;
-		pr->curLength[5] = 2.0f;
+		pr->curLength[0] = 6.0f;
+		pr->curLength[1] = 8.0f;
+		pr->curLength[2] = 8.0f;
+		pr->curLength[3] = 8.5f;
+		pr->curLength[4] = 8.5f;
+		pr->curLength[5] = 8.5f;
 		pr->curLength[6] = 1.5f;
 		pr->curLength[7] = 1.0f;
 		pr->curLength[8] = 0.75f;
@@ -186,10 +186,10 @@ public:
 
 
 
-				allPlantRules[i].begThickness *= _singleton->pixelsPerMeter;
-				allPlantRules[i].endThickness *= _singleton->pixelsPerMeter;
+				allPlantRules[i].begThickness *= _singleton->pixelsPerCell;
+				allPlantRules[i].endThickness *= _singleton->pixelsPerCell;
 				for (j = 0; j < MAX_PLANT_GEN; j++) {
-					allPlantRules[i].curLength[j] *= _singleton->pixelsPerMeter;
+					allPlantRules[i].curLength[j] *= _singleton->pixelsPerCell;
 				}
 
 				
@@ -358,7 +358,7 @@ public:
 			curChild->midThickness = (curChild->begThickness+curChild->endThickness)*0.5f;
 
 			if ( rules->sphereGen == fCurGen ) {
-				curChild->sphereRad = rules->sphereRad*singleton->pixelsPerMeter; //(maxLength-totLength) + 
+				curChild->sphereRad = rules->sphereRad*singleton->pixelsPerCell; //(maxLength-totLength) + 
 			}
 
 			if (curGen < maxGen) {

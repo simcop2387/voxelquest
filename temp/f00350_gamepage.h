@@ -3,47 +3,25 @@
 
 #include "f00350_gamepage.e"
 #define LZZ_INLINE inline
-uint * GamePage::getVolData ()
-                           {
-		int i;
-
-		if (volData == NULL) {
-			volData = new uint[iVolumeSize];
-			for (i = 0; i < iVolumeSize; i++) {
-				volData[i] = 0;
-			}
-		}
-
-		return volData;
-
-	}
-uint * GamePage::getVolDataLinear ()
-                                 {
-		int i;
-
-		if (volDataLinear == NULL) {
-			volDataLinear = new uint[iVolumeSize];
-			for (i = 0; i < iVolumeSize; i++) {
-				volDataLinear[i] = (0 << 24) | (0 << 16) | (0 << 8) | (0);
-			}
-		}
-
-		return volDataLinear;
-	}
 GamePage::GamePage ()
                    {
-		isEntity = false;
+		terRes = -1;
 		parentBlock = NULL;
 		volData = NULL;
 		volDataLinear = NULL;
+		cellData = NULL;
 	}
 void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _thisPageId, int offsetX, int offsetY, int offsetZ, int oxLoc, int oyLoc, int ozLoc, bool _isEntity)
           {
 
-		isDirty = true;
+		
+
+		isEntity = false;
 		hasLines = false;
 		hasSolids = false;
 		hasTrans = false;
+		isDirty = true;
+		
 
 		isEntity = _isEntity;
 
@@ -55,6 +33,7 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 		if (!isEntity) {
 			parentBlock = gw->getBlockAtId(parentGPH->blockId);
 		}
+		
 		
 		
 
@@ -86,9 +65,6 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 
 
 		unitSizeInPixels = (float)(singleton->unitSizeInPixels);
-
-
-		worldSeed.copyFrom(&(singleton->worldSeed));
 
 
 
@@ -126,9 +102,7 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 		centerPosition.addXYZRef(&worldMaxVisInPixels);
 		centerPosition.multXYZ(0.5f);
 
-		underground = false;
-		nearTerrain = false;
-		nearAir = false;
+		
 		
 		hasWater = ( singleton->getSLInPixels() >= worldMinVisInPixels.getFZ() );
 		
@@ -136,14 +110,7 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 		if (isEntity) {
 			addEntityGeom(true);
 		}
-		else {
-			parentBlock->isNearTerrain(&centerPosition,&centerPosition,nearTerrain,nearAir); //&worldMinVisInPixels,&worldMaxVisInPixels
-			
-			//terVal = parentBlock->fIsNearTerrain(&centerPosition);
-			
-			
-			
-			hasTerrain = nearTerrain&&nearAir;
+		else {			
 			addGeom(true);
 		}
 		
@@ -151,6 +118,33 @@ void GamePage::init (Singleton * _singleton, GamePageHolder * _parentGPH, int _t
 
 
 
+	}
+uint * GamePage::getVolData ()
+                           {
+		int i;
+
+		if (volData == NULL) {
+			volData = new uint[iVolumeSize];
+			for (i = 0; i < iVolumeSize; i++) {
+				volData[i] = 0;
+			}
+		}
+
+		return volData;
+
+	}
+uint * GamePage::getVolDataLinear ()
+                                 {
+		int i;
+
+		if (volDataLinear == NULL) {
+			volDataLinear = new uint[iVolumeSize];
+			for (i = 0; i < iVolumeSize; i++) {
+				volDataLinear[i] = (0 << 24) | (0 << 16) | (0 << 8) | (0);
+			}
+		}
+
+		return volDataLinear;
 	}
 void GamePage::copyToTexture (bool isForEmptyVD)
                                               {
@@ -259,6 +253,16 @@ void GamePage::copyToTexture (bool isForEmptyVD)
 
 
 	}
+void GamePage::setFalse ()
+                        {
+		hasLines = false;
+		hasSolids = false;
+		hasTrans = false;
+		hasTree = false;
+		hasWindow = false;
+		hasGeom = false;
+		hasTerrain = false;
+	}
 void GamePage::addEntityGeom (bool justTesting)
                                              {
 		
@@ -289,12 +293,7 @@ void GamePage::addEntityGeom (bool justTesting)
 
 
 		if (justTesting) {
-			hasTree = false;
-			hasWindow = false;
-			hasGeom = false;
-			hasLines = false;
-			hasSolids = false;
-			hasTrans = false;
+			setFalse();
 		}
 
 		
@@ -348,7 +347,7 @@ void GamePage::addEntityGeom (bool justTesting)
 
 		if (justTesting) {
 			parentGPH->hasTrans = false;
-			hasTrans = true;
+			hasTrans = false;
 			if (hasGeom||hasLines) {
 				parentGPH->hasSolids = true;
 				hasSolids = true;
@@ -408,9 +407,7 @@ void GamePage::addGeom (bool justTesting)
 		}
 
 		if (justTesting) {
-			hasTree = false;
-			hasWindow = false;
-			hasGeom = false;
+			setFalse();
 		}
 
 
@@ -486,21 +483,31 @@ void GamePage::addGeom (bool justTesting)
 
 		if (justTesting) {
 			
-			if (hasWindow || hasWater) {
-				parentGPH->hasTrans = true;
-				hasTrans = true;
-				if (MAX_LAYERS < 2) {
+			terRes = parentBlock->isNearTerrain(&centerPosition);
+			
+			hasTerrain = (terRes == E_TER_GROUNDLEVEL);
+			
+			if (terRes == E_TER_UNDERGROUND) {
+				
+			}
+			else {
+				if (hasWindow || hasWater) {
+					parentGPH->hasTrans = true;
+					hasTrans = true;
+					if (MAX_LAYERS < 2) {
+						parentGPH->hasSolids = true;
+						hasSolids = true;
+					}
+				}
+
+				if (hasTerrain || hasGeom || volDataModified) {
 					parentGPH->hasSolids = true;
 					hasSolids = true;
 				}
 			}
-
-			if (hasTerrain || hasGeom) {
-				parentGPH->hasSolids = true;
-				hasSolids = true;
-			}
 			
-			underground = ( nearTerrain&&(!nearAir)&&(!isEntity) );
+			
+						
 			
 		}
 		else {
@@ -628,8 +635,22 @@ void GamePage::getVoroPoints ()
 		
 		voroCount = 27;
 	}
-void GamePage::generateVolume ()
-                              {
+void GamePage::addAllGeom ()
+                          {
+		if (isEntity) {
+			
+			addEntityGeom(true);
+			addEntityGeom(false);
+		}
+		else {
+			
+			addGeom(true);
+			addGeom(false);
+			
+		}
+	}
+void GamePage::generateVolume (bool dd)
+                                             {
 		PAGE_COUNT++;
 
 		int curVGFBO = CUR_VG_FBO;
@@ -638,28 +659,36 @@ void GamePage::generateVolume ()
 			CUR_VG_FBO = 0;
 		}
 		
+		int curVGTFBO = CUR_VGT_FBO;
+		CUR_VGT_FBO++;
+		if (CUR_VGT_FBO >= MAX_VGT_FBOS) {
+			CUR_VGT_FBO = 0;
+		}
+		
 		// 1 = 0
 		// 2 = 1
 		// 4 = 2
 		// 8 = 2
 		
+		float curBlendAmount = 0.5f;
 		
 
-		int hspLog = 2;
+		// int hspLog = 2;
 		
-		switch (singleton->holderSizeInPages) {
-			case 1:
-				hspLog = 0;
-			break;
-			case 2:
-				hspLog = 1;
-			break;
-		}
-		
+		// switch (singleton->holderSizeInPages) {
+		// 	case 1:
+		// 		hspLog = 0;
+		// 	break;
+		// 	case 2:
+		// 		hspLog = 1;
+		// 	break;
+		// }
 		
 		
 		int resIndex = 0;
 		int i;
+		int mLayers = 1;
+		bool didRender = false;
 		isRendering = true;
 		
 		if (volDataModified) {
@@ -672,23 +701,20 @@ void GamePage::generateVolume ()
 			}
 		}
 		
-		if (isEntity) {
-			addEntityGeom(true);
-			addEntityGeom(false);
-		}
-		else {
-			resIndex = parentBlock->copyTerToTexture();
-			addGeom(true);
-			addGeom(false);
-			
-		}
+		
 		
 
 		parentGPH->clearSet(); //false
 		getVoroPoints();
 
 
-
+		if (dd) {
+			
+			hasTerrain = true;
+			hasSolids = true;
+			parentGPH->hasSolids = true;
+			
+		}
 
 
 		/////////////////////////////////////////
@@ -697,6 +723,7 @@ void GamePage::generateVolume ()
 
 
 		if (isEntity) {
+			curBlendAmount = 1.0f;
 			singleton->bindShader("GenerateVolumeEnt");
 		}
 		else {
@@ -705,7 +732,6 @@ void GamePage::generateVolume ()
 
 		
 
-		//singleton->bindFBO("volGenFBO0");
 		singleton->bindFBODirect(&(singleton->vgFBOArr[curVGFBO]), 0);
 
 		if (volDataModified) {
@@ -718,76 +744,30 @@ void GamePage::generateVolume ()
 		}
 
 		singleton->sampleFBO("hmFBOLinear", 2);
-		//singleton->setShaderTexture(3,singleton->terrainId);
 		
 		if (!isEntity) {
+			resIndex = parentBlock->copyTerToTexture();
 			singleton->setShaderTexture3D(4, singleton->terTextures[resIndex].texId);
 		}
-
-		// if (LAST_COMPILE_ERROR) {
-			
-		// }
-		// else {
-		// 	if (singleton->wasUpdatedUniformBlock(0)) {
-
-		// 	}
-		// 	else {
-
-		// 		doTraceND("UPDATING UNIFORM DATA");
-
-		// 		// MUST BE IN ORDER AND MATCH SHADER!
-
-		// 		singleton->beginUniformBlock(0);
-
-		// 		singleton->setShaderFloatUB("totLayers", MAX_LAYERS);
-		// 		singleton->setShaderFloatUB("pixelsPerMeter", singleton->pixelsPerMeter);
-		// 		singleton->setShaderFloatUB("seaLevel", singleton->getSLInPixels() );
-		// 		singleton->setShaderFloatUB("maxSeaDepthDeprecated", 0.0f );
-
-		// 		singleton->setShaderFloatUB("heightmapMin", 0.0);//singleton->heightmapMin);
-		// 		singleton->setShaderFloatUB("heightmapMax", 0.0);// singleton->heightmapMax);
-		// 		singleton->setShaderFloatUB("maxFloors", 1.0f); //singleton->maxFloors
-		// 		singleton->setShaderFloatUB("terDataTexScale", singleton->terDataTexScale);
-
-		// 		singleton->setShaderfVec4UB("worldSizeInPixels", &(singleton->worldSizeInPixels));
-		// 		singleton->setShaderfVec4UB("mapFreqs", &(singleton->mapFreqs) );
-		// 		singleton->setShaderfVec4UB("mapAmps", &(singleton->mapAmps) );
-
-		// 		singleton->updateUniformBlock(0);
-				
-		// 		doTraceND("END UPDATING UNIFORM DATA");
-		// 	}
-		// }
 		
 		
 		singleton->setShaderFloat("totLayers", MAX_LAYERS);
-		singleton->setShaderFloat("pixelsPerMeter", singleton->pixelsPerMeter);
-		singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
-		singleton->setShaderFloat("maxSeaDepthDeprecated", 0.0f );
-
-		//singleton->setShaderFloat("heightmapMin", 0.0);//singleton->heightmapMin);
-		//singleton->setShaderFloat("heightmapMax", 0.0);// singleton->heightmapMax);
-		//singleton->setShaderFloat("maxFloors", 1.0f); //singleton->maxFloors
-		//singleton->setShaderFloat("terDataTexScale", singleton->terDataTexScale);
-
-		singleton->setShaderfVec4("worldSizeInPixels", &(singleton->worldSizeInPixels));
-		//singleton->setShaderfVec4("mapFreqs", &(singleton->mapFreqs) );
-		//singleton->setShaderfVec4("mapAmps", &(singleton->mapAmps) );
-		
-		singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
+		singleton->setShaderFloat("pixelsPerCell", singleton->pixelsPerCell);	
 		singleton->setShaderFloat("volumePitch", (float)( singleton->volGenFBOX ));
-		//singleton->setShaderVec3("terPitch", singleton->terDataVisPitchXY, singleton->terDataVisPitchXY, singleton->terDataVisPitchZ);
-
 		singleton->setShaderfVec4("worldMinBufInPixels", &(worldMinBufInPixels));
 		singleton->setShaderfVec4("worldMaxBufInPixels", &(worldMaxBufInPixels));
 
-		if (!isEntity) {
+		if (isEntity) {
+			
+		}
+		else {
+			singleton->setShaderfVec4("worldSizeInPixels", &(singleton->worldSizeInPixels));	
+			singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
 			singleton->setShaderfVec4("blockMinBufInPixels", &(parentBlock->blockMinBufInPixels));
 			singleton->setShaderfVec4("blockMaxBufInPixels", &(parentBlock->blockMaxBufInPixels));
 		}
 		
 		
-		singleton->setShaderFloat("blockSizeInPixels", singleton->blockSizeInPixels);
 
 
 		singleton->setShaderInt("hasTree", (int)hasTree);
@@ -802,10 +782,10 @@ void GamePage::generateVolume ()
 			singleton->setShaderArray("matCountArr", singleton->matCountArr, E_MAT_PARAM_LENGTH);
 		}
 
-		singleton->setShaderInt("voroCount", voroCount);
+		//singleton->setShaderInt("voroCount", voroCount);
 		singleton->setShaderArrayfVec4("voroArr", singleton->voroArr, voroCount);
 
-		singleton->drawFSQuad(1.0f);
+		singleton->drawFSQuad();
 
 		if (!isEntity) {
 			singleton->setShaderTexture3D(4, 0);
@@ -835,57 +815,55 @@ void GamePage::generateVolume ()
 		/////////////////////////////////////////
 
 
+		
+
 		if (parentGPH->gpuRes != NULL) {
-			getCoords();
 			singleton->bindShader("RenderVolume");
+			
 
+			
 
-			for (i = 0; i < MAX_LAYERS; i++) {
+			if (
+				
+				(hasTerrain || hasGeom || hasLines || hasWater || hasWindow)
+				
+			) {
+				
+				
+				
+				didRender = true;
+				
+				singleton->bindFBODirect(&(singleton->vgtFBOArr[curVGTFBO]), 1);	
 
-				if (
-					(
-						(i == 0) &&
-						(
-							(hasTerrain || hasGeom || hasLines) ||
-							((MAX_LAYERS < 2)&&(hasWater))
-						)
-					) ||
-					((i == 1) && (hasWater || hasWindow))
-				) {
-					singleton->bindFBODirect(parentGPH->gpuRes->getFBOS(i), 0);
-					//singleton->sampleFBO("volGenFBO0", 0);
-					singleton->sampleFBODirect(&(singleton->vgFBOArr[curVGFBO]),0);
-					singleton->sampleFBO("frontFaceFBO", 2);
-					singleton->sampleFBO("backFaceFBO", 3);
+				singleton->sampleFBODirect(&(singleton->vgFBOArr[curVGFBO]),0);
+				//singleton->sampleFBO("frontFaceFBO", 2);
+				//singleton->sampleFBO("backFaceFBO", 3);
 
-					singleton->setShaderFloat("curLayer", i);
-					singleton->setShaderFloat("pageDepth", (float)( pageDepth ));
-					singleton->setShaderFloat("volumePitch", (float)( singleton->volGenFBOX ));
-					singleton->setShaderFloat("tiltAmount", singleton->tiltAmount);
-					singleton->setShaderFloat("holderSizeInPagesLog", hspLog);
-					singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
-					singleton->setShaderFloat("visPageSizeInPixels", (float)(singleton->visPageSizeInPixels));
-					singleton->setShaderfVec3("worldMinVisInPixels", &(worldMinVisInPixels));
-					singleton->setShaderfVec3("worldMaxVisInPixels", &(worldMaxVisInPixels));
-					singleton->setShaderfVec3("worldMinBufInPixels", &(worldMinBufInPixels));
-					singleton->setShaderfVec3("worldMaxBufInPixels", &(worldMaxBufInPixels));
-					singleton->setShaderfVec4("scaleAndOffset", &scaleAndOffset);
+				singleton->setShaderFloat("blendAmount",curBlendAmount);
+				//singleton->setShaderFloat("curLayer", i);
+				singleton->setShaderFloat("volGenSuperMod", singleton->volGenSuperMod);
+				singleton->setShaderFloat("volumePitch", (float)( singleton->volGenFBOX ));
+				//singleton->setShaderFloat("holderSizeInPagesLog", hspLog);
+				singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
+				singleton->setShaderFloat("visPageSizeInPixels", (float)(singleton->visPageSizeInPixels));
+				singleton->setShaderfVec3("worldMinVisInPixels", &(worldMinVisInPixels));
+				singleton->setShaderfVec3("worldMaxVisInPixels", &(worldMaxVisInPixels));
+				
+				singleton->drawFSQuad();
 
-					//glCallList(singleton->volTris);
-					singleton->drawFSQuad(1.0f);
-
-					
-					singleton->unsampleFBO("backFaceFBO",3);
-					singleton->unsampleFBO("frontFaceFBO",2);
-					//singleton->unsampleFBO("volGenFBO0",0);
-					singleton->unsampleFBODirect(&(singleton->vgFBOArr[curVGFBO]),0);
-					singleton->unbindFBO();
-				}
-
+				
+				//singleton->unsampleFBO("backFaceFBO",3);
+				//singleton->unsampleFBO("frontFaceFBO",2);
+				singleton->unsampleFBODirect(&(singleton->vgFBOArr[curVGFBO]),0);
+				singleton->unbindFBO();
 			}
+
+			
 
 			singleton->unbindShader();
 		}
+		
+		
 
 
 		/////////////////////////////////////////
@@ -895,67 +873,406 @@ void GamePage::generateVolume ()
 
 
 
+		
+		
+		if (didRender) {
+			
+			getPoints(curVGTFBO);
+			
+		}
+		
 		isDirty = false;
 		isRendering = false;
 
 	}
-void GamePage::getCoords ()
-                         {
-
-
-
-		float dx = offsetInPagesLocal.getFX();
-		float dy = offsetInPagesLocal.getFY();
-		float dz = offsetInPagesLocal.getFZ();
-
-		float pitchSrc = (float)((singleton->visPageSizeInPixels * 2.0f));
-		float pitchSrc2 = (pitchSrc) / 2.0f;
-
-		float dxmod = dx * pitchSrc2;
-		float dymod = dy * pitchSrc2;
-		float dzmod = dz * pitchSrc2;
-
-
-		// float fx1 = (dxmod - dymod) - pitchSrc2;
-		// //float fy1 = (-(dxmod / 2.0f) + -(dymod / 2.0f) + dzmod) - pitchSrc2;
-		// float tilt = 1.0-singleton->tiltAmount;
-		// float fy1 = (-tilt*dxmod + -tilt*dymod + (1.0-tilt)*2.0f*dzmod) - pitchSrc2;
+int GamePage::getIndex (int i, int j, int k, int p)
+                                                 {
+		return (i + j*p + k*p*p);
+	}
+bool GamePage::isAir ()
+                     {
+		// WAS DOING
+	}
+void GamePage::getPoints (int fboNum)
+                                   {
 		
-		float tilt = singleton->tiltAmount;
-		float itilt = 1.0f-singleton->tiltAmount;
-		
-		tempVec2.setFXYZ(dxmod,dymod,dzmod);
-		singleton->worldToScreenBase(&tempVec1,&tempVec2);
-		float fx1 = tempVec1.getFX()*(singleton->fHolderMod);
-		float fy1 = tempVec1.getFY()*(singleton->fHolderMod);
+		int sres = singleton->volGenSuperRes;
+		int sresM1 = sres-1;
+		float fres = sres;
 		
 		
 		
 		
-		fx1 -= pitchSrc2;
-		fy1 -= pitchSrc2;
+		int cellsPerPage = singleton->cellsPerPage;
+		int cellDataSize = cellsPerPage*cellsPerPage*cellsPerPage;
+		int cdBufferSize = cellDataSize*E_CD_LENGTH;
+		int ci;
+		
+		float fVisPageSizeInPixels = singleton->visPageSizeInPixels;
+		
+		int i, j, k, m, n, p, q;
+		
+		int ni;
+		int nj;
+		int nk;
+		
+		int ind = 0;
+		int ind2 = 0;
 		
 		
-		float fx2 = fx1 + pitchSrc;
-		float fy2 = fy1 + pitchSrc + 2.0;// + 2.0; // TODO: THIS "+ 2.0" is a hack used to cover cracks between pages, it should not be used
+		bool doMip = MAX_MIP_LEV > 1;
+		singleton->vgtFBOArr[fboNum].fbos[0].getPixels(doMip);
+		singleton->vgtFBOArr[fboNum].fbos[1].getPixels(doMip);
+		
+		if (doMip) {
+			singleton->vgtFBOArr[fboNum].fbos[0].updateMips3D(sres);
+			singleton->vgtFBOArr[fboNum].fbos[1].updateMips3D(sres);
+		}
+		
+		
+		int procCount[MAX_LAYERS];
+		
+		bool edgeK;
+		bool edgeJ;
+		bool edgeI;
+		
+		
+		//float iv0 = 0.0f;
+		//float iv1 = singleton->voxelSizeInWC;
+		
+		int mval;
 
-		float sx = singleton->holderSizeInPixels;
-		float sy = singleton->holderSizeInPixels;
+		
+		int MIN_MIP = 0;
+		int MAX_MIP = 1;
+		int AVG_MIP = 2;
+		
+		float fi = 0.0f;
+		float fj = 0.0f;
+		float fk = 0.0f;
+		
+		
+		float bpX = 0.0f;
+		float bpY = 0.0f;
+		float bpZ = 0.0f;
+		
+		//uint dirFlags;
+		bool isCand;
+		
+		uint flagVals[6];
+		flagVals[0] = 1;
+		flagVals[1] = 2;
+		flagVals[2] = 4;
+		flagVals[3] = 8;
+		flagVals[4] = 16;
+		flagVals[5] = 32;
+		
+		const uint AIR_VAL = 0;
+		
+		FBOWrapper* fbow0 = &(singleton->vgtFBOArr[fboNum].fbos[0]);
+		FBOWrapper* fbow1 = &(singleton->vgtFBOArr[fboNum].fbos[1]);
+		
+		bool doProc;
+		bool hasAir = false;
+		bool hasSolid = false;
+		bool hasSolidAndAir = false;
+		
+		
+		
+		for (i = 0; i < sres*sres*sres; i++) {
+			
+			if (fbow0->getPixelAtIndex(i,A_CHANNEL) == 0) {
+				hasAir = true;
+			}
+			else {
+				hasSolid = true;
+			}
+			
+			if (fbow0->getPixelAtIndex(i,G_CHANNEL) != 0) {
+				hasSolidAndAir = true;
+			}
+		}
+		
+		
+		
+		for (p = 0; p < MAX_MIP_LEV*MAX_LAYERS; p++) {
+			vertices[p].data.clear();
+		}
+		
+		
+		
+		
+		
+		
+		
+		// determine collision matrix
+		if (hasSolid||hasSolidAndAir) {
+			if (cellData == NULL) {
+				cellData = new int[cellDataSize];
+			}
+			
+			for (i = 0; i < cellDataSize; i++) {
+				cellData[i] = E_CD_EMPTY;
+			}
+			for (i = 0; i < cdBufferSize; i++) {
+				singleton->cdBuffer[i] = 0;
+			}
+			
+			
+			for (k = 0; k < sres; k++) {
+				nk = ((k*cellsPerPage)/sres)*cellsPerPage*cellsPerPage;
+				for (j = 0; j < sres; j++) {
+					nj = ((j*cellsPerPage)/sres)*cellsPerPage;
+					for (i = 0; i < sres; i++) {
+						ni = ((i*cellsPerPage)/sres);
+						ind = getIndex(i,j,k,sres);
+						ind2 = nk + nj + ni;
+						
+						q = fbow0->getPixelAtIndex(ind,A_CHANNEL);
+						p = singleton->cdMap[q];
+						
+						
+						
+						singleton->cdBuffer[p*cellDataSize + ind2] += 1;
+						
+					}
+				}
+			}
+			
+			
+			for (i = 0; i < cellDataSize; i++) {
+				
+				m = 0;
+				p = E_CD_EMPTY;
+				
+				for (j = 1; j < E_CD_LENGTH; j++) {
+					q = singleton->cdBuffer[j*cellDataSize + i];
+					if (q >= m) {
+						m = q;
+						p = j;
+					}
+				}
+				
+				cellData[i] = p;
+				
+				
+			}
+			
+		}
+		
+		
+		
+		
+		if ( (hasAir&&hasSolid)||(hasSolidAndAir) ) {
+			
+		}
+		else {
+			
+			goto DO_CLEANUP;
+		}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		for (p = 0; p < MAX_MIP_LEV; p++) {
+			
+			for (q = 0; q < MAX_LAYERS; q++) {
+				procCount[q] = 0;
+			}
+			
+			
+			
+			if (p == 0) {
+				mval = 3;
+			}
+			else {
+				mval = MAX_MIP;
+			}
+			
+			
+			for (n = 0; n < 2; n++) {
+				
+				
+				
+				for (k = 0; k < sres; k++) {
+					fk = k;
+					
+					for (j = 0; j < sres; j++) {
+						fj = j;
+						
+						for (i = 0; i < sres; i++) {
+							fi = i;
+							
+							ind = getIndex(i,j,k,sres);
+							
+							
+							
+							
+							
+							if (
+								(fbow0->getPixelAtIndex3DMip(ind,A_CHANNEL,mval,p) == 0)
+							) {
+								// is air
+							}
+							else {
+								
+								q = fbow0->getPixelAtIndex3DMip(ind,R_CHANNEL,mval,p);
+								
+								isCand = fbow0->getPixelAtIndex3DMip(ind,G_CHANNEL,mval,p) != 0;
+								
+								
+								
+								
+								// front facing: counter clock wise
+								
+								doProc = false;
+								
+								
+								
+								// x + 
+								if (i != sresM1) {
+									ind2 = getIndex(i+1,j,k,sres);
+									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+								}
+								else {
+									doProc = doProc||isCand;
+								}
+								
+								// x - 
+								if (i != 0) {
+									ind2 = getIndex(i-1,j,k,sres);
+									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+								}
+								else {
+									doProc = doProc||isCand;
+								}
+								
+								// y + 
+								if (j != sresM1) {
+									ind2 = getIndex(i,j+1,k,sres);
+									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+								}
+								else {
+									doProc = doProc||isCand;
+								}
+								
+								// y - 
+								if (j != 0) {
+									ind2 = getIndex(i,j-1,k,sres);
+									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+								}
+								else {
+									doProc = doProc||isCand;
+								}
+								
+								// z + 
+								if (k != sresM1) {
+									ind2 = getIndex(i,j,k+1,sres);
+									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+								}
+								else {
+									doProc = doProc||isCand;
+								}
+								
+								// z- 
+								if (k != 0) {
+									ind2 = getIndex(i,j,k-1,sres);
+									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+								}
+								else {
+									doProc = doProc||isCand;
+								}
+								
+								
+								if (doProc) {
+									if (n == 0) {
+										procCount[q]++;
+									}
+									else {
+										bpX = worldMinVisInPixels.getFX() + ((fi)/fres)*fVisPageSizeInPixels;
+										bpY = worldMinVisInPixels.getFY() + ((fj)/fres)*fVisPageSizeInPixels;
+										bpZ = worldMinVisInPixels.getFZ() + ((fk)/fres)*fVisPageSizeInPixels;
+										
+										ci = p*MAX_LAYERS+q;
+										
+										vertices[ci].data.push_back(fbow1->getPixelAtIndex3DMip(ind,R_CHANNEL,mval,p)*2.0f/255.0f - 1.0f);
+										vertices[ci].data.push_back(fbow1->getPixelAtIndex3DMip(ind,G_CHANNEL,mval,p)*2.0f/255.0f - 1.0f);
+										vertices[ci].data.push_back(fbow1->getPixelAtIndex3DMip(ind,B_CHANNEL,mval,p)*2.0f/255.0f - 1.0f);
+										vertices[ci].data.push_back(
+											fbow0->getPixelAtIndex3DMip(ind,B_CHANNEL,mval,p) +
+											fbow0->getPixelAtIndex3DMip(ind,A_CHANNEL,mval,p)*256
+										);
+										
+										vertices[ci].data.push_back(bpX);
+										vertices[ci].data.push_back(bpY);
+										vertices[ci].data.push_back(bpZ);
+										vertices[ci].data.push_back(1.0f);
+										
+										//totalPointCount++;
+										
+										//getPixVal(fbow0,fbow1,ind, bpX,bpY,bpZ, iv0,iv0,iv0);
+										
+									}
+								}
+								
+							}
+						}	
+					}
+				}
+				
+				if (n==0) {
+					for (q = 0; q < 2; q++) {
+						ci = p*MAX_LAYERS+q;
+						if (procCount[q] > 0) {
+							vertices[ci].data.reserve((procCount[q]+1)*8);
+						}
+					}
+					
+					
+				}
+				
+				
+			}
+			
+			
+			
+			
+			
+			
+			
+			sres = sres/2;
+			sresM1 = sres-1;
+			fres = sres;
+			
+		}
+		
+		
+		
+		
+		
+DO_CLEANUP:
 
-
-		fx1 = fx1 / sx;
-		fy1 = fy1 / sy;
-		fx2 = fx2 / sx;
-		fy2 = fy2 / sy;
-
-		scaleAndOffset.setFXYZW(
-			(fx2 - fx1) / 2.0f,
-			(fy2 - fy1) / 2.0f,
-			(fx1 + fx2) / 2.0f,
-			(fy1 + fy2) / 2.0f
-
-		);
-
+	;
+	
+	
+	// if (vertices[0].data.size() > 0) {
+	// 	if (isEntity) {
+	// 		cout << "RENDER ENT\n";
+	// 	}
+	// }
+	
+		
 	}
 GamePage::~ GamePage ()
                     {

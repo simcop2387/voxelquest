@@ -11,14 +11,10 @@ varying vec2 TexCoord0;
 
 
 uniform vec2 resolution;
-uniform vec3 process;
 uniform vec2 mouseCoords;
 uniform vec3 cameraPos;
 uniform vec2 bufferDim;
-uniform float cameraZoom;
-uniform float tiltAmount;
-uniform float fHolderMod;
-
+uniform int iMax;
 
 
 
@@ -26,7 +22,7 @@ $
 
 void main() {
 
-    TexCoord0 = gl_MultiTexCoord0.xy;// = ;//TexCoord0 = gl_MultiTexCoord0;
+    TexCoord0 = gl_MultiTexCoord0.xy;
     gl_Position = gl_Vertex;
 }
 
@@ -59,15 +55,6 @@ float unpack16(vec2 num) {
     return num.r*255.0 + num.g*65280.0;
 }
 
-// vec3 randV3(vec3 co) {
-//     return vec3(
-//                      fract(sin(dot(co.xyz , vec3(12.989, 78.233, 98.422))) * 43758.8563),
-//                      fract(sin(dot(co.zyx , vec3(93.989, 67.345, 54.256))) * 24634.6345),
-//                      fract(sin(dot(co.yxz , vec3(43.332, 93.532, 43.734))) * 56445.2345)
-//                  );
-// }
-
-
 void main() {
 
     vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
@@ -75,53 +62,20 @@ void main() {
     vec4 tex4 = texture2D(Texture4, TexCoord0.xy);
     vec4 tex5 = texture2D(Texture5, TexCoord0.xy);
 
-    //vec4 texFinal = tex0;
-    //texFinal.b = mix( tex0.b, tex2.b, float(tex2.a > 0.0) );
+    float objectId = unpack16(tex5.rg);
 
-    float objectId = unpack16(tex5.rg);//float(tex4.a > 0.0);
-    float newZoom = min(cameraZoom,1.0);
-    float baseHeight[4];
+    vec3 worldPosition[4];
     
-    baseHeight[0] = unpack16(tex0.rg);
-    baseHeight[1] = unpack16(tex2.rg);
-    baseHeight[2] = unpack16(tex4.rg);
-    baseHeight[3] = max(baseHeight[0], baseHeight[1]);//max(max(baseHeight[0], baseHeight[1]), baseHeight[2]);
-    //max(baseHeight1,baseHeight3);
-    
-    float tilt = tiltAmount;
-    float itilt = 1.0-tiltAmount;
-
-    vec3 worldPosition = vec3(0.0,0.0,0.0);
-    vec2 ssCoord = vec2(0.0);
+    worldPosition[0] = tex0.xyz;
+    worldPosition[1] = tex2.xyz;
+    worldPosition[2] = tex4.xyz;
+    worldPosition[3] = tex0.xyz;
     
     int i;
 
-    for (i = 0; i < 4; i++) {
-        ssCoord = vec2(TexCoord0.x,1.0-TexCoord0.y)*2.0-1.0;
-        
-        //ssCoord.x *= bufferDim.x/(newZoom);
-        //ssCoord.y *= bufferDim.y/(newZoom);
-        
-        ssCoord.xy *= bufferDim.xy*fHolderMod/(newZoom);
+    for (i = 0; i < iMax; i++) {
 
-        ssCoord.y -= cameraPos.z*tilt*2.0;
-        ssCoord.y += baseHeight[i]*tilt*2.0;
-
-        worldPosition.x = (ssCoord.y*0.5/itilt + ssCoord.x*0.5);
-        worldPosition.y = (ssCoord.y*0.5/itilt - ssCoord.x*0.5);
-        worldPosition.z = baseHeight[i];
-        worldPosition.x += cameraPos.x;
-        worldPosition.y += cameraPos.y;
-        
-        //worldPosition.xy = floor(worldPosition.xy/4.0 + 3.0)*4.0;
-        
-        //worldPosition.xyz = floor(worldPosition.xyz/8.0)*8.0;
-        
-        //worldPosition += randV3(worldPosition)*10.0;
-
-        gl_FragData[i] = vec4( worldPosition.xyz, objectId );
+        gl_FragData[i] = vec4( worldPosition[i].xyz, objectId );
     }
-
-    
     
 }

@@ -3,23 +3,31 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
-bool LAST_COMPILE_ERROR = false;
 
 
-//const static int MAX_FLOORS = 6;
-const static int MAX_LIGHTS = 24;
-const static int MAX_EVAL_LIGHTS = 256;
-const static int FLOATS_PER_LIGHT = 16;
 
-//const static int MAX_GRASS_LEV = 1;
+
+const static int DEF_SCALE_FACTOR = 2;
+const static int MAX_LAYERS = 2;
+
+
+
+
+
 
 const static int DEF_WIN_W = 1920;
 const static int DEF_WIN_H = 1080;
-const static int DEF_SCALE_FACTOR = 2;
-const static float UI_SCALE_FACTOR = 1.0f;
 
-const static bool ENT_ON = false;
-const static int MAX_LAYERS = 1;
+
+const static int MAX_LIGHTS = 24;
+const static int MAX_EVAL_LIGHTS = 1024;
+const static int FLOATS_PER_LIGHT = 16;
+
+
+const static int MAX_MIP_LEV = 1; // min of 1
+const static bool FILL_POINTS = false;
+
+const static float UI_SCALE_FACTOR = 1.0f;
 
 const static int MAX_PLANT_GEN = 16;
 
@@ -27,13 +35,18 @@ const static int MAX_TER_TEX = 9;
 
 const static int MAX_NODE_DIRS = 6;
 const static int MAX_NODE_VALS = 4;
-const static int TOT_NODE_VALS = 
+const static int TOT_NODE_VALS =
 	MAX_NODE_DIRS * MAX_NODE_VALS;
 
 const static int TOT_MAP_DIRS = 4;
 
 const static int MAX_BLOCK_STACK = 10;
 const static int MAX_UI_LAYERS = 4;
+
+int totalPointCount;
+
+
+bool LAST_COMPILE_ERROR = false;
 
 char *BUF_NAMES[] =
 {
@@ -53,14 +66,22 @@ char *BUF_NAMES[] =
 	"ublock13"
 };
 
+const static int R_CHANNEL = 0;
+const static int G_CHANNEL = 1;
+const static int B_CHANNEL = 2;
+const static int A_CHANNEL = 3;
 
-const static int MAX_VG_FBOS = 1;
+const static int MAX_VG_FBOS = 2;
 int CUR_VG_FBO = 0;
+
+const static int MAX_VGT_FBOS = 2;
+int CUR_VGT_FBO = 0;
+
+const static float M_PI = 3.14159;
+
 int PAGE_COUNT = 0;
-
-
 // set to 0 to disable
-int MAX_HOLDERS = 1024;
+int MAX_HOLDERS = 2048;
 
 
 float MAX_GPU_MEM = 2560.0f;
@@ -116,7 +137,6 @@ bool TRACE_ON = false;
 #include <gl/glu.h>
 #include <gl/freeglut.h>
 #pragma comment(lib, "glew32.lib")
-
 
 
 

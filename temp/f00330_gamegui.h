@@ -18,6 +18,7 @@ void GameGUI::init (Singleton * _singleton)
 		baseComp = new UIComponent();
 		baseComp->init(
 			singleton,
+			baseComp,
 			-1,
 			nodeCount,
 			0,
@@ -142,9 +143,12 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 		int numChildren = 0;
 		int numFloatingChildren = 0;
 		int numDataChildren = 0;
+		int numFilters = 0;
 		JSONValue* jvChildren = NULL;
 		JSONValue* jvFloatingChildren = NULL;
 		JSONValue* jvChildTemplate = NULL;
+		JSONValue* jvFilter = NULL;
+		JSONValue* curFilter = NULL;
 		
 		JSONValue* jvData = NULL;
 		JSONValue* jvDataRoot = NULL;
@@ -169,8 +173,9 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 		}
 		
 		
-		
+		bool doProc = false;
 		bool isInternal = false;
+		int totCount = 0;
 		E_GUI_CHILD_TYPES curCT = E_GCT_LENGTH;;
 		
 		
@@ -188,7 +193,15 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 				}
 			}
 			
-			
+			if (jv->HasChild("whereAllEqual")) {
+				jvFilter = jv->Child("whereAllEqual");
+				numFilters = jvFilter->CountChildren();
+			}
+			else {
+				jvFilter = NULL;
+				numFilters = 0;
+			}
+				
 			
 			
 			if (jv->HasChild("dataSource")) {
@@ -237,74 +250,108 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 					
 					curData = jvData->Child(i);
 					
-					switch (curCT) {
-						case E_GCT_INV_ITEM:
-							tempStrings[E_GDS_CHILD_NAME] = curData->Child("name")->string_value;
+					doProc = true;
+					if (jvFilter != NULL) {
+						
+						
+						for (j = 0; j < numFilters; j++) {
+							curFilter = jvFilter->Child(j);
 							
-							curIcon = jvRoot->
-								Child("itemDefs")->
-								Child(tempStrings[E_GDS_CHILD_NAME])->
-								Child("iconNum")->
-								number_value;
-							
-							jvChildTemplate->
-								Child("floatingChildren")->
-								Child(0)->
-								Child("children")->
-								Child(0)->
-								Child("label")->
-								string_value = 
-									jvRoot->
+							if ( curData->Child(curFilter->Child(0)->string_value)->IsNumber() ) {
+								if (
+									curData->Child(curFilter->Child(0)->string_value)->number_value !=
+									curFilter->Child(1)->number_value
+								) {
+									doProc = false;
+								}
+							}
+							else {
+								// todo: string support
+							}
+						}
+						
+						
+					}
+					
+					if (doProc) {
+						switch (curCT) {
+							case E_GCT_INV_ITEM:
+								tempStrings[E_GDS_CHILD_NAME] = curData->Child("name")->string_value;
+								
+								curIcon = jvRoot->
 									Child("itemDefs")->
 									Child(tempStrings[E_GDS_CHILD_NAME])->
-									Child("class")->
-									string_value;
+									Child("iconNum")->
+									number_value;
 								
-							jvChildTemplate->Child("label")->string_value = 
-								i__s(curIcon) +
-								"& " +
-								curData->Child("mat")->string_value +
-								" " +
-								tempStrings[E_GDS_CHILD_NAME];
-						break;
-						case E_GCT_SHADER_PARAM:
+								jvChildTemplate->
+									Child("floatingChildren")->
+									Child(0)->
+									Child("children")->
+									Child(0)->
+									Child("label")->
+									string_value = 
+										jvRoot->
+										Child("itemDefs")->
+										Child(tempStrings[E_GDS_CHILD_NAME])->
+										Child("class")->
+										string_value;
 								
-							jvChildTemplate->Child("label")->string_value = 
-								curData->Child("shaderName")->string_value +
-								"." +
-								curData->Child("paramName")->string_value;
-							
-							jvChildTemplate->Child("uid")->string_value = curData->Child("uid")->string_value;
+								tempStrings[E_GDS_MATERIAL] = curData->Child("mat")->string_value;
+								if (tempStrings[E_GDS_MATERIAL].compare("none") == 0) {
+									tempStrings[E_GDS_MATERIAL] = "";
+								}
 								
-							jvChildTemplate->Child("callbackData")->Child("shaderName")->string_value = 
-								curData->Child("shaderName")->string_value;
-							jvChildTemplate->Child("callbackData")->Child("paramName")->string_value = 
-								curData->Child("paramName")->string_value;
+								jvChildTemplate->Child("label")->string_value = 
+									i__s(curIcon) +
+									"& " +
+									tempStrings[E_GDS_MATERIAL] +
+									" " +
+									tempStrings[E_GDS_CHILD_NAME];
+							break;
+							case E_GCT_SHADER_PARAM:
+									
+								jvChildTemplate->Child("label")->string_value = 
+									curData->Child("shaderName")->string_value +
+									"." +
+									curData->Child("paramName")->string_value;
 								
-						break;
-						case E_GCT_LENGTH:
-							
-						break;
+								jvChildTemplate->Child("uid")->string_value = curData->Child("uid")->string_value;
+									
+								jvChildTemplate->Child("callbackData")->Child("shaderName")->string_value = 
+									curData->Child("shaderName")->string_value;
+								jvChildTemplate->Child("callbackData")->Child("paramName")->string_value = 
+									curData->Child("paramName")->string_value;
+									
+							break;
+							case E_GCT_LENGTH:
+								
+							break;
+						}
+						
+						
+						
+						
+						
+						// copy template to new child
+						jv->Child("children")->array_value.push_back(
+							JSON::Parse(jvChildTemplate->Stringify().c_str())
+						);
+						
+						
+						//PROBLEM
+						
+						addChildFromJSON(jv->Child("children")->Child(totCount),newParent,false); //jvChildTemplate //jv->Child("children")->Child(i)
+						
+						totCount++;
+						
+						
 					}
 					
 					
-					
-					
-					
-					// copy template to new child
-					jv->Child("children")->array_value.push_back(
-						JSON::Parse(jvChildTemplate->Stringify().c_str())
-					);
-					
-					
-					addChildFromJSON(jv->Child("children")->Child(i),newParent,false); //jvChildTemplate //jv->Child("children")->Child(i)
+				
 				}
 			}
-			
-			
-			
-			
-			
 			
 		}
 		
@@ -334,7 +381,7 @@ void GameGUI::guiFromJSON (JSONValue * jv)
 		
 		
 		addChildFromJSON(
-			jv->Child(jv->Child("curMenu")->string_value), //"inventoryMenu" "shaderParamMenu"
+			jv->Child("baseGUI"),  //jv->Child("curMenu")->string_value
 			baseComp,
 			false
 		);
@@ -348,22 +395,16 @@ void GameGUI::doRefresh ()
 		
 		int i;
 		
-		//if (singleton->guiDirty) {
-			
-			//cout << "guiDirty\n";
-			
-			singleton->guiDirty = false;
-			dirtyVec.clear();
-			baseComp->gatherDirty(&dirtyVec);
-			baseComp->clearDirty();
-			
-			for (i = 0; i < dirtyVec.size(); i++) {
-				dirtyVec[i]->layout();
-			}
-			
-			//dirtyVec.clear();
-			baseComp->renderAll();
-		//}
+		singleton->guiDirty = false;
+		dirtyVec.clear();
+		baseComp->gatherDirty(&dirtyVec);
+		baseComp->clearDirty();
+		
+		for (i = 0; i < dirtyVec.size(); i++) {
+			dirtyVec[i]->layout();
+		}
+		
+		baseComp->renderAll();
 		
 		
 	}
@@ -371,8 +412,17 @@ void GameGUI::testOver (int x, int y)
                                     {
 		singleton->maxLayerOver = -1;
 		
+		
+		mouseTrans.x = x;
+		mouseTrans.y = y;
+		mouseTrans.x /= singleton->guiWinW;
+		mouseTrans.y /= singleton->guiWinH;
+		mouseTrans.x = ((1.0f-mouseTrans.x) - 0.5f)*2.0f;
+		mouseTrans.y = ((1.0f-mouseTrans.y) - 0.5f)*2.0f;		
+		
+		
 		baseComp->clearOver();
-		baseComp->findMaxLayer(x, y);
+		baseComp->findMaxLayer(x, y, mouseTrans.x, mouseTrans.y);
 		baseComp->testOver(x, y);
 	}
 bool GameGUI::testHit (int button, int state, int x, int y)
@@ -399,11 +449,13 @@ void GameGUI::renderCharAt (UIComponent * uiComp, CharStruct * cs, FontWrapper *
 		
 		fBoundingBox destPos;
 		fBoundingBox srcPos;
+		
+		
 
-		destPos.xMin = (px+offsetX)+uiComp->floatOffset.x;
-		destPos.yMin = (py+offsetY)+uiComp->floatOffset.y+shadowOffset;
-		destPos.xMax = (px+offsetX+sampW*activeFont->fontScale)+uiComp->floatOffset.x;
-		destPos.yMax = (py+offsetY+sampH*activeFont->fontScale)+uiComp->floatOffset.y+shadowOffset;
+		destPos.xMin = (px+offsetX)+uiComp->totOffset.x;
+		destPos.yMin = (py+offsetY)+uiComp->totOffset.y+shadowOffset;
+		destPos.xMax = (px+offsetX+sampW*activeFont->fontScale)+uiComp->totOffset.x;
+		destPos.yMax = (py+offsetY+sampH*activeFont->fontScale)+uiComp->totOffset.y+shadowOffset;
 		
 		srcPos.xMin = (sampX)/sourceW;
 		srcPos.yMin = (sourceH-(sampY+sampH))/sourceH;
@@ -427,11 +479,14 @@ void GameGUI::renderCharAt (UIComponent * uiComp, CharStruct * cs, FontWrapper *
 			iconVal = 1.0f;
 		}
 		
+		
+		
+		
 		//dimensions
 		glMultiTexCoord4f(1, sampW, sampH, 0.0f, 0.0f);
 
 		glMultiTexCoord4f(4, 1.0f, 1.0f, 1.0f, 1.0f);
-		glMultiTexCoord4f(5, iconVal, shadowOffset, 1.0f, 1.0f);
+		glMultiTexCoord4f(5, iconVal, shadowOffset, uiComp->scrollMaskY.x, uiComp->scrollMaskY.y);
 		//border color
 		glMultiTexCoord4f(6, 1.0f, 1.0f, 1.0f, 1.0f);
 		//misc
@@ -456,12 +511,113 @@ void GameGUI::renderCharAt (UIComponent * uiComp, CharStruct * cs, FontWrapper *
 		glVertex3f (  x0, y0, -1.0f );
 
 	}
+void GameGUI::renderQuad (UIComponent * uiComp, fBoundingBox fbb, float shadowOffset)
+          {
+
+		StyleSheetResult* resSS = &(uiComp->resSS);
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		float x0 = (fbb.xMin+uiComp->totOffset.x)/singleton->guiWinW;
+		float x1 = (fbb.xMax+uiComp->totOffset.x)/singleton->guiWinW;
+		float y0 = (fbb.yMin+uiComp->totOffset.y+shadowOffset)/singleton->guiWinH;
+		float y1 = (fbb.yMax+uiComp->totOffset.y+shadowOffset)/singleton->guiWinH;
+
+		x0 = (x0-0.5f)*2.0f;
+		x1 = (x1-0.5f)*2.0f;
+		y0 = ((1.0f-y0) - 0.5f)*2.0f;
+		y1 = ((1.0f-y1) - 0.5f)*2.0f;
+
+		
+		//dimensions
+		glMultiTexCoord4f(1, fbb.xMax-fbb.xMin, fbb.yMax-fbb.yMin, resSS->props[E_SS_BORDER], resSS->props[E_SS_CORNERRAD]);
+
+		glMultiTexCoord4f(5, 0.0f, shadowOffset, uiComp->scrollMaskY.x, uiComp->scrollMaskY.y);
+		
+		//border color
+		glMultiTexCoord4f(6, resSS->props[E_SS_BDCOL_R], resSS->props[E_SS_BDCOL_G], resSS->props[E_SS_BDCOL_B], resSS->props[E_SS_BDCOL_A]);
+		//misc
+		glMultiTexCoord4f(7, resSS->props[E_SS_ROUNDNESS], uiComp->getValue(), 1.0f, 1.0f);
+
+
+		//bg
+		glMultiTexCoord4f(2, resSS->props[E_SS_BGCOL1_R], resSS->props[E_SS_BGCOL1_G], resSS->props[E_SS_BGCOL1_B], resSS->props[E_SS_BGCOL1_A]);
+		//fg
+		glMultiTexCoord4f(3, resSS->props[E_SS_FGCOL1_R], resSS->props[E_SS_FGCOL1_G], resSS->props[E_SS_FGCOL1_B], resSS->props[E_SS_FGCOL1_A]);
+		//tg
+		glMultiTexCoord4f(4, resSS->props[E_SS_TGCOL1_R], resSS->props[E_SS_TGCOL1_G], resSS->props[E_SS_TGCOL1_B], resSS->props[E_SS_TGCOL1_A]);
+		
+		
+		glMultiTexCoord4f(0, 0.0f, 0.0f, 0.0f, 1.0f);
+		glVertex3f (  x0, y1, -1.0f );
+		glMultiTexCoord4f(0, 0.0f, 0.0f, 1.0f, 1.0f);
+		glVertex3f (  x1, y1, -1.0f );
+
+		//bg
+		glMultiTexCoord4f(2, resSS->props[E_SS_BGCOL0_R], resSS->props[E_SS_BGCOL0_G], resSS->props[E_SS_BGCOL0_B], resSS->props[E_SS_BGCOL0_A]);
+		//fg
+		glMultiTexCoord4f(3, resSS->props[E_SS_FGCOL0_R], resSS->props[E_SS_FGCOL0_G], resSS->props[E_SS_FGCOL0_B], resSS->props[E_SS_FGCOL0_A]);
+		//tg
+		glMultiTexCoord4f(4, resSS->props[E_SS_TGCOL0_R], resSS->props[E_SS_TGCOL0_G], resSS->props[E_SS_TGCOL0_B], resSS->props[E_SS_TGCOL0_A]);
+
+		glMultiTexCoord4f(0, 0.0f, 0.0f, 1.0f, 0.0f);
+		glVertex3f (  x1, y0, -1.0f );
+		glMultiTexCoord4f(0, 0.0f, 0.0f, 0.0f, 0.0f);
+		glVertex3f (  x0, y0, -1.0f );
+
+
+	}
+void GameGUI::renderQuadDirect (UIComponent * uiComp)
+          {
+		
+		if (uiComp == NULL) {
+			return;
+		}
+		if (uiComp->visible) {
+			
+		}
+		else {
+			return;
+		}
+		
+		
+		
+		float x0 = (uiComp->hitBounds.xMin + uiComp->totOffset.x)/singleton->guiWinW;
+		float x1 = (uiComp->hitBounds.xMax + uiComp->totOffset.x)/singleton->guiWinW;
+		float y0 = (uiComp->hitBounds.yMin + uiComp->totOffset.y)/singleton->guiWinH;
+		float y1 = (uiComp->hitBounds.yMax + uiComp->totOffset.y)/singleton->guiWinH;
+
+		x0 = (x0-0.5f)*2.0f;
+		x1 = (x1-0.5f)*2.0f;
+		y0 = ((1.0f-y0) - 0.5f)*2.0f;
+		y1 = ((1.0f-y1) - 0.5f)*2.0f;
+
+		glBegin(GL_QUADS);
+
+		glTexCoord2f(0.0f, 1.0f);
+		glVertex3f (  x0, y1, -1.0f );
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex3f (  x1, y1, -1.0f );
+		glTexCoord2f(1.0f, 0.0f);
+		glVertex3f (  x1, y0, -1.0f );
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex3f (  x0, y0, -1.0f );
+
+		glEnd();
+
+	}
 void GameGUI::runReport ()
                          {
 		baseComp->runReport();
 	}
-void GameGUI::renderGUI (float newZoom, int activeFBO)
-                                                     {
+void GameGUI::renderGUI (int activeFBO)
+                                      {
 		
 		
 		int i;
@@ -486,15 +642,7 @@ void GameGUI::renderGUI (float newZoom, int activeFBO)
 		baseComp->updateSS();
 		
 
-		singleton->bindFBO("guiFBO");
-		singleton->drawFBO("resultFBO", 0, newZoom, activeFBO);
 		
-		glEnable (GL_BLEND);
-
-		singleton->bindShader("GUIShader");
-		singleton->setShaderTexture(0,singleton->fontWrappers[EFW_TEXT]->fontImage->tid);
-		singleton->setShaderTexture(1,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
-		singleton->sampleFBO("swapFBOBLin0", 2);
 		
 		for (i = 0; i < 2; i++) {
 			
@@ -507,9 +655,9 @@ void GameGUI::renderGUI (float newZoom, int activeFBO)
 			}
 			
 			singleton->setShaderFloat("passNum", i);
-			singleton->setShaderFloat("zoom", singleton->cameraZoom);
+			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			
 			glBegin (GL_QUADS);
-				//baseComp->renderAll(i == 0);
 			
 				for (j = 0; j < MAX_UI_LAYERS; j++) {
 					for (k = 0; k < singleton->guiLayers[j].size(); k++) {
@@ -585,16 +733,7 @@ void GameGUI::renderGUI (float newZoom, int activeFBO)
 		}
 		
 		
-		singleton->unsampleFBO("swapFBOBLin0", 2);
-		singleton->setShaderTexture(1,0);
-		singleton->setShaderTexture(0,0);
-		singleton->unbindShader();
 		
-		singleton->unbindFBO();
-		
-		glDisable(GL_BLEND);
-		
-		singleton->drawFBO("guiFBO", 0, 1.0f);
 		
 	}
 #undef LZZ_INLINE

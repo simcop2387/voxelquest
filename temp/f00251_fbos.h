@@ -14,7 +14,7 @@ public:
 	bool hasMipMap;
 	//bool hasDepth;
 
-
+	GLint numBytes;
 	GLint internalFormat;
 
 	uint *pixelsUINT;
@@ -38,6 +38,9 @@ public:
 		int clampEnum,
 		bool isMultisample = false
 	) {
+		numBytes = 0;
+		pixelsUINT = NULL;
+		
 		width = _width;
 		height = _height;
 		bytesPerChannel = _bytesPerChannel;
@@ -328,8 +331,13 @@ public:
 		return pixelsChar[ind * 4 + channel];
 	}
 
+
+	
+
 	int getPixelAtIndex(int ind, int channel) {
+		
 		return pixelsChar[ind * 4 + channel];
+		
 	}
 	void setPixelAtIndex(int ind, int channel, int val) {
 		pixelsChar[ind * 4 + channel] = val;
@@ -426,29 +434,6 @@ public:
 
 		xv = intDiv(x * curWidth, mipWidths[0]) + ox;
 		yv = intDiv(y * curWidth, mipWidths[0]) + oy;
-
-		// if (x < 0) {
-		//  t1 = -x*curWidth;
-		//  t2 = mipWidths[0];
-		//  t3 = -ceil(t1/t2);
-		//  xv = t3 + ox;
-
-		// }
-		// else {
-		//  xv = ((x*curWidth)/mipWidths[0]) + ox;
-		// }
-
-		// if (y < 0) {
-		//  t1 = -y*curWidth;
-		//  t2 = mipWidths[0];
-		//  t3 = -ceil(t1/t2);
-		//  yv = t3 + oy;
-		// }
-		// else {
-		//  yv = ((y*curWidth)/mipWidths[0]) + oy;
-		// }
-
-
 
 
 		while (xv < 0) {
@@ -547,7 +532,7 @@ public:
 				mRead = m;
 				mWrite = m + 1;
 
-				for (k = 0; k < 4; k++) {
+				for (k = 0; k < 4; k++) { // channels
 
 					for (i = 0; i < mipWidths[mWrite]; i++) {
 						for (j = 0; j < mipWidths[mWrite]; j++) {
@@ -598,6 +583,190 @@ public:
 			}
 		}
 	}
+	
+	
+
+	int getPixelAtIndex3DMip(int ind, int channel, int mval, int mipLev) {
+		
+		int newInd = ind * 4 + channel;
+		
+		switch (mval) {
+			case 0: // min
+				return pixelsCharMippedMax[mipLev][newInd];
+			break;
+			
+			case 1: // max
+				return pixelsCharMippedMax[mipLev][newInd];
+			break;
+			
+			case 2: // avg
+				return pixelsCharMippedMax[mipLev][newInd];
+			break;
+			
+			case 3: // no mip
+				return pixelsChar[newInd];
+			break;
+		}
+		
+		return 0;
+	}
+		
+	void updateMips3D(int basePitch) {
+
+		int i;
+		int j;
+		int k;
+		int m;
+		
+		int c;
+
+		int dest, ind0, ind1, ind2, ind3, ind4, ind5, ind6, ind7;
+
+		int mRead;
+		int mWrite;
+		
+		
+		int mrPitch = basePitch;
+		int mwPitch = basePitch/2;
+		
+		int mrPitch2;
+		
+		pixelsCharMippedAvg[0] = pixelsChar;
+		pixelsCharMippedMax[0] = pixelsChar;
+		pixelsCharMippedMin[0] = pixelsChar;
+		
+
+		if (pixelsCharMippedAvg == NULL) {
+			doTrace("Error: no mip maps, first call getPixels()");
+			return;
+		}
+		else {
+			
+			for (m = 0; m < (MAX_MIP_LEV-1); m++) { //m < numMips - 1
+
+				mRead = m;
+				mWrite = m + 1;
+				
+				
+				
+				 // channels
+
+				for (k = 0; k < mwPitch; k++) {
+					for (j = 0; j < mwPitch; j++) {
+						for (i = 0; i < mwPitch; i++) {
+						
+
+							for (c = 0; c < 4; c++) {
+								dest = (i + j * mwPitch + k*mwPitch*mwPitch) * 4 + c;
+								
+								mrPitch2 = mrPitch*mrPitch;
+
+								ind0 = ( (i * 2 + 0) + (j * 2 + 0) * mrPitch + (k * 2 + 0) * mrPitch2) * 4 + c;
+								ind1 = ( (i * 2 + 1) + (j * 2 + 0) * mrPitch + (k * 2 + 0) * mrPitch2) * 4 + c;
+								ind2 = ( (i * 2 + 0) + (j * 2 + 1) * mrPitch + (k * 2 + 0) * mrPitch2) * 4 + c;
+								ind3 = ( (i * 2 + 1) + (j * 2 + 1) * mrPitch + (k * 2 + 0) * mrPitch2) * 4 + c;
+								ind4 = ( (i * 2 + 0) + (j * 2 + 0) * mrPitch + (k * 2 + 1) * mrPitch2) * 4 + c;
+								ind5 = ( (i * 2 + 1) + (j * 2 + 0) * mrPitch + (k * 2 + 1) * mrPitch2) * 4 + c;
+								ind6 = ( (i * 2 + 0) + (j * 2 + 1) * mrPitch + (k * 2 + 1) * mrPitch2) * 4 + c;
+								ind7 = ( (i * 2 + 1) + (j * 2 + 1) * mrPitch + (k * 2 + 1) * mrPitch2) * 4 + c;
+
+								
+
+								
+								
+								// pixelsCharMippedMin[ mWrite ][ dest ] = pixelsCharMippedMin[ mRead ][ind0];
+								// pixelsCharMippedMax[ mWrite ][ dest ] = pixelsCharMippedMax[ mRead ][ind0];
+								// pixelsCharMippedAvg[ mWrite ][ dest ] = pixelsCharMippedAvg[ mRead ][ind0];
+								
+								
+								pixelsCharMippedAvg[ mWrite ][ dest ] = (
+										pixelsCharMippedAvg[ mRead ][ind0] +
+										pixelsCharMippedAvg[ mRead ][ind1] +
+										pixelsCharMippedAvg[ mRead ][ind2] +
+										pixelsCharMippedAvg[ mRead ][ind3] + 
+										pixelsCharMippedAvg[ mRead ][ind4] + 
+										pixelsCharMippedAvg[ mRead ][ind5] + 
+										pixelsCharMippedAvg[ mRead ][ind6] + 
+										pixelsCharMippedAvg[ mRead ][ind7]
+								) / 8;
+
+								pixelsCharMippedMax[ mWrite ][ dest ] =
+								
+								max(
+										max(
+											max(
+												pixelsCharMippedMax[ mRead ][ind0],
+												pixelsCharMippedMax[ mRead ][ind1]
+											),
+											max(
+												pixelsCharMippedMax[ mRead ][ind2],
+												pixelsCharMippedMax[ mRead ][ind3]
+											)
+										),
+										max(
+											max(
+												pixelsCharMippedMax[ mRead ][ind4],
+												pixelsCharMippedMax[ mRead ][ind5]
+											),
+											max(
+												pixelsCharMippedMax[ mRead ][ind6],
+												pixelsCharMippedMax[ mRead ][ind7]
+											)							
+										)
+								);
+								
+								
+								// pixelsCharMippedMin[ mWrite ][ dest ] = min(
+								// 		min(
+								// 			min(
+								// 				pixelsCharMippedMax[ mRead ][ind0],
+								// 				pixelsCharMippedMax[ mRead ][ind1]
+								// 			),
+								// 			min(
+								// 				pixelsCharMippedMax[ mRead ][ind2],
+								// 				pixelsCharMippedMax[ mRead ][ind3]
+								// 			)
+								// 		),
+								// 		min(
+								// 			min(
+								// 				pixelsCharMippedMax[ mRead ][ind4],
+								// 				pixelsCharMippedMax[ mRead ][ind5]
+								// 			),
+								// 			min(
+								// 				pixelsCharMippedMax[ mRead ][ind6],
+								// 				pixelsCharMippedMax[ mRead ][ind7]
+								// 			)							
+								// 		)
+								// );
+								
+								
+								
+								
+							}							
+
+							
+						}
+					}
+				}
+
+								
+				
+
+				
+				
+				
+				mrPitch = mrPitch/2;
+				mwPitch = mwPitch/2;
+				
+				
+			}
+			
+			
+			
+			
+		}
+	}
+	
 
 
 	void getPixelsFast() {
@@ -605,7 +774,6 @@ public:
 
 
 		glBindTexture(GL_TEXTURE_2D, color_tex);
-		GLint numBytes = 0;
 		int totalWidth;
 		int curBytes;
 
@@ -624,7 +792,6 @@ public:
 
 
 		glBindTexture(GL_TEXTURE_2D, color_tex);
-		GLint numBytes = 0;
 		int totalWidth;
 		int curBytes;
 		numBytes = width * height;
@@ -639,7 +806,7 @@ public:
 
 
 		glBindTexture(GL_TEXTURE_2D, color_tex);
-		GLint numBytes = 0;
+		
 
 		int targetlevel = 0;
 		int index;
@@ -694,7 +861,7 @@ public:
 					if (_hasMipMap) {
 
 						hasMipMap = _hasMipMap;
-
+						
 					}
 
 
@@ -769,6 +936,7 @@ public:
 
 	FBOWrapper *fbos;
 
+	bool isReady;
 	bool hasDepth;
 
 	FBOSet() {}
@@ -795,10 +963,14 @@ public:
 		numBufs = _numBufs;
 		height = _height;
 		width = _width;
+		
+		cout << width << "," << height <<"\n";
+		
 		bytesPerChannel = _bytesPerChannel;
 
 		fbos = new FBOWrapper[numBufs];
-
+		
+		isReady = true;
 
 		glGenFramebuffersEXT(1, &mFBO);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);

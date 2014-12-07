@@ -11,10 +11,6 @@ void GameGeom::init (int _id)
                            {
 		id = _id;
 	}
-float GameGeom::getRand ()
-                        {
-		return (fGenRand() + 1.0f) / 2.0f;
-	}
 FIVector4 * GameGeom::getBoundsMinInPixels ()
                                           {
 		return &boundsMinInPixels;
@@ -41,10 +37,10 @@ FIVector4 * GameGeom::getBoundsMaxInPixelsT ()
 	}
 FIVector4 * GameGeom::getVisMinInPixelsT ()
                                         {
-		// TODO: make this more efficient and use pixelsPerMeter
+		// TODO: make this more efficient and use pixelsPerCell
 
 		// tempVec1.copyFrom(&geomParams[E_GP_VISMININPIXELST]);
-		// tempVec1.addXYZ(pixelsPerMeter);
+		// tempVec1.addXYZ(pixelsPerCell);
 		// return &tempVec1;
 
 		return &geomParams[E_GP_VISMININPIXELST];
@@ -210,17 +206,18 @@ void GameGeom::initLines (int _buildingType, int _id, int _globalId, float scale
 
 		boundsMinInPixels.setFXYZRef(&tempVec1);
 		boundsMaxInPixels.setFXYZRef(&tempVec1);
+		
+		boundsMinInPixels.addXYZRef(_tanVec,-1.0);
+		boundsMaxInPixels.addXYZRef(_tanVec);
+		
+		FIVector4::normalizeBounds(&boundsMinInPixels, &boundsMaxInPixels);
 
 		radMax = max(
 			max(
 				max(tempVec2[0], tempVec2[1]),
 				max(tempVec3[0], tempVec3[1])
 			),
-			max(
-				max(tempVec2[2], tempVec3[2]),
-				_tanVec->length()
-			)
-			
+			max(tempVec2[2], tempVec3[2])
 		);
 		
 		boundsMinInPixels.addXYZ(-radMax);

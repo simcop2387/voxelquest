@@ -160,7 +160,7 @@ public:
 				defVecLength, defVecLength, defVecLength,
 				0.0f,0.0f,-1.0f,
 				0.0f,1.0f,0.0f,
-				1.0f,0.0f,0.0f
+				dirMod*1.0f,0.0f,0.0f
 			);
 			curNode = curNode->addChild(
 				E_BONE_L_LOWERLEG + lrMod,
@@ -168,14 +168,14 @@ public:
 				defVecLength, defVecLength, defVecLength,
 				0.0f,0.0f,-1.0f,
 				0.0f,1.0f,0.0f,
-				1.0f,0.0f,0.0f
+				dirMod*1.0f,0.0f,0.0f
 			);
 			curNode = curNode->addChild(
 				E_BONE_L_TALUS + lrMod,
 				0.2f, 
 				defVecLength, defVecLength, defVecLength,
 				0.0f,1.0f,0.0f,
-				1.0f,0.0f,0.0f,
+				dirMod*1.0f,0.0f,0.0f,
 				0.0f,0.0f,1.0f
 			);
 			

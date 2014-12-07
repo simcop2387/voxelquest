@@ -12,7 +12,18 @@ enum E_GUI_DATA_STRINGS {
 	E_GDS_DATA_FILE,
 	E_GDS_CHILD_TYPE,
 	E_GDS_CHILD_NAME,
+	E_GDS_MATERIAL,
 	E_GDS_LENGTH
+};
+
+enum E_PERFORMANCE_PROFILE {
+	E_PP_FAST_LOWRES,
+	E_PP_SCROLLING,
+	E_PP_HIGHQUALITY,
+	E_PP_FAST_MODIFICATION,
+	E_PP_TERRAIN_MODIFICATION,
+	E_PP_ENTITY,
+	E_PP_LENGTH
 };
 
 enum E_GUI_CHILD_TYPES {
@@ -25,6 +36,13 @@ enum E_FONT_WRAPPERS {
 	EFW_TEXT,
 	EFW_ICONS,
 	EFW_LENGTH
+};
+
+enum E_MOVE_TYPES {
+	E_MT_NONE,
+	E_MT_RELATIVE,
+	E_MT_TRACKBALL,
+	E_MT_LENGTH
 };
 
 enum eProgramState {
@@ -48,6 +66,15 @@ enum E_RENDER_METHODS {
 	E_RENDER_NONE,
 	E_RENDER_VOL,
 	E_RENDER_LENGTH
+};
+
+enum E_KEYMAP {
+	KEYMAP_UP,
+	KEYMAP_DOWN,
+	KEYMAP_FORWARD,
+	KEYMAP_BACKWARD,
+	KEYMAP_LEFT,
+	KEYMAP_RIGHT
 };
 
 enum E_STATES {
@@ -86,26 +113,22 @@ enum E_STATES {
 // 	E_UL_LENGTH
 // };
 
-enum E_CHAR_STATE {
-	E_CHAR_STATE_NONE,
-	E_CHAR_STATE_SKEL,
-	E_CHAR_STATE_RENDERED
+enum E_TER_TYPE {
+	E_TER_GROUNDLEVEL,
+	E_TER_UNDERGROUND,
+	E_TER_AIR,
+	E_TER_LENGTH
 };
+
 
 enum E_MOUSE_STATE {
 	E_MOUSE_STATE_MOVE,
-	E_MOUSE_STATE_POSE,
-	E_MOUSE_STATE_ENTS,
-	//E_MOUSE_STATE_OBJECTS,
 	E_MOUSE_STATE_BRUSH,
 	E_MOUSE_STATE_PICKING,
 	E_MOUSE_STATE_LENGTH
 };
 string mouseStateStrings[] = {
 	"E_MOUSE_STATE_MOVE",
-	"E_MOUSE_STATE_POSE",
-	"E_MOUSE_STATE_ENTS",
-	//"E_MOUSE_STATE_OBJECTS",
 	"E_MOUSE_STATE_BRUSH",
 	"E_MOUSE_STATE_PICKING",
 	"E_MOUSE_STATE_LENGTH"
@@ -175,6 +198,7 @@ enum E_OBJ {
 enum E_MAT_SUBPARAM {
 	E_MAT_SUBPARAM_NONE,
 	E_MAT_SUBPARAM_TUDOR,
+	E_MAT_SUBPARAM_DOCK,
 	E_MAT_SUBPARAM_BRICK,
 	E_MAT_SUBPARAM_BRICK_ARCH,
 	E_MAT_SUBPARAM_LENGTH
@@ -185,7 +209,7 @@ enum E_MAT_PARAM {
 	E_MAT_PARAM_FOUNDATION,
 	E_MAT_PARAM_ROOF,
 	//E_MAT_PARAM_WALKWAY_TOP,
-	E_MAT_PARAM_DOCK,
+	//E_MAT_PARAM_DOCK,
 	E_MAT_PARAM_BUILDING,
 	//E_MAT_PARAM_WALKWAY,
 	E_MAT_PARAM_LANTERN,
@@ -627,6 +651,10 @@ struct PlantRules
 
 };
 
+struct FloatVec {
+	std::vector<float> data;	
+};
+
 struct TerTexture {
 	int usedByBlockId;
 	GLuint texId;
@@ -656,6 +684,7 @@ struct MapNode {
 	int connectionProps[TOT_MAP_DIRS];
 	int terHeight;
 	int adjustedHeight;
+	int houseHeight;
 	int id;
 };
 
@@ -669,7 +698,7 @@ struct BuildingCon {
 	//bool isWingBeg;
 	//bool isWingEnd;
 	float wingMult;
-	float wallRadInMeters;
+	float wallRadInCells;
 	int heightDelta;
 	int direction; 	// -1: negative,
 					//  0: neutral,
@@ -721,21 +750,40 @@ enum E_MUSIC_LIST {
 	EML_BIRDSONG0,
 	EML_CRICKETS0,
 	EML_OCEANWAVES0,
+	EML_UNDERWATER0,
 	EML_LENGTH
 };
 
 string musicStrings[] = {
 	"birdsong0",
 	"crickets0",
-	"oceanwaves0"
+	"oceanwaves0",
+	"underwater0"
 };
 
 
+enum E_CELL_DATA {
+	E_CD_EMPTY,
+	E_CD_SOLID,
+	E_CD_WATER,
+	//E_CD_PORTAL,
+	E_CD_LENGTH	
+};
+
+// enum E_GUI_SECTIONS {
+// 	E_GS_MAINMENU,
+// 	E_GS_CONTEXTMENU,
+// 	E_GS_LENGTH
+// };
+
+// do not reorder!
 enum GUI_TYPES {
-	E_GT_HOLDER,
-	E_GT_SLIDER, // also a toggle if 1 division
-	E_GT_BUTTON,
-	E_GT_RADIO,
+	E_GT_HOLDER,  // 0
+	E_GT_SLIDER,  // 1 also a toggle if 1 division
+	E_GT_BUTTON,  // 2
+	E_GT_RADIO,   // 3
+	E_GT_MENUBAR, // 4
+	E_GT_DRAGPAD, // 5
 	E_GT_LENGTH
 };
 
@@ -745,6 +793,7 @@ enum GUI_STRING_TYPES {
 	E_GST_SS,
 	E_GST_LENGTH
 };
+
 char* guiStringTypes[] = {
 	"label",
 	"uid",
@@ -752,10 +801,11 @@ char* guiStringTypes[] = {
 };
 
 enum E_HOVER_TYPES {
-	E_HT_NORMAL,
-	E_HT_TOOLTIP,
-	E_HT_ONSELECTED,
-	E_HT_TOOLTIP_VALUE,
+	E_HT_NORMAL,		// 0
+	E_HT_TOOLTIP,		// 1
+	E_HT_ONSELECTED,	// 2
+	E_HT_TOOLTIP_VALUE, // 3
+	E_HT_ROOT,			// 4
 	E_HT_LENGTH
 };
 
@@ -772,6 +822,10 @@ enum GUI_FLOAT_TYPES {
 	E_GFT_ALIGNY,
 	E_GFT_LAYER,
 	E_GFT_HOVERTYPE, // 0: normal, 1: tooltip, 2: show when parent is selected
+	E_GFT_MAXDIMX,
+	E_GFT_MAXDIMY,
+	E_GFT_MINDIMX,
+	E_GFT_MINDIMY,
 	E_GFT_LENGTH
 };
 char* guiFloatTypes[] = {
@@ -786,7 +840,12 @@ char* guiFloatTypes[] = {
 	"alignX",
 	"alignY",
 	"layer",
-	"hoverType"
+	"hoverType",
+	"maxDimX",
+	"maxDimY",
+	"minDimX",
+	"minDimY"
+	
 };
 
 string guiStringValues[E_GST_LENGTH];

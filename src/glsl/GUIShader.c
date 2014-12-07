@@ -1,15 +1,13 @@
 varying vec3 worldPos;
 varying vec4 viewportPos;
 uniform vec2 windowSize;
-//uniform vec4 fgColor;
-//uniform vec4 bgColor;
+uniform vec2 resolution;
 
 uniform sampler2D Texture0; // chars
 uniform sampler2D Texture1; // icons
 uniform sampler2D Texture2; // background
 
 uniform float passNum;
-uniform float zoom;
 
 //tex coords, position
 varying vec4 TexCoord0;
@@ -90,7 +88,20 @@ void main() {
 	bool isIcon = TexCoord5.x != 0.0;
 	bool isShadow = TexCoord5.y != 0.0;
 	
-	vec4 shadowCol = vec4(0.0,0.0,0.0,0.5);
+	float yMin = TexCoord5.z;
+	float yMax = TexCoord5.w;
+	
+	float alphaMult = 1.0;
+	
+	if (worldPos.y > yMin) {
+		alphaMult = 1.0-clamp((worldPos.y - yMin)*resolution.y/8.0,0.0,1.0);
+	}
+	if (worldPos.y < yMax) {
+		alphaMult = 1.0-clamp((yMax - worldPos.y)*resolution.y/8.0,0.0,1.0);
+	}
+	
+	vec4 shadowCol = vec4(0.0,0.0,0.0,0.5*alphaMult);
+	texel1.a *= alphaMult;
 	
 	if (isIcon) {
 		
@@ -141,7 +152,7 @@ void main() {
 	if (passNum == 0.0) {
 		bgCoords += (pow(TexCoord0.zw-vec2(0.5,0.25),vec2(3.0)) )*0.05;
 		resultCol = texture2D(Texture2,
-			((bgCoords-0.5)*2.0/max(1.0,zoom)+1.0)/2.0
+			((bgCoords-0.5)*2.0+1.0)/2.0
 		);
 		resultCol.w = 1.0;
 	}
@@ -156,6 +167,11 @@ void main() {
 			resultCol.a = shadowCol.a;
 		}
 	}
+	
+	
+
+
+	resultCol.a *= alphaMult;
 
 	gl_FragColor = resultCol;
 

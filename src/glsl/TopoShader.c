@@ -3,42 +3,85 @@
 uniform sampler2D Texture0; // palette
 uniform sampler2D Texture1; // heightmap
 uniform sampler2D Texture2; // cityFBO;
-uniform sampler2D Texture3; // back face
-uniform sampler2D Texture4; // front face
-
+//uniform sampler2D Texture2; // combineFBO0
+//uniform sampler2D Texture3; // combineFBO1
 varying vec2 TexCoord0;
 
-uniform vec4 mapFreqs;
-uniform vec4 mapAmps;
-
-
-uniform float timeOfDay;
 uniform float curTime;
 uniform float cameraZoom;
-uniform float mapTrans;
-uniform float tiltAmount;
+//uniform float mapTrans;
 
 uniform float seaLevel;
 uniform vec3 cameraPos;
+uniform vec3 lookAtVec;
 uniform vec2 bufferDim;
 uniform vec2 mapDimInPixels;
 
+uniform vec3 maxBoundsInPixels;
 
-uniform vec3 worldSizeInPixels;
 
-float detailAmount = smoothstep(0.000793203,0.0110403*0.25,cameraZoom);
 
 $
 
 void main() {
 
     TexCoord0 = gl_MultiTexCoord0.xy;
+    
+    
+    
     gl_Position = gl_Vertex;
 
-}    
+    // vec3 finalVec;
+    // vec4 pos = gl_Vertex;
+
+    // vec3 myVert = gl_Vertex.xyz;// - vec3(0.0,0.0,cameraPos.z);
+    // vec3 transVert;
+
+    // transVert.x = (myVert.x-myVert.y);
+    // transVert.y = (-(myVert.x/2.0) + -(myVert.y/2.0) + myVert.z);
+    // transVert.z = myVert.z;
+
+    
+    // float newZoom = cameraZoom;//min(cameraZoom,1.0);
+    
+    // finalVec.x = (transVert.x)*newZoom/(bufferDim.x);
+    // finalVec.y = (transVert.y)*newZoom/(bufferDim.y);
+    // finalVec.z = gl_Vertex.z;//(transVert.z);
+
+
+    // //float hv = mix(0.5,0.0,float(matVal == 4.0));
+    // //*0.5 + hv
+
+    // gl_Position = vec4(finalVec.xy, 0.5, gl_Vertex.w); //clamp( (1.0-finalVec.z/(256.0*255.0)) ,0.0,1.0)
+
+}
 
 $
 
+/*
+
+vec3 COLOR_MASKS[16] = vec3[](
+    vec3(  1.0,  0.0,  0.0  ),
+    vec3(  1.0,  1.0,  0.0  ),
+    vec3(  0.0,  1.0,  0.0  ),
+    vec3(  0.0,  1.0,  1.0  ),
+    vec3(  0.0,  0.0,  1.0  ),
+    vec3(  1.0,  0.0,  1.0  ),
+
+    vec3(  0.7,  0.0,  0.0  ),
+    vec3(  0.7,  0.7,  0.0  ),
+    vec3(  0.0,  0.7,  0.0  ),
+    vec3(  0.0,  0.7,  0.7  ),
+    vec3(  0.0,  0.0,  0.7  ),
+    vec3(  0.7,  0.0,  0.7  ),
+   
+    vec3(  0.3,  0.0,  0.0  ),
+    vec3(  0.3,  0.3,  0.0  ),
+    vec3(  0.0,  0.3,  0.0  ),
+    vec3(  0.0,  0.3,  0.3  )
+
+);
+*/
 
 int intMod(int lhs, int rhs) {
     return lhs - ( (lhs/rhs)*rhs );
@@ -70,180 +113,25 @@ float getGrid(int val, vec2 gridVecBase, float thickness) {
     );
 }
 
-float getHeightAtCoords(vec2 mapCoord) {
-
-    //vec2 mapCoord = TexCoord0.xy; //(coord / worldSizeInPixels.x);
-
-    vec4 texHM0 =  texture2D(Texture1, mapFreqs.x * mapCoord );
-    vec4 texHM1 =  texture2D(Texture1, floor(mapFreqs.y * mapCoord) );
-    vec4 texHM2 =  texture2D(Texture1, floor(mapFreqs.z * mapCoord) );
-    vec4 texHM3 =  texture2D(Texture1, floor(mapFreqs.w * mapCoord) );
-
-    
-
-    float res =  
-        texHM0.r*mapAmps.x 
-        + (texHM1.r*mapAmps.y 
-        + texHM2.r*mapAmps.z 
-        + texHM3.r*mapAmps.w
-        -
-        ( texHM1.r*mapAmps.y * 0.5 
-        + texHM2.r*mapAmps.z * 0.5 
-        + texHM3.r*mapAmps.w * 0.5)
-        
-        )*detailAmount
-    ;
-    
-    res = mix(0.125f,0.875f,res);
-        
-    //return texHM0.r;
-
-    return res;
-
-}
-
-float fNumSteps = mix(64.0,256.0,detailAmount);
-int iNumSteps = int(fNumSteps);
-
 
 void main() {
 
-    float newTime = curTime/20000.0;
-    float maxMapDis = 0.45;
-    
-    int i;
-    int j;
-    
-    
-    vec3 backFace = texture2D(Texture3, TexCoord0.xy).xyz;
-    vec3 frontFace = texture2D(Texture4, TexCoord0.xy).xyz;
-    
-    vec2 orig = (cameraPos.xy/worldSizeInPixels.xy)+1.0;// ;
-    
-    backFace.xy += (cameraPos.xy/worldSizeInPixels.xy)+0.5;
-    frontFace.xy += (cameraPos.xy/worldSizeInPixels.xy)+0.5;
-    
-    float radModMax = 0.1;
-    float radMod = abs(mod(curTime,2000.0)*radModMax/2000.0);
+    float newTime = curTime/100.0;
 
-    
+    vec2 camPosZO = cameraPos.xy/maxBoundsInPixels.xy;
 
-    float origDis = 0.0;
-    float origMin = 0.0 + radMod;
-    float origMax = 0.01 + radMod;
-    
-    origMin = mix(origMin,origMax,radMod/radModMax);
+    vec2 newTC = (TexCoord0.xy-0.5)/cameraZoom + camPosZO;
 
-    //float tiltMod = 0.0;//sin(tiltAmount*3.14159/4.0)*0.2;
+    //vec2 newTC = ( (TexCoord0.xy - 0.5)-(camPosZO))/cameraZoom + 0.5;
 
-    // vec2 begCoord = TexCoord0.xy+(cameraPos.xy/worldSizeInPixels.xy)+0.5;
-    // vec2 endCoord = begCoord;
-    // begCoord.xy += tiltMod;
-    
-    // vec2 curCoord = vec2(0.0);
-    // vec2 orig = (cameraPos.xy/worldSizeInPixels.xy)+1.0 + tiltMod*0.5;// - tiltAmount*0.2;
-    
-    
-    vec3 begCoord = frontFace;
-    vec3 endCoord = backFace;
-    vec3 curCoord = vec3(0.0);
+    vec2 newLA = normalize(lookAtVec.xy);
 
-    float deltaVal = 0.0;
-    float fi = 0.0;
-    float fj = 0.0;
-    float lerpVal = 0.0;
-    float curHeight = 0.0;
-    float terHeight = 0.0;
-    float ringHeight = 0.0;
-    float iLerpVal = 0.0;
-    float oldLerpMin = 0.0;
-    float oldLerpMax = 0.0;
+    float posDis2 = distance(vec2(0.0), TexCoord0.xy - 0.5);
+    float posDis = posDis2*distance(vec2(0.0) + newLA*0.2, TexCoord0.xy - 0.5);
     
-    vec2 coordDif = vec2(0.0);
-    
-    //float terHeightBase = texture2D(Texture1, TexCoord0).r;
-    
-    bool isMarker = false;
-    
-    
-    
-    fi = 0.0;
-    
-    
-    
-    
-    
-    
-    for (i = 0; i < iNumSteps; i++) {
-        fi = float(i);
-        
-        //lerpVal = mix(fi/fNumSteps, mix(oldLerpMin,oldLerpMax,fi/fNumSteps), fj);
-        lerpVal = fi/fNumSteps;
-        
-        
-        iLerpVal = 1.0-lerpVal;
-        curCoord = mix(begCoord, endCoord, lerpVal);        
-        curHeight = curCoord.z;
-        origDis = distance(curCoord.xy,orig.xy);
-        
-        //terHeight = texture2D(Texture1, curCoord.xy).r;
-        
-        terHeight = getHeightAtCoords(curCoord.xy);
-        ringHeight = 1.0-radMod/radModMax;
-        
-        isMarker = isMarker || ( (origDis > origMin)&&(origDis < origMax)&&(ringHeight>terHeight)&&(ringHeight>curHeight) );
-        coordDif = abs(curCoord.xy-orig.xy);
-        
-        if (
-            (terHeight >= curHeight) &&
-            (max(coordDif.x,coordDif.y) < maxMapDis)
-        ) {
-            break;
-        }
+    if (posDis2 > 0.1) {
+        posDis = 1.0;
     }
-    
-    
-    
-    
-    // for (i = 0; i < iNumSteps; i++) {
-        
-    //     lerpVal = fi/fNumSteps;
-    //     iLerpVal = 1.0-lerpVal;
-    //     curCoord = mix(begCoord, endCoord, lerpVal);
-        
-    //     curHeight = curCoord.z;
-        
-    //     origDis = distance(curCoord.xy,orig.xy);
-        
-    //     terHeight = texture2D(Texture1, curCoord.xy).r;// + sin((curTime+TexCoord0.y*TexCoord0.x*16000.0)/1000.0)*0.5;
-    //     //terHeight = getHeightAtCoords(curCoord.xy);
-        
-    //     ringHeight = 1.0-radMod/radModMax;
-    //     isMarker = isMarker || ( (origDis > origMin)&&(origDis < origMax)&&(ringHeight>terHeight)&&(ringHeight>iLerpVal) );
-    //     coordDif = abs(curCoord.xy-orig.xy);
-    //     deltaVal = (curHeight-terHeight*float(max(coordDif.x,coordDif.y) < maxMapDis))*4.0; //
-        
-    //     //deltaVal *= mix(1.0,0.5,float(deltaVal<0.0));
-        
-    //     fi += deltaVal;
-    // }
-    
-    if ((max(coordDif.x,coordDif.y) > maxMapDis*1.01)) {
-        discard;
-    }
-    
-    
-    
-   
-    
-    
-    
-    
-
-    vec2 newTC = curCoord.xy;
-    
-    
-    
     
     
 
@@ -251,12 +139,12 @@ void main() {
     vec4 tex2 = texture2D( Texture2, newTC.xy);
 
 
-    // vec4 texHM0 =  texture2D(Texture1, (newTC.xy*1.0) );
-    // vec4 texHM1 =  texture2D(Texture1, (newTC.xy*4.0) );
-    // vec4 texHM2 =  texture2D(Texture1, (newTC.xy*16.0) );
+    vec4 texHM0 =  texture2D(Texture1, (newTC.xy*1.0) );
+    vec4 texHM1 =  texture2D(Texture1, (newTC.xy*4.0) );
+    vec4 texHM2 =  texture2D(Texture1, (newTC.xy*16.0) );
     //vec4 texHM3 =  texture2D(Texture1, (newTC.xy*32.0) );
 
-    float testHeight = getHeightAtCoords(newTC); //(texHM0.r);// *0.7 +  texHM1.r*0.2 + texHM2.r*0.1);//(texHM0.r*0.6 + texHM1.r*0.2 + texHM2.r*0.07 + texHM3.r*0.03);
+    float testHeight = (texHM0.r);//*0.7 +  texHM1.r*0.2 + texHM2.r*0.1);//(texHM0.r*0.6 + texHM1.r*0.2 + texHM2.r*0.07 + texHM3.r*0.03);
     //testHeight = pow(testHeight,2.0);
 
     float isAboveWater = float(testHeight > seaLevel);
@@ -280,13 +168,24 @@ void main() {
     vec4 tex2l = texture2D(Texture2, vec2(newTC.x - offsetAmount, newTC.y) );
     vec4 tex2r = texture2D(Texture2, vec2(newTC.x + offsetAmount, newTC.y) );
 
+    /*
+    vec4 tex1ul = texture2D(Texture1, vec2(newTC.x - offsetAmount, newTC.y + offsetAmount) );
+    vec4 tex1ur = texture2D(Texture1, vec2(newTC.x + offsetAmount, newTC.y + offsetAmount) );
+    vec4 tex1dl = texture2D(Texture1, vec2(newTC.x - offsetAmount, newTC.y - offsetAmount) );
+    vec4 tex1dr = texture2D(Texture1, vec2(newTC.x + offsetAmount, newTC.y - offsetAmount) );
+    */
 
     float mod1 = 1.0;
     if (
         tex1u.g != tex1.g ||
         tex1d.g != tex1.g ||
         tex1l.g != tex1.g ||
-        tex1r.g != tex1.g
+        tex1r.g != tex1.g /*||
+
+        tex1ul.g < tex1.g ||
+        tex1ur.g < tex1.g ||
+        tex1dl.g < tex1.g ||
+        tex1dr.g < tex1.g*/
 
     ) {
         mod1 = 1.0;
@@ -317,7 +216,7 @@ void main() {
     float gv2 = getGrid( int(tex2.r*255.0), gridVecBase, 0.2 ); //stchannel
     float gv1 = getGrid( int(tex2.g*255.0), gridVecBase, 0.1 )*0.5; //btchannel
     
-    float gridMod = mix( 0.0, max(gv1,gv2), clamp(cameraZoom/0.01,0.0,1.0) );
+    float gridMod = mix( max(gv1,gv2), 0.0, 1.0-clamp(cameraZoom*0.01,0.0,1.0) );
 
     vec3 resCol = (tex0.rgb + gridMod)*mod1;
 
@@ -357,29 +256,21 @@ void main() {
 
     // + tex2.a * 8.0;
     
-    if (isMarker) {
-        // *clamp(1.0/(cameraZoom*1024.0),0.0,1.0)
-        resCol += vec3(
-            (smoothstep(origMin, origMax, origDis)*0.5+0.5),
-            0.0,
-            0.0
-        )*(1.0-detailAmount)*(1.0-(radMod/radModMax));
+    bool mapMod = (posDis < 0.01)&&(posDis2>0.03);
+    bool mapMod2 = (posDis < 0.01)&&(posDis2>0.025);
+    
+    if (mapMod) {
+        resCol.r += 1.0;
     }
-    if (origDis < 0.005) {
-        resCol += 0.2*abs(sin(curTime/100.0));
+    else {
+        if (mapMod2) {
+            resCol.rgb += 1.0;
+        }
     }
     
-    resCol *= mix((1.0-smoothstep(0.9,1.0,max(coordDif.x,coordDif.y)/maxMapDis)) + iLerpVal*0.2,1.0,0.5);   
     
-    
-    // resCol = mix(
-    //     resCol,
-    //     //getFogColor(gl_FragCoord.y/bufferDim.y),
-    //     vec3(0.6f, 0.6f, 0.7f),
-    //     clamp( distance(curCoord.y,orig.y)/maxMapDis,0.0,1.0)    
-    // );
 
-    gl_FragData[0] = vec4( resCol, mapTrans );// + float(tex1.a > 0.0)*0.2;// + tex2.a*0.5;// + float(tex1.r < seaLevel);
+    gl_FragData[0] = vec4( resCol, 1.0 );// + float(tex1.a > 0.0)*0.2;// + tex2.a*0.5;// + float(tex1.r < seaLevel);//*mod;// + vec4( float(clamp(1.0-tex1.b,0.0,1.0) > 0.6) ,0.0,0.0,0.0);//tex0*mod;//1.0-tex1.bbbb;//tex0*mod;//tex0;//1.0-tex1.bbbb;////1.0-tex1.bbbb;//(tex0)*mod; // + colMod
 
 }
 

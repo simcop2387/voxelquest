@@ -9,51 +9,13 @@ uniform sampler3D Texture4; //ter tex
 
 
 
-// layout(std140) uniform ublocTTTTTTTTTTTTTTTTTTTTTTTTT0
-// {
-// 	float totLayers;
-// 	float pixelsPerMeter;
-// 	float seaLevel;
-// 	float maxSeaDepthDeprecated;
-
-// 	float heightmapMin;
-// 	float heightmapMax;
-// 	float maxFloors;
-// 	float terDataTexScale;
-
-// 	vec4 worldSizeInPixels;
-// 	vec4 mapFreqs;
-// 	vec4 mapAmps;
-// };
-
 
 uniform	float totLayers;
-uniform	float pixelsPerMeter;
-uniform	float seaLevel;
-uniform	float maxSeaDepthDeprecated;
-
-//uniform	float heightmapMin;
-//uniform	float heightmapMax;
-//uniform	float maxFloors;
-//uniform	float terDataTexScale;
-
-uniform	vec4 worldSizeInPixels;
-//uniform	vec4 mapFreqs;
-//uniform	vec4 mapAmps;
-	
-
-
-
+uniform	float pixelsPerCell;
 uniform float volumePitch;
-//uniform vec3 terPitch;
 
 uniform vec4 worldMinBufInPixels;
 uniform vec4 worldMaxBufInPixels;
-
-uniform vec4 blockMinBufInPixels;
-uniform vec4 blockMaxBufInPixels;
-
-uniform float blockSizeInPixels;
 
 uniform int numEntries;
 uniform int paramsPerEntry;
@@ -64,7 +26,6 @@ uniform bool hasTerrain;
 uniform bool hasLines;
 
 
-uniform int voroCount;
 uniform vec4 voroArr[27];
 
 uniform vec3 paramArr[256];
@@ -304,7 +265,7 @@ vec3 getShingle(vec3 uvwBase, float uvscale, float baseDepth, float maxDepth) {
 		finalDis = 1.0 - dis.y * 0.5;
 	}
 
-	shingleMod = finalDis;//+abs(sin( (uvwBase.x+uvwBase.y)/(2.0*pixelsPerMeter) ));//randf(vec2(finalDis,finalDis));
+	shingleMod = finalDis;//+abs(sin( (uvwBase.x+uvwBase.y)/(2.0*pixelsPerCell) ));//randf(vec2(finalDis,finalDis));
 
 
 	if ( baseDepth > ( finalDis * maxDepth ) ) {
@@ -354,34 +315,34 @@ bool brick(vec3 uvw, vec3 uvscale, bool isVert) {
 }
 
 
-float getIntervalF(float valInPix, float intervalInMeters, float widthInMeters ) {
+float getIntervalF(float valInPix, float intervalInCells, float widthInCells ) {
 
-	float intervalInPixels = intervalInMeters * pixelsPerMeter;
-	float widthInPixels = widthInMeters * pixelsPerMeter;
+	float intervalInPixels = intervalInCells * pixelsPerCell;
+	float widthInPixels = widthInCells * pixelsPerCell;
 
 	return  abs(abs( mod (valInPix, intervalInPixels) ) - intervalInPixels / 2.0) * 2.0
 					-
 					(intervalInPixels - widthInPixels);
 }
 
-bool getInterval(float valInPix, float intervalInMeters, float widthInMeters ) {
+bool getInterval(float valInPix, float intervalInCells, float widthInCells ) {
 
-	float intervalInPixels = intervalInMeters * pixelsPerMeter;
-	float widthInPixels = widthInMeters * pixelsPerMeter;
+	float intervalInPixels = intervalInCells * pixelsPerCell;
+	float widthInPixels = widthInCells * pixelsPerCell;
 
 	return ( abs(abs( mod (valInPix, intervalInPixels) ) - intervalInPixels / 2.0) * 2.0 > (intervalInPixels - widthInPixels) );
 }
 
-float getIntervalSpaced(float valInPix, float intervalInMeters, float spacingInMeters) {
+float getIntervalSpaced(float valInPix, float intervalInCells, float spacingInCells) {
 
-	float r0 = 1.0 - float(getInterval(valInPix + 0.5 * intervalInMeters * pixelsPerMeter, intervalInMeters, spacingInMeters));
-	float r1 = float(getInterval(valInPix, 2.0 * intervalInMeters, intervalInMeters));
+	float r0 = 1.0 - float(getInterval(valInPix + 0.5 * intervalInCells * pixelsPerCell, intervalInCells, spacingInCells));
+	float r1 = float(getInterval(valInPix, 2.0 * intervalInCells, intervalInCells));
 
 	return r0 * (r1 + 1.0);
 
 }
 
-float getBoardSpaced(vec3 coords, vec3 dimInMeters, float boardSpacing) {
+float getBoardSpaced(vec3 coords, vec3 dimInCells, float boardSpacing) {
 
 
 	vec4 res = vec4(0.0);
@@ -389,18 +350,18 @@ float getBoardSpaced(vec3 coords, vec3 dimInMeters, float boardSpacing) {
 
 	res.y = getIntervalSpaced(
 						coords.y,
-						dimInMeters.y,
+						dimInCells.y,
 						boardSpacing
 					);
 	res.x = getIntervalSpaced(
-						coords.x + (0.5 * dimInMeters.x) * pixelsPerMeter * float(res.y > 1.0),
-						dimInMeters.x,
+						coords.x + (0.5 * dimInCells.x) * pixelsPerCell * float(res.y > 1.0),
+						dimInCells.x,
 						boardSpacing
 					);
 
 	res.z = getIntervalSpaced(
 						coords.z,
-						dimInMeters.z,
+						dimInCells.z,
 						boardSpacing
 					);
 
@@ -442,7 +403,7 @@ float getWoodGrain(float normalUID, vec3 worldPosInPixels, float woodRad, float 
 	float woodAngle = atan(woodVec.y, woodVec.x);
 	float finalMod = (sin(
 
-											( distance(newPos.xy + mod(normalUID, 4.0) * pixelsPerMeter, woodCenter) + (woodRad / 2.0) ) *
+											( distance(newPos.xy + mod(normalUID, 4.0) * pixelsPerCell, woodCenter) + (woodRad / 2.0) ) *
 											( (8.0 + sin(woodAngle * 24.0 ) * 0.0625 + sin(woodAngle * 12.0 ) * 0.125 + sin(woodLen / 16.0) * 0.5 + sin(woodLen / 4.0) * 0.25  ) / (woodRad / sqrt(2.0)) )
 
 										));
@@ -464,7 +425,7 @@ float getBoard(vec2 coords, float boardPitch, float boardLength) {
 		}
 	}
 	else {
-		if ( getInterval(coords.x + (0.5 * boardLength)*pixelsPerMeter, 2.0 * boardLength, boardLength) ) {
+		if ( getInterval(coords.x + (0.5 * boardLength)*pixelsPerCell, 2.0 * boardLength, boardLength) ) {
 			return 2.0;
 		}
 		else {
@@ -583,7 +544,7 @@ void getCobble(vec3 worldPosInPixels) {
 
 	int i;
 
-	for (i = 0; i < 27; i++) { //voroCount
+	for (i = 0; i < 27; i++) {
 		curPos = voroArr[i];
 
 		curVoroDis = distance(curPos.xyz, worldPosInPixels);// *wpz;
@@ -640,18 +601,18 @@ vec4 getSlats(vec4 newUVW, float thickness, vec3 origin, vec3 worldPosInPixels, 
 
 
 	thickMod = mix(0.1875, 0.1875 / 2.0, isWindow);
-	bDis2 = distance(worldPosInPixels.x, origin.x) < thickMod * pixelsPerMeter;
+	bDis2 = distance(worldPosInPixels.x, origin.x) < thickMod * pixelsPerCell;
 
 
 
 
 
 	bDis1 = (
-						(distance(worldPosInPixels.z, orig.z + 0.5 * pixelsPerMeter) < thickMod * pixelsPerMeter / 2.0) ||
-						(distance(worldPosInPixels.z, orig.z - 0.5 * pixelsPerMeter) < thickMod * pixelsPerMeter / 2.0)
+						(distance(worldPosInPixels.z, orig.z + 0.5 * pixelsPerCell) < thickMod * pixelsPerCell / 2.0) ||
+						(distance(worldPosInPixels.z, orig.z - 0.5 * pixelsPerCell) < thickMod * pixelsPerCell / 2.0)
 					) && (!bIsWindow);
 
-	bDis3 = (distance(worldPosInPixels.z, orig.z) < thickMod * pixelsPerMeter / 2.0) && bIsWindow;
+	bDis3 = (distance(worldPosInPixels.z, orig.z) < thickMod * pixelsPerCell / 2.0) && bIsWindow;
 
 	if (bDis1 || bDis2 || bDis3) {
 		myResult.y = mix(TEX_WOOD, TEX_METAL, isWindow);
@@ -666,7 +627,7 @@ vec4 getSlats(vec4 newUVW, float thickness, vec3 origin, vec3 worldPosInPixels, 
 		) {
 			myResult.y = mix(TEX_WOOD, TEX_GLASS, isWindow);
 			myResult.w = 2.0;
-			myResult.x = (1.0 + floor(distance(worldPosInPixels.x, visMinInPixels.x) / (0.375 * pixelsPerMeter) )) * (1.0 - isWindow);
+			myResult.x = (1.0 + floor(distance(worldPosInPixels.x, visMinInPixels.x) / (0.375 * pixelsPerCell) )) * (1.0 - isWindow);
 		}
 		else {
 			myResult.y = TEX_NULL;
@@ -717,7 +678,7 @@ vec4 getLines(vec3 worldPosInPixels) {
 	
 	vec3 perpVec = vec3(0.0);
 	
-	
+	float lerpVal = 0.0;
 	float bitOrNor = 0.0;
 	float tanOrBN = 0.0;
 
@@ -762,6 +723,7 @@ vec4 getLines(vec3 worldPosInPixels) {
 				bitOrNor = clamp(abs(dot(perpVec,norVec)),0.0,1.0);
 				tanOrBN = clamp(abs(dot(perpVec,tanVec)),0.0,1.0);
 				
+				lerpVal = pow(clamp(dres.w,0.0,1.0),2.0);
 				
 				curThickness =
 					
@@ -769,17 +731,17 @@ vec4 getLines(vec3 worldPosInPixels) {
 					mix(
 						mix( tbnRad0.y, tbnRad0.z, bitOrNor ),
 						mix( tbnRad1.y, tbnRad1.z, bitOrNor ),
-						dres.w
+						lerpVal
 					);
 					
 					// mix(
 					// 	mix(
 					// 		mix( tbnRad0.y, tbnRad0.z, bitOrNor ),
 					// 		mix( tbnRad1.y, tbnRad1.z, bitOrNor ),
-					// 		dres.w
+					// 		lerpVal
 					// 	),
-					// 	mix(tbnRad0.x,tbnRad1.x,dres.w),
-					// 	abs(dres.w-0.5)*2.0	
+					// 	mix(tbnRad0.x,tbnRad1.x,lerpVal),
+					// 	lerpVal//abs(lerpVal-0.5)*2.0	
 					// );
 					
 					
@@ -879,7 +841,7 @@ vec4 getGeom(vec3 worldPosInPixels, int iCurMat) {//, float terHeight) {
 	float resInside = 0.0;
 	float woodRes = 0.0;
 
-	float divDis = 0.0625 * pixelsPerMeter;
+	float divDis = 0.0625 * pixelsPerCell;
 
 	bool doProc = false;
 
@@ -937,7 +899,7 @@ vec4 getGeom(vec3 worldPosInPixels, int iCurMat) {//, float terHeight) {
 
 	vec3 boundsMinCorner = vec3(0.0);
 	vec3 boundsMaxCorner = vec3(0.0);
-	//vec3 slack = vec3(0.0,0.0,0.0)*pixelsPerMeter; //vec3(0.125,0.125,0.0)*pixelsPerMeter;//vec3(0.0,0.0,0.0)*pixelsPerMeter; //
+	//vec3 slack = vec3(0.0,0.0,0.0)*pixelsPerCell; //vec3(0.125,0.125,0.0)*pixelsPerCell;//vec3(0.0,0.0,0.0)*pixelsPerCell; //
 
 	vec3 radInPixelsTopUV = vec3(0.0);
 	vec3 newCornerDisTopUV = vec3(0.0);
@@ -1451,7 +1413,7 @@ vec4 getGeom(vec3 worldPosInPixels, int iCurMat) {//, float terHeight) {
 
 	// todo: move this to main function
 	if (finalMat == TEX_WOOD) {
-		finalMod = getWoodGrain(normalUID, worldPosInPixels, 2.0 * pixelsPerMeter, woodRes, 4.0 );
+		finalMod = getWoodGrain(normalUID, worldPosInPixels, 2.0 * pixelsPerCell, woodRes, 4.0 );
 	}
 
 	matResult.x = normalUID;
@@ -1505,7 +1467,7 @@ void main() {
 	float randVal = randf(TexCoord0);
 	float finalMod = 0.0;
 	float finalMat = TEX_NULL;
-	float finalBlend = 1.0;
+	//float finalBlend = 1.0;
 	float finalNormUID = 0.0;
 	float finalInside = 0.0;
 	float finalLayer = 0.0;
@@ -1544,7 +1506,7 @@ void main() {
 			iMatCount = int(matCountArr[j]);
 
 			if (iMatCount > 0) {
-				tempResult = getGeom(worldPosInPixels, j);//, matResultTer.w-0.75*pixelsPerMeter );
+				tempResult = getGeom(worldPosInPixels, j);//, matResultTer.w-0.75*pixelsPerCell );
 				if ( (tempResult.z == 1.0) || (tempResult.y != TEX_NULL) ) {
 					matResultGeom = tempResult;
 				}
@@ -1648,23 +1610,27 @@ void main() {
 		finalMod = 0.0;
 	}
 
-
+	
+	// finalLayer = 0.0;
+	// finalMat = TEX_DIRT;
+	// finalNormUID = 1.0;
+	// finalMod = 0.0;
+	
 
 	finalLayer = min(finalLayer, totLayers - 1.0);
-
-	finalRes.a = finalMat / 255.0;
-	finalRes.r = finalLayer;
-	finalRes.b = (finalMod * 127.0) / 255.0; //finalMod         0.0; // blend amount
+	if (finalMat == TEX_NULL) {
+		finalLayer = 2.0;
+	}
+	
+	finalRes.r = finalLayer / 255.0;
 	finalRes.g = finalNormUID / 255.0;
-
-	//finalMod = abs(sin(worldPosInPixels.z/(1.0*pixelsPerMeter)));
-	//finalMod = matResult.w;
-
-	//finalRes2.b = (finalMod * 127.0) / 255.0; //finalMod
-
-
+	finalRes.b = finalMod;//( * 127.0) / 255.0;
+	finalRes.a = finalMat / 255.0;
 	gl_FragData[0] = finalRes;
-	//gl_FragData[1] = finalRes2;
+	
+	
+	
+	
 
 }
 

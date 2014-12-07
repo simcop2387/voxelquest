@@ -15,30 +15,6 @@ void main() {
 
 $
 
-int intMod(int lhs, int rhs) {
-    return lhs - ( (lhs/rhs)*rhs );
-}
-
-vec2 pack16(float num) {
-
-    int iz = int(num);
-    int ir = intMod(iz,256);
-    int ig = (iz)/256;
-
-    vec2 res;
-
-    res.r = float(ir)/255.0;
-    res.g = float(ig)/255.0;
-
-    return res;
-
-}
-
-float unpack16(vec2 num) {
-    return num.r*255.0 + num.g*65280.0;
-}
-
-
 void main() {
 
     // pages
@@ -50,14 +26,10 @@ void main() {
     vec4 tex3 = texture2D(Texture3, TexCoord0 );
 
 
-    float bh1 = unpack16(tex0.rg);
-    float bh2 = unpack16(tex2.rg);
-
-
     vec4 res0 = vec4(0.0);
     vec4 res1 = vec4(0.0);
     
-    if (bh2 > bh1) {
+    if (tex2.w > tex0.w) {
         res0 = tex2;
         res1 = tex3;
     }

@@ -7,6 +7,8 @@ uniform sampler2D Texture1;
 // combineFBOWithWater
 uniform sampler2D Texture2;
 
+uniform bool testOn;
+
 varying vec2 TexCoord0;
 
 $
@@ -29,24 +31,36 @@ void main() {
 
 	vec3 newRad = pow(tex1.rgb, vec3(1.0) );
 
-	vec3 finalCol = mix(tex0.rgb, tex0.rgb + newRad, newRad * 0.2);
+	vec3 finalCol = mix(tex0.rgb, tex0.rgb + newRad, newRad * 0.3);
 	vec3 resColGS = vec3( clamp(dot(finalCol, oneVec.xyz) / 3.0, 0.0, 1.0) );
 
-	if (tex2.a < 0.5) {
+	//if (tex2.a < 0.5) {
 		finalCol = mix(
-								 resColGS,
-								 finalCol,
-								 clamp(1.0 - distance(resColGS, finalCol), 0.0, 1.0) * 1.5 //*mix(0.5,1.0,totLightDis)
-							 );
+			 resColGS,
+			 finalCol,
+			 clamp(1.0 - distance(resColGS, finalCol), 0.0, 1.0) * 1.5 //*mix(0.5,1.0,totLightDis)
+		 );
+	// }
+	// else {
+	// 	finalCol = tex0.rgb;
+	// }
+
+	// todo: remove this line
+	//finalCol = tex0.rgb;
+
+	// if (testOn) {
+	// 	finalCol = newRad;
+	// }
+	//finalCol = newRad;// *dot(tex0.rgb,oneVec.rgb)/3.0;
+		
+	if (testOn) {
+		//finalCol = tex1.rgb;
+		//finalCol = tex1.rgb;
 	}
 	else {
-		finalCol = tex0.rgb;
+		//finalCol = mix(finalCol,tex1.rgb,0.5); //finalCol = //tex0.rgb*0.25 + tex1.rgb;
 	}
-
-
-
-
-	//finalCol = newRad;
+		
 	gl_FragData[0] = vec4(finalCol, 1.0);
 
 

@@ -1,4 +1,4 @@
-﻿Build started 9/27/2014 9:28:19 PM.
+﻿Build started 11/21/2014 3:26:31 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -7,7 +7,8 @@
          copying files to source
          .\src\cpp\f00025_includes.h
          .\src\cpp\f00026_enums.h
-         .\src\cpp\f00027_vectors.h
+         .\src\cpp\f00027_mat.h
+         .\src\cpp\f00028_vectors.h
          .\src\cpp\f00030_json.h
          .\src\cpp\f00040_png.h
          .\src\cpp\f00215_helperfuncs.h
@@ -23,7 +24,9 @@
          .\src\cpp\f00293_gamesound.hpp
          .\src\cpp\f00294_gamemusic.hpp
          .\src\cpp\f00295_gamegeom.hpp
+         .\src\cpp\f00297_gamecamera.hpp
          .\src\cpp\f00300_singleton.hpp
+         .\src\cpp\f00305_shader.hpp
          .\src\cpp\f00310_pooledresource.hpp
          .\src\cpp\f00315_poolmanager.hpp
          .\src\cpp\f00316_poolpagemanager.hpp
@@ -39,11 +42,11 @@
          .\src\cpp\f00352_gameblock.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         34 File(s) copied
+         37 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         21
+         23
          copying headers to one file
          .\f00290_wsrequesthandler.e
          .\f00291_rhfactory.e
@@ -51,7 +54,9 @@
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
          .\f00295_gamegeom.e
+         .\f00297_gamecamera.e
          .\f00300_singleton.e
+         .\f00305_shader.e
          .\f00310_pooledresource.e
          .\f00315_poolmanager.e
          .\f00316_poolpagemanager.e
@@ -69,7 +74,7 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         21
+         23
          .
          copying files to compiled
          .\temp\f00290_wsrequesthandler.e
@@ -78,7 +83,9 @@
          .\temp\f00293_gamesound.e
          .\temp\f00294_gamemusic.e
          .\temp\f00295_gamegeom.e
+         .\temp\f00297_gamecamera.e
          .\temp\f00300_singleton.e
+         .\temp\f00305_shader.e
          .\temp\f00310_pooledresource.e
          .\temp\f00315_poolmanager.e
          .\temp\f00316_poolpagemanager.e
@@ -93,10 +100,11 @@
          .\temp\f00351_gamepageholder.e
          .\temp\f00352_gameblock.e
          .\temp\f00380_gameworld.e
-         21 File(s) copied
+         23 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
-         .\temp\f00027_vectors.h
+         .\temp\f00027_mat.h
+         .\temp\f00028_vectors.h
          .\temp\f00030_json.h
          .\temp\f00040_png.h
          .\temp\f00215_helperfuncs.h
@@ -113,7 +121,9 @@
          .\temp\f00293_gamesound.h
          .\temp\f00294_gamemusic.h
          .\temp\f00295_gamegeom.h
+         .\temp\f00297_gamecamera.h
          .\temp\f00300_singleton.h
+         .\temp\f00305_shader.h
          .\temp\f00310_pooledresource.h
          .\temp\f00315_poolmanager.h
          .\temp\f00316_poolpagemanager.h
@@ -157,4 +167,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:03.89
+Time Elapsed 00:00:04.19
