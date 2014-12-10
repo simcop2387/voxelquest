@@ -1153,11 +1153,12 @@ public:
 						dragging = (guiClass == E_GT_MENUBAR);
 						if (dragging) {
 							singleton->dragging = true;
-							
+						}
+						
+						if (dragging||(guiClass == E_GT_DRAGPAD)) {
 							dragStart.x = x;
 							dragStart.y = y;
 						}
-						
 						
 						
 						

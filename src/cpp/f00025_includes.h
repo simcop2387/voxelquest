@@ -21,7 +21,7 @@ const static int DEF_WIN_H = 1080;
 
 const static int MAX_LIGHTS = 24;
 const static int MAX_EVAL_LIGHTS = 1024;
-const static int FLOATS_PER_LIGHT = 16;
+const static int FLOATS_PER_LIGHT = 12;
 
 
 const static int MAX_MIP_LEV = 1; // min of 1
@@ -89,6 +89,8 @@ float TOT_GPU_MEM_USAGE = 0.0f;
 
 float MAX_CPU_MEM = 4096.0f;
 float TOT_CPU_MEM_USAGE = 0.0f;
+
+long long ENT_COUNTER = 0;
 
 bool TRACE_ON = false;
 //#define DEBUG_MODE 1

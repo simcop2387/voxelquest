@@ -36,8 +36,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		
 		
 		for (i = 0; i < E_CT_LENGTH; i++) {
-			isInteractiveGeom[i] = false;
+			isInteractiveEnt[i] = false;
 		}
+		
+		float tempf;
 		
 		
 		cdMap[0] = E_CD_EMPTY;
@@ -46,9 +48,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		}
 		cdMap[32] = E_CD_WATER;
 		
-		isInteractiveGeom[E_CT_WINDOW] = true;
-		isInteractiveGeom[E_CT_DOOR] = true;
-		isInteractiveGeom[E_CT_LANTERN] = true;
+		isInteractiveEnt[E_CT_WINDOW] = true;
+		isInteractiveEnt[E_CT_DOOR] = true;
+		isInteractiveEnt[E_CT_LANTERN] = true;
 		
 		pathfindingOn = false;
 		isMacro = false;
@@ -67,6 +69,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		mapComp = NULL;
 		mainMenu = NULL;
 		ddMenu = NULL;
+		selectedEnt = NULL;
+		highlightedEnt = NULL;
 		draggingMap = false;
 		
 		FOV = 45.0f;
@@ -78,12 +82,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		selectedNode = NULL;
 		lastSelNode = NULL;
 		
-		curEntId = 0;
+		curOrgId = 0;
 		
 		rootObjJS = NULL;
 		guiRootJS = NULL;
-		highlightedGeom = NULL;
-		selectedGeom = NULL;
 		rbStack = NULL;
 		rbHeightStack = NULL;
 
@@ -113,7 +115,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		imageHM1->getTextureId(GL_NEAREST);
 		cloudImage->getTextureId(GL_LINEAR);
 
-		selGeomListInd = 0;
 
 		mapSampScale = 0.5f;
 		//renderCount = 1.0;
@@ -405,8 +406,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		cameraZoom = 1.0f;
 		targetZoom = cameraZoom;
 		
-		geomCounter = 0;
-		lightCounter = 0;
 
 
 
@@ -501,8 +500,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		}
 
 		
-
-		geomIdArr = new int[1024];
 		paramArr = new float[4096];
 		voroArr = new float[27 * 4];
 		matCountArr = new float[256];
@@ -665,6 +662,13 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 				break;
 			}
 
+			if (i == E_OBJ_LIGHT0) {
+				tempf = 4096.0f*pixelsPerCell;
+			}
+			else {
+				tempf = 16.0f*pixelsPerCell;
+			}
+
 			dynObjects[i]->init(
 				-2048 + i * 256,
 				-2048 + i * 256,
@@ -673,7 +677,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 				true,
 				E_MT_RELATIVE,
 				&(dynObjects[E_OBJ_CAMERA]->pos),
-				64.0f
+				64.0f,
+				tempf
 			);
 
 
@@ -978,7 +983,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		
 		
 		
-		testHuman = new GameEnt();
+		testHuman = new GameOrg();
 		testHuman->init(this);
 		
 		
@@ -1116,6 +1121,8 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 									
 									if (comp->uid.compare("map.mapHolder") == 0) {
 										cameraPos->setFXYZRef(&baseCameraPos);
+										//cout << x << " " << y << " " << comp->dragStart.x << " " << comp->dragStart.y << "\n";
+										
 										cameraPos->addXYZ(
 											-(x - comp->dragStart.x)*worldSizeInPixels.getFX()/(cameraZoom*comp->resultDimInPixels.x),
 											-(y - comp->dragStart.y)*worldSizeInPixels.getFY()/(cameraZoom*comp->resultDimInPixels.y),
@@ -2265,7 +2272,7 @@ float Singleton::getHeightAtPixelPos (float x, float y, bool dd)
 
 
 	}
-void Singleton::transformEnt (GameEnt * curEnt)
+void Singleton::transformEnt (GameOrg * curEnt)
                                            {
 		curEnt->baseNode->doTransform(this);
 	}
@@ -2369,7 +2376,7 @@ void Singleton::moveCamera (FIVector4 * pModXYZ)
 		mainCamera->unitPos[2] = dynObjects[E_OBJ_CAMERA]->pos.getFZ();
 		
 	}
-GameEntNode * Singleton::getMirroredNode (GameEntNode * curNode)
+GameOrgNode * Singleton::getMirroredNode (GameOrgNode * curNode)
                                                            {
 		if ((curNode->nodeName < E_BONE_C_BEG)&&mirrorOn) {
 			if (curNode->nodeName <= E_BONE_L_END) {
@@ -2388,10 +2395,10 @@ GameEntNode * Singleton::getMirroredNode (GameEntNode * curNode)
 		}
 		
 	}
-void Singleton::applyNodeChanges (GameEntNode * _curNode, float dx, float dy)
+void Singleton::applyNodeChanges (GameOrgNode * _curNode, float dx, float dy)
                                                                          {
 		
-		GameEntNode* curNode = _curNode;
+		GameOrgNode* curNode = _curNode;
 		
 		int i;
 		int j;
@@ -2477,7 +2484,7 @@ void Singleton::moveObject (float dx, float dy)
 		int diffy;
 		
 		
-		GameEntNode* curNode;
+		GameOrgNode* curNode;
 
 		
 		modXYZ.setFXYZ(0.0f,0.0f,0.0f);
@@ -2751,7 +2758,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
         {
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
-		int holderCount;
+		
 		
 		
 		
@@ -2770,7 +2777,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			
 		}
 
-		GameEntNode* curNode;
+		GameOrgNode* curNode;
 		
 		
 
@@ -2999,13 +3006,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 
 		case ' ':
-			selGeomListInd++;
-			if (selGeomListInd >= selGeomList.size()) {
-				selGeomListInd = 0;
-			}
-			if (selGeomList.size() > 0) {
-				selectedGeom = selGeomList[selGeomListInd];
-			}
+			selectedEnts.cycleEnts();
 			
 		break;
 
@@ -3059,22 +3060,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 		break;
 
 		case 'v':
-			if (selectedGeom == NULL)
-			{
-
-			}
-			else
-			{
-				selectedGeom->visible = !(selectedGeom->visible);
-
-				holderCount = gw->getHoldersInGeom(selectedGeom);
-				gw->refreshHoldersInList(true, true); //holderCount <= 12
-				gw->holdersToRefresh.clear();
-
-
-
-
-			}
+			gw->toggleVis(selectedEnts.getSelectedEnt());
 			break;
 
 
@@ -3160,101 +3146,6 @@ void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUp
 		forceGetPD = false;
 		
 	}
-GameGeom * Singleton::findNearestGeom (FIVector4 * testPoint, bool createList, bool onlyInteractive)
-        {
-		GameBlock *curBlock;
-
-		int i;
-		int j;
-		int k;
-		int ii;
-		int jj;
-		
-		int curInd = 0;
-		float bestDis;
-		float curDis;
-		
-		bool doProc = false;
-		
-		if (createList) {
-			selGeomList.clear();
-			selGeomListInd = 0;
-		}
-
-		bestDis = 99999.0f;
-		GameGeom *resGeom = NULL;
-
-		for (j = -1; j <= 1; j++)
-		{
-			for (i = -1; i <= 1; i++)
-			{
-				ii = i + gw->camBlockPos.getIX();
-				jj = j + gw->camBlockPos.getIY();
-
-				curBlock = gw->getBlockAtCoords(ii, jj, false);
-
-				if (curBlock == NULL)
-				{
-
-				}
-				else
-				{
-					for (k = 0; k < curBlock->gameGeom.size(); k++)
-					{
-						if (
-							testPoint->inBoundsXYZSlack(
-								curBlock->gameGeom[k]->getVisMinInPixelsT(),
-								curBlock->gameGeom[k]->getVisMaxInPixelsT(),
-								0.0625*pixelsPerCell
-							)
-						)
-						{
-							
-							if (createList) {
-								selGeomList.push_back(curBlock->gameGeom[k]);
-								curInd++;
-							}
-							
-							curDis = 
-							abs(curBlock->gameGeom[k]->getVisMaxInPixelsT()->getFX()-testPoint->getFX()) +
-							abs(curBlock->gameGeom[k]->getVisMaxInPixelsT()->getFY()-testPoint->getFY()) +
-							abs(curBlock->gameGeom[k]->getVisMaxInPixelsT()->getFZ()-testPoint->getFZ());
-							
-							//curBlock->gameGeom[k]->getVisMinInPixelsT()->distance(testPoint) +
-							//curBlock->gameGeom[k]->getVisMaxInPixelsT()->distance(testPoint);
-
-							if (curBlock->gameGeom[k]->visible) {
-								
-							}
-							else {
-								curDis *= 16.0f;
-							}
-
-							if (onlyInteractive) {
-								doProc = isInteractiveGeom[curBlock->gameGeom[k]->buildingType];
-							}
-							else {
-								doProc = true;
-							}
-
-							if (
-								(curDis < bestDis) &&
-								doProc
-							)
-							{
-								bestDis = curDis;
-								resGeom = curBlock->gameGeom[k];
-								selGeomListInd = curInd-1;
-							}
-
-						}
-					}
-				}
-			}
-		}
-
-		return resGeom;
-	}
 void Singleton::mouseMove (int _x, int _y)
         {
 
@@ -3314,7 +3205,7 @@ void Singleton::mouseMove (int _x, int _y)
 			//////////////
 
 			if (entOn) {
-				updateNearestEntNode(false, &mouseMovePD);
+				updateNearestOrgNode(false, &mouseMovePD);
 			}
 			else {
 				activeNode = NULL;
@@ -3322,8 +3213,14 @@ void Singleton::mouseMove (int _x, int _y)
 			}
 			
 
-			highlightedGeom = findNearestGeom(&mouseMovePD);
-			
+			gw->findNearestEnt(
+				&highlightedEnts,
+				E_ET_GEOM,
+				2,
+				1,
+				&mouseMovePD
+			);
+			highlightedEnt = highlightedEnts.getSelectedEnt();
 
 
 			//////////////
@@ -3344,7 +3241,7 @@ void Singleton::makeDirty ()
                          {
 		testHuman->gph->childrenDirty = true;
 	}
-void Singleton::setSelNode (GameEntNode * newNode)
+void Singleton::setSelNode (GameOrgNode * newNode)
                                               {
 		
 		selectedNode = newNode;
@@ -3500,6 +3397,8 @@ void Singleton::handleMovement ()
 	}
 void Singleton::mouseClick (int button, int state, int _x, int _y)
         {
+		
+		int tempInt;
 
 
 		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
@@ -3617,17 +3516,15 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		}
 		
 
-		if (state == GLUT_DOWN)
-		{
+		if (state == GLUT_DOWN) {
 			mouseVel.setFXY(0.0f, 0.0f);
 		}
 
-		if (abClicked)
-		{
+		if (abClicked) {
 
 
 			if (ddMenu != NULL) {
-				if (rbClicked) {
+				if (rbClicked&&(!bCtrl)) {
 					ddMenu->visible = true;
 					
 					ddMenu->floatOffset.x = (guiX);
@@ -3700,23 +3597,19 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 					
 					
 					
-					if (mouseState == E_MOUSE_STATE_PICKING) {
-						selectedGeom = findNearestGeom(
-							&mouseUpPD,
-							true,
-							false
-						);
-					}
-					else {
-						selectedGeom = findNearestGeom(
-							&mouseUpPD,
-							false,
-							true
-						);
-					}
+					gw->findNearestEnt(
+						&selectedEnts,
+						E_ET_GEOM,
+						2,
+						1,
+						&mouseUpPD,
+						true
+					);
+					
+					selectedEnt = selectedEnts.getSelectedEnt();
 
 					if (
-						(selectedGeom == NULL) ||
+						(selectedEnt == NULL) ||
 						(mouseState == E_MOUSE_STATE_PICKING) ||
 						(mouseState == E_MOUSE_STATE_BRUSH)
 					)	{
@@ -3725,7 +3618,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 					else
 					{
 
-						switch (selectedGeom->buildingType)
+						switch (selectedEnt->buildingType)
 						{
 						case E_CT_DOOR:
 						case E_CT_WINDOW:
@@ -3733,21 +3626,21 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 							
 
 						
-							gw->getHoldersInGeom(selectedGeom);
-							selectedGeom->toggleTransform();
-							gw->getHoldersInGeom(selectedGeom);
-							gw->refreshHoldersInList(true, true); //holderCount <= 12
+							gw->getHoldersInEnt(selectedEnt);
+							selectedEnt->toggleTransform();
+							gw->getHoldersInEnt(selectedEnt);
+							gw->refreshHoldersInList(true, true);
 							gw->holdersToRefresh.clear();
 							
-							if (selectedGeom->isToggled) {
+							if (selectedEnt->toggled) {
 								// open
-								switch (selectedGeom->buildingType)
+								switch (selectedEnt->buildingType)
 								{
 									case E_CT_DOOR:
 										playSoundPosAndPitch(
 											"open3",
 											cameraPos,
-											selectedGeom->getVisMinInPixelsT(),
+											selectedEnt->getVisMinInPixelsT(),
 											0.3f
 										);
 									break;
@@ -3755,7 +3648,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 										playSoundPosAndPitch(
 											"open1",
 											cameraPos,
-											selectedGeom->getVisMinInPixelsT(),
+											selectedEnt->getVisMinInPixelsT(),
 											0.3f
 										);
 									break;
@@ -3764,13 +3657,13 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 							else {
 								// close
 								
-								switch (selectedGeom->buildingType)
+								switch (selectedEnt->buildingType)
 								{
 									case E_CT_DOOR:
 										playSoundPosAndPitch(
 											"close2",
 											cameraPos,
-											selectedGeom->getVisMinInPixelsT(),
+											selectedEnt->getVisMinInPixelsT(),
 											0.3f
 										);
 									break;
@@ -3778,7 +3671,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 										playSoundPosAndPitch(
 											"close1",
 											cameraPos,
-											selectedGeom->getVisMinInPixelsT(),
+											selectedEnt->getVisMinInPixelsT(),
 											0.3f
 										);
 									break;
@@ -3791,25 +3684,15 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 							break;
 
 						case E_CT_LANTERN:
-							selectedGeom->light->isOn = !(selectedGeom->light->isOn);
+							selectedEnt->light->toggle();
 							playSoundPosAndPitch(
 								"castinet0",
 								cameraPos,
-								selectedGeom->getVisMinInPixelsT(),
+								selectedEnt->getVisMinInPixelsT(),
 								0.3f
 							);
-							
-							doTraceND("");
-							doTraceND("CUR LIGHT DIS ", f__s(selectedGeom->light->screenDistance));
-							doTraceND("");
-							for (i = 0; i < gw->lightCount; i++)
-							{
-							 	doTraceND("LIGHT DIS ", f__s(gw->activeLights[i]->screenDistance));
-							}
-							doTraceND("");
-							doTraceND("");
-
 							gw->updateLights();
+							cout << "final toggle " << selectedEnt->light->toggled << "\n";
 							break;
 
 						}
@@ -3931,7 +3814,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 						
 						
 						if (entOn) {
-							updateNearestEntNode(true, &mouseDownPD);
+							updateNearestOrgNode(true, &mouseDownPD);
 						}
 						
 					}
@@ -3962,7 +3845,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 void Singleton::resetActiveNode ()
                                {
 		
-		GameEntNode* curNode = NULL;
+		GameOrgNode* curNode = NULL;
 		
 		if (selectedNode == NULL) {
 			curNode = lastSelNode;
@@ -3981,7 +3864,7 @@ void Singleton::resetActiveNode ()
 			makeDirty();
 		}
 	}
-void Singleton::updateNearestEntNode (bool setActive, FIVector4 * mousePosWS)
+void Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
                                                                          {
 		// tempVec3.setFXYZRef(mousePosWS);
 		// tempVec3.addXYZRef(&(testHuman->basePosition),-1.0f);
@@ -3990,7 +3873,7 @@ void Singleton::updateNearestEntNode (bool setActive, FIVector4 * mousePosWS)
 		
 		bestNode = NULL;
 		bestNodeDis = 99999.0f;
-		findNearestEntNode(
+		findNearestOrgNode(
 			testHuman->baseNode,
 			mousePosWS//&tempVec1
 		);
@@ -4011,7 +3894,7 @@ void Singleton::updateNearestEntNode (bool setActive, FIVector4 * mousePosWS)
 			}
 		}
 	}
-void Singleton::findNearestEntNode (GameEntNode * curNode, FIVector4 * mousePosWS)
+void Singleton::findNearestOrgNode (GameOrgNode * curNode, FIVector4 * mousePosWS)
           {
 		
 		tempVec3.setFXYZRef(&(curNode->orgTrans[1]));
@@ -4029,7 +3912,7 @@ void Singleton::findNearestEntNode (GameEntNode * curNode, FIVector4 * mousePosW
 		int i;
 		
 		for (i = 0; i < curNode->children.size(); i++) {
-			findNearestEntNode(curNode->children[i],mousePosWS);
+			findNearestOrgNode(curNode->children[i],mousePosWS);
 		}
 		
 	}

@@ -18,7 +18,7 @@ uniform vec3 cameraPos;
 uniform float lightCount;
 uniform vec4 lightArr[128];
 
-const int VECS_PER_LIGHT = 4;
+uniform int vecsPerLight;
 
 uniform int iNumSteps;
 
@@ -198,7 +198,7 @@ void main()
 	float lightVal = 0.0;
 	float newAO = 0.0;
 	float lightRes = 0.0;
-	float lightFlooding = 0.0;
+	//float lightFlooding = 0.0;
 
 	float lightDis = 0.0;
 	float lightDisWater = 0.0;
@@ -283,7 +283,7 @@ void main()
 		// LIGHT LOOP START
 		for (k = 0; k < lightCount; k++)
 		{
-			baseInd = k * VECS_PER_LIGHT;
+			baseInd = k * vecsPerLight;
 			lightPosWS = lightArr[baseInd + 0];
 			lightRad = lightArr[baseInd + 1].w;
 			
@@ -306,14 +306,14 @@ void main()
 
 				//lightIntensity = lightArr[baseInd + 2].w;
 				//lightColorization = lightArr[baseInd + 3].r;
-				lightFlooding = lightArr[baseInd + 3].g;
+				//lightFlooding = lightArr[baseInd + 3].g;
 
 				if (k == 0)
 				{
 					curLightColor = globDayColor;
 					//lightIntensity = mix(@lightIntensityNight@, 1.0, timeOfDay);
 					//lightColorization = mix(@lightColorizationNight@, 0.0, timeOfDay);
-					lightFlooding = mix(@lightFloodingNight@, 0.0, timeOfDay);
+					//lightFlooding = mix(@lightFloodingNight@, 0.0, timeOfDay);
 				}
 
 

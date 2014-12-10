@@ -21,7 +21,7 @@ public:
 	bool refreshDL;
 	
 	
-	std::vector<GameGeom *> entityGeom;
+	std::vector<GameEnt *> entityGeom;
 	int entityGeomCounter;
 	FIVector4 offsetInHolders;
 
@@ -38,7 +38,7 @@ public:
 
 	Singleton* singleton;
 
-	std::vector<intPair> containsGeomIds;
+	intPairVec containsEntIds[E_ET_LENGTH];
 	GamePage** pageData;
 	
 	bool readyForClear;
@@ -309,7 +309,6 @@ public:
 	void refreshGeom() {
 		if (isEntity) {
 			entityGeomCounter = 0;
-			//fetchEntityGeom();
 			addNewLinesGeom(singleton->testHuman->baseNode, singleton->pixelsPerCell);
 		}
 		else {
@@ -490,14 +489,12 @@ public:
 	) {
 		
 		if (entityGeomCounter >= entityGeom.size()) {
-			entityGeom.push_back(new GameGeom());
+			entityGeom.push_back(new GameEnt());
 		}
 		
 		
 		entityGeom[entityGeomCounter]->initBounds(
 			_curBT,
-			entityGeomCounter,
-			entityGeomCounter,
 			_curAlign,
 			_baseOffset,
 			_p1,
@@ -520,7 +517,7 @@ public:
 
 
 	void addNewLinesGeom(
-		GameEntNode* curNode,
+		GameOrgNode* curNode,
 		float scale
 	) {
 		
@@ -533,10 +530,10 @@ public:
 		else {
 			
 			if (curNode == singleton->selectedNode) {
-				tempVec.setFXYZ(E_ENT_PARAM_LINES,10.0f,entityGeomCounter);
+				tempVec.setFXYZ(E_ORG_PARAM_LINES,10.0f,entityGeomCounter);
 			}
 			else {
-				tempVec.setFXYZ(E_ENT_PARAM_LINES,curNode->material,entityGeomCounter);
+				tempVec.setFXYZ(E_ORG_PARAM_LINES,curNode->material,entityGeomCounter);
 			}
 			
 			tempVec2.copyFrom(&(curNode->tbnRotC[0]));
@@ -544,13 +541,11 @@ public:
 			
 			
 			if (entityGeomCounter >= entityGeom.size()) {
-				entityGeom.push_back(new GameGeom());
+				entityGeom.push_back(new GameEnt());
 			}
 			
 			entityGeom[entityGeomCounter]->initLines(
 				E_CT_LINES,
-				entityGeomCounter,
-				entityGeomCounter,
 				scale,
 				
 				&origOffset,
@@ -578,134 +573,141 @@ public:
 		
 	}
 
-	void fetchEntityGeom() {
-		int curBT;
-		int curAlign;
-		float baseOffset;
-		FIVector4 p1;
-		FIVector4 p2;
-		FIVector4 rad;
-		FIVector4 cornerRad;
-		FIVector4 visInsetFromMin;
-		FIVector4 visInsetFromMax;
-		FIVector4 powerVals;
-		FIVector4 powerVals2;
-		FIVector4 thickVals;
-		FIVector4 matParams;
-		FIVector4 centerPoint;
-		FIVector4 anchorPoint;
-		int minRot;
-		int maxRot;
+	// void fetchEntityGeom() {
+	// 	int curBT;
+	// 	int curAlign;
+	// 	float baseOffset;
+	// 	FIVector4 p1;
+	// 	FIVector4 p2;
+	// 	FIVector4 rad;
+	// 	FIVector4 cornerRad;
+	// 	FIVector4 visInsetFromMin;
+	// 	FIVector4 visInsetFromMax;
+	// 	FIVector4 powerVals;
+	// 	FIVector4 powerVals2;
+	// 	FIVector4 thickVals;
+	// 	FIVector4 matParams;
+	// 	FIVector4 centerPoint;
+	// 	FIVector4 anchorPoint;
+	// 	int minRot;
+	// 	int maxRot;
 		
 		
-		FIVector4 orig;
-		FIVector4 maxRad;
+	// 	FIVector4 orig;
+	// 	FIVector4 maxRad;
 		
-		orig.setFXYZRef(&gphMinInPixels);
-		orig.addXYZRef(&gphMaxInPixels);
-		orig.multXYZ(0.5f);
-		
-		
-		
+	// 	orig.setFXYZRef(&gphMinInPixels);
+	// 	orig.addXYZRef(&gphMaxInPixels);
+	// 	orig.multXYZ(0.5f);
 		
 		
 		
-		curBT = E_CT_OBJECT;
-		curAlign = E_ALIGN_MIDDLE;
-		baseOffset = 0.0f;
-		p1.setFXYZRef(&orig);
-		p2.setFXYZRef(&orig);
-		rad.setFXYZ(
-			halfHolderSizeInPixels,
-			halfHolderSizeInPixels,
-			halfHolderSizeInPixels	
-		);
-		cornerRad.setFXYZ(
-			halfHolderSizeInPixels,
-			halfHolderSizeInPixels,
-			halfHolderSizeInPixels	
-		);
-		visInsetFromMin.setFXYZ(0.0f,0.0f,0.0f);
-		visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
-		powerVals.setFXYZ(2.0f,2.0f,0.0f);
-		powerVals2.setFXYZ(2.0f,2.0f,0.0f);
-		thickVals.setFXYZ(0.0f,0.0f,0.0f);
-		matParams.setFXYZ(E_ENT_PARAM_GEOM,0.0f,0.0f);
-		centerPoint.setFXYZRef(&orig);
-		anchorPoint.setFXYZRef(&orig);
-		minRot = 0;
-		maxRot = 0;		
-		addNewGeom(
-			curBT,
-			curAlign,
-			baseOffset,
-			&p1,
-			&p2,
-			&rad,
-			&cornerRad,
-			&visInsetFromMin,
-			&visInsetFromMax,
-			&powerVals,
-			&powerVals2,
-			&thickVals,
-			&matParams,
-			&centerPoint,
-			&anchorPoint,
-			minRot,
-			maxRot
-		);
 		
 		
-	}
+		
+	// 	curBT = E_CT_OBJECT;
+	// 	curAlign = E_ALIGN_MIDDLE;
+	// 	baseOffset = 0.0f;
+	// 	p1.setFXYZRef(&orig);
+	// 	p2.setFXYZRef(&orig);
+	// 	rad.setFXYZ(
+	// 		halfHolderSizeInPixels,
+	// 		halfHolderSizeInPixels,
+	// 		halfHolderSizeInPixels	
+	// 	);
+	// 	cornerRad.setFXYZ(
+	// 		halfHolderSizeInPixels,
+	// 		halfHolderSizeInPixels,
+	// 		halfHolderSizeInPixels	
+	// 	);
+	// 	visInsetFromMin.setFXYZ(0.0f,0.0f,0.0f);
+	// 	visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
+	// 	powerVals.setFXYZ(2.0f,2.0f,0.0f);
+	// 	powerVals2.setFXYZ(2.0f,2.0f,0.0f);
+	// 	thickVals.setFXYZ(0.0f,0.0f,0.0f);
+	// 	matParams.setFXYZ(E_ORG_PARAM_GEOM,0.0f,0.0f);
+	// 	centerPoint.setFXYZRef(&orig);
+	// 	anchorPoint.setFXYZRef(&orig);
+	// 	minRot = 0;
+	// 	maxRot = 0;		
+	// 	addNewGeom(
+	// 		curBT,
+	// 		curAlign,
+	// 		baseOffset,
+	// 		&p1,
+	// 		&p2,
+	// 		&rad,
+	// 		&cornerRad,
+	// 		&visInsetFromMin,
+	// 		&visInsetFromMax,
+	// 		&powerVals,
+	// 		&powerVals2,
+	// 		&thickVals,
+	// 		&matParams,
+	// 		&centerPoint,
+	// 		&anchorPoint,
+	// 		minRot,
+	// 		maxRot
+	// 	);
+		
+		
+	// }
 
 	void fetchGeom() {
 		int i;
 		int j;
 		int k;
+		int n;
 		int bufSize = (singleton->visPageSizeInPixels*singleton->bufferMult)*2;
 		
 		GameBlock* curBlock;
 		GamePageHolder* gph;
 		FIVector4 start;
 		FIVector4 end;
-		GameGeom* geom;
-
-		containsGeomIds.clear();
-
-		for (i = -1; i <= 1; i++) {
-			for (j = -1; j <= 1; j++) {
-				curBlock = singleton->gw->getBlockAtCoords(
-					offsetInBlocks.getIX()+i,
-					offsetInBlocks.getIY()+j,
-					true
-				);
-
-				for (k = 0; k < curBlock->gameGeom.size(); k++) {
+		GameEnt* gameEnt;
 
 
-					geom = curBlock->gameGeom[k];
+		for (n = 0; n < E_ET_LENGTH; n++) {
+			containsEntIds[n].data.clear();
+			
+			for (i = -1; i <= 1; i++) {
+				for (j = -1; j <= 1; j++) {
+					curBlock = singleton->gw->getBlockAtCoords(
+						offsetInBlocks.getIX()+i,
+						offsetInBlocks.getIY()+j,
+						true
+					);
+
+					for (k = 0; k < curBlock->gameEnts[n].data.size(); k++) {
 
 
-					start.copyFrom( &(geom->moveMinInPixels) );
-					end.copyFrom( &(geom->moveMaxInPixels) );
+						gameEnt = &(curBlock->gameEnts[n].data[k]);
 
-					start.addXYZ(-bufSize);
-					end.addXYZ(bufSize);
 
-					//start.intDivXYZ(singleton->holderSizeInPixels);
-					//end.intDivXYZ(singleton->holderSizeInPixels);
+						start.copyFrom( &(gameEnt->moveMinInPixels) );
+						end.copyFrom( &(gameEnt->moveMaxInPixels) );
 
-					start.clampZ(0.0,singleton->worldSizeInPixels.getFZ()-1.0f);
-					end.clampZ(0.0,singleton->worldSizeInPixels.getFZ()-1.0f);
+						start.addXYZ(-bufSize);
+						end.addXYZ(bufSize);
 
-					if (FIVector4::intersect(&start,&end,&gphMinInPixels,&gphMaxInPixels)) {
-						containsGeomIds.push_back(intPair());
-						containsGeomIds.back().v0 = curBlock->blockId;
-						containsGeomIds.back().v1 = k;
+						//start.intDivXYZ(singleton->holderSizeInPixels);
+						//end.intDivXYZ(singleton->holderSizeInPixels);
+
+						start.clampZ(0.0,singleton->worldSizeInPixels.getFZ()-1.0f);
+						end.clampZ(0.0,singleton->worldSizeInPixels.getFZ()-1.0f);
+
+						if (FIVector4::intersect(&start,&end,&gphMinInPixels,&gphMaxInPixels)) {
+							containsEntIds[n].data.push_back(intPair());
+							containsEntIds[n].data.back().v0 = curBlock->blockId;
+							containsEntIds[n].data.back().v1 = k;
+						}
 					}
 				}
 			}
 		}
+
+
+		
 	}
 
 

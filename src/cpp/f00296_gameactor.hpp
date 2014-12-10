@@ -1,0 +1,7 @@
+
+class GameActor {
+public:
+	GameActor() {
+		
+	}
+};

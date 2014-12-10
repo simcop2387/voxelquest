@@ -374,7 +374,7 @@ public:
 		int baseInd;
 
 		GamePageHolder *gph;
-		GameGeom *gg;
+		GameEnt *gg;
 
 		paramsPerEntry = E_GP_LENGTH * 3;
 		numEntries = 0;
@@ -479,7 +479,7 @@ public:
 		FIVector4 end;
 
 		GamePageHolder *gph;
-		GameGeom *gg;
+		GameEnt *gg;
 
 		paramsPerEntry = E_GP_LENGTH * 3;
 		numEntries = 0;
@@ -516,11 +516,11 @@ public:
 
 
 					if (gph) {
-						geomInPage = gph->containsGeomIds.size();
+						geomInPage = gph->containsEntIds[E_ET_GEOM].data.size();
 
 						for (m = 0; m < geomInPage; m++) {
-							curId = gph->containsGeomIds[m];
-							gg = gw->blockData[curId.v0]->gameGeom[curId.v1];
+							curId = gph->containsEntIds[E_ET_GEOM].data[m];
+							gg = &(gw->blockData[curId.v0]->gameEnts[E_ET_GEOM].data[curId.v1]);
 
 
 							if (
@@ -545,14 +545,14 @@ public:
 									doProc = true;
 
 									for (n = 0; n < numEntries; n++) {
-										if (singleton->geomIdArr[n] == gg->globalId) {
+										if (singleton->entIdArr[n] == curId) {
 											doProc = false;
 										}
 									}
 
 									if (doProc) {
 
-										singleton->geomIdArr[numEntries] = gg->globalId;
+										singleton->entIdArr[numEntries] = curId;
 
 
 

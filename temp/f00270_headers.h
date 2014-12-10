@@ -99,56 +99,16 @@ public:
 };
 #undef LZZ_INLINE
 #endif
-// f00295_gamegeom.e
+// f00296_gameactor.e
 //
 
-#ifndef LZZ_f00295_gamegeom_e
-#define LZZ_f00295_gamegeom_e
+#ifndef LZZ_f00296_gameactor_e
+#define LZZ_f00296_gameactor_e
 #define LZZ_INLINE inline
-class GameGeom
+class GameActor
 {
-private:
-  FIVector4 boundsMinInPixels;
-  FIVector4 boundsMaxInPixels;
-  FIVector4 visMinInPixels;
-  FIVector4 visMaxInPixels;
 public:
-  FIVector4 (geomParams) [E_GP_LENGTH];
-  FIVector4 anchorPointInPixels;
-  FIVector4 moveMinInPixels;
-  FIVector4 moveMaxInPixels;
-  GameLight * light;
-  bool visible;
-  bool hasAnchor;
-  bool isToggled;
-  int rotDir;
-  int minRot;
-  int maxRot;
-  int curRot;
-  int buildingType;
-  int id;
-  int globalId;
-  GameGeom ();
-  void init (int _id);
-  FIVector4 tempVec1;
-  FIVector4 tempVec2;
-  FIVector4 tempVec3;
-  FIVector4 * getBoundsMinInPixels ();
-  FIVector4 * getBoundsMaxInPixels ();
-  FIVector4 * getVisMinInPixels ();
-  FIVector4 * getVisMaxInPixels ();
-  FIVector4 * getBoundsMinInPixelsT ();
-  FIVector4 * getBoundsMaxInPixelsT ();
-  FIVector4 * getVisMinInPixelsT ();
-  FIVector4 * getVisMaxInPixelsT ();
-  int getClampedRot ();
-  void rotate (int mod, bool ignoreConstraints);
-  void initBounds (int _buildingType, int _id, int _globalId, int alignBottomMiddleTop, float _zOffset, FIVector4 * p1, FIVector4 * p2, FIVector4 * rad, FIVector4 * _cornerDisInPixels, FIVector4 * _visInsetFromMin, FIVector4 * _visInsetFromMax, FIVector4 * _powerVals, FIVector4 * _powerVals2, FIVector4 * _thickVals, FIVector4 * _matParams, FIVector4 * _centerPoint, FIVector4 * _anchorPoint, int _minRot, int _maxRot);
-  void initLines (int _buildingType, int _id, int _globalId, float scale, FIVector4 * _offset, FIVector4 * _orgVec, FIVector4 * _tanVec, FIVector4 * _bitVec, FIVector4 * _norVec, FIVector4 * _radVec0, FIVector4 * _radVec1, FIVector4 * _radVecScale0, FIVector4 * _radVecScale1, FIVector4 * _matParams);
-  void initTree (int _buildingType, int _id, int _globalId, FIVector4 * p0, FIVector4 * p1, FIVector4 * p2, float radP0, float radP1, float sphereRad, FIVector4 * _matParams);
-  void toggleTransform ();
-  void applyTransform (int rotMod, bool ignoreConstraints);
-  void initAnchorPoint (FIVector4 * _anchorPointInPixels, int _minRot, int _maxRot);
+  GameActor ();
 };
 #undef LZZ_INLINE
 #endif
@@ -244,7 +204,12 @@ public:
   eProgramState programState;
   eProgramAction (progActionsDown) [E_PS_SIZE * 256];
   eProgramAction (progActionsUp) [E_PS_SIZE * 256];
-  bool (isInteractiveGeom) [E_CT_LENGTH];
+  EntSelection nearestLights;
+  EntSelection highlightedEnts;
+  EntSelection selectedEnts;
+  GameEnt * selectedEnt;
+  GameEnt * highlightedEnt;
+  bool (isInteractiveEnt) [E_CT_LENGTH];
   bool pathfindingOn;
   bool isMacro;
   bool entOn;
@@ -310,7 +275,7 @@ public:
   int scaleFactor;
   int numDynLights;
   int iNumSteps;
-  int curEntId;
+  int curOrgId;
   int cellsPerLot;
   int extraRad;
   int defaultWinW;
@@ -332,8 +297,6 @@ public:
   int mouseCount;
   int lastMouseX;
   int lastMouseY;
-  int geomCounter;
-  int lightCounter;
   int cellsPerNodeXY;
   int terDataVisPitchXY;
   int terDataBufPitchXY;
@@ -349,7 +312,6 @@ public:
   int terDataBufSizeScaled;
   uint * terDataScaled;
   int iNodeDivsPerLot;
-  int selGeomListInd;
   int holderSizeInPages;
   uint volGenFBOX;
   int volGenSuperMod;
@@ -396,17 +358,17 @@ public:
   float * voroArr;
   float * matCountArr;
   float * paramArrMap;
-  int * geomIdArr;
+  intPair (entIdArr) [1024];
   int * cdBuffer;
   double lastMoveTime;
   double curTime;
   double lastTime;
   double mdTime;
   double muTime;
-  GameEntNode * bestNode;
-  GameEntNode * selectedNode;
-  GameEntNode * lastSelNode;
-  GameEntNode * activeNode;
+  GameOrgNode * bestNode;
+  GameOrgNode * selectedNode;
+  GameOrgNode * lastSelNode;
+  GameOrgNode * activeNode;
   FIVector4 worldMarker;
   FIVector4 lookAtVec;
   FIVector4 baseCameraPos;
@@ -417,7 +379,6 @@ public:
   FIVector4 mouseDownPD;
   FIVector4 mouseObjPD;
   FIVector4 mouseMovePD;
-  FIVector4 geomPD;
   FIVector4 tempVec1;
   FIVector4 tempVec2;
   FIVector4 tempVec3;
@@ -449,7 +410,6 @@ public:
   std::vector <UICont*> (guiLayers) [MAX_UI_LAYERS];
   std::vector <RotationInfo> rotMatStack;
   std::vector <DynObject *> dynObjects;
-  std::vector <GameGeom *> selGeomList;
   PathHolder charPathHolder;
   PathHolder splitPathHolder;
   float floorHeightInCells;
@@ -466,9 +426,6 @@ public:
   Image * imageHM0;
   Image * imageHM1;
   Image * cloudImage;
-  GameGeom * highlightedGeom;
-  GameGeom * selectedGeom;
-  GameGeom * curGeom;
   GamePlant * (gamePlants) [E_PT_LENGTH/2];
   Shader * curShaderPtr;
   string curShader;
@@ -511,7 +468,7 @@ public:
   int * rbStack;
   int * rbHeightStack;
   TerTexture (terTextures) [MAX_TER_TEX];
-  GameEnt * testHuman;
+  GameOrg * testHuman;
   GameGUI * mainGUI;
   UIComponent * mapComp;
   UIComponent * mainMenu;
@@ -590,12 +547,12 @@ public:
   float getSLNormalized ();
   float getSLInPixels ();
   float getHeightAtPixelPos (float x, float y, bool dd = false);
-  void transformEnt (GameEnt * curEnt);
+  void transformEnt (GameOrg * curEnt);
   void angleToVec (FIVector4 * fv, float xr, float yr);
   void syncObjects (FIVector4 * bp);
   void moveCamera (FIVector4 * pModXYZ);
-  GameEntNode * getMirroredNode (GameEntNode * curNode);
-  void applyNodeChanges (GameEntNode * _curNode, float dx, float dy);
+  GameOrgNode * getMirroredNode (GameOrgNode * curNode);
+  void applyNodeChanges (GameOrgNode * _curNode, float dx, float dy);
   void moveObject (float dx, float dy);
   void updateMultiLights ();
   void toggleFullScreen ();
@@ -611,16 +568,15 @@ public:
   void keyboardDown (unsigned char key, int _x, int _y);
   void runReport ();
   void getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj);
-  GameGeom * findNearestGeom (FIVector4 * testPoint, bool createList = false, bool onlyInteractive = false);
   void mouseMove (int _x, int _y);
   void makeDirty ();
-  void setSelNode (GameEntNode * newNode);
+  void setSelNode (GameOrgNode * newNode);
   void worldToScreenBase (FIVector4 * sc, FIVector4 * wc);
   void handleMovement ();
   void mouseClick (int button, int state, int _x, int _y);
   void resetActiveNode ();
-  void updateNearestEntNode (bool setActive, FIVector4 * mousePosWS);
-  void findNearestEntNode (GameEntNode * curNode, FIVector4 * mousePosWS);
+  void updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS);
+  void findNearestOrgNode (GameOrgNode * curNode, FIVector4 * mousePosWS);
   void processB64 (charArr * sourceBuffer, charArr * saveBuffer);
   bool processJSONFromString (string * sourceBuffer, JSONValue * * destObj);
   bool processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONValue * * destObj);
@@ -949,13 +905,13 @@ LZZ_INLINE bool GameGUI::compChildStr (string childStr)
 	}
 #undef LZZ_INLINE
 #endif
-// f00338_gameentnode.e
+// f00338_gameorgnode.e
 //
 
-#ifndef LZZ_f00338_gameentnode_e
-#define LZZ_f00338_gameentnode_e
+#ifndef LZZ_f00338_gameorgnode_e
+#define LZZ_f00338_gameorgnode_e
 #define LZZ_INLINE inline
-class GameEntNode
+class GameOrgNode
 {
 private:
 public:
@@ -980,31 +936,31 @@ public:
   float boneLengthScale;
   FIVector4 (orgTrans) [3];
   int nodeName;
-  GameEntNode * parent;
-  std::vector <GameEntNode*> children;
-  GameEntNode (GameEntNode * _parent, int _nodeName, float _boneLength, float _tanLengthInCells, float _bitLengthInCells, float _norLengthInCells, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
-  GameEntNode * addChild (int _nodeName, float _boneLength, float _tanLengthInCells, float _bitLengthInCells, float _norLengthInCells, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
-  GameEntNode * getNode (int _nodeName);
+  GameOrgNode * parent;
+  std::vector <GameOrgNode*> children;
+  GameOrgNode (GameOrgNode * _parent, int _nodeName, float _boneLength, float _tanLengthInCells, float _bitLengthInCells, float _norLengthInCells, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
+  GameOrgNode * addChild (int _nodeName, float _boneLength, float _tanLengthInCells, float _bitLengthInCells, float _norLengthInCells, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
+  GameOrgNode * getNode (int _nodeName);
   void doTransform (Singleton * singleton);
 };
 #undef LZZ_INLINE
 #endif
-// f00339_gameent.e
+// f00339_gameorg.e
 //
 
-#ifndef LZZ_f00339_gameent_e
-#define LZZ_f00339_gameent_e
+#ifndef LZZ_f00339_gameorg_e
+#define LZZ_f00339_gameorg_e
 #define LZZ_INLINE inline
-class GameEnt
+class GameOrg
 {
 public:
   Singleton * singleton;
   GamePageHolder * gph;
-  GameEntNode * baseNode;
+  GameOrgNode * baseNode;
   FIVector4 basePosition;
   float defVecLength;
   float gv (float * vals);
-  GameEnt ();
+  GameOrg ();
   void init (Singleton * _singleton);
   void initHuman ();
 };
@@ -1168,7 +1124,7 @@ public:
   bool childrenDirty;
   bool (hasVerts) [MAX_LAYERS];
   bool refreshDL;
-  std::vector <GameGeom *> entityGeom;
+  std::vector <GameEnt *> entityGeom;
   int entityGeomCounter;
   FIVector4 offsetInHolders;
   FIVector4 gphMinInPixels;
@@ -1180,7 +1136,7 @@ public:
   FIVector4 tempVec2;
   PooledResource * gpuRes;
   Singleton * singleton;
-  std::vector <intPair> containsGeomIds;
+  intPairVec (containsEntIds) [E_ET_LENGTH];
   GamePage * * pageData;
   bool readyForClear;
   bool isEntity;
@@ -1195,8 +1151,7 @@ public:
   int passiveRefresh ();
   void refreshChildren (bool refreshImmediate, bool clearEverything = false, bool refreshUnderground = false);
   void addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVector4 * _p1, FIVector4 * _p2, FIVector4 * _rad, FIVector4 * _cornerRad, FIVector4 * _visInsetFromMin, FIVector4 * _visInsetFromMax, FIVector4 * _powerVals, FIVector4 * _powerVals2, FIVector4 * _thickVals, FIVector4 * _matParams, FIVector4 * _centerPoint, FIVector4 * _anchorPoint, int _minRot, int _maxRot);
-  void addNewLinesGeom (GameEntNode * curNode, float scale);
-  void fetchEntityGeom ();
+  void addNewLinesGeom (GameOrgNode * curNode, float scale);
   void fetchGeom ();
   void unbindGPUResources ();
 };
@@ -1215,8 +1170,6 @@ public:
   int blockId;
   int blockSizeInHolders;
   int blockSizeInLots;
-  int localGeomCounter;
-  int lightCounter;
   int terDataBufAmount;
   bool forceUpdate;
   float (trilin) [8];
@@ -1251,8 +1204,6 @@ public:
   int (ctClasses) [E_CT_LENGTH];
   int (layerHash) [E_CT_LENGTH];
   FIVector4 anchorPoint;
-  FIVector4 moveMinInPixels;
-  FIVector4 moveMaxInPixels;
   FIVector4 p1;
   FIVector4 p2;
   FIVector4 newP1;
@@ -1279,8 +1230,8 @@ public:
   FIVector4 tempVecB;
   FIVector4 tempVecB2;
   FIVector4 tempVecB3;
-  std::vector <GameGeom *> gameGeom;
-  std::vector <GameLight *> gameLights;
+  GameEnt baseEnt;
+  EntVec (gameEnts) [E_ET_LENGTH];
   GameWorld * gw;
   GamePageHolder * * holderData;
   BuildingNode * buildingData;
@@ -1376,7 +1327,7 @@ public:
   int (dirModY) [6];
   int (dirModZ) [6];
   int (opDir) [4];
-  GameLight * (activeLights) [MAX_EVAL_LIGHTS];
+  GameEnt * (activeLights) [MAX_EVAL_LIGHTS];
   int dirFlagClear;
   int visFlag;
   int visFlagO;
@@ -1390,8 +1341,8 @@ public:
   FIVector4 worldSizeInPages;
   FIVector4 worldSizeInHolders;
   FIVector4 worldSizeInBlocks;
-  FIVector4 geomMin;
-  FIVector4 geomMax;
+  FIVector4 entMin;
+  FIVector4 entMax;
   FIVector4 camPagePos;
   FIVector4 camHolderPos;
   FIVector4 cutHolderPos;
@@ -1414,10 +1365,6 @@ public:
   PathHolder * finalPath;
   int (nodeInd) [2];
   GameBlock * (blockRef) [2];
-  FIVector4 minLRInPixels;
-  FIVector4 maxLRInPixels;
-  FIVector4 minLRInHolders;
-  FIVector4 maxLRInHolders;
   FIVector4 minv;
   FIVector4 maxv;
   FIVector4 tempVec;
@@ -1455,14 +1402,17 @@ public:
   GamePage * getPageAtCoords (int x, int y, int z, bool createOnNull = false);
   bool checkBounds (int k, int km);
   void update ();
+  void toggleVis (GameEnt * se);
+  void ensureBlocks ();
+  void findNearestEnt (EntSelection * entSelection, int entType, int maxLoadRad, int radStep, FIVector4 * testPoint, bool onlyInteractive = false, bool ignoreDistance = false);
   bool procPages ();
   bool addHolderToRefresh (GamePageHolder * toAdd);
-  int getHoldersInGeom (GameGeom * gg);
+  int getHoldersInEnt (GameEnt * gg);
   void refreshHoldersInList (bool doImmediate, bool clearEverything);
   void actionOnHolders (int action, bool instantRefresh = false, bool clearEverything = false);
   void combineHolders ();
-  void drawEnt (GameEnt * curEnt, bool drawAll);
-  void drawNodeEnt (GameEntNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
+  void drawOrg (GameOrg * curOrg, bool drawAll);
+  void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void clearVisitedPaths (PathHolder * pathHolder);
   void clearPathList (PathHolder * pathHolder);
   float getIdealPathLength (PathNode * blockAndIndex);

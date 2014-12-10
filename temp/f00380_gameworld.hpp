@@ -13,7 +13,6 @@ public:
 	int blockSizeInHolders;
 
 	int iBlockSize;
-	//int diagrams[E_RENDER_LENGTH][E_STATE_LENGTH];
 	int renderMethod;
 	int iBufferSize;
 	int maxThreads;
@@ -34,7 +33,6 @@ public:
 	int densityChannel;
 	int blockChannel;
 	
-	//int curLoadRadius;
 
 	int stChannel;
 	int btChannel;
@@ -66,13 +64,11 @@ public:
 	int dirModZ[6];
 	int opDir[4];
 
-	//GameLight globalLight;
-	GameLight *activeLights[MAX_EVAL_LIGHTS];
+	GameEnt *activeLights[MAX_EVAL_LIGHTS];
 
 	int dirFlagClear;
 	int visFlag;
 	int visFlagO;
-
 	int activeFBO;
 
 	bool noiseGenerated;
@@ -82,9 +78,19 @@ public:
 
 	std::vector<GamePageHolder *> holdersToRefresh;
 
+	vector<int> ocThreads;
+
+
+
+
+
+	
+	
 	
 
-	vector<int> ocThreads;
+
+
+
 
 	
 	FIVector4 lScreenCoords;
@@ -94,8 +100,8 @@ public:
 	FIVector4 worldSizeInHolders;
 	FIVector4 worldSizeInBlocks;
 
-	FIVector4 geomMin;
-	FIVector4 geomMax;
+	FIVector4 entMin;
+	FIVector4 entMax;
 
 	FIVector4 camPagePos;
 	FIVector4 camHolderPos;
@@ -128,11 +134,6 @@ public:
 	
 	
 
-	FIVector4 minLRInPixels;
-	FIVector4 maxLRInPixels;
-
-	FIVector4 minLRInHolders;
-	FIVector4 maxLRInHolders;
 
 	FIVector4 minv;
 	FIVector4 maxv;
@@ -196,19 +197,14 @@ public:
 	void init(Singleton *_singleton)
 	{
 
-		//pushTrace("GameWorld init()");
-
-		
-
 		singleton = _singleton;
 		
-		//curLoadRadius = singleton->minWInPages;
 
 		int i;
 		int j;
 		
 		//finalInd = -1;
-
+		
 		lightCount = 1;
 
 		noiseGenerated = false;
@@ -310,13 +306,6 @@ public:
 
 		doDrawFBO = false;
 
-		// for (j = 0; j < E_RENDER_LENGTH; j++)
-		// {
-		// 	for (i = 0; i < E_STATE_LENGTH; i++)
-		// 	{
-		// 		diagrams[j][i] = E_STATE_WAIT;
-		// 	}
-		// }
 
 		cutPos = &(singleton->dynObjects[E_OBJ_CUTAWAY]->pos);
 		fogPos = &(singleton->dynObjects[E_OBJ_FOG]->pos);
@@ -329,10 +318,6 @@ public:
 		worldSizeInBlocks.copyFrom( &(singleton->worldSizeInBlocks) );
 
 		visPageSizeInPixels = singleton->visPageSizeInPixels;
-
-		// diagrams[E_RENDER_VOL][E_STATE_INIT_END] = E_STATE_GENERATEVOLUME_LAUNCH;
-		// diagrams[E_RENDER_VOL][E_STATE_GENERATEVOLUME_END] = E_STATE_LENGTH;
-		// curDiagram = diagrams[renderMethod];
 
 		holderSizeInPages = singleton->holderSizeInPages;
 		visPageSizeInUnits = singleton->visPageSizeInUnits;
@@ -349,10 +334,6 @@ public:
 
 		
 		
-		
-
-
-		//popTrace();
 	}
 
 
@@ -738,6 +719,242 @@ public:
 
 	}
 
+	
+	void toggleVis(GameEnt* se) {
+		
+		
+		int holderCount;
+		
+		if (se == NULL) {
+
+		}
+		else {
+			se->visible = !(se->visible);
+
+			holderCount = getHoldersInEnt(se);
+			refreshHoldersInList(true, true);
+			holdersToRefresh.clear();
+
+
+
+		}
+	}
+
+	
+	
+	
+	void ensureBlocks() {
+		// first fetch all the blocks to make sure they get created
+		// don't remove this, necessary for overlapping geom
+		
+		int i;
+		int j;
+		int ii;
+		int jj;
+		int blockRad = 1;
+		
+		for (j = -blockRad; j <= blockRad; j++)
+		{
+			for (i = -blockRad; i <= blockRad; i++)
+			{
+				ii = i + camBlockPos.getIX();
+				jj = j + camBlockPos.getIY();
+
+				getBlockAtCoords(ii, jj, true);
+
+			}
+		}
+	}
+	
+
+	void findNearestEnt(
+		EntSelection* entSelection,
+		int entType,
+		int maxLoadRad,
+		int radStep,
+		FIVector4 *testPoint,
+		bool onlyInteractive = false,
+		bool ignoreDistance = false
+	)
+	{
+		
+		GameEnt* myEnt;
+		
+		int curInd = 0;
+		float bestDis;
+		float curDis;
+		
+		bool doProc = false;
+		
+		entSelection->selEntList.clear();
+		entSelection->selEntMap.clear();
+		entSelection->selEntListInd = 0;
+
+		bestDis = 99999.0f;
+		
+		
+		
+		
+		//////////////////////
+		
+		
+		
+		int i, j, k;
+		int ii, jj, kk;
+		int incVal;
+		
+		int tot = 0;
+
+
+		int mink;
+		int maxk;
+		int minj;
+		int maxj;
+		int mini;
+		int maxi;
+		int curLoadRadius;
+		intPair curId;
+		
+		tempVec.copyFrom(testPoint);
+		tempVec.intDivXYZ(singleton->holderSizeInPixels);
+
+
+		GamePageHolder* curHolder;
+		GameBlock *curBlock;
+
+
+		ensureBlocks();
+		
+		
+		
+
+		for (curLoadRadius = 0; curLoadRadius < maxLoadRad; curLoadRadius++) {
+			
+			mink = tempVec.getIZ() - curLoadRadius;
+			maxk = tempVec.getIZ() + curLoadRadius;
+			minj = tempVec.getIY() - curLoadRadius;
+			maxj = tempVec.getIY() + curLoadRadius;
+			mini = tempVec.getIX() - curLoadRadius;
+			maxi = tempVec.getIX() + curLoadRadius;
+			
+			for (jj = minj; jj <= maxj; jj += radStep) {
+				
+				if (curLoadRadius <= 2) {
+					incVal = 1;
+				}
+				else {
+					if ( (jj == minj) || (jj == maxj) ) {
+						incVal = radStep;
+					}
+					else {
+						incVal = maxi - mini;
+					}
+				}
+				
+				for (ii = maxi; ii >= mini; ii -= incVal) {
+					
+					
+					for (kk = mink; kk <= maxk; kk += radStep) {
+						
+						
+						
+						if ( checkBounds(kk, worldSizeInHolders.getIZ()) ) {
+							
+							curHolder = getHolderAtCoords(ii, jj, kk, true);
+							curBlock = getBlockAtId(curHolder->blockId);
+							
+							if (curBlock == NULL) {
+								cout << "NULL BLOCK\n";
+							}
+							else {
+								
+								for (k = 0; k < curHolder->containsEntIds[entType].data.size(); k++) { //curBlock->gameEnts[entType].data.size()
+									
+									curId = curHolder->containsEntIds[entType].data[k];
+									myEnt = &(blockData[curId.v0]->gameEnts[entType].data[curId.v1]);
+									
+									
+									
+									if (
+										ignoreDistance||
+										testPoint->inBoundsXYZSlack(
+											myEnt->getVisMinInPixelsT(),
+											myEnt->getVisMaxInPixelsT(),
+											0.0625*singleton->pixelsPerCell
+										)
+									)
+									{
+										
+										if (entSelection->selEntMap.count(curId) == 0 ) {
+											
+											entSelection->selEntList.push_back(myEnt);
+											entSelection->selEntMap[curId] = 1;
+											
+											
+											
+											curDis = 
+											abs(myEnt->getVisMaxInPixelsT()->getFX()-testPoint->getFX()) +
+											abs(myEnt->getVisMaxInPixelsT()->getFY()-testPoint->getFY()) +
+											abs(myEnt->getVisMaxInPixelsT()->getFZ()-testPoint->getFZ());
+											
+											//myEnt->getVisMinInPixelsT()->distance(testPoint) +
+											//myEnt->getVisMaxInPixelsT()->distance(testPoint);
+
+											if (myEnt->visible) {
+												
+											}
+											else {
+												curDis *= 16.0f;
+											}
+
+											if (onlyInteractive) {
+												doProc = singleton->isInteractiveEnt[myEnt->buildingType];
+											}
+											else {
+												doProc = true;
+											}
+
+											if ((curDis < bestDis)&&doProc) {
+												bestDis = curDis;
+												entSelection->selEntListInd = curInd;
+											}
+											
+											
+											curInd++;
+											
+										}
+										
+										
+
+									}
+								}
+								
+								
+								
+								
+								
+								
+								
+							}
+							
+						}
+						
+					}
+					
+				}
+			}
+			
+		}
+		
+		
+		
+		
+		//////////////////////
+		
+		
+		//return resEnt;
+	}
+
 
 
 	bool procPages()
@@ -757,13 +974,26 @@ public:
 		int incVal;
 
 		bool cmade = false;
+		
+		int m;
+		int changeCount = 0;
+
+		int maxChangesInHolders = singleton->maxChangesInHolders;
+		int tempVal = 0;
+
+		int mink;
+		int maxk;
+		int minj;
+		int maxj;
+		int mini;
+		int maxi;
+		int curLoadRadius;
 
 		
 		camPagePos.copyFrom( cameraPos );
 		camBlockPos.copyFrom( cameraPos );
 
 		
-		//camPagePos.setFZ(heightAtPoint);
 		camPagePos.intDivXYZ(visPageSizeInPixels);
 		camPagePos.addXYZ(1.0f,1.0f,1.0f);
 
@@ -775,20 +1005,13 @@ public:
 		cutHolderPos.copyFrom(cutPos);
 		cutHolderPos.intDivXYZ(singleton->holderSizeInPixels);
 		
-		
-
-		
 		camBlockPos.intDivXYZ(singleton->blockSizeInPixels);
 
 
 		GamePageHolder* curHolder;
 		GameBlock *curBlock;
 
-		int m;
 		
-		int changeCount = 0;
-
-		int maxChangesInHolders = singleton->maxChangesInHolders;
 		
 		
 		if (
@@ -805,46 +1028,10 @@ public:
 			}
 		}
 
-		// first fetch all the blocks to make sure they get created
-		// don't remove this, necessary for overlapping geom
-		
-		int blockRad = 1;
-		for (j = -blockRad; j <= blockRad; j++)
-		{
-			for (i = -blockRad; i <= blockRad; i++)
-			{
-				ii = i + camBlockPos.getIX();
-				jj = j + camBlockPos.getIY();
 
-				curBlock = getBlockAtCoords(ii, jj, true);
-
-			}
-		}
+		ensureBlocks();
 		
 		
-		minLRInPixels.copyFrom(&camHolderPos);
-		maxLRInPixels.copyFrom(&camHolderPos);
-		minLRInPixels.addXYZ(-singleton->maxWInPages, -singleton->maxWInPages, -singleton->maxHInPages);
-		maxLRInPixels.addXYZ(singleton->maxWInPages, singleton->maxWInPages, singleton->maxHInPages);
-		
-		minLRInPixels.addXYZ(-0.5f);
-		maxLRInPixels.addXYZ(0.5f);
-		
-		minLRInPixels.multXYZ(singleton->holderSizeInPixels);
-		maxLRInPixels.multXYZ(singleton->holderSizeInPixels);
-		
-		
-		
-		
-		int tempVal = 0;
-
-		int mink;
-		int maxk;
-		int minj;
-		int maxj;
-		int mini;
-		int maxi;
-		int curLoadRadius;
 		
 		
 
@@ -856,8 +1043,6 @@ public:
 			maxj = camHolderPos.getIY() + curLoadRadius;
 			mini = camHolderPos.getIX() - curLoadRadius;
 			maxi = camHolderPos.getIX() + curLoadRadius;
-			minLRInHolders.setIXYZ(mini + 1, minj + 1, mink + 1);
-			maxLRInHolders.setIXYZ(maxi - 1, maxj - 1, maxk - 1);
 			
 			for (jj = maxj; jj >= minj; jj--) {
 				
@@ -910,7 +1095,6 @@ public:
 
 DO_RETURN_PP:
 
-		//popTrace();
 		return cmade;
 	}
 
@@ -944,24 +1128,22 @@ DO_RETURN_PP:
 		}
 	}
 
-	int getHoldersInGeom(GameGeom *gg)
+	int getHoldersInEnt(GameEnt *gg)
 	{
 
 		int i;
 		int j;
 		int k;
 
-		geomMin.copyFrom(gg->getVisMinInPixelsT());
-		geomMin.intDivXYZ(singleton->holderSizeInPixels);
+		entMin.copyFrom(gg->getVisMinInPixelsT());
+		entMin.intDivXYZ(singleton->holderSizeInPixels);
 
-		geomMax.copyFrom(gg->getVisMaxInPixelsT());
-		geomMax.intDivXYZ(singleton->holderSizeInPixels);
+		entMax.copyFrom(gg->getVisMaxInPixelsT());
+		entMax.intDivXYZ(singleton->holderSizeInPixels);
 
-		GamePageHolder *gphMin = getHolderAtCoords(geomMin.getIX(), geomMin.getIY(), geomMin.getIZ(), true);
-		GamePageHolder *gphMax = getHolderAtCoords(geomMax.getIX(), geomMax.getIY(), geomMax.getIZ(), true);
+		GamePageHolder *gphMin = getHolderAtCoords(entMin.getIX(), entMin.getIY(), entMin.getIZ(), true);
+		GamePageHolder *gphMax = getHolderAtCoords(entMax.getIX(), entMax.getIY(), entMax.getIZ(), true);
 
-		//doTraceVecND("min: ", &(gphMin->offsetInHolders));
-		//doTraceVecND("max: ", &(gphMax->offsetInHolders));
 
 		int totCount = 0;
 
@@ -1002,7 +1184,6 @@ DO_RETURN_PP:
 	void actionOnHolders(int action, bool instantRefresh = false, bool clearEverything = false)
 	{
 
-		//pushTrace("renderHolders()");
 
 		int curMipLev = 0;
 		int i, j, k, m;
@@ -1019,7 +1200,7 @@ DO_RETURN_PP:
 		float zOffR = 0.0f;
 		float zOffG = 0.0f;
 		
-		GameEnt* activeEnt = singleton->testHuman;
+		GameOrg* activeEnt = singleton->testHuman;
 		GamePageHolder* gphEnt = activeEnt->gph;
 		
 		
@@ -1268,7 +1449,7 @@ DO_RETURN_PP:
 	
 
 
-	void drawEnt(GameEnt* curEnt, bool drawAll) {
+	void drawOrg(GameOrg* curOrg, bool drawAll) {
 		
 		
 		float scale = 1.0f*((float)(singleton->pixelsPerCell));
@@ -1280,20 +1461,20 @@ DO_RETURN_PP:
 		
 		// tangents
 		singleton->setShaderVec3("matVal", 255, 0, 0 );
-		drawNodeEnt((curEnt->baseNode),&(curEnt->basePosition), scale, 0, drawAll);
+		drawNodeEnt((curOrg->baseNode),&(curOrg->basePosition), scale, 0, drawAll);
 		
 		// bitangents
 		singleton->setShaderVec3("matVal", 0, 255, 0);
-		drawNodeEnt((curEnt->baseNode),&(curEnt->basePosition), scale, 1, drawAll);
+		drawNodeEnt((curOrg->baseNode),&(curOrg->basePosition), scale, 1, drawAll);
 		
 		// normals
 		singleton->setShaderVec3("matVal", 0, 0, 255);
-		drawNodeEnt((curEnt->baseNode),&(curEnt->basePosition), scale, 2, drawAll);
+		drawNodeEnt((curOrg->baseNode),&(curOrg->basePosition), scale, 2, drawAll);
 		
 		if (drawAll) {
 			// nodes
 			singleton->setShaderVec3("matVal", 254, 254, 254);
-			drawNodeEnt((curEnt->baseNode),&(curEnt->basePosition), scale, 3, drawAll);
+			drawNodeEnt((curOrg->baseNode),&(curOrg->basePosition), scale, 3, drawAll);
 		}
 		
 		
@@ -1302,7 +1483,7 @@ DO_RETURN_PP:
 
 
 	void drawNodeEnt(
-		GameEntNode* curNode,
+		GameOrgNode* curNode,
 		FIVector4* basePosition,
 		float scale,
 		int drawMode,
@@ -1883,7 +2064,10 @@ DONE_FINDING_PATH:
 		break;
 		case E_MOUSE_STATE_PICKING:
 
-			if (singleton->highlightedGeom == NULL)
+			
+			
+
+			if (singleton->highlightedEnt == NULL)
 			{
 
 			}
@@ -1892,8 +2076,8 @@ DONE_FINDING_PATH:
 				singleton->setShaderVec3("matVal", 254, 254, 254);
 				singleton->setShaderFloat("isWire", 1.0);
 
-				minv.setFXYZRef(singleton->highlightedGeom->getVisMinInPixelsT());
-				maxv.setFXYZRef(singleton->highlightedGeom->getVisMaxInPixelsT());
+				minv.setFXYZRef(singleton->highlightedEnt->getVisMinInPixelsT());
+				maxv.setFXYZRef(singleton->highlightedEnt->getVisMaxInPixelsT());
 
 				minv.addXYZ(-0.25 * singleton->pixelsPerCell);
 				maxv.addXYZ(0.25 * singleton->pixelsPerCell);
@@ -1902,7 +2086,7 @@ DONE_FINDING_PATH:
 				singleton->drawBox(&minv, &maxv);
 			}
 
-			if (singleton->selectedGeom == NULL)
+			if (singleton->selectedEnts.getSelectedEnt() == NULL)
 			{
 
 			}
@@ -1911,8 +2095,8 @@ DONE_FINDING_PATH:
 				singleton->setShaderVec3("matVal", 255, 255, 0);
 				singleton->setShaderFloat("isWire", 1.0);
 
-				minv.setFXYZRef(singleton->selectedGeom->getVisMinInPixelsT());
-				maxv.setFXYZRef(singleton->selectedGeom->getVisMaxInPixelsT());
+				minv.setFXYZRef(singleton->selectedEnts.getSelectedEnt()->getVisMinInPixelsT());
+				maxv.setFXYZRef(singleton->selectedEnts.getSelectedEnt()->getVisMaxInPixelsT());
 
 				singleton->drawBox(&minv, &maxv);
 			}
@@ -1963,9 +2147,21 @@ DONE_FINDING_PATH:
 				}
 			}
 		}
+		
+		// singleton->setShaderVec3("matVal", 254, 0, 0);
+		// singleton->setShaderFloat("isWire", 1.0);
+		// for (i = 0; i < singleton->nearestLights.selEntList.size(); i++) {
+			
+
+		// 	minv.setFXYZRef(singleton->nearestLights.selEntList[i]->getVisMinInPixelsT());
+		// 	maxv.setFXYZRef(singleton->nearestLights.selEntList[i]->getVisMaxInPixelsT());
 
 
-		GameEnt* activeEnt = singleton->testHuman;
+		// 	singleton->drawBox(&minv, &maxv);
+		// }
+
+
+		GameOrg* activeEnt = singleton->testHuman;
 		GamePageHolder* gphEnt = activeEnt->gph;
 		
 		if (singleton->entOn) {
@@ -1973,7 +2169,7 @@ DONE_FINDING_PATH:
 			
 			
 			singleton->setShaderFloat("objectId",0.0);
-			drawEnt(singleton->testHuman, false);
+			drawOrg(singleton->testHuman, false);
 			
 			tempVec.copyFrom(&(activeEnt->basePosition));
 			tempVec.addXYZRef(&gphEnt->gphCenInPixels,-1.0f);
@@ -1999,7 +2195,6 @@ DONE_FINDING_PATH:
 	void modifyUnit(FIVector4 *fPixelWorldCoordsBase, E_BRUSH brushAction)
 	{
 
-		//pushTrace("modifyUnit()");
 
 		int radius = ((int)singleton->curBrushRad);
 
@@ -2100,7 +2295,6 @@ DONE_FINDING_PATH:
 
 		if (brushAction == E_BRUSH_MOVE)
 		{
-			//popTrace();
 			return;
 		}
 
@@ -2134,13 +2328,8 @@ DONE_FINDING_PATH:
 						
 						
 
-						if (
-							checkBounds(kk,worldSizeInPages.getIZ())
-							
-						)
-						{
+						if ( checkBounds(kk,worldSizeInPages.getIZ()) )	{
 
-							//
 
 							curPage = getPageAtCoords(ii, jj, kk, true);
 
@@ -2151,10 +2340,6 @@ DONE_FINDING_PATH:
 								startBounds.maxXYZ(&unitPosMin, &(curPage->worldUnitMin));
 								endBounds.minXYZ(&unitPosMax, &(curPage->worldUnitMax));
 
-
-
-
-								
 
 
 
@@ -2326,7 +2511,6 @@ DONE_FINDING_PATH:
 		}
 		
 
-		//popTrace();
 
 	}
 
@@ -3957,7 +4141,6 @@ DONE_FINDING_PATH:
 
 		mapLockOn = false;
 
-		//popTrace();
 	}
 
 
@@ -4088,84 +4271,109 @@ DONE_FINDING_PATH:
 
 	void updateLights()
 	{
-
+		
+		
 		int i;
 		int j;
 		int k;
-
-		int flag = 1;
-
-		GameLight *tempLight;
-
-
-
-		int ii;
-		int jj;
-
-		int blockRad = 1;
-
+		bool flag = true;
+		GameEnt *tempLight;
+		GameEnt *curLight;
+		//GameBlock *curBlock;
+		
 		lightCount = singleton->numDynLights;
-		GameLight *curLight;
-		GameBlock *curBlock;
+		
+		
+		
+		
+		
 
-		//activeLights[0] = &globalLight;
+		
+		
+
+		
+
+
+
+		// int ii;
+		// int jj;
+		// int blockRad = 1;
+
+		
+
 
 		if (singleton->targetTimeOfDay <= 0.5)
 		{
-			for (j = -blockRad; j <= blockRad; j++)
-			{
-				for (i = -blockRad; i <= blockRad; i++)
-				{
-					ii = i + camBlockPos.getIX();
-					jj = j + camBlockPos.getIY();
+			
+			
+			findNearestEnt(&(singleton->nearestLights),E_ET_LIGHT,4,1,cameraPos,false,true);
+			
+			
+			for (i = 0; i < singleton->nearestLights.selEntList.size(); i++) {
+				
+				
+				curLight = singleton->nearestLights.selEntList[i];//&(curBlock->gameEnts[E_ET_LIGHT].data[k]);
+				curLight->camDistance = cameraPos->distance(&(curLight->geomParams[E_LP_POSITION]));
 
-					curBlock = getBlockAtCoords(ii, jj, true);
-
-
-					for (k = 0; k < curBlock->gameLights.size(); k++)
-					{
-						curLight = curBlock->gameLights[k];
-
-						// TODO: cache screen coords
-
-						
-						
-
-						curLight->screenDistance = cameraPos->distance(&(curLight->pos));
-
-						if ( (curLight->screenDistance < 64.0*singleton->pixelsPerCell ) && (curLight->isOn) )
-						{
-
-							// if (lightCount == singleton->numLights) {
-
-							// }
-
-							activeLights[lightCount] = curBlock->gameLights[k];
-							lightCount++;
-						}
-
-						if (lightCount >= MAX_EVAL_LIGHTS)
-						{
-							goto UPDATE_LIGHTS_END;
-						}
-
-					}
+				if (curLight->toggled) {
+					activeLights[lightCount] = singleton->nearestLights.selEntList[i];//&(curBlock->gameEnts[E_ET_LIGHT].data[k]);
+					lightCount++;
 				}
+
+				if (lightCount >= MAX_EVAL_LIGHTS)
+				{
+					goto UPDATE_LIGHTS_END;
+				}
+				
+				
 			}
+			
+			
+			
+			// for (j = -blockRad; j <= blockRad; j++)
+			// {
+			// 	for (i = -blockRad; i <= blockRad; i++)
+			// 	{
+			// 		ii = i + camBlockPos.getIX();
+			// 		jj = j + camBlockPos.getIY();
+
+			// 		curBlock = getBlockAtCoords(ii, jj, true);
+
+
+			// 		for (k = 0; k < curBlock->gameEnts[E_ET_LIGHT].data.size(); k++)
+			// 		{
+			// 			curLight = &(curBlock->gameEnts[E_ET_LIGHT].data[k]);
+			// 			curLight->camDistance = cameraPos->distance(&(curLight->geomParams[E_LP_POSITION]));
+
+			// 			if ( (curLight->camDistance < 64.0*singleton->pixelsPerCell ) && (curLight->toggled) )
+			// 			{
+
+			// 				activeLights[lightCount] = &(curBlock->gameEnts[E_ET_LIGHT].data[k]);
+			// 				lightCount++;
+			// 			}
+
+			// 			if (lightCount >= MAX_EVAL_LIGHTS)
+			// 			{
+			// 				goto UPDATE_LIGHTS_END;
+			// 			}
+
+			// 		}
+			// 	}
+			// }
 
 UPDATE_LIGHTS_END:
 
 			for (i = singleton->numDynLights + 1; (i <= lightCount) && flag; i++)
 			{
-				flag = 0;
+				flag = false;
 				for (j = singleton->numDynLights; j < (lightCount - 1); j++)
 				{
-					if (activeLights[j + 1]->screenDistance < activeLights[j]->screenDistance) // ascending order simply changes to <
+					if (activeLights[j + 1]->camDistance < activeLights[j]->camDistance) // ascending order simply changes to <
 					{
 						tempLight = activeLights[j];
 						activeLights[j] = activeLights[j + 1];
 						activeLights[j + 1] = tempLight;
-						flag = 1;
+						flag = true;
 					}
 				}
 			}
@@ -4183,118 +4391,71 @@ UPDATE_LIGHTS_END:
 		
 
 		int i;
-
 		int k;
+		int curCount;
 		int baseInd;
 
 		bool doProc = false;
 
-		GameLight *curLight;
-
-		//pushTrace("postProcess()");
-
-		// NOTE: ALWAYS UNSAMPLE IN REVERSE ORDER!!!
+		GameEnt *curLight;
 
 
-
-
-		//globalLight.initFrom( singleton->dynObjects[E_OBJ_LIGHT0] );
-		//activeLights[0] = &globalLight;
 
 		for (i = 0; i < singleton->numDynLights; i++)
 		{
 			activeLights[i] = singleton->dynObjects[E_OBJ_LIGHT0 + i]->getLight();
 		}
 
-
+		curCount = 0;
 		for (k = 0; k < lightCount; k++)
 		{
-			baseInd = k * FLOATS_PER_LIGHT;
-
-			// lightPosBase.copyFrom(&(singleton->dynObjects[E_OBJ_LIGHT0 + k]->pos));
-			// lightPosBase.addXYZ(
-			//  sin(singleton->curTime/1300.0)*4.0f*singleton->pixelsPerCell,
-			//  sin(singleton->curTime/700.0)*4.0f*singleton->pixelsPerCell,
-			//  sin(singleton->curTime/1100.0)*4.0f*singleton->pixelsPerCell
-			// );
-			// lightPos = &lightPosBase;
-
+			baseInd = curCount * FLOATS_PER_LIGHT;
 			curLight = activeLights[k];
+			lightPos = &(curLight->geomParams[E_LP_POSITION]);
 
-			lightPos = &(curLight->pos);
+			if (curLight->toggled) {
+				singleton->worldToScreenBase(&lScreenCoords, lightPos);
 
-			// if (k == 0) {
-			//  globLightPos = lightPos;
-			// }
-			// if (k == 1) {
-			//  lightPos->setFXYZ(
-			//      cameraPos->getFX()-(globLightPos->getFX() - cameraPos->getFX()),
-			//      cameraPos->getFY()-(globLightPos->getFY() - cameraPos->getFY()),
-			//      globLightPos->getFZ()
-			//  );
-			// }
+				singleton->lightArr[baseInd + 0] = lightPos->getFX();
+				singleton->lightArr[baseInd + 1] = lightPos->getFY();
+				singleton->lightArr[baseInd + 2] = lightPos->getFZ();
+				singleton->lightArr[baseInd + 3] = lScreenCoords.getFZ();
 
-			singleton->worldToScreenBase(&lScreenCoords, lightPos);
 
-			singleton->lightArr[baseInd + 0] = lightPos->getFX();
-			singleton->lightArr[baseInd + 1] = lightPos->getFY();
-			singleton->lightArr[baseInd + 2] = lightPos->getFZ();
-			singleton->lightArr[baseInd + 3] = lScreenCoords.getFZ();
+				singleton->lightArr[baseInd + 4] = lScreenCoords.getFX();
+				singleton->lightArr[baseInd + 5] = lScreenCoords.getFY();
+				singleton->lightArr[baseInd + 6] = lScreenCoords.getFZ();
+				singleton->lightArr[baseInd + 7] = curLight->geomParams[E_LP_RADIUS].getFX();
 
-			
 
-			singleton->lightArr[baseInd + 4] = lScreenCoords.getFX();
-			singleton->lightArr[baseInd + 5] = lScreenCoords.getFY();
-			singleton->lightArr[baseInd + 6] = lScreenCoords.getFZ();
-			//singleton->lightArr[baseInd + 7] = 0.0f;
-			
-			// light radius
-			if (k == 0)
-			{
-				// global light
-				singleton->lightArr[baseInd + 7] = 4096.0f * singleton->pixelsPerCell;
-			}
-			else
-			{
-				// if (k == 1) {
-				//  singleton->lightArr[baseInd + 3] = 4096.0f*singleton->pixelsPerCell;
+				// light color
+
+				singleton->lightArr[baseInd + 8] = curLight->geomParams[E_LP_COLOR].getFX(); // light red
+				singleton->lightArr[baseInd + 9] = curLight->geomParams[E_LP_COLOR].getFY(); // light green
+				singleton->lightArr[baseInd + 10] = curLight->geomParams[E_LP_COLOR].getFZ(); // light blue
+
+				// switch (k)
+				// {
+				// case 0:
+				// 	singleton->lightArr[baseInd + 11] = 1.0f; // light intensity (unused?)
+				// 	singleton->lightArr[baseInd + 12] = 0.0f; // light colorization (0-1)
+				// 	singleton->lightArr[baseInd + 13] = 0.0f; // light flooding (colorizes regardless of shadows) (0-1)
+				// 	break;
+				// default:
+				// 	singleton->lightArr[baseInd + 11] = 1.0f;
+				// 	singleton->lightArr[baseInd + 12] = 1.0f;
+				// 	singleton->lightArr[baseInd + 13] = 0.0f;
+				// 	break;
+
 				// }
-				// else {
-				// other lights
-				singleton->lightArr[baseInd + 7] = 16.0f * singleton->pixelsPerCell;
-				//}
 
+				curCount++;
 			}
 
-
-			// light color
-
-			singleton->lightArr[baseInd + 8] = curLight->color.getFX(); // light red
-			singleton->lightArr[baseInd + 9] = curLight->color.getFY(); // light green
-			singleton->lightArr[baseInd + 10] = curLight->color.getFZ(); // light blue
-
-			switch (k)
-			{
-			case 0:
-				singleton->lightArr[baseInd + 11] = 1.0f; // light intensity (unused?)
-				singleton->lightArr[baseInd + 12] = 0.0f; // light colorization (0-1)
-				singleton->lightArr[baseInd + 13] = 0.0f; // light flooding (colorizes regardless of shadows) (0-1)
-				break;
-			default:
-				singleton->lightArr[baseInd + 11] = 1.0f;
-				singleton->lightArr[baseInd + 12] = 1.0f;
-				singleton->lightArr[baseInd + 13] = 0.0f;
-				break;
-
-			}
-
-
+			
 		}
 
 		
-
-
-
 
 		activeFBO = 0;
 
@@ -4366,6 +4527,7 @@ UPDATE_LIGHTS_END:
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
 		singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
 		singleton->setShaderArrayfVec4("lightArr", singleton->lightArr, (FLOATS_PER_LIGHT * lightCount) / 4);
+		singleton->setShaderInt("vecsPerLight", FLOATS_PER_LIGHT / 4);
 		singleton->setShaderFloat("pixelsPerCell", singleton->pixelsPerCell);
 		singleton->setShaderFloat("lightCount", lightCount);
 		singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
@@ -4614,16 +4776,6 @@ UPDATE_LIGHTS_END:
 		
 		
 		
-
-
-
-
-
-		
-
-
-		//popTrace();
-
 
 	}
 

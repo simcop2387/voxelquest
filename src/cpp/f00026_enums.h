@@ -221,16 +221,18 @@ enum E_MAT_PARAM {
 };
 
 
-enum E_ENT_SUBPARAM {
-	E_ENT_SUBPARAM_NOT_SEL,
-	E_ENT_SUBPARAM_SEL,
-	E_ENT_SUBPARAM_LENGTH
+
+
+enum E_ORG_SUBPARAM {
+	E_ORG_SUBPARAM_NOT_SEL,
+	E_ORG_SUBPARAM_SEL,
+	E_ORG_SUBPARAM_LENGTH
 };
 
-enum E_ENT_PARAM {
-	E_ENT_PARAM_GEOM,
-	E_ENT_PARAM_LINES,
-	E_ENT_PARAM_LENGTH
+enum E_ORG_PARAM {
+	E_ORG_PARAM_GEOM,
+	E_ORG_PARAM_LINES,
+	E_ORG_PARAM_LENGTH
 };
 
 
@@ -495,7 +497,19 @@ enum E_EQUIPMENT_SLOTS {
 	
 // }
 
-
+enum E_LIGHT_PARAMS {
+	E_LP_VISMININPIXELST,
+	E_LP_VISMAXINPIXELST,
+	E_LP_POSITION,
+	E_LP_COLOR,
+	E_LP_RADIUS,
+	E_LP_UNUSED2,
+	E_LP_UNUSED3,
+	E_LP_UNUSED4,
+	E_LP_UNUSED5,
+	E_LP_UNUSED6, // must be last
+	E_LP_LENGTH
+};
 
 enum E_TREE_PARAMS {
 	E_TP_VISMININPIXELST,
@@ -539,10 +553,24 @@ enum E_GEOM_PARAMS {
 	E_GP_LENGTH
 };
 
-// enum E_ENT_TYPES {
-// 	E_ET_TEST,
-// 	E_ET_LENGTH
-// };
+enum E_ENT_TYPES {
+	E_ET_GEOM,
+	E_ET_ACTOR,
+	E_ET_LIGHT,
+	E_ET_LENGTH
+	
+};
+
+enum E_ENT_PARAM {
+	
+	E_EP_CURCENTERPOSINPIXELS,
+	E_EP_RADIUSINPIXELS,
+	E_EP_CURMINVISBOUNDSINPIXELS,
+	E_EP_CURMAXVISBOUNDSINPIXELS,
+	E_EP_MOVEMINBOUNDSINPIXELS,
+	E_EP_MOVEMAXBOUNDSINPIXELS,
+	E_EP_LENGTH
+};
 
 
 enum E_NODE_TYPE {
@@ -617,6 +645,44 @@ struct fBoundingBox {
 struct intPair {
 	int v0;
 	int v1;
+};
+
+bool operator==(const intPair& lhs, const intPair& rhs)
+{
+    return (lhs.v0 == rhs.v0)&&(lhs.v1==rhs.v1);
+}
+
+bool operator>(const intPair& lhs, const intPair& rhs)
+{
+	long lhs2 = lhs.v1;
+	long rhs2 = rhs.v1;
+
+	lhs2 = lhs2 << 16;
+	rhs2 = rhs2 << 16;
+
+	lhs2 |= lhs.v0;
+	rhs2 |= rhs.v0;
+
+
+	return (lhs2) > (rhs2);
+}
+
+bool operator<(const intPair& lhs, const intPair& rhs)
+{
+    long lhs2 = lhs.v1;
+	long rhs2 = rhs.v1;
+
+	lhs2 = lhs2 << 16;
+	rhs2 = rhs2 << 16;
+
+	lhs2 |= lhs.v0;
+	rhs2 |= rhs.v0;
+
+	return (lhs2) < (rhs2);
+}
+
+struct intPairVec {
+	std::vector<intPair> data;	
 };
 
 struct floatAndIndex {

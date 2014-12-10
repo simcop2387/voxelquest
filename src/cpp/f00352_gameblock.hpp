@@ -9,8 +9,6 @@ public:
 	int blockId;
 	int blockSizeInHolders;
 	int blockSizeInLots;
-	int localGeomCounter;
-	int lightCounter;
 	int terDataBufAmount;
 
 	bool forceUpdate;
@@ -56,8 +54,6 @@ public:
 	int layerHash[E_CT_LENGTH];
 
 	FIVector4 anchorPoint;
-	FIVector4 moveMinInPixels;
-	FIVector4 moveMaxInPixels;
 	
 	FIVector4 p1;
 	FIVector4 p2;
@@ -87,13 +83,14 @@ public:
 	FIVector4 tempVecB2;
 	FIVector4 tempVecB3;
 
-	std::vector<GameGeom *> gameGeom;
-	std::vector<GameLight *> gameLights;
-	//std::vector<GameEnt *> gameEnts; // only one instance per block
+	GameEnt baseEnt;
+	
+	
+	//std::vector<GameOrg *> GameOrgs; // only one instance per block
 
-	//GamePlant oakTree2;
-	//GamePlant oakTree;
-	//GamePlant bareTree;
+	EntVec gameEnts[E_ET_LENGTH];
+	
+
 	GameWorld *gw;
 	GamePageHolder **holderData;
 
@@ -147,8 +144,6 @@ public:
 		offsetInBlocks.setIXYZ(_x, _y, 0);
 		offsetInBlocksWrapped.setIXYZ(_xw, _yw, 0);
 
-		localGeomCounter = 0;
-		lightCounter = 0;
 
 		origin.setFXYZ(0.0f, 0.0f, 0.0f);
 
@@ -2797,13 +2792,11 @@ SKIP_ADD_GEOM:
 			tempVec2.addXYZRef(orig);
 			tempVec3.addXYZRef(orig);
 
-			gameGeom.push_back(new GameGeom());
-			gameGeom.back()->initTree(
+			gameEnts[E_ET_GEOM].data.push_back(baseEnt);
+			gameEnts[E_ET_GEOM].data.back().initTree(
 				
 				E_CT_TREE,
-				localGeomCounter,
-				singleton->geomCounter,
-								
+				
 				&tempVec,
 				&tempVec2,
 				&tempVec3,
@@ -2814,8 +2807,6 @@ SKIP_ADD_GEOM:
 										
 				&matParams
 			);
-			singleton->geomCounter++;
-			localGeomCounter++;
 		}
 
 		
@@ -2850,11 +2841,9 @@ SKIP_ADD_GEOM:
 		
 		
 		
-		gameGeom.push_back(new GameGeom());
-		gameGeom.back()->initBounds(
+		gameEnts[E_ET_GEOM].data.push_back(baseEnt);
+		gameEnts[E_ET_GEOM].data.back().initBounds(
 			_curBT,
-			localGeomCounter,
-			singleton->geomCounter,
 			_curAlign,
 			_baseOffset,
 			_p1,
@@ -2875,22 +2864,19 @@ SKIP_ADD_GEOM:
 		
 		if (_curBT == E_CT_LANTERN) {
 			lightVec.setFXYZ(1.0f,0.5f,0.1f);
-			gameLights.push_back(new GameLight());
-			gameLights.back()->init(
-				lightCounter,
-				singleton->lightCounter,
+			
+			gameEnts[E_ET_LIGHT].data.push_back(baseEnt);
+			gameEnts[E_ET_LIGHT].data.back().initLight(
 				_p1,
-				&lightVec
+				&lightVec,
+				16.0f*pixelsPerCell
 			);
-			singleton->lightCounter++;
-			lightCounter++;
-			gameGeom.back()->light = gameLights.back();
+			gameEnts[E_ET_LIGHT].data.back().toggled = true;
+			gameEnts[E_ET_GEOM].data.back().light = &(gameEnts[E_ET_LIGHT].data.back());
 		}
 		
 		
 		
-		singleton->geomCounter++;
-		localGeomCounter++;
 	}
 	
 

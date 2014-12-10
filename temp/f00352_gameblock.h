@@ -47,8 +47,6 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		offsetInBlocks.setIXYZ(_x, _y, 0);
 		offsetInBlocksWrapped.setIXYZ(_xw, _yw, 0);
 
-		localGeomCounter = 0;
-		lightCounter = 0;
 
 		origin.setFXYZ(0.0f, 0.0f, 0.0f);
 
@@ -2685,13 +2683,11 @@ void GameBlock::addPlantNodes (GamePlantNode * curPlantNode, FIVector4 * orig, f
 			tempVec2.addXYZRef(orig);
 			tempVec3.addXYZRef(orig);
 
-			gameGeom.push_back(new GameGeom());
-			gameGeom.back()->initTree(
+			gameEnts[E_ET_GEOM].data.push_back(baseEnt);
+			gameEnts[E_ET_GEOM].data.back().initTree(
 				
 				E_CT_TREE,
-				localGeomCounter,
-				singleton->geomCounter,
-								
+				
 				&tempVec,
 				&tempVec2,
 				&tempVec3,
@@ -2702,8 +2698,6 @@ void GameBlock::addPlantNodes (GamePlantNode * curPlantNode, FIVector4 * orig, f
 										
 				&matParams
 			);
-			singleton->geomCounter++;
-			localGeomCounter++;
 		}
 
 		
@@ -2719,11 +2713,9 @@ void GameBlock::addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVect
 		
 		
 		
-		gameGeom.push_back(new GameGeom());
-		gameGeom.back()->initBounds(
+		gameEnts[E_ET_GEOM].data.push_back(baseEnt);
+		gameEnts[E_ET_GEOM].data.back().initBounds(
 			_curBT,
-			localGeomCounter,
-			singleton->geomCounter,
 			_curAlign,
 			_baseOffset,
 			_p1,
@@ -2744,22 +2736,19 @@ void GameBlock::addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVect
 		
 		if (_curBT == E_CT_LANTERN) {
 			lightVec.setFXYZ(1.0f,0.5f,0.1f);
-			gameLights.push_back(new GameLight());
-			gameLights.back()->init(
-				lightCounter,
-				singleton->lightCounter,
+			
+			gameEnts[E_ET_LIGHT].data.push_back(baseEnt);
+			gameEnts[E_ET_LIGHT].data.back().initLight(
 				_p1,
-				&lightVec
+				&lightVec,
+				16.0f*pixelsPerCell
 			);
-			singleton->lightCounter++;
-			lightCounter++;
-			gameGeom.back()->light = gameLights.back();
+			gameEnts[E_ET_LIGHT].data.back().toggled = true;
+			gameEnts[E_ET_GEOM].data.back().light = &(gameEnts[E_ET_LIGHT].data.back());
 		}
 		
 		
 		
-		singleton->geomCounter++;
-		localGeomCounter++;
 	}
 void GameBlock::connectNodes (int _x1, int _y1, int _z1, int _x2, int _y2, int _z2, int ct, int id, int _heightDelta, int _direction, float _wallRadInCells, unsigned int _nodeFlags)
           {

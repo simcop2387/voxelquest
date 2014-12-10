@@ -1,4 +1,4 @@
-﻿Build started 12/7/2014 10:53:27 PM.
+﻿Build started 12/10/2014 2:40:49 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -9,6 +9,7 @@
          .\src\cpp\f00026_enums.h
          .\src\cpp\f00027_mat.h
          .\src\cpp\f00028_vectors.h
+         .\src\cpp\f00029_gameent.h
          .\src\cpp\f00030_json.h
          .\src\cpp\f00040_png.h
          .\src\cpp\f00215_helperfuncs.h
@@ -23,7 +24,7 @@
          .\src\cpp\f00292_wsserver.hpp
          .\src\cpp\f00293_gamesound.hpp
          .\src\cpp\f00294_gamemusic.hpp
-         .\src\cpp\f00295_gamegeom.hpp
+         .\src\cpp\f00296_gameactor.hpp
          .\src\cpp\f00297_gamecamera.hpp
          .\src\cpp\f00300_singleton.hpp
          .\src\cpp\f00305_shader.hpp
@@ -33,8 +34,8 @@
          .\src\cpp\f00320_fontwrapper.hpp
          .\src\cpp\f00325_uicomponent.hpp
          .\src\cpp\f00330_gamegui.hpp
-         .\src\cpp\f00338_gameentnode.hpp
-         .\src\cpp\f00339_gameent.hpp
+         .\src\cpp\f00338_gameorgnode.hpp
+         .\src\cpp\f00339_gameorg.hpp
          .\src\cpp\f00340_gameplantnode.hpp
          .\src\cpp\f00341_gameplant.hpp
          .\src\cpp\f00350_gamepage.hpp
@@ -42,7 +43,7 @@
          .\src\cpp\f00352_gameblock.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         37 File(s) copied
+         38 File(s) copied
          running lzz
          Missing operator.
          tot hpp
@@ -53,7 +54,7 @@
          .\f00292_wsserver.e
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
-         .\f00295_gamegeom.e
+         .\f00296_gameactor.e
          .\f00297_gamecamera.e
          .\f00300_singleton.e
          .\f00305_shader.e
@@ -63,8 +64,8 @@
          .\f00320_fontwrapper.e
          .\f00325_uicomponent.e
          .\f00330_gamegui.e
-         .\f00338_gameentnode.e
-         .\f00339_gameent.e
+         .\f00338_gameorgnode.e
+         .\f00339_gameorg.e
          .\f00340_gameplantnode.e
          .\f00341_gameplant.e
          .\f00350_gamepage.e
@@ -82,7 +83,7 @@
          .\temp\f00292_wsserver.e
          .\temp\f00293_gamesound.e
          .\temp\f00294_gamemusic.e
-         .\temp\f00295_gamegeom.e
+         .\temp\f00296_gameactor.e
          .\temp\f00297_gamecamera.e
          .\temp\f00300_singleton.e
          .\temp\f00305_shader.e
@@ -92,8 +93,8 @@
          .\temp\f00320_fontwrapper.e
          .\temp\f00325_uicomponent.e
          .\temp\f00330_gamegui.e
-         .\temp\f00338_gameentnode.e
-         .\temp\f00339_gameent.e
+         .\temp\f00338_gameorgnode.e
+         .\temp\f00339_gameorg.e
          .\temp\f00340_gameplantnode.e
          .\temp\f00341_gameplant.e
          .\temp\f00350_gamepage.e
@@ -105,6 +106,7 @@
          .\temp\f00026_enums.h
          .\temp\f00027_mat.h
          .\temp\f00028_vectors.h
+         .\temp\f00029_gameent.h
          .\temp\f00030_json.h
          .\temp\f00040_png.h
          .\temp\f00215_helperfuncs.h
@@ -120,7 +122,7 @@
          .\temp\f00292_wsserver.h
          .\temp\f00293_gamesound.h
          .\temp\f00294_gamemusic.h
-         .\temp\f00295_gamegeom.h
+         .\temp\f00296_gameactor.h
          .\temp\f00297_gamecamera.h
          .\temp\f00300_singleton.h
          .\temp\f00305_shader.h
@@ -130,8 +132,8 @@
          .\temp\f00320_fontwrapper.h
          .\temp\f00325_uicomponent.h
          .\temp\f00330_gamegui.h
-         .\temp\f00338_gameentnode.h
-         .\temp\f00339_gameent.h
+         .\temp\f00338_gameorgnode.h
+         .\temp\f00339_gameorg.h
          .\temp\f00340_gameplantnode.h
          .\temp\f00341_gameplant.h
          .\temp\f00350_gamepage.h
@@ -262,7 +264,7 @@
                    
          Loading:  ..\data\lastImageBuffer.txt         
          Load Successful          
-         Sea Level: 127
+         Sea Level: 173
          start place cities
          end place cities
          start grow provinces
@@ -309,65 +311,39 @@
          copyTerToTexture resIndex:  1         
          copyTerToTexture resIndex:  2         
          copyTerToTexture resIndex:  3         
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         Saving GUI Values
-         Save Successful          
-         End Saving GUI Values
-         
-         Valid JSON
-                   
-         Loading:  ..\data\lastJSONBufferGUI.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         getJVNodeByString(inventoryData.items)
-         inventoryData
-         items
-         getJVNodeByString(inventoryData.items)
-         inventoryData
-         items
-         getJVNodeByString(params)
-         params
-         Loading GUI Values
-         Loading:  ..\data\saves\save0\compMap.txt         
-         Load Successful          
-         End Loading GUI Values
-         E_MOUSE_STATE_BRUSH
-         E_MOUSE_STATE_PICKING
-         E_MOUSE_STATE_MOVE
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
-         placeActor
+         copyTerToTexture resIndex:  4         
+         final toggle 1
+         final toggle 0
+         final toggle 1
+         final toggle 0
+         final toggle 1
+         final toggle 0
+         final toggle 1
+         final toggle 0
+         final toggle 1
+         final toggle 0
+         final toggle 0
+         final toggle 1
+         copyTerToTexture resIndex:  5         
+         final toggle 1
+         final toggle 0
+         final toggle 1
+         final toggle 0
+         OBJECT ID 5
+         OBJECT ID 5
+         OBJECT ID 5
+         final toggle 1
+         final toggle 0
+         final toggle 1
+         final toggle 0
+         final toggle 1
+         final toggle 0
+         final toggle 1
+         final toggle 0
+         final toggle 1
+         final toggle 0
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:04:12.50
+Time Elapsed 00:05:04.45

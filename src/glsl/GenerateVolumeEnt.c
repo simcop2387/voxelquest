@@ -92,14 +92,14 @@ const float TEX_TREEWOOD =  43.0;
 const float TEX_LEAF =    45.0;
 
 
-const float E_ENT_SUBPARAM_NOT_SEL = 		0.0;
-const float E_ENT_SUBPARAM_SEL = 			1.0;
-const float E_ENT_SUBPARAM_LENGTH = 		2.0;
+const float E_ORG_SUBPARAM_NOT_SEL = 		0.0;
+const float E_ORG_SUBPARAM_SEL = 			1.0;
+const float E_ORG_SUBPARAM_LENGTH = 		2.0;
 
 
-const float E_ENT_PARAM_GEOM =		0.0;
-const float E_ENT_PARAM_LINES =		1.0; // must be last
-const float E_ENT_PARAM_LENGTH =      	2.0;
+const float E_ORG_PARAM_GEOM =		0.0;
+const float E_ORG_PARAM_LINES =		1.0; // must be last
+const float E_ORG_PARAM_LENGTH =      	2.0;
 
 
 
@@ -688,7 +688,7 @@ vec4 getLines(vec3 worldPosInPixels) {
 		matParams = paramArr[baseInd + E_AP_MATPARAMS];
 
 
-		if (matParams.x == E_ENT_PARAM_LINES) {
+		if (matParams.x == E_ORG_PARAM_LINES) {
 
 			visMinInPixels = paramArr[baseInd + E_AP_VISMININPIXELST];
 			visMaxInPixels = paramArr[baseInd + E_AP_VISMAXINPIXELST];
@@ -1501,7 +1501,7 @@ void main() {
 
 	if (hasGeom) {
 
-		for (j = 0; j < E_ENT_PARAM_LINES; j++) {
+		for (j = 0; j < E_ORG_PARAM_LINES; j++) {
 
 			iMatCount = int(matCountArr[j]);
 

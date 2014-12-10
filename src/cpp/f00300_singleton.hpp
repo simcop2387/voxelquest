@@ -79,9 +79,14 @@ public:
 	eProgramAction progActionsDown[E_PS_SIZE * 256];
 	eProgramAction progActionsUp[E_PS_SIZE * 256];
 
+	EntSelection nearestLights;
+	EntSelection highlightedEnts;
+	EntSelection selectedEnts;
+	GameEnt* selectedEnt;
+	GameEnt* highlightedEnt;
 	
 
-	bool isInteractiveGeom[E_CT_LENGTH];
+	bool isInteractiveEnt[E_CT_LENGTH];
 
 	bool pathfindingOn;
 	bool isMacro;
@@ -165,7 +170,7 @@ public:
 	int iNumSteps;
 
 
-	int curEntId;
+	int curOrgId;
 	int cellsPerLot;
 	int extraRad;
 	int defaultWinW;
@@ -188,8 +193,6 @@ public:
 	int mouseCount;
 	int lastMouseX;
 	int lastMouseY;
-	int geomCounter;
-	int lightCounter;
 
 	
 	
@@ -214,7 +217,6 @@ public:
 	uint *terDataScaled;
 
 	int iNodeDivsPerLot;
-	int selGeomListInd;
 	int holderSizeInPages;
 	uint volGenFBOX;
 	int volGenSuperMod;
@@ -277,7 +279,7 @@ public:
 	float *paramArrMap;
 	
 	
-	int *geomIdArr;
+	intPair entIdArr[1024];
 	int *cdBuffer;
 	
 	double lastMoveTime;
@@ -286,10 +288,10 @@ public:
 	double mdTime;
 	double muTime;
 	
-	GameEntNode* bestNode;
-	GameEntNode* selectedNode;
-	GameEntNode* lastSelNode;
-	GameEntNode* activeNode;
+	GameOrgNode* bestNode;
+	GameOrgNode* selectedNode;
+	GameOrgNode* lastSelNode;
+	GameOrgNode* activeNode;
 
 	FIVector4 worldMarker;
 	FIVector4 lookAtVec;
@@ -301,7 +303,6 @@ public:
 	FIVector4 mouseDownPD;
 	FIVector4 mouseObjPD;
 	FIVector4 mouseMovePD;
-	FIVector4 geomPD;
 	
 	FIVector4 tempVec1;
 	FIVector4 tempVec2;
@@ -345,7 +346,6 @@ public:
 	
 	std::vector<RotationInfo> rotMatStack;
 	std::vector<DynObject *> dynObjects;
-	std::vector<GameGeom *> selGeomList;
 	PathHolder charPathHolder;
 	PathHolder splitPathHolder;
 
@@ -369,9 +369,7 @@ public:
 	Image *imageHM1;
 	Image *cloudImage;
 
-	GameGeom *highlightedGeom;
-	GameGeom *selectedGeom;
-	GameGeom *curGeom;
+	
 	
 	GamePlant* gamePlants[E_PT_LENGTH/2];
 
@@ -437,7 +435,7 @@ public:
 	TerTexture terTextures[MAX_TER_TEX];
 
 
-	GameEnt* testHuman;
+	GameOrg* testHuman;
 
 	
 	GameGUI* mainGUI;
@@ -485,8 +483,10 @@ public:
 		
 		
 		for (i = 0; i < E_CT_LENGTH; i++) {
-			isInteractiveGeom[i] = false;
+			isInteractiveEnt[i] = false;
 		}
+		
+		float tempf;
 		
 		
 		cdMap[0] = E_CD_EMPTY;
@@ -495,9 +495,9 @@ public:
 		}
 		cdMap[32] = E_CD_WATER;
 		
-		isInteractiveGeom[E_CT_WINDOW] = true;
-		isInteractiveGeom[E_CT_DOOR] = true;
-		isInteractiveGeom[E_CT_LANTERN] = true;
+		isInteractiveEnt[E_CT_WINDOW] = true;
+		isInteractiveEnt[E_CT_DOOR] = true;
+		isInteractiveEnt[E_CT_LANTERN] = true;
 		
 		pathfindingOn = false;
 		isMacro = false;
@@ -516,6 +516,8 @@ public:
 		mapComp = NULL;
 		mainMenu = NULL;
 		ddMenu = NULL;
+		selectedEnt = NULL;
+		highlightedEnt = NULL;
 		draggingMap = false;
 		
 		FOV = 45.0f;
@@ -527,12 +529,10 @@ public:
 		selectedNode = NULL;
 		lastSelNode = NULL;
 		
-		curEntId = 0;
+		curOrgId = 0;
 		
 		rootObjJS = NULL;
 		guiRootJS = NULL;
-		highlightedGeom = NULL;
-		selectedGeom = NULL;
 		rbStack = NULL;
 		rbHeightStack = NULL;
 
@@ -562,7 +562,6 @@ public:
 		imageHM1->getTextureId(GL_NEAREST);
 		cloudImage->getTextureId(GL_LINEAR);
 
-		selGeomListInd = 0;
 
 		mapSampScale = 0.5f;
 		//renderCount = 1.0;
@@ -854,8 +853,6 @@ public:
 		cameraZoom = 1.0f;
 		targetZoom = cameraZoom;
 		
-		geomCounter = 0;
-		lightCounter = 0;
 
 
 
@@ -950,8 +947,6 @@ public:
 		}
 
 		
-
-		geomIdArr = new int[1024];
 		paramArr = new float[4096];
 		voroArr = new float[27 * 4];
 		matCountArr = new float[256];
@@ -1114,6 +1109,13 @@ public:
 				break;
 			}
 
+			if (i == E_OBJ_LIGHT0) {
+				tempf = 4096.0f*pixelsPerCell;
+			}
+			else {
+				tempf = 16.0f*pixelsPerCell;
+			}
+
 			dynObjects[i]->init(
 				-2048 + i * 256,
 				-2048 + i * 256,
@@ -1122,7 +1124,8 @@ public:
 				true,
 				E_MT_RELATIVE,
 				&(dynObjects[E_OBJ_CAMERA]->pos),
-				64.0f
+				64.0f,
+				tempf
 			);
 
 
@@ -1427,7 +1430,7 @@ public:
 		
 		
 		
-		testHuman = new GameEnt();
+		testHuman = new GameOrg();
 		testHuman->init(this);
 		
 		
@@ -1579,6 +1582,8 @@ public:
 									
 									if (comp->uid.compare("map.mapHolder") == 0) {
 										cameraPos->setFXYZRef(&baseCameraPos);
+										//cout << x << " " << y << " " << comp->dragStart.x << " " << comp->dragStart.y << "\n";
+										
 										cameraPos->addXYZ(
 											-(x - comp->dragStart.x)*worldSizeInPixels.getFX()/(cameraZoom*comp->resultDimInPixels.x),
 											-(y - comp->dragStart.y)*worldSizeInPixels.getFY()/(cameraZoom*comp->resultDimInPixels.y),
@@ -2820,7 +2825,7 @@ public:
 	}
 	
 	
-	void transformEnt(GameEnt* curEnt) {
+	void transformEnt(GameOrg* curEnt) {
 		curEnt->baseNode->doTransform(this);
 	}
 	
@@ -2925,7 +2930,7 @@ public:
 		
 	}
 	
-	GameEntNode* getMirroredNode(GameEntNode* curNode) {
+	GameOrgNode* getMirroredNode(GameOrgNode* curNode) {
 		if ((curNode->nodeName < E_BONE_C_BEG)&&mirrorOn) {
 			if (curNode->nodeName <= E_BONE_L_END) {
 				return testHuman->baseNode->getNode(
@@ -2946,9 +2951,9 @@ public:
 
 
 
-	void applyNodeChanges(GameEntNode* _curNode, float dx, float dy) {
+	void applyNodeChanges(GameOrgNode* _curNode, float dx, float dy) {
 		
-		GameEntNode* curNode = _curNode;
+		GameOrgNode* curNode = _curNode;
 		
 		int i;
 		int j;
@@ -3035,7 +3040,7 @@ public:
 		int diffy;
 		
 		
-		GameEntNode* curNode;
+		GameOrgNode* curNode;
 
 		
 		modXYZ.setFXYZ(0.0f,0.0f,0.0f);
@@ -3347,7 +3352,7 @@ public:
 	{
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
-		int holderCount;
+		
 		
 		
 		
@@ -3366,7 +3371,7 @@ public:
 			
 		}
 
-		GameEntNode* curNode;
+		GameOrgNode* curNode;
 		
 		
 
@@ -3595,13 +3600,7 @@ public:
 			break;
 
 		case ' ':
-			selGeomListInd++;
-			if (selGeomListInd >= selGeomList.size()) {
-				selGeomListInd = 0;
-			}
-			if (selGeomList.size() > 0) {
-				selectedGeom = selGeomList[selGeomListInd];
-			}
+			selectedEnts.cycleEnts();
 			
 		break;
 
@@ -3655,22 +3654,7 @@ public:
 		break;
 
 		case 'v':
-			if (selectedGeom == NULL)
-			{
-
-			}
-			else
-			{
-				selectedGeom->visible = !(selectedGeom->visible);
-
-				holderCount = gw->getHoldersInGeom(selectedGeom);
-				gw->refreshHoldersInList(true, true); //holderCount <= 12
-				gw->holdersToRefresh.clear();
-
-
-
-
-			}
+			gw->toggleVis(selectedEnts.getSelectedEnt());
 			break;
 
 
@@ -3715,21 +3699,6 @@ public:
 		cout << "totalPointCount: " << totalPointCount << "\n";
 	}
 	
-	// void getWorldSpaceBuffer(int bufNum = 0)
-	// {
-
-	// 	if (autoScroll) {
-			
-	// 	}
-	// 	else {
-	// 		cout << "getWS\n";
-	// 		getFBOWrapper("pagesTargFBO", bufNum)->getPixels();
-	// 	}
-
-	// 	wsBufferInvalid = false;
-	// 	forceGetPD = false;
-
-	// }
 
 	void getPixData(FIVector4 *toVector, int _xv, int _yv, bool forceUpdate, bool isObj)
 	{
@@ -3774,107 +3743,6 @@ public:
 		forceGetPD = false;
 		
 	}
-
-	GameGeom *findNearestGeom(
-		FIVector4 *testPoint,
-		bool createList = false,
-		bool onlyInteractive = false
-	)
-	{
-		GameBlock *curBlock;
-
-		int i;
-		int j;
-		int k;
-		int ii;
-		int jj;
-		
-		int curInd = 0;
-		float bestDis;
-		float curDis;
-		
-		bool doProc = false;
-		
-		if (createList) {
-			selGeomList.clear();
-			selGeomListInd = 0;
-		}
-
-		bestDis = 99999.0f;
-		GameGeom *resGeom = NULL;
-
-		for (j = -1; j <= 1; j++)
-		{
-			for (i = -1; i <= 1; i++)
-			{
-				ii = i + gw->camBlockPos.getIX();
-				jj = j + gw->camBlockPos.getIY();
-
-				curBlock = gw->getBlockAtCoords(ii, jj, false);
-
-				if (curBlock == NULL)
-				{
-
-				}
-				else
-				{
-					for (k = 0; k < curBlock->gameGeom.size(); k++)
-					{
-						if (
-							testPoint->inBoundsXYZSlack(
-								curBlock->gameGeom[k]->getVisMinInPixelsT(),
-								curBlock->gameGeom[k]->getVisMaxInPixelsT(),
-								0.0625*pixelsPerCell
-							)
-						)
-						{
-							
-							if (createList) {
-								selGeomList.push_back(curBlock->gameGeom[k]);
-								curInd++;
-							}
-							
-							curDis = 
-							abs(curBlock->gameGeom[k]->getVisMaxInPixelsT()->getFX()-testPoint->getFX()) +
-							abs(curBlock->gameGeom[k]->getVisMaxInPixelsT()->getFY()-testPoint->getFY()) +
-							abs(curBlock->gameGeom[k]->getVisMaxInPixelsT()->getFZ()-testPoint->getFZ());
-							
-							//curBlock->gameGeom[k]->getVisMinInPixelsT()->distance(testPoint) +
-							//curBlock->gameGeom[k]->getVisMaxInPixelsT()->distance(testPoint);
-
-							if (curBlock->gameGeom[k]->visible) {
-								
-							}
-							else {
-								curDis *= 16.0f;
-							}
-
-							if (onlyInteractive) {
-								doProc = isInteractiveGeom[curBlock->gameGeom[k]->buildingType];
-							}
-							else {
-								doProc = true;
-							}
-
-							if (
-								(curDis < bestDis) &&
-								doProc
-							)
-							{
-								bestDis = curDis;
-								resGeom = curBlock->gameGeom[k];
-								selGeomListInd = curInd-1;
-							}
-
-						}
-					}
-				}
-			}
-		}
-
-		return resGeom;
-	}
-
 
 	void mouseMove(int _x, int _y)
 	{
@@ -3935,7 +3803,7 @@ public:
 			//////////////
 
 			if (entOn) {
-				updateNearestEntNode(false, &mouseMovePD);
+				updateNearestOrgNode(false, &mouseMovePD);
 			}
 			else {
 				activeNode = NULL;
@@ -3943,8 +3811,14 @@ public:
 			}
 			
 
-			highlightedGeom = findNearestGeom(&mouseMovePD);
-			
+			gw->findNearestEnt(
+				&highlightedEnts,
+				E_ET_GEOM,
+				2,
+				1,
+				&mouseMovePD
+			);
+			highlightedEnt = highlightedEnts.getSelectedEnt();
 
 
 			//////////////
@@ -3967,7 +3841,7 @@ public:
 		testHuman->gph->childrenDirty = true;
 	}
 
-	void setSelNode(GameEntNode* newNode) {
+	void setSelNode(GameOrgNode* newNode) {
 		
 		selectedNode = newNode;
 		if (selectedNode != lastSelNode) {
@@ -4130,6 +4004,8 @@ public:
 
 	void mouseClick(int button, int state, int _x, int _y)
 	{
+		
+		int tempInt;
 
 
 		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
@@ -4247,17 +4123,15 @@ public:
 		}
 		
 
-		if (state == GLUT_DOWN)
-		{
+		if (state == GLUT_DOWN) {
 			mouseVel.setFXY(0.0f, 0.0f);
 		}
 
-		if (abClicked)
-		{
+		if (abClicked) {
 
 
 			if (ddMenu != NULL) {
-				if (rbClicked) {
+				if (rbClicked&&(!bCtrl)) {
 					ddMenu->visible = true;
 					
 					ddMenu->floatOffset.x = (guiX);
@@ -4330,23 +4204,19 @@ public:
 					
 					
 					
-					if (mouseState == E_MOUSE_STATE_PICKING) {
-						selectedGeom = findNearestGeom(
-							&mouseUpPD,
-							true,
-							false
-						);
-					}
-					else {
-						selectedGeom = findNearestGeom(
-							&mouseUpPD,
-							false,
-							true
-						);
-					}
+					gw->findNearestEnt(
+						&selectedEnts,
+						E_ET_GEOM,
+						2,
+						1,
+						&mouseUpPD,
+						true
+					);
+					
+					selectedEnt = selectedEnts.getSelectedEnt();
 
 					if (
-						(selectedGeom == NULL) ||
+						(selectedEnt == NULL) ||
 						(mouseState == E_MOUSE_STATE_PICKING) ||
 						(mouseState == E_MOUSE_STATE_BRUSH)
 					)	{
@@ -4355,7 +4225,7 @@ public:
 					else
 					{
 
-						switch (selectedGeom->buildingType)
+						switch (selectedEnt->buildingType)
 						{
 						case E_CT_DOOR:
 						case E_CT_WINDOW:
@@ -4363,21 +4233,21 @@ public:
 							
 
 						
-							gw->getHoldersInGeom(selectedGeom);
-							selectedGeom->toggleTransform();
-							gw->getHoldersInGeom(selectedGeom);
-							gw->refreshHoldersInList(true, true); //holderCount <= 12
+							gw->getHoldersInEnt(selectedEnt);
+							selectedEnt->toggleTransform();
+							gw->getHoldersInEnt(selectedEnt);
+							gw->refreshHoldersInList(true, true);
 							gw->holdersToRefresh.clear();
 							
-							if (selectedGeom->isToggled) {
+							if (selectedEnt->toggled) {
 								// open
-								switch (selectedGeom->buildingType)
+								switch (selectedEnt->buildingType)
 								{
 									case E_CT_DOOR:
 										playSoundPosAndPitch(
 											"open3",
 											cameraPos,
-											selectedGeom->getVisMinInPixelsT(),
+											selectedEnt->getVisMinInPixelsT(),
 											0.3f
 										);
 									break;
@@ -4385,7 +4255,7 @@ public:
 										playSoundPosAndPitch(
 											"open1",
 											cameraPos,
-											selectedGeom->getVisMinInPixelsT(),
+											selectedEnt->getVisMinInPixelsT(),
 											0.3f
 										);
 									break;
@@ -4394,13 +4264,13 @@ public:
 							else {
 								// close
 								
-								switch (selectedGeom->buildingType)
+								switch (selectedEnt->buildingType)
 								{
 									case E_CT_DOOR:
 										playSoundPosAndPitch(
 											"close2",
 											cameraPos,
-											selectedGeom->getVisMinInPixelsT(),
+											selectedEnt->getVisMinInPixelsT(),
 											0.3f
 										);
 									break;
@@ -4408,7 +4278,7 @@ public:
 										playSoundPosAndPitch(
 											"close1",
 											cameraPos,
-											selectedGeom->getVisMinInPixelsT(),
+											selectedEnt->getVisMinInPixelsT(),
 											0.3f
 										);
 									break;
@@ -4421,25 +4291,15 @@ public:
 							break;
 
 						case E_CT_LANTERN:
-							selectedGeom->light->isOn = !(selectedGeom->light->isOn);
+							selectedEnt->light->toggle();
 							playSoundPosAndPitch(
 								"castinet0",
 								cameraPos,
-								selectedGeom->getVisMinInPixelsT(),
+								selectedEnt->getVisMinInPixelsT(),
 								0.3f
 							);
-							
-							doTraceND("");
-							doTraceND("CUR LIGHT DIS ", f__s(selectedGeom->light->screenDistance));
-							doTraceND("");
-							for (i = 0; i < gw->lightCount; i++)
-							{
-							 	doTraceND("LIGHT DIS ", f__s(gw->activeLights[i]->screenDistance));
-							}
-							doTraceND("");
-							doTraceND("");
-
 							gw->updateLights();
+							cout << "final toggle " << selectedEnt->light->toggled << "\n";
 							break;
 
 						}
@@ -4561,7 +4421,7 @@ public:
 						
 						
 						if (entOn) {
-							updateNearestEntNode(true, &mouseDownPD);
+							updateNearestOrgNode(true, &mouseDownPD);
 						}
 						
 					}
@@ -4594,7 +4454,7 @@ public:
 	
 	void resetActiveNode() {
 		
-		GameEntNode* curNode = NULL;
+		GameOrgNode* curNode = NULL;
 		
 		if (selectedNode == NULL) {
 			curNode = lastSelNode;
@@ -4614,7 +4474,7 @@ public:
 		}
 	}
 	
-	void updateNearestEntNode(bool setActive, FIVector4* mousePosWS) {
+	void updateNearestOrgNode(bool setActive, FIVector4* mousePosWS) {
 		// tempVec3.setFXYZRef(mousePosWS);
 		// tempVec3.addXYZRef(&(testHuman->basePosition),-1.0f);
 		
@@ -4622,7 +4482,7 @@ public:
 		
 		bestNode = NULL;
 		bestNodeDis = 99999.0f;
-		findNearestEntNode(
+		findNearestOrgNode(
 			testHuman->baseNode,
 			mousePosWS//&tempVec1
 		);
@@ -4644,8 +4504,8 @@ public:
 		}
 	}
 	
-	void findNearestEntNode(
-		GameEntNode* curNode,
+	void findNearestOrgNode(
+		GameOrgNode* curNode,
 		FIVector4* mousePosWS
 	) {
 		
@@ -4664,7 +4524,7 @@ public:
 		int i;
 		
 		for (i = 0; i < curNode->children.size(); i++) {
-			findNearestEntNode(curNode->children[i],mousePosWS);
+			findNearestOrgNode(curNode->children[i],mousePosWS);
 		}
 		
 	}
