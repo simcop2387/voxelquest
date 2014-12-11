@@ -77,6 +77,6 @@ void main() {
     }
 
     gl_FragData[0] = vec4((worldPos.xyz),1.0-screenPos.z/clipDist);//vec4(heightPacked.rg,matPacked.rg);//vec4(bhr,bhg,3.0/255.0,tex0.a);
-    gl_FragData[1] = vec4(matVal.xyz/255.0,objectId);//vec4(resNorm.rgb, (TexCoord0.z+tex1.a)/2.0 ); //(TexCoord0.xyz+1.0)/2.0
+    gl_FragData[1] = vec4(matVal.rgb/255.0,objectId);//vec4(resNorm.rgb, (TexCoord0.z+tex1.a)/2.0 ); //(TexCoord0.xyz+1.0)/2.0
 
 }

@@ -2,7 +2,6 @@
 class WebSocketRequestHandler;
 class WebSocketServer;
 class RequestHandlerFactory;
-class GameActor;
 class Singleton;
 class Shader;
 class GameSound;

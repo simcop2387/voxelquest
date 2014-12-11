@@ -21,6 +21,7 @@ public:
 	float pageDepth;
 	//float seaHeightInPixels;
 	int iVolumeSize;
+	//int totCol[E_CD_LENGTH]
 
 	int* cellData;
 
@@ -1151,9 +1152,18 @@ public:
 			}
 			
 			
+			// for (j = 0; j < E_CD_LENGTH; j++) {
+			// 		totCol[j] = 0;
+			// 		for (i = 0; i < cellDataSize; i++) {
+			// 			totCol[j] += singleton->cdBuffer[j*cellDataSize + i];
+			// 		}
+			// }
+			
+			
+			
 			for (i = 0; i < cellDataSize; i++) {
 				
-				m = 0;
+				m = singleton->cdBuffer[E_CD_EMPTY*cellDataSize + i]/4;
 				p = E_CD_EMPTY;
 				
 				for (j = 1; j < E_CD_LENGTH; j++) {
@@ -1165,6 +1175,7 @@ public:
 				}
 				
 				cellData[i] = p;
+				
 				
 				
 			}

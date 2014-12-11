@@ -219,7 +219,7 @@ void main()
 	vec4 matVals = vec4(0.0,0.0,pack16(tex1.w));
 	
 	vec4 matValsGeom = tex5;
-	bool valIsGeom = (dot(matValsGeom.rgb,oneVec.rgb) != 0.0)&&(tex4.w > tex0.w);
+	bool valIsGeom = (dot(matValsGeom.rgb,oneVec.rgb) != 0.0);
 
 	vec4 worldPosition = tex0;
 	vec3 fogCol = getFogColor(TexCoord0.y);
@@ -242,30 +242,22 @@ void main()
 		resColor = fogCol;
 	}
 	else {
-		// if (valIsGeom) {
-		// 	resColor = unpackColorGeom(tex1.w);
-		// }
-		// else
-		// {
-			resColor = 
-				//tex2.rgb;
-				unpackColor(matVals.ba, lightRes );
-				
-				hsvVal = rgb2hsv(tex2.rgb);
-				
-				
-				resColor =
+		resColor = 
+			unpackColor(matVals.ba, lightRes );
+			
+			hsvVal = rgb2hsv(tex2.rgb);
+			
+			
+			resColor =
+			mix(
 				mix(
-					mix(
-							resColor*0.5,
-							resColor*(tex2.w*0.5+0.5),
-							lightRes//tex2.rgb
-					),
-					tex2.rgb,
-					hsvVal.g*0.5
-				);
-				
-		//}
+						resColor*0.5,
+						resColor*(tex2.w*0.5+0.5),
+						lightRes//tex2.rgb
+				),
+				tex2.rgb,
+				hsvVal.g*0.5
+			);
 	}
 	
 	
@@ -356,10 +348,7 @@ void main()
 	}
 	
 	
-	if (valIsGeom) {
-		resColor.rgb = mix(resColor.rgb, matValsGeom.rgb,0.5);
-		tot = 1.0;
-	}
+	
 	
 	
 	
@@ -377,8 +366,19 @@ void main()
 		gridVal0 = 0.0;
 	}
 	
+	float temp = 0.25 + float(tex4.w > tex0.w)*0.5;
+	resColor.rgb = mix(resColor.rgb, matValsGeom.rgb,temp*float(valIsGeom));
 	
-	resColor.rb += gridVal0;
+	if (temp > 0.5) {
+		
+		tot = 1.0;
+		
+	}
+	else {
+		resColor.rb += gridVal0;
+	}
+	
+
 	
 	float markerDis;
 	vec3 dirVec = normalize(worldPosition.xyz-worldMarker.xyz);

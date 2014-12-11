@@ -27,6 +27,7 @@ public:
 	
 	string tempStrings[10];
 	
+	
 
 	GameGUI() {
 		

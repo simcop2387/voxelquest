@@ -1,4 +1,4 @@
-﻿Build started 12/10/2014 2:40:49 AM.
+﻿Build started 12/10/2014 11:26:10 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -24,7 +24,6 @@
          .\src\cpp\f00292_wsserver.hpp
          .\src\cpp\f00293_gamesound.hpp
          .\src\cpp\f00294_gamemusic.hpp
-         .\src\cpp\f00296_gameactor.hpp
          .\src\cpp\f00297_gamecamera.hpp
          .\src\cpp\f00300_singleton.hpp
          .\src\cpp\f00305_shader.hpp
@@ -43,18 +42,17 @@
          .\src\cpp\f00352_gameblock.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         38 File(s) copied
+         37 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         23
+         22
          copying headers to one file
          .\f00290_wsrequesthandler.e
          .\f00291_rhfactory.e
          .\f00292_wsserver.e
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
-         .\f00296_gameactor.e
          .\f00297_gamecamera.e
          .\f00300_singleton.e
          .\f00305_shader.e
@@ -75,7 +73,7 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         23
+         22
          .
          copying files to compiled
          .\temp\f00290_wsrequesthandler.e
@@ -83,7 +81,6 @@
          .\temp\f00292_wsserver.e
          .\temp\f00293_gamesound.e
          .\temp\f00294_gamemusic.e
-         .\temp\f00296_gameactor.e
          .\temp\f00297_gamecamera.e
          .\temp\f00300_singleton.e
          .\temp\f00305_shader.e
@@ -101,7 +98,7 @@
          .\temp\f00351_gamepageholder.e
          .\temp\f00352_gameblock.e
          .\temp\f00380_gameworld.e
-         23 File(s) copied
+         22 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_mat.h
@@ -122,7 +119,6 @@
          .\temp\f00292_wsserver.h
          .\temp\f00293_gamesound.h
          .\temp\f00294_gamemusic.h
-         .\temp\f00296_gameactor.h
          .\temp\f00297_gamecamera.h
          .\temp\f00300_singleton.h
          .\temp\f00305_shader.h
@@ -264,7 +260,7 @@
                    
          Loading:  ..\data\lastImageBuffer.txt         
          Load Successful          
-         Sea Level: 173
+         Sea Level: 140
          start place cities
          end place cities
          start grow provinces
@@ -312,38 +308,38 @@
          copyTerToTexture resIndex:  2         
          copyTerToTexture resIndex:  3         
          copyTerToTexture resIndex:  4         
-         final toggle 1
-         final toggle 0
-         final toggle 1
-         final toggle 0
-         final toggle 1
-         final toggle 0
-         final toggle 1
-         final toggle 0
-         final toggle 1
-         final toggle 0
-         final toggle 0
-         final toggle 1
          copyTerToTexture resIndex:  5         
-         final toggle 1
-         final toggle 0
-         final toggle 1
-         final toggle 0
-         OBJECT ID 5
-         OBJECT ID 5
-         OBJECT ID 5
-         final toggle 1
-         final toggle 0
-         final toggle 1
-         final toggle 0
-         final toggle 1
-         final toggle 0
-         final toggle 1
-         final toggle 0
-         final toggle 1
-         final toggle 0
+         copyTerToTexture resIndex:  6         
+         copyTerToTexture resIndex:  7         
+         E_MOUSE_STATE_BRUSH
+         E_MOUSE_STATE_PICKING
+         bakeParamsOn: 0
+         
+         Valid JSON
+                   
+         bakeParamsOn: 1
+         
+         Valid JSON
+                   
+         bakeParamsOn: 0
+         
+         Valid JSON
+                   
+         bakeParamsOn: 1
+         
+         Valid JSON
+                   
+         E_MOUSE_STATE_MOVE
+         doPageRender: 0
+         E_MOUSE_STATE_BRUSH
+         E_MOUSE_STATE_PICKING
+         E_MOUSE_STATE_MOVE
+         E_MOUSE_STATE_BRUSH
+         E_MOUSE_STATE_PICKING
+         E_MOUSE_STATE_MOVE
+         Grid On: 1
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:05:04.45
+Time Elapsed 00:14:21.38

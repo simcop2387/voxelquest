@@ -8,10 +8,12 @@ uniform sampler2D Texture1;
 uniform sampler2D Texture2;
 uniform sampler2D Texture3;
 
-// water height
+// geom fbo
 uniform sampler2D Texture4;
+uniform sampler2D Texture5;
 
-
+// water height
+uniform sampler2D Texture6;
 
 
 varying vec2 TexCoord0;
@@ -79,6 +81,7 @@ void main() {
 
     vec4 tex2 = texture2D(Texture2, TexCoord0.xy);
     vec4 tex3 = texture2D(Texture3, TexCoord0.xy);
+    vec4 tex4 = texture2D(Texture4, TexCoord0.xy);
     vec4 tex3Orig = tex3;
 
     vec4 matValsSolid = vec4(0.0,0.0,pack16(tex1.w));
@@ -90,7 +93,7 @@ void main() {
     float maxWaveHeight = 0.01;//@maxWaveH@*pixelsPerCell*4.0/clipDist;
 
     
-    float baseHeightSolid = tex0.w;
+    float baseHeightSolid = max(tex0.w,tex4.w);
     float baseHeightWater = tex2.w;
     //vec3 worldPosition = tex0.xyz;
     //vec3 worldPositionWater = tex2.xyz;
@@ -152,7 +155,7 @@ void main() {
                     fi = float(i);
                     flerp = fi/fNumSteps;
                     newTC = TexCoord0.xy + vec2(yOff,fi+yOff)/(bufferDim);
-                    samp = texture2D(Texture4, newTC);
+                    samp = texture2D(Texture6, newTC);
 
                     waveDif = samp.a;
 

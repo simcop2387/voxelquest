@@ -336,17 +336,12 @@
 									},
 									{
 										"template":"radioFillCenter",
-										"label":"Test 2"
+										"label":"Remove Entity"
 										
 									},
 									{
 										"template":"radioFillCenter",
-										"label":"Test 3"
-										
-									},
-									{
-										"template":"radioFillCenter",
-										"label":"Test 4"
+										"label":"Edit Entity"
 										
 									}
 									

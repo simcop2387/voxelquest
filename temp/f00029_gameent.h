@@ -15,7 +15,7 @@ public:
 	bool visible;
 	
 	float camDistance;
-
+	float pixelsPerCell;
 
 	
 	
@@ -89,14 +89,90 @@ public:
 		float radius
 	) {
 		
-		
-		
 		geomParams[E_LP_COLOR].copyFrom(color);
 		geomParams[E_LP_RADIUS].setFXYZ(radius,radius,radius);
 		
 		setLightPos(position);
 		
 	}
+	
+	
+	
+	
+	void moveCellRotated(int dirMod) {
+		
+		//   1
+		// 2   0
+		//   3
+		
+		switch(curRot) {
+			case 0:
+				moveCell(dirMod,0,0);
+			break;
+			case 1:
+				moveCell(0,dirMod,0);
+			break;
+			case 2:
+				moveCell(-dirMod,0,0);
+			break;
+			case 3:
+				moveCell(0,-dirMod,0);
+			break;
+		}
+		
+		
+	}
+	
+	void moveCell(int x, int y, int z) {
+		geomParams[E_AC_POSITIONINCELLS].addXYZ(x,y,z);
+		updateActorPos();
+	}
+	
+	void updateActorPos() {
+		
+		
+		
+		tempVec1.copyFrom(&(geomParams[E_AC_POSITIONINCELLS]));
+		tempVec1.multXYZ(pixelsPerCell);
+		
+		tempVec2.copyFrom(&(geomParams[E_AC_DIAMETERINCELLS]));
+		tempVec2.multXYZ(pixelsPerCell);
+		
+		geomParams[E_AC_VISMININPIXELST].copyFrom(&tempVec1);
+		geomParams[E_AC_VISMAXINPIXELST].copyFrom(&tempVec1);
+		geomParams[E_AC_VISMAXINPIXELST].addXYZRef(&tempVec2);
+		
+		moveMinInPixels.setFXYZRef(&(geomParams[E_AC_VISMININPIXELST]));
+		moveMaxInPixels.setFXYZRef(&(geomParams[E_AC_VISMAXINPIXELST]));
+		
+	}
+
+	void initActor(
+		FIVector4 *positionInCells,
+		FIVector4 *diameterInCells,
+		float _pixelsPerCell
+		
+		//FIVector4 *color
+	) {
+		
+		curRot = 0;
+		rotDir = 1;
+		hasAnchor = false;
+		
+		initAnchorPoint(positionInCells,0,3);
+		
+		pixelsPerCell = _pixelsPerCell;
+		
+		geomParams[E_AC_DIAMETERINCELLS].copyFrom(diameterInCells);
+		geomParams[E_AC_POSITIONINCELLS].copyFrom(positionInCells);
+		
+		//geomParams[E_AC_COLOR].copyFrom(color);
+		
+		updateActorPos();
+		
+	}
+	
+	
 
 	
 	FIVector4 *getVisMinInPixelsT() {

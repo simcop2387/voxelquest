@@ -99,19 +99,6 @@ public:
 };
 #undef LZZ_INLINE
 #endif
-// f00296_gameactor.e
-//
-
-#ifndef LZZ_f00296_gameactor_e
-#define LZZ_f00296_gameactor_e
-#define LZZ_INLINE inline
-class GameActor
-{
-public:
-  GameActor ();
-};
-#undef LZZ_INLINE
-#endif
 // f00297_gamecamera.e
 //
 
@@ -369,6 +356,7 @@ public:
   GameOrgNode * selectedNode;
   GameOrgNode * lastSelNode;
   GameOrgNode * activeNode;
+  FIVector4 lastCellPos;
   FIVector4 worldMarker;
   FIVector4 lookAtVec;
   FIVector4 baseCameraPos;
@@ -426,6 +414,8 @@ public:
   Image * imageHM0;
   Image * imageHM1;
   Image * cloudImage;
+  GameEnt baseEnt;
+  GameEnt * currentActor;
   GamePlant * (gamePlants) [E_PT_LENGTH/2];
   Shader * curShaderPtr;
   string curShader;
@@ -1335,7 +1325,8 @@ public:
   bool noiseGenerated;
   std::vector <coordAndIndex> roadCoords;
   std::vector <GamePageHolder *> holdersToRefresh;
-  vector <int> ocThreads;
+  std::vector <int> ocThreads;
+  std::vector <GameEnt> gameActors;
   FIVector4 lScreenCoords;
   FIVector4 cScreenCoords;
   FIVector4 worldSizeInPages;
@@ -1352,7 +1343,6 @@ public:
   FIVector4 unitPos;
   FIVector4 lastUnitPos;
   FIVector4 lastPagePos;
-  FIVector4 lastCellPos;
   FIVector4 tempVec1;
   FIVector4 tempVec2;
   FIVector4 tempVec3;

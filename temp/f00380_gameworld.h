@@ -1240,12 +1240,6 @@ void GameWorld::drawOrg (GameOrg * curOrg, bool drawAll)
 void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll)
           {
 		
-		// if (curNode == singleton->selectedNode) {
-		// 	glLineWidth(3);
-		// }
-		// else {
-		// 	glLineWidth(0);
-		// }
 		
 		bool doProc = false;
 		
@@ -1723,8 +1717,18 @@ void GameWorld::renderGeom ()
         {
 
 		int i;
+		int j;
+		int k;
+		int n;
 		bool doProc;
 		int cellVal;
+		int xmax,ymax,zmax;
+		int xmin,ymin,zmin;
+		
+		bool showCollision = true;
+		
+		float dirVecLength = 4.0f*singleton->pixelsPerCell;
+		
 
 
 		singleton->bindShader("GeomShader");
@@ -1749,31 +1753,108 @@ void GameWorld::renderGeom ()
 
 		case E_MOUSE_STATE_MOVE:
 
-			if (singleton->markerFound) {
-				cellVal = getCellAtCoords(&(singleton->worldMarker));
+
+			
+			singleton->setShaderFloat("isWire", 0.0);
+			
+			glLineWidth(4.0f);
+			for (n = 0; n < gameActors.size(); n++) {
 				
-				lastCellPos.copyFrom(&(singleton->worldMarker));
-				lastCellPos.intDivXYZ(singleton->pixelsPerCell);
-				lastCellPos.multXYZ(singleton->pixelsPerCell);
 				
-				tempVec.copyFrom(&lastCellPos);
-				tempVec.addXYZ(singleton->pixelsPerCell);
-				
-				switch(cellVal) {
-					case E_CD_EMPTY:
-						singleton->setShaderVec3("matVal", 0, 255, 0);
-					break;
-					case E_CD_SOLID:
-						singleton->setShaderVec3("matVal", 255, 0, 0);
-					break;
-					case E_CD_WATER:
-						singleton->setShaderVec3("matVal", 0, 0, 255);
-					break;
+				if (showCollision) {
+					xmin = gameActors[n].geomParams[E_AC_POSITIONINCELLS].getIX();
+					ymin = gameActors[n].geomParams[E_AC_POSITIONINCELLS].getIY();
+					zmin = gameActors[n].geomParams[E_AC_POSITIONINCELLS].getIZ();
+					
+					xmax = xmin + gameActors[n].geomParams[E_AC_DIAMETERINCELLS].getIX();
+					ymax = ymin + gameActors[n].geomParams[E_AC_DIAMETERINCELLS].getIY();
+					zmax = zmin + gameActors[n].geomParams[E_AC_DIAMETERINCELLS].getIZ();
+					
+					for (k = zmin; k < zmax; k++) {
+						for (j = ymin; j < ymax; j++) {
+							for (i = xmin; i < xmax; i++) {
+								
+								tempVec1.setIXYZ(i,j,k);
+								tempVec1.multXYZ(singleton->pixelsPerCell);
+								tempVec2.copyFrom(&tempVec1);
+								tempVec2.addXYZ(singleton->pixelsPerCell);
+								
+								tempVec3.copyFrom(&tempVec1);
+								tempVec3.addXYZRef(&tempVec2);
+								tempVec3.multXYZ(0.5f);
+								//tempVec3.addXYZ(0.0f,0.0f,singleton->pixelsPerCell);
+								
+								cellVal = getCellAtCoords(&tempVec3);
+								
+								
+								
+								switch(cellVal) {
+									case E_CD_EMPTY:
+										singleton->setShaderVec3("matVal", 0, 255, 0);
+									break;
+									case E_CD_SOLID:
+										singleton->setShaderVec3("matVal", 255, 0, 0);
+									break;
+									case E_CD_WATER:
+										singleton->setShaderVec3("matVal", 0, 0, 255);
+									break;
+									
+								}
+								
+								
+								
+								singleton->drawBox(
+									&tempVec1,
+									&tempVec2
+								);
+							}	
+						}
+					}
 					
 				}
+				else {
+					singleton->setShaderVec3("matVal", 0, 0, 255);
+					singleton->drawBox(
+						&(gameActors[n].geomParams[E_AC_VISMININPIXELST]),
+						&(gameActors[n].geomParams[E_AC_VISMAXINPIXELST])
+					);
+				}
 				
-				singleton->setShaderFloat("isWire", 0.0);
-				singleton->drawBox(&lastCellPos,&tempVec);
+				
+				
+				tempVec1.setFXYZRef(&(gameActors[n].geomParams[E_AC_VISMININPIXELST]));
+				tempVec1.addXYZRef(&(gameActors[n].geomParams[E_AC_VISMAXINPIXELST]));
+				tempVec1.multXYZ(0.5f);
+				tempVec2.copyFrom(&tempVec1);
+				
+				switch(gameActors[n].curRot) {
+					case 0:
+						tempVec2.addXYZ(dirVecLength,0,0);
+					break;
+					case 1:
+						tempVec2.addXYZ(0,dirVecLength,0);
+					break;
+					case 2:
+						tempVec2.addXYZ(-dirVecLength,0,0);
+					break;
+					case 3:
+						tempVec2.addXYZ(0,-dirVecLength,0);
+					break;
+				}
+				singleton->setShaderVec3("matVal", 255, 255, 255);
+				singleton->drawLine(&tempVec1,&tempVec2);
+				
+			}
+			
+			glLineWidth(0);
+
+			if (singleton->markerFound) {
+				
+				
+				
+				
+				// singleton->setShaderFloat("isWire", 0.0);
+				// singleton->drawBox(&lastCellPos,&tempVec);
 				
 			}
 		
@@ -1945,7 +2026,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 		int jj;
 		int kk;
 
-		int pixelPS = (singleton->unitSizeInPixels * singleton->visPageSizeInUnits);
+		int pixelPS = (singleton->visPageSizeInPixels);
 
 
 
@@ -2164,7 +2245,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 																			linA = 0;
 																			//linB = 255;
 																			
-																			linB += 20;
+																			linB += 80;
 																			if (linB > 255) {
 																				linB = 255;
 																			}
@@ -2187,7 +2268,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 																		if (isInside)
 																		{
 																			//linA = 255;
-																			linA += 20;
+																			linA += 80;
 																			if (linA > 255) {
 																				linA = 255;
 																			}
@@ -4022,7 +4103,7 @@ void GameWorld::updateLights ()
 		{
 			
 			
-			findNearestEnt(&(singleton->nearestLights),E_ET_LIGHT,4,1,cameraPos,false,true);
+			findNearestEnt(&(singleton->nearestLights),E_ET_LIGHT,4,2,cameraPos,false,true);
 			
 			
 			for (i = 0; i < singleton->nearestLights.selEntList.size(); i++) {
@@ -4201,7 +4282,8 @@ void GameWorld::postProcess ()
 			singleton->bindFBO("combineWithWaterTargFBO");
 			singleton->sampleFBO("pagesTargFBO",0);
 			singleton->sampleFBO("waterTargFBO",2);
-			singleton->sampleFBO("waveFBO", 4);
+			singleton->sampleFBO("geomTargFBO", 4);
+			singleton->sampleFBO("waveFBO", 6);
 			
 			//singleton->setShaderFloat("maxWaveHeight", singleton->pixelsPerCell * 2.0f);
 			singleton->setShaderFloat("clipDist",singleton->mainCamera->clipDist[1]);
@@ -4213,7 +4295,8 @@ void GameWorld::postProcess ()
 			//singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
 			singleton->drawFSQuad();
 			
-			singleton->unsampleFBO("waveFBO", 4);
+			singleton->unsampleFBO("waveFBO", 6);
+			singleton->unsampleFBO("geomTargFBO", 4);
 			singleton->unsampleFBO("waterTargFBO",2);
 			singleton->unsampleFBO("pagesTargFBO",0);
 			singleton->unbindFBO();
@@ -4402,8 +4485,10 @@ void GameWorld::postProcess ()
 			singleton->sampleFBO("resultFBO", 0, activeFBO);
 			singleton->sampleFBO("swapFBOLinHalf0", 1);
 			singleton->sampleFBO("combineWithWaterTargFBO",2);
+			singleton->sampleFBO("geomTargFBO", 4);
 			singleton->setShaderInt("testOn", (int)(singleton->testOn));
 			singleton->drawFSQuad();
+			singleton->unsampleFBO("geomTargFBO", 4);
 			singleton->unsampleFBO("combineWithWaterTargFBO",2);
 			singleton->unsampleFBO("swapFBOLinHalf0", 1);
 			singleton->unsampleFBO("resultFBO", 0, activeFBO);

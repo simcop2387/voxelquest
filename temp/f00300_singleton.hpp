@@ -293,6 +293,8 @@ public:
 	GameOrgNode* lastSelNode;
 	GameOrgNode* activeNode;
 
+	
+	FIVector4 lastCellPos;
 	FIVector4 worldMarker;
 	FIVector4 lookAtVec;
 	FIVector4 baseCameraPos;
@@ -369,7 +371,8 @@ public:
 	Image *imageHM1;
 	Image *cloudImage;
 
-	
+	GameEnt baseEnt;
+	GameEnt* currentActor;
 	
 	GamePlant* gamePlants[E_PT_LENGTH/2];
 
@@ -513,6 +516,8 @@ public:
 		hitGUI = false;
 		guiLock = false;
 		guiDirty = true;
+		
+		currentActor = NULL;
 		mapComp = NULL;
 		mainMenu = NULL;
 		ddMenu = NULL;
@@ -1172,13 +1177,14 @@ public:
 		
 		glDepthFunc(GL_LESS);
 		
-		glCullFace(GL_BACK);
+		
+		glDisable(GL_CULL_FACE);
+		//glCullFace(GL_BACK);
 
 		
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 		glEnable(GL_TEXTURE_2D);
 		glDisable(GL_DEPTH_TEST);
-		glDisable(GL_CULL_FACE);
 		glDisable(GL_LIGHTING);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glDisable(GL_BLEND);
@@ -1631,18 +1637,30 @@ public:
 		}
 		
 		
+		if (mouseUpEvent) {
+			if (comp->uid.compare("placeEntity.actor") == 0) {
+				gw->gameActors.push_back(baseEnt);
+				currentActor = &(gw->gameActors.back());
+				tempVec1.setIXYZ(2,2,3);
+				currentActor->initActor(&lastCellPos,&tempVec1,pixelsPerCell);
+				
+				//cout << "placeActor\n";
+			}
+		}
+		
 		if (
 			(state == GLUT_UP) &&
 			(button == GLUT_LEFT_BUTTON) &&
 			(comp->floatingChildren.size() == 0)
 		) {
-			ddMenu->visible = false;	
+			ddMenu->visible = false;
+			markerFound = false;
 		}
 		
-		if (comp->uid.compare("placeEntity.actor") == 0) {
-			cout << "placeActor\n";
-		}		
-		else if (comp->uid.compare("$options.sound.masterVolume") == 0) {
+		
+		
+				
+		if (comp->uid.compare("$options.sound.masterVolume") == 0) {
 			masterVolume = curValue;
 		}
 		else if (comp->uid.compare("$options.sound.ambientVolume") == 0) {
@@ -3353,12 +3371,10 @@ public:
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
 		
+		//cout << "key: " << key << "\n";
 		
 		
-		
-
 		processKey(key,x,y,false);
-		
 		switch(key) {
 			case 'a':
 			case 'z':
@@ -3370,7 +3386,9 @@ public:
 			break;
 			
 		}
-
+		
+		
+		
 		GameOrgNode* curNode;
 		
 		
@@ -3387,6 +3405,47 @@ public:
 		}
 
 		switch (key) {
+
+		case '1':
+			currentActor->moveCell(0,0,1);
+		break;
+		case '0':
+			currentActor->moveCell(0,0,-1);
+		break;
+		case '8':
+			currentActor->moveCellRotated(1);
+		break;
+		case '5':
+			currentActor->moveCellRotated(-1);
+		break;
+		case '4':
+			currentActor->rotate(1,true);
+			//currentActor->moveCell(-1,0,0);
+		break;
+		case '6':
+			currentActor->rotate(-1,true);
+			//currentActor->moveCell(1,0,0);
+		break;
+		
+		// case 'a':
+		// 	// selectedNode->material += 1.0f;
+		// 	// curNode = getMirroredNode(selectedNode);
+		// 	// if (curNode != NULL) {
+		// 	// 	curNode->material += 1.0f;
+		// 	// }
+		// 	// makeDirty();
+		// break;
+		// case 'z':
+		// 	// selectedNode->material -= 1.0f;
+		// 	// curNode = getMirroredNode(selectedNode);
+		// 	// if (curNode != NULL) {
+		// 	// 	curNode->material -= 1.0f;
+		// 	// }
+		// 	// makeDirty();
+			
+		// break;
+
+
 
 		case 'i':
 				isMacro = !isMacro;
@@ -3438,12 +3497,12 @@ public:
 			
 		case 'q':
 		
-			autoScroll = !autoScroll;
+			// autoScroll = !autoScroll;
 			
-			if (autoScroll) {
-				scrollTimer.start();
-				baseScrollPos.copyFrom(&(dynObjects[E_OBJ_CAMERA]->pos));
-			}
+			// if (autoScroll) {
+			// 	scrollTimer.start();
+			// 	baseScrollPos.copyFrom(&(dynObjects[E_OBJ_CAMERA]->pos));
+			// }
 			
 			
 			break;
@@ -3635,23 +3694,7 @@ public:
 			}
 			break;
 
-		case 'a':
-			// selectedNode->material += 1.0f;
-			// curNode = getMirroredNode(selectedNode);
-			// if (curNode != NULL) {
-			// 	curNode->material += 1.0f;
-			// }
-			// makeDirty();
-		break;
-		case 'z':
-			// selectedNode->material -= 1.0f;
-			// curNode = getMirroredNode(selectedNode);
-			// if (curNode != NULL) {
-			// 	curNode->material -= 1.0f;
-			// }
-			// makeDirty();
-			
-		break;
+		
 
 		case 'v':
 			gw->toggleVis(selectedEnts.getSelectedEnt());
@@ -3679,6 +3722,8 @@ public:
 		int y = _y / scaleFactor;
 		
 		processKey(key,x,y,true);
+		
+		
 		
 		
 		bShift = shiftDown();
@@ -4126,12 +4171,14 @@ public:
 		if (state == GLUT_DOWN) {
 			mouseVel.setFXY(0.0f, 0.0f);
 		}
+		
+		//GamePage* gp;
 
 		if (abClicked) {
 
 
 			if (ddMenu != NULL) {
-				if (rbClicked&&(!bCtrl)) {
+				if (rbClicked&&(!bCtrl)&&(mouseState == E_MOUSE_STATE_MOVE)) {
 					ddMenu->visible = true;
 					
 					ddMenu->floatOffset.x = (guiX);
@@ -4145,6 +4192,21 @@ public:
 					// ddMenu->updateValue(guiX,guiY);
 					
 					worldMarker.copyFrom(&mouseUpPD);
+					
+					lastCellPos.copyFrom(&(worldMarker));
+					lastCellPos.intDivXYZ(pixelsPerCell);
+					//lastCellPos.multXYZ(pixelsPerCell);
+					
+					// tempVec.copyFrom(&lastCellPos);
+					// tempVec.addXYZ(pixelsPerCell);
+					
+					// gp = gw->getPageAtCoords()
+					// for (i = 0; i < E_CD_LENGTH; i++) {
+					// 	cout << gp->totCol[i] << "\n";
+					// }
+					// cout << "\n";
+					
+					
 					markerFound = true;
 					
 				}

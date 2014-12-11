@@ -807,12 +807,26 @@ enum E_EQUIPMENT_SLOTS {
 	
 // }
 
+enum E_ACTOR_PARAMS {
+	E_AC_VISMININPIXELST,
+	E_AC_VISMAXINPIXELST,
+	E_AC_DIAMETERINCELLS,
+	E_AC_POSITIONINCELLS,
+	E_AC_COLOR,
+	E_AC_UNUSED2,
+	E_AC_UNUSED3,
+	E_AC_UNUSED4,
+	E_AC_UNUSED5,
+	E_AC_UNUSED6, // must be last
+	E_AC_LENGTH
+};
+
 enum E_LIGHT_PARAMS {
 	E_LP_VISMININPIXELST,
 	E_LP_VISMAXINPIXELST,
 	E_LP_POSITION,
-	E_LP_COLOR,
 	E_LP_RADIUS,
+	E_LP_COLOR,
 	E_LP_UNUSED2,
 	E_LP_UNUSED3,
 	E_LP_UNUSED4,
@@ -865,7 +879,7 @@ enum E_GEOM_PARAMS {
 
 enum E_ENT_TYPES {
 	E_ET_GEOM,
-	E_ET_ACTOR,
+	//E_ET_ACTOR,
 	E_ET_LIGHT,
 	E_ET_LENGTH
 	
@@ -4828,7 +4842,7 @@ public:
 	bool visible;
 	
 	float camDistance;
-
+	float pixelsPerCell;
 
 	
 	
@@ -4902,14 +4916,90 @@ public:
 		float radius
 	) {
 		
-		
-		
 		geomParams[E_LP_COLOR].copyFrom(color);
 		geomParams[E_LP_RADIUS].setFXYZ(radius,radius,radius);
 		
 		setLightPos(position);
 		
 	}
+	
+	
+	
+	
+	void moveCellRotated(int dirMod) {
+		
+		//   1
+		// 2   0
+		//   3
+		
+		switch(curRot) {
+			case 0:
+				moveCell(dirMod,0,0);
+			break;
+			case 1:
+				moveCell(0,dirMod,0);
+			break;
+			case 2:
+				moveCell(-dirMod,0,0);
+			break;
+			case 3:
+				moveCell(0,-dirMod,0);
+			break;
+		}
+		
+		
+	}
+	
+	void moveCell(int x, int y, int z) {
+		geomParams[E_AC_POSITIONINCELLS].addXYZ(x,y,z);
+		updateActorPos();
+	}
+	
+	void updateActorPos() {
+		
+		
+		
+		tempVec1.copyFrom(&(geomParams[E_AC_POSITIONINCELLS]));
+		tempVec1.multXYZ(pixelsPerCell);
+		
+		tempVec2.copyFrom(&(geomParams[E_AC_DIAMETERINCELLS]));
+		tempVec2.multXYZ(pixelsPerCell);
+		
+		geomParams[E_AC_VISMININPIXELST].copyFrom(&tempVec1);
+		geomParams[E_AC_VISMAXINPIXELST].copyFrom(&tempVec1);
+		geomParams[E_AC_VISMAXINPIXELST].addXYZRef(&tempVec2);
+		
+		moveMinInPixels.setFXYZRef(&(geomParams[E_AC_VISMININPIXELST]));
+		moveMaxInPixels.setFXYZRef(&(geomParams[E_AC_VISMAXINPIXELST]));
+		
+	}
+
+	void initActor(
+		FIVector4 *positionInCells,
+		FIVector4 *diameterInCells,
+		float _pixelsPerCell
+		
+		//FIVector4 *color
+	) {
+		
+		curRot = 0;
+		rotDir = 1;
+		hasAnchor = false;
+		
+		initAnchorPoint(positionInCells,0,3);
+		
+		pixelsPerCell = _pixelsPerCell;
+		
+		geomParams[E_AC_DIAMETERINCELLS].copyFrom(diameterInCells);
+		geomParams[E_AC_POSITIONINCELLS].copyFrom(positionInCells);
+		
+		//geomParams[E_AC_COLOR].copyFrom(color);
+		
+		updateActorPos();
+		
+	}
+	
+	
 
 	
 	FIVector4 *getVisMinInPixelsT() {
@@ -15674,7 +15764,6 @@ public:
 class WebSocketRequestHandler;
 class WebSocketServer;
 class RequestHandlerFactory;
-class GameActor;
 class Singleton;
 class Shader;
 class GameSound;
@@ -15793,19 +15882,6 @@ public:
   void stop ();
   void setVolume (float _volume = 1.0f);
   void play (float _volume = 1.0f);
-};
-#undef LZZ_INLINE
-#endif
-// f00296_gameactor.e
-//
-
-#ifndef LZZ_f00296_gameactor_e
-#define LZZ_f00296_gameactor_e
-#define LZZ_INLINE inline
-class GameActor
-{
-public:
-  GameActor ();
 };
 #undef LZZ_INLINE
 #endif
@@ -16066,6 +16142,7 @@ public:
   GameOrgNode * selectedNode;
   GameOrgNode * lastSelNode;
   GameOrgNode * activeNode;
+  FIVector4 lastCellPos;
   FIVector4 worldMarker;
   FIVector4 lookAtVec;
   FIVector4 baseCameraPos;
@@ -16123,6 +16200,8 @@ public:
   Image * imageHM0;
   Image * imageHM1;
   Image * cloudImage;
+  GameEnt baseEnt;
+  GameEnt * currentActor;
   GamePlant * (gamePlants) [E_PT_LENGTH/2];
   Shader * curShaderPtr;
   string curShader;
@@ -17032,7 +17111,8 @@ public:
   bool noiseGenerated;
   std::vector <coordAndIndex> roadCoords;
   std::vector <GamePageHolder *> holdersToRefresh;
-  vector <int> ocThreads;
+  std::vector <int> ocThreads;
+  std::vector <GameEnt> gameActors;
   FIVector4 lScreenCoords;
   FIVector4 cScreenCoords;
   FIVector4 worldSizeInPages;
@@ -17049,7 +17129,6 @@ public:
   FIVector4 unitPos;
   FIVector4 lastUnitPos;
   FIVector4 lastPagePos;
-  FIVector4 lastCellPos;
   FIVector4 tempVec1;
   FIVector4 tempVec2;
   FIVector4 tempVec3;
@@ -17456,17 +17535,6 @@ void GameMusic::play (float _volume)
 		}
 #undef LZZ_INLINE
  
-// f00296_gameactor.h
-//
-
-#include "f00296_gameactor.e"
-#define LZZ_INLINE inline
-GameActor::GameActor ()
-                    {
-		
-	}
-#undef LZZ_INLINE
- 
 // f00297_gamecamera.h
 //
 
@@ -17553,9 +17621,9 @@ void GameCamera::init ()
         setRotation(0.0f, 180.0f);
         setClipDist(
             0.1f,
-            65536.0f
-            //16384.0f
-        ); //16384.0
+            //65536.0f
+            16384.0f
+        );
         setUnitPosition(200.0f,200.0f,200.0f);
         
     }
@@ -17629,6 +17697,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		hitGUI = false;
 		guiLock = false;
 		guiDirty = true;
+		
+		currentActor = NULL;
 		mapComp = NULL;
 		mainMenu = NULL;
 		ddMenu = NULL;
@@ -18288,13 +18358,14 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		
 		glDepthFunc(GL_LESS);
 		
-		glCullFace(GL_BACK);
+		
+		glDisable(GL_CULL_FACE);
+		//glCullFace(GL_BACK);
 
 		
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 		glEnable(GL_TEXTURE_2D);
 		glDisable(GL_DEPTH_TEST);
-		glDisable(GL_CULL_FACE);
 		glDisable(GL_LIGHTING);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glDisable(GL_BLEND);
@@ -18733,18 +18804,30 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		}
 		
 		
+		if (mouseUpEvent) {
+			if (comp->uid.compare("placeEntity.actor") == 0) {
+				gw->gameActors.push_back(baseEnt);
+				currentActor = &(gw->gameActors.back());
+				tempVec1.setIXYZ(2,2,3);
+				currentActor->initActor(&lastCellPos,&tempVec1,pixelsPerCell);
+				
+				//cout << "placeActor\n";
+			}
+		}
+		
 		if (
 			(state == GLUT_UP) &&
 			(button == GLUT_LEFT_BUTTON) &&
 			(comp->floatingChildren.size() == 0)
 		) {
-			ddMenu->visible = false;	
+			ddMenu->visible = false;
+			markerFound = false;
 		}
 		
-		if (comp->uid.compare("placeEntity.actor") == 0) {
-			cout << "placeActor\n";
-		}		
-		else if (comp->uid.compare("$options.sound.masterVolume") == 0) {
+		
+		
+				
+		if (comp->uid.compare("$options.sound.masterVolume") == 0) {
 			masterVolume = curValue;
 		}
 		else if (comp->uid.compare("$options.sound.ambientVolume") == 0) {
@@ -20322,12 +20405,10 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
 		
+		//cout << "key: " << key << "\n";
 		
 		
-		
-
 		processKey(key,x,y,false);
-		
 		switch(key) {
 			case 'a':
 			case 'z':
@@ -20339,7 +20420,9 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			break;
 			
 		}
-
+		
+		
+		
 		GameOrgNode* curNode;
 		
 		
@@ -20356,6 +20439,47 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 		}
 
 		switch (key) {
+
+		case '1':
+			currentActor->moveCell(0,0,1);
+		break;
+		case '0':
+			currentActor->moveCell(0,0,-1);
+		break;
+		case '8':
+			currentActor->moveCellRotated(1);
+		break;
+		case '5':
+			currentActor->moveCellRotated(-1);
+		break;
+		case '4':
+			currentActor->rotate(1,true);
+			//currentActor->moveCell(-1,0,0);
+		break;
+		case '6':
+			currentActor->rotate(-1,true);
+			//currentActor->moveCell(1,0,0);
+		break;
+		
+		// case 'a':
+		// 	// selectedNode->material += 1.0f;
+		// 	// curNode = getMirroredNode(selectedNode);
+		// 	// if (curNode != NULL) {
+		// 	// 	curNode->material += 1.0f;
+		// 	// }
+		// 	// makeDirty();
+		// break;
+		// case 'z':
+		// 	// selectedNode->material -= 1.0f;
+		// 	// curNode = getMirroredNode(selectedNode);
+		// 	// if (curNode != NULL) {
+		// 	// 	curNode->material -= 1.0f;
+		// 	// }
+		// 	// makeDirty();
+			
+		// break;
+
+
 
 		case 'i':
 				isMacro = !isMacro;
@@ -20407,12 +20531,12 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			
 		case 'q':
 		
-			autoScroll = !autoScroll;
+			// autoScroll = !autoScroll;
 			
-			if (autoScroll) {
-				scrollTimer.start();
-				baseScrollPos.copyFrom(&(dynObjects[E_OBJ_CAMERA]->pos));
-			}
+			// if (autoScroll) {
+			// 	scrollTimer.start();
+			// 	baseScrollPos.copyFrom(&(dynObjects[E_OBJ_CAMERA]->pos));
+			// }
 			
 			
 			break;
@@ -20604,23 +20728,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			}
 			break;
 
-		case 'a':
-			// selectedNode->material += 1.0f;
-			// curNode = getMirroredNode(selectedNode);
-			// if (curNode != NULL) {
-			// 	curNode->material += 1.0f;
-			// }
-			// makeDirty();
-		break;
-		case 'z':
-			// selectedNode->material -= 1.0f;
-			// curNode = getMirroredNode(selectedNode);
-			// if (curNode != NULL) {
-			// 	curNode->material -= 1.0f;
-			// }
-			// makeDirty();
-			
-		break;
+		
 
 		case 'v':
 			gw->toggleVis(selectedEnts.getSelectedEnt());
@@ -20647,6 +20755,8 @@ void Singleton::keyboardDown (unsigned char key, int _x, int _y)
 		int y = _y / scaleFactor;
 		
 		processKey(key,x,y,true);
+		
+		
 		
 		
 		bShift = shiftDown();
@@ -21082,12 +21192,14 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		if (state == GLUT_DOWN) {
 			mouseVel.setFXY(0.0f, 0.0f);
 		}
+		
+		//GamePage* gp;
 
 		if (abClicked) {
 
 
 			if (ddMenu != NULL) {
-				if (rbClicked&&(!bCtrl)) {
+				if (rbClicked&&(!bCtrl)&&(mouseState == E_MOUSE_STATE_MOVE)) {
 					ddMenu->visible = true;
 					
 					ddMenu->floatOffset.x = (guiX);
@@ -21101,6 +21213,21 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 					// ddMenu->updateValue(guiX,guiY);
 					
 					worldMarker.copyFrom(&mouseUpPD);
+					
+					lastCellPos.copyFrom(&(worldMarker));
+					lastCellPos.intDivXYZ(pixelsPerCell);
+					//lastCellPos.multXYZ(pixelsPerCell);
+					
+					// tempVec.copyFrom(&lastCellPos);
+					// tempVec.addXYZ(pixelsPerCell);
+					
+					// gp = gw->getPageAtCoords()
+					// for (i = 0; i < E_CD_LENGTH; i++) {
+					// 	cout << gp->totCol[i] << "\n";
+					// }
+					// cout << "\n";
+					
+					
 					markerFound = true;
 					
 				}
@@ -27540,9 +27667,18 @@ void GamePage::getPoints (int fboNum)
 			}
 			
 			
+			// for (j = 0; j < E_CD_LENGTH; j++) {
+			// 		totCol[j] = 0;
+			// 		for (i = 0; i < cellDataSize; i++) {
+			// 			totCol[j] += singleton->cdBuffer[j*cellDataSize + i];
+			// 		}
+			// }
+			
+			
+			
 			for (i = 0; i < cellDataSize; i++) {
 				
-				m = 0;
+				m = singleton->cdBuffer[E_CD_EMPTY*cellDataSize + i]/4;
 				p = E_CD_EMPTY;
 				
 				for (j = 1; j < E_CD_LENGTH; j++) {
@@ -27554,6 +27690,7 @@ void GamePage::getPoints (int fboNum)
 				}
 				
 				cellData[i] = p;
+				
 				
 				
 			}
@@ -33536,12 +33673,6 @@ void GameWorld::drawOrg (GameOrg * curOrg, bool drawAll)
 void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll)
           {
 		
-		// if (curNode == singleton->selectedNode) {
-		// 	glLineWidth(3);
-		// }
-		// else {
-		// 	glLineWidth(0);
-		// }
 		
 		bool doProc = false;
 		
@@ -34019,8 +34150,18 @@ void GameWorld::renderGeom ()
         {
 
 		int i;
+		int j;
+		int k;
+		int n;
 		bool doProc;
 		int cellVal;
+		int xmax,ymax,zmax;
+		int xmin,ymin,zmin;
+		
+		bool showCollision = true;
+		
+		float dirVecLength = 4.0f*singleton->pixelsPerCell;
+		
 
 
 		singleton->bindShader("GeomShader");
@@ -34045,31 +34186,108 @@ void GameWorld::renderGeom ()
 
 		case E_MOUSE_STATE_MOVE:
 
-			if (singleton->markerFound) {
-				cellVal = getCellAtCoords(&(singleton->worldMarker));
+
+			
+			singleton->setShaderFloat("isWire", 0.0);
+			
+			glLineWidth(4.0f);
+			for (n = 0; n < gameActors.size(); n++) {
 				
-				lastCellPos.copyFrom(&(singleton->worldMarker));
-				lastCellPos.intDivXYZ(singleton->pixelsPerCell);
-				lastCellPos.multXYZ(singleton->pixelsPerCell);
 				
-				tempVec.copyFrom(&lastCellPos);
-				tempVec.addXYZ(singleton->pixelsPerCell);
-				
-				switch(cellVal) {
-					case E_CD_EMPTY:
-						singleton->setShaderVec3("matVal", 0, 255, 0);
-					break;
-					case E_CD_SOLID:
-						singleton->setShaderVec3("matVal", 255, 0, 0);
-					break;
-					case E_CD_WATER:
-						singleton->setShaderVec3("matVal", 0, 0, 255);
-					break;
+				if (showCollision) {
+					xmin = gameActors[n].geomParams[E_AC_POSITIONINCELLS].getIX();
+					ymin = gameActors[n].geomParams[E_AC_POSITIONINCELLS].getIY();
+					zmin = gameActors[n].geomParams[E_AC_POSITIONINCELLS].getIZ();
+					
+					xmax = xmin + gameActors[n].geomParams[E_AC_DIAMETERINCELLS].getIX();
+					ymax = ymin + gameActors[n].geomParams[E_AC_DIAMETERINCELLS].getIY();
+					zmax = zmin + gameActors[n].geomParams[E_AC_DIAMETERINCELLS].getIZ();
+					
+					for (k = zmin; k < zmax; k++) {
+						for (j = ymin; j < ymax; j++) {
+							for (i = xmin; i < xmax; i++) {
+								
+								tempVec1.setIXYZ(i,j,k);
+								tempVec1.multXYZ(singleton->pixelsPerCell);
+								tempVec2.copyFrom(&tempVec1);
+								tempVec2.addXYZ(singleton->pixelsPerCell);
+								
+								tempVec3.copyFrom(&tempVec1);
+								tempVec3.addXYZRef(&tempVec2);
+								tempVec3.multXYZ(0.5f);
+								//tempVec3.addXYZ(0.0f,0.0f,singleton->pixelsPerCell);
+								
+								cellVal = getCellAtCoords(&tempVec3);
+								
+								
+								
+								switch(cellVal) {
+									case E_CD_EMPTY:
+										singleton->setShaderVec3("matVal", 0, 255, 0);
+									break;
+									case E_CD_SOLID:
+										singleton->setShaderVec3("matVal", 255, 0, 0);
+									break;
+									case E_CD_WATER:
+										singleton->setShaderVec3("matVal", 0, 0, 255);
+									break;
+									
+								}
+								
+								
+								
+								singleton->drawBox(
+									&tempVec1,
+									&tempVec2
+								);
+							}	
+						}
+					}
 					
 				}
+				else {
+					singleton->setShaderVec3("matVal", 0, 0, 255);
+					singleton->drawBox(
+						&(gameActors[n].geomParams[E_AC_VISMININPIXELST]),
+						&(gameActors[n].geomParams[E_AC_VISMAXINPIXELST])
+					);
+				}
 				
-				singleton->setShaderFloat("isWire", 0.0);
-				singleton->drawBox(&lastCellPos,&tempVec);
+				
+				
+				tempVec1.setFXYZRef(&(gameActors[n].geomParams[E_AC_VISMININPIXELST]));
+				tempVec1.addXYZRef(&(gameActors[n].geomParams[E_AC_VISMAXINPIXELST]));
+				tempVec1.multXYZ(0.5f);
+				tempVec2.copyFrom(&tempVec1);
+				
+				switch(gameActors[n].curRot) {
+					case 0:
+						tempVec2.addXYZ(dirVecLength,0,0);
+					break;
+					case 1:
+						tempVec2.addXYZ(0,dirVecLength,0);
+					break;
+					case 2:
+						tempVec2.addXYZ(-dirVecLength,0,0);
+					break;
+					case 3:
+						tempVec2.addXYZ(0,-dirVecLength,0);
+					break;
+				}
+				singleton->setShaderVec3("matVal", 255, 255, 255);
+				singleton->drawLine(&tempVec1,&tempVec2);
+				
+			}
+			
+			glLineWidth(0);
+
+			if (singleton->markerFound) {
+				
+				
+				
+				
+				// singleton->setShaderFloat("isWire", 0.0);
+				// singleton->drawBox(&lastCellPos,&tempVec);
 				
 			}
 		
@@ -34241,7 +34459,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 		int jj;
 		int kk;
 
-		int pixelPS = (singleton->unitSizeInPixels * singleton->visPageSizeInUnits);
+		int pixelPS = (singleton->visPageSizeInPixels);
 
 
 
@@ -34460,7 +34678,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 																			linA = 0;
 																			//linB = 255;
 																			
-																			linB += 20;
+																			linB += 80;
 																			if (linB > 255) {
 																				linB = 255;
 																			}
@@ -34483,7 +34701,7 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 																		if (isInside)
 																		{
 																			//linA = 255;
-																			linA += 20;
+																			linA += 80;
 																			if (linA > 255) {
 																				linA = 255;
 																			}
@@ -36318,7 +36536,7 @@ void GameWorld::updateLights ()
 		{
 			
 			
-			findNearestEnt(&(singleton->nearestLights),E_ET_LIGHT,4,1,cameraPos,false,true);
+			findNearestEnt(&(singleton->nearestLights),E_ET_LIGHT,4,2,cameraPos,false,true);
 			
 			
 			for (i = 0; i < singleton->nearestLights.selEntList.size(); i++) {
@@ -36497,7 +36715,8 @@ void GameWorld::postProcess ()
 			singleton->bindFBO("combineWithWaterTargFBO");
 			singleton->sampleFBO("pagesTargFBO",0);
 			singleton->sampleFBO("waterTargFBO",2);
-			singleton->sampleFBO("waveFBO", 4);
+			singleton->sampleFBO("geomTargFBO", 4);
+			singleton->sampleFBO("waveFBO", 6);
 			
 			//singleton->setShaderFloat("maxWaveHeight", singleton->pixelsPerCell * 2.0f);
 			singleton->setShaderFloat("clipDist",singleton->mainCamera->clipDist[1]);
@@ -36509,7 +36728,8 @@ void GameWorld::postProcess ()
 			//singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
 			singleton->drawFSQuad();
 			
-			singleton->unsampleFBO("waveFBO", 4);
+			singleton->unsampleFBO("waveFBO", 6);
+			singleton->unsampleFBO("geomTargFBO", 4);
 			singleton->unsampleFBO("waterTargFBO",2);
 			singleton->unsampleFBO("pagesTargFBO",0);
 			singleton->unbindFBO();
@@ -36698,8 +36918,10 @@ void GameWorld::postProcess ()
 			singleton->sampleFBO("resultFBO", 0, activeFBO);
 			singleton->sampleFBO("swapFBOLinHalf0", 1);
 			singleton->sampleFBO("combineWithWaterTargFBO",2);
+			singleton->sampleFBO("geomTargFBO", 4);
 			singleton->setShaderInt("testOn", (int)(singleton->testOn));
 			singleton->drawFSQuad();
+			singleton->unsampleFBO("geomTargFBO", 4);
 			singleton->unsampleFBO("combineWithWaterTargFBO",2);
 			singleton->unsampleFBO("swapFBOLinHalf0", 1);
 			singleton->unsampleFBO("resultFBO", 0, activeFBO);

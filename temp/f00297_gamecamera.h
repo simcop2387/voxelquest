@@ -84,9 +84,9 @@ void GameCamera::init ()
         setRotation(0.0f, 180.0f);
         setClipDist(
             0.1f,
-            65536.0f
-            //16384.0f
-        ); //16384.0
+            //65536.0f
+            16384.0f
+        );
         setUnitPosition(200.0f,200.0f,200.0f);
         
     }

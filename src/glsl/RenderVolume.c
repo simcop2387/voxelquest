@@ -263,7 +263,7 @@ void main() {
 	
 	vec3 curPos = vec3(0.0);
 	vec3 offsetPos = vec3(0.0);
-	vec3 bestPos = vec3(0.0);
+	vec3 bestPos = basePos;//vec3(0.0);
 	
 	float fi = 0.0;
 	float fj = 0.0;
@@ -349,14 +349,13 @@ void main() {
 	}
 	
 	
-	vec4 heightMat = blackCol;
-	heightMat.r = 2.0/255.0;
+	//vec4 heightMat = blackCol;
+	
 	vec4 normAO = blackCol;
 	
 	foundDif = 
 		(foundSolid&&(foundAir||foundTrans)) ||
 		(foundTrans&&(foundAir||foundSolid));
-	
 	
 	if (foundSolid) {
 		bestPos = bestSolid;
@@ -367,9 +366,14 @@ void main() {
 		}	
 	}
 	
+	samp = sampleAtPoint( bestPos );
+	
+	vec4 heightMat = samp;
+	heightMat.g = float(foundDif);
+	
+	
 	if (foundDif) {
-		samp = sampleAtPoint( bestPos );
-		heightMat = vec4(samp.r,float(foundDif), samp.ba);
+		//heightMat = vec4(samp.r,float(foundDif), samp.ba);
 		normAO = getAO(bestPos, samp);
 	}
 	
