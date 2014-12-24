@@ -68,7 +68,7 @@ public:
 	}
 	
 	void getJVNodeByString(JSONValue* rootNode, JSONValue** resultNode, string stringToSplit) {
-		cout << "getJVNodeByString(" << stringToSplit <<  ")\n";
+		//cout << "getJVNodeByString(" << stringToSplit <<  ")\n";
 			
 		int i;
 		*resultNode = rootNode;
@@ -77,7 +77,7 @@ public:
 		vector<string> splitStrings = split(stringToSplit, '.');
 		
 		for (i = 0; i < splitStrings.size(); i++) {
-			cout << splitStrings[i] << "\n";
+			//cout << splitStrings[i] << "\n";
 			
 			if ( (*resultNode)->HasChild(splitStrings[i]) ) {
 				*resultNode = (*resultNode)->Child(splitStrings[i]);
@@ -99,6 +99,50 @@ public:
 		return tempStrings[E_GDS_CHILD_TYPE].compare(childStr) == 0;
 	}
 	
+	
+	JSONValue* findNearestKey(JSONValue* jv, string key) {
+		int i;
+		int numChildren = 0;
+		int numFloatingChildren = 0;
+		JSONValue* jvChildren = NULL;
+		JSONValue* jvFloatingChildren = NULL;
+		
+		JSONValue* tempJV;
+		
+		if (jv->HasChild(key)) {
+			return jv;
+		}
+		
+		if (jv->HasChild("children")) {
+			jvChildren = jv->Child("children");
+			numChildren = jvChildren->CountChildren();
+		}
+		for (i = 0; i < numChildren; i++) {
+			tempJV = findNearestKey(jvChildren->Child(i),key);
+			
+			if (tempJV != NULL) {
+				return tempJV;
+			}
+		}
+		
+		
+		if (jv->HasChild("floatingChildren")) {
+			jvFloatingChildren = jv->Child("floatingChildren");
+			numFloatingChildren = jvFloatingChildren->CountChildren();
+		}
+		for (i = 0; i < numFloatingChildren; i++) {
+			tempJV = findNearestKey(jvFloatingChildren->Child(i),key);
+			
+			if (tempJV != NULL) {
+				return tempJV;
+			}
+		}
+		
+		return NULL;
+		
+	}
+	
+	
 	void addChildFromJSON(
 		JSONValue* jv,
 		UIComponent* curParent,
@@ -109,7 +153,7 @@ public:
 		int curIcon = 0;
 		
 		JSONValue* curTempl = NULL;
-		
+		JSONValue* tempJV = NULL;
 		
 	
 		if (
@@ -122,7 +166,7 @@ public:
 				curTempl = jvTemplates->Child(jv->Child("template")->string_value);
 			}
 			else {
-				cout << "invalid template \n";// << jv->Child("template")->string_value << "\n";
+				cout << "invalid template \n";
 			}
 		}
 		
@@ -187,23 +231,17 @@ public:
 		JSONValue* jvDataRoot = NULL;
 		JSONValue* curData = NULL;
 		
-		
-		if (jv->HasChild("children")) {
-			jvChildren = jv->Child("children");
-			numChildren = jvChildren->CountChildren();
-		}
-		for (i = 0; i < numChildren; i++) {
-			addChildFromJSON(jvChildren->Child(i),newParent, false);
-		}
+		tempStrings[E_GDS_CHILD_TYPE] = "";
 		
 		
-		if (jv->HasChild("floatingChildren")) {
-			jvFloatingChildren = jv->Child("floatingChildren");
-			numFloatingChildren = jvFloatingChildren->CountChildren();
-		}
-		for (i = 0; i < numFloatingChildren; i++) {
-			addChildFromJSON(jvFloatingChildren->Child(i),newParent,true);
-		}
+		
+		
+		
+		
+		
+		
+		////////////////
+		
 		
 		
 		bool doProc = false;
@@ -234,7 +272,6 @@ public:
 				jvFilter = NULL;
 				numFilters = 0;
 			}
-				
 			
 			
 			if (jv->HasChild("dataSource")) {
@@ -249,10 +286,34 @@ public:
 					
 				}
 				else {
-					jvDataRoot = jvRoot;
+					
+					if (jv->HasChild("dataFile")) {
+						tempStrings[E_GDS_DATA_FILE] = jv->Child("dataFile")->string_value;
+						
+						
+						
+						if (singleton->externalJSON.find( tempStrings[E_GDS_DATA_FILE] ) == singleton->externalJSON.end()) {
+							cout << "load jv data "  + tempStrings[E_GDS_DATA_FILE] << "\n";
+							singleton->loadJSON(
+								"..\\data\\" + tempStrings[E_GDS_DATA_FILE],
+								&((singleton->externalJSON[tempStrings[E_GDS_DATA_FILE]]).jv)
+							);
+						}
+						
+						jvDataRoot = (singleton->externalJSON[tempStrings[E_GDS_DATA_FILE]]).jv;
+						
+					}
+					else {
+						jvDataRoot = jvRoot;
+						
+					}
+					
+					
 				}
 				
 				if (jvDataRoot != NULL) {
+					
+					
 					getJVNodeByString(jvDataRoot, &jvData, tempStrings[E_GDS_DATA_SOURCE]);
 					
 					numDataChildren = jvData->CountChildren();
@@ -266,11 +327,14 @@ public:
 			if ((jvData != NULL)&&(jvChildTemplate != NULL)) {
 				
 				
-				if (compChildStr("inventoryItem")) {
+				if (compChildStr("E_GCT_INV_ITEM")) {
 					curCT = E_GCT_INV_ITEM;
 				}
-				if (compChildStr("shaderParams")) {
+				else if (compChildStr("E_GCT_SHADER_PARAM")) {
 					curCT = E_GCT_SHADER_PARAM;
+				}
+				else if (compChildStr("E_GTC_GENERIC")) {
+					curCT = E_GTC_GENERIC;
 				}
 				
 				//////////////////////////////////////////////////////////////////////
@@ -282,6 +346,14 @@ public:
 				for (i = 0; i < numDataChildren; i++) {
 					
 					curData = jvData->Child(i);
+					if (curData == NULL) {
+						cout << "NULL DATA\n";
+						tempStrings[E_GDS_LAST_KEY] = "";
+					}
+					else {
+						tempStrings[E_GDS_LAST_KEY] = jvData->lastKey;
+					}
+					
 					
 					doProc = true;
 					if (jvFilter != NULL) {
@@ -357,6 +429,30 @@ public:
 									curData->Child("paramName")->string_value;
 									
 							break;
+							
+							case E_GTC_GENERIC:
+								
+								if (jvChildTemplate->HasChild("label")) {
+									jvChildTemplate->Child("label")->string_value = tempStrings[E_GDS_LAST_KEY];//tempStrings[E_GDS_CHILD_NAME];
+								}
+								
+								if (jvChildTemplate->HasChild("value")) {
+									if (curData->IsNumber()) {
+										jvChildTemplate->Child("value")->number_value = curData->number_value;
+									}
+								}
+								
+								tempJV = findNearestKey(jvChildTemplate,"dataSource");
+								if (tempJV != NULL) {
+									tempJV->Child("dataSource")->string_value =
+										tempStrings[E_GDS_DATA_SOURCE] + "." + tempStrings[E_GDS_LAST_KEY];
+										
+								}
+								
+								
+								
+							break;
+							
 							case E_GCT_LENGTH:
 								
 							break;
@@ -372,9 +468,8 @@ public:
 						);
 						
 						
-						//PROBLEM
-						
-						addChildFromJSON(jv->Child("children")->Child(totCount),newParent,false); //jvChildTemplate //jv->Child("children")->Child(i)
+						//todo: problem here?
+						//addChildFromJSON(jv->Child("children")->Child(totCount),newParent,false);
 						
 						totCount++;
 						
@@ -388,6 +483,36 @@ public:
 			
 		}
 		
+		
+		
+		
+		////////////////
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		if (jv->HasChild("children")) {
+			jvChildren = jv->Child("children");
+			numChildren = jvChildren->CountChildren();
+		}
+		for (i = 0; i < numChildren; i++) {
+			addChildFromJSON(jvChildren->Child(i),newParent, false);
+		}
+		
+		
+		if (jv->HasChild("floatingChildren")) {
+			jvFloatingChildren = jv->Child("floatingChildren");
+			numFloatingChildren = jvFloatingChildren->CountChildren();
+		}
+		for (i = 0; i < numFloatingChildren; i++) {
+			addChildFromJSON(jvFloatingChildren->Child(i),newParent,true);
+		}
 		
 	}
 	

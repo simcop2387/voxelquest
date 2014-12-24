@@ -7,13 +7,13 @@
 
 
 
-const static int DEF_SCALE_FACTOR = 2;
+const static int DEF_SCALE_FACTOR = 1;
 const static int MAX_LAYERS = 2;
 
 
 
 
-
+const static int MAX_KEYS = 256;
 
 const static int DEF_WIN_W = 1920;
 const static int DEF_WIN_H = 1080;
@@ -42,6 +42,14 @@ const static int TOT_MAP_DIRS = 4;
 
 const static int MAX_BLOCK_STACK = 10;
 const static int MAX_UI_LAYERS = 4;
+
+// solid, water, air
+const static bool PROC_MATRIX[3][3] = {
+		{false, true, true},
+		{false, false, true},
+		{false, false, false}
+};
+
 
 int totalPointCount;
 
@@ -142,6 +150,13 @@ bool TRACE_ON = false;
 
 
 
+
+// note - check deprecated source folder
+// make sure to put it back in source
+// if using poco or web services
+
+#ifdef USE_POCO
+
 #include "Poco/Net/HTTPServer.h"
 #include "Poco/Net/HTTPRequestHandler.h"
 #include "Poco/Net/HTTPRequestHandlerFactory.h"
@@ -159,7 +174,9 @@ bool TRACE_ON = false;
 #include "Poco/Format.h"
 #include "Poco/Runnable.h"
 #include "Poco/ThreadPool.h"
-#include "Poco/Base64Decoder.h"
+
+
+
 
 
 using Poco::Net::ServerSocket;
@@ -182,6 +199,11 @@ using Poco::Util::Option;
 using Poco::Util::OptionSet;
 using Poco::Util::HelpFormatter;
 
+
+
+#endif
+
+#include "Poco/Base64Decoder.h"
 using Poco::Base64Decoder;
 
 

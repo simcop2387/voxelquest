@@ -443,7 +443,7 @@ void main() {
     else {
 
         if (matValsWater.a == TEX_GLASS) {
-            finalCol = transRendered.rgb*0.25 + tex5.rgb*0.25 + tex4.rgb*0.5;
+            finalCol = transRendered.rgb*0.5 + tex5.rgb*0.25 + tex4.rgb*0.5;
         }
         else {
             finalCol = tex4.rgb;

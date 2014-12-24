@@ -267,6 +267,59 @@
 			
 			
 			
+			{
+				"uid":"guiHandles.fieldMenu",
+				"template":"cont",
+				"hasBackground":0,
+				"alignX":1,
+				"children":[
+					{
+						"template":"cont",
+						"fillDir":1,
+						"children": [
+						
+							
+							{
+								"template":"cont",
+								"fillDir":1,
+								"fillRatioX":1,
+								"children":[
+									
+									{
+										"template":"fillLabel",
+										"uid":"fieldMenu.field"
+									},
+									{
+										"template":"cont",
+										"fillDir":0,
+										"fillRatioX":1,
+										"children":[
+											{
+												"ss":"greenSS",
+												"template":"fillButton",
+												"label":"Ok",
+												"uid":"fieldMenu.ok"
+												
+											},
+											{
+												"ss":"redSS",
+												"template":"fillButton",
+												"label":"Cancel",
+												"uid":"fieldMenu.cancel"
+												
+											}
+										]
+									}
+									
+									
+									
+									
+								]
+							}
+						]
+					}
+				]
+			},
 
 
 
@@ -414,7 +467,6 @@
 															"template":"cont",
 															"fillDir":1,
 															"fillRatioX":1,
-															"dataFile":"",
 															"dataSource":"inventoryData.items",
 															"whereAllEqual":[
 																["eq",1]
@@ -422,7 +474,7 @@
 															"whereAnyEqual":[
 															
 															],
-															"childType":"inventoryItem",
+															"childType":"E_GCT_INV_ITEM",
 															"childTemplate":{
 																"fillRatioX":1,
 																"template":"radio",
@@ -453,7 +505,6 @@
 														{
 															"template":"cont",
 															"fillDir":1,
-															"dataFile":"",
 															"dataSource":"inventoryData.items",
 															"fillRatioX":1,
 															"maxDimY":384,
@@ -463,7 +514,7 @@
 															"whereAnyEqual":[
 															
 															],
-															"childType":"inventoryItem",
+															"childType":"E_GCT_INV_ITEM",
 															"childTemplate":{
 																"fillRatioX":1,
 																"template":"radio",
@@ -595,7 +646,33 @@
 																		"template":"popout",
 																		"fillRatioX":1,
 																		"children": [
-																		
+																			
+																			{
+																				"template":"cont",
+																				"fillDir":1,
+																				"children": [
+																				
+																					{
+																						"template":"menuBar",
+																						"label":"Graphics Options",
+																						"alignX":1,
+																						"fillRatioX":1
+																						
+																					},
+																					{
+																						"template":"cont",
+																						"fillDir":1,
+																						"children":[
+																							{
+																								"template":"fillSlider",
+																								"label":"Clip Distance",
+																								"uid":"$options.graphics.clipDist"
+																							}
+																						]
+																					}
+																				]
+																			}
+																			
 																		]
 																	}]
 																},
@@ -684,6 +761,193 @@
 											]
 										}]
 									},
+									
+									
+									{
+										"template":"radioFillCenter",
+										"label":"Materials",
+										"floatingChildren": [{
+											"template":"popout",
+											"fillRatioX":1,
+											"children": [
+												{
+													"template":"cont",
+													"fillDir":1,
+													"children": [
+													
+														{
+															"template":"menuBar",
+															"label":"Materials",
+															"alignX":1,
+															"fillRatioX":1
+															
+														},
+														{
+															"template":"cont",
+															"fillDir":1,
+															"fillRatioX":1,
+															"dataFile":"materials.js",
+															"dataSource":"materials",
+															"childType":"E_GTC_GENERIC",
+															"children": [],
+															"childTemplate":{
+																"template":"radioFillCenter",
+																"label":"",
+																"floatingChildren":[
+																
+																
+																
+																
+																
+																	{
+																		"template":"popout",
+																		"fillRatioX":1,
+																		"children": [
+																			{
+																				"template":"cont",
+																				"fillDir":1,
+																				"children": [
+																					{
+																						"template":"menuBar",
+																						"label":"Material Node",
+																						"alignX":1,
+																						"fillRatioX":1
+																						
+																					},
+																					{
+																						"template":"cont",
+																						"fillDir":1,
+																						"fillRatioX":1,
+																						"dataFile":"materials.js",
+																						"dataSource":"",
+																						"childType":"E_GTC_GENERIC",
+																						"children": [],
+																						"childTemplate":{
+																							"template":"cont",
+																							"fillDir":0,
+																							"fillRatioX":1,
+																							"dataFile":"materials.js",
+																							"dataSource":"",
+																							"childType":"E_GTC_GENERIC",
+																							"children": [],
+																							"childTemplate":
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							{
+																								"template":"radioFillCenter",
+																								"label":"",
+																								"floatingChildren":[{
+																										"template":"popout",
+																										"fillRatioX":1,
+																										"children": [
+																											{
+																												"template":"cont",
+																												"fillDir":1,
+																												"children": [
+																													{
+																														"template":"menuBar",
+																														"label":"Material Props",
+																														"alignX":1,
+																														"fillRatioX":1
+																														
+																													},
+																													{
+																														"template":"cont",
+																														"fillDir":1,
+																														"fillRatioX":1,
+																														"dataFile":"materials.js",
+																														"dataSource":"",
+																														"childType":"E_GTC_GENERIC",
+																														"children": [],
+																														"childTemplate":{
+																															"template":"fillSlider",
+																															"label":" ",
+																															"value":0.0
+																														}
+																														
+																													}
+																												
+																												]
+																											}
+																										]
+																									}]
+																							}
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																							
+																						}
+																						
+																					}
+																				
+																				]
+																			}
+																		]
+																	}
+																
+																
+																
+																
+																
+																
+																]
+															}
+														}
+													
+													]
+												}
+											]
+										}]
+									},
+									
+									
+									
+									
+									
+									
+									
+									
+									
+									
+									
+									
+									
 									{
 										"template":"radioFillCenter",
 										"label":"Debug Info",
@@ -767,13 +1031,13 @@
 																},
 																{
 																	"template":"fillToggle",
-																	"label":"Lock Position",
-																	"uid":"$charEdit.lockPosition"
+																	"label":"Edit Pose",
+																	"uid":"$charEdit.editPose"
 																},
 																{
 																	"template":"fillToggle",
-																	"label":"Render Entities",
-																	"uid":"$charEdit.entOn"
+																	"label":"Render Human",
+																	"uid":"$charEdit.orgOn"
 																},
 																{
 																	"template":"fillToggle",
@@ -784,6 +1048,16 @@
 																	"template":"fillToggle",
 																	"label":"Apply to Children",
 																	"uid":"$charEdit.applyToChildren"
+																},
+																{
+																	"template":"fillButton",
+																	"label":"Save Pose",
+																	"uid":"charEdit.savePose"
+																},
+																{
+																	"template":"fillButton",
+																	"label":"Load Pose",
+																	"uid":"charEdit.loadPose"
 																}
 															]
 														}
@@ -820,7 +1094,7 @@
 															"isInternal":1,
 															"dataFile":"shaderParams",
 															"dataSource":"params",
-															"childType":"shaderParams",
+															"childType":"E_GCT_SHADER_PARAM",
 															"children": [],
 															"childTemplate":{
 																"fillRatioX":1,

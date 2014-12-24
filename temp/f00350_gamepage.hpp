@@ -1002,9 +1002,9 @@ public:
 		return (i + j*p + k*p*p);
 	}
 	
-	bool isAir() {
-		// WAS DOING
-	}
+	// bool isAir() {
+	// 	// WAS DOING
+	// }
 
 	void getPoints(int fboNum) {
 		
@@ -1022,7 +1022,7 @@ public:
 		
 		float fVisPageSizeInPixels = singleton->visPageSizeInPixels;
 		
-		int i, j, k, m, n, p, q;
+		int i, j, k, m, n, p, q, t;
 		
 		int ni;
 		int nj;
@@ -1265,7 +1265,10 @@ public:
 								// x + 
 								if (i != sresM1) {
 									ind2 = getIndex(i+1,j,k,sres);
-									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+									
+									
+									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+									doProc = doProc||(PROC_MATRIX[q][t]);
 								}
 								else {
 									doProc = doProc||isCand;
@@ -1274,7 +1277,8 @@ public:
 								// x - 
 								if (i != 0) {
 									ind2 = getIndex(i-1,j,k,sres);
-									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+									doProc = doProc||(PROC_MATRIX[q][t]);
 								}
 								else {
 									doProc = doProc||isCand;
@@ -1283,7 +1287,8 @@ public:
 								// y + 
 								if (j != sresM1) {
 									ind2 = getIndex(i,j+1,k,sres);
-									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+									doProc = doProc||(PROC_MATRIX[q][t]);
 								}
 								else {
 									doProc = doProc||isCand;
@@ -1292,7 +1297,8 @@ public:
 								// y - 
 								if (j != 0) {
 									ind2 = getIndex(i,j-1,k,sres);
-									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+									doProc = doProc||(PROC_MATRIX[q][t]);
 								}
 								else {
 									doProc = doProc||isCand;
@@ -1301,7 +1307,8 @@ public:
 								// z + 
 								if (k != sresM1) {
 									ind2 = getIndex(i,j,k+1,sres);
-									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+									doProc = doProc||(PROC_MATRIX[q][t]);
 								}
 								else {
 									doProc = doProc||isCand;
@@ -1310,7 +1317,8 @@ public:
 								// z- 
 								if (k != 0) {
 									ind2 = getIndex(i,j,k-1,sres);
-									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+									doProc = doProc||(PROC_MATRIX[q][t]);
 								}
 								else {
 									doProc = doProc||isCand;

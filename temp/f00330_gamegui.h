@@ -43,7 +43,7 @@ void GameGUI::init (Singleton * _singleton)
 	}
 void GameGUI::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit)
                                                                                                   {
-		cout << "getJVNodeByString(" << stringToSplit <<  ")\n";
+		//cout << "getJVNodeByString(" << stringToSplit <<  ")\n";
 			
 		int i;
 		*resultNode = rootNode;
@@ -52,7 +52,7 @@ void GameGUI::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode,
 		vector<string> splitStrings = split(stringToSplit, '.');
 		
 		for (i = 0; i < splitStrings.size(); i++) {
-			cout << splitStrings[i] << "\n";
+			//cout << splitStrings[i] << "\n";
 			
 			if ( (*resultNode)->HasChild(splitStrings[i]) ) {
 				*resultNode = (*resultNode)->Child(splitStrings[i]);
@@ -69,6 +69,48 @@ UIComponent * GameGUI::findNodeById (int _id)
                                            {
 		return baseComp->findNodeById(_id);
 	}
+JSONValue * GameGUI::findNearestKey (JSONValue * jv, string key)
+                                                             {
+		int i;
+		int numChildren = 0;
+		int numFloatingChildren = 0;
+		JSONValue* jvChildren = NULL;
+		JSONValue* jvFloatingChildren = NULL;
+		
+		JSONValue* tempJV;
+		
+		if (jv->HasChild(key)) {
+			return jv;
+		}
+		
+		if (jv->HasChild("children")) {
+			jvChildren = jv->Child("children");
+			numChildren = jvChildren->CountChildren();
+		}
+		for (i = 0; i < numChildren; i++) {
+			tempJV = findNearestKey(jvChildren->Child(i),key);
+			
+			if (tempJV != NULL) {
+				return tempJV;
+			}
+		}
+		
+		
+		if (jv->HasChild("floatingChildren")) {
+			jvFloatingChildren = jv->Child("floatingChildren");
+			numFloatingChildren = jvFloatingChildren->CountChildren();
+		}
+		for (i = 0; i < numFloatingChildren; i++) {
+			tempJV = findNearestKey(jvFloatingChildren->Child(i),key);
+			
+			if (tempJV != NULL) {
+				return tempJV;
+			}
+		}
+		
+		return NULL;
+		
+	}
 void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool isFloating)
           {
 		int i;
@@ -76,7 +118,7 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 		int curIcon = 0;
 		
 		JSONValue* curTempl = NULL;
-		
+		JSONValue* tempJV = NULL;
 		
 	
 		if (
@@ -89,7 +131,7 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 				curTempl = jvTemplates->Child(jv->Child("template")->string_value);
 			}
 			else {
-				cout << "invalid template \n";// << jv->Child("template")->string_value << "\n";
+				cout << "invalid template \n";
 			}
 		}
 		
@@ -154,23 +196,17 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 		JSONValue* jvDataRoot = NULL;
 		JSONValue* curData = NULL;
 		
-		
-		if (jv->HasChild("children")) {
-			jvChildren = jv->Child("children");
-			numChildren = jvChildren->CountChildren();
-		}
-		for (i = 0; i < numChildren; i++) {
-			addChildFromJSON(jvChildren->Child(i),newParent, false);
-		}
+		tempStrings[E_GDS_CHILD_TYPE] = "";
 		
 		
-		if (jv->HasChild("floatingChildren")) {
-			jvFloatingChildren = jv->Child("floatingChildren");
-			numFloatingChildren = jvFloatingChildren->CountChildren();
-		}
-		for (i = 0; i < numFloatingChildren; i++) {
-			addChildFromJSON(jvFloatingChildren->Child(i),newParent,true);
-		}
+		
+		
+		
+		
+		
+		
+		////////////////
+		
 		
 		
 		bool doProc = false;
@@ -201,7 +237,6 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 				jvFilter = NULL;
 				numFilters = 0;
 			}
-				
 			
 			
 			if (jv->HasChild("dataSource")) {
@@ -216,10 +251,34 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 					
 				}
 				else {
-					jvDataRoot = jvRoot;
+					
+					if (jv->HasChild("dataFile")) {
+						tempStrings[E_GDS_DATA_FILE] = jv->Child("dataFile")->string_value;
+						
+						
+						
+						if (singleton->externalJSON.find( tempStrings[E_GDS_DATA_FILE] ) == singleton->externalJSON.end()) {
+							cout << "load jv data "  + tempStrings[E_GDS_DATA_FILE] << "\n";
+							singleton->loadJSON(
+								"..\\data\\" + tempStrings[E_GDS_DATA_FILE],
+								&((singleton->externalJSON[tempStrings[E_GDS_DATA_FILE]]).jv)
+							);
+						}
+						
+						jvDataRoot = (singleton->externalJSON[tempStrings[E_GDS_DATA_FILE]]).jv;
+						
+					}
+					else {
+						jvDataRoot = jvRoot;
+						
+					}
+					
+					
 				}
 				
 				if (jvDataRoot != NULL) {
+					
+					
 					getJVNodeByString(jvDataRoot, &jvData, tempStrings[E_GDS_DATA_SOURCE]);
 					
 					numDataChildren = jvData->CountChildren();
@@ -233,11 +292,14 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 			if ((jvData != NULL)&&(jvChildTemplate != NULL)) {
 				
 				
-				if (compChildStr("inventoryItem")) {
+				if (compChildStr("E_GCT_INV_ITEM")) {
 					curCT = E_GCT_INV_ITEM;
 				}
-				if (compChildStr("shaderParams")) {
+				else if (compChildStr("E_GCT_SHADER_PARAM")) {
 					curCT = E_GCT_SHADER_PARAM;
+				}
+				else if (compChildStr("E_GTC_GENERIC")) {
+					curCT = E_GTC_GENERIC;
 				}
 				
 				//////////////////////////////////////////////////////////////////////
@@ -249,6 +311,14 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 				for (i = 0; i < numDataChildren; i++) {
 					
 					curData = jvData->Child(i);
+					if (curData == NULL) {
+						cout << "NULL DATA\n";
+						tempStrings[E_GDS_LAST_KEY] = "";
+					}
+					else {
+						tempStrings[E_GDS_LAST_KEY] = jvData->lastKey;
+					}
+					
 					
 					doProc = true;
 					if (jvFilter != NULL) {
@@ -324,6 +394,30 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 									curData->Child("paramName")->string_value;
 									
 							break;
+							
+							case E_GTC_GENERIC:
+								
+								if (jvChildTemplate->HasChild("label")) {
+									jvChildTemplate->Child("label")->string_value = tempStrings[E_GDS_LAST_KEY];//tempStrings[E_GDS_CHILD_NAME];
+								}
+								
+								if (jvChildTemplate->HasChild("value")) {
+									if (curData->IsNumber()) {
+										jvChildTemplate->Child("value")->number_value = curData->number_value;
+									}
+								}
+								
+								tempJV = findNearestKey(jvChildTemplate,"dataSource");
+								if (tempJV != NULL) {
+									tempJV->Child("dataSource")->string_value =
+										tempStrings[E_GDS_DATA_SOURCE] + "." + tempStrings[E_GDS_LAST_KEY];
+										
+								}
+								
+								
+								
+							break;
+							
 							case E_GCT_LENGTH:
 								
 							break;
@@ -339,9 +433,8 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 						);
 						
 						
-						//PROBLEM
-						
-						addChildFromJSON(jv->Child("children")->Child(totCount),newParent,false); //jvChildTemplate //jv->Child("children")->Child(i)
+						//todo: problem here?
+						//addChildFromJSON(jv->Child("children")->Child(totCount),newParent,false);
 						
 						totCount++;
 						
@@ -355,6 +448,36 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 			
 		}
 		
+		
+		
+		
+		////////////////
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		if (jv->HasChild("children")) {
+			jvChildren = jv->Child("children");
+			numChildren = jvChildren->CountChildren();
+		}
+		for (i = 0; i < numChildren; i++) {
+			addChildFromJSON(jvChildren->Child(i),newParent, false);
+		}
+		
+		
+		if (jv->HasChild("floatingChildren")) {
+			jvFloatingChildren = jv->Child("floatingChildren");
+			numFloatingChildren = jvFloatingChildren->CountChildren();
+		}
+		for (i = 0; i < numFloatingChildren; i++) {
+			addChildFromJSON(jvFloatingChildren->Child(i),newParent,true);
+		}
 		
 	}
 void GameGUI::guiFromJSON (JSONValue * jv)

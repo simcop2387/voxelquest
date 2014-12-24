@@ -6,6 +6,7 @@ class JSONValue;
 
 typedef std::vector<JSONValue*> JSONArray;
 typedef std::map<std::string, JSONValue*> JSONObject;
+typedef std::map<std::string, JSONValue*>::iterator joi_type;
 
 class JSONValue
 {
@@ -58,6 +59,7 @@ class JSONValue
 		double number_value;
 		JSONArray array_value;
 		JSONObject object_value;
+		string lastKey;
 };
 
 
@@ -664,14 +666,43 @@ bool JSONValue::HasChild(int index) const
  */
 JSONValue *JSONValue::Child(int index)
 {
-	if (index < array_value.size())
+	
+	int count = 0;
+	
+	switch (type)
 	{
-		return array_value[index];
+		case JSONType_Array:
+			if (index < array_value.size()) {
+				return array_value[index];
+			}
+			else {
+				return NULL;
+			}
+		break;
+		case JSONType_Object:
+			
+			for (joi_type iterator = object_value.begin(); iterator != object_value.end(); iterator++) {
+			    // iterator->first = key
+			    // iterator->second = value
+			    
+			    if (count == index) {
+			    	lastKey = iterator->first;
+			    	return iterator->second;
+			    }
+			    
+			    count++;
+			    
+			}
+			return NULL;
+		break;
+		default:
+			return NULL;
+		break;
 	}
-	else
-	{
-		return NULL;
-	}
+	
+	
+	
+	
 }
 
 /**

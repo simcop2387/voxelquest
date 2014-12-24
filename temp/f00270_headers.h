@@ -1,63 +1,3 @@
-// f00290_wsrequesthandler.e
-//
-
-#ifndef LZZ_f00290_wsrequesthandler_e
-#define LZZ_f00290_wsrequesthandler_e
-#define LZZ_INLINE inline
-class WebSocketRequestHandler : public HTTPRequestHandler
-{
-public:
-  WebSocketServer * ws_ptr;
-  WebSocketRequestHandler (WebSocketServer * _ws_ptr);
-  ~ WebSocketRequestHandler ();
-  void handleRequest (HTTPServerRequest & request, HTTPServerResponse & response);
-};
-#undef LZZ_INLINE
-#endif
-// f00291_rhfactory.e
-//
-
-#ifndef LZZ_f00291_rhfactory_e
-#define LZZ_f00291_rhfactory_e
-#define LZZ_INLINE inline
-class RequestHandlerFactory : public HTTPRequestHandlerFactory
-{
-public:
-  WebSocketServer * ws_ptr;
-  RequestHandlerFactory (WebSocketServer * _ws_ptr);
-  HTTPRequestHandler * createRequestHandler (HTTPServerRequest const & request);
-};
-#undef LZZ_INLINE
-#endif
-// f00292_wsserver.e
-//
-
-#ifndef LZZ_f00292_wsserver_e
-#define LZZ_f00292_wsserver_e
-#define LZZ_INLINE inline
-class WebSocketServer : public Poco::Util::ServerApplication
-{
-public:
-  bool dataReady;
-  bool isWorking;
-  bool isJSON;
-  int MAX_FRAME_SIZE;
-  charArr recBuffer;
-  charArr okBuffer;
-  WebSocketServer ();
-  ~ WebSocketServer ();
-protected:
-  void initialize (Application & self);
-  void uninitialize ();
-  void defineOptions (OptionSet & options);
-  void handleOption (std::string const & name, std::string const & value);
-  void displayHelp ();
-  int main (std::vector <std::string> const & args);
-private:
-  bool _helpRequested;
-};
-#undef LZZ_INLINE
-#endif
 // f00293_gamesound.e
 //
 
@@ -115,11 +55,10 @@ public:
   float accelB;
   float lastAccelA;
   float lastAccelB;
+  float subjectDistance;
   GLfloat (rotation) [2];
-  GLfloat (clipDist) [2];
   GameCamera ();
   void focusOn (int entID);
-  void setClipDist (float n, float f);
   void testCollision (float oldX, float oldY, float oldZ, float newX, float newY, float newZ, bool skipTest);
   void setUnitPosition (float x, float y, float z);
   void addUnitPosition (float x, float y, float z);
@@ -165,21 +104,10 @@ public:
   };
   CompareStruct compareStruct;
   typedef map <string, UICStruct>::iterator itUICStruct;
-  int lastW;
-  int lastH;
-  int (cdMap) [256];
   GameCamera * mainCamera;
-  float fogRed;
-  float fogGreen;
-  float fogBlue;
-  GLfloat lastx;
-  GLfloat lasty;
-  bool isMoving;
-  bool (keysPressed) [256];
-  bool perspectiveOn;
-  unsigned char (keyMap) [256];
-  float FOV;
-  float focalLength;
+  bool (keysPressed) [MAX_KEYS];
+  double (keyDownTimes) [MAX_KEYS];
+  unsigned char (keyMap) [MAX_KEYS];
   GLdouble (viewMatrixD) [16];
   GLdouble (projMatrixD) [16];
   Matrix4 viewMatrix;
@@ -187,7 +115,6 @@ public:
   GLint (viewport) [4];
   E_OBJ activeObject;
   E_OBJ tempObj;
-  int mouseState;
   eProgramState programState;
   eProgramAction (progActionsDown) [E_PS_SIZE * 256];
   eProgramAction (progActionsUp) [E_PS_SIZE * 256];
@@ -196,10 +123,13 @@ public:
   EntSelection selectedEnts;
   GameEnt * selectedEnt;
   GameEnt * highlightedEnt;
+  bool isMoving;
+  bool perspectiveOn;
   bool (isInteractiveEnt) [E_CT_LENGTH];
+  bool inputOn;
   bool pathfindingOn;
   bool isMacro;
-  bool entOn;
+  bool orgOn;
   bool autoScroll;
   bool cavesOn;
   bool bakeParamsOn;
@@ -244,6 +174,12 @@ public:
   bool rotOn;
   bool doPageRender;
   bool markerFound;
+  bool editPose;
+  int fieldCallback;
+  int mouseState;
+  int lastW;
+  int lastH;
+  int (cdMap) [256];
   int maxLayerOver;
   int holderResolution;
   int visPageSizeInUnits;
@@ -297,15 +233,24 @@ public:
   int terDataBufSize;
   int terDataTexScale;
   int terDataBufSizeScaled;
-  uint * terDataScaled;
   int iNodeDivsPerLot;
   int holderSizeInPages;
-  uint volGenFBOX;
   int volGenSuperMod;
   int volGenSuperRes;
+  int * cdBuffer;
+  intPair (entIdArr) [1024];
   uint palWidth;
   uint palHeight;
   uint blockShift;
+  uint volGenFBOX;
+  uint * terDataScaled;
+  float lastx;
+  float lasty;
+  float FOV;
+  float focalLength;
+  float zoomDelta;
+  float subjectDelta;
+  float subjectZoom;
   float voxelSizeInWC;
   float msPerFrame;
   float cameraZoom;
@@ -328,7 +273,6 @@ public:
   float mouseY;
   float mouseXUp;
   float mouseYUp;
-  float myDelta;
   float bufferMult;
   float holderSizeMB;
   float bestNodeDis;
@@ -345,8 +289,7 @@ public:
   float * voroArr;
   float * matCountArr;
   float * paramArrMap;
-  intPair (entIdArr) [1024];
-  int * cdBuffer;
+  float (clipDist) [2];
   double lastMoveTime;
   double curTime;
   double lastTime;
@@ -356,9 +299,11 @@ public:
   GameOrgNode * selectedNode;
   GameOrgNode * lastSelNode;
   GameOrgNode * activeNode;
+  FIVector4 targetCameraPos;
   FIVector4 lastCellPos;
   FIVector4 worldMarker;
   FIVector4 lookAtVec;
+  FIVector4 targetLookAtVec;
   FIVector4 baseCameraPos;
   FIVector4 cameraPosAdjusted;
   FIVector4 baseScrollPos;
@@ -418,6 +363,7 @@ public:
   GameEnt * currentActor;
   GamePlant * (gamePlants) [E_PT_LENGTH/2];
   Shader * curShaderPtr;
+  string currentFieldString;
   string curShader;
   string allText;
   string stringBuf;
@@ -447,7 +393,6 @@ public:
   charArr lastJSONBufferGUI;
   JSONValue * rootObjJS;
   JSONValue * guiRootJS;
-  WebSocketServer * myWS;
   Timer myTimer;
   Timer scrollTimer;
   Timer moveTimer;
@@ -463,17 +408,21 @@ public:
   UIComponent * mapComp;
   UIComponent * mainMenu;
   UIComponent * ddMenu;
+  UIComponent * fieldMenu;
+  UIComponent * fieldText;
   FontWrapper * (fontWrappers) [EFW_LENGTH];
   GameMusic * (music) [EML_LENGTH];
   map <string, GameSound> soundMap;
   map <string, StyleSheet> styleSheetMap;
   map <string, JSONStruct> internalJSON;
+  map <string, JSONStruct> externalJSON;
   Singleton ();
-  void init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer * _myWS);
+  void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
   void prepSound (string soundName);
   void playSoundPosAndPitch (string soundName, FIVector4 * listenerPos, FIVector4 * soundPos, float variance = 0.0f, float volume = 1.0f);
   void playSound (string soundName, float volume = 1.0f);
   void playSoundEvent (char const * eventName, bool suppress = false);
+  void setCurrentActor (GameEnt * ge);
   void dispatchEvent (int button, int state, float x, float y, UIComponent * comp, bool automated = false, bool preventRefresh = false);
   StyleSheet * getNewStyleSheet (string ssName);
   void initStyleSheet ();
@@ -537,9 +486,11 @@ public:
   float getSLNormalized ();
   float getSLInPixels ();
   float getHeightAtPixelPos (float x, float y, bool dd = false);
-  void transformEnt (GameOrg * curEnt);
+  void transformOrg (GameOrg * curOrg);
   void angleToVec (FIVector4 * fv, float xr, float yr);
+  void vecToAngle (FIVector4 * fv, FIVector4 * ta);
   void syncObjects (FIVector4 * bp);
+  void updateCamVals ();
   void moveCamera (FIVector4 * pModXYZ);
   GameOrgNode * getMirroredNode (GameOrgNode * curNode);
   void applyNodeChanges (GameOrgNode * _curNode, float dx, float dy);
@@ -550,11 +501,10 @@ public:
   void setObjToElevationBase (FIVector4 * obj);
   void setCameraToElevationBase ();
   void setCameraToElevation ();
-  void moveCameraToTown ();
   void processSpecialKeys (int key, int _x, int _y);
   void updateCS ();
+  void processInput (unsigned char key, bool keyDown);
   void keyboardUp (unsigned char key, int _x, int _y);
-  void processKey (unsigned char key, int x, int y, bool isPressed);
   void keyboardDown (unsigned char key, int _x, int _y);
   void runReport ();
   void getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj);
@@ -562,7 +512,9 @@ public:
   void makeDirty ();
   void setSelNode (GameOrgNode * newNode);
   void worldToScreenBase (FIVector4 * sc, FIVector4 * wc);
+  float getShortestAngle (float begInRad, float endInRad, float amount);
   void handleMovement ();
+  bool anyMenuVisible ();
   void mouseClick (int button, int state, int _x, int _y);
   void resetActiveNode ();
   void updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS);
@@ -578,6 +530,11 @@ public:
   void loadGUIValues (bool applyValues = false);
   void saveGUIValues ();
   void updateGUI ();
+  void beginFieldInput (string defString, int cb);
+  void processFieldInput (unsigned char key);
+  void endFieldInput (bool success);
+  void saveOrg ();
+  void loadOrg ();
   void loadGUI ();
   void loadAllData ();
   void saveAllData ();
@@ -877,6 +834,7 @@ public:
   void getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit);
   UIComponent * findNodeById (int _id);
   bool compChildStr (string childStr);
+  JSONValue * findNearestKey (JSONValue * jv, string key);
   void addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool isFloating = false);
   void guiFromJSON (JSONValue * jv);
   void doRefresh ();
@@ -905,31 +863,20 @@ class GameOrgNode
 {
 private:
 public:
-  float rotThe;
-  float rotPhi;
-  float rotRho;
-  float material;
-  float boneLengthHalf;
-  static float const multiplier;
+  int nodeName;
+  GameOrgNode * parent;
+  std::vector <GameOrgNode*> children;
+  FIVector4 (orgVecs) [E_OV_LENGTH];
   FIVector4 * readTBN;
   FIVector4 * writeTBN;
-  FIVector4 (tbnBase) [3];
   FIVector4 (tbnBaseTrans) [3];
   FIVector4 (tbnRotA) [3];
   FIVector4 (tbnRotB) [3];
   FIVector4 (tbnRotC) [3];
   FIVector4 (tbnTrans) [3];
-  FIVector4 tbnRadInCells0;
-  FIVector4 tbnRadInCells1;
-  FIVector4 tbnRadScale0;
-  FIVector4 tbnRadScale1;
-  float boneLengthScale;
   FIVector4 (orgTrans) [3];
-  int nodeName;
-  GameOrgNode * parent;
-  std::vector <GameOrgNode*> children;
-  GameOrgNode (GameOrgNode * _parent, int _nodeName, float _boneLength, float _tanLengthInCells, float _bitLengthInCells, float _norLengthInCells, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
-  GameOrgNode * addChild (int _nodeName, float _boneLength, float _tanLengthInCells, float _bitLengthInCells, float _norLengthInCells, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
+  GameOrgNode (GameOrgNode * _parent, int _nodeName, float _material, float _rotThe, float _rotPhi, float _rotRho, float _tanLengthInCells0, float _bitLengthInCells0, float _norLengthInCells0, float _tanLengthInCells1, float _bitLengthInCells1, float _norLengthInCells1, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
+  GameOrgNode * addChild (int _nodeName, float _material, float _rotThe, float _rotPhi, float _rotRho, float _tanLengthInCells0, float _bitLengthInCells0, float _norLengthInCells0, float _tanLengthInCells1, float _bitLengthInCells1, float _norLengthInCells1, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
   GameOrgNode * getNode (int _nodeName);
   void doTransform (Singleton * singleton);
 };
@@ -948,10 +895,16 @@ public:
   GamePageHolder * gph;
   GameOrgNode * baseNode;
   FIVector4 basePosition;
+  JSONValue * rootObj;
   float defVecLength;
   float gv (float * vals);
+  static float const baseMat;
   GameOrg ();
   void init (Singleton * _singleton);
+  void loadFromFile (string fileName);
+  void jsonToNode (JSONValue * * parentObj, GameOrgNode * curNode);
+  void saveToFile (string fileName);
+  void nodeToJSON (JSONValue * * parentObj, GameOrgNode * curNode);
   void initHuman ();
 };
 #undef LZZ_INLINE
@@ -1088,7 +1041,6 @@ public:
   void addAllGeom ();
   void generateVolume (bool dd = false);
   int getIndex (int i, int j, int k, int p);
-  bool isAir ();
   void getPoints (int fboNum);
   ~ GamePage ();
 };
@@ -1327,6 +1279,7 @@ public:
   std::vector <GamePageHolder *> holdersToRefresh;
   std::vector <int> ocThreads;
   std::vector <GameEnt> gameActors;
+  float ppCell;
   FIVector4 lScreenCoords;
   FIVector4 cScreenCoords;
   FIVector4 worldSizeInPages;
@@ -1336,7 +1289,6 @@ public:
   FIVector4 entMax;
   FIVector4 camPagePos;
   FIVector4 camHolderPos;
-  FIVector4 cutHolderPos;
   FIVector4 camBlockPos;
   FIVector4 iPixelWorldCoords;
   FIVector4 pagePos;
@@ -1363,8 +1315,6 @@ public:
   FIVector4 unitPosCenter;
   FIVector4 startBounds;
   FIVector4 endBounds;
-  FIVector4 * fogPos;
-  FIVector4 * cutPos;
   FIVector4 * lightPos;
   FIVector4 * globLightPos;
   FIVector4 lightPosBase;
@@ -1409,6 +1359,10 @@ public:
   int findAIPathRBT (PathHolder * pathHolder, PathNode * blockAndIndex, float _pathSlack);
   void drawPathLine (PathHolder * curPath, int r, int g, int b, float lw, float zoff);
   void drawAIPath (PathHolder * pathHolder, PathHolder * splitPathHolder);
+  void makeFall (GameEnt * ge);
+  void moveCell (GameEnt * ge, int x, int y, int z);
+  void moveCellRotated (GameEnt * ge, int dirMod);
+  int testHit (GameEnt * ge);
   void renderGeom ();
   void modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushAction);
   float weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean);

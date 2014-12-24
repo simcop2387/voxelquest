@@ -446,11 +446,11 @@ void GamePageHolder::addNewLinesGeom (GameOrgNode * curNode, float scale)
 				tempVec.setFXYZ(E_ORG_PARAM_LINES,10.0f,entityGeomCounter);
 			}
 			else {
-				tempVec.setFXYZ(E_ORG_PARAM_LINES,curNode->material,entityGeomCounter);
+				tempVec.setFXYZ(E_ORG_PARAM_LINES,curNode->orgVecs[E_OV_MATPARAMS].getFX(),entityGeomCounter);
 			}
 			
-			tempVec2.copyFrom(&(curNode->tbnRotC[0]));
-			tempVec2.multXYZ(curNode->boneLengthHalf*scale*curNode->boneLengthScale);
+			//tempVec2.copyFrom(&(curNode->tbnRotC[0]));
+			//tempVec2.multXYZ(curNode->boneLengthHalf*scale); //*curNode->boneLengthScale
 			
 			
 			if (entityGeomCounter >= entityGeom.size()) {
@@ -464,13 +464,13 @@ void GamePageHolder::addNewLinesGeom (GameOrgNode * curNode, float scale)
 				&origOffset,
 				
 				&(curNode->orgTrans[1]),
-				&(tempVec2),
+				&(curNode->tbnRotC[0]), //&(tempVec2),
 				&(curNode->tbnRotC[1]),
 				&(curNode->tbnRotC[2]),
-				&(curNode->tbnRadInCells0),
-				&(curNode->tbnRadInCells1),
-				&(curNode->tbnRadScale0),
-				&(curNode->tbnRadScale1),
+				&(curNode->orgVecs[E_OV_TBNRAD0]),
+				&(curNode->orgVecs[E_OV_TBNRAD1]),
+				//&(curNode->tbnRadScale0),
+				//&(curNode->tbnRadScale1),
 				&tempVec
 				
 			);

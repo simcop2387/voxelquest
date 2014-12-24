@@ -109,9 +109,9 @@ void RedirectIOToConsole()
 
 
 
-
+#ifdef USE_POCO
 WebSocketServer myWebsocketServer;
-
+#endif
 
 int main(int argc, char* argv[])
 {
@@ -147,7 +147,17 @@ int main(int argc, char* argv[])
     
     ////////////
     singleton = new Singleton();
-    singleton->init(winWidth, winHeight, scaleFactor, &myWebsocketServer);
+    singleton->init(
+        winWidth,
+        winHeight,
+        scaleFactor
+        
+        #ifdef USE_POCO
+            ,&myWebsocketServer
+        #endif
+        
+        
+    );
     
 
     glutDisplayFunc(display);
@@ -160,8 +170,12 @@ int main(int argc, char* argv[])
     glutKeyboardUpFunc(keyboardUp);
     glutSpecialFunc(processSpecialKeys);
     
-
-    myWebsocketServer.run(argc, argv);
+    #ifdef USE_POCO
+        myWebsocketServer.run(argc, argv);
+    #else
+        glutMainLoop();
+    #endif
+    
 
 
 

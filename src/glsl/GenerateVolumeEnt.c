@@ -667,7 +667,7 @@ vec4 getLines(vec3 worldPosInPixels) {
 	vec3 tbnRad0 = vec3(0.0);
 	vec3 tbnRad1 = vec3(0.0);
 	vec3 tanVec = vec3(0.0);
-	vec3 tanVecNoNorm = vec3(0.0);
+	//vec3 tanVecNoNorm = vec3(0.0);
 	vec3 bitVec = vec3(0.0);
 	vec3 norVec = vec3(0.0);
 	
@@ -703,16 +703,16 @@ vec4 getLines(vec3 worldPosInPixels) {
 				p1 = paramArr[baseInd + E_AP_ORG];
 				
 				
-				tanVecNoNorm = paramArr[baseInd + E_AP_TAN];
+				//tanVecNoNorm = paramArr[baseInd + E_AP_TAN];
 				
-				tanVec = normalize(tanVecNoNorm);
+				tanVec = paramArr[baseInd + E_AP_TAN];//normalize(tanVecNoNorm);
 				bitVec = paramArr[baseInd + E_AP_BIT];
 				norVec = paramArr[baseInd + E_AP_NOR];
 				tbnRad0 = paramArr[baseInd + E_AP_RAD0];
 				tbnRad1 = paramArr[baseInd + E_AP_RAD1];
 				
-				p0 -= tanVecNoNorm;
-				p1 += tanVecNoNorm;
+				p0 -= tanVec*tbnRad0.x;
+				p1 += tanVec*tbnRad1.x;
 				
 
 				dres = pointSegDistance(worldPosInPixels, p0, p1);

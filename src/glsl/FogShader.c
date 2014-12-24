@@ -17,7 +17,7 @@ uniform float timeOfDay;
 uniform vec2 bufferDim;
 uniform vec2 resolution;
 uniform vec3 cameraPos;
-uniform vec4 fogPos;
+//uniform vec4 fogPos;
 
 
 const float TEX_WATER = 32.0/255.0;

@@ -889,10 +889,6 @@ int GamePage::getIndex (int i, int j, int k, int p)
                                                  {
 		return (i + j*p + k*p*p);
 	}
-bool GamePage::isAir ()
-                     {
-		// WAS DOING
-	}
 void GamePage::getPoints (int fboNum)
                                    {
 		
@@ -910,7 +906,7 @@ void GamePage::getPoints (int fboNum)
 		
 		float fVisPageSizeInPixels = singleton->visPageSizeInPixels;
 		
-		int i, j, k, m, n, p, q;
+		int i, j, k, m, n, p, q, t;
 		
 		int ni;
 		int nj;
@@ -1153,7 +1149,10 @@ void GamePage::getPoints (int fboNum)
 								// x + 
 								if (i != sresM1) {
 									ind2 = getIndex(i+1,j,k,sres);
-									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+									
+									
+									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+									doProc = doProc||(PROC_MATRIX[q][t]);
 								}
 								else {
 									doProc = doProc||isCand;
@@ -1162,7 +1161,8 @@ void GamePage::getPoints (int fboNum)
 								// x - 
 								if (i != 0) {
 									ind2 = getIndex(i-1,j,k,sres);
-									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+									doProc = doProc||(PROC_MATRIX[q][t]);
 								}
 								else {
 									doProc = doProc||isCand;
@@ -1171,7 +1171,8 @@ void GamePage::getPoints (int fboNum)
 								// y + 
 								if (j != sresM1) {
 									ind2 = getIndex(i,j+1,k,sres);
-									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+									doProc = doProc||(PROC_MATRIX[q][t]);
 								}
 								else {
 									doProc = doProc||isCand;
@@ -1180,7 +1181,8 @@ void GamePage::getPoints (int fboNum)
 								// y - 
 								if (j != 0) {
 									ind2 = getIndex(i,j-1,k,sres);
-									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+									doProc = doProc||(PROC_MATRIX[q][t]);
 								}
 								else {
 									doProc = doProc||isCand;
@@ -1189,7 +1191,8 @@ void GamePage::getPoints (int fboNum)
 								// z + 
 								if (k != sresM1) {
 									ind2 = getIndex(i,j,k+1,sres);
-									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+									doProc = doProc||(PROC_MATRIX[q][t]);
 								}
 								else {
 									doProc = doProc||isCand;
@@ -1198,7 +1201,8 @@ void GamePage::getPoints (int fboNum)
 								// z- 
 								if (k != 0) {
 									ind2 = getIndex(i,j,k-1,sres);
-									doProc = doProc||(fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p) != q);
+									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+									doProc = doProc||(PROC_MATRIX[q][t]);
 								}
 								else {
 									doProc = doProc||isCand;

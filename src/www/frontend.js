@@ -359,7 +359,7 @@ j$(function() {
 		materials:{},
 		debugTex:null,
 		displayList:[],
-		traceOn:false,
+		traceOn:true,
 		traceLevel: 0,
 		lastTraceLevel: 0,
 		hasConnection:false,

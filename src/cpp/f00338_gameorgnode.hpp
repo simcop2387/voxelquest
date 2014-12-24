@@ -17,103 +17,132 @@ private:
 
 public:
 	
-	float rotThe; // vertical rotation
-	float rotPhi; // horizontal rotation
-	float rotRho;
 	
-	float material;
-	float boneLengthHalf;
+	int nodeName;
+	GameOrgNode* parent;
+	std::vector<GameOrgNode*> children;
 	
 	
-	const static float multiplier = 2.0f;
+	
+	
+	// FIVector4 tbnBase[3];
+	// FIVector4 tbnRadInCells0;
+	// FIVector4 tbnRadInCells1;
+	
+	// float rotThe;
+	// float rotPhi;
+	// float rotRho;
+	// float material;
+	
+	FIVector4 orgVecs[E_OV_LENGTH];
+	
+	
+	
+	
+	// computed results
 	
 	FIVector4* readTBN;
 	FIVector4* writeTBN;
-	
-	FIVector4 tbnBase[3];
 	FIVector4 tbnBaseTrans[3];
 	FIVector4 tbnRotA[3];
 	FIVector4 tbnRotB[3];
 	FIVector4 tbnRotC[3];
 	FIVector4 tbnTrans[3];
-	
-	
-	FIVector4 tbnRadInCells0;
-	FIVector4 tbnRadInCells1;
-
-	FIVector4 tbnRadScale0;
-	FIVector4 tbnRadScale1;
-	float boneLengthScale;
-
-	// transformed points
 	FIVector4 orgTrans[3]; // start, middle, end
 	
 	
 
-	int nodeName;
 	
 
-	GameOrgNode* parent;
-	std::vector<GameOrgNode*> children;
+	
 
 	GameOrgNode(
 		GameOrgNode* _parent,
 		int _nodeName,
-		float _boneLength,
-		float _tanLengthInCells,
-		float _bitLengthInCells,
-		float _norLengthInCells,
+		//float _boneLength,
+		
+		float _material,
+		
+		float _rotThe,
+		float _rotPhi,
+		float _rotRho,
+		
+		float _tanLengthInCells0,
+		float _bitLengthInCells0,
+		float _norLengthInCells0,
+		
+		float _tanLengthInCells1,
+		float _bitLengthInCells1,
+		float _norLengthInCells1,
 		
 		float _tanX, float _tanY, float _tanZ,
 		float _bitX, float _bitY, float _bitZ,
 		float _norX, float _norY, float _norZ
 		
 		
+		
+		
 	) {
 		
 		
 		
-		material = 8.0;
+		orgVecs[E_OV_MATPARAMS].setFX(_material);//8.0;
 		
 		parent = _parent;
 		nodeName = _nodeName;
 		
-		rotThe = 0.0f;
-		rotPhi = 0.0f;
-		rotRho = 0.0f;
+		orgVecs[E_OV_THETAPHIRHO].setFXYZ(_rotThe,_rotPhi,_rotRho);
+		
+		// rotThe = _rotThe;
+		// rotPhi = _rotPhi;
+		// rotRho = _rotRho;
 
 		
 
-		boneLengthHalf = _boneLength*0.5f*multiplier;
+		//boneLengthHalf = _boneLength*0.5f;// *multiplier;
 
-		tbnRadInCells0.setFXYZ(
-			_tanLengthInCells*multiplier,
-			_bitLengthInCells*multiplier,
-			_norLengthInCells*multiplier
+		orgVecs[E_OV_TBNRAD0].setFXYZ(
+			_tanLengthInCells0, // *multiplier,
+			_bitLengthInCells0, // *multiplier,
+			_norLengthInCells0 // *multiplier
 		);
-		tbnRadInCells1.setFXYZRef(&tbnRadInCells0);
-		tbnRadScale0.setFXYZ(1.0f,1.0f,1.0f);
-		tbnRadScale1.setFXYZ(1.0f,1.0f,1.0f);
-		boneLengthScale = 1.0f;
+		orgVecs[E_OV_TBNRAD1].setFXYZ(
+			_tanLengthInCells1, // *multiplier,
+			_bitLengthInCells1, // *multiplier,
+			_norLengthInCells1 // *multiplier
+		);
+		//orgVecs[E_OV_TBNRAD1].setFXYZRef(&orgVecs[E_OV_TBNRAD0]);
+		//tbnRadScale0.setFXYZ(1.0f,1.0f,1.0f);
+		//tbnRadScale1.setFXYZ(1.0f,1.0f,1.0f);
+		//boneLengthScale = 1.0f;
 		
 		
-		(tbnBase[0]).setFXYZ(_tanX,_tanY,_tanZ);
-		(tbnBase[1]).setFXYZ(_bitX,_bitY,_bitZ);
-		(tbnBase[2]).setFXYZ(_norX,_norY,_norZ);
-		(tbnBase[0]).normalize();
-		(tbnBase[1]).normalize();
-		(tbnBase[2]).normalize();
+		(orgVecs[0]).setFXYZ(_tanX,_tanY,_tanZ);
+		(orgVecs[1]).setFXYZ(_bitX,_bitY,_bitZ);
+		(orgVecs[2]).setFXYZ(_norX,_norY,_norZ);
+		(orgVecs[0]).normalize();
+		(orgVecs[1]).normalize();
+		(orgVecs[2]).normalize();
 		
-		// FIVector4::cross(&(tbnBase[2]),&(tbnBase[0]),&(tbnBase[1]));
-		// (tbnBase[2]).normalize();
 	}
 	
 	GameOrgNode* addChild(
 		int _nodeName,
-		float _boneLength,
-		float _tanLengthInCells,
-		float _bitLengthInCells,
-		float _norLengthInCells,
+		//float _boneLength,
+		
+		float _material,
+		
+		float _rotThe,
+		float _rotPhi,
+		float _rotRho,
+		
+		float _tanLengthInCells0,
+		float _bitLengthInCells0,
+		float _norLengthInCells0,
+		
+		float _tanLengthInCells1,
+		float _bitLengthInCells1,
+		float _norLengthInCells1,
 		
 		float _tanX, float _tanY, float _tanZ,
 		float _bitX, float _bitY, float _bitZ,
@@ -129,10 +158,21 @@ public:
 				this,
 				
 				_nodeName,
-				_boneLength,
-				_tanLengthInCells,
-				_bitLengthInCells,
-				_norLengthInCells,
+				//_boneLength,
+				
+				_material,
+				
+				_rotThe,
+				_rotPhi,
+				_rotRho,
+				
+				_tanLengthInCells0,
+				_bitLengthInCells0,
+				_norLengthInCells0,
+				
+				_tanLengthInCells1,
+				_bitLengthInCells1,
+				_norLengthInCells1,
 				
 				_tanX, _tanY, _tanZ,
 				_bitX, _bitY, _bitZ,
@@ -174,16 +214,6 @@ public:
 		int popCount = 0;
 		int modCount;
 		
-		//cout << "doTransform: " << boneStrings[nodeName] << "\n"; 
-		
-		
-		// void doRotation(
-		// 	FIVector4 *output,
-		// 	FIVector4 *input,
-		// 	FIVector4 *axis,
-		// 	float angle
-		// )
-		
 		
 		// start
 		if (parent == NULL) {
@@ -196,48 +226,14 @@ public:
 		
 		
 		for (i = 0; i < 3; i++) {
-			tbnBaseTrans[i].copyFrom(&(tbnBase[i]));
+			tbnBaseTrans[i].copyFrom(&(orgVecs[i]));
 			//tbnBaseTrans[i].addXYZRef(&(orgTrans[0]));
 		}
 		
 		
 		readTBN = tbnBaseTrans;
 		writeTBN = tbnRotA;
-		
-		
-		// if (rotRho != 0.0f) {
-		// 	singleton->rotStack.push_back(readTBN[2]);
-		// 	singleton->rotStack.back().setFW(rotRho);
-		// 	singleton->transStack.push_back(orgTrans[0]);
-		// 	popCount++;
-		// }
-		// if (rotThe != 0.0f) {
-		// 	singleton->rotStack.push_back(readTBN[1]);
-		// 	singleton->rotStack.back().setFW(rotThe);
-		// 	singleton->transStack.push_back(orgTrans[0]);
-		// 	popCount++;
-		// }
-		// if (rotPhi != 0.0f) {
-		// 	singleton->rotStack.push_back(readTBN[0]);
-		// 	singleton->rotStack.back().setFW(rotPhi);
-		// 	singleton->transStack.push_back(orgTrans[0]);			
-		// 	popCount++;
-		// }
-		
-		
-		/*
-		void doRotationTBN(
-			FIVector4 *output,
-			FIVector4 *input,
-			FIVector4 *axisAngle,
-			FIVector4 *parentOffset,
-			FIVector4 *baseOffset
-		)
-		*/
-		
-		
-		
-		
+			
 		
 		
 		modCount = 0;
@@ -245,132 +241,37 @@ public:
 		
 		
 		
+	
 		
-		
-		
-		
-		
-		
-		
-		
-		// if (rotRho != 0.0f) {
-		// 	singleton->rotStack.push_back(readTBN[2]);
-		// 	singleton->rotStack.back().setFW(rotRho);
-		// 	singleton->transStack.push_back(orgTrans[0]);
-			
-			
-			
-		// 	axisRotationInstance.doRotationTBN(
-		// 		writeTBN, // write
-		// 		readTBN, // read
-		// 		&(singleton->rotStack.back()),
-		// 		&(singleton->transStack.back()),
-		// 		&(orgTrans[0])
-		// 	);
-		// 	if ((modCount%2) == 0) {
-		// 		readTBN = tbnRotA;
-		// 		writeTBN = tbnRotB;
-		// 	}
-		// 	else {
-		// 		readTBN = tbnRotB;
-		// 		writeTBN = tbnRotA;
-		// 	}
-		// 	modCount++;
-			
-		// 	popCount++;
-		// }
-		// if (rotThe != 0.0f) {
-		// 	singleton->rotStack.push_back(readTBN[1]);
-		// 	singleton->rotStack.back().setFW(rotThe);
-		// 	singleton->transStack.push_back(orgTrans[0]);
-			
-		// 	axisRotationInstance.doRotationTBN(
-		// 		writeTBN, // write
-		// 		readTBN, // read
-		// 		&(singleton->rotStack.back()),
-		// 		&(singleton->transStack.back()),
-		// 		&(orgTrans[0])
-		// 	);
-		// 	if ((modCount%2) == 0) {
-		// 		readTBN = tbnRotA;
-		// 		writeTBN = tbnRotB;
-		// 	}
-		// 	else {
-		// 		readTBN = tbnRotB;
-		// 		writeTBN = tbnRotA;
-		// 	}
-		// 	modCount++;
-			
-		// 	popCount++;
-		// }
-		// if (rotPhi != 0.0f) {
-		// 	singleton->rotStack.push_back(readTBN[0]);
-		// 	singleton->rotStack.back().setFW(rotPhi);
-		// 	singleton->transStack.push_back(orgTrans[0]);
-			
-		// 	axisRotationInstance.doRotationTBN(
-		// 		writeTBN, // write
-		// 		readTBN, // read
-		// 		&(singleton->rotStack.back()),
-		// 		&(singleton->transStack.back()),
-		// 		&(orgTrans[0])
-		// 	);
-		// 	if ((modCount%2) == 0) {
-		// 		readTBN = tbnRotA;
-		// 		writeTBN = tbnRotB;
-		// 	}
-		// 	else {
-		// 		readTBN = tbnRotB;
-		// 		writeTBN = tbnRotA;
-		// 	}
-		// 	modCount++;
-			
-		// 	popCount++;
-		// }
-		
-		
-		
-		
-		
-		if (rotRho != 0.0f) {
+		if (orgVecs[E_OV_THETAPHIRHO].getFZ() != 0.0f) {
 			singleton->rotMatStack.push_back(RotationInfo());
 			singleton->rotMatStack.back().basePoint.copyFrom(&(orgTrans[0]));
 			singleton->rotMatStack.back().axisAngle.copyFrom(&(readTBN[2]));
-			singleton->rotMatStack.back().axisAngle.setFW(rotRho);
+			singleton->rotMatStack.back().axisAngle.setFW(orgVecs[E_OV_THETAPHIRHO].getFZ());
 			axisRotationInstance.buildRotMatrix(&(singleton->rotMatStack.back()));
 			
 			popCount++;
 		}
-		if (rotThe != 0.0f) {
+		if (orgVecs[E_OV_THETAPHIRHO].getFX() != 0.0f) {
 			singleton->rotMatStack.push_back(RotationInfo());
 			singleton->rotMatStack.back().basePoint.copyFrom(&(orgTrans[0]));
 			singleton->rotMatStack.back().axisAngle.copyFrom(&(readTBN[1]));
-			singleton->rotMatStack.back().axisAngle.setFW(rotThe);
+			singleton->rotMatStack.back().axisAngle.setFW(orgVecs[E_OV_THETAPHIRHO].getFX());
 			axisRotationInstance.buildRotMatrix(&(singleton->rotMatStack.back()));
 			popCount++;
 		}
-		if (rotPhi != 0.0f) {
+		if (orgVecs[E_OV_THETAPHIRHO].getFY() != 0.0f) {
 			singleton->rotMatStack.push_back(RotationInfo());
 			singleton->rotMatStack.back().basePoint.copyFrom(&(orgTrans[0]));
 			singleton->rotMatStack.back().axisAngle.copyFrom(&(readTBN[0]));
-			singleton->rotMatStack.back().axisAngle.setFW(rotPhi);
+			singleton->rotMatStack.back().axisAngle.setFW(orgVecs[E_OV_THETAPHIRHO].getFY());
 			axisRotationInstance.buildRotMatrix(&(singleton->rotMatStack.back()));
 			popCount++;
 		}
 		
 		
 		for (i = singleton->rotMatStack.size()-(1); i >= 0; i--) {
-			
-			// axisRotationInstance.doRotationTBN(
-			// 	writeTBN, // write
-			// 	readTBN, // read
-			// 	&(singleton->rotStack[i]), //axisAngle
-			// 	&(singleton->transStack[i]), //parentOffset
-			// 	&(orgTrans[0]) //baseOffset
-			// );
-			
-			
-			
+						
 			axisRotationInstance.applyRotation(
 				writeTBN,
 				readTBN,
@@ -401,17 +302,20 @@ public:
 		
 		// middle
 		orgTrans[1].setFXYZRef(&(tbnRotC[0]));
-		orgTrans[1].multXYZ(boneLengthHalf*boneLengthScale);
+		orgTrans[1].multXYZ(orgVecs[E_OV_TBNRAD0].getFX()); //*boneLengthScale
 		orgTrans[1].addXYZRef(&(orgTrans[0]));
 		
 		// end
 		orgTrans[2].setFXYZRef(&(tbnRotC[0]));
-		orgTrans[2].multXYZ(boneLengthHalf*boneLengthScale*2.0f);
+		orgTrans[2].multXYZ(
+			orgVecs[E_OV_TBNRAD0].getFX() +
+			orgVecs[E_OV_TBNRAD1].getFX()
+		); //*boneLengthScale
 		orgTrans[2].addXYZRef(&(orgTrans[0]));
 		
 		for (i = 0; i < 3; i++) {
 			(tbnTrans[i]).setFXYZRef(&(tbnRotC[i]));
-			(tbnTrans[i]).multXYZ(tbnRadInCells0[i]*tbnRadScale0[i]);
+			(tbnTrans[i]).multXYZ(orgVecs[E_OV_TBNRAD0][i]); //*tbnRadScale0[i]
 			(tbnTrans[i]).addXYZRef(&(orgTrans[1]));
 		}
 		

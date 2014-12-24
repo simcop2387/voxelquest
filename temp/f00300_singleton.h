@@ -17,9 +17,14 @@ Singleton::Singleton ()
 		
 		mainGUI = NULL;
 		gw = NULL;
-		myWS = NULL;
+		
+		
+		#ifdef USE_POCO
+			myWS = NULL;
+		#endif
+		
 	}
-void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebSocketServer * _myWS)
+void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
         {
 
 		pushTrace("Singleton init");
@@ -52,9 +57,13 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		isInteractiveEnt[E_CT_DOOR] = true;
 		isInteractiveEnt[E_CT_LANTERN] = true;
 		
+		clipDist[0] = 0.01f;
+		clipDist[1] = 16384.0f;
+		
+		inputOn = false;
 		pathfindingOn = false;
 		isMacro = false;
-		entOn = false;
+		orgOn = false;
 		autoScroll = false;
 		cavesOn = false;
 		bakeParamsOn = true;
@@ -71,6 +80,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		mapComp = NULL;
 		mainMenu = NULL;
 		ddMenu = NULL;
+		fieldMenu = NULL;
+		fieldText = NULL;
 		selectedEnt = NULL;
 		highlightedEnt = NULL;
 		draggingMap = false;
@@ -155,6 +166,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		treesOn = true;
 		rotOn = false;
 		markerFound = false;
+		editPose = false;
 		doPageRender = true;
 		
 		
@@ -409,7 +421,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		targetZoom = cameraZoom;
 		
 
-
+		zoomDelta = 0.0f;
+		subjectDelta = 0.0f;
+		subjectZoom = 1.0f;
 
 		int ccr = 0;
 		int ccg = 0;
@@ -540,8 +554,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		mouseCount = 0;
 		mouseMovingStepsBack = 20;
 		mouseMoving = new FIVector4[mouseMovingSize];
-
-		myWS = _myWS;
+		
+		#ifdef USE_POCO
+			myWS = _myWS;
+		#endif
+		
 
 		
 
@@ -688,10 +705,23 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		}
 		
 		dynObjects[E_OBJ_LIGHT0]->moveType = E_MT_TRACKBALL;
-
-		dynObjects[E_OBJ_FOG]->init(-1024*2, -1024*2, -1024/2,   0, 0, 255,     true, E_MT_RELATIVE, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
-		dynObjects[E_OBJ_CUTAWAY]->init(4096*4 - 256, 4096*4 - 256 + 2048, 4096*4,   0, 255, 0,     true, E_MT_RELATIVE, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
-		dynObjects[E_OBJ_HUMAN]->init(2048, 2048, -1024,   0, 255, 255,     true, E_MT_TRACKBALL, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+		
+		
+		dynObjects[E_OBJ_LIMBTARG0]->init(
+			-2048 + 3 * 256,
+			-2048 + 3 * 256,
+			1024/2,
+			255, 0, 0,
+			true,
+			E_MT_TRACKBALL,
+			&(dynObjects[E_OBJ_CAMERA]->pos),
+			64.0f,
+			16.0f*pixelsPerCell
+		);
+		
+		//dynObjects[E_OBJ_FOG]->init(-1024*2, -1024*2, -1024/2,   0, 0, 255,     true, E_MT_RELATIVE, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+		//dynObjects[E_OBJ_CUTAWAY]->init(4096*4 - 256, 4096*4 - 256 + 2048, 4096*4,   0, 255, 0,     true, E_MT_RELATIVE, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
+		//dynObjects[E_OBJ_HUMAN]->init(2048, 2048, -1024,   0, 255, 255,     true, E_MT_TRACKBALL, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 
 		// dynObjects[E_OBJ_P0]->init(512-256,1024-256,2048,   128,0,0,    true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 		// dynObjects[E_OBJ_P1]->init(512,1024,2048,      255,0,0,  true, true, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
@@ -720,7 +750,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		screenHeight = defaultWinH;
 		mouseLeftDown = mouseRightDown = false;
 		mouseX = mouseY = 0;
-		myDelta = 0.0f;
 
 
 
@@ -850,9 +879,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		/////////////////////////
 		/////////////////////////
 		
-		fogRed = 135.0f/255.0f;
-		fogGreen = 160.0f/255.0f;
-		fogBlue = 1.0f;
+
 		lastx = 0;
 		lasty = 0;
 		isMoving = false;
@@ -861,8 +888,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		mainCamera = new GameCamera();
 		mainCamera->init();
 
-		for (i = 0; i < 256; i++) {
+		for (i = 0; i < MAX_KEYS; i++) {
 			keysPressed[i] = false;
+			keyDownTimes[i] = 0.0;
+			//keyUpTimes[i] = 0.0;
 		}
 
 		keyMap[KEYMAP_UP] = 'a';
@@ -988,7 +1017,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor, WebS
 		
 		testHuman = new GameOrg();
 		testHuman->init(this);
-		
+		//TODO: fix this for proper angle alignment to model
+		//orientRotation();
 		
 		
 		
@@ -1079,6 +1109,16 @@ void Singleton::playSoundEvent (char const * eventName, bool suppress)
 		
 		
 	}
+void Singleton::setCurrentActor (GameEnt * ge)
+                                          {
+		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
+		
+		currentActor = ge;
+		if (currentActor != NULL) {
+			mainCamera->subjectDistance = currentActor->getVisMinInPixelsT()->distance(cameraPos);
+		}
+		
+	}
 void Singleton::dispatchEvent (int button, int state, float x, float y, UIComponent * comp, bool automated, bool preventRefresh)
           {
 		
@@ -1089,6 +1129,8 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		// if (guiLock) {
 		// 	return;
 		// }
+		
+		float wheelDelta = 0.0f;
 		
 		int i;
 		int cbDataCount;
@@ -1131,6 +1173,14 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 											-(y - comp->dragStart.y)*worldSizeInPixels.getFY()/(cameraZoom*comp->resultDimInPixels.y),
 											0.0f
 										);
+										
+										
+										
+										updateCamVals();
+										
+										//doTraceVecND("cameraPos ", cameraPos);
+										
+										
 										draggingMap = true;
 									}
 									
@@ -1166,38 +1216,80 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 						}
 					break;
 					
+					case 3: // wheel up
+						wheelDelta = 1.0f / 20.0f;
+						break;
+
+					case 4: // wheel down
+						wheelDelta = -1.0f / 20.0f;
+						break;
+					
+					
 				}
 			
 				
 			break;	
 		}
 		
+		if (comp->uid.compare("map.mapHolder") == 0) {
+			zoomDelta += wheelDelta;
+			targetZoom = pow(2.0, zoomDelta);
+		}
+		
 		
 		if (mouseUpEvent) {
 			if (comp->uid.compare("placeEntity.actor") == 0) {
 				gw->gameActors.push_back(baseEnt);
-				currentActor = &(gw->gameActors.back());
 				tempVec1.setIXYZ(2,2,3);
-				currentActor->initActor(&lastCellPos,&tempVec1,pixelsPerCell);
+				gw->gameActors.back().initActor(&lastCellPos,&tempVec1,pixelsPerCell);
+				setCurrentActor( &(gw->gameActors.back()) );
+				orgOn = true;
 				
 				//cout << "placeActor\n";
 			}
+			else if (comp->uid.compare("charEdit.savePose") == 0) {
+				saveOrg();
+			}
+			else if (comp->uid.compare("charEdit.loadPose") == 0) {
+				loadOrg();
+			}
+			else if (comp->uid.compare("$charEdit.orgOn") == 0) {
+				orgOn = curValue != 0.0f;
+			}
+			else if (comp->uid.compare("$charEdit.pathfindingOn") == 0) {
+				pathfindingOn = curValue != 0.0f;
+			}
+			else if (comp->uid.compare("$charEdit.editPose") == 0) {
+				editPose = curValue != 0.0f;
+			}
+			else if (comp->uid.compare("$charEdit.mirrorOn") == 0) {
+				mirrorOn = curValue != 0.0f;
+			}
+			else if (comp->uid.compare("$charEdit.applyToChildren") == 0) {
+				applyToChildren = curValue != 0.0f;
+			}
+			else if (comp->uid.compare("fieldMenu.ok") == 0) {
+				endFieldInput(true);
+			}
+			else if (comp->uid.compare("fieldMenu.cancel") == 0) {
+				endFieldInput(false);
+			}
+			
+			
+			if (comp->floatingChildren.size() == 0) {
+				ddMenu->visible = false;
+				markerFound = false;
+			}
+			
 		}
 		
-		if (
-			(state == GLUT_UP) &&
-			(button == GLUT_LEFT_BUTTON) &&
-			(comp->floatingChildren.size() == 0)
-		) {
-			ddMenu->visible = false;
-			markerFound = false;
-		}
+		
 		
 		
 		
 				
 		if (comp->uid.compare("$options.sound.masterVolume") == 0) {
-			masterVolume = curValue;
+			masterVolume = curValue; // *0.2;
 		}
 		else if (comp->uid.compare("$options.sound.ambientVolume") == 0) {
 			ambientVolume = curValue;
@@ -1211,27 +1303,12 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		else if (comp->uid.compare("$options.sound.fxVolume") == 0) {
 			fxVolume = curValue;
 		}
-		else if (comp->uid.compare("$charEdit.entOn") == 0) {
-			entOn = curValue != 0.0f;
+		else if (comp->uid.compare("$options.graphics.clipDist") == 0) {
+			clipDist[1] = curValue*65536.0f;
 		}
-		else if (comp->uid.compare("$charEdit.pathfindingOn") == 0) {
-			pathfindingOn = curValue != 0.0f;
-		}
-		else if (comp->uid.compare("$charEdit.lockPosition") == 0) {
-			//pathfindingOn = curValue != 0.0f;
-			if (curValue == 0.0f) {
-				dynObjects[E_OBJ_HUMAN]->moveType = E_MT_TRACKBALL;
-			}
-			else {
-				dynObjects[E_OBJ_HUMAN]->moveType = E_MT_NONE;
-			}
-		}
-		else if (comp->uid.compare("$charEdit.mirrorOn") == 0) {
-			mirrorOn = curValue != 0.0f;
-		}
-		else if (comp->uid.compare("$charEdit.applyToChildren") == 0) {
-			applyToChildren = curValue != 0.0f;
-		}
+		
+		
+		
 		
 		
 		if (comp->jvNodeNoTemplate != NULL) {
@@ -1314,6 +1391,7 @@ StyleSheet * Singleton::getNewStyleSheet (string ssName)
 void Singleton::initStyleSheet ()
                               {
 		
+		int i;
 		
 		StyleSheet* mainSS = getNewStyleSheet("defaultSS");
 		StyleSheetState* curState = &(mainSS->compStates[E_COMP_UP]);
@@ -1400,6 +1478,30 @@ void Singleton::initStyleSheet ()
 
 		curState = &(headerSS->compStates[E_COMP_OVER]);
 		curState = &(headerSS->compStates[E_COMP_DOWN]);
+		
+		
+		
+		StyleSheet* redSS = getNewStyleSheet("redSS");
+		redSS->copyFrom(mainSS);
+		
+		for (i = 0; i < E_COMP_TOTAL; i++) {
+			curState = &(redSS->compStates[i]);
+			curState->setVal(E_SS_BGCOL0_R, 1.0f, 0.2f, 0.5f, 1.0f);
+			curState->setVal(E_SS_BGCOL1_R, 0.8f, 0.4f, 0.8f, 0.5f);
+		}
+		
+		
+		
+		StyleSheet* greenSS = getNewStyleSheet("greenSS");
+		greenSS->copyFrom(mainSS);
+		
+		for (i = 0; i < E_COMP_TOTAL; i++) {
+			curState = &(greenSS->compStates[i]);
+			curState->setVal(E_SS_BGCOL0_R, 0.0f, 1.0f, 0.5f, 1.0f);
+			curState->setVal(E_SS_BGCOL1_R, 0.0f, 0.8f, 0.8f, 0.5f);
+		}
+		
+		
 		
 		
 		
@@ -2287,9 +2389,9 @@ float Singleton::getHeightAtPixelPos (float x, float y, bool dd)
 
 
 	}
-void Singleton::transformEnt (GameOrg * curEnt)
+void Singleton::transformOrg (GameOrg * curOrg)
                                            {
-		curEnt->baseNode->doTransform(this);
+		curOrg->baseNode->doTransform(this);
 	}
 void Singleton::angleToVec (FIVector4 * fv, float xr, float yr)
                                                            {
@@ -2300,6 +2402,15 @@ void Singleton::angleToVec (FIVector4 * fv, float xr, float yr)
 		);
 		fv->normalize();
 	}
+void Singleton::vecToAngle (FIVector4 * fv, FIVector4 * ta)
+                                                       {
+		
+		ta->setFXYZ(
+			atan2(fv->getFX(),fv->getFY()),
+			acos(fv->getFZ()),
+			0.0f	
+		);
+	}
 void Singleton::syncObjects (FIVector4 * bp)
                                         {
 		int i;
@@ -2307,8 +2418,8 @@ void Singleton::syncObjects (FIVector4 * bp)
 		float xrp;
 		float yrp;
 		
-		float xrotrad = (mainCamera->rotation[0] / 180 * M_PI);
-		float yrotrad = (mainCamera->rotation[1] / 180 * M_PI);
+		float xrotrad = (mainCamera->rotation[0]);
+		float yrotrad = (mainCamera->rotation[1]);
 		
 		
 		
@@ -2340,30 +2451,23 @@ void Singleton::syncObjects (FIVector4 * bp)
 
 		}
 		
-		testHuman->basePosition.copyFrom(&(dynObjects[E_OBJ_HUMAN]->pos));
-		transformEnt(testHuman);
-	}
-void Singleton::moveCamera (FIVector4 * pModXYZ)
-        {
+		//!!!
+		//testHuman->basePosition.copyFrom(&(dynObjects[E_OBJ_HUMAN]->pos));
 		
-		int i;
-		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
-		
-		if (
-				(pModXYZ->getFX() != 0.0) ||
-				(pModXYZ->getFY() != 0.0) ||
-				(pModXYZ->getFZ() != 0.0)
-		) {
-			wsBufferInvalid = true;
+		if (currentActor != NULL) {
+			testHuman->basePosition.copyFrom(currentActor->getVisMinInPixelsT());
+			testHuman->basePosition.addXYZRef(currentActor->getVisMaxInPixelsT());
+			testHuman->basePosition.multXYZ(0.5f);
 		}
 		
 		
-
-		cameraPos->addXYZRef(pModXYZ);
-
-
-		pModXYZ->setFZ(0.0f);
-
+		transformOrg(testHuman);
+	}
+void Singleton::updateCamVals ()
+                             {
+		
+		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
+		
 		if (cameraPos->getFX() > worldSizeInPixels.getFX() / 2.0)
 		{
 			cameraPos->setFX( cameraPos->getFX() - worldSizeInPixels.getFX() );
@@ -2389,6 +2493,29 @@ void Singleton::moveCamera (FIVector4 * pModXYZ)
 		mainCamera->unitPos[0] = dynObjects[E_OBJ_CAMERA]->pos.getFX();
 		mainCamera->unitPos[1] = dynObjects[E_OBJ_CAMERA]->pos.getFY();
 		mainCamera->unitPos[2] = dynObjects[E_OBJ_CAMERA]->pos.getFZ();
+	}
+void Singleton::moveCamera (FIVector4 * pModXYZ)
+        {
+		
+		int i;
+		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
+		
+		if (
+				(pModXYZ->getFX() != 0.0) ||
+				(pModXYZ->getFY() != 0.0) ||
+				(pModXYZ->getFZ() != 0.0)
+		) {
+			wsBufferInvalid = true;
+		}
+		
+		
+
+		cameraPos->addXYZRef(pModXYZ);
+
+
+		//pModXYZ->setFZ(0.0f);
+		
+		updateCamVals();
 		
 	}
 GameOrgNode * Singleton::getMirroredNode (GameOrgNode * curNode)
@@ -2455,25 +2582,29 @@ void Singleton::applyNodeChanges (GameOrgNode * _curNode, float dx, float dy)
 			if (shiftDown()) { // || altDown()
 								
 				if (lbDown) {
-					curNode->tbnRadScale0.addXYZ(0.0f,xm,ym);
+					curNode->orgVecs[E_OV_TBNRAD0].addXYZ(0.0f,xm,ym);
 				}
 				if (rbDown) {
-					curNode->tbnRadScale1.addXYZ(0.0f,xm,ym);
+					curNode->orgVecs[E_OV_TBNRAD1].addXYZ(0.0f,xm,ym);
 				}
 				if (mbDown) {
-					curNode->boneLengthScale += ym;
+					
+					curNode->orgVecs[E_OV_TBNRAD0].addXYZ(ym, 0.0f, 0.0f);
+					curNode->orgVecs[E_OV_TBNRAD1].addXYZ(ym, 0.0f, 0.0f);
+					
+					//curNode->boneLengthScale += ym;
 				}
 			}
 			else {
 				
 				if (lbDown) {
-					curNode->rotThe += dirMod*ym;
+					curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(dirMod*ym,0.0,0.0); //dirMod*ym
 				}
 				if (rbDown) {
-					curNode->rotRho += dirMod*ym;
+					curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0,0.0,dirMod*ym);
 				}
 				if (mbDown) {
-					curNode->rotPhi += dirMod*ym;
+					curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0,dirMod*ym,0.0);
 				}
 				
 				
@@ -2518,8 +2649,8 @@ void Singleton::moveObject (float dx, float dy)
 		float xmod = 0.0f;
 		float ymod = 0.0f;
 		float zmod = 0.0f;
-		float xrotrad = (mainCamera->rotation[0] / 180 * M_PI);
-		float yrotrad = (mainCamera->rotation[1] / 180 * M_PI);
+		float xrotrad = (mainCamera->rotation[0]);
+		float yrotrad = (mainCamera->rotation[1]);
 		
 		
 
@@ -2571,11 +2702,9 @@ void Singleton::moveObject (float dx, float dy)
 		
 		
 		if (
-			(entOn) && 
-			(activeNode != NULL)
-			
-			// todo: remove this
-			//&& false
+			(orgOn) && 
+			(activeNode != NULL) &&
+			editPose
 			
 		) {
 				
@@ -2648,10 +2777,9 @@ void Singleton::moveObject (float dx, float dy)
 					
 					
 					if (lbDown) {
-						mainCamera->addRotation(dx*0.25f, dy*0.25f);
+						mainCamera->addRotation(dx*0.005f, dy*0.005f);
 					}
 					
-					//moveCamera(&modXYZ);
 				}
 				
 
@@ -2721,23 +2849,6 @@ void Singleton::setCameraToElevation ()
 		
 		wsBufferInvalid = true;
 	}
-void Singleton::moveCameraToTown ()
-                                {
-		
-		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
-		FIVector4 townPos;
-		townPos.setFXYZ(
-			(gw->provinceX[15]/gw->mapWidth),
-			(gw->provinceY[15]/gw->mapHeight),
-			0.0f
-		);
-		
-		townPos.multXYZRef(&worldSizeInPixels);
-		
-		townPos.addXYZRef(cameraPos,-1.0f);
-		moveCamera(&townPos);
-		setCameraToElevation();
-	}
 void Singleton::processSpecialKeys (int key, int _x, int _y)
         {
 
@@ -2769,6 +2880,359 @@ void Singleton::updateCS ()
 		bCtrlOld = bCtrl;
 		bShiftOld = bShift;
 	}
+void Singleton::processInput (unsigned char key, bool keyDown)
+                                                           {
+		
+		if (inputOn) {
+			if (keyDown) {
+				
+			}
+			else {
+				processFieldInput(key);	
+			}
+			return;
+		}
+		
+		keysPressed[key] = keyDown;
+		
+		
+		if (keyDown) {
+			if (currentActor != NULL) {
+				if (key == keyMap[KEYMAP_UP]) {
+					gw->moveCell(currentActor,0,0,1);
+				}
+				
+				if (key == keyMap[KEYMAP_DOWN]) {
+					gw->moveCell(currentActor,0,0,-1);
+				}
+				
+				if (key == keyMap[KEYMAP_FORWARD]) {
+					gw->moveCellRotated(currentActor,1);
+				}
+				
+				if (key == keyMap[KEYMAP_BACKWARD]) {
+					gw->moveCellRotated(currentActor,-1);
+				}
+				
+				if (key == keyMap[KEYMAP_RIGHT]) {
+					currentActor->rotate(-1,true);
+					testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,-M_PI/2.0f);
+					transformOrg(testHuman);//testHuman->applyt
+					makeDirty();
+				}
+				
+				if (key == keyMap[KEYMAP_LEFT]) {
+
+					currentActor->rotate(1,true);
+					testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,M_PI/2.0f);
+					transformOrg(testHuman);
+					makeDirty();
+				}
+			}
+			
+			
+		}		
+		else {
+			switch (key) {
+
+
+
+
+
+			
+			// case 'a':
+			// 	// selectedNode->material += 1.0f;
+			// 	// curNode = getMirroredNode(selectedNode);
+			// 	// if (curNode != NULL) {
+			// 	// 	curNode->material += 1.0f;
+			// 	// }
+			// 	// makeDirty();
+			// break;
+			// case 'z':
+			// 	// selectedNode->material -= 1.0f;
+			// 	// curNode = getMirroredNode(selectedNode);
+			// 	// if (curNode != NULL) {
+			// 	// 	curNode->material -= 1.0f;
+			// 	// }
+			// 	// makeDirty();
+				
+			// break;
+
+
+
+				case 'i':
+						isMacro = !isMacro;
+						
+						//mirrorOn = !mirrorOn;
+						cout << "isMacro: " << isMacro << "\n";
+					break;
+
+
+				// case '9':
+				// 	saveAllData();
+				// 	cout << "data saved\n";
+				// break;
+				
+				case 19: //ctrl-s
+					saveGUIValues();
+					//cout << "Use s key in web editor to save\n";
+					break;
+
+				case 15: //ctrl-o
+					//loadAllData();
+					loadGUIValues();
+
+					break;
+
+				case '[':
+					iNumSteps /= 2;
+					if (iNumSteps < 16)
+					{
+						iNumSteps = 16;
+					}
+					doTraceND("iNumSteps: ", i__s(iNumSteps));
+
+					break;
+				case ']':
+					iNumSteps *= 2;
+					if (iNumSteps > 256)
+					{
+						iNumSteps = 256;
+					}
+					doTraceND("iNumSteps: ", i__s(iNumSteps));
+
+					break;
+
+
+				case 'u':
+					
+					break;
+					
+				case 'q':
+				
+					if (currentActor == NULL) {
+						if (gw->gameActors.size() > 0) {
+							setCurrentActor(&(gw->gameActors.back()));
+							
+						}
+					}
+					else{
+						currentActor = NULL;
+					}
+				
+					// autoScroll = !autoScroll;
+					
+					// if (autoScroll) {
+					// 	scrollTimer.start();
+					// 	baseScrollPos.copyFrom(&(dynObjects[E_OBJ_CAMERA]->pos));
+					// }
+					
+					
+					break;
+
+				case 'w':
+					resetActiveNode();
+				break;
+				case 'W':
+					maxWInPages++;
+					break;
+				case 'Q':
+					maxWInPages--;
+					if (maxWInPages < 1)
+					{
+						maxWInPages = 1;
+					}
+					break;
+
+				case 27: // esc
+					std::exit(0);
+					break;
+
+				case 'b':
+				
+					bakeParamsOn = !bakeParamsOn;
+					cout << "bakeParamsOn: " << bakeParamsOn << "\n";
+					doShaderRefresh(bakeParamsOn);
+					
+					
+					
+				
+					//radiosityOn = !radiosityOn;
+					break;
+
+
+				case 'R':
+				
+					//loadGUIValues(false);
+					doShaderRefresh(bakeParamsOn);
+					loadGUI();
+					loadGUIValues();
+				break;
+				case 'r':
+					doShaderRefresh(bakeParamsOn);
+					
+
+					cout << "Shaders Refreshed\n";
+					
+					break;
+					
+				case 'j':
+					doShaderRefresh(bakeParamsOn);
+				
+					mapInvalid = true;
+					gw->initMap();
+				break;
+
+				case 'G':
+					gridOn = 1.0 - gridOn;
+					cout << "Grid On: " << gridOn << "\n";
+
+					break;
+
+
+				case 'g':
+				
+					mouseState++;
+
+					if (mouseState == E_MOUSE_STATE_LENGTH)
+					{
+						mouseState = 0;
+					}
+					
+					cout << mouseStateStrings[mouseState] << "\n";
+
+
+					wsBufferInvalid = true;
+					forceGetPD = true;
+				
+					
+				break;
+				
+				case 'l':
+
+					multiLights = !multiLights;
+					updateMultiLights();
+
+
+					forceGetPD = true;
+
+					break;
+
+				case ';':
+					doPageRender = !doPageRender;
+					cout << "doPageRender: " << doPageRender << "\n";
+				break;
+				case 'p':
+					toggleFullScreen();
+					break;
+
+				case 'o':
+					targetTimeOfDay = 1.0f-targetTimeOfDay;
+					// targetTimeOfDay += 0.5;
+					
+					// if (targetTimeOfDay > 1.0) {
+					// 	targetTimeOfDay = 0.0;
+					// }
+					
+					break;
+
+				case 'h':
+					waterOn = !waterOn;
+
+					if (MAX_LAYERS == 1)
+					{
+						waterOn = false;
+					}
+
+
+
+					cout << "waterOn " << waterOn << "\n";
+					break;
+
+				case 't':
+					testOn = !testOn;
+					
+					break;
+				// case 'o':
+				// 	//rotOn = !rotOn;
+				// 	break;
+
+				case '\t':
+				
+					if (mainGUI->isReady) {
+						if (mainMenu == NULL) {
+							
+						}
+						else {
+							if (mainMenu->visible) {
+								playSoundEvent("hideGUI");
+							}
+							
+							mainMenu->visible = !(mainMenu->visible);
+							
+							if (mainMenu->visible) {
+								playSoundEvent("showGUI");
+							}
+						}
+					}
+					
+				
+					
+					
+					break;
+
+				case ' ':
+					selectedEnts.cycleEnts();
+					
+				break;
+
+				case 'c':
+					doShaderRefresh(bakeParamsOn);
+					restartGen(false, true);
+					break;
+				
+
+				case 'x':
+					fogOn = 1.0 - fogOn;
+					cout << "fog on " << fogOn << "\n";
+					break;
+
+				case 'm':
+
+					
+					runReport();
+					
+
+					break;
+
+				
+				case 'A':
+					maxHInPages++;
+					break;
+				case 'Z':
+					maxHInPages--;
+					if (maxHInPages < 1)
+					{
+						maxHInPages = 1;
+					}
+					break;
+
+				
+
+				case 'v':
+					gw->toggleVis(selectedEnts.getSelectedEnt());
+					break;
+
+
+
+				default:
+
+					break;
+			}
+		}
+		
+		
+	}
 void Singleton::keyboardUp (unsigned char key, int _x, int _y)
         {
 		int x = _x / scaleFactor;
@@ -2777,18 +3241,23 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 		//cout << "key: " << key << "\n";
 		
 		
-		processKey(key,x,y,false);
-		switch(key) {
-			case 'a':
-			case 'z':
-			case 'e':
-			case 'd':
-			case 's':
-			case 'f':
-				return;
-			break;
+		
+		
+		
+		
+		
+		// switch(key) {
+		// 	case keyMap[KEYMAP_UP]:
+		// 	case keyMap[KEYMAP_DOWN]:
+		// 	case keyMap[KEYMAP_LEFT]:
+		// 	case keyMap[KEYMAP_RIGHT]:
+		// 	case keyMap[KEYMAP_FORWARD]:
+		// 	case keyMap[KEYMAP_BACKWARD]:
+		// 		return;
+		// 	break;
 			
-		}
+		// }
+		
 		
 		
 		
@@ -2807,323 +3276,17 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			glutLeaveMainLoop();
 		}
 
-		switch (key) {
-
-		case '1':
-			currentActor->moveCell(0,0,1);
-		break;
-		case '0':
-			currentActor->moveCell(0,0,-1);
-		break;
-		case '8':
-			currentActor->moveCellRotated(1);
-		break;
-		case '5':
-			currentActor->moveCellRotated(-1);
-		break;
-		case '4':
-			currentActor->rotate(1,true);
-			//currentActor->moveCell(-1,0,0);
-		break;
-		case '6':
-			currentActor->rotate(-1,true);
-			//currentActor->moveCell(1,0,0);
-		break;
-		
-		// case 'a':
-		// 	// selectedNode->material += 1.0f;
-		// 	// curNode = getMirroredNode(selectedNode);
-		// 	// if (curNode != NULL) {
-		// 	// 	curNode->material += 1.0f;
-		// 	// }
-		// 	// makeDirty();
-		// break;
-		// case 'z':
-		// 	// selectedNode->material -= 1.0f;
-		// 	// curNode = getMirroredNode(selectedNode);
-		// 	// if (curNode != NULL) {
-		// 	// 	curNode->material -= 1.0f;
-		// 	// }
-		// 	// makeDirty();
-			
-		// break;
+		processInput(key, false);
 
 
-
-		case 'i':
-				isMacro = !isMacro;
-				
-				//mirrorOn = !mirrorOn;
-				cout << "isMacro: " << isMacro << "\n";
-			break;
-
-
-		// case '9':
-		// 	saveAllData();
-		// 	cout << "data saved\n";
-		// break;
-		
-		case 19: //ctrl-s
-			saveGUIValues();
-			//cout << "Use s key in web editor to save\n";
-			break;
-
-		case 15: //ctrl-o
-			//loadAllData();
-			loadGUIValues();
-
-			break;
-
-		case '[':
-			iNumSteps /= 2;
-			if (iNumSteps < 16)
-			{
-				iNumSteps = 16;
-			}
-			doTraceND("iNumSteps: ", i__s(iNumSteps));
-
-			break;
-		case ']':
-			iNumSteps *= 2;
-			if (iNumSteps > 256)
-			{
-				iNumSteps = 256;
-			}
-			doTraceND("iNumSteps: ", i__s(iNumSteps));
-
-			break;
-
-
-		case 'u':
-			moveCameraToTown();
-			break;
-			
-		case 'q':
-		
-			// autoScroll = !autoScroll;
-			
-			// if (autoScroll) {
-			// 	scrollTimer.start();
-			// 	baseScrollPos.copyFrom(&(dynObjects[E_OBJ_CAMERA]->pos));
-			// }
-			
-			
-			break;
-
-		case 'w':
-			resetActiveNode();
-		break;
-		case 'W':
-			maxWInPages++;
-			break;
-		case 'Q':
-			maxWInPages--;
-			if (maxWInPages < 1)
-			{
-				maxWInPages = 1;
-			}
-			break;
-
-		case 27: // esc
-			std::exit(0);
-			break;
-
-		case 'b':
-		
-			bakeParamsOn = !bakeParamsOn;
-			cout << "bakeParamsOn: " << bakeParamsOn << "\n";
-			doShaderRefresh(bakeParamsOn);
-			
-			
-			
-		
-			//radiosityOn = !radiosityOn;
-			break;
-
-
-		case 'R':
-		
-			//loadGUIValues(false);
-			doShaderRefresh(bakeParamsOn);
-			loadGUI();
-			loadGUIValues();
-		break;
-		case 'r':
-			doShaderRefresh(bakeParamsOn);
-			
-
-			cout << "Shaders Refreshed\n";
-			
-			break;
-			
-		case 'j':
-			doShaderRefresh(bakeParamsOn);
-		
-			mapInvalid = true;
-			gw->initMap();
-		break;
-
-		case 'G':
-			gridOn = 1.0 - gridOn;
-			cout << "Grid On: " << gridOn << "\n";
-
-			break;
-
-
-		case 'g':
-		
-			mouseState++;
-
-			if (mouseState == E_MOUSE_STATE_LENGTH)
-			{
-				mouseState = 0;
-			}
-			
-			cout << mouseStateStrings[mouseState] << "\n";
-
-
-			wsBufferInvalid = true;
-			forceGetPD = true;
-		
-			
-		break;
-		
-		case 'l':
-
-			multiLights = !multiLights;
-			updateMultiLights();
-
-
-			forceGetPD = true;
-
-			break;
-
-		case ';':
-			doPageRender = !doPageRender;
-			cout << "doPageRender: " << doPageRender << "\n";
-		break;
-		case 'p':
-			toggleFullScreen();
-			break;
-
-		case 'o':
-			targetTimeOfDay = 1.0f-targetTimeOfDay;
-			// targetTimeOfDay += 0.5;
-			
-			// if (targetTimeOfDay > 1.0) {
-			// 	targetTimeOfDay = 0.0;
-			// }
-			
-			break;
-
-		case 'h':
-			waterOn = !waterOn;
-
-			if (MAX_LAYERS == 1)
-			{
-				waterOn = false;
-			}
-
-
-
-			cout << "waterOn " << waterOn << "\n";
-			break;
-
-		case 't':
-			testOn = !testOn;
-			
-			break;
-		// case 'o':
-		// 	//rotOn = !rotOn;
-		// 	break;
-
-		case '\t':
-		
-			if (mainGUI->isReady) {
-				if (mainMenu == NULL) {
-					
-				}
-				else {
-					if (mainMenu->visible) {
-						playSoundEvent("hideGUI");
-					}
-					
-					mainMenu->visible = !(mainMenu->visible);
-					
-					if (mainMenu->visible) {
-						playSoundEvent("showGUI");
-					}
-				}
-			}
-			
-		
-			
-			
-			break;
-
-		case ' ':
-			selectedEnts.cycleEnts();
-			
-		break;
-
-		case 'c':
-			doShaderRefresh(bakeParamsOn);
-			restartGen(false, true);
-			break;
-		
-
-		case 'x':
-			fogOn = 1.0 - fogOn;
-			cout << "fog on " << fogOn << "\n";
-			break;
-
-		case 'm':
-
-			
-			runReport();
-			
-
-			break;
-
-		
-		case 'A':
-			maxHInPages++;
-			break;
-		case 'Z':
-			maxHInPages--;
-			if (maxHInPages < 1)
-			{
-				maxHInPages = 1;
-			}
-			break;
-
-		
-
-		case 'v':
-			gw->toggleVis(selectedEnts.getSelectedEnt());
-			break;
-
-
-
-		default:
-
-			break;
-		}
-
-
-	}
-void Singleton::processKey (unsigned char key, int x, int y, bool isPressed)
-                                                                         {
-
-		
-		keysPressed[key] = isPressed;
 	}
 void Singleton::keyboardDown (unsigned char key, int _x, int _y)
         {
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
 		
-		processKey(key,x,y,true);
+		
+		
 		
 		
 		
@@ -3132,7 +3295,7 @@ void Singleton::keyboardDown (unsigned char key, int _x, int _y)
 		bCtrl = ctrlDown();
 		updateCS();
 
-		
+		processInput(key, true);
 	}
 void Singleton::runReport ()
                          {
@@ -3225,7 +3388,7 @@ void Singleton::mouseMove (int _x, int _y)
 		else
 		{
 
-			if (entOn||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
+			if (orgOn||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
 				getPixData(&mouseMovePD, x, y, false, false);
 			}
 
@@ -3246,7 +3409,10 @@ void Singleton::mouseMove (int _x, int _y)
 
 			//////////////
 
-			if (entOn) {
+			if (
+				orgOn &&
+				editPose
+			) {
 				updateNearestOrgNode(false, &mouseMovePD);
 			}
 			else {
@@ -3333,108 +3499,177 @@ void Singleton::worldToScreenBase (FIVector4 * sc, FIVector4 * wc)
 		sc->setFXYZ(
 			(winX/bufferDim.getFX())/((float)DEF_SCALE_FACTOR),
 			(winY/bufferDim.getFY())/((float)DEF_SCALE_FACTOR),
-			1.0f - winZ/mainCamera->clipDist[1]
+			1.0f - winZ/clipDist[1]
 		);
 		
 
 	}
+float Singleton::getShortestAngle (float begInRad, float endInRad, float amount)
+                                                                             {
+		int begInDeg = begInRad*180/M_PI;
+		int endInDeg = endInRad*180/M_PI;
+		
+		float shortest_angle = ((((endInDeg - begInDeg) % 360) + 540) % 360) - 180;
+		
+		return shortest_angle * amount * M_PI / 180.0f;
+	}
 void Singleton::handleMovement ()
-                                  {
-
+                              {
+		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
+		
+		
+		double curTime = myTimer.getElapsedTimeInMilliSec();
 		
 		
 		
-		float xrotrad = (mainCamera->rotation[0] / 180 * M_PI);
-		float yrotrad = (mainCamera->rotation[1] / 180 * M_PI);
+		
+		if (currentActor != NULL) {
+			if (!lbDown) {
+				vecToAngle(&targetLookAtVec,&tempVec1);
+				mainCamera->rotation[0] += 
+					getShortestAngle(mainCamera->rotation[0],tempVec1.getFX(),0.1f);
+			}
+		}
 		
 		
+		float xrotrad = (mainCamera->rotation[0]);
+		float yrotrad = (mainCamera->rotation[1]);
+		
+		
+		//xrotrad = xrotrad*0.5f + tempVec1.getFX()*0.5f;
+		//rotrad = xrotrad*0.5f + tempVec1.getFX()*0.5f;
 		
 		angleToVec(&lookAtVec,xrotrad,yrotrad);
 		
 		
-		
 		double curMoveTime = moveTimer.getElapsedTimeInMilliSec();
+		double timeThresh = 200.0;
 		
-		
-
 		float xmod = 0.0f;
 		float ymod = 0.0f;
 		float zmod = 0.0f;
 		
+		
+		//unsigned char curKey;
+		
+		
+		if (currentActor == NULL) {
+			if (keysPressed[keyMap[KEYMAP_UP]]) {
+				zmod += 1.0f;
+			}
 
-		if (keysPressed[keyMap[KEYMAP_UP]]) {
-			zmod += 1.0f;
-		}
+			if (keysPressed[keyMap[KEYMAP_DOWN]]) {
+				zmod -= 1.0f;
+			}
 
-		if (keysPressed[keyMap[KEYMAP_DOWN]]) {
-			zmod -= 1.0f;
-		}
+			if (keysPressed[keyMap[KEYMAP_FORWARD]]) {
 
-		if (keysPressed[keyMap[KEYMAP_FORWARD]]) {
+				
+				xmod += float(sin(xrotrad));
+				ymod += float(cos(xrotrad));
+				zmod -= float(cos(yrotrad));
+			}
+
+			if (keysPressed[keyMap[KEYMAP_BACKWARD]]) {
+				
+				xmod -= float(sin(xrotrad));
+				ymod -= float(cos(xrotrad));
+				zmod += float(cos(yrotrad));
+			}
+
+			if (keysPressed[keyMap[KEYMAP_RIGHT]]) {
+				
+				xmod += float(cos(xrotrad));
+				ymod -= float(sin(xrotrad));
+			}
+
+			if (keysPressed[keyMap[KEYMAP_LEFT]]) {
+				
+				xmod -= float(cos(xrotrad));
+				ymod += float(sin(xrotrad));
+			}
 
 			
-			xmod += float(sin(xrotrad));
-			ymod += float(cos(xrotrad));
-			zmod -= float(cos(yrotrad));
-		}
-
-		if (keysPressed[keyMap[KEYMAP_BACKWARD]]) {
 			
-			xmod -= float(sin(xrotrad));
-			ymod -= float(cos(xrotrad));
-			zmod += float(cos(yrotrad));
-		}
-
-		if (keysPressed[keyMap[KEYMAP_RIGHT]]) {
 			
-			xmod += float(cos(xrotrad));
-			ymod -= float(sin(xrotrad));
-		}
-
-		if (keysPressed[keyMap[KEYMAP_LEFT]]) {
+			curMoveAccel = (curMoveTime-lastMoveTime)*0.5;
+			curMoveSpeed += curMoveAccel;
 			
-			xmod -= float(cos(xrotrad));
-			ymod += float(sin(xrotrad));
-		}
-
-		
-		
-		
-		curMoveAccel = (curMoveTime-lastMoveTime)*0.5;
-		curMoveSpeed += curMoveAccel;
-		
-		if (curMoveSpeed > 128.0f) {
-			curMoveSpeed = 128.0f;
-		}
-		
-		lastMoveTime = curMoveTime;
-		
-		modXYZ.setFXYZ(
-			xmod*curMoveSpeed,
-			ymod*curMoveSpeed,
-			zmod*curMoveSpeed
-		);
-		moveCamera(&modXYZ);
-		
-		
-		if (
-			(xmod != 0.0f) ||
-			(ymod != 0.0f) ||
-			(zmod != 0.0f)
-		) {
-			wsBufferInvalid = true;
-		
+			if (curMoveSpeed > 128.0f) {
+				curMoveSpeed = 128.0f;
+			}
+			
+			lastMoveTime = curMoveTime;
+			
+			modXYZ.setFXYZ(
+				xmod*curMoveSpeed,
+				ymod*curMoveSpeed,
+				zmod*curMoveSpeed
+			);
+			
+			moveCamera(&modXYZ);
+			
+			
+			
+			if (
+				(xmod != 0.0f) ||
+				(ymod != 0.0f) ||
+				(zmod != 0.0f)
+			) {
+				wsBufferInvalid = true;
+			
+			}
+			else {
+				
+				curMoveAccel = 0.0f;
+				curMoveSpeed *= 0.95f;
+			}
+			
+			isMoving = (curMoveSpeed >= 1.0);
 		}
 		else {
 			
-			curMoveAccel = 0.0f;
-			curMoveSpeed *= 0.95f;
+			
+			targetCameraPos.copyFrom(&lookAtVec);
+			targetCameraPos.multXYZ( -(mainCamera->subjectDistance)*subjectZoom );
+			targetCameraPos.addXYZRef(currentActor->getVisMinInPixelsT());
+			
+			modXYZ.copyFrom(&targetCameraPos);
+			modXYZ.addXYZRef(cameraPos,-1.0f);
+			modXYZ.multXYZ(0.5f);
+			
+			moveCamera(&modXYZ);
+			
 		}
 		
-		isMoving = (curMoveSpeed >= 1.0);
 		
+	}
+bool Singleton::anyMenuVisible ()
+                              {
+		bool doProc = false;
 		
+		if ((mainGUI != NULL)) {
+			if (mainGUI->isReady) {
+				if (mainMenu != NULL) {
+					if (mainMenu->visible){
+						doProc = true;
+					}
+				}
+				if (ddMenu != NULL) {
+					if (ddMenu->visible){
+						doProc = true;
+					}
+				}
+				if (fieldMenu != NULL) {
+					if (fieldMenu->visible) {
+						doProc = true;
+					}
+				}
+				
+			}
+		}
 		
+		return doProc;
 		
 	}
 void Singleton::mouseClick (int button, int state, int _x, int _y)
@@ -3484,23 +3719,8 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		
 		hitGUI = false;
 		
-		if ((mainGUI != NULL)) {
-			if (mainGUI->isReady) {
-				if (mainMenu != NULL) {
-					if (mainMenu->visible){
-							doProc = true;
-					}
-				}
-				if (ddMenu != NULL) {
-					if (ddMenu->visible){
-							doProc = true;
-					}
-				}
-				if (doProc) {
-					hitGUI = mainGUI->testHit(button, state, guiX, guiY);
-				}
-				
-			}
+		if (anyMenuVisible()) {
+			hitGUI = mainGUI->testHit(button, state, guiX, guiY);
 		}
 		
 
@@ -3568,7 +3788,12 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 
 			if (ddMenu != NULL) {
-				if (rbClicked&&(!bCtrl)&&(mouseState == E_MOUSE_STATE_MOVE)) {
+				if (
+					rbClicked && 
+					(!bCtrl) && 
+					(mouseState == E_MOUSE_STATE_MOVE) &&
+					(!editPose)
+				) {
 					ddMenu->visible = true;
 					
 					ddMenu->floatOffset.x = (guiX);
@@ -3872,7 +4097,11 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 						
 						
 						
-						if (entOn) {
+						if (
+							orgOn &&
+							editPose
+							
+						) {
 							updateNearestOrgNode(true, &mouseDownPD);
 						}
 						
@@ -3893,8 +4122,11 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 		if ( (button == 3) || (button == 4) ) {
 			
-			myDelta += wheelDelta;
-			targetZoom = pow(2.0, myDelta);
+			if (currentActor != NULL) {
+				subjectDelta -= wheelDelta;
+				subjectZoom = pow(2.0, subjectDelta);
+			}
+			 
 
 		}
 
@@ -3914,12 +4146,13 @@ void Singleton::resetActiveNode ()
 		}
 		
 		if (curNode != NULL) {
-			curNode->rotThe = 0.0f;
-			curNode->rotPhi = 0.0f;
-			curNode->rotRho = 0.0f;
+			//curNode->rotThe = 0.0f;
+			//curNode->rotPhi = 0.0f;
+			//curNode->rotRho = 0.0f;
+			//curNode->boneLengthScale = 1.0f;
 			
-			curNode->tbnRadScale0.setFXYZ(1.0f,1.0f,1.0f);
-			curNode->tbnRadScale1.setFXYZ(1.0f,1.0f,1.0f);
+			//curNode->tbnRadScale0.setFXYZ(1.0f,1.0f,1.0f);
+			//curNode->tbnRadScale1.setFXYZ(1.0f,1.0f,1.0f);
 			makeDirty();
 		}
 	}
@@ -4337,9 +4570,101 @@ void Singleton::updateGUI ()
 		}
 		
 	}
+void Singleton::beginFieldInput (string defString, int cb)
+                                                       {
+		currentFieldString = defString;
+		
+		fieldCallback = cb;
+		
+		inputOn = true;
+		fieldMenu->visible = true;
+		
+		if (fieldText != NULL) {
+			if (currentFieldString.compare("") == 0) {
+				fieldText->setText(" ");
+			}
+			else {
+				fieldText->setText(currentFieldString);
+			}
+			
+		}
+	}
+void Singleton::processFieldInput (unsigned char key)
+                                                  {
+		
+		bool doRef = false;
+		
+		switch (key) {
+			case 13: // enter
+				endFieldInput(true);
+			break;
+			case 27: // esc
+				endFieldInput(false);
+			break;
+			case 8: // backspace
+				currentFieldString = currentFieldString.substr(0, currentFieldString.size()-1);
+				doRef = true;
+			break;
+			default:
+				currentFieldString += key;
+				doRef = true;
+			break;
+		}
+		
+		if (doRef) {
+			if (fieldText != NULL) {
+				fieldText->setText(currentFieldString);
+			}
+		}
+	}
+void Singleton::endFieldInput (bool success)
+                                         {
+		inputOn = false;
+		fieldMenu->visible = false;
+		
+		float tempVal;
+				
+		if (success) {
+			switch (fieldCallback) {
+				case E_FC_SAVEORG:
+				
+					tempVal = testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].getFZ();
+				
+					testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].setFZ(0.0f);
+					transformOrg(testHuman);
+									
+					testHuman->saveToFile(currentFieldString);
+					
+					testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].setFZ(tempVal);
+					transformOrg(testHuman);
+					
+				break;
+				case E_FC_LOADORG:
+					testHuman->loadFromFile(currentFieldString);
+					//orientRotation();
+					if (currentActor != NULL) {
+						currentActor->curRot = 1;
+					}
+					transformOrg(testHuman);
+					makeDirty();
+					
+				break;
+				
+			}
+		}
+		
+	}
+void Singleton::saveOrg ()
+                       {
+		beginFieldInput("",E_FC_SAVEORG);
+	}
+void Singleton::loadOrg ()
+                       {
+		beginFieldInput("",E_FC_LOADORG);
+	}
 void Singleton::loadGUI ()
                        {
-		
+		externalJSON.clear();
 		
 		for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
 				iterator->second.uic = NULL;
@@ -4369,12 +4694,17 @@ void Singleton::loadGUI ()
 		mapComp = getGUIComp("map.mapHolder");
 		mainMenu = getGUIComp("guiHandles.mainMenu");
 		ddMenu = getGUIComp("guiHandles.ddMenu");
+		fieldMenu = getGUIComp("guiHandles.fieldMenu");
+		fieldText = getGUIComp("fieldMenu.field");
 		
 		if (mainMenu != NULL) {
 			mainMenu->visible = false;
 		}
 		if (ddMenu != NULL) {
 			ddMenu->visible = false;
+		}
+		if (fieldMenu != NULL) {
+			fieldMenu->visible = false;
 		}
 		
 		
@@ -4658,36 +4988,40 @@ void Singleton::display ()
 		
 		float fMouseVel;
 
-		if (myWS == NULL)
-		{
-
-		}
-		else
-		{
-
-			if (myWS->dataReady)
+		#ifdef USE_POCO
+			if (myWS == NULL)
 			{
 
-				if (myWS->isJSON)
+			}
+			else
+			{
+
+				if (myWS->dataReady)
 				{
-					if ( processJSON( &(myWS->recBuffer), &lastJSONBuffer, &rootObjJS ) )
+
+					if (myWS->isJSON)
 					{
-						saveAllData();
+						if ( processJSON( &(myWS->recBuffer), &lastJSONBuffer, &rootObjJS ) )
+						{
+							saveAllData();
+
+						}
+					}
+					else
+					{
+						processB64(  &(myWS->recBuffer), &lastImageBuffer );
 
 					}
+
+					
+
+					myWS->dataReady = false;
+					myWS->isWorking = false;
 				}
-				else
-				{
-					processB64(  &(myWS->recBuffer), &lastImageBuffer );
-
-				}
-
-				
-
-				myWS->dataReady = false;
-				myWS->isWorking = false;
 			}
-		}
+		#endif
+
+		
 
 
 
@@ -4773,15 +5107,16 @@ void Singleton::setMatrices (int w, int h)
 			gluPerspective (
 				FOV,
 				(GLfloat)w / (GLfloat)h,
-				mainCamera->clipDist[0],
-				mainCamera->clipDist[1]
+				clipDist[0],
+				clipDist[1]
 			); //set the perspective (angle of sight, width, height, , depth)
 			glMatrixMode (GL_MODELVIEW); //set the matrix back to model
 			
+			//*180.0f/M_PI / 180 * M_PI
 			
 			glLoadIdentity();
-			glRotatef(mainCamera->rotation[1],1.0,0.0,0.0);
-			glRotatef(mainCamera->rotation[0],0.0,0.0,1.0);
+			glRotatef(mainCamera->rotation[1]*180.0f/M_PI,1.0,0.0,0.0);
+			glRotatef(mainCamera->rotation[0]*180.0f/M_PI,0.0,0.0,1.0);
 			glTranslated(
 				-mainCamera->unitPos[0],
 				-mainCamera->unitPos[1],

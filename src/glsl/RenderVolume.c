@@ -355,7 +355,7 @@ void main() {
 	
 	foundDif = 
 		(foundSolid&&(foundAir||foundTrans)) ||
-		(foundTrans&&(foundAir||foundSolid));
+		(foundTrans&&(foundAir)); //||foundSolid
 	
 	if (foundSolid) {
 		bestPos = bestSolid;

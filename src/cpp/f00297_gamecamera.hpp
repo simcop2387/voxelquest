@@ -11,9 +11,9 @@ public:
     float accelB;
     float lastAccelA;
     float lastAccelB;
+    float subjectDistance;
     
     GLfloat rotation[2];
-    GLfloat clipDist[2];
     
     GameCamera() {
         
@@ -25,10 +25,7 @@ public:
         
     }
     
-    void setClipDist(float n, float f) {
-        clipDist[0] = n;
-        clipDist[1] = f;
-    }
+    
     
     void testCollision(float oldX, float oldY, float oldZ, float newX, float newY, float newZ, bool skipTest) {
         float oldPos[3] = {oldX,oldY,oldZ};
@@ -99,11 +96,6 @@ public:
         accel[2] = 0.0f;
         
         setRotation(0.0f, 180.0f);
-        setClipDist(
-            0.1f,
-            //65536.0f
-            16384.0f
-        );
         setUnitPosition(200.0f,200.0f,200.0f);
         
     }

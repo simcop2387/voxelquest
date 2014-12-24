@@ -7,11 +7,6 @@ GameCamera::GameCamera ()
                  {}
 void GameCamera::focusOn (int entID)
                             {}
-void GameCamera::setClipDist (float n, float f)
-                                       {
-        clipDist[0] = n;
-        clipDist[1] = f;
-    }
 void GameCamera::testCollision (float oldX, float oldY, float oldZ, float newX, float newY, float newZ, bool skipTest)
                                                                                                               {
         float oldPos[3] = {oldX,oldY,oldZ};
@@ -82,11 +77,6 @@ void GameCamera::init ()
         accel[2] = 0.0f;
         
         setRotation(0.0f, 180.0f);
-        setClipDist(
-            0.1f,
-            //65536.0f
-            16384.0f
-        );
         setUnitPosition(200.0f,200.0f,200.0f);
         
     }

@@ -1523,124 +1523,129 @@ public:
 			//words in line
 			for (j = 0; j < wordVec[i].size(); j++) {
 				curSize = wordVec[i][j].size();
-				isIcon = (wordVec[i][j][curSize-1] == '&') && (curSize >= 2);
 				
-				//if word won't fit, increment line
-				if ( (caretPos.x + lengthOfWord(i,j,isIcon)) + curFont->maxWidth >= spaceForCharsInPixels ) {
-					//charCount = 0;
+				if (curSize > 0) {
+					isIcon = (wordVec[i][j][curSize-1] == '&') && (curSize >= 2);
 					
-					if (getDimensions) {
-						linePitchVec.push_back(caretPos.x);
-					}
-					maxCaretPos = max(caretPos.x, maxCaretPos);
-					caretPos.x = 0.0f;
-					if (isRendering) {
-						caretPos.x += getLineOffset(lineCount);
-					}
-					
-					lineCount++;
-					caretPos.y += (curFont->fontHeight*curFont->fontScale + spacing.y);
-				}
-				
-				
-				
-				
-				if (isIcon) {
-					// is an icon
-					
-					curChar = atoi(wordVec[i][j].c_str());
-					
-					if (isRendering) {
-						thisUICont.charVec.push_back(Singleton::UIQuad());
-						curQuad = &(thisUICont.charVec.back());
-						curQuad->cs = &(curFontIcons->charVals[ curChar ]);
-						curQuad->fontId = EFW_ICONS;
-						curQuad->hitBounds.xMin = caretPos.x+offsetPos.x;
-						curQuad->hitBounds.yMin = caretPos.y+offsetPos.y;
-					}
-					
-					
-					
-					caretPos.x += curFontIcons->maxWidth*curFontIcons->fontScale;
-					
-					
-					
-					// renderCharAt(
-					// 	&(curFontIcons->charVals[ curChar ]),
-					// 	curFontIcons,
-					// 	caretPos.x+offsetPos.x,
-					// 	caretPos.y+offsetPos.y
-					// );
-					
-				}
-				else {
-					// is characters
-					
-					//if word won't fit on line, limit chars
-					maxSize = maxCharsForWord(i,j);
-					
-					for (k = 0; k < maxSize; k++) {
-						curChar = wordVec[i][j][k];
-						if (isRendering) {
-							
-							thisUICont.charVec.push_back(Singleton::UIQuad());
-							curQuad = &(thisUICont.charVec.back());
-							curQuad->fontId = EFW_TEXT;
-							curQuad->cs = &(curFont->charVals[ curChar ]);
-							curQuad->hitBounds.xMin = caretPos.x+offsetPos.x;
-							curQuad->hitBounds.yMin = caretPos.y+offsetPos.y;
-							
-							// renderCharAt(
-							// 	&(curFont->charVals[ curChar ]),
-							// 	curFont,
-							// 	caretPos.x+offsetPos.x,
-							// 	caretPos.y+offsetPos.y
-							// );
-						}
-						caretPos.x += (curFont->charVals[ curChar ].consumedW*curFont->fontScale + spacing.x);
-						//charCount++;
-					}
-	
-				}
-				
-				//chars in word
-				
-				
-				
-				// render a space
-				
-				curChar = ' ';
-				if (
-					//(i == wordVec.size()-1) && 
-					(j == wordVec[i].size()-1)
-				) {
-					//end of line, no space
-				}
-				else {
-					if (caretPos.x + curFont->maxWidth*curFont->fontScale < spaceForCharsInPixels) {
+					//if word won't fit, increment line
+					if ( (caretPos.x + lengthOfWord(i,j,isIcon)) + curFont->maxWidth >= spaceForCharsInPixels ) {
+						//charCount = 0;
 						
+						if (getDimensions) {
+							linePitchVec.push_back(caretPos.x);
+						}
+						maxCaretPos = max(caretPos.x, maxCaretPos);
+						caretPos.x = 0.0f;
 						if (isRendering) {
-							
-							thisUICont.charVec.push_back(Singleton::UIQuad());
-							curQuad = &(thisUICont.charVec.back());
-							curQuad->fontId = EFW_TEXT;
-							curQuad->cs = &(curFont->charVals[ curChar ]);
-							curQuad->hitBounds.xMin = caretPos.x+offsetPos.x;
-							curQuad->hitBounds.yMin = caretPos.y+offsetPos.y;
-							
-							// renderCharAt(
-							// 	&(curFont->charVals[ curChar ]),
-							// 	curFont,
-							// 	caretPos.x+offsetPos.x,
-							// 	caretPos.y+offsetPos.y
-							// );
+							caretPos.x += getLineOffset(lineCount);
 						}
 						
-						caretPos.x += (curFont->charVals[ curChar ].consumedW*curFont->fontScale + spacing.x);
-						// /charCount++;
+						lineCount++;
+						caretPos.y += (curFont->fontHeight*curFont->fontScale + spacing.y);
+					}
+					
+					
+					
+					
+					if (isIcon) {
+						// is an icon
 						
-					} 
+						curChar = atoi(wordVec[i][j].c_str());
+						
+						if (isRendering) {
+							thisUICont.charVec.push_back(Singleton::UIQuad());
+							curQuad = &(thisUICont.charVec.back());
+							curQuad->cs = &(curFontIcons->charVals[ curChar ]);
+							curQuad->fontId = EFW_ICONS;
+							curQuad->hitBounds.xMin = caretPos.x+offsetPos.x;
+							curQuad->hitBounds.yMin = caretPos.y+offsetPos.y;
+						}
+						
+						
+						
+						caretPos.x += curFontIcons->maxWidth*curFontIcons->fontScale;
+						
+						
+						
+						// renderCharAt(
+						// 	&(curFontIcons->charVals[ curChar ]),
+						// 	curFontIcons,
+						// 	caretPos.x+offsetPos.x,
+						// 	caretPos.y+offsetPos.y
+						// );
+						
+					}
+					else {
+						// is characters
+						
+						//if word won't fit on line, limit chars
+						maxSize = maxCharsForWord(i,j);
+						
+						for (k = 0; k < maxSize; k++) {
+							curChar = wordVec[i][j][k];
+							if (isRendering) {
+								
+								thisUICont.charVec.push_back(Singleton::UIQuad());
+								curQuad = &(thisUICont.charVec.back());
+								curQuad->fontId = EFW_TEXT;
+								curQuad->cs = &(curFont->charVals[ curChar ]);
+								curQuad->hitBounds.xMin = caretPos.x+offsetPos.x;
+								curQuad->hitBounds.yMin = caretPos.y+offsetPos.y;
+								
+								// renderCharAt(
+								// 	&(curFont->charVals[ curChar ]),
+								// 	curFont,
+								// 	caretPos.x+offsetPos.x,
+								// 	caretPos.y+offsetPos.y
+								// );
+							}
+							caretPos.x += (curFont->charVals[ curChar ].consumedW*curFont->fontScale + spacing.x);
+							//charCount++;
+						}
+					
+					}
+					
+					//chars in word
+					
+					
+					
+					// render a space
+					
+					curChar = ' ';
+					if (
+						//(i == wordVec.size()-1) && 
+						(j == wordVec[i].size()-1)
+					) {
+						//end of line, no space
+					}
+					else {
+						if (caretPos.x + curFont->maxWidth*curFont->fontScale < spaceForCharsInPixels) {
+							
+							if (isRendering) {
+								
+								thisUICont.charVec.push_back(Singleton::UIQuad());
+								curQuad = &(thisUICont.charVec.back());
+								curQuad->fontId = EFW_TEXT;
+								curQuad->cs = &(curFont->charVals[ curChar ]);
+								curQuad->hitBounds.xMin = caretPos.x+offsetPos.x;
+								curQuad->hitBounds.yMin = caretPos.y+offsetPos.y;
+								
+								// renderCharAt(
+								// 	&(curFont->charVals[ curChar ]),
+								// 	curFont,
+								// 	caretPos.x+offsetPos.x,
+								// 	caretPos.y+offsetPos.y
+								// );
+							}
+							
+							caretPos.x += (curFont->charVals[ curChar ].consumedW*curFont->fontScale + spacing.x);
+							// /charCount++;
+							
+						} 
+					}
+					
 				}
+				
 				
 
 			}
