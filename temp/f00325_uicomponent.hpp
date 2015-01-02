@@ -3,8 +3,12 @@ class UIComponent {
 private:
 	UIComponent* parent;
 	float value;
+	float valueY;
+	
 	
 public:
+	
+	
 
 	Singleton* singleton;
 
@@ -15,6 +19,9 @@ public:
 	string ss;
 	string text; // resulting text
 	string label; // base label
+	string dataFile;
+	string dataRef;
+	
 	
 	int parentId;
 	int nodeId;
@@ -32,6 +39,10 @@ public:
 	bool visible;
 	
 	iVector2 align;
+
+	FIVector4 valVec;
+	FIVector4* valVecPtr;
+	FIVector4 valVecMask;
 
 
 	JSONValue* jvNodeNoTemplate;
@@ -68,6 +79,7 @@ public:
 	bool isDirty;
 	bool isFloating;
 	
+	uint flags;
 	
 	float divisions;
 	float paddingInPixels; // inner
@@ -92,7 +104,8 @@ public:
 
 
 	UIComponent() {
-		
+		valVecPtr = NULL;
+		parent = NULL;
 	}
 
 
@@ -108,32 +121,22 @@ public:
 		int _index,
 		
 		JSONValue* _jvNodeNoTemplate, // original node without template applied to it
-		
-		string _label,
-		string _uid,
-		string _ss,
+		bool _isFloating,
 		
 		
-		int _guiClass=E_GT_HOLDER,
-		float _divisions=0.0f,
-		bool _hasBackground = true,
-		bool _singleLine = true,
-		float _fillRatioX = 0.0f,
-		float _fillRatioY = 0.0f,
-		int _fillDir=E_FILL_HORIZONTAL, //fill dir of children
-		int _alignX=E_ALIGNH_LEFT,
-		int _alignY=E_ALIGNV_TOP,
-		float _value = 0.0f,
-		int _layer = 0,
-		int _hoverType = E_HT_NORMAL,
-		float _maxDimInPixelsX = 0.0f,
-		float _maxDimInPixelsY = 0.0f,
-		float _minDimInPixelsX = 0.0f,
-		float _minDimInPixelsY = 0.0f,
-		bool _isFloating = false
-
+		string* stringVals,
+		double* floatVals
+		
 	) {
-
+		
+		//valVec = NULL;
+		
+		valueY = 0.0f;
+		
+		
+		
+		
+		valVecPtr = NULL;
 		parent = NULL;
 		foundParent = false;
 		contOnStack = false;
@@ -143,19 +146,52 @@ public:
 		parentId = _parentId;
 		nodeId = _nodeId;
 		
+		flags = floatVals[E_GFT_FLAGS];
+		
+		
+		
+		if ((flags&E_GF_HUE) == 0) {
+			valVecMask.setFX(0.0f);
+		}
+		else {
+			valVecMask.setFX(1.0f);
+		}
+		if ((flags&E_GF_SAT) == 0) {
+			valVecMask.setFY(0.0f);
+		}
+		else {
+			valVecMask.setFY(1.0f);
+		}
+		if ((flags&E_GF_LIT) == 0) {
+			valVecMask.setFZ(0.0f);
+		}
+		else {
+			valVecMask.setFZ(1.0f);
+		}
+		
+		valVec.setFXYZW(
+			floatVals[E_GFT_VALUE0],
+			floatVals[E_GFT_VALUE1],
+			floatVals[E_GFT_VALUE2],
+			floatVals[E_GFT_VALUE3]
+		);
+		
 		
 		
 		jvNodeNoTemplate = _jvNodeNoTemplate;
 		
-		layer = _layer;
-		hoverType = _hoverType;
+		layer = floatVals[E_GFT_LAYER];
+		hoverType = floatVals[E_GFT_HOVERTYPE];
 		isFloating = _isFloating;
 		
-		ss = _ss;
-		label = _label;
+		ss = stringVals[E_GST_SS];
+		label = stringVals[E_GST_LABEL];
 		text = label;
+		dataRef = stringVals[E_GST_DATAREF];
+		dataFile = stringVals[E_GST_DATAFILE];
 		
-		uid = _uid;
+		
+		uid = stringVals[E_GST_UID];
 		index = _index;
 		
 		if (uid.size() > 0) {
@@ -164,14 +200,14 @@ public:
 		
 		
 		
-		maxDimInPixels.x = _maxDimInPixelsX;
-		maxDimInPixels.y = _maxDimInPixelsY;
+		maxDimInPixels.x = floatVals[E_GFT_MAXDIMX];
+		maxDimInPixels.y = floatVals[E_GFT_MAXDIMY];
 		
-		minDimInPixels.x = _minDimInPixelsX;
-		minDimInPixels.y = _minDimInPixelsY;
+		minDimInPixels.x = floatVals[E_GFT_MINDIMX];
+		minDimInPixels.y = floatVals[E_GFT_MINDIMY];
 		
 		
-		guiClass = _guiClass;
+		guiClass = floatVals[E_GFT_TYPE];
 		//guiId = _guiId;
 		
 		
@@ -181,19 +217,19 @@ public:
 		isDirty = true;
 		visible = (hoverType == E_HT_NORMAL);
 		
-		hasBackground = _hasBackground;
-		fillRatioDim.x = _fillRatioX;
-		fillRatioDim.y = _fillRatioY;
+		hasBackground = floatVals[E_GFT_HASBACKGROUND];
+		fillRatioDim.x = floatVals[E_GFT_FILLRATIOX];
+		fillRatioDim.y = floatVals[E_GFT_FILLRATIOY];
 
-		singleLine = _singleLine;
+		singleLine = floatVals[E_GFT_SINGLELINE];
 		
 		
 		curFont = singleton->fontWrappers[EFW_TEXT];
 		curFontIcons = singleton->fontWrappers[EFW_ICONS];
 		
 		wasHit = false;
-		value = _value;
-		divisions = _divisions;
+		value = floatVals[E_GFT_VALUE];
+		divisions = floatVals[E_GFT_DIVISIONS];
 
 		mouseDown = false;
 		mouseOver = false;
@@ -246,9 +282,9 @@ public:
 		hitBounds.yMax = 0.0f;
 
 
-		align.x = _alignX;
-		align.y = _alignY;
-		fillDir = _fillDir;
+		align.x = floatVals[E_GFT_ALIGNX];
+		align.y = floatVals[E_GFT_ALIGNY];
+		fillDir = floatVals[E_GFT_FILLDIR];
 		
 		spacing.x = 0.0f;
 		spacing.y = 0.0f;
@@ -291,14 +327,66 @@ public:
 	// 	}
 	// }
 	
+	
+	void updateLinkedValues() {
+		int k;
+		
+		JSONValue* jvFileBase = NULL;
+		JSONValue* jvNodeBase = NULL;
+		
+		if (
+			(dataFile.compare("") == 0) ||
+			(dataRef.compare("") == 0)	
+		) {
+			
+		}
+		else {
+			jvFileBase = singleton->fetchJSONData(dataFile);
+			singleton->getJVNodeByString(jvFileBase,&jvNodeBase,dataRef);
+			
+			if (jvNodeBase != NULL) {
+				//cout << "success\n";
+				
+				if (jvNodeBase->IsNumber()) {
+					jvNodeBase->number_value = value;
+				}
+				if (jvNodeBase->IsArray()) {
+					for (k = 0; k < jvNodeBase->array_value.size(); k++) {
+						jvNodeBase->array_value[k]->number_value = valVec[k];
+					}
+				}
+				
+			}
+		}
+	}
+	
+	void setValueIndex(int ind, float val) {
+		valVec.setIndex(ind,val);
+		updateLinkedValues();
+		
+	}
+	
 	void setValue(float _value, bool doEventDispatch = false, bool preventRefresh = false) {
 		value = _value;
+		
+		updateLinkedValues();
+		
 		if (doEventDispatch) {
 			singleton->dispatchEvent(GLUT_LEFT_BUTTON, GLUT_UP, 0, 0, this, true, preventRefresh);
 		}
 	}
 	float getValue() {
 		return value;
+	}
+	
+	void setValueY(float _value, bool doEventDispatch = false, bool preventRefresh = false) {
+		valueY = _value;
+		// if (doEventDispatch) {
+		// 	singleton->dispatchEvent(GLUT_LEFT_BUTTON, GLUT_UP, 0, 0, this, true, preventRefresh);
+		// }
+	}
+	float getValueY() {
+		return valueY;
 	}
 	
 	
@@ -461,7 +549,7 @@ public:
 		int _parentId,
 		int _nodeId,
 		string* stringVals,
-		float* floatVals,
+		double* floatVals,
 		bool _isFloating,
 		JSONValue* _jvNodeNoTemplate
 		
@@ -496,28 +584,10 @@ public:
 			childCount,
 			
 			_jvNodeNoTemplate,
+			_isFloating,
 			
-			stringVals[E_GST_LABEL],
-			stringVals[E_GST_UID],
-			stringVals[E_GST_SS],
-			
-			floatVals[E_GFT_TYPE],
-			floatVals[E_GFT_DIVISIONS],
-			floatVals[E_GFT_HASBACKGROUND],
-			floatVals[E_GFT_SINGLELINE],
-			floatVals[E_GFT_FILLRATIOX],
-			floatVals[E_GFT_FILLRATIOY],
-			floatVals[E_GFT_FILLDIR],
-			floatVals[E_GFT_ALIGNX],
-			floatVals[E_GFT_ALIGNY],
-			floatVals[E_GFT_VALUE],
-			floatVals[E_GFT_LAYER],
-			floatVals[E_GFT_HOVERTYPE],
-			floatVals[E_GFT_MAXDIMX],
-			floatVals[E_GFT_MAXDIMY],
-			floatVals[E_GFT_MINDIMX],
-			floatVals[E_GFT_MINDIMY],
-			_isFloating
+			stringVals,
+			floatVals
 		);
 		
 		//return curComp;
@@ -778,6 +848,23 @@ public:
 		}
 	}
 	
+	
+	void alignToComp(UIComponent* myComp) {
+		
+		UIComponent* myComp2;
+		
+		if (myComp->fillDir == 0) {
+			myComp2 = myComp->getParent();
+		}
+		else {
+			myComp2 = myComp;
+		}
+		
+		floatOffset.x = myComp2->totOffset.x + myComp2->originPos.x + myComp2->resultDimInPixels.x;
+		floatOffset.y = myComp2->totOffset.y + myComp2->originPos.y;
+	}
+	
+	
 	void layout() {
 		
 		int i;
@@ -814,6 +901,7 @@ public:
 		
 		float hoverBuffer = 4.0f;
 		float tempValue;
+		float tempValueY;
 		
 		UIComponent* curParent = getParent();
 		
@@ -901,8 +989,7 @@ public:
 			break;
 			case E_HT_ONSELECTED:
 				//curParent->floatOffset.x + 
-				floatOffset.x = curParent->totOffset.x + curParent->originPos.x + curParent->resultDimInPixels.x;
-				floatOffset.y = curParent->totOffset.y + curParent->originPos.y;
+				alignToComp(curParent);
 				visible = (curParent->value == 1.0f)&&(curParent->visible);
 			break;
 						
@@ -936,6 +1023,9 @@ public:
 		float hbxMin = hitBounds.xMin + totOffset.x;
 		float hbxMax = hitBounds.xMax + totOffset.x;
 		
+		float hbyMin = hitBounds.yMin + totOffset.y;
+		float hbyMax = hitBounds.yMax + totOffset.y;
+		
 		if (wasHit&&(guiClass == E_GT_SLIDER)) {
 			
 			if (divisions == 1.0f) {
@@ -943,15 +1033,23 @@ public:
 			}
 			else {
 				tempValue = clampfZO((x-hbxMin)/(hbxMax-hbxMin));
+				tempValueY = clampfZO(1.0f - (y-hbyMin)/(hbyMax-hbyMin));
+				
 				if (divisions == 0.0f) {
 					setValue(
 						tempValue
+					);
+					setValueY(
+						tempValueY	
 					);
 				}
 				else {
 					
 					setValue(
 						floor(tempValue*divisions)/divisions
+					);
+					setValueY(
+						floor(tempValueY*divisions)/divisions
 					);
 				}
 				
@@ -1126,8 +1224,17 @@ public:
 		
 		
 		UIComponent* curParent = getParent();
+		UIComponent* curParent2 = NULL;
+		
+		UIComponent* selParent = NULL;
+		
+		if (curParent != NULL) {
+			curParent2 = curParent->getParent();
+		}
+		
 		
 		int i;
+		int j;
 		bool hitChild = false;
 		float lastValue = value;
 		float tempValue;
@@ -1197,6 +1304,9 @@ public:
 						case E_GT_BUTTON:
 							
 						break;
+						case E_GT_COLPICKER:
+							
+						break;
 						case E_GT_RADIO:
 							
 							tempValue = 1.0f-value;
@@ -1205,11 +1315,32 @@ public:
 								
 							}
 							else {
-								for (i = 0; i < curParent->children.size(); i++) {
-									if (curParent->children[i].guiClass == E_GT_RADIO) {
-										curParent->children[i].setValue(0.0f);
+								
+								if (curParent2 == NULL) {
+									for (i = 0; i < curParent->children.size(); i++) {
+										if (curParent->children[i].guiClass == E_GT_RADIO) {
+											curParent->children[i].setValue(0.0f);
+										}
 									}
 								}
+								else {
+									
+									for (j = 0; j < curParent2->children.size(); j++) {
+										selParent = &(curParent2->children[j]);
+										
+										for (i = 0; i < selParent->children.size(); i++) {
+											if (selParent->children[i].guiClass == E_GT_RADIO) {
+												selParent->children[i].setValue(0.0f);
+											}
+										}
+									}
+									
+									
+									
+									
+								}
+								
+								
 							}
 							
 							setValue(tempValue);

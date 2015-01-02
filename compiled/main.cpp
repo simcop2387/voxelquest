@@ -150,6 +150,11 @@ bool TRACE_ON = false;
 
 
 
+
+// note - check deprecated source folder
+// make sure to put it back in source
+// if using poco or web services
+
 #ifdef USE_POCO
 
 #include "Poco/Net/HTTPServer.h"
@@ -309,6 +314,8 @@ struct membuf : std::streambuf
 
 
 bool PROG_ACTIVE = true;
+
+string SPACE_BUFFER[] = {" ", "  ", "   ", "    ", "     ", "      ", "       ", "        ", "         ", "          ", "           ", "            ", "             ", "              ", "               ", "                ", "                 ", "                  ", "                   ", "                    ", "                     ", "                      ", "                       ", "                        ", "                         ", "                          ", "                           ", "                            ", "                             ", "                              ", "                               ", "                                ", "                                 ", "                                  ", "                                   ", "                                    ", "                                     ", "                                      ", "                                       ", "                                        ", "                                         ", "                                          ", "                                           ", "                                            ", "                                             ", "                                              ", "                                               ", "                                                ", "                                                 ", "                                                  ", "                                                   ", "                                                    ", "                                                     ", "                                                      ", "                                                       ", "                                                        ", "                                                         ", "                                                          ", "                                                           ", "                                                            ", "                                                             ", "                                                              ", "                                                               ", "                                                                ", "                                                                 ", "                                                                  ", "                                                                   ", "                                                                    ", "                                                                     ", "                                                                      ", "                                                                       ", "                                                                        ", "                                                                         ", "                                                                          ", "                                                                           ", "                                                                            ", "                                                                             ", "                                                                              ", "                                                                               ", "                                                                                ", "                                                                                 ", "                                                                                  ", "                                                                                   ", "                                                                                    ", "                                                                                     ", "                                                                                      ", "                                                                                       ", "                                                                                        ", "                                                                                         ", "                                                                                          ", "                                                                                           ", "                                                                                            ", "                                                                                             ", "                                                                                              ", "                                                                                               ", "                                                                                                ", "                                                                                                 ", "                                                                                                  ", "                                                                                                   ", "                                                                                                    "};
 
 #define glError() { \
 		GLenum err = glGetError(); \
@@ -1213,6 +1220,8 @@ enum GUI_TYPES {
 	E_GT_RADIO,   // 3
 	E_GT_MENUBAR, // 4
 	E_GT_DRAGPAD, // 5
+	E_GT_COLPICKER, // 6
+	E_GT_SLIDER2, // 7
 	E_GT_LENGTH
 };
 
@@ -1220,13 +1229,17 @@ enum GUI_STRING_TYPES {
 	E_GST_LABEL,
 	E_GST_UID,
 	E_GST_SS,
+	E_GST_DATAREF,
+	E_GST_DATAFILE,
 	E_GST_LENGTH
 };
 
 char* guiStringTypes[] = {
 	"label",
 	"uid",
-	"ss"
+	"ss",
+	"dataRef",
+	"dataFile"
 };
 
 enum E_HOVER_TYPES {
@@ -1255,6 +1268,11 @@ enum GUI_FLOAT_TYPES {
 	E_GFT_MAXDIMY,
 	E_GFT_MINDIMX,
 	E_GFT_MINDIMY,
+	E_GFT_FLAGS,
+	E_GFT_VALUE0,
+	E_GFT_VALUE1,
+	E_GFT_VALUE2,
+	E_GFT_VALUE3,
 	E_GFT_LENGTH
 };
 char* guiFloatTypes[] = {
@@ -1273,12 +1291,24 @@ char* guiFloatTypes[] = {
 	"maxDimX",
 	"maxDimY",
 	"minDimX",
-	"minDimY"
+	"minDimY",
+	"flags",
+	"value0",
+	"value1",
+	"value2",
+	"value3"
+	
 	
 };
 
+enum E_GUI_FLAGS {
+	E_GF_HUE = 1,
+	E_GF_SAT = 2,
+	E_GF_LIT = 4
+};
+
 string guiStringValues[E_GST_LENGTH];
-float guiFloatValues[E_GFT_LENGTH];
+double guiFloatValues[E_GFT_LENGTH];
 
 enum E_DIR_SPECS {
 	E_DIR_X,
@@ -3605,6 +3635,15 @@ float mixf(float v1, float v2, float lerpVal) {
 	return v1*(1.0f-lerpVal) + v2*lerpVal;
 }
 
+float mixb(float v1, float v2, bool lerpVal) {
+	if (lerpVal) {
+		return v2;
+	}
+	else {
+		return v1;
+	}
+}
+
 
 
 
@@ -3733,6 +3772,24 @@ public:
 		return -1.0f;
 	}
 
+	void setIndex(int ind, float val) {
+		
+		switch (ind) {
+			case 0:
+				fv4.x = val;
+			break;
+			case 1:
+				fv4.y = val;
+			break;
+			case 2:
+				fv4.z = val;
+			break;
+			case 3:
+				fv4.w = val;
+			break;
+		}
+		
+	}
 
 
 	void setIXYZW(int x, int y, int z, int w) {
@@ -5648,7 +5705,7 @@ class JSONValue
 		bool HasChild(string name) const;
 		JSONValue *Child(string name);
 
-		std::string Stringify() const;
+		std::string Stringify(int curLev) const;
 
 		static JSONValue *Parse(const char **data);
 
@@ -6382,7 +6439,7 @@ JSONValue* JSONValue::Child(string name)
  *
  * @return std::string Returns the JSON string
  */
-std::string JSONValue::Stringify() const
+std::string JSONValue::Stringify(int curLev = 0) const
 {
 	std::string ret_string;
 	
@@ -6416,35 +6473,45 @@ std::string JSONValue::Stringify() const
 		
 		case JSONType_Array:
 		{
-			ret_string = "[";
+			ret_string = "[\n";
 			JSONArray::const_iterator iter = array_value.begin();
 			while (iter != array_value.end())
 			{
-				ret_string += (*iter)->Stringify();
+				ret_string += SPACE_BUFFER[curLev];
+				ret_string += (*iter)->Stringify(curLev + 1);
 				
 				// Not at the end - add a separator
-				if (++iter != array_value.end())
-					ret_string += ",";
+				if (++iter != array_value.end()) {
+					ret_string += ",\n";
+				}
+				else {
+					ret_string += "\n";
+				}
 			}
-			ret_string += "]";
+			ret_string += SPACE_BUFFER[curLev]+"]";
 			break;
 		}
 		
 		case JSONType_Object:
 		{
-			ret_string = "{";
+			ret_string = "{\n";
 			JSONObject::const_iterator iter = object_value.begin();
 			while (iter != object_value.end())
 			{
+				ret_string += SPACE_BUFFER[curLev];
 				ret_string += StringifyString((*iter).first);
 				ret_string += ":";
-				ret_string += (*iter).second->Stringify();
+				ret_string += (*iter).second->Stringify(curLev+1);
 				
 				// Not at the end - add a separator
-				if (++iter != object_value.end())
-					ret_string += ",";
+				if (++iter != object_value.end()) {
+					ret_string += ",\n";
+				}
+				else {
+					ret_string += "\n";
+				}
 			}
-			ret_string += "}";
+			ret_string += SPACE_BUFFER[curLev]+"}";
 			break;
 		}
 	}
@@ -16013,6 +16080,7 @@ public:
   };
   CompareStruct compareStruct;
   typedef map <string, UICStruct>::iterator itUICStruct;
+  typedef map <string, JSONStruct>::iterator itJSStruct;
   GameCamera * mainCamera;
   bool (keysPressed) [MAX_KEYS];
   double (keyDownTimes) [MAX_KEYS];
@@ -16281,6 +16349,7 @@ public:
   string guiSaveLoc;
   PoolManager * gpuPool;
   PoolManager * entityPool;
+  vector <string> splitStrings;
   vector <string> shaderStrings;
   vector <string> shaderTextureIds;
   map <string, Shader*> shaderMap;
@@ -16314,9 +16383,11 @@ public:
   TerTexture (terTextures) [MAX_TER_TEX];
   GameOrg * testHuman;
   GameGUI * mainGUI;
+  UIComponent * lastPickerItem;
   UIComponent * mapComp;
   UIComponent * mainMenu;
   UIComponent * ddMenu;
+  UIComponent * pickerMenu;
   UIComponent * fieldMenu;
   UIComponent * fieldText;
   FontWrapper * (fontWrappers) [EFW_LENGTH];
@@ -16429,6 +16500,8 @@ public:
   void updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS);
   void findNearestOrgNode (GameOrgNode * curNode, FIVector4 * mousePosWS);
   void processB64 (charArr * sourceBuffer, charArr * saveBuffer);
+  void getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit);
+  JSONValue * fetchJSONData (string dataFile);
   bool processJSONFromString (string * sourceBuffer, JSONValue * * destObj);
   bool processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONValue * * destObj);
   bool loadJSON (string path, JSONValue * * destObj);
@@ -16437,6 +16510,7 @@ public:
   UIComponent * getGUIComp (string key);
   void setGUIValue (string key, float floatValue, bool dispatchEvent = false, bool preventRefresh = false);
   void loadGUIValues (bool applyValues = false);
+  void saveExternalJSON ();
   void saveGUIValues ();
   void updateGUI ();
   void beginFieldInput (string defString, int cb);
@@ -16617,6 +16691,7 @@ class UIComponent
 private:
   UIComponent * parent;
   float value;
+  float valueY;
 public:
   Singleton * singleton;
   Singleton::UIQuad thisUIQuad;
@@ -16625,6 +16700,8 @@ public:
   string ss;
   string text;
   string label;
+  string dataFile;
+  string dataRef;
   int parentId;
   int nodeId;
   int index;
@@ -16636,6 +16713,9 @@ public:
   bool foundParent;
   bool visible;
   iVector2 align;
+  FIVector4 valVec;
+  FIVector4 * valVecPtr;
+  FIVector4 valVecMask;
   JSONValue * jvNodeNoTemplate;
   fVector2 scrollMaskY;
   fVector2 dragStart;
@@ -16665,6 +16745,7 @@ public:
   bool wasHit;
   bool isDirty;
   bool isFloating;
+  uint flags;
   float divisions;
   float paddingInPixels;
   float borderInPixels;
@@ -16681,22 +16762,27 @@ public:
   UIComponent * curComp;
   UIComponent * baseComp;
   UIComponent ();
-  void init (Singleton * _singleton, UIComponent * _baseComp, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, string _label, string _uid, string _ss, int _guiClass = E_GT_HOLDER, float _divisions = 0.0f, bool _hasBackground = true, bool _singleLine = true, float _fillRatioX = 0.0f, float _fillRatioY = 0.0f, int _fillDir = E_FILL_HORIZONTAL, int _alignX = E_ALIGNH_LEFT, int _alignY = E_ALIGNV_TOP, float _value = 0.0f, int _layer = 0, int _hoverType = E_HT_NORMAL, float _maxDimInPixelsX = 0.0f, float _maxDimInPixelsY = 0.0f, float _minDimInPixelsX = 0.0f, float _minDimInPixelsY = 0.0f, bool _isFloating = false);
+  void init (Singleton * _singleton, UIComponent * _baseComp, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, bool _isFloating, string * stringVals, double * floatVals);
   float getDimYClamped (float val);
   float getResultDimYClamped ();
+  void updateLinkedValues ();
+  void setValueIndex (int ind, float val);
   void setValue (float _value, bool doEventDispatch = false, bool preventRefresh = false);
   float getValue ();
+  void setValueY (float _value, bool doEventDispatch = false, bool preventRefresh = false);
+  float getValueY ();
   UIComponent * getParent ();
   UIComponent * findNodeByString (string _uid);
   UIComponent * findNodeById (int id);
   float getMinWidth ();
   float getMinHeight ();
-  UIComponent * addChild (int _parentId, int _nodeId, string * stringVals, float * floatVals, bool _isFloating, JSONValue * _jvNodeNoTemplate);
+  UIComponent * addChild (int _parentId, int _nodeId, string * stringVals, double * floatVals, bool _isFloating, JSONValue * _jvNodeNoTemplate);
   void setOrigPos ();
   void applyHeight ();
   void applyWidth ();
   void gatherDirty (vector <UIComponent*> * dirtyVec);
   void clearDirty ();
+  void alignToComp (UIComponent * myComp);
   void layout ();
   void updateOffset ();
   void updateValue (float x, float y);
@@ -16738,9 +16824,10 @@ public:
   int nodeCount;
   vector <UIComponent*> dirtyVec;
   string (tempStrings) [10];
+  string (stringVals) [E_GST_LENGTH];
+  double (floatVals) [E_GFT_LENGTH];
   GameGUI ();
   void init (Singleton * _singleton);
-  void getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit);
   UIComponent * findNodeById (int _id);
   bool compChildStr (string childStr);
   JSONValue * findNearestKey (JSONValue * jv, string key);
@@ -17487,6 +17574,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		int i;
 		int j;
 		
+		
+		// todo: mem leak, should delete?
 		internalJSON["shaderParams"].jv = NULL;
 		
 		for (i = 0; i < EML_LENGTH; i++) {
@@ -17532,10 +17621,13 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		guiLock = false;
 		guiDirty = true;
 		
+		
 		currentActor = NULL;
+		lastPickerItem = NULL;
 		mapComp = NULL;
 		mainMenu = NULL;
 		ddMenu = NULL;
+		pickerMenu = NULL;
 		fieldMenu = NULL;
 		fieldText = NULL;
 		selectedEnt = NULL;
@@ -18578,6 +18670,8 @@ void Singleton::setCurrentActor (GameEnt * ge)
 void Singleton::dispatchEvent (int button, int state, float x, float y, UIComponent * comp, bool automated, bool preventRefresh)
           {
 		
+		UIComponent* tempComp;
+		
 		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 		
 		changingGenVal = false;
@@ -18585,6 +18679,9 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		// if (guiLock) {
 		// 	return;
 		// }
+		
+		
+		bool hitPicker = false;
 		
 		float wheelDelta = 0.0f;
 		
@@ -18596,12 +18693,17 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		bool mouseUpEvent = false;
 		
 		float curValue = comp->getValue();
+		float curValueY = comp->getValueY();
 		
 		draggingMap = false;
+		
+		
+		
 		
 		switch (comp->guiClass) {
 			case E_GT_SLIDER:
 			case E_GT_BUTTON:
+			case E_GT_COLPICKER:
 			case E_GT_RADIO:
 			case E_GT_DRAGPAD:
 			
@@ -18683,7 +18785,6 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 					
 				}
 			
-				
 			break;	
 		}
 		
@@ -18694,6 +18795,32 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		
 		
 		if (mouseUpEvent) {
+			
+			if (comp->guiClass == E_GT_COLPICKER) {
+				if (pickerMenu != NULL) {
+					lastPickerItem = comp;
+					
+					
+					
+					tempComp = &(pickerMenu->children[0].children[0]);
+					
+					for (i = 0; i < tempComp->children.size(); i++) {
+						tempComp->children[i].valVecPtr = &(comp->valVec);
+					}
+					
+					
+					hitPicker = true;
+					//children[0].children[0].bindValues(comp);
+					
+					pickerMenu->alignToComp(comp->getParent());
+					
+					// pickerMenu->floatOffset.x = (guiX);
+					// pickerMenu->floatOffset.y = (guiY);
+					
+				}
+			}
+			
+			
 			if (comp->uid.compare("placeEntity.actor") == 0) {
 				gw->gameActors.push_back(baseEnt);
 				tempVec1.setIXYZ(2,2,3);
@@ -18761,6 +18888,82 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		}
 		else if (comp->uid.compare("$options.graphics.clipDist") == 0) {
 			clipDist[1] = curValue*65536.0f;
+		}
+		
+		if (
+			(lastPickerItem != NULL) &&
+			(
+				(button == GLUT_LEFT_BUTTON) ||
+				(state == GLUT_CHANGING)	
+			)
+		) {
+			
+			tempComp = &(pickerMenu->children[0].children[0]);
+			
+			for (i = 0; i < tempComp->children.size(); i++) {
+				
+				switch((tempComp->children[i].flags)&(E_GF_HUE|E_GF_SAT|E_GF_LIT)) {
+					case 0: // nothing
+					
+					break;
+					case 1: // hue - x
+						tempComp->children[i].setValue(lastPickerItem->valVec[0]);
+					break;
+					case 2: // sat - y
+						tempComp->children[i].setValue(lastPickerItem->valVec[1]);
+					break;
+					case 3: // hue/sat - x/y
+						tempComp->children[i].setValue(lastPickerItem->valVec[0]);
+						tempComp->children[i].setValueY(lastPickerItem->valVec[1]);
+					break;
+					
+					case 4: // lit - z
+						tempComp->children[i].setValue(lastPickerItem->valVec[2]);
+					break;
+					case 5: // hue/lit - x/z
+						tempComp->children[i].setValue(lastPickerItem->valVec[0]);
+						tempComp->children[i].setValueY(lastPickerItem->valVec[2]);
+					break;
+					case 6: // sat/lit - y/z
+						tempComp->children[i].setValue(lastPickerItem->valVec[1]);
+						tempComp->children[i].setValueY(lastPickerItem->valVec[2]);
+					break;
+					case 7: // hue/sat/lit - x/y/z
+					
+					break;
+				}
+				
+			}
+			
+			if (comp->uid.compare("picker.hue") == 0) {
+				lastPickerItem->setValueIndex(0,curValue);
+				hitPicker = true;
+			}
+			else if (comp->uid.compare("picker.saturation") == 0) {
+				lastPickerItem->setValueIndex(1,curValue);
+				hitPicker = true;
+			}
+			else if (comp->uid.compare("picker.lightness") == 0) {
+				lastPickerItem->setValueIndex(2,curValue);
+				hitPicker = true;
+			}
+			else if (comp->uid.compare("picker.huelit") == 0) {
+				lastPickerItem->setValueIndex(0,curValue);
+				lastPickerItem->setValueIndex(2,curValueY);
+				hitPicker = true;
+			}
+			else if (comp->uid.compare("picker.satlit") == 0) {
+				lastPickerItem->setValueIndex(1,curValue);
+				lastPickerItem->setValueIndex(2,curValueY);
+				hitPicker = true;
+			}
+		}
+		
+		
+		
+		
+		if (mouseUpEvent) {
+			pickerMenu->visible = hitPicker;
 		}
 		
 		
@@ -20430,6 +20633,7 @@ void Singleton::processInput (unsigned char key, bool keyDown)
 				// break;
 				
 				case 19: //ctrl-s
+					saveExternalJSON();
 					saveGUIValues();
 					//cout << "Use s key in web editor to save\n";
 					break;
@@ -20501,7 +20705,11 @@ void Singleton::processInput (unsigned char key, bool keyDown)
 					break;
 
 				case 27: // esc
-					std::exit(0);
+					//std::exit(0);
+					
+					ddMenu->visible = false;
+					pickerMenu->visible = false;
+					
 					break;
 
 				case 'b':
@@ -21116,6 +21324,11 @@ bool Singleton::anyMenuVisible ()
 						doProc = true;
 					}
 				}
+				if (pickerMenu != NULL) {
+					if (pickerMenu->visible){
+						doProc = true;
+					}
+				}
 				if (fieldMenu != NULL) {
 					if (fieldMenu->visible) {
 						doProc = true;
@@ -21181,6 +21394,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		
 
 		if (hitGUI) {
+			
 			return;
 		}
 		
@@ -21284,6 +21498,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 				else {
 					if (noTravel) {
 						ddMenu->visible = false;
+						pickerMenu->visible = false;
 						markerFound = false;
 					}
 					
@@ -21707,6 +21922,41 @@ void Singleton::processB64 (charArr * sourceBuffer, charArr * saveBuffer)
 		fbos->copyFromMem(0, resultImage);
 
 	}
+void Singleton::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit)
+                                                                                                  {
+		//cout << "getJVNodeByString(" << stringToSplit <<  ")\n";
+		
+		int i;
+		*resultNode = rootNode;
+		
+		splitStrings.clear();
+		splitStrings = split(stringToSplit, '.');
+		
+		for (i = 0; i < splitStrings.size(); i++) {
+			//cout << splitStrings[i] << "\n";
+			
+			if ( (*resultNode)->HasChild(splitStrings[i]) ) {
+				*resultNode = (*resultNode)->Child(splitStrings[i]);
+			}
+			else {
+				*resultNode = NULL;
+				return;
+			}
+			
+		}
+		
+	}
+JSONValue * Singleton::fetchJSONData (string dataFile)
+                                                  {
+		if (externalJSON.find( dataFile ) == externalJSON.end()) {
+			cout << "load jv data "  + dataFile << "\n";
+			loadJSON(
+				"..\\data\\" + dataFile,
+				&((externalJSON[dataFile]).jv)
+			);
+		}
+		return (externalJSON[dataFile]).jv;
+	}
 bool Singleton::processJSONFromString (string * sourceBuffer, JSONValue * * destObj)
           {
 		if (*destObj != NULL)
@@ -21927,10 +22177,14 @@ void Singleton::loadGUIValues (bool applyValues)
 		UICStruct* curComp;
 		
 		string loadBuf;
-		vector<string> splitStrings;
+		//vector<string> splitStrings;
+		
+		
 		if ( loadFile(guiSaveLoc, &dest) )
 		{
 			loadBuf = string(dest.data);
+			
+			splitStrings.clear();
 			splitStrings = split(loadBuf, '^');
 			
 			for (i = 0; i < splitStrings.size(); i += 2) {
@@ -21964,6 +22218,29 @@ void Singleton::loadGUIValues (bool applyValues)
 		}
 		
 		cout << "End Loading GUI Values\n";
+	}
+void Singleton::saveExternalJSON ()
+                                {
+		
+		cout << "Saving External JSON Values\n";
+		
+		
+		for(itJSStruct iterator = externalJSON.begin(); iterator != externalJSON.end(); iterator++) {
+			
+			if (iterator->second.jv != NULL) {
+				saveFileString(
+					"..\\data\\" + iterator->first,
+					&(iterator->second.jv->Stringify())
+				);
+			}
+			
+		    // iterator->first = key
+		    // iterator->second = value
+		}
+		
+		
+		
+		cout << "End Saving External JSON Values\n";
 	}
 void Singleton::saveGUIValues ()
                              {
@@ -22079,7 +22356,7 @@ void Singleton::endFieldInput (bool success)
 		fieldMenu->visible = false;
 		
 		float tempVal;
-				
+		
 		if (success) {
 			switch (fieldCallback) {
 				case E_FC_SAVEORG:
@@ -22138,11 +22415,9 @@ void Singleton::loadGUI ()
 			);
 		
 			for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
-					
-					
-					if (iterator->second.nodeId != -1) {
-						iterator->second.uic = mainGUI->findNodeById(iterator->second.nodeId);
-					}
+				if (iterator->second.nodeId != -1) {
+					iterator->second.uic = mainGUI->findNodeById(iterator->second.nodeId);
+				}
 			}
 		
 		}
@@ -22150,9 +22425,13 @@ void Singleton::loadGUI ()
 		mapComp = getGUIComp("map.mapHolder");
 		mainMenu = getGUIComp("guiHandles.mainMenu");
 		ddMenu = getGUIComp("guiHandles.ddMenu");
+		pickerMenu = getGUIComp("guiHandles.pickerMenu");
 		fieldMenu = getGUIComp("guiHandles.fieldMenu");
 		fieldText = getGUIComp("fieldMenu.field");
 		
+		if (pickerMenu != NULL) {
+			pickerMenu->visible = false;
+		}
 		if (mainMenu != NULL) {
 			mainMenu->visible = false;
 		}
@@ -23627,11 +23906,20 @@ void FontWrapper::init (Singleton * _singleton, string fontName, bool _isIcons, 
 #define LZZ_INLINE inline
 UIComponent::UIComponent ()
                       {
-		
+		valVecPtr = NULL;
+		parent = NULL;
 	}
-void UIComponent::init (Singleton * _singleton, UIComponent * _baseComp, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, string _label, string _uid, string _ss, int _guiClass, float _divisions, bool _hasBackground, bool _singleLine, float _fillRatioX, float _fillRatioY, int _fillDir, int _alignX, int _alignY, float _value, int _layer, int _hoverType, float _maxDimInPixelsX, float _maxDimInPixelsY, float _minDimInPixelsX, float _minDimInPixelsY, bool _isFloating)
+void UIComponent::init (Singleton * _singleton, UIComponent * _baseComp, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, bool _isFloating, string * stringVals, double * floatVals)
           {
-
+		
+		//valVec = NULL;
+		
+		valueY = 0.0f;
+		
+		
+		
+		
+		valVecPtr = NULL;
 		parent = NULL;
 		foundParent = false;
 		contOnStack = false;
@@ -23641,19 +23929,52 @@ void UIComponent::init (Singleton * _singleton, UIComponent * _baseComp, int _pa
 		parentId = _parentId;
 		nodeId = _nodeId;
 		
+		flags = floatVals[E_GFT_FLAGS];
+		
+		
+		
+		if ((flags&E_GF_HUE) == 0) {
+			valVecMask.setFX(0.0f);
+		}
+		else {
+			valVecMask.setFX(1.0f);
+		}
+		if ((flags&E_GF_SAT) == 0) {
+			valVecMask.setFY(0.0f);
+		}
+		else {
+			valVecMask.setFY(1.0f);
+		}
+		if ((flags&E_GF_LIT) == 0) {
+			valVecMask.setFZ(0.0f);
+		}
+		else {
+			valVecMask.setFZ(1.0f);
+		}
+		
+		valVec.setFXYZW(
+			floatVals[E_GFT_VALUE0],
+			floatVals[E_GFT_VALUE1],
+			floatVals[E_GFT_VALUE2],
+			floatVals[E_GFT_VALUE3]
+		);
+		
 		
 		
 		jvNodeNoTemplate = _jvNodeNoTemplate;
 		
-		layer = _layer;
-		hoverType = _hoverType;
+		layer = floatVals[E_GFT_LAYER];
+		hoverType = floatVals[E_GFT_HOVERTYPE];
 		isFloating = _isFloating;
 		
-		ss = _ss;
-		label = _label;
+		ss = stringVals[E_GST_SS];
+		label = stringVals[E_GST_LABEL];
 		text = label;
+		dataRef = stringVals[E_GST_DATAREF];
+		dataFile = stringVals[E_GST_DATAFILE];
 		
-		uid = _uid;
+		
+		uid = stringVals[E_GST_UID];
 		index = _index;
 		
 		if (uid.size() > 0) {
@@ -23662,14 +23983,14 @@ void UIComponent::init (Singleton * _singleton, UIComponent * _baseComp, int _pa
 		
 		
 		
-		maxDimInPixels.x = _maxDimInPixelsX;
-		maxDimInPixels.y = _maxDimInPixelsY;
+		maxDimInPixels.x = floatVals[E_GFT_MAXDIMX];
+		maxDimInPixels.y = floatVals[E_GFT_MAXDIMY];
 		
-		minDimInPixels.x = _minDimInPixelsX;
-		minDimInPixels.y = _minDimInPixelsY;
+		minDimInPixels.x = floatVals[E_GFT_MINDIMX];
+		minDimInPixels.y = floatVals[E_GFT_MINDIMY];
 		
 		
-		guiClass = _guiClass;
+		guiClass = floatVals[E_GFT_TYPE];
 		//guiId = _guiId;
 		
 		
@@ -23679,19 +24000,19 @@ void UIComponent::init (Singleton * _singleton, UIComponent * _baseComp, int _pa
 		isDirty = true;
 		visible = (hoverType == E_HT_NORMAL);
 		
-		hasBackground = _hasBackground;
-		fillRatioDim.x = _fillRatioX;
-		fillRatioDim.y = _fillRatioY;
+		hasBackground = floatVals[E_GFT_HASBACKGROUND];
+		fillRatioDim.x = floatVals[E_GFT_FILLRATIOX];
+		fillRatioDim.y = floatVals[E_GFT_FILLRATIOY];
 
-		singleLine = _singleLine;
+		singleLine = floatVals[E_GFT_SINGLELINE];
 		
 		
 		curFont = singleton->fontWrappers[EFW_TEXT];
 		curFontIcons = singleton->fontWrappers[EFW_ICONS];
 		
 		wasHit = false;
-		value = _value;
-		divisions = _divisions;
+		value = floatVals[E_GFT_VALUE];
+		divisions = floatVals[E_GFT_DIVISIONS];
 
 		mouseDown = false;
 		mouseOver = false;
@@ -23744,9 +24065,9 @@ void UIComponent::init (Singleton * _singleton, UIComponent * _baseComp, int _pa
 		hitBounds.yMax = 0.0f;
 
 
-		align.x = _alignX;
-		align.y = _alignY;
-		fillDir = _fillDir;
+		align.x = floatVals[E_GFT_ALIGNX];
+		align.y = floatVals[E_GFT_ALIGNY];
+		fillDir = floatVals[E_GFT_FILLDIR];
 		
 		spacing.x = 0.0f;
 		spacing.y = 0.0f;
@@ -23779,9 +24100,50 @@ float UIComponent::getResultDimYClamped ()
 			return max(min(maxDimInPixels.y, resultDimInPixels.y),minDimInPixels.y);
 		}
 	}
+void UIComponent::updateLinkedValues ()
+                                  {
+		int k;
+		
+		JSONValue* jvFileBase = NULL;
+		JSONValue* jvNodeBase = NULL;
+		
+		if (
+			(dataFile.compare("") == 0) ||
+			(dataRef.compare("") == 0)	
+		) {
+			
+		}
+		else {
+			jvFileBase = singleton->fetchJSONData(dataFile);
+			singleton->getJVNodeByString(jvFileBase,&jvNodeBase,dataRef);
+			
+			if (jvNodeBase != NULL) {
+				//cout << "success\n";
+				
+				if (jvNodeBase->IsNumber()) {
+					jvNodeBase->number_value = value;
+				}
+				if (jvNodeBase->IsArray()) {
+					for (k = 0; k < jvNodeBase->array_value.size(); k++) {
+						jvNodeBase->array_value[k]->number_value = valVec[k];
+					}
+				}
+				
+			}
+		}
+	}
+void UIComponent::setValueIndex (int ind, float val)
+                                               {
+		valVec.setIndex(ind,val);
+		updateLinkedValues();
+		
+	}
 void UIComponent::setValue (float _value, bool doEventDispatch, bool preventRefresh)
                                                                                                {
 		value = _value;
+		
+		updateLinkedValues();
+		
 		if (doEventDispatch) {
 			singleton->dispatchEvent(GLUT_LEFT_BUTTON, GLUT_UP, 0, 0, this, true, preventRefresh);
 		}
@@ -23789,6 +24151,17 @@ void UIComponent::setValue (float _value, bool doEventDispatch, bool preventRefr
 float UIComponent::getValue ()
                          {
 		return value;
+	}
+void UIComponent::setValueY (float _value, bool doEventDispatch, bool preventRefresh)
+                                                                                                {
+		valueY = _value;
+		// if (doEventDispatch) {
+		// 	singleton->dispatchEvent(GLUT_LEFT_BUTTON, GLUT_UP, 0, 0, this, true, preventRefresh);
+		// }
+	}
+float UIComponent::getValueY ()
+                          {
+		return valueY;
 	}
 UIComponent * UIComponent::getParent ()
                                  {
@@ -23942,7 +24315,7 @@ float UIComponent::getMinHeight ()
 		return getDimYClamped(curMH);
 		
 	}
-UIComponent * UIComponent::addChild (int _parentId, int _nodeId, string * stringVals, float * floatVals, bool _isFloating, JSONValue * _jvNodeNoTemplate)
+UIComponent * UIComponent::addChild (int _parentId, int _nodeId, string * stringVals, double * floatVals, bool _isFloating, JSONValue * _jvNodeNoTemplate)
           {
 		
 		UIComponent tempComp;
@@ -23974,28 +24347,10 @@ UIComponent * UIComponent::addChild (int _parentId, int _nodeId, string * string
 			childCount,
 			
 			_jvNodeNoTemplate,
+			_isFloating,
 			
-			stringVals[E_GST_LABEL],
-			stringVals[E_GST_UID],
-			stringVals[E_GST_SS],
-			
-			floatVals[E_GFT_TYPE],
-			floatVals[E_GFT_DIVISIONS],
-			floatVals[E_GFT_HASBACKGROUND],
-			floatVals[E_GFT_SINGLELINE],
-			floatVals[E_GFT_FILLRATIOX],
-			floatVals[E_GFT_FILLRATIOY],
-			floatVals[E_GFT_FILLDIR],
-			floatVals[E_GFT_ALIGNX],
-			floatVals[E_GFT_ALIGNY],
-			floatVals[E_GFT_VALUE],
-			floatVals[E_GFT_LAYER],
-			floatVals[E_GFT_HOVERTYPE],
-			floatVals[E_GFT_MAXDIMX],
-			floatVals[E_GFT_MAXDIMY],
-			floatVals[E_GFT_MINDIMX],
-			floatVals[E_GFT_MINDIMY],
-			_isFloating
+			stringVals,
+			floatVals
 		);
 		
 		//return curComp;
@@ -24255,6 +24610,21 @@ void UIComponent::clearDirty ()
 			floatingChildren[i].clearDirty();
 		}
 	}
+void UIComponent::alignToComp (UIComponent * myComp)
+                                              {
+		
+		UIComponent* myComp2;
+		
+		if (myComp->fillDir == 0) {
+			myComp2 = myComp->getParent();
+		}
+		else {
+			myComp2 = myComp;
+		}
+		
+		floatOffset.x = myComp2->totOffset.x + myComp2->originPos.x + myComp2->resultDimInPixels.x;
+		floatOffset.y = myComp2->totOffset.y + myComp2->originPos.y;
+	}
 void UIComponent::layout ()
                       {
 		
@@ -24292,6 +24662,7 @@ void UIComponent::updateValue (float x, float y)
 		
 		float hoverBuffer = 4.0f;
 		float tempValue;
+		float tempValueY;
 		
 		UIComponent* curParent = getParent();
 		
@@ -24379,8 +24750,7 @@ void UIComponent::updateValue (float x, float y)
 			break;
 			case E_HT_ONSELECTED:
 				//curParent->floatOffset.x + 
-				floatOffset.x = curParent->totOffset.x + curParent->originPos.x + curParent->resultDimInPixels.x;
-				floatOffset.y = curParent->totOffset.y + curParent->originPos.y;
+				alignToComp(curParent);
 				visible = (curParent->value == 1.0f)&&(curParent->visible);
 			break;
 						
@@ -24414,6 +24784,9 @@ void UIComponent::updateValue (float x, float y)
 		float hbxMin = hitBounds.xMin + totOffset.x;
 		float hbxMax = hitBounds.xMax + totOffset.x;
 		
+		float hbyMin = hitBounds.yMin + totOffset.y;
+		float hbyMax = hitBounds.yMax + totOffset.y;
+		
 		if (wasHit&&(guiClass == E_GT_SLIDER)) {
 			
 			if (divisions == 1.0f) {
@@ -24421,15 +24794,23 @@ void UIComponent::updateValue (float x, float y)
 			}
 			else {
 				tempValue = clampfZO((x-hbxMin)/(hbxMax-hbxMin));
+				tempValueY = clampfZO(1.0f - (y-hbyMin)/(hbyMax-hbyMin));
+				
 				if (divisions == 0.0f) {
 					setValue(
 						tempValue
+					);
+					setValueY(
+						tempValueY	
 					);
 				}
 				else {
 					
 					setValue(
 						floor(tempValue*divisions)/divisions
+					);
+					setValueY(
+						floor(tempValueY*divisions)/divisions
 					);
 				}
 				
@@ -24599,8 +24980,17 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 		
 		
 		UIComponent* curParent = getParent();
+		UIComponent* curParent2 = NULL;
+		
+		UIComponent* selParent = NULL;
+		
+		if (curParent != NULL) {
+			curParent2 = curParent->getParent();
+		}
+		
 		
 		int i;
+		int j;
 		bool hitChild = false;
 		float lastValue = value;
 		float tempValue;
@@ -24670,6 +25060,9 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 						case E_GT_BUTTON:
 							
 						break;
+						case E_GT_COLPICKER:
+							
+						break;
 						case E_GT_RADIO:
 							
 							tempValue = 1.0f-value;
@@ -24678,11 +25071,32 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 								
 							}
 							else {
-								for (i = 0; i < curParent->children.size(); i++) {
-									if (curParent->children[i].guiClass == E_GT_RADIO) {
-										curParent->children[i].setValue(0.0f);
+								
+								if (curParent2 == NULL) {
+									for (i = 0; i < curParent->children.size(); i++) {
+										if (curParent->children[i].guiClass == E_GT_RADIO) {
+											curParent->children[i].setValue(0.0f);
+										}
 									}
 								}
+								else {
+									
+									for (j = 0; j < curParent2->children.size(); j++) {
+										selParent = &(curParent2->children[j]);
+										
+										for (i = 0; i < selParent->children.size(); i++) {
+											if (selParent->children[i].guiClass == E_GT_RADIO) {
+												selParent->children[i].setValue(0.0f);
+											}
+										}
+									}
+									
+									
+									
+									
+								}
+								
+								
 							}
 							
 							setValue(tempValue);
@@ -25156,6 +25570,57 @@ void GameGUI::init (Singleton * _singleton)
 		
 		nodeCount = 0;
 		baseComp = new UIComponent();
+		
+		int i;
+		
+		for (i = 0; i < E_GST_LENGTH; i++) {
+			stringVals[i] = "";
+		}
+		for (i = 0; i < E_GFT_LENGTH; i++) {
+			floatVals[i] = 0.0f;
+		}
+		
+		stringVals[E_GST_LABEL] = "";
+		stringVals[E_GST_UID] = "";
+		stringVals[E_GST_SS] = "defaultSS";
+		
+		floatVals[E_GFT_TYPE] = E_GT_HOLDER;
+		floatVals[E_GFT_DIVISIONS] = 0.0f;
+		floatVals[E_GFT_HASBACKGROUND] = 0.0f;
+		floatVals[E_GFT_SINGLELINE] = 1.0f;
+		floatVals[E_GFT_FILLRATIOX] = 0.0f;
+		floatVals[E_GFT_FILLRATIOY] = 0.0f;
+		floatVals[E_GFT_FILLDIR] = E_FILL_HORIZONTAL;
+		floatVals[E_GFT_ALIGNX] = E_ALIGNH_LEFT;
+		floatVals[E_GFT_ALIGNY] = E_ALIGNV_TOP;
+		floatVals[E_GFT_VALUE] = 0.0f;
+		floatVals[E_GFT_LAYER] = 0.0f;
+		floatVals[E_GFT_HOVERTYPE] = E_HT_NORMAL;
+		floatVals[E_GFT_MAXDIMX] = 0.0f;
+		floatVals[E_GFT_MAXDIMY] = 0.0f;
+		floatVals[E_GFT_MINDIMX] = 0.0f;
+		floatVals[E_GFT_MINDIMY] = 0.0f;
+		floatVals[E_GFT_FLAGS] = 0.0f;
+		
+		// int _guiClass=E_GT_HOLDER,
+		// float _divisions=0.0f,
+		// bool _hasBackground = true,
+		// bool _singleLine = true,
+		// float _fillRatioX = 0.0f,
+		// float _fillRatioY = 0.0f,
+		// int _fillDir=E_FILL_HORIZONTAL, //fill dir of children
+		// int _alignX=E_ALIGNH_LEFT,
+		// int _alignY=E_ALIGNV_TOP,
+		// float _value = 0.0f,
+		// int _layer = 0,
+		// int _hoverType = E_HT_NORMAL,
+		// float _maxDimInPixelsX = 0.0f,
+		// float _maxDimInPixelsY = 0.0f,
+		// float _minDimInPixelsX = 0.0f,
+		// float _minDimInPixelsY = 0.0f,
+		// uint _flags,
+		
+		
 		baseComp->init(
 			singleton,
 			baseComp,
@@ -25164,14 +25629,10 @@ void GameGUI::init (Singleton * _singleton)
 			0,
 			
 			NULL,
+			false,
 			
-			"",
-			"",
-			"defaultSS",
-
-			E_GT_HOLDER,
-			0.0f,
-			false
+			stringVals,
+			floatVals
 		);
 		nodeCount++;
 		
@@ -25179,30 +25640,6 @@ void GameGUI::init (Singleton * _singleton)
 		baseComp->resultDimInPixels.x = singleton->guiWinW;
 		baseComp->resultDimInPixels.y = singleton->guiWinH;
 		
-		
-	}
-void GameGUI::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit)
-                                                                                                  {
-		//cout << "getJVNodeByString(" << stringToSplit <<  ")\n";
-			
-		int i;
-		*resultNode = rootNode;
-		
-		
-		vector<string> splitStrings = split(stringToSplit, '.');
-		
-		for (i = 0; i < splitStrings.size(); i++) {
-			//cout << splitStrings[i] << "\n";
-			
-			if ( (*resultNode)->HasChild(splitStrings[i]) ) {
-				*resultNode = (*resultNode)->Child(splitStrings[i]);
-			}
-			else {
-				*resultNode = NULL;
-				return;
-			}
-			
-		}
 		
 	}
 UIComponent * GameGUI::findNodeById (int _id)
@@ -25255,6 +25692,7 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
           {
 		int i;
 		int j;
+		int k;
 		int curIcon = 0;
 		
 		JSONValue* curTempl = NULL;
@@ -25309,7 +25747,7 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 		}
 		
 		
-		guiFloatValues[E_GFT_LAYER] = max(guiFloatValues[E_GFT_LAYER],(float)(curParent->layer));
+		guiFloatValues[E_GFT_LAYER] = max(guiFloatValues[E_GFT_LAYER],(double)(curParent->layer));
 		
 		UIComponent* newParent = curParent->addChild(
 			curParent->nodeId,
@@ -25394,18 +25832,7 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 					
 					if (jv->HasChild("dataFile")) {
 						tempStrings[E_GDS_DATA_FILE] = jv->Child("dataFile")->string_value;
-						
-						
-						
-						if (singleton->externalJSON.find( tempStrings[E_GDS_DATA_FILE] ) == singleton->externalJSON.end()) {
-							cout << "load jv data "  + tempStrings[E_GDS_DATA_FILE] << "\n";
-							singleton->loadJSON(
-								"..\\data\\" + tempStrings[E_GDS_DATA_FILE],
-								&((singleton->externalJSON[tempStrings[E_GDS_DATA_FILE]]).jv)
-							);
-						}
-						
-						jvDataRoot = (singleton->externalJSON[tempStrings[E_GDS_DATA_FILE]]).jv;
+						jvDataRoot = singleton->fetchJSONData(tempStrings[E_GDS_DATA_FILE]);
 						
 					}
 					else {
@@ -25419,7 +25846,7 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 				if (jvDataRoot != NULL) {
 					
 					
-					getJVNodeByString(jvDataRoot, &jvData, tempStrings[E_GDS_DATA_SOURCE]);
+					singleton->getJVNodeByString(jvDataRoot, &jvData, tempStrings[E_GDS_DATA_SOURCE]);
 					
 					numDataChildren = jvData->CountChildren();
 					if (jv->HasChild("childTemplate")) {
@@ -25536,22 +25963,67 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 							break;
 							
 							case E_GTC_GENERIC:
+							
+								singleton->splitStrings.clear();
+								singleton->splitStrings = split(tempStrings[E_GDS_LAST_KEY], '_');
 								
 								if (jvChildTemplate->HasChild("label")) {
-									jvChildTemplate->Child("label")->string_value = tempStrings[E_GDS_LAST_KEY];//tempStrings[E_GDS_CHILD_NAME];
-								}
-								
-								if (jvChildTemplate->HasChild("value")) {
-									if (curData->IsNumber()) {
-										jvChildTemplate->Child("value")->number_value = curData->number_value;
+									
+									switch(singleton->splitStrings.size()) {
+										case 0:
+										case 1:
+											jvChildTemplate->Child("label")->string_value = tempStrings[E_GDS_LAST_KEY];
+										break;
+										case 2:
+										case 3:
+											jvChildTemplate->Child("label")->string_value = singleton->splitStrings[1];
+										break;
 									}
+									
+									
 								}
 								
 								tempJV = findNearestKey(jvChildTemplate,"dataSource");
-								if (tempJV != NULL) {
+								if (tempJV != NULL) { // is a branch node
 									tempJV->Child("dataSource")->string_value =
-										tempStrings[E_GDS_DATA_SOURCE] + "." + tempStrings[E_GDS_LAST_KEY];
+										tempStrings[E_GDS_DATA_SOURCE] + "." + tempStrings[E_GDS_LAST_KEY];										
+								}
+								else { // is a leaf node
+									
+									
+									if (singleton->splitStrings.size() == 3) {
+										if (jvChildTemplate->HasChild("template")) {
+											jvChildTemplate->Child("template")->string_value = singleton->splitStrings[2];
+										}
+									}
+									
+									if (jvChildTemplate->HasChild("value")) {
 										
+										
+										// WAS DOING THIS *****************************************
+										
+										if (jvChildTemplate->HasChild("dataRef")) {
+											jvChildTemplate->Child("dataRef")->string_value =
+												tempStrings[E_GDS_DATA_SOURCE] + "." + tempStrings[E_GDS_LAST_KEY];
+										}
+										if (jvChildTemplate->HasChild("dataFile")) {
+											jvChildTemplate->Child("dataFile")->string_value =
+												tempStrings[E_GDS_DATA_FILE];
+										}
+									
+										
+										if (curData->IsNumber()) {
+											jvChildTemplate->Child("value")->number_value = curData->number_value;
+										}
+										if (curData->IsArray()) {
+											
+											for (k = 0; k < curData->array_value.size(); k++) {
+												jvChildTemplate->Child(
+													guiFloatTypes[E_GFT_VALUE0 + k]
+												)->number_value = curData->array_value[k]->number_value;
+											}
+										}
+									}
 								}
 								
 								
@@ -25779,9 +26251,14 @@ void GameGUI::renderQuad (UIComponent * uiComp, fBoundingBox fbb, float shadowOf
 
 		StyleSheetResult* resSS = &(uiComp->resSS);
 		
+		bool isColor = uiComp->guiClass == E_GT_COLPICKER;
 		
+		bool isHSL = ( ((uiComp->flags)&(E_GF_HUE|E_GF_SAT|E_GF_LIT)) != 0)||isColor;
+		float fIsHSL = 0.0f;
 		
-		
+		if (isHSL) {
+			fIsHSL = 1.0f;
+		}
 		
 		
 		
@@ -25806,15 +26283,42 @@ void GameGUI::renderQuad (UIComponent * uiComp, fBoundingBox fbb, float shadowOf
 		//border color
 		glMultiTexCoord4f(6, resSS->props[E_SS_BDCOL_R], resSS->props[E_SS_BDCOL_G], resSS->props[E_SS_BDCOL_B], resSS->props[E_SS_BDCOL_A]);
 		//misc
-		glMultiTexCoord4f(7, resSS->props[E_SS_ROUNDNESS], uiComp->getValue(), 1.0f, 1.0f);
+		glMultiTexCoord4f(7, uiComp->getValue(), uiComp->getValueY(), resSS->props[E_SS_ROUNDNESS],  fIsHSL);
 
+		if ( isHSL ) { // bg with hsv
+			
+			if (uiComp->valVecPtr == NULL) {
+				glMultiTexCoord4f(
+					2,
+					mixf(uiComp->valVec[0],-1.0f,uiComp->valVecMask[0]),
+					mixf(uiComp->valVec[1],-1.0f,uiComp->valVecMask[1]),
+					mixf(uiComp->valVec[2],-1.0f,uiComp->valVecMask[2]),
+					1.0f
+				);
+			}
+			else {
+				glMultiTexCoord4f(
+					2,
+					mixf((*(uiComp->valVecPtr))[0],-1.0f,uiComp->valVecMask[0]),
+					mixf((*(uiComp->valVecPtr))[1],-1.0f,uiComp->valVecMask[1]),
+					mixf((*(uiComp->valVecPtr))[2],-1.0f,uiComp->valVecMask[2]),
+					1.0f
+				);
+			}
+			
+			
+		}
 
-		//bg
-		glMultiTexCoord4f(2, resSS->props[E_SS_BGCOL1_R], resSS->props[E_SS_BGCOL1_G], resSS->props[E_SS_BGCOL1_B], resSS->props[E_SS_BGCOL1_A]);
+		if ( !isHSL ) {
+			//bg
+			glMultiTexCoord4f(2, resSS->props[E_SS_BGCOL1_R], resSS->props[E_SS_BGCOL1_G], resSS->props[E_SS_BGCOL1_B], resSS->props[E_SS_BGCOL1_A]);
+		}
 		//fg
 		glMultiTexCoord4f(3, resSS->props[E_SS_FGCOL1_R], resSS->props[E_SS_FGCOL1_G], resSS->props[E_SS_FGCOL1_B], resSS->props[E_SS_FGCOL1_A]);
 		//tg
 		glMultiTexCoord4f(4, resSS->props[E_SS_TGCOL1_R], resSS->props[E_SS_TGCOL1_G], resSS->props[E_SS_TGCOL1_B], resSS->props[E_SS_TGCOL1_A]);
+		
+		
 		
 		
 		glMultiTexCoord4f(0, 0.0f, 0.0f, 0.0f, 1.0f);
@@ -25822,8 +26326,10 @@ void GameGUI::renderQuad (UIComponent * uiComp, fBoundingBox fbb, float shadowOf
 		glMultiTexCoord4f(0, 0.0f, 0.0f, 1.0f, 1.0f);
 		glVertex3f (  x1, y1, -1.0f );
 
-		//bg
-		glMultiTexCoord4f(2, resSS->props[E_SS_BGCOL0_R], resSS->props[E_SS_BGCOL0_G], resSS->props[E_SS_BGCOL0_B], resSS->props[E_SS_BGCOL0_A]);
+		if ( !isHSL ) {
+			//bg
+			glMultiTexCoord4f(2, resSS->props[E_SS_BGCOL0_R], resSS->props[E_SS_BGCOL0_G], resSS->props[E_SS_BGCOL0_B], resSS->props[E_SS_BGCOL0_A]);
+		}
 		//fg
 		glMultiTexCoord4f(3, resSS->props[E_SS_FGCOL0_R], resSS->props[E_SS_FGCOL0_G], resSS->props[E_SS_FGCOL0_B], resSS->props[E_SS_FGCOL0_A]);
 		//tg

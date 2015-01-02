@@ -16,6 +16,57 @@ void GameGUI::init (Singleton * _singleton)
 		
 		nodeCount = 0;
 		baseComp = new UIComponent();
+		
+		int i;
+		
+		for (i = 0; i < E_GST_LENGTH; i++) {
+			stringVals[i] = "";
+		}
+		for (i = 0; i < E_GFT_LENGTH; i++) {
+			floatVals[i] = 0.0f;
+		}
+		
+		stringVals[E_GST_LABEL] = "";
+		stringVals[E_GST_UID] = "";
+		stringVals[E_GST_SS] = "defaultSS";
+		
+		floatVals[E_GFT_TYPE] = E_GT_HOLDER;
+		floatVals[E_GFT_DIVISIONS] = 0.0f;
+		floatVals[E_GFT_HASBACKGROUND] = 0.0f;
+		floatVals[E_GFT_SINGLELINE] = 1.0f;
+		floatVals[E_GFT_FILLRATIOX] = 0.0f;
+		floatVals[E_GFT_FILLRATIOY] = 0.0f;
+		floatVals[E_GFT_FILLDIR] = E_FILL_HORIZONTAL;
+		floatVals[E_GFT_ALIGNX] = E_ALIGNH_LEFT;
+		floatVals[E_GFT_ALIGNY] = E_ALIGNV_TOP;
+		floatVals[E_GFT_VALUE] = 0.0f;
+		floatVals[E_GFT_LAYER] = 0.0f;
+		floatVals[E_GFT_HOVERTYPE] = E_HT_NORMAL;
+		floatVals[E_GFT_MAXDIMX] = 0.0f;
+		floatVals[E_GFT_MAXDIMY] = 0.0f;
+		floatVals[E_GFT_MINDIMX] = 0.0f;
+		floatVals[E_GFT_MINDIMY] = 0.0f;
+		floatVals[E_GFT_FLAGS] = 0.0f;
+		
+		// int _guiClass=E_GT_HOLDER,
+		// float _divisions=0.0f,
+		// bool _hasBackground = true,
+		// bool _singleLine = true,
+		// float _fillRatioX = 0.0f,
+		// float _fillRatioY = 0.0f,
+		// int _fillDir=E_FILL_HORIZONTAL, //fill dir of children
+		// int _alignX=E_ALIGNH_LEFT,
+		// int _alignY=E_ALIGNV_TOP,
+		// float _value = 0.0f,
+		// int _layer = 0,
+		// int _hoverType = E_HT_NORMAL,
+		// float _maxDimInPixelsX = 0.0f,
+		// float _maxDimInPixelsY = 0.0f,
+		// float _minDimInPixelsX = 0.0f,
+		// float _minDimInPixelsY = 0.0f,
+		// uint _flags,
+		
+		
 		baseComp->init(
 			singleton,
 			baseComp,
@@ -24,14 +75,10 @@ void GameGUI::init (Singleton * _singleton)
 			0,
 			
 			NULL,
+			false,
 			
-			"",
-			"",
-			"defaultSS",
-
-			E_GT_HOLDER,
-			0.0f,
-			false
+			stringVals,
+			floatVals
 		);
 		nodeCount++;
 		
@@ -39,30 +86,6 @@ void GameGUI::init (Singleton * _singleton)
 		baseComp->resultDimInPixels.x = singleton->guiWinW;
 		baseComp->resultDimInPixels.y = singleton->guiWinH;
 		
-		
-	}
-void GameGUI::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit)
-                                                                                                  {
-		//cout << "getJVNodeByString(" << stringToSplit <<  ")\n";
-			
-		int i;
-		*resultNode = rootNode;
-		
-		
-		vector<string> splitStrings = split(stringToSplit, '.');
-		
-		for (i = 0; i < splitStrings.size(); i++) {
-			//cout << splitStrings[i] << "\n";
-			
-			if ( (*resultNode)->HasChild(splitStrings[i]) ) {
-				*resultNode = (*resultNode)->Child(splitStrings[i]);
-			}
-			else {
-				*resultNode = NULL;
-				return;
-			}
-			
-		}
 		
 	}
 UIComponent * GameGUI::findNodeById (int _id)
@@ -115,6 +138,7 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
           {
 		int i;
 		int j;
+		int k;
 		int curIcon = 0;
 		
 		JSONValue* curTempl = NULL;
@@ -169,7 +193,7 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 		}
 		
 		
-		guiFloatValues[E_GFT_LAYER] = max(guiFloatValues[E_GFT_LAYER],(float)(curParent->layer));
+		guiFloatValues[E_GFT_LAYER] = max(guiFloatValues[E_GFT_LAYER],(double)(curParent->layer));
 		
 		UIComponent* newParent = curParent->addChild(
 			curParent->nodeId,
@@ -254,18 +278,7 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 					
 					if (jv->HasChild("dataFile")) {
 						tempStrings[E_GDS_DATA_FILE] = jv->Child("dataFile")->string_value;
-						
-						
-						
-						if (singleton->externalJSON.find( tempStrings[E_GDS_DATA_FILE] ) == singleton->externalJSON.end()) {
-							cout << "load jv data "  + tempStrings[E_GDS_DATA_FILE] << "\n";
-							singleton->loadJSON(
-								"..\\data\\" + tempStrings[E_GDS_DATA_FILE],
-								&((singleton->externalJSON[tempStrings[E_GDS_DATA_FILE]]).jv)
-							);
-						}
-						
-						jvDataRoot = (singleton->externalJSON[tempStrings[E_GDS_DATA_FILE]]).jv;
+						jvDataRoot = singleton->fetchJSONData(tempStrings[E_GDS_DATA_FILE]);
 						
 					}
 					else {
@@ -279,7 +292,7 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 				if (jvDataRoot != NULL) {
 					
 					
-					getJVNodeByString(jvDataRoot, &jvData, tempStrings[E_GDS_DATA_SOURCE]);
+					singleton->getJVNodeByString(jvDataRoot, &jvData, tempStrings[E_GDS_DATA_SOURCE]);
 					
 					numDataChildren = jvData->CountChildren();
 					if (jv->HasChild("childTemplate")) {
@@ -396,22 +409,67 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 							break;
 							
 							case E_GTC_GENERIC:
+							
+								singleton->splitStrings.clear();
+								singleton->splitStrings = split(tempStrings[E_GDS_LAST_KEY], '_');
 								
 								if (jvChildTemplate->HasChild("label")) {
-									jvChildTemplate->Child("label")->string_value = tempStrings[E_GDS_LAST_KEY];//tempStrings[E_GDS_CHILD_NAME];
-								}
-								
-								if (jvChildTemplate->HasChild("value")) {
-									if (curData->IsNumber()) {
-										jvChildTemplate->Child("value")->number_value = curData->number_value;
+									
+									switch(singleton->splitStrings.size()) {
+										case 0:
+										case 1:
+											jvChildTemplate->Child("label")->string_value = tempStrings[E_GDS_LAST_KEY];
+										break;
+										case 2:
+										case 3:
+											jvChildTemplate->Child("label")->string_value = singleton->splitStrings[1];
+										break;
 									}
+									
+									
 								}
 								
 								tempJV = findNearestKey(jvChildTemplate,"dataSource");
-								if (tempJV != NULL) {
+								if (tempJV != NULL) { // is a branch node
 									tempJV->Child("dataSource")->string_value =
-										tempStrings[E_GDS_DATA_SOURCE] + "." + tempStrings[E_GDS_LAST_KEY];
+										tempStrings[E_GDS_DATA_SOURCE] + "." + tempStrings[E_GDS_LAST_KEY];										
+								}
+								else { // is a leaf node
+									
+									
+									if (singleton->splitStrings.size() == 3) {
+										if (jvChildTemplate->HasChild("template")) {
+											jvChildTemplate->Child("template")->string_value = singleton->splitStrings[2];
+										}
+									}
+									
+									if (jvChildTemplate->HasChild("value")) {
 										
+										
+										// WAS DOING THIS *****************************************
+										
+										if (jvChildTemplate->HasChild("dataRef")) {
+											jvChildTemplate->Child("dataRef")->string_value =
+												tempStrings[E_GDS_DATA_SOURCE] + "." + tempStrings[E_GDS_LAST_KEY];
+										}
+										if (jvChildTemplate->HasChild("dataFile")) {
+											jvChildTemplate->Child("dataFile")->string_value =
+												tempStrings[E_GDS_DATA_FILE];
+										}
+									
+										
+										if (curData->IsNumber()) {
+											jvChildTemplate->Child("value")->number_value = curData->number_value;
+										}
+										if (curData->IsArray()) {
+											
+											for (k = 0; k < curData->array_value.size(); k++) {
+												jvChildTemplate->Child(
+													guiFloatTypes[E_GFT_VALUE0 + k]
+												)->number_value = curData->array_value[k]->number_value;
+											}
+										}
+									}
 								}
 								
 								
@@ -639,9 +697,14 @@ void GameGUI::renderQuad (UIComponent * uiComp, fBoundingBox fbb, float shadowOf
 
 		StyleSheetResult* resSS = &(uiComp->resSS);
 		
+		bool isColor = uiComp->guiClass == E_GT_COLPICKER;
 		
+		bool isHSL = ( ((uiComp->flags)&(E_GF_HUE|E_GF_SAT|E_GF_LIT)) != 0)||isColor;
+		float fIsHSL = 0.0f;
 		
-		
+		if (isHSL) {
+			fIsHSL = 1.0f;
+		}
 		
 		
 		
@@ -666,15 +729,42 @@ void GameGUI::renderQuad (UIComponent * uiComp, fBoundingBox fbb, float shadowOf
 		//border color
 		glMultiTexCoord4f(6, resSS->props[E_SS_BDCOL_R], resSS->props[E_SS_BDCOL_G], resSS->props[E_SS_BDCOL_B], resSS->props[E_SS_BDCOL_A]);
 		//misc
-		glMultiTexCoord4f(7, resSS->props[E_SS_ROUNDNESS], uiComp->getValue(), 1.0f, 1.0f);
+		glMultiTexCoord4f(7, uiComp->getValue(), uiComp->getValueY(), resSS->props[E_SS_ROUNDNESS],  fIsHSL);
 
+		if ( isHSL ) { // bg with hsv
+			
+			if (uiComp->valVecPtr == NULL) {
+				glMultiTexCoord4f(
+					2,
+					mixf(uiComp->valVec[0],-1.0f,uiComp->valVecMask[0]),
+					mixf(uiComp->valVec[1],-1.0f,uiComp->valVecMask[1]),
+					mixf(uiComp->valVec[2],-1.0f,uiComp->valVecMask[2]),
+					1.0f
+				);
+			}
+			else {
+				glMultiTexCoord4f(
+					2,
+					mixf((*(uiComp->valVecPtr))[0],-1.0f,uiComp->valVecMask[0]),
+					mixf((*(uiComp->valVecPtr))[1],-1.0f,uiComp->valVecMask[1]),
+					mixf((*(uiComp->valVecPtr))[2],-1.0f,uiComp->valVecMask[2]),
+					1.0f
+				);
+			}
+			
+			
+		}
 
-		//bg
-		glMultiTexCoord4f(2, resSS->props[E_SS_BGCOL1_R], resSS->props[E_SS_BGCOL1_G], resSS->props[E_SS_BGCOL1_B], resSS->props[E_SS_BGCOL1_A]);
+		if ( !isHSL ) {
+			//bg
+			glMultiTexCoord4f(2, resSS->props[E_SS_BGCOL1_R], resSS->props[E_SS_BGCOL1_G], resSS->props[E_SS_BGCOL1_B], resSS->props[E_SS_BGCOL1_A]);
+		}
 		//fg
 		glMultiTexCoord4f(3, resSS->props[E_SS_FGCOL1_R], resSS->props[E_SS_FGCOL1_G], resSS->props[E_SS_FGCOL1_B], resSS->props[E_SS_FGCOL1_A]);
 		//tg
 		glMultiTexCoord4f(4, resSS->props[E_SS_TGCOL1_R], resSS->props[E_SS_TGCOL1_G], resSS->props[E_SS_TGCOL1_B], resSS->props[E_SS_TGCOL1_A]);
+		
+		
 		
 		
 		glMultiTexCoord4f(0, 0.0f, 0.0f, 0.0f, 1.0f);
@@ -682,8 +772,10 @@ void GameGUI::renderQuad (UIComponent * uiComp, fBoundingBox fbb, float shadowOf
 		glMultiTexCoord4f(0, 0.0f, 0.0f, 1.0f, 1.0f);
 		glVertex3f (  x1, y1, -1.0f );
 
-		//bg
-		glMultiTexCoord4f(2, resSS->props[E_SS_BGCOL0_R], resSS->props[E_SS_BGCOL0_G], resSS->props[E_SS_BGCOL0_B], resSS->props[E_SS_BGCOL0_A]);
+		if ( !isHSL ) {
+			//bg
+			glMultiTexCoord4f(2, resSS->props[E_SS_BGCOL0_R], resSS->props[E_SS_BGCOL0_G], resSS->props[E_SS_BGCOL0_B], resSS->props[E_SS_BGCOL0_A]);
+		}
 		//fg
 		glMultiTexCoord4f(3, resSS->props[E_SS_FGCOL0_R], resSS->props[E_SS_FGCOL0_G], resSS->props[E_SS_FGCOL0_B], resSS->props[E_SS_FGCOL0_A]);
 		//tg

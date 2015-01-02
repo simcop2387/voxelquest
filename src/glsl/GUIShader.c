@@ -26,7 +26,7 @@ varying vec4 TexCoord5;
 //border col
 varying vec4 TexCoord6;
 
-//roundness,value
+//roundness,value, isHSL
 varying vec4 TexCoord7;
 
 
@@ -53,6 +53,13 @@ void main() {
 
 $
 
+vec3 hsv2rgb(vec3 c)
+{
+	vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+	vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+	return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
 
 void main() {
 	
@@ -76,7 +83,7 @@ void main() {
 		resVal2 = length(cornerDisScaled.xy);
 	}
 
-	float roundness = TexCoord7.x;
+	float roundness = TexCoord7.z;
 
 	resVal = mix(resVal,resVal2,roundness);
 
@@ -100,6 +107,8 @@ void main() {
 		alphaMult = 1.0-clamp((yMax - worldPos.y)*resolution.y/8.0,0.0,1.0);
 	}
 	
+	bool isHSL = bool(TexCoord7.w);
+	
 	vec4 shadowCol = vec4(0.0,0.0,0.0,0.5*alphaMult);
 	texel1.a *= alphaMult;
 	
@@ -122,14 +131,16 @@ void main() {
 		return;
 	}
 	
-	vec4 bgcol = TexCoord2;//mix(TexCoord2, TexCoord3, TexCoord0.w);
-	vec4 fgcol = TexCoord3;//mix(TexCoord4, TexCoord5, TexCoord0.w);
+	vec4 bgcol = TexCoord2;
+	vec4 fgcol = TexCoord3;
 
-	float value = TexCoord7.y;
+	vec2 value = TexCoord7.xy;
 
-	if (value > TexCoord0.z) {
+	if (value.x > TexCoord0.z) {
 		bgcol = TexCoord4;
 	}
+	
+	value.y = 1.0-value.y;
 
 
 	float alphaVal = float(resVal < 1.0);
@@ -141,6 +152,77 @@ void main() {
 	vec4 borderCol = TexCoord6;
 	borderCol.w *= alphaVal;
 	bval *= borderCol.w;
+
+	float disVal = 0.0;
+
+	float tc[3];
+	tc[0] = TexCoord0.z;
+	tc[1] = 1.0-TexCoord0.w;
+	tc[2] = 1.0;
+	
+	float tc2[3];
+	tc2[0] = value.x;
+	tc2[1] = 1.0-value.y;
+	tc2[2] = 1.0;
+	
+	int tcInd = 0;
+	vec3 hsvRes = TexCoord2.rgb;
+	vec3 hsvRes2 = TexCoord2.rgb;
+
+	if (isHSL) {
+		
+		if (hsvRes.r < 0.0) {
+			hsvRes.r = tc[tcInd];
+			hsvRes2.r = tc2[tcInd];
+			tcInd++;
+		}
+		if (hsvRes.g < 0.0) {
+			hsvRes.g = tc[tcInd];
+			hsvRes2.g = tc2[tcInd];
+			tcInd++;
+		}
+		if (hsvRes.b < 0.0) {
+			hsvRes.b = tc[tcInd];
+			hsvRes2.b = tc2[tcInd];
+			tcInd++;
+		}
+		
+		bgcol.rgb = hsv2rgb(hsvRes);
+		
+		if (tcInd != 2) {
+			bgcol.rgb = mix(bgcol.rgb, bgcol.rgb*0.25, TexCoord0.w);
+		}
+		
+		if (bgcol.a > 0.0) {
+			bgcol.a = 1.0;
+		}
+		
+		if (tcInd == 1) {
+			if ( 
+				(distance(value.x,TexCoord0.z) < 0.25*abs(TexCoord0.w-0.5)) &&
+				(TexCoord0.w > 0.5)
+			) {
+				bgcol.rgb += 0.5;
+			}
+		}
+		
+		if (tcInd == 2) {
+			
+			disVal = distance(value.xy,TexCoord0.zw);
+			
+			if ((disVal > 0.375)&&(disVal < 0.625)) {
+				bgcol.rgb = hsv2rgb(hsvRes2);//0.5;
+			}
+			
+			if (disVal < 0.03125) {
+				bgcol.rgb += 0.25;
+			}
+		}
+		
+		
+	}
+
+	
 
 	bgcol = mix(bgcol,borderCol,bval);
 

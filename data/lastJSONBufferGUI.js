@@ -19,6 +19,14 @@
 			"type":1,
 			"fillRatioX":1
 		},
+		"fillSlider2": {
+			"type":7,
+			"fillRatioX":1
+		},
+		"fillCP": {
+			"type":6,
+			"fillRatioX":1
+		},
 		"fillLabel": {
 			"type":0,
 			"label":" ",
@@ -325,7 +333,74 @@
 
 
 			
-
+			
+			
+			{
+				"uid":"guiHandles.pickerMenu",
+				"template":"cont",
+				"layer":2,
+				"hasBackground":0,
+				"children":[
+					{
+						"template":"cont",
+						"fillDir":1,
+						"children": [
+						
+							
+							{
+								"template":"cont",
+								"fillDir":1,
+								"fillRatioX":1,
+								"children":[
+									
+									
+									
+									
+									{
+										"template":"fillSlider",
+										"label":" ",
+										"uid":"picker.huelit",
+										"minDimY":140,
+										"flags":5
+									},
+									{
+										"template":"fillSlider",
+										"label":" ",
+										"uid":"picker.satlit",
+										"minDimY":140,
+										"flags":6
+									},
+									
+									
+									{
+										"template":"fillSlider",
+										"label":"Hue",
+										"uid":"picker.hue",
+										"flags":1
+									},
+									{
+										"template":"fillSlider",
+										"label":"Saturation",
+										"uid":"picker.saturation",
+										"flags":2
+									},
+									{
+										"template":"fillSlider",
+										"label":"Lightness",
+										"uid":"picker.lightness",
+										"flags":4
+										
+									}
+									
+									
+									
+								]
+							}
+						]
+					}
+				]
+			},
+			
 			
 			
 			
@@ -878,9 +953,15 @@
 																														"childType":"E_GTC_GENERIC",
 																														"children": [],
 																														"childTemplate":{
-																															"template":"fillSlider",
+																															"template":"",
+																															"dataFile":"",
+																															"dataRef":"",
 																															"label":" ",
-																															"value":0.0
+																															"value":0.0,
+																															"value0":0.0,
+																															"value1":0.0,
+																															"value2":0.0,
+																															"value3":0.0
 																														}
 																														
 																													}

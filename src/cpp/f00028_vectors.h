@@ -37,6 +37,15 @@ float mixf(float v1, float v2, float lerpVal) {
 	return v1*(1.0f-lerpVal) + v2*lerpVal;
 }
 
+float mixb(float v1, float v2, bool lerpVal) {
+	if (lerpVal) {
+		return v2;
+	}
+	else {
+		return v1;
+	}
+}
+
 
 
 
@@ -165,6 +174,24 @@ public:
 		return -1.0f;
 	}
 
+	void setIndex(int ind, float val) {
+		
+		switch (ind) {
+			case 0:
+				fv4.x = val;
+			break;
+			case 1:
+				fv4.y = val;
+			break;
+			case 2:
+				fv4.z = val;
+			break;
+			case 3:
+				fv4.w = val;
+			break;
+		}
+		
+	}
 
 
 	void setIXYZW(int x, int y, int z, int w) {

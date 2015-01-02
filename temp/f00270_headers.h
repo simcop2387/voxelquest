@@ -104,6 +104,7 @@ public:
   };
   CompareStruct compareStruct;
   typedef map <string, UICStruct>::iterator itUICStruct;
+  typedef map <string, JSONStruct>::iterator itJSStruct;
   GameCamera * mainCamera;
   bool (keysPressed) [MAX_KEYS];
   double (keyDownTimes) [MAX_KEYS];
@@ -372,6 +373,7 @@ public:
   string guiSaveLoc;
   PoolManager * gpuPool;
   PoolManager * entityPool;
+  vector <string> splitStrings;
   vector <string> shaderStrings;
   vector <string> shaderTextureIds;
   map <string, Shader*> shaderMap;
@@ -405,9 +407,11 @@ public:
   TerTexture (terTextures) [MAX_TER_TEX];
   GameOrg * testHuman;
   GameGUI * mainGUI;
+  UIComponent * lastPickerItem;
   UIComponent * mapComp;
   UIComponent * mainMenu;
   UIComponent * ddMenu;
+  UIComponent * pickerMenu;
   UIComponent * fieldMenu;
   UIComponent * fieldText;
   FontWrapper * (fontWrappers) [EFW_LENGTH];
@@ -520,6 +524,8 @@ public:
   void updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS);
   void findNearestOrgNode (GameOrgNode * curNode, FIVector4 * mousePosWS);
   void processB64 (charArr * sourceBuffer, charArr * saveBuffer);
+  void getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit);
+  JSONValue * fetchJSONData (string dataFile);
   bool processJSONFromString (string * sourceBuffer, JSONValue * * destObj);
   bool processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONValue * * destObj);
   bool loadJSON (string path, JSONValue * * destObj);
@@ -528,6 +534,7 @@ public:
   UIComponent * getGUIComp (string key);
   void setGUIValue (string key, float floatValue, bool dispatchEvent = false, bool preventRefresh = false);
   void loadGUIValues (bool applyValues = false);
+  void saveExternalJSON ();
   void saveGUIValues ();
   void updateGUI ();
   void beginFieldInput (string defString, int cb);
@@ -708,6 +715,7 @@ class UIComponent
 private:
   UIComponent * parent;
   float value;
+  float valueY;
 public:
   Singleton * singleton;
   Singleton::UIQuad thisUIQuad;
@@ -716,6 +724,8 @@ public:
   string ss;
   string text;
   string label;
+  string dataFile;
+  string dataRef;
   int parentId;
   int nodeId;
   int index;
@@ -727,6 +737,9 @@ public:
   bool foundParent;
   bool visible;
   iVector2 align;
+  FIVector4 valVec;
+  FIVector4 * valVecPtr;
+  FIVector4 valVecMask;
   JSONValue * jvNodeNoTemplate;
   fVector2 scrollMaskY;
   fVector2 dragStart;
@@ -756,6 +769,7 @@ public:
   bool wasHit;
   bool isDirty;
   bool isFloating;
+  uint flags;
   float divisions;
   float paddingInPixels;
   float borderInPixels;
@@ -772,22 +786,27 @@ public:
   UIComponent * curComp;
   UIComponent * baseComp;
   UIComponent ();
-  void init (Singleton * _singleton, UIComponent * _baseComp, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, string _label, string _uid, string _ss, int _guiClass = E_GT_HOLDER, float _divisions = 0.0f, bool _hasBackground = true, bool _singleLine = true, float _fillRatioX = 0.0f, float _fillRatioY = 0.0f, int _fillDir = E_FILL_HORIZONTAL, int _alignX = E_ALIGNH_LEFT, int _alignY = E_ALIGNV_TOP, float _value = 0.0f, int _layer = 0, int _hoverType = E_HT_NORMAL, float _maxDimInPixelsX = 0.0f, float _maxDimInPixelsY = 0.0f, float _minDimInPixelsX = 0.0f, float _minDimInPixelsY = 0.0f, bool _isFloating = false);
+  void init (Singleton * _singleton, UIComponent * _baseComp, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, bool _isFloating, string * stringVals, double * floatVals);
   float getDimYClamped (float val);
   float getResultDimYClamped ();
+  void updateLinkedValues ();
+  void setValueIndex (int ind, float val);
   void setValue (float _value, bool doEventDispatch = false, bool preventRefresh = false);
   float getValue ();
+  void setValueY (float _value, bool doEventDispatch = false, bool preventRefresh = false);
+  float getValueY ();
   UIComponent * getParent ();
   UIComponent * findNodeByString (string _uid);
   UIComponent * findNodeById (int id);
   float getMinWidth ();
   float getMinHeight ();
-  UIComponent * addChild (int _parentId, int _nodeId, string * stringVals, float * floatVals, bool _isFloating, JSONValue * _jvNodeNoTemplate);
+  UIComponent * addChild (int _parentId, int _nodeId, string * stringVals, double * floatVals, bool _isFloating, JSONValue * _jvNodeNoTemplate);
   void setOrigPos ();
   void applyHeight ();
   void applyWidth ();
   void gatherDirty (vector <UIComponent*> * dirtyVec);
   void clearDirty ();
+  void alignToComp (UIComponent * myComp);
   void layout ();
   void updateOffset ();
   void updateValue (float x, float y);
@@ -829,9 +848,10 @@ public:
   int nodeCount;
   vector <UIComponent*> dirtyVec;
   string (tempStrings) [10];
+  string (stringVals) [E_GST_LENGTH];
+  double (floatVals) [E_GFT_LENGTH];
   GameGUI ();
   void init (Singleton * _singleton);
-  void getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit);
   UIComponent * findNodeById (int _id);
   bool compChildStr (string childStr);
   JSONValue * findNearestKey (JSONValue * jv, string key);

@@ -1,4 +1,4 @@
-﻿Build started 12/24/2014 4:41:08 AM.
+﻿Build started 1/2/2015 2:59:04 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -248,7 +248,7 @@
                    
          Loading:  ..\data\lastImageBuffer.txt         
          Load Successful          
-         Sea Level: 143
+         Sea Level: 141
          start place cities
          end place cities
          start grow provinces
@@ -292,8 +292,29 @@
          copyTerToTexture resIndex:  0         
          copyTerToTexture resIndex:  1         
          copyTerToTexture resIndex:  2         
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
+         copyTerToTexture resIndex:  3         
+         Saving External JSON Values
+         Save Successful          
+         End Saving External JSON Values
+         Saving GUI Values
+         Save Successful          
+         End Saving GUI Values
+         Saving External JSON Values
+         Save Successful          
+         End Saving External JSON Values
+         Saving GUI Values
+         Save Successful          
+         End Saving GUI Values
+         Saving External JSON Values
+         Save Successful          
+         End Saving External JSON Values
+         Saving GUI Values
+         Save Successful          
+         End Saving GUI Values
+     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
+C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -2147418113.
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
 
-Build succeeded.
+Build FAILED.
 
-Time Elapsed 00:00:51.53
+Time Elapsed 00:08:08.85

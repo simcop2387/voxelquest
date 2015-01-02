@@ -35,7 +35,7 @@ public:
 	
 	
 	typedef map<string, UICStruct>::iterator itUICStruct;
-	
+	typedef map<string, JSONStruct>::iterator itJSStruct;
 	
 	
 	
@@ -341,6 +341,8 @@ public:
 	PoolManager* gpuPool;
 	PoolManager* entityPool;
 	
+	
+	vector<string> splitStrings;
 	vector<string> shaderStrings;
 	vector<string> shaderTextureIds;
 	map<string, Shader*> shaderMap;
@@ -399,9 +401,11 @@ public:
 	
 	GameGUI* mainGUI;
 	
+	UIComponent* lastPickerItem;
 	UIComponent* mapComp;
 	UIComponent* mainMenu;
 	UIComponent* ddMenu;
+	UIComponent* pickerMenu;
 	UIComponent* fieldMenu;
 	UIComponent* fieldText;
 	
@@ -447,6 +451,8 @@ public:
 		int i;
 		int j;
 		
+		
+		// todo: mem leak, should delete?
 		internalJSON["shaderParams"].jv = NULL;
 		
 		for (i = 0; i < EML_LENGTH; i++) {
@@ -492,10 +498,13 @@ public:
 		guiLock = false;
 		guiDirty = true;
 		
+		
 		currentActor = NULL;
+		lastPickerItem = NULL;
 		mapComp = NULL;
 		mainMenu = NULL;
 		ddMenu = NULL;
+		pickerMenu = NULL;
 		fieldMenu = NULL;
 		fieldText = NULL;
 		selectedEnt = NULL;
@@ -1557,6 +1566,8 @@ public:
 		bool preventRefresh = false
 	) {
 		
+		UIComponent* tempComp;
+		
 		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 		
 		changingGenVal = false;
@@ -1564,6 +1575,9 @@ public:
 		// if (guiLock) {
 		// 	return;
 		// }
+		
+		
+		bool hitPicker = false;
 		
 		float wheelDelta = 0.0f;
 		
@@ -1575,12 +1589,17 @@ public:
 		bool mouseUpEvent = false;
 		
 		float curValue = comp->getValue();
+		float curValueY = comp->getValueY();
 		
 		draggingMap = false;
+		
+		
+		
 		
 		switch (comp->guiClass) {
 			case E_GT_SLIDER:
 			case E_GT_BUTTON:
+			case E_GT_COLPICKER:
 			case E_GT_RADIO:
 			case E_GT_DRAGPAD:
 			
@@ -1662,7 +1681,6 @@ public:
 					
 				}
 			
-				
 			break;	
 		}
 		
@@ -1673,6 +1691,32 @@ public:
 		
 		
 		if (mouseUpEvent) {
+			
+			if (comp->guiClass == E_GT_COLPICKER) {
+				if (pickerMenu != NULL) {
+					lastPickerItem = comp;
+					
+					
+					
+					tempComp = &(pickerMenu->children[0].children[0]);
+					
+					for (i = 0; i < tempComp->children.size(); i++) {
+						tempComp->children[i].valVecPtr = &(comp->valVec);
+					}
+					
+					
+					hitPicker = true;
+					//children[0].children[0].bindValues(comp);
+					
+					pickerMenu->alignToComp(comp->getParent());
+					
+					// pickerMenu->floatOffset.x = (guiX);
+					// pickerMenu->floatOffset.y = (guiY);
+					
+				}
+			}
+			
+			
 			if (comp->uid.compare("placeEntity.actor") == 0) {
 				gw->gameActors.push_back(baseEnt);
 				tempVec1.setIXYZ(2,2,3);
@@ -1740,6 +1784,82 @@ public:
 		}
 		else if (comp->uid.compare("$options.graphics.clipDist") == 0) {
 			clipDist[1] = curValue*65536.0f;
+		}
+		
+		if (
+			(lastPickerItem != NULL) &&
+			(
+				(button == GLUT_LEFT_BUTTON) ||
+				(state == GLUT_CHANGING)	
+			)
+		) {
+			
+			tempComp = &(pickerMenu->children[0].children[0]);
+			
+			for (i = 0; i < tempComp->children.size(); i++) {
+				
+				switch((tempComp->children[i].flags)&(E_GF_HUE|E_GF_SAT|E_GF_LIT)) {
+					case 0: // nothing
+					
+					break;
+					case 1: // hue - x
+						tempComp->children[i].setValue(lastPickerItem->valVec[0]);
+					break;
+					case 2: // sat - y
+						tempComp->children[i].setValue(lastPickerItem->valVec[1]);
+					break;
+					case 3: // hue/sat - x/y
+						tempComp->children[i].setValue(lastPickerItem->valVec[0]);
+						tempComp->children[i].setValueY(lastPickerItem->valVec[1]);
+					break;
+					
+					case 4: // lit - z
+						tempComp->children[i].setValue(lastPickerItem->valVec[2]);
+					break;
+					case 5: // hue/lit - x/z
+						tempComp->children[i].setValue(lastPickerItem->valVec[0]);
+						tempComp->children[i].setValueY(lastPickerItem->valVec[2]);
+					break;
+					case 6: // sat/lit - y/z
+						tempComp->children[i].setValue(lastPickerItem->valVec[1]);
+						tempComp->children[i].setValueY(lastPickerItem->valVec[2]);
+					break;
+					case 7: // hue/sat/lit - x/y/z
+					
+					break;
+				}
+				
+			}
+			
+			if (comp->uid.compare("picker.hue") == 0) {
+				lastPickerItem->setValueIndex(0,curValue);
+				hitPicker = true;
+			}
+			else if (comp->uid.compare("picker.saturation") == 0) {
+				lastPickerItem->setValueIndex(1,curValue);
+				hitPicker = true;
+			}
+			else if (comp->uid.compare("picker.lightness") == 0) {
+				lastPickerItem->setValueIndex(2,curValue);
+				hitPicker = true;
+			}
+			else if (comp->uid.compare("picker.huelit") == 0) {
+				lastPickerItem->setValueIndex(0,curValue);
+				lastPickerItem->setValueIndex(2,curValueY);
+				hitPicker = true;
+			}
+			else if (comp->uid.compare("picker.satlit") == 0) {
+				lastPickerItem->setValueIndex(1,curValue);
+				lastPickerItem->setValueIndex(2,curValueY);
+				hitPicker = true;
+			}
+		}
+		
+		
+		
+		
+		if (mouseUpEvent) {
+			pickerMenu->visible = hitPicker;
 		}
 		
 		
@@ -3544,6 +3664,7 @@ public:
 				// break;
 				
 				case 19: //ctrl-s
+					saveExternalJSON();
 					saveGUIValues();
 					//cout << "Use s key in web editor to save\n";
 					break;
@@ -3615,7 +3736,11 @@ public:
 					break;
 
 				case 27: // esc
-					std::exit(0);
+					//std::exit(0);
+					
+					ddMenu->visible = false;
+					pickerMenu->visible = false;
+					
 					break;
 
 				case 'b':
@@ -4246,6 +4371,11 @@ public:
 						doProc = true;
 					}
 				}
+				if (pickerMenu != NULL) {
+					if (pickerMenu->visible){
+						doProc = true;
+					}
+				}
 				if (fieldMenu != NULL) {
 					if (fieldMenu->visible) {
 						doProc = true;
@@ -4312,6 +4442,7 @@ public:
 		
 
 		if (hitGUI) {
+			
 			return;
 		}
 		
@@ -4415,6 +4546,7 @@ public:
 				else {
 					if (noTravel) {
 						ddMenu->visible = false;
+						pickerMenu->visible = false;
 						markerFound = false;
 					}
 					
@@ -4846,6 +4978,40 @@ public:
 
 	}
 
+	void getJVNodeByString(JSONValue* rootNode, JSONValue** resultNode, string stringToSplit) {
+		//cout << "getJVNodeByString(" << stringToSplit <<  ")\n";
+		
+		int i;
+		*resultNode = rootNode;
+		
+		splitStrings.clear();
+		splitStrings = split(stringToSplit, '.');
+		
+		for (i = 0; i < splitStrings.size(); i++) {
+			//cout << splitStrings[i] << "\n";
+			
+			if ( (*resultNode)->HasChild(splitStrings[i]) ) {
+				*resultNode = (*resultNode)->Child(splitStrings[i]);
+			}
+			else {
+				*resultNode = NULL;
+				return;
+			}
+			
+		}
+		
+	}
+
+	JSONValue* fetchJSONData(string dataFile) {
+		if (externalJSON.find( dataFile ) == externalJSON.end()) {
+			cout << "load jv data "  + dataFile << "\n";
+			loadJSON(
+				"..\\data\\" + dataFile,
+				&((externalJSON[dataFile]).jv)
+			);
+		}
+		return (externalJSON[dataFile]).jv;
+	}
 
 	bool processJSONFromString(
 		string* sourceBuffer,
@@ -5171,10 +5337,14 @@ public:
 		UICStruct* curComp;
 		
 		string loadBuf;
-		vector<string> splitStrings;
+		//vector<string> splitStrings;
+		
+		
 		if ( loadFile(guiSaveLoc, &dest) )
 		{
 			loadBuf = string(dest.data);
+			
+			splitStrings.clear();
 			splitStrings = split(loadBuf, '^');
 			
 			for (i = 0; i < splitStrings.size(); i += 2) {
@@ -5208,6 +5378,30 @@ public:
 		}
 		
 		cout << "End Loading GUI Values\n";
+	}
+	
+	
+	void saveExternalJSON() {
+		
+		cout << "Saving External JSON Values\n";
+		
+		
+		for(itJSStruct iterator = externalJSON.begin(); iterator != externalJSON.end(); iterator++) {
+			
+			if (iterator->second.jv != NULL) {
+				saveFileString(
+					"..\\data\\" + iterator->first,
+					&(iterator->second.jv->Stringify())
+				);
+			}
+			
+		    // iterator->first = key
+		    // iterator->second = value
+		}
+		
+		
+		
+		cout << "End Saving External JSON Values\n";
 	}
 	
 	
@@ -5327,7 +5521,7 @@ public:
 		fieldMenu->visible = false;
 		
 		float tempVal;
-				
+		
 		if (success) {
 			switch (fieldCallback) {
 				case E_FC_SAVEORG:
@@ -5387,11 +5581,9 @@ public:
 			);
 		
 			for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
-					
-					
-					if (iterator->second.nodeId != -1) {
-						iterator->second.uic = mainGUI->findNodeById(iterator->second.nodeId);
-					}
+				if (iterator->second.nodeId != -1) {
+					iterator->second.uic = mainGUI->findNodeById(iterator->second.nodeId);
+				}
 			}
 		
 		}
@@ -5399,9 +5591,13 @@ public:
 		mapComp = getGUIComp("map.mapHolder");
 		mainMenu = getGUIComp("guiHandles.mainMenu");
 		ddMenu = getGUIComp("guiHandles.ddMenu");
+		pickerMenu = getGUIComp("guiHandles.pickerMenu");
 		fieldMenu = getGUIComp("guiHandles.fieldMenu");
 		fieldText = getGUIComp("fieldMenu.field");
 		
+		if (pickerMenu != NULL) {
+			pickerMenu->visible = false;
+		}
 		if (mainMenu != NULL) {
 			mainMenu->visible = false;
 		}

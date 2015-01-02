@@ -45,7 +45,7 @@ class JSONValue
 		bool HasChild(string name) const;
 		JSONValue *Child(string name);
 
-		std::string Stringify() const;
+		std::string Stringify(int curLev) const;
 
 		static JSONValue *Parse(const char **data);
 
@@ -779,7 +779,7 @@ JSONValue* JSONValue::Child(string name)
  *
  * @return std::string Returns the JSON string
  */
-std::string JSONValue::Stringify() const
+std::string JSONValue::Stringify(int curLev = 0) const
 {
 	std::string ret_string;
 	
@@ -813,35 +813,45 @@ std::string JSONValue::Stringify() const
 		
 		case JSONType_Array:
 		{
-			ret_string = "[";
+			ret_string = "[\n";
 			JSONArray::const_iterator iter = array_value.begin();
 			while (iter != array_value.end())
 			{
-				ret_string += (*iter)->Stringify();
+				ret_string += SPACE_BUFFER[curLev];
+				ret_string += (*iter)->Stringify(curLev + 1);
 				
 				// Not at the end - add a separator
-				if (++iter != array_value.end())
-					ret_string += ",";
+				if (++iter != array_value.end()) {
+					ret_string += ",\n";
+				}
+				else {
+					ret_string += "\n";
+				}
 			}
-			ret_string += "]";
+			ret_string += SPACE_BUFFER[curLev]+"]";
 			break;
 		}
 		
 		case JSONType_Object:
 		{
-			ret_string = "{";
+			ret_string = "{\n";
 			JSONObject::const_iterator iter = object_value.begin();
 			while (iter != object_value.end())
 			{
+				ret_string += SPACE_BUFFER[curLev];
 				ret_string += StringifyString((*iter).first);
 				ret_string += ":";
-				ret_string += (*iter).second->Stringify();
+				ret_string += (*iter).second->Stringify(curLev+1);
 				
 				// Not at the end - add a separator
-				if (++iter != object_value.end())
-					ret_string += ",";
+				if (++iter != object_value.end()) {
+					ret_string += ",\n";
+				}
+				else {
+					ret_string += "\n";
+				}
 			}
-			ret_string += "}";
+			ret_string += SPACE_BUFFER[curLev]+"}";
 			break;
 		}
 	}
