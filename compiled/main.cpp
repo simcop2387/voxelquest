@@ -957,7 +957,24 @@ enum E_ALIGN {
 	E_ALIGN_TOP
 };
 
+enum E_MAT_CODE {
+	E_MC_DEFAULT,
+	E_MC_HSV,
+	E_MC_MATERIAL,
+	E_MC_LENGTH
+};
 
+
+struct materialNode {
+	float h;
+	float s;
+	float l;
+	float r;
+	float g;
+	float b;
+	float power;
+	float ratio;
+};
 
 struct iVector4 {
 	int x;
@@ -1221,7 +1238,6 @@ enum GUI_TYPES {
 	E_GT_MENUBAR, // 4
 	E_GT_DRAGPAD, // 5
 	E_GT_COLPICKER, // 6
-	E_GT_SLIDER2, // 7
 	E_GT_LENGTH
 };
 
@@ -1231,6 +1247,8 @@ enum GUI_STRING_TYPES {
 	E_GST_SS,
 	E_GST_DATAREF,
 	E_GST_DATAFILE,
+	E_GST_DATAKEY,
+	E_GST_VALREF,
 	E_GST_LENGTH
 };
 
@@ -1239,7 +1257,9 @@ char* guiStringTypes[] = {
 	"uid",
 	"ss",
 	"dataRef",
-	"dataFile"
+	"dataFile",
+	"dataKey",
+	"valRef"
 };
 
 enum E_HOVER_TYPES {
@@ -1273,6 +1293,7 @@ enum GUI_FLOAT_TYPES {
 	E_GFT_VALUE1,
 	E_GFT_VALUE2,
 	E_GFT_VALUE3,
+	E_GFT_MATCODE,
 	E_GFT_LENGTH
 };
 char* guiFloatTypes[] = {
@@ -1296,15 +1317,18 @@ char* guiFloatTypes[] = {
 	"value0",
 	"value1",
 	"value2",
-	"value3"
+	"value3",
+	"matCode"
 	
 	
 };
 
 enum E_GUI_FLAGS {
-	E_GF_HUE = 1,
-	E_GF_SAT = 2,
-	E_GF_LIT = 4
+	E_GF_X = 1,
+	E_GF_Y = 2,
+	E_GF_Z = 4,
+	E_GF_W = 8,
+	E_GF_MAT = 16
 };
 
 string guiStringValues[E_GST_LENGTH];
@@ -3597,6 +3621,10 @@ Matrix4& Matrix4::rotateZ(float angle)
 }
  
 
+float fract(float val) {
+	return (val - floor(val));
+}
+
 int intDiv(int v, int s) {
 	float fv = v;
 	float fs = s;
@@ -4293,7 +4321,23 @@ public:
 		}
 
 	}
-
+	
+	bool any() {
+		return (
+			(fv4.x != 0.0f) ||
+			(fv4.y != 0.0f) ||
+			(fv4.z != 0.0f) ||
+			(fv4.w != 0.0f)
+		);
+	}
+	bool all() {
+		return (
+			(fv4.x != 0.0f) &&
+			(fv4.y != 0.0f) &&
+			(fv4.z != 0.0f) &&
+			(fv4.w != 0.0f)
+		);
+	}
 
 
 	bool inBoundsXYZ(FIVector4 *minV, FIVector4 *maxV) {
@@ -4607,6 +4651,40 @@ public:
 
 
 };
+
+
+
+
+void hsv2rgb(materialNode* matNode) {
+	
+	
+	static FIVector4 K_HSV;
+	static FIVector4 P_HSV;
+	static FIVector4 C_HSV;
+	static FIVector4 R_HSV;
+	
+	K_HSV.setFXYZW(1.0f, 2.0f / 3.0f, 1.0f / 3.0f, 3.0f);
+	
+	C_HSV.setFXYZ(matNode->h,matNode->s,matNode->l);
+	
+	
+	P_HSV.setFXYZ(
+		abs(fract(C_HSV[0] + K_HSV[0]) * 6.0f - K_HSV[3]),
+		abs(fract(C_HSV[0] + K_HSV[1]) * 6.0f - K_HSV[3]),
+		abs(fract(C_HSV[0] + K_HSV[2]) * 6.0f - K_HSV[3])
+	);
+	R_HSV.setFXYZ(
+		C_HSV[2] * mixf(K_HSV[0], clampf(P_HSV[0] - K_HSV[0], 0.0f, 1.0f), C_HSV[1]),
+		C_HSV[2] * mixf(K_HSV[0], clampf(P_HSV[1] - K_HSV[0], 0.0f, 1.0f), C_HSV[1]),
+		C_HSV[2] * mixf(K_HSV[0], clampf(P_HSV[2] - K_HSV[0], 0.0f, 1.0f), C_HSV[1])	
+	);
+	
+	matNode->r = R_HSV[0];
+	matNode->g = R_HSV[1];
+	matNode->b = R_HSV[2];
+	
+}
+
 
 struct RotationInfo {
 	float rotMatrix[16];
@@ -16100,6 +16178,8 @@ public:
   EntSelection selectedEnts;
   GameEnt * selectedEnt;
   GameEnt * highlightedEnt;
+  bool updateMatVolFlag;
+  bool matVolLock;
   bool isMoving;
   bool perspectiveOn;
   bool (isInteractiveEnt) [E_CT_LENGTH];
@@ -16214,6 +16294,7 @@ public:
   int holderSizeInPages;
   int volGenSuperMod;
   int volGenSuperRes;
+  int matVolSize;
   int * cdBuffer;
   intPair (entIdArr) [1024];
   uint palWidth;
@@ -16317,6 +16398,8 @@ public:
   FIVector4 panMod;
   FIVector4 dMod;
   FIVector4 modXYZ;
+  FIVector4 matVolDim;
+  uint * matVol;
   std::vector <UICont*> (guiLayers) [MAX_UI_LAYERS];
   std::vector <RotationInfo> rotMatStack;
   std::vector <DynObject *> dynObjects;
@@ -16362,9 +16445,12 @@ public:
   GLuint volIdLinear;
   GLuint volIdEmpty;
   GLuint volIdEmptyLinear;
+  GLuint volIdMat;
   GLuint volGenId;
   uint * lookup2to3;
   unsigned char * resultImage;
+  materialNode * matSlice0;
+  materialNode * matSlice1;
   charArr nullBuffer;
   charArr lastImageBuffer;
   charArr lastJSONBuffer;
@@ -16383,11 +16469,9 @@ public:
   TerTexture (terTextures) [MAX_TER_TEX];
   GameOrg * testHuman;
   GameGUI * mainGUI;
-  UIComponent * lastPickerItem;
   UIComponent * mapComp;
   UIComponent * mainMenu;
   UIComponent * ddMenu;
-  UIComponent * pickerMenu;
   UIComponent * fieldMenu;
   UIComponent * fieldText;
   FontWrapper * (fontWrappers) [EFW_LENGTH];
@@ -16403,6 +16487,7 @@ public:
   void playSound (string soundName, float volume = 1.0f);
   void playSoundEvent (char const * eventName, bool suppress = false);
   void setCurrentActor (GameEnt * ge);
+  void updateMatVol ();
   void dispatchEvent (int button, int state, float x, float y, UIComponent * comp, bool automated = false, bool preventRefresh = false);
   StyleSheet * getNewStyleSheet (string ssName);
   void initStyleSheet ();
@@ -16690,8 +16775,9 @@ class UIComponent
 {
 private:
   UIComponent * parent;
-  float value;
-  float valueY;
+  UIComponent * valuePtr;
+  float privValueX;
+  float privValueY;
 public:
   Singleton * singleton;
   Singleton::UIQuad thisUIQuad;
@@ -16702,6 +16788,9 @@ public:
   string label;
   string dataFile;
   string dataRef;
+  string dataKey;
+  string valRef;
+  int matCode;
   int parentId;
   int nodeId;
   int index;
@@ -16710,11 +16799,12 @@ public:
   int hoverType;
   int guiClass;
   Singleton::UIQuad * curQuad;
+  bool selected;
   bool foundParent;
+  bool foundValuePtr;
   bool visible;
   iVector2 align;
   FIVector4 valVec;
-  FIVector4 * valVecPtr;
   FIVector4 valVecMask;
   JSONValue * jvNodeNoTemplate;
   fVector2 scrollMaskY;
@@ -16745,6 +16835,7 @@ public:
   bool wasHit;
   bool isDirty;
   bool isFloating;
+  bool dataLoaded;
   uint flags;
   float divisions;
   float paddingInPixels;
@@ -16765,13 +16856,18 @@ public:
   void init (Singleton * _singleton, UIComponent * _baseComp, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, bool _isFloating, string * stringVals, double * floatVals);
   float getDimYClamped (float val);
   float getResultDimYClamped ();
-  void updateLinkedValues ();
+  string findKeyString (int valEnum);
+  void updateLinkedValues (bool isRead = false);
   void setValueIndex (int ind, float val);
+  float getValueIndex (int ind);
+  float getValueIndexPtr (int ind);
   void setValue (float _value, bool doEventDispatch = false, bool preventRefresh = false);
   float getValue ();
   void setValueY (float _value, bool doEventDispatch = false, bool preventRefresh = false);
   float getValueY ();
   UIComponent * getParent ();
+  UIComponent * findParentByUID (string parUID);
+  UIComponent * getValuePtr ();
   UIComponent * findNodeByString (string _uid);
   UIComponent * findNodeById (int id);
   float getMinWidth ();
@@ -17592,6 +17688,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		float tempf;
 		
 		
+		
 		cdMap[0] = E_CD_EMPTY;
 		for (i = 1; i < 256; i++) {
 			cdMap[i] = E_CD_SOLID;
@@ -17622,12 +17719,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		guiDirty = true;
 		
 		
+		//lastPickerItem = NULL;
+		//pickerMenu = NULL;
 		currentActor = NULL;
-		lastPickerItem = NULL;
 		mapComp = NULL;
 		mainMenu = NULL;
 		ddMenu = NULL;
-		pickerMenu = NULL;
 		fieldMenu = NULL;
 		fieldText = NULL;
 		selectedEnt = NULL;
@@ -17746,7 +17843,15 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		moveTimer.start();
 		
 		
+		matVolDim.setIXYZ(64,4,256);
+		matVolSize = matVolDim.getIX()*matVolDim.getIY()*matVolDim.getIZ();
+		matVol = new uint[matVolSize];
+		matSlice0 = new materialNode[matVolDim.getIX()*matVolDim.getIY()];
+		matSlice1 = new materialNode[matVolDim.getIX()*matVolDim.getIY()];
 		
+		for (i = 0; i < matVolSize; i++) {
+			matVol[i] = 0;
+		}
 		
 		
 		// qqqqqq
@@ -17984,10 +18089,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 
-		glGenTextures(1, &volId);
-		glGenTextures(1, &volIdLinear);
-		glGenTextures(1, &volIdEmpty);
-		glGenTextures(1, &volIdEmptyLinear);
+		
 
 		int curFilter;
 
@@ -18026,7 +18128,23 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		}
 
 
+		glGenTextures(1, &volIdMat);
+		glBindTexture(GL_TEXTURE_3D, volIdMat);
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, matVolDim.getIX(), matVolDim.getIY(), matVolDim.getIZ(), 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+		glBindTexture(GL_TEXTURE_3D, 0);
 
+
+
+		glGenTextures(1, &volId);
+		glGenTextures(1, &volIdLinear);
+		glGenTextures(1, &volIdEmpty);
+		glGenTextures(1, &volIdEmptyLinear);
 		for (i = 0; i < 4; i++)
 		{
 			switch (i)
@@ -18431,6 +18549,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		lastx = 0;
 		lasty = 0;
 		isMoving = false;
+		updateMatVolFlag = false;
+		matVolLock = false;
 		perspectiveOn = false;
 
 		mainCamera = new GameCamera();
@@ -18667,6 +18787,221 @@ void Singleton::setCurrentActor (GameEnt * ge)
 		}
 		
 	}
+void Singleton::updateMatVol ()
+                            {
+		
+		matVolLock = true;
+		
+		JSONValue* jv = fetchJSONData("materials.js");
+		JSONValue* curJV = NULL;
+		JSONValue* curK = NULL;
+		JSONValue* curJ = NULL;
+		JSONValue* curI = NULL;
+		JSONValue* curCol = NULL;
+		
+		int i;
+		int j;
+		int k;
+		int m;
+		int n;
+		int totN;
+		
+		int curInd0;
+		int curInd0Prev;
+		int curInd0Next;
+		int curInd1;
+		
+		int mvInd;
+		
+		uint rv, gv, bv;
+		
+		joi_type itI;
+		joi_type itJ;
+		joi_type itK;
+		
+		float totRatio;
+		float curLerp;
+		float curLerpWithPower;
+		
+		
+		if (jv != NULL) {
+			
+			
+			
+			
+			
+			curJV = jv->Child("materials");
+			
+			k = 0;
+			for (itK = curJV->object_value.begin(); itK != curJV->object_value.end(); itK++) {
+				curK = itK->second;
+				
+				j = 0;
+				for (itJ = curK->object_value.begin(); itJ != curK->object_value.end(); itJ++) {
+					curJ = itJ->second;
+					
+					i = 0;
+					totRatio = 0.0f;
+					for (itI = curJ->object_value.begin(); itI != curJ->object_value.end(); itI++) {
+						curI = itI->second;
+						
+						curInd0 = i+j*matVolDim.getIX();
+						curCol = curI->Child("i0_color");
+						
+						
+						matSlice0[curInd0].h = curCol->Child(0)->number_value;
+						matSlice0[curInd0].s = curCol->Child(1)->number_value;
+						matSlice0[curInd0].l = curCol->Child(2)->number_value;
+						
+						hsv2rgb(&(matSlice0[curInd0]));
+						
+						matSlice0[curInd0].power = curI->Child("i1_power")->number_value;
+						matSlice0[curInd0].ratio = curI->Child("i2_ratio")->number_value;
+						
+						if (matSlice0[curInd0].ratio <= 0.0f) {
+							matSlice0[curInd0].ratio = 1.0f/(matVolDim.getFX()-1.0f);
+						}
+						
+						totRatio += matSlice0[curInd0].ratio;
+						
+						i++;
+					}
+					
+					
+					switch (i) {
+						case 0:
+							
+						break;
+						case 1:
+						
+						break;
+						default:
+							for (m = 0; m < i; m++) {
+								curInd0 = m+j*matVolDim.getIX();
+								matSlice0[curInd0].ratio = matSlice0[curInd0].ratio*(matVolDim.getFX()-1.0f)/totRatio;
+							}
+							
+							
+							totN = 0;
+							for (m = 0; m < i; m++) {
+								curInd0 = m+j*matVolDim.getIX();
+								curInd0Prev = (m-1)+j*matVolDim.getIX();
+								curInd0Next = (m+1)+j*matVolDim.getIX();
+								
+								for (n = 0; (n < matSlice0[curInd0].ratio)&&(n < matVolDim.getIX()); n++) {
+									curLerp = ((float)n)/(matSlice0[curInd0].ratio);
+									curInd1 = totN + j*matVolDim.getIX();
+									
+									if (m == 0) {
+										
+										curLerpWithPower = curLerp*0.5f;
+										
+										matSlice1[curInd1].r = mixf(matSlice0[curInd0].r,matSlice0[curInd0Next].r,curLerpWithPower);
+										matSlice1[curInd1].g = mixf(matSlice0[curInd0].g,matSlice0[curInd0Next].g,curLerpWithPower);
+										matSlice1[curInd1].b = mixf(matSlice0[curInd0].b,matSlice0[curInd0Next].b,curLerpWithPower);
+									}
+									else if (m == (i-1)) {
+										curLerpWithPower = curLerp*0.5f+0.5f;
+										
+										matSlice1[curInd1].r = mixf(matSlice0[curInd0Prev].r,matSlice0[curInd0].r,curLerpWithPower);
+										matSlice1[curInd1].g = mixf(matSlice0[curInd0Prev].g,matSlice0[curInd0].g,curLerpWithPower);
+										matSlice1[curInd1].b = mixf(matSlice0[curInd0Prev].b,matSlice0[curInd0].b,curLerpWithPower);
+									}
+									else {
+										
+										
+										if (curLerp < 0.5f) {
+											curLerpWithPower = curLerp + 0.5f;
+											
+											matSlice1[curInd1].r = mixf(matSlice0[curInd0Prev].r,matSlice0[curInd0].r,curLerpWithPower);
+											matSlice1[curInd1].g = mixf(matSlice0[curInd0Prev].g,matSlice0[curInd0].g,curLerpWithPower);
+											matSlice1[curInd1].b = mixf(matSlice0[curInd0Prev].b,matSlice0[curInd0].b,curLerpWithPower);
+										}
+										else {
+											curLerpWithPower = curLerp - 0.5f;
+											
+											matSlice1[curInd1].r = mixf(matSlice0[curInd0].r,matSlice0[curInd0Next].r,curLerpWithPower);
+											matSlice1[curInd1].g = mixf(matSlice0[curInd0].g,matSlice0[curInd0Next].g,curLerpWithPower);
+											matSlice1[curInd1].b = mixf(matSlice0[curInd0].b,matSlice0[curInd0Next].b,curLerpWithPower);											
+											
+										}
+										
+										
+										
+									}
+									
+									
+									
+									totN++;
+								}
+								
+								
+							}
+						break;
+					}
+					
+					
+					
+					
+					for (m = 0; m < matVolDim.getIX(); m++) {
+						curInd1 = m + j*matVolDim.getIX();
+						
+						mvInd = m + j*matVolDim.getIX() + k*matVolDim.getIX()*matVolDim.getIY();
+						
+						rv = matSlice1[curInd1].r*255.0f;
+						gv = matSlice1[curInd1].g*255.0f;
+						bv = matSlice1[curInd1].b*255.0f;
+						
+						matVol[mvInd] = (0 << 24) | (bv << 16) | (gv << 8) | (rv);
+						
+					}
+					
+					
+					
+					j++;
+					
+				}
+				
+				k++;
+			}
+			
+			
+			
+			glBindTexture(GL_TEXTURE_3D, 0);
+			glBindTexture(GL_TEXTURE_3D, volIdMat);
+			glTexSubImage3D(
+				GL_TEXTURE_3D,
+				0,
+
+				0,
+				0,
+				0,
+
+				matVolDim.getIX(),
+				matVolDim.getIY(),
+				matVolDim.getIZ(),
+
+				GL_RGBA,
+				GL_UNSIGNED_BYTE,
+
+				matVol
+			);
+			glBindTexture(GL_TEXTURE_3D, 0);
+			
+			
+			
+		}
+		
+		
+		
+		
+		 
+		
+		
+		
+		matVolLock = false;	
+		
+	}
 void Singleton::dispatchEvent (int button, int state, float x, float y, UIComponent * comp, bool automated, bool preventRefresh)
           {
 		
@@ -18796,29 +19131,27 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		
 		if (mouseUpEvent) {
 			
-			if (comp->guiClass == E_GT_COLPICKER) {
-				if (pickerMenu != NULL) {
-					lastPickerItem = comp;
+			// if (comp->guiClass == E_GT_COLPICKER) {
+			// 	if (pickerMenu != NULL) {
+			// 		lastPickerItem = comp;
 					
 					
+			// 		tempComp = &(pickerMenu->children[0].children[0]);
 					
-					tempComp = &(pickerMenu->children[0].children[0]);
-					
-					for (i = 0; i < tempComp->children.size(); i++) {
-						tempComp->children[i].valVecPtr = &(comp->valVec);
-					}
+			// 		for (i = 0; i < tempComp->children.size(); i++) {
+			// 			tempComp->children[i].valVecPtr = &(comp->valVec);
+			// 		}
 					
 					
-					hitPicker = true;
-					//children[0].children[0].bindValues(comp);
+			// 		hitPicker = true;
 					
-					pickerMenu->alignToComp(comp->getParent());
+			// 		pickerMenu->alignToComp(comp->getParent());
 					
-					// pickerMenu->floatOffset.x = (guiX);
-					// pickerMenu->floatOffset.y = (guiY);
+			// 		// pickerMenu->floatOffset.x = (guiX);
+			// 		// pickerMenu->floatOffset.y = (guiY);
 					
-				}
-			}
+			// 	}
+			// }
 			
 			
 			if (comp->uid.compare("placeEntity.actor") == 0) {
@@ -18890,81 +19223,98 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 			clipDist[1] = curValue*65536.0f;
 		}
 		
+		
 		if (
-			(lastPickerItem != NULL) &&
-			(
-				(button == GLUT_LEFT_BUTTON) ||
-				(state == GLUT_CHANGING)	
-			)
+			(button == GLUT_LEFT_BUTTON) ||
+			(state == GLUT_CHANGING)	
 		) {
-			
-			tempComp = &(pickerMenu->children[0].children[0]);
-			
-			for (i = 0; i < tempComp->children.size(); i++) {
-				
-				switch((tempComp->children[i].flags)&(E_GF_HUE|E_GF_SAT|E_GF_LIT)) {
-					case 0: // nothing
-					
-					break;
-					case 1: // hue - x
-						tempComp->children[i].setValue(lastPickerItem->valVec[0]);
-					break;
-					case 2: // sat - y
-						tempComp->children[i].setValue(lastPickerItem->valVec[1]);
-					break;
-					case 3: // hue/sat - x/y
-						tempComp->children[i].setValue(lastPickerItem->valVec[0]);
-						tempComp->children[i].setValueY(lastPickerItem->valVec[1]);
-					break;
-					
-					case 4: // lit - z
-						tempComp->children[i].setValue(lastPickerItem->valVec[2]);
-					break;
-					case 5: // hue/lit - x/z
-						tempComp->children[i].setValue(lastPickerItem->valVec[0]);
-						tempComp->children[i].setValueY(lastPickerItem->valVec[2]);
-					break;
-					case 6: // sat/lit - y/z
-						tempComp->children[i].setValue(lastPickerItem->valVec[1]);
-						tempComp->children[i].setValueY(lastPickerItem->valVec[2]);
-					break;
-					case 7: // hue/sat/lit - x/y/z
-					
-					break;
-				}
-				
+			if (comp->uid.compare("#materialVal") == 0) {
+				updateMatVolFlag = true;
 			}
 			
-			if (comp->uid.compare("picker.hue") == 0) {
-				lastPickerItem->setValueIndex(0,curValue);
-				hitPicker = true;
-			}
-			else if (comp->uid.compare("picker.saturation") == 0) {
-				lastPickerItem->setValueIndex(1,curValue);
-				hitPicker = true;
-			}
-			else if (comp->uid.compare("picker.lightness") == 0) {
-				lastPickerItem->setValueIndex(2,curValue);
-				hitPicker = true;
-			}
-			else if (comp->uid.compare("picker.huelit") == 0) {
-				lastPickerItem->setValueIndex(0,curValue);
-				lastPickerItem->setValueIndex(2,curValueY);
-				hitPicker = true;
-			}
-			else if (comp->uid.compare("picker.satlit") == 0) {
-				lastPickerItem->setValueIndex(1,curValue);
-				lastPickerItem->setValueIndex(2,curValueY);
-				hitPicker = true;
-			}
 		}
 		
 		
+		// if (
+		// 	(lastPickerItem != NULL) &&
+		// 	(
+		// 		(button == GLUT_LEFT_BUTTON) ||
+		// 		(state == GLUT_CHANGING)	
+		// 	)
+		// ) {
+			
+		// 	tempComp = &(pickerMenu->children[0].children[0]);
+			
+		// 	for (i = 0; i < tempComp->children.size(); i++) {
+				
+		// 		switch((tempComp->children[i].flags)&(E_GF_HUE|E_GF_SAT|E_GF_LIT)) {
+		// 			case 0: // nothing
+					
+		// 			break;
+		// 			case 1: // hue - x
+		// 				tempComp->children[i].setValue(lastPickerItem->valVec[0]);
+		// 			break;
+		// 			case 2: // sat - y
+		// 				tempComp->children[i].setValue(lastPickerItem->valVec[1]);
+		// 			break;
+		// 			case 3: // hue/sat - x/y
+		// 				tempComp->children[i].setValue(lastPickerItem->valVec[0]);
+		// 				tempComp->children[i].setValueY(lastPickerItem->valVec[1]);
+		// 			break;
+					
+		// 			case 4: // lit - z
+		// 				tempComp->children[i].setValue(lastPickerItem->valVec[2]);
+		// 			break;
+		// 			case 5: // hue/lit - x/z
+		// 				tempComp->children[i].setValue(lastPickerItem->valVec[0]);
+		// 				tempComp->children[i].setValueY(lastPickerItem->valVec[2]);
+		// 			break;
+		// 			case 6: // sat/lit - y/z
+		// 				tempComp->children[i].setValue(lastPickerItem->valVec[1]);
+		// 				tempComp->children[i].setValueY(lastPickerItem->valVec[2]);
+		// 			break;
+		// 			case 7: // hue/sat/lit - x/y/z
+					
+		// 			break;
+		// 		}
+				
+		// 	}
+			
+		// 	if (comp->uid.compare("picker.hue") == 0) {
+		// 		lastPickerItem->setValueIndex(0,curValue);
+		// 		updateMatVolFlag = true;
+		// 		hitPicker = true;
+		// 	}
+		// 	else if (comp->uid.compare("picker.saturation") == 0) {
+		// 		lastPickerItem->setValueIndex(1,curValue);
+		// 		updateMatVolFlag = true;
+		// 		hitPicker = true;
+		// 	}
+		// 	else if (comp->uid.compare("picker.lightness") == 0) {
+		// 		lastPickerItem->setValueIndex(2,curValue);
+		// 		updateMatVolFlag = true;
+		// 		hitPicker = true;
+		// 	}
+		// 	else if (comp->uid.compare("picker.huelit") == 0) {
+		// 		lastPickerItem->setValueIndex(0,curValue);
+		// 		lastPickerItem->setValueIndex(2,curValueY);
+		// 		updateMatVolFlag = true;
+		// 		hitPicker = true;
+		// 	}
+		// 	else if (comp->uid.compare("picker.satlit") == 0) {
+		// 		lastPickerItem->setValueIndex(1,curValue);
+		// 		lastPickerItem->setValueIndex(2,curValueY);
+		// 		updateMatVolFlag = true;
+		// 		hitPicker = true;
+		// 	}
+		// }
+		// if (mouseUpEvent) {
+		// 	pickerMenu->visible = hitPicker;
+		// }
 		
 		
-		if (mouseUpEvent) {
-			pickerMenu->visible = hitPicker;
-		}
+		
+		
 		
 		
 		
@@ -20708,7 +21058,7 @@ void Singleton::processInput (unsigned char key, bool keyDown)
 					//std::exit(0);
 					
 					ddMenu->visible = false;
-					pickerMenu->visible = false;
+					//pickerMenu->visible = false;
 					
 					break;
 
@@ -21324,11 +21674,11 @@ bool Singleton::anyMenuVisible ()
 						doProc = true;
 					}
 				}
-				if (pickerMenu != NULL) {
-					if (pickerMenu->visible){
-						doProc = true;
-					}
-				}
+				// if (pickerMenu != NULL) {
+				// 	if (pickerMenu->visible){
+				// 		doProc = true;
+				// 	}
+				// }
 				if (fieldMenu != NULL) {
 					if (fieldMenu->visible) {
 						doProc = true;
@@ -21498,7 +21848,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 				else {
 					if (noTravel) {
 						ddMenu->visible = false;
-						pickerMenu->visible = false;
+						//pickerMenu->visible = false;
 						markerFound = false;
 					}
 					
@@ -21923,8 +22273,8 @@ void Singleton::processB64 (charArr * sourceBuffer, charArr * saveBuffer)
 
 	}
 void Singleton::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit)
-                                                                                                  {
-		//cout << "getJVNodeByString(" << stringToSplit <<  ")\n";
+          {
+		//if (dd) cout << "getJVNodeByString(" << stringToSplit <<  ")\n";
 		
 		int i;
 		*resultNode = rootNode;
@@ -21933,12 +22283,13 @@ void Singleton::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNod
 		splitStrings = split(stringToSplit, '.');
 		
 		for (i = 0; i < splitStrings.size(); i++) {
-			//cout << splitStrings[i] << "\n";
+			//if (dd) cout << splitStrings[i] << "\n";
 			
 			if ( (*resultNode)->HasChild(splitStrings[i]) ) {
 				*resultNode = (*resultNode)->Child(splitStrings[i]);
 			}
 			else {
+				cout << "NULL RESULT NODE\n";
 				*resultNode = NULL;
 				return;
 			}
@@ -22425,13 +22776,13 @@ void Singleton::loadGUI ()
 		mapComp = getGUIComp("map.mapHolder");
 		mainMenu = getGUIComp("guiHandles.mainMenu");
 		ddMenu = getGUIComp("guiHandles.ddMenu");
-		pickerMenu = getGUIComp("guiHandles.pickerMenu");
+		//pickerMenu = getGUIComp("guiHandles.pickerMenu");
 		fieldMenu = getGUIComp("guiHandles.fieldMenu");
 		fieldText = getGUIComp("fieldMenu.field");
 		
-		if (pickerMenu != NULL) {
-			pickerMenu->visible = false;
-		}
+		// if (pickerMenu != NULL) {
+		// 	pickerMenu->visible = false;
+		// }
 		if (mainMenu != NULL) {
 			mainMenu->visible = false;
 		}
@@ -22441,6 +22792,8 @@ void Singleton::loadGUI ()
 		if (fieldMenu != NULL) {
 			fieldMenu->visible = false;
 		}
+		
+		updateMatVolFlag = true;
 		
 		
 	}
@@ -22631,6 +22984,12 @@ void Singleton::updateAmbientSounds ()
 	}
 void Singleton::frameUpdate ()
                            {
+		
+		if (updateMatVolFlag&&(!matVolLock)) {
+			updateMatVolFlag = false;
+			updateMatVol();
+		}
+		
 		
 		cameraZoom += (targetZoom - cameraZoom) / (4.0f);
 		
@@ -23906,22 +24265,30 @@ void FontWrapper::init (Singleton * _singleton, string fontName, bool _isIcons, 
 #define LZZ_INLINE inline
 UIComponent::UIComponent ()
                       {
-		valVecPtr = NULL;
+		//valVecPtr = NULL;
 		parent = NULL;
+		valuePtr = NULL;
+		baseComp = NULL;
+		curComp = NULL;
 	}
 void UIComponent::init (Singleton * _singleton, UIComponent * _baseComp, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, bool _isFloating, string * stringVals, double * floatVals)
           {
 		
+		dataLoaded = false;
+		
 		//valVec = NULL;
 		
-		valueY = 0.0f;
+		privValueY = 0.0f;
+		selected = false;
 		
 		
 		
-		
-		valVecPtr = NULL;
+		//valVecPtr = NULL;
+		valuePtr = NULL;
 		parent = NULL;
 		foundParent = false;
+		foundValuePtr = false;
+		
 		contOnStack = false;
 
 		singleton = _singleton;
@@ -23933,24 +24300,32 @@ void UIComponent::init (Singleton * _singleton, UIComponent * _baseComp, int _pa
 		
 		
 		
-		if ((flags&E_GF_HUE) == 0) {
+		if ((flags&E_GF_X) == 0) {
 			valVecMask.setFX(0.0f);
 		}
 		else {
 			valVecMask.setFX(1.0f);
 		}
-		if ((flags&E_GF_SAT) == 0) {
+		if ((flags&E_GF_Y) == 0) {
 			valVecMask.setFY(0.0f);
 		}
 		else {
 			valVecMask.setFY(1.0f);
 		}
-		if ((flags&E_GF_LIT) == 0) {
+		if ((flags&E_GF_Z) == 0) {
 			valVecMask.setFZ(0.0f);
 		}
 		else {
 			valVecMask.setFZ(1.0f);
 		}
+		if ((flags&E_GF_W) == 0) {
+			valVecMask.setFW(0.0f);
+		}
+		else {
+			valVecMask.setFW(1.0f);
+		}
+		
+		matCode = floatVals[E_GFT_MATCODE];
 		
 		valVec.setFXYZW(
 			floatVals[E_GFT_VALUE0],
@@ -23958,6 +24333,8 @@ void UIComponent::init (Singleton * _singleton, UIComponent * _baseComp, int _pa
 			floatVals[E_GFT_VALUE2],
 			floatVals[E_GFT_VALUE3]
 		);
+		
+		
 		
 		
 		
@@ -23972,13 +24349,23 @@ void UIComponent::init (Singleton * _singleton, UIComponent * _baseComp, int _pa
 		text = label;
 		dataRef = stringVals[E_GST_DATAREF];
 		dataFile = stringVals[E_GST_DATAFILE];
+		dataKey = stringVals[E_GST_DATAKEY];
+		valRef = stringVals[E_GST_VALREF];
 		
 		
 		uid = stringVals[E_GST_UID];
 		index = _index;
 		
 		if (uid.size() > 0) {
-			singleton->compMap[uid].nodeId = nodeId;
+			
+			if (uid[0] == '#') {
+				
+			}
+			else {
+				singleton->compMap[uid].nodeId = nodeId;
+			}
+			
+			
 		}
 		
 		
@@ -24011,7 +24398,7 @@ void UIComponent::init (Singleton * _singleton, UIComponent * _baseComp, int _pa
 		curFontIcons = singleton->fontWrappers[EFW_ICONS];
 		
 		wasHit = false;
-		value = floatVals[E_GFT_VALUE];
+		privValueX = floatVals[E_GFT_VALUE];
 		divisions = floatVals[E_GFT_DIVISIONS];
 
 		mouseDown = false;
@@ -24080,6 +24467,8 @@ void UIComponent::init (Singleton * _singleton, UIComponent * _baseComp, int _pa
 			originPos.y = 0.0;
 		}
 		
+		//
+		
 		
 	}
 float UIComponent::getDimYClamped (float val)
@@ -24100,68 +24489,279 @@ float UIComponent::getResultDimYClamped ()
 			return max(min(maxDimInPixels.y, resultDimInPixels.y),minDimInPixels.y);
 		}
 	}
-void UIComponent::updateLinkedValues ()
-                                  {
+string UIComponent::findKeyString (int valEnum)
+                                          {
+		string resString = "";
+		UIComponent* curParent = getParent();
+		
+		
+		while (
+			(curParent != NULL)
+		) {
+			
+			switch (valEnum) {
+				case E_GST_DATAREF:
+					if (curParent->dataRef.compare("") != 0) {
+						return curParent->dataRef;
+					}
+				break;
+				case E_GST_DATAFILE:
+					if (curParent->dataFile.compare("") != 0) {
+						return curParent->dataFile;
+					}
+				break;
+			}
+			
+			curParent = curParent->getParent();
+		}
+		
+		return "";
+	}
+void UIComponent::updateLinkedValues (bool isRead)
+                                                     {
 		int k;
 		
 		JSONValue* jvFileBase = NULL;
 		JSONValue* jvNodeBase = NULL;
 		
-		if (
-			(dataFile.compare("") == 0) ||
-			(dataRef.compare("") == 0)	
-		) {
+		
+		
+		
+		if (dataKey.compare("") == 0) {
 			
 		}
 		else {
-			jvFileBase = singleton->fetchJSONData(dataFile);
-			singleton->getJVNodeByString(jvFileBase,&jvNodeBase,dataRef);
 			
-			if (jvNodeBase != NULL) {
-				//cout << "success\n";
+			if (dataFile.compare("") == 0) {
+				dataFile = findKeyString(E_GST_DATAFILE);
+			}
+			
+			if (dataRef.compare("") == 0) {
+				dataRef = findKeyString(E_GST_DATAREF);
+			}
+			
+			if (
+				(dataFile.compare("") == 0) ||
+				(dataRef.compare("") == 0)
+			) {
+				cout << "missing dataFile or dataRef";
+			}
+			else {
 				
-				if (jvNodeBase->IsNumber()) {
-					jvNodeBase->number_value = value;
-				}
-				if (jvNodeBase->IsArray()) {
-					for (k = 0; k < jvNodeBase->array_value.size(); k++) {
-						jvNodeBase->array_value[k]->number_value = valVec[k];
+				
+				jvFileBase = singleton->fetchJSONData(dataFile);
+				singleton->getJVNodeByString(jvFileBase,&jvNodeBase,dataRef + "." + dataKey);
+				
+				// if (isRead) {
+				// 	cout << "DF " << dataFile << "\n";
+				// }
+				
+				
+				if (jvNodeBase != NULL) {
+					
+					if (isRead) {
+						
+						//cout << "yay\n";
+						
+						if (jvNodeBase->IsNumber()) {
+							setValue(jvNodeBase->number_value);
+						}
+						if (jvNodeBase->IsArray()) {
+							for (k = 0; k < jvNodeBase->array_value.size(); k++) {
+								valVec.setIndex(k,jvNodeBase->array_value[k]->number_value);
+							}
+						}
 					}
+					else {
+						if (jvNodeBase->IsNumber()) {
+							jvNodeBase->number_value = getValue();
+						}
+						if (jvNodeBase->IsArray()) {
+							for (k = 0; k < jvNodeBase->array_value.size(); k++) {
+								jvNodeBase->array_value[k]->number_value = valVec[k];
+							}
+						}
+					}
+					
+					
+					
 				}
 				
 			}
+			
+			
+			
 		}
 	}
 void UIComponent::setValueIndex (int ind, float val)
                                                {
 		valVec.setIndex(ind,val);
-		updateLinkedValues();
+		updateLinkedValues();	
+	}
+float UIComponent::getValueIndex (int ind)
+                                     {
+		
+		if (!dataLoaded) {
+			dataLoaded = true;
+			updateLinkedValues(true);
+		}
+		
+		return valVec[ind];
+	}
+float UIComponent::getValueIndexPtr (int ind)
+                                        {
+		
+		UIComponent* curValuePtr = getValuePtr();
+		if (curValuePtr != NULL) {
+			return curValuePtr->getValueIndex(ind);
+		}
+		else {
+			return getValueIndex(ind);
+		}
+		
 		
 	}
 void UIComponent::setValue (float _value, bool doEventDispatch, bool preventRefresh)
                                                                                                {
-		value = _value;
+		UIComponent* curValuePtr = getValuePtr();
 		
-		updateLinkedValues();
-		
-		if (doEventDispatch) {
-			singleton->dispatchEvent(GLUT_LEFT_BUTTON, GLUT_UP, 0, 0, this, true, preventRefresh);
+		if (curValuePtr != NULL) {
+			
+			if ((flags&E_GF_X) != 0) {
+				curValuePtr->setValueIndex(0,_value);
+			}
+			else if ((flags&E_GF_Y) != 0) {
+				curValuePtr->setValueIndex(1,_value);
+			}
+			else if ((flags&E_GF_Z) != 0) {
+				curValuePtr->setValueIndex(2,_value);
+			}
+			else if ((flags&E_GF_W) != 0) {
+				curValuePtr->setValueIndex(3,_value);
+			}
+			
+			
 		}
+		else {
+			privValueX = _value;
+			
+			updateLinkedValues();
+			
+			if (doEventDispatch) {
+				singleton->dispatchEvent(GLUT_LEFT_BUTTON, GLUT_UP, 0, 0, this, true, preventRefresh);
+			}
+		}
+		
+		
 	}
 float UIComponent::getValue ()
                          {
-		return value;
+		
+		if (!dataLoaded) {
+			dataLoaded = true;
+			updateLinkedValues(true);
+		}
+		
+		UIComponent* curValuePtr = getValuePtr();
+		if (curValuePtr != NULL) {
+			if ((flags&E_GF_X) != 0) {
+				return curValuePtr->getValueIndex(0);
+			}
+			else if ((flags&E_GF_Y) != 0) {
+				return curValuePtr->getValueIndex(1);
+			}
+			else if ((flags&E_GF_Z) != 0) {
+				return curValuePtr->getValueIndex(2);
+			}
+			else if ((flags&E_GF_W) != 0) {
+				return curValuePtr->getValueIndex(3);
+			}
+			return 0.0f;
+		}
+		else {
+			return privValueX;
+		}
+		
 	}
 void UIComponent::setValueY (float _value, bool doEventDispatch, bool preventRefresh)
                                                                                                 {
-		valueY = _value;
-		// if (doEventDispatch) {
-		// 	singleton->dispatchEvent(GLUT_LEFT_BUTTON, GLUT_UP, 0, 0, this, true, preventRefresh);
-		// }
+		UIComponent* curValuePtr = getValuePtr();
+		
+		int count = 0;
+		
+		if (curValuePtr != NULL) {
+			if ((flags&E_GF_X) != 0) {
+				if (count == 1) {
+					curValuePtr->setValueIndex(0,_value);
+				}
+				count++;
+			}
+			if ((flags&E_GF_Y) != 0) {
+				if (count == 1) {
+					curValuePtr->setValueIndex(1,_value);
+				}
+				count++;
+			}
+			if ((flags&E_GF_Z) != 0) {
+				if (count == 1) {
+					curValuePtr->setValueIndex(2,_value);
+				}
+				count++;
+			}
+			if ((flags&E_GF_W) != 0) {
+				if (count == 1) {
+					curValuePtr->setValueIndex(3,_value);
+				}
+				count++;
+			}
+		}
+		else {
+			privValueY = _value;
+		}
 	}
 float UIComponent::getValueY ()
                           {
-		return valueY;
+		int count = 0;
+		UIComponent* curValuePtr = getValuePtr();
+		
+		if (!dataLoaded) {
+			dataLoaded = true;
+			updateLinkedValues(true);
+		}
+		
+		if (curValuePtr != NULL) {
+			if ((flags&E_GF_X) != 0) {
+				if (count == 1) {
+					return curValuePtr->getValueIndex(0);
+				}
+				count++;
+			}
+			if ((flags&E_GF_Y) != 0) {
+				if (count == 1) {
+					return curValuePtr->getValueIndex(1);
+				}
+				count++;
+			}
+			if ((flags&E_GF_Z) != 0) {
+				if (count == 1) {
+					return curValuePtr->getValueIndex(2);
+				}
+				count++;
+			}
+			if ((flags&E_GF_W) != 0) {
+				if (count == 1) {
+					return curValuePtr->getValueIndex(3);
+				}
+				count++;
+			}
+			
+			return 0.0f;
+			
+		}
+		else {
+			return privValueY;
+		}
+		
 	}
 UIComponent * UIComponent::getParent ()
                                  {
@@ -24169,12 +24769,61 @@ UIComponent * UIComponent::getParent ()
 			
 		}
 		else {
-			// todo: replace with root or id
-			parent = baseComp->findNodeById(parentId);
 			foundParent = true;
+			
+			if (nodeId == 0) {
+				parent = NULL;
+			}
+			else {
+				if (baseComp == NULL) {
+					parent = NULL;
+				}
+				else {
+					parent = baseComp->findNodeById(parentId);
+				}
+			}
+			
+			
 		}
 		
 		return parent;
+	}
+UIComponent * UIComponent::findParentByUID (string parUID)
+                                                    {
+		string resString = "";
+		UIComponent* curParent = getParent();
+		
+		
+		while (curParent != NULL) {
+			
+			
+			if(curParent->uid.compare(parUID) == 0) {
+				return curParent;
+			}
+			
+			curParent = curParent->getParent();
+		}
+		
+		return NULL;
+	}
+UIComponent * UIComponent::getValuePtr ()
+                                   {
+		if (foundValuePtr) {
+			
+		}
+		else {
+			
+			if (valRef.compare("") != 0) {
+				valuePtr = findParentByUID(valRef);
+			}
+			else {
+				valuePtr = NULL;
+			}
+			
+			foundValuePtr = true;
+		}
+		
+		return valuePtr;
 	}
 UIComponent * UIComponent::findNodeByString (string _uid)
                                                    {
@@ -24612,18 +25261,23 @@ void UIComponent::clearDirty ()
 	}
 void UIComponent::alignToComp (UIComponent * myComp)
                                               {
+		UIComponent* myComp2 = myComp->getParent();
 		
-		UIComponent* myComp2;
-		
-		if (myComp->fillDir == 0) {
-			myComp2 = myComp->getParent();
+		if (
+			(myComp->fillDir == 0) &&
+			(myComp2 != NULL)
+		) {
+			floatOffset.x = myComp2->totOffset.x + myComp2->originPos.x + myComp2->resultDimInPixels.x;
+			floatOffset.y = myComp2->totOffset.y + myComp2->originPos.y;
 		}
 		else {
-			myComp2 = myComp;
+			floatOffset.x = myComp->totOffset.x + myComp->originPos.x + myComp->resultDimInPixels.x;
+			floatOffset.y = myComp->totOffset.y + myComp->originPos.y;
 		}
 		
-		floatOffset.x = myComp2->totOffset.x + myComp2->originPos.x + myComp2->resultDimInPixels.x;
-		floatOffset.y = myComp2->totOffset.y + myComp2->originPos.y;
+		
+		
+		
 	}
 void UIComponent::layout ()
                       {
@@ -24686,10 +25340,7 @@ void UIComponent::updateValue (float x, float y)
 		}
 		else {
 			if (
-				//(hoverType == E_HT_ONSELECTED) ||
-				//(guiClass == E_GT_ROOTCONT) ||
 				(curParent->floatingChildren.size() > 0)
-				
 			) {
 				
 			}
@@ -24744,16 +25395,19 @@ void UIComponent::updateValue (float x, float y)
 				
 				if ((hoverType == E_HT_TOOLTIP_VALUE)&&visible) {
 					
-					children[0].setText(f__s(curParent->value));
+					children[0].setText(f__s(curParent->getValue()));
 				}
 				
 			break;
 			case E_HT_ONSELECTED:
 				//curParent->floatOffset.x + 
-				alignToComp(curParent);
-				visible = (curParent->value == 1.0f)&&(curParent->visible);
+				if (curParent != NULL) {
+					alignToComp(curParent);
+					visible = (curParent->selected)&&(curParent->visible);
+				}
+				
 			break;
-						
+
 		}
 		
 		updateOffset();
@@ -24992,8 +25646,8 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 		int i;
 		int j;
 		bool hitChild = false;
-		float lastValue = value;
-		float tempValue;
+		float lastValue = getValue();
+		bool tempValue;
 		
 		
 		
@@ -25054,7 +25708,7 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 						break;
 						case E_GT_SLIDER:
 							if (divisions == 1.0f) {
-								setValue(1.0f-value);
+								setValue(1.0f-getValue());
 							}
 						break;
 						case E_GT_BUTTON:
@@ -25064,8 +25718,8 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 							
 						break;
 						case E_GT_RADIO:
-							
-							tempValue = 1.0f-value;
+							//selected = !selected;
+							tempValue = !selected;
 							
 							if (singleton->bShift) {
 								
@@ -25075,7 +25729,8 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 								if (curParent2 == NULL) {
 									for (i = 0; i < curParent->children.size(); i++) {
 										if (curParent->children[i].guiClass == E_GT_RADIO) {
-											curParent->children[i].setValue(0.0f);
+											curParent->children[i].selected = false;
+											//curParent->children[i].setValue(0.0f);
 										}
 									}
 								}
@@ -25086,7 +25741,8 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 										
 										for (i = 0; i < selParent->children.size(); i++) {
 											if (selParent->children[i].guiClass == E_GT_RADIO) {
-												selParent->children[i].setValue(0.0f);
+												//selParent->children[i].setValue(0.0f);
+												selParent->children[i].selected = false;
 											}
 										}
 									}
@@ -25098,8 +25754,8 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 								
 								
 							}
-							
-							setValue(tempValue);
+							selected = tempValue;
+							//setValue(tempValue);
 							
 						break;
 					}
@@ -25983,52 +26639,77 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 									
 								}
 								
+								
+								
 								tempJV = findNearestKey(jvChildTemplate,"dataSource");
 								if (tempJV != NULL) { // is a branch node
 									tempJV->Child("dataSource")->string_value =
 										tempStrings[E_GDS_DATA_SOURCE] + "." + tempStrings[E_GDS_LAST_KEY];										
 								}
-								else { // is a leaf node
+								else { // if childTemplate does not contain dataSource, it is a leaf node
 									
-									
-									if (singleton->splitStrings.size() == 3) {
-										if (jvChildTemplate->HasChild("template")) {
-											jvChildTemplate->Child("template")->string_value = singleton->splitStrings[2];
-										}
-									}
-									
-									if (jvChildTemplate->HasChild("value")) {
+									// if (jvChildTemplate->HasChild("oneToOne")) { // one-to-one data mapping
 										
+									// 	if (singleton->splitStrings.size() == 3) {
+									// 		if (jvChildTemplate->HasChild("template")) {
+									// 			jvChildTemplate->Child("template")->string_value = singleton->splitStrings[2];
+									// 		}
+									// 	}
 										
-										// WAS DOING THIS *****************************************
-										
-										if (jvChildTemplate->HasChild("dataRef")) {
-											jvChildTemplate->Child("dataRef")->string_value =
-												tempStrings[E_GDS_DATA_SOURCE] + "." + tempStrings[E_GDS_LAST_KEY];
-										}
-										if (jvChildTemplate->HasChild("dataFile")) {
-											jvChildTemplate->Child("dataFile")->string_value =
-												tempStrings[E_GDS_DATA_FILE];
-										}
-									
-										
-										if (curData->IsNumber()) {
-											jvChildTemplate->Child("value")->number_value = curData->number_value;
-										}
-										if (curData->IsArray()) {
+									// 	if (jvChildTemplate->HasChild("value")) {
 											
-											for (k = 0; k < curData->array_value.size(); k++) {
-												jvChildTemplate->Child(
-													guiFloatTypes[E_GFT_VALUE0 + k]
-												)->number_value = curData->array_value[k]->number_value;
-											}
-										}
+											
+									// 		if (jvChildTemplate->HasChild("dataRef")) {
+									// 			jvChildTemplate->Child("dataRef")->string_value =
+									// 				tempStrings[E_GDS_DATA_SOURCE];
+									// 		}
+									// 		if (jvChildTemplate->HasChild("dataKey")) {
+									// 			jvChildTemplate->Child("dataKey")->string_value =
+									// 				tempStrings[E_GDS_LAST_KEY];
+									// 		}											
+									// 		if (jvChildTemplate->HasChild("dataFile")) {
+									// 			jvChildTemplate->Child("dataFile")->string_value =
+									// 				tempStrings[E_GDS_DATA_FILE];
+									// 		}
+										
+											
+									// 		if (curData->IsNumber()) {
+									// 			jvChildTemplate->Child("value")->number_value = curData->number_value;
+									// 		}
+									// 		if (curData->IsArray()) {
+												
+									// 			for (k = 0; k < curData->array_value.size(); k++) {
+									// 				jvChildTemplate->Child(
+									// 					guiFloatTypes[E_GFT_VALUE0 + k]
+									// 				)->number_value = curData->array_value[k]->number_value;
+									// 			}
+									// 		}
+									// 	}
+										
+									// }
+									// else { // custom data mapping
+										
+									// }
+									
+									
+									if (jvChildTemplate->HasChild("dataRef")) {
+										jvChildTemplate->Child("dataRef")->string_value =
+											tempStrings[E_GDS_DATA_SOURCE] + "." + tempStrings[E_GDS_LAST_KEY];
 									}
+									if (jvChildTemplate->HasChild("dataFile")) {
+										jvChildTemplate->Child("dataFile")->string_value =
+											tempStrings[E_GDS_DATA_FILE];
+									}
+									
+									
+									
+									
 								}
 								
 								
 								
 							break;
+							
 							
 							case E_GCT_LENGTH:
 								
@@ -26251,16 +26932,15 @@ void GameGUI::renderQuad (UIComponent * uiComp, fBoundingBox fbb, float shadowOf
 
 		StyleSheetResult* resSS = &(uiComp->resSS);
 		
-		bool isColor = uiComp->guiClass == E_GT_COLPICKER;
+		//bool isColor = uiComp->guiClass == E_GT_COLPICKER;
 		
-		bool isHSL = ( ((uiComp->flags)&(E_GF_HUE|E_GF_SAT|E_GF_LIT)) != 0)||isColor;
-		float fIsHSL = 0.0f;
-		
-		if (isHSL) {
-			fIsHSL = 1.0f;
-		}
+		//( ((uiComp->flags)&(E_GF_HUE|E_GF_SAT|E_GF_LIT)) != 0)||isColor;
+		float fMatCode = uiComp->matCode;
+		bool isHSL = uiComp->matCode == E_MC_HSV;
 		
 		
+		float selMod = 0.0f;
+		float selMod2 = 1.0f;
 		
 		
 		
@@ -26280,31 +26960,36 @@ void GameGUI::renderQuad (UIComponent * uiComp, fBoundingBox fbb, float shadowOf
 
 		glMultiTexCoord4f(5, 0.0f, shadowOffset, uiComp->scrollMaskY.x, uiComp->scrollMaskY.y);
 		
+		
+		// todo: fix this to use style sheet
+		if (uiComp->selected) {
+			selMod = 0.5f;
+			selMod2 = 0.5f;
+		}
+		
 		//border color
-		glMultiTexCoord4f(6, resSS->props[E_SS_BDCOL_R], resSS->props[E_SS_BDCOL_G], resSS->props[E_SS_BDCOL_B], resSS->props[E_SS_BDCOL_A]);
+		glMultiTexCoord4f(
+			6,
+			resSS->props[E_SS_BDCOL_R]*selMod2 + selMod,
+			resSS->props[E_SS_BDCOL_G]*selMod2 + selMod,
+			resSS->props[E_SS_BDCOL_B]*selMod2,
+			resSS->props[E_SS_BDCOL_A]*selMod2 + selMod
+		);
+		
+		
+		
 		//misc
-		glMultiTexCoord4f(7, uiComp->getValue(), uiComp->getValueY(), resSS->props[E_SS_ROUNDNESS],  fIsHSL);
+		glMultiTexCoord4f(7, uiComp->getValue(), uiComp->getValueY(), resSS->props[E_SS_ROUNDNESS],  fMatCode);
 
 		if ( isHSL ) { // bg with hsv
 			
-			if (uiComp->valVecPtr == NULL) {
-				glMultiTexCoord4f(
-					2,
-					mixf(uiComp->valVec[0],-1.0f,uiComp->valVecMask[0]),
-					mixf(uiComp->valVec[1],-1.0f,uiComp->valVecMask[1]),
-					mixf(uiComp->valVec[2],-1.0f,uiComp->valVecMask[2]),
-					1.0f
-				);
-			}
-			else {
-				glMultiTexCoord4f(
-					2,
-					mixf((*(uiComp->valVecPtr))[0],-1.0f,uiComp->valVecMask[0]),
-					mixf((*(uiComp->valVecPtr))[1],-1.0f,uiComp->valVecMask[1]),
-					mixf((*(uiComp->valVecPtr))[2],-1.0f,uiComp->valVecMask[2]),
-					1.0f
-				);
-			}
+			glMultiTexCoord4f(
+				2,
+				mixf(uiComp->getValueIndexPtr(0),-1.0f,uiComp->valVecMask[0]),
+				mixf(uiComp->getValueIndexPtr(1),-1.0f,uiComp->valVecMask[1]),
+				mixf(uiComp->getValueIndexPtr(2),-1.0f,uiComp->valVecMask[2]),
+				1.0f
+			);
 			
 			
 		}
@@ -38032,9 +38717,12 @@ void GameWorld::postProcess ()
 			singleton->setShaderTexture(0,singleton->fontWrappers[EFW_TEXT]->fontImage->tid);
 			singleton->setShaderTexture(1,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
 			singleton->sampleFBO("swapFBOBLin0", 2);
+			singleton->setShaderTexture3D(3,singleton->volIdMat);
 			
 			singleton->mainGUI->renderGUI(1 - activeFBO);
 			
+			
+			singleton->setShaderTexture3D(3,0);
 			singleton->unsampleFBO("swapFBOBLin0", 2);
 			singleton->setShaderTexture(1,0);
 			singleton->setShaderTexture(0,0);

@@ -6,6 +6,7 @@ uniform vec2 resolution;
 uniform sampler2D Texture0; // chars
 uniform sampler2D Texture1; // icons
 uniform sampler2D Texture2; // background
+uniform sampler3D Texture3; // material volume
 
 uniform float passNum;
 
@@ -107,7 +108,8 @@ void main() {
 		alphaMult = 1.0-clamp((yMax - worldPos.y)*resolution.y/8.0,0.0,1.0);
 	}
 	
-	bool isHSL = bool(TexCoord7.w);
+	bool isHSL = bool(TexCoord7.w == 1.0);
+	bool isMat = bool(TexCoord7.w == 2.0);
 	
 	vec4 shadowCol = vec4(0.0,0.0,0.0,0.5*alphaMult);
 	texel1.a *= alphaMult;
@@ -220,6 +222,11 @@ void main() {
 		}
 		
 		
+	}
+	else {
+		if (isMat) {
+			bgcol.rgb = (texture3D(Texture3, vec3(TexCoord0.zw,1.5/255.0) ).rgb); //hsv2rgb
+		}
 	}
 
 	

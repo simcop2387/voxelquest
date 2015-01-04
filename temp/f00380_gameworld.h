@@ -4743,9 +4743,12 @@ void GameWorld::postProcess ()
 			singleton->setShaderTexture(0,singleton->fontWrappers[EFW_TEXT]->fontImage->tid);
 			singleton->setShaderTexture(1,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
 			singleton->sampleFBO("swapFBOBLin0", 2);
+			singleton->setShaderTexture3D(3,singleton->volIdMat);
 			
 			singleton->mainGUI->renderGUI(1 - activeFBO);
 			
+			
+			singleton->setShaderTexture3D(3,0);
 			singleton->unsampleFBO("swapFBOBLin0", 2);
 			singleton->setShaderTexture(1,0);
 			singleton->setShaderTexture(0,0);

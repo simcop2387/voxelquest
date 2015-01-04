@@ -49,6 +49,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		float tempf;
 		
 		
+		
 		cdMap[0] = E_CD_EMPTY;
 		for (i = 1; i < 256; i++) {
 			cdMap[i] = E_CD_SOLID;
@@ -79,12 +80,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		guiDirty = true;
 		
 		
+		//lastPickerItem = NULL;
+		//pickerMenu = NULL;
 		currentActor = NULL;
-		lastPickerItem = NULL;
 		mapComp = NULL;
 		mainMenu = NULL;
 		ddMenu = NULL;
-		pickerMenu = NULL;
 		fieldMenu = NULL;
 		fieldText = NULL;
 		selectedEnt = NULL;
@@ -203,7 +204,15 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		moveTimer.start();
 		
 		
+		matVolDim.setIXYZ(64,4,256);
+		matVolSize = matVolDim.getIX()*matVolDim.getIY()*matVolDim.getIZ();
+		matVol = new uint[matVolSize];
+		matSlice0 = new materialNode[matVolDim.getIX()*matVolDim.getIY()];
+		matSlice1 = new materialNode[matVolDim.getIX()*matVolDim.getIY()];
 		
+		for (i = 0; i < matVolSize; i++) {
+			matVol[i] = 0;
+		}
 		
 		
 		// qqqqqq
@@ -441,10 +450,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 
-		glGenTextures(1, &volId);
-		glGenTextures(1, &volIdLinear);
-		glGenTextures(1, &volIdEmpty);
-		glGenTextures(1, &volIdEmptyLinear);
+		
 
 		int curFilter;
 
@@ -483,7 +489,23 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		}
 
 
+		glGenTextures(1, &volIdMat);
+		glBindTexture(GL_TEXTURE_3D, volIdMat);
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, matVolDim.getIX(), matVolDim.getIY(), matVolDim.getIZ(), 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+		glBindTexture(GL_TEXTURE_3D, 0);
 
+
+
+		glGenTextures(1, &volId);
+		glGenTextures(1, &volIdLinear);
+		glGenTextures(1, &volIdEmpty);
+		glGenTextures(1, &volIdEmptyLinear);
 		for (i = 0; i < 4; i++)
 		{
 			switch (i)
@@ -888,6 +910,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		lastx = 0;
 		lasty = 0;
 		isMoving = false;
+		updateMatVolFlag = false;
+		matVolLock = false;
 		perspectiveOn = false;
 
 		mainCamera = new GameCamera();
@@ -1124,6 +1148,221 @@ void Singleton::setCurrentActor (GameEnt * ge)
 		}
 		
 	}
+void Singleton::updateMatVol ()
+                            {
+		
+		matVolLock = true;
+		
+		JSONValue* jv = fetchJSONData("materials.js");
+		JSONValue* curJV = NULL;
+		JSONValue* curK = NULL;
+		JSONValue* curJ = NULL;
+		JSONValue* curI = NULL;
+		JSONValue* curCol = NULL;
+		
+		int i;
+		int j;
+		int k;
+		int m;
+		int n;
+		int totN;
+		
+		int curInd0;
+		int curInd0Prev;
+		int curInd0Next;
+		int curInd1;
+		
+		int mvInd;
+		
+		uint rv, gv, bv;
+		
+		joi_type itI;
+		joi_type itJ;
+		joi_type itK;
+		
+		float totRatio;
+		float curLerp;
+		float curLerpWithPower;
+		
+		
+		if (jv != NULL) {
+			
+			
+			
+			
+			
+			curJV = jv->Child("materials");
+			
+			k = 0;
+			for (itK = curJV->object_value.begin(); itK != curJV->object_value.end(); itK++) {
+				curK = itK->second;
+				
+				j = 0;
+				for (itJ = curK->object_value.begin(); itJ != curK->object_value.end(); itJ++) {
+					curJ = itJ->second;
+					
+					i = 0;
+					totRatio = 0.0f;
+					for (itI = curJ->object_value.begin(); itI != curJ->object_value.end(); itI++) {
+						curI = itI->second;
+						
+						curInd0 = i+j*matVolDim.getIX();
+						curCol = curI->Child("i0_color");
+						
+						
+						matSlice0[curInd0].h = curCol->Child(0)->number_value;
+						matSlice0[curInd0].s = curCol->Child(1)->number_value;
+						matSlice0[curInd0].l = curCol->Child(2)->number_value;
+						
+						hsv2rgb(&(matSlice0[curInd0]));
+						
+						matSlice0[curInd0].power = curI->Child("i1_power")->number_value;
+						matSlice0[curInd0].ratio = curI->Child("i2_ratio")->number_value;
+						
+						if (matSlice0[curInd0].ratio <= 0.0f) {
+							matSlice0[curInd0].ratio = 1.0f/(matVolDim.getFX()-1.0f);
+						}
+						
+						totRatio += matSlice0[curInd0].ratio;
+						
+						i++;
+					}
+					
+					
+					switch (i) {
+						case 0:
+							
+						break;
+						case 1:
+						
+						break;
+						default:
+							for (m = 0; m < i; m++) {
+								curInd0 = m+j*matVolDim.getIX();
+								matSlice0[curInd0].ratio = matSlice0[curInd0].ratio*(matVolDim.getFX()-1.0f)/totRatio;
+							}
+							
+							
+							totN = 0;
+							for (m = 0; m < i; m++) {
+								curInd0 = m+j*matVolDim.getIX();
+								curInd0Prev = (m-1)+j*matVolDim.getIX();
+								curInd0Next = (m+1)+j*matVolDim.getIX();
+								
+								for (n = 0; (n < matSlice0[curInd0].ratio)&&(n < matVolDim.getIX()); n++) {
+									curLerp = ((float)n)/(matSlice0[curInd0].ratio);
+									curInd1 = totN + j*matVolDim.getIX();
+									
+									if (m == 0) {
+										
+										curLerpWithPower = curLerp*0.5f;
+										
+										matSlice1[curInd1].r = mixf(matSlice0[curInd0].r,matSlice0[curInd0Next].r,curLerpWithPower);
+										matSlice1[curInd1].g = mixf(matSlice0[curInd0].g,matSlice0[curInd0Next].g,curLerpWithPower);
+										matSlice1[curInd1].b = mixf(matSlice0[curInd0].b,matSlice0[curInd0Next].b,curLerpWithPower);
+									}
+									else if (m == (i-1)) {
+										curLerpWithPower = curLerp*0.5f+0.5f;
+										
+										matSlice1[curInd1].r = mixf(matSlice0[curInd0Prev].r,matSlice0[curInd0].r,curLerpWithPower);
+										matSlice1[curInd1].g = mixf(matSlice0[curInd0Prev].g,matSlice0[curInd0].g,curLerpWithPower);
+										matSlice1[curInd1].b = mixf(matSlice0[curInd0Prev].b,matSlice0[curInd0].b,curLerpWithPower);
+									}
+									else {
+										
+										
+										if (curLerp < 0.5f) {
+											curLerpWithPower = curLerp + 0.5f;
+											
+											matSlice1[curInd1].r = mixf(matSlice0[curInd0Prev].r,matSlice0[curInd0].r,curLerpWithPower);
+											matSlice1[curInd1].g = mixf(matSlice0[curInd0Prev].g,matSlice0[curInd0].g,curLerpWithPower);
+											matSlice1[curInd1].b = mixf(matSlice0[curInd0Prev].b,matSlice0[curInd0].b,curLerpWithPower);
+										}
+										else {
+											curLerpWithPower = curLerp - 0.5f;
+											
+											matSlice1[curInd1].r = mixf(matSlice0[curInd0].r,matSlice0[curInd0Next].r,curLerpWithPower);
+											matSlice1[curInd1].g = mixf(matSlice0[curInd0].g,matSlice0[curInd0Next].g,curLerpWithPower);
+											matSlice1[curInd1].b = mixf(matSlice0[curInd0].b,matSlice0[curInd0Next].b,curLerpWithPower);											
+											
+										}
+										
+										
+										
+									}
+									
+									
+									
+									totN++;
+								}
+								
+								
+							}
+						break;
+					}
+					
+					
+					
+					
+					for (m = 0; m < matVolDim.getIX(); m++) {
+						curInd1 = m + j*matVolDim.getIX();
+						
+						mvInd = m + j*matVolDim.getIX() + k*matVolDim.getIX()*matVolDim.getIY();
+						
+						rv = matSlice1[curInd1].r*255.0f;
+						gv = matSlice1[curInd1].g*255.0f;
+						bv = matSlice1[curInd1].b*255.0f;
+						
+						matVol[mvInd] = (0 << 24) | (bv << 16) | (gv << 8) | (rv);
+						
+					}
+					
+					
+					
+					j++;
+					
+				}
+				
+				k++;
+			}
+			
+			
+			
+			glBindTexture(GL_TEXTURE_3D, 0);
+			glBindTexture(GL_TEXTURE_3D, volIdMat);
+			glTexSubImage3D(
+				GL_TEXTURE_3D,
+				0,
+
+				0,
+				0,
+				0,
+
+				matVolDim.getIX(),
+				matVolDim.getIY(),
+				matVolDim.getIZ(),
+
+				GL_RGBA,
+				GL_UNSIGNED_BYTE,
+
+				matVol
+			);
+			glBindTexture(GL_TEXTURE_3D, 0);
+			
+			
+			
+		}
+		
+		
+		
+		
+		 
+		
+		
+		
+		matVolLock = false;	
+		
+	}
 void Singleton::dispatchEvent (int button, int state, float x, float y, UIComponent * comp, bool automated, bool preventRefresh)
           {
 		
@@ -1253,29 +1492,27 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		
 		if (mouseUpEvent) {
 			
-			if (comp->guiClass == E_GT_COLPICKER) {
-				if (pickerMenu != NULL) {
-					lastPickerItem = comp;
+			// if (comp->guiClass == E_GT_COLPICKER) {
+			// 	if (pickerMenu != NULL) {
+			// 		lastPickerItem = comp;
 					
 					
+			// 		tempComp = &(pickerMenu->children[0].children[0]);
 					
-					tempComp = &(pickerMenu->children[0].children[0]);
-					
-					for (i = 0; i < tempComp->children.size(); i++) {
-						tempComp->children[i].valVecPtr = &(comp->valVec);
-					}
+			// 		for (i = 0; i < tempComp->children.size(); i++) {
+			// 			tempComp->children[i].valVecPtr = &(comp->valVec);
+			// 		}
 					
 					
-					hitPicker = true;
-					//children[0].children[0].bindValues(comp);
+			// 		hitPicker = true;
 					
-					pickerMenu->alignToComp(comp->getParent());
+			// 		pickerMenu->alignToComp(comp->getParent());
 					
-					// pickerMenu->floatOffset.x = (guiX);
-					// pickerMenu->floatOffset.y = (guiY);
+			// 		// pickerMenu->floatOffset.x = (guiX);
+			// 		// pickerMenu->floatOffset.y = (guiY);
 					
-				}
-			}
+			// 	}
+			// }
 			
 			
 			if (comp->uid.compare("placeEntity.actor") == 0) {
@@ -1347,81 +1584,98 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 			clipDist[1] = curValue*65536.0f;
 		}
 		
+		
 		if (
-			(lastPickerItem != NULL) &&
-			(
-				(button == GLUT_LEFT_BUTTON) ||
-				(state == GLUT_CHANGING)	
-			)
+			(button == GLUT_LEFT_BUTTON) ||
+			(state == GLUT_CHANGING)	
 		) {
-			
-			tempComp = &(pickerMenu->children[0].children[0]);
-			
-			for (i = 0; i < tempComp->children.size(); i++) {
-				
-				switch((tempComp->children[i].flags)&(E_GF_HUE|E_GF_SAT|E_GF_LIT)) {
-					case 0: // nothing
-					
-					break;
-					case 1: // hue - x
-						tempComp->children[i].setValue(lastPickerItem->valVec[0]);
-					break;
-					case 2: // sat - y
-						tempComp->children[i].setValue(lastPickerItem->valVec[1]);
-					break;
-					case 3: // hue/sat - x/y
-						tempComp->children[i].setValue(lastPickerItem->valVec[0]);
-						tempComp->children[i].setValueY(lastPickerItem->valVec[1]);
-					break;
-					
-					case 4: // lit - z
-						tempComp->children[i].setValue(lastPickerItem->valVec[2]);
-					break;
-					case 5: // hue/lit - x/z
-						tempComp->children[i].setValue(lastPickerItem->valVec[0]);
-						tempComp->children[i].setValueY(lastPickerItem->valVec[2]);
-					break;
-					case 6: // sat/lit - y/z
-						tempComp->children[i].setValue(lastPickerItem->valVec[1]);
-						tempComp->children[i].setValueY(lastPickerItem->valVec[2]);
-					break;
-					case 7: // hue/sat/lit - x/y/z
-					
-					break;
-				}
-				
+			if (comp->uid.compare("#materialVal") == 0) {
+				updateMatVolFlag = true;
 			}
 			
-			if (comp->uid.compare("picker.hue") == 0) {
-				lastPickerItem->setValueIndex(0,curValue);
-				hitPicker = true;
-			}
-			else if (comp->uid.compare("picker.saturation") == 0) {
-				lastPickerItem->setValueIndex(1,curValue);
-				hitPicker = true;
-			}
-			else if (comp->uid.compare("picker.lightness") == 0) {
-				lastPickerItem->setValueIndex(2,curValue);
-				hitPicker = true;
-			}
-			else if (comp->uid.compare("picker.huelit") == 0) {
-				lastPickerItem->setValueIndex(0,curValue);
-				lastPickerItem->setValueIndex(2,curValueY);
-				hitPicker = true;
-			}
-			else if (comp->uid.compare("picker.satlit") == 0) {
-				lastPickerItem->setValueIndex(1,curValue);
-				lastPickerItem->setValueIndex(2,curValueY);
-				hitPicker = true;
-			}
 		}
 		
 		
+		// if (
+		// 	(lastPickerItem != NULL) &&
+		// 	(
+		// 		(button == GLUT_LEFT_BUTTON) ||
+		// 		(state == GLUT_CHANGING)	
+		// 	)
+		// ) {
+			
+		// 	tempComp = &(pickerMenu->children[0].children[0]);
+			
+		// 	for (i = 0; i < tempComp->children.size(); i++) {
+				
+		// 		switch((tempComp->children[i].flags)&(E_GF_HUE|E_GF_SAT|E_GF_LIT)) {
+		// 			case 0: // nothing
+					
+		// 			break;
+		// 			case 1: // hue - x
+		// 				tempComp->children[i].setValue(lastPickerItem->valVec[0]);
+		// 			break;
+		// 			case 2: // sat - y
+		// 				tempComp->children[i].setValue(lastPickerItem->valVec[1]);
+		// 			break;
+		// 			case 3: // hue/sat - x/y
+		// 				tempComp->children[i].setValue(lastPickerItem->valVec[0]);
+		// 				tempComp->children[i].setValueY(lastPickerItem->valVec[1]);
+		// 			break;
+					
+		// 			case 4: // lit - z
+		// 				tempComp->children[i].setValue(lastPickerItem->valVec[2]);
+		// 			break;
+		// 			case 5: // hue/lit - x/z
+		// 				tempComp->children[i].setValue(lastPickerItem->valVec[0]);
+		// 				tempComp->children[i].setValueY(lastPickerItem->valVec[2]);
+		// 			break;
+		// 			case 6: // sat/lit - y/z
+		// 				tempComp->children[i].setValue(lastPickerItem->valVec[1]);
+		// 				tempComp->children[i].setValueY(lastPickerItem->valVec[2]);
+		// 			break;
+		// 			case 7: // hue/sat/lit - x/y/z
+					
+		// 			break;
+		// 		}
+				
+		// 	}
+			
+		// 	if (comp->uid.compare("picker.hue") == 0) {
+		// 		lastPickerItem->setValueIndex(0,curValue);
+		// 		updateMatVolFlag = true;
+		// 		hitPicker = true;
+		// 	}
+		// 	else if (comp->uid.compare("picker.saturation") == 0) {
+		// 		lastPickerItem->setValueIndex(1,curValue);
+		// 		updateMatVolFlag = true;
+		// 		hitPicker = true;
+		// 	}
+		// 	else if (comp->uid.compare("picker.lightness") == 0) {
+		// 		lastPickerItem->setValueIndex(2,curValue);
+		// 		updateMatVolFlag = true;
+		// 		hitPicker = true;
+		// 	}
+		// 	else if (comp->uid.compare("picker.huelit") == 0) {
+		// 		lastPickerItem->setValueIndex(0,curValue);
+		// 		lastPickerItem->setValueIndex(2,curValueY);
+		// 		updateMatVolFlag = true;
+		// 		hitPicker = true;
+		// 	}
+		// 	else if (comp->uid.compare("picker.satlit") == 0) {
+		// 		lastPickerItem->setValueIndex(1,curValue);
+		// 		lastPickerItem->setValueIndex(2,curValueY);
+		// 		updateMatVolFlag = true;
+		// 		hitPicker = true;
+		// 	}
+		// }
+		// if (mouseUpEvent) {
+		// 	pickerMenu->visible = hitPicker;
+		// }
 		
 		
-		if (mouseUpEvent) {
-			pickerMenu->visible = hitPicker;
-		}
+		
+		
 		
 		
 		
@@ -3165,7 +3419,7 @@ void Singleton::processInput (unsigned char key, bool keyDown)
 					//std::exit(0);
 					
 					ddMenu->visible = false;
-					pickerMenu->visible = false;
+					//pickerMenu->visible = false;
 					
 					break;
 
@@ -3781,11 +4035,11 @@ bool Singleton::anyMenuVisible ()
 						doProc = true;
 					}
 				}
-				if (pickerMenu != NULL) {
-					if (pickerMenu->visible){
-						doProc = true;
-					}
-				}
+				// if (pickerMenu != NULL) {
+				// 	if (pickerMenu->visible){
+				// 		doProc = true;
+				// 	}
+				// }
 				if (fieldMenu != NULL) {
 					if (fieldMenu->visible) {
 						doProc = true;
@@ -3955,7 +4209,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 				else {
 					if (noTravel) {
 						ddMenu->visible = false;
-						pickerMenu->visible = false;
+						//pickerMenu->visible = false;
 						markerFound = false;
 					}
 					
@@ -4380,8 +4634,8 @@ void Singleton::processB64 (charArr * sourceBuffer, charArr * saveBuffer)
 
 	}
 void Singleton::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit)
-                                                                                                  {
-		//cout << "getJVNodeByString(" << stringToSplit <<  ")\n";
+          {
+		//if (dd) cout << "getJVNodeByString(" << stringToSplit <<  ")\n";
 		
 		int i;
 		*resultNode = rootNode;
@@ -4390,12 +4644,13 @@ void Singleton::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNod
 		splitStrings = split(stringToSplit, '.');
 		
 		for (i = 0; i < splitStrings.size(); i++) {
-			//cout << splitStrings[i] << "\n";
+			//if (dd) cout << splitStrings[i] << "\n";
 			
 			if ( (*resultNode)->HasChild(splitStrings[i]) ) {
 				*resultNode = (*resultNode)->Child(splitStrings[i]);
 			}
 			else {
+				cout << "NULL RESULT NODE\n";
 				*resultNode = NULL;
 				return;
 			}
@@ -4882,13 +5137,13 @@ void Singleton::loadGUI ()
 		mapComp = getGUIComp("map.mapHolder");
 		mainMenu = getGUIComp("guiHandles.mainMenu");
 		ddMenu = getGUIComp("guiHandles.ddMenu");
-		pickerMenu = getGUIComp("guiHandles.pickerMenu");
+		//pickerMenu = getGUIComp("guiHandles.pickerMenu");
 		fieldMenu = getGUIComp("guiHandles.fieldMenu");
 		fieldText = getGUIComp("fieldMenu.field");
 		
-		if (pickerMenu != NULL) {
-			pickerMenu->visible = false;
-		}
+		// if (pickerMenu != NULL) {
+		// 	pickerMenu->visible = false;
+		// }
 		if (mainMenu != NULL) {
 			mainMenu->visible = false;
 		}
@@ -4898,6 +5153,8 @@ void Singleton::loadGUI ()
 		if (fieldMenu != NULL) {
 			fieldMenu->visible = false;
 		}
+		
+		updateMatVolFlag = true;
 		
 		
 	}
@@ -5088,6 +5345,12 @@ void Singleton::updateAmbientSounds ()
 	}
 void Singleton::frameUpdate ()
                            {
+		
+		if (updateMatVolFlag&&(!matVolLock)) {
+			updateMatVolFlag = false;
+			updateMatVol();
+		}
+		
 		
 		cameraZoom += (targetZoom - cameraZoom) / (4.0f);
 		

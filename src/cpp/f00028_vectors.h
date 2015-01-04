@@ -1,4 +1,8 @@
 
+float fract(float val) {
+	return (val - floor(val));
+}
+
 int intDiv(int v, int s) {
 	float fv = v;
 	float fs = s;
@@ -695,7 +699,23 @@ public:
 		}
 
 	}
-
+	
+	bool any() {
+		return (
+			(fv4.x != 0.0f) ||
+			(fv4.y != 0.0f) ||
+			(fv4.z != 0.0f) ||
+			(fv4.w != 0.0f)
+		);
+	}
+	bool all() {
+		return (
+			(fv4.x != 0.0f) &&
+			(fv4.y != 0.0f) &&
+			(fv4.z != 0.0f) &&
+			(fv4.w != 0.0f)
+		);
+	}
 
 
 	bool inBoundsXYZ(FIVector4 *minV, FIVector4 *maxV) {
@@ -1009,6 +1029,40 @@ public:
 
 
 };
+
+
+
+
+void hsv2rgb(materialNode* matNode) {
+	
+	
+	static FIVector4 K_HSV;
+	static FIVector4 P_HSV;
+	static FIVector4 C_HSV;
+	static FIVector4 R_HSV;
+	
+	K_HSV.setFXYZW(1.0f, 2.0f / 3.0f, 1.0f / 3.0f, 3.0f);
+	
+	C_HSV.setFXYZ(matNode->h,matNode->s,matNode->l);
+	
+	
+	P_HSV.setFXYZ(
+		abs(fract(C_HSV[0] + K_HSV[0]) * 6.0f - K_HSV[3]),
+		abs(fract(C_HSV[0] + K_HSV[1]) * 6.0f - K_HSV[3]),
+		abs(fract(C_HSV[0] + K_HSV[2]) * 6.0f - K_HSV[3])
+	);
+	R_HSV.setFXYZ(
+		C_HSV[2] * mixf(K_HSV[0], clampf(P_HSV[0] - K_HSV[0], 0.0f, 1.0f), C_HSV[1]),
+		C_HSV[2] * mixf(K_HSV[0], clampf(P_HSV[1] - K_HSV[0], 0.0f, 1.0f), C_HSV[1]),
+		C_HSV[2] * mixf(K_HSV[0], clampf(P_HSV[2] - K_HSV[0], 0.0f, 1.0f), C_HSV[1])	
+	);
+	
+	matNode->r = R_HSV[0];
+	matNode->g = R_HSV[1];
+	matNode->b = R_HSV[2];
+	
+}
+
 
 struct RotationInfo {
 	float rotMatrix[16];

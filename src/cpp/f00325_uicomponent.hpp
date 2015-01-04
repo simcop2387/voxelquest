@@ -2,8 +2,10 @@
 class UIComponent {
 private:
 	UIComponent* parent;
-	float value;
-	float valueY;
+	UIComponent* valuePtr;
+	
+	float privValueX;
+	float privValueY;
 	
 	
 public:
@@ -21,8 +23,10 @@ public:
 	string label; // base label
 	string dataFile;
 	string dataRef;
+	string dataKey;
+	string valRef;
 	
-	
+	int matCode;
 	int parentId;
 	int nodeId;
 	int index;
@@ -35,14 +39,18 @@ public:
 	//Singleton::UICont* curCont;
 	Singleton::UIQuad* curQuad;
 	
+	bool selected;
 	bool foundParent;
+	bool foundValuePtr;
 	bool visible;
 	
 	iVector2 align;
 
 	FIVector4 valVec;
-	FIVector4* valVecPtr;
+	//FIVector4* valVecPtr;
 	FIVector4 valVecMask;
+	
+	
 
 
 	JSONValue* jvNodeNoTemplate;
@@ -78,6 +86,7 @@ public:
 	bool wasHit;
 	bool isDirty;
 	bool isFloating;
+	bool dataLoaded;
 	
 	uint flags;
 	
@@ -104,8 +113,11 @@ public:
 
 
 	UIComponent() {
-		valVecPtr = NULL;
+		//valVecPtr = NULL;
 		parent = NULL;
+		valuePtr = NULL;
+		baseComp = NULL;
+		curComp = NULL;
 	}
 
 
@@ -129,16 +141,21 @@ public:
 		
 	) {
 		
+		dataLoaded = false;
+		
 		//valVec = NULL;
 		
-		valueY = 0.0f;
+		privValueY = 0.0f;
+		selected = false;
 		
 		
 		
-		
-		valVecPtr = NULL;
+		//valVecPtr = NULL;
+		valuePtr = NULL;
 		parent = NULL;
 		foundParent = false;
+		foundValuePtr = false;
+		
 		contOnStack = false;
 
 		singleton = _singleton;
@@ -150,24 +167,32 @@ public:
 		
 		
 		
-		if ((flags&E_GF_HUE) == 0) {
+		if ((flags&E_GF_X) == 0) {
 			valVecMask.setFX(0.0f);
 		}
 		else {
 			valVecMask.setFX(1.0f);
 		}
-		if ((flags&E_GF_SAT) == 0) {
+		if ((flags&E_GF_Y) == 0) {
 			valVecMask.setFY(0.0f);
 		}
 		else {
 			valVecMask.setFY(1.0f);
 		}
-		if ((flags&E_GF_LIT) == 0) {
+		if ((flags&E_GF_Z) == 0) {
 			valVecMask.setFZ(0.0f);
 		}
 		else {
 			valVecMask.setFZ(1.0f);
 		}
+		if ((flags&E_GF_W) == 0) {
+			valVecMask.setFW(0.0f);
+		}
+		else {
+			valVecMask.setFW(1.0f);
+		}
+		
+		matCode = floatVals[E_GFT_MATCODE];
 		
 		valVec.setFXYZW(
 			floatVals[E_GFT_VALUE0],
@@ -175,6 +200,8 @@ public:
 			floatVals[E_GFT_VALUE2],
 			floatVals[E_GFT_VALUE3]
 		);
+		
+		
 		
 		
 		
@@ -189,13 +216,23 @@ public:
 		text = label;
 		dataRef = stringVals[E_GST_DATAREF];
 		dataFile = stringVals[E_GST_DATAFILE];
+		dataKey = stringVals[E_GST_DATAKEY];
+		valRef = stringVals[E_GST_VALREF];
 		
 		
 		uid = stringVals[E_GST_UID];
 		index = _index;
 		
 		if (uid.size() > 0) {
-			singleton->compMap[uid].nodeId = nodeId;
+			
+			if (uid[0] == '#') {
+				
+			}
+			else {
+				singleton->compMap[uid].nodeId = nodeId;
+			}
+			
+			
 		}
 		
 		
@@ -228,7 +265,7 @@ public:
 		curFontIcons = singleton->fontWrappers[EFW_ICONS];
 		
 		wasHit = false;
-		value = floatVals[E_GFT_VALUE];
+		privValueX = floatVals[E_GFT_VALUE];
 		divisions = floatVals[E_GFT_DIVISIONS];
 
 		mouseDown = false;
@@ -297,6 +334,8 @@ public:
 			originPos.y = 0.0;
 		}
 		
+		//
+		
 		
 	}
 	
@@ -328,65 +367,274 @@ public:
 	// }
 	
 	
-	void updateLinkedValues() {
+	string findKeyString(int valEnum) {
+		string resString = "";
+		UIComponent* curParent = getParent();
+		
+		
+		while (
+			(curParent != NULL)
+		) {
+			
+			switch (valEnum) {
+				case E_GST_DATAREF:
+					if (curParent->dataRef.compare("") != 0) {
+						return curParent->dataRef;
+					}
+				break;
+				case E_GST_DATAFILE:
+					if (curParent->dataFile.compare("") != 0) {
+						return curParent->dataFile;
+					}
+				break;
+			}
+			
+			curParent = curParent->getParent();
+		}
+		
+		return "";
+	}
+	
+	void updateLinkedValues(bool isRead = false) {
 		int k;
 		
 		JSONValue* jvFileBase = NULL;
 		JSONValue* jvNodeBase = NULL;
 		
-		if (
-			(dataFile.compare("") == 0) ||
-			(dataRef.compare("") == 0)	
-		) {
+		
+		
+		
+		if (dataKey.compare("") == 0) {
 			
 		}
 		else {
-			jvFileBase = singleton->fetchJSONData(dataFile);
-			singleton->getJVNodeByString(jvFileBase,&jvNodeBase,dataRef);
 			
-			if (jvNodeBase != NULL) {
-				//cout << "success\n";
+			if (dataFile.compare("") == 0) {
+				dataFile = findKeyString(E_GST_DATAFILE);
+			}
+			
+			if (dataRef.compare("") == 0) {
+				dataRef = findKeyString(E_GST_DATAREF);
+			}
+			
+			if (
+				(dataFile.compare("") == 0) ||
+				(dataRef.compare("") == 0)
+			) {
+				cout << "missing dataFile or dataRef";
+			}
+			else {
 				
-				if (jvNodeBase->IsNumber()) {
-					jvNodeBase->number_value = value;
-				}
-				if (jvNodeBase->IsArray()) {
-					for (k = 0; k < jvNodeBase->array_value.size(); k++) {
-						jvNodeBase->array_value[k]->number_value = valVec[k];
+				
+				jvFileBase = singleton->fetchJSONData(dataFile);
+				singleton->getJVNodeByString(jvFileBase,&jvNodeBase,dataRef + "." + dataKey);
+				
+				// if (isRead) {
+				// 	cout << "DF " << dataFile << "\n";
+				// }
+				
+				
+				if (jvNodeBase != NULL) {
+					
+					if (isRead) {
+						
+						//cout << "yay\n";
+						
+						if (jvNodeBase->IsNumber()) {
+							setValue(jvNodeBase->number_value);
+						}
+						if (jvNodeBase->IsArray()) {
+							for (k = 0; k < jvNodeBase->array_value.size(); k++) {
+								valVec.setIndex(k,jvNodeBase->array_value[k]->number_value);
+							}
+						}
 					}
+					else {
+						if (jvNodeBase->IsNumber()) {
+							jvNodeBase->number_value = getValue();
+						}
+						if (jvNodeBase->IsArray()) {
+							for (k = 0; k < jvNodeBase->array_value.size(); k++) {
+								jvNodeBase->array_value[k]->number_value = valVec[k];
+							}
+						}
+					}
+					
+					
+					
 				}
 				
 			}
+			
+			
+			
 		}
 	}
 	
 	void setValueIndex(int ind, float val) {
 		valVec.setIndex(ind,val);
-		updateLinkedValues();
+		updateLinkedValues();	
+	}
+	float getValueIndex(int ind) {
+		
+		if (!dataLoaded) {
+			dataLoaded = true;
+			updateLinkedValues(true);
+		}
+		
+		return valVec[ind];
+	}
+	float getValueIndexPtr(int ind) {
+		
+		UIComponent* curValuePtr = getValuePtr();
+		if (curValuePtr != NULL) {
+			return curValuePtr->getValueIndex(ind);
+		}
+		else {
+			return getValueIndex(ind);
+		}
+		
 		
 	}
 	
 	void setValue(float _value, bool doEventDispatch = false, bool preventRefresh = false) {
-		value = _value;
+		UIComponent* curValuePtr = getValuePtr();
 		
-		updateLinkedValues();
-		
-		if (doEventDispatch) {
-			singleton->dispatchEvent(GLUT_LEFT_BUTTON, GLUT_UP, 0, 0, this, true, preventRefresh);
+		if (curValuePtr != NULL) {
+			
+			if ((flags&E_GF_X) != 0) {
+				curValuePtr->setValueIndex(0,_value);
+			}
+			else if ((flags&E_GF_Y) != 0) {
+				curValuePtr->setValueIndex(1,_value);
+			}
+			else if ((flags&E_GF_Z) != 0) {
+				curValuePtr->setValueIndex(2,_value);
+			}
+			else if ((flags&E_GF_W) != 0) {
+				curValuePtr->setValueIndex(3,_value);
+			}
+			
+			
 		}
+		else {
+			privValueX = _value;
+			
+			updateLinkedValues();
+			
+			if (doEventDispatch) {
+				singleton->dispatchEvent(GLUT_LEFT_BUTTON, GLUT_UP, 0, 0, this, true, preventRefresh);
+			}
+		}
+		
+		
 	}
 	float getValue() {
-		return value;
+		
+		if (!dataLoaded) {
+			dataLoaded = true;
+			updateLinkedValues(true);
+		}
+		
+		UIComponent* curValuePtr = getValuePtr();
+		if (curValuePtr != NULL) {
+			if ((flags&E_GF_X) != 0) {
+				return curValuePtr->getValueIndex(0);
+			}
+			else if ((flags&E_GF_Y) != 0) {
+				return curValuePtr->getValueIndex(1);
+			}
+			else if ((flags&E_GF_Z) != 0) {
+				return curValuePtr->getValueIndex(2);
+			}
+			else if ((flags&E_GF_W) != 0) {
+				return curValuePtr->getValueIndex(3);
+			}
+			return 0.0f;
+		}
+		else {
+			return privValueX;
+		}
+		
 	}
 	
 	void setValueY(float _value, bool doEventDispatch = false, bool preventRefresh = false) {
-		valueY = _value;
-		// if (doEventDispatch) {
-		// 	singleton->dispatchEvent(GLUT_LEFT_BUTTON, GLUT_UP, 0, 0, this, true, preventRefresh);
-		// }
+		UIComponent* curValuePtr = getValuePtr();
+		
+		int count = 0;
+		
+		if (curValuePtr != NULL) {
+			if ((flags&E_GF_X) != 0) {
+				if (count == 1) {
+					curValuePtr->setValueIndex(0,_value);
+				}
+				count++;
+			}
+			if ((flags&E_GF_Y) != 0) {
+				if (count == 1) {
+					curValuePtr->setValueIndex(1,_value);
+				}
+				count++;
+			}
+			if ((flags&E_GF_Z) != 0) {
+				if (count == 1) {
+					curValuePtr->setValueIndex(2,_value);
+				}
+				count++;
+			}
+			if ((flags&E_GF_W) != 0) {
+				if (count == 1) {
+					curValuePtr->setValueIndex(3,_value);
+				}
+				count++;
+			}
+		}
+		else {
+			privValueY = _value;
+		}
 	}
 	float getValueY() {
-		return valueY;
+		int count = 0;
+		UIComponent* curValuePtr = getValuePtr();
+		
+		if (!dataLoaded) {
+			dataLoaded = true;
+			updateLinkedValues(true);
+		}
+		
+		if (curValuePtr != NULL) {
+			if ((flags&E_GF_X) != 0) {
+				if (count == 1) {
+					return curValuePtr->getValueIndex(0);
+				}
+				count++;
+			}
+			if ((flags&E_GF_Y) != 0) {
+				if (count == 1) {
+					return curValuePtr->getValueIndex(1);
+				}
+				count++;
+			}
+			if ((flags&E_GF_Z) != 0) {
+				if (count == 1) {
+					return curValuePtr->getValueIndex(2);
+				}
+				count++;
+			}
+			if ((flags&E_GF_W) != 0) {
+				if (count == 1) {
+					return curValuePtr->getValueIndex(3);
+				}
+				count++;
+			}
+			
+			return 0.0f;
+			
+		}
+		else {
+			return privValueY;
+		}
+		
 	}
 	
 	
@@ -397,13 +645,65 @@ public:
 			
 		}
 		else {
-			// todo: replace with root or id
-			parent = baseComp->findNodeById(parentId);
 			foundParent = true;
+			
+			if (nodeId == 0) {
+				parent = NULL;
+			}
+			else {
+				if (baseComp == NULL) {
+					parent = NULL;
+				}
+				else {
+					parent = baseComp->findNodeById(parentId);
+				}
+			}
+			
+			
 		}
 		
 		return parent;
 	}
+	
+	
+	UIComponent* findParentByUID(string parUID) {
+		string resString = "";
+		UIComponent* curParent = getParent();
+		
+		
+		while (curParent != NULL) {
+			
+			
+			if(curParent->uid.compare(parUID) == 0) {
+				return curParent;
+			}
+			
+			curParent = curParent->getParent();
+		}
+		
+		return NULL;
+	}
+	
+	
+	UIComponent* getValuePtr() {
+		if (foundValuePtr) {
+			
+		}
+		else {
+			
+			if (valRef.compare("") != 0) {
+				valuePtr = findParentByUID(valRef);
+			}
+			else {
+				valuePtr = NULL;
+			}
+			
+			foundValuePtr = true;
+		}
+		
+		return valuePtr;
+	}
+	
 	
 	UIComponent* findNodeByString(string _uid) {
 		int i;
@@ -850,18 +1150,23 @@ public:
 	
 	
 	void alignToComp(UIComponent* myComp) {
+		UIComponent* myComp2 = myComp->getParent();
 		
-		UIComponent* myComp2;
-		
-		if (myComp->fillDir == 0) {
-			myComp2 = myComp->getParent();
+		if (
+			(myComp->fillDir == 0) &&
+			(myComp2 != NULL)
+		) {
+			floatOffset.x = myComp2->totOffset.x + myComp2->originPos.x + myComp2->resultDimInPixels.x;
+			floatOffset.y = myComp2->totOffset.y + myComp2->originPos.y;
 		}
 		else {
-			myComp2 = myComp;
+			floatOffset.x = myComp->totOffset.x + myComp->originPos.x + myComp->resultDimInPixels.x;
+			floatOffset.y = myComp->totOffset.y + myComp->originPos.y;
 		}
 		
-		floatOffset.x = myComp2->totOffset.x + myComp2->originPos.x + myComp2->resultDimInPixels.x;
-		floatOffset.y = myComp2->totOffset.y + myComp2->originPos.y;
+		
+		
+		
 	}
 	
 	
@@ -925,10 +1230,7 @@ public:
 		}
 		else {
 			if (
-				//(hoverType == E_HT_ONSELECTED) ||
-				//(guiClass == E_GT_ROOTCONT) ||
 				(curParent->floatingChildren.size() > 0)
-				
 			) {
 				
 			}
@@ -983,16 +1285,19 @@ public:
 				
 				if ((hoverType == E_HT_TOOLTIP_VALUE)&&visible) {
 					
-					children[0].setText(f__s(curParent->value));
+					children[0].setText(f__s(curParent->getValue()));
 				}
 				
 			break;
 			case E_HT_ONSELECTED:
 				//curParent->floatOffset.x + 
-				alignToComp(curParent);
-				visible = (curParent->value == 1.0f)&&(curParent->visible);
+				if (curParent != NULL) {
+					alignToComp(curParent);
+					visible = (curParent->selected)&&(curParent->visible);
+				}
+				
 			break;
-						
+
 		}
 		
 		updateOffset();
@@ -1236,8 +1541,8 @@ public:
 		int i;
 		int j;
 		bool hitChild = false;
-		float lastValue = value;
-		float tempValue;
+		float lastValue = getValue();
+		bool tempValue;
 		
 		
 		
@@ -1298,7 +1603,7 @@ public:
 						break;
 						case E_GT_SLIDER:
 							if (divisions == 1.0f) {
-								setValue(1.0f-value);
+								setValue(1.0f-getValue());
 							}
 						break;
 						case E_GT_BUTTON:
@@ -1308,8 +1613,8 @@ public:
 							
 						break;
 						case E_GT_RADIO:
-							
-							tempValue = 1.0f-value;
+							//selected = !selected;
+							tempValue = !selected;
 							
 							if (singleton->bShift) {
 								
@@ -1319,7 +1624,8 @@ public:
 								if (curParent2 == NULL) {
 									for (i = 0; i < curParent->children.size(); i++) {
 										if (curParent->children[i].guiClass == E_GT_RADIO) {
-											curParent->children[i].setValue(0.0f);
+											curParent->children[i].selected = false;
+											//curParent->children[i].setValue(0.0f);
 										}
 									}
 								}
@@ -1330,7 +1636,8 @@ public:
 										
 										for (i = 0; i < selParent->children.size(); i++) {
 											if (selParent->children[i].guiClass == E_GT_RADIO) {
-												selParent->children[i].setValue(0.0f);
+												//selParent->children[i].setValue(0.0f);
+												selParent->children[i].selected = false;
 											}
 										}
 									}
@@ -1342,8 +1649,8 @@ public:
 								
 								
 							}
-							
-							setValue(tempValue);
+							selected = tempValue;
+							//setValue(tempValue);
 							
 						break;
 					}

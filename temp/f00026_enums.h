@@ -623,7 +623,24 @@ enum E_ALIGN {
 	E_ALIGN_TOP
 };
 
+enum E_MAT_CODE {
+	E_MC_DEFAULT,
+	E_MC_HSV,
+	E_MC_MATERIAL,
+	E_MC_LENGTH
+};
 
+
+struct materialNode {
+	float h;
+	float s;
+	float l;
+	float r;
+	float g;
+	float b;
+	float power;
+	float ratio;
+};
 
 struct iVector4 {
 	int x;
@@ -887,7 +904,6 @@ enum GUI_TYPES {
 	E_GT_MENUBAR, // 4
 	E_GT_DRAGPAD, // 5
 	E_GT_COLPICKER, // 6
-	E_GT_SLIDER2, // 7
 	E_GT_LENGTH
 };
 
@@ -897,6 +913,8 @@ enum GUI_STRING_TYPES {
 	E_GST_SS,
 	E_GST_DATAREF,
 	E_GST_DATAFILE,
+	E_GST_DATAKEY,
+	E_GST_VALREF,
 	E_GST_LENGTH
 };
 
@@ -905,7 +923,9 @@ char* guiStringTypes[] = {
 	"uid",
 	"ss",
 	"dataRef",
-	"dataFile"
+	"dataFile",
+	"dataKey",
+	"valRef"
 };
 
 enum E_HOVER_TYPES {
@@ -939,6 +959,7 @@ enum GUI_FLOAT_TYPES {
 	E_GFT_VALUE1,
 	E_GFT_VALUE2,
 	E_GFT_VALUE3,
+	E_GFT_MATCODE,
 	E_GFT_LENGTH
 };
 char* guiFloatTypes[] = {
@@ -962,15 +983,18 @@ char* guiFloatTypes[] = {
 	"value0",
 	"value1",
 	"value2",
-	"value3"
+	"value3",
+	"matCode"
 	
 	
 };
 
 enum E_GUI_FLAGS {
-	E_GF_HUE = 1,
-	E_GF_SAT = 2,
-	E_GF_LIT = 4
+	E_GF_X = 1,
+	E_GF_Y = 2,
+	E_GF_Z = 4,
+	E_GF_W = 8,
+	E_GF_MAT = 16
 };
 
 string guiStringValues[E_GST_LENGTH];

@@ -1,4 +1,4 @@
-﻿Build started 12/15/2014 9:07:57 PM.
+﻿Build started 1/4/2015 9:19:13 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -19,9 +19,6 @@
          .\src\cpp\f00250_imageloader.h
          .\src\cpp\f00251_fbos.h
          .\src\cpp\f00260_classdefs.h
-         .\src\cpp\f00290_wsrequesthandler.hpp
-         .\src\cpp\f00291_rhfactory.hpp
-         .\src\cpp\f00292_wsserver.hpp
          .\src\cpp\f00293_gamesound.hpp
          .\src\cpp\f00294_gamemusic.hpp
          .\src\cpp\f00297_gamecamera.hpp
@@ -42,15 +39,12 @@
          .\src\cpp\f00352_gameblock.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         37 File(s) copied
+         34 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         22
+         19
          copying headers to one file
-         .\f00290_wsrequesthandler.e
-         .\f00291_rhfactory.e
-         .\f00292_wsserver.e
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
          .\f00297_gamecamera.e
@@ -73,12 +67,9 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         22
+         19
          .
          copying files to compiled
-         .\temp\f00290_wsrequesthandler.e
-         .\temp\f00291_rhfactory.e
-         .\temp\f00292_wsserver.e
          .\temp\f00293_gamesound.e
          .\temp\f00294_gamemusic.e
          .\temp\f00297_gamecamera.e
@@ -98,7 +89,7 @@
          .\temp\f00351_gamepageholder.e
          .\temp\f00352_gameblock.e
          .\temp\f00380_gameworld.e
-         22 File(s) copied
+         19 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_mat.h
@@ -114,9 +105,6 @@
          .\temp\f00251_fbos.h
          .\temp\f00260_classdefs.h
          .\temp\f00270_headers.h
-         .\temp\f00290_wsrequesthandler.h
-         .\temp\f00291_rhfactory.h
-         .\temp\f00292_wsserver.h
          .\temp\f00293_gamesound.h
          .\temp\f00294_gamemusic.h
          .\temp\f00297_gamecamera.h
@@ -165,4 +153,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:04.31
+Time Elapsed 00:00:03.85

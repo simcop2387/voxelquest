@@ -19,9 +19,15 @@
 			"type":1,
 			"fillRatioX":1
 		},
-		"fillSlider2": {
-			"type":7,
-			"fillRatioX":1
+		"fillSliderHSV": {
+			"type":1,
+			"fillRatioX":1,
+			"matCode":1
+		},
+		"fillSliderMat": {
+			"type":1,
+			"fillRatioX":1,
+			"matCode":2
 		},
 		"fillCP": {
 			"type":6,
@@ -332,74 +338,6 @@
 
 
 
-			
-			
-			
-			{
-				"uid":"guiHandles.pickerMenu",
-				"template":"cont",
-				"layer":2,
-				"hasBackground":0,
-				"children":[
-					{
-						"template":"cont",
-						"fillDir":1,
-						"children": [
-						
-							
-							{
-								"template":"cont",
-								"fillDir":1,
-								"fillRatioX":1,
-								"children":[
-									
-									
-									
-									
-									{
-										"template":"fillSlider",
-										"label":" ",
-										"uid":"picker.huelit",
-										"minDimY":140,
-										"flags":5
-									},
-									{
-										"template":"fillSlider",
-										"label":" ",
-										"uid":"picker.satlit",
-										"minDimY":140,
-										"flags":6
-									},
-									
-									
-									{
-										"template":"fillSlider",
-										"label":"Hue",
-										"uid":"picker.hue",
-										"flags":1
-									},
-									{
-										"template":"fillSlider",
-										"label":"Saturation",
-										"uid":"picker.saturation",
-										"flags":2
-									},
-									{
-										"template":"fillSlider",
-										"label":"Lightness",
-										"uid":"picker.lightness",
-										"flags":4
-										
-									}
-									
-									
-									
-								]
-							}
-						]
-					}
-				]
-			},
 			
 			
 			
@@ -884,7 +822,7 @@
 																				"children": [
 																					{
 																						"template":"menuBar",
-																						"label":"Material Node",
+																						"label":"Material Nodes",
 																						"alignX":1,
 																						"fillRatioX":1
 																						
@@ -929,6 +867,20 @@
 																							{
 																								"template":"radioFillCenter",
 																								"label":"",
+																								
+																								"value0":0.0,
+																								"value1":0.0,
+																								"value2":0.0,
+																								"value3":0.0,
+																								
+																								"dataFile":"",
+																								"dataRef":"",
+																								"dataKey":"i0_color",
+																								
+																								"uid":"#colorNode",
+																								
+																								"matCode":1,
+																								
 																								"floatingChildren":[{
 																										"template":"popout",
 																										"fillRatioX":1,
@@ -948,21 +900,72 @@
 																														"template":"cont",
 																														"fillDir":1,
 																														"fillRatioX":1,
-																														"dataFile":"materials.js",
-																														"dataSource":"",
-																														"childType":"E_GTC_GENERIC",
-																														"children": [],
-																														"childTemplate":{
-																															"template":"",
-																															"dataFile":"",
-																															"dataRef":"",
-																															"label":" ",
-																															"value":0.0,
-																															"value0":0.0,
-																															"value1":0.0,
-																															"value2":0.0,
-																															"value3":0.0
-																														}
+																														
+																														"children": [
+																															{
+																																"template":"fillSliderMat",
+																																"label":" ",
+																																"minDimY":140,
+																																"flags":16
+																															},
+																															
+																															{
+																																"template":"fillSliderHSV",
+																																"label":" ",
+																																"minDimY":140,
+																																"flags":5,
+																																"valRef":"#colorNode",
+																																"uid":"#materialVal"
+																															},
+																															{
+																																"template":"fillSliderHSV",
+																																"label":" ",
+																																"minDimY":140,
+																																"flags":6,
+																																"valRef":"#colorNode",
+																																"uid":"#materialVal"
+																															},
+																															
+																															
+																															{
+																																"template":"fillSliderHSV",
+																																"label":"Hue",
+																																"flags":1,
+																																"valRef":"#colorNode",
+																																"uid":"#materialVal"
+																															},
+																															{
+																																"template":"fillSliderHSV",
+																																"label":"Saturation",
+																																"flags":2,
+																																"valRef":"#colorNode",
+																																"uid":"#materialVal"
+																															},
+																															{
+																																"template":"fillSliderHSV",
+																																"label":"Lightness",
+																																"flags":4,
+																																"valRef":"#colorNode",
+																																"uid":"#materialVal"
+																																
+																															},
+																															
+																															
+																															{
+																																"template":"fillSlider",
+																																"label":"Power",
+																																"dataKey":"i1_power",
+																																"uid":"#materialVal"
+																															},
+																															{
+																																"template":"fillSlider",
+																																"label":"Ratio",
+																																"dataKey":"i2_ratio",
+																																"uid":"#materialVal"
+																															}
+																															
+																															
+																														]
 																														
 																													}
 																												
@@ -1214,7 +1217,6 @@
 									{
 										"template":"radioFillCenter",
 										"label":"Map",
-										"value":1.0,
 										"floatingChildren": [{
 											"template":"popout",
 											"fillRatioX":1,

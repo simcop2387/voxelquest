@@ -429,52 +429,77 @@ void GameGUI::addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool is
 									
 								}
 								
+								
+								
 								tempJV = findNearestKey(jvChildTemplate,"dataSource");
 								if (tempJV != NULL) { // is a branch node
 									tempJV->Child("dataSource")->string_value =
 										tempStrings[E_GDS_DATA_SOURCE] + "." + tempStrings[E_GDS_LAST_KEY];										
 								}
-								else { // is a leaf node
+								else { // if childTemplate does not contain dataSource, it is a leaf node
 									
-									
-									if (singleton->splitStrings.size() == 3) {
-										if (jvChildTemplate->HasChild("template")) {
-											jvChildTemplate->Child("template")->string_value = singleton->splitStrings[2];
-										}
-									}
-									
-									if (jvChildTemplate->HasChild("value")) {
+									// if (jvChildTemplate->HasChild("oneToOne")) { // one-to-one data mapping
 										
+									// 	if (singleton->splitStrings.size() == 3) {
+									// 		if (jvChildTemplate->HasChild("template")) {
+									// 			jvChildTemplate->Child("template")->string_value = singleton->splitStrings[2];
+									// 		}
+									// 	}
 										
-										// WAS DOING THIS *****************************************
-										
-										if (jvChildTemplate->HasChild("dataRef")) {
-											jvChildTemplate->Child("dataRef")->string_value =
-												tempStrings[E_GDS_DATA_SOURCE] + "." + tempStrings[E_GDS_LAST_KEY];
-										}
-										if (jvChildTemplate->HasChild("dataFile")) {
-											jvChildTemplate->Child("dataFile")->string_value =
-												tempStrings[E_GDS_DATA_FILE];
-										}
-									
-										
-										if (curData->IsNumber()) {
-											jvChildTemplate->Child("value")->number_value = curData->number_value;
-										}
-										if (curData->IsArray()) {
+									// 	if (jvChildTemplate->HasChild("value")) {
 											
-											for (k = 0; k < curData->array_value.size(); k++) {
-												jvChildTemplate->Child(
-													guiFloatTypes[E_GFT_VALUE0 + k]
-												)->number_value = curData->array_value[k]->number_value;
-											}
-										}
+											
+									// 		if (jvChildTemplate->HasChild("dataRef")) {
+									// 			jvChildTemplate->Child("dataRef")->string_value =
+									// 				tempStrings[E_GDS_DATA_SOURCE];
+									// 		}
+									// 		if (jvChildTemplate->HasChild("dataKey")) {
+									// 			jvChildTemplate->Child("dataKey")->string_value =
+									// 				tempStrings[E_GDS_LAST_KEY];
+									// 		}											
+									// 		if (jvChildTemplate->HasChild("dataFile")) {
+									// 			jvChildTemplate->Child("dataFile")->string_value =
+									// 				tempStrings[E_GDS_DATA_FILE];
+									// 		}
+										
+											
+									// 		if (curData->IsNumber()) {
+									// 			jvChildTemplate->Child("value")->number_value = curData->number_value;
+									// 		}
+									// 		if (curData->IsArray()) {
+												
+									// 			for (k = 0; k < curData->array_value.size(); k++) {
+									// 				jvChildTemplate->Child(
+									// 					guiFloatTypes[E_GFT_VALUE0 + k]
+									// 				)->number_value = curData->array_value[k]->number_value;
+									// 			}
+									// 		}
+									// 	}
+										
+									// }
+									// else { // custom data mapping
+										
+									// }
+									
+									
+									if (jvChildTemplate->HasChild("dataRef")) {
+										jvChildTemplate->Child("dataRef")->string_value =
+											tempStrings[E_GDS_DATA_SOURCE] + "." + tempStrings[E_GDS_LAST_KEY];
 									}
+									if (jvChildTemplate->HasChild("dataFile")) {
+										jvChildTemplate->Child("dataFile")->string_value =
+											tempStrings[E_GDS_DATA_FILE];
+									}
+									
+									
+									
+									
 								}
 								
 								
 								
 							break;
+							
 							
 							case E_GCT_LENGTH:
 								
@@ -697,16 +722,15 @@ void GameGUI::renderQuad (UIComponent * uiComp, fBoundingBox fbb, float shadowOf
 
 		StyleSheetResult* resSS = &(uiComp->resSS);
 		
-		bool isColor = uiComp->guiClass == E_GT_COLPICKER;
+		//bool isColor = uiComp->guiClass == E_GT_COLPICKER;
 		
-		bool isHSL = ( ((uiComp->flags)&(E_GF_HUE|E_GF_SAT|E_GF_LIT)) != 0)||isColor;
-		float fIsHSL = 0.0f;
-		
-		if (isHSL) {
-			fIsHSL = 1.0f;
-		}
+		//( ((uiComp->flags)&(E_GF_HUE|E_GF_SAT|E_GF_LIT)) != 0)||isColor;
+		float fMatCode = uiComp->matCode;
+		bool isHSL = uiComp->matCode == E_MC_HSV;
 		
 		
+		float selMod = 0.0f;
+		float selMod2 = 1.0f;
 		
 		
 		
@@ -726,31 +750,36 @@ void GameGUI::renderQuad (UIComponent * uiComp, fBoundingBox fbb, float shadowOf
 
 		glMultiTexCoord4f(5, 0.0f, shadowOffset, uiComp->scrollMaskY.x, uiComp->scrollMaskY.y);
 		
+		
+		// todo: fix this to use style sheet
+		if (uiComp->selected) {
+			selMod = 0.5f;
+			selMod2 = 0.5f;
+		}
+		
 		//border color
-		glMultiTexCoord4f(6, resSS->props[E_SS_BDCOL_R], resSS->props[E_SS_BDCOL_G], resSS->props[E_SS_BDCOL_B], resSS->props[E_SS_BDCOL_A]);
+		glMultiTexCoord4f(
+			6,
+			resSS->props[E_SS_BDCOL_R]*selMod2 + selMod,
+			resSS->props[E_SS_BDCOL_G]*selMod2 + selMod,
+			resSS->props[E_SS_BDCOL_B]*selMod2,
+			resSS->props[E_SS_BDCOL_A]*selMod2 + selMod
+		);
+		
+		
+		
 		//misc
-		glMultiTexCoord4f(7, uiComp->getValue(), uiComp->getValueY(), resSS->props[E_SS_ROUNDNESS],  fIsHSL);
+		glMultiTexCoord4f(7, uiComp->getValue(), uiComp->getValueY(), resSS->props[E_SS_ROUNDNESS],  fMatCode);
 
 		if ( isHSL ) { // bg with hsv
 			
-			if (uiComp->valVecPtr == NULL) {
-				glMultiTexCoord4f(
-					2,
-					mixf(uiComp->valVec[0],-1.0f,uiComp->valVecMask[0]),
-					mixf(uiComp->valVec[1],-1.0f,uiComp->valVecMask[1]),
-					mixf(uiComp->valVec[2],-1.0f,uiComp->valVecMask[2]),
-					1.0f
-				);
-			}
-			else {
-				glMultiTexCoord4f(
-					2,
-					mixf((*(uiComp->valVecPtr))[0],-1.0f,uiComp->valVecMask[0]),
-					mixf((*(uiComp->valVecPtr))[1],-1.0f,uiComp->valVecMask[1]),
-					mixf((*(uiComp->valVecPtr))[2],-1.0f,uiComp->valVecMask[2]),
-					1.0f
-				);
-			}
+			glMultiTexCoord4f(
+				2,
+				mixf(uiComp->getValueIndexPtr(0),-1.0f,uiComp->valVecMask[0]),
+				mixf(uiComp->getValueIndexPtr(1),-1.0f,uiComp->valVecMask[1]),
+				mixf(uiComp->getValueIndexPtr(2),-1.0f,uiComp->valVecMask[2]),
+				1.0f
+			);
 			
 			
 		}

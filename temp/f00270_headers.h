@@ -124,6 +124,8 @@ public:
   EntSelection selectedEnts;
   GameEnt * selectedEnt;
   GameEnt * highlightedEnt;
+  bool updateMatVolFlag;
+  bool matVolLock;
   bool isMoving;
   bool perspectiveOn;
   bool (isInteractiveEnt) [E_CT_LENGTH];
@@ -238,6 +240,7 @@ public:
   int holderSizeInPages;
   int volGenSuperMod;
   int volGenSuperRes;
+  int matVolSize;
   int * cdBuffer;
   intPair (entIdArr) [1024];
   uint palWidth;
@@ -341,6 +344,8 @@ public:
   FIVector4 panMod;
   FIVector4 dMod;
   FIVector4 modXYZ;
+  FIVector4 matVolDim;
+  uint * matVol;
   std::vector <UICont*> (guiLayers) [MAX_UI_LAYERS];
   std::vector <RotationInfo> rotMatStack;
   std::vector <DynObject *> dynObjects;
@@ -386,9 +391,12 @@ public:
   GLuint volIdLinear;
   GLuint volIdEmpty;
   GLuint volIdEmptyLinear;
+  GLuint volIdMat;
   GLuint volGenId;
   uint * lookup2to3;
   unsigned char * resultImage;
+  materialNode * matSlice0;
+  materialNode * matSlice1;
   charArr nullBuffer;
   charArr lastImageBuffer;
   charArr lastJSONBuffer;
@@ -407,11 +415,9 @@ public:
   TerTexture (terTextures) [MAX_TER_TEX];
   GameOrg * testHuman;
   GameGUI * mainGUI;
-  UIComponent * lastPickerItem;
   UIComponent * mapComp;
   UIComponent * mainMenu;
   UIComponent * ddMenu;
-  UIComponent * pickerMenu;
   UIComponent * fieldMenu;
   UIComponent * fieldText;
   FontWrapper * (fontWrappers) [EFW_LENGTH];
@@ -427,6 +433,7 @@ public:
   void playSound (string soundName, float volume = 1.0f);
   void playSoundEvent (char const * eventName, bool suppress = false);
   void setCurrentActor (GameEnt * ge);
+  void updateMatVol ();
   void dispatchEvent (int button, int state, float x, float y, UIComponent * comp, bool automated = false, bool preventRefresh = false);
   StyleSheet * getNewStyleSheet (string ssName);
   void initStyleSheet ();
@@ -714,8 +721,9 @@ class UIComponent
 {
 private:
   UIComponent * parent;
-  float value;
-  float valueY;
+  UIComponent * valuePtr;
+  float privValueX;
+  float privValueY;
 public:
   Singleton * singleton;
   Singleton::UIQuad thisUIQuad;
@@ -726,6 +734,9 @@ public:
   string label;
   string dataFile;
   string dataRef;
+  string dataKey;
+  string valRef;
+  int matCode;
   int parentId;
   int nodeId;
   int index;
@@ -734,11 +745,12 @@ public:
   int hoverType;
   int guiClass;
   Singleton::UIQuad * curQuad;
+  bool selected;
   bool foundParent;
+  bool foundValuePtr;
   bool visible;
   iVector2 align;
   FIVector4 valVec;
-  FIVector4 * valVecPtr;
   FIVector4 valVecMask;
   JSONValue * jvNodeNoTemplate;
   fVector2 scrollMaskY;
@@ -769,6 +781,7 @@ public:
   bool wasHit;
   bool isDirty;
   bool isFloating;
+  bool dataLoaded;
   uint flags;
   float divisions;
   float paddingInPixels;
@@ -789,13 +802,18 @@ public:
   void init (Singleton * _singleton, UIComponent * _baseComp, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, bool _isFloating, string * stringVals, double * floatVals);
   float getDimYClamped (float val);
   float getResultDimYClamped ();
-  void updateLinkedValues ();
+  string findKeyString (int valEnum);
+  void updateLinkedValues (bool isRead = false);
   void setValueIndex (int ind, float val);
+  float getValueIndex (int ind);
+  float getValueIndexPtr (int ind);
   void setValue (float _value, bool doEventDispatch = false, bool preventRefresh = false);
   float getValue ();
   void setValueY (float _value, bool doEventDispatch = false, bool preventRefresh = false);
   float getValueY ();
   UIComponent * getParent ();
+  UIComponent * findParentByUID (string parUID);
+  UIComponent * getValuePtr ();
   UIComponent * findNodeByString (string _uid);
   UIComponent * findNodeById (int id);
   float getMinWidth ();
