@@ -8,7 +8,7 @@ float GameOrg::gv (float * vals)
 		float lerp = fGenRand();
 		return vals[0]*lerp + vals[1]*(1.0f-lerp);
 	}
-float const GameOrg::baseMat = 8.0f;
+float const GameOrg::baseMat = 12.0f;
 GameOrg::GameOrg ()
                   {
 		rootObj = NULL;

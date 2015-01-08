@@ -206,10 +206,10 @@ public:
 								
 								glMultiTexCoord4f(
 									GL_TEXTURE0,
-									pageData[ind]->vertices[ci].data[i*numVert + 0],
-									pageData[ind]->vertices[ci].data[i*numVert + 1],
-									pageData[ind]->vertices[ci].data[i*numVert + 2],
-									pageData[ind]->vertices[ci].data[i*numVert + 3]
+									pageData[ind]->vertices[ci].data[i*numVert + 0], // normal x
+									pageData[ind]->vertices[ci].data[i*numVert + 1], // normal y
+									pageData[ind]->vertices[ci].data[i*numVert + 2], // normal z
+									pageData[ind]->vertices[ci].data[i*numVert + 3]  // matData
 									
 								);
 								
@@ -530,10 +530,10 @@ public:
 		else {
 			
 			if (curNode == singleton->selectedNode) {
-				tempVec.setFXYZ(E_ORG_PARAM_LINES,10.0f,entityGeomCounter);
+				tempVec.setFXYZ(E_ORG_PARAM_LINES,16.0f/255.0f,entityGeomCounter);
 			}
 			else {
-				tempVec.setFXYZ(E_ORG_PARAM_LINES,curNode->orgVecs[E_OV_MATPARAMS].getFX(),entityGeomCounter);
+				tempVec.setFXYZ(E_ORG_PARAM_LINES,curNode->orgVecs[E_OV_MATPARAMS].getFX()/255.0f,entityGeomCounter);
 			}
 			
 			//tempVec2.copyFrom(&(curNode->tbnRotC[0]));

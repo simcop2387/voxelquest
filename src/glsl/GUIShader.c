@@ -101,12 +101,19 @@ void main() {
 	
 	float alphaMult = 1.0;
 	
-	if (worldPos.y > yMin) {
-		alphaMult = 1.0-clamp((worldPos.y - yMin)*resolution.y/8.0,0.0,1.0);
+	
+	if ( (abs(yMin) + abs(yMax)) == 0.0 ) {
+		
 	}
-	if (worldPos.y < yMax) {
-		alphaMult = 1.0-clamp((yMax - worldPos.y)*resolution.y/8.0,0.0,1.0);
+	else {
+		if (worldPos.y > yMin) {
+			alphaMult = 1.0-clamp((worldPos.y - yMin)*resolution.y/8.0,0.0,1.0);
+		}
+		if (worldPos.y < yMax) {
+			alphaMult = 1.0-clamp((yMax - worldPos.y)*resolution.y/8.0,0.0,1.0);
+		}
 	}
+	
 	
 	bool isHSL = bool(TexCoord7.w == 1.0);
 	bool isMat = bool(TexCoord7.w == 2.0);
@@ -225,7 +232,10 @@ void main() {
 	}
 	else {
 		if (isMat) {
-			bgcol.rgb = (texture3D(Texture3, vec3(TexCoord0.zw,1.5/255.0) ).rgb); //hsv2rgb
+			bgcol.rgb = (texture3D(Texture3, vec3(TexCoord0.zw,value.x) ).rgb); //hsv2rgb
+			if (bgcol.a > 0.0) {
+				bgcol.a = 1.0;
+			}
 		}
 	}
 

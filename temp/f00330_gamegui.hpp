@@ -10,7 +10,6 @@ public:
 
 	//Shader shaderGUI;
 
-	UIComponent* baseComp;
 	
 	JSONValue* jvRoot;
 	JSONValue* jvTemplates;
@@ -22,6 +21,7 @@ public:
 	fVector2 mouseTrans;
 	
 	
+	int guiRenderCount;
 	int nodeCount;
 	vector<UIComponent*> dirtyVec;
 	
@@ -43,86 +43,11 @@ public:
 		isReady = false;
 		isLoaded = false;
 		
-		nodeCount = 0;
-		baseComp = new UIComponent();
-		
-		int i;
-		
-		for (i = 0; i < E_GST_LENGTH; i++) {
-			stringVals[i] = "";
-		}
-		for (i = 0; i < E_GFT_LENGTH; i++) {
-			floatVals[i] = 0.0f;
-		}
-		
-		stringVals[E_GST_LABEL] = "";
-		stringVals[E_GST_UID] = "";
-		stringVals[E_GST_SS] = "defaultSS";
-		
-		floatVals[E_GFT_TYPE] = E_GT_HOLDER;
-		floatVals[E_GFT_DIVISIONS] = 0.0f;
-		floatVals[E_GFT_HASBACKGROUND] = 0.0f;
-		floatVals[E_GFT_SINGLELINE] = 1.0f;
-		floatVals[E_GFT_FILLRATIOX] = 0.0f;
-		floatVals[E_GFT_FILLRATIOY] = 0.0f;
-		floatVals[E_GFT_FILLDIR] = E_FILL_HORIZONTAL;
-		floatVals[E_GFT_ALIGNX] = E_ALIGNH_LEFT;
-		floatVals[E_GFT_ALIGNY] = E_ALIGNV_TOP;
-		floatVals[E_GFT_VALUE] = 0.0f;
-		floatVals[E_GFT_LAYER] = 0.0f;
-		floatVals[E_GFT_HOVERTYPE] = E_HT_NORMAL;
-		floatVals[E_GFT_MAXDIMX] = 0.0f;
-		floatVals[E_GFT_MAXDIMY] = 0.0f;
-		floatVals[E_GFT_MINDIMX] = 0.0f;
-		floatVals[E_GFT_MINDIMY] = 0.0f;
-		floatVals[E_GFT_FLAGS] = 0.0f;
-		
-		// int _guiClass=E_GT_HOLDER,
-		// float _divisions=0.0f,
-		// bool _hasBackground = true,
-		// bool _singleLine = true,
-		// float _fillRatioX = 0.0f,
-		// float _fillRatioY = 0.0f,
-		// int _fillDir=E_FILL_HORIZONTAL, //fill dir of children
-		// int _alignX=E_ALIGNH_LEFT,
-		// int _alignY=E_ALIGNV_TOP,
-		// float _value = 0.0f,
-		// int _layer = 0,
-		// int _hoverType = E_HT_NORMAL,
-		// float _maxDimInPixelsX = 0.0f,
-		// float _maxDimInPixelsY = 0.0f,
-		// float _minDimInPixelsX = 0.0f,
-		// float _minDimInPixelsY = 0.0f,
-		// uint _flags,
-		
-		
-		baseComp->init(
-			singleton,
-			baseComp,
-			-1,
-			nodeCount,
-			0,
-			
-			NULL,
-			false,
-			
-			stringVals,
-			floatVals
-		);
-		nodeCount++;
-		
-		
-		baseComp->resultDimInPixels.x = singleton->guiWinW;
-		baseComp->resultDimInPixels.y = singleton->guiWinH;
-		
 		
 	}
 	
 	
 	
-	UIComponent* findNodeById(int _id) {
-		return baseComp->findNodeById(_id);
-	}
 	
 	inline bool compChildStr(string childStr) {
 		return tempStrings[E_GDS_CHILD_TYPE].compare(childStr) == 0;
@@ -174,7 +99,7 @@ public:
 	
 	void addChildFromJSON(
 		JSONValue* jv,
-		UIComponent* curParent,
+		int curParentId,
 		bool isFloating = false
 	) {
 		int i;
@@ -234,10 +159,10 @@ public:
 		}
 		
 		
-		guiFloatValues[E_GFT_LAYER] = max(guiFloatValues[E_GFT_LAYER],(double)(curParent->layer));
+		guiFloatValues[E_GFT_LAYER] = max(guiFloatValues[E_GFT_LAYER],(double)(singleton->compStack[curParentId]->layer));
 		
-		UIComponent* newParent = curParent->addChild(
-			curParent->nodeId,
+		int newParent = singleton->compStack[curParentId]->addChild(
+			singleton->compStack[curParentId]->nodeId,
 			nodeCount,
 			guiStringValues,
 			guiFloatValues,
@@ -557,8 +482,6 @@ public:
 						);
 						
 						
-						//todo: problem here?
-						//addChildFromJSON(jv->Child("children")->Child(totCount),newParent,false);
 						
 						totCount++;
 						
@@ -607,15 +530,78 @@ public:
 	
 	void guiFromJSON(JSONValue* jv) {
 		
+		int i;
+		
 		isLoaded = false;
 		isReady = false;
 		
+		guiRenderCount = 0;
+		nodeCount = 0;
 		
-		int i;
+		for (i = 0 ; i < singleton->compStack.size(); i++) {
+				delete (singleton->compStack[i]);
+		}
+		singleton->compStack.clear();
 		
-		nodeCount = 1;
-		baseComp->children.clear();
-		baseComp->floatingChildren.clear();
+		singleton->compStack.push_back(new UIComponent);
+				
+		for (i = 0; i < E_GST_LENGTH; i++) {
+			stringVals[i] = "";
+		}
+		for (i = 0; i < E_GFT_LENGTH; i++) {
+			floatVals[i] = 0.0f;
+		}
+		
+		stringVals[E_GST_LABEL] = "";
+		stringVals[E_GST_UID] = "";
+		stringVals[E_GST_SS] = "defaultSS";
+		
+		floatVals[E_GFT_TYPE] = E_GT_HOLDER;
+		floatVals[E_GFT_DIVISIONS] = 0.0f;
+		floatVals[E_GFT_HASBACKGROUND] = 0.0f;
+		floatVals[E_GFT_SINGLELINE] = 1.0f;
+		floatVals[E_GFT_FILLRATIOX] = 0.0f;
+		floatVals[E_GFT_FILLRATIOY] = 0.0f;
+		floatVals[E_GFT_FILLDIR] = E_FILL_HORIZONTAL;
+		floatVals[E_GFT_ALIGNX] = E_ALIGNH_LEFT;
+		floatVals[E_GFT_ALIGNY] = E_ALIGNV_TOP;
+		floatVals[E_GFT_VALUE] = 0.0f;
+		floatVals[E_GFT_LAYER] = 0.0f;
+		floatVals[E_GFT_HOVERTYPE] = E_HT_NORMAL;
+		floatVals[E_GFT_MAXDIMX] = 0.0f;
+		floatVals[E_GFT_MAXDIMY] = 0.0f;
+		floatVals[E_GFT_MINDIMX] = 0.0f;
+		floatVals[E_GFT_MINDIMY] = 0.0f;
+		floatVals[E_GFT_FLAGS] = 0.0f;
+		
+		singleton->compStack[0]->init(
+			singleton,
+			-1,
+			nodeCount,
+			0,
+			
+			NULL,
+			false,
+			
+			stringVals,
+			floatVals
+		);
+		nodeCount++;
+		
+		
+		singleton->compStack[0]->resultDimInPixels.x = singleton->guiWinW;
+		singleton->compStack[0]->resultDimInPixels.y = singleton->guiWinH;
+		
+		
+		
+		
+		
+		
+		
+		///////
+		
+		//singleton->compStack[0]->children.clear();
+		//singleton->compStack[0]->floatingChildren.clear();
 		
 		
 		for (i = 0; i < MAX_UI_LAYERS; i++) {
@@ -629,11 +615,11 @@ public:
 		
 		addChildFromJSON(
 			jv->Child("baseGUI"),  //jv->Child("curMenu")->string_value
-			baseComp,
+			0,
 			false
 		);
 		
-		baseComp->isDirty = true;
+		singleton->compStack[0]->isDirty = true;
 		isReady = true;
 		isLoaded = true;
 	}
@@ -646,14 +632,14 @@ public:
 		
 		singleton->guiDirty = false;
 		dirtyVec.clear();
-		baseComp->gatherDirty(&dirtyVec);
-		baseComp->clearDirty();
+		singleton->compStack[0]->gatherDirty(&dirtyVec);
+		singleton->compStack[0]->clearDirty();
 		
 		for (i = 0; i < dirtyVec.size(); i++) {
 			dirtyVec[i]->layout();
 		}
 		
-		baseComp->renderAll();
+		singleton->compStack[0]->renderAll();
 		
 		
 	}
@@ -671,18 +657,18 @@ public:
 		mouseTrans.y = ((1.0f-mouseTrans.y) - 0.5f)*2.0f;		
 		
 		
-		baseComp->clearOver();
-		baseComp->findMaxLayer(x, y, mouseTrans.x, mouseTrans.y);
-		baseComp->testOver(x, y);
+		singleton->compStack[0]->clearOver();
+		singleton->compStack[0]->findMaxLayer(x, y, mouseTrans.x, mouseTrans.y);
+		singleton->compStack[0]->testOver(x, y);
 	}
 
 	bool testHit(int button, int state, int x, int y) {
-		return baseComp->testHit(button, state, x, y);
+		return singleton->compStack[0]->testHit(button, state, x, y);
 	}
 	
 	
 	UIComponent* findNodeByString(string _uid) {
-		return baseComp->findNodeByString(_uid);
+		return singleton->compStack[0]->findNodeByString(_uid);
 	}
 
 	void renderCharAt(
@@ -778,9 +764,6 @@ public:
 
 		StyleSheetResult* resSS = &(uiComp->resSS);
 		
-		//bool isColor = uiComp->guiClass == E_GT_COLPICKER;
-		
-		//( ((uiComp->flags)&(E_GF_HUE|E_GF_SAT|E_GF_LIT)) != 0)||isColor;
 		float fMatCode = uiComp->matCode;
 		bool isHSL = uiComp->matCode == E_MC_HSV;
 		
@@ -918,7 +901,7 @@ public:
 	
 	
 	void runReport() {
-		baseComp->runReport();
+		singleton->compStack[0]->runReport();
 	}
 
 	void renderGUI(int activeFBO) {
@@ -932,21 +915,20 @@ public:
 		int n;
 		
 		int maxLoop = 0;
-		
 		float shadowOffset = 0.0;
-		
-		testOver(singleton->guiX,singleton->guiY);
-		doRefresh();
-		
-
 		Singleton::UICont* curCont = NULL;
 		
 		
 		
-		baseComp->updateSS();
+		testOver(singleton->guiX,singleton->guiY);
+		doRefresh();
+		singleton->compStack[0]->updateSS();
 		
-
+		guiRenderCount++;
 		
+		if (guiRenderCount < 5) {
+			return;
+		}
 		
 		for (i = 0; i < 2; i++) {
 			

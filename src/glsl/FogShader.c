@@ -12,15 +12,20 @@ uniform sampler2D Texture3;
 uniform sampler2D Texture4;
 uniform sampler2D Texture5;
 
+// pal fbo
+uniform sampler3D Texture6;
+
+
 uniform float seaLevel;
 uniform float timeOfDay;
 uniform vec2 bufferDim;
 uniform vec2 resolution;
 uniform vec3 cameraPos;
+uniform vec3 lookAtVec;
 //uniform vec4 fogPos;
 
-
-const float TEX_WATER = 32.0/255.0;
+^INCLUDE:MATERIALS^
+//const float TEX_WATER = 32.0/255.0;
 
 varying vec2 TexCoord0;
 
@@ -51,52 +56,66 @@ vec2 pack16(float num)
 
 }
 
-vec3 getFogColor(float lv)
+vec3 unpackColor(vec2 num, float lightVal)
 {
-    float lvBase = (lv-0.5)*0.65 + 0.5;
+    return texture3D( Texture6, vec3(lightVal, num.r, num.g + 0.5/255.0) ).rgb;
+}
+
+vec3 getFogColor(vec2 lv)
+{
     
-    float newlv = clamp( 1.0 - pow( (lvBase - 0.5) * 2.0, 2.0 ), 0.0, 1.0);
-    float newlv2 = clamp( 1.0 - pow( (lvBase - 0.5) * 4.0 - 1.0, 2.0 ), 0.0, 1.0);
+    return unpackColor(
+        vec2(
+            ((1.0 - lv.y - distance(lv,vec2(0.5))*0.1) - lookAtVec.z ),
+            TEX_SKY
+        ),
+        timeOfDay
+    );
+    
+    // float lvBase = (lv-0.5)*0.65 + 0.5;
+    
+    // float newlv = clamp( 1.0 - pow( (lvBase - 0.5) * 2.0, 2.0 ), 0.0, 1.0);
+    // float newlv2 = clamp( 1.0 - pow( (lvBase - 0.5) * 4.0 - 1.0, 2.0 ), 0.0, 1.0);
 
-    vec3 fogColor1 = vec3(0.0);
-    vec3 fogColor2 = vec3(0.0);
+    // vec3 fogColor1 = vec3(0.0);
+    // vec3 fogColor2 = vec3(0.0);
 
-    // 0: moon is high, 1: sun is high
+    // // 0: moon is high, 1: sun is high
 
-    float timeLerp = 0.0;
+    // float timeLerp = 0.0;
 
-    if (timeOfDay < 0.5)
-    {
-        timeLerp = timeOfDay * 2.0;
+    // if (timeOfDay < 0.5)
+    // {
+    //     timeLerp = timeOfDay * 2.0;
 
-        fogColor1 = mix(
-                                    vec3(0.0, 0.0, 0.05),
-                                    vec3(0.3, 0.1, 0.05),
-                                    timeLerp
-                                );
-        fogColor2 = mix(
-                                    vec3(0.025, 0.0, 0.1),
-                                    vec3(1.0, 0.8, 0.7),
-                                    timeLerp
-                                );
-    }
-    else
-    {
-        timeLerp = (timeOfDay - 0.5) * 2.0;
+    //     fogColor1 = mix(
+    //                                 vec3(0.0, 0.0, 0.05),
+    //                                 vec3(0.3, 0.1, 0.05),
+    //                                 timeLerp
+    //                             );
+    //     fogColor2 = mix(
+    //                                 vec3(0.025, 0.0, 0.1),
+    //                                 vec3(1.0, 0.8, 0.7),
+    //                                 timeLerp
+    //                             );
+    // }
+    // else
+    // {
+    //     timeLerp = (timeOfDay - 0.5) * 2.0;
 
-        fogColor1 = mix(
-                                    vec3(0.3, 0.1, 0.05),
-                                    vec3(0.05, 0.1, 0.3),
-                                    timeLerp
-                                );
-        fogColor2 = mix(
-                                    vec3(1.0, 0.8, 0.7),
-                                    vec3(0.7, 0.8, 1.0),
-                                    timeLerp
-                                );
-    }
+    //     fogColor1 = mix(
+    //                                 vec3(0.3, 0.1, 0.05),
+    //                                 vec3(0.05, 0.1, 0.3),
+    //                                 timeLerp
+    //                             );
+    //     fogColor2 = mix(
+    //                                 vec3(1.0, 0.8, 0.7),
+    //                                 vec3(0.7, 0.8, 1.0),
+    //                                 timeLerp
+    //                             );
+    // }
 
-    return mix(fogColor1, fogColor2, newlv ) + pow(newlv2, 4.0) * timeLerp / 4.0;
+    // return mix(fogColor1, fogColor2, newlv ) + pow(newlv2, 4.0) * timeLerp / 4.0;
 }
 
 void main() {
@@ -212,9 +231,9 @@ void main() {
 
     vec3 lightMod = pow( (1.0-timeOfDay)*tex3.rgb, vec3(2.0) );
 
-    vec3 fogColor = getFogColor(TexCoord0.y);
+    vec3 fogColor = getFogColor(TexCoord0.xy);
 
-    vec3 finalCol = mix(tex2.rgb,tex3.rgb,hfog);
+    vec3 finalCol = mix(tex2.rgb,tex3.rgb,hfog); // increase hfog for more blur
 
 
     

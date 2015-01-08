@@ -5,10 +5,11 @@
 
 
 
+int RUN_COUNT;
 
-
-const static int DEF_SCALE_FACTOR = 1;
+const static int DEF_SCALE_FACTOR = 2;
 const static int MAX_LAYERS = 2;
+const static int MAX_MIP_LEV = 1; // min of 1
 
 
 
@@ -24,7 +25,6 @@ const static int MAX_EVAL_LIGHTS = 1024;
 const static int FLOATS_PER_LIGHT = 12;
 
 
-const static int MAX_MIP_LEV = 1; // min of 1
 const static bool FILL_POINTS = false;
 
 const static float UI_SCALE_FACTOR = 1.0f;

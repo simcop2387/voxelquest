@@ -1,12 +1,13 @@
 
 class UIComponent {
 private:
-	UIComponent* parent;
 	UIComponent* valuePtr;
 	
 	float privValueX;
 	float privValueY;
 	
+	std::vector<int> _children;
+	std::vector<int> _floatingChildren;
 	
 public:
 	
@@ -105,19 +106,14 @@ public:
 	fBoundingBox hitBounds;
 	StyleSheetResult resSS;
 	
-	std::vector<UIComponent> children;
-	std::vector<UIComponent> floatingChildren;
-	UIComponent* curComp;
-	UIComponent* baseComp;
+	
+	
 	
 
 
 	UIComponent() {
-		//valVecPtr = NULL;
-		parent = NULL;
+		singleton = NULL;
 		valuePtr = NULL;
-		baseComp = NULL;
-		curComp = NULL;
 	}
 
 
@@ -126,7 +122,6 @@ public:
 	void init(
 
 		Singleton* _singleton,
-		UIComponent* _baseComp,
 		
 		int _parentId,
 		int _nodeId,
@@ -152,14 +147,12 @@ public:
 		
 		//valVecPtr = NULL;
 		valuePtr = NULL;
-		parent = NULL;
 		foundParent = false;
 		foundValuePtr = false;
 		
 		contOnStack = false;
 
 		singleton = _singleton;
-		baseComp = _baseComp;
 		parentId = _parentId;
 		nodeId = _nodeId;
 		
@@ -338,6 +331,25 @@ public:
 		
 		
 	}
+	
+	
+	
+	UIComponent* getChild(int ind) {
+		return (singleton->compStack[_children[ind]]);
+	}
+	UIComponent* getFloatingChild(int ind) {
+		return (singleton->compStack[_floatingChildren[ind]]);
+	}
+	int getChildCount() {
+		return _children.size();
+	}
+	int getFloatingChildCount() {
+		return _floatingChildren.size();
+	}
+	
+	
+	
+	
 	
 	float getDimYClamped(float val) {
 		if (maxDimInPixels.y == 0) {
@@ -536,6 +548,25 @@ public:
 			updateLinkedValues(true);
 		}
 		
+		UIComponent* highestCont = NULL;
+		UIComponent* highestContPar = NULL;
+		
+		if (matCode == E_MC_MATERIAL) {
+			highestCont = getHighestCont(this, 0);
+			if (highestCont != NULL) {
+				highestContPar = highestCont->getParent();
+				if (highestContPar != NULL) {
+					return (((float)(highestContPar->index)) + 0.5f)/255.0f;
+				}
+				
+			}
+			else {
+				return 1.0;
+			}
+			
+		}
+		
+		
 		UIComponent* curValuePtr = getValuePtr();
 		if (curValuePtr != NULL) {
 			if ((flags&E_GF_X) != 0) {
@@ -550,11 +581,12 @@ public:
 			else if ((flags&E_GF_W) != 0) {
 				return curValuePtr->getValueIndex(3);
 			}
-			return 0.0f;
 		}
 		else {
 			return privValueX;
 		}
+		
+		return 0.0f;
 		
 	}
 	
@@ -638,31 +670,13 @@ public:
 	}
 	
 	
-	// use this function to avoid pointer out-of-scope issues
-	// better solutions exist but it works for now
 	UIComponent* getParent() {
-		if (foundParent) {
-			
+		if (nodeId == 0) {
+			return NULL;
 		}
 		else {
-			foundParent = true;
-			
-			if (nodeId == 0) {
-				parent = NULL;
-			}
-			else {
-				if (baseComp == NULL) {
-					parent = NULL;
-				}
-				else {
-					parent = baseComp->findNodeById(parentId);
-				}
-			}
-			
-			
+			return (singleton->compStack[parentId]);
 		}
-		
-		return parent;
 	}
 	
 	
@@ -712,37 +726,15 @@ public:
 			return this;
 		}
 		
-		for (i = 0; i < children.size(); i++) {
-			if (children[i].findNodeByString(_uid) != NULL) {
-				return children[i].findNodeByString(_uid);
+		for (i = 0; i < getChildCount(); i++) {
+			if (getChild(i)->findNodeByString(_uid) != NULL) {
+				return getChild(i)->findNodeByString(_uid);
 			}
 		}
 		
-		for (i = 0; i < floatingChildren.size(); i++) {
-			if (floatingChildren[i].findNodeByString(_uid) != NULL) {
-				return floatingChildren[i].findNodeByString(_uid);
-			}
-		}
-		
-		return NULL;
-	}
-	
-	UIComponent* findNodeById(int id) {
-		int i;
-		
-		if (nodeId == id) {
-			return this;
-		}
-		
-		for (i = 0; i < children.size(); i++) {
-			if (children[i].findNodeById(id) != NULL) {
-				return children[i].findNodeById(id);
-			}
-		}
-		
-		for (i = 0; i < floatingChildren.size(); i++) {
-			if (floatingChildren[i].findNodeById(id) != NULL) {
-				return floatingChildren[i].findNodeById(id);
+		for (i = 0; i < getFloatingChildCount(); i++) {
+			if (getFloatingChild(i)->findNodeByString(_uid) != NULL) {
+				return getFloatingChild(i)->findNodeByString(_uid);
 			}
 		}
 		
@@ -773,9 +765,9 @@ public:
 		float totMW = 0.0f;
 		float tempMW = 0.0f;
 		
-		for (i = 0; i < children.size(); i++) {
+		for (i = 0; i < getChildCount(); i++) {
 			
-			tempMW = children[i].getMinWidth();
+			tempMW = getChild(i)->getMinWidth();
 			
 			if (fillDir == E_FILL_HORIZONTAL) {
 				totMW += tempMW;
@@ -785,8 +777,8 @@ public:
 			}
 		}
 		
-		for (i = 0; i < floatingChildren.size(); i++) {
-			floatingChildren[i].getMinWidth();
+		for (i = 0; i < getFloatingChildCount(); i++) {
+			getFloatingChild(i)->getMinWidth();
 		}
 		
 		
@@ -819,9 +811,9 @@ public:
 		float tempMH = 0.0f;
 		
 		
-		for (i = 0; i < children.size(); i++) {
+		for (i = 0; i < getChildCount(); i++) {
 			
-			tempMH = children[i].getMinHeight();
+			tempMH = getChild(i)->getMinHeight();
 			
 			if (fillDir == E_FILL_HORIZONTAL) {
 				
@@ -833,8 +825,8 @@ public:
 		}
 		
 		
-		for (i = 0; i < floatingChildren.size(); i++) {
-			floatingChildren[i].getMinHeight();
+		for (i = 0; i < getFloatingChildCount(); i++) {
+			getFloatingChild(i)->getMinHeight();
 		}
 		
 		curMH += totMH;
@@ -845,7 +837,10 @@ public:
 		
 	}
 	
-	UIComponent* addChild(
+	
+	// Warning: adding children invalidates pointers!
+	
+	int addChild(
 		int _parentId,
 		int _nodeId,
 		string* stringVals,
@@ -855,30 +850,25 @@ public:
 		
 	) {
 		
-		UIComponent tempComp;
 		
 		int childCount = 0;
 		
 		if (_isFloating) {
-			floatingChildren.push_back(tempComp);
-			curComp = &(floatingChildren.back());
-			childCount = floatingChildren.size()-1;
-			
-			
+			_floatingChildren.push_back(_nodeId);
+			childCount = getFloatingChildCount()-1;
 		}
 		else {
-			children.push_back(tempComp);
-			curComp = &(children.back());
-			childCount = children.size()-1;
+			_children.push_back(_nodeId);
+			childCount = getChildCount()-1;
 		}
 		
 		
+		singleton->compStack.push_back(new UIComponent());
 		
 		
 		
-		curComp->init(
+		singleton->compStack.back()->init(
 			singleton,
-			baseComp,
 			_parentId,
 			_nodeId,
 			childCount,
@@ -890,14 +880,15 @@ public:
 			floatVals
 		);
 		
-		//return curComp;
 		
-		if (_isFloating) {
-			return &(floatingChildren.back());
-		}
-		else {
-			return &(children.back());
-		}
+		return _nodeId;
+		
+		// if (_isFloating) {
+		// 	return &(floatingChildren.back());
+		// }
+		// else {
+		// 	return &(children.back());
+		// }
 		
 	}
 	
@@ -916,15 +907,15 @@ public:
 		totVals.x = 0.0f;
 		totVals.y = 0.0f;
 		
-		for (i = 0; i < children.size(); i++) {
+		for (i = 0; i < getChildCount(); i++) {
 			
 			if (fillDir == E_FILL_HORIZONTAL) {
-				totVals.x += children[i].resultDimInPixels.x;
-				totVals.y = max(totVals.y,children[i].resultDimInPixels.y);
+				totVals.x += getChild(i)->resultDimInPixels.x;
+				totVals.y = max(totVals.y,getChild(i)->resultDimInPixels.y);
 			}
 			else {
-				totVals.y += children[i].resultDimInPixels.y;
-				totVals.x = max(totVals.x,children[i].resultDimInPixels.x);
+				totVals.y += getChild(i)->resultDimInPixels.y;
+				totVals.x = max(totVals.x,getChild(i)->resultDimInPixels.x);
 			}
 			
 			
@@ -960,28 +951,28 @@ public:
 		}
 		
 		if (fillDir == E_FILL_HORIZONTAL) {
-			for (i = 0; i < children.size(); i++) {
-				children[i].originPos.x = curPos.x;
-				children[i].originPos.y = curPos.y;
-				curPos.x += children[i].resultDimInPixels.x;
+			for (i = 0; i < getChildCount(); i++) {
+				getChild(i)->originPos.x = curPos.x;
+				getChild(i)->originPos.y = curPos.y;
+				curPos.x += getChild(i)->resultDimInPixels.x;
 			}
 		}
 		else {
-			for (i = 0; i < children.size(); i++) {
-				children[i].originPos.x = curPos.x;
-				children[i].originPos.y = curPos.y;
-				curPos.y += children[i].resultDimInPixels.y;
+			for (i = 0; i < getChildCount(); i++) {
+				getChild(i)->originPos.x = curPos.x;
+				getChild(i)->originPos.y = curPos.y;
+				curPos.y += getChild(i)->resultDimInPixels.y;
 			}
 		}
 		
 		
-		for (i = 0; i < children.size(); i++) {
-			children[i].setOrigPos();
+		for (i = 0; i < getChildCount(); i++) {
+			getChild(i)->setOrigPos();
 		}
 		
 		
-		for (i = 0; i < floatingChildren.size(); i++) {
-			floatingChildren[i].setOrigPos();
+		for (i = 0; i < getFloatingChildCount(); i++) {
+			getFloatingChild(i)->setOrigPos();
 		}
 		
 	}
@@ -995,13 +986,13 @@ public:
 		
 		
 
-		for (i = 0; i < children.size(); i++) {
-			totalRatios.y += children[i].fillRatioDim.y;
+		for (i = 0; i < getChildCount(); i++) {
+			totalRatios.y += getChild(i)->fillRatioDim.y;
 			if (fillDir == E_FILL_HORIZONTAL) {
 				
 			}
 			else {
-				availSpace -= children[i].rmDimInPixels.y;
+				availSpace -= getChild(i)->rmDimInPixels.y;
 			}
 		}
 		
@@ -1013,33 +1004,33 @@ public:
 		}
 		
 		
-		for (i = 0; i < children.size(); i++) {
+		for (i = 0; i < getChildCount(); i++) {
 			
 			if (fillDir == E_FILL_HORIZONTAL) {
 				
-				if (children[i].fillRatioDim.y == 0.0f) {
-					children[i].resultDimInPixels.y = children[i].rmDimInPixels.y;
+				if (getChild(i)->fillRatioDim.y == 0.0f) {
+					getChild(i)->resultDimInPixels.y = getChild(i)->rmDimInPixels.y;
 				}
 				else {
 					
 					
-					children[i].resultDimInPixels.y = availSpace;
+					getChild(i)->resultDimInPixels.y = availSpace;
 				}
 			}
 			else {
-				children[i].resultDimInPixels.y =
-					children[i].rmDimInPixels.y + 
-					(availSpace*children[i].fillRatioDim.y)/totalRatios.y;	
+				getChild(i)->resultDimInPixels.y =
+					getChild(i)->rmDimInPixels.y + 
+					(availSpace*getChild(i)->fillRatioDim.y)/totalRatios.y;	
 				
 			}
 		}
 		
-		for (i = 0; i < children.size(); i++) {
-			children[i].applyHeight();	
+		for (i = 0; i < getChildCount(); i++) {
+			getChild(i)->applyHeight();	
 		}
 		
-		for (i = 0; i < floatingChildren.size(); i++) {
-			floatingChildren[i].applyHeight();
+		for (i = 0; i < getFloatingChildCount(); i++) {
+			getFloatingChild(i)->applyHeight();
 		}
 		
 	}
@@ -1053,10 +1044,10 @@ public:
 		int i;
 		
 
-		for (i = 0; i < children.size(); i++) {
-			totalRatios.x += children[i].fillRatioDim.x;
+		for (i = 0; i < getChildCount(); i++) {
+			totalRatios.x += getChild(i)->fillRatioDim.x;
 			if (fillDir == E_FILL_HORIZONTAL) {
-				availSpace -= children[i].rmDimInPixels.x;
+				availSpace -= getChild(i)->rmDimInPixels.x;
 			}
 			else {
 				
@@ -1069,35 +1060,35 @@ public:
 		}
 		
 		
-		for (i = 0; i < children.size(); i++) {
+		for (i = 0; i < getChildCount(); i++) {
 			
 			if (fillDir == E_FILL_HORIZONTAL) {
 				
 				
 				
-				children[i].resultDimInPixels.x =
+				getChild(i)->resultDimInPixels.x =
 					max(
-						children[i].rmDimInPixels.x +
-						(availSpace*children[i].fillRatioDim.x)/totalRatios.x,
-						children[i].minDimInPixels.x
+						getChild(i)->rmDimInPixels.x +
+						(availSpace*getChild(i)->fillRatioDim.x)/totalRatios.x,
+						getChild(i)->minDimInPixels.x
 					);
 					
 			}
 			else {
 				
-				if (children[i].fillRatioDim.x == 0.0f) {
-					children[i].resultDimInPixels.x =
+				if (getChild(i)->fillRatioDim.x == 0.0f) {
+					getChild(i)->resultDimInPixels.x =
 						max(
-							children[i].rmDimInPixels.x,
-							children[i].minDimInPixels.x
+							getChild(i)->rmDimInPixels.x,
+							getChild(i)->minDimInPixels.x
 						);
 					
 				}
 				else {
-					children[i].resultDimInPixels.x =
+					getChild(i)->resultDimInPixels.x =
 						max(
 							availSpace,
-							children[i].minDimInPixels.x
+							getChild(i)->minDimInPixels.x
 						);
 					
 				}
@@ -1106,12 +1097,12 @@ public:
 		}
 		
 		
-		for (i = 0; i < children.size(); i++) {
-			children[i].applyWidth();	
+		for (i = 0; i < getChildCount(); i++) {
+			getChild(i)->applyWidth();	
 		}
 		
-		for (i = 0; i < floatingChildren.size(); i++) {
-			floatingChildren[i].applyWidth();
+		for (i = 0; i < getFloatingChildCount(); i++) {
+			getFloatingChild(i)->applyWidth();
 		}
 		
 	}
@@ -1124,11 +1115,11 @@ public:
 			dirtyVec->push_back(this);
 		}
 		else {
-			for (i = 0; i < children.size(); i++) {
-				children[i].gatherDirty(dirtyVec);
+			for (i = 0; i < getChildCount(); i++) {
+				getChild(i)->gatherDirty(dirtyVec);
 			}
-			for (i = 0; i < floatingChildren.size(); i++) {
-				floatingChildren[i].gatherDirty(dirtyVec);
+			for (i = 0; i < getFloatingChildCount(); i++) {
+				getFloatingChild(i)->gatherDirty(dirtyVec);
 			}
 		}
 		
@@ -1140,11 +1131,11 @@ public:
 		
 		isDirty = false;
 		
-		for (i = 0; i < children.size(); i++) {
-			children[i].clearDirty();
+		for (i = 0; i < getChildCount(); i++) {
+			getChild(i)->clearDirty();
 		}
-		for (i = 0; i < floatingChildren.size(); i++) {
-			floatingChildren[i].clearDirty();
+		for (i = 0; i < getFloatingChildCount(); i++) {
+			getFloatingChild(i)->clearDirty();
 		}
 	}
 	
@@ -1152,16 +1143,17 @@ public:
 	void alignToComp(UIComponent* myComp) {
 		UIComponent* myComp2 = myComp->getParent();
 		
+		
 		if (
 			(myComp->fillDir == 0) &&
 			(myComp2 != NULL)
 		) {
-			floatOffset.x = myComp2->totOffset.x + myComp2->originPos.x + myComp2->resultDimInPixels.x;
-			floatOffset.y = myComp2->totOffset.y + myComp2->originPos.y;
+			floatOffset.x = myComp2->floatOffset.x + myComp2->dragOffset.x + myComp2->originPos.x + myComp2->resultDimInPixels.x;
+			floatOffset.y = myComp2->floatOffset.y + myComp2->dragOffset.y + myComp2->originPos.y;
 		}
 		else {
-			floatOffset.x = myComp->totOffset.x + myComp->originPos.x + myComp->resultDimInPixels.x;
-			floatOffset.y = myComp->totOffset.y + myComp->originPos.y;
+			floatOffset.x = myComp->floatOffset.x + myComp->dragOffset.x + myComp->originPos.x + myComp->resultDimInPixels.x;
+			floatOffset.y = myComp->floatOffset.y + myComp->dragOffset.y + myComp->originPos.y;
 		}
 		
 		
@@ -1214,12 +1206,7 @@ public:
 		UIComponent* highestCont;
 		
 		if (dragging) {
-			highestCont = getHighestCont(this, 0);
-			
-			// if (highestCont->floatingChildren.size() > 0) {
-			// 	highestCont = &(highestCont->floatingChildren[0]);
-			// }
-			
+			highestCont = getHighestCont(this, 0);			
 			highestCont->dragOffset.x = lastDrag.x + (x - dragStart.x); //
 			highestCont->dragOffset.y = lastDrag.y + (y - dragStart.y); //
 			
@@ -1230,7 +1217,7 @@ public:
 		}
 		else {
 			if (
-				(curParent->floatingChildren.size() > 0)
+				(curParent->getFloatingChildCount() > 0)
 			) {
 				
 			}
@@ -1244,14 +1231,20 @@ public:
 		
 		
 		
+		
+		
+		
 		if ((maxDimInPixels.y == 0)&&(curParent != NULL)) {
-			scrollOffset.y = curParent->scrollOffset.y;
+			
+			if (curParent->getFloatingChildCount() == 0) {
+				scrollOffset.y = curParent->scrollOffset.y;
+			}
+			
+			
 		}
 		else {
 			scrollOffset.y += (targScrollOffset.y-scrollOffset.y)/16.0f;
-			
 		}
-		
 		
 		
 		
@@ -1285,7 +1278,7 @@ public:
 				
 				if ((hoverType == E_HT_TOOLTIP_VALUE)&&visible) {
 					
-					children[0].setText(f__s(curParent->getValue()));
+					getChild(0)->setText(f__s(curParent->getValue()));
 				}
 				
 			break;
@@ -1303,23 +1296,27 @@ public:
 		updateOffset();
 		
 		
+		if (curParent != NULL) {
+			if (curParent->getFloatingChildCount() == 0) {
+				if (maxDimInPixels.y == 0) {
+					scrollMaskY = curParent->scrollMaskY;
+				}
+				else {
+					scrollMaskY.x = originPos.y + marginInPixels;
+					scrollMaskY.y = originPos.y +  getResultDimYClamped() - marginInPixels;
+					
+					scrollMaskY.x += totOffset.y-scrollOffset.y;
+					scrollMaskY.y += totOffset.y-scrollOffset.y;
+					
+					scrollMaskY.x /= singleton->guiWinH;
+					scrollMaskY.y /= singleton->guiWinH;
+					scrollMaskY.x = ((1.0f-scrollMaskY.x) - 0.5f)*2.0f;
+					scrollMaskY.y = ((1.0f-scrollMaskY.y) - 0.5f)*2.0f;			
+				}
+			}
+		}
 		
 		
-		if ((maxDimInPixels.y == 0)&&(curParent != NULL)) {
-			scrollMaskY = curParent->scrollMaskY;
-		}
-		else {
-			scrollMaskY.x = originPos.y + marginInPixels;
-			scrollMaskY.y = originPos.y +  getResultDimYClamped() - marginInPixels;
-			
-			scrollMaskY.x += totOffset.y-scrollOffset.y;
-			scrollMaskY.y += totOffset.y-scrollOffset.y;
-			
-			scrollMaskY.x /= singleton->guiWinH;
-			scrollMaskY.y /= singleton->guiWinH;
-			scrollMaskY.x = ((1.0f-scrollMaskY.x) - 0.5f)*2.0f;
-			scrollMaskY.y = ((1.0f-scrollMaskY.y) - 0.5f)*2.0f;			
-		}
 		
 		
 		
@@ -1369,11 +1366,11 @@ public:
 		
 		//cout << overSelf << " " << text << "\n";
 				
-		for (i = 0; i < children.size(); i++) {
-			children[i].runReport();
+		for (i = 0; i < getChildCount(); i++) {
+			getChild(i)->runReport();
 		}
-		for (i = 0; i < floatingChildren.size(); i++) {
-			floatingChildren[i].runReport();
+		for (i = 0; i < getFloatingChildCount(); i++) {
+			getFloatingChild(i)->runReport();
 		}
 	}
 	
@@ -1383,11 +1380,11 @@ public:
 		int i;
 		overSelf = false;
 		
-		for (i = 0; i < children.size(); i++) {
-			children[i].clearOver();
+		for (i = 0; i < getChildCount(); i++) {
+			getChild(i)->clearOver();
 		}
-		for (i = 0; i < floatingChildren.size(); i++) {
-			floatingChildren[i].clearOver();
+		for (i = 0; i < getFloatingChildCount(); i++) {
+			getFloatingChild(i)->clearOver();
 		}
 		
 	}
@@ -1402,16 +1399,19 @@ public:
 			(x > (hitBounds.xMin+totOffset.x)) &&
 			(y < (hitBounds.yMax+totOffset.y)) &&
 			(y > (hitBounds.yMin+totOffset.y))
-		) && visible;
+		) && visible;// && hasBackground;
 		
 		
-		if (maxDimInPixels.y == 0) {
+		if (
+			(maxDimInPixels.y == 0) ||
+			((abs(scrollMaskY.x) + abs(scrollMaskY.y)) <= 1.0f)
+		) {
 			
 		}
 		else {
 			if (
-				(yTransformed > scrollMaskY.x) || 
-				(yTransformed < scrollMaskY.y)
+					(yTransformed > scrollMaskY.x) || 
+				  (yTransformed < scrollMaskY.y)
 			) {
 				overSelf = false;
 				overChild = false;
@@ -1427,11 +1427,11 @@ public:
 		
 		overChild = false;
 		
-		for (i = 0; i < children.size(); i++) {
-			overChild = overChild||children[i].findMaxLayer(x,y,xTransformed,yTransformed);
+		for (i = 0; i < getChildCount(); i++) {
+			overChild = overChild||getChild(i)->findMaxLayer(x,y,xTransformed,yTransformed);
 		}
-		for (i = 0; i < floatingChildren.size(); i++) {
-			overChild = overChild||floatingChildren[i].findMaxLayer(x,y,xTransformed,yTransformed);
+		for (i = 0; i < getFloatingChildCount(); i++) {
+			overChild = overChild||getFloatingChild(i)->findMaxLayer(x,y,xTransformed,yTransformed);
 		}
 		
 		if (
@@ -1455,11 +1455,11 @@ public:
 		
 		bool lastOver = mouseOver;
 		
-		for (i = 0; i < children.size(); i++) {
-			children[i].testOver(x,y);
+		for (i = 0; i < getChildCount(); i++) {
+			getChild(i)->testOver(x,y);
 		}
-		for (i = 0; i < floatingChildren.size(); i++) {
-			floatingChildren[i].testOver(x,y);
+		for (i = 0; i < getFloatingChildCount(); i++) {
+			getFloatingChild(i)->testOver(x,y);
 		}
 		
 		mouseOver = 
@@ -1468,6 +1468,7 @@ public:
 			(hasBackground) && //||(guiClass == E_GT_DRAGPAD)
 			(!overChild) &&
 			(layer >= singleton->maxLayerOver);
+		
 		
 		
 		if ((mouseOver != lastOver)&&(!(singleton->dragging))) {
@@ -1516,6 +1517,7 @@ public:
 				}
 			}
 		}
+		
 		
 		
 		
@@ -1609,11 +1611,11 @@ public:
 						case E_GT_BUTTON:
 							
 						break;
-						case E_GT_COLPICKER:
-							
+						case E_GT_CHECK:
+							selected = !selected;
 						break;
+						
 						case E_GT_RADIO:
-							//selected = !selected;
 							tempValue = !selected;
 							
 							if (singleton->bShift) {
@@ -1622,22 +1624,22 @@ public:
 							else {
 								
 								if (curParent2 == NULL) {
-									for (i = 0; i < curParent->children.size(); i++) {
-										if (curParent->children[i].guiClass == E_GT_RADIO) {
-											curParent->children[i].selected = false;
-											//curParent->children[i].setValue(0.0f);
+									for (i = 0; i < curParent->getChildCount(); i++) {
+										if (curParent->getChild(i)->guiClass == E_GT_RADIO) {
+											curParent->getChild(i)->selected = false;
+											//curParent->getChild(i)->setValue(0.0f);
 										}
 									}
 								}
 								else {
 									
-									for (j = 0; j < curParent2->children.size(); j++) {
-										selParent = &(curParent2->children[j]);
+									for (j = 0; j < curParent2->getChildCount(); j++) {
+										selParent = curParent2->getChild(j);
 										
-										for (i = 0; i < selParent->children.size(); i++) {
-											if (selParent->children[i].guiClass == E_GT_RADIO) {
-												//selParent->children[i].setValue(0.0f);
-												selParent->children[i].selected = false;
+										for (i = 0; i < selParent->getChildCount(); i++) {
+											if (selParent->getChild(i)->guiClass == E_GT_RADIO) {
+												//selParent->getChild(i)->setValue(0.0f);
+												selParent->getChild(i)->selected = false;
 											}
 										}
 									}
@@ -1678,6 +1680,7 @@ public:
 							}
 							
 							
+							
 							targScrollOffset.y += wheelDelta*20.0f;
 							
 							targScrollOffset.y = clampf(targScrollOffset.y, -(resultDimInPixels.y-maxDimInPixels.y), 0.0f);
@@ -1692,12 +1695,12 @@ public:
 
 		updateValue(x, y);
 		
-		for (i = 0; i < children.size(); i++) {
-			hitChild = hitChild||children[i].testHit(button, state, x, y);
+		for (i = 0; i < getChildCount(); i++) {
+			hitChild = hitChild||getChild(i)->testHit(button, state, x, y);
 		}
 		
-		for (i = 0; i < floatingChildren.size(); i++) {
-			hitChild = hitChild||floatingChildren[i].testHit(button, state, x, y);
+		for (i = 0; i < getFloatingChildCount(); i++) {
+			hitChild = hitChild||getFloatingChild(i)->testHit(button, state, x, y);
 		}
 		
 		
@@ -1724,7 +1727,7 @@ public:
 			return curNode;
 		}
 		else {
-			if (curParent->floatingChildren.size() > 0) {
+			if (curParent->getFloatingChildCount() > 0) {
 				return curNode;
 			}
 			else {
@@ -1780,11 +1783,11 @@ public:
 		
 		renderText(false);
 		
-		for (i = 0; i < children.size(); i++) {
-			children[i].renderAll();
+		for (i = 0; i < getChildCount(); i++) {
+			getChild(i)->renderAll();
 		}
-		for (i = 0; i < floatingChildren.size(); i++) {
-			floatingChildren[i].renderAll();
+		for (i = 0; i < getFloatingChildCount(); i++) {
+			getFloatingChild(i)->renderAll();
 		}
 	}
 	
@@ -1794,11 +1797,11 @@ public:
 		
 		resSS.update(mouseOver, mouseDown);
 		
-		for (i = 0; i < children.size(); i++) {
-			children[i].updateSS();
+		for (i = 0; i < getChildCount(); i++) {
+			getChild(i)->updateSS();
 		}
-		for (i = 0; i < floatingChildren.size(); i++) {
-			floatingChildren[i].updateSS();
+		for (i = 0; i < getFloatingChildCount(); i++) {
+			getFloatingChild(i)->updateSS();
 		}
 		
 	}

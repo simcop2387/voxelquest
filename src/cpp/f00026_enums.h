@@ -122,6 +122,13 @@ enum E_TER_TYPE {
 	E_TER_LENGTH
 };
 
+enum E_LAYER_TYPE {
+	E_LAYER_SOLID,
+	E_LAYER_TRANS,
+	E_LAYER_NULL, // must be last
+	E_LAYER_LENGTH
+};
+
 
 enum E_MOUSE_STATE {
 	E_MOUSE_STATE_MOVE,
@@ -903,7 +910,7 @@ enum GUI_TYPES {
 	E_GT_RADIO,   // 3
 	E_GT_MENUBAR, // 4
 	E_GT_DRAGPAD, // 5
-	E_GT_COLPICKER, // 6
+	E_GT_CHECK,   // 6
 	E_GT_LENGTH
 };
 

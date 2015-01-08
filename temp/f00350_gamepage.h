@@ -845,7 +845,7 @@ void GamePage::generateVolume (bool dd)
 				singleton->setShaderFloat("volumePitch", (float)( singleton->volGenFBOX ));
 				//singleton->setShaderFloat("holderSizeInPagesLog", hspLog);
 				singleton->setShaderFloat("bufferMult", (float)(singleton->bufferMult));
-				singleton->setShaderFloat("visPageSizeInPixels", (float)(singleton->visPageSizeInPixels));
+				singleton->setShaderFloat("volGenFBOX", (float)(singleton->volGenFBOX));
 				singleton->setShaderfVec3("worldMinVisInPixels", &(worldMinVisInPixels));
 				singleton->setShaderfVec3("worldMaxVisInPixels", &(worldMaxVisInPixels));
 				
@@ -984,8 +984,8 @@ void GamePage::getPoints (int fboNum)
 				hasSolid = true;
 			}
 			
-			if (fbow0->getPixelAtIndex(i,G_CHANNEL) != 0) {
-				hasSolidAndAir = true;
+			if (fbow1->getPixelAtIndex(i,A_CHANNEL) != 0) {
+				hasAir = true;
 			}
 		}
 		
@@ -1122,7 +1122,18 @@ void GamePage::getPoints (int fboNum)
 							
 							ind = getIndex(i,j,k,sres);
 							
+							// final layer:
+							// 0: solid;
+							// 1: water;
+							// 2: null
 							
+							// fbow0.r = finalLayer;
+							// fbow0.g = finalNormUID;
+							// fbow0.b = finalMod;
+							// fbow0.a = finalMat;
+							
+							// fbow1.rgb = normal;
+							// fbow1.a = aoVal;
 							
 							
 							
@@ -1135,118 +1146,122 @@ void GamePage::getPoints (int fboNum)
 								
 								q = fbow0->getPixelAtIndex3DMip(ind,R_CHANNEL,mval,p);
 								
-								isCand = fbow0->getPixelAtIndex3DMip(ind,G_CHANNEL,mval,p) != 0;
-								
-								
-								
-								
-								// front facing: counter clock wise
-								
-								doProc = false;
-								
-								
-								
-								// x + 
-								if (i != sresM1) {
-									ind2 = getIndex(i+1,j,k,sres);
+								if (q < E_LAYER_NULL) {
+									isCand = fbow1->getPixelAtIndex3DMip(ind,A_CHANNEL,mval,p) != 0;
 									
 									
-									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
-									doProc = doProc||(PROC_MATRIX[q][t]);
-								}
-								else {
-									doProc = doProc||isCand;
-								}
-								
-								// x - 
-								if (i != 0) {
-									ind2 = getIndex(i-1,j,k,sres);
-									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
-									doProc = doProc||(PROC_MATRIX[q][t]);
-								}
-								else {
-									doProc = doProc||isCand;
-								}
-								
-								// y + 
-								if (j != sresM1) {
-									ind2 = getIndex(i,j+1,k,sres);
-									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
-									doProc = doProc||(PROC_MATRIX[q][t]);
-								}
-								else {
-									doProc = doProc||isCand;
-								}
-								
-								// y - 
-								if (j != 0) {
-									ind2 = getIndex(i,j-1,k,sres);
-									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
-									doProc = doProc||(PROC_MATRIX[q][t]);
-								}
-								else {
-									doProc = doProc||isCand;
-								}
-								
-								// z + 
-								if (k != sresM1) {
-									ind2 = getIndex(i,j,k+1,sres);
-									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
-									doProc = doProc||(PROC_MATRIX[q][t]);
-								}
-								else {
-									doProc = doProc||isCand;
-								}
-								
-								// z- 
-								if (k != 0) {
-									ind2 = getIndex(i,j,k-1,sres);
-									t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
-									doProc = doProc||(PROC_MATRIX[q][t]);
-								}
-								else {
-									doProc = doProc||isCand;
-								}
-								
-								
-								if (doProc) {
-									if (n == 0) {
-										procCount[q]++;
+									
+									
+									// front facing: counter clock wise
+									
+									doProc = false;
+									
+									
+									
+									// x + 
+									if (i != sresM1) {
+										ind2 = getIndex(i+1,j,k,sres);
+										
+										
+										t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+										doProc = doProc||(PROC_MATRIX[q][t]);
 									}
 									else {
-										bpX = worldMinVisInPixels.getFX() + ((fi)/fres)*fVisPageSizeInPixels;
-										bpY = worldMinVisInPixels.getFY() + ((fj)/fres)*fVisPageSizeInPixels;
-										bpZ = worldMinVisInPixels.getFZ() + ((fk)/fres)*fVisPageSizeInPixels;
-										
-										ci = p*MAX_LAYERS+q;
-										
-										vertices[ci].data.push_back(fbow1->getPixelAtIndex3DMip(ind,R_CHANNEL,mval,p)*2.0f/255.0f - 1.0f);
-										vertices[ci].data.push_back(fbow1->getPixelAtIndex3DMip(ind,G_CHANNEL,mval,p)*2.0f/255.0f - 1.0f);
-										vertices[ci].data.push_back(fbow1->getPixelAtIndex3DMip(ind,B_CHANNEL,mval,p)*2.0f/255.0f - 1.0f);
-										vertices[ci].data.push_back(
-											fbow0->getPixelAtIndex3DMip(ind,B_CHANNEL,mval,p) +
-											fbow0->getPixelAtIndex3DMip(ind,A_CHANNEL,mval,p)*256
-										);
-										
-										vertices[ci].data.push_back(bpX);
-										vertices[ci].data.push_back(bpY);
-										vertices[ci].data.push_back(bpZ);
-										vertices[ci].data.push_back(1.0f);
-										
-										//totalPointCount++;
-										
-										//getPixVal(fbow0,fbow1,ind, bpX,bpY,bpZ, iv0,iv0,iv0);
-										
+										doProc = doProc||isCand;
+									}
+									
+									// x - 
+									if (i != 0) {
+										ind2 = getIndex(i-1,j,k,sres);
+										t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+										doProc = doProc||(PROC_MATRIX[q][t]);
+									}
+									else {
+										doProc = doProc||isCand;
+									}
+									
+									// y + 
+									if (j != sresM1) {
+										ind2 = getIndex(i,j+1,k,sres);
+										t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+										doProc = doProc||(PROC_MATRIX[q][t]);
+									}
+									else {
+										doProc = doProc||isCand;
+									}
+									
+									// y - 
+									if (j != 0) {
+										ind2 = getIndex(i,j-1,k,sres);
+										t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+										doProc = doProc||(PROC_MATRIX[q][t]);
+									}
+									else {
+										doProc = doProc||isCand;
+									}
+									
+									// z + 
+									if (k != sresM1) {
+										ind2 = getIndex(i,j,k+1,sres);
+										t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+										doProc = doProc||(PROC_MATRIX[q][t]);
+									}
+									else {
+										doProc = doProc||isCand;
+									}
+									
+									// z- 
+									if (k != 0) {
+										ind2 = getIndex(i,j,k-1,sres);
+										t = fbow0->getPixelAtIndex3DMip(ind2,R_CHANNEL,mval,p);
+										doProc = doProc||(PROC_MATRIX[q][t]);
+									}
+									else {
+										doProc = doProc||isCand;
+									}
+									
+									
+									if (doProc) {
+										if (n == 0) {
+											procCount[q]++;
+										}
+										else {
+											bpX = worldMinVisInPixels.getFX() + ((fi)/fres)*fVisPageSizeInPixels;
+											bpY = worldMinVisInPixels.getFY() + ((fj)/fres)*fVisPageSizeInPixels;
+											bpZ = worldMinVisInPixels.getFZ() + ((fk)/fres)*fVisPageSizeInPixels;
+											
+											ci = p*MAX_LAYERS+q;
+											
+											vertices[ci].data.push_back(fbow1->getPixelAtIndex3DMip(ind,R_CHANNEL,mval,p)*2.0f/255.0f - 1.0f);
+											vertices[ci].data.push_back(fbow1->getPixelAtIndex3DMip(ind,G_CHANNEL,mval,p)*2.0f/255.0f - 1.0f);
+											vertices[ci].data.push_back(fbow1->getPixelAtIndex3DMip(ind,B_CHANNEL,mval,p)*2.0f/255.0f - 1.0f);
+											vertices[ci].data.push_back(
+												fbow0->getPixelAtIndex3DMip(ind,B_CHANNEL,mval,p) +
+												fbow0->getPixelAtIndex3DMip(ind,A_CHANNEL,mval,p)*256
+											);
+											
+											vertices[ci].data.push_back(bpX);
+											vertices[ci].data.push_back(bpY);
+											vertices[ci].data.push_back(bpZ);
+											vertices[ci].data.push_back(1.0f);
+											
+											//totalPointCount++;
+											
+											//getPixVal(fbow0,fbow1,ind, bpX,bpY,bpZ, iv0,iv0,iv0);
+											
+										}
 									}
 								}
 								
+								
+								 
 							}
-						}	
+						}
 					}
 				}
 				
 				if (n==0) {
-					for (q = 0; q < 2; q++) {
+					for (q = 0; q < MAX_LAYERS; q++) {
 						ci = p*MAX_LAYERS+q;
 						if (procCount[q] > 0) {
 							vertices[ci].data.reserve((procCount[q]+1)*8);

@@ -1,6 +1,6 @@
 #version 120
 
-uniform sampler2D Texture0; // palette
+uniform sampler3D Texture0; // pal fbo
 uniform sampler2D Texture1; // heightmap
 uniform sampler2D Texture2; // cityFBO;
 //uniform sampler2D Texture2; // combineFBO0
@@ -19,7 +19,7 @@ uniform vec2 mapDimInPixels;
 
 uniform vec3 maxBoundsInPixels;
 
-
+^INCLUDE:MATERIALS^
 
 $
 
@@ -148,8 +148,18 @@ void main() {
     //testHeight = pow(testHeight,2.0);
 
     float isAboveWater = float(testHeight > seaLevel);
-    vec4 landRes = texture2D( Texture0, vec2( (testHeight-seaLevel)/(1.0-seaLevel), (5.0 + 0.5)/255.0 ) ); //vec4(testHeight);//
-    vec4 seaRes = texture2D( Texture0, vec2(testHeight/seaLevel, (6.0 + 0.5)/255.0 ) );
+    vec4 landRes = texture3D( Texture0, vec3(
+            (testHeight-seaLevel)*1.5/(1.0-seaLevel),
+            0.0,
+            TEX_MAPLAND + 0.5/255.0
+        )
+    );
+    vec4 seaRes = texture3D( Texture0, vec3(
+            testHeight/seaLevel,
+            0.0,
+            TEX_MAPWATER + 0.5/255.0
+        )
+    );
     vec4 topoRes = mix(seaRes,landRes,isAboveWater);
 
     vec4 tex0 = topoRes;

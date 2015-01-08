@@ -24,14 +24,10 @@
 			"fillRatioX":1,
 			"matCode":1
 		},
-		"fillSliderMat": {
-			"type":1,
+		"fillContMat": {
+			"type":0,
 			"fillRatioX":1,
 			"matCode":2
-		},
-		"fillCP": {
-			"type":6,
-			"fillRatioX":1
 		},
 		"fillLabel": {
 			"type":0,
@@ -83,6 +79,17 @@
 			"type":3,
 			"fillRatioX":1,
 			"alignX":1
+		},
+		"checkFillCenter": {
+			"type":6,
+			"fillRatioX":1,
+			"alignX":1
+		},
+		"radioFillCenterColor": {
+			"type":3,
+			"fillRatioX":1,
+			"alignX":1,
+			"matCode":1
 		}
 	},
 	
@@ -409,7 +416,48 @@
 										"template":"radioFillCenter",
 										"label":"Edit Entity"
 										
+									},
+									{
+										"template":"radioFillCenter",
+										"label":"Change Material",
+										"floatingChildren": [{
+											"template":"popout",
+											"fillRatioX":1,
+											"children": [
+												{
+													"template":"cont",
+													"fillDir":1,
+													"children": [
+													
+														{
+															"template":"menuBar",
+															"label":"Materials",
+															"alignX":1,
+															"fillRatioX":1
+															
+														},
+														{
+															"template":"cont",
+															"fillDir":1,
+															"fillRatioX":1,
+															"maxDimY": 512,
+															"dataFile":"materials.js",
+															"dataSource":"materials",
+															"childType":"E_GTC_GENERIC",
+															"children": [],
+															"childTemplate":{
+																"template":"radioFillCenter",
+																"label":"",
+																"uid":"#materialPicker"
+															}
+														}
+													
+													]
+												}
+											]
+										}]
 									}
+									
 									
 									
 									
@@ -680,6 +728,11 @@
 																								"template":"fillSlider",
 																								"label":"Clip Distance",
 																								"uid":"$options.graphics.clipDist"
+																							},
+																							{
+																								"template":"fillSlider",
+																								"label":"Field of View",
+																								"uid":"$options.graphics.fov"
 																							}
 																						]
 																					}
@@ -799,6 +852,7 @@
 															"template":"cont",
 															"fillDir":1,
 															"fillRatioX":1,
+															"maxDimY": 512,
 															"dataFile":"materials.js",
 															"dataSource":"materials",
 															"childType":"E_GTC_GENERIC",
@@ -826,6 +880,12 @@
 																						"alignX":1,
 																						"fillRatioX":1
 																						
+																					},
+																					{
+																						"template":"fillContMat",
+																						"label":" ",
+																						"minDimY":140,
+																						"flags":16
 																					},
 																					{
 																						"template":"cont",
@@ -865,7 +925,7 @@
 																							
 																							
 																							{
-																								"template":"radioFillCenter",
+																								"template":"radioFillCenterColor",
 																								"label":"",
 																								
 																								"value0":0.0,
@@ -879,7 +939,6 @@
 																								
 																								"uid":"#colorNode",
 																								
-																								"matCode":1,
 																								
 																								"floatingChildren":[{
 																										"template":"popout",
@@ -902,13 +961,7 @@
 																														"fillRatioX":1,
 																														
 																														"children": [
-																															{
-																																"template":"fillSliderMat",
-																																"label":" ",
-																																"minDimY":140,
-																																"flags":16
-																															},
-																															
+																																																														
 																															{
 																																"template":"fillSliderHSV",
 																																"label":" ",
@@ -1215,7 +1268,7 @@
 										
 									},
 									{
-										"template":"radioFillCenter",
+										"template":"checkFillCenter",
 										"label":"Map",
 										"floatingChildren": [{
 											"template":"popout",

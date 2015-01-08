@@ -114,8 +114,8 @@ int Shader::countOc (string * src, string testStr)
 		
 		return totCount;
 	}
-void Shader::init (string _shaderFile, bool doBake)
-                                                   {
+void Shader::init (string _shaderFile, bool doBake, map <string, string> * includeMap)
+                                                                                    {
 		
 		
 		
@@ -137,8 +137,10 @@ void Shader::init (string _shaderFile, bool doBake)
 		int uniCount = 0;
 		int dolCount = 0;
 		
+		string allTextStringInc;
 		
 		vector<string> allTextStringSplit;
+		vector<string> allTextStringSplitInc;
 
 		bool doCont;
 		
@@ -226,7 +228,43 @@ void Shader::init (string _shaderFile, bool doBake)
 					
 					
 					
-					allTextStringSplit = split(allTextString, '$');
+					
+					
+					
+					//###
+					
+					
+					if (allTextString.find('^', 0) != std::string::npos) {
+						allTextStringInc = "";
+						allTextStringSplitInc = split(allTextString, '^');
+						
+						for (i = 0; i < allTextStringSplitInc.size(); i++) {
+							if (allTextStringSplitInc[i].compare("INCLUDE:MATERIALS") == 0) {
+								allTextStringInc.append((*includeMap)["materials"]);
+							}
+							else {
+								allTextStringInc.append(allTextStringSplitInc[i]);
+							}
+						}
+						
+						allTextStringSplit = split(allTextStringInc, '$');
+					}
+					else {
+						allTextStringSplit = split(allTextString, '$');
+					}
+					
+					
+					
+					
+					//###
+					
+					
+					
+					
+					
+					
+					
+					
 					
 					allTextStringSplit[0].append("\n");
 					

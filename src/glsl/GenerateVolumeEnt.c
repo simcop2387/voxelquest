@@ -71,25 +71,7 @@ const int E_AP_MATPARAMS = 					9; // must be last
 const int E_AP_LENGTH = 					10;
 
 
-const float TEX_NULL =    0.0;
-const float TEX_GOLD =    1.0;
-const float TEX_DIRT =    8.0;
-const float TEX_STONE =   10.0;
-const float TEX_GRASS =   12.0;
-const float TEX_SAND =    14.0;
-const float TEX_MORTAR =  16.0;
-const float TEX_WOOD =    18.0;
-const float TEX_BRICK =   20.0;
-const float TEX_SHINGLE =   22.0;
-const float TEX_PLASTER =   28.0;
-const float TEX_DEBUG =   30.0;
-const float TEX_WATER =   32.0;
-const float TEX_METAL =   33.0;
-const float TEX_GLASS =   35.0;
-const float TEX_EARTH =   36.0;
-const float TEX_BARK =    41.0;
-const float TEX_TREEWOOD =  43.0;
-const float TEX_LEAF =    45.0;
+^INCLUDE:MATERIALS^
 
 
 const float E_ORG_SUBPARAM_NOT_SEL = 		0.0;
@@ -1406,7 +1388,7 @@ vec4 getGeom(vec3 worldPosInPixels, int iCurMat) {//, float terHeight) {
 
 	if ( testRes ) {
 		normalUID = 1.0;
-		finalMat = TEX_DIRT;
+		finalMat = TEX_EARTH;
 		finalMod = 0.0;
 		isInside = true;
 	}
@@ -1491,7 +1473,7 @@ void main() {
 
 	// if (hasTerrain) {
 	// 	getCobble(worldPosInPixels);
-	// 	matResultTer = getTerrain(worldPosInPixels);//vec4(1.0,TEX_DIRT,1.0,1.0);//getTerrain(worldPosInPixels);
+	// 	matResultTer = getTerrain(worldPosInPixels);//vec4(1.0,TEX_EARTH,1.0,1.0);//getTerrain(worldPosInPixels);
 	// }
 
 
@@ -1554,7 +1536,7 @@ void main() {
 
 	vec4 tex2 =  texture3D(Texture1, newCoords);
 	if (tex2.a > 0.5) {
-		finalMat = TEX_DIRT;
+		finalMat = TEX_EARTH;
 
 	}
 	else {
@@ -1564,36 +1546,12 @@ void main() {
 	}
 
 
-
-	if (finalMat == TEX_MORTAR) {
-		finalMat = TEX_SAND;
-		finalNormUID = 0.0;
-	}
-
-	if (finalMat == TEX_SAND || finalMat == TEX_MORTAR || finalMat == TEX_BRICK || finalMat == TEX_METAL) {
+	if (finalMat == TEX_SAND || finalMat == TEX_MORTAR || finalMat == TEX_BRICK) {
 		finalMod = randVal;
 	}
-
-	if ( (finalMat >= TEX_SHINGLE) && (finalMat < TEX_PLASTER) ) {
-		finalMod = clamp(shingleMod, 0.0, 1.0);
+	if (finalMat == TEX_METAL) {
+		finalMod = 0.5;
 	}
-
-
-	if (finalMat == TEX_DIRT) {
-		fj = clamp((matResultTer.w - worldPosInPixels.z) / 512.0, 0.0, 3.0);
-		finalMat = TEX_EARTH + floor(fj);
-		finalMod = fj - floor(fj);
-	}
-
-
-	// if (hasTerrain) {
-	// 		finalLayer = 0.0;
-	// 		finalMat = TEX_DIRT;
-	// 		finalNormUID = 1.0;
-	// 		finalMod = 0.0;
-	// }
-
-
 
 	//TODO: ADD BACK IN FOR WATER
 	if (finalMat == TEX_WATER) {
@@ -1609,12 +1567,6 @@ void main() {
 		finalNormUID = 254.0;
 		finalMod = 0.0;
 	}
-
-	
-	// finalLayer = 0.0;
-	// finalMat = TEX_DIRT;
-	// finalNormUID = 1.0;
-	// finalMod = 0.0;
 	
 
 	finalLayer = min(finalLayer, totLayers - 1.0);
@@ -1625,7 +1577,7 @@ void main() {
 	finalRes.r = finalLayer / 255.0;
 	finalRes.g = finalNormUID / 255.0;
 	finalRes.b = finalMod;//( * 127.0) / 255.0;
-	finalRes.a = finalMat / 255.0;
+	finalRes.a = finalMat;
 	gl_FragData[0] = finalRes;
 	
 	

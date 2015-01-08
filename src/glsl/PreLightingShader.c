@@ -29,11 +29,11 @@ float offV[2] = float[](
 
 float minRad[2] = float[](
 	1.0,
-	16.0
+	1.0
 );
 float maxRad[2] = float[](
 	16.0,
-	64.0
+	128.0
 );
 
 varying vec2 TexCoord0;
@@ -163,7 +163,7 @@ void main()
 	
 	float waterMod;
 
-	//float resCompTot = 0.0;
+	float resCompTot = 0.0;
 	//float frontLightTot = 0.0;
 
 
@@ -347,12 +347,6 @@ void main()
 				resComp = mix(1.0, 0.0, clamp(totHits*2.0/hitCount,0.0,1.0));
 				resComp = clamp(pow(resComp,2.0), 0.0, 1.0);
 				
-				// resComp = mix(
-				// 	resComp,
-				// 	resComp*0.75 + 0.25,
-				// 	timeOfDay
-				// );
-
 				
 
 
@@ -369,12 +363,6 @@ void main()
 
 				totLightDis += lightDis;
 				
-				
-
-				//totNonColored += lightDis * resComp * (1.0 - lightColorization);
-
-				//totColorization += lightColorization * lightDis * clamp(resComp + lightFlooding, 0.0, 1.0);
-				//totLightIntensity += lightIntensity * lightDis * resComp;
 
 				totLightColor += frontLight * resComp * curLightColor * lightDis;
 				totLightColor += vec3(0.0, 1.0, 1.0) * colAmount * (bottomLight) * 0.5 * lightDis;
@@ -383,7 +371,7 @@ void main()
 
 				totLightColorWater += frontLightWater * curLightColor * lightDisWater;
 
-				//resCompTot += resComp * lightDis;
+				resCompTot += (1.0-resComp) * lightDis;
 				//frontLightTot += frontLight * lightDis;
 
 			}

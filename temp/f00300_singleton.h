@@ -48,13 +48,14 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		float tempf;
 		
+		RUN_COUNT = 0;
 		
 		
 		cdMap[0] = E_CD_EMPTY;
 		for (i = 1; i < 256; i++) {
 			cdMap[i] = E_CD_SOLID;
 		}
-		cdMap[32] = E_CD_WATER;
+		cdMap[17] = E_CD_WATER; //TEX_WATER
 		
 		isInteractiveEnt[E_CT_WINDOW] = true;
 		isInteractiveEnt[E_CT_DOOR] = true;
@@ -93,7 +94,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		draggingMap = false;
 		
 		FOV = 45.0f;
-		float focalLength = 1.0f / tan(FOV / 2.0f);
+		focalLength = 1.0f / tan(FOV / 2.0f);
 
 		totalPointCount = 0;
 		
@@ -147,6 +148,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 
+
+		escCount = 0;
 
 		initStyleSheet();
 
@@ -204,11 +207,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		moveTimer.start();
 		
 		
-		matVolDim.setIXYZ(64,4,256);
+		matVolDim.setIXYZ(64,64,256);
 		matVolSize = matVolDim.getIX()*matVolDim.getIY()*matVolDim.getIZ();
 		matVol = new uint[matVolSize];
 		matSlice0 = new materialNode[matVolDim.getIX()*matVolDim.getIY()];
 		matSlice1 = new materialNode[matVolDim.getIX()*matVolDim.getIY()];
+		matSlice2 = new materialNode[matVolDim.getIX()*matVolDim.getIY()];
 		
 		for (i = 0; i < matVolSize; i++) {
 			matVol[i] = 0;
@@ -219,14 +223,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		// TODO:
-		// render chunks with offset to save precision
-		// add in adjacent voxel information into rvvcubemap
-		// fix lighting
-		// load chunks better
-		// cache chunks properly
-		// transparency
-		// clearing holders
-		// move objects
+		// implement power values
 		
 		int bufferDiv = 2;
 		int curProfile;
@@ -240,13 +237,13 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		
-		maxChangesInPages = 4;
+		maxChangesInPages = 1;
 		maxChangesInHolders = 1; 
 		maxHInPages = 4;
 		maxWInPages = 4;
-		pixelsPerCell = 128;
-		volGenSuperMod = 2;
-		cellsPerPage = 4;
+		pixelsPerCell = 128; // do not adjust this, instead change volGenFBOX
+		volGenSuperMod = 1;
+		cellsPerPage = 8;
 		cellsPerHolder = 8;
 		volGenSuperRes = (volGenFBOX/volGenSuperMod);
 		
@@ -315,7 +312,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		terDataTexScale = 1;
 		//if (pixelsPerCell >= 128) {
-			terDataTexScale = 2;
+			terDataTexScale = 1;
 		//}
 		
 		terDataVisPitchXY = blockSizeInCells / cellsPerNodeXY;
@@ -413,8 +410,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		cout << "\n\n\n\n\n\n";
 
 
-		mapFreqs.setFXYZW(1.0f, 15.0f, 37.0f, 83.0f);
-		mapAmps.setFXYZW(8.0f/16.0f, 8.0f/16.0f, 8.0f/16.0f, 8.0f/16.0f); //0.0f, 0.0f, 0.0f);//
+		mapFreqs.setFXYZW(1.0f, 15.0f, 37.0f, 123.0f);
+		mapAmps.setFXYZW(8.0f/16.0f, 8.0f/16.0f, 8.0f/16.0f, 32.0f/16.0f); //0.0f, 0.0f, 0.0f);//
 
 
 		gridSizeInPixels = pixelsPerCell;
@@ -558,8 +555,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		lastImageBuffer.data = NULL;
 		lastImageBuffer.size = 0;
 
-		lastJSONBuffer.data = NULL;
-		lastJSONBuffer.size = 0;
+		//lastJSONBuffer.data = NULL;
+		//lastJSONBuffer.size = 0;
 		
 		lastJSONBufferGUI.data = NULL;
 		lastJSONBufferGUI.size = 0;
@@ -606,7 +603,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		origWinH = _defaultWinH;
 
 		curBrushRad = 4.0f;
-
 		mouseState = E_MOUSE_STATE_MOVE;
 
 
@@ -910,7 +906,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		lastx = 0;
 		lasty = 0;
 		isMoving = false;
-		updateMatVolFlag = false;
+		updateMatFlag = false;
 		matVolLock = false;
 		perspectiveOn = false;
 
@@ -963,7 +959,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		fboMap["backFaceFBO"].init(1, faceDim, faceDim, 4, false, GL_NEAREST);
 		fboMap["frontFaceMapFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
 		fboMap["backFaceMapFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
-		fboMap["palFBO"].init(1, palWidth, palHeight, 1, false, GL_LINEAR);
+		//fboMap["palFBO"].init(1, palWidth, palHeight, 1, false, GL_LINEAR);
 		
 		bool fboHasDepth = true;
 		int numChannels = 4;
@@ -1021,7 +1017,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		mainGUI->init(this);
 
 
-		loadAllData();
+		//loadAllData();
 
 		GamePlant::initAllPlants(this);
 		for (i = 0; i < E_PT_LENGTH/2; i++) {
@@ -1151,6 +1147,7 @@ void Singleton::setCurrentActor (GameEnt * ge)
 void Singleton::updateMatVol ()
                             {
 		
+		
 		matVolLock = true;
 		
 		JSONValue* jv = fetchJSONData("materials.js");
@@ -1165,6 +1162,7 @@ void Singleton::updateMatVol ()
 		int k;
 		int m;
 		int n;
+		int p;
 		int totN;
 		
 		int curInd0;
@@ -1182,8 +1180,14 @@ void Singleton::updateMatVol ()
 		
 		float totRatio;
 		float curLerp;
+		float curLerpNoPower;
+		float curPower;
 		float curLerpWithPower;
+		float curRatio;
 		
+		int mvx = matVolDim.getIX();
+		int mvy = matVolDim.getIY();
+		int mvz = matVolDim.getIZ();
 		
 		if (jv != NULL) {
 			
@@ -1206,7 +1210,7 @@ void Singleton::updateMatVol ()
 					for (itI = curJ->object_value.begin(); itI != curJ->object_value.end(); itI++) {
 						curI = itI->second;
 						
-						curInd0 = i+j*matVolDim.getIX();
+						curInd0 = i+j*mvx;
 						curCol = curI->Child("i0_color");
 						
 						
@@ -1220,7 +1224,7 @@ void Singleton::updateMatVol ()
 						matSlice0[curInd0].ratio = curI->Child("i2_ratio")->number_value;
 						
 						if (matSlice0[curInd0].ratio <= 0.0f) {
-							matSlice0[curInd0].ratio = 1.0f/(matVolDim.getFX()-1.0f);
+							matSlice0[curInd0].ratio = 1.0f/(mvx-1.0f);
 						}
 						
 						totRatio += matSlice0[curInd0].ratio;
@@ -1229,99 +1233,208 @@ void Singleton::updateMatVol ()
 					}
 					
 					
-					switch (i) {
-						case 0:
-							
-						break;
-						case 1:
+					if (i == 0) {
 						
-						break;
-						default:
-							for (m = 0; m < i; m++) {
-								curInd0 = m+j*matVolDim.getIX();
-								matSlice0[curInd0].ratio = matSlice0[curInd0].ratio*(matVolDim.getFX()-1.0f)/totRatio;
+					}
+					else {
+						for (m = 0; m < i; m++) {
+							curInd0 = m+j*mvx;
+							matSlice0[curInd0].ratio = matSlice0[curInd0].ratio*(matVolDim.getFX()-1.0f)/totRatio;
+						}
+						
+						
+						totN = 0;
+						for (m = 0; m < i; m++) {
+							curInd0 = m+j*mvx;
+							
+							if (i == 1) {
+								curInd0Prev = curInd0;
+								curInd0Next = curInd0;
+							}
+							else {
+								curInd0Prev = (m-1)+j*mvx;
+								curInd0Next = (m+1)+j*mvx;
 							}
 							
 							
-							totN = 0;
-							for (m = 0; m < i; m++) {
-								curInd0 = m+j*matVolDim.getIX();
-								curInd0Prev = (m-1)+j*matVolDim.getIX();
-								curInd0Next = (m+1)+j*matVolDim.getIX();
+							
+							curRatio = matSlice0[curInd0].ratio;
+							
+							for (n = 0; (n < (curRatio+0.1f) )&&(totN < mvx); n++) {
+								curLerp = ((float)n)/curRatio;
+								curInd1 = totN + j*mvx;
 								
-								for (n = 0; (n < matSlice0[curInd0].ratio)&&(n < matVolDim.getIX()); n++) {
-									curLerp = ((float)n)/(matSlice0[curInd0].ratio);
-									curInd1 = totN + j*matVolDim.getIX();
+								if (m == 0) {
 									
-									if (m == 0) {
-										
-										curLerpWithPower = curLerp*0.5f;
-										
-										matSlice1[curInd1].r = mixf(matSlice0[curInd0].r,matSlice0[curInd0Next].r,curLerpWithPower);
-										matSlice1[curInd1].g = mixf(matSlice0[curInd0].g,matSlice0[curInd0Next].g,curLerpWithPower);
-										matSlice1[curInd1].b = mixf(matSlice0[curInd0].b,matSlice0[curInd0Next].b,curLerpWithPower);
-									}
-									else if (m == (i-1)) {
-										curLerpWithPower = curLerp*0.5f+0.5f;
+									curLerpNoPower = curLerp*0.5f;
+									curPower = mixf(matSlice0[curInd0].power,matSlice0[curInd0Next].power,curLerpNoPower);
+									curLerpWithPower = pow(curLerpNoPower,curPower*8.0f);
+									
+									matSlice1[curInd1].r = mixf(matSlice0[curInd0].r,matSlice0[curInd0Next].r,curLerpWithPower);
+									matSlice1[curInd1].g = mixf(matSlice0[curInd0].g,matSlice0[curInd0Next].g,curLerpWithPower);
+									matSlice1[curInd1].b = mixf(matSlice0[curInd0].b,matSlice0[curInd0Next].b,curLerpWithPower);
+								}
+								else if (m == (i-1)) {
+									curLerpNoPower = curLerp*0.5f+0.5f;
+									curPower = mixf(matSlice0[curInd0Prev].power,matSlice0[curInd0].power,curLerpNoPower);
+									curLerpWithPower = pow(curLerpNoPower,curPower*8.0f);
+									
+									matSlice1[curInd1].r = mixf(matSlice0[curInd0Prev].r,matSlice0[curInd0].r,curLerpWithPower);
+									matSlice1[curInd1].g = mixf(matSlice0[curInd0Prev].g,matSlice0[curInd0].g,curLerpWithPower);
+									matSlice1[curInd1].b = mixf(matSlice0[curInd0Prev].b,matSlice0[curInd0].b,curLerpWithPower);
+								}
+								else {
+									
+									
+									if (curLerp < 0.5f) {
+										curLerpNoPower = curLerp + 0.5f;
+										curPower = mixf(matSlice0[curInd0Prev].power,matSlice0[curInd0].power,curLerpNoPower);
+										curLerpWithPower = pow(curLerpNoPower,curPower*8.0f);
 										
 										matSlice1[curInd1].r = mixf(matSlice0[curInd0Prev].r,matSlice0[curInd0].r,curLerpWithPower);
 										matSlice1[curInd1].g = mixf(matSlice0[curInd0Prev].g,matSlice0[curInd0].g,curLerpWithPower);
 										matSlice1[curInd1].b = mixf(matSlice0[curInd0Prev].b,matSlice0[curInd0].b,curLerpWithPower);
 									}
 									else {
+										curLerpNoPower = curLerp - 0.5f;
+										curPower = mixf(matSlice0[curInd0].power,matSlice0[curInd0Next].power,curLerpNoPower);
+										curLerpWithPower = pow(curLerpNoPower,curPower*8.0f);
 										
-										
-										if (curLerp < 0.5f) {
-											curLerpWithPower = curLerp + 0.5f;
-											
-											matSlice1[curInd1].r = mixf(matSlice0[curInd0Prev].r,matSlice0[curInd0].r,curLerpWithPower);
-											matSlice1[curInd1].g = mixf(matSlice0[curInd0Prev].g,matSlice0[curInd0].g,curLerpWithPower);
-											matSlice1[curInd1].b = mixf(matSlice0[curInd0Prev].b,matSlice0[curInd0].b,curLerpWithPower);
-										}
-										else {
-											curLerpWithPower = curLerp - 0.5f;
-											
-											matSlice1[curInd1].r = mixf(matSlice0[curInd0].r,matSlice0[curInd0Next].r,curLerpWithPower);
-											matSlice1[curInd1].g = mixf(matSlice0[curInd0].g,matSlice0[curInd0Next].g,curLerpWithPower);
-											matSlice1[curInd1].b = mixf(matSlice0[curInd0].b,matSlice0[curInd0Next].b,curLerpWithPower);											
-											
-										}
-										
-										
+										matSlice1[curInd1].r = mixf(matSlice0[curInd0].r,matSlice0[curInd0Next].r,curLerpWithPower);
+										matSlice1[curInd1].g = mixf(matSlice0[curInd0].g,matSlice0[curInd0Next].g,curLerpWithPower);
+										matSlice1[curInd1].b = mixf(matSlice0[curInd0].b,matSlice0[curInd0Next].b,curLerpWithPower);											
 										
 									}
 									
 									
 									
-									totN++;
 								}
 								
 								
+								
+								totN++;
 							}
-						break;
+							
+							
+						}
 					}
-					
-					
-					
-					
-					for (m = 0; m < matVolDim.getIX(); m++) {
-						curInd1 = m + j*matVolDim.getIX();
 						
-						mvInd = m + j*matVolDim.getIX() + k*matVolDim.getIX()*matVolDim.getIY();
-						
-						rv = matSlice1[curInd1].r*255.0f;
-						gv = matSlice1[curInd1].g*255.0f;
-						bv = matSlice1[curInd1].b*255.0f;
-						
-						matVol[mvInd] = (0 << 24) | (bv << 16) | (gv << 8) | (rv);
-						
-					}
+					
 					
 					
 					
 					j++;
 					
 				}
+				
+				
+				
+				
+				
+				////////////////////
+				
+				
+				
+				
+				
+				for (p = 0; p < mvx; p++) {
+					
+					totN = 0;
+					for (m = 0; m < j; m++) {
+						curInd0 = p + m*mvx;
+						
+						if (j == 1) {
+							curInd0Prev = curInd0;
+							curInd0Next = curInd0;
+						}
+						else {
+							curInd0Prev = p + (m-1)*mvx;
+							curInd0Next = p + (m+1)*mvx;
+						}
+						
+						
+						
+						if (j == 0) {
+							curRatio = (float(mvy));
+						}
+						else {
+							curRatio = (float(mvy))/(float(j));
+						}
+						
+						
+						for (n = 0; (n < (curRatio+0.1f))&&(totN < mvy); n++) {
+							curLerp = ((float)n)/curRatio;
+							curInd1 = p + totN*mvx;
+							
+							if (m == 0) {
+								
+								curLerpWithPower = curLerp*0.5f;
+								
+								matSlice2[curInd1].r = mixf(matSlice1[curInd0].r,matSlice1[curInd0Next].r,curLerpWithPower);
+								matSlice2[curInd1].g = mixf(matSlice1[curInd0].g,matSlice1[curInd0Next].g,curLerpWithPower);
+								matSlice2[curInd1].b = mixf(matSlice1[curInd0].b,matSlice1[curInd0Next].b,curLerpWithPower);
+							}
+							else if (m == (j-1)) {
+								curLerpWithPower = curLerp*0.5f+0.5f;
+								
+								matSlice2[curInd1].r = mixf(matSlice1[curInd0Prev].r,matSlice1[curInd0].r,curLerpWithPower);
+								matSlice2[curInd1].g = mixf(matSlice1[curInd0Prev].g,matSlice1[curInd0].g,curLerpWithPower);
+								matSlice2[curInd1].b = mixf(matSlice1[curInd0Prev].b,matSlice1[curInd0].b,curLerpWithPower);
+							}
+							else {
+								
+								
+								if (curLerp < 0.5f) {
+									curLerpWithPower = curLerp + 0.5f;
+									
+									matSlice2[curInd1].r = mixf(matSlice1[curInd0Prev].r,matSlice1[curInd0].r,curLerpWithPower);
+									matSlice2[curInd1].g = mixf(matSlice1[curInd0Prev].g,matSlice1[curInd0].g,curLerpWithPower);
+									matSlice2[curInd1].b = mixf(matSlice1[curInd0Prev].b,matSlice1[curInd0].b,curLerpWithPower);
+								}
+								else {
+									curLerpWithPower = curLerp - 0.5f;
+									
+									matSlice2[curInd1].r = mixf(matSlice1[curInd0].r,matSlice1[curInd0Next].r,curLerpWithPower);
+									matSlice2[curInd1].g = mixf(matSlice1[curInd0].g,matSlice1[curInd0Next].g,curLerpWithPower);
+									matSlice2[curInd1].b = mixf(matSlice1[curInd0].b,matSlice1[curInd0Next].b,curLerpWithPower);											
+									
+								}
+								
+								
+								
+							}
+							
+							
+							
+							mvInd = curInd1 + k*mvx*mvy;
+							rv = matSlice2[curInd1].r*255.0f;
+							gv = matSlice2[curInd1].g*255.0f;
+							bv = matSlice2[curInd1].b*255.0f;
+							matVol[mvInd] = (0 << 24) | (bv << 16) | (gv << 8) | (rv);
+							
+							
+							
+							
+							totN++;
+						}
+						
+						
+					}
+				}
+				
+				
+				
+				
+				////////////////////
+				
+				
+				
+				
+				
+				
+				
+				
+				
 				
 				k++;
 			}
@@ -1338,9 +1451,9 @@ void Singleton::updateMatVol ()
 				0,
 				0,
 
-				matVolDim.getIX(),
-				matVolDim.getIY(),
-				matVolDim.getIZ(),
+				mvx,
+				mvy,
+				mvz,
 
 				GL_RGBA,
 				GL_UNSIGNED_BYTE,
@@ -1372,10 +1485,7 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		
 		changingGenVal = false;
 		
-		// if (guiLock) {
-		// 	return;
-		// }
-		
+		GameOrgNode* tmpNode = NULL;
 		
 		bool hitPicker = false;
 		
@@ -1399,8 +1509,8 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		switch (comp->guiClass) {
 			case E_GT_SLIDER:
 			case E_GT_BUTTON:
-			case E_GT_COLPICKER:
 			case E_GT_RADIO:
+			case E_GT_CHECK:
 			case E_GT_DRAGPAD:
 			
 				switch(button) {
@@ -1492,27 +1602,6 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		
 		if (mouseUpEvent) {
 			
-			// if (comp->guiClass == E_GT_COLPICKER) {
-			// 	if (pickerMenu != NULL) {
-			// 		lastPickerItem = comp;
-					
-					
-			// 		tempComp = &(pickerMenu->children[0].children[0]);
-					
-			// 		for (i = 0; i < tempComp->children.size(); i++) {
-			// 			tempComp->children[i].valVecPtr = &(comp->valVec);
-			// 		}
-					
-					
-			// 		hitPicker = true;
-					
-			// 		pickerMenu->alignToComp(comp->getParent());
-					
-			// 		// pickerMenu->floatOffset.x = (guiX);
-			// 		// pickerMenu->floatOffset.y = (guiY);
-					
-			// 	}
-			// }
 			
 			
 			if (comp->uid.compare("placeEntity.actor") == 0) {
@@ -1551,9 +1640,19 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 			else if (comp->uid.compare("fieldMenu.cancel") == 0) {
 				endFieldInput(false);
 			}
+			else if (comp->uid.compare("#materialPicker") == 0) {
+				if (selectedNode != NULL) {
+					selectedNode->orgVecs[E_OV_MATPARAMS].setFX(comp->index);
+					tmpNode = getMirroredNode(selectedNode);
+					if (tmpNode != NULL) {
+						tmpNode->orgVecs[E_OV_MATPARAMS].setFX(comp->index);
+					}
+					makeDirty();
+				}
+			}
 			
 			
-			if (comp->floatingChildren.size() == 0) {
+			if (comp->getFloatingChildCount() == 0) {
 				ddMenu->visible = false;
 				markerFound = false;
 			}
@@ -1566,7 +1665,7 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		
 				
 		if (comp->uid.compare("$options.sound.masterVolume") == 0) {
-			masterVolume = curValue; // *0.2;
+			masterVolume = curValue*0.2; // ;
 		}
 		else if (comp->uid.compare("$options.sound.ambientVolume") == 0) {
 			ambientVolume = curValue;
@@ -1583,6 +1682,11 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		else if (comp->uid.compare("$options.graphics.clipDist") == 0) {
 			clipDist[1] = curValue*65536.0f;
 		}
+		else if (comp->uid.compare("$options.graphics.fov") == 0) {
+			FOV = mixf(25.0f,120.0f,curValue);
+			focalLength = 1.0f / tan(FOV / 2.0f);
+			
+		}
 		
 		
 		if (
@@ -1590,88 +1694,10 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 			(state == GLUT_CHANGING)	
 		) {
 			if (comp->uid.compare("#materialVal") == 0) {
-				updateMatVolFlag = true;
+				updateMatFlag = true;
 			}
 			
 		}
-		
-		
-		// if (
-		// 	(lastPickerItem != NULL) &&
-		// 	(
-		// 		(button == GLUT_LEFT_BUTTON) ||
-		// 		(state == GLUT_CHANGING)	
-		// 	)
-		// ) {
-			
-		// 	tempComp = &(pickerMenu->children[0].children[0]);
-			
-		// 	for (i = 0; i < tempComp->children.size(); i++) {
-				
-		// 		switch((tempComp->children[i].flags)&(E_GF_HUE|E_GF_SAT|E_GF_LIT)) {
-		// 			case 0: // nothing
-					
-		// 			break;
-		// 			case 1: // hue - x
-		// 				tempComp->children[i].setValue(lastPickerItem->valVec[0]);
-		// 			break;
-		// 			case 2: // sat - y
-		// 				tempComp->children[i].setValue(lastPickerItem->valVec[1]);
-		// 			break;
-		// 			case 3: // hue/sat - x/y
-		// 				tempComp->children[i].setValue(lastPickerItem->valVec[0]);
-		// 				tempComp->children[i].setValueY(lastPickerItem->valVec[1]);
-		// 			break;
-					
-		// 			case 4: // lit - z
-		// 				tempComp->children[i].setValue(lastPickerItem->valVec[2]);
-		// 			break;
-		// 			case 5: // hue/lit - x/z
-		// 				tempComp->children[i].setValue(lastPickerItem->valVec[0]);
-		// 				tempComp->children[i].setValueY(lastPickerItem->valVec[2]);
-		// 			break;
-		// 			case 6: // sat/lit - y/z
-		// 				tempComp->children[i].setValue(lastPickerItem->valVec[1]);
-		// 				tempComp->children[i].setValueY(lastPickerItem->valVec[2]);
-		// 			break;
-		// 			case 7: // hue/sat/lit - x/y/z
-					
-		// 			break;
-		// 		}
-				
-		// 	}
-			
-		// 	if (comp->uid.compare("picker.hue") == 0) {
-		// 		lastPickerItem->setValueIndex(0,curValue);
-		// 		updateMatVolFlag = true;
-		// 		hitPicker = true;
-		// 	}
-		// 	else if (comp->uid.compare("picker.saturation") == 0) {
-		// 		lastPickerItem->setValueIndex(1,curValue);
-		// 		updateMatVolFlag = true;
-		// 		hitPicker = true;
-		// 	}
-		// 	else if (comp->uid.compare("picker.lightness") == 0) {
-		// 		lastPickerItem->setValueIndex(2,curValue);
-		// 		updateMatVolFlag = true;
-		// 		hitPicker = true;
-		// 	}
-		// 	else if (comp->uid.compare("picker.huelit") == 0) {
-		// 		lastPickerItem->setValueIndex(0,curValue);
-		// 		lastPickerItem->setValueIndex(2,curValueY);
-		// 		updateMatVolFlag = true;
-		// 		hitPicker = true;
-		// 	}
-		// 	else if (comp->uid.compare("picker.satlit") == 0) {
-		// 		lastPickerItem->setValueIndex(1,curValue);
-		// 		lastPickerItem->setValueIndex(2,curValueY);
-		// 		updateMatVolFlag = true;
-		// 		hitPicker = true;
-		// 	}
-		// }
-		// if (mouseUpEvent) {
-		// 	pickerMenu->visible = hitPicker;
-		// }
 		
 		
 		
@@ -2185,6 +2211,47 @@ void Singleton::drawBox (FIVector4 * minVec, FIVector4 * maxVec, int faceFlag)
 
 		glEnd();
 	}
+void Singleton::getMaterialString ()
+                                 {
+		string resString = "\n";
+		
+		JSONValue* jv = fetchJSONData("materials.js");
+		
+		if (jv != NULL) {
+			JSONValue* jv2 = jv->Child("materials");
+			JSONValue* curChild;
+			
+			int numChildren = jv2->CountChildren();
+			int i;
+			
+			string lastKey;
+			
+			for (i = 0; i < numChildren; i++) {
+				curChild = jv2->Child(i);
+				lastKey = jv2->lastKey;
+				
+				splitStrings.clear();
+				splitStrings = split(lastKey, '_');
+				
+				resString.append("const float TEX_"+splitStrings[1]+"="+i__s(i)+".0/255.0;\n");
+				
+			}
+			
+			resString.append("\n");
+			
+			includeMap["materials"] = resString;
+			
+			cout << "material string: \n\n";
+			cout << includeMap["materials"];
+		}
+		
+		
+		
+	}
+void Singleton::refreshIncludeMap ()
+                                 {
+		getMaterialString();
+	}
 void Singleton::doShaderRefresh (bool doBake)
         {
 
@@ -2196,10 +2263,12 @@ void Singleton::doShaderRefresh (bool doBake)
 		int j;
 		
 		Shader* curShader;
+		
+		refreshIncludeMap();
 
 
 		for (i = 0; i < shaderStrings.size(); i++) {
-			shaderMap[ shaderStrings[i] ]->init( "../src/glsl/" + shaderStrings[i] + ".c", doBake);
+			shaderMap[ shaderStrings[i] ]->init( "../src/glsl/" + shaderStrings[i] + ".c", doBake, &includeMap);
 		}
 		shadersAreLoaded = 1;
 		readyToRecompile = 1;
@@ -3250,8 +3319,8 @@ void Singleton::updateCS ()
 		bCtrlOld = bCtrl;
 		bShiftOld = bShift;
 	}
-void Singleton::processInput (unsigned char key, bool keyDown)
-                                                           {
+void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
+                                                                         {
 		
 		if (inputOn) {
 			if (keyDown) {
@@ -3418,8 +3487,20 @@ void Singleton::processInput (unsigned char key, bool keyDown)
 				case 27: // esc
 					//std::exit(0);
 					
-					ddMenu->visible = false;
+					if (ddMenu->visible) {
+						ddMenu->visible = false;
+						escCount = 0;
+					}
+					else {
+						escCount++;
+						if (escCount >= 3) {
+							std::exit(0);
+						}
+					}
+					
 					//pickerMenu->visible = false;
+					
+					
 					
 					break;
 
@@ -3439,6 +3520,7 @@ void Singleton::processInput (unsigned char key, bool keyDown)
 				case 'R':
 				
 					//loadGUIValues(false);
+					
 					doShaderRefresh(bakeParamsOn);
 					loadGUI();
 					loadGUIValues();
@@ -3557,7 +3639,19 @@ void Singleton::processInput (unsigned char key, bool keyDown)
 					break;
 
 				case ' ':
-					selectedEnts.cycleEnts();
+					//selectedEnts.cycleEnts();
+					
+					
+					ddMenu->visible = !(ddMenu->visible);
+					markerFound = ddMenu->visible;
+					
+					ddMenu->floatOffset.x = (guiX);
+					ddMenu->floatOffset.y = (guiY);
+					
+					getPixData(&spaceUpPD, x, y, true, false);
+					worldMarker.copyFrom(&spaceUpPD);
+					lastCellPos.copyFrom(&(worldMarker));
+					lastCellPos.intDivXYZ(pixelsPerCell);
 					
 				break;
 
@@ -3651,7 +3745,7 @@ void Singleton::keyboardUp (unsigned char key, int _x, int _y)
 			glutLeaveMainLoop();
 		}
 
-		processInput(key, false);
+		processInput(key, false, x, y);
 
 
 	}
@@ -3670,7 +3764,7 @@ void Singleton::keyboardDown (unsigned char key, int _x, int _y)
 		bCtrl = ctrlDown();
 		updateCS();
 
-		processInput(key, true);
+		processInput(key, true, x, y);
 	}
 void Singleton::runReport ()
                          {
@@ -3750,7 +3844,11 @@ void Singleton::mouseMove (int _x, int _y)
 		mouseXUp = x;
 		mouseYUp = y;
 
-
+		bool ddVis = false;
+		
+		if (ddMenu != NULL) {
+			ddVis = ddMenu->visible;
+		}
 		
 			
 
@@ -3787,12 +3885,15 @@ void Singleton::mouseMove (int _x, int _y)
 			if (
 				orgOn &&
 				editPose
+				&& (!ddVis)
 			) {
 				updateNearestOrgNode(false, &mouseMovePD);
 			}
 			else {
-				activeNode = NULL;
-				setSelNode(NULL);
+				if (!ddVis) {
+					activeNode = NULL;
+					setSelNode(NULL);
+				}
 			}
 			
 
@@ -4080,6 +4181,11 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		int bestInd;
 		float bestDis;
 		float curDis;
+		
+		bool ddVis = false;
+		if (ddMenu != NULL) {
+			ddVis = ddMenu->visible;
+		}
 
 		float wheelDelta = 0.0f;
 		bool mbClicked = false;
@@ -4152,6 +4258,8 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 			getPixData(&mouseUpPD, x, y, true, false);
 		}
 		
+		
+		
 		if (abClicked) {
 			mouseEnd.setIXY(x, y);
 			noTravel = mouseEnd.distance(&mouseStart) < 30.0;
@@ -4169,50 +4277,10 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 
 			if (ddMenu != NULL) {
-				if (
-					rbClicked && 
-					(!bCtrl) && 
-					(mouseState == E_MOUSE_STATE_MOVE) &&
-					(!editPose)
-				) {
-					ddMenu->visible = true;
-					
-					ddMenu->floatOffset.x = (guiX);
-					ddMenu->floatOffset.y = (guiY);
-					// ddMenu->dragStart.x = 0.0f;
-					// ddMenu->dragStart.y = 0.0f;
-					// ddMenu->dragOffset.x = 0.0f;
-					// ddMenu->dragOffset.y = 0.0f;
-					// ddMenu->lastDrag.x = 0.0f;
-					// ddMenu->lastDrag.y = 0.0f;
-					// ddMenu->updateValue(guiX,guiY);
-					
-					worldMarker.copyFrom(&mouseUpPD);
-					
-					lastCellPos.copyFrom(&(worldMarker));
-					lastCellPos.intDivXYZ(pixelsPerCell);
-					//lastCellPos.multXYZ(pixelsPerCell);
-					
-					// tempVec.copyFrom(&lastCellPos);
-					// tempVec.addXYZ(pixelsPerCell);
-					
-					// gp = gw->getPageAtCoords()
-					// for (i = 0; i < E_CD_LENGTH; i++) {
-					// 	cout << gp->totCol[i] << "\n";
-					// }
-					// cout << "\n";
-					
-					
-					markerFound = true;
-					
-				}
-				else {
-					if (noTravel) {
-						ddMenu->visible = false;
-						//pickerMenu->visible = false;
-						markerFound = false;
-					}
-					
+								
+				if (noTravel) {
+					ddMenu->visible = false;
+					markerFound = false;
 				}
 			}
 			
@@ -4482,6 +4550,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 						if (
 							orgOn &&
 							editPose
+							&& (!ddVis)
 							
 						) {
 							updateNearestOrgNode(true, &mouseDownPD);
@@ -4589,49 +4658,6 @@ void Singleton::findNearestOrgNode (GameOrgNode * curNode, FIVector4 * mousePosW
 			findNearestOrgNode(curNode->children[i],mousePosWS);
 		}
 		
-	}
-void Singleton::processB64 (charArr * sourceBuffer, charArr * saveBuffer)
-        {
-
-		char *buf = sourceBuffer->data;
-		int len = sourceBuffer->size;
-
-		if (saveBuffer != &nullBuffer)
-		{
-			if (saveBuffer->data != NULL)
-			{
-				delete[] saveBuffer->data;
-				saveBuffer->data = NULL;
-			}
-			saveBuffer->data = new char[len];
-			strncpy(saveBuffer->data, buf, len);
-			saveBuffer->size = len;
-		}
-
-		string palString = "palFBO";
-
-		FBOSet *fbos = getFBOByName(palString);
-
-
-		//unsigned char* resultImage = new unsigned char[256*256*4];
-
-		membuf inBuffer(sourceBuffer->data, sourceBuffer->data + sourceBuffer->size);
-		std::istream myIS(&inBuffer);
-		Poco::Base64Decoder b64in(myIS);
-
-
-
-		std::ostringstream oss;
-		oss << b64in.rdbuf();
-
-		std::string strConst = oss.str();
-		const char *inString = strConst.c_str();
-
-
-		lodepng_decode32(&resultImage, &palWidth, &palHeight, (unsigned char *)inString, strConst.size() );
-
-		fbos->copyFromMem(0, resultImage);
-
 	}
 void Singleton::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit)
           {
@@ -5119,6 +5145,8 @@ void Singleton::loadGUI ()
 		}
 		
 		
+		
+		
 		if (
 			loadJSON("..\\data\\lastJSONBufferGUI.js", &guiRootJS)
 		) {
@@ -5128,7 +5156,7 @@ void Singleton::loadGUI ()
 		
 			for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
 				if (iterator->second.nodeId != -1) {
-					iterator->second.uic = mainGUI->findNodeById(iterator->second.nodeId);
+					iterator->second.uic = (compStack[iterator->second.nodeId]); //mainGUI->findNodeById(
 				}
 			}
 		
@@ -5154,31 +5182,9 @@ void Singleton::loadGUI ()
 			fieldMenu->visible = false;
 		}
 		
-		updateMatVolFlag = true;
+		updateMatFlag = true;
 		
 		
-	}
-void Singleton::loadAllData ()
-        {
-		if ( loadFile("..\\data\\lastJSONBuffer.js", &lastJSONBuffer) )
-		{
-			processJSON(&lastJSONBuffer, &nullBuffer, &rootObjJS);
-		}
-
-		if ( loadFile("..\\data\\lastImageBuffer.txt", &lastImageBuffer) )
-		{
-			processB64(&lastImageBuffer, &nullBuffer);
-		}
-
-	}
-void Singleton::saveAllData ()
-        {
-		
-		
-		saveFile("..\\data\\lastJSONBuffer.js", &lastJSONBuffer);
-		saveFile("..\\data\\lastImageBuffer.txt", &lastImageBuffer);
-		
-		cout << "All Data Saved\n";
 	}
 bool Singleton::loadFile (string fnString, charArr * dest)
         {
@@ -5346,8 +5352,8 @@ void Singleton::updateAmbientSounds ()
 void Singleton::frameUpdate ()
                            {
 		
-		if (updateMatVolFlag&&(!matVolLock)) {
-			updateMatVolFlag = false;
+		if (updateMatFlag&&(!matVolLock)) {
+			updateMatFlag = false;
 			updateMatVol();
 		}
 		
@@ -5456,15 +5462,15 @@ void Singleton::display ()
 
 					if (myWS->isJSON)
 					{
-						if ( processJSON( &(myWS->recBuffer), &lastJSONBuffer, &rootObjJS ) )
-						{
-							saveAllData();
+						// if ( processJSON( &(myWS->recBuffer), &lastJSONBuffer, &rootObjJS ) )
+						// {
+						// 	saveAllData();
 
-						}
+						// }
 					}
 					else
 					{
-						processB64(  &(myWS->recBuffer), &lastImageBuffer );
+						//processB64(  &(myWS->recBuffer), &lastImageBuffer );
 
 					}
 
@@ -5598,11 +5604,11 @@ void Singleton::setMatrices (int w, int h)
 			heightOfNearPlane =
 				(
 					((float)abs(viewport[3]-viewport[1])) /
-			    	(2.0f*tan(0.5f*FOV*M_PI/180.0f))
-			    ) *
-			    (
-			    	2.0f*voxelSizeInWC / ((float)scaleFactor)	
-			    );
+			    (2.0f*tan(0.5f*FOV*M_PI/180.0f))
+			  ) *
+			  (
+			  	2.0f*voxelSizeInWC / ((float)scaleFactor)	
+			  );
 			    
 			
 			

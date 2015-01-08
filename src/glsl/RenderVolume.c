@@ -9,12 +9,12 @@ uniform vec3 worldMinVisInPixels;
 uniform vec3 worldMaxVisInPixels;
 uniform float blendAmount;
 uniform float bufferMult;
-uniform float visPageSizeInPixels;
+uniform float volGenFBOX;
 uniform float volumePitch;
 uniform float volGenSuperMod;
 uniform float holderSizeInPagesLog;
 
-int iVGSM = int(volGenSuperMod)/2;
+int iVGSM = int(volGenSuperMod+1.0)/2;
 
 varying vec2 TexCoord0;
 
@@ -74,9 +74,9 @@ vec4 getAO(vec3 tp, vec4 curSamp) { //, vec3 wp
 	vec4 res;
 
 	int maxRad;
-	float tsize = visPageSizeInPixels;
-	float pixMod = 1.0 / (tsize);
-	vec3 testPoint = tp + pixMod;
+	float tsize = volGenFBOX;
+	//float pixMod = 1.0 / (tsize);
+	vec3 testPoint = tp;// + pixMod;
 
 	float fMaxRad;
 	float curPower;
@@ -95,6 +95,7 @@ vec4 getAO(vec3 tp, vec4 curSamp) { //, vec3 wp
 
 	float totSteps = 0.0;
 	float totHits = 0.0;
+	float totAir = 0.0;
 
 	float allHits = 0.0;
 
@@ -110,8 +111,8 @@ vec4 getAO(vec3 tp, vec4 curSamp) { //, vec3 wp
 
 	// rad = 1;
 	// radStep = 1;
-	rad = 16;
-	radStep = 4;
+	rad = 3;
+	radStep = 1;
 
 	// for (i = 0; i < 2; i++) {
 
@@ -130,7 +131,7 @@ vec4 getAO(vec3 tp, vec4 curSamp) { //, vec3 wp
 					isAir = 1.0-isCurLayer;//float(isCurLayer == 0.0); // //res.a*
 
 
-					allHits += isAir;
+					
 
 					if (curSamp.g == 0.0) {
 						rval = isAir;
@@ -143,10 +144,15 @@ vec4 getAO(vec3 tp, vec4 curSamp) { //, vec3 wp
 					norm += rvMix * (offVal);
 
 					totHits += rval;
+					totAir += isAir;
+					allHits += 1.0;
+					
 
 				}
 			}
 		}
+		
+		aoVal = totAir/allHits;
 
 	// 	if (totHits == 0.0) {
 	// 		break;
@@ -256,8 +262,8 @@ void main() {
 	
 	vec3 basePos = get3DCoords(TexCoord0.xy,newPitch);
 	
-	basePos.xy += vec2(0.5/volumePitch);
-	basePos.z += 1.0/volumePitch;
+	// basePos.xy += vec2(0.5/volumePitch);
+	// basePos.z += 1.0/volumePitch;
 	
 	//basePos = basePos*((newPitch+2.0/newPitch)/newPitch) - (1.0/newPitch);
 	
@@ -303,15 +309,17 @@ void main() {
 	// for (m = 0; m < 3; m++) {
 		
 	// }
+	
+	//samp = sampleAtPoint( curPos );
 
-	for (k = -iVGSM; k <= iVGSM; k++) {
-		fk = float(k);
-		for (j = -iVGSM; j <= iVGSM; j++) {
-			fj = float(j);
-			for (i = -iVGSM; i <= iVGSM; i++) {
-				fi = float(i);
-				offsetPos = vec3(fi,fj,fk);
-				curPos = basePos + offsetPos/volumePitch;
+	// for (k = -iVGSM; k <= iVGSM; k++) {
+	// 	fk = float(k);
+	// 	for (j = -iVGSM; j <= iVGSM; j++) {
+	// 		fj = float(j);
+	// 		for (i = -iVGSM; i <= iVGSM; i++) {
+	//			fi = float(i);
+				//offsetPos = vec3(fi,fj,fk);
+				curPos = basePos;// + offsetPos/volumePitch;
 				samp = sampleAtPoint( curPos );
 				
 				
@@ -344,9 +352,9 @@ void main() {
 				// 	break;
 				// }
 				
-			}
-		}
-	}
+	// 		}
+	// 	}
+	// }
 	
 	
 	//vec4 heightMat = blackCol;
@@ -363,24 +371,23 @@ void main() {
 	else {
 		if (foundTrans) {
 			bestPos = bestTrans;
-		}	
+		}
 	}
 	
 	samp = sampleAtPoint( bestPos );
 	
-	vec4 heightMat = samp;
-	heightMat.g = float(foundDif);
+	//vec4 heightMat = samp;
+	//heightMat.g = float(foundDif);
 	
 	
-	if (foundDif) {
-		//heightMat = vec4(samp.r,float(foundDif), samp.ba);
-		normAO = getAO(bestPos, samp);
-	}
+	//if (foundDif) {
+	//	normAO = getAO(bestPos, samp);
+	//}
 	
 	
 
-	gl_FragData[0] = heightMat;
-	gl_FragData[1] = normAO;
+	gl_FragData[0] = samp;
+	gl_FragData[1] = getAO(bestPos, samp);
 	
 
 

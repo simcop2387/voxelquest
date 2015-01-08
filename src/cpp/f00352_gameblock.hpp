@@ -1688,8 +1688,8 @@ public:
 		
 		
 		
-		int minRad = -1;
-		int minRadZ = -1;
+		int minRad = 1;
+		int minRadZ = 1;
 		// if (pixelsPerCell <= 32) {
 		// 	minRad = -2;
 		// }
@@ -1713,9 +1713,9 @@ public:
 						
 						
 						
-						for (ko = minRadZ; ko <= 1; ko++) {
-							for (jo = minRad; jo <= 1; jo++) {
-								for (io = minRad; io <= 1; io++) {
+						for (ko = -minRadZ; ko <= minRadZ; ko++) {
+							for (jo = -minRad; jo <= minRad; jo++) {
+								for (io = -minRad; io <= minRad; io++) {
 									testInd = getNodeIndex(i + io, j + jo, k + ko, 0);
 
 									if (testInd > -1) {

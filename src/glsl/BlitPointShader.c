@@ -16,6 +16,8 @@ varying float camDis;
 
 const float blendDepth = 0.001;
 
+
+
 $
 
 
@@ -54,11 +56,11 @@ void main() {
     
     
     
-    float a = pow(2.0*(gl_PointCoord.x - 0.5), 2.0);
-    float b = pow(2.0*(gl_PointCoord.y - 0.5), 2.0);
-    float c = 1.0 - (a + b);
+    // float a = (2.0*abs(gl_PointCoord.x - 0.5));
+    // float b = (2.0*abs(gl_PointCoord.y - 0.5));
+    // float c = 1.0 - (a + b);
     if (
-        (c < 0.0) ||
+        //(c < 0.0) ||
         (facingCam < -0.5)
     ) {
         discard;

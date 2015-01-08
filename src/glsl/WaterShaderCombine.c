@@ -25,8 +25,10 @@ uniform vec3 cameraPos;
 uniform vec2 bufferDim;
 
 
-const float TEX_WATER = 32.0/255.0;
-const float TEX_GLASS = 35.0/255.0;
+^INCLUDE:MATERIALS^
+
+// const float TEX_WATER = 32.0/255.0;
+// const float TEX_GLASS = 35.0/255.0;
 const float pi = 3.14159;
 
 

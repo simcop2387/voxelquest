@@ -124,7 +124,7 @@ public:
   EntSelection selectedEnts;
   GameEnt * selectedEnt;
   GameEnt * highlightedEnt;
-  bool updateMatVolFlag;
+  bool updateMatFlag;
   bool matVolLock;
   bool isMoving;
   bool perspectiveOn;
@@ -241,6 +241,7 @@ public:
   int volGenSuperMod;
   int volGenSuperRes;
   int matVolSize;
+  int escCount;
   int * cdBuffer;
   intPair (entIdArr) [1024];
   uint palWidth;
@@ -313,6 +314,7 @@ public:
   FIVector4 baseScrollPos;
   FIVector4 worldSizeInPixels;
   FIVector4 mouseUpPD;
+  FIVector4 spaceUpPD;
   FIVector4 mouseDownPD;
   FIVector4 mouseObjPD;
   FIVector4 mouseMovePD;
@@ -378,11 +380,13 @@ public:
   string guiSaveLoc;
   PoolManager * gpuPool;
   PoolManager * entityPool;
+  vector <UIComponent*> compStack;
   vector <string> splitStrings;
   vector <string> shaderStrings;
   vector <string> shaderTextureIds;
   map <string, Shader*> shaderMap;
   map <string, UICStruct> compMap;
+  map <string, string> includeMap;
   map <string, FBOSet> fboMap;
   FBOSet (vgFBOArr) [MAX_VG_FBOS];
   FBOSet (vgtFBOArr) [MAX_VGT_FBOS];
@@ -397,9 +401,9 @@ public:
   unsigned char * resultImage;
   materialNode * matSlice0;
   materialNode * matSlice1;
+  materialNode * matSlice2;
   charArr nullBuffer;
   charArr lastImageBuffer;
-  charArr lastJSONBuffer;
   charArr lastJSONBufferGUI;
   JSONValue * rootObjJS;
   JSONValue * guiRootJS;
@@ -447,6 +451,8 @@ public:
   void drawCubeCentered (FIVector4 * originVec, float radius);
   void drawBoxUp (FIVector4 originVec, float radiusX, float radiusY, float diamZ);
   void drawBox (FIVector4 * minVec, FIVector4 * maxVec, int faceFlag = 2);
+  void getMaterialString ();
+  void refreshIncludeMap ();
   void doShaderRefresh (bool doBake);
   void setWH (int w, int h);
   void sampleFBODirect (FBOSet * fbos, int offset = 0);
@@ -514,7 +520,7 @@ public:
   void setCameraToElevation ();
   void processSpecialKeys (int key, int _x, int _y);
   void updateCS ();
-  void processInput (unsigned char key, bool keyDown);
+  void processInput (unsigned char key, bool keyDown, int x, int y);
   void keyboardUp (unsigned char key, int _x, int _y);
   void keyboardDown (unsigned char key, int _x, int _y);
   void runReport ();
@@ -530,7 +536,6 @@ public:
   void resetActiveNode ();
   void updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS);
   void findNearestOrgNode (GameOrgNode * curNode, FIVector4 * mousePosWS);
-  void processB64 (charArr * sourceBuffer, charArr * saveBuffer);
   void getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit);
   JSONValue * fetchJSONData (string dataFile);
   bool processJSONFromString (string * sourceBuffer, JSONValue * * destObj);
@@ -550,8 +555,6 @@ public:
   void saveOrg ();
   void loadOrg ();
   void loadGUI ();
-  void loadAllData ();
-  void saveAllData ();
   bool loadFile (string fnString, charArr * dest);
   bool saveFileString (string fileName, string * source);
   bool saveFile (char * fileName, charArr * source);
@@ -588,7 +591,7 @@ public:
   static void validateShader (GLuint shader, char const * file = 0);
   static int validateProgram (GLuint program);
   int countOc (string * src, string testStr);
-  void init (string _shaderFile, bool doBake);
+  void init (string _shaderFile, bool doBake, map <string, string> * includeMap);
   ~ Shader ();
   unsigned int id ();
   void bind ();
@@ -720,10 +723,11 @@ public:
 class UIComponent
 {
 private:
-  UIComponent * parent;
   UIComponent * valuePtr;
   float privValueX;
   float privValueY;
+  std::vector <int> _children;
+  std::vector <int> _floatingChildren;
 public:
   Singleton * singleton;
   Singleton::UIQuad thisUIQuad;
@@ -794,12 +798,12 @@ public:
   std::vector <float> linePitchVec;
   fBoundingBox hitBounds;
   StyleSheetResult resSS;
-  std::vector <UIComponent> children;
-  std::vector <UIComponent> floatingChildren;
-  UIComponent * curComp;
-  UIComponent * baseComp;
   UIComponent ();
-  void init (Singleton * _singleton, UIComponent * _baseComp, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, bool _isFloating, string * stringVals, double * floatVals);
+  void init (Singleton * _singleton, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, bool _isFloating, string * stringVals, double * floatVals);
+  UIComponent * getChild (int ind);
+  UIComponent * getFloatingChild (int ind);
+  int getChildCount ();
+  int getFloatingChildCount ();
   float getDimYClamped (float val);
   float getResultDimYClamped ();
   string findKeyString (int valEnum);
@@ -815,10 +819,9 @@ public:
   UIComponent * findParentByUID (string parUID);
   UIComponent * getValuePtr ();
   UIComponent * findNodeByString (string _uid);
-  UIComponent * findNodeById (int id);
   float getMinWidth ();
   float getMinHeight ();
-  UIComponent * addChild (int _parentId, int _nodeId, string * stringVals, double * floatVals, bool _isFloating, JSONValue * _jvNodeNoTemplate);
+  int addChild (int _parentId, int _nodeId, string * stringVals, double * floatVals, bool _isFloating, JSONValue * _jvNodeNoTemplate);
   void setOrigPos ();
   void applyHeight ();
   void applyWidth ();
@@ -856,13 +859,13 @@ class GameGUI
 private:
 public:
   Singleton * singleton;
-  UIComponent * baseComp;
   JSONValue * jvRoot;
   JSONValue * jvTemplates;
   JSONValue * jvSounds;
   bool isReady;
   bool isLoaded;
   fVector2 mouseTrans;
+  int guiRenderCount;
   int nodeCount;
   vector <UIComponent*> dirtyVec;
   string (tempStrings) [10];
@@ -870,10 +873,9 @@ public:
   double (floatVals) [E_GFT_LENGTH];
   GameGUI ();
   void init (Singleton * _singleton);
-  UIComponent * findNodeById (int _id);
   bool compChildStr (string childStr);
   JSONValue * findNearestKey (JSONValue * jv, string key);
-  void addChildFromJSON (JSONValue * jv, UIComponent * curParent, bool isFloating = false);
+  void addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating = false);
   void guiFromJSON (JSONValue * jv);
   void doRefresh ();
   void testOver (int x, int y);

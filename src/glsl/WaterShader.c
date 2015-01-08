@@ -21,7 +21,7 @@ uniform sampler2D Texture6;
 uniform sampler2D Texture7;
 
 // pal fbo
-uniform sampler2D Texture8;
+uniform sampler3D Texture8;
 
 // prelight fbo
 uniform sampler2D Texture9;
@@ -39,8 +39,10 @@ uniform vec3 cameraPos;
 uniform vec2 bufferDim;
 
 
-const float TEX_WATER = 32.0/255.0;
-const float TEX_GLASS = 35.0/255.0;
+^INCLUDE:MATERIALS^
+// const float TEX_WATER = 32.0/255.0;
+// const float TEX_GLASS = 35.0/255.0;
+
 const float pi = 3.14159;
 
 const int maxEntries = 5;
@@ -111,7 +113,7 @@ vec2 pack16(float num) {
 
 vec3 unpackColor(vec2 num, float lightVal)
 {
-    return texture2D( Texture8, vec2(lightVal, (num.g * 255.0 + num.r + 0.5) / 255.0 ) ).rgb;
+    return texture3D( Texture8, vec3(lightVal, num.r, num.g + 0.5/255.0) ).rgb;
 }
 
 // WAS DOING 

@@ -963,7 +963,7 @@ void GameWorld::actionOnHolders (int action, bool instantRefresh, bool clearEver
 
 
 		int curMipLev = 0;
-		int i, j, k, m;
+		int i, j, k, m, n;
 		int res;
 		int drawnPageCount = 0;
 		int skippedPages = 0;
@@ -1003,7 +1003,7 @@ void GameWorld::actionOnHolders (int action, bool instantRefresh, bool clearEver
 		singleton->setShaderfVec3("cameraPos", cameraPos);
 		
 		
-		//GLint loc = singleton->getShaderLoc("heightOfNearPlane");
+		GLint loc = singleton->getShaderLoc("heightOfNearPlane");
 		
 		
 		
@@ -1030,88 +1030,99 @@ void GameWorld::actionOnHolders (int action, bool instantRefresh, bool clearEver
 				}
 			}
 			
-
-			for (i = 0; i < ppSize; i++)
-			{
-				cid = singleton->gpuPool->orderedIds[i];
-
-				if ( pairIsNeg(cid) )
-				{
-
+			for (n = 0; n < MAX_MIP_LEV; n++) {
+				
+				if (MAX_MIP_LEV > 1) {
+					glUniform1f(loc,
+						singleton->heightOfNearPlane * 
+						
+						((float)( 1<<(n+1) ))
+						
+					);
 				}
-				else
+				
+				
+				for (i = 0; i < ppSize; i++)
 				{
-					gp = getHolderAtId(cid);
+					cid = singleton->gpuPool->orderedIds[i];
 
-					if (gp == NULL)
+					if ( pairIsNeg(cid) )
 					{
 
 					}
 					else
 					{
+						gp = getHolderAtId(cid);
 
-						switch (action)
+						if (gp == NULL)
 						{
-						case E_HOLDER_ACTION_RENDER:
+
+						}
+						else
+						{
 							
 							
 							
-							if ( ((k == 0) && gp->hasSolids) || ((k == 1) && gp->hasTrans) ) {
+
+							switch (action)
+							{
+							case E_HOLDER_ACTION_RENDER:
 								
-								tempVec.copyFrom(&gp->gphCenInPixels);
-								tempVec.addXYZRef(cameraPos,-1.0f);
-								tempVec.normalize();
+								curMipLev = clampf(cameraPos->distance(&gp->gphCenInPixels)/4096.0f,0.0,MAX_MIP_LEV-1);
 								
-								chunkDis = cameraPos->distance(&gp->gphCenInPixels);
-								
-								
-								
-								if (
-									(
-										(tempVec.dot(&(singleton->lookAtVec)) > 0.5f) ||
-										(chunkDis < gp->holderSizeInPixels*2.0f)
-									) &&
-									(chunkDis < singleton->clipDist[1])
-								) {
-									
-									curMipLev = clampf(cameraPos->distance(&gp->gphCenInPixels)/4096.0f,0.0,MAX_MIP_LEV-1);
-									
-									// if (MAX_MIP_LEV > 1) {
-									// 	glUniform1f(loc,
-									// 		singleton->heightOfNearPlane * 
-											
-									// 		( 1<<(curMipLev+1) )
-											
-									// 	);
-									// }
-									
-									if (gp->hasVerts[k] && gp->gpuRes->listGenerated) {
-										glCallList(gp->gpuRes->holderDL[curMipLev*MAX_LAYERS+k]);
+								if (curMipLev == n) {
+									if ( ((k == 0) && gp->hasSolids) || ((k == 1) && gp->hasTrans) ) {
 										
+										tempVec.copyFrom(&gp->gphCenInPixels);
+										tempVec.addXYZRef(cameraPos,-1.0f);
+										tempVec.normalize();
+										
+										chunkDis = cameraPos->distance(&gp->gphCenInPixels);
+										
+										
+										
+										if (
+											(
+												(tempVec.dot(&(singleton->lookAtVec)) > 0.5f) ||
+												(chunkDis < gp->holderSizeInPixels*2.0f)
+											) &&
+											(chunkDis < singleton->clipDist[1])
+										) {
+											
+											
+											
+											
+											if (gp->hasVerts[k] && gp->gpuRes->listGenerated) {
+												glCallList(gp->gpuRes->holderDL[curMipLev*MAX_LAYERS+k]);
+												
+											}
+										}
+										
+
 									}
 								}
 								
-
+								
+								
+								
+								
+								break;
+							case E_HOLDER_ACTION_RESET:
+							
+								gp->refreshChildren(instantRefresh, clearEverything);
+							
+								
+								break;
 							}
-							
-							
-							
-							
-							
-							
-							break;
-						case E_HOLDER_ACTION_RESET:
-						
-							gp->refreshChildren(instantRefresh, clearEverything);
-						
-							
-							break;
+
+
 						}
-
-
 					}
 				}
 			}
+			
+
+			
 			
 			
 			
@@ -3206,6 +3217,7 @@ void GameWorld::initMap ()
 
 			// TODO: EDIT CITY
 
+			//testPix > xxx <- (xxx = 0: no city, xxx = 255: all city, def: 220)
 			if ( testPix1 != testPix2 || testPix3 != testPix4 || testPix > 220 )
 			{
 				fbow->setPixelAtIndex(curInd, blockChannel, 0);
@@ -4172,7 +4184,8 @@ void GameWorld::drawMap ()
 		
 		//singleton->bindFBO("resultFBO0");
 		
-		singleton->sampleFBO("palFBO", 0);
+		//singleton->sampleFBO("palFBO", 0);
+		singleton->setShaderTexture3D(0,singleton->volIdMat);
 		singleton->sampleFBO("hmFBO", 1); //Linear
 		singleton->sampleFBO("cityFBO", 2);
 		//singleton->sampleFBO("backFaceMapFBO",3);
@@ -4209,8 +4222,8 @@ void GameWorld::drawMap ()
 		//singleton->unsampleFBO("backFaceMapFBO",3);
 		singleton->unsampleFBO("cityFBO", 2);
 		singleton->unsampleFBO("hmFBO", 1);
-		singleton->unsampleFBO("palFBO", 0);
-		
+		//singleton->unsampleFBO("palFBO", 0);
+		singleton->setShaderTexture3D(0,0);
 		
 		//singleton->unbindFBO();
 		
@@ -4568,11 +4581,14 @@ void GameWorld::postProcess ()
 		singleton->sampleFBO("pagesTargFBO",0);
 		singleton->sampleFBO("prelightFBO", 2);
 		singleton->sampleFBO("geomTargFBO", 4);
-		singleton->sampleFBO("palFBO", 6);
+		//singleton->sampleFBO("palFBO", 6);
+		singleton->setShaderTexture3D(6,singleton->volIdMat);
 		
 		singleton->setShaderfVec4("worldMarker",&(singleton->worldMarker));
 		singleton->setShaderInt("markerFound", (int)(singleton->markerFound));
 		
+		
+		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 		singleton->setShaderfVec3("cameraPos", cameraPos);
 		singleton->setShaderInt("gridOn", (int)(singleton->gridOn));
@@ -4584,7 +4600,8 @@ void GameWorld::postProcess ()
 		singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 		singleton->drawFSQuad();
 		
-		singleton->unsampleFBO("palFBO", 6);
+		singleton->setShaderTexture3D(6,0);
+		//singleton->unsampleFBO("palFBO", 6);
 		singleton->unsampleFBO("geomTargFBO", 4);
 		singleton->unsampleFBO("prelightFBO", 2);
 		singleton->unsampleFBO("pagesTargFBO",0);
@@ -4609,7 +4626,8 @@ void GameWorld::postProcess ()
 			singleton->sampleFBO("swapFBOLinHalf0", 5);
 			singleton->sampleFBO("noiseFBO", 6);
 			singleton->sampleFBO("waveFBO", 7);
-			singleton->sampleFBO("palFBO", 8);
+			singleton->setShaderTexture3D(8,singleton->volIdMat);
+			//singleton->sampleFBO("palFBO", 8);
 			singleton->sampleFBO("prelightFBO", 9);
 			
 			singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
@@ -4623,7 +4641,8 @@ void GameWorld::postProcess ()
 			singleton->drawFSQuad();
 			
 			singleton->unsampleFBO("prelightFBO", 9);
-			singleton->unsampleFBO("palFBO", 8);
+			//singleton->unsampleFBO("palFBO", 8);
+			singleton->setShaderTexture3D(8,0);
 			singleton->unsampleFBO("waveFBO", 7);
 			singleton->unsampleFBO("noiseFBO", 6);
 			singleton->unsampleFBO("swapFBOLinHalf0", 5);
@@ -4700,6 +4719,9 @@ void GameWorld::postProcess ()
 		if (singleton->fogOn == 1.0f)
 		{
 
+			
+			
+
 			singleton->bindShader("FogShader");
 			singleton->bindFBO("resultFBO", activeFBO);
 
@@ -4707,17 +4729,20 @@ void GameWorld::postProcess ()
 			singleton->sampleFBO("resultFBO", 2, activeFBO);
 			singleton->sampleFBO("swapFBOBLin0", 3);
 			singleton->sampleFBO("geomTargFBO", 4);
+			singleton->setShaderTexture3D(6,singleton->volIdMat);
 			
 			singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
 			singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
 			singleton->setShaderfVec3("cameraPos", cameraPos);
+			singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 			//singleton->setShaderfVec4("fogPos", fogPos);
 
 			singleton->drawFSQuad();
 
 			
+			singleton->setShaderTexture3D(6,0);
 			singleton->unsampleFBO("geomTargFBO", 4);
 			singleton->unsampleFBO("swapFBOBLin0", 3);
 			singleton->unsampleFBO("resultFBO", 2, activeFBO);

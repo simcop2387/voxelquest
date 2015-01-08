@@ -18,7 +18,7 @@ public:
 		return vals[0]*lerp + vals[1]*(1.0f-lerp);
 	}
 	
-	const static float baseMat = 8.0f;
+	const static float baseMat = 12.0f;
 	
 
 	GameOrg() {

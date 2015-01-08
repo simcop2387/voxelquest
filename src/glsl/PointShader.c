@@ -170,7 +170,7 @@ void main() {
                     // rayStart = 0.5 * (rayStart + 1.0);
                     // rayStop = 0.5 * (rayStop + 1.0);
                     
-                    testW = distance(cameraPos,worldPos) + curRad*16.0;
+                    testW = distance(cameraPos,worldPos);
                     
                     //if (res.z != 0.0) {
                         //testW = distance(rayStart,TexCoord0); //tnear;//distance(rayStart,cameraPos);

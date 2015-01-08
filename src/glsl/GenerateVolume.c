@@ -92,28 +92,8 @@ const float E_PT_BARE_OAK_TRUNK = 4.0;
 const float E_PT_BARE_OAK_ROOTS = 5.0;
 const float E_PT_LENGTH = 6.0;
 
-// TODO: change materials to single entries, every one has secondary texture
 
-const float TEX_NULL =    0.0;
-const float TEX_GOLD =    1.0;
-const float TEX_DIRT =    8.0;
-const float TEX_STONE =   10.0;
-const float TEX_GRASS =   12.0;
-const float TEX_SAND =    14.0;
-const float TEX_MORTAR =  16.0;
-const float TEX_WOOD =    18.0;
-const float TEX_BRICK =   20.0;
-const float TEX_SHINGLE =   22.0;
-const float TEX_PLASTER =   28.0;
-const float TEX_DEBUG =   30.0;
-const float TEX_WATER =   32.0;
-const float TEX_METAL =   33.0;
-const float TEX_GLASS =   35.0;
-const float TEX_EARTH =   36.0;
-const float TEX_BARK =    41.0;
-const float TEX_TREEWOOD =  43.0;
-const float TEX_LEAF =    45.0;
-const float TEX_SNOW =    47.0;
+^INCLUDE:MATERIALS^
 
 
 const float E_MAT_SUBPARAM_NONE =       0.0;
@@ -793,16 +773,16 @@ vec4 getBuilding(
 
 
 	// inner pillars / beams
-	if ( hasPillars && notDock ) { //(!bIsOuterWallOrig) && ( notBasement || (isBasement&&(!bIsCapWall)) )
-		if (resXY * thickness < 0.25 * pixelsPerCell) {
+	// if ( hasPillars && notDock ) { //(!bIsOuterWallOrig) && ( notBasement || (isBasement&&(!bIsCapWall)) )
+	// 	if (resXY * thickness < 0.25 * pixelsPerCell) {
 
-			if ( getInterval(disCenterMinMax, 8.0, 0.25 ) ) {
-				myResult.x = 5.0;
-				myResult.w = 2.0;
-			}
+	// 		if ( getInterval(disCenterMinMax, 8.0, 0.25 ) ) {
+	// 			myResult.x = 5.0;
+	// 			myResult.w = 2.0;
+	// 		}
 
-		}
-	}
+	// 	}
+	// }
 
 	if (myResult.x == 0.0) {
 		myResult.y = TEX_NULL;
@@ -861,7 +841,7 @@ vec4 getBuilding(
 		disFromOutsideInPixels = min(disFromOutsideInPixels, capDis);
 		disFromOutsideRef = (1.0 - abs(clamp( (disFromOutsideInPixels / wallThickness), 0.0, 1.0) - 0.5) * 2.0) * wallThickness;
 
-		if (disFromOutsideRef < 0.125 * pixelsPerCell) {
+		if (disFromOutsideRef < 0.25 * pixelsPerCell) {
 			myResult.x = 0.0;
 			myResult.y = TEX_NULL;
 			//myResult.z = 0.0;
@@ -1508,13 +1488,13 @@ vec4 getTerrain(vec3 worldPosInPixels) {
 		
 		
 		
-		if (
-			(newTWA2 - threshVal2) > mix(-0.5,0.05,newMult)*compScale		// GRASS 
-		) {
-			finalNormUID = 2.0;
-			finalMat = TEX_GRASS;
-			finalMod = 1.0;//clamp((newTWA2 - threshVal2) * 10.0, 0.0, 1.0) * 0.25 + 0.5;
-		}
+		// if (
+		// 	(newTWA2 - threshVal2) > mix(-0.5,0.05,newMult)*compScale		// GRASS 
+		// ) {
+		// 	finalNormUID = 2.0;
+		// 	finalMat = TEX_GRASS;
+		// 	finalMod = 1.0;//clamp((newTWA2 - threshVal2) * 10.0, 0.0, 1.0) * 0.25 + 0.5;
+		// }
 		
 	}
 	
@@ -1527,7 +1507,7 @@ vec4 getTerrain(vec3 worldPosInPixels) {
 		 		// SAND
 	) {
 		finalNormUID = 2.0;
-		finalMat = TEX_DIRT;
+		finalMat = TEX_EARTH;
 		finalMod = 0.0;
 	}
 
@@ -1556,7 +1536,7 @@ vec4 getTerrain(vec3 worldPosInPixels) {
 		
 	) {
 		finalNormUID = voroId;
-		finalMat = TEX_DIRT;
+		finalMat = TEX_EARTH;
 		finalMod = voroGrad;
 	}
 
@@ -2672,7 +2652,7 @@ vec4 getGeom(vec3 worldPosInPixels, int iCurMat) {//, float terHeight) {
 			woodRes = matResult.w;
 
 			if (finalMat == TEX_SHINGLE) {
-				finalMat += matParams.z;
+				finalMod = matParams.z/6.0;
 			}
 
 		}
@@ -3058,7 +3038,7 @@ vec4 getGeom(vec3 worldPosInPixels, int iCurMat) {//, float terHeight) {
 
 		// 		if (tempVec3.z < 8.0 * pixelsPerCell - tempf1) {
 		// 			//normalUID = 1.0;
-		// 			//finalMat = TEX_DIRT;
+		// 			//finalMat = TEX_EARTH;
 		// 			finalMod = 1.0;
 		// 			isInside = true;
 
@@ -3104,7 +3084,7 @@ vec4 getGeom(vec3 worldPosInPixels, int iCurMat) {//, float terHeight) {
 
 	// todo: move this to main function
 	if (finalMat == TEX_WOOD) {
-		finalMod = getWoodGrain(normalUID, worldPosInPixels, 2.0 * pixelsPerCell, woodRes, 4.0 );
+		finalMod = getWoodGrain(normalUID, worldPosInPixels.yxz, 4.0 * pixelsPerCell, woodRes, 4.0 );
 	}
 
 	// if (finalMat == TEX_METAL) {
@@ -3246,7 +3226,7 @@ void main() {
 
 	vec4 tex2 =  texture3D(Texture1, newCoords);
 	if (tex2.a > 0.5) {
-		finalMat = TEX_DIRT;
+		finalMat = TEX_EARTH;
 
 	}
 	else {
@@ -3257,38 +3237,22 @@ void main() {
 
 
 
-	if (finalMat == TEX_MORTAR) {
-		finalMat = TEX_SAND;
-		finalNormUID = 0.0;
-	}
+	
 
-	if (finalMat == TEX_SAND || finalMat == TEX_MORTAR || finalMat == TEX_BRICK || finalMat == TEX_METAL) {
-		finalMod = randVal;
-	}
-
-	if ( (finalMat >= TEX_SHINGLE) && (finalMat < TEX_PLASTER) ) {
-		finalMod = clamp(shingleMod, 0.0, 1.0);
-	}
-
-
-	// if (finalMat == TEX_BRICK) {
-	// 	finalMat = TEX_DIRT;
+	// if (finalMat == TEX_SAND || finalMat == TEX_MORTAR || finalMat == TEX_BRICK) {
+	// 	finalMod = randVal;
 	// }
 	
-	//
+	if (finalMat == TEX_METAL) {
+		finalMod = 0.5;
+	}
+	
+	if ( (finalMat == TEX_SHINGLE) ) {
+		finalMod += shingleMod/6.0;
+	}
 
-	if (finalMat == TEX_DIRT) {
-		fj = clamp(
-			(
-				abs(sin(worldPosInPixels.z / (4.0*pixelsPerCell))) + 
-				texture2D(Texture2, 256.0 * worldPosInPixels.xy/worldSizeInPixels.xy ).r*3.0
-				+ matResultTer.w*2.0 
-			),
-			0.0,
-			5.0
-		);
-		finalMat = TEX_EARTH + floor(fj);
-		finalMod = fj - floor(fj);
+	if (finalMat == TEX_EARTH) {		
+		finalMod = (1.0+sin( (worldPosInPixels.z)/(1000.0) ) )/2.0;//fj/5.0;
 	}
 
 	//TODO: ADD BACK IN FOR WATER
@@ -3296,7 +3260,6 @@ void main() {
 
 	 (
 	   (finalMat == TEX_NULL)
-	   // || (finalMat == TEX_GRASS)
 	 ) &&
 	 (worldPosInPixels.z <= (seaLevel)) && //
 	 (finalInside == 0.0)
@@ -3307,23 +3270,6 @@ void main() {
 	 finalNormUID = 254.0;
 	 finalMod = 0.0;
 	}
-	
-	// if (finalMat == TEX_GRASS) {
-	//  finalLayer = 1.0;
-	//  //finalMat = TEX_WATER;
-	//  finalNormUID = 254.0;
-	//  //finalMod = 0.0;
-	// }
-	
-	
-	// if ((finalMat == TEX_NULL)) {
-		
-	// 	finalLayer = 0.0;
-	// 	finalMat = TEX_DIRT;
-	// 	finalNormUID = 1.0;
-	// 	finalMod = 0.0;
-	// }
-
 
 	if (finalMat == TEX_GLASS) {
 		finalLayer = 1.0;
@@ -3336,34 +3282,10 @@ void main() {
 	}
 	
 	
-	// if ((newCoords.x > 0.5)) {
-	// 	if ( 
-	// 		(distance(newCoords.xyz,vec3(0.5)) < 0.25)
-			
-			
-	// 	) {
-			
-	// 		finalLayer = 0.0;
-	// 		finalMat = TEX_DIRT;
-	// 		finalNormUID = 1.0;
-	// 		finalMod = 0.0;
-	// 	}
-	// 	else {
-	// 		finalLayer = 0.0;
-	// 		finalMat = TEX_NULL;
-	// 		finalNormUID = 1.0;
-	// 		finalMod = 0.0;
-			
-	// 	}
-	// }
-	
-	
-	// finalLayer = 0.0;
-	// finalMat = TEX_DIRT;
-	// finalNormUID = 1.0;
-	// finalMod = 0.0;
-	
-	
+	// final layer:
+	// 0: solid;
+	// 1: water;
+	// 2: null
 
 	finalLayer = min(finalLayer, totLayers - 1.0);
 	if (finalMat == TEX_NULL) {
@@ -3372,7 +3294,7 @@ void main() {
 	finalRes.r = finalLayer / 255.0;
 	finalRes.g = finalNormUID / 255.0;
 	finalRes.b = finalMod;
-	finalRes.a = finalMat / 255.0;
+	finalRes.a = finalMat;
 	
 	gl_FragData[0] = finalRes;
 

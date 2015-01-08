@@ -1,4 +1,4 @@
-﻿Build started 1/4/2015 11:14:12 AM.
+﻿Build started 1/8/2015 6:31:09 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -160,11 +160,11 @@
          cellsPerNodeZ: 8
          blockSizeInHolders: 32
          blockSizeInPixels: 32768
-         terDataBufPitchScaledXY 48
+         terDataBufPitchScaledXY 24
          maxChangesInHolders: 1
          volGenFBOX: 128
          volGenFBOY: 16384
-         visPageSizeInPixels: 512
+         visPageSizeInPixels: 1024
          holderSizeInPixels: 1024
          bufferMult: 1.25
          cellsPerLot: 64
@@ -174,14 +174,14 @@
          pixelsPerUnit: 32
          unitsPerLot: 256
          pixelsPerLot: 8192
-         holderSizeInPages: 2
+         holderSizeInPages: 1
          holdersPerLot: 8
-         visPageSizeInUnits: 16
+         visPageSizeInUnits: 32
          unitSizeInPixels: 32
          worldSizeInBlocks:    256.000000   256.000000   1.000000    
          worldSizeInLots:    1024.000000   1024.000000   4.000000    
          worldSizeInHolders:    8192.000000   8192.000000   32.000000    
-         worldSizeInPages:    16384.000000   16384.000000   64.000000    
+         worldSizeInPages:    8192.000000   8192.000000   32.000000    
          worldSizeInTerData:    4096.000000   4096.000000   32.000000    
          MAX_UNIFORMS: 65536
          
@@ -191,33 +191,67 @@
          
          
          worldSizeInPixels:    8388608.000000   8388608.000000   32768.000000    
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         material string: 
+         
+         
+         const float TEX_NULL=0.0/255.0;
+         const float TEX_DEBUG=1.0/255.0;
+         const float TEX_UNUSED=2.0/255.0;
+         const float TEX_SAND=3.0/255.0;
+         const float TEX_STONE=4.0/255.0;
+         const float TEX_SNOW=5.0/255.0;
+         const float TEX_GRASS=6.0/255.0;
+         const float TEX_MORTAR=7.0/255.0;
+         const float TEX_WOOD=8.0/255.0;
+         const float TEX_BRICK=9.0/255.0;
+         const float TEX_SHINGLE=10.0/255.0;
+         const float TEX_PLASTER=11.0/255.0;
+         const float TEX_EARTH=12.0/255.0;
+         const float TEX_BARK=13.0/255.0;
+         const float TEX_TREEWOOD=14.0/255.0;
+         const float TEX_LEAF=15.0/255.0;
+         const float TEX_GOLD=16.0/255.0;
+         const float TEX_WATER=17.0/255.0;
+         const float TEX_METAL=18.0/255.0;
+         const float TEX_GLASS=19.0/255.0;
+         const float TEX_MAPLAND=20.0/255.0;
+         const float TEX_MAPWATER=21.0/255.0;
+         const float TEX_SKY=22.0/255.0;
+         const float TEX_SKIN=23.0/255.0;
+         const float TEX_LEATHER=24.0/255.0;
+         
          
          Valid JSON
                    
          128,16384
          128,16384
-         64,4096
-         64,4096
+         128,16384
+         128,16384
          256,256
          256,256
-         1920,1080
-         1920,1080
-         256,256
-         1920,1080
-         1920,1080
-         1920,1080
-         1920,1080
-         1920,1080
-         1920,1080
-         1920,1080
-         1920,1080
-         960,540
-         1920,1080
-         1920,1080
          960,540
          960,540
          960,540
          960,540
+         960,540
+         960,540
+         960,540
+         960,540
+         960,540
+         960,540
+         480,270
+         960,540
+         960,540
+         480,270
+         480,270
+         480,270
+         480,270
          1024,1024
          1024,1024
          1024,1024
@@ -241,14 +275,7 @@
          
          Valid JSON
                    
-         Loading:  ..\data\lastJSONBuffer.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loading:  ..\data\lastImageBuffer.txt         
-         Load Successful          
-         Sea Level: 102
+         Sea Level: 121
          start place cities
          end place cities
          start grow provinces
@@ -285,6 +312,35 @@
          Loading:  ..\data\saves\save0\compMap.txt         
          Load Successful          
          End Loading GUI Values
+         material string: 
+         
+         
+         const float TEX_NULL=0.0/255.0;
+         const float TEX_DEBUG=1.0/255.0;
+         const float TEX_UNUSED=2.0/255.0;
+         const float TEX_SAND=3.0/255.0;
+         const float TEX_STONE=4.0/255.0;
+         const float TEX_SNOW=5.0/255.0;
+         const float TEX_GRASS=6.0/255.0;
+         const float TEX_MORTAR=7.0/255.0;
+         const float TEX_WOOD=8.0/255.0;
+         const float TEX_BRICK=9.0/255.0;
+         const float TEX_SHINGLE=10.0/255.0;
+         const float TEX_PLASTER=11.0/255.0;
+         const float TEX_EARTH=12.0/255.0;
+         const float TEX_BARK=13.0/255.0;
+         const float TEX_TREEWOOD=14.0/255.0;
+         const float TEX_LEAF=15.0/255.0;
+         const float TEX_GOLD=16.0/255.0;
+         const float TEX_WATER=17.0/255.0;
+         const float TEX_METAL=18.0/255.0;
+         const float TEX_GLASS=19.0/255.0;
+         const float TEX_MAPLAND=20.0/255.0;
+         const float TEX_MAPWATER=21.0/255.0;
+         const float TEX_SKY=22.0/255.0;
+         const float TEX_SKIN=23.0/255.0;
+         const float TEX_LEATHER=24.0/255.0;
+         
          
          Valid JSON
                    
@@ -293,10 +349,99 @@
          copyTerToTexture resIndex:  1         
          copyTerToTexture resIndex:  2         
          copyTerToTexture resIndex:  3         
-     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
-C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -2147418113.
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
+         E_MOUSE_STATE_BRUSH
+         isMacro: 1
+         copyTerToTexture resIndex:  2         
+         copyTerToTexture resIndex:  0         
+         copyTerToTexture resIndex:  2         
+         copyTerToTexture resIndex:  2         
+         copyTerToTexture resIndex:  2         
+         copyTerToTexture resIndex:  2         
+         copyTerToTexture resIndex:  2         
+         copyTerToTexture resIndex:  2         
+         E_MOUSE_STATE_PICKING
+         doPageRender: 0
+         doPageRender: 1
+         doPageRender: 0
+         E_MOUSE_STATE_MOVE
+         E_MOUSE_STATE_BRUSH
+         copyTerToTexture resIndex:  3         
+         copyTerToTexture resIndex:  3         
+         copyTerToTexture resIndex:  3         
+         E_MOUSE_STATE_PICKING
+         E_MOUSE_STATE_MOVE
+         Loading:  ..\data\orgdata\mypose1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         E_MOUSE_STATE_BRUSH
+         copyTerToTexture resIndex:  2         
+         copyTerToTexture resIndex:  2         
+         copyTerToTexture resIndex:  2         
+         E_MOUSE_STATE_PICKING
+         E_MOUSE_STATE_MOVE
+         Save Successful          
+         Loading:  ..\data\orgdata\mypose1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\mypose4.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         material string: 
+         
+         
+         const float TEX_NULL=0.0/255.0;
+         const float TEX_DEBUG=1.0/255.0;
+         const float TEX_UNUSED=2.0/255.0;
+         const float TEX_SAND=3.0/255.0;
+         const float TEX_STONE=4.0/255.0;
+         const float TEX_SNOW=5.0/255.0;
+         const float TEX_GRASS=6.0/255.0;
+         const float TEX_MORTAR=7.0/255.0;
+         const float TEX_WOOD=8.0/255.0;
+         const float TEX_BRICK=9.0/255.0;
+         const float TEX_SHINGLE=10.0/255.0;
+         const float TEX_PLASTER=11.0/255.0;
+         const float TEX_EARTH=12.0/255.0;
+         const float TEX_BARK=13.0/255.0;
+         const float TEX_TREEWOOD=14.0/255.0;
+         const float TEX_LEAF=15.0/255.0;
+         const float TEX_GOLD=16.0/255.0;
+         const float TEX_WATER=17.0/255.0;
+         const float TEX_METAL=18.0/255.0;
+         const float TEX_GLASS=19.0/255.0;
+         const float TEX_MAPLAND=20.0/255.0;
+         const float TEX_MAPWATER=21.0/255.0;
+         const float TEX_SKY=22.0/255.0;
+         const float TEX_SKIN=23.0/255.0;
+         const float TEX_LEATHER=24.0/255.0;
+         
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         doPageRender: 1
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
-Build FAILED.
+Build succeeded.
 
-Time Elapsed 00:01:34.90
+Time Elapsed 00:28:54.65

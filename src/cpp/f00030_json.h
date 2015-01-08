@@ -813,22 +813,22 @@ std::string JSONValue::Stringify(int curLev = 0) const
 		
 		case JSONType_Array:
 		{
-			ret_string = "[\n";
+			ret_string = "[";
 			JSONArray::const_iterator iter = array_value.begin();
 			while (iter != array_value.end())
 			{
-				ret_string += SPACE_BUFFER[curLev];
+				//ret_string += SPACE_BUFFER[curLev];
 				ret_string += (*iter)->Stringify(curLev + 1);
 				
 				// Not at the end - add a separator
 				if (++iter != array_value.end()) {
-					ret_string += ",\n";
+					ret_string += ",";
 				}
 				else {
-					ret_string += "\n";
+					//ret_string += "\n";
 				}
 			}
-			ret_string += SPACE_BUFFER[curLev]+"]";
+			ret_string += "]"; //SPACE_BUFFER[curLev]+
 			break;
 		}
 		
