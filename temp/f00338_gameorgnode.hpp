@@ -52,10 +52,6 @@ public:
 	
 	
 
-	
-
-	
-
 	GameOrgNode(
 		GameOrgNode* _parent,
 		int _nodeName,
@@ -233,15 +229,10 @@ public:
 		
 		readTBN = tbnBaseTrans;
 		writeTBN = tbnRotA;
-			
 		
 		
 		modCount = 0;
 		
-		
-		
-		
-	
 		
 		if (orgVecs[E_OV_THETAPHIRHO].getFZ() != 0.0f) {
 			singleton->rotMatStack.push_back(RotationInfo());
@@ -271,7 +262,7 @@ public:
 		
 		
 		for (i = singleton->rotMatStack.size()-(1); i >= 0; i--) {
-						
+			
 			axisRotationInstance.applyRotation(
 				writeTBN,
 				readTBN,

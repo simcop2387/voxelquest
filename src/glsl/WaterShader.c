@@ -27,6 +27,9 @@ uniform sampler3D Texture8;
 uniform sampler2D Texture9;
 uniform sampler2D Texture10;
 
+// geom fbo
+uniform sampler2D Texture11;
+uniform sampler2D Texture12;
 
 varying vec2 TexCoord0;
 
@@ -133,12 +136,14 @@ void main() {
     
     vec4 tex10 = texture2D(Texture10, TexCoord0.xy);
     
+    // vec4 tex11 = texture2D(Texture0, TexCoord0.xy);
+    // vec4 tex12 = texture2D(Texture1, TexCoord0.xy);
     
 
     float tot = float(tex0.r + tex0.g + tex0.b + tex0.a > 0.0);    
     vec4 oneVec = vec4(1.0);
     
-    
+    //tex0.w = max(tex0.w,tex11.w);
     
     int i;
     int j;
@@ -278,6 +283,9 @@ void main() {
     newTC.xy = TexCoord0.xy + 0.02*(waterNorm.xy-waterNorm.z)*heightDifNoRef/maxDis;
     
     tex0Ref = texture2D(Texture0, newTC.xy);
+    
+    //tex0Ref.w = max(tex0Ref.w,texture2D(Texture11, newTC.xy).w);
+    
     tex1Ref = texture2D(Texture1, newTC.xy);
     tex5Ref = texture2D(Texture5, newTC.xy);
     

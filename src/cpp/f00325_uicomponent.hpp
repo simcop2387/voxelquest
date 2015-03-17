@@ -15,8 +15,7 @@ public:
 
 	Singleton* singleton;
 
-	Singleton::UIQuad thisUIQuad;
-	Singleton::UICont thisUICont;
+	Singleton::UICont uiCont;
 
 	string uid;
 	string ss;
@@ -33,13 +32,12 @@ public:
 	int index;
 	int fillDir;
 	int layer;
+	int layerId;
 	int hoverType;
 	int guiClass;
 	//int guiId;
 	
-	//Singleton::UICont* curCont;
-	Singleton::UIQuad* curQuad;
-	
+	bool forceDragUpdate;
 	bool selected;
 	bool foundParent;
 	bool foundValuePtr;
@@ -77,7 +75,6 @@ public:
 	FontWrapper* curFontIcons;
 
 	bool dragging;
-	bool contOnStack;
 	bool overChild;
 	bool overSelf;
 	bool singleLine;	
@@ -136,13 +133,16 @@ public:
 		
 	) {
 		
+		_children.clear();
+		_floatingChildren.clear();
+		
 		dataLoaded = false;
 		
 		//valVec = NULL;
 		
 		privValueY = 0.0f;
 		selected = false;
-		
+		forceDragUpdate = false;
 		
 		
 		//valVecPtr = NULL;
@@ -150,7 +150,6 @@ public:
 		foundParent = false;
 		foundValuePtr = false;
 		
-		contOnStack = false;
 
 		singleton = _singleton;
 		parentId = _parentId;
@@ -196,7 +195,7 @@ public:
 		
 		
 		
-		
+		layerId = -1;
 		
 		jvNodeNoTemplate = _jvNodeNoTemplate;
 		
@@ -245,7 +244,7 @@ public:
 		overSelf = false;
 		overChild = false;
 		isDirty = true;
-		visible = (hoverType == E_HT_NORMAL);
+		visible = false;//(hoverType == E_HT_NORMAL);
 		
 		hasBackground = floatVals[E_GFT_HASBACKGROUND];
 		fillRatioDim.x = floatVals[E_GFT_FILLRATIOX];
@@ -333,12 +332,32 @@ public:
 	}
 	
 	
+	void clearChildren() {
+		_children.clear();
+		_floatingChildren.clear();
+	}
 	
 	UIComponent* getChild(int ind) {
-		return (singleton->compStack[_children[ind]]);
+		
+		int curInd = _children[ind];
+		
+		//if (singleton->compStack[curInd].isValid) {
+			return (singleton->compStack[curInd].data);
+		// }
+		// else {
+		// 	return NULL;
+		// }
 	}
 	UIComponent* getFloatingChild(int ind) {
-		return (singleton->compStack[_floatingChildren[ind]]);
+		
+		int curInd = _floatingChildren[ind];
+		
+		//if (singleton->compStack[curInd].isValid) {
+			return (singleton->compStack[curInd].data);
+		// }
+		// else {
+		// 	return NULL;
+		// }
 	}
 	int getChildCount() {
 		return _children.size();
@@ -671,11 +690,11 @@ public:
 	
 	
 	UIComponent* getParent() {
-		if (nodeId == 0) {
+		if (nodeId <= 0) {
 			return NULL;
 		}
 		else {
-			return (singleton->compStack[parentId]);
+			return (singleton->compStack[parentId].data);
 		}
 	}
 	
@@ -838,11 +857,10 @@ public:
 	}
 	
 	
-	// Warning: adding children invalidates pointers!
 	
 	int addChild(
+		int _lastIndex,
 		int _parentId,
-		int _nodeId,
 		string* stringVals,
 		double* floatVals,
 		bool _isFloating,
@@ -850,24 +868,40 @@ public:
 		
 	) {
 		
-		
+		int _nodeId;
 		int childCount = 0;
 		
+		_nodeId = singleton->placeInStack();
+		
+		
+		
 		if (_isFloating) {
-			_floatingChildren.push_back(_nodeId);
-			childCount = getFloatingChildCount()-1;
+			
+			if (_lastIndex < 0) {
+				_floatingChildren.push_back(_nodeId);
+				childCount = getFloatingChildCount()-1;
+			}
+			else {
+				_floatingChildren[_lastIndex] = _nodeId;
+				childCount = _lastIndex;
+			}
+			
+			
 		}
 		else {
-			_children.push_back(_nodeId);
-			childCount = getChildCount()-1;
+			
+			if (_lastIndex < 0) {
+				_children.push_back(_nodeId);
+				childCount = getChildCount()-1;
+			}
+			else {
+				_children[_lastIndex] = _nodeId;
+				childCount = _lastIndex;
+			}
+			
 		}
 		
-		
-		singleton->compStack.push_back(new UIComponent());
-		
-		
-		
-		singleton->compStack.back()->init(
+		singleton->compStack[_nodeId].data->init(
 			singleton,
 			_parentId,
 			_nodeId,
@@ -880,15 +914,7 @@ public:
 			floatVals
 		);
 		
-		
 		return _nodeId;
-		
-		// if (_isFloating) {
-		// 	return &(floatingChildren.back());
-		// }
-		// else {
-		// 	return &(children.back());
-		// }
 		
 	}
 	
@@ -1194,7 +1220,7 @@ public:
 
 	void updateValue(float x, float y) {
 		
-		
+		int i;
 		
 		float hoverBuffer = 4.0f;
 		float tempValue;
@@ -1205,11 +1231,20 @@ public:
 		
 		UIComponent* highestCont;
 		
-		if (dragging) {
-			highestCont = getHighestCont(this, 0);			
-			highestCont->dragOffset.x = lastDrag.x + (x - dragStart.x); //
-			highestCont->dragOffset.y = lastDrag.y + (y - dragStart.y); //
+		if (dragging||forceDragUpdate) {
+			highestCont = getHighestCont(this, 0);
 			
+			if (forceDragUpdate) {
+				highestCont->dragOffset.x = lastDrag.x;
+				highestCont->dragOffset.y = lastDrag.y;
+			}
+			else {
+				highestCont->dragOffset.x = lastDrag.x + (x - dragStart.x); //
+				highestCont->dragOffset.y = lastDrag.y + (y - dragStart.y); //
+			}
+			
+			
+			forceDragUpdate = false;
 		}
 		
 		if (curParent == NULL) {
@@ -1222,9 +1257,9 @@ public:
 				
 			}
 			else {
-				if (curParent->hoverType != E_HT_ROOT) {
+				//if (curParent->hoverType != E_HT_ROOT) {
 					dragOffset = curParent->dragOffset;
-				}			
+				//}			
 			}
 		}
 		
@@ -1256,22 +1291,15 @@ public:
 		
 		switch (hoverType) {
 			case E_HT_NORMAL:
-			case E_HT_ROOT:
 				if (curParent != NULL) {
-					
-					
-					if (curParent->hoverType != E_HT_ROOT) {
-						floatOffset = curParent->floatOffset;
-						visible = curParent->visible;
-					}
-					
-					
-					
+					floatOffset = curParent->floatOffset;					
 				}
+			break;
+			case E_HT_ROOT:
+				
 			break;
 			case E_HT_TOOLTIP:
 			case E_HT_TOOLTIP_VALUE:
-				//curParent->floatOffset.x + 
 				floatOffset.x = x + hoverBuffer - dragOffset.x; 
 				floatOffset.y = curParent->totOffset.y + curParent->originPos.y + curParent->resultDimInPixels.y + hoverBuffer;
 				visible = curParent->overSelf;
@@ -1283,15 +1311,63 @@ public:
 				
 			break;
 			case E_HT_ONSELECTED:
-				//curParent->floatOffset.x + 
 				if (curParent != NULL) {
 					alignToComp(curParent);
-					visible = (curParent->selected)&&(curParent->visible);
+					
+					//visible = (curParent->selected)&&(curParent->visible);
 				}
+				
+				
+				
 				
 			break;
 
 		}
+		
+		for (i = 0; i < getChildCount(); i++) {
+			
+			switch(getChild(i)->hoverType) {
+				case E_HT_NORMAL:
+					getChild(i)->visible = visible;
+				break;
+				
+				case E_HT_ROOT:
+					
+				break;
+				
+				case E_HT_TOOLTIP:
+				case E_HT_TOOLTIP_VALUE:
+				
+				break;
+				
+				case E_HT_ONSELECTED:
+					getChild(i)->visible = visible&&selected;
+				break;
+			}
+			
+		}
+		for (i = 0; i < getFloatingChildCount(); i++) {
+			
+			switch(getFloatingChild(i)->hoverType) {
+				case E_HT_NORMAL:
+					getFloatingChild(i)->visible = visible;
+				break;
+				
+				case E_HT_ROOT:
+					
+				break;
+				
+				case E_HT_TOOLTIP:
+				case E_HT_TOOLTIP_VALUE:
+				
+				break;
+				
+				case E_HT_ONSELECTED:
+					getFloatingChild(i)->visible = visible&&selected;
+				break;
+			}
+		}
+		
 		
 		updateOffset();
 		
@@ -1527,6 +1603,7 @@ public:
 
 	bool testHit(int button, int state, float x, float y) {
 		
+		bool hitDeepest = false;		
 		float wheelDelta = 0.0f;
 		
 		
@@ -1618,10 +1695,17 @@ public:
 						case E_GT_RADIO:
 							tempValue = !selected;
 							
-							if (singleton->bShift) {
+							if (singleton->bCtrl) {
 								
 							}
 							else {
+								
+								if (singleton->bShift) {
+									
+								}
+								else {
+									
+								}
 								
 								if (curParent2 == NULL) {
 									for (i = 0; i < curParent->getChildCount(); i++) {
@@ -1679,17 +1763,16 @@ public:
 								// wheel down
 							}
 							
+							if (resultDimInPixels.y > maxDimInPixels.y) {
+								targScrollOffset.y += wheelDelta*20.0f;
+								targScrollOffset.y = clampf(targScrollOffset.y, -(resultDimInPixels.y-maxDimInPixels.y), 0.0f);
+								
+							}
 							
-							
-							targScrollOffset.y += wheelDelta*20.0f;
-							
-							targScrollOffset.y = clampf(targScrollOffset.y, -(resultDimInPixels.y-maxDimInPixels.y), 0.0f);
 							
 							return true;
 						}	
 					}
-					
-					
 				}
 		}
 
@@ -1703,14 +1786,15 @@ public:
 			hitChild = hitChild||getFloatingChild(i)->testHit(button, state, x, y);
 		}
 		
+		hitDeepest = (!hitChild)&&(mouseOver);
 		
-		if ( (!hitChild)&&(mouseOver) ) {
+		if ( hitDeepest ) {
 			// deepest node
 			
 			singleton->dispatchEvent(button, state, x, y, this);
 		}
 		
-		bool finalRes = wasHit||hitChild;
+		bool finalRes = (hitDeepest||hitChild); //(wasHit)
 		if ((state == GLUT_UP)) { //&&(wheelDelta==0.0f)
 			wasHit = false;
 		}
@@ -1886,7 +1970,7 @@ public:
 		
 		float vspace = resultDimInPixels.y - textDimInPixels.y;
 		
-		
+		Singleton::UIQuad* curQuad;
 		
 		caretPos.x = 0.0f;
 		caretPos.y = 0.0f;
@@ -1925,29 +2009,25 @@ public:
 			hitBounds.yMax = originPos.y + resultDimInPixels.y - marginInPixels;
 			
 			
-			if (contOnStack) {
-				
-			}
-			else {
-				contOnStack = true;
-				singleton->guiLayers[layer].push_back(&thisUICont);
-				//thisUICont.locked = false;
+			if (layerId == -1) {
+				layerId = singleton->placeInLayer(nodeId, layer);
+				//singleton->guiLayers[layer].push_back(&uiCont);
 			}
 			
 			
-			if (thisUICont.charVec.size() > 0) {
-				thisUICont.charVec.clear();
+			if (uiCont.charVec.size() > 0) {
+				uiCont.charVec.clear();
 			}
 			
 			
 			
-			thisUICont.uiComp = this;
-			thisUICont.bg.hitBounds = hitBounds;
-			thisUICont.bg.cs = NULL;
-			thisUICont.bg.fontId = -1;
+			//uiCont.uiComp = this;
+			uiCont.bg.hitBounds = hitBounds;
+			uiCont.bg.cs = NULL;
+			uiCont.bg.fontId = -1;
 			
 			if (hasBackground) {
-				thisUICont.bg.fontId = 0;
+				uiCont.bg.fontId = 0;
 			}
 			
 		}
@@ -1994,8 +2074,8 @@ public:
 						curChar = atoi(wordVec[i][j].c_str());
 						
 						if (isRendering) {
-							thisUICont.charVec.push_back(Singleton::UIQuad());
-							curQuad = &(thisUICont.charVec.back());
+							uiCont.charVec.push_back(Singleton::UIQuad());
+							curQuad = &(uiCont.charVec.back());
 							curQuad->cs = &(curFontIcons->charVals[ curChar ]);
 							curQuad->fontId = EFW_ICONS;
 							curQuad->hitBounds.xMin = caretPos.x+offsetPos.x;
@@ -2026,8 +2106,8 @@ public:
 							curChar = wordVec[i][j][k];
 							if (isRendering) {
 								
-								thisUICont.charVec.push_back(Singleton::UIQuad());
-								curQuad = &(thisUICont.charVec.back());
+								uiCont.charVec.push_back(Singleton::UIQuad());
+								curQuad = &(uiCont.charVec.back());
 								curQuad->fontId = EFW_TEXT;
 								curQuad->cs = &(curFont->charVals[ curChar ]);
 								curQuad->hitBounds.xMin = caretPos.x+offsetPos.x;
@@ -2064,8 +2144,8 @@ public:
 							
 							if (isRendering) {
 								
-								thisUICont.charVec.push_back(Singleton::UIQuad());
-								curQuad = &(thisUICont.charVec.back());
+								uiCont.charVec.push_back(Singleton::UIQuad());
+								curQuad = &(uiCont.charVec.back());
 								curQuad->fontId = EFW_TEXT;
 								curQuad->cs = &(curFont->charVals[ curChar ]);
 								curQuad->hitBounds.xMin = caretPos.x+offsetPos.x;

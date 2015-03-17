@@ -14,6 +14,10 @@ uniform float volumePitch;
 uniform float volGenSuperMod;
 uniform float holderSizeInPagesLog;
 
+const float SOLID_LAYER = 0.0/255.0;
+const float WATER_LAYER = 1.0/255.0;
+const float AIR_LAYER = 2.0/255.0;
+
 int iVGSM = int(volGenSuperMod+1.0)/2;
 
 varying vec2 TexCoord0;
@@ -96,6 +100,7 @@ vec4 getAO(vec3 tp, vec4 curSamp) { //, vec3 wp
 	float totSteps = 0.0;
 	float totHits = 0.0;
 	float totAir = 0.0;
+	float totWater = 0.0;
 
 	float allHits = 0.0;
 
@@ -128,7 +133,7 @@ vec4 getAO(vec3 tp, vec4 curSamp) { //, vec3 wp
 
 
 					isCurLayer = float(res.r == curSamp.r);
-					isAir = 1.0-isCurLayer;//float(isCurLayer == 0.0); // //res.a*
+					isAir = 1.0-isCurLayer;
 
 
 					
@@ -144,7 +149,8 @@ vec4 getAO(vec3 tp, vec4 curSamp) { //, vec3 wp
 					norm += rvMix * (offVal);
 
 					totHits += rval;
-					totAir += isAir;
+					totAir += float(res.r == AIR_LAYER);
+					totWater += float(res.r == WATER_LAYER);
 					allHits += 1.0;
 					
 
@@ -153,6 +159,10 @@ vec4 getAO(vec3 tp, vec4 curSamp) { //, vec3 wp
 		}
 		
 		aoVal = totAir/allHits;
+		
+		if (curSamp.r == SOLID_LAYER) {
+			aoVal += totWater/allHits;
+		}
 
 	// 	if (totHits == 0.0) {
 	// 		break;
@@ -269,7 +279,7 @@ void main() {
 	
 	vec3 curPos = vec3(0.0);
 	vec3 offsetPos = vec3(0.0);
-	vec3 bestPos = basePos;//vec3(0.0);
+	//vec3 bestPos = basePos;//vec3(0.0);
 	
 	float fi = 0.0;
 	float fj = 0.0;
@@ -287,7 +297,7 @@ void main() {
 	vec3 bestSolid = vec3(0.0);
 	vec3 bestTrans = vec3(0.0);
 	
-	bool foundDif = false;
+	//bool foundDif = false;
 	
 
 	// fk = float(-iVGSM);
@@ -319,21 +329,21 @@ void main() {
 	// 		for (i = -iVGSM; i <= iVGSM; i++) {
 	//			fi = float(i);
 				//offsetPos = vec3(fi,fj,fk);
-				curPos = basePos;// + offsetPos/volumePitch;
-				samp = sampleAtPoint( curPos );
+				// curPos = basePos;// + offsetPos/volumePitch;
+				// samp = sampleAtPoint( curPos );
 				
 				
-				if (samp.r == solidVal) {
-					bestSolid = curPos;
-					foundSolid = true;
-				}
-				if (samp.r == airVal) {
-					foundAir = true;
-				}
-				if (samp.r == transVal) {
-					bestTrans = curPos;
-					foundTrans = true;
-				}
+				// if (samp.r == solidVal) {
+				// 	bestSolid = curPos;
+				// 	foundSolid = true;
+				// }
+				// if (samp.r == airVal) {
+				// 	foundAir = true;
+				// }
+				// if (samp.r == transVal) {
+				// 	bestTrans = curPos;
+				// 	foundTrans = true;
+				// }
 				
 				// if (samp.r != sampOrig.r) {
 				// 	foundDif = true;
@@ -359,22 +369,22 @@ void main() {
 	
 	//vec4 heightMat = blackCol;
 	
-	vec4 normAO = blackCol;
+	//vec4 normAO = blackCol;
 	
-	foundDif = 
-		(foundSolid&&(foundAir||foundTrans)) ||
-		(foundTrans&&(foundAir)); //||foundSolid
+	// foundDif = 
+	// 	(foundSolid&&(foundAir||foundTrans)) ||
+	// 	(foundTrans&&(foundAir)); //||foundSolid
 	
-	if (foundSolid) {
-		bestPos = bestSolid;
-	}
-	else {
-		if (foundTrans) {
-			bestPos = bestTrans;
-		}
-	}
+	// if (foundSolid) {
+	// 	bestPos = bestSolid;
+	// }
+	// else {
+	// 	if (foundTrans) {
+	// 		bestPos = bestTrans;
+	// 	}
+	// }
 	
-	samp = sampleAtPoint( bestPos );
+	//samp = sampleAtPoint( basePos );
 	
 	//vec4 heightMat = samp;
 	//heightMat.g = float(foundDif);
@@ -384,11 +394,9 @@ void main() {
 	//	normAO = getAO(bestPos, samp);
 	//}
 	
-	
-
+	samp = sampleAtPoint( basePos );
 	gl_FragData[0] = samp;
-	gl_FragData[1] = getAO(bestPos, samp);
+	gl_FragData[1] = getAO(basePos, samp);
 	
-
 
 }

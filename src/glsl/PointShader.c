@@ -62,26 +62,36 @@ $
 
 
 
-
+const int rad = 4;
+const float frad = float(rad);
 
 void main() {
 
     vec4 tex0 = texture2D(Texture0, TexCoord0 );
     vec4 tex1 = texture2D(Texture1, TexCoord0 );
-
+    vec4 tex2 = vec4(0.0);
+    vec4 tex3 = vec4(0.0);
+    
+    vec4 oneVec = vec4(1.0);
+    
+    vec4 texf0 = vec4(0.0);
+    vec4 texf1 = vec4(0.0);
 
     int i;
     int j;
-    int rad = 8;
-    int radStep = 2;
-    float frad = float(rad);
+    
     float curRad = 0.0;
     
-    float bestW = 999999.0;
+    float bestW = 0.0;
+    float bestW2 = 0.0;
+    float bestW3 = 0.0;
     vec4 samp = vec4(0.0);
     vec2 tc = vec2(0.0);
     vec2 bestCoord = TexCoord0;
+    vec2 bestCoord2 = TexCoord0;
+    vec2 bestCoord3 = TexCoord0;
     vec2 curCoord = vec2(0.0);
+    vec2 offVal = vec2(0.0);
     vec2 orig = vec2(0.0);
     
     float testW = 0.0;
@@ -91,134 +101,158 @@ void main() {
     float totCount = 0.0;
     
     
-    float boxRad = boxDiam/2.0;
     vec3 worldPos = vec3(0.0);
     
+    // clamp((1.0-samp.w)/0.2,0.0,1.0)
     
-    // /////////////////////
     
     
-    // vec3 rayDirection = vec3(0.0);
-    // vec3 res = vec3(0.0);
-    // vec3 rayStart = vec3(0.0);
-    // float tnear = 0.0;
-    // float tfar = 0.0;
-    // bool didHit = false;
     
-    // rayDirection.xy = 2.0 * gl_FragCoord.xy / bufferDim - 1.0;
-    // rayDirection.z = -focalLength;
-    // rayDirection = (vec4(rayDirection, 0.0) * modelview).xyz;
+    
+    // for (j = -rad; j <= rad; j++ ) {
+    //     tc.y = float(j);
+    //     for (i = -rad; i <= rad; i++ ) {
+    //         tc.x = float(i);
+            
+    //         offVal = tc/bufferDim;
+    //         curCoord = TexCoord0 + offVal;
+    //         samp = texture2D(Texture0,curCoord);
+            
+    //         curRad = length(tc.xy/frad);
+            
+    //         if (curRad < 1.0) {
+    //             if (samp.w > 0.0) {
+    //                 testW = samp.w;
+    //                 if (testW > bestW) {                
+    //                     bestW = testW;
+    //                 }
+    //             }
+    //         }
+            
+            
+            
+            
+            
+    //     }  
+    // }
+    
+    // float closestW = bestW;
+    
+    
+    
+    // bestW = 0.0;
+    // testW = 0.0;
+    
+    // int newRad = 
+    // int(mix(
+    //     8.0,
+    //     0.0,
+    //     clamp(
+    //         (1.0-closestW)/0.6,
+    //         0.0,
+    //         1.0
+    //     )
+    // ));
+    // //rad;
+    
+    // float fNewRad = float(newRad);
+    
+    vec4 avgVal0 = vec4(0.0);
+    vec4 avgVal1 = vec4(0.0);
+    float totVal = 0.0;
+    
+    for (j = -rad; j <= rad; j++ ) {
+        tc.y = float(j);
+        for (i = -rad; i <= rad; i++ ) {
+            tc.x = float(i);
+            
+            offVal = tc/bufferDim;
+            curCoord = TexCoord0 + offVal;
+            
+            samp = texture2D(Texture0,curCoord);
+            
+            //curRad = length(tc.xy/frad);
+            // if (curRad < 1.0) {
+            //     if (samp.w >= closestW-0.001) {
+                    
+            //         testW = (1.0-curRad);//samp.w*mix(1.0,0.9999,curRad);
 
-    // Ray eye = Ray( cameraPos, normalize(rayDirection) );
-    // AABB aabb;// = AABB(worldPos-boxRad, worldPos+boxRad);
-
-    // // aabb.Min = worldPos-boxRad;
-    // // aabb.Max = worldPos+boxRad;
-    // // res = IntersectBox(eye, aabb);
-    // // tnear = max(res.x,0.0);
-    // // tfar = res.y;
-    // // didHit = bool(res.z);
-    // // rayStart = eye.Origin + eye.Dir * tnear;
-    
-    
-    // // vec3 rayStop = eye.Origin + eye.Dir * tfar;
-    
-    // // // Transform from object space to texture coordinate space:
-    // // rayStart = 0.5 * (rayStart + 1.0);
-    // // rayStop = 0.5 * (rayStop + 1.0);
-    
-    
-    
-    
-    
-    // /////////////////////
-    
-    
-    
-    
-    
-    
-    
-    
-    if (tex0.w == 0.0) {
-        for (j = -rad; j <= rad; j+=radStep ) {
-            tc.y = float(j);
-            for (i = -rad; i <= rad; i+=radStep ) {
-                tc.x = float(i);
-                
-                curCoord = TexCoord0 + tc/bufferDim;
-                
-                samp = texture2D(Texture0,curCoord);
-                
-                worldPos = samp.xyz;
-                //pSize = (samp.w)*2.0;//(heightOfNearPlane) / (samp.w); //heightOfNearPlane
-                curRad = length(tc.xy);
-                
-                
-                
-                if (samp.w != 0.0) {
-                    // aabb.Min = worldPos-boxRad;
-                    // aabb.Max = worldPos+boxRad;
-                    // res = IntersectBox(eye, aabb);
-                    // tnear = max(res.x,0.0);
-                    // tfar = res.y;
-                    // didHit = bool(res.z);
-                    // rayStart = eye.Origin + eye.Dir * tnear;
-                    // vec3 rayStop = eye.Origin + eye.Dir * tfar;
-                    
-                    // // // Transform from object space to texture coordinate space:
-                    // rayStart = 0.5 * (rayStart + 1.0);
-                    // rayStop = 0.5 * (rayStop + 1.0);
-                    
-                    testW = distance(cameraPos,worldPos);
-                    
-                    //if (res.z != 0.0) {
-                        //testW = distance(rayStart,TexCoord0); //tnear;//distance(rayStart,cameraPos);
+            //         if (testW > bestW) {
                         
-                        if ((testW < bestW)) { //&&(curRad < samp.w)
-                        //if (didHit) {
-                            bestW = testW;
-                            bestCoord = curCoord;
-                        }
-                    //}
+            //             bestW2 = bestW;
+            //             bestCoord2 = bestCoord;
+                        
+            //             bestW = testW;
+            //             bestCoord = curCoord;
+            //         }
+            //         else {
+            //             if (testW > bestW2) {
+            //                 bestW2 = testW;
+            //                 bestCoord2 = curCoord;
+            //             }
+            //         }
                     
-                    
-                    
-                }
-                
-                
-                
-                
-                
-                
-                //pSize = (heightOfNearPlane*0.01) * samp.w;
-                
-                // w approaches 1.0 as it gets closer to camera
-                
-                //testW = samp.w - distance(tc,orig)*0.1/frad;// + (1.0-distance(tc,orig)/frad )*0.01;///abs(samp.w-tex0.w);// + (1.0-distance(tc,orig)/frad )*samp.w;
-                
-                //airCount += float(samp.w == 0.0);
-                //totCount += 1.0;
-                
-                
-            }  
-        }
+            //     }
+            // }
+            
+            if (samp.w > 0.0) {
+                totVal += 1.0;
+                avgVal0 += samp;
+                avgVal1 += texture2D(Texture1,curCoord);
+            }
+            
+            
+            
+            //airCount += float(samp.w == 0.0);
+            //totCount += 1.0;
+            
+            
+        }  
     }
     
     
+    // if (bestW2 == 0.0) {
+    //     bestCoord2 = bestCoord;
+    // }
+    
+    // float d1 = distance(TexCoord0,bestCoord);
+    // float d2 = distance(TexCoord0,bestCoord2);
+    
+    // float lerpVal = clamp(d1/(d1+d2),0.0,1.0);
+    
+    // tex0 = texture2D(Texture0,bestCoord);
+    // tex1 = texture2D(Texture1,bestCoord);
+    
+    // tex2 = texture2D(Texture0,bestCoord2);
+    // tex3 = texture2D(Texture1,bestCoord2);
+    
+    
+    // texf0 = mix(tex0,tex2,lerpVal);
+    // texf1 = mix(tex1,tex3,lerpVal);
+    
+    if (totVal == 0.0) {
+        texf0 = tex0;
+        texf1 = tex1;
+    }
+    else {
+        texf0 = avgVal0/totVal;
+        texf1 = avgVal1/totVal;
+        texf1.xyz = normalize(texf1.xyz);
+        texf1.w = tex1.w;
+    }
+    
+   
+    
+    // if (dot(abs(texf1.xyz),oneVec.xyz) != 0.0) {
+    //     texf1.xyz = normalize(texf1.xyz);
+    // }
     
     
     
-
-    tex0 = texture2D(Texture0,bestCoord);
-    tex1 = texture2D(Texture1,bestCoord);
     
     
-    
-    
-    
-    gl_FragData[0] = tex0;
-    gl_FragData[1] = tex1;
+    gl_FragData[0] = texf0;
+    gl_FragData[1] = texf1;
 
 
 }

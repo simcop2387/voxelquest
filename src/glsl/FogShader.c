@@ -1,3 +1,5 @@
+#version 120
+
 // pages fbo
 uniform sampler2D Texture0;
 uniform sampler2D Texture1;
@@ -15,7 +17,11 @@ uniform sampler2D Texture5;
 // pal fbo
 uniform sampler3D Texture6;
 
+// wave fbo
+uniform sampler2D Texture7;
 
+uniform float curTime;
+uniform float bestObjInd;
 uniform float seaLevel;
 uniform float timeOfDay;
 uniform vec2 bufferDim;
@@ -23,6 +29,15 @@ uniform vec2 resolution;
 uniform vec3 cameraPos;
 uniform vec3 lookAtVec;
 //uniform vec4 fogPos;
+
+vec3 dirVecs[6] = vec3[](
+                                         vec3( 1.0,  0.0, 0.0 ), // right
+                                         vec3( -1.0, 0.0, 0.0 ), // left
+                                         vec3( 0.0, 1.0, 0.0 ), // up
+                                         vec3( 0.0, -1.0, 0.0 ), // down
+                                         vec3( 0.0, 0.0, 1.0 ), // above
+                                         vec3( 0.0, 0.0, -1.0 ) // below
+                                     );
 
 ^INCLUDE:MATERIALS^
 //const float TEX_WATER = 32.0/255.0;
@@ -72,50 +87,6 @@ vec3 getFogColor(vec2 lv)
         timeOfDay
     );
     
-    // float lvBase = (lv-0.5)*0.65 + 0.5;
-    
-    // float newlv = clamp( 1.0 - pow( (lvBase - 0.5) * 2.0, 2.0 ), 0.0, 1.0);
-    // float newlv2 = clamp( 1.0 - pow( (lvBase - 0.5) * 4.0 - 1.0, 2.0 ), 0.0, 1.0);
-
-    // vec3 fogColor1 = vec3(0.0);
-    // vec3 fogColor2 = vec3(0.0);
-
-    // // 0: moon is high, 1: sun is high
-
-    // float timeLerp = 0.0;
-
-    // if (timeOfDay < 0.5)
-    // {
-    //     timeLerp = timeOfDay * 2.0;
-
-    //     fogColor1 = mix(
-    //                                 vec3(0.0, 0.0, 0.05),
-    //                                 vec3(0.3, 0.1, 0.05),
-    //                                 timeLerp
-    //                             );
-    //     fogColor2 = mix(
-    //                                 vec3(0.025, 0.0, 0.1),
-    //                                 vec3(1.0, 0.8, 0.7),
-    //                                 timeLerp
-    //                             );
-    // }
-    // else
-    // {
-    //     timeLerp = (timeOfDay - 0.5) * 2.0;
-
-    //     fogColor1 = mix(
-    //                                 vec3(0.3, 0.1, 0.05),
-    //                                 vec3(0.05, 0.1, 0.3),
-    //                                 timeLerp
-    //                             );
-    //     fogColor2 = mix(
-    //                                 vec3(1.0, 0.8, 0.7),
-    //                                 vec3(0.7, 0.8, 1.0),
-    //                                 timeLerp
-    //                             );
-    // }
-
-    // return mix(fogColor1, fogColor2, newlv ) + pow(newlv2, 4.0) * timeLerp / 4.0;
 }
 
 void main() {
@@ -126,10 +97,11 @@ void main() {
     vec4 tex2 = texture2D(Texture2, TexCoord0.xy);
     vec4 tex3 = texture2D(Texture3, TexCoord0.xy);
     
-    // vec4 tex4 = texture2D(Texture4, TexCoord0.xy);
-    // vec4 tex5 = texture2D(Texture5, TexCoord0.xy);
-    // vec4 tex6 = texture2D(Texture6, TexCoord0.xy);
-    // vec4 tex7 = texture2D(Texture7, TexCoord0.xy);
+    
+    vec4 tex4 = texture2D(Texture4, TexCoord0.xy);
+    
+    vec4 tex7 = texture2D(Texture7, TexCoord0.xy);
+    
 
     
     vec4 oneVec = vec4(1.0);
@@ -150,6 +122,9 @@ void main() {
     // }
     
     vec4 worldPosition = tex0;
+    
+    worldPosition.w = max(tex0.w,tex4.w);
+    
     float baseHeight = worldPosition.w;
     
     
@@ -223,10 +198,10 @@ void main() {
                 0.0,
                 2.0,
                 (1.0-worldPosition.w) + mix(0.0,0.25,isUW)
-            ),
+            ) - tex7.a*0.1,
             0.0,
             1.0
-        ),2.0);
+        ),1.0);
         
 
     vec3 lightMod = pow( (1.0-timeOfDay)*tex3.rgb, vec3(2.0) );
@@ -236,46 +211,81 @@ void main() {
     vec3 finalCol = mix(tex2.rgb,tex3.rgb,hfog); // increase hfog for more blur
 
 
-    
-
     finalCol = mix(
         finalCol,
         fogColor, 
         hfog*mix(1.0,0.75,isUW)
     ) + lightMod*2.0*(hfog);
     
-    if (isUW == 1.0) {
+    if (cameraPos.z < seaLevel) {
         finalCol.rgb = 
         
             
-            
-            
             mix(
-                
+                finalCol.rgb,
                 mix(
-                    finalCol.rgb,
-                    dot(finalCol.rgb,oneVec.rgb)*vec3(0.15,0.3,1.0),
-                    0.5
-                )*0.75,
-                mix(
-                    finalCol.rgb,
-                    dot(finalCol.rgb,oneVec.rgb)*vec3(0.0,0.1,0.3),
-                    0.95
-                )*0.5,
-                
-                clamp((seaLevel-worldPosition.z)/(2048.0)*float(worldPosition.w != 0.0),0.0,1.0)       
+                    
+                    mix(
+                        finalCol.rgb,
+                        dot(finalCol.rgb,oneVec.rgb)*vec3(0.15,0.3,1.0),
+                        0.5
+                    )*0.75,
+                    mix(
+                        finalCol.rgb,
+                        dot(finalCol.rgb,oneVec.rgb)*vec3(0.1,0.2,0.5),
+                        0.95
+                    )*0.5,
+                    
+                    pow(clamp((seaLevel-worldPosition.z)/(2048.0)*float(worldPosition.w != 0.0),0.0,1.0),0.5)       
+                ),
+               clamp((seaLevel-worldPosition.z)/(512.0),0.0,1.0)*0.5+0.5
             );
-            
-            
-            
-        
-
     }
+    
+    
+
+    
+    int i;
+    bool isOutline = false;
+    bool isSelObj = false;
+    vec2 newTC = vec2(0.0);
+    vec4 samp = vec4(0.0);
+    if (tex5.w == bestObjInd) {
+        isSelObj = true;
+    }
+    for (i = 0; i < 4; i++) {
+        newTC = TexCoord0.xy + dirVecs[i].xy*1.0/bufferDim;
+        samp = texture2D(Texture5, newTC );
+        if (samp.w != tex5.w) {
+            isOutline = true;
+        }
+        if (samp.w == bestObjInd) {
+            isSelObj = true;
+        }
+    }
+    
+    if (bestObjInd == 0) {
+        isSelObj = false;
+    }
+    if (isOutline) {
+        
+        if (isSelObj) {
+            finalCol.rgb += vec3(1.0,1.0,0.0)*(0.5+0.5*abs(sin(curTime/200.0)));
+        }
+        else {
+            finalCol.rgb -= vec3(1.0,1.0,1.0)*0.5;
+        }
+        
+        
+    }
+    
     
 
     if (valIsGeom) {
         finalCol = tex2.rgb;
     }
+    
+    //finalCol = tex7.aaa;
 
     gl_FragData[0] = vec4(finalCol,1.0);
 

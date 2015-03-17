@@ -85,7 +85,6 @@ public:
   };
   struct UICont
   {
-    UIComponent * uiComp;
     UIQuad bg;
     std::vector <UIQuad> charVec;
   };
@@ -95,8 +94,12 @@ public:
   };
   struct UICStruct
   {
-    UIComponent * uic;
     int nodeId;
+  };
+  struct CompStruct
+  {
+    bool isValid;
+    UIComponent * data;
   };
   struct CompareStruct
   {
@@ -178,6 +181,20 @@ public:
   bool doPageRender;
   bool markerFound;
   bool editPose;
+  bool isDraggingObject;
+  int (entIdToIcon) [MAX_OBJ_TYPES];
+  int (iconToEntId) [MAX_OBJ_TYPES];
+  bool (isContainer) [MAX_OBJ_TYPES];
+  int currentTick;
+  int draggingFromInd;
+  int draggingToInd;
+  int draggingFromType;
+  int draggingToType;
+  int maxHolderDis;
+  int gameObjCounter;
+  int lastObjectCount;
+  int lastObjInd;
+  int bestObjInd;
   int fieldCallback;
   int mouseState;
   int lastW;
@@ -242,6 +259,7 @@ public:
   int volGenSuperRes;
   int matVolSize;
   int escCount;
+  int lastNodeId;
   int * cdBuffer;
   intPair (entIdArr) [1024];
   uint palWidth;
@@ -295,8 +313,10 @@ public:
   float * matCountArr;
   float * paramArrMap;
   float (clipDist) [2];
+  float MAX_TRAVEL_DIS;
   double lastMoveTime;
   double curTime;
+  double clickTime;
   double lastTime;
   double mdTime;
   double muTime;
@@ -304,19 +324,20 @@ public:
   GameOrgNode * selectedNode;
   GameOrgNode * lastSelNode;
   GameOrgNode * activeNode;
+  FIVector4 (dirVecs) [6];
   FIVector4 targetCameraPos;
   FIVector4 lastCellPos;
   FIVector4 worldMarker;
   FIVector4 lookAtVec;
-  FIVector4 targetLookAtVec;
   FIVector4 baseCameraPos;
   FIVector4 cameraPosAdjusted;
   FIVector4 baseScrollPos;
   FIVector4 worldSizeInPixels;
   FIVector4 mouseUpPD;
+  FIVector4 mouseUpOPD;
   FIVector4 spaceUpPD;
   FIVector4 mouseDownPD;
-  FIVector4 mouseObjPD;
+  FIVector4 mouseDownOPD;
   FIVector4 mouseMovePD;
   FIVector4 tempVec1;
   FIVector4 tempVec2;
@@ -333,6 +354,7 @@ public:
   floatAndIndex (indexArr) [125];
   FIVector4 mouseStart;
   FIVector4 mouseEnd;
+  FIVector4 mouseMoveVec;
   FIVector4 mapFreqs;
   FIVector4 mapAmps;
   FIVector4 * mouseMoving;
@@ -348,7 +370,7 @@ public:
   FIVector4 modXYZ;
   FIVector4 matVolDim;
   uint * matVol;
-  std::vector <UICont*> (guiLayers) [MAX_UI_LAYERS];
+  std::vector <int> (guiLayers) [MAX_UI_LAYERS];
   std::vector <RotationInfo> rotMatStack;
   std::vector <DynObject *> dynObjects;
   PathHolder charPathHolder;
@@ -367,8 +389,8 @@ public:
   Image * imageHM0;
   Image * imageHM1;
   Image * cloudImage;
-  GameEnt baseEnt;
-  GameEnt * currentActor;
+  BaseObj * currentActor;
+  BaseObj baseObj;
   GamePlant * (gamePlants) [E_PT_LENGTH/2];
   Shader * curShaderPtr;
   string currentFieldString;
@@ -380,7 +402,8 @@ public:
   string guiSaveLoc;
   PoolManager * gpuPool;
   PoolManager * entityPool;
-  vector <UIComponent*> compStack;
+  vector <CompStruct> compStack;
+  vector <int> emptyStack;
   vector <string> splitStrings;
   vector <string> shaderStrings;
   vector <string> shaderTextureIds;
@@ -411,6 +434,7 @@ public:
   Timer scrollTimer;
   Timer moveTimer;
   GameWorld * gw;
+  GameAI * gameAI;
   float (lightArr) [MAX_LIGHTS * 16];
   int numLights;
   bool multiLights;
@@ -421,23 +445,36 @@ public:
   GameGUI * mainGUI;
   UIComponent * mapComp;
   UIComponent * mainMenu;
+  UIComponent * contMenu;
+  UIComponent * contMenuBar;
   UIComponent * ddMenu;
+  UIComponent * ddMenuBar;
   UIComponent * fieldMenu;
   UIComponent * fieldText;
   FontWrapper * (fontWrappers) [EFW_LENGTH];
   GameMusic * (music) [EML_LENGTH];
   map <string, GameSound> soundMap;
   map <string, StyleSheet> styleSheetMap;
-  map <string, JSONStruct> internalJSON;
   map <string, JSONStruct> externalJSON;
   Singleton ();
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
+  int placeInStack ();
+  int placeInLayer (int nodeId, int layer);
+  void initAllMatrices ();
+  int numberIcons (int pCurCount, int x1, int y1, int x2, int y2);
   void prepSound (string soundName);
   void playSoundPosAndPitch (string soundName, FIVector4 * listenerPos, FIVector4 * soundPos, float variance = 0.0f, float volume = 1.0f);
   void playSound (string soundName, float volume = 1.0f);
   void playSoundEvent (char const * eventName, bool suppress = false);
-  void setCurrentActor (GameEnt * ge);
+  void setCurrentActor (BaseObj * ge);
   void updateMatVol ();
+  int getRandomContId ();
+  int getRandomNPCId ();
+  int getRandomMonsterId ();
+  int getRandomObjId ();
+  void fillWithRandomObjects (int parentUID, int gen);
+  void performDrag ();
+  void placeNewEnt (int et);
   void dispatchEvent (int button, int state, float x, float y, UIComponent * comp, bool automated = false, bool preventRefresh = false);
   StyleSheet * getNewStyleSheet (string ssName);
   void initStyleSheet ();
@@ -450,7 +487,7 @@ public:
   void drawLine (FIVector4 * p0, FIVector4 * p1);
   void drawCubeCentered (FIVector4 * originVec, float radius);
   void drawBoxUp (FIVector4 originVec, float radiusX, float radiusY, float diamZ);
-  void drawBox (FIVector4 * minVec, FIVector4 * maxVec, int faceFlag = 2);
+  void drawBox (FIVector4 * v0, FIVector4 * v1, int faceFlag = 2);
   void getMaterialString ();
   void refreshIncludeMap ();
   void doShaderRefresh (bool doBake);
@@ -465,7 +502,7 @@ public:
   FBOWrapper * getFBOWrapper (string fboName, int offset);
   void copyFBO (string src, string dest, int num = 0);
   void copyFBO2 (string src, string dest);
-  void bindFBO (string fboName, int swapFlag = -1);
+  void bindFBO (string fboName, int swapFlag = -1, int doClear = 1);
   void unbindFBO ();
   void bindShader (string shaderName);
   void unbindShader ();
@@ -520,6 +557,8 @@ public:
   void setCameraToElevation ();
   void processSpecialKeys (int key, int _x, int _y);
   void updateCS ();
+  void playBump (BaseObj * ge);
+  void getMarkerPos (int x, int y);
   void processInput (unsigned char key, bool keyDown, int x, int y);
   void keyboardUp (unsigned char key, int _x, int _y);
   void keyboardDown (unsigned char key, int _x, int _y);
@@ -529,15 +568,22 @@ public:
   void makeDirty ();
   void setSelNode (GameOrgNode * newNode);
   void worldToScreenBase (FIVector4 * sc, FIVector4 * wc);
+  void refreshContainers (bool onMousePos);
+  void toggleCont (int contIndex, bool onMousePos);
   float getShortestAngle (float begInRad, float endInRad, float amount);
   void handleMovement ();
   bool anyMenuVisible ();
   void mouseClick (int button, int state, int _x, int _y);
   void resetActiveNode ();
-  void updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS);
+  bool updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS);
   void findNearestOrgNode (GameOrgNode * curNode, FIVector4 * mousePosWS);
   void getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit);
-  JSONValue * fetchJSONData (string dataFile);
+  void closeAllContainers ();
+  bool anyContainerOpen ();
+  void cleanJVPointer (JSONValue * * jv);
+  void getObjectData ();
+  string getStringForObjectId (int objectId);
+  JSONValue * fetchJSONData (string dataFile, JSONValue * params = NULL);
   bool processJSONFromString (string * sourceBuffer, JSONValue * * destObj);
   bool processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONValue * * destObj);
   bool loadJSON (string path, JSONValue * * destObj);
@@ -545,7 +591,7 @@ public:
   float getGUIValue (string key);
   UIComponent * getGUIComp (string key);
   void setGUIValue (string key, float floatValue, bool dispatchEvent = false, bool preventRefresh = false);
-  void loadGUIValues (bool applyValues = false);
+  void loadValuesGUI (bool applyValues = false);
   void saveExternalJSON ();
   void saveGUIValues ();
   void updateGUI ();
@@ -730,8 +776,7 @@ private:
   std::vector <int> _floatingChildren;
 public:
   Singleton * singleton;
-  Singleton::UIQuad thisUIQuad;
-  Singleton::UICont thisUICont;
+  Singleton::UICont uiCont;
   string uid;
   string ss;
   string text;
@@ -746,9 +791,10 @@ public:
   int index;
   int fillDir;
   int layer;
+  int layerId;
   int hoverType;
   int guiClass;
-  Singleton::UIQuad * curQuad;
+  bool forceDragUpdate;
   bool selected;
   bool foundParent;
   bool foundValuePtr;
@@ -775,7 +821,6 @@ public:
   FontWrapper * curFont;
   FontWrapper * curFontIcons;
   bool dragging;
-  bool contOnStack;
   bool overChild;
   bool overSelf;
   bool singleLine;
@@ -800,6 +845,7 @@ public:
   StyleSheetResult resSS;
   UIComponent ();
   void init (Singleton * _singleton, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, bool _isFloating, string * stringVals, double * floatVals);
+  void clearChildren ();
   UIComponent * getChild (int ind);
   UIComponent * getFloatingChild (int ind);
   int getChildCount ();
@@ -821,7 +867,7 @@ public:
   UIComponent * findNodeByString (string _uid);
   float getMinWidth ();
   float getMinHeight ();
-  int addChild (int _parentId, int _nodeId, string * stringVals, double * floatVals, bool _isFloating, JSONValue * _jvNodeNoTemplate);
+  int addChild (int _lastIndex, int _parentId, string * stringVals, double * floatVals, bool _isFloating, JSONValue * _jvNodeNoTemplate);
   void setOrigPos ();
   void applyHeight ();
   void applyWidth ();
@@ -866,16 +912,18 @@ public:
   bool isLoaded;
   fVector2 mouseTrans;
   int guiRenderCount;
-  int nodeCount;
   vector <UIComponent*> dirtyVec;
   string (tempStrings) [10];
   string (stringVals) [E_GST_LENGTH];
   double (floatVals) [E_GFT_LENGTH];
   GameGUI ();
   void init (Singleton * _singleton);
-  bool compChildStr (string childStr);
   JSONValue * findNearestKey (JSONValue * jv, string key);
-  void addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating = false);
+  void addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, bool isFloating = false);
+  void deleteJSONNodes (JSONValue * jv);
+  void clearRenderOrder ();
+  void deleteNodes (UIComponent * curNode);
+  void refreshNode (UIComponent * oldNode);
   void guiFromJSON (JSONValue * jv);
   void doRefresh ();
   void testOver (int x, int y);
@@ -887,10 +935,51 @@ public:
   void runReport ();
   void renderGUI (int activeFBO);
 };
-LZZ_INLINE bool GameGUI::compChildStr (string childStr)
-                                                  {
-		return tempStrings[E_GDS_CHILD_TYPE].compare(childStr) == 0;
-	}
+#undef LZZ_INLINE
+#endif
+// f00335_gameai.e
+//
+
+#ifndef LZZ_f00335_gameai_e
+#define LZZ_f00335_gameai_e
+#define LZZ_INLINE inline
+class GameAI
+{
+public:
+  Singleton * singleton;
+  std::vector <intVec> tokenToRules;
+  std::vector <VToken> intToVToken;
+  std::vector <VNode*> tokenIndexToVar;
+  std::vector <AssignStruct> assignStack;
+  map <string,int> stringToVTokenIndex;
+  string tempVarStr;
+  VNode * kbCompiled;
+  VNode * qbCompiled;
+  JSONValue * jvKB;
+  GameAI ();
+  void init (Singleton * _singleton);
+  string getResolvedString (VNode * tempNode);
+  bool setEqualTo (VNode * destNodeFinal, VNode * srceNodeFinal, int curGen);
+  void rollBack (int curGen);
+  bool attemptUnify (VNode * nodeToUnify, VNode * testNode, int curGen);
+  VNode * drillDown (VNode * curVar);
+  bool testEqual (VNode * testNode);
+  bool isBetween (VNode * testNode);
+  bool searchToUnify (VNode * nodeToUnifyBase, int curGen, int curOffset = 0);
+  void printChain (VNode * curVar);
+  void runQueries ();
+  bool compileVocab (JSONValue * uncompiledNode, VNode * curVNode);
+  bool checkVocab (JSONValue * jv);
+  void buildRule (VNode * curNode, int ruleNumber, bool isIfThen);
+  void buildRuleSet (VNode * curNode);
+  void numberRule (VNode * curNode, int ruleNumber);
+  int numberRuleSet (VNode * curNode, int offset);
+  void printRule (VNode * curNode, int offset);
+  void printRuleSet (VNode * curNode);
+  bool parseKB ();
+  void traceRules ();
+  void getKB ();
+};
 #undef LZZ_INLINE
 #endif
 // f00338_gameorgnode.e
@@ -1079,9 +1168,9 @@ public:
   void addGeom (bool justTesting);
   void getVoroPoints ();
   void addAllGeom ();
-  void generateVolume (bool dd = false);
+  bool generateVolume (bool dd = false);
   int getIndex (int i, int j, int k, int p);
-  void getPoints (int fboNum);
+  bool getPoints (int fboNum);
   ~ GamePage ();
 };
 #undef LZZ_INLINE
@@ -1130,7 +1219,7 @@ public:
   GamePage * getPageAtCoordsLocal (int x, int y, int z, bool createOnNull = false);
   void refreshGeom ();
   void clearSet ();
-  int passiveRefresh ();
+  int passiveRefresh (int * renderCount);
   void refreshChildren (bool refreshImmediate, bool clearEverything = false, bool refreshUnderground = false);
   void addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVector4 * _p1, FIVector4 * _p2, FIVector4 * _rad, FIVector4 * _cornerRad, FIVector4 * _visInsetFromMin, FIVector4 * _visInsetFromMax, FIVector4 * _powerVals, FIVector4 * _powerVals2, FIVector4 * _thickVals, FIVector4 * _matParams, FIVector4 * _centerPoint, FIVector4 * _anchorPoint, int _minRot, int _maxRot);
   void addNewLinesGeom (GameOrgNode * curNode, float scale);
@@ -1270,6 +1359,7 @@ public:
   int mapSwapFlag;
   int visPageSizeInUnits;
   int blockSizeInHolders;
+  int renderCount;
   int iBlockSize;
   int renderMethod;
   int iBufferSize;
@@ -1315,10 +1405,13 @@ public:
   int visFlagO;
   int activeFBO;
   bool noiseGenerated;
+  std::vector <GamePageHolder*> loadStack;
   std::vector <coordAndIndex> roadCoords;
   std::vector <GamePageHolder *> holdersToRefresh;
   std::vector <int> ocThreads;
-  std::vector <GameEnt> gameActors;
+  map <BaseObjType, BaseObj> gameObjects;
+  vector <BaseObjType> visObjects;
+  vector <ObjDef> objDefs;
   float ppCell;
   FIVector4 lScreenCoords;
   FIVector4 cScreenCoords;
@@ -1329,6 +1422,7 @@ public:
   FIVector4 entMax;
   FIVector4 camPagePos;
   FIVector4 camHolderPos;
+  FIVector4 camHolderPosOrig;
   FIVector4 camBlockPos;
   FIVector4 iPixelWorldCoords;
   FIVector4 pagePos;
@@ -1370,6 +1464,7 @@ public:
   GameBlock * * blockData;
   FBOWrapper * curFBO;
   FBOWrapper * curFBO2;
+  BaseObjType lastHitObjUID;
   GameWorld ();
   void init (Singleton * _singleton);
   GameBlock * getBlockAtCoords (int xInBlocks, int yInBlocks, bool createOnNull = false);
@@ -1378,7 +1473,7 @@ public:
   GamePageHolder * getHolderAtId (intPair id);
   GameBlock * getBlockAtId (int id);
   GamePage * getPageAtIndex (int ind);
-  int getCellAtCoords (FIVector4 * coords);
+  int getCellAtCoords (int xv, int yv, int zv);
   GamePage * getPageAtCoords (int x, int y, int z, bool createOnNull = false);
   bool checkBounds (int k, int km);
   void update ();
@@ -1399,10 +1494,12 @@ public:
   int findAIPathRBT (PathHolder * pathHolder, PathNode * blockAndIndex, float _pathSlack);
   void drawPathLine (PathHolder * curPath, int r, int g, int b, float lw, float zoff);
   void drawAIPath (PathHolder * pathHolder, PathHolder * splitPathHolder);
-  void makeFall (GameEnt * ge);
-  void moveCell (GameEnt * ge, int x, int y, int z);
-  void moveCellRotated (GameEnt * ge, int dirMod);
-  int testHit (GameEnt * ge);
+  void makeFall (BaseObj * ge);
+  bool rotateCell (BaseObj * ge, int dir, int axis);
+  bool moveCell (BaseObj * ge, int x, int y, int z);
+  void removeVisObject (int _uid);
+  void moveCellRotated (BaseObj * ge, int dirMod);
+  int testHit (BaseObj * ge);
   void renderGeom ();
   void modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushAction);
   float weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean);

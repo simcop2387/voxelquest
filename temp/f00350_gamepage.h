@@ -273,7 +273,7 @@ void GamePage::addEntityGeom (bool justTesting)
 		int n;
 		int p;
 		int ind;
-		int bufSize = (singleton->visPageSizeInPixels * singleton->bufferMult);
+		//int bufSize = (singleton->visPageSizeInPixels * singleton->bufferMult);
 		int geomInPage;
 		int baseInd;
 
@@ -309,7 +309,7 @@ void GamePage::addEntityGeom (bool justTesting)
 
 				if (
 
-					FIVector4::intersect( gg->getVisMinInPixelsT(), gg->getVisMaxInPixelsT(), &worldMinBufInPixels, &worldMaxBufInPixels )
+					FIVector4::intersectInt( gg->getVisMinInPixelsT(), gg->getVisMaxInPixelsT(), &worldMinBufInPixels, &worldMaxBufInPixels )
 					&& (gg->visible)
 
 				) {
@@ -374,7 +374,7 @@ void GamePage::addGeom (bool justTesting)
 		int n;
 		int p;
 		int ind;
-		int bufSize = (singleton->visPageSizeInPixels * singleton->bufferMult);
+		//int bufSize = (singleton->visPageSizeInPixels * singleton->bufferMult);
 		intPair curId;
 		int geomInPage;
 		int baseInd;
@@ -393,8 +393,8 @@ void GamePage::addGeom (bool justTesting)
 		start.copyFrom( &worldMinBufInPixels );
 		end.copyFrom( &worldMaxBufInPixels );
 
-		start.addXYZ(-bufSize);
-		end.addXYZ(bufSize);
+		//start.addXYZ(-bufSize);
+		//end.addXYZ(bufSize);
 
 		start.intDivXYZ(singleton->holderSizeInPixels);
 		end.intDivXYZ(singleton->holderSizeInPixels);
@@ -429,7 +429,7 @@ void GamePage::addGeom (bool justTesting)
 
 							if (
 
-								FIVector4::intersect( gg->getVisMinInPixelsT(), gg->getVisMaxInPixelsT(), &worldMinBufInPixels, &worldMaxBufInPixels )
+								FIVector4::intersectInt( gg->getVisMinInPixelsT(), gg->getVisMaxInPixelsT(), &worldMinBufInPixels, &worldMaxBufInPixels )
 								&& (gg->visible)
 
 							) {
@@ -649,8 +649,11 @@ void GamePage::addAllGeom ()
 			
 		}
 	}
-void GamePage::generateVolume (bool dd)
+bool GamePage::generateVolume (bool dd)
                                              {
+		
+		bool addedVerts = false;
+		
 		PAGE_COUNT++;
 
 		int curVGFBO = CUR_VG_FBO;
@@ -877,26 +880,28 @@ void GamePage::generateVolume (bool dd)
 		
 		if (didRender) {
 			
-			getPoints(curVGTFBO);
+			addedVerts = getPoints(curVGTFBO);
 			
 		}
 		
 		isDirty = false;
 		isRendering = false;
+		
+		return addedVerts;
 
 	}
 int GamePage::getIndex (int i, int j, int k, int p)
                                                  {
 		return (i + j*p + k*p*p);
 	}
-void GamePage::getPoints (int fboNum)
+bool GamePage::getPoints (int fboNum)
                                    {
 		
 		int sres = singleton->volGenSuperRes;
 		int sresM1 = sres-1;
 		float fres = sres;
 		
-		
+		bool addedVerts = false;
 		
 		
 		int cellsPerPage = singleton->cellsPerPage;
@@ -971,7 +976,6 @@ void GamePage::getPoints (int fboNum)
 		bool doProc;
 		bool hasAir = false;
 		bool hasSolid = false;
-		bool hasSolidAndAir = false;
 		
 		
 		
@@ -1002,7 +1006,7 @@ void GamePage::getPoints (int fboNum)
 		
 		
 		// determine collision matrix
-		if (hasSolid||hasSolidAndAir) {
+		if (hasSolid) {
 			if (cellData == NULL) {
 				cellData = new int[cellDataSize];
 			}
@@ -1069,7 +1073,7 @@ void GamePage::getPoints (int fboNum)
 		
 		
 		
-		if ( (hasAir&&hasSolid)||(hasSolidAndAir) ) {
+		if ( hasAir&&hasSolid ) {
 			
 		}
 		else {
@@ -1147,7 +1151,7 @@ void GamePage::getPoints (int fboNum)
 								q = fbow0->getPixelAtIndex3DMip(ind,R_CHANNEL,mval,p);
 								
 								if (q < E_LAYER_NULL) {
-									isCand = fbow1->getPixelAtIndex3DMip(ind,A_CHANNEL,mval,p) != 0;
+									isCand = (fbow1->getPixelAtIndex3DMip(ind,A_CHANNEL,mval,p) != 0);
 									
 									
 									
@@ -1245,6 +1249,8 @@ void GamePage::getPoints (int fboNum)
 											vertices[ci].data.push_back(bpZ);
 											vertices[ci].data.push_back(1.0f);
 											
+											addedVerts = true;
+											
 											//totalPointCount++;
 											
 											//getPixVal(fbow0,fbow1,ind, bpX,bpY,bpZ, iv0,iv0,iv0);
@@ -1292,14 +1298,7 @@ void GamePage::getPoints (int fboNum)
 		
 DO_CLEANUP:
 
-	;
-	
-	
-	// if (vertices[0].data.size() > 0) {
-	// 	if (isEntity) {
-	// 		cout << "RENDER ENT\n";
-	// 	}
-	// }
+	return addedVerts;
 	
 		
 	}

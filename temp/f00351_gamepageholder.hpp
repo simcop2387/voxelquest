@@ -169,14 +169,22 @@ public:
 		
 		int i;
 		int j;
+		
+		
 		int ind;
 		int numVert = 8;
 		int maxVal;
 		
 		int p;
 		int q;
+		int r;
+		int s;
+		
+		int baseInd;
+		
 		int ci;
 		
+		float voxSize = singleton->voxelSizeInWC*0.5f;
 		
 		// TODO: if the holder was cleared entirely, must make sure to clear all displaylists
 		
@@ -189,7 +197,7 @@ public:
 					ci = p*MAX_LAYERS+q;
 					
 					gpuRes->bindHolderDL(p,q);
-					glBegin(GL_POINTS);
+					if (DO_POINTS) {glBegin(GL_POINTS);}
 					
 					
 					for (j = 0; j < iPageDataVolume; j++) {
@@ -204,6 +212,8 @@ public:
 							
 							for (i = 0; i < maxVal; i++ ) {
 								
+								
+								
 								glMultiTexCoord4f(
 									GL_TEXTURE0,
 									pageData[ind]->vertices[ci].data[i*numVert + 0], // normal x
@@ -213,11 +223,37 @@ public:
 									
 								);
 								
-								glVertex3f(
-									pageData[ind]->vertices[ci].data[i*numVert + 4],
-									pageData[ind]->vertices[ci].data[i*numVert + 5],
-									pageData[ind]->vertices[ci].data[i*numVert + 6]	
-								);
+								if (DO_POINTS) {
+									glVertex3f(
+										pageData[ind]->vertices[ci].data[i*numVert + 4],
+										pageData[ind]->vertices[ci].data[i*numVert + 5],
+										pageData[ind]->vertices[ci].data[i*numVert + 6]	
+									);
+								}
+								else {
+									
+									
+									
+									for (s = 0; s < 1; s++) {
+										glBegin(GL_TRIANGLE_FAN);
+										for (r = 0; r < 7; r++) {
+											
+											baseInd = (r+s*7)*3;
+											
+											
+											
+											glVertex3f(
+												pageData[ind]->vertices[ci].data[i*numVert + 4] + CUBE_POINTS[baseInd+0]*voxSize,
+												pageData[ind]->vertices[ci].data[i*numVert + 5] + CUBE_POINTS[baseInd+1]*voxSize,
+												pageData[ind]->vertices[ci].data[i*numVert + 6]	+ CUBE_POINTS[baseInd+2]*voxSize
+											);
+										}
+										glEnd();
+									}
+									
+								}
+								
+								
 								
 								
 							}
@@ -226,8 +262,8 @@ public:
 					
 					
 					
+					if (DO_POINTS) {glEnd();}
 					
-					glEnd();
 					gpuRes->unbindHolderDL(p,q);
 				}
 			}
@@ -358,12 +394,15 @@ public:
 		
 	}
 
-	int passiveRefresh() {
+	int passiveRefresh(int* renderCount) {
 		int i;
-		int changeCount;
+		int changeCount = 0;
+		*renderCount = 0;
 		
 		childrenDirty = false;
-		changeCount = 0;
+		
+
+		bool addedVerts = false;
 
 		//bool finished = true;
 				
@@ -385,7 +424,10 @@ public:
 					(pageData[i]->hasSolids || pageData[i]->hasTrans)
 				) {
 					if (pageData[i]->isDirty) {
-						pageData[i]->generateVolume();
+						addedVerts = pageData[i]->generateVolume();
+						if (addedVerts) {
+							(*renderCount)++;
+						}
 						changeCount++;
 					}
 				}
@@ -658,7 +700,7 @@ public:
 		int j;
 		int k;
 		int n;
-		int bufSize = (singleton->visPageSizeInPixels*singleton->bufferMult)*2;
+		//int bufSize = (singleton->visPageSizeInPixels*singleton->bufferMult)*2;
 		
 		GameBlock* curBlock;
 		GamePageHolder* gph;
@@ -687,8 +729,8 @@ public:
 						start.copyFrom( &(gameEnt->moveMinInPixels) );
 						end.copyFrom( &(gameEnt->moveMaxInPixels) );
 
-						start.addXYZ(-bufSize);
-						end.addXYZ(bufSize);
+						// start.addXYZ(-bufSize);
+						// end.addXYZ(bufSize);
 
 						//start.intDivXYZ(singleton->holderSizeInPixels);
 						//end.intDivXYZ(singleton->holderSizeInPixels);
@@ -696,7 +738,7 @@ public:
 						start.clampZ(0.0,singleton->worldSizeInPixels.getFZ()-1.0f);
 						end.clampZ(0.0,singleton->worldSizeInPixels.getFZ()-1.0f);
 
-						if (FIVector4::intersect(&start,&end,&gphMinInPixels,&gphMaxInPixels)) {
+						if (FIVector4::intersectInt(&start,&end,&gphMinInPixels,&gphMaxInPixels)) {
 							containsEntIds[n].data.push_back(intPair());
 							containsEntIds[n].data.back().v0 = curBlock->blockId;
 							containsEntIds[n].data.back().v1 = k;

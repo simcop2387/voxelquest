@@ -64,38 +64,37 @@ vec2 pack16(float num) {
     return res;
 
 }
-bool isGeom(float aVal) {
-    return aVal >= 0.5;
-    // int test = int(unpack16(num));
-    // return (test >= 32768);
-}
 
 
 void main() {
+    vec4 oneVec = vec4(1.0);
 
     vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
     vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
-
-    bool isGeometry = isGeom(tex0.a);
-    //bool outOfWater = true;
-    
-    
-
     vec4 tex2 = texture2D(Texture2, TexCoord0.xy);
     vec4 tex3 = texture2D(Texture3, TexCoord0.xy);
     vec4 tex4 = texture2D(Texture4, TexCoord0.xy);
+    vec4 tex5 = texture2D(Texture5, TexCoord0.xy);
+    
+    vec4 matValsGeom = tex5;
+    bool valIsGeom = (dot(matValsGeom.rgb,oneVec.rgb) != 0.0);
+    
+    tex0.w = max(tex0.w,tex4.w);
+
+
+    
     vec4 tex3Orig = tex3;
 
     vec4 matValsSolid = vec4(0.0,0.0,pack16(tex1.w));
     vec4 matValsWater = vec4(0.0,0.0,pack16(tex3.w));
     
-    vec4 oneVec = vec4(1.0);
+    
     
     
     float maxWaveHeight = 0.01;//@maxWaveH@*pixelsPerCell*4.0/clipDist;
 
     
-    float baseHeightSolid = max(tex0.w,tex4.w);
+    float baseHeightSolid = tex0.w;
     float baseHeightWater = tex2.w;
     //vec3 worldPosition = tex0.xyz;
     //vec3 worldPositionWater = tex2.xyz;
@@ -303,10 +302,12 @@ void main() {
     }
     else {
         
-        // water
+        // waterr
         
         gl_FragData[0] = tex2;
         gl_FragData[1] = tex3;
+        
+        
         
     }
 

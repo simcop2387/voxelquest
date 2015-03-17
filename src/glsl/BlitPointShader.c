@@ -7,6 +7,9 @@ uniform float clipDist;
 uniform vec2 bufferDim;
 uniform vec3 lookAtVec;
 
+// uniform float curTime;
+// uniform vec3 mousePos;
+
 varying vec4 TexCoord0;
 varying vec4 TexCoord1;
 varying float facingCam;
@@ -14,9 +17,9 @@ uniform vec3 cameraPos;
 uniform vec3 offsetPos;
 varying float camDis;
 
-const float blendDepth = 0.001;
+const float blendDepth = 0.01;
 
-
+//const bool DO_POINTS = false;
 
 $
 
@@ -25,6 +28,20 @@ void main() {
 
     vec4 newVert = gl_Vertex;
     newVert.xyz += offsetPos;
+    
+   
+    //float mdis = clamp(1.0-distance(newVert.xyz,mousePos.xyz)/3000.0,0.0,1.0);
+    //newVert.xyz = mix(newVert.xyz,mousePos.xyz,mdis*(sin(mdis*4.0+curTime/500.0)));
+    
+    //vec2 newv = newVert.xy-mousePos.xy;
+    // newVert.z += sin(
+    //     distance(newVert.xyz,mousePos.xyz)/100.0 +
+    //     curTime/500.0 +
+    //     atan(newv.y,newv.x)*5.0
+    // )*1000.0 * mdis;
+    
+    
+    
 
     vec4 screenPos = gl_ModelViewProjectionMatrix * newVert;
     
@@ -32,16 +49,16 @@ void main() {
     TexCoord1 = gl_MultiTexCoord0;
     
     TexCoord1.w += 0.01;
-    
-    //TexCoord1.xyz = normalize(TexCoord1.xyz);
-    
-    facingCam = dot(-lookAtVec,TexCoord1.xyz);
     camDis = distance(cameraPos.xyz,newVert.xyz);
     
-    gl_Position = screenPos;
-    gl_PointSize = (heightOfNearPlane / screenPos.w);   
+    // if (DO_POINTS) {
+        facingCam = dot(-lookAtVec,TexCoord1.xyz);
+        gl_PointSize = (heightOfNearPlane / screenPos.w);
+    // }
     
-    //gl_PointSize = (heightOfNearPlane / screenPos.w) * min(pow(2.0,screenPos.z*16.0/clipDist),16.0);
+    
+    
+    gl_Position = screenPos;
     
 }
 
@@ -54,20 +71,25 @@ $
 void main() {
     
     
+    //if (DO_POINTS) {
+        vec2 mv = (gl_PointCoord.xy - 0.5);
+        mv = mv*mv;
+        // float c = 1.0 - (mv.x + mv.y);
+        
+        if (
+            //(c < 0.0) ||
+            (facingCam < -0.5)
+        ) {
+            discard;
+        }
+    //}
+        
+    gl_FragDepthEXT = camDis/clipDist + length(mv)*0.001;
     
     
-    // float a = (2.0*abs(gl_PointCoord.x - 0.5));
-    // float b = (2.0*abs(gl_PointCoord.y - 0.5));
-    // float c = 1.0 - (a + b);
-    if (
-        //(c < 0.0) ||
-        (facingCam < -0.5)
-    ) {
-        discard;
-    }
-    //gl_FragDepthEXT = camDis/clipDist + blendDepth*(1.0-c) * gl_FragCoord.w; //pow(c, 1.0)
-    //gl_FragCoord.z
-    gl_FragDepthEXT = camDis/clipDist;
+    
+    
+    
     
     
     gl_FragData[0] = TexCoord0;

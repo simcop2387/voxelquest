@@ -130,15 +130,10 @@ void GameOrgNode::doTransform (Singleton * singleton)
 		
 		readTBN = tbnBaseTrans;
 		writeTBN = tbnRotA;
-			
 		
 		
 		modCount = 0;
 		
-		
-		
-		
-	
 		
 		if (orgVecs[E_OV_THETAPHIRHO].getFZ() != 0.0f) {
 			singleton->rotMatStack.push_back(RotationInfo());
@@ -168,7 +163,7 @@ void GameOrgNode::doTransform (Singleton * singleton)
 		
 		
 		for (i = singleton->rotMatStack.size()-(1); i >= 0; i--) {
-						
+			
 			axisRotationInstance.applyRotation(
 				writeTBN,
 				readTBN,

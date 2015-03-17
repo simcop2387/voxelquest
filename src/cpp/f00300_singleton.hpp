@@ -11,7 +11,7 @@ public:
 	};
 	
 	struct UICont {
-		UIComponent* uiComp;
+		//UIComponent* uiComp;
 		UIQuad bg;
 		std::vector<UIQuad> charVec;
 		//bool locked;
@@ -21,9 +21,14 @@ public:
 		JSONValue* jv;
 	};
 	struct UICStruct {
-		UIComponent* uic;
 		int nodeId;
 	};
+	struct CompStruct {
+		bool isValid;
+		UIComponent* data;
+	};
+	
+	
 	
 	struct CompareStruct {
 	    bool operator()(const string& first, const string& second) {
@@ -39,12 +44,7 @@ public:
 	
 	
 	
-	
-	
-	
-	
 	GameCamera* mainCamera;
-	
 	
 	
 	bool keysPressed[MAX_KEYS];
@@ -125,7 +125,24 @@ public:
 	bool doPageRender;
 	bool markerFound;
 	bool editPose;
+	bool isDraggingObject;
 	
+	int entIdToIcon[MAX_OBJ_TYPES];
+	int iconToEntId[MAX_OBJ_TYPES];
+	bool isContainer[MAX_OBJ_TYPES];
+	
+	int currentTick;
+	int draggingFromInd;
+	int draggingToInd;
+	int draggingFromType;
+	int draggingToType;
+	
+	int maxHolderDis;
+	int gameObjCounter;
+	//int lastContIndex;
+	int lastObjectCount;
+	int lastObjInd;
+	int bestObjInd;
 	int fieldCallback;
 	int mouseState;
 	int lastW;
@@ -190,6 +207,7 @@ public:
 	int volGenSuperRes;
 	int matVolSize;
 	int escCount;
+	int lastNodeId;
 	int *cdBuffer;
 	intPair entIdArr[1024];
 	
@@ -247,8 +265,11 @@ public:
 	float *paramArrMap;
 	float clipDist[2];
 	
+	float MAX_TRAVEL_DIS;
+	
 	double lastMoveTime;
 	double curTime;
+	double clickTime;
 	double lastTime;
 	double mdTime;
 	double muTime;
@@ -258,19 +279,21 @@ public:
 	GameOrgNode* lastSelNode;
 	GameOrgNode* activeNode;
 
+	FIVector4 dirVecs[6];
 	FIVector4 targetCameraPos;
 	FIVector4 lastCellPos;
 	FIVector4 worldMarker;
 	FIVector4 lookAtVec;
-	FIVector4 targetLookAtVec;
+	//FIVector4 targetLookAtVec;
 	FIVector4 baseCameraPos;
 	FIVector4 cameraPosAdjusted;
 	FIVector4 baseScrollPos;
 	FIVector4 worldSizeInPixels;
 	FIVector4 mouseUpPD;
+	FIVector4 mouseUpOPD;
 	FIVector4 spaceUpPD;
 	FIVector4 mouseDownPD;
-	FIVector4 mouseObjPD;
+	FIVector4 mouseDownOPD;
 	FIVector4 mouseMovePD;
 	FIVector4 tempVec1;
 	FIVector4 tempVec2;
@@ -287,6 +310,7 @@ public:
 	floatAndIndex indexArr[125];
 	FIVector4 mouseStart;
 	FIVector4 mouseEnd;
+	FIVector4 mouseMoveVec;
 	FIVector4 mapFreqs;
 	FIVector4 mapAmps;
 	FIVector4 *mouseMoving;
@@ -304,7 +328,10 @@ public:
 	
 	uint* matVol;
 	
-	std::vector<UICont*> guiLayers[MAX_UI_LAYERS];
+	
+	
+	std::vector<int> guiLayers[MAX_UI_LAYERS];
+	//std::vector<int> emptyLayers[MAX_UI_LAYERS];
 	
 	std::vector<RotationInfo> rotMatStack;
 	std::vector<DynObject *> dynObjects;
@@ -317,7 +344,7 @@ public:
 	float wallRadInCells;
 
 
-
+	
 	int cellsPerHolder;
 	int cellsPerPage;
 	int unitsPerCell;
@@ -331,8 +358,9 @@ public:
 	Image *imageHM1;
 	Image *cloudImage;
 
-	GameEnt baseEnt;
-	GameEnt* currentActor;
+	BaseObj* currentActor;
+	BaseObj baseObj;
+	
 	
 	GamePlant* gamePlants[E_PT_LENGTH/2];
 
@@ -351,7 +379,11 @@ public:
 	
 	
 	
-	vector<UIComponent*> compStack;
+	vector<CompStruct> compStack;
+	vector<int> emptyStack;
+	
+	
+	
 	vector<string> splitStrings;
 	vector<string> shaderStrings;
 	vector<string> shaderTextureIds;
@@ -362,6 +394,9 @@ public:
 	FBOSet vgFBOArr[MAX_VG_FBOS];
 	FBOSet vgtFBOArr[MAX_VGT_FBOS];
 
+	
+	
+	
 	
 	
 	GLuint fsqDL;
@@ -396,7 +431,8 @@ public:
 	Timer myTimer;
 	Timer scrollTimer;
 	Timer moveTimer;
-	GameWorld *gw;
+	GameWorld* gw;
+	GameAI* gameAI;
 
 	float lightArr[MAX_LIGHTS * 16];
 	int numLights;
@@ -419,9 +455,13 @@ public:
 	
 	//UIComponent* lastPickerItem;
 	//UIComponent* pickerMenu;
+	//UIComponent* nullComp;
 	UIComponent* mapComp;
 	UIComponent* mainMenu;
+	UIComponent* contMenu;
+	UIComponent* contMenuBar;
 	UIComponent* ddMenu;
+	UIComponent* ddMenuBar;
 	UIComponent* fieldMenu;
 	UIComponent* fieldText;
 	
@@ -431,7 +471,6 @@ public:
 	map<string, GameSound> soundMap;
 	
 	map<string, StyleSheet> styleSheetMap;
-	map<string, JSONStruct> internalJSON;
 	map<string, JSONStruct> externalJSON;
 
 	Singleton()
@@ -466,10 +505,17 @@ public:
 		pushTrace("Singleton init");
 		int i;
 		int j;
+		int k;
+		
+		TEMP_DEBUG = false;
 		
 		
 		// todo: mem leak, should delete?
-		internalJSON["shaderParams"].jv = NULL;
+		externalJSON["shaderParams"].jv = NULL;
+		externalJSON["objectData"].jv = NULL;
+		externalJSON["kb.js"].jv = NULL;
+		
+		
 		
 		for (i = 0; i < EML_LENGTH; i++) {
 			music[i] = new GameMusic();
@@ -477,6 +523,45 @@ public:
 			music[i]->setLoop(true);
 		}
 		
+		for (i = 0; i < MAX_OBJ_TYPES; i++) {
+			isContainer[i] = false;
+			iconToEntId[i] = 0;
+			entIdToIcon[i] = 0;
+		}
+		
+		int itemCount = 0;
+		
+		itemCount = numberIcons(itemCount,0,0,11,20);
+		itemCount = numberIcons(itemCount,12,0,23,15);
+		itemCount = numberIcons(itemCount,24,0,35,16);
+		itemCount = numberIcons(itemCount,12,16,21,20);
+		itemCount = numberIcons(itemCount,22,17,35,31);
+		itemCount = numberIcons(itemCount,0,21,15,31);
+		itemCount = numberIcons(itemCount,16,21,21,22);
+		itemCount = numberIcons(itemCount,0,32,35,35);
+		itemCount = numberIcons(itemCount,0,36,15,47);
+		itemCount = numberIcons(itemCount,16,36,35,47);
+		
+		
+		for (i = 360; i <= 419; i++ ) {
+			isContainer[i] = true;
+		}
+		for (i = 1240; i <= 1671; i++ ) {
+			isContainer[i] = true;
+		}
+		
+		
+		for (i = 0; i < 6; i++) {
+			dirVecs[i].setFXYZ(
+				DIR_VECS[i][0],
+				DIR_VECS[i][1],
+				DIR_VECS[i][2]
+			);
+		}
+		
+		initAllMatrices();
+		
+		//nullComp = new UIComponent();
 		
 		for (i = 0; i < E_CT_LENGTH; i++) {
 			isInteractiveEnt[i] = false;
@@ -497,7 +582,9 @@ public:
 		isInteractiveEnt[E_CT_DOOR] = true;
 		isInteractiveEnt[E_CT_LANTERN] = true;
 		
-		clipDist[0] = 0.01f;
+		// problem with clipDist at 0.0 not rendering geom
+		
+		clipDist[0] = 0.0f;
 		clipDist[1] = 16384.0f;
 		
 		inputOn = false;
@@ -517,18 +604,21 @@ public:
 		guiDirty = true;
 		
 		
+		
 		//lastPickerItem = NULL;
 		//pickerMenu = NULL;
 		currentActor = NULL;
 		mapComp = NULL;
 		mainMenu = NULL;
 		ddMenu = NULL;
+		contMenu = NULL;
 		fieldMenu = NULL;
 		fieldText = NULL;
 		selectedEnt = NULL;
 		highlightedEnt = NULL;
 		draggingMap = false;
 		
+		MAX_TRAVEL_DIS = 10.0f;
 		FOV = 45.0f;
 		focalLength = 1.0f / tan(FOV / 2.0f);
 
@@ -572,7 +662,7 @@ public:
 		cloudImage->getTextureId(GL_LINEAR);
 
 
-		mapSampScale = 0.5f;
+		mapSampScale = 0.25f;
 		//renderCount = 1.0;
 		int newPitch = (imageHM0->width) * mapSampScale; //*2;
 
@@ -584,7 +674,7 @@ public:
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 
-
+		lastNodeId = 0;
 		escCount = 0;
 
 		initStyleSheet();
@@ -611,8 +701,12 @@ public:
 		treesOn = true;
 		rotOn = false;
 		markerFound = false;
+		isDraggingObject = false;
 		editPose = false;
 		doPageRender = true;
+		
+		
+		
 		
 		
 		
@@ -636,8 +730,10 @@ public:
 		// chunk to load
 		// flood fill from there until it hits blank chunk and stop
 		
-		
-		
+		lastObjectCount = 0;
+		lastObjInd = 0;
+		bestObjInd = 0;
+		currentTick = 0;
 		
 		
 		moveTimer.start();
@@ -659,7 +755,9 @@ public:
 		
 		
 		// TODO:
-		// implement power values
+		// WAS DOING: make sure can drag from containers
+		
+		maxHolderDis = 32;
 		
 		int bufferDiv = 2;
 		int curProfile;
@@ -669,22 +767,25 @@ public:
 		msPerFrame = 8.0;
 		
 		
-		volGenFBOX = 128; // MAX OF 128, DO NOT CHANGE THIS VALUE
+		volGenFBOX = 32; // MAX OF 128
 		
 		
 		
-		maxChangesInPages = 1;
-		maxChangesInHolders = 1; 
+		maxChangesInPages = 8;
+		maxChangesInHolders = 2;
 		maxHInPages = 4;
-		maxWInPages = 4;
+		maxWInPages = 8;
 		pixelsPerCell = 128; // do not adjust this, instead change volGenFBOX
 		volGenSuperMod = 1;
-		cellsPerPage = 8;
+		cellsPerPage = 4;
 		cellsPerHolder = 8;
 		volGenSuperRes = (volGenFBOX/volGenSuperMod);
 		
-		glEnable(GL_POINT_SPRITE);
-		glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+		if (DO_POINTS) {
+			glEnable(GL_POINT_SPRITE);
+			glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+		}
+		
 		
 		
 		//glPointSize(2.0);
@@ -742,10 +843,6 @@ public:
 		
 		
 		
-		
-		
-		lastMoveTime = 0.0;
-		
 		terDataTexScale = 1;
 		//if (pixelsPerCell >= 128) {
 			terDataTexScale = 1;
@@ -783,7 +880,11 @@ public:
 			worldSizeInBlocks.getIZ()*terDataVisPitchZ
 		);
 		
-
+		//lastContIndex = 0;
+		draggingFromInd = 0;
+		draggingToInd = 0;
+		gameObjCounter = E_OBJ_LENGTH;
+		lastMoveTime = 0.0;
 
 		
 
@@ -847,7 +948,7 @@ public:
 
 
 		mapFreqs.setFXYZW(1.0f, 15.0f, 37.0f, 123.0f);
-		mapAmps.setFXYZW(8.0f/16.0f, 8.0f/16.0f, 8.0f/16.0f, 32.0f/16.0f); //0.0f, 0.0f, 0.0f);//
+		mapAmps.setFXYZW(4.0f/16.0f,4.0f/16.0f, 4.0f/16.0f, 16.0f/16.0f); //0.0f, 0.0f, 0.0f);//
 
 
 		gridSizeInPixels = pixelsPerCell;
@@ -1252,6 +1353,7 @@ public:
 		shaderStrings.push_back("MapBorderShader");
 		//shaderStrings.push_back("WorldSpaceShader");
 		shaderStrings.push_back("BlitPointShader");
+		shaderStrings.push_back("BillboardShader");
 		
 		shaderStrings.push_back("PreLightingShader");
 		shaderStrings.push_back("HDRShader");
@@ -1444,10 +1546,10 @@ public:
 
 
 		fontWrappers[EFW_ICONS] = new FontWrapper();
-		fontWrappers[EFW_ICONS]->init(this, "icons", true, 2.0f, 0.0f);
+		fontWrappers[EFW_ICONS]->init(this, "icons", true, 1.0f, 0.0f);
 		
 		fontWrappers[EFW_TEXT] = new FontWrapper();
-		fontWrappers[EFW_TEXT]->init(this, "arial_regular_24", false, 1.0f);
+		fontWrappers[EFW_TEXT]->init(this, "arial_regular_14", false, 1.0f);
 
 		mainGUI = new GameGUI();
 		mainGUI->init(this);
@@ -1485,7 +1587,21 @@ public:
 		
 		gw->init(this);
 		gw->initMap();
-			
+		
+		gameAI = new GameAI();
+		gameAI->init(this);
+		
+		
+		// gw->gameObjects[E_OBJ_CAMERA] = baseObj;
+		// gw->gameObjects[E_OBJ_CAMERA].init(
+		// 	E_OBJ_CAMERA,
+		// 	0,
+		// 	0,
+		// 	pixelsPerCell,
+		// 	&lastCellPos,
+		// 	5,5,5
+		// );
+		
 		
 		music[EML_BIRDSONG0]->play();
 		music[EML_CRICKETS0]->play();
@@ -1493,7 +1609,7 @@ public:
 		music[EML_UNDERWATER0]->play();
 		
 		loadGUI();
-		loadGUIValues();
+		loadValuesGUI();
 		
 		if (bakeParamsOn) {
 			doShaderRefresh(true);
@@ -1512,6 +1628,96 @@ public:
 	// void orientRotation() {
 	// 	//testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,3.0f*M_PI/2.0f);
 	// }
+	
+	int placeInStack() {
+		int curId;
+		int stackSize = emptyStack.size();
+		if (stackSize > 0) {
+			curId = emptyStack.back();
+			emptyStack.pop_back();
+			//compStack[curId].data = new UIComponent();
+			compStack[curId].isValid = true;
+			
+			
+			return curId;
+		}
+		else {
+			compStack.push_back( CompStruct() );
+			compStack.back().data = new UIComponent();
+			compStack.back().isValid = true;
+			
+			
+			return compStack.size() - 1;
+			
+		}
+	}
+	
+	int placeInLayer(int nodeId, int layer) {
+		// int curId;
+		// if (emptyLayers[layer].size() > 0) {
+		// 	curId = emptyLayers[layer].back();
+		// 	emptyLayers[layer].pop_back();
+		// 	guiLayers[layer][curId] = nodeId;
+			
+		// 	return curId;
+		// }
+		// else {
+			guiLayers[layer].push_back(nodeId);	
+			return guiLayers[layer].size() - 1;
+			
+		//}
+	}
+	
+	
+	void initAllMatrices() {
+		int i;
+		int j;
+		int k;
+		int m;
+		int curOffset;
+		
+		for (k = 0; k < NUM_ORIENTATIONS; k++) {
+			for (j = 0; j < NUM_ORIENTATIONS; j++) {
+				for (i = 0; i < NUM_ORIENTATIONS; i++) {
+					curOffset = (k*NUM_ORIENTATIONS*NUM_ORIENTATIONS + j*NUM_ORIENTATIONS + i)*16;
+					
+					for (m = 0; m < 16; m++) {
+						ALL_ROT[curOffset+m] = 0.0f;
+					}
+					ALL_ROT[curOffset+15] = 1.0f;
+					
+					for (m = 0; m < 3; m++) {
+						ALL_ROT[curOffset+0+m] = DIR_VECS[i][m];
+						ALL_ROT[curOffset+4+m] = DIR_VECS[j][m];
+						ALL_ROT[curOffset+8+m] = DIR_VECS[k][m];
+					}
+					
+					
+					
+				}
+			}
+		}
+		
+	}
+	
+	int numberIcons(int pCurCount, int x1, int y1, int x2, int y2) {
+	  int i;
+	  int j;
+	  int curCount = pCurCount;
+	  
+	  for (j = y1; j <= y2; j++) {
+	    for (i = x1; i <= x2; i++) {
+	      entIdToIcon[curCount] = i + j * ITEMS_PER_ROW;
+	      iconToEntId[i + j * ITEMS_PER_ROW] = curCount;
+	      curCount++;
+	    }
+	  }
+	  
+	  
+	  return curCount;
+	  
+	}
+	
 	
 	void prepSound(string soundName) {
 		if (soundMap.find( soundName ) == soundMap.end()) {
@@ -1575,24 +1781,23 @@ public:
 		}
 		
 		
-		
-		
-		
-		
 	}
 	
-	void setCurrentActor(GameEnt* ge) {
+	void setCurrentActor(BaseObj* ge) {
 		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
+		
+		
 		
 		currentActor = ge;
 		if (currentActor != NULL) {
-			mainCamera->subjectDistance = currentActor->getVisMinInPixelsT()->distance(cameraPos);
+			
+			mainCamera->subjectDistance = currentActor->centerPointInPixels.distance(cameraPos);
 		}
 		
 	}
 	
-	
 	void updateMatVol() {
+		
 		
 		
 		matVolLock = true;
@@ -1924,6 +2129,268 @@ public:
 		
 	}
 	
+	int getRandomContId() {
+		return iGenRand(360,419);
+	}
+	int getRandomNPCId() {
+		return (iGenRand(1432,1671)/4)*4;
+	}
+	int getRandomMonsterId() {
+		return (iGenRand(1240,1431)/2)*2;
+	}
+	int getRandomObjId() {
+		return iGenRand(0,907);
+		
+	}
+	
+	void fillWithRandomObjects(int parentUID, int gen) {
+		
+		int i;
+		int maxObj = iGenRand(2,16);
+		BaseObj* tmpObj = NULL;
+		
+		int curId;
+		
+		
+		for (i = 0; i < maxObj; i++) {
+			gw->gameObjects[gameObjCounter] = baseObj;
+			tmpObj = &(gw->gameObjects[gameObjCounter]);
+			
+			curId = getRandomObjId();
+			
+			
+			// if (
+			// 	(curId%5 == 0) &&
+			// 	(gen <= 1)
+			// ) {
+				
+			// 	curId = getRandomContId();
+			// }
+			
+			tmpObj->init(
+				gameObjCounter,
+				parentUID,
+				curId, 
+				pixelsPerCell,
+				&lastCellPos,
+				// iGenRand(1,4),
+				// iGenRand(1,4),
+				// iGenRand(1,4)
+				2,
+				2,
+				2
+			);
+			
+			gw->gameObjects[parentUID].children.push_back(gameObjCounter);
+			
+			gameObjCounter++;
+			
+			if (isContainer[curId] && (gen < 1)) {
+				fillWithRandomObjects(gameObjCounter-1, gen + 1);
+			}
+			
+		}
+		
+		
+	}
+	
+	
+	void performDrag() {
+		
+		int i;
+		int bestPos;
+		bool moveCont = false;
+		bool draggedIntoWorldObj = false;
+		BaseObj* sourceObj = NULL;
+		BaseObj* destObj = NULL;
+		
+		vector<BaseObjType>* myVec;
+		
+		
+		
+		
+		cout << "from " << dragStrings[draggingFromType] << " to " << dragStrings[draggingToType] << "\n";
+		
+		switch (draggingFromType) {
+			case E_DT_NOTHING:
+				
+			break;
+			case E_DT_WORLD_OBJECT:
+			
+				sourceObj = &(gw->gameObjects[draggingFromInd]);
+			
+				switch (draggingToType) {
+					case E_DT_NOTHING:
+						
+						lastCellPos.copyFrom(&(worldMarker));
+						lastCellPos.intDivXYZ(pixelsPerCell);
+						lastCellPos.addXYZ(0,0,5);
+						sourceObj->positionInCells.copyFrom(&lastCellPos);
+						sourceObj->updateBounds();
+						
+					break;
+					case E_DT_WORLD_OBJECT:
+					case E_DT_INV_OBJECT:
+					case E_DT_INV_OBJECT_PARENT:
+						destObj = &(gw->gameObjects[draggingToInd]);
+						moveCont = true;
+					break;
+				}
+			break;
+			
+			case E_DT_INV_OBJECT:
+			
+				sourceObj = &(gw->gameObjects[draggingFromInd]);
+			
+				switch (draggingToType) {
+					case E_DT_NOTHING:
+						
+						
+						lastCellPos.copyFrom(&(worldMarker));
+						lastCellPos.intDivXYZ(pixelsPerCell);
+						lastCellPos.addXYZ(0,0,5);
+						sourceObj->positionInCells.copyFrom(&lastCellPos);
+						sourceObj->updateBounds();
+						
+						gw->gameObjects[sourceObj->parentUID].removeChild(sourceObj->uid);
+						gw->visObjects.push_back(sourceObj->uid);
+						sourceObj->parentUID = 0;
+						
+						
+					break;
+					case E_DT_WORLD_OBJECT:
+					case E_DT_INV_OBJECT:
+					case E_DT_INV_OBJECT_PARENT:
+						destObj = &(gw->gameObjects[draggingToInd]);
+						moveCont = true;
+					break;
+				}
+			break;
+			case E_DT_INV_OBJECT_PARENT:
+				
+			break;
+		}
+		
+		
+		if (moveCont) {
+			
+			if (isContainer[destObj->objectType]) {	
+				if (draggingFromInd == draggingToInd) {
+					goto PERFORM_DRAG_END;
+				}
+			}
+			else {
+				if (draggingFromInd == destObj->parentUID) {
+					goto PERFORM_DRAG_END;
+				}
+			}
+			
+			
+			gw->gameObjects[sourceObj->parentUID].removeChild(sourceObj->uid);
+			
+			if (isContainer[destObj->objectType]) {
+				destObj->children.push_back(sourceObj->uid);
+				sourceObj->parentUID = destObj->uid;
+				draggedIntoWorldObj = true;
+			}
+			else {
+				
+				myVec = &(gw->gameObjects[destObj->parentUID].children);
+				
+				bestPos = 0;
+				for (i = 0; i < myVec->size(); i++) {
+					if ((*myVec)[i] == destObj->uid) {
+						bestPos = i+1;
+					}
+				}
+				myVec->insert(
+					myVec->begin()+bestPos,
+					sourceObj->uid
+				);
+				
+				sourceObj->parentUID = destObj->parentUID;
+			}
+			
+			if (draggingFromType == E_DT_WORLD_OBJECT) {
+				gw->removeVisObject(sourceObj->uid);
+			}
+			
+		}
+		
+		
+		
+		
+		
+		if (
+			(draggingFromType == E_DT_INV_OBJECT) ||
+			(draggingToType == E_DT_INV_OBJECT) ||
+			(draggingToType == E_DT_INV_OBJECT_PARENT) ||
+			draggedIntoWorldObj
+		) {
+			refreshContainers(false);
+		}
+		
+		
+PERFORM_DRAG_END:		
+		markerFound = false;
+		isDraggingObject = false;
+	}
+	
+	
+	void placeNewEnt(int et) {
+		
+		
+		BaseObj* tmpObj = NULL;
+		
+		int newType = 0;
+		
+		int xv = 2;
+		int yv = 2;
+		int zv = 3;
+		
+		int mf = 0;
+		
+		switch (et) {
+			case E_ENTTYPE_OBJ:
+				newType = getRandomObjId();
+				zv = 2;
+			break;
+			case E_ENTTYPE_MONSTER:
+				newType = getRandomMonsterId();
+				mf = 2;
+			break;
+			case E_ENTTYPE_NPC:
+				newType = getRandomNPCId();
+				mf = 4;
+			break;
+		}
+		
+		
+		gw->gameObjects[gameObjCounter] = baseObj;
+		tmpObj = &(gw->gameObjects[gameObjCounter]);
+		tmpObj->init(
+			gameObjCounter,
+			0,
+			newType,
+			pixelsPerCell,
+			&lastCellPos,
+			xv,yv,zv
+		);
+		
+		
+		tmpObj->maxFrames = mf;
+		gw->visObjects.push_back(gameObjCounter);
+		gameObjCounter++;
+		
+		
+		if (isContainer[newType]) {
+			fillWithRandomObjects(gameObjCounter-1, 0);
+		}
+		
+		
+	}
+
+
 
 	void dispatchEvent(
 		int button,
@@ -1941,24 +2408,34 @@ public:
 		
 		changingGenVal = false;
 		
+		BaseObj* tmpObj = NULL;
 		GameOrgNode* tmpNode = NULL;
 		
 		bool hitPicker = false;
+		bool wasDoubleClick = false;
 		
 		float wheelDelta = 0.0f;
 		
+		double tempTime = myTimer.getElapsedTimeInMilliSec();
+		
 		int i;
+		int j;
+		
 		int cbDataCount;
 		JSONValue* cbData = NULL;
 		
 		bool doSPUpdate = false;
 		bool mouseUpEvent = false;
+		bool mouseDownEvent = false;
 		
 		float curValue = comp->getValue();
 		float curValueY = comp->getValueY();
 		
 		draggingMap = false;
 		
+		bool noTravel = false;
+		bool isInteractiveComp = false;
+		bool suppressSound = false;
 		
 		
 		
@@ -1968,106 +2445,214 @@ public:
 			case E_GT_RADIO:
 			case E_GT_CHECK:
 			case E_GT_DRAGPAD:
+					isInteractiveComp = true;
+			break;
+			default:
+				if (comp->jvNodeNoTemplate->HasChild("interactive")) {
+					isInteractiveComp = true;
+				}
+			break;
+		}
+		
+		suppressSound = automated||(!isInteractiveComp);
+		
+		
+		switch(button) {
+			case GLUT_NO_BUTTON:
 			
-				switch(button) {
-					case GLUT_NO_BUTTON:
-					
-						
-						
-						switch(state) {
-							case GLUT_OVER:
-								playSoundEvent("mouseOver",automated);
-							break;
-							case GLUT_OUT:
-								playSoundEvent("mouseOut",automated);
-							break;
-							case GLUT_CHANGING:
-								if (comp->guiClass == E_GT_DRAGPAD) {
-									
-									if (comp->uid.compare("map.mapHolder") == 0) {
-										cameraPos->setFXYZRef(&baseCameraPos);
-										//cout << x << " " << y << " " << comp->dragStart.x << " " << comp->dragStart.y << "\n";
-										
-										cameraPos->addXYZ(
-											-(x - comp->dragStart.x)*worldSizeInPixels.getFX()/(cameraZoom*comp->resultDimInPixels.x),
-											-(y - comp->dragStart.y)*worldSizeInPixels.getFY()/(cameraZoom*comp->resultDimInPixels.y),
-											0.0f
-										);
-										
-										
-										
-										updateCamVals();
-										
-										//doTraceVecND("cameraPos ", cameraPos);
-										
-										
-										draggingMap = true;
-									}
-									
-								}
-								else {
-									doSPUpdate = true;
-								}
-								
-							break;
-						}
-						
+				
+				
+				switch(state) {
+					case GLUT_OVER:
+						playSoundEvent("mouseOver",suppressSound);
 					break;
-					case GLUT_LEFT_BUTTON:
-						if (state == GLUT_DOWN) {
-							playSoundEvent("mouseDown",automated);
+					case GLUT_OUT:
+						playSoundEvent("mouseOut",suppressSound);
+					break;
+					case GLUT_CHANGING:
+						if (comp->guiClass == E_GT_DRAGPAD) {
 							
 							if (comp->uid.compare("map.mapHolder") == 0) {
-								baseCameraPos.setFXYZRef(cameraPos);
+								cameraPos->setFXYZRef(&baseCameraPos);
+								
+								cameraPos->addXYZ(
+									-(x - comp->dragStart.x)*worldSizeInPixels.getFX()/(cameraZoom*comp->resultDimInPixels.x),
+									-(y - comp->dragStart.y)*worldSizeInPixels.getFY()/(cameraZoom*comp->resultDimInPixels.y),
+									0.0f
+								);
+								
+								
+								
+								updateCamVals();
+								
+								//doTraceVecND("cameraPos ", cameraPos);
+								
+								
+								draggingMap = true;
 							}
+							
 						}
 						else {
-							playSoundEvent("mouseUp",automated);
-							
-							if (comp->guiClass == E_GT_DRAGPAD) {
-								
-							}
-							else {
-								doSPUpdate = true;
-								mouseUpEvent = true;
-							}
-							
-							
+							doSPUpdate = true;
 						}
+						
 					break;
+				}
+				
+			break;
+			case GLUT_LEFT_BUTTON:
+			
+			
+				if (state == GLUT_DOWN) {
+					playSoundEvent("mouseDown",suppressSound);
 					
-					case 3: // wheel up
-						wheelDelta = 1.0f / 20.0f;
-						break;
-
-					case 4: // wheel down
-						wheelDelta = -1.0f / 20.0f;
-						break;
+					if (comp->uid.compare("map.mapHolder") == 0) {
+						baseCameraPos.setFXYZRef(cameraPos);
+					}
+					
+					mouseDownEvent = true;
+					mdTime = myTimer.getElapsedTimeInMilliSec();
+				}
+				else {
+					playSoundEvent("mouseUp",suppressSound);
+					
+					if (comp->guiClass == E_GT_DRAGPAD) {
+						
+					}
+					else {
+						doSPUpdate = true;
+						mouseUpEvent = true;
+					}
 					
 					
 				}
+			break;
 			
-			break;	
+			case 3: // wheel up
+				wheelDelta = 1.0f / 20.0f;
+				break;
+
+			case 4: // wheel down
+				wheelDelta = -1.0f / 20.0f;
+				break;
+			
+			
 		}
+		
+		if (mouseUpEvent) {
+			if (!automated) {
+				noTravel = mouseEnd.distance(&mouseStart) < MAX_TRAVEL_DIS;
+				
+				if (lastNodeId == comp->nodeId) {
+					
+					if ( (tempTime-clickTime) < 500 ) {
+						wasDoubleClick = true;
+					}
+					
+				}
+				
+				clickTime = tempTime;
+				lastNodeId = comp->nodeId;
+			}
+		}
+		
+		
 		
 		if (comp->uid.compare("map.mapHolder") == 0) {
 			zoomDelta += wheelDelta;
 			targetZoom = pow(2.0, zoomDelta);
 		}
 		
+		if (comp->uid.compare("#contItemParent") == 0) {
+			if (comp->jvNodeNoTemplate != NULL) {
+				if (comp->jvNodeNoTemplate->HasChild("objectId")) {
+					if (mouseUpEvent) {
+						if (isDraggingObject) {
+							if (noTravel) {
+								
+							}
+							else {
+								draggingToType = E_DT_INV_OBJECT_PARENT;
+								draggingToInd = comp->jvNodeNoTemplate->Child("objectId")->number_value;
+								performDrag();
+							}
+						}
+					}
+				}
+			}
+			
+			goto DISPATCH_EVENT_END;
+		}
+		
+		if (comp->uid.compare("#contItem") == 0) {
+			
+			
+			
+			if (comp->jvNodeNoTemplate != NULL) {
+				
+				
+				if (comp->jvNodeNoTemplate->HasChild("objectId")) {
+					
+					// !!
+					
+					if (mouseUpEvent) {
+						
+						if (wasDoubleClick) {
+							i = comp->jvNodeNoTemplate->Child("objectId")->number_value;
+							if (isContainer[gw->gameObjects[i].objectType]) {
+								toggleCont(i, false);
+							}
+							else {
+								gw->gameObjects[i].isEquipped = !(gw->gameObjects[i].isEquipped);
+								if (gw->gameObjects[i].isEquipped) {
+									playSoundEvent("showGUI");
+								}
+								else {
+									playSoundEvent("hideGUI");
+								}
+								refreshContainers(false);
+							}
+							
+							
+						}
+						else if (isDraggingObject) {
+							if (noTravel) {
+								
+							}
+							else {
+								draggingToType = E_DT_INV_OBJECT;
+								draggingToInd = comp->jvNodeNoTemplate->Child("objectId")->number_value;
+								performDrag();
+							}
+							
+						}
+					}
+					else if (mouseDownEvent) {
+						
+						isDraggingObject = true;
+						draggingFromType = E_DT_INV_OBJECT;
+						draggingFromInd = comp->jvNodeNoTemplate->Child("objectId")->number_value;
+					}
+				}
+			}
+			
+			goto DISPATCH_EVENT_END;
+			
+		}
+		
+		
 		
 		if (mouseUpEvent) {
 			
 			
-			
-			if (comp->uid.compare("placeEntity.actor") == 0) {
-				gw->gameActors.push_back(baseEnt);
-				tempVec1.setIXYZ(2,2,3);
-				gw->gameActors.back().initActor(&lastCellPos,&tempVec1,pixelsPerCell);
-				setCurrentActor( &(gw->gameActors.back()) );
-				orgOn = true;
-				
-				//cout << "placeActor\n";
+			if (comp->uid.compare("placeEntity.npc") == 0) {
+				placeNewEnt(E_ENTTYPE_NPC);
+			}
+			if (comp->uid.compare("placeEntity.monster") == 0) {
+				placeNewEnt(E_ENTTYPE_MONSTER);
+			}
+			else if (comp->uid.compare("placeEntity.object") == 0) {
+				placeNewEnt(E_ENTTYPE_OBJ);
 			}
 			else if (comp->uid.compare("charEdit.savePose") == 0) {
 				saveOrg();
@@ -2106,6 +2691,18 @@ public:
 					makeDirty();
 				}
 			}
+			else if (comp->uid.compare("#contMenu.close") == 0) {
+				
+				i = comp->getParent()->getChild(1)->jvNodeNoTemplate->Child("objectId")->number_value;
+				
+				cout << "ival " << i << "\n";
+				
+				gw->gameObjects[i].isOpen = false;
+				refreshContainers(false);
+				
+			}
+			
+			
 			
 			
 			if (comp->getFloatingChildCount() == 0) {
@@ -2183,9 +2780,6 @@ public:
 						
 						if (cbData != NULL) {
 							
-							// cout <<
-							// 	cbData->Child("paramName")->string_value <<
-							// 	"\n";
 							
 							cbDataStrings[0] = cbData->Child("shaderName")->string_value;
 							cbDataStrings[1] = cbData->Child("paramName")->string_value;
@@ -2230,9 +2824,13 @@ public:
 			}
 		}
 		
+DISPATCH_EVENT_END:
 		
 		if (mouseMoved) {
 			mouseMoved = false;
+		}
+		if (mouseUpEvent) {
+			isDraggingObject = false;
 		}
 	}
 
@@ -2262,9 +2860,9 @@ public:
 		curState->setVal(E_SS_FGCOLTEXT1_R, 1.0f, 0.8f, 0.7f, 1.0f);
 		curState->setVal(E_SS_BDCOL_R, 1.0f, 1.0f, 1.0f, 0.5f);
 
-		curState->props[E_SS_PADDING] = 4.0f;
+		curState->props[E_SS_PADDING] = 2.0f;
 		curState->props[E_SS_BORDER] = 1.0f;
-		curState->props[E_SS_MARGIN] = 4.0f;
+		curState->props[E_SS_MARGIN] = 2.0f;
 		curState->props[E_SS_CORNERRAD] = 4.0f;
 		curState->props[E_SS_ROUNDNESS] = 1.0f;
 
@@ -2589,19 +3187,19 @@ public:
 
 
 	void drawBox(
-		FIVector4 *minVec,
-		FIVector4 *maxVec,
+		FIVector4 *v0,
+		FIVector4 *v1,
 		int faceFlag=2
 	) {
 
 
-		float minX = minVec->getFX();
-		float minY = minVec->getFY();
-		float minZ = minVec->getFZ();
+		float minX = min(v0->getFX(),v1->getFX());
+		float minY = min(v0->getFY(),v1->getFY());
+		float minZ = min(v0->getFZ(),v1->getFZ());
 
-		float maxX = maxVec->getFX();
-		float maxY = maxVec->getFY();
-		float maxZ = maxVec->getFZ();
+		float maxX = max(v0->getFX(),v1->getFX());
+		float maxY = max(v0->getFY(),v1->getFY());
+		float maxZ = max(v0->getFZ(),v1->getFZ());
 
 
 		bool drawFront = false;
@@ -2719,8 +3317,6 @@ public:
 			
 			includeMap["materials"] = resString;
 			
-			cout << "material string: \n\n";
-			cout << includeMap["materials"];
 		}
 		
 		
@@ -2763,6 +3359,7 @@ public:
 			// save merged data to saved data
 			
 			
+			
 			stringBuf = "{\n\t\"params\":[\n";
 			
 			
@@ -2788,15 +3385,12 @@ public:
 			
 			// this should automatically clear the key
 			// and deallocate existing entries
-			//internalJSON.insertValue("shaderParams", JSON::Parse(stringBuf.c_str()));
 			
 			processJSONFromString(
 				&stringBuf,
-				&(internalJSON["shaderParams"].jv)
+				&(externalJSON["shaderParams"].jv)
 			);
 			
-			// cout << "stringBuf:\n\n";
-			// cout << stringBuf;
 			
 			
 		}
@@ -2970,7 +3564,7 @@ public:
 		unbindShader();
 	}
 
-	void bindFBO(string fboName, int swapFlag = -1)
+	void bindFBO(string fboName, int swapFlag = -1, int doClear = 1)
 	{
 
 		FBOSet *fbos;
@@ -2995,7 +3589,7 @@ public:
 
 		if (fbos)
 		{
-			bindFBODirect(fbos);
+			bindFBODirect(fbos, doClear);
 		}
 		else
 		{
@@ -3443,9 +4037,7 @@ public:
 		//testHuman->basePosition.copyFrom(&(dynObjects[E_OBJ_HUMAN]->pos));
 		
 		if (currentActor != NULL) {
-			testHuman->basePosition.copyFrom(currentActor->getVisMinInPixelsT());
-			testHuman->basePosition.addXYZRef(currentActor->getVisMaxInPixelsT());
-			testHuman->basePosition.multXYZ(0.5f);
+			testHuman->basePosition.copyFrom(&(currentActor->centerPointInPixels));
 		}
 		
 		
@@ -3658,16 +4250,13 @@ public:
 		
 		
 
-		if (abDown)
-		{
+		if (abDown) {
 			
-			if (rbDown || (shiftDown() ) )
-			{
+			if ( shiftDown() ) { //rbDown || 
 				zmod += dy;
 
 			}
-			else
-			{
+			else {
 				
 				xmod += float(sin(yrotrad))*dy;
 				ymod += float(cos(yrotrad))*dy;
@@ -3675,7 +4264,6 @@ public:
 
 				xmod += float(cos(yrotrad))*(-dx);
 				ymod -= float(sin(yrotrad))*(-dx);
-				
 			}
 			
 			modXYZ.setFXYZ(
@@ -3686,8 +4274,6 @@ public:
 			
 
 			lastModXYZ.addXYZRef(&modXYZ);
-
-
 
 
 		}
@@ -3704,45 +4290,32 @@ public:
 			
 		}
 		else {
-			if (shiftDown())
-			{
+			if (
+				shiftDown() && 
+				(mouseState == E_MOUSE_STATE_BRUSH) && 
+				lbDown
+			) {
 				
-				
-				if ((mouseState == E_MOUSE_STATE_BRUSH)&&lbDown)
+				curBrushRad -= modXYZ.getFZ() / 50.0f;
+				if (curBrushRad < 0.0f)
 				{
-					curBrushRad -= modXYZ.getFZ() / 50.0f;
-
-					if (curBrushRad < 0.0f)
-					{
-						curBrushRad = 0.0f;
-					}
-				}
-				else
-				{
-					
-					
-					
+					curBrushRad = 0.0f;
 				}
 
 			}
-			else
-			{
-				if (mouseState == E_MOUSE_STATE_BRUSH)
-				{
+			else {
+				if (mouseState == E_MOUSE_STATE_BRUSH) {
 					doDefault = true;
 				}
-				else
-				{
+				else {
 
-					if (activeObject == E_OBJ_CAMERA)
-					{
+					if (activeObject == E_OBJ_CAMERA) {
 						doDefault = true;
 					}
-					else
-					{
+					else {
 						
 						if (dynObjects[activeObject]->moveType == E_MT_TRACKBALL) {
-							if (rbDown) {
+							if (shiftDown()) {
 								dynObjects[activeObject]->posTrackball.addXYZ(0.0f,0.0f,dy);
 							}
 							else {
@@ -3768,7 +4341,7 @@ public:
 				{
 					
 					
-					if (lbDown) {
+					if (rbDown) {
 						mainCamera->addRotation(dx*0.005f, dy*0.005f);
 					}
 					
@@ -3909,7 +4482,35 @@ public:
 		bShiftOld = bShift;
 	}
 	
+	void playBump(BaseObj* ge) {
+		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
+		
+		if (ge == NULL) {
+			playSoundPosAndPitch(
+				"bump0",
+				cameraPos,
+				cameraPos,
+				0.3f
+			);
+		}
+		else {
+			playSoundPosAndPitch(
+				"bump0",
+				cameraPos,
+				&(ge->centerPointInPixels),
+				0.3f
+			);
+		}
+		
+		
+	}
 	
+	void getMarkerPos(int x, int y) {
+		getPixData(&spaceUpPD, x, y, true, false);
+		worldMarker.copyFrom(&spaceUpPD);
+		lastCellPos.copyFrom(&(worldMarker));
+		lastCellPos.intDivXYZ(pixelsPerCell);
+	}
 	
 	
 	void processInput(unsigned char key, bool keyDown, int x, int y) {
@@ -3924,7 +4525,18 @@ public:
 			return;
 		}
 		
-		keysPressed[key] = keyDown;
+		unsigned char newKey = key;
+		
+		if (
+			(key >= 'A') &&
+			(key <= 'Z')
+		) {
+			newKey += 32;
+		}
+		
+		keysPressed[newKey] = keyDown;
+		
+		
 		
 		
 		if (keyDown) {
@@ -3946,18 +4558,31 @@ public:
 				}
 				
 				if (key == keyMap[KEYMAP_RIGHT]) {
-					currentActor->rotate(-1,true);
-					testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,-M_PI/2.0f);
-					transformOrg(testHuman);//testHuman->applyt
-					makeDirty();
+					
+					gw->rotateCell(currentActor,1,E_DIR_Z);
+					
+					// currentActor->rotate(1,E_DIR_Z,true);
+					// if (gw->testHit(currentActor)) {
+					// 	playBump(currentActor);
+					// 	currentActor->rotate(0,E_DIR_Z,true);
+					// }
+					//testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,-M_PI/2.0f);
+					//transformOrg(testHuman);//testHuman->applyt
+					//makeDirty();
 				}
 				
 				if (key == keyMap[KEYMAP_LEFT]) {
 
-					currentActor->rotate(1,true);
-					testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,M_PI/2.0f);
-					transformOrg(testHuman);
-					makeDirty();
+					gw->rotateCell(currentActor,0,E_DIR_Z);
+
+					// currentActor->rotate(0,E_DIR_Z,true);
+					// if (gw->testHit(currentActor)) {
+					// 	playBump(currentActor);
+					// 	currentActor->rotate(1,E_DIR_Z,true);
+					// }
+					//testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,M_PI/2.0f);
+					//transformOrg(testHuman);
+					//makeDirty();
 				}
 			}
 			
@@ -3990,7 +4615,22 @@ public:
 			// break;
 
 
-
+				
+				
+				case '1':
+					getMarkerPos(x, y);
+					placeNewEnt(E_ENTTYPE_NPC);
+				break;
+				case '2':
+					getMarkerPos(x, y);
+					placeNewEnt(E_ENTTYPE_MONSTER);
+				break;
+				case '3':
+					getMarkerPos(x, y);
+					placeNewEnt(E_ENTTYPE_OBJ);
+				break;
+				
+				
 				case 'i':
 						isMacro = !isMacro;
 						
@@ -4012,7 +4652,7 @@ public:
 
 				case 15: //ctrl-o
 					//loadAllData();
-					loadGUIValues();
+					loadValuesGUI();
 
 					break;
 
@@ -4038,18 +4678,20 @@ public:
 
 				case 'u':
 					
+					
 					break;
 					
 				case 'q':
 				
 					if (currentActor == NULL) {
-						if (gw->gameActors.size() > 0) {
-							setCurrentActor(&(gw->gameActors.back()));
-							
+						
+						if (bestObjInd >= E_OBJ_LENGTH) {
+							setCurrentActor(&(gw->gameObjects[bestObjInd]));
 						}
+						
 					}
 					else{
-						currentActor = NULL;
+						setCurrentActor(NULL);
 					}
 				
 					// autoScroll = !autoScroll;
@@ -4079,11 +4721,14 @@ public:
 				case 27: // esc
 					//std::exit(0);
 					
-					if (ddMenu->visible) {
+					if (ddMenu->visible || contMenu->visible) {
 						ddMenu->visible = false;
+						contMenu->visible = false;
+						closeAllContainers();
 						escCount = 0;
 					}
 					else {
+						
 						escCount++;
 						if (escCount >= 3) {
 							std::exit(0);
@@ -4111,11 +4756,11 @@ public:
 
 				case 'R':
 				
-					//loadGUIValues(false);
+					//loadValuesGUI(false);
 					
-					doShaderRefresh(bakeParamsOn);
+					
 					loadGUI();
-					loadGUIValues();
+					loadValuesGUI();
 				break;
 				case 'r':
 					doShaderRefresh(bakeParamsOn);
@@ -4157,6 +4802,10 @@ public:
 					
 				break;
 				
+				case 'k':
+					gameAI->getKB();
+				break;
+				
 				case 'l':
 
 					multiLights = !multiLights;
@@ -4177,11 +4826,6 @@ public:
 
 				case 'o':
 					targetTimeOfDay = 1.0f-targetTimeOfDay;
-					// targetTimeOfDay += 0.5;
-					
-					// if (targetTimeOfDay > 1.0) {
-					// 	targetTimeOfDay = 0.0;
-					// }
 					
 					break;
 
@@ -4208,22 +4852,33 @@ public:
 
 				case '\t':
 				
-					if (mainGUI->isReady) {
-						if (mainMenu == NULL) {
-							
-						}
-						else {
-							if (mainMenu->visible) {
-								playSoundEvent("hideGUI");
+					if (ddMenu->visible || contMenu->visible) {
+						ddMenu->visible = false;
+						contMenu->visible = false;
+						closeAllContainers();
+						
+						escCount = 0;
+					}
+					else {
+						if (mainGUI->isReady) {
+							if (mainMenu == NULL) {
+								
 							}
-							
-							mainMenu->visible = !(mainMenu->visible);
-							
-							if (mainMenu->visible) {
-								playSoundEvent("showGUI");
+							else {
+								if (mainMenu->visible) {
+									playSoundEvent("hideGUI");
+								}
+								
+								mainMenu->visible = !(mainMenu->visible);
+								
+								if (mainMenu->visible) {
+									playSoundEvent("showGUI");
+								}
 							}
 						}
 					}
+				
+					
 					
 				
 					
@@ -4232,18 +4887,21 @@ public:
 
 				case ' ':
 					//selectedEnts.cycleEnts();
-					
+					getMarkerPos(x, y);
 					
 					ddMenu->visible = !(ddMenu->visible);
 					markerFound = ddMenu->visible;
 					
-					ddMenu->floatOffset.x = (guiX);
-					ddMenu->floatOffset.y = (guiY);
+					// ddMenu->floatOffset.x = (guiX);
+					// ddMenu->floatOffset.y = min((float)(guiY), (float)( (guiWinH - ddMenu->getChild(0)->resultDimInPixels.y) ));
 					
-					getPixData(&spaceUpPD, x, y, true, false);
-					worldMarker.copyFrom(&spaceUpPD);
-					lastCellPos.copyFrom(&(worldMarker));
-					lastCellPos.intDivXYZ(pixelsPerCell);
+					ddMenuBar = ddMenu->getChild(0)->getChild(0);
+					ddMenuBar->lastDrag.x = (guiX);
+					ddMenuBar->lastDrag.y = min((float)(guiY), (float)( (guiWinH - ddMenu->getChild(0)->resultDimInPixels.y) ));
+					ddMenuBar->forceDragUpdate = true;
+					
+					
+					
 					
 				break;
 
@@ -4267,16 +4925,16 @@ public:
 					break;
 
 				
-				case 'A':
-					maxHInPages++;
-					break;
-				case 'Z':
-					maxHInPages--;
-					if (maxHInPages < 1)
-					{
-						maxHInPages = 1;
-					}
-					break;
+				// case 'A':
+				// 	maxHInPages++;
+				// 	break;
+				// case 'Z':
+				// 	maxHInPages--;
+				// 	if (maxHInPages < 1)
+				// 	{
+				// 		maxHInPages = 1;
+				// 	}
+				// 	break;
 
 				
 
@@ -4284,10 +4942,23 @@ public:
 					gw->toggleVis(selectedEnts.getSelectedEnt());
 					break;
 
-
+				case 'A':
+				case 'Z':
+				case 'S':
+				case 'F':
+				case 'E':
+				case 'D':
+				case 'a':
+				case 'z':
+				case 's':
+				case 'f':
+				case 'e':
+				case 'd':
+					// reserved for movement
+				break;
 
 				default:
-
+					cout << "No code for key: " << key << "\n";
 					break;
 			}
 		}
@@ -4369,12 +5040,14 @@ public:
 	void runReport() {
 		
 		mainGUI->runReport();
-		cout << "lightCount: " << gw->lightCount << "\n";
-		cout << "TOT GPU MEM USED (MB): " << TOT_GPU_MEM_USAGE << "\n";
-		cout << "HolderSize (MB): " << holderSizeMB << "\n";
-		cout << "Num GPU Holders: " << gpuPool->holderPoolItems.size() << "\n";
-		cout << "GPU Pooled MB Used: " << ((float)gpuPool->holderPoolItems.size())*holderSizeMB << "\n";
-		cout << "totalPointCount: " << totalPointCount << "\n";
+		
+		cout << "Object Count: " << lastObjectCount << "\n";
+		// cout << "lightCount: " << gw->lightCount << "\n";
+		// cout << "TOT GPU MEM USED (MB): " << TOT_GPU_MEM_USAGE << "\n";
+		// cout << "HolderSize (MB): " << holderSizeMB << "\n";
+		// cout << "Num GPU Holders: " << gpuPool->holderPoolItems.size() << "\n";
+		// cout << "GPU Pooled MB Used: " << ((float)gpuPool->holderPoolItems.size())*holderSizeMB << "\n";
+		// cout << "totalPointCount: " << totalPointCount << "\n";
 	}
 	
 
@@ -4447,15 +5120,18 @@ public:
 		mouseYUp = y;
 
 		bool ddVis = false;
+		bool noTravel = false;
 		
 		if (ddMenu != NULL) {
 			ddVis = ddMenu->visible;
 		}
 		
-			
-
 		
-
+		if (mbDown) {
+			getMarkerPos(x, y);
+			placeNewEnt(iGenRand(0,2));
+		}
+		
 		if (abDown)
 		{
 			moveObject((float)dx, (float)dy);
@@ -4463,12 +5139,9 @@ public:
 		else
 		{
 
-			if (orgOn||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
+			if (RT_TRANSFORM||orgOn||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
 				getPixData(&mouseMovePD, x, y, false, false);
 			}
-
-			
-
 
 			
 
@@ -4480,7 +5153,6 @@ public:
 			//}
 			
 			
-
 
 			//////////////
 
@@ -4539,7 +5211,7 @@ public:
 		
 	}
 
-
+	
 
 
 
@@ -4588,6 +5260,55 @@ public:
 
 	}
 
+	void refreshContainers(bool onMousePos) {
+		UIComponent* objCont = NULL;
+		
+		bool oldVis = false;
+		
+		if (contMenu != NULL) {
+			
+			cout << "refreshContainers\n";
+			
+			externalJSON.erase("objectData"); // mem leak?
+			
+			oldVis = contMenu->visible;
+			contMenu->visible = anyContainerOpen();
+
+			objCont = mainGUI->findNodeByString("objectContainer");
+			//objCont->jvNodeNoTemplate->Child("dataParams")->number_value = contIndex;
+			
+			mainGUI->refreshNode(objCont);
+			
+			if (onMousePos&&(oldVis == false)) {
+				
+				// contMenu->dragOffset.x = 0.0f;
+				// contMenu->dragOffset.y = 0.0f;
+				contMenuBar = contMenu->getChild(0)->getChild(0);
+				
+				contMenuBar->lastDrag.x = (guiX);
+				contMenuBar->lastDrag.y = min((float)(guiY), (float)( (guiWinH - contMenu->getChild(0)->resultDimInPixels.y) ));
+				contMenuBar->forceDragUpdate = true;
+			}
+			
+		}
+	}
+
+	void toggleCont(int contIndex, bool onMousePos) {
+		
+		if (
+			isContainer[gw->gameObjects[contIndex].objectType]
+		) {
+			
+			gw->gameObjects[contIndex].isOpen = !(gw->gameObjects[contIndex].isOpen);
+			refreshContainers(onMousePos);
+		}
+		else {
+			playBump(NULL);	
+		}
+		
+		
+	}
+
 
 	float getShortestAngle(float begInRad, float endInRad, float amount) {
 		int begInDeg = begInRad*180/M_PI;
@@ -4604,12 +5325,15 @@ public:
 		
 		double curTime = myTimer.getElapsedTimeInMilliSec();
 		
-		
+		int i;
 		
 		
 		if (currentActor != NULL) {
-			if (!lbDown) {
-				vecToAngle(&targetLookAtVec,&tempVec1);
+			if (!rbDown) {
+				vecToAngle(
+					&(dirVecs[currentActor->orientationXYZ.getIY()]),
+					&tempVec1
+				);
 				mainCamera->rotation[0] += 
 					getShortestAngle(mainCamera->rotation[0],tempVec1.getFX(),0.1f);
 			}
@@ -4618,10 +5342,6 @@ public:
 		
 		float xrotrad = (mainCamera->rotation[0]);
 		float yrotrad = (mainCamera->rotation[1]);
-		
-		
-		//xrotrad = xrotrad*0.5f + tempVec1.getFX()*0.5f;
-		//rotrad = xrotrad*0.5f + tempVec1.getFX()*0.5f;
 		
 		angleToVec(&lookAtVec,xrotrad,yrotrad);
 		
@@ -4633,6 +5353,9 @@ public:
 		float ymod = 0.0f;
 		float zmod = 0.0f;
 		
+		float tempZoom = 1.0;
+		
+		float tempMoveSpeed;
 		
 		//unsigned char curKey;
 		
@@ -4685,10 +5408,16 @@ public:
 			
 			lastMoveTime = curMoveTime;
 			
+			
+			tempMoveSpeed = curMoveSpeed;
+			if (bShift) {
+				tempMoveSpeed *= 0.1;
+			}
+			
 			modXYZ.setFXYZ(
-				xmod*curMoveSpeed,
-				ymod*curMoveSpeed,
-				zmod*curMoveSpeed
+				xmod*tempMoveSpeed,
+				ymod*tempMoveSpeed,
+				zmod*tempMoveSpeed
 			);
 			
 			moveCamera(&modXYZ);
@@ -4714,9 +5443,27 @@ public:
 		else {
 			
 			
-			targetCameraPos.copyFrom(&lookAtVec);
-			targetCameraPos.multXYZ( -(mainCamera->subjectDistance)*subjectZoom );
-			targetCameraPos.addXYZRef(currentActor->getVisMinInPixelsT());
+			
+			//for (i = 0; i < 10; i++) {
+				targetCameraPos.copyFrom(&lookAtVec);
+				targetCameraPos.multXYZ( -(mainCamera->subjectDistance)*subjectZoom*tempZoom );
+				targetCameraPos.addXYZRef(&(currentActor->centerPointInPixels));
+				
+			// 	gw->gameObjects[E_OBJ_CAMERA].positionInCells.setFXYZRef(&targetCameraPos);
+			// 	gw->gameObjects[E_OBJ_CAMERA].updateBounds();
+				
+			// 	if (
+			// 		gw->testHit(&(gw->gameObjects[E_OBJ_CAMERA])) != E_CD_SOLID	
+			// 	) {
+			// 		break;
+			// 	}
+				
+			// 	tempZoom *= 0.75f;
+				
+			// }
+			
+			
+			
 			
 			modXYZ.copyFrom(&targetCameraPos);
 			modXYZ.addXYZRef(cameraPos,-1.0f);
@@ -4741,6 +5488,11 @@ public:
 				}
 				if (ddMenu != NULL) {
 					if (ddMenu->visible){
+						doProc = true;
+					}
+				}
+				if (contMenu != NULL) {
+					if (contMenu->visible){
 						doProc = true;
 					}
 				}
@@ -4788,8 +5540,12 @@ public:
 		int ii;
 		int jj;
 		int bestInd;
+		int upInd;
 		float bestDis;
 		float curDis;
+		bool findObject = false;
+		bool hitObject = false;
+		bool wasDoubleClick = false;
 		
 		bool ddVis = false;
 		if (ddMenu != NULL) {
@@ -4814,15 +5570,8 @@ public:
 		
 		hitGUI = false;
 		
-		if (anyMenuVisible()) {
-			hitGUI = mainGUI->testHit(button, state, guiX, guiY);
-		}
 		
-
-		if (hitGUI) {
-			
-			return;
-		}
+		
 		
 		
 		
@@ -4858,22 +5607,41 @@ public:
 		abDown = lbDown || rbDown || mbDown;
 		abClicked = lbClicked || rbClicked || mbClicked;
 		
+		
+		
+		if (abDown) {
+			mouseStart.setIXY(x, y);
+		}
+		if (abClicked) {
+			mouseEnd.setIXY(x, y);
+			noTravel = mouseEnd.distance(&mouseStart) < MAX_TRAVEL_DIS;	
+		}
+		
+		if (anyMenuVisible()) {
+			hitGUI = mainGUI->testHit(button, state, guiX, guiY);
+		}
+		
+
+		if (hitGUI) {
+			return;
+		}
+		
+		//cout << "NO GUI HIT\n";
+		
+		
 		wsBufferInvalid = true;
 		
 		if (abDown) {
 			getPixData(&mouseDownPD, x, y, true, false);
+			getPixData(&mouseDownOPD, x, y, true, true);
 		}
 		else {
 			getPixData(&mouseUpPD, x, y, true, false);
+			getPixData(&mouseUpOPD, x, y, true, true);
 		}
 		
 		
 		
-		if (abClicked) {
-			mouseEnd.setIXY(x, y);
-			noTravel = mouseEnd.distance(&mouseStart) < 30.0;
-			
-		}
 		
 
 		if (state == GLUT_DOWN) {
@@ -4883,6 +5651,46 @@ public:
 		//GamePage* gp;
 
 		if (abClicked) {
+			
+			if (lbClicked) {
+				if (noTravel) {
+					
+				}
+				else {
+					if (isDraggingObject) {
+						
+						upInd = mouseUpOPD.getFW();
+						
+						//cout << "UP IND " << upInd << "\n";
+						
+						if (upInd == 0) {
+							draggingToInd = 0;
+							draggingToType = E_DT_NOTHING;
+							performDrag();
+						}
+						else {
+							if (upInd >= E_OBJ_LENGTH) {
+								
+									if (isContainer[gw->gameObjects[upInd].objectType]) {
+										draggingToInd = upInd;
+										draggingToType = E_DT_WORLD_OBJECT;
+									}
+									else {
+										draggingToInd = 0;
+										draggingToType = E_DT_NOTHING;
+									}
+									
+									performDrag();
+							}						
+						}
+						
+						
+						
+					}
+				}
+			}
+			
+			
 
 
 			if (ddMenu != NULL) {
@@ -5093,83 +5901,110 @@ public:
 
 
 		}
-		else
-		{
-			if (abDown)
-			{
+		else {
+			if (abDown) {
 
-				if (rbDown && lbDown)
-				{
+				lastModXYZ.setFXYZ(0.0f, 0.0f, 0.0f);
 
-				}
-				else
-				{
+				mouseMovingLoc = 0;
+				mouseCount = 0;
+				mdTime = myTimer.getElapsedTimeInMilliSec();
+				
 
 
-					lastModXYZ.setFXYZ(0.0f, 0.0f, 0.0f);
-
-					mouseMovingLoc = 0;
-					mouseCount = 0;
-					mdTime = myTimer.getElapsedTimeInMilliSec();
-					mouseStart.setIXY(x, y);
-
-					
-
-
-
-
-
-
-
-
-
-
-					activeObject = E_OBJ_CAMERA;
-					
-					
-					
-					
-					if (bCtrl) {
+				activeObject = E_OBJ_CAMERA;
+				
+				
+				if (mouseState == E_MOUSE_STATE_MOVE) {
+					if (
+						orgOn &&
+						editPose
+						&& (!ddVis)
 						
-						getPixData(&mouseObjPD, x, y, true, true);
+					) {
+						findObject = !(updateNearestOrgNode(true, &mouseDownPD));
+					}
+					else {
+						findObject = true;
+					}
+					
+					if (findObject&&lbDown) {
 						
-						if (mouseObjPD.getFW() != 0.0) {
-							// find nearest dyn object
+						
+						
+						bestInd = mouseDownOPD.getFW();
+						
+						
+						
+						bestObjInd = bestInd;
+						
+						//setCurrentActor(&(gw->gameObjects[bestInd]));
+						
+						
+						
+						
+						
+						if (bestObjInd != 0) {
+							if (lastObjInd == bestObjInd) {
+								if ( (mdTime-clickTime) < 500 ) {
+									wasDoubleClick = true;
+								}
+							}
+						}
+						
+						lastObjInd = bestObjInd;
+						clickTime = mdTime;
+						
+						
+						draggingFromInd = 0;
+						draggingFromType = E_DT_NOTHING;
+						
+						if (wasDoubleClick) {
+							toggleCont(bestObjInd, true);
+						}
+						
+						if (bestInd >= E_OBJ_LENGTH) {
 							
-							cout << "OBJECT ID " << mouseObjPD.getFW() << "\n";
+							isDraggingObject = true;
+							//markerFound = true;
+							draggingFromInd = bestObjInd;
+							draggingFromType = E_DT_WORLD_OBJECT;
 							
-
-							bestInd = mouseObjPD.getFW();
+							// todo: make sure bestInd exists
 							
-							if ((bestInd >= E_OBJ_LENGTH)||(bestInd <= 0)) {
+						}
+						else {
+							
+							if (bCtrl) {
+								if (bestInd <= 0) {
+									
+								}
+								else {
+									activeObject = (E_OBJ)(bestInd);
+									hitObject = true;
+								}
+							}
+							
+							if (hitObject) {
 								
 							}
 							else {
-								activeObject = (E_OBJ)(bestInd);
+								setCurrentActor(NULL);
 							}
 							
-
 							
-						}
-					}
-					else {
-						
-						
-						
-						if (
-							orgOn &&
-							editPose
-							&& (!ddVis)
-							
-						) {
-							updateNearestOrgNode(true, &mouseDownPD);
 						}
 						
 					}
-					
-					
-					
 				}
+				
+				
+				
+				
+				
+				
+				
+				
 
 
 			}
@@ -5219,7 +6054,7 @@ public:
 		}
 	}
 	
-	void updateNearestOrgNode(bool setActive, FIVector4* mousePosWS) {
+	bool updateNearestOrgNode(bool setActive, FIVector4* mousePosWS) {
 		// tempVec3.setFXYZRef(mousePosWS);
 		// tempVec3.addXYZRef(&(testHuman->basePosition),-1.0f);
 		
@@ -5247,6 +6082,8 @@ public:
 				activeNode = bestNode;				
 			}
 		}
+		
+		return (bestNode != NULL);
 	}
 	
 	void findNearestOrgNode(
@@ -5323,7 +6160,7 @@ public:
 		string stringToSplit
 		//, bool dd = false
 	) {
-		//if (dd) cout << "getJVNodeByString(" << stringToSplit <<  ")\n";
+		//if (TEMP_DEBUG) cout << "getJVNodeByString(" << stringToSplit <<  ")\n";
 		
 		int i;
 		*resultNode = rootNode;
@@ -5334,27 +6171,167 @@ public:
 		for (i = 0; i < splitStrings.size(); i++) {
 			//if (dd) cout << splitStrings[i] << "\n";
 			
-			if ( (*resultNode)->HasChild(splitStrings[i]) ) {
-				*resultNode = (*resultNode)->Child(splitStrings[i]);
+			if (
+				(splitStrings[i][0] >= '0')	&&
+				(splitStrings[i][0] <= '9')
+			) {
+				*resultNode = (*resultNode)->Child(
+					stoi(splitStrings[i])
+				);
 			}
 			else {
-				cout << "NULL RESULT NODE\n";
-				*resultNode = NULL;
-				return;
+				if ( (*resultNode)->HasChild(splitStrings[i]) ) {
+					*resultNode = (*resultNode)->Child(splitStrings[i]);
+				}
+				else {
+					cout << "NULL RESULT NODE\n";
+					*resultNode = NULL;
+					return;
+				}
 			}
+			
+			
 			
 		}
 		
 	}
-
-	JSONValue* fetchJSONData(string dataFile) {
-		if (externalJSON.find( dataFile ) == externalJSON.end()) {
-			cout << "load jv data "  + dataFile << "\n";
-			loadJSON(
-				"..\\data\\" + dataFile,
-				&((externalJSON[dataFile]).jv)
-			);
+	
+	
+	void closeAllContainers() {
+		BaseObj* curCont;
+		for (itBaseObj iterator = gw->gameObjects.begin(); iterator != gw->gameObjects.end(); iterator++) {
+			// iterator->first = key
+			// iterator->second = value
+			
+			curCont = &(gw->gameObjects[iterator->first]);
+			curCont->isOpen = false;
 		}
+	}
+	
+	bool anyContainerOpen() {
+		BaseObj* curCont;
+		for (itBaseObj iterator = gw->gameObjects.begin(); iterator != gw->gameObjects.end(); iterator++) {
+			// iterator->first = key
+			// iterator->second = value
+			
+			curCont = &(gw->gameObjects[iterator->first]);
+			
+			if (curCont->isOpen) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	void cleanJVPointer(JSONValue** jv) {
+		
+		if (*jv != NULL)
+		{
+			delete *jv;
+		}
+		*jv = NULL;
+		
+	}
+
+	void getObjectData() {//int paramVal) {
+		int i;
+		int objectType;
+		int childId;
+		
+		JSONValue* tempVal0;
+		JSONValue* tempVal1;
+		BaseObj* curCont;
+		
+		
+		cleanJVPointer(&(externalJSON["objectData"].jv));
+		
+		
+		externalJSON["objectData"].jv = new JSONValue(JSONObject());
+		externalJSON["objectData"].jv->object_value["objects"] = new JSONValue(JSONArray());
+		tempVal0 = externalJSON["objectData"].jv->object_value["objects"];
+		
+		for (itBaseObj iterator = gw->gameObjects.begin(); iterator != gw->gameObjects.end(); iterator++) {
+			// iterator->first = key
+			// iterator->second = value
+			
+			curCont = &(gw->gameObjects[iterator->first]);
+			
+			if (curCont->isOpen) {
+				
+				tempVal0->array_value.push_back( new JSONValue(JSONObject()) );
+				
+				tempVal0->array_value.back()->object_value["children"] = new JSONValue(JSONArray());
+				tempVal0->array_value.back()->object_value["objectId"] = new JSONValue( ((double)(iterator->first)) );
+				tempVal1 = tempVal0->array_value.back()->Child("children");
+				
+				
+				for (i = 0; i < curCont->children.size(); i++) {
+					tempVal1->array_value.push_back(new JSONValue(JSONObject()));
+					childId = curCont->children[i];
+					objectType = gw->gameObjects[childId].objectType;
+					tempVal1->array_value.back()->object_value["objectType"] = new JSONValue( ((double)(objectType)) );
+					tempVal1->array_value.back()->object_value["objectId"] = new JSONValue( ((double)(childId)) );
+				}
+			}
+		}
+	}
+	
+	string getStringForObjectId(int objectId) {
+		int objectType = entIdToIcon[gw->gameObjects[objectId].objectType];
+		
+		if (isContainer[objectType]) {
+			return i__s(objectType) + "& Test Container ";
+		}
+		else {
+			if (gw->gameObjects[objectId].isEquipped) {
+				return "(E) " + i__s(objectType) + "& Test Object ";
+			}
+			else {
+				return i__s(objectType) + "& Test Object ";
+			}
+		}
+	}
+
+	JSONValue* fetchJSONData(string dataFile, JSONValue* params = NULL) {
+		
+		
+		bool doLoad = false;
+		bool loadRes = false;
+		
+		if (externalJSON.find( dataFile ) == externalJSON.end()) {
+			doLoad = true;
+		}
+		else {
+			if (externalJSON[dataFile].jv == NULL) {
+				doLoad = true;
+			}
+		}
+			
+		if (doLoad) {
+			if (dataFile.compare("shaderParams") == 0) {
+				cout << "attempted to load shaderParams\n";
+			}
+			else if (dataFile.compare("objectData") == 0) {
+				getObjectData();//params->number_value);
+			}
+			else {
+				cout << "load jv data "  + dataFile << "\n";
+				loadRes = loadJSON(
+					"..\\data\\" + dataFile,
+					&((externalJSON[dataFile]).jv)
+				);
+				
+				if (loadRes == false) {
+					return NULL;	
+				}
+				
+			}
+			
+			
+		}
+		
+		
+		
 		return (externalJSON[dataFile]).jv;
 	}
 
@@ -5362,11 +6339,7 @@ public:
 		string* sourceBuffer,
 		JSONValue** destObj
 	) {
-		if (*destObj != NULL)
-		{
-			delete *destObj;
-			*destObj = NULL;
-		}
+		cleanJVPointer(destObj);
 		
 		*destObj = JSON::Parse(sourceBuffer->c_str());
 
@@ -5390,11 +6363,7 @@ public:
 		JSONValue** destObj
 	) {
 		
-		if (*destObj != NULL)
-		{
-			delete *destObj;
-			*destObj = NULL;
-		}
+		cleanJVPointer(destObj);
 
 		//doTraceND("destObj is now NULL");
 		
@@ -5449,87 +6418,6 @@ public:
 	}
 	
 	
-	
-	// void mergeJSON(
-	// 	JSONValue** destJV,
-	// 	JSONValue* srcJV	
-	// ) {
-		
-	// 	int i;
-		
-	// 	if (srcJV != NULL) {
-	// 		if (srcJV->HasChild("value")) {
-	// 			if ((*destJV)->HasChild("value")) {
-	// 				(*destJV)->Child("value")->number_value = srcJV->Child("value");
-	// 			}	
-	// 		}
-	// 	}
-		
-		
-	// 	for (i = 0; i < destJV; i++) {
-			
-	// 	}
-		
-		
-	// }
-	
-	
-	// bool saveJSON(
-	// 	string path,
-	// 	JSONValue** jvToSave
-	// 	//,bool mergeFile = true
-	// ) {
-		
-	// 	bool res = false;
-		
-	// 	string saveString;
-		
-	// 	charArr dest;
-	// 	dest.data = NULL;
-	// 	dest.size = 0;
-		
-	// 	//JSONValue* jvToMergeFrom = NULL;
-		
-	// 	// if (mergeFile) {
-	// 	// 	if ( loadFile(path, &dest) )
-	// 	// 	{
-	// 	// 		if (processJSON(&dest, &nullBuffer, &jvToMergeFrom)) {
-	// 	// 			res = true;
-	// 	// 		}
-	// 	// 		else {
-	// 	// 			res = false;
-	// 	// 		}
-	// 	// 	}
-	// 	// 	else {
-	// 	// 		res = false;
-	// 	// 	}
-	// 	// }
-		
-		
-	// 	// if (res) { // jvToMergeFrom is ready to merge
-	// 	// 	//mergeJSON(jvToSave,jvToMergeFrom);
-	// 	// }
-		
-	// 	saveFileString(path, &saveString);
-		
-		
-	// 	if (dest.data != NULL)
-	// 	{
-	// 		delete[] dest.data;
-	// 		dest.data = NULL;
-	// 	}
-	// 	// if (jvToMergeFrom != NULL)
-	// 	// {
-	// 	// 	delete jvToMergeFrom;
-	// 	// 	jvToMergeFrom = NULL;
-	// 	// }
-		
-		
-	// 	return res;
-		
-		
-	// }
-	
 	bool loadJSON(
 		string path,
 		JSONValue** destObj
@@ -5580,18 +6468,15 @@ public:
 		else {
 			curComp = &(compMap[key]);
 			
-			if (
-				(curComp->uic == NULL) ||
-				(curComp->nodeId < 0)	
-			) {
+			if (curComp->nodeId < 0) {
 				// component was deleted
 			}
 			else {
 				if (applyString) {
-					curComp->uic->setText(stringValue);
+					compStack[curComp->nodeId].data->setText(stringValue);
 				}
 				if (applyVal) {
-					curComp->uic->setValue(floatValue);
+					compStack[curComp->nodeId].data->setValue(floatValue);
 				}
 				
 			}
@@ -5606,14 +6491,11 @@ public:
 		else {
 			curComp = &(compMap[key]);
 			
-			if (
-				(curComp->uic == NULL) ||
-				(curComp->nodeId < 0)	
-			) {
+			if (curComp->nodeId < 0) {
 				// component was deleted
 			}
 			else {
-				return curComp->uic->getValue();
+				return compStack[curComp->nodeId].data->getValue();
 			}
 		}
 		
@@ -5628,14 +6510,11 @@ public:
 		else {
 			curComp = &(compMap[key]);
 			
-			if (
-				(curComp->uic == NULL) ||
-				(curComp->nodeId < 0)	
-			) {
+			if (curComp->nodeId < 0) {
 				// component was deleted
 			}
 			else {
-				return curComp->uic;
+				return compStack[curComp->nodeId].data;
 			}
 		}
 		
@@ -5656,20 +6535,17 @@ public:
 		else {
 			curComp = &(compMap[key]);
 			
-			if (
-				(curComp->uic == NULL) ||
-				(curComp->nodeId < 0)	
-			) {
+			if (curComp->nodeId < 0) {
 				// component was deleted
 			}
 			else {
-				curComp->uic->setValue(floatValue,dispatchEvent,preventRefresh);
+				compStack[curComp->nodeId].data->setValue(floatValue,dispatchEvent,preventRefresh);
 			}
 		}
 	}
 	
 	
-	void loadGUIValues(bool applyValues = false) {
+	void loadValuesGUI(bool applyValues = false) {
 		
 		cout << "Loading GUI Values\n";
 		
@@ -5731,6 +6607,8 @@ public:
 		cout << "Saving External JSON Values\n";
 		
 		
+		
+		
 		for(itJSStruct iterator = externalJSON.begin(); iterator != externalJSON.end(); iterator++) {
 			
 			if (iterator->second.jv != NULL) {
@@ -5740,8 +6618,8 @@ public:
 				);
 			}
 			
-		    // iterator->first = key
-		    // iterator->second = value
+			// iterator->first = key
+			// iterator->second = value
 		}
 		
 		
@@ -5758,16 +6636,13 @@ public:
 		
 		for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
 				
-				if (
-					(iterator->second.uic == NULL) ||
-					(iterator->second.nodeId < 0)
-				) {
+				if (iterator->second.nodeId < 0) {
 					
 				}
 				else {
 					if (iterator->first[0] ==  '$') {
 						stringBuf.append(
-							iterator->first + "^" + floatToHex(iterator->second.uic->getValue()) + "^"
+							iterator->first + "^" + floatToHex(compStack[iterator->second.nodeId].data->getValue()) + "^"
 						);
 					}
 					
@@ -5886,7 +6761,7 @@ public:
 					testHuman->loadFromFile(currentFieldString);
 					//orientRotation();
 					if (currentActor != NULL) {
-						currentActor->curRot = 1;
+						//currentActor->curRot = 1;
 					}
 					transformOrg(testHuman);
 					makeDirty();
@@ -5909,9 +6784,9 @@ public:
 
 	void loadGUI() {
 		externalJSON.clear();
+		doShaderRefresh(bakeParamsOn);
 		
 		for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
-				iterator->second.uic = NULL;
 				iterator->second.nodeId = -1;
 		    // iterator->first = key
 		    // iterator->second = value
@@ -5927,17 +6802,18 @@ public:
 				guiRootJS
 			);
 		
-			for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
-				if (iterator->second.nodeId != -1) {
-					iterator->second.uic = (compStack[iterator->second.nodeId]); //mainGUI->findNodeById(
-				}
-			}
+			// for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
+			// 	if (iterator->second.nodeId != -1) {
+			// 		//iterator->second.uic = (compStack[iterator->second.nodeId].data);
+			// 	}
+			// }
 		
 		}
 		
 		mapComp = getGUIComp("map.mapHolder");
 		mainMenu = getGUIComp("guiHandles.mainMenu");
 		ddMenu = getGUIComp("guiHandles.ddMenu");
+		contMenu = getGUIComp("guiHandles.contMenu");
 		//pickerMenu = getGUIComp("guiHandles.pickerMenu");
 		fieldMenu = getGUIComp("guiHandles.fieldMenu");
 		fieldText = getGUIComp("fieldMenu.field");
@@ -6162,6 +7038,7 @@ public:
 	
 	void frameUpdate() {
 		
+		
 		if (updateMatFlag&&(!matVolLock)) {
 			updateMatFlag = false;
 			updateMatVol();
@@ -6238,7 +7115,17 @@ public:
 			
 		}
 		else {
-			gw->update();
+			
+			
+			
+			if (mainGUI != NULL) {
+				if (mainGUI->isReady) {
+					currentTick++;
+					gw->update();
+				}
+			}
+			
+			
 		}
 		
 		
@@ -6256,6 +7143,8 @@ public:
 
 	void display(void)
 	{
+		
+		bool noTravel = false;
 
 		curTime = myTimer.getElapsedTimeInMilliSec();
 
@@ -6319,9 +7208,26 @@ public:
 
 
 			lastTime = curTime;
-
-
 			timeOfDay += (targetTimeOfDay - timeOfDay) / 8.0;
+
+			if (
+				lbDown &&
+				isDraggingObject && 
+				(draggingFromType != E_DT_NOTHING) &&
+				((curTime-mdTime) > 300)
+			) {
+				glutSetCursor(GLUT_CURSOR_CROSSHAIR);
+			
+				mouseMoveVec.setFXYZ(lastMouseX,lastMouseY,0.0);
+				noTravel = mouseMoveVec.distance(&mouseStart) < MAX_TRAVEL_DIS;	
+				markerFound = !noTravel;
+				getPixData(&worldMarker, lastMouseX, lastMouseY, true, false);
+			
+			}
+			else {
+				markerFound = false;
+				glutSetCursor(GLUT_CURSOR_RIGHT_ARROW);
+			}
 
 
 			mouseMovingLoc = (mouseMovingLoc + 1) % mouseMovingSize;

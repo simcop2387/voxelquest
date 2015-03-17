@@ -370,7 +370,7 @@ public:
 		int n;
 		int p;
 		int ind;
-		int bufSize = (singleton->visPageSizeInPixels * singleton->bufferMult);
+		//int bufSize = (singleton->visPageSizeInPixels * singleton->bufferMult);
 		int geomInPage;
 		int baseInd;
 
@@ -406,7 +406,7 @@ public:
 
 				if (
 
-					FIVector4::intersect( gg->getVisMinInPixelsT(), gg->getVisMaxInPixelsT(), &worldMinBufInPixels, &worldMaxBufInPixels )
+					FIVector4::intersectInt( gg->getVisMinInPixelsT(), gg->getVisMaxInPixelsT(), &worldMinBufInPixels, &worldMaxBufInPixels )
 					&& (gg->visible)
 
 				) {
@@ -471,7 +471,7 @@ public:
 		int n;
 		int p;
 		int ind;
-		int bufSize = (singleton->visPageSizeInPixels * singleton->bufferMult);
+		//int bufSize = (singleton->visPageSizeInPixels * singleton->bufferMult);
 		intPair curId;
 		int geomInPage;
 		int baseInd;
@@ -490,8 +490,8 @@ public:
 		start.copyFrom( &worldMinBufInPixels );
 		end.copyFrom( &worldMaxBufInPixels );
 
-		start.addXYZ(-bufSize);
-		end.addXYZ(bufSize);
+		//start.addXYZ(-bufSize);
+		//end.addXYZ(bufSize);
 
 		start.intDivXYZ(singleton->holderSizeInPixels);
 		end.intDivXYZ(singleton->holderSizeInPixels);
@@ -526,7 +526,7 @@ public:
 
 							if (
 
-								FIVector4::intersect( gg->getVisMinInPixelsT(), gg->getVisMaxInPixelsT(), &worldMinBufInPixels, &worldMaxBufInPixels )
+								FIVector4::intersectInt( gg->getVisMinInPixelsT(), gg->getVisMaxInPixelsT(), &worldMinBufInPixels, &worldMaxBufInPixels )
 								&& (gg->visible)
 
 							) {
@@ -758,7 +758,10 @@ public:
 		}
 	}
 
-	void generateVolume(bool dd = false) {
+	bool generateVolume(bool dd = false) {
+		
+		bool addedVerts = false;
+		
 		PAGE_COUNT++;
 
 		int curVGFBO = CUR_VG_FBO;
@@ -985,12 +988,14 @@ public:
 		
 		if (didRender) {
 			
-			getPoints(curVGTFBO);
+			addedVerts = getPoints(curVGTFBO);
 			
 		}
 		
 		isDirty = false;
 		isRendering = false;
+		
+		return addedVerts;
 
 	}
 
@@ -1006,13 +1011,13 @@ public:
 	// 	// WAS DOING
 	// }
 
-	void getPoints(int fboNum) {
+	bool getPoints(int fboNum) {
 		
 		int sres = singleton->volGenSuperRes;
 		int sresM1 = sres-1;
 		float fres = sres;
 		
-		
+		bool addedVerts = false;
 		
 		
 		int cellsPerPage = singleton->cellsPerPage;
@@ -1087,7 +1092,6 @@ public:
 		bool doProc;
 		bool hasAir = false;
 		bool hasSolid = false;
-		bool hasSolidAndAir = false;
 		
 		
 		
@@ -1118,7 +1122,7 @@ public:
 		
 		
 		// determine collision matrix
-		if (hasSolid||hasSolidAndAir) {
+		if (hasSolid) {
 			if (cellData == NULL) {
 				cellData = new int[cellDataSize];
 			}
@@ -1185,7 +1189,7 @@ public:
 		
 		
 		
-		if ( (hasAir&&hasSolid)||(hasSolidAndAir) ) {
+		if ( hasAir&&hasSolid ) {
 			
 		}
 		else {
@@ -1263,7 +1267,7 @@ public:
 								q = fbow0->getPixelAtIndex3DMip(ind,R_CHANNEL,mval,p);
 								
 								if (q < E_LAYER_NULL) {
-									isCand = fbow1->getPixelAtIndex3DMip(ind,A_CHANNEL,mval,p) != 0;
+									isCand = (fbow1->getPixelAtIndex3DMip(ind,A_CHANNEL,mval,p) != 0);
 									
 									
 									
@@ -1361,6 +1365,8 @@ public:
 											vertices[ci].data.push_back(bpZ);
 											vertices[ci].data.push_back(1.0f);
 											
+											addedVerts = true;
+											
 											//totalPointCount++;
 											
 											//getPixVal(fbow0,fbow1,ind, bpX,bpY,bpZ, iv0,iv0,iv0);
@@ -1408,14 +1414,7 @@ public:
 		
 DO_CLEANUP:
 
-	;
-	
-	
-	// if (vertices[0].data.size() > 0) {
-	// 	if (isEntity) {
-	// 		cout << "RENDER ENT\n";
-	// 	}
-	// }
+	return addedVerts;
 	
 		
 	}

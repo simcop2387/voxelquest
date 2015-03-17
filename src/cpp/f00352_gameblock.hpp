@@ -379,6 +379,9 @@ public:
 		int curType;
 		uint uiSimp;
 		float fSimp;
+		
+		float fSimpLow;
+		float fSimpHigh;
 
 		int newCount = 0;
 		int io, jo, ko;
@@ -516,29 +519,19 @@ public:
 
 					tempf = singleton->getHeightAtPixelPos(tempVec.getFX(), tempVec.getFY());
 
-					if ( tempVec.getFZ() < tempf) {//tempVec.getFZ() < singleton->getSLInPixels() + 4.0*pixelsPerCell ) {//
+					if ( tempVec.getFZ() < tempf) {
 						uiSimp = 255;
 					} else {
 						uiSimp = 0;
 					}
 
 
-
-					// if ((i+j+k)%2 == 0) {
-					//  uiSimp = 255;
-					// }
-					// else {
-					//  uiSimp = 0;
-					// }
-
 					terData[curInd] = (uiSimp << 24) | (uiSimp << 16) | (uiSimp << 8) | uiSimp;
 				}
 			}
 		}
-
-
-
-
+		
+		
 
 
 		// Get Ter Data Height
@@ -577,6 +570,13 @@ public:
 
 
 		
+
+
+
+
+
+
+
 
 
 
@@ -820,7 +820,7 @@ public:
 							
 							
 							
-							if ( iGetRandSeeded(&tempVec,&tempVec2, 0, 100) > 20 ) {
+							if ( iGetRandSeeded(&tempVec,&tempVec2, 0, 100) > 10 ) {
 								mapData[testInd].connectionProps[0] = E_CT_TREE;
 							}
 						}
@@ -1500,54 +1500,54 @@ public:
 											
 											
 											
-											if ( (curDir==1) ) { // 
+											
+											
+											if (curBT == E_CT_DOORWAY) {
 												
-												if (curBT == E_CT_DOORWAY) {
-													
-												}
-												else {
-													nodeFlags |= BC_FLAG_INSIDE;
-												}
-												
-												/*
-												void connectNodes(
-													int _x1,
-													int _y1,
-													int _z1,
-													int _x2,
-													int _y2,
-													int _z2,
-													
-													int ct,
-													int id = -1,
-													
-													int _heightDelta = 0,
-													int _direction = 0,
-													
-													float _wallRadInCells = -1.0f,
-													unsigned int _nodeFlags = 0
-												)
-												*/
-												
-												connectNodes(
-													i,
-													j,
-													k,
-													i + dirModX[m],
-													j + dirModY[m],
-													k + dirModZ[m],
-													
-													E_CT_LANTERN,
-													-1,
-													
-													0,
-													curDir,
-													
-													-1.0f,
-													nodeFlags
-
-												);
 											}
+											else {
+												nodeFlags |= BC_FLAG_INSIDE;
+											}
+											
+											/*
+											void connectNodes(
+												int _x1,
+												int _y1,
+												int _z1,
+												int _x2,
+												int _y2,
+												int _z2,
+												
+												int ct,
+												int id = -1,
+												
+												int _heightDelta = 0,
+												int _direction = 0,
+												
+												float _wallRadInCells = -1.0f,
+												unsigned int _nodeFlags = 0
+											)
+											*/
+											
+											connectNodes(
+												i,
+												j,
+												k,
+												i + dirModX[m],
+												j + dirModY[m],
+												k + dirModZ[m],
+												
+												E_CT_LANTERN,
+												-1,
+												
+												0,
+												curDir,
+												
+												-1.0f,
+												nodeFlags
+
+											);
+											
 											
 											
 											
@@ -1665,6 +1665,81 @@ public:
 				}
 			}
 		}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+
+
+		// simplex noise caves
+
+		// fSimpLow = 9999.0f;
+		// fSimpHigh = -9999.0f;
+		
+		
+		// for (k = terDataBufPitchZ-2; k >= 0; k--) {
+		// 	fk = k;
+		// 	for (j = 0; j < terDataBufPitchXY; j++) {
+		// 		fj = j;
+		// 		for (i = 0; i < terDataBufPitchXY; i++) {
+		// 			fi = i;
+
+
+		// 			curInd = getNodeIndex(i, j, k, 0);
+		// 			testInd = getNodeIndex(i, j, k+1, 0);
+					
+		// 			if (terData[curInd] != 0) {
+		// 				if (terData[testInd] != 0) {
+							
+							
+							
+		// 					fSimp = simplexScaledNoise(
+		// 					 4.0f, //octaves
+		// 					 2.0f, //persistence (amount added in each successive generation)
+		// 					 1.0f/4.0f, //scale (frequency)
+		// 					 0.0f, // lo bound
+		// 					 1.0f, // hi bound
+		// 					 fi + offsetInBlocks.getFX()*((float)terDataVisPitchXY) - 1.0f,
+		// 					 fj + offsetInBlocks.getFY()*((float)terDataVisPitchXY) - 1.0f,
+		// 					 fk + offsetInBlocks.getFZ()*((float)terDataVisPitchZ) - 1.0f
+		// 					);
+							
+		// 					if (fSimp < fSimpLow) {
+		// 						fSimpLow = fSimp;
+		// 					}
+		// 					if (fSimp > fSimpHigh) {
+		// 						fSimpHigh = fSimp;
+		// 					}
+							
+		// 					if (fSimp > 0.6f) {
+		// 						terData[curInd] = 0;
+		// 					}
+							
+							
+							
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+		// }
+
+		// cout << "LOW " << fSimpLow << "\n";
+		// cout << "HIGH " << fSimpHigh << "\n\n";
+
+
+
+
+		
+		
 		
 		
 		
@@ -2352,15 +2427,16 @@ public:
 											);
 
 											
+											rad.addXYZ(
+												0.0f,
+												0.0f,
+												(2.0f)*pixelsPerCell
+											);
+											
 											if (
 												singleton->getHeightAtPixelPos(p1.getFX(), p1.getFY()) <=
 												singleton->getSLInPixels()  + 2.0f * pixelsPerCell
 											) {
-												rad.addXYZ(
-													0.0f,
-													0.0f,
-													(2.0f)*pixelsPerCell
-												);
 												matParams.setFXYZ(E_MAT_PARAM_FOUNDATION, E_MAT_SUBPARAM_DOCK, 0.0f);
 											}
 											else {
@@ -3902,7 +3978,7 @@ SKIP_ADD_GEOM:
 							}
 						}
 
-						singleton->terDataScaled[indDest] = (uiSimp << 24) | (uiSimp << 16) | (uiSimp << 8) | uiSimp;//terData[indSource];
+						singleton->terDataScaled[indDest] = (uiSimp << 24) | (uiSimp << 16) | (uiSimp << 8) | uiSimp;
 					}
 				}
 			}

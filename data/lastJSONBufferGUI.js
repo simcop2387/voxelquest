@@ -5,10 +5,16 @@
 		},
 		"menuBar": {
 			"type":4,
-			"ss":"headerSS"
+			"ss":"headerSS",
+			"alignX":1,
+			"fillRatioX":1
 		},
 		"cont": {
 			"type":0
+		},
+		"rootCont": {
+			"type":0,
+			"hoverType":4
 		},
 		"fillToggle": {
 			"type":1,
@@ -139,8 +145,7 @@
 		"Silk":{"class":"Cloth"},
 		
 		"Leather":{"class":"Hide"},
-		"Dragon Scale":{"class":"Hide"},
-		"Yew":{"class":"Hide"}
+		"Dragon Scale":{"class":"Hide"}
 		
 	},
 	
@@ -274,9 +279,8 @@
 	
 	
 	"baseGUI":{
-		"template":"cont",
+		"template":"rootCont",
 		"hasBackground":0,
-		"hoverType":4,
 		"floatingChildren":[
 			
 			
@@ -290,7 +294,7 @@
 			
 			{
 				"uid":"guiHandles.fieldMenu",
-				"template":"cont",
+				"template":"rootCont",
 				"hasBackground":0,
 				"alignX":1,
 				"children":[
@@ -342,16 +346,10 @@
 				]
 			},
 
-
-
-
-			
-			
-			
 			
 			{
 				"uid":"guiHandles.ddMenu",
-				"template":"cont",
+				"template":"rootCont",
 				"hasBackground":0,
 				"children":[
 					{
@@ -359,7 +357,10 @@
 						"fillDir":1,
 						"children": [
 						
-							
+							{
+								"template":"menuBar",
+								"label":"Context Menu"
+							},
 							{
 								"template":"cont",
 								"fillDir":1,
@@ -386,8 +387,13 @@
 															"children":[
 																{
 																	"template":"fillButton",
-																	"label":"Actor",
-																	"uid":"placeEntity.actor"
+																	"label":"NPC",
+																	"uid":"placeEntity.npc"
+																},
+																{
+																	"template":"fillButton",
+																	"label":"Monster",
+																	"uid":"placeEntity.monster"
 																},
 																{
 																	"template":"fillButton",
@@ -431,9 +437,7 @@
 													
 														{
 															"template":"menuBar",
-															"label":"Materials",
-															"alignX":1,
-															"fillRatioX":1
+															"label":"Materials"
 															
 														},
 														{
@@ -443,7 +447,7 @@
 															"maxDimY": 512,
 															"dataFile":"materials.js",
 															"dataSource":"materials",
-															"childType":"E_GTC_GENERIC",
+															"childType":2,
 															"children": [],
 															"childTemplate":{
 																"template":"radioFillCenter",
@@ -472,7 +476,81 @@
 			
 			
 			
-			
+			{
+				"uid":"guiHandles.contMenu",
+				"template":"rootCont",
+				"hasBackground":0,
+				"children":[
+					
+					{
+						"template":"cont",
+						"fillDir":1,
+						"children": [
+							{
+								"template":"menuBar",
+								"label":"Open Container(s)"
+							},
+							
+							{
+								"template":"cont",
+								"fillRatioX":1,
+								"fillDir":0,
+								
+								"uid":"objectContainer",
+								"dataFile":"objectData",
+								"dataSource":"objects",
+								"childType":4,
+								"children":[],
+								
+								"childTemplate": {
+									"template":"cont",
+									"fillRatioX":1,
+									"fillDir":1,
+									
+									"children": [
+											{
+												"template":"fillButton",
+												"label":"Close",
+												"alignX":1,
+												"uid":"#contMenu.close",
+												"ss":"redSS"
+											},
+											{
+												"template":"cont",
+												"fillDir":1,
+												"fillRatioX":1,
+												"maxDimY": 512,
+												"minDimY": 32,
+												
+												
+												"objectId":0,
+												"uid":"#contItemParent",
+												"interactive":1,
+												
+												"dataFile":"objectData",
+												"dataSource":"",
+												"childType":3,
+												"children":[],
+												
+												"childTemplate":{
+													"template":"radioFillCenter",
+													"label":"",
+													"objectId":0,
+													"objectType":0,
+													"uid":"#contItem"
+												}
+										}
+									]
+								}
+							}
+						]
+					}
+					
+					
+					
+					
+				]
+			},
 			
 			
 			
@@ -485,7 +563,7 @@
 			
 			{
 				"uid":"guiHandles.mainMenu",
-				"template":"cont",
+				"template":"rootCont",
 				"hasBackground":0,
 				"children":[
 					{
@@ -495,9 +573,7 @@
 						
 							{
 								"template":"menuBar",
-								"label":"Main Menu",
-								"alignX":1,
-								"fillRatioX":1
+								"label":"Main Menu"
 								
 							},
 							{
@@ -519,9 +595,7 @@
 													
 														{
 															"template":"menuBar",
-															"label":"Equipped",
-															"alignX":1,
-															"fillRatioX":1
+															"label":"Equipped"
 															
 														},
 														{
@@ -535,7 +609,7 @@
 															"whereAnyEqual":[
 															
 															],
-															"childType":"E_GCT_INV_ITEM",
+															"childType":0,
 															"childTemplate":{
 																"fillRatioX":1,
 																"template":"radio",
@@ -558,9 +632,7 @@
 														},
 														{
 															"template":"menuBar",
-															"label":"Inventory",
-															"alignX":1,
-															"fillRatioX":1
+															"label":"Inventory"
 															
 														},
 														{
@@ -575,7 +647,7 @@
 															"whereAnyEqual":[
 															
 															],
-															"childType":"E_GCT_INV_ITEM",
+															"childType":0,
 															"childTemplate":{
 																"fillRatioX":1,
 																"template":"radio",
@@ -617,9 +689,7 @@
 													
 														{
 															"template":"menuBar",
-															"label":"Stats",
-															"alignX":1,
-															"fillRatioX":1
+															"label":"Stats"
 															
 														},
 														{
@@ -691,9 +761,7 @@
 													"children": [
 														{
 															"template":"menuBar",
-															"label":"Options",
-															"alignX":1,
-															"fillRatioX":1
+															"label":"Options"
 															
 														},
 														{
@@ -715,9 +783,7 @@
 																				
 																					{
 																						"template":"menuBar",
-																						"label":"Graphics Options",
-																						"alignX":1,
-																						"fillRatioX":1
+																						"label":"Graphics Options"
 																						
 																					},
 																					{
@@ -756,9 +822,7 @@
 																				
 																					{
 																						"template":"menuBar",
-																						"label":"Sound Options",
-																						"alignX":1,
-																						"fillRatioX":1
+																						"label":"Sound Options"
 																						
 																					},
 																					{
@@ -843,9 +907,7 @@
 													
 														{
 															"template":"menuBar",
-															"label":"Materials",
-															"alignX":1,
-															"fillRatioX":1
+															"label":"Materials"
 															
 														},
 														{
@@ -853,9 +915,10 @@
 															"fillDir":1,
 															"fillRatioX":1,
 															"maxDimY": 512,
+															"uid":"materialEditor",
 															"dataFile":"materials.js",
 															"dataSource":"materials",
-															"childType":"E_GTC_GENERIC",
+															"childType":2,
 															"children": [],
 															"childTemplate":{
 																"template":"radioFillCenter",
@@ -876,9 +939,7 @@
 																				"children": [
 																					{
 																						"template":"menuBar",
-																						"label":"Material Nodes",
-																						"alignX":1,
-																						"fillRatioX":1
+																						"label":"Material Nodes"
 																						
 																					},
 																					{
@@ -893,7 +954,7 @@
 																						"fillRatioX":1,
 																						"dataFile":"materials.js",
 																						"dataSource":"",
-																						"childType":"E_GTC_GENERIC",
+																						"childType":2,
 																						"children": [],
 																						"childTemplate":{
 																							"template":"cont",
@@ -901,7 +962,7 @@
 																							"fillRatioX":1,
 																							"dataFile":"materials.js",
 																							"dataSource":"",
-																							"childType":"E_GTC_GENERIC",
+																							"childType":2,
 																							"children": [],
 																							"childTemplate":
 																							
@@ -950,9 +1011,7 @@
 																												"children": [
 																													{
 																														"template":"menuBar",
-																														"label":"Material Props",
-																														"alignX":1,
-																														"fillRatioX":1
+																														"label":"Material Props"
 																														
 																													},
 																													{
@@ -1101,9 +1160,7 @@
 													
 														{
 															"template":"menuBar",
-															"label":"Debug Info",
-															"alignX":1,
-															"fillRatioX":1
+															"label":"Debug Info"
 															
 														},
 														{
@@ -1151,9 +1208,7 @@
 													
 														{
 															"template":"menuBar",
-															"label":"Character Editor",
-															"alignX":1,
-															"fillRatioX":1
+															"label":"Character Editor"
 															
 														},
 														{
@@ -1219,19 +1274,16 @@
 													
 														{
 															"template":"menuBar",
-															"label":"Shader Parameters",
-															"alignX":1,
-															"fillRatioX":1
+															"label":"Shader Parameters"
 															
 														},
 														{
 															"template":"cont",
 															"maxDimY": 512,
 															"fillDir":1,
-															"isInternal":1,
 															"dataFile":"shaderParams",
 															"dataSource":"params",
-															"childType":"E_GCT_SHADER_PARAM",
+															"childType":1,
 															"children": [],
 															"childTemplate":{
 																"fillRatioX":1,
@@ -1282,9 +1334,7 @@
 													
 														{
 															"template":"menuBar",
-															"label":"Map",
-															"alignX":1,
-															"fillRatioX":1
+															"label":"Map"
 															
 														},
 														{

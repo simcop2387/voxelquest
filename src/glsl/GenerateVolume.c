@@ -1360,7 +1360,27 @@ vec4 getTerrain(vec3 worldPosInPixels) {
 	vec4 texW = texture3D(Texture4, wCoords); //texture3D //tex3DBiLinear
 	
 	
-	vec2 roughPos = (worldPosInPixels.xy + worldPosInPixels.yz) / worldSizeInPixels.x;
+	vec2 roughPos = (worldPosInPixels.xy + worldPosInPixels.yz) * 0.25 / worldSizeInPixels.x;
+	
+	// vec2 roughPos = (
+	// 	worldPosInPixels.xy +
+	// 	worldPosInPixels.yz +
+	// 	sin((worldPosInPixels.xy + worldPosInPixels.zx - worldPosInPixels.zy)/(4.0*pixelsPerCell))*4.0*pixelsPerCell
+	// )*0.25 / worldSizeInPixels.x;
+	
+	// float m1 = abs(sin( (worldPosInPixels.x*5.1-worldPosInPixels.y*1.3+worldPosInPixels.z*3.2)/(pixelsPerCell*100.0) ));
+	// float m2 = abs(sin( (worldPosInPixels.x*3.2-worldPosInPixels.y*5.1+worldPosInPixels.z*1.3)/(pixelsPerCell*100.0) ));
+	
+	// vec2 roughPos = mix(
+	// 	mix(
+	// 		worldPosInPixels.xy + worldPosInPixels.yz,
+	// 		worldPosInPixels.zx + worldPosInPixels.zy,
+	// 		m1
+	// 	),
+	// 	worldPosInPixels.xy + worldPosInPixels.zx,
+	// 	m2
+	// ) / worldSizeInPixels.x;
+	
 	vec2 roughVal = vec2(
 										abs(texture2D(Texture2, 512.0 * roughPos+0.01*randVoro*voroGrad ).r),
 										abs(texture2D(Texture2, 256.0 * roughPos+0.015*randVoro*voroGrad ).r)
@@ -1656,9 +1676,7 @@ vec4 getTree(vec3 worldPosInPixels) {
 	float testDis = 0.0;
 	float t;
 
-	vec4 resPoint[2];
-	resPoint[0] = vec4(0.0);
-	resPoint[1] = vec4(0.0);
+	vec4 resPoint = vec4(0.0);
 
 	vec3 visMinInPixels = vec3(0.0);
 	vec3 visMaxInPixels = vec3(0.0);
@@ -1826,25 +1844,28 @@ vec4 getTree(vec3 worldPosInPixels) {
 						
 						k = 1;
 						//for (k = 0; k < 2; k++) {
-							radNormFloored = roundVal( (roThetaPhi.y)*@tt1NumDivsY@*8.0)/(tt1NumDivsY*8.0);						
-							roThetaPhi2.x = roundVal( (roThetaPhi.x)*@tt1NumDivsX@*8.0*radNormFloored)/(tt1NumDivsX*8.0*radNormFloored);
+							radNormFloored = ( mix(0.5,1.0,1.0-abs(tempvNorm.z))*@tt1NumDivsY@*8.0)/(tt1NumDivsY*8.0);						
+							
 							roThetaPhi2.y = roundVal( (roThetaPhi.y)*tt1NumDivsY*8.0)/(tt1NumDivsY*8.0);
+							
+							roThetaPhi2.x = roundVal( (roThetaPhi.x)*@tt1NumDivsX@*8.0*radNormFloored)/(tt1NumDivsX*8.0*radNormFloored);
+							
 							roThetaPhi2.z = roThetaPhi.z;
 							
-							resPoint[k].x = cos(roThetaPhi2.x)*sin(roThetaPhi2.y)*roThetaPhi2.z;
-							resPoint[k].y = sin(roThetaPhi2.x)*sin(roThetaPhi2.y)*roThetaPhi2.z;
-							resPoint[k].z = cos(roThetaPhi2.y)*roThetaPhi2.z - roThetaPhi.z*@tt1Falloff@;
-							resPoint[k].w = (1.0-radNormFloored)*0.25*pixelsPerCell;
+							resPoint.x = cos(roThetaPhi2.x)*sin(roThetaPhi2.y)*roThetaPhi2.z;
+							resPoint.y = sin(roThetaPhi2.x)*sin(roThetaPhi2.y)*roThetaPhi2.z;
+							resPoint.z = cos(roThetaPhi2.y)*roThetaPhi2.z - roThetaPhi.z*@tt1Falloff@;
+							resPoint.w = (1.0-radNormFloored)*0.25*pixelsPerCell;
 						//}
 						
 						
-						resArrLeaf = pointSegDistance(tempv, resPoint[1].xyz, resPoint[1].xyz); //
+						resArrLeaf = pointSegDistance(tempv, resPoint.xyz*0.5, resPoint.xyz); //
 						
 						
 						curThickness = pixelsPerCell*mix(
 							@tt1MinRad@*16.0-8.0,
 							@tt1MaxRad@*16.0,
-							pow(1.0-radNorm,@tt1PowVal@*4.0)
+							pow(1.0-radNorm,@tt1PowVal@*1.0)
 						);
 						
 						if (
@@ -2665,6 +2686,8 @@ vec4 getGeom(vec3 worldPosInPixels, int iCurMat) {//, float terHeight) {
 
 			if (matParams.y == E_MAT_SUBPARAM_BRICK) {
 				
+				worldPosInPixels += 2.0*pixelsPerCell;
+				
 				tempVec4.z = (visMaxInPixels.z-worldPosInPixels.z) + 1.0*pixelsPerCell;
 				
 				tempf1 = floor (   (tempVec4.z - float(newUVW.z < (thickness-1.0*pixelsPerCell))*pixelsPerCell) / pixelsPerCell) / floorHeight;
@@ -2720,7 +2743,7 @@ vec4 getGeom(vec3 worldPosInPixels, int iCurMat) {//, float terHeight) {
 
 
 							normalUID = getBoardSpaced(
-														brickCoords + vec3(0.0, -0.6 * pixelsPerCell, 0.0),
+														brickCoords + vec3(0.0, -0.375 * pixelsPerCell, 0.0),
 														vec3(2.0 + tempf3, 1.0, 2.0),
 														0.125
 													);
@@ -2789,6 +2812,9 @@ vec4 getGeom(vec3 worldPosInPixels, int iCurMat) {//, float terHeight) {
 					finalMat = TEX_NULL;
 					isInside = true;
 				}
+				
+				worldPosInPixels -= 2.0*pixelsPerCell;
+				
 			}
 			else {
 				
@@ -3251,8 +3277,8 @@ void main() {
 		finalMod += shingleMod/6.0;
 	}
 
-	if (finalMat == TEX_EARTH) {		
-		finalMod = (1.0+sin( (worldPosInPixels.z)/(1000.0) ) )/2.0;//fj/5.0;
+	if (finalMat == TEX_EARTH) {
+		finalMod = (1.0+sin( (worldPosInPixels.z + sin((worldPosInPixels.x + worldPosInPixels.y)/1000.0)*1.0*pixelsPerCell)/(1000.0) ) )/2.0;//fj/5.0;
 	}
 
 	//TODO: ADD BACK IN FOR WATER

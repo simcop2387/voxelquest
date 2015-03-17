@@ -126,7 +126,23 @@ void main() {
     }
     
     
-    vec2 newPos = (worldPosition.xy+worldPosition.z)/waveSpacing;
+    // vec2 newPos = (
+    //     (worldPosition.xy*2.3 + 
+    //     worldPosition.zx*5.4 - 
+    //     worldPosition.yz*7.1 + 
+    //     worldPosition.yx*11.2 - 
+    //     worldPosition.zy*13.3 + 
+    //     worldPosition.yx*17.3)/
+    //     worldPosition.zy*12.3 + 
+    //     worldPosition.xz*6.4 - 
+    //     worldPosition.yz*3.1 + 
+    //     worldPosition.yx*4.2 - 
+    //     worldPosition.zx*8.3 + 
+    //     worldPosition.yx*22.3
+    // )*0.05/waveSpacing;
+    
+    
+    vec2 newPos = (worldPosition.xy + worldPosition.z)/waveSpacing;
 
     float waveh = (waveHeight(newPos) )*0.5+0.5;
     vec3 waven = (normalize( waveNormal(newPos) )+1.0)/2.0;

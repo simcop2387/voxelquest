@@ -7,21 +7,20 @@
 
 int RUN_COUNT;
 
-const static int DEF_SCALE_FACTOR = 2;
+const static int DEF_SCALE_FACTOR = 1;
 const static int MAX_LAYERS = 2;
 const static int MAX_MIP_LEV = 1; // min of 1
 
-
+const static bool DO_POINTS = true;
 
 
 const static int MAX_KEYS = 256;
 
-const static int DEF_WIN_W = 1920;
-const static int DEF_WIN_H = 1080;
-
+const static int DEF_WIN_W = 720;
+const static int DEF_WIN_H = 720;
 
 const static int MAX_LIGHTS = 24;
-const static int MAX_EVAL_LIGHTS = 1024;
+const static int MAX_EVAL_LIGHTS = 128;
 const static int FLOATS_PER_LIGHT = 12;
 
 
@@ -32,6 +31,10 @@ const static float UI_SCALE_FACTOR = 1.0f;
 const static int MAX_PLANT_GEN = 16;
 
 const static int MAX_TER_TEX = 9;
+
+const static bool RT_TRANSFORM = false;
+
+
 
 const static int MAX_NODE_DIRS = 6;
 const static int MAX_NODE_VALS = 4;
@@ -44,12 +47,119 @@ const static int MAX_BLOCK_STACK = 10;
 const static int MAX_UI_LAYERS = 4;
 
 // solid, water, air
+const static float CUBE_POINTS[42] = {
+		0,0,0,
+		1,0,1,
+		0,0,1,
+		0,1,1,
+		0,1,0,
+		1,1,0,
+		1,0,0,
+		
+		
+		1,1,1,
+		1,0,0,
+		1,1,0,
+		0,1,0,
+		0,1,1,
+		0,0,1,
+		1,0,1
+		
+		
+		
+};
+
+
+// solid, water, air
 const static bool PROC_MATRIX[3][3] = {
 		{false, true, true},
 		{false, false, true},
 		{false, false, false}
 };
 
+bool TEMP_DEBUG;
+
+const static int MAX_OBJ_TYPES = 1673;
+const static int ITEMS_PER_ROW = 36;
+const static int EMPTY_OBJECT_TYPE = 1672;
+const static int EMPTY_OBJECT_ID = 1;
+
+enum E_DIR_SPECS_SIGN {
+	E_DIR_XP,
+	E_DIR_XM,
+	E_DIR_YP,
+	E_DIR_YM,
+	E_DIR_ZP,
+	E_DIR_ZM,
+	E_DIR_MP_LENGTH
+};
+const static int NUM_ORIENTATIONS = 6;
+const static float DIR_VECS[NUM_ORIENTATIONS][3] = {
+	{1.0f, 0.0f, 0.0f},
+	{-1.0f, 0.0f, 0.0f},
+	{0.0f, 1.0f, 0.0f},
+	{0.0f, -1.0f, 0.0f},
+	{0.0f, 0.0f, 1.0f},
+	{0.0f, 0.0f, -1.0f}
+};
+float ALL_ROT[16*NUM_ORIENTATIONS*NUM_ORIENTATIONS*NUM_ORIENTATIONS];
+const static int ROT_MAP[36] = {
+	
+	// x, inc theta
+	//-------------
+	E_DIR_XP,// x+ -> x+
+	E_DIR_XM,// x- -> x-
+	E_DIR_ZP,// y+ -> z+
+	E_DIR_ZM,// y- -> z-
+	E_DIR_YM,// z+ -> y-
+	E_DIR_YP,// z- -> y+
+	
+	// x, dec theta
+	//-------------
+	E_DIR_XP,// x+ -> x+
+	E_DIR_XM,// x- -> x-
+	E_DIR_ZM,// y+ -> z-
+	E_DIR_ZP,// y- -> z+
+	E_DIR_YP,// z+ -> y+
+	E_DIR_YM,// z- -> y-
+	
+	// y, inc theta
+	//-------------
+	E_DIR_ZP,// x+ -> z+
+	E_DIR_ZM,// x- -> z-
+	E_DIR_YP,// y+ -> y+
+	E_DIR_YM,// y- -> y-
+	E_DIR_XM,// z+ -> x-
+	E_DIR_XP,// z- -> x+
+	
+	// y, dec theta
+	//-------------
+	E_DIR_ZM,// x+ -> z-
+	E_DIR_ZP,// x- -> z+
+	E_DIR_YP,// y+ -> y+
+	E_DIR_YM,// y- -> y-
+	E_DIR_XP,// z+ -> x+
+	E_DIR_XM,// z- -> x-
+	
+	// z, inc theta
+	//-------------
+	E_DIR_YP,// x+ -> y+
+	E_DIR_YM,// x- -> y-
+	E_DIR_XM,// y+ -> x-
+	E_DIR_XP,// y- -> x+
+	E_DIR_ZP,// z+ -> z+
+	E_DIR_ZM,// z- -> z-
+	
+	// z, dec theta
+	//-------------
+	E_DIR_YM,// x+ -> y-
+	E_DIR_YP,// x- -> y+
+	E_DIR_XP,// y+ -> x+
+	E_DIR_XM,// y- -> x-
+	E_DIR_ZP,// z+ -> z+
+	E_DIR_ZM// z- -> z-
+	
+};
 
 int totalPointCount;
 
@@ -334,17 +444,10 @@ string SPACE_BUFFER[] = {" ", "  ", "   ", "    ", "     ", "      ", "       ",
  
 
 
-enum E_VOCAB {
-	vPosition,
-	vRadius,
-	vIsAlive,
-	vLength
-};
-
 enum E_GUI_DATA_STRINGS {
 	E_GDS_DATA_SOURCE,
 	E_GDS_DATA_FILE,
-	E_GDS_CHILD_TYPE,
+	//E_GDS_CHILD_TYPE,
 	E_GDS_CHILD_NAME,
 	E_GDS_MATERIAL,
 	E_GDS_LAST_KEY,
@@ -361,11 +464,100 @@ enum E_PERFORMANCE_PROFILE {
 	E_PP_LENGTH
 };
 
+enum E_DRAG_TYPE {
+	E_DT_NOTHING, // can drag to, but not from
+	E_DT_WORLD_OBJECT,
+	E_DT_INV_OBJECT,
+	E_DT_INV_OBJECT_PARENT,
+	E_DT_LENGTH
+};
+
+enum E_VOCAB {
+	E_VC_FLOAT,
+	E_VC_IFTHEN,
+	E_VC_ALL,
+	E_VC_ANY,
+	E_VC_NONE,
+	E_VC_LIST,
+	E_VC_EQUAL,
+	E_VC_NOTEQUAL,
+	E_VC_ISBETWEEN,
+	E_VC_LENGTH	
+};
+
+enum E_VOCAB_TYPE {
+	
+	E_VCT_FLOAT, // terminal
+	E_VCT_NOUN, // terminal
+	E_VCT_OPERATOR,
+	E_VCT_VARIABLE,
+	E_VCT_PREDICATE,
+	E_VCT_LENGTH
+};
+
+struct VToken
+{
+	int index;
+	int type;
+	int maxParam;
+	float floatValue;
+	string stringValue;
+};
+
+
+string dragStrings[] = {
+	"E_DT_NOTHING",
+	"E_DT_WORLD_OBJECT",
+	"E_DT_INV_OBJECT",
+	"E_DT_INV_OBJECT_PARENT",
+	"E_DT_LENGTH"
+};
+
+enum E_ITEM_CLASS {
+	E_IC_NONE,
+	E_IC_EQ_HEAD,
+	E_IC_EQ_NECK,
+	E_IC_EQ_BACK,
+	E_IC_EQ_TORSO,
+	E_IC_WAIST,
+	E_IC_EQ_WRISTS,
+	E_IC_EQ_HANDS,
+	E_IC_EQ_FINGERS,
+	E_IC_EQ_HOLDING,
+	E_IC_EQ_FEET,
+	E_IC_RESOURCE,
+	E_IC_CONSUMABLE,
+	E_IC_MISC,
+	E_IC_LENGTH,
+};
+
+// enum E_TOOL_CLASS {
+// 	E_TC_NONE,
+// 	E_TC_SWORD,
+// 	E_TC_AXE,
+// 	E_TC_WAND,
+// 	E_TC_BOW,
+// 	E_TC_,
+// 	E_TC_,
+// 	E_TC_,
+// 	E_TC_,
+// 	E_TC_,
+// 	E_TC_,
+// 	E_TC_,
+// 	E_TC_,
+// 	E_TC_,
+// 	E_IC_LENGTH,
+// };
+
+
+// do not reorder
 enum E_GUI_CHILD_TYPES {
-	E_GCT_INV_ITEM,
-	E_GCT_SHADER_PARAM,
-	E_GTC_GENERIC,
-	E_GCT_LENGTH
+	E_GCT_INV_ITEM,			// 0
+	E_GCT_SHADER_PARAM,		// 1
+	E_GTC_GENERIC, 			// 2
+	E_GTC_CONTAINER,		// 3
+	E_GTC_CONTAINER_PARENT, // 4
+	E_GCT_LENGTH			// 5
 };
 
 enum E_FONT_WRAPPERS {
@@ -411,6 +603,13 @@ enum E_KEYMAP {
 	KEYMAP_BACKWARD,
 	KEYMAP_LEFT,
 	KEYMAP_RIGHT
+};
+
+enum ENT_TYPE {
+	E_ENTTYPE_OBJ,
+	E_ENTTYPE_MONSTER,
+	E_ENTTYPE_NPC,
+	E_ENTTYPE_LENGTH
 };
 
 enum E_STATES {
@@ -1077,6 +1276,9 @@ bool operator<(const intPair& lhs, const intPair& rhs)
 struct intPairVec {
 	std::vector<intPair> data;	
 };
+struct intVec {
+	std::vector<int> data;	
+};
 
 struct floatAndIndex {
 	float value;
@@ -1347,6 +1549,8 @@ enum E_DIR_SPECS {
 	E_DIR_Z,
 	E_DIR_LENGTH
 };
+
+
 
 enum eSSProperties {
 
@@ -3908,7 +4112,14 @@ public:
 		multXYZ(val);
 	}
 
-
+	void setFloatArr(float* vals) {
+		fv4.x = vals[0];
+		fv4.y = vals[1];
+		fv4.z = vals[2];
+		iv4.x = fv4.x;
+		iv4.y = fv4.y;
+		iv4.z = fv4.z;
+	}
 
 	void setFXYZW(float x, float y, float z, float w) {
 		fv4.x = x;
@@ -3963,6 +4174,20 @@ public:
 	
 	
 	
+	
+	void fixForRot() {
+		iv4.x = -iv4.x;
+		iv4.y = -iv4.y;
+		iv4.z = -iv4.z;
+		
+		iv4.x = max(iv4.x, 0);
+		iv4.y = max(iv4.y, 0);
+		iv4.z = max(iv4.z, 0);
+		
+		fv4.x = (float)iv4.x;
+		fv4.y = (float)iv4.y;
+		fv4.z = (float)iv4.z;
+	}
 	
 	void setRand(FIVector4 *seedPos) {
 
@@ -4281,6 +4506,23 @@ public:
 			minBounds->setFZ(temp);
 		}
 	}
+
+
+	
+	static bool intersectInt(FIVector4 *aMin, FIVector4 *aMax, FIVector4 *bMin, FIVector4 *bMax) {
+		
+		if (aMax->getFX() <= bMin->getFX()) return false;
+		if (aMin->getFX() >= bMax->getFX()) return false;
+		if (aMax->getFY() <= bMin->getFY()) return false;
+		if (aMin->getFY() >= bMax->getFY()) return false;
+		if (aMax->getFZ() <= bMin->getFZ()) return false;
+		if (aMin->getFZ() >= bMax->getFZ()) return false;
+		
+		return true;
+		
+	}
+	
+	
 
 	static bool intersect(FIVector4 *aMin, FIVector4 *aMax, FIVector4 *bMin, FIVector4 *bMax) {
 
@@ -4697,7 +4939,6 @@ struct RotationInfo {
 	float rotMatrix[16];
 	FIVector4 basePoint;
 	FIVector4 axisAngle;
-		
 };
 
 
@@ -4733,6 +4974,41 @@ public:
 	FIVector4 tempRes1;
 	FIVector4 tempRes2;
 	FIVector4 tempRes3;
+
+	void doRotationOr(FIVector4 *output, FIVector4 *input, int orientationOffset)
+	{
+		int i;
+		int j;
+		int k;
+
+		outputMatrix[0] = 0.0f;
+		outputMatrix[1] = 0.0f;
+		outputMatrix[2] = 0.0f;
+		outputMatrix[3] = 0.0f;
+
+		inputMatrix[0] = input->getFX();
+		inputMatrix[1] = input->getFY();
+		inputMatrix[2] = input->getFZ();
+		inputMatrix[3] = 1.0;
+
+
+		for (i = 0; i < 4; i++ ) {
+			for (j = 0; j < 1; j++) {
+				outputMatrix[i] = 0;
+				for (k = 0; k < 4; k++) {
+					outputMatrix[i] += ALL_ROT[orientationOffset+i*4+k] * inputMatrix[k];
+				}
+			}
+		}
+
+		output->setFXYZW(
+			outputMatrix[0],
+			outputMatrix[1],
+			outputMatrix[2],
+			outputMatrix[3]
+		);
+
+	}
 
 	void doRotation(FIVector4 *output, FIVector4 *input, FIVector4 *axis, float angle)
 	{
@@ -4918,8 +5194,7 @@ public:
 		FIVector4 *axisAngle,
 		FIVector4 *parentOffset,
 		FIVector4 *baseOffset
-	)
-	{
+	) {
 		int i;
 		int j;
 		int k;
@@ -5002,12 +5277,188 @@ public:
 };
 AxisRotation axisRotationInstance;
 
+typedef int BaseObjType;
 
+class BaseObj
+{
+public:
+	
+	//   1
+	// 2   0
+	//   3
+	// int rotDir;
+	// int minRot;
+	// int maxRot;
+	// int curRot;
+	
+	int objectType;
+	int maxFrames;
+	
+	BaseObjType uid;
+	BaseObjType parentUID;
+	//map<BaseObjType, bool> containsUID;
+	vector<BaseObjType> children;
+	
+	bool isFalling;
+	bool isOpen;
+	bool isEquipped;
+	
+	float pixelsPerCell;
+	
+	FIVector4 positionInCells;
+	FIVector4 diameterInCells;
+	
+	FIVector4 diameterInCellsRotated;
+	FIVector4 boundsMinTransInCells;
+	FIVector4 boundsMaxTransInCells;
+	
+	FIVector4 centerPointInPixels;
+	
+	FIVector4 tempVec;
+	
+	//0, 2, 4 - default
+	
+	//x+,x-,y+,y-,z+,z-
+	FIVector4 orientationXYZ;
+	
+	BaseObj() {
+		
+	}
+	
+	void removeChild(int _uid) {
+		int i;
+		
+		for (i = 0; i < children.size(); i++) {
+			if (children[i] == _uid) {
+				children.erase(children.begin() + i);
+				return;
+			}
+		}
+	}
+	
+	
+	
+	void updateOrientation(int ox, int oy, int oz) {
+		
+		int orOffset = (oz*NUM_ORIENTATIONS*NUM_ORIENTATIONS + oy*NUM_ORIENTATIONS + ox)*16;
+		
+		orientationXYZ.setIXYZW(
+			ox,
+			oy,
+			oz,
+			orOffset
+		);
+		
+		axisRotationInstance.doRotationOr(
+			&diameterInCellsRotated,
+			&diameterInCells,
+			orOffset
+		);
+	}
+	
+	void updateBounds() {
+		boundsMinTransInCells.copyFrom(&positionInCells);
+		boundsMaxTransInCells.copyFrom(&positionInCells);
+		boundsMaxTransInCells.addXYZRef(&diameterInCellsRotated);
+		
+		tempVec.copyFrom(&diameterInCellsRotated);
+		tempVec.fixForRot();
+		boundsMinTransInCells.addXYZRef(&tempVec);
+		boundsMaxTransInCells.addXYZRef(&tempVec);
+		
+		FIVector4::normalizeBounds(&boundsMinTransInCells,&boundsMaxTransInCells);
+		
+		centerPointInPixels.copyFrom(&boundsMinTransInCells);
+		centerPointInPixels.addXYZRef(&boundsMaxTransInCells);
+		centerPointInPixels.multXYZ(0.5f*pixelsPerCell);
+		
+	}
+	
+	void rotate(
+		int mod, // 0:+, 1:-
+		int axis // 0:x, 1:y, 2:z
+	) {
+		
+		int offset = (axis*2+mod)*6;
+		
+		updateOrientation(
+			ROT_MAP[orientationXYZ.getIX()+offset],
+			ROT_MAP[orientationXYZ.getIY()+offset],
+			ROT_MAP[orientationXYZ.getIZ()+offset]
+		);
+	}
+	
+	
+	void init(
+		BaseObjType _uid,
+		BaseObjType _parentUID,
+		int _objectType,
+		float _pixelsPerCell,
+		FIVector4* cellPos,
+		int xs,
+		int ys,
+		int zs,
+		int ox = 0,
+		int oy = 2,
+		int oz = 4
+	) {
+		maxFrames = 0;
+		objectType = _objectType;
+		isFalling = false;
+		isOpen = false;
+		isEquipped = false;
+		parentUID = _parentUID;
+		uid = _uid;
+		pixelsPerCell = _pixelsPerCell;
+		positionInCells.copyFrom(cellPos);
+		diameterInCells.setIXYZ(xs,ys,zs);
+		updateOrientation(ox,oy,oz);
+		updateBounds();
+	}
+	
+};
 
+typedef map<BaseObjType, BaseObj>::iterator itBaseObj;
 
+class ObjDef {
+public:
+	
+	string classId;
+	
+	ObjDef() {
+		
+	}
+	
+};
 
+class VNode {
+public:
+	
+	int tokenIndex;
+	int ruleNumber;
+	std::vector<VNode*> children;
+	
+	VNode(int _tokenIndex) {
+		tokenIndex = _tokenIndex;
+	}
+	
+	~VNode() {
+		int i;
+		
+		for (i = 0; i < children.size(); i++) {
+			delete children[i];
+		}
+		children.clear();
+	}
+	
+};
 
-
+struct AssignStruct {
+	VNode* lastAssign;
+	VNode* newAssign;
+	int tokenIndex;
+	int genIndex;
+};
 
 
 
@@ -5057,10 +5508,10 @@ public:
 
 
 	int rotDir;
-
 	int minRot;
 	int maxRot;
 	int curRot;
+	
 	int buildingType;
 
 
@@ -5129,42 +5580,6 @@ public:
 		moveMaxInPixels.setFXYZRef(&(geomParams[E_CP_VISMAXINPIXELST]));
 		
 	}
-
-
-	// FIVector4* getPositionInCells() {
-	// 	return &positionInCells;
-	// }
-	// FIVector4* getDiameterInCells() {
-	// 	return &diameterInCells;
-	// }
-	// void setPositionInCells(FIVector4* val) {
-	// 	positionInCells.copyFrom(&val);
-	// 	//updatePosFromCells();
-	// }
-	// void setDiameterInCells(FIVector4* val) {
-	// 	diameterInCells.copyFrom(&val);
-	// 	//updatePosFromCells();
-	// }
-	
-	
-	
-	// FIVector4* getPositionInPixels() {
-	// 	return &positionInPixels;
-	// }
-	// FIVector4* getDiameterInPixels() {
-	// 	return &diameterInPixels;
-	// }
-	// void setPositionInPixels(FIVector4* val) {
-	// 	positionInPixels.copyFrom(&val);
-	// 	//updatePosFromPixels();
-	// }
-	// void setDiameterInPixels(FIVector4* val) {
-	// 	diameterInPixels.copyFrom(&val);
-	// 	//updatePosFromPixels();
-	// }
-
-
-
 
 
 
@@ -16046,6 +16461,7 @@ class GameMusic;
 class FontWrapper;
 class UIComponent;
 class GameGUI;
+class GameAI;
 class GameOrgNode;
 class GameOrg;
 class GamePlantNode;
@@ -16146,7 +16562,6 @@ public:
   };
   struct UICont
   {
-    UIComponent * uiComp;
     UIQuad bg;
     std::vector <UIQuad> charVec;
   };
@@ -16156,8 +16571,12 @@ public:
   };
   struct UICStruct
   {
-    UIComponent * uic;
     int nodeId;
+  };
+  struct CompStruct
+  {
+    bool isValid;
+    UIComponent * data;
   };
   struct CompareStruct
   {
@@ -16239,6 +16658,20 @@ public:
   bool doPageRender;
   bool markerFound;
   bool editPose;
+  bool isDraggingObject;
+  int (entIdToIcon) [MAX_OBJ_TYPES];
+  int (iconToEntId) [MAX_OBJ_TYPES];
+  bool (isContainer) [MAX_OBJ_TYPES];
+  int currentTick;
+  int draggingFromInd;
+  int draggingToInd;
+  int draggingFromType;
+  int draggingToType;
+  int maxHolderDis;
+  int gameObjCounter;
+  int lastObjectCount;
+  int lastObjInd;
+  int bestObjInd;
   int fieldCallback;
   int mouseState;
   int lastW;
@@ -16303,6 +16736,7 @@ public:
   int volGenSuperRes;
   int matVolSize;
   int escCount;
+  int lastNodeId;
   int * cdBuffer;
   intPair (entIdArr) [1024];
   uint palWidth;
@@ -16356,8 +16790,10 @@ public:
   float * matCountArr;
   float * paramArrMap;
   float (clipDist) [2];
+  float MAX_TRAVEL_DIS;
   double lastMoveTime;
   double curTime;
+  double clickTime;
   double lastTime;
   double mdTime;
   double muTime;
@@ -16365,19 +16801,20 @@ public:
   GameOrgNode * selectedNode;
   GameOrgNode * lastSelNode;
   GameOrgNode * activeNode;
+  FIVector4 (dirVecs) [6];
   FIVector4 targetCameraPos;
   FIVector4 lastCellPos;
   FIVector4 worldMarker;
   FIVector4 lookAtVec;
-  FIVector4 targetLookAtVec;
   FIVector4 baseCameraPos;
   FIVector4 cameraPosAdjusted;
   FIVector4 baseScrollPos;
   FIVector4 worldSizeInPixels;
   FIVector4 mouseUpPD;
+  FIVector4 mouseUpOPD;
   FIVector4 spaceUpPD;
   FIVector4 mouseDownPD;
-  FIVector4 mouseObjPD;
+  FIVector4 mouseDownOPD;
   FIVector4 mouseMovePD;
   FIVector4 tempVec1;
   FIVector4 tempVec2;
@@ -16394,6 +16831,7 @@ public:
   floatAndIndex (indexArr) [125];
   FIVector4 mouseStart;
   FIVector4 mouseEnd;
+  FIVector4 mouseMoveVec;
   FIVector4 mapFreqs;
   FIVector4 mapAmps;
   FIVector4 * mouseMoving;
@@ -16409,7 +16847,7 @@ public:
   FIVector4 modXYZ;
   FIVector4 matVolDim;
   uint * matVol;
-  std::vector <UICont*> (guiLayers) [MAX_UI_LAYERS];
+  std::vector <int> (guiLayers) [MAX_UI_LAYERS];
   std::vector <RotationInfo> rotMatStack;
   std::vector <DynObject *> dynObjects;
   PathHolder charPathHolder;
@@ -16428,8 +16866,8 @@ public:
   Image * imageHM0;
   Image * imageHM1;
   Image * cloudImage;
-  GameEnt baseEnt;
-  GameEnt * currentActor;
+  BaseObj * currentActor;
+  BaseObj baseObj;
   GamePlant * (gamePlants) [E_PT_LENGTH/2];
   Shader * curShaderPtr;
   string currentFieldString;
@@ -16441,7 +16879,8 @@ public:
   string guiSaveLoc;
   PoolManager * gpuPool;
   PoolManager * entityPool;
-  vector <UIComponent*> compStack;
+  vector <CompStruct> compStack;
+  vector <int> emptyStack;
   vector <string> splitStrings;
   vector <string> shaderStrings;
   vector <string> shaderTextureIds;
@@ -16472,6 +16911,7 @@ public:
   Timer scrollTimer;
   Timer moveTimer;
   GameWorld * gw;
+  GameAI * gameAI;
   float (lightArr) [MAX_LIGHTS * 16];
   int numLights;
   bool multiLights;
@@ -16482,23 +16922,36 @@ public:
   GameGUI * mainGUI;
   UIComponent * mapComp;
   UIComponent * mainMenu;
+  UIComponent * contMenu;
+  UIComponent * contMenuBar;
   UIComponent * ddMenu;
+  UIComponent * ddMenuBar;
   UIComponent * fieldMenu;
   UIComponent * fieldText;
   FontWrapper * (fontWrappers) [EFW_LENGTH];
   GameMusic * (music) [EML_LENGTH];
   map <string, GameSound> soundMap;
   map <string, StyleSheet> styleSheetMap;
-  map <string, JSONStruct> internalJSON;
   map <string, JSONStruct> externalJSON;
   Singleton ();
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
+  int placeInStack ();
+  int placeInLayer (int nodeId, int layer);
+  void initAllMatrices ();
+  int numberIcons (int pCurCount, int x1, int y1, int x2, int y2);
   void prepSound (string soundName);
   void playSoundPosAndPitch (string soundName, FIVector4 * listenerPos, FIVector4 * soundPos, float variance = 0.0f, float volume = 1.0f);
   void playSound (string soundName, float volume = 1.0f);
   void playSoundEvent (char const * eventName, bool suppress = false);
-  void setCurrentActor (GameEnt * ge);
+  void setCurrentActor (BaseObj * ge);
   void updateMatVol ();
+  int getRandomContId ();
+  int getRandomNPCId ();
+  int getRandomMonsterId ();
+  int getRandomObjId ();
+  void fillWithRandomObjects (int parentUID, int gen);
+  void performDrag ();
+  void placeNewEnt (int et);
   void dispatchEvent (int button, int state, float x, float y, UIComponent * comp, bool automated = false, bool preventRefresh = false);
   StyleSheet * getNewStyleSheet (string ssName);
   void initStyleSheet ();
@@ -16511,7 +16964,7 @@ public:
   void drawLine (FIVector4 * p0, FIVector4 * p1);
   void drawCubeCentered (FIVector4 * originVec, float radius);
   void drawBoxUp (FIVector4 originVec, float radiusX, float radiusY, float diamZ);
-  void drawBox (FIVector4 * minVec, FIVector4 * maxVec, int faceFlag = 2);
+  void drawBox (FIVector4 * v0, FIVector4 * v1, int faceFlag = 2);
   void getMaterialString ();
   void refreshIncludeMap ();
   void doShaderRefresh (bool doBake);
@@ -16526,7 +16979,7 @@ public:
   FBOWrapper * getFBOWrapper (string fboName, int offset);
   void copyFBO (string src, string dest, int num = 0);
   void copyFBO2 (string src, string dest);
-  void bindFBO (string fboName, int swapFlag = -1);
+  void bindFBO (string fboName, int swapFlag = -1, int doClear = 1);
   void unbindFBO ();
   void bindShader (string shaderName);
   void unbindShader ();
@@ -16581,6 +17034,8 @@ public:
   void setCameraToElevation ();
   void processSpecialKeys (int key, int _x, int _y);
   void updateCS ();
+  void playBump (BaseObj * ge);
+  void getMarkerPos (int x, int y);
   void processInput (unsigned char key, bool keyDown, int x, int y);
   void keyboardUp (unsigned char key, int _x, int _y);
   void keyboardDown (unsigned char key, int _x, int _y);
@@ -16590,15 +17045,22 @@ public:
   void makeDirty ();
   void setSelNode (GameOrgNode * newNode);
   void worldToScreenBase (FIVector4 * sc, FIVector4 * wc);
+  void refreshContainers (bool onMousePos);
+  void toggleCont (int contIndex, bool onMousePos);
   float getShortestAngle (float begInRad, float endInRad, float amount);
   void handleMovement ();
   bool anyMenuVisible ();
   void mouseClick (int button, int state, int _x, int _y);
   void resetActiveNode ();
-  void updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS);
+  bool updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS);
   void findNearestOrgNode (GameOrgNode * curNode, FIVector4 * mousePosWS);
   void getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit);
-  JSONValue * fetchJSONData (string dataFile);
+  void closeAllContainers ();
+  bool anyContainerOpen ();
+  void cleanJVPointer (JSONValue * * jv);
+  void getObjectData ();
+  string getStringForObjectId (int objectId);
+  JSONValue * fetchJSONData (string dataFile, JSONValue * params = NULL);
   bool processJSONFromString (string * sourceBuffer, JSONValue * * destObj);
   bool processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONValue * * destObj);
   bool loadJSON (string path, JSONValue * * destObj);
@@ -16606,7 +17068,7 @@ public:
   float getGUIValue (string key);
   UIComponent * getGUIComp (string key);
   void setGUIValue (string key, float floatValue, bool dispatchEvent = false, bool preventRefresh = false);
-  void loadGUIValues (bool applyValues = false);
+  void loadValuesGUI (bool applyValues = false);
   void saveExternalJSON ();
   void saveGUIValues ();
   void updateGUI ();
@@ -16791,8 +17253,7 @@ private:
   std::vector <int> _floatingChildren;
 public:
   Singleton * singleton;
-  Singleton::UIQuad thisUIQuad;
-  Singleton::UICont thisUICont;
+  Singleton::UICont uiCont;
   string uid;
   string ss;
   string text;
@@ -16807,9 +17268,10 @@ public:
   int index;
   int fillDir;
   int layer;
+  int layerId;
   int hoverType;
   int guiClass;
-  Singleton::UIQuad * curQuad;
+  bool forceDragUpdate;
   bool selected;
   bool foundParent;
   bool foundValuePtr;
@@ -16836,7 +17298,6 @@ public:
   FontWrapper * curFont;
   FontWrapper * curFontIcons;
   bool dragging;
-  bool contOnStack;
   bool overChild;
   bool overSelf;
   bool singleLine;
@@ -16861,6 +17322,7 @@ public:
   StyleSheetResult resSS;
   UIComponent ();
   void init (Singleton * _singleton, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, bool _isFloating, string * stringVals, double * floatVals);
+  void clearChildren ();
   UIComponent * getChild (int ind);
   UIComponent * getFloatingChild (int ind);
   int getChildCount ();
@@ -16882,7 +17344,7 @@ public:
   UIComponent * findNodeByString (string _uid);
   float getMinWidth ();
   float getMinHeight ();
-  int addChild (int _parentId, int _nodeId, string * stringVals, double * floatVals, bool _isFloating, JSONValue * _jvNodeNoTemplate);
+  int addChild (int _lastIndex, int _parentId, string * stringVals, double * floatVals, bool _isFloating, JSONValue * _jvNodeNoTemplate);
   void setOrigPos ();
   void applyHeight ();
   void applyWidth ();
@@ -16927,16 +17389,18 @@ public:
   bool isLoaded;
   fVector2 mouseTrans;
   int guiRenderCount;
-  int nodeCount;
   vector <UIComponent*> dirtyVec;
   string (tempStrings) [10];
   string (stringVals) [E_GST_LENGTH];
   double (floatVals) [E_GFT_LENGTH];
   GameGUI ();
   void init (Singleton * _singleton);
-  bool compChildStr (string childStr);
   JSONValue * findNearestKey (JSONValue * jv, string key);
-  void addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating = false);
+  void addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, bool isFloating = false);
+  void deleteJSONNodes (JSONValue * jv);
+  void clearRenderOrder ();
+  void deleteNodes (UIComponent * curNode);
+  void refreshNode (UIComponent * oldNode);
   void guiFromJSON (JSONValue * jv);
   void doRefresh ();
   void testOver (int x, int y);
@@ -16948,10 +17412,51 @@ public:
   void runReport ();
   void renderGUI (int activeFBO);
 };
-LZZ_INLINE bool GameGUI::compChildStr (string childStr)
-                                                  {
-		return tempStrings[E_GDS_CHILD_TYPE].compare(childStr) == 0;
-	}
+#undef LZZ_INLINE
+#endif
+// f00335_gameai.e
+//
+
+#ifndef LZZ_f00335_gameai_e
+#define LZZ_f00335_gameai_e
+#define LZZ_INLINE inline
+class GameAI
+{
+public:
+  Singleton * singleton;
+  std::vector <intVec> tokenToRules;
+  std::vector <VToken> intToVToken;
+  std::vector <VNode*> tokenIndexToVar;
+  std::vector <AssignStruct> assignStack;
+  map <string,int> stringToVTokenIndex;
+  string tempVarStr;
+  VNode * kbCompiled;
+  VNode * qbCompiled;
+  JSONValue * jvKB;
+  GameAI ();
+  void init (Singleton * _singleton);
+  string getResolvedString (VNode * tempNode);
+  bool setEqualTo (VNode * destNodeFinal, VNode * srceNodeFinal, int curGen);
+  void rollBack (int curGen);
+  bool attemptUnify (VNode * nodeToUnify, VNode * testNode, int curGen);
+  VNode * drillDown (VNode * curVar);
+  bool testEqual (VNode * testNode);
+  bool isBetween (VNode * testNode);
+  bool searchToUnify (VNode * nodeToUnifyBase, int curGen, int curOffset = 0);
+  void printChain (VNode * curVar);
+  void runQueries ();
+  bool compileVocab (JSONValue * uncompiledNode, VNode * curVNode);
+  bool checkVocab (JSONValue * jv);
+  void buildRule (VNode * curNode, int ruleNumber, bool isIfThen);
+  void buildRuleSet (VNode * curNode);
+  void numberRule (VNode * curNode, int ruleNumber);
+  int numberRuleSet (VNode * curNode, int offset);
+  void printRule (VNode * curNode, int offset);
+  void printRuleSet (VNode * curNode);
+  bool parseKB ();
+  void traceRules ();
+  void getKB ();
+};
 #undef LZZ_INLINE
 #endif
 // f00338_gameorgnode.e
@@ -17140,9 +17645,9 @@ public:
   void addGeom (bool justTesting);
   void getVoroPoints ();
   void addAllGeom ();
-  void generateVolume (bool dd = false);
+  bool generateVolume (bool dd = false);
   int getIndex (int i, int j, int k, int p);
-  void getPoints (int fboNum);
+  bool getPoints (int fboNum);
   ~ GamePage ();
 };
 #undef LZZ_INLINE
@@ -17191,7 +17696,7 @@ public:
   GamePage * getPageAtCoordsLocal (int x, int y, int z, bool createOnNull = false);
   void refreshGeom ();
   void clearSet ();
-  int passiveRefresh ();
+  int passiveRefresh (int * renderCount);
   void refreshChildren (bool refreshImmediate, bool clearEverything = false, bool refreshUnderground = false);
   void addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVector4 * _p1, FIVector4 * _p2, FIVector4 * _rad, FIVector4 * _cornerRad, FIVector4 * _visInsetFromMin, FIVector4 * _visInsetFromMax, FIVector4 * _powerVals, FIVector4 * _powerVals2, FIVector4 * _thickVals, FIVector4 * _matParams, FIVector4 * _centerPoint, FIVector4 * _anchorPoint, int _minRot, int _maxRot);
   void addNewLinesGeom (GameOrgNode * curNode, float scale);
@@ -17331,6 +17836,7 @@ public:
   int mapSwapFlag;
   int visPageSizeInUnits;
   int blockSizeInHolders;
+  int renderCount;
   int iBlockSize;
   int renderMethod;
   int iBufferSize;
@@ -17376,10 +17882,13 @@ public:
   int visFlagO;
   int activeFBO;
   bool noiseGenerated;
+  std::vector <GamePageHolder*> loadStack;
   std::vector <coordAndIndex> roadCoords;
   std::vector <GamePageHolder *> holdersToRefresh;
   std::vector <int> ocThreads;
-  std::vector <GameEnt> gameActors;
+  map <BaseObjType, BaseObj> gameObjects;
+  vector <BaseObjType> visObjects;
+  vector <ObjDef> objDefs;
   float ppCell;
   FIVector4 lScreenCoords;
   FIVector4 cScreenCoords;
@@ -17390,6 +17899,7 @@ public:
   FIVector4 entMax;
   FIVector4 camPagePos;
   FIVector4 camHolderPos;
+  FIVector4 camHolderPosOrig;
   FIVector4 camBlockPos;
   FIVector4 iPixelWorldCoords;
   FIVector4 pagePos;
@@ -17431,6 +17941,7 @@ public:
   GameBlock * * blockData;
   FBOWrapper * curFBO;
   FBOWrapper * curFBO2;
+  BaseObjType lastHitObjUID;
   GameWorld ();
   void init (Singleton * _singleton);
   GameBlock * getBlockAtCoords (int xInBlocks, int yInBlocks, bool createOnNull = false);
@@ -17439,7 +17950,7 @@ public:
   GamePageHolder * getHolderAtId (intPair id);
   GameBlock * getBlockAtId (int id);
   GamePage * getPageAtIndex (int ind);
-  int getCellAtCoords (FIVector4 * coords);
+  int getCellAtCoords (int xv, int yv, int zv);
   GamePage * getPageAtCoords (int x, int y, int z, bool createOnNull = false);
   bool checkBounds (int k, int km);
   void update ();
@@ -17460,10 +17971,12 @@ public:
   int findAIPathRBT (PathHolder * pathHolder, PathNode * blockAndIndex, float _pathSlack);
   void drawPathLine (PathHolder * curPath, int r, int g, int b, float lw, float zoff);
   void drawAIPath (PathHolder * pathHolder, PathHolder * splitPathHolder);
-  void makeFall (GameEnt * ge);
-  void moveCell (GameEnt * ge, int x, int y, int z);
-  void moveCellRotated (GameEnt * ge, int dirMod);
-  int testHit (GameEnt * ge);
+  void makeFall (BaseObj * ge);
+  bool rotateCell (BaseObj * ge, int dir, int axis);
+  bool moveCell (BaseObj * ge, int x, int y, int z);
+  void removeVisObject (int _uid);
+  void moveCellRotated (BaseObj * ge, int dirMod);
+  int testHit (BaseObj * ge);
   void renderGeom ();
   void modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushAction);
   float weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean);
@@ -17678,10 +18191,17 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		pushTrace("Singleton init");
 		int i;
 		int j;
+		int k;
+		
+		TEMP_DEBUG = false;
 		
 		
 		// todo: mem leak, should delete?
-		internalJSON["shaderParams"].jv = NULL;
+		externalJSON["shaderParams"].jv = NULL;
+		externalJSON["objectData"].jv = NULL;
+		externalJSON["kb.js"].jv = NULL;
+		
+		
 		
 		for (i = 0; i < EML_LENGTH; i++) {
 			music[i] = new GameMusic();
@@ -17689,6 +18209,45 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			music[i]->setLoop(true);
 		}
 		
+		for (i = 0; i < MAX_OBJ_TYPES; i++) {
+			isContainer[i] = false;
+			iconToEntId[i] = 0;
+			entIdToIcon[i] = 0;
+		}
+		
+		int itemCount = 0;
+		
+		itemCount = numberIcons(itemCount,0,0,11,20);
+		itemCount = numberIcons(itemCount,12,0,23,15);
+		itemCount = numberIcons(itemCount,24,0,35,16);
+		itemCount = numberIcons(itemCount,12,16,21,20);
+		itemCount = numberIcons(itemCount,22,17,35,31);
+		itemCount = numberIcons(itemCount,0,21,15,31);
+		itemCount = numberIcons(itemCount,16,21,21,22);
+		itemCount = numberIcons(itemCount,0,32,35,35);
+		itemCount = numberIcons(itemCount,0,36,15,47);
+		itemCount = numberIcons(itemCount,16,36,35,47);
+		
+		
+		for (i = 360; i <= 419; i++ ) {
+			isContainer[i] = true;
+		}
+		for (i = 1240; i <= 1671; i++ ) {
+			isContainer[i] = true;
+		}
+		
+		
+		for (i = 0; i < 6; i++) {
+			dirVecs[i].setFXYZ(
+				DIR_VECS[i][0],
+				DIR_VECS[i][1],
+				DIR_VECS[i][2]
+			);
+		}
+		
+		initAllMatrices();
+		
+		//nullComp = new UIComponent();
 		
 		for (i = 0; i < E_CT_LENGTH; i++) {
 			isInteractiveEnt[i] = false;
@@ -17709,7 +18268,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		isInteractiveEnt[E_CT_DOOR] = true;
 		isInteractiveEnt[E_CT_LANTERN] = true;
 		
-		clipDist[0] = 0.01f;
+		// problem with clipDist at 0.0 not rendering geom
+		
+		clipDist[0] = 0.0f;
 		clipDist[1] = 16384.0f;
 		
 		inputOn = false;
@@ -17729,18 +18290,21 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		guiDirty = true;
 		
 		
+		
 		//lastPickerItem = NULL;
 		//pickerMenu = NULL;
 		currentActor = NULL;
 		mapComp = NULL;
 		mainMenu = NULL;
 		ddMenu = NULL;
+		contMenu = NULL;
 		fieldMenu = NULL;
 		fieldText = NULL;
 		selectedEnt = NULL;
 		highlightedEnt = NULL;
 		draggingMap = false;
 		
+		MAX_TRAVEL_DIS = 10.0f;
 		FOV = 45.0f;
 		focalLength = 1.0f / tan(FOV / 2.0f);
 
@@ -17784,7 +18348,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		cloudImage->getTextureId(GL_LINEAR);
 
 
-		mapSampScale = 0.5f;
+		mapSampScale = 0.25f;
 		//renderCount = 1.0;
 		int newPitch = (imageHM0->width) * mapSampScale; //*2;
 
@@ -17796,7 +18360,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 
-
+		lastNodeId = 0;
 		escCount = 0;
 
 		initStyleSheet();
@@ -17823,8 +18387,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		treesOn = true;
 		rotOn = false;
 		markerFound = false;
+		isDraggingObject = false;
 		editPose = false;
 		doPageRender = true;
+		
+		
+		
 		
 		
 		
@@ -17848,8 +18416,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		// chunk to load
 		// flood fill from there until it hits blank chunk and stop
 		
-		
-		
+		lastObjectCount = 0;
+		lastObjInd = 0;
+		bestObjInd = 0;
+		currentTick = 0;
 		
 		
 		moveTimer.start();
@@ -17871,7 +18441,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		// TODO:
-		// implement power values
+		// WAS DOING: make sure can drag from containers
+		
+		maxHolderDis = 32;
 		
 		int bufferDiv = 2;
 		int curProfile;
@@ -17881,22 +18453,25 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		msPerFrame = 8.0;
 		
 		
-		volGenFBOX = 128; // MAX OF 128, DO NOT CHANGE THIS VALUE
+		volGenFBOX = 32; // MAX OF 128
 		
 		
 		
-		maxChangesInPages = 1;
-		maxChangesInHolders = 1; 
+		maxChangesInPages = 8;
+		maxChangesInHolders = 2;
 		maxHInPages = 4;
-		maxWInPages = 4;
+		maxWInPages = 8;
 		pixelsPerCell = 128; // do not adjust this, instead change volGenFBOX
 		volGenSuperMod = 1;
-		cellsPerPage = 8;
+		cellsPerPage = 4;
 		cellsPerHolder = 8;
 		volGenSuperRes = (volGenFBOX/volGenSuperMod);
 		
-		glEnable(GL_POINT_SPRITE);
-		glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+		if (DO_POINTS) {
+			glEnable(GL_POINT_SPRITE);
+			glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+		}
+		
 		
 		
 		//glPointSize(2.0);
@@ -17954,10 +18529,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		
-		
-		
-		lastMoveTime = 0.0;
-		
 		terDataTexScale = 1;
 		//if (pixelsPerCell >= 128) {
 			terDataTexScale = 1;
@@ -17995,7 +18566,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			worldSizeInBlocks.getIZ()*terDataVisPitchZ
 		);
 		
-
+		//lastContIndex = 0;
+		draggingFromInd = 0;
+		draggingToInd = 0;
+		gameObjCounter = E_OBJ_LENGTH;
+		lastMoveTime = 0.0;
 
 		
 
@@ -18059,7 +18634,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 		mapFreqs.setFXYZW(1.0f, 15.0f, 37.0f, 123.0f);
-		mapAmps.setFXYZW(8.0f/16.0f, 8.0f/16.0f, 8.0f/16.0f, 32.0f/16.0f); //0.0f, 0.0f, 0.0f);//
+		mapAmps.setFXYZW(4.0f/16.0f,4.0f/16.0f, 4.0f/16.0f, 16.0f/16.0f); //0.0f, 0.0f, 0.0f);//
 
 
 		gridSizeInPixels = pixelsPerCell;
@@ -18464,6 +19039,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("MapBorderShader");
 		//shaderStrings.push_back("WorldSpaceShader");
 		shaderStrings.push_back("BlitPointShader");
+		shaderStrings.push_back("BillboardShader");
 		
 		shaderStrings.push_back("PreLightingShader");
 		shaderStrings.push_back("HDRShader");
@@ -18656,10 +19232,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 		fontWrappers[EFW_ICONS] = new FontWrapper();
-		fontWrappers[EFW_ICONS]->init(this, "icons", true, 2.0f, 0.0f);
+		fontWrappers[EFW_ICONS]->init(this, "icons", true, 1.0f, 0.0f);
 		
 		fontWrappers[EFW_TEXT] = new FontWrapper();
-		fontWrappers[EFW_TEXT]->init(this, "arial_regular_24", false, 1.0f);
+		fontWrappers[EFW_TEXT]->init(this, "arial_regular_14", false, 1.0f);
 
 		mainGUI = new GameGUI();
 		mainGUI->init(this);
@@ -18697,7 +19273,21 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		gw->init(this);
 		gw->initMap();
-			
+		
+		gameAI = new GameAI();
+		gameAI->init(this);
+		
+		
+		// gw->gameObjects[E_OBJ_CAMERA] = baseObj;
+		// gw->gameObjects[E_OBJ_CAMERA].init(
+		// 	E_OBJ_CAMERA,
+		// 	0,
+		// 	0,
+		// 	pixelsPerCell,
+		// 	&lastCellPos,
+		// 	5,5,5
+		// );
+		
 		
 		music[EML_BIRDSONG0]->play();
 		music[EML_CRICKETS0]->play();
@@ -18705,7 +19295,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		music[EML_UNDERWATER0]->play();
 		
 		loadGUI();
-		loadGUIValues();
+		loadValuesGUI();
 		
 		if (bakeParamsOn) {
 			doShaderRefresh(true);
@@ -18719,6 +19309,94 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 
+	}
+int Singleton::placeInStack ()
+                           {
+		int curId;
+		int stackSize = emptyStack.size();
+		if (stackSize > 0) {
+			curId = emptyStack.back();
+			emptyStack.pop_back();
+			//compStack[curId].data = new UIComponent();
+			compStack[curId].isValid = true;
+			
+			
+			return curId;
+		}
+		else {
+			compStack.push_back( CompStruct() );
+			compStack.back().data = new UIComponent();
+			compStack.back().isValid = true;
+			
+			
+			return compStack.size() - 1;
+			
+		}
+	}
+int Singleton::placeInLayer (int nodeId, int layer)
+                                                {
+		// int curId;
+		// if (emptyLayers[layer].size() > 0) {
+		// 	curId = emptyLayers[layer].back();
+		// 	emptyLayers[layer].pop_back();
+		// 	guiLayers[layer][curId] = nodeId;
+			
+		// 	return curId;
+		// }
+		// else {
+			guiLayers[layer].push_back(nodeId);	
+			return guiLayers[layer].size() - 1;
+			
+		//}
+	}
+void Singleton::initAllMatrices ()
+                               {
+		int i;
+		int j;
+		int k;
+		int m;
+		int curOffset;
+		
+		for (k = 0; k < NUM_ORIENTATIONS; k++) {
+			for (j = 0; j < NUM_ORIENTATIONS; j++) {
+				for (i = 0; i < NUM_ORIENTATIONS; i++) {
+					curOffset = (k*NUM_ORIENTATIONS*NUM_ORIENTATIONS + j*NUM_ORIENTATIONS + i)*16;
+					
+					for (m = 0; m < 16; m++) {
+						ALL_ROT[curOffset+m] = 0.0f;
+					}
+					ALL_ROT[curOffset+15] = 1.0f;
+					
+					for (m = 0; m < 3; m++) {
+						ALL_ROT[curOffset+0+m] = DIR_VECS[i][m];
+						ALL_ROT[curOffset+4+m] = DIR_VECS[j][m];
+						ALL_ROT[curOffset+8+m] = DIR_VECS[k][m];
+					}
+					
+					
+					
+				}
+			}
+		}
+		
+	}
+int Singleton::numberIcons (int pCurCount, int x1, int y1, int x2, int y2)
+                                                                       {
+	  int i;
+	  int j;
+	  int curCount = pCurCount;
+	  
+	  for (j = y1; j <= y2; j++) {
+	    for (i = x1; i <= x2; i++) {
+	      entIdToIcon[curCount] = i + j * ITEMS_PER_ROW;
+	      iconToEntId[i + j * ITEMS_PER_ROW] = curCount;
+	      curCount++;
+	    }
+	  }
+	  
+	  
+	  return curCount;
+	  
 	}
 void Singleton::prepSound (string soundName)
                                          {
@@ -18777,23 +19455,23 @@ void Singleton::playSoundEvent (char const * eventName, bool suppress)
 		}
 		
 		
-		
-		
-		
-		
 	}
-void Singleton::setCurrentActor (GameEnt * ge)
+void Singleton::setCurrentActor (BaseObj * ge)
                                           {
 		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 		
+		
+		
 		currentActor = ge;
 		if (currentActor != NULL) {
-			mainCamera->subjectDistance = currentActor->getVisMinInPixelsT()->distance(cameraPos);
+			
+			mainCamera->subjectDistance = currentActor->centerPointInPixels.distance(cameraPos);
 		}
 		
 	}
 void Singleton::updateMatVol ()
                             {
+		
 		
 		
 		matVolLock = true;
@@ -19124,6 +19802,268 @@ void Singleton::updateMatVol ()
 		matVolLock = false;	
 		
 	}
+int Singleton::getRandomContId ()
+                              {
+		return iGenRand(360,419);
+	}
+int Singleton::getRandomNPCId ()
+                             {
+		return (iGenRand(1432,1671)/4)*4;
+	}
+int Singleton::getRandomMonsterId ()
+                                 {
+		return (iGenRand(1240,1431)/2)*2;
+	}
+int Singleton::getRandomObjId ()
+                             {
+		return iGenRand(0,907);
+		
+	}
+void Singleton::fillWithRandomObjects (int parentUID, int gen)
+                                                           {
+		
+		int i;
+		int maxObj = iGenRand(2,16);
+		BaseObj* tmpObj = NULL;
+		
+		int curId;
+		
+		
+		for (i = 0; i < maxObj; i++) {
+			gw->gameObjects[gameObjCounter] = baseObj;
+			tmpObj = &(gw->gameObjects[gameObjCounter]);
+			
+			curId = getRandomObjId();
+			
+			
+			// if (
+			// 	(curId%5 == 0) &&
+			// 	(gen <= 1)
+			// ) {
+				
+			// 	curId = getRandomContId();
+			// }
+			
+			tmpObj->init(
+				gameObjCounter,
+				parentUID,
+				curId, 
+				pixelsPerCell,
+				&lastCellPos,
+				// iGenRand(1,4),
+				// iGenRand(1,4),
+				// iGenRand(1,4)
+				2,
+				2,
+				2
+			);
+			
+			gw->gameObjects[parentUID].children.push_back(gameObjCounter);
+			
+			gameObjCounter++;
+			
+			if (isContainer[curId] && (gen < 1)) {
+				fillWithRandomObjects(gameObjCounter-1, gen + 1);
+			}
+			
+		}
+		
+		
+	}
+void Singleton::performDrag ()
+                           {
+		
+		int i;
+		int bestPos;
+		bool moveCont = false;
+		bool draggedIntoWorldObj = false;
+		BaseObj* sourceObj = NULL;
+		BaseObj* destObj = NULL;
+		
+		vector<BaseObjType>* myVec;
+		
+		
+		
+		
+		cout << "from " << dragStrings[draggingFromType] << " to " << dragStrings[draggingToType] << "\n";
+		
+		switch (draggingFromType) {
+			case E_DT_NOTHING:
+				
+			break;
+			case E_DT_WORLD_OBJECT:
+			
+				sourceObj = &(gw->gameObjects[draggingFromInd]);
+			
+				switch (draggingToType) {
+					case E_DT_NOTHING:
+						
+						lastCellPos.copyFrom(&(worldMarker));
+						lastCellPos.intDivXYZ(pixelsPerCell);
+						lastCellPos.addXYZ(0,0,5);
+						sourceObj->positionInCells.copyFrom(&lastCellPos);
+						sourceObj->updateBounds();
+						
+					break;
+					case E_DT_WORLD_OBJECT:
+					case E_DT_INV_OBJECT:
+					case E_DT_INV_OBJECT_PARENT:
+						destObj = &(gw->gameObjects[draggingToInd]);
+						moveCont = true;
+					break;
+				}
+			break;
+			
+			case E_DT_INV_OBJECT:
+			
+				sourceObj = &(gw->gameObjects[draggingFromInd]);
+			
+				switch (draggingToType) {
+					case E_DT_NOTHING:
+						
+						
+						lastCellPos.copyFrom(&(worldMarker));
+						lastCellPos.intDivXYZ(pixelsPerCell);
+						lastCellPos.addXYZ(0,0,5);
+						sourceObj->positionInCells.copyFrom(&lastCellPos);
+						sourceObj->updateBounds();
+						
+						gw->gameObjects[sourceObj->parentUID].removeChild(sourceObj->uid);
+						gw->visObjects.push_back(sourceObj->uid);
+						sourceObj->parentUID = 0;
+						
+						
+					break;
+					case E_DT_WORLD_OBJECT:
+					case E_DT_INV_OBJECT:
+					case E_DT_INV_OBJECT_PARENT:
+						destObj = &(gw->gameObjects[draggingToInd]);
+						moveCont = true;
+					break;
+				}
+			break;
+			case E_DT_INV_OBJECT_PARENT:
+				
+			break;
+		}
+		
+		
+		if (moveCont) {
+			
+			if (isContainer[destObj->objectType]) {	
+				if (draggingFromInd == draggingToInd) {
+					goto PERFORM_DRAG_END;
+				}
+			}
+			else {
+				if (draggingFromInd == destObj->parentUID) {
+					goto PERFORM_DRAG_END;
+				}
+			}
+			
+			
+			gw->gameObjects[sourceObj->parentUID].removeChild(sourceObj->uid);
+			
+			if (isContainer[destObj->objectType]) {
+				destObj->children.push_back(sourceObj->uid);
+				sourceObj->parentUID = destObj->uid;
+				draggedIntoWorldObj = true;
+			}
+			else {
+				
+				myVec = &(gw->gameObjects[destObj->parentUID].children);
+				
+				bestPos = 0;
+				for (i = 0; i < myVec->size(); i++) {
+					if ((*myVec)[i] == destObj->uid) {
+						bestPos = i+1;
+					}
+				}
+				myVec->insert(
+					myVec->begin()+bestPos,
+					sourceObj->uid
+				);
+				
+				sourceObj->parentUID = destObj->parentUID;
+			}
+			
+			if (draggingFromType == E_DT_WORLD_OBJECT) {
+				gw->removeVisObject(sourceObj->uid);
+			}
+			
+		}
+		
+		
+		
+		
+		
+		if (
+			(draggingFromType == E_DT_INV_OBJECT) ||
+			(draggingToType == E_DT_INV_OBJECT) ||
+			(draggingToType == E_DT_INV_OBJECT_PARENT) ||
+			draggedIntoWorldObj
+		) {
+			refreshContainers(false);
+		}
+		
+		
+PERFORM_DRAG_END:		
+		markerFound = false;
+		isDraggingObject = false;
+	}
+void Singleton::placeNewEnt (int et)
+                                 {
+		
+		
+		BaseObj* tmpObj = NULL;
+		
+		int newType = 0;
+		
+		int xv = 2;
+		int yv = 2;
+		int zv = 3;
+		
+		int mf = 0;
+		
+		switch (et) {
+			case E_ENTTYPE_OBJ:
+				newType = getRandomObjId();
+				zv = 2;
+			break;
+			case E_ENTTYPE_MONSTER:
+				newType = getRandomMonsterId();
+				mf = 2;
+			break;
+			case E_ENTTYPE_NPC:
+				newType = getRandomNPCId();
+				mf = 4;
+			break;
+		}
+		
+		
+		gw->gameObjects[gameObjCounter] = baseObj;
+		tmpObj = &(gw->gameObjects[gameObjCounter]);
+		tmpObj->init(
+			gameObjCounter,
+			0,
+			newType,
+			pixelsPerCell,
+			&lastCellPos,
+			xv,yv,zv
+		);
+		
+		
+		tmpObj->maxFrames = mf;
+		gw->visObjects.push_back(gameObjCounter);
+		gameObjCounter++;
+		
+		
+		if (isContainer[newType]) {
+			fillWithRandomObjects(gameObjCounter-1, 0);
+		}
+		
+		
+	}
 void Singleton::dispatchEvent (int button, int state, float x, float y, UIComponent * comp, bool automated, bool preventRefresh)
           {
 		
@@ -19133,24 +20073,34 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		
 		changingGenVal = false;
 		
+		BaseObj* tmpObj = NULL;
 		GameOrgNode* tmpNode = NULL;
 		
 		bool hitPicker = false;
+		bool wasDoubleClick = false;
 		
 		float wheelDelta = 0.0f;
 		
+		double tempTime = myTimer.getElapsedTimeInMilliSec();
+		
 		int i;
+		int j;
+		
 		int cbDataCount;
 		JSONValue* cbData = NULL;
 		
 		bool doSPUpdate = false;
 		bool mouseUpEvent = false;
+		bool mouseDownEvent = false;
 		
 		float curValue = comp->getValue();
 		float curValueY = comp->getValueY();
 		
 		draggingMap = false;
 		
+		bool noTravel = false;
+		bool isInteractiveComp = false;
+		bool suppressSound = false;
 		
 		
 		
@@ -19160,106 +20110,214 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 			case E_GT_RADIO:
 			case E_GT_CHECK:
 			case E_GT_DRAGPAD:
+					isInteractiveComp = true;
+			break;
+			default:
+				if (comp->jvNodeNoTemplate->HasChild("interactive")) {
+					isInteractiveComp = true;
+				}
+			break;
+		}
+		
+		suppressSound = automated||(!isInteractiveComp);
+		
+		
+		switch(button) {
+			case GLUT_NO_BUTTON:
 			
-				switch(button) {
-					case GLUT_NO_BUTTON:
-					
-						
-						
-						switch(state) {
-							case GLUT_OVER:
-								playSoundEvent("mouseOver",automated);
-							break;
-							case GLUT_OUT:
-								playSoundEvent("mouseOut",automated);
-							break;
-							case GLUT_CHANGING:
-								if (comp->guiClass == E_GT_DRAGPAD) {
-									
-									if (comp->uid.compare("map.mapHolder") == 0) {
-										cameraPos->setFXYZRef(&baseCameraPos);
-										//cout << x << " " << y << " " << comp->dragStart.x << " " << comp->dragStart.y << "\n";
-										
-										cameraPos->addXYZ(
-											-(x - comp->dragStart.x)*worldSizeInPixels.getFX()/(cameraZoom*comp->resultDimInPixels.x),
-											-(y - comp->dragStart.y)*worldSizeInPixels.getFY()/(cameraZoom*comp->resultDimInPixels.y),
-											0.0f
-										);
-										
-										
-										
-										updateCamVals();
-										
-										//doTraceVecND("cameraPos ", cameraPos);
-										
-										
-										draggingMap = true;
-									}
-									
-								}
-								else {
-									doSPUpdate = true;
-								}
-								
-							break;
-						}
-						
+				
+				
+				switch(state) {
+					case GLUT_OVER:
+						playSoundEvent("mouseOver",suppressSound);
 					break;
-					case GLUT_LEFT_BUTTON:
-						if (state == GLUT_DOWN) {
-							playSoundEvent("mouseDown",automated);
+					case GLUT_OUT:
+						playSoundEvent("mouseOut",suppressSound);
+					break;
+					case GLUT_CHANGING:
+						if (comp->guiClass == E_GT_DRAGPAD) {
 							
 							if (comp->uid.compare("map.mapHolder") == 0) {
-								baseCameraPos.setFXYZRef(cameraPos);
+								cameraPos->setFXYZRef(&baseCameraPos);
+								
+								cameraPos->addXYZ(
+									-(x - comp->dragStart.x)*worldSizeInPixels.getFX()/(cameraZoom*comp->resultDimInPixels.x),
+									-(y - comp->dragStart.y)*worldSizeInPixels.getFY()/(cameraZoom*comp->resultDimInPixels.y),
+									0.0f
+								);
+								
+								
+								
+								updateCamVals();
+								
+								//doTraceVecND("cameraPos ", cameraPos);
+								
+								
+								draggingMap = true;
 							}
+							
 						}
 						else {
-							playSoundEvent("mouseUp",automated);
-							
-							if (comp->guiClass == E_GT_DRAGPAD) {
-								
-							}
-							else {
-								doSPUpdate = true;
-								mouseUpEvent = true;
-							}
-							
-							
+							doSPUpdate = true;
 						}
+						
 					break;
+				}
+				
+			break;
+			case GLUT_LEFT_BUTTON:
+			
+			
+				if (state == GLUT_DOWN) {
+					playSoundEvent("mouseDown",suppressSound);
 					
-					case 3: // wheel up
-						wheelDelta = 1.0f / 20.0f;
-						break;
-
-					case 4: // wheel down
-						wheelDelta = -1.0f / 20.0f;
-						break;
+					if (comp->uid.compare("map.mapHolder") == 0) {
+						baseCameraPos.setFXYZRef(cameraPos);
+					}
+					
+					mouseDownEvent = true;
+					mdTime = myTimer.getElapsedTimeInMilliSec();
+				}
+				else {
+					playSoundEvent("mouseUp",suppressSound);
+					
+					if (comp->guiClass == E_GT_DRAGPAD) {
+						
+					}
+					else {
+						doSPUpdate = true;
+						mouseUpEvent = true;
+					}
 					
 					
 				}
+			break;
 			
-			break;	
+			case 3: // wheel up
+				wheelDelta = 1.0f / 20.0f;
+				break;
+
+			case 4: // wheel down
+				wheelDelta = -1.0f / 20.0f;
+				break;
+			
+			
 		}
+		
+		if (mouseUpEvent) {
+			if (!automated) {
+				noTravel = mouseEnd.distance(&mouseStart) < MAX_TRAVEL_DIS;
+				
+				if (lastNodeId == comp->nodeId) {
+					
+					if ( (tempTime-clickTime) < 500 ) {
+						wasDoubleClick = true;
+					}
+					
+				}
+				
+				clickTime = tempTime;
+				lastNodeId = comp->nodeId;
+			}
+		}
+		
+		
 		
 		if (comp->uid.compare("map.mapHolder") == 0) {
 			zoomDelta += wheelDelta;
 			targetZoom = pow(2.0, zoomDelta);
 		}
 		
+		if (comp->uid.compare("#contItemParent") == 0) {
+			if (comp->jvNodeNoTemplate != NULL) {
+				if (comp->jvNodeNoTemplate->HasChild("objectId")) {
+					if (mouseUpEvent) {
+						if (isDraggingObject) {
+							if (noTravel) {
+								
+							}
+							else {
+								draggingToType = E_DT_INV_OBJECT_PARENT;
+								draggingToInd = comp->jvNodeNoTemplate->Child("objectId")->number_value;
+								performDrag();
+							}
+						}
+					}
+				}
+			}
+			
+			goto DISPATCH_EVENT_END;
+		}
+		
+		if (comp->uid.compare("#contItem") == 0) {
+			
+			
+			
+			if (comp->jvNodeNoTemplate != NULL) {
+				
+				
+				if (comp->jvNodeNoTemplate->HasChild("objectId")) {
+					
+					// !!
+					
+					if (mouseUpEvent) {
+						
+						if (wasDoubleClick) {
+							i = comp->jvNodeNoTemplate->Child("objectId")->number_value;
+							if (isContainer[gw->gameObjects[i].objectType]) {
+								toggleCont(i, false);
+							}
+							else {
+								gw->gameObjects[i].isEquipped = !(gw->gameObjects[i].isEquipped);
+								if (gw->gameObjects[i].isEquipped) {
+									playSoundEvent("showGUI");
+								}
+								else {
+									playSoundEvent("hideGUI");
+								}
+								refreshContainers(false);
+							}
+							
+							
+						}
+						else if (isDraggingObject) {
+							if (noTravel) {
+								
+							}
+							else {
+								draggingToType = E_DT_INV_OBJECT;
+								draggingToInd = comp->jvNodeNoTemplate->Child("objectId")->number_value;
+								performDrag();
+							}
+							
+						}
+					}
+					else if (mouseDownEvent) {
+						
+						isDraggingObject = true;
+						draggingFromType = E_DT_INV_OBJECT;
+						draggingFromInd = comp->jvNodeNoTemplate->Child("objectId")->number_value;
+					}
+				}
+			}
+			
+			goto DISPATCH_EVENT_END;
+			
+		}
+		
+		
 		
 		if (mouseUpEvent) {
 			
 			
-			
-			if (comp->uid.compare("placeEntity.actor") == 0) {
-				gw->gameActors.push_back(baseEnt);
-				tempVec1.setIXYZ(2,2,3);
-				gw->gameActors.back().initActor(&lastCellPos,&tempVec1,pixelsPerCell);
-				setCurrentActor( &(gw->gameActors.back()) );
-				orgOn = true;
-				
-				//cout << "placeActor\n";
+			if (comp->uid.compare("placeEntity.npc") == 0) {
+				placeNewEnt(E_ENTTYPE_NPC);
+			}
+			if (comp->uid.compare("placeEntity.monster") == 0) {
+				placeNewEnt(E_ENTTYPE_MONSTER);
+			}
+			else if (comp->uid.compare("placeEntity.object") == 0) {
+				placeNewEnt(E_ENTTYPE_OBJ);
 			}
 			else if (comp->uid.compare("charEdit.savePose") == 0) {
 				saveOrg();
@@ -19298,6 +20356,18 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 					makeDirty();
 				}
 			}
+			else if (comp->uid.compare("#contMenu.close") == 0) {
+				
+				i = comp->getParent()->getChild(1)->jvNodeNoTemplate->Child("objectId")->number_value;
+				
+				cout << "ival " << i << "\n";
+				
+				gw->gameObjects[i].isOpen = false;
+				refreshContainers(false);
+				
+			}
+			
+			
 			
 			
 			if (comp->getFloatingChildCount() == 0) {
@@ -19375,9 +20445,6 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 						
 						if (cbData != NULL) {
 							
-							// cout <<
-							// 	cbData->Child("paramName")->string_value <<
-							// 	"\n";
 							
 							cbDataStrings[0] = cbData->Child("shaderName")->string_value;
 							cbDataStrings[1] = cbData->Child("paramName")->string_value;
@@ -19422,9 +20489,13 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 			}
 		}
 		
+DISPATCH_EVENT_END:
 		
 		if (mouseMoved) {
 			mouseMoved = false;
+		}
+		if (mouseUpEvent) {
+			isDraggingObject = false;
 		}
 	}
 StyleSheet * Singleton::getNewStyleSheet (string ssName)
@@ -19454,9 +20525,9 @@ void Singleton::initStyleSheet ()
 		curState->setVal(E_SS_FGCOLTEXT1_R, 1.0f, 0.8f, 0.7f, 1.0f);
 		curState->setVal(E_SS_BDCOL_R, 1.0f, 1.0f, 1.0f, 0.5f);
 
-		curState->props[E_SS_PADDING] = 4.0f;
+		curState->props[E_SS_PADDING] = 2.0f;
 		curState->props[E_SS_BORDER] = 1.0f;
-		curState->props[E_SS_MARGIN] = 4.0f;
+		curState->props[E_SS_MARGIN] = 2.0f;
 		curState->props[E_SS_CORNERRAD] = 4.0f;
 		curState->props[E_SS_ROUNDNESS] = 1.0f;
 
@@ -19762,17 +20833,17 @@ void Singleton::drawBoxUp (FIVector4 originVec, float radiusX, float radiusY, fl
 
 		drawBox(&minV, &maxV);
 	}
-void Singleton::drawBox (FIVector4 * minVec, FIVector4 * maxVec, int faceFlag)
+void Singleton::drawBox (FIVector4 * v0, FIVector4 * v1, int faceFlag)
           {
 
 
-		float minX = minVec->getFX();
-		float minY = minVec->getFY();
-		float minZ = minVec->getFZ();
+		float minX = min(v0->getFX(),v1->getFX());
+		float minY = min(v0->getFY(),v1->getFY());
+		float minZ = min(v0->getFZ(),v1->getFZ());
 
-		float maxX = maxVec->getFX();
-		float maxY = maxVec->getFY();
-		float maxZ = maxVec->getFZ();
+		float maxX = max(v0->getFX(),v1->getFX());
+		float maxY = max(v0->getFY(),v1->getFY());
+		float maxZ = max(v0->getFZ(),v1->getFZ());
 
 
 		bool drawFront = false;
@@ -19889,8 +20960,6 @@ void Singleton::getMaterialString ()
 			
 			includeMap["materials"] = resString;
 			
-			cout << "material string: \n\n";
-			cout << includeMap["materials"];
 		}
 		
 		
@@ -19931,6 +21000,7 @@ void Singleton::doShaderRefresh (bool doBake)
 			// save merged data to saved data
 			
 			
+			
 			stringBuf = "{\n\t\"params\":[\n";
 			
 			
@@ -19956,15 +21026,12 @@ void Singleton::doShaderRefresh (bool doBake)
 			
 			// this should automatically clear the key
 			// and deallocate existing entries
-			//internalJSON.insertValue("shaderParams", JSON::Parse(stringBuf.c_str()));
 			
 			processJSONFromString(
 				&stringBuf,
-				&(internalJSON["shaderParams"].jv)
+				&(externalJSON["shaderParams"].jv)
 			);
 			
-			// cout << "stringBuf:\n\n";
-			// cout << stringBuf;
 			
 			
 		}
@@ -20113,7 +21180,7 @@ void Singleton::copyFBO2 (string src, string dest)
 		unbindFBO();
 		unbindShader();
 	}
-void Singleton::bindFBO (string fboName, int swapFlag)
+void Singleton::bindFBO (string fboName, int swapFlag, int doClear)
         {
 
 		FBOSet *fbos;
@@ -20138,7 +21205,7 @@ void Singleton::bindFBO (string fboName, int swapFlag)
 
 		if (fbos)
 		{
-			bindFBODirect(fbos);
+			bindFBODirect(fbos, doClear);
 		}
 		else
 		{
@@ -20542,9 +21609,7 @@ void Singleton::syncObjects (FIVector4 * bp)
 		//testHuman->basePosition.copyFrom(&(dynObjects[E_OBJ_HUMAN]->pos));
 		
 		if (currentActor != NULL) {
-			testHuman->basePosition.copyFrom(currentActor->getVisMinInPixelsT());
-			testHuman->basePosition.addXYZRef(currentActor->getVisMaxInPixelsT());
-			testHuman->basePosition.multXYZ(0.5f);
+			testHuman->basePosition.copyFrom(&(currentActor->centerPointInPixels));
 		}
 		
 		
@@ -20753,16 +21818,13 @@ void Singleton::moveObject (float dx, float dy)
 		
 		
 
-		if (abDown)
-		{
+		if (abDown) {
 			
-			if (rbDown || (shiftDown() ) )
-			{
+			if ( shiftDown() ) { //rbDown || 
 				zmod += dy;
 
 			}
-			else
-			{
+			else {
 				
 				xmod += float(sin(yrotrad))*dy;
 				ymod += float(cos(yrotrad))*dy;
@@ -20770,7 +21832,6 @@ void Singleton::moveObject (float dx, float dy)
 
 				xmod += float(cos(yrotrad))*(-dx);
 				ymod -= float(sin(yrotrad))*(-dx);
-				
 			}
 			
 			modXYZ.setFXYZ(
@@ -20781,8 +21842,6 @@ void Singleton::moveObject (float dx, float dy)
 			
 
 			lastModXYZ.addXYZRef(&modXYZ);
-
-
 
 
 		}
@@ -20799,45 +21858,32 @@ void Singleton::moveObject (float dx, float dy)
 			
 		}
 		else {
-			if (shiftDown())
-			{
+			if (
+				shiftDown() && 
+				(mouseState == E_MOUSE_STATE_BRUSH) && 
+				lbDown
+			) {
 				
-				
-				if ((mouseState == E_MOUSE_STATE_BRUSH)&&lbDown)
+				curBrushRad -= modXYZ.getFZ() / 50.0f;
+				if (curBrushRad < 0.0f)
 				{
-					curBrushRad -= modXYZ.getFZ() / 50.0f;
-
-					if (curBrushRad < 0.0f)
-					{
-						curBrushRad = 0.0f;
-					}
-				}
-				else
-				{
-					
-					
-					
+					curBrushRad = 0.0f;
 				}
 
 			}
-			else
-			{
-				if (mouseState == E_MOUSE_STATE_BRUSH)
-				{
+			else {
+				if (mouseState == E_MOUSE_STATE_BRUSH) {
 					doDefault = true;
 				}
-				else
-				{
+				else {
 
-					if (activeObject == E_OBJ_CAMERA)
-					{
+					if (activeObject == E_OBJ_CAMERA) {
 						doDefault = true;
 					}
-					else
-					{
+					else {
 						
 						if (dynObjects[activeObject]->moveType == E_MT_TRACKBALL) {
-							if (rbDown) {
+							if (shiftDown()) {
 								dynObjects[activeObject]->posTrackball.addXYZ(0.0f,0.0f,dy);
 							}
 							else {
@@ -20863,7 +21909,7 @@ void Singleton::moveObject (float dx, float dy)
 				{
 					
 					
-					if (lbDown) {
+					if (rbDown) {
 						mainCamera->addRotation(dx*0.005f, dy*0.005f);
 					}
 					
@@ -20967,6 +22013,36 @@ void Singleton::updateCS ()
 		bCtrlOld = bCtrl;
 		bShiftOld = bShift;
 	}
+void Singleton::playBump (BaseObj * ge)
+                                   {
+		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
+		
+		if (ge == NULL) {
+			playSoundPosAndPitch(
+				"bump0",
+				cameraPos,
+				cameraPos,
+				0.3f
+			);
+		}
+		else {
+			playSoundPosAndPitch(
+				"bump0",
+				cameraPos,
+				&(ge->centerPointInPixels),
+				0.3f
+			);
+		}
+		
+		
+	}
+void Singleton::getMarkerPos (int x, int y)
+                                        {
+		getPixData(&spaceUpPD, x, y, true, false);
+		worldMarker.copyFrom(&spaceUpPD);
+		lastCellPos.copyFrom(&(worldMarker));
+		lastCellPos.intDivXYZ(pixelsPerCell);
+	}
 void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
                                                                          {
 		
@@ -20980,7 +22056,18 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 			return;
 		}
 		
-		keysPressed[key] = keyDown;
+		unsigned char newKey = key;
+		
+		if (
+			(key >= 'A') &&
+			(key <= 'Z')
+		) {
+			newKey += 32;
+		}
+		
+		keysPressed[newKey] = keyDown;
+		
+		
 		
 		
 		if (keyDown) {
@@ -21002,18 +22089,31 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				}
 				
 				if (key == keyMap[KEYMAP_RIGHT]) {
-					currentActor->rotate(-1,true);
-					testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,-M_PI/2.0f);
-					transformOrg(testHuman);//testHuman->applyt
-					makeDirty();
+					
+					gw->rotateCell(currentActor,1,E_DIR_Z);
+					
+					// currentActor->rotate(1,E_DIR_Z,true);
+					// if (gw->testHit(currentActor)) {
+					// 	playBump(currentActor);
+					// 	currentActor->rotate(0,E_DIR_Z,true);
+					// }
+					//testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,-M_PI/2.0f);
+					//transformOrg(testHuman);//testHuman->applyt
+					//makeDirty();
 				}
 				
 				if (key == keyMap[KEYMAP_LEFT]) {
 
-					currentActor->rotate(1,true);
-					testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,M_PI/2.0f);
-					transformOrg(testHuman);
-					makeDirty();
+					gw->rotateCell(currentActor,0,E_DIR_Z);
+
+					// currentActor->rotate(0,E_DIR_Z,true);
+					// if (gw->testHit(currentActor)) {
+					// 	playBump(currentActor);
+					// 	currentActor->rotate(1,E_DIR_Z,true);
+					// }
+					//testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,M_PI/2.0f);
+					//transformOrg(testHuman);
+					//makeDirty();
 				}
 			}
 			
@@ -21046,7 +22146,22 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 			// break;
 
 
-
+				
+				
+				case '1':
+					getMarkerPos(x, y);
+					placeNewEnt(E_ENTTYPE_NPC);
+				break;
+				case '2':
+					getMarkerPos(x, y);
+					placeNewEnt(E_ENTTYPE_MONSTER);
+				break;
+				case '3':
+					getMarkerPos(x, y);
+					placeNewEnt(E_ENTTYPE_OBJ);
+				break;
+				
+				
 				case 'i':
 						isMacro = !isMacro;
 						
@@ -21068,7 +22183,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				case 15: //ctrl-o
 					//loadAllData();
-					loadGUIValues();
+					loadValuesGUI();
 
 					break;
 
@@ -21094,18 +22209,20 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				case 'u':
 					
+					
 					break;
 					
 				case 'q':
 				
 					if (currentActor == NULL) {
-						if (gw->gameActors.size() > 0) {
-							setCurrentActor(&(gw->gameActors.back()));
-							
+						
+						if (bestObjInd >= E_OBJ_LENGTH) {
+							setCurrentActor(&(gw->gameObjects[bestObjInd]));
 						}
+						
 					}
 					else{
-						currentActor = NULL;
+						setCurrentActor(NULL);
 					}
 				
 					// autoScroll = !autoScroll;
@@ -21135,11 +22252,14 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				case 27: // esc
 					//std::exit(0);
 					
-					if (ddMenu->visible) {
+					if (ddMenu->visible || contMenu->visible) {
 						ddMenu->visible = false;
+						contMenu->visible = false;
+						closeAllContainers();
 						escCount = 0;
 					}
 					else {
+						
 						escCount++;
 						if (escCount >= 3) {
 							std::exit(0);
@@ -21167,11 +22287,11 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				case 'R':
 				
-					//loadGUIValues(false);
+					//loadValuesGUI(false);
 					
-					doShaderRefresh(bakeParamsOn);
+					
 					loadGUI();
-					loadGUIValues();
+					loadValuesGUI();
 				break;
 				case 'r':
 					doShaderRefresh(bakeParamsOn);
@@ -21213,6 +22333,10 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 				break;
 				
+				case 'k':
+					gameAI->getKB();
+				break;
+				
 				case 'l':
 
 					multiLights = !multiLights;
@@ -21233,11 +22357,6 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				case 'o':
 					targetTimeOfDay = 1.0f-targetTimeOfDay;
-					// targetTimeOfDay += 0.5;
-					
-					// if (targetTimeOfDay > 1.0) {
-					// 	targetTimeOfDay = 0.0;
-					// }
 					
 					break;
 
@@ -21264,22 +22383,33 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				case '\t':
 				
-					if (mainGUI->isReady) {
-						if (mainMenu == NULL) {
-							
-						}
-						else {
-							if (mainMenu->visible) {
-								playSoundEvent("hideGUI");
+					if (ddMenu->visible || contMenu->visible) {
+						ddMenu->visible = false;
+						contMenu->visible = false;
+						closeAllContainers();
+						
+						escCount = 0;
+					}
+					else {
+						if (mainGUI->isReady) {
+							if (mainMenu == NULL) {
+								
 							}
-							
-							mainMenu->visible = !(mainMenu->visible);
-							
-							if (mainMenu->visible) {
-								playSoundEvent("showGUI");
+							else {
+								if (mainMenu->visible) {
+									playSoundEvent("hideGUI");
+								}
+								
+								mainMenu->visible = !(mainMenu->visible);
+								
+								if (mainMenu->visible) {
+									playSoundEvent("showGUI");
+								}
 							}
 						}
 					}
+				
+					
 					
 				
 					
@@ -21288,18 +22418,21 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				case ' ':
 					//selectedEnts.cycleEnts();
-					
+					getMarkerPos(x, y);
 					
 					ddMenu->visible = !(ddMenu->visible);
 					markerFound = ddMenu->visible;
 					
-					ddMenu->floatOffset.x = (guiX);
-					ddMenu->floatOffset.y = (guiY);
+					// ddMenu->floatOffset.x = (guiX);
+					// ddMenu->floatOffset.y = min((float)(guiY), (float)( (guiWinH - ddMenu->getChild(0)->resultDimInPixels.y) ));
 					
-					getPixData(&spaceUpPD, x, y, true, false);
-					worldMarker.copyFrom(&spaceUpPD);
-					lastCellPos.copyFrom(&(worldMarker));
-					lastCellPos.intDivXYZ(pixelsPerCell);
+					ddMenuBar = ddMenu->getChild(0)->getChild(0);
+					ddMenuBar->lastDrag.x = (guiX);
+					ddMenuBar->lastDrag.y = min((float)(guiY), (float)( (guiWinH - ddMenu->getChild(0)->resultDimInPixels.y) ));
+					ddMenuBar->forceDragUpdate = true;
+					
+					
+					
 					
 				break;
 
@@ -21323,16 +22456,16 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 
 				
-				case 'A':
-					maxHInPages++;
-					break;
-				case 'Z':
-					maxHInPages--;
-					if (maxHInPages < 1)
-					{
-						maxHInPages = 1;
-					}
-					break;
+				// case 'A':
+				// 	maxHInPages++;
+				// 	break;
+				// case 'Z':
+				// 	maxHInPages--;
+				// 	if (maxHInPages < 1)
+				// 	{
+				// 		maxHInPages = 1;
+				// 	}
+				// 	break;
 
 				
 
@@ -21340,10 +22473,23 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					gw->toggleVis(selectedEnts.getSelectedEnt());
 					break;
 
-
+				case 'A':
+				case 'Z':
+				case 'S':
+				case 'F':
+				case 'E':
+				case 'D':
+				case 'a':
+				case 'z':
+				case 's':
+				case 'f':
+				case 'e':
+				case 'd':
+					// reserved for movement
+				break;
 
 				default:
-
+					cout << "No code for key: " << key << "\n";
 					break;
 			}
 		}
@@ -21418,12 +22564,14 @@ void Singleton::runReport ()
                          {
 		
 		mainGUI->runReport();
-		cout << "lightCount: " << gw->lightCount << "\n";
-		cout << "TOT GPU MEM USED (MB): " << TOT_GPU_MEM_USAGE << "\n";
-		cout << "HolderSize (MB): " << holderSizeMB << "\n";
-		cout << "Num GPU Holders: " << gpuPool->holderPoolItems.size() << "\n";
-		cout << "GPU Pooled MB Used: " << ((float)gpuPool->holderPoolItems.size())*holderSizeMB << "\n";
-		cout << "totalPointCount: " << totalPointCount << "\n";
+		
+		cout << "Object Count: " << lastObjectCount << "\n";
+		// cout << "lightCount: " << gw->lightCount << "\n";
+		// cout << "TOT GPU MEM USED (MB): " << TOT_GPU_MEM_USAGE << "\n";
+		// cout << "HolderSize (MB): " << holderSizeMB << "\n";
+		// cout << "Num GPU Holders: " << gpuPool->holderPoolItems.size() << "\n";
+		// cout << "GPU Pooled MB Used: " << ((float)gpuPool->holderPoolItems.size())*holderSizeMB << "\n";
+		// cout << "totalPointCount: " << totalPointCount << "\n";
 	}
 void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj)
         {
@@ -21493,15 +22641,18 @@ void Singleton::mouseMove (int _x, int _y)
 		mouseYUp = y;
 
 		bool ddVis = false;
+		bool noTravel = false;
 		
 		if (ddMenu != NULL) {
 			ddVis = ddMenu->visible;
 		}
 		
-			
-
 		
-
+		if (mbDown) {
+			getMarkerPos(x, y);
+			placeNewEnt(iGenRand(0,2));
+		}
+		
 		if (abDown)
 		{
 			moveObject((float)dx, (float)dy);
@@ -21509,12 +22660,9 @@ void Singleton::mouseMove (int _x, int _y)
 		else
 		{
 
-			if (orgOn||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
+			if (RT_TRANSFORM||orgOn||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
 				getPixData(&mouseMovePD, x, y, false, false);
 			}
-
-			
-
 
 			
 
@@ -21526,7 +22674,6 @@ void Singleton::mouseMove (int _x, int _y)
 			//}
 			
 			
-
 
 			//////////////
 
@@ -21628,6 +22775,55 @@ void Singleton::worldToScreenBase (FIVector4 * sc, FIVector4 * wc)
 		
 
 	}
+void Singleton::refreshContainers (bool onMousePos)
+                                                {
+		UIComponent* objCont = NULL;
+		
+		bool oldVis = false;
+		
+		if (contMenu != NULL) {
+			
+			cout << "refreshContainers\n";
+			
+			externalJSON.erase("objectData"); // mem leak?
+			
+			oldVis = contMenu->visible;
+			contMenu->visible = anyContainerOpen();
+
+			objCont = mainGUI->findNodeByString("objectContainer");
+			//objCont->jvNodeNoTemplate->Child("dataParams")->number_value = contIndex;
+			
+			mainGUI->refreshNode(objCont);
+			
+			if (onMousePos&&(oldVis == false)) {
+				
+				// contMenu->dragOffset.x = 0.0f;
+				// contMenu->dragOffset.y = 0.0f;
+				contMenuBar = contMenu->getChild(0)->getChild(0);
+				
+				contMenuBar->lastDrag.x = (guiX);
+				contMenuBar->lastDrag.y = min((float)(guiY), (float)( (guiWinH - contMenu->getChild(0)->resultDimInPixels.y) ));
+				contMenuBar->forceDragUpdate = true;
+			}
+			
+		}
+	}
+void Singleton::toggleCont (int contIndex, bool onMousePos)
+                                                        {
+		
+		if (
+			isContainer[gw->gameObjects[contIndex].objectType]
+		) {
+			
+			gw->gameObjects[contIndex].isOpen = !(gw->gameObjects[contIndex].isOpen);
+			refreshContainers(onMousePos);
+		}
+		else {
+			playBump(NULL);	
+		}
+		
+		
+	}
 float Singleton::getShortestAngle (float begInRad, float endInRad, float amount)
                                                                              {
 		int begInDeg = begInRad*180/M_PI;
@@ -21644,12 +22840,15 @@ void Singleton::handleMovement ()
 		
 		double curTime = myTimer.getElapsedTimeInMilliSec();
 		
-		
+		int i;
 		
 		
 		if (currentActor != NULL) {
-			if (!lbDown) {
-				vecToAngle(&targetLookAtVec,&tempVec1);
+			if (!rbDown) {
+				vecToAngle(
+					&(dirVecs[currentActor->orientationXYZ.getIY()]),
+					&tempVec1
+				);
 				mainCamera->rotation[0] += 
 					getShortestAngle(mainCamera->rotation[0],tempVec1.getFX(),0.1f);
 			}
@@ -21658,10 +22857,6 @@ void Singleton::handleMovement ()
 		
 		float xrotrad = (mainCamera->rotation[0]);
 		float yrotrad = (mainCamera->rotation[1]);
-		
-		
-		//xrotrad = xrotrad*0.5f + tempVec1.getFX()*0.5f;
-		//rotrad = xrotrad*0.5f + tempVec1.getFX()*0.5f;
 		
 		angleToVec(&lookAtVec,xrotrad,yrotrad);
 		
@@ -21673,6 +22868,9 @@ void Singleton::handleMovement ()
 		float ymod = 0.0f;
 		float zmod = 0.0f;
 		
+		float tempZoom = 1.0;
+		
+		float tempMoveSpeed;
 		
 		//unsigned char curKey;
 		
@@ -21725,10 +22923,16 @@ void Singleton::handleMovement ()
 			
 			lastMoveTime = curMoveTime;
 			
+			
+			tempMoveSpeed = curMoveSpeed;
+			if (bShift) {
+				tempMoveSpeed *= 0.1;
+			}
+			
 			modXYZ.setFXYZ(
-				xmod*curMoveSpeed,
-				ymod*curMoveSpeed,
-				zmod*curMoveSpeed
+				xmod*tempMoveSpeed,
+				ymod*tempMoveSpeed,
+				zmod*tempMoveSpeed
 			);
 			
 			moveCamera(&modXYZ);
@@ -21754,9 +22958,27 @@ void Singleton::handleMovement ()
 		else {
 			
 			
-			targetCameraPos.copyFrom(&lookAtVec);
-			targetCameraPos.multXYZ( -(mainCamera->subjectDistance)*subjectZoom );
-			targetCameraPos.addXYZRef(currentActor->getVisMinInPixelsT());
+			
+			//for (i = 0; i < 10; i++) {
+				targetCameraPos.copyFrom(&lookAtVec);
+				targetCameraPos.multXYZ( -(mainCamera->subjectDistance)*subjectZoom*tempZoom );
+				targetCameraPos.addXYZRef(&(currentActor->centerPointInPixels));
+				
+			// 	gw->gameObjects[E_OBJ_CAMERA].positionInCells.setFXYZRef(&targetCameraPos);
+			// 	gw->gameObjects[E_OBJ_CAMERA].updateBounds();
+				
+			// 	if (
+			// 		gw->testHit(&(gw->gameObjects[E_OBJ_CAMERA])) != E_CD_SOLID	
+			// 	) {
+			// 		break;
+			// 	}
+				
+			// 	tempZoom *= 0.75f;
+				
+			// }
+			
+			
+			
 			
 			modXYZ.copyFrom(&targetCameraPos);
 			modXYZ.addXYZRef(cameraPos,-1.0f);
@@ -21781,6 +23003,11 @@ bool Singleton::anyMenuVisible ()
 				}
 				if (ddMenu != NULL) {
 					if (ddMenu->visible){
+						doProc = true;
+					}
+				}
+				if (contMenu != NULL) {
+					if (contMenu->visible){
 						doProc = true;
 					}
 				}
@@ -21827,8 +23054,12 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		int ii;
 		int jj;
 		int bestInd;
+		int upInd;
 		float bestDis;
 		float curDis;
+		bool findObject = false;
+		bool hitObject = false;
+		bool wasDoubleClick = false;
 		
 		bool ddVis = false;
 		if (ddMenu != NULL) {
@@ -21853,15 +23084,8 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		
 		hitGUI = false;
 		
-		if (anyMenuVisible()) {
-			hitGUI = mainGUI->testHit(button, state, guiX, guiY);
-		}
 		
-
-		if (hitGUI) {
-			
-			return;
-		}
+		
 		
 		
 		
@@ -21897,22 +23121,41 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		abDown = lbDown || rbDown || mbDown;
 		abClicked = lbClicked || rbClicked || mbClicked;
 		
+		
+		
+		if (abDown) {
+			mouseStart.setIXY(x, y);
+		}
+		if (abClicked) {
+			mouseEnd.setIXY(x, y);
+			noTravel = mouseEnd.distance(&mouseStart) < MAX_TRAVEL_DIS;	
+		}
+		
+		if (anyMenuVisible()) {
+			hitGUI = mainGUI->testHit(button, state, guiX, guiY);
+		}
+		
+
+		if (hitGUI) {
+			return;
+		}
+		
+		//cout << "NO GUI HIT\n";
+		
+		
 		wsBufferInvalid = true;
 		
 		if (abDown) {
 			getPixData(&mouseDownPD, x, y, true, false);
+			getPixData(&mouseDownOPD, x, y, true, true);
 		}
 		else {
 			getPixData(&mouseUpPD, x, y, true, false);
+			getPixData(&mouseUpOPD, x, y, true, true);
 		}
 		
 		
 		
-		if (abClicked) {
-			mouseEnd.setIXY(x, y);
-			noTravel = mouseEnd.distance(&mouseStart) < 30.0;
-			
-		}
 		
 
 		if (state == GLUT_DOWN) {
@@ -21922,6 +23165,46 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		//GamePage* gp;
 
 		if (abClicked) {
+			
+			if (lbClicked) {
+				if (noTravel) {
+					
+				}
+				else {
+					if (isDraggingObject) {
+						
+						upInd = mouseUpOPD.getFW();
+						
+						//cout << "UP IND " << upInd << "\n";
+						
+						if (upInd == 0) {
+							draggingToInd = 0;
+							draggingToType = E_DT_NOTHING;
+							performDrag();
+						}
+						else {
+							if (upInd >= E_OBJ_LENGTH) {
+								
+									if (isContainer[gw->gameObjects[upInd].objectType]) {
+										draggingToInd = upInd;
+										draggingToType = E_DT_WORLD_OBJECT;
+									}
+									else {
+										draggingToInd = 0;
+										draggingToType = E_DT_NOTHING;
+									}
+									
+									performDrag();
+							}						
+						}
+						
+						
+						
+					}
+				}
+			}
+			
+			
 
 
 			if (ddMenu != NULL) {
@@ -22132,83 +23415,110 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 
 		}
-		else
-		{
-			if (abDown)
-			{
+		else {
+			if (abDown) {
 
-				if (rbDown && lbDown)
-				{
+				lastModXYZ.setFXYZ(0.0f, 0.0f, 0.0f);
 
-				}
-				else
-				{
+				mouseMovingLoc = 0;
+				mouseCount = 0;
+				mdTime = myTimer.getElapsedTimeInMilliSec();
+				
 
 
-					lastModXYZ.setFXYZ(0.0f, 0.0f, 0.0f);
-
-					mouseMovingLoc = 0;
-					mouseCount = 0;
-					mdTime = myTimer.getElapsedTimeInMilliSec();
-					mouseStart.setIXY(x, y);
-
-					
-
-
-
-
-
-
-
-
-
-
-					activeObject = E_OBJ_CAMERA;
-					
-					
-					
-					
-					if (bCtrl) {
+				activeObject = E_OBJ_CAMERA;
+				
+				
+				if (mouseState == E_MOUSE_STATE_MOVE) {
+					if (
+						orgOn &&
+						editPose
+						&& (!ddVis)
 						
-						getPixData(&mouseObjPD, x, y, true, true);
+					) {
+						findObject = !(updateNearestOrgNode(true, &mouseDownPD));
+					}
+					else {
+						findObject = true;
+					}
+					
+					if (findObject&&lbDown) {
 						
-						if (mouseObjPD.getFW() != 0.0) {
-							// find nearest dyn object
+						
+						
+						bestInd = mouseDownOPD.getFW();
+						
+						
+						
+						bestObjInd = bestInd;
+						
+						//setCurrentActor(&(gw->gameObjects[bestInd]));
+						
+						
+						
+						
+						
+						if (bestObjInd != 0) {
+							if (lastObjInd == bestObjInd) {
+								if ( (mdTime-clickTime) < 500 ) {
+									wasDoubleClick = true;
+								}
+							}
+						}
+						
+						lastObjInd = bestObjInd;
+						clickTime = mdTime;
+						
+						
+						draggingFromInd = 0;
+						draggingFromType = E_DT_NOTHING;
+						
+						if (wasDoubleClick) {
+							toggleCont(bestObjInd, true);
+						}
+						
+						if (bestInd >= E_OBJ_LENGTH) {
 							
-							cout << "OBJECT ID " << mouseObjPD.getFW() << "\n";
+							isDraggingObject = true;
+							//markerFound = true;
+							draggingFromInd = bestObjInd;
+							draggingFromType = E_DT_WORLD_OBJECT;
 							
-
-							bestInd = mouseObjPD.getFW();
+							// todo: make sure bestInd exists
 							
-							if ((bestInd >= E_OBJ_LENGTH)||(bestInd <= 0)) {
+						}
+						else {
+							
+							if (bCtrl) {
+								if (bestInd <= 0) {
+									
+								}
+								else {
+									activeObject = (E_OBJ)(bestInd);
+									hitObject = true;
+								}
+							}
+							
+							if (hitObject) {
 								
 							}
 							else {
-								activeObject = (E_OBJ)(bestInd);
+								setCurrentActor(NULL);
 							}
 							
-
 							
-						}
-					}
-					else {
-						
-						
-						
-						if (
-							orgOn &&
-							editPose
-							&& (!ddVis)
-							
-						) {
-							updateNearestOrgNode(true, &mouseDownPD);
 						}
 						
 					}
-					
-					
-					
 				}
+				
+				
+				
+				
+				
+				
+				
+				
 
 
 			}
@@ -22255,7 +23565,7 @@ void Singleton::resetActiveNode ()
 			makeDirty();
 		}
 	}
-void Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
+bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
                                                                          {
 		// tempVec3.setFXYZRef(mousePosWS);
 		// tempVec3.addXYZRef(&(testHuman->basePosition),-1.0f);
@@ -22284,6 +23594,8 @@ void Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
 				activeNode = bestNode;				
 			}
 		}
+		
+		return (bestNode != NULL);
 	}
 void Singleton::findNearestOrgNode (GameOrgNode * curNode, FIVector4 * mousePosWS)
           {
@@ -22309,7 +23621,7 @@ void Singleton::findNearestOrgNode (GameOrgNode * curNode, FIVector4 * mousePosW
 	}
 void Singleton::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit)
           {
-		//if (dd) cout << "getJVNodeByString(" << stringToSplit <<  ")\n";
+		//if (TEMP_DEBUG) cout << "getJVNodeByString(" << stringToSplit <<  ")\n";
 		
 		int i;
 		*resultNode = rootNode;
@@ -22320,36 +23632,171 @@ void Singleton::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNod
 		for (i = 0; i < splitStrings.size(); i++) {
 			//if (dd) cout << splitStrings[i] << "\n";
 			
-			if ( (*resultNode)->HasChild(splitStrings[i]) ) {
-				*resultNode = (*resultNode)->Child(splitStrings[i]);
+			if (
+				(splitStrings[i][0] >= '0')	&&
+				(splitStrings[i][0] <= '9')
+			) {
+				*resultNode = (*resultNode)->Child(
+					stoi(splitStrings[i])
+				);
 			}
 			else {
-				cout << "NULL RESULT NODE\n";
-				*resultNode = NULL;
-				return;
+				if ( (*resultNode)->HasChild(splitStrings[i]) ) {
+					*resultNode = (*resultNode)->Child(splitStrings[i]);
+				}
+				else {
+					cout << "NULL RESULT NODE\n";
+					*resultNode = NULL;
+					return;
+				}
 			}
+			
+			
 			
 		}
 		
 	}
-JSONValue * Singleton::fetchJSONData (string dataFile)
-                                                  {
-		if (externalJSON.find( dataFile ) == externalJSON.end()) {
-			cout << "load jv data "  + dataFile << "\n";
-			loadJSON(
-				"..\\data\\" + dataFile,
-				&((externalJSON[dataFile]).jv)
-			);
+void Singleton::closeAllContainers ()
+                                  {
+		BaseObj* curCont;
+		for (itBaseObj iterator = gw->gameObjects.begin(); iterator != gw->gameObjects.end(); iterator++) {
+			// iterator->first = key
+			// iterator->second = value
+			
+			curCont = &(gw->gameObjects[iterator->first]);
+			curCont->isOpen = false;
 		}
+	}
+bool Singleton::anyContainerOpen ()
+                                {
+		BaseObj* curCont;
+		for (itBaseObj iterator = gw->gameObjects.begin(); iterator != gw->gameObjects.end(); iterator++) {
+			// iterator->first = key
+			// iterator->second = value
+			
+			curCont = &(gw->gameObjects[iterator->first]);
+			
+			if (curCont->isOpen) {
+				return true;
+			}
+		}
+		return false;
+	}
+void Singleton::cleanJVPointer (JSONValue * * jv)
+                                            {
+		
+		if (*jv != NULL)
+		{
+			delete *jv;
+		}
+		*jv = NULL;
+		
+	}
+void Singleton::getObjectData ()
+                             {//int paramVal) {
+		int i;
+		int objectType;
+		int childId;
+		
+		JSONValue* tempVal0;
+		JSONValue* tempVal1;
+		BaseObj* curCont;
+		
+		
+		cleanJVPointer(&(externalJSON["objectData"].jv));
+		
+		
+		externalJSON["objectData"].jv = new JSONValue(JSONObject());
+		externalJSON["objectData"].jv->object_value["objects"] = new JSONValue(JSONArray());
+		tempVal0 = externalJSON["objectData"].jv->object_value["objects"];
+		
+		for (itBaseObj iterator = gw->gameObjects.begin(); iterator != gw->gameObjects.end(); iterator++) {
+			// iterator->first = key
+			// iterator->second = value
+			
+			curCont = &(gw->gameObjects[iterator->first]);
+			
+			if (curCont->isOpen) {
+				
+				tempVal0->array_value.push_back( new JSONValue(JSONObject()) );
+				
+				tempVal0->array_value.back()->object_value["children"] = new JSONValue(JSONArray());
+				tempVal0->array_value.back()->object_value["objectId"] = new JSONValue( ((double)(iterator->first)) );
+				tempVal1 = tempVal0->array_value.back()->Child("children");
+				
+				
+				for (i = 0; i < curCont->children.size(); i++) {
+					tempVal1->array_value.push_back(new JSONValue(JSONObject()));
+					childId = curCont->children[i];
+					objectType = gw->gameObjects[childId].objectType;
+					tempVal1->array_value.back()->object_value["objectType"] = new JSONValue( ((double)(objectType)) );
+					tempVal1->array_value.back()->object_value["objectId"] = new JSONValue( ((double)(childId)) );
+				}
+			}
+		}
+	}
+string Singleton::getStringForObjectId (int objectId)
+                                                  {
+		int objectType = entIdToIcon[gw->gameObjects[objectId].objectType];
+		
+		if (isContainer[objectType]) {
+			return i__s(objectType) + "& Test Container ";
+		}
+		else {
+			if (gw->gameObjects[objectId].isEquipped) {
+				return "(E) " + i__s(objectType) + "& Test Object ";
+			}
+			else {
+				return i__s(objectType) + "& Test Object ";
+			}
+		}
+	}
+JSONValue * Singleton::fetchJSONData (string dataFile, JSONValue * params)
+                                                                            {
+		
+		
+		bool doLoad = false;
+		bool loadRes = false;
+		
+		if (externalJSON.find( dataFile ) == externalJSON.end()) {
+			doLoad = true;
+		}
+		else {
+			if (externalJSON[dataFile].jv == NULL) {
+				doLoad = true;
+			}
+		}
+			
+		if (doLoad) {
+			if (dataFile.compare("shaderParams") == 0) {
+				cout << "attempted to load shaderParams\n";
+			}
+			else if (dataFile.compare("objectData") == 0) {
+				getObjectData();//params->number_value);
+			}
+			else {
+				cout << "load jv data "  + dataFile << "\n";
+				loadRes = loadJSON(
+					"..\\data\\" + dataFile,
+					&((externalJSON[dataFile]).jv)
+				);
+				
+				if (loadRes == false) {
+					return NULL;	
+				}
+				
+			}
+			
+			
+		}
+		
+		
+		
 		return (externalJSON[dataFile]).jv;
 	}
 bool Singleton::processJSONFromString (string * sourceBuffer, JSONValue * * destObj)
           {
-		if (*destObj != NULL)
-		{
-			delete *destObj;
-			*destObj = NULL;
-		}
+		cleanJVPointer(destObj);
 		
 		*destObj = JSON::Parse(sourceBuffer->c_str());
 
@@ -22369,11 +23816,7 @@ bool Singleton::processJSONFromString (string * sourceBuffer, JSONValue * * dest
 bool Singleton::processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONValue * * destObj)
           {
 		
-		if (*destObj != NULL)
-		{
-			delete *destObj;
-			*destObj = NULL;
-		}
+		cleanJVPointer(destObj);
 
 		//doTraceND("destObj is now NULL");
 		
@@ -22467,18 +23910,15 @@ void Singleton::setGUIText (string key, string stringValue, float floatValue, bo
 		else {
 			curComp = &(compMap[key]);
 			
-			if (
-				(curComp->uic == NULL) ||
-				(curComp->nodeId < 0)	
-			) {
+			if (curComp->nodeId < 0) {
 				// component was deleted
 			}
 			else {
 				if (applyString) {
-					curComp->uic->setText(stringValue);
+					compStack[curComp->nodeId].data->setText(stringValue);
 				}
 				if (applyVal) {
-					curComp->uic->setValue(floatValue);
+					compStack[curComp->nodeId].data->setValue(floatValue);
 				}
 				
 			}
@@ -22493,14 +23933,11 @@ float Singleton::getGUIValue (string key)
 		else {
 			curComp = &(compMap[key]);
 			
-			if (
-				(curComp->uic == NULL) ||
-				(curComp->nodeId < 0)	
-			) {
+			if (curComp->nodeId < 0) {
 				// component was deleted
 			}
 			else {
-				return curComp->uic->getValue();
+				return compStack[curComp->nodeId].data->getValue();
 			}
 		}
 		
@@ -22515,14 +23952,11 @@ UIComponent * Singleton::getGUIComp (string key)
 		else {
 			curComp = &(compMap[key]);
 			
-			if (
-				(curComp->uic == NULL) ||
-				(curComp->nodeId < 0)	
-			) {
+			if (curComp->nodeId < 0) {
 				// component was deleted
 			}
 			else {
-				return curComp->uic;
+				return compStack[curComp->nodeId].data;
 			}
 		}
 		
@@ -22538,18 +23972,15 @@ void Singleton::setGUIValue (string key, float floatValue, bool dispatchEvent, b
 		else {
 			curComp = &(compMap[key]);
 			
-			if (
-				(curComp->uic == NULL) ||
-				(curComp->nodeId < 0)	
-			) {
+			if (curComp->nodeId < 0) {
 				// component was deleted
 			}
 			else {
-				curComp->uic->setValue(floatValue,dispatchEvent,preventRefresh);
+				compStack[curComp->nodeId].data->setValue(floatValue,dispatchEvent,preventRefresh);
 			}
 		}
 	}
-void Singleton::loadGUIValues (bool applyValues)
+void Singleton::loadValuesGUI (bool applyValues)
                                                      {
 		
 		cout << "Loading GUI Values\n";
@@ -22611,6 +24042,8 @@ void Singleton::saveExternalJSON ()
 		cout << "Saving External JSON Values\n";
 		
 		
+		
+		
 		for(itJSStruct iterator = externalJSON.begin(); iterator != externalJSON.end(); iterator++) {
 			
 			if (iterator->second.jv != NULL) {
@@ -22620,8 +24053,8 @@ void Singleton::saveExternalJSON ()
 				);
 			}
 			
-		    // iterator->first = key
-		    // iterator->second = value
+			// iterator->first = key
+			// iterator->second = value
 		}
 		
 		
@@ -22637,16 +24070,13 @@ void Singleton::saveGUIValues ()
 		
 		for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
 				
-				if (
-					(iterator->second.uic == NULL) ||
-					(iterator->second.nodeId < 0)
-				) {
+				if (iterator->second.nodeId < 0) {
 					
 				}
 				else {
 					if (iterator->first[0] ==  '$') {
 						stringBuf.append(
-							iterator->first + "^" + floatToHex(iterator->second.uic->getValue()) + "^"
+							iterator->first + "^" + floatToHex(compStack[iterator->second.nodeId].data->getValue()) + "^"
 						);
 					}
 					
@@ -22762,7 +24192,7 @@ void Singleton::endFieldInput (bool success)
 					testHuman->loadFromFile(currentFieldString);
 					//orientRotation();
 					if (currentActor != NULL) {
-						currentActor->curRot = 1;
+						//currentActor->curRot = 1;
 					}
 					transformOrg(testHuman);
 					makeDirty();
@@ -22784,9 +24214,9 @@ void Singleton::loadOrg ()
 void Singleton::loadGUI ()
                        {
 		externalJSON.clear();
+		doShaderRefresh(bakeParamsOn);
 		
 		for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
-				iterator->second.uic = NULL;
 				iterator->second.nodeId = -1;
 		    // iterator->first = key
 		    // iterator->second = value
@@ -22802,17 +24232,18 @@ void Singleton::loadGUI ()
 				guiRootJS
 			);
 		
-			for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
-				if (iterator->second.nodeId != -1) {
-					iterator->second.uic = (compStack[iterator->second.nodeId]); //mainGUI->findNodeById(
-				}
-			}
+			// for(itUICStruct iterator = compMap.begin(); iterator != compMap.end(); iterator++) {
+			// 	if (iterator->second.nodeId != -1) {
+			// 		//iterator->second.uic = (compStack[iterator->second.nodeId].data);
+			// 	}
+			// }
 		
 		}
 		
 		mapComp = getGUIComp("map.mapHolder");
 		mainMenu = getGUIComp("guiHandles.mainMenu");
 		ddMenu = getGUIComp("guiHandles.ddMenu");
+		contMenu = getGUIComp("guiHandles.contMenu");
 		//pickerMenu = getGUIComp("guiHandles.pickerMenu");
 		fieldMenu = getGUIComp("guiHandles.fieldMenu");
 		fieldText = getGUIComp("fieldMenu.field");
@@ -23000,6 +24431,7 @@ void Singleton::updateAmbientSounds ()
 void Singleton::frameUpdate ()
                            {
 		
+		
 		if (updateMatFlag&&(!matVolLock)) {
 			updateMatFlag = false;
 			updateMatVol();
@@ -23076,7 +24508,17 @@ void Singleton::frameUpdate ()
 			
 		}
 		else {
-			gw->update();
+			
+			
+			
+			if (mainGUI != NULL) {
+				if (mainGUI->isReady) {
+					currentTick++;
+					gw->update();
+				}
+			}
+			
+			
 		}
 		
 		
@@ -23090,6 +24532,8 @@ void Singleton::frameUpdate ()
 	}
 void Singleton::display ()
         {
+		
+		bool noTravel = false;
 
 		curTime = myTimer.getElapsedTimeInMilliSec();
 
@@ -23153,9 +24597,26 @@ void Singleton::display ()
 
 
 			lastTime = curTime;
-
-
 			timeOfDay += (targetTimeOfDay - timeOfDay) / 8.0;
+
+			if (
+				lbDown &&
+				isDraggingObject && 
+				(draggingFromType != E_DT_NOTHING) &&
+				((curTime-mdTime) > 300)
+			) {
+				glutSetCursor(GLUT_CURSOR_CROSSHAIR);
+			
+				mouseMoveVec.setFXYZ(lastMouseX,lastMouseY,0.0);
+				noTravel = mouseMoveVec.distance(&mouseStart) < MAX_TRAVEL_DIS;	
+				markerFound = !noTravel;
+				getPixData(&worldMarker, lastMouseX, lastMouseY, true, false);
+			
+			}
+			else {
+				markerFound = false;
+				glutSetCursor(GLUT_CURSOR_RIGHT_ARROW);
+			}
 
 
 			mouseMovingLoc = (mouseMovingLoc + 1) % mouseMovingSize;
@@ -24324,13 +25785,16 @@ UIComponent::UIComponent ()
 void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, bool _isFloating, string * stringVals, double * floatVals)
           {
 		
+		_children.clear();
+		_floatingChildren.clear();
+		
 		dataLoaded = false;
 		
 		//valVec = NULL;
 		
 		privValueY = 0.0f;
 		selected = false;
-		
+		forceDragUpdate = false;
 		
 		
 		//valVecPtr = NULL;
@@ -24338,7 +25802,6 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		foundParent = false;
 		foundValuePtr = false;
 		
-		contOnStack = false;
 
 		singleton = _singleton;
 		parentId = _parentId;
@@ -24384,7 +25847,7 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		
 		
 		
-		
+		layerId = -1;
 		
 		jvNodeNoTemplate = _jvNodeNoTemplate;
 		
@@ -24433,7 +25896,7 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		overSelf = false;
 		overChild = false;
 		isDirty = true;
-		visible = (hoverType == E_HT_NORMAL);
+		visible = false;//(hoverType == E_HT_NORMAL);
 		
 		hasBackground = floatVals[E_GFT_HASBACKGROUND];
 		fillRatioDim.x = floatVals[E_GFT_FILLRATIOX];
@@ -24519,13 +25982,34 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		
 		
 	}
+void UIComponent::clearChildren ()
+                             {
+		_children.clear();
+		_floatingChildren.clear();
+	}
 UIComponent * UIComponent::getChild (int ind)
                                        {
-		return (singleton->compStack[_children[ind]]);
+		
+		int curInd = _children[ind];
+		
+		//if (singleton->compStack[curInd].isValid) {
+			return (singleton->compStack[curInd].data);
+		// }
+		// else {
+		// 	return NULL;
+		// }
 	}
 UIComponent * UIComponent::getFloatingChild (int ind)
                                                {
-		return (singleton->compStack[_floatingChildren[ind]]);
+		
+		int curInd = _floatingChildren[ind];
+		
+		//if (singleton->compStack[curInd].isValid) {
+			return (singleton->compStack[curInd].data);
+		// }
+		// else {
+		// 	return NULL;
+		// }
 	}
 int UIComponent::getChildCount ()
                             {
@@ -24849,11 +26333,11 @@ float UIComponent::getValueY ()
 	}
 UIComponent * UIComponent::getParent ()
                                  {
-		if (nodeId == 0) {
+		if (nodeId <= 0) {
 			return NULL;
 		}
 		else {
-			return (singleton->compStack[parentId]);
+			return (singleton->compStack[parentId].data);
 		}
 	}
 UIComponent * UIComponent::findParentByUID (string parUID)
@@ -25010,27 +26494,43 @@ float UIComponent::getMinHeight ()
 		return getDimYClamped(curMH);
 		
 	}
-int UIComponent::addChild (int _parentId, int _nodeId, string * stringVals, double * floatVals, bool _isFloating, JSONValue * _jvNodeNoTemplate)
+int UIComponent::addChild (int _lastIndex, int _parentId, string * stringVals, double * floatVals, bool _isFloating, JSONValue * _jvNodeNoTemplate)
           {
 		
-		
+		int _nodeId;
 		int childCount = 0;
 		
+		_nodeId = singleton->placeInStack();
+		
+		
+		
 		if (_isFloating) {
-			_floatingChildren.push_back(_nodeId);
-			childCount = getFloatingChildCount()-1;
+			
+			if (_lastIndex < 0) {
+				_floatingChildren.push_back(_nodeId);
+				childCount = getFloatingChildCount()-1;
+			}
+			else {
+				_floatingChildren[_lastIndex] = _nodeId;
+				childCount = _lastIndex;
+			}
+			
+			
 		}
 		else {
-			_children.push_back(_nodeId);
-			childCount = getChildCount()-1;
+			
+			if (_lastIndex < 0) {
+				_children.push_back(_nodeId);
+				childCount = getChildCount()-1;
+			}
+			else {
+				_children[_lastIndex] = _nodeId;
+				childCount = _lastIndex;
+			}
+			
 		}
 		
-		
-		singleton->compStack.push_back(new UIComponent());
-		
-		
-		
-		singleton->compStack.back()->init(
+		singleton->compStack[_nodeId].data->init(
 			singleton,
 			_parentId,
 			_nodeId,
@@ -25043,15 +26543,7 @@ int UIComponent::addChild (int _parentId, int _nodeId, string * stringVals, doub
 			floatVals
 		);
 		
-		
 		return _nodeId;
-		
-		// if (_isFloating) {
-		// 	return &(floatingChildren.back());
-		// }
-		// else {
-		// 	return &(children.back());
-		// }
 		
 	}
 void UIComponent::setOrigPos ()
@@ -25355,7 +26847,7 @@ void UIComponent::updateOffset ()
 void UIComponent::updateValue (float x, float y)
                                            {
 		
-		
+		int i;
 		
 		float hoverBuffer = 4.0f;
 		float tempValue;
@@ -25366,11 +26858,20 @@ void UIComponent::updateValue (float x, float y)
 		
 		UIComponent* highestCont;
 		
-		if (dragging) {
-			highestCont = getHighestCont(this, 0);			
-			highestCont->dragOffset.x = lastDrag.x + (x - dragStart.x); //
-			highestCont->dragOffset.y = lastDrag.y + (y - dragStart.y); //
+		if (dragging||forceDragUpdate) {
+			highestCont = getHighestCont(this, 0);
 			
+			if (forceDragUpdate) {
+				highestCont->dragOffset.x = lastDrag.x;
+				highestCont->dragOffset.y = lastDrag.y;
+			}
+			else {
+				highestCont->dragOffset.x = lastDrag.x + (x - dragStart.x); //
+				highestCont->dragOffset.y = lastDrag.y + (y - dragStart.y); //
+			}
+			
+			
+			forceDragUpdate = false;
 		}
 		
 		if (curParent == NULL) {
@@ -25383,9 +26884,9 @@ void UIComponent::updateValue (float x, float y)
 				
 			}
 			else {
-				if (curParent->hoverType != E_HT_ROOT) {
+				//if (curParent->hoverType != E_HT_ROOT) {
 					dragOffset = curParent->dragOffset;
-				}			
+				//}			
 			}
 		}
 		
@@ -25417,22 +26918,15 @@ void UIComponent::updateValue (float x, float y)
 		
 		switch (hoverType) {
 			case E_HT_NORMAL:
-			case E_HT_ROOT:
 				if (curParent != NULL) {
-					
-					
-					if (curParent->hoverType != E_HT_ROOT) {
-						floatOffset = curParent->floatOffset;
-						visible = curParent->visible;
-					}
-					
-					
-					
+					floatOffset = curParent->floatOffset;					
 				}
+			break;
+			case E_HT_ROOT:
+				
 			break;
 			case E_HT_TOOLTIP:
 			case E_HT_TOOLTIP_VALUE:
-				//curParent->floatOffset.x + 
 				floatOffset.x = x + hoverBuffer - dragOffset.x; 
 				floatOffset.y = curParent->totOffset.y + curParent->originPos.y + curParent->resultDimInPixels.y + hoverBuffer;
 				visible = curParent->overSelf;
@@ -25444,15 +26938,63 @@ void UIComponent::updateValue (float x, float y)
 				
 			break;
 			case E_HT_ONSELECTED:
-				//curParent->floatOffset.x + 
 				if (curParent != NULL) {
 					alignToComp(curParent);
-					visible = (curParent->selected)&&(curParent->visible);
+					
+					//visible = (curParent->selected)&&(curParent->visible);
 				}
+				
+				
+				
 				
 			break;
 
 		}
+		
+		for (i = 0; i < getChildCount(); i++) {
+			
+			switch(getChild(i)->hoverType) {
+				case E_HT_NORMAL:
+					getChild(i)->visible = visible;
+				break;
+				
+				case E_HT_ROOT:
+					
+				break;
+				
+				case E_HT_TOOLTIP:
+				case E_HT_TOOLTIP_VALUE:
+				
+				break;
+				
+				case E_HT_ONSELECTED:
+					getChild(i)->visible = visible&&selected;
+				break;
+			}
+			
+		}
+		for (i = 0; i < getFloatingChildCount(); i++) {
+			
+			switch(getFloatingChild(i)->hoverType) {
+				case E_HT_NORMAL:
+					getFloatingChild(i)->visible = visible;
+				break;
+				
+				case E_HT_ROOT:
+					
+				break;
+				
+				case E_HT_TOOLTIP:
+				case E_HT_TOOLTIP_VALUE:
+				
+				break;
+				
+				case E_HT_ONSELECTED:
+					getFloatingChild(i)->visible = visible&&selected;
+				break;
+			}
+		}
+		
 		
 		updateOffset();
 		
@@ -25683,6 +27225,7 @@ void UIComponent::testOver (float x, float y)
 bool UIComponent::testHit (int button, int state, float x, float y)
                                                               {
 		
+		bool hitDeepest = false;		
 		float wheelDelta = 0.0f;
 		
 		
@@ -25774,10 +27317,17 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 						case E_GT_RADIO:
 							tempValue = !selected;
 							
-							if (singleton->bShift) {
+							if (singleton->bCtrl) {
 								
 							}
 							else {
+								
+								if (singleton->bShift) {
+									
+								}
+								else {
+									
+								}
 								
 								if (curParent2 == NULL) {
 									for (i = 0; i < curParent->getChildCount(); i++) {
@@ -25835,17 +27385,16 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 								// wheel down
 							}
 							
+							if (resultDimInPixels.y > maxDimInPixels.y) {
+								targScrollOffset.y += wheelDelta*20.0f;
+								targScrollOffset.y = clampf(targScrollOffset.y, -(resultDimInPixels.y-maxDimInPixels.y), 0.0f);
+								
+							}
 							
-							
-							targScrollOffset.y += wheelDelta*20.0f;
-							
-							targScrollOffset.y = clampf(targScrollOffset.y, -(resultDimInPixels.y-maxDimInPixels.y), 0.0f);
 							
 							return true;
 						}	
 					}
-					
-					
 				}
 		}
 
@@ -25859,14 +27408,15 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 			hitChild = hitChild||getFloatingChild(i)->testHit(button, state, x, y);
 		}
 		
+		hitDeepest = (!hitChild)&&(mouseOver);
 		
-		if ( (!hitChild)&&(mouseOver) ) {
+		if ( hitDeepest ) {
 			// deepest node
 			
 			singleton->dispatchEvent(button, state, x, y, this);
 		}
 		
-		bool finalRes = wasHit||hitChild;
+		bool finalRes = (hitDeepest||hitChild); //(wasHit)
 		if ((state == GLUT_UP)) { //&&(wheelDelta==0.0f)
 			wasHit = false;
 		}
@@ -26038,7 +27588,7 @@ void UIComponent::renderText (bool getDimensions)
 		
 		float vspace = resultDimInPixels.y - textDimInPixels.y;
 		
-		
+		Singleton::UIQuad* curQuad;
 		
 		caretPos.x = 0.0f;
 		caretPos.y = 0.0f;
@@ -26077,29 +27627,25 @@ void UIComponent::renderText (bool getDimensions)
 			hitBounds.yMax = originPos.y + resultDimInPixels.y - marginInPixels;
 			
 			
-			if (contOnStack) {
-				
-			}
-			else {
-				contOnStack = true;
-				singleton->guiLayers[layer].push_back(&thisUICont);
-				//thisUICont.locked = false;
+			if (layerId == -1) {
+				layerId = singleton->placeInLayer(nodeId, layer);
+				//singleton->guiLayers[layer].push_back(&uiCont);
 			}
 			
 			
-			if (thisUICont.charVec.size() > 0) {
-				thisUICont.charVec.clear();
+			if (uiCont.charVec.size() > 0) {
+				uiCont.charVec.clear();
 			}
 			
 			
 			
-			thisUICont.uiComp = this;
-			thisUICont.bg.hitBounds = hitBounds;
-			thisUICont.bg.cs = NULL;
-			thisUICont.bg.fontId = -1;
+			//uiCont.uiComp = this;
+			uiCont.bg.hitBounds = hitBounds;
+			uiCont.bg.cs = NULL;
+			uiCont.bg.fontId = -1;
 			
 			if (hasBackground) {
-				thisUICont.bg.fontId = 0;
+				uiCont.bg.fontId = 0;
 			}
 			
 		}
@@ -26146,8 +27692,8 @@ void UIComponent::renderText (bool getDimensions)
 						curChar = atoi(wordVec[i][j].c_str());
 						
 						if (isRendering) {
-							thisUICont.charVec.push_back(Singleton::UIQuad());
-							curQuad = &(thisUICont.charVec.back());
+							uiCont.charVec.push_back(Singleton::UIQuad());
+							curQuad = &(uiCont.charVec.back());
 							curQuad->cs = &(curFontIcons->charVals[ curChar ]);
 							curQuad->fontId = EFW_ICONS;
 							curQuad->hitBounds.xMin = caretPos.x+offsetPos.x;
@@ -26178,8 +27724,8 @@ void UIComponent::renderText (bool getDimensions)
 							curChar = wordVec[i][j][k];
 							if (isRendering) {
 								
-								thisUICont.charVec.push_back(Singleton::UIQuad());
-								curQuad = &(thisUICont.charVec.back());
+								uiCont.charVec.push_back(Singleton::UIQuad());
+								curQuad = &(uiCont.charVec.back());
 								curQuad->fontId = EFW_TEXT;
 								curQuad->cs = &(curFont->charVals[ curChar ]);
 								curQuad->hitBounds.xMin = caretPos.x+offsetPos.x;
@@ -26216,8 +27762,8 @@ void UIComponent::renderText (bool getDimensions)
 							
 							if (isRendering) {
 								
-								thisUICont.charVec.push_back(Singleton::UIQuad());
-								curQuad = &(thisUICont.charVec.back());
+								uiCont.charVec.push_back(Singleton::UIQuad());
+								curQuad = &(uiCont.charVec.back());
 								curQuad->fontId = EFW_TEXT;
 								curQuad->cs = &(curFont->charVals[ curChar ]);
 								curQuad->hitBounds.xMin = caretPos.x+offsetPos.x;
@@ -26277,8 +27823,6 @@ void GameGUI::init (Singleton * _singleton)
 		singleton = _singleton;
 		isReady = false;
 		isLoaded = false;
-		
-		
 	}
 JSONValue * GameGUI::findNearestKey (JSONValue * jv, string key)
                                                              {
@@ -26322,15 +27866,18 @@ JSONValue * GameGUI::findNearestKey (JSONValue * jv, string key)
 		return NULL;
 		
 	}
-void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating)
+void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, bool isFloating)
           {
 		int i;
 		int j;
 		int k;
 		int curIcon = 0;
+		int objectId = 0;
 		
 		JSONValue* curTempl = NULL;
 		JSONValue* tempJV = NULL;
+		
+		
 		
 	
 		if (
@@ -26380,24 +27927,30 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 			curTempl = jv;
 		}
 		
+		UIComponent* parentPtr = singleton->compStack[curParentId].data;
 		
-		guiFloatValues[E_GFT_LAYER] = max(guiFloatValues[E_GFT_LAYER],(double)(singleton->compStack[curParentId]->layer));
+		guiFloatValues[E_GFT_LAYER] = max(
+			guiFloatValues[E_GFT_LAYER],
+			(double)(parentPtr->layer)
+		);
 		
-		int newParent = singleton->compStack[curParentId]->addChild(
-			singleton->compStack[curParentId]->nodeId,
-			nodeCount,
+		int newParent = parentPtr->addChild(
+			lastIndex,
+			parentPtr->nodeId,
 			guiStringValues,
 			guiFloatValues,
 			isFloating,
 			jv
 		);
-		nodeCount++;
+		
+		
 		
 		
 		int numChildren = 0;
 		int numFloatingChildren = 0;
 		int numDataChildren = 0;
 		int numFilters = 0;
+		int childType = 0;
 		JSONValue* jvChildren = NULL;
 		JSONValue* jvFloatingChildren = NULL;
 		JSONValue* jvChildTemplate = NULL;
@@ -26408,7 +27961,7 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 		JSONValue* jvDataRoot = NULL;
 		JSONValue* curData = NULL;
 		
-		tempStrings[E_GDS_CHILD_TYPE] = "";
+		//tempStrings[E_GDS_CHILD_TYPE] = "";
 		
 		
 		
@@ -26422,24 +27975,25 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 		
 		
 		bool doProc = false;
-		bool isInternal = false;
+		//bool isInternal = false;
 		int totCount = 0;
-		E_GUI_CHILD_TYPES curCT = E_GCT_LENGTH;;
+		int curCT = 0;
 		
 		
 		if (jv->HasChild("childType")) {
-			tempStrings[E_GDS_CHILD_TYPE] = jv->Child("childType")->string_value;
+			childType = jv->Child("childType")->number_value;
+			//tempStrings[E_GDS_CHILD_TYPE] = jv->Child("childType")->string_value;
 			
 			
-			if (jv->HasChild("isInternal")) {
-				if (jv->Child("isInternal")->number_value != 0 ) {
-					// use an internally generated JSON node
-					isInternal = true;
-				}
-				else {
-					// todo: load JSON file
-				}
-			}
+			// if (jv->HasChild("isInternal")) {
+			// 	if (jv->Child("isInternal")->number_value != 0 ) {
+			// 		// use an internally generated JSON node
+			// 		isInternal = true;
+			// 	}
+			// 	else {
+			// 		// todo: load JSON file
+			// 	}
+			// }
 			
 			if (jv->HasChild("whereAllEqual")) {
 				jvFilter = jv->Child("whereAllEqual");
@@ -26454,28 +28008,30 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 			if (jv->HasChild("dataSource")) {
 				tempStrings[E_GDS_DATA_SOURCE] = jv->Child("dataSource")->string_value;
 				
-				if (isInternal) {
+				// if (isInternal) {
+				// 	if (jv->HasChild("dataFile")) {
+				// 		tempStrings[E_GDS_DATA_FILE] = jv->Child("dataFile")->string_value;
+				// 		jvDataRoot = (singleton->internalJSON[tempStrings[E_GDS_DATA_FILE]]).jv;
+				// 	}
+					
+					
+				// }
+				// else {
+					
 					if (jv->HasChild("dataFile")) {
 						tempStrings[E_GDS_DATA_FILE] = jv->Child("dataFile")->string_value;
-						jvDataRoot = (singleton->internalJSON[tempStrings[E_GDS_DATA_FILE]]).jv;
-					}
-					
-					
-				}
-				else {
-					
-					if (jv->HasChild("dataFile")) {
-						tempStrings[E_GDS_DATA_FILE] = jv->Child("dataFile")->string_value;
-						jvDataRoot = singleton->fetchJSONData(tempStrings[E_GDS_DATA_FILE]);
 						
+						if ( jv->HasChild("dataParams") ) {
+							jvDataRoot = singleton->fetchJSONData(tempStrings[E_GDS_DATA_FILE], jv->Child("dataParams"));
+						}
+						else {
+							jvDataRoot = singleton->fetchJSONData(tempStrings[E_GDS_DATA_FILE], NULL);
+						}
 					}
 					else {
 						jvDataRoot = jvRoot;
-						
 					}
-					
-					
-				}
+				//}
 				
 				if (jvDataRoot != NULL) {
 					
@@ -26492,16 +28048,17 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 			
 			if ((jvData != NULL)&&(jvChildTemplate != NULL)) {
 				
+				curCT = childType;
 				
-				if (compChildStr("E_GCT_INV_ITEM")) {
-					curCT = E_GCT_INV_ITEM;
-				}
-				else if (compChildStr("E_GCT_SHADER_PARAM")) {
-					curCT = E_GCT_SHADER_PARAM;
-				}
-				else if (compChildStr("E_GTC_GENERIC")) {
-					curCT = E_GTC_GENERIC;
-				}
+				// if (compChildStr("E_GCT_INV_ITEM")) {
+				// 	curCT = E_GCT_INV_ITEM;
+				// }
+				// else if (compChildStr("E_GCT_SHADER_PARAM")) {
+				// 	curCT = E_GCT_SHADER_PARAM;
+				// }
+				// else if (compChildStr("E_GTC_GENERIC")) {
+				// 	curCT = E_GTC_GENERIC;
+				// }
 				
 				//////////////////////////////////////////////////////////////////////
 				//////////////////////////////////////////////////////////////////////
@@ -26549,11 +28106,15 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 							case E_GCT_INV_ITEM:
 								tempStrings[E_GDS_CHILD_NAME] = curData->Child("name")->string_value;
 								
-								curIcon = jvRoot->
+								curIcon = singleton->entIdToIcon[
+									(int)(jvRoot->
 									Child("itemDefs")->
 									Child(tempStrings[E_GDS_CHILD_NAME])->
 									Child("iconNum")->
-									number_value;
+									number_value)
+								];
+									
+									
 								
 								jvChildTemplate->
 									Child("floatingChildren")->
@@ -26613,62 +28174,14 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 											jvChildTemplate->Child("label")->string_value = singleton->splitStrings[1];
 										break;
 									}
-									
-									
 								}
-								
-								
 								
 								tempJV = findNearestKey(jvChildTemplate,"dataSource");
 								if (tempJV != NULL) { // is a branch node
 									tempJV->Child("dataSource")->string_value =
 										tempStrings[E_GDS_DATA_SOURCE] + "." + tempStrings[E_GDS_LAST_KEY];										
 								}
-								else { // if childTemplate does not contain dataSource, it is a leaf node
-									
-									// if (jvChildTemplate->HasChild("oneToOne")) { // one-to-one data mapping
-										
-									// 	if (singleton->splitStrings.size() == 3) {
-									// 		if (jvChildTemplate->HasChild("template")) {
-									// 			jvChildTemplate->Child("template")->string_value = singleton->splitStrings[2];
-									// 		}
-									// 	}
-										
-									// 	if (jvChildTemplate->HasChild("value")) {
-											
-											
-									// 		if (jvChildTemplate->HasChild("dataRef")) {
-									// 			jvChildTemplate->Child("dataRef")->string_value =
-									// 				tempStrings[E_GDS_DATA_SOURCE];
-									// 		}
-									// 		if (jvChildTemplate->HasChild("dataKey")) {
-									// 			jvChildTemplate->Child("dataKey")->string_value =
-									// 				tempStrings[E_GDS_LAST_KEY];
-									// 		}											
-									// 		if (jvChildTemplate->HasChild("dataFile")) {
-									// 			jvChildTemplate->Child("dataFile")->string_value =
-									// 				tempStrings[E_GDS_DATA_FILE];
-									// 		}
-										
-											
-									// 		if (curData->IsNumber()) {
-									// 			jvChildTemplate->Child("value")->number_value = curData->number_value;
-									// 		}
-									// 		if (curData->IsArray()) {
-												
-									// 			for (k = 0; k < curData->array_value.size(); k++) {
-									// 				jvChildTemplate->Child(
-									// 					guiFloatTypes[E_GFT_VALUE0 + k]
-									// 				)->number_value = curData->array_value[k]->number_value;
-									// 			}
-									// 		}
-									// 	}
-										
-									// }
-									// else { // custom data mapping
-										
-									// }
-									
+								else { // is a leaf node
 									
 									if (jvChildTemplate->HasChild("dataRef")) {
 										jvChildTemplate->Child("dataRef")->string_value =
@@ -26678,16 +28191,35 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 										jvChildTemplate->Child("dataFile")->string_value =
 											tempStrings[E_GDS_DATA_FILE];
 									}
-									
-									
-									
-									
 								}
 								
 								
 								
 							break;
 							
+							case E_GTC_CONTAINER:
+							
+								// curIcon = singleton->entIdToIcon[
+								// 	(int)(curData->Child("objectType")->number_value)
+								// ];
+								objectId = curData->Child("objectId")->number_value;
+								jvChildTemplate->Child("objectId")->number_value = objectId;
+								jvChildTemplate->Child("label")->string_value = singleton->getStringForObjectId(objectId);
+							break;
+							
+							case E_GTC_CONTAINER_PARENT:
+								
+								
+								tempJV = findNearestKey(jvChildTemplate,"objectId");
+								if (tempJV != NULL) {
+									tempJV->Child("objectId")->number_value = curData->Child("objectId")->number_value;
+								}
+								
+								tempJV = findNearestKey(jvChildTemplate,"dataSource");
+								if (tempJV != NULL) {
+									tempJV->Child("dataSource")->string_value = "objects." + i__s(totCount) + ".children";								
+								}
+							break;
 							
 							case E_GCT_LENGTH:
 								
@@ -26736,7 +28268,7 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 			numChildren = jvChildren->CountChildren();
 		}
 		for (i = 0; i < numChildren; i++) {
-			addChildFromJSON(jvChildren->Child(i),newParent, false);
+			addChildFromJSON(-1,jvChildren->Child(i),newParent, false);
 		}
 		
 		
@@ -26745,8 +28277,141 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 			numFloatingChildren = jvFloatingChildren->CountChildren();
 		}
 		for (i = 0; i < numFloatingChildren; i++) {
-			addChildFromJSON(jvFloatingChildren->Child(i),newParent,true);
+			addChildFromJSON(-1,jvFloatingChildren->Child(i),newParent,true);
 		}
+		
+	}
+void GameGUI::deleteJSONNodes (JSONValue * jv)
+                                            {
+		JSONValue* jvChildren = NULL;
+		JSONValue* jvFloatingChildren = NULL;
+		
+		int numChildren = 0;
+		int numFloatingChildren = 0;
+		
+		int i;
+		
+		
+		
+		
+		
+		
+		if (jv->HasChild("floatingChildren")) {
+			jvFloatingChildren = jv->Child("floatingChildren");
+			numFloatingChildren = jvFloatingChildren->CountChildren();
+		}
+		for (i = 0; i < numFloatingChildren; i++) {
+			deleteJSONNodes(jvFloatingChildren->Child(i));
+		}
+		
+		if (jv->HasChild("children")) {
+			jvChildren = jv->Child("children");
+			numChildren = jvChildren->CountChildren();
+		}
+		for (i = 0; i < numChildren; i++) {
+			deleteJSONNodes(jvChildren->Child(i));
+		}
+		
+		if (jv->HasChild("dataSource")) {
+				jvChildren->array_value.clear();
+		}
+		
+		
+	}
+void GameGUI::clearRenderOrder ()
+                                {
+		int i;
+		for (i = 0; i < singleton->compStack.size(); i++) {
+			singleton->compStack[i].data->layerId = -1;
+		}
+		
+		for (i = 0; i < MAX_UI_LAYERS; i++) {
+			singleton->guiLayers[i].clear();
+		}
+		
+	}
+void GameGUI::deleteNodes (UIComponent * curNode)
+                                               {
+		int i;
+		int curNodeId;
+		
+		for (i = 0; i < curNode->getChildCount(); i++) {
+			deleteNodes(curNode->getChild(i));
+		}
+		
+		for (i = 0; i < curNode->getFloatingChildCount(); i++) {
+			deleteNodes(curNode->getFloatingChild(i));
+		}
+		
+		curNodeId = curNode->nodeId;
+		
+		
+		singleton->compMap[curNode->uid].nodeId = -1;
+		
+		// if (curNode->layerId != -1) {
+		// 	singleton->guiLayers[curNode->layer][curNode->layerId] = -1;
+		// 	singleton->emptyLayers[curNode->layer].push_back(curNode->layerId);
+		// }
+		
+		//delete (singleton->compStack[curNodeId].data);
+		//singleton->compStack[curNodeId].data = NULL;
+		singleton->compStack[curNodeId].isValid = false;
+		singleton->emptyStack.push_back(curNodeId);
+		
+		curNode->clearChildren();
+		
+	}
+void GameGUI::refreshNode (UIComponent * oldNode)
+                                               {
+		
+		if (oldNode == NULL) {
+			cout << "refreshNode is NULL\n";
+		}
+		
+		isReady = false;
+		isLoaded = false;
+		
+		//TEMP_DEBUG = true;
+		
+		
+		// TODO: there is a problem with this - templated data must be cleared
+		JSONValue* oldJV = oldNode->jvNodeNoTemplate;
+		
+		int curParentId = oldNode->parentId;
+		int lastIndex = oldNode->index;
+		//oldNode->getParent()->getParent()->isDirty = true;
+		singleton->compStack[0].data->isDirty = true;
+		
+		
+		deleteNodes(oldNode);
+		
+		
+		deleteJSONNodes(oldJV);
+		
+		
+		addChildFromJSON(
+			lastIndex,
+			oldJV,
+			curParentId,
+			false
+		);
+		
+		clearRenderOrder();
+		
+		
+		TEMP_DEBUG = false;
+		
+		
+		testOver(singleton->guiX,singleton->guiY);
+		doRefresh();
+		testOver(singleton->guiX,singleton->guiY);
+		doRefresh();
+		singleton->compStack[0].data->updateSS();
+		
+		
+		isReady = true;
+		isLoaded = true;
+		
 		
 	}
 void GameGUI::guiFromJSON (JSONValue * jv)
@@ -26758,15 +28423,31 @@ void GameGUI::guiFromJSON (JSONValue * jv)
 		isReady = false;
 		
 		guiRenderCount = 0;
-		nodeCount = 0;
+		
 		
 		for (i = 0 ; i < singleton->compStack.size(); i++) {
-				delete (singleton->compStack[i]);
-		}
-		singleton->compStack.clear();
-		
-		singleton->compStack.push_back(new UIComponent);
+				if (singleton->compStack[i].data == NULL) {
+					
+				}
+				else {
+					delete (singleton->compStack[i].data);
+					singleton->compStack[i].data = NULL;
+					singleton->compStack[i].isValid = false;
+				}
 				
+		}
+		
+		singleton->compStack.clear();
+		singleton->emptyStack.clear();
+		for (i = 0; i < MAX_UI_LAYERS; i++) {
+			singleton->guiLayers[i].clear();
+			//singleton->emptyLayers[i].clear();
+		}
+		
+		
+		singleton->compStack.push_back(Singleton::CompStruct());
+		singleton->compStack[0].data = new UIComponent;
+		
 		for (i = 0; i < E_GST_LENGTH; i++) {
 			stringVals[i] = "";
 		}
@@ -26796,10 +28477,10 @@ void GameGUI::guiFromJSON (JSONValue * jv)
 		floatVals[E_GFT_MINDIMY] = 0.0f;
 		floatVals[E_GFT_FLAGS] = 0.0f;
 		
-		singleton->compStack[0]->init(
+		singleton->compStack[0].data->init(
 			singleton,
 			-1,
-			nodeCount,
+			0,
 			0,
 			
 			NULL,
@@ -26808,11 +28489,24 @@ void GameGUI::guiFromJSON (JSONValue * jv)
 			stringVals,
 			floatVals
 		);
-		nodeCount++;
+		
+		// singleton->nullComp->init(
+		// 	singleton,
+		// 	-1,
+		// 	0,
+		// 	0,
+			
+		// 	NULL,
+		// 	false,
+			
+		// 	stringVals,
+		// 	floatVals
+		// );
 		
 		
-		singleton->compStack[0]->resultDimInPixels.x = singleton->guiWinW;
-		singleton->compStack[0]->resultDimInPixels.y = singleton->guiWinH;
+		
+		singleton->compStack[0].data->resultDimInPixels.x = singleton->guiWinW;
+		singleton->compStack[0].data->resultDimInPixels.y = singleton->guiWinH;
 		
 		
 		
@@ -26822,13 +28516,7 @@ void GameGUI::guiFromJSON (JSONValue * jv)
 		
 		///////
 		
-		//singleton->compStack[0]->children.clear();
-		//singleton->compStack[0]->floatingChildren.clear();
 		
-		
-		for (i = 0; i < MAX_UI_LAYERS; i++) {
-			singleton->guiLayers[i].clear();
-		}
 		
 		jvRoot = jv;
 		jvTemplates = jv->Child("templates");
@@ -26836,12 +28524,13 @@ void GameGUI::guiFromJSON (JSONValue * jv)
 		
 		
 		addChildFromJSON(
+			-1,
 			jv->Child("baseGUI"),  //jv->Child("curMenu")->string_value
 			0,
 			false
 		);
 		
-		singleton->compStack[0]->isDirty = true;
+		singleton->compStack[0].data->isDirty = true;
 		isReady = true;
 		isLoaded = true;
 	}
@@ -26852,14 +28541,14 @@ void GameGUI::doRefresh ()
 		
 		singleton->guiDirty = false;
 		dirtyVec.clear();
-		singleton->compStack[0]->gatherDirty(&dirtyVec);
-		singleton->compStack[0]->clearDirty();
+		singleton->compStack[0].data->gatherDirty(&dirtyVec);
+		singleton->compStack[0].data->clearDirty();
 		
 		for (i = 0; i < dirtyVec.size(); i++) {
 			dirtyVec[i]->layout();
 		}
 		
-		singleton->compStack[0]->renderAll();
+		singleton->compStack[0].data->renderAll();
 		
 		
 	}
@@ -26867,6 +28556,7 @@ void GameGUI::testOver (int x, int y)
                                     {
 		singleton->maxLayerOver = -1;
 		
+		int i;
 		
 		mouseTrans.x = x;
 		mouseTrans.y = y;
@@ -26875,18 +28565,20 @@ void GameGUI::testOver (int x, int y)
 		mouseTrans.x = ((1.0f-mouseTrans.x) - 0.5f)*2.0f;
 		mouseTrans.y = ((1.0f-mouseTrans.y) - 0.5f)*2.0f;		
 		
-		
-		singleton->compStack[0]->clearOver();
-		singleton->compStack[0]->findMaxLayer(x, y, mouseTrans.x, mouseTrans.y);
-		singleton->compStack[0]->testOver(x, y);
+		for (i = 0; i < singleton->compStack.size(); i++) {
+			singleton->compStack[i].data->overSelf = false;
+		}
+		//singleton->compStack[0].data->clearOver();
+		singleton->compStack[0].data->findMaxLayer(x, y, mouseTrans.x, mouseTrans.y);
+		singleton->compStack[0].data->testOver(x, y);
 	}
 bool GameGUI::testHit (int button, int state, int x, int y)
                                                           {
-		return singleton->compStack[0]->testHit(button, state, x, y);
+		return singleton->compStack[0].data->testHit(button, state, x, y);
 	}
 UIComponent * GameGUI::findNodeByString (string _uid)
                                                    {
-		return singleton->compStack[0]->findNodeByString(_uid);
+		return singleton->compStack[0].data->findNodeByString(_uid);
 	}
 void GameGUI::renderCharAt (UIComponent * uiComp, CharStruct * cs, FontWrapper * activeFont, float px, float py, float shadowOffset)
           {
@@ -27104,7 +28796,7 @@ void GameGUI::renderQuadDirect (UIComponent * uiComp)
 	}
 void GameGUI::runReport ()
                          {
-		singleton->compStack[0]->runReport();
+		singleton->compStack[0].data->runReport();
 	}
 void GameGUI::renderGUI (int activeFBO)
                                       {
@@ -27120,12 +28812,13 @@ void GameGUI::renderGUI (int activeFBO)
 		int maxLoop = 0;
 		float shadowOffset = 0.0;
 		Singleton::UICont* curCont = NULL;
+		UIComponent* curComp = NULL;
 		
 		
 		
 		testOver(singleton->guiX,singleton->guiY);
 		doRefresh();
-		singleton->compStack[0]->updateSS();
+		singleton->compStack[0].data->updateSS();
 		
 		guiRenderCount++;
 		
@@ -27151,67 +28844,63 @@ void GameGUI::renderGUI (int activeFBO)
 				for (j = 0; j < MAX_UI_LAYERS; j++) {
 					for (k = 0; k < singleton->guiLayers[j].size(); k++) {
 						
-						curCont = (singleton->guiLayers[j][k]);
 						
-						if (curCont->uiComp->visible) {
+						
+						if (singleton->guiLayers[j][k] >= 0) {
 							
-							for (m = 0; m < maxLoop; m++) {
+							curComp = singleton->compStack[ singleton->guiLayers[j][k] ].data;
+							curCont = &(curComp->uiCont);
+							
+							if (curComp->visible && (curComp->layerId >= 0)) {
 								
-								shadowOffset = ((1-m)*i)*4.0f;
-								
-								
-								// only shadow text
-								if (shadowOffset == 0.0f) {
+								for (m = 0; m < maxLoop; m++) {
+									
+									shadowOffset = ((1-m)*i)*4.0f;
 									
 									
-									if (curCont->bg.fontId > -1) {
-										renderQuad(
-											curCont->uiComp,
-											curCont->bg.hitBounds,
-											shadowOffset
-										);
-									}
-									
-									
-								}
-								
-								if (i == 0) {
-									// don't render text in first pass
-								}
-								else {
-								
-									if (false) { //curCont->locked) {
-										// busy updating characters
-									}
-									else {
-										for (n = 0; n < curCont->charVec.size(); n++) {
-											renderCharAt(
-												curCont->uiComp,
-												curCont->charVec[n].cs,
-												singleton->fontWrappers[curCont->charVec[n].fontId],
-												curCont->charVec[n].hitBounds.xMin,
-												curCont->charVec[n].hitBounds.yMin,
+									// only shadow text
+									if (shadowOffset == 0.0f) {
+										
+										
+										if (curCont->bg.fontId > -1) {
+											renderQuad(
+												curComp,
+												curCont->bg.hitBounds,
 												shadowOffset
 											);
 										}
+										
+										
 									}
 									
+									if (i == 0) {
+										// don't render text in first pass
+									}
+									else {
 									
-									
-									
-								}	
-								
-								
-								
+										if (false) { //curCont->locked) {
+											// busy updating characters
+										}
+										else {
+											for (n = 0; n < curCont->charVec.size(); n++) {
+												renderCharAt(
+													curComp,
+													curCont->charVec[n].cs,
+													singleton->fontWrappers[curCont->charVec[n].fontId],
+													curCont->charVec[n].hitBounds.xMin,
+													curCont->charVec[n].hitBounds.yMin,
+													shadowOffset
+												);
+											}
+										}
+									}
+								}
 							}
 							
 							
 							
 							
-							
 						}
-						
-						
 						
 						
 						
@@ -27223,6 +28912,1109 @@ void GameGUI::renderGUI (int activeFBO)
 		
 		
 		
+		
+	}
+#undef LZZ_INLINE
+ 
+// f00335_gameai.h
+//
+
+#include "f00335_gameai.e"
+#define LZZ_INLINE inline
+GameAI::GameAI ()
+                 {
+		kbCompiled = NULL;
+		qbCompiled = NULL;
+		jvKB = NULL;
+	}
+void GameAI::init (Singleton * _singleton)
+                                         {
+		singleton = _singleton;
+	}
+string GameAI::getResolvedString (VNode * tempNode)
+                                                  {
+		// if (tokenIndexToVar[tempNode->tokenIndex] == NULL) {
+		// 	return intToVToken[tempNode->tokenIndex].stringValue;
+		// }
+		// else {
+		// 	return intToVToken[tokenIndexToVar[tempNode->tokenIndex]->tokenIndex].stringValue;
+		// }
+		
+		return intToVToken[tempNode->tokenIndex].stringValue;
+		
+	}
+bool GameAI::setEqualTo (VNode * destNodeFinal, VNode * srceNodeFinal, int curGen)
+                                                                                {
+		
+		bool notAssigned = false;
+		
+		cout << SPACE_BUFFER[curGen] << "setEqualTo(): " << getResolvedString(destNodeFinal) << " = " << 
+			getResolvedString(srceNodeFinal) << "\n";
+
+		// VNode* destNodeFinal = NULL;
+		// VNode* srceNodeFinal = NULL;
+		
+		// if (tokenIndexToVar[destNode->tokenIndex] == NULL) {
+		// 	destNodeFinal = destNode;
+		// }
+		// else {
+		// 	destNodeFinal = tokenIndexToVar[destNode->tokenIndex];
+		// }
+		
+		// if (tokenIndexToVar[srceNode->tokenIndex] == NULL) {
+		// 	srceNodeFinal = srceNode;
+		// }
+		// else {
+		// 	srceNodeFinal = tokenIndexToVar[srceNode->tokenIndex];
+		// }
+		
+		if (tokenIndexToVar[destNodeFinal->tokenIndex] == NULL) {
+			notAssigned = true;
+		}
+		// else {
+		// 	if (intToVToken[tokenIndexToVar[destNodeFinal->tokenIndex]->tokenIndex].type == E_VCT_VARIABLE) {
+		// 		notAssigned = true;
+		// 	}
+		// }
+		
+		if (notAssigned) {
+			// check if dest node is already set
+			
+			assignStack.push_back(AssignStruct());
+			assignStack.back().lastAssign = tokenIndexToVar[destNodeFinal->tokenIndex];
+			assignStack.back().newAssign = srceNodeFinal;
+			assignStack.back().tokenIndex = destNodeFinal->tokenIndex;
+			assignStack.back().genIndex = curGen;
+			
+			tokenIndexToVar[destNodeFinal->tokenIndex] = srceNodeFinal;
+			
+		}
+		else {
+			
+			// cout << SPACE_BUFFER[curGen] << "token indices: " << tokenIndexToVar[destNodeFinal->tokenIndex]->tokenIndex <<
+			// ", " << srceNodeFinal->tokenIndex << "\n";
+			
+			if (tokenIndexToVar[destNodeFinal->tokenIndex]->tokenIndex == srceNodeFinal->tokenIndex) {
+				// if set value matches, do nothing
+				cout << SPACE_BUFFER[curGen] << "Attempted to set variable to same value\n";
+				return true;
+			}
+			else {
+				// attempted to set to different value
+				cout << SPACE_BUFFER[curGen] << "Variable is already assigned\n";
+				return false;
+			}
+			
+			
+		}
+
+		return true;
+	}
+void GameAI::rollBack (int curGen)
+                                  {
+		// roll back any assignments
+		bool foundGen = true;
+		do {
+			if (assignStack.size() <= 0) {
+				foundGen = false;
+			}
+			else {
+				if (assignStack.back().genIndex > curGen) {
+					
+					
+					// assignStack.back().lastAssign = tokenIndexToVar[destNodeFinal->tokenIndex];
+					// assignStack.back().newAssign = srceNodeFinal;
+					// assignStack.back().tokenIndex = destNodeFinal->tokenIndex;
+					// assignStack.back().genIndex = curGen;
+					// tokenIndexToVar[destNodeFinal->tokenIndex] = srceNodeFinal;
+					
+					cout << "Roll back; " << intToVToken[
+						assignStack.back().tokenIndex
+					].stringValue << " = ";
+					
+					if (assignStack.back().lastAssign == NULL) {
+						cout << "NULL\n";
+					}
+					else {
+						cout << intToVToken[
+							assignStack.back().lastAssign->tokenIndex
+						].stringValue << "\n";
+					}
+					
+					
+					
+					tokenIndexToVar[assignStack.back().tokenIndex] = assignStack.back().lastAssign;
+					
+					assignStack.pop_back();
+				}
+				else {
+					foundGen = false;
+				}
+			}
+		} while (foundGen);
+		
+	}
+bool GameAI::attemptUnify (VNode * nodeToUnify, VNode * testNode, int curGen)
+                                                                           {
+		
+		int nodeToUnifyType = intToVToken[nodeToUnify->tokenIndex].type;
+		int testNodeType = intToVToken[testNode->tokenIndex].type;
+		int i;
+		
+		bool isPredicate1 = nodeToUnifyType == E_VCT_PREDICATE;
+		bool isPredicate2 = testNodeType == E_VCT_PREDICATE;
+		
+		cout << SPACE_BUFFER[curGen] << "attemptUnify(" << getResolvedString(nodeToUnify);
+		if (isPredicate1) {
+			cout << "[ ";
+			for (i = 0; i < nodeToUnify->children.size(); i++) {
+				cout << getResolvedString(nodeToUnify->children[i]) << " ";
+			}
+			cout << "]";
+		}
+		
+		cout << ", " << getResolvedString(testNode);
+		
+		if (isPredicate2) {
+			cout << "[ ";
+			for (i = 0; i < testNode->children.size(); i++) {
+				cout << getResolvedString(testNode->children[i]) << " ";
+			}
+			cout << "]";
+		}
+		
+		cout << ")\n";
+		
+		bool res;
+		
+		switch (nodeToUnifyType) {
+			case E_VCT_FLOAT:
+				if (testNodeType == E_VCT_FLOAT) {
+					return intToVToken[testNode->tokenIndex].floatValue == intToVToken[nodeToUnify->tokenIndex].floatValue;
+				}
+				else {
+					if (testNodeType == E_VCT_VARIABLE) {
+						// set variable to float
+						return setEqualTo(testNode, nodeToUnify, curGen);
+					}
+					else {
+						return false;
+					}
+				}
+			break;
+			case E_VCT_NOUN:
+				switch (testNodeType) {
+					case E_VCT_FLOAT:
+						return false;
+					break;
+					case E_VCT_NOUN:
+						return testNode->tokenIndex == nodeToUnify->tokenIndex;
+					break;
+					case E_VCT_OPERATOR:
+						return false;
+					break;
+					case E_VCT_VARIABLE:
+						// set variable to noun
+						return setEqualTo(testNode, nodeToUnify, curGen);
+					break;
+					case E_VCT_PREDICATE:
+						return false;
+					break;
+				}
+			break;
+			case E_VCT_OPERATOR:
+				return false;
+			break;
+			case E_VCT_VARIABLE:
+				switch (testNodeType) {
+					case E_VCT_FLOAT:
+						// set variable to the float value
+						setEqualTo(nodeToUnify, testNode, curGen);
+					break;
+					case E_VCT_NOUN:
+						// set the variable to the noun value
+						return setEqualTo(nodeToUnify, testNode, curGen);
+					break;
+					case E_VCT_OPERATOR:
+						return false;
+					break;
+					case E_VCT_VARIABLE:
+						// set variables to share values
+						return setEqualTo(nodeToUnify, testNode, curGen);
+					break;
+					case E_VCT_PREDICATE:
+						// set the variable to the predicate
+						// todo: fix?
+						return false;
+					break;
+				}
+			break;
+			case E_VCT_PREDICATE:
+				switch (testNodeType) {
+					case E_VCT_FLOAT:
+						return false;
+					break;
+					case E_VCT_NOUN:
+						return false;
+					break;
+					case E_VCT_OPERATOR:
+						return false;
+					break;
+					case E_VCT_VARIABLE:
+						// set variable to the predicate
+						// todo: fix this?
+						return false;
+					break;
+					case E_VCT_PREDICATE:
+						// unify predicates
+						
+						if (testNode->tokenIndex == nodeToUnify->tokenIndex) {
+							if (testNode->children.size() == nodeToUnify->children.size()) {
+								
+								for (i = 0; i < nodeToUnify->children.size(); i++) {
+									res = attemptUnify(nodeToUnify->children[i], testNode->children[i], curGen);
+									
+									if (res) {
+										
+									}
+									else {
+										return false;
+									}
+								}
+							}
+							else {
+								return false;
+							}
+						}
+						else {
+							return false;
+						}
+						
+					break;
+				}
+			break;
+			
+		}
+		
+		return true;
+	}
+VNode * GameAI::drillDown (VNode * curVar)
+                                        {
+		VNode* tempVar = curVar;
+		
+		if (tempVar == NULL) {
+			return NULL;
+		}
+		else {
+			while ( tokenIndexToVar[tempVar->tokenIndex] != NULL ) {
+				tempVar = tokenIndexToVar[tempVar->tokenIndex];
+			}
+			return tempVar;
+		}
+		
+	}
+bool GameAI::testEqual (VNode * testNode)
+                                        {
+		
+		VNode* term1;
+		VNode* term2;
+		bool res = false;
+		
+		if (testNode->children.size() != 2) {
+			cout << "Invalid number of arguments for testEqual()\n";
+			return false;
+		}
+		else {
+			term1 = drillDown(testNode->children[0]);
+			term2 = drillDown(testNode->children[1]);
+			
+			if (term1 == NULL) {
+				return (term2 == NULL);
+			}
+			
+			res = (term1->tokenIndex == term2->tokenIndex);
+			
+			cout << "testEqual(): " << res << "\n";
+			
+			return res;
+		}
+	}
+bool GameAI::isBetween (VNode * testNode)
+                                        {
+		
+		cout << "isBetween()\n";
+		
+		VNode* term0;
+		VNode* term1;
+		VNode* term2;
+		
+		float fv0;
+		float fv1;
+		float fv2;
+		
+		if (testNode->children.size() != 3) {
+			cout << "Invalid number of arguments for isBetween()\n";
+			return false;
+		}
+		else {
+			term0 = drillDown(testNode->children[0]);
+			term1 = drillDown(testNode->children[1]);
+			term2 = drillDown(testNode->children[2]);
+			
+			if (
+				(term0 == NULL) ||
+				(term1 == NULL) ||
+				(term2 == NULL)	
+			) {
+				cout << "null term\n";
+				return false;
+			}
+			else {
+				
+				if (
+					(intToVToken[term0->tokenIndex].type == E_VCT_FLOAT) &&
+					(intToVToken[term1->tokenIndex].type == E_VCT_FLOAT) &&
+					(intToVToken[term2->tokenIndex].type == E_VCT_FLOAT)
+				) {
+					
+					fv0 = intToVToken[term0->tokenIndex].floatValue;
+					fv1 = intToVToken[term1->tokenIndex].floatValue;
+					fv2 = intToVToken[term2->tokenIndex].floatValue;
+					
+					cout << "success, compare: " << fv0 << " " << fv1 << " " << fv2 << "\n";
+					
+					return ((fv0 >= fv1)&&(fv0<=fv2));
+					
+				}
+				else {
+					cout << "non float term\n";
+					
+					return false;
+				}
+				
+			}
+			
+			
+			
+		}
+	}
+bool GameAI::searchToUnify (VNode * nodeToUnifyBase, int curGen, int curOffset)
+                                                                                  {
+		
+		
+		int i;
+		int j;
+		int k;
+		
+		bool tempRes = false;
+		bool tempRes2 = false;
+		bool foundUni;
+		bool isHead;
+		bool wasSuccessful = false;
+		bool foundGen;
+		
+		VNode* curKBRule = NULL;
+		VNode* curKBRuleHead = NULL;
+		VNode* curKBRuleTail = NULL;
+		VNode* nodeToUnify = nodeToUnifyBase;
+		
+		// if (goalList.size() == 0) {
+		// 	wasSuccessful = true;
+		// 	goto DO_RETURN;
+		// }
+		
+		//nodeToUnify = goalList.back();
+		//removeGoal();
+		//goalList.pop_back();
+		
+		cout << SPACE_BUFFER[curGen]  << "searchToUnify(" <<
+		 intToVToken[nodeToUnify->tokenIndex].stringValue << ") curOffset = " << curOffset << "\n";
+		
+		for (j = 0; j < qbCompiled->children[0]->children.size(); j++) {
+			printChain(qbCompiled->children[0]->children[j]);
+			cout << "\n";
+		}
+		cout << "\n";
+		
+		
+		
+		if (intToVToken[nodeToUnify->tokenIndex].type == E_VCT_OPERATOR) {
+			switch (nodeToUnify->tokenIndex) {
+				case E_VC_ALL:
+				case E_VC_NONE:
+					nodeToUnify = nodeToUnify->children[curOffset];
+				break;
+				case E_VC_ANY:
+					wasSuccessful = false;
+					for (i = 0; i < nodeToUnify->children.size(); i++) {
+						wasSuccessful = wasSuccessful || searchToUnify(nodeToUnify->children[i], curGen + 1);
+					}
+					goto DO_RETURN;
+				break;
+			}
+		}
+		
+		if (intToVToken[nodeToUnify->tokenIndex].type == E_VCT_OPERATOR) {
+			switch (nodeToUnify->tokenIndex) {
+				case E_VC_EQUAL:
+					wasSuccessful = testEqual(nodeToUnify);
+					goto DO_RETURN;
+				break;
+				case E_VC_NOTEQUAL:
+					wasSuccessful = !( testEqual(nodeToUnify) );
+					goto DO_RETURN;
+				break;
+				case E_VC_ISBETWEEN:
+					wasSuccessful = isBetween(nodeToUnify);
+					goto DO_RETURN;
+				break;				
+			}
+		}
+		
+		
+		
+		for (i = 0; i < tokenToRules[nodeToUnify->tokenIndex].data.size(); i++) {
+			
+			curKBRule = kbCompiled->children[
+				tokenToRules[nodeToUnify->tokenIndex].data[i]	
+			];
+			
+			
+			isHead = false;
+			
+			// if dealing with an if then statement, set rule to head
+			if (curKBRule->tokenIndex == E_VC_IFTHEN) {
+				
+				if (curKBRule->children.size() != 2) {
+					cout << "Error: If/Then statement requires exactly two arguments.\n";
+					wasSuccessful = false;
+								goto DO_RETURN;
+				}
+				else {
+					isHead = true;
+					curKBRuleHead = curKBRule->children[1]; // then
+					curKBRuleTail = curKBRule->children[0]; // if
+				}
+			}
+			else {
+				curKBRuleHead = curKBRule;
+			}
+			
+			foundUni = false;
+			if (curKBRuleHead->tokenIndex == E_VC_LIST) {
+				for (j = 0; j < curKBRule->children[1]->children.size(); j++) {
+					curKBRuleHead = curKBRule->children[1]->children[j];
+					
+					tempRes = attemptUnify(nodeToUnify, curKBRuleHead, curGen + 1);
+					
+					if (tempRes) {
+						cout << SPACE_BUFFER[curGen] << "Unify success\n";
+						foundUni = true;
+						break;
+					}
+					else {
+						cout << SPACE_BUFFER[curGen] << "Unify failure\n";
+						rollBack(curGen);
+					}
+				}
+			}
+			else {
+				
+				tempRes = attemptUnify(nodeToUnify, curKBRuleHead, curGen + 1);
+				// if (nodeToUnifyBase->tokenIndex == E_VC_NONE) {
+				// 	tempRes = !tempRes;
+				// }
+				
+				
+				if (tempRes) {
+					
+					if (intToVToken[nodeToUnifyBase->tokenIndex].type == E_VCT_OPERATOR) {
+						switch (nodeToUnifyBase->tokenIndex) {
+							case E_VC_ALL:
+							case E_VC_NONE:
+							
+								if (curOffset < (nodeToUnifyBase->children.size()-1) ) {
+									// we still have more items to prove
+									
+									tempRes2 = searchToUnify(nodeToUnifyBase, curGen + 1, curOffset + 1);
+									// if (nodeToUnifyBase->tokenIndex == E_VC_NONE) {
+									// 	tempRes2 = !tempRes2;
+									// }
+									
+									if (tempRes2) {
+										cout << SPACE_BUFFER[curGen] << "Unify success\n";
+										foundUni = true;
+									}
+									else {
+										cout << SPACE_BUFFER[curGen] << "Unify failure\n";
+										rollBack(curGen);
+									}
+									
+								}
+								else {
+									// done proving items
+									cout << SPACE_BUFFER[curGen] << "Total unify success\n";
+									foundUni = true;
+								}
+							
+								
+							break;
+							case E_VC_ANY:
+								// should not hit this
+								cout << SPACE_BUFFER[curGen] << "Error: should not reach this segment\n";
+							break;
+						}
+					}
+					else {
+						cout << SPACE_BUFFER[curGen] << "Unify success\n";
+						foundUni = true;
+					}
+					
+				}
+				else {
+					cout << SPACE_BUFFER[curGen] << "Unify failure\n";
+					rollBack(curGen);
+				}
+			}
+			
+			
+			if (foundUni) {
+				// rule or head of rule successfully unified
+				
+				
+				if (isHead) {
+					// attempt to prove all tail conditions true
+					
+					tempRes = searchToUnify(curKBRuleTail, curGen + 1);
+					if (tempRes) {
+						wasSuccessful = true;
+									goto DO_RETURN;
+					}
+					else {
+						rollBack(curGen);
+					}
+				}
+				else {
+					wasSuccessful = true;
+								goto DO_RETURN;
+				}
+			}
+			else {
+				rollBack(curGen);
+			}
+			
+			
+			
+			
+			
+			
+		}
+		
+DO_RETURN:
+
+		if (nodeToUnifyBase->tokenIndex == E_VC_NONE) {
+			if (curOffset == 0) {
+				wasSuccessful = !wasSuccessful;
+			}
+		}
+
+		cout << SPACE_BUFFER[curGen] << "wasSuccessful: " << wasSuccessful << "\n";
+		return wasSuccessful;
+		
+	}
+void GameAI::printChain (VNode * curVar)
+                                       {
+		
+		if (curVar == NULL) {
+			cout << "NULL";
+		}
+		else {
+			cout << intToVToken[curVar->tokenIndex].stringValue;
+			
+			if ( tokenIndexToVar[curVar->tokenIndex] == NULL ) {
+				return;
+			}
+			else {
+				cout << " -> ";
+				printChain(tokenIndexToVar[curVar->tokenIndex]);
+			}
+		}
+		
+	}
+void GameAI::runQueries ()
+                          {
+		int i;
+		int j;
+		
+		bool res = false;
+		
+		
+		cout << "\n\n";
+		
+		for (i = 0; i < qbCompiled->children.size(); i++) {
+			
+			
+			//goalList.clear();
+			assignStack.clear();
+			
+			
+			res = searchToUnify(qbCompiled->children[i], 0);
+			
+			for (j = 0; j < qbCompiled->children[i]->children.size(); j++) {
+				printChain(qbCompiled->children[i]->children[j]);
+				cout << "\n";
+			}
+			
+			cout << "final result: " << res << "\n";
+			
+			
+		}
+		
+		cout << "\n\n";
+	}
+bool GameAI::compileVocab (JSONValue * uncompiledNode, VNode * curVNode)
+                                                                      {
+		int i;
+		int curInd;
+		int tokIndex;
+		bool result = true;
+		JSONValue* curJVNode = NULL;
+		JSONValue* lastJVNode = NULL;
+		
+		
+		string tempNumberStr;
+		
+		if (uncompiledNode->IsArray()) {
+			for (i = 0; i < uncompiledNode->array_value.size(); i++) {
+				curJVNode = uncompiledNode->array_value[i];
+				
+				//compiledNode.array_value.push_back( new JSONValue(JSONArray()) );
+				
+				if (curJVNode->IsArray()) {
+					if (lastJVNode == NULL) {
+						cout << "Array must be preceded by string value\n";
+						return false;
+					}
+					else {
+						if (lastJVNode->IsString()) {
+							
+							tokIndex = stringToVTokenIndex[lastJVNode->string_value];
+							
+							if (
+								(intToVToken[tokIndex].type == E_VCT_OPERATOR) ||
+								(intToVToken[tokIndex].type == E_VCT_PREDICATE)
+							) {
+								curVNode->children.push_back(new VNode(tokIndex));
+								result = result && compileVocab(curJVNode, curVNode->children.back());
+							}
+							else {
+								cout << "Array must be preceded by operator or predicate\n";
+								return false;
+							}
+							
+							
+						}
+						else {
+							cout << "Array must be preceded by string value\n";
+							return false;
+						}
+					}
+				}
+				else if (curJVNode->IsString()) {
+					
+					
+					tokIndex = stringToVTokenIndex[curJVNode->string_value];
+					
+					if (
+						(intToVToken[tokIndex].type == E_VCT_OPERATOR) ||
+						(intToVToken[tokIndex].type == E_VCT_PREDICATE)
+					) {
+						// wait to consume array
+					}
+					else {
+						curVNode->children.push_back(new VNode(tokIndex));
+					}
+					
+					
+				}
+				else if (curJVNode->IsNumber()) {
+					
+					tempNumberStr = f__s(curJVNode->number_value);
+					if (stringToVTokenIndex.find( tempNumberStr ) == stringToVTokenIndex.end()) {
+						intToVToken.push_back(VToken());
+						curInd = intToVToken.size()-1;
+						intToVToken[curInd].index = curInd;
+						intToVToken[curInd].stringValue = tempNumberStr;
+						intToVToken[curInd].floatValue = curJVNode->number_value;
+						intToVToken[curInd].type = E_VCT_FLOAT;
+						intToVToken[curInd].maxParam = 0;
+						stringToVTokenIndex[tempNumberStr] = curInd;
+					}
+					
+					tokIndex = stringToVTokenIndex[tempNumberStr];
+					curVNode->children.push_back(new VNode(tokIndex));
+					
+				}
+				
+				
+				lastJVNode = uncompiledNode->array_value[i];
+				
+			}
+		}
+		
+		return result;
+	}
+bool GameAI::checkVocab (JSONValue * jv)
+                                       {
+		
+		int i;
+		
+		bool result = true;
+		
+		if (jv->IsArray()) {
+			for (i = 0; i < jv->array_value.size(); i++) {
+				result = result && checkVocab(jv->array_value[i]);
+			}
+		}
+		else {
+			if (jv->IsString()) {
+				if (stringToVTokenIndex.find( jv->string_value ) == stringToVTokenIndex.end()) {
+						result = false;
+						cout << "Undeclared token " << jv->string_value << "\n";
+				}
+			}
+		}
+		
+		return result;
+	}
+void GameAI::buildRule (VNode * curNode, int ruleNumber, bool isIfThen)
+                                                                      {
+		int i;
+		VToken* vt =  &(intToVToken[curNode->tokenIndex]);
+		
+		std::vector<int>::iterator it;
+		
+		if (curNode->tokenIndex == E_VC_IFTHEN) {
+			buildRule(curNode->children[1], ruleNumber, true);
+		}
+		else {
+			
+			if (
+				(vt->type == E_VCT_NOUN) ||
+				(vt->type == E_VCT_PREDICATE)
+			) {
+				
+				if (isIfThen) { // push if-then rules to the back
+					tokenToRules[curNode->tokenIndex].data.push_back(ruleNumber);
+				}
+				else { // all other rules go to the front
+					it = tokenToRules[curNode->tokenIndex].data.begin();
+					it = tokenToRules[curNode->tokenIndex].data.insert ( it , ruleNumber );
+				}
+				
+				
+			}
+			
+			for (i = 0; i < curNode->children.size(); i++) {
+				buildRule(curNode->children[i], ruleNumber, isIfThen);
+			}
+		}
+	}
+void GameAI::buildRuleSet (VNode * curNode)
+                                          {
+		
+		int i;
+		
+		for (i = 0; i < curNode->children.size(); i++) {
+			buildRule(curNode->children[i], i, false);
+		}
+		
+	}
+void GameAI::numberRule (VNode * curNode, int ruleNumber)
+                                                        {
+		int i;
+		int curInd;
+		
+		
+		curNode->ruleNumber = ruleNumber;
+		
+		if (intToVToken[curNode->tokenIndex].type == E_VCT_VARIABLE) {
+			// check if variable already registered
+			
+			tempVarStr = intToVToken[curNode->tokenIndex].stringValue;
+			tempVarStr.append("__");
+			tempVarStr.append(i__s(ruleNumber));
+			
+			if (stringToVTokenIndex.find( tempVarStr ) == stringToVTokenIndex.end()) {
+				// variable not yet created, make it
+				
+				intToVToken.push_back(VToken());
+				curInd = intToVToken.size()-1;
+				intToVToken[curInd].index = curInd;
+				intToVToken[curInd].stringValue = tempVarStr;
+				intToVToken[curInd].floatValue = 0.0f;
+				intToVToken[curInd].type = E_VCT_VARIABLE;
+				intToVToken[curInd].maxParam = 0;
+				stringToVTokenIndex[tempVarStr] = curInd;
+				
+				
+			}
+			
+			curNode->tokenIndex = stringToVTokenIndex[tempVarStr];
+			
+		}
+		
+		for (i = 0; i < curNode->children.size(); i++) {
+			numberRule(curNode->children[i], ruleNumber);
+		}		
+	}
+int GameAI::numberRuleSet (VNode * curNode, int offset)
+                                                      {
+		
+		int i;
+		
+		for (i = 0; i < curNode->children.size(); i++) {
+			numberRule(curNode->children[i], i + offset);
+		}
+		
+		return i;
+	}
+void GameAI::printRule (VNode * curNode, int offset)
+                                                   {
+		int i;
+		int curInd;
+		
+		
+		curNode->tokenIndex;
+		
+		
+		
+		if (curNode->children.size() > 0) {
+			cout << SPACE_BUFFER[offset] << intToVToken[curNode->tokenIndex].stringValue << "[\n";
+		}
+		else {
+			cout << SPACE_BUFFER[offset] << intToVToken[curNode->tokenIndex].stringValue << "\n";
+		}
+		
+		for (i = 0; i < curNode->children.size(); i++) {
+			printRule(curNode->children[i], offset + 1);
+		}	
+		
+		if (curNode->children.size() > 0) {
+			cout << SPACE_BUFFER[offset] << "]\n";
+		}	
+	}
+void GameAI::printRuleSet (VNode * curNode)
+                                          {
+		
+		int i;
+		
+		for (i = 0; i < curNode->children.size(); i++) {
+			printRule(curNode->children[i],0);
+			
+			cout << "\n\n";
+			
+		}
+		
+	}
+bool GameAI::parseKB ()
+                       {
+		int i;
+		int j;
+		int tokIndex;
+		int curType;
+		int arraySize;
+		int tempInt0;
+		int curInd;
+		int tempInt = 0;
+		string tempStr0;
+		JSONValue* curJV;
+		
+		bool res0;
+		bool res1;
+		
+		
+		
+		
+		
+		for (i = 0; i < jvKB->Child("vocabulary")->array_value.size(); i++) {
+			
+			curJV = jvKB->Child("vocabulary")->array_value[i];
+			
+			if ( curJV->IsArray() ) {
+				
+				arraySize = curJV->array_value.size();
+				
+				if (arraySize == 2) {
+					
+					tempStr0 = curJV->array_value[0]->string_value;
+					tempInt0 = curJV->array_value[1]->number_value;
+					
+					switch(tempStr0[0]) {
+						case 'f':
+							curType = E_VCT_FLOAT;
+						break;
+						case 'o':
+							curType = E_VCT_OPERATOR;
+						break;
+						case 'v':
+							curType = E_VCT_VARIABLE;
+						break;
+						case 'n':
+							curType = E_VCT_NOUN;
+						break;
+						case 'p':
+							curType = E_VCT_PREDICATE;
+						break;
+						default:
+							cout << "Unsupported type in token " << tempStr0 << "\n";
+							return false;
+						break;
+					}
+					
+					intToVToken.push_back(VToken());
+					curInd = intToVToken.size()-1;
+					intToVToken[curInd].index = curInd;
+					intToVToken[curInd].stringValue = tempStr0;
+					intToVToken[curInd].floatValue = 0.0f;
+					intToVToken[curInd].type = curType;
+					intToVToken[curInd].maxParam = tempInt0;
+					stringToVTokenIndex[tempStr0] = curInd;
+					
+				}
+				else {
+					cout << "Invalid Array Size of " << arraySize << " in vocabulary.\n";
+					return false;
+				}
+				
+				
+				
+			}
+			else {
+				cout << "Vocabulary entry " << i << " is not an array.\n";
+				return false;
+			}
+		}
+		
+		res0 = checkVocab(jvKB->Child("kb"));
+		res1 = checkVocab(jvKB->Child("qb"));
+		
+		if (res0&&res1) {
+			
+		}
+		else {
+			cout << "checkVocab() failed\n";
+			return false;
+		}
+		
+		
+		if (kbCompiled != NULL) {
+			delete kbCompiled;
+		}
+		if (qbCompiled != NULL) {
+			delete qbCompiled;
+		}
+		
+		
+		
+		tokIndex = stringToVTokenIndex["oList"];
+		
+		kbCompiled = new VNode(tokIndex);
+		qbCompiled = new VNode(tokIndex);
+		
+		cout << "Begin vocab compile\n";
+		
+		res0 = compileVocab(jvKB->Child("kb"),kbCompiled);
+		res1 = compileVocab(jvKB->Child("qb"),qbCompiled);
+		
+		if (res0&&res1) {
+			
+		}
+		else {
+			cout << "compileVocab() failed\n";
+			return false;
+		}
+		
+		
+		for (i = 0; i < intToVToken.size();i++) {
+			tokenToRules.push_back(intVec());
+		}
+		buildRuleSet(kbCompiled);
+		tempInt = numberRuleSet(kbCompiled, 0);
+		numberRuleSet(qbCompiled,tempInt);
+		
+		
+		
+		for (i = 0; i < intToVToken.size();i++) {
+			tokenIndexToVar.push_back(NULL);
+		}
+		
+		
+		
+		traceRules();
+		
+		
+		return true;
+	}
+void GameAI::traceRules ()
+                          {
+		int i;
+		int j;
+		
+		cout << "TokenToRules:\n";
+		for (i = 0; i < tokenToRules.size(); i++) {
+			
+			cout << intToVToken[i].stringValue << ": ";
+			
+			for (j = 0; j < tokenToRules[i].data.size(); j++) {
+				cout << tokenToRules[i].data[j] << " ";
+			}
+			
+			cout << "\n";
+		}
+		
+		cout << "\nAll Vocab:\n";
+		for (i = 0; i < intToVToken.size(); i++) {
+			cout << intToVToken[i].stringValue << "\n";
+		}
+		
+		
+		cout << "kb\n";
+		printRuleSet(kbCompiled);
+		cout << "qb\n";
+		printRuleSet(qbCompiled);
+		cout << "\n\n";
+		
+	}
+void GameAI::getKB ()
+                     {
+		
+		bool res;
+		
+		cout << "getKB()\n";
+		singleton->cleanJVPointer(&(singleton->externalJSON["kb.js"].jv));
+		tokenToRules.clear();
+		stringToVTokenIndex.clear();
+		tokenIndexToVar.clear();
+		intToVToken.clear();
+		
+		jvKB = singleton->fetchJSONData("kb.js");
+		
+		if (jvKB == NULL) {
+			return;
+		}
+		
+		res = parseKB();
+		
+		if (res) {
+			cout << "Successfully compiled KB\n";
+			
+			runQueries();
+			
+		}
+		else {
+			cout << "Failed to compile KB\n";
+		}
 		
 	}
 #undef LZZ_INLINE
@@ -27359,15 +30151,10 @@ void GameOrgNode::doTransform (Singleton * singleton)
 		
 		readTBN = tbnBaseTrans;
 		writeTBN = tbnRotA;
-			
 		
 		
 		modCount = 0;
 		
-		
-		
-		
-	
 		
 		if (orgVecs[E_OV_THETAPHIRHO].getFZ() != 0.0f) {
 			singleton->rotMatStack.push_back(RotationInfo());
@@ -27397,7 +30184,7 @@ void GameOrgNode::doTransform (Singleton * singleton)
 		
 		
 		for (i = singleton->rotMatStack.size()-(1); i >= 0; i--) {
-						
+			
 			axisRotationInstance.applyRotation(
 				writeTBN,
 				readTBN,
@@ -28472,7 +31259,7 @@ void GamePage::addEntityGeom (bool justTesting)
 		int n;
 		int p;
 		int ind;
-		int bufSize = (singleton->visPageSizeInPixels * singleton->bufferMult);
+		//int bufSize = (singleton->visPageSizeInPixels * singleton->bufferMult);
 		int geomInPage;
 		int baseInd;
 
@@ -28508,7 +31295,7 @@ void GamePage::addEntityGeom (bool justTesting)
 
 				if (
 
-					FIVector4::intersect( gg->getVisMinInPixelsT(), gg->getVisMaxInPixelsT(), &worldMinBufInPixels, &worldMaxBufInPixels )
+					FIVector4::intersectInt( gg->getVisMinInPixelsT(), gg->getVisMaxInPixelsT(), &worldMinBufInPixels, &worldMaxBufInPixels )
 					&& (gg->visible)
 
 				) {
@@ -28573,7 +31360,7 @@ void GamePage::addGeom (bool justTesting)
 		int n;
 		int p;
 		int ind;
-		int bufSize = (singleton->visPageSizeInPixels * singleton->bufferMult);
+		//int bufSize = (singleton->visPageSizeInPixels * singleton->bufferMult);
 		intPair curId;
 		int geomInPage;
 		int baseInd;
@@ -28592,8 +31379,8 @@ void GamePage::addGeom (bool justTesting)
 		start.copyFrom( &worldMinBufInPixels );
 		end.copyFrom( &worldMaxBufInPixels );
 
-		start.addXYZ(-bufSize);
-		end.addXYZ(bufSize);
+		//start.addXYZ(-bufSize);
+		//end.addXYZ(bufSize);
 
 		start.intDivXYZ(singleton->holderSizeInPixels);
 		end.intDivXYZ(singleton->holderSizeInPixels);
@@ -28628,7 +31415,7 @@ void GamePage::addGeom (bool justTesting)
 
 							if (
 
-								FIVector4::intersect( gg->getVisMinInPixelsT(), gg->getVisMaxInPixelsT(), &worldMinBufInPixels, &worldMaxBufInPixels )
+								FIVector4::intersectInt( gg->getVisMinInPixelsT(), gg->getVisMaxInPixelsT(), &worldMinBufInPixels, &worldMaxBufInPixels )
 								&& (gg->visible)
 
 							) {
@@ -28848,8 +31635,11 @@ void GamePage::addAllGeom ()
 			
 		}
 	}
-void GamePage::generateVolume (bool dd)
+bool GamePage::generateVolume (bool dd)
                                              {
+		
+		bool addedVerts = false;
+		
 		PAGE_COUNT++;
 
 		int curVGFBO = CUR_VG_FBO;
@@ -29076,26 +31866,28 @@ void GamePage::generateVolume (bool dd)
 		
 		if (didRender) {
 			
-			getPoints(curVGTFBO);
+			addedVerts = getPoints(curVGTFBO);
 			
 		}
 		
 		isDirty = false;
 		isRendering = false;
+		
+		return addedVerts;
 
 	}
 int GamePage::getIndex (int i, int j, int k, int p)
                                                  {
 		return (i + j*p + k*p*p);
 	}
-void GamePage::getPoints (int fboNum)
+bool GamePage::getPoints (int fboNum)
                                    {
 		
 		int sres = singleton->volGenSuperRes;
 		int sresM1 = sres-1;
 		float fres = sres;
 		
-		
+		bool addedVerts = false;
 		
 		
 		int cellsPerPage = singleton->cellsPerPage;
@@ -29170,7 +31962,6 @@ void GamePage::getPoints (int fboNum)
 		bool doProc;
 		bool hasAir = false;
 		bool hasSolid = false;
-		bool hasSolidAndAir = false;
 		
 		
 		
@@ -29201,7 +31992,7 @@ void GamePage::getPoints (int fboNum)
 		
 		
 		// determine collision matrix
-		if (hasSolid||hasSolidAndAir) {
+		if (hasSolid) {
 			if (cellData == NULL) {
 				cellData = new int[cellDataSize];
 			}
@@ -29268,7 +32059,7 @@ void GamePage::getPoints (int fboNum)
 		
 		
 		
-		if ( (hasAir&&hasSolid)||(hasSolidAndAir) ) {
+		if ( hasAir&&hasSolid ) {
 			
 		}
 		else {
@@ -29346,7 +32137,7 @@ void GamePage::getPoints (int fboNum)
 								q = fbow0->getPixelAtIndex3DMip(ind,R_CHANNEL,mval,p);
 								
 								if (q < E_LAYER_NULL) {
-									isCand = fbow1->getPixelAtIndex3DMip(ind,A_CHANNEL,mval,p) != 0;
+									isCand = (fbow1->getPixelAtIndex3DMip(ind,A_CHANNEL,mval,p) != 0);
 									
 									
 									
@@ -29444,6 +32235,8 @@ void GamePage::getPoints (int fboNum)
 											vertices[ci].data.push_back(bpZ);
 											vertices[ci].data.push_back(1.0f);
 											
+											addedVerts = true;
+											
 											//totalPointCount++;
 											
 											//getPixVal(fbow0,fbow1,ind, bpX,bpY,bpZ, iv0,iv0,iv0);
@@ -29491,14 +32284,7 @@ void GamePage::getPoints (int fboNum)
 		
 DO_CLEANUP:
 
-	;
-	
-	
-	// if (vertices[0].data.size() > 0) {
-	// 	if (isEntity) {
-	// 		cout << "RENDER ENT\n";
-	// 	}
-	// }
+	return addedVerts;
 	
 		
 	}
@@ -29630,14 +32416,22 @@ void GamePageHolder::doRefreshDL ()
 		
 		int i;
 		int j;
+		
+		
 		int ind;
 		int numVert = 8;
 		int maxVal;
 		
 		int p;
 		int q;
+		int r;
+		int s;
+		
+		int baseInd;
+		
 		int ci;
 		
+		float voxSize = singleton->voxelSizeInWC*0.5f;
 		
 		// TODO: if the holder was cleared entirely, must make sure to clear all displaylists
 		
@@ -29650,7 +32444,7 @@ void GamePageHolder::doRefreshDL ()
 					ci = p*MAX_LAYERS+q;
 					
 					gpuRes->bindHolderDL(p,q);
-					glBegin(GL_POINTS);
+					if (DO_POINTS) {glBegin(GL_POINTS);}
 					
 					
 					for (j = 0; j < iPageDataVolume; j++) {
@@ -29665,6 +32459,8 @@ void GamePageHolder::doRefreshDL ()
 							
 							for (i = 0; i < maxVal; i++ ) {
 								
+								
+								
 								glMultiTexCoord4f(
 									GL_TEXTURE0,
 									pageData[ind]->vertices[ci].data[i*numVert + 0], // normal x
@@ -29674,11 +32470,37 @@ void GamePageHolder::doRefreshDL ()
 									
 								);
 								
-								glVertex3f(
-									pageData[ind]->vertices[ci].data[i*numVert + 4],
-									pageData[ind]->vertices[ci].data[i*numVert + 5],
-									pageData[ind]->vertices[ci].data[i*numVert + 6]	
-								);
+								if (DO_POINTS) {
+									glVertex3f(
+										pageData[ind]->vertices[ci].data[i*numVert + 4],
+										pageData[ind]->vertices[ci].data[i*numVert + 5],
+										pageData[ind]->vertices[ci].data[i*numVert + 6]	
+									);
+								}
+								else {
+									
+									
+									
+									for (s = 0; s < 1; s++) {
+										glBegin(GL_TRIANGLE_FAN);
+										for (r = 0; r < 7; r++) {
+											
+											baseInd = (r+s*7)*3;
+											
+											
+											
+											glVertex3f(
+												pageData[ind]->vertices[ci].data[i*numVert + 4] + CUBE_POINTS[baseInd+0]*voxSize,
+												pageData[ind]->vertices[ci].data[i*numVert + 5] + CUBE_POINTS[baseInd+1]*voxSize,
+												pageData[ind]->vertices[ci].data[i*numVert + 6]	+ CUBE_POINTS[baseInd+2]*voxSize
+											);
+										}
+										glEnd();
+									}
+									
+								}
+								
+								
 								
 								
 							}
@@ -29687,8 +32509,8 @@ void GamePageHolder::doRefreshDL ()
 					
 					
 					
+					if (DO_POINTS) {glEnd();}
 					
-					glEnd();
 					gpuRes->unbindHolderDL(p,q);
 				}
 			}
@@ -29814,13 +32636,16 @@ void GamePageHolder::clearSet ()
 		}
 		
 	}
-int GamePageHolder::passiveRefresh ()
-                             {
+int GamePageHolder::passiveRefresh (int * renderCount)
+                                             {
 		int i;
-		int changeCount;
+		int changeCount = 0;
+		*renderCount = 0;
 		
 		childrenDirty = false;
-		changeCount = 0;
+		
+
+		bool addedVerts = false;
 
 		//bool finished = true;
 				
@@ -29842,7 +32667,10 @@ int GamePageHolder::passiveRefresh ()
 					(pageData[i]->hasSolids || pageData[i]->hasTrans)
 				) {
 					if (pageData[i]->isDirty) {
-						pageData[i]->generateVolume();
+						addedVerts = pageData[i]->generateVolume();
+						if (addedVerts) {
+							(*renderCount)++;
+						}
 						changeCount++;
 					}
 				}
@@ -30007,7 +32835,7 @@ void GamePageHolder::fetchGeom ()
 		int j;
 		int k;
 		int n;
-		int bufSize = (singleton->visPageSizeInPixels*singleton->bufferMult)*2;
+		//int bufSize = (singleton->visPageSizeInPixels*singleton->bufferMult)*2;
 		
 		GameBlock* curBlock;
 		GamePageHolder* gph;
@@ -30036,8 +32864,8 @@ void GamePageHolder::fetchGeom ()
 						start.copyFrom( &(gameEnt->moveMinInPixels) );
 						end.copyFrom( &(gameEnt->moveMaxInPixels) );
 
-						start.addXYZ(-bufSize);
-						end.addXYZ(bufSize);
+						// start.addXYZ(-bufSize);
+						// end.addXYZ(bufSize);
 
 						//start.intDivXYZ(singleton->holderSizeInPixels);
 						//end.intDivXYZ(singleton->holderSizeInPixels);
@@ -30045,7 +32873,7 @@ void GamePageHolder::fetchGeom ()
 						start.clampZ(0.0,singleton->worldSizeInPixels.getFZ()-1.0f);
 						end.clampZ(0.0,singleton->worldSizeInPixels.getFZ()-1.0f);
 
-						if (FIVector4::intersect(&start,&end,&gphMinInPixels,&gphMaxInPixels)) {
+						if (FIVector4::intersectInt(&start,&end,&gphMinInPixels,&gphMaxInPixels)) {
 							containsEntIds[n].data.push_back(intPair());
 							containsEntIds[n].data.back().v0 = curBlock->blockId;
 							containsEntIds[n].data.back().v1 = k;
@@ -30352,6 +33180,9 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		int curType;
 		uint uiSimp;
 		float fSimp;
+		
+		float fSimpLow;
+		float fSimpHigh;
 
 		int newCount = 0;
 		int io, jo, ko;
@@ -30489,29 +33320,19 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 					tempf = singleton->getHeightAtPixelPos(tempVec.getFX(), tempVec.getFY());
 
-					if ( tempVec.getFZ() < tempf) {//tempVec.getFZ() < singleton->getSLInPixels() + 4.0*pixelsPerCell ) {//
+					if ( tempVec.getFZ() < tempf) {
 						uiSimp = 255;
 					} else {
 						uiSimp = 0;
 					}
 
 
-
-					// if ((i+j+k)%2 == 0) {
-					//  uiSimp = 255;
-					// }
-					// else {
-					//  uiSimp = 0;
-					// }
-
 					terData[curInd] = (uiSimp << 24) | (uiSimp << 16) | (uiSimp << 8) | uiSimp;
 				}
 			}
 		}
-
-
-
-
+		
+		
 
 
 		// Get Ter Data Height
@@ -30550,6 +33371,13 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 
 		
+
+
+
+
+
+
+
 
 
 
@@ -30793,7 +33621,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 							
 							
 							
-							if ( iGetRandSeeded(&tempVec,&tempVec2, 0, 100) > 20 ) {
+							if ( iGetRandSeeded(&tempVec,&tempVec2, 0, 100) > 10 ) {
 								mapData[testInd].connectionProps[0] = E_CT_TREE;
 							}
 						}
@@ -31473,54 +34301,54 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											
 											
 											
-											if ( (curDir==1) ) { // 
+											
+											
+											if (curBT == E_CT_DOORWAY) {
 												
-												if (curBT == E_CT_DOORWAY) {
-													
-												}
-												else {
-													nodeFlags |= BC_FLAG_INSIDE;
-												}
-												
-												/*
-												void connectNodes(
-													int _x1,
-													int _y1,
-													int _z1,
-													int _x2,
-													int _y2,
-													int _z2,
-													
-													int ct,
-													int id = -1,
-													
-													int _heightDelta = 0,
-													int _direction = 0,
-													
-													float _wallRadInCells = -1.0f,
-													unsigned int _nodeFlags = 0
-												)
-												*/
-												
-												connectNodes(
-													i,
-													j,
-													k,
-													i + dirModX[m],
-													j + dirModY[m],
-													k + dirModZ[m],
-													
-													E_CT_LANTERN,
-													-1,
-													
-													0,
-													curDir,
-													
-													-1.0f,
-													nodeFlags
-
-												);
 											}
+											else {
+												nodeFlags |= BC_FLAG_INSIDE;
+											}
+											
+											/*
+											void connectNodes(
+												int _x1,
+												int _y1,
+												int _z1,
+												int _x2,
+												int _y2,
+												int _z2,
+												
+												int ct,
+												int id = -1,
+												
+												int _heightDelta = 0,
+												int _direction = 0,
+												
+												float _wallRadInCells = -1.0f,
+												unsigned int _nodeFlags = 0
+											)
+											*/
+											
+											connectNodes(
+												i,
+												j,
+												k,
+												i + dirModX[m],
+												j + dirModY[m],
+												k + dirModZ[m],
+												
+												E_CT_LANTERN,
+												-1,
+												
+												0,
+												curDir,
+												
+												-1.0f,
+												nodeFlags
+
+											);
+											
 											
 											
 											
@@ -31638,6 +34466,81 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 				}
 			}
 		}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+
+
+		// simplex noise caves
+
+		// fSimpLow = 9999.0f;
+		// fSimpHigh = -9999.0f;
+		
+		
+		// for (k = terDataBufPitchZ-2; k >= 0; k--) {
+		// 	fk = k;
+		// 	for (j = 0; j < terDataBufPitchXY; j++) {
+		// 		fj = j;
+		// 		for (i = 0; i < terDataBufPitchXY; i++) {
+		// 			fi = i;
+
+
+		// 			curInd = getNodeIndex(i, j, k, 0);
+		// 			testInd = getNodeIndex(i, j, k+1, 0);
+					
+		// 			if (terData[curInd] != 0) {
+		// 				if (terData[testInd] != 0) {
+							
+							
+							
+		// 					fSimp = simplexScaledNoise(
+		// 					 4.0f, //octaves
+		// 					 2.0f, //persistence (amount added in each successive generation)
+		// 					 1.0f/4.0f, //scale (frequency)
+		// 					 0.0f, // lo bound
+		// 					 1.0f, // hi bound
+		// 					 fi + offsetInBlocks.getFX()*((float)terDataVisPitchXY) - 1.0f,
+		// 					 fj + offsetInBlocks.getFY()*((float)terDataVisPitchXY) - 1.0f,
+		// 					 fk + offsetInBlocks.getFZ()*((float)terDataVisPitchZ) - 1.0f
+		// 					);
+							
+		// 					if (fSimp < fSimpLow) {
+		// 						fSimpLow = fSimp;
+		// 					}
+		// 					if (fSimp > fSimpHigh) {
+		// 						fSimpHigh = fSimp;
+		// 					}
+							
+		// 					if (fSimp > 0.6f) {
+		// 						terData[curInd] = 0;
+		// 					}
+							
+							
+							
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+		// }
+
+		// cout << "LOW " << fSimpLow << "\n";
+		// cout << "HIGH " << fSimpHigh << "\n\n";
+
+
+
+
+		
+		
 		
 		
 		
@@ -32325,15 +35228,16 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											);
 
 											
+											rad.addXYZ(
+												0.0f,
+												0.0f,
+												(2.0f)*pixelsPerCell
+											);
+											
 											if (
 												singleton->getHeightAtPixelPos(p1.getFX(), p1.getFY()) <=
 												singleton->getSLInPixels()  + 2.0f * pixelsPerCell
 											) {
-												rad.addXYZ(
-													0.0f,
-													0.0f,
-													(2.0f)*pixelsPerCell
-												);
 												matParams.setFXYZ(E_MAT_PARAM_FOUNDATION, E_MAT_SUBPARAM_DOCK, 0.0f);
 											}
 											else {
@@ -33803,7 +36707,7 @@ int GameBlock::copyTerToTexture ()
 							}
 						}
 
-						singleton->terDataScaled[indDest] = (uiSimp << 24) | (uiSimp << 16) | (uiSimp << 8) | uiSimp;//terData[indSource];
+						singleton->terDataScaled[indDest] = (uiSimp << 24) | (uiSimp << 16) | (uiSimp << 8) | uiSimp;
 					}
 				}
 			}
@@ -34045,6 +36949,9 @@ void GameWorld::init (Singleton * _singleton)
 
 		int i;
 		int j;
+		
+		lastHitObjUID = 0;
+		renderCount = 0;
 		
 		//finalInd = -1;
 		
@@ -34340,28 +37247,25 @@ GamePage * GameWorld::getPageAtIndex (int ind)
 		return gp;
 
 	}
-int GameWorld::getCellAtCoords (FIVector4 * coords)
-                                               {
+int GameWorld::getCellAtCoords (int xv, int yv, int zv)
+                                                    {
 		
 		int cellsPerPage = singleton->cellsPerPage;
 		
-		int newX = wrapCoord(coords->getIX(),singleton->worldSizeInPixels.getIX());
-		int newY = wrapCoord(coords->getIY(),singleton->worldSizeInPixels.getIY());
-		int newZ = coords->getIZ();
+		int newX = wrapCoord(xv,singleton->worldSizeInCells.getIX());
+		int newY = wrapCoord(yv,singleton->worldSizeInCells.getIY());
+		int newZ = zv;
 		
-		int x2 = intDiv(newX,visPageSizeInPixels);
-		int y2 = intDiv(newY,visPageSizeInPixels);
-		int z2 = intDiv(newZ,visPageSizeInPixels);
+		int x2 = intDiv(newX,cellsPerPage);
+		int y2 = intDiv(newY,cellsPerPage);
+		int z2 = intDiv(newZ,cellsPerPage);
 		
 		GamePage* gp = getPageAtCoords(x2, y2, z2, false);
 		
-		int xr = newX - x2*visPageSizeInPixels;
-		int yr = newY - y2*visPageSizeInPixels;
-		int zr = newZ - z2*visPageSizeInPixels;
+		int xr = newX - x2*cellsPerPage;
+		int yr = newY - y2*cellsPerPage;
+		int zr = newZ - z2*cellsPerPage;
 		
-		int xl = xr/singleton->pixelsPerCell;
-		int yl = yr/singleton->pixelsPerCell;
-		int zl = zr/singleton->pixelsPerCell;
 		
 		if (gp == NULL) {
 			return E_CD_SOLID;
@@ -34371,7 +37275,7 @@ int GameWorld::getCellAtCoords (FIVector4 * coords)
 				return E_CD_EMPTY;
 			}
 			else {
-				return gp->cellData[zl*cellsPerPage*cellsPerPage + yl*cellsPerPage + xl];
+				return gp->cellData[zr*cellsPerPage*cellsPerPage + yr*cellsPerPage + xr];
 			}
 		}
 	}
@@ -34465,8 +37369,10 @@ void GameWorld::update ()
 		float z;
 		
 		
+		for(i = 0; i < visObjects.size(); i++) {
+			makeFall( &(gameObjects[visObjects[i]]) );
+		}
 		
-		makeFall(singleton->currentActor);
 
 		
 
@@ -34760,6 +37666,9 @@ bool GameWorld::procPages ()
 		int counter;
 		int i, j, k;
 		int res;
+		
+		int minLR;
+		int maxLR;
 
 
 		int ii;
@@ -34798,7 +37707,7 @@ bool GameWorld::procPages ()
 			camHolderPos.addXYZRef(&(singleton->lookAtVec),4.0);
 		}
 		else {
-			camHolderPos.copyFrom(singleton->currentActor->getVisMinInPixelsT());
+			camHolderPos.copyFrom(&(singleton->currentActor->centerPointInPixels));
 			camHolderPos.intDivXYZ(singleton->holderSizeInPixels);
 		}
 
@@ -34809,7 +37718,7 @@ bool GameWorld::procPages ()
 		
 		camBlockPos.intDivXYZ(singleton->blockSizeInPixels);
 
-
+		
 		GamePageHolder* curHolder;
 		GameBlock *curBlock;
 
@@ -34833,11 +37742,25 @@ bool GameWorld::procPages ()
 
 		ensureBlocks();
 		
+		camHolderPosOrig.copyFrom(&camHolderPos);
+		
+		if (loadStack.size() > 0) {
+			minLR = 1;
+			maxLR = 2;
+			
+			loadStack.pop_back();
+			
+		}
+		else {
+			minLR = 2;
+			maxLR = singleton->maxWInPages;
+		}
 		
 		
 		
-
-		for (curLoadRadius = 2; curLoadRadius < singleton->maxWInPages; curLoadRadius++) {
+		
+		
+		for (curLoadRadius = minLR; curLoadRadius < maxLR; curLoadRadius++) {
 			
 			mink = camHolderPos.getIZ() - curLoadRadius;
 			maxk = camHolderPos.getIZ() + curLoadRadius;
@@ -34870,13 +37793,26 @@ bool GameWorld::procPages ()
 							
 							if (curHolder->childrenDirty) {
 								
-								tempVal = curHolder->passiveRefresh();
+								tempVal = curHolder->passiveRefresh(&renderCount);
 								changeCount += tempVal;
+								
+								if (renderCount > 0) {
+									
+									tempVec1.setIXYZ(ii,jj,kk);
+									
+									if (
+										camHolderPosOrig.distance(&tempVec1) < singleton->maxHolderDis
+									) {
+										loadStack.push_back(curHolder);
+									}
+									
+									//cmade = true;
+									//goto DO_RETURN_PP;
+								}
 								
 								if (tempVal > 0) {
 									cmade = true;
 								}
-								
 							}
 							
 							if (changeCount >= maxChangesInHolders)
@@ -34890,6 +37826,12 @@ bool GameWorld::procPages ()
 			}
 			
 		}
+		
+		
+		
+		
+
+		
 		
 		
 		
@@ -35019,6 +37961,13 @@ void GameWorld::actionOnHolders (int action, bool instantRefresh, bool clearEver
 		
 		singleton->bindShader("BlitPointShader");
 		
+		
+		if (RT_TRANSFORM) {
+			singleton->setShaderfVec3("mousePos", &(singleton->mouseMovePD) );
+			singleton->setShaderFloat("curTime", singleton->curTime);
+		}
+		
+		
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec) );
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
 		singleton->setShaderFloat("holderSizeInPixels",singleton->holderSizeInPixels);
@@ -35107,7 +38056,8 @@ void GameWorld::actionOnHolders (int action, bool instantRefresh, bool clearEver
 										
 										if (
 											(
-												(tempVec.dot(&(singleton->lookAtVec)) > 0.5f) ||
+												// adjust this for wider fov; > 0.0f == 180 degrees
+												(tempVec.dot(&(singleton->lookAtVec)) > (1.0f - singleton->FOV/120.0f)) ||
 												(chunkDis < gp->holderSizeInPixels*2.0f)
 											) &&
 											(chunkDis < singleton->clipDist[1])
@@ -35757,18 +38707,44 @@ void GameWorld::drawAIPath (PathHolder * pathHolder, PathHolder * splitPathHolde
 		
 		
 	}
-void GameWorld::makeFall (GameEnt * ge)
+void GameWorld::makeFall (BaseObj * ge)
                                    {
+		
+		bool doProc = false;
+		
 		if (ge == NULL) {
 			return;
 		}
 		
-		ge->positionInCells.addXYZ(0,0,-1);
-		ge->updatePosFromCells();
-		
+		// make it float
 		int res = testHit(ge);
+		if (res == E_CD_SOLID) {
+			
+			if (lastHitObjUID == 0) {
+				doProc = true;
+			}
+			else {
+				doProc = (ge->uid > lastHitObjUID);
+			}
+			
+			if (doProc) {
+				ge->positionInCells.addXYZ(0,0,1);
+				ge->updateBounds();
+				ge->isFalling = true;
+			}
+			else {
+				ge->isFalling = false;
+			}
+		}
 		
-		if (res == E_CD_EMPTY) {
+		
+		//make it fall
+		ge->positionInCells.addXYZ(0,0,-1);
+		ge->updateBounds();
+		
+		res = testHit(ge);
+		
+		if ( (res == E_CD_EMPTY) || (res == E_CD_WATER) ) {
 			// let it fall
 			ge->isFalling = true;
 		}
@@ -35778,24 +38754,25 @@ void GameWorld::makeFall (GameEnt * ge)
 			ge->isFalling = false;
 			
 			ge->positionInCells.addXYZ(0,0,1);
-			ge->updatePosFromCells();
+			ge->updateBounds();
 		}
 	}
-void GameWorld::moveCell (GameEnt * ge, int x, int y, int z)
-                                                        {
+bool GameWorld::rotateCell (BaseObj * ge, int dir, int axis)
+          {
 		
 		if (ge == NULL) {
-			return;
+			return false;
 		}
 		
 		if (ge->isFalling) {
-			return;
+			return false;
 		}
 		
 		bool moveSuccessful = false;
+		bool moveSuc = false;
 		
-		ge->positionInCells.addXYZ(x,y,z);
-		ge->updatePosFromCells();
+		ge->rotate(dir,axis);
+		ge->updateBounds();
 		
 		int res = testHit(ge);
 		int res2 = E_CD_EMPTY;
@@ -35804,20 +38781,16 @@ void GameWorld::moveCell (GameEnt * ge, int x, int y, int z)
 		if (res == E_CD_SOLID) {
 			
 			ge->positionInCells.addXYZ(0,0,1);
-			ge->updatePosFromCells();
+			ge->updateBounds();
 			res2 = testHit(ge);
 			
 			if (res2 == E_CD_SOLID) {
-				ge->positionInCells.addXYZ(0,0,-1);
-				ge->positionInCells.addXYZ(-x,-y,-z);
-				ge->updatePosFromCells();
 				
-				singleton->playSoundPosAndPitch(
-					"bump0",
-					cameraPos,
-					ge->getVisMinInPixelsT(),
-					0.3f
-				);
+				ge->positionInCells.addXYZ(0,0,-1);
+				ge->rotate(1-dir,axis);
+				ge->updateBounds();
+				
+				singleton->playBump(ge);
 				
 			}
 			else {
@@ -35829,49 +38802,101 @@ void GameWorld::moveCell (GameEnt * ge, int x, int y, int z)
 			moveSuccessful = true;
 		}
 		
+		return moveSuccessful;
 		
-		if (moveSuccessful) {
-			if ((x == 0)&&(y == 0)) {
+	}
+bool GameWorld::moveCell (BaseObj * ge, int x, int y, int z)
+          {
+		
+		if (ge == NULL) {
+			return false;
+		}
+		
+		if (ge->isFalling) {
+			return false;
+		}
+		
+		bool moveSuccessful = false;
+		bool moveSuc = false;
+		
+		ge->positionInCells.addXYZ(x,y,z);
+		ge->updateBounds();
+		
+		int res = testHit(ge);
+		int res2 = E_CD_EMPTY;
+		int res3 = E_CD_EMPTY;
+		
+		if (res == E_CD_SOLID) {
+			
+			ge->positionInCells.addXYZ(0,0,1);
+			ge->updateBounds();
+			res2 = testHit(ge);
+			
+			if (res2 == E_CD_SOLID) {
+				
+				ge->positionInCells.addXYZ(0,0,-1);
+				ge->positionInCells.addXYZ(-x,-y,-z);
+				ge->updateBounds();
+				
+				if (lastHitObjUID != 0) {
+					moveSuc = moveCell(&(gameObjects[lastHitObjUID]),x,y,z);
+				}
+				
+				if (moveSuc == false) {
+					singleton->playBump(ge);
+				}
+				else {
+					moveSuccessful = moveCell(ge,x,y,z);
+				}
+				
+				
+				
+				
 				
 			}
 			else {
-				
+				moveSuccessful = true;
 			}
+			
 		}
-		
+		else {
+			moveSuccessful = true;
+		}
+				
+		return moveSuccessful;
 		
 	}
-void GameWorld::moveCellRotated (GameEnt * ge, int dirMod)
+void GameWorld::removeVisObject (int _uid)
+                                       {
+		int i;
+		
+		for (i = 0; i < visObjects.size(); i++) {
+			if (visObjects[i] == _uid) {
+				visObjects.erase(visObjects.begin() + i);
+				return;
+			}
+		}
+	}
+void GameWorld::moveCellRotated (BaseObj * ge, int dirMod)
                                                       {
 		
 		if (ge == NULL) {
 			return;
 		}
 		
-		//   1
-		// 2   0
-		//   3
+		int yOrient = ge->orientationXYZ.getIY();
 		
-		switch(ge->curRot) {
-			case 0:
-				moveCell(ge,dirMod,0,0);
-			break;
-			case 1:
-				moveCell(ge,0,dirMod,0);
-			break;
-			case 2:
-				moveCell(ge,-dirMod,0,0);
-			break;
-			case 3:
-				moveCell(ge,0,-dirMod,0);
-			break;
-		}
-		
+		moveCell(
+			ge,
+			DIR_VECS[yOrient][0]*dirMod,
+			DIR_VECS[yOrient][1]*dirMod,
+			DIR_VECS[yOrient][2]*dirMod
+		);
 		
 	}
-int GameWorld::testHit (GameEnt * ge)
+int GameWorld::testHit (BaseObj * ge)
                                  {
-		
+		lastHitObjUID = 0;
 		if (ge == NULL) {
 			return E_CD_EMPTY;
 		}
@@ -35884,30 +38909,49 @@ int GameWorld::testHit (GameEnt * ge)
 		
 		int tempVal = E_CD_EMPTY;
 		
-		xmin = ge->getVisMinInPixelsT()->getIX()/ppCell;
-		ymin = ge->getVisMinInPixelsT()->getIY()/ppCell;
-		zmin = ge->getVisMinInPixelsT()->getIZ()/ppCell;
+		bool hitObj = false;
 		
-		xmax = ge->getVisMaxInPixelsT()->getIX()/ppCell;
-		ymax = ge->getVisMaxInPixelsT()->getIY()/ppCell;
-		zmax = ge->getVisMaxInPixelsT()->getIZ()/ppCell;
+		BaseObj* testObj;
+		
+		for(i = 0; i < visObjects.size(); i++) {
+			
+			if (visObjects[i] == ge->uid) {
+				// do not test hit against self
+			}
+			else {
+				
+				testObj = &(gameObjects[visObjects[i]]);
+				
+				hitObj = FIVector4::intersectInt(
+					&(testObj->boundsMinTransInCells),
+					&(testObj->boundsMaxTransInCells),
+					&(ge->boundsMinTransInCells),
+					&(ge->boundsMaxTransInCells)
+				);
+				
+				if (hitObj) {
+					lastHitObjUID = testObj->uid;
+					return E_CD_SOLID;
+				}
+					
+			}
+		}
+		
+		
+		
+		xmin = ge->boundsMinTransInCells.getIX();
+		ymin = ge->boundsMinTransInCells.getIY();
+		zmin = ge->boundsMinTransInCells.getIZ();
+		
+		xmax = ge->boundsMaxTransInCells.getIX();
+		ymax = ge->boundsMaxTransInCells.getIY();
+		zmax = ge->boundsMaxTransInCells.getIZ();
 		
 		for (k = zmin; k < zmax; k++) {
 			for (j = ymin; j < ymax; j++) {
 				for (i = xmin; i < xmax; i++) {
 					
-					tempVec1.setIXYZ(i,j,k);
-					tempVec1.multXYZ(singleton->pixelsPerCell);
-					tempVec2.copyFrom(&tempVec1);
-					tempVec2.addXYZ(singleton->pixelsPerCell);
-					
-					tempVec3.copyFrom(&tempVec1);
-					tempVec3.addXYZRef(&tempVec2);
-					tempVec3.multXYZ(0.5f);
-					//tempVec3.addXYZ(0.0f,0.0f,singleton->pixelsPerCell);
-					
-					cellVal = getCellAtCoords(&tempVec3);
-					
+					cellVal = getCellAtCoords(i,j,k);
 					
 					if (cellVal == E_CD_SOLID) {
 						return cellVal;
@@ -35932,17 +38976,29 @@ void GameWorld::renderGeom ()
 		int j;
 		int k;
 		int n;
+		
+		float frameMod;
+		int objCount = 0;
+		
+		int curOr;
 		bool doProc;
 		int cellVal;
 		int xmax,ymax,zmax;
 		int xmin,ymin,zmin;
 		
+		CharStruct* tempCS;
+		
+		BaseObj* curObj;
+		
 		bool showHit = false;
-		
-		
-		
 		float dirVecLength = 4.0f*singleton->pixelsPerCell;
 		
+		float x1 = 0.0f;
+		float x2 = 0.0f;
+		float y1 = 0.0f;
+		float y2 = 0.0f;
+		float iw = singleton->fontWrappers[EFW_ICONS]->fontImage->width;
+		float ih = singleton->fontWrappers[EFW_ICONS]->fontImage->height;
 
 
 		singleton->bindShader("GeomShader");
@@ -35952,148 +39008,193 @@ void GameWorld::renderGeom ()
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
 		singleton->setShaderfVec3("offsetPos",&(singleton->origin));
 		
-		if (MAX_LAYERS == 2) {
-			
-		}
-		else {
-			
-		}
-		
 		singleton->bindFBO("geomTargFBO");
 		
+		
+		glLineWidth(4.0f);
+		// for (n = 0; n < gameActors.size(); n++) {
+			
+			
+		// 	if (singleton->orgOn) {
+				
+		// 	}
+		// 	else {
+		// 		if (showHit) {
+		// 			xmin = gameActors[n].getVisMinInPixelsT()->getIX()/ppCell;
+		// 			ymin = gameActors[n].getVisMinInPixelsT()->getIY()/ppCell;
+		// 			zmin = gameActors[n].getVisMinInPixelsT()->getIZ()/ppCell;
+					
+		// 			xmax = gameActors[n].getVisMaxInPixelsT()->getIX()/ppCell;
+		// 			ymax = gameActors[n].getVisMaxInPixelsT()->getIY()/ppCell;
+		// 			zmax = gameActors[n].getVisMaxInPixelsT()->getIZ()/ppCell;
+					
+		// 			for (k = zmin; k < zmax; k++) {
+		// 				for (j = ymin; j < ymax; j++) {
+		// 					for (i = xmin; i < xmax; i++) {
+								
+		// 						tempVec1.setIXYZ(i,j,k);
+		// 						tempVec1.multXYZ(singleton->pixelsPerCell);
+		// 						tempVec2.copyFrom(&tempVec1);
+		// 						tempVec2.addXYZ(singleton->pixelsPerCell);
+								
+		// 						tempVec3.copyFrom(&tempVec1);
+		// 						tempVec3.addXYZRef(&tempVec2);
+		// 						tempVec3.multXYZ(0.5f);
+		// 						//tempVec3.addXYZ(0.0f,0.0f,singleton->pixelsPerCell);
+								
+		// 						cellVal = getCellAtCoords(&tempVec3);
+								
+								
+								
+		// 						switch(cellVal) {
+		// 							case E_CD_EMPTY:
+		// 								singleton->setShaderVec3("matVal", 0, 255, 0);
+		// 							break;
+		// 							case E_CD_SOLID:
+		// 								singleton->setShaderVec3("matVal", 255, 0, 0);
+		// 							break;
+		// 							case E_CD_WATER:
+		// 								singleton->setShaderVec3("matVal", 0, 0, 255);
+		// 							break;
+									
+		// 						}
+								
+								
+								
+		// 						singleton->drawBox(
+		// 							&tempVec1,
+		// 							&tempVec2
+		// 						);
+		// 					}	
+		// 				}
+		// 			}
+					
+		// 		}
+		// 		else {
+		// 			singleton->setShaderVec3("matVal", 0, 0, 255);
+		// 			singleton->drawBox(
+		// 				gameActors[n].getVisMinInPixelsT(),
+		// 				gameActors[n].getVisMaxInPixelsT()
+		// 			);
+		// 		}
+		// 	}
+			
+			
+			
+		// 	tempVec1.setFXYZRef(gameActors[n].getVisMinInPixelsT());
+		// 	tempVec1.addXYZRef(gameActors[n].getVisMaxInPixelsT());
+		// 	tempVec1.multXYZ(0.5f);
+		// 	tempVec2.copyFrom(&tempVec1);
+			
+		// 	switch(gameActors[n].curRot) {
+		// 		case 0:
+		// 			tempVec2.addXYZ(dirVecLength,0,0);
+		// 			singleton->targetLookAtVec.setFXYZ(1,0,0);
+		// 		break;
+		// 		case 1:
+		// 			tempVec2.addXYZ(0,dirVecLength,0);
+		// 			singleton->targetLookAtVec.setFXYZ(0,1,0);
+		// 		break;
+		// 		case 2:
+		// 			tempVec2.addXYZ(-dirVecLength,0,0);
+		// 			singleton->targetLookAtVec.setFXYZ(-1,0,0);
+		// 		break;
+		// 		case 3:
+		// 			tempVec2.addXYZ(0,-dirVecLength,0);
+		// 			singleton->targetLookAtVec.setFXYZ(0,-1,0);
+		// 		break;
+		// 	}
+			
+		// 	if (singleton->orgOn) {
+				
+		// 	}
+		// 	else {
+		// 		singleton->setShaderVec3("matVal", 255, 255, 255);
+		// 		singleton->drawLine(&tempVec1,&tempVec2);
+		// 	}
+			
+			
+		// }
+		
+		singleton->setShaderVec3("matVal", 30, 30, 30);
+		
+		for(i = 0; i < visObjects.size(); i++) {
+			
+			curObj = &(gameObjects[visObjects[i]]);
+			
+			objCount++;
+			
+							
+			singleton->setShaderFloat("objectId",visObjects[i]);
+			
+			
+			tempVec1.copyFrom( &(curObj->boundsMinTransInCells) );
+			tempVec2.copyFrom( &(curObj->boundsMaxTransInCells) );
+			
+			tempVec1.multXYZ(singleton->pixelsPerCell);
+			tempVec2.multXYZ(singleton->pixelsPerCell);
+			
+			singleton->drawBox(
+				&tempVec1,
+				&tempVec2
+			);
+			
+			
+			if (visObjects[i] == singleton->bestObjInd) {
+				
+				singleton->setShaderFloat("objectId",0);
+				
+				tempVec1.copyFrom( &(curObj->centerPointInPixels) );
+				
+				curOr = curObj->orientationXYZ.getIX();
+				tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
+				tempVec2.multXYZ(singleton->pixelsPerCell*4.0f);
+				tempVec2.addXYZRef(&tempVec1);
+				singleton->setShaderVec3("matVal", 255, 0, 0);
+				singleton->drawLine(&tempVec1,&tempVec2);
+				
+				curOr = curObj->orientationXYZ.getIY();
+				tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
+				tempVec2.multXYZ(singleton->pixelsPerCell*4.0f);
+				tempVec2.addXYZRef(&tempVec1);
+				singleton->setShaderVec3("matVal", 0, 255, 0);
+				singleton->drawLine(&tempVec1,&tempVec2);
+				
+				curOr = curObj->orientationXYZ.getIZ();
+				tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
+				tempVec2.multXYZ(singleton->pixelsPerCell*4.0f);
+				tempVec2.addXYZRef(&tempVec1);
+				singleton->setShaderVec3("matVal", 0, 0, 255);
+				singleton->drawLine(&tempVec1,&tempVec2);
+				
+				
+				singleton->setShaderVec3("matVal", 30, 30, 30);
+				
+			}
+							
+						
+			
+			
+			
+			
+		}
+		
+		singleton->setShaderFloat("objectId",0.0);
+		glLineWidth(0);
+
+		//cout << "objectCount " << objCount << "\n";
+		singleton->lastObjectCount = objCount;		
 
 		switch (singleton->mouseState)
 		{
 
 		case E_MOUSE_STATE_MOVE:
 
-
-			
-			singleton->setShaderFloat("isWire", 0.0);
-			
-			glLineWidth(4.0f);
-			for (n = 0; n < gameActors.size(); n++) {
-				
-				
-				if (singleton->orgOn) {
-					
-				}
-				else {
-					if (showHit) {
-						xmin = gameActors[n].getVisMinInPixelsT()->getIX()/ppCell;
-						ymin = gameActors[n].getVisMinInPixelsT()->getIY()/ppCell;
-						zmin = gameActors[n].getVisMinInPixelsT()->getIZ()/ppCell;
-						
-						xmax = gameActors[n].getVisMaxInPixelsT()->getIX()/ppCell;
-						ymax = gameActors[n].getVisMaxInPixelsT()->getIY()/ppCell;
-						zmax = gameActors[n].getVisMaxInPixelsT()->getIZ()/ppCell;
-						
-						for (k = zmin; k < zmax; k++) {
-							for (j = ymin; j < ymax; j++) {
-								for (i = xmin; i < xmax; i++) {
-									
-									tempVec1.setIXYZ(i,j,k);
-									tempVec1.multXYZ(singleton->pixelsPerCell);
-									tempVec2.copyFrom(&tempVec1);
-									tempVec2.addXYZ(singleton->pixelsPerCell);
-									
-									tempVec3.copyFrom(&tempVec1);
-									tempVec3.addXYZRef(&tempVec2);
-									tempVec3.multXYZ(0.5f);
-									//tempVec3.addXYZ(0.0f,0.0f,singleton->pixelsPerCell);
-									
-									cellVal = getCellAtCoords(&tempVec3);
-									
-									
-									
-									switch(cellVal) {
-										case E_CD_EMPTY:
-											singleton->setShaderVec3("matVal", 0, 255, 0);
-										break;
-										case E_CD_SOLID:
-											singleton->setShaderVec3("matVal", 255, 0, 0);
-										break;
-										case E_CD_WATER:
-											singleton->setShaderVec3("matVal", 0, 0, 255);
-										break;
-										
-									}
-									
-									
-									
-									singleton->drawBox(
-										&tempVec1,
-										&tempVec2
-									);
-								}	
-							}
-						}
-						
-					}
-					else {
-						singleton->setShaderVec3("matVal", 0, 0, 255);
-						singleton->drawBox(
-							gameActors[n].getVisMinInPixelsT(),
-							gameActors[n].getVisMaxInPixelsT()
-						);
-					}
-				}
-				
-				
-				
-				tempVec1.setFXYZRef(gameActors[n].getVisMinInPixelsT());
-				tempVec1.addXYZRef(gameActors[n].getVisMaxInPixelsT());
-				tempVec1.multXYZ(0.5f);
-				tempVec2.copyFrom(&tempVec1);
-				
-				switch(gameActors[n].curRot) {
-					case 0:
-						tempVec2.addXYZ(dirVecLength,0,0);
-						singleton->targetLookAtVec.setFXYZ(1,0,0);
-					break;
-					case 1:
-						tempVec2.addXYZ(0,dirVecLength,0);
-						singleton->targetLookAtVec.setFXYZ(0,1,0);
-					break;
-					case 2:
-						tempVec2.addXYZ(-dirVecLength,0,0);
-						singleton->targetLookAtVec.setFXYZ(-1,0,0);
-					break;
-					case 3:
-						tempVec2.addXYZ(0,-dirVecLength,0);
-						singleton->targetLookAtVec.setFXYZ(0,-1,0);
-					break;
-				}
-				
-				if (singleton->orgOn) {
-					
-				}
-				else {
-					singleton->setShaderVec3("matVal", 255, 255, 255);
-					singleton->drawLine(&tempVec1,&tempVec2);
-				}
-				
-				
-				
-				
-				
-			}
-			
-			glLineWidth(0);
-
-			if (singleton->markerFound) {
-				
-				
-				
-				
-				// singleton->setShaderFloat("isWire", 0.0);
-				// singleton->drawBox(&lastCellPos,&tempVec);
-				
-			}
 		
 			break;
 		
 		case E_MOUSE_STATE_BRUSH:
+			
 			
 			singleton->setShaderVec3("matVal", 255, 0, 0);
 			singleton->setShaderFloat("isWire", 1.0);
@@ -36153,7 +39254,10 @@ void GameWorld::renderGeom ()
 			drawAIPath( &(singleton->charPathHolder), &(singleton->splitPathHolder) );
 		}
 		
-		if (singleton->bCtrl) {
+		if (
+			(singleton->bCtrl) &&
+			(!(singleton->anyMenuVisible()))	
+		) {
 			for (i = 1; i < singleton->dynObjects.size(); i++) {
 				if (singleton->dynObjects[i]->doRender)
 				{
@@ -36225,10 +39329,74 @@ void GameWorld::renderGeom ()
 		// }
 
 		
-
-
+		
 		singleton->unbindFBO();
 		singleton->unbindShader();
+
+
+
+
+
+
+
+		//////////////////////////////
+		
+		//glDisable(GL_DEPTH_TEST);
+		
+		singleton->bindShader("BillboardShader");
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
+		singleton->setShaderFloat("holderSizeInPixels",singleton->holderSizeInPixels);
+		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
+		singleton->setShaderfVec3("cameraPos", cameraPos);
+		singleton->setShaderTexture(0,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
+		singleton->bindFBO("geomTargFBO", -1, 0);
+		
+		glBegin(GL_POINTS);
+		for(i = 0; i < visObjects.size(); i++) {
+			
+			curObj = &(gameObjects[visObjects[i]]);
+			
+			tempCS = &(singleton->fontWrappers[EFW_ICONS]->charVals[
+				singleton->entIdToIcon[curObj->objectType] 
+			]);
+			frameMod = 0;
+			if (curObj->maxFrames != 0) {
+				frameMod = ((singleton->currentTick/10)%(curObj->maxFrames))*16.0f;
+			}
+			
+			
+			x1 = (tempCS->sampX + frameMod )/iw;
+			x2 = (tempCS->sampX + tempCS->sampW + frameMod)/iw;
+			y1 = 1.0f-(tempCS->sampY)/ih;
+			y2 = 1.0f-(tempCS->sampY+tempCS->sampH)/ih;
+			
+			glMultiTexCoord4f(GL_TEXTURE0, visObjects[i], -1.0f, 1.0f, 1.0f);
+			glMultiTexCoord4f(GL_TEXTURE1, x1,y1,x2,y2);
+			glVertex3f(
+				curObj->centerPointInPixels[0],
+				curObj->centerPointInPixels[1],
+				curObj->centerPointInPixels[2]
+			);
+							
+							
+							
+											
+							
+						
+			
+		}
+		glEnd();
+		
+		singleton->setShaderTexture(0,0);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		
+		//////////////////////////////
+
+
+
+
 
 
 	}
@@ -36474,13 +39642,21 @@ void GameWorld::modifyUnit (FIVector4 * fPixelWorldCoordsBase, E_BRUSH brushActi
 																	if (brushAction == E_BRUSH_SUB) {
 																		if (isInside)
 																		{
-																			linA = 0;
-																			//linB = 255;
 																			
-																			linB += 80;
-																			if (linB > 255) {
-																				linB = 255;
-																			}
+																			//uncomment just this
+																			// linA = 0;
+																			// //linB = 255;
+																			// linB += 80;
+																			// if (linB > 255) {
+																			// 	linB = 255;
+																			// }
+																			
+																			
+																			
+																			
+																			
+																			
+																			
 																			
 																			// (tex2.b > 0.5)
 																			// 1.0 = nothing
@@ -36966,7 +40142,7 @@ void GameWorld::initMap ()
 
 		singleton->bindShader("Simplex2D");
 		singleton->bindFBO("simplexFBO");
-		singleton->setShaderFloat("curTime", fGenRand() * 100.0f); //singleton->curTime);
+		singleton->setShaderFloat("curTime", fGenRand() * 100.0f);
 		singleton->drawFSQuad();
 		singleton->unbindFBO();
 		singleton->unbindShader();
@@ -38651,8 +41827,8 @@ void GameWorld::postProcess ()
 			singleton->sampleFBO("noiseFBO", 6);
 			singleton->sampleFBO("waveFBO", 7);
 			singleton->setShaderTexture3D(8,singleton->volIdMat);
-			//singleton->sampleFBO("palFBO", 8);
 			singleton->sampleFBO("prelightFBO", 9);
+			singleton->sampleFBO("geomTargFBO", 11);
 			
 			singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
 			singleton->setShaderFloat("pixelsPerCell", singleton->pixelsPerCell);
@@ -38664,8 +41840,9 @@ void GameWorld::postProcess ()
 			singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
 			singleton->drawFSQuad();
 			
+			
+			singleton->unsampleFBO("geomTargFBO", 11);
 			singleton->unsampleFBO("prelightFBO", 9);
-			//singleton->unsampleFBO("palFBO", 8);
 			singleton->setShaderTexture3D(8,0);
 			singleton->unsampleFBO("waveFBO", 7);
 			singleton->unsampleFBO("noiseFBO", 6);
@@ -38754,7 +41931,10 @@ void GameWorld::postProcess ()
 			singleton->sampleFBO("swapFBOBLin0", 3);
 			singleton->sampleFBO("geomTargFBO", 4);
 			singleton->setShaderTexture3D(6,singleton->volIdMat);
+			singleton->sampleFBO("waveFBO", 7);
 			
+			singleton->setShaderFloat("curTime", singleton->curTime);
+			singleton->setShaderFloat("bestObjInd",singleton->bestObjInd);
 			singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
 			singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
@@ -38765,7 +41945,7 @@ void GameWorld::postProcess ()
 
 			singleton->drawFSQuad();
 
-			
+			singleton->unsampleFBO("waveFBO", 7);
 			singleton->setShaderTexture3D(6,0);
 			singleton->unsampleFBO("geomTargFBO", 4);
 			singleton->unsampleFBO("swapFBOBLin0", 3);

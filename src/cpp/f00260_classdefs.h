@@ -9,6 +9,7 @@ class GameMusic;
 class FontWrapper;
 class UIComponent;
 class GameGUI;
+class GameAI;
 class GameOrgNode;
 class GameOrg;
 class GamePlantNode;

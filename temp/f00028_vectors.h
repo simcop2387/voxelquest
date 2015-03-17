@@ -279,7 +279,14 @@ public:
 		multXYZ(val);
 	}
 
-
+	void setFloatArr(float* vals) {
+		fv4.x = vals[0];
+		fv4.y = vals[1];
+		fv4.z = vals[2];
+		iv4.x = fv4.x;
+		iv4.y = fv4.y;
+		iv4.z = fv4.z;
+	}
 
 	void setFXYZW(float x, float y, float z, float w) {
 		fv4.x = x;
@@ -334,6 +341,20 @@ public:
 	
 	
 	
+	
+	void fixForRot() {
+		iv4.x = -iv4.x;
+		iv4.y = -iv4.y;
+		iv4.z = -iv4.z;
+		
+		iv4.x = max(iv4.x, 0);
+		iv4.y = max(iv4.y, 0);
+		iv4.z = max(iv4.z, 0);
+		
+		fv4.x = (float)iv4.x;
+		fv4.y = (float)iv4.y;
+		fv4.z = (float)iv4.z;
+	}
 	
 	void setRand(FIVector4 *seedPos) {
 
@@ -652,6 +673,23 @@ public:
 			minBounds->setFZ(temp);
 		}
 	}
+
+
+	
+	static bool intersectInt(FIVector4 *aMin, FIVector4 *aMax, FIVector4 *bMin, FIVector4 *bMax) {
+		
+		if (aMax->getFX() <= bMin->getFX()) return false;
+		if (aMin->getFX() >= bMax->getFX()) return false;
+		if (aMax->getFY() <= bMin->getFY()) return false;
+		if (aMin->getFY() >= bMax->getFY()) return false;
+		if (aMax->getFZ() <= bMin->getFZ()) return false;
+		if (aMin->getFZ() >= bMax->getFZ()) return false;
+		
+		return true;
+		
+	}
+	
+	
 
 	static bool intersect(FIVector4 *aMin, FIVector4 *aMax, FIVector4 *bMin, FIVector4 *bMax) {
 
@@ -1068,7 +1106,6 @@ struct RotationInfo {
 	float rotMatrix[16];
 	FIVector4 basePoint;
 	FIVector4 axisAngle;
-		
 };
 
 
@@ -1104,6 +1141,41 @@ public:
 	FIVector4 tempRes1;
 	FIVector4 tempRes2;
 	FIVector4 tempRes3;
+
+	void doRotationOr(FIVector4 *output, FIVector4 *input, int orientationOffset)
+	{
+		int i;
+		int j;
+		int k;
+
+		outputMatrix[0] = 0.0f;
+		outputMatrix[1] = 0.0f;
+		outputMatrix[2] = 0.0f;
+		outputMatrix[3] = 0.0f;
+
+		inputMatrix[0] = input->getFX();
+		inputMatrix[1] = input->getFY();
+		inputMatrix[2] = input->getFZ();
+		inputMatrix[3] = 1.0;
+
+
+		for (i = 0; i < 4; i++ ) {
+			for (j = 0; j < 1; j++) {
+				outputMatrix[i] = 0;
+				for (k = 0; k < 4; k++) {
+					outputMatrix[i] += ALL_ROT[orientationOffset+i*4+k] * inputMatrix[k];
+				}
+			}
+		}
+
+		output->setFXYZW(
+			outputMatrix[0],
+			outputMatrix[1],
+			outputMatrix[2],
+			outputMatrix[3]
+		);
+
+	}
 
 	void doRotation(FIVector4 *output, FIVector4 *input, FIVector4 *axis, float angle)
 	{
@@ -1289,8 +1361,7 @@ public:
 		FIVector4 *axisAngle,
 		FIVector4 *parentOffset,
 		FIVector4 *baseOffset
-	)
-	{
+	) {
 		int i;
 		int j;
 		int k;
@@ -1373,12 +1444,188 @@ public:
 };
 AxisRotation axisRotationInstance;
 
+typedef int BaseObjType;
 
+class BaseObj
+{
+public:
+	
+	//   1
+	// 2   0
+	//   3
+	// int rotDir;
+	// int minRot;
+	// int maxRot;
+	// int curRot;
+	
+	int objectType;
+	int maxFrames;
+	
+	BaseObjType uid;
+	BaseObjType parentUID;
+	//map<BaseObjType, bool> containsUID;
+	vector<BaseObjType> children;
+	
+	bool isFalling;
+	bool isOpen;
+	bool isEquipped;
+	
+	float pixelsPerCell;
+	
+	FIVector4 positionInCells;
+	FIVector4 diameterInCells;
+	
+	FIVector4 diameterInCellsRotated;
+	FIVector4 boundsMinTransInCells;
+	FIVector4 boundsMaxTransInCells;
+	
+	FIVector4 centerPointInPixels;
+	
+	FIVector4 tempVec;
+	
+	//0, 2, 4 - default
+	
+	//x+,x-,y+,y-,z+,z-
+	FIVector4 orientationXYZ;
+	
+	BaseObj() {
+		
+	}
+	
+	void removeChild(int _uid) {
+		int i;
+		
+		for (i = 0; i < children.size(); i++) {
+			if (children[i] == _uid) {
+				children.erase(children.begin() + i);
+				return;
+			}
+		}
+	}
+	
+	
+	
+	void updateOrientation(int ox, int oy, int oz) {
+		
+		int orOffset = (oz*NUM_ORIENTATIONS*NUM_ORIENTATIONS + oy*NUM_ORIENTATIONS + ox)*16;
+		
+		orientationXYZ.setIXYZW(
+			ox,
+			oy,
+			oz,
+			orOffset
+		);
+		
+		axisRotationInstance.doRotationOr(
+			&diameterInCellsRotated,
+			&diameterInCells,
+			orOffset
+		);
+	}
+	
+	void updateBounds() {
+		boundsMinTransInCells.copyFrom(&positionInCells);
+		boundsMaxTransInCells.copyFrom(&positionInCells);
+		boundsMaxTransInCells.addXYZRef(&diameterInCellsRotated);
+		
+		tempVec.copyFrom(&diameterInCellsRotated);
+		tempVec.fixForRot();
+		boundsMinTransInCells.addXYZRef(&tempVec);
+		boundsMaxTransInCells.addXYZRef(&tempVec);
+		
+		FIVector4::normalizeBounds(&boundsMinTransInCells,&boundsMaxTransInCells);
+		
+		centerPointInPixels.copyFrom(&boundsMinTransInCells);
+		centerPointInPixels.addXYZRef(&boundsMaxTransInCells);
+		centerPointInPixels.multXYZ(0.5f*pixelsPerCell);
+		
+	}
+	
+	void rotate(
+		int mod, // 0:+, 1:-
+		int axis // 0:x, 1:y, 2:z
+	) {
+		
+		int offset = (axis*2+mod)*6;
+		
+		updateOrientation(
+			ROT_MAP[orientationXYZ.getIX()+offset],
+			ROT_MAP[orientationXYZ.getIY()+offset],
+			ROT_MAP[orientationXYZ.getIZ()+offset]
+		);
+	}
+	
+	
+	void init(
+		BaseObjType _uid,
+		BaseObjType _parentUID,
+		int _objectType,
+		float _pixelsPerCell,
+		FIVector4* cellPos,
+		int xs,
+		int ys,
+		int zs,
+		int ox = 0,
+		int oy = 2,
+		int oz = 4
+	) {
+		maxFrames = 0;
+		objectType = _objectType;
+		isFalling = false;
+		isOpen = false;
+		isEquipped = false;
+		parentUID = _parentUID;
+		uid = _uid;
+		pixelsPerCell = _pixelsPerCell;
+		positionInCells.copyFrom(cellPos);
+		diameterInCells.setIXYZ(xs,ys,zs);
+		updateOrientation(ox,oy,oz);
+		updateBounds();
+	}
+	
+};
 
+typedef map<BaseObjType, BaseObj>::iterator itBaseObj;
 
+class ObjDef {
+public:
+	
+	string classId;
+	
+	ObjDef() {
+		
+	}
+	
+};
 
+class VNode {
+public:
+	
+	int tokenIndex;
+	int ruleNumber;
+	std::vector<VNode*> children;
+	
+	VNode(int _tokenIndex) {
+		tokenIndex = _tokenIndex;
+	}
+	
+	~VNode() {
+		int i;
+		
+		for (i = 0; i < children.size(); i++) {
+			delete children[i];
+		}
+		children.clear();
+	}
+	
+};
 
-
+struct AssignStruct {
+	VNode* lastAssign;
+	VNode* newAssign;
+	int tokenIndex;
+	int genIndex;
+};
 
 
 

@@ -7,21 +7,20 @@
 
 int RUN_COUNT;
 
-const static int DEF_SCALE_FACTOR = 2;
+const static int DEF_SCALE_FACTOR = 1;
 const static int MAX_LAYERS = 2;
 const static int MAX_MIP_LEV = 1; // min of 1
 
-
+const static bool DO_POINTS = true;
 
 
 const static int MAX_KEYS = 256;
 
-const static int DEF_WIN_W = 1920;
-const static int DEF_WIN_H = 1080;
-
+const static int DEF_WIN_W = 720;
+const static int DEF_WIN_H = 720;
 
 const static int MAX_LIGHTS = 24;
-const static int MAX_EVAL_LIGHTS = 1024;
+const static int MAX_EVAL_LIGHTS = 128;
 const static int FLOATS_PER_LIGHT = 12;
 
 
@@ -32,6 +31,10 @@ const static float UI_SCALE_FACTOR = 1.0f;
 const static int MAX_PLANT_GEN = 16;
 
 const static int MAX_TER_TEX = 9;
+
+const static bool RT_TRANSFORM = false;
+
+
 
 const static int MAX_NODE_DIRS = 6;
 const static int MAX_NODE_VALS = 4;
@@ -44,12 +47,119 @@ const static int MAX_BLOCK_STACK = 10;
 const static int MAX_UI_LAYERS = 4;
 
 // solid, water, air
+const static float CUBE_POINTS[42] = {
+		0,0,0,
+		1,0,1,
+		0,0,1,
+		0,1,1,
+		0,1,0,
+		1,1,0,
+		1,0,0,
+		
+		
+		1,1,1,
+		1,0,0,
+		1,1,0,
+		0,1,0,
+		0,1,1,
+		0,0,1,
+		1,0,1
+		
+		
+		
+};
+
+
+// solid, water, air
 const static bool PROC_MATRIX[3][3] = {
 		{false, true, true},
 		{false, false, true},
 		{false, false, false}
 };
 
+bool TEMP_DEBUG;
+
+const static int MAX_OBJ_TYPES = 1673;
+const static int ITEMS_PER_ROW = 36;
+const static int EMPTY_OBJECT_TYPE = 1672;
+const static int EMPTY_OBJECT_ID = 1;
+
+enum E_DIR_SPECS_SIGN {
+	E_DIR_XP,
+	E_DIR_XM,
+	E_DIR_YP,
+	E_DIR_YM,
+	E_DIR_ZP,
+	E_DIR_ZM,
+	E_DIR_MP_LENGTH
+};
+const static int NUM_ORIENTATIONS = 6;
+const static float DIR_VECS[NUM_ORIENTATIONS][3] = {
+	{1.0f, 0.0f, 0.0f},
+	{-1.0f, 0.0f, 0.0f},
+	{0.0f, 1.0f, 0.0f},
+	{0.0f, -1.0f, 0.0f},
+	{0.0f, 0.0f, 1.0f},
+	{0.0f, 0.0f, -1.0f}
+};
+float ALL_ROT[16*NUM_ORIENTATIONS*NUM_ORIENTATIONS*NUM_ORIENTATIONS];
+const static int ROT_MAP[36] = {
+	
+	// x, inc theta
+	//-------------
+	E_DIR_XP,// x+ -> x+
+	E_DIR_XM,// x- -> x-
+	E_DIR_ZP,// y+ -> z+
+	E_DIR_ZM,// y- -> z-
+	E_DIR_YM,// z+ -> y-
+	E_DIR_YP,// z- -> y+
+	
+	// x, dec theta
+	//-------------
+	E_DIR_XP,// x+ -> x+
+	E_DIR_XM,// x- -> x-
+	E_DIR_ZM,// y+ -> z-
+	E_DIR_ZP,// y- -> z+
+	E_DIR_YP,// z+ -> y+
+	E_DIR_YM,// z- -> y-
+	
+	// y, inc theta
+	//-------------
+	E_DIR_ZP,// x+ -> z+
+	E_DIR_ZM,// x- -> z-
+	E_DIR_YP,// y+ -> y+
+	E_DIR_YM,// y- -> y-
+	E_DIR_XM,// z+ -> x-
+	E_DIR_XP,// z- -> x+
+	
+	// y, dec theta
+	//-------------
+	E_DIR_ZM,// x+ -> z-
+	E_DIR_ZP,// x- -> z+
+	E_DIR_YP,// y+ -> y+
+	E_DIR_YM,// y- -> y-
+	E_DIR_XP,// z+ -> x+
+	E_DIR_XM,// z- -> x-
+	
+	// z, inc theta
+	//-------------
+	E_DIR_YP,// x+ -> y+
+	E_DIR_YM,// x- -> y-
+	E_DIR_XM,// y+ -> x-
+	E_DIR_XP,// y- -> x+
+	E_DIR_ZP,// z+ -> z+
+	E_DIR_ZM,// z- -> z-
+	
+	// z, dec theta
+	//-------------
+	E_DIR_YM,// x+ -> y-
+	E_DIR_YP,// x- -> y+
+	E_DIR_XP,// y+ -> x+
+	E_DIR_XM,// y- -> x-
+	E_DIR_ZP,// z+ -> z+
+	E_DIR_ZM// z- -> z-
+	
+};
 
 int totalPointCount;
 

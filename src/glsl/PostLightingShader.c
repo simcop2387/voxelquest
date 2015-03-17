@@ -54,6 +54,14 @@ float maxRad[2] = float[](
 	32.0,
 	255.0
 );
+vec2 dirModXY[4] = vec2[](
+	
+	vec2(1.0, 0.0),
+	vec2(-1.0, 1.0),
+	vec2(0.0, 1.0),
+	vec2(0.0, -1.0)
+);
+
 
 varying vec2 TexCoord0;
 
@@ -139,51 +147,6 @@ vec3 getFogColor(vec2 lv)
 		),
 		timeOfDay
 	);
-	
-	// float lvBase = (lv-0.5)*0.65 + 0.5;
-	
-	// float newlv = clamp( 1.0 - pow( (lvBase - 0.5) * 2.0, 2.0 ), 0.0, 1.0);
-	// float newlv2 = clamp( 1.0 - pow( (lvBase - 0.5) * 4.0 - 1.0, 2.0 ), 0.0, 1.0);
-
-	// vec3 fogColor1 = vec3(0.0);
-	// vec3 fogColor2 = vec3(0.0);
-
-	// // 0: moon is high, 1: sun is high
-
-	// float timeLerp = 0.0;
-
-	// if (timeOfDay < 0.5)
-	// {
-	// 	timeLerp = timeOfDay * 2.0;
-
-	// 	fogColor1 = mix(
-	// 								vec3(0.0, 0.0, 0.05),
-	// 								vec3(0.3, 0.1, 0.05),
-	// 								timeLerp
-	// 							);
-	// 	fogColor2 = mix(
-	// 								vec3(0.025, 0.0, 0.1),
-	// 								vec3(1.0, 0.8, 0.7),
-	// 								timeLerp
-	// 							);
-	// }
-	// else
-	// {
-	// 	timeLerp = (timeOfDay - 0.5) * 2.0;
-
-	// 	fogColor1 = mix(
-	// 								vec3(0.3, 0.1, 0.05),
-	// 								vec3(0.05, 0.1, 0.3),
-	// 								timeLerp
-	// 							);
-	// 	fogColor2 = mix(
-	// 								vec3(1.0, 0.8, 0.7),
-	// 								vec3(0.7, 0.8, 1.0),
-	// 								timeLerp
-	// 							);
-	// }
-
-	// return mix(fogColor1, fogColor2, newlv ) + pow(newlv2, 4.0) * timeLerp / 4.0;
 }
 
 
@@ -197,6 +160,7 @@ void main()
 	float fi;
 
 	float fNumSteps = float(iNumSteps);
+	
 	
 	
 	vec4 oneVec = vec4(1.0);
@@ -324,10 +288,11 @@ void main()
 		// resColorTemp = hsv2rgb(hsvVal);
 		
 		
-		if (testOn) {
-			
-		}
-		resColorTemp += modColor*0.3;
+		resColorTemp += modColor*mix(
+			0.2,
+			0.5,
+			clamp(1.0-distance(TexCoord0.xy,vec2(0.5)),0.0,1.0)
+		);
 		
 		
 		resColorTemp += pow( clamp(lightRes, 0.0, 1.0), 4.0) * (1.0-timeOfDay)*0.5;
@@ -349,7 +314,7 @@ void main()
 		
 		
 		//resColor = vec3(lightRes);//vec3(newAO*lightRes + lightRes*0.2);//mix(tex2.a,tex2.a*0.5+0.5,lightRes);
-		resColor = vec3(modColor);
+		resColor = vec3(tex1.w);
 	}
 	
 	
@@ -357,14 +322,22 @@ void main()
 	
 	
 	
-	float unitSizeInPixels = pixelsPerCell*1.0;//*blockSizeInCells;
-	vec3 grid0 = abs(mod(worldPosition.xyz, unitSizeInPixels) - unitSizeInPixels / 2.0) * 2.0;
-	float gridVal0 = float(
-										 (grid0.x >= (unitSizeInPixels - 4.0)) ||
-										 (grid0.y >= (unitSizeInPixels - 4.0))
-									 )  * clamp(myVec.z - 0.4, 0.0, 1.0);
+	float unitSizeInPixels = pixelsPerCell*blockSizeInCells;
+	vec3 grid0 = 
+		//floor(worldPosition.xyz/unitSizeInPixels);
+		abs(mod(worldPosition.xyz, unitSizeInPixels) - unitSizeInPixels / 2.0) * 2.0;
 	
-	//* float(aoval != 0.0)
+	
+	
+	float gridVal0 = 
+		//mod(grid0.x+grid0.y,2.0)
+		
+		float(
+		 (grid0.x >= (unitSizeInPixels - 4.0)) ||
+		 (grid0.y >= (unitSizeInPixels - 4.0))
+		)
+	
+		* clamp(myVec.z - 0.4, 0.0, 1.0);
 	
 	if (!gridOn)
 	{
@@ -411,6 +384,30 @@ void main()
 		
 		
 	}
+	
+	float testHeight = 0.0;
+	float bestHeight = 0.0;
+	vec4 testTex = vec4(0.0);
+	for (i = 0; i < 4; i++) {
+
+		testTex = texture2D(Texture0, TexCoord0.xy + dirModXY[i].xy / (bufferDim) );
+
+		testHeight = distance(worldPosition.xyz,testTex.xyz);
+		if (testHeight > bestHeight)
+		{
+			bestHeight = testHeight;
+		}
+	}
+	float outDif = clamp(bestHeight / 400.0, 0.0, 1.0) * 0.25;
+	// if (tex0.a == TEX_WATER || tex0.a == TEX_NULL) {
+	// 	outDif = 0.0;
+	// }
+	
+	if (!valIsGeom) {
+		resColor -= outDif;
+	}
+	
+	
 	
 
 	gl_FragData[0] = vec4(resColor.rgb,tot);

@@ -35,6 +35,13 @@ float maxRad[2] = float[](
 	16.0,
 	128.0
 );
+vec2 dirModXY[4] = vec2[](
+	
+	vec2(1.0, 0.0),
+	vec2(-1.0, 1.0),
+	vec2(0.0, 1.0),
+	vec2(0.0, -1.0)
+);
 
 varying vec2 TexCoord0;
 
@@ -151,11 +158,7 @@ void main()
 
 	// outlines
 
-	vec2 dirModXY[4];
-	dirModXY[0] = vec2(1.0, 0.0);
-	dirModXY[1] = vec2(-1.0, 1.0);
-	dirModXY[2] = vec2(0.0, 1.0);
-	dirModXY[3] = vec2(0.0, -1.0);
+	
 	float testHeight = 0.0;
 	float bestHeight = 0.0;
 	float maxDif = 0.01;

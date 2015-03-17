@@ -13,8 +13,6 @@ void GameGUI::init (Singleton * _singleton)
 		singleton = _singleton;
 		isReady = false;
 		isLoaded = false;
-		
-		
 	}
 JSONValue * GameGUI::findNearestKey (JSONValue * jv, string key)
                                                              {
@@ -58,15 +56,18 @@ JSONValue * GameGUI::findNearestKey (JSONValue * jv, string key)
 		return NULL;
 		
 	}
-void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating)
+void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, bool isFloating)
           {
 		int i;
 		int j;
 		int k;
 		int curIcon = 0;
+		int objectId = 0;
 		
 		JSONValue* curTempl = NULL;
 		JSONValue* tempJV = NULL;
+		
+		
 		
 	
 		if (
@@ -116,24 +117,30 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 			curTempl = jv;
 		}
 		
+		UIComponent* parentPtr = singleton->compStack[curParentId].data;
 		
-		guiFloatValues[E_GFT_LAYER] = max(guiFloatValues[E_GFT_LAYER],(double)(singleton->compStack[curParentId]->layer));
+		guiFloatValues[E_GFT_LAYER] = max(
+			guiFloatValues[E_GFT_LAYER],
+			(double)(parentPtr->layer)
+		);
 		
-		int newParent = singleton->compStack[curParentId]->addChild(
-			singleton->compStack[curParentId]->nodeId,
-			nodeCount,
+		int newParent = parentPtr->addChild(
+			lastIndex,
+			parentPtr->nodeId,
 			guiStringValues,
 			guiFloatValues,
 			isFloating,
 			jv
 		);
-		nodeCount++;
+		
+		
 		
 		
 		int numChildren = 0;
 		int numFloatingChildren = 0;
 		int numDataChildren = 0;
 		int numFilters = 0;
+		int childType = 0;
 		JSONValue* jvChildren = NULL;
 		JSONValue* jvFloatingChildren = NULL;
 		JSONValue* jvChildTemplate = NULL;
@@ -144,7 +151,7 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 		JSONValue* jvDataRoot = NULL;
 		JSONValue* curData = NULL;
 		
-		tempStrings[E_GDS_CHILD_TYPE] = "";
+		//tempStrings[E_GDS_CHILD_TYPE] = "";
 		
 		
 		
@@ -158,24 +165,25 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 		
 		
 		bool doProc = false;
-		bool isInternal = false;
+		//bool isInternal = false;
 		int totCount = 0;
-		E_GUI_CHILD_TYPES curCT = E_GCT_LENGTH;;
+		int curCT = 0;
 		
 		
 		if (jv->HasChild("childType")) {
-			tempStrings[E_GDS_CHILD_TYPE] = jv->Child("childType")->string_value;
+			childType = jv->Child("childType")->number_value;
+			//tempStrings[E_GDS_CHILD_TYPE] = jv->Child("childType")->string_value;
 			
 			
-			if (jv->HasChild("isInternal")) {
-				if (jv->Child("isInternal")->number_value != 0 ) {
-					// use an internally generated JSON node
-					isInternal = true;
-				}
-				else {
-					// todo: load JSON file
-				}
-			}
+			// if (jv->HasChild("isInternal")) {
+			// 	if (jv->Child("isInternal")->number_value != 0 ) {
+			// 		// use an internally generated JSON node
+			// 		isInternal = true;
+			// 	}
+			// 	else {
+			// 		// todo: load JSON file
+			// 	}
+			// }
 			
 			if (jv->HasChild("whereAllEqual")) {
 				jvFilter = jv->Child("whereAllEqual");
@@ -190,28 +198,30 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 			if (jv->HasChild("dataSource")) {
 				tempStrings[E_GDS_DATA_SOURCE] = jv->Child("dataSource")->string_value;
 				
-				if (isInternal) {
+				// if (isInternal) {
+				// 	if (jv->HasChild("dataFile")) {
+				// 		tempStrings[E_GDS_DATA_FILE] = jv->Child("dataFile")->string_value;
+				// 		jvDataRoot = (singleton->internalJSON[tempStrings[E_GDS_DATA_FILE]]).jv;
+				// 	}
+					
+					
+				// }
+				// else {
+					
 					if (jv->HasChild("dataFile")) {
 						tempStrings[E_GDS_DATA_FILE] = jv->Child("dataFile")->string_value;
-						jvDataRoot = (singleton->internalJSON[tempStrings[E_GDS_DATA_FILE]]).jv;
-					}
-					
-					
-				}
-				else {
-					
-					if (jv->HasChild("dataFile")) {
-						tempStrings[E_GDS_DATA_FILE] = jv->Child("dataFile")->string_value;
-						jvDataRoot = singleton->fetchJSONData(tempStrings[E_GDS_DATA_FILE]);
 						
+						if ( jv->HasChild("dataParams") ) {
+							jvDataRoot = singleton->fetchJSONData(tempStrings[E_GDS_DATA_FILE], jv->Child("dataParams"));
+						}
+						else {
+							jvDataRoot = singleton->fetchJSONData(tempStrings[E_GDS_DATA_FILE], NULL);
+						}
 					}
 					else {
 						jvDataRoot = jvRoot;
-						
 					}
-					
-					
-				}
+				//}
 				
 				if (jvDataRoot != NULL) {
 					
@@ -228,16 +238,17 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 			
 			if ((jvData != NULL)&&(jvChildTemplate != NULL)) {
 				
+				curCT = childType;
 				
-				if (compChildStr("E_GCT_INV_ITEM")) {
-					curCT = E_GCT_INV_ITEM;
-				}
-				else if (compChildStr("E_GCT_SHADER_PARAM")) {
-					curCT = E_GCT_SHADER_PARAM;
-				}
-				else if (compChildStr("E_GTC_GENERIC")) {
-					curCT = E_GTC_GENERIC;
-				}
+				// if (compChildStr("E_GCT_INV_ITEM")) {
+				// 	curCT = E_GCT_INV_ITEM;
+				// }
+				// else if (compChildStr("E_GCT_SHADER_PARAM")) {
+				// 	curCT = E_GCT_SHADER_PARAM;
+				// }
+				// else if (compChildStr("E_GTC_GENERIC")) {
+				// 	curCT = E_GTC_GENERIC;
+				// }
 				
 				//////////////////////////////////////////////////////////////////////
 				//////////////////////////////////////////////////////////////////////
@@ -285,11 +296,15 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 							case E_GCT_INV_ITEM:
 								tempStrings[E_GDS_CHILD_NAME] = curData->Child("name")->string_value;
 								
-								curIcon = jvRoot->
+								curIcon = singleton->entIdToIcon[
+									(int)(jvRoot->
 									Child("itemDefs")->
 									Child(tempStrings[E_GDS_CHILD_NAME])->
 									Child("iconNum")->
-									number_value;
+									number_value)
+								];
+									
+									
 								
 								jvChildTemplate->
 									Child("floatingChildren")->
@@ -349,62 +364,14 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 											jvChildTemplate->Child("label")->string_value = singleton->splitStrings[1];
 										break;
 									}
-									
-									
 								}
-								
-								
 								
 								tempJV = findNearestKey(jvChildTemplate,"dataSource");
 								if (tempJV != NULL) { // is a branch node
 									tempJV->Child("dataSource")->string_value =
 										tempStrings[E_GDS_DATA_SOURCE] + "." + tempStrings[E_GDS_LAST_KEY];										
 								}
-								else { // if childTemplate does not contain dataSource, it is a leaf node
-									
-									// if (jvChildTemplate->HasChild("oneToOne")) { // one-to-one data mapping
-										
-									// 	if (singleton->splitStrings.size() == 3) {
-									// 		if (jvChildTemplate->HasChild("template")) {
-									// 			jvChildTemplate->Child("template")->string_value = singleton->splitStrings[2];
-									// 		}
-									// 	}
-										
-									// 	if (jvChildTemplate->HasChild("value")) {
-											
-											
-									// 		if (jvChildTemplate->HasChild("dataRef")) {
-									// 			jvChildTemplate->Child("dataRef")->string_value =
-									// 				tempStrings[E_GDS_DATA_SOURCE];
-									// 		}
-									// 		if (jvChildTemplate->HasChild("dataKey")) {
-									// 			jvChildTemplate->Child("dataKey")->string_value =
-									// 				tempStrings[E_GDS_LAST_KEY];
-									// 		}											
-									// 		if (jvChildTemplate->HasChild("dataFile")) {
-									// 			jvChildTemplate->Child("dataFile")->string_value =
-									// 				tempStrings[E_GDS_DATA_FILE];
-									// 		}
-										
-											
-									// 		if (curData->IsNumber()) {
-									// 			jvChildTemplate->Child("value")->number_value = curData->number_value;
-									// 		}
-									// 		if (curData->IsArray()) {
-												
-									// 			for (k = 0; k < curData->array_value.size(); k++) {
-									// 				jvChildTemplate->Child(
-									// 					guiFloatTypes[E_GFT_VALUE0 + k]
-									// 				)->number_value = curData->array_value[k]->number_value;
-									// 			}
-									// 		}
-									// 	}
-										
-									// }
-									// else { // custom data mapping
-										
-									// }
-									
+								else { // is a leaf node
 									
 									if (jvChildTemplate->HasChild("dataRef")) {
 										jvChildTemplate->Child("dataRef")->string_value =
@@ -414,16 +381,35 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 										jvChildTemplate->Child("dataFile")->string_value =
 											tempStrings[E_GDS_DATA_FILE];
 									}
-									
-									
-									
-									
 								}
 								
 								
 								
 							break;
 							
+							case E_GTC_CONTAINER:
+							
+								// curIcon = singleton->entIdToIcon[
+								// 	(int)(curData->Child("objectType")->number_value)
+								// ];
+								objectId = curData->Child("objectId")->number_value;
+								jvChildTemplate->Child("objectId")->number_value = objectId;
+								jvChildTemplate->Child("label")->string_value = singleton->getStringForObjectId(objectId);
+							break;
+							
+							case E_GTC_CONTAINER_PARENT:
+								
+								
+								tempJV = findNearestKey(jvChildTemplate,"objectId");
+								if (tempJV != NULL) {
+									tempJV->Child("objectId")->number_value = curData->Child("objectId")->number_value;
+								}
+								
+								tempJV = findNearestKey(jvChildTemplate,"dataSource");
+								if (tempJV != NULL) {
+									tempJV->Child("dataSource")->string_value = "objects." + i__s(totCount) + ".children";								
+								}
+							break;
 							
 							case E_GCT_LENGTH:
 								
@@ -472,7 +458,7 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 			numChildren = jvChildren->CountChildren();
 		}
 		for (i = 0; i < numChildren; i++) {
-			addChildFromJSON(jvChildren->Child(i),newParent, false);
+			addChildFromJSON(-1,jvChildren->Child(i),newParent, false);
 		}
 		
 		
@@ -481,8 +467,141 @@ void GameGUI::addChildFromJSON (JSONValue * jv, int curParentId, bool isFloating
 			numFloatingChildren = jvFloatingChildren->CountChildren();
 		}
 		for (i = 0; i < numFloatingChildren; i++) {
-			addChildFromJSON(jvFloatingChildren->Child(i),newParent,true);
+			addChildFromJSON(-1,jvFloatingChildren->Child(i),newParent,true);
 		}
+		
+	}
+void GameGUI::deleteJSONNodes (JSONValue * jv)
+                                            {
+		JSONValue* jvChildren = NULL;
+		JSONValue* jvFloatingChildren = NULL;
+		
+		int numChildren = 0;
+		int numFloatingChildren = 0;
+		
+		int i;
+		
+		
+		
+		
+		
+		
+		if (jv->HasChild("floatingChildren")) {
+			jvFloatingChildren = jv->Child("floatingChildren");
+			numFloatingChildren = jvFloatingChildren->CountChildren();
+		}
+		for (i = 0; i < numFloatingChildren; i++) {
+			deleteJSONNodes(jvFloatingChildren->Child(i));
+		}
+		
+		if (jv->HasChild("children")) {
+			jvChildren = jv->Child("children");
+			numChildren = jvChildren->CountChildren();
+		}
+		for (i = 0; i < numChildren; i++) {
+			deleteJSONNodes(jvChildren->Child(i));
+		}
+		
+		if (jv->HasChild("dataSource")) {
+				jvChildren->array_value.clear();
+		}
+		
+		
+	}
+void GameGUI::clearRenderOrder ()
+                                {
+		int i;
+		for (i = 0; i < singleton->compStack.size(); i++) {
+			singleton->compStack[i].data->layerId = -1;
+		}
+		
+		for (i = 0; i < MAX_UI_LAYERS; i++) {
+			singleton->guiLayers[i].clear();
+		}
+		
+	}
+void GameGUI::deleteNodes (UIComponent * curNode)
+                                               {
+		int i;
+		int curNodeId;
+		
+		for (i = 0; i < curNode->getChildCount(); i++) {
+			deleteNodes(curNode->getChild(i));
+		}
+		
+		for (i = 0; i < curNode->getFloatingChildCount(); i++) {
+			deleteNodes(curNode->getFloatingChild(i));
+		}
+		
+		curNodeId = curNode->nodeId;
+		
+		
+		singleton->compMap[curNode->uid].nodeId = -1;
+		
+		// if (curNode->layerId != -1) {
+		// 	singleton->guiLayers[curNode->layer][curNode->layerId] = -1;
+		// 	singleton->emptyLayers[curNode->layer].push_back(curNode->layerId);
+		// }
+		
+		//delete (singleton->compStack[curNodeId].data);
+		//singleton->compStack[curNodeId].data = NULL;
+		singleton->compStack[curNodeId].isValid = false;
+		singleton->emptyStack.push_back(curNodeId);
+		
+		curNode->clearChildren();
+		
+	}
+void GameGUI::refreshNode (UIComponent * oldNode)
+                                               {
+		
+		if (oldNode == NULL) {
+			cout << "refreshNode is NULL\n";
+		}
+		
+		isReady = false;
+		isLoaded = false;
+		
+		//TEMP_DEBUG = true;
+		
+		
+		// TODO: there is a problem with this - templated data must be cleared
+		JSONValue* oldJV = oldNode->jvNodeNoTemplate;
+		
+		int curParentId = oldNode->parentId;
+		int lastIndex = oldNode->index;
+		//oldNode->getParent()->getParent()->isDirty = true;
+		singleton->compStack[0].data->isDirty = true;
+		
+		
+		deleteNodes(oldNode);
+		
+		
+		deleteJSONNodes(oldJV);
+		
+		
+		addChildFromJSON(
+			lastIndex,
+			oldJV,
+			curParentId,
+			false
+		);
+		
+		clearRenderOrder();
+		
+		
+		TEMP_DEBUG = false;
+		
+		
+		testOver(singleton->guiX,singleton->guiY);
+		doRefresh();
+		testOver(singleton->guiX,singleton->guiY);
+		doRefresh();
+		singleton->compStack[0].data->updateSS();
+		
+		
+		isReady = true;
+		isLoaded = true;
+		
 		
 	}
 void GameGUI::guiFromJSON (JSONValue * jv)
@@ -494,15 +613,31 @@ void GameGUI::guiFromJSON (JSONValue * jv)
 		isReady = false;
 		
 		guiRenderCount = 0;
-		nodeCount = 0;
+		
 		
 		for (i = 0 ; i < singleton->compStack.size(); i++) {
-				delete (singleton->compStack[i]);
-		}
-		singleton->compStack.clear();
-		
-		singleton->compStack.push_back(new UIComponent);
+				if (singleton->compStack[i].data == NULL) {
+					
+				}
+				else {
+					delete (singleton->compStack[i].data);
+					singleton->compStack[i].data = NULL;
+					singleton->compStack[i].isValid = false;
+				}
 				
+		}
+		
+		singleton->compStack.clear();
+		singleton->emptyStack.clear();
+		for (i = 0; i < MAX_UI_LAYERS; i++) {
+			singleton->guiLayers[i].clear();
+			//singleton->emptyLayers[i].clear();
+		}
+		
+		
+		singleton->compStack.push_back(Singleton::CompStruct());
+		singleton->compStack[0].data = new UIComponent;
+		
 		for (i = 0; i < E_GST_LENGTH; i++) {
 			stringVals[i] = "";
 		}
@@ -532,10 +667,10 @@ void GameGUI::guiFromJSON (JSONValue * jv)
 		floatVals[E_GFT_MINDIMY] = 0.0f;
 		floatVals[E_GFT_FLAGS] = 0.0f;
 		
-		singleton->compStack[0]->init(
+		singleton->compStack[0].data->init(
 			singleton,
 			-1,
-			nodeCount,
+			0,
 			0,
 			
 			NULL,
@@ -544,11 +679,24 @@ void GameGUI::guiFromJSON (JSONValue * jv)
 			stringVals,
 			floatVals
 		);
-		nodeCount++;
+		
+		// singleton->nullComp->init(
+		// 	singleton,
+		// 	-1,
+		// 	0,
+		// 	0,
+			
+		// 	NULL,
+		// 	false,
+			
+		// 	stringVals,
+		// 	floatVals
+		// );
 		
 		
-		singleton->compStack[0]->resultDimInPixels.x = singleton->guiWinW;
-		singleton->compStack[0]->resultDimInPixels.y = singleton->guiWinH;
+		
+		singleton->compStack[0].data->resultDimInPixels.x = singleton->guiWinW;
+		singleton->compStack[0].data->resultDimInPixels.y = singleton->guiWinH;
 		
 		
 		
@@ -558,13 +706,7 @@ void GameGUI::guiFromJSON (JSONValue * jv)
 		
 		///////
 		
-		//singleton->compStack[0]->children.clear();
-		//singleton->compStack[0]->floatingChildren.clear();
 		
-		
-		for (i = 0; i < MAX_UI_LAYERS; i++) {
-			singleton->guiLayers[i].clear();
-		}
 		
 		jvRoot = jv;
 		jvTemplates = jv->Child("templates");
@@ -572,12 +714,13 @@ void GameGUI::guiFromJSON (JSONValue * jv)
 		
 		
 		addChildFromJSON(
+			-1,
 			jv->Child("baseGUI"),  //jv->Child("curMenu")->string_value
 			0,
 			false
 		);
 		
-		singleton->compStack[0]->isDirty = true;
+		singleton->compStack[0].data->isDirty = true;
 		isReady = true;
 		isLoaded = true;
 	}
@@ -588,14 +731,14 @@ void GameGUI::doRefresh ()
 		
 		singleton->guiDirty = false;
 		dirtyVec.clear();
-		singleton->compStack[0]->gatherDirty(&dirtyVec);
-		singleton->compStack[0]->clearDirty();
+		singleton->compStack[0].data->gatherDirty(&dirtyVec);
+		singleton->compStack[0].data->clearDirty();
 		
 		for (i = 0; i < dirtyVec.size(); i++) {
 			dirtyVec[i]->layout();
 		}
 		
-		singleton->compStack[0]->renderAll();
+		singleton->compStack[0].data->renderAll();
 		
 		
 	}
@@ -603,6 +746,7 @@ void GameGUI::testOver (int x, int y)
                                     {
 		singleton->maxLayerOver = -1;
 		
+		int i;
 		
 		mouseTrans.x = x;
 		mouseTrans.y = y;
@@ -611,18 +755,20 @@ void GameGUI::testOver (int x, int y)
 		mouseTrans.x = ((1.0f-mouseTrans.x) - 0.5f)*2.0f;
 		mouseTrans.y = ((1.0f-mouseTrans.y) - 0.5f)*2.0f;		
 		
-		
-		singleton->compStack[0]->clearOver();
-		singleton->compStack[0]->findMaxLayer(x, y, mouseTrans.x, mouseTrans.y);
-		singleton->compStack[0]->testOver(x, y);
+		for (i = 0; i < singleton->compStack.size(); i++) {
+			singleton->compStack[i].data->overSelf = false;
+		}
+		//singleton->compStack[0].data->clearOver();
+		singleton->compStack[0].data->findMaxLayer(x, y, mouseTrans.x, mouseTrans.y);
+		singleton->compStack[0].data->testOver(x, y);
 	}
 bool GameGUI::testHit (int button, int state, int x, int y)
                                                           {
-		return singleton->compStack[0]->testHit(button, state, x, y);
+		return singleton->compStack[0].data->testHit(button, state, x, y);
 	}
 UIComponent * GameGUI::findNodeByString (string _uid)
                                                    {
-		return singleton->compStack[0]->findNodeByString(_uid);
+		return singleton->compStack[0].data->findNodeByString(_uid);
 	}
 void GameGUI::renderCharAt (UIComponent * uiComp, CharStruct * cs, FontWrapper * activeFont, float px, float py, float shadowOffset)
           {
@@ -840,7 +986,7 @@ void GameGUI::renderQuadDirect (UIComponent * uiComp)
 	}
 void GameGUI::runReport ()
                          {
-		singleton->compStack[0]->runReport();
+		singleton->compStack[0].data->runReport();
 	}
 void GameGUI::renderGUI (int activeFBO)
                                       {
@@ -856,12 +1002,13 @@ void GameGUI::renderGUI (int activeFBO)
 		int maxLoop = 0;
 		float shadowOffset = 0.0;
 		Singleton::UICont* curCont = NULL;
+		UIComponent* curComp = NULL;
 		
 		
 		
 		testOver(singleton->guiX,singleton->guiY);
 		doRefresh();
-		singleton->compStack[0]->updateSS();
+		singleton->compStack[0].data->updateSS();
 		
 		guiRenderCount++;
 		
@@ -887,67 +1034,63 @@ void GameGUI::renderGUI (int activeFBO)
 				for (j = 0; j < MAX_UI_LAYERS; j++) {
 					for (k = 0; k < singleton->guiLayers[j].size(); k++) {
 						
-						curCont = (singleton->guiLayers[j][k]);
 						
-						if (curCont->uiComp->visible) {
+						
+						if (singleton->guiLayers[j][k] >= 0) {
 							
-							for (m = 0; m < maxLoop; m++) {
+							curComp = singleton->compStack[ singleton->guiLayers[j][k] ].data;
+							curCont = &(curComp->uiCont);
+							
+							if (curComp->visible && (curComp->layerId >= 0)) {
 								
-								shadowOffset = ((1-m)*i)*4.0f;
-								
-								
-								// only shadow text
-								if (shadowOffset == 0.0f) {
+								for (m = 0; m < maxLoop; m++) {
+									
+									shadowOffset = ((1-m)*i)*4.0f;
 									
 									
-									if (curCont->bg.fontId > -1) {
-										renderQuad(
-											curCont->uiComp,
-											curCont->bg.hitBounds,
-											shadowOffset
-										);
-									}
-									
-									
-								}
-								
-								if (i == 0) {
-									// don't render text in first pass
-								}
-								else {
-								
-									if (false) { //curCont->locked) {
-										// busy updating characters
-									}
-									else {
-										for (n = 0; n < curCont->charVec.size(); n++) {
-											renderCharAt(
-												curCont->uiComp,
-												curCont->charVec[n].cs,
-												singleton->fontWrappers[curCont->charVec[n].fontId],
-												curCont->charVec[n].hitBounds.xMin,
-												curCont->charVec[n].hitBounds.yMin,
+									// only shadow text
+									if (shadowOffset == 0.0f) {
+										
+										
+										if (curCont->bg.fontId > -1) {
+											renderQuad(
+												curComp,
+												curCont->bg.hitBounds,
 												shadowOffset
 											);
 										}
+										
+										
 									}
 									
+									if (i == 0) {
+										// don't render text in first pass
+									}
+									else {
 									
-									
-									
-								}	
-								
-								
-								
+										if (false) { //curCont->locked) {
+											// busy updating characters
+										}
+										else {
+											for (n = 0; n < curCont->charVec.size(); n++) {
+												renderCharAt(
+													curComp,
+													curCont->charVec[n].cs,
+													singleton->fontWrappers[curCont->charVec[n].fontId],
+													curCont->charVec[n].hitBounds.xMin,
+													curCont->charVec[n].hitBounds.yMin,
+													shadowOffset
+												);
+											}
+										}
+									}
+								}
 							}
 							
 							
 							
 							
-							
 						}
-						
-						
 						
 						
 						

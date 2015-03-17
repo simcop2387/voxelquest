@@ -1,16 +1,9 @@
 
 
-enum E_VOCAB {
-	vPosition,
-	vRadius,
-	vIsAlive,
-	vLength
-};
-
 enum E_GUI_DATA_STRINGS {
 	E_GDS_DATA_SOURCE,
 	E_GDS_DATA_FILE,
-	E_GDS_CHILD_TYPE,
+	//E_GDS_CHILD_TYPE,
 	E_GDS_CHILD_NAME,
 	E_GDS_MATERIAL,
 	E_GDS_LAST_KEY,
@@ -27,11 +20,100 @@ enum E_PERFORMANCE_PROFILE {
 	E_PP_LENGTH
 };
 
+enum E_DRAG_TYPE {
+	E_DT_NOTHING, // can drag to, but not from
+	E_DT_WORLD_OBJECT,
+	E_DT_INV_OBJECT,
+	E_DT_INV_OBJECT_PARENT,
+	E_DT_LENGTH
+};
+
+enum E_VOCAB {
+	E_VC_FLOAT,
+	E_VC_IFTHEN,
+	E_VC_ALL,
+	E_VC_ANY,
+	E_VC_NONE,
+	E_VC_LIST,
+	E_VC_EQUAL,
+	E_VC_NOTEQUAL,
+	E_VC_ISBETWEEN,
+	E_VC_LENGTH	
+};
+
+enum E_VOCAB_TYPE {
+	
+	E_VCT_FLOAT, // terminal
+	E_VCT_NOUN, // terminal
+	E_VCT_OPERATOR,
+	E_VCT_VARIABLE,
+	E_VCT_PREDICATE,
+	E_VCT_LENGTH
+};
+
+struct VToken
+{
+	int index;
+	int type;
+	int maxParam;
+	float floatValue;
+	string stringValue;
+};
+
+
+string dragStrings[] = {
+	"E_DT_NOTHING",
+	"E_DT_WORLD_OBJECT",
+	"E_DT_INV_OBJECT",
+	"E_DT_INV_OBJECT_PARENT",
+	"E_DT_LENGTH"
+};
+
+enum E_ITEM_CLASS {
+	E_IC_NONE,
+	E_IC_EQ_HEAD,
+	E_IC_EQ_NECK,
+	E_IC_EQ_BACK,
+	E_IC_EQ_TORSO,
+	E_IC_WAIST,
+	E_IC_EQ_WRISTS,
+	E_IC_EQ_HANDS,
+	E_IC_EQ_FINGERS,
+	E_IC_EQ_HOLDING,
+	E_IC_EQ_FEET,
+	E_IC_RESOURCE,
+	E_IC_CONSUMABLE,
+	E_IC_MISC,
+	E_IC_LENGTH,
+};
+
+// enum E_TOOL_CLASS {
+// 	E_TC_NONE,
+// 	E_TC_SWORD,
+// 	E_TC_AXE,
+// 	E_TC_WAND,
+// 	E_TC_BOW,
+// 	E_TC_,
+// 	E_TC_,
+// 	E_TC_,
+// 	E_TC_,
+// 	E_TC_,
+// 	E_TC_,
+// 	E_TC_,
+// 	E_TC_,
+// 	E_TC_,
+// 	E_IC_LENGTH,
+// };
+
+
+// do not reorder
 enum E_GUI_CHILD_TYPES {
-	E_GCT_INV_ITEM,
-	E_GCT_SHADER_PARAM,
-	E_GTC_GENERIC,
-	E_GCT_LENGTH
+	E_GCT_INV_ITEM,			// 0
+	E_GCT_SHADER_PARAM,		// 1
+	E_GTC_GENERIC, 			// 2
+	E_GTC_CONTAINER,		// 3
+	E_GTC_CONTAINER_PARENT, // 4
+	E_GCT_LENGTH			// 5
 };
 
 enum E_FONT_WRAPPERS {
@@ -77,6 +159,13 @@ enum E_KEYMAP {
 	KEYMAP_BACKWARD,
 	KEYMAP_LEFT,
 	KEYMAP_RIGHT
+};
+
+enum ENT_TYPE {
+	E_ENTTYPE_OBJ,
+	E_ENTTYPE_MONSTER,
+	E_ENTTYPE_NPC,
+	E_ENTTYPE_LENGTH
 };
 
 enum E_STATES {
@@ -743,6 +832,9 @@ bool operator<(const intPair& lhs, const intPair& rhs)
 struct intPairVec {
 	std::vector<intPair> data;	
 };
+struct intVec {
+	std::vector<int> data;	
+};
 
 struct floatAndIndex {
 	float value;
@@ -1013,6 +1105,8 @@ enum E_DIR_SPECS {
 	E_DIR_Z,
 	E_DIR_LENGTH
 };
+
+
 
 enum eSSProperties {
 

@@ -43,10 +43,10 @@ public:
 
 
 	int rotDir;
-
 	int minRot;
 	int maxRot;
 	int curRot;
+	
 	int buildingType;
 
 
@@ -115,42 +115,6 @@ public:
 		moveMaxInPixels.setFXYZRef(&(geomParams[E_CP_VISMAXINPIXELST]));
 		
 	}
-
-
-	// FIVector4* getPositionInCells() {
-	// 	return &positionInCells;
-	// }
-	// FIVector4* getDiameterInCells() {
-	// 	return &diameterInCells;
-	// }
-	// void setPositionInCells(FIVector4* val) {
-	// 	positionInCells.copyFrom(&val);
-	// 	//updatePosFromCells();
-	// }
-	// void setDiameterInCells(FIVector4* val) {
-	// 	diameterInCells.copyFrom(&val);
-	// 	//updatePosFromCells();
-	// }
-	
-	
-	
-	// FIVector4* getPositionInPixels() {
-	// 	return &positionInPixels;
-	// }
-	// FIVector4* getDiameterInPixels() {
-	// 	return &diameterInPixels;
-	// }
-	// void setPositionInPixels(FIVector4* val) {
-	// 	positionInPixels.copyFrom(&val);
-	// 	//updatePosFromPixels();
-	// }
-	// void setDiameterInPixels(FIVector4* val) {
-	// 	diameterInPixels.copyFrom(&val);
-	// 	//updatePosFromPixels();
-	// }
-
-
-
 
 
 
