@@ -322,7 +322,7 @@ void main()
 	
 	
 	
-	float unitSizeInPixels = pixelsPerCell*blockSizeInCells;
+	float unitSizeInPixels = pixelsPerCell;// *blockSizeInCells;
 	vec3 grid0 = 
 		//floor(worldPosition.xyz/unitSizeInPixels);
 		abs(mod(worldPosition.xyz, unitSizeInPixels) - unitSizeInPixels / 2.0) * 2.0;
@@ -407,6 +407,7 @@ void main()
 		resColor -= outDif;
 	}
 	
+	//resColor.rgb = myVec.rgb;
 	
 	
 

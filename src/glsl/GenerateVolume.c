@@ -37,7 +37,7 @@ uniform bool hasLines;
 
 
 //uniform int voroCount;
-uniform vec4 voroArr[27];
+//uniform vec4 voroArr[27];
 
 uniform vec3 paramArr[256];
 uniform float matCountArr[16];
@@ -112,69 +112,86 @@ const float E_MAT_PARAM_DOOR =        	5.0;
 const float E_MAT_PARAM_TREE =        	6.0; // TREES MUST BE LAST ENTRY
 const float E_MAT_PARAM_LENGTH =      	7.0;
 
+const vec3 crand0 = vec3(12.989, 78.233, 98.422);
+const vec3 crand1 = vec3(93.989, 67.345, 54.256);
+const vec3 crand2 = vec3(43.332, 93.532, 43.734);
 
 
 vec3 dirVecs[6] = vec3[](
-										 vec3( 1.0,  0.0, 0.0 ), // right
-										 vec3( -1.0, 0.0, 0.0 ), // left
-										 vec3( 0.0, 1.0, 0.0 ), // up
-										 vec3( 0.0, -1.0, 0.0 ), // down
-										 vec3( 0.0, 0.0, 1.0 ), // above
-										 vec3( 0.0, 0.0, -1.0 ) // below
-									 );
+	vec3( 1.0,  0.0, 0.0 ), // right
+	vec3( -1.0, 0.0, 0.0 ), // left
+	vec3( 0.0, 1.0, 0.0 ), // up
+	vec3( 0.0, -1.0, 0.0 ), // down
+	vec3( 0.0, 0.0, 1.0 ), // above
+	vec3( 0.0, 0.0, -1.0 ) // below
+);
 
 
 mat2 dirMats[4] = mat2[](
-										mat2( 0.0, 1.0, -1.0, 0.0 ),   // right
-										mat2( 0.0, 1.0, 1.0, 0.0 ),  // left
-										mat2( 1.0, 0.0, 0.0, -1.0 ), // up
-										mat2( 1.0, 0.0, 0.0, 1.0 )   // down
+	mat2( 0.0, 1.0, -1.0, 0.0 ),   // right
+	mat2( 0.0, 1.0, 1.0, 0.0 ),  // left
+	mat2( 1.0, 0.0, 0.0, -1.0 ), // up
+	mat2( 1.0, 0.0, 0.0, 1.0 )   // down
+);
 
-									);
 
-
-vec3 voroOffsets[27] = vec3[](
-												 vec3(  -1.0,  -1.0,  -1.0  ),
-												 vec3(  -1.0,  -1.0,  0.0  ),
-												 vec3(  -1.0,  -1.0,  1.0  ),
-
-												 vec3(  -1.0,  0.0,  -1.0  ),
-												 vec3(  -1.0,  0.0,  0.0  ),
-												 vec3(  -1.0,  0.0,  1.0  ),
-
-												 vec3(  -1.0,  1.0,  -1.0  ),
-												 vec3(  -1.0,  1.0,  0.0  ),
-												 vec3(  -1.0,  1.0,  1.0  ),
+vec3 voroOffsets[8] = vec3[](
+	vec3(  -1.0,  -1.0,  -1.0  ),
+	vec3(  -1.0,  -1.0,  1.0  ),
+	vec3(  -1.0,  1.0,  -1.0  ),
+	vec3(  -1.0,  1.0,  1.0  ),
+	vec3(  1.0,  -1.0,  -1.0  ),
+	vec3(  1.0,  -1.0,  1.0  ),
+	vec3(  1.0,  1.0,  -1.0  ),
+	vec3(  1.0,  1.0,  1.0  )
+	
+);
 
 
 
-												 vec3(  0.0,  -1.0,  -1.0  ),
-												 vec3(  0.0,  -1.0,  0.0  ),
-												 vec3(  0.0,  -1.0,  1.0  ),
 
-												 vec3(  0.0,  0.0,  -1.0  ),
-												 vec3(  0.0,  0.0,  0.0  ),
-												 vec3(  0.0,  0.0,  1.0  ),
+// vec3 voroOffsets[27] = vec3[](
+// 												 vec3(  -1.0,  -1.0,  -1.0  ),
+// 												 vec3(  -1.0,  -1.0,  0.0  ),
+// 												 vec3(  -1.0,  -1.0,  1.0  ),
 
-												 vec3(  0.0,  1.0,  -1.0  ),
-												 vec3(  0.0,  1.0,  0.0  ),
-												 vec3(  0.0,  1.0,  1.0  ),
+// 												 vec3(  -1.0,  0.0,  -1.0  ),
+// 												 vec3(  -1.0,  0.0,  0.0  ),
+// 												 vec3(  -1.0,  0.0,  1.0  ),
+
+// 												 vec3(  -1.0,  1.0,  -1.0  ),
+// 												 vec3(  -1.0,  1.0,  0.0  ),
+// 												 vec3(  -1.0,  1.0,  1.0  ),
 
 
 
-												 vec3(  1.0,  -1.0,  -1.0  ),
-												 vec3(  1.0,  -1.0,  0.0  ),
-												 vec3(  1.0,  -1.0,  1.0  ),
+// 												 vec3(  0.0,  -1.0,  -1.0  ),
+// 												 vec3(  0.0,  -1.0,  0.0  ),
+// 												 vec3(  0.0,  -1.0,  1.0  ),
 
-												 vec3(  1.0,  0.0,  -1.0  ),
-												 vec3(  1.0,  0.0,  0.0  ),
-												 vec3(  1.0,  0.0,  1.0  ),
+// 												 vec3(  0.0,  0.0,  -1.0  ),
+// 												 vec3(  0.0,  0.0,  0.0  ),
+// 												 vec3(  0.0,  0.0,  1.0  ),
 
-												 vec3(  1.0,  1.0,  -1.0  ),
-												 vec3(  1.0,  1.0,  0.0  ),
-												 vec3(  1.0,  1.0,  1.0  )
+// 												 vec3(  0.0,  1.0,  -1.0  ),
+// 												 vec3(  0.0,  1.0,  0.0  ),
+// 												 vec3(  0.0,  1.0,  1.0  ),
 
-											 );
+
+
+// 												 vec3(  1.0,  -1.0,  -1.0  ),
+// 												 vec3(  1.0,  -1.0,  0.0  ),
+// 												 vec3(  1.0,  -1.0,  1.0  ),
+
+// 												 vec3(  1.0,  0.0,  -1.0  ),
+// 												 vec3(  1.0,  0.0,  0.0  ),
+// 												 vec3(  1.0,  0.0,  1.0  ),
+
+// 												 vec3(  1.0,  1.0,  -1.0  ),
+// 												 vec3(  1.0,  1.0,  0.0  ),
+// 												 vec3(  1.0,  1.0,  1.0  )
+
+// 											 );
 
 
 
@@ -215,18 +232,21 @@ vec3 intModFV(vec3 v1, vec3 v2) {
 }
 
 float randf(vec2 co) {
-	return fract(sin(dot(co.xy , vec2(12.9898, 78.233))) * 43758.5453);
+	return fract(sin(dot(co.xy, crand0.xy)) * 43758.5453);
 }
 
 vec3 rand(vec3 co) {
-	return vec3(
-					 fract(sin(dot(co.xyz , vec3(12.989, 78.233, 98.422))) * 43758.8563),
-					 fract(sin(dot(co.zyx , vec3(93.989, 67.345, 54.256))) * 24634.6345),
-					 fract(sin(dot(co.yxz , vec3(43.332, 93.532, 43.734))) * 56445.2345)
-				 );
+	
+	vec3 myres = vec3(
+		dot(co.xyz, crand0),
+		dot(co.zyx, crand1),
+		dot(co.yxz, crand2)
+	);
+	
+	return fract(sin(myres) * 43758.8563);
 }
 float randf3(vec3 co) {
-	return fract(sin(dot(co.xyz , vec3(12.989, 78.233, 98.422))) * 43758.8563);
+	return fract(sin(dot(co.xyz , crand0)) * 43758.8563);
 }
 
 
@@ -575,6 +595,7 @@ vec4 getBuilding(
 
 	float disFromBottomInPixels = worldPosInPixels.z - floor(worldPosInPixels.z / floorHeightInPixels) * floorHeightInPixels; //relPos.z;
 
+	// - fIsTudor * 0.4
 	float wallThickness = (1.0 - fIsTudor * 0.4) * pixelsPerCell; // + pow(( max(disFromBottomInPixels-3.0*pixelsPerCell,0.0)/floorHeight)*0.1,2.0); //+0.5*float(isBasement)
 	//
 
@@ -633,6 +654,10 @@ vec4 getBuilding(
 	float fVert = float(isVert);
 
 	myResult.w = fVert;
+	
+	if (notDock) {
+		myResult.w = 1.0-fVert;
+	}
 
 	bool bIsOuterWallOrig = bIsOuterWall;
 
@@ -735,7 +760,7 @@ vec4 getBuilding(
 						}
 
 
-						if (( getInterval(newUVW.y + (dockMod*0.5) * pixelsPerCell, 4.0, horzBoardThickness*1.0) ) ) {
+						if (( getInterval(newUVW.y + (dockMod*0.5) * pixelsPerCell, 4.0, horzBoardThickness) ) ) {
 							myResult.x = 3.0 * isOuterWall;
 							myResult.y = TEX_WOOD;
 						}
@@ -749,7 +774,7 @@ vec4 getBuilding(
 							if (bLessThanOrig.z && notDock) {
 								dirMod = (float(getInterval(newUVW.x, 8.0, 4.0)) - 0.5) * 2.0;
 
-								if ( getInterval(newUVW.x + dirMod * newUVW.y * 0.5, 2.0, 0.25) && bIsOuterWall ) {
+								if ( getInterval(newUVW.x + dirMod * newUVW.y * 0.5, 2.0, horzBoardThickness) && bIsOuterWall ) {
 									myResult.x = 50.0;
 									myResult.w = 2.0;
 								}
@@ -788,7 +813,7 @@ vec4 getBuilding(
 		myResult.y = TEX_NULL;
 
 		if (isTudor && (!bIsCapWall)) {
-			wallThickness = 0.5 * pixelsPerCell;
+			//wallThickness = 0.5 * pixelsPerCell;
 			wallInsetInPixels = 0.3 * pixelsPerCell;
 			disFromInsideInPixels = newUVW.z;
 			disFromOutsideInPixels = (thickness - wallInsetInPixels ) - disFromInsideInPixels; //thickness - disFromInsideInPixels;
@@ -975,8 +1000,8 @@ vec4 getRoof(
 	float wallThickness = (0.5) * pixelsPerCell;
 	bool bIsOuterWall = disFromOutsideInPixels < (wallThickness + 0.5 * pixelsPerCell );
 	float vertMod = 50.0 * float(isVert);
-	float shingleDepth = 0.25 * pixelsPerCell;
-	bool bIsOuterWallBoards =  (disFromOutsideInPixels < (0.5 * pixelsPerCell)) && (disFromOutsideInPixels > (0.25 * pixelsPerCell));
+	float shingleDepth = 1.0 * pixelsPerCell;
+	bool bIsOuterWallBoards =  (disFromOutsideInPixels < (1.5 * pixelsPerCell)) && (disFromOutsideInPixels > (0.25 * pixelsPerCell));
 	bool bIsShingle = (disFromOutsideInPixels < (shingleDepth));
 	float notCorner = float(bLessThanOrig.x || bLessThanOrig.y);
 	float isOuterWall = float(bIsOuterWall);
@@ -1064,14 +1089,17 @@ vec4 getRoof(
 		// SHINGLE MAT
 		////////////////////////////////////
 
-		myResult.xyz = getShingle(newUVW.xyz, 2.0 * pixelsPerCell, disFromOutsideInPixels, shingleDepth );
+		myResult.xyz = getShingle(
+			vec3(newUVW.x, newUVW.y*0.5, newUVW.z),
+			2.0 * pixelsPerCell, disFromOutsideInPixels, shingleDepth );
 		myResult.x += 16.0;
 		myResult.z = float(myResult.y != TEX_NULL);
 	}
 	else {
 		if (bIsOuterWallBoards) { // roof boards
-			myResult.x = 11.0 + getBoard(newUVW.xy, 1.0, 2.0);
+			myResult.x = 11.0 + getBoard(newUVW.xy, 4.0, 8.0);
 			myResult.y = TEX_WOOD;
+			myResult.w = 1.0-float(isVert);
 		}
 		else {
 			if (bIsCapWall) {
@@ -1207,18 +1235,106 @@ vec2 pointSegDistance(vec3 testPoint, vec3 sp0, vec3 sp1)
 }
 
 
-void getCobble(vec3 worldPosInPixels) {//, float minSpacing, float maxSpacing) {
 
-	//vec2 psRes = vec2(0.0);
+void getCobble(vec3 worldPosInPixels) {
+
 
 	vec4 myResult = vec4(0.0);
+	vec3 curPos;
+	vec3 bestPos = vec3(0.0);
+	vec3 nextBestPos = vec3(0.0);
+	float curVoroDis;
+	float notValid = 99999.0;
+	float minDis1 = notValid;
+	float minDis2 = notValid;
+	float gradVal;
+	vec3 randNum = vec3(0.0);
+	vec3 oneVec = vec3(1.0);
+	float bestRand;
 
-	// vec3 newWP = worldPosInPixels + vec3(
-	//  cos(worldPosInPixels.z/100.0),
-	//  sin(worldPosInPixels.z/100.0),
-	//  cos(worldPosInPixels.x/100.0)
-	// )*0.25*pixelsPerCell;
+	int i;
+	
+	
+	vec2 roughPos = (worldPosInPixels.xy + worldPosInPixels.yz) / worldSizeInPixels.x;
+	float roughVoro = abs(texture2D(Texture2, 256.0 * roughPos ).r);
 
+	float tempr = 0.0;
+
+	float vsize = pixelsPerCell*4.0;
+
+	vec3 newWP = floor(worldPosInPixels.xyz/vsize)*vsize + vsize/2.0;
+	
+	vec3 newWP2 = worldPosInPixels.xyz + clamp((roughVoro-0.5)*8.0,-1.0,1.0)*0.5*pixelsPerCell;
+
+	float x;
+	float y;
+	float z;
+/*
+	for (x = -1.0; x <= 1.0; x+= 2.0) {
+		for (y = -1.0; y <= 1.0; y+= 2.0) {
+			for (z = -1.0; z <= 1.0; z+= 2.0) {
+				curPos = newWP + vec3(x,y,z)*vsize/2.0;
+				tempr = rand(curPos);
+				curPos += (tempr-0.5)*vsize;
+				
+				curVoroDis = distance(curPos.xyz, newWP2)*(1.0+tempr*0.5);
+
+				if (curVoroDis < minDis1) {
+					nextBestPos = bestPos;
+					bestPos = curPos.xyz;
+
+					minDis2 = minDis1;
+					minDis1 = curVoroDis;
+				}
+				else {
+					if (curVoroDis < minDis2) {
+						nextBestPos = curPos.xyz;
+						minDis2 = curVoroDis;
+					}
+				}
+			}
+		}
+	}*/
+
+	for (i = 0; i < 8; i++) {
+		
+		
+		curPos = newWP + voroOffsets[i]*vsize/2.0;
+		tempr = rand(curPos);
+		curPos += (tempr-0.5)*vsize;
+		
+		curVoroDis = distance(curPos.xyz, newWP2)*(1.0+tempr*0.5);
+
+		if (curVoroDis < minDis1) {
+			nextBestPos = bestPos;
+			bestPos = curPos.xyz;
+
+			minDis2 = minDis1;
+			minDis1 = curVoroDis;
+		}
+		else {
+			if (curVoroDis < minDis2) {
+				nextBestPos = curPos.xyz;
+				minDis2 = curVoroDis;
+			}
+		}
+	}
+
+	bestRand = randf3(bestPos);
+	gradVal = (clamp(1.0 - (minDis1 * 2.0 / (minDis1 + minDis2)), 1.0 / 255.0, 1.0));
+	voroId = floor(bestRand * 120.0) + 1.0;
+	voroGrad = gradVal;
+	voroPos = bestPos;
+
+}
+
+
+
+/*
+void getCobble(vec3 worldPosInPixels) {
+
+
+	vec4 myResult = vec4(0.0);
 	vec4 curPos;
 	vec3 bestPos = vec3(0.0);
 	vec3 nextBestPos = vec3(0.0);
@@ -1240,15 +1356,11 @@ void getCobble(vec3 worldPosInPixels) {//, float minSpacing, float maxSpacing) {
 	vec3 newWP = worldPosInPixels.xyz;
 	newWP.xyz += clamp((roughVoro-0.5)*8.0,-1.0,1.0)*1.0*pixelsPerCell;
 
-	//vec3 modVec = vec3(2.0,2.0,1.0);
 
-	//float wpz = abs(sin( (worldMaxBufInPixels.x+worldMaxBufInPixels.y+worldMaxBufInPixels.z)/(1.0*pixelsPerCell) ));
-
-	for (i = 0; i < 27; i++) { //voroCount
+	for (i = 0; i < 27; i++) {
 		curPos = voroArr[i];
 		
-
-		curVoroDis = distance(curPos.xyz, newWP);// *wpz;
+		curVoroDis = distance(curPos.xyz, newWP);
 
 		if (curVoroDis < minDis1) {
 			nextBestPos = bestPos;
@@ -1266,46 +1378,19 @@ void getCobble(vec3 worldPosInPixels) {//, float minSpacing, float maxSpacing) {
 	}
 
 	bestRand = randf3(bestPos);
-
-	// gradVal = clamp(
-	//  min(
-	//    (pointSegDistance(worldPosInPixels, nextBestPos, bestPos ).y-0.5)*2.0,
-	//    (pointSegDistance(worldPosInPixels, bestPos, nextBestPos ).y)*2.0
-	//  ),
-	//  0.0,
-	//  1.0
-	// );
 	gradVal = (clamp(1.0 - (minDis1 * 2.0 / (minDis1 + minDis2)), 1.0 / 255.0, 1.0));
-
-
-
-
-	// if (
-	//  (gradVal > (minDis1+minDis2)/(minSpacing+bestRand*maxSpacing))
-	// ) {
-	//  myResult.y = TEX_STONE;
-	// }
-
-	//myResult.y = TEX_DEBUG;
-
-	// float dv = clamp(distance(nearestCenterPoint.xy, bestPos.xy)/(3.0*pixelsPerCell),0.0,1.0);
-
-
-
-	//myResult.z = float(myResult.y != TEX_NULL);
-
 	voroId = floor(bestRand * 120.0) + 1.0;
 	voroGrad = gradVal;
 	voroPos = bestPos;
 
-	// finalNormUID = matResult.x;
-	// finalMat = matResult.y;
-	// finalInside = matResult.z;
-	// finalMod = matResult.w;
-
-	//return myResult;
-
 }
+*/
+
+
+
+
+
+
 
 
 // vec4 tex3DBiLinear( sampler3D textureSampler_i, vec3 texCoord_i )
@@ -1650,14 +1735,20 @@ vec4 getSlats(vec4 newUVW, float thickness, vec3 origin, vec3 worldPosInPixels, 
 
 
 float roundVal(float v) {
-	float floorV = floor(v);
-	float f = v-floorV;
-	if (f > 0.5) {
-		return floorV+1.0;
-	}
-	else {
-		return floorV;
-	}
+	// float floorV = floor(v);
+	// float f = v-floorV;
+	// if (f > 0.5) {
+	// 	return floorV+1.0;
+	// }
+	// else {
+	// 	return floorV;
+	// }
+	
+	float floorV = floor(v+0.5);
+	
+	
+	return floorV;
+	
 }
 
 vec4 getTree(vec3 worldPosInPixels) {
@@ -1735,7 +1826,7 @@ vec4 getTree(vec3 worldPosInPixels) {
 	float totCount = 0.0;
 	float totThresh = 0.0;
 	float threshVal = 0.0;
-
+	float ttt = 0.0;
 	float leafRad = 8.0;//0.5*pixelsPerCell;
 
 	vec4 maxv = vec4(invalid);
@@ -1766,6 +1857,7 @@ vec4 getTree(vec3 worldPosInPixels) {
 				thickVals = paramArr[baseInd + E_TP_THICKVALS];
 
 				sphereRad = thickVals.z;
+				ttt = 8.0;//2.0*sphereRad/pixelsPerCell;
 
 				dres = pointSegDistance(worldPosInPixels, p0, p1);
 				//dres2 = pointSegDistance(worldPosInPixels,p0,p2);
@@ -1778,10 +1870,10 @@ vec4 getTree(vec3 worldPosInPixels) {
 				bezTanP1 = mix(p2, p1, t);
 				resArr = pointSegDistance(worldPosInPixels, bezTanP0, bezTanP1);
 
-				curThickness = mix(thickVals.x, thickVals.y, t) * (1.0 + 0.3*abs(sin(smoothVal*10.0)));
+				curThickness = mix(thickVals.x, thickVals.y, t) * (1.0 + 0.1*abs(sin(smoothVal*10.0)));
 
 				if (
-					resArr.x <curThickness
+					resArr.x < curThickness
 					//sin( (worldPosInPixels.x + worldPosInPixels.z + worldPosInPixels.y) / (0.125 * pixelsPerCell) )
 				) {
 
@@ -1839,23 +1931,23 @@ vec4 getTree(vec3 worldPosInPixels) {
 						radNorm = length(tempv)/sphereRad;//sqrt();
 						
 						roThetaPhi.z = length(tempv); //sphereRad - 
-						roThetaPhi.x = atan(tempvNorm.y, tempvNorm.x);
-						roThetaPhi.y = acos(tempvNorm.z);
+						roThetaPhi.x = atan(tempvNorm.y, tempvNorm.x)*3.0/PI;
+						roThetaPhi.y = acos(tempvNorm.z)*3.0/PI;
 						
 						k = 1;
 						//for (k = 0; k < 2; k++) {
-							radNormFloored = ( mix(0.5,1.0,1.0-abs(tempvNorm.z))*@tt1NumDivsY@*8.0)/(tt1NumDivsY*8.0);						
+							radNormFloored = ( mix(1.0,0.5,abs(tempvNorm.z))*@tt1NumDivsY@*9.0)/(tt1NumDivsY*9.0);						
 							
-							roThetaPhi2.y = roundVal( (roThetaPhi.y)*tt1NumDivsY*8.0)/(tt1NumDivsY*8.0);
+							roThetaPhi2.y = roundVal( (roThetaPhi.y)*tt1NumDivsY*9.0)/(tt1NumDivsY*9.0);
 							
-							roThetaPhi2.x = roundVal( (roThetaPhi.x)*@tt1NumDivsX@*8.0*radNormFloored)/(tt1NumDivsX*8.0*radNormFloored);
+							roThetaPhi2.x = roundVal( (roThetaPhi.x)*@tt1NumDivsX@*9.0*radNormFloored)/(tt1NumDivsX*9.0*radNormFloored);
 							
-							roThetaPhi2.z = roThetaPhi.z;
+							roThetaPhi2.z = roThetaPhi.z*2.0;
 							
-							resPoint.x = cos(roThetaPhi2.x)*sin(roThetaPhi2.y)*roThetaPhi2.z;
-							resPoint.y = sin(roThetaPhi2.x)*sin(roThetaPhi2.y)*roThetaPhi2.z;
-							resPoint.z = cos(roThetaPhi2.y)*roThetaPhi2.z - roThetaPhi.z*@tt1Falloff@;
-							resPoint.w = (1.0-radNormFloored)*0.25*pixelsPerCell;
+							resPoint.x = cos(roThetaPhi2.x)*abs(sin(roThetaPhi2.y)*roThetaPhi2.z);
+							resPoint.y = sin(roThetaPhi2.x)*abs(sin(roThetaPhi2.y)*roThetaPhi2.z);
+							resPoint.z = cos(roThetaPhi2.y)*abs(roThetaPhi2.z) - abs(roThetaPhi.z)*@tt1Falloff@;
+							//resPoint.w = (1.0-radNormFloored)*0.25*pixelsPerCell;
 						//}
 						
 						
@@ -1863,9 +1955,9 @@ vec4 getTree(vec3 worldPosInPixels) {
 						
 						
 						curThickness = pixelsPerCell*mix(
-							@tt1MinRad@*16.0-8.0,
+							(@tt1MinRad@*16.0-9.0),
 							@tt1MaxRad@*16.0,
-							pow(1.0-radNorm,@tt1PowVal@*1.0)
+							pow(1.0-radNorm,0.25) //@tt1PowVal@*1.0
 						);
 						
 						if (
@@ -1873,7 +1965,7 @@ vec4 getTree(vec3 worldPosInPixels) {
 								resArrLeaf.x <
 								curThickness
 							)
-							&& (length(tempv) < sphereRad)
+							// && (length(tempv) < sphereRad)
 						) {
 							matResult.y = TEX_LEAF;
 							matResult.w = resArrLeaf.x/curThickness;
@@ -1887,20 +1979,20 @@ vec4 getTree(vec3 worldPosInPixels) {
 						
 						tempv = worldPosInPixels - maxv.xyz;
 						
-						if (length(tempv) < (@tt0MaxClamp@*8.0*pixelsPerCell)) {
+						if (length(tempv) < (@tt0MaxClamp@*ttt*pixelsPerCell)) {
 							roThetaPhi.z = sphereRad - length(tempv);
 							roThetaPhi.x = atan(tempv.y, tempv.x);
 							roThetaPhi.y = -0.35 * acos(tempv.z / length(tempv)); //randf(bestNode.xy)
 
-							roThetaPhi.x *= @tt0ScaleParamX@*8.0;
-							roThetaPhi.y *= @tt0ScaleParamY@*8.0;
+							roThetaPhi.x *= @tt0ScaleParamX@*ttt;
+							roThetaPhi.y *= @tt0ScaleParamY@*ttt;
 							
 
 							tempv = getShingle(
-								threshVal*roThetaPhi * pixelsPerCell * 8.0 / PI,
+								roThetaPhi * pixelsPerCell * ttt / PI,
 								1.0 * pixelsPerCell,
-								1.0*roThetaPhi.z,
-								threshVal*8.0 * pixelsPerCell * ( (0.95 - normalize(tempv).z) )
+								2.0 * roThetaPhi.z,
+								clamp(ttt * ( (0.95 - normalize(tempv).z) ),0.1,10.0) * pixelsPerCell
 							);
 
 							if ( (matResult.y == TEX_NULL) && (tempv.y != TEX_NULL) ) {
@@ -2818,7 +2910,7 @@ vec4 getGeom(vec3 worldPosInPixels, int iCurMat) {//, float terHeight) {
 			}
 			else {
 				
-				// is wood
+				// is wood dock
 				
 				
 				

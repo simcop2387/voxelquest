@@ -40,23 +40,23 @@ public:
 		PlantRules* pr;
 
 		pr = &(allPlantRules[E_PT_OAK_TRUNK]);
-		pr->numChildren[0] = 2.0f;
+		pr->numChildren[0] = 3.0f;
 		pr->numChildren[1] = 5.0f;
 		pr->divergenceAngleV[0] = pi/3.0f;
-		pr->divergenceAngleV[1] = pi/6.0f;
-		pr->begThickness = 1.0f;
-		pr->endThickness = 0.4f;
-		pr->sphereGen = 2.0f;
-		pr->sphereRad = 6.0f;
-		pr->numGenerations = 2.0f;
+		pr->divergenceAngleV[1] = pi/5.0f;
+		pr->begThickness = 1.5f;
+		pr->endThickness = 0.3f;
+		pr->sphereGen = 5.0f;
+		pr->sphereRad = 5.0f;
+		pr->numGenerations = 5.0f;
 		pr->angleUniformityU = 0.75f;
 		pr->isInit = 0.0;
 		pr->curLength[0] = 6.0f;
-		pr->curLength[1] = 8.0f;
-		pr->curLength[2] = 8.0f;
-		pr->curLength[3] = 8.5f;
-		pr->curLength[4] = 8.5f;
-		pr->curLength[5] = 8.5f;
+		pr->curLength[1] = 4.0f;
+		pr->curLength[2] = 6.0f;
+		pr->curLength[3] = 4.5f;
+		pr->curLength[4] = 4.0f;
+		pr->curLength[5] = 3.5f;
 		pr->curLength[6] = 1.0f;
 		pr->curLength[7] = 1.0f;
 		pr->curLength[8] = 0.75f;
@@ -66,11 +66,11 @@ public:
 		pr->numChildren[1] = 5.0f;
 		pr->divergenceAngleV[0] = pi/8.0f;
 		pr->divergenceAngleV[1] = pi/8.0f;
-		pr->begThickness = 1.0f;
+		pr->begThickness = 1.5f;
 		pr->endThickness = 0.0f;
 		pr->sphereGen = -1.0f;
 		pr->sphereRad = 0.0f;		
-		pr->numGenerations = 4.0f;
+		pr->numGenerations = 2.0f;
 		pr->angleUniformityU = 0.75f;
 		pr->isInit = 0.0;
 		pr->curLength[0] = 6.0f;
@@ -85,23 +85,23 @@ public:
 		
 		
 		pr = &(allPlantRules[E_PT_OAK2_TRUNK]);
-		pr->numChildren[0] = 2.0f;
+		pr->numChildren[0] = 3.0f;
 		pr->numChildren[1] = 5.0f;
 		pr->divergenceAngleV[0] = pi/3.0f;
 		pr->divergenceAngleV[1] = pi/4.0f;
 		pr->begThickness = 1.0f;
 		pr->endThickness = 0.2f;
-		pr->sphereGen = 2.0f;
+		pr->sphereGen = 5.0f;
 		pr->sphereRad = 6.0f;
-		pr->numGenerations = 2.0f;
+		pr->numGenerations = 5.0f;
 		pr->angleUniformityU = 0.75f;
 		pr->isInit = 0.0;
 		pr->curLength[0] = 6.0f;
-		pr->curLength[1] = 8.0f;
-		pr->curLength[2] = 8.0f;
-		pr->curLength[3] = 8.5f;
-		pr->curLength[4] = 8.5f;
-		pr->curLength[5] = 1.5f;
+		pr->curLength[1] = 4.0f;
+		pr->curLength[2] = 6.0f;
+		pr->curLength[3] = 4.5f;
+		pr->curLength[4] = 4.0f;
+		pr->curLength[5] = 3.5f;
 		pr->curLength[6] = 1.0f;
 		pr->curLength[7] = 1.0f;
 		pr->curLength[8] = 0.75f;
@@ -333,7 +333,7 @@ public:
 				curChild->init(curParent,0,0);
 			}
 			else {
-				curChild->init(curParent,rules->numChildren[1], max( gv(rules->numChildren)-(float)curGen, 1.0f) );
+				curChild->init(curParent,rules->numChildren[1], max( gv(rules->numChildren)-(float)curGen/2, 1.0f) );
 			}
 
 			

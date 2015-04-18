@@ -435,6 +435,46 @@ public:
 		iv4.z = (int)fv4.z;
 	}
 
+	void lerpXYZ(FIVector4 *v2, float amount) {
+		float iamount = 1.0f-amount;
+		fv4.x = fv4.x*iamount + v2->getFX()*amount;
+		fv4.y = fv4.y*iamount + v2->getFY()*amount;
+		fv4.z = fv4.z*iamount + v2->getFZ()*amount;
+
+		iv4.x = (int)fv4.x;
+		iv4.y = (int)fv4.y;
+		iv4.z = (int)fv4.z;
+	}
+	
+	void lerpXYZ(FIVector4 *v2, FIVector4* av) {
+		
+		float xa;
+		float ya;
+		float za;
+		
+		if (av == NULL) {
+			xa = 1.0f;
+			ya = 1.0f;
+			za = 1.0f;
+		}
+		else {
+			xa = (*av)[0];
+			ya = (*av)[1];
+			za = (*av)[2];
+		}
+		
+		
+		float ixa = 1.0f-xa;
+		float iya = 1.0f-ya;
+		float iza = 1.0f-za;
+		fv4.x = fv4.x*ixa + v2->getFX()*xa;
+		fv4.y = fv4.y*iya + v2->getFY()*ya;
+		fv4.z = fv4.z*iza + v2->getFZ()*za;
+
+		iv4.x = (int)fv4.x;
+		iv4.y = (int)fv4.y;
+		iv4.z = (int)fv4.z;
+	}
 
 
 	void multXYZ(float scalar) {
@@ -976,8 +1016,15 @@ public:
 		fv4.y = fv4.y / len;
 		fv4.z = fv4.z / len;
 
-
 	}
+	
+	void normalizeXY() {
+		float len = sqrt(fv4.x * fv4.x + fv4.y * fv4.y);
+		
+		fv4.x = fv4.x / len;
+		fv4.y = fv4.y / len;
+	}
+	
 
 	float dot(FIVector4 *otherVec) {
 
@@ -1444,6 +1491,15 @@ public:
 };
 AxisRotation axisRotationInstance;
 
+
+struct SphereStruct {
+	FIVector4 position;
+	float maxRad;
+	float curRad;
+	float radVel;
+	float radAcc;
+};
+
 typedef int BaseObjType;
 
 class BaseObj
@@ -1466,9 +1522,14 @@ public:
 	//map<BaseObjType, bool> containsUID;
 	vector<BaseObjType> children;
 	
+	bool isBullet;
 	bool isFalling;
+	bool isJumping;
 	bool isOpen;
 	bool isEquipped;
+	
+	float bounciness;
+	float friction;
 	
 	float pixelsPerCell;
 	
@@ -1479,7 +1540,13 @@ public:
 	FIVector4 boundsMinTransInCells;
 	FIVector4 boundsMaxTransInCells;
 	
+	FIVector4 boundsMinTransInPixels;
+	FIVector4 boundsMaxTransInPixels;
 	FIVector4 centerPointInPixels;
+	
+	FIVector4 boundsMinTransInPixelsTarg;
+	FIVector4 boundsMaxTransInPixelsTarg;
+	FIVector4 centerPointInPixelsTarg;
 	
 	FIVector4 tempVec;
 	
@@ -1488,11 +1555,20 @@ public:
 	//x+,x-,y+,y-,z+,z-
 	FIVector4 orientationXYZ;
 	
+	
+	float ang;
+	FIVector4 posOffsetInPixels;
+	FIVector4 vel;
+	FIVector4 acc;
+	
+	
+	
+	
 	BaseObj() {
 		
 	}
 	
-	void removeChild(int _uid) {
+	void removeChild(BaseObjType _uid) {
 		int i;
 		
 		for (i = 0; i < children.size(); i++) {
@@ -1535,10 +1611,29 @@ public:
 		
 		FIVector4::normalizeBounds(&boundsMinTransInCells,&boundsMaxTransInCells);
 		
-		centerPointInPixels.copyFrom(&boundsMinTransInCells);
-		centerPointInPixels.addXYZRef(&boundsMaxTransInCells);
-		centerPointInPixels.multXYZ(0.5f*pixelsPerCell);
+				
+	}
+	
+	void updatePixelBounds() {
+		boundsMinTransInPixelsTarg.copyFrom(&boundsMinTransInCells);
+		boundsMaxTransInPixelsTarg.copyFrom(&boundsMaxTransInCells);
 		
+		boundsMinTransInPixelsTarg.multXYZ(pixelsPerCell);
+		boundsMaxTransInPixelsTarg.multXYZ(pixelsPerCell);
+		
+		centerPointInPixelsTarg.copyFrom(&boundsMinTransInPixelsTarg);
+		centerPointInPixelsTarg.addXYZRef(&boundsMaxTransInPixelsTarg);
+		centerPointInPixelsTarg.multXYZ(0.5f);
+		
+		boundsMinTransInPixelsTarg.addXYZRef(&posOffsetInPixels);
+		boundsMaxTransInPixelsTarg.addXYZRef(&posOffsetInPixels);
+		centerPointInPixelsTarg.addXYZRef(&posOffsetInPixels);
+	}
+	
+	void updateTargets(FIVector4* fv) {
+		centerPointInPixels.lerpXYZ(&centerPointInPixelsTarg, fv);
+		boundsMinTransInPixels.lerpXYZ(&boundsMinTransInPixelsTarg, fv);
+		boundsMaxTransInPixels.lerpXYZ(&boundsMaxTransInPixelsTarg, fv);
 	}
 	
 	void rotate(
@@ -1555,6 +1650,9 @@ public:
 		);
 	}
 	
+	void toggleGrav(float gravMod) {
+		acc.setFXYZ(0.0f,0.0f,gravMod*pixelsPerCell*80.0f);
+	}
 	
 	void init(
 		BaseObjType _uid,
@@ -1569,18 +1667,33 @@ public:
 		int oy = 2,
 		int oz = 4
 	) {
+		
+		
+		
+		ang = 0.0f;
 		maxFrames = 0;
 		objectType = _objectType;
 		isFalling = false;
+		isJumping = false;
+		isBullet = false;
+		bounciness = 0.0f;
+		friction = 1.0f;
 		isOpen = false;
 		isEquipped = false;
 		parentUID = _parentUID;
 		uid = _uid;
 		pixelsPerCell = _pixelsPerCell;
+		
+		posOffsetInPixels.setFXYZ(0.0f,0.0f,0.0f);
+		vel.setFXYZ(0.0f,0.0f,0.0f);
+		toggleGrav(-1.0f);
+		
 		positionInCells.copyFrom(cellPos);
 		diameterInCells.setIXYZ(xs,ys,zs);
 		updateOrientation(ox,oy,oz);
 		updateBounds();
+		updatePixelBounds();
+		updateTargets(NULL);
 	}
 	
 };

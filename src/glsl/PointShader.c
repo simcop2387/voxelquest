@@ -62,7 +62,7 @@ $
 
 
 
-const int rad = 4;
+const int rad = 8;
 const float frad = float(rad);
 
 void main() {
@@ -109,39 +109,39 @@ void main() {
     
     
     
-    // for (j = -rad; j <= rad; j++ ) {
-    //     tc.y = float(j);
-    //     for (i = -rad; i <= rad; i++ ) {
-    //         tc.x = float(i);
+    for (j = -rad; j <= rad; j++ ) {
+        tc.y = float(j);
+        for (i = -rad; i <= rad; i++ ) {
+            tc.x = float(i);
             
-    //         offVal = tc/bufferDim;
-    //         curCoord = TexCoord0 + offVal;
-    //         samp = texture2D(Texture0,curCoord);
+            offVal = tc/bufferDim;
+            curCoord = TexCoord0 + offVal;
+            samp = texture2D(Texture0,curCoord);
             
-    //         curRad = length(tc.xy/frad);
+            curRad = length(tc.xy/frad);
             
-    //         if (curRad < 1.0) {
-    //             if (samp.w > 0.0) {
-    //                 testW = samp.w;
-    //                 if (testW > bestW) {                
-    //                     bestW = testW;
-    //                 }
-    //             }
-    //         }
-            
-            
+            if (curRad < 1.0) {
+                if (samp.w > 0.0) {
+                    testW = samp.w;
+                    if (testW > bestW) {                
+                        bestW = testW;
+                    }
+                }
+            }
             
             
             
-    //     }  
-    // }
+            
+            
+        }  
+    }
     
-    // float closestW = bestW;
+    float closestW = bestW;
+    bestW = 0.0;
+    testW = 0.0;
     
     
     
-    // bestW = 0.0;
-    // testW = 0.0;
     
     // int newRad = 
     // int(mix(
@@ -160,6 +160,7 @@ void main() {
     vec4 avgVal0 = vec4(0.0);
     vec4 avgVal1 = vec4(0.0);
     float totVal = 0.0;
+    float tempVal = 0.0;
     
     for (j = -rad; j <= rad; j++ ) {
         tc.y = float(j);
@@ -195,10 +196,11 @@ void main() {
             //     }
             // }
             
-            if (samp.w > 0.0) {
-                totVal += 1.0;
-                avgVal0 += samp;
-                avgVal1 += texture2D(Texture1,curCoord);
+            if (samp.w > (closestW-0.2)) {
+                tempVal = clamp(1.0-length(tc.xy/frad),0.0,1.0);
+                totVal += tempVal;
+                avgVal0 += samp*tempVal;
+                avgVal1 += texture2D(Texture1,curCoord)*tempVal;
             }
             
             
@@ -239,8 +241,12 @@ void main() {
         texf1 = avgVal1/totVal;
         texf1.xyz = normalize(texf1.xyz);
         texf1.w = tex1.w;
+        
+        //texf0 = mix(texf0,tex0,0.5);
+        //texf1 = mix(texf1,tex1,0.5);
     }
     
+   
    
     
     // if (dot(abs(texf1.xyz),oneVec.xyz) != 0.0) {

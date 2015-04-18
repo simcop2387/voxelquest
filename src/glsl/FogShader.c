@@ -21,7 +21,8 @@ uniform sampler3D Texture6;
 uniform sampler2D Texture7;
 
 uniform float curTime;
-uniform float bestObjInd;
+uniform float selObjInd;
+uniform float actObjInd;
 uniform float seaLevel;
 uniform float timeOfDay;
 uniform vec2 bufferDim;
@@ -201,7 +202,7 @@ void main() {
             ) - tex7.a*0.1,
             0.0,
             1.0
-        ),1.0);
+        ),0.75);
         
 
     vec3 lightMod = pow( (1.0-timeOfDay)*tex3.rgb, vec3(2.0) );
@@ -248,10 +249,15 @@ void main() {
     int i;
     bool isOutline = false;
     bool isSelObj = false;
+    bool isActObj = false;
+    
     vec2 newTC = vec2(0.0);
     vec4 samp = vec4(0.0);
-    if (tex5.w == bestObjInd) {
+    if (tex5.w == selObjInd) {
         isSelObj = true;
+    }
+    if (tex5.w == actObjInd) {
+        isActObj = true;
     }
     for (i = 0; i < 4; i++) {
         newTC = TexCoord0.xy + dirVecs[i].xy*1.0/bufferDim;
@@ -259,21 +265,49 @@ void main() {
         if (samp.w != tex5.w) {
             isOutline = true;
         }
-        if (samp.w == bestObjInd) {
+        if (samp.w == selObjInd) {
             isSelObj = true;
+        }
+        if (samp.w == actObjInd) {
+            isActObj = true;
         }
     }
     
-    if (bestObjInd == 0) {
+    float stripeVal = float(sin(
+        (TexCoord0.x + TexCoord0.y)*(bufferDim.y/5.0) + curTime/50.0     
+    ) > 0.0);
+    
+    if (selObjInd == 0) {
         isSelObj = false;
+    }
+    if (actObjInd == 0) {
+        isActObj = false;
     }
     if (isOutline) {
         
-        if (isSelObj) {
-            finalCol.rgb += vec3(1.0,1.0,0.0)*(0.5+0.5*abs(sin(curTime/200.0)));
+        if (isSelObj||isActObj) {
+            if (isSelObj) {
+                
+                
+                                
+                finalCol.rgb += stripeVal;
+                //vec3(1.0,0.0,0.0)*(0.5+0.5*abs(sin(curTime/200.0)));
+            }
+            if (isActObj) {
+                
+                if (isSelObj) {
+                    finalCol.rgb *= vec3(0.0,1.0,0.0);
+                }
+                else {
+                    finalCol.rgb += vec3(0.0,1.0,0.0);
+                }
+                
+                
+            }
+            
         }
         else {
-            finalCol.rgb -= vec3(1.0,1.0,1.0)*0.5;
+            finalCol.rgb += vec3(1.0,1.0,1.0)*0.25;
         }
         
         
@@ -281,11 +315,11 @@ void main() {
     
     
 
-    if (valIsGeom) {
+    if (valIsGeom&&(!isOutline)) {
         finalCol = tex2.rgb;
     }
     
-    //finalCol = tex7.aaa;
+    //finalCol = vec3(stripeVal);
 
     gl_FragData[0] = vec4(finalCol,1.0);
 

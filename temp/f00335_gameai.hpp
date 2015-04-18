@@ -33,11 +33,36 @@ public:
 	
 	
 	
+	// emotions:
+	// ---------------
+	// 
 	
 	
+	// physical:
+	// ---------------
+	// pickup
+	// drop
+	// take from
+	// place inside
+	// move
+	// toggle
+	// kiss on cheek
+	// kiss on mouth
+	// hug
+	// grope
+	// reproduce (?)
+	// slap
+	// detain
+	// 
 	
-	
-	
+	// verbal:
+	// ----------------
+	// threaten
+	// insult
+	// compliment
+	// seduce
+	// ask about (?)
+	// 
 	
 	
 	

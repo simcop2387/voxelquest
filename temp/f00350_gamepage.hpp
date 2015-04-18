@@ -816,7 +816,7 @@ public:
 		
 
 		parentGPH->clearSet(); //false
-		getVoroPoints();
+		//getVoroPoints();
 
 
 		if (dd) {
@@ -894,7 +894,7 @@ public:
 		}
 
 		//singleton->setShaderInt("voroCount", voroCount);
-		singleton->setShaderArrayfVec4("voroArr", singleton->voroArr, voroCount);
+		//singleton->setShaderArrayfVec4("voroArr", singleton->voroArr, voroCount);
 
 		singleton->drawFSQuad();
 

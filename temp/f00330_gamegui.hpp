@@ -1013,7 +1013,7 @@ public:
 		if (uiComp == NULL) {
 			return;
 		}
-		if (uiComp->visible) {
+		if (uiComp->visible && uiComp->enabled) {
 			
 		}
 		else {
@@ -1052,7 +1052,7 @@ public:
 		singleton->compStack[0].data->runReport();
 	}
 
-	void renderGUI(int activeFBO) {
+	void renderGUI() {
 		
 		
 		int i;
@@ -1104,7 +1104,7 @@ public:
 							curComp = singleton->compStack[ singleton->guiLayers[j][k] ].data;
 							curCont = &(curComp->uiCont);
 							
-							if (curComp->visible && (curComp->layerId >= 0)) {
+							if (curComp->visible  && curComp->enabled && (curComp->layerId >= 0)) {
 								
 								for (m = 0; m < maxLoop; m++) {
 									

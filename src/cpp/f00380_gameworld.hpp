@@ -124,6 +124,7 @@ public:
 	FIVector4 tempVec1;
 	FIVector4 tempVec2;
 	FIVector4 tempVec3;
+	FIVector4 tempVec4;
 	
 	FIVector4 blockPos[2];
 	FIVector4 nodePos[2];
@@ -159,7 +160,6 @@ public:
 	FIVector4 *lightPos;
 	FIVector4 *globLightPos;
 	FIVector4 lightPosBase;
-	FIVector4 *cameraPos;
 
 	FIVector4 *curBoxPos;
 	FIVector4 tv0;
@@ -320,7 +320,7 @@ public:
 
 		//cutPos = &(singleton->dynObjects[E_OBJ_CUTAWAY]->pos);
 		//fogPos = &(singleton->dynObjects[E_OBJ_FOG]->pos);
-		cameraPos = &(singleton->dynObjects[E_OBJ_CAMERA]->pos);
+		
 
 		renderMethod = (int)E_RENDER_VOL;
 
@@ -644,9 +644,248 @@ public:
 	
 	
 	
+	int testMoveHit(BaseObj* ge, int x, int y, int z) {
+		ge->positionInCells.addXYZ(x,y,z);
+		ge->updateBounds();
+		int res = testHit(ge);
+		ge->positionInCells.addXYZ(-x,-y,-z);
+		ge->updateBounds();
+		
+		return res;
+	}
 	
+	bool makeMove(BaseObj* ge) {
+		
+		bool hitGround = false;
+		bool onGround = false;
+		
+		float fPixelsPerCell = singleton->pixelsPerCell;
+		bool res;
+		int ires;
+		int i;
+		
+		
+		tempVec1.copyFrom(&(ge->positionInCells));
+		tempVec2.copyFrom(&(ge->posOffsetInPixels));
+		
+		ires = testHit(ge);
+		if (ires == E_CD_SOLID) {
+			// make it float
+			ge->toggleGrav(0.0f);
+			ge->vel.setFZ(0.0f);
+			ge->posOffsetInPixels.addXYZ(
+				ge->vel[0]*singleton->timeDelta,
+				ge->vel[0]*singleton->timeDelta,
+				1.0f*fPixelsPerCell*singleton->timeDelta	
+			);
+		}
+		else {
+			ge->toggleGrav(-1.0f);
+			ge->vel.addXYZRef(&(ge->acc),singleton->timeDelta);
+			ge->posOffsetInPixels.addXYZRef(&(ge->vel),singleton->timeDelta);
+		}
+		
+		
+		
+		if (ge->posOffsetInPixels[2] > 0.0f) {
+			
+			if (testMoveHit(ge,0,0,1) == E_CD_SOLID) {
+				
+				// if (ge->vel[2] > 0.0f) {
+				// 	ge->vel.setFZ(0.0f);
+				// 	ge->posOffsetInPixels.setFZ(0.0f);
+				// }
+				ge->vel.multXYZ(1.0f,1.0f,-ge->bounciness);
+				ge->posOffsetInPixels.setFZ(0.0f);
+			}
+		}
+		if (ge->posOffsetInPixels[2] < 0.0f) {
+			
+			if (testMoveHit(ge,0,0,-1) == E_CD_SOLID) {
+				
+				onGround = abs(ge->vel[2]) < 2.0f*fPixelsPerCell;
+				
+				if (ge->vel[2] < 0.0f) {
+					
+					if (ge->vel[2] < -20.0*fPixelsPerCell) {
+						hitGround = true;
+					}
+					
+					ge->vel.multXYZ(1.0f,1.0f,-ge->bounciness);
+					ge->posOffsetInPixels.setFZ(0.0f);
+					ge->isFalling = false;
+					ge->isJumping = false;
+				}
+				
+			}
+		}
+		
+		if (onGround) {
+			ge->vel.multXYZ(ge->friction,ge->friction,1.0f);
+		}
+		
+		
+		if (ge->posOffsetInPixels[0] > 0.0f) {
+			res = moveCell(ge,1,0,0);
+			ge->positionInCells.copyFrom(&tempVec1);
+			ge->updateBounds();
+			
+			if (!res) {
+				ge->vel.multXYZ(-ge->bounciness,1.0f,1.0f);
+				ge->posOffsetInPixels.setFX(0.0f);
+			}
+		}
+		if (ge->posOffsetInPixels[0] < 0.0f) {
+			res = moveCell(ge,-1,0,0);
+			ge->positionInCells.copyFrom(&tempVec1);
+			ge->updateBounds();
+			
+			if (!res) {
+				ge->vel.multXYZ(-ge->bounciness,1.0f,1.0f);
+				ge->posOffsetInPixels.setFX(0.0f);
+			}
+		}
+		
+		if (ge->posOffsetInPixels[1] > 0.0f) {
+			res = moveCell(ge,0,1,0);
+			ge->positionInCells.copyFrom(&tempVec1);
+			ge->updateBounds();
+			
+			if (!res) {
+				ge->vel.multXYZ(1.0f,-ge->bounciness,1.0f);
+				ge->posOffsetInPixels.setFY(0.0f);
+			}
+		}
+		if (ge->posOffsetInPixels[1] < 0.0f) {
+			res = moveCell(ge,0,-1,0);
+			ge->positionInCells.copyFrom(&tempVec1);
+			ge->updateBounds();
+			
+			if (!res) {
+				ge->vel.multXYZ(1.0f,-ge->bounciness,1.0f);
+				ge->posOffsetInPixels.setFY(0.0f);
+			}
+		}
+		
+		
+		
+		ge->updateBounds();
+		
+		
+		
+		if (ge->posOffsetInPixels[0] >= fPixelsPerCell) {
+			ge->posOffsetInPixels.addXYZ(-fPixelsPerCell,0.0f,0.0f);
+			res = moveCell(ge,1,0,0);
+		}
+		if (ge->posOffsetInPixels[0] <= -fPixelsPerCell) {
+			ge->posOffsetInPixels.addXYZ(fPixelsPerCell,0.0f,0.0f);
+			res = moveCell(ge,-1,0,0);
+		}
+		
+		if (ge->posOffsetInPixels[1] >= fPixelsPerCell) {
+			ge->posOffsetInPixels.addXYZ(0.0f,-fPixelsPerCell,0.0f);
+			res = moveCell(ge,0,1,0);
+		}
+		if (ge->posOffsetInPixels[1] <= -fPixelsPerCell) {
+			ge->posOffsetInPixels.addXYZ(0.0f,fPixelsPerCell,0.0f);
+			res = moveCell(ge,0,-1,0);
+		}
+		
+		if (ge->posOffsetInPixels[2] >= fPixelsPerCell) {
+			ge->posOffsetInPixels.addXYZ(0.0f,0.0f,-fPixelsPerCell);
+			res = moveCell(ge,0,0,1);
+		}
+		if (ge->posOffsetInPixels[2] <= -fPixelsPerCell) {
+			ge->posOffsetInPixels.addXYZ(0.0f,0.0f,fPixelsPerCell);
+			res = moveCell(ge,0,0,-1);
+			
+			
+		}
+		
+		ge->updateBounds();
+		
+		return hitGround;
+	}
 	
 
+	void updatePhys() {
+		int i;
+		BaseObj* ge;
+		
+		FIVector4 modv;
+		
+		float smoothMod = 0.125f;
+		
+		modv.setFXYZ(smoothMod,smoothMod,smoothMod);
+		
+		bool hitGround;
+		
+		SphereStruct* ss;
+		
+		for(i = 0; i < visObjects.size(); i++) {
+			ge = &(gameObjects[visObjects[i]]);
+			
+			
+			modv.setFZ(smoothMod);
+			
+			hitGround = false;
+			
+			if (singleton->moveMode == E_MM_UNIT) {
+				makeFloat(ge);
+				makeFall(ge);
+			}
+			else {
+				hitGround = makeMove(ge);
+				if (ge->vel[2] != 0.0f) {
+					modv.setFZ(1.0f);
+				}
+				
+				if (hitGround) {
+					singleton->playBump(ge);
+					singleton->performCamShake(ge);
+				}
+			}
+			
+			ge->updatePixelBounds();
+			
+			ge->updateTargets(&modv);
+			
+			if (ge->isBullet) {
+				if (ge->vel.length() < (2.0f*singleton->pixelsPerCell) ) {
+					singleton->explodeBullet(ge);
+				}
+			}
+			
+		}
+		
+		for (i = 0; i < singleton->sphereStack.size(); i++) {
+			ss = &(singleton->sphereStack[i]);
+			
+			ss->radVel += ss->radAcc*singleton->timeDelta;
+			ss->curRad += ss->radVel*singleton->timeDelta;
+			
+			if (ss->curRad >= ss->maxRad) {
+				ss->curRad = ss->maxRad;
+				ss->radVel = 0.0f;
+			}
+		}
+		
+		for (i = 0; i < singleton->sphereStack.size(); i++) {
+			ss = &(singleton->sphereStack[i]);
+			if (ss->curRad <= 0.0) {
+				singleton->sphereStack.erase(singleton->sphereStack.begin() + i);
+			}
+		}
+		
+		
+		singleton->resultShake = -singleton->cameraShake*sin(singleton->shakeTimer.getElapsedTimeInMilliSec()/20.0f);
+		
+		singleton->resultCameraPos.copyFrom(singleton->cameraPos);
+		singleton->resultCameraPos.addXYZ(0.0f,0.0f,singleton->resultShake*0.5f*singleton->pixelsPerCell);
+		
+		singleton->cameraShake += (0.0f - singleton->cameraShake)*singleton->timeDelta*8.0f;
+		
+	}
 
 	void update()
 	{
@@ -661,13 +900,7 @@ public:
 		float z;
 		
 		
-		for(i = 0; i < visObjects.size(); i++) {
-			makeFall( &(gameObjects[visObjects[i]]) );
-		}
 		
-
-		
-
 		
 
 		if (noiseGenerated) {
@@ -696,9 +929,8 @@ public:
 		
 		
 		actionOnHolders(E_HOLDER_ACTION_RENDER);
+		drawSpheres();
 		renderGeom();
-		
-		
 		glDisable(GL_DEPTH_TEST);
 		singleton->perspectiveOn = false;
 		
@@ -714,6 +946,15 @@ public:
 		
 		drawMap();
 		
+		
+		
+		// singleton->myDynBuffer->displayCB();
+		// glBindTexture(GL_TEXTURE_2D, singleton->myDynBuffer->textureId);
+		// singleton->drawFSQuadOffset(0.0,0.0,0.5);
+		// glBindTexture(GL_TEXTURE_2D, 0);
+		
+		
+		
 		glutSwapBuffers();
 		glFlush();
 
@@ -727,6 +968,10 @@ public:
 		
 		singleton->updateLock = false;
 
+	}
+	
+	void changeEntParam(int param, int offset, float val) {
+		
 	}
 
 	
@@ -744,7 +989,6 @@ public:
 			holderCount = getHoldersInEnt(se);
 			refreshHoldersInList(true, true);
 			holdersToRefresh.clear();
-
 
 
 		}
@@ -1003,8 +1247,8 @@ public:
 		int curLoadRadius;
 
 		
-		camPagePos.copyFrom( cameraPos );
-		camBlockPos.copyFrom( cameraPos );
+		camPagePos.copyFrom( singleton->cameraPos );
+		camBlockPos.copyFrom( singleton->cameraPos );
 
 		
 		camPagePos.intDivXYZ(visPageSizeInPixels);
@@ -1237,6 +1481,79 @@ DO_RETURN_PP:
 		}
 	}
 
+	
+	void drawSpheres() {
+		int i;
+		int k = 0;
+		
+		if (singleton->sphereStack.size() <= 0) {
+			return;
+		}
+		
+		SphereStruct* ss;
+		
+		singleton->bindShader("SphereShader");
+		
+		
+		singleton->setShaderFloat("curTime", singleton->curTime);
+		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec) );
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
+		singleton->setShaderFloat("holderSizeInPixels",singleton->holderSizeInPixels);
+		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		
+		
+		if (FILL_POINTS) {
+			if (k == 0) {
+				singleton->bindFBO("pages2TargFBO", -1, 0);
+			}
+			else {
+				singleton->bindFBO("water2TargFBO", -1, 0);
+			}
+		}
+		else {
+			if (k == 0) {
+				singleton->bindFBO("pagesTargFBO", -1, 0);
+			}
+			else {
+				singleton->bindFBO("waterTargFBO", -1, 0);
+			}
+		}
+		
+		//singleton->sampleFBO("waveFBO", 0);
+		
+		
+		
+		glBegin(GL_POINTS);
+		for (i = 0; i < singleton->sphereStack.size(); i++) {
+			
+			ss = &(singleton->sphereStack[i]);
+			
+			glMultiTexCoord4f(
+				GL_TEXTURE0,
+				ss->curRad, // was normal x
+				0.0f, // was normal y
+				0.0f, // was normal z
+				10.0
+				
+			);
+			
+			glVertex3f(
+				ss->position.getFX(),
+				ss->position.getFY(),
+				ss->position.getFZ()
+			);
+		}
+		glEnd();
+		
+		//singleton->unsampleFBO("waveFBO",0);
+		
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		
+	}
+
 
 	void actionOnHolders(int action, bool instantRefresh = false, bool clearEverything = false)
 	{
@@ -1287,7 +1604,7 @@ DO_RETURN_PP:
 		singleton->setShaderFloat("holderSizeInPixels",singleton->holderSizeInPixels);
 		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
-		singleton->setShaderfVec3("cameraPos", cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 		
 		
 		GLint loc = singleton->getShaderLoc("heightOfNearPlane");
@@ -1299,7 +1616,11 @@ DO_RETURN_PP:
 		for (k = 0; k < MAX_LAYERS; k++)
 		{
 			
-			singleton->setShaderVec3("offsetPos", 0.0f,0.0f,0.0f);
+			singleton->setShaderVec3("offsetPos", 
+				0.0f,
+				0.0f,
+				0.0f
+			);
 			if (FILL_POINTS) {
 				if (k == 0) {
 					singleton->bindFBO("pages2TargFBO");
@@ -1355,16 +1676,16 @@ DO_RETURN_PP:
 							{
 							case E_HOLDER_ACTION_RENDER:
 								
-								curMipLev = clampf(cameraPos->distance(&gp->gphCenInPixels)/4096.0f,0.0,MAX_MIP_LEV-1);
+								curMipLev = clampf(singleton->cameraPos->distance(&gp->gphCenInPixels)/4096.0f,0.0,MAX_MIP_LEV-1);
 								
 								if (curMipLev == n) {
 									if ( ((k == 0) && gp->hasSolids) || ((k == 1) && gp->hasTrans) ) {
 										
 										tempVec.copyFrom(&gp->gphCenInPixels);
-										tempVec.addXYZRef(cameraPos,-1.0f);
+										tempVec.addXYZRef(singleton->cameraPos,-1.0f);
 										tempVec.normalize();
 										
-										chunkDis = cameraPos->distance(&gp->gphCenInPixels);
+										chunkDis = singleton->cameraPos->distance(&gp->gphCenInPixels);
 										
 										
 										
@@ -1489,7 +1810,7 @@ DO_RETURN_PP:
 			singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
 			singleton->setShaderFloat("focalLength",singleton->focalLength);
 			singleton->setShaderFloat("boxDiam",singleton->voxelSizeInWC);
-			singleton->setShaderfVec3("cameraPos", cameraPos);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 			
 			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
 			singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
@@ -1517,7 +1838,61 @@ DO_RETURN_PP:
 
 
 
+	void drawPrim() {
+		
+		
+		glDisable(GL_DEPTH_TEST);
+		glClearColor(0.6f, 0.6f, 0.7f, 0.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		
+		singleton->bindShader("PrimShader");
+		singleton->bindFBO("resultFBO0");
+		singleton->sampleFBO("hmFBOLinear", 0);
+		
+		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+		singleton->setShaderFloat("curTime", singleton->curTime/1000.0f);
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
+		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec) );
+		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+		
+		singleton->drawFSQuad();
+		
+		singleton->unsampleFBO("hmFBOLinear", 0);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		
+		
+		singleton->drawFBO("resultFBO0", 0, 1.0f);
+		
+		
+		if (singleton->anyMenuVisible()) {
+			glEnable (GL_BLEND);
 
+			singleton->bindShader("GUIShader");
+			singleton->setShaderTexture(0,singleton->fontWrappers[EFW_TEXT]->fontImage->tid);
+			singleton->setShaderTexture(1,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
+			singleton->sampleFBO("resultFBO0", 2);
+			singleton->setShaderTexture3D(3,singleton->volIdMat);
+			
+			singleton->mainGUI->renderGUI();
+			
+			
+			singleton->setShaderTexture3D(3,0);
+			singleton->unsampleFBO("resultFBO0", 2);
+			singleton->setShaderTexture(1,0);
+			singleton->setShaderTexture(0,0);
+			singleton->unbindShader();
+			
+			glDisable(GL_BLEND);
+		}
+		
+		
+		
+		glutSwapBuffers();
+		
+	}
 	
 
 
@@ -2056,8 +2431,8 @@ DONE_FINDING_PATH:
 		
 	}
 
-	
-	void makeFall(BaseObj *ge) {
+
+	void makeFloat(BaseObj *ge) {
 		
 		bool doProc = false;
 		
@@ -2079,11 +2454,20 @@ DONE_FINDING_PATH:
 			if (doProc) {
 				ge->positionInCells.addXYZ(0,0,1);
 				ge->updateBounds();
-				ge->isFalling = true;
+				//ge->isFalling = true;
 			}
 			else {
-				ge->isFalling = false;
+				//ge->isFalling = false;
 			}
+		}
+	}
+	
+	void makeFall(BaseObj *ge, bool justTesting = false) {
+		
+		bool doProc = false;
+		
+		if (ge == NULL) {
+			return;
 		}
 		
 		
@@ -2091,20 +2475,27 @@ DONE_FINDING_PATH:
 		ge->positionInCells.addXYZ(0,0,-1);
 		ge->updateBounds();
 		
-		res = testHit(ge);
+		int res = testHit(ge);
 		
 		if ( (res == E_CD_EMPTY) || (res == E_CD_WATER) ) {
 			// let it fall
+			
 			ge->isFalling = true;
 		}
 		else {
-			// correct the fall			
+			// correct the fall
 			
 			ge->isFalling = false;
 			
+			doProc = true;
+			
+		}
+		
+		if (doProc || justTesting) {
 			ge->positionInCells.addXYZ(0,0,1);
 			ge->updateBounds();
 		}
+		
 	}
 	
 	
@@ -2119,9 +2510,9 @@ DONE_FINDING_PATH:
 			return false;
 		}
 		
-		if (ge->isFalling) {
-			return false;
-		}
+		// if (ge->isFalling) {
+		// 	return false;
+		// }
 		
 		bool moveSuccessful = false;
 		bool moveSuc = false;
@@ -2145,7 +2536,7 @@ DONE_FINDING_PATH:
 				ge->rotate(1-dir,axis);
 				ge->updateBounds();
 				
-				singleton->playBump(ge);
+				//singleton->playBump(ge);
 				
 			}
 			else {
@@ -2172,12 +2563,13 @@ DONE_FINDING_PATH:
 			return false;
 		}
 		
-		if (ge->isFalling) {
-			return false;
-		}
+		// if (ge->isFalling) {
+		// 	return false;
+		// }
 		
 		bool moveSuccessful = false;
 		bool moveSuc = false;
+		bool notBullet = !(ge->isBullet);
 		
 		ge->positionInCells.addXYZ(x,y,z);
 		ge->updateBounds();
@@ -2188,13 +2580,15 @@ DONE_FINDING_PATH:
 		
 		if (res == E_CD_SOLID) {
 			
-			ge->positionInCells.addXYZ(0,0,1);
+			if (notBullet) { ge->positionInCells.addXYZ(0,0,1); }
 			ge->updateBounds();
 			res2 = testHit(ge);
 			
+			//res2 = testMoveHit(ge,0,0,1);
+			
 			if (res2 == E_CD_SOLID) {
 				
-				ge->positionInCells.addXYZ(0,0,-1);
+				if (notBullet) { ge->positionInCells.addXYZ(0,0,-1); }
 				ge->positionInCells.addXYZ(-x,-y,-z);
 				ge->updateBounds();
 				
@@ -2203,15 +2597,11 @@ DONE_FINDING_PATH:
 				}
 				
 				if (moveSuc == false) {
-					singleton->playBump(ge);
+					//singleton->playBump(ge);
 				}
 				else {
 					moveSuccessful = moveCell(ge,x,y,z);
 				}
-				
-				
-				
-				
 				
 			}
 			else {
@@ -2222,20 +2612,38 @@ DONE_FINDING_PATH:
 		else {
 			moveSuccessful = true;
 		}
+		
+		if (notBullet) {
+			if (ge->vel[2] == 0.0f) {
+				res = testMoveHit(ge,0,0,-1);
+				if (res != E_CD_SOLID) {
+						res2 = testMoveHit(ge,0,0,-2);
+						if (res2 == E_CD_SOLID) {
+								ge->positionInCells.addXYZ(0,0,-1);
+								ge->updateBounds();
+						}
+				}
+			}
+		}
+		
+		
+		
 				
 		return moveSuccessful;
 		
 	}
 	
-	void removeVisObject(int _uid) {
+	bool removeVisObject(BaseObjType _uid) {
 		int i;
 		
 		for (i = 0; i < visObjects.size(); i++) {
 			if (visObjects[i] == _uid) {
 				visObjects.erase(visObjects.begin() + i);
-				return;
+				return true;
 			}
 		}
+		
+		return false;
 	}
 	
 	
@@ -2277,29 +2685,36 @@ DONE_FINDING_PATH:
 		
 		BaseObj* testObj;
 		
-		for(i = 0; i < visObjects.size(); i++) {
+		if (ge->isBullet) {
 			
-			if (visObjects[i] == ge->uid) {
-				// do not test hit against self
-			}
-			else {
+		}
+		else {
+			for(i = 0; i < visObjects.size(); i++) {
 				
-				testObj = &(gameObjects[visObjects[i]]);
-				
-				hitObj = FIVector4::intersectInt(
-					&(testObj->boundsMinTransInCells),
-					&(testObj->boundsMaxTransInCells),
-					&(ge->boundsMinTransInCells),
-					&(ge->boundsMaxTransInCells)
-				);
-				
-				if (hitObj) {
-					lastHitObjUID = testObj->uid;
-					return E_CD_SOLID;
+				if (visObjects[i] == ge->uid) {
+					// do not test hit against self
 				}
+				else {
 					
+					testObj = &(gameObjects[visObjects[i]]);
+					
+					hitObj = FIVector4::intersectInt(
+						&(testObj->boundsMinTransInCells),
+						&(testObj->boundsMaxTransInCells),
+						&(ge->boundsMinTransInCells),
+						&(ge->boundsMaxTransInCells)
+					);
+					
+					if (hitObj) {
+						lastHitObjUID = testObj->uid;
+						return E_CD_SOLID;
+					}
+						
+				}
 			}
 		}
+		
+		
 		
 		
 		
@@ -2368,12 +2783,12 @@ DONE_FINDING_PATH:
 
 		singleton->bindShader("GeomShader");
 		singleton->setShaderFloat("objectId",0.0);
-		singleton->setShaderfVec3("cameraPos", cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 		singleton->setShaderFloat("isWire", 0.0);
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
 		singleton->setShaderfVec3("offsetPos",&(singleton->origin));
 		
-		singleton->bindFBO("geomTargFBO");
+		singleton->bindFBO("geomBaseTargFBO");
 		
 		
 		glLineWidth(4.0f);
@@ -2493,48 +2908,68 @@ DONE_FINDING_PATH:
 			singleton->setShaderFloat("objectId",visObjects[i]);
 			
 			
-			tempVec1.copyFrom( &(curObj->boundsMinTransInCells) );
-			tempVec2.copyFrom( &(curObj->boundsMaxTransInCells) );
-			
-			tempVec1.multXYZ(singleton->pixelsPerCell);
-			tempVec2.multXYZ(singleton->pixelsPerCell);
-			
-			singleton->drawBox(
-				&tempVec1,
-				&tempVec2
-			);
+			tempVec1.copyFrom( &(curObj->boundsMinTransInPixels) );
+			tempVec2.copyFrom( &(curObj->boundsMaxTransInPixels) );
 			
 			
-			if (visObjects[i] == singleton->bestObjInd) {
+			// if (visObjects[i] == singleton->actObjInd) {
+			// 	singleton->vecToAngle(&(singleton->lookAtVec),&tempVec4);
+			// 	curObj->ang = tempVec4.getFX();
+			// }
+			
+			tempVec3.copyFrom(&(curObj->centerPointInPixels));
+			tempVec3.setFW(curObj->ang);
+			
+			singleton->setShaderfVec4("rotationZ",&tempVec3);
+			
+			
+			if (visObjects[i] == singleton->actObjInd) {
 				
-				singleton->setShaderFloat("objectId",0);
+				if (!singleton->firstPerson) {
+					
+					singleton->drawBox(
+						&tempVec1,
+						&tempVec2
+					);
+					
+					singleton->setShaderFloat("objectId",0);
+					
+					tempVec1.copyFrom( &(curObj->centerPointInPixels) );
+					
+					
+					curOr = curObj->orientationXYZ.getIX();
+					tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
+					tempVec2.multXYZ(singleton->pixelsPerCell*4.0f);
+					tempVec2.addXYZRef(&tempVec1);
+					singleton->setShaderVec3("matVal", 255, 0, 0);
+					singleton->drawLine(&tempVec1,&tempVec2);
+					
+					curOr = curObj->orientationXYZ.getIY();
+					tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
+					tempVec2.multXYZ(singleton->pixelsPerCell*4.0f);
+					tempVec2.addXYZRef(&tempVec1);
+					singleton->setShaderVec3("matVal", 0, 255, 0);
+					singleton->drawLine(&tempVec1,&tempVec2);
+					
+					curOr = curObj->orientationXYZ.getIZ();
+					tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
+					tempVec2.multXYZ(singleton->pixelsPerCell*4.0f);
+					tempVec2.addXYZRef(&tempVec1);
+					singleton->setShaderVec3("matVal", 0, 0, 255);
+					singleton->drawLine(&tempVec1,&tempVec2);
+					
+					
+					singleton->setShaderVec3("matVal", 30, 30, 30);
+				}
 				
-				tempVec1.copyFrom( &(curObj->centerPointInPixels) );
-				
-				curOr = curObj->orientationXYZ.getIX();
-				tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
-				tempVec2.multXYZ(singleton->pixelsPerCell*4.0f);
-				tempVec2.addXYZRef(&tempVec1);
-				singleton->setShaderVec3("matVal", 255, 0, 0);
-				singleton->drawLine(&tempVec1,&tempVec2);
-				
-				curOr = curObj->orientationXYZ.getIY();
-				tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
-				tempVec2.multXYZ(singleton->pixelsPerCell*4.0f);
-				tempVec2.addXYZRef(&tempVec1);
-				singleton->setShaderVec3("matVal", 0, 255, 0);
-				singleton->drawLine(&tempVec1,&tempVec2);
-				
-				curOr = curObj->orientationXYZ.getIZ();
-				tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
-				tempVec2.multXYZ(singleton->pixelsPerCell*4.0f);
-				tempVec2.addXYZRef(&tempVec1);
-				singleton->setShaderVec3("matVal", 0, 0, 255);
-				singleton->drawLine(&tempVec1,&tempVec2);
 				
 				
-				singleton->setShaderVec3("matVal", 30, 30, 30);
-				
+			}
+			else {
+				singleton->drawBox(
+					&tempVec1,
+					&tempVec2
+				);
 			}
 							
 						
@@ -2544,6 +2979,8 @@ DONE_FINDING_PATH:
 			
 		}
 		
+		tempVec3.setFXYZW(0.0f,0.0f,0.0f,0.0f);
+		singleton->setShaderfVec4("rotationZ",&tempVec3);
 		singleton->setShaderFloat("objectId",0.0);
 		glLineWidth(0);
 
@@ -2621,6 +3058,7 @@ DONE_FINDING_PATH:
 		
 		if (
 			(singleton->bCtrl) &&
+			(singleton->mouseState != E_MOUSE_STATE_BRUSH) &&
 			(!(singleton->anyMenuVisible()))	
 		) {
 			for (i = 1; i < singleton->dynObjects.size(); i++) {
@@ -2706,15 +3144,19 @@ DONE_FINDING_PATH:
 
 		//////////////////////////////
 		
+		singleton->copyFBO2("geomBaseTargFBO","geomTargFBO");
+		
 		//glDisable(GL_DEPTH_TEST);
 		
 		singleton->bindShader("BillboardShader");
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
 		singleton->setShaderFloat("holderSizeInPixels",singleton->holderSizeInPixels);
+		singleton->setShaderFloat("pixelsPerCell", singleton->pixelsPerCell);
 		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
-		singleton->setShaderfVec3("cameraPos", cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 		singleton->setShaderTexture(0,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
+		singleton->sampleFBO("geomBaseTargFBO",1);
 		singleton->bindFBO("geomTargFBO", -1, 0);
 		
 		glBegin(GL_POINTS);
@@ -2743,16 +3185,11 @@ DONE_FINDING_PATH:
 				curObj->centerPointInPixels[1],
 				curObj->centerPointInPixels[2]
 			);
-							
-							
-							
-											
-							
-						
 			
 		}
 		glEnd();
 		
+		singleton->unsampleFBO("geomBaseTargFBO",1);
 		singleton->setShaderTexture(0,0);
 		singleton->unbindFBO();
 		singleton->unbindShader();
@@ -2776,6 +3213,7 @@ DONE_FINDING_PATH:
 		FIVector4 fPixelWorldCoords;
 		fPixelWorldCoords.copyFrom(fPixelWorldCoordsBase);
 
+		bool notAdded = false;
 
 		uint *vd_ptr;
 		uint *vdl_ptr;
@@ -2787,7 +3225,7 @@ DONE_FINDING_PATH:
 		int pageSizeMult = visPageSizeInUnits * (singleton->bufferMult);
 
 
-		int i, j, k, m, n, o, p;
+		int i, j, k, m, n, o, p, q;
 
 		int ii;
 		int jj;
@@ -3006,52 +3444,60 @@ DONE_FINDING_PATH:
 																else
 																{
 
-																	if (brushAction == E_BRUSH_SUB) {
-																		if (isInside)
-																		{
+																	switch(brushAction) {
+																		case E_BRUSH_ADD:
 																			
-																			//uncomment just this
-																			// linA = 0;
-																			// //linB = 255;
-																			// linB += 80;
-																			// if (linB > 255) {
-																			// 	linB = 255;
-																			// }
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			// (tex2.b > 0.5)
-																			// 1.0 = nothing
-																			// 0.0 = solid
-																			// linB = clampf(
-																				
-																			// 	(unitPosCurDis/unitPosRad - unitPosCurDis/(unitPosRad+1)),
-																			// 	0.0f,
-																			// 	1.0f
-																			// )*255.0f;
-																		}
 
-																	}
-																	else
-																	{
-
-																		if (isInside)
-																		{
-																			//linA = 255;
-																			linA += 80;
-																			if (linA > 255) {
-																				linA = 255;
+																			if (isInside)
+																			{
+																				//linA = 255;
+																				linA += 80;
+																				if (linA > 255) {
+																					linA = 255;
+																				}
+																				linB = 0;
 																			}
-																			linB = 0;
-																		}
+																			nearA = 0;
 
-																		nearA = 0;
+																			
+																		break;
+																		case E_BRUSH_SUB:
+																			
+																			if (isInside) {
+																				
+																				
+																				
+																				//uncomment just this
+																				linA = 0;
+																				linB = 255;
+																				// linB += 80;
+																				// if (linB > 255) {
+																				// 	linB = 255;
+																				// }
+																				
+																				
+																				
+																				
+																				
+																				
+																				
+																				
+																				// (tex2.b > 0.5)
+																				// 1.0 = nothing
+																				// 0.0 = solid
+																				// linB = clampf(
+																					
+																				// 	(unitPosCurDis/unitPosRad - unitPosCurDis/(unitPosRad+1)),
+																				// 	0.0f,
+																				// 	1.0f
+																				// )*255.0f;
+																			}
 
+																			
+																		break;
+																		case E_BRUSH_REF:
+																		
+																		break;
 																	}
 																}
 
@@ -3064,11 +3510,23 @@ DONE_FINDING_PATH:
 															curPage->isDirty = true;
 															changes = true;
 														}
-														else
-														{
-															if (curPage->parentGPH->childrenDirty)
-															{
-																curPage->parentGPH->refreshChildren(true,true,true);
+														else {
+															if (curPage->parentGPH->childrenDirty) {
+																
+																notAdded = true;
+																for (q = 0; q < singleton->dirtyGPHStack.size(); q++) {
+																	if (singleton->dirtyGPHStack[q] == curPage->parentGPH) {
+																		notAdded = false;
+																	}
+																}
+																
+																if (notAdded) {
+																	singleton->dirtyGPHStack.push_back(curPage->parentGPH);
+																}
+																
+																//
+																
+																//curPage->parentGPH->refreshChildren(true,true,true);
 															}
 														}
 
@@ -3792,7 +4250,7 @@ DONE_FINDING_PATH:
 			// TODO: EDIT CITY
 
 			//testPix > xxx <- (xxx = 0: no city, xxx = 255: all city, def: 220)
-			if ( testPix1 != testPix2 || testPix3 != testPix4 || testPix > 220 )
+			if ( testPix1 != testPix2 || testPix3 != testPix4 || testPix > 200 )
 			{
 				fbow->setPixelAtIndex(curInd, blockChannel, 0);
 			}
@@ -4771,7 +5229,7 @@ DONE_FINDING_PATH:
 		singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 		singleton->setShaderfVec4("mapFreqs", &(singleton->mapFreqs) );
 		singleton->setShaderfVec4("mapAmps", &(singleton->mapAmps) );
-		singleton->setShaderfVec3("cameraPos", cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		
 		singleton->setShaderfVec3("maxBoundsInPixels", &(singleton->worldSizeInPixels));
@@ -4891,14 +5349,14 @@ DONE_FINDING_PATH:
 		{
 			
 			
-			findNearestEnt(&(singleton->nearestLights),E_ET_LIGHT,4,2,cameraPos,false,true);
+			findNearestEnt(&(singleton->nearestLights),E_ET_LIGHT,4,2,singleton->cameraPos,false,true);
 			
 			
 			for (i = 0; i < singleton->nearestLights.selEntList.size(); i++) {
 				
 				
 				curLight = singleton->nearestLights.selEntList[i];//&(curBlock->gameEnts[E_ET_LIGHT].data[k]);
-				curLight->camDistance = cameraPos->distance(&(curLight->geomParams[E_LP_POSITION]));
+				curLight->camDistance = singleton->cameraPos->distance(&(curLight->geomParams[E_LP_POSITION]));
 
 				if (curLight->toggled) {
 					activeLights[lightCount] = singleton->nearestLights.selEntList[i];//&(curBlock->gameEnts[E_ET_LIGHT].data[k]);
@@ -4928,7 +5386,7 @@ DONE_FINDING_PATH:
 			// 		for (k = 0; k < curBlock->gameEnts[E_ET_LIGHT].data.size(); k++)
 			// 		{
 			// 			curLight = &(curBlock->gameEnts[E_ET_LIGHT].data[k]);
-			// 			curLight->camDistance = cameraPos->distance(&(curLight->geomParams[E_LP_POSITION]));
+			// 			curLight->camDistance = singleton->cameraPos->distance(&(curLight->geomParams[E_LP_POSITION]));
 
 			// 			if ( (curLight->camDistance < 64.0*singleton->pixelsPerCell ) && (curLight->toggled) )
 			// 			{
@@ -5078,7 +5536,7 @@ UPDATE_LIGHTS_END:
 			singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
 			singleton->setShaderFloat("pixelsPerCell", singleton->pixelsPerCell);
 			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-			singleton->setShaderfVec3("cameraPos", cameraPos);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
 			singleton->setShaderFloat("curTime", singleton->curTime);
 			//singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
@@ -5110,7 +5568,7 @@ UPDATE_LIGHTS_END:
 		singleton->sampleFBO("pagesTargFBO",0);
 		singleton->sampleFBO("combineWithWaterTargFBO",2);
 		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
-		singleton->setShaderfVec3("cameraPos", cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
 		singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
 		singleton->setShaderArrayfVec4("lightArr", singleton->lightArr, (FLOATS_PER_LIGHT * lightCount) / 4);
@@ -5136,7 +5594,7 @@ UPDATE_LIGHTS_END:
 		// singleton->sampleFBO("prelightFBO", 3);
 		// singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
 		// singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
-		// singleton->setShaderfVec3("cameraPos", cameraPos);
+		// singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 		// singleton->setShaderInt("testOn", (int)(singleton->testOn));
 		// singleton->setShaderFloat("curTime", singleton->curTime);
 		// singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
@@ -5169,7 +5627,7 @@ UPDATE_LIGHTS_END:
 		
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
-		singleton->setShaderfVec3("cameraPos", cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 		singleton->setShaderInt("gridOn", (int)(singleton->gridOn));
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
 		singleton->setShaderFloat("curTime", singleton->curTime);
@@ -5213,7 +5671,7 @@ UPDATE_LIGHTS_END:
 			singleton->setShaderFloat("pixelsPerCell", singleton->pixelsPerCell);
 			singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-			singleton->setShaderfVec3("cameraPos", cameraPos);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
 			singleton->setShaderFloat("curTime", singleton->curTime);
 			singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
@@ -5264,7 +5722,7 @@ UPDATE_LIGHTS_END:
 			singleton->sampleFBO("swapFBOBLin0", 2);
 			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
-			singleton->setShaderfVec3("cameraPos", cameraPos);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 			singleton->setShaderfVec3("lightPosWS", lightPos);
 			singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
 			singleton->drawFSQuad();
@@ -5313,12 +5771,13 @@ UPDATE_LIGHTS_END:
 			singleton->sampleFBO("waveFBO", 7);
 			
 			singleton->setShaderFloat("curTime", singleton->curTime);
-			singleton->setShaderFloat("bestObjInd",singleton->bestObjInd);
+			singleton->setShaderFloat("selObjInd",singleton->selObjInd);
+			singleton->setShaderFloat("actObjInd",singleton->actObjInd);
 			singleton->setShaderFloat("seaLevel", singleton->getSLInPixels() );
 			singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
-			singleton->setShaderfVec3("cameraPos", cameraPos);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 			singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 			//singleton->setShaderfVec4("fogPos", fogPos);
 
@@ -5353,7 +5812,7 @@ UPDATE_LIGHTS_END:
 			singleton->sampleFBO("swapFBOBLin0", 2);
 			singleton->setShaderTexture3D(3,singleton->volIdMat);
 			
-			singleton->mainGUI->renderGUI(1 - activeFBO);
+			singleton->mainGUI->renderGUI();
 			
 			
 			singleton->setShaderTexture3D(3,0);

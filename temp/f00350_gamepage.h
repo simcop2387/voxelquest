@@ -708,7 +708,7 @@ bool GamePage::generateVolume (bool dd)
 		
 
 		parentGPH->clearSet(); //false
-		getVoroPoints();
+		//getVoroPoints();
 
 
 		if (dd) {
@@ -786,7 +786,7 @@ bool GamePage::generateVolume (bool dd)
 		}
 
 		//singleton->setShaderInt("voroCount", voroCount);
-		singleton->setShaderArrayfVec4("voroArr", singleton->voroArr, voroCount);
+		//singleton->setShaderArrayfVec4("voroArr", singleton->voroArr, voroCount);
 
 		singleton->drawFSQuad();
 

@@ -28,7 +28,7 @@ public:
 		UIComponent* data;
 	};
 	
-	
+	DynBuffer* myDynBuffer;
 	
 	struct CompareStruct {
 	    bool operator()(const string& first, const string& second) {
@@ -44,14 +44,13 @@ public:
 	
 	
 	
-	GameCamera* mainCamera;
-	
 	
 	bool keysPressed[MAX_KEYS];
 	double keyDownTimes[MAX_KEYS];
 	unsigned char keyMap[MAX_KEYS];
 	
 	GLdouble viewMatrixD[16];
+	float viewMatrixDI[16];
 	GLdouble projMatrixD[16];
 	
 	Matrix4 viewMatrix;
@@ -71,16 +70,18 @@ public:
 	GameEnt* selectedEnt;
 	GameEnt* highlightedEnt;
 	
+	bool combatOn;
+	bool firstPerson;
 	bool updateMatFlag;
 	bool matVolLock;
 	bool isMoving;
 	bool perspectiveOn;
+	bool lastPersp;
 	bool isInteractiveEnt[E_CT_LENGTH];
 	bool inputOn;
 	bool pathfindingOn;
 	bool isMacro;
 	bool orgOn;
-	bool autoScroll;
 	bool cavesOn;
 	bool bakeParamsOn;
 	bool dragging;
@@ -128,8 +129,9 @@ public:
 	bool isDraggingObject;
 	
 	int entIdToIcon[MAX_OBJ_TYPES];
-	int iconToEntId[MAX_OBJ_TYPES];
+	int iconToEntId[MAX_ICON_ID];
 	bool isContainer[MAX_OBJ_TYPES];
+	string objStrings[MAX_OBJ_TYPES];
 	
 	int currentTick;
 	int draggingFromInd;
@@ -137,12 +139,14 @@ public:
 	int draggingFromType;
 	int draggingToType;
 	
+	
+	int moveMode;
 	int maxHolderDis;
 	int gameObjCounter;
-	//int lastContIndex;
 	int lastObjectCount;
 	int lastObjInd;
-	int bestObjInd;
+	int selObjInd;
+	int actObjInd;
 	int fieldCallback;
 	int mouseState;
 	int lastW;
@@ -218,6 +222,12 @@ public:
 	uint *terDataScaled;
 
 
+	GLfloat camRotation[2];
+
+	float resultShake;
+	float cameraShake;
+	float subjectDistance;
+	float lastSubjectDistance;
 	float lastx;
 	float lasty;
 	float FOV;
@@ -267,7 +277,9 @@ public:
 	
 	float MAX_TRAVEL_DIS;
 	
+	double curMoveTime;
 	double lastMoveTime;
+	double timeDelta;
 	double curTime;
 	double clickTime;
 	double lastTime;
@@ -279,12 +291,14 @@ public:
 	GameOrgNode* lastSelNode;
 	GameOrgNode* activeNode;
 
+	FIVector4 resultCameraPos;
+
+	FIVector4* cameraPos;
 	FIVector4 dirVecs[6];
 	FIVector4 targetCameraPos;
 	FIVector4 lastCellPos;
 	FIVector4 worldMarker;
 	FIVector4 lookAtVec;
-	//FIVector4 targetLookAtVec;
 	FIVector4 baseCameraPos;
 	FIVector4 cameraPosAdjusted;
 	FIVector4 baseScrollPos;
@@ -328,7 +342,9 @@ public:
 	
 	uint* matVol;
 	
+	std::vector<SphereStruct> sphereStack;
 	
+	std::vector<GamePageHolder*> dirtyGPHStack;
 	
 	std::vector<int> guiLayers[MAX_UI_LAYERS];
 	//std::vector<int> emptyLayers[MAX_UI_LAYERS];
@@ -343,7 +359,7 @@ public:
 	float roofHeightInCells;
 	float wallRadInCells;
 
-
+	
 	
 	int cellsPerHolder;
 	int cellsPerPage;
@@ -428,6 +444,7 @@ public:
 		WebSocketServer *myWS;
 	#endif
 	
+	Timer shakeTimer;
 	Timer myTimer;
 	Timer scrollTimer;
 	Timer moveTimer;
@@ -452,10 +469,6 @@ public:
 	
 	GameGUI* mainGUI;
 	
-	
-	//UIComponent* lastPickerItem;
-	//UIComponent* pickerMenu;
-	//UIComponent* nullComp;
 	UIComponent* mapComp;
 	UIComponent* mainMenu;
 	UIComponent* contMenu;
@@ -506,7 +519,9 @@ public:
 		int i;
 		int j;
 		int k;
+		float tempf;
 		
+		RUN_COUNT = 0;
 		TEMP_DEBUG = false;
 		
 		
@@ -516,40 +531,11 @@ public:
 		externalJSON["kb.js"].jv = NULL;
 		
 		
-		
 		for (i = 0; i < EML_LENGTH; i++) {
 			music[i] = new GameMusic();
 			music[i]->init("..\\data\\music\\"+musicStrings[i]+".ogg");
 			music[i]->setLoop(true);
 		}
-		
-		for (i = 0; i < MAX_OBJ_TYPES; i++) {
-			isContainer[i] = false;
-			iconToEntId[i] = 0;
-			entIdToIcon[i] = 0;
-		}
-		
-		int itemCount = 0;
-		
-		itemCount = numberIcons(itemCount,0,0,11,20);
-		itemCount = numberIcons(itemCount,12,0,23,15);
-		itemCount = numberIcons(itemCount,24,0,35,16);
-		itemCount = numberIcons(itemCount,12,16,21,20);
-		itemCount = numberIcons(itemCount,22,17,35,31);
-		itemCount = numberIcons(itemCount,0,21,15,31);
-		itemCount = numberIcons(itemCount,16,21,21,22);
-		itemCount = numberIcons(itemCount,0,32,35,35);
-		itemCount = numberIcons(itemCount,0,36,15,47);
-		itemCount = numberIcons(itemCount,16,36,35,47);
-		
-		
-		for (i = 360; i <= 419; i++ ) {
-			isContainer[i] = true;
-		}
-		for (i = 1240; i <= 1671; i++ ) {
-			isContainer[i] = true;
-		}
-		
 		
 		for (i = 0; i < 6; i++) {
 			dirVecs[i].setFXYZ(
@@ -559,17 +545,13 @@ public:
 			);
 		}
 		
+		
+		initAllObjects();
 		initAllMatrices();
 		
-		//nullComp = new UIComponent();
 		
-		for (i = 0; i < E_CT_LENGTH; i++) {
-			isInteractiveEnt[i] = false;
-		}
-		
-		float tempf;
-		
-		RUN_COUNT = 0;
+		camRotation[0] = 0.0f;
+		camRotation[1] = -M_PI/2.0f;
 		
 		
 		cdMap[0] = E_CD_EMPTY;
@@ -578,6 +560,9 @@ public:
 		}
 		cdMap[17] = E_CD_WATER; //TEX_WATER
 		
+		for (i = 0; i < E_CT_LENGTH; i++) {
+			isInteractiveEnt[i] = false;
+		}
 		isInteractiveEnt[E_CT_WINDOW] = true;
 		isInteractiveEnt[E_CT_DOOR] = true;
 		isInteractiveEnt[E_CT_LANTERN] = true;
@@ -591,7 +576,6 @@ public:
 		pathfindingOn = false;
 		isMacro = false;
 		orgOn = false;
-		autoScroll = false;
 		cavesOn = false;
 		bakeParamsOn = true;
 		dragging = false;
@@ -688,6 +672,8 @@ public:
 		musicVolume = 0.0f;
 		fxVolume = 0.0f;
 
+		combatOn = false;
+		firstPerson = false;
 		applyToChildren = false;
 		mirrorOn = true;
 		//guiOn = false;
@@ -716,23 +702,11 @@ public:
 				
 		// IMPORTANT: Maximum height must be less than 2^16, max world pitch must be less than 2^32
 		
-		// todo:
-		
-		// realtime cutaway based on green cube position
-		// character editor load from json
-		// floating trees
-		// stacked lots?
-		// WAS DOING:
-		// replace worldspace fbo make xFBO have 3 targets instead of 2
-		// edit: pack normal in 16, only use 2 targets
-		
-		// adjust camera for better loading, ray cast from cam pos to find nearest
-		// chunk to load
-		// flood fill from there until it hits blank chunk and stop
-		
+		moveMode = E_MM_SMOOTH;
 		lastObjectCount = 0;
 		lastObjInd = 0;
-		bestObjInd = 0;
+		selObjInd = 0;
+		actObjInd = 0;
 		currentTick = 0;
 		
 		
@@ -751,35 +725,30 @@ public:
 		}
 		
 		
-		// qqqqqq
+		// qqqqqq		
 		
 		
-		// TODO:
-		// WAS DOING: make sure can drag from containers
+		
+		
+		volGenFBOX = 128; // MAX OF 128
+		pixelsPerCell = 128; // do not adjust this, instead change volGenFBOX
+		volGenSuperMod = 2;
+		maxChangesInPages = 1;
+		maxChangesInHolders = 1;
+		cellsPerPage = 8;
+		cellsPerHolder = 8;
+		bufferMult = 1.125f;
+		
 		
 		maxHolderDis = 32;
-		
-		int bufferDiv = 2;
-		int curProfile;
-		heightOfNearPlane = 1.0f;
-		scrollDiv = 2.0;
-		
-		msPerFrame = 8.0;
-		
-		
-		volGenFBOX = 32; // MAX OF 128
-		
-		
-		
-		maxChangesInPages = 8;
-		maxChangesInHolders = 2;
 		maxHInPages = 4;
 		maxWInPages = 8;
-		pixelsPerCell = 128; // do not adjust this, instead change volGenFBOX
-		volGenSuperMod = 1;
-		cellsPerPage = 4;
-		cellsPerHolder = 8;
 		volGenSuperRes = (volGenFBOX/volGenSuperMod);
+		heightOfNearPlane = 1.0f;
+		scrollDiv = 2.0;
+		msPerFrame = 16.0;
+		
+		int bufferDiv = 2;
 		
 		if (DO_POINTS) {
 			glEnable(GL_POINT_SPRITE);
@@ -812,7 +781,7 @@ public:
 		holderSizeInPages = cellsPerHolder / cellsPerPage;
 		holdersPerLot = cellsPerLot / cellsPerHolder;
 		visPageSizeInUnits = cellsPerPage * unitsPerCell;
-		bufferMult = 1.25f;
+		
 		bufferedPageSizeInUnits = visPageSizeInUnits * bufferMult;
 		worldSizeInHolders.copyIntMult(&worldSizeInLots, holdersPerLot);
 		blockSizeInHolders = blockSizeInLots * holdersPerLot;
@@ -880,11 +849,12 @@ public:
 			worldSizeInBlocks.getIZ()*terDataVisPitchZ
 		);
 		
-		//lastContIndex = 0;
 		draggingFromInd = 0;
 		draggingToInd = 0;
 		gameObjCounter = E_OBJ_LENGTH;
+		curMoveTime = 0.0;
 		lastMoveTime = 0.0;
+		timeDelta = 0.0;
 
 		
 
@@ -1139,7 +1109,7 @@ public:
 		origWinW = _defaultWinW;
 		origWinH = _defaultWinH;
 
-		curBrushRad = 4.0f;
+		curBrushRad = 16.0f;
 		mouseState = E_MOUSE_STATE_MOVE;
 
 
@@ -1279,6 +1249,9 @@ public:
 			16.0f*pixelsPerCell
 		);
 		
+		cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
+		
+		
 		//dynObjects[E_OBJ_FOG]->init(-1024*2, -1024*2, -1024/2,   0, 0, 255,     true, E_MT_RELATIVE, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 		//dynObjects[E_OBJ_CUTAWAY]->init(4096*4 - 256, 4096*4 - 256 + 2048, 4096*4,   0, 255, 0,     true, E_MT_RELATIVE, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
 		//dynObjects[E_OBJ_HUMAN]->init(2048, 2048, -1024,   0, 255, 255,     true, E_MT_TRACKBALL, &(dynObjects[E_OBJ_CAMERA]->pos), 64.0f );
@@ -1352,6 +1325,8 @@ public:
 		shaderStrings.push_back("NoiseShader");
 		shaderStrings.push_back("MapBorderShader");
 		//shaderStrings.push_back("WorldSpaceShader");
+		shaderStrings.push_back("SphereShader");
+		shaderStrings.push_back("PrimShader");
 		shaderStrings.push_back("BlitPointShader");
 		shaderStrings.push_back("BillboardShader");
 		
@@ -1440,16 +1415,17 @@ public:
 		/////////////////////////
 		/////////////////////////
 		
-
+		lastSubjectDistance = 0.0f;
+		resultShake = 0.0f;
+		cameraShake = 0.0f;
 		lastx = 0;
 		lasty = 0;
 		isMoving = false;
 		updateMatFlag = false;
 		matVolLock = false;
 		perspectiveOn = false;
+		lastPersp = false;
 
-		mainCamera = new GameCamera();
-		mainCamera->init();
 
 		for (i = 0; i < MAX_KEYS; i++) {
 			keysPressed[i] = false;
@@ -1520,6 +1496,9 @@ public:
 		}
 		//fboMap["pages3TargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
 		//fboMap["water3TargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
+		
+		
+		fboMap["geomBaseTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
 		fboMap["geomTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
 		fboMap["combineWithWaterTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
 		
@@ -1543,7 +1522,8 @@ public:
 		fboMap["swapFBO0"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 		fboMap["swapFBO1"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 
-
+		
+		myDynBuffer = new DynBuffer();
 
 		fontWrappers[EFW_ICONS] = new FontWrapper();
 		fontWrappers[EFW_ICONS]->init(this, "icons", true, 1.0f, 0.0f);
@@ -1629,6 +1609,10 @@ public:
 	// 	//testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,3.0f*M_PI/2.0f);
 	// }
 	
+	FIVector4* cameraGetPos() {
+		return &resultCameraPos;
+	}
+	
 	int placeInStack() {
 		int curId;
 		int stackSize = emptyStack.size();
@@ -1707,8 +1691,21 @@ public:
 	  
 	  for (j = y1; j <= y2; j++) {
 	    for (i = x1; i <= x2; i++) {
-	      entIdToIcon[curCount] = i + j * ITEMS_PER_ROW;
-	      iconToEntId[i + j * ITEMS_PER_ROW] = curCount;
+				if (curCount >= MAX_OBJ_TYPES) {
+					cout << "error curCount " << curCount << "\n";
+				}
+				else {
+					entIdToIcon[curCount] = i + j * ITEMS_PER_ROW;
+				}
+	    	
+	    	if ((i + j * ITEMS_PER_ROW) >= MAX_ICON_ID) {
+	    		cout << "error i + j * ITEMS_PER_ROW "  << (i + j * ITEMS_PER_ROW) << "\n";
+	    	}
+	    	else {
+	    		iconToEntId[i + j * ITEMS_PER_ROW] = curCount;
+	    	}
+	      
+	      
 	      curCount++;
 	    }
 	  }
@@ -1784,14 +1781,17 @@ public:
 	}
 	
 	void setCurrentActor(BaseObj* ge) {
-		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 		
 		
 		
 		currentActor = ge;
-		if (currentActor != NULL) {
-			
-			mainCamera->subjectDistance = currentActor->centerPointInPixels.distance(cameraPos);
+		if (currentActor == NULL) {
+			actObjInd = 0;
+			setFirstPerson(false);
+		}
+		else {	
+			actObjInd = ge->uid;
+			subjectDistance = currentActor->centerPointInPixels.distance(cameraPos);
 		}
 		
 	}
@@ -2191,7 +2191,82 @@ public:
 			
 		}
 		
+	}
+	
+	
+	
+	
+	void toggleDDMenu(int x, int y, bool toggled) {
+		int ind = 0;
+		bool objTargeted = false;
+		bool actOnSel = false;
+		UIComponent* tempComp;
 		
+		if (toggled) {
+			
+			ind = mouseDownOPD.getFW();
+			
+			objTargeted = ind >= E_OBJ_LENGTH;	
+			
+			if (objTargeted) {
+				selObjInd = ind;				
+			}
+			else {
+				getMarkerPos(x, y);
+				markerFound = true;
+				selObjInd = 0;
+			}
+			
+			
+			actOnSel = 
+				objTargeted &&
+				(selObjInd != actObjInd) &&
+				(actObjInd >= E_OBJ_LENGTH);
+			
+			tempComp = getGUIComp("ddMenu.placeEntity");
+			if (tempComp != NULL) {tempComp->enabled = !objTargeted;}
+			tempComp = getGUIComp("ddMenu.removeEntity");
+			if (tempComp != NULL) {tempComp->enabled = objTargeted;}
+			tempComp = getGUIComp("ddMenu.editEntity");
+			if (tempComp != NULL) {tempComp->enabled = objTargeted;}
+			tempComp = getGUIComp("ddMenu.changeMaterial");
+			if (tempComp != NULL) {tempComp->enabled = objTargeted;}
+			
+			tempComp = getGUIComp("ddMenu.attack");
+			if (tempComp != NULL) {tempComp->enabled = actOnSel;}
+			tempComp = getGUIComp("ddMenu.talkTo");
+			if (tempComp != NULL) {tempComp->enabled = actOnSel;}
+			tempComp = getGUIComp("ddMenu.engageWith");
+			if (tempComp != NULL) {tempComp->enabled = actOnSel;}
+			tempComp = getGUIComp("ddMenu.pickPocket");
+			if (tempComp != NULL) {tempComp->enabled = actOnSel;}
+			tempComp = getGUIComp("ddMenu.tradeWith");
+			if (tempComp != NULL) {tempComp->enabled = actOnSel;}
+			
+			
+			
+			tempComp = getGUIComp("ddMenu.menuBar");
+			if (tempComp != NULL) {
+				if (objTargeted) {
+					tempComp->setText(objStrings[gw->gameObjects[selObjInd].objectType ]);
+				}
+				else {
+					tempComp->setText("Context Menu");
+				}
+				
+			}
+			
+			ddMenu->isDirty = true;
+			ddMenu->visible = true;
+			ddMenuBar = ddMenu->getChild(0)->getChild(0);
+			ddMenuBar->lastDrag.x = (guiX);
+			ddMenuBar->lastDrag.y = min((float)(guiY), (float)( (guiWinH - ddMenu->getChild(0)->resultDimInPixels.y) ));
+			ddMenuBar->forceDragUpdate = true;
+		}
+		else {
+			ddMenu->visible = false;
+			markerFound = false;
+		}
 	}
 	
 	
@@ -2337,7 +2412,15 @@ PERFORM_DRAG_END:
 	}
 	
 	
-	void placeNewEnt(int et) {
+	void removeEntity(int ind) {
+		if (ind >= E_OBJ_LENGTH) {
+			if (gw->removeVisObject(ind)) {
+				selObjInd = 0;
+			}
+		}
+	}
+	
+	BaseObjType placeNewEnt(int et, FIVector4* cellPos) {
 		
 		
 		BaseObj* tmpObj = NULL;
@@ -2363,6 +2446,13 @@ PERFORM_DRAG_END:
 				newType = getRandomNPCId();
 				mf = 4;
 			break;
+			
+			case E_ENTTYPE_BULLET:
+				newType = 645;
+				xv = 2;
+				yv = 2;
+				zv = 2;
+			break;
 		}
 		
 		
@@ -2373,20 +2463,37 @@ PERFORM_DRAG_END:
 			0,
 			newType,
 			pixelsPerCell,
-			&lastCellPos,
+			cellPos,
 			xv,yv,zv
 		);
+		
+		if (et == E_ENTTYPE_BULLET) {
+			tmpObj->isBullet = true;
+			
+			if (combatOn) {
+				tmpObj->bounciness = 0.0f;
+				tmpObj->friction = 0.0f;
+			}
+			else {
+				tmpObj->bounciness = 0.3f;
+				tmpObj->friction = 0.1f;
+			}
+			
+			
+		}
 		
 		
 		tmpObj->maxFrames = mf;
 		gw->visObjects.push_back(gameObjCounter);
+		
+		BaseObjType thisObjId = gameObjCounter;
+		
 		gameObjCounter++;
-		
-		
 		if (isContainer[newType]) {
 			fillWithRandomObjects(gameObjCounter-1, 0);
 		}
 		
+		return thisObjId;
 		
 	}
 
@@ -2403,8 +2510,6 @@ PERFORM_DRAG_END:
 	) {
 		
 		UIComponent* tempComp;
-		
-		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 		
 		changingGenVal = false;
 		
@@ -2644,15 +2749,17 @@ PERFORM_DRAG_END:
 		
 		if (mouseUpEvent) {
 			
-			
-			if (comp->uid.compare("placeEntity.npc") == 0) {
-				placeNewEnt(E_ENTTYPE_NPC);
+			if (comp->uid.compare("ddMenu.removeEntity") == 0) {
+				removeEntity(selObjInd);
 			}
-			if (comp->uid.compare("placeEntity.monster") == 0) {
-				placeNewEnt(E_ENTTYPE_MONSTER);
+			else if (comp->uid.compare("ddMenu.placeEntity.npc") == 0) {
+				placeNewEnt(E_ENTTYPE_NPC, &lastCellPos);
 			}
-			else if (comp->uid.compare("placeEntity.object") == 0) {
-				placeNewEnt(E_ENTTYPE_OBJ);
+			else if (comp->uid.compare("ddMenu.placeEntity.monster") == 0) {
+				placeNewEnt(E_ENTTYPE_MONSTER, &lastCellPos);
+			}
+			else if (comp->uid.compare("ddMenu.placeEntity.object") == 0) {
+				placeNewEnt(E_ENTTYPE_OBJ, &lastCellPos);
 			}
 			else if (comp->uid.compare("charEdit.savePose") == 0) {
 				saveOrg();
@@ -2705,9 +2812,8 @@ PERFORM_DRAG_END:
 			
 			
 			
-			if (comp->getFloatingChildCount() == 0) {
-				ddMenu->visible = false;
-				markerFound = false;
+			if (comp->guiClass == E_GT_BUTTON) {
+				toggleDDMenu(x,y,false);
 			}
 			
 		}
@@ -3453,7 +3559,7 @@ DISPATCH_EVENT_END:
 	FBOSet* getFBOByName(string &fboName) {
 		
 		if (fboMap.find( fboName ) == fboMap.end()) {
-			cout << "invalid key" << fboName << "\n";
+			cout << "invalid key " << fboName << "\n";
 			exit(0);
 		}
 		
@@ -3994,17 +4100,13 @@ DISPATCH_EVENT_END:
 	}
 	
 	
-	void syncObjects(FIVector4* bp) {
+	void syncObjects() {
 		int i;
-				
 		float xrp;
 		float yrp;
 		
-		float xrotrad = (mainCamera->rotation[0]);
-		float yrotrad = (mainCamera->rotation[1]);
-		
-		
-		
+		float xrotrad = (camRotation[0]);
+		float yrotrad = (camRotation[1]);
 		
 		
 		
@@ -4017,16 +4119,16 @@ DISPATCH_EVENT_END:
 				yrp = yrotrad + dynObjects[i]->posTrackball.getFY()/200.0f;
 				
 				angleToVec(&tempVec1,xrp,yrp);
-				tempVec1.multXYZ(dynObjects[i]->posTrackball.getFZ()*10.0f + 8.0f*pixelsPerCell);
+				tempVec1.multXYZ(dynObjects[i]->posTrackball.getFZ()*10.0f + 2.0f*pixelsPerCell);
 				
 				
-				dynObjects[i]->pos.copyFrom(bp);
+				dynObjects[i]->pos.copyFrom(cameraGetPos());
 				dynObjects[i]->pos.addXYZRef( &(tempVec1) );
 				
 			}
 			else {
 				if (dynObjects[i]->moveType == E_MT_RELATIVE) {
-					dynObjects[i]->pos.copyFrom(bp);
+					dynObjects[i]->pos.copyFrom(cameraGetPos());
 					dynObjects[i]->pos.addXYZRef( &(dynObjects[i]->posRel) );
 				}
 			}
@@ -4046,8 +4148,6 @@ DISPATCH_EVENT_END:
 
 	void updateCamVals() {
 		
-		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
-		
 		if (cameraPos->getFX() > worldSizeInPixels.getFX() / 2.0)
 		{
 			cameraPos->setFX( cameraPos->getFX() - worldSizeInPixels.getFX() );
@@ -4065,21 +4165,12 @@ DISPATCH_EVENT_END:
 			cameraPos->setFY( cameraPos->getFY() + worldSizeInPixels.getFY() );
 		}
 
-
-
-		//syncObjects(cameraPos);
-
-		
-		mainCamera->unitPos[0] = dynObjects[E_OBJ_CAMERA]->pos.getFX();
-		mainCamera->unitPos[1] = dynObjects[E_OBJ_CAMERA]->pos.getFY();
-		mainCamera->unitPos[2] = dynObjects[E_OBJ_CAMERA]->pos.getFZ();
 	}
 
 	void moveCamera(FIVector4 *pModXYZ)
 	{
 		
 		int i;
-		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 		
 		if (
 				(pModXYZ->getFX() != 0.0) ||
@@ -4089,10 +4180,7 @@ DISPATCH_EVENT_END:
 			wsBufferInvalid = true;
 		}
 		
-		
-
 		cameraPos->addXYZRef(pModXYZ);
-
 
 		//pModXYZ->setFZ(0.0f);
 		
@@ -4233,8 +4321,8 @@ DISPATCH_EVENT_END:
 		float xmod = 0.0f;
 		float ymod = 0.0f;
 		float zmod = 0.0f;
-		float xrotrad = (mainCamera->rotation[0]);
-		float yrotrad = (mainCamera->rotation[1]);
+		float xrotrad = (camRotation[0]);
+		float yrotrad = (camRotation[1]);
 		
 		
 
@@ -4315,7 +4403,7 @@ DISPATCH_EVENT_END:
 					else {
 						
 						if (dynObjects[activeObject]->moveType == E_MT_TRACKBALL) {
-							if (shiftDown()) {
+							if (lbDown&&rbDown) {
 								dynObjects[activeObject]->posTrackball.addXYZ(0.0f,0.0f,dy);
 							}
 							else {
@@ -4342,7 +4430,8 @@ DISPATCH_EVENT_END:
 					
 					
 					if (rbDown) {
-						mainCamera->addRotation(dx*0.005f, dy*0.005f);
+						camRotation[0] += dx*0.005f;
+						camRotation[1] += dy*0.005f;
 					}
 					
 				}
@@ -4435,7 +4524,6 @@ DISPATCH_EVENT_END:
 	}
 
 	void setCameraToElevationBase() {
-		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 
 		setObjToElevationBase(cameraPos);
 	}
@@ -4469,6 +4557,26 @@ DISPATCH_EVENT_END:
 		}
 	}
 	
+	void setFirstPerson(bool _newVal) {
+		
+		bool newVal = _newVal;
+		
+		if (currentActor == NULL) {
+			newVal = false;	
+		}
+		
+		if (firstPerson) {
+			subjectDistance = lastSubjectDistance;
+		}
+		
+		firstPerson = newVal;
+		
+		if (firstPerson) {
+			lastSubjectDistance = subjectDistance;
+		}
+		
+		cout << "firstPerson " << firstPerson << "\n";
+	}
 	
 	void updateCS() {
 		if (
@@ -4483,7 +4591,6 @@ DISPATCH_EVENT_END:
 	}
 	
 	void playBump(BaseObj* ge) {
-		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 		
 		if (ge == NULL) {
 			playSoundPosAndPitch(
@@ -4515,6 +4622,8 @@ DISPATCH_EVENT_END:
 	
 	void processInput(unsigned char key, bool keyDown, int x, int y) {
 		
+		
+		
 		if (inputOn) {
 			if (keyDown) {
 				
@@ -4541,48 +4650,78 @@ DISPATCH_EVENT_END:
 		
 		if (keyDown) {
 			if (currentActor != NULL) {
-				if (key == keyMap[KEYMAP_UP]) {
-					gw->moveCell(currentActor,0,0,1);
-				}
 				
-				if (key == keyMap[KEYMAP_DOWN]) {
-					gw->moveCell(currentActor,0,0,-1);
-				}
 				
-				if (key == keyMap[KEYMAP_FORWARD]) {
-					gw->moveCellRotated(currentActor,1);
-				}
-				
-				if (key == keyMap[KEYMAP_BACKWARD]) {
-					gw->moveCellRotated(currentActor,-1);
-				}
-				
-				if (key == keyMap[KEYMAP_RIGHT]) {
+				if (moveMode == E_MM_UNIT) {
+					if (key == keyMap[KEYMAP_UP]) {
+						gw->moveCell(currentActor,0,0,1);
+					}
 					
-					gw->rotateCell(currentActor,1,E_DIR_Z);
+					if (key == keyMap[KEYMAP_DOWN]) {
+						gw->moveCell(currentActor,0,0,-1);
+					}
 					
-					// currentActor->rotate(1,E_DIR_Z,true);
-					// if (gw->testHit(currentActor)) {
-					// 	playBump(currentActor);
-					// 	currentActor->rotate(0,E_DIR_Z,true);
-					// }
-					//testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,-M_PI/2.0f);
-					//transformOrg(testHuman);//testHuman->applyt
-					//makeDirty();
+					if (key == keyMap[KEYMAP_FORWARD]) {
+						gw->moveCellRotated(currentActor,1);
+					}
+					
+					if (key == keyMap[KEYMAP_BACKWARD]) {
+						gw->moveCellRotated(currentActor,-1);
+					}
+					
+					if (key == keyMap[KEYMAP_RIGHT]) {
+						
+						gw->rotateCell(currentActor,1,E_DIR_Z);
+						
+						// currentActor->rotate(1,E_DIR_Z,true);
+						// if (gw->testHit(currentActor)) {
+						// 	playBump(currentActor);
+						// 	currentActor->rotate(0,E_DIR_Z,true);
+						// }
+						//testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,-M_PI/2.0f);
+						//transformOrg(testHuman);//testHuman->applyt
+						//makeDirty();
+					}
+					
+					if (key == keyMap[KEYMAP_LEFT]) {
+
+						gw->rotateCell(currentActor,0,E_DIR_Z);
+
+						// currentActor->rotate(0,E_DIR_Z,true);
+						// if (gw->testHit(currentActor)) {
+						// 	playBump(currentActor);
+						// 	currentActor->rotate(1,E_DIR_Z,true);
+						// }
+						//testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,M_PI/2.0f);
+						//transformOrg(testHuman);
+						//makeDirty();
+					}
 				}
-				
-				if (key == keyMap[KEYMAP_LEFT]) {
-
-					gw->rotateCell(currentActor,0,E_DIR_Z);
-
-					// currentActor->rotate(0,E_DIR_Z,true);
-					// if (gw->testHit(currentActor)) {
-					// 	playBump(currentActor);
-					// 	currentActor->rotate(1,E_DIR_Z,true);
-					// }
-					//testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,M_PI/2.0f);
-					//transformOrg(testHuman);
-					//makeDirty();
+				else {
+					if (key == keyMap[KEYMAP_UP]) {
+						
+						if (currentActor != NULL) {
+							
+							if (currentActor->isFalling) {
+								
+							}
+							else {
+								
+								
+								currentActor->isFalling = true;
+								currentActor->isJumping = true;
+								currentActor->vel.setFZ(30*pixelsPerCell);
+								
+								playSoundPosAndPitch(
+									"jump0",
+									cameraPos,
+									&(currentActor->centerPointInPixels),
+									0.0f
+								);
+								
+							}
+						}
+					}
 				}
 			}
 			
@@ -4619,15 +4758,15 @@ DISPATCH_EVENT_END:
 				
 				case '1':
 					getMarkerPos(x, y);
-					placeNewEnt(E_ENTTYPE_NPC);
+					placeNewEnt(E_ENTTYPE_NPC, &lastCellPos);
 				break;
 				case '2':
 					getMarkerPos(x, y);
-					placeNewEnt(E_ENTTYPE_MONSTER);
+					placeNewEnt(E_ENTTYPE_MONSTER, &lastCellPos);
 				break;
 				case '3':
 					getMarkerPos(x, y);
-					placeNewEnt(E_ENTTYPE_OBJ);
+					placeNewEnt(E_ENTTYPE_OBJ, &lastCellPos);
 				break;
 				
 				
@@ -4683,29 +4822,30 @@ DISPATCH_EVENT_END:
 					
 				case 'q':
 				
-					if (currentActor == NULL) {
-						
-						if (bestObjInd >= E_OBJ_LENGTH) {
-							setCurrentActor(&(gw->gameObjects[bestObjInd]));
+					subjectZoom = 1.0f;
+				
+					if (selObjInd >= E_OBJ_LENGTH) {
+						if (selObjInd == actObjInd) {
+							setCurrentActor(NULL);
 						}
-						
+						else {
+							setCurrentActor(&(gw->gameObjects[selObjInd]));
+						}
 					}
-					else{
+					else {
 						setCurrentActor(NULL);
 					}
-				
-					// autoScroll = !autoScroll;
-					
-					// if (autoScroll) {
-					// 	scrollTimer.start();
-					// 	baseScrollPos.copyFrom(&(dynObjects[E_OBJ_CAMERA]->pos));
-					// }
-					
 					
 					break;
 
 				case 'w':
-					resetActiveNode();
+					
+					setFirstPerson(!firstPerson);
+					
+					
+					
+					
+					//resetActiveNode();
 				break;
 				case 'W':
 					maxWInPages++;
@@ -4722,7 +4862,7 @@ DISPATCH_EVENT_END:
 					//std::exit(0);
 					
 					if (ddMenu->visible || contMenu->visible) {
-						ddMenu->visible = false;
+						toggleDDMenu(x,y,false);
 						contMenu->visible = false;
 						closeAllContainers();
 						escCount = 0;
@@ -4830,16 +4970,7 @@ DISPATCH_EVENT_END:
 					break;
 
 				case 'h':
-					waterOn = !waterOn;
-
-					if (MAX_LAYERS == 1)
-					{
-						waterOn = false;
-					}
-
-
-
-					cout << "waterOn " << waterOn << "\n";
+					
 					break;
 
 				case 't':
@@ -4853,7 +4984,7 @@ DISPATCH_EVENT_END:
 				case '\t':
 				
 					if (ddMenu->visible || contMenu->visible) {
-						ddMenu->visible = false;
+						toggleDDMenu(x,y,false);
 						contMenu->visible = false;
 						closeAllContainers();
 						
@@ -4877,37 +5008,32 @@ DISPATCH_EVENT_END:
 							}
 						}
 					}
-				
-					
-					
-				
-					
 					
 					break;
 
 				case ' ':
-					//selectedEnts.cycleEnts();
-					getMarkerPos(x, y);
-					
-					ddMenu->visible = !(ddMenu->visible);
-					markerFound = ddMenu->visible;
-					
-					// ddMenu->floatOffset.x = (guiX);
-					// ddMenu->floatOffset.y = min((float)(guiY), (float)( (guiWinH - ddMenu->getChild(0)->resultDimInPixels.y) ));
-					
-					ddMenuBar = ddMenu->getChild(0)->getChild(0);
-					ddMenuBar->lastDrag.x = (guiX);
-					ddMenuBar->lastDrag.y = min((float)(guiY), (float)( (guiWinH - ddMenu->getChild(0)->resultDimInPixels.y) ));
-					ddMenuBar->forceDragUpdate = true;
-					
-					
-					
+				
+					if (mouseState == E_MOUSE_STATE_PICKING) {
+						selectedEnts.cycleEnts();
+					}
+					else {
+						launchBullet();
+					}
 					
 				break;
 
 				case 'c':
-					doShaderRefresh(bakeParamsOn);
-					restartGen(false, true);
+					//doShaderRefresh(bakeParamsOn);
+					//restartGen(false, true);
+
+					combatOn = !combatOn;
+					
+					if (currentActor == NULL) {
+						combatOn = false;
+					}
+					
+					cout << "combatOn " << combatOn << "\n";
+				
 					break;
 				
 
@@ -4975,27 +5101,6 @@ DISPATCH_EVENT_END:
 	{
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
-		
-		//cout << "key: " << key << "\n";
-		
-		
-		
-		
-		
-		
-		
-		// switch(key) {
-		// 	case keyMap[KEYMAP_UP]:
-		// 	case keyMap[KEYMAP_DOWN]:
-		// 	case keyMap[KEYMAP_LEFT]:
-		// 	case keyMap[KEYMAP_RIGHT]:
-		// 	case keyMap[KEYMAP_FORWARD]:
-		// 	case keyMap[KEYMAP_BACKWARD]:
-		// 		return;
-		// 	break;
-			
-		// }
-		
 		
 		
 		
@@ -5103,8 +5208,8 @@ DISPATCH_EVENT_END:
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
 
-		int dx = x - lastPosX;
-		int dy = y - lastPosY;
+		int dx = _x - lastPosX;
+		int dy = _y - lastPosY;
 
 		guiX = _x/UI_SCALE_FACTOR;
 		guiY = _y/UI_SCALE_FACTOR;
@@ -5127,14 +5232,36 @@ DISPATCH_EVENT_END:
 		}
 		
 		
-		if (mbDown) {
-			getMarkerPos(x, y);
-			placeNewEnt(iGenRand(0,2));
-		}
+		// if (mbDown) {
+		// 	getMarkerPos(x, y);
+		// 	placeNewEnt(iGenRand(0,2), &lastCellPos);
+		// }
 		
 		if (abDown)
 		{
-			moveObject((float)dx, (float)dy);
+			
+			if (bCtrl&&(mouseState == E_MOUSE_STATE_BRUSH)) {
+				
+				getPixData(&mouseMovePD, x, y, false, false);
+				
+				if (lbDown) {
+					gw->modifyUnit(&mouseMovePD, E_BRUSH_ADD);
+				}
+				else if (rbDown) {
+					gw->modifyUnit(&mouseMovePD, E_BRUSH_SUB);
+				}
+				else if (mbDown) {
+					gw->modifyUnit(&mouseMovePD, E_BRUSH_REF);
+				}
+				
+				forceGetPD = true;
+			}
+			else {
+				moveObject((float)dx, (float)dy);
+			}
+			
+			
+			
 		}
 		else
 		{
@@ -5143,14 +5270,7 @@ DISPATCH_EVENT_END:
 				getPixData(&mouseMovePD, x, y, false, false);
 			}
 
-			
-
-			// if (
-			// 	mouseState != E_MOUSE_STATE_MOVE
-			// )	{
-
-				gw->modifyUnit(&mouseMovePD, E_BRUSH_MOVE);
-			//}
+			gw->modifyUnit(&mouseMovePD, E_BRUSH_MOVE);
 			
 			
 
@@ -5170,7 +5290,7 @@ DISPATCH_EVENT_END:
 				}
 			}
 			
-
+			
 			gw->findNearestEnt(
 				&highlightedEnts,
 				E_ET_GEOM,
@@ -5186,14 +5306,10 @@ DISPATCH_EVENT_END:
 
 		}
 
-		lastPosX = x;
-		lastPosY = y;
+		lastPosX = _x;
+		lastPosY = _y;
 
-		if ( (x >= 0) && (y >= 0) && (x < baseW) && (y < baseH) )
-		{
-
-			
-		}
+		
 	}
 
 
@@ -5319,35 +5435,30 @@ DISPATCH_EVENT_END:
 		return shortest_angle * amount * M_PI / 180.0f;
 	}
 
+
+	
+
 	void handleMovement() {
-		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 		
 		
-		double curTime = myTimer.getElapsedTimeInMilliSec();
+		
 		
 		int i;
 		
 		
-		if (currentActor != NULL) {
-			if (!rbDown) {
-				vecToAngle(
-					&(dirVecs[currentActor->orientationXYZ.getIY()]),
-					&tempVec1
-				);
-				mainCamera->rotation[0] += 
-					getShortestAngle(mainCamera->rotation[0],tempVec1.getFX(),0.1f);
-			}
-		}
 		
 		
-		float xrotrad = (mainCamera->rotation[0]);
-		float yrotrad = (mainCamera->rotation[1]);
+		
+		float fPixelsPerCell = pixelsPerCell;
+		
+		float xrotrad = (camRotation[0]);
+		float yrotrad = (camRotation[1]);
 		
 		angleToVec(&lookAtVec,xrotrad,yrotrad);
 		
 		
-		double curMoveTime = moveTimer.getElapsedTimeInMilliSec();
-		double timeThresh = 200.0;
+		
+		
 		
 		float xmod = 0.0f;
 		float ymod = 0.0f;
@@ -5359,22 +5470,26 @@ DISPATCH_EVENT_END:
 		
 		//unsigned char curKey;
 		
+		bool isPressingMove = false;
 		
 		if (currentActor == NULL) {
 			if (keysPressed[keyMap[KEYMAP_UP]]) {
 				zmod += 1.0f;
+				isPressingMove = true;
 			}
 
 			if (keysPressed[keyMap[KEYMAP_DOWN]]) {
 				zmod -= 1.0f;
+				isPressingMove = true;
 			}
 
 			if (keysPressed[keyMap[KEYMAP_FORWARD]]) {
 
-				
 				xmod += float(sin(xrotrad));
 				ymod += float(cos(xrotrad));
 				zmod -= float(cos(yrotrad));
+				
+				isPressingMove = true;
 			}
 
 			if (keysPressed[keyMap[KEYMAP_BACKWARD]]) {
@@ -5382,36 +5497,51 @@ DISPATCH_EVENT_END:
 				xmod -= float(sin(xrotrad));
 				ymod -= float(cos(xrotrad));
 				zmod += float(cos(yrotrad));
+				
+				isPressingMove = true;
 			}
 
 			if (keysPressed[keyMap[KEYMAP_RIGHT]]) {
 				
 				xmod += float(cos(xrotrad));
 				ymod -= float(sin(xrotrad));
+				
+				isPressingMove = true;
 			}
 
 			if (keysPressed[keyMap[KEYMAP_LEFT]]) {
 				
 				xmod -= float(cos(xrotrad));
 				ymod += float(sin(xrotrad));
+				
+				isPressingMove = true;
 			}
 
 			
 			
 			
-			curMoveAccel = (curMoveTime-lastMoveTime)*0.5;
-			curMoveSpeed += curMoveAccel;
 			
-			if (curMoveSpeed > 128.0f) {
-				curMoveSpeed = 128.0f;
+			if (isPressingMove) {
+				
+				curMoveAccel = 32.0*pixelsPerCell*timeDelta;
+				curMoveSpeed += curMoveAccel;
+				
+				if (curMoveSpeed > 32.0*pixelsPerCell*timeDelta) {
+					curMoveSpeed = 32.0*pixelsPerCell*timeDelta;
+				}
+				
+				wsBufferInvalid = true;
+			}
+			else {
+				curMoveAccel = 0.0f;
+				curMoveSpeed += (0.0-curMoveSpeed)*timeDelta;
 			}
 			
-			lastMoveTime = curMoveTime;
 			
 			
-			tempMoveSpeed = curMoveSpeed;
+			tempMoveSpeed = curMoveSpeed*0.001;
 			if (bShift) {
-				tempMoveSpeed *= 0.1;
+				tempMoveSpeed *= 0.25;
 			}
 			
 			modXYZ.setFXYZ(
@@ -5424,19 +5554,7 @@ DISPATCH_EVENT_END:
 			
 			
 			
-			if (
-				(xmod != 0.0f) ||
-				(ymod != 0.0f) ||
-				(zmod != 0.0f)
-			) {
-				wsBufferInvalid = true;
 			
-			}
-			else {
-				
-				curMoveAccel = 0.0f;
-				curMoveSpeed *= 0.95f;
-			}
 			
 			isMoving = (curMoveSpeed >= 1.0);
 		}
@@ -5444,23 +5562,108 @@ DISPATCH_EVENT_END:
 			
 			
 			
-			//for (i = 0; i < 10; i++) {
+			
+			if (moveMode == E_MM_SMOOTH) {
+				
+				
+				tempVec1.setFXYZ(
+					sin(currentActor->ang),
+					cos(currentActor->ang),
+					0.0f
+				);
+				
+				tempVec2.setFXYZ(0.0f,0.0f,0.0);
+							
+				
+				
+				if (keysPressed[keyMap[KEYMAP_UP]]) {
+						//tempVec2.setFZ(2.0f);
+				}
+				
+				if (keysPressed[keyMap[KEYMAP_DOWN]]) {
+					// duck
+				}
+				
+				if (keysPressed[keyMap[KEYMAP_FORWARD]]) {
+					tempVec2.setFXY(tempVec1[0],tempVec1[1]);
+				}
+				
+				if (keysPressed[keyMap[KEYMAP_BACKWARD]]) {
+					tempVec2.setFXY(-tempVec1[0],-tempVec1[1]);
+				}
+				
+				
+				
+				if (keysPressed[keyMap[KEYMAP_RIGHT]]) {
+					if (firstPerson) {
+						tempVec2.setFXY(tempVec1[1],-tempVec1[0]);
+					}
+					else {
+						currentActor->ang += 2.0f*M_PI*timeDelta;
+					}
+					
+				}
+				
+				if (keysPressed[keyMap[KEYMAP_LEFT]]) {
+					if (firstPerson) {
+						tempVec2.setFXY(-tempVec1[1],tempVec1[0]);
+					}
+					else {
+						currentActor->ang -= 2.0f*M_PI*timeDelta;
+					}
+				}
+				
+				
+				if (firstPerson) {
+					
+					currentActor->ang = camRotation[0];
+					
+					//camRotation[0] = currentActor->ang;
+					// += getShortestAngle(camRotation[0],currentActor->ang,1.0f);
+				}
+				else {
+					if (
+						keysPressed[keyMap[KEYMAP_FORWARD]] ||
+						keysPressed[keyMap[KEYMAP_BACKWARD]]
+					) {
+						if (!rbDown) {
+							camRotation[0] += 
+								getShortestAngle(camRotation[0],currentActor->ang,timeDelta*1.0);
+						}
+					}
+				}
+				
+				
+				
+				tempVec2.multXYZ(fPixelsPerCell*timeDelta*10.0f);
+				
+				currentActor->posOffsetInPixels.addXYZRef(&tempVec2);
+				
+				
+				
+				
+				
+				
+				
+				
+			}
+			
+			
+			
+			
+			
+			
+			if (firstPerson) {
+				targetCameraPos.copyFrom(&(currentActor->centerPointInPixels));
+				targetCameraPos.addXYZ(0.0f,0.0f,currentActor->diameterInCells.getFZ()*pixelsPerCell*0.5f);
+			}
+			else {
 				targetCameraPos.copyFrom(&lookAtVec);
-				targetCameraPos.multXYZ( -(mainCamera->subjectDistance)*subjectZoom*tempZoom );
+				targetCameraPos.multXYZ( -(subjectDistance)*subjectZoom*tempZoom );
 				targetCameraPos.addXYZRef(&(currentActor->centerPointInPixels));
-				
-			// 	gw->gameObjects[E_OBJ_CAMERA].positionInCells.setFXYZRef(&targetCameraPos);
-			// 	gw->gameObjects[E_OBJ_CAMERA].updateBounds();
-				
-			// 	if (
-			// 		gw->testHit(&(gw->gameObjects[E_OBJ_CAMERA])) != E_CD_SOLID	
-			// 	) {
-			// 		break;
-			// 	}
-				
-			// 	tempZoom *= 0.75f;
-				
-			// }
+			}
+			
+			
 			
 			
 			
@@ -5513,6 +5716,95 @@ DISPATCH_EVENT_END:
 		return doProc;
 		
 	}
+	
+	void performCamShake(BaseObj* ge) {
+		float lastCamShake = cameraShake;
+		
+		cameraShake = max(
+			cameraShake,
+			1.0f-clampfZO(ge->centerPointInPixels.distance(cameraPos)/(200.0f*pixelsPerCell))
+		);
+		
+		if (cameraShake > lastCamShake) {
+			shakeTimer.stop();
+			shakeTimer.start();
+		}
+		
+		
+	}
+	
+	void explodeBullet(BaseObj* ge) {
+		
+		FIVector4 newPos;
+		
+		newPos.copyFrom(&(ge->centerPointInPixels));
+		newPos.addXYZ(0.0f,0.0f,-2.0f*pixelsPerCell);
+		
+		playSoundPosAndPitch(
+			"explosion0",
+			cameraPos,
+			&(ge->centerPointInPixels),
+			0.2f
+		);
+		
+		performCamShake(ge);
+		
+		sphereStack.push_back(SphereStruct());
+		sphereStack.back().position.copyFrom(&(ge->centerPointInPixels));
+		sphereStack.back().curRad = 0.0f;
+		sphereStack.back().maxRad = curBrushRad*(unitSizeInPixels);
+		sphereStack.back().radVel = 40.0f*pixelsPerCell;
+		sphereStack.back().radAcc = -5.0f*pixelsPerCell;
+		
+		gw->modifyUnit(&newPos, E_BRUSH_SUB);
+		
+		gw->removeVisObject(ge->uid);
+	}
+	
+	void launchBullet() {
+		
+		int entNum;
+		
+		int vx;
+		int vy;
+		
+		FIVector4 newCellPos;
+		FIVector4 newVel;
+		
+		if (currentActor == NULL) {
+			
+		}
+		else {
+			newCellPos.copyFrom(&(currentActor->positionInCells));
+			
+			vx = lookAtVec.getFX()*pixelsPerCell*5.0f;
+			vx = vx / pixelsPerCell;
+			
+			vy = lookAtVec.getFY()*pixelsPerCell*5.0f;
+			vy = vy / pixelsPerCell;
+			
+			newCellPos.addXYZ(vx, vy, 2);
+			
+			entNum = placeNewEnt(E_ENTTYPE_BULLET, &newCellPos);
+			
+			newVel.setFXYZ(
+				sin(currentActor->ang)*pixelsPerCell*20.0f,
+				cos(currentActor->ang)*pixelsPerCell*20.0f,
+				pixelsPerCell*40.0f
+			);
+			
+			gw->gameObjects[entNum].vel.copyFrom(&newVel);
+			
+			playSoundPosAndPitch(
+				"shoot0",
+				cameraPos,
+				&(currentActor->centerPointInPixels),
+				0.2f
+			);
+			
+		}
+	}
+	
 
 	void mouseClick(int button, int state, int _x, int _y)
 	{
@@ -5520,13 +5812,11 @@ DISPATCH_EVENT_END:
 		int tempInt;
 
 
-		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
-
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
 
-		lastPosX = x;
-		lastPosY = y;
+		lastPosX = _x;
+		lastPosY = _y;
 		
 		guiX = _x/UI_SCALE_FACTOR;
 		guiY = _y/UI_SCALE_FACTOR;
@@ -5569,7 +5859,7 @@ DISPATCH_EVENT_END:
 		bool abClicked = false;
 		
 		hitGUI = false;
-		
+		bool longClick = false;
 		
 		
 		
@@ -5607,6 +5897,14 @@ DISPATCH_EVENT_END:
 		abDown = lbDown || rbDown || mbDown;
 		abClicked = lbClicked || rbClicked || mbClicked;
 		
+		
+		if (abDown) {
+			
+		}
+		else {
+			muTime = myTimer.getElapsedTimeInMilliSec();
+			longClick = (muTime - mdTime) > 300.0f;
+		}
 		
 		
 		if (abDown) {
@@ -5694,26 +5992,27 @@ DISPATCH_EVENT_END:
 
 
 			if (ddMenu != NULL) {
-								
 				if (noTravel) {
-					ddMenu->visible = false;
-					markerFound = false;
+					toggleDDMenu(x,y,false);
+				}
+				if (
+					rbClicked &&
+					(!lbDown) &&
+					noTravel &&
+					(!longClick) &&
+					(mouseState != E_MOUSE_STATE_BRUSH)
+				) {
+					toggleDDMenu(x,y,true);
 				}
 			}
 			
-
-
-			if (abDown)
-			{
+			
+			if (abDown) {
 
 			}
-			else
-			{
+			else {
 
-				muTime = myTimer.getElapsedTimeInMilliSec();
-
-
-				if ( (activeObject == E_OBJ_CAMERA) && (muTime - mdTime > 300.0f) )
+				if ( (activeObject == E_OBJ_CAMERA) && longClick )
 				{
 					mouseMovingStart = (mouseMovingLoc - min(mouseMovingStepsBack, mouseCount) + mouseMovingSize) % mouseMovingSize;
 
@@ -5731,22 +6030,15 @@ DISPATCH_EVENT_END:
 
 				lastModXYZ.normalize();
 
-				if (shiftDown())
-				{
-
-				}
-				else
-				{
-
-
+				if (
+					lbClicked &&
+					(!(shiftDown()))	
+				) {
 
 
 					activeObject = E_OBJ_CAMERA;
 					
 
-
-					
-					
 					
 					gw->findNearestEnt(
 						&selectedEnts,
@@ -5858,38 +6150,16 @@ DISPATCH_EVENT_END:
 					if ( noTravel ) {
 						
 						if (pathfindingOn) {
-							if (lbClicked) {
-								
-								if (currentStep == 2) {
-									currentStep = 0;
-									moveNodes[0].setFXYZ(0.0,0.0,0.0);
-									moveNodes[1].setFXYZ(0.0,0.0,0.0);
-								}
-								else {
-									moveNodes[currentStep].copyFrom(&(gw->lastUnitPos));
-									currentStep++;
-								}
+							if (currentStep == 2) {
+								currentStep = 0;
+								moveNodes[0].setFXYZ(0.0,0.0,0.0);
+								moveNodes[1].setFXYZ(0.0,0.0,0.0);
+							}
+							else {
+								moveNodes[currentStep].copyFrom(&(gw->lastUnitPos));
+								currentStep++;
 							}
 						}
-						else {
-							switch (mouseState) {
-								case E_MOUSE_STATE_BRUSH:
-									
-									if (lbClicked)
-									{
-										gw->modifyUnit(&mouseUpPD, E_BRUSH_ADD);
-									}
-									else
-									{
-										gw->modifyUnit(&mouseUpPD, E_BRUSH_SUB);
-									}
-
-									forceGetPD = true;
-
-								break;
-							}
-						}
-						
 						
 						
 					}
@@ -5911,8 +6181,10 @@ DISPATCH_EVENT_END:
 				mdTime = myTimer.getElapsedTimeInMilliSec();
 				
 
-
-				activeObject = E_OBJ_CAMERA;
+				if (rbDown&&(!lbDown)) {
+					activeObject = E_OBJ_CAMERA;
+				}
+				
 				
 				
 				if (mouseState == E_MOUSE_STATE_MOVE) {
@@ -5936,7 +6208,7 @@ DISPATCH_EVENT_END:
 						
 						
 						
-						bestObjInd = bestInd;
+						selObjInd = bestInd;
 						
 						//setCurrentActor(&(gw->gameObjects[bestInd]));
 						
@@ -5944,15 +6216,15 @@ DISPATCH_EVENT_END:
 						
 						
 						
-						if (bestObjInd != 0) {
-							if (lastObjInd == bestObjInd) {
+						if (selObjInd != 0) {
+							if (lastObjInd == selObjInd) {
 								if ( (mdTime-clickTime) < 500 ) {
 									wasDoubleClick = true;
 								}
 							}
 						}
 						
-						lastObjInd = bestObjInd;
+						lastObjInd = selObjInd;
 						clickTime = mdTime;
 						
 						
@@ -5960,14 +6232,14 @@ DISPATCH_EVENT_END:
 						draggingFromType = E_DT_NOTHING;
 						
 						if (wasDoubleClick) {
-							toggleCont(bestObjInd, true);
+							toggleCont(selObjInd, true);
 						}
 						
 						if (bestInd >= E_OBJ_LENGTH) {
 							
 							isDraggingObject = true;
 							//markerFound = true;
-							draggingFromInd = bestObjInd;
+							draggingFromInd = selObjInd;
 							draggingFromType = E_DT_WORLD_OBJECT;
 							
 							// todo: make sure bestInd exists
@@ -5989,7 +6261,7 @@ DISPATCH_EVENT_END:
 								
 							}
 							else {
-								setCurrentActor(NULL);
+								//setCurrentActor(NULL);
 							}
 							
 							
@@ -6010,8 +6282,29 @@ DISPATCH_EVENT_END:
 			}
 		}
 
+		
+		if (!bShift) {
+			if (noTravel) {
+				switch (mouseState) {
+					case E_MOUSE_STATE_BRUSH:
+					
+						if (lbClicked) {
+							gw->modifyUnit(&mouseUpPD, E_BRUSH_ADD);
+						}
+						else if (rbClicked) {
+							gw->modifyUnit(&mouseUpPD, E_BRUSH_SUB);
+						}
+						else if (mbClicked) {
+							gw->modifyUnit(&mouseUpPD, E_BRUSH_REF);
+						}
+						
+						forceGetPD = true;
 
-
+					break;
+				}
+			}
+		}
+		
 		
 
 
@@ -6233,6 +6526,31 @@ DISPATCH_EVENT_END:
 		
 	}
 
+	string getStringForObjectId(int objectId) {
+		int objType = gw->gameObjects[objectId].objectType;
+		int iconNum = entIdToIcon[objType];
+		
+		// if (isContainer[objType]) {
+		// 	return i__s(iconNum) + "& Test Container ";
+		// }
+		// else {
+		// 	if (gw->gameObjects[objectId].isEquipped) {
+		// 		return "(E) " + i__s(iconNum) + "& Test Object ";
+		// 	}
+		// 	else {
+		// 		return i__s(iconNum) + "& Test Object ";
+		// 	}
+		// }
+		
+		if (gw->gameObjects[objectId].isEquipped) {
+			return "(E) " + i__s(iconNum) + "& "+objStrings[objType]+" ";
+		}
+		else {
+			return i__s(iconNum) + "& "+objStrings[objType]+" ";
+		}
+		
+	}
+
 	void getObjectData() {//int paramVal) {
 		int i;
 		int objectType;
@@ -6276,21 +6594,7 @@ DISPATCH_EVENT_END:
 		}
 	}
 	
-	string getStringForObjectId(int objectId) {
-		int objectType = entIdToIcon[gw->gameObjects[objectId].objectType];
-		
-		if (isContainer[objectType]) {
-			return i__s(objectType) + "& Test Container ";
-		}
-		else {
-			if (gw->gameObjects[objectId].isEquipped) {
-				return "(E) " + i__s(objectType) + "& Test Object ";
-			}
-			else {
-				return i__s(objectType) + "& Test Object ";
-			}
-		}
-	}
+	
 
 	JSONValue* fetchJSONData(string dataFile, JSONValue* params = NULL) {
 		
@@ -6991,7 +7295,6 @@ DISPATCH_EVENT_END:
 
 
 	void updateAmbientSounds() {
-		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 		
 		int i;
 		int j;
@@ -7039,6 +7342,35 @@ DISPATCH_EVENT_END:
 	void frameUpdate() {
 		
 		
+		
+		
+		
+		if (firstRun)
+		{
+			
+		}
+		else
+		{
+			curMoveTime = moveTimer.getElapsedTimeInMicroSec();
+			
+			if (lastMoveTime == 0.0) {
+				timeDelta = 0.0f;
+			}
+			else {
+				timeDelta = 1.0f/60.0f;//(curMoveTime-lastMoveTime)/1000000.0;
+			}
+			
+			lastMoveTime = curMoveTime;
+			
+			handleMovement();
+			gw->updatePhys();
+		}
+		
+		
+		
+		
+		
+		
 		if (updateMatFlag&&(!matVolLock)) {
 			updateMatFlag = false;
 			updateMatVol();
@@ -7053,7 +7385,6 @@ DISPATCH_EVENT_END:
 		
 		float hs = holderSizeInPixels;
 		
-		FIVector4 *cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 		float scrollAmount = 0.0f;
 		
 		updateAmbientSounds();
@@ -7063,49 +7394,34 @@ DISPATCH_EVENT_END:
 			}
 			
 		}
+		syncObjects();
 		
 		
-		if (autoScroll) {
-			cameraPos->copyFrom(&baseScrollPos);
-			scrollAmount = scrollTimer.getElapsedTimeInMilliSec()/scrollDiv;
-			cameraPos->addXYZ(-scrollAmount,-scrollAmount,0.0f);
+		if (
+			(
+				readyForRestart &&
+				(guiLock == false)
+				//&& (gw->curLoadRadius > minWInPages)	
+			)
+			||
+			forceRestart
+		) {
 			
-			// cameraPosAdjusted.copyFrom(cameraPos);
-			// setObjToElevationBase(&cameraPosAdjusted);
-			// cameraPos->addXYZ(16.0*pixelsPerCell,16.0*pixelsPerCell,0.0f);
-			//syncObjects(&cameraPosAdjusted);
-			
-			//syncObjects(cameraPos);
-			
-			
-			
-			
-		}
-		else {
-			if (
-				(
-					readyForRestart &&
-					(guiLock == false)
-					//&& (gw->curLoadRadius > minWInPages)	
-				)
-				||
-				forceRestart
-			) {
-				
-				if (forceRestart) {
-					forceRestart = false;			
-				}
-				readyForRestart = false;
-				guiLock = true;
-				restartGen(false, false);
-				guiLock = false;
-				
+			if (forceRestart) {
+				forceRestart = false;			
 			}
+			readyForRestart = false;
+			guiLock = true;
+			restartGen(false, false);
+			guiLock = false;
 			
-			updateGUI();
 		}
 		
-		handleMovement();
+		updateGUI();
+		
+		
+		
+		
 		
 		
 		if (
@@ -7121,7 +7437,29 @@ DISPATCH_EVENT_END:
 			if (mainGUI != NULL) {
 				if (mainGUI->isReady) {
 					currentTick++;
-					gw->update();
+					
+					// if (currentTick < 2) {
+					// 	gw->update();
+					// }
+					
+					if (currentTick < 4) {
+						cameraPos->setFXYZ(0.0,0.0,0.0);
+					}
+					
+					
+					perspectiveOn = true;
+					setMatrices(bufferDim.getIX(), bufferDim.getIY());
+					perspectiveOn = false;
+					
+					gw->drawPrim();
+					
+					
+					
+					if (dirtyGPHStack.size() > 0) {
+						dirtyGPHStack.back()->refreshChildren(true,true,true);
+						dirtyGPHStack.pop_back();
+					}
+					
 				}
 			}
 			
@@ -7129,7 +7467,7 @@ DISPATCH_EVENT_END:
 		}
 		
 		
-		syncObjects(cameraPos);
+		
 		
 		
 		TRACE_ON = false;
@@ -7187,8 +7525,8 @@ DISPATCH_EVENT_END:
 
 		
 
-
-
+		
+		
 
 		if (elTime >= ( msPerFrame  )  ) {
 
@@ -7225,7 +7563,7 @@ DISPATCH_EVENT_END:
 			
 			}
 			else {
-				markerFound = false;
+				markerFound = (ddMenu->visible)&&(selObjInd < E_OBJ_LENGTH);
 				glutSetCursor(GLUT_CURSOR_RIGHT_ARROW);
 			}
 
@@ -7276,6 +7614,139 @@ DISPATCH_EVENT_END:
 	}
 	
 	
+	
+	bool gluInvertMatrix(const double m[16], float invOut[16])
+	{
+	    float inv[16], det;
+	    int i;
+
+	    inv[0] = m[5]  * m[10] * m[15] - 
+	             m[5]  * m[11] * m[14] - 
+	             m[9]  * m[6]  * m[15] + 
+	             m[9]  * m[7]  * m[14] +
+	             m[13] * m[6]  * m[11] - 
+	             m[13] * m[7]  * m[10];
+
+	    inv[4] = -m[4]  * m[10] * m[15] + 
+	              m[4]  * m[11] * m[14] + 
+	              m[8]  * m[6]  * m[15] - 
+	              m[8]  * m[7]  * m[14] - 
+	              m[12] * m[6]  * m[11] + 
+	              m[12] * m[7]  * m[10];
+
+	    inv[8] = m[4]  * m[9] * m[15] - 
+	             m[4]  * m[11] * m[13] - 
+	             m[8]  * m[5] * m[15] + 
+	             m[8]  * m[7] * m[13] + 
+	             m[12] * m[5] * m[11] - 
+	             m[12] * m[7] * m[9];
+
+	    inv[12] = -m[4]  * m[9] * m[14] + 
+	               m[4]  * m[10] * m[13] +
+	               m[8]  * m[5] * m[14] - 
+	               m[8]  * m[6] * m[13] - 
+	               m[12] * m[5] * m[10] + 
+	               m[12] * m[6] * m[9];
+
+	    inv[1] = -m[1]  * m[10] * m[15] + 
+	              m[1]  * m[11] * m[14] + 
+	              m[9]  * m[2] * m[15] - 
+	              m[9]  * m[3] * m[14] - 
+	              m[13] * m[2] * m[11] + 
+	              m[13] * m[3] * m[10];
+
+	    inv[5] = m[0]  * m[10] * m[15] - 
+	             m[0]  * m[11] * m[14] - 
+	             m[8]  * m[2] * m[15] + 
+	             m[8]  * m[3] * m[14] + 
+	             m[12] * m[2] * m[11] - 
+	             m[12] * m[3] * m[10];
+
+	    inv[9] = -m[0]  * m[9] * m[15] + 
+	              m[0]  * m[11] * m[13] + 
+	              m[8]  * m[1] * m[15] - 
+	              m[8]  * m[3] * m[13] - 
+	              m[12] * m[1] * m[11] + 
+	              m[12] * m[3] * m[9];
+
+	    inv[13] = m[0]  * m[9] * m[14] - 
+	              m[0]  * m[10] * m[13] - 
+	              m[8]  * m[1] * m[14] + 
+	              m[8]  * m[2] * m[13] + 
+	              m[12] * m[1] * m[10] - 
+	              m[12] * m[2] * m[9];
+
+	    inv[2] = m[1]  * m[6] * m[15] - 
+	             m[1]  * m[7] * m[14] - 
+	             m[5]  * m[2] * m[15] + 
+	             m[5]  * m[3] * m[14] + 
+	             m[13] * m[2] * m[7] - 
+	             m[13] * m[3] * m[6];
+
+	    inv[6] = -m[0]  * m[6] * m[15] + 
+	              m[0]  * m[7] * m[14] + 
+	              m[4]  * m[2] * m[15] - 
+	              m[4]  * m[3] * m[14] - 
+	              m[12] * m[2] * m[7] + 
+	              m[12] * m[3] * m[6];
+
+	    inv[10] = m[0]  * m[5] * m[15] - 
+	              m[0]  * m[7] * m[13] - 
+	              m[4]  * m[1] * m[15] + 
+	              m[4]  * m[3] * m[13] + 
+	              m[12] * m[1] * m[7] - 
+	              m[12] * m[3] * m[5];
+
+	    inv[14] = -m[0]  * m[5] * m[14] + 
+	               m[0]  * m[6] * m[13] + 
+	               m[4]  * m[1] * m[14] - 
+	               m[4]  * m[2] * m[13] - 
+	               m[12] * m[1] * m[6] + 
+	               m[12] * m[2] * m[5];
+
+	    inv[3] = -m[1] * m[6] * m[11] + 
+	              m[1] * m[7] * m[10] + 
+	              m[5] * m[2] * m[11] - 
+	              m[5] * m[3] * m[10] - 
+	              m[9] * m[2] * m[7] + 
+	              m[9] * m[3] * m[6];
+
+	    inv[7] = m[0] * m[6] * m[11] - 
+	             m[0] * m[7] * m[10] - 
+	             m[4] * m[2] * m[11] + 
+	             m[4] * m[3] * m[10] + 
+	             m[8] * m[2] * m[7] - 
+	             m[8] * m[3] * m[6];
+
+	    inv[11] = -m[0] * m[5] * m[11] + 
+	               m[0] * m[7] * m[9] + 
+	               m[4] * m[1] * m[11] - 
+	               m[4] * m[3] * m[9] - 
+	               m[8] * m[1] * m[7] + 
+	               m[8] * m[3] * m[5];
+
+	    inv[15] = m[0] * m[5] * m[10] - 
+	              m[0] * m[6] * m[9] - 
+	              m[4] * m[1] * m[10] + 
+	              m[4] * m[2] * m[9] + 
+	              m[8] * m[1] * m[6] - 
+	              m[8] * m[2] * m[5];
+
+	    det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+
+	    if (det == 0)
+	        return false;
+
+	    det = 1.0 / det;
+
+	    for (i = 0; i < 16; i++)
+	        invOut[i] = inv[i] * det;
+
+	    return true;
+	}
+	
+	
+	
 	void setMatrices(int w, int h)
 	{
 		int i;
@@ -7298,12 +7769,12 @@ DISPATCH_EVENT_END:
 			//*180.0f/M_PI / 180 * M_PI
 			
 			glLoadIdentity();
-			glRotatef(mainCamera->rotation[1]*180.0f/M_PI,1.0,0.0,0.0);
-			glRotatef(mainCamera->rotation[0]*180.0f/M_PI,0.0,0.0,1.0);
+			glRotatef(camRotation[1]*180.0f/M_PI,1.0,0.0,0.0);
+			glRotatef(camRotation[0]*180.0f/M_PI,0.0,0.0,1.0);
 			glTranslated(
-				-mainCamera->unitPos[0],
-				-mainCamera->unitPos[1],
-				-mainCamera->unitPos[2]
+				-cameraGetPos()->getFX(),
+				-cameraGetPos()->getFY(),
+				-cameraGetPos()->getFZ()
 			);
 			
 			
@@ -7319,6 +7790,8 @@ DISPATCH_EVENT_END:
 				viewMatrixD[i] = ptr1[i];
 				projMatrixD[i] = ptr2[i];
 			}
+			
+			gluInvertMatrix(viewMatrixD, viewMatrixDI);
 			
 			glGetIntegerv(GL_VIEWPORT, viewport);
 			
@@ -7341,7 +7814,8 @@ DISPATCH_EVENT_END:
 		else {
 			if (
 				(lastW == w) && 
-				(lastH == h)
+				(lastH == h) &&
+				(lastPersp == perspectiveOn)
 			) {
 				
 			}
@@ -7360,7 +7834,7 @@ DISPATCH_EVENT_END:
 			}
 		}
 		
-		
+		lastPersp = perspectiveOn;
 
 	}
 	
@@ -7377,6 +7851,490 @@ DISPATCH_EVENT_END:
 	void idleFunc(void)
 	{
 
+	}
+
+	void initAllObjects() {
+		int i;
+		int j;
+		int k;
+		int itemCount = 0;
+		
+		for (i = 0; i < MAX_ICON_ID; i++) {
+			iconToEntId[i] = 0;
+		}
+		
+		for (i = 0; i < MAX_OBJ_TYPES; i++) {
+			entIdToIcon[i] = 0;
+		}
+		
+		
+		
+		itemCount = numberIcons(itemCount,0,0,11,20);
+		itemCount = numberIcons(itemCount,12,0,23,15);
+		itemCount = numberIcons(itemCount,24,0,35,16);
+		itemCount = numberIcons(itemCount,12,16,21,20);
+		itemCount = numberIcons(itemCount,22,17,35,31);
+		itemCount = numberIcons(itemCount,0,21,15,31);
+		itemCount = numberIcons(itemCount,16,21,21,22);
+		itemCount = numberIcons(itemCount,0,32,35,35);
+		itemCount = numberIcons(itemCount,0,36,15,47);
+		itemCount = numberIcons(itemCount,16,36,35,47);
+		
+		
+		for (i = 0; i < MAX_OBJ_TYPES; i++) {
+			isContainer[i] = false;
+			objStrings[i] = "";
+		}
+		for (i = 360; i <= 419; i++ ) {
+			isContainer[i] = true;
+		}
+		for (i = 1240; i <= 1671; i++ ) {
+			isContainer[i] = true;
+		}
+		for (i = 525; i <= 527; i++ ) {
+			isContainer[i] = true;
+		}
+		for (i = 537; i <= 539; i++ ) {
+			isContainer[i] = true;
+		}
+		
+		
+		for (i = 0; i <= 35; i++) {
+			objStrings[i] = gemStrings[i%12] + " and Gold Ring";
+		}
+		
+		for (i = 36; i <= 71; i++) {
+			objStrings[i] = gemStrings[i%12] + " and Silver Ring";
+		}
+		
+		for (i = 180; i <= 191; i++) {
+			objStrings[i] = gemStrings[i%12] + " Necklace";
+		}
+		
+		for (i = 420; i <= 431; i++) {
+			objStrings[i] = gemStrings[i%12] + " Ore";
+		}
+		
+		for (i = 432; i <= 443; i++) {
+			objStrings[i] = "Polished " + gemStrings[i%12];
+		}
+		
+		for (i = 72; i <= 419; i++) {
+			
+			j = i/12;
+			
+			if (j == 15) {
+				
+			}
+			else {
+				objStrings[i] = colorStrings[i%12] + " ";
+			}
+			
+			
+			switch (j) {
+				case 6:
+				case 7:
+				case 8:
+				case 9:
+				case 10:
+					objStrings[i] += "Cloak";
+				break;
+				case 11:
+					objStrings[i] += "Plate Armor";
+				break;
+				case 12:
+					objStrings[i] += "Leather Armor";
+				break;
+				case 13:
+					objStrings[i] += "Buckler";
+				break;
+				case 14:
+					objStrings[i] += "Kite Shield";
+				break;
+				case 15:
+				
+				break;
+				case 16:
+					objStrings[i] += "Bandana";
+				break;
+				case 17:
+					objStrings[i] += "Boot";
+				break;
+				case 18:
+					objStrings[i] += "Pointed Cap";
+				break;
+				case 19:
+					objStrings[i] += "Plumed Helm";
+				break;
+				case 20:
+					objStrings[i] += "Sailor Cap";
+				break;
+				case 21:
+				case 22:
+				case 23:
+					objStrings[i] += "Book";
+				break;
+				case 24:
+					objStrings[i] += "Bound Scroll";
+				break;
+				case 25:
+					objStrings[i] += "Scroll";
+				break;
+				case 26:
+				case 27:
+					objStrings[i] += "Parchment";
+				break;
+				case 28:
+				case 29:
+					objStrings[i] += "Scroll";
+				break;
+				case 30:
+					objStrings[i] += "Bag";
+				break;
+				case 31:
+				case 32:
+					objStrings[i] += "Satchel";
+				break;
+				case 33:
+				case 34:
+					objStrings[i] += "Gift Box";
+				break;
+			}
+		}
+		
+		for (i = 698; i <= 907; i++) {
+			objStrings[i] = colorStrings[(i+2)%14] + " Potion";
+		}
+		
+		
+		for (i = 648; i <= 697; i++) {
+			
+			j = (i+2)%10;
+			
+			k = ((i+2)/10) - 65;
+			
+			objStrings[i] = metalStrings[k] + " ";
+			
+			
+			switch (j) {
+				case 0:
+					objStrings[i] += "Bullion";
+				break;
+				case 1:
+					objStrings[i] += "Denarii (100)";
+				break;
+				case 2:
+					objStrings[i] += "Denarii (10)";
+				break;
+				case 3:
+					objStrings[i] += "Denarius";
+				break;
+				case 4:
+					objStrings[i] += "Decima";
+				break;
+				case 5:
+					objStrings[i] += "Cent";
+				break;
+				case 6:
+					objStrings[i] += "Medal";
+				break;
+				case 7:
+				case 8:
+				case 9:
+					objStrings[i] += "Key";
+				break;
+			}
+		}
+		
+		for (i = 1084; i <= 1095; i++) {
+			objStrings[i] = "Parchment";
+		}
+		
+		
+		
+		for (i = 908; i <= 1083; i++) {
+			
+			j = (i+4)%16;
+			k = ((i+4)/16) - 57;
+			
+			
+			objStrings[i] = elementStrings[j] + " " + weaponStrings[k];
+		}
+		
+		
+		objStrings[444] = "Leather Helm";
+		objStrings[445] = "Leather Helm";
+		objStrings[446] = "Leather Helm";
+		objStrings[447] = "Leather Helm";
+		objStrings[448] = "Iron Helm";
+		objStrings[449] = "Iron Helm";
+		objStrings[450] = "Iron Helm";
+		objStrings[451] = "Artifact Helm";
+		objStrings[452] = "Artifact Helm";
+		objStrings[453] = "Artifact Helm";
+		objStrings[454] = "Pointed Cap";
+		objStrings[455] = "Feathered Cap";
+		objStrings[456] = "Cap";
+		objStrings[457] = "Mask";
+		objStrings[458] = "Top Hat";
+		objStrings[459] = "Feathered Hat";
+		objStrings[460] = "Cat Ears";
+		objStrings[461] = "Rabbit Ears";
+		objStrings[462] = "Headband";
+		objStrings[463] = "Crown";
+		objStrings[464] = "Fur Cap";
+		objStrings[465] = "Cap";
+		objStrings[466] = "Hat";
+		objStrings[467] = "Leather Cap";
+		objStrings[468] = "Tunic";
+		objStrings[469] = "Tunic";
+		objStrings[470] = "Fur Coat";
+		objStrings[471] = "Overcoat";
+		objStrings[472] = "Leather Armor";
+		objStrings[473] = "Leather Armor";
+		objStrings[474] = "Iron Plated Armor";
+		objStrings[475] = "Iron Plated Armor";
+		objStrings[476] = "Iron Plated Armor";
+		objStrings[477] = "Artifact Armor";
+		objStrings[478] = "Artifact Armor";
+		objStrings[479] = "Artifact Armor";
+		objStrings[480] = "Slipper";
+		objStrings[481] = "Boot";
+		objStrings[482] = "Buckled Boot";
+		objStrings[483] = "Fur Boot";
+		objStrings[484] = "Buckled Boot";
+		objStrings[485] = "Shoe";
+		objStrings[486] = "Iron Plated Boot";
+		objStrings[487] = "Iron Plated Boot";
+		objStrings[488] = "Iron Plated Boot";
+		objStrings[489] = "Artifact Boot";
+		objStrings[490] = "Artifact Boot";
+		objStrings[491] = "Artifact Boot";
+		objStrings[492] = "Wooden Buckler";
+		objStrings[493] = "Wooden Divoted Buckler";
+		objStrings[494] = "Wood and Iron Buckler";
+		objStrings[495] = "Iron Buckler";
+		objStrings[496] = "Iron Buckler";
+		objStrings[497] = "Iron Tower Shield";
+		objStrings[498] = "Wooden Heater Shield";
+		objStrings[499] = "Wood and Iron Heater Shield";
+		objStrings[500] = "Iron Heater Shield";
+		objStrings[501] = "Decorated Heater Shield";
+		objStrings[502] = "Kite Shield";
+		objStrings[503] = "Decorated Kite Shield";
+		objStrings[504] = "Artifact Shield";
+		objStrings[505] = "Artifact Shield";
+		objStrings[506] = "Artifact Shield";
+		objStrings[507] = "Artifact Shield";
+		objStrings[508] = "Belt";
+		objStrings[509] = "Belt";
+		objStrings[510] = "Belt";
+		objStrings[511] = "Artifact Necklace";
+		objStrings[512] = "Artifact Necklace";
+		objStrings[513] = "Artifact Necklace";
+		objStrings[514] = "Artifact Necklace";
+		objStrings[515] = "Artifact Necklace";
+		objStrings[516] = "Gold Ring";
+		objStrings[517] = "Gold Ring";
+		objStrings[518] = "Gold Ring";
+		objStrings[519] = "Gold Ring";
+		objStrings[520] = "Gold Ring";
+		objStrings[521] = "Gold Ring";
+		objStrings[522] = "Gold Ring";
+		objStrings[523] = "Gold Ring";
+		objStrings[524] = "Gold Ring";
+		objStrings[525] = "Box";
+		objStrings[526] = "Box";
+		objStrings[527] = "Bag";
+		objStrings[528] = "Silver Ring";
+		objStrings[529] = "Silver Ring";
+		objStrings[530] = "Silver Ring";
+		objStrings[531] = "Silver Ring";
+		objStrings[532] = "Silver Ring";
+		objStrings[533] = "Silver Ring";
+		objStrings[534] = "Silver Ring";
+		objStrings[535] = "Silver Ring";
+		objStrings[536] = "Silver Ring";
+		objStrings[537] = "Box";
+		objStrings[538] = "Box";
+		objStrings[539] = "Bag";
+		
+		objStrings[540] = "Canine";
+		objStrings[541] = "Patch of Fur";
+		objStrings[542] = "Hide";
+		objStrings[543] = "Claw";
+		objStrings[544] = "Feather";
+		objStrings[545] = "Horn";
+		objStrings[546] = "Mushroom Cap";
+		objStrings[547] = "Shell";
+		objStrings[548] = "Bone";
+		objStrings[549] = "Eyeball";
+		objStrings[550] = "Tentacle";
+		objStrings[551] = "Bat Wing";
+		
+		objStrings[552] = "Molar";
+		objStrings[553] = "Patch of Fur";
+		objStrings[554] = "Hide";
+		objStrings[555] = "Claw";
+		objStrings[556] = "Feather";
+		objStrings[557] = "Horn";
+		objStrings[558] = "Mushroom Cap";
+		objStrings[559] = "Shell";
+		objStrings[560] = "Bone";
+		objStrings[561] = "Eyeball";
+		objStrings[562] = "Tentacle";
+		objStrings[563] = "Bat Wing";
+		
+		objStrings[564] = "Candle";
+		objStrings[565] = "Jelly";
+		objStrings[566] = "Mirror";
+		objStrings[567] = "Flask";
+		objStrings[568] = "Yarn";
+		objStrings[569] = "Button";
+		objStrings[570] = "Cloth";
+		objStrings[571] = "Bell";
+		objStrings[572] = "Wood";
+		objStrings[573] = "Beak";
+		objStrings[574] = "Tail";
+		objStrings[575] = "Claw";
+		
+		objStrings[576] = "Candle";
+		objStrings[577] = "Jelly";
+		objStrings[578] = "Mirror";
+		objStrings[579] = "Flask";
+		objStrings[580] = "Yarn";
+		objStrings[581] = "Button";
+		objStrings[582] = "Cloth";
+		objStrings[583] = "Bell";
+		objStrings[584] = "Wood";
+		objStrings[585] = "Beak";
+		objStrings[586] = "Tail";
+		objStrings[587] = "Claw";
+		
+		objStrings[588] = "Apple";
+		objStrings[589] = "Lime";
+		objStrings[590] = "Orange";
+		objStrings[591] = "Passion Fruit";
+		objStrings[592] = "Pineapple";
+		objStrings[593] = "Banana";
+		objStrings[594] = "Cherries";
+		objStrings[595] = "Watermelon";
+		objStrings[596] = "Bread";
+		objStrings[597] = "Cooked Lamb Shank";
+		objStrings[598] = "Cooked Egg";
+		objStrings[599] = "Cooked Fish";
+		objStrings[600] = "Cooked Chicken";
+		objStrings[601] = "Sandwich";
+		objStrings[602] = "Sliced Potato";
+		objStrings[603] = "Steak";
+		objStrings[604] = "Sliced Apple";
+		objStrings[605] = "Sliced Lime";
+		objStrings[606] = "Sliced Orange";
+		objStrings[607] = "Sliced Passion Fruit";
+		objStrings[608] = "Sliced Pineapple";
+		objStrings[609] = "Peeled Banana";
+		objStrings[610] = "Cherry";
+		objStrings[611] = "Sliced Watermelon";
+		objStrings[612] = "Cookie";
+		objStrings[613] = "Candy";
+		objStrings[614] = "Candy Cane";
+		objStrings[615] = "Slice of Cake";
+		objStrings[616] = "Dark Chocolate";
+		objStrings[617] = "Lollipop";
+		objStrings[618] = "Icecream";
+		objStrings[619] = "Honey";
+		objStrings[620] = "Half Cookie";
+		objStrings[621] = "Candy";
+		objStrings[622] = "Candy Cane";
+		objStrings[623] = "Cake";
+		objStrings[624] = "Milk Chocolate";
+		objStrings[625] = "Lollipop";
+		objStrings[626] = "Icecream";
+		objStrings[627] = "Water";
+		objStrings[628] = "Cheese";
+		objStrings[629] = "Raw Lamb Shank";
+		objStrings[630] = "Raw Egg";
+		objStrings[631] = "Raw Fish";
+		objStrings[632] = "Cooked Chicken";
+		objStrings[633] = "Sandwich";
+		objStrings[634] = "Potato";
+		objStrings[635] = "Raw Steak";
+		objStrings[636] = "Cut Emerald";
+		objStrings[637] = "Cut Ruby";
+		objStrings[638] = "Cut Sapphire";
+		objStrings[639] = "Cut Amethyst";
+		objStrings[640] = "Cut Beryl";
+		objStrings[641] = "Cut Topaz";
+		objStrings[642] = "Cut Onyx";
+		objStrings[643] = "Cut Diamond";
+		objStrings[644] = "Glass";
+		objStrings[645] = "Pearl";
+		objStrings[646] = "Ash";
+		objStrings[647] = "Flint";
+		
+		
+		
+		for (i = 0; i < 3; i++) {
+			j = i*16;
+			objStrings[1240 + j] = "Giant Ant";
+			objStrings[1242 + j] = "Giant Rat";
+			objStrings[1244 + j] = "Slime";
+			objStrings[1246 + j] = "Giant Larva";
+			objStrings[1248 + j] = "Giant Wasp";
+			objStrings[1250 + j] = "Dread Knight";
+			objStrings[1252 + j] = "Carnivorous Plant";
+			objStrings[1254 + j] = "Haunted Stump";
+			
+			objStrings[1288 + j] = "Floating Eye";
+			objStrings[1290 + j] = "Gazer";
+			objStrings[1292 + j] = "Skeleton";
+			objStrings[1294 + j] = "Ghost";
+			objStrings[1296 + j] = "Animated Fungus";
+			objStrings[1298 + j] = "Necromancer";
+			objStrings[1300 + j] = "Electric Eye";
+			objStrings[1302 + j] = "Mimic";
+			
+			objStrings[1336 + j] = "Fire Elemental";
+			objStrings[1338 + j] = "Wind Elemental";
+			objStrings[1340 + j] = "Earth Elemental";
+			objStrings[1342 + j] = "Water Elemental";
+			objStrings[1344 + j] = "Golem";
+			objStrings[1346 + j] = "Zombie";
+			objStrings[1348 + j] = "Imp";
+			objStrings[1350 + j] = "Cyclopes";
+			
+			objStrings[1384 + j] = "Hatchling";
+			objStrings[1386 + j] = "Giant Crab";
+			objStrings[1388 + j] = "Giant Snake";
+			objStrings[1390 + j] = "Giant Frog";
+			objStrings[1392 + j] = "Giant Snail";
+			objStrings[1394 + j] = "Dark Lord";
+			objStrings[1396 + j] = "Animated Armor";
+			objStrings[1398 + j] = "Banshee";
+		}
+		
+		for (i = 0; i < 4; i++) {
+			j = i*20;
+			
+			objStrings[1432 + j] = "Female Townsperson";
+			objStrings[1436 + j] = "Male Townsperson";
+			objStrings[1440 + j] = "Priest";
+			objStrings[1444 + j] = "Rogue";
+			objStrings[1448 + j] = "Theif";
+			
+			objStrings[1512 + j] = "Guard";
+			objStrings[1516 + j] = "Townsperson";
+			objStrings[1520 + j] = "Knight";
+			objStrings[1524 + j] = "Assassin";
+			objStrings[1528 + j] = "Warlord";
+			
+			objStrings[1592 + j] = "Ninja";
+			objStrings[1596 + j] = "Old Man";
+			objStrings[1600 + j] = "Old Woman";
+			objStrings[1604 + j] = "Paladin";
+			objStrings[1608 + j] = "Wizard";
+			
+		}
 	}
 
 };

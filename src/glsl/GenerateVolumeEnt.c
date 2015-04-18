@@ -26,7 +26,7 @@ uniform bool hasTerrain;
 uniform bool hasLines;
 
 
-uniform vec4 voroArr[27];
+//uniform vec4 voroArr[27];
 
 uniform vec3 paramArr[256];
 uniform float matCountArr[16];
@@ -113,48 +113,60 @@ mat2 dirMats[4] = mat2[](
 									);
 
 
-vec3 voroOffsets[27] = vec3[](
-												 vec3(  -1.0,  -1.0,  -1.0  ),
-												 vec3(  -1.0,  -1.0,  0.0  ),
-												 vec3(  -1.0,  -1.0,  1.0  ),
+vec3 voroOffsets[8] = vec3[](
+	vec3(  -1.0,  -1.0,  -1.0  ),
+	vec3(  -1.0,  -1.0,  1.0  ),
+	vec3(  -1.0,  1.0,  -1.0  ),
+	vec3(  -1.0,  1.0,  1.0  ),
+	vec3(  1.0,  -1.0,  -1.0  ),
+	vec3(  1.0,  -1.0,  1.0  ),
+	vec3(  1.0,  1.0,  -1.0  ),
+	vec3(  1.0,  1.0,  1.0  )
+	
+);
 
-												 vec3(  -1.0,  0.0,  -1.0  ),
-												 vec3(  -1.0,  0.0,  0.0  ),
-												 vec3(  -1.0,  0.0,  1.0  ),
+// vec3 voroOffsets[27] = vec3[](
+// 												 vec3(  -1.0,  -1.0,  -1.0  ),
+// 												 vec3(  -1.0,  -1.0,  0.0  ),
+// 												 vec3(  -1.0,  -1.0,  1.0  ),
 
-												 vec3(  -1.0,  1.0,  -1.0  ),
-												 vec3(  -1.0,  1.0,  0.0  ),
-												 vec3(  -1.0,  1.0,  1.0  ),
+// 												 vec3(  -1.0,  0.0,  -1.0  ),
+// 												 vec3(  -1.0,  0.0,  0.0  ),
+// 												 vec3(  -1.0,  0.0,  1.0  ),
 
-
-
-												 vec3(  0.0,  -1.0,  -1.0  ),
-												 vec3(  0.0,  -1.0,  0.0  ),
-												 vec3(  0.0,  -1.0,  1.0  ),
-
-												 vec3(  0.0,  0.0,  -1.0  ),
-												 vec3(  0.0,  0.0,  0.0  ),
-												 vec3(  0.0,  0.0,  1.0  ),
-
-												 vec3(  0.0,  1.0,  -1.0  ),
-												 vec3(  0.0,  1.0,  0.0  ),
-												 vec3(  0.0,  1.0,  1.0  ),
+// 												 vec3(  -1.0,  1.0,  -1.0  ),
+// 												 vec3(  -1.0,  1.0,  0.0  ),
+// 												 vec3(  -1.0,  1.0,  1.0  ),
 
 
 
-												 vec3(  1.0,  -1.0,  -1.0  ),
-												 vec3(  1.0,  -1.0,  0.0  ),
-												 vec3(  1.0,  -1.0,  1.0  ),
+// 												 vec3(  0.0,  -1.0,  -1.0  ),
+// 												 vec3(  0.0,  -1.0,  0.0  ),
+// 												 vec3(  0.0,  -1.0,  1.0  ),
 
-												 vec3(  1.0,  0.0,  -1.0  ),
-												 vec3(  1.0,  0.0,  0.0  ),
-												 vec3(  1.0,  0.0,  1.0  ),
+// 												 vec3(  0.0,  0.0,  -1.0  ),
+// 												 vec3(  0.0,  0.0,  0.0  ),
+// 												 vec3(  0.0,  0.0,  1.0  ),
 
-												 vec3(  1.0,  1.0,  -1.0  ),
-												 vec3(  1.0,  1.0,  0.0  ),
-												 vec3(  1.0,  1.0,  1.0  )
+// 												 vec3(  0.0,  1.0,  -1.0  ),
+// 												 vec3(  0.0,  1.0,  0.0  ),
+// 												 vec3(  0.0,  1.0,  1.0  ),
 
-											 );
+
+
+// 												 vec3(  1.0,  -1.0,  -1.0  ),
+// 												 vec3(  1.0,  -1.0,  0.0  ),
+// 												 vec3(  1.0,  -1.0,  1.0  ),
+
+// 												 vec3(  1.0,  0.0,  -1.0  ),
+// 												 vec3(  1.0,  0.0,  0.0  ),
+// 												 vec3(  1.0,  0.0,  1.0  ),
+
+// 												 vec3(  1.0,  1.0,  -1.0  ),
+// 												 vec3(  1.0,  1.0,  0.0  ),
+// 												 vec3(  1.0,  1.0,  1.0  )
+
+// 											 );
 
 
 
@@ -510,9 +522,9 @@ vec4 pointSegDistance(vec3 testPoint, vec3 sp0, vec3 sp1)
 
 void getCobble(vec3 worldPosInPixels) {
 
-	vec4 myResult = vec4(0.0);
 
-	vec4 curPos;
+	vec4 myResult = vec4(0.0);
+	vec3 curPos;
 	vec3 bestPos = vec3(0.0);
 	vec3 nextBestPos = vec3(0.0);
 	float curVoroDis;
@@ -525,11 +537,23 @@ void getCobble(vec3 worldPosInPixels) {
 	float bestRand;
 
 	int i;
+	
+	
+	// vec2 roughPos = (worldPosInPixels.xy + worldPosInPixels.yz) / worldSizeInPixels.x;
+	// float roughVoro = abs(texture2D(Texture2, 256.0 * roughPos ).r);
 
-	for (i = 0; i < 27; i++) {
-		curPos = voroArr[i];
 
-		curVoroDis = distance(curPos.xyz, worldPosInPixels);// *wpz;
+	float vsize = 512.0;
+
+	vec3 newWP = floor(worldPosInPixels.xyz/vsize)*vsize + vsize/2.0;
+	//newWP.xyz += clamp((roughVoro-0.5)*8.0,-1.0,1.0)*1.0*pixelsPerCell;
+
+
+	for (i = 0; i < 8; i++) {
+		curPos = newWP + voroOffsets[i]*vsize/2.0;
+		curPos += (rand(curPos)-0.5)*vsize;
+		
+		curVoroDis = distance(curPos.xyz, worldPosInPixels.xyz);
 
 		if (curVoroDis < minDis1) {
 			nextBestPos = bestPos;
@@ -547,14 +571,60 @@ void getCobble(vec3 worldPosInPixels) {
 	}
 
 	bestRand = randf3(bestPos);
-
 	gradVal = (clamp(1.0 - (minDis1 * 2.0 / (minDis1 + minDis2)), 1.0 / 255.0, 1.0));
-
 	voroId = floor(bestRand * 120.0) + 1.0;
 	voroGrad = gradVal;
 	voroPos = bestPos;
 
 }
+
+// void getCobble(vec3 worldPosInPixels) {
+
+// 	vec4 myResult = vec4(0.0);
+
+// 	vec4 curPos;
+// 	vec3 bestPos = vec3(0.0);
+// 	vec3 nextBestPos = vec3(0.0);
+// 	float curVoroDis;
+// 	float notValid = 99999.0;
+// 	float minDis1 = notValid;
+// 	float minDis2 = notValid;
+// 	float gradVal;
+// 	vec3 randNum = vec3(0.0);
+// 	vec3 oneVec = vec3(1.0);
+// 	float bestRand;
+
+// 	int i;
+
+// 	for (i = 0; i < 27; i++) {
+// 		curPos = voroArr[i];
+
+// 		curVoroDis = distance(curPos.xyz, worldPosInPixels);// *wpz;
+
+// 		if (curVoroDis < minDis1) {
+// 			nextBestPos = bestPos;
+// 			bestPos = curPos.xyz;
+
+// 			minDis2 = minDis1;
+// 			minDis1 = curVoroDis;
+// 		}
+// 		else {
+// 			if (curVoroDis < minDis2) {
+// 				nextBestPos = curPos.xyz;
+// 				minDis2 = curVoroDis;
+// 			}
+// 		}
+// 	}
+
+// 	bestRand = randf3(bestPos);
+
+// 	gradVal = (clamp(1.0 - (minDis1 * 2.0 / (minDis1 + minDis2)), 1.0 / 255.0, 1.0));
+
+// 	voroId = floor(bestRand * 120.0) + 1.0;
+// 	voroGrad = gradVal;
+// 	voroPos = bestPos;
+
+// }
 
 vec4 getSlats(vec4 newUVW, float thickness, vec3 origin, vec3 worldPosInPixels, vec3 visMinInPixels, vec3 visMaxInPixels, bool isVert, float isWindow) {
 

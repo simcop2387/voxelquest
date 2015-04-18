@@ -1,4 +1,4 @@
-﻿Build started 3/17/2015 12:19:29 AM.
+﻿Build started 4/18/2015 11:28:06 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -21,9 +21,9 @@
          .\src\cpp\f00260_classdefs.h
          .\src\cpp\f00293_gamesound.hpp
          .\src\cpp\f00294_gamemusic.hpp
-         .\src\cpp\f00297_gamecamera.hpp
          .\src\cpp\f00300_singleton.hpp
          .\src\cpp\f00305_shader.hpp
+         .\src\cpp\f00307_dynbuffer.hpp
          .\src\cpp\f00310_pooledresource.hpp
          .\src\cpp\f00315_poolmanager.hpp
          .\src\cpp\f00316_poolpagemanager.hpp
@@ -48,9 +48,9 @@
          copying headers to one file
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
-         .\f00297_gamecamera.e
          .\f00300_singleton.e
          .\f00305_shader.e
+         .\f00307_dynbuffer.e
          .\f00310_pooledresource.e
          .\f00315_poolmanager.e
          .\f00316_poolpagemanager.e
@@ -74,9 +74,9 @@
          copying files to compiled
          .\temp\f00293_gamesound.e
          .\temp\f00294_gamemusic.e
-         .\temp\f00297_gamecamera.e
          .\temp\f00300_singleton.e
          .\temp\f00305_shader.e
+         .\temp\f00307_dynbuffer.e
          .\temp\f00310_pooledresource.e
          .\temp\f00315_poolmanager.e
          .\temp\f00316_poolpagemanager.e
@@ -110,9 +110,9 @@
          .\temp\f00270_headers.h
          .\temp\f00293_gamesound.h
          .\temp\f00294_gamemusic.h
-         .\temp\f00297_gamecamera.h
          .\temp\f00300_singleton.h
          .\temp\f00305_shader.h
+         .\temp\f00307_dynbuffer.h
          .\temp\f00310_pooledresource.h
          .\temp\f00315_poolmanager.h
          .\temp\f00316_poolpagemanager.h
@@ -165,12 +165,12 @@
          blockSizeInHolders: 32
          blockSizeInPixels: 32768
          terDataBufPitchScaledXY 24
-         maxChangesInHolders: 2
-         volGenFBOX: 32
-         volGenFBOY: 1024
-         visPageSizeInPixels: 512
+         maxChangesInHolders: 1
+         volGenFBOX: 128
+         volGenFBOY: 16384
+         visPageSizeInPixels: 1024
          holderSizeInPixels: 1024
-         bufferMult: 1.25
+         bufferMult: 1.125
          cellsPerLot: 64
          pixelsPerCell: 128
          unitsPerCell: 4
@@ -178,14 +178,14 @@
          pixelsPerUnit: 32
          unitsPerLot: 256
          pixelsPerLot: 8192
-         holderSizeInPages: 2
+         holderSizeInPages: 1
          holdersPerLot: 8
-         visPageSizeInUnits: 16
+         visPageSizeInUnits: 32
          unitSizeInPixels: 32
          worldSizeInBlocks:    128.000000   128.000000   1.000000    
          worldSizeInLots:    512.000000   512.000000   4.000000    
          worldSizeInHolders:    4096.000000   4096.000000   32.000000    
-         worldSizeInPages:    8192.000000   8192.000000   64.000000    
+         worldSizeInPages:    4096.000000   4096.000000   32.000000    
          worldSizeInTerData:    2048.000000   2048.000000   32.000000    
          MAX_UNIFORMS: 65536
          
@@ -204,35 +204,38 @@
          
          Valid JSON
                    
-         32,1024
-         32,1024
-         32,1024
-         32,1024
+         128,16384
+         128,16384
+         64,4096
+         64,4096
          256,256
          256,256
-         720,720
-         720,720
-         720,720
-         720,720
-         720,720
-         720,720
-         720,720
-         720,720
-         720,720
-         720,720
-         360,360
-         720,720
-         720,720
-         360,360
-         360,360
-         360,360
-         360,360
+         720,360
+         720,360
+         720,360
+         720,360
+         720,360
+         720,360
+         720,360
+         720,360
+         720,360
+         720,360
+         720,360
+         360,180
+         720,360
+         720,360
+         360,180
+         360,180
+         360,180
+         360,180
          512,512
          512,512
          512,512
          512,512
          512,512
          512,512
+         Video card supports GL_ARB_pixel_buffer_object.
+         Video card supports WGL_EXT_swap_control.
          
          
          
@@ -250,7 +253,7 @@
          
          Valid JSON
                    
-         Sea Level: 132
+         Sea Level: 153
          start place cities
          end place cities
          start grow provinces
@@ -294,668 +297,20 @@
          Valid JSON
                    
          GW DONE          
-         copyTerToTexture resIndex:  0         
-         copyTerToTexture resIndex:  1         
-         getKB()
-         load jv data kb.js
-         Loading:  ..\data\kb.js         
-         Load Successful          
          
          Valid JSON
                    
-         Begin vocab compile
-         TokenToRules:
-         fFloat: 
-         oIfThen: 
-         oAll: 
-         oAny: 
-         oNone: 
-         oList: 
-         oEqual: 
-         oNotEqual: 
-         oIsBetween: 
-         vX: 
-         vY: 
-         vZ: 
-         nBob: 22 
-         nSue: 23 22 21 
-         nSteve: 23 21 
-         nItem0: 28 18 
-         nItem1: 19 
-         pIsClass: 28 
-         pIsJealous: 20 
-         pLoves: 23 22 21 
-         pIsIronSword: 19 18 
-         pIsClothBag: 
-         pIsDoombringer: 
-         pIsArtifact: 15 
-         pIsContainer: 14 
-         pIsMetal: 0 2 
-         pIsPreciousMetal: 1 
-         pIsStone: 4 
-         pIsWood: 3 
-         pIsCloth: 6 17 
-         pIsHide: 7 
-         pIsGemstone: 5 
-         pIsCopper: 
-         pIsSilver: 
-         pIsGold: 
-         pIsPlatinum: 
-         pIsOnyx: 
-         pIsAmethyst: 
-         pIsTopaz: 
-         pIsSapphire: 
-         pIsEmerald: 
-         pIsRuby: 
-         pIsDiamond: 
-         pIsSandstone: 
-         pIsMarble: 
-         pIsGranite: 
-         pIsBronze: 
-         pIsIron: 16 
-         pIsSteel: 15 
-         pIsOak: 
-         pIsRedwood: 
-         pIsYew: 
-         pIsCotton: 
-         pIsLinen: 
-         pIsSilk: 
-         pIsLeather: 
-         pIsDragonScale: 
-         pIsEdible: 
-         pIsEquipable: 8 9 
-         pIsWorn: 
-         pIsHeld: 10 11 
-         pIsTool: 
-         pIsWeapon: 12 
-         pIsSword: 15 16 
-         pIsCloak: 25 
-         pIsRing: 24 
-         pIsArmor: 26 
-         pIsShield: 27 
-         pIsBag: 17 
-         pHandsRequired: 13 
-         pCoversHead: 
-         pCoversNeck: 
-         pCoversBack: 
-         pCoversTorso: 
-         pCoversLegs: 
-         pCoversFeet: 
-         pCoversWrists: 
-         pCoversHands: 
-         pCoversFingers: 
-         1.000000: 
-         0.000000: 
-         71.000000: 
-         72.000000: 
-         131.000000: 
-         132.000000: 
-         155.000000: 
-         156.000000: 
-         179.000000: 
-         162.000000: 
-         
-         All Vocab:
-         fFloat
-         oIfThen
-         oAll
-         oAny
-         oNone
-         oList
-         oEqual
-         oNotEqual
-         oIsBetween
-         vX
-         vY
-         vZ
-         nBob
-         nSue
-         nSteve
-         nItem0
-         nItem1
-         pIsClass
-         pIsJealous
-         pLoves
-         pIsIronSword
-         pIsClothBag
-         pIsDoombringer
-         pIsArtifact
-         pIsContainer
-         pIsMetal
-         pIsPreciousMetal
-         pIsStone
-         pIsWood
-         pIsCloth
-         pIsHide
-         pIsGemstone
-         pIsCopper
-         pIsSilver
-         pIsGold
-         pIsPlatinum
-         pIsOnyx
-         pIsAmethyst
-         pIsTopaz
-         pIsSapphire
-         pIsEmerald
-         pIsRuby
-         pIsDiamond
-         pIsSandstone
-         pIsMarble
-         pIsGranite
-         pIsBronze
-         pIsIron
-         pIsSteel
-         pIsOak
-         pIsRedwood
-         pIsYew
-         pIsCotton
-         pIsLinen
-         pIsSilk
-         pIsLeather
-         pIsDragonScale
-         pIsEdible
-         pIsEquipable
-         pIsWorn
-         pIsHeld
-         pIsTool
-         pIsWeapon
-         pIsSword
-         pIsCloak
-         pIsRing
-         pIsArmor
-         pIsShield
-         pIsBag
-         pHandsRequired
-         pCoversHead
-         pCoversNeck
-         pCoversBack
-         pCoversTorso
-         pCoversLegs
-         pCoversFeet
-         pCoversWrists
-         pCoversHands
-         pCoversFingers
-         1.000000
-         0.000000
-         71.000000
-         72.000000
-         131.000000
-         132.000000
-         155.000000
-         156.000000
-         179.000000
-         162.000000
-         vX__0
-         vX__1
-         vX__2
-         vX__3
-         vX__4
-         vX__5
-         vX__6
-         vX__7
-         vX__8
-         vX__9
-         vX__10
-         vX__11
-         vX__12
-         vX__13
-         vX__14
-         vX__15
-         vX__16
-         vX__17
-         vX__20
-         vZ__20
-         vY__20
-         vX__24
-         vY__24
-         vX__25
-         vY__25
-         vX__26
-         vY__26
-         vX__27
-         vY__27
-         kb
-          oIfThen[
-           pIsPreciousMetal[
-            vX__0
-           ]
-           pIsMetal[
-            vX__0
-           ]
-          ]
-         
-         
-          oIfThen[
-           oAny[
-            pIsCopper[
-             vX__1
-            ]
-            pIsSilver[
-             vX__1
-            ]
-            pIsGold[
-             vX__1
-            ]
-            pIsPlatinum[
-             vX__1
-            ]
-           ]
-           pIsPreciousMetal[
-            vX__1
-           ]
-          ]
-         
-         
-          oIfThen[
-           oAny[
-            pIsBronze[
-             vX__2
-            ]
-            pIsIron[
-             vX__2
-            ]
-            pIsSteel[
-             vX__2
-            ]
-           ]
-           pIsMetal[
-            vX__2
-           ]
-          ]
-         
-         
-          oIfThen[
-           oAny[
-            pIsOak[
-             vX__3
-            ]
-            pIsRedwood[
-             vX__3
-            ]
-            pIsYew[
-             vX__3
-            ]
-           ]
-           pIsWood[
-            vX__3
-           ]
-          ]
-         
-         
-          oIfThen[
-           oAny[
-            pIsSandstone[
-             vX__4
-            ]
-            pIsMarble[
-             vX__4
-            ]
-            pIsGranite[
-             vX__4
-            ]
-           ]
-           pIsStone[
-            vX__4
-           ]
-          ]
-         
-         
-          oIfThen[
-           oAny[
-            pIsOnyx[
-             vX__5
-            ]
-            pIsAmethyst[
-             vX__5
-            ]
-            pIsTopaz[
-             vX__5
-            ]
-            pIsSapphire[
-             vX__5
-            ]
-            pIsEmerald[
-             vX__5
-            ]
-            pIsRuby[
-             vX__5
-            ]
-            pIsDiamond[
-             vX__5
-            ]
-           ]
-           pIsGemstone[
-            vX__5
-           ]
-          ]
-         
-         
-          oIfThen[
-           oAny[
-            pIsCotton[
-             vX__6
-            ]
-            pIsLinen[
-             vX__6
-            ]
-            pIsSilk[
-             vX__6
-            ]
-           ]
-           pIsCloth[
-            vX__6
-           ]
-          ]
-         
-         
-          oIfThen[
-           oAny[
-            pIsLeather[
-             vX__7
-            ]
-            pIsDragonScale[
-             vX__7
-            ]
-           ]
-           pIsHide[
-            vX__7
-           ]
-          ]
-         
-         
-          oIfThen[
-           pIsWorn[
-            vX__8
-           ]
-           pIsEquipable[
-            vX__8
-           ]
-          ]
-         
-         
-          oIfThen[
-           pIsHeld[
-            vX__9
-           ]
-           pIsEquipable[
-            vX__9
-           ]
-          ]
-         
-         
-          oIfThen[
-           pIsTool[
-            vX__10
-           ]
-           pIsHeld[
-            vX__10
-           ]
-          ]
-         
-         
-          oIfThen[
-           pIsWeapon[
-            vX__11
-           ]
-           pIsHeld[
-            vX__11
-           ]
-          ]
-         
-         
-          oIfThen[
-           pIsSword[
-            vX__12
-           ]
-           pIsWeapon[
-            vX__12
-           ]
-          ]
-         
-         
-          oIfThen[
-           pIsSword[
-            vX__13
-           ]
-           pHandsRequired[
-            vX__13
-            1.000000
-           ]
-          ]
-         
-         
-          oIfThen[
-           pIsBag[
-            vX__14
-           ]
-           pIsContainer[
-            vX__14
-           ]
-          ]
-         
-         
-          oIfThen[
-           pIsDoombringer[
-            vX__15
-           ]
-           oList[
-            pIsSword[
-             vX__15
-            ]
-            pIsSteel[
-             vX__15
-            ]
-            pIsArtifact[
-             vX__15
-            ]
-           ]
-          ]
-         
-         
-          oIfThen[
-           pIsIronSword[
-            vX__16
-           ]
-           oList[
-            pIsSword[
-             vX__16
-            ]
-            pIsIron[
-             vX__16
-            ]
-           ]
-          ]
-         
-         
-          oIfThen[
-           pIsClothBag[
-            vX__17
-           ]
-           oList[
-            pIsCloth[
-             vX__17
-            ]
-            pIsBag[
-             vX__17
-            ]
-           ]
-          ]
-         
-         
-          pIsIronSword[
-           nItem0
-          ]
-         
-         
-          pIsIronSword[
-           nItem1
-          ]
-         
-         
-          oIfThen[
-           oAll[
-            pLoves[
-             vX__20
-             vZ__20
-            ]
-            pLoves[
-             vZ__20
-             vY__20
-            ]
-            oNotEqual[
-             vX__20
-             vY__20
-            ]
-           ]
-           pIsJealous[
-            vX__20
-            vY__20
-           ]
-          ]
-         
-         
-          pLoves[
-           nSteve
-           nSue
-          ]
-         
-         
-          pLoves[
-           nBob
-           nSue
-          ]
-         
-         
-          pLoves[
-           nSue
-           nSteve
-          ]
-         
-         
-          oIfThen[
-           oAll[
-            pIsClass[
-             vX__24
-             vY__24
-            ]
-            oIsBetween[
-             vY__24
-             0.000000
-             71.000000
-            ]
-           ]
-           pIsRing[
-            vX__24
-           ]
-          ]
-         
-         
-          oIfThen[
-           oAll[
-            pIsClass[
-             vX__25
-             vY__25
-            ]
-            oIsBetween[
-             vY__25
-             72.000000
-             131.000000
-            ]
-           ]
-           pIsCloak[
-            vX__25
-           ]
-          ]
-         
-         
-          oIfThen[
-           oAll[
-            pIsClass[
-             vX__26
-             vY__26
-            ]
-            oIsBetween[
-             vY__26
-             132.000000
-             155.000000
-            ]
-           ]
-           pIsArmor[
-            vX__26
-           ]
-          ]
-         
-         
-          oIfThen[
-           oAll[
-            pIsClass[
-             vX__27
-             vY__27
-            ]
-            oIsBetween[
-             vY__27
-             156.000000
-             179.000000
-            ]
-           ]
-           pIsShield[
-            vX__27
-           ]
-          ]
-         
-         
-          pIsClass[
-           nItem0
-           162.000000
-          ]
-         
-         
-         qb
-          pIsShield[
-           nItem0
-          ]
-         
-         
-         
-         
-         Successfully compiled KB
-         
-         
-          searchToUnify(pIsShield) curOffset = 0
-         nItem0
-         
-           attemptUnify(pIsShield[ nItem0 ], pIsShield[ vX__27 ])
-           attemptUnify(nItem0, vX__27)
-           setEqualTo(): vX__27 = nItem0
-          Unify success
-           searchToUnify(oAll) curOffset = 0
-         nItem0
-         
-            attemptUnify(pIsClass[ vX__27 vY__27 ], pIsClass[ nItem0 162.000000 ])
-            attemptUnify(vX__27, nItem0)
-            setEqualTo(): vX__27 = nItem0
-            Attempted to set variable to same value
-            attemptUnify(vY__27, 162.000000)
-            setEqualTo(): vY__27 = 162.000000
-            searchToUnify(oAll) curOffset = 1
-         nItem0
-         
-         isBetween()
-         success, compare: 162 156 179
-            wasSuccessful: 1
-           Unify success
-           wasSuccessful: 1
-          wasSuccessful: 1
-         nItem0
-         final result: 1
-         
-         
-         copyTerToTexture resIndex:  2         
-         copyTerToTexture resIndex:  3         
-     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
-C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -2147418113.
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
+         Shaders Refreshed
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
-Build FAILED.
+Build succeeded.
 
-Time Elapsed 00:00:25.82
+Time Elapsed 00:05:04.85

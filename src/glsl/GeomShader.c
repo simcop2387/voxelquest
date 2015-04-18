@@ -9,6 +9,7 @@ uniform vec3 cameraPos;
 uniform vec3 offsetPos;
 uniform float isWire;
 uniform vec3 matVal;
+uniform vec4 rotationZ;
 
 varying vec3 TexCoord0;
 
@@ -28,6 +29,20 @@ void main() {
     
     vec4 newPos = gl_Vertex;
     newPos.xyz += offsetPos;
+    
+    mat2 m2x2;
+    
+    if (rotationZ.w != 0.0) {
+        newPos.xyz -= rotationZ.xyz;
+        m2x2 = mat2(
+            cos(rotationZ.w), -sin(rotationZ.w),
+            sin(rotationZ.w), cos(rotationZ.w)
+        );
+        
+        newPos.xy = m2x2*newPos.xy;
+        
+        newPos.xyz += rotationZ.xyz;
+    }
     
     worldPos = newPos;
     screenPos = gl_ModelViewProjectionMatrix * newPos;

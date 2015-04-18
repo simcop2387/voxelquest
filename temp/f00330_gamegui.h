@@ -951,7 +951,7 @@ void GameGUI::renderQuadDirect (UIComponent * uiComp)
 		if (uiComp == NULL) {
 			return;
 		}
-		if (uiComp->visible) {
+		if (uiComp->visible && uiComp->enabled) {
 			
 		}
 		else {
@@ -988,8 +988,8 @@ void GameGUI::runReport ()
                          {
 		singleton->compStack[0].data->runReport();
 	}
-void GameGUI::renderGUI (int activeFBO)
-                                      {
+void GameGUI::renderGUI ()
+                         {
 		
 		
 		int i;
@@ -1041,7 +1041,7 @@ void GameGUI::renderGUI (int activeFBO)
 							curComp = singleton->compStack[ singleton->guiLayers[j][k] ].data;
 							curCont = &(curComp->uiCont);
 							
-							if (curComp->visible && (curComp->layerId >= 0)) {
+							if (curComp->visible  && curComp->enabled && (curComp->layerId >= 0)) {
 								
 								for (m = 0; m < maxLoop; m++) {
 									

@@ -11,6 +11,8 @@ UIComponent::UIComponent ()
 void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int _index, JSONValue * _jvNodeNoTemplate, bool _isFloating, string * stringVals, double * floatVals)
           {
 		
+		enabled = true;
+		
 		_children.clear();
 		_floatingChildren.clear();
 		
@@ -247,6 +249,10 @@ int UIComponent::getFloatingChildCount ()
 	}
 float UIComponent::getDimYClamped (float val)
                                         {
+		if (!enabled) {
+			return 0.0f;
+		}
+		
 		if (maxDimInPixels.y == 0) {
 			return max(val,minDimInPixels.y);
 		}
@@ -256,6 +262,10 @@ float UIComponent::getDimYClamped (float val)
 	}
 float UIComponent::getResultDimYClamped ()
                                      {
+		if (!enabled) {
+			return 0.0f;
+		}
+		
 		if (maxDimInPixels.y == 0) {
 			return max(resultDimInPixels.y,minDimInPixels.y);
 		}
@@ -887,23 +897,30 @@ void UIComponent::applyHeight ()
 		
 		for (i = 0; i < getChildCount(); i++) {
 			
-			if (fillDir == E_FILL_HORIZONTAL) {
-				
-				if (getChild(i)->fillRatioDim.y == 0.0f) {
-					getChild(i)->resultDimInPixels.y = getChild(i)->rmDimInPixels.y;
-				}
-				else {
-					
-					
-					getChild(i)->resultDimInPixels.y = availSpace;
-				}
+			if (getChild(i)->enabled == false) {
+				getChild(i)->resultDimInPixels.y = 0.0;
 			}
 			else {
-				getChild(i)->resultDimInPixels.y =
-					getChild(i)->rmDimInPixels.y + 
-					(availSpace*getChild(i)->fillRatioDim.y)/totalRatios.y;	
-				
+				if (fillDir == E_FILL_HORIZONTAL) {
+					
+					if (getChild(i)->fillRatioDim.y == 0.0f) {
+						getChild(i)->resultDimInPixels.y = getChild(i)->rmDimInPixels.y;
+					}
+					else {
+						
+						
+						getChild(i)->resultDimInPixels.y = availSpace;
+					}
+				}
+				else {
+					getChild(i)->resultDimInPixels.y =
+						getChild(i)->rmDimInPixels.y + 
+						(availSpace*getChild(i)->fillRatioDim.y)/totalRatios.y;	
+					
+				}
 			}
+			
+			
 		}
 		
 		for (i = 0; i < getChildCount(); i++) {
@@ -943,37 +960,45 @@ void UIComponent::applyWidth ()
 		
 		for (i = 0; i < getChildCount(); i++) {
 			
-			if (fillDir == E_FILL_HORIZONTAL) {
-				
-				
-				
-				getChild(i)->resultDimInPixels.x =
-					max(
-						getChild(i)->rmDimInPixels.x +
-						(availSpace*getChild(i)->fillRatioDim.x)/totalRatios.x,
-						getChild(i)->minDimInPixels.x
-					);
-					
+			
+			if (getChild(i)->enabled == false) {
+				getChild(i)->resultDimInPixels.x = 0.0;
 			}
 			else {
-				
-				if (getChild(i)->fillRatioDim.x == 0.0f) {
+				if (fillDir == E_FILL_HORIZONTAL) {
+					
+					
+					
 					getChild(i)->resultDimInPixels.x =
 						max(
-							getChild(i)->rmDimInPixels.x,
+							getChild(i)->rmDimInPixels.x +
+							(availSpace*getChild(i)->fillRatioDim.x)/totalRatios.x,
 							getChild(i)->minDimInPixels.x
 						);
-					
+						
 				}
 				else {
-					getChild(i)->resultDimInPixels.x =
-						max(
-							availSpace,
-							getChild(i)->minDimInPixels.x
-						);
 					
+					if (getChild(i)->fillRatioDim.x == 0.0f) {
+						getChild(i)->resultDimInPixels.x =
+							max(
+								getChild(i)->rmDimInPixels.x,
+								getChild(i)->minDimInPixels.x
+							);
+						
+					}
+					else {
+						getChild(i)->resultDimInPixels.x =
+							max(
+								availSpace,
+								getChild(i)->minDimInPixels.x
+							);
+						
+					}
 				}
 			}
+			
+			
 					
 		}
 		
@@ -1155,9 +1180,9 @@ void UIComponent::updateValue (float x, float y)
 			case E_HT_TOOLTIP_VALUE:
 				floatOffset.x = x + hoverBuffer - dragOffset.x; 
 				floatOffset.y = curParent->totOffset.y + curParent->originPos.y + curParent->resultDimInPixels.y + hoverBuffer;
-				visible = curParent->overSelf;
+				visible = curParent->overSelf && curParent->enabled;
 				
-				if ((hoverType == E_HT_TOOLTIP_VALUE)&&visible) {
+				if ((hoverType == E_HT_TOOLTIP_VALUE)&&visible&&enabled) {
 					
 					getChild(0)->setText(f__s(curParent->getValue()));
 				}
@@ -1181,7 +1206,7 @@ void UIComponent::updateValue (float x, float y)
 			
 			switch(getChild(i)->hoverType) {
 				case E_HT_NORMAL:
-					getChild(i)->visible = visible;
+					getChild(i)->visible = visible&&enabled;
 				break;
 				
 				case E_HT_ROOT:
@@ -1194,7 +1219,7 @@ void UIComponent::updateValue (float x, float y)
 				break;
 				
 				case E_HT_ONSELECTED:
-					getChild(i)->visible = visible&&selected;
+					getChild(i)->visible = visible&&selected&&enabled;
 				break;
 			}
 			
@@ -1203,7 +1228,7 @@ void UIComponent::updateValue (float x, float y)
 			
 			switch(getFloatingChild(i)->hoverType) {
 				case E_HT_NORMAL:
-					getFloatingChild(i)->visible = visible;
+					getFloatingChild(i)->visible = visible&&enabled;
 				break;
 				
 				case E_HT_ROOT:
@@ -1216,7 +1241,7 @@ void UIComponent::updateValue (float x, float y)
 				break;
 				
 				case E_HT_ONSELECTED:
-					getFloatingChild(i)->visible = visible&&selected;
+					getFloatingChild(i)->visible = visible&&selected&&enabled;
 				break;
 			}
 		}
@@ -1325,7 +1350,7 @@ bool UIComponent::findMaxLayer (float x, float y, float xTransformed, float yTra
 			(x > (hitBounds.xMin+totOffset.x)) &&
 			(y < (hitBounds.yMax+totOffset.y)) &&
 			(y > (hitBounds.yMin+totOffset.y))
-		) && visible;// && hasBackground;
+		) && visible && enabled;// && hasBackground;
 		
 		
 		if (
@@ -1363,6 +1388,7 @@ bool UIComponent::findMaxLayer (float x, float y, float xTransformed, float yTra
 		if (
 			overSelf &&
 			visible &&
+			enabled &&
 			hasBackground &&
 			(!overChild) &&
 			(layer >= singleton->maxLayerOver)
@@ -1389,6 +1415,7 @@ void UIComponent::testOver (float x, float y)
 		mouseOver = 
 			overSelf &&
 			visible &&
+			enabled &&
 			(hasBackground) && //||(guiClass == E_GT_DRAGPAD)
 			(!overChild) &&
 			(layer >= singleton->maxLayerOver);
@@ -1478,7 +1505,7 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 			if (state == GLUT_DOWN) { // MOUSE DOWN
 				if (mouseOver) {
 					
-					if (visible) {
+					if (enabled && visible) {
 						
 						
 					
@@ -1599,7 +1626,7 @@ bool UIComponent::testHit (int button, int state, float x, float y)
 				if ( (button == 3) || (button == 4) ) {
 					
 					
-					if (visible && overSelf) {
+					if (enabled && visible && overSelf) {
 						if (maxDimInPixels.y != 0) {
 							
 							if (button == 3) {

@@ -18,6 +18,9 @@ const float SOLID_LAYER = 0.0/255.0;
 const float WATER_LAYER = 1.0/255.0;
 const float AIR_LAYER = 2.0/255.0;
 
+const int rad = 4;
+const int radStep = 1;
+
 int iVGSM = int(volGenSuperMod+1.0)/2;
 
 varying vec2 TexCoord0;
@@ -77,12 +80,10 @@ vec4 getAO(vec3 tp, vec4 curSamp) { //, vec3 wp
 
 	vec4 res;
 
-	int maxRad;
 	float tsize = volGenFBOX;
 	//float pixMod = 1.0 / (tsize);
 	vec3 testPoint = tp;// + pixMod;
 
-	float fMaxRad;
 	float curPower;
 
 	float rval;
@@ -91,11 +92,7 @@ vec4 getAO(vec3 tp, vec4 curSamp) { //, vec3 wp
 	vec3 norm = vec3(0.0, 0.0, 0.0);
 	vec3 norm2 = vec3(0.0, 0.0, 0.0);
 
-	int rad;
-	int radStep;
-	float theta = 0.0;
-	float phi = 0.0;
-	float frad = float(radStep);
+	
 
 	float totSteps = 0.0;
 	float totHits = 0.0;
@@ -113,11 +110,6 @@ vec4 getAO(vec3 tp, vec4 curSamp) { //, vec3 wp
 	float isCurLayer = 0.0;
 
 	float isAir = 0.0;
-
-	// rad = 1;
-	// radStep = 1;
-	rad = 3;
-	radStep = 1;
 
 	// for (i = 0; i < 2; i++) {
 
@@ -395,8 +387,18 @@ void main() {
 	//}
 	
 	samp = sampleAtPoint( basePos );
+	
+	vec4 normAO = blackCol;
+	
+	if (samp.r == airVal) {
+		
+	}
+	else {
+		normAO = getAO(basePos, samp);
+	}
+	
 	gl_FragData[0] = samp;
-	gl_FragData[1] = getAO(basePos, samp);
+	gl_FragData[1] = normAO;
 	
 
 }

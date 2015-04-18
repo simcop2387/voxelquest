@@ -39,35 +39,6 @@ public:
 };
 #undef LZZ_INLINE
 #endif
-// f00297_gamecamera.e
-//
-
-#ifndef LZZ_f00297_gamecamera_e
-#define LZZ_f00297_gamecamera_e
-#define LZZ_INLINE inline
-class GameCamera
-{
-private:
-public:
-  GLfloat (unitPos) [3];
-  float (accel) [3];
-  float accelA;
-  float accelB;
-  float lastAccelA;
-  float lastAccelB;
-  float subjectDistance;
-  GLfloat (rotation) [2];
-  GameCamera ();
-  void focusOn (int entID);
-  void testCollision (float oldX, float oldY, float oldZ, float newX, float newY, float newZ, bool skipTest);
-  void setUnitPosition (float x, float y, float z);
-  void addUnitPosition (float x, float y, float z);
-  void setRotation (float a, float b);
-  void addRotation (float a, float b);
-  void init ();
-};
-#undef LZZ_INLINE
-#endif
 // f00300_singleton.e
 //
 
@@ -101,6 +72,7 @@ public:
     bool isValid;
     UIComponent * data;
   };
+  DynBuffer * myDynBuffer;
   struct CompareStruct
   {
     bool operator () (string const & first, string const & second);
@@ -108,11 +80,11 @@ public:
   CompareStruct compareStruct;
   typedef map <string, UICStruct>::iterator itUICStruct;
   typedef map <string, JSONStruct>::iterator itJSStruct;
-  GameCamera * mainCamera;
   bool (keysPressed) [MAX_KEYS];
   double (keyDownTimes) [MAX_KEYS];
   unsigned char (keyMap) [MAX_KEYS];
   GLdouble (viewMatrixD) [16];
+  float (viewMatrixDI) [16];
   GLdouble (projMatrixD) [16];
   Matrix4 viewMatrix;
   Matrix4 projMatrix;
@@ -127,16 +99,18 @@ public:
   EntSelection selectedEnts;
   GameEnt * selectedEnt;
   GameEnt * highlightedEnt;
+  bool combatOn;
+  bool firstPerson;
   bool updateMatFlag;
   bool matVolLock;
   bool isMoving;
   bool perspectiveOn;
+  bool lastPersp;
   bool (isInteractiveEnt) [E_CT_LENGTH];
   bool inputOn;
   bool pathfindingOn;
   bool isMacro;
   bool orgOn;
-  bool autoScroll;
   bool cavesOn;
   bool bakeParamsOn;
   bool dragging;
@@ -183,18 +157,21 @@ public:
   bool editPose;
   bool isDraggingObject;
   int (entIdToIcon) [MAX_OBJ_TYPES];
-  int (iconToEntId) [MAX_OBJ_TYPES];
+  int (iconToEntId) [MAX_ICON_ID];
   bool (isContainer) [MAX_OBJ_TYPES];
+  string (objStrings) [MAX_OBJ_TYPES];
   int currentTick;
   int draggingFromInd;
   int draggingToInd;
   int draggingFromType;
   int draggingToType;
+  int moveMode;
   int maxHolderDis;
   int gameObjCounter;
   int lastObjectCount;
   int lastObjInd;
-  int bestObjInd;
+  int selObjInd;
+  int actObjInd;
   int fieldCallback;
   int mouseState;
   int lastW;
@@ -267,6 +244,11 @@ public:
   uint blockShift;
   uint volGenFBOX;
   uint * terDataScaled;
+  GLfloat (camRotation) [2];
+  float resultShake;
+  float cameraShake;
+  float subjectDistance;
+  float lastSubjectDistance;
   float lastx;
   float lasty;
   float FOV;
@@ -314,7 +296,9 @@ public:
   float * paramArrMap;
   float (clipDist) [2];
   float MAX_TRAVEL_DIS;
+  double curMoveTime;
   double lastMoveTime;
+  double timeDelta;
   double curTime;
   double clickTime;
   double lastTime;
@@ -324,6 +308,8 @@ public:
   GameOrgNode * selectedNode;
   GameOrgNode * lastSelNode;
   GameOrgNode * activeNode;
+  FIVector4 resultCameraPos;
+  FIVector4 * cameraPos;
   FIVector4 (dirVecs) [6];
   FIVector4 targetCameraPos;
   FIVector4 lastCellPos;
@@ -370,6 +356,8 @@ public:
   FIVector4 modXYZ;
   FIVector4 matVolDim;
   uint * matVol;
+  std::vector <SphereStruct> sphereStack;
+  std::vector <GamePageHolder*> dirtyGPHStack;
   std::vector <int> (guiLayers) [MAX_UI_LAYERS];
   std::vector <RotationInfo> rotMatStack;
   std::vector <DynObject *> dynObjects;
@@ -430,6 +418,7 @@ public:
   charArr lastJSONBufferGUI;
   JSONValue * rootObjJS;
   JSONValue * guiRootJS;
+  Timer shakeTimer;
   Timer myTimer;
   Timer scrollTimer;
   Timer moveTimer;
@@ -458,6 +447,7 @@ public:
   map <string, JSONStruct> externalJSON;
   Singleton ();
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
+  FIVector4 * cameraGetPos ();
   int placeInStack ();
   int placeInLayer (int nodeId, int layer);
   void initAllMatrices ();
@@ -473,8 +463,10 @@ public:
   int getRandomMonsterId ();
   int getRandomObjId ();
   void fillWithRandomObjects (int parentUID, int gen);
+  void toggleDDMenu (int x, int y, bool toggled);
   void performDrag ();
-  void placeNewEnt (int et);
+  void removeEntity (int ind);
+  BaseObjType placeNewEnt (int et, FIVector4 * cellPos);
   void dispatchEvent (int button, int state, float x, float y, UIComponent * comp, bool automated = false, bool preventRefresh = false);
   StyleSheet * getNewStyleSheet (string ssName);
   void initStyleSheet ();
@@ -543,7 +535,7 @@ public:
   void transformOrg (GameOrg * curOrg);
   void angleToVec (FIVector4 * fv, float xr, float yr);
   void vecToAngle (FIVector4 * fv, FIVector4 * ta);
-  void syncObjects (FIVector4 * bp);
+  void syncObjects ();
   void updateCamVals ();
   void moveCamera (FIVector4 * pModXYZ);
   GameOrgNode * getMirroredNode (GameOrgNode * curNode);
@@ -556,6 +548,7 @@ public:
   void setCameraToElevationBase ();
   void setCameraToElevation ();
   void processSpecialKeys (int key, int _x, int _y);
+  void setFirstPerson (bool _newVal);
   void updateCS ();
   void playBump (BaseObj * ge);
   void getMarkerPos (int x, int y);
@@ -573,6 +566,9 @@ public:
   float getShortestAngle (float begInRad, float endInRad, float amount);
   void handleMovement ();
   bool anyMenuVisible ();
+  void performCamShake (BaseObj * ge);
+  void explodeBullet (BaseObj * ge);
+  void launchBullet ();
   void mouseClick (int button, int state, int _x, int _y);
   void resetActiveNode ();
   bool updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS);
@@ -581,8 +577,8 @@ public:
   void closeAllContainers ();
   bool anyContainerOpen ();
   void cleanJVPointer (JSONValue * * jv);
-  void getObjectData ();
   string getStringForObjectId (int objectId);
+  void getObjectData ();
   JSONValue * fetchJSONData (string dataFile, JSONValue * params = NULL);
   bool processJSONFromString (string * sourceBuffer, JSONValue * * destObj);
   bool processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONValue * * destObj);
@@ -607,9 +603,11 @@ public:
   void updateAmbientSounds ();
   void frameUpdate ();
   void display ();
+  bool gluInvertMatrix (double const (m) [16], float (invOut) [16]);
   void setMatrices (int w, int h);
   void reshape (int w, int h);
   void idleFunc ();
+  void initAllObjects ();
 };
 #undef LZZ_INLINE
 #endif
@@ -664,6 +662,59 @@ public:
   void setShaderfVec4 (string paramName, FIVector4 * f);
   void setShaderFloatUB (string paramName, float x);
   void setShaderfVec4UB (string paramName, FIVector4 * f);
+};
+#undef LZZ_INLINE
+#endif
+// f00307_dynbuffer.e
+//
+
+#ifndef LZZ_f00307_dynbuffer_e
+#define LZZ_f00307_dynbuffer_e
+#define LZZ_INLINE inline
+class DynBuffer
+{
+public:
+  int SCREEN_WIDTH;
+  int SCREEN_HEIGHT;
+  float CAMERA_DISTANCE;
+  int TEXT_WIDTH;
+  int TEXT_HEIGHT;
+  int IMAGE_WIDTH;
+  int IMAGE_HEIGHT;
+  int CHANNEL_COUNT;
+  int DATA_SIZE;
+  void * font;
+  GLuint (pboIds) [2];
+  GLuint textureId;
+  GLubyte * imageData;
+  int screenWidth;
+  int screenHeight;
+  bool mouseLeftDown;
+  bool mouseRightDown;
+  float mouseX;
+  float mouseY;
+  float cameraAngleX;
+  float cameraAngleY;
+  float cameraDistance;
+  bool pboSupported;
+  int pboMode;
+  int drawMode;
+  DynBuffer ();
+  ~ DynBuffer ();
+  bool initSharedMem ();
+  void clearSharedMem ();
+  void initLights ();
+  void setCamera (float posX, float posY, float posZ, float targetX, float targetY, float targetZ);
+  void updatePixels (GLubyte * dst, int size);
+  void showTransferRate ();
+  void toOrtho ();
+  void toPerspective ();
+  void displayCB ();
+  void reshapeCB (int width, int height);
+  void idleCB ();
+  void keyboardCB (unsigned char key, int x, int y);
+  void mouseCB (int button, int state, int x, int y);
+  void mouseMotionCB (int x, int y);
 };
 #undef LZZ_INLINE
 #endif
@@ -799,6 +850,7 @@ public:
   bool foundParent;
   bool foundValuePtr;
   bool visible;
+  bool enabled;
   iVector2 align;
   FIVector4 valVec;
   FIVector4 valVecMask;
@@ -933,7 +985,7 @@ public:
   void renderQuad (UIComponent * uiComp, fBoundingBox fbb, float shadowOffset);
   void renderQuadDirect (UIComponent * uiComp);
   void runReport ();
-  void renderGUI (int activeFBO);
+  void renderGUI ();
 };
 #undef LZZ_INLINE
 #endif
@@ -1252,6 +1304,7 @@ public:
   float fTerDataVisPitchZ;
   int terDataBufPitchZ;
   int terDataBufPitchScaledZ;
+  float plantScale;
   int terDataTexScale;
   int terDataVisSize;
   int terDataBufSize;
@@ -1315,6 +1368,7 @@ public:
   int getNodeIndex (int x, int y, int z, int bufAmount);
   int touchesPlanarBN (int x, int y, int z, int buildingType, int bufAmount);
   int touchesPlanarClass (int x, int y, int z, int classType, int bufAmount);
+  int touchesPlanarClass2 (int x, int y, int z, int classType, int bufAmount);
   bool isLCorner (int x, int y, int z, int classType, bool includeSingle);
   void applyWingValues (int _x1, int _y1, int _z1, int _x2, int _y2, int _z2, int cnum, bool isWingBeg, bool isWingEnd, float multiplier);
   void addPlantNodes (GamePlantNode * curPlantNode, FIVector4 * orig, float scale);
@@ -1432,6 +1486,7 @@ public:
   FIVector4 tempVec1;
   FIVector4 tempVec2;
   FIVector4 tempVec3;
+  FIVector4 tempVec4;
   FIVector4 (blockPos) [2];
   FIVector4 (nodePos) [2];
   FIVector4 (nodePosInPixels) [2];
@@ -1452,7 +1507,6 @@ public:
   FIVector4 * lightPos;
   FIVector4 * globLightPos;
   FIVector4 lightPosBase;
-  FIVector4 * cameraPos;
   FIVector4 * curBoxPos;
   FIVector4 tv0;
   FIVector4 tv1;
@@ -1476,7 +1530,11 @@ public:
   int getCellAtCoords (int xv, int yv, int zv);
   GamePage * getPageAtCoords (int x, int y, int z, bool createOnNull = false);
   bool checkBounds (int k, int km);
+  int testMoveHit (BaseObj * ge, int x, int y, int z);
+  bool makeMove (BaseObj * ge);
+  void updatePhys ();
   void update ();
+  void changeEntParam (int param, int offset, float val);
   void toggleVis (GameEnt * se);
   void ensureBlocks ();
   void findNearestEnt (EntSelection * entSelection, int entType, int maxLoadRad, int radStep, FIVector4 * testPoint, bool onlyInteractive = false, bool ignoreDistance = false);
@@ -1484,8 +1542,10 @@ public:
   bool addHolderToRefresh (GamePageHolder * toAdd);
   int getHoldersInEnt (GameEnt * gg);
   void refreshHoldersInList (bool doImmediate, bool clearEverything);
+  void drawSpheres ();
   void actionOnHolders (int action, bool instantRefresh = false, bool clearEverything = false);
   void combineHolders ();
+  void drawPrim ();
   void drawOrg (GameOrg * curOrg, bool drawAll);
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void clearVisitedPaths (PathHolder * pathHolder);
@@ -1494,10 +1554,11 @@ public:
   int findAIPathRBT (PathHolder * pathHolder, PathNode * blockAndIndex, float _pathSlack);
   void drawPathLine (PathHolder * curPath, int r, int g, int b, float lw, float zoff);
   void drawAIPath (PathHolder * pathHolder, PathHolder * splitPathHolder);
-  void makeFall (BaseObj * ge);
+  void makeFloat (BaseObj * ge);
+  void makeFall (BaseObj * ge, bool justTesting = false);
   bool rotateCell (BaseObj * ge, int dir, int axis);
   bool moveCell (BaseObj * ge, int x, int y, int z);
-  void removeVisObject (int _uid);
+  bool removeVisObject (BaseObjType _uid);
   void moveCellRotated (BaseObj * ge, int dirMod);
   int testHit (BaseObj * ge);
   void renderGeom ();

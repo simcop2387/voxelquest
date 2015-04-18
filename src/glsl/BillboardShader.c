@@ -1,13 +1,17 @@
 #version 120
 #extension GL_EXT_frag_depth : enable
 
-uniform sampler2D Texture0;
+uniform sampler2D Texture0; // sprites
+uniform sampler2D Texture1; // geomBaseTargFBO
+uniform sampler2D Texture2; // geomBaseTargFBO
 
 
 uniform float holderSizeInPixels;
 uniform float heightOfNearPlane;
 uniform float clipDist;
+uniform float pixelsPerCell;
 uniform vec2 bufferDim;
+
 
 varying vec4 TexCoord0;
 varying vec4 multiTex0;
@@ -37,7 +41,7 @@ void main() {
     
     camDis = distance(cameraPos.xyz,newVert.xyz);
     
-    gl_PointSize = (heightOfNearPlane / screenPos.w)*8.0;
+    gl_PointSize = (heightOfNearPlane / screenPos.w)*pixelsPerCell/16.0;
     
     
     
@@ -50,7 +54,11 @@ $
 
 
 void main() {
+    vec4 geomSamp0 = texture2D(Texture1,gl_FragCoord.xy/bufferDim.xy);
+    vec4 geomSamp1 = texture2D(Texture2,gl_FragCoord.xy/bufferDim.xy);
     
+    vec4 final0 = geomSamp0;
+    vec4 final1 = geomSamp1;
     
     //if (DO_POINTS) {
         // vec2 mv = 2.0*(gl_PointCoord.xy - 0.5);
@@ -65,7 +73,7 @@ void main() {
         // }
     //}
         
-    gl_FragDepthEXT = camDis/clipDist - 0.02;
+    gl_FragDepthEXT = camDis/clipDist - 0.01;
     
     vec2 newTC = gl_PointCoord.xy;
     //newTC.y = 1.0 - newTC.y;
@@ -75,10 +83,17 @@ void main() {
     
     vec3 finalCol = texture2D(Texture0,newTC).rgb;
     
-    if ((finalCol.x + finalCol.y + finalCol.z) == 0.0) {
-        discard;
+    
+    if (
+        (int(geomSamp1.w) != int(multiTex0.x)) ||
+        ((finalCol.x + finalCol.y + finalCol.z) == 0.0)  
+    ) {
+        
+    }
+    else {
+        final1.rgb = finalCol.rgb;
     }
     
-    gl_FragData[0] = TexCoord0;
-    gl_FragData[1] = vec4(finalCol,multiTex0.x);
+    gl_FragData[0] = final0;//TexCoord0;
+    gl_FragData[1] = final1;//vec4(finalCol,multiTex0.x);
 }

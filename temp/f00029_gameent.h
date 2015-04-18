@@ -18,7 +18,7 @@ public:
 	
 	bool toggled;
 	bool visible;
-	bool isFalling;
+	//bool isFalling;
 	
 	float camDistance;
 	float pixelsPerCell;
@@ -246,7 +246,7 @@ public:
 		//maxToggleStates = 2;
 		toggled = false;
 		visible = true;
-		isFalling = false;
+		//isFalling = false;
 	}
 	
 	
@@ -628,6 +628,7 @@ public:
 	//bool isRelative;
 	int moveType;
 	bool doRender;
+	bool firstRun;
 
 	float radius;
 	float lightRadius;
@@ -636,17 +637,21 @@ public:
 
 
 	DynObject() {
-
+		firstRun = true;
 	}
 
 	GameEnt *getLight() {
 		
+		if (firstRun) {
+			childLight.toggled = true;
+			firstRun = false;
+		}
 		childLight.initLight(
 			&pos,
 			&color,
 			lightRadius
 		);
-		childLight.toggled = true;
+		
 		
 		return &childLight;
 	}

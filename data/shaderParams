@@ -88,6 +88,10 @@
    "shaderName":"PreLightingShader",
    "uid":"$shaderParams.PreLightingShader.lightIntensityNight"
    },{
+   "paramName":"tempv1",
+   "shaderName":"PrimShader",
+   "uid":"$shaderParams.PrimShader.tempv1"
+   },{
    "paramName":"maxWaveH",
    "shaderName":"WaterShaderCombine",
    "uid":"$shaderParams.WaterShaderCombine.maxWaveH"

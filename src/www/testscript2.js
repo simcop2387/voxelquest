@@ -29,6 +29,8 @@ j$( document ).ready(function() {
     
     var fieldNameElement = document.getElementById("myId");
     fieldNameElement.innerHTML = "0";
+    var fieldNameElement2 = document.getElementById("myId2");
+    fieldNameElement2.innerHTML = "0";
     
     var itemCount = 0;
     
@@ -69,9 +71,11 @@ j$( document ).ready(function() {
        var iconsPerRow = Math.floor(imgWidth/iconWidth);
 
        var curInd = (Math.floor(relX/iconWidth) + Math.floor(relY/iconWidth)*iconsPerRow);
-
-       fieldNameElement.innerHTML = iconArr[curInd] + //curInd + " >> " + 
+       var newText = iconArr[curInd] + //curInd + " >> " + 
        " ("+Math.floor(relX/iconWidth)+","+Math.floor(relY/iconWidth)+")";
+
+       fieldNameElement.innerHTML = newText;
+       fieldNameElement2.innerHTML = newText;
         
     });
 });

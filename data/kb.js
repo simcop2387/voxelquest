@@ -40,8 +40,8 @@
     ["pIsJealous",3],
     ["pLoves",2],
     
-    ["pHandsRequired",2],
-    
+    ["pLimbsRequired",2],
+    ["pIsHeld",1],
     
     ["pIsIronSword",1],
     ["pIsClothBag",1],
@@ -92,8 +92,6 @@
     
     ["pIsEdible",1],
     ["pIsEquipable",1],
-    ["pIsWorn",1],
-    ["pIsHeld",1],
     ["pIsTool",1],
     ["pIsWeapon",1],
     
@@ -105,6 +103,18 @@
     ["pIsBag",1],
     
     
+    ["pIsHumanoid",1],
+    
+    ["pHasHead",2],
+    ["pHasNeck",2],
+    ["pHasBack",2],
+    ["pHasTorso",2],
+    ["pHasLegs",2],
+    ["pHasFeet",2],
+    ["pHasArms",2],
+    ["pHasHands",2],
+    ["pHasFingers",2],
+    
     
     ["pCoversHead",1],
     ["pCoversNeck",1],
@@ -112,7 +122,7 @@
     ["pCoversTorso",1],
     ["pCoversLegs",1],
     ["pCoversFeet",1],
-    ["pCoversWrists",1],
+    ["pCoversArms",1],
     ["pCoversHands",1],
     ["pCoversFingers",1]
     
@@ -198,26 +208,6 @@
       ],
       "pIsHide",["vX"]
     ],
-
-    "oIfThen",[
-      "pIsWorn",["vX"],
-      "pIsEquipable",["vX"]
-    ],
-    
-    "oIfThen",[
-      "pIsHeld",["vX"],
-      "pIsEquipable",["vX"]
-    ],
-    
-    "oIfThen",[
-      "pIsTool",["vX"],
-      "pIsHeld",["vX"]
-    ],
-    
-    "oIfThen",[
-      "pIsWeapon",["vX"],
-      "pIsHeld",["vX"]
-    ],
     
     "oIfThen",[
       "pIsSword",["vX"],
@@ -226,7 +216,7 @@
     
     "oIfThen",[
       "pIsSword",["vX"],
-      "pHandsRequired",["vX",1]
+      "pLimbsRequired",["vX",1]
     ],
     
     "oIfThen",[
@@ -281,6 +271,48 @@
     
     
     
+    "oIfThen",[
+      "oAny",[
+        "pCoversHead",["vX"],
+        "pCoversNeck",["vX"],
+        "pCoversBack",["vX"],
+        "pCoversTorso",["vX"],
+        "pCoversLegs",["vX"],
+        "pCoversFeet",["vX"],
+        "pCoversArms",["vX"],
+        "pCoversHands",["vX"],
+        "pCoversFingers",["vX"],
+        "pIsHeld",["vX"]
+      ],
+      "pIsEquipable",["vX"]
+    ],
+    
+    "oIfThen",[
+      "pIsHumanoid",["vX"],
+      "oList",[
+        "pHasHead",["vX", 1],
+        "pHasNeck",["vX", 1],
+        "pHasBack",["vX", 1],
+        "pHasTorso",["vX", 1],
+        "pHasLegs",["vX", 2],
+        "pHasFeet",["vX", 2],
+        "pHasArms",["vX", 2],
+        "pHasHands",["vX", 2],
+        "pHasFingers",["vX", 2]
+      ]
+    ],
+    
+    
+    
+    "oIfThen",[
+      "pWantsToStayAlive",["vX"],
+      "oList",[
+        "pWantsToSatiateHunger",["vX"],
+        "pWantsToQuenchThirst",["vX"],
+        "pWantsToPreventDamage",["vX"]
+      ]
+      
+    ],
     
     
     
@@ -317,6 +349,8 @@
     ],
     
     "pIsClass",["nItem0",162]
+    
+    
     
     
     

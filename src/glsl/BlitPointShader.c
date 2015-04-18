@@ -19,7 +19,6 @@ varying float camDis;
 
 const float blendDepth = 0.01;
 
-//const bool DO_POINTS = false;
 
 $
 
@@ -51,10 +50,8 @@ void main() {
     TexCoord1.w += 0.01;
     camDis = distance(cameraPos.xyz,newVert.xyz);
     
-    // if (DO_POINTS) {
-        facingCam = dot(-lookAtVec,TexCoord1.xyz);
-        gl_PointSize = (heightOfNearPlane / screenPos.w);
-    // }
+    facingCam = dot(-lookAtVec,TexCoord1.xyz);
+    gl_PointSize = (heightOfNearPlane / screenPos.w);
     
     
     
@@ -71,26 +68,20 @@ $
 void main() {
     
     
-    //if (DO_POINTS) {
-        vec2 mv = (gl_PointCoord.xy - 0.5);
-        mv = mv*mv;
-        // float c = 1.0 - (mv.x + mv.y);
+    vec2 mv = (gl_PointCoord.xy - 0.5);
+    mv = mv*mv;
+    // float c = 1.0 - (mv.x + mv.y);
+    
+    if (
+        //(c < 0.0) ||
+        (facingCam < -0.5)
+    ) {
+        discard;
+    }
         
-        if (
-            //(c < 0.0) ||
-            (facingCam < -0.5)
-        ) {
-            discard;
-        }
-    //}
-        
-    gl_FragDepthEXT = camDis/clipDist + length(mv)*0.001;
+    gl_FragDepthEXT = camDis/clipDist + length(mv)*0.002;
     
-    
-    
-    
-    
-    
+   
     
     gl_FragData[0] = TexCoord0;
     gl_FragData[1] = TexCoord1;

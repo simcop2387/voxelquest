@@ -122,6 +122,12 @@ enum E_FONT_WRAPPERS {
 	EFW_LENGTH
 };
 
+enum E_MOVE_MODE {
+	E_MM_UNIT,
+	E_MM_SMOOTH,
+	E_MM_LENGTH
+};
+
 enum E_MOVE_TYPES {
 	E_MT_NONE,
 	E_MT_RELATIVE,
@@ -165,6 +171,7 @@ enum ENT_TYPE {
 	E_ENTTYPE_OBJ,
 	E_ENTTYPE_MONSTER,
 	E_ENTTYPE_NPC,
+	E_ENTTYPE_BULLET,
 	E_ENTTYPE_LENGTH
 };
 
@@ -235,6 +242,7 @@ string mouseStateStrings[] = {
 enum E_BRUSH {
 	E_BRUSH_ADD,
 	E_BRUSH_SUB,
+	E_BRUSH_REF,
 	E_BRUSH_MOVE,
 	E_BRUSH_LENGTH
 };
@@ -360,6 +368,7 @@ enum E_CONNECTION_TYPE_CLASSES {
 	E_CTC_ROOF,
 	E_CTC_ROOM,
 	E_CTC_STAIRS,
+	E_CTC_LANTERN,
 	E_CTC_LENGTH
 };
 
@@ -727,6 +736,7 @@ enum E_MAT_CODE {
 };
 
 
+
 struct materialNode {
 	float h;
 	float s;
@@ -969,6 +979,76 @@ enum E_MUSIC_LIST {
 	EML_OCEANWAVES0,
 	EML_UNDERWATER0,
 	EML_LENGTH
+};
+
+
+string colorStrings[] = {
+	"Red",
+	"Orange",
+	"Yellow",
+	"Green",
+	"Aqua",
+	"Blue",
+	"Purple",
+	"Pink",
+	"Brown",
+	"Black",
+	"Gray",
+	"White",
+	"Empty",
+	"Broken"
+};
+string gemStrings[] = {
+	"Ruby",
+	"Citrine",
+	"Topaz",
+	"Emerald",
+	"Aquamarine",
+	"Sapphire",
+	"Amethyst",
+	"Quartz",
+	"Beryl",
+	"Onyx",
+	"Moonstone",
+	"Diamond"
+};
+string metalStrings[] = {
+	"Copper",
+	"Silver",
+	"Gold",
+	"Platinum",
+	"Meteorite"
+};
+string weaponStrings[] = {
+	"Sword",
+	"Axe",
+	"Spear",
+	"Dagger",
+	"Mace",
+	"Staff",
+	"Wand",
+	"Throwing Star",
+	"Bow",
+	"Knuckles",
+	"Punch Dagger"
+};
+string elementStrings[] = {
+	"Normal",
+	"Fire",
+	"Ice",
+	"Poison",
+	"Earth",
+	"Electric",
+	"Light",
+	"Dark",
+	"Holy",
+	"Unholy",
+	"Crystal",
+	"Artifact",
+	"Artifact",
+	"Artifact",
+	"Artifact",
+	"Artifact"
 };
 
 string musicStrings[] = {

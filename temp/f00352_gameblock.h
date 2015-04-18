@@ -11,6 +11,7 @@ GameBlock::GameBlock ()
 void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int _xw, int _yw)
                                                                                          {
 
+		plantScale = 2.0f;
 
 		dirModX[0] = 1;
 		dirModX[1] = -1;
@@ -116,6 +117,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		ctClasses[E_CT_ROOM_TUDOR] = E_CTC_ROOM;
 		ctClasses[E_CT_WALKWAY] = E_CTC_ROOM;
 		ctClasses[E_CT_STAIRS] = E_CTC_STAIRS;
+		ctClasses[E_CT_LANTERN] = E_CTC_LANTERN;
 		ctClasses[E_CT_LENGTH] = E_CTC_NOTHING;
 
 		int nMax;
@@ -1504,8 +1506,28 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 														curDir
 
 													);
+													//int touchesPlanarClass(int x, int y, int z, int classType, int bufAmount)
+													/*
+													void connectNodes(
+														int _x1,
+														int _y1,
+														int _z1,
+														int _x2,
+														int _y2,
+														int _z2,
+														
+														int ct,
+														int id = -1,
+														
+														int _heightDelta = 0,
+														int _direction = 0,
+														
+														float _wallRadInCells = -1.0f,
+														unsigned int _nodeFlags = 0
+													)
+													*/
 													
-													//if (curDir == 1) {
+													if (touchesPlanarClass2(i, j, k, E_CTC_LANTERN, 0) == 0) {
 														nodeFlags |= BC_FLAG_INSIDE;
 														connectNodes(
 															i,
@@ -1525,7 +1547,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 															nodeFlags
 
 														);
-													//}
+													}
 													
 													
 												}
@@ -1888,10 +1910,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 													if (conType == E_CT_LANTERN) {
 														
 															if (isInside) {
-																zmod1 += 0.125f;
-																zmod2 += 0.125f;
-																
-																
+																																
 															}
 															else {
 																xmod1 += lanternOffset*dirModY[m];
@@ -1959,6 +1978,15 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 													
 													
 												}
+												
+												if (conType == E_CT_LANTERN) {
+													
+													if (isInside) {
+														zmod1 += 0.375f;
+														zmod2 += 0.375f;
+													}
+												}
+												
 											
 										}
 										
@@ -2094,6 +2122,10 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											tempVec.setIXYZ(i,j,k);
 											tempVec.multXYZ(102.33,305.44,609.121);
 											tempVec2.setFXYZ(93.989f, 67.345f, 54.256f);
+											
+											//0: palm
+											//1: oak
+											//2: bare
 											tempInt = iGetRandSeeded(&tempVec,&tempVec2,0,E_PT_LENGTH/2 - 1);
 											
 											
@@ -2105,9 +2137,9 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 												&origin
 											);
 											matParams.setFY(tempInt*2+1);
-											addPlantNodes(singleton->gamePlants[tempInt]->rootsNode, &tempVec4, 1.0f);
+											addPlantNodes(singleton->gamePlants[tempInt]->rootsNode, &tempVec4, plantScale);
 											matParams.setFY(tempInt*2);
-											addPlantNodes(singleton->gamePlants[tempInt]->trunkNode, &tempVec4, 1.0f);
+											addPlantNodes(singleton->gamePlants[tempInt]->trunkNode, &tempVec4, plantScale);
 											
 											
 											
@@ -2127,18 +2159,18 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											// roofHeight = 0.25f;
 											// baseOffset = 0.0f;
 											rad.setFXYZ(
-												(0.25f)*pixelsPerCell,
-												(0.25f)*pixelsPerCell,
-												(0.5f)*pixelsPerCell
+												(0.5f)*pixelsPerCell,
+												(0.5f)*pixelsPerCell,
+												(0.75f)*pixelsPerCell
 											);
 											cornerRad.setFXYZ(
-												(0.0625f)*pixelsPerCell,
-												(0.0625f)*pixelsPerCell,
+												(0.125f)*pixelsPerCell,
+												(0.125f)*pixelsPerCell,
 												(0.25f)*pixelsPerCell
 											);
 											thickVals.setFX(0.25f*pixelsPerCell);											
 
-											visInsetFromMin.setFXYZ(0.0f,0.0f,cornerRad.getFZ() - 0.0625*pixelsPerCell);
+											visInsetFromMin.setFXYZ(0.0f,0.0f,cornerRad.getFZ() - 0.125*pixelsPerCell);
 											visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
 
 											powerVals.setFXYZ(2.0f, 1.0f, 0.0f);
@@ -2562,6 +2594,7 @@ int GameBlock::touchesPlanarBN (int x, int y, int z, int buildingType, int bufAm
 int GameBlock::touchesPlanarClass (int x, int y, int z, int classType, int bufAmount)
                                                                                   {
 		int i;
+		int j;
 		int tot = 0;
 		int ind;
 
@@ -2569,13 +2602,37 @@ int GameBlock::touchesPlanarClass (int x, int y, int z, int classType, int bufAm
 
 		if (ind > -1) {
 			for (i = 0; i < 4; i++) {
-				if (ctClasses[buildingData[ind].con[i].conType] == classType) {
-					tot++;
+				
+				for (j = 0; j < MAX_NODE_VALS; j++) {
+					if (ctClasses[buildingData[ind].con[i+j*MAX_NODE_DIRS].conType] == classType) {
+						tot++;
+					}
 				}
+				
+				
 			}
 		}
 
 		return tot;
+	}
+int GameBlock::touchesPlanarClass2 (int x, int y, int z, int classType, int bufAmount)
+                                                                                   {
+		int i;
+		int tot = 0;
+		int testX;
+		int testY;
+
+		for (i = 0; i < 4; i++) {
+
+			testX = x + dirModX[i];
+			testY = y + dirModY[i];
+
+			tot += touchesPlanarClass(testX, testY, z, classType, bufAmount);
+
+		}
+
+		return tot;
+
 	}
 bool GameBlock::isLCorner (int x, int y, int z, int classType, bool includeSingle)
                                                                                {
@@ -2770,7 +2827,7 @@ void GameBlock::addPlantNodes (GamePlantNode * curPlantNode, FIVector4 * orig, f
 
 				begThickness*scale,//curPlantNode->begThickness,
 				endThickness*scale,//curPlantNode->endThickness,	
-				curPlantNode->sphereRad*scale,			
+				curPlantNode->sphereRad, // *scale,			
 										
 				&matParams
 			);

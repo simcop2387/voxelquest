@@ -44,6 +44,11 @@
 			"type":2,
 			"fillRatioX":1
 		},
+		"fillButtonCenter": {
+			"type":2,
+			"fillRatioX":1,
+			"alignX":1
+		},
 		"statSlider": {
 			"type":1,
 			"label":" ",
@@ -359,6 +364,7 @@
 						
 							{
 								"template":"menuBar",
+								"uid":"ddMenu.menuBar",
 								"label":"Context Menu"
 							},
 							{
@@ -367,9 +373,23 @@
 								"fillRatioX":1,
 								"children":[
 									
+									
+									
+									{
+										"template":"fillButtonCenter",
+										"label":"Trade With",
+										"uid":"ddMenu.tradeWith"
+									},
+									{
+										"template":"fillButtonCenter",
+										"label":"Pickpocket",
+										"uid":"ddMenu.pickPocket"
+									},
+									
 									{
 										"template":"radioFillCenter",
-										"label":"Place Entity",
+										"label":"Engage With...",
+										"uid":"ddMenu.engageWith",
 										"floatingChildren": [{
 											"template":"popout",
 											"fillRatioX":1,
@@ -386,24 +406,200 @@
 															"fillRatioX":1,
 															"children":[
 																{
-																	"template":"fillButton",
+																	"template":"fillButtonCenter",
+																	"label":"Shake Hands",
+																	"uid":"ddMenu.engageWith.shakeHands"
+																},
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Hug",
+																	"uid":"ddMenu.engageWith.hug"
+																},
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Kiss",
+																	"uid":"ddMenu.engageWith.kiss"
+																},
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Grope",
+																	"uid":"ddMenu.engageWith.grope"
+																},
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Slap",
+																	"uid":"ddMenu.engageWith.slap"
+																},
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Detain",
+																	"uid":"ddMenu.engageWith.detain"
+																}
+																
+																
+															]
+														}
+													]
+												}
+												
+											]
+										}]
+									},
+									
+									
+									
+									{
+										"template":"radioFillCenter",
+										"label":"Talk To...",
+										"uid":"ddMenu.talkTo",
+										"floatingChildren": [{
+											"template":"popout",
+											"fillRatioX":1,
+											"children": [
+												
+												{
+													"template":"cont",
+													"fillDir":1,
+													"children": [
+													
+														{
+															"template":"cont",
+															"fillDir":1,
+															"fillRatioX":1,
+															"children":[
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Compliment",
+																	"uid":"ddMenu.talkTo.compliment"
+																},
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Insult",
+																	"uid":"ddMenu.talkTo.insult"
+																},
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Joke With",
+																	"uid":"ddMenu.talkTo.jokeWith"
+																},
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Flirt",
+																	"uid":"ddMenu.talkTo.flirt"
+																},
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Seduce",
+																	"uid":"ddMenu.talkTo.seduce"
+																},
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Ask About",
+																	"uid":"ddMenu.talkTo.askAbout"
+																},
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Tell About",
+																	"uid":"ddMenu.talkTo.tellAbout"
+																}
+																
+															]
+														}
+													]
+												}
+												
+											]
+										}]
+									},
+									
+									{
+										"template":"radioFillCenter",
+										"label":"Attack...",
+										"uid":"ddMenu.attack",
+										"floatingChildren": [{
+											"template":"popout",
+											"fillRatioX":1,
+											"children": [
+												
+												{
+													"template":"cont",
+													"fillDir":1,
+													"children": [
+													
+														{
+															"template":"cont",
+															"fillDir":1,
+															"fillRatioX":1,
+															"children":[
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Slash",
+																	"uid":"ddMenu.attack.slash"
+																},
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Stab",
+																	"uid":"ddMenu.attack.stab"
+																},
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Hack",
+																	"uid":"ddMenu.attack.hack"
+																}
+																
+															]
+														}
+													]
+												}
+												
+											]
+										}]
+									},
+									
+									
+									
+									
+									
+									
+									{
+										"template":"radioFillCenter",
+										"label":"Debug: Place Entity",
+										"uid":"ddMenu.placeEntity",
+										"ss":"redSS",
+										"floatingChildren": [{
+											"template":"popout",
+											"fillRatioX":1,
+											"children": [
+												
+												{
+													"template":"cont",
+													"fillDir":1,
+													"children": [
+													
+														{
+															"template":"cont",
+															"fillDir":1,
+															"fillRatioX":1,
+															"children":[
+																{
+																	"template":"fillButtonCenter",
 																	"label":"NPC",
-																	"uid":"placeEntity.npc"
+																	"uid":"ddMenu.placeEntity.npc"
 																},
 																{
-																	"template":"fillButton",
+																	"template":"fillButtonCenter",
 																	"label":"Monster",
-																	"uid":"placeEntity.monster"
+																	"uid":"ddMenu.placeEntity.monster"
 																},
 																{
-																	"template":"fillButton",
+																	"template":"fillButtonCenter",
 																	"label":"Object",
-																	"uid":"placeEntity.object"
+																	"uid":"ddMenu.placeEntity.object"
 																},
 																{
-																	"template":"fillButton",
+																	"template":"fillButtonCenter",
 																	"label":"Building",
-																	"uid":"placeEntity.building"
+																	"uid":"ddMenu.placeEntity.building"
 																}
 															]
 														}
@@ -414,18 +610,24 @@
 										}]
 									},
 									{
-										"template":"radioFillCenter",
-										"label":"Remove Entity"
+										"template":"fillButtonCenter",
+										"label":"Debug: Remove Entity",
+										"ss":"redSS",
+										"uid":"ddMenu.removeEntity"
 										
 									},
 									{
 										"template":"radioFillCenter",
-										"label":"Edit Entity"
+										"label":"Debug: Edit Entity",
+										"ss":"redSS",
+										"uid":"ddMenu.editEntity"
 										
 									},
 									{
 										"template":"radioFillCenter",
-										"label":"Change Material",
+										"label":"Debug: Change Material",
+										"ss":"redSS",
+										"uid":"ddMenu.changeMaterial",
 										"floatingChildren": [{
 											"template":"popout",
 											"fillRatioX":1,
