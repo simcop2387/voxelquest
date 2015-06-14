@@ -52,7 +52,7 @@ void main() {
 	
 	
 	if (testOn) {
-		//finalCol = tex1.rgb;
+		finalCol = tex1.rgb;
 	}
 	else {
 		//finalCol = mix(finalCol,tex1.rgb,0.5); //finalCol = //tex0.rgb*0.25 + tex1.rgb;

@@ -468,7 +468,7 @@ public:
 			else {
 				
 				
-				jvFileBase = singleton->fetchJSONData(dataFile);
+				jvFileBase = singleton->fetchJSONData(dataFile, false);
 				singleton->getJVNodeByString(jvFileBase,&jvNodeBase,dataRef + "." + dataKey);
 				
 				// if (isRead) {

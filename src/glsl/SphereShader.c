@@ -26,10 +26,13 @@ void main() {
     vec4 newVert = gl_Vertex;
     vec4 screenPos = gl_ModelViewProjectionMatrix * newVert;
     
-    TexCoord0 = vec4(newVert.xyz,1.0-screenPos.z/clipDist);
+    camDis = distance(cameraPos.xyz,newVert.xyz);
+    float zbVal = 1.0-camDis/clipDist;
+    //float zbVal = 1.0-screenPos.z/clipDist;
+    
+    TexCoord0 = vec4(newVert.xyz,zbVal);
     TexCoord1 = gl_MultiTexCoord0;
     
-    camDis = distance(cameraPos.xyz,newVert.xyz);
     
     gl_PointSize = (heightOfNearPlane / screenPos.w)*gl_MultiTexCoord0.x/16.0;
     

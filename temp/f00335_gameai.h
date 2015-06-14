@@ -1074,13 +1074,12 @@ void GameAI::getKB ()
 		bool res;
 		
 		cout << "getKB()\n";
-		singleton->cleanJVPointer(&(singleton->externalJSON["kb.js"].jv));
 		tokenToRules.clear();
 		stringToVTokenIndex.clear();
 		tokenIndexToVar.clear();
 		intToVToken.clear();
 		
-		jvKB = singleton->fetchJSONData("kb.js");
+		jvKB = singleton->fetchJSONData("kb.js", true);
 		
 		if (jvKB == NULL) {
 			return;

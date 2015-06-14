@@ -27,6 +27,22 @@ void pack16(float num, float &outR, float &outG) {
 }
 
 
+uint clampChar(int baseVal, int bitShift) {
+	int val = baseVal;
+	
+	if (val > 255) {
+		val = 255;
+	}
+	if (val < 0) {
+		val = 0;
+	}
+	
+	uint retVal = val;
+	
+	return (retVal << bitShift);
+	
+}
+
 int clamp(int val, int min, int max) {
 	if (val > max) {
 		val = max;
@@ -183,15 +199,19 @@ public:
 		switch (ind) {
 			case 0:
 				fv4.x = val;
+				iv4.x = val;
 			break;
 			case 1:
 				fv4.y = val;
+				iv4.y = val;
 			break;
 			case 2:
 				fv4.z = val;
+				iv4.z = val;
 			break;
 			case 3:
 				fv4.w = val;
+				iv4.w = val;
 			break;
 		}
 		
@@ -354,6 +374,17 @@ public:
 		fv4.x = (float)iv4.x;
 		fv4.y = (float)iv4.y;
 		fv4.z = (float)iv4.z;
+	}
+	
+	void setRandNoSeed() {
+
+		fv4.x = fGenRand();
+		fv4.y = fGenRand();
+		fv4.z = fGenRand();
+
+		iv4.x = (int)fv4.x;
+		iv4.y = (int)fv4.y;
+		iv4.z = (int)fv4.z;
 	}
 	
 	void setRand(FIVector4 *seedPos) {
@@ -1155,6 +1186,13 @@ struct RotationInfo {
 	FIVector4 axisAngle;
 };
 
+struct ModUnitStruct {
+	FIVector4 basePos;
+	int brushAction;
+	int modType;
+	int radius;
+};
+
 
 float getRandSeeded(FIVector4 *seedPos, FIVector4 *seedVals) {
 	float intPart;		
@@ -1739,6 +1777,117 @@ struct AssignStruct {
 	int tokenIndex;
 	int genIndex;
 };
+
+
+
+
+
+class FSQuad {
+public:
+	GLuint vao, vbo, ibo;
+
+	FSQuad() {
+		
+	}
+	
+	void init() {
+		
+		// vao and vbo handle
+		
+		
+		// generate and bind the vao
+		glGenVertexArrays(1, &vao);
+		glBindVertexArray(vao);
+		
+		// generate and bind the vertex buffer object
+		glGenBuffers(1, &vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		        
+		// data for a fullscreen quad (this time with texture coords)
+		GLfloat vertexData[] = {
+		//  X     Y     Z           U     V     
+		   1.0f, 1.0f, 0.0f,       1.0f, 1.0f, // vertex 0
+		  -1.0f, 1.0f, 0.0f,       0.0f, 1.0f, // vertex 1
+		   1.0f,-1.0f, 0.0f,       1.0f, 0.0f, // vertex 2
+		  -1.0f,-1.0f, 0.0f,       0.0f, 0.0f, // vertex 3
+		}; // 4 vertices with 5 components (floats) each
+
+		// fill with data
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*4*5, vertexData, GL_STATIC_DRAW);
+		                
+		       
+		// set up generic attrib pointers
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5*sizeof(GLfloat), (char*)0 + 0*sizeof(GLfloat));
+		
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5*sizeof(GLfloat), (char*)0 + 3*sizeof(GLfloat));
+		
+		
+		// generate and bind the index buffer object
+		glGenBuffers(1, &ibo);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+		        
+		GLuint indexData[] = {
+		    0,1,2, // first triangle
+		    2,1,3, // second triangle
+		};
+
+		// fill with data
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*2*3, indexData, GL_STATIC_DRAW);
+		
+		// "unbind" vao
+		glBindVertexArray(0);
+		
+	
+	}
+	
+	void draw() {
+		// bind the vao
+		glBindVertexArray(vao);
+				
+		// draw
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		
+		glBindVertexArray(0);
+	}
+	
+	
+	
+};
+
+
+class TBOWrapper {
+public:
+	GLuint tbo_buf;
+	GLuint tbo_tex;
+	
+	int dataSize;
+	
+	TBOWrapper() {
+		
+	}
+	
+	void init(float* tbo_data, int _dataSize) {
+		
+		dataSize = _dataSize;
+
+		glGenBuffers(1, &tbo_buf);
+		glBindBuffer(GL_TEXTURE_BUFFER, tbo_buf);
+		glBufferData(GL_TEXTURE_BUFFER, dataSize, tbo_data, GL_STATIC_DRAW);
+		glGenTextures(1, &tbo_tex);
+		glBindBuffer(GL_TEXTURE_BUFFER, 0);
+	}
+	
+	void update(float* tbo_data) {
+		glBindBuffer(GL_TEXTURE_BUFFER, tbo_buf);
+		glBufferSubData(GL_TEXTURE_BUFFER, 0, dataSize, tbo_data);
+		glBindBuffer(GL_TEXTURE_BUFFER, 0);
+	}
+	
+	
+};
+
 
 
 

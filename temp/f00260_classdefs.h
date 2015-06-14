@@ -10,6 +10,7 @@ class FontWrapper;
 class UIComponent;
 class GameGUI;
 class GameAI;
+class GameFluid;
 class GameOrgNode;
 class GameOrg;
 class GamePlantNode;

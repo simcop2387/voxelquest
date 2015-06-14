@@ -4,14 +4,48 @@
 #endif
 
 
+/*
+E_GP_VISMININPIXELST,
+E_GP_VISMAXINPIXELST,
+E_GP_BOUNDSMININPIXELST,
+E_GP_BOUNDSMAXINPIXELST,
+E_GP_CORNERDISINPIXELS,
+E_GP_POWERVALS,
+E_GP_POWERVALS2,
+E_GP_THICKVALS,
+E_GP_CENTERPOINT,
+E_GP_MATPARAMS, // must be last
+E_GP_LENGTH
+*/
+
+
+
 
 int RUN_COUNT;
 
 const static float OFFSET_X[4] = {-0.5,0.5,0.5,-0.5};
 const static float OFFSET_Y[4] = {-0.5,-0.5,0.5,0.5};
 
-const static int DEF_SCALE_FACTOR = 2;
-const static int MAX_LAYERS = 1;
+
+const static int DEF_WIN_W = 1920;
+const static int DEF_WIN_H = 1080;
+const static int DEF_SCALE_FACTOR = 4;
+
+const static bool RAY_MODE = true;
+
+#define PRIM_FLOAT_FORMAT 1
+// #define DEBUG_BOUNDS 1
+
+#ifdef PRIM_FLOAT_FORMAT
+typedef float PRIM_FORMAT;
+#else
+typedef unsigned int PRIM_FORMAT;
+#endif
+
+const static int FLUID_UNIT_MIN = -1;
+const static int FLUID_UNIT_MAX = 16384;
+
+const static int MAX_LAYERS = 2;
 const static int MAX_MIP_LEV = 1; // min of 1
 
 const static bool DO_POINTS = true;
@@ -19,8 +53,7 @@ const static bool DO_POINTS = true;
 
 const static int MAX_KEYS = 256;
 
-const static int DEF_WIN_W = 1440;
-const static int DEF_WIN_H = 720;
+//const static int NUM_PRIM_LAYERS = 1;
 
 const static int MAX_LIGHTS = 24;
 const static int MAX_EVAL_LIGHTS = 128;
@@ -107,6 +140,15 @@ const static float DIR_VECS[NUM_ORIENTATIONS][3] = {
 	{0.0f, 0.0f, 1.0f},
 	{0.0f, 0.0f, -1.0f}
 };
+const static int DIR_VECS_I[NUM_ORIENTATIONS][3] = {
+	{1, 0, 0},
+	{-1, 0, 0},
+	{0, 1, 0},
+	{0, -1, 0},
+	{0, 0, 1},
+	{0, 0, -1}
+};
+
 float ALL_ROT[16*NUM_ORIENTATIONS*NUM_ORIENTATIONS*NUM_ORIENTATIONS];
 const static int ROT_MAP[36] = {
 	
@@ -200,7 +242,7 @@ int CUR_VG_FBO = 0;
 const static int MAX_VGT_FBOS = 2;
 int CUR_VGT_FBO = 0;
 
-const static float M_PI = 3.14159;
+const static float M_PI = 3.14159265359;
 
 int PAGE_COUNT = 0;
 // set to 0 to disable
@@ -238,6 +280,7 @@ bool TRACE_ON = false;
 #include <ios>
 #include <algorithm>
 #include <cstdlib>
+#include <thread>
 
 #include <iomanip>
 #include <map>

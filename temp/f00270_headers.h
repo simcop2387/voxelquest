@@ -99,6 +99,8 @@ public:
   EntSelection selectedEnts;
   GameEnt * selectedEnt;
   GameEnt * highlightedEnt;
+  bool autoMove;
+  bool allInit;
   bool combatOn;
   bool firstPerson;
   bool updateMatFlag;
@@ -160,11 +162,13 @@ public:
   int (iconToEntId) [MAX_ICON_ID];
   bool (isContainer) [MAX_OBJ_TYPES];
   string (objStrings) [MAX_OBJ_TYPES];
+  int earthMod;
   int currentTick;
   int draggingFromInd;
   int draggingToInd;
   int draggingFromType;
   int draggingToType;
+  int medianCount;
   int moveMode;
   int maxHolderDis;
   int gameObjCounter;
@@ -236,15 +240,25 @@ public:
   int volGenSuperRes;
   int matVolSize;
   int escCount;
+  int volSizePrim;
+  int volSizePrimMacro;
+  int floatsInPrimMacro;
+  int primsPerMacro;
+  int primDiv;
   int lastNodeId;
   int * cdBuffer;
+  int internalPrimFormat;
+  int precPrimFormat;
   intPair (entIdArr) [1024];
+  PRIM_FORMAT * (volDataPrim) [E_PL_LENGTH];
   uint palWidth;
   uint palHeight;
   uint blockShift;
   uint volGenFBOX;
   uint * terDataScaled;
   GLfloat (camRotation) [2];
+  bool timeMod;
+  float waterLerp;
   float resultShake;
   float cameraShake;
   float subjectDistance;
@@ -300,6 +314,7 @@ public:
   double lastMoveTime;
   double timeDelta;
   double curTime;
+  double pauseTime;
   double clickTime;
   double lastTime;
   double mdTime;
@@ -310,6 +325,7 @@ public:
   GameOrgNode * activeNode;
   FIVector4 resultCameraPos;
   FIVector4 * cameraPos;
+  FIVector4 lightVec;
   FIVector4 (dirVecs) [6];
   FIVector4 targetCameraPos;
   FIVector4 lastCellPos;
@@ -325,6 +341,8 @@ public:
   FIVector4 mouseDownPD;
   FIVector4 mouseDownOPD;
   FIVector4 mouseMovePD;
+  FIVector4 tempBoundsMin;
+  FIVector4 tempBoundsMax;
   FIVector4 tempVec1;
   FIVector4 tempVec2;
   FIVector4 tempVec3;
@@ -356,6 +374,9 @@ public:
   FIVector4 modXYZ;
   FIVector4 matVolDim;
   uint * matVol;
+  std::thread fluidThread;
+  bool firstFluidThread;
+  std::vector <FIVector4> primTemplateStack;
   std::vector <SphereStruct> sphereStack;
   std::vector <GamePageHolder*> dirtyGPHStack;
   std::vector <int> (guiLayers) [MAX_UI_LAYERS];
@@ -363,9 +384,13 @@ public:
   std::vector <DynObject *> dynObjects;
   PathHolder charPathHolder;
   PathHolder splitPathHolder;
+  FSQuad fsQuad;
+  TBOWrapper tboWrapper;
+  float * tboData;
   float floorHeightInCells;
   float roofHeightInCells;
   float wallRadInCells;
+  int tickSpace;
   int cellsPerHolder;
   int cellsPerPage;
   int unitsPerCell;
@@ -407,6 +432,7 @@ public:
   GLuint volIdEmpty;
   GLuint volIdEmptyLinear;
   GLuint volIdMat;
+  GLuint (volIdPrim) [E_PL_LENGTH];
   GLuint volGenId;
   uint * lookup2to3;
   unsigned char * resultImage;
@@ -423,6 +449,7 @@ public:
   Timer scrollTimer;
   Timer moveTimer;
   GameWorld * gw;
+  GameFluid * gameFluid;
   GameAI * gameAI;
   float (lightArr) [MAX_LIGHTS * 16];
   int numLights;
@@ -447,11 +474,20 @@ public:
   map <string, JSONStruct> externalJSON;
   Singleton ();
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
+  void addPrimObj (FIVector4 * pos, int tempId);
+  void updateTBOData (bool firstTime);
   FIVector4 * cameraGetPos ();
   int placeInStack ();
   int placeInLayer (int nodeId, int layer);
   void initAllMatrices ();
   int numberIcons (int pCurCount, int x1, int y1, int x2, int y2);
+  void getPrimData (int n);
+  void setupPrimTexture ();
+  void updateFluidDataFirstTime ();
+  void updateFluidData ();
+  void startFluidThread ();
+  void stopFluidThread ();
+  void copyPrimTexture ();
   void prepSound (string soundName);
   void playSoundPosAndPitch (string soundName, FIVector4 * listenerPos, FIVector4 * soundPos, float variance = 0.0f, float volume = 1.0f);
   void playSound (string soundName, float volume = 1.0f);
@@ -481,6 +517,7 @@ public:
   void drawBoxUp (FIVector4 originVec, float radiusX, float radiusY, float diamZ);
   void drawBox (FIVector4 * v0, FIVector4 * v1, int faceFlag = 2);
   void getMaterialString ();
+  void getPrimTemplateString ();
   void refreshIncludeMap ();
   void doShaderRefresh (bool doBake);
   void setWH (int w, int h);
@@ -493,7 +530,7 @@ public:
   FBOSet * getFBOSet (string fboName);
   FBOWrapper * getFBOWrapper (string fboName, int offset);
   void copyFBO (string src, string dest, int num = 0);
-  void copyFBO2 (string src, string dest);
+  void copyFBO2 (string src, string dest, int num1 = 0, int num2 = 1);
   void bindFBO (string fboName, int swapFlag = -1, int doClear = 1);
   void unbindFBO ();
   void bindShader (string shaderName);
@@ -517,6 +554,7 @@ public:
   void invalidateUniformBlock (int ubIndex);
   void beginUniformBlock (int ubIndex);
   bool wasUpdatedUniformBlock (int ubIndex);
+  void setShaderTBO (int multitexNumber, GLuint tbo_tex, GLuint tbo_buf);
   void setShaderTexture (int multitexNumber, uint texId);
   void setShaderTexture3D (int multitexNumber, uint texId);
   bool shiftDown ();
@@ -579,7 +617,7 @@ public:
   void cleanJVPointer (JSONValue * * jv);
   string getStringForObjectId (int objectId);
   void getObjectData ();
-  JSONValue * fetchJSONData (string dataFile, JSONValue * params = NULL);
+  JSONValue * fetchJSONData (string dataFile, bool doClean, JSONValue * params = NULL);
   bool processJSONFromString (string * sourceBuffer, JSONValue * * destObj);
   bool processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONValue * * destObj);
   bool loadJSON (string path, JSONValue * * destObj);
@@ -1034,6 +1072,51 @@ public:
 };
 #undef LZZ_INLINE
 #endif
+// f00337_gamefluid.e
+//
+
+#ifndef LZZ_f00337_gamefluid_e
+#define LZZ_f00337_gamefluid_e
+#define LZZ_INLINE inline
+class GameFluid
+{
+public:
+  Singleton * singleton;
+  int volSizePrim;
+  int volSizePrimBuf;
+  int bufAmount;
+  int vspMin;
+  int vspMax;
+  int * fluidData;
+  int * lastFluidData;
+  std::vector <int> indexStack;
+  int curTick;
+  int maxTicks;
+  int UNIT_MIN;
+  int UNIT_MAX;
+  int watchMinX;
+  int watchMaxX;
+  int watchMinY;
+  int watchMaxY;
+  int watchMinZ;
+  int watchMaxZ;
+  bool invalidated;
+  float F_UNIT_MAX;
+  float F_UNIT_MIN;
+  std::vector <FluidStruct> fsVec;
+  std::vector <ModUnitStruct> modStack;
+  FluidPlane fluidPlane;
+  GameFluid ();
+  void init (Singleton * _singleton);
+  void updateFluidData (bool firstTime);
+  bool findStableRegions (int startInd, int newId);
+  bool floodFillId (int startInd, int newId);
+  bool inBounds (int i, int j, int k);
+  void modifyUnit (FIVector4 * fPixelWorldCoordsBase, int brushAction, int modType, int radius);
+  void applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int brushAction, int modType, int radius);
+};
+#undef LZZ_INLINE
+#endif
 // f00338_gameorgnode.e
 //
 
@@ -1441,7 +1524,6 @@ public:
   int * provinceX;
   int * provinceY;
   bool doDrawFBO;
-  bool lastProcResult;
   bool mapLockOn;
   bool foundPath;
   float mapStep;
@@ -1533,6 +1615,7 @@ public:
   int testMoveHit (BaseObj * ge, int x, int y, int z);
   bool makeMove (BaseObj * ge);
   void updatePhys ();
+  void drawScene ();
   void update ();
   void changeEntParam (int param, int offset, float val);
   void toggleVis (GameEnt * se);
@@ -1569,6 +1652,7 @@ public:
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
   void updateLights ();
+  void renderWaveHeight ();
   void postProcess ();
   ~ GameWorld ();
 };

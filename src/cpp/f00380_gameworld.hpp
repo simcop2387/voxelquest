@@ -50,7 +50,6 @@ public:
 	int *provinceY;
 
 	bool doDrawFBO;
-	bool lastProcResult;
 	bool mapLockOn;
 	bool foundPath;
 
@@ -288,7 +287,6 @@ public:
 		mapStep = 0.0f;
 
 		pageCount = 0;
-		lastProcResult = true;
 		maxThreads = 7;
 		availThreads = maxThreads;
 
@@ -887,10 +885,52 @@ public:
 		
 	}
 
+
+	void drawScene() {
+		
+		if (RAY_MODE) {
+			
+			
+			drawPrim();
+			
+			// singleton->bindFBO("geomTargFBO");
+			// singleton->unbindFBO();
+			
+			singleton->perspectiveOn = true;
+			glEnable(GL_DEPTH_TEST);
+			//actionOnHolders(E_HOLDER_ACTION_RENDER);
+			//drawSpheres();
+			renderGeom();
+			glDisable(GL_DEPTH_TEST);
+			singleton->perspectiveOn = false;
+			
+		}
+		else {
+			if (singleton->doPageRender && (!(singleton->draggingMap)) ) {
+				//procResult =
+				procPages();
+			}
+			
+			singleton->perspectiveOn = true;
+			glEnable(GL_DEPTH_TEST);
+			actionOnHolders(E_HOLDER_ACTION_RENDER);
+			drawSpheres();
+			renderGeom();
+			glDisable(GL_DEPTH_TEST);
+			singleton->perspectiveOn = false;
+			
+			if (FILL_POINTS) {
+				combineHolders();
+			}
+		}
+		
+		
+	}
+
 	void update()
 	{
 		
-		bool procResult = false;
+		//bool procResult = false;
 		singleton->updateLock = true;
 
 		int i;
@@ -915,48 +955,18 @@ public:
 			singleton->unbindShader();
 		}
 
-		if (singleton->doPageRender && (!(singleton->draggingMap)) ) {
-			procResult = procPages();
-		}
 		
 		
 		
-		
-		singleton->perspectiveOn = true;
-		
-		glEnable(GL_DEPTH_TEST);
-
+		drawScene();
 		
 		
-		actionOnHolders(E_HOLDER_ACTION_RENDER);
-		drawSpheres();
-		renderGeom();
-		glDisable(GL_DEPTH_TEST);
-		singleton->perspectiveOn = false;
 		
-		
-		if (FILL_POINTS) {
-			combineHolders();
-		}
-		
-
-		//glClearColor(0.6f, 0.6f, 0.7f, 0.0f);
-		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		postProcess();
-		
 		drawMap();
-		
-		
-		
-		// singleton->myDynBuffer->displayCB();
-		// glBindTexture(GL_TEXTURE_2D, singleton->myDynBuffer->textureId);
-		// singleton->drawFSQuadOffset(0.0,0.0,0.5);
-		// glBindTexture(GL_TEXTURE_2D, 0);
-		
-		
-		
+
 		glutSwapBuffers();
-		glFlush();
+		//glFlush();
 
 
 
@@ -1835,64 +1845,156 @@ DO_RETURN_PP:
 		
 		
 	}
+	
+	// void draw2Prim() {
+		
+	// 	activeFBO = 0;
+	// 	int i;
+		
+	// 	glDisable(GL_DEPTH_TEST);
+	// 	glClearColor(0.6f, 0.6f, 0.7f, 0.0f);
+	// 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		
+	// 	singleton->bindShader("PrimShader");
+	// 	singleton->bindFBO("resultFBO",activeFBO);
+		
+	// 	for (i = 0; i < E_PL_LENGTH; i++) {
+	// 		singleton->setShaderTexture3D(i, singleton->volIdPrim[i]);
+			
+	// 	}
+		
+	// 	singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+	// 	singleton->setShaderInt("testOn", (int)(singleton->testOn));
+	// 	singleton->setShaderFloat("volSizePrim", singleton->volSizePrim);
+	// 	singleton->setShaderFloat("curTime", singleton->pauseTime/1000.0f);
+	// 	singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
+	// 	singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+	// 	singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec) );
+	// 	singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
+	// 	singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+	// 	singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+		
+	// 	singleton->drawFSQuad();
+		
+	// 	for (i = 0; i < E_PL_LENGTH; i++) {
+	// 		singleton->setShaderTexture3D(i, 0);
+	// 	}
+		
+	// 	singleton->unbindFBO();
+	// 	singleton->unbindShader();
+		
+		
+		
+	// 	activeFBO = 1-activeFBO;
+		
+	// 	for (i = 0; i < singleton->medianCount; i++) {
+	// 		singleton->bindShader("MedianShader");
+	// 		singleton->bindFBO("resultFBO",activeFBO);
+	// 		singleton->sampleFBO("resultFBO", 0, activeFBO);
+	// 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
+			
+	// 		singleton->drawFSQuad();
+			
+	// 		singleton->unsampleFBO("resultFBO", 0, activeFBO);
+	// 		singleton->unbindFBO();
+	// 		singleton->unbindShader();
+			
+	// 		activeFBO = 1-activeFBO;
+	// 	}
+		
+		
+		
+		
+		
+		
+		
+	// 	singleton->drawFBO("resultFBO", 0, 1.0f, 1-activeFBO);
+		
+		
+	// 	if (singleton->anyMenuVisible()) {
+	// 		glEnable (GL_BLEND);
 
+	// 		singleton->bindShader("GUIShader");
+	// 		singleton->setShaderTexture(0,singleton->fontWrappers[EFW_TEXT]->fontImage->tid);
+	// 		singleton->setShaderTexture(1,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
+	// 		singleton->sampleFBO("resultFBO", 2,activeFBO);
+	// 		singleton->setShaderTexture3D(3,singleton->volIdMat);
+			
+	// 		singleton->mainGUI->renderGUI();
+			
+			
+	// 		singleton->setShaderTexture3D(3,0);
+	// 		singleton->unsampleFBO("resultFBO", 2, activeFBO);
+	// 		singleton->setShaderTexture(1,0);
+	// 		singleton->setShaderTexture(0,0);
+	// 		singleton->unbindShader();
+			
+	// 		glDisable(GL_BLEND);
+	// 	}
+		
+		
+		
+	// 	glutSwapBuffers();
+		
+	// }
 
 
 	void drawPrim() {
-		
-		
-		glDisable(GL_DEPTH_TEST);
-		glClearColor(0.6f, 0.6f, 0.7f, 0.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		int i;
 		
 		singleton->bindShader("PrimShader");
-		singleton->bindFBO("resultFBO0");
-		singleton->sampleFBO("hmFBOLinear", 0);
 		
+		//if (k == 0) {
+			singleton->bindFBO("pagesAndWaterTargFBO");
+		// }
+		// else {
+		// 	singleton->bindFBO("waterTargFBO");
+		// }
+		
+		for (i = 0; i < E_PL_LENGTH; i++) {
+			singleton->setShaderTexture3D(i, singleton->volIdPrim[i]);
+		}
+		singleton->setShaderTBO(
+			E_PL_LENGTH,
+			singleton->tboWrapper.tbo_tex,
+			singleton->tboWrapper.tbo_buf
+		);
+		
+		
+		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
+		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
-		singleton->setShaderFloat("curTime", singleton->curTime/1000.0f);
+		singleton->setShaderInt("testOn", (int)(singleton->testOn));
+		singleton->setShaderFloat("pixelsPerCell", singleton->pixelsPerCell);
+		singleton->setShaderFloat("UNIT_MAX", FLUID_UNIT_MAX + 1);
+		singleton->setShaderFloat("waterLerp", singleton->waterLerp);
+		singleton->setShaderFloat("volSizePrim", singleton->volSizePrim);
+		singleton->setShaderFloat("curTime", singleton->pauseTime/1000.0f);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
 		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec) );
+		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 		
-		singleton->drawFSQuad();
+		singleton->fsQuad.draw();
+		//singleton->drawFSQuad();
 		
-		singleton->unsampleFBO("hmFBOLinear", 0);
+		singleton->setShaderTBO(E_PL_LENGTH,0,0);
+		for (i = 0; i < E_PL_LENGTH; i++) {
+			singleton->setShaderTexture3D(i, 0);
+		}
+		
 		singleton->unbindFBO();
 		singleton->unbindShader();
 		
 		
-		singleton->drawFBO("resultFBO0", 0, 1.0f);
-		
-		
-		if (singleton->anyMenuVisible()) {
-			glEnable (GL_BLEND);
-
-			singleton->bindShader("GUIShader");
-			singleton->setShaderTexture(0,singleton->fontWrappers[EFW_TEXT]->fontImage->tid);
-			singleton->setShaderTexture(1,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
-			singleton->sampleFBO("resultFBO0", 2);
-			singleton->setShaderTexture3D(3,singleton->volIdMat);
-			
-			singleton->mainGUI->renderGUI();
-			
-			
-			singleton->setShaderTexture3D(3,0);
-			singleton->unsampleFBO("resultFBO0", 2);
-			singleton->setShaderTexture(1,0);
-			singleton->setShaderTexture(0,0);
-			singleton->unbindShader();
-			
-			glDisable(GL_BLEND);
-		}
-		
-		
-		
-		glutSwapBuffers();
+		singleton->copyFBO2("pagesAndWaterTargFBO","pagesTargFBO", 0, 1);
+		singleton->copyFBO2("pagesAndWaterTargFBO","waterTargFBO", 2, 3);
 		
 	}
+
+	
 	
 
 
@@ -2998,7 +3100,14 @@ DONE_FINDING_PATH:
 		case E_MOUSE_STATE_BRUSH:
 			
 			
-			singleton->setShaderVec3("matVal", 255, 0, 0);
+			if (singleton->earthMod == E_PTT_TER) {
+				singleton->setShaderVec3("matVal", 255, 0, 0);
+			}
+			else {
+				singleton->setShaderVec3("matVal", 0, 0, 255);
+			}
+			
+			
 			singleton->setShaderFloat("isWire", 1.0);
 			singleton->drawCubeCentered(
 				&lastUnitPos,
@@ -3204,8 +3313,7 @@ DONE_FINDING_PATH:
 	}
 
 
-	void modifyUnit(FIVector4 *fPixelWorldCoordsBase, E_BRUSH brushAction)
-	{
+	void modifyUnit(FIVector4 *fPixelWorldCoordsBase, E_BRUSH brushAction) {
 
 
 		int radius = ((int)singleton->curBrushRad);
@@ -4040,7 +4148,15 @@ DONE_FINDING_PATH:
 
 		
 		// TODO: FIX SEA LEVEL
-		seaLevel = i+20; //avgSL;//1
+		
+		if (RAY_MODE) {
+			seaLevel = 0;
+		}
+		else {
+			seaLevel = i+20; //avgSL;//1
+		}
+		
+		
 		seaSlack = seaLevel - 1;
 		cout << "Sea Level: " << seaLevel << "\n";
 
@@ -5428,6 +5544,26 @@ UPDATE_LIGHTS_END:
 
 	}
 
+	void renderWaveHeight() {
+		singleton->bindShader("WaveHeightShader");
+		singleton->bindFBO("waveFBO");
+		
+		singleton->sampleFBO("pagesTargFBO",0);
+		singleton->sampleFBO("waterTargFBO",2);
+		
+		//singleton->setShaderFloat("waveSpacing", singleton->pixelsPerCell * 4.0f);
+		singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+		singleton->setShaderFloat("curTime", singleton->curTime);
+		singleton->drawFSQuad();
+		
+		
+		singleton->unsampleFBO("waterTargFBO",2);
+		singleton->unsampleFBO("pagesTargFBO",0);
+		
+		singleton->unbindFBO();
+		singleton->unbindShader();
+	}
+
 	void postProcess()
 	{
 
@@ -5502,27 +5638,12 @@ UPDATE_LIGHTS_END:
 
 		activeFBO = 0;
 
+		renderWaveHeight();
 
 		if (singleton->waterOn)	{
 
 
-			singleton->bindShader("WaveHeightShader");
-			singleton->bindFBO("waveFBO");
 			
-			singleton->sampleFBO("pagesTargFBO",0);
-			singleton->sampleFBO("waterTargFBO",2);
-			
-			singleton->setShaderFloat("waveSpacing", singleton->pixelsPerCell * 4.0f);
-			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-			singleton->setShaderFloat("curTime", singleton->curTime);
-			singleton->drawFSQuad();
-			
-			
-			singleton->unsampleFBO("waterTargFBO",2);
-			singleton->unsampleFBO("pagesTargFBO",0);
-			
-			singleton->unbindFBO();
-			singleton->unbindShader();
 
 
 			singleton->bindShader("WaterShaderCombine");
@@ -5567,6 +5688,7 @@ UPDATE_LIGHTS_END:
 		singleton->bindFBO("prelightFBO");
 		singleton->sampleFBO("pagesTargFBO",0);
 		singleton->sampleFBO("combineWithWaterTargFBO",2);
+		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
@@ -5582,33 +5704,7 @@ UPDATE_LIGHTS_END:
 		singleton->unbindFBO();
 		singleton->unbindShader();
 		
-		
-		
-		// singleton->copyFBO("prelightFBO","prelightFBO0");
-		// doBlur("prelightFBO",0);
-		
-		// singleton->bindShader("HDRShader");
-		// singleton->bindFBO("resultFBO",activeFBO);
-		// singleton->sampleFBO("pagesTargFBO",0);
-		// singleton->sampleFBO("prelightFBO0", 2);
-		// singleton->sampleFBO("prelightFBO", 3);
-		// singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
-		// singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
-		// singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
-		// singleton->setShaderInt("testOn", (int)(singleton->testOn));
-		// singleton->setShaderFloat("curTime", singleton->curTime);
-		// singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
-		// singleton->setShaderFloat("pixelsPerCell", singleton->pixelsPerCell);
-		// singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
-		// singleton->drawFSQuad();
-		// singleton->unsampleFBO("prelightFBO", 3);
-		// singleton->unsampleFBO("prelightFBO0", 2);
-		// singleton->unsampleFBO("pagesTargFBO",0);
-		// singleton->unbindFBO();
-		// singleton->unbindShader();
-		// activeFBO = 1 - activeFBO;
-		
-		
+			
 		
 		
 		
@@ -5617,9 +5713,8 @@ UPDATE_LIGHTS_END:
 		
 		singleton->sampleFBO("pagesTargFBO",0);
 		singleton->sampleFBO("prelightFBO", 2);
-		singleton->sampleFBO("geomTargFBO", 4);
-		//singleton->sampleFBO("palFBO", 6);
-		singleton->setShaderTexture3D(6,singleton->volIdMat);
+		singleton->sampleFBO("geomTargFBO", 6);
+		singleton->setShaderTexture3D(8,singleton->volIdMat);
 		
 		singleton->setShaderfVec4("worldMarker",&(singleton->worldMarker));
 		singleton->setShaderInt("markerFound", (int)(singleton->markerFound));
@@ -5637,9 +5732,8 @@ UPDATE_LIGHTS_END:
 		singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 		singleton->drawFSQuad();
 		
-		singleton->setShaderTexture3D(6,0);
-		//singleton->unsampleFBO("palFBO", 6);
-		singleton->unsampleFBO("geomTargFBO", 4);
+		singleton->setShaderTexture3D(8,0);
+		singleton->unsampleFBO("geomTargFBO", 6);
 		singleton->unsampleFBO("prelightFBO", 2);
 		singleton->unsampleFBO("pagesTargFBO",0);
 		
@@ -5665,7 +5759,7 @@ UPDATE_LIGHTS_END:
 			singleton->sampleFBO("waveFBO", 7);
 			singleton->setShaderTexture3D(8,singleton->volIdMat);
 			singleton->sampleFBO("prelightFBO", 9);
-			singleton->sampleFBO("geomTargFBO", 11);
+			singleton->sampleFBO("geomTargFBO", 13);
 			
 			singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
 			singleton->setShaderFloat("pixelsPerCell", singleton->pixelsPerCell);
@@ -5678,7 +5772,7 @@ UPDATE_LIGHTS_END:
 			singleton->drawFSQuad();
 			
 			
-			singleton->unsampleFBO("geomTargFBO", 11);
+			singleton->unsampleFBO("geomTargFBO", 13);
 			singleton->unsampleFBO("prelightFBO", 9);
 			singleton->setShaderTexture3D(8,0);
 			singleton->unsampleFBO("waveFBO", 7);
@@ -5758,7 +5852,6 @@ UPDATE_LIGHTS_END:
 		{
 
 			
-			
 
 			singleton->bindShader("FogShader");
 			singleton->bindFBO("resultFBO", activeFBO);
@@ -5797,10 +5890,35 @@ UPDATE_LIGHTS_END:
 			activeFBO = 1 - activeFBO;
 
 		}
+		
+		
+		for (i = 0; i < singleton->medianCount; i++) {
+			singleton->bindShader("MedianShader");
+			singleton->bindFBO("resultFBO",activeFBO);
+			singleton->sampleFBO("resultFBO", 0, activeFBO);
+			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
+			
+			singleton->drawFSQuad();
+			
+			singleton->unsampleFBO("resultFBO", 0, activeFBO);
+			singleton->unbindFBO();
+			singleton->unbindShader();
+			
+			activeFBO = 1-activeFBO;
+		}
+		
+		
+		if (singleton->testOn) {
+			//primshader
+			singleton->drawFBO("waterTargFBO", 0, 1.0f);
+			
+		}
+		else {
+			singleton->drawFBO("resultFBO", 0, 1.0f, 1 - activeFBO);
+						
+		}
 
-
-		//singleton->drawFBO("resultFBO", 0, 1.0f, activeFBO);
-		singleton->drawFBO("resultFBO", 0, 1.0f, 1 - activeFBO);
+		
 
 
 		if (singleton->anyMenuVisible()) {

@@ -140,7 +140,17 @@ public:
 				break;
 			case 4:
 				internalFormat = GL_RGBA32F;
-				glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_RGBA, GL_FLOAT, 0);
+				glTexImage2D(
+					GL_TEXTURE_2D,
+					0,
+					internalFormat,
+					w,
+					h,
+					0,
+					GL_RGBA,
+					GL_FLOAT,
+					0
+				);
 				isFloat = true;
 
 				break;

@@ -7,13 +7,15 @@ uniform sampler2D Texture1;
 // prelight fbo
 uniform sampler2D Texture2;
 uniform sampler2D Texture3;
-
-// geom fbo
 uniform sampler2D Texture4;
 uniform sampler2D Texture5;
 
+// geom fbo
+uniform sampler2D Texture6;
+uniform sampler2D Texture7;
+
 // pal fbo
-uniform sampler3D Texture6;
+uniform sampler3D Texture8;
 
 
 //uniform float holderMod;
@@ -113,7 +115,7 @@ float randf(vec2 co)
 
 vec3 unpackColor(vec2 num, float lightVal)
 {
-	return texture3D( Texture6, vec3(lightVal, num.r, num.g + 0.5/255.0) ).rgb;
+	return texture3D( Texture8, vec3(lightVal, num.r, num.g + 0.5/255.0) ).rgb;
 }
 
 vec3 rgb2hsv(vec3 c)
@@ -171,8 +173,10 @@ void main()
 	vec4 tex2 = texture2D(Texture2, TexCoord0.xy);
 	//vec4 tex3 = texture2D(Texture3, TexCoord0.xy);
 	
-	vec4 tex4 = texture2D(Texture4, TexCoord0.xy);
-	vec4 tex5 = texture2D(Texture5, TexCoord0.xy);
+	vec4 texSpec = texture2D(Texture4, TexCoord0.xy);
+	
+	vec4 tex4 = texture2D(Texture6, TexCoord0.xy);
+	vec4 tex5 = texture2D(Texture7, TexCoord0.xy);
 
 	float tot = float(tex1.r + tex1.g + tex1.b + tex1.a > 0.0);
 
@@ -255,7 +259,7 @@ void main()
 
 		resColorTemp = resColor;
 
-		tempVec = clamp( (worldPosition.xyz - (cameraPos.xyz)) / 2048.0, 0.0, 1.0);
+		tempVec = clamp( (worldPosition.xyz - (cameraPos.xyz)) / 16.0*pixelsPerCell, 0.0, 1.0);
 
 		tempVec2.r = abs(sin( (tempVec.r * 0.25 + tempVec.g * 0.5 + tempVec.b * 0.0) * 4.0 ));
 		tempVec2.g = abs(sin( (tempVec.r * 0.0 + tempVec.g * 0.25 + tempVec.b * 0.5) * 4.0 ));
@@ -292,10 +296,10 @@ void main()
 			0.2,
 			0.5,
 			clamp(1.0-distance(TexCoord0.xy,vec2(0.5)),0.0,1.0)
-		);
+		)*0.25;
 		
 		
-		resColorTemp += pow( clamp(lightRes, 0.0, 1.0), 4.0) * (1.0-timeOfDay)*0.5;
+		//resColorTemp += pow( clamp(lightRes, 0.0, 1.0), 4.0) * (1.0-timeOfDay)*0.5;
 		resColorTemp += pow(lightRes,4.0)*0.1;
 		
 		
@@ -306,15 +310,17 @@ void main()
 
 	}
 	
+	resColor += resColor*texSpec.r*4.0;
+	
 	
 	
 	
 	
 	if (testOn) {
 		
-		
-		//resColor = vec3(lightRes);//vec3(newAO*lightRes + lightRes*0.2);//mix(tex2.a,tex2.a*0.5+0.5,lightRes);
-		resColor = vec3(tex1.w);
+		//resColor = vec3(newAO);
+		//resColor = vec3(lightRes);//mix(resColor*lightRes,resColor,clamp( (worldPosition.w)*0.5,0.0,1.0) );//vec3(newAO*lightRes + lightRes*0.2);//mix(tex2.a,tex2.a*0.5+0.5,lightRes);
+		//resColor = vec3(tex1.w);
 	}
 	
 	
@@ -364,7 +370,7 @@ void main()
 	
 	
 	if (markerFound) {
-		markerDis = clamp(distance(worldPosition,worldMarker)/(2.0*pixelsPerCell),0.0,1.0);
+		markerDis = clamp(distance(worldPosition,worldMarker)/(0.5*pixelsPerCell),0.0,1.0);
 		
 		
 		if (

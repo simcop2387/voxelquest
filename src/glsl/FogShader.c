@@ -202,7 +202,7 @@ void main() {
             ) - tex7.a*0.1,
             0.0,
             1.0
-        ),0.75);
+        ),2.0);
         
 
     vec3 lightMod = pow( (1.0-timeOfDay)*tex3.rgb, vec3(2.0) );
@@ -318,6 +318,8 @@ void main() {
     if (valIsGeom&&(!isOutline)) {
         finalCol = tex2.rgb;
     }
+    
+    //finalCol = vec3(tex7.a);
     
     //finalCol = vec3(stripeVal);
 

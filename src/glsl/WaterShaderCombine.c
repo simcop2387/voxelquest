@@ -145,7 +145,10 @@ void main() {
     
 
     if (tex2.w > tex0.w) {
-        if (matValsWater.a == TEX_GLASS) {
+        if (
+            (matValsWater.a == TEX_GLASS) ||
+            (matValsWater.a == TEX_WATER)    
+        ) {
             endRes = 1.0;
         }
         else {

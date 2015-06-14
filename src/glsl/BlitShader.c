@@ -6,6 +6,7 @@ uniform float heightOfNearPlane;
 uniform float clipDist;
 uniform vec2 bufferDim;
 uniform vec3 lookAtVec;
+uniform vec3 cameraPos;
 
 varying vec4 TexCoord0;
 varying vec4 TexCoord1;
@@ -19,7 +20,11 @@ void main() {
 
     vec4 screenPos = gl_ModelViewProjectionMatrix * gl_Vertex;
     
-    TexCoord0 = vec4(gl_Vertex.xyz,1.0-screenPos.z/clipDist);
+    float camDis = distance(cameraPos.xyz,gl_Vertex.xyz);
+    float zbVal = 1.0-camDis/clipDist;
+    //float zbVal = 1.0-screenPos.z/clipDist;
+    
+    TexCoord0 = vec4(gl_Vertex.xyz,zbVal);
     TexCoord1 = gl_MultiTexCoord0;
     
     gl_Position = screenPos;

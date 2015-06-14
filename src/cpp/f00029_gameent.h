@@ -660,7 +660,9 @@ public:
 		int _x, int _y, int _z,
 		int _r, int _g, int _b,
 		bool _doRender, int _moveType,//bool _isRelative, bool _isTrackball,
-		FIVector4 *_cameraPos, float _radius, float _lightRadius=0.0f
+		FIVector4 *_cameraPos,
+		float _radius,
+		float _lightRadius=0.0f
 	) {
 		//isRelative = _isRelative;
 		//isTrackball = _isTrackball;

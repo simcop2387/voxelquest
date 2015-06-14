@@ -26,10 +26,12 @@ uniform sampler3D Texture8;
 // prelight fbo
 uniform sampler2D Texture9;
 uniform sampler2D Texture10;
-
-// geom fbo
 uniform sampler2D Texture11;
 uniform sampler2D Texture12;
+
+// geom fbo
+uniform sampler2D Texture13;
+uniform sampler2D Texture14;
 
 varying vec2 TexCoord0;
 
@@ -136,6 +138,8 @@ void main() {
     
     vec4 tex10 = texture2D(Texture10, TexCoord0.xy);
     
+    vec4 tex11 = texture2D(Texture11, TexCoord0.xy);
+    
     // vec4 tex11 = texture2D(Texture0, TexCoord0.xy);
     // vec4 tex12 = texture2D(Texture1, TexCoord0.xy);
     
@@ -184,11 +188,13 @@ void main() {
 
     float distances[maxEntries];
 
-    distances[0] = 0.0*pixelsPerCell;
-    distances[1] = 0.5*pixelsPerCell;
-    distances[2] = 4.0*pixelsPerCell;
-    distances[3] = 8.0*pixelsPerCell;
-    distances[4] = 16.0*pixelsPerCell;
+    float difScale = 0.25*pixelsPerCell;
+
+    distances[0] = 0.0*difScale;
+    distances[1] = 0.5*difScale;
+    distances[2] = 4.0*difScale;
+    distances[3] = 8.0*difScale;
+    distances[4] = 16.0*difScale;
 
     vec3 colVecs[maxEntries];
 
@@ -220,7 +226,7 @@ void main() {
     vec4 tex5Ref = vec4(0.0);
     
     
-    
+    bool wasTrans = true;
     
         
         
@@ -284,7 +290,7 @@ void main() {
     
     tex0Ref = texture2D(Texture0, newTC.xy);
     
-    //tex0Ref.w = max(tex0Ref.w,texture2D(Texture11, newTC.xy).w);
+    //tex0Ref.w = max(tex0Ref.w,texture2D(Texture13, newTC.xy).w);
     
     tex1Ref = texture2D(Texture1, newTC.xy);
     tex5Ref = texture2D(Texture5, newTC.xy);
@@ -446,6 +452,7 @@ void main() {
 
         finalCol = (finalCol + lastCol*mix(vec3(0.05,0.1,0.2),vec3(0.5),timeOfDay));
         
+        //finalCol *= 0.5;
         
         //finalCol = vec3(max(max(tex10.r,tex10.g),tex10.b));
         
@@ -456,6 +463,7 @@ void main() {
             finalCol = transRendered.rgb*0.5 + tex5.rgb*0.25 + tex4.rgb*0.5;
         }
         else {
+            wasTrans = false;
             finalCol = tex4.rgb;
         }
 
@@ -487,6 +495,11 @@ void main() {
 
     }
     
+    //finalCol.rgb = unpackColor(matValsWater.ba, lightRes);
+    
+    if (wasTrans) {
+        finalCol.rgb += finalCol.rgb*tex11.g*4.0;
+    }
     
     gl_FragData[0] = vec4(finalCol.rgb,1.0);
     

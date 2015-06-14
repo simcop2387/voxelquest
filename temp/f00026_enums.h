@@ -20,6 +20,14 @@ enum E_PERFORMANCE_PROFILE {
 	E_PP_LENGTH
 };
 
+enum E_PRIM_TYPE_TER {
+	E_PTT_TER,
+	E_PTT_WAT,
+	E_PTT_IDE,
+	E_PTT_STB,
+	E_PTT_LENGTH
+};
+
 enum E_DRAG_TYPE {
 	E_DT_NOTHING, // can drag to, but not from
 	E_DT_WORLD_OBJECT,
@@ -49,6 +57,27 @@ enum E_VOCAB_TYPE {
 	E_VCT_VARIABLE,
 	E_VCT_PREDICATE,
 	E_VCT_LENGTH
+};
+
+struct FluidPlane {
+	std::vector<int> fluidIds;
+};
+
+struct FluidStruct {
+	int minX;
+	int minY;
+	int minZ;
+	
+	int maxX;
+	int maxY;
+	int maxZ;
+	
+	int id;
+	long long int collectedWater;
+	
+	std::vector<int> fluidIds;
+	std::vector<int> idealCellIds;
+		
 };
 
 struct VToken
@@ -286,7 +315,7 @@ enum E_PLANT_TYPES {
 
 enum E_OBJ {
 	E_OBJ_CAMERA,
-	E_OBJ_LIMBTARG0,
+	//E_OBJ_LIMBTARG0,
 	//E_OBJ_FOG,
 	//E_OBJ_CUTAWAY,
 	//E_OBJ_HUMAN,
@@ -680,8 +709,8 @@ enum E_LINES_PARAMS {
 };
 
 enum E_GEOM_PARAMS {
-	E_GP_RESERVED0,
-	E_GP_RESERVED1,
+	E_GP_RESERVED0, //visMin
+	E_GP_RESERVED1, //visMax
 	E_GP_BOUNDSMININPIXELST,
 	E_GP_BOUNDSMAXINPIXELST,
 	E_GP_CORNERDISINPIXELS,
@@ -692,6 +721,13 @@ enum E_GEOM_PARAMS {
 	E_GP_MATPARAMS, // must be last
 	E_GP_LENGTH
 };
+
+enum E_PRIM_LAYERS {
+	E_PL_TERRAIN,
+	//E_PL_PRIMIDS,
+	E_PL_LENGTH
+};
+
 
 enum E_ENT_TYPES {
 	E_ET_GEOM,
@@ -981,6 +1017,24 @@ enum E_MUSIC_LIST {
 	EML_LENGTH
 };
 
+enum E_PRIMTEMP {
+	E_PRIMTEMP_VISMIN,
+	E_PRIMTEMP_VISMAX,
+	E_PRIMTEMP_BOUNDSMIN,
+	E_PRIMTEMP_BOUNDSMAX,
+	E_PRIMTEMP_CORNERDIS, //E_PRIMTEMP_CORNERDISTHICKNESSPOWER
+	E_PRIMTEMP_MATPARAMS,
+	E_PRIMTEMP_LENGTH
+};
+
+string primTempStrings[] = {
+	"visMin",
+	"visMax",
+	"boundsMin",
+	"boundsMax",
+	"cornerDis",
+	"matParams"
+};
 
 string colorStrings[] = {
 	"Red",

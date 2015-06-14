@@ -212,10 +212,10 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 						tempStrings[E_GDS_DATA_FILE] = jv->Child("dataFile")->string_value;
 						
 						if ( jv->HasChild("dataParams") ) {
-							jvDataRoot = singleton->fetchJSONData(tempStrings[E_GDS_DATA_FILE], jv->Child("dataParams"));
+							jvDataRoot = singleton->fetchJSONData(tempStrings[E_GDS_DATA_FILE], false, jv->Child("dataParams"));
 						}
 						else {
-							jvDataRoot = singleton->fetchJSONData(tempStrings[E_GDS_DATA_FILE], NULL);
+							jvDataRoot = singleton->fetchJSONData(tempStrings[E_GDS_DATA_FILE], false, NULL);
 						}
 					}
 					else {

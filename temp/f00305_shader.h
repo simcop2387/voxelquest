@@ -242,6 +242,9 @@ void Shader::init (string _shaderFile, bool doBake, map <string, string> * inclu
 							if (allTextStringSplitInc[i].compare("INCLUDE:MATERIALS") == 0) {
 								allTextStringInc.append((*includeMap)["materials"]);
 							}
+							else if (allTextStringSplitInc[i].compare("INCLUDE:PRIMTEMPLATES") == 0) {
+								allTextStringInc.append((*includeMap)["primTemplates"]);
+							}
 							else {
 								allTextStringInc.append(allTextStringSplitInc[i]);
 							}

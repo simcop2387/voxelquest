@@ -70,6 +70,8 @@ public:
 	GameEnt* selectedEnt;
 	GameEnt* highlightedEnt;
 	
+	bool autoMove;
+	bool allInit;
 	bool combatOn;
 	bool firstPerson;
 	bool updateMatFlag;
@@ -133,13 +135,14 @@ public:
 	bool isContainer[MAX_OBJ_TYPES];
 	string objStrings[MAX_OBJ_TYPES];
 	
+	int earthMod;
 	int currentTick;
 	int draggingFromInd;
 	int draggingToInd;
 	int draggingFromType;
 	int draggingToType;
 	
-	
+	int medianCount;
 	int moveMode;
 	int maxHolderDis;
 	int gameObjCounter;
@@ -211,9 +214,23 @@ public:
 	int volGenSuperRes;
 	int matVolSize;
 	int escCount;
+	int volSizePrim;
+	int volSizePrimMacro;
+	int floatsInPrimMacro;
+	int primsPerMacro;
+	int primDiv;
 	int lastNodeId;
 	int *cdBuffer;
+	
+	int internalPrimFormat;
+	int precPrimFormat;
+	
+	
 	intPair entIdArr[1024];
+	
+	PRIM_FORMAT* volDataPrim[E_PL_LENGTH];
+	
+	
 	
 	uint palWidth;
 	uint palHeight;
@@ -224,6 +241,9 @@ public:
 
 	GLfloat camRotation[2];
 
+	bool timeMod;
+	
+	float waterLerp;
 	float resultShake;
 	float cameraShake;
 	float subjectDistance;
@@ -281,6 +301,7 @@ public:
 	double lastMoveTime;
 	double timeDelta;
 	double curTime;
+	double pauseTime;
 	double clickTime;
 	double lastTime;
 	double mdTime;
@@ -294,6 +315,7 @@ public:
 	FIVector4 resultCameraPos;
 
 	FIVector4* cameraPos;
+	FIVector4 lightVec;
 	FIVector4 dirVecs[6];
 	FIVector4 targetCameraPos;
 	FIVector4 lastCellPos;
@@ -309,6 +331,8 @@ public:
 	FIVector4 mouseDownPD;
 	FIVector4 mouseDownOPD;
 	FIVector4 mouseMovePD;
+	FIVector4 tempBoundsMin;
+	FIVector4 tempBoundsMax;
 	FIVector4 tempVec1;
 	FIVector4 tempVec2;
 	FIVector4 tempVec3;
@@ -342,6 +366,11 @@ public:
 	
 	uint* matVol;
 	
+	std::thread fluidThread;
+	
+	bool firstFluidThread;
+	
+	std::vector<FIVector4> primTemplateStack;
 	std::vector<SphereStruct> sphereStack;
 	
 	std::vector<GamePageHolder*> dirtyGPHStack;
@@ -354,13 +383,18 @@ public:
 	PathHolder charPathHolder;
 	PathHolder splitPathHolder;
 
+	FSQuad fsQuad;
+	TBOWrapper tboWrapper;
+	
+	float* tboData;
+	
 
 	float floorHeightInCells;
 	float roofHeightInCells;
 	float wallRadInCells;
 
 	
-	
+	int tickSpace;
 	int cellsPerHolder;
 	int cellsPerPage;
 	int unitsPerCell;
@@ -422,6 +456,9 @@ public:
 	GLuint volIdEmpty;
 	GLuint volIdEmptyLinear;
 	GLuint volIdMat;
+	GLuint volIdPrim[E_PL_LENGTH];
+	
+	
 
 	GLuint volGenId;
 	uint *lookup2to3;
@@ -449,6 +486,7 @@ public:
 	Timer scrollTimer;
 	Timer moveTimer;
 	GameWorld* gw;
+	GameFluid* gameFluid;
 	GameAI* gameAI;
 
 	float lightArr[MAX_LIGHTS * 16];
@@ -489,6 +527,8 @@ public:
 	Singleton()
 	{
 		
+		allInit = false;
+		
 		fboMap.clear();
 		shaderMap.clear();
 		soundMap.clear();
@@ -519,6 +559,8 @@ public:
 		int i;
 		int j;
 		int k;
+		int m;
+		int ind;
 		float tempf;
 		
 		RUN_COUNT = 0;
@@ -549,6 +591,10 @@ public:
 		initAllObjects();
 		initAllMatrices();
 		
+		fsQuad.init();
+		
+		
+		
 		
 		camRotation[0] = 0.0f;
 		camRotation[1] = -M_PI/2.0f;
@@ -567,11 +613,12 @@ public:
 		isInteractiveEnt[E_CT_DOOR] = true;
 		isInteractiveEnt[E_CT_LANTERN] = true;
 		
-		// problem with clipDist at 0.0 not rendering geom
 		
-		clipDist[0] = 0.0f;
-		clipDist[1] = 16384.0f;
+		lightVec.setFXYZ(0.3f,0.4f,1.0f);
+		lightVec.normalize();
 		
+		
+		autoMove = false;
 		inputOn = false;
 		pathfindingOn = false;
 		isMacro = false;
@@ -586,7 +633,7 @@ public:
 		hitGUI = false;
 		guiLock = false;
 		guiDirty = true;
-		
+		firstFluidThread = true;
 		
 		
 		//lastPickerItem = NULL;
@@ -658,6 +705,8 @@ public:
 		//////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////
 
+		
+
 		lastNodeId = 0;
 		escCount = 0;
 
@@ -702,13 +751,14 @@ public:
 				
 		// IMPORTANT: Maximum height must be less than 2^16, max world pitch must be less than 2^32
 		
+		medianCount = 0;
 		moveMode = E_MM_SMOOTH;
 		lastObjectCount = 0;
 		lastObjInd = 0;
 		selObjInd = 0;
 		actObjInd = 0;
 		currentTick = 0;
-		
+		earthMod = E_PTT_TER;
 		
 		moveTimer.start();
 		
@@ -727,11 +777,18 @@ public:
 		
 		// qqqqqq		
 		
-		
-		
+		tickSpace = 4096;
+		volSizePrim = 128;
+		primDiv = 4;
+		volSizePrimMacro = volSizePrim/primDiv;
+		primsPerMacro = 16;
+		floatsInPrimMacro = volSizePrimMacro*volSizePrimMacro*volSizePrimMacro*primsPerMacro*4;
 		
 		volGenFBOX = 128; // MAX OF 128
 		pixelsPerCell = 128; // do not adjust this, instead change volGenFBOX
+		
+		
+		
 		volGenSuperMod = 2;
 		maxChangesInPages = 1;
 		maxChangesInHolders = 1;
@@ -746,7 +803,7 @@ public:
 		volGenSuperRes = (volGenFBOX/volGenSuperMod);
 		heightOfNearPlane = 1.0f;
 		scrollDiv = 2.0;
-		msPerFrame = 16.0;
+		msPerFrame = 8.0;
 		
 		int bufferDiv = 2;
 		
@@ -755,9 +812,18 @@ public:
 			glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 		}
 		
+		tboData = new float[floatsInPrimMacro];
+		
+		updateTBOData(true);
 		
 		
-		//glPointSize(2.0);
+		
+		
+		
+		
+		
+		
+		
 		
 		
 		
@@ -773,6 +839,16 @@ public:
 		cellsPerNodeZ = 8;
 		blockSizeInLots = 4;
 		unitsPerCell = 4; // ONE UNIT == ONE METER
+		
+		if (RAY_MODE) {
+			pixelsPerCell = 1;
+			unitsPerCell = 1;
+			bufferMult = 1.0f;
+		}
+		
+		
+		clipDist[0] = 0.0f;
+		clipDist[1] = 512.0f*((float)pixelsPerCell);
 		
 
 		worldSizeInLots.setIXYZ(newPitch, newPitch, blockSizeInLots);
@@ -814,7 +890,7 @@ public:
 		
 		terDataTexScale = 1;
 		//if (pixelsPerCell >= 128) {
-			terDataTexScale = 1;
+		// terDataTexScale = 1;
 		//}
 		
 		terDataVisPitchXY = blockSizeInCells / cellsPerNodeXY;
@@ -946,17 +1022,31 @@ public:
 		int ccr = 0;
 		int ccg = 0;
 		int ccb = 0;
+		int curFilter;
 
 		doTraceVecND("worldSizeInPixels: ", &worldSizeInPixels);
 
 
 
-
-
-
+		#ifdef PRIM_FLOAT_FORMAT
+		internalPrimFormat = GL_RGBA32F;
+		precPrimFormat = GL_FLOAT;
+		#else
+		internalPrimFormat = GL_RGBA;
+		precPrimFormat = GL_UNSIGNED_BYTE;
+		#endif
 		
+		
+		gameFluid = new GameFluid();
+		gameFluid->init(this);
+		
+		setupPrimTexture();
+		updateFluidDataFirstTime();
+		copyPrimTexture();
+		//doTraceND( "POSSIBLE ERROR: " , i__s(glGetError()) , "\n" );
 
-		int curFilter;
+
+
 
 		for (i = 0; i < MAX_TER_TEX; i++)
 		{
@@ -1109,7 +1199,7 @@ public:
 		origWinW = _defaultWinW;
 		origWinH = _defaultWinH;
 
-		curBrushRad = 16.0f;
+		curBrushRad = 2.0f;
 		mouseState = E_MOUSE_STATE_MOVE;
 
 
@@ -1139,7 +1229,7 @@ public:
 
 
 
-
+		float fPixelsPerCell = (float)pixelsPerCell;
 
 
 		mbDown = false;
@@ -1212,21 +1302,21 @@ public:
 			}
 
 			if (i == E_OBJ_LIGHT0) {
-				tempf = 4096.0f*pixelsPerCell;
+				tempf = 64.0f*fPixelsPerCell;
 			}
 			else {
-				tempf = 16.0f*pixelsPerCell;
+				tempf = 16.0f*fPixelsPerCell;
 			}
 
 			dynObjects[i]->init(
-				-2048 + i * 256,
-				-2048 + i * 256,
-				1024/2,
+				-16*pixelsPerCell + i * 2*pixelsPerCell,
+				-16*pixelsPerCell + i * 2*pixelsPerCell,
+				4*pixelsPerCell,
 				ccr, ccg, ccb,
 				true,
 				E_MT_RELATIVE,
 				&(dynObjects[E_OBJ_CAMERA]->pos),
-				64.0f,
+				fPixelsPerCell*0.125f,
 				tempf
 			);
 
@@ -1237,17 +1327,17 @@ public:
 		dynObjects[E_OBJ_LIGHT0]->moveType = E_MT_TRACKBALL;
 		
 		
-		dynObjects[E_OBJ_LIMBTARG0]->init(
-			-2048 + 3 * 256,
-			-2048 + 3 * 256,
-			1024/2,
-			255, 0, 0,
-			true,
-			E_MT_TRACKBALL,
-			&(dynObjects[E_OBJ_CAMERA]->pos),
-			64.0f,
-			16.0f*pixelsPerCell
-		);
+		// dynObjects[E_OBJ_LIMBTARG0]->init(
+		// 	-16*pixelsPerCell + 3 * 2*pixelsPerCell,
+		// 	-16*pixelsPerCell + 3 * 2*pixelsPerCell,
+		// 	4*pixelsPerCell,
+		// 	255, 0, 0,
+		// 	true,
+		// 	E_MT_TRACKBALL,
+		// 	&(dynObjects[E_OBJ_CAMERA]->pos),
+		// 	fPixelsPerCell*0.5f,
+		// 	16.0f*fPixelsPerCell
+		// );
 		
 		cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 		
@@ -1309,14 +1399,19 @@ public:
 		
 		
 
-		shaderStrings.push_back("PointShader");
+		
+		shaderStrings.push_back("PrimShader");
 		shaderStrings.push_back("GUIShader");
+		shaderStrings.push_back("MedianShader");
+		shaderStrings.push_back("TopoShader");
+		
+
+		shaderStrings.push_back("PointShader");
 		shaderStrings.push_back("RoadShader");
 		shaderStrings.push_back("SkeletonShader");
 		shaderStrings.push_back("DilateShader");
 		shaderStrings.push_back("TerrainMix");
 		shaderStrings.push_back("Simplex2D");
-		shaderStrings.push_back("TopoShader");
 		shaderStrings.push_back("WaveHeightShader");
 		shaderStrings.push_back("WaterShader");
 		shaderStrings.push_back("WaterShaderCombine");
@@ -1324,12 +1419,9 @@ public:
 		shaderStrings.push_back("CopyShader2");
 		shaderStrings.push_back("NoiseShader");
 		shaderStrings.push_back("MapBorderShader");
-		//shaderStrings.push_back("WorldSpaceShader");
 		shaderStrings.push_back("SphereShader");
-		shaderStrings.push_back("PrimShader");
 		shaderStrings.push_back("BlitPointShader");
 		shaderStrings.push_back("BillboardShader");
-		
 		shaderStrings.push_back("PreLightingShader");
 		shaderStrings.push_back("HDRShader");
 		shaderStrings.push_back("PostLightingShader");
@@ -1376,6 +1468,8 @@ public:
 		int faceDim = 256;
 		
 		
+		
+		
 		/*
 		void init(
 			int _numBufs,
@@ -1415,9 +1509,11 @@ public:
 		/////////////////////////
 		/////////////////////////
 		
+		timeMod = true;
 		lastSubjectDistance = 0.0f;
 		resultShake = 0.0f;
 		cameraShake = 0.0f;
+		waterLerp = 0.0f;
 		lastx = 0;
 		lasty = 0;
 		isMoving = false;
@@ -1480,12 +1576,9 @@ public:
 		int numMaps = 2;
 		
 		
-		//fboMap["prelightFBO0"].init(1, bufferDimTarg.getIX()/4, bufferDimTarg.getIY()/4, 1, false, GL_LINEAR);
-		//fboMap["prelightFBO1"].init(1, bufferDimTarg.getIX()/4, bufferDimTarg.getIY()/4, 1, false, GL_LINEAR);
+		fboMap["prelightFBO"].init(4, bufferDimTarg.getIX(), bufferDimTarg.getIY(), 1, false, GL_LINEAR);
 		
-		fboMap["prelightFBO"].init(2, bufferDimTarg.getIX(), bufferDimTarg.getIY(), 1, false, GL_LINEAR);
-		
-		
+		fboMap["pagesAndWaterTargFBO"].init(numMaps*2, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
 		fboMap["pagesTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
 		fboMap["waterTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
 		
@@ -1596,6 +1689,8 @@ public:
 		}
 		
 
+		allInit = true;
+		
 		doTraceND("GW DONE");
 
 
@@ -1604,6 +1699,92 @@ public:
 
 
 	}
+	
+	
+	
+	
+	void addPrimObj(FIVector4* pos, int tempId) {
+		int baseInd = tempId*E_PRIMTEMP_LENGTH;
+		int i;
+		int j;
+		int k;
+		int m;
+		int ind;
+		float fPrimDiv = primDiv;
+		float cornerDis = primTemplateStack[baseInd+E_PRIMTEMP_CORNERDIS].getFX();
+		
+		tempBoundsMin.copyFrom(&(primTemplateStack[baseInd+E_PRIMTEMP_BOUNDSMIN]));
+		tempBoundsMax.copyFrom(&(primTemplateStack[baseInd+E_PRIMTEMP_BOUNDSMAX]));
+		
+		tempBoundsMin.addXYZRef(pos);
+		tempBoundsMax.addXYZRef(pos);
+		
+		tempBoundsMin.addXYZ(-cornerDis);
+		tempBoundsMax.addXYZ(cornerDis);
+		
+		tempBoundsMin.multXYZ(1.0f/fPrimDiv);
+		tempBoundsMax.multXYZ(1.0f/fPrimDiv);
+		
+		int iMin = max(tempBoundsMin[0],0.0f);
+		int jMin = max(tempBoundsMin[1],0.0f);
+		int kMin = max(tempBoundsMin[2],0.0f);
+		
+		int iMax = min(tempBoundsMax[0],volSizePrimMacro-1.0f);
+		int jMax = min(tempBoundsMax[1],volSizePrimMacro-1.0f);
+		int kMax = min(tempBoundsMax[2],volSizePrimMacro-1.0f);
+		
+		for (i = iMin; i <= iMax; i++) {
+			for (j = jMin; j <= jMax; j++) {
+				for (k = kMin; k <= kMax; k++) {
+					for (m = 0; m < primsPerMacro; m++) {
+						
+						ind = ((i + j*volSizePrimMacro + k*volSizePrimMacro*volSizePrimMacro)*primsPerMacro + m)*4;
+						
+						if (tboData[ind+3] == 0.0f) {
+							tboData[ind+0] = pos->getFX();
+							tboData[ind+1] = pos->getFY();
+							tboData[ind+2] = pos->getFZ();
+							tboData[ind+3] = tempId;
+							
+							break;
+						}
+						
+						
+					}
+				}
+			}
+		}
+		
+		
+		
+	}
+	
+	void updateTBOData(bool firstTime) {
+		int i;
+		
+		for (i = 0; i < floatsInPrimMacro/4; i++) {
+			tboData[i*4 + 0] = 0.0f;
+			tboData[i*4 + 1] = 0.0f;
+			tboData[i*4 + 2] = 0.0f;
+			tboData[i*4 + 3] = 0.0f;
+		}
+		getPrimTemplateString();
+		
+		for (i = 0; i < 1000; i++) {
+			tempVec1.setRandNoSeed();
+			tempVec1.multXYZ(volSizePrim);
+			addPrimObj(&tempVec1,iGenRand(1,3));
+		}
+		
+		if (firstTime) {
+			tboWrapper.init(tboData,floatsInPrimMacro*4);
+		}
+		else {
+			tboWrapper.update(tboData);
+		}
+		
+	}
+	
 	
 	// void orientRotation() {
 	// 	//testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,3.0f*M_PI/2.0f);
@@ -1716,6 +1897,238 @@ public:
 	}
 	
 	
+	
+	
+	
+	
+	void getPrimData(int n) {
+		
+		
+		/*
+		E_GP_VISMININPIXELST,
+		E_GP_VISMAXINPIXELST,
+		E_GP_BOUNDSMININPIXELST,
+		E_GP_BOUNDSMAXINPIXELST,
+		E_GP_CORNERDISINPIXELS,
+		E_GP_POWERVALS,
+		E_GP_POWERVALS2,
+		E_GP_THICKVALS,
+		E_GP_CENTERPOINT,
+		E_GP_MATPARAMS, // must be last
+		E_GP_LENGTH
+		*/
+		
+		
+		int i;
+		int j;
+		int k;
+		int c;
+		
+		int indSrc;
+		int indDest;
+		
+		int totSize = volSizePrim*volSizePrim*volSizePrim;
+		
+		int* fluidData = gameFluid->fluidData;
+		int* lastFluidData = gameFluid->lastFluidData;
+		int vspMin = gameFluid->vspMin;
+		int vspMax = gameFluid->vspMax;
+		int volSizePrimBuf = gameFluid->volSizePrimBuf;
+		int bufAmount = gameFluid->bufAmount;
+		
+		float UNIT_MAX = gameFluid->UNIT_MAX + 1;
+		
+		float tempf;
+		
+		int volOffsetZ = volSizePrimBuf*volSizePrimBuf;
+		
+		int curDat;
+		
+		switch (n) {
+			case E_PL_TERRAIN:
+				
+				for (i = vspMin; i < vspMax; i++) {
+					for (j = vspMin; j < vspMax; j++) {
+						for (k = vspMin; k < vspMax; k++) {
+							indSrc = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
+							indDest = ((i-bufAmount) + (j-bufAmount)*volSizePrim + (k-bufAmount)*volSizePrim*volSizePrim)*4;
+							
+							#ifdef PRIM_FLOAT_FORMAT
+								
+								for (c = 0; c < 4; c++) {
+									
+									
+									if (c == E_PTT_IDE)	{
+										curDat = lastFluidData[indSrc+E_PTT_WAT];
+									}
+									else {
+										curDat = fluidData[indSrc+c];
+									}
+									
+									tempf = (curDat+1)/UNIT_MAX;
+									
+									if (
+										(c == E_PTT_WAT) ||
+										(c == E_PTT_IDE)	
+									) {
+									
+										if (curDat > FLUID_UNIT_MIN) {
+											
+											
+											// // if it has water above or earth below, make sure it is full
+											// if (
+											// 	(fluidData[indSrc+E_PTT_TER-volOffsetZ] > FLUID_UNIT_MIN) ||
+											// 	(fluidData[indSrc+E_PTT_WAT+volOffsetZ] > FLUID_UNIT_MIN)
+											// ) {
+											// 	tempf += 1.0f;
+											// 	tempf = tempf/2.0f;
+											// }
+											
+											tempf += 2.0f;
+											tempf = tempf/3.0f;
+											
+										}
+									}
+									
+									volDataPrim[n][indDest+c] = tempf;
+									
+								}
+								
+							#else
+								
+								volDataPrim[n][indDest] = 
+									clampChar(fluidData[indSrc+0],0) |
+									clampChar(fluidData[indSrc+1],8) |
+									clampChar(fluidData[indSrc+2],16) |
+									clampChar(fluidData[indSrc+3],24);
+								
+							#endif	
+							
+						}
+					}
+				}
+				
+				
+			break;
+			
+			// case E_PL_PRIMIDS:
+				
+			// break;
+			
+		}
+		
+		
+		
+	}
+	
+	
+	void setupPrimTexture() {
+		int i;
+		int curFilter;
+		
+
+		for (i = 0; i < E_PL_LENGTH; i++) {
+			
+			if (i == 0) {
+				curFilter = GL_LINEAR;
+			}
+			else {
+				curFilter = GL_NEAREST;
+			}
+			
+			//curFilter = GL_NEAREST;
+			
+			#ifdef PRIM_FLOAT_FORMAT
+			volDataPrim[i] = new float[volSizePrim*volSizePrim*volSizePrim*4];
+			#else
+			volDataPrim[i] = new uint[volSizePrim*volSizePrim*volSizePrim];
+			#endif
+			
+			
+			glGenTextures(1, &(volIdPrim[i]));
+			
+			//cout << "vp " << volIdPrim[i] << "\n";
+			
+			glBindTexture(GL_TEXTURE_3D, volIdPrim[i]);
+			glTexImage3D(
+				GL_TEXTURE_3D,
+				0,
+				internalPrimFormat, //GL_RGBA, // GL_RGBA32F
+				volSizePrim,
+				volSizePrim,
+				volSizePrim,
+				0,
+				GL_RGBA,
+				precPrimFormat, // GL_UNSIGNED_BYTE, // GL_FLOAT
+				0
+			);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, curFilter);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, curFilter);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER); //GL_CLAMP_TO_EDGE
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
+			glBindTexture(GL_TEXTURE_3D, 0);
+			
+			
+		}
+	}
+	
+	
+	
+	void updateFluidDataFirstTime() {
+		gameFluid->updateFluidData(true);
+	}
+	void updateFluidData() {
+		gameFluid->updateFluidData(false);
+	}
+	
+	
+	void startFluidThread() {
+		fluidThread = std::thread(&Singleton::updateFluidData, this);
+	}
+	
+	void stopFluidThread() {
+		fluidThread.join();
+		copyPrimTexture();
+	}
+	
+	
+	void copyPrimTexture() {
+		
+		int i;
+		
+		for (i = 0; i < E_PL_LENGTH; i++) {
+			
+			getPrimData(i);
+			
+			glBindTexture(GL_TEXTURE_3D, volIdPrim[i]);
+			glTexSubImage3D(
+				GL_TEXTURE_3D,
+				0,
+
+				0,
+				0,
+				0,
+
+				volSizePrim,
+				volSizePrim,
+				volSizePrim,
+
+				GL_RGBA,
+				precPrimFormat, //GL_UNSIGNED_BYTE,
+
+				volDataPrim[i]
+			);
+			glBindTexture(GL_TEXTURE_3D, 0);
+		}
+		
+
+
+	}
+	
+	
+	
 	void prepSound(string soundName) {
 		if (soundMap.find( soundName ) == soundMap.end()) {
 			soundMap.insert( pair<string, GameSound>(soundName, GameSound()) );
@@ -1802,7 +2215,7 @@ public:
 		
 		matVolLock = true;
 		
-		JSONValue* jv = fetchJSONData("materials.js");
+		JSONValue* jv = fetchJSONData("materials.js", false);
 		JSONValue* curJV = NULL;
 		JSONValue* curK = NULL;
 		JSONValue* curJ = NULL;
@@ -2824,7 +3237,15 @@ PERFORM_DRAG_END:
 		
 				
 		if (comp->uid.compare("$options.sound.masterVolume") == 0) {
-			masterVolume = curValue*0.2; // ;
+			
+			
+			// if (RAY_MODE) {
+			// 	masterVolume = 0.0;
+			// }
+			// else {
+				masterVolume = curValue*0.2;
+			//}
+			
 		}
 		else if (comp->uid.compare("$options.sound.ambientVolume") == 0) {
 			ambientVolume = curValue;
@@ -2839,7 +3260,9 @@ PERFORM_DRAG_END:
 			fxVolume = curValue;
 		}
 		else if (comp->uid.compare("$options.graphics.clipDist") == 0) {
-			clipDist[1] = curValue*65536.0f;
+			
+			clipDist[1] = curValue*512.0f*((float)pixelsPerCell);
+			
 		}
 		else if (comp->uid.compare("$options.graphics.fov") == 0) {
 			FOV = mixf(25.0f,120.0f,curValue);
@@ -3397,7 +3820,7 @@ DISPATCH_EVENT_END:
 	void getMaterialString() {
 		string resString = "\n";
 		
-		JSONValue* jv = fetchJSONData("materials.js");
+		JSONValue* jv = fetchJSONData("materials.js", false);
 		
 		if (jv != NULL) {
 			JSONValue* jv2 = jv->Child("materials");
@@ -3425,12 +3848,86 @@ DISPATCH_EVENT_END:
 			
 		}
 		
+	}
+	
+	void getPrimTemplateString() {
+		
+		primTemplateStack.clear();
+		
+		JSONValue* jv = fetchJSONData("primTemplates.js",true);		
+		JSONValue* jv2 = jv->Child("primTemplates");
+		JSONValue* jv3 = NULL;
+		JSONValue* jv4 = NULL;
+		
+		int i;
+		int j;
+		int k;
+		
+		int numTemplates = jv2->CountChildren();
+		int numProps = 0;
+		int numFields = 0;
+		
+		int propCount = 0;
+		int maxProps = numTemplates*E_PRIMTEMP_LENGTH;
+		
+		float curNumber;
+		
+		string resString = "const int PRIMS_PER_MACRO = " + i__s(primsPerMacro) + ";\n";
+		resString.append("const float PRIM_DIV = " + i__s(primDiv) + ".0;\n");
+		resString.append("const vec4 primTemp[" + i__s(numTemplates*E_PRIMTEMP_LENGTH) + "] = vec4[](\n");
+		
+		for (i = 0; i < numTemplates; i++) {
+			jv3 = jv2->Child(i);
+			numProps = jv3->CountChildren();
+			if (numProps != E_PRIMTEMP_LENGTH) {
+				cout << "ERROR: invalid number of properties\n";
+			}
+			
+			for (j = 0; j < numProps; j++) {
+				jv4 = jv3->Child(j);
+				numFields = jv4->CountChildren();
+				if (numFields != 4) {
+					cout << "ERROR: invalid number of fields\n";
+				}
+				
+				primTemplateStack.push_back(FIVector4());
+				
+				resString.append("vec4(");
+				for (k = 0; k < numFields; k++) {
+					curNumber = jv4->Child(k)->number_value;
+					primTemplateStack.back().setIndex(k, curNumber);
+					
+					resString.append( f__s(curNumber) );
+					if (k < numFields-1) {
+						resString.append(",");
+					}
+				}
+				resString.append(")");
+				
+				
+				if (propCount < (maxProps-1) ) {
+					resString.append(",");
+				}
+				
+				resString.append("\n");
+				
+				propCount++;
+				
+			}
+			
+		}
 		
 		
+		resString.append(");\n");
+		
+		cout << resString << "\n";
+		
+		includeMap["primTemplates"] = resString;
 	}
 	
 	void refreshIncludeMap() {
 		getMaterialString();
+		getPrimTemplateString();
 	}
 	
 
@@ -3654,18 +4151,20 @@ DISPATCH_EVENT_END:
 		//sampleFBO(src, 0);
 		setShaderTexture(0, getFBOWrapper(src,num)->color_tex);
 		drawFSQuad();
-		unsampleFBO(src, 0);
+		setShaderTexture(0, 0);
 		unbindFBO();
 		unbindShader();
 	}
 
-	void copyFBO2(string src, string dest)
+	void copyFBO2(string src, string dest, int num1 = 0, int num2 = 1)
 	{
 		bindShader("CopyShader2");
 		bindFBO(dest);
-		sampleFBO(src, 0);
+		setShaderTexture(0, getFBOWrapper(src,num1)->color_tex);
+		setShaderTexture(1, getFBOWrapper(src,num2)->color_tex);
 		drawFSQuad();
-		unsampleFBO(src, 0);
+		setShaderTexture(1, 0);
+		setShaderTexture(0, 0);
 		unbindFBO();
 		unbindShader();
 	}
@@ -3845,6 +4344,20 @@ DISPATCH_EVENT_END:
 
 	}
 
+
+	void setShaderTBO(int multitexNumber, GLuint tbo_tex, GLuint tbo_buf)
+	{
+		if (shadersAreLoaded)
+		{
+			glActiveTexture(GL_TEXTURE0 + multitexNumber);
+			glBindTexture(GL_TEXTURE_2D, tbo_tex);
+			if (tbo_tex != 0) {
+				glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, tbo_buf); //GL_R32F
+			}
+			curShaderPtr->setShaderInt(shaderTextureIds[multitexNumber] , multitexNumber);
+		}
+	}
+
 	void setShaderTexture(int multitexNumber, uint texId)
 	{
 		if (shadersAreLoaded)
@@ -4005,7 +4518,7 @@ DISPATCH_EVENT_END:
 	}
 	float getSLInPixels()
 	{
-		return getSLNormalized()*worldSizeInPixels.getFZ() + 2.5f*pixelsPerCell;
+		return getSLNormalized()*worldSizeInPixels.getFZ();// + 2.5f*pixelsPerCell;
 	}
 
 	float getHeightAtPixelPos(float x, float y, bool dd = false)
@@ -4119,7 +4632,7 @@ DISPATCH_EVENT_END:
 				yrp = yrotrad + dynObjects[i]->posTrackball.getFY()/200.0f;
 				
 				angleToVec(&tempVec1,xrp,yrp);
-				tempVec1.multXYZ(dynObjects[i]->posTrackball.getFZ()*10.0f + 2.0f*pixelsPerCell);
+				tempVec1.multXYZ(dynObjects[i]->posTrackball.getFZ()*0.5f*pixelsPerCell + 2.0f*pixelsPerCell);
 				
 				
 				dynObjects[i]->pos.copyFrom(cameraGetPos());
@@ -4295,6 +4808,7 @@ DISPATCH_EVENT_END:
 
 	void moveObject(float dx, float dy)
 	{
+		
 
 		int i;
 		int j;
@@ -4304,6 +4818,9 @@ DISPATCH_EVENT_END:
 		
 		GameOrgNode* curNode;
 
+
+		float fPixelsPerCell = (float)pixelsPerCell;
+		float deltaMod = fPixelsPerCell/32.0;
 		
 		modXYZ.setFXYZ(0.0f,0.0f,0.0f);
 
@@ -4404,7 +4921,7 @@ DISPATCH_EVENT_END:
 						
 						if (dynObjects[activeObject]->moveType == E_MT_TRACKBALL) {
 							if (lbDown&&rbDown) {
-								dynObjects[activeObject]->posTrackball.addXYZ(0.0f,0.0f,dy);
+								dynObjects[activeObject]->posTrackball.addXYZ(0.0f,0.0f,dy*deltaMod);
 							}
 							else {
 								dynObjects[activeObject]->posTrackball.addXYZ(dx,dy,0.0f);
@@ -4622,6 +5139,7 @@ DISPATCH_EVENT_END:
 	
 	void processInput(unsigned char key, bool keyDown, int x, int y) {
 		
+		int i;
 		
 		
 		if (inputOn) {
@@ -4821,20 +5339,32 @@ DISPATCH_EVENT_END:
 					break;
 					
 				case 'q':
-				
-					subjectZoom = 1.0f;
-				
-					if (selObjInd >= E_OBJ_LENGTH) {
-						if (selObjInd == actObjInd) {
-							setCurrentActor(NULL);
-						}
-						else {
-							setCurrentActor(&(gw->gameObjects[selObjInd]));
-						}
+					
+					if (RAY_MODE) {
+						// if (earthMod == E_PTT_TER) {
+						// 	earthMod = E_PTT_WAT;
+						// }
+						// else {
+						// 	earthMod = E_PTT_TER;
+						// }
 					}
 					else {
-						setCurrentActor(NULL);
+						subjectZoom = 1.0f;
+						
+						if (selObjInd >= E_OBJ_LENGTH) {
+							if (selObjInd == actObjInd) {
+								setCurrentActor(NULL);
+							}
+							else {
+								setCurrentActor(&(gw->gameObjects[selObjInd]));
+							}
+						}
+						else {
+							setCurrentActor(NULL);
+						}
 					}
+					
+					
 					
 					break;
 
@@ -4928,10 +5458,28 @@ DISPATCH_EVENT_END:
 				
 					mouseState++;
 
-					if (mouseState == E_MOUSE_STATE_LENGTH)
-					{
-						mouseState = 0;
+					if (RAY_MODE) {
+						if (mouseState == E_MOUSE_STATE_PICKING) {
+							
+							mouseState = E_MOUSE_STATE_BRUSH;
+							
+							if (earthMod == E_PTT_WAT) {
+								mouseState = 0;
+								earthMod = E_PTT_TER;
+							}
+							else {
+								earthMod = E_PTT_WAT;
+							}
+							
+						}
 					}
+					else {
+						if (mouseState == E_MOUSE_STATE_LENGTH) {
+							mouseState = 0;
+						}
+					}
+
+					
 					
 					cout << mouseStateStrings[mouseState] << "\n";
 
@@ -4971,8 +5519,15 @@ DISPATCH_EVENT_END:
 
 				case 'h':
 					
+					updateTBOData(false);
+					
+					
+					
 					break;
-
+					
+				case 'y':
+					
+				break;
 				case 't':
 					testOn = !testOn;
 					
@@ -5013,12 +5568,24 @@ DISPATCH_EVENT_END:
 
 				case ' ':
 				
-					if (mouseState == E_MOUSE_STATE_PICKING) {
-						selectedEnts.cycleEnts();
+					if (RAY_MODE) {
+						timeMod = !timeMod;
+						//copyPrimTexture();
+						
+						
 					}
 					else {
-						launchBullet();
+						if (mouseState == E_MOUSE_STATE_PICKING) {
+							selectedEnts.cycleEnts();
+						}
+						else {
+							launchBullet();
+						}
 					}
+				
+					
+				
+					
 					
 				break;
 
@@ -5044,8 +5611,13 @@ DISPATCH_EVENT_END:
 
 				case 'm':
 
+					medianCount++;
 					
-					runReport();
+					if (medianCount == 4) {
+						medianCount = 0;
+					}
+					
+					//runReport();
 					
 
 					break;
@@ -5231,6 +5803,13 @@ DISPATCH_EVENT_END:
 			ddVis = ddMenu->visible;
 		}
 		
+		float fx = ((float)x)*M_PI*2.0f / bufferDim[0];
+		float fy = ((float)y)*M_PI / bufferDim[1];
+		
+		if (bCtrl) {
+			angleToVec(&lightVec, fx*2.0, fy*2.0);
+		}
+		
 		
 		// if (mbDown) {
 		// 	getMarkerPos(x, y);
@@ -5240,18 +5819,41 @@ DISPATCH_EVENT_END:
 		if (abDown)
 		{
 			
-			if (bCtrl&&(mouseState == E_MOUSE_STATE_BRUSH)) {
+			if (bCtrl&&(mouseState == E_MOUSE_STATE_BRUSH)) { //
 				
 				getPixData(&mouseMovePD, x, y, false, false);
 				
-				if (lbDown) {
-					gw->modifyUnit(&mouseMovePD, E_BRUSH_ADD);
+				if (RAY_MODE) {
+					
+					stopFluidThread();
+					
+					
+					if (lbDown) {
+						gameFluid->modifyUnit(&mouseMovePD, E_BRUSH_ADD, earthMod, curBrushRad);
+					}
+					else if (rbDown) {
+						gameFluid->modifyUnit(&mouseMovePD, E_BRUSH_SUB, earthMod, curBrushRad);
+					}
+					else if (mbDown) {
+						gameFluid->modifyUnit(&mouseMovePD, E_BRUSH_REF, earthMod, curBrushRad);
+					}
+					
+					startFluidThread();
+					
+					
+					//copyPrimTexture();
+					
 				}
-				else if (rbDown) {
-					gw->modifyUnit(&mouseMovePD, E_BRUSH_SUB);
-				}
-				else if (mbDown) {
-					gw->modifyUnit(&mouseMovePD, E_BRUSH_REF);
+				else {
+					if (lbDown) {
+						gw->modifyUnit(&mouseMovePD, E_BRUSH_ADD);
+					}
+					else if (rbDown) {
+						gw->modifyUnit(&mouseMovePD, E_BRUSH_SUB);
+					}
+					else if (mbDown) {
+						gw->modifyUnit(&mouseMovePD, E_BRUSH_REF);
+					}
 				}
 				
 				forceGetPD = true;
@@ -5483,7 +6085,7 @@ DISPATCH_EVENT_END:
 				isPressingMove = true;
 			}
 
-			if (keysPressed[keyMap[KEYMAP_FORWARD]]) {
+			if (keysPressed[keyMap[KEYMAP_FORWARD]]) { // || mbDown
 
 				xmod += float(sin(xrotrad));
 				ymod += float(cos(xrotrad));
@@ -5539,9 +6141,14 @@ DISPATCH_EVENT_END:
 			
 			
 			
-			tempMoveSpeed = curMoveSpeed*0.001;
+			
+			tempMoveSpeed = curMoveSpeed;
+			if (RAY_MODE) {
+				tempMoveSpeed *= 0.5;
+				//tempMoveSpeed *= 0.001;
+			}
 			if (bShift) {
-				tempMoveSpeed *= 0.25;
+				tempMoveSpeed *= 0.125;
 			}
 			
 			modXYZ.setFXYZ(
@@ -6288,15 +6895,53 @@ DISPATCH_EVENT_END:
 				switch (mouseState) {
 					case E_MOUSE_STATE_BRUSH:
 					
-						if (lbClicked) {
-							gw->modifyUnit(&mouseUpPD, E_BRUSH_ADD);
+						// if (lbClicked) {
+						// 	gw->modifyUnit(&mouseUpPD, E_BRUSH_ADD);
+						// }
+						// else if (rbClicked) {
+						// 	gw->modifyUnit(&mouseUpPD, E_BRUSH_SUB);
+						// }
+						// else if (mbClicked) {
+						// 	gw->modifyUnit(&mouseUpPD, E_BRUSH_REF);
+						// }
+						
+						
+						
+						
+						if (RAY_MODE) {
+							stopFluidThread();
+							
+							if (lbClicked) {
+								gameFluid->modifyUnit(&mouseUpPD, E_BRUSH_ADD, earthMod, curBrushRad);
+							}
+							else if (rbClicked) {
+								gameFluid->modifyUnit(&mouseUpPD, E_BRUSH_SUB, earthMod, curBrushRad);
+							}
+							else if (mbClicked) {
+								gameFluid->modifyUnit(&mouseUpPD, E_BRUSH_REF, earthMod, curBrushRad);
+							}
+							
+							startFluidThread();
+							
+							//copyPrimTexture();
+							
 						}
-						else if (rbClicked) {
-							gw->modifyUnit(&mouseUpPD, E_BRUSH_SUB);
+						else {
+							if (lbClicked) {
+								gw->modifyUnit(&mouseUpPD, E_BRUSH_ADD);
+							}
+							else if (rbClicked) {
+								gw->modifyUnit(&mouseUpPD, E_BRUSH_SUB);
+							}
+							else if (mbClicked) {
+								gw->modifyUnit(&mouseUpPD, E_BRUSH_REF);
+							}
 						}
-						else if (mbClicked) {
-							gw->modifyUnit(&mouseUpPD, E_BRUSH_REF);
-						}
+						
+						
+						
+						
+						
 						
 						forceGetPD = true;
 
@@ -6518,10 +7163,10 @@ DISPATCH_EVENT_END:
 
 	void cleanJVPointer(JSONValue** jv) {
 		
-		if (*jv != NULL)
-		{
+		if (*jv != NULL) {
 			delete *jv;
 		}
+		
 		*jv = NULL;
 		
 	}
@@ -6596,7 +7241,7 @@ DISPATCH_EVENT_END:
 	
 	
 
-	JSONValue* fetchJSONData(string dataFile, JSONValue* params = NULL) {
+	JSONValue* fetchJSONData(string dataFile, bool doClean, JSONValue* params = NULL) {
 		
 		
 		bool doLoad = false;
@@ -6608,6 +7253,12 @@ DISPATCH_EVENT_END:
 		else {
 			if (externalJSON[dataFile].jv == NULL) {
 				doLoad = true;
+			}
+			else {
+				if (doClean) {
+					cleanJVPointer( &(externalJSON[dataFile].jv) );
+					doLoad = true;
+				}
 			}
 		}
 			
@@ -7342,7 +7993,7 @@ DISPATCH_EVENT_END:
 	void frameUpdate() {
 		
 		
-		
+		int currentTickMod = 0;
 		
 		
 		if (firstRun)
@@ -7437,6 +8088,15 @@ DISPATCH_EVENT_END:
 			if (mainGUI != NULL) {
 				if (mainGUI->isReady) {
 					currentTick++;
+					currentTickMod = currentTick%tickSpace;
+					
+					
+					if (timeMod) {
+						waterLerp = ((float)currentTickMod)/((float)tickSpace);
+					}
+					else {
+						waterLerp = 0.0f;
+					}
 					
 					// if (currentTick < 2) {
 					// 	gw->update();
@@ -7447,11 +8107,44 @@ DISPATCH_EVENT_END:
 					}
 					
 					
-					perspectiveOn = true;
-					setMatrices(bufferDim.getIX(), bufferDim.getIY());
-					perspectiveOn = false;
+					if (RAY_MODE) {
+						
+						if (timeMod) {
+							if (currentTickMod == 0) {
+								
+								if (firstFluidThread) {
+									startFluidThread();
+									firstFluidThread = false;
+								}
+								else {
+									stopFluidThread();
+									startFluidThread();
+								}
+								
+								
+							}
+						}
+						
+						
+					}
 					
-					gw->drawPrim();
+					
+					
+					
+					
+					// if (RAY_MODE) {
+					// 	perspectiveOn = true;
+					// 	setMatrices(bufferDim.getIX(), bufferDim.getIY());
+					// 	perspectiveOn = false;
+					// }
+					
+					
+					if ((currentTick > 2)&&allInit) {
+						//gw->drawPrim();
+						gw->update();
+					}
+					
+					
 					
 					
 					
@@ -7483,8 +8176,15 @@ DISPATCH_EVENT_END:
 	{
 		
 		bool noTravel = false;
-
+		
+		
+		
 		curTime = myTimer.getElapsedTimeInMilliSec();
+		
+		if (timeMod) {
+			pauseTime = curTime;
+		}
+		
 
 		float elTime = curTime - lastTime;
 		

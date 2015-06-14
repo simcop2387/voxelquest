@@ -14,6 +14,8 @@ uniform vec2 bufferDim;
 
 uniform bool testOn;
 
+
+uniform vec3 lookAtVec;
 uniform vec3 cameraPos;
 uniform float lightCount;
 uniform vec4 lightArr[128];
@@ -95,6 +97,9 @@ vec3 getGlobLightCol()
 void main()
 {
 	
+
+	float specularSolid = 0.0;
+	float specularWater = 0.0;
 
 	vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
 	vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
@@ -243,7 +248,7 @@ void main()
 
 			curMin = minRad[j];
 			curMax = maxRad[j];
-			curOff = offV[j]*pixelsPerCell;
+			curOff = offV[j]*pixelsPerCell/128.0; // todo: change this based on RAY_MODE
 
 			for (i = 0; i < iNumSteps; i++)
 			{
@@ -353,8 +358,27 @@ void main()
 				
 
 
-				frontLight = clamp(dot(myVec, lightVec), 0.0, 1.0);
-				frontLightWater = clamp(dot(waterVec, lightVec), 0.0, 1.0);
+				frontLight = clamp(
+					dot(myVec, lightVec),
+					0.0,
+					1.0
+				);
+				
+				frontLightWater = clamp(
+					dot(waterVec, lightVec),
+					0.0,
+					1.0
+				);
+				
+				specularSolid += pow(clamp( dot(
+				 	normalize(reflect( lookAtVec , myVec )),
+				 	lightVec
+				 ), 0.0, 1.0 ),8.0) * resComp * lightDis;
+				specularWater += pow(clamp( dot(
+				 	normalize(reflect( lookAtVec , waterVec )),
+				 	lightVec
+				 ), 0.0, 1.0 ),8.0) * lightDis;
+				
 				
 				backLight = clamp(dot(myVec, -lightVec), 0.0, 1.0);
 				
@@ -370,9 +394,10 @@ void main()
 				totLightColor += frontLight * resComp * curLightColor * lightDis;
 				totLightColor += vec3(0.0, 1.0, 1.0) * colAmount * (bottomLight) * 0.5 * lightDis;
 				totLightColor += vec3(0.9, 0.5, 0.2) * colAmount * (timeOfDay * 0.5 + 0.5) * behindLight * 0.5 * lightDis * (1.0 - frontLight);
-
-
+				
 				totLightColorWater += frontLightWater * curLightColor * lightDisWater;
+				
+				
 
 				resCompTot += (1.0-resComp) * lightDis;
 				//frontLightTot += frontLight * lightDis;
@@ -389,5 +414,7 @@ void main()
 
 	gl_FragData[0] = resColor;
 	gl_FragData[1] = vec4(totLightColorWater,newAO);
+	gl_FragData[2] = vec4(specularSolid,specularWater,0.0,0.0);
+	gl_FragData[3] = vec4(0.0);
 
 }
