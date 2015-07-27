@@ -248,7 +248,7 @@ void main()
 
 			curMin = minRad[j];
 			curMax = maxRad[j];
-			curOff = offV[j]*pixelsPerCell/128.0; // todo: change this based on RAY_MODE
+			curOff = offV[j]*pixelsPerCell/128.0; // todo: change this based on RAY MODE
 
 			for (i = 0; i < iNumSteps; i++)
 			{
@@ -293,7 +293,7 @@ void main()
 		{
 			baseInd = k * vecsPerLight;
 			lightPosWS = lightArr[baseInd + 0];
-			lightRad = lightArr[baseInd + 1].w;
+			lightRad = 4000.0;//lightArr[baseInd + 1].w;
 			
 
 			lightDis = 1.0 - clamp(distance(worldPosition.xyz, lightPosWS.xyz) / lightRad, 0.0, 1.0);

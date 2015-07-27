@@ -67,7 +67,15 @@ float mixb(float v1, float v2, bool lerpVal) {
 }
 
 
-
+float roundf(float val) {
+	//return floor(val);
+	if (val < 0.0) {
+		return -floor(abs(val));
+	}
+	else {
+		return floor(val);
+	}
+}
 
 float clampf(float val, float min, float max) {
 	if (val > max) {
@@ -387,7 +395,9 @@ public:
 		iv4.z = (int)fv4.z;
 	}
 	
-	void setRand(FIVector4 *seedPos) {
+	void setRand(FIVector4 *seedPos, float addVal, float multVal) {
+
+		// default output is -1 to 1
 
 		FIVector4 r0;
 		FIVector4 r1;
@@ -422,6 +432,15 @@ public:
 		fv4.x = modf(sin(l0.dot(&r0)) * 43758.8563f, &intPart);
 		fv4.y = modf(sin(l1.dot(&r1)) * 24634.6345f, &intPart);
 		fv4.z = modf(sin(l2.dot(&r2)) * 56445.2345f, &intPart);
+		
+		
+		fv4.x += addVal;
+		fv4.y += addVal;
+		fv4.z += addVal;
+		
+		fv4.x *= multVal;
+		fv4.y *= multVal;
+		fv4.z *= multVal;
 
 		iv4.x = (int)fv4.x;
 		iv4.y = (int)fv4.y;
@@ -617,6 +636,46 @@ public:
 
 	}
 
+	void powXYZ(float p1, float p2, float p3) {
+		fv4.x = pow(fv4.x,p1);
+		fv4.y = pow(fv4.y,p2);
+		fv4.z = pow(fv4.z,p3);
+
+		iv4.x = (int)fv4.x;
+		iv4.y = (int)fv4.y;
+		iv4.z = (int)fv4.z;
+	}
+
+	void absXYZ() {
+		fv4.x = abs(fv4.x);
+		fv4.y = abs(fv4.y);
+		fv4.z = abs(fv4.z);
+
+		iv4.x = (int)fv4.x;
+		iv4.y = (int)fv4.y;
+		iv4.z = (int)fv4.z;
+	}
+	
+	void averageXYZ(FIVector4 *v1, FIVector4 *v2) {
+		fv4.x = (v1->getFX() + v2->getFX())*0.5f;
+		fv4.y = (v1->getFY() + v2->getFY())*0.5f;
+		fv4.z = (v1->getFZ() + v2->getFZ())*0.5f;
+
+		iv4.x = (int)fv4.x;
+		iv4.y = (int)fv4.y;
+		iv4.z = (int)fv4.z;
+	}
+	
+	void averageNegXYZ(FIVector4 *v1, FIVector4 *v2) {
+		fv4.x = (v1->getFX() - v2->getFX())*0.5f;
+		fv4.y = (v1->getFY() - v2->getFY())*0.5f;
+		fv4.z = (v1->getFZ() - v2->getFZ())*0.5f;
+
+		iv4.x = (int)fv4.x;
+		iv4.y = (int)fv4.y;
+		iv4.z = (int)fv4.z;
+	}
+
 
 	void minXYZ(FIVector4 *v1, FIVector4 *v2) {
 		fv4.x = std::min(v1->getFX(), v2->getFX());
@@ -632,6 +691,31 @@ public:
 		fv4.x = std::max(v1->getFX(), v2->getFX());
 		fv4.y = std::max(v1->getFY(), v2->getFY());
 		fv4.z = std::max(v1->getFZ(), v2->getFZ());
+
+		iv4.x = (int)fv4.x;
+		iv4.y = (int)fv4.y;
+		iv4.z = (int)fv4.z;
+	}
+
+	void clampXYZS(float minV, float maxV) {
+		if (fv4.x < minV) {
+			fv4.x = minV;
+		}
+		if (fv4.y < minV) {
+			fv4.y = minV;
+		}
+		if (fv4.z < minV) {
+			fv4.z = minV;
+		}
+		if (fv4.x > maxV) {
+			fv4.x = maxV;
+		}
+		if (fv4.y > maxV) {
+			fv4.y = maxV;
+		}
+		if (fv4.z > maxV) {
+			fv4.z = maxV;
+		}
 
 		iv4.x = (int)fv4.x;
 		iv4.y = (int)fv4.y;
@@ -1030,6 +1114,9 @@ public:
 	float length() {
 		return sqrt(fv4.x * fv4.x + fv4.y * fv4.y + fv4.z * fv4.z);
 	}
+	float lengthXY() {
+		return sqrt(fv4.x * fv4.x + fv4.y * fv4.y);
+	}
 
 	float manhattanDis(FIVector4 *otherVec) {
 
@@ -1192,6 +1279,13 @@ struct ModUnitStruct {
 	int modType;
 	int radius;
 };
+
+
+
+float getRandSeededPos(float xv, float yv, float zv) {
+	float intPart;		
+	return abs ( modf(sin(xv*433.2 + yv*522.9 + zv*839.4) * 43758.8563f, &intPart) );
+}
 
 
 float getRandSeeded(FIVector4 *seedPos, FIVector4 *seedVals) {
@@ -1564,6 +1658,7 @@ public:
 	bool isFalling;
 	bool isJumping;
 	bool isOpen;
+	bool inWater;
 	bool isEquipped;
 	
 	float bounciness;
@@ -1714,6 +1809,7 @@ public:
 		isFalling = false;
 		isJumping = false;
 		isBullet = false;
+		inWater = false;
 		bounciness = 0.0f;
 		friction = 1.0f;
 		isOpen = false;
@@ -1721,6 +1817,7 @@ public:
 		parentUID = _parentUID;
 		uid = _uid;
 		pixelsPerCell = _pixelsPerCell;
+		
 		
 		posOffsetInPixels.setFXYZ(0.0f,0.0f,0.0f);
 		vel.setFXYZ(0.0f,0.0f,0.0f);

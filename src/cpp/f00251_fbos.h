@@ -974,7 +974,7 @@ public:
 		height = _height;
 		width = _width;
 		
-		cout << width << "," << height <<"\n";
+		// cout << width << "," << height <<"\n";
 		
 		bytesPerChannel = _bytesPerChannel;
 

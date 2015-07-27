@@ -5,6 +5,9 @@
 #define LZZ_INLINE inline
 GameFluid::GameFluid ()
                     {
+		
+		hasRead = false;
+		
 		UNIT_MIN = FLUID_UNIT_MIN;
 		UNIT_MAX = FLUID_UNIT_MAX;
 		
@@ -35,11 +38,137 @@ void GameFluid::init (Singleton * _singleton)
 		vspMax = volSizePrimBuf-bufAmount;
 		
 		fluidData = new int[volSizePrimBuf*volSizePrimBuf*volSizePrimBuf*4];
-		lastFluidData = new int[volSizePrimBuf*volSizePrimBuf*volSizePrimBuf*4];
+		extraData = new int[volSizePrimBuf*volSizePrimBuf*volSizePrimBuf*4];
+		
+		totSize = volSizePrimBuf*volSizePrimBuf*volSizePrimBuf;
 		
 	}
-void GameFluid::updateFluidData (bool firstTime)
-                                             {
+void GameFluid::writeFluidData ()
+                              {
+		int i;
+		int j;
+		int k;
+		
+		float fi;
+		float fj;
+		float fk;
+		
+		int ind;
+		
+		
+		
+		if (hasRead) {
+			
+			
+			for (k = vspMin; k < vspMax; k++) {
+				fk = k + (singleton->volMinInPixels[2]);
+				for (j = vspMin; j < vspMax; j++) {
+					fj = j + (singleton->volMinInPixels[1]);
+					for (i = vspMin; i < vspMax; i++) {
+						fi = i + (singleton->volMinInPixels[0]);
+						
+						ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
+						//indSrc = ((i-bufAmount) + (j-bufAmount)*volSizePrim + (k-bufAmount)*volSizePrim*volSizePrim)*4;
+												
+						singleton->gw->setCellAtCoords(
+							(i-bufAmount)+singleton->volMinInPixels.getIX(),
+							(j-bufAmount)+singleton->volMinInPixels.getIY(),
+							(k-bufAmount)+singleton->volMinInPixels.getIZ(),
+							ind,
+							fluidData,
+							extraData
+							
+							// fluidData[ind+0],
+							// fluidData[ind+1],
+							// fluidData[ind+2],//lastFluidData[ind+1],
+							// fluidData[ind+3]
+						);
+						
+						
+					}
+					
+					
+				}	
+			}
+			
+			
+		}
+	}
+void GameFluid::readFluidData ()
+                             {
+		hasRead = true;
+		
+		
+		int i;
+		int j;
+		int k;
+		int q;
+		
+		float fi;
+		float fj;
+		float fk;
+		
+		int ind;
+		int ind2;
+		
+		
+		for (i = 0; i < totSize; i++) {
+			ind = i*4;
+			
+			for (q = 0; q < 4; q++) {
+				fluidData[ind+q] = UNIT_MIN;
+				extraData[ind+q] = UNIT_MIN;
+			}
+			
+			fluidData[ind+E_PTT_TER] = UNIT_MAX;
+			
+		}
+		
+		
+		for (k = vspMin; k < vspMax; k++) {
+			fk = k + (singleton->volMinInPixels[2]);
+			for (j = vspMin; j < vspMax; j++) {
+				fj = j + (singleton->volMinInPixels[1]);
+				for (i = vspMin; i < vspMax; i++) {
+					fi = i + (singleton->volMinInPixels[0]);
+					
+					ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
+					//indSrc = ((i-bufAmount) + (j-bufAmount)*volSizePrim + (k-bufAmount)*volSizePrim*volSizePrim)*4;
+					
+					singleton->gw->getCellAtCoords(
+						(i-bufAmount)+singleton->volMinInPixels.getIX(),
+						(j-bufAmount)+singleton->volMinInPixels.getIY(),
+						(k-bufAmount)+singleton->volMinInPixels.getIZ()
+					);
+					
+					for (q = 0; q < 4; q++) {
+						ind2 = ind+q;
+						fluidData[ind2] = singleton->gw->tempCellData[q];
+						extraData[ind2] = singleton->gw->tempCellData2[q];
+					}
+					//lastFluidData[ind+E_PTT_WAT] = extraData[ind+E_PTT_IDE];
+					
+				}
+				
+				
+			}
+		}
+		
+	}
+void GameFluid::applyMods ()
+                         {
+		while (modStack.size() > 0) {
+			applyUnitModification(
+				&(modStack.back().basePos),
+				modStack.back().brushAction,
+				modStack.back().modType,
+				modStack.back().radius
+			);
+			modStack.pop_back();
+		}
+	}
+void GameFluid::updateFluidData ()
+                               {
 		
 		int i;
 		int j;
@@ -66,7 +195,7 @@ void GameFluid::updateFluidData (bool firstTime)
 		
 		int totWat;
 		
-		int totSize = volSizePrimBuf*volSizePrimBuf*volSizePrimBuf;
+		float fVSP = volSizePrimBuf;
 		
 		bool doProc;
 		
@@ -81,11 +210,13 @@ void GameFluid::updateFluidData (bool firstTime)
 		int curId;
 		int tempi;
 		
+		int* bldVal;
 		int* terVal;
 		int* watVal;
 		int* watVal2;
 		int* watVal3;
 		int* terVal2;
+		int* bldVal2;
 		int* ideVal;
 		int* edgVal;
 		
@@ -98,8 +229,8 @@ void GameFluid::updateFluidData (bool firstTime)
 		
 		bool bTouchesAir;
 		
-		float fSimp[4];
-		int iSimp[4];
+		// float fSimp[4];
+		// int iSimp[4];
 		
 		float disFromTop;
 		float disFromBot;
@@ -107,6 +238,8 @@ void GameFluid::updateFluidData (bool firstTime)
 		float minZ;
 		
 		float maxDif = 1.0f/4.0f;// /8.0f;
+		
+		float zv;
 		
 		bool isAir;
 		bool isEmptyWater;
@@ -118,72 +251,11 @@ void GameFluid::updateFluidData (bool firstTime)
 		int minV1 = min( ((curTick+1)*totSize)/maxTicks, totSize-1 );
 		
 		
-		if (firstTime) {
-			for (i = 0; i < 4; i++) {
-				fSimp[i] = 0.0f;
-			}
+		if (hasRead) {
 			
-			for (i = 0; i < totSize; i++) {
-				ind = i*4;
-				fluidData[ind+E_PTT_TER] = UNIT_MAX;
-				fluidData[ind+E_PTT_WAT] = UNIT_MIN;
-			}
-			
-			
-			for (k = vspMin; k < vspMax; k++) {
-				fk = k;
-				for (j = vspMin; j < vspMax; j++) {
-					fj = j;
-					for (i = vspMin; i < vspMax; i++) {
-						fi = i;
-				
-						
-						fSimp[0] = clampfZO(simplexScaledNoise(
-							4.0f, //octaves
-							0.5f, //persistence (amount added in each successive generation)
-							1.0f/16.0f, //scale (frequency)
-							0.0f, // lo bound
-							1.0f, // hi bound
-							fi,
-							fj,
-							fk
-						));
-						
-						fSimp[1] = clampfZO(simplexScaledNoise(
-							4.0f, //octaves
-							0.5f, //persistence (amount added in each successive generation)
-							1.0f/16.0f, //scale (frequency)
-							0.0f, // lo bound
-							1.0f, // hi bound
-							fi+124.0f,
-							fj+23.0f,
-							fk+53.0f
-						));
-						
-						if (fSimp[0] > 0.5) {
-							iSimp[0] = UNIT_MAX;
-						}
-						else {
-							iSimp[0] = UNIT_MIN;
-						}
-						
-						if (fSimp[1] > 0.75) {
-							iSimp[1] = UNIT_MAX;
-						}
-						else {
-							iSimp[1] = UNIT_MIN;
-						}
-						
-						ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
-						fluidData[ind+0] = iSimp[0];
-						fluidData[ind+1] = iSimp[1];
-						fluidData[ind+2] = 0;
-						fluidData[ind+3] = 0;
-						
-						
-					}	
-				}
-			}
+		}
+		else {
+			return;
 		}
 		
 		
@@ -191,9 +263,10 @@ void GameFluid::updateFluidData (bool firstTime)
 			// clear water ids and edges
 			for (i = 0; i < totSize; i++) {
 				ind = i;
-				fluidData[ind*4+E_PTT_IDE] = 0;
-				fluidData[ind*4+E_PTT_STB] = 0;
-				lastFluidData[ind*4+E_PTT_WAT] = fluidData[ind*4+E_PTT_WAT];
+				extraData[ind*4+E_PTT_IDE] = 0;
+				extraData[ind*4+E_PTT_STB] = 0;
+				fluidData[ind*4+E_PTT_LST] = fluidData[ind*4+E_PTT_WAT];
+				//lastFluidData[ind*4+E_PTT_WAT] = fluidData[ind*4+E_PTT_WAT];
 			}
 			
 			for (i = 0; i < fsVec.size(); i++) {
@@ -208,15 +281,7 @@ void GameFluid::updateFluidData (bool firstTime)
 			// fsPlaneVec.clear();
 			
 			
-			while (modStack.size() > 0) {
-				applyUnitModification(
-					&(modStack.back().basePos),
-					modStack.back().brushAction,
-					modStack.back().modType,
-					modStack.back().radius
-				);
-				modStack.pop_back();
-			}
+			
 		//}
 		
 		
@@ -230,7 +295,7 @@ void GameFluid::updateFluidData (bool firstTime)
 			
 			
 			watVal = &(fluidData[ind*4+E_PTT_WAT]);
-			ideVal = &(fluidData[ind*4+E_PTT_STB]);
+			ideVal = &(extraData[ind*4+E_PTT_STB]);
 			
 			if (
 				(*watVal >= 0) &&
@@ -251,7 +316,7 @@ void GameFluid::updateFluidData (bool firstTime)
 			ind = i;
 			
 			watVal = &(fluidData[ind*4+E_PTT_WAT]);
-			ideVal = &(fluidData[ind*4+E_PTT_IDE]);
+			ideVal = &(extraData[ind*4+E_PTT_IDE]);
 			
 			if (
 				(*watVal >= 0) &&
@@ -290,12 +355,13 @@ void GameFluid::updateFluidData (bool firstTime)
 				#endif
 				
 				
-				
+				bldVal = &(extraData[ind*4+E_PTT_BLD]);
 				terVal = &(fluidData[ind*4+E_PTT_TER]);
 				watVal = &(fluidData[ind*4+E_PTT_WAT]);
 				
 				isAir = 
 					(*watVal == UNIT_MIN) &&
+					(*bldVal == UNIT_MIN) &&
 					(*terVal == UNIT_MIN);
 				
 				isEmptyWater = (*watVal == 0);
@@ -326,7 +392,6 @@ void GameFluid::updateFluidData (bool firstTime)
 								testJ*volSizePrimBuf +
 								testK*volSizePrimBuf*volSizePrimBuf;
 							
-							//terVal2 = &(fluidData[testInd2*4+E_PTT_TER]);
 							watVal3 = &(fluidData[testInd2*4+E_PTT_WAT]);
 							
 							// has (partially) full water cell to side
@@ -335,7 +400,8 @@ void GameFluid::updateFluidData (bool firstTime)
 								// if unit below that one is earth
 								testInd3 = testInd2 - volSizePrimBuf*volSizePrimBuf;
 								if (
-									(fluidData[testInd3*4+E_PTT_TER] > UNIT_MIN)
+									(fluidData[testInd3*4+E_PTT_TER] > UNIT_MIN) ||
+									(extraData[testInd3*4+E_PTT_BLD] > UNIT_MIN)
 									// || (fluidData[testInd3*4+E_PTT_WAT] == UNIT_MIN)
 								) {
 									fsVec[n].idealCellIds.push_back(ind);
@@ -407,7 +473,7 @@ void GameFluid::updateFluidData (bool firstTime)
 				
 				//terVal = &(fluidData[ind*4+E_PTT_TER]);
 				watVal = &(fluidData[ind*4+E_PTT_WAT]);
-				//ideVal = &(fluidData[ind*4+E_PTT_IDE]);
+				//ideVal = &(extraData[ind*4+E_PTT_IDE]);
 				
 				totWat += max(*watVal,0);
 				
@@ -415,12 +481,14 @@ void GameFluid::updateFluidData (bool firstTime)
 				testInd = ind + (volSizePrimBuf*volSizePrimBuf);
 				watVal2 = &(fluidData[testInd*4+E_PTT_WAT]);
 				terVal2 = &(fluidData[testInd*4+E_PTT_TER]);
+				bldVal2 = &(extraData[testInd*4+E_PTT_BLD]);
 				
 				if (
 					(*watVal > 0) &&
 					(
 						(*watVal2 <= 0) ||
-						(*terVal2 != UNIT_MIN)
+						(*terVal2 != UNIT_MIN) ||
+						(*bldVal2 != UNIT_MIN)
 					)
 				) {
 					curCollectedWater = 
@@ -622,6 +690,8 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 		int ind;
 		int testInd;
 		int testInd2;
+		int* bldVal;
+		int* bldVal2;
 		int* terVal;
 		int* terVal2;
 		int* watVal;
@@ -665,7 +735,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 		while (indexStack.size() > 0) {
 			
 			ind = indexStack.back();
-			fluidData[ind*4+E_PTT_STB] = newId;
+			extraData[ind*4+E_PTT_STB] = newId;
 			fsPtr->fluidIds.push_back(ind);
 			
 			if (fluidData[ind*4+E_PTT_WAT] == 0) {
@@ -693,13 +763,14 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 				
 				terVal = &(fluidData[testInd*4+E_PTT_TER]);
 				watVal = &(fluidData[testInd*4+E_PTT_WAT]);
-				ideVal = &(fluidData[testInd*4+E_PTT_STB]);
-				
+				ideVal = &(extraData[testInd*4+E_PTT_STB]);
+				bldVal = &(extraData[testInd*4+E_PTT_BLD]);
 				
 				
 				isAir = 
 					(*watVal == UNIT_MIN) &&
-					(*terVal == UNIT_MIN);
+					(*terVal == UNIT_MIN) &&
+					(*bldVal == UNIT_MIN);
 					
 				//terVal2 = &(fluidData[testInd2*4+E_PTT_TER]);
 				//watVal2 = &(fluidData[testInd2*4+E_PTT_WAT]);
@@ -848,6 +919,7 @@ bool GameFluid::floodFillId (int startInd, int newId)
 		
 		int ind;
 		int testInd;
+		int* bldVal;
 		int* terVal;
 		int* watVal;
 		int* watVal2;
@@ -886,7 +958,7 @@ bool GameFluid::floodFillId (int startInd, int newId)
 		while (indexStack.size() > 0) {
 			
 			ind = indexStack.back();
-			fluidData[ind*4+E_PTT_IDE] = newId;
+			extraData[ind*4+E_PTT_IDE] = newId;
 			
 			k = ind/(volSizePrimBuf*volSizePrimBuf);
 			j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
@@ -906,7 +978,10 @@ bool GameFluid::floodFillId (int startInd, int newId)
 				// if its full and there is earth above, add it
 				testInd = ind + volSizePrimBuf*volSizePrimBuf;
 				
-				if (fluidData[testInd*4+E_PTT_TER] != UNIT_MIN) {
+				if (
+					(fluidData[testInd*4+E_PTT_TER] != UNIT_MIN) ||
+					(extraData[testInd*4+E_PTT_BLD] != UNIT_MIN)	
+				) {
 					fsPtr->fluidIds.push_back(ind);
 					notFound = false;
 				}
@@ -927,13 +1002,15 @@ bool GameFluid::floodFillId (int startInd, int newId)
 					testJ*volSizePrimBuf +
 					testK*volSizePrimBuf*volSizePrimBuf;
 				
+				bldVal = &(extraData[testInd*4+E_PTT_BLD]);
 				terVal = &(fluidData[testInd*4+E_PTT_TER]);
 				watVal = &(fluidData[testInd*4+E_PTT_WAT]);
-				ideVal = &(fluidData[testInd*4+E_PTT_IDE]);
+				ideVal = &(extraData[testInd*4+E_PTT_IDE]);
 				
 				isAir = 
 					(*watVal == UNIT_MIN) &&
-					(*terVal == UNIT_MIN);
+					(*terVal == UNIT_MIN) &&
+					(*bldVal == UNIT_MIN);
 				
 				isEmptyWater = (*watVal == 0);
 				
@@ -980,16 +1057,17 @@ bool GameFluid::floodFillId (int startInd, int newId)
 			j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
 			i = ind - ( j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf );
 			
-			
+			bldVal = &(extraData[ind*4+E_PTT_BLD]);
 			terVal = &(fluidData[ind*4+E_PTT_TER]);
 			watVal = &(fluidData[ind*4+E_PTT_WAT]);
 			
 			// remove ids from any air values so they can be reused
 			if (
 				(*watVal == UNIT_MIN) &&
-				(*terVal == UNIT_MIN)	
+				(*terVal == UNIT_MIN) &&
+				(*bldVal == UNIT_MIN)
 			) {
-				fluidData[ind*4+E_PTT_IDE] = 0;
+				extraData[ind*4+E_PTT_IDE] = 0;
 			}
 			
 			//fluidData[ind*4+E_PTT_EDG] = UNIT_MAX;
@@ -1033,13 +1111,190 @@ void GameFluid::modifyUnit (FIVector4 * fPixelWorldCoordsBase, int brushAction, 
 		modStack.back().modType = modType;
 		modStack.back().radius = radius;
 	}
+bool GameFluid::roundBox (FIVector4 * absVecFromCenter, FIVector4 * innerBoxRad, FIVector4 * cornerDisThicknessPower)
+          {
+		
+		//doTraceVecND("absVecFromCenter ", absVecFromCenter);
+		//doTraceVecND("innerBoxRad ", innerBoxRad);
+		
+		
+		FIVector4 newP;
+		FIVector4 orig1;
+		FIVector4 orig2;
+		
+		orig1.setFXYZ(0.0f,0.0f,0.0f);
+		
+		//vec3 newP = abs(max( absVecFromCenter-(box_dim.xyz),0.0));
+		
+		orig2.copyFrom(absVecFromCenter);
+		orig2.addXYZRef(innerBoxRad,-1.0f);
+		newP.maxXYZ(&orig2,&orig1);
+		newP.absXYZ();
+		
+		float powX = cornerDisThicknessPower->getFZ();
+		float powY = cornerDisThicknessPower->getFW();
+		
+		
+		
+
+		//newP.xy = pow(newP.xy, box_power.xx );
+		newP.powXYZ(powX,powX,1.0f);		
+		//newP.x = pow( newP.x + newP.y, 1.0/box_power.x );
+		newP.setFX(newP[0] + newP[1]);
+		newP.powXYZ(1.0/powX,1.0f,1.0f);
+
+		//newP.xz = pow(newP.xz, box_power.yy );
+		newP.powXYZ(powY,1.0f,powY);
+		//newP.x = pow( newP.x + newP.z, 1.0/box_power.y );
+		newP.setFX(newP[0] + newP[2]);
+		newP.powXYZ(1.0/powY,1.0f,1.0f);
+		
+		//newP.setFX(newP.length());
+		
+		
+		float dis = 
+			//(newP[0]-cornerDisThicknessPower->getFX());
+			max(
+				(newP[0]-cornerDisThicknessPower->getFX()),
+				( (cornerDisThicknessPower->getFX()-cornerDisThicknessPower->getFY())-newP[0] )	
+			);
+		
+		//cout << newP[0] << " - " << cornerDisThicknessPower->getFX() << " = " << dis << "\n";
+		
+		return dis < 0.0f;
+
+	}
+void GameFluid::fillCurrentGeom ()
+                               {
+		
+		int i;
+		int j;
+		int k;
+		
+		
+		FIVector4 paramArrGeom[E_PRIMTEMP_LENGTH];
+		
+		for (i = 0; i < E_PRIMTEMP_LENGTH; i++) {
+			paramArrGeom[i].setFXYZW(
+				singleton->paramArrGeom[i*4+0],
+				singleton->paramArrGeom[i*4+1],
+				singleton->paramArrGeom[i*4+2],
+				singleton->paramArrGeom[i*4+3]
+			);
+		}
+		
+		FIVector4 innerBoxRad;
+		FIVector4 absVecFromCenter;
+		//FIVector4 centerCoord;
+		
+		FIVector4 baseVec;
+		baseVec.averageXYZ(
+			&(paramArrGeom[E_PRIMTEMP_BOUNDSMIN]),
+			&(paramArrGeom[E_PRIMTEMP_BOUNDSMAX])
+		);
+		baseVec.addXYZRef(&(singleton->geomPoints[0]));
+		baseVec.addXYZ(0.0,0.0,singleton->geomOrigOffset);
+		baseVec.addXYZRef(&(singleton->volMinInPixels),-1.0f);
+		baseVec.addXYZ(1.0f);
+		
+		FIVector4 curCoord;
+		
+		FIVector4 newCoordMin;
+		FIVector4 newCoordMax;
+		newCoordMin.copyFrom(&baseVec);
+		newCoordMax.copyFrom(&baseVec);
+		
+		// centerCoord.averageXYZ(
+		// 	&(paramArrGeom[E_PRIMTEMP_BOUNDSMAX]),
+		// 	&(paramArrGeom[E_PRIMTEMP_BOUNDSMIN])
+		// );
+		innerBoxRad.averageNegXYZ(
+			&(paramArrGeom[E_PRIMTEMP_BOUNDSMAX]),
+			&(paramArrGeom[E_PRIMTEMP_BOUNDSMIN])
+		);
+		
+		innerBoxRad.addXYZ(paramArrGeom[E_PRIMTEMP_CORNERDIS].getFX(),-1.0f);
+		
+		newCoordMin.addXYZRef(&(paramArrGeom[E_PRIMTEMP_VISMIN]));
+		newCoordMax.addXYZRef(&(paramArrGeom[E_PRIMTEMP_VISMAX]));
+		
+		//newCoordMin.addXYZ(2.0f,2.0f,2.0f);
+		//newCoordMax.addXYZ(2.0f,2.0f,2.0f);
+		
+		int iMin = clamp(newCoordMin.getIX(), vspMin, vspMax);
+		int iMax = clamp(newCoordMax.getIX(), vspMin, vspMax);
+		int jMin = clamp(newCoordMin.getIY(), vspMin, vspMax);
+		int jMax = clamp(newCoordMax.getIY(), vspMin, vspMax);
+		int kMin = clamp(newCoordMin.getIZ(), vspMin, vspMax);
+		int kMax = clamp(newCoordMax.getIZ(), vspMin, vspMax);
+		
+		int* bldVal;
+		int* terVal;
+		int* watVal;
+		
+		int ind;
+		
+		
+		
+		// cout << "cornerDis " << paramArrGeom[E_PRIMTEMP_CORNERDIS].getFX() << "\n";
+		// doTraceVecND("E_PRIMTEMP_BOUNDSMIN ", &(paramArrGeom[E_PRIMTEMP_BOUNDSMIN]));
+		// doTraceVecND("E_PRIMTEMP_BOUNDSMAX ", &(paramArrGeom[E_PRIMTEMP_BOUNDSMAX]));
+		// doTraceVecND("innerBoxRad ", &innerBoxRad);
+		
+		for (k = kMin; k < kMax; k++) {
+			for (j = jMin; j < jMax; j++) {
+				for (i = iMin; i < iMax; i++) {
+					
+					curCoord.setFXYZ(i,j,k);
+					curCoord.addXYZ(0.5f);
+					absVecFromCenter.copyFrom(&curCoord);
+					absVecFromCenter.addXYZRef(&baseVec,-1.0f);
+					absVecFromCenter.absXYZ();
+					
+					if (roundBox(
+						&absVecFromCenter,
+						&innerBoxRad,
+						&(paramArrGeom[E_PRIMTEMP_CORNERDIS])
+					)) {
+						
+						
+						ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf);
+						
+						bldVal = &(extraData[ind*4+E_PTT_BLD]);
+						terVal = &(fluidData[ind*4+E_PTT_TER]);
+						watVal = &(fluidData[ind*4+E_PTT_WAT]);
+						
+						*bldVal = UNIT_MAX;
+						//*terVal = UNIT_MAX;
+						*watVal = UNIT_MIN;
+						
+						
+						
+					}
+					
+					
+				}
+			}
+		}
+		
+		
+		
+	}
 void GameFluid::applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int brushAction, int modType, int radius)
           {
+		
+			FIVector4 baseVec;
+			baseVec.copyFrom(fPixelWorldCoordsBase);
+			baseVec.addXYZRef(&(singleton->volMinInPixels),-1.0f);
+			
+			
+			FIVector4 curCoord;
 			
 			FIVector4 newCoordMin;
 			FIVector4 newCoordMax;
-			newCoordMin.copyFrom(fPixelWorldCoordsBase);
-			newCoordMax.copyFrom(fPixelWorldCoordsBase);
+			newCoordMin.copyFrom(&baseVec);
+			newCoordMax.copyFrom(&baseVec);
+			
 			
 			newCoordMin.addXYZ(-radius + 1);
 			newCoordMax.addXYZ( radius + 1);
@@ -1052,11 +1307,18 @@ void GameFluid::applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int br
 			int kMax = clamp(newCoordMax.getIZ(), vspMin, vspMax);
 			
 			
+			// cout << "applyUnitModification "
+			// 	<< iMin << " " << iMax << " "
+			// 	<< jMin << " " << jMax << " "
+			// 	<< kMin << " " << kMax << "\n";
+			
 			
 			int i;
 			int j;
 			int k;
 			
+			int* empVal;
+			int* bldVal;
 			int* terVal;
 			int* watVal;
 			// int* ideVal;
@@ -1068,49 +1330,63 @@ void GameFluid::applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int br
 				for (j = jMin; j < jMax; j++) {
 					for (i = iMin; i < iMax; i++) {
 						
-						ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf);
+						curCoord.setFXYZ(i,j,k);
 						
-						terVal = &(fluidData[ind*4+E_PTT_TER]);
-						watVal = &(fluidData[ind*4+E_PTT_WAT]);
-						// ideVal = &(fluidData[ind*4+E_PTT_IDE]);
-						// stbVal = &(fluidData[ind*4+E_PTT_STB]);
-						
-						switch (brushAction) {
-							case E_BRUSH_MOVE:
-								return;
-							break;
-							case E_BRUSH_ADD:
+						if (baseVec.distance(&curCoord) <= radius) {
 							
-								if (modType == E_PTT_WAT) {
-									if (*terVal == UNIT_MIN) {
-										*watVal = UNIT_MAX;
+							
+							ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf);
+							
+							bldVal = &(extraData[ind*4+E_PTT_BLD]);
+							empVal = &(fluidData[ind*4+E_PTT_EMP]);
+							terVal = &(fluidData[ind*4+E_PTT_TER]);
+							watVal = &(fluidData[ind*4+E_PTT_WAT]);
+							// ideVal = &(extraData[ind*4+E_PTT_IDE]);
+							// stbVal = &(extraData[ind*4+E_PTT_STB]);
+							
+							switch (brushAction) {
+								case E_BRUSH_MOVE:
+									return;
+								break;
+								case E_BRUSH_ADD:
+								
+									if (modType == E_PTT_WAT) {
+										if (*terVal == UNIT_MIN) {
+											*watVal = UNIT_MAX;
+										}
 									}
-								}
-								else {
-									*terVal = UNIT_MAX;
+									else {
+										*terVal = UNIT_MAX;
+										*watVal = UNIT_MIN;
+									}
+									
+									
+									
+								break;
+								case E_BRUSH_SUB:
+									*empVal = UNIT_MAX;
+									*bldVal = UNIT_MIN;
+									*terVal = UNIT_MIN;
 									*watVal = UNIT_MIN;
-								}
+								break;
+								case E_BRUSH_REF:
+									watchMinX = iMin;
+									watchMaxX = iMax;
+									
+									watchMinY = jMin;
+									watchMaxY = jMax;
+									
+									watchMinZ = kMin;
+									watchMaxZ = kMax;
+									
+								break;
 								
-								
-								
-							break;
-							case E_BRUSH_SUB:
-								*terVal = UNIT_MIN;
-								*watVal = UNIT_MIN;
-							break;
-							case E_BRUSH_REF:
-								watchMinX = iMin;
-								watchMaxX = iMax;
-								
-								watchMinY = jMin;
-								watchMaxY = jMax;
-								
-								watchMinZ = kMin;
-								watchMaxZ = kMax;
-								
-							break;
+							}
+							
 							
 						}
+						
+						
 					}
 				}
 			}

@@ -2,6 +2,10 @@
 
 uniform sampler2D Texture0;
 
+// pagesTargFBO
+uniform sampler2D Texture1;
+uniform sampler2D Texture2;
+
 uniform vec2 bufferDim;
 
 varying vec2 TexCoord0;
@@ -48,12 +52,24 @@ void main() {
   mnmx3(v[3], v[4], v[8]);
   
   vec4 tex0 = texture2D(Texture0, TexCoord0);
+  vec4 tex1 = texture2D(Texture1, TexCoord0);
+  
+  
+  float dval = pow(tex1.w,5.0);
+  
+  float mixVal = clamp(
+    mix(1.25,0.2,dval),
+    0.0,
+    1.0
+  );
+  
+  //gl_FragColor = vec4(vec3(mixVal),1.0);
   
   gl_FragColor = vec4(
     mix(
       v[4].rgb,
       tex0.rgb,
-      0.0
+      float(distance(tex0.rgb,v[4].rgb) < 0.25)//mixVal
     )
   ,1.0);
   

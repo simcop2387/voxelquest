@@ -20,15 +20,19 @@ uniform sampler3D Texture6;
 // wave fbo
 uniform sampler2D Texture7;
 
+uniform int iNumSteps;
+uniform float volSizePrim;
 uniform float curTime;
 uniform float selObjInd;
 uniform float actObjInd;
-uniform float seaLevel;
+uniform float isUnderWater;
 uniform float timeOfDay;
 uniform vec2 bufferDim;
 uniform vec2 resolution;
 uniform vec3 cameraPos;
 uniform vec3 lookAtVec;
+uniform vec3 entPos;
+uniform float thirdPerson;
 //uniform vec4 fogPos;
 
 vec3 dirVecs[6] = vec3[](
@@ -90,7 +94,82 @@ vec3 getFogColor(vec2 lv)
     
 }
 
+
+//##
+const float M_PI = 3.14159265359;
+const float timeScale = 0.0005;
+const int numWaves = 8;
+float amplitude[8] = float[]( 1.0/16.0, 1.0/32.0, 1.0/2.0, 1.0/4.0, 1.0/8.0, 1.0/64.0, 1.0/128.0, 1.0/256.0 );
+float wavelength[8] = float[]( 48.0/1.0, 48.0/5.0, 48.0/9.0, 48.0/19.0, 48.0/29.0, 48.0/41.0, 48.0/53.0, 48.0/68.0 );
+float speed[8] = float[]( 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+const vec2 direction[8] = vec2[](
+    vec2(cos(-0.7),sin(-0.7)),
+    vec2(cos(0.4),sin(0.4)),
+    vec2(cos(0.1),sin(0.1)),
+    vec2(cos(-0.75),sin(-0.75)),
+    vec2(cos(-0.2),sin(-0.2)),
+    vec2(cos(0.3),sin(0.3)),
+    vec2(cos(-0.1),sin(-0.1)),
+    vec2(cos(-0.25),sin(-0.25))
+);
+
+
+float wave(int i, float x, float y) {
+    float frequency = 2.0*M_PI/(wavelength[i]);
+    float phase = speed[i] * frequency;
+    float theta = dot(direction[i], vec2(x, y));
+    return amplitude[i] * sin(theta * frequency + curTime*timeScale * phase);
+}
+
+float waveHeight(vec2 param) {
+
+    float x = param.x;
+    float y = param.y;
+
+    float height = 0.0;
+    for (int i = 0; i < numWaves; ++i) {
+        height += wave(i, x, y);
+    }
+    return height;
+}
+
+float dWavedx(int i, float x, float y) {
+    float frequency = 2.0*M_PI/wavelength[i];
+    float phase = speed[i] * frequency;
+    float theta = dot(direction[i], vec2(x, y));
+    float A = amplitude[i] * direction[i].x * frequency;
+    float res = A * cos(theta * frequency + curTime*timeScale * phase);
+    return res*2.0;
+}
+
+float dWavedy(int i, float x, float y) {
+    float frequency = 2.0*M_PI/wavelength[i];
+    float phase = speed[i] * frequency;
+    float theta = dot(direction[i], vec2(x, y));
+    float A = amplitude[i] * direction[i].y * frequency;
+    float res =  A * cos(theta * frequency + curTime*timeScale * phase);
+    return res*2.0;
+}
+
+vec3 waveNormal(vec2 param) {
+    float x = param.x;
+    float y = param.y;
+    float dx = 0.0;
+    float dy = 0.0;
+    for (int i = 0; i < numWaves; ++i) {
+        dx += dWavedx(i, x, y);
+        dy += dWavedy(i, x, y);
+    }
+    vec3 n = vec3(-dx, -dy, 1.0);
+    return normalize(n);
+}
+
+//##
+
+
 void main() {
+
+    int i;
 
     vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
     vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
@@ -101,7 +180,7 @@ void main() {
     
     vec4 tex4 = texture2D(Texture4, TexCoord0.xy);
     
-    vec4 tex7 = texture2D(Texture7, TexCoord0.xy);
+    //vec4 tex7 = texture2D(Texture7, TexCoord0.xy);
     
 
     
@@ -114,145 +193,157 @@ void main() {
     
     
     
-    // vec3 worldPosition = tex7.xyz;
-    // float baseHeight = tex7.z;
-    
-    // if (tex6.z > tex7.z) {
-    //     worldPosition = tex6.xyz;
-    //     baseHeight = tex6.z;
-    // }
-    
     vec4 worldPosition = tex0;
     
     worldPosition.w = max(tex0.w,tex4.w);
     
-    float baseHeight = worldPosition.w;
-    
-    
-
-    /////////////
-
-    //vec3 newFog = vec3(0.0);
-    //vec3 fogXYZ = vec3(0.0);
-    //float fogLen = 0.0;
-    //float hfog = 1.0;
     
     
     vec4 matVals = vec4(0.0,0.0,pack16(tex1.w));
 
     
-
-    // newFog = (fogPos.xyz-worldPosition.xyz);
-    // newFog /= 4096.0;
-    // newFog.xy /= 2.0;
-    // fogXYZ = 1.0-clamp( newFog, 0.0, 1.0);
-    // fogLen = 1.0-clamp(1.0-(fogXYZ.x*fogXYZ.y),0.0,1.0);
-    // hfog = min(clamp(sqrt(fogLen),0.0,1.0),fogXYZ.z);
-    // hfog *= float(baseHeight > 0.0);
-    // //hfog = clamp(hfog+clamp(1.0-waveh,0.0,1.0)/2.0,0.0,1.0);
-    // hfog = pow( hfog , 2.0);
-    // hfog = 1.0-clamp(hfog,0.0,1.0);
-
-
     /////////////
     
     
-    float isUW = 0.0;
     
-    // if (
-    //     (
-    //     (matVals.a == TEX_WATER) ||
-    //     (tex0.w == 0.0)
-    //     )
-    // ) {
+    float waveVal = (waveHeight(worldPosition.xy + worldPosition.z)+1.0)*0.5;
+    
+    
+    
+    // ??????????
+    
+    vec4 samp = vec4(0.0);
+    float fi;
+    
+    float curRad;
+    float minRotInc = 0.5;
+    float maxRotInc = 0.01;
+    float curRotInc = 0.0;
+    float curRot = 0.0;
+    vec2 offsetCoord;
+    float curMin = 1.0;
+    float curMax = 8.0;
+    vec2 newTC = vec2(0.0);
+    
+    float tot = worldPosition.w;
+    
+    if (thirdPerson != 0.0) {
+        tot = max(
+            1.0-clamp(distance(worldPosition.xyz,entPos)/(volSizePrim),0.0,1.0),
+            tot
+        );
+    }
+    
+    tot = tot*(0.95+0.05*mix(waveVal,1.0,isUnderWater));
+    
+    float totMax = 0.0;
+    float weightVal;
+    
+    float fNumSteps = float(iNumSteps);
+    
+    // for (i = 0; i < iNumSteps; i++)
+    // {
+
+    //     fi = float(i) / fNumSteps;
+
+    //     curRad = mix(curMin, curMax, fi);
+    //     curRotInc = mix(minRotInc, maxRotInc, fi);
+
+    //     offsetCoord.x = cos(curRot) * curRad;
+    //     offsetCoord.y = sin(curRot) * curRad;
+
+    //     newTC = TexCoord0.xy + (offsetCoord) / (bufferDim);
+
         
+    //     samp = texture2D(Texture0, newTC );
+        
+    //     weightVal = 1.0-(curRad/curMax);
+        
+    //     tot += samp.w*weightVal;
+    //     totMax += weightVal;
+
+    //     curRot += curRotInc;
     // }
-    // else {
-    //     isUW = float(
-    //         //(worldPosition.z < seaLevel) ||
-    //         (cameraPos.z < seaLevel)
-    //     );
-    // }
+    // tot /= totMax;
     
-    // isUW = float(
-    //     //(worldPosition.z < seaLevel) ||
-    //     (cameraPos.z < seaLevel)
-    // );
+    // ??????????
     
-    if (cameraPos.z > seaLevel) {
-        isUW = 
-            clamp((seaLevel-worldPosition.z)/512.0,0.0,1.0) *
-                float(
-                    (matVals.a != TEX_WATER) &&
-                    (tex0.w != 0.0)
-                );
-              
-    }
-    else {
-        isUW = 1.0;
-    }
+    
+    
     
     
     float hfog = 
         pow(clamp(
-            mix(
-                0.0,
-                2.0,
-                (1.0-worldPosition.w) + mix(0.0,0.25,isUW)
-            ) - tex7.a*0.1,
+            (1.0-tot)*mix(2.0,5.0,isUnderWater),
             0.0,
             1.0
-        ),2.0);
+        ),1.0);
         
 
-    vec3 lightMod = pow( (1.0-timeOfDay)*tex3.rgb, vec3(2.0) );
+    //vec3 lightMod = pow( (1.0-timeOfDay)*tex3.rgb, vec3(2.0) );
 
     vec3 fogColor = getFogColor(TexCoord0.xy);
-
-    vec3 finalCol = mix(tex2.rgb,tex3.rgb,hfog); // increase hfog for more blur
-
+    
+    if (isUnderWater == 1.0) {
+        fogColor = mix(
+            vec3(0.0,0.25,1.0),
+            vec3(0.0,0.1,0.5),
+            hfog
+        );
+    }
+    
+    vec3 finalCol = mix(tex2.rgb,tex3.rgb,pow(hfog,2.0)); // increase hfog for more blur
+    
+    if (isUnderWater == 1.0) {
+        finalCol = mix( finalCol, vec3(0.0,0.1,0.5), 0.5);
+        finalCol += pow( waveVal, 8.0)*0.25;
+    }
 
     finalCol = mix(
         finalCol,
         fogColor, 
-        hfog*mix(1.0,0.75,isUW)
-    ) + lightMod*2.0*(hfog);
+        pow(hfog,3.0) // *mix(1.0,0.75,isUnderWater)
+    );
     
-    if (cameraPos.z < seaLevel) {
-        finalCol.rgb = 
+    // + lightMod*2.0*(hfog);
+    
+    float waterMod = clamp((1.0-worldPosition.w)*16.0,0.0,1.0);
+    
+    // if (isUnderWater == 1.0) {
+    //     finalCol.rgb = 
         
             
-            mix(
-                finalCol.rgb,
-                mix(
+    //         mix(
+    //             finalCol.rgb,
+    //             mix(
                     
-                    mix(
-                        finalCol.rgb,
-                        dot(finalCol.rgb,oneVec.rgb)*vec3(0.15,0.3,1.0),
-                        0.5
-                    )*0.75,
-                    mix(
-                        finalCol.rgb,
-                        dot(finalCol.rgb,oneVec.rgb)*vec3(0.1,0.2,0.5),
-                        0.95
-                    )*0.5,
+    //                 mix(
+    //                     finalCol.rgb,
+    //                     dot(finalCol.rgb,oneVec.rgb)*vec3(0.15,0.3,1.0),
+    //                     0.5
+    //                 )*0.75,
+    //                 mix(
+    //                     finalCol.rgb,
+    //                     dot(finalCol.rgb,oneVec.rgb)*vec3(0.1,0.2,0.5),
+    //                     0.95
+    //                 )*0.5,
                     
-                    pow(clamp((seaLevel-worldPosition.z)/(2048.0)*float(worldPosition.w != 0.0),0.0,1.0),0.5)       
-                ),
-               clamp((seaLevel-worldPosition.z)/(512.0),0.0,1.0)*0.5+0.5
-            );
-    }
+    //                 pow(clamp(waterMod*float(worldPosition.w != 0.0),0.0,1.0),0.5)       
+    //             ),
+    //            clamp(waterMod,0.0,1.0)*0.5+0.5
+    //         );
+    // }
     
     
-
     
-    int i;
+    
+    
     bool isOutline = false;
     bool isSelObj = false;
     bool isActObj = false;
     
-    vec2 newTC = vec2(0.0);
-    vec4 samp = vec4(0.0);
+    
+    
     if (tex5.w == selObjInd) {
         isSelObj = true;
     }

@@ -18,10 +18,6 @@ class GamePlant;
 class GameEnt;
 class GameBlock;
 class GamePageHolder;
-class GamePage;
 class GameWorld;
 class DynBuffer;
-class PooledResource;
-class PoolManager;
-class PoolPageManager;
  

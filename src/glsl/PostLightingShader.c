@@ -41,7 +41,6 @@ const int VECS_PER_LIGHT = 4;
 ^INCLUDE:MATERIALS^
 
 
-uniform int iNumSteps;
 
 float offV[2] = float[](
 	0.03125,
@@ -161,8 +160,6 @@ void main()
 	float fj;
 	float fi;
 
-	float fNumSteps = float(iNumSteps);
-	
 	
 	
 	vec4 oneVec = vec4(1.0);
@@ -243,14 +240,17 @@ void main()
 	
 	
 	modVal = pow(1.0-lightRes,1.0)*facingCam;
-	modColor = hsv2rgb(vec3(
-		mix(0.75, 0.4, modVal)
-		,1.0,1.0))*modVal;
+	// modColor = hsv2rgb(vec3(
+	// 	mix(0.75, 0.4, modVal)
+	// 	,1.0,1.0))*modVal;
+	modColor = vec3(0.0,0.65,1.0)*modVal;
 	
 	modVal = pow(lightRes,10.0)*(1.0-facingCam);
-	modColor += hsv2rgb(vec3(
-		mix(0.0, 0.12, modVal)
-		,mix(0.75,1.0,1.0-modVal),1.0))*modVal;
+	// modColor += hsv2rgb(vec3(
+	// 	mix(0.0, 0.12, modVal)
+	// 	,mix(0.75,1.0,1.0-modVal),1.0))*modVal;
+	modColor += vec3(1.0,0.5,0.0)*modVal;
+	
 	
 	
 	
@@ -310,7 +310,7 @@ void main()
 
 	}
 	
-	resColor += resColor*texSpec.r*4.0;
+	resColor += resColor*mix(texSpec.r,1.0,0.25)*texSpec.r;
 	
 	
 	
@@ -333,21 +333,36 @@ void main()
 		//floor(worldPosition.xyz/unitSizeInPixels);
 		abs(mod(worldPosition.xyz, unitSizeInPixels) - unitSizeInPixels / 2.0) * 2.0;
 	
+	float unitBuf = (unitSizeInPixels - 0.1);
 	
+	vec3 gridVec = vec3(
+		float(grid0.x >= unitBuf),
+		float(grid0.y >= unitBuf),
+		float(grid0.z >= unitBuf)	
+	);
 	
-	float gridVal0 = 
-		//mod(grid0.x+grid0.y,2.0)
-		
-		float(
-		 (grid0.x >= (unitSizeInPixels - 4.0)) ||
-		 (grid0.y >= (unitSizeInPixels - 4.0))
-		)
+	vec3 absVec = abs(myVec);
 	
-		* clamp(myVec.z - 0.4, 0.0, 1.0);
+	vec3 gridVal0 = gridVec;
+	
+	gridVal0 = max(gridVal0 - abs(lookAtVec),vec3(0.0));
+	
+	// if (absVec.x > 0.99) {
+	// 	gridVal0.x = 1.0;
+	// }
+	// if (absVec.y > 0.99) {
+	// 	gridVal0.y = 1.0;	
+	// }
+	// if (absVec.z > 0.99) {
+	// 	gridVal0.z = 1.0;	
+	// }
+	
+	gridVal0 *= clamp(1.0-distance(worldPosition.xyz, cameraPos.xyz)/32.0,0.0,1.0);
+	
 	
 	if (!gridOn)
 	{
-		gridVal0 = 0.0;
+		gridVal0 = vec3(0.0);
 	}
 	
 	float temp = 0.25 + float(tex4.w > tex0.w)*0.5;
@@ -359,7 +374,7 @@ void main()
 		
 	}
 	else {
-		resColor.rb += gridVal0;
+		resColor.rgb += gridVal0;
 	}
 	
 
@@ -370,7 +385,7 @@ void main()
 	
 	
 	if (markerFound) {
-		markerDis = clamp(distance(worldPosition,worldMarker)/(0.5*pixelsPerCell),0.0,1.0);
+		markerDis = clamp(distance(worldPosition,worldMarker)/(2.0*pixelsPerCell),0.0,1.0);
 		
 		
 		if (
@@ -404,7 +419,17 @@ void main()
 			bestHeight = testHeight;
 		}
 	}
-	float outDif = clamp(bestHeight / 400.0, 0.0, 1.0) * 0.25;
+	float outDif = clamp(bestHeight / 1.0, 0.0, 1.0);
+	
+	
+	outDif *= mix(
+		0.25,
+		0.01,
+		clamp(distance(worldPosition.xyz, cameraPos.xyz)/64.0,0.0,1.0)
+	);
+	
+	
+	
 	// if (tex0.a == TEX_WATER || tex0.a == TEX_NULL) {
 	// 	outDif = 0.0;
 	// }
@@ -412,6 +437,16 @@ void main()
 	if (!valIsGeom) {
 		resColor -= outDif;
 	}
+	
+	//resColor = vec3(lightRes);
+	
+	//resColor += sin(worldPosition.x/4.0)*0.1;
+	
+	//resColor = vec3(outDif);
+	
+	//resColor = ((myVec+1.0)*0.5);
+	
+	//resColor = mix(resColor,vec3(resColor.r+resColor.g+resColor.b)/2.0,0.5);
 	
 	//resColor.rgb = myVec.rgb;
 	

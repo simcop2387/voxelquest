@@ -5,16 +5,14 @@
 #define LZZ_INLINE inline
 GamePageHolder::GamePageHolder ()
                          {
-		isEntity = false;
-		usingPoolId = -1;
-		hasTrans = false;
-		hasSolids = false;
+		cellData = NULL;
+		extrData = NULL;
+		wasGenerated = false;
 	}
-void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isEntity)
+void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ)
           {
 
 		
-		refreshDL = true;
 		entityGeomCounter = 0;
 
 		int i;
@@ -22,24 +20,14 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		int k;
 		int ind;
 		
-		for (i = 0; i < MAX_LAYERS; i++) {
-			hasVerts[i] = false;
-		}
 		
-		
-		readyForClear = true;
 
-		isEntity = _isEntity;
 
 		blockId = _blockId;
 		holderId = _holderId;
 
-		childrenDirty = true;
-
 		singleton = _singleton;
-		usingPoolId = -1;
 
-		sres = singleton->volGenSuperRes;
 
 		holderSizeInPixels = singleton->holderSizeInPixels;
 		halfHolderSizeInPixels = holderSizeInPixels*0.5f;
@@ -62,470 +50,141 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		gphCenInPixels.addXYZRef(&gphMinInPixels);
 		gphCenInPixels.multXYZ(0.5f);
 		
-		holderSizeInPages = singleton->holderSizeInPages;
-		iPageDataVolume = holderSizeInPages*holderSizeInPages*holderSizeInPages;
-		pageData = new GamePage*[iPageDataVolume];
-		
-		
 
-		for (i = 0; i < iPageDataVolume; i++) {
-			pageData[i] = NULL;
-		}
 		
 		
-		refreshGeom();
-		
-		
-		for (k = 0; k < holderSizeInPages; k++) {
-			for (j = 0; j < holderSizeInPages; j++) {
-				for (i = 0; i < holderSizeInPages; i++) {
-					ind = k*holderSizeInPages*holderSizeInPages + j*holderSizeInPages + i;
-					
-					if (pageData[ind] == NULL) {
-						
-						if (isEntity) {
-							pageData[ind] = getPageAtCoordsLocal(
-								offsetInHolders.getIX()*holderSizeInPages + i,
-								offsetInHolders.getIY()*holderSizeInPages + j,
-								offsetInHolders.getIZ()*holderSizeInPages + k,
-								true
-							);
-						}
-						else {
-							pageData[ind] = singleton->gw->getPageAtCoords(
-								offsetInHolders.getIX()*holderSizeInPages + i,
-								offsetInHolders.getIY()*holderSizeInPages + j,
-								offsetInHolders.getIZ()*holderSizeInPages + k,
-								true	
-							);
-						}
-						
-						
-					}
-				}
-			}
-		}
+		fetchGeom();
 		
 	}
-void GamePageHolder::doRefreshDL ()
+void GamePageHolder::genCellData ()
                            {
-		
-		refreshDL = false;
-		
 		int i;
 		int j;
+		int k;
 		
+		int q;
 		
 		int ind;
-		int numVert = 8;
-		int maxVal;
 		
-		int p;
-		int q;
-		int r;
-		int s;
+		float fi;
+		float fj;
+		float fk;
 		
-		int baseInd;
+		float zv;
 		
-		int ci;
+		float fSimp[4];
+		int iSimp[4];
 		
-		float voxSize = singleton->voxelSizeInWC*0.5f;
+		int cellsPerHolder = singleton->cellsPerHolder;
+		int cellDataSize = cellsPerHolder*cellsPerHolder*cellsPerHolder*4;
 		
-		// TODO: if the holder was cleared entirely, must make sure to clear all displaylists
+		if (cellData == NULL) {
+			cellData = new int[cellDataSize];
+		}
 		
+		if (extrData == NULL) {
+			extrData = new int[cellDataSize];
+		}
 		
-		if (gpuRes != NULL) {
-			
-			for (q = 0; q < MAX_LAYERS; q++) {
-				for (p = 0; p < MAX_MIP_LEV; p++) {
+		for (i = 0; i < cellDataSize; i++) {
+			cellData[i] = FLUID_UNIT_MIN;
+			extrData[i] = FLUID_UNIT_MIN;
+		}
+		
+		for (j = 0; j < cellsPerHolder; j++) {
+			fj = (j + gphMinInPixels[1]);
+			for (i = 0; i < cellsPerHolder; i++) {
+				fi = (i + gphMinInPixels[0]);
+				
+				// - singleton->worldSizeInPixels[0]*0.5f
+				
+				// zv = simplexScaledNoise(
+				// 		4.0f, //octaves
+				// 		0.5f, //persistence (amount added in each successive generation)
+				// 		1.0f/16.0f, //scale (frequency)
+				// 		0.0f, // lo bound
+				// 		1.0f, // hi bound
+				// 		fi + 2333.2,
+				// 		fj + 1352.4,
+				// 		4222.3
+				// 	);
+				
+				for (k = 0; k < cellsPerHolder; k++) {
+					fk = k + gphMinInPixels[2];
 					
-					ci = p*MAX_LAYERS+q;
 					
-					gpuRes->bindHolderDL(p,q);
-					if (DO_POINTS) {glBegin(GL_POINTS);}
-					
-					
-					for (j = 0; j < iPageDataVolume; j++) {
-						ind = j;
+					// land
+					fSimp[0] = clampfZO(
+						simplexScaledNoise(
+							5.0f, //octaves
+							0.5f, //persistence (amount added in each successive generation)
+							1.0f/128.0f, //scale (frequency)
+							0.0f, // lo bound
+							1.0f, // hi bound
+							fi,
+							fj,
+							fk
+						) // - (zv*fk*0.5f/fVSP) + (1.0-fk/fVSP)*0.25
 						
-						if (pageData[ind] != NULL) {
-							
-							
-							hasVerts[q] = hasVerts[q] || (pageData[ind]->vertices[ci].data.size() > 0);
-							
-							maxVal = (pageData[ind]->vertices[ci].data.size())/numVert;
-							
-							for (i = 0; i < maxVal; i++ ) {
-								
-								
-								
-								glMultiTexCoord4f(
-									GL_TEXTURE0,
-									pageData[ind]->vertices[ci].data[i*numVert + 0], // normal x
-									pageData[ind]->vertices[ci].data[i*numVert + 1], // normal y
-									pageData[ind]->vertices[ci].data[i*numVert + 2], // normal z
-									pageData[ind]->vertices[ci].data[i*numVert + 3]  // matData
-									
-								);
-								
-								if (DO_POINTS) {
-									glVertex3f(
-										pageData[ind]->vertices[ci].data[i*numVert + 4],
-										pageData[ind]->vertices[ci].data[i*numVert + 5],
-										pageData[ind]->vertices[ci].data[i*numVert + 6]	
-									);
-								}
-								else {
-									
-									
-									
-									for (s = 0; s < 1; s++) {
-										glBegin(GL_TRIANGLE_FAN);
-										for (r = 0; r < 7; r++) {
-											
-											baseInd = (r+s*7)*3;
-											
-											
-											
-											glVertex3f(
-												pageData[ind]->vertices[ci].data[i*numVert + 4] + CUBE_POINTS[baseInd+0]*voxSize,
-												pageData[ind]->vertices[ci].data[i*numVert + 5] + CUBE_POINTS[baseInd+1]*voxSize,
-												pageData[ind]->vertices[ci].data[i*numVert + 6]	+ CUBE_POINTS[baseInd+2]*voxSize
-											);
-										}
-										glEnd();
-									}
-									
-								}
-								
-								
-								
-								
-							}
-						}
-					}
-					
-					
-					
-					if (DO_POINTS) {glEnd();}
-					
-					gpuRes->unbindHolderDL(p,q);
-				}
-			}
-			
-			
-			
-			
-			
-		}
-		
-	}
-GamePage * GamePageHolder::getPageAtCoordsLocal (int x, int y, int z, bool createOnNull)
-                                                                                       {
-		
-
-		int hx, hy, hz;
-		int px, py, pz;
-		int gpInd;
-		int newX = x;
-		int newY = y;
-		int newZ = z;
-		int ind =
-			newZ * holderSizeInPages * holderSizeInPages +
-			newY * holderSizeInPages +
-			newX;
-
-		GamePage *gp = NULL;
-
-		px = newX % holderSizeInPages;
-		py = newY % holderSizeInPages;
-		pz = newZ % holderSizeInPages;
-		
-
-
-
-		gpInd = pz * holderSizeInPages * holderSizeInPages + py * holderSizeInPages + px;
-
-		if (gpInd == -1)
-		{
-			// prob
-			cout << "Invalid holder index\n";
-		}
-		else
-		{
-			gp = pageData[gpInd];
-
-			if (gp)
-			{
-
-			}
-			else
-			{
-				if (createOnNull)
-				{
-					pageData[gpInd] = new GamePage();
-					gp = pageData[gpInd];
-					gp->init(
-						singleton,
-						this,
-						ind,
-						x, y, z,
-						px, py, pz,
-						true
 					);
-				}
-			}
-		}
-
-		
-
-		return gp;
-
-		
-	}
-void GamePageHolder::refreshGeom ()
-                           {
-		if (isEntity) {
-			entityGeomCounter = 0;
-			addNewLinesGeom(singleton->testHuman->baseNode, singleton->pixelsPerCell);
-		}
-		else {
-			fetchGeom();
-		}
-	}
-void GamePageHolder::clearSet ()
-                        { //bool forceClear
-		int i;
-		
-
-		
-
-		//bool doClear = forceClear;
-
-		if (usingPoolId == -1) {
-			
-			if (isEntity) {
-				usingPoolId = singleton->entityPool->requestPoolId(blockId,holderId);
-				gpuRes = singleton->entityPool->holderPoolItems[usingPoolId];
-			}
-			else {
-				usingPoolId = singleton->gpuPool->requestPoolId(blockId,holderId);
-				gpuRes = singleton->gpuPool->holderPoolItems[usingPoolId];
-			}
-			
-
-			readyForClear = true;
-		}
-
-		if (readyForClear) {
-			readyForClear = false;
-			
-			// if (true) { //freeCam
-				
-			// }
-			// else {
-			// 	for (i = 0; i < MAX_LAYERS; i++) {
-			// 		// clear fbo by binding it with auto flag
-			// 		singleton->bindFBODirect(gpuRes->getFBOS(i));
-			// 		singleton->unbindFBO();
-			// 	}
-			// }
-			
-		}
-		
-	}
-int GamePageHolder::passiveRefresh (int * renderCount)
-                                             {
-		int i;
-		int changeCount = 0;
-		*renderCount = 0;
-		
-		childrenDirty = false;
-		
-
-		bool addedVerts = false;
-
-		//bool finished = true;
-				
-
-		for (i = 0; i < iPageDataVolume; i++) {
-			
-			if (changeCount >= singleton->maxChangesInPages) {
-				childrenDirty = true;
-				//finished = false;
-				break;
-			}
-			
-			if (pageData[i] == NULL) {
-				
-			}
-			else {
-				pageData[i]->addAllGeom();
-				if (
-					(pageData[i]->hasSolids || pageData[i]->hasTrans)
-				) {
-					if (pageData[i]->isDirty) {
-						addedVerts = pageData[i]->generateVolume();
-						if (addedVerts) {
-							(*renderCount)++;
-						}
-						changeCount++;
-					}
-				}
-				
-				
-				
-			}
-		}
-		
-		if (refreshDL&&(!childrenDirty)) {
-			doRefreshDL();
-		}
-		
-		
-		
-		
-		return changeCount;	
-
-	}
-void GamePageHolder::refreshChildren (bool refreshImmediate, bool clearEverything, bool refreshUnderground)
-          {
-		int i;
-		
-		
-		
-		
-		
-		
-		readyForClear = true;
-		if (clearEverything) {
-			clearSet();
-		}
-		
-		for (i = 0; i < iPageDataVolume; i++) {
-			if (pageData[i] == NULL) {
-
-			}
-			else {
-				
-				
-				if (refreshImmediate) {
 					
-					pageData[i]->addAllGeom();
+					// water
+					// fSimp[1] = clampfZO(
+					// 	simplexScaledNoise(
+					// 		4.0f, //octaves
+					// 		0.5f, //persistence (amount added in each successive generation)
+					// 		1.0f/16.0f, //scale (frequency)
+					// 		0.0f, // lo bound
+					// 		1.0f, // hi bound
+					// 		fi+124.0f,
+					// 		fj+23.0f,
+					// 		fk+53.0f
+					// 	)// - (zv*fk*0.5f/fVSP) + (1.0-fk/fVSP)*0.5
+					// );
 					
-					if (
-						(
-							(pageData[i]->hasSolids || pageData[i]->hasTrans)
-						) ||
-						refreshUnderground ||
-						isEntity
-					) {
-						if (refreshUnderground) {
-							pageData[i]->isDirty = true;
-						}
-						pageData[i]->generateVolume(refreshUnderground);
+					// if (fk/fVSP > 0.9) {
+					// 	fSimp[0] = 0.0;
+					// }
+					
+					// if (fk/fVSP > 0.5) {
+					// 	fSimp[1] = 0.0;
+					// }
+					
+					
+					if (fSimp[0] > 0.5) {
+						iSimp[0] = FLUID_UNIT_MAX;
 					}
-					childrenDirty = false;
+					else {
+						iSimp[0] = FLUID_UNIT_MIN;
+					}
+					
+					// if (fSimp[1] > 0.75) {
+					// 	iSimp[1] = FLUID_UNIT_MAX;
+					// }
+					// else {
+					// iSimp[1] = FLUID_UNIT_MIN;
+					//}
+					
+					ind = (i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder)*4;
+					
+					for (q = 0; q < 4; q++) {
+						cellData[ind+q] = FLUID_UNIT_MIN;
+						extrData[ind+q] = FLUID_UNIT_MIN;
+					}
+					
+					
+					cellData[ind+0] = iSimp[0];
+					// cellData[ind+1] = FLUID_UNIT_MIN;//iSimp[1];
+					// cellData[ind+2] = FLUID_UNIT_MIN;//iSimp[1];
+					// cellData[ind+3] = FLUID_UNIT_MIN;
+		
+		
 				}
-				else {
-					childrenDirty = true;
-					pageData[i]->isDirty = true;
-				}
-				
-				
-				
 			}
 		}
 		
-		if (refreshImmediate) {
-			doRefreshDL();
-		}
 		
-
-		
-	}
-void GamePageHolder::addNewGeom (int _curBT, int _curAlign, float _baseOffset, FIVector4 * _p1, FIVector4 * _p2, FIVector4 * _rad, FIVector4 * _cornerRad, FIVector4 * _visInsetFromMin, FIVector4 * _visInsetFromMax, FIVector4 * _powerVals, FIVector4 * _powerVals2, FIVector4 * _thickVals, FIVector4 * _matParams, FIVector4 * _centerPoint, FIVector4 * _anchorPoint, int _minRot, int _maxRot)
-          {
-		
-		if (entityGeomCounter >= entityGeom.size()) {
-			entityGeom.push_back(new GameEnt());
-		}
-		
-		
-		entityGeom[entityGeomCounter]->initBounds(
-			_curBT,
-			_curAlign,
-			_baseOffset,
-			_p1,
-			_p2,
-			_rad,
-			_cornerRad,
-			_visInsetFromMin,
-			_visInsetFromMax,
-			_powerVals,
-			_powerVals2,
-			_thickVals,
-			_matParams,
-			_centerPoint,
-			_anchorPoint,
-			_minRot,
-			_maxRot
-		);
-		entityGeomCounter++;
-	}
-void GamePageHolder::addNewLinesGeom (GameOrgNode * curNode, float scale)
-          {
-		
-		int i;
-		
-		
-		if (curNode->parent == NULL) {
-			
-		}
-		else {
-			
-			if (curNode == singleton->selectedNode) {
-				tempVec.setFXYZ(E_ORG_PARAM_LINES,16.0f/255.0f,entityGeomCounter);
-			}
-			else {
-				tempVec.setFXYZ(E_ORG_PARAM_LINES,curNode->orgVecs[E_OV_MATPARAMS].getFX()/255.0f,entityGeomCounter);
-			}
-			
-			//tempVec2.copyFrom(&(curNode->tbnRotC[0]));
-			//tempVec2.multXYZ(curNode->boneLengthHalf*scale); //*curNode->boneLengthScale
-			
-			
-			if (entityGeomCounter >= entityGeom.size()) {
-				entityGeom.push_back(new GameEnt());
-			}
-			
-			entityGeom[entityGeomCounter]->initLines(
-				E_CT_LINES,
-				scale,
-				
-				&origOffset,
-				
-				&(curNode->orgTrans[1]),
-				&(curNode->tbnRotC[0]), //&(tempVec2),
-				&(curNode->tbnRotC[1]),
-				&(curNode->tbnRotC[2]),
-				&(curNode->orgVecs[E_OV_TBNRAD0]),
-				&(curNode->orgVecs[E_OV_TBNRAD1]),
-				//&(curNode->tbnRadScale0),
-				//&(curNode->tbnRadScale1),
-				&tempVec
-				
-			);
-			entityGeomCounter++;
-		}
-		
-		
-		
-		for (i = 0; i < curNode->children.size(); i++) {
-			addNewLinesGeom(curNode->children[i],scale);
-		}
-		
-		
+		wasGenerated = true;
 	}
 void GamePageHolder::fetchGeom ()
                          {
@@ -533,7 +192,6 @@ void GamePageHolder::fetchGeom ()
 		int j;
 		int k;
 		int n;
-		//int bufSize = (singleton->visPageSizeInPixels*singleton->bufferMult)*2;
 		
 		GameBlock* curBlock;
 		GamePageHolder* gph;
@@ -555,18 +213,10 @@ void GamePageHolder::fetchGeom ()
 
 					for (k = 0; k < curBlock->gameEnts[n].data.size(); k++) {
 
-
 						gameEnt = &(curBlock->gameEnts[n].data[k]);
-
 
 						start.copyFrom( &(gameEnt->moveMinInPixels) );
 						end.copyFrom( &(gameEnt->moveMaxInPixels) );
-
-						// start.addXYZ(-bufSize);
-						// end.addXYZ(bufSize);
-
-						//start.intDivXYZ(singleton->holderSizeInPixels);
-						//end.intDivXYZ(singleton->holderSizeInPixels);
 
 						start.clampZ(0.0,singleton->worldSizeInPixels.getFZ()-1.0f);
 						end.clampZ(0.0,singleton->worldSizeInPixels.getFZ()-1.0f);
@@ -583,14 +233,6 @@ void GamePageHolder::fetchGeom ()
 
 
 		
-	}
-void GamePageHolder::unbindGPUResources ()
-                                  {
-
-		usingPoolId = -1;
-		gpuRes = NULL;
-		childrenDirty = true;
-
 	}
 #undef LZZ_INLINE
  

@@ -267,7 +267,6 @@ public:
 		FIVector4 *_powerVals2,
 		FIVector4 *_thickVals,
 		FIVector4 *_matParams,
-		FIVector4 *_centerPoint,
 		FIVector4 *_anchorPoint,
 		int _minRot,
 		int _maxRot
@@ -328,7 +327,6 @@ public:
 		geomParams[E_GP_POWERVALS2].setFXYZRef(_powerVals2);
 		geomParams[E_GP_THICKVALS].setFXYZRef(_thickVals);
 		geomParams[E_GP_MATPARAMS].setFXYZRef(_matParams);
-		geomParams[E_GP_CENTERPOINT].setFXYZRef(_centerPoint);
 
 		moveMinInPixels.setFXYZRef(&boundsMinInPixels);
 		moveMaxInPixels.setFXYZRef(&boundsMaxInPixels);

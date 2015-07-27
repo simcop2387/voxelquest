@@ -821,14 +821,10 @@ public:
 							
 						) {
 							
-							
-							
 							if ( iGetRandSeeded(&tempVec,&tempVec2, 0, 100) > 10 ) {
 								mapData[testInd].connectionProps[0] = E_CT_TREE;
 							}
 						}
-
-						
 					}
 				}
 			}
@@ -2618,7 +2614,6 @@ public:
 										&powerVals2,
 										&thickVals,
 										&matParams,
-										&centerPoint,
 										&anchorPoint,
 										minRot,
 										maxRot
@@ -2966,7 +2961,6 @@ SKIP_ADD_GEOM:
 		FIVector4* _powerVals2,
 		FIVector4* _thickVals,
 		FIVector4* _matParams,
-		FIVector4* _centerPoint,
 		FIVector4* _anchorPoint,
 		int _minRot,
 		int _maxRot
@@ -2992,7 +2986,6 @@ SKIP_ADD_GEOM:
 			_powerVals2,
 			_thickVals,
 			_matParams,
-			_centerPoint,
 			_anchorPoint,
 			_minRot,
 			_maxRot
@@ -3373,51 +3366,6 @@ SKIP_ADD_GEOM:
 
 
 
-	void refreshHoldersInArea(
-		FIVector4 *worldPos
-	) {
-
-
-		int ind;
-		int curInd;
-		int testInd;
-		int i;
-		int j;
-		int k;
-		
-		int holderSizeInPixels = singleton->holderSizeInPixels;
-	
-		float bsih = blockSizeInHolders;
-	
-		tempVec.copyFrom(worldPos);
-		tempVec.intDivXYZ(holderSizeInPixels);
-		
-		
-		doTraceVecND("refreshHoldersInArea", &tempVec);
-		
-		
-		int rad = 2;
-		
-		for (i = -rad; i <= rad; i++) {
-			for (j = -rad; j <= rad; j++) {
-				for (k = -rad; k <= rad; k++) {
-					
-					
-					
-					gw->getHolderAtCoords(
-						tempVec.getIX()+i,
-						tempVec.getIY()+j,
-						tempVec.getIZ()+k,
-						true
-					)->refreshChildren(true,true,true);
-				}
-			}
-		}
-		
-
-
-	}
-
 
 	void modifyTerrain(
 		FIVector4 *worldPos,
@@ -3598,7 +3546,6 @@ SKIP_ADD_GEOM:
 
 		//copyTerToTexture(true);
 		
-		//refreshHoldersInArea(worldPos);
 
 	}
 

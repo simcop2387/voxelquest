@@ -1,4 +1,4 @@
-﻿Build started 6/14/2015 6:26:55 AM.
+﻿Build started 7/27/2015 5:27:00 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -24,9 +24,6 @@
          .\src\cpp\f00300_singleton.hpp
          .\src\cpp\f00305_shader.hpp
          .\src\cpp\f00307_dynbuffer.hpp
-         .\src\cpp\f00310_pooledresource.hpp
-         .\src\cpp\f00315_poolmanager.hpp
-         .\src\cpp\f00316_poolpagemanager.hpp
          .\src\cpp\f00320_fontwrapper.hpp
          .\src\cpp\f00325_uicomponent.hpp
          .\src\cpp\f00330_gamegui.hpp
@@ -36,25 +33,21 @@
          .\src\cpp\f00339_gameorg.hpp
          .\src\cpp\f00340_gameplantnode.hpp
          .\src\cpp\f00341_gameplant.hpp
-         .\src\cpp\f00350_gamepage.hpp
          .\src\cpp\f00351_gamepageholder.hpp
          .\src\cpp\f00352_gameblock.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         36 File(s) copied
+         32 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         21
+         17
          copying headers to one file
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
          .\f00300_singleton.e
          .\f00305_shader.e
          .\f00307_dynbuffer.e
-         .\f00310_pooledresource.e
-         .\f00315_poolmanager.e
-         .\f00316_poolpagemanager.e
          .\f00320_fontwrapper.e
          .\f00325_uicomponent.e
          .\f00330_gamegui.e
@@ -64,14 +57,13 @@
          .\f00339_gameorg.e
          .\f00340_gameplantnode.e
          .\f00341_gameplant.e
-         .\f00350_gamepage.e
          .\f00351_gamepageholder.e
          .\f00352_gameblock.e
          .\f00380_gameworld.e
                  1 file(s) copied.
          Missing operator.
          tot e
-         21
+         17
          .
          copying files to compiled
          .\temp\f00293_gamesound.e
@@ -79,9 +71,6 @@
          .\temp\f00300_singleton.e
          .\temp\f00305_shader.e
          .\temp\f00307_dynbuffer.e
-         .\temp\f00310_pooledresource.e
-         .\temp\f00315_poolmanager.e
-         .\temp\f00316_poolpagemanager.e
          .\temp\f00320_fontwrapper.e
          .\temp\f00325_uicomponent.e
          .\temp\f00330_gamegui.e
@@ -91,11 +80,10 @@
          .\temp\f00339_gameorg.e
          .\temp\f00340_gameplantnode.e
          .\temp\f00341_gameplant.e
-         .\temp\f00350_gamepage.e
          .\temp\f00351_gamepageholder.e
          .\temp\f00352_gameblock.e
          .\temp\f00380_gameworld.e
-         21 File(s) copied
+         17 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_mat.h
@@ -116,9 +104,6 @@
          .\temp\f00300_singleton.h
          .\temp\f00305_shader.h
          .\temp\f00307_dynbuffer.h
-         .\temp\f00310_pooledresource.h
-         .\temp\f00315_poolmanager.h
-         .\temp\f00316_poolpagemanager.h
          .\temp\f00320_fontwrapper.h
          .\temp\f00325_uicomponent.h
          .\temp\f00330_gamegui.h
@@ -128,7 +113,6 @@
          .\temp\f00339_gameorg.h
          .\temp\f00340_gameplantnode.h
          .\temp\f00341_gameplant.h
-         .\temp\f00350_gamepage.h
          .\temp\f00351_gamepageholder.h
          .\temp\f00352_gameblock.h
          .\temp\f00380_gameworld.h
@@ -164,47 +148,6 @@
          
          Valid JSON
                    
-         const int PRIMS_PER_MACRO = 16;
-         const float PRIM_DIV = 4.0;
-         const vec4 primTemp[36] = vec4[](
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-0.400000,-0.400000,-0.400000,0.000000),
-         vec4(0.500000,0.500000,0.500000,0.000000),
-         vec4(5.000000,0.000000,2.000000,2.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-2.125000,-4.400000,-0.125000,0.000000),
-         vec4(0.125000,2.400000,2.200000,0.000000),
-         vec4(4.400000,0.000000,2.000000,1.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-5.125000,-2.125000,-3.125000,0.000000),
-         vec4(3.125000,4.125000,5.125000,0.000000),
-         vec4(2.000000,0.000000,1.000000,1.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-0.125000,-0.125000,-0.125000,0.000000),
-         vec4(0.125000,0.125000,0.125000,0.000000),
-         vec4(0.100000,0.000000,2.000000,2.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-0.125000,-0.125000,-0.125000,0.000000),
-         vec4(0.125000,0.125000,0.125000,0.000000),
-         vec4(0.100000,0.000000,2.000000,2.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000)
-         );
-         
          
          
          
@@ -213,15 +156,10 @@
          
          cellsPerNodeXY: 16
          cellsPerNodeZ: 8
-         blockSizeInHolders: 32
+         blockSizeInHolders: 16
          blockSizeInPixels: 256
          terDataBufPitchScaledXY 24
-         maxChangesInHolders: 1
-         volGenFBOX: 128
-         volGenFBOY: 16384
-         visPageSizeInPixels: 8
-         holderSizeInPixels: 8
-         bufferMult: 1
+         holderSizeInPixels: 16
          cellsPerLot: 64
          pixelsPerCell: 1
          unitsPerCell: 1
@@ -229,14 +167,11 @@
          pixelsPerUnit: 1
          unitsPerLot: 64
          pixelsPerLot: 64
-         holderSizeInPages: 1
-         holdersPerLot: 8
-         visPageSizeInUnits: 8
+         holdersPerLot: 4
          unitSizeInPixels: 1
          worldSizeInBlocks:    128.000000   128.000000   1.000000    
          worldSizeInLots:    512.000000   512.000000   4.000000    
-         worldSizeInHolders:    4096.000000   4096.000000   32.000000    
-         worldSizeInPages:    4096.000000   4096.000000   32.000000    
+         worldSizeInHolders:    2048.000000   2048.000000   16.000000    
          worldSizeInTerData:    2048.000000   2048.000000   32.000000    
          MAX_UNIFORMS: 65536
          
@@ -258,81 +193,9 @@
          
          Valid JSON
                    
-         const int PRIMS_PER_MACRO = 16;
-         const float PRIM_DIV = 4.0;
-         const vec4 primTemp[36] = vec4[](
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-0.400000,-0.400000,-0.400000,0.000000),
-         vec4(0.500000,0.500000,0.500000,0.000000),
-         vec4(5.000000,0.000000,2.000000,2.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-2.125000,-4.400000,-0.125000,0.000000),
-         vec4(0.125000,2.400000,2.200000,0.000000),
-         vec4(4.400000,0.000000,2.000000,1.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-5.125000,-2.125000,-3.125000,0.000000),
-         vec4(3.125000,4.125000,5.125000,0.000000),
-         vec4(2.000000,0.000000,1.000000,1.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-0.125000,-0.125000,-0.125000,0.000000),
-         vec4(0.125000,0.125000,0.125000,0.000000),
-         vec4(0.100000,0.000000,2.000000,2.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-0.125000,-0.125000,-0.125000,0.000000),
-         vec4(0.125000,0.125000,0.125000,0.000000),
-         vec4(0.100000,0.000000,2.000000,2.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000)
-         );
-         
          
          Valid JSON
                    
-         128,16384
-         128,16384
-         64,4096
-         64,4096
-         256,256
-         256,256
-         480,270
-         480,270
-         480,270
-         480,270
-         480,270
-         480,270
-         480,270
-         480,270
-         480,270
-         480,270
-         480,270
-         480,270
-         240,135
-         480,270
-         480,270
-         240,135
-         240,135
-         240,135
-         240,135
-         512,512
-         512,512
-         512,512
-         512,512
-         512,512
-         512,512
          Video card supports GL_ARB_pixel_buffer_object.
          Video card supports WGL_EXT_swap_control.
          
@@ -386,47 +249,6 @@
          
          Valid JSON
                    
-         const int PRIMS_PER_MACRO = 16;
-         const float PRIM_DIV = 4.0;
-         const vec4 primTemp[36] = vec4[](
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-0.400000,-0.400000,-0.400000,0.000000),
-         vec4(0.500000,0.500000,0.500000,0.000000),
-         vec4(5.000000,0.000000,2.000000,2.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-2.125000,-4.400000,-0.125000,0.000000),
-         vec4(0.125000,2.400000,2.200000,0.000000),
-         vec4(4.400000,0.000000,2.000000,1.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-5.125000,-2.125000,-3.125000,0.000000),
-         vec4(3.125000,4.125000,5.125000,0.000000),
-         vec4(2.000000,0.000000,1.000000,1.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-0.125000,-0.125000,-0.125000,0.000000),
-         vec4(0.125000,0.125000,0.125000,0.000000),
-         vec4(0.100000,0.000000,2.000000,2.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-0.125000,-0.125000,-0.125000,0.000000),
-         vec4(0.125000,0.125000,0.125000,0.000000),
-         vec4(0.100000,0.000000,2.000000,2.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000)
-         );
-         
          
          Valid JSON
                    
@@ -445,53 +267,50 @@
          
          Valid JSON
                    
-         const int PRIMS_PER_MACRO = 16;
-         const float PRIM_DIV = 4.0;
-         const vec4 primTemp[36] = vec4[](
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-0.400000,-0.400000,-0.400000,0.000000),
-         vec4(0.500000,0.500000,0.500000,0.000000),
-         vec4(5.000000,0.000000,2.000000,2.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-2.125000,-4.400000,-0.125000,0.000000),
-         vec4(0.125000,2.400000,2.200000,0.000000),
-         vec4(4.400000,0.000000,2.000000,1.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-5.125000,-2.125000,-3.125000,0.000000),
-         vec4(3.125000,4.125000,5.125000,0.000000),
-         vec4(2.000000,0.000000,1.000000,1.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-0.125000,-0.125000,-0.125000,0.000000),
-         vec4(0.125000,0.125000,0.125000,0.000000),
-         vec4(0.100000,0.000000,2.000000,2.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000),
-         vec4(-0.125000,-0.125000,-0.125000,0.000000),
-         vec4(0.125000,0.125000,0.125000,0.000000),
-         vec4(0.100000,0.000000,2.000000,2.000000),
-         vec4(0.000000,0.000000,0.000000,0.000000)
-         );
-         
          
          Valid JSON
                    
          GW DONE          
+         cur step: E_GEOM_POINTS_RAD_XY
+         cur step: E_GEOM_POINTS_RAD_Z
+         cur step: E_GEOM_POINTS_OFFSET_Z
+         cur step: E_GEOM_POINTS_CORNER
+         cur step: E_GEOM_POINTS_POWER_VALS
+         cur step: E_GEOM_POINTS_NEG_RAD_XY
+         cur step: E_GEOM_POINTS_POS_RAD_XY
+         cur step: E_GEOM_POINTS_NEG_RAD_Z
+         cur step: E_GEOM_POINTS_POS_RAD_Z
+         cur step: E_GEOM_POINTS_THICKNESS
+         cur step: E_GEOM_POINTS_LENGTH
+         E_MOUSE_STATE_BRUSH
+         E_MOUSE_STATE_BRUSH
+         E_MOUSE_STATE_MOVE
+         from E_DT_WORLD_OBJECT to E_DT_NOTHING
+         from E_DT_WORLD_OBJECT to E_DT_NOTHING
+         from E_DT_WORLD_OBJECT to E_DT_NOTHING
+         from E_DT_WORLD_OBJECT to E_DT_NOTHING
+         from E_DT_WORLD_OBJECT to E_DT_NOTHING
+         from E_DT_WORLD_OBJECT to E_DT_NOTHING
+         from E_DT_WORLD_OBJECT to E_DT_NOTHING
+         iNumSteps:  16         
+         iNumSteps:  16         
+         from E_DT_WORLD_OBJECT to E_DT_NOTHING
+         from E_DT_WORLD_OBJECT to E_DT_NOTHING
+         from E_DT_WORLD_OBJECT to E_DT_NOTHING
+         from E_DT_WORLD_OBJECT to E_DT_NOTHING
+         from E_DT_WORLD_OBJECT to E_DT_NOTHING
+         from E_DT_WORLD_OBJECT to E_DT_NOTHING
+         refreshContainers
+         ival 177
+         refreshContainers
+         iNumSteps:  16         
+         iNumSteps:  16         
+         start FPS timer
+         firstPerson 1
+         firstPerson 0
+         E_MOUSE_STATE_BRUSH
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:05:09.78
+Time Elapsed 00:10:43.16

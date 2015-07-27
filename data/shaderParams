@@ -1,69 +1,5 @@
 {
  "params":[{
-   "paramName":"snowVal",
-   "shaderName":"GenerateVolume",
-   "uid":"$shaderParams.GenerateVolume.snowVal"
-   },{
-   "paramName":"terCompScale",
-   "shaderName":"GenerateVolume",
-   "uid":"$shaderParams.GenerateVolume.terCompScale"
-   },{
-   "paramName":"terMedian",
-   "shaderName":"GenerateVolume",
-   "uid":"$shaderParams.GenerateVolume.terMedian"
-   },{
-   "paramName":"terThickness",
-   "shaderName":"GenerateVolume",
-   "uid":"$shaderParams.GenerateVolume.terThickness"
-   },{
-   "paramName":"terThickness2",
-   "shaderName":"GenerateVolume",
-   "uid":"$shaderParams.GenerateVolume.terThickness2"
-   },{
-   "paramName":"tt0MaxClamp",
-   "shaderName":"GenerateVolume",
-   "uid":"$shaderParams.GenerateVolume.tt0MaxClamp"
-   },{
-   "paramName":"tt0PowValThresh",
-   "shaderName":"GenerateVolume",
-   "uid":"$shaderParams.GenerateVolume.tt0PowValThresh"
-   },{
-   "paramName":"tt0ScaleParamX",
-   "shaderName":"GenerateVolume",
-   "uid":"$shaderParams.GenerateVolume.tt0ScaleParamX"
-   },{
-   "paramName":"tt0ScaleParamY",
-   "shaderName":"GenerateVolume",
-   "uid":"$shaderParams.GenerateVolume.tt0ScaleParamY"
-   },{
-   "paramName":"tt1Falloff",
-   "shaderName":"GenerateVolume",
-   "uid":"$shaderParams.GenerateVolume.tt1Falloff"
-   },{
-   "paramName":"tt1MaxRad",
-   "shaderName":"GenerateVolume",
-   "uid":"$shaderParams.GenerateVolume.tt1MaxRad"
-   },{
-   "paramName":"tt1MinRad",
-   "shaderName":"GenerateVolume",
-   "uid":"$shaderParams.GenerateVolume.tt1MinRad"
-   },{
-   "paramName":"tt1NumDivsX",
-   "shaderName":"GenerateVolume",
-   "uid":"$shaderParams.GenerateVolume.tt1NumDivsX"
-   },{
-   "paramName":"tt1NumDivsY",
-   "shaderName":"GenerateVolume",
-   "uid":"$shaderParams.GenerateVolume.tt1NumDivsY"
-   },{
-   "paramName":"tt1PowVal",
-   "shaderName":"GenerateVolume",
-   "uid":"$shaderParams.GenerateVolume.tt1PowVal"
-   },{
-   "paramName":"tt2MetaThresh",
-   "shaderName":"GenerateVolume",
-   "uid":"$shaderParams.GenerateVolume.tt2MetaThresh"
-   },{
    "paramName":"lightColBNight",
    "shaderName":"PreLightingShader",
    "uid":"$shaderParams.PreLightingShader.lightColBNight"
@@ -87,6 +23,14 @@
    "paramName":"lightIntensityNight",
    "shaderName":"PreLightingShader",
    "uid":"$shaderParams.PreLightingShader.lightIntensityNight"
+   },{
+   "paramName":"myTexSpacing",
+   "shaderName":"PrimShader",
+   "uid":"$shaderParams.PrimShader.myTexSpacing"
+   },{
+   "paramName":"myTexTest",
+   "shaderName":"PrimShader",
+   "uid":"$shaderParams.PrimShader.myTexTest"
    },{
    "paramName":"maxWaveH",
    "shaderName":"WaterShaderCombine",

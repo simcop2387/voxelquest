@@ -46,7 +46,7 @@ void main() {
     
     
     
-    gl_PointSize = (heightOfNearPlane / screenPos.w)*pixelsPerCell/16.0;
+    gl_PointSize = (heightOfNearPlane / screenPos.w);
     
     
     

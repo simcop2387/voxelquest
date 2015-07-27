@@ -38,7 +38,7 @@ varying vec2 TexCoord0;
 uniform float clipDist;
 uniform float pixelsPerCell;
 uniform float timeOfDay;
-uniform float seaLevel;
+uniform float isUnderWater;
 uniform float curTime;
 uniform vec3 cameraPos;
 uniform vec2 bufferDim;
@@ -188,13 +188,13 @@ void main() {
 
     float distances[maxEntries];
 
-    float difScale = 0.25*pixelsPerCell;
+    float difScale = 1.0;//0.5*pixelsPerCell;
 
     distances[0] = 0.0*difScale;
-    distances[1] = 0.5*difScale;
-    distances[2] = 4.0*difScale;
-    distances[3] = 8.0*difScale;
-    distances[4] = 16.0*difScale;
+    distances[1] = 1.0*difScale;
+    distances[2] = 2.0*difScale;
+    distances[3] = 3.0*difScale;
+    distances[4] = 4.0*difScale;
 
     vec3 colVecs[maxEntries];
 
@@ -247,7 +247,6 @@ void main() {
 
     float lerpVal;
     float lerpValNorm = 0.0;
-    float curSeaLev = seaLevel;
 
     float totRef;
 
@@ -405,29 +404,18 @@ void main() {
         // }
         // else {
             resTC = newTC.xy;
-            if (
-                (heightDifNoRef >= distances[0]) &&
-                (heightDifNoRef <= distances[1]) 
-            ) {
-                // shore foam
-
-                //finalCol = vec3(1.0);
-                
-                lerpVal = clamp( (heightDifNoRef - distances[0])/(distances[1]-distances[0]), 0.0, 1.0);
-                finalCol += 4.0*finalCol*(rand(TexCoord0.xy*curTime/10000.0)*0.15+0.25)*(1.0-lerpVal)*4.0*mix(0.5,1.0,timeOfDay);
             
-            }
 
 
 
-            finalCol = mix(
-                finalCol,
-                finalCol*vec3(0.4,0.5,0.6) + transRendered.rgb,
-                facingEye*0.3
-            ) + transRendered.rgb*vec3(0.1,0.2,0.4);
+            // finalCol = mix(
+            //     finalCol,
+            //     finalCol*vec3(0.4,0.5,0.6) + transRendered.rgb,
+            //     facingEye*0.3
+            // ) + transRendered.rgb*vec3(0.1,0.2,0.4);
 
 
-            // highlights
+            // // highlights
 
             finalCol += 
             pow(
@@ -436,13 +424,29 @@ void main() {
                     vec3(0.0,0.0,1.0)
                 ),0.0,1.0),
                 6.0
-            )*vec3(0.5,0.45,1.0)*0.5*timeOfDay;
+            )*vec3(0.5,0.45,1.0)*0.25*timeOfDay-0.125;
 
             
             finalCol *= 0.5;
             finalCol += tex5Ref.rgb*0.25;
+            
+            finalCol = mix(finalCol,transRendered.rgb,0.3*facingEye);
+            
+            finalCol = (finalCol + lastCol*mix(vec3(0.05,0.1,0.2),vec3(0.5),timeOfDay));
 
+            if (
+                (heightDifNoRef >= distances[0]) &&
+                (heightDifNoRef <= distances[1]) &&
+                (isUnderWater == 0.0)
+            ) {
+                // shore foam
 
+                //finalCol = vec3(1.0);
+                
+                lerpVal = clamp( (heightDifNoRef - distances[0])/(distances[1]-distances[0]), 0.0, 1.0);
+                finalCol += 1.0*finalCol*(rand(TexCoord0.xy*curTime/10000.0)*0.15+0.25)*(1.0-lerpVal)*4.0*mix(0.5,1.0,timeOfDay);
+            
+            }
 
 
             
@@ -450,7 +454,7 @@ void main() {
 
         
 
-        finalCol = (finalCol + lastCol*mix(vec3(0.05,0.1,0.2),vec3(0.5),timeOfDay));
+        
         
         //finalCol *= 0.5;
         
@@ -473,33 +477,44 @@ void main() {
     
     
     
-    if (cameraPos.z < seaLevel) {
-        
-            // caustics
-            finalCol += pow(
-            (
-                
-                pow( ( (tex7Ref2.a ) ), 2.0 ) +
-                pow( ( (tex7Ref3.a ) ), 2.0 ) 
-            )
-            ,2.0)*vec3(0.2,0.2,0.4)*mix(0.2,1.0,timeOfDay)*lval;
+    if (isUnderWater == 1.0) {
         
             // bubbles
             finalCol += 
             pow(
-                texture2D(Texture6, TexCoord0.xy*vec2(1.0,1.0) - 
-                    vec2(waterNorm.x*0.1,abs(waterNorm.y)*0.5 + 1.0 )*(curTime/20000.0)  ).rgb*0.85,
+                texture2D(Texture6, TexCoord0.xy - vec2(0.0,1.0)*curTime/10000.0  ).rgb*0.85,
                 vec3(10.0)
             ) * 
-            abs(sin(rand(TexCoord0.xy)*1000.0 + curTime/200.0))*mix(0.75,1.0,timeOfDay)*4.0;
+            abs(sin(rand(TexCoord0.xy)*1000.0 + curTime/200.0))*mix(0.75,1.0,timeOfDay)*3.0;
 
     }
     
     //finalCol.rgb = unpackColor(matValsWater.ba, lightRes);
     
     if (wasTrans) {
-        finalCol.rgb += finalCol.rgb*tex11.g*4.0;
+        finalCol.rgb += finalCol.rgb*tex11.g*2.0;
+        
+        //finalCol = vec3(tex11.g);
     }
+    
+    vec4 charTest;
+    
+    if (matValsWater.a == TEX_WATER) {
+        
+        
+        if (texture2D(Texture13, TexCoord0.xy).w < baseHeightWater) {
+            charTest = texture2D(Texture14, mix(newTC.xy,TexCoord0,0.75) );
+            if (charTest.a == 0.0) {
+                
+            }
+            else {
+                finalCol = mix(charTest.rgb,finalCol,0.9);
+            }
+            
+        }
+    }
+    
+    
     
     gl_FragData[0] = vec4(finalCol.rgb,1.0);
     

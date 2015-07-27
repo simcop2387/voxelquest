@@ -5,7 +5,7 @@
 #define LZZ_INLINE inline
 GameSound::GameSound ()
                             {
-			
+			curVolume = 0.0;
 		}
 void GameSound::init (string path)
                                        {
@@ -34,8 +34,25 @@ void GameSound::stop ()
                             {
 			
 		}
+void GameSound::setVolumeSmooth (float volume, float decay)
+                {
+			
+			curVolume += (volume-curVolume)*decay;
+			
+			
+			int intVol = curVolume*100.0f;
+			sound.setVolume(intVol);
+					
+		}
+void GameSound::setVolume (float volume)
+                {
+			curVolume = volume;
+			int intVol = volume*100.0f;
+			sound.setVolume(intVol);			
+		}
 void GameSound::play (float volume)
                 {
+			curVolume = volume;
 			int intVol = volume*100.0f;
 			
 			sound.setVolume(intVol);

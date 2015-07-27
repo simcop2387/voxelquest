@@ -51,19 +51,6 @@ void GameOrg::init (Singleton * _singleton)
 		
 		initHuman();
 		
-		gph = new GamePageHolder();
-		gph->init(
-			singleton,
-			
-			singleton->curOrgId,
-			0,
-			
-			0,
-			0,
-			0,
-			
-			true
-		);
 		
 		singleton->curOrgId++;
 		

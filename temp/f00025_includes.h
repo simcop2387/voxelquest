@@ -4,38 +4,24 @@
 #endif
 
 
-/*
-E_GP_VISMININPIXELST,
-E_GP_VISMAXINPIXELST,
-E_GP_BOUNDSMININPIXELST,
-E_GP_BOUNDSMAXINPIXELST,
-E_GP_CORNERDISINPIXELS,
-E_GP_POWERVALS,
-E_GP_POWERVALS2,
-E_GP_THICKVALS,
-E_GP_CENTERPOINT,
-E_GP_MATPARAMS, // must be last
-E_GP_LENGTH
-*/
-
-
-
-
 int RUN_COUNT;
 
 const static float OFFSET_X[4] = {-0.5,0.5,0.5,-0.5};
 const static float OFFSET_Y[4] = {-0.5,-0.5,0.5,0.5};
 
+const static int MAX_SPLASHES = 8;
 
 const static int DEF_WIN_W = 1920;
 const static int DEF_WIN_H = 1080;
-const static int DEF_SCALE_FACTOR = 4;
+const static int DEF_SCALE_FACTOR = 2;
+const static int RENDER_SCALE_FACTOR = 2;
 
+const static bool FLUID_ON = true;
 const static bool RAY_MODE = true;
 
 #define PRIM_FLOAT_FORMAT 1
 // #define DEBUG_BOUNDS 1
-
+ 
 #ifdef PRIM_FLOAT_FORMAT
 typedef float PRIM_FORMAT;
 #else
@@ -60,7 +46,6 @@ const static int MAX_EVAL_LIGHTS = 128;
 const static int FLOATS_PER_LIGHT = 12;
 
 
-const static bool FILL_POINTS = false;
 
 const static float UI_SCALE_FACTOR = 1.0f;
 
@@ -104,6 +89,8 @@ const static float CUBE_POINTS[42] = {
 		
 		
 };
+
+
 
 
 // solid, water, air
@@ -509,8 +496,7 @@ string SPACE_BUFFER[] = {" ", "  ", "   ", "    ", "     ", "      ", "       ",
 
 // ########
 	
-	
-	
+
 
 
 // struct variable to store OpenGL info

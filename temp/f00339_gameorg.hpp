@@ -4,7 +4,6 @@ class GameOrg {
 public:
 
 	Singleton* singleton;
-	GamePageHolder* gph;
 	GameOrgNode* baseNode;
 	FIVector4 basePosition;
 	
@@ -65,19 +64,6 @@ public:
 		
 		initHuman();
 		
-		gph = new GamePageHolder();
-		gph->init(
-			singleton,
-			
-			singleton->curOrgId,
-			0,
-			
-			0,
-			0,
-			0,
-			
-			true
-		);
 		
 		singleton->curOrgId++;
 		
