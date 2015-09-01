@@ -18,10 +18,10 @@ uniform sampler2D Texture5;
 uniform sampler2D Texture6;
 
 // wave fbo
-uniform sampler2D Texture7;
+//uniform sampler2D Texture7;
 
 // pal fbo
-uniform sampler3D Texture8;
+uniform sampler3D Texture7;
 
 // prelight fbo
 uniform sampler2D Texture9;
@@ -36,7 +36,6 @@ uniform sampler2D Texture14;
 varying vec2 TexCoord0;
 
 uniform float clipDist;
-uniform float pixelsPerCell;
 uniform float timeOfDay;
 uniform float isUnderWater;
 uniform float curTime;
@@ -45,8 +44,6 @@ uniform vec2 bufferDim;
 
 
 ^INCLUDE:MATERIALS^
-// const float TEX_WATER = 32.0/255.0;
-// const float TEX_GLASS = 35.0/255.0;
 
 const float pi = 3.14159;
 
@@ -118,7 +115,7 @@ vec2 pack16(float num) {
 
 vec3 unpackColor(vec2 num, float lightVal)
 {
-    return texture3D( Texture8, vec3(lightVal, num.r, num.g + 0.5/255.0) ).rgb;
+    return texture3D( Texture7, vec3(lightVal, num.r, num.g + 0.5/255.0) ).rgb;
 }
 
 // WAS DOING 
@@ -144,7 +141,7 @@ void main() {
     // vec4 tex12 = texture2D(Texture1, TexCoord0.xy);
     
 
-    float tot = float(tex0.r + tex0.g + tex0.b + tex0.a > 0.0);    
+    //float tot = float(tex0.r + tex0.g + tex0.b + tex0.a > 0.0);    
     vec4 oneVec = vec4(1.0);
     
     //tex0.w = max(tex0.w,tex11.w);
@@ -188,7 +185,7 @@ void main() {
 
     float distances[maxEntries];
 
-    float difScale = 1.0;//0.5*pixelsPerCell;
+    float difScale = 4.0;
 
     distances[0] = 0.0*difScale;
     distances[1] = 1.0*difScale;
@@ -234,9 +231,9 @@ void main() {
 
     //vec4 tex5Ref2 = vec4(0.0);
 
-    vec4 tex7Ref = vec4(0.0);
-    vec4 tex7Ref2 = vec4(0.0);
-    vec4 tex7Ref3 = vec4(0.0);
+    // vec4 tex7Ref = vec4(0.0);
+    // vec4 tex7Ref2 = vec4(0.0);
+    // vec4 tex7Ref3 = vec4(0.0);
 
     float baseHeightRef = 0.0;
 
@@ -269,16 +266,16 @@ void main() {
     
     vec3 transRendered = unpackColor(matValsWater.ba, lightRes);
     
-    transRendered =
-    mix(
-        mix(
-                transRendered*0.5,
-                transRendered*(tex10.w*0.5+0.5),
-                lightRes//tex2.rgb
-        ),
-        tex10.rgb,
-        hsvVal.g*0.5
-    );
+    // transRendered =
+    // mix(
+    //     mix(
+    //             transRendered*0.5,
+    //             transRendered*(tex10.w*0.5+0.5),
+    //             lightRes//tex2.rgb
+    //     ),
+    //     tex10.rgb,
+    //     hsvVal.g*0.5
+    // );
     
 
 
@@ -305,7 +302,7 @@ void main() {
 
     totRef = float(tex0Ref.w != 0.0);
     // if (totRef == 0.0) {
-    //     baseHeightRef = baseHeightWater-1.0*pixelsPerCell;
+    //     baseHeightRef = baseHeightWater-1.0;
     // }
 
     heightDif = clamp(abs(baseHeightWater - baseHeightRef)*clipDist*0.5, 0.0, maxDis);
@@ -317,9 +314,9 @@ void main() {
     refMod.xy += refMod.z;
     //refMod *= 0.5;
 
-    tex7Ref = texture2D(Texture7, newTC.xy);
-    tex7Ref2 = texture2D(Texture7, newTC.xy + refMod.xy*0.1 + tex7Ref.xy - baseHeight*clipDist*0.1/bufferDim.xy );
-    tex7Ref3 = texture2D(Texture7, newTC.xy + refMod.xy*0.1 + 1.0 - (tex7Ref.xy - baseHeight*clipDist*0.1/bufferDim.xy) );
+    // tex7Ref = texture2D(Texture7, newTC.xy);
+    // tex7Ref2 = texture2D(Texture7, newTC.xy + refMod.xy*0.1 + tex7Ref.xy - baseHeight*clipDist*0.1/bufferDim.xy );
+    // tex7Ref3 = texture2D(Texture7, newTC.xy + refMod.xy*0.1 + 1.0 - (tex7Ref.xy - baseHeight*clipDist*0.1/bufferDim.xy) );
 
 
     // bigger == deeper under water
@@ -449,8 +446,6 @@ void main() {
             }
 
 
-            
-
 
         
 
@@ -465,10 +460,19 @@ void main() {
 
         if (matValsWater.a == TEX_GLASS) {
             finalCol = transRendered.rgb*0.5 + tex5.rgb*0.25 + tex4.rgb*0.5;
+            
         }
         else {
-            wasTrans = false;
-            finalCol = tex4.rgb;
+            
+            if (tex2.w > tex0.w) {
+                finalCol = transRendered.rgb*0.75 + tex5.rgb*0.25 + tex4.rgb*0.25;
+            }
+            else {
+                wasTrans = false;
+                finalCol = tex4.rgb;
+            }
+            
+            
         }
 
 
@@ -479,6 +483,7 @@ void main() {
     
     if (isUnderWater == 1.0) {
         
+        if (matValsWater.a != TEX_WATER) {
             // bubbles
             finalCol += 
             pow(
@@ -487,6 +492,7 @@ void main() {
             ) * 
             abs(sin(rand(TexCoord0.xy)*1000.0 + curTime/200.0))*mix(0.75,1.0,timeOfDay)*3.0;
 
+        }
     }
     
     //finalCol.rgb = unpackColor(matValsWater.ba, lightRes);
@@ -499,10 +505,14 @@ void main() {
     
     vec4 charTest;
     
+    vec4 objSamp = texture2D(Texture13, TexCoord0.xy);
+    
     if (matValsWater.a == TEX_WATER) {
         
         
-        if (texture2D(Texture13, TexCoord0.xy).w < baseHeightWater) {
+        if (
+            (objSamp.w < baseHeightWater)
+        ) {
             charTest = texture2D(Texture14, mix(newTC.xy,TexCoord0,0.75) );
             if (charTest.a == 0.0) {
                 
@@ -511,6 +521,11 @@ void main() {
                 finalCol = mix(charTest.rgb,finalCol,0.9);
             }
             
+        }
+    }
+    else {
+        if (objSamp.w > baseHeight) {
+            finalCol = texture2D(Texture14, TexCoord0.xy).rgb;
         }
     }
     

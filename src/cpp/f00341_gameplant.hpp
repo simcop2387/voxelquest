@@ -186,12 +186,6 @@ public:
 
 
 
-				allPlantRules[i].begThickness *= _singleton->pixelsPerCell;
-				allPlantRules[i].endThickness *= _singleton->pixelsPerCell;
-				for (j = 0; j < MAX_PLANT_GEN; j++) {
-					allPlantRules[i].curLength[j] *= _singleton->pixelsPerCell;
-				}
-
 				
 
 			}
@@ -358,7 +352,7 @@ public:
 			curChild->midThickness = (curChild->begThickness+curChild->endThickness)*0.5f;
 
 			if ( rules->sphereGen == fCurGen ) {
-				curChild->sphereRad = rules->sphereRad*singleton->pixelsPerCell; //(maxLength-totLength) + 
+				curChild->sphereRad = rules->sphereRad; //(maxLength-totLength) + 
 			}
 
 			if (curGen < maxGen) {

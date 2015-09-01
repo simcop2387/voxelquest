@@ -29,15 +29,17 @@ public:
 
 	intPairVec containsEntIds[E_ET_LENGTH];
 	
-	float holderSizeInPixels;
-	float halfHolderSizeInPixels;
+	float cellsPerHolder;
+	float halfCellsPerHolder;
 
 	bool wasGenerated;
+	bool justGenerated;
 
 	GamePageHolder() {
 		cellData = NULL;
 		extrData = NULL;
 		wasGenerated = false;
+		justGenerated = false;
 	}
 	
 
@@ -69,10 +71,10 @@ public:
 		singleton = _singleton;
 
 
-		holderSizeInPixels = singleton->holderSizeInPixels;
-		halfHolderSizeInPixels = holderSizeInPixels*0.5f;
+		cellsPerHolder = singleton->cellsPerHolder;
+		halfCellsPerHolder = cellsPerHolder*0.5f;
 		
-		origOffset.setFXYZ(halfHolderSizeInPixels,halfHolderSizeInPixels,halfHolderSizeInPixels);
+		origOffset.setFXYZ(halfCellsPerHolder,halfCellsPerHolder,halfCellsPerHolder);
 
 		offsetInHolders.setIXYZ(trueX,trueY,trueZ);
 		offsetInBlocks.copyFrom(&offsetInHolders);
@@ -83,12 +85,10 @@ public:
 
 		gphMaxInPixels.addXYZ(1);
 
-		gphMinInPixels.multXYZ(singleton->holderSizeInPixels);
-		gphMaxInPixels.multXYZ(singleton->holderSizeInPixels);
+		gphMinInPixels.multXYZ(singleton->cellsPerHolder);
+		gphMaxInPixels.multXYZ(singleton->cellsPerHolder);
 
-		gphCenInPixels.copyFrom(&gphMaxInPixels);
-		gphCenInPixels.addXYZRef(&gphMinInPixels);
-		gphCenInPixels.multXYZ(0.5f);
+		gphCenInPixels.averageXYZ(&gphMaxInPixels,&gphMinInPixels);
 		
 
 		
@@ -98,6 +98,9 @@ public:
 	}
 
 	void genCellData() {
+		
+		//cout << "genCellData()\n";
+		
 		int i;
 		int j;
 		int k;
@@ -112,11 +115,29 @@ public:
 		
 		float zv;
 		
-		float fSimp[4];
-		int iSimp[4];
+		float fiAbs;
+		float fjAbs;
+		float fkAbs;
+		
+		float terHeight;
+		float simplexVal;
+		float simplexVal1;
+		float simplexVal2;
+		
+		float disVal;
+		
+		float fSimp;
+		int iSimp;
+		int iSimp2;
 		
 		int cellsPerHolder = singleton->cellsPerHolder;
 		int cellDataSize = cellsPerHolder*cellsPerHolder*cellsPerHolder*4;
+		
+		
+		float wspX = singleton->worldSizeInPixels[0]/2.0f;
+		float wspY = singleton->worldSizeInPixels[1]/2.0f;
+		
+		float distanceBelowTer;
 		
 		if (cellData == NULL) {
 			cellData = new int[cellDataSize];
@@ -131,10 +152,53 @@ public:
 			extrData[i] = FLUID_UNIT_MIN;
 		}
 		
+		float watHeight = singleton->getSLInPixels();
+		
+		float simplexRegion = 200.0f;
+		float simplexMod = 0.0f;
+		
 		for (j = 0; j < cellsPerHolder; j++) {
-			fj = (j + gphMinInPixels[1]);
+			fj = abs(j + gphMinInPixels[1]);
+			fjAbs = abs(wspY-fj);
 			for (i = 0; i < cellsPerHolder; i++) {
-				fi = (i + gphMinInPixels[0]);
+				fi = abs(i + gphMinInPixels[0]);
+				fiAbs = abs(wspX-fi);
+				
+				
+				
+				/*
+				for x=0,bufferwidth-1,1 do
+					for y=0,bufferheight-1,1 do
+						s=x/bufferwidth
+						t=y/bufferheight
+				    dx=x2-x1
+				    dy=y2-y1
+						
+						nx=x1+cos(s*2*pi)*dx/(2*pi)
+						ny=y1+cos(t*2*pi)*dy/(2*pi)
+						nz=x1+sin(s*2*pi)*dx/(2*pi)
+						nw=y1+sin(t*2*pi)*dy/(2*pi)
+						
+						buffer:set(x,y,Noise4D(nx,ny,nz,nw))
+					end
+				end
+				*/
+				
+				/*
+				float simplexScaledNoise(
+					const float octaves,
+					const float persistence,
+					const float scale,
+					const float loBound,
+					const float hiBound,
+					const float x,
+					const float y,
+					const float z,
+					const float w
+				) {
+					return simplexNoise(octaves, persistence, scale, x, y, z, w) * (hiBound - loBound) / 2 + (hiBound + loBound) / 2;
+				}
+				*/
 				
 				// - singleton->worldSizeInPixels[0]*0.5f
 				
@@ -149,61 +213,109 @@ public:
 				// 		4222.3
 				// 	);
 				
+				
+				terHeight = singleton->getHeightAtPixelPos(fi,fj);
+				
+				
+				
 				for (k = 0; k < cellsPerHolder; k++) {
-					fk = k + gphMinInPixels[2];
+					fk = (k + gphMinInPixels[2]);
+					fkAbs = fk;//abs(j-singleton->heightmapMax*0.5f);
 					
 					
-					// land
-					fSimp[0] = clampfZO(
-						simplexScaledNoise(
-							5.0f, //octaves
-							0.5f, //persistence (amount added in each successive generation)
-							1.0f/128.0f, //scale (frequency)
-							0.0f, // lo bound
-							1.0f, // hi bound
-							fi,
-							fj,
-							fk
-						) // - (zv*fk*0.5f/fVSP) + (1.0-fk/fVSP)*0.25
-						
+					simplexMod = (
+						clampfZO(
+							1.0f - 
+							abs(
+								fk-(terHeight-simplexRegion*0.5f)
+							)/simplexRegion
+						)	
 					);
 					
-					// water
-					// fSimp[1] = clampfZO(
-					// 	simplexScaledNoise(
-					// 		4.0f, //octaves
-					// 		0.5f, //persistence (amount added in each successive generation)
-					// 		1.0f/16.0f, //scale (frequency)
-					// 		0.0f, // lo bound
-					// 		1.0f, // hi bound
-					// 		fi+124.0f,
-					// 		fj+23.0f,
-					// 		fk+53.0f
-					// 	)// - (zv*fk*0.5f/fVSP) + (1.0-fk/fVSP)*0.5
-					// );
-					
-					// if (fk/fVSP > 0.9) {
-					// 	fSimp[0] = 0.0;
-					// }
-					
-					// if (fk/fVSP > 0.5) {
-					// 	fSimp[1] = 0.0;
-					// }
+					distanceBelowTer = (
+						clampfZO(
+							
+							(
+								terHeight-fk
+							)/simplexRegion
+						)	
+					);
 					
 					
-					if (fSimp[0] > 0.5) {
-						iSimp[0] = FLUID_UNIT_MAX;
+					if (simplexMod > 0.0f) {
+						simplexVal = clampfZO(
+							simplexScaledNoise(
+								4.0f, //octaves
+								0.5f, //persistence (amount added in each successive generation)
+								1.0f/64.0f, //scale (frequency)
+								0.0f, // lo bound
+								1.0f, // hi bound
+								fiAbs,
+								fjAbs,
+								fkAbs
+							) 
+						);
 					}
 					else {
-						iSimp[0] = FLUID_UNIT_MIN;
+						simplexVal = 0.0f;
 					}
 					
-					// if (fSimp[1] > 0.75) {
-					// 	iSimp[1] = FLUID_UNIT_MAX;
+					
+					
+					//simplexVal = simplexVal*2.0f-1.0f;
+					
+					// simplexVal2 = clampfZO(
+					// 	simplexScaledNoise(
+					// 		5.0f, //octaves
+					// 		0.5f, //persistence (amount added in each successive generation)
+					// 		1.0f/128.0f, //scale (frequency)
+					// 		0.0f, // lo bound
+					// 		1.0f, // hi bound
+					// 		fiAbs,
+					// 		fjAbs,
+					// 		fkAbs
+					// 	) 
+					// );
+					
+					// disVal = (fi/wspX)*(fj/wspY);
+					
+					
+					
+					// simplexVal = mixf(simplexVal1,simplexVal2,disVal);
+					
+					if (
+						((terHeight + simplexVal*simplexMod*800.0f) - (fk+100.0f+300.0f*distanceBelowTer)) > 0.0f
+					) {
+						iSimp = FLUID_UNIT_MAX;
+					}
+					else {
+						iSimp = FLUID_UNIT_MIN;
+					}
+					
+					if (iSimp == FLUID_UNIT_MAX) {
+						iSimp2 = FLUID_UNIT_MIN;
+					}
+					else {
+						if (fk < watHeight) {
+							iSimp2 = FLUID_UNIT_MAX;
+						}
+						else {
+							iSimp2 = FLUID_UNIT_MIN;
+						}
+					}
+					
+					
+					
+					
+					
+					
+					// if (fSimp > 0.5) {
+					// 	iSimp = FLUID_UNIT_MAX;
 					// }
 					// else {
-					// iSimp[1] = FLUID_UNIT_MIN;
-					//}
+					// 	iSimp = FLUID_UNIT_MIN;
+					// }
+					
 					
 					ind = (i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder)*4;
 					
@@ -213,10 +325,10 @@ public:
 					}
 					
 					
-					cellData[ind+0] = iSimp[0];
-					// cellData[ind+1] = FLUID_UNIT_MIN;//iSimp[1];
-					// cellData[ind+2] = FLUID_UNIT_MIN;//iSimp[1];
-					// cellData[ind+3] = FLUID_UNIT_MIN;
+					cellData[ind+0] = iSimp;
+					cellData[ind+1] = iSimp2;
+					cellData[ind+2] = iSimp2;
+					
 		
 		
 				}
@@ -225,6 +337,7 @@ public:
 		
 		
 		wasGenerated = true;
+		justGenerated = true;
 	}
 
 	
@@ -233,6 +346,8 @@ public:
 		int j;
 		int k;
 		int n;
+		
+		int m;
 		
 		GameBlock* curBlock;
 		GamePageHolder* gph;
@@ -246,28 +361,32 @@ public:
 			
 			for (i = -1; i <= 1; i++) {
 				for (j = -1; j <= 1; j++) {
-					curBlock = singleton->gw->getBlockAtCoords(
-						offsetInBlocks.getIX()+i,
-						offsetInBlocks.getIY()+j,
-						true
-					);
+					for (k = -1; k <= 1; k++) {
+						curBlock = singleton->gw->getBlockAtCoords(
+							offsetInBlocks.getIX()+i,
+							offsetInBlocks.getIY()+j,
+							offsetInBlocks.getIZ()+k,
+							true
+						);
 
-					for (k = 0; k < curBlock->gameEnts[n].data.size(); k++) {
+						for (m = 0; m < curBlock->gameEnts[n].data.size(); m++) {
 
-						gameEnt = &(curBlock->gameEnts[n].data[k]);
+							gameEnt = &(curBlock->gameEnts[n].data[m]);
 
-						start.copyFrom( &(gameEnt->moveMinInPixels) );
-						end.copyFrom( &(gameEnt->moveMaxInPixels) );
+							start.copyFrom( &(gameEnt->moveMinInPixels) );
+							end.copyFrom( &(gameEnt->moveMaxInPixels) );
 
-						start.clampZ(0.0,singleton->worldSizeInPixels.getFZ()-1.0f);
-						end.clampZ(0.0,singleton->worldSizeInPixels.getFZ()-1.0f);
+							start.clampZ(0.0,singleton->worldSizeInPixels.getFZ()-1.0f);
+							end.clampZ(0.0,singleton->worldSizeInPixels.getFZ()-1.0f);
 
-						if (FIVector4::intersectInt(&start,&end,&gphMinInPixels,&gphMaxInPixels)) {
-							containsEntIds[n].data.push_back(intPair());
-							containsEntIds[n].data.back().v0 = curBlock->blockId;
-							containsEntIds[n].data.back().v1 = k;
+							if (FIVector4::intersectInt(&start,&end,&gphMinInPixels,&gphMaxInPixels)) {
+								containsEntIds[n].data.push_back(intPair());
+								containsEntIds[n].data.back().v0 = curBlock->blockId;
+								containsEntIds[n].data.back().v1 = m;
+							}
 						}
 					}
+					
 				}
 			}
 		}

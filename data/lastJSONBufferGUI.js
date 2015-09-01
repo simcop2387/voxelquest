@@ -1001,6 +1001,11 @@
 																								"template":"fillSlider",
 																								"label":"Field of View",
 																								"uid":"$options.graphics.fov"
+																							},
+																							{
+																								"template":"fillSlider",
+																								"label":"SphereMap Precision",
+																								"uid":"$options.graphics.sphereMapPrec"
 																							}
 																						]
 																					}

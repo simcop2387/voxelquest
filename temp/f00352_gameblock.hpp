@@ -40,7 +40,6 @@ public:
 	int dirModZ[6];
 	int opDir[6];
 	
-	float pixelsPerCell;
 	float floorHeightInCells;
 	
 	float floorHeight;
@@ -107,7 +106,16 @@ public:
 		buildingData = NULL;
 	}
 
-	void init(Singleton *_singleton, int _blockId, int _x, int _y, int _xw, int _yw) {
+	void init(
+		Singleton *_singleton,
+		int _blockId,
+		int _x,
+		int _y,
+		int _z,
+		int _xw,
+		int _yw,
+		int _zw
+	) {
 
 		plantScale = 2.0f;
 
@@ -143,8 +151,8 @@ public:
 
 		singleton = _singleton;
 		blockId = _blockId;
-		offsetInBlocks.setIXYZ(_x, _y, 0);
-		offsetInBlocksWrapped.setIXYZ(_xw, _yw, 0);
+		offsetInBlocks.setIXYZ(_x, _y, _z);
+		offsetInBlocksWrapped.setIXYZ(_xw, _yw, _zw);
 
 
 		origin.setFXYZ(0.0f, 0.0f, 0.0f);
@@ -252,11 +260,8 @@ public:
 		blockSizeInPixels = singleton->blockSizeInPixels;
 		fBlockSizeInPixels = (float)blockSizeInPixels;
 
-		pixelsPerCell = singleton->pixelsPerCell;
-
-
 		float uvSizeInCells = 1.0;
-		float uvSizeInPixels = uvSizeInCells * pixelsPerCell; // 64
+		float uvSizeInPixels = uvSizeInCells; // 64
 
 		float offsetPerFloor = 0.25;
 		float floorOffset;
@@ -363,7 +368,7 @@ public:
 		float perc1;
 		float perc2;
 		float baseOffset = 0.0f;
-		float holderSizeInPixels = singleton->holderSizeInPixels;
+		float cellsPerHolder = singleton->cellsPerHolder;
 
 		bool doProc = false;
 		bool isVert;
@@ -481,7 +486,10 @@ public:
 		}
 
 
-
+		
+		// TODO: REIMPLEMENT BUILDING DATA AND REMOVE THIS RETURN
+		return;
+		
 
 		// Create Ter Data
 
@@ -618,7 +626,7 @@ public:
 
 					// if (
 					// 	singleton->getHeightAtPixelPos(lotX*singleton->pixelsPerLot,lotY*singleton->pixelsPerLot) <=
-					// 	singleton->getSLInPixels()  + 1.0f * pixelsPerCell
+					// 	singleton->getSLInPixels()  + 1.0f
 					// ) {
 					// 	curType = E_CT_DOCK;
 					// }
@@ -814,7 +822,7 @@ public:
 						if (
 							
 							//singleton->getHeightAtPixelPos(x1,y1) >
-							//singleton->getSLInPixels() + 2.0f * pixelsPerCell
+							//singleton->getSLInPixels() + 2.0f
 							
 							( ((float)(mapData[testInd].terHeight))/fTerDataVisPitchZ ) >
 							(singleton->getSLNormalized() + 1.0f/255.0f)
@@ -1784,12 +1792,6 @@ public:
 		
 		int minRad = 1;
 		int minRadZ = 1;
-		// if (pixelsPerCell <= 32) {
-		// 	minRad = -2;
-		// }
-		// if (pixelsPerCell <= 64) {
-		// 	minRadZ = -2;
-		// }
 		
 		
 		bool nearAir = false;
@@ -2026,10 +2028,10 @@ public:
 												}
 												else {
 													if (nDir == 1.0f) {
-														tempf = (flushRadInCells*pixelsPerCell)/(fBlockSizeInPixels / fTerDataVisPitchXY);
+														tempf = (flushRadInCells)/(fBlockSizeInPixels / fTerDataVisPitchXY);
 													}
 													else {
-														tempf = 1.0f-(flushRadInCells*pixelsPerCell)/(fBlockSizeInPixels / fTerDataVisPitchXY);
+														tempf = 1.0f-(flushRadInCells)/(fBlockSizeInPixels / fTerDataVisPitchXY);
 													}
 													
 													xmod1 = tempf*dirModX[m];
@@ -2151,14 +2153,14 @@ public:
 									
 									curBT = conType;
 									rad.setFXYZ(
-										wallRadInCells * pixelsPerCell,
-										wallRadInCells * pixelsPerCell,
-										(floorHeightInCells * 0.5f + roofHeightInCells)*pixelsPerCell
+										wallRadInCells,
+										wallRadInCells,
+										(floorHeightInCells * 0.5f + roofHeightInCells)
 									);
 									cornerRad.setFXYZ(
-										wallRadInCells * pixelsPerCell,
-										wallRadInCells * pixelsPerCell,
-										roofHeightInCells * pixelsPerCell
+										wallRadInCells,
+										wallRadInCells,
+										roofHeightInCells
 									);
 									powerVals.setFXYZ(2.0f, 1.0f, 0.0f);
 									powerVals2.setFXYZ(2.0f, 1.0f, 0.0f);
@@ -2211,7 +2213,7 @@ public:
 											visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
 											
 											tempVec4.setFXYZRef(&p1);
-											tempVec4.addXYZ(0.0f,0.0f,2.0f*pixelsPerCell);
+											tempVec4.addXYZ(0.0f,0.0f,2.0f);
 
 											tempVec.setIXYZ(i,j,k);
 											tempVec.multXYZ(102.33,305.44,609.121);
@@ -2253,18 +2255,18 @@ public:
 											// roofHeight = 0.25f;
 											// baseOffset = 0.0f;
 											rad.setFXYZ(
-												(0.5f)*pixelsPerCell,
-												(0.5f)*pixelsPerCell,
-												(0.75f)*pixelsPerCell
+												(0.5f),
+												(0.5f),
+												(0.75f)
 											);
 											cornerRad.setFXYZ(
-												(0.125f)*pixelsPerCell,
-												(0.125f)*pixelsPerCell,
-												(0.25f)*pixelsPerCell
+												(0.125f),
+												(0.125f),
+												(0.25f)
 											);
-											thickVals.setFX(0.25f*pixelsPerCell);											
+											thickVals.setFX(0.25f);											
 
-											visInsetFromMin.setFXYZ(0.0f,0.0f,cornerRad.getFZ() - 0.125*pixelsPerCell);
+											visInsetFromMin.setFXYZ(0.0f,0.0f,cornerRad.getFZ() - 0.125);
 											visInsetFromMax.setFXYZ(0.0f,0.0f,0.0f);
 
 											powerVals.setFXYZ(2.0f, 1.0f, 0.0f);
@@ -2299,7 +2301,7 @@ public:
 											}
 											
 											curAlign = E_ALIGN_BOTTOM;
-											baseOffset = -(rad.getFZ() - (cornerRad.getFZ()+(0.25+doorMod)*pixelsPerCell) ) + tempf*2.0f*pixelsPerCell;
+											baseOffset = -(rad.getFZ() - (cornerRad.getFZ()+(0.25+doorMod)) ) + tempf*2.0f;
 											
 
 											
@@ -2307,23 +2309,21 @@ public:
 											roofHeight = 2.25f-doorMod;
 											
 											rad.setFXYZ(
-												(roofHeight)*pixelsPerCell,
-												(roofHeight)*pixelsPerCell,
-												(floorHeight*0.5f + roofHeight + tempf*0.5f)*pixelsPerCell
+												(roofHeight),
+												(roofHeight),
+												(floorHeight*0.5f + roofHeight + tempf*0.5f)
 											);
 											cornerRad.setFXYZ(
-												(roofHeight)*pixelsPerCell,
-												(roofHeight)*pixelsPerCell,
-												roofHeight*pixelsPerCell
+												(roofHeight),
+												(roofHeight),
+												roofHeight
 											);
-											thickVals.setFX(0.25f*pixelsPerCell);	
+											thickVals.setFX(0.25f);	
 										
-											doorInset = doorMod*pixelsPerCell*1.25f;
+											doorInset = doorMod*1.25f;
 											
 											
-											anchorPoint.copyFrom(&p1);
-											anchorPoint.addXYZRef(&p2);
-											anchorPoint.multXYZ(0.5f);
+											anchorPoint.averageXYZ(&p1,&p2);
 											
 											hingeDis = p1.distance(&p2)*0.5f;
 											
@@ -2444,27 +2444,27 @@ public:
 											//testInd = getMapNodeIndex(i, j, 0);
 											//testInd2 = getMapNodeIndex(i + dirModX[m], j + dirModY[m], 0);
 
-											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
-											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
+											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells);
+											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells);
 											
 											
-											baseOffset = 0.0f;// -(floorHeightInCells)*pixelsPerCell;
+											baseOffset = 0.0f;// -(floorHeightInCells);
 											rad.addXYZ(
 												0.0f,
 												0.0f,
-												(floorHeightInCells+1.0f)*pixelsPerCell
+												(floorHeightInCells+1.0f)
 											);
 
 											
 											rad.addXYZ(
 												0.0f,
 												0.0f,
-												(2.0f)*pixelsPerCell
+												(2.0f)
 											);
 											
 											if (
 												singleton->getHeightAtPixelPos(p1.getFX(), p1.getFY()) <=
-												singleton->getSLInPixels()  + 2.0f * pixelsPerCell
+												singleton->getSLInPixels()  + 2.0f
 											) {
 												matParams.setFXYZ(E_MAT_PARAM_FOUNDATION, E_MAT_SUBPARAM_DOCK, 0.0f);
 											}
@@ -2479,42 +2479,42 @@ public:
 											break;
 										case E_CT_ROOM_BRICK:
 											matParams.setFXYZ(E_MAT_PARAM_BUILDING, E_MAT_SUBPARAM_BRICK, 0.0f);
-											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
-											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
+											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells);
+											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells);
 											break;
 										case E_CT_ROOM_TUDOR:
 
-											//rad.addXYZ(-0.5f*pixelsPerCell,-0.5f*pixelsPerCell,0.0f);
-											//cornerRad.addXYZ(-0.5f*pixelsPerCell);
+											//rad.addXYZ(-0.5f,-0.5f,0.0f);
+											//cornerRad.addXYZ(-0.5f);
 
 											matParams.setFXYZ(E_MAT_PARAM_BUILDING, E_MAT_SUBPARAM_TUDOR, 0.0f);
-											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
-											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
+											visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells);
+											visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells);
 											break;
 
 										// case E_CT_WALKWAY:
 
 										// 	matParams.setFXYZ(E_MAT_PARAM_WALKWAY, E_MAT_SUBPARAM_BRICK_ARCH, 0.0f);
-										// 	visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
-										// 	visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
+										// 	visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells);
+										// 	visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells);
 
 										// 	break;
 
 										// case E_CT_WALKWAY_TOP:
 										// 	matParams.setFXYZ(E_MAT_PARAM_WALKWAY_TOP, E_MAT_SUBPARAM_BRICK_ARCH, 0.0f);
-										// 	visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
-										// 	visInsetFromMax.setFXYZ(0.0f, 0.0f, (roofHeightInCells + (floorHeightInCells * 0.75))*pixelsPerCell);
+										// 	visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells);
+										// 	visInsetFromMax.setFXYZ(0.0f, 0.0f, (roofHeightInCells + (floorHeightInCells * 0.75)));
 
 										// 	break;
 
 										case E_CT_ROOF:
-											baseOffset = -floorHeightInCells * pixelsPerCell;
+											baseOffset = -floorHeightInCells;
 											matParams.setFXYZ(E_MAT_PARAM_ROOF, E_MAT_SUBPARAM_TUDOR, buildingData[curInd].id);
 
 											if (curDir == E_DIR_Z) {
-												visInsetFromMin.setFXYZ(0.0f, 0.0f, (roofHeightInCells + floorHeightInCells * 2.0f)*pixelsPerCell);
+												visInsetFromMin.setFXYZ(0.0f, 0.0f, (roofHeightInCells + floorHeightInCells * 2.0f));
 											} else {
-												visInsetFromMin.setFXYZ(0.0f, 0.0f, (roofHeightInCells + floorHeightInCells)*pixelsPerCell);
+												visInsetFromMin.setFXYZ(0.0f, 0.0f, (roofHeightInCells + floorHeightInCells));
 											}
 											visInsetFromMax.setFXYZ(0.0f, 0.0f, 0.0f);
 											break;
@@ -2527,11 +2527,11 @@ public:
 										// 		cornerRad.multXYZ(0.5f, 0.5f, 1.0f);
 
 										// 		if ((k % 2) == 0) {
-										// 			visInsetFromMin.setFXYZ(cornerRad.getFX(), rad.getFY(), roofHeightInCells * pixelsPerCell);
-										// 			visInsetFromMax.setFXYZ(cornerRad.getFX(), 0.0f, roofHeightInCells * pixelsPerCell);
+										// 			visInsetFromMin.setFXYZ(cornerRad.getFX(), rad.getFY(), roofHeightInCells);
+										// 			visInsetFromMax.setFXYZ(cornerRad.getFX(), 0.0f, roofHeightInCells);
 										// 		} else {
-										// 			visInsetFromMin.setFXYZ(cornerRad.getFX(), 0.0f, roofHeightInCells * pixelsPerCell);
-										// 			visInsetFromMax.setFXYZ(cornerRad.getFX(), rad.getFY(), roofHeightInCells * pixelsPerCell);
+										// 			visInsetFromMin.setFXYZ(cornerRad.getFX(), 0.0f, roofHeightInCells);
+										// 			visInsetFromMax.setFXYZ(cornerRad.getFX(), rad.getFY(), roofHeightInCells);
 										// 		}
 										// 		break;
 
@@ -2540,11 +2540,11 @@ public:
 										// 		cornerRad.multXYZ(0.5f, 0.5f, 1.0f);
 
 										// 		if ((k % 2) == 0) {
-										// 			visInsetFromMin.setFXYZ(rad.getFX(), cornerRad.getFY(), roofHeightInCells * pixelsPerCell);
-										// 			visInsetFromMax.setFXYZ(0.0f, cornerRad.getFY(), roofHeightInCells * pixelsPerCell);
+										// 			visInsetFromMin.setFXYZ(rad.getFX(), cornerRad.getFY(), roofHeightInCells);
+										// 			visInsetFromMax.setFXYZ(0.0f, cornerRad.getFY(), roofHeightInCells);
 										// 		} else {
-										// 			visInsetFromMin.setFXYZ(0.0f, cornerRad.getFY(), roofHeightInCells * pixelsPerCell);
-										// 			visInsetFromMax.setFXYZ(rad.getFX(), cornerRad.getFY(), roofHeightInCells * pixelsPerCell);
+										// 			visInsetFromMin.setFXYZ(0.0f, cornerRad.getFY(), roofHeightInCells);
+										// 			visInsetFromMax.setFXYZ(rad.getFX(), cornerRad.getFY(), roofHeightInCells);
 										// 		}
 
 										// 		break;
@@ -2552,14 +2552,14 @@ public:
 										// 	case E_DIR_Z:
 										// 		rad.multXYZ(0.75f, 0.75f, 1.0f);
 										// 		cornerRad.multXYZ(0.75f, 0.75f, 1.0f);
-										// 		visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
-										// 		visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells * pixelsPerCell);
+										// 		visInsetFromMin.setFXYZ(0.0f, 0.0f, roofHeightInCells);
+										// 		visInsetFromMax.setFXYZ(0.0f, 0.0f, roofHeightInCells);
 
 										// 		break;
 										// 	}
 
 										// 	matParams.setFXYZ(E_MAT_PARAM_STAIRS, E_MAT_SUBPARAM_NONE, (float)(k % 2));
-										// 	baseOffset = 1.0f * pixelsPerCell;
+										// 	baseOffset = 1.0f;
 
 										// 	break;
 
@@ -2894,24 +2894,21 @@ SKIP_ADD_GEOM:
 
 			}
 			else {
-				tempVec.setFXYZRef(&(curPlantNode->parent->begPoint));
-				tempVec.addXYZRef(&(curPlantNode->parent->endPoint));
-				tempVec.multXYZ(0.5f);
+				tempVec.averageXYZ(
+					&(curPlantNode->parent->begPoint),
+					&(curPlantNode->parent->endPoint)
+				);
 
 				begThickness = curPlantNode->parent->midThickness;
 				endThickness = curPlantNode->midThickness;
 			}
 
-
-			// if (curPlantNode->numChildren == 0) {
-			// 	endThickness = 0.5f*singleton->pixelsPerCell;
-			// }
-
 			
 			
-			tempVec2.setFXYZRef(&(curPlantNode->begPoint));
-			tempVec2.addXYZRef(&(curPlantNode->endPoint));
-			tempVec2.multXYZ(0.5f);
+			tempVec2.averageXYZ(
+				&(curPlantNode->begPoint),
+				&(curPlantNode->endPoint)
+			);
 			
 			tempVec3.setFXYZRef(&(curPlantNode->begPoint));
 
@@ -2998,7 +2995,7 @@ SKIP_ADD_GEOM:
 			gameEnts[E_ET_LIGHT].data.back().initLight(
 				_p1,
 				&lightVec,
-				16.0f*pixelsPerCell
+				16.0f
 			);
 			gameEnts[E_ET_LIGHT].data.back().toggled = true;
 			gameEnts[E_ET_GEOM].data.back().light = &(gameEnts[E_ET_LIGHT].data.back());
@@ -3252,9 +3249,9 @@ SKIP_ADD_GEOM:
 
 	int getAdjustedHeightInHolders(int xInHolders, int yInHolders) {
 
-		float holderSizeInPixels = singleton->holderSizeInPixels;
+		float cellsPerHolder = singleton->cellsPerHolder;
 
-		tempVec.setFXYZ(xInHolders*holderSizeInPixels, yInHolders*holderSizeInPixels, 0.0f);
+		tempVec.setFXYZ(xInHolders*cellsPerHolder, yInHolders*cellsPerHolder, 0.0f);
 
 		tempVec.addXYZ(
 			-fBlockSizeInPixels * offsetInBlocks.getFX(),
@@ -3611,7 +3608,7 @@ SKIP_ADD_GEOM:
 		int offset;
 		int bestInd = -1;
 		
-		float zBias = floorHeightInCells*pixelsPerCell*0.5f;
+		float zBias = floorHeightInCells*0.5f;
 
 		bool notFound = true;
 		

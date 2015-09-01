@@ -18,7 +18,7 @@ uniform sampler2D Texture5;
 uniform sampler3D Texture6;
 
 // wave fbo
-uniform sampler2D Texture7;
+//uniform sampler2D Texture7;
 
 uniform int iNumSteps;
 uniform float volSizePrim;
@@ -33,6 +33,7 @@ uniform vec3 cameraPos;
 uniform vec3 lookAtVec;
 uniform vec3 entPos;
 uniform float thirdPerson;
+uniform vec2 clipDist;
 //uniform vec4 fogPos;
 
 vec3 dirVecs[6] = vec3[](
@@ -194,8 +195,10 @@ void main() {
     
     
     vec4 worldPosition = tex0;
+    if (tex4.w > tex0.w) {
+        worldPosition = tex4;
+    }
     
-    worldPosition.w = max(tex0.w,tex4.w);
     
     
     
@@ -206,7 +209,14 @@ void main() {
     
     
     
-    float waveVal = (waveHeight(worldPosition.xy + worldPosition.z)+1.0)*0.5;
+    float waveVal = (waveHeight(
+        sin(worldPosition.xy/2.0) *
+        sin(worldPosition.yz/2.0) *
+        sin(worldPosition.zx/2.0)
+        
+        + (worldPosition.xy + worldPosition.zz)*0.25
+        
+    )+1.0)*0.5;
     
     
     
@@ -225,16 +235,18 @@ void main() {
     float curMax = 8.0;
     vec2 newTC = vec2(0.0);
     
-    float tot = worldPosition.w;
+    //float tot = distance(worldPosition.xyz,cameraPos)/clipDist.y//worldPosition.w;
+    
+    vec3 finalPos = cameraPos;
     
     if (thirdPerson != 0.0) {
-        tot = max(
-            1.0-clamp(distance(worldPosition.xyz,entPos)/(volSizePrim),0.0,1.0),
-            tot
-        );
+        finalPos = entPos;
     }
     
-    tot = tot*(0.95+0.05*mix(waveVal,1.0,isUnderWater));
+    float tot = 1.0-clamp(distance(worldPosition.xyz,finalPos)/(clipDist.y),0.0,1.0);
+    
+    
+    tot = tot*(0.8+0.2*mix(waveVal,1.0,isUnderWater));
     
     float totMax = 0.0;
     float weightVal;
@@ -274,7 +286,7 @@ void main() {
     
     float hfog = 
         pow(clamp(
-            (1.0-tot)*mix(2.0,5.0,isUnderWater),
+            (1.0-tot)*mix(1.0,1.0,isUnderWater),
             0.0,
             1.0
         ),1.0);
@@ -294,11 +306,113 @@ void main() {
     
     vec3 finalCol = mix(tex2.rgb,tex3.rgb,pow(hfog,2.0)); // increase hfog for more blur
     
+    
+    
+    
+    bool isOutline = false;
+    bool isSelObj = false;
+    bool isActObj = false;
+    
+    
+    
+    if (tex5.w == selObjInd) {
+        isSelObj = true;
+    }
+    if (tex5.w == actObjInd) {
+        isActObj = true;
+    }
+    for (i = 0; i < 4; i++) {
+        newTC = TexCoord0.xy + dirVecs[i].xy*1.0/bufferDim;
+        samp = texture2D(Texture5, newTC );
+        if (samp.w != tex5.w) {
+            isOutline = true;
+        }
+        if (samp.w == selObjInd) {
+            isSelObj = true;
+        }
+        if (samp.w == actObjInd) {
+            isActObj = true;
+        }
+    }
+    
+    // if (tex4.w < tex0.w) {
+    //     isActObj = false;
+    //     isSelObj = false;
+    //     isOutline = false;
+    // }
+    
+    vec3 finalColOrig = finalCol;
+    
+    float stripeVal = float(sin(
+        (TexCoord0.x + TexCoord0.y)*(bufferDim.y/5.0) + curTime/50.0     
+    ) > 0.0);
+    
+    if (selObjInd == 0) {
+        isSelObj = false;
+    }
+    if (actObjInd == 0) {
+        isActObj = false;
+    }
+    if (isOutline) {
+        
+        if (isSelObj||isActObj) {
+            if (isSelObj) {
+                
+                
+                                
+                finalCol += stripeVal;
+                //vec3(1.0,0.0,0.0)*(0.5+0.5*abs(sin(curTime/200.0)));
+            }
+            if (isActObj) {
+                
+                if (isSelObj) {
+                    finalCol *= vec3(0.0,1.0,0.0);
+                }
+                else {
+                    finalCol += vec3(0.0,1.0,0.0);
+                }
+                
+                
+            }
+            
+        }
+        else {
+            finalCol += vec3(1.0,1.0,1.0)*0.25;
+        }
+        
+        // if (tex4.w < tex0.w) {
+        //     finalCol = mix(finalCol,finalColOrig,0.9);
+        // }
+        
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     if (isUnderWater == 1.0) {
         finalCol = mix( finalCol, vec3(0.0,0.1,0.5), 0.5);
         finalCol += pow( waveVal, 8.0)*0.25;
     }
 
+
+
+
+
+    
+    
+    
+    
+
+
+
+
+    
     finalCol = mix(
         finalCol,
         fogColor, 
@@ -338,76 +452,12 @@ void main() {
     
     
     
-    bool isOutline = false;
-    bool isSelObj = false;
-    bool isActObj = false;
     
-    
-    
-    if (tex5.w == selObjInd) {
-        isSelObj = true;
-    }
-    if (tex5.w == actObjInd) {
-        isActObj = true;
-    }
-    for (i = 0; i < 4; i++) {
-        newTC = TexCoord0.xy + dirVecs[i].xy*1.0/bufferDim;
-        samp = texture2D(Texture5, newTC );
-        if (samp.w != tex5.w) {
-            isOutline = true;
-        }
-        if (samp.w == selObjInd) {
-            isSelObj = true;
-        }
-        if (samp.w == actObjInd) {
-            isActObj = true;
-        }
-    }
-    
-    float stripeVal = float(sin(
-        (TexCoord0.x + TexCoord0.y)*(bufferDim.y/5.0) + curTime/50.0     
-    ) > 0.0);
-    
-    if (selObjInd == 0) {
-        isSelObj = false;
-    }
-    if (actObjInd == 0) {
-        isActObj = false;
-    }
-    if (isOutline) {
-        
-        if (isSelObj||isActObj) {
-            if (isSelObj) {
-                
-                
-                                
-                finalCol.rgb += stripeVal;
-                //vec3(1.0,0.0,0.0)*(0.5+0.5*abs(sin(curTime/200.0)));
-            }
-            if (isActObj) {
-                
-                if (isSelObj) {
-                    finalCol.rgb *= vec3(0.0,1.0,0.0);
-                }
-                else {
-                    finalCol.rgb += vec3(0.0,1.0,0.0);
-                }
-                
-                
-            }
-            
-        }
-        else {
-            finalCol.rgb += vec3(1.0,1.0,1.0)*0.25;
-        }
-        
-        
-    }
     
     
 
     if (valIsGeom&&(!isOutline)) {
-        finalCol = tex2.rgb;
+        //finalCol = tex2.rgb;
     }
     
     //finalCol = vec3(tex7.a);

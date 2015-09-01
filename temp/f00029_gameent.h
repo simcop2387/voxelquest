@@ -12,6 +12,9 @@ private:
 	
 public:
 	
+	int templateId;
+	FIVector4 templatePos;
+	
 	int entType;
 	//int toggleState;
 	//int maxToggleStates;
@@ -21,7 +24,6 @@ public:
 	//bool isFalling;
 	
 	float camDistance;
-	float pixelsPerCell;
 
 	
 	
@@ -56,67 +58,6 @@ public:
 	FIVector4 tempVec4;
 	FIVector4 tempVec5;
 	
-	
-	FIVector4 positionInPixels;
-	FIVector4 diameterInPixels;
-	FIVector4 positionInCells;
-	FIVector4 diameterInCells;
-
-
-	// FIVector4 *getBoundsMinInPixels() {
-	// 	return &boundsMinInPixels;
-	// }
-	// FIVector4 *getBoundsMaxInPixels() {
-	// 	return &boundsMaxInPixels;
-	// }
-	// FIVector4 *getBoundsMinInPixelsT() {
-	// 	return &geomParams[E_GP_BOUNDSMININPIXELST];
-	// }
-	// FIVector4 *getBoundsMaxInPixelsT() {
-	// 	return &geomParams[E_GP_BOUNDSMAXINPIXELST];
-	// }
-	// FIVector4 *getVisMinInPixels() {
-	// 	return &visMinInPixels;
-	// }
-	// FIVector4 *getVisMaxInPixels() {
-	// 	return &visMaxInPixels;
-	// }
-	
-
-
-
-
-	void updatePosFromCells() {
-		
-		positionInPixels.copyFrom(&positionInCells);
-		positionInPixels.multXYZ(pixelsPerCell);
-		diameterInPixels.copyFrom(&diameterInCells);
-		diameterInPixels.multXYZ(pixelsPerCell);
-		
-		geomParams[E_CP_VISMININPIXELST].copyFrom(&positionInPixels);
-		geomParams[E_CP_VISMAXINPIXELST].copyFrom(&positionInPixels);
-		geomParams[E_CP_VISMAXINPIXELST].addXYZRef(&diameterInPixels);
-		
-		moveMinInPixels.setFXYZRef(&(geomParams[E_CP_VISMININPIXELST]));
-		moveMaxInPixels.setFXYZRef(&(geomParams[E_CP_VISMAXINPIXELST]));
-		
-	}
-	void updatePosFromPixels() {
-		positionInCells.copyFrom(&positionInPixels);
-		positionInCells.intDivXYZ(pixelsPerCell);
-		diameterInCells.copyFrom(&diameterInPixels);
-		diameterInCells.intDivXYZ(pixelsPerCell);
-		
-		geomParams[E_CP_VISMININPIXELST].copyFrom(&positionInPixels);
-		geomParams[E_CP_VISMAXINPIXELST].copyFrom(&positionInPixels);
-		geomParams[E_CP_VISMAXINPIXELST].addXYZRef(&diameterInPixels);
-		
-		moveMinInPixels.setFXYZRef(&(geomParams[E_CP_VISMININPIXELST]));
-		moveMaxInPixels.setFXYZRef(&(geomParams[E_CP_VISMAXINPIXELST]));
-		
-	}
-
-
 
 	void setLightPos(FIVector4* newPos) {
 		geomParams[E_LP_POSITION].copyFrom(newPos);
@@ -152,30 +93,6 @@ public:
 	
 	
 	
-	
-
-	void initActor(
-		FIVector4 *_positionInCells,
-		FIVector4 *_diameterInCells,
-		float _pixelsPerCell
-		
-	) {
-		
-		curRot = 1;
-		rotDir = 1;
-		hasAnchor = false;
-		
-		initAnchorPoint(_positionInCells,0,3);
-		
-		pixelsPerCell = _pixelsPerCell;
-		
-		diameterInCells.copyFrom(_diameterInCells);
-		positionInCells.copyFrom(_positionInCells);
-		
-		
-		updatePosFromCells();
-		
-	}
 	
 	
 
@@ -241,6 +158,9 @@ public:
 	
 	
 	GameEnt() {
+		
+		templateId = 0;
+		
 		light = NULL;
 		//toggleState = 0;
 		//maxToggleStates = 2;

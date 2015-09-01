@@ -85,7 +85,11 @@ public:
   typedef map <string, JSONStruct>::iterator itJSStruct;
   bool (keysPressed) [MAX_KEYS];
   double (keyDownTimes) [MAX_KEYS];
-  unsigned char (keyMap) [MAX_KEYS];
+  unsigned char (keyMap) [KEYMAP_LENGTH];
+  bool (keyMapResultZipped) [KEYMAP_LENGTH];
+  bool (keyMapResultUnzipped) [KEYMAP_LENGTH];
+  int (keyMapCoolDown) [KEYMAP_LENGTH];
+  int (keyMapMaxCoolDown) [KEYMAP_LENGTH];
   GLdouble (viewMatrixD) [16];
   float (viewMatrixDI) [16];
   GLdouble (projMatrixD) [16];
@@ -102,12 +106,19 @@ public:
   EntSelection selectedEnts;
   GameEnt * selectedEnt;
   GameEnt * highlightedEnt;
+  bool dumpingFluid;
+  bool modifiedUnit;
+  bool modifiedGeom;
+  bool readyForTBOUpdate;
+  bool firstVPUpdate;
+  bool placingTemplate;
+  bool smoothMove;
   bool waterBulletOn;
   bool doUpdateVolPos;
   bool ignoreFrameLimit;
   bool autoMove;
   bool allInit;
-  bool combatOn;
+  bool noBounce;
   bool firstPerson;
   bool updateMatFlag;
   bool matVolLock;
@@ -163,21 +174,27 @@ public:
   bool isDraggingObject;
   bool fpsTest;
   bool frameMouseMove;
+  bool depthInvalidRotate;
+  bool depthInvalidMove;
+  bool lastDepthInvalidMove;
   int (entIdToIcon) [MAX_OBJ_TYPES];
   int (iconToEntId) [MAX_ICON_ID];
   bool (isContainer) [MAX_OBJ_TYPES];
   string (objStrings) [MAX_OBJ_TYPES];
+  int curPrimTemplate;
   int geomStep;
   int earthMod;
   int currentTick;
+  int waterTick;
   int draggingFromInd;
   int draggingToInd;
   int draggingFromType;
   int draggingToType;
+  int fdWritePos;
+  int fdReadPos;
   int fpsCountMax;
   int fpsCount;
   int medianCount;
-  int moveMode;
   int maxHolderDis;
   int gameObjCounter;
   int lastObjectCount;
@@ -190,12 +207,9 @@ public:
   int lastH;
   int (cdMap) [256];
   int maxLayerOver;
-  int holderResolution;
   int unitSizeInPixels;
   int holdersPerLot;
   int pixelsPerLot;
-  int pixelsPerCell;
-  int holderSizeInPixels;
   int currentStep;
   int baseW;
   int baseH;
@@ -252,14 +266,20 @@ public:
   int internalPrimFormat;
   int precPrimFormat;
   intPair (entIdArr) [1024];
-  PRIM_FORMAT * (volDataPrim) [E_PL_LENGTH];
   uint palWidth;
   uint palHeight;
   uint blockShift;
   uint * terDataScaled;
   GLfloat (camRotation) [2];
+  GLfloat (curCamRotation) [2];
   bool timeMod;
-  float geomOrigOffset;
+  uint (naUintData) [8];
+  int (naIntData) [8];
+  float (naFloatData) [8];
+  float amountInvalidMove;
+  float amountInvalidRotate;
+  float sphereMapPrec;
+  float heightmapMax;
   float waterLerp;
   float resultShake;
   float cameraShake;
@@ -288,6 +308,7 @@ public:
   float aspectRatio;
   float currentFBOResolutionX;
   float currentFBOResolutionY;
+  float curPrimMod;
   float mouseX;
   float mouseY;
   float mouseXUp;
@@ -306,6 +327,7 @@ public:
   float * paramArr;
   float * paramArrGeom;
   float * splashArr;
+  float * explodeArr;
   float * voroArr;
   float * matCountArr;
   float * paramArrMap;
@@ -325,10 +347,21 @@ public:
   GameOrgNode * lastSelNode;
   GameOrgNode * activeNode;
   FIVector4 (geomPoints) [E_GEOM_POINTS_LENGTH];
+  FIVector4 curDirtyMax;
+  FIVector4 curDirtyMin;
+  FIVector4 campPosVPDump;
+  FIVector4 geomOrigOffset;
+  FIVector4 lastSend;
+  FIVector4 tempLerpPos;
+  FIVector4 camLerpPos;
   FIVector4 resultCameraPos;
   FIVector4 volMinInPixels;
   FIVector4 volMaxInPixels;
+  FIVector4 volMinReadyInPixels;
+  FIVector4 volMaxReadyInPixels;
   FIVector4 camPosVP;
+  FIVector4 newCamPos;
+  FIVector4 lastCamPos;
   FIVector4 camPosVPInPixels;
   FIVector4 lastCamPosVP;
   FIVector4 * cameraPos;
@@ -378,8 +411,16 @@ public:
   FIVector4 modXYZ;
   FIVector4 matVolDim;
   uint * matVol;
-  std::thread fluidThread;
-  bool fluidThreadRunning;
+  int threadPoolCount;
+  ThreadWrapper (threadPool) [MAX_THREADS];
+  ThreadWrapper threadLoader;
+  ThreadWrapper threadTex;
+  ThreadWrapper threadFluid;
+  ThreadWrapper threadNetSend;
+  ThreadWrapper threadNetRecv;
+  std::list <KeyStackEvent> keyStack;
+  EntPool (entPoolStack) [E_ENTTYPE_LENGTH];
+  std::vector <PushModStruct> pmStack;
   std::vector <FIVector4> primTemplateStack;
   std::vector <SphereStruct> sphereStack;
   std::vector <int> (guiLayers) [MAX_UI_LAYERS];
@@ -393,7 +434,7 @@ public:
   float floorHeightInCells;
   float roofHeightInCells;
   float wallRadInCells;
-  int waterTickSpace;
+  int waterTickMax;
   int cellsPerHolder;
   int unitsPerCell;
   int blockSizeInLots;
@@ -444,6 +485,7 @@ public:
   Timer moveTimer;
   GameWorld * gw;
   GameFluid * gameFluid;
+  GameNetwork * gameNetwork;
   GameAI * gameAI;
   float (lightArr) [MAX_LIGHTS * 16];
   int numLights;
@@ -469,21 +511,44 @@ public:
   Singleton ();
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
   bool addPrimObj (FIVector4 * pos, int tempId, int uid);
+  void addGeom (FIVector4 * newPos, int templateId);
   void fetchGeom ();
+  void fillAllGeom ();
   void updateTBOData (bool firstTime, bool reloadTemplates);
   FIVector4 * cameraGetPos ();
   int placeInStack ();
   int placeInLayer (int nodeId, int layer);
   void initAllMatrices ();
   int numberIcons (int pCurCount, int x1, int y1, int x2, int y2);
-  void getPrimData (int n);
   void setupPrimTexture ();
-  void updateFluidData ();
-  void startFluidThread ();
-  void updateCamVP ();
-  void stopFluidThread ();
+  void beginFluidDump (FIVector4 * _campPosVPDump);
+  void endFluidDump ();
+  void shiftRegion ();
+  void funcNT2 ();
+  void startNT2 ();
+  bool stopNT2 ();
+  void funcNT ();
+  void startNT ();
+  bool stopNT ();
+  void funcFT ();
+  void startFT ();
+  bool stopFT ();
+  void funcTL ();
+  void startTL ();
+  bool stopTL ();
+  void funcTT ();
+  void startTT ();
+  bool stopTT ();
+  void funcTP (int threadId);
+  void startTP (int threadId);
+  bool stopTP (int threadId);
+  void flushActionStack ();
+  void pushExplodeBullet (bool isReq, FIVector4 * newPos);
+  void pushModifyUnit (bool isReq, FIVector4 * mp, int buttonNum);
+  void pushPlaceTemplate (bool isReq, FIVector4 * newPos, int pt);
   void copyPrimTexture ();
   void prepSound (string soundName);
+  void playSoundEnt (string soundName, BaseObj * ge = NULL, float variance = 0.0f, float volume = 1.0f, bool doLoop = false);
   void playSoundPosAndPitch (string soundName, FIVector4 * listenerPos, FIVector4 * soundPos, float variance = 0.0f, float volume = 1.0f, bool doLoop = false);
   void updateSoundPosAndPitch (string soundName, FIVector4 * listenerPos, FIVector4 * soundPos, float volume = 1.0f, float decay = 0.01f);
   void playSound (string soundName, float volume = 1.0f);
@@ -496,9 +561,9 @@ public:
   int getRandomObjId ();
   void fillWithRandomObjects (int parentUID, int gen);
   void toggleDDMenu (int x, int y, bool toggled);
-  void performDrag ();
-  void removeEntity (int ind);
-  BaseObjType placeNewEnt (int et, FIVector4 * cellPos);
+  void performDrag (bool isReq, int _draggingFromInd, int _draggingFromType, int _draggingToInd, int _draggingToType, FIVector4 * _worldMarker);
+  void removeEntity (bool isReq, int ind);
+  BaseObjType placeNewEnt (bool isReq, int et, FIVector4 * cellPos, bool isHidden = false);
   void dispatchEvent (int button, int state, float x, float y, UIComponent * comp, bool automated = false, bool preventRefresh = false);
   StyleSheet * getNewStyleSheet (string ssName);
   void initStyleSheet ();
@@ -574,25 +639,22 @@ public:
   void moveCamera (FIVector4 * pModXYZ);
   GameOrgNode * getMirroredNode (GameOrgNode * curNode);
   void applyNodeChanges (GameOrgNode * _curNode, float dx, float dy);
+  GLfloat getCamRot (int ind);
   void moveObject (float dx, float dy);
   void updateMultiLights ();
   void toggleFullScreen ();
-  void setObjToElevationBase (FIVector4 * obj);
-  void setCameraToElevationBase ();
   void setCameraToElevation ();
-  void processSpecialKeys (int key, int _x, int _y);
+  void runReport ();
   void setFirstPerson (bool _newVal);
+  int getCurActorUID ();
   void updateCS ();
-  void playBump (BaseObj * ge);
   void getMarkerPos (int x, int y);
-  void makeJump (BaseObj * ge);
+  void makeJump (int actorId, int isUp);
   void resetGeom ();
   void processInput (unsigned char key, bool keyDown, int x, int y);
-  void keyboardUp (unsigned char key, int _x, int _y);
-  void keyboardDown (unsigned char key, int _x, int _y);
-  void runReport ();
   void getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj);
   float getMinGeom (int baseIndex);
+  void setFXYZWGeom (int baseIndex, FIVector4 * baseVec);
   void setFXYGeom (int baseIndex, float xv, float yv);
   void setFXGeom (int baseIndex, float xv);
   void setFYGeom (int baseIndex, float yv);
@@ -602,19 +664,27 @@ public:
   float getFYGeom (int baseIndex);
   float getFZGeom (int baseIndex);
   float getFWGeom (int baseIndex);
+  void processSpecialKeys (int key, int _x, int _y);
+  void keyboardUp (unsigned char key, int _x, int _y);
+  void keyboardDown (unsigned char key, int _x, int _y);
+  void updateCurGeom (int x, int y);
   void mouseMove (int _x, int _y);
+  void mouseClick (int button, int state, int _x, int _y);
   void makeDirty ();
   void setSelNode (GameOrgNode * newNode);
   void worldToScreenBase (FIVector4 * sc, FIVector4 * wc);
   void refreshContainers (bool onMousePos);
   void toggleCont (int contIndex, bool onMousePos);
   float getShortestAngle (float begInRad, float endInRad, float amount);
+  void flushKeyStack ();
+  void applyKeyAction (bool isReq, int actorId, uint keyFlags, float camRotX, float camRotY);
+  void gatherKeyActions ();
   void handleMovement ();
   bool anyMenuVisible ();
   void performCamShake (BaseObj * ge);
   void explodeBullet (BaseObj * ge);
-  void launchBullet ();
-  void mouseClick (int button, int state, int _x, int _y);
+  void grabThrowObj (int actorId);
+  void launchBullet (int actorId, int bulletType);
   void resetActiveNode ();
   bool updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS);
   void findNearestOrgNode (GameOrgNode * curNode, FIVector4 * mousePosWS);
@@ -647,7 +717,9 @@ public:
   bool saveFile (char * fileName, charArr * source);
   float getUnderWater ();
   void updateAmbientSounds ();
+  void updateWaterTick ();
   void frameUpdate ();
+  void updateCamShake ();
   void display ();
   bool gluInvertMatrix (double const (m) [16], float (invOut) [16]);
   void setMatrices (int w, int h);
@@ -968,6 +1040,49 @@ public:
 };
 #undef LZZ_INLINE
 #endif
+// f00332_gamenetwork.e
+//
+
+#ifndef LZZ_f00332_gamenetwork_e
+#define LZZ_f00332_gamenetwork_e
+#define LZZ_INLINE inline
+class GameNetwork
+{
+public:
+  Singleton * singleton;
+  static int const FRAME_SIZE_IN_BYTES = 256;
+  static int const TOT_BUFFER_SIZE = FRAME_SIZE_IN_BYTES*256;
+  FIVector4 (tempVecs) [8];
+  WSADATA wsaData;
+  SOCKET ConnectSocket;
+  int recvPosInBytes;
+  int sendPosInBytes;
+  int recvConsumedInBytes;
+  int sendConsumedInBytes;
+  uint * (uintPtr) [8];
+  int * (intPtr) [8];
+  float * (floatPtr) [8];
+  char (recvbuf) [TOT_BUFFER_SIZE];
+  char (sendbuf) [TOT_BUFFER_SIZE];
+  bool isConnected;
+  std::vector <NetworkAction> netSendStack;
+  GameNetwork ();
+  void init (Singleton * _singleton);
+  void getIntFloatLen (int opCode, int * uintLen, int * intLen, int * floatLen);
+  void addNetworkAction (int opCode, uint * naUintData, int * naIntData, float * naFloatData);
+  void addNetworkActionForSend (NetworkAction * na);
+  void applyNetworkActions ();
+  int socketConnect (bool doConnect);
+  void socketRecv ();
+  void socketSend ();
+  void checkBufferLengthSend ();
+  void checkBufferLengthRecv ();
+  void flushNetworkActions ();
+  void updateSend ();
+  void updateRecv ();
+};
+#undef LZZ_INLINE
+#endif
 // f00335_gameai.e
 //
 
@@ -1023,6 +1138,8 @@ class GameFluid
 {
 public:
   Singleton * singleton;
+  PRIM_FORMAT * (volDataPrim) [E_PL_LENGTH];
+  int forceFullRefresh;
   int volSizePrim;
   int volSizePrimBuf;
   int bufAmount;
@@ -1035,6 +1152,7 @@ public:
   int maxTicks;
   int UNIT_MIN;
   int UNIT_MAX;
+  int UNIT_INSIDE;
   int watchMinX;
   int watchMaxX;
   int watchMinY;
@@ -1042,6 +1160,15 @@ public:
   int watchMinZ;
   int watchMaxZ;
   int totSize;
+  FIVector4 readMIP;
+  FIVector4 lastDirtyMin;
+  FIVector4 lastDirtyMax;
+  FIVector4 dirtyMin;
+  FIVector4 dirtyMax;
+  FIVector4 tempMin;
+  FIVector4 tempMax;
+  FIVector4 minV;
+  FIVector4 maxV;
   bool hasRead;
   bool invalidated;
   float F_UNIT_MAX;
@@ -1051,7 +1178,9 @@ public:
   FluidPlane fluidPlane;
   GameFluid ();
   void init (Singleton * _singleton);
-  void writeFluidData ();
+  void getPrimData (int n);
+  bool writeFluidData (int writePosStart, int writePosEnd, bool writeDirty);
+  void prereadFluidData ();
   void readFluidData ();
   void applyMods ();
   void updateFluidData ();
@@ -1059,8 +1188,12 @@ public:
   bool floodFillId (int startInd, int newId);
   bool inBounds (int i, int j, int k);
   void modifyUnit (FIVector4 * fPixelWorldCoordsBase, int brushAction, int modType, int radius);
-  bool roundBox (FIVector4 * absVecFromCenter, FIVector4 * innerBoxRad, FIVector4 * cornerDisThicknessPower);
-  void fillCurrentGeom ();
+  void roundBox (FIVector4 * absVecFromCenter, FIVector4 * innerBoxRad, FIVector4 * cornerDisThicknessPower, bool & isInObj, bool & isInside);
+  void clearAllGeom ();
+  void clearInsideValues ();
+  void fillCurrentGeom (int templateId, FIVector4 * templatePos);
+  void resetDirtyRegion ();
+  void maxDirtyRegion ();
   void applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int brushAction, int modType, int radius);
 };
 #undef LZZ_INLINE
@@ -1206,9 +1339,10 @@ public:
   FIVector4 tempVec2;
   Singleton * singleton;
   intPairVec (containsEntIds) [E_ET_LENGTH];
-  float holderSizeInPixels;
-  float halfHolderSizeInPixels;
+  float cellsPerHolder;
+  float halfCellsPerHolder;
   bool wasGenerated;
+  bool justGenerated;
   GamePageHolder ();
   void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ);
   void genCellData ();
@@ -1252,7 +1386,6 @@ public:
   int (dirModY) [6];
   int (dirModZ) [6];
   int (opDir) [6];
-  float pixelsPerCell;
   float floorHeightInCells;
   float floorHeight;
   float roofHeight;
@@ -1299,7 +1432,7 @@ public:
   uint * terData;
   BuildingCon * curCon;
   GameBlock ();
-  void init (Singleton * _singleton, int _blockId, int _x, int _y, int _xw, int _yw);
+  void init (Singleton * _singleton, int _blockId, int _x, int _y, int _z, int _xw, int _yw, int _zw);
   int getNodeIndexClamped (int _x, int _y, int _z);
   int getNodeIndex (int x, int y, int z, int bufAmount);
   int touchesPlanarBN (int x, int y, int z, int buildingType, int bufAmount);
@@ -1348,6 +1481,8 @@ public:
   int mapSwapFlag;
   int blockSizeInHolders;
   int renderCount;
+  float invalidCount;
+  float invalidCountMax;
   int iBlockSize;
   int renderMethod;
   int iBufferSize;
@@ -1376,8 +1511,6 @@ public:
   bool mapLockOn;
   bool foundPath;
   float mapStep;
-  int (tempCellData) [4];
-  int (tempCellData2) [4];
   int (dirFlags) [4];
   int (dirFlagsOp) [4];
   int (dirFlagsO) [4];
@@ -1397,7 +1530,8 @@ public:
   map <BaseObjType, BaseObj> gameObjects;
   vector <BaseObjType> visObjects;
   vector <ObjDef> objDefs;
-  float ppCell;
+  string (curTargFBO) [2];
+  string (curDepthFBO) [2];
   FIVector4 lScreenCoords;
   FIVector4 cScreenCoords;
   FIVector4 worldSizeInHolders;
@@ -1448,13 +1582,12 @@ public:
   BaseObjType lastHitObjUID;
   GameWorld ();
   void init (Singleton * _singleton);
-  GameBlock * getBlockAtCoords (int xInBlocks, int yInBlocks, bool createOnNull = false);
+  GameBlock * getBlockAtCoords (int xInBlocks, int yInBlocks, int zInBlocks, bool createOnNull = false);
   GamePageHolder * getHolderAtCoords (int x, int y, int z, bool createOnNull = false);
-  uint getTerDataAtCoords (int x, int y, int z);
-  GamePageHolder * getHolderAtId (intPair id);
+  GamePageHolder * getHolderAtId (int blockId, int holderId);
   GameBlock * getBlockAtId (int id);
   void setCellAtCoords (int xv, int yv, int zv, int readInd, int * fluidData, int * extraData);
-  int getCellAtCoords (int xv, int yv, int zv);
+  int getCellAtCoords (int xv, int yv, int zv, int * tempCellData = NULL, int * tempCellData2 = NULL);
   int testMoveHit (BaseObj * ge, int x, int y, int z);
   bool makeMove (BaseObj * ge);
   void updatePhys ();
@@ -1463,7 +1596,7 @@ public:
   void ensureBlocks ();
   void loadNearestHolders ();
   void findNearestEnt (EntSelection * entSelection, int entType, int maxLoadRad, int radStep, FIVector4 * testPoint, bool onlyInteractive = false, bool ignoreDistance = false);
-  void drawPrim ();
+  void drawPrim (bool doSphereMap);
   void drawOrg (GameOrg * curOrg, bool drawAll);
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void clearVisitedPaths (PathHolder * pathHolder);
@@ -1478,6 +1611,7 @@ public:
   bool moveCell (BaseObj * ge, int x, int y, int z);
   bool removeVisObject (BaseObjType _uid);
   void moveCellRotated (BaseObj * ge, int dirMod);
+  int getClosestObj (int actorId, FIVector4 * basePoint);
   int testHit (BaseObj * ge);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);
@@ -1487,7 +1621,6 @@ public:
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
   void updateLights ();
-  void renderWaveHeight ();
   void postProcess ();
   ~ GameWorld ();
 };

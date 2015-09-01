@@ -1,4 +1,4 @@
-﻿Build started 7/27/2015 5:27:00 AM.
+﻿Build started 9/1/2015 4:56:37 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -27,6 +27,7 @@
          .\src\cpp\f00320_fontwrapper.hpp
          .\src\cpp\f00325_uicomponent.hpp
          .\src\cpp\f00330_gamegui.hpp
+         .\src\cpp\f00332_gamenetwork.hpp
          .\src\cpp\f00335_gameai.hpp
          .\src\cpp\f00337_gamefluid.hpp
          .\src\cpp\f00338_gameorgnode.hpp
@@ -37,11 +38,11 @@
          .\src\cpp\f00352_gameblock.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         32 File(s) copied
+         33 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         17
+         18
          copying headers to one file
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
@@ -51,6 +52,7 @@
          .\f00320_fontwrapper.e
          .\f00325_uicomponent.e
          .\f00330_gamegui.e
+         .\f00332_gamenetwork.e
          .\f00335_gameai.e
          .\f00337_gamefluid.e
          .\f00338_gameorgnode.e
@@ -63,7 +65,7 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         17
+         18
          .
          copying files to compiled
          .\temp\f00293_gamesound.e
@@ -74,6 +76,7 @@
          .\temp\f00320_fontwrapper.e
          .\temp\f00325_uicomponent.e
          .\temp\f00330_gamegui.e
+         .\temp\f00332_gamenetwork.e
          .\temp\f00335_gameai.e
          .\temp\f00337_gamefluid.e
          .\temp\f00338_gameorgnode.e
@@ -83,7 +86,7 @@
          .\temp\f00351_gamepageholder.e
          .\temp\f00352_gameblock.e
          .\temp\f00380_gameworld.e
-         17 File(s) copied
+         18 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_mat.h
@@ -107,6 +110,7 @@
          .\temp\f00320_fontwrapper.h
          .\temp\f00325_uicomponent.h
          .\temp\f00330_gamegui.h
+         .\temp\f00332_gamenetwork.h
          .\temp\f00335_gameai.h
          .\temp\f00337_gamefluid.h
          .\temp\f00338_gameorgnode.h
@@ -119,7 +123,7 @@
          .\temp\f00500_mainfuncs.h
                  1 file(s) copied.
        ClCompile:
-         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W1 /WX- /sdl /Ox /Oi /GL /D SFML_STATIC /D WIN32 /D NDEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Release\\" /Fd"x64\Release\vc110.pdb" /Gd /TP /errorReport:prompt ..\compiled\main.cpp
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W1 /WX- /sdl /Ox /Oi /GL /D _CRT_SECURE_NO_WARNINGS /D SFML_STATIC /D WIN32 /D NDEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Release\\" /Fd"x64\Release\vc110.pdb" /Gd /TP /errorReport:prompt ..\compiled\main.cpp
          main.cpp
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.exe" /INCREMENTAL:NO /NOLOGO /LIBPATH:C:\wamp\www\voxelquest\glew\lib /LIBPATH:"C:\Program Files (x86)\Windows Kits\8.0\Lib\win8\um\x64" /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\lib\amd64" /LIBPATH:"C:\SFML-2.1\lib" "sfml-system-s.lib" "sfml-audio-s.lib" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.lib" /MACHINE:X64 x64\Release\main.obj
@@ -156,23 +160,22 @@
          
          cellsPerNodeXY: 16
          cellsPerNodeZ: 8
-         blockSizeInHolders: 16
+         blockSizeInHolders: 8
          blockSizeInPixels: 256
          terDataBufPitchScaledXY 24
-         holderSizeInPixels: 16
+         cellsPerHolder: 32
          cellsPerLot: 64
-         pixelsPerCell: 1
          unitsPerCell: 1
          blockSizeInLots: 4
          pixelsPerUnit: 1
          unitsPerLot: 64
          pixelsPerLot: 64
-         holdersPerLot: 4
+         holdersPerLot: 2
          unitSizeInPixels: 1
-         worldSizeInBlocks:    128.000000   128.000000   1.000000    
-         worldSizeInLots:    512.000000   512.000000   4.000000    
-         worldSizeInHolders:    2048.000000   2048.000000   16.000000    
-         worldSizeInTerData:    2048.000000   2048.000000   32.000000    
+         worldSizeInBlocks:    128.000000   128.000000   128.000000    
+         worldSizeInLots:    512.000000   512.000000   512.000000    
+         worldSizeInHolders:    1024.000000   1024.000000   1024.000000    
+         worldSizeInTerData:    2048.000000   2048.000000   4096.000000    
          MAX_UNIFORMS: 65536
          
          
@@ -180,7 +183,8 @@
          
          
          
-         worldSizeInPixels:    32768.000000   32768.000000   256.000000    
+         worldSizeInPixels:    32768.000000   32768.000000   32768.000000    
+         Unable to connect to server!
          load jv data materials.js
          Loading:  ..\data\materials.js         
          Load Successful          
@@ -193,6 +197,7 @@
          
          Valid JSON
                    
+         Save Successful          
          
          Valid JSON
                    
@@ -215,7 +220,7 @@
          
          Valid JSON
                    
-         Sea Level: 0
+         Sea Level: 136
          start place cities
          end place cities
          start grow provinces
@@ -249,6 +254,7 @@
          
          Valid JSON
                    
+         Save Successful          
          
          Valid JSON
                    
@@ -267,50 +273,28 @@
          
          Valid JSON
                    
+         Save Successful          
          
          Valid JSON
                    
          GW DONE          
-         cur step: E_GEOM_POINTS_RAD_XY
-         cur step: E_GEOM_POINTS_RAD_Z
-         cur step: E_GEOM_POINTS_OFFSET_Z
-         cur step: E_GEOM_POINTS_CORNER
-         cur step: E_GEOM_POINTS_POWER_VALS
-         cur step: E_GEOM_POINTS_NEG_RAD_XY
-         cur step: E_GEOM_POINTS_POS_RAD_XY
-         cur step: E_GEOM_POINTS_NEG_RAD_Z
-         cur step: E_GEOM_POINTS_POS_RAD_Z
-         cur step: E_GEOM_POINTS_THICKNESS
-         cur step: E_GEOM_POINTS_LENGTH
-         E_MOUSE_STATE_BRUSH
-         E_MOUSE_STATE_BRUSH
-         E_MOUSE_STATE_MOVE
-         from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         iNumSteps:  16         
-         iNumSteps:  16         
-         from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         refreshContainers
-         ival 177
-         refreshContainers
-         iNumSteps:  16         
-         iNumSteps:  16         
-         start FPS timer
-         firstPerson 1
-         firstPerson 0
-         E_MOUSE_STATE_BRUSH
+         curHeight 0 newHeight 271.812
+         pos change
+         pos change end
+         pos change
+         pos change end
+         pos change
+         pos change end
+         pos change
+         pos change end
+         pos change
+         pos change end
+         pos change
+         pos change end
+         pos change
+         pos change end
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:10:43.16
+Time Elapsed 00:01:13.64

@@ -3,13 +3,16 @@ class GameFluid {
 public:
 	Singleton* singleton;
 
+	PRIM_FORMAT* volDataPrim[E_PL_LENGTH];
+
+	int forceFullRefresh;
+
 	int volSizePrim;
 	int volSizePrimBuf;
 	int bufAmount;
 	int vspMin;
 	int vspMax;
 	int* fluidData;
-	//int* lastFluidData;
 	int* extraData;
 	
 	std::vector<int> indexStack;
@@ -19,6 +22,7 @@ public:
 	
 	int UNIT_MIN;
 	int UNIT_MAX;
+	int UNIT_INSIDE;
 	
 	int watchMinX;
 	int watchMaxX;
@@ -28,6 +32,19 @@ public:
 	int watchMaxZ;
 	int totSize;
 	
+	FIVector4 readMIP;
+	
+	FIVector4 lastDirtyMin;
+	FIVector4 lastDirtyMax;
+	
+	FIVector4 dirtyMin;
+	FIVector4 dirtyMax;
+	
+	FIVector4 tempMin;
+	FIVector4 tempMax;
+	
+	FIVector4 minV;
+	FIVector4 maxV;
 	
 	bool hasRead;
 	bool invalidated;
@@ -47,6 +64,8 @@ public:
 		
 		UNIT_MIN = FLUID_UNIT_MIN;
 		UNIT_MAX = FLUID_UNIT_MAX;
+		
+		UNIT_INSIDE = FLUID_UNIT_MIN + 8;
 		
 		invalidated = true;
 		
@@ -68,6 +87,8 @@ public:
 		bufAmount = 1;
 		volSizePrimBuf = volSizePrim+bufAmount*2;
 		
+		forceFullRefresh = 2;
+		
 		curTick = 0;
 		maxTicks = 1;//volSizePrim/8;
 		
@@ -79,46 +100,168 @@ public:
 		
 		totSize = volSizePrimBuf*volSizePrimBuf*volSizePrimBuf;
 		
+		int i;
+		
+		for (i = 0; i < E_PL_LENGTH; i++) {
+			
+			volDataPrim[i] = new uint[volSizePrim*volSizePrim*volSizePrim];
+			
+		}
+		
+		lastDirtyMax.setFXYZ(vspMin);
+		lastDirtyMin.setFXYZ(vspMax);
+		maxDirtyRegion();
+		
+		
 	}
 	
-	void writeFluidData() {
+	void getPrimData(int n) {
+		//cout << "start\n";
+		
+		int i;
+		int j;
+		int k;
+		int c;
+		
+		uint v0;
+		uint v1;
+		uint v2;
+		uint v3;
+		
+		int indSrc;
+		int indDest;
+		
+		int iMin = clamp(dirtyMin.getIX(), vspMin, vspMax);
+		int iMax = clamp(dirtyMax.getIX(), vspMin, vspMax);
+		int jMin = clamp(dirtyMin.getIY(), vspMin, vspMax);
+		int jMax = clamp(dirtyMax.getIY(), vspMin, vspMax);
+		int kMin = clamp(dirtyMin.getIZ(), vspMin, vspMax);
+		int kMax = clamp(dirtyMax.getIZ(), vspMin, vspMax);
+		
+		if (forceFullRefresh > 0) {
+		 	forceFullRefresh--;
+			
+			iMin = vspMin;
+			iMax = vspMax;
+			jMin = vspMin;
+			jMax = vspMax;
+			kMin = vspMin;
+			kMax = vspMax;
+		}
+		
+		
+		float NEW_UNIT_MAX = UNIT_MAX + 1;
+		
+		uint* vdpPtr = (volDataPrim[n]);
+		
+		switch (n) {
+			case E_PL_TERRAIN:
+				
+				for (i = iMin; i < iMax; i++) {
+					for (j = jMin; j < jMax; j++) {
+						for (k = kMin; k < kMax; k++) {
+							indSrc = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
+							indDest = ((i-bufAmount) + (j-bufAmount)*volSizePrim + (k-bufAmount)*volSizePrim*volSizePrim);
+							
+							v0 = ((fluidData[indSrc+0]+1)*255)/NEW_UNIT_MAX;
+							v1 = ((fluidData[indSrc+1]+1)*255)/NEW_UNIT_MAX;
+							v2 = ((fluidData[indSrc+2]+1)*255)/NEW_UNIT_MAX;
+							v3 = ((fluidData[indSrc+3]+1)*255)/NEW_UNIT_MAX;
+							
+							vdpPtr[indDest] = 
+								(v0) |
+								(v1 << 8) |
+								(v2 << 16) |
+								(v3 << 24);
+								
+							
+							
+						}
+					}
+				}
+				
+				
+			break;
+			
+			// case E_PL_PRIMIDS:
+				
+			// break;
+			
+		}
+		//cout << "end\n\n";
+	}
+	
+	
+	
+	
+	
+	bool writeFluidData(int writePosStart, int writePosEnd, bool writeDirty) {
 		int i;
 		int j;
 		int k;
 		
-		float fi;
-		float fj;
-		float fk;
-		
 		int ind;
 		
+		if (writePosStart >= vspMax) {
+			return true;
+		}
+		
+		
+		//tempMin.copyFrom(&lastDirtyMin);
+		//tempMax.copyFrom(&lastDirtyMax);
+		//FIVector4::growBoundary(&tempMin,&tempMax,&dirtyMin,&dirtyMax);
+		
+		tempMin.copyFrom(&dirtyMin);
+		tempMax.copyFrom(&dirtyMax);
+		
+		int iMin = clamp(tempMin.getIX()-1, vspMin, vspMax);
+		int iMax = clamp(tempMax.getIX()+1, vspMin, vspMax);
+		int jMin = clamp(tempMin.getIY()-1, vspMin, vspMax);
+		int jMax = clamp(tempMax.getIY()+1, vspMin, vspMax);
+		int kMin = clamp(tempMin.getIZ()-1, vspMin, vspMax);
+		int kMax = clamp(tempMax.getIZ()+1, vspMin, vspMax);
+		
+		
+		
+		if (writeDirty) {
+			
+		}
+		else {
+			iMin = vspMin;
+			iMax = vspMax;
+			jMin = vspMin;
+			jMax = vspMax;
+			kMin = writePosStart;
+			kMax = writePosEnd;
+		}
+		
+		bool endGreater = (writePosEnd >= vspMax);
+		
+		int ox = singleton->volMinInPixels.getIX();
+		int oy = singleton->volMinInPixels.getIY();
+		int oz = singleton->volMinInPixels.getIZ();
 		
 		
 		if (hasRead) {
 			
 			
-			for (k = vspMin; k < vspMax; k++) {
-				fk = k + (singleton->volMinInPixels[2]);
-				for (j = vspMin; j < vspMax; j++) {
-					fj = j + (singleton->volMinInPixels[1]);
-					for (i = vspMin; i < vspMax; i++) {
-						fi = i + (singleton->volMinInPixels[0]);
+			for (k = kMin; k < kMax; k++) {
+				
+				for (j = jMin; j < jMax; j++) {
+					
+					for (i = iMin; i < iMax; i++) {
+						
 						
 						ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
-						//indSrc = ((i-bufAmount) + (j-bufAmount)*volSizePrim + (k-bufAmount)*volSizePrim*volSizePrim)*4;
 												
 						singleton->gw->setCellAtCoords(
-							(i-bufAmount)+singleton->volMinInPixels.getIX(),
-							(j-bufAmount)+singleton->volMinInPixels.getIY(),
-							(k-bufAmount)+singleton->volMinInPixels.getIZ(),
+							i-bufAmount+ox,
+							j-bufAmount+oy,
+							k-bufAmount+oz,
 							ind,
 							fluidData,
 							extraData
 							
-							// fluidData[ind+0],
-							// fluidData[ind+1],
-							// fluidData[ind+2],//lastFluidData[ind+1],
-							// fluidData[ind+3]
 						);
 						
 						
@@ -128,25 +271,86 @@ public:
 				}	
 			}
 			
-			
+			return endGreater||writeDirty;
+		}
+		else {
+			return true;
 		}
 	}
 	
-	void readFluidData() {
-		hasRead = true;
+	void prereadFluidData() {
 		
+		GamePageHolder* curHolder;
 		
 		int i;
 		int j;
 		int k;
 		int q;
 		
-		float fi;
-		float fj;
-		float fk;
+		int ox = singleton->volMinInPixels.getIX()/singleton->cellsPerHolder;
+		int oy = singleton->volMinInPixels.getIY()/singleton->cellsPerHolder;
+		int oz = singleton->volMinInPixels.getIZ()/singleton->cellsPerHolder;
+		
+		int maxVal = (volSizePrimBuf/singleton->cellsPerHolder) + 1;
+		
+		for (k = -1; k < maxVal; k++) {
+			
+			for (j = -1; j < maxVal; j++) {
+				
+				for (i = -1; i < maxVal; i++) {
+					
+					
+					curHolder = singleton->gw->getHolderAtCoords(
+						i+ox,
+						j+oy,
+						k+oz,
+						true
+					);
+					
+					if (curHolder->wasGenerated) {
+						
+					}
+					else {
+						
+						if (singleton->threadPoolCount == MAX_THREADS) {
+							
+							//cout << "joining threadPool\n";
+							
+							for (q = 0; q < MAX_THREADS; q++) {
+								singleton->stopTP(i);
+							}
+							singleton->threadPoolCount = 0;
+						}
+						
+						singleton->threadPool[singleton->threadPoolCount].threadDataInt[0] = curHolder->blockId;
+						singleton->threadPool[singleton->threadPoolCount].threadDataInt[1] = curHolder->holderId;
+						
+						singleton->startTP(singleton->threadPoolCount);
+						
+						
+						
+						singleton->threadPoolCount++;
+						
+					}
+					
+				}
+				
+				
+			}
+		}
+	}
+	
+	void readFluidData() {
+		
+		int i;
+		int j;
+		int k;
+		int q;
+		
 		
 		int ind;
 		int ind2;
+		
 		
 		
 		for (i = 0; i < totSize; i++) {
@@ -156,40 +360,37 @@ public:
 				fluidData[ind+q] = UNIT_MIN;
 				extraData[ind+q] = UNIT_MIN;
 			}
-			
 			fluidData[ind+E_PTT_TER] = UNIT_MAX;
 			
 		}
 		
 		
+		
+		
 		for (k = vspMin; k < vspMax; k++) {
-			fk = k + (singleton->volMinInPixels[2]);
+			
 			for (j = vspMin; j < vspMax; j++) {
-				fj = j + (singleton->volMinInPixels[1]);
+				
 				for (i = vspMin; i < vspMax; i++) {
-					fi = i + (singleton->volMinInPixels[0]);
+					
 					
 					ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
-					//indSrc = ((i-bufAmount) + (j-bufAmount)*volSizePrim + (k-bufAmount)*volSizePrim*volSizePrim)*4;
 					
 					singleton->gw->getCellAtCoords(
-						(i-bufAmount)+singleton->volMinInPixels.getIX(),
-						(j-bufAmount)+singleton->volMinInPixels.getIY(),
-						(k-bufAmount)+singleton->volMinInPixels.getIZ()
+						(i-bufAmount)+readMIP.getIX(),
+						(j-bufAmount)+readMIP.getIY(),
+						(k-bufAmount)+readMIP.getIZ(),
+						&(fluidData[ind]),
+						&(extraData[ind])
 					);
 					
-					for (q = 0; q < 4; q++) {
-						ind2 = ind+q;
-						fluidData[ind2] = singleton->gw->tempCellData[q];
-						extraData[ind2] = singleton->gw->tempCellData2[q];
-					}
-					//lastFluidData[ind+E_PTT_WAT] = extraData[ind+E_PTT_IDE];
 					
 				}
 				
 				
 			}
 		}
+		
 		
 	}
 	
@@ -305,7 +506,6 @@ public:
 				extraData[ind*4+E_PTT_IDE] = 0;
 				extraData[ind*4+E_PTT_STB] = 0;
 				fluidData[ind*4+E_PTT_LST] = fluidData[ind*4+E_PTT_WAT];
-				//lastFluidData[ind*4+E_PTT_WAT] = fluidData[ind*4+E_PTT_WAT];
 			}
 			
 			for (i = 0; i < fsVec.size(); i++) {
@@ -378,6 +578,8 @@ public:
 		// find most ideal areas to distribute water
 		for (n = 0; n < fsVec.size(); n++) {
 			
+			spanZ = fsVec[n].maxZ - fsVec[n].minZ;
+			
 			#ifdef DEBUG_BOUNDS
 			isInBounds = false;
 			#endif
@@ -413,7 +615,10 @@ public:
 				#endif
 				
 				
-				if (isAir) {
+				if (
+					isAir
+					// && ((k != fsVec[n].maxZ)||(spanZ==1)) // water on top is not ideal for redist
+				) {
 					// check for water above
 					testInd = ind + (volSizePrimBuf*volSizePrimBuf);
 					watVal2 = &(fluidData[testInd*4+E_PTT_WAT]);
@@ -463,100 +668,107 @@ public:
 			
 		}
 		
-		
-		
+		/*
+		if (fsVec[n].idealCellIds.size() != 0) {
+			
+		}
+		*/
 		
 	
 		// remove water from top of fluid body
 		for (n = 0; n < fsVec.size(); n++) {
 			
-			
-			fsVec[n].collectedWater = 0;
-			curCollectedWater = 0;
-			
-			minZ = fsVec[n].minZ;
-			spanZ = fsVec[n].maxZ - fsVec[n].minZ;
-			
-			#ifdef DEBUG_BOUNDS
-			isInBounds = false;
-			#endif
-			
-			totWat = 0;
-			
-			for (p = 0; p < fsVec[n].fluidIds.size(); p++) {
-				ind = fsVec[n].fluidIds[p];
+			if (fsVec[n].idealCellIds.size() != 0) {
+				fsVec[n].collectedWater = 0;
+				curCollectedWater = 0;
 				
-				k = ind/(volSizePrimBuf*volSizePrimBuf);
-				j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
-				i = ind - ( j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf );
+				minZ = fsVec[n].minZ;
+				spanZ = fsVec[n].maxZ - fsVec[n].minZ;
 				
 				#ifdef DEBUG_BOUNDS
-				isInBounds = isInBounds||inBounds(i,j,k);
+				isInBounds = false;
 				#endif
 				
+				totWat = 0;
 				
-				
-				
-				
-				fk = k;
-				disFromBot = (fk-minZ)/(spanZ);
-				disFromTop = 1.0f - disFromBot;
-				
-				disFromBot = mixf(0.25,0.75,disFromBot);
-				disFromTop = mixf(0.25,0.75,disFromTop);
-				
-				if (spanZ <= 3.0f) {
-					disFromBot = 1.0f;
+				for (p = 0; p < fsVec[n].fluidIds.size(); p++) {
+					ind = fsVec[n].fluidIds[p];
+					
+					k = ind/(volSizePrimBuf*volSizePrimBuf);
+					j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
+					i = ind - ( j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf );
+					
+					#ifdef DEBUG_BOUNDS
+					isInBounds = isInBounds||inBounds(i,j,k);
+					#endif
+					
+					
+					
+					
+					
+					fk = k;
+					disFromBot = (fk-minZ)/(spanZ);
+					disFromTop = 1.0f - disFromBot;
+					
+					disFromBot = mixf(0.25,0.75,disFromBot);
+					disFromTop = mixf(0.25,0.75,disFromTop);
+					
+					if (spanZ <= 3.0f) {
+						disFromBot = 1.0f;
+					}
+					
+					
+					//terVal = &(fluidData[ind*4+E_PTT_TER]);
+					watVal = &(fluidData[ind*4+E_PTT_WAT]);
+					//ideVal = &(extraData[ind*4+E_PTT_IDE]);
+					
+					totWat += max(*watVal,0);
+					
+					// make sure no water is above or that there is earth above
+					testInd = ind + (volSizePrimBuf*volSizePrimBuf);
+					watVal2 = &(fluidData[testInd*4+E_PTT_WAT]);
+					terVal2 = &(fluidData[testInd*4+E_PTT_TER]);
+					bldVal2 = &(extraData[testInd*4+E_PTT_BLD]);
+					
+					if (
+						(*watVal > 0) &&
+						(
+							(*watVal2 <= 0) ||
+							(*terVal2 != UNIT_MIN) ||
+							(*bldVal2 != UNIT_MIN)
+						)
+					) {
+						curCollectedWater = 
+							min(
+								((int)(disFromBot*F_UNIT_MAX*maxDif + 1.0f)),
+								*watVal
+							);
+						*watVal -= curCollectedWater;
+						fsVec[n].collectedWater += curCollectedWater;
+					}
 				}
 				
 				
-				//terVal = &(fluidData[ind*4+E_PTT_TER]);
-				watVal = &(fluidData[ind*4+E_PTT_WAT]);
-				//ideVal = &(extraData[ind*4+E_PTT_IDE]);
 				
-				totWat += max(*watVal,0);
+				// cout << "fsVec[n].collectedWater " << fsVec[n].collectedWater << "\n";
 				
-				// make sure no water is above or that there is earth above
-				testInd = ind + (volSizePrimBuf*volSizePrimBuf);
-				watVal2 = &(fluidData[testInd*4+E_PTT_WAT]);
-				terVal2 = &(fluidData[testInd*4+E_PTT_TER]);
-				bldVal2 = &(extraData[testInd*4+E_PTT_BLD]);
+				// if (fsVec[n].collectedWater == 0) {
+				// 	cout << "fsVec[n].fluidIds.size() " << fsVec[n].fluidIds.size() << "\n";
+				// }
 				
-				if (
-					(*watVal > 0) &&
-					(
-						(*watVal2 <= 0) ||
-						(*terVal2 != UNIT_MIN) ||
-						(*bldVal2 != UNIT_MIN)
-					)
-				) {
-					curCollectedWater = 
-						min(
-							((int)(disFromBot*F_UNIT_MAX*maxDif + 1.0f)),
-							*watVal
-						);
-					*watVal -= curCollectedWater;
-					fsVec[n].collectedWater += curCollectedWater;
+				
+				
+				#ifdef DEBUG_BOUNDS
+				if (isInBounds) {
+					didPrint = true;
+					cout << "totWat " << totWat << "\n";
+					cout << "fsVec[n].collectedWater " << fsVec[n].collectedWater << "\n";
 				}
+				#endif
+				
 			}
 			
 			
-			
-			// cout << "fsVec[n].collectedWater " << fsVec[n].collectedWater << "\n";
-			
-			// if (fsVec[n].collectedWater == 0) {
-			// 	cout << "fsVec[n].fluidIds.size() " << fsVec[n].fluidIds.size() << "\n";
-			// }
-			
-			
-			
-			#ifdef DEBUG_BOUNDS
-			if (isInBounds) {
-				didPrint = true;
-				cout << "totWat " << totWat << "\n";
-				cout << "fsVec[n].collectedWater " << fsVec[n].collectedWater << "\n";
-			}
-			#endif
 			
 		}
 		
@@ -643,66 +855,72 @@ public:
 		}
 		
 		
+		tempMax.setFXYZ(vspMin);
+		tempMin.setFXYZ(vspMax);
+		
+		
 		// add water to bottom of fluid body
 		for (n = 0; n < fsVec.size(); n++) {
 			
-			curCollectedWater = 0;
-			minZ = fsVec[n].minZ;
-			
-			
-			
-			
-			while (fsVec[n].collectedWater > 0) {
+			if (fsVec[n].idealCellIds.size() != 0) {
+				curCollectedWater = 0;
+				minZ = fsVec[n].minZ;
 				
 				
-				for (q = fsVec[n].minZ; q <= fsVec[n].maxZ; q++) {
-					for (p = 0; p < fsVec[n].fluidIds.size(); p++) {
-						ind = fsVec[n].fluidIds[p];
-						
-						k = ind/(volSizePrimBuf*volSizePrimBuf);
-						watVal = &(fluidData[ind*4+E_PTT_WAT]);
-						
-						if (k == q) {
+				while (fsVec[n].collectedWater > 0) {
+					
+					
+					for (q = fsVec[n].minZ; q <= fsVec[n].maxZ; q++) {
+						for (p = 0; p < fsVec[n].fluidIds.size(); p++) {
+							ind = fsVec[n].fluidIds[p];
 							
-							if (fsVec[n].collectedWater > UNIT_MAX) {
-								tempv = UNIT_MAX;
-							}
-							else {
-								tempv = fsVec[n].collectedWater;
-							}
+							k = ind/(volSizePrimBuf*volSizePrimBuf);
+							watVal = &(fluidData[ind*4+E_PTT_WAT]);
 							
-							//if (fluidData[ind*4+E_PTT_TER] == UNIT_MIN) {
+							if (k == q) {
 								
-								curCollectedWater = min(
-									((int)((UNIT_MAX - max(*watVal,0) )*maxDif + 1.0f )),
-									tempv
-								);
-								
-								if (curCollectedWater > 0) {
-									if (*watVal == UNIT_MIN) {
-										*watVal = 0;
-									}
-									
-									tempi = min(UNIT_MAX - *watVal,curCollectedWater);
-									
-									*watVal += tempi;
-									fsVec[n].collectedWater -= tempi;
+								if (fsVec[n].collectedWater > UNIT_MAX) {
+									tempv = UNIT_MAX;
+								}
+								else {
+									tempv = fsVec[n].collectedWater;
 								}
 								
-							//}
-						}
-						
-						
-						// out of water, break both parent loops
-						if (fsVec[n].collectedWater <= 0) {
-							p = fsVec[n].fluidIds.size() + 1;
-							q = fsVec[n].maxZ + 1;
+								//if (fluidData[ind*4+E_PTT_TER] == UNIT_MIN) {
+									
+									curCollectedWater = min(
+										((int)((UNIT_MAX - max(*watVal,0) )*maxDif + 1.0f )),
+										tempv
+									);
+									
+									if (curCollectedWater > 0) {
+										if (*watVal == UNIT_MIN) {
+											*watVal = 0;
+										}
+										
+										tempi = min(UNIT_MAX - *watVal,curCollectedWater);
+										
+										*watVal += tempi;
+										fsVec[n].collectedWater -= tempi;
+									}
+									
+								//}
+							}
+							
+							
+							// out of water, break both parent loops
+							if (fsVec[n].collectedWater <= 0) {
+								p = fsVec[n].fluidIds.size() + 1;
+								q = fsVec[n].maxZ + 1;
+							}
 						}
 					}
+					
+					
 				}
-				
-				
 			}
+			
+			
 		}
 	
 		
@@ -717,6 +935,85 @@ public:
 		}
 		
 		
+		
+		/////////////
+		
+		
+		for (n = 0; n < fsVec.size(); n++) {
+			
+			if (
+				(fsVec[n].idealCellIds.size() != 0)
+				// || (
+				// 	(fsVec[n].fluidIds.size() > 0) &&
+				// 	(fsVec[n].fluidIds.size() < 8)
+				// )
+				
+			) {
+				
+				minV.setIXYZ(fsVec[n].minX,fsVec[n].minY,fsVec[n].minZ);
+				maxV.setIXYZ(fsVec[n].maxX,fsVec[n].maxY,fsVec[n].maxZ);
+				FIVector4::growBoundary(&tempMin,&tempMax,&minV,&maxV);
+				
+			}
+		}
+		
+		tempMin.addXYZ(-1.0f);
+		tempMax.addXYZ(1.0f);
+		
+		FIVector4::growBoundary(&dirtyMin,&dirtyMax,&tempMin,&tempMax);
+		
+		// int iMin = clamp(tempMin.getIX(), vspMin, vspMax);
+		// int iMax = clamp(tempMax.getIX(), vspMin, vspMax);
+		// int jMin = clamp(tempMin.getIY(), vspMin, vspMax);
+		// int jMax = clamp(tempMax.getIY(), vspMin, vspMax);
+		// int kMin = clamp(tempMin.getIZ(), vspMin, vspMax);
+		// int kMax = clamp(tempMax.getIZ(), vspMin, vspMax);
+		
+		// int iMin2 = vspMax;
+		// int iMax2 = vspMin;
+		// int jMin2 = vspMax;
+		// int jMax2 = vspMin;
+		// int kMin2 = vspMax;
+		// int kMax2 = vspMin;
+		
+		// int indSrc;
+		
+		// for (k = kMin; k <= kMax; k++) {
+		// 	for (j = jMin; j <= jMax; j++) {
+		// 		for (i = iMin; i <= iMax; i++) {
+		// 			indSrc = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
+		// 			if (
+					
+		// 				//true
+					
+		// 				fluidData[indSrc + E_PTT_WAT] != fluidData[indSrc + E_PTT_LST]
+						
+		// 				// (
+		// 				// 	(fluidData[indSrc + E_PTT_WAT] == UNIT_MIN) &&
+		// 				// 	(fluidData[indSrc + E_PTT_LST] != UNIT_MIN)	
+		// 				// ) ||
+		// 				// (
+		// 				// 	(fluidData[indSrc + E_PTT_WAT] != UNIT_MIN) &&
+		// 				// 	(fluidData[indSrc + E_PTT_LST] = UNIT_MIN)	
+		// 				// )
+						
+		// 			) {
+						
+		// 				if (i < iMin2) {iMin2 = i;}
+		// 				if (j < jMin2) {jMin2 = j;}
+		// 				if (k < kMin2) {kMin2 = k;}
+		// 				if (i > iMax2) {iMax2 = i;}
+		// 				if (j > jMax2) {jMax2 = j;}
+		// 				if (k > kMax2) {kMax2 = k;}
+						
+		// 			}
+		// 		}
+		// 	}
+		// }
+		
+		// minV.setIXYZ(iMin2,jMin2,kMin2);
+		// maxV.setIXYZ(iMax2,jMax2,kMax2);
+		// FIVector4::growBoundary(&dirtyMin,&dirtyMax,&minV,&maxV);
 		
 	}
 	
@@ -1166,11 +1463,14 @@ public:
 	}
 	
 	
-	bool roundBox(
+	void roundBox(
 		
 		FIVector4* absVecFromCenter,
 		FIVector4* innerBoxRad,
-		FIVector4* cornerDisThicknessPower
+		FIVector4* cornerDisThicknessPower,
+		
+		bool &isInObj,
+		bool &isInside
 		
 		//float vectorFromCenterX, float vectorFromCenterY, float vectorFromCenterZ,
 		//float box_dimX, float box_dimY, float box_dimZ, float box_dimW, 
@@ -1215,37 +1515,65 @@ public:
 		
 		//newP.setFX(newP.length());
 		
+		float rad = cornerDisThicknessPower->getFX();
+		float wallThickness = cornerDisThicknessPower->getFY();
 		
-		float dis = 
-			//(newP[0]-cornerDisThicknessPower->getFX());
-			max(
-				(newP[0]-cornerDisThicknessPower->getFX()),
-				( (cornerDisThicknessPower->getFX()-cornerDisThicknessPower->getFY())-newP[0] )	
-			);
+		// float dis = 
+		// 	max(
+		// 		(newP[0]-rad),
+		// 		( (rad-wallThickness)-newP[0] )	 //newP[0] - (rad-wallThickness)
+		// 	);
 		
-		//cout << newP[0] << " - " << cornerDisThicknessPower->getFX() << " = " << dis << "\n";
+		// //cout << newP[0] << " - " << cornerDisThicknessPower->getFX() << " = " << dis << "\n";
 		
-		return dis < 0.0f;
+		// return dis < 0.0f;
+		
+		isInObj = (newP[0]-rad) < 0.0f;
+		isInside = (newP[0] - (rad-wallThickness)) < 0.0f;
 
 	}
 	
-	void fillCurrentGeom() {
+	
+	void clearAllGeom() {
+		int i;
+		int ind;
+		for (i = 0; i < totSize; i++) {
+			ind = i;
+			extraData[ind*4+E_PTT_BLD] = UNIT_MIN;
+		}
+	}
+	void clearInsideValues() {
+		int i;
+		int ind;
+		for (i = 0; i < totSize; i++) {
+			ind = i;
+			if (extraData[ind*4+E_PTT_BLD] == UNIT_INSIDE) {
+				extraData[ind*4+E_PTT_BLD] = UNIT_MIN;
+			}
+			
+		}
+	}
+	
+	void fillCurrentGeom(int templateId, FIVector4* templatePos) {
+		
+		
+		
 		
 		int i;
 		int j;
 		int k;
 		
 		
-		FIVector4 paramArrGeom[E_PRIMTEMP_LENGTH];
+		FIVector4* paramArrGeom = &(singleton->primTemplateStack[templateId*E_PRIMTEMP_LENGTH]);
 		
-		for (i = 0; i < E_PRIMTEMP_LENGTH; i++) {
-			paramArrGeom[i].setFXYZW(
-				singleton->paramArrGeom[i*4+0],
-				singleton->paramArrGeom[i*4+1],
-				singleton->paramArrGeom[i*4+2],
-				singleton->paramArrGeom[i*4+3]
-			);
-		}
+		// for (i = 0; i < E_PRIMTEMP_LENGTH; i++) {
+		// 	paramArrGeom[i].setFXYZW(
+		// 		singleton->paramArrGeom[i*4+0],
+		// 		singleton->paramArrGeom[i*4+1],
+		// 		singleton->paramArrGeom[i*4+2],
+		// 		singleton->paramArrGeom[i*4+3]
+		// 	);
+		// }
 		
 		FIVector4 innerBoxRad;
 		FIVector4 absVecFromCenter;
@@ -1256,9 +1584,8 @@ public:
 			&(paramArrGeom[E_PRIMTEMP_BOUNDSMIN]),
 			&(paramArrGeom[E_PRIMTEMP_BOUNDSMAX])
 		);
-		baseVec.addXYZRef(&(singleton->geomPoints[0]));
-		baseVec.addXYZ(0.0,0.0,singleton->geomOrigOffset);
-		baseVec.addXYZRef(&(singleton->volMinInPixels),-1.0f);
+		baseVec.addXYZRef(templatePos);
+		baseVec.addXYZRef(&(singleton->volMinReadyInPixels),-1.0f);
 		baseVec.addXYZ(1.0f);
 		
 		FIVector4 curCoord;
@@ -1298,6 +1625,13 @@ public:
 		
 		int ind;
 		
+		bool isInObj;
+		bool isInside;
+		
+		minV.setIXYZ(iMin,jMin,kMin);
+		maxV.setIXYZ(iMax,jMax,kMax);
+		FIVector4::growBoundary(&dirtyMin,&dirtyMax,&minV,&maxV);
+		
 		
 		
 		// cout << "cornerDis " << paramArrGeom[E_PRIMTEMP_CORNERDIS].getFX() << "\n";
@@ -1315,26 +1649,44 @@ public:
 					absVecFromCenter.addXYZRef(&baseVec,-1.0f);
 					absVecFromCenter.absXYZ();
 					
-					if (roundBox(
+					roundBox(
 						&absVecFromCenter,
 						&innerBoxRad,
-						&(paramArrGeom[E_PRIMTEMP_CORNERDIS])
-					)) {
-						
-						
-						ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf);
-						
-						bldVal = &(extraData[ind*4+E_PTT_BLD]);
-						terVal = &(fluidData[ind*4+E_PTT_TER]);
-						watVal = &(fluidData[ind*4+E_PTT_WAT]);
-						
-						*bldVal = UNIT_MAX;
-						//*terVal = UNIT_MAX;
-						*watVal = UNIT_MIN;
-						
-						
+						&(paramArrGeom[E_PRIMTEMP_CORNERDIS]),
+						isInObj,
+						isInside
+					);
+					
+					ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf);
+					bldVal = &(extraData[ind*4+E_PTT_BLD]);
+					terVal = &(fluidData[ind*4+E_PTT_TER]);
+					watVal = &(fluidData[ind*4+E_PTT_WAT]);
+					
+					if (*bldVal == UNIT_INSIDE) {
 						
 					}
+					else {
+						
+						if (isInObj) {
+							if (isInside) {
+								*bldVal = UNIT_INSIDE;
+							}
+							else {
+								*bldVal = UNIT_MAX;
+								*watVal = UNIT_MIN; // todo: collect water for redist instead of destroying it
+							}
+						}
+						else {
+							
+						}
+					}
+					
+					// if (*bldVal == UNIT_MAX) {
+					// 	*terVal = UNIT_MAX;
+					// }
+					// else {
+					// 	*terVal = UNIT_MIN;
+					// }
 					
 					
 				}
@@ -1345,6 +1697,18 @@ public:
 		
 	}
 	
+	void resetDirtyRegion() {
+		lastDirtyMax.copyFrom(&dirtyMax);
+		lastDirtyMin.copyFrom(&dirtyMin);
+		
+		dirtyMax.setFXYZ(vspMin);
+		dirtyMin.setFXYZ(vspMax);
+	}
+	void maxDirtyRegion() {
+		dirtyMax.setFXYZ(vspMax);
+		dirtyMin.setFXYZ(vspMin);
+	}
+	
 	void applyUnitModification(
 		FIVector4 *fPixelWorldCoordsBase,
 		int brushAction,
@@ -1352,9 +1716,11 @@ public:
 		int radius
 	) {
 		
+			
+		
 			FIVector4 baseVec;
 			baseVec.copyFrom(fPixelWorldCoordsBase);
-			baseVec.addXYZRef(&(singleton->volMinInPixels),-1.0f);
+			baseVec.addXYZRef(&(singleton->volMinReadyInPixels),-1.0f);
 			
 			
 			FIVector4 curCoord;
@@ -1375,11 +1741,9 @@ public:
 			int kMin = clamp(newCoordMin.getIZ(), vspMin, vspMax);
 			int kMax = clamp(newCoordMax.getIZ(), vspMin, vspMax);
 			
-			
-			// cout << "applyUnitModification "
-			// 	<< iMin << " " << iMax << " "
-			// 	<< jMin << " " << jMax << " "
-			// 	<< kMin << " " << kMax << "\n";
+			minV.setIXYZ(iMin,jMin,kMin);
+			maxV.setIXYZ(iMax,jMax,kMax);
+			FIVector4::growBoundary(&dirtyMin,&dirtyMax,&minV,&maxV);
 			
 			
 			int i;
@@ -1420,7 +1784,10 @@ public:
 								case E_BRUSH_ADD:
 								
 									if (modType == E_PTT_WAT) {
-										if (*terVal == UNIT_MIN) {
+										if (
+											(*terVal == UNIT_MIN) &&
+											(*bldVal == UNIT_MIN)	
+										) {
 											*watVal = UNIT_MAX;
 										}
 									}

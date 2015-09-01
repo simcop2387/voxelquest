@@ -20,7 +20,6 @@ uniform sampler3D Texture8;
 
 //uniform float holderMod;
 uniform float timeOfDay;
-uniform float pixelsPerCell;
 uniform float blockSizeInCells;
 uniform vec2 bufferDim;
 uniform vec2 mouseCoords;
@@ -259,7 +258,7 @@ void main()
 
 		resColorTemp = resColor;
 
-		tempVec = clamp( (worldPosition.xyz - (cameraPos.xyz)) / 16.0*pixelsPerCell, 0.0, 1.0);
+		tempVec = clamp( (worldPosition.xyz - (cameraPos.xyz)) / 16.0, 0.0, 1.0);
 
 		tempVec2.r = abs(sin( (tempVec.r * 0.25 + tempVec.g * 0.5 + tempVec.b * 0.0) * 4.0 ));
 		tempVec2.g = abs(sin( (tempVec.r * 0.0 + tempVec.g * 0.25 + tempVec.b * 0.5) * 4.0 ));
@@ -328,7 +327,7 @@ void main()
 	
 	
 	
-	float unitSizeInPixels = pixelsPerCell;// *blockSizeInCells;
+	float unitSizeInPixels = 1.0;// *blockSizeInCells;
 	vec3 grid0 = 
 		//floor(worldPosition.xyz/unitSizeInPixels);
 		abs(mod(worldPosition.xyz, unitSizeInPixels) - unitSizeInPixels / 2.0) * 2.0;
@@ -365,8 +364,15 @@ void main()
 		gridVal0 = vec3(0.0);
 	}
 	
-	float temp = 0.25 + float(tex4.w > tex0.w)*0.5;
-	resColor.rgb = mix(resColor.rgb, matValsGeom.rgb,temp*float(valIsGeom));
+	float temp = float(valIsGeom)*(
+		0.25 + float(tex4.w > tex0.w)*0.5
+	);
+	//;
+	
+	if (tex4.w > tex0.w) {
+		resColor.rgb = mix(resColor.rgb, matValsGeom.rgb,temp);
+	}
+	
 	
 	if (temp > 0.5) {
 		
@@ -385,7 +391,7 @@ void main()
 	
 	
 	if (markerFound) {
-		markerDis = clamp(distance(worldPosition,worldMarker)/(2.0*pixelsPerCell),0.0,1.0);
+		markerDis = clamp(distance(worldPosition,worldMarker)/(2.0),0.0,1.0);
 		
 		
 		if (

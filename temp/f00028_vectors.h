@@ -1,4 +1,24 @@
 
+
+
+uint* toUintPtr(char* baseAdr) {
+	void* voidPtr = baseAdr;
+	uint* uintPtr = (uint*)voidPtr;
+	return uintPtr;
+}
+
+int* toIntPtr(char* baseAdr) {
+	void* voidPtr = baseAdr;
+	int* intPtr = (int*)voidPtr;
+	return intPtr;
+}
+
+float* toFloatPtr(char* baseAdr) {
+	void* voidPtr = baseAdr;
+	float* floatPtr = (float*)voidPtr;
+	return floatPtr;
+}
+
 float fract(float val) {
 	return (val - floor(val));
 }
@@ -26,22 +46,52 @@ void pack16(float num, float &outR, float &outG) {
 
 }
 
+uint zipBits(bool* boolArr, int len) {
+	uint i;
+	uint result = 0;
+	uint oneVal = 1;
+	
+	for (i = 0; i < len; i++) {
+		if (boolArr[i]) {
+			result = result | (oneVal<<i);
+		}
+		
+	}
+	
+	return result;
+}
 
-uint clampChar(int baseVal, int bitShift) {
-	int val = baseVal;
+void unzipBits(uint zipped, bool* boolArr, int len) {
+	uint i;
+	uint zeroVal = 0;
+	uint oneVal = 1;
 	
-	if (val > 255) {
-		val = 255;
+	
+	
+	for (i = 0; i < len; i++) {
+		boolArr[i] = (
+			(zipped & (oneVal<<i)) > zeroVal
+		);
 	}
-	if (val < 0) {
-		val = 0;
-	}
-	
-	uint retVal = val;
-	
-	return (retVal << bitShift);
 	
 }
+
+
+// inline uint clampChar(int baseVal, int bitShift) {
+// 	int val = baseVal;
+	
+// 	if (val > 255) {
+// 		val = 255;
+// 	}
+// 	if (val < 0) {
+// 		val = 0;
+// 	}
+	
+// 	uint retVal = val;
+	
+// 	return (retVal << bitShift);
+	
+// }
 
 int clamp(int val, int min, int max) {
 	if (val > max) {
@@ -99,17 +149,44 @@ inline float clampfZO(float val) {
 }
 
 
-// float genRand(float LO, float HI)
-// {
-
-// 	return LO + (float)rand() / ((float)RAND_MAX / (HI - LO));
-// }
+// these random generators are used for things that DO NOT effect networking
 
 inline float fGenRand() {
-
-	return (float)rand() / (float)RAND_MAX;
-	//return ((float)(rand()%100000))/100000.0f;
+	float intPart;
+	float res = abs ( modf(sin(RAND_COUNTER*433.2351267) * 43758.8563f, &intPart) );
+	RAND_COUNTER += 1.0f;
+	if (RAND_COUNTER >= 8000000.0f) {
+		RAND_COUNTER = 0.0f;
+	}
+	
+	return res;
 }
+
+inline int iGenRand(int nMin, int nMax)
+{
+	return nMin + (int)( (fGenRand()) * (nMax + 1 - nMin));
+}
+
+// these random generators are used for things that DO effect networking
+
+inline float fGenRand2() {
+	float intPart;
+	float res = abs ( modf(sin(RAND_COUNTER2*433.2351267) * 43758.8563f, &intPart) );
+	RAND_COUNTER2 += 1.0f;
+	if (RAND_COUNTER2 >= 8000000.0f) {
+		RAND_COUNTER2 = 0.0f;
+	}
+	
+	return res;
+}
+
+inline int iGenRand2(int nMin, int nMax)
+{
+	return nMin + (int)( (fGenRand2()) * (nMax + 1 - nMin));
+}
+
+
+
 
 float fSeedRand2(float x, float y) {
 	float intPart;
@@ -122,10 +199,7 @@ int iSeedRand2(float x, float y, int minV, int maxV) {
 }
 
 
-inline int iGenRand(int nMin, int nMax)
-{
-	return nMin + (int)((double)rand() / (RAND_MAX + 1) * (nMax - nMin + 1));
-}
+
 
 unsigned int intLogB2 (unsigned int val) {
 	unsigned int ret = -1;
@@ -222,7 +296,26 @@ public:
 				iv4.w = val;
 			break;
 		}
+	}
+	
+	float getIndex(int ind) {
 		
+		switch (ind) {
+			case 0:
+				return fv4.x;
+			break;
+			case 1:
+				return fv4.y;
+			break;
+			case 2:
+				return fv4.z;
+			break;
+			case 3:
+				return fv4.w;
+			break;
+		}
+		
+		return 0.0f;
 	}
 
 
@@ -333,6 +426,15 @@ public:
 		iv4.x = (int)x;
 		iv4.y = (int)y;
 		iv4.z = (int)z;
+	}
+	
+	void setFXYZ(float scalar) {
+		fv4.x = scalar;
+		fv4.y = scalar;
+		fv4.z = scalar;
+		iv4.x = (int)scalar;
+		iv4.y = (int)scalar;
+		iv4.z = (int)scalar;
 	}
 
 	void setFXYZRef(FIVector4 *v1) {
@@ -456,6 +558,12 @@ public:
 		iv4.y = (int)fv4.y;
 		iv4.z = (int)fv4.z;
 	}
+	
+	void addW(float scalar) {
+		fv4.w += scalar;
+		iv4.w = (int)fv4.w;
+	}
+	
 	void addXYZ(float scalarX, float scalarY, float scalarZ, float multiplier = 1.0f) {
 		fv4.x += scalarX * multiplier;
 		fv4.y += scalarY * multiplier;
@@ -979,16 +1087,21 @@ public:
 	}
 
 	bool iNotEqual(FIVector4 *otherVec) {
-		if (
-			(iv4.x == otherVec->getIX()) &&
-			(iv4.y == otherVec->getIY()) &&
-			(iv4.z == otherVec->getIZ())
-		) {
-			return false;
-		}
-		else {
-			return true;
-		}
+		return (
+			(iv4.x != otherVec->getIX()) ||
+			(iv4.y != otherVec->getIY()) ||
+			(iv4.z != otherVec->getIZ()) ||
+			(iv4.w != otherVec->getIW())
+		);
+	}
+	
+	bool fNotEqual4(FIVector4 *otherVec) {
+		return (
+			(fv4.x != otherVec->getFX()) ||
+			(fv4.y != otherVec->getFY()) ||
+			(fv4.z != otherVec->getFZ()) ||
+			(fv4.w != otherVec->getFW())
+		);
 	}
 
 
@@ -1654,7 +1767,10 @@ public:
 	//map<BaseObjType, bool> containsUID;
 	vector<BaseObjType> children;
 	
-	bool isBullet;
+	int isGrabbingId;
+	int isGrabbedById;
+	int entType;
+	bool isHidden;
 	bool isFalling;
 	bool isJumping;
 	bool isOpen;
@@ -1663,8 +1779,8 @@ public:
 	
 	float bounciness;
 	float friction;
+	float windResistance;
 	
-	float pixelsPerCell;
 	
 	FIVector4 positionInCells;
 	FIVector4 diameterInCells;
@@ -1744,19 +1860,16 @@ public:
 		
 		FIVector4::normalizeBounds(&boundsMinTransInCells,&boundsMaxTransInCells);
 		
-				
 	}
 	
 	void updatePixelBounds() {
 		boundsMinTransInPixelsTarg.copyFrom(&boundsMinTransInCells);
 		boundsMaxTransInPixelsTarg.copyFrom(&boundsMaxTransInCells);
 		
-		boundsMinTransInPixelsTarg.multXYZ(pixelsPerCell);
-		boundsMaxTransInPixelsTarg.multXYZ(pixelsPerCell);
-		
-		centerPointInPixelsTarg.copyFrom(&boundsMinTransInPixelsTarg);
-		centerPointInPixelsTarg.addXYZRef(&boundsMaxTransInPixelsTarg);
-		centerPointInPixelsTarg.multXYZ(0.5f);
+		centerPointInPixelsTarg.averageXYZ(
+			&boundsMinTransInPixelsTarg,
+			&boundsMaxTransInPixelsTarg
+		);
 		
 		boundsMinTransInPixelsTarg.addXYZRef(&posOffsetInPixels);
 		boundsMaxTransInPixelsTarg.addXYZRef(&posOffsetInPixels);
@@ -1784,14 +1897,14 @@ public:
 	}
 	
 	void toggleGrav(float gravMod) {
-		acc.setFXYZ(0.0f,0.0f,gravMod*pixelsPerCell*80.0f);
+		acc.setFXYZ(0.0f,0.0f,gravMod*80.0f);
 	}
 	
 	void init(
 		BaseObjType _uid,
 		BaseObjType _parentUID,
 		int _objectType,
-		float _pixelsPerCell,
+		int _entType,
 		FIVector4* cellPos,
 		int xs,
 		int ys,
@@ -1801,22 +1914,24 @@ public:
 		int oz = 4
 	) {
 		
-		
+		isHidden = false;
 		
 		ang = 0.0f;
 		maxFrames = 0;
 		objectType = _objectType;
+		entType = _entType;
 		isFalling = false;
 		isJumping = false;
-		isBullet = false;
+		isGrabbedById = -1;
+		isGrabbingId = -1;
 		inWater = false;
 		bounciness = 0.0f;
-		friction = 1.0f;
+		friction = 0.9;
+		windResistance = 0.9;
 		isOpen = false;
 		isEquipped = false;
 		parentUID = _parentUID;
 		uid = _uid;
-		pixelsPerCell = _pixelsPerCell;
 		
 		
 		posOffsetInPixels.setFXYZ(0.0f,0.0f,0.0f);
@@ -1985,6 +2100,61 @@ public:
 	
 };
 
+class ThreadWrapper {
+private:
+	bool threadRunningEx; // thread is running (exclusive, must lock)
+public:
+	std::thread threadMain;
+	std::mutex threadMutex;
+	bool threadRunning; // thread is running (not exclusive)
+	
+	int threadDataInt[16];
+	
+	ThreadWrapper() {
+		
+	}
+	
+	void init() {
+		threadRunning = false;
+		threadRunningEx = false;
+	}
+	
+	void setRunningLocked(bool val) {
+		threadMutex.lock();
+		threadRunningEx = val;
+		threadMutex.unlock();
+	}
+	
+	bool isReady() {
+		bool doProc = false;
+		
+		doProc = false;
+		
+		if (threadRunning) {
+			if (threadMutex.try_lock()) {
+				if (threadRunningEx) {
+					
+				}
+				else {
+					doProc = true;
+				}
+				threadMutex.unlock();
+			}
+		}
+		else {
+			doProc = true;
+		}
+		
+		return doProc;
+	}
+	
+};
+
+struct PushModStruct
+{
+	int actionType;
+	FIVector4 data[4];
+};
 
 
 

@@ -8,8 +8,11 @@ uniform sampler2D Texture1;
 uniform sampler2D Texture2;
 uniform sampler2D Texture3;
 
+// geom fbo
+uniform sampler2D Texture4;
+uniform sampler2D Texture5;
+
 uniform float timeOfDay;
-uniform float pixelsPerCell;
 uniform vec2 bufferDim;
 
 uniform bool testOn;
@@ -112,6 +115,7 @@ void main()
 	vec4 oneVec = vec4(1.0);
 	vec4 lightPosWS = vec4(0.0);
 	vec4 samp;
+	vec4 samp2;
 	vec4 wCurPos;
 	vec4 testTex = vec4(0.0);
 	
@@ -139,7 +143,10 @@ void main()
 	float fj;
 	float fi;
 	float fNumSteps = float(iNumSteps);
-	float tot = float(tex1.r + tex1.g + tex1.b + tex1.a > 0.0);
+	float totSamp = (
+		tex1.r + tex1.g + tex1.b + tex1.a +
+		tex3.r + tex3.g + tex3.b + tex3.a	
+	);
 	float totHits = 0.0;
 	float baseHeight = worldPosition.w;
 	float resComp = 1.0;
@@ -232,7 +239,7 @@ void main()
 	vec3 globDayColor = getGlobLightCol();
 
 
-	if (tot == 0.0)
+	if (totSamp == 0.0)
 	{
 		resColor = vec4(0.0);
 	}
@@ -248,7 +255,7 @@ void main()
 
 			curMin = minRad[j];
 			curMax = maxRad[j];
-			curOff = offV[j]*pixelsPerCell/128.0; // todo: change this based on RAY MODE
+			curOff = offV[j]/128.0; // todo: change this based on RAY MODE
 
 			for (i = 0; i < iNumSteps; i++)
 			{
@@ -293,7 +300,7 @@ void main()
 		{
 			baseInd = k * vecsPerLight;
 			lightPosWS = lightArr[baseInd + 0];
-			lightRad = 4000.0;//lightArr[baseInd + 1].w;
+			lightRad = 1000.0;//lightArr[baseInd + 1].w;
 			
 
 			lightDis = 1.0 - clamp(distance(worldPosition.xyz, lightPosWS.xyz) / lightRad, 0.0, 1.0);
@@ -343,7 +350,12 @@ void main()
 					sCurPos = mix(sStartPos, sEndPos, flerp);
 
 					samp = texture2D(Texture0, sCurPos.xy);
-					wasHit = float( samp.w > sCurPos.z );
+					//samp2 = texture2D(Texture4, sCurPos.xy);
+					wasHit = float( 
+						samp.w
+						//max(samp.w,samp2.w)
+						> sCurPos.z
+					);
 					
 					totHits += wasHit;
 					hitCount += 1.0;
@@ -406,7 +418,7 @@ void main()
 		}
 		// LIGHT LOOP END
 
-		resColor.xyz = totLightColor.xyz;
+		resColor.xyz = totLightColor.xyz*0.75+newAO*0.25;
 		resColor.w = newAO;
 	}
 	
@@ -414,7 +426,7 @@ void main()
 
 	gl_FragData[0] = resColor;
 	gl_FragData[1] = vec4(totLightColorWater,newAO);
-	gl_FragData[2] = vec4(specularSolid,specularWater,0.0,0.0);
+	gl_FragData[2] = vec4(specularSolid*0.25+newAO*0.25,specularWater,0.0,0.0);
 	gl_FragData[3] = vec4(0.0);
 
 }

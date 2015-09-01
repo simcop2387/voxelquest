@@ -2,7 +2,7 @@
 
 uniform sampler2D Texture0;
 
-// pagesTargFBO
+// solidTargFBO
 uniform sampler2D Texture1;
 uniform sampler2D Texture2;
 

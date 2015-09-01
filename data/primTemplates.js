@@ -5,41 +5,79 @@
    "02_bndMin":[0,0,0,0],
    "03_bndMax":[0,0,0,0],
    "04_cornerDis":[0,0,0,0],
-   "05_matParams":[0,0,0,0]
+   "05_matParams":[0,0,0,0],
+   "06_comment":"null"
    },{
    "00_visMin":[1,1,1,0],
-   "01_visMax":[1,1,1,0],
-   "02_bndMin":[-5,-5,-5,0],
-   "03_bndMax":[5,5,5,0],
-   "04_cornerDis":[2.5,2,2,2],
-   "05_matParams":[0,0,0,0]
+   "01_visMax":[1,1,0.5,0],
+   "02_bndMin":[-8,-8,-16,0],
+   "03_bndMax":[8,8,16,0],
+   "04_cornerDis":[8,2,2,10],
+   "05_matParams":[0,0,0,0],
+   "06_comment":"tower"
    },{
    "00_visMin":[1,1,1,0],
-   "01_visMax":[1,1,1,0],
-   "02_bndMin":[-1,-1,-1,0],
-   "03_bndMax":[1,1,1,0],
-   "04_cornerDis":[0.5,0.25,1,1],
-   "05_matParams":[0,0,0,0]
+   "01_visMax":[1,1,0.5,0],
+   "02_bndMin":[-8,-16,-16,0],
+   "03_bndMax":[8,16,16,0],
+   "04_cornerDis":[8,9,2,10],
+   "05_matParams":[1,0,0,0],
+   "06_comment":"wall X"
    },{
    "00_visMin":[1,1,1,0],
-   "01_visMax":[1,1,1,0],
-   "02_bndMin":[-6,-6,-6,0],
-   "03_bndMax":[6,6,6,0],
-   "04_cornerDis":[2,1.5,2,2],
-   "05_matParams":[0,0,0,0]
+   "01_visMax":[1,1,0.5,0],
+   "02_bndMin":[-16,-8,-16,0],
+   "03_bndMax":[16,8,16,0],
+   "04_cornerDis":[8,9,2,10],
+   "05_matParams":[1,0,0,0],
+   "06_comment":"wall Y"
    },{
-   "00_visMin":[1,1,1,0],
+   "00_visMin":[1,1,0,0],
    "01_visMax":[1,1,1,0],
-   "02_bndMin":[-1,-1,-1,0],
-   "03_bndMax":[1,2,1,0],
-   "04_cornerDis":[0.5,0.25,2,2],
-   "05_matParams":[0,0,0,0]
+   "02_bndMin":[-8.5,-8.5,-8.5,0],
+   "03_bndMax":[8.5,8.5,8.5,0],
+   "04_cornerDis":[8.5,2,2,2],
+   "05_matParams":[2,0,0,0],
+   "06_comment":"roof sphere tower"
    },{
-   "00_visMin":[1,0.5,1,0],
-   "01_visMax":[1,0.5,1,0],
-   "02_bndMin":[-2,-3,-3,0],
-   "03_bndMax":[2,3,3,0],
-   "04_cornerDis":[1,0.25,2,2],
-   "05_matParams":[0,0,0,0]
+   "00_visMin":[1,1,0,0],
+   "01_visMax":[1,1,1,0],
+   "02_bndMin":[-16.5,-8.5,-8.5,0],
+   "03_bndMax":[16.5,8.5,8.5,0],
+   "04_cornerDis":[8.5,2,2,2],
+   "05_matParams":[2,0,0,0],
+   "06_comment":"roof sphere X"
+   },{
+   "00_visMin":[1,1,0,0],
+   "01_visMax":[1,1,1,0],
+   "02_bndMin":[-8.5,-16.5,-8.5,0],
+   "03_bndMax":[8.5,16.5,8.5,0],
+   "04_cornerDis":[8.5,2,2,2],
+   "05_matParams":[2,0,0,0],
+   "06_comment":"roof sphere Y"
+   },{
+   "00_visMin":[1,1,0,0],
+   "01_visMax":[1,1,1,0],
+   "02_bndMin":[-10,-10,-10,0],
+   "03_bndMax":[10,10,10,0],
+   "04_cornerDis":[10,2,2,0.75],
+   "05_matParams":[2,0,0,0],
+   "06_comment":"roof pointed tower"
+   },{
+   "00_visMin":[0.4,1,0.5,0],
+   "01_visMax":[0.4,1,1,0],
+   "02_bndMin":[-8,-4,-8,0],
+   "03_bndMax":[8,4,8,0],
+   "04_cornerDis":[4,2,2,2],
+   "05_matParams":[1,0,0,0],
+   "06_comment":"portal X"
+   },{
+   "00_visMin":[1,0.4,0.5,0],
+   "01_visMax":[1,0.4,1,0],
+   "02_bndMin":[-4,-8,-8,0],
+   "03_bndMax":[4,8,8,0],
+   "04_cornerDis":[4,2,2,2],
+   "05_matParams":[1,0,0,0],
+   "06_comment":"portal Y"
    }]
  }

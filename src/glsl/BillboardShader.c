@@ -6,10 +6,9 @@ uniform sampler2D Texture1; // geomBaseTargFBO
 uniform sampler2D Texture2; // geomBaseTargFBO
 
 
-uniform float holderSizeInPixels;
+uniform float cellsPerHolder;
 uniform float heightOfNearPlane;
 uniform float clipDist;
-uniform float pixelsPerCell;
 uniform vec2 bufferDim;
 
 
@@ -77,8 +76,12 @@ void main() {
         //     discard;
         // }
     //}
-        
-    gl_FragDepthEXT = camDis/clipDist - 0.01;
+    
+    
+    
+    float myDepth = camDis/clipDist - 0.01;
+    
+    gl_FragDepthEXT = myDepth;
     
     vec2 newTC = gl_PointCoord.xy;
     //newTC.y = 1.0 - newTC.y;
@@ -89,16 +92,18 @@ void main() {
     vec3 finalCol = texture2D(Texture0,newTC).rgb;
     
     
-    if (
-        (int(geomSamp1.w) != int(multiTex0.x)) ||
-        ((finalCol.x + finalCol.y + finalCol.z) == 0.0)  
-    ) {
-        
+    if ((finalCol.x + finalCol.y + finalCol.z) == 0.0) {
+        discard;
     }
     else {
-        final1.rgb = finalCol.rgb;
+        if (
+            (int(geomSamp1.w) == int(multiTex0.x)) ||
+            (multiTex0.y > 0.0)
+        ) {
+            final1.rgb = finalCol.rgb;
+        }
     }
     
-    gl_FragData[0] = final0;//TexCoord0;
+    gl_FragData[0] = vec4(final0.xyz,max(final0.w,TexCoord0.w));//max(final0,myDepth);//TexCoord0;
     gl_FragData[1] = final1;//vec4(finalCol,multiTex0.x);
 }

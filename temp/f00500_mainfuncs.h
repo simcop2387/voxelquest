@@ -39,9 +39,7 @@ void idleFunc(void) {
 
 int MAX_CONSOLE_LINES = 500;
 
-void RedirectIOToConsole()
-
-{
+void RedirectIOToConsole() {
 
     int hConHandle;
 
@@ -109,9 +107,9 @@ void RedirectIOToConsole()
 
 
 
-#ifdef USE_POCO
-WebSocketServer myWebsocketServer;
-#endif
+// #ifdef USE_POCO
+// WebSocketServer myWebsocketServer;
+// #endif
 
 int main(int argc, char* argv[])
 {
@@ -152,9 +150,9 @@ int main(int argc, char* argv[])
         winHeight,
         scaleFactor
         
-        #ifdef USE_POCO
-            ,&myWebsocketServer
-        #endif
+        // #ifdef USE_POCO
+        //     ,&myWebsocketServer
+        // #endif
         
         
     );
@@ -170,11 +168,11 @@ int main(int argc, char* argv[])
     glutKeyboardUpFunc(keyboardUp);
     glutSpecialFunc(processSpecialKeys);
     
-    #ifdef USE_POCO
-        myWebsocketServer.run(argc, argv);
-    #else
+    // #ifdef USE_POCO
+    //     myWebsocketServer.run(argc, argv);
+    // #else
         glutMainLoop();
-    #endif
+    //#endif
     
 
 

@@ -1,31 +1,34 @@
 #version 330
 
 
-
+uniform bool placingGeom;
 uniform bool testOn;
+uniform bool depthInvalidMove;
+uniform bool depthInvalidRotate;
+uniform bool doSphereMap;
+uniform bool USE_SPHERE_MAP;
 
+uniform float invalidCount;
 uniform float UNIT_MAX;
 uniform float FOV;
 uniform float curTime;
-uniform float pixelsPerCell;
 uniform float volSizePrim;
 uniform float waterLerp;
-//uniform float geomOn;
 
 uniform vec3 entPos;
 uniform float thirdPerson;
 uniform float CAM_BOX_SIZE;
-
-
 uniform float isUnderWater;
+uniform float stepMod;
+uniform float SPHEREMAP_SCALE_FACTOR;
 
 uniform vec2 bufferDim;
 uniform vec2 clipDist;
 uniform vec3 lightVec;
 uniform vec3 cameraPos;
 uniform vec3 lookAtVec;
-uniform vec3 volMinInPixels;
-uniform vec3 volMaxInPixels;
+uniform vec3 volMinReadyInPixels;
+uniform vec3 volMaxReadyInPixels;
 uniform vec3 worldSizeInCells;
 
 uniform vec4 paramFetch1;
@@ -38,6 +41,9 @@ uniform mat4 modelviewInverse;
 uniform int numSplashes;
 uniform vec4 splashArr[8];
 
+uniform int numExplodes;
+uniform vec4 explodeArr[8];
+
 uniform vec4 paramArrGeom[20];
 
 
@@ -48,6 +54,21 @@ uniform samplerBuffer Texture1; // prim ids
 
 uniform sampler2D Texture2; // hm fbo
 
+// depth targ fbo
+uniform sampler2D Texture3;
+uniform sampler2D Texture4;
+
+// depth targ fbo sphereMap
+uniform sampler2D Texture5;
+uniform sampler2D Texture6;
+
+// // sphereTargFBO
+// uniform sampler2D Texture7;
+// uniform sampler2D Texture8;
+// uniform sampler2D Texture9;
+// uniform sampler2D Texture10;
+// uniform sampler2D Texture11;
+// uniform sampler2D Texture12;
 
 $
 
@@ -70,10 +91,12 @@ $
 const float MIN_STEPS = 1.0;
 const float MAX_STEPS = 100.0;
 
+const float WAVE_HEIGHT = 0.6;
+
 //const int MAX_LAND_PASSES = 2;
 //const int MAX_LAND_DET_STEPS = 20;
 
-const float EARTH_STEPS = 200.0;
+const float EARTH_STEPS = 400.0;
 const float WATER_STEPS = EARTH_STEPS;
 
 const int MAX_PRIM_IDS = 8;
@@ -110,7 +133,7 @@ const vec3 crand2 = vec3(43.332, 93.532, 43.734);
 const float LAND_ID = -3.0;
 const float WATER_ID = -4.0;
 const float SKY_ID = -5.0;
-
+const float EXPLODE_ID = -6.0;
 
 // 432
 // 501
@@ -187,7 +210,7 @@ const vec3 voroOffsets[NUM_VORO] = vec3[](
 );
 
 const vec3 dirVec[6] = vec3[](
-       
+    
     vec3(  1.0,  0.0, 0.0  ),
     vec3(  -1.0,  0.0, 0.0  ),
     vec3(  0.0,  1.0, 0.0  ),
@@ -230,10 +253,13 @@ float MAX_CAM_DIS;
 vec2 globTexEarth;
 vec2 globTexPrim;
 vec2 globTexWater;
-
+float globWoodDir;
+vec3 globWoodCoords;
 
 int globNumPrims;
+float globWaterMod;
 float globCurSteps;
+float globLandSteps;
 float globTotSteps;
 float globIntersect;
 float globTest;
@@ -261,6 +287,8 @@ layout(location = 0) out vec4 FragColor0;
 layout(location = 1) out vec4 FragColor1;
 layout(location = 2) out vec4 FragColor2;
 layout(location = 3) out vec4 FragColor3;
+layout(location = 4) out vec4 FragColor4;
+layout(location = 5) out vec4 FragColor5;
 
 
 
@@ -427,6 +455,14 @@ float sdBox( vec3 p, vec3 b )
   return min(max(d.x,max(d.y,d.z)),0.0) + length(max(d,0.0));
 }
 
+vec2 sdBoxM( float m, vec3 p, vec3 b ) {
+    vec3 d = abs(p) - b;
+    return vec2(
+        min(max(d.x,max(d.y,d.z)),0.0) + length(max(d,0.0)),
+        m
+    );
+}
+
 float sdBoxDisp( vec3 p, vec3 pb, float dv )
 {
   vec3 b = pb;
@@ -466,44 +502,12 @@ float sdCone( in vec3 p, in vec3 c )
 // }
 
 
-bool brick(vec3 uvw, vec3 uvscale, bool isVert) {
-    vec3 color;
-    vec3 position, useBrick;
-    vec3 brickDim;
-
-
-    vec3 bricksize;
-    bricksize = vec3(1.0, 0.5, 1.0) * uvscale;
-
-    vec3 brickPct = vec3(0.8, 0.8, 0.8);
-
-    position = uvw.xyz / bricksize.xyz;
-
-
-    if (isVert) {
-
-        if (fract(position.y * 0.5) > 0.5) {
-            position.x += 0.5;
-        }
-    }
-    else {
-        if (fract(position.y * 0.5) > 0.5) {
-            position.x += 0.5;
-        }
-    }
-
-    position = fract(position - 0.1);
-    useBrick = step(position, brickPct.xyz);
-
-    return (useBrick.x * useBrick.y * useBrick.z) > 0.0;
-}
-
-
 vec4 getUVW(
     vec3 worldPos,
     vec3 centerPos, 
     vec4 box_dim,
-    vec4 uvwScale
+    vec4 uvwScale,
+    bool mirrored
 ) {
     
     globIntersect = 999.0;
@@ -524,7 +528,7 @@ vec4 getUVW(
     
     
     vec3 newOffset = max(abs(centerOffset)-innerBoxSize,0.0);
-    vec2 newNorm1 = normalize(newOffset.xy);
+    vec2 newNorm1 = normalize(newOffset.xy)*sign(centerOffset.xy);
     vec2 newNorm2 = normalize(vec2(length(newOffset.xy), newOffset.z));
     
     
@@ -553,19 +557,31 @@ vec4 getUVW(
     float curPhi = atan(newNorm1.y, newNorm1.x);
     float curThe = atan(newNorm2.y, newNorm2.x);
     
+    // if (mirrored) {
+    //     if (centerOffset.y < 0.0) {
+    //         curPhi *= -1.0;
+    //     }
+    //     if (centerOffset.z < 0.0) {
+    //         curPhi *= -1.0;
+    //     }
+    // }
+    
+    float angMod = 
+        (uvwScale.w*2.0/M_PI) *
+        (max(floor(sqrt(box_dim.w*box_dim.w*2.0)),1.0));
+    
+    //globTest3.xy = vec2(curPhi,curThe)/M_PI;
+    
     // side corner
     if (newNorm1.x*newNorm1.y != 0.0) {
-        
-        uvwCoords.x = (curPhi*uvwScale.w*2.0/M_PI) *
-            (max(floor(sqrt(box_dim.w*box_dim.w*2.0)),1.0));
+        uvwCoords.x = curPhi*angMod;
         uvwCoords.y = pos.z;
     }
     
     // top corner
     if (newNorm2.x*newNorm2.y != 0.0) {
         //uvwCoords.x = curPhi*cornerRad;
-        uvwCoords.y = (curThe*uvwScale.w*2.0/M_PI) *
-            (max(floor(sqrt(box_dim.w*box_dim.w*2.0)),1.0));
+        uvwCoords.y = curThe*angMod;
     }
     
     // top
@@ -599,7 +615,7 @@ vec4 getUVW(
     }
     
     
-    uvwCoords.z = length(max(abs(centerOffset)-box_dim.xyz,0.0));
+    uvwCoords.z = 0.0;//length(max(abs(centerOffset)-box_dim.xyz,0.0));
     
     //uvwCoords.z = length(centerOffset);
     
@@ -619,7 +635,7 @@ vec2 opRotate( vec2 p, float theta )
     return m*p;
 }
 
-vec3 getUVW2(
+vec3 get2UVW(
     vec3 basePos,
     vec3 bCenter,
     vec4 box_dim
@@ -834,7 +850,7 @@ vec3 udRoundBox( vec3 vectorFromCenter, vec4 box_dim, vec2 box_power, float wall
 {
     vec3 absVecFromCenter = abs(vectorFromCenter);
     
-    vec3 newP = abs(max( absVecFromCenter-(box_dim.xyz),0.0));
+    vec3 newP = abs(max( absVecFromCenter-(box_dim.xyz), vec3(0.0) ));
     
     newP.xy = pow(newP.xy, box_power.xx );
     newP.x = pow( newP.x + newP.y, 1.0/box_power.x );
@@ -847,8 +863,47 @@ vec3 udRoundBox( vec3 vectorFromCenter, vec4 box_dim, vec2 box_power, float wall
         ( (box_dim.w-wallThickness)-newP.x ),
         (newP.x-(box_dim.w-wallThickness))
     );
+}
+
+float udMinBox( vec3 vectorFromCenter, vec4 box_dim )
+{
+    vec3 absVecFromCenter = abs(vectorFromCenter);
+    
+    vec3 newBoxDim = box_dim.xyz;
+    newBoxDim.z = 0.0;
+    if (newBoxDim.x > newBoxDim.y) {
+        newBoxDim.y = 0.0;
+    }
+    else {
+        newBoxDim.x = 0.0;
+    }
+    
+    return length(max(absVecFromCenter-newBoxDim, vec3(0.0) ));
     
 }
+
+// vec4 udRoundBoxLayered(
+//     vec3 vectorFromCenter,
+//     vec4 box_dim,
+//     vec2 box_power,
+//     vec4 outer,
+//     vec4 inner
+// ) {
+//     vec3 absVecFromCenter = abs(vectorFromCenter);
+    
+//     vec3 newP = abs(max( absVecFromCenter-(box_dim.xyz), vec3(0.0) ));
+    
+//     newP.xy = pow(newP.xy, box_power.xx );
+//     newP.x = pow( newP.x + newP.y, 1.0/box_power.x );
+    
+//     newP.xz = pow(newP.xz, box_power.yy );
+//     newP.x = pow( newP.x + newP.z, 1.0/box_power.y );
+    
+//     return max(
+//         (newP.xxxx-outer),
+//         ( (outer-inner)-newP.xxxx )    
+//     );
+// }
 
 
 //vec3 newP2 = abs(max( (box_dim.xyz + box_dim.w)-absVecFromCenter,0.0));
@@ -1000,6 +1055,11 @@ float opS( float d1, float d2 )
     return max(-d2,d1);
 }
 
+float opSI( float d1, float d2, float d3 )
+{
+    return max(max(-d2,d1),d3);
+}
+
 float opD( float d1, float d2 )
 {
     return d1+d2;
@@ -1011,6 +1071,45 @@ vec2 opU( vec2 d1, vec2 d2 )
     //(d1.x<d2.x) ? d1 : d2;
 }
 
+vec3 opUTie( vec3 d1, vec3 d2 )
+{
+    // if (d1.x == d2.x) {
+        
+    //     globTest = 1.0;
+        
+    //     return mix(d2,d1,float(d1.z<d2.z));
+    // }
+    // else {
+    //     return mix(d2,d1,float(d1.x<d2.x));
+    // }
+    
+    
+    
+    return mix(
+        mix(d2,d1,float(d1.x<d2.x)),
+        mix(d2,d1,float(d1.z<d2.z)),
+        float(d1.x == d2.x)
+    );
+    
+    
+}
+
+vec2 opU3( vec2 d1, vec2 d2, vec2 d3 )
+{
+    vec2 res = mix(d2, d1, float(d1.x<d2.x));
+    return mix(d3, res, float(res.x<d3.x));
+}
+
+float opUF( float d1, float d2 )
+{
+    return min(d1,d2);//mix(d2,d1,float(d1<d2));
+    //(d1.x<d2.x) ? d1 : d2;
+}
+float opUF3( float d1, float d2, float d3 )
+{
+    return min(min(d1,d2),d3);//mix(d2,d1,float(d1<d2));
+    //(d1.x<d2.x) ? d1 : d2;
+}
 
 
 vec3 opRep( vec3 p, vec3 c )
@@ -1173,7 +1272,7 @@ vec3 opTwist( vec3 p )
 
 vec3 getTexPos(vec3 inPos) {
     return (
-        inPos-volMinInPixels
+        inPos-volMinReadyInPixels
     )/volSizePrim; // 
 }
 
@@ -1201,7 +1300,13 @@ float getLand3D(vec3 pos, float sampVal) {
 float getWater3D(vec3 pos) {
     
     vec4 samp = texture(Texture0, getTexPos(pos) );
-    float waterVal = mix(samp.b,samp.g,waterLerp);
+    float hasWater = float(samp.g > 0.0);
+    
+    float waterVal = mix(
+        samp.b*hasWater, // last value
+        samp.g, // new value
+        waterLerp
+    );
     
     float maxDis = mix(0.5,1.0,distance(cameraPos,pos)/MAX_CAM_DIS);
     
@@ -1209,7 +1314,7 @@ float getWater3D(vec3 pos) {
         maxDis,
         -maxDis,
         sqrt(waterVal) //samp.g //+sin(curTime)*0.1
-    );
+    ) + globWaterMod;
     
     // return mix(
     //         0.5,
@@ -1229,7 +1334,7 @@ float getEmpty3D(vec3 pos) {
     vec4 samp = texture(Texture0, getTexPos(pos) );
     float maxDis = mix(0.5,1.0,distance(cameraPos,pos)/MAX_CAM_DIS);
     
-    return isUnderWater*mix(
+    return mix(
         maxDis,
         -maxDis,
         sqrt(samp.a)
@@ -1237,26 +1342,6 @@ float getEmpty3D(vec3 pos) {
 }
 
 
-float getOld3D(vec3 pos) {
-    
-    vec2 basePos = pos.xy/worldSizeInCells.xy;
-    
-    vec4 samp = texture(Texture2, basePos );
-    vec4 samp2 = texture(Texture2, basePos*2.0 );
-    vec4 samp3 = texture(Texture2, basePos*4.0 );
-    vec4 samp4 = texture(Texture2, basePos*8.0 );
-    // vec4 samp5 = texture(Texture0, pos*16.0/volSizePrim );
-    // vec4 samp6 = texture(Texture0, pos*32.0/volSizePrim );
-    
-    float smax = (samp.r*8.0 + samp2.r*4.0 + samp3.r*2.0 + samp4.r*1.0)/15.0;
-    
-    //smax = pow(smax,2.0-2.0*smax); 
-        //(samp.a*8.0 + samp2.a*4.0 + samp3.a*2.0 + samp4.a*1.0 + samp5.a*0.5 + samp6.a*0.25)/15.75;//max(max(samp.r,samp.g),max(samp.b,samp.a));
-    
-    //smax = floor(smax*64.0 + 0.99)/64.0;
-    
-    return mix(-1.0,1.0,smax);//2.0*smax*float(smax < 0.5))*0.5;
-}
 
 float getRidge(vec2 uvwBase) {
     vec2 newUVW = mod(uvwBase.xy, 2.0)-1.0;
@@ -1276,11 +1361,10 @@ float getRidge2(vec2 uvwBase) {
 float getShingle(vec2 uvwBase) {
     
 
-    float numScales = 2.0;
     float finalDis = 0.0;
 
-    vec2 iUV = ivec2(uvwBase.xy * numScales);
-    vec2 dis = uvwBase.xy * numScales - floor(uvwBase.xy * numScales);
+    vec2 iUV = ivec2(uvwBase.xy);
+    vec2 dis = uvwBase.xy - floor(uvwBase.xy);
 
     dis.y = 1.0 - dis.y;
 
@@ -1479,18 +1563,9 @@ vec2 getTerrain(
             upTex*absTerNorm.z;
         
         texVal *= 3.0*@myTexTest@;
+                
         
-        
-        
-        //*float(grassRes < 0.1);//*float(pRes.x < 0.0);//*float(grassNorm>0.0);
-        // *(1.0-grassNorm);
-        
-        //pos = getUVW2(pos, bestBoxCenterPoint, bestBoxDim);// + bestBoxCenterPoint;
-        
-        //pos = abs(pos);
-        //pos.z = 1.25;
-        
-        globTest3 = pos; //abs(normalize(pos-bestBoxCenterPoint));//abs(normalize(pos-bestaBoxCenterPoint));//
+        //globTest3 = pos; //abs(normalize(pos-bestBoxCenterPoint));//abs(normalize(pos-bestaBoxCenterPoint));//
         
         cellVal = cell2D(
             pos.xyz,
@@ -1510,6 +1585,8 @@ vec2 getTerrain(
             (1.0-gradVal*(1.0-seedRand))
         )*smoothstep(0.7,1.0,terNorm.z)*seedRand*upTex*2.0
         /3.0;
+        
+        //isGrass = 0.0;
         
         //res.x += (1.0-gradVal)*0.1;
         
@@ -1582,89 +1659,96 @@ vec2 getTerrain(
         
         
         
-        if (isGrass > 0.5) {
+        // if (isGrass > 0.5) {
             
-            for (i = 0; i < 2; i++) {
-                fi = float(i);
-                repPos = opRep(
-                    pos
-                    + fi*grassSize.x*0.5
-                    + sin(curTime*2.0+pos.x+pos.y+pos.z + fi*5.3) //  + upTex*10.0
-                    * 0.125 * (1.0-clamp(0.7-primRes,0.0,1.0)) //* grassNorm
-                    ,vec3(grassSize.xx*1.0,1.0)
-                );
+        //     for (i = 0; i < 2; i++) {
+        //         fi = float(i);
+        //         repPos = opRep(
+        //             pos
+        //             + fi*grassSize.x*0.5
+        //             + sin(curTime*2.0+pos.x+pos.y+pos.z + fi*5.3) //  + upTex*10.0
+        //             * 0.125 * (1.0-clamp(0.7-primRes,0.0,1.0)) //* grassNorm
+        //             ,vec3(grassSize.xx*1.0,1.0)
+        //         );
                 
-                //repPos.z += ( earthX ) + sin(curTime);//mix(pos.z,pos.z+earthX,0.5);
+        //         //repPos.z += ( earthX ) + sin(curTime);//mix(pos.z,pos.z+earthX,0.5);
                 
-                //repPos.z *= 0.5;
+        //         //repPos.z *= 0.5;
                 
-                lerpVal = pow(abs(sin(pos.x+pos.y+pos.z)),6.0);
+        //         lerpVal = pow(abs(sin(pos.x+pos.y+pos.z)),6.0);
                 
-                grassRes = sdSphere(
-                        vec3(repPos.xy,earthX)*vec3(
-                            mix(0.5,1.0,lerpVal),
-                            mix(0.5,1.0,1.0-lerpVal),
-                            0.5*grassSize.x + (1.0-isGrass)*0.5
-                        )
-                        +vec3(
-                            0.0,
-                            0.0,
-                            (1.0-isGrass)*0.05//(1.0-isGrass) + float(isGrass < 0.5)*1000.0
-                        )
-                        , 
-                        // *vec3(1.0,1.0,0.2*grassSize.x),
-                        // + vec3(0.0,0.0,(earthX+0.25)*2.0))*vec3(1.0,1.0,0.2*grassSize.x
-                        (grassSize.x)*0.0625 // *(1.0-pow(upTex+0.2,4.0)) //grassNorm*
-                    );
+        //         grassRes = sdSphere(
+        //                 vec3(repPos.xy,earthX)*vec3(
+        //                     mix(0.5,1.0,lerpVal),
+        //                     mix(0.5,1.0,1.0-lerpVal),
+        //                     0.5*grassSize.x + (1.0-isGrass)*0.5
+        //                 )
+        //                 +vec3(
+        //                     0.0,
+        //                     0.0,
+        //                     (1.0-isGrass)*0.05//(1.0-isGrass) + float(isGrass < 0.5)*1000.0
+        //                 )
+        //                 , 
+        //                 // *vec3(1.0,1.0,0.2*grassSize.x),
+        //                 // + vec3(0.0,0.0,(earthX+0.25)*2.0))*vec3(1.0,1.0,0.2*grassSize.x
+        //                 (grassSize.x)*0.0625 // *(1.0-pow(upTex+0.2,4.0)) //grassNorm*
+        //             );
                 
-                res.x = min(
-                    res.x,
+        //         res.x = min(
+        //             res.x,
                     
                     
-                    grassRes
+        //             grassRes
                     
-                    // sdSphere(
-                    //     repPos, 
-                    //     mix(
-                    //         grassSize.x*0.25,
-                    //         0.0,
-                    //         1.3 - clamp( abs(primRes*5.0*(1.0-powVal)),0.0,1.0)    
-                    //     ) *
-                    //     pow(clamp(distance(primRes,-0.4)*4.0,0.0,1.0),4.0)
-                    // )
-                    //sdBox( repPos, vec3(grassSize.x*0.125,grassSize.x*0.125, 0.0325) )
-                );
-            }
+        //             // sdSphere(
+        //             //     repPos, 
+        //             //     mix(
+        //             //         grassSize.x*0.25,
+        //             //         0.0,
+        //             //         1.3 - clamp( abs(primRes*5.0*(1.0-powVal)),0.0,1.0)    
+        //             //     ) *
+        //             //     pow(clamp(distance(primRes,-0.4)*4.0,0.0,1.0),4.0)
+        //             // )
+        //             //sdBox( repPos, vec3(grassSize.x*0.125,grassSize.x*0.125, 0.0325) )
+        //         );
+        //     }
             
             
             
-            // if (res.x >= earthX + texVal*0.1) {
-            //     res.x = earthX + texVal*0.1;
-            //     globTexEarth.x = TEX_EARTH;
-            // }
-            // else {
+        //     // if (res.x >= earthX + texVal*0.1) {
+        //     //     res.x = earthX + texVal*0.1;
+        //     //     globTexEarth.x = TEX_EARTH;
+        //     // }
+        //     // else {
                 
-                if (isInAir&&(grassRes < earthX)) { //
-                    globTexEarth.x = 
-                        TEX_GRASS;
-                        //TEX_STONE;
+        //         if (isInAir&&(grassRes < earthX)) { //
+        //             globTexEarth.x = 
+        //                 TEX_GRASS;
+        //                 //TEX_STONE;
                         
-                        globTexEarth.y = abs(sin(seedRand*4.0+earthX*2.0));
-                        //globTexEarth.y = clamp(abs(primRes)*4.0,0.0,1.0);
-                }
+        //                 globTexEarth.y = abs(sin(seedRand*4.0+earthX*2.0));
+        //                 //globTexEarth.y = clamp(abs(primRes)*4.0,0.0,1.0);
+        //         }
                 
                 
-            //}
+        //     //}
             
             
             
-        }
+        // }
         
         
         
         
         if (globTexEarth.x == TEX_EARTH) {
-            globTexEarth.y = mod(abs(sin((pos.z+pos.x+pos.y)/15.0)),1.0);// *0.5 + gradVal*0.5;//randf3(cellVal.xyz);
+            globTexEarth.y = mod(
+                abs(
+                    sin(pos.z/16.0)*
+                    sin(pos.x/16.0)*
+                    sin(pos.y/16.0)
+                ),
+                1.0
+            );
         }
         
         //globTexEarth.x = TEX_STONE;
@@ -1713,7 +1797,7 @@ float mapWater( vec3 pos ) {
             getWater3D(pos + vec3(
                 0.0,
                 0.0,
-                (waveHeight(pos.xy*2.0) + 1.0) * 0.3    
+                (waveHeight(pos.xy*1.0) + 1.0) * 0.5 * WAVE_HEIGHT    
             )),
             
             WATER_ID
@@ -1749,6 +1833,8 @@ float mapWater( vec3 pos ) {
 
 float mapLand( vec3 pos ) {
     
+    int i;
+    
     vec2 ov = vec2(0.0,0.5);
     
     vec2 res = vec2(MAX_CAM_DIS,SKY_ID);
@@ -1765,7 +1851,6 @@ float mapLand( vec3 pos ) {
         )
     );
     
-    // int i;
     // float splashTot = 0.0;
     // float splashDis = 0.0;
     // float maxDis = 10.0;
@@ -1782,6 +1867,22 @@ float mapLand( vec3 pos ) {
     // res.x = opD(res.x,splashTot*waveMod*1.5);
     
     
+    float splashTot = 0.0;
+    float splashDis = 0.0;
+    float maxDis = 10.0;
+    float waveMod = clamp(abs(res.x-1.0),0.0,1.0);
+    for (i = 0; i < numExplodes; i++) {
+        splashDis = distance(explodeArr[i].xyz+vec3(0.0,0.0,1.0),pos.xyz);
+        splashTot += (
+            
+            (sin(splashDis*2.0+explodeArr[i].w*0.5-curTime*4.0)+1.0)*explodeArr[i].w*0.5
+            
+        ) * 
+        clamp(1.0-splashDis/maxDis, 0.0, 1.0);
+    }
+    res.x = opD(res.x,splashTot*waveMod*1.5);
+    
+    
     if (res.x <= max(SOLID_PREC,SOLID_NORMAL_PREC)*8.0) {
         
         terNorm = normalize(
@@ -1794,6 +1895,26 @@ float mapLand( vec3 pos ) {
         );
         
         res = getTerrain(res, terNorm, pos);
+    }
+    
+    
+    float multVal = 1.5;
+    
+    vec2 expRes = vec2(0.0,EXPLODE_ID);
+    vec3 expVec = vec3(0.0);
+    float sphereRes;
+    for (i = 0; i < numExplodes; i++) {
+        expRes.x = sdSphere(
+            pos-explodeArr[i].xyz,
+            explodeArr[i].w + pow(sin(pos.x*multVal)*sin(pos.y*multVal)*sin(pos.z*multVal),2.0)
+        );
+        expVec += normalize(pos-explodeArr[i].xyz);
+        res = opU(res,expRes);
+    }
+    
+    if (res.y == EXPLODE_ID) {
+        globTexEarth.x = TEX_EXPLOSION;
+        globTexEarth.y = pow(abs(dot(lookAtVec,normalize(expVec))),2.0);
     }
     
     
@@ -1821,13 +1942,65 @@ float getBrick( vec3 uvwCoords) {
     return max(max(res.x,res.y),res.z);
 }
 
+float getWoodGrain(float normalUID, vec3 worldPosInPixels, float woodRad, float boardDir, float stretchAmount) {
+    float woodDiam = woodRad * 2.0;
+
+    vec3 newPos = vec3(0.0);//worldPosInPixels.xyz;
+
+    if (boardDir == 0.0) {
+        newPos = worldPosInPixels.xyz;
+    }
+    if (boardDir == 1.0) {
+        newPos = worldPosInPixels.xzy;
+    }
+    if (boardDir == 2.0) {
+        newPos = worldPosInPixels.yxz;
+    }
+    if (boardDir == 3.0) {
+        newPos = worldPosInPixels.yzx;
+    }
+    if (boardDir == 4.0) {
+        newPos = worldPosInPixels.zxy;
+    }
+    if (boardDir == 5.0) {
+        newPos = worldPosInPixels.zyx;
+    }
+
+    vec2 woodCenter = floor( (newPos.xy + woodRad) / woodDiam) * woodDiam;
+    vec2 woodVec = normalize(newPos.xy - woodCenter);
+    float woodLen = newPos.z;
+
+
+    woodCenter.y *= stretchAmount;
+    newPos.y *= stretchAmount;
+
+
+    float woodAngle = atan(woodVec.y, woodVec.x);
+    float finalMod = (sin(
+
+                                            ( distance(newPos.xy + mod(normalUID, 4.0), woodCenter) + (woodRad / 2.0) ) *
+                                            ( (8.0 + sin(woodAngle * 24.0 ) * 0.0625 + sin(woodAngle * 12.0 ) * 0.125 + sin(woodLen / 16.0) * 0.5 + sin(woodLen / 4.0) * 0.25  ) / (woodRad / sqrt(2.0)) )
+
+                                        ));
+    if (finalMod < 0.0) {
+        finalMod = (1.0 - finalMod) / 2.0;
+    }
+
+    return finalMod;
+}
+
+
 float mapSolid( vec3 pos ) {
     
+    int i;
     int m;
     int n;
     int primDataInd;
     int primTempInd;
-    int diagInd = 0;
+    //int diagInd = 0;
+    
+    float dis1;
+    float dis2;
     
     float gradVal = 0.0;
     vec3 norVal = vec3(0.0);
@@ -1836,18 +2009,44 @@ float mapSolid( vec3 pos ) {
     float testDis = 0.0;
     
     vec4 uvwCoords = vec4(0.0);
+    vec4 uvwCoordsMir = vec4(0.0);
+    vec4 uvwCoordsMirScaled = vec4(0.0);
     
-    vec3 boxRes = vec3(0.0);
-    vec3 diagRes = vec3(0.0);
+    //vec4 boxRes = vec4(0.0);
+    
+    
+    
+    vec4 boxRes1 = vec4(0.0);
+    vec4 boxRes2 = vec4(0.0);
+    
+    float subResult1 = MAX_CAM_DIS;
+    float subResult2 = MAX_CAM_DIS;
+    
+    vec3 res1 = vec3(MAX_CAM_DIS,SKY_ID,MAX_CAM_DIS);
+    vec3 res2 = res1;
+    
+    float uvwDepth = MAX_CAM_DIS;
+    float minBoxRes = 0.0;
+    
+    //vec3 diagRes = vec3(0.0);
     
     vec3 visCenterPoint = vec3(0.0);
     vec3 visDim = vec3(0.0);
     
-    vec2 res = vec2(MAX_CAM_DIS,SKY_ID);
     
-    float notInside = 1.0;
+    
+    //bool notInside = true;
     //vec3 bestBoxCenterPoint = vec3(0.0);
     //vec4 bestBoxDim = vec4(0.0);
+    
+    vec2 tempDis;
+    vec2 tempDis1;
+    vec2 tempDis2;
+    vec2 tempDis3;
+    float shingleVal;
+    float visBoxDis = 0.0;
+    
+    
     
     
     
@@ -1864,7 +2063,7 @@ float mapSolid( vec3 pos ) {
             texelRes2 = texelFetch(Texture1, primDataInd+1);
         }
         
-        diagInd = int(texelRes2.x);
+        //diagInd = int(texelRes2.x);
         primTempInd = int(texelRes1.w);
         
         if (primTempInd == 0) {
@@ -1881,46 +2080,129 @@ float mapSolid( vec3 pos ) {
         
         visDim = (pdVisMax.xyz - pdVisMin.xyz)*0.5;
         
+        visBoxDis = sdBox(pos-visCenterPoint, visDim);
         
-        boxRes = udRoundBox(
+        
+        boxRes1.xyz = udRoundBox(
           pos-boxCenterPoint,
           boxDim,
           boxPower,
           pdCornerDis.y
         );
-        diagRes = udRoundBox(
-          pos-(texelRes1.xyz+diagVals[diagInd]),
-          vec4(0.0,0.0,MAX_DIAG_RAD,MAX_DIAG_RAD),
-          vec2(1.0),
-          MAX_DIAG_RAD
+        boxRes2.xyz = udRoundBox(
+          pos-boxCenterPoint,
+          boxDim,
+          boxPower,
+          pdCornerDis.y*2.0
         );
         
-        testDis = opI3(
-          max(boxRes.x,boxRes.y) *0.5,
-          diagRes *0.5,
-          sdBox(pos-visCenterPoint, visDim)
+        minBoxRes = udMinBox(pos-boxCenterPoint, boxDim);
+        
+        // diagRes = udRoundBox(
+        //   pos-(texelRes1.xyz+diagVals[diagInd]),
+        //   vec4(0.0,0.0,MAX_DIAG_RAD,MAX_DIAG_RAD),
+        //   vec2(1.0),
+        //   MAX_DIAG_RAD
+        // );
+        
+        // testDis = opI(//opI3(
+        //   max(boxRes.x,boxRes.y) * 0.5,
+        //   //diagRes.x * 0.5,
+        //   visBoxDis
+        // );
+        
+        
+        
+        // if (testDis < res.x) {
+        //     //bestBoxCenterPoint = boxCenterPoint;
+        //     //bestBoxDim = boxDim;
+        //     notInside = (boxRes.x > boxRes.y);
+        // }
+        
+        subResult1 = min(
+            subResult1,
+            opI(
+                boxRes1.z * 0.5,
+                visBoxDis
+            )
         );
         
-        if (testDis < res.x) {
-            //bestBoxCenterPoint = boxCenterPoint;
-            //bestBoxDim = boxDim;
-            notInside = float(boxRes.x > boxRes.y);
-        }
+        // uvwDepth = min(
+        //     uvwDepth,
+        //     max(boxRes1.x,boxRes1.y)
+        // );
         
-        res = opU(
-            res,
-            vec2(
-                testDis,
-                float(primDataInd)
+        res1 = opUTie(
+            res1,
+            vec3(
+                opI(
+                  max(boxRes1.x,boxRes1.y) * 0.5,
+                  visBoxDis
+                ),
+                float(primDataInd),
+                minBoxRes
+            )
+        );
+        
+        
+        
+        subResult2 = min(
+            subResult2,
+            opI(
+                boxRes2.z * 0.5,
+                visBoxDis
+            )
+        );
+        
+        res2 = opUTie(
+            res2,
+            vec3(
+                opI(
+                  max(boxRes2.x,boxRes2.y) * 0.5,
+                  visBoxDis
+                ),
+                float(primDataInd),
+                minBoxRes
             )
         );
         
     }
     
     
+    // make subtracted region slightly bigger with opD to counter bugs
+    if (subResult1 == MAX_CAM_DIS) {
+        
+    }
+    else {
+        res1.x = opS(res1.x,opD(subResult1,-0.01) ); 
+    }
+    
+    if (subResult2 == MAX_CAM_DIS) {
+        
+    }
+    else {
+        res2.x = opS(res2.x,opD(subResult2,-0.01));
+    }
+    
+    //res.x = opD(res.x,0.1);
+    
+    // globTexPrim.x = TEX_PLASTER; 
+    // return res1.x;
+    
+    // if (res.x == MAX_CAM_DIS) {
+    //     return res.x;
+    // }
     
     
     //////////////
+    
+    
+    
+    vec2 res = res2.xy;
+    vec4 boxRes = boxRes2;
+    
+    
+    primDataInd = int(res.y);
     
     if (primDataInd == -1) {
         texelRes1 = paramFetch1;
@@ -1931,8 +2213,14 @@ float mapSolid( vec3 pos ) {
         texelRes2 = texelFetch(Texture1, primDataInd+1);
     }
     
-    diagInd = int(texelRes2.x);
+    //diagInd = int(texelRes2.x);
     primTempInd = int(texelRes1.w);
+    
+    float origDis = res1.x;
+    float myDis = 0.0;
+    
+    
+    
     
     if (primTempInd == 0) {
         
@@ -1946,23 +2234,205 @@ float mapSolid( vec3 pos ) {
         )*0.5;
         
         visDim = (pdVisMax.xyz - pdVisMin.xyz)*0.5;
+        visBoxDis = sdBox(pos-visCenterPoint, visDim);
+        
+        // origDis = opI(
+        //     origDis,
+        //     visBoxDis  
+        // );
         
         uvwCoords = getUVW(
           pos,
           boxCenterPoint, 
           boxDim,
-          vec4(1.0)
+          vec4(1.0),
+          false
         );
+        uvwCoords.z = 
         
-        cellRes.x = getBrick(uvwCoords.xyz*vec3(0.5,1.0,0.5));
-        res.x = opD(res.x,max(cellRes.x,0.6)*0.2);
+            udRoundBox(
+                      pos-boxCenterPoint,
+                      boxDim,
+                      boxPower,
+                      pdCornerDis.y
+                    ).x;
+            //uvwDepth;
         
-        if (cellRes.x > 0.9) {
-            globTexPrim.x = TEX_PLASTER;
+        uvwCoordsMir = uvwCoords;
+        
+        uvwCoordsMirScaled = uvwCoords*0.5;
+        
+        //float outer = box_dim.w;
+        //float inner = wallThickness.x;
+        
+        // boxRes = udRoundBoxLayered(
+        //   pos-boxCenterPoint,
+        //   boxDim,
+        //   boxPower,
+        //   vec4(boxDim.w,boxDim.w-0.4,boxDim.w-0.8,boxDim.w-0.4),
+        //   vec4(0.4,0.2,0.4,0.6)*2.0  
+        // )*0.5;
+        
+        boxRes.x = res.x;
+        boxRes.y = opD(res.x,0.4);
+        boxRes.z = opD(res.x,0.6);
+        boxRes.w = opD(res.x,0.2);
+        
+        boxRes.x = opSI(boxRes.x,boxRes.y,res1.x);
+        boxRes.y = opSI(boxRes.y,boxRes.z,res1.x);
+        boxRes.z = opI(boxRes.z,res1.x);
+        boxRes.w = opI(boxRes.w,res1.x);
+        
+        // tempDis1 = vec2(boxRes.x,TEX_SHINGLE);
+        // tempDis2 = vec2(boxRes.y,TEX_EARTH);
+        // tempDis3 = vec2(boxRes.z,TEX_PLASTER);
+        // res = 
+        //     opU3(tempDis1,tempDis2,tempDis3);
+        //     //vec2(res1.x,TEX_PLASTER);
+        
+        // if (subResult == MAX_CAM_DIS) {
+            
+        // }
+        // else {
+        //     //opS: max(-d2,d1);
+        //     boxRes.xyzw = max(boxRes.xyzw, vec4(-subResult) );
+        // }
+        
+        
+        
+        tempDis = opU3(
+            sdBoxM(
+                2.0,
+                opRep(uvwCoordsMirScaled.xyz,vec3(2.0)),
+                vec3(0.125,0.84,10.0)
+            ),
+            sdBoxM(
+                5.0,
+                opRep(uvwCoordsMirScaled.xyz+vec3(1.0,1.0,0.0),vec3(4.0,2.0,2.0)),
+                vec3(1.97,0.125,10.0)
+            ),
+            sdBoxM(
+                2.0,
+                opRep(
+                    uvwCoordsMirScaled.xyz + vec3(1.0,uvwCoordsMirScaled.x,0.0),
+                    vec3(2.0)),
+                vec3(0.8,0.15,10.0)
+            )
+        );
+        globWoodDir = tempDis.y;
+        globWoodCoords = uvwCoordsMirScaled.xyz;
+        tempDis.y = TEX_WOOD;
+        
+        if (pdMatParmas.x < 2.0) {
+            //////////
+            // brick
+            //////////        
+            
+            // tempDis1 = vec2(boxRes.x,TEX_WOOD);
+            // tempDis2 = vec2(boxRes.y,TEX_WOOD);
+            // tempDis3 = vec2(boxRes.z,TEX_WOOD);
+            
+            if (pdMatParmas.x < 1.0) {
+                myDis = boxRes.w;
+            }
+            else {
+                myDis = origDis;
+            }
+            
+            tempDis.x = opI(tempDis.x,origDis);
+            
+            cellRes.x = getBrick(uvwCoords.xyz*vec3(0.5,1.0,0.5));
+            
+            dis1 = (max(cellRes.x,0.8)-0.8);
+            dis2 = texture2D(Texture2, uvwCoords.xy/16.0).r*0.3 + float(pdMatParmas.x > 0.0);
+            
+            //min(dis1,dis2));
+            
+            tempDis1.x = opD(myDis,dis1);
+            tempDis2.x = opD(origDis,dis2);
+            tempDis2.x = opS(tempDis2.x,tempDis1.x);
+            tempDis2.y = TEX_PLASTER;
+            
+            if (
+                (cellRes.x > 0.95)
+                // || ( min(dis1,dis2) < dis1 )
+            ) {
+                tempDis1.y = TEX_PLASTER;
+            }
+            else {
+                tempDis1.y = TEX_BRICK;
+            }
+            
+            
+            res = opU(tempDis1,tempDis2);
+            
+            if (pdMatParmas.x < 1.0) {
+                res.x = opS(res.x,tempDis.x);
+                res = opU(res,tempDis);
+            }
+            
+            
+            
         }
         else {
-            globTexPrim.x = TEX_BRICK;
+            tempDis1 = vec2(boxRes.x,TEX_SHINGLE);
+            tempDis2 = vec2(boxRes.y,TEX_WOOD);
+            tempDis3 = vec2(boxRes.z,TEX_WOOD);
+            
+            shingleVal = getShingle(abs(uvwCoords.xy*2.0) );
+            
+            tempDis1.x = opD(tempDis1.x,shingleVal*0.2 + (0.25-clamp(pos.z - (visCenterPoint.z-visDim.z),0.0,0.25))*shingleVal );
+            
+            tempDis2.x = opI(
+                tempDis2.x,
+                sdBox(
+                    opRep(
+                        uvwCoords.xyz + vec3(
+                        float(mod(uvwCoords.y,1.0) < 0.5)*2.0    
+                        ,0.0,0.0),
+                        vec3(4.0,0.5,2.0)
+                    ),
+                    vec3(1.95,0.23,10.0)
+                )
+            );
+            
+            
+            
+            
+            tempDis3.x = opI(tempDis3.x,tempDis.x);
+            
+            
+            
+            res = opU3(tempDis1,tempDis2,tempDis3);
         }
+        
+        
+        
+        
+        
+        
+        // res.x = opI(
+        //     res.x,
+        //     visBoxDis  
+        // );
+        
+        
+        
+        //res = tempDis;
+        
+        
+        globTexPrim.x = res.y;
+        
+        globWoodCoords = uvwCoords.xyz*0.5;
+        
+        if (globTexPrim.x == TEX_SHINGLE) {
+            globTexPrim.y = shingleVal*0.3+0.3;
+        }
+        
+        //res = tempDis;
+        
+        //getWoodGrain
+        
         
         //cellRes.x;
         
@@ -1993,11 +2463,14 @@ float mapSolid( vec3 pos ) {
     
     
     res.x = opS(res.x, getEmpty3D(pos));
+        
     
     res.x = opS(
       res.x,
-      sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) )
+      sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) ) //CAM_BOX_SIZE
     );
+    
+    //
     
     
     
@@ -2052,7 +2525,8 @@ vec2 aabbIntersect(vec3 rayOrig, vec3 rayDir, vec3 minv, vec3 maxv) {
 }
 
 
-float rayCast( vec3 ro, vec3 rd, vec2 minMaxT, float fNumSteps ) {
+
+vec2 rayCast( vec3 ro, vec3 rd, vec2 minMaxT, float fNumSteps ) {
     int p = 0;
     int numSteps = int(fNumSteps);
     
@@ -2071,7 +2545,7 @@ float rayCast( vec3 ro, vec3 rd, vec2 minMaxT, float fNumSteps ) {
         //res = opS(res, sdSphere(pos - rd*(sphereRad), sphereRad ));
         
         if (
-            (res < SOLID_PREC) ||
+            (res < (SOLID_PREC)) ||
             (t>minMaxT.y)
         ) {
             break;
@@ -2079,9 +2553,9 @@ float rayCast( vec3 ro, vec3 rd, vec2 minMaxT, float fNumSteps ) {
         t += res;
     }
     
-    globCurSteps += float(p);
+    //globCurSteps += float(p);
     
-    return t;
+    return vec2(t,res);
 }
 
 float rayCastWater( vec3 ro, vec3 rd, vec2 minMaxT, float fNumSteps ) {
@@ -2099,7 +2573,7 @@ float rayCastWater( vec3 ro, vec3 rd, vec2 minMaxT, float fNumSteps ) {
         
         res = mapWater( ro+rd*t );
         if (
-            (abs(res) < mix(0.002,0.1,fp/fNumSteps)) ||
+            (abs(res) < (mix(0.02,0.2,fp/fNumSteps))) ||
             //(abs(res)<precis) ||
             (t>minMaxT.y)
         ) {
@@ -2140,13 +2614,13 @@ float rayCastLand( vec3 ro, vec3 rd, vec2 minMaxT, float fNumSteps ) {
         
         res = mapLand( ro+rd*t );
         if (
-            (abs(res) < mix(0.002,0.1,fp/fNumSteps)) ||
+            (abs(res) < (mix(0.02,0.2,fp/fNumSteps))) || // todo: fix this
             (t>minMaxT.y)
         ) {
             break;
         }
         
-        t += res*0.5 - pow(fp/fNumSteps, 10.0)*0.01;
+        t += res*0.5 - pow(fp/fNumSteps, 10.0)*0.01; // todo: fix this also
     }
     
     
@@ -2168,6 +2642,7 @@ float rayCastLand( vec3 ro, vec3 rd, vec2 minMaxT, float fNumSteps ) {
     
     globCurSteps += float(p+q);
     
+    globLandSteps = float(p);
     
     return t;
 }
@@ -2215,7 +2690,17 @@ int intMod(int lhs, int rhs)
     return lhs - ( (lhs / rhs) * rhs );
 }
 
-float lineStep(vec3 ro, vec3 rd, float maxDis, float accuracy) {
+float lineStep(
+    vec3 ro,
+    vec3 rd,
+    float maxDis,
+    float accuracy
+    //,int _startIndex
+) {
+    
+    
+    //int startIndex = _startIndex;
+    
     globCurSteps = 0.0;
     
     vec3 oneVec = vec3(1.0);
@@ -2254,7 +2739,7 @@ float lineStep(vec3 ro, vec3 rd, float maxDis, float accuracy) {
     vec3 p = p1;
     
     
-    float tval = 0.0;
+    vec2 tval = vec2(0.0);
     vec3 seBoxDis1 = vec3(0.0);
     vec3 seBoxDis2 = vec3(0.0);
     
@@ -2300,7 +2785,7 @@ float lineStep(vec3 ro, vec3 rd, float maxDis, float accuracy) {
     int diagInd = 0;
     
     
-    
+    vec2 newBoxPower = vec2(2.0);
     
     vec3 minBox = vec3(0.0);
     vec3 maxBox = vec3(0.0);
@@ -2323,7 +2808,7 @@ float lineStep(vec3 ro, vec3 rd, float maxDis, float accuracy) {
     int volSizePrimDiv = int(volSizePrim/PRIM_DIV);
     ivec3 vpMin = ivec3(0);
     ivec3 vpMax = ivec3(volSizePrimDiv);
-    //ivec3 cpmOffset = ivec3(volMinInPixels/PRIM_DIV);
+    //ivec3 cpmOffset = ivec3(volMinReadyInPixels/PRIM_DIV);
     
     //cpmOffset -= volSizePrimDiv/2;
     
@@ -2338,7 +2823,7 @@ float lineStep(vec3 ro, vec3 rd, float maxDis, float accuracy) {
         primAlreadyTested[i] = -1.0f;
     }
     
-    int startIndex = -1;
+    
     
     bool alreadyExists = false;
     
@@ -2362,7 +2847,7 @@ float lineStep(vec3 ro, vec3 rd, float maxDis, float accuracy) {
         maxPlanesMacro = minPlanesMacro + PRIM_DIV;
         centerPointMacro = (minPlanesMacro+maxPlanesMacro)*0.5;
         //centerPointMacroUnit = ;
-        iCenterPointMacroUnit = ivec3((centerPointMacro-volMinInPixels)/PRIM_DIV);
+        iCenterPointMacroUnit = ivec3((centerPointMacro-volMinReadyInPixels)/PRIM_DIV);
         
         //iCenterPointMacroUnit -= cpmOffset;
         
@@ -2376,8 +2861,8 @@ float lineStep(vec3 ro, vec3 rd, float maxDis, float accuracy) {
             
             //true
             
-            //all(greaterThan(p,volMinInPixels)) &&
-            //all(lessThan(p,volMaxInPixels))
+            //all(greaterThan(p,volMinReadyInPixels)) &&
+            //all(lessThan(p,volMaxReadyInPixels))
             
             all(greaterThanEqual(iCenterPointMacroUnit,vpMin)) &&
             all(lessThan(iCenterPointMacroUnit,vpMax))
@@ -2399,22 +2884,22 @@ float lineStep(vec3 ro, vec3 rd, float maxDis, float accuracy) {
             )*PRIMS_PER_MACRO*VECS_PER_PRIM;
             
             
-            for (m = startIndex; m < PRIMS_PER_MACRO; m++) {
+            for (m = 0; m < PRIMS_PER_MACRO; m++) { //startIndex
                 
                 alreadyExists = false;
                 
                 //%%%%%%%%
-                if (m == -1) {
-                    startIndex = 0;
-                    primDataInd = -1;
-                    texelRes1 = paramFetch1;
-                    texelRes2 = paramFetch2;
-                }
-                else {
+                // if (m == -1) {
+                //     startIndex = 0;
+                //     primDataInd = -1;
+                //     texelRes1 = paramFetch1;
+                //     texelRes2 = paramFetch2;
+                // }
+                // else {
                     primDataInd = myBaseInd + m*VECS_PER_PRIM;
                     texelRes1 = texelFetch(Texture1, primDataInd).xyzw;
                     texelRes2 = texelFetch(Texture1, primDataInd+1).xyzw;
-                }
+                //}
                 //%%%%%%%%
                 
                 
@@ -2516,7 +3001,7 @@ float lineStep(vec3 ro, vec3 rd, float maxDis, float accuracy) {
                             (hitBoxXYZ[0].x <= hitBoxXYZ[0].y) ||
                             (hitBoxXYZ[1].x <= hitBoxXYZ[1].y) ||
                             (hitBoxXYZ[2].x <= hitBoxXYZ[2].y)    
-                        );
+                        ) || ((boxDim.x+boxDim.y+boxDim.z) == 0.0);
                         
                         
                         
@@ -2525,13 +3010,13 @@ float lineStep(vec3 ro, vec3 rd, float maxDis, float accuracy) {
                         didHit = false;
                         
                         
-                        
+                        newBoxPower = max(boxPower,vec2(1.5));
                         
                         
                         if (onlyHitCorner) {
                             
                             //
-                            //globTest = 1.0;
+                            
                             //
                             
                             //fullHitBox = aabbIntersect(p1,rd,minBox-boxDim.w, maxBox+boxDim.w);
@@ -2549,7 +3034,7 @@ float lineStep(vec3 ro, vec3 rd, float maxDis, float accuracy) {
                             seBoxDis1 = udRoundBox(
                                 closestPointOnRay1.xyz-boxCenterPoint,
                                 boxDim,
-                                boxPower,
+                                newBoxPower,
                                 pdCornerDis.y
                             );
                             didHit = seBoxDis1.x <= 0.0;
@@ -2580,7 +3065,7 @@ float lineStep(vec3 ro, vec3 rd, float maxDis, float accuracy) {
                                     seBoxDis1 = udRoundBox(
                                         closestPointOnRay1.xyz-boxCenterPoint,
                                         boxDim,
-                                        boxPower,
+                                        newBoxPower,
                                         pdCornerDis.y
                                     );
                                     
@@ -2588,7 +3073,7 @@ float lineStep(vec3 ro, vec3 rd, float maxDis, float accuracy) {
                                     seBoxDis2 = udRoundBox(
                                         closestPointOnRay2.xyz-boxCenterPoint,
                                         boxDim,
-                                        boxPower,
+                                        newBoxPower,
                                         pdCornerDis.y
                                     );
                                     
@@ -2611,12 +3096,14 @@ float lineStep(vec3 ro, vec3 rd, float maxDis, float accuracy) {
                         
                         if (didHit) {
                             
+                            //globTest = 1.0;
+                            
                             //globTest += 1.0/float(MAX_PRIM_IDS);
                             
                             seBoxDis2 = udRoundBox(
                                 (cameraPos)-boxCenterPoint,
                                 boxDim,
-                                boxPower,
+                                newBoxPower,
                                 pdCornerDis.y
                             );
                             isInside = (seBoxDis2.y > seBoxDis2.x);
@@ -2678,7 +3165,7 @@ float lineStep(vec3 ro, vec3 rd, float maxDis, float accuracy) {
           clamp(camDis/(clipDist.y*0.5),minLOD,maxLOD) //MAX_DETAIL_DIS
       )*accuracy;
       
-      btSteps = mix(MIN_STEPS,MAX_STEPS,curLOD);
+      btSteps = mix(MIN_STEPS,MAX_STEPS,curLOD); //*stepMod
       
       tval = rayCast(
           p1,
@@ -2686,15 +3173,20 @@ float lineStep(vec3 ro, vec3 rd, float maxDis, float accuracy) {
           hitBoxFinal.xy,
           btSteps
       );
-         
+
+
+      
       if (
-          (tval < hitBoxFinal.y)
-          && (tval > 0.01)
+          (tval.x < hitBoxFinal.y)
+          && (tval.x > 0.01)
+          //&& (tval.y < 0.0)
       ) {
-          return tval;
+            
+          return tval.x;
       }
     }
     
+    //globTest = 1.0;
     
     
     return MAX_CAM_DIS;
@@ -2702,7 +3194,7 @@ float lineStep(vec3 ro, vec3 rd, float maxDis, float accuracy) {
 
 
 
-vec3 getNormalSolid( vec3 pos, float dis )
+vec3 getNormalSolid( vec3 pos )
 {
     vec3 eps = vec3( 0.0, 0.0, 0.0 );
     eps.x = SOLID_NORMAL_PREC;
@@ -2714,7 +3206,7 @@ vec3 getNormalSolid( vec3 pos, float dis )
     return normalize(nor);
 }
 
-vec3 getNormalWater( vec3 pos, float dis )
+vec3 getNormalWater( vec3 pos )
 {
     vec3 eps = vec3( 0.0, 0.0, 0.0 );
     eps.x = 0.1;
@@ -2726,7 +3218,7 @@ vec3 getNormalWater( vec3 pos, float dis )
     return normalize(nor);
 }
 
-vec3 getNormalLand( vec3 pos, float dis )
+vec3 getNormalLand( vec3 pos )
 {
     vec3 eps = vec3( 0.0, 0.0, 0.0 );
     eps.x = 0.05;
@@ -2773,6 +3265,7 @@ mat3 setCamera( vec3 ro, vec3 ta, float cr )
 
 void main() {
     
+    globLandSteps = 0.0;
     globCurSteps = 0.0;
     globTotSteps = 0.0;
     globIntersect = 0.0;
@@ -2781,9 +3274,13 @@ void main() {
     globNumPrims = 0;
     primIdListLength = 0;
     
+    globWoodDir = 0.0;
+    globWoodCoords = vec3(0.0);
     globTexEarth = vec2(TEX_EARTH,0.0);
-    globTexPrim = vec2(TEX_EARTH,1.0);
+    globTexPrim = vec2(0.0);
     globTexWater = vec2(TEX_WATER,0.0);
+    
+    globWaterMod = float(isUnderWater < 0.0)*(1.0-pow(abs(lookAtVec.z),4.0))*0.6;
     
     texelRes1 = vec4(0.0);
     texelRes2 = vec4(0.0);
@@ -2811,6 +3308,14 @@ void main() {
     float dx = tan(FOV*0.5f)*(gl_FragCoord.x/(bufferDim.x*0.5)-1.0f)/aspect;
     float dy = tan(FOV*0.5f)*(1.0f-gl_FragCoord.y/(bufferDim.y*0.5));
     
+    
+    
+    //vec3 randV = (randPN(vec3(vec2(dx,dy)*sin(curTime*0.1),1.0))-0.5)*2.0;
+    // dx += randV.x*0.002;
+    // dy += randV.y*0.002;
+    
+    
+    
     dx = -dx;
     
     vec4 p1 = vec4(dx*NEAR,dy*NEAR,NEAR,1.0);
@@ -2821,12 +3326,52 @@ void main() {
 
 
     vec3 ro = p1.xyz;
-    vec3 rd = normalize(p1.xyz-p2.xyz);
+    
+    
+    
+    float phi = TexCoord0.x*M_PI*2.0;// - atan(lookAtVec.y,lookAtVec.x) - M_PI;
+    float theta = (TexCoord0.y)*M_PI;// - acos(lookAtVec.z);
+    
+    vec3 rd = vec3(0.0);
+    
+    
+    if (doSphereMap) {
+        rd = normalize(vec3(
+            cos(phi)*sin(theta),
+            sin(phi)*sin(theta),
+            cos(theta)
+        )
+        //+randV*0.01
+        );
+        
+    }
+    else {
+        rd = normalize(p1.xyz-p2.xyz);
+        
+        
+        
+        // FragColor0 = texture(Texture7,newTex.xy);
+        // FragColor1 = texture(Texture8,newTex.xy);
+        // FragColor2 = texture(Texture9,newTex.xy);
+        // FragColor3 = texture(Texture10,newTex.xy);
+        // FragColor4 = texture(Texture11,newTex.xy);
+        // FragColor5 = texture(Texture12,newTex.xy);
+        
+        
+    }
+    
+    vec2 newTex = vec2(
+        ((atan(-rd.y,-rd.x)/(M_PI))+1.0)/2.0,
+        acos(rd.z)/(M_PI)
+    );
+    
+    
+    
     
 
     
     vec3 origMod = ro;// - rd*1000.0;
-    vec2 volBounds = aabbIntersect(origMod, rd, volMinInPixels, volMaxInPixels);
+    vec2 volBounds = aabbIntersect(origMod, rd, volMinReadyInPixels, volMaxReadyInPixels);
     //volBounds.xy += 1000.0;
     
     
@@ -2837,54 +3382,225 @@ void main() {
     float curMat = 0.0;
     vec2 curTex = vec2(0.0);
     
+    vec2 curTexSolid = vec2(0.0);
+    vec2 curTexTrans = vec2(0.0);
+    
     vec3 nor = vec3(0.0);
     vec3 pos = vec3(0.0);
 
     vec4 fragRes0 = vec4(0.0);
     vec4 fragRes1 = vec4(0.0);
     
+    vec4 rayCache = vec4(0.0);
+    
     float tBase[2];
     float t;
-    float landVal;
-    float solidVal;
-    float waterVal;
+    float landVal = 0.0;
+    float solidVal = 0.0;
+    float waterVal = 0.0;
+    float transVal = 0.0;
+    
+    float fdiMove = float(depthInvalidMove);
+    
+    float fi;
+    float fj;
+    
+    vec4 dtexLast = vec4(999999.0);
+    vec4 dtexSphere = vec4(999999.0);
+    
+    vec2 tcl;
+    vec2 tcs;
+    
+    
+    
+    float cacheMiss = 0.0;
+    
+    //float subPrec = 0.125;
+    
+    vec3 solidNorm = vec3(0.0);
+    vec3 transNorm = vec3(0.0);
     
     float MIN_CAM_DIS = 0.0;
+    
+    vec4 v1 = vec4(0.0);
+    vec4 v2 = vec4(0.0);
+    vec4 v3 = vec4(0.0);
+    
+    
+    
+    
+    
+    if (doSphereMap) {
+        tcs = TexCoord0.xy;
+        tcl = newTex.xy;
+    }
+    else {
+        tcl = TexCoord0.xy;
+        tcs = newTex.xy;
+    }
+    
+    
+    
+    const int T_RAD = 1;
+    
+    
+    for (j = -T_RAD; j <= T_RAD; j++) {
+        fj = float(j);
+        for (i = -T_RAD; i <= T_RAD; i++) {
+            fi = float(i);
+            
+            dtexLast = min(
+                dtexLast,
+                texture(Texture3, tcl.xy + vec2(fi,fj)*
+                    1.0*invalidCount / 
+                    bufferDim.xy ).xyzw   
+            );
+            
+            if (USE_SPHERE_MAP) {
+                dtexSphere = min(
+                    dtexSphere,
+                    texture(Texture5, tcs.xy + vec2(fi,fj) *
+                        4.0*(invalidCount/SPHEREMAP_SCALE_FACTOR) / 
+                        bufferDim.xy ).xyzw   
+                );
+            }
+            
+        }
+    }
+    
+    
+    
+    
     
     if (volBounds.x <= volBounds.y) {
         
         //rayStart = ro + rd*volBounds.x;
         
         if (
-            all(greaterThanEqual(ro,volMinInPixels)) &&
-            all(lessThanEqual(ro,volMaxInPixels))
+            all(greaterThanEqual(ro,volMinReadyInPixels)) &&
+            all(lessThanEqual(ro,volMaxReadyInPixels))
         ) {
             
         }
         else {
             MIN_CAM_DIS = volBounds.x;
         }
-        
         MAX_CAM_DIS = volBounds.y;
+        
+        rayCache = vec4(MIN_CAM_DIS);
         
         if (thirdPerson == 0.0) {
             MAX_CAM_DIS = min(MAX_CAM_DIS,FAR);
         }
         
+        if (USE_SPHERE_MAP) {
+            if (doSphereMap) {
+                // rayCache = max(
+                //     rayCache,
+                //     vec4(
+                //         dtexSphere.x - (fdiMove*0.5),
+                //         dtexSphere.y - (fdiMove*0.5),
+                //         dtexSphere.z - (fdiMove*0.5),
+                //         0.0
+                //     )
+                // );
+            }
+            else {
+                
+                // v1 = vec4(
+                //     dtexSphere.x - (subPrec + invalidCount*2.0),
+                //     dtexSphere.y - (subPrec + invalidCount*2.0),
+                //     dtexSphere.z - (subPrec + invalidCount*2.0),
+                //     0.0
+                // );
+                // v2 = vec4(
+                //     dtexLast.x - subPrec,
+                //     dtexLast.y - subPrec,
+                //     dtexLast.z - subPrec,
+                //     0.0
+                // );
+                
+                // if (depthInvalidRotate||depthInvalidMove) {
+                //     v3 = v1;
+                // }
+                // else {
+                //     v3 = mix(min(v1,v2),max(v1,v2),invalidCount);
+                // }
+                
+                //v3 = v1;
+                //v3 = mix(min(v1,v2),v2,invalidCount);
+                //v3 = min(v1,v2);
+                
+                
+                
+                if (depthInvalidMove) {
+                    
+                }
+                else {
+                    rayCache = max(
+                        rayCache,
+                        vec4(
+                            dtexSphere.xyz-vec3(
+                                0.001,
+                                0.001,
+                                WAVE_HEIGHT
+                                
+                            ),
+                            0.0
+                        )
+                    );
+                }
+                
+                
+                
+            }
+        }
+        else {
+            rayCache = max(
+                rayCache,
+                vec4(
+                    dtexLast.x - (1.0+invalidCount*2.0),
+                    dtexLast.y - (1.0+invalidCount*2.0),
+                    dtexLast.z - (1.0+invalidCount*2.0),
+                    0.0
+                )
+            );
+        }
+        
+        
+        
+        
         
         landVal = MAX_CAM_DIS;
         solidVal = MAX_CAM_DIS;
         waterVal = MAX_CAM_DIS;
+        transVal = MAX_CAM_DIS;
+        
+        // raycache -- x:landVal, y:solidVal, z:waterVal, w:transVal
+        
+        landVal = rayCastLand(ro,rd,vec2(rayCache.x,MAX_CAM_DIS),EARTH_STEPS*stepMod);
+        
+        //solidVal = lineStep(ro,rd,min(landVal,MAX_CAM_DIS),1.0); //,-1
+        solidNorm = getNormalSolid( ro + solidVal*rd );
+        curTexSolid = globTexPrim;
+        
+        if (placingGeom) {
+            primIdList[0] = -1;
+            primIdListLength = 1;
+            transVal = rayCast(ro, rd, vec2(rayCache.w,solidVal), 50.0 ).x;
+            transNorm = getNormalSolid( ro + transVal*rd );
+            curTexTrans = globTexPrim;
+        }
         
         
-        landVal = rayCastLand(ro,rd,vec2(MIN_CAM_DIS,MAX_CAM_DIS),EARTH_STEPS);
-        solidVal = lineStep(ro,rd,min(landVal,MAX_CAM_DIS),1.0);
-        waterVal = rayCastWater(ro,rd,vec2(MIN_CAM_DIS,min(landVal,solidVal)),WATER_STEPS);
+        waterVal = rayCastWater(ro,rd,vec2(rayCache.z,min(landVal,solidVal)),WATER_STEPS*stepMod);
         
+        
+        //solidVal = min(solidVal,transVal);
         
         
         tBase[0] = min(landVal,solidVal);
-        tBase[1] = waterVal;
+        tBase[1] = min(waterVal,transVal);
         
         
         
@@ -2900,11 +3616,11 @@ void main() {
                 
                 if (landVal < solidVal) {
                     curTex = globTexEarth;
-                    nor = getNormalLand( pos, t/MAX_CAM_DIS );
+                    nor = getNormalLand( pos );
                 }
                 else {
-                    curTex = globTexPrim;
-                    nor = getNormalSolid( pos, t/MAX_CAM_DIS );
+                    curTex = curTexSolid;
+                    nor = solidNorm;
                 }
                 
                 if (dot(nor,rd) > 0.0) {
@@ -2912,23 +3628,55 @@ void main() {
                 }
             }
             else {
-                curTex = globTexWater;
-                nor = getNormalWater( pos, t/MAX_CAM_DIS );
+                
+                if (transVal < waterVal) {
+                    curTex = curTexTrans;
+                    nor = transNorm;
+                    
+                }
+                else {
+                    curTex = globTexWater;
+                    nor = getNormalWater( pos );
+                }
+                
             }
             
             if (
                 (t > 0.0) &&
-                (t < MAX_CAM_DIS)
+                (t < MAX_CAM_DIS) &&
+                //(globTest < 1.0) &&
+                //(landVal != MAX_CAM_DIS) && 
+                ((curTex.x + curTex.y) > 0.0)
             ) {
+                
+                if (curTex.x == TEX_WOOD) {
+                    curTex.y = getWoodGrain(
+                        0.0,//float normalUID,
+                        globWoodCoords,//vec3 worldPosInPixels,
+                        1.0,//float woodRad,
+                        globWoodDir, //float boardDir,
+                        4.0 //float stretchAmount    
+                    );
+                }
+                
+                
+                
                 curMat = curTex.x*256.0*255.0 + curTex.y*255.0;
+                
+                camDis = distance(cameraPos.xyz,pos.xyz);
+                zbVal = 1.0-camDis/clipDist.y;
+                
             }
             else {
+                t = MAX_CAM_DIS;
+                nor = vec3(0.0);
                 curMat = 0.0;
+                pos = vec3(0.0);
+                zbVal = 0.0;
             }
             
+            cacheMiss = clamp(distance(rayCache.xyz,vec3(landVal,solidVal,waterVal))/50.0,0.0,1.0);
             
-            camDis = distance(cameraPos.xyz,pos.xyz);
-            zbVal = 1.0-camDis/clipDist.y;
             
             if (testOn) {
                 fragRes0 =
@@ -2939,12 +3687,27 @@ void main() {
                         vec3(
                             
                             //
-                            globCurSteps/(EARTH_STEPS*2.0), //40.0,//,
+                            //solidVal/MAX_CAM_DIS, //, //40.0,//,
                             //t/MAX_CAM_DIS,// 
-                            0.0,
-                            0.0 //globTest //float(primIdListLength)/float(MAX_PRIM_IDS),//globTest,
+                            
+                            
+                            globCurSteps/(EARTH_STEPS*stepMod),
+                            //max(MIN_CAM_DIS,rayCache.x)/MAX_CAM_DIS,
+                            
+                            //globTest3.x,
+                            0.0,//
+                            0.0
+                            //dtexSphere.w
+                            //0.0
+                            //dtexSphere.w
+                            //cacheMiss
+                            //landVal/MAX_CAM_DIS //0.0
+                            //distance(dtexSphere.xyz,dtexLast.xyz)/100.0//float(depthInvalid)
+                            //globTest//float(primIdListLength)*2.0/float(MAX_PRIM_IDS)//,
                             //
                         )
+                        
+                        //nor
                         
                         // mod(globTest3,vec3(1.0)).xy,
                         // 0.0
@@ -3004,11 +3767,15 @@ void main() {
         FragColor2 = vec4(0.0);
         FragColor3 = vec4(0.0);
         
+        
         if (testOn) {
             FragColor0 = vec4(0.0,1.0,0.0,0.0);
         }
     }
-
+    
+    // rayCache
+    FragColor4 = vec4(landVal,solidVal,waterVal,globCurSteps/(EARTH_STEPS*stepMod));
+    FragColor5 = vec4(0.0);
     
     
     

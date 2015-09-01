@@ -12,7 +12,6 @@ uniform sampler2D Texture3;
 
 uniform float clipDist;
 uniform float timeOfDay;
-uniform float pixelsPerCell;
 uniform vec2 bufferDim;
 
 uniform bool testOn;
@@ -161,7 +160,7 @@ void main()
 
 			curMin = minRad[j];
 			curMax = maxRad[j];
-			curOff = offV[j]*pixelsPerCell;
+			curOff = offV[j];
 
 			for (i = 0; i < iNumSteps; i++)
 			{

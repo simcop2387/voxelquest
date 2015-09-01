@@ -545,7 +545,7 @@ void getCobble(vec3 pos) {
 
 //     vec4 matResult = vec4(0.0);
 
-//     float newMult = pixelsPerCell/128.0;
+//     float newMult = 1.0/128.0;
 
 //     float finalMat = 0.0;
 //     float finalNormUID = 0.0;
@@ -584,10 +584,10 @@ void getCobble(vec3 pos) {
 //                                          0.25,
 //                                          0.25,
 //                                          -mix(randv,snowRand,fIsSnow)
-//                                      ) * pixelsPerCell - blockMinBufInPixels.xyz) / newBlockSizeInPixels;
+//                                      ) - blockMinBufInPixels.xyz) / newBlockSizeInPixels;
 //     vec4 texW2 = texture3D(Texture4, wCoords2);
 //     vec4 texW3 = texture3D(Texture4, 
-//         (worldPos + vec3(0.5,0.5,-0.5) * pixelsPerCell - blockMinBufInPixels.xyz) / newBlockSizeInPixels    
+//         (worldPos + vec3(0.5,0.5,-0.5) - blockMinBufInPixels.xyz) / newBlockSizeInPixels    
 //     );
     
     

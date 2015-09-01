@@ -48,16 +48,6 @@ public:
 
 		shootLength = begPoint.distance(&endPoint);
 
-		// ctrPoint.copyFrom(&begPoint);
-		// if (parent == NULL) {
-		// 	ctrPoint.addXYZRef(&endPoint);
-		// 	ctrPoint.multXYZ(0.5f);
-		// }
-		// else {
-		// 	ctrPoint.addXYZRef(&(parent->tangent), shootLength/2.0f);
-		// }
-		
-
 	}
 
 	void init(

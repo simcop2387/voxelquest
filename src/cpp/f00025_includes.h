@@ -6,27 +6,40 @@
 
 int RUN_COUNT;
 
+
+#define DEFAULT_BUFLEN 512
+#define DEFAULT_PORT "27015"
+
+
 const static float OFFSET_X[4] = {-0.5,0.5,0.5,-0.5};
 const static float OFFSET_Y[4] = {-0.5,-0.5,0.5,0.5};
 
 const static int MAX_SPLASHES = 8;
+const static int MAX_EXPLODES = 8;
 
-const static int DEF_WIN_W = 1920;
-const static int DEF_WIN_H = 1080;
+//const static bool DO_CONNECT = true;
+const static bool DO_SHADER_DUMP = true;
+
+const static int DEF_WIN_W = 1440;
+const static int DEF_WIN_H = 720;
 const static int DEF_SCALE_FACTOR = 2;
 const static int RENDER_SCALE_FACTOR = 2;
 
-const static bool FLUID_ON = true;
-const static bool RAY_MODE = true;
 
-#define PRIM_FLOAT_FORMAT 1
+const static float SPHEREMAP_SCALE_FACTOR = 4.0f;
+const static bool USE_SPHERE_MAP = true;
+
+const static float TIME_DELTA = 1.0f/60.0f;
+const static int MAX_THREADS = 8;
+
 // #define DEBUG_BOUNDS 1
- 
-#ifdef PRIM_FLOAT_FORMAT
-typedef float PRIM_FORMAT;
-#else
+
+const static float explodeRad = 5.0f;
+
+float RAND_COUNTER = 0.0f;
+float RAND_COUNTER2 = 0.0f;
+
 typedef unsigned int PRIM_FORMAT;
-#endif
 
 const static int FLUID_UNIT_MIN = -1;
 const static int FLUID_UNIT_MAX = 16384;
@@ -268,6 +281,8 @@ bool TRACE_ON = false;
 #include <algorithm>
 #include <cstdlib>
 #include <thread>
+#include <mutex>
+//#include <atomic>
 
 #include <iomanip>
 #include <map>
@@ -300,65 +315,56 @@ bool TRACE_ON = false;
 // make sure to put it back in source
 // if using poco or web services
 
-#ifdef USE_POCO
+// #ifdef USE_POCO
 
-#include "Poco/Net/HTTPServer.h"
-#include "Poco/Net/HTTPRequestHandler.h"
-#include "Poco/Net/HTTPRequestHandlerFactory.h"
-#include "Poco/Net/HTTPServerParams.h"
-#include "Poco/Net/HTTPServerRequest.h"
-#include "Poco/Net/HTTPServerResponse.h"
-#include "Poco/Net/HTTPServerParams.h"
-#include "Poco/Net/ServerSocket.h"
-#include "Poco/Net/WebSocket.h"
-#include "Poco/Net/NetException.h"
-#include "Poco/Util/ServerApplication.h"
-#include "Poco/Util/Option.h"
-#include "Poco/Util/OptionSet.h"
-#include "Poco/Util/HelpFormatter.h"
-#include "Poco/Format.h"
-#include "Poco/Runnable.h"
-#include "Poco/ThreadPool.h"
-
-
+// #include "Poco/Net/HTTPServer.h"
+// #include "Poco/Net/HTTPRequestHandler.h"
+// #include "Poco/Net/HTTPRequestHandlerFactory.h"
+// #include "Poco/Net/HTTPServerParams.h"
+// #include "Poco/Net/HTTPServerRequest.h"
+// #include "Poco/Net/HTTPServerResponse.h"
+// #include "Poco/Net/HTTPServerParams.h"
+// #include "Poco/Net/ServerSocket.h"
+// #include "Poco/Net/WebSocket.h"
+// #include "Poco/Net/NetException.h"
+// #include "Poco/Util/ServerApplication.h"
+// #include "Poco/Util/Option.h"
+// #include "Poco/Util/OptionSet.h"
+// #include "Poco/Util/HelpFormatter.h"
+// #include "Poco/Format.h"
+// #include "Poco/Runnable.h"
+// #include "Poco/ThreadPool.h"
 
 
 
-using Poco::Net::ServerSocket;
-using Poco::Net::WebSocket;
-using Poco::Net::WebSocketException;
-using Poco::SystemException;
-using Poco::Net::HTTPRequestHandler;
-using Poco::Net::HTTPRequestHandlerFactory;
-using Poco::Net::HTTPServer;
-using Poco::Net::HTTPServerRequest;
-using Poco::Net::HTTPResponse;
-using Poco::Net::HTTPServerResponse;
-using Poco::Net::HTTPServerParams;
-using Poco::Timestamp;
-using Poco::Runnable;
-using Poco::ThreadPool;
-using Poco::Util::ServerApplication;
-using Poco::Util::Application;
-using Poco::Util::Option;
-using Poco::Util::OptionSet;
-using Poco::Util::HelpFormatter;
+
+
+// using Poco::Net::ServerSocket;
+// using Poco::Net::WebSocket;
+// using Poco::Net::WebSocketException;
+// using Poco::SystemException;
+// using Poco::Net::HTTPRequestHandler;
+// using Poco::Net::HTTPRequestHandlerFactory;
+// using Poco::Net::HTTPServer;
+// using Poco::Net::HTTPServerRequest;
+// using Poco::Net::HTTPResponse;
+// using Poco::Net::HTTPServerResponse;
+// using Poco::Net::HTTPServerParams;
+// using Poco::Timestamp;
+// using Poco::Runnable;
+// using Poco::ThreadPool;
+// using Poco::Util::ServerApplication;
+// using Poco::Util::Application;
+// using Poco::Util::Option;
+// using Poco::Util::OptionSet;
+// using Poco::Util::HelpFormatter;
 
 
 
-#endif
+// #endif
 
-#include "Poco/Base64Decoder.h"
-using Poco::Base64Decoder;
-
-
-/*
-#pragma comment (lib, "olepro32.lib")   // for IPicture COM interface support
-#include <windows.h>
-#include <olectl.h.>    // for OleLoadPicture() and IPicture COM interface
-*/
-
-
+//#include "Poco/Base64Decoder.h"
+//using Poco::Base64Decoder;
 
 
 
@@ -370,6 +376,14 @@ struct charArr {
 
 #ifdef WIN32
 #include <windows.h>
+
+#include <winsock2.h>
+#include <ws2tcpip.h>
+// Need to link with Ws2_32.lib, Mswsock.lib, and Advapi32.lib
+#pragma comment (lib, "Ws2_32.lib")
+#pragma comment (lib, "Mswsock.lib")
+#pragma comment (lib, "AdvApi32.lib")
+
 #else
 #include <sys/time.h>
 #endif

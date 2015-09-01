@@ -154,6 +154,11 @@ void doTraceVecND(std::string traceVal0, FIVector4 *fv) {
 	doTraceND(traceVal0, " ", f__s(fv->getFX()), " ", f__s(fv->getFY()), " ", f__s(fv->getFZ())  );
 	
 }
+void doTraceVecND4(std::string traceVal0, FIVector4 *fv) {
+	
+	doTraceND(traceVal0, " ", f__s(fv->getFX()), " ", f__s(fv->getFY()), " ", f__s(fv->getFZ()), " ", f__s(fv->getFW())  );
+	
+}
 
 void pushTraceND(std::string traceVal0 = "", std::string traceVal1 = "",std::string traceVal2 = "",std::string traceVal3 = "",std::string traceVal4 = "",std::string traceVal5 = "", std::string traceVal6 = "",std::string traceVal7 = "",std::string traceVal8 = "",std::string traceVal9 = "",std::string traceVal10 = "") {
 	

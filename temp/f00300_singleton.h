@@ -21,9 +21,9 @@ Singleton::Singleton ()
 		gw = NULL;
 		
 		
-		#ifdef USE_POCO
-			myWS = NULL;
-		#endif
+		// #ifdef USE_POCO
+		// 	myWS = NULL;
+		// #endif
 		
 	}
 void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
@@ -73,6 +73,14 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		camRotation[0] = 0.0f;
 		camRotation[1] = -M_PI/2.0f;
 		
+		curCamRotation[0] = camRotation[0];
+		curCamRotation[1] = camRotation[1];
+		
+		
+		for (i = 0; i < KEYMAP_LENGTH; i++) {
+			keyMapCoolDown[i] = 0;
+			keyMapMaxCoolDown[i] = 0;
+		}
 		
 		cdMap[0] = E_CD_EMPTY;
 		for (i = 1; i < 256; i++) {
@@ -93,6 +101,14 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		lightVec.setFXYZ(0.3f,0.4f,1.0f);
 		lightVec.normalize();
 		
+		//readyForWaterReset = false;
+		dumpingFluid = false;
+		modifiedUnit = false;
+		modifiedGeom = false;
+		readyForTBOUpdate = false;
+		firstVPUpdate = true;
+		placingTemplate = true;
+		smoothMove = false;
 		waterBulletOn = false;
 		doUpdateVolPos = true;
 		ignoreFrameLimit = true;
@@ -107,8 +123,17 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		mouseMoved = false;
 		hitGUI = false;
 		guiDirty = true;
-		fluidThreadRunning = false;
 		
+		threadPoolCount = 0;
+		for (i = 0; i < MAX_THREADS; i++) {
+			threadPool[i].init();
+		}
+		
+		threadLoader.init();
+		threadTex.init();
+		threadFluid.init();
+		threadNetSend.init();
+		threadNetRecv.init();
 		
 		currentActor = NULL;
 		mapComp = NULL;
@@ -165,7 +190,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		cloudImage->getTextureId(GL_LINEAR);
 
 
-		mapSampScale = 0.25f;
+		mapSampScale = 0.5f;
 		//renderCount = 1.0;
 		int newPitch = (imageHM0->width) * mapSampScale; //*2;
 
@@ -193,9 +218,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		musicVolume = 0.0f;
 		fxVolume = 0.0f;
 		
+		curPrimMod = 0.0f;
+		curPrimTemplate = 1;
 		geomStep = 0;
 
-		combatOn = false;
+		noBounce = true;
 		firstPerson = false;
 		applyToChildren = false;
 		mirrorOn = true;
@@ -226,12 +253,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		// IMPORTANT: Maximum height must be less than 2^16, max world pitch must be less than 2^32
 		
 		medianCount = 0;
-		moveMode = E_MM_SMOOTH;
 		lastObjectCount = 0;
 		lastObjInd = 0;
 		selObjInd = 0;
 		actObjInd = 0;
 		currentTick = 0;
+		waterTick = 0;
 		earthMod = E_PTT_TER;
 		
 		moveTimer.start();
@@ -254,10 +281,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		// qqqqqq
 		
 		
-		volSizePrim = 64; //measured in cells
+		volSizePrim = 256; //measured in cells
 		
-		waterTickSpace = 8;
-		volSizePrimRefSize = volSizePrim/4;
+		//volSizePrimLoadStep = 1;
+		
+		waterTickMax = 16;
+		volSizePrimRefSize = volSizePrim/8;
 		primDiv = 4;
 		volSizePrimMacro = volSizePrim/primDiv;
 		primsPerMacro = 8;
@@ -265,7 +294,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		floatsInPrimMacro = volSizePrimMacro*volSizePrimMacro*volSizePrimMacro*primsPerMacro*floatsPerPrimEntry;
 		fpsCountMax = 5000;
 		
-		pixelsPerCell = 1;
 		
 		
 		cellsPerHolder = volSizePrimRefSize;
@@ -304,10 +332,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		clipDist[0] = 0.0f;
-		clipDist[1] = 512.0f*((float)pixelsPerCell);
+		clipDist[1] = 512.0f;
 		
 
-		worldSizeInLots.setIXYZ(newPitch, newPitch, blockSizeInLots);
+		worldSizeInLots.setIXYZ(newPitch, newPitch, newPitch);
 		worldSizeInCells.copyIntMult(&worldSizeInLots, cellsPerLot);
 		blockSizeInCells = blockSizeInLots * cellsPerLot;
 		holdersPerLot = cellsPerLot / cellsPerHolder;
@@ -319,15 +347,17 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 
-		pixelsPerLot = pixelsPerCell * cellsPerLot;
-		unitSizeInPixels = pixelsPerCell / unitsPerCell;
-		blockSizeInPixels = pixelsPerCell * blockSizeInCells;
-		worldSizeInPixels.copyIntMult(&worldSizeInCells, pixelsPerCell);
+		pixelsPerLot = cellsPerLot;
+		unitSizeInPixels = unitsPerCell;
+		blockSizeInPixels = blockSizeInCells;
+		worldSizeInPixels.copyFrom(&worldSizeInCells);
 		
-		holderSizeInPixels = pixelsPerCell * cellsPerHolder;
+		amountInvalidMove = 0.0f;
+		amountInvalidRotate = 0.0f;
+		sphereMapPrec = 0.0f;
+		heightmapMax = 512.0f;
+		heightmapMax = min(heightmapMax,worldSizeInPixels[2]);
 		
-		
-		holderResolution = holderSizeInPixels;
 		
 		
 		terDataTexScale = 1;
@@ -372,12 +402,16 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		timeDelta = 0.0;
 
 		
+		
+		
+		
+		
+		
 
 
 		
 		blockShift = intLogB2(blockSizeInHolders * blockSizeInHolders * blockSizeInHolders);
-		holderSizeMB = ( ((float)MAX_LAYERS) * 2.0f * 4.0f * (float)(holderResolution * holderResolution)) / (1024.0f * 1024.0f);
-
+		holderSizeMB = 0;
 
 
 
@@ -395,9 +429,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		cout << "blockSizeInHolders: " << blockSizeInHolders << "\n";
 		cout << "blockSizeInPixels: " << blockSizeInPixels << "\n";
 		cout << "terDataBufPitchScaledXY " << terDataBufPitchScaledXY << "\n";
-		cout << "holderSizeInPixels: " << holderSizeInPixels << "\n";
+		cout << "cellsPerHolder: " << cellsPerHolder << "\n";
 		cout << "cellsPerLot: " << cellsPerLot << "\n";
-		cout << "pixelsPerCell: " << pixelsPerCell << "\n";
 		cout << "unitsPerCell: " << unitsPerCell << "\n";
 		cout << "blockSizeInLots: " << blockSizeInLots << "\n";
 		cout << "pixelsPerUnit: " << unitSizeInPixels << "\n";
@@ -419,11 +452,21 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		cout << "\n\n\n\n\n\n";
 
 
-		mapFreqs.setFXYZW(1.0f, 15.0f, 37.0f, 123.0f);
-		mapAmps.setFXYZW(4.0f/16.0f,4.0f/16.0f, 4.0f/16.0f, 16.0f/16.0f); //0.0f, 0.0f, 0.0f);//
+		mapFreqs.setFXYZW(
+			1.0f,
+			4.0f,
+			8.0f,
+			16.0f
+		);
+		mapAmps.setFXYZW(
+			4.0f/16.0f,
+			4.0f/16.0f,
+			4.0f/16.0f,
+			16.0f/16.0f
+		); //0.0f, 0.0f, 0.0f);//
 
 
-		gridSizeInPixels = pixelsPerCell;
+		gridSizeInPixels = 1;
 
 
 
@@ -436,6 +479,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		updateLock = false;
 		traceOn = false;
 		frameMouseMove = false;
+		depthInvalidMove = true;
+		lastDepthInvalidMove = true;
+		depthInvalidRotate = true;
 		gridOn = 0.0f;
 		fogOn = 1.0f;
 		cameraZoom = 1.0f;
@@ -455,22 +501,24 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 
-		#ifdef PRIM_FLOAT_FORMAT
-		internalPrimFormat = GL_RGBA32F;
-		precPrimFormat = GL_FLOAT;
-		#else
+		
 		internalPrimFormat = GL_RGBA;
 		precPrimFormat = GL_UNSIGNED_BYTE;
-		#endif
+		
+		
+		gameNetwork = new GameNetwork();
+		gameNetwork->init(this);
+		
+		//if (!(gameNetwork->isConnected)) {
+		//if (DO_CONNECT) {
+			gameNetwork->socketConnect(true);
+		//}
 		
 		
 		gameFluid = new GameFluid();
 		gameFluid->init(this);
 		
 		setupPrimTexture();
-		//copyPrimTexture();
-		//doTraceND( "POSSIBLE ERROR: " , i__s(glGetError()) , "\n" );
-
 
 
 
@@ -524,6 +572,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		paramArr = new float[4096];
 		paramArrGeom = new float[128];
 		splashArr = new float[MAX_SPLASHES*4];
+		explodeArr = new float[MAX_EXPLODES*4];
 		voroArr = new float[27 * 4];
 		matCountArr = new float[256];
 		paramArrMap = new float[4096];
@@ -563,9 +612,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		mouseMovingStepsBack = 20;
 		mouseMoving = new FIVector4[mouseMovingSize];
 		
-		#ifdef USE_POCO
-			myWS = _myWS;
-		#endif
+		// #ifdef USE_POCO
+		// 	myWS = _myWS;
+		// #endif
 		
 
 		
@@ -615,8 +664,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 
-
-		float fPixelsPerCell = (float)pixelsPerCell;
 
 
 		mbDown = false;
@@ -689,21 +736,21 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			}
 
 			if (i == E_OBJ_LIGHT0) {
-				tempf = 128.0f*fPixelsPerCell;
+				tempf = 128.0f;
 			}
 			else {
-				tempf = 16.0f*fPixelsPerCell;
+				tempf = 16.0f;
 			}
 
 			dynObjects[i]->init(
-				-16*pixelsPerCell + i * 2*pixelsPerCell,
-				-16*pixelsPerCell + i * 2*pixelsPerCell,
-				4*pixelsPerCell,
+				-16 + i * 2,
+				-16 + i * 2,
+				4,
 				ccr, ccg, ccb,
 				true,
 				E_MT_RELATIVE,
 				&(dynObjects[E_OBJ_CAMERA]->pos),
-				fPixelsPerCell*0.125f,
+				0.125f,
 				tempf
 			);
 
@@ -715,16 +762,17 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		// dynObjects[E_OBJ_LIMBTARG0]->init(
-		// 	-16*pixelsPerCell + 3 * 2*pixelsPerCell,
-		// 	-16*pixelsPerCell + 3 * 2*pixelsPerCell,
-		// 	4*pixelsPerCell,
+		// 	-16 + 3 * 2,
+		// 	-16 + 3 * 2,
+		// 	4,
 		// 	255, 0, 0,
 		// 	true,
 		// 	E_MT_TRACKBALL,
 		// 	&(dynObjects[E_OBJ_CAMERA]->pos),
-		// 	fPixelsPerCell*0.5f,
-		// 	16.0f*fPixelsPerCell
+		// 	0.5f,
+		// 	16.0f
 		// );
+		
 		
 		cameraPos = &(dynObjects[E_OBJ_CAMERA]->pos);
 		
@@ -744,7 +792,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		mouseXUp = 0.0f;
 		mouseYUp = 0.0f;
 
-		geomOrigOffset = 0.0f;
+		geomOrigOffset.setFXYZ(0.0f);
 
 
 
@@ -790,6 +838,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("PrimShader");
 		shaderStrings.push_back("GUIShader");
 		shaderStrings.push_back("MedianShader");
+		shaderStrings.push_back("MergeShader");
 		shaderStrings.push_back("TopoShader");
 		
 
@@ -806,19 +855,19 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("CopyShader2");
 		shaderStrings.push_back("NoiseShader");
 		shaderStrings.push_back("MapBorderShader");
-		shaderStrings.push_back("SphereShader");
-		shaderStrings.push_back("BlitPointShader");
 		shaderStrings.push_back("BillboardShader");
 		shaderStrings.push_back("PreLightingShader");
-		shaderStrings.push_back("HDRShader");
 		shaderStrings.push_back("PostLightingShader");
 		shaderStrings.push_back("BlurShader");
-		shaderStrings.push_back("DownScaleShader");
 		shaderStrings.push_back("RadiosityShader");
 		shaderStrings.push_back("RadiosityCombineShader");
 		shaderStrings.push_back("FogShader");
 		shaderStrings.push_back("GeomShader");
-		shaderStrings.push_back("CombineShader");
+		//shaderStrings.push_back("SphereShader");
+		//shaderStrings.push_back("BlitPointShader");
+		//shaderStrings.push_back("HDRShader");
+		//shaderStrings.push_back("DownScaleShader");
+		//shaderStrings.push_back("CombineShader");
 		//shaderStrings.push_back("GenerateVolume");
 		//shaderStrings.push_back("GenerateVolumeEnt");
 		//shaderStrings.push_back("RenderVolume");
@@ -880,15 +929,20 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		}
 
 		keyMap[KEYMAP_UP] = 'a';
+		keyMapMaxCoolDown[KEYMAP_UP] = 3;
 		keyMap[KEYMAP_DOWN] = 'z';
+		keyMapMaxCoolDown[KEYMAP_DOWN] = 3;
 		keyMap[KEYMAP_FORWARD] = 'e';
 		keyMap[KEYMAP_BACKWARD] = 'd';
 		keyMap[KEYMAP_LEFT] = 's';
 		keyMap[KEYMAP_RIGHT] = 'f';
+		keyMap[KEYMAP_FIRE_PRIMARY] = ' ';
+		keyMapMaxCoolDown[KEYMAP_FIRE_PRIMARY] = 20;
+		keyMap[KEYMAP_GRAB_THROW] = 'c';
+		keyMapMaxCoolDown[KEYMAP_GRAB_THROW] = 50;
 		
 		/////////////////////////
 		/////////////////////////
-		
 		
 		
 		
@@ -905,8 +959,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		)*/
 		
 		
-		
-			
 		//TODO: get rid of these
 		//GL_LINEAR
 		//fboMap["worldSpaceFBO"].init(4, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
@@ -928,9 +980,20 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		fboMap["prelightFBO"].init(4, bufferDimTarg.getIX(), bufferDimTarg.getIY(), 1, false, GL_LINEAR);
 		
-		fboMap["pagesAndWaterTargFBO"].init(numMaps*2, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
-		fboMap["pagesTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
+		fboMap["allTargFBO"].init(6, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
+		fboMap["allDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
+		
+		if (USE_SPHERE_MAP) {
+			fboMap["sphereTargFBO"].init(6, bufferRenderDim.getIX()*SPHEREMAP_SCALE_FACTOR, bufferRenderDim.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth);
+			fboMap["sphereDepthFBO"].init(numMaps, bufferDimTarg.getIX()*SPHEREMAP_SCALE_FACTOR, bufferDimTarg.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth, GL_LINEAR, GL_REPEAT);
+		}
+		
+		
+		
+		fboMap["solidTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
 		fboMap["waterTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
+		
+		
 		
 		fboMap["swapTargFBO0"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, false);
 		fboMap["swapTargFBO1"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, false);
@@ -944,7 +1007,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		//fboMap["guiFBO"].init(1, guiWinW, guiWinH, 1, false, GL_LINEAR);
 		fboMap["resultFBO0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);
 		fboMap["resultFBO1"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);
-		fboMap["waveFBO"].init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 1, false, GL_LINEAR, GL_MIRRORED_REPEAT);
+		fboMap["lastFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);
+		//fboMap["waveFBO"].init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 1, false, GL_LINEAR, GL_MIRRORED_REPEAT);
 		fboMap["swapFBOLin0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
 		fboMap["swapFBOLin1"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR);
 		fboMap["swapFBOBLin0"].init(1, bufferDim.getIX() / bufferDiv, bufferDim.getIY() / bufferDiv, 1, false, GL_LINEAR);
@@ -1005,7 +1069,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		// 	E_OBJ_CAMERA,
 		// 	0,
 		// 	0,
-		// 	pixelsPerCell,
+		// 	1,
 		// 	&lastCellPos,
 		// 	5,5,5
 		// );
@@ -1021,6 +1085,30 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		if (bakeParamsOn) {
 			doShaderRefresh(true);
+		}
+		
+		
+		for (i = 0; i < E_ENTTYPE_LENGTH; i++) {
+			entPoolStack[i].curIndex = 0;
+			
+			switch (i) {
+				case E_ENTTYPE_BULLET:
+					k = 20;
+				break;
+				case E_ENTTYPE_TRACE:
+					k = 50;
+				break;
+				default:
+					k = 0;
+				break;
+				
+			}
+
+			entPoolStack[i].maxCount = k;
+			
+			for (j = 0; j < entPoolStack[i].maxCount; j++) {
+				placeNewEnt(false, i, &origin, true);
+			}
 		}
 		
 
@@ -1051,8 +1139,8 @@ bool Singleton::addPrimObj (FIVector4 * pos, int tempId, int uid)
 		tempBoundsMin.addXYZRef(pos);
 		tempBoundsMax.addXYZRef(pos);
 		
-		tempBoundsMin.addXYZRef(&volMinInPixels,-1.0f);
-		tempBoundsMax.addXYZRef(&volMinInPixels,-1.0f);
+		tempBoundsMin.addXYZRef(&volMinReadyInPixels,-1.0f);
+		tempBoundsMax.addXYZRef(&volMinReadyInPixels,-1.0f);
 		
 		//tempBoundsMin.addXYZ(-volSizePrim/2);
 		//tempBoundsMax.addXYZ(-volSizePrim/2);
@@ -1108,14 +1196,12 @@ bool Singleton::addPrimObj (FIVector4 * pos, int tempId, int uid)
 							tboData[ind+3] = tempId;
 							
 							tboData[ind+4] = diagCount;//;
-							tboData[ind+5] = uid;
+							tboData[ind+5] = uid + 1; // uid of 0 results in blank object
 							tboData[ind+6] = 0.0f;
 							tboData[ind+7] = 0.0f;
 							
 							break;
 						}
-						
-						
 					}
 				}
 			}
@@ -1123,15 +1209,40 @@ bool Singleton::addPrimObj (FIVector4 * pos, int tempId, int uid)
 		
 		return wasAdded;
 	}
+void Singleton::addGeom (FIVector4 * newPos, int templateId)
+                                                        { //FIVector4* pos, FIVector4* offset
+		
+		FIVector4 camBlockPos;
+		GameBlock* curBlock;
+		
+		
+		
+		camBlockPos.copyFrom(newPos);
+		camBlockPos.intDivXYZ(blockSizeInPixels);
+		
+		curBlock = gw->getBlockAtCoords(
+			camBlockPos.getIX(),
+			camBlockPos.getIY(),
+			camBlockPos.getIZ(),
+			true
+		);
+		
+		curBlock->gameEnts[E_ET_GEOM].data.push_back(GameEnt());
+		
+		GameEnt* gameEnt = &(curBlock->gameEnts[E_ET_GEOM].data.back());
+		
+		gameEnt->templateId = templateId;
+		gameEnt->templatePos.copyFrom(newPos);
+	}
 void Singleton::fetchGeom ()
                          {
 		
-		//cout << "fetchGeom\n";
 		
 		int i;
 		int j;
 		int k;
-		int n = E_ET_GEOM;
+		
+		int m;
 		
 		GameBlock* curBlock;
 		GameEnt* gameEnt;
@@ -1142,7 +1253,7 @@ void Singleton::fetchGeom ()
 		
 		
 		int geomCount = 0;
-		
+		int tempId;
 		
 		FIVector4 camBlockPos;
 		
@@ -1151,35 +1262,42 @@ void Singleton::fetchGeom ()
 		
 		for (i = -1; i <= 1; i++) {
 			for (j = -1; j <= 1; j++) {
-				curBlock = gw->getBlockAtCoords(
-					camBlockPos.getIX()+i,
-					camBlockPos.getIY()+j,
-					true
-				);
-
-				for (k = 0; k < curBlock->gameEnts[n].data.size(); k++) {
-
-					gameEnt = &(curBlock->gameEnts[n].data[k]);
-
-					start.copyFrom( &(gameEnt->moveMinInPixels) );
-					end.copyFrom( &(gameEnt->moveMaxInPixels) );
-
-					//start.clampZ(0.0,worldSizeInPixels.getFZ()-1.0f);
-					//end.clampZ(0.0,worldSizeInPixels.getFZ()-1.0f);
+				for (k = -1; k <= 1; k++) {
 					
 					
-					
+					curBlock = gw->getBlockAtCoords(
+						camBlockPos.getIX()+i,
+						camBlockPos.getIY()+j,
+						camBlockPos.getIZ()+k,
+						true
+					);
 
-					if (FIVector4::intersect(&start,&end,&volMinInPixels,&volMaxInPixels)) {
+					for (m = 0; m < curBlock->gameEnts[E_ET_GEOM].data.size(); m++) {
+
+						gameEnt = &(curBlock->gameEnts[E_ET_GEOM].data[m]);
+
+						tempId = gameEnt->templateId;
 						
-						avg.copyFrom(&start);
-						avg.addXYZRef(&end);
-						avg.multXYZ(0.5f);
+
+						//start.copyFrom( &(gameEnt->moveMinInPixels) );
+						//end.copyFrom( &(gameEnt->moveMaxInPixels) );
+
+						//start.clampZ(0.0,worldSizeInPixels.getFZ()-1.0f);
+						//end.clampZ(0.0,worldSizeInPixels.getFZ()-1.0f);
 						
-						addPrimObj(&avg, 1, geomCount);
 						
-						geomCount++;
+						
+
+						//if (FIVector4::intersect(&start,&end,&volMinReadyInPixels,&volMaxReadyInPixels)) {
+							
+							//avg.averageXYZ(&start,&end);
+							
+							addPrimObj(&(gameEnt->templatePos), tempId, geomCount);
+							
+							geomCount++;
+						//}
 					}
+						
 				}
 			}
 		}
@@ -1187,6 +1305,85 @@ void Singleton::fetchGeom ()
 		//cout << geomCount << " <-- geomCount\n";
 
 
+		
+	}
+void Singleton::fillAllGeom ()
+                           {
+		
+		gameFluid->clearAllGeom();
+		
+		int i;
+		int j;
+		int k;
+		
+		int m;
+		
+		GameBlock* curBlock;
+		GameEnt* gameEnt;
+		FIVector4 start;
+		FIVector4 end;
+		FIVector4 avg;
+
+		
+		
+		int geomCount = 0;
+		int tempId;
+		
+		FIVector4 camBlockPos;
+		
+		camBlockPos.copyFrom(cameraPos);
+		camBlockPos.intDivXYZ(blockSizeInPixels);
+		
+		int baseInd;
+		
+		
+		for (i = -1; i <= 1; i++) {
+			for (j = -1; j <= 1; j++) {
+				for (k = -1; k <= 1; k++) {
+					
+					curBlock = gw->getBlockAtCoords(
+						camBlockPos.getIX()+i,
+						camBlockPos.getIY()+j,
+						camBlockPos.getIZ()+k,
+						true
+					);
+
+					for (m = 0; m < curBlock->gameEnts[E_ET_GEOM].data.size(); m++) {
+
+						gameEnt = &(curBlock->gameEnts[E_ET_GEOM].data[m]);
+
+						tempId = gameEnt->templateId;
+						baseInd = tempId*E_PRIMTEMP_LENGTH;
+
+						start.copyFrom(&(primTemplateStack[baseInd+E_PRIMTEMP_VISMIN]));
+						end.copyFrom(&(primTemplateStack[baseInd+E_PRIMTEMP_VISMAX]));
+						start.addXYZRef(&(gameEnt->templatePos));
+						end.addXYZRef(&(gameEnt->templatePos));
+						
+						
+
+						if (FIVector4::intersect(&start,&end,&volMinReadyInPixels,&volMaxReadyInPixels)) {
+							
+							//cout << "fillCurrentGeom" << tempId;
+							
+							gameFluid->fillCurrentGeom(tempId, &(gameEnt->templatePos));
+							
+							// baseInd = curPrimTemplate*E_PRIMTEMP_LENGTH;
+							
+							// for (j = 0; j < E_PRIMTEMP_LENGTH; j++) {
+							// 	setFXYZWGeom(j, &(primTemplateStack[baseInd+j]) );
+							// }
+							
+						}
+					}
+				}
+				
+				
+			}
+		}
+		
+		
+		gameFluid->clearInsideValues();
 		
 	}
 void Singleton::updateTBOData (bool firstTime, bool reloadTemplates)
@@ -1205,6 +1402,8 @@ void Singleton::updateTBOData (bool firstTime, bool reloadTemplates)
 		
 		int totCount = 0;
 		
+		
+		// clear tbo data
 		
 		for (i = 0; i < floatsInPrimMacro/floatsPerPrimEntry; i++) {
 			
@@ -1227,41 +1426,10 @@ void Singleton::updateTBOData (bool firstTime, bool reloadTemplates)
 		
 		
 		if (firstTime) {
-			
-		}
-		else {
-			
-			// if (FLUID_ON) {
-			// 	fluidThread.join();
-			// }
-			// gameFluid->updateFluidData(true);
-			// copyPrimTexture();
-			
-			
-			// for (i = 0; i < 300; i++) {
-			// 	tempVec2.setFXYZ(i+32, i+65, i+94);
-			// 	tempVec1.setRand(&tempVec2, 1.0f, 0.5f);
-			// 	tempVec1.multXYZ(volSizePrim);
-				
-			// 	tempVec1.addXYZRef(&volMinInPixels);
-				
-			// 	if (addPrimObj(&tempVec1,i%4 + 1, i)) {
-			// 		totCount++;
-			// 	}
-			// }
-			
-			
-			fetchGeom();
-		}
-		
-		
-		
-		
-		if (firstTime) {
 			tboWrapper.init(tboData,floatsInPrimMacro*4);
 		}
 		else {
-			tboWrapper.update(tboData);
+			readyForTBOUpdate = true;
 		}
 		
 	}
@@ -1370,122 +1538,6 @@ int Singleton::numberIcons (int pCurCount, int x1, int y1, int x2, int y2)
 	  return curCount;
 	  
 	}
-void Singleton::getPrimData (int n)
-                                {
-		
-		
-		int i;
-		int j;
-		int k;
-		int c;
-		
-		int indSrc;
-		int indDest;
-		
-		int totSize = volSizePrim*volSizePrim*volSizePrim;
-		
-		int* fluidData = gameFluid->fluidData;
-		//int* lastFluidData = gameFluid->lastFluidData;
-		int vspMin = gameFluid->vspMin;
-		int vspMax = gameFluid->vspMax;
-		int volSizePrimBuf = gameFluid->volSizePrimBuf;
-		int bufAmount = gameFluid->bufAmount;
-		
-		float UNIT_MAX = gameFluid->UNIT_MAX + 1;
-		
-		float tempf;
-		
-		int volOffsetZ = volSizePrimBuf*volSizePrimBuf;
-		
-		int curDat;
-		
-		switch (n) {
-			case E_PL_TERRAIN:
-				
-				for (i = vspMin; i < vspMax; i++) {
-					for (j = vspMin; j < vspMax; j++) {
-						for (k = vspMin; k < vspMax; k++) {
-							indSrc = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
-							indDest = ((i-bufAmount) + (j-bufAmount)*volSizePrim + (k-bufAmount)*volSizePrim*volSizePrim)*4;
-							
-							#ifdef PRIM_FLOAT_FORMAT
-								
-								for (c = 0; c < 4; c++) {
-									
-									
-									//if (c == E_PTT_IDE)	{
-									//	curDat = lastFluidData[indSrc+E_PTT_WAT];
-									//}
-									//else {
-										curDat = fluidData[indSrc+c];
-									//}
-									
-									tempf = (curDat+1)/UNIT_MAX;
-									
-									if (
-										(c == E_PTT_WAT) ||
-										(c == E_PTT_LST)
-										//(c == E_PTT_IDE)	
-									) {
-									
-										if (curDat > FLUID_UNIT_MIN) {
-											
-											
-											// // if it has water above or earth below, make sure it is full
-											// if (
-											// 	(fluidData[indSrc+E_PTT_TER-volOffsetZ] > FLUID_UNIT_MIN) ||
-											// 	(fluidData[indSrc+E_PTT_WAT+volOffsetZ] > FLUID_UNIT_MIN)
-											// ) {
-											// 	tempf += 1.0f;
-											// 	tempf = tempf/2.0f;
-											// }
-											
-											tempf += 2.0f;
-											tempf = tempf/3.0f;
-											
-										}
-									}
-									
-									
-									if (c == E_PTT_TER) {
-										tempf = tempf*(0.75f+getRandSeededPos(
-											i + volMinInPixels[0],
-											j + volMinInPixels[1],
-											k + volMinInPixels[2]
-										)*0.25f);
-									}
-									
-									
-									volDataPrim[n][indDest+c] = tempf;
-									
-								}
-								
-							#else
-								
-								volDataPrim[n][indDest] = 
-									clampChar(fluidData[indSrc+0],0) |
-									clampChar(fluidData[indSrc+1],8) |
-									clampChar(fluidData[indSrc+2],16) |
-									clampChar(fluidData[indSrc+3],24);
-								
-							#endif	
-							
-						}
-					}
-				}
-				
-				
-			break;
-			
-			// case E_PL_PRIMIDS:
-				
-			// break;
-			
-		}
-		
-		
-		
-	}
 void Singleton::setupPrimTexture ()
                                 {
 		int i;
@@ -1503,11 +1555,7 @@ void Singleton::setupPrimTexture ()
 			
 			//curFilter = GL_NEAREST;
 			
-			#ifdef PRIM_FLOAT_FORMAT
-			volDataPrim[i] = new float[volSizePrim*volSizePrim*volSizePrim*4];
-			#else
-			volDataPrim[i] = new uint[volSizePrim*volSizePrim*volSizePrim];
-			#endif
+			
 			
 			
 			glGenTextures(1, &(volIdPrim[i]));
@@ -1538,29 +1586,80 @@ void Singleton::setupPrimTexture ()
 			
 		}
 	}
-void Singleton::updateFluidData ()
-                               {
-		gameFluid->updateFluidData();
-	}
-void Singleton::startFluidThread ()
-                                {
-		copyPrimTexture();
+void Singleton::beginFluidDump (FIVector4 * _campPosVPDump)
+                                                       {
 		
-		fluidThreadRunning = true;
-		fluidThread = std::thread(&Singleton::updateFluidData, this);
+		//fdWritePos = 0;
+		//fdReadPos = 0;
+		
+		cout << "pos change\n";
+		dumpingFluid = true;
+		campPosVPDump.copyFrom(_campPosVPDump);
+	
+		
+		//
+		camPosVPInPixels.copyFrom( &campPosVPDump );
+		camPosVPInPixels.multXYZ( volSizePrimRefSize );
+		volMinInPixels.copyFrom( &camPosVPInPixels );
+		volMaxInPixels.copyFrom( &camPosVPInPixels );
+		volMaxInPixels.addXYZ(volSizePrim);				
+		//
+		
+		gameFluid->prereadFluidData();
+		gameFluid->readMIP.copyFrom(&volMinInPixels);
+		startTL();
+		
+		
 	}
-void Singleton::updateCamVP ()
+void Singleton::endFluidDump ()
+                            {
+		cout << "pos change end\n";
+		dumpingFluid = false;
+		
+		gameFluid->hasRead = true;
+		updateTBOData(false,false);
+		lastCamPosVP.setFXYZRef(&campPosVPDump);
+		
+		if (firstVPUpdate) {
+			firstVPUpdate = false;
+			volMinReadyInPixels.copyFrom(&volMinInPixels);
+			volMaxReadyInPixels.copyFrom(&volMaxInPixels);
+		}
+		
+		//readyForWaterReset = true;
+		startFT();
+		
+	}
+void Singleton::shiftRegion ()
                            {
+		
+		
 		if (doUpdateVolPos) {
 			
-			if ((currentActor == NULL)||firstPerson) {
-				camPosVP.setFXYZRef(cameraPos);
-				camPosVP.addXYZ(-volSizePrim*0.5f + volSizePrimRefSize*0.5f);
-				camPosVP.addXYZRef(&lookAtVec,volSizePrim*0.4f);
+			// if ((currentActor == NULL)||firstPerson) {
+			// 	camPosVP.setFXYZRef(cameraPos);
+			// 	camPosVP.addXYZ(-volSizePrim*0.5f + volSizePrimRefSize*0.5f);
+			// 	camPosVP.addXYZRef(&lookAtVec,volSizePrim*0.4f);
+			// }
+			// else {
+			// 	camPosVP.setFXYZRef(&(currentActor->centerPointInPixels));
+			// 	camPosVP.addXYZ(-volSizePrim*0.5f + volSizePrimRefSize*0.5f);
+			// }
+			
+			bool notThirdPerson = (currentActor == NULL)||firstPerson;
+			
+			if (notThirdPerson) {
+				newCamPos.copyFrom(cameraPos);
 			}
 			else {
-				camPosVP.setFXYZRef(&(currentActor->centerPointInPixels));
-				camPosVP.addXYZ(-volSizePrim*0.5f + volSizePrimRefSize*0.5f);
+				newCamPos.copyFrom(&(currentActor->centerPointInPixels));
+			}
+			
+			camPosVP.copyFrom(&newCamPos);
+			camPosVP.addXYZ(-volSizePrim*0.5f + volSizePrimRefSize*0.5f);
+			
+			if (notThirdPerson) {
+				//camPosVP.addXYZRef(&lookAtVec,volSizePrim*0.4f);
 			}
 			
 			camPosVP.intDivXYZ(volSizePrimRefSize);
@@ -1569,43 +1668,298 @@ void Singleton::updateCamVP ()
 			
 			
 			
-			if (camPosVP.iNotEqual(&lastCamPosVP)) {
-				gameFluid->writeFluidData();
+			if (
+				camPosVP.iNotEqual(&lastCamPosVP) && 
+				(lastCamPos.distance(&newCamPos) > volSizePrimRefSize/32.0f)
+			) {
+				lastCamPos.copyFrom(&newCamPos);
+				//gameFluid->maxDirtyRegion();
+				gameFluid->forceFullRefresh = 1;
 				
-				//
-				camPosVPInPixels.copyFrom( &camPosVP );
-				camPosVPInPixels.multXYZ( volSizePrimRefSize );
-				volMinInPixels.copyFrom( &camPosVPInPixels );
-				volMaxInPixels.copyFrom( &camPosVPInPixels );
-				volMaxInPixels.addXYZ(volSizePrim);				
-				//
+				beginFluidDump(&camPosVP);
 				
-				gameFluid->readFluidData();
-				
-				updateTBOData(false,false);
 			}
-			lastCamPosVP.setFXYZRef(&camPosVP);
 		}
 	}
-void Singleton::stopFluidThread ()
-                               {
+void Singleton::funcNT2 ()
+                       {
+		threadNetRecv.setRunningLocked(true);
+		gameNetwork->updateRecv();
+		threadNetRecv.setRunningLocked(false);
+	}
+void Singleton::startNT2 ()
+                        {
+		if (threadNetRecv.threadRunning) {
+			
+		}
+		else {
+			threadNetRecv.threadRunning = true;
+			threadNetRecv.threadMain = std::thread(&Singleton::funcNT2, this);
+		}
+	}
+bool Singleton::stopNT2 ()
+                       {
+		bool didStop = false;
+		if (threadNetRecv.threadRunning) {
+			threadNetRecv.threadMain.join();
+			threadNetRecv.threadRunning = false;
+			didStop = true;
+		}
+		return didStop;
+	}
+void Singleton::funcNT ()
+                      {
+		threadNetSend.setRunningLocked(true);
+		gameNetwork->updateSend();
+		threadNetSend.setRunningLocked(false);
+	}
+void Singleton::startNT ()
+                       {
+		if (threadNetSend.threadRunning) {
+			
+		}
+		else {
+			threadNetSend.threadRunning = true;
+			threadNetSend.threadMain = std::thread(&Singleton::funcNT, this);
+		}
+	}
+bool Singleton::stopNT ()
+                      {
+		bool didStop = false;
 		
-		if (fluidThreadRunning) {
-			fluidThreadRunning = false;
-			fluidThread.join();
-		}		
+		if (threadNetSend.threadRunning) {
+			threadNetSend.threadMain.join();
+			threadNetSend.threadRunning = false;
+			didStop = true;
+		}
+		return didStop;
+		
+	}
+void Singleton::funcFT ()
+                      {
+		threadFluid.setRunningLocked(true);
+		gameFluid->updateFluidData();
+		threadFluid.setRunningLocked(false);
+	}
+void Singleton::startFT ()
+                       {
+		if (threadFluid.threadRunning) {
+			
+		}
+		else {
+			threadFluid.threadRunning = true;
+			threadFluid.threadMain = std::thread(&Singleton::funcFT, this);
+		}
+		
+	}
+bool Singleton::stopFT ()
+                      {
+		bool didStop = false;
+		
+		if (threadFluid.threadRunning) {
+			threadFluid.threadMain.join();
+			threadFluid.threadRunning = false;
+			didStop = true;
+		}
+		return didStop;
+	}
+void Singleton::funcTL ()
+                      {
+		threadLoader.setRunningLocked(true);
+		gameFluid->readFluidData();
+		threadLoader.setRunningLocked(false);
+	}
+void Singleton::startTL ()
+                       {
+		if (threadLoader.threadRunning) {
+			
+		}
+		else {
+			
+			threadLoader.threadRunning = true;
+			threadLoader.threadMain = std::thread(&Singleton::funcTL, this);
+		}
+		
+	}
+bool Singleton::stopTL ()
+                      {
+		bool didStop = false;
+		if (threadLoader.threadRunning) {
+			threadLoader.threadMain.join();
+			threadLoader.threadRunning = false;
+			didStop = true;
+		}
+		return didStop;
+	}
+void Singleton::funcTT ()
+                      {
+		threadTex.setRunningLocked(true);
+		gameFluid->getPrimData(0);
+		threadTex.setRunningLocked(false);
+	}
+void Singleton::startTT ()
+                       {
+		if (threadTex.threadRunning) {
+			
+		}
+		else {
+			
+			//cout << "startTT(" << gameFluid->forceFullRefresh << ")\n";
+			
+			threadTex.threadRunning = true;
+			threadTex.threadMain = std::thread(&Singleton::funcTT, this);
+		}
+		
+	}
+bool Singleton::stopTT ()
+                      {
+		bool didStop = false;
+		if (threadTex.threadRunning) {
+			threadTex.threadMain.join();
+			threadTex.threadRunning = false;
+			didStop = true;
+		}
+		return didStop;
+	}
+void Singleton::funcTP (int threadId)
+                                  {
+		
+		GamePageHolder* curHolder;
+		
+		threadPool[threadId].setRunningLocked(true);
+		
+		curHolder = gw->getHolderAtId(
+			threadPool[threadId].threadDataInt[0],
+			threadPool[threadId].threadDataInt[1]
+		);
+		
+		curHolder->genCellData();
+		
+		threadPool[threadId].setRunningLocked(false);
+	}
+void Singleton::startTP (int threadId)
+                                   {
+		if (threadPool[threadId].threadRunning) {
+			
+		}
+		else {
+			threadPool[threadId].threadRunning = true;
+			threadPool[threadId].threadMain = std::thread(&Singleton::funcTP, this, threadId);
+		}
+		
+	}
+bool Singleton::stopTP (int threadId)
+                                  {
+		bool didStop = false;
+		if (threadPool[threadId].threadRunning) {
+			threadPool[threadId].threadMain.join();
+			threadPool[threadId].threadRunning = false;
+			didStop = true;
+		}
+		return didStop;
+	}
+void Singleton::flushActionStack ()
+                                {
+		PushModStruct* curPM;
+		
+		while (pmStack.size() > 0) {
+			
+			curPM = &(pmStack.back());
+			
+			switch(curPM->actionType) {
+				case E_PM_EXPLODE_BULLET:
+					pushExplodeBullet(false,&(curPM->data[0]));
+				break;
+				case E_PM_MODIFY_UNIT:
+					pushModifyUnit(false,&(curPM->data[0]), curPM->data[1].getIX());
+				break;
+				case E_PM_PLACE_TEMPLATE:
+					pushPlaceTemplate(false,&(curPM->data[0]), curPM->data[1].getIX());
+				break;
+			}
+			
+			pmStack.pop_back();
+		}
+	}
+void Singleton::pushExplodeBullet (bool isReq, FIVector4 * newPos)
+                                                              {
+		
+		
+		if (isReq) {
+			pmStack.push_back(PushModStruct());
+			pmStack.back().actionType = E_PM_EXPLODE_BULLET;
+			pmStack.back().data[0].copyFrom(newPos);
+			return;
+		}
+		
+		if (waterBulletOn) {
+			gameFluid->modifyUnit(newPos, E_BRUSH_ADD, E_PTT_WAT, explodeRad);
+		}
+		else {
+			gameFluid->modifyUnit(newPos, E_BRUSH_SUB, E_PTT_TER, explodeRad);
+		}
+		
+		modifiedUnit = true;
+		
+		
+	}
+void Singleton::pushModifyUnit (bool isReq, FIVector4 * mp, int buttonNum)
+                                                                      {
+		
+		
+		if (isReq) {
+			pmStack.push_back(PushModStruct());
+			pmStack.back().actionType = E_PM_MODIFY_UNIT;
+			pmStack.back().data[0].copyFrom(mp);
+			pmStack.back().data[1].setIX(buttonNum);
+			return;
+		}
+		
+		//bool lbClicked, bool rbClicked, bool mbClicked
+		
+		switch (buttonNum) {
+			case 0: //lb
+				gameFluid->modifyUnit(mp, E_BRUSH_ADD, earthMod, curBrushRad);
+			break;	
+			case 1: //rb
+				gameFluid->modifyUnit(mp, E_BRUSH_SUB, earthMod, curBrushRad);
+			break;	
+			case 2: //mb
+				gameFluid->modifyUnit(mp, E_BRUSH_REF, earthMod, curBrushRad);
+			break;	
+		}
+		
+		modifiedUnit = true;
+		
+		
+		
+		forceGetPD = true;
+	}
+void Singleton::pushPlaceTemplate (bool isReq, FIVector4 * newPos, int pt)
+                                                                      {
+		
+		if (isReq) {
+			pmStack.push_back(PushModStruct());
+			pmStack.back().actionType = E_PM_PLACE_TEMPLATE;
+			pmStack.back().data[0].copyFrom(newPos);
+			pmStack.back().data[1].setIX(pt);
+			return;
+		}
+		
+		addGeom(newPos,pt);
+		
+		modifiedGeom = true;
+		
 		
 	}
 void Singleton::copyPrimTexture ()
                                {
 		
-		//cout << "copyPrimTexture\n";
 		
 		int i;
 		
 		for (i = 0; i < E_PL_LENGTH; i++) {
 			
-			getPrimData(i);
 			
 			glBindTexture(GL_TEXTURE_3D, volIdPrim[i]);
 			glTexSubImage3D(
@@ -1623,7 +1977,7 @@ void Singleton::copyPrimTexture ()
 				GL_RGBA,
 				precPrimFormat, //GL_UNSIGNED_BYTE,
 
-				volDataPrim[i]
+				gameFluid->volDataPrim[i]
 			);
 			glBindTexture(GL_TEXTURE_3D, 0);
 		}
@@ -1637,6 +1991,28 @@ void Singleton::prepSound (string soundName)
 			soundMap.insert( pair<string, GameSound>(soundName, GameSound()) );
 			soundMap[soundName].init("..\\data\\sounds\\"+soundName+".wav");
 		}
+	}
+void Singleton::playSoundEnt (string soundName, BaseObj * ge, float variance, float volume, bool doLoop)
+          {
+		
+		if (ge == NULL) {
+			playSoundPosAndPitch(soundName,cameraPos,cameraPos,variance,volume,doLoop);
+		}
+		else {
+			if (
+				(ge->entType == E_ENTTYPE_TRACE) ||
+				(ge->isHidden)	
+			) {
+				
+			}
+			else {
+				playSoundPosAndPitch(soundName,cameraPos,&(ge->centerPointInPixels),variance,volume,doLoop);
+			}
+		}
+		
+		
+		
+		
 	}
 void Singleton::playSoundPosAndPitch (string soundName, FIVector4 * listenerPos, FIVector4 * soundPos, float variance, float volume, bool doLoop)
           {
@@ -1657,7 +2033,7 @@ void Singleton::playSoundPosAndPitch (string soundName, FIVector4 * listenerPos,
 			res.getFX(),
 			res.getFY(),
 			res.getFZ(),
-			32.0f*pixelsPerCell
+			32.0f
 		);
 		
 		soundMap[soundName].setLoop(doLoop);
@@ -1679,7 +2055,7 @@ void Singleton::updateSoundPosAndPitch (string soundName, FIVector4 * listenerPo
 			res.getFX(),
 			res.getFY(),
 			res.getFZ(),
-			32.0f*pixelsPerCell
+			32.0f
 		);
 		
 		soundMap[soundName].setVolumeSmooth(volume,decay);
@@ -1717,15 +2093,18 @@ void Singleton::setCurrentActor (BaseObj * ge)
                                           {
 		
 		
-		
 		currentActor = ge;
 		if (currentActor == NULL) {
 			actObjInd = 0;
 			setFirstPerson(false);
 		}
-		else {	
+		else {
+			
+			
 			actObjInd = ge->uid;
 			subjectDistance = currentActor->centerPointInPixels.distance(cameraPos);
+			
+			
 		}
 		
 	}
@@ -2054,36 +2433,31 @@ void Singleton::updateMatVol ()
 		
 		
 		
-		
-		 
-		
-		
-		
 		matVolLock = false;	
 		
 	}
 int Singleton::getRandomContId ()
                               {
-		return iGenRand(360,419);
+		return iGenRand2(360,419);
 	}
 int Singleton::getRandomNPCId ()
                              {
-		return (iGenRand(1432,1671)/4)*4;
+		return (iGenRand2(1432,1671)/4)*4;
 	}
 int Singleton::getRandomMonsterId ()
                                  {
-		return (iGenRand(1240,1431)/2)*2;
+		return (iGenRand2(1240,1431)/2)*2;
 	}
 int Singleton::getRandomObjId ()
                              {
-		return iGenRand(0,907);
+		return iGenRand2(0,907);
 		
 	}
 void Singleton::fillWithRandomObjects (int parentUID, int gen)
                                                            {
 		
 		int i;
-		int maxObj = iGenRand(2,16);
+		int maxObj = iGenRand2(2,16);
 		BaseObj* tmpObj = NULL;
 		
 		int curId;
@@ -2107,12 +2481,9 @@ void Singleton::fillWithRandomObjects (int parentUID, int gen)
 			tmpObj->init(
 				gameObjCounter,
 				parentUID,
-				curId, 
-				pixelsPerCell,
+				curId,
+				E_ENTTYPE_OBJ,
 				&lastCellPos,
-				// iGenRand(1,4),
-				// iGenRand(1,4),
-				// iGenRand(1,4)
 				2,
 				2,
 				2
@@ -2131,6 +2502,11 @@ void Singleton::fillWithRandomObjects (int parentUID, int gen)
 	}
 void Singleton::toggleDDMenu (int x, int y, bool toggled)
                                                       {
+		
+		if (placingGeom) {
+			return;
+		}
+		
 		int ind = 0;
 		bool objTargeted = false;
 		bool actOnSel = false;
@@ -2202,8 +2578,8 @@ void Singleton::toggleDDMenu (int x, int y, bool toggled)
 			markerFound = false;
 		}
 	}
-void Singleton::performDrag ()
-                           {
+void Singleton::performDrag (bool isReq, int _draggingFromInd, int _draggingFromType, int _draggingToInd, int _draggingToType, FIVector4 * _worldMarker)
+          {
 		
 		int i;
 		int bestPos;
@@ -2214,24 +2590,33 @@ void Singleton::performDrag ()
 		
 		vector<BaseObjType>* myVec;
 		
+		if (isReq) {
+			naFloatData[0] = _worldMarker->getFX();
+			naFloatData[1] = _worldMarker->getFY();
+			naFloatData[2] = _worldMarker->getFZ();
+			naIntData[0] = _draggingFromInd;
+			naIntData[1] = _draggingFromType;
+			naIntData[2] = _draggingToInd;
+			naIntData[3] = _draggingToType;
+			gameNetwork->addNetworkAction(E_NO_DRAG_ENT,naUintData,naIntData,naFloatData);
+			return;
+		}
 		
 		
+		cout << "from " << dragStrings[_draggingFromType] << " to " << dragStrings[_draggingToType] << "\n";
 		
-		cout << "from " << dragStrings[draggingFromType] << " to " << dragStrings[draggingToType] << "\n";
-		
-		switch (draggingFromType) {
+		switch (_draggingFromType) {
 			case E_DT_NOTHING:
 				
 			break;
 			case E_DT_WORLD_OBJECT:
 			
-				sourceObj = &(gw->gameObjects[draggingFromInd]);
+				sourceObj = &(gw->gameObjects[_draggingFromInd]);
 			
-				switch (draggingToType) {
+				switch (_draggingToType) {
 					case E_DT_NOTHING:
 						
-						lastCellPos.copyFrom(&(worldMarker));
-						lastCellPos.intDivXYZ(pixelsPerCell);
+						lastCellPos.copyFrom(_worldMarker);
 						lastCellPos.addXYZ(0,0,5);
 						sourceObj->positionInCells.copyFrom(&lastCellPos);
 						sourceObj->updateBounds();
@@ -2240,7 +2625,7 @@ void Singleton::performDrag ()
 					case E_DT_WORLD_OBJECT:
 					case E_DT_INV_OBJECT:
 					case E_DT_INV_OBJECT_PARENT:
-						destObj = &(gw->gameObjects[draggingToInd]);
+						destObj = &(gw->gameObjects[_draggingToInd]);
 						moveCont = true;
 					break;
 				}
@@ -2248,14 +2633,13 @@ void Singleton::performDrag ()
 			
 			case E_DT_INV_OBJECT:
 			
-				sourceObj = &(gw->gameObjects[draggingFromInd]);
+				sourceObj = &(gw->gameObjects[_draggingFromInd]);
 			
-				switch (draggingToType) {
+				switch (_draggingToType) {
 					case E_DT_NOTHING:
 						
 						
-						lastCellPos.copyFrom(&(worldMarker));
-						lastCellPos.intDivXYZ(pixelsPerCell);
+						lastCellPos.copyFrom(_worldMarker);
 						lastCellPos.addXYZ(0,0,5);
 						sourceObj->positionInCells.copyFrom(&lastCellPos);
 						sourceObj->updateBounds();
@@ -2269,7 +2653,7 @@ void Singleton::performDrag ()
 					case E_DT_WORLD_OBJECT:
 					case E_DT_INV_OBJECT:
 					case E_DT_INV_OBJECT_PARENT:
-						destObj = &(gw->gameObjects[draggingToInd]);
+						destObj = &(gw->gameObjects[_draggingToInd]);
 						moveCont = true;
 					break;
 				}
@@ -2283,12 +2667,12 @@ void Singleton::performDrag ()
 		if (moveCont) {
 			
 			if (isContainer[destObj->objectType]) {	
-				if (draggingFromInd == draggingToInd) {
+				if (_draggingFromInd == _draggingToInd) {
 					goto PERFORM_DRAG_END;
 				}
 			}
 			else {
-				if (draggingFromInd == destObj->parentUID) {
+				if (_draggingFromInd == destObj->parentUID) {
 					goto PERFORM_DRAG_END;
 				}
 			}
@@ -2319,7 +2703,7 @@ void Singleton::performDrag ()
 				sourceObj->parentUID = destObj->parentUID;
 			}
 			
-			if (draggingFromType == E_DT_WORLD_OBJECT) {
+			if (_draggingFromType == E_DT_WORLD_OBJECT) {
 				gw->removeVisObject(sourceObj->uid);
 			}
 			
@@ -2330,9 +2714,9 @@ void Singleton::performDrag ()
 		
 		
 		if (
-			(draggingFromType == E_DT_INV_OBJECT) ||
-			(draggingToType == E_DT_INV_OBJECT) ||
-			(draggingToType == E_DT_INV_OBJECT_PARENT) ||
+			(_draggingFromType == E_DT_INV_OBJECT) ||
+			(_draggingToType == E_DT_INV_OBJECT) ||
+			(_draggingToType == E_DT_INV_OBJECT_PARENT) ||
 			draggedIntoWorldObj
 		) {
 			refreshContainers(false);
@@ -2343,32 +2727,59 @@ PERFORM_DRAG_END:
 		markerFound = false;
 		isDraggingObject = false;
 	}
-void Singleton::removeEntity (int ind)
-                                   {
+void Singleton::removeEntity (bool isReq, int ind)
+                                               {
+		
+		if (isReq) {
+			naIntData[0] = ind;
+			gameNetwork->addNetworkAction(E_NO_REM_ENT,naUintData,naIntData,naFloatData);
+			return;
+		}
+		
 		if (ind >= E_OBJ_LENGTH) {
 			if (gw->removeVisObject(ind)) {
 				selObjInd = 0;
 			}
 		}
 	}
-BaseObjType Singleton::placeNewEnt (int et, FIVector4 * cellPos)
-                                                            {
+BaseObjType Singleton::placeNewEnt (bool isReq, int et, FIVector4 * cellPos, bool isHidden)
+                                                                                               {
 		
 		
 		BaseObj* tmpObj = NULL;
 		
 		int newType = 0;
-		
+		int poolId = et;
 		int xv = 2;
 		int yv = 2;
 		int zv = 3;
 		
+		int curEntId;
+		
 		int mf = 0;
+		
+		bool isRecycled = false;
+		
+		if (isReq) {
+			naFloatData[0] = cellPos->getFX();
+			naFloatData[1] = cellPos->getFY();
+			naFloatData[2] = cellPos->getFZ();
+			naIntData[0] = et;
+			gameNetwork->addNetworkAction(E_NO_ADD_ENT,naUintData,naIntData,naFloatData);
+			return - 1;
+		}
+		
+		float bounciness = 0.0f;
+		float friction = 0.9;
+		float windResistance = 0.9;
 		
 		switch (et) {
 			case E_ENTTYPE_OBJ:
 				newType = getRandomObjId();
 				zv = 2;
+				friction = 0.1;
+				windResistance = 1.0f;
+				bounciness = 0.3;
 			break;
 			case E_ENTTYPE_MONSTER:
 				newType = getRandomMonsterId();
@@ -2380,6 +2791,8 @@ BaseObjType Singleton::placeNewEnt (int et, FIVector4 * cellPos)
 			break;
 			
 			case E_ENTTYPE_BULLET:
+			case E_ENTTYPE_TRACE:
+				
 				if (waterBulletOn) {
 					newType = 1103;
 				}
@@ -2387,49 +2800,97 @@ BaseObjType Singleton::placeNewEnt (int et, FIVector4 * cellPos)
 					newType = 1139;
 				}
 				
+				// if (et == E_ENTTYPE_TRACE) {
+					
+				// }
+				
 				xv = 2;
 				yv = 2;
 				zv = 2;
 			break;
+			
 		}
 		
 		
-		gw->gameObjects[gameObjCounter] = baseObj;
-		tmpObj = &(gw->gameObjects[gameObjCounter]);
+		if (
+			(entPoolStack[poolId].maxCount == 0) ||
+			(entPoolStack[poolId].entIds.size() < entPoolStack[poolId].maxCount)
+		) {
+			isRecycled = false;
+			curEntId = gameObjCounter;
+			entPoolStack[poolId].entIds.push_back(gameObjCounter);
+			
+		}
+		else {
+			
+			isRecycled = true;
+			curEntId = entPoolStack[poolId].entIds[
+				entPoolStack[poolId].curIndex
+			];
+			
+			entPoolStack[poolId].curIndex++;
+			if (entPoolStack[poolId].curIndex == entPoolStack[poolId].maxCount) {
+				entPoolStack[poolId].curIndex = 0;
+			}
+		}
+		
+		
+		
+		gw->gameObjects[curEntId] = baseObj;
+		tmpObj = &(gw->gameObjects[curEntId]);
 		tmpObj->init(
-			gameObjCounter,
+			curEntId,
 			0,
 			newType,
-			pixelsPerCell,
+			et,
 			cellPos,
 			xv,yv,zv
 		);
 		
-		if (et == E_ENTTYPE_BULLET) {
-			tmpObj->isBullet = true;
+		if (
+			(et == E_ENTTYPE_BULLET) ||
+			(et == E_ENTTYPE_TRACE)
+		) {
 			
-			if (combatOn) {
-				tmpObj->bounciness = 0.0f;
-				tmpObj->friction = 0.0f;
+			if (noBounce) {
+				bounciness = 0.0f;
+				friction = 0.0f;
+				windResistance = 1.0f;
 			}
 			else {
-				tmpObj->bounciness = 0.3f;
-				tmpObj->friction = 0.1f;
+				bounciness = 0.7f;
+				friction = 0.1f;
+				windResistance = 1.0f;
 			}
 			
-			
 		}
 		
+		
+		tmpObj->isHidden = isHidden;
+		tmpObj->bounciness = bounciness;
+		tmpObj->friction = friction;
+		tmpObj->windResistance = windResistance;
 		
 		tmpObj->maxFrames = mf;
-		gw->visObjects.push_back(gameObjCounter);
 		
-		BaseObjType thisObjId = gameObjCounter;
+		BaseObjType thisObjId = curEntId;
 		
-		gameObjCounter++;
-		if (isContainer[newType]) {
-			fillWithRandomObjects(gameObjCounter-1, 0);
+		if (isRecycled) {
+			
 		}
+		else {
+			
+			
+			gw->visObjects.push_back(curEntId);
+			
+			gameObjCounter++;
+			
+			if (isContainer[newType]) {
+				fillWithRandomObjects(gameObjCounter-1, 0);
+			}
+		}
+		
+		
 		
 		return thisObjId;
 		
@@ -2513,11 +2974,9 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 									0.0f
 								);
 								
+								camLerpPos.copyFrom(cameraPos);
 								
 								
-								updateCamVals();
-								
-								//doTraceVecND("cameraPos ", cameraPos);
 								
 								
 								draggingMap = true;
@@ -2606,7 +3065,14 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 							else {
 								draggingToType = E_DT_INV_OBJECT_PARENT;
 								draggingToInd = comp->jvNodeNoTemplate->Child("objectId")->number_value;
-								performDrag();
+								performDrag(
+									gameNetwork->isConnected,
+									draggingFromInd,
+									draggingFromType,
+									draggingToInd,
+									draggingToType,
+									&(worldMarker)
+								);
 							}
 						}
 					}
@@ -2654,7 +3120,14 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 							else {
 								draggingToType = E_DT_INV_OBJECT;
 								draggingToInd = comp->jvNodeNoTemplate->Child("objectId")->number_value;
-								performDrag();
+								performDrag(
+									gameNetwork->isConnected,
+									draggingFromInd,
+									draggingFromType,
+									draggingToInd,
+									draggingToType,
+									&(worldMarker)
+								);
 							}
 							
 						}
@@ -2677,16 +3150,16 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		if (mouseUpEvent) {
 			
 			if (comp->uid.compare("ddMenu.removeEntity") == 0) {
-				removeEntity(selObjInd);
+				removeEntity(gameNetwork->isConnected, selObjInd);
 			}
 			else if (comp->uid.compare("ddMenu.placeEntity.npc") == 0) {
-				placeNewEnt(E_ENTTYPE_NPC, &lastCellPos);
+				placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
 			}
 			else if (comp->uid.compare("ddMenu.placeEntity.monster") == 0) {
-				placeNewEnt(E_ENTTYPE_MONSTER, &lastCellPos);
+				placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
 			}
 			else if (comp->uid.compare("ddMenu.placeEntity.object") == 0) {
-				placeNewEnt(E_ENTTYPE_OBJ, &lastCellPos);
+				placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_OBJ, &lastCellPos);
 			}
 			else if (comp->uid.compare("charEdit.savePose") == 0) {
 				saveOrg();
@@ -2770,7 +3243,7 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		}
 		else if (comp->uid.compare("$options.graphics.clipDist") == 0) {
 			
-			clipDist[1] = curValue*512.0f*((float)pixelsPerCell);
+			clipDist[1] = curValue*512.0f;
 			
 		}
 		else if (comp->uid.compare("$options.graphics.fov") == 0) {
@@ -2778,7 +3251,9 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 			focalLength = 1.0f / tan(FOV / 2.0f);
 			
 		}
-		
+		else if (comp->uid.compare("$options.graphics.sphereMapPrec") == 0) {
+			sphereMapPrec = mixf(0.0f,200.0f,curValue);
+		}
 		
 		if (
 			(button == GLUT_LEFT_BUTTON) ||
@@ -3343,7 +3818,7 @@ bool Singleton::getPrimTemplateString ()
 		
 		for (i = 0; i < numTemplates; i++) {
 			jv3 = jv2->Child(i);
-			numProps = jv3->CountChildren();
+			numProps = jv3->CountChildren() - 1; //minus one for comment
 			if (numProps != E_PRIMTEMP_LENGTH) {
 				cout << "ERROR: invalid number of properties\n";
 				return false;
@@ -3430,9 +3905,16 @@ void Singleton::doShaderRefresh (bool doBake)
 		refreshIncludeMap();
 
 
+		// this is expensive
 		for (i = 0; i < shaderStrings.size(); i++) {
 			shaderMap[ shaderStrings[i] ]->init( "../src/glsl/" + shaderStrings[i] + ".c", doBake, &includeMap);
 		}
+		
+		if (DO_SHADER_DUMP) {
+			saveFileString("..\\data\\temp.txt", &globString);
+		}
+		
+		
 		shadersAreLoaded = 1;
 		readyToRecompile = 1;
 		
@@ -3925,7 +4407,7 @@ void Singleton::drawFBOOffset (string fboName, int ind, float xOff, float yOff, 
 	}
 float Singleton::getTerHeightScaled (float val)
         {
-		return mixf(0.125f,0.875f,val)*worldSizeInPixels.getFZ();
+		return mixf(0.125f,0.875f,val)*heightmapMax;
 		
 	}
 float Singleton::getSLNormalized ()
@@ -3934,7 +4416,7 @@ float Singleton::getSLNormalized ()
 	}
 float Singleton::getSLInPixels ()
         {
-		return getSLNormalized()*worldSizeInPixels.getFZ();// + 2.5f*pixelsPerCell;
+		return getSLNormalized()*heightmapMax;
 	}
 float Singleton::getHeightAtPixelPos (float x, float y, bool dd)
         {
@@ -4031,8 +4513,8 @@ void Singleton::syncObjects ()
 		float xrp;
 		float yrp;
 		
-		float xrotrad = (camRotation[0]);
-		float yrotrad = (camRotation[1]);
+		float xrotrad = getCamRot(0);
+		float yrotrad = getCamRot(1);
 		
 		
 		
@@ -4045,7 +4527,7 @@ void Singleton::syncObjects ()
 				yrp = yrotrad + dynObjects[i]->posTrackball.getFY()/200.0f;
 				
 				angleToVec(&tempVec1,xrp,yrp);
-				tempVec1.multXYZ(dynObjects[i]->posTrackball.getFZ()*0.5f*pixelsPerCell + 2.0f*pixelsPerCell);
+				tempVec1.multXYZ(dynObjects[i]->posTrackball.getFZ()*0.5f + 2.0f);
 				
 				
 				dynObjects[i]->pos.copyFrom(cameraGetPos());
@@ -4058,7 +4540,6 @@ void Singleton::syncObjects ()
 					dynObjects[i]->pos.addXYZRef( &(dynObjects[i]->posRel) );
 				}
 			}
-
 		}
 		
 		//!!!
@@ -4073,6 +4554,25 @@ void Singleton::syncObjects ()
 	}
 void Singleton::updateCamVals ()
                              {
+		
+		
+		if (camLerpPos.getFX() > worldSizeInPixels.getFX() / 2.0)
+		{
+			camLerpPos.setFX( camLerpPos.getFX() - worldSizeInPixels.getFX() );
+		}
+		if (camLerpPos.getFX() < -worldSizeInPixels.getFX() / 2.0)
+		{
+			camLerpPos.setFX( camLerpPos.getFX() + worldSizeInPixels.getFX() );
+		}
+		if (camLerpPos.getFY() > worldSizeInPixels.getFY() / 2.0)
+		{
+			camLerpPos.setFY( camLerpPos.getFY() - worldSizeInPixels.getFY() );
+		}
+		if (camLerpPos.getFY() < -worldSizeInPixels.getFY() / 2.0)
+		{
+			camLerpPos.setFY( camLerpPos.getFY() + worldSizeInPixels.getFY() );
+		}
+		
 		
 		if (cameraPos->getFX() > worldSizeInPixels.getFX() / 2.0)
 		{
@@ -4090,6 +4590,21 @@ void Singleton::updateCamVals ()
 		{
 			cameraPos->setFY( cameraPos->getFY() + worldSizeInPixels.getFY() );
 		}
+		
+		if (smoothMove) {
+			tempLerpPos.copyFrom(&camLerpPos);
+			tempLerpPos.addXYZRef(cameraPos,-1.0f);
+			tempLerpPos.multXYZ(timeDelta);
+			
+			amountInvalidMove = tempLerpPos.length();
+			depthInvalidMove = amountInvalidMove > 0.01f;
+			
+			cameraPos->addXYZRef(&tempLerpPos);
+		}
+		else {
+			cameraPos->copyFrom(&camLerpPos);
+		}
+		
 
 	}
 void Singleton::moveCamera (FIVector4 * pModXYZ)
@@ -4102,14 +4617,22 @@ void Singleton::moveCamera (FIVector4 * pModXYZ)
 				(pModXYZ->getFY() != 0.0) ||
 				(pModXYZ->getFZ() != 0.0)
 		) {
+			
+			if (!smoothMove) {
+				amountInvalidMove = pModXYZ->length();
+				depthInvalidMove = true;
+			}
+			
 			wsBufferInvalid = true;
 		}
 		
-		cameraPos->addXYZRef(pModXYZ);
+		camLerpPos.addXYZRef(pModXYZ);
+		
+		//cameraPos->addXYZRef(pModXYZ);
 
 		//pModXYZ->setFZ(0.0f);
 		
-		updateCamVals();
+		
 		
 	}
 GameOrgNode * Singleton::getMirroredNode (GameOrgNode * curNode)
@@ -4215,6 +4738,12 @@ void Singleton::applyNodeChanges (GameOrgNode * _curNode, float dx, float dy)
 			
 		
 	}
+GLfloat Singleton::getCamRot (int ind)
+                                   {
+		
+		return curCamRotation[ind];
+		
+	}
 void Singleton::moveObject (float dx, float dy)
         {
 		
@@ -4228,8 +4757,7 @@ void Singleton::moveObject (float dx, float dy)
 		GameOrgNode* curNode;
 
 
-		float fPixelsPerCell = (float)pixelsPerCell;
-		float deltaMod = fPixelsPerCell/32.0;
+		float deltaMod = 1.0f/32.0f;
 		
 		modXYZ.setFXYZ(0.0f,0.0f,0.0f);
 
@@ -4247,8 +4775,8 @@ void Singleton::moveObject (float dx, float dy)
 		float xmod = 0.0f;
 		float ymod = 0.0f;
 		float zmod = 0.0f;
-		float xrotrad = (camRotation[0]);
-		float yrotrad = (camRotation[1]);
+		float xrotrad = getCamRot(0);
+		float yrotrad = getCamRot(1);
 		
 		
 
@@ -4399,43 +4927,33 @@ void Singleton::toggleFullScreen ()
 			glutPositionWindow(250, 50);
 		}
 	}
-void Singleton::setObjToElevationBase (FIVector4 * obj)
-                                                   {
-		
-		obj->setFZ(
-			getHeightAtPixelPos(obj->getFX(), obj->getFY())
-		);
-
-	}
-void Singleton::setCameraToElevationBase ()
-                                        {
-
-		setObjToElevationBase(cameraPos);
-	}
 void Singleton::setCameraToElevation ()
-        {
-		setCameraToElevationBase();
+                                    {
+
+		float newHeight = getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY());
+		float curHeight = cameraPos->getFZ();
+
+		cout << "curHeight " << curHeight << " newHeight " << newHeight << "\n";
+
+		modXYZ.setFXYZ(
+			0.0,
+			0.0,
+			newHeight-curHeight
+		);
 		
-		wsBufferInvalid = true;
+		moveCamera(&modXYZ);
+
 	}
-void Singleton::processSpecialKeys (int key, int _x, int _y)
-        {
-
-		int x = _x / scaleFactor;
-		int y = _y / scaleFactor;
-
-		switch (key)
-		{
-		case GLUT_KEY_F1 :
-
-			break;
-		case GLUT_KEY_F2 :
-
-			break;
-		case GLUT_KEY_F3 :
-
-			break;
-		}
+void Singleton::runReport ()
+                         {
+		
+		mainGUI->runReport();
+		
+		cout << "Object Count: " << lastObjectCount << "\n";
+		// cout << "lightCount: " << gw->lightCount << "\n";
+		// cout << "TOT GPU MEM USED (MB): " << TOT_GPU_MEM_USAGE << "\n";
+		// cout << "HolderSize (MB): " << holderSizeMB << "\n";
+		// cout << "totalPointCount: " << totalPointCount << "\n";
 	}
 void Singleton::setFirstPerson (bool _newVal)
                                           {
@@ -4458,6 +4976,15 @@ void Singleton::setFirstPerson (bool _newVal)
 		
 		cout << "firstPerson " << firstPerson << "\n";
 	}
+int Singleton::getCurActorUID ()
+                             {
+		if (currentActor == NULL) {
+			return -1;
+		}
+		else {
+			return currentActor->uid;
+		}
+	}
 void Singleton::updateCS ()
                         {
 		if (
@@ -4470,105 +4997,98 @@ void Singleton::updateCS ()
 		bCtrlOld = bCtrl;
 		bShiftOld = bShift;
 	}
-void Singleton::playBump (BaseObj * ge)
-                                   {
-		
-		if (ge == NULL) {
-			playSoundPosAndPitch(
-				"bump0",
-				cameraPos,
-				cameraPos,
-				0.3f
-			);
-		}
-		else {
-			playSoundPosAndPitch(
-				"bump0",
-				cameraPos,
-				&(ge->centerPointInPixels),
-				0.3f
-			);
-		}
-		
-		
-	}
 void Singleton::getMarkerPos (int x, int y)
                                         {
 		getPixData(&spaceUpPD, x, y, true, false);
 		worldMarker.copyFrom(&spaceUpPD);
 		lastCellPos.copyFrom(&(worldMarker));
-		lastCellPos.intDivXYZ(pixelsPerCell);
 	}
-void Singleton::makeJump (BaseObj * ge)
-                                   {
+void Singleton::makeJump (int actorId, int isUp)
+                                             {
+		
+		BaseObj* ge = &(gw->gameObjects[actorId]);
 		
 		
-		
-		if (ge->inWater) {
-			
-			ge->isFalling = true;
-			ge->isJumping = true;
-			
-			if (
-				gw->getCellAtCoords(
-					ge->centerPointInPixels[0],
-					ge->centerPointInPixels[1],
-					ge->centerPointInPixels[2] + 1.0f
-				) == E_CD_EMPTY
-			) {
+		if (isUp == 1) {
+			if (ge->inWater) {
 				
+				ge->isFalling = true;
+				ge->isJumping = true;
 				
-				// at water surface
-				
-				ge->vel.setFZ(40*pixelsPerCell);
-				ge->toggleGrav(-1.0f);
+				if (
+					gw->getCellAtCoords(
+						ge->centerPointInPixels[0],
+						ge->centerPointInPixels[1],
+						ge->centerPointInPixels[2] + 1.0f
+					) == E_CD_EMPTY
+				) {
+					
+					
+					// at water surface
+					
+					ge->vel.setFZ(40);
+					ge->toggleGrav(-1.0f);
+					
+					
+				}
+				else {
+					
+					// underwater
+					
+					
+					ge->vel.setFZ(10);
+					
+					playSoundEnt(
+						"bubble0",
+						ge,
+						0.3f,
+						0.5f
+					);
+				}
 				
 				
 			}
 			else {
+				if (ge->isFalling) {
+					
+				}
+				else {
+					
+					
+					ge->isFalling = true;
+					ge->isJumping = true;
+					ge->vel.setFZ(30);
+					
+					playSoundEnt(
+						"jump0",
+						ge,
+						0.0f
+					);
+					
+				}
+			}
+		}
+		else {
+			if (ge->inWater) {
+				ge->vel.setFZ(-10);
 				
-				// underwater
-				
-				
-				ge->vel.setFZ(10*pixelsPerCell);
-				
-				playSoundPosAndPitch(
+				playSoundEnt(
 					"bubble0",
-					cameraPos,
-					&(ge->centerPointInPixels),
+					ge,
 					0.3f,
 					0.5f
 				);
 			}
-			
-			
 		}
-		else {
-			if (ge->isFalling) {
-				
-			}
-			else {
-				
-				
-				ge->isFalling = true;
-				ge->isJumping = true;
-				ge->vel.setFZ(30*pixelsPerCell);
-				
-				playSoundPosAndPitch(
-					"jump0",
-					cameraPos,
-					&(ge->centerPointInPixels),
-					0.0f
-				);
-				
-			}
-		}
+		
+		
+		
 	}
 void Singleton::resetGeom ()
                          {
 		int i;
 		geomStep = 0;
-		geomOrigOffset = 0.0f;
+		geomOrigOffset.setFXYZ(0.0f);
 		geomPoints[0].setFXYZ(0.0f,0.0f,0.0f);
 		
 		for (i = 0; i < FLOATS_PER_TEMPLATE; i++) {
@@ -4606,66 +5126,6 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 		
 		
 		if (keyDown) {
-			if (currentActor != NULL) {
-				
-				
-				if (moveMode == E_MM_UNIT) {
-					if (key == keyMap[KEYMAP_UP]) {
-						gw->moveCell(currentActor,0,0,1);
-					}
-					
-					if (key == keyMap[KEYMAP_DOWN]) {
-						gw->moveCell(currentActor,0,0,-1);
-					}
-					
-					if (key == keyMap[KEYMAP_FORWARD]) {
-						gw->moveCellRotated(currentActor,1);
-					}
-					
-					if (key == keyMap[KEYMAP_BACKWARD]) {
-						gw->moveCellRotated(currentActor,-1);
-					}
-					
-					if (key == keyMap[KEYMAP_RIGHT]) {
-						
-						gw->rotateCell(currentActor,1,E_DIR_Z);
-						
-						// currentActor->rotate(1,E_DIR_Z,true);
-						// if (gw->testHit(currentActor)) {
-						// 	playBump(currentActor);
-						// 	currentActor->rotate(0,E_DIR_Z,true);
-						// }
-						//testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,-M_PI/2.0f);
-						//transformOrg(testHuman);//testHuman->applyt
-						//makeDirty();
-					}
-					
-					if (key == keyMap[KEYMAP_LEFT]) {
-
-						gw->rotateCell(currentActor,0,E_DIR_Z);
-
-						// currentActor->rotate(0,E_DIR_Z,true);
-						// if (gw->testHit(currentActor)) {
-						// 	playBump(currentActor);
-						// 	currentActor->rotate(1,E_DIR_Z,true);
-						// }
-						//testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,M_PI/2.0f);
-						//transformOrg(testHuman);
-						//makeDirty();
-					}
-				}
-				else {
-					if (key == keyMap[KEYMAP_UP]) {
-						
-						if (currentActor != NULL) {
-							
-							makeJump(currentActor);
-							
-						}
-					}
-				}
-			}
-			
 			
 		}		
 		else {
@@ -4699,15 +5159,15 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				case '1':
 					getMarkerPos(x, y);
-					placeNewEnt(E_ENTTYPE_NPC, &lastCellPos);
+					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
 				break;
 				case '2':
 					getMarkerPos(x, y);
-					placeNewEnt(E_ENTTYPE_MONSTER, &lastCellPos);
+					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
 				break;
 				case '3':
 					getMarkerPos(x, y);
-					placeNewEnt(E_ENTTYPE_OBJ, &lastCellPos);
+					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_OBJ, &lastCellPos);
 				break;
 				case '`':
 					placingGeom = !placingGeom;
@@ -4782,18 +5242,16 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						else {
 							setCurrentActor(&(gw->gameObjects[selObjInd]));
 							
-							playSoundPosAndPitch(
+							playSoundEnt(
 								"swimming0",
-								cameraPos,
-								&(currentActor->centerPointInPixels),
+								currentActor,
 								0.0f,
 								0.0f,
 								true
 							);
-							playSoundPosAndPitch(
+							playSoundEnt(
 								"walkinggravel0",
-								cameraPos,
-								&(currentActor->centerPointInPixels),
+								currentActor,
 								0.0f,
 								0.0f,
 								true
@@ -4810,12 +5268,11 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				case 'w':
 					
 					cout << "start FPS timer\n";
+					fpsTest = true;
+					fpsCount = 0;
+					fpsTimer.start();
 					
-					// fpsTest = true;
-					// fpsCount = 0;
-					// fpsTimer.start();
-					
-					setFirstPerson(!firstPerson);
+					//setFirstPerson(!firstPerson);
 					
 					
 					
@@ -4876,10 +5333,13 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 					
 				case 'j':
-					doShaderRefresh(bakeParamsOn);
 				
-					mapInvalid = true;
-					gw->initMap();
+					smoothMove = !smoothMove;
+				
+					// doShaderRefresh(bakeParamsOn);
+				
+					// mapInvalid = true;
+					// gw->initMap();
 				break;
 
 				case 'G':
@@ -4949,11 +5409,11 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				case 'h':
 					
-					diagCount++;
+					// diagCount++;
 					
-					if (diagCount >= 9) {
-						diagCount = 0;
-					}
+					// if (diagCount >= 9) {
+					// 	diagCount = 0;
+					// }
 					
 					updateTBOData(false,true);
 					
@@ -5003,35 +5463,33 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 
 				case ' ':
-				
-				
-					//timeMod = !timeMod;
-				
-				
-				
-					if (mouseState == E_MOUSE_STATE_PICKING) {
-						selectedEnts.cycleEnts();
-					}
-					else {
-						launchBullet();
-					}
-				
 					
 				
+					//timeMod = !timeMod;
+					// if (mouseState == E_MOUSE_STATE_PICKING) {
+					// 	selectedEnts.cycleEnts();
+					// }
 					
 					
 				break;
-
+				
+				
+				case 'C':
+					
 				case 'c':
+					
+					setCameraToElevation();
+				
 					//doShaderRefresh(bakeParamsOn);
 
-					combatOn = !combatOn;
+					// noBounce = !noBounce;
 					
-					if (currentActor == NULL) {
-						combatOn = false;
-					}
+					// if (currentActor == NULL) {
+					// 	noBounce = false;
+					// }
 					
-					cout << "combatOn " << combatOn << "\n";
+					// cout << "noBounce " << noBounce << "\n";
+									
 				
 					break;
 				
@@ -5039,6 +5497,11 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				case 'x':
 					fogOn = 1.0 - fogOn;
 					cout << "fog on " << fogOn << "\n";
+				
+					// if (isConnected) {
+						
+					// }
+				
 					break;
 
 				case 'm':
@@ -5085,60 +5548,6 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 		
 		
 	}
-void Singleton::keyboardUp (unsigned char key, int _x, int _y)
-        {
-		int x = _x / scaleFactor;
-		int y = _y / scaleFactor;
-		
-		frameMouseMove = true;
-		
-		GameOrgNode* curNode;
-		
-		
-
-
-		
-		bShift = shiftDown();
-		bCtrl = ctrlDown();
-		updateCS();
-
-
-		if (key == 17) {
-			glutLeaveMainLoop();
-		}
-
-		processInput(key, false, x, y);
-
-
-	}
-void Singleton::keyboardDown (unsigned char key, int _x, int _y)
-        {
-		int x = _x / scaleFactor;
-		int y = _y / scaleFactor;
-		
-		frameMouseMove = true;
-		
-		
-		
-		
-		
-		bShift = shiftDown();
-		bCtrl = ctrlDown();
-		updateCS();
-
-		processInput(key, true, x, y);
-	}
-void Singleton::runReport ()
-                         {
-		
-		mainGUI->runReport();
-		
-		cout << "Object Count: " << lastObjectCount << "\n";
-		// cout << "lightCount: " << gw->lightCount << "\n";
-		// cout << "TOT GPU MEM USED (MB): " << TOT_GPU_MEM_USAGE << "\n";
-		// cout << "HolderSize (MB): " << holderSizeMB << "\n";
-		// cout << "totalPointCount: " << totalPointCount << "\n";
-	}
 void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj)
         {
 
@@ -5160,7 +5569,7 @@ void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUp
 				getFBOWrapper("geomTargFBO", 1)->getPixels();
 			}
 			else {
-				getFBOWrapper("pagesTargFBO", 0)->getPixels();
+				getFBOWrapper("solidTargFBO", 0)->getPixels();
 			}
 			
 			//cout << "getBuf\n";
@@ -5178,7 +5587,7 @@ void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUp
 			fbow->getPixelAtF(toVector, newX, (bufferDim.getIY() - 1) - newY);
 		}
 		else {
-			fbow = getFBOWrapper("pagesTargFBO", 0);
+			fbow = getFBOWrapper("solidTargFBO", 0);
 			fbow->getPixelAtF(toVector, newX, (bufferDim.getIY() - 1) - newY);
 		}
 
@@ -5197,6 +5606,16 @@ float Singleton::getMinGeom (int baseIndex)
 			),
 			paramArrGeom[newIndex + 2]
 		);
+		
+	}
+void Singleton::setFXYZWGeom (int baseIndex, FIVector4 * baseVec)
+                                                             {
+		int newIndex = baseIndex*4;
+		int i;
+		
+		for (i = 0; i < 4; i++) {
+			paramArrGeom[newIndex + i] = baseVec->getIndex(i);
+		}
 		
 	}
 void Singleton::setFXYGeom (int baseIndex, float xv, float yv)
@@ -5245,10 +5664,229 @@ float Singleton::getFWGeom (int baseIndex)
 		int newIndex = baseIndex*4;
 		return paramArrGeom[newIndex + 3];
 	}
+void Singleton::processSpecialKeys (int key, int _x, int _y)
+        {
+
+		int x = _x / scaleFactor;
+		int y = _y / scaleFactor;
+
+		switch (key)
+		{
+		case GLUT_KEY_F1 :
+
+			break;
+		case GLUT_KEY_F2 :
+
+			break;
+		case GLUT_KEY_F3 :
+
+			break;
+		}
+	}
+void Singleton::keyboardUp (unsigned char key, int _x, int _y)
+        {
+		int x = _x / scaleFactor;
+		int y = _y / scaleFactor;
+		
+		frameMouseMove = true;
+		
+		GameOrgNode* curNode;
+		
+		
+		
+
+		
+		bShift = shiftDown();
+		bCtrl = ctrlDown();
+		updateCS();
+
+
+		if (key == 17) {
+			glutLeaveMainLoop();
+		}
+
+		keyStack.push_back(KeyStackEvent());
+		keyStack.back().key = key;
+		keyStack.back().keyDown = false;
+		keyStack.back().x = x;
+		keyStack.back().y = y;
+
+		//processInput(key, false, x, y);
+
+
+	}
+void Singleton::keyboardDown (unsigned char key, int _x, int _y)
+        {
+		int x = _x / scaleFactor;
+		int y = _y / scaleFactor;
+		
+		frameMouseMove = true;
+		
+		
+		
+		
+		
+		bShift = shiftDown();
+		bCtrl = ctrlDown();
+		updateCS();
+
+		keyStack.push_back(KeyStackEvent());
+		keyStack.back().key = key;
+		keyStack.back().keyDown = true;
+		keyStack.back().x = x;
+		keyStack.back().y = y;
+		//processInput(key, true, x, y);
+	}
+void Singleton::updateCurGeom (int x, int y)
+                                         {
+		
+		float maxDis = 30.0;
+		
+		int i;
+		int j;
+		
+		float xv;
+		float yv;
+		float xv2;
+		float yv2;
+		float minCornerDis;
+		float maxCornerDis;
+		
+		int baseInd;
+		
+		if (geomStep == 0) {
+			geomPoints[geomStep].setFXYZRef(&mouseMovePD);
+			geomPoints[geomStep].setFW(-1.0f);
+			geomPoints[geomStep].floorXYZ();
+		}
+		else {
+			geomPoints[geomStep].setFXYZ(
+				((float)x)/bufferDim.getFX(),
+				((float)y)/bufferDim.getFY(),
+				0.0f
+			);
+		}
+		
+		
+		
+		for (i = 0; i <= geomStep; i++) {
+			
+			xv = (geomPoints[i][0]-0.5f)*2.0f;
+			yv = (geomPoints[i][1]-0.5f)*2.0f;
+			
+			xv2 = xv;
+			yv2 = yv;
+			
+			xv = abs(xv);
+			yv = abs(yv);
+			
+			xv *= maxDis;
+			yv *= maxDis;
+			yv2 *= maxDis;
+			xv2 *= maxDis;
+			
+			
+			if (placingTemplate) {
+				switch(i) {
+					case E_GEOM_POINTS_TEMP_ORIGIN:
+						// wheel (no longer) changes template
+						
+						geomOrigOffset.setFXYZ(
+							0.0f,//roundf(xv2),
+							0.0f,//roundf(yv2),
+							roundf(curPrimMod)
+						);
+					
+					break;
+					// case E_GEOM_POINTS_TEMP_OFFSET:
+						
+					// break;
+				}
+				
+				baseInd = curPrimTemplate*E_PRIMTEMP_LENGTH;
+				
+				for (j = 0; j < E_PRIMTEMP_LENGTH; j++) {
+					setFXYZWGeom(j, &(primTemplateStack[baseInd+j]) );
+				}
+			}
+			else {
+				switch (i) {
+					case E_GEOM_POINTS_ORIGIN:
+						
+					break;
+					case E_GEOM_POINTS_RAD_XYZ:
+						setFXYGeom(E_PRIMTEMP_BOUNDSMIN, roundf(-xv), roundf(-yv));
+						setFXYGeom(E_PRIMTEMP_BOUNDSMAX, roundf( xv), roundf( yv));
+						
+						setFXYGeom(E_PRIMTEMP_VISMIN, roundf(-xv), roundf(-yv));
+						setFXYGeom(E_PRIMTEMP_VISMAX, roundf( xv), roundf( yv));
+						
+						setFZGeom(E_PRIMTEMP_BOUNDSMIN, roundf(-curPrimMod));
+						setFZGeom(E_PRIMTEMP_BOUNDSMAX, roundf( curPrimMod));
+						
+						setFZGeom(E_PRIMTEMP_VISMIN, roundf(-curPrimMod));
+						setFZGeom(E_PRIMTEMP_VISMAX, roundf( curPrimMod));
+						
+					break;
+					case E_GEOM_POINTS_OFFSET:
+						geomOrigOffset.setFXYZ(
+							roundf(xv2),
+							roundf(yv2),
+							roundf(curPrimMod)
+						);
+					break;
+					case E_GEOM_POINTS_CORNER:
+					
+						minCornerDis = 0.1;
+						maxCornerDis = getMinGeom(E_PRIMTEMP_BOUNDSMAX);
+						
+						setFXGeom(E_PRIMTEMP_CORNERDIS, 
+							roundf(mixf(
+								minCornerDis,
+								maxCornerDis,
+								clampfZO(yv/(maxDis*0.5f))	
+							))
+						);
+					break;
+					case E_GEOM_POINTS_POWER_VALS:
+						setFZGeom(E_PRIMTEMP_CORNERDIS, xv + 1.0f);
+						setFWGeom(E_PRIMTEMP_CORNERDIS, yv + 1.0f);
+					break;
+					case E_GEOM_POINTS_NEG_RAD_XY:
+						setFXYGeom(E_PRIMTEMP_VISMIN, 
+							roundf(max(xv2,getFXGeom(E_PRIMTEMP_BOUNDSMIN))),
+							roundf(max(yv2,getFYGeom(E_PRIMTEMP_BOUNDSMIN)))
+						);
+					break;
+					case E_GEOM_POINTS_POS_RAD_XY:						
+						setFXYGeom(E_PRIMTEMP_VISMAX, 
+							roundf(min(xv2,getFXGeom(E_PRIMTEMP_BOUNDSMAX))),
+							roundf(min(yv2,getFYGeom(E_PRIMTEMP_BOUNDSMAX)))
+						);
+					
+					break;
+					case E_GEOM_POINTS_NEG_RAD_Z:
+						setFZGeom(E_PRIMTEMP_VISMIN, roundf(max(yv2,getFZGeom(E_PRIMTEMP_BOUNDSMIN))) );
+					break;
+					case E_GEOM_POINTS_POS_RAD_Z:
+						setFZGeom(E_PRIMTEMP_VISMAX, roundf(min(yv2,getFZGeom(E_PRIMTEMP_BOUNDSMAX))) );
+					break;
+					case E_GEOM_POINTS_THICKNESS:
+						setFYGeom(E_PRIMTEMP_CORNERDIS, roundf(yv));
+					break;
+				}
+			}
+			
+			
+		}
+		
+		
+	}
 void Singleton::mouseMove (int _x, int _y)
         {
 
 		int i;
+		int j;
 
 		frameMouseMove = true;
 
@@ -5260,13 +5898,6 @@ void Singleton::mouseMove (int _x, int _y)
 		int dx = _x - lastPosX;
 		int dy = _y - lastPosY;
 		
-		float xv;
-		float yv;
-		float xv2;
-		float yv2;
-		float minCornerDis;
-		float maxCornerDis;
-
 		guiX = _x/UI_SCALE_FACTOR;
 		guiY = _y/UI_SCALE_FACTOR;
 
@@ -5294,45 +5925,18 @@ void Singleton::mouseMove (int _x, int _y)
 			angleToVec(&lightVec, fx*2.0, fy*2.0);
 		}
 		
-		float maxDis = 30.0;
 		
-		// if (mbDown) {
-		// 	getMarkerPos(x, y);
-		// 	placeNewEnt(iGenRand(0,2), &lastCellPos);
-		// }
+		
 		
 		if (abDown)
 		{
 			
-			if (bCtrl&&(mouseState == E_MOUSE_STATE_BRUSH)) { //
+			if (bCtrl&&(mouseState == E_MOUSE_STATE_BRUSH)) {
 				
-				// getPixData(&mouseMovePD, x, y, false, false);
-				
-				// stopFluidThread();
-				
-				// if (lbDown) {
-				// 	gameFluid->modifyUnit(&mouseMovePD, E_BRUSH_ADD, earthMod, curBrushRad);
-				// }
-				// else if (rbDown) {
-				// 	gameFluid->modifyUnit(&mouseMovePD, E_BRUSH_SUB, earthMod, curBrushRad);
-				// }
-				// else if (mbDown) {
-				// 	gameFluid->modifyUnit(&mouseMovePD, E_BRUSH_REF, earthMod, curBrushRad);
-				// }
-				
-				// startFluidThread();
-				
-				
-				
-				
-				
-				// forceGetPD = true;
 			}
 			else {
 				moveObject((float)dx, (float)dy);
 			}
-			
-			
 			
 		}
 		else
@@ -5350,103 +5954,7 @@ void Singleton::mouseMove (int _x, int _y)
 
 
 			if (placingGeom) {
-				
-				if (geomStep == 0) {
-					geomPoints[geomStep].setFXYZRef(&mouseMovePD);
-					geomPoints[geomStep].setFW(-1.0f);
-					geomPoints[geomStep].floorXYZ();
-				}
-				else {
-					geomPoints[geomStep].setFXYZ(
-						((float)x)/bufferDim.getFX(),
-						((float)y)/bufferDim.getFY(),
-						0.0f	
-					);
-				}
-				
-				for (i = 0; i <= geomStep; i++) {
-					
-					xv = (geomPoints[i][0]-0.5f)*2.0f;
-					yv = (geomPoints[i][1]-0.5f)*2.0f;
-					
-					
-					
-					xv2 = xv;
-					yv2 = yv;
-					
-					xv = abs(xv);
-					yv = abs(yv);
-					
-					xv *= maxDis;
-					yv *= maxDis;
-					yv2 *= maxDis;
-					xv2 *= maxDis;
-					
-					switch (i) {
-						case E_GEOM_POINTS_ORIGIN:
-							
-						break;
-						case E_GEOM_POINTS_RAD_XY:
-							setFXYGeom(E_PRIMTEMP_BOUNDSMIN, roundf(-xv), roundf(-yv));
-							setFXYGeom(E_PRIMTEMP_BOUNDSMAX, roundf( xv), roundf( yv));
-							
-							setFXYGeom(E_PRIMTEMP_VISMIN, roundf(-xv), roundf(-yv));
-							setFXYGeom(E_PRIMTEMP_VISMAX, roundf( xv), roundf( yv));
-							
-						break;
-						case E_GEOM_POINTS_RAD_Z:
-							setFZGeom(E_PRIMTEMP_BOUNDSMIN, roundf(-yv));
-							setFZGeom(E_PRIMTEMP_BOUNDSMAX, roundf( yv));
-							
-							setFZGeom(E_PRIMTEMP_VISMIN, roundf(-yv));
-							setFZGeom(E_PRIMTEMP_VISMAX, roundf( yv));
-							
-						break;
-						case E_GEOM_POINTS_OFFSET_Z:
-							geomOrigOffset = roundf(-yv2);
-						break;
-						case E_GEOM_POINTS_CORNER:
-						
-							minCornerDis = 0.1;
-							maxCornerDis = getMinGeom(E_PRIMTEMP_BOUNDSMAX);
-							
-							setFXGeom(E_PRIMTEMP_CORNERDIS, 
-								roundf(mixf(
-									minCornerDis,
-									maxCornerDis,
-									clampfZO(yv/(maxDis*0.5f))	
-								))
-							);
-						break;
-						case E_GEOM_POINTS_POWER_VALS:
-							setFZGeom(E_PRIMTEMP_CORNERDIS, xv + 1.0f);
-							setFWGeom(E_PRIMTEMP_CORNERDIS, yv + 1.0f);
-						break;
-						case E_GEOM_POINTS_NEG_RAD_XY:
-							setFXYGeom(E_PRIMTEMP_VISMIN, 
-								roundf(max(xv2,getFXGeom(E_PRIMTEMP_BOUNDSMIN))),
-								roundf(max(yv2,getFYGeom(E_PRIMTEMP_BOUNDSMIN)))
-							);
-						break;
-						case E_GEOM_POINTS_POS_RAD_XY:						
-							setFXYGeom(E_PRIMTEMP_VISMAX, 
-								roundf(min(xv2,getFXGeom(E_PRIMTEMP_BOUNDSMAX))),
-								roundf(min(yv2,getFYGeom(E_PRIMTEMP_BOUNDSMAX)))
-							);
-						
-						break;
-						case E_GEOM_POINTS_NEG_RAD_Z:
-							setFZGeom(E_PRIMTEMP_VISMIN, roundf(max(yv2,getFZGeom(E_PRIMTEMP_BOUNDSMIN))) );
-						break;
-						case E_GEOM_POINTS_POS_RAD_Z:
-							setFZGeom(E_PRIMTEMP_VISMAX, roundf(min(yv2,getFZGeom(E_PRIMTEMP_BOUNDSMAX))) );
-						break;
-						case E_GEOM_POINTS_THICKNESS:
-							setFYGeom(E_PRIMTEMP_CORNERDIS, roundf(yv));
-						break;
-					}
-				}
-				
+				updateCurGeom(x, y);
 			}
 			else {
 				
@@ -5487,521 +5995,12 @@ void Singleton::mouseMove (int _x, int _y)
 
 		
 	}
-void Singleton::makeDirty ()
-                         {
-		//testHuman->gph->childrenDirty = true;
-	}
-void Singleton::setSelNode (GameOrgNode * newNode)
-                                              {
-		
-		selectedNode = newNode;
-		if (selectedNode != lastSelNode) {
-			makeDirty();
-		}
-		lastSelNode = newNode;
-		
-	}
-void Singleton::worldToScreenBase (FIVector4 * sc, FIVector4 * wc)
-                                                             {
-		
-		
-		
-		
-		
-		
-		
-		Vector4 v;
-		v.x = wc->getFX();
-		v.y = wc->getFY();
-		v.z = wc->getFZ();
-		v.w = 1.0;
-		
-
-		
-		
-		
-		
-		GLdouble winX;
-		GLdouble winY;
-		GLdouble winZ;
-		
-		
-		gluProject(
-			v.x,// GLdouble  	objX,
-			v.y,// GLdouble  	objY,
-			v.z, // GLdouble  	objZ,
-			viewMatrixD, // const GLdouble *  	model,
-			projMatrixD, // const GLdouble *  	proj,
-			viewport, // const GLint *  	view,
-			&winX,
-			&winY,
-			&winZ
-		);
-		
-		sc->setFXYZ(
-			(winX/bufferDim.getFX())/((float)DEF_SCALE_FACTOR),
-			(winY/bufferDim.getFY())/((float)DEF_SCALE_FACTOR),
-			1.0f - winZ/clipDist[1]
-		);
-		
-
-	}
-void Singleton::refreshContainers (bool onMousePos)
-                                                {
-		UIComponent* objCont = NULL;
-		
-		bool oldVis = false;
-		
-		if (contMenu != NULL) {
-			
-			cout << "refreshContainers\n";
-			
-			externalJSON.erase("objectData"); // mem leak?
-			
-			oldVis = contMenu->visible;
-			contMenu->visible = anyContainerOpen();
-
-			objCont = mainGUI->findNodeByString("objectContainer");
-			//objCont->jvNodeNoTemplate->Child("dataParams")->number_value = contIndex;
-			
-			mainGUI->refreshNode(objCont);
-			
-			if (onMousePos&&(oldVis == false)) {
-				
-				// contMenu->dragOffset.x = 0.0f;
-				// contMenu->dragOffset.y = 0.0f;
-				contMenuBar = contMenu->getChild(0)->getChild(0);
-				
-				contMenuBar->lastDrag.x = (guiX);
-				contMenuBar->lastDrag.y = min((float)(guiY), (float)( (guiWinH - contMenu->getChild(0)->resultDimInPixels.y) ));
-				contMenuBar->forceDragUpdate = true;
-			}
-			
-		}
-	}
-void Singleton::toggleCont (int contIndex, bool onMousePos)
-                                                        {
-		
-		if (
-			isContainer[gw->gameObjects[contIndex].objectType]
-		) {
-			
-			gw->gameObjects[contIndex].isOpen = !(gw->gameObjects[contIndex].isOpen);
-			refreshContainers(onMousePos);
-		}
-		else {
-			playBump(NULL);	
-		}
-		
-		
-	}
-float Singleton::getShortestAngle (float begInRad, float endInRad, float amount)
-                                                                             {
-		int begInDeg = begInRad*180/M_PI;
-		int endInDeg = endInRad*180/M_PI;
-		
-		float shortest_angle = ((((endInDeg - begInDeg) % 360) + 540) % 360) - 180;
-		
-		return shortest_angle * amount * M_PI / 180.0f;
-	}
-void Singleton::handleMovement ()
-                              {
-		
-		
-		
-		
-		int i;
-		
-		
-		
-		
-		
-		float fPixelsPerCell = pixelsPerCell;
-		
-		float xrotrad = (camRotation[0]);
-		float yrotrad = (camRotation[1]);
-		
-		angleToVec(&lookAtVec,xrotrad,yrotrad);
-		
-		
-		
-		
-		
-		float xmod = 0.0f;
-		float ymod = 0.0f;
-		float zmod = 0.0f;
-		
-		float tempZoom = 1.0;
-		
-		float tempMoveSpeed;
-		
-		//unsigned char curKey;
-		
-		bool isPressingMove = false;
-		
-		if (currentActor == NULL) {
-			if (keysPressed[keyMap[KEYMAP_UP]]) {
-				zmod += 1.0f;
-				isPressingMove = true;
-			}
-
-			if (keysPressed[keyMap[KEYMAP_DOWN]]) {
-				zmod -= 1.0f;
-				isPressingMove = true;
-			}
-
-			if (keysPressed[keyMap[KEYMAP_FORWARD]]) { // || mbDown
-
-				xmod += float(sin(xrotrad));
-				ymod += float(cos(xrotrad));
-				zmod -= float(cos(yrotrad));
-				
-				isPressingMove = true;
-			}
-
-			if (keysPressed[keyMap[KEYMAP_BACKWARD]]) {
-				
-				xmod -= float(sin(xrotrad));
-				ymod -= float(cos(xrotrad));
-				zmod += float(cos(yrotrad));
-				
-				isPressingMove = true;
-			}
-
-			if (keysPressed[keyMap[KEYMAP_RIGHT]]) {
-				
-				xmod += float(cos(xrotrad));
-				ymod -= float(sin(xrotrad));
-				
-				isPressingMove = true;
-			}
-
-			if (keysPressed[keyMap[KEYMAP_LEFT]]) {
-				
-				xmod -= float(cos(xrotrad));
-				ymod += float(sin(xrotrad));
-				
-				isPressingMove = true;
-			}
-
-			
-			
-			
-			
-			if (isPressingMove) {
-				
-				curMoveAccel = 32.0*pixelsPerCell*timeDelta;
-				curMoveSpeed += curMoveAccel;
-				
-				if (curMoveSpeed > 32.0*pixelsPerCell*timeDelta) {
-					curMoveSpeed = 32.0*pixelsPerCell*timeDelta;
-				}
-				
-				wsBufferInvalid = true;
-			}
-			else {
-				curMoveAccel = 0.0f;
-				curMoveSpeed += (0.0-curMoveSpeed)*timeDelta;
-			}
-			
-			
-			
-			
-			tempMoveSpeed = curMoveSpeed*0.5;
-			
-			if (bShift) {
-				tempMoveSpeed *= 0.125;
-			}
-			
-			modXYZ.setFXYZ(
-				xmod*tempMoveSpeed,
-				ymod*tempMoveSpeed,
-				zmod*tempMoveSpeed
-			);
-			
-			moveCamera(&modXYZ);
-			
-			
-			
-			
-			
-			isMoving = (curMoveSpeed >= 1.0);
-		}
-		else {
-			
-			
-			
-			
-			if (moveMode == E_MM_SMOOTH) {
-				
-				
-				tempVec1.setFXYZ(
-					sin(currentActor->ang),
-					cos(currentActor->ang),
-					0.0f
-				);
-				
-				tempVec2.setFXYZ(0.0f,0.0f,0.0);
-							
-				
-				
-				if (keysPressed[keyMap[KEYMAP_UP]]) {
-						//tempVec2.setFZ(2.0f);
-				}
-				
-				if (keysPressed[keyMap[KEYMAP_DOWN]]) {
-					// duck
-				}
-				
-				if (keysPressed[keyMap[KEYMAP_FORWARD]]) {
-					tempVec2.setFXY(tempVec1[0],tempVec1[1]);
-				}
-				
-				if (keysPressed[keyMap[KEYMAP_BACKWARD]]) {
-					tempVec2.setFXY(-tempVec1[0],-tempVec1[1]);
-				}
-				
-				
-				
-				if (keysPressed[keyMap[KEYMAP_RIGHT]]) {
-					if (firstPerson) {
-						tempVec2.setFXY(tempVec1[1],-tempVec1[0]);
-					}
-					else {
-						currentActor->ang += 2.0f*M_PI*timeDelta;
-					}
-					
-				}
-				
-				if (keysPressed[keyMap[KEYMAP_LEFT]]) {
-					if (firstPerson) {
-						tempVec2.setFXY(-tempVec1[1],tempVec1[0]);
-					}
-					else {
-						currentActor->ang -= 2.0f*M_PI*timeDelta;
-					}
-				}
-				
-				
-				if (firstPerson) {
-					
-					currentActor->ang = camRotation[0];
-					
-					//camRotation[0] = currentActor->ang;
-					// += getShortestAngle(camRotation[0],currentActor->ang,1.0f);
-				}
-				else {
-					if (
-						keysPressed[keyMap[KEYMAP_FORWARD]] ||
-						keysPressed[keyMap[KEYMAP_BACKWARD]]
-					) {
-						if (!rbDown) {
-							camRotation[0] += 
-								getShortestAngle(camRotation[0],currentActor->ang,timeDelta*1.0);
-						}
-					}
-				}
-				
-				
-				
-				tempVec2.multXYZ(fPixelsPerCell*timeDelta*10.0f);
-				
-				currentActor->posOffsetInPixels.addXYZRef(&tempVec2);
-				
-				
-				
-				
-				
-				
-				
-				
-			}
-			
-			
-			
-			
-			
-			
-			if (firstPerson) {
-				targetCameraPos.copyFrom(&(currentActor->centerPointInPixels));
-				targetCameraPos.addXYZ(0.0f,0.0f,currentActor->diameterInCells.getFZ()*pixelsPerCell*0.5f);
-			}
-			else {
-				targetCameraPos.copyFrom(&lookAtVec);
-				targetCameraPos.multXYZ( -(subjectDistance)*subjectZoom*tempZoom );
-				targetCameraPos.addXYZRef(&(currentActor->centerPointInPixels));
-			}
-			
-			
-			
-			
-			
-			
-			modXYZ.copyFrom(&targetCameraPos);
-			modXYZ.addXYZRef(cameraPos,-1.0f);
-			modXYZ.multXYZ(0.5f);
-			
-			moveCamera(&modXYZ);
-			
-		}
-		
-		
-	}
-bool Singleton::anyMenuVisible ()
-                              {
-		bool doProc = false;
-		
-		if ((mainGUI != NULL)) {
-			if (mainGUI->isReady) {
-				if (mainMenu != NULL) {
-					if (mainMenu->visible){
-						doProc = true;
-					}
-				}
-				if (ddMenu != NULL) {
-					if (ddMenu->visible){
-						doProc = true;
-					}
-				}
-				if (contMenu != NULL) {
-					if (contMenu->visible){
-						doProc = true;
-					}
-				}
-				// if (pickerMenu != NULL) {
-				// 	if (pickerMenu->visible){
-				// 		doProc = true;
-				// 	}
-				// }
-				if (fieldMenu != NULL) {
-					if (fieldMenu->visible) {
-						doProc = true;
-					}
-				}
-				
-			}
-		}
-		
-		return doProc;
-		
-	}
-void Singleton::performCamShake (BaseObj * ge)
-                                          {
-		float lastCamShake = cameraShake;
-		
-		cameraShake = max(
-			cameraShake,
-			1.0f-clampfZO(ge->centerPointInPixels.distance(cameraPos)/(200.0f*pixelsPerCell))
-		);
-		
-		if (cameraShake > lastCamShake) {
-			shakeTimer.stop();
-			shakeTimer.start();
-		}
-		
-		
-	}
-void Singleton::explodeBullet (BaseObj * ge)
-                                        {
-		
-		FIVector4 newPos;
-		
-		newPos.copyFrom(&(ge->centerPointInPixels));
-		newPos.addXYZ(0.0f,0.0f,-2.0f*pixelsPerCell);
-		
-		if (waterBulletOn) {
-			playSoundPosAndPitch(
-				"bubble0",
-				cameraPos,
-				&(ge->centerPointInPixels),
-				0.2f
-			);
-		}
-		else {
-			playSoundPosAndPitch(
-				"explosion0",
-				cameraPos,
-				&(ge->centerPointInPixels),
-				0.2f
-			);
-			
-			performCamShake(ge);
-		}
-		
-		sphereStack.push_back(SphereStruct());
-		sphereStack.back().position.copyFrom(&(ge->centerPointInPixels));
-		sphereStack.back().curRad = 0.0f;
-		sphereStack.back().maxRad = curBrushRad*(unitSizeInPixels);
-		sphereStack.back().radVel = 40.0f*pixelsPerCell;
-		sphereStack.back().radAcc = -5.0f*pixelsPerCell;
-		
-		
-		
-		stopFluidThread();
-		
-		if (waterBulletOn) {
-			gameFluid->modifyUnit(&newPos, E_BRUSH_ADD, E_PTT_WAT, 5);
-		}
-		else {
-			gameFluid->modifyUnit(&newPos, E_BRUSH_SUB, E_PTT_TER, 5);
-		}
-		
-		
-		gameFluid->applyMods();
-		gameFluid->writeFluidData();
-		startFluidThread();
-		
-		gw->removeVisObject(ge->uid);
-	}
-void Singleton::launchBullet ()
-                            {
-		
-		int entNum;
-		
-		int vx;
-		int vy;
-		
-		FIVector4 newCellPos;
-		FIVector4 newVel;
-		
-		if (currentActor == NULL) {
-			
-		}
-		else {
-			newCellPos.copyFrom(&(currentActor->positionInCells));
-			
-			vx = sin(currentActor->ang)*pixelsPerCell*2.0f;
-			vx = vx / pixelsPerCell;
-			
-			vy = cos(currentActor->ang)*pixelsPerCell*2.0f;
-			vy = vy / pixelsPerCell;
-			
-			newCellPos.addXYZ(vx, vy, 2);
-			
-			entNum = placeNewEnt(E_ENTTYPE_BULLET, &newCellPos);
-			
-			newVel.setFXYZ(
-				sin(currentActor->ang)*pixelsPerCell*20.0f,
-				cos(currentActor->ang)*pixelsPerCell*20.0f,
-				pixelsPerCell*30.0f
-			);
-			
-			gw->gameObjects[entNum].vel.copyFrom(&newVel);
-			
-			playSoundPosAndPitch(
-				"shoot0",
-				cameraPos,
-				&(currentActor->centerPointInPixels),
-				0.2f
-			);
-			
-		}
-	}
 void Singleton::mouseClick (int button, int state, int _x, int _y)
-        {
+                                                               {
 		
 		int tempInt;
 
+		FIVector4 newPos;
 
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
@@ -6034,6 +6033,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		}
 
 		float wheelDelta = 0.0f;
+		int wheelDeltaInt = 0;
 		bool mbClicked = false;
 		bool rbClicked = false;
 		bool lbClicked = false;
@@ -6054,10 +6054,6 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		
 		
 		
-		
-		
-		
-
 		switch (button)
 		{
 		case GLUT_LEFT_BUTTON:
@@ -6076,13 +6072,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 			break;
 
-		case 3: // wheel up
-			wheelDelta = 1.0f / 20.0f;
-			break;
-
-		case 4: // wheel down
-			wheelDelta = -1.0f / 20.0f;
-			break;
+		
 		}
 
 		abDown = lbDown || rbDown || mbDown;
@@ -6159,20 +6149,36 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 					
 					if (placingGeom) {
 						geomStep++;
+						curPrimMod = 0.0f;
 						
 						cout << "cur step: " << E_GEOM_POINTS_STR[geomStep] << "\n";
 						
-						if (geomStep == E_GEOM_POINTS_LENGTH) {
+						if (
+							(
+								(geomStep == E_GEOM_POINTS_LENGTH) && (!placingTemplate)
+							)
+							||
+							(
+								(geomStep == E_GEOM_POINTS_TEMP_LENGTH) && (placingTemplate)
+							)
+						) {
+							
 							geomStep--;
+							
+							if (placingTemplate) {
+								
+								
+								newPos.setFXYZRef(&(geomPoints[0]));
+								newPos.addXYZRef(&geomOrigOffset);
+								
+								pushPlaceTemplate(true, &newPos, curPrimTemplate);
+								resetGeom();
+							}
+							
+							
+							
 							placingGeom = false;
 							
-							
-							stopFluidThread();
-							gameFluid->fillCurrentGeom();
-							gameFluid->writeFluidData();
-							startFluidThread();
-							
-							//resetGeom();
 							
 							
 						}
@@ -6213,7 +6219,14 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 								if (upInd == 0) {
 									draggingToInd = 0;
 									draggingToType = E_DT_NOTHING;
-									performDrag();
+									performDrag(
+									gameNetwork->isConnected,
+										draggingFromInd,
+										draggingFromType,
+										draggingToInd,
+										draggingToType,
+										&(worldMarker)
+									);
 								}
 								else {
 									if (upInd >= E_OBJ_LENGTH) {
@@ -6227,7 +6240,14 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 												draggingToType = E_DT_NOTHING;
 											}
 											
-											performDrag();
+											performDrag(
+												gameNetwork->isConnected,
+												draggingFromInd,
+												draggingFromType,
+												draggingToInd,
+												draggingToType,
+												&(worldMarker)
+											);
 									}						
 								}
 								
@@ -6474,26 +6494,18 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 			if (noTravel) {
 				switch (mouseState) {
 					case E_MOUSE_STATE_BRUSH:
-											
-						
-						stopFluidThread();
 						
 						if (lbClicked) {
-							gameFluid->modifyUnit(&mouseUpPD, E_BRUSH_ADD, earthMod, curBrushRad);
+							pushModifyUnit(true, &mouseUpPD, 0);
 						}
 						else if (rbClicked) {
-							gameFluid->modifyUnit(&mouseUpPD, E_BRUSH_SUB, earthMod, curBrushRad);
+							pushModifyUnit(true, &mouseUpPD, 1);
 						}
 						else if (mbClicked) {
-							gameFluid->modifyUnit(&mouseUpPD, E_BRUSH_REF, earthMod, curBrushRad);
+							pushModifyUnit(true, &mouseUpPD, 2);
 						}
 						
-						gameFluid->applyMods();
-						gameFluid->writeFluidData();
 						
-						startFluidThread();
-						
-						forceGetPD = true;
 
 					break;
 				}
@@ -6501,20 +6513,724 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		}
 		
 		
+		//cout << "button " << button << "\n";
+		//cout << "state " << state << "\n\n";
+		
+		
+		switch (button) {
+			case 3: // wheel up
+			case 7: // rbDown
+			case 11: // shift down
+				wheelDelta = 1.0f / 20.0f;
+				wheelDeltaInt = 1;
+				break;
 
-
-		if ( (button == 3) || (button == 4) ) {
+			case 4: // wheel down
+			case 8: // rbDown
+			case 12: // shift down
+				wheelDelta = -1.0f / 20.0f;
+				wheelDeltaInt = -1;
+				break;
+		}
+		
+		if ((wheelDelta != 0.0f)&&(state==1)) {
+			frameMouseMove = true;
 			
-			if (currentActor != NULL) {
-				subjectDelta -= wheelDelta;
-				subjectZoom = pow(2.0, subjectDelta);
+			if (placingGeom) {
+				
+				if ((button == 7) || (button == 8)) {
+					curPrimTemplate -= wheelDeltaInt;
+					
+					if (curPrimTemplate <= 1) {
+						curPrimTemplate = 1;
+					}
+					if (curPrimTemplate >= (primTemplateStack.size()/E_PRIMTEMP_LENGTH)) {
+						curPrimTemplate = (primTemplateStack.size()/E_PRIMTEMP_LENGTH) - 1;
+					}
+					
+					cout << "curPrimTemplate " << curPrimTemplate << "\n";
+				}
+				else {
+					curPrimMod += wheelDeltaInt;
+				}
+				
+				updateCurGeom(x,y);
+				
 			}
+			else {
+				if (currentActor != NULL) {
+					subjectDelta -= wheelDelta;
+					subjectZoom = pow(2.0, subjectDelta);
+				}
+			}
+			
+			
 			 
 
 		}
 
 		
 
+	}
+void Singleton::makeDirty ()
+                         {
+		//testHuman->gph->childrenDirty = true;
+	}
+void Singleton::setSelNode (GameOrgNode * newNode)
+                                              {
+		
+		selectedNode = newNode;
+		if (selectedNode != lastSelNode) {
+			makeDirty();
+		}
+		lastSelNode = newNode;
+		
+	}
+void Singleton::worldToScreenBase (FIVector4 * sc, FIVector4 * wc)
+                                                             {
+		
+		
+		
+		
+		
+		
+		
+		Vector4 v;
+		v.x = wc->getFX();
+		v.y = wc->getFY();
+		v.z = wc->getFZ();
+		v.w = 1.0;
+		
+
+		
+		
+		
+		
+		GLdouble winX;
+		GLdouble winY;
+		GLdouble winZ;
+		
+		
+		gluProject(
+			v.x,// GLdouble  	objX,
+			v.y,// GLdouble  	objY,
+			v.z, // GLdouble  	objZ,
+			viewMatrixD, // const GLdouble *  	model,
+			projMatrixD, // const GLdouble *  	proj,
+			viewport, // const GLint *  	view,
+			&winX,
+			&winY,
+			&winZ
+		);
+		
+		sc->setFXYZ(
+			(winX/bufferDim.getFX())/((float)DEF_SCALE_FACTOR),
+			(winY/bufferDim.getFY())/((float)DEF_SCALE_FACTOR),
+			1.0f - winZ/clipDist[1]
+		);
+		
+
+	}
+void Singleton::refreshContainers (bool onMousePos)
+                                                {
+		UIComponent* objCont = NULL;
+		
+		bool oldVis = false;
+		
+		if (contMenu != NULL) {
+			
+			cout << "refreshContainers\n";
+			
+			externalJSON.erase("objectData"); // mem leak?
+			
+			oldVis = contMenu->visible;
+			contMenu->visible = anyContainerOpen();
+
+			objCont = mainGUI->findNodeByString("objectContainer");
+			//objCont->jvNodeNoTemplate->Child("dataParams")->number_value = contIndex;
+			
+			mainGUI->refreshNode(objCont);
+			
+			if (onMousePos&&(oldVis == false)) {
+				
+				// contMenu->dragOffset.x = 0.0f;
+				// contMenu->dragOffset.y = 0.0f;
+				contMenuBar = contMenu->getChild(0)->getChild(0);
+				
+				contMenuBar->lastDrag.x = (guiX);
+				contMenuBar->lastDrag.y = min((float)(guiY), (float)( (guiWinH - contMenu->getChild(0)->resultDimInPixels.y) ));
+				contMenuBar->forceDragUpdate = true;
+			}
+			
+		}
+	}
+void Singleton::toggleCont (int contIndex, bool onMousePos)
+                                                        {
+		
+		if (
+			isContainer[gw->gameObjects[contIndex].objectType]
+		) {
+			
+			gw->gameObjects[contIndex].isOpen = !(gw->gameObjects[contIndex].isOpen);
+			refreshContainers(onMousePos);
+		}
+		else {
+			playSoundEnt("bump0");	
+		}
+		
+		
+	}
+float Singleton::getShortestAngle (float begInRad, float endInRad, float amount)
+                                                                             {
+		int begInDeg = begInRad*180/M_PI;
+		int endInDeg = endInRad*180/M_PI;
+		
+		float shortest_angle = ((((endInDeg - begInDeg) % 360) + 540) % 360) - 180;
+		
+		return shortest_angle * amount * M_PI / 180.0f;
+	}
+void Singleton::flushKeyStack ()
+                             {
+		while (keyStack.size() > 0) {
+			processInput(
+				keyStack.front().key,
+				keyStack.front().keyDown,
+				keyStack.front().x,
+				keyStack.front().y
+			);
+			keyStack.pop_front();
+		}
+	}
+void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float camRotX, float camRotY)
+                                                                                                  {
+		
+		int i;
+		BaseObj* ca;
+		
+		if (isReq) {
+			//naFloatData[0] = ;
+			naUintData[0] = keyFlags;
+			naIntData[0] = actorId;
+			naFloatData[0] = camRotX;
+			naFloatData[1] = camRotY;
+			gameNetwork->addNetworkAction(E_NO_KEY_ACTION,naUintData,naIntData,naFloatData);
+			return;
+		}
+		
+		if (actorId < 0) {
+			
+		}
+		else {
+			
+			
+			ca = &(gw->gameObjects[actorId]);
+			
+			unzipBits(keyFlags,keyMapResultUnzipped,KEYMAP_LENGTH);
+			
+			// for (i = 0; i < KEYMAP_LENGTH; i++) {
+			// 	if (keyMapResultUnzipped[i]) {
+			// 		cout << i << "\n";
+			// 	}
+			// }
+			
+			tempVec2.setFXYZ(0.0f,0.0f,0.0);
+			
+			if (firstPerson) {
+				ca->ang = camRotX;
+			}
+			
+			tempVec1.setFXYZ(
+				sin(ca->ang),
+				cos(ca->ang),
+				0.0f
+			);
+			
+			
+			if (keyMapResultUnzipped[KEYMAP_RIGHT]) {
+				if (firstPerson) {
+					tempVec2.addXYZ(tempVec1[1],-tempVec1[0],0.0f);
+				}
+				else {
+					ca->ang += (2.0f*M_PI*timeDelta);
+				}
+			}
+			
+			if (keyMapResultUnzipped[KEYMAP_LEFT]) {
+				if (firstPerson) {
+					tempVec2.addXYZ(-tempVec1[1],tempVec1[0],0.0f);
+				}
+				else {
+					ca->ang += (-2.0f*M_PI*timeDelta);
+				}
+			}
+			
+			
+			
+			if (keyMapResultUnzipped[KEYMAP_FIRE_PRIMARY]) {
+				launchBullet(actorId, E_ENTTYPE_BULLET);
+			}
+			
+			if (keyMapResultUnzipped[KEYMAP_GRAB_THROW]) {
+				grabThrowObj(actorId);
+			}
+			
+			if (keyMapResultUnzipped[KEYMAP_UP]) {
+				makeJump(actorId,1);
+			}
+			
+			if (keyMapResultUnzipped[KEYMAP_DOWN]) {
+				makeJump(actorId,0);
+			}
+			
+			if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
+				
+				
+				tempVec2.addXYZ(tempVec1[0],tempVec1[1],0.0f);
+			}
+			
+			if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
+				tempVec2.addXYZ(-tempVec1[0],-tempVec1[1],0.0f);
+			}
+			
+			
+			
+			tempVec2.multXYZ(timeDelta*50.0f);
+			
+			ca->vel.addXYZRef(&tempVec2);
+			
+		}
+		
+		
+		
+		gw->updatePhys();
+		
+	}
+void Singleton::gatherKeyActions ()
+                                {
+		int i;
+		
+		bool res;
+		
+		for (i = 0; i < KEYMAP_LENGTH; i++) {
+			res = keysPressed[keyMap[i]];
+			
+			if (res) {
+				if (keyMapCoolDown[i] == 0) {
+					keyMapCoolDown[i] = keyMapMaxCoolDown[i];
+				}
+				else {
+					res = false;
+				}
+			}
+			
+			keyMapCoolDown[i] -= 1;
+			if (keyMapCoolDown[i] < 0) {
+				keyMapCoolDown[i] = 0;
+			}
+			
+			keyMapResultZipped[i] = res;
+		}
+		
+		applyKeyAction(
+			gameNetwork->isConnected,
+			getCurActorUID(),
+			zipBits(keyMapResultZipped, KEYMAP_LENGTH),
+			getCamRot(0),
+			getCamRot(1)
+		);
+	}
+void Singleton::handleMovement ()
+                              {
+		
+		
+		
+		
+		int i;
+		
+		
+		
+		
+		
+		
+		float xrotrad = getCamRot(0);
+		float yrotrad = getCamRot(1);
+		
+		angleToVec(&lookAtVec,xrotrad,yrotrad);
+		
+		
+		
+		
+		
+		float xmod = 0.0f;
+		float ymod = 0.0f;
+		float zmod = 0.0f;
+		
+		float tempZoom = 1.0;
+		
+		float tempMoveSpeed;
+		
+		//unsigned char curKey;
+		
+		bool isPressingMove = false;
+		
+		
+		
+		amountInvalidRotate = (abs(curCamRotation[0]-camRotation[0]) + abs(curCamRotation[1]-camRotation[1]));
+		depthInvalidRotate = (amountInvalidRotate > 0.001f);
+		
+		if (smoothMove||(
+			(!firstPerson) &&
+			(currentActor != NULL)	
+		)) {
+			curCamRotation[0] += (camRotation[0]-curCamRotation[0])*timeDelta*8.0f;
+			curCamRotation[1] += (camRotation[1]-curCamRotation[1])*timeDelta*8.0f;
+		}
+		else {
+			curCamRotation[0] = camRotation[0];
+			curCamRotation[1] = camRotation[1];
+		}
+		
+		
+		
+		if (currentActor == NULL) {
+			if (keysPressed[keyMap[KEYMAP_UP]]) {
+				zmod += 1.0f;
+				isPressingMove = true;
+			}
+
+			if (keysPressed[keyMap[KEYMAP_DOWN]]) {
+				zmod -= 1.0f;
+				isPressingMove = true;
+			}
+
+			if (keysPressed[keyMap[KEYMAP_FORWARD]]) { // || mbDown
+
+				xmod += float(sin(xrotrad));
+				ymod += float(cos(xrotrad));
+				zmod -= float(cos(yrotrad));
+				
+				isPressingMove = true;
+			}
+
+			if (keysPressed[keyMap[KEYMAP_BACKWARD]]) {
+				
+				xmod -= float(sin(xrotrad));
+				ymod -= float(cos(xrotrad));
+				zmod += float(cos(yrotrad));
+				
+				isPressingMove = true;
+			}
+
+			if (keysPressed[keyMap[KEYMAP_RIGHT]]) {
+				
+				xmod += float(cos(xrotrad));
+				ymod -= float(sin(xrotrad));
+				
+				isPressingMove = true;
+			}
+
+			if (keysPressed[keyMap[KEYMAP_LEFT]]) {
+				
+				xmod -= float(cos(xrotrad));
+				ymod += float(sin(xrotrad));
+				
+				isPressingMove = true;
+			}
+
+			
+			
+			
+			
+			if (isPressingMove) {
+				
+				curMoveAccel = 32.0*timeDelta;
+				curMoveSpeed += curMoveAccel;
+				
+				if (curMoveSpeed > 32.0*timeDelta) {
+					curMoveSpeed = 32.0*timeDelta;
+				}
+				
+				wsBufferInvalid = true;
+			}
+			else {
+				curMoveAccel = 0.0f;
+				curMoveSpeed += (0.0-curMoveSpeed)*timeDelta;
+			}
+			
+			
+			
+			
+			tempMoveSpeed = curMoveSpeed*0.5;
+			
+			if (bShift) {
+				tempMoveSpeed *= 0.125;
+			}
+			
+			modXYZ.setFXYZ(
+				xmod*tempMoveSpeed,
+				ymod*tempMoveSpeed,
+				zmod*tempMoveSpeed
+			);
+			
+			moveCamera(&modXYZ);
+			
+			
+			isMoving = (curMoveSpeed >= 1.0);
+		}
+		
+		
+		if (currentActor != NULL) {
+				
+			if (firstPerson) {
+				targetCameraPos.copyFrom(&(currentActor->centerPointInPixels));
+				targetCameraPos.addXYZ(0.0f,0.0f,currentActor->diameterInCells.getFZ()*0.5f);
+			}
+			else {
+				targetCameraPos.copyFrom(&lookAtVec);
+				targetCameraPos.multXYZ( -(subjectDistance)*subjectZoom*tempZoom );
+				targetCameraPos.addXYZRef(&(currentActor->centerPointInPixels));
+			}
+			
+			
+			if (!firstPerson) {
+				if (
+					keysPressed[keyMap[KEYMAP_FORWARD]] ||
+					keysPressed[keyMap[KEYMAP_BACKWARD]]
+				) {
+					if (!rbDown) {
+						camRotation[0] += 
+							getShortestAngle(camRotation[0],currentActor->ang,timeDelta*1.0);
+					}
+				}
+			}
+			
+			
+			
+			modXYZ.copyFrom(&targetCameraPos);
+			modXYZ.addXYZRef(cameraPos,-1.0f);
+			modXYZ.multXYZ(0.5f);
+			
+			moveCamera(&modXYZ);
+			
+		}
+		
+	}
+bool Singleton::anyMenuVisible ()
+                              {
+		bool doProc = false;
+		
+		if ((mainGUI != NULL)) {
+			if (mainGUI->isReady) {
+				if (mainMenu != NULL) {
+					if (mainMenu->visible){
+						doProc = true;
+					}
+				}
+				if (ddMenu != NULL) {
+					if (ddMenu->visible){
+						doProc = true;
+					}
+				}
+				if (contMenu != NULL) {
+					if (contMenu->visible){
+						doProc = true;
+					}
+				}
+				// if (pickerMenu != NULL) {
+				// 	if (pickerMenu->visible){
+				// 		doProc = true;
+				// 	}
+				// }
+				if (fieldMenu != NULL) {
+					if (fieldMenu->visible) {
+						doProc = true;
+					}
+				}
+				
+			}
+		}
+		
+		return doProc;
+		
+	}
+void Singleton::performCamShake (BaseObj * ge)
+                                          {
+		float lastCamShake = cameraShake;
+		
+		cameraShake = max(
+			cameraShake,
+			1.0f-clampfZO(ge->centerPointInPixels.distance(cameraPos)/(200.0f))
+		);
+		
+		if (cameraShake > lastCamShake) {
+			shakeTimer.stop();
+			shakeTimer.start();
+		}
+		
+		
+	}
+void Singleton::explodeBullet (BaseObj * ge)
+                                        {
+		
+		FIVector4 newPos;
+		
+		
+		
+		newPos.copyFrom(&(ge->centerPointInPixels));
+		newPos.addXYZ(0.0f,0.0f,-2.0f);
+		
+		if (waterBulletOn) {
+			playSoundEnt(
+				"bubble0",
+				ge,
+				0.2f
+			);
+		}
+		else {
+			playSoundEnt(
+				"explosion0",
+				ge,
+				0.2f,
+				4.0
+			);
+			
+			performCamShake(ge);
+		}
+		
+		sphereStack.push_back(SphereStruct());
+		sphereStack.back().position.copyFrom(&(ge->centerPointInPixels));
+		sphereStack.back().curRad = 1.0f;
+		sphereStack.back().maxRad = explodeRad;
+		sphereStack.back().radVel = 40.0f;
+		sphereStack.back().radAcc = -5.0f;
+		
+		
+		
+		pushExplodeBullet(true,&newPos);
+		
+		ge->isHidden = true;
+		
+		//gw->removeVisObject(ge->uid);
+	}
+void Singleton::grabThrowObj (int actorId)
+                                       {
+		
+		int res;
+		
+		if (actorId < 0) {
+			return;
+		}
+		
+		BaseObj* ca = &(gw->gameObjects[actorId]);
+		
+		if (ca->isGrabbingId >= 0) {
+			// throw current obj
+			
+			
+			
+			//##
+			
+			gw->gameObjects[ca->isGrabbingId].vel.setFXYZ(
+				sin(ca->ang)*20.0f,
+				cos(ca->ang)*20.0f,
+				30.0f	
+			);
+			
+			playSoundEnt(
+				"woosh0",
+				ca,
+				0.2f
+			);
+			
+			//##
+			
+			
+			gw->gameObjects[ca->isGrabbingId].isGrabbedById = -1;
+			ca->isGrabbingId = -1;
+			
+			
+		}
+		else {
+			// find obj to pickup
+			
+			res = gw->getClosestObj(actorId, &(ca->positionInCells));
+			
+			if (res < 0) {
+				
+			}
+			else {
+				
+				playSoundEnt(
+					"scrape0",
+					ca,
+					0.2f
+				);
+				
+				ca->isGrabbingId = res;
+				gw->gameObjects[res].isGrabbedById = actorId;
+			}
+			
+			
+		}
+		
+	}
+void Singleton::launchBullet (int actorId, int bulletType)
+                                                       {
+		
+		int entNum;
+		
+		int vx;
+		int vy;
+		
+		
+		FIVector4 newCellPos;
+		FIVector4 newVel;
+		
+		if (actorId < 0) {
+			return;
+		}
+		
+		
+		
+		BaseObj* ca = &(gw->gameObjects[actorId]);
+		
+		if (ca == NULL) {
+			
+		}
+		else {
+			newCellPos.copyFrom(&(ca->positionInCells));
+			
+			vx = sin(ca->ang)*3.0f;
+			vx = vx;
+			
+			vy = cos(ca->ang)*3.0f;
+			vy = vy;
+			
+			newCellPos.addXYZ(vx, vy, 2);
+			
+			entNum = placeNewEnt(false, bulletType, &newCellPos);
+			
+			
+			
+			newVel.setFXYZ(
+				sin(ca->ang)*20.0f,
+				cos(ca->ang)*20.0f,
+				30.0f
+			);
+			
+			gw->gameObjects[entNum].vel.copyFrom(&newVel);
+			
+			if (bulletType != E_ENTTYPE_TRACE) {
+				playSoundEnt(
+					"woosh0",
+					ca,
+					0.2f
+				);
+			}
+			
+			
+			
+		}
 	}
 void Singleton::resetActiveNode ()
                                {
@@ -6555,7 +7271,7 @@ bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
 		
 		//cout << "bestNodeDis " << bestNodeDis << "\n";
 		
-		if (bestNodeDis >= 3.0f*pixelsPerCell) {
+		if (bestNodeDis >= 3.0f) {
 			bestNode = NULL;
 			activeNode = NULL;
 			setSelNode(NULL);
@@ -6575,7 +7291,6 @@ void Singleton::findNearestOrgNode (GameOrgNode * curNode, FIVector4 * mousePosW
           {
 		
 		tempVec3.setFXYZRef(&(curNode->orgTrans[1]));
-		tempVec3.multXYZ(pixelsPerCell);
 		tempVec3.addXYZRef(&(testHuman->basePosition));
 		
 		//worldToScreenBase(&tempVec2, &tempVec3);
@@ -7401,8 +8116,8 @@ void Singleton::updateAmbientSounds ()
 		for (i = -maxRad; i <= maxRad; i++) {
 			for (j = -maxRad; j <= maxRad; j++) {
 				avgHeight += getHeightAtPixelPos(
-					cameraPos->getFX() + i*32.0f*pixelsPerCell,
-					cameraPos->getFY() + j*32.0f*pixelsPerCell
+					cameraPos->getFX() + i*32.0f,
+					cameraPos->getFY() + j*32.0f
 				);
 				tot += 1.0f;
 			}
@@ -7412,7 +8127,7 @@ void Singleton::updateAmbientSounds ()
 		
 		float seaHeight = getSLInPixels();
 		
-		float heightDif = clampf((terHeight-seaHeight)/(16.0*pixelsPerCell), 0.0, 1.0);
+		float heightDif = clampf((terHeight-seaHeight)/(16.0), 0.0, 1.0);
 		
 		float isUnderWater = getUnderWater();
 		
@@ -7429,14 +8144,30 @@ void Singleton::updateAmbientSounds ()
 		
 		
 	}
+void Singleton::updateWaterTick ()
+                               {
+		
+		// if (readyForWaterReset) {
+		// 	readyForWaterReset = false;
+		// 	waterTick = 0;
+		// }
+		
+		waterTick++;
+		
+		if (waterTick >= waterTickMax) {
+			waterTick = waterTickMax;
+		}
+		
+		
+		
+	}
 void Singleton::frameUpdate ()
                            {
 		
 		float temp;
 		float temp2;
 		
-		int currentTickMod = 0;
-		
+		//int currentTickMod = 0;
 		
 		if (firstRun)
 		{
@@ -7450,16 +8181,69 @@ void Singleton::frameUpdate ()
 				timeDelta = 0.0f;
 			}
 			else {
-				timeDelta = 1.0f/((float)120.0);//60.0f;//(curMoveTime-lastMoveTime)/1000000.0;
+				
+				timeDelta = TIME_DELTA;
+				
+				// if (smoothMove) {
+				// 	timeDelta = 1.0f/90.0f;
+				// }
+				// else {
+				// 	timeDelta = 1.0f/90.0f;
+				// }
+				
+				//60.0f;//(curMoveTime-lastMoveTime)/1000000.0;
 			}
 			
 			lastMoveTime = curMoveTime;
 			
+			
+			
+			
+			// #######
+			
+			
+			////////////////////////////////
+			
+			
+			// WAS DOING: PASS KEY STATE (BITFLAG) TO NETWORK FOR EACH TICK AND MOUSE STATE
+			
+			
+			////////////////////////////////
+			
+			if (threadNetRecv.isReady()) {
+				stopNT2();
+				
+				gameNetwork->applyNetworkActions();
+				
+				if (gameNetwork->isConnected) {
+					startNT2();
+				}
+				
+			}
+			
+			
+			if (threadNetSend.isReady()) {
+				stopNT();
+				
+				gameNetwork->flushNetworkActions();
+				
+				if (gameNetwork->isConnected) {
+					startNT();
+				}
+				
+			}
+			
+			
+			flushKeyStack();
+			gatherKeyActions();
 			handleMovement();
-			gw->updatePhys();
+			
+			// #######
+			
+			
+			
+			
 		}
-		
-		
 		
 		
 		
@@ -7476,7 +8260,7 @@ void Singleton::frameUpdate ()
 			cameraZoom = 1.0f;
 		}
 		
-		float hs = holderSizeInPixels;
+		float hs = cellsPerHolder;
 		
 		float scrollAmount = 0.0f;
 		
@@ -7508,87 +8292,205 @@ void Singleton::frameUpdate ()
 			if (mainGUI != NULL) {
 				if (mainGUI->isReady) {
 					currentTick++;
-					currentTickMod = currentTick%waterTickSpace;
 					
 					
-					if (timeMod) {
-						waterLerp = ((float)currentTickMod)/((float)waterTickSpace);
-					}
-					else {
-						waterLerp = 0.0f;
-					}
-					
-					// if (currentTick < 2) {
-					// 	gw->update();
-					// }
-					
-					if (currentTick < 4) {
-						cameraPos->setFXYZ(0.0,0.0,0.0);
-					}
 					
 					if (currentActor != NULL) {
-						
-						if (currentActor->inWater) {
-							temp = clampfZO(
-								currentActor->centerPointInPixelsTarg.distance(&(currentActor->centerPointInPixels))
-							)*0.25f;
-							temp2 = 0.0f;
-						}
-						else {
+						if ((currentTick%10) == 0) {
 							
-							if (currentActor->isFalling) {
+							// if (rbDown) {
+							// 	launchBullet(currentActor->uid, E_ENTTYPE_TRACE);
+							// }
+							
+							
+						}
+					}
+					
+					if (currentTick > 2) {
+						
+						
+						updateCamVals();
+						updateCamShake();
+						
+						
+						
+						
+						// if (currentTick < 2) {
+						// 	gw->update();
+						// }
+						
+						if (currentTick < 4) {
+							cameraPos->setFXYZ(0.0,0.0,0.0);
+							camLerpPos.copyFrom(cameraPos);
+						}
+						
+						if (currentTick == 4) {
+							setCameraToElevation();
+						}
+						
+						if (currentActor != NULL) {
+							
+							if (currentActor->inWater) {
+								temp = clampfZO(
+									currentActor->centerPointInPixelsTarg.distance(&(currentActor->centerPointInPixels))
+								)*0.25f;
 								temp2 = 0.0f;
 							}
 							else {
-								temp2 = clampfZO(
-									currentActor->centerPointInPixelsTarg.distance(&(currentActor->centerPointInPixels))
-								);
+								
+								if (currentActor->isFalling) {
+									temp2 = 0.0f;
+								}
+								else {
+									temp2 = clampfZO(
+										currentActor->centerPointInPixelsTarg.distance(&(currentActor->centerPointInPixels))
+									);
+								}
+								
+								temp = 0.0f;
 							}
 							
-							temp = 0.0f;
+							
+							
+							updateSoundPosAndPitch(
+								"swimming0",
+								cameraPos,
+								&(currentActor->centerPointInPixels),
+								temp,
+								0.01
+							);
+							updateSoundPosAndPitch(
+								"walkinggravel0",
+								cameraPos,
+								&(currentActor->centerPointInPixels),
+								temp2,
+								0.1
+							);
 						}
 						
 						
 						
-						updateSoundPosAndPitch(
-							"swimming0",
-							cameraPos,
-							&(currentActor->centerPointInPixels),
-							temp,
-							0.01
-						);
-						updateSoundPosAndPitch(
-							"walkinggravel0",
-							cameraPos,
-							&(currentActor->centerPointInPixels),
-							temp2,
-							0.1
-						);
+						
+						
+						if (dumpingFluid) {
+							
+							if (threadLoader.isReady()) {
+								stopTL();
+								endFluidDump();
+							}
+						}
+						else {
+							/////////
+							
+							if (threadTex.threadRunning) {
+								
+							}
+							else {
+								
+								updateWaterTick();
+								waterLerp = ((float)waterTick)/((float)waterTickMax);
+								
+								if (timeMod) {
+									
+									if (waterTick == waterTickMax) {
+										if (threadFluid.isReady()) {
+											stopFT();
+											
+											
+											flushActionStack();
+											
+											if (modifiedUnit) {
+												gameFluid->applyMods();
+											}
+											
+											if (modifiedGeom) {	
+												fillAllGeom();
+												updateTBOData(false,false);
+											}
+											
+											//DirtyRegion
+											//if (modifiedUnit||modifiedGeom) {
+												
+												modifiedUnit = false;
+												modifiedGeom = false;
+												
+												if (gameFluid->hasRead&&(!firstVPUpdate)) {
+													gameFluid->writeFluidData(gameFluid->vspMin,gameFluid->vspMax,true);
+												} 
+												
+												
+												
+												
+												
+												//doTraceVecND("dirtyMin ",&(gameFluid->dirtyMin));
+												//doTraceVecND("dirtyMax ",&(gameFluid->dirtyMax));
+												
+											//}
+											
+											startTT();
+										}
+									}
+									
+									
+								}
+							}
+							
+							
+							if (threadFluid.threadRunning) {
+								
+							}
+							else {
+								
+								
+								if (threadTex.isReady()) {
+									stopTT();
+									
+									
+									volMinReadyInPixels.copyFrom(&volMinInPixels);
+									volMaxReadyInPixels.copyFrom(&volMaxInPixels);
+									
+									if (readyForTBOUpdate) {
+										readyForTBOUpdate = false;
+										fetchGeom();
+										tboWrapper.update(tboData);
+									}
+									
+									waterTick = 0;
+									waterLerp = ((float)waterTick)/((float)waterTickMax);
+									copyPrimTexture();
+									curDirtyMax.copyFrom(&(gameFluid->dirtyMax));
+									curDirtyMin.copyFrom(&(gameFluid->dirtyMin));
+									gameFluid->resetDirtyRegion();
+									
+									shiftRegion();
+									
+									if (dumpingFluid) {
+										
+									}
+									else {
+										//readyForWaterReset = true;
+										startFT();
+									}
+								}
+								
+								
+								
+							}
+							
+							////////////////
+						}
+						
+						
+						
+						
+						
+						
 					}
 					
 					
 					
 					
-					if (timeMod) {
-						if (currentTickMod == 0) {
-							
-							if (FLUID_ON) {
-								stopFluidThread();
-								
-								updateCamVP();
-								
-								startFluidThread();
-							}
-							
-							
-							
-							
-						}
-					}
-					
-					
-					
-					if ((currentTick > 2)&&allInit) {
+					if ((currentTick > 4)&&allInit) {
 						//gw->drawPrim();
 						gw->update();
 					}
@@ -7598,8 +8500,12 @@ void Singleton::frameUpdate ()
 				}
 			}
 			
-			
 		}
+		
+		
+		
+		
+		
 		
 		
 		
@@ -7609,6 +8515,15 @@ void Singleton::frameUpdate ()
 		
 		
 		frameCount++;
+	}
+void Singleton::updateCamShake ()
+                              {
+		resultShake = -cameraShake*sin(shakeTimer.getElapsedTimeInMilliSec()/20.0f);
+		
+		resultCameraPos.copyFrom(cameraPos);
+		resultCameraPos.addXYZ(0.0f,0.0f,resultShake*0.5f);
+		
+		cameraShake += (0.0f - cameraShake)*timeDelta*8.0f;
 	}
 void Singleton::display ()
         {
@@ -7627,38 +8542,36 @@ void Singleton::display ()
 
 		float elTime = curTime - lastTime;
 		
-		#ifdef USE_POCO
-			if (myWS == NULL)
-			{
+		// #ifdef USE_POCO
+		// 	if (myWS == NULL)
+		// 	{
 
-			}
-			else
-			{
+		// 	}
+		// 	else
+		// 	{
 
-				if (myWS->dataReady)
-				{
+		// 		if (myWS->dataReady)
+		// 		{
 
-					if (myWS->isJSON)
-					{
-						// if ( processJSON( &(myWS->recBuffer), &lastJSONBuffer, &rootObjJS ) )
-						// {
-						// 	saveAllData();
+		// 			if (myWS->isJSON)
+		// 			{
+		// 				// if ( processJSON( &(myWS->recBuffer), &lastJSONBuffer, &rootObjJS ) )
+		// 				// {
+		// 				// 	saveAllData();
 
-						// }
-					}
-					else
-					{
-						//processB64(  &(myWS->recBuffer), &lastImageBuffer );
+		// 				// }
+		// 			}
+		// 			else
+		// 			{
+		// 				//processB64(  &(myWS->recBuffer), &lastImageBuffer );
 
-					}
+		// 			}
 
-					
-
-					myWS->dataReady = false;
-					myWS->isWorking = false;
-				}
-			}
-		#endif
+		// 			myWS->dataReady = false;
+		// 			myWS->isWorking = false;
+		// 		}
+		// 	}
+		// #endif
 
 		
 		int i;
@@ -7681,6 +8594,7 @@ void Singleton::display ()
 			) || fpsTest
 		) {
 
+			
 			frameMouseMove = false;
 
 			if (firstRun)
@@ -7695,7 +8609,7 @@ void Singleton::display ()
 				// }
 			}
 
-
+			
 
 
 			lastTime = curTime;
@@ -7743,9 +8657,16 @@ void Singleton::display ()
 				}
 				else
 				{
+					
 					frameUpdate();
+					
+					lastDepthInvalidMove = depthInvalidMove;
+					depthInvalidMove = false;
+					depthInvalidRotate = false;
 				}
 			}
+			
+			
 
 
 			if (fpsTest) {
@@ -7924,8 +8845,8 @@ void Singleton::setMatrices (int w, int h)
 			//*180.0f/M_PI / 180 * M_PI
 			
 			glLoadIdentity();
-			glRotatef(camRotation[1]*180.0f/M_PI,1.0,0.0,0.0);
-			glRotatef(camRotation[0]*180.0f/M_PI,0.0,0.0,1.0);
+			glRotatef(getCamRot(1)*180.0f/M_PI,1.0,0.0,0.0);
+			glRotatef(getCamRot(0)*180.0f/M_PI,0.0,0.0,1.0);
 			glTranslated(
 				-cameraGetPos()->getFX(),
 				-cameraGetPos()->getFY(),

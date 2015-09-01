@@ -1,7 +1,7 @@
 #version 120
 #extension GL_EXT_frag_depth : enable
 
-uniform float holderSizeInPixels;
+uniform float cellsPerHolder;
 uniform float heightOfNearPlane;
 uniform float clipDist;
 uniform vec2 bufferDim;

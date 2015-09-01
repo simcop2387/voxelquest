@@ -305,6 +305,13 @@ public:
 					string vertStr = allTextStringSplit[0] + allTextStringSplit[1];
 					string fragStr = allTextStringSplit[0] + allTextStringSplit[2];
 
+					if (DO_SHADER_DUMP) {
+						if (_shaderFile.compare("../src/glsl/PrimShader.c") == 0) {
+							globString = fragStr;
+						}
+					}
+					
+
 					const GLchar* vertCS = new char[vertStr.length() + 1];
 					const GLchar* fragCS = new char[fragStr.length() + 1];
 

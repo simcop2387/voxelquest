@@ -99,6 +99,9 @@ struct VToken
 };
 
 
+
+string globString;
+
 string dragStrings[] = {
 	"E_DT_NOTHING",
 	"E_DT_WORLD_OBJECT",
@@ -106,6 +109,23 @@ string dragStrings[] = {
 	"E_DT_INV_OBJECT_PARENT",
 	"E_DT_LENGTH"
 };
+
+
+const static int NA_SIZE_IN_BYTES = 32;
+
+struct NetworkAction {
+	char data[NA_SIZE_IN_BYTES];
+};
+
+enum E_NET_OPS {
+	E_NO_TERMINAL,
+	E_NO_KEY_ACTION,
+	E_NO_ADD_ENT,
+	E_NO_REM_ENT,
+	E_NO_DRAG_ENT,
+	E_NO_LENGTH	
+};
+
 
 enum E_ITEM_CLASS {
 	E_IC_NONE,
@@ -160,12 +180,6 @@ enum E_FONT_WRAPPERS {
 	EFW_LENGTH
 };
 
-enum E_MOVE_MODE {
-	E_MM_UNIT,
-	E_MM_SMOOTH,
-	E_MM_LENGTH
-};
-
 enum E_MOVE_TYPES {
 	E_MT_NONE,
 	E_MT_RELATIVE,
@@ -202,7 +216,10 @@ enum E_KEYMAP {
 	KEYMAP_FORWARD,
 	KEYMAP_BACKWARD,
 	KEYMAP_LEFT,
-	KEYMAP_RIGHT
+	KEYMAP_RIGHT,
+	KEYMAP_FIRE_PRIMARY,
+	KEYMAP_GRAB_THROW,
+	KEYMAP_LENGTH
 };
 
 enum ENT_TYPE {
@@ -210,6 +227,7 @@ enum ENT_TYPE {
 	E_ENTTYPE_MONSTER,
 	E_ENTTYPE_NPC,
 	E_ENTTYPE_BULLET,
+	E_ENTTYPE_TRACE,
 	E_ENTTYPE_LENGTH
 };
 
@@ -248,6 +266,27 @@ enum E_STATES {
 // 	E_UL_TOT_MEM,
 // 	E_UL_LENGTH
 // };
+
+
+// enum E_ENTPOOL {
+// 	E_ENTPOOL_BULLET,
+// 	E_ENTPOOL_TRACE,
+// 	E_ENTPOOL_LENGTH
+// };
+
+struct EntPool {
+	int curIndex;
+	int maxCount;
+	int entType;
+	std::vector<int> entIds;
+};
+
+struct KeyStackEvent {
+	unsigned char key;
+	bool keyDown;
+	int x;
+	int y;
+};
 
 enum E_TER_TYPE {
 	E_TER_GROUNDLEVEL,
@@ -764,9 +803,8 @@ string primTempStrings[] = {
 
 enum E_GEOM_POINTS {
 	E_GEOM_POINTS_ORIGIN,
-	E_GEOM_POINTS_RAD_XY,
-	E_GEOM_POINTS_RAD_Z,
-	E_GEOM_POINTS_OFFSET_Z,
+	E_GEOM_POINTS_RAD_XYZ,
+	E_GEOM_POINTS_OFFSET,
 	E_GEOM_POINTS_CORNER,
 	E_GEOM_POINTS_POWER_VALS,
 	E_GEOM_POINTS_NEG_RAD_XY,
@@ -777,11 +815,16 @@ enum E_GEOM_POINTS {
 	E_GEOM_POINTS_LENGTH
 };
 
+enum E_GEOM_POINTS_TEMP {
+	E_GEOM_POINTS_TEMP_ORIGIN,
+	//E_GEOM_POINTS_TEMP_OFFSET,
+	E_GEOM_POINTS_TEMP_LENGTH
+};
+
 string E_GEOM_POINTS_STR[] = {
 	"E_GEOM_POINTS_ORIGIN",
-	"E_GEOM_POINTS_RAD_XY",
-	"E_GEOM_POINTS_RAD_Z",
-	"E_GEOM_POINTS_OFFSET_Z",
+	"E_GEOM_POINTS_RAD_XYZ",
+	"E_GEOM_POINTS_OFFSET",
 	"E_GEOM_POINTS_CORNER",
 	"E_GEOM_POINTS_POWER_VALS",
 	"E_GEOM_POINTS_NEG_RAD_XY",
@@ -797,6 +840,14 @@ enum E_PRIM_LAYERS {
 	//E_PL_PRIMIDS,
 	E_PL_LENGTH
 };
+
+enum E_PUSH_MOD {
+	E_PM_EXPLODE_BULLET,
+	E_PM_MODIFY_UNIT,
+	E_PM_PLACE_TEMPLATE,
+	E_PM_LENGTH
+};
+
 
 
 enum E_ENT_TYPES {

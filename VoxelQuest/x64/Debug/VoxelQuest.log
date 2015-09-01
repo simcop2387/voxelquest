@@ -1,4 +1,4 @@
-﻿Build started 7/17/2015 2:46:09 AM.
+﻿Build started 8/30/2015 9:31:06 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -27,6 +27,7 @@
          .\src\cpp\f00320_fontwrapper.hpp
          .\src\cpp\f00325_uicomponent.hpp
          .\src\cpp\f00330_gamegui.hpp
+         .\src\cpp\f00332_gamenetwork.hpp
          .\src\cpp\f00335_gameai.hpp
          .\src\cpp\f00337_gamefluid.hpp
          .\src\cpp\f00338_gameorgnode.hpp
@@ -37,11 +38,11 @@
          .\src\cpp\f00352_gameblock.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         32 File(s) copied
+         33 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         17
+         18
          copying headers to one file
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
@@ -51,6 +52,7 @@
          .\f00320_fontwrapper.e
          .\f00325_uicomponent.e
          .\f00330_gamegui.e
+         .\f00332_gamenetwork.e
          .\f00335_gameai.e
          .\f00337_gamefluid.e
          .\f00338_gameorgnode.e
@@ -63,7 +65,7 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         17
+         18
          .
          copying files to compiled
          .\temp\f00293_gamesound.e
@@ -74,6 +76,7 @@
          .\temp\f00320_fontwrapper.e
          .\temp\f00325_uicomponent.e
          .\temp\f00330_gamegui.e
+         .\temp\f00332_gamenetwork.e
          .\temp\f00335_gameai.e
          .\temp\f00337_gamefluid.e
          .\temp\f00338_gameorgnode.e
@@ -83,7 +86,7 @@
          .\temp\f00351_gamepageholder.e
          .\temp\f00352_gameblock.e
          .\temp\f00380_gameworld.e
-         17 File(s) copied
+         18 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_mat.h
@@ -107,6 +110,7 @@
          .\temp\f00320_fontwrapper.h
          .\temp\f00325_uicomponent.h
          .\temp\f00330_gamegui.h
+         .\temp\f00332_gamenetwork.h
          .\temp\f00335_gameai.h
          .\temp\f00337_gamefluid.h
          .\temp\f00338_gameorgnode.h
@@ -119,7 +123,7 @@
          .\temp\f00500_mainfuncs.h
                  1 file(s) copied.
        ClCompile:
-         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\CL.exe /c /I"C:\SFML-2.1\include" /Zi /nologo /W1 /WX- /sdl /Od /D SFML_STATIC /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc110.pdb" /Gd /TP /errorReport:prompt ..\compiled\main.cpp
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\CL.exe /c /I"C:\SFML-2.1\include" /Zi /nologo /W1 /WX- /sdl /Od /D _CRT_SECURE_NO_WARNINGS /D SFML_STATIC /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc110.pdb" /Gd /TP /errorReport:prompt ..\compiled\main.cpp
          main.cpp
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.exe" /INCREMENTAL /NOLOGO /LIBPATH:C:\wamp\www\voxelquest\glew\lib /LIBPATH:"C:\Program Files (x86)\Windows Kits\8.0\Lib\win8\um\x64" /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\lib\amd64" /LIBPATH:"C:\SFML-2.1\lib" "sfml-system-s-d.lib" "sfml-audio-s-d.lib" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.lib" /MACHINE:X64 x64\Debug\main.obj
@@ -145,4 +149,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:04.62
+Time Elapsed 00:00:04.84

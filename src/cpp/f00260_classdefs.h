@@ -1,7 +1,7 @@
 
-class WebSocketRequestHandler;
-class WebSocketServer;
-class RequestHandlerFactory;
+// class WebSocketRequestHandler;
+// class WebSocketServer;
+// class RequestHandlerFactory;
 class Singleton;
 class Shader;
 class GameSound;
@@ -10,6 +10,7 @@ class FontWrapper;
 class UIComponent;
 class GameGUI;
 class GameAI;
+class GameNetwork;
 class GameFluid;
 class GameOrgNode;
 class GameOrg;
