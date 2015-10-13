@@ -9,28 +9,12 @@
 //            | 2 5 8 |    |  2  6 10 14 |
 //                         |  3  7 11 15 |
 //
-//  AUTHOR: Song Ho Ahn (song.ahn@gmail.com)
+//  AUTHOR: Song Ho Ahn (song.ahn at gmail.com)
 // CREATED: 2005-06-24
 // UPDATED: 2013-09-30
 //
 // Copyright (C) 2005 Song Ho Ahn
 ///////////////////////////////////////////////////////////////////////////////
-
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Vectors.h
-// =========
-// 2D/3D/4D vectors
-//
-//  AUTHOR: Song Ho Ahn (song.ahn@gmail.com)
-// CREATED: 2007-02-14
-// UPDATED: 2013-01-20
-//
-// Copyright (C) 2007-2013 Song Ho Ahn
-///////////////////////////////////////////////////////////////////////////////
-
-
 
 
 
@@ -267,10 +251,7 @@ inline float Vector2::distance(const Vector2& vec) const {
 }
 
 inline Vector2& Vector2::normalize() {
-    //@@const float EPSILON = 0.000001f;
     float xxyy = x*x + y*y;
-    //@@if(xxyy < EPSILON)
-    //@@    return *this;
 
     //float invLength = invSqrt(xxyy);
     float invLength = 1.0f / sqrtf(xxyy);
@@ -386,11 +367,7 @@ inline float Vector3::distance(const Vector3& vec) const {
 }
 
 inline Vector3& Vector3::normalize() {
-    //@@const float EPSILON = 0.000001f;
     float xxyyzz = x*x + y*y + z*z;
-    //@@if(xxyyzz < EPSILON)
-    //@@    return *this; // do nothing if it is ~zero vector
-
     //float invLength = invSqrt(xxyyzz);
     float invLength = 1.0f / sqrtf(xxyyzz);
     x *= invLength;
@@ -512,11 +489,7 @@ inline float Vector4::distance(const Vector4& vec) const {
 
 inline Vector4& Vector4::normalize() {
     //NOTE: leave w-component untouched
-    //@@const float EPSILON = 0.000001f;
     float xxyyzz = x*x + y*y + z*z;
-    //@@if(xxyyzz < EPSILON)
-    //@@    return *this; // do nothing if it is zero vector
-
     //float invLength = invSqrt(xxyyzz);
     float invLength = 1.0f / sqrtf(xxyyzz);
     x *= invLength;
@@ -1447,7 +1420,7 @@ inline std::ostream& operator<<(std::ostream& os, const Matrix4& m)
 //            | 2 5 8 |    |  2  6 10 14 |
 //                         |  3  7 11 15 |
 //
-//  AUTHOR: Song Ho Ahn (song.ahn@gmail.com)
+//  AUTHOR: Song Ho Ahn (song.ahn at gmail.com)
 // CREATED: 2005-06-24
 // UPDATED: 2014-09-21
 //
@@ -1603,12 +1576,7 @@ Matrix4& Matrix4::invert()
     else
     {
         this->invertGeneral();
-        /*@@ invertProjective() is not optimized (slower than generic one)
-        if(fabs(m[0]*m[5] - m[1]*m[4]) > EPSILON)
-            this->invertProjective();   // inverse using matrix partition
-        else
-            this->invertGeneral();      // generalized inverse
-        */
+        
     }
 
     return *this;

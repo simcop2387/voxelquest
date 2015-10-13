@@ -35,12 +35,16 @@ uniform sampler2D Texture14;
 
 varying vec2 TexCoord0;
 
-uniform float clipDist;
+
+uniform mat4 modelviewInverse;
+uniform float FOV;
+uniform vec2 clipDist;
 uniform float timeOfDay;
 uniform float isUnderWater;
 uniform float curTime;
 uniform vec3 cameraPos;
 uniform vec2 bufferDim;
+uniform vec3 lookAtVec;
 
 
 ^INCLUDE:MATERIALS^
@@ -118,9 +122,42 @@ vec3 unpackColor(vec2 num, float lightVal)
     return texture3D( Texture7, vec3(lightVal, num.r, num.g + 0.5/255.0) ).rgb;
 }
 
-// WAS DOING 
-
 const int rad = 4;
+
+
+
+
+
+
+
+
+vec3 getRay() {
+    float aspect = bufferDim.y/bufferDim.x;
+    float NEAR = clipDist.x;
+    float FAR = clipDist.y;
+    float dx = tan(FOV*0.5f)*(TexCoord0.x*2.0-1.0f)/aspect; //gl_FragCoord.x/(bufferDim.x*0.5)
+    float dy = tan(FOV*0.5f)*((1.0f-TexCoord0.y)*2.0-1.0f); //gl_FragCoord.y/(bufferDim.y*0.5)
+    
+    
+    dx = -dx;
+    
+    vec4 p1 = vec4(dx*NEAR,dy*NEAR,NEAR,1.0);
+    vec4 p2 = vec4(dx*FAR,dy*FAR,FAR,1.0);
+    
+    p1 = modelviewInverse*p1;
+    p2 = modelviewInverse*p2;
+
+    vec3 ro = p1.xyz;
+    
+    vec3 rd = normalize(p1.xyz-p2.xyz);
+    
+    return rd;
+}
+
+
+
+
+
 
 void main() {
 
@@ -181,17 +218,17 @@ void main() {
     vec3 worldPositionWater = tex2.xyz;
     
     
-    
+    float camDis = clamp(distance(worldPositionWater,cameraPos)/16384.0,0.0,1.0);
 
     float distances[maxEntries];
 
-    float difScale = 4.0;
+    float difScale = mix(4.0,128.0,camDis);
 
     distances[0] = 0.0*difScale;
     distances[1] = 1.0*difScale;
     distances[2] = 2.0*difScale;
-    distances[3] = 3.0*difScale;
-    distances[4] = 4.0*difScale;
+    distances[3] = 4.0*difScale;
+    distances[4] = 8.0*difScale;
 
     vec3 colVecs[maxEntries];
 
@@ -225,8 +262,10 @@ void main() {
     
     bool wasTrans = true;
     
-        
-        
+    vec3 myRay = vec3(0.0);
+    vec2 moveVec = vec2(0.0);
+    vec2 moveVec2 = vec2(0.0);
+    float newTime = 0.0;
         
 
     //vec4 tex5Ref2 = vec4(0.0);
@@ -237,7 +276,7 @@ void main() {
 
     float baseHeightRef = 0.0;
 
-    
+    float myDis = (clamp(distance(worldPosition.xyz,cameraPos.xyz)*4.0/(clipDist.y),0.0,1.0));
 
     float curLerp = 0.0;
     float lval;
@@ -247,7 +286,7 @@ void main() {
 
     float totRef;
 
-    float facingEye = clamp(dot(oneVec.xyz,-waterNorm.xyz),0.0,1.0);
+    float facingEye = 0.0;//clamp(dot(oneVec.xyz,-waterNorm.xyz),0.0,1.0);
 
     vec3 finalCol = vec3(0.0);
 
@@ -281,7 +320,7 @@ void main() {
 
 
 
-    heightDifNoRef = clamp((baseHeightWater - baseHeight)*clipDist, 0.0, maxDis);
+    heightDifNoRef = clamp((baseHeightWater - baseHeight)*clipDist.y, 0.0, maxDis);
     newTC.xy = TexCoord0.xy + 0.02*(waterNorm.xy-waterNorm.z)*heightDifNoRef/maxDis;
     
     tex0Ref = texture2D(Texture0, newTC.xy);
@@ -305,7 +344,7 @@ void main() {
     //     baseHeightRef = baseHeightWater-1.0;
     // }
 
-    heightDif = clamp(abs(baseHeightWater - baseHeightRef)*clipDist*0.5, 0.0, maxDis);
+    heightDif = clamp(abs(baseHeightWater - baseHeightRef)*clipDist.y*0.5, 0.0, maxDis);
 
     lval = dot(oneVec.rgb, tex5Ref.rgb)/3.0;
 
@@ -315,8 +354,8 @@ void main() {
     //refMod *= 0.5;
 
     // tex7Ref = texture2D(Texture7, newTC.xy);
-    // tex7Ref2 = texture2D(Texture7, newTC.xy + refMod.xy*0.1 + tex7Ref.xy - baseHeight*clipDist*0.1/bufferDim.xy );
-    // tex7Ref3 = texture2D(Texture7, newTC.xy + refMod.xy*0.1 + 1.0 - (tex7Ref.xy - baseHeight*clipDist*0.1/bufferDim.xy) );
+    // tex7Ref2 = texture2D(Texture7, newTC.xy + refMod.xy*0.1 + tex7Ref.xy - baseHeight*clipDist.y*0.1/bufferDim.xy );
+    // tex7Ref3 = texture2D(Texture7, newTC.xy + refMod.xy*0.1 + 1.0 - (tex7Ref.xy - baseHeight*clipDist.y*0.1/bufferDim.xy) );
 
 
     // bigger == deeper under water
@@ -328,132 +367,144 @@ void main() {
     //     heightDif = max(heightDif,distances[1]+1.0);
     // }
 
+    float curTOD = 1.0; //timeOfDay
+
 
     if (matValsWater.a == TEX_WATER) {
-
-        for (i = 0; i < maxEntriesM1; i++) {
-
-            if (
-                (heightDif >= distances[i]) &&
-                (heightDif <= distances[i+1]) 
-            ) {
-
-                
-
-                lerpVal = clamp( (heightDif - distances[i])/(distances[i+1]-distances[i]), 0.0, 1.0);
-                lerpValNorm = heightDif/maxDis;
-                
-                lastCol = mix(colVecs[i], colVecs[i+1], lerpVal);
-                finalCol = lastCol*lval;
-                
-                
-
-                
-
-            }
+        
+        if ( false ) {//isUnderWater == 1.0) {
+            // this gets overwritten
+            //finalCol = mix(tex4.rgb,tex5Ref.rgb,myDis);
         }
-
-        // if (tex3.a == 0.0 ) {
-
-        //     resTC = TexCoord0.xy;
-
-        //     if ( abs(waterNorm.z) > 0.5) {
-                
-        //     }
-        //     else {
-                
-        //         // rays
-
-        //         // finalCol += sin(
-        //         //     (worldPositionWater.x + worldPositionWater.y + worldPositionWater.z/2.0)/(100.0) + curTime/500.0
-        //         // )*vec3(0.2,0.2,0.4);
-        //         // * pow(1.0-clamp((curSeaLev-worldPositionWater.z)/2000.0,0.0,1.0),5.0 )*mix(0.5,1.0,timeOfDay);
-
-        //     }
-
-        //     // caustics
-
-
-        //     finalCol += pow(
-        //     (
-        //         //pow(abs(sin(tex7Ref.a*10.0)),4.0) +
-        //         pow( ( (tex7Ref2.a ) ), 2.0 ) +
-        //         pow( ( (tex7Ref3.a ) ), 2.0 ) 
-        //     ) *
-        //     clamp( 1.0 - ((baseHeightWater - baseHeightRef)/512.0),0.0,1.0 )*
-        //     totRef
-        //     ,2.0)*vec3(0.2,0.2,0.4)*mix(0.2,1.0,timeOfDay)*lval;
-            
+        else {
             
 
+            for (i = 0; i < maxEntriesM1; i++) {
 
-        // //     // bubbles
+                if (
+                    (heightDif >= distances[i]) &&
+                    (heightDif <= distances[i+1]) 
+                ) {
 
-        //     finalCol += 
-        //     pow(
-        //         texture2D(Texture6, resTC*vec2(1.0,1.0)-vec2(0.0,(curTime/20000.0))  ).rgb*0.85,
-        //         vec3(10.0)
-        //     ) * 
-        //     abs(sin(rand(TexCoord0.xy)*1000.0 + curTime/200.0))*(1.0-lerpValNorm)*mix(0.75,1.0,timeOfDay);
+                    
 
+                    lerpVal = clamp( (heightDif - distances[i])/(distances[i+1]-distances[i]), 0.0, 1.0);
+                    lerpValNorm = heightDif/maxDis;
+                    
+                    lastCol = mix(colVecs[i], colVecs[i+1], lerpVal);
+                    finalCol = lastCol*lval;
+                    
+                    
 
+                    
 
-        // }
-        // else {
-            resTC = newTC.xy;
-            
-
-
-
-            // finalCol = mix(
-            //     finalCol,
-            //     finalCol*vec3(0.4,0.5,0.6) + transRendered.rgb,
-            //     facingEye*0.3
-            // ) + transRendered.rgb*vec3(0.1,0.2,0.4);
-
-
-            // // highlights
-
-            finalCol += 
-            pow(
-                clamp(dot(
-                    -waterNorm,
-                    vec3(0.0,0.0,1.0)
-                ),0.0,1.0),
-                6.0
-            )*vec3(0.5,0.45,1.0)*0.25*timeOfDay-0.125;
-
-            
-            finalCol *= 0.5;
-            finalCol += tex5Ref.rgb*0.25;
-            
-            finalCol = mix(finalCol,transRendered.rgb,0.3*facingEye);
-            
-            finalCol = (finalCol + lastCol*mix(vec3(0.05,0.1,0.2),vec3(0.5),timeOfDay));
-
-            if (
-                (heightDifNoRef >= distances[0]) &&
-                (heightDifNoRef <= distances[1]) &&
-                (isUnderWater == 0.0)
-            ) {
-                // shore foam
-
-                //finalCol = vec3(1.0);
-                
-                lerpVal = clamp( (heightDifNoRef - distances[0])/(distances[1]-distances[0]), 0.0, 1.0);
-                finalCol += 1.0*finalCol*(rand(TexCoord0.xy*curTime/10000.0)*0.15+0.25)*(1.0-lerpVal)*4.0*mix(0.5,1.0,timeOfDay);
-            
+                }
             }
 
+            // if (tex3.a == 0.0 ) {
+
+            //     resTC = TexCoord0.xy;
+
+            //     if ( abs(waterNorm.z) > 0.5) {
+                    
+            //     }
+            //     else {
+                    
+            //         // rays
+
+            //         // finalCol += sin(
+            //         //     (worldPositionWater.x + worldPositionWater.y + worldPositionWater.z/2.0)/(100.0) + curTime/500.0
+            //         // )*vec3(0.2,0.2,0.4);
+            //         // * pow(1.0-clamp((curSeaLev-worldPositionWater.z)/2000.0,0.0,1.0),5.0 )*mix(0.5,1.0,curTOD);
+
+            //     }
+
+            //     // caustics
 
 
-        
+            //     finalCol += pow(
+            //     (
+            //         //pow(abs(sin(tex7Ref.a*10.0)),4.0) +
+            //         pow( ( (tex7Ref2.a ) ), 2.0 ) +
+            //         pow( ( (tex7Ref3.a ) ), 2.0 ) 
+            //     ) *
+            //     clamp( 1.0 - ((baseHeightWater - baseHeightRef)/512.0),0.0,1.0 )*
+            //     totRef
+            //     ,2.0)*vec3(0.2,0.2,0.4)*mix(0.2,1.0,curTOD)*lval;
+                
+                
 
-        
-        
-        //finalCol *= 0.5;
-        
-        //finalCol = vec3(max(max(tex10.r,tex10.g),tex10.b));
+
+            // //     // bubbles
+
+            //     finalCol += 
+            //     pow(
+            //         texture2D(Texture6, resTC*vec2(1.0,1.0)-vec2(0.0,(curTime/20000.0))  ).rgb*0.85,
+            //         vec3(10.0)
+            //     ) * 
+            //     abs(sin(rand(TexCoord0.xy)*1000.0 + curTime/200.0))*(1.0-lerpValNorm)*mix(0.75,1.0,curTOD);
+
+
+
+            // }
+            // else {
+                resTC = newTC.xy;
+                
+
+
+
+                // finalCol = mix(
+                //     finalCol,
+                //     finalCol*vec3(0.4,0.5,0.6) + transRendered.rgb,
+                //     facingEye*0.3
+                // ) + transRendered.rgb*vec3(0.1,0.2,0.4);
+
+
+                // // highlights
+
+                finalCol += 
+                pow(
+                    clamp(dot(
+                        -waterNorm,
+                        vec3(0.0,0.0,1.0)
+                    ),0.0,1.0),
+                    6.0
+                )*vec3(0.5,0.45,1.0)*0.25*curTOD-0.125;
+
+                
+                finalCol *= 0.5;
+                finalCol += tex5Ref.rgb*0.25;
+                
+                finalCol = mix(finalCol,transRendered.rgb,0.3*facingEye);
+                
+                finalCol = (finalCol + lastCol*mix(vec3(0.05,0.1,0.2),vec3(0.5),curTOD));
+
+                if (
+                    (heightDifNoRef >= distances[0]) &&
+                    (heightDifNoRef <= distances[1]) &&
+                    (isUnderWater == 0.0)
+                ) {
+                    // shore foam
+
+                    //finalCol = vec3(1.0);
+                    
+                    lerpVal = clamp( (heightDifNoRef - distances[0])/(distances[1]-distances[0]), 0.0, 1.0);
+                    finalCol += 1.0*finalCol*(rand(TexCoord0.xy*curTime/10000.0)*0.15+0.25)*(1.0-lerpVal)*4.0*mix(0.5,1.0,curTOD);
+                
+                }
+
+
+
+            
+
+            
+            
+            //finalCol *= 0.5;
+            
+            //finalCol = vec3(max(max(tex10.r,tex10.g),tex10.b));
+            
+            
+        }
         
     }
     else {
@@ -481,19 +532,7 @@ void main() {
     
     
     
-    if (isUnderWater == 1.0) {
-        
-        if (matValsWater.a != TEX_WATER) {
-            // bubbles
-            finalCol += 
-            pow(
-                texture2D(Texture6, TexCoord0.xy - vec2(0.0,1.0)*curTime/10000.0  ).rgb*0.85,
-                vec3(10.0)
-            ) * 
-            abs(sin(rand(TexCoord0.xy)*1000.0 + curTime/200.0))*mix(0.75,1.0,timeOfDay)*3.0;
-
-        }
-    }
+    
     
     //finalCol.rgb = unpackColor(matValsWater.ba, lightRes);
     
@@ -502,6 +541,60 @@ void main() {
         
         //finalCol = vec3(tex11.g);
     }
+    
+    if (isUnderWater == 1.0) {
+        
+        //finalCol = tex4.rgb;
+        //if (matValsWater.a == TEX_WATER) {
+        //    finalCol = tex5Ref.rgb;
+        //}
+            
+        // if (matValsWater.a == TEX_WATER) {
+        //     finalCol += vec3(0.0,0.1,0.3);//tex5.rgb;
+        // }
+        
+        //bubbles
+        // if (
+        //     (matValsWater.a != TEX_WATER) ||
+        //     (
+        //         distance(worldPosition,worldPositionWater) < 5.0    
+        //     )    
+        // ) {
+            
+            myRay = getRay();
+            
+            newTime = (mod(curTime*0.1/1000.0,1.0) + 4.0);
+            
+            moveVec = -(vec2(TexCoord0.xy-0.5)*2.0)*newTime;
+            moveVec2 = vec2(0.0,-1.0)*newTime;
+            
+            //moveVec2 += -mod( (vec2(TexCoord0.xy-0.5)*2.0)*cameraPos.xy,1.0);
+            
+            //finalCol = texture2D(Texture6, TexCoord0.xy + normalize(myRay.xy)*newTime*0.000001  ).rgb; // - moveVec
+            
+            finalCol += 
+            pow(
+                mix(
+                    
+                    texture2D(Texture6, TexCoord0.xy + moveVec2  ).rgb,
+                    texture2D(Texture6, TexCoord0.xy - moveVec  ).rgb,
+                    abs(lookAtVec.z)
+                )
+                *0.85,
+                vec3(10.0)
+            )
+            * 
+            abs(sin(rand(TexCoord0.xy)*1000.0 + newTime))*mix(0.75,1.0,curTOD)*3.0*
+            //myDis*
+            clamp(1.0-min(
+                distance(cameraPos,worldPositionWater),
+                distance(cameraPos,worldPosition)
+            )/50.0,0.0,1.0);
+
+        //}
+    }
+    
+    
     
     vec4 charTest;
     
@@ -522,12 +615,21 @@ void main() {
             }
             
         }
+        
+        finalCol.rgb = mix(pow(finalCol.rgb,vec3(2.0)), finalCol.rgb, timeOfDay);
+        
     }
     else {
         if (objSamp.w > baseHeight) {
             finalCol = texture2D(Texture14, TexCoord0.xy).rgb;
+            
+            finalCol = mix(finalCol, transRendered.rgb*0.75 + tex5.rgb*0.25 + tex4.rgb*0.25, 0.25);
+            
         }
     }
+    
+    
+    
     
     
     

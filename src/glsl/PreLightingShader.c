@@ -12,11 +12,18 @@ uniform sampler2D Texture3;
 uniform sampler2D Texture4;
 uniform sampler2D Texture5;
 
+// prim depth
+uniform sampler2D Texture6;
+uniform sampler2D Texture7;
+
 uniform float timeOfDay;
 uniform vec2 bufferDim;
 
 uniform bool testOn;
 
+uniform vec3 baseLightVec;
+
+uniform vec2 clipDist;
 
 uniform vec3 lookAtVec;
 uniform vec3 cameraPos;
@@ -76,7 +83,7 @@ vec3 getGlobLightCol()
 		timeLerp = timeOfDay * 2.0;
 
 		glCol = mix(
-							vec3(@lightColRNight@, @lightColGNight@, @lightColBNight@),
+							vec3(0.1, 0.1, 1.0),
 							vec3(1.0, 0.8, 0.7),
 							timeLerp
 						);
@@ -109,6 +116,8 @@ void main()
 	
 	vec4 tex2 = texture2D(Texture2, TexCoord0.xy);
 	vec4 tex3 = texture2D(Texture3, TexCoord0.xy);
+	
+	vec4 tex6 = texture2D(Texture6, TexCoord0.xy);
 	
 	vec4 worldPosition = tex0;
 	vec4 waterPosition = tex2;
@@ -292,7 +301,8 @@ void main()
 		
 		newAO = clamp(ssao, 0.0, 1.0);
 		
-		
+		//newAO = mix(-0.5, 1.0, newAO);
+		//newAO = clamp(newAO, 0.0, 1.0);
 
 
 		// LIGHT LOOP START
@@ -300,11 +310,11 @@ void main()
 		{
 			baseInd = k * vecsPerLight;
 			lightPosWS = lightArr[baseInd + 0];
-			lightRad = 1000.0;//lightArr[baseInd + 1].w;
+			lightRad = clipDist.y*2.0;//lightArr[baseInd + 1].w;
 			
 
-			lightDis = 1.0 - clamp(distance(worldPosition.xyz, lightPosWS.xyz) / lightRad, 0.0, 1.0);
-			lightDisWater = 1.0 - clamp(distance(waterPosition.xyz, lightPosWS.xyz) / lightRad, 0.0, 1.0);
+			lightDis = 1.0 - clamp(distance(worldPosition.xyz, cameraPos.xyz) / lightRad, 0.0, 1.0);
+			lightDisWater = 1.0 - clamp(distance(waterPosition.xyz, cameraPos.xyz) / lightRad, 0.0, 1.0);
 			
 
 			if ( (lightDis+lightDisWater) != 0.0 ) {
@@ -312,9 +322,14 @@ void main()
 				curLightColor = lightArr[baseInd + 2].xyz;
 
 
-
+				if (k == 0) {
+					lightVec = baseLightVec;
+				}
+				else {
+					lightVec = normalize(lightPosWS.xyz - worldPosition.xyz);
+				}
 				
-				lightVec = normalize(lightPosWS.xyz - worldPosition.xyz);
+				
 
 				sEndPos = lightPosSS;
 
@@ -323,7 +338,7 @@ void main()
 				//lightColorization = lightArr[baseInd + 3].r;
 				//lightFlooding = lightArr[baseInd + 3].g;
 
-				if (k == 0)
+				if (k <= 0)
 				{
 					curLightColor = globDayColor;
 					//lightIntensity = mix(@lightIntensityNight@, 1.0, timeOfDay);
@@ -336,36 +351,40 @@ void main()
 				// shadows
 
 
-				
-
-				totHits = 0.0;
-				totHits2 = 0.0;
-				totRays = 0.0;
-				hitCount = 0.0;
-				for (i = 0; i < iNumSteps; i++)
-				{
-					fi = float(i);
-					flerp = (fi / fNumSteps);
-
-					sCurPos = mix(sStartPos, sEndPos, flerp);
-
-					samp = texture2D(Texture0, sCurPos.xy);
-					//samp2 = texture2D(Texture4, sCurPos.xy);
-					wasHit = float( 
-						samp.w
-						//max(samp.w,samp2.w)
-						> sCurPos.z
-					);
-					
-					totHits += wasHit;
-					hitCount += 1.0;
-					
-					
-
+				if (k == 0) {
+					resComp = tex6.w;
 				}
-				
-				resComp = mix(1.0, 0.0, clamp(totHits*2.0/hitCount,0.0,1.0));
-				resComp = clamp(pow(resComp,2.0), 0.0, 1.0);
+				else {
+					totHits = 0.0;
+					totHits2 = 0.0;
+					totRays = 0.0;
+					hitCount = 0.0;
+					for (i = 0; i < iNumSteps; i++)
+					{
+						fi = float(i);
+						flerp = (fi / fNumSteps);
+
+						sCurPos = mix(sStartPos, sEndPos, flerp);
+
+						samp = texture2D(Texture0, sCurPos.xy);
+						//samp2 = texture2D(Texture4, sCurPos.xy);
+						wasHit = float( 
+							samp.w
+							//max(samp.w,samp2.w)
+							> sCurPos.z
+						);
+						
+						totHits += wasHit;
+						hitCount += 1.0;
+						
+						
+
+					}
+					resComp = mix(1.0, 0.0, clamp(totHits*2.0/hitCount,0.0,1.0));
+					resComp = clamp(pow(resComp,2.0), 0.0, 1.0);
+					
+				}
+
 				
 				
 
@@ -418,7 +437,7 @@ void main()
 		}
 		// LIGHT LOOP END
 
-		resColor.xyz = totLightColor.xyz*0.75+newAO*0.25;
+		resColor.xyz = pow(totLightColor.xyz*0.75+newAO*0.25,vec3(0.5));;////mix(newAO*totLightColor.xyz,totLightColor.xyz, max(max(totLightColor.x, totLightColor.y), totLightColor.z) ); // 
 		resColor.w = newAO;
 	}
 	

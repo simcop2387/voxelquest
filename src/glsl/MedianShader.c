@@ -69,7 +69,7 @@ void main() {
     mix(
       v[4].rgb,
       tex0.rgb,
-      float(distance(tex0.rgb,v[4].rgb) < 0.25)//mixVal
+      0.0//float(distance(tex0.rgb,v[4].rgb) > 0.5)//mixVal
     )
   ,1.0);
   

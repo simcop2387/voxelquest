@@ -1,7 +1,8 @@
 #version 120
 #extension GL_EXT_frag_depth : enable
 
-
+uniform mat4 modelview;
+uniform mat4 proj;
 
 uniform float objectId;
 uniform float curTime;
@@ -22,6 +23,7 @@ uniform float clipDist;
 
 $
 
+const float M_PI = 3.14159265359;
 
 void main() {
 
@@ -32,11 +34,16 @@ void main() {
     
     mat2 m2x2;
     
+    float rotInv = (M_PI*2.0-rotationZ.w)+M_PI/2.0;
+    
     if (rotationZ.w != 0.0) {
         newPos.xyz -= rotationZ.xyz;
+        
         m2x2 = mat2(
-            cos(rotationZ.w), -sin(rotationZ.w),
-            sin(rotationZ.w), cos(rotationZ.w)
+            cos(rotInv),
+            -sin(rotInv),
+            sin(rotInv),
+            cos(rotInv)
         );
         
         newPos.xy = m2x2*newPos.xy;
@@ -45,7 +52,10 @@ void main() {
     }
     
     worldPos = newPos;
-    screenPos = gl_ModelViewProjectionMatrix * newPos;
+    
+    mat4 myMat = proj*modelview;// gl_ModelViewProjectionMatrix;
+    
+    screenPos = myMat * newPos;
     camDis = distance(cameraPos.xyz,newPos.xyz);
     
     gl_Position = screenPos;

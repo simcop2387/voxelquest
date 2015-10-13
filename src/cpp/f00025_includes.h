@@ -10,6 +10,16 @@ int RUN_COUNT;
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "27015"
 
+//#define GEN_POLYS 1
+
+const static bool SINGLE_THREADED = false;
+const static bool DO_RANDOMIZE = false;
+
+// no greater than 8 unless shader changed
+const static int MAX_PRIM_IDS = 8;
+const static int MAX_PRIMTEST = 8;
+
+const static int MAX_DEPTH_PEELS = 4;
 
 const static float OFFSET_X[4] = {-0.5,0.5,0.5,-0.5};
 const static float OFFSET_Y[4] = {-0.5,-0.5,0.5,0.5};
@@ -18,28 +28,35 @@ const static int MAX_SPLASHES = 8;
 const static int MAX_EXPLODES = 8;
 
 //const static bool DO_CONNECT = true;
-const static bool DO_SHADER_DUMP = true;
+const static bool DO_SHADER_DUMP = false;
+
 
 const static int DEF_WIN_W = 1440;
 const static int DEF_WIN_H = 720;
+
+const static int DEF_VOL_SIZE = 64;
+
 const static int DEF_SCALE_FACTOR = 2;
 const static int RENDER_SCALE_FACTOR = 2;
+const static float SPHEREMAP_SCALE_FACTOR = 0.5f; // lower is faster
 
-
-const static float SPHEREMAP_SCALE_FACTOR = 4.0f;
-const static bool USE_SPHERE_MAP = true;
+const static bool USE_SPHERE_MAP = false;
 
 const static float TIME_DELTA = 1.0f/60.0f;
-const static int MAX_THREADS = 8;
+
+const static int THREAD_DATA_COUNT = 16;
 
 // #define DEBUG_BOUNDS 1
 
 const static float explodeRad = 5.0f;
 
-float RAND_COUNTER = 0.0f;
-float RAND_COUNTER2 = 0.0f;
+float RAND_COUNTER = 25.0f;
+float RAND_COUNTER2 = 25.0f;
 
-typedef unsigned int PRIM_FORMAT;
+
+const static int GROUP_ID_NONEXISTENT = -3;
+const static int GROUP_ID_UNMARKED = -2;
+const static int GROUP_ID_UNMARKED_IDEAL = -1;
 
 const static int FLUID_UNIT_MIN = -1;
 const static int FLUID_UNIT_MAX = 16384;
@@ -148,6 +165,56 @@ const static int DIR_VECS_I[NUM_ORIENTATIONS][3] = {
 	{0, 0, 1},
 	{0, 0, -1}
 };
+
+const static int NUM_MOVEABLE_DIRS = 20;// 12 20 24
+const static int DIR_VECS_MOVE[NUM_MOVEABLE_DIRS][3] = {
+	{ 1,  0,  1},
+	{-1,  0,  1},
+	{ 0,  1,  1},
+	{ 0, -1,  1},
+	
+	{ 1,  0,  0},
+	{-1,  0,  0},
+	{ 0,  1,  0},
+	{ 0, -1,  0},
+	
+	{ 1,  0, -1},
+	{-1,  0, -1},
+	{ 0,  1, -1},
+	{ 0, -1, -1}
+	
+	
+	,
+	{ 1,  0,  -2},
+	{-1,  0,  -2},
+	{ 0,  1,  -2},
+	{ 0, -1,  -2},
+	
+	{ 1,  0,  2},
+	{-1,  0,  2},
+	{ 0,  1,  2},
+	{ 0, -1,  2}
+	
+	
+	
+	// ,{ 1,  1,  1},
+	// { 1, -1,  1},
+	// {-1,  1,  1},
+	// {-1, -1,  1},
+	
+	// { 1,  1,  0},
+	// { 1, -1,  0},
+	// {-1,  1,  0},
+	// {-1, -1,  0},
+	
+	// { 1,  1, -1},
+	// { 1, -1, -1},
+	// {-1,  1, -1},
+	// {-1, -1, -1}
+	
+	
+};
+
 
 float ALL_ROT[16*NUM_ORIENTATIONS*NUM_ORIENTATIONS*NUM_ORIENTATIONS];
 const static int ROT_MAP[36] = {
@@ -260,6 +327,173 @@ long long ENT_COUNTER = 0;
 bool TRACE_ON = false;
 //#define DEBUG_MODE 1
 
+
+
+
+
+
+
+
+
+
+
+//??????????????
+
+
+// #if defined(USE_SIMD)
+// #include "use_simd.h"
+// #else
+// #include "use_scalar.h"
+// #endif
+
+// #include <swizzle/glsl/vector.h>
+// #include <swizzle/glsl/matrix.h>
+//#include <swizzle/glsl/texture_functions.h>
+
+// typedef swizzle::glsl::vector< float_type, 2 > vec2;
+// typedef swizzle::glsl::vector< float_type, 3 > vec3;
+// typedef swizzle::glsl::vector< float_type, 4 > vec4;
+
+// static_assert(sizeof(vec2) == sizeof(float_type[2]), "Too big");
+// static_assert(sizeof(vec3) == sizeof(float_type[3]), "Too big");
+// static_assert(sizeof(vec4) == sizeof(float_type[4]), "Too big");
+
+// typedef swizzle::glsl::matrix< swizzle::glsl::vector, vec4::scalar_type, 2, 2> mat2;
+// typedef swizzle::glsl::matrix< swizzle::glsl::vector, vec4::scalar_type, 3, 3> mat3;
+// typedef swizzle::glsl::matrix< swizzle::glsl::vector, vec4::scalar_type, 4, 4> mat4;
+
+
+// //! A really, really simplistic sampler using SDLImage
+// struct SDL_Surface;
+// class sampler2D : public swizzle::glsl::texture_functions::tag
+// {
+// public:
+//     enum WrapMode
+//     {
+//         Clamp,
+//         Repeat,
+//         MirrorRepeat
+//     };
+
+//     typedef const vec2& tex_coord_type;
+
+//     sampler2D(const char* path, WrapMode wrapMode);
+//     ~sampler2D();
+//     vec4 sample(const vec2& coord);
+
+// private:
+//     SDL_Surface *m_image;
+//     WrapMode m_wrapMode;
+
+//     // do not allow copies to be made
+//     sampler2D(const sampler2D&);
+//     sampler2D& operator=(const sampler2D&);
+// };
+
+
+
+
+
+
+
+
+
+
+// this where the magic happens...
+// namespace glsl_sandbox
+// {
+//     // a nested namespace used when redefining 'inout' and 'out' keywords
+//     namespace ref
+//     {
+// #ifdef CXXSWIZZLE_VECTOR_INOUT_WRAPPER_ENABLED
+//         typedef swizzle::detail::vector_inout_wrapper<vec2> vec2;
+//         typedef swizzle::detail::vector_inout_wrapper<vec3> vec3;
+//         typedef swizzle::detail::vector_inout_wrapper<vec4> vec4;
+// #else
+//         typedef vec2& vec2;
+//         typedef vec3& vec3;
+//         typedef vec4& vec4;
+// #endif
+//         typedef ::float_type& float_type;
+//     }
+
+//     namespace in
+//     {
+//         typedef const ::vec2& vec2;
+//         typedef const ::vec3& vec3;
+//         typedef const ::vec4& vec4;
+//         typedef const ::float_type& float_type;
+//     }
+
+//     #include <swizzle/glsl/vector_functions.h>
+
+//     // constants shaders are using
+//     float_type time = 1;
+//     vec2 mouse(0, 0);
+//     vec2 resolution;
+
+//     // constants some shaders from shader toy are using
+//     vec2& iResolution = resolution;
+//     float_type& iGlobalTime = time;
+//     vec2& iMouse = mouse;
+
+//     //sampler2D diffuse("diffuse.png", sampler2D::Repeat);
+//     //sampler2D specular("specular.png", sampler2D::Repeat);
+
+//     struct fragment_shader
+//     {
+//         vec2 gl_FragCoord;
+//         vec4 gl_FragColor;
+//         void operator()(void);
+//     };
+
+//     // change meaning of glsl keywords to match sandbox
+//     #define uniform extern
+//     #define in in::
+//     #define out ref::
+//     #define inout ref::
+//     #define main fragment_shader::operator()
+//     #define float float_type   
+//     #define bool bool_type
+    
+//     #pragma warning(push)
+//     #pragma warning(disable: 4244) // disable return implicit conversion warning
+//     #pragma warning(disable: 4305) // disable truncation warning
+    
+//     //#include "shaders/sampler.frag"
+//     //#include "shaders/leadlight.frag"
+//     //#include "shaders/terrain.frag"
+//     //#include "shaders/complex.frag"
+//     //#include "shaders/road.frag"
+//     //#include "shaders/gears.frag"
+//     //#include "shaders/water_turbulence.frag"
+//     //#include "shaders/sky.frag"
+
+//     // be a dear a clean up
+//     #pragma warning(pop)
+//     #undef bool
+//     #undef float
+//     #undef main
+//     #undef in
+//     #undef out
+//     #undef inout
+//     #undef uniform
+// }
+
+//??????????????
+
+
+
+
+
+
+
+
+
+
+
+
+
 #include <SDKDDKVer.h>
 
 
@@ -307,6 +541,13 @@ bool TRACE_ON = false;
 #include <gl/glu.h>
 #include <gl/freeglut.h>
 #pragma comment(lib, "glew32.lib")
+
+
+
+
+
+
+
 
 
 
@@ -771,3 +1012,31 @@ PFNWGLGETSWAPINTERVALEXTPROC pwglGetSwapIntervalEXT = 0;
 #endif
 
 
+const static GLenum bufNames[] = {
+			GL_COLOR_ATTACHMENT0_EXT,
+			GL_COLOR_ATTACHMENT1_EXT,
+			GL_COLOR_ATTACHMENT2_EXT,
+			GL_COLOR_ATTACHMENT3_EXT,
+			GL_COLOR_ATTACHMENT4_EXT,
+			GL_COLOR_ATTACHMENT5_EXT,
+			GL_COLOR_ATTACHMENT6_EXT,
+			GL_COLOR_ATTACHMENT7_EXT
+		};
+
+
+
+
+
+
+// data for a fullscreen quad (this time with texture coords)
+GLfloat vertexDataQuad[] = {
+//  X     Y     Z           U     V     
+   1.0f, 1.0f, 0.0f, 1.0f,       1.0f, 1.0f, 0.0f, 0.0f, // vertex 0
+  -1.0f, 1.0f, 0.0f, 1.0f,       0.0f, 1.0f, 0.0f, 0.0f, // vertex 1
+   1.0f,-1.0f, 0.0f, 1.0f,       1.0f, 0.0f, 0.0f, 0.0f, // vertex 2
+  -1.0f,-1.0f, 0.0f, 1.0f,       0.0f, 0.0f, 0.0f, 0.0f  // vertex 3
+}; // 4 vertices with 8 components (floats) each
+GLuint indexDataQuad[] = {
+    0,1,2, // first triangle
+    2,1,3  // second triangle
+};

@@ -1,4 +1,4 @@
-﻿Build started 9/1/2015 4:56:37 AM.
+﻿Build started 10/12/2015 11:33:43 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -36,13 +36,16 @@
          .\src\cpp\f00341_gameplant.hpp
          .\src\cpp\f00351_gamepageholder.hpp
          .\src\cpp\f00352_gameblock.hpp
+         .\src\cpp\f00355_volumewrapper.hpp
+         .\src\cpp\f00360_threadpoolwrapper.hpp
+         .\src\cpp\f00370_gamelogic.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         33 File(s) copied
+         36 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         18
+         21
          copying headers to one file
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
@@ -61,11 +64,14 @@
          .\f00341_gameplant.e
          .\f00351_gamepageholder.e
          .\f00352_gameblock.e
+         .\f00355_volumewrapper.e
+         .\f00360_threadpoolwrapper.e
+         .\f00370_gamelogic.e
          .\f00380_gameworld.e
                  1 file(s) copied.
          Missing operator.
          tot e
-         18
+         21
          .
          copying files to compiled
          .\temp\f00293_gamesound.e
@@ -85,8 +91,11 @@
          .\temp\f00341_gameplant.e
          .\temp\f00351_gamepageholder.e
          .\temp\f00352_gameblock.e
+         .\temp\f00355_volumewrapper.e
+         .\temp\f00360_threadpoolwrapper.e
+         .\temp\f00370_gamelogic.e
          .\temp\f00380_gameworld.e
-         18 File(s) copied
+         21 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_mat.h
@@ -119,6 +128,9 @@
          .\temp\f00341_gameplant.h
          .\temp\f00351_gamepageholder.h
          .\temp\f00352_gameblock.h
+         .\temp\f00355_volumewrapper.h
+         .\temp\f00360_threadpoolwrapper.h
+         .\temp\f00370_gamelogic.h
          .\temp\f00380_gameworld.h
          .\temp\f00500_mainfuncs.h
                  1 file(s) copied.
@@ -146,12 +158,6 @@
          9 File(s) copied
          Could Not Find c:\wamp\www\voxelquest\x64\Release\*.ilk
          running EXE
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
          
          
          
@@ -160,22 +166,12 @@
          
          cellsPerNodeXY: 16
          cellsPerNodeZ: 8
-         blockSizeInHolders: 8
-         blockSizeInPixels: 256
-         terDataBufPitchScaledXY 24
+         holdersPerBlock: 4
+         cellsPerBlock: 128
+         terDataBufPitchScaledXY 12
          cellsPerHolder: 32
-         cellsPerLot: 64
-         unitsPerCell: 1
-         blockSizeInLots: 4
-         pixelsPerUnit: 1
-         unitsPerLot: 64
-         pixelsPerLot: 64
-         holdersPerLot: 2
-         unitSizeInPixels: 1
-         worldSizeInBlocks:    128.000000   128.000000   128.000000    
-         worldSizeInLots:    512.000000   512.000000   512.000000    
-         worldSizeInHolders:    1024.000000   1024.000000   1024.000000    
-         worldSizeInTerData:    2048.000000   2048.000000   4096.000000    
+         worldSizeInBlocks:    512.000000   512.000000   128.000000    
+         worldSizeInHolders:    2048.000000   2048.000000   512.000000    
          MAX_UNIFORMS: 65536
          
          
@@ -183,8 +179,14 @@
          
          
          
-         worldSizeInPixels:    32768.000000   32768.000000   32768.000000    
+         worldSizeInCells:    65536.000000   65536.000000   16384.000000    
          Unable to connect to server!
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
          load jv data materials.js
          Loading:  ..\data\materials.js         
          Load Successful          
@@ -197,7 +199,6 @@
          
          Valid JSON
                    
-         Save Successful          
          
          Valid JSON
                    
@@ -220,27 +221,7 @@
          
          Valid JSON
                    
-         Sea Level: 136
-         start place cities
-         end place cities
-         start grow provinces
-         end grow provinces
-         start find neighboring cities
-         end find neighboring cities
-         start find city blocks
-         end find city blocks
-         start add in city roads
-         end add in city roads
-         start link close cities
-         end link close cities
-         start find biggest ocean gaps
-         iteration: 0
-         iteration: 1
-         end find biggest ocean gaps
-         start road regions
-         end road regions
-         start filling houses
-         end filling houses
+         Sea Level: 80
          DONE WITH MAP
          load jv data materials.js
          Loading:  ..\data\materials.js         
@@ -254,7 +235,6 @@
          
          Valid JSON
                    
-         Save Successful          
          
          Valid JSON
                    
@@ -273,28 +253,558 @@
          
          Valid JSON
                    
-         Save Successful          
          
          Valid JSON
                    
          GW DONE          
-         curHeight 0 newHeight 271.812
-         pos change
-         pos change end
-         pos change
-         pos change end
-         pos change
-         pos change end
-         pos change
-         pos change end
-         pos change
-         pos change end
-         pos change
-         pos change end
-         pos change
-         pos change end
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
+         curHeight 0 newHeight 2634.04
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         start FPS timer
+         Average Frame Time: 4028.6
+         start FPS timer
+         Average Frame Time: 3882.76
+         start FPS timer
+         Average Frame Time: 4892.71
+         start FPS timer
+         Average Frame Time: 4891.55
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         start FPS timer
+         Average Frame Time: 4381.34
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+     1>EXEC : Shader  2567  ( ../src/glsl/PrimShader.c ) compile error : 0(3431) : error C1216: dereference of non-pointer
+              
+     1>EXEC : Program  2568  link error : Fragment info
+         -------------
+     1>0(3431): error C1216: dereference of non-pointer
+                
+     1>EXEC : Shader  2570  ( ../src/glsl/PrimShader.c ) compile error : 0(3431) : error C1216: dereference of non-pointer
+              
+     1>EXEC : Program  2571  link error : Fragment info
+         -------------
+     1>0(3431): error C1216: dereference of non-pointer
+                
+     1>EXEC : Shader  2588  ( ../src/glsl/TerGenShader.c ) compile error : 0(955) : error C1216: dereference of non-pointer
+              
+     1>EXEC : Program  2589  link error : Fragment info
+         -------------
+     1>0(955): error C1216: dereference of non-pointer
+                
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Grid On: 1
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Grid On: 0
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         start FPS timer
+         Average Frame Time: 4880.99
+         start FPS timer
+         Average Frame Time: 4909.39
+         firstPerson 0
+         start FPS timer
+         Average Frame Time: 4180.36
+         ignoreFrameLimit: 1
+         start FPS timer
+         Average Frame Time: 4133.74
+         start FPS timer
+         Average Frame Time: 4132.9
+         start FPS timer
+         Average Frame Time: 5801.12
+         ignoreFrameLimit: 0
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         ignoreFrameLimit: 1
+     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
+C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -2147418113.
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
 
-Build succeeded.
+Build FAILED.
 
-Time Elapsed 00:01:13.64
+Time Elapsed 01:14:14.67

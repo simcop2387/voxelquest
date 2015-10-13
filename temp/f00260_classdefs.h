@@ -19,6 +19,9 @@ class GamePlant;
 class GameEnt;
 class GameBlock;
 class GamePageHolder;
+class VolumeWrapper;
+class ThreadPoolWrapper;
+class GameLogic;
 class GameWorld;
 class DynBuffer;
  

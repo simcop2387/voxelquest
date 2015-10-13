@@ -1006,8 +1006,7 @@ public:
 
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
 
-		GLenum buffers[] = {GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_COLOR_ATTACHMENT4_EXT};
-		glDrawBuffers(numBufs, buffers);
+		glDrawBuffers(numBufs, bufNames);
 
 		if (doClear) {
 			glClearColor(0.0, 0.0, 0.0, 0.0);

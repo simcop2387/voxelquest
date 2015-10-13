@@ -114,10 +114,33 @@ int Shader::countOc (string * src, string testStr)
 		
 		return totCount;
 	}
-void Shader::init (string _shaderFile, bool doBake, map <string, string> * includeMap)
-                                                                                    {
+void Shader::init (string shaderName, bool doBake, map <string, string> * includeMap)
+                                                                                   {
+		
+		string shaderFN;
+		vector<string> shaderNameSplit;
+		
+		string defineString = "\n";
+		
+		if (
+			shaderName.find('_', 0) != std::string::npos
+		) {
+			shaderNameSplit = split(shaderName,'_');
+			shaderFN = shaderNameSplit[0];
+			
+			//cout << shaderName << "\n";
+		}
+		else {
+			shaderFN = shaderName;
+		}
 		
 		
+		string tempFileString = "";
+		string tempFileLoc = "";
+		
+		
+		string shaderRoot = "../src/glsl/";
+		string _shaderFile = shaderRoot + shaderFN + ".c";
 		
 		const char* shaderFile = _shaderFile.c_str();
 		
@@ -128,6 +151,7 @@ void Shader::init (string _shaderFile, bool doBake, map <string, string> * inclu
 		shader_vp = glCreateShader(GL_VERTEX_SHADER);
 		shader_fp = glCreateShader(GL_FRAGMENT_SHADER);
 	    
+	    std::size_t foundTF;
 	    
 		std::size_t found;
 		std::size_t found2;
@@ -147,6 +171,20 @@ void Shader::init (string _shaderFile, bool doBake, map <string, string> * inclu
 		string paramName;
 
 		int i;
+		
+		for (i = 1; i < shaderNameSplit.size(); i++) {
+			if (i == 1) {
+				defineString.append("#version ");
+			}
+			else {
+				defineString.append("#define ");
+			}
+			defineString.append(shaderNameSplit[i]);
+			defineString.append("\n");
+		}
+		
+		defineString.append("\n");
+		
 
 		const char* allText = textFileRead(shaderFile);
 
@@ -169,6 +207,60 @@ void Shader::init (string _shaderFile, bool doBake, map <string, string> * inclu
 				if (dolCount == 2) {
 					
 					uniCount = countOc(&allTextString,"ublock");
+
+
+					if (allTextString.find('^', 0) != std::string::npos) {
+						allTextStringInc = "";
+						allTextStringSplitInc = split(allTextString, '^');
+						
+						for (i = 0; i < allTextStringSplitInc.size(); i++) {
+							if (allTextStringSplitInc[i].compare("INCLUDE:MATERIALS") == 0) {
+								allTextStringInc.append((*includeMap)["materials"]);
+							}
+							else if (allTextStringSplitInc[i].compare("INCLUDE:PRIMTEMPLATES") == 0) {
+								allTextStringInc.append((*includeMap)["primTemplates"]);
+							}
+							else {
+							
+								foundTF = allTextStringSplitInc[i].find("INCLUDE:");
+								
+								if (foundTF != std::string::npos) {
+									tempFileLoc = allTextStringSplitInc[i].substr(foundTF+8,std::string::npos);
+									
+									//cout << "tempFileLoc " << tempFileLoc << "\n";
+									
+									tempFileString = singleton->loadFileString(shaderRoot+tempFileLoc+".c");
+									
+									if (tempFileString.size() > 2) {
+										
+										allTextStringInc.append(tempFileString);
+										
+									}
+									else {
+										cout << "Error loading " << shaderRoot+tempFileLoc+".c\n";
+									}
+									
+									
+								}
+								else {
+									allTextStringInc.append(allTextStringSplitInc[i]);
+								}
+							
+									// if (
+									// 	allTextStringSplitInc[i].find("INCLUDE:") != std::string::npos	
+									// ) {
+										
+										//singleton->loadFile(shaderRoot+,&tempFile)) {
+										
+									// }
+									// else {
+									// 	allTextStringInc.append(allTextStringSplitInc[i]);
+							}
+						}
+						
+						allTextString = allTextStringInc;
+					}
+
 
 
 					baseIndex = 0;
@@ -234,29 +326,29 @@ void Shader::init (string _shaderFile, bool doBake, map <string, string> * inclu
 					//###
 					
 					
-					if (allTextString.find('^', 0) != std::string::npos) {
-						allTextStringInc = "";
-						allTextStringSplitInc = split(allTextString, '^');
+					// if (allTextString.find('^', 0) != std::string::npos) {
+					// 	allTextStringInc = "";
+					// 	allTextStringSplitInc = split(allTextString, '^');
 						
-						for (i = 0; i < allTextStringSplitInc.size(); i++) {
-							if (allTextStringSplitInc[i].compare("INCLUDE:MATERIALS") == 0) {
-								allTextStringInc.append((*includeMap)["materials"]);
-							}
-							else if (allTextStringSplitInc[i].compare("INCLUDE:PRIMTEMPLATES") == 0) {
-								allTextStringInc.append((*includeMap)["primTemplates"]);
-							}
-							else {
-								allTextStringInc.append(allTextStringSplitInc[i]);
-							}
-						}
+					// 	for (i = 0; i < allTextStringSplitInc.size(); i++) {
+					// 		if (allTextStringSplitInc[i].compare("INCLUDE:MATERIALS") == 0) {
+					// 			allTextStringInc.append((*includeMap)["materials"]);
+					// 		}
+					// 		else if (allTextStringSplitInc[i].compare("INCLUDE:PRIMTEMPLATES") == 0) {
+					// 			allTextStringInc.append((*includeMap)["primTemplates"]);
+					// 		}
+					// 		else {
+					// 			allTextStringInc.append(allTextStringSplitInc[i]);
+					// 		}
+					// 	}
 						
-						allTextStringSplit = split(allTextStringInc, '$');
-					}
-					else {
-						allTextStringSplit = split(allTextString, '$');
-					}
+					// 	allTextStringSplit = split(allTextStringInc, '$');
+					// }
+					// else {
+					// 	allTextStringSplit = split(allTextString, '$');
+					// }
 					
-					
+					allTextStringSplit = split(allTextString, '$');
 					
 					
 					//###
@@ -270,6 +362,10 @@ void Shader::init (string _shaderFile, bool doBake, map <string, string> * inclu
 					
 					
 					allTextStringSplit[0].append("\n");
+					
+					allTextStringSplit[0] = defineString + allTextStringSplit[0];
+					
+					//allTextStringSplit[0].append(defineString);
 					
 					if (doBake) {
 						for (i = 0; i < paramVec.size(); i++) {
@@ -294,7 +390,7 @@ void Shader::init (string _shaderFile, bool doBake, map <string, string> * inclu
 					string fragStr = allTextStringSplit[0] + allTextStringSplit[2];
 
 					if (DO_SHADER_DUMP) {
-						if (_shaderFile.compare("../src/glsl/PrimShader.c") == 0) {
+						if (_shaderFile.compare("../src/glsl/TopoShader.c") == 0) {
 							globString = fragStr;
 						}
 					}

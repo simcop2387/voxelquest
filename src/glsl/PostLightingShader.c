@@ -20,7 +20,7 @@ uniform sampler3D Texture8;
 
 //uniform float holderMod;
 uniform float timeOfDay;
-uniform float blockSizeInCells;
+uniform float cellsPerBlock;
 uniform vec2 bufferDim;
 uniform vec2 mouseCoords;
 uniform vec2 resolution;
@@ -32,6 +32,13 @@ uniform bool markerFound;
 uniform bool testOn;
 uniform bool gridOn;
 uniform float curTime;
+
+uniform mat4 modelviewInverse;
+uniform float FOV;
+uniform vec3 lightVec;
+uniform vec3 lightVecOrig;
+uniform vec2 clipDist;
+
 
 uniform vec3 cameraPos;
 
@@ -135,18 +142,93 @@ vec3 hsv2rgb(vec3 c)
 	return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
+vec3 getRay() {
+    float aspect = bufferDim.y/bufferDim.x;
+    float NEAR = clipDist.x;
+    float FAR = clipDist.y;
+    float dx = tan(FOV*0.5f)*(TexCoord0.x*2.0-1.0f)/aspect; //gl_FragCoord.x/(bufferDim.x*0.5)
+    float dy = tan(FOV*0.5f)*((1.0f-TexCoord0.y)*2.0-1.0f); //gl_FragCoord.y/(bufferDim.y*0.5)
+    
+    
+    dx = -dx;
+    
+    vec4 p1 = vec4(dx*NEAR,dy*NEAR,NEAR,1.0);
+    vec4 p2 = vec4(dx*FAR,dy*FAR,FAR,1.0);
+    
+    p1 = modelviewInverse*p1;
+    p2 = modelviewInverse*p2;
 
-vec3 getFogColor(vec2 lv)
+    vec3 ro = p1.xyz;
+    
+    vec3 rd = normalize(p1.xyz-p2.xyz);
+    
+    return rd;
+}
+
+vec3 getFogColor()
 {
-	
-	
-	return unpackColor(
-		vec2(
-			((1.0 - lv.y - distance(lv,vec2(0.5))*0.1) - lookAtVec.z ),
-			TEX_SKY
-		),
-		timeOfDay
-	);
+    
+    vec3 myRay = getRay();
+    
+    float zv = pow(1.0-(myRay.z+1.0)/2.0,2.0);
+    
+    return unpackColor(
+        vec2(
+            zv,
+            TEX_SKY
+        ),
+        (lightVecOrig.z + 1.0)*0.5//timeOfDay
+    )
+    +
+    
+    (
+        (
+            pow(
+                clamp(
+                    dot(lightVecOrig,myRay),0.0,1.0
+                ),
+                16.0    
+            )*1.0
+            *vec3(1.0,0.5,0.0) //+lightVecOrig.z*0.25
+        )
+        +
+        (
+            pow(
+                clamp(
+                    dot(lightVecOrig,myRay),0.0,1.0
+                ),
+                64.0    
+            )*1.0
+            *vec3(1.0,1.0,1.0) //+lightVecOrig.z*0.25
+        )    
+    )*(pow(clamp((timeOfDay+0.4),0.0,1.0),8.0))
+    
+    
+    +
+    
+    (
+        (
+            pow(
+                clamp(
+                    dot(lightVecOrig*vec3(1.0,1.0,-1.0),myRay),0.0,1.0
+                ),
+                64.0    
+            )*1.0
+            *vec3(0.5,0.5,1.0) //+lightVecOrig.z*0.25
+        )
+        +
+        (
+            pow(
+                clamp(
+                    dot(lightVecOrig*vec3(1.0,1.0,-1.0),myRay),0.0,1.0
+                ),
+                256.0    
+            )*1.0
+            *vec3(1.0,1.0,1.0) //+lightVecOrig.z*0.25
+        )    
+    )*(pow(clamp(1.0-(timeOfDay-0.4),0.0,1.0),8.0))
+    ;
+    
 }
 
 
@@ -182,7 +264,7 @@ void main()
 	bool valIsGeom = (dot(matValsGeom.rgb,oneVec.rgb) != 0.0);
 
 	vec4 worldPosition = tex0;
-	vec3 fogCol = getFogColor(TexCoord0.xy);
+	vec3 fogCol = getFogColor();
 	vec3 resColor = vec3(0.0);
 	vec3 rcOrig = vec3(0.0);
 	vec3 resColorTemp = vec3(0.0);
@@ -211,29 +293,36 @@ void main()
 		resColor = fogCol;
 	}
 	else {
-		resColor = 
-			unpackColor(matVals.ba, lightRes ); //(lightRes*0.5+newAO*0.5)
+		// resColor = 
+		// 	unpackColor(matVals.ba, lightRes ); //(lightRes*0.5+newAO*0.5)
 		
-		hsvVal = rgb2hsv(resColor);
+		// hsvVal = rgb2hsv(resColor);
 		
-		//resColor = mix(resColor*0.5,resColor,lightRes);
+		// //resColor = mix(resColor*0.5,resColor,lightRes);
 		
 		
 		
-		mix(resColor, vec3(lightRes), abs(lightRes-0.5)*2.0 );
-			hsvVal = rgb2hsv(tex2.rgb);
+		// mix(resColor, vec3(lightRes), abs(lightRes-0.5)*2.0 );
+		// 	hsvVal = rgb2hsv(tex2.rgb);
 			
 			
-			resColor =
-			mix(
-				mix(
-						resColor*0.5,
-						resColor*(tex2.w*0.5+0.5),
-						lightRes//tex2.rgb
-				),
-				tex2.rgb,
-				hsvVal.g*0.5
-			);
+		// 	resColor =
+		// 	mix(
+		// 		mix(
+		// 				resColor*0.5,
+		// 				resColor*(tex2.w*0.5+0.5),
+		// 				lightRes//tex2.rgb
+		// 		),
+		// 		tex2.rgb,
+		// 		hsvVal.g*0.5
+		// 	);
+			
+		
+		resColor.rgb = vec3(
+			unpackColor(matVals.ba,tex2.r).r,
+			unpackColor(matVals.ba,tex2.g).g,
+			unpackColor(matVals.ba,tex2.b).b
+		);
 	}
 	
 	
@@ -295,7 +384,7 @@ void main()
 			0.2,
 			0.5,
 			clamp(1.0-distance(TexCoord0.xy,vec2(0.5)),0.0,1.0)
-		)*0.25;
+		)*0.5;
 		
 		
 		//resColorTemp += pow( clamp(lightRes, 0.0, 1.0), 4.0) * (1.0-timeOfDay)*0.5;
@@ -309,11 +398,13 @@ void main()
 
 	}
 	
+	
+	
+	resColor = mix(pow(resColor,vec3(1.0)), resColor, timeOfDay);
+	
+	resColor = mix(resColor*0.5,resColor,tex2.rgb);
+	
 	resColor += resColor*mix(texSpec.r,1.0,0.25)*texSpec.r;
-	
-	
-	
-	
 	
 	if (testOn) {
 		
@@ -322,17 +413,18 @@ void main()
 		//resColor = vec3(tex1.w);
 	}
 	
+	//resColor = vec3(newAO);
+	//resColor = vec3(lightRes);
 	
 	
 	
 	
-	
-	float unitSizeInPixels = 1.0;// *blockSizeInCells;
+	float cellSize = 1024.0;// *cellsPerBlock;
 	vec3 grid0 = 
-		//floor(worldPosition.xyz/unitSizeInPixels);
-		abs(mod(worldPosition.xyz, unitSizeInPixels) - unitSizeInPixels / 2.0) * 2.0;
+		//floor(worldPosition.xyz/cellSize);
+		abs(mod(worldPosition.xyz, cellSize) - cellSize / 2.0) * 2.0;
 	
-	float unitBuf = (unitSizeInPixels - 0.1);
+	float unitBuf = (cellSize - cellSize*0.125);
 	
 	vec3 gridVec = vec3(
 		float(grid0.x >= unitBuf),
@@ -356,7 +448,7 @@ void main()
 	// 	gridVal0.z = 1.0;	
 	// }
 	
-	gridVal0 *= clamp(1.0-distance(worldPosition.xyz, cameraPos.xyz)/32.0,0.0,1.0);
+	//gridVal0 *= clamp(1.0-distance(worldPosition.xyz, cameraPos.xyz)/32.0,0.0,1.0);
 	
 	
 	if (!gridOn)
@@ -429,7 +521,7 @@ void main()
 	
 	
 	outDif *= mix(
-		0.25,
+		0.1,
 		0.01,
 		clamp(distance(worldPosition.xyz, cameraPos.xyz)/64.0,0.0,1.0)
 	);
@@ -441,7 +533,7 @@ void main()
 	// }
 	
 	if (!valIsGeom) {
-		resColor -= outDif;
+		//resColor -= outDif;
 	}
 	
 	//resColor = vec3(lightRes);
@@ -456,7 +548,10 @@ void main()
 	
 	//resColor.rgb = myVec.rgb;
 	
+	//unpackColor(matVals.ba, lightRes );
 	
+
+	//resColor.rgb = tex2.rgb;
 
 	gl_FragData[0] = vec4(resColor.rgb,tot);
 }

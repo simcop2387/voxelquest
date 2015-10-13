@@ -37,7 +37,7 @@ void main() {
 	vec4 matValsGeom = tex5;
 	bool valIsGeom = (dot(matValsGeom.rgb,oneVec.rgb) != 0.0);
 
-	vec3 newRad = pow(tex1.rgb, vec3(1.0) );
+	vec3 newRad = pow(tex1.rgb, vec3(2.0) );
 
 	vec3 finalCol = mix(tex0.rgb, tex0.rgb + newRad, newRad * 0.5);
 	
@@ -57,6 +57,8 @@ void main() {
 	else {
 		//finalCol = mix(finalCol,tex1.rgb,0.5); //finalCol = //tex0.rgb*0.25 + tex1.rgb;
 	}
+	
+	//finalCol = tex1.rgb;
 	
 	if (valIsGeom) {
 		finalCol.rgb = tex0.rgb;

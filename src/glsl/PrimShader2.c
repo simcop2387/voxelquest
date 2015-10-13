@@ -494,7 +494,7 @@ void getCobble(vec3 pos) {
     int i;
     
     
-    //vec2 roughPos = (pos.xy + pos.yz) / worldSizeInPixels.x;
+    //vec2 roughPos = (pos.xy + pos.yz) / worldSizeInCells.x;
     //float roughVoro = 0.5;//abs(texture2D(Texture2, 256.0 * roughPos ).r);
 
     float tempr = 0.0;
@@ -560,15 +560,15 @@ void getCobble(vec3 pos) {
 //     float resMod = 0.25;
 
 //     float randv = baseRand;
-//     vec3 newBlockSizeInPixels = blockMaxBufInPixels.xyz - blockMinBufInPixels.xyz;
-//     vec3 voroCoords = (voroPos - blockMinBufInPixels.xyz) / newBlockSizeInPixels;
+//     vec3 newCellsPerBlock = blockMaxBufInPixels.xyz - blockMinBufInPixels.xyz;
+//     vec3 voroCoords = (voroPos - blockMinBufInPixels.xyz) / newCellsPerBlock;
 //     vec4 texVoro = texture3D(Texture4, voroCoords);
 //     float randVoro = randf(voroCoords.xy);
-//     vec3 wCoords = (worldPos - blockMinBufInPixels.xyz) / newBlockSizeInPixels;
+//     vec3 wCoords = (worldPos - blockMinBufInPixels.xyz) / newCellsPerBlock;
 //     vec4 texW = texture3D(Texture4, wCoords);
     
     
-//     vec2 roughPos = (worldPos.xy + worldPos.yz) * 0.25 / worldSizeInPixels.x;
+//     vec2 roughPos = (worldPos.xy + worldPos.yz) * 0.25 / worldSizeInCells.x;
     
 //     vec2 roughVal = vec2(
 //                                         abs(texture2D(Texture2, 512.0 * roughPos+0.01*randVoro*voroGrad ).r),
@@ -584,10 +584,10 @@ void getCobble(vec3 pos) {
 //                                          0.25,
 //                                          0.25,
 //                                          -mix(randv,snowRand,fIsSnow)
-//                                      ) - blockMinBufInPixels.xyz) / newBlockSizeInPixels;
+//                                      ) - blockMinBufInPixels.xyz) / newCellsPerBlock;
 //     vec4 texW2 = texture3D(Texture4, wCoords2);
 //     vec4 texW3 = texture3D(Texture4, 
-//         (worldPos + vec3(0.5,0.5,-0.5) - blockMinBufInPixels.xyz) / newBlockSizeInPixels    
+//         (worldPos + vec3(0.5,0.5,-0.5) - blockMinBufInPixels.xyz) / newCellsPerBlock    
 //     );
     
     

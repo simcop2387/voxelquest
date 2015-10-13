@@ -1032,18 +1032,21 @@ public:
 		y0 = ((1.0f-y0) - 0.5f)*2.0f;
 		y1 = ((1.0f-y1) - 0.5f)*2.0f;
 
-		glBegin(GL_QUADS);
+		// glBegin(GL_QUADS);
 
-		glTexCoord2f(0.0f, 1.0f);
-		glVertex3f (  x0, y1, -1.0f );
-		glTexCoord2f(1.0f, 1.0f);
-		glVertex3f (  x1, y1, -1.0f );
-		glTexCoord2f(1.0f, 0.0f);
-		glVertex3f (  x1, y0, -1.0f );
-		glTexCoord2f(0.0f, 0.0f);
-		glVertex3f (  x0, y0, -1.0f );
+		// glTexCoord2f(0.0f, 1.0f);
+		// glVertex3f (  x0, y1, -1.0f );
+		// glTexCoord2f(1.0f, 1.0f);
+		// glVertex3f (  x1, y1, -1.0f );
+		// glTexCoord2f(1.0f, 0.0f);
+		// glVertex3f (  x1, y0, -1.0f );
+		// glTexCoord2f(0.0f, 0.0f);
+		// glVertex3f (  x0, y0, -1.0f );
 
-		glEnd();
+		// glEnd();
+		
+		singleton->setShaderVec4("blitCoords", x0,y0,x1,y1 );
+		singleton->fsQuad.draw();
 
 	}
 	

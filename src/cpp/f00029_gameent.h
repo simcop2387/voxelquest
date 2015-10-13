@@ -218,14 +218,14 @@ public:
 
 		switch (alignBottomMiddleTop) {
 
-		case E_ALIGN_BOTTOM: // bottom _@_
+		case E_ALIGN_BOTTOM: // bottom _$_
 			zOffset += (rad->getFZ() - _visInsetFromMin->getFZ());
 			break;
-		case E_ALIGN_MIDDLE: // middle -@-
+		case E_ALIGN_MIDDLE: // middle -$-
 			zOffset += 0.0f;
 			break;
 			//               ___
-		case E_ALIGN_TOP: // top  @
+		case E_ALIGN_TOP: // top  $
 			zOffset += -(rad->getFZ() - _visInsetFromMax->getFZ());
 			break;
 

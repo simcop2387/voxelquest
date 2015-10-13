@@ -1,16 +1,12 @@
 {
  "params":[{
-   "paramName":"lightColBNight",
-   "shaderName":"PreLightingShader",
-   "uid":"$shaderParams.PreLightingShader.lightColBNight"
+   "paramName":"myTexSpacing",
+   "shaderName":"PolyShader",
+   "uid":"$shaderParams.PolyShader.myTexSpacing"
    },{
-   "paramName":"lightColGNight",
-   "shaderName":"PreLightingShader",
-   "uid":"$shaderParams.PreLightingShader.lightColGNight"
-   },{
-   "paramName":"lightColRNight",
-   "shaderName":"PreLightingShader",
-   "uid":"$shaderParams.PreLightingShader.lightColRNight"
+   "paramName":"myTexTest",
+   "shaderName":"PolyShader",
+   "uid":"$shaderParams.PolyShader.myTexTest"
    },{
    "paramName":"lightColorizationNight",
    "shaderName":"PreLightingShader",
@@ -23,14 +19,6 @@
    "paramName":"lightIntensityNight",
    "shaderName":"PreLightingShader",
    "uid":"$shaderParams.PreLightingShader.lightIntensityNight"
-   },{
-   "paramName":"myTexSpacing",
-   "shaderName":"PrimShader",
-   "uid":"$shaderParams.PrimShader.myTexSpacing"
-   },{
-   "paramName":"myTexTest",
-   "shaderName":"PrimShader",
-   "uid":"$shaderParams.PrimShader.myTexTest"
    },{
    "paramName":"maxWaveH",
    "shaderName":"WaterShaderCombine",

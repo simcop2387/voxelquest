@@ -13,7 +13,8 @@ uniform sampler2D Texture2;
 uniform vec2 bufferDim;
 uniform vec2 resolution;
 uniform vec3 cameraPos;
-uniform vec3 lightPosWS;
+uniform vec3 lightVec;
+//uniform vec3 lightPosWS;
 
 varying vec2 TexCoord0;
 
@@ -70,7 +71,7 @@ void main() {
 
 	
 
-	vec3 lightVec = normalize(lightPosWS.xyz - worldPosition.xyz);
+	//vec3 lightVec = normalize(lightPosWS.xyz - worldPosition.xyz);
 
 
 
@@ -102,7 +103,7 @@ void main() {
 	
 	float divVal = 1.0-clamp( distance(TexCoord0.xy,vec2(0.5,0.5))/0.5 ,0.0,1.0);
 	
-	float maxRad = bufferDim.y / mix(32.0,4.0,tex0.w);//mix(1.0,4.0,divVal);
+	float maxRad = bufferDim.y*2.0 / mix(32.0,4.0,tex0.w);//mix(1.0,4.0,divVal);
 	float curRad = 0.0;
 
 	float minRotInc = pi;
@@ -129,6 +130,7 @@ void main() {
 
 	float finalRes = 0.0;
 	float disMult = 0.0;
+	float weightVal = 0.0;
 
 	for (i = 0; i < iNumSteps; i++) {
 
@@ -157,16 +159,16 @@ void main() {
 		);
 
 		
-
+		weightVal = 1.0-curRad/maxRad;
 
 		newRes += 
 			float((tex1.a*samp1.a) != 0.0) *
 			//tex2.a * tex1.a * samp2.a * // samp1.a *
 			samp2.rgb *
 			// disMult *
-			clamp(dot(testNormRef, baseNormOrig), 0.0, 1.0);
+			clamp(dot(testNormRef, baseNormOrig), 0.0, 1.0) * weightVal;
 		
-		totRays += 1.0;
+		totRays += weightVal;
 
 		curRot += curRotInc;
 	}

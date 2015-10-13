@@ -27,7 +27,14 @@ float rand(vec2 co){
 }
 
 void main() {
-    gl_FragData[0] = vec4(randv(TexCoord0.xy),1.0);
+	vec3 rv = randv(TexCoord0.xy);
+	
+	// float thresh = 0.65;	
+	// rv.x *= float(rv.x>thresh);
+	// rv.y *= float(rv.y>thresh);
+	// rv.z *= float(rv.z>thresh);
+	
+    gl_FragData[0] = vec4(rv,1.0);
 
 
     

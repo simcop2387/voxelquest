@@ -7,8 +7,7 @@ public:
 	Singleton *singleton;
 
 	int blockId;
-	int blockSizeInHolders;
-	int blockSizeInLots;
+	int holdersPerBlock;
 	int terDataBufAmount;
 
 	bool forceUpdate;
@@ -30,10 +29,10 @@ public:
 	int terDataTexScale;
 	int terDataVisSize;
 	int terDataBufSize;
-	int blockSizeInPixels;
+	int cellsPerBlock;
 	int iHolderSize;
 	int maxFloors;
-	float fBlockSizeInPixels;
+	float fCellsPerBlock;
 
 	int dirModX[6];
 	int dirModY[6];
@@ -254,11 +253,10 @@ public:
 
 		terDataTexScale = singleton->terDataTexScale;
 
-		blockSizeInHolders = singleton->blockSizeInHolders;
-		blockSizeInLots = singleton->blockSizeInLots;
+		holdersPerBlock = singleton->holdersPerBlock;
 
-		blockSizeInPixels = singleton->blockSizeInPixels;
-		fBlockSizeInPixels = (float)blockSizeInPixels;
+		cellsPerBlock = singleton->cellsPerBlock;
+		fCellsPerBlock = (float)cellsPerBlock;
 
 		float uvSizeInCells = 1.0;
 		float uvSizeInPixels = uvSizeInCells; // 64
@@ -334,7 +332,7 @@ public:
 		int counter;
 
 		int houseColor = 0;
-		int lotSizeO2 = singleton->pixelsPerLot / 2;
+		int lotSizeO2 = singleton->cellsPerHolder / 2;
 
 		int XP = 0;
 		int XN = 1;
@@ -399,9 +397,9 @@ public:
 		float doorInset = 0.0f;
 		float doorScale = 0.625f;
 		
-		int iNodeDivsPerLot = singleton->iNodeDivsPerLot;
+		int iNodeDivsPerHolder = singleton->iNodeDivsPerHolder;
 
-		iHolderSize = blockSizeInHolders * blockSizeInHolders * blockSizeInHolders;
+		iHolderSize = holdersPerBlock * holdersPerBlock * holdersPerBlock;
 		holderData = new GamePageHolder*[iHolderSize];
 		for (i = 0; i < iHolderSize; i++) {
 			holderData[i] = NULL;
@@ -431,12 +429,17 @@ public:
 
 		blockMinBufInPixels.copyFrom(&(offsetInBlocks));
 		blockMinBufInPixels.addXYZ(-bmodXY, -bmodXY, -bmodZ);
-		blockMinBufInPixels.multXYZ(fBlockSizeInPixels);
+		blockMinBufInPixels.multXYZ(fCellsPerBlock);
 
 
 		blockMaxBufInPixels.copyFrom(&(offsetInBlocks));
 		blockMaxBufInPixels.addXYZ(1.0f + bmodXY, 1.0f + bmodXY, 1.0f + bmodZ);
-		blockMaxBufInPixels.multXYZ(fBlockSizeInPixels);
+		blockMaxBufInPixels.multXYZ(fCellsPerBlock);
+
+
+
+		// TODO: REIMPLEMENT BUILDING DATA AND REMOVE THIS RETURN
+		return;
 
 
 		
@@ -471,7 +474,7 @@ public:
 
 
 		
-		// iBuildingNodesPerSideM1 = blockSizeInLots*iNodeDivsPerLot;
+		// iBuildingNodesPerSideM1 = holdersPerBlock*iNodeDivsPerHolder;
 		// fBuildingNodesPerSideM1 = (float)iBuildingNodesPerSideM1;
 		// iBuildingNodesPerSide = iBuildingNodesPerSideM1 + 1;
 		int iMapBufSize = terDataBufPitchXY * terDataBufPitchXY;
@@ -487,8 +490,7 @@ public:
 
 
 		
-		// TODO: REIMPLEMENT BUILDING DATA AND REMOVE THIS RETURN
-		return;
+		
 		
 
 		// Create Ter Data
@@ -523,9 +525,9 @@ public:
 						fk + offsetInBlocks.getFZ()*fTerDataVisPitchZ - fTerDataBufAmount
 					);
 					tempVec.multXYZ(
-						fBlockSizeInPixels / fTerDataVisPitchXY,
-						fBlockSizeInPixels / fTerDataVisPitchXY,
-						fBlockSizeInPixels / fTerDataVisPitchZ	
+						fCellsPerBlock / fTerDataVisPitchXY,
+						fCellsPerBlock / fTerDataVisPitchXY,
+						fCellsPerBlock / fTerDataVisPitchZ	
 					);
 
 					tempf = singleton->getHeightAtPixelPos(tempVec.getFX(), tempVec.getFY());
@@ -602,8 +604,8 @@ public:
 
 		// Layout Map Roads
 
-		for (i = -1; i <= blockSizeInLots; i++) {
-			for (j = -1; j <= blockSizeInLots; j++) {
+		for (i = -1; i <= holdersPerBlock; i++) {
+			for (j = -1; j <= holdersPerBlock; j++) {
 
 
 				for (m = 0; m < 2; m++) {
@@ -619,14 +621,14 @@ public:
 					}
 
 					//one lot = one map pixel
-					lotX = blockSizeInLots * (offsetInBlocks.getIX()) + i;
-					lotY = blockSizeInLots * (offsetInBlocks.getIY()) + j;
+					lotX = holdersPerBlock * (offsetInBlocks.getIX()) + i;
+					lotY = holdersPerBlock * (offsetInBlocks.getIY()) + j;
 					res = fbow2->getPixelAtWrapped(lotX, lotY, curChannel);
 
 
 					// if (
-					// 	singleton->getHeightAtPixelPos(lotX*singleton->pixelsPerLot,lotY*singleton->pixelsPerLot) <=
-					// 	singleton->getSLInPixels()  + 1.0f
+					// 	singleton->getHeightAtPixelPos(lotX*singleton->cellsPerHolder,lotY*singleton->cellsPerHolder) <=
+					// 	singleton->getSeaHeightScaled()  + 1.0f
 					// ) {
 					// 	curType = E_CT_DOCK;
 					// }
@@ -642,19 +644,19 @@ public:
 
 						if ( (res & gw->dirFlagsO[k]) > 0) { // has road
 
-							baseI = i * iNodeDivsPerLot + terDataBufAmount;
-							baseJ = j * iNodeDivsPerLot + terDataBufAmount;
+							baseI = i * iNodeDivsPerHolder + terDataBufAmount;
+							baseJ = j * iNodeDivsPerHolder + terDataBufAmount;
 
-							for (m = 0; m < iNodeDivsPerLot; m++) {
+							for (m = 0; m < iNodeDivsPerHolder; m++) {
 								switch (k) {
 								case 0: // x+
-									connectMapNodes(baseI + iNodeDivsPerLot, baseJ + m, baseI + iNodeDivsPerLot, baseJ + m + 1, curType, -1, 0);
+									connectMapNodes(baseI + iNodeDivsPerHolder, baseJ + m, baseI + iNodeDivsPerHolder, baseJ + m + 1, curType, -1, 0);
 									break;
 								case 1: // x-
 									connectMapNodes(baseI, baseJ + m, baseI, baseJ + m + 1, curType, -1, 0);
 									break;
 								case 2: // y+
-									connectMapNodes(baseI + m, baseJ + iNodeDivsPerLot, baseI + m + 1, baseJ + iNodeDivsPerLot, curType, -1, 0);
+									connectMapNodes(baseI + m, baseJ + iNodeDivsPerHolder, baseI + m + 1, baseJ + iNodeDivsPerHolder, curType, -1, 0);
 									break;
 								case 3: // y-
 									connectMapNodes(baseI + m, baseJ, baseI + m + 1, baseJ, curType, -1, 0);
@@ -673,11 +675,11 @@ public:
 
 		// houses
 
-		for (i = 0; i < blockSizeInLots; i++) {
-			for (j = 0; j < blockSizeInLots; j++) {
+		for (i = 0; i < holdersPerBlock; i++) {
+			for (j = 0; j < holdersPerBlock; j++) {
 
-				lotX = blockSizeInLots * (offsetInBlocks.getIX()) + i;
-				lotY = blockSizeInLots * (offsetInBlocks.getIY()) + j;
+				lotX = holdersPerBlock * (offsetInBlocks.getIX()) + i;
+				lotY = holdersPerBlock * (offsetInBlocks.getIY()) + j;
 
 
 				res = fbow2->getPixelAtWrapped(lotX, lotY, gw->houseChannel);
@@ -693,10 +695,10 @@ public:
 
 
 
-							baseI = i * iNodeDivsPerLot + terDataBufAmount + iNodeDivsPerLot / 2;
-							baseJ = j * iNodeDivsPerLot + terDataBufAmount + iNodeDivsPerLot / 2;
+							baseI = i * iNodeDivsPerHolder + terDataBufAmount + iNodeDivsPerHolder / 2;
+							baseJ = j * iNodeDivsPerHolder + terDataBufAmount + iNodeDivsPerHolder / 2;
 
-							for (m = 0; m < iNodeDivsPerLot / 2; m++) {
+							for (m = 0; m < iNodeDivsPerHolder / 2; m++) {
 
 								
 								switch (k) {
@@ -809,11 +811,11 @@ public:
 				for (j = terDataBufAmount*2; j < terDataBufPitchXY-terDataBufAmount*2; j++) {
 					if ( (touchesWithinRadMap(i,j,E_CT_TREE, 3, 0) == 0) && (touches2Map(i,j,E_CT_NULL,0) == 16) ) {
 
-						lotX = blockSizeInLots * (offsetInBlocks.getIX()) + i;
-						lotY = blockSizeInLots * (offsetInBlocks.getIY()) + j;
+						lotX = holdersPerBlock * (offsetInBlocks.getIX()) + i;
+						lotY = holdersPerBlock * (offsetInBlocks.getIY()) + j;
 
-						x1 = lotX + (i*blockSizeInPixels)/terDataBufPitchXY;
-						y1 = lotY + (j*blockSizeInPixels)/terDataBufPitchXY;
+						x1 = lotX + (i*cellsPerBlock)/terDataBufPitchXY;
+						y1 = lotY + (j*cellsPerBlock)/terDataBufPitchXY;
 
 						testInd = getMapNodeIndex(i, j, 0);
 						
@@ -822,7 +824,7 @@ public:
 						if (
 							
 							//singleton->getHeightAtPixelPos(x1,y1) >
-							//singleton->getSLInPixels() + 2.0f
+							//singleton->getSeaHeightScaled() + 2.0f
 							
 							( ((float)(mapData[testInd].terHeight))/fTerDataVisPitchZ ) >
 							(singleton->getSLNormalized() + 1.0f/255.0f)
@@ -1835,8 +1837,8 @@ public:
 
 		// geometry generation
 		
-		lotX = blockSizeInPixels * offsetInBlocks.getIX();
-		lotY = blockSizeInPixels * offsetInBlocks.getIY();
+		lotX = cellsPerBlock * offsetInBlocks.getIX();
+		lotY = cellsPerBlock * offsetInBlocks.getIY();
 		lotZ = 0;
 
 		for (k = 0; k <= terDataBufPitchZ; k++) {
@@ -2028,10 +2030,10 @@ public:
 												}
 												else {
 													if (nDir == 1.0f) {
-														tempf = (flushRadInCells)/(fBlockSizeInPixels / fTerDataVisPitchXY);
+														tempf = (flushRadInCells)/(fCellsPerBlock / fTerDataVisPitchXY);
 													}
 													else {
-														tempf = 1.0f-(flushRadInCells)/(fBlockSizeInPixels / fTerDataVisPitchXY);
+														tempf = 1.0f-(flushRadInCells)/(fCellsPerBlock / fTerDataVisPitchXY);
 													}
 													
 													xmod1 = tempf*dirModX[m];
@@ -2089,13 +2091,13 @@ public:
 										
 									}
 										
-									x1 = lotX + ( ((float)(i - terDataBufAmount) + xmod1 + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchXY;
-									y1 = lotY + ( ((float)(j - terDataBufAmount) + ymod1 + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchXY;
-									z1 = lotZ + ( ((float)(k - terDataBufAmount) + zmod1 + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchZ;
+									x1 = lotX + ( ((float)(i - terDataBufAmount) + xmod1 + 0.5f) * fCellsPerBlock) / fTerDataVisPitchXY;
+									y1 = lotY + ( ((float)(j - terDataBufAmount) + ymod1 + 0.5f) * fCellsPerBlock) / fTerDataVisPitchXY;
+									z1 = lotZ + ( ((float)(k - terDataBufAmount) + zmod1 + 0.5f) * fCellsPerBlock) / fTerDataVisPitchZ;
 
-									x2 = lotX + ( ((float)(i - terDataBufAmount) + xmod2 + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchXY;
-									y2 = lotY + ( ((float)(j - terDataBufAmount) + ymod2 + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchXY;
-									z2 = lotZ + ( ((float)(k - terDataBufAmount) + zmod2 + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchZ;
+									x2 = lotX + ( ((float)(i - terDataBufAmount) + xmod2 + 0.5f) * fCellsPerBlock) / fTerDataVisPitchXY;
+									y2 = lotY + ( ((float)(j - terDataBufAmount) + ymod2 + 0.5f) * fCellsPerBlock) / fTerDataVisPitchXY;
+									z2 = lotZ + ( ((float)(k - terDataBufAmount) + zmod2 + 0.5f) * fCellsPerBlock) / fTerDataVisPitchZ;
 									
 									if (n == 0) {
 										centerPoint.setFXYZ(
@@ -2464,7 +2466,7 @@ public:
 											
 											if (
 												singleton->getHeightAtPixelPos(p1.getFX(), p1.getFY()) <=
-												singleton->getSLInPixels()  + 2.0f
+												singleton->getSeaHeightScaled()  + 2.0f
 											) {
 												matParams.setFXYZ(E_MAT_PARAM_FOUNDATION, E_MAT_SUBPARAM_DOCK, 0.0f);
 											}
@@ -3254,15 +3256,15 @@ SKIP_ADD_GEOM:
 		tempVec.setFXYZ(xInHolders*cellsPerHolder, yInHolders*cellsPerHolder, 0.0f);
 
 		tempVec.addXYZ(
-			-fBlockSizeInPixels * offsetInBlocks.getFX(),
-			-fBlockSizeInPixels * offsetInBlocks.getFY(),
+			-fCellsPerBlock * offsetInBlocks.getFX(),
+			-fCellsPerBlock * offsetInBlocks.getFY(),
 			0.0f
 		);
 
 		tempVec.multXYZ(
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchZ / fBlockSizeInPixels
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchZ / fCellsPerBlock
 		);
 		tempVec.addXYZ((float)terDataBufAmount);
 
@@ -3303,15 +3305,15 @@ SKIP_ADD_GEOM:
 		tempVec.copyFrom(worldMinVisInPixels);
 
 		tempVec.addXYZ(
-			-fBlockSizeInPixels * offsetInBlocks.getFX(),
-			-fBlockSizeInPixels * offsetInBlocks.getFY(),
+			-fCellsPerBlock * offsetInBlocks.getFX(),
+			-fCellsPerBlock * offsetInBlocks.getFY(),
 			0.0f
 		);
 
 		tempVec.multXYZ(
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchZ / fBlockSizeInPixels
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchZ / fCellsPerBlock
 		);
 		tempVec.addXYZ((float)terDataBufAmount);
 
@@ -3391,15 +3393,15 @@ SKIP_ADD_GEOM:
 		
 
 		tempVec.addXYZ(
-			-fBlockSizeInPixels * offsetInBlocks.getFX(),
-			-fBlockSizeInPixels * offsetInBlocks.getFY(),
+			-fCellsPerBlock * offsetInBlocks.getFX(),
+			-fCellsPerBlock * offsetInBlocks.getFY(),
 			0.0f
 		);
 
 		tempVec.multXYZ(
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchZ / fBlockSizeInPixels
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchZ / fCellsPerBlock
 		);
 		tempVec.addXYZ((float)terDataBufAmount);
 
@@ -3557,15 +3559,15 @@ SKIP_ADD_GEOM:
 		
 		tempVec.copyFrom(worldPosInPix);
 		tempVec.addXYZ(
-			-fBlockSizeInPixels * offsetInBlocks.getFX(),
-			-fBlockSizeInPixels * offsetInBlocks.getFY(),
+			-fCellsPerBlock * offsetInBlocks.getFX(),
+			-fCellsPerBlock * offsetInBlocks.getFY(),
 			0.0f
 		);
 
 		tempVec.multXYZ(
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchZ / fBlockSizeInPixels
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchZ / fCellsPerBlock
 		);
 		tempVec.addXYZ((float)terDataBufAmount);
 
@@ -3615,15 +3617,15 @@ SKIP_ADD_GEOM:
 		
 		tempVec.copyFrom(worldPositionInPixelsIn);
 		tempVec.addXYZ(
-			-fBlockSizeInPixels * offsetInBlocks.getFX(),
-			-fBlockSizeInPixels * offsetInBlocks.getFY(),
+			-fCellsPerBlock * offsetInBlocks.getFX(),
+			-fCellsPerBlock * offsetInBlocks.getFY(),
 			zBias
 		);
 
 		tempVec.multXYZ(
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchZ / fBlockSizeInPixels
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchZ / fCellsPerBlock
 		);
 		tempVec.addXYZ((float)terDataBufAmount);
 
@@ -3681,9 +3683,9 @@ SKIP_ADD_GEOM:
 		int i = ind - (k * terDataBufPitchXY * terDataBufPitchXY + j * terDataBufPitchXY);
 				
 		posInPixelsOut->setFXYZ(
-			blockSizeInPixels * offsetInBlocks.getIX() + ( ((float)(i - terDataBufAmount) + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchXY,
-			blockSizeInPixels * offsetInBlocks.getIY() + ( ((float)(j - terDataBufAmount) + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchXY,
-			0 + ( ((float)(k - terDataBufAmount) + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchZ
+			cellsPerBlock * offsetInBlocks.getIX() + ( ((float)(i - terDataBufAmount) + 0.5f) * fCellsPerBlock) / fTerDataVisPitchXY,
+			cellsPerBlock * offsetInBlocks.getIY() + ( ((float)(j - terDataBufAmount) + 0.5f) * fCellsPerBlock) / fTerDataVisPitchXY,
+			0 + ( ((float)(k - terDataBufAmount) + 0.5f) * fCellsPerBlock) / fTerDataVisPitchZ
 		);
 
 	}
@@ -3902,122 +3904,122 @@ SKIP_ADD_GEOM:
 		return false;
 	}
 
-	int copyTerToTexture() {
+	// int copyTerToTexture() {
 
-		int resIndex = singleton->requestTerIndex(blockId);
+	// 	int resIndex = 0;//singleton->requestTerIndex(blockId);
 
-		int i;
-		int j;
-		int k;
-		int indSource;
-		int indDest;
+	// 	int i;
+	// 	int j;
+	// 	int k;
+	// 	int indSource;
+	// 	int indDest;
 
-		uint uiSimp;
+	// 	uint uiSimp;
 
-		uint *finalTex;
+	// 	uint *finalTex;
 
-		if (singleton->terTextures[resIndex].alreadyBound && (!forceUpdate)) {
+	// 	if (singleton->terTextures[resIndex].alreadyBound && (!forceUpdate)) {
 			
-		} else {
+	// 	} else {
 			
-			forceUpdate = false;
+	// 		forceUpdate = false;
 
-			doTraceND("copyTerToTexture resIndex: ", i__s(resIndex));
+	// 		doTraceND("copyTerToTexture resIndex: ", i__s(resIndex));
 
-			singleton->terTextures[resIndex].alreadyBound = true;
+	// 		singleton->terTextures[resIndex].alreadyBound = true;
 
 
-			// if (terDataTexScale == 1) {
-			// 	finalTex = terData;
-			// } else {
+	// 		// if (terDataTexScale == 1) {
+	// 		// 	finalTex = terData;
+	// 		// } else {
 				
-			// }
+	// 		// }
 			
-			tempVec2.setFXYZ(93.989f, 67.345f, 54.256f);
+	// 		tempVec2.setFXYZ(93.989f, 67.345f, 54.256f);
 			
 			
-			for (k = 0; k < terDataBufPitchScaledZ; k++) {
-				for (j = 0; j < terDataBufPitchScaledXY; j++) {
-					for (i = 0; i < terDataBufPitchScaledXY; i++) {
-						indDest = k * terDataBufPitchScaledXY * terDataBufPitchScaledXY + j * terDataBufPitchScaledXY + i;
-						indSource =
-							(k / terDataTexScale) * terDataBufPitchXY * terDataBufPitchXY +
-							(j / terDataTexScale) * terDataBufPitchXY +
-							(i / terDataTexScale);
+	// 		for (k = 0; k < terDataBufPitchScaledZ; k++) {
+	// 			for (j = 0; j < terDataBufPitchScaledXY; j++) {
+	// 				for (i = 0; i < terDataBufPitchScaledXY; i++) {
+	// 					indDest = k * terDataBufPitchScaledXY * terDataBufPitchScaledXY + j * terDataBufPitchScaledXY + i;
+	// 					indSource =
+	// 						(k / terDataTexScale) * terDataBufPitchXY * terDataBufPitchXY +
+	// 						(j / terDataTexScale) * terDataBufPitchXY +
+	// 						(i / terDataTexScale);
 							
-						if (terData[indSource] == 0) {
-							uiSimp = 0;
-						}
-						else {
-							if (buildingData[indSource].nearAir) {
+	// 					if (terData[indSource] == 0) {
+	// 						uiSimp = 0;
+	// 					}
+	// 					else {
+	// 						if (buildingData[indSource].nearAir) {
 								
-								// TODO: rand num should be hashed based on location
-								
-								
+	// 							// TODO: rand num should be hashed based on location
 								
 								
 								
-								if (
-									(i >= terDataBufPitchScaledXY-terDataBufAmount*4) ||
-									(i <= terDataBufAmount*4) ||
-									(j >= terDataBufPitchScaledXY-terDataBufAmount*4) ||
-									(j <= terDataBufAmount*4)
-								) {
-									uiSimp = 255; // make sure block borders match up
-								}
-								else {
+								
+								
+	// 							if (
+	// 								(i >= terDataBufPitchScaledXY-terDataBufAmount*4) ||
+	// 								(i <= terDataBufAmount*4) ||
+	// 								(j >= terDataBufPitchScaledXY-terDataBufAmount*4) ||
+	// 								(j <= terDataBufAmount*4)
+	// 							) {
+	// 								uiSimp = 255; // make sure block borders match up
+	// 							}
+	// 							else {
 									
-									tempVec.setIXYZ(
-										i + offsetInBlocks.getIX()*terDataVisPitchXY - terDataBufAmount,
-										j + offsetInBlocks.getIY()*terDataVisPitchXY - terDataBufAmount,
-										k + offsetInBlocks.getIZ()*terDataVisPitchZ - terDataBufAmount
-									);
+	// 								tempVec.setIXYZ(
+	// 									i + offsetInBlocks.getIX()*terDataVisPitchXY - terDataBufAmount,
+	// 									j + offsetInBlocks.getIY()*terDataVisPitchXY - terDataBufAmount,
+	// 									k + offsetInBlocks.getIZ()*terDataVisPitchZ - terDataBufAmount
+	// 								);
 									
-									uiSimp = iGetRandSeeded(&tempVec,&tempVec2,200,255);
-								}
+	// 								uiSimp = iGetRandSeeded(&tempVec,&tempVec2,200,255);
+	// 							}
 								
-							}
-							else {
-								uiSimp = 255;
-							}
-						}
+	// 						}
+	// 						else {
+	// 							uiSimp = 255;
+	// 						}
+	// 					}
 
-						singleton->terDataScaled[indDest] = (uiSimp << 24) | (uiSimp << 16) | (uiSimp << 8) | uiSimp;
-					}
-				}
-			}
+	// 					singleton->terDataScaled[indDest] = (uiSimp << 24) | (uiSimp << 16) | (uiSimp << 8) | uiSimp;
+	// 				}
+	// 			}
+	// 		}
 
-			finalTex = singleton->terDataScaled;
+	// 		finalTex = singleton->terDataScaled;
 			
 			
 			
 
-			glBindTexture(GL_TEXTURE_3D, singleton->terTextures[resIndex].texId);
+	// 		glBindTexture(GL_TEXTURE_3D, singleton->terTextures[resIndex].texId);
 
-			glTexSubImage3D(
-				GL_TEXTURE_3D,
-				0,
+	// 		glTexSubImage3D(
+	// 			GL_TEXTURE_3D,
+	// 			0,
 
-				0,
-				0,
-				0,
+	// 			0,
+	// 			0,
+	// 			0,
 
-				terDataBufPitchScaledXY,
-				terDataBufPitchScaledXY,
-				terDataBufPitchScaledZ,
+	// 			terDataBufPitchScaledXY,
+	// 			terDataBufPitchScaledXY,
+	// 			terDataBufPitchScaledZ,
 
-				GL_RGBA,
-				GL_UNSIGNED_BYTE,
+	// 			GL_RGBA,
+	// 			GL_UNSIGNED_BYTE,
 
-				finalTex
+	// 			finalTex
 
-			);
-			glBindTexture(GL_TEXTURE_3D, 0);
-		}
+	// 		);
+	// 		glBindTexture(GL_TEXTURE_3D, 0);
+	// 	}
 
-		return resIndex;
+	// 	return resIndex;
 
-	}
+	// }
 
 
 

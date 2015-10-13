@@ -3,9 +3,45 @@
 
 #include "f00337_gamefluid.e"
 #define LZZ_INLINE inline
+int GameFluid::getFluidId (int groupNum, int ind)
+                                              {
+		return fluidIds[fsVec[groupNum].fidBegInd + ind];
+	}
+int GameFluid::getFIDSize (int groupNum)
+                                     {
+		return fsVec[groupNum].fidEndInd - fsVec[groupNum].fidBegInd;
+	}
+void GameFluid::fidPushBack (int groupNum, int val)
+                                                {
+		fluidIds[fsVec[groupNum].fidEndInd] = val;
+		fsVec[groupNum].fidEndInd++;
+	}
+int * GameFluid::fidGetBeg (int groupNum)
+                                     {
+		return fluidIds + fsVec[groupNum].fidBegInd;
+	}
+int * GameFluid::fidGetEnd (int groupNum)
+                                     {
+		return fluidIds + fsVec[groupNum].fidEndInd;
+	}
+int GameFluid::getIdealCellId (int groupNum, int ind)
+                                                  {
+		return idealCellIds[fsVec[groupNum].iciBegInd + ind];
+	}
+int GameFluid::getICISize (int groupNum)
+                                     {
+		return fsVec[groupNum].iciEndInd - fsVec[groupNum].iciBegInd;
+	}
+void GameFluid::iciPushBack (int groupNum, int val)
+                                                {
+		idealCellIds[fsVec[groupNum].iciEndInd] = val;
+		fsVec[groupNum].iciEndInd++;
+	}
 GameFluid::GameFluid ()
                     {
 		
+		fluidChanged = false;
+		posShifted = false;
 		hasRead = false;
 		
 		UNIT_MIN = FLUID_UNIT_MIN;
@@ -26,17 +62,83 @@ GameFluid::GameFluid ()
 		watchMaxZ = -1;
 		
 	}
-void GameFluid::init (Singleton * _singleton)
-                                         {
+void GameFluid::init (Singleton * _singleton, int _mainId)
+                                                      {
+		int i;
+		
 		singleton = _singleton;
-		volSizePrim = singleton->volSizePrim;
+		mainId = _mainId;
+		
+		// qqqqqq
+		// WAS DOING: LEVEL OUT TOP OF WATER BY SEARCHING FOR WATER RIGHT BELOW TOP
+		// AND FILLING WITH ZERO VALUE WATER IF THERE IS
+		
+		//volSizes[E_FID_SML] = 64;
+		volSizes[E_FID_BIG] = DEF_VOL_SIZE;
+		mipSizes[E_FID_BIG] = 1;
+		
+		// volSizes[E_FID_MIP] = 256;
+		// mipSizes[E_FID_MIP] = 4;
+		
+		waterTick = 0;
+		waterTickMax = 32;
+		waterTickMaxDiv = 64;
+		waterTickReady = false;
+		
+		
+		
+		volSizePrim = volSizes[mainId]/mipSizes[mainId];
+		cellsPerBlock = singleton->cellsPerBlock;
+		cellsPerHolder = singleton->cellsPerHolder;
+		
+		readyForTermination = false;
+		cycleTerminated = false;
+		proceedingToRead = false;
+		fluidReading = false;
+		modifiedUnit = false;
+		modifiedGeom = false;
+		readyForTBOUpdate = false;
+		firstVPUpdate = true;
+		
+		internalPrimFormat = GL_RGBA;
+		precPrimFormat = GL_UNSIGNED_BYTE;
+		
+		curGeomCount = 0;
+		waterLerp = 0.0f;
+		primDiv = 4;
+		volSizePrimMacro = volSizePrim/primDiv;
+		primsPerMacro = 8;
+		floatsPerPrimEntry = 8;
+		floatsInPrimMacro = volSizePrimMacro*volSizePrimMacro*volSizePrimMacro*primsPerMacro*floatsPerPrimEntry;
+		
+		
+		
+		
+		
+		
+		threadLoader.init();
+		threadTex.init();
+		threadFluid.init();
+		
+		
+		camPosVP.setFXYZ(0.0f,0.0f,0.0f);
+		lastCamPosVP.setFXYZ(0.0f,0.0f,0.0f);//(-100.0f,-100.0f,-100.0f);
+		
+		
 		bufAmount = 1;
+		
+		if (mipSizes[mainId] > 1) {
+			bufAmount = 0;
+		}
+		
 		volSizePrimBuf = volSizePrim+bufAmount*2;
 		
 		forceFullRefresh = 2;
 		
-		curTick = 0;
-		maxTicks = 1;//volSizePrim/8;
+		shrinkCount = 0;
+		
+		//curTick = 0;
+		//maxTicks = 1;//volSizePrim/8;
 		
 		vspMin = bufAmount;
 		vspMax = volSizePrimBuf-bufAmount;
@@ -44,24 +146,958 @@ void GameFluid::init (Singleton * _singleton)
 		fluidData = new int[volSizePrimBuf*volSizePrimBuf*volSizePrimBuf*4];
 		extraData = new int[volSizePrimBuf*volSizePrimBuf*volSizePrimBuf*4];
 		
+		fluidIds = new int[volSizePrimBuf*volSizePrimBuf*volSizePrimBuf];
+		idealCellIds = new int[volSizePrimBuf*volSizePrimBuf*volSizePrimBuf];
+		
+		
 		totSize = volSizePrimBuf*volSizePrimBuf*volSizePrimBuf;
+		
+		
+		
+		for (i = 0; i < E_PL_LENGTH; i++) {
+			volDataPrim[i] = new uint[volSizePrim*volSizePrim*volSizePrim];
+		}
+		
+		//maxDirtyRegion();
+		
+		tboData = new float[floatsInPrimMacro];
+		
+		
+		
+		
+		setupPrimTexture();
+		
+	}
+void GameFluid::flushActionStack ()
+                                {
+		PushModStruct* curPM;
+		
+		
+		
+		while (pmStack.size() > 0) {
+			
+			cout << "flushActionStack()\n";
+			
+			curPM = &(pmStack.back());
+			
+			switch(curPM->actionType) {
+				case E_PM_EXPLODE_BULLET:
+					pushExplodeBullet(
+						false,
+						&(curPM->data[0]),
+						curPM->data[1].getIX()
+					);
+				break;
+				case E_PM_MODIFY_UNIT:
+					pushModifyUnit(
+						false,
+						&(curPM->data[0]),
+						curPM->data[1].getIX(),
+						curPM->data[1].getIY(),
+						curPM->data[1].getIZ()
+					);
+				break;
+				case E_PM_PLACE_TEMPLATE:
+					pushPlaceTemplate(false,&(curPM->data[0]), curPM->data[1].getIX());
+				break;
+			}
+			
+			pmStack.pop_back();
+		}
+	}
+void GameFluid::pushExplodeBullet (bool isReq, FIVector4 * newPos, int waterBulletOn)
+                                                                                 {
+		
+		
+		if (isReq) {
+			pmStack.push_back(PushModStruct());
+			pmStack.back().actionType = E_PM_EXPLODE_BULLET;
+			pmStack.back().data[0].copyFrom(newPos);
+			pmStack.back().data[1].setIX(waterBulletOn);
+			return;
+		}
+		
+		if (waterBulletOn > 0) {
+			modifyUnit(newPos, E_BRUSH_ADD, E_PTT_WAT, explodeRad);
+		}
+		else {
+			modifyUnit(newPos, E_BRUSH_SUB, E_PTT_TER, explodeRad);
+		}
+		
+		modifiedUnit = true;
+		
+		
+	}
+void GameFluid::pushModifyUnit (bool isReq, FIVector4 * mp, int buttonNum, int earthMod, int curBrushRad)
+                                                                                                     {
+		
+		cout << "pushModifyUnit " << isReq << "\n";
+		
+		if (isReq) {
+			pmStack.push_back(PushModStruct());
+			pmStack.back().actionType = E_PM_MODIFY_UNIT;
+			pmStack.back().data[0].copyFrom(mp);
+			pmStack.back().data[1].setIXYZ(buttonNum,earthMod,curBrushRad);
+			return;
+		}
+		
+		//bool lbClicked, bool rbClicked, bool mbClicked
+		
+		switch (buttonNum) {
+			case 0: //lb
+				modifyUnit(mp, E_BRUSH_ADD, earthMod, curBrushRad);
+			break;	
+			case 1: //rb
+				modifyUnit(mp, E_BRUSH_SUB, earthMod, curBrushRad);
+			break;	
+			case 2: //mb
+				modifyUnit(mp, E_BRUSH_REF, earthMod, curBrushRad);
+			break;	
+		}
+		
+		modifiedUnit = true;
+		
+		
+		
+		
+	}
+void GameFluid::pushPlaceTemplate (bool isReq, FIVector4 * newPos, int pt)
+                                                                      {
+		
+		if (isReq) {
+			pmStack.push_back(PushModStruct());
+			pmStack.back().actionType = E_PM_PLACE_TEMPLATE;
+			pmStack.back().data[0].copyFrom(newPos);
+			pmStack.back().data[1].setIX(pt);
+			return;
+		}
+		
+		addGeom(newPos,pt);
+		
+		modifiedGeom = true;
+		
+		
+	}
+bool GameFluid::addPrimObj (FIVector4 * pos, int tempId, int uid)
+                                                             {
+		int baseInd = tempId*E_PRIMTEMP_LENGTH;
+		int i;
+		int j;
+		int k;
+		int m;
+		int ind;
+		float fPrimDiv = 1.0f/primDiv;
+		//float cornerDis = singleton->primTemplateStack[baseInd+E_PRIMTEMP_CORNERDIS].getFX();
+		
+		tempBoundsMin.copyFrom(&(singleton->primTemplateStack[baseInd+E_PRIMTEMP_VISMIN]));
+		tempBoundsMax.copyFrom(&(singleton->primTemplateStack[baseInd+E_PRIMTEMP_VISMAX]));
+		
+		tempBoundsMin.addXYZRef(pos);
+		tempBoundsMax.addXYZRef(pos);
+		
+		tempBoundsMin.addXYZRef(&volMinReadyInPixels,-1.0f);
+		tempBoundsMax.addXYZRef(&volMinReadyInPixels,-1.0f);
+		
+		//tempBoundsMin.addXYZ(-volSizePrim/2);
+		//tempBoundsMax.addXYZ(-volSizePrim/2);
+		
+		
+		
+		//tempBoundsMin.addXYZ(-cornerDis);
+		//tempBoundsMax.addXYZ(cornerDis);
+		
+		tempBoundsMin.multXYZ(fPrimDiv);
+		tempBoundsMax.multXYZ(fPrimDiv);
+		
+		//tempBoundsMin.intDivXYZ(primDiv);
+		//tempBoundsMax.intDivXYZ(primDiv);
+		
+		
+		
+		// tempBoundsMin.addXYZ(0.0f, 0.0f, 2.0f);
+		// tempBoundsMax.addXYZ(0.0f, 0.0f, 2.0f);
+		
+		
+		
+		int iMin = max(tempBoundsMin[0],0.0f);
+		int jMin = max(tempBoundsMin[1],0.0f);
+		int kMin = max(tempBoundsMin[2],0.0f);
+		
+		int iMax = min(tempBoundsMax[0],volSizePrimMacro-1.0f);
+		int jMax = min(tempBoundsMax[1],volSizePrimMacro-1.0f);
+		int kMax = min(tempBoundsMax[2],volSizePrimMacro-1.0f);
+		
+		bool wasAdded = false;
+		
+		for (i = iMin; i <= iMax; i++) {
+			for (j = jMin; j <= jMax; j++) {
+				for (k = kMin; k <= kMax; k++) {
+					for (m = 0; m < primsPerMacro; m++) {
+						
+						ind = (
+							(
+								i +
+								j*volSizePrimMacro +
+								k*volSizePrimMacro*volSizePrimMacro
+							)*primsPerMacro + m
+						)*floatsPerPrimEntry;
+						
+						if (tboData[ind+3] == 0.0f) {
+							
+							wasAdded = true;
+							
+							tboData[ind+0] = pos->getFX();
+							tboData[ind+1] = pos->getFY();
+							tboData[ind+2] = pos->getFZ();
+							tboData[ind+3] = tempId;
+							
+							tboData[ind+4] = 0;//diagCount;//;
+							tboData[ind+5] = uid + 1; // uid of 0 results in blank object
+							tboData[ind+6] = 0.0f;
+							tboData[ind+7] = 0.0f;
+							
+							break;
+						}
+					}
+				}
+			}
+		}
+		
+		return wasAdded;
+	}
+void GameFluid::addGeom (FIVector4 * newPos, int templateId)
+                                                        { //FIVector4* pos, FIVector4* offset
+		
+		FIVector4 camBlockPos;
+		GameBlock* curBlock;
+		
+		
+		
+		camBlockPos.copyFrom(newPos);
+		camBlockPos.intDivXYZ(cellsPerBlock);
+		
+		curBlock = singleton->gw->getBlockAtCoords(
+			camBlockPos.getIX(),
+			camBlockPos.getIY(),
+			camBlockPos.getIZ(),
+			true
+		);
+		
+		curBlock->gameEnts[E_ET_GEOM].data.push_back(GameEnt());
+		
+		GameEnt* gameEnt = &(curBlock->gameEnts[E_ET_GEOM].data.back());
+		
+		gameEnt->templateId = templateId;
+		gameEnt->templatePos.copyFrom(newPos);
+	}
+void GameFluid::fetchGeom ()
+                         {
+		
+		
+		int i;
+		int j;
+		int k;
+		
+		int m;
+		
+		GameBlock* curBlock;
+		GameEnt* gameEnt;
+		FIVector4 start;
+		FIVector4 end;
+		FIVector4 avg;
+
+		
+		
+		int geomCount = 0;
+		int tempId;
+		
+		FIVector4 camBlockPos;
+		
+		camBlockPos.averageXYZ(&volMinReadyInPixels,&volMaxReadyInPixels);
+		camBlockPos.intDivXYZ(cellsPerBlock);
+		
+		for (i = -1; i <= 1; i++) {
+			for (j = -1; j <= 1; j++) {
+				for (k = -1; k <= 1; k++) {
+					
+					
+					curBlock = singleton->gw->getBlockAtCoords(
+						camBlockPos.getIX()+i,
+						camBlockPos.getIY()+j,
+						camBlockPos.getIZ()+k,
+						true
+					);
+
+					for (m = 0; m < curBlock->gameEnts[E_ET_GEOM].data.size(); m++) {
+
+						gameEnt = &(curBlock->gameEnts[E_ET_GEOM].data[m]);
+
+						tempId = gameEnt->templateId;
+						
+
+						//start.copyFrom( &(gameEnt->moveMinInPixels) );
+						//end.copyFrom( &(gameEnt->moveMaxInPixels) );
+
+						//start.clampZ(0.0,worldSizeInCells.getFZ()-1.0f);
+						//end.clampZ(0.0,worldSizeInCells.getFZ()-1.0f);
+						
+						
+						
+
+						//if (FIVector4::intersect(&start,&end,&volMinReadyInPixels,&volMaxReadyInPixels)) {
+							
+							//avg.averageXYZ(&start,&end);
+							
+							if( addPrimObj(&(gameEnt->templatePos), tempId, geomCount) ) {
+								geomCount++;
+							}
+							
+							
+						//}
+					}
+						
+				}
+			}
+		}
+		
+		curGeomCount = geomCount;
+		
+		//cout << geomCount << " <-- geomCount\n";
+
+
+		
+	}
+void GameFluid::setupPrimTexture ()
+                                {
+		int i;
+
+		
+
+		for (i = 0; i < E_PL_LENGTH; i++) {
+			
+			
+			glGenTextures(1, &(volIdPrim[i]));
+			
+			//cout << "vp " << volIdPrim[i] << "\n";
+			
+			glBindTexture(GL_TEXTURE_3D, volIdPrim[i]);
+			glTexImage3D(
+				GL_TEXTURE_3D,
+				0,
+				internalPrimFormat, //GL_RGBA, // GL_RGBA32F
+				volSizePrim,
+				volSizePrim,
+				volSizePrim,
+				0,
+				GL_RGBA,
+				precPrimFormat, // GL_UNSIGNED_BYTE, // GL_FLOAT
+				0
+			);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			//glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); //GL_CLAMP_TO_BORDER
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+			glBindTexture(GL_TEXTURE_3D, 0);
+			
+			
+		}
+		
+		
+	}
+bool GameFluid::tryToEndRead ()
+                            {
+		
+		
+		if (threadLoader.isReady()) {
+			
+			
+			stopTL();
+			endFluidRead();
+			//cycleTerminated = false;
+			
+			
+			//if (mainId == E_FID_SML) {
+			//	startFT();
+			//}
+			
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+bool GameFluid::anyThreadsRunning ()
+                                 {
+		return threadLoader.threadRunning||threadTex.threadRunning||threadFluid.threadRunning;
+	}
+bool GameFluid::updateAll ()
+                         {
+		
+		
+		if (cycleTerminated) {
+			
+			return true;
+		}
+		
+		waterTick++;		
+		if (waterTick == waterTickMax) {
+			waterTickReady = true;	
+		}
+		
+		if (waterTick > waterTickMaxDiv) {
+			waterTick = waterTickMaxDiv;
+		}
+		
+		waterLerp = ((float)waterTick)/((float)waterTickMaxDiv);
+		
+		
+		
+		
+		//cout << "still going " << mainId << "\n";
+		
+		
+		if (fluidReading) {
+			
+		}
+		else {
+			/////////
+			
+			if (threadTex.threadRunning) {
+				
+			}
+			else {
+				
+				
+				
+				
+				
+				if (waterTickReady) {
+					
+					
+					
+					if (threadFluid.isReady()) {
+						
+						waterTickReady = false;
+						
+						stopFT();
+						
+						// cout << "\n\nimmobileHeight " << immobileHeight << "\n";
+						// cout << "maxWaterHeight " << maxWaterHeight << "\n\n";
+						
+						flushActionStack();
+						
+						if (modifiedUnit) {
+							applyMods();
+						}
+						
+						if (modifiedGeom) {	
+							fillAllGeom();
+							updateTBOData(false,false);
+						}
+						
+						if (modifiedUnit||modifiedGeom) {
+							//singleton->refreshPaths = true;
+						}
+						
+						//DirtyRegion
+						if (modifiedUnit||modifiedGeom||fluidChanged) {
+							
+							if (fluidChanged) {
+								cout << "fluidChanged (max/imobile)" << maxWaterHeight << " " << immobileHeight << "\n";
+							}
+							
+							
+							if (hasRead&&(!firstVPUpdate)) {
+								writeMIP.copyFrom(&volMinInPixels); //volMinInPixels
+								
+								//if (mainId == E_FID_SML) {
+									singleton->gameLogic->threadPoolPath->stopAll();
+									singleton->gameLogic->threadPoolList->stopAll();
+									writeFluidData();
+								//}
+								
+							}
+							
+						}
+							
+						modifiedUnit = false;
+						modifiedGeom = false;
+						
+						forceFullRefresh = 1; // todo: should not require this?
+						
+						startTT();
+					}
+				}
+			}
+			
+			
+			if (threadFluid.threadRunning) {
+				
+			}
+			else {
+				
+				
+				if (threadTex.isReady()) {
+					stopTT();
+					
+					
+					volMinReadyInPixels.copyFrom(&volMinInPixels);
+					volMaxReadyInPixels.copyFrom(&volMaxInPixels);
+					
+					if (readyForTBOUpdate) {
+						readyForTBOUpdate = false;
+						fetchGeom();
+						tboWrapper.update(tboData);
+					}
+					
+					waterTick = 0;
+					waterLerp = ((float)waterTick)/((float)waterTickMaxDiv);
+					
+					//if (mainId == E_FID_BIG) {
+						copyPrimTexture(
+							0,
+							0,
+							0,
+							volSizePrim,
+							&(volDataPrim[0])
+						);
+					//}
+					
+					
+					curDirtyMax.copyFrom(&(dirtyMax));
+					curDirtyMin.copyFrom(&(dirtyMin));
+					curWaterMin.copyFrom(&tempMin2);
+					curWaterMax.copyFrom(&tempMax2);
+					//curWaterMin.addXYZRef(&volMinReadyInPixels);
+					//curWaterMax.addXYZRef(&volMinReadyInPixels);
+					//shrinkDirtyRegion();
+					resetDirtyRegion();
+					
+					
+					shiftRegion();
+					
+					if (fluidReading) {
+						
+					}
+					else {
+						terminateCycle();
+					}
+				}
+				
+				
+				
+			}
+			
+			////////////////
+		}
+		return false;
+	}
+void GameFluid::copyPrimTexture (int ox, int oy, int oz, int dim, uint * * myData)
+                                                                             {
+		
 		
 		int i;
 		
 		for (i = 0; i < E_PL_LENGTH; i++) {
 			
-			volDataPrim[i] = new uint[volSizePrim*volSizePrim*volSizePrim];
+			
+			glBindTexture(GL_TEXTURE_3D, volIdPrim[i]);
+			glTexSubImage3D(
+				GL_TEXTURE_3D,
+				0,
+
+				ox,
+				oy,
+				oz,
+
+				dim,
+				dim,
+				dim,
+
+				GL_RGBA,
+				precPrimFormat, //GL_UNSIGNED_BYTE,
+
+				myData[i]
+			);
+			glBindTexture(GL_TEXTURE_3D, 0);
+		}
+		
+		//singleton->depthInvalidMove = true;
+		
+	}
+void GameFluid::fillAllGeom ()
+                           {
+		
+		clearAllGeom();
+		
+		int i;
+		int j;
+		int k;
+		
+		int m;
+		
+		GameBlock* curBlock;
+		GameEnt* gameEnt;
+		FIVector4 start;
+		FIVector4 end;
+		FIVector4 avg;
+
+		
+		
+		int geomCount = 0;
+		int tempId;
+		
+		FIVector4 camBlockPos;
+		
+		camBlockPos.averageXYZ(&volMinReadyInPixels,&volMaxReadyInPixels);
+		camBlockPos.intDivXYZ(cellsPerBlock);
+		
+		int baseInd;
+		
+		
+		for (i = -1; i <= 1; i++) {
+			for (j = -1; j <= 1; j++) {
+				for (k = -1; k <= 1; k++) {
+					
+					curBlock = singleton->gw->getBlockAtCoords(
+						camBlockPos.getIX()+i,
+						camBlockPos.getIY()+j,
+						camBlockPos.getIZ()+k,
+						true
+					);
+
+					for (m = 0; m < curBlock->gameEnts[E_ET_GEOM].data.size(); m++) {
+
+						gameEnt = &(curBlock->gameEnts[E_ET_GEOM].data[m]);
+
+						tempId = gameEnt->templateId;
+						baseInd = tempId*E_PRIMTEMP_LENGTH;
+
+						start.copyFrom(&(singleton->primTemplateStack[baseInd+E_PRIMTEMP_VISMIN]));
+						end.copyFrom(&(singleton->primTemplateStack[baseInd+E_PRIMTEMP_VISMAX]));
+						start.addXYZRef(&(gameEnt->templatePos));
+						end.addXYZRef(&(gameEnt->templatePos));
+						
+						
+
+						if (FIVector4::intersect(&start,&end,&volMinReadyInPixels,&volMaxReadyInPixels)) {
+							
+							//cout << "fillCurrentGeom" << tempId;
+							
+							fillCurrentGeom(tempId, &(gameEnt->templatePos));
+							
+							// baseInd = curPrimTemplate*E_PRIMTEMP_LENGTH;
+							
+							// for (j = 0; j < E_PRIMTEMP_LENGTH; j++) {
+							// 	setFXYZWGeom(j, &(singleton->primTemplateStack[baseInd+j]) );
+							// }
+							
+						}
+					}
+				}
+				
+				
+			}
+		}
+		
+		
+		clearInsideValues();
+		
+	}
+void GameFluid::updateTBOData (bool firstTime, bool reloadTemplates)
+                                                                 {
+		int i;
+		int ind;
+		
+		// if (mainId == E_FID_SML) {
+		// 	// no need to update geometry visuals for small buffer
+		// 	return;
+		// }
+		
+		
+		if (firstTime||reloadTemplates) {
+			if (singleton->getPrimTemplateString()) {
+				
+			}
+			else {
+				return;
+			}
+		}
+		
+		int totCount = 0;
+		
+		
+		// clear tbo data
+		
+		for (i = 0; i < floatsInPrimMacro/floatsPerPrimEntry; i++) {
+			
+			ind = i*floatsPerPrimEntry;
+			
+			tboData[ind + 0] = 0.0f;
+			tboData[ind + 1] = 0.0f;
+			tboData[ind + 2] = 0.0f;
+			tboData[ind + 3] = 0.0f;
+			
+			tboData[ind + 4] = 0.0f;
+			tboData[ind + 5] = 0.0f;
+			tboData[ind + 6] = 0.0f;
+			tboData[ind + 7] = 0.0f;
 			
 		}
 		
-		lastDirtyMax.setFXYZ(vspMin);
-		lastDirtyMin.setFXYZ(vspMax);
-		maxDirtyRegion();
+		
+		
+		if (firstTime) {
+			tboWrapper.init(tboData,floatsInPrimMacro*4);
+		}
+		else {
+			readyForTBOUpdate = true;
+		}
+		
+	}
+void GameFluid::terminateCycle ()
+                              {
+		readyForTermination = true;
+	}
+void GameFluid::beginFluidRead (FIVector4 * _campPosVPDump)
+                                                       {
+		
+		//fdWritePos = 0;
+		//fdReadPos = 0;
+		
+		//cout << "pos change " << mainId << "\n";
+		fluidReading = true;
+		campPosVPDump.copyFrom(_campPosVPDump);
+		terminateCycle();
+	}
+void GameFluid::proceedWithRead ()
+                               {
+		
+		
+		proceedingToRead = true;
+		//
+		camPosVPInPixels.copyFrom( &campPosVPDump );
+		camPosVPInPixels.multXYZ( cellsPerHolder );
+		volMinInPixels.copyFrom( &camPosVPInPixels );
+		volMaxInPixels.copyFrom( &camPosVPInPixels );
+		volMaxInPixels.addXYZ(volSizePrim);				
+		//
+		
+		
+		
+		readMIP.copyFrom(&volMinInPixels);
+		
+		singleton->gameLogic->threadPoolPath->stopAll();
+		singleton->gameLogic->threadPoolList->stopAll();
+		prereadFluidData();
+		
+		
+		startTL();
+		
+	}
+void GameFluid::endFluidRead ()
+                            {
+		
+		
+		
+		//cout << "pos change end " << mainId << "\n";
+		fluidReading = false;
+		proceedingToRead = false;
+		
+		
+		updateTBOData(false,false);
+		lastCamPosVP.setFXYZRef(&campPosVPDump);
+		
+		if (firstVPUpdate) {
+			firstVPUpdate = false;
+			volMinReadyInPixels.copyFrom(&volMinInPixels);
+			volMaxReadyInPixels.copyFrom(&volMaxInPixels);
+		}
+		
+		hasRead = true;
+		posShifted = true;
 		
 		
 	}
+void GameFluid::shiftRegion ()
+                           {
+		
+		
+		bool notThirdPerson = (singleton->currentActor == NULL);// ||singleton->firstPerson;
+		
+		if (notThirdPerson) {
+			newCamPos.copyFrom(singleton->cameraPos);
+		}
+		else {
+			newCamPos.copyFrom(&(singleton->currentActor->centerPointInPixels));
+		}
+		
+		if (notThirdPerson&&(volSizePrim < 512)) { // && (mainId==E_FID_SML)
+			newCamPos.addXYZRef(&singleton->lookAtVec,volSizePrim*0.4f);
+		}
+		
+		camPosVP.copyFrom(&newCamPos);
+		camPosVP.addXYZ(-volSizePrim*0.5f + cellsPerHolder*0.5f);
+		
+		
+		
+		camPosVP.intDivXYZ(cellsPerHolder);
+		
+		
+		
+		
+		
+		if (
+			camPosVP.iNotEqual(&lastCamPosVP) && 
+			(lastCamPos.distance(&newCamPos) > cellsPerHolder/16.0f)
+		) {
+			lastCamPos.copyFrom(&newCamPos);
+			forceFullRefresh = 1;
+			
+			
+			
+			beginFluidRead(&camPosVP);
+			
+		}
+		
+	}
+void GameFluid::funcFT ()
+                      {
+		threadFluid.setRunningLocked(true);
+		//if (mainId==E_FID_SML) {
+			fluidChanged = updateFluidData();
+		//}
+		
+		threadFluid.setRunningLocked(false);
+	}
+void GameFluid::startFT ()
+                       {
+		if (threadFluid.threadRunning) {
+			
+		}
+		else {
+			threadFluid.threadRunning = true;
+			
+			if (SINGLE_THREADED) {
+				funcFT();
+			}
+			else {
+				threadFluid.threadMain = std::thread(&GameFluid::funcFT, this);
+			}
+			
+			
+		}
+		
+	}
+bool GameFluid::stopFT ()
+                      {
+		bool didStop = false;
+		
+		if (threadFluid.threadRunning) {
+			
+			if (SINGLE_THREADED) {
+				
+			}
+			else {
+				threadFluid.threadMain.join();
+			}
+			
+			threadFluid.threadRunning = false;
+			didStop = true;
+		}
+		return didStop;
+	}
+void GameFluid::funcTL ()
+                      {
+		threadLoader.setRunningLocked(true);
+		readFluidData();
+		threadLoader.setRunningLocked(false);
+	}
+void GameFluid::startTL ()
+                       {
+		if (threadLoader.threadRunning) {
+			
+		}
+		else {
+			
+			threadLoader.threadRunning = true;
+			
+			if (SINGLE_THREADED) {
+				funcTL();
+			}
+			else {
+				threadLoader.threadMain = std::thread(&GameFluid::funcTL, this);
+			}
+			
+		}
+		
+	}
+bool GameFluid::stopTL ()
+                      {
+		bool didStop = false;
+		if (threadLoader.threadRunning) {
+			
+			if (SINGLE_THREADED) {
+				
+			}
+			else {
+				threadLoader.threadMain.join();
+			}
+			
+			threadLoader.threadRunning = false;
+			didStop = true;
+		}
+		return didStop;
+	}
+void GameFluid::funcTT ()
+                      {
+		threadTex.setRunningLocked(true);
+		getPrimData(0);
+		threadTex.setRunningLocked(false);
+	}
+void GameFluid::startTT ()
+                       {
+		if (threadTex.threadRunning) {
+			
+		}
+		else {
+			
+			threadTex.threadRunning = true;
+			
+			if (SINGLE_THREADED) {
+				funcTT();
+			}
+			else {
+				threadTex.threadMain = std::thread(&GameFluid::funcTT, this);
+			}
+			
+		}
+		
+	}
+bool GameFluid::stopTT ()
+                      {
+		bool didStop = false;
+		if (threadTex.threadRunning) {
+			
+			if (SINGLE_THREADED) {
+				
+			}
+			else {
+				threadTex.threadMain.join();
+			}
+			
+			threadTex.threadRunning = false;
+			didStop = true;
+		}
+		return didStop;
+	}
 void GameFluid::getPrimData (int n)
                                 {
+		
+		// gggg
+		
 		//cout << "start\n";
 		
 		int i;
@@ -73,6 +1109,11 @@ void GameFluid::getPrimData (int n)
 		uint v1;
 		uint v2;
 		uint v3;
+		
+		uint maxVal = 255;
+		
+		int indAbove;
+		int indBelow;
 		
 		int indSrc;
 		int indDest;
@@ -103,10 +1144,25 @@ void GameFluid::getPrimData (int n)
 		switch (n) {
 			case E_PL_TERRAIN:
 				
+				// for (i = 0; i < totSize; i++) {
+				// 	indSrc = i*4;
+					
+				// 	fluidData[indSrc+E_PTT_LST] += (fluidData[indSrc+E_PTT_LST] - fluidData[indSrc+E_PTT_WAT])/16;
+					
+				// 	if (fluidData[indSrc+E_PTT_LST] > fluidData[indSrc+E_PTT_WAT]) {
+				// 		fluidData[indSrc+E_PTT_LST]--;
+				// 	}
+				// 	if (fluidData[indSrc+E_PTT_LST] < fluidData[indSrc+E_PTT_WAT]) {
+				// 		fluidData[indSrc+E_PTT_LST]++;
+				// 	}
+				// }
+				
 				for (i = iMin; i < iMax; i++) {
 					for (j = jMin; j < jMax; j++) {
 						for (k = kMin; k < kMax; k++) {
 							indSrc = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
+							//indAbove = indSrc+volSizePrimBuf*volSizePrimBuf*4;
+							//indBelow = indSrc-volSizePrimBuf*volSizePrimBuf*4;
 							indDest = ((i-bufAmount) + (j-bufAmount)*volSizePrim + (k-bufAmount)*volSizePrim*volSizePrim);
 							
 							v0 = ((fluidData[indSrc+0]+1)*255)/NEW_UNIT_MAX;
@@ -114,11 +1170,36 @@ void GameFluid::getPrimData (int n)
 							v2 = ((fluidData[indSrc+2]+1)*255)/NEW_UNIT_MAX;
 							v3 = ((fluidData[indSrc+3]+1)*255)/NEW_UNIT_MAX;
 							
+							
+							// if (
+							// 	(fluidData[indAbove+1] == -1) &&
+							// 	(fluidData[indBelow+1] > -1)
+							// ) {
+							// 	v1 = 0;
+							// }
+							// if (
+							// 	(fluidData[indAbove+2] == -1) &&
+							// 	(fluidData[indBelow+2] > -1)
+							// ) {
+							// 	v2 = 0;
+							// }
+							
+							
+							if (v1 != 0) {
+								v1 = (v1+510)/3;
+							}
+							if (v2 != 0) {
+								v2 = (v2+510)/3;
+							}
+							
+							v1 = min(v1,maxVal);
+							v2 = min(v2,maxVal);
+							
 							vdpPtr[indDest] = 
-								(v0) |
-								(v1 << 8) |
-								(v2 << 16) |
-								(v3 << 24);
+								 (v0) |
+								((v1) << 8) |
+								((v2) << 16) |
+								((v3) << 24);
 								
 							
 							
@@ -136,22 +1217,16 @@ void GameFluid::getPrimData (int n)
 		}
 		//cout << "end\n\n";
 	}
-bool GameFluid::writeFluidData (int writePosStart, int writePosEnd, bool writeDirty)
-                                                                                 {
+void GameFluid::writeFluidData ()
+                              {
 		int i;
 		int j;
 		int k;
 		
 		int ind;
 		
-		if (writePosStart >= vspMax) {
-			return true;
-		}
+		//cout << "writeFluidData " << mainId << "\n";
 		
-		
-		//tempMin.copyFrom(&lastDirtyMin);
-		//tempMax.copyFrom(&lastDirtyMax);
-		//FIVector4::growBoundary(&tempMin,&tempMax,&dirtyMin,&dirtyMax);
 		
 		tempMin.copyFrom(&dirtyMin);
 		tempMax.copyFrom(&dirtyMax);
@@ -165,27 +1240,13 @@ bool GameFluid::writeFluidData (int writePosStart, int writePosEnd, bool writeDi
 		
 		
 		
-		if (writeDirty) {
-			
-		}
-		else {
-			iMin = vspMin;
-			iMax = vspMax;
-			jMin = vspMin;
-			jMax = vspMax;
-			kMin = writePosStart;
-			kMax = writePosEnd;
-		}
+		int ox = writeMIP.getIX();
+		int oy = writeMIP.getIY();
+		int oz = writeMIP.getIZ();
 		
-		bool endGreater = (writePosEnd >= vspMax);
-		
-		int ox = singleton->volMinInPixels.getIX();
-		int oy = singleton->volMinInPixels.getIY();
-		int oz = singleton->volMinInPixels.getIZ();
-		
+		//bool doFW = (mainId == E_FID_SML);
 		
 		if (hasRead) {
-			
 			
 			for (k = kMin; k < kMax; k++) {
 				
@@ -196,27 +1257,18 @@ bool GameFluid::writeFluidData (int writePosStart, int writePosEnd, bool writeDi
 						
 						ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
 												
-						singleton->gw->setCellAtCoords(
+						singleton->gw->setArrAtCoords(
 							i-bufAmount+ox,
 							j-bufAmount+oy,
 							k-bufAmount+oz,
-							ind,
-							fluidData,
-							extraData
-							
+							//ind,
+							&(fluidData[ind]),
+							&(extraData[ind])
+							//,doFW
 						);
-						
-						
 					}
-					
-					
 				}	
 			}
-			
-			return endGreater||writeDirty;
-		}
-		else {
-			return true;
 		}
 	}
 void GameFluid::prereadFluidData ()
@@ -229,17 +1281,19 @@ void GameFluid::prereadFluidData ()
 		int k;
 		int q;
 		
-		int ox = singleton->volMinInPixels.getIX()/singleton->cellsPerHolder;
-		int oy = singleton->volMinInPixels.getIY()/singleton->cellsPerHolder;
-		int oz = singleton->volMinInPixels.getIZ()/singleton->cellsPerHolder;
+		int ox = readMIP.getIX()/cellsPerHolder;
+		int oy = readMIP.getIY()/cellsPerHolder;
+		int oz = readMIP.getIZ()/cellsPerHolder;
 		
-		int maxVal = (volSizePrimBuf/singleton->cellsPerHolder) + 1;
+		int maxVal = (volSizePrimBuf/cellsPerHolder) + 2;
 		
-		for (k = -1; k < maxVal; k++) {
+		
+		
+		for (k = -2; k < maxVal; k++) {
 			
-			for (j = -1; j < maxVal; j++) {
+			for (j = -2; j < maxVal; j++) {
 				
-				for (i = -1; i < maxVal; i++) {
+				for (i = -2; i < maxVal; i++) {
 					
 					
 					curHolder = singleton->gw->getHolderAtCoords(
@@ -254,32 +1308,17 @@ void GameFluid::prereadFluidData ()
 					}
 					else {
 						
-						if (singleton->threadPoolCount == MAX_THREADS) {
-							
-							//cout << "joining threadPool\n";
-							
-							for (q = 0; q < MAX_THREADS; q++) {
-								singleton->stopTP(i);
-							}
-							singleton->threadPoolCount = 0;
-						}
-						
-						singleton->threadPool[singleton->threadPoolCount].threadDataInt[0] = curHolder->blockId;
-						singleton->threadPool[singleton->threadPoolCount].threadDataInt[1] = curHolder->holderId;
-						
-						singleton->startTP(singleton->threadPoolCount);
-						
-						
-						
-						singleton->threadPoolCount++;
+						curHolder->genCellData();
 						
 					}
-					
 				}
-				
-				
 			}
 		}
+		
+		
+		
+		
+		
 	}
 void GameFluid::readFluidData ()
                              {
@@ -318,7 +1357,8 @@ void GameFluid::readFluidData ()
 					
 					ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
 					
-					singleton->gw->getCellAtCoords(
+					singleton->gw->getArrAtCoords(
+						2,
 						(i-bufAmount)+readMIP.getIX(),
 						(j-bufAmount)+readMIP.getIY(),
 						(k-bufAmount)+readMIP.getIZ(),
@@ -347,8 +1387,22 @@ void GameFluid::applyMods ()
 			modStack.pop_back();
 		}
 	}
-void GameFluid::updateFluidData ()
+bool GameFluid::passesCheck (int n)
+                                {
+		
+		// true; // 
+		return (getICISize(n) != 0); //fsVec[n].idealCellIds.size()
+	}
+bool GameFluid::updateFluidData ()
                                {
+		
+		// rrrr
+		
+		//maxDirtyRegion(); // todo: utilize dirty regions instad?
+		
+		int indAbove;
+		int indBelow;
+		int indSrc;
 		
 		int i;
 		int j;
@@ -416,6 +1470,7 @@ void GameFluid::updateFluidData ()
 		float disFromBot;
 		float spanZ;
 		float minZ;
+		float maxZ;
 		
 		float maxDif = 1.0f/4.0f;// /8.0f;
 		
@@ -427,15 +1482,16 @@ void GameFluid::updateFluidData ()
 		
 		bool isInBounds;
 		
-		int minV0 = min( ((curTick)*totSize)/maxTicks, totSize-1 );
-		int minV1 = min( ((curTick+1)*totSize)/maxTicks, totSize-1 );
+		int minV0 = 0;//min( ((curTick)*totSize)/maxTicks, totSize-1 );
+		int minV1 = totSize;//min( ((curTick+1)*totSize)/maxTicks, totSize-1 );
+		
 		
 		
 		if (hasRead) {
 			
 		}
 		else {
-			return;
+			return false;
 		}
 		
 		
@@ -448,10 +1504,10 @@ void GameFluid::updateFluidData ()
 				fluidData[ind*4+E_PTT_LST] = fluidData[ind*4+E_PTT_WAT];
 			}
 			
-			for (i = 0; i < fsVec.size(); i++) {
-				fsVec[i].fluidIds.clear();
-				fsVec[i].idealCellIds.clear();
-			}
+			// for (i = 0; i < fsVec.size(); i++) {
+			// 	fsVec[i].fluidIds.clear();
+			// 	fsVec[i].idealCellIds.clear();
+			// }
 			fsVec.clear();
 			
 			// for (i = 0; i < fsPlaneVec.size(); i++) {
@@ -462,6 +1518,96 @@ void GameFluid::updateFluidData ()
 			
 			
 		//}
+		
+		
+		
+		
+		// find the immobile height
+		bool notFound = true;
+		ind = 0;
+		immobileHeight = 0;
+		while (notFound && (ind < totSize)) {
+			watVal = &(fluidData[ind*4+E_PTT_WAT]);
+			bldVal = &(extraData[ind*4+E_PTT_BLD]);
+			terVal = &(fluidData[ind*4+E_PTT_TER]);
+			
+			if (
+				(*watVal > UNIT_MIN) ||
+				(*bldVal > UNIT_MIN) ||
+				(*terVal > UNIT_MIN)
+			) {
+				ind++;
+			}
+			else {
+				notFound = false;
+			}
+		}
+		immobileHeight = max((ind/(volSizePrimBuf*volSizePrimBuf)),0);
+		immobileInd = immobileHeight*(volSizePrimBuf*volSizePrimBuf);
+		
+		
+		// find the max water height
+		notFound = true;
+		ind = totSize-1;
+		maxWaterHeight = 0;
+		while (notFound && (ind >= 0)) {
+			watVal = &(fluidData[ind*4+E_PTT_WAT]);
+			
+			if (*watVal != UNIT_MIN) {
+				notFound = false;
+			}
+			else {
+				ind--;
+			}
+		}
+		maxWaterHeight = (ind/(volSizePrimBuf*volSizePrimBuf));
+		maxWaterInd = ind;//maxWaterHeight*(volSizePrimBuf*volSizePrimBuf);
+		
+		
+		if ((maxWaterHeight - immobileHeight) <= 1) {
+			
+			tempMin2.setFXYZ(0,0,0);
+			tempMax2.setFXYZ(volSizePrimBuf,volSizePrimBuf,maxWaterHeight+1);
+			
+			
+			return false;
+		}
+		
+		
+		minV0 = immobileInd;
+		minV1 = maxWaterInd;
+		
+		
+		
+		
+		// add zero water above all existing water
+		
+		// p = max(
+		// 	immobileInd - volSizePrimBuf*volSizePrimBuf,
+		// 	0
+		// );
+		
+		// for (i = p; i <= minV1; i++) {
+		// 	ind = i;
+		// 	indAbove = i + volSizePrimBuf*volSizePrimBuf;
+			
+		// 	if (indAbove < totSize) {
+		// 		watVal = &(fluidData[ind*4+E_PTT_WAT]);
+				
+		// 		watVal2 = &(fluidData[indAbove*4+E_PTT_WAT]);
+		// 		terVal = &(fluidData[indAbove*4+E_PTT_TER]);
+		// 		bldVal = &(extraData[indAbove*4+E_PTT_BLD]);
+				
+		// 		if (
+		// 			(*watVal > 0) &&
+		// 			(*watVal2 == UNIT_MIN) &&
+		// 			(*terVal == UNIT_MIN) &&
+		// 			(*bldVal == UNIT_MIN)
+		// 		) {
+		// 			*watVal2 = 0;
+		// 		}
+		// 	}
+		// }
 		
 		
 		
@@ -489,6 +1635,7 @@ void GameFluid::updateFluidData ()
 		
 		
 		
+		
 		// flood fill water ids
 		fluidBodyCount = 1;
 		for (i = minV0; i <= minV1; i++) {
@@ -503,6 +1650,19 @@ void GameFluid::updateFluidData ()
 			) {
 				
 				if (floodFillId(ind,fluidBodyCount)) {
+					
+					//if (fsVec.back().minZ > vspMin) {
+					//	sort(fsVec.back().fluidIds.begin(), fsVec.back().fluidIds.end());
+					//}
+					
+					
+					// int intArray[SIZE] = {5, 3, 32, -1, 1, 104, 53};
+					// sort(intArray, intArray + SIZE);
+					
+					j = fsVec.size()-1;
+					
+					sort(fidGetBeg(j),fidGetEnd(j));
+					
 					fluidBodyCount++;
 				}
 				
@@ -524,8 +1684,8 @@ void GameFluid::updateFluidData ()
 			isInBounds = false;
 			#endif
 			
-			for (p = 0; p < fsVec[n].fluidIds.size(); p++) {
-				ind = fsVec[n].fluidIds[p];
+			for (p = 0; p < getFIDSize(n); p++) { //fsVec[n].fluidIds.size()
+				ind = getFluidId(n,p);//fsVec[n].fluidIds[p];
 				
 				k = ind/(volSizePrimBuf*volSizePrimBuf);
 				j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
@@ -564,7 +1724,8 @@ void GameFluid::updateFluidData ()
 					watVal2 = &(fluidData[testInd*4+E_PTT_WAT]);
 					
 					if (*watVal2 > 0) {
-						fsVec[n].idealCellIds.push_back(ind);
+						iciPushBack(n,ind);
+						//fsVec[n].idealCellIds.push_back(ind);
 					}
 					else {
 						for (dir = 0; dir < 4; dir++) {
@@ -588,7 +1749,8 @@ void GameFluid::updateFluidData ()
 									(extraData[testInd3*4+E_PTT_BLD] > UNIT_MIN)
 									// || (fluidData[testInd3*4+E_PTT_WAT] == UNIT_MIN)
 								) {
-									fsVec[n].idealCellIds.push_back(ind);
+									iciPushBack(n,ind);
+									//fsVec[n].idealCellIds.push_back(ind);
 									break;
 								}
 							}
@@ -600,30 +1762,113 @@ void GameFluid::updateFluidData ()
 			#ifdef DEBUG_BOUNDS
 			if (isInBounds) {
 				didPrint = true;
-				cout << "cells considered " << fsVec[n].fluidIds.size() << "\n";
-				cout << "cells pushed " << fsVec[n].idealCellIds.size() << "\n";
+				cout << "cells considered " << getFIDSize(n) << "\n"; //fsVec[n].fluidIds.size()
+				cout << "cells pushed " << getICISize(n) << "\n"; //fsVec[n].idealCellIds.size()
 			}
 			#endif
 			
 			
 		}
 		
-		/*
-		if (fsVec[n].idealCellIds.size() != 0) {
-			
-		}
-		*/
 		
-	
-		// remove water from top of fluid body
+		
+		
+		
+		// if no ideal spots exist, find next most ideal spots
 		for (n = 0; n < fsVec.size(); n++) {
 			
-			if (fsVec[n].idealCellIds.size() != 0) {
+			spanZ = fsVec[n].maxZ - fsVec[n].minZ;
+			
+			#ifdef DEBUG_BOUNDS
+			isInBounds = false;
+			#endif
+			
+			if (passesCheck(n)) {
+				
+			}
+			else {
+				for (p = 0; p < getFIDSize(n); p++) { //fsVec[n].fluidIds.size()
+					ind = getFluidId(n,p);//fsVec[n].fluidIds[p];
+					
+					k = ind/(volSizePrimBuf*volSizePrimBuf);
+					j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
+					i = ind - ( j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf );
+					
+					bldVal = &(extraData[ind*4+E_PTT_BLD]);
+					terVal = &(fluidData[ind*4+E_PTT_TER]);
+					watVal = &(fluidData[ind*4+E_PTT_WAT]);
+					
+					isAir = 
+						(*watVal == UNIT_MIN) &&
+						(*bldVal == UNIT_MIN) &&
+						(*terVal == UNIT_MIN);
+					
+					isEmptyWater = (*watVal == 0);
+					
+					
+					if (
+						isAir
+						// && ((k != fsVec[n].maxZ)||(spanZ==1)) // water on top is not ideal for redist
+					) {
+						// check for water above
+						testInd = ind + (volSizePrimBuf*volSizePrimBuf);
+						watVal2 = &(fluidData[testInd*4+E_PTT_WAT]);
+						
+						if (*watVal2 > 0) {
+							iciPushBack(n,ind);
+							//fsVec[n].idealCellIds.push_back(ind);
+						}
+						else {
+							for (dir = 0; dir < 4; dir++) {
+								testI = (i+DIR_VECS_I[dir][0]);
+								testJ = (j+DIR_VECS_I[dir][1]);
+								testK = (k+DIR_VECS_I[dir][2]);
+								testInd2 = 
+									testI +
+									testJ*volSizePrimBuf +
+									testK*volSizePrimBuf*volSizePrimBuf;
+								
+								watVal3 = &(fluidData[testInd2*4+E_PTT_WAT]);
+								
+								// has (partially) full water cell to side
+								if (*watVal3 >= 0) {
+									
+									// if unit below that one is earth < IGNORED FOR THIS PASS
+									// testInd3 = testInd2 - volSizePrimBuf*volSizePrimBuf;
+									// if (
+									// 	(fluidData[testInd3*4+E_PTT_TER] > UNIT_MIN) ||
+									// 	(extraData[testInd3*4+E_PTT_BLD] > UNIT_MIN)
+									// 	// || (fluidData[testInd3*4+E_PTT_WAT] == UNIT_MIN)
+									// ) {
+										iciPushBack(n,ind);
+										//fsVec[n].idealCellIds.push_back(ind);
+										break;
+									//}
+								}
+							}
+						}
+					}
+				}
+			}
+			
+			
+			
+		}
+		
+		
+		
+		
+	
+		// remove water from top of fluid body (and only the very top)
+		for (n = 0; n < fsVec.size(); n++) {
+			
+			if (passesCheck(n)) {
 				fsVec[n].collectedWater = 0;
 				curCollectedWater = 0;
 				
 				minZ = fsVec[n].minZ;
-				spanZ = fsVec[n].maxZ - fsVec[n].minZ;
+				maxZ = fsVec[n].maxZ;
+				spanZ = maxZ-minZ;
 				
 				#ifdef DEBUG_BOUNDS
 				isInBounds = false;
@@ -631,8 +1876,8 @@ void GameFluid::updateFluidData ()
 				
 				totWat = 0;
 				
-				for (p = 0; p < fsVec[n].fluidIds.size(); p++) {
-					ind = fsVec[n].fluidIds[p];
+				for (p = 0; p < getFIDSize(n); p++) { //fsVec[n].fluidIds.size()
+					ind = getFluidId(n,p);//fsVec[n].fluidIds[p];
 					
 					k = ind/(volSizePrimBuf*volSizePrimBuf);
 					j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
@@ -642,50 +1887,70 @@ void GameFluid::updateFluidData ()
 					isInBounds = isInBounds||inBounds(i,j,k);
 					#endif
 					
-					
-					
-					
-					
 					fk = k;
-					disFromBot = (fk-minZ)/(spanZ);
-					disFromTop = 1.0f - disFromBot;
 					
-					disFromBot = mixf(0.25,0.75,disFromBot);
-					disFromTop = mixf(0.25,0.75,disFromTop);
 					
-					if (spanZ <= 3.0f) {
-						disFromBot = 1.0f;
+					
+					if (fk >= (maxZ-1.0f)) {
+						watVal = &(fluidData[ind*4+E_PTT_WAT]);
+						if ((*watVal) > 0) {
+							curCollectedWater = (*watVal);
+							*watVal -= curCollectedWater;
+							fsVec[n].collectedWater += curCollectedWater;
+						}
 					}
+					// else {
+						
+					// 	disFromBot = (fk-minZ)/(spanZ);
+					// 	disFromTop = 1.0f - disFromBot;
+						
+					// 	disFromBot = mixf(0.25,0.75,disFromBot);
+					// 	disFromTop = mixf(0.25,0.75,disFromTop);
+						
+					// 	if (spanZ <= 3.0f) {
+					// 		disFromBot = 1.0f;
+					// 	}
+						
+						
+					// 	//terVal = &(fluidData[ind*4+E_PTT_TER]);
+					// 	watVal = &(fluidData[ind*4+E_PTT_WAT]);
+					// 	//ideVal = &(extraData[ind*4+E_PTT_IDE]);
+						
+					// 	totWat += max(*watVal,0);
+						
+					// 	// make sure no water is above or that there is earth above
+					// 	testInd = ind + (volSizePrimBuf*volSizePrimBuf);
+					// 	watVal2 = &(fluidData[testInd*4+E_PTT_WAT]);
+					// 	terVal2 = &(fluidData[testInd*4+E_PTT_TER]);
+					// 	bldVal2 = &(extraData[testInd*4+E_PTT_BLD]);
+						
+					// 	if (
+					// 		(*watVal > 0) &&
+					// 		(
+					// 			(*watVal2 == UNIT_MIN) || // todo: examine this
+					// 			(*terVal2 != UNIT_MIN) ||
+					// 			(*bldVal2 != UNIT_MIN)
+					// 		)
+					// 	) {
+					// 		curCollectedWater = 
+					// 			min(
+					// 				((int)(disFromBot*F_UNIT_MAX*maxDif + 1.0f)),
+					// 				*watVal
+					// 			);
+					// 		*watVal -= curCollectedWater;
+					// 		fsVec[n].collectedWater += curCollectedWater;
+					// 	}
+						
+					// }
 					
 					
-					//terVal = &(fluidData[ind*4+E_PTT_TER]);
-					watVal = &(fluidData[ind*4+E_PTT_WAT]);
-					//ideVal = &(extraData[ind*4+E_PTT_IDE]);
 					
-					totWat += max(*watVal,0);
 					
-					// make sure no water is above or that there is earth above
-					testInd = ind + (volSizePrimBuf*volSizePrimBuf);
-					watVal2 = &(fluidData[testInd*4+E_PTT_WAT]);
-					terVal2 = &(fluidData[testInd*4+E_PTT_TER]);
-					bldVal2 = &(extraData[testInd*4+E_PTT_BLD]);
 					
-					if (
-						(*watVal > 0) &&
-						(
-							(*watVal2 <= 0) ||
-							(*terVal2 != UNIT_MIN) ||
-							(*bldVal2 != UNIT_MIN)
-						)
-					) {
-						curCollectedWater = 
-							min(
-								((int)(disFromBot*F_UNIT_MAX*maxDif + 1.0f)),
-								*watVal
-							);
-						*watVal -= curCollectedWater;
-						fsVec[n].collectedWater += curCollectedWater;
-					}
+					
+					
+					
+					
 				}
 				
 				
@@ -693,7 +1958,7 @@ void GameFluid::updateFluidData ()
 				// cout << "fsVec[n].collectedWater " << fsVec[n].collectedWater << "\n";
 				
 				// if (fsVec[n].collectedWater == 0) {
-				// 	cout << "fsVec[n].fluidIds.size() " << fsVec[n].fluidIds.size() << "\n";
+				// 	cout << "fsVec[n].fluidIds.size() " << getFIDSize(n) << "\n"; //fsVec[n].fluidIds.size()
 				// }
 				
 				
@@ -708,7 +1973,7 @@ void GameFluid::updateFluidData ()
 				
 			}
 			
-			
+			fsVec[n].didCollectWater = (fsVec[n].collectedWater > 0);
 			
 		}
 		
@@ -719,12 +1984,12 @@ void GameFluid::updateFluidData ()
 		// add water to ideal spots
 		for (n = 0; n < fsVec.size(); n++) {
 			
-			numCells = fsVec[n].idealCellIds.size();
+			numCells = getICISize(n);//fsVec[n].idealCellIds.size();
 			
 			if (numCells > 0) {
 				
 				for (p = 0; p < numCells; p++) {
-					ind = fsVec[n].idealCellIds[p];
+					ind = getIdealCellId(n,p);//fsVec[n].idealCellIds[p];
 					watVal = &(fluidData[ind*4+E_PTT_WAT]);
 					
 					if (*watVal == UNIT_MIN) {
@@ -751,7 +2016,7 @@ void GameFluid::updateFluidData ()
 				
 				
 				for (p = 0; p < numCells; p++) {
-					ind = fsVec[n].idealCellIds[p];
+					ind = getIdealCellId(n,p);//fsVec[n].idealCellIds[p];
 					
 					k = ind/(volSizePrimBuf*volSizePrimBuf);
 					j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
@@ -795,14 +2060,12 @@ void GameFluid::updateFluidData ()
 		}
 		
 		
-		tempMax.setFXYZ(vspMin);
-		tempMin.setFXYZ(vspMax);
 		
 		
 		// add water to bottom of fluid body
 		for (n = 0; n < fsVec.size(); n++) {
 			
-			if (fsVec[n].idealCellIds.size() != 0) {
+			if (passesCheck(n)) {
 				curCollectedWater = 0;
 				minZ = fsVec[n].minZ;
 				
@@ -810,14 +2073,14 @@ void GameFluid::updateFluidData ()
 				while (fsVec[n].collectedWater > 0) {
 					
 					
-					for (q = fsVec[n].minZ; q <= fsVec[n].maxZ; q++) {
-						for (p = 0; p < fsVec[n].fluidIds.size(); p++) {
-							ind = fsVec[n].fluidIds[p];
+					//for (q = fsVec[n].minZ; q <= fsVec[n].maxZ; q++) {
+						for (p = 0; p < getFIDSize(n); p++) { //fsVec[n].fluidIds.size()
+							ind = getFluidId(n,p);//fsVec[n].fluidIds[p];
 							
 							k = ind/(volSizePrimBuf*volSizePrimBuf);
 							watVal = &(fluidData[ind*4+E_PTT_WAT]);
 							
-							if (k == q) {
+							//if (k == q) {
 								
 								if (fsVec[n].collectedWater > UNIT_MAX) {
 									tempv = UNIT_MAX;
@@ -845,62 +2108,129 @@ void GameFluid::updateFluidData ()
 									}
 									
 								//}
-							}
+							//}
 							
 							
 							// out of water, break both parent loops
 							if (fsVec[n].collectedWater <= 0) {
-								p = fsVec[n].fluidIds.size() + 1;
-								q = fsVec[n].maxZ + 1;
+								break;
+								//p = fsVec[n].fluidIds.size() + 1;
+								//q = fsVec[n].maxZ + 1;
 							}
 						}
-					}
-					
-					
+					//}
 				}
 			}
-			
-			
 		}
-	
 		
 		if (didPrint) {
 			watchMinX = -1;
 		}
 		
 		
-		curTick++;
-		if (curTick == maxTicks) {
-			curTick = 0;
-		}
+		// curTick++;
+		// if (curTick == maxTicks) {
+		// 	curTick = 0;
+		// }
 		
 		
 		
 		/////////////
 		
 		
+		tempMax.setFXYZ(vspMin);
+		tempMin.setFXYZ(vspMax);
+		
+		tempMax2.setFXYZ(vspMin);
+		tempMin2.setFXYZ(vspMax);
+		
 		for (n = 0; n < fsVec.size(); n++) {
 			
+			minV.setIXYZ(fsVec[n].minX,fsVec[n].minY,fsVec[n].minZ);
+			maxV.setIXYZ(fsVec[n].maxX,fsVec[n].maxY,fsVec[n].maxZ);
+			
 			if (
-				(fsVec[n].idealCellIds.size() != 0)
+				
+				passesCheck(n)
+				
 				// || (
 				// 	(fsVec[n].fluidIds.size() > 0) &&
 				// 	(fsVec[n].fluidIds.size() < 8)
 				// )
 				
 			) {
-				
-				minV.setIXYZ(fsVec[n].minX,fsVec[n].minY,fsVec[n].minZ);
-				maxV.setIXYZ(fsVec[n].maxX,fsVec[n].maxY,fsVec[n].maxZ);
 				FIVector4::growBoundary(&tempMin,&tempMax,&minV,&maxV);
-				
 			}
+			
+			FIVector4::growBoundary(&tempMin2,&tempMax2,&minV,&maxV);
 		}
 		
 		tempMin.addXYZ(-1.0f);
 		tempMax.addXYZ(1.0f);
 		
+		
+		if (maxWaterHeight > 0) {
+			minV.setIXYZ(0,0,0);
+			maxV.setIXYZ(cellsPerHolder,cellsPerHolder,maxWaterHeight);
+			FIVector4::growBoundary(&tempMin2,&tempMax2,&minV,&maxV);
+		}
+		
+		
+		
 		FIVector4::growBoundary(&dirtyMin,&dirtyMax,&tempMin,&tempMax);
+		
+		//dirtyMin.setFZ(max(dirtyMin[2],(float)(immobileHeight)));
+		
+		
+		
+		
+		// sink water into immobile area
+		
+		// int kMin = clamp(immobileHeight, vspMin, vspMax);
+		// int kMax = clamp(immobileHeight+1, vspMin, vspMax);
+		
+		// k = immobileHeight;
+		
+		// for (k = kMin; k < kMax; k++) {
+		// 	for (j = vspMin; j < vspMax; j++) {
+		// 		for (i = vspMin; i < vspMax; i++) {
+		// 			indSrc = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf);
+		// 			indAbove = indSrc + volSizePrimBuf*volSizePrimBuf;
+					
+		// 			watVal = &(fluidData[indSrc*4 + E_PTT_WAT]);
+		// 			watVal2 = &(fluidData[indAbove*4 + E_PTT_WAT]);
+					
+		// 			if ((*watVal) > UNIT_MIN) {
+		// 				if ((*watVal2) <= 0) {
+		// 					(*watVal2) = UNIT_MIN;
+		// 				}
+		// 				else {
+							
+		// 					curCollectedWater = 0;
+							
+		// 					if ((*watVal2) == 1) {
+		// 						curCollectedWater = 1;
+		// 					}
+		// 					else {
+		// 						curCollectedWater = (*watVal2)/2;
+		// 					}
+							
+		// 					if (curCollectedWater >= 1) {
+		// 						if (((*watVal) + curCollectedWater) < UNIT_MAX) {
+		// 							*watVal2 = UNIT_MIN;
+		// 							*watVal += curCollectedWater;
+		// 						}
+		// 					}
+							
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+		// }
+		
+		// todo: expand water within immobile area if necessary
+		
+		
 		
 		// int iMin = clamp(tempMin.getIX(), vspMin, vspMax);
 		// int iMax = clamp(tempMax.getIX(), vspMin, vspMax);
@@ -909,6 +2239,7 @@ void GameFluid::updateFluidData ()
 		// int kMin = clamp(tempMin.getIZ(), vspMin, vspMax);
 		// int kMax = clamp(tempMax.getIZ(), vspMin, vspMax);
 		
+		
 		// int iMin2 = vspMax;
 		// int iMax2 = vspMin;
 		// int jMin2 = vspMax;
@@ -916,28 +2247,33 @@ void GameFluid::updateFluidData ()
 		// int kMin2 = vspMax;
 		// int kMax2 = vspMin;
 		
-		// int indSrc;
 		
 		// for (k = kMin; k <= kMax; k++) {
 		// 	for (j = jMin; j <= jMax; j++) {
 		// 		for (i = iMin; i <= iMax; i++) {
 		// 			indSrc = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
+		
+		
+		// for (p = 0; p < (totSize - volSizePrimBuf); p++) {
+		// 	ind = p;
+		// 	indAbove = p + volSizePrimBuf*volSizePrimBuf;
+			
+		// 	k = ind/(volSizePrimBuf*volSizePrimBuf);
+		// 	j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
+		// 	i = ind - ( j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf );
+		
 		// 			if (
 					
-		// 				//true
-					
-		// 				fluidData[indSrc + E_PTT_WAT] != fluidData[indSrc + E_PTT_LST]
-						
-		// 				// (
-		// 				// 	(fluidData[indSrc + E_PTT_WAT] == UNIT_MIN) &&
-		// 				// 	(fluidData[indSrc + E_PTT_LST] != UNIT_MIN)	
-		// 				// ) ||
-		// 				// (
-		// 				// 	(fluidData[indSrc + E_PTT_WAT] != UNIT_MIN) &&
-		// 				// 	(fluidData[indSrc + E_PTT_LST] = UNIT_MIN)	
-		// 				// )
+		// 				fluidData[ind*4 + E_PTT_WAT] != fluidData[ind*4 + E_PTT_LST]
 						
 		// 			) {
+						
+		// 				// if (fluidData[indSrc + E_PTT_LST] < fluidData[indSrc + E_PTT_WAT]) {
+		// 				// 	fluidData[indSrc + E_PTT_LST]++;
+		// 				// }
+		// 				// if (fluidData[indSrc + E_PTT_LST] > fluidData[indSrc + E_PTT_WAT]) {
+		// 				// 	fluidData[indSrc + E_PTT_LST]--;
+		// 				// }
 						
 		// 				if (i < iMin2) {iMin2 = i;}
 		// 				if (j < jMin2) {jMin2 = j;}
@@ -947,6 +2283,7 @@ void GameFluid::updateFluidData ()
 		// 				if (k > kMax2) {kMax2 = k;}
 						
 		// 			}
+		// }
 		// 		}
 		// 	}
 		// }
@@ -954,6 +2291,9 @@ void GameFluid::updateFluidData ()
 		// minV.setIXYZ(iMin2,jMin2,kMin2);
 		// maxV.setIXYZ(iMax2,jMax2,kMax2);
 		// FIVector4::growBoundary(&dirtyMin,&dirtyMax,&minV,&maxV);
+		
+		
+		return true;
 		
 	}
 bool GameFluid::findStableRegions (int startInd, int newId)
@@ -979,7 +2319,6 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 		int k;
 		int n;
 		
-		int* curVec;
 		
 		int foundInd;
 		
@@ -998,11 +2337,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 		long long int totWat2;
 		long long int divWat;
 		
-		//fsPlaneVec.push_back(FluidPlane());
-		
-		
-		FluidPlane* fsPtr = &fluidPlane;//&(fsPlaneVec.back());
-		fsPtr->fluidIds.clear();
+		fluidPlane.planeIds.clear();
 		
 		int emptyWaterCount = 0;
 		int airCount = 0;
@@ -1012,7 +2347,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 			
 			ind = indexStack.back();
 			extraData[ind*4+E_PTT_STB] = newId;
-			fsPtr->fluidIds.push_back(ind);
+			fluidPlane.planeIds.push_back(ind);
 			
 			if (fluidData[ind*4+E_PTT_WAT] == 0) {
 				emptyWaterCount++;
@@ -1043,10 +2378,10 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 				bldVal = &(extraData[testInd*4+E_PTT_BLD]);
 				
 				
-				isAir = 
-					(*watVal == UNIT_MIN) &&
-					(*terVal == UNIT_MIN) &&
-					(*bldVal == UNIT_MIN);
+				// isAir = 
+				// 	(*watVal == UNIT_MIN) &&
+				// 	(*terVal == UNIT_MIN) &&
+				// 	(*bldVal == UNIT_MIN);
 					
 				//terVal2 = &(fluidData[testInd2*4+E_PTT_TER]);
 				//watVal2 = &(fluidData[testInd2*4+E_PTT_WAT]);
@@ -1075,7 +2410,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 		}
 		
 		
-		maxSize = fsPtr->fluidIds.size();
+		maxSize = fluidPlane.planeIds.size();
 		
 		
 		
@@ -1089,12 +2424,12 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 			
 			
 			for (i = 0; i < maxSize; i++) {
-				ind = fsPtr->fluidIds[i];
+				ind = fluidPlane.planeIds[i];
 				
 				fluidData[ind*4+E_PTT_WAT] = UNIT_MIN;
 			}
 			
-			fsPtr->fluidIds.clear();
+			fluidPlane.planeIds.clear();
 			
 		}
 		else {
@@ -1109,7 +2444,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 				
 				totWat = 0;
 				for (i = 0; i < maxSize; i++) {
-					ind = fsPtr->fluidIds[i];
+					ind = fluidPlane.planeIds[i];
 					watVal = &(fluidData[ind*4+E_PTT_WAT]);
 					totWat += *watVal;
 				}
@@ -1123,7 +2458,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 						
 						totWat2 = 0;
 						for (i = 0; i < maxSize; i++) {
-							ind = fsPtr->fluidIds[i];
+							ind = fluidPlane.planeIds[i];
 							watVal = &(fluidData[ind*4+E_PTT_WAT]);
 							*watVal += (targWat - *watVal)/2;
 							totWat2 += *watVal;
@@ -1133,7 +2468,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 						
 						while (totWat > totWat2) {
 							
-							ind = fsPtr->fluidIds[i];
+							ind = fluidPlane.planeIds[i];
 							watVal = &(fluidData[ind*4+E_PTT_WAT]);
 							
 							*watVal += 1;
@@ -1146,7 +2481,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 						
 						while (totWat < totWat2) {
 							
-							ind = fsPtr->fluidIds[i];
+							ind = fluidPlane.planeIds[i];
 							watVal = &(fluidData[ind*4+E_PTT_WAT]);
 							
 							*watVal -= 1;
@@ -1174,7 +2509,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 		
 		//fsPlaneVec.pop_back();
 		
-		if ( fsPtr->fluidIds.size() == 0 ) {
+		if ( fluidPlane.planeIds.size() == 0 ) {
 			
 			return false;
 		}
@@ -1206,7 +2541,6 @@ bool GameFluid::floodFillId (int startInd, int newId)
 		int k;
 		int n;
 		
-		int* curVec;
 		
 		int foundInd;
 		
@@ -1221,8 +2555,27 @@ bool GameFluid::floodFillId (int startInd, int newId)
 		fsVec.push_back(FluidStruct());
 		
 		
-		FluidStruct* fsPtr = &(fsVec.back());
 		
+		FluidStruct* fsPtr = &(fsVec.back());
+		FluidStruct* fsPtrLast;
+		
+		int groupId = fsVec.size()-1;
+		
+		
+		if (groupId == 0) {
+			fsPtr->fidBegInd = 0;
+			fsPtr->fidEndInd = 0;
+			fsPtr->iciBegInd = 0;
+			fsPtr->iciBegInd = 0;
+		}
+		else {
+			fsPtrLast = &(fsVec[groupId-1]);
+			
+			fsPtr->fidBegInd = fsPtrLast->fidEndInd;
+			fsPtr->fidEndInd = fsPtrLast->fidEndInd;
+			fsPtr->iciBegInd = fsPtrLast->iciEndInd;
+			fsPtr->iciBegInd = fsPtrLast->iciEndInd;
+		}
 		
 		fsPtr->minX = volSizePrimBuf*2;
 		fsPtr->minY = volSizePrimBuf*2;
@@ -1242,29 +2595,29 @@ bool GameFluid::floodFillId (int startInd, int newId)
 			
 			watVal2 = &(fluidData[ind*4+E_PTT_WAT]);
 			
-			
-			
 			notFound = true;
-			if (*watVal2 < UNIT_MAX) {
-				// if water is partially filled, add to fluidId stack
-				fsPtr->fluidIds.push_back(ind);
-				notFound = false;
-			}
-			else {
-				// if its full and there is earth above, add it
-				testInd = ind + volSizePrimBuf*volSizePrimBuf;
-				
-				if (
-					(fluidData[testInd*4+E_PTT_TER] != UNIT_MIN) ||
-					(extraData[testInd*4+E_PTT_BLD] != UNIT_MIN)	
-				) {
-					fsPtr->fluidIds.push_back(ind);
+			
+			if (k > immobileHeight) {
+				if (*watVal2 < UNIT_MAX) {
+					// if water is partially filled, add to fluidId stack
+					fidPushBack(groupId,ind); //fsPtr->fluidIds.push_back(ind);
 					notFound = false;
 				}
-				
+				else {
+					// if its full and there is earth above, add it
+					testInd = ind + volSizePrimBuf*volSizePrimBuf;
+					
+					if (
+						(fluidData[testInd*4+E_PTT_TER] != UNIT_MIN) ||
+						(extraData[testInd*4+E_PTT_BLD] != UNIT_MIN)	
+					) {
+						fidPushBack(groupId,ind); //fsPtr->fluidIds.push_back(ind);
+						notFound = false;
+					}
+					
+				}
 			}
 			
-			//fsPtr->fluidIds.push_back(ind);
 			
 			foundInd = -1;
 			
@@ -1278,40 +2631,44 @@ bool GameFluid::floodFillId (int startInd, int newId)
 					testJ*volSizePrimBuf +
 					testK*volSizePrimBuf*volSizePrimBuf;
 				
-				bldVal = &(extraData[testInd*4+E_PTT_BLD]);
-				terVal = &(fluidData[testInd*4+E_PTT_TER]);
-				watVal = &(fluidData[testInd*4+E_PTT_WAT]);
-				ideVal = &(extraData[testInd*4+E_PTT_IDE]);
 				
-				isAir = 
-					(*watVal == UNIT_MIN) &&
-					(*terVal == UNIT_MIN) &&
-					(*bldVal == UNIT_MIN);
-				
-				isEmptyWater = (*watVal == 0);
-				
-				// check if water touches air or an empty water cell, if so add to fluidId stack
-				if (
-					(isAir||isEmptyWater)	&&
-					notFound
-				) {
-					fsPtr->fluidIds.push_back(ind);
-					notFound = false;
-				}
-				
-				if (*ideVal == 0) {
-					if (isAir) {
-						// it is an unmarked air value or empty water cell adjacent to a water cell
-						
-						fsPtr->fluidIds.push_back(testInd);
-						*ideVal = newId;
-						
+				if (testK > immobileHeight) {
+					bldVal = &(extraData[testInd*4+E_PTT_BLD]);
+					terVal = &(fluidData[testInd*4+E_PTT_TER]);
+					watVal = &(fluidData[testInd*4+E_PTT_WAT]);
+					ideVal = &(extraData[testInd*4+E_PTT_IDE]);
+					
+					isAir = 
+						(*watVal == UNIT_MIN) &&
+						(*terVal == UNIT_MIN) &&
+						(*bldVal == UNIT_MIN);
+					
+					isEmptyWater = (*watVal == 0);
+					
+					// check if water touches air or an empty water cell, if so add to fluidId stack
+					if (
+						(isAir||isEmptyWater)	&&
+						notFound
+					) {
+						fidPushBack(groupId,ind); //fsPtr->fluidIds.push_back(ind);
+						notFound = false;
 					}
 					
-					if (*watVal >= 0) {
-						foundInd = testInd;
+					if (*ideVal == 0) {
+						if (isAir) {
+							// it is an unmarked air value or empty water cell adjacent to a water cell
+							// push back immediately without growing main stack
+							
+							fidPushBack(groupId,testInd); //fsPtr->fluidIds.push_back(testInd);
+							*ideVal = newId;
+							
+						}
+						
+						if (*watVal >= 0) {
+							foundInd = testInd;
+						}
+						
 					}
-					
 				}
 			}
 			
@@ -1325,9 +2682,9 @@ bool GameFluid::floodFillId (int startInd, int newId)
 		}
 		
 		
-		for (n = 0; n < fsPtr->fluidIds.size(); n++) {
+		for (n = 0; n < getFIDSize(groupId); n++) { //fsPtr->fluidIds.size()
 			
-			ind = fsPtr->fluidIds[n];
+			ind = getFluidId(groupId,n); //fsPtr->fluidIds[n];
 			
 			k = ind/(volSizePrimBuf*volSizePrimBuf);
 			j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
@@ -1358,7 +2715,7 @@ bool GameFluid::floodFillId (int startInd, int newId)
 			
 		}
 		
-		if ( fsPtr->fluidIds.size() == 0) {
+		if ( getFIDSize(groupId) == 0) { //fsPtr->fluidIds.size() 
 			fsVec.pop_back();
 			return false;
 		}
@@ -1478,15 +2835,6 @@ void GameFluid::fillCurrentGeom (int templateId, FIVector4 * templatePos)
 		
 		FIVector4* paramArrGeom = &(singleton->primTemplateStack[templateId*E_PRIMTEMP_LENGTH]);
 		
-		// for (i = 0; i < E_PRIMTEMP_LENGTH; i++) {
-		// 	paramArrGeom[i].setFXYZW(
-		// 		singleton->paramArrGeom[i*4+0],
-		// 		singleton->paramArrGeom[i*4+1],
-		// 		singleton->paramArrGeom[i*4+2],
-		// 		singleton->paramArrGeom[i*4+3]
-		// 	);
-		// }
-		
 		FIVector4 innerBoxRad;
 		FIVector4 absVecFromCenter;
 		//FIVector4 centerCoord;
@@ -1497,7 +2845,7 @@ void GameFluid::fillCurrentGeom (int templateId, FIVector4 * templatePos)
 			&(paramArrGeom[E_PRIMTEMP_BOUNDSMAX])
 		);
 		baseVec.addXYZRef(templatePos);
-		baseVec.addXYZRef(&(singleton->volMinReadyInPixels),-1.0f);
+		baseVec.addXYZRef(&(volMinReadyInPixels),-1.0f);
 		baseVec.addXYZ(1.0f);
 		
 		FIVector4 curCoord;
@@ -1531,6 +2879,7 @@ void GameFluid::fillCurrentGeom (int templateId, FIVector4 * templatePos)
 		int kMin = clamp(newCoordMin.getIZ(), vspMin, vspMax);
 		int kMax = clamp(newCoordMax.getIZ(), vspMin, vspMax);
 		
+		int* empVal;
 		int* bldVal;
 		int* terVal;
 		int* watVal;
@@ -1573,6 +2922,7 @@ void GameFluid::fillCurrentGeom (int templateId, FIVector4 * templatePos)
 					bldVal = &(extraData[ind*4+E_PTT_BLD]);
 					terVal = &(fluidData[ind*4+E_PTT_TER]);
 					watVal = &(fluidData[ind*4+E_PTT_WAT]);
+					empVal = &(fluidData[ind*4+E_PTT_EMP]);
 					
 					if (*bldVal == UNIT_INSIDE) {
 						
@@ -1587,11 +2937,15 @@ void GameFluid::fillCurrentGeom (int templateId, FIVector4 * templatePos)
 								*bldVal = UNIT_MAX;
 								*watVal = UNIT_MIN; // todo: collect water for redist instead of destroying it
 							}
+							
 						}
 						else {
 							
 						}
 					}
+					
+					
+					*empVal = UNIT_MIN;
 					
 					// if (*bldVal == UNIT_MAX) {
 					// 	*terVal = UNIT_MAX;
@@ -1610,11 +2964,28 @@ void GameFluid::fillCurrentGeom (int templateId, FIVector4 * templatePos)
 	}
 void GameFluid::resetDirtyRegion ()
                                 {
-		lastDirtyMax.copyFrom(&dirtyMax);
-		lastDirtyMin.copyFrom(&dirtyMin);
 		
 		dirtyMax.setFXYZ(vspMin);
 		dirtyMin.setFXYZ(vspMax);
+	}
+void GameFluid::shrinkDirtyRegion ()
+                                 {
+		
+		if (shrinkCount == 4) {
+			shrinkCount = 0;
+			dirtyMax.addXYZ(-1.0f);
+			dirtyMin.addXYZ(1.0f);
+		}
+		
+		if (
+			(dirtyMax[0] <= dirtyMin[0]) ||
+			(dirtyMax[1] <= dirtyMin[1]) ||
+			(dirtyMax[2] <= dirtyMin[2])
+		) {
+			resetDirtyRegion();
+		}
+		
+		shrinkCount++;
 	}
 void GameFluid::maxDirtyRegion ()
                               {
@@ -1628,7 +2999,7 @@ void GameFluid::applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int br
 		
 			FIVector4 baseVec;
 			baseVec.copyFrom(fPixelWorldCoordsBase);
-			baseVec.addXYZRef(&(singleton->volMinReadyInPixels),-1.0f);
+			baseVec.addXYZRef(&(volMinReadyInPixels),-1.0f);
 			
 			
 			FIVector4 curCoord;
@@ -1666,6 +3037,17 @@ void GameFluid::applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int br
 			// int* stbVal;
 			
 			int ind;
+			int ind2;
+			
+			int i2;
+			int j2;
+			int k2;
+			
+			int i3;
+			int j3;
+			int k3;
+			
+			bool touchesBuilding;
 			
 			for (k = kMin; k < kMax; k++) {
 				for (j = jMin; j < jMax; j++) {
@@ -1692,26 +3074,60 @@ void GameFluid::applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int br
 								case E_BRUSH_ADD:
 								
 									if (modType == E_PTT_WAT) {
-										if (
-											(*terVal == UNIT_MIN) &&
-											(*bldVal == UNIT_MIN)	
-										) {
-											*watVal = UNIT_MAX;
-										}
+										//if (mainId == E_FID_SML) {
+											if (
+												(*terVal == UNIT_MIN) &&
+												(*bldVal == UNIT_MIN)	
+											) {
+												*watVal = UNIT_MAX;
+											}
+										//}
 									}
 									else {
 										*terVal = UNIT_MAX;
 										*watVal = UNIT_MIN;
 									}
-									
+									*empVal = UNIT_MIN;
 									
 									
 								break;
 								case E_BRUSH_SUB:
-									*empVal = UNIT_MAX;
-									*bldVal = UNIT_MIN;
-									*terVal = UNIT_MIN;
-									*watVal = UNIT_MIN;
+									
+									touchesBuilding = false;
+									
+									for (k2 = -1; k2 <= 1; k2++) {
+										for (j2 = -1; j2 <= 1; j2++) {
+											for (i2 = -1; i2 <= 1; i2++) {
+												
+												i3 = clamp(i+i2,vspMin,vspMax);
+												j3 = clamp(j+j2,vspMin,vspMax);
+												k3 = clamp(k+k2,vspMin,vspMax);
+												
+												
+												ind2 = 
+													i3 +
+													j3*volSizePrimBuf +
+													k3*volSizePrimBuf*volSizePrimBuf;
+												
+												touchesBuilding = touchesBuilding || (extraData[ind2*4+E_PTT_BLD] != UNIT_MIN);
+												
+											}
+										}
+									}
+									
+									if (
+										touchesBuilding ||
+										(*terVal != UNIT_MIN) ||
+										(*watVal != UNIT_MIN)
+									) {
+										*empVal = UNIT_MAX;
+										*bldVal = UNIT_MIN;
+										*terVal = UNIT_MIN;
+										*watVal = UNIT_MIN;
+									}
+								
+									
+									
 								break;
 								case E_BRUSH_REF:
 									watchMinX = iMin;

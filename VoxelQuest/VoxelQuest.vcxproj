@@ -73,7 +73,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\poco146\Net\include;C:\poco146\Util\include;C:\poco146\Foundation\include;C:\SFML-2.1\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\poco146\Net\include;C:\poco146\Util\include;C:\poco146\Foundation\include;C:\SFML-2.1\include;C:\wamp\www\voxelquest\include;$(IncludePath)</IncludePath>
     <LibraryPath>opengl32.lib;glu32.lib;C:\poco146\lib64;C:\glew\lib\Release\x64;C:\SFML-2.1\lib\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -83,7 +83,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\poco146\Net\include;C:\poco146\Util\include;C:\poco146\Foundation\include;C:\SFML-2.1\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\poco146\Net\include;C:\poco146\Util\include;C:\poco146\Foundation\include;C:\SFML-2.1\include;C:\wamp\www\voxelquest\include;$(IncludePath)</IncludePath>
     <LibraryPath>opengl32.lib;glu32.lib;C:\poco146\lib64;C:\glew\lib\Release\x64;C:\SFML-2.1\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

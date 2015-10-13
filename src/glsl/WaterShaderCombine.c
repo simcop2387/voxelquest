@@ -41,26 +41,8 @@ $
 
 
 
-// int intMod(int lhs, int rhs) {
-//     return lhs - ( (lhs/rhs)*rhs );
-// }
-// float unpack16(vec2 num) {
-//     return num.r*255.0 + num.g*65280.0;
-// }
-// vec2 pack16(float num) {
 
-//     int iz = int(num);
-//     int ir = intMod(iz,256);
-//     int ig = (iz)/256;
 
-//     vec2 res;
-
-//     res.r = float(ir)/255.0;
-//     res.g = float(ig)/255.0;
-
-//     return res;
-
-// }
 
 
 void main() {

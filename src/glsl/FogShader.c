@@ -17,10 +17,17 @@ uniform sampler2D Texture5;
 // pal fbo
 uniform sampler3D Texture6;
 
-// wave fbo
-//uniform sampler2D Texture7;
+// noise fbo
+uniform sampler2D Texture7;
+
+uniform mat4 modelviewInverse;
+uniform float FOV;
+uniform vec3 lightVec;
+uniform vec3 lightVecOrig;
+uniform vec2 clipDist;
 
 uniform int iNumSteps;
+uniform float seaLevel;
 uniform float volSizePrim;
 uniform float curTime;
 uniform float selObjInd;
@@ -33,7 +40,6 @@ uniform vec3 cameraPos;
 uniform vec3 lookAtVec;
 uniform vec3 entPos;
 uniform float thirdPerson;
-uniform vec2 clipDist;
 //uniform vec4 fogPos;
 
 vec3 dirVecs[6] = vec3[](
@@ -60,6 +66,9 @@ void main() {
 
 $
 
+
+
+
 vec2 pack16(float num)
 {
 
@@ -82,91 +91,258 @@ vec3 unpackColor(vec2 num, float lightVal)
     return texture3D( Texture6, vec3(lightVal, num.r, num.g + 0.5/255.0) ).rgb;
 }
 
-vec3 getFogColor(vec2 lv)
+
+
+
+vec3 getRay() {
+    float aspect = bufferDim.y/bufferDim.x;
+    float NEAR = clipDist.x;
+    float FAR = clipDist.y;
+    
+    vec2 newTC = TexCoord0.xy;
+    //newTC.y += cameraPos.z*0.0001;
+    
+    float dx = tan(FOV*0.5f)*(newTC.x*2.0-1.0f)/aspect; //gl_FragCoord.x/(bufferDim.x*0.5)
+    float dy = tan(FOV*0.5f)*((1.0f-newTC.y)*2.0-1.0f); //gl_FragCoord.y/(bufferDim.y*0.5)
+    
+    
+    dx = -dx;
+    
+    vec4 p1 = vec4(dx*NEAR,dy*NEAR,NEAR,1.0);
+    vec4 p2 = vec4(dx*FAR,dy*FAR,FAR,1.0);
+    
+    p1 = modelviewInverse*p1;
+    p2 = modelviewInverse*p2;
+
+    vec3 ro = p1.xyz;
+    
+    vec3 rd = normalize(p1.xyz-p2.xyz);
+    
+    return rd;
+}
+vec3 getFogColor()
 {
+    
+    vec3 myRay = getRay();
+    
+    float zv = pow(1.0-(myRay.z+1.0)/2.0,2.0);
     
     return unpackColor(
         vec2(
-            ((1.0 - lv.y - distance(lv,vec2(0.5))*0.1) - lookAtVec.z ),
+            zv,
             TEX_SKY
         ),
-        timeOfDay
-    );
+        (lightVecOrig.z + 1.0)*0.5//timeOfDay
+    )
+    +
+    
+    (
+        (
+            pow(
+                clamp(
+                    dot(lightVecOrig,myRay),0.0,1.0
+                ),
+                16.0    
+            )*1.0
+            *vec3(1.0,0.5,0.0) //+lightVecOrig.z*0.25
+        )
+        +
+        (
+            pow(
+                clamp(
+                    dot(lightVecOrig,myRay),0.0,1.0
+                ),
+                64.0    
+            )*1.0
+            *vec3(1.0,1.0,1.0) //+lightVecOrig.z*0.25
+        )    
+    )*(pow(clamp((timeOfDay+0.4),0.0,1.0),8.0))
+    
+    
+    +
+    
+    (
+        (
+            pow(
+                clamp(
+                    dot(lightVecOrig*vec3(1.0,1.0,-1.0),myRay),0.0,1.0
+                ),
+                64.0    
+            )*1.0
+            *vec3(0.5,0.5,1.0) //+lightVecOrig.z*0.25
+        )
+        +
+        (
+            pow(
+                clamp(
+                    dot(lightVecOrig*vec3(1.0,1.0,-1.0),myRay),0.0,1.0
+                ),
+                256.0    
+            )*1.0
+            *vec3(1.0,1.0,1.0) //+lightVecOrig.z*0.25
+        )    
+    )*(pow(clamp(1.0-(timeOfDay-0.4),0.0,1.0),8.0))
+    ;
     
 }
 
 
 //##
+
+
 const float M_PI = 3.14159265359;
 const float timeScale = 0.0005;
-const int numWaves = 8;
-float amplitude[8] = float[]( 1.0/16.0, 1.0/32.0, 1.0/2.0, 1.0/4.0, 1.0/8.0, 1.0/64.0, 1.0/128.0, 1.0/256.0 );
-float wavelength[8] = float[]( 48.0/1.0, 48.0/5.0, 48.0/9.0, 48.0/19.0, 48.0/29.0, 48.0/41.0, 48.0/53.0, 48.0/68.0 );
-float speed[8] = float[]( 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
-const vec2 direction[8] = vec2[](
-    vec2(cos(-0.7),sin(-0.7)),
-    vec2(cos(0.4),sin(0.4)),
-    vec2(cos(0.1),sin(0.1)),
-    vec2(cos(-0.75),sin(-0.75)),
-    vec2(cos(-0.2),sin(-0.2)),
-    vec2(cos(0.3),sin(0.3)),
-    vec2(cos(-0.1),sin(-0.1)),
-    vec2(cos(-0.25),sin(-0.25))
-);
 
 
-float wave(int i, float x, float y) {
-    float frequency = 2.0*M_PI/(wavelength[i]);
-    float phase = speed[i] * frequency;
-    float theta = dot(direction[i], vec2(x, y));
-    return amplitude[i] * sin(theta * frequency + curTime*timeScale * phase);
-}
+const float WAVE_SPEED = 0.2;
+const float WAVE_SCALE = 100.0;
+^INCLUDE:WaveFuncs^
 
-float waveHeight(vec2 param) {
-
-    float x = param.x;
-    float y = param.y;
-
-    float height = 0.0;
-    for (int i = 0; i < numWaves; ++i) {
-        height += wave(i, x, y);
-    }
-    return height;
-}
-
-float dWavedx(int i, float x, float y) {
-    float frequency = 2.0*M_PI/wavelength[i];
-    float phase = speed[i] * frequency;
-    float theta = dot(direction[i], vec2(x, y));
-    float A = amplitude[i] * direction[i].x * frequency;
-    float res = A * cos(theta * frequency + curTime*timeScale * phase);
-    return res*2.0;
-}
-
-float dWavedy(int i, float x, float y) {
-    float frequency = 2.0*M_PI/wavelength[i];
-    float phase = speed[i] * frequency;
-    float theta = dot(direction[i], vec2(x, y));
-    float A = amplitude[i] * direction[i].y * frequency;
-    float res =  A * cos(theta * frequency + curTime*timeScale * phase);
-    return res*2.0;
-}
-
-vec3 waveNormal(vec2 param) {
-    float x = param.x;
-    float y = param.y;
-    float dx = 0.0;
-    float dy = 0.0;
-    for (int i = 0; i < numWaves; ++i) {
-        dx += dWavedx(i, x, y);
-        dy += dWavedy(i, x, y);
-    }
-    vec3 n = vec3(-dx, -dy, 1.0);
-    return normalize(n);
-}
 
 //##
 
+
+
+// #########################
+
+
+const float tau = 6.28318530717958647692;
+
+// Gamma correction
+#define GAMMA (2.2)
+
+vec3 ToLinear( in vec3 col )
+{
+    // simulate a monitor, converting colour values into light values
+    return pow( col, vec3(GAMMA) );
+}
+
+vec3 ToGamma( in vec3 col )
+{
+    // convert back into colour values, so the correct light will come out of the monitor
+    return pow( col, vec3(1.0/GAMMA) );
+}
+
+vec4 Noise( in ivec2 x )
+{
+    
+    vec2 coords = (vec2(x)+0.5)/bufferDim;
+    
+    
+    return texture2D( Texture7, coords ); //, -100.0
+}
+
+// vec4 Rand( in int x )
+// {
+//     vec2 uv;
+//     uv.x = (float(x)+0.5)/256.0;
+//     uv.y = (floor(uv.x)+0.5)/256.0;
+//     return texture2D( Texture7, uv, -100.0 );
+// }
+
+
+
+
+vec4 particles( vec2 fragCoord, vec4 wp, float dir, float partSpeed, float partLength )
+{
+    vec3 ray = getRay();
+    
+    ray.z = ray.z*dir;
+    
+    bool offsetMod = false;
+    
+    if (ray.z < 0) {
+        ray.z = abs(ray.z);
+        offsetMod = true;
+    }
+    
+    //ray.xy += fract(cameraPos.xy);
+    //ray.z = abs(ray.z);
+    // ray.xz = 2.0*(fragCoord.xy-bufferDim.xy*.5)/bufferDim.x;
+    // ray.y = 1.0;
+
+    float offset = 0.0;
+    float speed2 = 0.0;
+    float speed = 0.0;
+    
+    
+    vec3 col = vec3(0.0);
+    
+    vec3 stp = ray/max(abs(ray.x),abs(ray.y));
+    vec3 pos;
+    int i;
+    float z;
+    float d;
+    float w;
+    
+    vec3 c = vec3(0.0);
+    int j;
+    
+    float offsetBase = 0.0;
+    
+    for (j = 0; j < 3; j++) {
+        
+        
+        offset = curTime*partSpeed/1000.0 - cameraPos.z*0.001;// + floor(sin(pos.z) + sin(pos.x) + sin(pos.y))*0.3;
+        if (offsetMod) {
+            offset = 1.0-offset;
+        }
+        speed2 = partLength;//(cos(offset)+1.0)*2.0;
+        speed = speed2+0.1;
+        //offset += sin(offset)*.96;
+        //offset *= 2.0;
+        
+        pos = 2.0*stp+0.5;
+        
+        offsetBase = offset;
+        
+        for (i = 0; i < 20; i++ )
+        {
+            
+            offset = offsetBase + float(j)*0.3*floor((pos.x+pos.y)*16.0)/16.0;// + floor(sin(pos.x*20.0 + pos.y*20.0)*100.0);
+            
+            z = Noise(ivec2(pos.xy)).x; // + cameraPos.xy
+            
+            
+            
+            z = fract(z-offset);
+            
+            
+            
+            d = 50.0*z-pos.z;
+            w = pow(
+                max(
+                    0.0,
+                    1.0-16.0*length(fract(pos.xy)-.5)
+                ),
+                2.0
+            );
+            
+            c = clamp(
+                vec3(
+                    1.0-abs(d+speed2*.5)/speed,
+                    1.0-abs(d)/speed,
+                    1.0-abs(d-speed2*.5)/speed
+                ),
+                
+                vec3(0.0),
+                vec3(1.0)
+            );
+            col += 1.5*(1.0-z)*c*w*clamp(bufferDim.x*0.02-length(pos),0.0,1.0);
+            pos += stp;
+            
+            
+        }
+    }
+    
+    
+    
+    
+    return vec4(ToGamma(col)*abs(ray.z),1.0);
+}
+
+
+// #########################
 
 void main() {
 
@@ -209,15 +385,6 @@ void main() {
     
     
     
-    float waveVal = (waveHeight(
-        sin(worldPosition.xy/2.0) *
-        sin(worldPosition.yz/2.0) *
-        sin(worldPosition.zx/2.0)
-        
-        + (worldPosition.xy + worldPosition.zz)*0.25
-        
-    )+1.0)*0.5;
-    
     
     
     // ??????????
@@ -239,14 +406,53 @@ void main() {
     
     vec3 finalPos = cameraPos;
     
-    if (thirdPerson != 0.0) {
-        finalPos = entPos;
-    }
+    // if (thirdPerson != 0.0) {
+    //     finalPos = entPos;
+    // }
     
-    float tot = 1.0-clamp(distance(worldPosition.xyz,finalPos)/(clipDist.y),0.0,1.0);
+    float camDis = distance(worldPosition.xyz,finalPos);
+    
+    float camDisNorm = clamp(camDis/clipDist.y,0.0,1.0);
+    
+    float waveScale = 0.001;//mix(0.01/camDis,0.05/camDis,camDis/16384.0);
+    
+    float waveVal = clamp(
+        
+        waveHeight2(
+            //(worldPosition.xy+worldPosition.zy)*mix(0.01,0.0005,camDisNorm)
+            
+            
+            sin(worldPosition.xy*waveScale) *
+            sin(worldPosition.yz*waveScale) *
+            sin(worldPosition.zx*waveScale)
+            
+            + (worldPosition.xy + worldPosition.zz)*waveScale
+            
+        )*16.0 +
+        
+        waveHeight2(
+            //(worldPosition.xy+worldPosition.zy)*mix(0.01,0.0005,camDisNorm)
+            
+            
+            sin(worldPosition.yx*waveScale*1.3) *
+            sin(worldPosition.zy*waveScale*2.2) *
+            sin(worldPosition.xz*waveScale*3.1)
+            
+            + (worldPosition.xy + worldPosition.zz)*waveScale*2.2
+            
+        )*16.0
+        
+        +1.0,
+        0.0,
+        2.0
+    )*0.5;
     
     
-    tot = tot*(0.8+0.2*mix(waveVal,1.0,isUnderWater));
+    
+    float tot = 1.0-camDisNorm;
+    
+    
+    //tot = tot*(0.8+0.2*mix(waveVal,1.0,isUnderWater));
     
     float totMax = 0.0;
     float weightVal;
@@ -286,21 +492,51 @@ void main() {
     
     float hfog = 
         pow(clamp(
-            (1.0-tot)*mix(1.0,1.0,isUnderWater),
+            pow(1.0-tot,0.5) //+(1.0-timeOfDay)
+            
+            // + (cameraPos.z - worldPosition.z)/100.0
+            
+            ,
             0.0,
             1.0
         ),1.0);
         
+    
+    
+    hfog -= clamp(
+        (waveVal*0.2*(1.0-isUnderWater)*(1.0-camDisNorm)),
+        0.0,
+        1.0
+    );
+    // hfog += clamp(1.0-(worldPosition.z-seaLevel)/400.0,0.0,1.0)*camDisNorm*0.5;
+    // hfog = pow(hfog,0.5);
+    
+    hfog += clamp(1.0-(worldPosition.z-seaLevel)/200.0,0.0,1.0)*pow(camDisNorm,0.5)*0.5*(1.0-camDisNorm);
+    hfog = clamp(hfog,0.0,1.0);
+    
+    
+    if (isUnderWater == 1.0) {
+        hfog = clamp(hfog*2.0,0.0,1.0);
+    }
+    
+    if (dot(worldPosition.xyz,oneVec.xyz) == 0.0) {
+        hfog = 1.0;
+    }
 
     //vec3 lightMod = pow( (1.0-timeOfDay)*tex3.rgb, vec3(2.0) );
 
-    vec3 fogColor = getFogColor(TexCoord0.xy);
+    vec3 fogColor = getFogColor();
     
     if (isUnderWater == 1.0) {
-        fogColor = mix(
-            vec3(0.0,0.25,1.0),
-            vec3(0.0,0.1,0.5),
-            hfog
+        fogColor = 
+        mix(
+            mix(
+                vec3(0.0,0.25,1.0),
+                vec3(0.0,0.1,0.5),
+                hfog
+            ),
+            fogColor,
+            0.1    
         );
     }
     
@@ -397,7 +633,7 @@ void main() {
     
     if (isUnderWater == 1.0) {
         finalCol = mix( finalCol, vec3(0.0,0.1,0.5), 0.5);
-        finalCol += pow( waveVal, 8.0)*0.25;
+        finalCol += pow( waveVal, 2.0)*0.1;
     }
 
 
@@ -454,15 +690,23 @@ void main() {
     
     
     
-    
 
     if (valIsGeom&&(!isOutline)) {
-        //finalCol = tex2.rgb;
+        finalCol = tex2.rgb;
     }
     
     //finalCol = vec3(tex7.a);
     
     //finalCol = vec3(stripeVal);
+
+    vec4 particleRes;
+    
+    // if (isUnderWater == 1.0) {
+    //     particleRes = particles(TexCoord0.xy*bufferDim.xy, worldPosition, -1.0, 0.05, 0.05)*0.1;
+    //     finalCol.rgb += particleRes.rgb;
+    // }
+    
+    
 
     gl_FragData[0] = vec4(finalCol,1.0);
 

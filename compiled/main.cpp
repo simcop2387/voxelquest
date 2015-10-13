@@ -10,6 +10,16 @@ int RUN_COUNT;
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "27015"
 
+//#define GEN_POLYS 1
+
+const static bool SINGLE_THREADED = false;
+const static bool DO_RANDOMIZE = false;
+
+// no greater than 8 unless shader changed
+const static int MAX_PRIM_IDS = 8;
+const static int MAX_PRIMTEST = 8;
+
+const static int MAX_DEPTH_PEELS = 4;
 
 const static float OFFSET_X[4] = {-0.5,0.5,0.5,-0.5};
 const static float OFFSET_Y[4] = {-0.5,-0.5,0.5,0.5};
@@ -18,28 +28,35 @@ const static int MAX_SPLASHES = 8;
 const static int MAX_EXPLODES = 8;
 
 //const static bool DO_CONNECT = true;
-const static bool DO_SHADER_DUMP = true;
-
-const static int DEF_WIN_W = 1920;
-const static int DEF_WIN_H = 1080;
-const static int DEF_SCALE_FACTOR = 1;
-const static int RENDER_SCALE_FACTOR = 1;
+const static bool DO_SHADER_DUMP = false;
 
 
-const static float SPHEREMAP_SCALE_FACTOR = 1.0f;
-const static bool USE_SPHERE_MAP = true;
+const static int DEF_WIN_W = 1440;
+const static int DEF_WIN_H = 720;
+
+const static int DEF_VOL_SIZE = 64;
+
+const static int DEF_SCALE_FACTOR = 2;
+const static int RENDER_SCALE_FACTOR = 2;
+const static float SPHEREMAP_SCALE_FACTOR = 0.5f; // lower is faster
+
+const static bool USE_SPHERE_MAP = false;
 
 const static float TIME_DELTA = 1.0f/60.0f;
-const static int MAX_THREADS = 8;
+
+const static int THREAD_DATA_COUNT = 16;
 
 // #define DEBUG_BOUNDS 1
 
 const static float explodeRad = 5.0f;
 
-float RAND_COUNTER = 0.0f;
-float RAND_COUNTER2 = 0.0f;
+float RAND_COUNTER = 25.0f;
+float RAND_COUNTER2 = 25.0f;
 
-typedef unsigned int PRIM_FORMAT;
+
+const static int GROUP_ID_NONEXISTENT = -3;
+const static int GROUP_ID_UNMARKED = -2;
+const static int GROUP_ID_UNMARKED_IDEAL = -1;
 
 const static int FLUID_UNIT_MIN = -1;
 const static int FLUID_UNIT_MAX = 16384;
@@ -148,6 +165,56 @@ const static int DIR_VECS_I[NUM_ORIENTATIONS][3] = {
 	{0, 0, 1},
 	{0, 0, -1}
 };
+
+const static int NUM_MOVEABLE_DIRS = 20;// 12 20 24
+const static int DIR_VECS_MOVE[NUM_MOVEABLE_DIRS][3] = {
+	{ 1,  0,  1},
+	{-1,  0,  1},
+	{ 0,  1,  1},
+	{ 0, -1,  1},
+	
+	{ 1,  0,  0},
+	{-1,  0,  0},
+	{ 0,  1,  0},
+	{ 0, -1,  0},
+	
+	{ 1,  0, -1},
+	{-1,  0, -1},
+	{ 0,  1, -1},
+	{ 0, -1, -1}
+	
+	
+	,
+	{ 1,  0,  -2},
+	{-1,  0,  -2},
+	{ 0,  1,  -2},
+	{ 0, -1,  -2},
+	
+	{ 1,  0,  2},
+	{-1,  0,  2},
+	{ 0,  1,  2},
+	{ 0, -1,  2}
+	
+	
+	
+	// ,{ 1,  1,  1},
+	// { 1, -1,  1},
+	// {-1,  1,  1},
+	// {-1, -1,  1},
+	
+	// { 1,  1,  0},
+	// { 1, -1,  0},
+	// {-1,  1,  0},
+	// {-1, -1,  0},
+	
+	// { 1,  1, -1},
+	// { 1, -1, -1},
+	// {-1,  1, -1},
+	// {-1, -1, -1}
+	
+	
+};
+
 
 float ALL_ROT[16*NUM_ORIENTATIONS*NUM_ORIENTATIONS*NUM_ORIENTATIONS];
 const static int ROT_MAP[36] = {
@@ -260,6 +327,173 @@ long long ENT_COUNTER = 0;
 bool TRACE_ON = false;
 //#define DEBUG_MODE 1
 
+
+
+
+
+
+
+
+
+
+
+//??????????????
+
+
+// #if defined(USE_SIMD)
+// #include "use_simd.h"
+// #else
+// #include "use_scalar.h"
+// #endif
+
+// #include <swizzle/glsl/vector.h>
+// #include <swizzle/glsl/matrix.h>
+//#include <swizzle/glsl/texture_functions.h>
+
+// typedef swizzle::glsl::vector< float_type, 2 > vec2;
+// typedef swizzle::glsl::vector< float_type, 3 > vec3;
+// typedef swizzle::glsl::vector< float_type, 4 > vec4;
+
+// static_assert(sizeof(vec2) == sizeof(float_type[2]), "Too big");
+// static_assert(sizeof(vec3) == sizeof(float_type[3]), "Too big");
+// static_assert(sizeof(vec4) == sizeof(float_type[4]), "Too big");
+
+// typedef swizzle::glsl::matrix< swizzle::glsl::vector, vec4::scalar_type, 2, 2> mat2;
+// typedef swizzle::glsl::matrix< swizzle::glsl::vector, vec4::scalar_type, 3, 3> mat3;
+// typedef swizzle::glsl::matrix< swizzle::glsl::vector, vec4::scalar_type, 4, 4> mat4;
+
+
+// //! A really, really simplistic sampler using SDLImage
+// struct SDL_Surface;
+// class sampler2D : public swizzle::glsl::texture_functions::tag
+// {
+// public:
+//     enum WrapMode
+//     {
+//         Clamp,
+//         Repeat,
+//         MirrorRepeat
+//     };
+
+//     typedef const vec2& tex_coord_type;
+
+//     sampler2D(const char* path, WrapMode wrapMode);
+//     ~sampler2D();
+//     vec4 sample(const vec2& coord);
+
+// private:
+//     SDL_Surface *m_image;
+//     WrapMode m_wrapMode;
+
+//     // do not allow copies to be made
+//     sampler2D(const sampler2D&);
+//     sampler2D& operator=(const sampler2D&);
+// };
+
+
+
+
+
+
+
+
+
+
+// this where the magic happens...
+// namespace glsl_sandbox
+// {
+//     // a nested namespace used when redefining 'inout' and 'out' keywords
+//     namespace ref
+//     {
+// #ifdef CXXSWIZZLE_VECTOR_INOUT_WRAPPER_ENABLED
+//         typedef swizzle::detail::vector_inout_wrapper<vec2> vec2;
+//         typedef swizzle::detail::vector_inout_wrapper<vec3> vec3;
+//         typedef swizzle::detail::vector_inout_wrapper<vec4> vec4;
+// #else
+//         typedef vec2& vec2;
+//         typedef vec3& vec3;
+//         typedef vec4& vec4;
+// #endif
+//         typedef ::float_type& float_type;
+//     }
+
+//     namespace in
+//     {
+//         typedef const ::vec2& vec2;
+//         typedef const ::vec3& vec3;
+//         typedef const ::vec4& vec4;
+//         typedef const ::float_type& float_type;
+//     }
+
+//     #include <swizzle/glsl/vector_functions.h>
+
+//     // constants shaders are using
+//     float_type time = 1;
+//     vec2 mouse(0, 0);
+//     vec2 resolution;
+
+//     // constants some shaders from shader toy are using
+//     vec2& iResolution = resolution;
+//     float_type& iGlobalTime = time;
+//     vec2& iMouse = mouse;
+
+//     //sampler2D diffuse("diffuse.png", sampler2D::Repeat);
+//     //sampler2D specular("specular.png", sampler2D::Repeat);
+
+//     struct fragment_shader
+//     {
+//         vec2 gl_FragCoord;
+//         vec4 gl_FragColor;
+//         void operator()(void);
+//     };
+
+//     // change meaning of glsl keywords to match sandbox
+//     #define uniform extern
+//     #define in in::
+//     #define out ref::
+//     #define inout ref::
+//     #define main fragment_shader::operator()
+//     #define float float_type   
+//     #define bool bool_type
+    
+//     #pragma warning(push)
+//     #pragma warning(disable: 4244) // disable return implicit conversion warning
+//     #pragma warning(disable: 4305) // disable truncation warning
+    
+//     //#include "shaders/sampler.frag"
+//     //#include "shaders/leadlight.frag"
+//     //#include "shaders/terrain.frag"
+//     //#include "shaders/complex.frag"
+//     //#include "shaders/road.frag"
+//     //#include "shaders/gears.frag"
+//     //#include "shaders/water_turbulence.frag"
+//     //#include "shaders/sky.frag"
+
+//     // be a dear a clean up
+//     #pragma warning(pop)
+//     #undef bool
+//     #undef float
+//     #undef main
+//     #undef in
+//     #undef out
+//     #undef inout
+//     #undef uniform
+// }
+
+//??????????????
+
+
+
+
+
+
+
+
+
+
+
+
+
 #include <SDKDDKVer.h>
 
 
@@ -307,6 +541,13 @@ bool TRACE_ON = false;
 #include <gl/glu.h>
 #include <gl/freeglut.h>
 #pragma comment(lib, "glew32.lib")
+
+
+
+
+
+
+
 
 
 
@@ -771,6 +1012,34 @@ PFNWGLGETSWAPINTERVALEXTPROC pwglGetSwapIntervalEXT = 0;
 #endif
 
 
+const static GLenum bufNames[] = {
+			GL_COLOR_ATTACHMENT0_EXT,
+			GL_COLOR_ATTACHMENT1_EXT,
+			GL_COLOR_ATTACHMENT2_EXT,
+			GL_COLOR_ATTACHMENT3_EXT,
+			GL_COLOR_ATTACHMENT4_EXT,
+			GL_COLOR_ATTACHMENT5_EXT,
+			GL_COLOR_ATTACHMENT6_EXT,
+			GL_COLOR_ATTACHMENT7_EXT
+		};
+
+
+
+
+
+
+// data for a fullscreen quad (this time with texture coords)
+GLfloat vertexDataQuad[] = {
+//  X     Y     Z           U     V     
+   1.0f, 1.0f, 0.0f, 1.0f,       1.0f, 1.0f, 0.0f, 0.0f, // vertex 0
+  -1.0f, 1.0f, 0.0f, 1.0f,       0.0f, 1.0f, 0.0f, 0.0f, // vertex 1
+   1.0f,-1.0f, 0.0f, 1.0f,       1.0f, 0.0f, 0.0f, 0.0f, // vertex 2
+  -1.0f,-1.0f, 0.0f, 1.0f,       0.0f, 0.0f, 0.0f, 0.0f  // vertex 3
+}; // 4 vertices with 8 components (floats) each
+GLuint indexDataQuad[] = {
+    0,1,2, // first triangle
+    2,1,3  // second triangle
+};
  
 
 
@@ -795,12 +1064,19 @@ enum E_PERFORMANCE_PROFILE {
 };
 
 
+
 enum E_PRIM_TYPE_TER {
 	E_PTT_TER,
 	E_PTT_WAT,
 	E_PTT_LST,
 	E_PTT_EMP,
 	E_PTT_LENGTH
+};
+
+enum E_THREAD_TYPE {
+	E_TT_GENPATHS,
+	E_TT_GENLIST,
+	E_TT_LENGTH
 };
 
 enum E_PRIM_TYPE_EXT {
@@ -843,7 +1119,7 @@ enum E_VOCAB_TYPE {
 };
 
 struct FluidPlane {
-	std::vector<int> fluidIds;
+	std::vector<int> planeIds;
 };
 
 struct FluidStruct {
@@ -858,9 +1134,14 @@ struct FluidStruct {
 	int id;
 	long long int collectedWater;
 	
-	std::vector<int> fluidIds;
-	std::vector<int> idealCellIds;
-		
+	bool didCollectWater;
+	
+	int fidBegInd;
+	int fidEndInd;
+	
+	int iciBegInd;
+	int iciEndInd;
+	
 };
 
 struct VToken
@@ -872,9 +1153,24 @@ struct VToken
 	string stringValue;
 };
 
-
+enum E_FLUID_IDS {
+	//E_FID_SML,
+	E_FID_BIG,
+	//E_FID_MIP,
+	E_FID_LENGTH	
+};
 
 string globString;
+
+
+int NUM_POLY_STRINGS = 0;
+string polyFBOStrings[] = {
+	"polyFBO0",
+	"polyFBO1",
+	"polyFBO2",
+	"polyFBO3",
+	"polyFBO4"
+};
 
 string dragStrings[] = {
 	"E_DT_NOTHING",
@@ -937,6 +1233,19 @@ enum E_ITEM_CLASS {
 // 	E_IC_LENGTH,
 // };
 
+enum E_VOLUME_WRAPPERS {
+	//E_VW_TERGEN,
+	E_VW_HOLDER,
+	E_VW_VORO,
+	E_VW_LENGTH
+};
+
+// string volumeWrapperStrings[] = {
+// 	"E_VW_TERGEN",
+// 	"E_VW_HOLDER",
+// 	"E_VW_VORO",
+// 	"E_VW_LENGTH"
+// };
 
 // do not reorder
 enum E_GUI_CHILD_TYPES {
@@ -1591,7 +1900,7 @@ enum E_GEOM_POINTS {
 
 enum E_GEOM_POINTS_TEMP {
 	E_GEOM_POINTS_TEMP_ORIGIN,
-	//E_GEOM_POINTS_TEMP_OFFSET,
+	E_GEOM_POINTS_TEMP_OFFSET,
 	E_GEOM_POINTS_TEMP_LENGTH
 };
 
@@ -1665,6 +1974,103 @@ enum E_MAT_CODE {
 	E_MC_MATERIAL,
 	E_MC_LENGTH
 };
+
+
+
+
+// enum E_PATH_INDEX_TYPE {
+// 	E_PIT_TYPE,
+// 	E_PIT_RES1,
+// 	E_PIT_RES2,
+// 	E_PIT_RES3,
+// 	E_PIT_LENGTH
+// };
+
+enum E_PATH_VALUE_TYPE {
+	E_PVT_INVALID = 1,
+	E_PVT_LAND_BELOW = 2,
+	E_PVT_LENGTH = 128
+};
+
+
+// enum E_CELL_DATA {
+// 	E_CD_EMPTY,
+// 	E_CD_WATER,
+// 	E_CD_SOLID,
+// 	//E_CD_PORTAL, // cost of moving through a door is very high, but less than a wall
+// 	E_CD_LENGTH	
+// };
+
+// dont use enums, not cast to uint
+const static uint E_CD_UNKNOWN = 0;
+const static uint E_CD_EMPTY = 1;
+const static uint E_CD_WATER = 2;
+const static uint E_CD_SOLID = 4;
+
+struct ConnectingNodeStruct {
+	//this info already exists in current holder
+	//int blockIdFrom;
+	//int holderIdFrom;
+	
+	int blockIdTo;
+	int holderIdTo;
+	
+	int groupIdFrom;
+	int groupIdTo;
+	
+	int cellIndFrom;
+	int cellIndTo;
+	
+	int totCost;
+};
+
+struct GroupIdStruct {
+	int ind;
+	int groupId;
+	
+	
+	int cameFromInd;
+	int pathCost;
+};
+
+struct GroupInfoStruct {
+	//bool touchesFace[6];
+	int begInd;
+	int endInd;
+	int centerInd;
+	
+	int visitId;
+};
+
+
+struct PathResult {
+	int blockId;
+	int holderId;
+	int groupId;
+	
+	int lastBlockId;
+	int lastHolderId;
+	int lastGroupId;
+};
+
+enum E_PATH_FILL_OPS {
+	E_PFO_CLEAR_GROUPS,
+	E_PFO_SEARCH_GROUPS,
+	E_PFO_LENGTH
+};
+
+
+// struct PathNode {
+// 	// uint flags;
+// 	// int cameFromInd;
+// 	// int pathCost;
+// 	// int groupId;
+	
+// 	giIndex
+	
+// };
+
+
 
 
 
@@ -1820,22 +2226,22 @@ struct TerTexture {
 };
 
 
-struct PathNode {
-	int index;
-	int blockId;
-	int x;
-	int y;
-	int z;
-};
-bool operator==(const PathNode& lhs, const PathNode& rhs)
-{
-    return (lhs.index == rhs.index)&&(lhs.blockId==rhs.blockId);
-}
+// struct PathNode {
+// 	int index;
+// 	int blockId;
+// 	int x;
+// 	int y;
+// 	int z;
+// };
+// bool operator==(const PathNode& lhs, const PathNode& rhs)
+// {
+//     return (lhs.index == rhs.index)&&(lhs.blockId==rhs.blockId);
+// }
 
-struct PathHolder {
-	std::vector<PathNode> pathList;
-	std::vector<PathNode> visitedList;
-};
+// struct PathHolder {
+// 	std::vector<PathNode> pathList;
+// 	std::vector<PathNode> visitedList;
+// };
 
 
 struct MapNode {
@@ -1992,13 +2398,7 @@ string musicStrings[] = {
 
 
 
-enum E_CELL_DATA {
-	E_CD_EMPTY,
-	E_CD_SOLID,
-	E_CD_WATER,
-	//E_CD_PORTAL,
-	E_CD_LENGTH	
-};
+
 
 // enum E_GUI_SECTIONS {
 // 	E_GS_MAINMENU,
@@ -2393,28 +2793,12 @@ public:
 //            | 2 5 8 |    |  2  6 10 14 |
 //                         |  3  7 11 15 |
 //
-//  AUTHOR: Song Ho Ahn (song.ahn@gmail.com)
+//  AUTHOR: Song Ho Ahn (song.ahn at gmail.com)
 // CREATED: 2005-06-24
 // UPDATED: 2013-09-30
 //
 // Copyright (C) 2005 Song Ho Ahn
 ///////////////////////////////////////////////////////////////////////////////
-
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Vectors.h
-// =========
-// 2D/3D/4D vectors
-//
-//  AUTHOR: Song Ho Ahn (song.ahn@gmail.com)
-// CREATED: 2007-02-14
-// UPDATED: 2013-01-20
-//
-// Copyright (C) 2007-2013 Song Ho Ahn
-///////////////////////////////////////////////////////////////////////////////
-
-
 
 
 
@@ -2651,10 +3035,7 @@ inline float Vector2::distance(const Vector2& vec) const {
 }
 
 inline Vector2& Vector2::normalize() {
-    //@@const float EPSILON = 0.000001f;
     float xxyy = x*x + y*y;
-    //@@if(xxyy < EPSILON)
-    //@@    return *this;
 
     //float invLength = invSqrt(xxyy);
     float invLength = 1.0f / sqrtf(xxyy);
@@ -2770,11 +3151,7 @@ inline float Vector3::distance(const Vector3& vec) const {
 }
 
 inline Vector3& Vector3::normalize() {
-    //@@const float EPSILON = 0.000001f;
     float xxyyzz = x*x + y*y + z*z;
-    //@@if(xxyyzz < EPSILON)
-    //@@    return *this; // do nothing if it is ~zero vector
-
     //float invLength = invSqrt(xxyyzz);
     float invLength = 1.0f / sqrtf(xxyyzz);
     x *= invLength;
@@ -2896,11 +3273,7 @@ inline float Vector4::distance(const Vector4& vec) const {
 
 inline Vector4& Vector4::normalize() {
     //NOTE: leave w-component untouched
-    //@@const float EPSILON = 0.000001f;
     float xxyyzz = x*x + y*y + z*z;
-    //@@if(xxyyzz < EPSILON)
-    //@@    return *this; // do nothing if it is zero vector
-
     //float invLength = invSqrt(xxyyzz);
     float invLength = 1.0f / sqrtf(xxyyzz);
     x *= invLength;
@@ -3831,7 +4204,7 @@ inline std::ostream& operator<<(std::ostream& os, const Matrix4& m)
 //            | 2 5 8 |    |  2  6 10 14 |
 //                         |  3  7 11 15 |
 //
-//  AUTHOR: Song Ho Ahn (song.ahn@gmail.com)
+//  AUTHOR: Song Ho Ahn (song.ahn at gmail.com)
 // CREATED: 2005-06-24
 // UPDATED: 2014-09-21
 //
@@ -3987,12 +4360,7 @@ Matrix4& Matrix4::invert()
     else
     {
         this->invertGeneral();
-        /*@@ invertProjective() is not optimized (slower than generic one)
-        if(fabs(m[0]*m[5] - m[1]*m[4]) > EPSILON)
-            this->invertProjective();   // inverse using matrix partition
-        else
-            this->invertGeneral();      // generalized inverse
-        */
+        
     }
 
     return *this;
@@ -4401,6 +4769,15 @@ Matrix4& Matrix4::rotateZ(float angle)
  
 
 
+
+int boolToInt(bool val) {
+	if (val) {
+		return 1;
+	}
+	else {
+		return 0;
+	}
+}
 
 uint* toUintPtr(char* baseAdr) {
 	void* voidPtr = baseAdr;
@@ -6148,6 +6525,13 @@ struct SphereStruct {
 
 typedef int BaseObjType;
 
+
+// states:
+// explore
+// seek
+// avoid
+// return
+
 class BaseObj
 {
 public:
@@ -6395,15 +6779,28 @@ struct AssignStruct {
 
 
 
-class FSQuad {
+class VBOWrapper {
 public:
 	GLuint vao, vbo, ibo;
 
-	FSQuad() {
+	int sizeOfID;
+	int sizeOfVD;
+	GLfloat* vertexData;
+	GLuint* indexData;
+
+	VBOWrapper() {
 		
 	}
 	
-	void init() {
+	void init(GLfloat* _vertexData, int _sizeOfVD, GLuint* _indexData, int _sizeOfID) {
+		
+		
+		sizeOfID = _sizeOfID;
+		sizeOfVD = _sizeOfVD;
+		vertexData = _vertexData;
+		indexData = _indexData;
+		
+		
 		
 		// vao and vbo handle
 		
@@ -6415,39 +6812,27 @@ public:
 		// generate and bind the vertex buffer object
 		glGenBuffers(1, &vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		        
-		// data for a fullscreen quad (this time with texture coords)
-		GLfloat vertexData[] = {
-		//  X     Y     Z           U     V     
-		   1.0f, 1.0f, 0.0f,       1.0f, 1.0f, // vertex 0
-		  -1.0f, 1.0f, 0.0f,       0.0f, 1.0f, // vertex 1
-		   1.0f,-1.0f, 0.0f,       1.0f, 0.0f, // vertex 2
-		  -1.0f,-1.0f, 0.0f,       0.0f, 0.0f, // vertex 3
-		}; // 4 vertices with 5 components (floats) each
-
+		
+		
 		// fill with data
-		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*4*5, vertexData, GL_STATIC_DRAW);
-		                
-		       
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*sizeOfVD, vertexData, GL_STATIC_DRAW);
+		
+		
 		// set up generic attrib pointers
 		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5*sizeof(GLfloat), (char*)0 + 0*sizeof(GLfloat));
+		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 8*sizeof(GLfloat), (char*)0 + 0*sizeof(GLfloat));
 		
 		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5*sizeof(GLfloat), (char*)0 + 3*sizeof(GLfloat));
+		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 8*sizeof(GLfloat), (char*)0 + 4*sizeof(GLfloat));
 		
 		
 		// generate and bind the index buffer object
 		glGenBuffers(1, &ibo);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-		        
-		GLuint indexData[] = {
-		    0,1,2, // first triangle
-		    2,1,3, // second triangle
-		};
+		
 
 		// fill with data
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*2*3, indexData, GL_STATIC_DRAW);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*sizeOfID, indexData, GL_STATIC_DRAW);
 		
 		// "unbind" vao
 		glBindVertexArray(0);
@@ -6456,18 +6841,89 @@ public:
 	}
 	
 	void draw() {
-		// bind the vao
 		glBindVertexArray(vao);
-				
-		// draw
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-		
+		glDrawElements(GL_TRIANGLES, sizeOfID, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 	}
 	
 	
-	
 };
+
+// class PlaneGrid {
+// public:
+
+// 	PlaneGrid() {
+		
+// 	}
+// 	void init() {
+// 		int plane_width = 4; // amount of columns
+// 		int plane_height = 2; // amount of rows
+
+// 		int total_vertices = (plane_width + 1) * (plane_height + 1);
+// 		planeVert = new CIwFVec2[total_vertices];
+// 		memset(planeVert, 0, sizeof(CIwFVec2) * total_vertices);
+
+// 		int numIndPerRow = plane_width * 2 + 2;
+// 		int numIndDegensReq = (plane_height - 1) * 2;
+// 		int total_indices = numIndPerRow * plane_height + numIndDegensReq;
+
+// 		planeInd = new uint16[total_indices];
+
+// 		make_plane(plane_width, plane_height, planeVert, planeInd);
+
+// 		...
+
+// 		void make_plane(int width, int height, CIwFVec2 *vertices, uint16 *indices) {
+			
+// 			width++;
+// 			height++;
+
+// 			int size = sizeof(CIwFVec2);
+// 			// Set up vertices
+// 			for(int y = 0; y < height; y++)
+// 			{
+// 			    int base = y * width;
+// 			    for(int x = 0; x < width; x++)
+// 			    {
+// 			        int index = base + x;
+// 			        CIwFVec2 *v = vertices + index;
+// 			        v->x = (float) x;
+// 			        v->y = (float) y;
+// 			        Debug::PrintDebug("%d: %f, %f", index, v->x, v->y);
+// 			    }
+// 			}
+
+// 			Debug::PrintDebug("-------------------------");
+
+// 			// Set up indices
+// 			int i = 0;
+// 			height--;
+// 			for(int y = 0; y < height; y++)
+// 			{
+// 			    int base = y * width;
+
+// 			    //indices[i++] = (uint16)base;
+// 			    for(int x = 0; x < width; x++)
+// 			    {
+// 			        indices[i++] = (uint16)(base + x);
+// 			        indices[i++] = (uint16)(base + width + x);
+// 			    }
+// 			    // add a degenerate triangle (except in a last row)
+// 			    if(y < height - 1)
+// 			    {
+// 			        indices[i++] = (uint16)((y + 1) * width + (width - 1));
+// 			        indices[i++] = (uint16)((y + 1) * width);
+// 			    }
+// 			}
+
+// 			for(int ind=0; ind < i; ind++)
+// 			    Debug::PrintDebug("%d ", indices[ind]);
+			
+// 		}
+// 	}
+// };
+
+
 
 
 class TBOWrapper {
@@ -6509,7 +6965,7 @@ public:
 	std::mutex threadMutex;
 	bool threadRunning; // thread is running (not exclusive)
 	
-	int threadDataInt[16];
+	int threadDataInt[THREAD_DATA_COUNT];
 	
 	ThreadWrapper() {
 		
@@ -6528,8 +6984,6 @@ public:
 	
 	bool isReady() {
 		bool doProc = false;
-		
-		doProc = false;
 		
 		if (threadRunning) {
 			if (threadMutex.try_lock()) {
@@ -6551,12 +7005,217 @@ public:
 	
 };
 
+
+
 struct PushModStruct
 {
 	int actionType;
 	FIVector4 data[4];
 };
 
+
+
+
+
+// struct vec2 {
+// 	float x;
+// 	float y;
+// 	float z;	
+// };
+
+// struct vec3 {
+// 	float x;
+// 	float y;
+// 	float z;	
+// };
+
+// struct vec4 {
+// 	float x;
+// 	float y;
+// 	float z;
+// 	float w;
+// };
+
+// class ShaderSimplex() {
+// public:
+
+// 	ShaderSimplex() {
+		
+// 	}
+	
+	
+// 	//#############################
+
+
+// 	//
+// 	// Description : Array and textureless GLSL 2D/3D/4D simplex 
+// 	//               noise functions.
+// 	//      Author : Ian McEwan, Ashima Arts.
+// 	//  Maintainer : ijm
+// 	//     Lastmod : 20110822 (ijm)
+// 	//     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
+// 	//               Distributed under the MIT License. See LICENSE file.
+// 	//               https://github.com/ashima/webgl-noise
+// 	// 
+
+// 	vec3 mod289(vec3 q) {
+// 		vec3 res;
+// 		q - floor(q * (1.0 / 289.0)) * 289.0;
+// 		return res;
+// 	}
+
+// 	vec4 mod289(vec4 q) {
+// 		vec4 res;
+// 		q - floor(q * (1.0 / 289.0)) * 289.0;
+// 		return res;
+// 	}
+
+// 	vec4 permute(vec4 q) {
+// 		vec4 res;
+// 		mod289(((q*34.0)+1.0)*q);
+// 		return res;
+		
+// 	}
+
+// 	vec4 taylorInvSqrt(vec4 q) {
+// 		vec4 res;
+// 		1.79284291400159 - 0.85373472095314 * q;
+// 		return res;
+// 	}
+
+// 	float snoise(vec3 v) { 
+// 		const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+// 		const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+
+// 		// First corner
+// 		vec3 i  = floor(v + dot(v, C.yyy) );
+// 		vec3 x0 =   v - i + dot(i, C.xxx) ;
+
+// 		// Other corners
+// 		vec3 g = step(x0.yzx, x0.xyz);
+// 		vec3 l = 1.0 - g;
+// 		vec3 i1 = min( g.xyz, l.zxy );
+// 		vec3 i2 = max( g.xyz, l.zxy );
+
+// 		//   x0 = x0 - 0.0 + 0.0 * C.xxx;
+// 		//   x1 = x0 - i1  + 1.0 * C.xxx;
+// 		//   x2 = x0 - i2  + 2.0 * C.xxx;
+// 		//   x3 = x0 - 1.0 + 3.0 * C.xxx;
+// 		vec3 x1 = x0 - i1 + C.xxx;
+// 		vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
+// 		vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y
+
+// 		// Permutations
+// 		i = mod289(i); 
+// 		vec4 p = permute( permute( permute( 
+// 		         i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+// 		       + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
+// 		       + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+
+// 		// Gradients: 7x7 points over a square, mapped onto an octahedron.
+// 		// The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
+// 		float n_ = 0.142857142857; // 1.0/7.0
+// 		vec3  ns = n_ * D.wyz - D.xzx;
+
+// 		vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)
+
+// 		vec4 x_ = floor(j * ns.z);
+// 		vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
+
+// 		vec4 x = x_ * ns.x + ns.yyyy;
+// 		vec4 y = y_ * ns.x + ns.yyyy;
+// 		vec4 h = 1.0 - abs(x) - abs(y);
+
+// 		vec4 b0 = vec4( x.xy, y.xy );
+// 		vec4 b1 = vec4( x.zw, y.zw );
+
+// 		//vec4 s0 = vec4(lessThan(b0,0.0))*2.0 - 1.0;
+// 		//vec4 s1 = vec4(lessThan(b1,0.0))*2.0 - 1.0;
+// 		vec4 s0 = floor(b0)*2.0 + 1.0;
+// 		vec4 s1 = floor(b1)*2.0 + 1.0;
+// 		vec4 sh = -step(h, vec4(0.0));
+
+// 		vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+// 		vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+
+// 		vec3 p0 = vec3(a0.xy,h.x);
+// 		vec3 p1 = vec3(a0.zw,h.y);
+// 		vec3 p2 = vec3(a1.xy,h.z);
+// 		vec3 p3 = vec3(a1.zw,h.w);
+
+// 		//Normalise gradients
+// 		vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+// 		p0 *= norm.x;
+// 		p1 *= norm.y;
+// 		p2 *= norm.z;
+// 		p3 *= norm.w;
+
+// 		// Mix final noise value
+// 		vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+// 		m = m * m;
+// 		return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+// 	}
+
+
+// 	//#############################
+	
+	
+// };
+
+
+
+// void opSeamlessSimplexNoise(float oct, float pers, float freq) {
+	
+// 	currentState = S_OP_SEAMLESS_SIMPLEX_NOISE;
+
+// 	int i;
+
+// 	int ix;
+// 	int iy;
+// 	int iz;
+
+// 	float fx;
+// 	float fy;
+// 	float fz;
+
+// 	float testVal;
+
+// 	//float oct = 4.0;
+// 	//float pers = 0.5;
+// 	//float freq =- 1.0/gfTEXTURE_SIZE;
+
+// 	float ts = gfTEXTURE_SIZE;
+
+
+// 	for (i = 0; i < iTotalUnits; i++) {
+// 		ix = i%(iPageSize);
+// 		iy = (i%(iPageSize*iPageSize))/iPageSize;
+// 		iz = i/(iPageSize*iPageSize);
+
+// 		fx = ((float)ix) + fOffsets.x;
+// 		fy = ((float)iy) + fOffsets.y;
+// 		fz = ((float)iz) + fOffsets.z;
+
+// 		//float simplexScaledNoise( const float octaves, const float persistence, const float scale, const float loBound, const float hiBound, const float x, const float y, const float z ) {
+// 		testVal = 
+// 			(
+// 			simplexScaledNoise(oct, pers, freq, 0.0f, 1.0f, fx, 	fy, 	fz) * 		(ts-fx) *		(ts-fy) *	(ts-fz) +
+// 			simplexScaledNoise(oct, pers, freq, 0.0f, 1.0f, fx-ts, 	fy, 	fz) * 		(fx) *			(ts-fy) *	(ts-fz) +
+// 			simplexScaledNoise(oct, pers, freq, 0.0f, 1.0f, fx, 	fy-ts, 	fz) * 		(ts-fx) *		(fy) *		(ts-fz) +
+// 			simplexScaledNoise(oct, pers, freq, 0.0f, 1.0f, fx-ts, 	fy-ts, 	fz) * 		(fx) *			(fy) *		(ts-fz) +
+// 			simplexScaledNoise(oct, pers, freq, 0.0f, 1.0f, fx, 	fy, 	fz-ts) * 	(ts-fx) *		(ts-fy) *	(fz) +
+// 			simplexScaledNoise(oct, pers, freq, 0.0f, 1.0f, fx-ts, 	fy, 	fz-ts) * 	(fx) *			(ts-fy) *	(fz) +
+// 			simplexScaledNoise(oct, pers, freq, 0.0f, 1.0f, fx, 	fy-ts, 	fz-ts) * 	(ts-fx) *		(fy) *		(fz) +
+// 			simplexScaledNoise(oct, pers, freq, 0.0f, 1.0f, fx-ts, 	fy-ts, 	fz-ts) * 	(fx) *			(fy) *		(fz)
+// 			)/(ts*ts*ts);
+
+// 		fDataArray[i] = testVal;
+
+		
+// 	}
+
+// 	currentState = E_OP_SEAMLESS_SIMPLEX_NOISE;
+// }
 
 
  
@@ -6780,14 +7439,14 @@ public:
 
 		switch (alignBottomMiddleTop) {
 
-		case E_ALIGN_BOTTOM: // bottom _@_
+		case E_ALIGN_BOTTOM: // bottom _$_
 			zOffset += (rad->getFZ() - _visInsetFromMin->getFZ());
 			break;
-		case E_ALIGN_MIDDLE: // middle -@-
+		case E_ALIGN_MIDDLE: // middle -$-
 			zOffset += 0.0f;
 			break;
 			//               ___
-		case E_ALIGN_TOP: // top  @
+		case E_ALIGN_TOP: // top  $
 			zOffset += -(rad->getFZ() - _visInsetFromMax->getFZ());
 			break;
 
@@ -17459,8 +18118,7 @@ public:
 
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, mFBO);
 
-		GLenum buffers[] = {GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_COLOR_ATTACHMENT4_EXT};
-		glDrawBuffers(numBufs, buffers);
+		glDrawBuffers(numBufs, bufNames);
 
 		if (doClear) {
 			glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -17508,6 +18166,9 @@ class GamePlant;
 class GameEnt;
 class GameBlock;
 class GamePageHolder;
+class VolumeWrapper;
+class ThreadPoolWrapper;
+class GameLogic;
 class GameWorld;
 class DynBuffer;
  
@@ -17619,15 +18280,10 @@ public:
   EntSelection selectedEnts;
   GameEnt * selectedEnt;
   GameEnt * highlightedEnt;
-  bool dumpingFluid;
-  bool modifiedUnit;
-  bool modifiedGeom;
-  bool readyForTBOUpdate;
-  bool firstVPUpdate;
+  bool refreshPaths;
   bool placingTemplate;
   bool smoothMove;
   bool waterBulletOn;
-  bool doUpdateVolPos;
   bool ignoreFrameLimit;
   bool autoMove;
   bool allInit;
@@ -17658,6 +18314,7 @@ public:
   bool bCtrl;
   bool bShift;
   bool testOn;
+  bool testOn2;
   bool emptyVDNotReady;
   bool radiosityOn;
   bool updateLock;
@@ -17685,6 +18342,7 @@ public:
   bool markerFound;
   bool editPose;
   bool isDraggingObject;
+  bool updateHolders;
   bool fpsTest;
   bool frameMouseMove;
   bool depthInvalidRotate;
@@ -17698,11 +18356,11 @@ public:
   int geomStep;
   int earthMod;
   int currentTick;
-  int waterTick;
   int draggingFromInd;
   int draggingToInd;
   int draggingFromType;
   int draggingToType;
+  int polyCount;
   int fdWritePos;
   int fdReadPos;
   int fpsCountMax;
@@ -17718,19 +18376,14 @@ public:
   int mouseState;
   int lastW;
   int lastH;
-  int (cdMap) [256];
   int maxLayerOver;
-  int unitSizeInPixels;
-  int holdersPerLot;
-  int pixelsPerLot;
-  int currentStep;
+  int pathFindingStep;
   int baseW;
   int baseH;
   int scaleFactor;
   int numDynLights;
   int iNumSteps;
   int curOrgId;
-  int cellsPerLot;
   int extraRad;
   int defaultWinW;
   int defaultWinH;
@@ -17762,22 +18415,20 @@ public:
   int terDataBufSize;
   int terDataTexScale;
   int terDataBufSizeScaled;
-  int iNodeDivsPerLot;
+  int iNodeDivsPerHolder;
   int matVolSize;
   int escCount;
-  int volSizePrim;
-  int volSizePrimRefSize;
-  int volSizePrimMacro;
-  int floatsInPrimMacro;
-  int floatsPerPrimEntry;
-  int primsPerMacro;
-  int primDiv;
+  int mapPitch;
   int lastNodeId;
   int diagCount;
   int frameSkip;
   int frameSkipCount;
-  int internalPrimFormat;
-  int precPrimFormat;
+  int cellsPerHolder;
+  int cellsPerBlock;
+  int holdersPerBlock;
+  FIVector4 worldSizeInCells;
+  FIVector4 worldSizeInHolders;
+  FIVector4 worldSizeInBlocks;
   intPair (entIdArr) [1024];
   uint palWidth;
   uint palHeight;
@@ -17789,11 +18440,11 @@ public:
   uint (naUintData) [8];
   int (naIntData) [8];
   float (naFloatData) [8];
+  float globWheelDelta;
   float amountInvalidMove;
   float amountInvalidRotate;
   float sphereMapPrec;
-  float heightmapMax;
-  float waterLerp;
+  float heightMapMaxInCells;
   float resultShake;
   float cameraShake;
   float subjectDistance;
@@ -17805,6 +18456,7 @@ public:
   float zoomDelta;
   float subjectDelta;
   float subjectZoom;
+  float targetSubjectZoom;
   float cameraZoom;
   float targetZoom;
   float fogOn;
@@ -17813,7 +18465,6 @@ public:
   float curBrushRad;
   float timeOfDay;
   float targetTimeOfDay;
-  float gridSizeInPixels;
   float origWinW;
   float origWinH;
   float guiX;
@@ -17860,50 +18511,34 @@ public:
   GameOrgNode * lastSelNode;
   GameOrgNode * activeNode;
   FIVector4 (geomPoints) [E_GEOM_POINTS_LENGTH];
-  FIVector4 curDirtyMax;
-  FIVector4 curDirtyMin;
-  FIVector4 campPosVPDump;
+  FIVector4 (colVecs) [16];
   FIVector4 geomOrigOffset;
   FIVector4 lastSend;
   FIVector4 tempLerpPos;
   FIVector4 camLerpPos;
   FIVector4 resultCameraPos;
-  FIVector4 volMinInPixels;
-  FIVector4 volMaxInPixels;
-  FIVector4 volMinReadyInPixels;
-  FIVector4 volMaxReadyInPixels;
-  FIVector4 camPosVP;
-  FIVector4 newCamPos;
-  FIVector4 lastCamPos;
-  FIVector4 camPosVPInPixels;
-  FIVector4 lastCamPosVP;
   FIVector4 * cameraPos;
+  FIVector4 lastHolderPos;
   FIVector4 lightVec;
+  FIVector4 lightVecOrig;
   FIVector4 (dirVecs) [6];
   FIVector4 targetCameraPos;
   FIVector4 lastCellPos;
   FIVector4 worldMarker;
   FIVector4 lookAtVec;
+  FIVector4 lookAtVec2D;
   FIVector4 baseCameraPos;
   FIVector4 cameraPosAdjusted;
   FIVector4 baseScrollPos;
-  FIVector4 worldSizeInPixels;
   FIVector4 mouseUpPD;
   FIVector4 mouseUpOPD;
   FIVector4 spaceUpPD;
   FIVector4 mouseDownPD;
   FIVector4 mouseDownOPD;
   FIVector4 mouseMovePD;
-  FIVector4 tempBoundsMin;
-  FIVector4 tempBoundsMax;
   FIVector4 tempVec1;
   FIVector4 tempVec2;
   FIVector4 tempVec3;
-  FIVector4 worldSizeInTerData;
-  FIVector4 worldSizeInLots;
-  FIVector4 worldSizeInCells;
-  FIVector4 worldSizeInHolders;
-  FIVector4 worldSizeInBlocks;
   FIVector4 (moveNodes) [2];
   FIVector4 (voroVecArr) [125];
   floatAndIndex (indexArr) [125];
@@ -17924,41 +18559,25 @@ public:
   FIVector4 modXYZ;
   FIVector4 matVolDim;
   uint * matVol;
-  int threadPoolCount;
-  ThreadWrapper (threadPool) [MAX_THREADS];
-  ThreadWrapper threadLoader;
-  ThreadWrapper threadTex;
-  ThreadWrapper threadFluid;
   ThreadWrapper threadNetSend;
   ThreadWrapper threadNetRecv;
   std::list <KeyStackEvent> keyStack;
   EntPool (entPoolStack) [E_ENTTYPE_LENGTH];
-  std::vector <PushModStruct> pmStack;
   std::vector <FIVector4> primTemplateStack;
   std::vector <SphereStruct> sphereStack;
   std::vector <int> (guiLayers) [MAX_UI_LAYERS];
   std::vector <RotationInfo> rotMatStack;
   std::vector <DynObject *> dynObjects;
-  PathHolder charPathHolder;
-  PathHolder splitPathHolder;
-  FSQuad fsQuad;
-  TBOWrapper tboWrapper;
-  float * tboData;
+  VBOWrapper fsQuad;
   float floorHeightInCells;
   float roofHeightInCells;
   float wallRadInCells;
-  int waterTickMax;
-  int cellsPerHolder;
-  int unitsPerCell;
-  int blockSizeInLots;
-  int blockSizeInCells;
-  int blockSizeInHolders;
-  int blockSizeInPixels;
   Image * imageHM0;
   Image * imageHM1;
   Image * cloudImage;
   BaseObj * currentActor;
   BaseObj baseObj;
+  GamePageHolder * closestHolder;
   GamePlant * (gamePlants) [E_PT_LENGTH/2];
   Shader * curShaderPtr;
   string currentFieldString;
@@ -17968,6 +18587,7 @@ public:
   string curCallback;
   string (cbDataStrings) [10];
   string guiSaveLoc;
+  VolumeWrapper * (volumeWrappers) [E_VW_LENGTH];
   vector <CompStruct> compStack;
   vector <int> emptyStack;
   vector <string> splitStrings;
@@ -17979,7 +18599,6 @@ public:
   map <string, FBOSet> fboMap;
   GLuint fsqDL;
   GLuint volIdMat;
-  GLuint (volIdPrim) [E_PL_LENGTH];
   GLuint volGenId;
   uint * lookup2to3;
   unsigned char * resultImage;
@@ -17997,7 +18616,8 @@ public:
   Timer scrollTimer;
   Timer moveTimer;
   GameWorld * gw;
-  GameFluid * gameFluid;
+  GameFluid * (gameFluid) [E_FID_LENGTH];
+  GameLogic * gameLogic;
   GameNetwork * gameNetwork;
   GameAI * gameAI;
   float (lightArr) [MAX_LIGHTS * 16];
@@ -18023,43 +18643,17 @@ public:
   map <string, JSONStruct> externalJSON;
   Singleton ();
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
-  bool addPrimObj (FIVector4 * pos, int tempId, int uid);
-  void addGeom (FIVector4 * newPos, int templateId);
-  void fetchGeom ();
-  void fillAllGeom ();
-  void updateTBOData (bool firstTime, bool reloadTemplates);
   FIVector4 * cameraGetPos ();
   int placeInStack ();
   int placeInLayer (int nodeId, int layer);
   void initAllMatrices ();
   int numberIcons (int pCurCount, int x1, int y1, int x2, int y2);
-  void setupPrimTexture ();
-  void beginFluidDump (FIVector4 * _campPosVPDump);
-  void endFluidDump ();
-  void shiftRegion ();
   void funcNT2 ();
   void startNT2 ();
   bool stopNT2 ();
   void funcNT ();
   void startNT ();
   bool stopNT ();
-  void funcFT ();
-  void startFT ();
-  bool stopFT ();
-  void funcTL ();
-  void startTL ();
-  bool stopTL ();
-  void funcTT ();
-  void startTT ();
-  bool stopTT ();
-  void funcTP (int threadId);
-  void startTP (int threadId);
-  bool stopTP (int threadId);
-  void flushActionStack ();
-  void pushExplodeBullet (bool isReq, FIVector4 * newPos);
-  void pushModifyUnit (bool isReq, FIVector4 * mp, int buttonNum);
-  void pushPlaceTemplate (bool isReq, FIVector4 * newPos, int pt);
-  void copyPrimTexture ();
   void prepSound (string soundName);
   void playSoundEnt (string soundName, BaseObj * ge = NULL, float variance = 0.0f, float volume = 1.0f, bool doLoop = false);
   void playSoundPosAndPitch (string soundName, FIVector4 * listenerPos, FIVector4 * soundPos, float variance = 0.0f, float volume = 1.0f, bool doLoop = false);
@@ -18080,7 +18674,6 @@ public:
   void dispatchEvent (int button, int state, float x, float y, UIComponent * comp, bool automated = false, bool preventRefresh = false);
   StyleSheet * getNewStyleSheet (string ssName);
   void initStyleSheet ();
-  int requestTerIndex (int requestingBlockId);
   static void qNormalizeAngle (int & angle);
   ~ Singleton ();
   void setProgAction (eProgramState ps, unsigned char kc, eProgramAction pa, bool isDown);
@@ -18142,7 +18735,7 @@ public:
   void drawFBOOffset (string fboName, int ind, float xOff, float yOff, float zm);
   float getTerHeightScaled (float val);
   float getSLNormalized ();
-  float getSLInPixels ();
+  float getSeaHeightScaled ();
   float getHeightAtPixelPos (float x, float y, bool dd = false);
   void transformOrg (GameOrg * curOrg);
   void angleToVec (FIVector4 * fv, float xr, float yr);
@@ -18185,7 +18778,6 @@ public:
   void mouseClick (int button, int state, int _x, int _y);
   void makeDirty ();
   void setSelNode (GameOrgNode * newNode);
-  void worldToScreenBase (FIVector4 * sc, FIVector4 * wc);
   void refreshContainers (bool onMousePos);
   void toggleCont (int contIndex, bool onMousePos);
   float getShortestAngle (float begInRad, float endInRad, float amount);
@@ -18225,16 +18817,20 @@ public:
   void saveOrg ();
   void loadOrg ();
   void loadGUI ();
+  string loadFileString (string fnString);
+  std::ifstream::pos_type filesize (char const * filename);
   bool loadFile (string fnString, charArr * dest);
   bool saveFileString (string fileName, string * source);
   bool saveFile (char * fileName, charArr * source);
   float getUnderWater ();
   void updateAmbientSounds ();
-  void updateWaterTick ();
   void frameUpdate ();
   void updateCamShake ();
+  float getTargetTimeOfDay ();
   void display ();
   bool gluInvertMatrix (double const (m) [16], float (invOut) [16]);
+  int getMatrixInd (int col, int row);
+  void ComputeFOVProjection (float * result, float fov, float aspect, float nearDist, float farDist, bool leftHanded);
   void setMatrices (int w, int h);
   void reshape (int w, int h);
   void idleFunc ();
@@ -18266,7 +18862,7 @@ public:
   static void validateShader (GLuint shader, char const * file = 0);
   static int validateProgram (GLuint program);
   int countOc (string * src, string testStr);
-  void init (string _shaderFile, bool doBake, map <string, string> * includeMap);
+  void init (string shaderName, bool doBake, map <string, string> * includeMap);
   ~ Shader ();
   unsigned int id ();
   void bind ();
@@ -18651,7 +19247,7 @@ class GameFluid
 {
 public:
   Singleton * singleton;
-  PRIM_FORMAT * (volDataPrim) [E_PL_LENGTH];
+  uint * (volDataPrim) [E_PL_LENGTH];
   int forceFullRefresh;
   int volSizePrim;
   int volSizePrimBuf;
@@ -18660,9 +19256,13 @@ public:
   int vspMax;
   int * fluidData;
   int * extraData;
+  int shrinkCount;
+  int immobileHeight;
+  int immobileInd;
+  int maxWaterHeight;
+  int maxWaterInd;
   std::vector <int> indexStack;
-  int curTick;
-  int maxTicks;
+  int curGeomCount;
   int UNIT_MIN;
   int UNIT_MAX;
   int UNIT_INSIDE;
@@ -18674,29 +19274,119 @@ public:
   int watchMaxZ;
   int totSize;
   FIVector4 readMIP;
-  FIVector4 lastDirtyMin;
-  FIVector4 lastDirtyMax;
+  FIVector4 writeMIP;
   FIVector4 dirtyMin;
   FIVector4 dirtyMax;
   FIVector4 tempMin;
   FIVector4 tempMax;
+  FIVector4 tempMin2;
+  FIVector4 tempMax2;
   FIVector4 minV;
   FIVector4 maxV;
+  bool fluidChanged;
+  bool posShifted;
   bool hasRead;
   bool invalidated;
   float F_UNIT_MAX;
   float F_UNIT_MIN;
   std::vector <FluidStruct> fsVec;
   std::vector <ModUnitStruct> modStack;
+  int * fluidIds;
+  int * idealCellIds;
   FluidPlane fluidPlane;
+  bool waterTickReady;
+  bool cycleTerminated;
+  bool readyForTermination;
+  bool fluidReading;
+  bool proceedingToRead;
+  bool modifiedUnit;
+  bool modifiedGeom;
+  bool readyForTBOUpdate;
+  bool firstVPUpdate;
+  int volSizePrimMacro;
+  int floatsInPrimMacro;
+  int floatsPerPrimEntry;
+  int primsPerMacro;
+  int primDiv;
+  int waterTick;
+  int waterTickMax;
+  int waterTickMaxDiv;
+  int cellsPerHolder;
+  int cellsPerBlock;
+  int internalPrimFormat;
+  int precPrimFormat;
+  int mainId;
+  int (volSizes) [E_FID_LENGTH];
+  int (mipSizes) [E_FID_LENGTH];
+  float waterLerp;
+  float * tboData;
+  GLuint (volIdPrim) [E_PL_LENGTH];
+  TBOWrapper tboWrapper;
+  std::vector <PushModStruct> pmStack;
+  FIVector4 volMinInPixels;
+  FIVector4 volMaxInPixels;
+  FIVector4 volMinReadyInPixels;
+  FIVector4 volMaxReadyInPixels;
+  FIVector4 camPosVP;
+  FIVector4 campPosVPDump;
+  FIVector4 newCamPos;
+  FIVector4 lastCamPos;
+  FIVector4 camPosVPInPixels;
+  FIVector4 lastCamPosVP;
+  FIVector4 curDirtyMax;
+  FIVector4 curDirtyMin;
+  FIVector4 curWaterMax;
+  FIVector4 curWaterMin;
+  FIVector4 tempBoundsMin;
+  FIVector4 tempBoundsMax;
+  ThreadWrapper threadLoader;
+  ThreadWrapper threadTex;
+  ThreadWrapper threadFluid;
+  int getFluidId (int groupNum, int ind);
+  int getFIDSize (int groupNum);
+  void fidPushBack (int groupNum, int val);
+  int * fidGetBeg (int groupNum);
+  int * fidGetEnd (int groupNum);
+  int getIdealCellId (int groupNum, int ind);
+  int getICISize (int groupNum);
+  void iciPushBack (int groupNum, int val);
   GameFluid ();
-  void init (Singleton * _singleton);
+  void init (Singleton * _singleton, int _mainId);
+  void flushActionStack ();
+  void pushExplodeBullet (bool isReq, FIVector4 * newPos, int waterBulletOn);
+  void pushModifyUnit (bool isReq, FIVector4 * mp, int buttonNum, int earthMod, int curBrushRad);
+  void pushPlaceTemplate (bool isReq, FIVector4 * newPos, int pt);
+  bool addPrimObj (FIVector4 * pos, int tempId, int uid);
+  void addGeom (FIVector4 * newPos, int templateId);
+  void fetchGeom ();
+  void setupPrimTexture ();
+  bool tryToEndRead ();
+  bool anyThreadsRunning ();
+  bool updateAll ();
+  void copyPrimTexture (int ox, int oy, int oz, int dim, uint * * myData);
+  void fillAllGeom ();
+  void updateTBOData (bool firstTime, bool reloadTemplates);
+  void terminateCycle ();
+  void beginFluidRead (FIVector4 * _campPosVPDump);
+  void proceedWithRead ();
+  void endFluidRead ();
+  void shiftRegion ();
+  void funcFT ();
+  void startFT ();
+  bool stopFT ();
+  void funcTL ();
+  void startTL ();
+  bool stopTL ();
+  void funcTT ();
+  void startTT ();
+  bool stopTT ();
   void getPrimData (int n);
-  bool writeFluidData (int writePosStart, int writePosEnd, bool writeDirty);
+  void writeFluidData ();
   void prereadFluidData ();
   void readFluidData ();
   void applyMods ();
-  void updateFluidData ();
+  bool passesCheck (int n);
+  bool updateFluidData ();
   bool findStableRegions (int startInd, int newId);
   bool floodFillId (int startInd, int newId);
   bool inBounds (int i, int j, int k);
@@ -18706,6 +19396,7 @@ public:
   void clearInsideValues ();
   void fillCurrentGeom (int templateId, FIVector4 * templatePos);
   void resetDirtyRegion ();
+  void shrinkDirtyRegion ();
   void maxDirtyRegion ();
   void applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int brushAction, int modType, int radius);
 };
@@ -18835,11 +19526,38 @@ public:
 #define LZZ_INLINE inline
 class GamePageHolder
 {
-public:
-  int blockId;
-  int holderId;
+private:
+  int * pathData;
   int * cellData;
   int * extrData;
+public:
+  bool listGenerated;
+  bool listEmpty;
+  bool hasData;
+  bool hasPath;
+  bool lockWrite;
+  bool lockRead;
+  VBOWrapper vboWrapper;
+  VolumeWrapper * terVW;
+  int blockId;
+  int holderId;
+  int pathSize;
+  int totIdealNodes;
+  int totGroupIds;
+  int cellDataSize;
+  int cellsPerHolder;
+  int visitId;
+  bool pathsInvalid;
+  bool idealPathsInvalid;
+  bool pathsReady;
+  bool idealPathsReady;
+  uint holderFlags;
+  std::vector <int> indexStack;
+  std::vector <GroupIdStruct> groupIdStack;
+  std::vector <GroupInfoStruct> groupInfoStack;
+  std::vector <ConnectingNodeStruct> bestConnectingNodes;
+  std::vector <float> vertexVec;
+  std::vector <uint> indexVec;
   std::vector <GameEnt *> entityGeom;
   int entityGeomCounter;
   FIVector4 offsetInHolders;
@@ -18848,19 +19566,87 @@ public:
   FIVector4 gphCenInPixels;
   FIVector4 offsetInBlocks;
   FIVector4 origOffset;
-  FIVector4 tempVec;
-  FIVector4 tempVec2;
   Singleton * singleton;
   intPairVec (containsEntIds) [E_ET_LENGTH];
-  float cellsPerHolder;
-  float halfCellsPerHolder;
   bool wasGenerated;
-  bool justGenerated;
   GamePageHolder ();
   void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ);
+  int getCellAtInd (int ind);
+  void getArrAtInd (int ind, int * tempCellData, int * tempCellData2);
+  void setArrAtInd (int ind, int * tempCellData = NULL, int * tempCellData2 = NULL);
+  void clearPathPreserve ();
+  void clearPathSizes ();
+  void checkData (bool checkPath);
+  void clearGroupFlags (int targId);
+  void floodFillAtInd (int firstInd, int newId, bool findCenter, GroupInfoStruct * curGI);
+  void findIdealNodes ();
+  int getGroupId (int pathDataIndex);
+  GroupIdStruct * getInfo (int pathDataIndex);
+  void linkRegions ();
+  bool prepPathRefresh (int rad);
+  void refreshPaths ();
   void genCellData ();
-  void fetchGeom ();
+  void fetchHolderGeom ();
+  void getIndVal (int procCount);
+  void getIndVal2 (int procCount);
+  void getPixVal (float xb, float yb, float zb, float xm, float ym, float zm);
+  void fillVBO ();
+  void generateList ();
 };
+LZZ_INLINE void GamePageHolder::getIndVal (int procCount)
+                                             {
+		indexVec.push_back(0+procCount*4);
+		indexVec.push_back(1+procCount*4);
+		indexVec.push_back(2+procCount*4);
+		indexVec.push_back(2+procCount*4);
+		indexVec.push_back(1+procCount*4);
+		indexVec.push_back(3+procCount*4);
+	}
+LZZ_INLINE void GamePageHolder::getIndVal2 (int procCount)
+                                              {
+		indexVec.push_back(2+procCount*4);
+		indexVec.push_back(1+procCount*4);
+		indexVec.push_back(0+procCount*4);
+		indexVec.push_back(3+procCount*4);
+		indexVec.push_back(1+procCount*4);
+		indexVec.push_back(2+procCount*4);
+	}
+LZZ_INLINE void GamePageHolder::getPixVal (float xb, float yb, float zb, float xm, float ym, float zm)
+          {
+		
+		
+		vertexVec.push_back(xb+xm);
+		vertexVec.push_back(yb+ym);
+		vertexVec.push_back(zb+zm);
+		vertexVec.push_back(1.0f);
+		
+		vertexVec.push_back(xb+xm);
+		vertexVec.push_back(yb+ym);
+		vertexVec.push_back(zb+zm);
+		vertexVec.push_back(1.0f);
+		
+		
+		
+		
+		// glMultiTexCoord3f(
+		// 	GL_TEXTURE0,
+		// 	xb+xm,
+		// 	yb+ym,
+		// 	zb+zm
+		// );
+		// glMultiTexCoord4f(
+		// 	GL_TEXTURE1,
+		// 	fbow1->getPixelAtIndex(ind,R_CHANNEL)/255.0f,
+		// 	fbow1->getPixelAtIndex(ind,G_CHANNEL)/255.0f,
+		// 	fbow1->getPixelAtIndex(ind,B_CHANNEL)/255.0f,
+			
+		// 	fbow0->getPixelAtIndex(ind,B_CHANNEL) +
+		// 	fbow0->getPixelAtIndex(ind,A_CHANNEL)*256
+			
+		// );
+		
+		//glVertex3f(xb+xm,yb+ym,zb+zm);
+	}
 #undef LZZ_INLINE
 #endif
 // f00352_gameblock.e
@@ -18874,8 +19660,7 @@ class GameBlock
 public:
   Singleton * singleton;
   int blockId;
-  int blockSizeInHolders;
-  int blockSizeInLots;
+  int holdersPerBlock;
   int terDataBufAmount;
   bool forceUpdate;
   float (trilin) [8];
@@ -18891,10 +19676,10 @@ public:
   int terDataTexScale;
   int terDataVisSize;
   int terDataBufSize;
-  int blockSizeInPixels;
+  int cellsPerBlock;
   int iHolderSize;
   int maxFloors;
-  float fBlockSizeInPixels;
+  float fCellsPerBlock;
   int (dirModX) [6];
   int (dirModY) [6];
   int (dirModZ) [6];
@@ -18973,8 +19758,101 @@ public:
   bool touchesRoomOnLevel (int i, int j, int k);
   bool touchesBaseOnLevel (int i, int j, int k, int layer);
   bool buildingAbove (int x, int y, int z);
-  int copyTerToTexture ();
   void makeMazeUG ();
+};
+#undef LZZ_INLINE
+#endif
+// f00355_volumewrapper.e
+//
+
+#ifndef LZZ_f00355_volumewrapper_e
+#define LZZ_f00355_volumewrapper_e
+#define LZZ_INLINE inline
+class VolumeWrapper
+{
+public:
+  FBOSet fboSet;
+  GLuint volId;
+  FIVector4 terGenDim;
+  FIVector4 genPosMin;
+  FIVector4 genPosMax;
+  bool isFloat;
+  bool isReady;
+  VolumeWrapper ();
+  void init (int z, GLenum clampMethod, bool _isFloat);
+  void copyFloatArr (float * floatArr);
+  void copyCharArr (unsigned char * charArr);
+};
+#undef LZZ_INLINE
+#endif
+// f00360_threadpoolwrapper.e
+//
+
+#ifndef LZZ_f00360_threadpoolwrapper_e
+#define LZZ_f00360_threadpoolwrapper_e
+#define LZZ_INLINE inline
+class ThreadPoolWrapper
+{
+public:
+  int maxThreads;
+  int (intData) [THREAD_DATA_COUNT];
+  ThreadWrapper * threadPool;
+  Singleton * singleton;
+  bool singleThreaded;
+  std::vector <int> availIds;
+  ThreadPoolWrapper ();
+  void init (Singleton * _singleton, int _maxThreads, bool _singleThreaded);
+  void funcTP (int threadId);
+  void startTP (int threadId);
+  bool stopTP (int threadId);
+  bool startThread ();
+  bool anyRunning ();
+  void stopAll ();
+  ~ ThreadPoolWrapper ();
+};
+#undef LZZ_INLINE
+#endif
+// f00370_gamelogic.e
+//
+
+#ifndef LZZ_f00370_gamelogic_e
+#define LZZ_f00370_gamelogic_e
+#define LZZ_INLINE inline
+class GameLogic
+{
+public:
+  Singleton * singleton;
+  std::vector <PathResult> pathSearchStack;
+  std::vector <PathResult> pathFinalStack;
+  std::vector <PathResult> pathHolder;
+  ThreadPoolWrapper * threadPoolPath;
+  ThreadPoolWrapper * threadPoolList;
+  FIVector4 minv;
+  FIVector4 maxv;
+  bool didFindPath;
+  bool searchedForPath;
+  int idCounter;
+  GamePageHolder * globEndHolder;
+  int globEndGroupId;
+  bool globFoundTarg;
+  GameLogic ();
+  void init (Singleton * _singleton);
+  GamePageHolder * getHolderById (int blockId, int holderId);
+  GamePageHolder * getHolderByPR (PathResult * pr);
+  bool holdersEqual (GamePageHolder * h0, GamePageHolder * h1);
+  void addHolderToStack (GamePageHolder * curHolder, int targId);
+  void remHolderFromStack (int opCode, int targId);
+  void fillAllPaths (GamePageHolder * begHolder, GamePageHolder * endHolder, int begInd, int endInd, int targId, int opCode);
+  void addGroupToStack (GamePageHolder * curHolder, int groupId, GamePageHolder * lastHolder, int lastGroupId, int targId);
+  void remGroupFromStack (int opCode, int targId);
+  void fillAllGroups (GamePageHolder * begHolder, GamePageHolder * endHolder, int begInd, int endInd, int targId, int opCode);
+  bool findBestPath (GamePageHolder * closestHolder, GamePageHolder * closestHolder2, int bestInd, int bestInd2);
+  void update ();
+  void drawLineAtIndices (GamePageHolder * curPointHolder, int curPointIndex, GamePageHolder * curPointHolder2, int curPointIndex2, int r, int g, int b);
+  void drawPointAtIndex (GamePageHolder * curPointHolder, int curPointIndex, int r, int g, int b, float rad);
+  void drawPaths (int offX, int offY, int offZ, GamePageHolder * curPointHolder, int curPointIndex);
+  int getClosestPathInd (FIVector4 * closestPoint, GamePageHolder * & closestHolder);
+  void loadNearestHolders ();
 };
 #undef LZZ_INLINE
 #endif
@@ -18992,7 +19870,8 @@ public:
   int seaSlack;
   int pageCount;
   int mapSwapFlag;
-  int blockSizeInHolders;
+  int holdersPerBlock;
+  int shiftCounter;
   int renderCount;
   float invalidCount;
   float invalidCountMax;
@@ -19043,8 +19922,8 @@ public:
   map <BaseObjType, BaseObj> gameObjects;
   vector <BaseObjType> visObjects;
   vector <ObjDef> objDefs;
-  string (curTargFBO) [2];
-  string (curDepthFBO) [2];
+  string (curTargFBO) [3];
+  string (curDepthFBO) [3];
   FIVector4 lScreenCoords;
   FIVector4 cScreenCoords;
   FIVector4 worldSizeInHolders;
@@ -19064,10 +19943,7 @@ public:
   FIVector4 (blockPos) [2];
   FIVector4 (nodePos) [2];
   FIVector4 (nodePosInPixels) [2];
-  PathNode (blockAndIndexPath) [2];
-  PathNode (blockAndIndexSplitPath) [2];
   FIVector4 (lineSeg) [2];
-  PathHolder * finalPath;
   int (nodeInd) [2];
   GameBlock * (blockRef) [2];
   FIVector4 minv;
@@ -19099,25 +19975,21 @@ public:
   GamePageHolder * getHolderAtCoords (int x, int y, int z, bool createOnNull = false);
   GamePageHolder * getHolderAtId (int blockId, int holderId);
   GameBlock * getBlockAtId (int id);
-  void setCellAtCoords (int xv, int yv, int zv, int readInd, int * fluidData, int * extraData);
-  int getCellAtCoords (int xv, int yv, int zv, int * tempCellData = NULL, int * tempCellData2 = NULL);
+  int getCellInd (FIVector4 * cParam, GamePageHolder * & curHolder);
+  int getCellAtCoords (int debugVal, int xv, int yv, int zv);
+  void setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
+  void getArrAtCoords (int debugVal, int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   int testMoveHit (BaseObj * ge, int x, int y, int z);
   bool makeMove (BaseObj * ge);
   void updatePhys ();
   void update ();
   void toggleVis (GameEnt * se);
   void ensureBlocks ();
-  void loadNearestHolders ();
   void findNearestEnt (EntSelection * entSelection, int entType, int maxLoadRad, int radStep, FIVector4 * testPoint, bool onlyInteractive = false, bool ignoreDistance = false);
-  void drawPrim (bool doSphereMap);
+  void drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * maxc, bool copyToTex, bool forceFinish, bool getVoro = false);
+  void drawPrim (bool doSphereMap, bool doTer, bool doPoly);
   void drawOrg (GameOrg * curOrg, bool drawAll);
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
-  void clearVisitedPaths (PathHolder * pathHolder);
-  void clearPathList (PathHolder * pathHolder);
-  float getIdealPathLength (PathNode * blockAndIndex);
-  int findAIPathRBT (PathHolder * pathHolder, PathNode * blockAndIndex, float _pathSlack);
-  void drawPathLine (PathHolder * curPath, int r, int g, int b, float lw, float zoff);
-  void drawAIPath (PathHolder * pathHolder, PathHolder * splitPathHolder);
   void makeFloat (BaseObj * ge);
   void makeFall (BaseObj * ge, bool justTesting = false);
   bool rotateCell (BaseObj * ge, int dir, int axis);
@@ -19126,6 +19998,9 @@ public:
   void moveCellRotated (BaseObj * ge, int dirMod);
   int getClosestObj (int actorId, FIVector4 * basePoint);
   int testHit (BaseObj * ge);
+  void polyCombine ();
+  void drawPolys (string fboName, int minPeel, int maxPeel);
+  void rasterPolys (int minPeel, int maxPeel, int extraRad = 0);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);
   float weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean);
@@ -19284,6 +20159,16 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		TEMP_DEBUG = false;
 		
 		
+		
+		
+		if (DO_RANDOMIZE) {
+			// todo: get rid of this for random seeds, causes desync
+			srand(time(NULL));
+			RAND_COUNTER = rand();
+			RAND_COUNTER2 = rand();
+		}
+		
+		
 		// todo: mem leak, should delete?
 		externalJSON["shaderParams"].jv = NULL;
 		externalJSON["objectData"].jv = NULL;
@@ -19308,13 +20193,28 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		initAllObjects();
 		initAllMatrices();
 		
-		fsQuad.init();
+		fsQuad.init(vertexDataQuad, 32, indexDataQuad, 6);
 		
-		
+		colVecs[0].setFXYZ(255,0,0);
+		colVecs[1].setFXYZ(0,255,0);
+		colVecs[2].setFXYZ(0,0,255);
+		colVecs[3].setFXYZ(255,255,0);
+		colVecs[4].setFXYZ(255,0,255);
+		colVecs[5].setFXYZ(0,255,255);
+		colVecs[6].setFXYZ(128,0,0);
+		colVecs[7].setFXYZ(0,128,0);
+		colVecs[8].setFXYZ(0,0,128);
+		colVecs[9].setFXYZ(128,128,0);
+		colVecs[10].setFXYZ(128,0,128);
+		colVecs[11].setFXYZ(0,128,128);
+		colVecs[12].setFXYZ(255,128,128);
+		colVecs[13].setFXYZ(128,255,128);
+		colVecs[14].setFXYZ(128,128,255);
+		colVecs[15].setFXYZ(255,255,128);
 		
 		
 		camRotation[0] = 0.0f;
-		camRotation[1] = -M_PI/2.0f;
+		camRotation[1] = M_PI/2.0f;
 		
 		curCamRotation[0] = camRotation[0];
 		curCamRotation[1] = camRotation[1];
@@ -19325,11 +20225,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			keyMapMaxCoolDown[i] = 0;
 		}
 		
-		cdMap[0] = E_CD_EMPTY;
-		for (i = 1; i < 256; i++) {
-			cdMap[i] = E_CD_SOLID;
-		}
-		cdMap[17] = E_CD_WATER; //TEX_WATER
 		
 		for (i = 0; i < E_CT_LENGTH; i++) {
 			isInteractiveEnt[i] = false;
@@ -19338,26 +20233,19 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		isInteractiveEnt[E_CT_DOOR] = true;
 		isInteractiveEnt[E_CT_LANTERN] = true;
 		
-		camPosVP.setFXYZ(0.0f,0.0f,0.0f);
-		lastCamPosVP.setFXYZ(-100.0f,-100.0f,-100.0f);
+		
 		
 		lightVec.setFXYZ(0.3f,0.4f,1.0f);
 		lightVec.normalize();
+		lightVecOrig.copyFrom(&lightVec);
 		
-		//readyForWaterReset = false;
-		dumpingFluid = false;
-		modifiedUnit = false;
-		modifiedGeom = false;
-		readyForTBOUpdate = false;
-		firstVPUpdate = true;
+		refreshPaths = false;
 		placingTemplate = true;
 		smoothMove = false;
 		waterBulletOn = false;
-		doUpdateVolPos = true;
-		ignoreFrameLimit = true;
+		ignoreFrameLimit = false;
 		autoMove = false;
 		inputOn = false;
-		pathfindingOn = false;
 		isMacro = false;
 		orgOn = false;
 		cavesOn = false;
@@ -19367,14 +20255,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		hitGUI = false;
 		guiDirty = true;
 		
-		threadPoolCount = 0;
-		for (i = 0; i < MAX_THREADS; i++) {
-			threadPool[i].init();
-		}
 		
-		threadLoader.init();
-		threadTex.init();
-		threadFluid.init();
+		
+		
 		threadNetSend.init();
 		threadNetRecv.init();
 		
@@ -19413,7 +20296,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		maxLayerOver = -1;
 
 		iNumSteps = 16;
-		currentStep = 0;
+		pathFindingStep = 0;
 
 		srand(time(NULL));
 
@@ -19432,11 +20315,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		imageHM1->getTextureId(GL_NEAREST);
 		cloudImage->getTextureId(GL_LINEAR);
 
-
-		mapSampScale = 0.5f;
-		//renderCount = 1.0;
-		int newPitch = (imageHM0->width) * mapSampScale; //*2;
-
+		
+		
+		
 		numLights = MAX_LIGHTS;//min(MAX_LIGHTS,E_OBJ_LENGTH-E_OBJ_LIGHT0);
 
 
@@ -19501,7 +20382,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		selObjInd = 0;
 		actObjInd = 0;
 		currentTick = 0;
-		waterTick = 0;
 		earthMod = E_PTT_TER;
 		
 		moveTimer.start();
@@ -19521,32 +20401,33 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		diagCount = 0;
 		
+		
+		
 		// qqqqqq
 		
+		// was doing: exmaine why fluidchange 66 33
 		
-		volSizePrim = 256; //measured in cells
+		// was doing: silouhette rendering?
 		
-		//volSizePrimLoadStep = 1;
+		// todo: compress volumes into stacks of lines
+		// todo: rasterize voxels with tris for depth cache
+		// todo - generate silouhette by expanding position of edges with high differential
+		// map right in the center of these edges to inexpensively determine silouhette
 		
-		waterTickMax = 16;
-		volSizePrimRefSize = volSizePrim/8;
-		primDiv = 4;
-		volSizePrimMacro = volSizePrim/primDiv;
-		primsPerMacro = 8;
-		floatsPerPrimEntry = 8;
-		floatsInPrimMacro = volSizePrimMacro*volSizePrimMacro*volSizePrimMacro*primsPerMacro*floatsPerPrimEntry;
-		fpsCountMax = 5000;
+		// todo: probe area ahead of current ray step to see if near edge
 		
+		polyCount = 0;
+		fpsCountMax = 500;
 		
-		
-		cellsPerHolder = volSizePrimRefSize;
-		
+		fpsTest = false;
+		pathfindingOn = false;
+		updateHolders = false;
 		
 		
 		maxHolderDis = 32;
 		heightOfNearPlane = 1.0f;
 		scrollDiv = 2.0;
-		frameSkip = 64;
+		frameSkip = 32;
 		frameSkipCount = 0;
 		
 		int bufferDiv = 1;
@@ -19556,58 +20437,50 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 		}
 		
-		tboData = new float[floatsInPrimMacro];
-		
-		updateTBOData(true, false);
-		
 		
 		
 		// This var determines how high the z val can go,
 		// but also increases load times for each block
 		
-		cellsPerLot = 64; // adjust this to make lots bigger
+		
+		
+		heightMapMaxInCells = 8192.0f;
+		mapSampScale = 2.0f;
+		int newPitch = (imageHM0->width) * mapSampScale; //*2;
+		mapPitch = (imageHM0->width)*0.5; //newPitch;// //
+		
+		cellsPerHolder = 32;
+		holdersPerBlock = 4;
+		
+		worldSizeInHolders.setIXYZ(newPitch, newPitch, (heightMapMaxInCells*2.0f)/cellsPerHolder);
+		worldSizeInCells.copyIntMult(&worldSizeInHolders, cellsPerHolder);
+		cellsPerBlock = holdersPerBlock * cellsPerHolder;
+		worldSizeInBlocks.copyIntDiv(&worldSizeInHolders, holdersPerBlock);
+		
+		
+		
+		
+		
+		
+		globWheelDelta = 0.0f;
+		amountInvalidMove = 0.0f;
+		amountInvalidRotate = 0.0f;
+		sphereMapPrec = 0.0f;
+		//heightMapMaxInCells = min(heightMapMaxInCells,worldSizeInCells[2]);
 		
 		cellsPerNodeXY = 16;
 		cellsPerNodeZ = 8;
-		blockSizeInLots = 4;
-		unitsPerCell = 1; // ONE UNIT == ONE METER
 		
 		
 		
 		clipDist[0] = 0.0f;
 		clipDist[1] = 512.0f;
 		
-
-		worldSizeInLots.setIXYZ(newPitch, newPitch, newPitch);
-		worldSizeInCells.copyIntMult(&worldSizeInLots, cellsPerLot);
-		blockSizeInCells = blockSizeInLots * cellsPerLot;
-		holdersPerLot = cellsPerLot / cellsPerHolder;
-		
-		worldSizeInHolders.copyIntMult(&worldSizeInLots, holdersPerLot);
-		blockSizeInHolders = blockSizeInLots * holdersPerLot;
-		worldSizeInBlocks.copyIntDiv(&worldSizeInHolders, blockSizeInHolders);
-		
-		
-		
-
-		pixelsPerLot = cellsPerLot;
-		unitSizeInPixels = unitsPerCell;
-		blockSizeInPixels = blockSizeInCells;
-		worldSizeInPixels.copyFrom(&worldSizeInCells);
-		
-		amountInvalidMove = 0.0f;
-		amountInvalidRotate = 0.0f;
-		sphereMapPrec = 0.0f;
-		heightmapMax = 512.0f;
-		heightmapMax = min(heightmapMax,worldSizeInPixels[2]);
-		
-		
-		
 		terDataTexScale = 1;
 		
-		terDataVisPitchXY = blockSizeInCells / cellsPerNodeXY;
-		iNodeDivsPerLot = terDataVisPitchXY / blockSizeInLots;
-		terDataBufAmount = iNodeDivsPerLot; // pad with one extra lot
+		terDataVisPitchXY = cellsPerBlock / cellsPerNodeXY;
+		iNodeDivsPerHolder = terDataVisPitchXY / holdersPerBlock;
+		terDataBufAmount = iNodeDivsPerHolder; // pad with one extra lot
 		
 		floorHeightInCells = (float)cellsPerNodeZ;
 		roofHeightInCells = ((float)cellsPerNodeXY)/4.0f;
@@ -19617,7 +20490,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		terDataBufPitchXY = terDataVisPitchXY + terDataBufAmount * 2;
 		terDataBufPitchScaledXY = terDataBufPitchXY * terDataTexScale;
 		
-		terDataVisPitchZ = blockSizeInCells / cellsPerNodeZ;
+		terDataVisPitchZ = cellsPerBlock / cellsPerNodeZ;
 		terDataBufPitchZ = terDataVisPitchZ + terDataBufAmount * 2;
 		terDataBufPitchScaledZ = terDataBufPitchZ * terDataTexScale;
 
@@ -19631,11 +20504,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		rbHeightStack = new int[terDataBufSize];
 
 
-		worldSizeInTerData.setIXYZ(
-			worldSizeInBlocks.getIX()*terDataVisPitchXY,
-			worldSizeInBlocks.getIY()*terDataVisPitchXY,
-			worldSizeInBlocks.getIZ()*terDataVisPitchZ
-		);
 		
 		draggingFromInd = 0;
 		draggingToInd = 0;
@@ -19653,7 +20521,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 		
-		blockShift = intLogB2(blockSizeInHolders * blockSizeInHolders * blockSizeInHolders);
+		blockShift = intLogB2(holdersPerBlock * holdersPerBlock * holdersPerBlock);
 		holderSizeMB = 0;
 
 
@@ -19669,24 +20537,14 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		cout << "cellsPerNodeXY: " << cellsPerNodeXY << "\n";
 		cout << "cellsPerNodeZ: " << cellsPerNodeZ << "\n";
 		
-		cout << "blockSizeInHolders: " << blockSizeInHolders << "\n";
-		cout << "blockSizeInPixels: " << blockSizeInPixels << "\n";
+		cout << "holdersPerBlock: " << holdersPerBlock << "\n";
+		cout << "cellsPerBlock: " << cellsPerBlock << "\n";
 		cout << "terDataBufPitchScaledXY " << terDataBufPitchScaledXY << "\n";
 		cout << "cellsPerHolder: " << cellsPerHolder << "\n";
-		cout << "cellsPerLot: " << cellsPerLot << "\n";
-		cout << "unitsPerCell: " << unitsPerCell << "\n";
-		cout << "blockSizeInLots: " << blockSizeInLots << "\n";
-		cout << "pixelsPerUnit: " << unitSizeInPixels << "\n";
-		cout << "unitsPerLot: " << cellsPerLot*unitsPerCell << "\n";
-		cout << "pixelsPerLot: " << pixelsPerLot << "\n";
-		cout << "holdersPerLot: " << holdersPerLot << "\n";
-		cout << "unitSizeInPixels: " << unitSizeInPixels << "\n";
 
 
 		doTraceVecND("worldSizeInBlocks: ", &worldSizeInBlocks);
-		doTraceVecND("worldSizeInLots: ", &worldSizeInLots);
 		doTraceVecND("worldSizeInHolders: ", &worldSizeInHolders);
-		doTraceVecND("worldSizeInTerData: ", &worldSizeInTerData);
 
 		GLint glQuery;
 		glGetIntegerv(GL_MAX_UNIFORM_LOCATIONS, &glQuery);
@@ -19698,19 +20556,18 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		mapFreqs.setFXYZW(
 			1.0f,
 			4.0f,
-			8.0f,
-			16.0f
+			16.0f,
+			32.0f
 		);
 		mapAmps.setFXYZW(
-			4.0f/16.0f,
-			4.0f/16.0f,
-			4.0f/16.0f,
-			16.0f/16.0f
+			12.0f/16.0f,
+			2.0f/16.0f,
+			1.0f/16.0f,
+			0.25f/16.0f
 		); //0.0f, 0.0f, 0.0f);//
 
 
-		gridSizeInPixels = 1;
-
+		
 
 
 		//////////////////////////////////////////////////////////////
@@ -19719,6 +20576,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		//////////////////////////////////////////////////////////////
 		radiosityOn = true;
 		testOn = false;
+		testOn2 = false;
 		updateLock = false;
 		traceOn = false;
 		frameMouseMove = false;
@@ -19734,19 +20592,16 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		zoomDelta = 0.0f;
 		subjectDelta = 0.0f;
 		subjectZoom = 1.0f;
+		targetSubjectZoom = 1.0f;
 
 		int ccr = 0;
 		int ccg = 0;
 		int ccb = 0;
 		int curFilter;
 
-		doTraceVecND("worldSizeInPixels: ", &worldSizeInPixels);
+		doTraceVecND("worldSizeInCells: ", &worldSizeInCells);
 
 
-
-		
-		internalPrimFormat = GL_RGBA;
-		precPrimFormat = GL_UNSIGNED_BYTE;
 		
 		
 		gameNetwork = new GameNetwork();
@@ -19758,46 +20613,58 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		//}
 		
 		
-		gameFluid = new GameFluid();
-		gameFluid->init(this);
-		
-		setupPrimTexture();
-
-
-
-		for (i = 0; i < MAX_TER_TEX; i++)
-		{
-
-			terTextures[i].usedByBlockId = -1;
-			terTextures[i].alreadyBound = false;
-
-
-			// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, 0);
-
-			glGenTextures(1, &(terTextures[i].texId));
-			glBindTexture(GL_TEXTURE_3D, terTextures[i].texId);
-			glTexImage3D(
-				GL_TEXTURE_3D,
-				0,
-				GL_RGBA,
-				terDataBufPitchScaledXY,
-				terDataBufPitchScaledXY,
-				terDataBufPitchScaledZ,
-				0,
-				GL_RGBA,
-				GL_UNSIGNED_BYTE,
-				0
-			);
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-			glBindTexture(GL_TEXTURE_3D, 0);
-
-			TOT_GPU_MEM_USAGE += ((float)(terDataBufSizeScaled * 4)) / (1024.0f * 1024.0f);
+		for (i = 0; i < E_FID_LENGTH; i++) {
+			gameFluid[i] = new GameFluid();
+			gameFluid[i]->init(this, i);
 		}
+		
+		
+		// must be done after all are init
+		for (i = 0; i < E_FID_LENGTH; i++) {
+			gameFluid[i]->updateTBOData(true, false);
+		}
+		
+		
+		
+		gameLogic = new GameLogic();
+		gameLogic->init(this);
+
+
+		// for (i = 0; i < MAX_TER_TEX; i++)
+		// {
+
+		// 	terTextures[i].usedByBlockId = -1;
+		// 	terTextures[i].alreadyBound = false;
+
+
+		// 	// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, 0);
+
+		// 	glGenTextures(1, &(terTextures[i].texId));
+		// 	glBindTexture(GL_TEXTURE_3D, terTextures[i].texId);
+		// 	glTexImage3D(
+		// 		GL_TEXTURE_3D,
+		// 		0,
+		// 		GL_RGBA,
+		// 		terDataBufPitchScaledXY,
+		// 		terDataBufPitchScaledXY,
+		// 		terDataBufPitchScaledZ,
+		// 		0,
+		// 		GL_RGBA,
+		// 		GL_UNSIGNED_BYTE,
+		// 		0
+		// 	);
+		// 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		// 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		// 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+		// 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		// 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		// 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+		// 	glBindTexture(GL_TEXTURE_3D, 0);
+
+		// 	TOT_GPU_MEM_USAGE += ((float)(terDataBufSizeScaled * 4)) / (1024.0f * 1024.0f);
+		// }
+
+		
 
 
 		glGenTextures(1, &volIdMat);
@@ -19805,7 +20672,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, matVolDim.getIX(), matVolDim.getIY(), matVolDim.getIZ(), 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+		//glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
@@ -19820,6 +20687,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		matCountArr = new float[256];
 		paramArrMap = new float[4096];
 
+		
 		
 		
 
@@ -19890,6 +20758,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 		wsBufferInvalid = true;
 
+		// x*y must == z*z*z
+		
+
 		bufferDim.setIXY(defaultWinW, defaultWinH);
 		bufferDimTarg.setIXY(defaultWinW, defaultWinH);
 		
@@ -19928,7 +20799,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			dynObjects.push_back(new DynObject());
 		}
 
-		dynObjects[E_OBJ_CAMERA]->init(0, 0, worldSizeInPixels.getIZ() / 2, 0, 0, 0, false, E_MT_NONE, NULL, 4.0f );
+		dynObjects[E_OBJ_CAMERA]->init(0, 0, worldSizeInCells.getIZ() / 2, 0, 0, 0, false, E_MT_NONE, NULL, 4.0f );
 
 		for (i = E_OBJ_LIGHT0; i < E_OBJ_LENGTH; i++)
 		{
@@ -20040,8 +20911,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 
-		//// GL WIDGET START ////
 
+
+		
 		frameCount = 0;
 		forceGetPD = false;
 		mapInvalid = true;
@@ -20056,10 +20928,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 		
 		glDepthFunc(GL_LESS);
-		
-		
+		glCullFace(GL_BACK);
 		glDisable(GL_CULL_FACE);
-		//glCullFace(GL_BACK);
+		
 
 		
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
@@ -20076,15 +20947,20 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		glEndList();
 		
 		
-
+		if (USE_SPHERE_MAP) {
+			shaderStrings.push_back("PrimShader_330_DOTER_USESPHEREMAP");
+		}
+		else {
+			shaderStrings.push_back("PrimShader_330_DOTER_DOPOLY");
+			shaderStrings.push_back("PrimShader_330_DOTER");
+		}
+		shaderStrings.push_back("PrimShader_330_DOPRIM");
 		
-		shaderStrings.push_back("PrimShader");
+		shaderStrings.push_back("TerGenShader");
 		shaderStrings.push_back("GUIShader");
 		shaderStrings.push_back("MedianShader");
 		shaderStrings.push_back("MergeShader");
 		shaderStrings.push_back("TopoShader");
-		
-
 		shaderStrings.push_back("PointShader");
 		shaderStrings.push_back("RoadShader");
 		shaderStrings.push_back("SkeletonShader");
@@ -20106,6 +20982,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("RadiosityCombineShader");
 		shaderStrings.push_back("FogShader");
 		shaderStrings.push_back("GeomShader");
+		shaderStrings.push_back("PolyShader");
+		shaderStrings.push_back("PolyCombineShader");
 		//shaderStrings.push_back("SphereShader");
 		//shaderStrings.push_back("BlitPointShader");
 		//shaderStrings.push_back("HDRShader");
@@ -20142,6 +21020,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		{
 			shaderMap.insert(  pair<string, Shader*>(shaderStrings[i], new Shader(this))  );
 		}
+		
 		doShaderRefresh(false);
 		
 		int faceDim = 256;
@@ -20155,7 +21034,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		lastSubjectDistance = 0.0f;
 		resultShake = 0.0f;
 		cameraShake = 0.0f;
-		waterLerp = 0.0f;
 		lastx = 0;
 		lasty = 0;
 		isMoving = false;
@@ -20180,9 +21058,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		keyMap[KEYMAP_LEFT] = 's';
 		keyMap[KEYMAP_RIGHT] = 'f';
 		keyMap[KEYMAP_FIRE_PRIMARY] = ' ';
-		keyMapMaxCoolDown[KEYMAP_FIRE_PRIMARY] = 20;
+		keyMapMaxCoolDown[KEYMAP_FIRE_PRIMARY] = 200;
 		keyMap[KEYMAP_GRAB_THROW] = 'c';
-		keyMapMaxCoolDown[KEYMAP_GRAB_THROW] = 50;
+		keyMapMaxCoolDown[KEYMAP_GRAB_THROW] = 200;
 		
 		/////////////////////////
 		/////////////////////////
@@ -20210,25 +21088,79 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		//fboMap["worldSpaceBlurFBO0"].init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 4, false, GL_LINEAR);
 		//fboMap["worldSpaceBlurFBO1"].init(1, bufferDim.getIX()/2, bufferDim.getIY()/2, 4, false, GL_LINEAR);
 		
-		fboMap["frontFaceFBO"].init(1, faceDim, faceDim, 4, false, GL_NEAREST);
-		fboMap["backFaceFBO"].init(1, faceDim, faceDim, 4, false, GL_NEAREST);
-		fboMap["frontFaceMapFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
-		fboMap["backFaceMapFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
+		// fboMap["frontFaceFBO"].init(1, faceDim, faceDim, 4, false, GL_NEAREST);
+		// fboMap["backFaceFBO"].init(1, faceDim, faceDim, 4, false, GL_NEAREST);
+		// fboMap["frontFaceMapFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
+		// fboMap["backFaceMapFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, false, GL_NEAREST);
 		//fboMap["palFBO"].init(1, palWidth, palHeight, 1, false, GL_LINEAR);
 		
 		bool fboHasDepth = true;
 		int numChannels = 4;
 		int numMaps = 2;
 		
+		int tx = 0;
+		int ty = 0;
+		int tz = 0;
+		int clampType;
+		
+		int vwChan = 1;
+		
+		
+		for (i = 0; i < E_VW_LENGTH; i++) {
+			
+			switch (i) {
+				
+				// tx = 4096;
+				// ty = 4096;
+				// tz = 256;
+				
+				// tx = 2048;
+				// ty = 1024;
+				// tz = 128;
+				case E_VW_HOLDER:
+					tz = cellsPerHolder;
+					clampType = GL_CLAMP_TO_EDGE; //GL_CLAMP_TO_BORDER
+				break;
+				// case E_VW_TERGEN:
+				// 	tz = 128;
+				// 	clampType = GL_CLAMP_TO_EDGE;//GL_CLAMP_TO_BORDER
+				// break;
+				case E_VW_VORO:
+					tz = 256;
+					clampType = GL_REPEAT;
+				break;
+			}
+			
+			
+			volumeWrappers[i] = new VolumeWrapper();
+			volumeWrappers[i]->init(tz, clampType, (vwChan==4) ); //volumeWrapperStrings[i]
+			//fboMap[volumeWrapperStrings[i]].init(1, tx, ty, vwChan, false);
+		}
+		
+		
+		
 		
 		fboMap["prelightFBO"].init(4, bufferDimTarg.getIX(), bufferDimTarg.getIY(), 1, false, GL_LINEAR);
 		
-		fboMap["allTargFBO"].init(6, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
-		fboMap["allDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
+		// fboMap["allTargFBO"].init(6, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
+		// fboMap["allDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
+		
+		
+		fboMap["prmTargFBO"].init(6, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
+		fboMap["prmDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
+		
+		fboMap["terTargFBO"].init(6, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
+		fboMap["terDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
+		
+		for (i = 0; i <= NUM_POLY_STRINGS; i++) {
+			fboMap[polyFBOStrings[i]].init(1, bufferRenderDim.getIX(), bufferRenderDim.getIY(), 4, true);
+		}
+		
+		
 		
 		if (USE_SPHERE_MAP) {
-			fboMap["sphereTargFBO"].init(6, bufferRenderDim.getIX()*SPHEREMAP_SCALE_FACTOR, bufferRenderDim.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth);
-			fboMap["sphereDepthFBO"].init(numMaps, bufferDimTarg.getIX()*SPHEREMAP_SCALE_FACTOR, bufferDimTarg.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth, GL_LINEAR, GL_REPEAT);
+			fboMap["sphTargFBO"].init(6, bufferRenderDim.getIX()*SPHEREMAP_SCALE_FACTOR, bufferRenderDim.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth);
+			fboMap["sphDepthFBO"].init(numMaps, bufferDimTarg.getIX()*SPHEREMAP_SCALE_FACTOR, bufferDimTarg.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth, GL_LINEAR, GL_REPEAT);
 		}
 		
 		
@@ -20246,7 +21178,16 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		fboMap["geomTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
 		fboMap["combineWithWaterTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
 		
+		
+		
+		
+		
+		
+		// fboMap["noiseFBO"].init(1, 1024, 1024, 1, false, GL_NEAREST, GL_REPEAT);
+		// fboMap["noiseFBOLinear"].init(1, 1024, 1024, 1, false, GL_LINEAR, GL_REPEAT);
+		
 		fboMap["noiseFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST, GL_REPEAT);
+		fboMap["noiseFBOLinear"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR, GL_REPEAT);
 		//fboMap["guiFBO"].init(1, guiWinW, guiWinH, 1, false, GL_LINEAR);
 		fboMap["resultFBO0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);
 		fboMap["resultFBO1"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);
@@ -20261,6 +21202,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		fboMap["cityFBO"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 		fboMap["hmFBO"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 		fboMap["hmFBOLinear"].init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
+		fboMap["hmFBOLinearBig"].init(1, mapPitch, mapPitch, 1, false, GL_LINEAR, GL_REPEAT);
 		fboMap["simplexFBO"].init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
 		fboMap["swapFBO0"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 		fboMap["swapFBO1"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
@@ -20364,317 +21306,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 
-	}
-bool Singleton::addPrimObj (FIVector4 * pos, int tempId, int uid)
-                                                             {
-		int baseInd = tempId*E_PRIMTEMP_LENGTH;
-		int i;
-		int j;
-		int k;
-		int m;
-		int ind;
-		float fPrimDiv = 1.0f/primDiv;
-		//float cornerDis = primTemplateStack[baseInd+E_PRIMTEMP_CORNERDIS].getFX();
-		
-		tempBoundsMin.copyFrom(&(primTemplateStack[baseInd+E_PRIMTEMP_VISMIN]));
-		tempBoundsMax.copyFrom(&(primTemplateStack[baseInd+E_PRIMTEMP_VISMAX]));
-		
-		tempBoundsMin.addXYZRef(pos);
-		tempBoundsMax.addXYZRef(pos);
-		
-		tempBoundsMin.addXYZRef(&volMinReadyInPixels,-1.0f);
-		tempBoundsMax.addXYZRef(&volMinReadyInPixels,-1.0f);
-		
-		//tempBoundsMin.addXYZ(-volSizePrim/2);
-		//tempBoundsMax.addXYZ(-volSizePrim/2);
-		
-		
-		
-		//tempBoundsMin.addXYZ(-cornerDis);
-		//tempBoundsMax.addXYZ(cornerDis);
-		
-		tempBoundsMin.multXYZ(fPrimDiv);
-		tempBoundsMax.multXYZ(fPrimDiv);
-		
-		//tempBoundsMin.intDivXYZ(primDiv);
-		//tempBoundsMax.intDivXYZ(primDiv);
-		
-		
-		
-		// tempBoundsMin.addXYZ(0.0f, 0.0f, 2.0f);
-		// tempBoundsMax.addXYZ(0.0f, 0.0f, 2.0f);
-		
-		
-		
-		int iMin = max(tempBoundsMin[0],0.0f);
-		int jMin = max(tempBoundsMin[1],0.0f);
-		int kMin = max(tempBoundsMin[2],0.0f);
-		
-		int iMax = min(tempBoundsMax[0],volSizePrimMacro-1.0f);
-		int jMax = min(tempBoundsMax[1],volSizePrimMacro-1.0f);
-		int kMax = min(tempBoundsMax[2],volSizePrimMacro-1.0f);
-		
-		bool wasAdded = false;
-		
-		for (i = iMin; i <= iMax; i++) {
-			for (j = jMin; j <= jMax; j++) {
-				for (k = kMin; k <= kMax; k++) {
-					for (m = 0; m < primsPerMacro; m++) {
-						
-						ind = (
-							(
-								i +
-								j*volSizePrimMacro +
-								k*volSizePrimMacro*volSizePrimMacro
-							)*primsPerMacro + m
-						)*floatsPerPrimEntry;
-						
-						if (tboData[ind+3] == 0.0f) {
-							
-							wasAdded = true;
-							
-							tboData[ind+0] = pos->getFX();
-							tboData[ind+1] = pos->getFY();
-							tboData[ind+2] = pos->getFZ();
-							tboData[ind+3] = tempId;
-							
-							tboData[ind+4] = diagCount;//;
-							tboData[ind+5] = uid + 1; // uid of 0 results in blank object
-							tboData[ind+6] = 0.0f;
-							tboData[ind+7] = 0.0f;
-							
-							break;
-						}
-					}
-				}
-			}
-		}
-		
-		return wasAdded;
-	}
-void Singleton::addGeom (FIVector4 * newPos, int templateId)
-                                                        { //FIVector4* pos, FIVector4* offset
-		
-		FIVector4 camBlockPos;
-		GameBlock* curBlock;
-		
-		
-		
-		camBlockPos.copyFrom(newPos);
-		camBlockPos.intDivXYZ(blockSizeInPixels);
-		
-		curBlock = gw->getBlockAtCoords(
-			camBlockPos.getIX(),
-			camBlockPos.getIY(),
-			camBlockPos.getIZ(),
-			true
-		);
-		
-		curBlock->gameEnts[E_ET_GEOM].data.push_back(GameEnt());
-		
-		GameEnt* gameEnt = &(curBlock->gameEnts[E_ET_GEOM].data.back());
-		
-		gameEnt->templateId = templateId;
-		gameEnt->templatePos.copyFrom(newPos);
-	}
-void Singleton::fetchGeom ()
-                         {
-		
-		
-		int i;
-		int j;
-		int k;
-		
-		int m;
-		
-		GameBlock* curBlock;
-		GameEnt* gameEnt;
-		FIVector4 start;
-		FIVector4 end;
-		FIVector4 avg;
-
-		
-		
-		int geomCount = 0;
-		int tempId;
-		
-		FIVector4 camBlockPos;
-		
-		camBlockPos.copyFrom(cameraPos);
-		camBlockPos.intDivXYZ(blockSizeInPixels);
-		
-		for (i = -1; i <= 1; i++) {
-			for (j = -1; j <= 1; j++) {
-				for (k = -1; k <= 1; k++) {
-					
-					
-					curBlock = gw->getBlockAtCoords(
-						camBlockPos.getIX()+i,
-						camBlockPos.getIY()+j,
-						camBlockPos.getIZ()+k,
-						true
-					);
-
-					for (m = 0; m < curBlock->gameEnts[E_ET_GEOM].data.size(); m++) {
-
-						gameEnt = &(curBlock->gameEnts[E_ET_GEOM].data[m]);
-
-						tempId = gameEnt->templateId;
-						
-
-						//start.copyFrom( &(gameEnt->moveMinInPixels) );
-						//end.copyFrom( &(gameEnt->moveMaxInPixels) );
-
-						//start.clampZ(0.0,worldSizeInPixels.getFZ()-1.0f);
-						//end.clampZ(0.0,worldSizeInPixels.getFZ()-1.0f);
-						
-						
-						
-
-						//if (FIVector4::intersect(&start,&end,&volMinReadyInPixels,&volMaxReadyInPixels)) {
-							
-							//avg.averageXYZ(&start,&end);
-							
-							addPrimObj(&(gameEnt->templatePos), tempId, geomCount);
-							
-							geomCount++;
-						//}
-					}
-						
-				}
-			}
-		}
-		
-		//cout << geomCount << " <-- geomCount\n";
-
-
-		
-	}
-void Singleton::fillAllGeom ()
-                           {
-		
-		gameFluid->clearAllGeom();
-		
-		int i;
-		int j;
-		int k;
-		
-		int m;
-		
-		GameBlock* curBlock;
-		GameEnt* gameEnt;
-		FIVector4 start;
-		FIVector4 end;
-		FIVector4 avg;
-
-		
-		
-		int geomCount = 0;
-		int tempId;
-		
-		FIVector4 camBlockPos;
-		
-		camBlockPos.copyFrom(cameraPos);
-		camBlockPos.intDivXYZ(blockSizeInPixels);
-		
-		int baseInd;
-		
-		
-		for (i = -1; i <= 1; i++) {
-			for (j = -1; j <= 1; j++) {
-				for (k = -1; k <= 1; k++) {
-					
-					curBlock = gw->getBlockAtCoords(
-						camBlockPos.getIX()+i,
-						camBlockPos.getIY()+j,
-						camBlockPos.getIZ()+k,
-						true
-					);
-
-					for (m = 0; m < curBlock->gameEnts[E_ET_GEOM].data.size(); m++) {
-
-						gameEnt = &(curBlock->gameEnts[E_ET_GEOM].data[m]);
-
-						tempId = gameEnt->templateId;
-						baseInd = tempId*E_PRIMTEMP_LENGTH;
-
-						start.copyFrom(&(primTemplateStack[baseInd+E_PRIMTEMP_VISMIN]));
-						end.copyFrom(&(primTemplateStack[baseInd+E_PRIMTEMP_VISMAX]));
-						start.addXYZRef(&(gameEnt->templatePos));
-						end.addXYZRef(&(gameEnt->templatePos));
-						
-						
-
-						if (FIVector4::intersect(&start,&end,&volMinReadyInPixels,&volMaxReadyInPixels)) {
-							
-							//cout << "fillCurrentGeom" << tempId;
-							
-							gameFluid->fillCurrentGeom(tempId, &(gameEnt->templatePos));
-							
-							// baseInd = curPrimTemplate*E_PRIMTEMP_LENGTH;
-							
-							// for (j = 0; j < E_PRIMTEMP_LENGTH; j++) {
-							// 	setFXYZWGeom(j, &(primTemplateStack[baseInd+j]) );
-							// }
-							
-						}
-					}
-				}
-				
-				
-			}
-		}
-		
-		
-		gameFluid->clearInsideValues();
-		
-	}
-void Singleton::updateTBOData (bool firstTime, bool reloadTemplates)
-                                                                 {
-		int i;
-		int ind;
-		
-		if (firstTime||reloadTemplates) {
-			if (getPrimTemplateString()) {
-				
-			}
-			else {
-				return;
-			}
-		}
-		
-		int totCount = 0;
-		
-		
-		// clear tbo data
-		
-		for (i = 0; i < floatsInPrimMacro/floatsPerPrimEntry; i++) {
-			
-			ind = i*floatsPerPrimEntry;
-			
-			tboData[ind + 0] = 0.0f;
-			tboData[ind + 1] = 0.0f;
-			tboData[ind + 2] = 0.0f;
-			tboData[ind + 3] = 0.0f;
-			
-			tboData[ind + 4] = 0.0f;
-			tboData[ind + 5] = 0.0f;
-			tboData[ind + 6] = 0.0f;
-			tboData[ind + 7] = 0.0f;
-			
-		}
-		
-		
-		
-		
-		
-		if (firstTime) {
-			tboWrapper.init(tboData,floatsInPrimMacro*4);
-		}
-		else {
-			readyForTBOUpdate = true;
-		}
-		
 	}
 FIVector4 * Singleton::cameraGetPos ()
                                   {
@@ -20781,149 +21412,6 @@ int Singleton::numberIcons (int pCurCount, int x1, int y1, int x2, int y2)
 	  return curCount;
 	  
 	}
-void Singleton::setupPrimTexture ()
-                                {
-		int i;
-		int curFilter;
-		
-
-		for (i = 0; i < E_PL_LENGTH; i++) {
-			
-			if (i == 0) {
-				curFilter = GL_LINEAR;
-			}
-			else {
-				curFilter = GL_NEAREST;
-			}
-			
-			//curFilter = GL_NEAREST;
-			
-			
-			
-			
-			glGenTextures(1, &(volIdPrim[i]));
-			
-			//cout << "vp " << volIdPrim[i] << "\n";
-			
-			glBindTexture(GL_TEXTURE_3D, volIdPrim[i]);
-			glTexImage3D(
-				GL_TEXTURE_3D,
-				0,
-				internalPrimFormat, //GL_RGBA, // GL_RGBA32F
-				volSizePrim,
-				volSizePrim,
-				volSizePrim,
-				0,
-				GL_RGBA,
-				precPrimFormat, // GL_UNSIGNED_BYTE, // GL_FLOAT
-				0
-			);
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, curFilter);
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, curFilter);
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER); //GL_CLAMP_TO_EDGE
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
-			glBindTexture(GL_TEXTURE_3D, 0);
-			
-			
-		}
-	}
-void Singleton::beginFluidDump (FIVector4 * _campPosVPDump)
-                                                       {
-		
-		//fdWritePos = 0;
-		//fdReadPos = 0;
-		
-		cout << "pos change\n";
-		dumpingFluid = true;
-		campPosVPDump.copyFrom(_campPosVPDump);
-	
-		
-		//
-		camPosVPInPixels.copyFrom( &campPosVPDump );
-		camPosVPInPixels.multXYZ( volSizePrimRefSize );
-		volMinInPixels.copyFrom( &camPosVPInPixels );
-		volMaxInPixels.copyFrom( &camPosVPInPixels );
-		volMaxInPixels.addXYZ(volSizePrim);				
-		//
-		
-		gameFluid->prereadFluidData();
-		gameFluid->readMIP.copyFrom(&volMinInPixels);
-		startTL();
-		
-		
-	}
-void Singleton::endFluidDump ()
-                            {
-		cout << "pos change end\n";
-		dumpingFluid = false;
-		
-		gameFluid->hasRead = true;
-		updateTBOData(false,false);
-		lastCamPosVP.setFXYZRef(&campPosVPDump);
-		
-		if (firstVPUpdate) {
-			firstVPUpdate = false;
-			volMinReadyInPixels.copyFrom(&volMinInPixels);
-			volMaxReadyInPixels.copyFrom(&volMaxInPixels);
-		}
-		
-		//readyForWaterReset = true;
-		startFT();
-		
-	}
-void Singleton::shiftRegion ()
-                           {
-		
-		
-		if (doUpdateVolPos) {
-			
-			// if ((currentActor == NULL)||firstPerson) {
-			// 	camPosVP.setFXYZRef(cameraPos);
-			// 	camPosVP.addXYZ(-volSizePrim*0.5f + volSizePrimRefSize*0.5f);
-			// 	camPosVP.addXYZRef(&lookAtVec,volSizePrim*0.4f);
-			// }
-			// else {
-			// 	camPosVP.setFXYZRef(&(currentActor->centerPointInPixels));
-			// 	camPosVP.addXYZ(-volSizePrim*0.5f + volSizePrimRefSize*0.5f);
-			// }
-			
-			bool notThirdPerson = (currentActor == NULL)||firstPerson;
-			
-			if (notThirdPerson) {
-				newCamPos.copyFrom(cameraPos);
-			}
-			else {
-				newCamPos.copyFrom(&(currentActor->centerPointInPixels));
-			}
-			
-			camPosVP.copyFrom(&newCamPos);
-			camPosVP.addXYZ(-volSizePrim*0.5f + volSizePrimRefSize*0.5f);
-			
-			if (notThirdPerson) {
-				//camPosVP.addXYZRef(&lookAtVec,volSizePrim*0.4f);
-			}
-			
-			camPosVP.intDivXYZ(volSizePrimRefSize);
-			
-			
-			
-			
-			
-			if (
-				camPosVP.iNotEqual(&lastCamPosVP) && 
-				(lastCamPos.distance(&newCamPos) > volSizePrimRefSize/32.0f)
-			) {
-				lastCamPos.copyFrom(&newCamPos);
-				//gameFluid->maxDirtyRegion();
-				gameFluid->forceFullRefresh = 1;
-				
-				beginFluidDump(&camPosVP);
-				
-			}
-		}
-	}
 void Singleton::funcNT2 ()
                        {
 		threadNetRecv.setRunningLocked(true);
@@ -20977,256 +21465,6 @@ bool Singleton::stopNT ()
 		}
 		return didStop;
 		
-	}
-void Singleton::funcFT ()
-                      {
-		threadFluid.setRunningLocked(true);
-		gameFluid->updateFluidData();
-		threadFluid.setRunningLocked(false);
-	}
-void Singleton::startFT ()
-                       {
-		if (threadFluid.threadRunning) {
-			
-		}
-		else {
-			threadFluid.threadRunning = true;
-			threadFluid.threadMain = std::thread(&Singleton::funcFT, this);
-		}
-		
-	}
-bool Singleton::stopFT ()
-                      {
-		bool didStop = false;
-		
-		if (threadFluid.threadRunning) {
-			threadFluid.threadMain.join();
-			threadFluid.threadRunning = false;
-			didStop = true;
-		}
-		return didStop;
-	}
-void Singleton::funcTL ()
-                      {
-		threadLoader.setRunningLocked(true);
-		gameFluid->readFluidData();
-		threadLoader.setRunningLocked(false);
-	}
-void Singleton::startTL ()
-                       {
-		if (threadLoader.threadRunning) {
-			
-		}
-		else {
-			
-			threadLoader.threadRunning = true;
-			threadLoader.threadMain = std::thread(&Singleton::funcTL, this);
-		}
-		
-	}
-bool Singleton::stopTL ()
-                      {
-		bool didStop = false;
-		if (threadLoader.threadRunning) {
-			threadLoader.threadMain.join();
-			threadLoader.threadRunning = false;
-			didStop = true;
-		}
-		return didStop;
-	}
-void Singleton::funcTT ()
-                      {
-		threadTex.setRunningLocked(true);
-		gameFluid->getPrimData(0);
-		threadTex.setRunningLocked(false);
-	}
-void Singleton::startTT ()
-                       {
-		if (threadTex.threadRunning) {
-			
-		}
-		else {
-			
-			//cout << "startTT(" << gameFluid->forceFullRefresh << ")\n";
-			
-			threadTex.threadRunning = true;
-			threadTex.threadMain = std::thread(&Singleton::funcTT, this);
-		}
-		
-	}
-bool Singleton::stopTT ()
-                      {
-		bool didStop = false;
-		if (threadTex.threadRunning) {
-			threadTex.threadMain.join();
-			threadTex.threadRunning = false;
-			didStop = true;
-		}
-		return didStop;
-	}
-void Singleton::funcTP (int threadId)
-                                  {
-		
-		GamePageHolder* curHolder;
-		
-		threadPool[threadId].setRunningLocked(true);
-		
-		curHolder = gw->getHolderAtId(
-			threadPool[threadId].threadDataInt[0],
-			threadPool[threadId].threadDataInt[1]
-		);
-		
-		curHolder->genCellData();
-		
-		threadPool[threadId].setRunningLocked(false);
-	}
-void Singleton::startTP (int threadId)
-                                   {
-		if (threadPool[threadId].threadRunning) {
-			
-		}
-		else {
-			threadPool[threadId].threadRunning = true;
-			threadPool[threadId].threadMain = std::thread(&Singleton::funcTP, this, threadId);
-		}
-		
-	}
-bool Singleton::stopTP (int threadId)
-                                  {
-		bool didStop = false;
-		if (threadPool[threadId].threadRunning) {
-			threadPool[threadId].threadMain.join();
-			threadPool[threadId].threadRunning = false;
-			didStop = true;
-		}
-		return didStop;
-	}
-void Singleton::flushActionStack ()
-                                {
-		PushModStruct* curPM;
-		
-		while (pmStack.size() > 0) {
-			
-			curPM = &(pmStack.back());
-			
-			switch(curPM->actionType) {
-				case E_PM_EXPLODE_BULLET:
-					pushExplodeBullet(false,&(curPM->data[0]));
-				break;
-				case E_PM_MODIFY_UNIT:
-					pushModifyUnit(false,&(curPM->data[0]), curPM->data[1].getIX());
-				break;
-				case E_PM_PLACE_TEMPLATE:
-					pushPlaceTemplate(false,&(curPM->data[0]), curPM->data[1].getIX());
-				break;
-			}
-			
-			pmStack.pop_back();
-		}
-	}
-void Singleton::pushExplodeBullet (bool isReq, FIVector4 * newPos)
-                                                              {
-		
-		
-		if (isReq) {
-			pmStack.push_back(PushModStruct());
-			pmStack.back().actionType = E_PM_EXPLODE_BULLET;
-			pmStack.back().data[0].copyFrom(newPos);
-			return;
-		}
-		
-		if (waterBulletOn) {
-			gameFluid->modifyUnit(newPos, E_BRUSH_ADD, E_PTT_WAT, explodeRad);
-		}
-		else {
-			gameFluid->modifyUnit(newPos, E_BRUSH_SUB, E_PTT_TER, explodeRad);
-		}
-		
-		modifiedUnit = true;
-		
-		
-	}
-void Singleton::pushModifyUnit (bool isReq, FIVector4 * mp, int buttonNum)
-                                                                      {
-		
-		
-		if (isReq) {
-			pmStack.push_back(PushModStruct());
-			pmStack.back().actionType = E_PM_MODIFY_UNIT;
-			pmStack.back().data[0].copyFrom(mp);
-			pmStack.back().data[1].setIX(buttonNum);
-			return;
-		}
-		
-		//bool lbClicked, bool rbClicked, bool mbClicked
-		
-		switch (buttonNum) {
-			case 0: //lb
-				gameFluid->modifyUnit(mp, E_BRUSH_ADD, earthMod, curBrushRad);
-			break;	
-			case 1: //rb
-				gameFluid->modifyUnit(mp, E_BRUSH_SUB, earthMod, curBrushRad);
-			break;	
-			case 2: //mb
-				gameFluid->modifyUnit(mp, E_BRUSH_REF, earthMod, curBrushRad);
-			break;	
-		}
-		
-		modifiedUnit = true;
-		
-		
-		
-		forceGetPD = true;
-	}
-void Singleton::pushPlaceTemplate (bool isReq, FIVector4 * newPos, int pt)
-                                                                      {
-		
-		if (isReq) {
-			pmStack.push_back(PushModStruct());
-			pmStack.back().actionType = E_PM_PLACE_TEMPLATE;
-			pmStack.back().data[0].copyFrom(newPos);
-			pmStack.back().data[1].setIX(pt);
-			return;
-		}
-		
-		addGeom(newPos,pt);
-		
-		modifiedGeom = true;
-		
-		
-	}
-void Singleton::copyPrimTexture ()
-                               {
-		
-		
-		int i;
-		
-		for (i = 0; i < E_PL_LENGTH; i++) {
-			
-			
-			glBindTexture(GL_TEXTURE_3D, volIdPrim[i]);
-			glTexSubImage3D(
-				GL_TEXTURE_3D,
-				0,
-
-				0,
-				0,
-				0,
-
-				volSizePrim,
-				volSizePrim,
-				volSizePrim,
-
-				GL_RGBA,
-				precPrimFormat, //GL_UNSIGNED_BYTE,
-
-				gameFluid->volDataPrim[i]
-			);
-			glBindTexture(GL_TEXTURE_3D, 0);
-		}
-		
-
-
 	}
 void Singleton::prepSound (string soundName)
                                          {
@@ -21727,9 +21965,9 @@ void Singleton::fillWithRandomObjects (int parentUID, int gen)
 				curId,
 				E_ENTTYPE_OBJ,
 				&lastCellPos,
-				2,
-				2,
-				2
+				1,
+				1,
+				1
 			);
 			
 			gw->gameObjects[parentUID].children.push_back(gameObjCounter);
@@ -21993,9 +22231,9 @@ BaseObjType Singleton::placeNewEnt (bool isReq, int et, FIVector4 * cellPos, boo
 		
 		int newType = 0;
 		int poolId = et;
-		int xv = 2;
-		int yv = 2;
-		int zv = 3;
+		int xv = 1;
+		int yv = 1;
+		int zv = 1;
 		
 		int curEntId;
 		
@@ -22019,7 +22257,6 @@ BaseObjType Singleton::placeNewEnt (bool isReq, int et, FIVector4 * cellPos, boo
 		switch (et) {
 			case E_ENTTYPE_OBJ:
 				newType = getRandomObjId();
-				zv = 2;
 				friction = 0.1;
 				windResistance = 1.0f;
 				bounciness = 0.3;
@@ -22027,10 +22264,12 @@ BaseObjType Singleton::placeNewEnt (bool isReq, int et, FIVector4 * cellPos, boo
 			case E_ENTTYPE_MONSTER:
 				newType = getRandomMonsterId();
 				mf = 2;
+				zv = 2;
 			break;
 			case E_ENTTYPE_NPC:
 				newType = getRandomNPCId();
 				mf = 4;
+				zv = 2;
 			break;
 			
 			case E_ENTTYPE_BULLET:
@@ -22047,9 +22286,6 @@ BaseObjType Singleton::placeNewEnt (bool isReq, int et, FIVector4 * cellPos, boo
 					
 				// }
 				
-				xv = 2;
-				yv = 2;
-				zv = 2;
 			break;
 			
 		}
@@ -22212,8 +22448,8 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 								cameraPos->setFXYZRef(&baseCameraPos);
 								
 								cameraPos->addXYZ(
-									-(x - comp->dragStart.x)*worldSizeInPixels.getFX()/(cameraZoom*comp->resultDimInPixels.x),
-									-(y - comp->dragStart.y)*worldSizeInPixels.getFY()/(cameraZoom*comp->resultDimInPixels.y),
+									-(x - comp->dragStart.x)*worldSizeInCells.getFX()/(cameraZoom*comp->resultDimInPixels.x),
+									-(y - comp->dragStart.y)*worldSizeInCells.getFY()/(cameraZoom*comp->resultDimInPixels.y),
 									0.0f
 								);
 								
@@ -22263,10 +22499,12 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 			break;
 			
 			case 3: // wheel up
+				frameMouseMove = true;
 				wheelDelta = 1.0f / 20.0f;
 				break;
 
 			case 4: // wheel down
+				frameMouseMove = true;
 				wheelDelta = -1.0f / 20.0f;
 				break;
 			
@@ -22293,8 +22531,20 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		
 		
 		if (comp->uid.compare("map.mapHolder") == 0) {
+			
+			
 			zoomDelta += wheelDelta;
+			
+			if (zoomDelta < 0.0) {
+				zoomDelta = 0.0;
+			}
+			
+			
 			targetZoom = pow(2.0, zoomDelta);
+			if (!ignoreFrameLimit) {
+				cameraZoom = targetZoom;
+			}
+			
 		}
 		
 		if (comp->uid.compare("#contItemParent") == 0) {
@@ -22414,7 +22664,7 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 				orgOn = curValue != 0.0f;
 			}
 			else if (comp->uid.compare("$charEdit.pathfindingOn") == 0) {
-				pathfindingOn = curValue != 0.0f;
+				//pathfindingOn = curValue != 0.0f;
 			}
 			else if (comp->uid.compare("$charEdit.editPose") == 0) {
 				editPose = curValue != 0.0f;
@@ -22462,12 +22712,7 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		}
 		
 		
-		
-		
-		
-				
 		if (comp->uid.compare("$options.sound.masterVolume") == 0) {
-			
 			
 			masterVolume = curValue;
 			
@@ -22486,7 +22731,10 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		}
 		else if (comp->uid.compare("$options.graphics.clipDist") == 0) {
 			
-			clipDist[1] = curValue*512.0f;
+			clipDist[1] = curValue*4096.0f*4.0;
+			
+			
+			
 			
 		}
 		else if (comp->uid.compare("$options.graphics.fov") == 0) {
@@ -22685,78 +22933,6 @@ void Singleton::initStyleSheet ()
 		
 		
 		
-	}
-int Singleton::requestTerIndex (int requestingBlockId)
-        {
-
-
-		int i;
-
-		bool foundFree = false;
-
-		float bestDis;
-		float testDis;
-		int bestInd = 0;
-
-		GameBlock *curBlock;
-
-		// find if blockId already in use
-		for (i = 0; i < MAX_TER_TEX; i++)
-		{
-			if (terTextures[i].usedByBlockId == requestingBlockId)
-			{
-				return i;
-			}
-		}
-
-		// find if any blockIds not in use
-		for (i = 0; i < MAX_TER_TEX; i++)
-		{
-			if (terTextures[i].usedByBlockId == -1)
-			{
-				bestInd = i;
-				foundFree = true;
-				break;
-			}
-		}
-
-		if (foundFree)
-		{
-
-		}
-		else
-		{
-
-			// find furthest blockId
-			for (i = 0; i < MAX_TER_TEX; i++)
-			{
-
-				curBlock = gw->getBlockAtId(terTextures[i].usedByBlockId);
-				testDis = curBlock->offsetInBlocks.distance(&(gw->camBlockPos));
-
-				if (i == 0)
-				{
-					bestInd = 0;
-					bestDis = testDis;
-				}
-				else
-				{
-					if (testDis > bestDis)
-					{
-						bestDis = testDis;
-						bestInd = i;
-					}
-				}
-
-			}
-
-		}
-
-		terTextures[bestInd].usedByBlockId = requestingBlockId;
-		terTextures[bestInd].alreadyBound = false;
-		return bestInd;
-
-
 	}
 void Singleton::qNormalizeAngle (int & angle)
         {
@@ -23054,9 +23230,9 @@ bool Singleton::getPrimTemplateString ()
 		float curNumber;
 		
 		string resString = "";
-		resString.append("const int PRIMS_PER_MACRO = " + i__s(primsPerMacro) + ";\n");
-		resString.append("const int VECS_PER_PRIM = " + i__s(floatsPerPrimEntry/4) + ";\n");
-		resString.append("const float PRIM_DIV = " + i__s(primDiv) + ".0;\n");
+		resString.append("const int PRIMS_PER_MACRO = " + i__s(gameFluid[E_FID_BIG]->primsPerMacro) + ";\n");
+		resString.append("const int VECS_PER_PRIM = " + i__s(gameFluid[E_FID_BIG]->floatsPerPrimEntry/4) + ";\n");
+		resString.append("const float PRIM_DIV = " + i__s(gameFluid[E_FID_BIG]->primDiv) + ".0;\n");
 		
 		
 		for (i = 0; i < numTemplates; i++) {
@@ -23150,10 +23326,13 @@ void Singleton::doShaderRefresh (bool doBake)
 
 		// this is expensive
 		for (i = 0; i < shaderStrings.size(); i++) {
-			shaderMap[ shaderStrings[i] ]->init( "../src/glsl/" + shaderStrings[i] + ".c", doBake, &includeMap);
+			shaderMap[ shaderStrings[i] ]->init(shaderStrings[i] , doBake, &includeMap);
 		}
 		
+		//"../src/glsl/" + shaderStrings[i] + ".c"
+		
 		if (DO_SHADER_DUMP) {
+			cout << "SHADER_DUMP\n";
 			saveFileString("..\\data\\temp.txt", &globString);
 		}
 		
@@ -23399,6 +23578,12 @@ void Singleton::bindShader (string shaderName)
 		
 		int i;
 		int totSize;
+
+
+		if (shaderMap.find( shaderName ) == shaderMap.end()) {
+			cout << "invalid shader name " << shaderName << "\n";
+			exit(0);
+		}
 
 		if (shadersAreLoaded)
 		{
@@ -23650,16 +23835,16 @@ void Singleton::drawFBOOffset (string fboName, int ind, float xOff, float yOff, 
 	}
 float Singleton::getTerHeightScaled (float val)
         {
-		return mixf(0.125f,0.875f,val)*heightmapMax;
+		return val*heightMapMaxInCells; //mixf(0.125f,0.875f,val)
 		
 	}
 float Singleton::getSLNormalized ()
         {
 		return (((float)gw->seaLevel) / 255.0f);
 	}
-float Singleton::getSLInPixels ()
+float Singleton::getSeaHeightScaled ()
         {
-		return getSLNormalized()*heightmapMax;
+		return getSLNormalized()*heightMapMaxInCells;
 	}
 float Singleton::getHeightAtPixelPos (float x, float y, bool dd)
         {
@@ -23671,10 +23856,11 @@ float Singleton::getHeightAtPixelPos (float x, float y, bool dd)
 
 		float testHeight;
 		
-		float v0;
-		float v1;
-		float v2;
-		float v3;
+		float v0 = 0.0f;
+		float v1 = 0.0f;
+		float v2 = 0.0f;
+		float v3 = 0.0f;
+		
 		
 		if (mapInvalid)
 		{
@@ -23687,13 +23873,16 @@ float Singleton::getHeightAtPixelPos (float x, float y, bool dd)
 		{
 			FBOWrapper *fbow = getFBOWrapper("hmFBO", 0);
 
-			xc = (x / worldSizeInPixels.getFX()) * ((float)fbow->width);
-			yc = (y / worldSizeInPixels.getFY()) * ((float)fbow->height);
+			xc = (x / worldSizeInCells.getFX()) * ((float)fbow->width);
+			yc = (y / worldSizeInCells.getFY()) * ((float)fbow->height);
 
 			v0 = fbow->getPixelAtLinear((xc * mapFreqs.getFX()), (yc * mapFreqs.getFX()), channel);
 			v1 = fbow->getPixelAtLinear((xc * mapFreqs.getFY()), (yc * mapFreqs.getFY()), channel);
 			v2 = fbow->getPixelAtLinear((xc * mapFreqs.getFZ()), (yc * mapFreqs.getFZ()), channel);
 			v3 = fbow->getPixelAtLinear((xc * mapFreqs.getFW()), (yc * mapFreqs.getFW()), channel);
+
+			
+
 
 
 			if (dd) {
@@ -23707,9 +23896,9 @@ float Singleton::getHeightAtPixelPos (float x, float y, bool dd)
 				+ v2 * mapAmps.getFZ()
 				+ v3 * mapAmps.getFW()
 				
-				- v1 * mapAmps.getFY()*0.5f
-				- v2 * mapAmps.getFZ()*0.5f
-				- v3 * mapAmps.getFW()*0.5f
+				// - v1 * mapAmps.getFY()*0.5f
+				// - v2 * mapAmps.getFZ()*0.5f
+				// - v3 * mapAmps.getFW()*0.5f
 				
 			;
 			
@@ -23735,9 +23924,9 @@ void Singleton::transformOrg (GameOrg * curOrg)
 void Singleton::angleToVec (FIVector4 * fv, float xr, float yr)
                                                            {
 		fv->setFXYZ(
-			 -sin(xr)*sin(yr),
-			 -cos(xr)*sin(yr),
-			 -cos(yr)
+			 cos(xr)*sin(yr),
+			 sin(xr)*sin(yr),
+			 cos(yr)
 		);
 		fv->normalize();
 	}
@@ -23745,7 +23934,7 @@ void Singleton::vecToAngle (FIVector4 * fv, FIVector4 * ta)
                                                        {
 		
 		ta->setFXYZ(
-			atan2(fv->getFX(),fv->getFY()),
+			atan2(fv->getFY(),fv->getFX()),
 			acos(fv->getFZ()),
 			0.0f	
 		);
@@ -23792,46 +23981,45 @@ void Singleton::syncObjects ()
 			testHuman->basePosition.copyFrom(&(currentActor->centerPointInPixels));
 		}
 		
-		
 		transformOrg(testHuman);
 	}
 void Singleton::updateCamVals ()
                              {
 		
 		
-		if (camLerpPos.getFX() > worldSizeInPixels.getFX() / 2.0)
+		if (camLerpPos.getFX() > worldSizeInCells.getFX() / 2.0)
 		{
-			camLerpPos.setFX( camLerpPos.getFX() - worldSizeInPixels.getFX() );
+			camLerpPos.setFX( camLerpPos.getFX() - worldSizeInCells.getFX() );
 		}
-		if (camLerpPos.getFX() < -worldSizeInPixels.getFX() / 2.0)
+		if (camLerpPos.getFX() < -worldSizeInCells.getFX() / 2.0)
 		{
-			camLerpPos.setFX( camLerpPos.getFX() + worldSizeInPixels.getFX() );
+			camLerpPos.setFX( camLerpPos.getFX() + worldSizeInCells.getFX() );
 		}
-		if (camLerpPos.getFY() > worldSizeInPixels.getFY() / 2.0)
+		if (camLerpPos.getFY() > worldSizeInCells.getFY() / 2.0)
 		{
-			camLerpPos.setFY( camLerpPos.getFY() - worldSizeInPixels.getFY() );
+			camLerpPos.setFY( camLerpPos.getFY() - worldSizeInCells.getFY() );
 		}
-		if (camLerpPos.getFY() < -worldSizeInPixels.getFY() / 2.0)
+		if (camLerpPos.getFY() < -worldSizeInCells.getFY() / 2.0)
 		{
-			camLerpPos.setFY( camLerpPos.getFY() + worldSizeInPixels.getFY() );
+			camLerpPos.setFY( camLerpPos.getFY() + worldSizeInCells.getFY() );
 		}
 		
 		
-		if (cameraPos->getFX() > worldSizeInPixels.getFX() / 2.0)
+		if (cameraPos->getFX() > worldSizeInCells.getFX() / 2.0)
 		{
-			cameraPos->setFX( cameraPos->getFX() - worldSizeInPixels.getFX() );
+			cameraPos->setFX( cameraPos->getFX() - worldSizeInCells.getFX() );
 		}
-		if (cameraPos->getFX() < -worldSizeInPixels.getFX() / 2.0)
+		if (cameraPos->getFX() < -worldSizeInCells.getFX() / 2.0)
 		{
-			cameraPos->setFX( cameraPos->getFX() + worldSizeInPixels.getFX() );
+			cameraPos->setFX( cameraPos->getFX() + worldSizeInCells.getFX() );
 		}
-		if (cameraPos->getFY() > worldSizeInPixels.getFY() / 2.0)
+		if (cameraPos->getFY() > worldSizeInCells.getFY() / 2.0)
 		{
-			cameraPos->setFY( cameraPos->getFY() - worldSizeInPixels.getFY() );
+			cameraPos->setFY( cameraPos->getFY() - worldSizeInCells.getFY() );
 		}
-		if (cameraPos->getFY() < -worldSizeInPixels.getFY() / 2.0)
+		if (cameraPos->getFY() < -worldSizeInCells.getFY() / 2.0)
 		{
-			cameraPos->setFY( cameraPos->getFY() + worldSizeInPixels.getFY() );
+			cameraPos->setFY( cameraPos->getFY() + worldSizeInCells.getFY() );
 		}
 		
 		if (smoothMove) {
@@ -23848,6 +24036,10 @@ void Singleton::updateCamVals ()
 			cameraPos->copyFrom(&camLerpPos);
 		}
 		
+		
+		lastHolderPos.copyIntDiv(cameraPos,cellsPerHolder);
+		
+		
 
 	}
 void Singleton::moveCamera (FIVector4 * pModXYZ)
@@ -23863,7 +24055,7 @@ void Singleton::moveCamera (FIVector4 * pModXYZ)
 			
 			if (!smoothMove) {
 				amountInvalidMove = pModXYZ->length();
-				depthInvalidMove = true;
+				depthInvalidMove = amountInvalidMove > 0.01f;
 			}
 			
 			wsBufferInvalid = true;
@@ -24047,8 +24239,8 @@ void Singleton::moveObject (float dx, float dy)
 				ymod += float(cos(yrotrad))*dy;
 				//zmod -= float(cos(xrotrad))*dy;
 
-				xmod += float(cos(yrotrad))*(-dx);
-				ymod -= float(sin(yrotrad))*(-dx);
+				xmod += float(cos(yrotrad))*(dx); //??
+				ymod -= float(sin(yrotrad))*(dx);
 			}
 			
 			modXYZ.setFXYZ(
@@ -24126,7 +24318,7 @@ void Singleton::moveObject (float dx, float dy)
 					
 					
 					if (rbDown) {
-						camRotation[0] += dx*0.005f;
+						camRotation[0] -= dx*0.005f;
 						camRotation[1] += dy*0.005f;
 					}
 					
@@ -24174,6 +24366,9 @@ void Singleton::setCameraToElevation ()
                                     {
 
 		float newHeight = getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY());
+		
+		newHeight = max(newHeight,getSeaHeightScaled()+64.0f);
+		
 		float curHeight = cameraPos->getFZ();
 
 		cout << "curHeight " << curHeight << " newHeight " << newHeight << "\n";
@@ -24190,11 +24385,17 @@ void Singleton::setCameraToElevation ()
 void Singleton::runReport ()
                          {
 		
-		mainGUI->runReport();
+		//mainGUI->runReport();
 		
-		cout << "Object Count: " << lastObjectCount << "\n";
+		cout << "polyCount " << polyCount << "\n";
+		
+		doTraceVecND("cameraPos ", cameraPos);
+		doTraceVecND("lookAtVec ", &lookAtVec);
+		cout << "\n";
+		
+		//cout << "Object Count: " << lastObjectCount << "\n";
 		// cout << "lightCount: " << gw->lightCount << "\n";
-		// cout << "TOT GPU MEM USED (MB): " << TOT_GPU_MEM_USAGE << "\n";
+		//cout << "TOT GPU MEM USED (MB): " << TOT_GPU_MEM_USAGE << "\n";
 		// cout << "HolderSize (MB): " << holderSizeMB << "\n";
 		// cout << "totalPointCount: " << totalPointCount << "\n";
 	}
@@ -24260,6 +24461,7 @@ void Singleton::makeJump (int actorId, int isUp)
 				
 				if (
 					gw->getCellAtCoords(
+						0,
 						ge->centerPointInPixels[0],
 						ge->centerPointInPixels[1],
 						ge->centerPointInPixels[2] + 1.0f
@@ -24343,6 +24545,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 		
 		int i;
 		
+		GamePageHolder* curHolder;
 		
 		if (inputOn) {
 			if (keyDown) {
@@ -24470,13 +24673,35 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 
 				case 'u':
-					doUpdateVolPos = !doUpdateVolPos;
-					cout << "doUpdateVolPos: " << doUpdateVolPos << "\n";
-					break;
 					
+					if (updateHolders) {
+						if (pathfindingOn) {
+							updateHolders = false;
+							pathfindingOn = false;
+						}
+						else {
+							pathfindingOn = true;
+							
+						}
+					}
+					else {
+						updateHolders = true;
+					}
+					
+					
+					
+					cout << "pathfindingOn: " << pathfindingOn << "\n";
+					cout << "updateHolders " << updateHolders << "\n";
+					
+					
+					
+				break;
 				case 'q':
 					
-					subjectZoom = 1.0f;
+					targetSubjectZoom = 1.0f;
+					if (!ignoreFrameLimit) {
+						subjectZoom = targetSubjectZoom;
+					}
 					
 					if (selObjInd >= E_OBJ_LENGTH) {
 						if (selObjInd == actObjInd) {
@@ -24508,14 +24733,19 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					break;
 
-				case 'w':
-					
+				
+				case 'W':
 					cout << "start FPS timer\n";
 					fpsTest = true;
 					fpsCount = 0;
 					fpsTimer.start();
+				break;
+				
+				case 'w':
 					
-					//setFirstPerson(!firstPerson);
+					
+					
+					setFirstPerson(!firstPerson);
 					
 					
 					
@@ -24562,7 +24792,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				case 'R':
 				
 					//loadValuesGUI(false);
-					
+					gw->noiseGenerated = false;
 					
 					loadGUI();
 					loadValuesGUI();
@@ -24580,9 +24810,16 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					smoothMove = !smoothMove;
 				
 					// doShaderRefresh(bakeParamsOn);
-				
 					// mapInvalid = true;
 					// gw->initMap();
+				break;
+
+				case 'J':
+				
+					doShaderRefresh(bakeParamsOn);
+					mapInvalid = true;
+					gw->initMap();
+				
 				break;
 
 				case 'G':
@@ -24642,11 +24879,13 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					cout << "doPageRender: " << doPageRender << "\n";
 				break;
 				case 'p':
+					
+					
 					toggleFullScreen();
-					break;
-
+				break;
+				
 				case 'o':
-					targetTimeOfDay = 1.0f-targetTimeOfDay;
+					//targetTimeOfDay = 1.0f-targetTimeOfDay;
 					
 					break;
 
@@ -24658,8 +24897,8 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					// 	diagCount = 0;
 					// }
 					
-					updateTBOData(false,true);
-					
+					//gameFluid[E_FID_SML]->updateTBOData(false,true);
+					gameFluid[E_FID_BIG]->updateTBOData(false,true);
 					
 					
 					break;
@@ -24670,10 +24909,15 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				case 't':
 					testOn = !testOn;
 					
-					break;
+				break;
+				case 'T':
+					testOn2 = !testOn2;
+					
+				break;
 				// case 'o':
 				// 	//rotOn = !rotOn;
 				// 	break;
+					
 
 				case '\t':
 				
@@ -24721,7 +24965,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 				case 'c':
 					
-					setCameraToElevation();
+					//setCameraToElevation();
 				
 					//doShaderRefresh(bakeParamsOn);
 
@@ -24749,13 +24993,14 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				case 'm':
 
-					medianCount++;
-					
+					medianCount++;					
 					if (medianCount == 4) {
 						medianCount = 0;
 					}
 					
 					//runReport();
+					
+					// refreshPaths = true;
 					
 
 					break;
@@ -25001,16 +25246,19 @@ void Singleton::updateCurGeom (int x, int y)
 			geomPoints[geomStep].setFXYZRef(&mouseMovePD);
 			geomPoints[geomStep].setFW(-1.0f);
 			geomPoints[geomStep].floorXYZ();
+			geomStep++;
 		}
-		else {
+		//else {
 			geomPoints[geomStep].setFXYZ(
 				((float)x)/bufferDim.getFX(),
 				((float)y)/bufferDim.getFY(),
 				0.0f
 			);
-		}
+		//}
 		
 		
+		float xrotrad = getCamRot(0);
+		float yrotrad = getCamRot(1);
 		
 		for (i = 0; i <= geomStep; i++) {
 			
@@ -25029,21 +25277,67 @@ void Singleton::updateCurGeom (int x, int y)
 			xv2 *= maxDis;
 			
 			
+			
+			/*
+			if (keysPressed[keyMap[KEYMAP_FORWARD]]) { // || mbDown
+
+				xmod += float(sin(xrotrad));
+				ymod += float(cos(xrotrad));
+				
+				isPressingMove = true;
+			}
+
+			if (keysPressed[keyMap[KEYMAP_BACKWARD]]) {
+				
+				xmod -= float(sin(xrotrad));
+				ymod -= float(cos(xrotrad));
+				
+				isPressingMove = true;
+			}
+
+			if (keysPressed[keyMap[KEYMAP_RIGHT]]) {
+				
+				xmod += float(cos(xrotrad));
+				ymod -= float(sin(xrotrad));
+				
+				isPressingMove = true;
+			}
+
+			if (keysPressed[keyMap[KEYMAP_LEFT]]) {
+				
+				xmod -= float(cos(xrotrad));
+				ymod += float(sin(xrotrad));
+				
+				isPressingMove = true;
+			}
+			*/
+			
 			if (placingTemplate) {
 				switch(i) {
 					case E_GEOM_POINTS_TEMP_ORIGIN:
 						// wheel (no longer) changes template
 						
-						geomOrigOffset.setFXYZ(
-							0.0f,//roundf(xv2),
-							0.0f,//roundf(yv2),
-							roundf(curPrimMod)
-						);
+						
 					
 					break;
-					// case E_GEOM_POINTS_TEMP_OFFSET:
-						
-					// break;
+					case E_GEOM_POINTS_TEMP_OFFSET:
+					
+					//rrrrr
+					//xmod += float(cos(xrotrad));
+					//ymod -= float(sin(xrotrad));
+					
+					
+					
+						geomOrigOffset.setFXYZ(
+							-roundf(
+								cos(xrotrad)*yv2 + -sin(xrotrad)*xv2
+							),
+							-roundf(
+								sin(xrotrad)*yv2 + cos(xrotrad)*xv2
+							),
+							roundf(curPrimMod)
+						);
+					break;
 				}
 				
 				baseInd = curPrimTemplate*E_PRIMTEMP_LENGTH;
@@ -25164,9 +25458,12 @@ void Singleton::mouseMove (int _x, int _y)
 		float fx = ((float)x)*M_PI*2.0f / bufferDim[0];
 		float fy = ((float)y)*M_PI / bufferDim[1];
 		
-		if (bCtrl) {
+		if (mbDown) {
 			angleToVec(&lightVec, fx*2.0, fy*2.0);
+			lightVecOrig.copyFrom(&lightVec);
+			lightVec.setFZ(abs(lightVec.getFZ()));
 		}
+		
 		
 		
 		
@@ -25186,11 +25483,26 @@ void Singleton::mouseMove (int _x, int _y)
 		{
 
 			if (placingGeom||RT_TRANSFORM||orgOn||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
+			//if (true) {
 				getPixData(&mouseMovePD, x, y, false, false);
 			}
+			
 
 			gw->updateMouseCoords(&mouseMovePD);
 			
+			if (pathfindingOn) {
+				
+				if (gameLogic->getClosestPathInd(&mouseMovePD, closestHolder) > -1) {
+					
+					if (pathFindingStep < 2) {
+						moveNodes[pathFindingStep].copyFrom(&(mouseMovePD));
+					}
+					
+					
+				}
+				
+				
+			}
 			
 
 			//////////////
@@ -25255,6 +25567,8 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		guiY = _y/UI_SCALE_FACTOR;
 
 		GameBlock *curBlock;
+
+		int buttonInt = 0;
 
 		int res;
 		int i;
@@ -25414,7 +25728,9 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 								newPos.setFXYZRef(&(geomPoints[0]));
 								newPos.addXYZRef(&geomOrigOffset);
 								
-								pushPlaceTemplate(true, &newPos, curPrimTemplate);
+								//dont add geom twice
+								//gameFluid[E_FID_SML]->pushPlaceTemplate(true, &newPos, curPrimTemplate);
+								gameFluid[E_FID_BIG]->pushPlaceTemplate(true, &newPos, curPrimTemplate);
 								resetGeom();
 							}
 							
@@ -25439,14 +25755,15 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 							
 							
 							if (pathfindingOn) {
-								if (currentStep == 2) {
-									currentStep = 0;
+								
+								pathFindingStep++;
+								
+								if (pathFindingStep == 3) {
+									pathFindingStep = 0;
 									moveNodes[0].setFXYZ(0.0,0.0,0.0);
 									moveNodes[1].setFXYZ(0.0,0.0,0.0);
-								}
-								else {
-									moveNodes[currentStep].copyFrom(&(gw->lastUnitPos));
-									currentStep++;
+									gameLogic->searchedForPath = false;
+									//gameLogic->didFindPath = false;
 								}
 							}
 							
@@ -25738,14 +26055,22 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 				switch (mouseState) {
 					case E_MOUSE_STATE_BRUSH:
 						
+						
+						
 						if (lbClicked) {
-							pushModifyUnit(true, &mouseUpPD, 0);
+							buttonInt = 0;
 						}
 						else if (rbClicked) {
-							pushModifyUnit(true, &mouseUpPD, 1);
+							buttonInt = 1;
 						}
 						else if (mbClicked) {
-							pushModifyUnit(true, &mouseUpPD, 2);
+							buttonInt = 2;
+						}
+						
+						if (abClicked) {
+							//gameFluid[E_FID_SML]->pushModifyUnit(true, &mouseUpPD, buttonInt, earthMod, curBrushRad);
+							gameFluid[E_FID_BIG]->pushModifyUnit(true, &mouseUpPD, buttonInt, earthMod, curBrushRad);
+							forceGetPD = true;
 						}
 						
 						
@@ -25776,42 +26101,46 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 				break;
 		}
 		
-		if ((wheelDelta != 0.0f)&&(state==1)) {
+		globWheelDelta += wheelDelta;
+		
+		
+		if ((abs(globWheelDelta) > 0.01f)) {
 			frameMouseMove = true;
+		}
+		
+		if ((state==1)) {
+			
+			
 			
 			if (placingGeom) {
 				
-				if ((button == 7) || (button == 8)) {
-					curPrimTemplate -= wheelDeltaInt;
-					
-					if (curPrimTemplate <= 1) {
-						curPrimTemplate = 1;
+				if ((wheelDeltaInt != 0)) {
+					if ((button == 7) || (button == 8)) {
+						curPrimTemplate -= wheelDeltaInt;
+						
+						if (curPrimTemplate <= 1) {
+							curPrimTemplate = 1;
+						}
+						if (curPrimTemplate >= (primTemplateStack.size()/E_PRIMTEMP_LENGTH)) {
+							curPrimTemplate = (primTemplateStack.size()/E_PRIMTEMP_LENGTH) - 1;
+						}
+						
+						cout << "curPrimTemplate " << curPrimTemplate << "\n";
 					}
-					if (curPrimTemplate >= (primTemplateStack.size()/E_PRIMTEMP_LENGTH)) {
-						curPrimTemplate = (primTemplateStack.size()/E_PRIMTEMP_LENGTH) - 1;
+					else {
+						curPrimMod += wheelDeltaInt;
 					}
 					
-					cout << "curPrimTemplate " << curPrimTemplate << "\n";
-				}
-				else {
-					curPrimMod += wheelDeltaInt;
+					updateCurGeom(x,y);
 				}
 				
-				updateCurGeom(x,y);
+				
 				
 			}
-			else {
-				if (currentActor != NULL) {
-					subjectDelta -= wheelDelta;
-					subjectZoom = pow(2.0, subjectDelta);
-				}
-			}
-			
-			
 			 
 
 		}
-
+		
 		
 
 	}
@@ -25828,51 +26157,6 @@ void Singleton::setSelNode (GameOrgNode * newNode)
 		}
 		lastSelNode = newNode;
 		
-	}
-void Singleton::worldToScreenBase (FIVector4 * sc, FIVector4 * wc)
-                                                             {
-		
-		
-		
-		
-		
-		
-		
-		Vector4 v;
-		v.x = wc->getFX();
-		v.y = wc->getFY();
-		v.z = wc->getFZ();
-		v.w = 1.0;
-		
-
-		
-		
-		
-		
-		GLdouble winX;
-		GLdouble winY;
-		GLdouble winZ;
-		
-		
-		gluProject(
-			v.x,// GLdouble  	objX,
-			v.y,// GLdouble  	objY,
-			v.z, // GLdouble  	objZ,
-			viewMatrixD, // const GLdouble *  	model,
-			projMatrixD, // const GLdouble *  	proj,
-			viewport, // const GLint *  	view,
-			&winX,
-			&winY,
-			&winZ
-		);
-		
-		sc->setFXYZ(
-			(winX/bufferDim.getFX())/((float)DEF_SCALE_FACTOR),
-			(winY/bufferDim.getFY())/((float)DEF_SCALE_FACTOR),
-			1.0f - winZ/clipDist[1]
-		);
-		
-
 	}
 void Singleton::refreshContainers (bool onMousePos)
                                                 {
@@ -25950,6 +26234,9 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 		int i;
 		BaseObj* ca;
 		
+		//depthInvalidMove
+		bool charMoved;
+		
 		if (isReq) {
 			//naFloatData[0] = ;
 			naUintData[0] = keyFlags;
@@ -25983,8 +26270,8 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 			}
 			
 			tempVec1.setFXYZ(
-				sin(ca->ang),
 				cos(ca->ang),
+				sin(ca->ang),
 				0.0f
 			);
 			
@@ -25994,7 +26281,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 					tempVec2.addXYZ(tempVec1[1],-tempVec1[0],0.0f);
 				}
 				else {
-					ca->ang += (2.0f*M_PI*timeDelta);
+					ca->ang += (-2.0f*M_PI*timeDelta);
 				}
 			}
 			
@@ -26003,7 +26290,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 					tempVec2.addXYZ(-tempVec1[1],tempVec1[0],0.0f);
 				}
 				else {
-					ca->ang += (-2.0f*M_PI*timeDelta);
+					ca->ang += (2.0f*M_PI*timeDelta);
 				}
 			}
 			
@@ -26036,10 +26323,16 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 			}
 			
 			
+			// actor move curMoveSpeed
 			
-			tempVec2.multXYZ(timeDelta*50.0f);
+			tempVec2.multXYZ(timeDelta*200.0f);
 			
 			ca->vel.addXYZRef(&tempVec2);
+			
+			// if (tempVec2.length() > 0.01) {
+			// 	depthInvalidMove = true;
+			// 	amountInvalidMove = tempVec2.length();
+			// }
 			
 		}
 		
@@ -26100,7 +26393,8 @@ void Singleton::handleMovement ()
 		
 		angleToVec(&lookAtVec,xrotrad,yrotrad);
 		
-		
+		lookAtVec2D.copyFrom(&lookAtVec);
+		lookAtVec2D.normalizeXY();
 		
 		
 		
@@ -26148,34 +26442,39 @@ void Singleton::handleMovement ()
 
 			if (keysPressed[keyMap[KEYMAP_FORWARD]]) { // || mbDown
 
-				xmod += float(sin(xrotrad));
-				ymod += float(cos(xrotrad));
-				zmod -= float(cos(yrotrad));
+				xmod += lookAtVec[0];//float(cos(xrotrad));
+				ymod += lookAtVec[1]; //float(sin(xrotrad));
+				zmod += lookAtVec[2];//float(cos(yrotrad));
 				
 				isPressingMove = true;
 			}
 
 			if (keysPressed[keyMap[KEYMAP_BACKWARD]]) {
 				
-				xmod -= float(sin(xrotrad));
-				ymod -= float(cos(xrotrad));
-				zmod += float(cos(yrotrad));
+				
+				xmod -= lookAtVec[0];
+				ymod -= lookAtVec[1];
+				zmod -= lookAtVec[2];
+				
+				// xmod += float(cos(xrotrad+M_PI));
+				// ymod += float(sin(xrotrad+M_PI));
+				// zmod += float(cos(yrotrad));
 				
 				isPressingMove = true;
 			}
 
 			if (keysPressed[keyMap[KEYMAP_RIGHT]]) {
 				
-				xmod += float(cos(xrotrad));
-				ymod -= float(sin(xrotrad));
+				xmod += lookAtVec2D[1];//float(cos(xrotrad+M_PI*0.5f));
+				ymod += -lookAtVec2D[0];//float(sin(xrotrad+M_PI*0.5f));
 				
 				isPressingMove = true;
 			}
 
 			if (keysPressed[keyMap[KEYMAP_LEFT]]) {
 				
-				xmod -= float(cos(xrotrad));
-				ymod += float(sin(xrotrad));
+				xmod += -lookAtVec2D[1];//float(cos(xrotrad-M_PI*0.5f));
+				ymod += lookAtVec2D[0];//float(sin(xrotrad-M_PI*0.5f));
 				
 				isPressingMove = true;
 			}
@@ -26186,27 +26485,27 @@ void Singleton::handleMovement ()
 			
 			if (isPressingMove) {
 				
-				curMoveAccel = 32.0*timeDelta;
-				curMoveSpeed += curMoveAccel;
+				curMoveAccel += 0.5f*timeDelta;
+				curMoveSpeed += curMoveAccel*timeDelta;
 				
-				if (curMoveSpeed > 32.0*timeDelta) {
-					curMoveSpeed = 32.0*timeDelta;
-				}
+				// if (curMoveSpeed > 32.0*timeDelta) {
+				// 	curMoveSpeed = 32.0*timeDelta;
+				// }
 				
 				wsBufferInvalid = true;
 			}
 			else {
 				curMoveAccel = 0.0f;
-				curMoveSpeed += (0.0-curMoveSpeed)*timeDelta;
+				curMoveSpeed += (0.0f-curMoveSpeed)*timeDelta;
 			}
 			
 			
 			
 			
-			tempMoveSpeed = curMoveSpeed*0.5;
+			tempMoveSpeed = curMoveSpeed;
 			
 			if (bShift) {
-				tempMoveSpeed *= 0.125;
+				tempMoveSpeed *= 1.0f/32.0f;
 			}
 			
 			modXYZ.setFXYZ(
@@ -26348,8 +26647,8 @@ void Singleton::explodeBullet (BaseObj * ge)
 		sphereStack.back().radAcc = -5.0f;
 		
 		
-		
-		pushExplodeBullet(true,&newPos);
+		//gameFluid[E_FID_SML]->pushExplodeBullet(true,&newPos,boolToInt(waterBulletOn));
+		gameFluid[E_FID_BIG]->pushExplodeBullet(true,&newPos,boolToInt(waterBulletOn));
 		
 		ge->isHidden = true;
 		
@@ -26374,8 +26673,8 @@ void Singleton::grabThrowObj (int actorId)
 			//##
 			
 			gw->gameObjects[ca->isGrabbingId].vel.setFXYZ(
-				sin(ca->ang)*20.0f,
 				cos(ca->ang)*20.0f,
+				sin(ca->ang)*20.0f,
 				30.0f	
 			);
 			
@@ -26443,10 +26742,10 @@ void Singleton::launchBullet (int actorId, int bulletType)
 		else {
 			newCellPos.copyFrom(&(ca->positionInCells));
 			
-			vx = sin(ca->ang)*3.0f;
+			vx = cos(ca->ang)*3.0f;
 			vx = vx;
 			
-			vy = cos(ca->ang)*3.0f;
+			vy = sin(ca->ang)*3.0f;
 			vy = vy;
 			
 			newCellPos.addXYZ(vx, vy, 2);
@@ -26456,8 +26755,8 @@ void Singleton::launchBullet (int actorId, int bulletType)
 			
 			
 			newVel.setFXYZ(
-				sin(ca->ang)*20.0f,
 				cos(ca->ang)*20.0f,
+				sin(ca->ang)*20.0f,
 				30.0f
 			);
 			
@@ -27212,6 +27511,50 @@ void Singleton::loadGUI ()
 		
 		
 	}
+string Singleton::loadFileString (string fnString)
+                                               {
+		// charArr tempFile;
+		// tempFile.data = NULL;
+		// tempFile.size = 0;
+		// string tempFileString;
+		
+		
+		// if ( loadFile(fnString,&tempFile) ) {
+		// 	tempFileString = string(tempFile.data);
+			
+		// 	if (tempFile.data != NULL)
+		// 	{
+		// 		delete[] tempFile.data;
+		// 		tempFile.data = NULL;
+		// 		tempFile.size = 0;
+		// 	}
+			
+		// 	cout << "::::::::::: \n\n\n\n";
+			
+		// 	cout << tempFileString << "\n";
+			
+		// 	cout << "::::::::::: \n\n\n\n";
+			
+		// 	return tempFileString;
+			
+		// }
+		// else {
+		// 	return "";
+		// }
+		
+		
+		std::ifstream t(fnString);
+		std::stringstream buffer;
+		buffer << t.rdbuf();
+		
+		return buffer.str();
+		
+	}
+std::ifstream::pos_type Singleton::filesize (char const * filename)
+        {
+	    std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
+	    return in.tellg(); 
+	}
 bool Singleton::loadFile (string fnString, charArr * dest)
         {
 		
@@ -27234,13 +27577,14 @@ bool Singleton::loadFile (string fnString, charArr * dest)
 			return false;
 		}
 
-		// get size of file
-		infile.seekg (0, infile.end);
-		long size = (long)infile.tellg();
-		infile.seekg (0, infile.beg);
+		// // get size of file
+		// infile.seekg (0, infile.end);
+		// long size = (long)infile.tellg();
+		// infile.seekg (0, infile.beg);
 
+		long mySize = filesize(fnString.c_str());
 
-		dest->size = size;
+		dest->size = mySize;
 
 		if (dest->data != NULL)
 		{
@@ -27248,10 +27592,10 @@ bool Singleton::loadFile (string fnString, charArr * dest)
 			dest->data = NULL;
 		}
 
-		dest->data = new char[size+1];
+		dest->data = new char[mySize+8];
 
 		// read content of infile
-		infile.read (dest->data, size);
+		infile.read (dest->data, mySize);
 
 		if ( infile.bad() )
 		{
@@ -27262,7 +27606,7 @@ bool Singleton::loadFile (string fnString, charArr * dest)
 
 		infile.close();
 		
-		dest->data[size] = '\0';
+		dest->data[mySize] = '\0';
 
 		doTraceND("Load Successful");
 
@@ -27334,16 +27678,21 @@ bool Singleton::saveFile (char * fileName, charArr * source)
 	}
 float Singleton::getUnderWater ()
                               {
-		if (gw->getCellAtCoords(
-			cameraPos->getFX(),
-			cameraPos->getFY(),
-			cameraPos->getFZ() - 1.0f
-		) == E_CD_WATER) {
+		if (
+			(gw->getCellAtCoords(
+				1,
+				cameraPos->getFX(),
+				cameraPos->getFY(),
+				cameraPos->getFZ() - 1.0f
+			) == E_CD_WATER) ||
+			(cameraPos->getFZ() < (getSeaHeightScaled()-32.0f))	
+		) {
 			return 1.0;
 		}
 		else {
 			return 0.0;
 		}
+		
 	}
 void Singleton::updateAmbientSounds ()
                                    {
@@ -27351,7 +27700,7 @@ void Singleton::updateAmbientSounds ()
 		int i;
 		int j;
 		
-		int maxRad = 2.0f;
+		int maxRad = 2;
 		
 		float avgHeight = 0.0f;
 		float tot = 0.0f;
@@ -27359,8 +27708,8 @@ void Singleton::updateAmbientSounds ()
 		for (i = -maxRad; i <= maxRad; i++) {
 			for (j = -maxRad; j <= maxRad; j++) {
 				avgHeight += getHeightAtPixelPos(
-					cameraPos->getFX() + i*32.0f,
-					cameraPos->getFY() + j*32.0f
+					cameraPos->getFX() + i*256.0f,
+					cameraPos->getFY() + j*256.0f
 				);
 				tot += 1.0f;
 			}
@@ -27368,9 +27717,9 @@ void Singleton::updateAmbientSounds ()
 		
 		float terHeight = avgHeight/tot;
 		
-		float seaHeight = getSLInPixels();
+		float seaHeight = getSeaHeightScaled();
 		
-		float heightDif = clampf((terHeight-seaHeight)/(16.0), 0.0, 1.0);
+		float heightDif = clampf((terHeight-seaHeight)/(1024.0f), 0.0f, 1.0f);
 		
 		float isUnderWater = getUnderWater();
 		
@@ -27384,23 +27733,6 @@ void Singleton::updateAmbientSounds ()
 		music[EML_CRICKETS0]->setVolume(masterVolume*ambientVolume*(1.0f-timeOfDay)*heightDif*(1.0-isUnderWater));
 		music[EML_OCEANWAVES0]->setVolume(masterVolume*ambientVolume*(1.0f-heightDif)*(1.0-isUnderWater));
 		music[EML_UNDERWATER0]->setVolume(masterVolume*ambientVolume*(isUnderWater));
-		
-		
-	}
-void Singleton::updateWaterTick ()
-                               {
-		
-		// if (readyForWaterReset) {
-		// 	readyForWaterReset = false;
-		// 	waterTick = 0;
-		// }
-		
-		waterTick++;
-		
-		if (waterTick >= waterTickMax) {
-			waterTick = waterTickMax;
-		}
-		
 		
 		
 	}
@@ -27425,7 +27757,7 @@ void Singleton::frameUpdate ()
 			}
 			else {
 				
-				timeDelta = TIME_DELTA;
+				timeDelta = timeDelta*0.999 + ((curMoveTime-lastMoveTime)/1000000.0)*0.001;//TIME_DELTA;
 				
 				// if (smoothMove) {
 				// 	timeDelta = 1.0f/90.0f;
@@ -27490,14 +27822,34 @@ void Singleton::frameUpdate ()
 		
 		
 		
-		
 		if (updateMatFlag&&(!matVolLock)) {
 			updateMatFlag = false;
 			updateMatVol();
 		}
 		
 		
-		cameraZoom += (targetZoom - cameraZoom) / (4.0f);
+		if (ignoreFrameLimit) {
+			subjectZoom += (targetSubjectZoom - subjectZoom) / 32.0f;
+			cameraZoom += (targetZoom - cameraZoom) / 4.0f;
+		}
+		
+		
+		
+		if (!placingGeom) {
+			if (abs(globWheelDelta) > 0.001f) {
+				if (currentActor != NULL) {
+					subjectDelta -= globWheelDelta;
+					targetSubjectZoom = pow(2.0, subjectDelta);
+					if (!ignoreFrameLimit) {
+						subjectZoom = targetSubjectZoom;
+					}
+				}
+			}
+		}
+
+		globWheelDelta *= 0.5f;
+		
+		
 		
 		if (cameraZoom < 1.0f) {
 			cameraZoom = 1.0f;
@@ -27563,7 +27915,7 @@ void Singleton::frameUpdate ()
 						// }
 						
 						if (currentTick < 4) {
-							cameraPos->setFXYZ(0.0,0.0,0.0);
+							cameraPos->setFXYZ(2048.0,2048.0,0.0);
 							camLerpPos.copyFrom(cameraPos);
 						}
 						
@@ -27612,117 +27964,105 @@ void Singleton::frameUpdate ()
 						}
 						
 						
-						
-						
-						
-						if (dumpingFluid) {
+						// if (
+						// 	gameFluid[E_FID_SML]->fluidReading ||
+						// 	gameFluid[E_FID_BIG]->fluidReading
+						// ) {
+						// 	if (gameFluid[E_FID_BIG]->fluidReading) {
+						// 		if (gameFluid[E_FID_SML]->cycleTerminated) {
+						// 			gameFluid[E_FID_BIG]->updateAll();
+						// 		}
+						// 		else {
+						// 			// wait for small fluid to finish its cycle
+						// 			gameFluid[E_FID_SML]->updateAll();
+						// 		}
+						// 	}
+						// 	else {
+						// 		if (gameFluid[E_FID_BIG]->cycleTerminated) {
+						// 			gameFluid[E_FID_SML]->updateAll();
+						// 		}
+						// 		else {
+						// 			// wait for big fluid to finish its cycle
+						// 			gameFluid[E_FID_BIG]->updateAll();
+						// 		}
+						// 	}
+						// }
+						// else {
 							
-							if (threadLoader.isReady()) {
-								stopTL();
-								endFluidDump();
-							}
-						}
-						else {
-							/////////
 							
-							if (threadTex.threadRunning) {
+						// 	gameFluid[E_FID_SML]->updateAll();
+						// 	gameFluid[E_FID_BIG]->updateAll();
+							
+						// 	if (
+						// 		gameFluid[E_FID_SML]->fluidReading ||
+						// 		gameFluid[E_FID_BIG]->fluidReading
+						// 	) {
 								
-							}
-							else {
+						// 	}
+						// 	else {
 								
-								updateWaterTick();
-								waterLerp = ((float)waterTick)/((float)waterTickMax);
+						// 		if (gameFluid[E_FID_SML]->cycleTerminated) {
+						// 			gameFluid[E_FID_SML]->cycleTerminated = false;
+									
+						// 			//tempVec1.copyFrom(&(gameFluid[E_FID_SML]->volMinReadyInPixels));
+						// 			//tempVec1.addXYZRef(&(gameFluid[E_FID_SML]->volMinReadyInPixels),-1.0f);
+									
+						// 			// gameFluid[E_FID_BIG]->copyPrimTexture(
+						// 			// 	tempVec1[0],
+						// 			// 	tempVec1[1],
+						// 			// 	tempVec1[2],
+						// 			// 	gameFluid[E_FID_SML]->volSizePrim,
+						// 			// 	&(gameFluid[E_FID_SML]->volDataPrim[0])
+						// 			// );
+									
+						// 			gameFluid[E_FID_SML]->startFT();
+						// 		}
 								
-								if (timeMod) {
-									
-									if (waterTick == waterTickMax) {
-										if (threadFluid.isReady()) {
-											stopFT();
-											
-											
-											flushActionStack();
-											
-											if (modifiedUnit) {
-												gameFluid->applyMods();
-											}
-											
-											if (modifiedGeom) {	
-												fillAllGeom();
-												updateTBOData(false,false);
-											}
-											
-											//DirtyRegion
-											//if (modifiedUnit||modifiedGeom) {
-												
-												modifiedUnit = false;
-												modifiedGeom = false;
-												
-												if (gameFluid->hasRead&&(!firstVPUpdate)) {
-													gameFluid->writeFluidData(gameFluid->vspMin,gameFluid->vspMax,true);
-												} 
-												
-												
-												
-												
-												
-												//doTraceVecND("dirtyMin ",&(gameFluid->dirtyMin));
-												//doTraceVecND("dirtyMax ",&(gameFluid->dirtyMax));
-												
-											//}
-											
-											startTT();
-										}
-									}
-									
-									
+								
+						// 		if (gameFluid[E_FID_BIG]->cycleTerminated) {
+						// 			gameFluid[E_FID_BIG]->cycleTerminated = false;
+						// 			gameFluid[E_FID_BIG]->startFT();
+						// 		}
+						// 	}
+						// }
+						
+						if ((!draggingMap)&&(!fpsTest)&&updateHolders) {
+							gameFluid[E_FID_BIG]->updateAll();
+							
+							if (gameFluid[E_FID_BIG]->fluidReading) {
+								if (gameFluid[E_FID_BIG]->proceedingToRead) {
+									gameFluid[E_FID_BIG]->tryToEndRead();
+								}
+								else {
+									gameFluid[E_FID_BIG]->proceedWithRead();
 								}
 							}
 							
 							
-							if (threadFluid.threadRunning) {
-								
-							}
-							else {
+							if (gameFluid[E_FID_BIG]->readyForTermination) {
 								
 								
-								if (threadTex.isReady()) {
-									stopTT();
+								if (
+								 gameFluid[E_FID_BIG]->anyThreadsRunning()
+								) {
 									
-									
-									volMinReadyInPixels.copyFrom(&volMinInPixels);
-									volMaxReadyInPixels.copyFrom(&volMaxInPixels);
-									
-									if (readyForTBOUpdate) {
-										readyForTBOUpdate = false;
-										fetchGeom();
-										tboWrapper.update(tboData);
-									}
-									
-									waterTick = 0;
-									waterLerp = ((float)waterTick)/((float)waterTickMax);
-									copyPrimTexture();
-									curDirtyMax.copyFrom(&(gameFluid->dirtyMax));
-									curDirtyMin.copyFrom(&(gameFluid->dirtyMin));
-									gameFluid->resetDirtyRegion();
-									
-									shiftRegion();
-									
-									if (dumpingFluid) {
-										
-									}
-									else {
-										//readyForWaterReset = true;
-										startFT();
-									}
 								}
-								
+								else {
+									gameFluid[E_FID_BIG]->readyForTermination = false;
+									gameFluid[E_FID_BIG]->cycleTerminated = true;
+								}
 								
 								
 							}
 							
-							////////////////
+							if (gameFluid[E_FID_BIG]->cycleTerminated) {
+								
+								gameLogic->loadNearestHolders();
+								
+								gameFluid[E_FID_BIG]->cycleTerminated = false;
+								gameFluid[E_FID_BIG]->startFT();
+							}
 						}
-						
 						
 						
 						
@@ -27734,8 +28074,11 @@ void Singleton::frameUpdate ()
 					
 					
 					if ((currentTick > 4)&&allInit) {
+						
+						
 						//gw->drawPrim();
 						gw->update();
+						
 					}
 					
 					
@@ -27767,6 +28110,10 @@ void Singleton::updateCamShake ()
 		resultCameraPos.addXYZ(0.0f,0.0f,resultShake*0.5f);
 		
 		cameraShake += (0.0f - cameraShake)*timeDelta*8.0f;
+	}
+float Singleton::getTargetTimeOfDay ()
+                                   {
+		return (lightVecOrig.getFZ() + 1.0f)*0.5f;
 	}
 void Singleton::display ()
         {
@@ -27856,7 +28203,7 @@ void Singleton::display ()
 
 
 			lastTime = curTime;
-			timeOfDay += (targetTimeOfDay - timeOfDay) / 8.0;
+			timeOfDay += (getTargetTimeOfDay() - timeOfDay) / 8.0;
 
 			if (
 				lbDown &&
@@ -27919,7 +28266,7 @@ void Singleton::display ()
 					
 					fpsTest = false;
 					
-					cout << "Average Frame Time: " << (fpsTimer.getElapsedTimeInMilliSec()/((double)(fpsCountMax))) << "\n";
+					cout << "Average Frame Time: " << (fpsTimer.getElapsedTimeInMilliSec()*1000.0/((double)(fpsCountMax))) << "\n";
 					fpsTimer.stop();
 				}
 				
@@ -28066,6 +28413,55 @@ bool Singleton::gluInvertMatrix (double const (m) [16], float (invOut) [16])
 
 	    return true;
 	}
+int Singleton::getMatrixInd (int col, int row)
+                                           {
+		return col*4 + row;
+	}
+void Singleton::ComputeFOVProjection (float * result, float fov, float aspect, float nearDist, float farDist, bool leftHanded)
+          {
+	    //
+	    // General form of the Projection Matrix
+	    //
+	    // uh = Cot( fov/2 ) == 1/Tan(fov/2)
+	    // uw / uh = 1/aspect
+	    // 
+	    //   uw         0       0       0    	0  1  2  3
+	    //    0        uh       0       0    	4  5  6  7
+	    //    0         0      f/(f-n)  1    	8  9  10 11
+	    //    0         0    -fn/(f-n)  0   	12 13 14 15
+	    //
+	    // Make result to be identity first
+
+		int i;
+		int j;
+		
+		float val;
+		
+		for (i = 0; i < 4; i++) {
+			for (j = 0; j < 4; j++) {
+				
+				if (i == j) {
+					val = 1.0f;
+				}
+				else {
+					val = 0.0f;
+				}
+				
+				result[getMatrixInd(i,j)] = val;
+			}
+		}
+
+		
+	    float frustumDepth = farDist - nearDist;
+	    float oneOverDepth = 1 / frustumDepth;
+
+	    result[getMatrixInd(1,1)] = 1 / tan(0.5f * fov);
+	    result[getMatrixInd(0,0)] = (leftHanded ? 1 : -1 ) * result[getMatrixInd(1,1)] / aspect;
+	    result[getMatrixInd(2,2)] = farDist * oneOverDepth;
+	    result[getMatrixInd(3,2)] = (-farDist * nearDist) * oneOverDepth;
+	    result[getMatrixInd(2,3)] = 1;
+	    result[getMatrixInd(3,3)] = 0;
+	}
 void Singleton::setMatrices (int w, int h)
         {
 		int i;
@@ -28083,23 +28479,49 @@ void Singleton::setMatrices (int w, int h)
 				clipDist[0],
 				clipDist[1]
 			); //set the perspective (angle of sight, width, height, , depth)
+			
+			
+			// ComputeFOVProjection(
+			// 	projMatrix.get(),
+			// 	FOV,
+			// 	w/h,
+			// 	clipDist[0],
+			// 	clipDist[1],
+			// 	false
+			// );
+			
+			glGetFloatv(GL_PROJECTION_MATRIX, projMatrix.get());
+			
 			glMatrixMode (GL_MODELVIEW); //set the matrix back to model
 			
 			//*180.0f/M_PI / 180 * M_PI
 			
 			glLoadIdentity();
-			glRotatef(getCamRot(1)*180.0f/M_PI,1.0,0.0,0.0);
-			glRotatef(getCamRot(0)*180.0f/M_PI,0.0,0.0,1.0);
-			glTranslated(
-				-cameraGetPos()->getFX(),
-				-cameraGetPos()->getFY(),
-				-cameraGetPos()->getFZ()
+			
+			gluLookAt(
+				cameraPos->getFX(),
+				cameraPos->getFY(),
+				cameraPos->getFZ(),
+				cameraPos->getFX()+lookAtVec[0],
+				cameraPos->getFY()+lookAtVec[1],
+				cameraPos->getFZ()+lookAtVec[2],
+				0.0f,
+				0.0f,
+				1.0f
 			);
+			
+			// glRotatef(getCamRot(1)*180.0f/M_PI,0.0f,1.0f,0.0f);
+			// glRotatef(getCamRot(0)*180.0f/M_PI,0.0f,0.0f,1.0f);
+			// glTranslated(
+			// 	-cameraGetPos()->getFX(),
+			// 	-cameraGetPos()->getFY(),
+			// 	-cameraGetPos()->getFZ()
+			// );
 			
 			
 			
 			glGetFloatv(GL_MODELVIEW_MATRIX, viewMatrix.get());
-			glGetFloatv(GL_PROJECTION_MATRIX, projMatrix.get());
+			
 			
 			ptr1 = viewMatrix.get();
 			ptr2 = projMatrix.get();
@@ -28123,8 +28545,6 @@ void Singleton::setMatrices (int w, int h)
 			  (
 			  	2.0f / ((float)scaleFactor)	
 			  );
-			    
-			
 			
 			// lastW = -1; 
 			// lastH = -1;
@@ -28140,13 +28560,16 @@ void Singleton::setMatrices (int w, int h)
 			}
 			else {
 				glViewport(0, 0, w, h);
-				glMatrixMode(GL_PROJECTION);
-				glLoadIdentity();
-				glOrtho(-0.5, +0.5, -0.5, +0.5, 4.0, 15.0);
+				
 				glMatrixMode(GL_MODELVIEW);
 				glLoadIdentity ();
+				
 				glMatrixMode (GL_PROJECTION);
 				glLoadIdentity ();
+				
+				// glMatrixMode(GL_PROJECTION);
+				// glLoadIdentity();
+				// glOrtho(-0.5, +0.5, -0.5, +0.5, clipDist[0], clipDist[1]);
 				
 				lastW = w;
 				lastH = h;
@@ -28772,10 +29195,33 @@ int Shader::countOc (string * src, string testStr)
 		
 		return totCount;
 	}
-void Shader::init (string _shaderFile, bool doBake, map <string, string> * includeMap)
-                                                                                    {
+void Shader::init (string shaderName, bool doBake, map <string, string> * includeMap)
+                                                                                   {
+		
+		string shaderFN;
+		vector<string> shaderNameSplit;
+		
+		string defineString = "\n";
+		
+		if (
+			shaderName.find('_', 0) != std::string::npos
+		) {
+			shaderNameSplit = split(shaderName,'_');
+			shaderFN = shaderNameSplit[0];
+			
+			//cout << shaderName << "\n";
+		}
+		else {
+			shaderFN = shaderName;
+		}
 		
 		
+		string tempFileString = "";
+		string tempFileLoc = "";
+		
+		
+		string shaderRoot = "../src/glsl/";
+		string _shaderFile = shaderRoot + shaderFN + ".c";
 		
 		const char* shaderFile = _shaderFile.c_str();
 		
@@ -28786,6 +29232,7 @@ void Shader::init (string _shaderFile, bool doBake, map <string, string> * inclu
 		shader_vp = glCreateShader(GL_VERTEX_SHADER);
 		shader_fp = glCreateShader(GL_FRAGMENT_SHADER);
 	    
+	    std::size_t foundTF;
 	    
 		std::size_t found;
 		std::size_t found2;
@@ -28805,6 +29252,20 @@ void Shader::init (string _shaderFile, bool doBake, map <string, string> * inclu
 		string paramName;
 
 		int i;
+		
+		for (i = 1; i < shaderNameSplit.size(); i++) {
+			if (i == 1) {
+				defineString.append("#version ");
+			}
+			else {
+				defineString.append("#define ");
+			}
+			defineString.append(shaderNameSplit[i]);
+			defineString.append("\n");
+		}
+		
+		defineString.append("\n");
+		
 
 		const char* allText = textFileRead(shaderFile);
 
@@ -28827,6 +29288,60 @@ void Shader::init (string _shaderFile, bool doBake, map <string, string> * inclu
 				if (dolCount == 2) {
 					
 					uniCount = countOc(&allTextString,"ublock");
+
+
+					if (allTextString.find('^', 0) != std::string::npos) {
+						allTextStringInc = "";
+						allTextStringSplitInc = split(allTextString, '^');
+						
+						for (i = 0; i < allTextStringSplitInc.size(); i++) {
+							if (allTextStringSplitInc[i].compare("INCLUDE:MATERIALS") == 0) {
+								allTextStringInc.append((*includeMap)["materials"]);
+							}
+							else if (allTextStringSplitInc[i].compare("INCLUDE:PRIMTEMPLATES") == 0) {
+								allTextStringInc.append((*includeMap)["primTemplates"]);
+							}
+							else {
+							
+								foundTF = allTextStringSplitInc[i].find("INCLUDE:");
+								
+								if (foundTF != std::string::npos) {
+									tempFileLoc = allTextStringSplitInc[i].substr(foundTF+8,std::string::npos);
+									
+									//cout << "tempFileLoc " << tempFileLoc << "\n";
+									
+									tempFileString = singleton->loadFileString(shaderRoot+tempFileLoc+".c");
+									
+									if (tempFileString.size() > 2) {
+										
+										allTextStringInc.append(tempFileString);
+										
+									}
+									else {
+										cout << "Error loading " << shaderRoot+tempFileLoc+".c\n";
+									}
+									
+									
+								}
+								else {
+									allTextStringInc.append(allTextStringSplitInc[i]);
+								}
+							
+									// if (
+									// 	allTextStringSplitInc[i].find("INCLUDE:") != std::string::npos	
+									// ) {
+										
+										//singleton->loadFile(shaderRoot+,&tempFile)) {
+										
+									// }
+									// else {
+									// 	allTextStringInc.append(allTextStringSplitInc[i]);
+							}
+						}
+						
+						allTextString = allTextStringInc;
+					}
+
 
 
 					baseIndex = 0;
@@ -28892,29 +29407,29 @@ void Shader::init (string _shaderFile, bool doBake, map <string, string> * inclu
 					//###
 					
 					
-					if (allTextString.find('^', 0) != std::string::npos) {
-						allTextStringInc = "";
-						allTextStringSplitInc = split(allTextString, '^');
+					// if (allTextString.find('^', 0) != std::string::npos) {
+					// 	allTextStringInc = "";
+					// 	allTextStringSplitInc = split(allTextString, '^');
 						
-						for (i = 0; i < allTextStringSplitInc.size(); i++) {
-							if (allTextStringSplitInc[i].compare("INCLUDE:MATERIALS") == 0) {
-								allTextStringInc.append((*includeMap)["materials"]);
-							}
-							else if (allTextStringSplitInc[i].compare("INCLUDE:PRIMTEMPLATES") == 0) {
-								allTextStringInc.append((*includeMap)["primTemplates"]);
-							}
-							else {
-								allTextStringInc.append(allTextStringSplitInc[i]);
-							}
-						}
+					// 	for (i = 0; i < allTextStringSplitInc.size(); i++) {
+					// 		if (allTextStringSplitInc[i].compare("INCLUDE:MATERIALS") == 0) {
+					// 			allTextStringInc.append((*includeMap)["materials"]);
+					// 		}
+					// 		else if (allTextStringSplitInc[i].compare("INCLUDE:PRIMTEMPLATES") == 0) {
+					// 			allTextStringInc.append((*includeMap)["primTemplates"]);
+					// 		}
+					// 		else {
+					// 			allTextStringInc.append(allTextStringSplitInc[i]);
+					// 		}
+					// 	}
 						
-						allTextStringSplit = split(allTextStringInc, '$');
-					}
-					else {
-						allTextStringSplit = split(allTextString, '$');
-					}
+					// 	allTextStringSplit = split(allTextStringInc, '$');
+					// }
+					// else {
+					// 	allTextStringSplit = split(allTextString, '$');
+					// }
 					
-					
+					allTextStringSplit = split(allTextString, '$');
 					
 					
 					//###
@@ -28928,6 +29443,10 @@ void Shader::init (string _shaderFile, bool doBake, map <string, string> * inclu
 					
 					
 					allTextStringSplit[0].append("\n");
+					
+					allTextStringSplit[0] = defineString + allTextStringSplit[0];
+					
+					//allTextStringSplit[0].append(defineString);
 					
 					if (doBake) {
 						for (i = 0; i < paramVec.size(); i++) {
@@ -28952,7 +29471,7 @@ void Shader::init (string _shaderFile, bool doBake, map <string, string> * inclu
 					string fragStr = allTextStringSplit[0] + allTextStringSplit[2];
 
 					if (DO_SHADER_DUMP) {
-						if (_shaderFile.compare("../src/glsl/PrimShader.c") == 0) {
+						if (_shaderFile.compare("../src/glsl/TopoShader.c") == 0) {
 							globString = fragStr;
 						}
 					}
@@ -32849,18 +33368,21 @@ void GameGUI::renderQuadDirect (UIComponent * uiComp)
 		y0 = ((1.0f-y0) - 0.5f)*2.0f;
 		y1 = ((1.0f-y1) - 0.5f)*2.0f;
 
-		glBegin(GL_QUADS);
+		// glBegin(GL_QUADS);
 
-		glTexCoord2f(0.0f, 1.0f);
-		glVertex3f (  x0, y1, -1.0f );
-		glTexCoord2f(1.0f, 1.0f);
-		glVertex3f (  x1, y1, -1.0f );
-		glTexCoord2f(1.0f, 0.0f);
-		glVertex3f (  x1, y0, -1.0f );
-		glTexCoord2f(0.0f, 0.0f);
-		glVertex3f (  x0, y0, -1.0f );
+		// glTexCoord2f(0.0f, 1.0f);
+		// glVertex3f (  x0, y1, -1.0f );
+		// glTexCoord2f(1.0f, 1.0f);
+		// glVertex3f (  x1, y1, -1.0f );
+		// glTexCoord2f(1.0f, 0.0f);
+		// glVertex3f (  x1, y0, -1.0f );
+		// glTexCoord2f(0.0f, 0.0f);
+		// glVertex3f (  x0, y0, -1.0f );
 
-		glEnd();
+		// glEnd();
+		
+		singleton->setShaderVec4("blitCoords", x0,y0,x1,y1 );
+		singleton->fsQuad.draw();
 
 	}
 void GameGUI::runReport ()
@@ -34498,9 +35020,45 @@ void GameAI::getKB ()
 
 #include "f00337_gamefluid.e"
 #define LZZ_INLINE inline
+int GameFluid::getFluidId (int groupNum, int ind)
+                                              {
+		return fluidIds[fsVec[groupNum].fidBegInd + ind];
+	}
+int GameFluid::getFIDSize (int groupNum)
+                                     {
+		return fsVec[groupNum].fidEndInd - fsVec[groupNum].fidBegInd;
+	}
+void GameFluid::fidPushBack (int groupNum, int val)
+                                                {
+		fluidIds[fsVec[groupNum].fidEndInd] = val;
+		fsVec[groupNum].fidEndInd++;
+	}
+int * GameFluid::fidGetBeg (int groupNum)
+                                     {
+		return fluidIds + fsVec[groupNum].fidBegInd;
+	}
+int * GameFluid::fidGetEnd (int groupNum)
+                                     {
+		return fluidIds + fsVec[groupNum].fidEndInd;
+	}
+int GameFluid::getIdealCellId (int groupNum, int ind)
+                                                  {
+		return idealCellIds[fsVec[groupNum].iciBegInd + ind];
+	}
+int GameFluid::getICISize (int groupNum)
+                                     {
+		return fsVec[groupNum].iciEndInd - fsVec[groupNum].iciBegInd;
+	}
+void GameFluid::iciPushBack (int groupNum, int val)
+                                                {
+		idealCellIds[fsVec[groupNum].iciEndInd] = val;
+		fsVec[groupNum].iciEndInd++;
+	}
 GameFluid::GameFluid ()
                     {
 		
+		fluidChanged = false;
+		posShifted = false;
 		hasRead = false;
 		
 		UNIT_MIN = FLUID_UNIT_MIN;
@@ -34521,17 +35079,83 @@ GameFluid::GameFluid ()
 		watchMaxZ = -1;
 		
 	}
-void GameFluid::init (Singleton * _singleton)
-                                         {
+void GameFluid::init (Singleton * _singleton, int _mainId)
+                                                      {
+		int i;
+		
 		singleton = _singleton;
-		volSizePrim = singleton->volSizePrim;
+		mainId = _mainId;
+		
+		// qqqqqq
+		// WAS DOING: LEVEL OUT TOP OF WATER BY SEARCHING FOR WATER RIGHT BELOW TOP
+		// AND FILLING WITH ZERO VALUE WATER IF THERE IS
+		
+		//volSizes[E_FID_SML] = 64;
+		volSizes[E_FID_BIG] = DEF_VOL_SIZE;
+		mipSizes[E_FID_BIG] = 1;
+		
+		// volSizes[E_FID_MIP] = 256;
+		// mipSizes[E_FID_MIP] = 4;
+		
+		waterTick = 0;
+		waterTickMax = 32;
+		waterTickMaxDiv = 64;
+		waterTickReady = false;
+		
+		
+		
+		volSizePrim = volSizes[mainId]/mipSizes[mainId];
+		cellsPerBlock = singleton->cellsPerBlock;
+		cellsPerHolder = singleton->cellsPerHolder;
+		
+		readyForTermination = false;
+		cycleTerminated = false;
+		proceedingToRead = false;
+		fluidReading = false;
+		modifiedUnit = false;
+		modifiedGeom = false;
+		readyForTBOUpdate = false;
+		firstVPUpdate = true;
+		
+		internalPrimFormat = GL_RGBA;
+		precPrimFormat = GL_UNSIGNED_BYTE;
+		
+		curGeomCount = 0;
+		waterLerp = 0.0f;
+		primDiv = 4;
+		volSizePrimMacro = volSizePrim/primDiv;
+		primsPerMacro = 8;
+		floatsPerPrimEntry = 8;
+		floatsInPrimMacro = volSizePrimMacro*volSizePrimMacro*volSizePrimMacro*primsPerMacro*floatsPerPrimEntry;
+		
+		
+		
+		
+		
+		
+		threadLoader.init();
+		threadTex.init();
+		threadFluid.init();
+		
+		
+		camPosVP.setFXYZ(0.0f,0.0f,0.0f);
+		lastCamPosVP.setFXYZ(0.0f,0.0f,0.0f);//(-100.0f,-100.0f,-100.0f);
+		
+		
 		bufAmount = 1;
+		
+		if (mipSizes[mainId] > 1) {
+			bufAmount = 0;
+		}
+		
 		volSizePrimBuf = volSizePrim+bufAmount*2;
 		
 		forceFullRefresh = 2;
 		
-		curTick = 0;
-		maxTicks = 1;//volSizePrim/8;
+		shrinkCount = 0;
+		
+		//curTick = 0;
+		//maxTicks = 1;//volSizePrim/8;
 		
 		vspMin = bufAmount;
 		vspMax = volSizePrimBuf-bufAmount;
@@ -34539,24 +35163,958 @@ void GameFluid::init (Singleton * _singleton)
 		fluidData = new int[volSizePrimBuf*volSizePrimBuf*volSizePrimBuf*4];
 		extraData = new int[volSizePrimBuf*volSizePrimBuf*volSizePrimBuf*4];
 		
+		fluidIds = new int[volSizePrimBuf*volSizePrimBuf*volSizePrimBuf];
+		idealCellIds = new int[volSizePrimBuf*volSizePrimBuf*volSizePrimBuf];
+		
+		
 		totSize = volSizePrimBuf*volSizePrimBuf*volSizePrimBuf;
+		
+		
+		
+		for (i = 0; i < E_PL_LENGTH; i++) {
+			volDataPrim[i] = new uint[volSizePrim*volSizePrim*volSizePrim];
+		}
+		
+		//maxDirtyRegion();
+		
+		tboData = new float[floatsInPrimMacro];
+		
+		
+		
+		
+		setupPrimTexture();
+		
+	}
+void GameFluid::flushActionStack ()
+                                {
+		PushModStruct* curPM;
+		
+		
+		
+		while (pmStack.size() > 0) {
+			
+			cout << "flushActionStack()\n";
+			
+			curPM = &(pmStack.back());
+			
+			switch(curPM->actionType) {
+				case E_PM_EXPLODE_BULLET:
+					pushExplodeBullet(
+						false,
+						&(curPM->data[0]),
+						curPM->data[1].getIX()
+					);
+				break;
+				case E_PM_MODIFY_UNIT:
+					pushModifyUnit(
+						false,
+						&(curPM->data[0]),
+						curPM->data[1].getIX(),
+						curPM->data[1].getIY(),
+						curPM->data[1].getIZ()
+					);
+				break;
+				case E_PM_PLACE_TEMPLATE:
+					pushPlaceTemplate(false,&(curPM->data[0]), curPM->data[1].getIX());
+				break;
+			}
+			
+			pmStack.pop_back();
+		}
+	}
+void GameFluid::pushExplodeBullet (bool isReq, FIVector4 * newPos, int waterBulletOn)
+                                                                                 {
+		
+		
+		if (isReq) {
+			pmStack.push_back(PushModStruct());
+			pmStack.back().actionType = E_PM_EXPLODE_BULLET;
+			pmStack.back().data[0].copyFrom(newPos);
+			pmStack.back().data[1].setIX(waterBulletOn);
+			return;
+		}
+		
+		if (waterBulletOn > 0) {
+			modifyUnit(newPos, E_BRUSH_ADD, E_PTT_WAT, explodeRad);
+		}
+		else {
+			modifyUnit(newPos, E_BRUSH_SUB, E_PTT_TER, explodeRad);
+		}
+		
+		modifiedUnit = true;
+		
+		
+	}
+void GameFluid::pushModifyUnit (bool isReq, FIVector4 * mp, int buttonNum, int earthMod, int curBrushRad)
+                                                                                                     {
+		
+		cout << "pushModifyUnit " << isReq << "\n";
+		
+		if (isReq) {
+			pmStack.push_back(PushModStruct());
+			pmStack.back().actionType = E_PM_MODIFY_UNIT;
+			pmStack.back().data[0].copyFrom(mp);
+			pmStack.back().data[1].setIXYZ(buttonNum,earthMod,curBrushRad);
+			return;
+		}
+		
+		//bool lbClicked, bool rbClicked, bool mbClicked
+		
+		switch (buttonNum) {
+			case 0: //lb
+				modifyUnit(mp, E_BRUSH_ADD, earthMod, curBrushRad);
+			break;	
+			case 1: //rb
+				modifyUnit(mp, E_BRUSH_SUB, earthMod, curBrushRad);
+			break;	
+			case 2: //mb
+				modifyUnit(mp, E_BRUSH_REF, earthMod, curBrushRad);
+			break;	
+		}
+		
+		modifiedUnit = true;
+		
+		
+		
+		
+	}
+void GameFluid::pushPlaceTemplate (bool isReq, FIVector4 * newPos, int pt)
+                                                                      {
+		
+		if (isReq) {
+			pmStack.push_back(PushModStruct());
+			pmStack.back().actionType = E_PM_PLACE_TEMPLATE;
+			pmStack.back().data[0].copyFrom(newPos);
+			pmStack.back().data[1].setIX(pt);
+			return;
+		}
+		
+		addGeom(newPos,pt);
+		
+		modifiedGeom = true;
+		
+		
+	}
+bool GameFluid::addPrimObj (FIVector4 * pos, int tempId, int uid)
+                                                             {
+		int baseInd = tempId*E_PRIMTEMP_LENGTH;
+		int i;
+		int j;
+		int k;
+		int m;
+		int ind;
+		float fPrimDiv = 1.0f/primDiv;
+		//float cornerDis = singleton->primTemplateStack[baseInd+E_PRIMTEMP_CORNERDIS].getFX();
+		
+		tempBoundsMin.copyFrom(&(singleton->primTemplateStack[baseInd+E_PRIMTEMP_VISMIN]));
+		tempBoundsMax.copyFrom(&(singleton->primTemplateStack[baseInd+E_PRIMTEMP_VISMAX]));
+		
+		tempBoundsMin.addXYZRef(pos);
+		tempBoundsMax.addXYZRef(pos);
+		
+		tempBoundsMin.addXYZRef(&volMinReadyInPixels,-1.0f);
+		tempBoundsMax.addXYZRef(&volMinReadyInPixels,-1.0f);
+		
+		//tempBoundsMin.addXYZ(-volSizePrim/2);
+		//tempBoundsMax.addXYZ(-volSizePrim/2);
+		
+		
+		
+		//tempBoundsMin.addXYZ(-cornerDis);
+		//tempBoundsMax.addXYZ(cornerDis);
+		
+		tempBoundsMin.multXYZ(fPrimDiv);
+		tempBoundsMax.multXYZ(fPrimDiv);
+		
+		//tempBoundsMin.intDivXYZ(primDiv);
+		//tempBoundsMax.intDivXYZ(primDiv);
+		
+		
+		
+		// tempBoundsMin.addXYZ(0.0f, 0.0f, 2.0f);
+		// tempBoundsMax.addXYZ(0.0f, 0.0f, 2.0f);
+		
+		
+		
+		int iMin = max(tempBoundsMin[0],0.0f);
+		int jMin = max(tempBoundsMin[1],0.0f);
+		int kMin = max(tempBoundsMin[2],0.0f);
+		
+		int iMax = min(tempBoundsMax[0],volSizePrimMacro-1.0f);
+		int jMax = min(tempBoundsMax[1],volSizePrimMacro-1.0f);
+		int kMax = min(tempBoundsMax[2],volSizePrimMacro-1.0f);
+		
+		bool wasAdded = false;
+		
+		for (i = iMin; i <= iMax; i++) {
+			for (j = jMin; j <= jMax; j++) {
+				for (k = kMin; k <= kMax; k++) {
+					for (m = 0; m < primsPerMacro; m++) {
+						
+						ind = (
+							(
+								i +
+								j*volSizePrimMacro +
+								k*volSizePrimMacro*volSizePrimMacro
+							)*primsPerMacro + m
+						)*floatsPerPrimEntry;
+						
+						if (tboData[ind+3] == 0.0f) {
+							
+							wasAdded = true;
+							
+							tboData[ind+0] = pos->getFX();
+							tboData[ind+1] = pos->getFY();
+							tboData[ind+2] = pos->getFZ();
+							tboData[ind+3] = tempId;
+							
+							tboData[ind+4] = 0;//diagCount;//;
+							tboData[ind+5] = uid + 1; // uid of 0 results in blank object
+							tboData[ind+6] = 0.0f;
+							tboData[ind+7] = 0.0f;
+							
+							break;
+						}
+					}
+				}
+			}
+		}
+		
+		return wasAdded;
+	}
+void GameFluid::addGeom (FIVector4 * newPos, int templateId)
+                                                        { //FIVector4* pos, FIVector4* offset
+		
+		FIVector4 camBlockPos;
+		GameBlock* curBlock;
+		
+		
+		
+		camBlockPos.copyFrom(newPos);
+		camBlockPos.intDivXYZ(cellsPerBlock);
+		
+		curBlock = singleton->gw->getBlockAtCoords(
+			camBlockPos.getIX(),
+			camBlockPos.getIY(),
+			camBlockPos.getIZ(),
+			true
+		);
+		
+		curBlock->gameEnts[E_ET_GEOM].data.push_back(GameEnt());
+		
+		GameEnt* gameEnt = &(curBlock->gameEnts[E_ET_GEOM].data.back());
+		
+		gameEnt->templateId = templateId;
+		gameEnt->templatePos.copyFrom(newPos);
+	}
+void GameFluid::fetchGeom ()
+                         {
+		
+		
+		int i;
+		int j;
+		int k;
+		
+		int m;
+		
+		GameBlock* curBlock;
+		GameEnt* gameEnt;
+		FIVector4 start;
+		FIVector4 end;
+		FIVector4 avg;
+
+		
+		
+		int geomCount = 0;
+		int tempId;
+		
+		FIVector4 camBlockPos;
+		
+		camBlockPos.averageXYZ(&volMinReadyInPixels,&volMaxReadyInPixels);
+		camBlockPos.intDivXYZ(cellsPerBlock);
+		
+		for (i = -1; i <= 1; i++) {
+			for (j = -1; j <= 1; j++) {
+				for (k = -1; k <= 1; k++) {
+					
+					
+					curBlock = singleton->gw->getBlockAtCoords(
+						camBlockPos.getIX()+i,
+						camBlockPos.getIY()+j,
+						camBlockPos.getIZ()+k,
+						true
+					);
+
+					for (m = 0; m < curBlock->gameEnts[E_ET_GEOM].data.size(); m++) {
+
+						gameEnt = &(curBlock->gameEnts[E_ET_GEOM].data[m]);
+
+						tempId = gameEnt->templateId;
+						
+
+						//start.copyFrom( &(gameEnt->moveMinInPixels) );
+						//end.copyFrom( &(gameEnt->moveMaxInPixels) );
+
+						//start.clampZ(0.0,worldSizeInCells.getFZ()-1.0f);
+						//end.clampZ(0.0,worldSizeInCells.getFZ()-1.0f);
+						
+						
+						
+
+						//if (FIVector4::intersect(&start,&end,&volMinReadyInPixels,&volMaxReadyInPixels)) {
+							
+							//avg.averageXYZ(&start,&end);
+							
+							if( addPrimObj(&(gameEnt->templatePos), tempId, geomCount) ) {
+								geomCount++;
+							}
+							
+							
+						//}
+					}
+						
+				}
+			}
+		}
+		
+		curGeomCount = geomCount;
+		
+		//cout << geomCount << " <-- geomCount\n";
+
+
+		
+	}
+void GameFluid::setupPrimTexture ()
+                                {
+		int i;
+
+		
+
+		for (i = 0; i < E_PL_LENGTH; i++) {
+			
+			
+			glGenTextures(1, &(volIdPrim[i]));
+			
+			//cout << "vp " << volIdPrim[i] << "\n";
+			
+			glBindTexture(GL_TEXTURE_3D, volIdPrim[i]);
+			glTexImage3D(
+				GL_TEXTURE_3D,
+				0,
+				internalPrimFormat, //GL_RGBA, // GL_RGBA32F
+				volSizePrim,
+				volSizePrim,
+				volSizePrim,
+				0,
+				GL_RGBA,
+				precPrimFormat, // GL_UNSIGNED_BYTE, // GL_FLOAT
+				0
+			);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			//glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); //GL_CLAMP_TO_BORDER
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+			glBindTexture(GL_TEXTURE_3D, 0);
+			
+			
+		}
+		
+		
+	}
+bool GameFluid::tryToEndRead ()
+                            {
+		
+		
+		if (threadLoader.isReady()) {
+			
+			
+			stopTL();
+			endFluidRead();
+			//cycleTerminated = false;
+			
+			
+			//if (mainId == E_FID_SML) {
+			//	startFT();
+			//}
+			
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+bool GameFluid::anyThreadsRunning ()
+                                 {
+		return threadLoader.threadRunning||threadTex.threadRunning||threadFluid.threadRunning;
+	}
+bool GameFluid::updateAll ()
+                         {
+		
+		
+		if (cycleTerminated) {
+			
+			return true;
+		}
+		
+		waterTick++;		
+		if (waterTick == waterTickMax) {
+			waterTickReady = true;	
+		}
+		
+		if (waterTick > waterTickMaxDiv) {
+			waterTick = waterTickMaxDiv;
+		}
+		
+		waterLerp = ((float)waterTick)/((float)waterTickMaxDiv);
+		
+		
+		
+		
+		//cout << "still going " << mainId << "\n";
+		
+		
+		if (fluidReading) {
+			
+		}
+		else {
+			/////////
+			
+			if (threadTex.threadRunning) {
+				
+			}
+			else {
+				
+				
+				
+				
+				
+				if (waterTickReady) {
+					
+					
+					
+					if (threadFluid.isReady()) {
+						
+						waterTickReady = false;
+						
+						stopFT();
+						
+						// cout << "\n\nimmobileHeight " << immobileHeight << "\n";
+						// cout << "maxWaterHeight " << maxWaterHeight << "\n\n";
+						
+						flushActionStack();
+						
+						if (modifiedUnit) {
+							applyMods();
+						}
+						
+						if (modifiedGeom) {	
+							fillAllGeom();
+							updateTBOData(false,false);
+						}
+						
+						if (modifiedUnit||modifiedGeom) {
+							//singleton->refreshPaths = true;
+						}
+						
+						//DirtyRegion
+						if (modifiedUnit||modifiedGeom||fluidChanged) {
+							
+							if (fluidChanged) {
+								cout << "fluidChanged (max/imobile)" << maxWaterHeight << " " << immobileHeight << "\n";
+							}
+							
+							
+							if (hasRead&&(!firstVPUpdate)) {
+								writeMIP.copyFrom(&volMinInPixels); //volMinInPixels
+								
+								//if (mainId == E_FID_SML) {
+									singleton->gameLogic->threadPoolPath->stopAll();
+									singleton->gameLogic->threadPoolList->stopAll();
+									writeFluidData();
+								//}
+								
+							}
+							
+						}
+							
+						modifiedUnit = false;
+						modifiedGeom = false;
+						
+						forceFullRefresh = 1; // todo: should not require this?
+						
+						startTT();
+					}
+				}
+			}
+			
+			
+			if (threadFluid.threadRunning) {
+				
+			}
+			else {
+				
+				
+				if (threadTex.isReady()) {
+					stopTT();
+					
+					
+					volMinReadyInPixels.copyFrom(&volMinInPixels);
+					volMaxReadyInPixels.copyFrom(&volMaxInPixels);
+					
+					if (readyForTBOUpdate) {
+						readyForTBOUpdate = false;
+						fetchGeom();
+						tboWrapper.update(tboData);
+					}
+					
+					waterTick = 0;
+					waterLerp = ((float)waterTick)/((float)waterTickMaxDiv);
+					
+					//if (mainId == E_FID_BIG) {
+						copyPrimTexture(
+							0,
+							0,
+							0,
+							volSizePrim,
+							&(volDataPrim[0])
+						);
+					//}
+					
+					
+					curDirtyMax.copyFrom(&(dirtyMax));
+					curDirtyMin.copyFrom(&(dirtyMin));
+					curWaterMin.copyFrom(&tempMin2);
+					curWaterMax.copyFrom(&tempMax2);
+					//curWaterMin.addXYZRef(&volMinReadyInPixels);
+					//curWaterMax.addXYZRef(&volMinReadyInPixels);
+					//shrinkDirtyRegion();
+					resetDirtyRegion();
+					
+					
+					shiftRegion();
+					
+					if (fluidReading) {
+						
+					}
+					else {
+						terminateCycle();
+					}
+				}
+				
+				
+				
+			}
+			
+			////////////////
+		}
+		return false;
+	}
+void GameFluid::copyPrimTexture (int ox, int oy, int oz, int dim, uint * * myData)
+                                                                             {
+		
 		
 		int i;
 		
 		for (i = 0; i < E_PL_LENGTH; i++) {
 			
-			volDataPrim[i] = new uint[volSizePrim*volSizePrim*volSizePrim];
+			
+			glBindTexture(GL_TEXTURE_3D, volIdPrim[i]);
+			glTexSubImage3D(
+				GL_TEXTURE_3D,
+				0,
+
+				ox,
+				oy,
+				oz,
+
+				dim,
+				dim,
+				dim,
+
+				GL_RGBA,
+				precPrimFormat, //GL_UNSIGNED_BYTE,
+
+				myData[i]
+			);
+			glBindTexture(GL_TEXTURE_3D, 0);
+		}
+		
+		//singleton->depthInvalidMove = true;
+		
+	}
+void GameFluid::fillAllGeom ()
+                           {
+		
+		clearAllGeom();
+		
+		int i;
+		int j;
+		int k;
+		
+		int m;
+		
+		GameBlock* curBlock;
+		GameEnt* gameEnt;
+		FIVector4 start;
+		FIVector4 end;
+		FIVector4 avg;
+
+		
+		
+		int geomCount = 0;
+		int tempId;
+		
+		FIVector4 camBlockPos;
+		
+		camBlockPos.averageXYZ(&volMinReadyInPixels,&volMaxReadyInPixels);
+		camBlockPos.intDivXYZ(cellsPerBlock);
+		
+		int baseInd;
+		
+		
+		for (i = -1; i <= 1; i++) {
+			for (j = -1; j <= 1; j++) {
+				for (k = -1; k <= 1; k++) {
+					
+					curBlock = singleton->gw->getBlockAtCoords(
+						camBlockPos.getIX()+i,
+						camBlockPos.getIY()+j,
+						camBlockPos.getIZ()+k,
+						true
+					);
+
+					for (m = 0; m < curBlock->gameEnts[E_ET_GEOM].data.size(); m++) {
+
+						gameEnt = &(curBlock->gameEnts[E_ET_GEOM].data[m]);
+
+						tempId = gameEnt->templateId;
+						baseInd = tempId*E_PRIMTEMP_LENGTH;
+
+						start.copyFrom(&(singleton->primTemplateStack[baseInd+E_PRIMTEMP_VISMIN]));
+						end.copyFrom(&(singleton->primTemplateStack[baseInd+E_PRIMTEMP_VISMAX]));
+						start.addXYZRef(&(gameEnt->templatePos));
+						end.addXYZRef(&(gameEnt->templatePos));
+						
+						
+
+						if (FIVector4::intersect(&start,&end,&volMinReadyInPixels,&volMaxReadyInPixels)) {
+							
+							//cout << "fillCurrentGeom" << tempId;
+							
+							fillCurrentGeom(tempId, &(gameEnt->templatePos));
+							
+							// baseInd = curPrimTemplate*E_PRIMTEMP_LENGTH;
+							
+							// for (j = 0; j < E_PRIMTEMP_LENGTH; j++) {
+							// 	setFXYZWGeom(j, &(singleton->primTemplateStack[baseInd+j]) );
+							// }
+							
+						}
+					}
+				}
+				
+				
+			}
+		}
+		
+		
+		clearInsideValues();
+		
+	}
+void GameFluid::updateTBOData (bool firstTime, bool reloadTemplates)
+                                                                 {
+		int i;
+		int ind;
+		
+		// if (mainId == E_FID_SML) {
+		// 	// no need to update geometry visuals for small buffer
+		// 	return;
+		// }
+		
+		
+		if (firstTime||reloadTemplates) {
+			if (singleton->getPrimTemplateString()) {
+				
+			}
+			else {
+				return;
+			}
+		}
+		
+		int totCount = 0;
+		
+		
+		// clear tbo data
+		
+		for (i = 0; i < floatsInPrimMacro/floatsPerPrimEntry; i++) {
+			
+			ind = i*floatsPerPrimEntry;
+			
+			tboData[ind + 0] = 0.0f;
+			tboData[ind + 1] = 0.0f;
+			tboData[ind + 2] = 0.0f;
+			tboData[ind + 3] = 0.0f;
+			
+			tboData[ind + 4] = 0.0f;
+			tboData[ind + 5] = 0.0f;
+			tboData[ind + 6] = 0.0f;
+			tboData[ind + 7] = 0.0f;
 			
 		}
 		
-		lastDirtyMax.setFXYZ(vspMin);
-		lastDirtyMin.setFXYZ(vspMax);
-		maxDirtyRegion();
+		
+		
+		if (firstTime) {
+			tboWrapper.init(tboData,floatsInPrimMacro*4);
+		}
+		else {
+			readyForTBOUpdate = true;
+		}
+		
+	}
+void GameFluid::terminateCycle ()
+                              {
+		readyForTermination = true;
+	}
+void GameFluid::beginFluidRead (FIVector4 * _campPosVPDump)
+                                                       {
+		
+		//fdWritePos = 0;
+		//fdReadPos = 0;
+		
+		//cout << "pos change " << mainId << "\n";
+		fluidReading = true;
+		campPosVPDump.copyFrom(_campPosVPDump);
+		terminateCycle();
+	}
+void GameFluid::proceedWithRead ()
+                               {
+		
+		
+		proceedingToRead = true;
+		//
+		camPosVPInPixels.copyFrom( &campPosVPDump );
+		camPosVPInPixels.multXYZ( cellsPerHolder );
+		volMinInPixels.copyFrom( &camPosVPInPixels );
+		volMaxInPixels.copyFrom( &camPosVPInPixels );
+		volMaxInPixels.addXYZ(volSizePrim);				
+		//
+		
+		
+		
+		readMIP.copyFrom(&volMinInPixels);
+		
+		singleton->gameLogic->threadPoolPath->stopAll();
+		singleton->gameLogic->threadPoolList->stopAll();
+		prereadFluidData();
+		
+		
+		startTL();
+		
+	}
+void GameFluid::endFluidRead ()
+                            {
+		
+		
+		
+		//cout << "pos change end " << mainId << "\n";
+		fluidReading = false;
+		proceedingToRead = false;
+		
+		
+		updateTBOData(false,false);
+		lastCamPosVP.setFXYZRef(&campPosVPDump);
+		
+		if (firstVPUpdate) {
+			firstVPUpdate = false;
+			volMinReadyInPixels.copyFrom(&volMinInPixels);
+			volMaxReadyInPixels.copyFrom(&volMaxInPixels);
+		}
+		
+		hasRead = true;
+		posShifted = true;
 		
 		
 	}
+void GameFluid::shiftRegion ()
+                           {
+		
+		
+		bool notThirdPerson = (singleton->currentActor == NULL);// ||singleton->firstPerson;
+		
+		if (notThirdPerson) {
+			newCamPos.copyFrom(singleton->cameraPos);
+		}
+		else {
+			newCamPos.copyFrom(&(singleton->currentActor->centerPointInPixels));
+		}
+		
+		if (notThirdPerson&&(volSizePrim < 512)) { // && (mainId==E_FID_SML)
+			newCamPos.addXYZRef(&singleton->lookAtVec,volSizePrim*0.4f);
+		}
+		
+		camPosVP.copyFrom(&newCamPos);
+		camPosVP.addXYZ(-volSizePrim*0.5f + cellsPerHolder*0.5f);
+		
+		
+		
+		camPosVP.intDivXYZ(cellsPerHolder);
+		
+		
+		
+		
+		
+		if (
+			camPosVP.iNotEqual(&lastCamPosVP) && 
+			(lastCamPos.distance(&newCamPos) > cellsPerHolder/16.0f)
+		) {
+			lastCamPos.copyFrom(&newCamPos);
+			forceFullRefresh = 1;
+			
+			
+			
+			beginFluidRead(&camPosVP);
+			
+		}
+		
+	}
+void GameFluid::funcFT ()
+                      {
+		threadFluid.setRunningLocked(true);
+		//if (mainId==E_FID_SML) {
+			fluidChanged = updateFluidData();
+		//}
+		
+		threadFluid.setRunningLocked(false);
+	}
+void GameFluid::startFT ()
+                       {
+		if (threadFluid.threadRunning) {
+			
+		}
+		else {
+			threadFluid.threadRunning = true;
+			
+			if (SINGLE_THREADED) {
+				funcFT();
+			}
+			else {
+				threadFluid.threadMain = std::thread(&GameFluid::funcFT, this);
+			}
+			
+			
+		}
+		
+	}
+bool GameFluid::stopFT ()
+                      {
+		bool didStop = false;
+		
+		if (threadFluid.threadRunning) {
+			
+			if (SINGLE_THREADED) {
+				
+			}
+			else {
+				threadFluid.threadMain.join();
+			}
+			
+			threadFluid.threadRunning = false;
+			didStop = true;
+		}
+		return didStop;
+	}
+void GameFluid::funcTL ()
+                      {
+		threadLoader.setRunningLocked(true);
+		readFluidData();
+		threadLoader.setRunningLocked(false);
+	}
+void GameFluid::startTL ()
+                       {
+		if (threadLoader.threadRunning) {
+			
+		}
+		else {
+			
+			threadLoader.threadRunning = true;
+			
+			if (SINGLE_THREADED) {
+				funcTL();
+			}
+			else {
+				threadLoader.threadMain = std::thread(&GameFluid::funcTL, this);
+			}
+			
+		}
+		
+	}
+bool GameFluid::stopTL ()
+                      {
+		bool didStop = false;
+		if (threadLoader.threadRunning) {
+			
+			if (SINGLE_THREADED) {
+				
+			}
+			else {
+				threadLoader.threadMain.join();
+			}
+			
+			threadLoader.threadRunning = false;
+			didStop = true;
+		}
+		return didStop;
+	}
+void GameFluid::funcTT ()
+                      {
+		threadTex.setRunningLocked(true);
+		getPrimData(0);
+		threadTex.setRunningLocked(false);
+	}
+void GameFluid::startTT ()
+                       {
+		if (threadTex.threadRunning) {
+			
+		}
+		else {
+			
+			threadTex.threadRunning = true;
+			
+			if (SINGLE_THREADED) {
+				funcTT();
+			}
+			else {
+				threadTex.threadMain = std::thread(&GameFluid::funcTT, this);
+			}
+			
+		}
+		
+	}
+bool GameFluid::stopTT ()
+                      {
+		bool didStop = false;
+		if (threadTex.threadRunning) {
+			
+			if (SINGLE_THREADED) {
+				
+			}
+			else {
+				threadTex.threadMain.join();
+			}
+			
+			threadTex.threadRunning = false;
+			didStop = true;
+		}
+		return didStop;
+	}
 void GameFluid::getPrimData (int n)
                                 {
+		
+		// gggg
+		
 		//cout << "start\n";
 		
 		int i;
@@ -34568,6 +36126,11 @@ void GameFluid::getPrimData (int n)
 		uint v1;
 		uint v2;
 		uint v3;
+		
+		uint maxVal = 255;
+		
+		int indAbove;
+		int indBelow;
 		
 		int indSrc;
 		int indDest;
@@ -34598,10 +36161,25 @@ void GameFluid::getPrimData (int n)
 		switch (n) {
 			case E_PL_TERRAIN:
 				
+				// for (i = 0; i < totSize; i++) {
+				// 	indSrc = i*4;
+					
+				// 	fluidData[indSrc+E_PTT_LST] += (fluidData[indSrc+E_PTT_LST] - fluidData[indSrc+E_PTT_WAT])/16;
+					
+				// 	if (fluidData[indSrc+E_PTT_LST] > fluidData[indSrc+E_PTT_WAT]) {
+				// 		fluidData[indSrc+E_PTT_LST]--;
+				// 	}
+				// 	if (fluidData[indSrc+E_PTT_LST] < fluidData[indSrc+E_PTT_WAT]) {
+				// 		fluidData[indSrc+E_PTT_LST]++;
+				// 	}
+				// }
+				
 				for (i = iMin; i < iMax; i++) {
 					for (j = jMin; j < jMax; j++) {
 						for (k = kMin; k < kMax; k++) {
 							indSrc = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
+							//indAbove = indSrc+volSizePrimBuf*volSizePrimBuf*4;
+							//indBelow = indSrc-volSizePrimBuf*volSizePrimBuf*4;
 							indDest = ((i-bufAmount) + (j-bufAmount)*volSizePrim + (k-bufAmount)*volSizePrim*volSizePrim);
 							
 							v0 = ((fluidData[indSrc+0]+1)*255)/NEW_UNIT_MAX;
@@ -34609,11 +36187,36 @@ void GameFluid::getPrimData (int n)
 							v2 = ((fluidData[indSrc+2]+1)*255)/NEW_UNIT_MAX;
 							v3 = ((fluidData[indSrc+3]+1)*255)/NEW_UNIT_MAX;
 							
+							
+							// if (
+							// 	(fluidData[indAbove+1] == -1) &&
+							// 	(fluidData[indBelow+1] > -1)
+							// ) {
+							// 	v1 = 0;
+							// }
+							// if (
+							// 	(fluidData[indAbove+2] == -1) &&
+							// 	(fluidData[indBelow+2] > -1)
+							// ) {
+							// 	v2 = 0;
+							// }
+							
+							
+							if (v1 != 0) {
+								v1 = (v1+510)/3;
+							}
+							if (v2 != 0) {
+								v2 = (v2+510)/3;
+							}
+							
+							v1 = min(v1,maxVal);
+							v2 = min(v2,maxVal);
+							
 							vdpPtr[indDest] = 
-								(v0) |
-								(v1 << 8) |
-								(v2 << 16) |
-								(v3 << 24);
+								 (v0) |
+								((v1) << 8) |
+								((v2) << 16) |
+								((v3) << 24);
 								
 							
 							
@@ -34631,22 +36234,16 @@ void GameFluid::getPrimData (int n)
 		}
 		//cout << "end\n\n";
 	}
-bool GameFluid::writeFluidData (int writePosStart, int writePosEnd, bool writeDirty)
-                                                                                 {
+void GameFluid::writeFluidData ()
+                              {
 		int i;
 		int j;
 		int k;
 		
 		int ind;
 		
-		if (writePosStart >= vspMax) {
-			return true;
-		}
+		//cout << "writeFluidData " << mainId << "\n";
 		
-		
-		//tempMin.copyFrom(&lastDirtyMin);
-		//tempMax.copyFrom(&lastDirtyMax);
-		//FIVector4::growBoundary(&tempMin,&tempMax,&dirtyMin,&dirtyMax);
 		
 		tempMin.copyFrom(&dirtyMin);
 		tempMax.copyFrom(&dirtyMax);
@@ -34660,27 +36257,13 @@ bool GameFluid::writeFluidData (int writePosStart, int writePosEnd, bool writeDi
 		
 		
 		
-		if (writeDirty) {
-			
-		}
-		else {
-			iMin = vspMin;
-			iMax = vspMax;
-			jMin = vspMin;
-			jMax = vspMax;
-			kMin = writePosStart;
-			kMax = writePosEnd;
-		}
+		int ox = writeMIP.getIX();
+		int oy = writeMIP.getIY();
+		int oz = writeMIP.getIZ();
 		
-		bool endGreater = (writePosEnd >= vspMax);
-		
-		int ox = singleton->volMinInPixels.getIX();
-		int oy = singleton->volMinInPixels.getIY();
-		int oz = singleton->volMinInPixels.getIZ();
-		
+		//bool doFW = (mainId == E_FID_SML);
 		
 		if (hasRead) {
-			
 			
 			for (k = kMin; k < kMax; k++) {
 				
@@ -34691,27 +36274,18 @@ bool GameFluid::writeFluidData (int writePosStart, int writePosEnd, bool writeDi
 						
 						ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
 												
-						singleton->gw->setCellAtCoords(
+						singleton->gw->setArrAtCoords(
 							i-bufAmount+ox,
 							j-bufAmount+oy,
 							k-bufAmount+oz,
-							ind,
-							fluidData,
-							extraData
-							
+							//ind,
+							&(fluidData[ind]),
+							&(extraData[ind])
+							//,doFW
 						);
-						
-						
 					}
-					
-					
 				}	
 			}
-			
-			return endGreater||writeDirty;
-		}
-		else {
-			return true;
 		}
 	}
 void GameFluid::prereadFluidData ()
@@ -34724,17 +36298,19 @@ void GameFluid::prereadFluidData ()
 		int k;
 		int q;
 		
-		int ox = singleton->volMinInPixels.getIX()/singleton->cellsPerHolder;
-		int oy = singleton->volMinInPixels.getIY()/singleton->cellsPerHolder;
-		int oz = singleton->volMinInPixels.getIZ()/singleton->cellsPerHolder;
+		int ox = readMIP.getIX()/cellsPerHolder;
+		int oy = readMIP.getIY()/cellsPerHolder;
+		int oz = readMIP.getIZ()/cellsPerHolder;
 		
-		int maxVal = (volSizePrimBuf/singleton->cellsPerHolder) + 1;
+		int maxVal = (volSizePrimBuf/cellsPerHolder) + 2;
 		
-		for (k = -1; k < maxVal; k++) {
+		
+		
+		for (k = -2; k < maxVal; k++) {
 			
-			for (j = -1; j < maxVal; j++) {
+			for (j = -2; j < maxVal; j++) {
 				
-				for (i = -1; i < maxVal; i++) {
+				for (i = -2; i < maxVal; i++) {
 					
 					
 					curHolder = singleton->gw->getHolderAtCoords(
@@ -34749,32 +36325,17 @@ void GameFluid::prereadFluidData ()
 					}
 					else {
 						
-						if (singleton->threadPoolCount == MAX_THREADS) {
-							
-							//cout << "joining threadPool\n";
-							
-							for (q = 0; q < MAX_THREADS; q++) {
-								singleton->stopTP(i);
-							}
-							singleton->threadPoolCount = 0;
-						}
-						
-						singleton->threadPool[singleton->threadPoolCount].threadDataInt[0] = curHolder->blockId;
-						singleton->threadPool[singleton->threadPoolCount].threadDataInt[1] = curHolder->holderId;
-						
-						singleton->startTP(singleton->threadPoolCount);
-						
-						
-						
-						singleton->threadPoolCount++;
+						curHolder->genCellData();
 						
 					}
-					
 				}
-				
-				
 			}
 		}
+		
+		
+		
+		
+		
 	}
 void GameFluid::readFluidData ()
                              {
@@ -34813,7 +36374,8 @@ void GameFluid::readFluidData ()
 					
 					ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
 					
-					singleton->gw->getCellAtCoords(
+					singleton->gw->getArrAtCoords(
+						2,
 						(i-bufAmount)+readMIP.getIX(),
 						(j-bufAmount)+readMIP.getIY(),
 						(k-bufAmount)+readMIP.getIZ(),
@@ -34842,8 +36404,22 @@ void GameFluid::applyMods ()
 			modStack.pop_back();
 		}
 	}
-void GameFluid::updateFluidData ()
+bool GameFluid::passesCheck (int n)
+                                {
+		
+		// true; // 
+		return (getICISize(n) != 0); //fsVec[n].idealCellIds.size()
+	}
+bool GameFluid::updateFluidData ()
                                {
+		
+		// rrrr
+		
+		//maxDirtyRegion(); // todo: utilize dirty regions instad?
+		
+		int indAbove;
+		int indBelow;
+		int indSrc;
 		
 		int i;
 		int j;
@@ -34911,6 +36487,7 @@ void GameFluid::updateFluidData ()
 		float disFromBot;
 		float spanZ;
 		float minZ;
+		float maxZ;
 		
 		float maxDif = 1.0f/4.0f;// /8.0f;
 		
@@ -34922,15 +36499,16 @@ void GameFluid::updateFluidData ()
 		
 		bool isInBounds;
 		
-		int minV0 = min( ((curTick)*totSize)/maxTicks, totSize-1 );
-		int minV1 = min( ((curTick+1)*totSize)/maxTicks, totSize-1 );
+		int minV0 = 0;//min( ((curTick)*totSize)/maxTicks, totSize-1 );
+		int minV1 = totSize;//min( ((curTick+1)*totSize)/maxTicks, totSize-1 );
+		
 		
 		
 		if (hasRead) {
 			
 		}
 		else {
-			return;
+			return false;
 		}
 		
 		
@@ -34943,10 +36521,10 @@ void GameFluid::updateFluidData ()
 				fluidData[ind*4+E_PTT_LST] = fluidData[ind*4+E_PTT_WAT];
 			}
 			
-			for (i = 0; i < fsVec.size(); i++) {
-				fsVec[i].fluidIds.clear();
-				fsVec[i].idealCellIds.clear();
-			}
+			// for (i = 0; i < fsVec.size(); i++) {
+			// 	fsVec[i].fluidIds.clear();
+			// 	fsVec[i].idealCellIds.clear();
+			// }
 			fsVec.clear();
 			
 			// for (i = 0; i < fsPlaneVec.size(); i++) {
@@ -34957,6 +36535,96 @@ void GameFluid::updateFluidData ()
 			
 			
 		//}
+		
+		
+		
+		
+		// find the immobile height
+		bool notFound = true;
+		ind = 0;
+		immobileHeight = 0;
+		while (notFound && (ind < totSize)) {
+			watVal = &(fluidData[ind*4+E_PTT_WAT]);
+			bldVal = &(extraData[ind*4+E_PTT_BLD]);
+			terVal = &(fluidData[ind*4+E_PTT_TER]);
+			
+			if (
+				(*watVal > UNIT_MIN) ||
+				(*bldVal > UNIT_MIN) ||
+				(*terVal > UNIT_MIN)
+			) {
+				ind++;
+			}
+			else {
+				notFound = false;
+			}
+		}
+		immobileHeight = max((ind/(volSizePrimBuf*volSizePrimBuf)),0);
+		immobileInd = immobileHeight*(volSizePrimBuf*volSizePrimBuf);
+		
+		
+		// find the max water height
+		notFound = true;
+		ind = totSize-1;
+		maxWaterHeight = 0;
+		while (notFound && (ind >= 0)) {
+			watVal = &(fluidData[ind*4+E_PTT_WAT]);
+			
+			if (*watVal != UNIT_MIN) {
+				notFound = false;
+			}
+			else {
+				ind--;
+			}
+		}
+		maxWaterHeight = (ind/(volSizePrimBuf*volSizePrimBuf));
+		maxWaterInd = ind;//maxWaterHeight*(volSizePrimBuf*volSizePrimBuf);
+		
+		
+		if ((maxWaterHeight - immobileHeight) <= 1) {
+			
+			tempMin2.setFXYZ(0,0,0);
+			tempMax2.setFXYZ(volSizePrimBuf,volSizePrimBuf,maxWaterHeight+1);
+			
+			
+			return false;
+		}
+		
+		
+		minV0 = immobileInd;
+		minV1 = maxWaterInd;
+		
+		
+		
+		
+		// add zero water above all existing water
+		
+		// p = max(
+		// 	immobileInd - volSizePrimBuf*volSizePrimBuf,
+		// 	0
+		// );
+		
+		// for (i = p; i <= minV1; i++) {
+		// 	ind = i;
+		// 	indAbove = i + volSizePrimBuf*volSizePrimBuf;
+			
+		// 	if (indAbove < totSize) {
+		// 		watVal = &(fluidData[ind*4+E_PTT_WAT]);
+				
+		// 		watVal2 = &(fluidData[indAbove*4+E_PTT_WAT]);
+		// 		terVal = &(fluidData[indAbove*4+E_PTT_TER]);
+		// 		bldVal = &(extraData[indAbove*4+E_PTT_BLD]);
+				
+		// 		if (
+		// 			(*watVal > 0) &&
+		// 			(*watVal2 == UNIT_MIN) &&
+		// 			(*terVal == UNIT_MIN) &&
+		// 			(*bldVal == UNIT_MIN)
+		// 		) {
+		// 			*watVal2 = 0;
+		// 		}
+		// 	}
+		// }
 		
 		
 		
@@ -34984,6 +36652,7 @@ void GameFluid::updateFluidData ()
 		
 		
 		
+		
 		// flood fill water ids
 		fluidBodyCount = 1;
 		for (i = minV0; i <= minV1; i++) {
@@ -34998,6 +36667,19 @@ void GameFluid::updateFluidData ()
 			) {
 				
 				if (floodFillId(ind,fluidBodyCount)) {
+					
+					//if (fsVec.back().minZ > vspMin) {
+					//	sort(fsVec.back().fluidIds.begin(), fsVec.back().fluidIds.end());
+					//}
+					
+					
+					// int intArray[SIZE] = {5, 3, 32, -1, 1, 104, 53};
+					// sort(intArray, intArray + SIZE);
+					
+					j = fsVec.size()-1;
+					
+					sort(fidGetBeg(j),fidGetEnd(j));
+					
 					fluidBodyCount++;
 				}
 				
@@ -35019,8 +36701,8 @@ void GameFluid::updateFluidData ()
 			isInBounds = false;
 			#endif
 			
-			for (p = 0; p < fsVec[n].fluidIds.size(); p++) {
-				ind = fsVec[n].fluidIds[p];
+			for (p = 0; p < getFIDSize(n); p++) { //fsVec[n].fluidIds.size()
+				ind = getFluidId(n,p);//fsVec[n].fluidIds[p];
 				
 				k = ind/(volSizePrimBuf*volSizePrimBuf);
 				j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
@@ -35059,7 +36741,8 @@ void GameFluid::updateFluidData ()
 					watVal2 = &(fluidData[testInd*4+E_PTT_WAT]);
 					
 					if (*watVal2 > 0) {
-						fsVec[n].idealCellIds.push_back(ind);
+						iciPushBack(n,ind);
+						//fsVec[n].idealCellIds.push_back(ind);
 					}
 					else {
 						for (dir = 0; dir < 4; dir++) {
@@ -35083,7 +36766,8 @@ void GameFluid::updateFluidData ()
 									(extraData[testInd3*4+E_PTT_BLD] > UNIT_MIN)
 									// || (fluidData[testInd3*4+E_PTT_WAT] == UNIT_MIN)
 								) {
-									fsVec[n].idealCellIds.push_back(ind);
+									iciPushBack(n,ind);
+									//fsVec[n].idealCellIds.push_back(ind);
 									break;
 								}
 							}
@@ -35095,30 +36779,113 @@ void GameFluid::updateFluidData ()
 			#ifdef DEBUG_BOUNDS
 			if (isInBounds) {
 				didPrint = true;
-				cout << "cells considered " << fsVec[n].fluidIds.size() << "\n";
-				cout << "cells pushed " << fsVec[n].idealCellIds.size() << "\n";
+				cout << "cells considered " << getFIDSize(n) << "\n"; //fsVec[n].fluidIds.size()
+				cout << "cells pushed " << getICISize(n) << "\n"; //fsVec[n].idealCellIds.size()
 			}
 			#endif
 			
 			
 		}
 		
-		/*
-		if (fsVec[n].idealCellIds.size() != 0) {
-			
-		}
-		*/
 		
-	
-		// remove water from top of fluid body
+		
+		
+		
+		// if no ideal spots exist, find next most ideal spots
 		for (n = 0; n < fsVec.size(); n++) {
 			
-			if (fsVec[n].idealCellIds.size() != 0) {
+			spanZ = fsVec[n].maxZ - fsVec[n].minZ;
+			
+			#ifdef DEBUG_BOUNDS
+			isInBounds = false;
+			#endif
+			
+			if (passesCheck(n)) {
+				
+			}
+			else {
+				for (p = 0; p < getFIDSize(n); p++) { //fsVec[n].fluidIds.size()
+					ind = getFluidId(n,p);//fsVec[n].fluidIds[p];
+					
+					k = ind/(volSizePrimBuf*volSizePrimBuf);
+					j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
+					i = ind - ( j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf );
+					
+					bldVal = &(extraData[ind*4+E_PTT_BLD]);
+					terVal = &(fluidData[ind*4+E_PTT_TER]);
+					watVal = &(fluidData[ind*4+E_PTT_WAT]);
+					
+					isAir = 
+						(*watVal == UNIT_MIN) &&
+						(*bldVal == UNIT_MIN) &&
+						(*terVal == UNIT_MIN);
+					
+					isEmptyWater = (*watVal == 0);
+					
+					
+					if (
+						isAir
+						// && ((k != fsVec[n].maxZ)||(spanZ==1)) // water on top is not ideal for redist
+					) {
+						// check for water above
+						testInd = ind + (volSizePrimBuf*volSizePrimBuf);
+						watVal2 = &(fluidData[testInd*4+E_PTT_WAT]);
+						
+						if (*watVal2 > 0) {
+							iciPushBack(n,ind);
+							//fsVec[n].idealCellIds.push_back(ind);
+						}
+						else {
+							for (dir = 0; dir < 4; dir++) {
+								testI = (i+DIR_VECS_I[dir][0]);
+								testJ = (j+DIR_VECS_I[dir][1]);
+								testK = (k+DIR_VECS_I[dir][2]);
+								testInd2 = 
+									testI +
+									testJ*volSizePrimBuf +
+									testK*volSizePrimBuf*volSizePrimBuf;
+								
+								watVal3 = &(fluidData[testInd2*4+E_PTT_WAT]);
+								
+								// has (partially) full water cell to side
+								if (*watVal3 >= 0) {
+									
+									// if unit below that one is earth < IGNORED FOR THIS PASS
+									// testInd3 = testInd2 - volSizePrimBuf*volSizePrimBuf;
+									// if (
+									// 	(fluidData[testInd3*4+E_PTT_TER] > UNIT_MIN) ||
+									// 	(extraData[testInd3*4+E_PTT_BLD] > UNIT_MIN)
+									// 	// || (fluidData[testInd3*4+E_PTT_WAT] == UNIT_MIN)
+									// ) {
+										iciPushBack(n,ind);
+										//fsVec[n].idealCellIds.push_back(ind);
+										break;
+									//}
+								}
+							}
+						}
+					}
+				}
+			}
+			
+			
+			
+		}
+		
+		
+		
+		
+	
+		// remove water from top of fluid body (and only the very top)
+		for (n = 0; n < fsVec.size(); n++) {
+			
+			if (passesCheck(n)) {
 				fsVec[n].collectedWater = 0;
 				curCollectedWater = 0;
 				
 				minZ = fsVec[n].minZ;
-				spanZ = fsVec[n].maxZ - fsVec[n].minZ;
+				maxZ = fsVec[n].maxZ;
+				spanZ = maxZ-minZ;
 				
 				#ifdef DEBUG_BOUNDS
 				isInBounds = false;
@@ -35126,8 +36893,8 @@ void GameFluid::updateFluidData ()
 				
 				totWat = 0;
 				
-				for (p = 0; p < fsVec[n].fluidIds.size(); p++) {
-					ind = fsVec[n].fluidIds[p];
+				for (p = 0; p < getFIDSize(n); p++) { //fsVec[n].fluidIds.size()
+					ind = getFluidId(n,p);//fsVec[n].fluidIds[p];
 					
 					k = ind/(volSizePrimBuf*volSizePrimBuf);
 					j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
@@ -35137,50 +36904,70 @@ void GameFluid::updateFluidData ()
 					isInBounds = isInBounds||inBounds(i,j,k);
 					#endif
 					
-					
-					
-					
-					
 					fk = k;
-					disFromBot = (fk-minZ)/(spanZ);
-					disFromTop = 1.0f - disFromBot;
 					
-					disFromBot = mixf(0.25,0.75,disFromBot);
-					disFromTop = mixf(0.25,0.75,disFromTop);
 					
-					if (spanZ <= 3.0f) {
-						disFromBot = 1.0f;
+					
+					if (fk >= (maxZ-1.0f)) {
+						watVal = &(fluidData[ind*4+E_PTT_WAT]);
+						if ((*watVal) > 0) {
+							curCollectedWater = (*watVal);
+							*watVal -= curCollectedWater;
+							fsVec[n].collectedWater += curCollectedWater;
+						}
 					}
+					// else {
+						
+					// 	disFromBot = (fk-minZ)/(spanZ);
+					// 	disFromTop = 1.0f - disFromBot;
+						
+					// 	disFromBot = mixf(0.25,0.75,disFromBot);
+					// 	disFromTop = mixf(0.25,0.75,disFromTop);
+						
+					// 	if (spanZ <= 3.0f) {
+					// 		disFromBot = 1.0f;
+					// 	}
+						
+						
+					// 	//terVal = &(fluidData[ind*4+E_PTT_TER]);
+					// 	watVal = &(fluidData[ind*4+E_PTT_WAT]);
+					// 	//ideVal = &(extraData[ind*4+E_PTT_IDE]);
+						
+					// 	totWat += max(*watVal,0);
+						
+					// 	// make sure no water is above or that there is earth above
+					// 	testInd = ind + (volSizePrimBuf*volSizePrimBuf);
+					// 	watVal2 = &(fluidData[testInd*4+E_PTT_WAT]);
+					// 	terVal2 = &(fluidData[testInd*4+E_PTT_TER]);
+					// 	bldVal2 = &(extraData[testInd*4+E_PTT_BLD]);
+						
+					// 	if (
+					// 		(*watVal > 0) &&
+					// 		(
+					// 			(*watVal2 == UNIT_MIN) || // todo: examine this
+					// 			(*terVal2 != UNIT_MIN) ||
+					// 			(*bldVal2 != UNIT_MIN)
+					// 		)
+					// 	) {
+					// 		curCollectedWater = 
+					// 			min(
+					// 				((int)(disFromBot*F_UNIT_MAX*maxDif + 1.0f)),
+					// 				*watVal
+					// 			);
+					// 		*watVal -= curCollectedWater;
+					// 		fsVec[n].collectedWater += curCollectedWater;
+					// 	}
+						
+					// }
 					
 					
-					//terVal = &(fluidData[ind*4+E_PTT_TER]);
-					watVal = &(fluidData[ind*4+E_PTT_WAT]);
-					//ideVal = &(extraData[ind*4+E_PTT_IDE]);
 					
-					totWat += max(*watVal,0);
 					
-					// make sure no water is above or that there is earth above
-					testInd = ind + (volSizePrimBuf*volSizePrimBuf);
-					watVal2 = &(fluidData[testInd*4+E_PTT_WAT]);
-					terVal2 = &(fluidData[testInd*4+E_PTT_TER]);
-					bldVal2 = &(extraData[testInd*4+E_PTT_BLD]);
 					
-					if (
-						(*watVal > 0) &&
-						(
-							(*watVal2 <= 0) ||
-							(*terVal2 != UNIT_MIN) ||
-							(*bldVal2 != UNIT_MIN)
-						)
-					) {
-						curCollectedWater = 
-							min(
-								((int)(disFromBot*F_UNIT_MAX*maxDif + 1.0f)),
-								*watVal
-							);
-						*watVal -= curCollectedWater;
-						fsVec[n].collectedWater += curCollectedWater;
-					}
+					
+					
+					
+					
 				}
 				
 				
@@ -35188,7 +36975,7 @@ void GameFluid::updateFluidData ()
 				// cout << "fsVec[n].collectedWater " << fsVec[n].collectedWater << "\n";
 				
 				// if (fsVec[n].collectedWater == 0) {
-				// 	cout << "fsVec[n].fluidIds.size() " << fsVec[n].fluidIds.size() << "\n";
+				// 	cout << "fsVec[n].fluidIds.size() " << getFIDSize(n) << "\n"; //fsVec[n].fluidIds.size()
 				// }
 				
 				
@@ -35203,7 +36990,7 @@ void GameFluid::updateFluidData ()
 				
 			}
 			
-			
+			fsVec[n].didCollectWater = (fsVec[n].collectedWater > 0);
 			
 		}
 		
@@ -35214,12 +37001,12 @@ void GameFluid::updateFluidData ()
 		// add water to ideal spots
 		for (n = 0; n < fsVec.size(); n++) {
 			
-			numCells = fsVec[n].idealCellIds.size();
+			numCells = getICISize(n);//fsVec[n].idealCellIds.size();
 			
 			if (numCells > 0) {
 				
 				for (p = 0; p < numCells; p++) {
-					ind = fsVec[n].idealCellIds[p];
+					ind = getIdealCellId(n,p);//fsVec[n].idealCellIds[p];
 					watVal = &(fluidData[ind*4+E_PTT_WAT]);
 					
 					if (*watVal == UNIT_MIN) {
@@ -35246,7 +37033,7 @@ void GameFluid::updateFluidData ()
 				
 				
 				for (p = 0; p < numCells; p++) {
-					ind = fsVec[n].idealCellIds[p];
+					ind = getIdealCellId(n,p);//fsVec[n].idealCellIds[p];
 					
 					k = ind/(volSizePrimBuf*volSizePrimBuf);
 					j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
@@ -35290,14 +37077,12 @@ void GameFluid::updateFluidData ()
 		}
 		
 		
-		tempMax.setFXYZ(vspMin);
-		tempMin.setFXYZ(vspMax);
 		
 		
 		// add water to bottom of fluid body
 		for (n = 0; n < fsVec.size(); n++) {
 			
-			if (fsVec[n].idealCellIds.size() != 0) {
+			if (passesCheck(n)) {
 				curCollectedWater = 0;
 				minZ = fsVec[n].minZ;
 				
@@ -35305,14 +37090,14 @@ void GameFluid::updateFluidData ()
 				while (fsVec[n].collectedWater > 0) {
 					
 					
-					for (q = fsVec[n].minZ; q <= fsVec[n].maxZ; q++) {
-						for (p = 0; p < fsVec[n].fluidIds.size(); p++) {
-							ind = fsVec[n].fluidIds[p];
+					//for (q = fsVec[n].minZ; q <= fsVec[n].maxZ; q++) {
+						for (p = 0; p < getFIDSize(n); p++) { //fsVec[n].fluidIds.size()
+							ind = getFluidId(n,p);//fsVec[n].fluidIds[p];
 							
 							k = ind/(volSizePrimBuf*volSizePrimBuf);
 							watVal = &(fluidData[ind*4+E_PTT_WAT]);
 							
-							if (k == q) {
+							//if (k == q) {
 								
 								if (fsVec[n].collectedWater > UNIT_MAX) {
 									tempv = UNIT_MAX;
@@ -35340,62 +37125,129 @@ void GameFluid::updateFluidData ()
 									}
 									
 								//}
-							}
+							//}
 							
 							
 							// out of water, break both parent loops
 							if (fsVec[n].collectedWater <= 0) {
-								p = fsVec[n].fluidIds.size() + 1;
-								q = fsVec[n].maxZ + 1;
+								break;
+								//p = fsVec[n].fluidIds.size() + 1;
+								//q = fsVec[n].maxZ + 1;
 							}
 						}
-					}
-					
-					
+					//}
 				}
 			}
-			
-			
 		}
-	
 		
 		if (didPrint) {
 			watchMinX = -1;
 		}
 		
 		
-		curTick++;
-		if (curTick == maxTicks) {
-			curTick = 0;
-		}
+		// curTick++;
+		// if (curTick == maxTicks) {
+		// 	curTick = 0;
+		// }
 		
 		
 		
 		/////////////
 		
 		
+		tempMax.setFXYZ(vspMin);
+		tempMin.setFXYZ(vspMax);
+		
+		tempMax2.setFXYZ(vspMin);
+		tempMin2.setFXYZ(vspMax);
+		
 		for (n = 0; n < fsVec.size(); n++) {
 			
+			minV.setIXYZ(fsVec[n].minX,fsVec[n].minY,fsVec[n].minZ);
+			maxV.setIXYZ(fsVec[n].maxX,fsVec[n].maxY,fsVec[n].maxZ);
+			
 			if (
-				(fsVec[n].idealCellIds.size() != 0)
+				
+				passesCheck(n)
+				
 				// || (
 				// 	(fsVec[n].fluidIds.size() > 0) &&
 				// 	(fsVec[n].fluidIds.size() < 8)
 				// )
 				
 			) {
-				
-				minV.setIXYZ(fsVec[n].minX,fsVec[n].minY,fsVec[n].minZ);
-				maxV.setIXYZ(fsVec[n].maxX,fsVec[n].maxY,fsVec[n].maxZ);
 				FIVector4::growBoundary(&tempMin,&tempMax,&minV,&maxV);
-				
 			}
+			
+			FIVector4::growBoundary(&tempMin2,&tempMax2,&minV,&maxV);
 		}
 		
 		tempMin.addXYZ(-1.0f);
 		tempMax.addXYZ(1.0f);
 		
+		
+		if (maxWaterHeight > 0) {
+			minV.setIXYZ(0,0,0);
+			maxV.setIXYZ(cellsPerHolder,cellsPerHolder,maxWaterHeight);
+			FIVector4::growBoundary(&tempMin2,&tempMax2,&minV,&maxV);
+		}
+		
+		
+		
 		FIVector4::growBoundary(&dirtyMin,&dirtyMax,&tempMin,&tempMax);
+		
+		//dirtyMin.setFZ(max(dirtyMin[2],(float)(immobileHeight)));
+		
+		
+		
+		
+		// sink water into immobile area
+		
+		// int kMin = clamp(immobileHeight, vspMin, vspMax);
+		// int kMax = clamp(immobileHeight+1, vspMin, vspMax);
+		
+		// k = immobileHeight;
+		
+		// for (k = kMin; k < kMax; k++) {
+		// 	for (j = vspMin; j < vspMax; j++) {
+		// 		for (i = vspMin; i < vspMax; i++) {
+		// 			indSrc = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf);
+		// 			indAbove = indSrc + volSizePrimBuf*volSizePrimBuf;
+					
+		// 			watVal = &(fluidData[indSrc*4 + E_PTT_WAT]);
+		// 			watVal2 = &(fluidData[indAbove*4 + E_PTT_WAT]);
+					
+		// 			if ((*watVal) > UNIT_MIN) {
+		// 				if ((*watVal2) <= 0) {
+		// 					(*watVal2) = UNIT_MIN;
+		// 				}
+		// 				else {
+							
+		// 					curCollectedWater = 0;
+							
+		// 					if ((*watVal2) == 1) {
+		// 						curCollectedWater = 1;
+		// 					}
+		// 					else {
+		// 						curCollectedWater = (*watVal2)/2;
+		// 					}
+							
+		// 					if (curCollectedWater >= 1) {
+		// 						if (((*watVal) + curCollectedWater) < UNIT_MAX) {
+		// 							*watVal2 = UNIT_MIN;
+		// 							*watVal += curCollectedWater;
+		// 						}
+		// 					}
+							
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+		// }
+		
+		// todo: expand water within immobile area if necessary
+		
+		
 		
 		// int iMin = clamp(tempMin.getIX(), vspMin, vspMax);
 		// int iMax = clamp(tempMax.getIX(), vspMin, vspMax);
@@ -35404,6 +37256,7 @@ void GameFluid::updateFluidData ()
 		// int kMin = clamp(tempMin.getIZ(), vspMin, vspMax);
 		// int kMax = clamp(tempMax.getIZ(), vspMin, vspMax);
 		
+		
 		// int iMin2 = vspMax;
 		// int iMax2 = vspMin;
 		// int jMin2 = vspMax;
@@ -35411,28 +37264,33 @@ void GameFluid::updateFluidData ()
 		// int kMin2 = vspMax;
 		// int kMax2 = vspMin;
 		
-		// int indSrc;
 		
 		// for (k = kMin; k <= kMax; k++) {
 		// 	for (j = jMin; j <= jMax; j++) {
 		// 		for (i = iMin; i <= iMax; i++) {
 		// 			indSrc = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
+		
+		
+		// for (p = 0; p < (totSize - volSizePrimBuf); p++) {
+		// 	ind = p;
+		// 	indAbove = p + volSizePrimBuf*volSizePrimBuf;
+			
+		// 	k = ind/(volSizePrimBuf*volSizePrimBuf);
+		// 	j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
+		// 	i = ind - ( j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf );
+		
 		// 			if (
 					
-		// 				//true
-					
-		// 				fluidData[indSrc + E_PTT_WAT] != fluidData[indSrc + E_PTT_LST]
-						
-		// 				// (
-		// 				// 	(fluidData[indSrc + E_PTT_WAT] == UNIT_MIN) &&
-		// 				// 	(fluidData[indSrc + E_PTT_LST] != UNIT_MIN)	
-		// 				// ) ||
-		// 				// (
-		// 				// 	(fluidData[indSrc + E_PTT_WAT] != UNIT_MIN) &&
-		// 				// 	(fluidData[indSrc + E_PTT_LST] = UNIT_MIN)	
-		// 				// )
+		// 				fluidData[ind*4 + E_PTT_WAT] != fluidData[ind*4 + E_PTT_LST]
 						
 		// 			) {
+						
+		// 				// if (fluidData[indSrc + E_PTT_LST] < fluidData[indSrc + E_PTT_WAT]) {
+		// 				// 	fluidData[indSrc + E_PTT_LST]++;
+		// 				// }
+		// 				// if (fluidData[indSrc + E_PTT_LST] > fluidData[indSrc + E_PTT_WAT]) {
+		// 				// 	fluidData[indSrc + E_PTT_LST]--;
+		// 				// }
 						
 		// 				if (i < iMin2) {iMin2 = i;}
 		// 				if (j < jMin2) {jMin2 = j;}
@@ -35442,6 +37300,7 @@ void GameFluid::updateFluidData ()
 		// 				if (k > kMax2) {kMax2 = k;}
 						
 		// 			}
+		// }
 		// 		}
 		// 	}
 		// }
@@ -35449,6 +37308,9 @@ void GameFluid::updateFluidData ()
 		// minV.setIXYZ(iMin2,jMin2,kMin2);
 		// maxV.setIXYZ(iMax2,jMax2,kMax2);
 		// FIVector4::growBoundary(&dirtyMin,&dirtyMax,&minV,&maxV);
+		
+		
+		return true;
 		
 	}
 bool GameFluid::findStableRegions (int startInd, int newId)
@@ -35474,7 +37336,6 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 		int k;
 		int n;
 		
-		int* curVec;
 		
 		int foundInd;
 		
@@ -35493,11 +37354,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 		long long int totWat2;
 		long long int divWat;
 		
-		//fsPlaneVec.push_back(FluidPlane());
-		
-		
-		FluidPlane* fsPtr = &fluidPlane;//&(fsPlaneVec.back());
-		fsPtr->fluidIds.clear();
+		fluidPlane.planeIds.clear();
 		
 		int emptyWaterCount = 0;
 		int airCount = 0;
@@ -35507,7 +37364,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 			
 			ind = indexStack.back();
 			extraData[ind*4+E_PTT_STB] = newId;
-			fsPtr->fluidIds.push_back(ind);
+			fluidPlane.planeIds.push_back(ind);
 			
 			if (fluidData[ind*4+E_PTT_WAT] == 0) {
 				emptyWaterCount++;
@@ -35538,10 +37395,10 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 				bldVal = &(extraData[testInd*4+E_PTT_BLD]);
 				
 				
-				isAir = 
-					(*watVal == UNIT_MIN) &&
-					(*terVal == UNIT_MIN) &&
-					(*bldVal == UNIT_MIN);
+				// isAir = 
+				// 	(*watVal == UNIT_MIN) &&
+				// 	(*terVal == UNIT_MIN) &&
+				// 	(*bldVal == UNIT_MIN);
 					
 				//terVal2 = &(fluidData[testInd2*4+E_PTT_TER]);
 				//watVal2 = &(fluidData[testInd2*4+E_PTT_WAT]);
@@ -35570,7 +37427,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 		}
 		
 		
-		maxSize = fsPtr->fluidIds.size();
+		maxSize = fluidPlane.planeIds.size();
 		
 		
 		
@@ -35584,12 +37441,12 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 			
 			
 			for (i = 0; i < maxSize; i++) {
-				ind = fsPtr->fluidIds[i];
+				ind = fluidPlane.planeIds[i];
 				
 				fluidData[ind*4+E_PTT_WAT] = UNIT_MIN;
 			}
 			
-			fsPtr->fluidIds.clear();
+			fluidPlane.planeIds.clear();
 			
 		}
 		else {
@@ -35604,7 +37461,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 				
 				totWat = 0;
 				for (i = 0; i < maxSize; i++) {
-					ind = fsPtr->fluidIds[i];
+					ind = fluidPlane.planeIds[i];
 					watVal = &(fluidData[ind*4+E_PTT_WAT]);
 					totWat += *watVal;
 				}
@@ -35618,7 +37475,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 						
 						totWat2 = 0;
 						for (i = 0; i < maxSize; i++) {
-							ind = fsPtr->fluidIds[i];
+							ind = fluidPlane.planeIds[i];
 							watVal = &(fluidData[ind*4+E_PTT_WAT]);
 							*watVal += (targWat - *watVal)/2;
 							totWat2 += *watVal;
@@ -35628,7 +37485,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 						
 						while (totWat > totWat2) {
 							
-							ind = fsPtr->fluidIds[i];
+							ind = fluidPlane.planeIds[i];
 							watVal = &(fluidData[ind*4+E_PTT_WAT]);
 							
 							*watVal += 1;
@@ -35641,7 +37498,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 						
 						while (totWat < totWat2) {
 							
-							ind = fsPtr->fluidIds[i];
+							ind = fluidPlane.planeIds[i];
 							watVal = &(fluidData[ind*4+E_PTT_WAT]);
 							
 							*watVal -= 1;
@@ -35669,7 +37526,7 @@ bool GameFluid::findStableRegions (int startInd, int newId)
 		
 		//fsPlaneVec.pop_back();
 		
-		if ( fsPtr->fluidIds.size() == 0 ) {
+		if ( fluidPlane.planeIds.size() == 0 ) {
 			
 			return false;
 		}
@@ -35701,7 +37558,6 @@ bool GameFluid::floodFillId (int startInd, int newId)
 		int k;
 		int n;
 		
-		int* curVec;
 		
 		int foundInd;
 		
@@ -35716,8 +37572,27 @@ bool GameFluid::floodFillId (int startInd, int newId)
 		fsVec.push_back(FluidStruct());
 		
 		
-		FluidStruct* fsPtr = &(fsVec.back());
 		
+		FluidStruct* fsPtr = &(fsVec.back());
+		FluidStruct* fsPtrLast;
+		
+		int groupId = fsVec.size()-1;
+		
+		
+		if (groupId == 0) {
+			fsPtr->fidBegInd = 0;
+			fsPtr->fidEndInd = 0;
+			fsPtr->iciBegInd = 0;
+			fsPtr->iciBegInd = 0;
+		}
+		else {
+			fsPtrLast = &(fsVec[groupId-1]);
+			
+			fsPtr->fidBegInd = fsPtrLast->fidEndInd;
+			fsPtr->fidEndInd = fsPtrLast->fidEndInd;
+			fsPtr->iciBegInd = fsPtrLast->iciEndInd;
+			fsPtr->iciBegInd = fsPtrLast->iciEndInd;
+		}
 		
 		fsPtr->minX = volSizePrimBuf*2;
 		fsPtr->minY = volSizePrimBuf*2;
@@ -35737,29 +37612,29 @@ bool GameFluid::floodFillId (int startInd, int newId)
 			
 			watVal2 = &(fluidData[ind*4+E_PTT_WAT]);
 			
-			
-			
 			notFound = true;
-			if (*watVal2 < UNIT_MAX) {
-				// if water is partially filled, add to fluidId stack
-				fsPtr->fluidIds.push_back(ind);
-				notFound = false;
-			}
-			else {
-				// if its full and there is earth above, add it
-				testInd = ind + volSizePrimBuf*volSizePrimBuf;
-				
-				if (
-					(fluidData[testInd*4+E_PTT_TER] != UNIT_MIN) ||
-					(extraData[testInd*4+E_PTT_BLD] != UNIT_MIN)	
-				) {
-					fsPtr->fluidIds.push_back(ind);
+			
+			if (k > immobileHeight) {
+				if (*watVal2 < UNIT_MAX) {
+					// if water is partially filled, add to fluidId stack
+					fidPushBack(groupId,ind); //fsPtr->fluidIds.push_back(ind);
 					notFound = false;
 				}
-				
+				else {
+					// if its full and there is earth above, add it
+					testInd = ind + volSizePrimBuf*volSizePrimBuf;
+					
+					if (
+						(fluidData[testInd*4+E_PTT_TER] != UNIT_MIN) ||
+						(extraData[testInd*4+E_PTT_BLD] != UNIT_MIN)	
+					) {
+						fidPushBack(groupId,ind); //fsPtr->fluidIds.push_back(ind);
+						notFound = false;
+					}
+					
+				}
 			}
 			
-			//fsPtr->fluidIds.push_back(ind);
 			
 			foundInd = -1;
 			
@@ -35773,40 +37648,44 @@ bool GameFluid::floodFillId (int startInd, int newId)
 					testJ*volSizePrimBuf +
 					testK*volSizePrimBuf*volSizePrimBuf;
 				
-				bldVal = &(extraData[testInd*4+E_PTT_BLD]);
-				terVal = &(fluidData[testInd*4+E_PTT_TER]);
-				watVal = &(fluidData[testInd*4+E_PTT_WAT]);
-				ideVal = &(extraData[testInd*4+E_PTT_IDE]);
 				
-				isAir = 
-					(*watVal == UNIT_MIN) &&
-					(*terVal == UNIT_MIN) &&
-					(*bldVal == UNIT_MIN);
-				
-				isEmptyWater = (*watVal == 0);
-				
-				// check if water touches air or an empty water cell, if so add to fluidId stack
-				if (
-					(isAir||isEmptyWater)	&&
-					notFound
-				) {
-					fsPtr->fluidIds.push_back(ind);
-					notFound = false;
-				}
-				
-				if (*ideVal == 0) {
-					if (isAir) {
-						// it is an unmarked air value or empty water cell adjacent to a water cell
-						
-						fsPtr->fluidIds.push_back(testInd);
-						*ideVal = newId;
-						
+				if (testK > immobileHeight) {
+					bldVal = &(extraData[testInd*4+E_PTT_BLD]);
+					terVal = &(fluidData[testInd*4+E_PTT_TER]);
+					watVal = &(fluidData[testInd*4+E_PTT_WAT]);
+					ideVal = &(extraData[testInd*4+E_PTT_IDE]);
+					
+					isAir = 
+						(*watVal == UNIT_MIN) &&
+						(*terVal == UNIT_MIN) &&
+						(*bldVal == UNIT_MIN);
+					
+					isEmptyWater = (*watVal == 0);
+					
+					// check if water touches air or an empty water cell, if so add to fluidId stack
+					if (
+						(isAir||isEmptyWater)	&&
+						notFound
+					) {
+						fidPushBack(groupId,ind); //fsPtr->fluidIds.push_back(ind);
+						notFound = false;
 					}
 					
-					if (*watVal >= 0) {
-						foundInd = testInd;
+					if (*ideVal == 0) {
+						if (isAir) {
+							// it is an unmarked air value or empty water cell adjacent to a water cell
+							// push back immediately without growing main stack
+							
+							fidPushBack(groupId,testInd); //fsPtr->fluidIds.push_back(testInd);
+							*ideVal = newId;
+							
+						}
+						
+						if (*watVal >= 0) {
+							foundInd = testInd;
+						}
+						
 					}
-					
 				}
 			}
 			
@@ -35820,9 +37699,9 @@ bool GameFluid::floodFillId (int startInd, int newId)
 		}
 		
 		
-		for (n = 0; n < fsPtr->fluidIds.size(); n++) {
+		for (n = 0; n < getFIDSize(groupId); n++) { //fsPtr->fluidIds.size()
 			
-			ind = fsPtr->fluidIds[n];
+			ind = getFluidId(groupId,n); //fsPtr->fluidIds[n];
 			
 			k = ind/(volSizePrimBuf*volSizePrimBuf);
 			j = (ind - k*volSizePrimBuf*volSizePrimBuf)/volSizePrimBuf;
@@ -35853,7 +37732,7 @@ bool GameFluid::floodFillId (int startInd, int newId)
 			
 		}
 		
-		if ( fsPtr->fluidIds.size() == 0) {
+		if ( getFIDSize(groupId) == 0) { //fsPtr->fluidIds.size() 
 			fsVec.pop_back();
 			return false;
 		}
@@ -35973,15 +37852,6 @@ void GameFluid::fillCurrentGeom (int templateId, FIVector4 * templatePos)
 		
 		FIVector4* paramArrGeom = &(singleton->primTemplateStack[templateId*E_PRIMTEMP_LENGTH]);
 		
-		// for (i = 0; i < E_PRIMTEMP_LENGTH; i++) {
-		// 	paramArrGeom[i].setFXYZW(
-		// 		singleton->paramArrGeom[i*4+0],
-		// 		singleton->paramArrGeom[i*4+1],
-		// 		singleton->paramArrGeom[i*4+2],
-		// 		singleton->paramArrGeom[i*4+3]
-		// 	);
-		// }
-		
 		FIVector4 innerBoxRad;
 		FIVector4 absVecFromCenter;
 		//FIVector4 centerCoord;
@@ -35992,7 +37862,7 @@ void GameFluid::fillCurrentGeom (int templateId, FIVector4 * templatePos)
 			&(paramArrGeom[E_PRIMTEMP_BOUNDSMAX])
 		);
 		baseVec.addXYZRef(templatePos);
-		baseVec.addXYZRef(&(singleton->volMinReadyInPixels),-1.0f);
+		baseVec.addXYZRef(&(volMinReadyInPixels),-1.0f);
 		baseVec.addXYZ(1.0f);
 		
 		FIVector4 curCoord;
@@ -36026,6 +37896,7 @@ void GameFluid::fillCurrentGeom (int templateId, FIVector4 * templatePos)
 		int kMin = clamp(newCoordMin.getIZ(), vspMin, vspMax);
 		int kMax = clamp(newCoordMax.getIZ(), vspMin, vspMax);
 		
+		int* empVal;
 		int* bldVal;
 		int* terVal;
 		int* watVal;
@@ -36068,6 +37939,7 @@ void GameFluid::fillCurrentGeom (int templateId, FIVector4 * templatePos)
 					bldVal = &(extraData[ind*4+E_PTT_BLD]);
 					terVal = &(fluidData[ind*4+E_PTT_TER]);
 					watVal = &(fluidData[ind*4+E_PTT_WAT]);
+					empVal = &(fluidData[ind*4+E_PTT_EMP]);
 					
 					if (*bldVal == UNIT_INSIDE) {
 						
@@ -36082,11 +37954,15 @@ void GameFluid::fillCurrentGeom (int templateId, FIVector4 * templatePos)
 								*bldVal = UNIT_MAX;
 								*watVal = UNIT_MIN; // todo: collect water for redist instead of destroying it
 							}
+							
 						}
 						else {
 							
 						}
 					}
+					
+					
+					*empVal = UNIT_MIN;
 					
 					// if (*bldVal == UNIT_MAX) {
 					// 	*terVal = UNIT_MAX;
@@ -36105,11 +37981,28 @@ void GameFluid::fillCurrentGeom (int templateId, FIVector4 * templatePos)
 	}
 void GameFluid::resetDirtyRegion ()
                                 {
-		lastDirtyMax.copyFrom(&dirtyMax);
-		lastDirtyMin.copyFrom(&dirtyMin);
 		
 		dirtyMax.setFXYZ(vspMin);
 		dirtyMin.setFXYZ(vspMax);
+	}
+void GameFluid::shrinkDirtyRegion ()
+                                 {
+		
+		if (shrinkCount == 4) {
+			shrinkCount = 0;
+			dirtyMax.addXYZ(-1.0f);
+			dirtyMin.addXYZ(1.0f);
+		}
+		
+		if (
+			(dirtyMax[0] <= dirtyMin[0]) ||
+			(dirtyMax[1] <= dirtyMin[1]) ||
+			(dirtyMax[2] <= dirtyMin[2])
+		) {
+			resetDirtyRegion();
+		}
+		
+		shrinkCount++;
 	}
 void GameFluid::maxDirtyRegion ()
                               {
@@ -36123,7 +38016,7 @@ void GameFluid::applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int br
 		
 			FIVector4 baseVec;
 			baseVec.copyFrom(fPixelWorldCoordsBase);
-			baseVec.addXYZRef(&(singleton->volMinReadyInPixels),-1.0f);
+			baseVec.addXYZRef(&(volMinReadyInPixels),-1.0f);
 			
 			
 			FIVector4 curCoord;
@@ -36161,6 +38054,17 @@ void GameFluid::applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int br
 			// int* stbVal;
 			
 			int ind;
+			int ind2;
+			
+			int i2;
+			int j2;
+			int k2;
+			
+			int i3;
+			int j3;
+			int k3;
+			
+			bool touchesBuilding;
 			
 			for (k = kMin; k < kMax; k++) {
 				for (j = jMin; j < jMax; j++) {
@@ -36187,26 +38091,60 @@ void GameFluid::applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int br
 								case E_BRUSH_ADD:
 								
 									if (modType == E_PTT_WAT) {
-										if (
-											(*terVal == UNIT_MIN) &&
-											(*bldVal == UNIT_MIN)	
-										) {
-											*watVal = UNIT_MAX;
-										}
+										//if (mainId == E_FID_SML) {
+											if (
+												(*terVal == UNIT_MIN) &&
+												(*bldVal == UNIT_MIN)	
+											) {
+												*watVal = UNIT_MAX;
+											}
+										//}
 									}
 									else {
 										*terVal = UNIT_MAX;
 										*watVal = UNIT_MIN;
 									}
-									
+									*empVal = UNIT_MIN;
 									
 									
 								break;
 								case E_BRUSH_SUB:
-									*empVal = UNIT_MAX;
-									*bldVal = UNIT_MIN;
-									*terVal = UNIT_MIN;
-									*watVal = UNIT_MIN;
+									
+									touchesBuilding = false;
+									
+									for (k2 = -1; k2 <= 1; k2++) {
+										for (j2 = -1; j2 <= 1; j2++) {
+											for (i2 = -1; i2 <= 1; i2++) {
+												
+												i3 = clamp(i+i2,vspMin,vspMax);
+												j3 = clamp(j+j2,vspMin,vspMax);
+												k3 = clamp(k+k2,vspMin,vspMax);
+												
+												
+												ind2 = 
+													i3 +
+													j3*volSizePrimBuf +
+													k3*volSizePrimBuf*volSizePrimBuf;
+												
+												touchesBuilding = touchesBuilding || (extraData[ind2*4+E_PTT_BLD] != UNIT_MIN);
+												
+											}
+										}
+									}
+									
+									if (
+										touchesBuilding ||
+										(*terVal != UNIT_MIN) ||
+										(*watVal != UNIT_MIN)
+									) {
+										*empVal = UNIT_MAX;
+										*bldVal = UNIT_MIN;
+										*terVal = UNIT_MIN;
+										*watVal = UNIT_MIN;
+									}
+								
+									
+									
 								break;
 								case E_BRUSH_REF:
 									watchMinX = iMin;
@@ -37176,16 +39114,39 @@ void GamePlant::applyRules (PlantRules * rules, GamePlantNode * curParent, int c
 #define LZZ_INLINE inline
 GamePageHolder::GamePageHolder ()
                          {
+		
+		hasData = true;
+		hasPath = true;
+		
+		terVW = NULL;
+		
+		holderFlags = E_CD_UNKNOWN;
+		
+		listEmpty = true;
+		listGenerated = false;
+		pathsInvalid = true;
+		idealPathsInvalid = true;
+		
+		pathsReady = false;
+		idealPathsReady = false;
 		cellData = NULL;
 		extrData = NULL;
+		pathData = NULL;
 		wasGenerated = false;
-		justGenerated = false;
 	}
 void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ)
           {
 
-		
+		//cout << "gph init\n";
+
+		lockRead = false;
+		lockWrite = false;
+
 		entityGeomCounter = 0;
+		totIdealNodes = 0;
+		totGroupIds = 0;
+
+		visitId = 0;
 
 		int i;
 		int j;
@@ -37194,7 +39155,6 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		
 		
 
-
 		blockId = _blockId;
 		holderId = _holderId;
 
@@ -37202,39 +39162,984 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 
 
 		cellsPerHolder = singleton->cellsPerHolder;
-		halfCellsPerHolder = cellsPerHolder*0.5f;
 		
-		origOffset.setFXYZ(halfCellsPerHolder,halfCellsPerHolder,halfCellsPerHolder);
+		pathSize = cellsPerHolder*cellsPerHolder*cellsPerHolder;
+		cellDataSize = cellsPerHolder*cellsPerHolder*cellsPerHolder*4;
+
+		origOffset.setFXYZ(cellsPerHolder/2,cellsPerHolder/2,cellsPerHolder/2);
 
 		offsetInHolders.setIXYZ(trueX,trueY,trueZ);
 		offsetInBlocks.copyFrom(&offsetInHolders);
-		offsetInBlocks.intDivXYZ(singleton->blockSizeInHolders);
+		offsetInBlocks.intDivXYZ(singleton->holdersPerBlock);
 		
 		gphMinInPixels.copyFrom(&offsetInHolders);
 		gphMaxInPixels.copyFrom(&offsetInHolders);
 
 		gphMaxInPixels.addXYZ(1);
 
-		gphMinInPixels.multXYZ(singleton->cellsPerHolder);
-		gphMaxInPixels.multXYZ(singleton->cellsPerHolder);
+		gphMinInPixels.multXYZ(cellsPerHolder);
+		gphMaxInPixels.multXYZ(cellsPerHolder);
 
 		gphCenInPixels.averageXYZ(&gphMaxInPixels,&gphMinInPixels);
 		
 
 		
 		
-		fetchGeom();
+		fetchHolderGeom();
 		
 	}
-void GamePageHolder::genCellData ()
-                           {
+int GamePageHolder::getCellAtInd (int ind)
+          {
 		
-		//cout << "genCellData()\n";
+		
+		int q;
+		
+		
+		if (wasGenerated) {
+			
+		}
+		else {
+			//cout << debugVal << " attempted getCellAtCoords without generation\n";
+			//genCellData();
+			
+			return E_CD_SOLID;
+		}
+		//GamePage* gp = getPageAtCoords(x2, y2, z2, false);
+		
+		// todo: fix this
+		//cout << "Holder is all one type\n";
+		
+		switch (holderFlags) {
+			case E_CD_EMPTY:
+				return E_CD_EMPTY;
+			break;
+			case E_CD_WATER:
+				return E_CD_WATER;
+			break;
+			case E_CD_SOLID:
+				return E_CD_SOLID;
+			break;
+		}
+		
+		if (cellData == NULL) {
+			return E_CD_EMPTY;
+		}
+		else {
+			
+			
+			if (
+				(cellData[ind+E_PTT_TER] != FLUID_UNIT_MIN) ||
+				(extrData[ind+E_PTT_BLD] != FLUID_UNIT_MIN)
+			) {
+				return E_CD_SOLID;
+			}
+			else {
+				
+				if (cellData[ind+E_PTT_WAT] != FLUID_UNIT_MIN) {
+					return E_CD_WATER;
+				}
+				else {
+					return E_CD_EMPTY;
+				}
+				
+				
+			}
+		}
+	}
+void GamePageHolder::getArrAtInd (int ind, int * tempCellData, int * tempCellData2)
+          {
+		
+		
+		int q;
+		
+		if (
+			wasGenerated
+		) {
+			
+			if (hasData && (cellData != NULL)) {
+				for (q = 0; q < 4; q++) {
+					tempCellData[q] = cellData[ind+q];
+					tempCellData2[q] = extrData[ind+q];
+				}
+			}
+			else {
+				switch (holderFlags) {
+					case E_CD_WATER:
+						tempCellData[E_PTT_WAT] = FLUID_UNIT_MAX;
+						tempCellData[E_PTT_LST] = FLUID_UNIT_MAX;
+					break;
+					case E_CD_SOLID:
+						tempCellData[E_PTT_TER] = FLUID_UNIT_MAX;
+					break;
+				}
+			}
+			
+			
+		}
+		
+		
+	}
+void GamePageHolder::setArrAtInd (int ind, int * tempCellData, int * tempCellData2)
+          {
+			
+			int q;
+			
+			if (
+				hasData && wasGenerated && (cellData != NULL)
+			) {
+				for (q = 0; q < 4; q++) {
+					cellData[ind+q] = tempCellData[q];
+					extrData[ind+q] = tempCellData2[q];
+				}
+			}
+			
+			
+	}
+void GamePageHolder::clearPathPreserve ()
+                                 {
+		int i;
+		
+		if (hasPath) {
+			for (i = 0; i < pathSize; i++) {
+					if (pathData[i] > 0) {
+						pathData[i] = GROUP_ID_UNMARKED_IDEAL;
+					}
+					else {
+						pathData[i] = GROUP_ID_UNMARKED;
+					}
+			}
+		}
+		
+		
+		
+		
+		groupIdStack.clear();
+		
+		totIdealNodes = 0;
+		totGroupIds = 0;
+		
+	}
+void GamePageHolder::clearPathSizes ()
+                              {
+		int i;
+		
+		if (hasPath) {
+			for (i = 0; i < pathSize; i++) {
+				pathData[i] = GROUP_ID_UNMARKED;
+			}
+		}
+		
+
+		
+		groupIdStack.clear();
+		groupInfoStack.clear();
+		
+		totIdealNodes = 0;
+		totGroupIds = 0;
+		
+	}
+void GamePageHolder::checkData (bool checkPath)
+                                       {
+		
+		if (hasData) {
+			if (cellData == NULL) {
+				cellData = new int[cellDataSize];
+			}
+			
+			if (extrData == NULL) {
+				extrData = new int[cellDataSize];
+			}
+				
+		}
+		
+		if (hasPath&&checkPath) {
+			if (pathData == NULL) {
+				pathData = new int[pathSize];
+			}
+		}
+		
+		
+		
+		
+	}
+void GamePageHolder::clearGroupFlags (int targId)
+                                         {
+		int i;
+		for (i = 0; i < groupInfoStack.size(); i++) {
+			groupInfoStack[i].visitId = targId;
+		}
+	}
+void GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, GroupInfoStruct * curGI)
+                                                                                              {
+		
+		
+		
+		
+		indexStack.clear();
+		indexStack.push_back(firstInd);
+		groupIdStack.push_back(GroupIdStruct());
+		groupIdStack.back().ind = firstInd;
+		groupIdStack.back().groupId = newId;
+		groupIdStack.back().cameFromInd = -1;
+		groupIdStack.back().pathCost = 0;
+		
+		bool doProc;
+		
+		int groupIdStackInd;
+		int dir;
+		int ind;
+		int testInd;
+		int i;
+		int j;
+		int k;
+		int n;
+		int q;
+		int foundInd;
+		int testI;
+		int testJ;
+		int testK;
+		int cellsPerHolderM1 = cellsPerHolder-1;
+		int lastCost;
+		
+		// for (i = 0; i < 6; i++) {
+		// 	curGI->touchesFace[i] = false;
+		// }
+		curGI->begInd = groupIdStack.size() - 1;
+		
+		
+		// find contiguous regions
+		while (indexStack.size() > 0) {
+			
+			ind = indexStack.back();
+			
+			//.groupId
+			pathData[ind] = groupIdStack.size()-1;
+			
+			k = ind/(cellsPerHolder*cellsPerHolder);
+			j = (ind - k*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+			i = ind - ( j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder );
+			
+			foundInd = -1;
+			
+			for (dir = 0; dir < NUM_MOVEABLE_DIRS; dir++) {
+				testI = (i+DIR_VECS_MOVE[dir][0]);
+				testJ = (j+DIR_VECS_MOVE[dir][1]);
+				testK = (k+DIR_VECS_MOVE[dir][2]);
+				
+				
+				if (
+					(testI >= 0) &&
+					(testI < cellsPerHolder) &&
+					(testJ >= 0) &&
+					(testJ < cellsPerHolder) &&
+					(testK >= 0) &&
+					(testK < cellsPerHolder)
+				) {
+					
+					
+					
+					testInd = 
+						testI +
+						testJ*cellsPerHolder +
+						testK*cellsPerHolder*cellsPerHolder;
+					
+					if (
+							//.groupId
+							(pathData[testInd] == GROUP_ID_UNMARKED_IDEAL)
+							//&& ((pathData[testInd].flags&E_PVT_LAND_BELOW) != 0)
+					) {
+						
+						
+						foundInd = testInd;
+						goto NEXT_FILL_POINT;
+					}
+				}
+			}
+
+NEXT_FILL_POINT:
+			if (foundInd >= 0) {
+				indexStack.push_back(foundInd);
+				
+				lastCost = groupIdStack.back().pathCost;
+				
+				groupIdStack.push_back(GroupIdStruct());
+				groupIdStack.back().ind = foundInd;
+				groupIdStack.back().groupId = newId;
+				groupIdStack.back().cameFromInd = ind;
+				groupIdStack.back().pathCost = lastCost+1;
+			}
+			else {
+				indexStack.pop_back();
+			}
+			
+		}
+		
+		curGI->endInd = groupIdStack.size();
+		
+		
+		// // if region touches one or fewer faces of bounding volume, remove it
+		// // todo: maybe evaluate all regions regardless of pruning criteria
+		// for (n = curGI->begInd; n < curGI->endInd; n++) {
+			
+		// 	ind = groupIdStack[n].ind;
+			
+		// 	k = ind/(cellsPerHolder*cellsPerHolder);
+		// 	j = (ind - k*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+		// 	i = ind - ( j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder );
+			
+		// 	if (i == 0) 								{curGI->touchesFace[0] = true;}
+		// 	if (i == cellsPerHolderM1) 	{curGI->touchesFace[1] = true;}
+		// 	if (j == 0) 								{curGI->touchesFace[2] = true;}
+		// 	if (j == cellsPerHolderM1) 	{curGI->touchesFace[3] = true;}
+		// 	if (k == 0) 								{curGI->touchesFace[4] = true;}
+		// 	if (k == cellsPerHolderM1) 	{curGI->touchesFace[5] = true;}
+			
+		// }
+		
+		// q = 0;
+		// for (n = 0; n < 6; n++) {
+		// 	if (curGI->touchesFace[n]) {q++;}
+		// }
+		
+		// // if region touches less than x faces prune it
+		// if (q < 1) {
+			
+		// 	doProc = true;
+		// 	while (doProc) {
+		// 		if (groupIdStack.size() == 0) {
+		// 			doProc = false;
+		// 		}
+		// 		else {
+		// 			if (groupIdStack.back().groupId == newId) {
+		// 				groupIdStack.pop_back();
+		// 			}
+		// 			else {
+		// 				doProc = false;
+		// 			}
+		// 		}
+		// 	}
+			
+		// 	groupInfoStack.pop_back();
+			
+		// 	return false;
+		// }
+		
+		
+		// find the center of the region
+		int avgX = 0;
+		int avgY = 0;
+		int avgZ = 0;
+		
+		int totCount = 0;
+		int testDis;
+		int bestDis = 99999;
+		int bestInd = -1;
+		
+		if (findCenter) {
+			for (n = curGI->begInd; n < curGI->endInd; n++) {
+				ind = groupIdStack[n].ind;
+				
+				k = ind/(cellsPerHolder*cellsPerHolder);
+				j = (ind - k*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+				i = ind - ( j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder );
+				
+				avgX += i;
+				avgY += j;
+				avgZ += k;
+				
+				totCount++;
+			}
+			
+			avgX /= totCount;
+			avgY /= totCount;
+			avgZ /= totCount;
+			
+			for (n = curGI->begInd; n < curGI->endInd; n++) {
+				ind = groupIdStack[n].ind;
+				
+				k = ind/(cellsPerHolder*cellsPerHolder);
+				j = (ind - k*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+				i = ind - ( j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder );
+				
+				testInd = ind;
+				testDis = abs(i-avgX) + abs(j-avgY) + abs(k-avgZ);
+				
+				if (testDis < bestDis) {
+					bestDis = testDis;
+					bestInd = testInd;
+				}
+				
+			}
+			
+			curGI->centerInd = bestInd;
+		}
+		
+		
+		
+		
+		// // clear visited
+		// for (n = curGI->begInd; n < curGI->endInd; n++) {
+		// 	ind = groupIdStack[n].ind;
+		// 	//.groupId
+		// 	pathData[ind] = GROUP_ID_UNMARKED_IDEAL;
+		// }
+		
+		
+		// // flood fill again, this time from center point and storing dir traveled and cost
+		// indexStack.clear();
+		// indexStack.push_back(curGI->centerInd);
+		
+		
+		// groupIdStackInd = pathData[curGI->centerInd];
+		
+		// if (groupIdStackInd >= 0) {
+		// 	groupIdStack[groupIdStackInd].cameFromInd = -1;
+		// 	groupIdStack[groupIdStackInd].pathCost = 0;
+		// }
+		
+		// //groupIdStack[bestN] = -1
+		// //pathData[curGI->centerInd].cameFromInd = -1;
+		// //pathData[curGI->centerInd].pathCost = 0;
+		
+		// //pathData[curGI->centerInd] = newId;
+		
+		// int frontInd = 0;
+		
+		// while (frontInd < indexStack.size()) {
+			
+		// 	ind = indexStack[frontInd];
+		// 	frontInd++;
+		// 	//indexStack.pop_front();
+			
+
+			
+			
+		// 	k = ind/(cellsPerHolder*cellsPerHolder);
+		// 	j = (ind - k*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+		// 	i = ind - ( j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder );
+			
+			
+		// 	for (dir = 0; dir < NUM_MOVEABLE_DIRS; dir++) {
+		// 		testI = (i+DIR_VECS_MOVE[dir][0]);
+		// 		testJ = (j+DIR_VECS_MOVE[dir][1]);
+		// 		testK = (k+DIR_VECS_MOVE[dir][2]);
+				
+				
+		// 		if (
+		// 			(testI >= 0) &&
+		// 			(testI < cellsPerHolder) &&
+		// 			(testJ >= 0) &&
+		// 			(testJ < cellsPerHolder) &&
+		// 			(testK >= 0) &&
+		// 			(testK < cellsPerHolder)
+		// 		) {
+					
+					
+		// 			testInd = 
+		// 				testI +
+		// 				testJ*cellsPerHolder +
+		// 				testK*cellsPerHolder*cellsPerHolder;
+					
+		// 			if (
+		// 					(pathData[testInd] == GROUP_ID_UNMARKED_IDEAL)
+		// 					//&& ((pathData[testInd].flags&E_PVT_LAND_BELOW) != 0)
+		// 			) {
+		// 				pathData[testInd].cameFromInd = ind;
+		// 				pathData[testInd].pathCost = pathData[ind].pathCost+1;
+		// 				pathData[testInd].groupId = newId;
+		// 				indexStack.push_back(testInd);
+		// 			}
+		// 		}
+		// 	}
+			
+			
+		// }
+		
+		
+		
+		
+		//return true;
+	}
+void GamePageHolder::findIdealNodes ()
+                              {
+			idealPathsReady = false;
+			
+			
+			int i;
+			int j;
+			int k;
+			int cellVal;
+			int cellValAbove;
+			//int cellValAbove2;
+			int cellValBelow;
+			
+			int curX;
+			int curY;
+			int curZ;
+			int curInd;
+			
+			bool doProc;
+			
+			
+			
+			if (hasPath) {
+				checkData(true);
+				clearPathSizes();
+				
+				for (k = 0; k < cellsPerHolder; k++) {
+					for (j = 0; j < cellsPerHolder; j++) {
+						for (i = 0; i < cellsPerHolder; i++) {
+							cellVal = singleton->gw->getCellAtCoords(
+								3,
+								gphMinInPixels.getIX()+i,
+								gphMinInPixels.getIY()+j,
+								gphMinInPixels.getIZ()+k
+							);
+							cellValAbove = singleton->gw->getCellAtCoords(
+								4,
+								gphMinInPixels.getIX()+i,
+								gphMinInPixels.getIY()+j,
+								gphMinInPixels.getIZ()+k+1
+							);
+							// cellValAbove2 = singleton->gw->getCellAtCoords(
+							// 	gphMinInPixels.getIX()+i,
+							// 	gphMinInPixels.getIY()+j,
+							// 	gphMinInPixels.getIZ()+k+2
+							// );
+							cellValBelow = singleton->gw->getCellAtCoords(
+								5,
+								gphMinInPixels.getIX()+i,
+								gphMinInPixels.getIY()+j,
+								gphMinInPixels.getIZ()+k-1
+							);
+							
+							
+							
+							// doProc = (
+							// 	(cellVal == E_CD_WATER) &&
+							// 	(
+							// 		(cellValAbove == E_CD_WATER) || (cellValAbove==E_CD_EMPTY)
+							// 	)
+							// ) || (
+							// 	(cellVal == E_CD_EMPTY)&&
+							// 	(
+							// 		(cellValAbove == E_CD_WATER) || (cellValAbove==E_CD_EMPTY)
+							// 	) &&
+							// 	(
+							// 		cellValBelow == E_CD_SOLID	
+							// 	)
+							// );
+							
+							doProc =
+								(cellVal < E_CD_SOLID) &&
+								(cellValAbove < E_CD_SOLID) &&
+								//(cellValAbove2 < E_CD_SOLID) &&
+								(cellValBelow == E_CD_SOLID);
+							
+							
+							if (doProc) {
+								curInd = i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder;
+								//.groupId
+								pathData[curInd] = GROUP_ID_UNMARKED_IDEAL;
+								//pathData[curInd].flags |= E_PVT_LAND_BELOW;
+								totIdealNodes++;		
+							}
+							
+							
+							
+						}
+					}
+				}
+				
+				
+				
+				
+				
+				for (i = 0; i < pathSize; i++) {
+					if (
+						//.groupId
+						(pathData[i] == GROUP_ID_UNMARKED_IDEAL)
+						// && ((pathData[i].flags&E_PVT_LAND_BELOW) != 0)
+					) {
+						
+						groupInfoStack.push_back(GroupInfoStruct());
+						groupInfoStack.back().visitId = 0;
+						floodFillAtInd(i,totGroupIds,true,&(groupInfoStack.back()));
+						totGroupIds++;
+					}
+				}
+				
+				clearPathPreserve();
+				
+				for (i = 0; i < groupInfoStack.size(); i++) {
+					floodFillAtInd(groupInfoStack[i].centerInd,totGroupIds,false,&(groupInfoStack[i]));
+					totGroupIds++;
+				}
+			}
+			
+			
+			
+			
+			
+			idealPathsReady = true;
+			
+	}
+int GamePageHolder::getGroupId (int pathDataIndex)
+                                          {
+		
+		if (hasPath) {
+			if (pathData[pathDataIndex] < 0) {
+				return pathData[pathDataIndex];
+			}
+			else {
+				return groupIdStack[pathData[pathDataIndex]].groupId;
+			}
+		}
+		else {
+			return GROUP_ID_NONEXISTENT;
+		}
+		
+		
+		
+		
+	}
+GroupIdStruct * GamePageHolder::getInfo (int pathDataIndex)
+                                                  {
+		
+		if (hasPath) {
+			if (pathData[pathDataIndex] < 0) {
+				cout << "pathDataIndex < 0\n";
+				return NULL;
+			}
+			
+			return &(groupIdStack[pathData[pathDataIndex]]);
+			
+		}
+		else {
+			return NULL;
+		}
+		
+		
+	}
+void GamePageHolder::linkRegions ()
+                           {
+		int i;
+		int j;
+		int k;
+		
+		int ii;
+		int jj;
+		int kk;
+		
+		int ic;
+		int jc;
+		int kc;
+		
+		int iic;
+		int jjc;
+		int kkc;
+		
+		int m;
+		int n;
+		int q;
+		
+		
+		int ind;
+		int mo2;
+		
+		int holderInd;
+		
+		int cellsPerHolderM1 = cellsPerHolder-1;
+		GamePageHolder* holderArr[NUM_ORIENTATIONS];
+		int boundsArr[NUM_ORIENTATIONS];
+		int indArr[NUM_ORIENTATIONS/2];
+		int indArrInv[NUM_ORIENTATIONS/2];
+		int targetInd;
+		int targetGroupId;
+		int targetCost;
+		int curGroupId;
+		
+		bool notFound;
+		bool foundBetter;
+		
+		ConnectingNodeStruct* cNode;
+		
+		boundsArr[0] = cellsPerHolderM1;
+		boundsArr[1] = 0;
+		boundsArr[2] = cellsPerHolderM1;
+		boundsArr[3] = 0;
+		boundsArr[4] = cellsPerHolderM1;
+		boundsArr[5] = 0;
+		
+		for (i = 0; i < NUM_ORIENTATIONS; i++) {
+			holderArr[i] = singleton->gw->getHolderAtCoords(
+				offsetInHolders.getIX()+DIR_VECS_I[i][0],
+				offsetInHolders.getIY()+DIR_VECS_I[i][1],
+				offsetInHolders.getIZ()+DIR_VECS_I[i][2],
+				true
+			);
+		}
+		
+		bestConnectingNodes.clear();
+		
+		// find cells that touch side of holder
+		
+		
+		
+		for (n = 0; n < groupIdStack.size(); n++) {
+			
+			ind = groupIdStack[n].ind;
+			
+			
+			curGroupId = groupIdStack[n].groupId;
+			
+			k = ind/(cellsPerHolder*cellsPerHolder);
+			j = (ind - k*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+			i = ind - ( j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder );
+			
+			indArr[0] = i;
+			indArr[1] = j;
+			indArr[2] = k;
+			
+			for (m = 0; m < NUM_ORIENTATIONS; m++) {
+				mo2 = m/2;
+				
+				if (indArr[mo2] == boundsArr[m]) {
+					
+					indArrInv[0] = i;
+					indArrInv[1] = j;
+					indArrInv[2] = k;
+					
+					if (mo2 == 0) {indArrInv[0] = cellsPerHolderM1-i;}
+					if (mo2 == 1) {indArrInv[1] = cellsPerHolderM1-j;}
+					if (mo2 == 2) {indArrInv[2] = cellsPerHolderM1-k;}
+					
+					targetInd = indArrInv[0] + indArrInv[1]*cellsPerHolder + indArrInv[2]*cellsPerHolder*cellsPerHolder;
+					
+					
+					
+					targetGroupId = holderArr[m]->getGroupId(targetInd);
+					
+					if (targetGroupId > -1) {
+						targetCost = holderArr[m]->getInfo(targetInd)->pathCost + getInfo(ind)->pathCost;
+						
+						// first see if another connection to this block/holder/groupId exists
+						
+						notFound = true;
+						foundBetter = false;
+						
+						for (q = 0; q < bestConnectingNodes.size(); q++) {
+							cNode = &(bestConnectingNodes[q]);
+							
+							if (
+								(cNode->blockIdTo == holderArr[m]->blockId) &&
+								(cNode->holderIdTo == holderArr[m]->holderId) &&
+								(cNode->groupIdFrom == curGroupId) &&
+								(cNode->groupIdTo == targetGroupId)
+							) {
+								notFound = false;
+							
+								if (targetCost <= cNode->totCost) {
+									
+									// tie breaker
+									if (targetCost == cNode->totCost) {
+										kk = targetInd/(cellsPerHolder*cellsPerHolder);
+										jj = (targetInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+										ii = targetInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+										
+										//cNode->cellIndFrom
+										kc = cNode->cellIndFrom/(cellsPerHolder*cellsPerHolder);
+										jc = (cNode->cellIndFrom-kc*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+										ic = cNode->cellIndFrom-(kc*cellsPerHolder*cellsPerHolder + jc*cellsPerHolder);
+										
+										//cNode->cellIndTo
+										kkc = cNode->cellIndTo/(cellsPerHolder*cellsPerHolder);
+										jjc = (cNode->cellIndTo-kkc*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+										iic = cNode->cellIndTo-(kkc*cellsPerHolder*cellsPerHolder + jjc*cellsPerHolder);
+										
+										
+										
+										if ((k+kk) < (kc+kkc)) {foundBetter = true;} else {
+											if ((j+jj) < (jc+jjc)) {foundBetter = true;} else {
+												if ((i+ii) < (ic+iic)) {foundBetter = true;}
+											}
+										}
+									}
+									else {
+										foundBetter = true;
+									}
+								}
+
+								break;
+							}
+						}
+						
+						if (notFound) {
+							bestConnectingNodes.push_back(ConnectingNodeStruct());
+							cNode = &(bestConnectingNodes.back());
+						}
+						else {
+							cNode = &(bestConnectingNodes[q]);
+						}
+						
+						if (foundBetter||notFound) {
+							
+							cNode->blockIdTo = holderArr[m]->blockId;
+							cNode->holderIdTo = holderArr[m]->holderId;
+							cNode->groupIdFrom = curGroupId;
+							cNode->groupIdTo = targetGroupId;
+							cNode->cellIndFrom = ind;
+							cNode->cellIndTo = targetInd;
+							cNode->totCost = targetCost;
+							
+						}
+						
+						
+						
+						// otherwise push back a new block/holder/groupId
+						
+					}
+				}
+			}
+			
+			
+		}
+		
+	}
+bool GamePageHolder::prepPathRefresh (int rad)
+                                      {
+		int i;
+		int j;
+		int k;
+		
+		GamePageHolder* curHolder;
+		
+		for (k = -rad; k <= rad; k++) {
+			for (j = -rad; j <= rad; j++) {
+				for (i = -rad; i <= rad; i++) {
+					curHolder = singleton->gw->getHolderAtCoords(
+						offsetInHolders.getIX()+i,
+						offsetInHolders.getIY()+j,
+						offsetInHolders.getIZ()+k,
+						true
+					);
+					
+					if (curHolder->wasGenerated) {
+						
+					}
+					else {
+						return false;
+						
+					}
+					
+				}
+			}
+		}
+		
+		return true;
+		
+	}
+void GamePageHolder::refreshPaths ()
+                            {
+		
+		pathsReady = false;
 		
 		int i;
 		int j;
 		int k;
 		
+		GamePageHolder* curHolder;
+		
+		int rad;
+		
+		rad = 2;
+		for (k = -rad; k <= rad; k++) {
+			for (j = -rad; j <= rad; j++) {
+				for (i = -rad; i <= rad; i++) {
+					curHolder = singleton->gw->getHolderAtCoords(
+						offsetInHolders.getIX()+i,
+						offsetInHolders.getIY()+j,
+						offsetInHolders.getIZ()+k,
+						true
+					);
+					
+					if (curHolder->idealPathsInvalid) {
+						curHolder->findIdealNodes();
+						curHolder->idealPathsInvalid = false;
+					}
+					
+				}
+			}
+		}
+		
+		rad = 1;
+		for (k = -rad; k <= rad; k++) {
+			for (j = -rad; j <= rad; j++) {
+				for (i = -rad; i <= rad; i++) {
+					curHolder = singleton->gw->getHolderAtCoords(
+						offsetInHolders.getIX()+i,
+						offsetInHolders.getIY()+j,
+						offsetInHolders.getIZ()+k,
+						true
+					);
+					
+					if (curHolder->pathsInvalid) {
+						curHolder->linkRegions();
+						curHolder->pathsInvalid = false;
+					}
+				}
+			}
+		}
+		
+		
+		// findIdealNodes();
+		// // fetch all neighboring paths
+		// for (i = 0; i < NUM_ORIENTATIONS; i++) {
+		// 	curHolder = singleton->gw->getHolderAtCoords(
+		// 		offsetInHolders.getIX()+DIR_VECS_I[i][0],
+		// 		offsetInHolders.getIY()+DIR_VECS_I[i][1],
+		// 		offsetInHolders.getIZ()+DIR_VECS_I[i][2],
+		// 		true
+		// 	);
+			
+		// 	curHolder->findIdealNodes();
+		// }
+		//linkRegions();
+		
+		// find complete array map of regions for just this holder
+		
+		
+		if (groupInfoStack.size() == 0) {
+			if (pathData != NULL) {delete[] pathData;}
+			pathData = NULL;
+			hasPath = false;
+		}
+		
+		
+		
+		
+		
+		pathsReady = true;
+		
+		
+		
+		
+		//singleton->gameLogic->insertNode(holderId,blockId);
+		
+	}
+void GamePageHolder::genCellData ()
+                           {
+		
+		
+		int i;
+		int j;
+		int k;
+		
+		int ii;
+		int jj;
+		int kk;
+		
+		int p;
 		int q;
 		
 		int ind;
@@ -37260,217 +40165,84 @@ void GamePageHolder::genCellData ()
 		int iSimp;
 		int iSimp2;
 		
-		int cellsPerHolder = singleton->cellsPerHolder;
-		int cellDataSize = cellsPerHolder*cellsPerHolder*cellsPerHolder*4;
-		
-		
-		float wspX = singleton->worldSizeInPixels[0]/2.0f;
-		float wspY = singleton->worldSizeInPixels[1]/2.0f;
-		
-		float distanceBelowTer;
-		
-		if (cellData == NULL) {
-			cellData = new int[cellDataSize];
-		}
-		
-		if (extrData == NULL) {
-			extrData = new int[cellDataSize];
-		}
+		checkData(false);
 		
 		for (i = 0; i < cellDataSize; i++) {
 			cellData[i] = FLUID_UNIT_MIN;
 			extrData[i] = FLUID_UNIT_MIN;
 		}
 		
-		float watHeight = singleton->getSLInPixels();
 		
-		float simplexRegion = 200.0f;
-		float simplexMod = 0.0f;
 		
-		for (j = 0; j < cellsPerHolder; j++) {
-			fj = abs(j + gphMinInPixels[1]);
-			fjAbs = abs(wspY-fj);
-			for (i = 0; i < cellsPerHolder; i++) {
-				fi = abs(i + gphMinInPixels[0]);
-				fiAbs = abs(wspX-fi);
-				
-				
-				
-				/*
-				for x=0,bufferwidth-1,1 do
-					for y=0,bufferheight-1,1 do
-						s=x/bufferwidth
-						t=y/bufferheight
-				    dx=x2-x1
-				    dy=y2-y1
-						
-						nx=x1+cos(s*2*pi)*dx/(2*pi)
-						ny=y1+cos(t*2*pi)*dy/(2*pi)
-						nz=x1+sin(s*2*pi)*dx/(2*pi)
-						nw=y1+sin(t*2*pi)*dy/(2*pi)
-						
-						buffer:set(x,y,Noise4D(nx,ny,nz,nw))
-					end
-				end
-				*/
-				
-				/*
-				float simplexScaledNoise(
-					const float octaves,
-					const float persistence,
-					const float scale,
-					const float loBound,
-					const float hiBound,
-					const float x,
-					const float y,
-					const float z,
-					const float w
-				) {
-					return simplexNoise(octaves, persistence, scale, x, y, z, w) * (hiBound - loBound) / 2 + (hiBound + loBound) / 2;
+		VolumeWrapper* curVW = (singleton->volumeWrappers[E_VW_HOLDER]);
+		FBOWrapper* fbow = curVW->fboSet.getFBOWrapper(0);
+		singleton->gw->drawVol(curVW, &gphMinInPixels, &gphMaxInPixels, true, true);
+		
+		
+		// if (terVW == NULL) {
+		// 	terVW = new VolumeWrapper();
+		// 	terVW->init(cellsPerHolder,GL_REPEAT,false);
+		// }
+		// FBOWrapper* fbow = terVW->fboSet.getFBOWrapper(0);
+		// singleton->gw->drawVol(terVW, &gphMinInPixels, &gphMaxInPixels, true, true);
+		
+		
+		unsigned char* vdPtr = fbow->pixelsChar;
+		
+		
+		float watHeight = singleton->getSeaHeightScaled();
+		
+		int cdo4 = cellDataSize/4;
+		
+		for (p = 0; p < cdo4; p++) {
+			
+			kk = p/(cellsPerHolder*cellsPerHolder);
+			jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+			ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+			
+			fk = gphMinInPixels[2] + kk;
+			
+			ind = p*4;
+			
+			if (
+				vdPtr[ind + 0] > 128 // 0.5f
+			) {
+				iSimp = FLUID_UNIT_MAX;
+			}
+			else {
+				iSimp = FLUID_UNIT_MIN;
+			}
+			
+			if (iSimp == FLUID_UNIT_MAX) {
+				iSimp2 = FLUID_UNIT_MIN;
+			}
+			else {
+				if (fk < watHeight) {
+					iSimp2 = FLUID_UNIT_MAX;
 				}
-				*/
-				
-				// - singleton->worldSizeInPixels[0]*0.5f
-				
-				// zv = simplexScaledNoise(
-				// 		4.0f, //octaves
-				// 		0.5f, //persistence (amount added in each successive generation)
-				// 		1.0f/16.0f, //scale (frequency)
-				// 		0.0f, // lo bound
-				// 		1.0f, // hi bound
-				// 		fi + 2333.2,
-				// 		fj + 1352.4,
-				// 		4222.3
-				// 	);
-				
-				
-				terHeight = singleton->getHeightAtPixelPos(fi,fj);
-				
-				
-				
-				for (k = 0; k < cellsPerHolder; k++) {
-					fk = (k + gphMinInPixels[2]);
-					fkAbs = fk;//abs(j-singleton->heightmapMax*0.5f);
-					
-					
-					simplexMod = (
-						clampfZO(
-							1.0f - 
-							abs(
-								fk-(terHeight-simplexRegion*0.5f)
-							)/simplexRegion
-						)	
-					);
-					
-					distanceBelowTer = (
-						clampfZO(
-							
-							(
-								terHeight-fk
-							)/simplexRegion
-						)	
-					);
-					
-					
-					if (simplexMod > 0.0f) {
-						simplexVal = clampfZO(
-							simplexScaledNoise(
-								4.0f, //octaves
-								0.5f, //persistence (amount added in each successive generation)
-								1.0f/64.0f, //scale (frequency)
-								0.0f, // lo bound
-								1.0f, // hi bound
-								fiAbs,
-								fjAbs,
-								fkAbs
-							) 
-						);
-					}
-					else {
-						simplexVal = 0.0f;
-					}
-					
-					
-					
-					//simplexVal = simplexVal*2.0f-1.0f;
-					
-					// simplexVal2 = clampfZO(
-					// 	simplexScaledNoise(
-					// 		5.0f, //octaves
-					// 		0.5f, //persistence (amount added in each successive generation)
-					// 		1.0f/128.0f, //scale (frequency)
-					// 		0.0f, // lo bound
-					// 		1.0f, // hi bound
-					// 		fiAbs,
-					// 		fjAbs,
-					// 		fkAbs
-					// 	) 
-					// );
-					
-					// disVal = (fi/wspX)*(fj/wspY);
-					
-					
-					
-					// simplexVal = mixf(simplexVal1,simplexVal2,disVal);
-					
-					if (
-						((terHeight + simplexVal*simplexMod*800.0f) - (fk+100.0f+300.0f*distanceBelowTer)) > 0.0f
-					) {
-						iSimp = FLUID_UNIT_MAX;
-					}
-					else {
-						iSimp = FLUID_UNIT_MIN;
-					}
-					
-					if (iSimp == FLUID_UNIT_MAX) {
-						iSimp2 = FLUID_UNIT_MIN;
-					}
-					else {
-						if (fk < watHeight) {
-							iSimp2 = FLUID_UNIT_MAX;
-						}
-						else {
-							iSimp2 = FLUID_UNIT_MIN;
-						}
-					}
-					
-					
-					
-					
-					
-					
-					// if (fSimp > 0.5) {
-					// 	iSimp = FLUID_UNIT_MAX;
-					// }
-					// else {
-					// 	iSimp = FLUID_UNIT_MIN;
-					// }
-					
-					
-					ind = (i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder)*4;
-					
-					for (q = 0; q < 4; q++) {
-						cellData[ind+q] = FLUID_UNIT_MIN;
-						extrData[ind+q] = FLUID_UNIT_MIN;
-					}
-					
-					
-					cellData[ind+0] = iSimp;
-					cellData[ind+1] = iSimp2;
-					cellData[ind+2] = iSimp2;
-					
-		
-		
+				else {
+					iSimp2 = FLUID_UNIT_MIN;
 				}
 			}
+			
+			
+			for (q = 0; q < 4; q++) {
+				cellData[ind+q] = FLUID_UNIT_MIN;
+				extrData[ind+q] = FLUID_UNIT_MIN;
+			}
+			
+			
+			cellData[ind+E_PTT_TER] = iSimp;
+			cellData[ind+E_PTT_WAT] = iSimp2;
+			cellData[ind+E_PTT_LST] = iSimp2;
 		}
 		
 		
 		wasGenerated = true;
-		justGenerated = true;
+		
 	}
-void GamePageHolder::fetchGeom ()
-                         {
+void GamePageHolder::fetchHolderGeom ()
+                               {
 		int i;
 		int j;
 		int k;
@@ -37505,8 +40277,8 @@ void GamePageHolder::fetchGeom ()
 							start.copyFrom( &(gameEnt->moveMinInPixels) );
 							end.copyFrom( &(gameEnt->moveMaxInPixels) );
 
-							start.clampZ(0.0,singleton->worldSizeInPixels.getFZ()-1.0f);
-							end.clampZ(0.0,singleton->worldSizeInPixels.getFZ()-1.0f);
+							start.clampZ(0.0,singleton->worldSizeInCells.getFZ()-1.0f);
+							end.clampZ(0.0,singleton->worldSizeInCells.getFZ()-1.0f);
 
 							if (FIVector4::intersectInt(&start,&end,&gphMinInPixels,&gphMaxInPixels)) {
 								containsEntIds[n].data.push_back(intPair());
@@ -37520,7 +40292,281 @@ void GamePageHolder::fetchGeom ()
 			}
 		}
 
+	}
+void GamePageHolder::fillVBO ()
+                       {
+		
+		if (
+			(holderFlags == E_CD_SOLID) ||
+			(holderFlags == E_CD_EMPTY)	
+		) {
+			if (cellData != NULL) {delete[] cellData;}
+			if (extrData != NULL) {delete[] extrData;}
+			
+			cellData = NULL;
+			extrData = NULL;
+			
+			hasData = false;
+		}
+		
+		
+#ifdef GEN_POLYS
+		
+		if (listEmpty) {
+			
+		}
+		else {
+			vboWrapper.init(
+				&(vertexVec[0]),
+				vertexVec.size(),
+				&(indexVec[0]),
+				indexVec.size()
+			);
+			// todo: not needed?
+			//glFlush();
+			//glFinish();
+		}
+		
+#endif
+		
+		
+		listGenerated = true;
+		
+	}
+void GamePageHolder::generateList ()
+                            { //int fboNum
+		
+		
+		int cellsPerHolderM1 = cellsPerHolder-1;
+		float fres = cellsPerHolder;
+		int i, j, k, m, q;
+		
+		//singleton->vgtFBOArr[fboNum].fbos[0].getPixels();
+		//singleton->vgtFBOArr[fboNum].fbos[1].getPixels();
+		
+		int procCount = 0;
+		
+		bool edgeK;
+		bool edgeJ;
+		bool edgeI;
+		
+		
+		
+		float iv0 = 0.0f;
+		float iv1 = 1.0f;
+		
+		
+		
+		float fi = 0.0f;
+		float fj = 0.0f;
+		float fk = 0.0f;
+		
+		int iX;
+		int iY;
+		int iZ;
+		
+		float bpX = 0.0f;
+		float bpY = 0.0f;
+		float bpZ = 0.0f;
+		
+		int cellVal;
+		int cellVal2;
+		
+		
+		uint dirFlags;
+		uint flagVals[6];
+		flagVals[0] = 1;
+		flagVals[1] = 2;
+		flagVals[2] = 4;
+		flagVals[3] = 8;
+		flagVals[4] = 16;
+		flagVals[5] = 32;
+		
+		const uint AIR_VAL = 0;
+		
+		
+		//FBOWrapper* fbow0 = &(singleton->vgtFBOArr[fboNum].fbos[0]);
+		//FBOWrapper* fbow1 = &(singleton->vgtFBOArr[fboNum].fbos[1]);
+		
+		bool doProc[6];// = false;
 
+		uint tempHF = E_CD_UNKNOWN;
+
+		// bool hasAir = false;
+		// bool hasSolid = false;
+		// bool allSolid = true;
+		
+		// for (i = 0; i < cellsPerHolder*cellsPerHolder*cellsPerHolder; i++) {
+			
+		// 	if (fbow0->getPixelAtIndex(i,A_CHANNEL) == 0) {
+		// 		hasAir = true;
+		// 	}
+		// 	else {
+		// 		hasSolid = true;
+		// 	}
+			
+		// 	if (fbow0->getPixelAtIndex(i,R_CHANNEL) != 63) {
+		// 		allSolid = false;
+		// 	}
+		// }
+		
+		// hasSomething = (hasAir||(!allSolid))&&hasSolid;
+		
+		// if (hasSomething) {
+			
+		// }
+		// else {
+		// 	goto DO_CLEANUP;
+		// }
+		
+		
+		
+		
+		vertexVec.clear();
+		indexVec.clear();
+		
+		//bindHolderDL();
+		
+		
+		//glBegin(GL_QUADS);
+		
+		
+		for (k = -1; k <= cellsPerHolder; k++) {
+			for (j = -1; j <= cellsPerHolder; j++) {
+				for (i = -1; i <= cellsPerHolder; i++) {
+					
+					iX = gphMinInPixels.getIX() + i;
+					iY = gphMinInPixels.getIY() + j;
+					iZ = gphMinInPixels.getIZ() + k;
+					
+					cellVal = singleton->gw->getCellAtCoords(20,iX,iY,iZ);
+					tempHF = tempHF|cellVal;
+				}
+			}	
+		}
+		
+#ifdef GEN_POLYS
+		
+		if (
+			(tempHF == E_CD_SOLID) ||
+			(tempHF == E_CD_EMPTY)	
+		) {
+			
+		}
+		else {
+			for (k = 0; k < cellsPerHolder; k++) {
+				
+				for (j = 0; j < cellsPerHolder; j++) {
+					
+					for (i = 0; i < cellsPerHolder; i++) {
+						
+						
+						iX = gphMinInPixels.getIX() + i;
+						iY = gphMinInPixels.getIY() + j;
+						iZ = gphMinInPixels.getIZ() + k;
+						bpX = iX;
+						bpY = iY;
+						bpZ = iZ;
+						
+						cellVal = singleton->gw->getCellAtCoords(6,iX,iY,iZ);
+						
+						
+						if ( cellVal == E_CD_SOLID ) {
+							
+							for (q = 0; q < NUM_ORIENTATIONS; q++) {
+								cellVal2 = singleton->gw->getCellAtCoords(7,
+									iX + DIR_VECS_I[q][0],
+									iY + DIR_VECS_I[q][1],
+									iZ + DIR_VECS_I[q][2]
+								);
+								doProc[q] = cellVal2 != E_CD_SOLID;
+								
+							}
+							
+							
+							if (doProc[0]) { // x+
+								
+								getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
+								getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
+								getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
+								getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
+								
+								getIndVal(procCount);
+								procCount++;
+								
+								
+							}
+							if (doProc[1]) { // x-
+								
+								getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
+								getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
+								getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
+								getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
+								
+								getIndVal2(procCount);
+								procCount++;
+								
+							}
+							if (doProc[2]) { // y+
+								
+								getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
+								getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
+								getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
+								getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
+								
+								getIndVal2(procCount);
+								procCount++;
+								
+							}
+							if (doProc[3]) { // y-
+								
+								
+								getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
+								getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
+								getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
+								getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
+								
+								getIndVal(procCount);
+								procCount++;
+							}
+							if (doProc[4]) { // z+
+								
+								getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
+								getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
+								getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
+								getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
+								
+								getIndVal(procCount);
+								procCount++;
+							}
+							if (doProc[5]) { // z-
+								
+								getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
+								getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
+								getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
+								getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
+								
+								getIndVal2(procCount);
+								procCount++;
+							}
+							
+						}
+					}
+				}
+			}
+		}
+
+#endif
+		
+		
+		listEmpty = (vertexVec.size() == 0);
+		holderFlags = tempHF;
+		
+		
+		
+		
+		
+		
 		
 	}
 #undef LZZ_INLINE
@@ -37675,11 +40721,10 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 		terDataTexScale = singleton->terDataTexScale;
 
-		blockSizeInHolders = singleton->blockSizeInHolders;
-		blockSizeInLots = singleton->blockSizeInLots;
+		holdersPerBlock = singleton->holdersPerBlock;
 
-		blockSizeInPixels = singleton->blockSizeInPixels;
-		fBlockSizeInPixels = (float)blockSizeInPixels;
+		cellsPerBlock = singleton->cellsPerBlock;
+		fCellsPerBlock = (float)cellsPerBlock;
 
 		float uvSizeInCells = 1.0;
 		float uvSizeInPixels = uvSizeInCells; // 64
@@ -37755,7 +40800,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		int counter;
 
 		int houseColor = 0;
-		int lotSizeO2 = singleton->pixelsPerLot / 2;
+		int lotSizeO2 = singleton->cellsPerHolder / 2;
 
 		int XP = 0;
 		int XN = 1;
@@ -37820,9 +40865,9 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 		float doorInset = 0.0f;
 		float doorScale = 0.625f;
 		
-		int iNodeDivsPerLot = singleton->iNodeDivsPerLot;
+		int iNodeDivsPerHolder = singleton->iNodeDivsPerHolder;
 
-		iHolderSize = blockSizeInHolders * blockSizeInHolders * blockSizeInHolders;
+		iHolderSize = holdersPerBlock * holdersPerBlock * holdersPerBlock;
 		holderData = new GamePageHolder*[iHolderSize];
 		for (i = 0; i < iHolderSize; i++) {
 			holderData[i] = NULL;
@@ -37852,12 +40897,17 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 		blockMinBufInPixels.copyFrom(&(offsetInBlocks));
 		blockMinBufInPixels.addXYZ(-bmodXY, -bmodXY, -bmodZ);
-		blockMinBufInPixels.multXYZ(fBlockSizeInPixels);
+		blockMinBufInPixels.multXYZ(fCellsPerBlock);
 
 
 		blockMaxBufInPixels.copyFrom(&(offsetInBlocks));
 		blockMaxBufInPixels.addXYZ(1.0f + bmodXY, 1.0f + bmodXY, 1.0f + bmodZ);
-		blockMaxBufInPixels.multXYZ(fBlockSizeInPixels);
+		blockMaxBufInPixels.multXYZ(fCellsPerBlock);
+
+
+
+		// TODO: REIMPLEMENT BUILDING DATA AND REMOVE THIS RETURN
+		return;
 
 
 		
@@ -37892,7 +40942,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 
 		
-		// iBuildingNodesPerSideM1 = blockSizeInLots*iNodeDivsPerLot;
+		// iBuildingNodesPerSideM1 = holdersPerBlock*iNodeDivsPerHolder;
 		// fBuildingNodesPerSideM1 = (float)iBuildingNodesPerSideM1;
 		// iBuildingNodesPerSide = iBuildingNodesPerSideM1 + 1;
 		int iMapBufSize = terDataBufPitchXY * terDataBufPitchXY;
@@ -37908,8 +40958,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 
 		
-		// TODO: REIMPLEMENT BUILDING DATA AND REMOVE THIS RETURN
-		return;
+		
 		
 
 		// Create Ter Data
@@ -37944,9 +40993,9 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 						fk + offsetInBlocks.getFZ()*fTerDataVisPitchZ - fTerDataBufAmount
 					);
 					tempVec.multXYZ(
-						fBlockSizeInPixels / fTerDataVisPitchXY,
-						fBlockSizeInPixels / fTerDataVisPitchXY,
-						fBlockSizeInPixels / fTerDataVisPitchZ	
+						fCellsPerBlock / fTerDataVisPitchXY,
+						fCellsPerBlock / fTerDataVisPitchXY,
+						fCellsPerBlock / fTerDataVisPitchZ	
 					);
 
 					tempf = singleton->getHeightAtPixelPos(tempVec.getFX(), tempVec.getFY());
@@ -38023,8 +41072,8 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 		// Layout Map Roads
 
-		for (i = -1; i <= blockSizeInLots; i++) {
-			for (j = -1; j <= blockSizeInLots; j++) {
+		for (i = -1; i <= holdersPerBlock; i++) {
+			for (j = -1; j <= holdersPerBlock; j++) {
 
 
 				for (m = 0; m < 2; m++) {
@@ -38040,14 +41089,14 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 					}
 
 					//one lot = one map pixel
-					lotX = blockSizeInLots * (offsetInBlocks.getIX()) + i;
-					lotY = blockSizeInLots * (offsetInBlocks.getIY()) + j;
+					lotX = holdersPerBlock * (offsetInBlocks.getIX()) + i;
+					lotY = holdersPerBlock * (offsetInBlocks.getIY()) + j;
 					res = fbow2->getPixelAtWrapped(lotX, lotY, curChannel);
 
 
 					// if (
-					// 	singleton->getHeightAtPixelPos(lotX*singleton->pixelsPerLot,lotY*singleton->pixelsPerLot) <=
-					// 	singleton->getSLInPixels()  + 1.0f
+					// 	singleton->getHeightAtPixelPos(lotX*singleton->cellsPerHolder,lotY*singleton->cellsPerHolder) <=
+					// 	singleton->getSeaHeightScaled()  + 1.0f
 					// ) {
 					// 	curType = E_CT_DOCK;
 					// }
@@ -38063,19 +41112,19 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 						if ( (res & gw->dirFlagsO[k]) > 0) { // has road
 
-							baseI = i * iNodeDivsPerLot + terDataBufAmount;
-							baseJ = j * iNodeDivsPerLot + terDataBufAmount;
+							baseI = i * iNodeDivsPerHolder + terDataBufAmount;
+							baseJ = j * iNodeDivsPerHolder + terDataBufAmount;
 
-							for (m = 0; m < iNodeDivsPerLot; m++) {
+							for (m = 0; m < iNodeDivsPerHolder; m++) {
 								switch (k) {
 								case 0: // x+
-									connectMapNodes(baseI + iNodeDivsPerLot, baseJ + m, baseI + iNodeDivsPerLot, baseJ + m + 1, curType, -1, 0);
+									connectMapNodes(baseI + iNodeDivsPerHolder, baseJ + m, baseI + iNodeDivsPerHolder, baseJ + m + 1, curType, -1, 0);
 									break;
 								case 1: // x-
 									connectMapNodes(baseI, baseJ + m, baseI, baseJ + m + 1, curType, -1, 0);
 									break;
 								case 2: // y+
-									connectMapNodes(baseI + m, baseJ + iNodeDivsPerLot, baseI + m + 1, baseJ + iNodeDivsPerLot, curType, -1, 0);
+									connectMapNodes(baseI + m, baseJ + iNodeDivsPerHolder, baseI + m + 1, baseJ + iNodeDivsPerHolder, curType, -1, 0);
 									break;
 								case 3: // y-
 									connectMapNodes(baseI + m, baseJ, baseI + m + 1, baseJ, curType, -1, 0);
@@ -38094,11 +41143,11 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 		// houses
 
-		for (i = 0; i < blockSizeInLots; i++) {
-			for (j = 0; j < blockSizeInLots; j++) {
+		for (i = 0; i < holdersPerBlock; i++) {
+			for (j = 0; j < holdersPerBlock; j++) {
 
-				lotX = blockSizeInLots * (offsetInBlocks.getIX()) + i;
-				lotY = blockSizeInLots * (offsetInBlocks.getIY()) + j;
+				lotX = holdersPerBlock * (offsetInBlocks.getIX()) + i;
+				lotY = holdersPerBlock * (offsetInBlocks.getIY()) + j;
 
 
 				res = fbow2->getPixelAtWrapped(lotX, lotY, gw->houseChannel);
@@ -38114,10 +41163,10 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 
 
-							baseI = i * iNodeDivsPerLot + terDataBufAmount + iNodeDivsPerLot / 2;
-							baseJ = j * iNodeDivsPerLot + terDataBufAmount + iNodeDivsPerLot / 2;
+							baseI = i * iNodeDivsPerHolder + terDataBufAmount + iNodeDivsPerHolder / 2;
+							baseJ = j * iNodeDivsPerHolder + terDataBufAmount + iNodeDivsPerHolder / 2;
 
-							for (m = 0; m < iNodeDivsPerLot / 2; m++) {
+							for (m = 0; m < iNodeDivsPerHolder / 2; m++) {
 
 								
 								switch (k) {
@@ -38230,11 +41279,11 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 				for (j = terDataBufAmount*2; j < terDataBufPitchXY-terDataBufAmount*2; j++) {
 					if ( (touchesWithinRadMap(i,j,E_CT_TREE, 3, 0) == 0) && (touches2Map(i,j,E_CT_NULL,0) == 16) ) {
 
-						lotX = blockSizeInLots * (offsetInBlocks.getIX()) + i;
-						lotY = blockSizeInLots * (offsetInBlocks.getIY()) + j;
+						lotX = holdersPerBlock * (offsetInBlocks.getIX()) + i;
+						lotY = holdersPerBlock * (offsetInBlocks.getIY()) + j;
 
-						x1 = lotX + (i*blockSizeInPixels)/terDataBufPitchXY;
-						y1 = lotY + (j*blockSizeInPixels)/terDataBufPitchXY;
+						x1 = lotX + (i*cellsPerBlock)/terDataBufPitchXY;
+						y1 = lotY + (j*cellsPerBlock)/terDataBufPitchXY;
 
 						testInd = getMapNodeIndex(i, j, 0);
 						
@@ -38243,7 +41292,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 						if (
 							
 							//singleton->getHeightAtPixelPos(x1,y1) >
-							//singleton->getSLInPixels() + 2.0f
+							//singleton->getSeaHeightScaled() + 2.0f
 							
 							( ((float)(mapData[testInd].terHeight))/fTerDataVisPitchZ ) >
 							(singleton->getSLNormalized() + 1.0f/255.0f)
@@ -39256,8 +42305,8 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 
 		// geometry generation
 		
-		lotX = blockSizeInPixels * offsetInBlocks.getIX();
-		lotY = blockSizeInPixels * offsetInBlocks.getIY();
+		lotX = cellsPerBlock * offsetInBlocks.getIX();
+		lotY = cellsPerBlock * offsetInBlocks.getIY();
 		lotZ = 0;
 
 		for (k = 0; k <= terDataBufPitchZ; k++) {
@@ -39449,10 +42498,10 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 												}
 												else {
 													if (nDir == 1.0f) {
-														tempf = (flushRadInCells)/(fBlockSizeInPixels / fTerDataVisPitchXY);
+														tempf = (flushRadInCells)/(fCellsPerBlock / fTerDataVisPitchXY);
 													}
 													else {
-														tempf = 1.0f-(flushRadInCells)/(fBlockSizeInPixels / fTerDataVisPitchXY);
+														tempf = 1.0f-(flushRadInCells)/(fCellsPerBlock / fTerDataVisPitchXY);
 													}
 													
 													xmod1 = tempf*dirModX[m];
@@ -39510,13 +42559,13 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 										
 									}
 										
-									x1 = lotX + ( ((float)(i - terDataBufAmount) + xmod1 + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchXY;
-									y1 = lotY + ( ((float)(j - terDataBufAmount) + ymod1 + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchXY;
-									z1 = lotZ + ( ((float)(k - terDataBufAmount) + zmod1 + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchZ;
+									x1 = lotX + ( ((float)(i - terDataBufAmount) + xmod1 + 0.5f) * fCellsPerBlock) / fTerDataVisPitchXY;
+									y1 = lotY + ( ((float)(j - terDataBufAmount) + ymod1 + 0.5f) * fCellsPerBlock) / fTerDataVisPitchXY;
+									z1 = lotZ + ( ((float)(k - terDataBufAmount) + zmod1 + 0.5f) * fCellsPerBlock) / fTerDataVisPitchZ;
 
-									x2 = lotX + ( ((float)(i - terDataBufAmount) + xmod2 + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchXY;
-									y2 = lotY + ( ((float)(j - terDataBufAmount) + ymod2 + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchXY;
-									z2 = lotZ + ( ((float)(k - terDataBufAmount) + zmod2 + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchZ;
+									x2 = lotX + ( ((float)(i - terDataBufAmount) + xmod2 + 0.5f) * fCellsPerBlock) / fTerDataVisPitchXY;
+									y2 = lotY + ( ((float)(j - terDataBufAmount) + ymod2 + 0.5f) * fCellsPerBlock) / fTerDataVisPitchXY;
+									z2 = lotZ + ( ((float)(k - terDataBufAmount) + zmod2 + 0.5f) * fCellsPerBlock) / fTerDataVisPitchZ;
 									
 									if (n == 0) {
 										centerPoint.setFXYZ(
@@ -39885,7 +42934,7 @@ void GameBlock::init (Singleton * _singleton, int _blockId, int _x, int _y, int 
 											
 											if (
 												singleton->getHeightAtPixelPos(p1.getFX(), p1.getFY()) <=
-												singleton->getSLInPixels()  + 2.0f
+												singleton->getSeaHeightScaled()  + 2.0f
 											) {
 												matParams.setFXYZ(E_MAT_PARAM_FOUNDATION, E_MAT_SUBPARAM_DOCK, 0.0f);
 											}
@@ -40622,15 +43671,15 @@ int GameBlock::getAdjustedHeightInHolders (int xInHolders, int yInHolders)
 		tempVec.setFXYZ(xInHolders*cellsPerHolder, yInHolders*cellsPerHolder, 0.0f);
 
 		tempVec.addXYZ(
-			-fBlockSizeInPixels * offsetInBlocks.getFX(),
-			-fBlockSizeInPixels * offsetInBlocks.getFY(),
+			-fCellsPerBlock * offsetInBlocks.getFX(),
+			-fCellsPerBlock * offsetInBlocks.getFY(),
 			0.0f
 		);
 
 		tempVec.multXYZ(
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchZ / fBlockSizeInPixels
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchZ / fCellsPerBlock
 		);
 		tempVec.addXYZ((float)terDataBufAmount);
 
@@ -40667,15 +43716,15 @@ float GameBlock::fIsNearTerrain (FIVector4 * worldMinVisInPixels)
 		tempVec.copyFrom(worldMinVisInPixels);
 
 		tempVec.addXYZ(
-			-fBlockSizeInPixels * offsetInBlocks.getFX(),
-			-fBlockSizeInPixels * offsetInBlocks.getFY(),
+			-fCellsPerBlock * offsetInBlocks.getFX(),
+			-fCellsPerBlock * offsetInBlocks.getFY(),
 			0.0f
 		);
 
 		tempVec.multXYZ(
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchZ / fBlockSizeInPixels
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchZ / fCellsPerBlock
 		);
 		tempVec.addXYZ((float)terDataBufAmount);
 
@@ -40749,15 +43798,15 @@ void GameBlock::modifyTerrain (FIVector4 * worldPos, bool doSub)
 		
 
 		tempVec.addXYZ(
-			-fBlockSizeInPixels * offsetInBlocks.getFX(),
-			-fBlockSizeInPixels * offsetInBlocks.getFY(),
+			-fCellsPerBlock * offsetInBlocks.getFX(),
+			-fCellsPerBlock * offsetInBlocks.getFY(),
 			0.0f
 		);
 
 		tempVec.multXYZ(
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchZ / fBlockSizeInPixels
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchZ / fCellsPerBlock
 		);
 		tempVec.addXYZ((float)terDataBufAmount);
 
@@ -40914,15 +43963,15 @@ int GameBlock::isNearTerrain (FIVector4 * worldPosInPix)
 		
 		tempVec.copyFrom(worldPosInPix);
 		tempVec.addXYZ(
-			-fBlockSizeInPixels * offsetInBlocks.getFX(),
-			-fBlockSizeInPixels * offsetInBlocks.getFY(),
+			-fCellsPerBlock * offsetInBlocks.getFX(),
+			-fCellsPerBlock * offsetInBlocks.getFY(),
 			0.0f
 		);
 
 		tempVec.multXYZ(
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchZ / fBlockSizeInPixels
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchZ / fCellsPerBlock
 		);
 		tempVec.addXYZ((float)terDataBufAmount);
 
@@ -40971,15 +44020,15 @@ int GameBlock::findNearestNode (FIVector4 * worldPositionInPixelsIn, FIVector4 *
 		
 		tempVec.copyFrom(worldPositionInPixelsIn);
 		tempVec.addXYZ(
-			-fBlockSizeInPixels * offsetInBlocks.getFX(),
-			-fBlockSizeInPixels * offsetInBlocks.getFY(),
+			-fCellsPerBlock * offsetInBlocks.getFX(),
+			-fCellsPerBlock * offsetInBlocks.getFY(),
 			zBias
 		);
 
 		tempVec.multXYZ(
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchXY / fBlockSizeInPixels,
-			fTerDataVisPitchZ / fBlockSizeInPixels
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchXY / fCellsPerBlock,
+			fTerDataVisPitchZ / fCellsPerBlock
 		);
 		tempVec.addXYZ((float)terDataBufAmount);
 
@@ -41037,9 +44086,9 @@ void GameBlock::nodeIndexToWorldSpaceInPixels (int ind, FIVector4 * posInPixelsO
 		int i = ind - (k * terDataBufPitchXY * terDataBufPitchXY + j * terDataBufPitchXY);
 				
 		posInPixelsOut->setFXYZ(
-			blockSizeInPixels * offsetInBlocks.getIX() + ( ((float)(i - terDataBufAmount) + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchXY,
-			blockSizeInPixels * offsetInBlocks.getIY() + ( ((float)(j - terDataBufAmount) + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchXY,
-			0 + ( ((float)(k - terDataBufAmount) + 0.5f) * fBlockSizeInPixels) / fTerDataVisPitchZ
+			cellsPerBlock * offsetInBlocks.getIX() + ( ((float)(i - terDataBufAmount) + 0.5f) * fCellsPerBlock) / fTerDataVisPitchXY,
+			cellsPerBlock * offsetInBlocks.getIY() + ( ((float)(j - terDataBufAmount) + 0.5f) * fCellsPerBlock) / fTerDataVisPitchXY,
+			0 + ( ((float)(k - terDataBufAmount) + 0.5f) * fCellsPerBlock) / fTerDataVisPitchZ
 		);
 
 	}
@@ -41251,123 +44300,6 @@ bool GameBlock::buildingAbove (int x, int y, int z)
 
 		return false;
 	}
-int GameBlock::copyTerToTexture ()
-                               {
-
-		int resIndex = singleton->requestTerIndex(blockId);
-
-		int i;
-		int j;
-		int k;
-		int indSource;
-		int indDest;
-
-		uint uiSimp;
-
-		uint *finalTex;
-
-		if (singleton->terTextures[resIndex].alreadyBound && (!forceUpdate)) {
-			
-		} else {
-			
-			forceUpdate = false;
-
-			doTraceND("copyTerToTexture resIndex: ", i__s(resIndex));
-
-			singleton->terTextures[resIndex].alreadyBound = true;
-
-
-			// if (terDataTexScale == 1) {
-			// 	finalTex = terData;
-			// } else {
-				
-			// }
-			
-			tempVec2.setFXYZ(93.989f, 67.345f, 54.256f);
-			
-			
-			for (k = 0; k < terDataBufPitchScaledZ; k++) {
-				for (j = 0; j < terDataBufPitchScaledXY; j++) {
-					for (i = 0; i < terDataBufPitchScaledXY; i++) {
-						indDest = k * terDataBufPitchScaledXY * terDataBufPitchScaledXY + j * terDataBufPitchScaledXY + i;
-						indSource =
-							(k / terDataTexScale) * terDataBufPitchXY * terDataBufPitchXY +
-							(j / terDataTexScale) * terDataBufPitchXY +
-							(i / terDataTexScale);
-							
-						if (terData[indSource] == 0) {
-							uiSimp = 0;
-						}
-						else {
-							if (buildingData[indSource].nearAir) {
-								
-								// TODO: rand num should be hashed based on location
-								
-								
-								
-								
-								
-								if (
-									(i >= terDataBufPitchScaledXY-terDataBufAmount*4) ||
-									(i <= terDataBufAmount*4) ||
-									(j >= terDataBufPitchScaledXY-terDataBufAmount*4) ||
-									(j <= terDataBufAmount*4)
-								) {
-									uiSimp = 255; // make sure block borders match up
-								}
-								else {
-									
-									tempVec.setIXYZ(
-										i + offsetInBlocks.getIX()*terDataVisPitchXY - terDataBufAmount,
-										j + offsetInBlocks.getIY()*terDataVisPitchXY - terDataBufAmount,
-										k + offsetInBlocks.getIZ()*terDataVisPitchZ - terDataBufAmount
-									);
-									
-									uiSimp = iGetRandSeeded(&tempVec,&tempVec2,200,255);
-								}
-								
-							}
-							else {
-								uiSimp = 255;
-							}
-						}
-
-						singleton->terDataScaled[indDest] = (uiSimp << 24) | (uiSimp << 16) | (uiSimp << 8) | uiSimp;
-					}
-				}
-			}
-
-			finalTex = singleton->terDataScaled;
-			
-			
-			
-
-			glBindTexture(GL_TEXTURE_3D, singleton->terTextures[resIndex].texId);
-
-			glTexSubImage3D(
-				GL_TEXTURE_3D,
-				0,
-
-				0,
-				0,
-				0,
-
-				terDataBufPitchScaledXY,
-				terDataBufPitchScaledXY,
-				terDataBufPitchScaledZ,
-
-				GL_RGBA,
-				GL_UNSIGNED_BYTE,
-
-				finalTex
-
-			);
-			glBindTexture(GL_TEXTURE_3D, 0);
-		}
-
-		return resIndex;
-
-	}
 void GameBlock::makeMazeUG ()
                                   {
 
@@ -41551,6 +44483,1321 @@ void GameBlock::makeMazeUG ()
 		}
 #undef LZZ_INLINE
  
+// f00355_volumewrapper.h
+//
+
+#include "f00355_volumewrapper.e"
+#define LZZ_INLINE inline
+VolumeWrapper::VolumeWrapper ()
+                        {
+		isReady = false;
+	}
+void VolumeWrapper::init (int z, GLenum clampMethod, bool _isFloat)
+                                                            {
+		
+		int tx = 0;
+		int ty = 0;
+		
+		switch (z) {
+			case 16:
+				tx = 64;
+				ty = 64;
+			break;
+			case 32:
+				tx = 256;
+				ty = 128;
+			break;
+			case 64:
+				tx = 512;
+				ty = 512;
+			break;
+			case 128:
+				tx = 2048;
+				ty = 1024;
+			break;
+			case 256:
+				tx = 4096;
+				ty = 4096;
+			break;
+			default:
+				cout << "Invalid VolumeWrapper dim\n";
+			break;
+		}
+		
+		int x = tx;
+		int y = ty;
+		
+		
+		isFloat = _isFloat;
+		
+		
+		terGenDim.setFXYZ(x,y,z); //4096.0f,4096.0f,256.0f
+		
+		glGenTextures(1, &(volId));
+		
+		glBindTexture(GL_TEXTURE_3D, volId);
+		
+		if (isFloat) {
+			glTexImage3D(
+				GL_TEXTURE_3D,
+				0,
+				GL_RGBA32F, //GL_RGBA, // GL_RGBA32F
+				z,
+				z,
+				z,
+				0,
+				GL_RGBA,
+				GL_FLOAT, // GL_UNSIGNED_BYTE, // GL_FLOAT
+				0
+			);
+		}
+		else {
+			glTexImage3D(
+				GL_TEXTURE_3D,
+				0,
+				GL_RGBA, //GL_RGBA, // GL_RGBA32F
+				z,
+				z,
+				z,
+				0,
+				GL_RGBA,
+				GL_UNSIGNED_BYTE, // GL_UNSIGNED_BYTE, // GL_FLOAT
+				0
+			);
+		}
+		
+		
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		//glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0); // causes crash on getError()?
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, clampMethod);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, clampMethod);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, clampMethod);
+		glBindTexture(GL_TEXTURE_3D, 0);
+		
+		if (isFloat) {
+			fboSet.init(1, tx, ty, 4, false);
+		}
+		else {
+			fboSet.init(1, tx, ty, 1, false);
+		}
+		
+		isReady = true;
+		
+	}
+void VolumeWrapper::copyFloatArr (float * floatArr)
+                                           {
+		glBindTexture(GL_TEXTURE_3D, volId);
+		glTexSubImage3D(
+			GL_TEXTURE_3D,
+			0,
+
+			0,
+			0,
+			0,
+
+			terGenDim[2],
+			terGenDim[2],
+			terGenDim[2],
+
+			GL_RGBA,
+			GL_FLOAT, //GL_UNSIGNED_BYTE,
+
+			floatArr
+		);
+		glBindTexture(GL_TEXTURE_3D, 0);
+	}
+void VolumeWrapper::copyCharArr (unsigned char * charArr)
+                                                 {
+		glBindTexture(GL_TEXTURE_3D, volId);
+		glTexSubImage3D(
+			GL_TEXTURE_3D,
+			0,
+
+			0,
+			0,
+			0,
+
+			terGenDim[2],
+			terGenDim[2],
+			terGenDim[2],
+
+			GL_RGBA,
+			GL_UNSIGNED_BYTE, //GL_UNSIGNED_BYTE,
+
+			charArr
+		);
+		glBindTexture(GL_TEXTURE_3D, 0);
+	}
+#undef LZZ_INLINE
+ 
+// f00360_threadpoolwrapper.h
+//
+
+#include "f00360_threadpoolwrapper.e"
+#define LZZ_INLINE inline
+ThreadPoolWrapper::ThreadPoolWrapper ()
+                            {
+		
+	}
+void ThreadPoolWrapper::init (Singleton * _singleton, int _maxThreads, bool _singleThreaded)
+                                                                                {
+		int i;
+		
+		singleton = _singleton;
+		
+		singleThreaded = _singleThreaded;
+		maxThreads = _maxThreads;
+		threadPool = new ThreadWrapper[maxThreads];
+		
+		
+		
+		for (i = 0; i < maxThreads; i++) {
+			threadPool[i].init();
+			availIds.push_back(i);
+		}
+		
+		for (i = 0; i < THREAD_DATA_COUNT; i++) {
+			intData[i] = 0;
+		}
+	}
+void ThreadPoolWrapper::funcTP (int threadId)
+                                  {
+		
+		GamePageHolder* curHolder;
+		
+		threadPool[threadId].setRunningLocked(true);
+		
+		curHolder = singleton->gw->getHolderAtId(
+			threadPool[threadId].threadDataInt[1],
+			threadPool[threadId].threadDataInt[2]
+		);
+		
+		switch(threadPool[threadId].threadDataInt[0]) {
+			case E_TT_GENPATHS:
+				curHolder->refreshPaths();
+			break;
+			case E_TT_GENLIST:
+				curHolder->generateList();
+			break;
+		}
+		
+		//curHolder->genCellData();
+		
+		threadPool[threadId].setRunningLocked(false);
+	}
+void ThreadPoolWrapper::startTP (int threadId)
+                                   {
+		if (threadPool[threadId].threadRunning) {
+			
+		}
+		else {
+			threadPool[threadId].threadRunning = true;
+			
+			if (singleThreaded) {
+				funcTP(threadId);
+			}
+			else {
+				threadPool[threadId].threadMain = std::thread(&ThreadPoolWrapper::funcTP, this, threadId);
+			}
+			
+		}
+		
+	}
+bool ThreadPoolWrapper::stopTP (int threadId)
+                                  {
+		
+		GamePageHolder* curHolder;
+		
+		bool didStop = false;
+		if (threadPool[threadId].threadRunning) {
+			
+			if (singleThreaded) {
+				
+			}
+			else {
+				threadPool[threadId].threadMain.join();
+			}
+			
+			curHolder = singleton->gw->getHolderAtId(
+				threadPool[threadId].threadDataInt[1],
+				threadPool[threadId].threadDataInt[2]
+			);
+			
+			switch(threadPool[threadId].threadDataInt[0]) {
+				case E_TT_GENPATHS:
+					
+				break;
+				case E_TT_GENLIST:
+					curHolder->fillVBO();
+					
+				break;
+			}
+			
+			curHolder->lockWrite = false;
+			threadPool[threadId].threadRunning = false;
+			didStop = true;
+			
+			availIds.push_back(threadId);
+			
+		}
+		return didStop;
+	}
+bool ThreadPoolWrapper::startThread ()
+                           {
+		int i;
+		int q;
+		
+		
+		if (availIds.size() == 0) {
+			anyRunning();
+		}
+		
+		if (availIds.size() == 0) {
+			return false;
+		}
+		
+		int curId = availIds.back();
+		availIds.pop_back();
+		
+		for (i = 0; i < THREAD_DATA_COUNT; i++) {
+			threadPool[curId].threadDataInt[i] = intData[i];
+		}
+		
+		GamePageHolder* curHolder = singleton->gw->getHolderAtId(
+			threadPool[curId].threadDataInt[1],
+			threadPool[curId].threadDataInt[2]
+		);
+		
+		curHolder->lockWrite = true;
+		
+		startTP(curId);
+		
+		return true;
+	}
+bool ThreadPoolWrapper::anyRunning ()
+                          {
+		
+		int q;
+		
+		bool bAnyRunning = false;
+		for (q = 0; q < maxThreads; q++) {
+			if (threadPool[q].threadRunning) {
+				if (threadPool[q].isReady()) {
+					stopTP(q);
+				}
+				else {
+					bAnyRunning = true;
+				}
+			}
+		}
+		
+		return bAnyRunning;
+	}
+void ThreadPoolWrapper::stopAll ()
+                       {
+		int q;
+		for (q = 0; q < maxThreads; q++) {
+			stopTP(q);
+		}
+	}
+ThreadPoolWrapper::~ ThreadPoolWrapper ()
+                             {
+		stopAll();
+		delete[] threadPool;
+	}
+#undef LZZ_INLINE
+ 
+// f00370_gamelogic.h
+//
+
+#include "f00370_gamelogic.e"
+#define LZZ_INLINE inline
+GameLogic::GameLogic ()
+                    {
+		
+	}
+void GameLogic::init (Singleton * _singleton)
+                                         {
+		singleton = _singleton;
+		
+		searchedForPath = false;
+		didFindPath = false;
+		idCounter = 0;
+		
+		threadPoolPath = new ThreadPoolWrapper();
+		threadPoolPath->init(singleton, 8, true||SINGLE_THREADED);
+		
+		threadPoolList = new ThreadPoolWrapper();
+		threadPoolList->init(singleton, 8, false||SINGLE_THREADED);
+		
+	}
+GamePageHolder * GameLogic::getHolderById (int blockId, int holderId)
+                                                                 {
+		GameBlock* curBlock = singleton->gw->blockData[blockId];
+		GamePageHolder* curHolder;
+		if (curBlock != NULL) {
+			curHolder = curBlock->holderData[holderId];
+			return curHolder;
+		}
+		else {
+			return NULL;
+		}
+	}
+GamePageHolder * GameLogic::getHolderByPR (PathResult * pr)
+                                                      {
+		int blockId = pr->blockId;
+		int holderId = pr->holderId;
+		
+		GamePageHolder* curHolder;
+		GameBlock* curBlock = singleton->gw->blockData[blockId];
+		if (curBlock != NULL) {
+			curHolder = curBlock->holderData[holderId];
+			return curHolder;
+		}
+		else {
+			return NULL;
+		}
+	}
+bool GameLogic::holdersEqual (GamePageHolder * h0, GamePageHolder * h1)
+                                                                  {
+		return (
+			(h0->blockId == h1->blockId) &&
+			(h0->holderId == h1->holderId)
+		);
+	}
+void GameLogic::addHolderToStack (GamePageHolder * curHolder, int targId)
+                                                                     {
+		pathSearchStack.push_back(PathResult());
+		pathSearchStack.back().blockId = curHolder->blockId;
+		pathSearchStack.back().holderId = curHolder->holderId;
+		curHolder->visitId = targId;
+	}
+void GameLogic::remHolderFromStack (int opCode, int targId)
+                                                        {
+		
+		GamePageHolder* curHolder = getHolderByPR(&(pathSearchStack.back()));
+		
+		switch(opCode) {
+			case E_PFO_CLEAR_GROUPS:
+				curHolder->clearGroupFlags(targId);
+				if (holdersEqual(globEndHolder,curHolder)) {
+					globFoundTarg = true;
+				}
+			break;
+		}
+		
+		pathSearchStack.pop_back();
+	}
+void GameLogic::fillAllPaths (GamePageHolder * begHolder, GamePageHolder * endHolder, int begInd, int endInd, int targId, int opCode)
+          {
+		int i;
+		
+		pathSearchStack.clear();
+		
+		GamePageHolder* curHolder;
+		GamePageHolder* testHolder;
+		
+		addHolderToStack(begHolder,targId); //true
+		
+		bool notFound;
+		
+		while (pathSearchStack.size() > 0) {
+			
+			curHolder = getHolderByPR(&(pathSearchStack.back()));
+			
+			notFound = true;
+			
+			for (i = 0; i < NUM_ORIENTATIONS; i++) {
+				testHolder = singleton->gw->getHolderAtCoords(
+					curHolder->offsetInHolders.getIX()+DIR_VECS_I[i][0],
+					curHolder->offsetInHolders.getIY()+DIR_VECS_I[i][1],
+					curHolder->offsetInHolders.getIZ()+DIR_VECS_I[i][2],
+					false
+				);
+				
+				if (testHolder != NULL) {
+					if (testHolder->pathsReady) {
+						if (testHolder->visitId == targId) {
+							
+						}
+						else {
+							notFound = false;
+							addHolderToStack(testHolder,targId);
+						}
+					}
+				}
+			}
+			
+			if (notFound) {
+				remHolderFromStack(opCode, targId);
+			}
+			
+		}
+		
+	}
+void GameLogic::addGroupToStack (GamePageHolder * curHolder, int groupId, GamePageHolder * lastHolder, int lastGroupId, int targId)
+          {
+		pathSearchStack.push_back(PathResult());
+		PathResult* lastRes = &(pathSearchStack.back());
+		
+		lastRes->blockId = curHolder->blockId;
+		lastRes->holderId = curHolder->holderId;
+		lastRes->groupId = groupId;
+		
+		if (lastHolder == NULL) {
+			lastRes->lastBlockId = -1;
+			lastRes->lastHolderId = -1;
+			lastRes->lastGroupId = -1;
+		}
+		else {
+			lastRes->lastBlockId = lastHolder->blockId;
+			lastRes->lastHolderId = lastHolder->holderId;
+			lastRes->lastGroupId = groupId;
+		}
+		
+		
+		
+		curHolder->groupInfoStack[groupId].visitId = targId;
+	}
+void GameLogic::remGroupFromStack (int opCode, int targId)
+                                                       {
+		
+		GamePageHolder* curHolder = getHolderByPR(&(pathSearchStack.back()));
+		int curGroupId = pathSearchStack.back().groupId;
+		
+		switch(opCode) {
+			case E_PFO_CLEAR_GROUPS:
+				// curHolder->clearGroupFlags(targId);
+				// if (groupsEqual(globEndHolder,curHolder)) {
+				// 	globFoundTarg = true;
+				// }
+			break;
+			case E_PFO_SEARCH_GROUPS:
+				if (
+					holdersEqual(globEndHolder,curHolder) &&
+					(curGroupId == globEndGroupId)	
+				) {
+					globFoundTarg = true;
+				}
+			break;
+		}
+		
+		pathFinalStack.push_back(pathSearchStack.back());
+		
+		pathSearchStack.pop_back();
+	}
+void GameLogic::fillAllGroups (GamePageHolder * begHolder, GamePageHolder * endHolder, int begInd, int endInd, int targId, int opCode)
+          {
+		int i;
+		
+		pathSearchStack.clear();
+		pathFinalStack.clear();
+		
+		GamePageHolder* curHolder;
+		GamePageHolder* testHolder;
+		
+		int begGroupId = begHolder->getGroupId(begInd);
+		int endGroupId = endHolder->getGroupId(endInd);
+		globEndGroupId = endGroupId;
+		int curGroupId = 0;
+		int testGroupId;
+		
+		ConnectingNodeStruct* testConNode;
+		
+		addGroupToStack(begHolder,begGroupId,NULL,-1,targId); //true
+		
+		bool notFound;
+		
+		while (pathSearchStack.size() > 0) {
+			
+			curHolder = getHolderByPR(&(pathSearchStack.back()));
+			curGroupId = pathSearchStack.back().groupId;
+			
+			notFound = true;
+			
+			for (i = 0; i < curHolder->bestConnectingNodes.size();i++) {
+				testConNode = &(curHolder->bestConnectingNodes[i]);
+				
+				if (testConNode->groupIdFrom == curGroupId) {
+					
+					testHolder = getHolderById(testConNode->blockIdTo,testConNode->holderIdTo);
+					testGroupId = testConNode->groupIdTo;
+					
+					if (testHolder != NULL) {
+						if (testHolder->pathsReady) {
+							if (testHolder->groupInfoStack[testGroupId].visitId == targId) {
+								// already visited current group
+							}
+							else {
+								notFound = false;
+								addGroupToStack(testHolder,testGroupId,curHolder,curGroupId,targId);
+							}
+						}
+					}
+					
+				}
+				
+				
+				
+			}
+			
+			/*
+			for (i = 0; i < NUM_ORIENTATIONS; i++) {
+				testHolder = singleton->gw->getHolderAtCoords(
+					curHolder->offsetInHolders.getIX()+DIR_VECS_I[i][0],
+					curHolder->offsetInHolders.getIY()+DIR_VECS_I[i][1],
+					curHolder->offsetInHolders.getIZ()+DIR_VECS_I[i][2],
+					false
+				);
+				
+				if (testHolder != NULL) {
+					if (testHolder->pathsReady) {
+						if (testHolder->visitId == targId) {
+							
+						}
+						else {
+							notFound = false;
+							addGroupToStack(testHolder,targId);
+						}
+					}
+				}
+			}
+			*/
+			
+			if (notFound) {
+				remGroupFromStack(opCode, targId);
+			}
+			
+		}
+		
+	}
+bool GameLogic::findBestPath (GamePageHolder * closestHolder, GamePageHolder * closestHolder2, int bestInd, int bestInd2)
+          {
+		
+		// clear
+		globEndHolder = closestHolder2;
+		globFoundTarg = false;
+		fillAllPaths(closestHolder, closestHolder2, bestInd, bestInd2, idCounter, E_PFO_CLEAR_GROUPS); idCounter++;
+		if (globFoundTarg) {
+			cout << "Found linking holders\n";
+		}
+		else {
+			cout << "No available path, or path data not ready\n";
+			return false;
+		}
+		
+		globFoundTarg = false;
+		fillAllGroups(closestHolder, closestHolder2, bestInd, bestInd2, idCounter, E_PFO_SEARCH_GROUPS); idCounter++;
+		
+		if (globFoundTarg) {
+			cout << "Found linking groups\n";
+		}
+		else {
+			cout << "Could not find linking groups\n";
+			return false;
+		}
+		
+		return true;
+		
+	}
+void GameLogic::update ()
+                      {
+		
+		int i;
+		int j;
+		int k;
+		
+		GamePageHolder* curHolder = singleton->gw->getHolderAtCoords(
+			singleton->lastHolderPos.getIX(),
+			singleton->lastHolderPos.getIY(),
+			singleton->lastHolderPos.getIZ(),
+			true
+		);
+		
+		// if (singleton->refreshPaths) {
+		// 	singleton->refreshPaths = false;
+		// 	curHolder->refreshPaths();
+		// }
+		
+		
+		////////////////////
+		
+		
+		GamePageHolder* tempHolder;
+		GamePageHolder* tempHolder2;
+		
+		int tempInd;
+		int tempInd2;
+		
+		GamePageHolder* closestHolder;
+		GamePageHolder* closestHolder2;
+		int bestInd;
+		int bestInd2;
+		PathResult* curPR;
+		
+		if (singleton->pathfindingOn) {
+			
+			bestInd = getClosestPathInd(&(singleton->moveNodes[0]), closestHolder);
+			bestInd2 = getClosestPathInd(&(singleton->moveNodes[1]), closestHolder2);
+			
+			
+			drawPointAtIndex(closestHolder, bestInd, 0,255,0, 0.5f);
+			drawPointAtIndex(closestHolder2, bestInd2, 255,0,0, 0.5f);
+			
+			if ((bestInd > -1)  && (bestInd2 >-1) && (!searchedForPath)) {
+				// draw path between index
+				
+				didFindPath = findBestPath(closestHolder, closestHolder2, bestInd, bestInd2);
+				searchedForPath = true;
+			}
+			
+			if (didFindPath) {
+				for (i = 0; i < pathFinalStack.size(); i++) {
+					curPR = &(pathFinalStack[i]);
+					
+					tempHolder = getHolderById(curPR->blockId,curPR->holderId);
+					
+					
+					if ((tempHolder != NULL)) {
+						tempInd = tempHolder->groupInfoStack[curPR->groupId].centerInd;
+						if (tempInd > -1) {
+							drawPointAtIndex(tempHolder, tempInd, 64, 64, 255, 0.25f);
+							
+							if (curPR->lastGroupId == -1) {
+								
+							}
+							else {
+								tempHolder2 = getHolderById(curPR->lastBlockId,curPR->lastHolderId);
+								
+								if (tempHolder2 != NULL) {
+									tempInd2 = tempHolder2->groupInfoStack[curPR->lastGroupId].centerInd;
+									
+									if (tempInd2 > -1) {
+										drawLineAtIndices(
+											tempHolder, tempInd,
+											tempHolder2, tempInd2,
+											64, 64, 255
+										);
+									}
+									
+								}
+								
+							}
+							
+						}
+						
+						
+					}
+					
+					
+				}
+			}
+			
+			
+			
+			//bestInd = getClosestPathInd(&(singleton->mouseMovePD), closestHolder);
+			//drawPaths(0, 0, 0, closestHolder, bestInd);
+			
+			// for (k = -1; k <= 1; k++) {
+			// 	for (j = -1; j <= 1; j++) {
+			// 		for (i = -1; i <= 1; i++) {
+			// 			drawPaths(
+			// 				i,
+			// 				j,
+			// 				k,
+			// 				closestHolder,
+			// 				bestInd
+			// 			);
+			// 		}
+			// 	}
+			// }
+			
+			
+			
+			
+		}
+		
+		
+		
+		
+		// for (i = 0; i < NUM_ORIENTATIONS; i++) {			
+		// 	drawPaths(
+		// 		DIR_VECS_I[i][0],
+		// 		DIR_VECS_I[i][1],
+		// 		DIR_VECS_I[i][2],
+		// 		closestHolder,
+		// 		bestInd
+		// 	);
+		// }
+		
+		
+		////////////////////
+	}
+void GameLogic::drawLineAtIndices (GamePageHolder * curPointHolder, int curPointIndex, GamePageHolder * curPointHolder2, int curPointIndex2, int r, int g, int b)
+          {
+		
+		if (curPointIndex < 0) {
+			return;
+		}
+		
+		if (curPointHolder == NULL) {
+			return;
+		}
+		
+		int ii;
+		int jj;
+		int kk;
+		
+		int cellsPerHolder = singleton->cellsPerHolder;
+		
+		FIVector4 pVec1;
+		FIVector4 pVec2;
+		
+		singleton->setShaderVec3("matVal", r, g, b);
+		// draw highlighted cube here if necessary
+		
+		kk = curPointIndex/(cellsPerHolder*cellsPerHolder);
+		jj = (curPointIndex-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+		ii = curPointIndex-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+		
+		pVec1.copyFrom(&(curPointHolder->gphMinInPixels));
+		pVec1.addXYZ(ii,jj,kk);
+		pVec1.addXYZ(0.5f);
+		
+		kk = curPointIndex2/(cellsPerHolder*cellsPerHolder);
+		jj = (curPointIndex2-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+		ii = curPointIndex2-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+		
+		pVec2.copyFrom(&(curPointHolder2->gphMinInPixels));
+		pVec2.addXYZ(ii,jj,kk);
+		pVec2.addXYZ(0.5f);
+		
+		
+		singleton->drawLine(&pVec1, &pVec2);
+	}
+void GameLogic::drawPointAtIndex (GamePageHolder * curPointHolder, int curPointIndex, int r, int g, int b, float rad)
+                                                                                                                 {
+		
+		if (curPointIndex < 0) {
+			return;
+		}
+		
+		if (curPointHolder == NULL) {
+			return;
+		}
+		
+		int ii;
+		int jj;
+		int kk;
+		
+		int cellsPerHolder = singleton->cellsPerHolder;
+		
+		FIVector4 pVec1;
+		
+		singleton->setShaderVec3("matVal", r, g, b);
+		// draw highlighted cube here if necessary
+		
+		kk = curPointIndex/(cellsPerHolder*cellsPerHolder);
+		jj = (curPointIndex-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+		ii = curPointIndex-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+		
+		pVec1.copyFrom(&(curPointHolder->gphMinInPixels));
+		pVec1.addXYZ(ii,jj,kk);
+		pVec1.addXYZ(0.5f);
+		singleton->drawCubeCentered(&pVec1, rad);
+	}
+void GameLogic::drawPaths (int offX, int offY, int offZ, GamePageHolder * curPointHolder, int curPointIndex)
+          {
+		
+		if (curPointHolder == NULL) {
+			return;
+		}
+		
+		
+		int i;
+		int j;
+		int k;
+		int n;
+		int q;
+		
+		int ii;
+		int jj;
+		int kk;
+		int ii2;
+		int jj2;
+		int kk2;
+		
+		int ind;
+		int lastId;
+		int curId;
+		int curInd;
+		int cameFromInd;
+		int cellVal;
+		
+		int targetGroup;
+		int targetBlockId;
+		int targetHolderId;
+		
+		
+		int cellsPerHolder = singleton->cellsPerHolder;
+		
+		bool doProc = false;
+		
+		FIVector4 lhPos;
+		lhPos.copyFrom(&(singleton->lastHolderPos));
+		lhPos.addXYZ(offX,offY,offZ);
+		
+		GamePageHolder* curHolder = singleton->gw->getHolderAtCoords(
+			lhPos.getIX(),
+			lhPos.getIY(),
+			lhPos.getIZ(),
+			true
+		);
+		
+		bool sameHolder = (
+			(curPointHolder->blockId = curHolder->blockId) &&
+			(curPointHolder->holderId = curHolder->holderId)
+		);
+		
+		float curPathCost;
+		
+		FIVector4 pVec1;
+		FIVector4 pVec2;
+		FIVector4 pVec3;
+		
+		
+		if (curHolder->idealPathsReady) {
+			
+			singleton->setShaderFloat("isWire", 1.0);
+			singleton->setShaderVec3("matVal", 255, 0, 0);
+			minv.copyFrom(&lhPos);
+			minv.multXYZ(cellsPerHolder);
+			maxv.copyFrom(&minv);
+			maxv.addXYZ(cellsPerHolder);
+			singleton->drawBox(&minv, &maxv);
+			singleton->setShaderFloat("isWire", 0.0);
+			
+			
+			// draw all path points
+			lastId = -1;
+			for (q = 0; q < curHolder->groupIdStack.size(); q++) {
+				
+				curId = curHolder->groupIdStack[q].groupId;
+				curInd = curHolder->groupIdStack[q].ind;
+				
+				if (lastId != curId) {
+					singleton->setShaderfVec3("matVal", &(singleton->colVecs[curId%16]));
+				}
+				
+				if (curInd == curHolder->groupInfoStack[curId].centerInd) {
+					singleton->setShaderVec3("matVal", 254, 254, 254);
+				}
+				
+				kk = curInd/(cellsPerHolder*cellsPerHolder);
+				jj = (curInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+				ii = curInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+				
+				pVec1.copyFrom(&minv);
+				pVec1.addXYZ(ii,jj,kk);
+				pVec1.addXYZ(0.5f);
+				
+				curPathCost = curHolder->getInfo(curInd)->pathCost;
+				
+				
+				singleton->drawCubeCentered(
+					&pVec1, 
+					mixf(0.05f,0.45f,clampfZO(curPathCost/64.0f))
+				);
+				
+				
+				if (curInd == curHolder->groupInfoStack[curId].centerInd) {
+					singleton->setShaderfVec3("matVal", &(singleton->colVecs[curId%16]));
+				}
+				
+				lastId = curId;
+			}
+			
+			doProc = false;
+			
+			
+			
+			
+			// draw paths
+			
+			if (curPointIndex > -1) {
+				
+				
+				
+				singleton->setShaderVec3("matVal", 254, 254, 254);
+				// draw highlighted cube here if necessary
+				// ??
+				
+				
+				targetGroup = curPointHolder->getGroupId(curPointIndex);
+				targetBlockId = curPointHolder->blockId;
+				targetHolderId = curPointHolder->holderId;
+				
+				
+				
+				
+				if (curHolder->pathsReady && (targetGroup > -1)) {
+					
+					for (q = 0; q < curHolder->bestConnectingNodes.size(); q++) {
+						//doProc = curHolder->pathsReady && (targetGroup > -1);
+						
+						doProc = false;
+						if (sameHolder) {
+							
+							if (curHolder->bestConnectingNodes[q].groupIdFrom == targetGroup) {
+								doProc = true;
+								curInd = curHolder->bestConnectingNodes[q].cellIndFrom;
+							}
+						}
+						else {
+							if (
+								
+								(curHolder->bestConnectingNodes[q].groupIdTo == targetGroup) &&
+								(curHolder->bestConnectingNodes[q].blockIdTo == targetBlockId) &&
+								(curHolder->bestConnectingNodes[q].groupIdTo == targetHolderId)	
+								
+							) {
+								doProc = true;
+								curInd = curHolder->bestConnectingNodes[q].cellIndFrom;
+							}
+						}
+						
+						// must set curInd
+						//curInd = curPointHolder->groupInfoStack[targetGroup].centerInd;
+						
+						
+						if (doProc) {
+							cameFromInd = curHolder->getInfo(curInd)->cameFromInd;
+							while (
+								(cameFromInd > -1) &&
+								(curInd > -1)	
+							) {
+								
+								cameFromInd = curHolder->getInfo(curInd)->cameFromInd;
+								
+								if (
+									(curInd > -1) &&
+									(cameFromInd > -1) &&
+									(curInd < (cellsPerHolder*cellsPerHolder*cellsPerHolder)) &&
+									(cameFromInd < (cellsPerHolder*cellsPerHolder*cellsPerHolder))
+								) {
+									kk = curInd/(cellsPerHolder*cellsPerHolder);
+									jj = (curInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+									ii = curInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+									
+									kk2 = cameFromInd/(cellsPerHolder*cellsPerHolder);
+									jj2 = (cameFromInd-kk2*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+									ii2 = cameFromInd-(kk2*cellsPerHolder*cellsPerHolder + jj2*cellsPerHolder);
+									
+									
+									pVec1.copyFrom(&minv);
+									pVec1.addXYZ(ii,jj,kk);
+									pVec1.addXYZ(0.5f);
+									
+									pVec2.copyFrom(&minv);
+									pVec2.addXYZ(ii2,jj2,kk2);
+									pVec2.addXYZ(0.5f);
+									
+									singleton->drawLine(&pVec1, &pVec2);
+								}
+								
+								curInd = cameFromInd;
+								
+							}
+						}
+						
+					}
+				}
+				
+				
+				
+				
+			}
+			
+			
+			
+			
+			//singleton->setShaderVec3("matVal", 30, 30, 30);
+			// for (q = 0; q < curHolder->groupIdStack.size(); q++) {
+				
+			// 	curId = curHolder->groupIdStack[q].groupId;
+			// 	curInd = curHolder->groupIdStack[q].ind;
+			// 	cameFromInd = curHolder->getInfo(curInd)->cameFromInd;
+				
+			// 	if (
+			// 		(cameFromInd > -1) &&
+			// 		(cameFromInd < (cellsPerHolder*cellsPerHolder*cellsPerHolder))
+			// 	) {
+			// 		kk = curInd/(cellsPerHolder*cellsPerHolder);
+			// 		jj = (curInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+			// 		ii = curInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+					
+			// 		kk2 = cameFromInd/(cellsPerHolder*cellsPerHolder);
+			// 		jj2 = (cameFromInd-kk2*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+			// 		ii2 = cameFromInd-(kk2*cellsPerHolder*cellsPerHolder + jj2*cellsPerHolder);
+					
+					
+			// 		pVec1.copyFrom(&minv);
+			// 		pVec1.addXYZ(ii,jj,kk);
+			// 		pVec1.addXYZ(0.5f);
+					
+			// 		pVec2.copyFrom(&minv);
+			// 		pVec2.addXYZ(ii2,jj2,kk2);
+			// 		pVec2.addXYZ(0.5f);
+					
+			// 		singleton->drawLine(&pVec1, &pVec2);
+			// 	}
+			// }
+			
+			
+		}
+	}
+int GameLogic::getClosestPathInd (FIVector4 * closestPoint, GamePageHolder * & closestHolder)
+                                                                                       {
+			
+			
+			
+			int i;
+			int j;
+			int k;
+			int n;
+			int ind;
+			
+			int testInd;
+			int testDis;
+			int bestDis = 99999;
+			int bestInd = -1;
+			
+			int cellsPerHolder = singleton->cellsPerHolder;
+			int curInd = singleton->gw->getCellInd(closestPoint, closestHolder);
+			
+			if (closestHolder == NULL) {
+				return -1;
+			}
+			
+			// if (singleton->gameFluid[E_FID_BIG]->threadPoolPath.anyRunning()) {
+			// 	return -1;
+			// }
+			
+			if (closestHolder->idealPathsReady) {
+				
+			}
+			else {
+				return -1;
+			}
+			
+			
+			int kk = curInd/(cellsPerHolder*cellsPerHolder);
+			int jj = (curInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+			int ii = curInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+			
+			
+			for (n = 0; n < cellsPerHolder*cellsPerHolder*cellsPerHolder; n++) {
+				ind = n;
+				
+				
+				
+				if (closestHolder->getGroupId(n) > -1) {
+					k = ind/(cellsPerHolder*cellsPerHolder);
+					j = (ind - k*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+					i = ind - ( j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder );
+					
+					testInd = ind;
+					testDis = abs(i-ii) + abs(j-jj) + abs(k-kk);
+					
+					if (testDis < bestDis) {
+						bestDis = testDis;
+						bestInd = testInd;
+					}
+				}
+				
+			}
+			
+			return bestInd;
+		}
+void GameLogic::loadNearestHolders ()
+                                  {
+		
+		FIVector4 tempVec;
+		
+		int i, j, k;
+		int ii, jj, kk;
+		int incVal;
+		int maxLoadRad = 0;
+		int genCount = 0;
+		int mink;
+		int maxk;
+		int minj;
+		int maxj;
+		int mini;
+		int maxi;
+		int curLoadRadius;
+		int radStep = 1;
+		intPair curId;
+		
+		int cellsPerHolder = singleton->cellsPerHolder;
+		
+		switch(cellsPerHolder) {
+			case 16:
+				maxLoadRad = 4;
+			break;
+			
+			case 32:
+				maxLoadRad = 4;
+			break;
+			
+			case 64:
+				maxLoadRad = 2;
+			break;
+			
+			case 128:
+				maxLoadRad = 1;
+			break;
+		}
+		
+		bool doPaths;
+		
+		// check if any are done running and stop them if necessary
+		threadPoolList->anyRunning();
+		if (threadPoolPath->anyRunning()) {
+			doPaths = false;
+		}
+		else {
+			doPaths = true;
+		}
+		
+		
+		
+		
+		tempVec.copyFrom(singleton->cameraPos);
+		tempVec.intDivXYZ(singleton->cellsPerHolder);
+
+		GamePageHolder* curHolder;
+		GameBlock *curBlock;
+
+		singleton->gw->ensureBlocks();
+		
+		// if (singleton->pathfindingOn) {
+			
+		// }
+		// else {
+		// 	return;
+		// }
+		
+		for (curLoadRadius = 0; curLoadRadius < maxLoadRad; curLoadRadius++) {
+			
+			mink = max(tempVec.getIZ() - curLoadRadius,0);
+			maxk = min(tempVec.getIZ() + curLoadRadius,singleton->worldSizeInHolders.getIZ()-1);
+			minj = tempVec.getIY() - curLoadRadius;
+			maxj = tempVec.getIY() + curLoadRadius;
+			mini = tempVec.getIX() - curLoadRadius;
+			maxi = tempVec.getIX() + curLoadRadius;
+			
+			for (jj = minj; jj <= maxj; jj += radStep) {
+				
+				if (curLoadRadius <= 2) {
+					incVal = 1;
+				}
+				else {
+					if ( (jj == minj) || (jj == maxj) ) {
+						incVal = radStep;
+					}
+					else {
+						incVal = maxi - mini;
+					}
+				}
+				
+				for (ii = maxi; ii >= mini; ii -= incVal) {
+					
+					
+					for (kk = mink; kk <= maxk; kk += radStep) {
+						
+						
+						curHolder = singleton->gw->getHolderAtCoords(ii, jj, kk, true);
+						curBlock = singleton->gw->getBlockAtId(curHolder->blockId);
+						
+						
+						if (curBlock == NULL) {
+							cout << "NULL BLOCK\n";
+						}
+						else {
+							if (curHolder->wasGenerated) {
+								
+								
+								if ((curLoadRadius < 2)&&(singleton->pathfindingOn)&&doPaths) {
+									if (curHolder->pathsReady || curHolder->lockWrite) {
+										
+									}
+									else {
+										
+										if(curHolder->prepPathRefresh(2)) {
+											
+											
+											threadPoolPath->intData[0] = E_TT_GENPATHS;
+											threadPoolPath->intData[1] = curHolder->blockId;
+											threadPoolPath->intData[2] = curHolder->holderId;
+											
+											if (threadPoolPath->startThread()) {
+												genCount++;
+											}
+											
+											
+										}
+										
+									}
+								}
+								
+								if (curHolder->listGenerated || curHolder->lockWrite) {
+									
+								}
+								else {
+									//cout << "genList\n";
+									
+									if(curHolder->prepPathRefresh(1)) {
+										
+										
+										
+										threadPoolList->intData[0] = E_TT_GENLIST;
+										threadPoolList->intData[1] = curHolder->blockId;
+										threadPoolList->intData[2] = curHolder->holderId;
+										
+										if (threadPoolList->startThread()) {
+											genCount++;
+										}
+										
+										//curHolder->generateList();
+									}
+									
+									
+								}
+								
+								
+							}
+							else {
+								// curHolder->genCellData();
+								// genCount++;
+							}
+						}
+						
+						
+						// if (genCount >= 2) {
+						// 	return;
+						// }
+						
+					}
+					
+				}
+			}
+			
+		}
+	}
+#undef LZZ_INLINE
+ 
 // f00380_gameworld.h
 //
 
@@ -41575,12 +45822,15 @@ void GameWorld::init (Singleton * _singleton)
 		int i;
 		int j;
 		
+		shiftCounter = 0;
 		
+		curTargFBO[0] = "terTargFBO";
+		curTargFBO[1] = "sphTargFBO";
+		curTargFBO[2] = "prmTargFBO";
 		
-		curTargFBO[0] = "allTargFBO";
-		curTargFBO[1] = "sphereTargFBO";
-		curDepthFBO[0] = "allDepthFBO";
-		curDepthFBO[1] = "sphereDepthFBO";
+		curDepthFBO[0] = "terDepthFBO";
+		curDepthFBO[1] = "sphDepthFBO";
+		curDepthFBO[2] = "prmDepthFBO";
 		
 		lastHitObjUID = 0;
 		renderCount = 0;
@@ -41593,9 +45843,9 @@ void GameWorld::init (Singleton * _singleton)
 
 		noiseGenerated = false;
 
-		finalPath = NULL;
+		//finalPath = NULL;
 
-		blockSizeInHolders = singleton->blockSizeInHolders;
+		holdersPerBlock = singleton->holdersPerBlock;
 
 		dirFlagsO[0] = 1;
 		dirFlagsO[1] = 2;
@@ -41652,7 +45902,7 @@ void GameWorld::init (Singleton * _singleton)
 		activeFBO = 0;
 		mapLockOn = false;
 
-		numProvinces = 32;
+		numProvinces = 16;
 		provinceGrid = new int[numProvinces * numProvinces];
 		provinceX = new int[numProvinces];
 		provinceY = new int[numProvinces];
@@ -41746,17 +45996,17 @@ GamePageHolder * GameWorld::getHolderAtCoords (int x, int y, int z, bool createO
 		int newY = wrapCoord(y, worldSizeInHolders.getIY());
 		int newZ = z;
 
-		int holderX = newX - intDiv(newX, blockSizeInHolders) * blockSizeInHolders;
-		int holderY = newY - intDiv(newY, blockSizeInHolders) * blockSizeInHolders;
-		int holderZ = newZ - intDiv(newZ, blockSizeInHolders) * blockSizeInHolders;
+		int holderX = newX - intDiv(newX, holdersPerBlock) * holdersPerBlock;
+		int holderY = newY - intDiv(newY, holdersPerBlock) * holdersPerBlock;
+		int holderZ = newZ - intDiv(newZ, holdersPerBlock) * holdersPerBlock;
 
-		int holderId = holderZ * blockSizeInHolders * blockSizeInHolders + holderY * blockSizeInHolders + holderX;
+		int holderId = holderZ * holdersPerBlock * holdersPerBlock + holderY * holdersPerBlock + holderX;
 
 
 		GameBlock *curBlock = getBlockAtCoords(
-			intDiv(x, blockSizeInHolders),
-			intDiv(y, blockSizeInHolders),
-			intDiv(z, blockSizeInHolders),
+			intDiv(x, holdersPerBlock),
+			intDiv(y, holdersPerBlock),
+			intDiv(z, holdersPerBlock),
 			createOnNull
 		);
 
@@ -41822,10 +46072,12 @@ GameBlock * GameWorld::getBlockAtId (int id)
 
 
 	}
-void GameWorld::setCellAtCoords (int xv, int yv, int zv, int readInd, int * fluidData, int * extraData)
+int GameWorld::getCellInd (FIVector4 * cParam, GamePageHolder * & curHolder)
           {
 		
-		int q;
+		int xv = cParam->getIX();
+		int yv = cParam->getIY();
+		int zv = cParam->getIZ();
 		
 		int cellsPerHolder = singleton->cellsPerHolder;
 		
@@ -41837,12 +46089,15 @@ void GameWorld::setCellAtCoords (int xv, int yv, int zv, int readInd, int * flui
 		int y2 = intDiv(newY,cellsPerHolder);
 		int z2 = intDiv(newZ,cellsPerHolder);
 		
-		GamePageHolder* curHolder = getHolderAtCoords(x2, y2, z2, true);
+		
+		curHolder = (getHolderAtCoords(x2, y2, z2, true));
 		if (curHolder->wasGenerated) {
 			
 		}
 		else {
-			curHolder->genCellData();
+			//cout << "attempted getCellInd without generation\n";
+			//curHolder->genCellData();
+			return -1;
 		}
 		//GamePage* gp = getPageAtCoords(x2, y2, z2, false);
 		
@@ -41850,26 +46105,9 @@ void GameWorld::setCellAtCoords (int xv, int yv, int zv, int readInd, int * flui
 		int yr = newY - y2*cellsPerHolder;
 		int zr = newZ - z2*cellsPerHolder;
 		
-		int ind = (zr*cellsPerHolder*cellsPerHolder + yr*cellsPerHolder + xr)*4;
-		
-		
-		// if (curHolder == NULL) {
-			
-		// }
-		// else {
-		// 	if (curHolder->cellData == NULL) {
-				
-		// 	}
-		// 	else {
-				
-				for (q = 0; q < 4; q++) {
-					curHolder->cellData[ind+q] = fluidData[readInd+q];
-					curHolder->extrData[ind+q] = extraData[readInd+q];
-				}
-		// 	}
-		// }
+		return (zr*cellsPerHolder*cellsPerHolder + yr*cellsPerHolder + xr);
 	}
-int GameWorld::getCellAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2)
+int GameWorld::getCellAtCoords (int debugVal, int xv, int yv, int zv)
           {
 		
 		int cellsPerHolder = singleton->cellsPerHolder;
@@ -41884,62 +46122,92 @@ int GameWorld::getCellAtCoords (int xv, int yv, int zv, int * tempCellData, int 
 		
 		int q;
 		
+		
 		GamePageHolder* curHolder = getHolderAtCoords(x2, y2, z2, true);
-		if (curHolder->wasGenerated) {
-			
-		}
-		else {
-			curHolder->genCellData();
-		}
-		//GamePage* gp = getPageAtCoords(x2, y2, z2, false);
-		
-		int xr = newX - x2*cellsPerHolder;
-		int yr = newY - y2*cellsPerHolder;
-		int zr = newZ - z2*cellsPerHolder;
-		
-		int ind = (zr*cellsPerHolder*cellsPerHolder + yr*cellsPerHolder + xr)*4;
-		
-		// for (q = 0; q < 4; q++) {
-		// 	tempCellData[q] = FLUID_UNIT_MIN;
-		// 	tempCellData2[q] = FLUID_UNIT_MIN;
-		// }
 		
 		if (curHolder == NULL) {
 			return E_CD_SOLID;
 		}
-		else {
-			if (curHolder->cellData == NULL) {
-				return E_CD_EMPTY;
-			}
-			else {
-				
-				if (tempCellData != NULL) {
-					for (q = 0; q < 4; q++) {
-						tempCellData[q] = curHolder->cellData[ind+q];
-						tempCellData2[q] = curHolder->extrData[ind+q];
-					}
-				}
-				
-				
-				if (
-					(curHolder->cellData[ind+E_PTT_TER] != FLUID_UNIT_MIN) ||
-					(curHolder->extrData[ind+E_PTT_BLD] != FLUID_UNIT_MIN)
-				) {
-					return E_CD_SOLID;
-				}
-				else {
-					
-					if (curHolder->cellData[ind+E_PTT_WAT] != FLUID_UNIT_MIN) {
-						return E_CD_WATER;
-					}
-					else {
-						return E_CD_EMPTY;
-					}
-					
-					
-				}
+		
+		if (curHolder->lockRead) {
+			return E_CD_UNKNOWN;
+		}
+		
+		int xr = newX - x2*cellsPerHolder;
+		int yr = newY - y2*cellsPerHolder;
+		int zr = newZ - z2*cellsPerHolder;
+		
+		int ind = (zr*cellsPerHolder*cellsPerHolder + yr*cellsPerHolder + xr)*4;
+		
+		return curHolder->getCellAtInd(ind);
+		
+	}
+void GameWorld::setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2)
+          {
+		int cellsPerHolder = singleton->cellsPerHolder;
+		
+		int newX = wrapCoord(xv,singleton->worldSizeInCells.getIX());
+		int newY = wrapCoord(yv,singleton->worldSizeInCells.getIY());
+		int newZ = zv;
+		
+		int x2 = intDiv(newX,cellsPerHolder);
+		int y2 = intDiv(newY,cellsPerHolder);
+		int z2 = intDiv(newZ,cellsPerHolder);
+		
+		GamePageHolder* curHolder = getHolderAtCoords(x2, y2, z2, true);
+		
+		if (curHolder == NULL) {
+			return;
+		}
+		
+		if (curHolder->lockWrite) {
+			return;
+		}
+		
+		int xr = newX - x2*cellsPerHolder;
+		int yr = newY - y2*cellsPerHolder;
+		int zr = newZ - z2*cellsPerHolder;
+		
+		int ind = (zr*cellsPerHolder*cellsPerHolder + yr*cellsPerHolder + xr)*4;
+		
+		curHolder->setArrAtInd(ind,tempCellData,tempCellData2);
+	}
+void GameWorld::getArrAtCoords (int debugVal, int xv, int yv, int zv, int * tempCellData, int * tempCellData2)
+          {
+		
+		int cellsPerHolder = singleton->cellsPerHolder;
+		
+		int newX = wrapCoord(xv,singleton->worldSizeInCells.getIX());
+		int newY = wrapCoord(yv,singleton->worldSizeInCells.getIY());
+		int newZ = zv;
+		
+		int x2 = intDiv(newX,cellsPerHolder);
+		int y2 = intDiv(newY,cellsPerHolder);
+		int z2 = intDiv(newZ,cellsPerHolder);
+		
+		int q;
+		
+		if (tempCellData != NULL) {
+			for (q = 0; q < 4; q++) {
+				tempCellData[q] = FLUID_UNIT_MIN;
+				tempCellData2[q] = FLUID_UNIT_MIN;
 			}
 		}
+		
+		GamePageHolder* curHolder = getHolderAtCoords(x2, y2, z2, true);
+		
+		if (curHolder == NULL) {
+			return;
+		}
+		
+		int xr = newX - x2*cellsPerHolder;
+		int yr = newY - y2*cellsPerHolder;
+		int zr = newZ - z2*cellsPerHolder;
+		
+		int ind = (zr*cellsPerHolder*cellsPerHolder + yr*cellsPerHolder + xr)*4;
+		
+		curHolder->getArrAtInd(ind,tempCellData,tempCellData2);
+		
 	}
 int GameWorld::testMoveHit (BaseObj * ge, int x, int y, int z)
                                                           {
@@ -42270,12 +46538,20 @@ void GameWorld::update ()
 			singleton->drawFSQuad();
 			singleton->unbindFBO();
 			singleton->unbindShader();
+			
+			singleton->copyFBO("noiseFBO","noiseFBOLinear");
+			
+			tempVec1.setFXYZ(0.0f,0.0f,0.0f);
+			tempVec2.setFXYZ(256.0,256.0f,256.0f);
+			
+			drawVol((singleton->volumeWrappers[E_VW_VORO]), &tempVec1, &tempVec2, true, true, true);
+			
 		}
 
 		
 		
 		camBlockPos.copyFrom( singleton->cameraPos );
-		camBlockPos.intDivXYZ(singleton->blockSizeInPixels);
+		camBlockPos.intDivXYZ(singleton->cellsPerBlock);
 
 		if (singleton->currentActor == NULL) {
 			camHolderPos.copyFrom( singleton->cameraPos );
@@ -42289,8 +46565,7 @@ void GameWorld::update ()
 
 		
 		
-		loadNearestHolders();
-		
+		//loadNearestHolders();
 		
 		
 		
@@ -42308,31 +46583,97 @@ void GameWorld::update ()
 		
 		// if was moving and just stopped moving, render sphere map once
 		
-		if ((singleton->lastDepthInvalidMove)&&(!singleton->depthInvalidMove)&&USE_SPHERE_MAP) {
-			
-			
-			drawPrim(true);
+		// if (singleton->gameFluid[E_FID_BIG]->posShifted) {
+		// 	drawVol((singleton->volumeWrappers[E_VW_TERGEN]));
+		// }
+		
+		
+		if (singleton->gameFluid[E_FID_BIG]->posShifted) {
+			shiftCounter = 10;
+			singleton->gameFluid[E_FID_BIG]->posShifted = false;
 		}
 		
-		// if (
-		// 	USE_SPHERE_MAP && (!singleton->depthInvalidMove)
-		// 	// && (
-		// 	// 	singleton->depthInvalidMove || (invalidCount > 0.0f)
-		// 	// )	
-		// ) {
-		// 	drawPrim(true);
-		// }
-		drawPrim(false);
+		shiftCounter--;
+		if (shiftCounter < 0) {
+			shiftCounter = 0;
+		}
+		
+		
+		
+		
+		glEnable(GL_DEPTH_TEST);
 		
 		singleton->perspectiveOn = true;
-		glEnable(GL_DEPTH_TEST);
 		renderGeom();
-		glDisable(GL_DEPTH_TEST);
 		singleton->perspectiveOn = false;
+		
+		glDisable(GL_DEPTH_TEST);
+		
+		
+		
+		
+		
+		
+		if (
+			
+			(
+			
+				( shiftCounter == 1 ) ||
+				(
+					(singleton->lastDepthInvalidMove) &&
+					(!singleton->depthInvalidMove)
+				)	
+				
+			)
+			&&
+			USE_SPHERE_MAP
+		) {
+			drawPrim(true,true,false);
+		}
+		
+		
+#ifdef GEN_POLYS
+		
+		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_CULL_FACE);
+		
+		//back face
+		//glDepthFunc(GL_GREATER);
+		// glCullFace(GL_FRONT);
+		// drawPolys(polyFBOStrings[1], 4,-1);
+		
+		//front face
+		//glDepthFunc(GL_LESS);
+		glCullFace(GL_BACK);
+		
+		glDepthRange(singleton->clipDist[0],singleton->clipDist[1]);
+		
+		drawPolys(polyFBOStrings[0], 0, DEF_VOL_SIZE/singleton->cellsPerHolder + 1);
+		
+		
+		glDisable(GL_CULL_FACE);
+		glDisable(GL_DEPTH_TEST);
+		
+		//polyCombine();
+		
+#endif
+
+
+		drawPrim(false,true,false);
+		
+		
+		drawPrim(false,false,false);
+		
+	
 		
 		
 		postProcess();
+		
+		
+		
 		drawMap();
+		
+		
 
 		glutSwapBuffers();
 		//glFlush();
@@ -42378,98 +46719,6 @@ void GameWorld::ensureBlocks ()
 				}
 			}
 		}
-		
-	}
-void GameWorld::loadNearestHolders ()
-                                  {
-		
-		
-		int i, j, k;
-		int ii, jj, kk;
-		int incVal;
-		int maxLoadRad = 5;
-		int genCount = 0;
-		int mink;
-		int maxk;
-		int minj;
-		int maxj;
-		int mini;
-		int maxi;
-		int curLoadRadius;
-		int radStep = 1;
-		intPair curId;
-		
-		
-		
-		tempVec.copyFrom(singleton->cameraPos);
-		tempVec.intDivXYZ(singleton->cellsPerHolder);
-
-		GamePageHolder* curHolder;
-		GameBlock *curBlock;
-
-		ensureBlocks();
-		
-		//todo: get rid of this
-		return;
-		
-		
-		for (curLoadRadius = 0; curLoadRadius < maxLoadRad; curLoadRadius++) {
-			
-			mink = max(tempVec.getIZ() - curLoadRadius,0);
-			maxk = min(tempVec.getIZ() + curLoadRadius,worldSizeInHolders.getIZ()-1);
-			minj = tempVec.getIY() - curLoadRadius;
-			maxj = tempVec.getIY() + curLoadRadius;
-			mini = tempVec.getIX() - curLoadRadius;
-			maxi = tempVec.getIX() + curLoadRadius;
-			
-			for (jj = minj; jj <= maxj; jj += radStep) {
-				
-				if (curLoadRadius <= 2) {
-					incVal = 1;
-				}
-				else {
-					if ( (jj == minj) || (jj == maxj) ) {
-						incVal = radStep;
-					}
-					else {
-						incVal = maxi - mini;
-					}
-				}
-				
-				for (ii = maxi; ii >= mini; ii -= incVal) {
-					
-					
-					for (kk = mink; kk <= maxk; kk += radStep) {
-						
-						
-						curHolder = getHolderAtCoords(ii, jj, kk, true);
-						curBlock = getBlockAtId(curHolder->blockId);
-						
-						if (curBlock == NULL) {
-							cout << "NULL BLOCK\n";
-						}
-						else {
-							if (curHolder->wasGenerated) {
-								
-							}
-							else {
-								curHolder->genCellData();
-								genCount++;
-							}
-						}
-						
-						
-						if (genCount >= 2) {
-							return;
-						}
-						
-					}
-					
-				}
-			}
-			
-		}
-		
 		
 	}
 void GameWorld::findNearestEnt (EntSelection * entSelection, int entType, int maxLoadRad, int radStep, FIVector4 * testPoint, bool onlyInteractive, bool ignoreDistance)
@@ -42644,47 +46893,168 @@ void GameWorld::findNearestEnt (EntSelection * entSelection, int entType, int ma
 		
 		//return resEnt;
 	}
-void GameWorld::drawPrim (bool doSphereMap)
-                                        {
+void GameWorld::drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * maxc, bool copyToTex, bool forceFinish, bool getVoro)
+          {
+		
+		
+		curVW->genPosMin.copyFrom( minc );
+		curVW->genPosMax.copyFrom( maxc );
+		
+		//curVW->genPosMin.copyFrom( &(singleton->gameFluid[E_FID_BIG]->volMinReadyInPixels) );
+		//curVW->genPosMax.copyFrom( &(singleton->gameFluid[E_FID_BIG]->volMaxReadyInPixels) );
+		
+		singleton->bindShader("TerGenShader");
+		singleton->bindFBODirect(&(curVW->fboSet));
+		singleton->sampleFBO("hmFBOLinearBig",2);
+		
+		if (!getVoro) {
+			singleton->setShaderTexture3D(13, singleton->volumeWrappers[E_VW_VORO]->volId);
+		}
+		
+		singleton->setShaderfVec3("bufferDim", &(curVW->terGenDim) );
+		
+		singleton->setShaderFloat("voroSize",singleton->volumeWrappers[E_VW_VORO]->terGenDim.getFZ());
+		
+		singleton->setShaderFloat("mapPitch", singleton->mapPitch);
+		singleton->setShaderFloat("seaLevel", singleton->getSLNormalized() );
+		singleton->setShaderFloat("heightMapMaxInCells", singleton->heightMapMaxInCells);
+		singleton->setShaderfVec4("mapFreqs", &(singleton->mapFreqs) );
+		singleton->setShaderfVec4("mapAmps", &(singleton->mapAmps) );
+		
+		singleton->setShaderfVec3("volMinReadyInPixels", &(curVW->genPosMin) );
+		singleton->setShaderfVec3("volMaxReadyInPixels", &(curVW->genPosMax) );
+		//singleton->setShaderfVec3("volMinReadyInPixels", &(singleton->gameFluid[E_FID_BIG]->volMinInPixels) );
+		//singleton->setShaderfVec3("volMaxReadyInPixels", &(singleton->gameFluid[E_FID_BIG]->volMaxInPixels) );
+		
+		singleton->setShaderInt("getVoro", (int)(getVoro));
+		
+		singleton->setShaderfVec3("worldSizeInCells", &(singleton->worldSizeInCells) );
+		
+		singleton->fsQuad.draw();
+		
+		if (!getVoro) {
+			singleton->setShaderTexture3D(13, 0);
+		}
+		singleton->unsampleFBO("hmFBOLinearBig",2);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		
+		if (forceFinish) {
+			glFlush();
+			glFinish();
+		}
+		
+		FBOWrapper* fbow = curVW->fboSet.getFBOWrapper(0);
+		fbow->getPixels();
+		
+		if (forceFinish) {
+			glFlush();
+			glFinish();
+		}
+		
+		if (copyToTex) {
+			if (curVW->isFloat) {
+				curVW->copyFloatArr(fbow->pixelsFloat);
+			}
+			else {
+				curVW->copyCharArr(fbow->pixelsChar);
+			}
+		}
+		
+		
+	}
+void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
+                                                                 {
 		int i;
 		
 		int ind = 0;
 		
 		if (doSphereMap) {
+			
+			//cout << "doSphereMap\n";
+			
 			ind = 1;
 		}
 		
-		float stepMod[2];
-		stepMod[0] = 1.0f;//mixf(0.125f,0.5f,invalidCount);
-		stepMod[1] = 1.0f;//mixf(0.125f,1.0f,invalidCount);
 		
-		//string curTargFBO[2];
-		//string curDepthFBO[2];
 		
-		singleton->bindShader("PrimShader");
-		singleton->bindFBO(curTargFBO[ind]);
+		
+		VolumeWrapper* curVW = (singleton->volumeWrappers[E_VW_VORO]);
+		
+		bool doPrim = !doTer;
+		
+		int curGeomCount = singleton->gameFluid[E_FID_BIG]->curGeomCount;
+		
+		
+		
+		if (doPrim) {
+			ind = 2;
+			
+			if ((curGeomCount == 0)&&(singleton->placingGeom == false)) {
+				singleton->copyFBO2("terTargFBO","solidTargFBO", 0, 1);
+				singleton->copyFBO2("terTargFBO","waterTargFBO", 2, 3);
+				singleton->copyFBO2("terTargFBO","prmDepthFBO", 4, 5);
+				return;
+			}
+			
+		}
+		
+		
+		
+		if (doPoly) {
+			singleton->bindShader("PrimShader_330_DOTER_DOPOLY");
+			singleton->bindFBO("polyFBO");
+		}
+		else {
+			if (doTer) {
+				
+				if (USE_SPHERE_MAP) {
+					singleton->bindShader("PrimShader_330_DOTER_USESPHEREMAP");
+				}
+				else {
+					singleton->bindShader("PrimShader_330_DOTER");
+				}
+				
+			}
+			else {
+				singleton->bindShader("PrimShader_330_DOPRIM");
+			}
+			singleton->bindFBO(curTargFBO[ind]);
+		}
+		
+		
+		
+		
+		
+		
+		
 		
 		for (i = 0; i < E_PL_LENGTH; i++) {
-			singleton->setShaderTexture3D(i, singleton->volIdPrim[i]);
+			singleton->setShaderTexture3D(i, singleton->gameFluid[E_FID_BIG]->volIdPrim[i]);
 		}
 		singleton->setShaderTBO(
 			E_PL_LENGTH,
-			singleton->tboWrapper.tbo_tex,
-			singleton->tboWrapper.tbo_buf
+			singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_tex,
+			singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_buf
 		);
 		
-		singleton->sampleFBO("hmFBOLinear",2);
-		singleton->sampleFBO("allDepthFBO",3);
+		singleton->sampleFBO("hmFBOLinearBig",2);
+		singleton->sampleFBO("terDepthFBO",3);
 		
 		if (USE_SPHERE_MAP) {
-			singleton->sampleFBO("sphereDepthFBO",5);
-			
-			// if (!doSphereMap) {
-			// 	singleton->sampleFBO("sphereTargFBO",7);
-			// }
-			
-			
+			singleton->sampleFBO("sphDepthFBO",5);
 		}
+		
+		if (doPrim) {
+			singleton->sampleFBO("terTargFBO",7);
+		}
+		
+		singleton->setShaderTexture3D(13, curVW->volId);
+		
+		if (!doPoly) {
+			singleton->sampleFBO(polyFBOStrings[NUM_POLY_STRINGS],14);
+		}
+		
 		
 		
 		
@@ -42694,39 +47064,66 @@ void GameWorld::drawPrim (bool doSphereMap)
 		}
 		else {
 			singleton->setShaderFloat("thirdPerson", 1.0f);
-			singleton->setShaderFloat("CAM_BOX_SIZE", 8.0f);
+			singleton->setShaderFloat("CAM_BOX_SIZE", 0.5f);
 			singleton->setShaderfVec3("entPos", &(singleton->currentActor->centerPointInPixels));
 		}
 		
+		
 		singleton->setShaderFloat("isUnderWater", -(singleton->getUnderWater()-0.5f)*2.0f );
+		
 		
 		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
 		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+		//singleton->setShaderInt("readPoly", (int)(readPoly));
 		singleton->setShaderInt("depthInvalidMove", (int)(singleton->depthInvalidMove));
 		singleton->setShaderInt("depthInvalidRotate", (int)(singleton->depthInvalidRotate));
 		
+		singleton->setShaderFloat("voroSize",singleton->volumeWrappers[E_VW_VORO]->terGenDim.getFZ());
+		
+		singleton->setShaderInt("MAX_PRIM_IDS", min(curGeomCount,MAX_PRIM_IDS));
+		singleton->setShaderInt("MAX_PRIMTEST", min(curGeomCount,MAX_PRIMTEST));
+		
 		
 		singleton->setShaderFloat("invalidCount", invalidCount/invalidCountMax);
-		
 		singleton->setShaderInt("doSphereMap", (int)(doSphereMap));
-		singleton->setShaderInt("USE_SPHERE_MAP", (int)(USE_SPHERE_MAP));
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
 		singleton->setShaderInt("placingGeom", (int)(singleton->placingGeom));
 		
-		singleton->setShaderFloat("stepMod", stepMod[ind]);
+		singleton->setShaderfVec3("genPosMin", &(curVW->genPosMin) );
+		singleton->setShaderfVec3("genPosMax", &(curVW->genPosMax) );
+		
+		// singleton->setShaderfVec3("volMinReadyInPixels", &(curVW->genPosMin) );
+		// singleton->setShaderfVec3("volMaxReadyInPixels", &(curVW->genPosMax) );
+		
+		singleton->setShaderfVec3("waterMin", &(singleton->gameFluid[E_FID_BIG]->curWaterMin) );
+		singleton->setShaderfVec3("waterMax", &(singleton->gameFluid[E_FID_BIG]->curWaterMax) );
+		
+		
+		singleton->setShaderfVec3("volMinReadyInPixels", &(singleton->gameFluid[E_FID_BIG]->volMinReadyInPixels) );
+		singleton->setShaderfVec3("volMaxReadyInPixels", &(singleton->gameFluid[E_FID_BIG]->volMaxReadyInPixels) );
+		
+		
+		singleton->setShaderFloat("mapPitch", singleton->mapPitch);
+		singleton->setShaderFloat("seaLevel", singleton->getSLNormalized() );
+		singleton->setShaderFloat("heightMapMaxInCells", singleton->heightMapMaxInCells);
+		singleton->setShaderfVec4("mapFreqs", &(singleton->mapFreqs) );
+		singleton->setShaderfVec4("mapAmps", &(singleton->mapAmps) );
+		
 		singleton->setShaderFloat("SPHEREMAP_SCALE_FACTOR", SPHEREMAP_SCALE_FACTOR);
 		singleton->setShaderFloat("UNIT_MAX", FLUID_UNIT_MAX + 1);
-		singleton->setShaderFloat("waterLerp", singleton->waterLerp);
-		singleton->setShaderFloat("volSizePrim", singleton->volSizePrim);
+		singleton->setShaderFloat("waterLerp", singleton->gameFluid[E_FID_BIG]->waterLerp); //todo: E_FID_SML?
+		singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 		singleton->setShaderFloat("curTime", singleton->pauseTime/1000.0f);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferRenderDim) );
 		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec) );
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
-		singleton->setShaderfVec3("volMinReadyInPixels", &(singleton->volMinReadyInPixels) );
-		singleton->setShaderfVec3("volMaxReadyInPixels", &(singleton->volMaxReadyInPixels) );
 		singleton->setShaderfVec3("worldSizeInCells", &(singleton->worldSizeInCells) );
+		
+		// singleton->setShaderFloat("volSizePrimSmall", singleton->gameFluid[E_FID_SML]->volSizePrim);
+		// singleton->setShaderfVec3("volMinReadyInPixelsSmall", &(singleton->gameFluid[E_FID_SML]->volMinReadyInPixels) );
+		// singleton->setShaderfVec3("volMaxReadyInPixelsSmall", &(singleton->gameFluid[E_FID_SML]->volMaxReadyInPixels) );
 		
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
@@ -42758,7 +47155,7 @@ void GameWorld::drawPrim (bool doSphereMap)
 			singleton->setShaderArrayfVec4("splashArr", singleton->splashArr, MAX_SPLASHES);
 		}
 		else {
-			singleton->setShaderFloat("numSplashes", 0);
+			singleton->setShaderInt("numSplashes", 0);
 		}
 		
 		
@@ -42781,17 +47178,30 @@ void GameWorld::drawPrim (bool doSphereMap)
 		}
 		
 		
-		singleton->fsQuad.draw();
+		if (doPoly) {
+			rasterPolys(0,5);
+		}
+		else {
+			singleton->fsQuad.draw();
+		}
+		
+		if (!doPoly) {
+			singleton->unsampleFBO(polyFBOStrings[NUM_POLY_STRINGS],14);
+		}
+		
+		
+		singleton->setShaderTexture3D(13, 0);
+		
+		if (doPrim) {
+			singleton->unsampleFBO("terTargFBO",7);
+		}
 		
 		if (USE_SPHERE_MAP) {
-			singleton->unsampleFBO("sphereDepthFBO",5);
-			
-			// if (!doSphereMap) {
-			// 	singleton->unsampleFBO("sphereTargFBO",7);
-			// }
+			singleton->unsampleFBO("sphDepthFBO",5);
 		}
-		singleton->unsampleFBO("allDepthFBO",3);
-		singleton->unsampleFBO("hmFBOLinear",2);
+		
+		singleton->unsampleFBO("terDepthFBO",3);
+		singleton->unsampleFBO("hmFBOLinearBig",2);
 		
 		singleton->setShaderTBO(E_PL_LENGTH,0,0);
 		for (i = 0; i < E_PL_LENGTH; i++) {
@@ -42801,22 +47211,18 @@ void GameWorld::drawPrim (bool doSphereMap)
 		singleton->unbindFBO();
 		singleton->unbindShader();
 		
-		int curFBO = 0;
+		if (doPoly) {
+			return;
+		}
+		
 		
 		
 		singleton->copyFBO2(curTargFBO[ind],curDepthFBO[ind], 4, 5);
 		
-		if (doSphereMap) {
-			
+		if (doPrim) {
+			singleton->copyFBO2("prmTargFBO","waterTargFBO", 2, 3);
+			singleton->copyFBO2("prmTargFBO","solidTargFBO", 0, 1);
 		}
-		else {
-			singleton->copyFBO2("allTargFBO","waterTargFBO", 2, 3);
-			singleton->copyFBO2("allTargFBO","solidTargFBO", 0, 1);
-		}
-		
-		
-		
-		
 		
 		
 		
@@ -42829,7 +47235,7 @@ void GameWorld::drawOrg (GameOrg * curOrg, bool drawAll)
 		float scale = 1.0f;
 		
 		
-		glLineWidth(0);
+		glLineWidth(1.0f);
 		
 		
 		
@@ -42910,430 +47316,6 @@ void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, fl
 		for (i = 0; i < curNode->children.size(); i++) {
 			drawNodeEnt(curNode->children[i], basePosition, scale, drawMode, drawAll);
 		}
-		
-	}
-void GameWorld::clearVisitedPaths (PathHolder * pathHolder)
-                                                       {
-		while (pathHolder->visitedList.size() > 0) {
-			blockData[
-				pathHolder->visitedList.back().blockId
-			]->buildingData[
-				pathHolder->visitedList.back().index
-			].visited = 0;
-			pathHolder->visitedList.pop_back();
-		}
-	}
-void GameWorld::clearPathList (PathHolder * pathHolder)
-                                                   {
-		pathHolder->pathList.clear();
-	}
-float GameWorld::getIdealPathLength (PathNode * blockAndIndex)
-                                                          {
-		return 		
-			abs(blockAndIndex[0].x-blockAndIndex[1].x) +
-			abs(blockAndIndex[0].y-blockAndIndex[1].y) +
-			abs(blockAndIndex[0].z-blockAndIndex[1].z);
-	}
-int GameWorld::findAIPathRBT (PathHolder * pathHolder, PathNode * blockAndIndex, float _pathSlack)
-          {
-
-
-		//int begInd, int endInd
-
-		float pathSlack = _pathSlack;
-
-		int i;
-		//int rbInd = 0;
-		PathNode curInd;
-
-		int testX = 0;
-		int testY = 0;
-		int testZ = 0;
-		
-		int wrappedX;
-		int wrappedY;
-		int wrappedZ;
-
-		int curX = 0;
-		int curY = 0;
-		int curZ = 0;
-		
-		float idealPathLength = getIdealPathLength(blockAndIndex);
-		
-		int bestBlockId;
-		int bestX;
-		int bestY;
-		int bestZ;
-		int bestInd = 0;
-
-		int testInd = 0;
-		int curDir = 0;
-		
-
-		int endZ = blockAndIndex[1].z;
-		int endY = blockAndIndex[1].y;
-		int endX = blockAndIndex[1].x;
-		
-		int terDataVisPitchXY = singleton->terDataVisPitchXY;
-		
-		int conType;
-		
-		int pathCost;
-		int bestCost;
-		int invalidCost = 1<<30;
-
-		int maxPops;
-
-		PathNode tempNode;
-
-		
-		
-		
-		int numPathSteps = 0;
-		
-		
-		
-		//cout << "\n\n\nSTART COORD " << blockAndIndex[0].x << " " << blockAndIndex[0].y << " " << blockAndIndex[0].z << "\n";
-		//cout << "END COORD " << blockAndIndex[1].x << " " << blockAndIndex[1].y << " " << blockAndIndex[1].z << "\n";
-		
-
-		BuildingNode* curBuildingData;
-		GameBlock* testBlock;
-
-		while ( (pathHolder->pathList.size() > 0) ) { // && (numPathSteps < 10)
-			
-			numPathSteps++;
-			bestInd = -1;
-			bestCost = invalidCost;
-
-			curInd = pathHolder->pathList.back();
-			
-			
-			
-			if (curInd == blockAndIndex[1]) {
-				goto DONE_FINDING_PATH;
-			}
-			
-			//cout << "curBlockId " << curInd.blockId << "\n";
-			
-			curBuildingData = &(blockData[curInd.blockId]->buildingData[curInd.index]); 
-			curBuildingData->visited = 1;
-			pathHolder->visitedList.push_back(curInd);
-			
-			
-			if (pathHolder->pathList.size() > idealPathLength*pathSlack) {
-				cout << "Exceeded Path Slack\n";
-				return false;
-			}
-				
-			// 	maxPops = pathHolder->pathList.size() / 2;
-			// 	pathSlack *= 1.1f;
-				
-			// 	if (pathSlack > 5.0f) {
-			// 		cout << "Exceeded max path length\n";
-			// 		return false;
-			// 	}
-				
-			// 	for (i = 0; i < maxPops; i++) {
-					
-			// 		if (i < maxPops/2) {
-			// 			blockData[
-			// 				pathHolder->pathList.back().blockId
-			// 			]->buildingData[
-			// 				pathHolder->pathList.back().index
-			// 			].visited = 0;
-			// 		}
-					
-					
-			// 		pathHolder->pathList.pop_back();
-			// 	}
-				
-			// 	goto SKIP_PATH;
-			
-			
-
-			curZ = curInd.z;
-			curY = curInd.y;
-			curX = curInd.x;
-
-			
-			for (curDir = 0; curDir < 4; curDir++) {
-
-
-				testX = curX + dirModX[curDir];
-				testY = curY + dirModY[curDir];
-				testZ = curZ + dirModZ[curDir] + curBuildingData->con[curDir].heightDelta;
-				
-				
-				wrappedX = (wrapCoord(testX,terDataVisPitchXY*worldSizeInBlocks.getIX())%terDataVisPitchXY)+singleton->terDataBufAmount;
-				wrappedY = (wrapCoord(testY,terDataVisPitchXY*worldSizeInBlocks.getIY())%terDataVisPitchXY)+singleton->terDataBufAmount;
-				wrappedZ = testZ+singleton->terDataBufAmount;
-				
-				testBlock = getBlockAtCoords(
-					intDiv(testX,terDataVisPitchXY),
-					intDiv(testY,terDataVisPitchXY),
-					intDiv(testZ,terDataVisPitchXY), //terDataVisPitchZ ???
-					true
-				);
-				
-				
-				if (testBlock != NULL) {
-					testInd = testBlock->getNodeIndex(wrappedX, wrappedY, wrappedZ, 0);
-
-					if (testInd >= 0) {
-
-						conType = curBuildingData->con[curDir].conType;
-						
-						//cout << "conType " << conType << " visited " << testBlock->buildingData[testInd].visited << "\n";
-						
-						if (
-							( testBlock->isTraversable[conType] ) &&
-							( testBlock->buildingData[testInd].visited == 0 )
-						) {
-							
-							
-							pathCost = abs(testX-endX) + abs(testY-endY) + abs(testZ-endZ);
-
-							//cout << "pathCost " << pathCost << " bestCost " << bestCost << "\n";
-
-							if (pathCost < bestCost) {
-								bestInd = testInd;
-								bestBlockId = testBlock->blockId;
-								bestCost = pathCost;
-								bestX = testX;
-								bestY = testY;
-								bestZ = testZ;
-							}
-						}
-					}
-				}
-				
-				
-			}
-
-
-			
-			if (bestInd == -1) { // dead end, back up
-				pathHolder->pathList.pop_back();
-				
-				//cout << "pop_back\n";
-				//cout << "new length: " << pathHolder->pathList.size() << "\n\n";
-			} else {
-				tempNode.index = bestInd;
-				tempNode.blockId = bestBlockId;
-				tempNode.x = bestX;
-				tempNode.y = bestY;
-				tempNode.z = bestZ;
-				pathHolder->pathList.push_back(tempNode);
-				
-				//cout << bestInd << " " << bestBlockId << " " << bestX << " " << bestY << " " << bestZ << "\n\n";
-				
-			}
-
-SKIP_PATH:
-			;
-			
-			
-
-		}
-		
-DONE_FINDING_PATH:
-		;
-		
-		return pathHolder->pathList.size() > 0;
-
-	}
-void GameWorld::drawPathLine (PathHolder * curPath, int r, int g, int b, float lw, float zoff)
-                                                                                          {
-		// IMPORTANT: size is a uint, do not let underflow happen!
-		int totSize = curPath->pathList.size();
-		totSize -= 1;
-		int i;
-		
-		glLineWidth(lw);
-		
-		singleton->setShaderVec3("matVal", r,g,b);
-		for (i = 0; i < totSize; i++) {
-			blockData[curPath->pathList[i].blockId]->nodeIndexToWorldSpaceInPixels(curPath->pathList[i].index, &(lineSeg[0]));
-			blockData[curPath->pathList[i+1].blockId]->nodeIndexToWorldSpaceInPixels(curPath->pathList[i+1].index, &(lineSeg[1]));
-			lineSeg[0].addXYZ(0.0f,0.0f,zoff);
-			lineSeg[1].addXYZ(0.0f,0.0f,zoff);
-			singleton->drawLine(&(lineSeg[0]),&(lineSeg[1]));
-		}
-	}
-void GameWorld::drawAIPath (PathHolder * pathHolder, PathHolder * splitPathHolder)
-                                                                             {
-		
-		
-		
-		
-		int i;
-		int curStep = singleton->currentStep;
-		int curInd;
-		int totSize;
-		bool pathResult;
-		bool doCont;
-		
-		float maxSlack = 8.0f;
-		
-		int numDivisions;
-		int splitSize = 100;
-		
-		//int terDataBufPitchXY2 = singleton->terDataBufPitchXY*singleton->terDataBufPitchXY;
-		//int endSegInd;
-		
-		// 0 - nothing
-		// 1 - first marker placed
-		// 2 - second marker placed
-		// 3 - clear markers
-		
-		
-		singleton->setShaderFloat("isWire", 0.0f);
-		for (i = 0; i < curStep; i++) {
-			
-			blockPos[i].copyFrom(&(singleton->moveNodes[i]));
-			blockPos[i].intDivXYZ(singleton->blockSizeInPixels);
-			blockRef[i] = getBlockAtCoords(
-				blockPos[i].getIX(),
-				blockPos[i].getIY(),
-				blockPos[i].getIZ(),
-				true
-			);
-			nodeInd[i] = blockRef[i]->findNearestNode(
-				&(singleton->moveNodes[i]),
-				&(nodePos[i]),
-				&(nodePosInPixels[i])
-			);
-			blockAndIndexPath[i].index = nodeInd[i];
-			blockAndIndexPath[i].blockId = blockRef[i]->blockId;
-			blockAndIndexPath[i].x = nodePos[i].getIX();
-			blockAndIndexPath[i].y = nodePos[i].getIY();
-			blockAndIndexPath[i].z = nodePos[i].getIZ();
-			
-			singleton->setShaderVec3("matVal", i*255, (1-i)*255, 0);
-			singleton->drawCubeCentered(
-				&(nodePosInPixels[i]),
-				1.0f
-			);
-		}
-		
-		
-		
-		if (curStep == 2) {
-			
-			if (!foundPath) {
-				
-				finalPath = NULL;
-				foundPath = true;
-				
-				if (
-					//(blockRef[0] == blockRef[1]) &&
-					(nodeInd[0] != -1) &&
-					(nodeInd[1] != -1)
-				) {
-					
-					clearVisitedPaths( pathHolder );
-					clearPathList( pathHolder );
-					clearVisitedPaths( splitPathHolder );
-					clearPathList( splitPathHolder );
-					
-					
-					pathHolder->pathList.push_back(blockAndIndexPath[0]);
-					
-					pathResult = findAIPathRBT(
-						pathHolder,
-						blockAndIndexPath,
-						maxSlack
-					);
-					
-					clearVisitedPaths( pathHolder );
-					if (pathResult) {
-						finalPath = pathHolder;
-					}
-					
-					
-					
-					// if (pathResult) {	
-					// 	numDivisions = pathHolder->pathList.size()/splitSize;
-					// 	if (
-					// 		(numDivisions >= 2) &&
-					// 		(pathHolder->pathList.size() > getIdealPathLength(blockAndIndexPath)*1.5f)
-					// 	) {
-							
-					// 		cout << "splitting path " << numDivisions << " times\n";
-					// 		cout << "total path size is " << pathHolder->pathList.size() << "\n";
-							
-							
-					// 		splitPathHolder->pathList.push_back(blockAndIndexPath[0]);
-							
-							
-					// 		i = 0;
-					// 		doCont = true;
-					// 		while (doCont) {
-					// 			blockAndIndexSplitPath[0] = pathHolder->pathList[i*splitSize];
-								
-								
-					// 			cout << "split number " << i << "\n";
-								
-					// 			if ( (i+1)*splitSize >= pathHolder->pathList.size() ) {
-					// 				blockAndIndexSplitPath[1] = pathHolder->pathList.back();
-					// 				doCont = false;
-					// 			}
-					// 			else {
-					// 				blockAndIndexSplitPath[1] = pathHolder->pathList[(i+1)*splitSize];
-					// 			}
-								
-									
-					// 			pathResult = findAIPathRBT(
-					// 				splitPathHolder,
-					// 				blockAndIndexSplitPath,
-					// 				maxSlack
-					// 			);
-								
-					// 			if (pathResult) {
-									
-					// 			}
-					// 			else {
-					// 				doCont = false;
-					// 				cout << "Failed to find path at split #" << i << "\n";
-					// 			}
-								
-					// 			i++;
-								
-					// 		}
-							
-					// 		finalPath = splitPathHolder;
-							
-					// 	}
-						
-					// }
-					
-				
-					cout << "DONE FINDING PATH\n";
-					
-					//finalInd = blockRef[0]->findPath(nodeInd[0],nodeInd[1]);
-					//doTraceND("finalInd ", i__s(finalInd), " nodeInd ", i__s(nodeInd[0]), " ", i__s(nodeInd[1]));
-				}
-				else {
-					// doTraceND("Different Blocks");
-				}
-				
-			}
-			
-		}
-		else {
-			foundPath = false;
-			//finalInd = -1;
-		}
-		
-		
-		if ( (finalPath != NULL) && foundPath) {
-			drawPathLine(pathHolder, 255, 255, 0, 2.0f, 0.0f);
-			drawPathLine(splitPathHolder, 255, 0, 0, 2.0f, 4.0f);
-		}
-		
-		
-		
 		
 	}
 void GameWorld::makeFloat (BaseObj * ge)
@@ -43677,7 +47659,7 @@ int GameWorld::testHit (BaseObj * ge)
 			for (j = ymin; j < ymax; j++) {
 				for (i = xmin; i < xmax; i++) {
 					
-					cellVal = getCellAtCoords(i,j,k);
+					cellVal = getCellAtCoords(8,i,j,k);
 					
 					if (cellVal == E_CD_SOLID) {
 						return cellVal;
@@ -43686,12 +47668,214 @@ int GameWorld::testHit (BaseObj * ge)
 					if (cellVal == E_CD_WATER) {
 						tempVal = E_CD_WATER;
 					}
-					
-				}	
+				}
 			}
 		}
 		
 		return tempVal;
+		
+		
+	}
+void GameWorld::polyCombine ()
+                           {
+		int q;
+		
+		singleton->bindShader("PolyCombineShader");
+		singleton->bindFBO(polyFBOStrings[NUM_POLY_STRINGS]);
+		
+		for (q = 0; q < NUM_POLY_STRINGS; q++) {
+			singleton->sampleFBO(polyFBOStrings[q], q);
+		}
+		
+		singleton->fsQuad.draw();
+		
+		for (q = NUM_POLY_STRINGS-1; q >= 0; q--) {
+			singleton->unsampleFBO(polyFBOStrings[q], q);
+		}
+		
+		singleton->unbindFBO();
+		singleton->unbindShader();
+	}
+void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel)
+                                                                 {
+		
+		//VolumeWrapper* curVW = (singleton->volumeWrappers[E_VW_VORO]);
+		
+		singleton->bindShader("PolyShader");
+		singleton->bindFBO(fboName);
+		//singleton->sampleFBO("polyFBO",0,fboNum);
+		
+		///singleton->setShaderTexture3D(0, singleton->gameFluid[E_FID_BIG]->volIdPrim[0]);
+		//singleton->sampleFBO("hmFBOLinearBig",2);
+		//singleton->setShaderTexture3D(13, curVW->volId);
+		
+		if (polyFBOStrings[0].compare(fboName) == 0) {
+			singleton->setShaderVec4("maskVals", 1.0f, 0.0f, 0.0f, 0.0f);
+		}
+		else {
+			singleton->setShaderVec4("maskVals", 0.0f, 1.0f, 0.0f, 0.0f);
+		}
+		
+		
+		singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
+		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferRenderDim) );
+		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("volMinReadyInPixels", &(singleton->gameFluid[E_FID_BIG]->volMinReadyInPixels) );
+		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec) );
+		
+		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
+		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
+		
+		
+		rasterPolys(minPeel,maxPeel*4, 6);
+		
+		// singleton->setShaderTexture3D(13, 0);
+		// singleton->unsampleFBO("hmFBOLinearBig",2);
+		// singleton->setShaderTexture3D(0,0);
+		
+		//singleton->unsampleFBO("polyFBO",0,fboNum);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+	}
+void GameWorld::rasterPolys (int minPeel, int maxPeel, int extraRad)
+                                                                     {
+		
+		int q;
+		
+		int ii;
+		int jj;
+		int kk;
+		
+		int cellsPerHolder = singleton->cellsPerHolder;
+		
+		
+		
+		GamePageHolder* curHolder;
+		
+		minv.copyIntDiv(&(singleton->gameFluid[E_FID_BIG]->volMinReadyInPixels),cellsPerHolder);
+		maxv.copyIntDiv(&(singleton->gameFluid[E_FID_BIG]->volMaxReadyInPixels),cellsPerHolder);
+		
+		
+		
+		bool idealDis = false;
+		
+		int pCount = 0;
+		
+		
+		int bi = singleton->lastHolderPos.getIX();
+		int bj = singleton->lastHolderPos.getIY();
+		int bk = singleton->lastHolderPos.getIZ();
+		
+		int curRad = 0;
+		
+		
+		int minK = minv.getIZ() - extraRad;
+		int maxK = maxv.getIZ() + extraRad;
+		int minJ = minv.getIY() - extraRad;
+		int maxJ = maxv.getIY() + extraRad;
+		int minI = minv.getIX() - extraRad;
+		int maxI = maxv.getIX() + extraRad;
+		
+		int qmod;
+		
+		if (minPeel < maxPeel) {
+			qmod = 1;
+		}
+		else {
+			qmod = -1;
+		}
+		
+		for (q = minPeel; q != maxPeel; q += qmod) {
+			
+			// if (q <= 1) {
+			// 	doClear = 1;
+			// }
+			// else {
+			// 	doClear = 0;
+			// }
+			
+			
+			// switch(q) {
+			// 	case 0:
+			// 		singleton->setShaderVec4("maskVals", 1.0f, 0.0f, 0.0f, 0.0f);
+			// 	break;
+			// 	case 1:
+			// 		singleton->setShaderVec4("maskVals", 0.0f, 1.0f, 0.0f, 0.0f);
+			// 	break;
+			// 	case 2:
+			// 		singleton->setShaderVec4("maskVals", 0.0f, 0.0f, 1.0f, 0.0f);
+			// 	break;
+			// 	case 3:
+			// 		singleton->setShaderVec4("maskVals", 0.0f, 0.0f, 0.0f, 1.0f);
+			// 	break;
+			// 	case 4:
+			// 		singleton->setShaderVec4("maskVals", 1.0f, 0.0f, 0.0f, 0.0f);
+			// 	break;
+			// }
+			
+			
+			// singleton->bindFBO("polyFBO");//,swapFlag);
+			// //singleton->sampleFBO("polyFBO", 0, swapFlag);
+			
+			for (kk = minK; kk < maxK; kk++) {
+				for (jj = minJ; jj < maxJ; jj++) {
+					for (ii = minI; ii < maxI; ii++) {
+						curHolder = getHolderAtCoords(ii,jj,kk,true);
+						
+						curRad = max(max(abs(bi-ii),abs(bj-jj)),abs(bk-kk));
+						
+						
+						// if (q == 4) {
+						// 	idealDis = true;
+						// }
+						// else {
+						// 	if (q == 3) {
+						// 		idealDis = (q>=curRad);
+						// 	}
+						// 	else {
+						// 		idealDis = (q==curRad);
+						// 	}
+						// }
+						
+						
+						if (
+							(curHolder->listGenerated) &&
+							(!(curHolder->listEmpty)) &&
+							(q==curRad) || (q == -1)
+						) {
+							
+							pCount++;
+							
+							// singleton->setShaderFloat("volSizePrim", singleton->cellsPerHolder);
+							// singleton->setShaderfVec3("volMinReadyInPixels", &(curHolder->gphMinInPixels) );
+							// singleton->setShaderfVec3("volMaxReadyInPixels", &(curHolder->gphMaxInPixels) );
+							// singleton->setShaderTexture3D(0, curHolder->terVW->volId);
+							
+							curHolder->vboWrapper.draw();
+							
+						}
+					}
+				}
+			}
+			
+			//singleton->unsampleFBO("polyFBO", 0);//, swapFlag);
+			//singleton->unbindFBO();
+			
+			//swapFlag = 1 - swapFlag;
+			
+		}
+		
+		
+		// singleton->setShaderTexture3D(13, 0);
+		// singleton->unsampleFBO("hmFBOLinearBig",2);
+		// singleton->setShaderTexture3D(0,0);
+		
+		// singleton->unbindShader();
+		
+		singleton->polyCount = pCount;
 		
 		
 	}
@@ -43702,6 +47886,24 @@ void GameWorld::renderGeom ()
 		int j;
 		int k;
 		int n;
+		int q;
+		
+		int ii;
+		int jj;
+		int kk;
+		int ii2;
+		int jj2;
+		int kk2;
+		
+		
+		int ind;
+		int lastId;
+		int curId;
+		int curInd;
+		int cameFromInd;
+		
+		int cellsPerHolder = singleton->cellsPerHolder;
+		
 		
 		float frameMod;
 		int objCount = 0;
@@ -43727,14 +47929,16 @@ void GameWorld::renderGeom ()
 		float ih = singleton->fontWrappers[EFW_ICONS]->fontImage->height;
 
 
+
 		singleton->bindShader("GeomShader");
+		singleton->bindFBO("geomBaseTargFBO");
 		singleton->setShaderFloat("objectId",0.0);
 		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 		singleton->setShaderFloat("isWire", 0.0);
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
 		singleton->setShaderfVec3("offsetPos",&(singleton->origin));
-		
-		singleton->bindFBO("geomBaseTargFBO");
+		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
+		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 		
 		
 		glLineWidth(4.0f);
@@ -43783,21 +47987,21 @@ void GameWorld::renderGeom ()
 						
 						curOr = curObj->orientationXYZ.getIX();
 						tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
-						tempVec2.multXYZ(4.0f);
+						tempVec2.multXYZ(2.0f);
 						tempVec2.addXYZRef(&tempVec1);
 						singleton->setShaderVec3("matVal", 255, 0, 0);
 						singleton->drawLine(&tempVec1,&tempVec2);
 						
 						curOr = curObj->orientationXYZ.getIY();
 						tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
-						tempVec2.multXYZ(4.0f);
+						tempVec2.multXYZ(2.0f);
 						tempVec2.addXYZRef(&tempVec1);
 						singleton->setShaderVec3("matVal", 0, 255, 0);
 						singleton->drawLine(&tempVec1,&tempVec2);
 						
 						curOr = curObj->orientationXYZ.getIZ();
 						tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
-						tempVec2.multXYZ(4.0f);
+						tempVec2.multXYZ(2.0f);
 						tempVec2.addXYZRef(&tempVec1);
 						singleton->setShaderVec3("matVal", 0, 0, 255);
 						singleton->drawLine(&tempVec1,&tempVec2);
@@ -43839,10 +48043,14 @@ void GameWorld::renderGeom ()
 			
 		}
 		
+		
+		
 		tempVec3.setFXYZW(0.0f,0.0f,0.0f,0.0f);
 		singleton->setShaderfVec4("rotationZ",&tempVec3);
 		singleton->setShaderFloat("objectId",0.0);
-		glLineWidth(0);
+		
+		glLineWidth(1.0f);
+
 
 		//cout << "objectCount " << objCount << "\n";
 		singleton->lastObjectCount = objCount;		
@@ -43851,11 +48059,24 @@ void GameWorld::renderGeom ()
 		
 		// singleton->setShaderFloat("isWire", 1.0);
 		// singleton->setShaderVec3("matVal", 255, 0, 0);
-		// minv.setFXYZRef(&(singleton->curDirtyMin));
-		// maxv.setFXYZRef(&(singleton->curDirtyMax));
-		// minv.addXYZRef(&(singleton->volMinReadyInPixels));
-		// maxv.addXYZRef(&(singleton->volMinReadyInPixels));
+		// minv.setFXYZRef(&(singleton->gameFluid[E_FID_BIG]->curDirtyMin));
+		// maxv.setFXYZRef(&(singleton->gameFluid[E_FID_BIG]->curDirtyMax));
+		// minv.addXYZRef(&(singleton->gameFluid[E_FID_BIG]->volMinReadyInPixels));
+		// maxv.addXYZRef(&(singleton->gameFluid[E_FID_BIG]->volMinReadyInPixels));
+		// minv.addXYZ(-4.0f,-4.0f,0.0f);
+		// maxv.addXYZ(4.0f,4.0f,0.0f);
 		// singleton->drawBox(&minv, &maxv);
+		
+		
+		// singleton->setShaderFloat("isWire", 1.0);
+		// singleton->setShaderVec3("matVal", 255, 0, 0);
+		// minv.setFXYZRef(&(singleton->gameFluid[E_FID_BIG]->curWaterMin));
+		// maxv.setFXYZRef(&(singleton->gameFluid[E_FID_BIG]->curWaterMax));
+		// minv.addXYZ(-4.0f,-4.0f,0.0f);
+		// maxv.addXYZ(4.0f,4.0f,0.0f);
+		// singleton->drawBox(&minv, &maxv);
+		
+		
 		
 
 		switch (singleton->mouseState)
@@ -43896,7 +48117,7 @@ void GameWorld::renderGeom ()
 			singleton->setShaderFloat("isWire", 1.0);
 			singleton->drawCubeCentered(
 				&lastUnitPos,
-				((int)singleton->curBrushRad) * (singleton->unitSizeInPixels)
+				((int)singleton->curBrushRad)
 			);
 			
 			
@@ -43947,8 +48168,10 @@ void GameWorld::renderGeom ()
 		}
 		
 		if (singleton->pathfindingOn) {
-			drawAIPath( &(singleton->charPathHolder), &(singleton->splitPathHolder) );
+			singleton->gameLogic->update();
 		}
+		
+		
 		
 		if (
 			(singleton->bCtrl) &&
@@ -43991,6 +48214,7 @@ void GameWorld::renderGeom ()
 				}
 			}
 		}
+		
 		
 		// singleton->setShaderVec3("matVal", 254, 0, 0);
 		// singleton->setShaderFloat("isWire", 1.0);
@@ -44044,7 +48268,7 @@ void GameWorld::renderGeom ()
 		
 		singleton->bindShader("BillboardShader");
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
-		singleton->setShaderFloat("cellsPerHolder",singleton->cellsPerHolder);
+		singleton->setShaderFloat("cellsPerHolder",cellsPerHolder);
 		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
 		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
@@ -44052,7 +48276,9 @@ void GameWorld::renderGeom ()
 		singleton->sampleFBO("geomBaseTargFBO",1);
 		singleton->bindFBO("geomTargFBO", -1, 0);
 		
+		
 		glBegin(GL_POINTS);
+		
 		for(i = 0; i < visObjects.size(); i++) {
 			
 			curObj = &(gameObjects[visObjects[i]]);
@@ -44102,17 +48328,16 @@ void GameWorld::renderGeom ()
 		}
 		glEnd();
 		
+		
+		
 		singleton->unsampleFBO("geomBaseTargFBO",1);
 		singleton->setShaderTexture(0,0);
 		singleton->unbindFBO();
 		singleton->unbindShader();
 		
 		//////////////////////////////
-
-
-
-
-
+		
+		
 
 	}
 void GameWorld::updateMouseCoords (FIVector4 * fPixelWorldCoordsBase)
@@ -44123,9 +48348,7 @@ void GameWorld::updateMouseCoords (FIVector4 * fPixelWorldCoordsBase)
 
 
 		lastUnitPos.copyFrom(&fPixelWorldCoords);
-		lastUnitPos.intDivXYZ(singleton->unitSizeInPixels);
-		lastUnitPos.multXYZ(singleton->unitSizeInPixels);
-		lastUnitPos.setFW(singleton->unitSizeInPixels);
+		lastUnitPos.setFW(1.0);
 		
 
 	}
@@ -44442,6 +48665,8 @@ void GameWorld::initMap ()
 		int j;
 		int k;
 		int m;
+		int q;
+		
 		int totSize = w * h;
 		int *btStack = new int[totSize];
 		int btStackInd = 0;
@@ -44477,7 +48702,7 @@ void GameWorld::initMap ()
 
 		int startDir;
 		int curDir;
-		blockMip = intLogB2(singleton->blockSizeInLots);
+		blockMip = intLogB2(singleton->holdersPerBlock);
 
 		int cx1;
 		int cy1;
@@ -44509,7 +48734,11 @@ void GameWorld::initMap ()
 		float mult;
 		float tempDis;
 
-
+		int minSL = 0;
+		int maxSL = 0;
+		int curSL = 0;
+		int avgSL = 0;
+		//int totFilled = 0;
 
 
 
@@ -44540,81 +48769,77 @@ void GameWorld::initMap ()
 
 
 
-		singleton->bindShader("Simplex2D");
-		singleton->bindFBO("simplexFBO");
-		singleton->setShaderFloat("curTime", fGenRand() * 100.0f);
-		singleton->drawFSQuad();
-		singleton->unbindFBO();
-		singleton->unbindShader();
-
-		singleton->bindShader("TerrainMix");
-		singleton->bindFBO("hmFBOLinear");
-		singleton->sampleFBO("simplexFBO", 0);
-		singleton->setShaderTexture(1, singleton->imageHM0->tid);
-		singleton->setShaderTexture(2, singleton->imageHM1->tid);
-		singleton->setShaderArrayfVec3("paramArrMap", singleton->paramArrMap, 16 );
-		singleton->setShaderFloat("mapSampScale", 1.0f); //singleton->mapSampScale
-		singleton->drawFSQuad();
-		singleton->setShaderTexture(2, 0);
-		singleton->setShaderTexture(1, 0);
-		singleton->unsampleFBO("simplexFBO", 0);
-		singleton->unbindFBO();
-		singleton->unbindShader();
-
-		singleton->copyFBO("hmFBOLinear", "hmFBO");
-
-
-		fbow->getPixels(true);
-		fbow->setAllPixels(densityChannel, 255);
-		fbow->setAllPixels(idChannel, 0);
-		fbow->setAllPixels(blockChannel, 0);
-
-
-		// determine sea level
-
-		for (i = 0; i < 256; i++)
-		{
-			histogram[i] = 0;
-		}
-		
-		int minSL = 0;
-		int maxSL = 0;
-		int curSL = 0;
-		int avgSL = 0;
-		
-		for (i = 0; i < totSize; i++)
-		{
-			curSL = fbow->getPixelAtIndex(i, hmChannel);
+		for (q = 0; q < 2; q++) {
 			
-			if (curSL < minSL) {
-				minSL = curSL;
-			}
-			if (curSL > maxSL) {
-				maxSL = curSL;
+			
+			singleton->bindShader("Simplex2D");
+			singleton->bindFBO("simplexFBO");
+			singleton->setShaderFloat("curTime", fGenRand() * 100.0f);
+			singleton->drawFSQuad();
+			singleton->unbindFBO();
+			singleton->unbindShader();
+
+			singleton->bindShader("TerrainMix");
+			singleton->bindFBO("hmFBOLinear");
+			singleton->sampleFBO("simplexFBO", 0);
+			singleton->setShaderTexture(1, singleton->imageHM0->tid);
+			singleton->setShaderTexture(2, singleton->imageHM1->tid);
+			singleton->setShaderInt("passNum",q);
+			singleton->setShaderVec2("minAndMax",((float)minSL)/255.0f,((float)maxSL)/255.0f);
+			singleton->setShaderArrayfVec3("paramArrMap", singleton->paramArrMap, 16 );
+			singleton->setShaderFloat("mapSampScale", 1.0f); //singleton->mapSampScale
+			singleton->drawFSQuad();
+			singleton->setShaderTexture(2, 0);
+			singleton->setShaderTexture(1, 0);
+			singleton->unsampleFBO("simplexFBO", 0);
+			singleton->unbindFBO();
+			singleton->unbindShader();
+
+			singleton->copyFBO("hmFBOLinear", "hmFBO");
+			
+			glFlush();
+			glFinish();
+
+			fbow->getPixels(true);
+			fbow->setAllPixels(densityChannel, 255);
+			fbow->setAllPixels(idChannel, 0);
+			fbow->setAllPixels(blockChannel, 0);
+
+
+			// determine sea level
+
+			for (i = 0; i < 256; i++)
+			{
+				histogram[i] = 0;
 			}
 			
-			histogram[curSL]++;
+			minSL = 255;
+			maxSL = 0;
+			curSL = 0;
+			avgSL = 0;
+			//totFilled = 0;
+			
+			for (i = 0; i < totSize; i++)
+			{
+				curSL = fbow->getPixelAtIndex(i, hmChannel);
+				
+				if (curSL < minSL) {
+					minSL = curSL;
+				}
+				if (curSL > maxSL) {
+					maxSL = curSL;
+				}
+				
+				histogram[curSL]++;
+			}
+
+			avgSL = (minSL+maxSL)/2;
 		}
 
-		int totFilled = 0;
-		i = 0;
-		while (totFilled < (totSize * 40) / 100 )
-		{
-			totFilled += histogram[i];
-			i++;
-		}
-		
-		avgSL = (minSL*3+maxSL*1)/4;
+		seaLevel = 80;
 
 		
-		// TODO: FIX SEA LEVEL
-		
-		// if (RAY_MODE) {
-		// 	seaLevel = 0;
-		// }
-		// else {
-			seaLevel = i+20; //avgSL;//1
-		//}
+		singleton->copyFBO("hmFBOLinear", "hmFBOLinearBig");
 		
 		
 		seaSlack = seaLevel - 1;
@@ -44623,6 +48848,7 @@ void GameWorld::initMap ()
 		mapWidth = fbow->width;
 		mapHeight = fbow->height;
 
+		goto DONE_WITH_MAP;
 
 		
 		cout << "start place cities\n";
@@ -44809,7 +49035,7 @@ void GameWorld::initMap ()
 		fbow2->setAllPixels(houseChannel, 0);
 
 
-		int blockMod = singleton->blockSizeInLots;
+		int blockMod = singleton->holdersPerBlock;
 		for (k = 0; k < totSize; k++)
 		{
 			curInd = k;
@@ -44828,7 +49054,7 @@ void GameWorld::initMap ()
 			// TODO: EDIT CITY
 
 			//testPix > xxx <- (xxx = 0: no city, xxx = 255: all city, def: 220)
-			if ( testPix1 != testPix2 || testPix3 != testPix4 || testPix > 255 )
+			if ( testPix1 != testPix2 || testPix3 != testPix4 || testPix > 0 )
 			{
 				fbow->setPixelAtIndex(curInd, blockChannel, 0);
 			}
@@ -45380,7 +49606,7 @@ void GameWorld::initMap ()
 		// 4 - y+
 		// 8 - y-
 
-		for (i = 0; i < w; i += singleton->blockSizeInLots )
+		for (i = 0; i < w; i += singleton->holdersPerBlock )
 		{
 
 			curInd = i - 1;
@@ -45393,7 +49619,7 @@ void GameWorld::initMap ()
 			streetFlagsV[curInd] |= 1;
 			streetFlagsV[i] |= 2;
 		}
-		for (i = 0; i < h; i += singleton->blockSizeInLots )
+		for (i = 0; i < h; i += singleton->holdersPerBlock )
 		{
 
 			curInd = i - 1;
@@ -45751,7 +49977,7 @@ void GameWorld::initMap ()
 
 		//////////
 
-
+DONE_WITH_MAP:
 
 		singleton->mapInvalid = false;
 
@@ -45798,7 +50024,7 @@ void GameWorld::drawMap ()
 		singleton->setShaderTexture3D(0,singleton->volIdMat);
 		singleton->sampleFBO("hmFBO", 1); //Linear
 		singleton->sampleFBO("cityFBO", 2);
-		//singleton->sampleFBO("backFaceMapFBO",3);
+		singleton->sampleFBO("hmFBOLinear",3);
 		//singleton->sampleFBO("frontFaceMapFBO",4);
 
 		
@@ -45808,15 +50034,15 @@ void GameWorld::drawMap ()
 		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		
-		singleton->setShaderfVec3("maxBoundsInPixels", &(singleton->worldSizeInPixels));
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
 		//singleton->setShaderFloat("mapTrans", mapTrans);
 		singleton->setShaderFloat("seaLevel", singleton->getSLNormalized() );
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderVec2("mapDimInPixels", fbow->width, fbow->height);
-		singleton->setShaderfVec3("worldSizeInPixels", &(singleton->worldSizeInPixels) );
 
-		
+		singleton->setShaderFloat("mapPitch", singleton->mapPitch);
+		singleton->setShaderFloat("heightMapMaxInCells", singleton->heightMapMaxInCells);
+		singleton->setShaderfVec3("worldSizeInCells", &(singleton->worldSizeInCells) );
 		
 		
 		singleton->mainGUI->renderQuadDirect(singleton->mapComp);
@@ -45829,7 +50055,7 @@ void GameWorld::drawMap ()
 
 		
 		//singleton->unsampleFBO("frontFaceMapFBO",4);
-		//singleton->unsampleFBO("backFaceMapFBO",3);
+		singleton->unsampleFBO("hmFBOLinear",3);
 		singleton->unsampleFBO("cityFBO", 2);
 		singleton->unsampleFBO("hmFBO", 1);
 		//singleton->unsampleFBO("palFBO", 0);
@@ -45989,44 +50215,44 @@ void GameWorld::postProcess ()
 			curLight = activeLights[k];
 			lightPos = &(curLight->geomParams[E_LP_POSITION]);
 
-			if (curLight->toggled) {
-				singleton->worldToScreenBase(&lScreenCoords, lightPos);
+			// if (curLight->toggled) {
+			// 	singleton->worldToScreenBase(&lScreenCoords, lightPos);
 
-				singleton->lightArr[baseInd + 0] = lightPos->getFX();
-				singleton->lightArr[baseInd + 1] = lightPos->getFY();
-				singleton->lightArr[baseInd + 2] = lightPos->getFZ();
-				singleton->lightArr[baseInd + 3] = lScreenCoords.getFZ();
-
-
-				singleton->lightArr[baseInd + 4] = lScreenCoords.getFX();
-				singleton->lightArr[baseInd + 5] = lScreenCoords.getFY();
-				singleton->lightArr[baseInd + 6] = lScreenCoords.getFZ();
-				singleton->lightArr[baseInd + 7] = curLight->geomParams[E_LP_RADIUS].getFX();
+			// 	singleton->lightArr[baseInd + 0] = lightPos->getFX();
+			// 	singleton->lightArr[baseInd + 1] = lightPos->getFY();
+			// 	singleton->lightArr[baseInd + 2] = lightPos->getFZ();
+			// 	singleton->lightArr[baseInd + 3] = lScreenCoords.getFZ();
 
 
-				// light color
+			// 	singleton->lightArr[baseInd + 4] = lScreenCoords.getFX();
+			// 	singleton->lightArr[baseInd + 5] = lScreenCoords.getFY();
+			// 	singleton->lightArr[baseInd + 6] = lScreenCoords.getFZ();
+			// 	singleton->lightArr[baseInd + 7] = curLight->geomParams[E_LP_RADIUS].getFX();
 
-				singleton->lightArr[baseInd + 8] = curLight->geomParams[E_LP_COLOR].getFX(); // light red
-				singleton->lightArr[baseInd + 9] = curLight->geomParams[E_LP_COLOR].getFY(); // light green
-				singleton->lightArr[baseInd + 10] = curLight->geomParams[E_LP_COLOR].getFZ(); // light blue
 
-				// switch (k)
-				// {
-				// case 0:
-				// 	singleton->lightArr[baseInd + 11] = 1.0f; // light intensity (unused?)
-				// 	singleton->lightArr[baseInd + 12] = 0.0f; // light colorization (0-1)
-				// 	singleton->lightArr[baseInd + 13] = 0.0f; // light flooding (colorizes regardless of shadows) (0-1)
-				// 	break;
-				// default:
-				// 	singleton->lightArr[baseInd + 11] = 1.0f;
-				// 	singleton->lightArr[baseInd + 12] = 1.0f;
-				// 	singleton->lightArr[baseInd + 13] = 0.0f;
-				// 	break;
+			// 	// light color
 
-				// }
+			// 	singleton->lightArr[baseInd + 8] = curLight->geomParams[E_LP_COLOR].getFX(); // light red
+			// 	singleton->lightArr[baseInd + 9] = curLight->geomParams[E_LP_COLOR].getFY(); // light green
+			// 	singleton->lightArr[baseInd + 10] = curLight->geomParams[E_LP_COLOR].getFZ(); // light blue
 
-				curCount++;
-			}
+			// 	// switch (k)
+			// 	// {
+			// 	// case 0:
+			// 	// 	singleton->lightArr[baseInd + 11] = 1.0f; // light intensity (unused?)
+			// 	// 	singleton->lightArr[baseInd + 12] = 0.0f; // light colorization (0-1)
+			// 	// 	singleton->lightArr[baseInd + 13] = 0.0f; // light flooding (colorizes regardless of shadows) (0-1)
+			// 	// 	break;
+			// 	// default:
+			// 	// 	singleton->lightArr[baseInd + 11] = 1.0f;
+			// 	// 	singleton->lightArr[baseInd + 12] = 1.0f;
+			// 	// 	singleton->lightArr[baseInd + 13] = 0.0f;
+			// 	// 	break;
+
+			// 	// }
+
+			// 	curCount++;
+			// }
 
 			
 		}
@@ -46076,13 +50302,15 @@ void GameWorld::postProcess ()
 		}
 
 
-
+		
 
 		singleton->bindShader("PreLightingShader");
 		singleton->bindFBO("prelightFBO");
 		singleton->sampleFBO("solidTargFBO",0);
 		singleton->sampleFBO("combineWithWaterTargFBO",2);
 		singleton->sampleFBO("geomTargFBO",4);
+		singleton->sampleFBO("prmDepthFBO",6);
+		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
@@ -46092,7 +50320,11 @@ void GameWorld::postProcess ()
 		singleton->setShaderInt("vecsPerLight", FLOATS_PER_LIGHT / 4);
 		singleton->setShaderFloat("lightCount", lightCount);
 		singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
+		singleton->setShaderfVec3("baseLightVec", &(singleton->lightVec) );
+		
 		singleton->drawFSQuad();
+		
+		singleton->unsampleFBO("prmDepthFBO",6);
 		singleton->unsampleFBO("geomTargFBO",4);
 		singleton->unsampleFBO("combineWithWaterTargFBO",2);
 		singleton->unsampleFBO("solidTargFBO",0);
@@ -46115,13 +50347,20 @@ void GameWorld::postProcess ()
 		singleton->setShaderInt("markerFound", (int)(singleton->markerFound));
 		
 		
+		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
+		singleton->setShaderfVec3("lightVecOrig", &(singleton->lightVecOrig) );
+		
+		
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 		singleton->setShaderInt("gridOn", (int)(singleton->gridOn));
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
 		singleton->setShaderFloat("curTime", singleton->curTime);
-		singleton->setShaderFloat("blockSizeInCells", singleton->blockSizeInCells);
+		singleton->setShaderFloat("cellsPerBlock", singleton->cellsPerBlock);
 		singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 		singleton->drawFSQuad();
 		
@@ -46154,11 +50393,16 @@ void GameWorld::postProcess ()
 			singleton->sampleFBO("prelightFBO", 9);
 			singleton->sampleFBO("geomTargFBO", 13);
 			
-			singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
+			
+			singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
+			
+			singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec) );
 			singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 			singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
-			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
 			singleton->setShaderFloat("curTime", singleton->curTime);
 			singleton->setShaderFloat("isUnderWater", singleton->getUnderWater() );
 			singleton->drawFSQuad();
@@ -46209,7 +50453,8 @@ void GameWorld::postProcess ()
 			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
 			singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
-			singleton->setShaderfVec3("lightPosWS", lightPos);
+			singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
+			//singleton->setShaderfVec3("lightPosWS", lightPos);
 			singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
 			singleton->drawFSQuad();
 			singleton->unsampleFBO("swapFBOBLin0", 2);
@@ -46253,7 +50498,7 @@ void GameWorld::postProcess ()
 			singleton->sampleFBO("swapFBOBLin0", 3);
 			singleton->sampleFBO("geomTargFBO", 4);
 			singleton->setShaderTexture3D(6,singleton->volIdMat);
-			//singleton->sampleFBO("waveFBO", 7);
+			singleton->sampleFBO("noiseFBOLinear", 7);
 			
 			
 			if ((singleton->currentActor == NULL)||singleton->firstPerson) {
@@ -46262,10 +50507,15 @@ void GameWorld::postProcess ()
 			else {
 				singleton->setShaderFloat("thirdPerson", 1.0f);
 				singleton->setShaderfVec3("entPos", &(singleton->currentActor->centerPointInPixels));
-				singleton->setShaderFloat("volSizePrim", singleton->volSizePrim);
+				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
 			
+			singleton->setShaderFloat("seaLevel", singleton->getSeaHeightScaled() );
+			singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+			singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
+			singleton->setShaderfVec3("lightVecOrig", &(singleton->lightVecOrig) );
 			singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
 			singleton->setShaderFloat("curTime", singleton->curTime);
 			singleton->setShaderFloat("selObjInd",singleton->selObjInd);
@@ -46280,7 +50530,7 @@ void GameWorld::postProcess ()
 
 			singleton->drawFSQuad();
 
-			//singleton->unsampleFBO("waveFBO", 7);
+			singleton->unsampleFBO("noiseFBOLinear", 7);
 			singleton->setShaderTexture3D(6,0);
 			singleton->unsampleFBO("geomTargFBO", 4);
 			singleton->unsampleFBO("swapFBOBLin0", 3);
@@ -46315,7 +50565,24 @@ void GameWorld::postProcess ()
 		
 		
 		if (singleton->testOn) {			
-			singleton->drawFBO("solidTargFBO", 0, 1.0f); //waterTargFBO //solidTargFBO
+			
+			
+			
+			
+			//terGenFBO
+			//solidTargFBO
+			
+			
+			
+			
+			//"solidTargFBO" //"polyFBO"
+			singleton->drawFBO("solidTargFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
+			
+			// leave this here to catch errors
+			//cout << "Getting Errors: \n";
+			//glError();
+			
+			
 			
 		}
 		else {

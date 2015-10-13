@@ -1,4 +1,4 @@
-﻿Build started 8/30/2015 9:31:06 AM.
+﻿Build started 10/5/2015 11:15:34 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -36,13 +36,16 @@
          .\src\cpp\f00341_gameplant.hpp
          .\src\cpp\f00351_gamepageholder.hpp
          .\src\cpp\f00352_gameblock.hpp
+         .\src\cpp\f00355_volumewrapper.hpp
+         .\src\cpp\f00360_threadpoolwrapper.hpp
+         .\src\cpp\f00370_gamelogic.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         33 File(s) copied
+         36 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         18
+         21
          copying headers to one file
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
@@ -61,11 +64,14 @@
          .\f00341_gameplant.e
          .\f00351_gamepageholder.e
          .\f00352_gameblock.e
+         .\f00355_volumewrapper.e
+         .\f00360_threadpoolwrapper.e
+         .\f00370_gamelogic.e
          .\f00380_gameworld.e
                  1 file(s) copied.
          Missing operator.
          tot e
-         18
+         21
          .
          copying files to compiled
          .\temp\f00293_gamesound.e
@@ -85,8 +91,11 @@
          .\temp\f00341_gameplant.e
          .\temp\f00351_gamepageholder.e
          .\temp\f00352_gameblock.e
+         .\temp\f00355_volumewrapper.e
+         .\temp\f00360_threadpoolwrapper.e
+         .\temp\f00370_gamelogic.e
          .\temp\f00380_gameworld.e
-         18 File(s) copied
+         21 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_mat.h
@@ -119,6 +128,9 @@
          .\temp\f00341_gameplant.h
          .\temp\f00351_gamepageholder.h
          .\temp\f00352_gameblock.h
+         .\temp\f00355_volumewrapper.h
+         .\temp\f00360_threadpoolwrapper.h
+         .\temp\f00370_gamelogic.h
          .\temp\f00380_gameworld.h
          .\temp\f00500_mainfuncs.h
                  1 file(s) copied.
@@ -149,4 +161,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:04.84
+Time Elapsed 00:00:05.07
