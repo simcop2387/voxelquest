@@ -37,9 +37,12 @@ void main() {
 	vec4 matValsGeom = tex5;
 	bool valIsGeom = (dot(matValsGeom.rgb,oneVec.rgb) != 0.0);
 
-	vec3 newRad = pow(tex1.rgb, vec3(2.0) );
+	vec3 newRad = tex1.rgb;//pow(tex1.rgb, vec3(2.0) );
 
-	vec3 finalCol = mix(tex0.rgb, tex0.rgb + newRad, newRad * 0.5);
+	vec3 finalCol = 
+		
+		//mix(tex0.rgb, tex0.rgb + newRad*0.5, newRad); //tex0.rgb + newRad*0.25;//
+		tex0.rgb + tex1.rgb*0.1;//mix(tex0.rgb, tex1.rgb,0.25);
 	
 	// vec3 resColGS = vec3( clamp(dot(finalCol, oneVec.xyz) / 3.0, 0.0, 1.0) );
 	// finalCol = mix(
@@ -63,6 +66,8 @@ void main() {
 	if (valIsGeom) {
 		finalCol.rgb = tex0.rgb;
 	}
+	
+	
 	
 	gl_FragData[0] = vec4(finalCol.rgb, 1.0);//finalCol
 

@@ -44,8 +44,8 @@ float minRad[2] = float[](
 	1.0
 );
 float maxRad[2] = float[](
-	16.0,
-	128.0
+	8.0,
+	32.0
 );
 vec2 dirModXY[4] = vec2[](
 	
@@ -169,7 +169,13 @@ void main()
 	float tempv;
 	
 
+	float camDis = 
 	
+	clamp(
+		distance(cameraPos,worldPosition.xyz)/2048.0,
+		0.0,
+		1.0	
+	);
 
 
 	
@@ -323,7 +329,7 @@ void main()
 
 
 				if (k == 0) {
-					lightVec = baseLightVec;
+					lightVec = -baseLightVec;
 				}
 				else {
 					lightVec = normalize(lightPosWS.xyz - worldPosition.xyz);
@@ -437,7 +443,19 @@ void main()
 		}
 		// LIGHT LOOP END
 
-		resColor.xyz = pow(totLightColor.xyz*0.75+newAO*0.25,vec3(0.5));;////mix(newAO*totLightColor.xyz,totLightColor.xyz, max(max(totLightColor.x, totLightColor.y), totLightColor.z) ); // 
+		resColor.xyz =
+		pow(totLightColor.xyz*0.75+newAO*0.25,vec3(0.5));
+		//(totLightColor.xyz+newAO*0.25)/1.25;//*0.75+newAO*0.25;
+		// pow(
+			
+		// 	//mix(vec3(newAO*0.5),totLightColor.xyz,totLightColor.xyz)
+		// 	totLightColor.xyz*0.75+newAO*0.25
+			
+		// 	,
+		// 	vec3(
+		// 		1.0//mix(2.0,0.5,newAO*0.5)
+		// 	)
+		// );////mix(newAO*totLightColor.xyz,totLightColor.xyz, max(max(totLightColor.x, totLightColor.y), totLightColor.z) ); // 
 		resColor.w = newAO;
 	}
 	

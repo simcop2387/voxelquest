@@ -1,6 +1,6 @@
 #version 330
 
-
+uniform float curTime;
 uniform float voroSize;
 uniform float mapPitch;
 uniform float heightMapMaxInCells;
@@ -11,7 +11,7 @@ uniform vec4 mapAmps;
 uniform vec3 bufferDim;
 uniform vec3 volMinReadyInPixels;
 uniform vec3 volMaxReadyInPixels;
-uniform vec3 worldSizeInCells;
+uniform float cellsPerWorld;
 
 uniform bool getVoro;
 
@@ -152,7 +152,8 @@ float randf3(vec3 co) {
 
 
 
-
+float globTest;
+float globTexTap;
 
 
 // float MAX_CAM_DIS;
@@ -255,6 +256,10 @@ float opI( float d1, float d2 )
 float opD( float d1, float d2 )
 {
     return d1+d2;
+}
+vec3 opRep( vec3 p, vec3 c )
+{
+    return mod(p,c)-0.5*c;
 }
 
 // >>>>>>>>>>> END COMMON <<<<<<<<<<<<<
@@ -558,7 +563,7 @@ float mapLandMacro( vec3 pos ) {
     
     vec3 offsetPos = pos + vec3(0.0,0.0,0.25);
     
-    vec2 newTC = pos.xy/worldSizeInCells.xy;
+    vec2 newTC = pos.xy/cellsPerWorld;
     
     float heightRes = getTerHeight(Texture2,newTC,pos.z).x;//mix(getTerHeight(pos),getTerHeight(mapPos),lerpVal);
     
@@ -693,6 +698,9 @@ vec4 genVoro( vec3 pos ) {
 
 void main() {
     
+    globTest = 0.0;
+    globTexTap = 0.0;
+    
     ivec2 iCoords = ivec2(TexCoord0.xy*bufferDim.xy);//-ivec2(1);
     
     int totIC = iCoords.x + iCoords.y*int(bufferDim.x);
@@ -710,7 +718,9 @@ void main() {
     int x = totIC;
     
     
-    vec3 pos = vec3(x,y,z) + volMinReadyInPixels + 0.5;
+    //vec3 pos = vec3(x,y,z) + volMinReadyInPixels + 0.5;
+    
+    vec3 pos = mix(volMinReadyInPixels, volMaxReadyInPixels, (vec3(x,y,z)+0.5)/fVolPitch );
     
     vec4 finalRes = vec4(0.0);
     

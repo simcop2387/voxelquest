@@ -494,7 +494,7 @@ void getCobble(vec3 pos) {
     int i;
     
     
-    //vec2 roughPos = (pos.xy + pos.yz) / worldSizeInCells.x;
+    //vec2 roughPos = (pos.xy + pos.yz) / cellsPerWorld;
     //float roughVoro = 0.5;//abs(texture2D(Texture2, 256.0 * roughPos ).r);
 
     float tempr = 0.0;
@@ -568,7 +568,7 @@ void getCobble(vec3 pos) {
 //     vec4 texW = texture3D(Texture4, wCoords);
     
     
-//     vec2 roughPos = (worldPos.xy + worldPos.yz) * 0.25 / worldSizeInCells.x;
+//     vec2 roughPos = (worldPos.xy + worldPos.yz) * 0.25 / cellsPerWorld;
     
 //     vec2 roughVal = vec2(
 //                                         abs(texture2D(Texture2, 512.0 * roughPos+0.01*randVoro*voroGrad ).r),

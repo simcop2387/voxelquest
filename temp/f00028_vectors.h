@@ -327,6 +327,9 @@ public:
 		return 0.0f;
 	}
 
+	q3Vec3 getQ3Vec3() {
+		return q3Vec3(fv4.x,fv4.y,fv4.z);
+	}
 
 	void setIXYZW(int x, int y, int z, int w) {
 		iv4.x = x;
@@ -1765,72 +1768,107 @@ typedef int BaseObjType;
 
 class BaseObj
 {
+private:
+	FIVector4 centerPoint;
+	FIVector4 linVelocity;
+	
 public:
 	
-	//   1
-	// 2   0
-	//   3
-	// int rotDir;
-	// int minRot;
-	// int maxRot;
-	// int curRot;
 	
 	int objectType;
 	int maxFrames;
 	
 	BaseObjType uid;
 	BaseObjType parentUID;
-	//map<BaseObjType, bool> containsUID;
 	vector<BaseObjType> children;
+	
+	q3Body* body;
 	
 	int isGrabbingId;
 	int isGrabbedById;
 	int entType;
 	bool isHidden;
 	bool isFalling;
+	bool isInside;
 	bool isJumping;
 	bool isOpen;
 	bool inWater;
 	bool isEquipped;
+	bool isUpright;
+	
+	
+	float angVel;
+	float angVelMax;
+	
+	float ang;
+	float angRelative;
+	
+	float targAng;
+	float targAngRelative;
+	
+	FIVector4 diameterInCells;
 	
 	float bounciness;
 	float friction;
 	float windResistance;
 	
 	
-	FIVector4 positionInCells;
-	FIVector4 diameterInCells;
+	FIVector4* getVel() {
+		
+		if (body != NULL) {
+			linVelocity.setFXYZ(
+				body->GetLinearVelocity().x,
+				body->GetLinearVelocity().y,
+				body->GetLinearVelocity().z	
+			);
+		}
+		
+		
+		return &linVelocity;
+	}
+	void setVel(float x, float y, float z) {
+		if (body != NULL) {
+			
+			body->m_linearVelocity.x = x;
+			body->m_linearVelocity.y = y;
+			body->m_linearVelocity.z = z;
+			
+		}
+	}
 	
-	FIVector4 diameterInCellsRotated;
-	FIVector4 boundsMinTransInCells;
-	FIVector4 boundsMaxTransInCells;
-	
-	FIVector4 boundsMinTransInPixels;
-	FIVector4 boundsMaxTransInPixels;
-	FIVector4 centerPointInPixels;
-	
-	FIVector4 boundsMinTransInPixelsTarg;
-	FIVector4 boundsMaxTransInPixelsTarg;
-	FIVector4 centerPointInPixelsTarg;
-	
-	FIVector4 tempVec;
-	
-	//0, 2, 4 - default
-	
-	//x+,x-,y+,y-,z+,z-
-	FIVector4 orientationXYZ;
 	
 	
-	float ang;
-	FIVector4 posOffsetInPixels;
-	FIVector4 vel;
-	FIVector4 acc;
+	void setCenterPointXYZ(float x, float y, float z) {
+		centerPoint.setFXYZ(x,y,z);
+	}
+	
+	void setCenterPoint(FIVector4* newPos) {
+		
+		centerPoint.copyFrom(newPos);
+		
+		if (body == NULL) {
+			
+		}
+		else {
+			body->SetTransform(
+				q3Vec3(
+					centerPoint[0],
+					centerPoint[1],
+					centerPoint[2]	
+				)	
+			);
+		}
+	}
+	
+	FIVector4* getCenterPoint() {
+		return &centerPoint;
+	}
 	
 	
 	
 	
 	BaseObj() {
-		
+		body = NULL;
 	}
 	
 	void removeChild(BaseObjType _uid) {
@@ -1844,77 +1882,26 @@ public:
 		}
 	}
 	
-	
-	
-	void updateOrientation(int ox, int oy, int oz) {
+	void updateTargets() { //FIVector4* fv
 		
-		int orOffset = (oz*NUM_ORIENTATIONS*NUM_ORIENTATIONS + oy*NUM_ORIENTATIONS + ox)*16;
+		ang += (targAng-ang)/4.0f;
+		angRelative += (targAngRelative-angRelative)/4.0f;
 		
-		orientationXYZ.setIXYZW(
-			ox,
-			oy,
-			oz,
-			orOffset
-		);
-		
-		axisRotationInstance.doRotationOr(
-			&diameterInCellsRotated,
-			&diameterInCells,
-			orOffset
-		);
-	}
-	
-	void updateBounds() {
-		boundsMinTransInCells.copyFrom(&positionInCells);
-		boundsMaxTransInCells.copyFrom(&positionInCells);
-		boundsMaxTransInCells.addXYZRef(&diameterInCellsRotated);
-		
-		tempVec.copyFrom(&diameterInCellsRotated);
-		tempVec.fixForRot();
-		boundsMinTransInCells.addXYZRef(&tempVec);
-		boundsMaxTransInCells.addXYZRef(&tempVec);
-		
-		FIVector4::normalizeBounds(&boundsMinTransInCells,&boundsMaxTransInCells);
+		if (body == NULL) {
+			
+		}
+		else {
+			
+			if (isUpright) {
+				body->SetAngle(ang);
+			}
+			
+			
+		}
 		
 	}
 	
-	void updatePixelBounds() {
-		boundsMinTransInPixelsTarg.copyFrom(&boundsMinTransInCells);
-		boundsMaxTransInPixelsTarg.copyFrom(&boundsMaxTransInCells);
-		
-		centerPointInPixelsTarg.averageXYZ(
-			&boundsMinTransInPixelsTarg,
-			&boundsMaxTransInPixelsTarg
-		);
-		
-		boundsMinTransInPixelsTarg.addXYZRef(&posOffsetInPixels);
-		boundsMaxTransInPixelsTarg.addXYZRef(&posOffsetInPixels);
-		centerPointInPixelsTarg.addXYZRef(&posOffsetInPixels);
-	}
 	
-	void updateTargets(FIVector4* fv) {
-		centerPointInPixels.lerpXYZ(&centerPointInPixelsTarg, fv);
-		boundsMinTransInPixels.lerpXYZ(&boundsMinTransInPixelsTarg, fv);
-		boundsMaxTransInPixels.lerpXYZ(&boundsMaxTransInPixelsTarg, fv);
-	}
-	
-	void rotate(
-		int mod, // 0:+, 1:-
-		int axis // 0:x, 1:y, 2:z
-	) {
-		
-		int offset = (axis*2+mod)*6;
-		
-		updateOrientation(
-			ROT_MAP[orientationXYZ.getIX()+offset],
-			ROT_MAP[orientationXYZ.getIY()+offset],
-			ROT_MAP[orientationXYZ.getIZ()+offset]
-		);
-	}
-	
-	void toggleGrav(float gravMod) {
-		acc.setFXYZ(0.0f,0.0f,gravMod*80.0f);
-	}
 	
 	void init(
 		BaseObjType _uid,
@@ -1924,42 +1911,49 @@ public:
 		FIVector4* cellPos,
 		int xs,
 		int ys,
-		int zs,
-		int ox = 0,
-		int oy = 2,
-		int oz = 4
+		int zs
 	) {
+		
+		
+		
 		
 		isHidden = false;
 		
+		angVel = 0.0f;
+		angVelMax = 10.0f;
+		
 		ang = 0.0f;
+		angRelative = 0.0f;
+		
+		targAng = 0.0f;
+		targAngRelative = 0.75f;
+		
 		maxFrames = 0;
 		objectType = _objectType;
 		entType = _entType;
 		isFalling = false;
+		isInside = false;
 		isJumping = false;
 		isGrabbedById = -1;
 		isGrabbingId = -1;
 		inWater = false;
-		bounciness = 0.0f;
-		friction = 0.9;
-		windResistance = 0.9;
+		
+		isUpright = false;
+		//	(entType == E_ENTTYPE_NPC) ||
+		//	(entType == E_ENTTYPE_MONSTER);
+		
 		isOpen = false;
 		isEquipped = false;
 		parentUID = _parentUID;
 		uid = _uid;
 		
-		
-		posOffsetInPixels.setFXYZ(0.0f,0.0f,0.0f);
-		vel.setFXYZ(0.0f,0.0f,0.0f);
-		toggleGrav(-1.0f);
-		
-		positionInCells.copyFrom(cellPos);
+		centerPoint.copyFrom(cellPos);
 		diameterInCells.setIXYZ(xs,ys,zs);
-		updateOrientation(ox,oy,oz);
-		updateBounds();
-		updatePixelBounds();
-		updateTargets(NULL);
+		
+		bounciness = 0.0f;
+		friction = 0.9;
+		windResistance = 0.9;
+		
 	}
 	
 };
@@ -2243,6 +2237,72 @@ struct PushModStruct
 	int actionType;
 	FIVector4 data[4];
 };
+
+
+class Q3Rend : public q3Render {
+public:
+	void SetPenColor( f32 r, f32 g, f32 b, f32 a = 1.0f ) override
+	{
+		// Q3_UNUSED( a );
+
+		// glColor3f( (float)r, (float)g, (float)b );
+	}
+
+	void SetPenPosition( f32 x, f32 y, f32 z ) override
+	{
+		x_ = x, y_ = y, z_ = z;
+	}
+
+	void SetScale( f32 sx, f32 sy, f32 sz ) override
+	{
+		// glPointSize( (float)sx );
+		// sx_ = sx, sy_ = sy, sz_ = sz;
+	}
+
+	void Line( f32 x, f32 y, f32 z ) override
+	{
+		// glBegin( GL_LINES );
+		// glVertex3f( (float)x_, (float)y_, (float)z_ );
+		// glVertex3f( (float)x, (float)y, (float)z );
+		// SetPenPosition( x, y, z );
+		// glEnd( );
+	}
+
+	void Triangle(
+		f32 x1, f32 y1, f32 z1,
+		f32 x2, f32 y2, f32 z2,
+		f32 x3, f32 y3, f32 z3
+		) override
+	{
+		
+		//glEnable( GL_LIGHTING );
+		//glBegin( GL_TRIANGLES );
+		//glColor4f( 0.2f, 0.4f, 0.7f, 0.5f );
+		glVertex3f( (float)x1, (float)y1, (float)z1 );
+		glVertex3f( (float)x2, (float)y2, (float)z2 );
+		glVertex3f( (float)x3, (float)y3, (float)z3 );
+		//glEnd( );
+		//glDisable( GL_LIGHTING );
+	}
+
+	void SetTriNormal( f32 x, f32 y, f32 z ) override
+	{
+		glNormal3f( (float)x, (float)y, (float)z );
+	}
+
+	void Point( ) override
+	{
+		// glBegin( GL_POINTS );
+		// glVertex3f( (float)x_, (float)y_, (float)z_ );
+		// glEnd( );
+	};
+
+private:
+	f32 x_, y_, z_;
+	f32 sx_, sy_, sz_;
+};
+
+Q3Rend q3Rend;
 
 
 

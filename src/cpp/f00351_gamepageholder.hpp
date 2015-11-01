@@ -7,6 +7,7 @@ private:
 	int* extrData;
 public:
 
+	bool preGenList;
 	bool listGenerated;
 	bool listEmpty;
 	bool hasData;
@@ -24,6 +25,7 @@ public:
 	int blockId;
 	int holderId;
 	
+	bool isBlockHolder;
 	
 	int pathSize;
 	int totIdealNodes;
@@ -51,6 +53,7 @@ public:
 	
 	std::vector<float> vertexVec;
 	std::vector<uint> indexVec;
+	std::vector<int> collideIndices;
 	
 	std::vector<GameEnt *> entityGeom;
 	int entityGeomCounter;
@@ -60,7 +63,7 @@ public:
 	FIVector4 gphMaxInPixels;
 	FIVector4 gphCenInPixels;
 
-	FIVector4 offsetInBlocks;
+	//FIVector4 offsetInBlocks;
 	FIVector4 origOffset;
 
 	
@@ -73,9 +76,12 @@ public:
 	bool wasGenerated;
 
 
-
-
-
+	
+	q3Body* body;
+	
+	// q3BodyDef bodyDef;
+	// q3Transform tx;
+	// q3BoxDef boxDef;
 	
 
 
@@ -91,6 +97,7 @@ public:
 		holderFlags = E_CD_UNKNOWN;
 		
 		listEmpty = true;
+		preGenList = false;
 		listGenerated = false;
 		pathsInvalid = true;
 		idealPathsInvalid = true;
@@ -112,9 +119,13 @@ public:
 		
 		int trueX,
 		int trueY,
-		int trueZ
-
+		int trueZ, 
+		
+		bool _isBlockHolder = false
+		
 	) {
+
+		isBlockHolder = _isBlockHolder;
 
 		//cout << "gph init\n";
 
@@ -139,8 +150,15 @@ public:
 
 		singleton = _singleton;
 
-
-		cellsPerHolder = singleton->cellsPerHolder;
+		
+		if (isBlockHolder) {
+			cellsPerHolder = singleton->blocksPerWorld;
+		}
+		else {
+			cellsPerHolder = singleton->cellsPerHolder;
+		}
+		
+		
 		
 		pathSize = cellsPerHolder*cellsPerHolder*cellsPerHolder;
 		cellDataSize = cellsPerHolder*cellsPerHolder*cellsPerHolder*4;
@@ -148,28 +166,112 @@ public:
 		origOffset.setFXYZ(cellsPerHolder/2,cellsPerHolder/2,cellsPerHolder/2);
 
 		offsetInHolders.setIXYZ(trueX,trueY,trueZ);
-		offsetInBlocks.copyFrom(&offsetInHolders);
-		offsetInBlocks.intDivXYZ(singleton->holdersPerBlock);
+		//offsetInBlocks.copyFrom(&offsetInHolders);
+		//offsetInBlocks.intDivXYZ(singleton->holdersPerBlock);
 		
 		gphMinInPixels.copyFrom(&offsetInHolders);
 		gphMaxInPixels.copyFrom(&offsetInHolders);
 
 		gphMaxInPixels.addXYZ(1);
 
-		gphMinInPixels.multXYZ(cellsPerHolder);
-		gphMaxInPixels.multXYZ(cellsPerHolder);
+		
+		
+		if (isBlockHolder) {
+			gphMinInPixels.multXYZ(singleton->cellsPerWorld);
+			gphMaxInPixels.multXYZ(singleton->cellsPerWorld);
+			
+			doTraceVecND("gphMin",&gphMinInPixels);
+			doTraceVecND("gphMax",&gphMaxInPixels);
+			
+		}
+		else {
+			gphMinInPixels.multXYZ(cellsPerHolder);
+			gphMaxInPixels.multXYZ(cellsPerHolder);
+		}
+		
 
 		gphCenInPixels.averageXYZ(&gphMaxInPixels,&gphMinInPixels);
 		
-
+		if (GEN_COLLISION) {
+			// q3BodyDef bodyDef;
+			// bodyDef.position.Set( gphMinInPixels[0], gphMinInPixels[1], gphMinInPixels[2] );
+			// //bodyDef.axis.Set( 0.0f, 0.0f, 1.0f );
+			// //bodyDef.angle = 0.0f;
+			// //bodyDef.bodyType = eStaticBody;
+			// //bodyDef.angularVelocity.Set( 0.0f, 0.0f, 0.0f );
+			// //bodyDef.linearVelocity.Set( 0.0f, 0.0f, 0.0f );
+			// body = singleton->gamePhysics->scene->CreateBody( bodyDef );
+			
+			// q3Transform tx;
+			// q3Identity( tx );
+			// tx.position.Set(
+			// 	cellsPerHolder/2,
+			// 	cellsPerHolder/2,
+			// 	cellsPerHolder/2
+			// );
+			
+			// q3BoxDef boxDef;
+			// boxDef.Set( tx, q3Vec3( 8.0f, 8.0f, 8.0f ) );
+			// boxDef.SetRestitution( 0 );
+			// body->AddBox( boxDef );
+			
+			
+			q3BodyDef bodyDef;
+			bodyDef.position.Set(
+				gphMinInPixels[0], gphMinInPixels[1], gphMinInPixels[2]
+			);
+			body = singleton->gamePhysics->scene->CreateBody( bodyDef );
+			
+			
+			
+			
+		}
+		
+		// if (GEN_COLLISION) {
+		// 	q3BodyDef bodyDef;
+		// 	bodyDef.position.Set(
+		// 		gphMinInPixels[0], gphMinInPixels[1], gphMinInPixels[2]
+		// 	);
+		// 	body = singleton->gamePhysics->scene->CreateBody( bodyDef );
+		// }
 		
 		
-		fetchHolderGeom();
+		
+		
+		
+		//fetchHolderGeom();
 		
 	}
 	
 	
-	
+	int getCellAtCoordsLocal(int xx, int yy, int zz) {
+		int ii = xx;
+		int jj = yy;
+		int kk = zz;
+		
+		if (ii < 0) {
+			ii += cellsPerHolder;
+		}
+		if (ii >= cellsPerHolder) {
+			ii -= cellsPerHolder;
+		}
+		
+		if (jj < 0) {
+			jj += cellsPerHolder;
+		}
+		if (jj >= cellsPerHolder) {
+			jj -= cellsPerHolder;
+		}
+		
+		if (kk < 0) {
+			kk += cellsPerHolder;
+		}
+		if (kk >= cellsPerHolder) {
+			kk -= cellsPerHolder;
+		}
+		
+		return getCellAtInd((ii + jj*cellsPerHolder + kk*cellsPerHolder*cellsPerHolder)*4);
+	}
 
 	int getCellAtInd(
 		int ind
@@ -329,7 +431,7 @@ public:
 		
 		if (hasPath) {
 			for (i = 0; i < pathSize; i++) {
-					if (pathData[i] > 0) {
+					if (pathData[i] >= 0) {
 						pathData[i] = GROUP_ID_UNMARKED_IDEAL;
 					}
 					else {
@@ -398,18 +500,26 @@ public:
 		}
 	}
 
-	void floodFillAtInd(int firstInd, int newId, bool findCenter, GroupInfoStruct* curGI) {
+	void floodFillAtInd(
+		int firstInd,
+		int newId,
+		bool findCenter,
+		GroupInfoStruct* curGI
+	) {
 		
 		
 		
 		
 		indexStack.clear();
+		
 		indexStack.push_back(firstInd);
 		groupIdStack.push_back(GroupIdStruct());
 		groupIdStack.back().ind = firstInd;
 		groupIdStack.back().groupId = newId;
 		groupIdStack.back().cameFromInd = -1;
 		groupIdStack.back().pathCost = 0;
+		
+		pathData[firstInd] = groupIdStack.size()-1;
 		
 		bool doProc;
 		
@@ -428,20 +538,21 @@ public:
 		int testK;
 		int cellsPerHolderM1 = cellsPerHolder-1;
 		int lastCost;
+		int frontInd = 0;
 		
 		// for (i = 0; i < 6; i++) {
 		// 	curGI->touchesFace[i] = false;
 		// }
-		curGI->begInd = groupIdStack.size() - 1;
+		curGI->begInd = groupIdStack.size()-1;
 		
 		
 		// find contiguous regions
-		while (indexStack.size() > 0) {
+		while (frontInd < indexStack.size()) {//while (indexStack.size() > 0) {
 			
-			ind = indexStack.back();
+			//ind = indexStack.back();
 			
-			//.groupId
-			pathData[ind] = groupIdStack.size()-1;
+			ind = indexStack[frontInd];
+			frontInd++;
 			
 			k = ind/(cellsPerHolder*cellsPerHolder);
 			j = (ind - k*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
@@ -479,22 +590,43 @@ public:
 						
 						
 						foundInd = testInd;
-						goto NEXT_FILL_POINT;
+						// goto NEXT_FILL_POINT;
+					
+						if (foundInd >= 0) {
+							indexStack.push_back(foundInd);
+							
+							lastCost = groupIdStack.back().pathCost;
+							
+							groupIdStack.push_back(GroupIdStruct());
+							groupIdStack.back().ind = foundInd;
+							groupIdStack.back().groupId = newId;
+							groupIdStack.back().cameFromInd = ind;
+							groupIdStack.back().pathCost = lastCost+1;
+							
+							//.groupId
+							pathData[foundInd] = groupIdStack.size()-1;
+							
+						}
+					
 					}
 				}
 			}
 
-NEXT_FILL_POINT:
+// NEXT_FILL_POINT:
 			if (foundInd >= 0) {
-				indexStack.push_back(foundInd);
+				// indexStack.push_back(foundInd);
 				
-				lastCost = groupIdStack.back().pathCost;
+				// lastCost = groupIdStack.back().pathCost;
 				
-				groupIdStack.push_back(GroupIdStruct());
-				groupIdStack.back().ind = foundInd;
-				groupIdStack.back().groupId = newId;
-				groupIdStack.back().cameFromInd = ind;
-				groupIdStack.back().pathCost = lastCost+1;
+				// groupIdStack.push_back(GroupIdStruct());
+				// groupIdStack.back().ind = foundInd;
+				// groupIdStack.back().groupId = newId;
+				// groupIdStack.back().cameFromInd = ind;
+				// groupIdStack.back().pathCost = lastCost+1;
+				
+				// //.groupId
+				// pathData[foundInd] = groupIdStack.size()-1;
+				
 			}
 			else {
 				indexStack.pop_back();
@@ -718,13 +850,11 @@ NEXT_FILL_POINT:
 					for (j = 0; j < cellsPerHolder; j++) {
 						for (i = 0; i < cellsPerHolder; i++) {
 							cellVal = singleton->gw->getCellAtCoords(
-								3,
 								gphMinInPixels.getIX()+i,
 								gphMinInPixels.getIY()+j,
 								gphMinInPixels.getIZ()+k
 							);
 							cellValAbove = singleton->gw->getCellAtCoords(
-								4,
 								gphMinInPixels.getIX()+i,
 								gphMinInPixels.getIY()+j,
 								gphMinInPixels.getIZ()+k+1
@@ -735,7 +865,6 @@ NEXT_FILL_POINT:
 							// 	gphMinInPixels.getIZ()+k+2
 							// );
 							cellValBelow = singleton->gw->getCellAtCoords(
-								5,
 								gphMinInPixels.getIX()+i,
 								gphMinInPixels.getIY()+j,
 								gphMinInPixels.getIZ()+k-1
@@ -780,8 +909,7 @@ NEXT_FILL_POINT:
 				}
 				
 				
-				
-				
+				//cout << "\n";
 				
 				for (i = 0; i < pathSize; i++) {
 					if (
@@ -792,21 +920,33 @@ NEXT_FILL_POINT:
 						
 						groupInfoStack.push_back(GroupInfoStruct());
 						groupInfoStack.back().visitId = 0;
-						floodFillAtInd(i,totGroupIds,true,&(groupInfoStack.back()));
+						floodFillAtInd(
+							i,
+							totGroupIds,
+							true,
+							&(groupInfoStack.back())
+						);
 						totGroupIds++;
 					}
 				}
 				
+				//cout << "groupIdStack.size()1 " << groupIdStack.size() << "\n";
+				
 				clearPathPreserve();
 				
 				for (i = 0; i < groupInfoStack.size(); i++) {
-					floodFillAtInd(groupInfoStack[i].centerInd,totGroupIds,false,&(groupInfoStack[i]));
+					floodFillAtInd(
+						groupInfoStack[i].centerInd,
+						totGroupIds,
+						false,
+						&(groupInfoStack[i])
+					);
 					totGroupIds++;
 				}
 			}
 			
-			
-			
+			// cout << "groupIdStack.size()2 " << groupIdStack.size() << "\n";
+			// cout << "\n";
 			
 			
 			idealPathsReady = true;
@@ -817,6 +957,7 @@ NEXT_FILL_POINT:
 		
 		if (hasPath) {
 			if (pathData[pathDataIndex] < 0) {
+				
 				return pathData[pathDataIndex];
 			}
 			else {
@@ -832,11 +973,12 @@ NEXT_FILL_POINT:
 		
 	}
 	
+	
 	GroupIdStruct* getInfo(int pathDataIndex) {
 		
 		if (hasPath) {
 			if (pathData[pathDataIndex] < 0) {
-				cout << "pathDataIndex < 0\n";
+				//cout << "pathDataIndex < 0\n";
 				return NULL;
 			}
 			
@@ -849,6 +991,28 @@ NEXT_FILL_POINT:
 		
 		
 	}
+	
+	void getInfoReport(int pathDataIndex) {
+		
+		cout << "\n";
+		
+		if (hasPath) {
+			if (pathData[pathDataIndex] < 0) {
+				cout << "pathDataIndex < 0\n";
+				return;
+			}
+			
+			cout << "success\n";
+			
+		}
+		else {
+			cout << "hasPath==false\n";
+			return;
+		}
+		
+		
+	}
+	
 	
 	
 	void linkRegions() {
@@ -872,14 +1036,21 @@ NEXT_FILL_POINT:
 		int n;
 		int q;
 		
+		int zm;
 		
 		int ind;
 		int mo2;
 		
+		int baseX;
+		int baseY;
+		int baseZ;
+		
 		int holderInd;
 		
+		bool doProc = false;
+		
 		int cellsPerHolderM1 = cellsPerHolder-1;
-		GamePageHolder* holderArr[NUM_ORIENTATIONS];
+		//GamePageHolder* holderArr[NUM_MOVEABLE_DIRS_ONE_AWAY];
 		int boundsArr[NUM_ORIENTATIONS];
 		int indArr[NUM_ORIENTATIONS/2];
 		int indArrInv[NUM_ORIENTATIONS/2];
@@ -892,6 +1063,7 @@ NEXT_FILL_POINT:
 		bool foundBetter;
 		
 		ConnectingNodeStruct* cNode;
+		GamePageHolder* targetHolder;
 		
 		boundsArr[0] = cellsPerHolderM1;
 		boundsArr[1] = 0;
@@ -900,14 +1072,15 @@ NEXT_FILL_POINT:
 		boundsArr[4] = cellsPerHolderM1;
 		boundsArr[5] = 0;
 		
-		for (i = 0; i < NUM_ORIENTATIONS; i++) {
-			holderArr[i] = singleton->gw->getHolderAtCoords(
-				offsetInHolders.getIX()+DIR_VECS_I[i][0],
-				offsetInHolders.getIY()+DIR_VECS_I[i][1],
-				offsetInHolders.getIZ()+DIR_VECS_I[i][2],
-				true
-			);
-		}
+		
+		// for (i = 0; i < NUM_MOVEABLE_DIRS_ONE_AWAY; i++) {
+		// 	holderArr[i] = singleton->gw->getHolderAtCoords(
+		// 		offsetInHolders.getIX()+DIR_VECS_MOVE[i][0],
+		// 		offsetInHolders.getIY()+DIR_VECS_MOVE[i][1],
+		// 		offsetInHolders.getIZ()+DIR_VECS_MOVE[i][2],
+		// 		true
+		// 	);
+		// }
 		
 		bestConnectingNodes.clear();
 		
@@ -930,105 +1103,175 @@ NEXT_FILL_POINT:
 			indArr[1] = j;
 			indArr[2] = k;
 			
+			doProc = false;
+			
+			
+			
 			for (m = 0; m < NUM_ORIENTATIONS; m++) {
 				mo2 = m/2;
 				
-				if (indArr[mo2] == boundsArr[m]) {
+				
+				
+				if (m <= 3) {
+					// m is planar
 					
-					indArrInv[0] = i;
-					indArrInv[1] = j;
-					indArrInv[2] = k;
+					if (indArr[mo2] == boundsArr[m]) {
+						// its on the planar edge
+						doProc = true;
+						break;
+					}
 					
-					if (mo2 == 0) {indArrInv[0] = cellsPerHolderM1-i;}
-					if (mo2 == 1) {indArrInv[1] = cellsPerHolderM1-j;}
-					if (mo2 == 2) {indArrInv[2] = cellsPerHolderM1-k;}
+				}
+				else {
+					// m is in z direction
 					
-					targetInd = indArrInv[0] + indArrInv[1]*cellsPerHolder + indArrInv[2]*cellsPerHolder*cellsPerHolder;
-					
-					
-					
-					targetGroupId = holderArr[m]->getGroupId(targetInd);
-					
-					if (targetGroupId > -1) {
-						targetCost = holderArr[m]->getInfo(targetInd)->pathCost + getInfo(ind)->pathCost;
-						
-						// first see if another connection to this block/holder/groupId exists
-						
-						notFound = true;
-						foundBetter = false;
-						
-						for (q = 0; q < bestConnectingNodes.size(); q++) {
-							cNode = &(bestConnectingNodes[q]);
-							
-							if (
-								(cNode->blockIdTo == holderArr[m]->blockId) &&
-								(cNode->holderIdTo == holderArr[m]->holderId) &&
-								(cNode->groupIdFrom == curGroupId) &&
-								(cNode->groupIdTo == targetGroupId)
-							) {
-								notFound = false;
-							
-								if (targetCost <= cNode->totCost) {
-									
-									// tie breaker
-									if (targetCost == cNode->totCost) {
-										kk = targetInd/(cellsPerHolder*cellsPerHolder);
-										jj = (targetInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-										ii = targetInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
-										
-										//cNode->cellIndFrom
-										kc = cNode->cellIndFrom/(cellsPerHolder*cellsPerHolder);
-										jc = (cNode->cellIndFrom-kc*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-										ic = cNode->cellIndFrom-(kc*cellsPerHolder*cellsPerHolder + jc*cellsPerHolder);
-										
-										//cNode->cellIndTo
-										kkc = cNode->cellIndTo/(cellsPerHolder*cellsPerHolder);
-										jjc = (cNode->cellIndTo-kkc*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-										iic = cNode->cellIndTo-(kkc*cellsPerHolder*cellsPerHolder + jjc*cellsPerHolder);
-										
-										
-										
-										if ((k+kk) < (kc+kkc)) {foundBetter = true;} else {
-											if ((j+jj) < (jc+jjc)) {foundBetter = true;} else {
-												if ((i+ii) < (ic+iic)) {foundBetter = true;}
-											}
-										}
-									}
-									else {
-										foundBetter = true;
-									}
-								}
-
-								break;
-							}
-						}
-						
-						if (notFound) {
-							bestConnectingNodes.push_back(ConnectingNodeStruct());
-							cNode = &(bestConnectingNodes.back());
-						}
-						else {
-							cNode = &(bestConnectingNodes[q]);
-						}
-						
-						if (foundBetter||notFound) {
-							
-							cNode->blockIdTo = holderArr[m]->blockId;
-							cNode->holderIdTo = holderArr[m]->holderId;
-							cNode->groupIdFrom = curGroupId;
-							cNode->groupIdTo = targetGroupId;
-							cNode->cellIndFrom = ind;
-							cNode->cellIndTo = targetInd;
-							cNode->totCost = targetCost;
-							
-						}
-						
-						
-						
-						// otherwise push back a new block/holder/groupId
-						
+					if ( abs(indArr[mo2] - boundsArr[m]) <= BASE_MOVEABLE_Z ) {
+						doProc = true;
+						break;
 					}
 				}
+				
+			}
+			
+			if (doProc) {
+				
+				baseX = i + gphMinInPixels.getIX();
+				baseY = j + gphMinInPixels.getIY();
+				baseZ = k + gphMinInPixels.getIZ();
+				
+				for (m = 0; m < NUM_PLANAR_ORIENTATIONS; m++) {
+					
+					for (zm = -BASE_MOVEABLE_Z; zm <= BASE_MOVEABLE_Z; zm++) {
+						
+						
+
+						// indArrInv[0] = i;
+						// indArrInv[1] = j;
+						// indArrInv[2] = k;
+
+						// if (mo2 == 0) {indArrInv[0] = cellsPerHolderM1-i;}
+						// if (mo2 == 1) {indArrInv[1] = cellsPerHolderM1-j;}
+						// if (mo2 == 2) {indArrInv[2] = cellsPerHolderM1-k;}
+
+						targetInd = singleton->gw->getCellInd(
+							targetHolder,
+							baseX + DIR_VECS_I[m][0],
+							baseY + DIR_VECS_I[m][1],
+							baseZ + zm
+						);//indArrInv[0] + indArrInv[1]*cellsPerHolder + indArrInv[2]*cellsPerHolder*cellsPerHolder;
+						
+						
+						if (
+							(targetHolder->holderId == holderId) &&
+							(targetHolder->blockId == blockId)
+						) {
+							// same holder, do nothing
+						}
+						else {
+							
+							
+							
+							targetGroupId = targetHolder->getGroupId(targetInd);
+
+							if (targetGroupId > -1) {
+								targetCost = targetHolder->getInfo(targetInd)->pathCost + getInfo(ind)->pathCost;
+								
+								// first see if another connection to this block/holder/groupId exists
+								
+								notFound = true;
+								foundBetter = false;
+								
+								for (q = 0; q < bestConnectingNodes.size(); q++) {
+									cNode = &(bestConnectingNodes[q]);
+									
+									if (
+										(cNode->blockIdTo == targetHolder->blockId) &&
+										(cNode->holderIdTo == targetHolder->holderId) &&
+										(cNode->groupIdFrom == curGroupId) &&
+										(cNode->groupIdTo == targetGroupId)
+									) {
+										notFound = false;
+									
+										if (targetCost <= cNode->totCost) {
+											
+											// tie breaker
+											if (targetCost == cNode->totCost) {
+												kk = targetInd/(cellsPerHolder*cellsPerHolder);
+												jj = (targetInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+												ii = targetInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+												
+												//cNode->cellIndFrom
+												kc = cNode->cellIndFrom/(cellsPerHolder*cellsPerHolder);
+												jc = (cNode->cellIndFrom-kc*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+												ic = cNode->cellIndFrom-(kc*cellsPerHolder*cellsPerHolder + jc*cellsPerHolder);
+												
+												//cNode->cellIndTo
+												kkc = cNode->cellIndTo/(cellsPerHolder*cellsPerHolder);
+												jjc = (cNode->cellIndTo-kkc*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+												iic = cNode->cellIndTo-(kkc*cellsPerHolder*cellsPerHolder + jjc*cellsPerHolder);
+												
+												
+												
+												if ((k+kk) < (kc+kkc)) {foundBetter = true;} else {
+													if ((j+jj) < (jc+jjc)) {foundBetter = true;} else {
+														if ((i+ii) < (ic+iic)) {foundBetter = true;}
+													}
+												}
+											}
+											else {
+												foundBetter = true;
+											}
+										}
+
+										break;
+									}
+								}
+								
+								if (notFound) {
+									bestConnectingNodes.push_back(ConnectingNodeStruct());
+									cNode = &(bestConnectingNodes.back());
+								}
+								else {
+									cNode = &(bestConnectingNodes[q]);
+								}
+								
+								if (foundBetter||notFound) {
+									
+									cNode->blockIdFrom = blockId;
+									cNode->holderIdFrom = holderId;
+									cNode->blockIdTo = targetHolder->blockId;
+									cNode->holderIdTo = targetHolder->holderId;
+									cNode->groupIdFrom = curGroupId;
+									cNode->groupIdTo = targetGroupId;
+									cNode->cellIndFrom = ind;
+									cNode->cellIndTo = targetInd;
+									cNode->totCost = targetCost;
+									
+								}
+								
+								
+								
+								// otherwise push back a new block/holder/groupId
+								
+							}
+
+							
+							
+							
+						}
+						
+
+						
+						
+						
+						
+						
+						
+					}
+					
+				}
+								
+				
 			}
 			
 			
@@ -1138,11 +1381,11 @@ NEXT_FILL_POINT:
 		// find complete array map of regions for just this holder
 		
 		
-		if (groupInfoStack.size() == 0) {
-			if (pathData != NULL) {delete[] pathData;}
-			pathData = NULL;
-			hasPath = false;
-		}
+		// if (groupInfoStack.size() == 0) {
+		// 	if (pathData != NULL) {delete[] pathData;}
+		// 	pathData = NULL;
+		// 	hasPath = false;
+		// }
 		
 		
 		
@@ -1152,8 +1395,6 @@ NEXT_FILL_POINT:
 		
 		
 		
-		
-		//singleton->gameLogic->insertNode(holderId,blockId);
 		
 	}
 	
@@ -1192,8 +1433,8 @@ NEXT_FILL_POINT:
 		float disVal;
 		
 		float fSimp;
-		int iSimp;
-		int iSimp2;
+		int iTer;
+		int iWat;
 		
 		checkData(false);
 		
@@ -1204,10 +1445,21 @@ NEXT_FILL_POINT:
 		
 		
 		
-		VolumeWrapper* curVW = (singleton->volumeWrappers[E_VW_HOLDER]);
-		FBOWrapper* fbow = curVW->fboSet.getFBOWrapper(0);
-		singleton->gw->drawVol(curVW, &gphMinInPixels, &gphMaxInPixels, true, true);
 		
+		
+		VolumeWrapper* curVW;
+		
+		if (isBlockHolder) {
+			curVW = (singleton->volumeWrappers[E_VW_WORLD]);
+			cout << "genBlockHolder\n";
+		}
+		else {
+			curVW = (singleton->volumeWrappers[E_VW_HOLDER]);
+		}
+		
+		
+		singleton->gw->drawVol(curVW, &gphMinInPixels, &gphMaxInPixels, true, true);
+		FBOWrapper* fbow = curVW->fboSet.getFBOWrapper(0);
 		
 		// if (terVW == NULL) {
 		// 	terVW = new VolumeWrapper();
@@ -1230,30 +1482,41 @@ NEXT_FILL_POINT:
 			jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
 			ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 			
-			fk = gphMinInPixels[2] + kk;
+			if (isBlockHolder) {
+				fk = gphMinInPixels[2] + kk*singleton->cellsPerBlock;
+			}
+			else {
+				fk = gphMinInPixels[2] + kk;
+			}
+			
+			
 			
 			ind = p*4;
+			
+			
 			
 			if (
 				vdPtr[ind + 0] > 128 // 0.5f
 			) {
-				iSimp = FLUID_UNIT_MAX;
+				iTer = FLUID_UNIT_MAX;
 			}
 			else {
-				iSimp = FLUID_UNIT_MIN;
+				iTer = FLUID_UNIT_MIN;
 			}
 			
-			if (iSimp == FLUID_UNIT_MAX) {
-				iSimp2 = FLUID_UNIT_MIN;
+			if (iTer == FLUID_UNIT_MAX) {
+				iWat = FLUID_UNIT_MIN;
 			}
 			else {
 				if (fk < watHeight) {
-					iSimp2 = FLUID_UNIT_MAX;
+					iWat = FLUID_UNIT_MAX;
 				}
 				else {
-					iSimp2 = FLUID_UNIT_MIN;
+					iWat = FLUID_UNIT_MIN;
 				}
 			}
+			
+			
 			
 			
 			for (q = 0; q < 4; q++) {
@@ -1262,9 +1525,9 @@ NEXT_FILL_POINT:
 			}
 			
 			
-			cellData[ind+E_PTT_TER] = iSimp;
-			cellData[ind+E_PTT_WAT] = iSimp2;
-			cellData[ind+E_PTT_LST] = iSimp2;
+			cellData[ind+E_PTT_TER] = iTer;
+			cellData[ind+E_PTT_WAT] = iWat;
+			cellData[ind+E_PTT_LST] = iWat;
 		}
 		
 		
@@ -1308,8 +1571,8 @@ NEXT_FILL_POINT:
 		
 		
 		
-	// 	float wspX = singleton->worldSizeInCells[0]/2.0f;
-	// 	float wspY = singleton->worldSizeInCells[1]/2.0f;
+	// 	float wspX = singleton->cellsPerWorld/2.0f;
+	// 	float wspY = singleton->cellsPerWorld/2.0f;
 		
 	// 	float distanceBelowTer;
 		
@@ -1369,7 +1632,7 @@ NEXT_FILL_POINT:
 	// 			}
 	// 			*/
 				
-	// 			// - singleton->worldSizeInCells[0]*0.5f
+	// 			// - singleton->cellsPerWorld*0.5f
 				
 	// 			// zv = simplexScaledNoise(
 	// 			// 		4.0f, //octaves
@@ -1510,57 +1773,57 @@ NEXT_FILL_POINT:
 	// }
 
 	
-	void fetchHolderGeom() {
-		int i;
-		int j;
-		int k;
-		int n;
+	// void fetchHolderGeom() {
+	// 	int i;
+	// 	int j;
+	// 	int k;
+	// 	int n;
 		
-		int m;
+	// 	int m;
 		
-		GameBlock* curBlock;
-		GamePageHolder* gph;
-		FIVector4 start;
-		FIVector4 end;
-		GameEnt* gameEnt;
+	// 	GameBlock* curBlock;
+	// 	GamePageHolder* gph;
+	// 	FIVector4 start;
+	// 	FIVector4 end;
+	// 	GameEnt* gameEnt;
 
 
-		for (n = 0; n < E_ET_LENGTH; n++) {
-			containsEntIds[n].data.clear();
+	// 	for (n = 0; n < E_ET_LENGTH; n++) {
+	// 		containsEntIds[n].data.clear();
 			
-			for (i = -1; i <= 1; i++) {
-				for (j = -1; j <= 1; j++) {
-					for (k = -1; k <= 1; k++) {
-						curBlock = singleton->gw->getBlockAtCoords(
-							offsetInBlocks.getIX()+i,
-							offsetInBlocks.getIY()+j,
-							offsetInBlocks.getIZ()+k,
-							true
-						);
+	// 		for (i = -1; i <= 1; i++) {
+	// 			for (j = -1; j <= 1; j++) {
+	// 				for (k = -1; k <= 1; k++) {
+	// 					curBlock = singleton->gw->getBlockAtCoords(
+	// 						offsetInBlocks.getIX()+i,
+	// 						offsetInBlocks.getIY()+j,
+	// 						offsetInBlocks.getIZ()+k,
+	// 						true
+	// 					);
 
-						for (m = 0; m < curBlock->gameEnts[n].data.size(); m++) {
+	// 					for (m = 0; m < curBlock->gameEnts[n].data.size(); m++) {
 
-							gameEnt = &(curBlock->gameEnts[n].data[m]);
+	// 						gameEnt = &(curBlock->gameEnts[n].data[m]);
 
-							start.copyFrom( &(gameEnt->moveMinInPixels) );
-							end.copyFrom( &(gameEnt->moveMaxInPixels) );
+	// 						start.copyFrom( &(gameEnt->moveMinInPixels) );
+	// 						end.copyFrom( &(gameEnt->moveMaxInPixels) );
 
-							start.clampZ(0.0,singleton->worldSizeInCells.getFZ()-1.0f);
-							end.clampZ(0.0,singleton->worldSizeInCells.getFZ()-1.0f);
+	// 						start.clampZ(0.0,singleton->cellsPerWorld-1.0f);
+	// 						end.clampZ(0.0,singleton->cellsPerWorld-1.0f);
 
-							if (FIVector4::intersectInt(&start,&end,&gphMinInPixels,&gphMaxInPixels)) {
-								containsEntIds[n].data.push_back(intPair());
-								containsEntIds[n].data.back().v0 = curBlock->blockId;
-								containsEntIds[n].data.back().v1 = m;
-							}
-						}
-					}
+	// 						if (FIVector4::intersectInt(&start,&end,&gphMinInPixels,&gphMaxInPixels)) {
+	// 							containsEntIds[n].data.push_back(intPair());
+	// 							containsEntIds[n].data.back().v0 = curBlock->blockId;
+	// 							containsEntIds[n].data.back().v1 = m;
+	// 						}
+	// 					}
+	// 				}
 					
-				}
-			}
-		}
+	// 			}
+	// 		}
+	// 	}
 
-	}
+	// }
 	
 	
 	
@@ -1645,6 +1908,18 @@ NEXT_FILL_POINT:
 
 	void fillVBO() {
 		
+		int q;
+		
+		int p;
+		int ii;
+		int jj;
+		int kk;
+		
+		int p2;
+		// int ii2;
+		// int jj2;
+		int kk2;
+		
 		if (
 			(holderFlags == E_CD_SOLID) ||
 			(holderFlags == E_CD_EMPTY)	
@@ -1659,24 +1934,93 @@ NEXT_FILL_POINT:
 		}
 		
 		
-#ifdef GEN_POLYS
+		/////////////////////
 		
-		if (listEmpty) {
-			
-		}
-		else {
-			vboWrapper.init(
-				&(vertexVec[0]),
-				vertexVec.size(),
-				&(indexVec[0]),
-				indexVec.size()
-			);
-			// todo: not needed?
-			//glFlush();
-			//glFinish();
+		
+		
+		// if (GEN_COLLISION) {
+		// 	q3BoxDef boxDef;
+		// 	boxDef.SetRestitution( 0 );
+		// 	q3Transform tx;
+		// 	q3Identity( tx );
+		// 	tx.position.Set(2,2,2);
+		// 	boxDef.Set( tx, q3Vec3( 8.0f, 8.0f, 8.0f ) );
+		// 	body->AddBox( boxDef );
+		// }
+		
+		float fk;
+		
+		if (GEN_COLLISION) {
+			for (q = 0; q < collideIndices.size(); q += 2) {
+				
+				p = collideIndices[q];
+				p2 = collideIndices[q+1];
+				
+				kk = p/(cellsPerHolder*cellsPerHolder);
+				jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+				ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+				
+				kk2 = p2/(cellsPerHolder*cellsPerHolder);
+				
+				fk = (kk2-kk)+1;
+				
+				q3BoxDef boxDef;
+				boxDef.SetRestitution( 0 );
+				q3Transform tx;
+				q3Identity( tx );
+				tx.position.Set(ii,jj,(kk+kk2)*0.5f);
+				boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, fk ) );
+				body->AddBox( boxDef );
+				
+				
+				// q3BoxDef boxDef;
+				// boxDef.SetRestitution( 0 );
+				// q3Transform tx;
+				// q3Identity( tx );
+				// tx.position.Set(ii,jj,kk);
+				// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
+				// body->AddBox( boxDef );
+				
+				
+				// q3Identity( tx );
+				// tx.position.Set(ii,jj,kk);
+				// // tranform, extents
+				// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
+				// boxDef.SetRestitution( 0 );
+				// body->AddBox( boxDef );
+				
+			}
 		}
 		
-#endif
+		//cout << "collideIndices.size() " << collideIndices.size() << "\n";
+		
+		
+		
+		////////////////////
+		
+		
+		if (
+			(isBlockHolder&&GEN_POLYS_WORLD) ||
+			((!isBlockHolder)&&GEN_POLYS_HOLDER)	
+		) {
+			if (listEmpty) {
+				
+			}
+			else {
+				vboWrapper.init(
+					&(vertexVec[0]),
+					vertexVec.size(),
+					&(indexVec[0]),
+					indexVec.size()
+				);
+				// todo: not needed?
+				//glFlush();
+				//glFinish();
+			}
+		}
+		
+		
+		
 		
 		
 		listGenerated = true;
@@ -1685,13 +2029,13 @@ NEXT_FILL_POINT:
 
 	void generateList() { //int fboNum
 		
+		preGenList = false;
 		
 		int cellsPerHolderM1 = cellsPerHolder-1;
 		float fres = cellsPerHolder;
 		int i, j, k, m, q;
 		
-		//singleton->vgtFBOArr[fboNum].fbos[0].getPixels();
-		//singleton->vgtFBOArr[fboNum].fbos[1].getPixels();
+		int curInd;
 		
 		int procCount = 0;
 		
@@ -1701,9 +2045,19 @@ NEXT_FILL_POINT:
 		
 		
 		
-		float iv0 = 0.0f;
-		float iv1 = 1.0f;
 		
+		
+		float cellPitch;
+		
+		if (isBlockHolder) {
+			cellPitch = singleton->cellsPerBlock;
+		}
+		else {
+			cellPitch = 1.0f;
+		}
+		
+		float iv0 = 0.0f;
+		float iv1 = cellPitch;
 		
 		
 		float fi = 0.0f;
@@ -1734,42 +2088,14 @@ NEXT_FILL_POINT:
 		const uint AIR_VAL = 0;
 		
 		
-		//FBOWrapper* fbow0 = &(singleton->vgtFBOArr[fboNum].fbos[0]);
-		//FBOWrapper* fbow1 = &(singleton->vgtFBOArr[fboNum].fbos[1]);
-		
+		bool doProcAny;
 		bool doProc[6];// = false;
 
 		uint tempHF = E_CD_UNKNOWN;
 
-		// bool hasAir = false;
-		// bool hasSolid = false;
-		// bool allSolid = true;
-		
-		// for (i = 0; i < cellsPerHolder*cellsPerHolder*cellsPerHolder; i++) {
-			
-		// 	if (fbow0->getPixelAtIndex(i,A_CHANNEL) == 0) {
-		// 		hasAir = true;
-		// 	}
-		// 	else {
-		// 		hasSolid = true;
-		// 	}
-			
-		// 	if (fbow0->getPixelAtIndex(i,R_CHANNEL) != 63) {
-		// 		allSolid = false;
-		// 	}
-		// }
-		
-		// hasSomething = (hasAir||(!allSolid))&&hasSolid;
-		
-		// if (hasSomething) {
-			
-		// }
-		// else {
-		// 	goto DO_CLEANUP;
-		// }
-		
-		
-		
+		if (GEN_COLLISION) {
+			collideIndices.clear();
+		}
 		
 		vertexVec.clear();
 		indexVec.clear();
@@ -1780,142 +2106,295 @@ NEXT_FILL_POINT:
 		//glBegin(GL_QUADS);
 		
 		
-		for (k = -1; k <= cellsPerHolder; k++) {
-			for (j = -1; j <= cellsPerHolder; j++) {
-				for (i = -1; i <= cellsPerHolder; i++) {
+		
+		int empCount = 0;
+		int watCount = 0;
+		int solCount = 0;
+		int errCount = 0;
+		
+		int minRad = -1;
+		int maxRad = cellsPerHolder;
+		
+		if (isBlockHolder) {
+			minRad = 0;
+			maxRad = cellsPerHolder-1;
+		}
+		
+		
+		for (k = minRad; k <= maxRad; k++) {
+			for (j = minRad; j <= maxRad; j++) {
+				for (i = minRad; i <= maxRad; i++) {
 					
 					iX = gphMinInPixels.getIX() + i;
 					iY = gphMinInPixels.getIY() + j;
 					iZ = gphMinInPixels.getIZ() + k;
 					
-					cellVal = singleton->gw->getCellAtCoords(20,iX,iY,iZ);
+					if (isBlockHolder) {
+						cellVal = getCellAtCoordsLocal(iX,iY,iZ);
+						
+						switch (cellVal) {
+							case E_CD_EMPTY:
+								empCount++;
+							break;
+							case E_CD_WATER:
+								watCount++;
+							break;
+							case E_CD_SOLID:
+								solCount++;
+							break;
+							default:
+								errCount++;
+							break;
+						}
+						
+					}
+					else {
+						cellVal = singleton->gw->getCellAtCoords(iX,iY,iZ);
+					}
+					
+					
 					tempHF = tempHF|cellVal;
 				}
 			}	
 		}
 		
-#ifdef GEN_POLYS
 		
-		if (
-			(tempHF == E_CD_SOLID) ||
-			(tempHF == E_CD_EMPTY)	
-		) {
+		
+		if (isBlockHolder) {
 			
+			cout << "\n\n\n";
+			cout << "cellsPerHolder" << cellsPerHolder << "\n";
+			cout << "empCount " << empCount << "\n";
+			cout << "watCount " << watCount << "\n";
+			cout << "solCount " << solCount << "\n";
+			cout << "errCount " << errCount << "\n";
+			cout << "\n\n\n";
 		}
-		else {
-			for (k = 0; k < cellsPerHolder; k++) {
+		
+		bool fillPolys = 
+			(isBlockHolder&&GEN_POLYS_WORLD) ||
+			((!isBlockHolder)&&GEN_POLYS_HOLDER);
+		
+		
+		
+		bool rleOn = false;
+		bool isLast = false;
+		int begInd;
+		int endInd;
+		
+		
+		if (GEN_COLLISION) {
+			
+			if (
+				(tempHF == E_CD_SOLID) ||
+				(tempHF == E_CD_EMPTY)	
+			) {
 				
-				for (j = 0; j < cellsPerHolder; j++) {
-					
-					for (i = 0; i < cellsPerHolder; i++) {
-						
-						
-						iX = gphMinInPixels.getIX() + i;
-						iY = gphMinInPixels.getIY() + j;
-						iZ = gphMinInPixels.getIZ() + k;
-						bpX = iX;
-						bpY = iY;
-						bpZ = iZ;
-						
-						cellVal = singleton->gw->getCellAtCoords(6,iX,iY,iZ);
-						
-						
-						if ( cellVal == E_CD_SOLID ) {
+			}
+			else {
+				for (i = 0; i < cellsPerHolder; i++) {
+					for (j = 0; j < cellsPerHolder; j++) {
+						for (k = 0; k < cellsPerHolder; k++) {
 							
-							for (q = 0; q < NUM_ORIENTATIONS; q++) {
-								cellVal2 = singleton->gw->getCellAtCoords(7,
-									iX + DIR_VECS_I[q][0],
-									iY + DIR_VECS_I[q][1],
-									iZ + DIR_VECS_I[q][2]
-								);
-								doProc[q] = cellVal2 != E_CD_SOLID;
-								
-							}
+							isLast = (k == (cellsPerHolder-1));
 							
+							curInd = (i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder);
 							
-							if (doProc[0]) { // x+
-								
-								getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
-								getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
-								getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
-								getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
-								
-								getIndVal(procCount);
-								procCount++;
-								
-								
+							cellVal = getCellAtInd(curInd*4);
+							
+							if (cellVal == E_CD_SOLID) {
+								if (rleOn) {
+									
+								}
+								else {
+									rleOn = true;
+									begInd = curInd;
+									collideIndices.push_back(begInd);
+								}
 							}
-							if (doProc[1]) { // x-
-								
-								getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
-								getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
-								getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
-								getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
-								
-								getIndVal2(procCount);
-								procCount++;
-								
-							}
-							if (doProc[2]) { // y+
-								
-								getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
-								getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
-								getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
-								getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
-								
-								getIndVal2(procCount);
-								procCount++;
-								
-							}
-							if (doProc[3]) { // y-
-								
-								
-								getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
-								getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
-								getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
-								getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
-								
-								getIndVal(procCount);
-								procCount++;
-							}
-							if (doProc[4]) { // z+
-								
-								getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
-								getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
-								getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
-								getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
-								
-								getIndVal(procCount);
-								procCount++;
-							}
-							if (doProc[5]) { // z-
-								
-								getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
-								getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
-								getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
-								getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
-								
-								getIndVal2(procCount);
-								procCount++;
+							else {
+								if (rleOn) {
+									rleOn = false;
+									endInd = curInd-(cellsPerHolder*cellsPerHolder);
+									
+									collideIndices.push_back(endInd);
+								}
 							}
 							
+							if (rleOn&&isLast) {
+								rleOn = false;
+								endInd = curInd;
+								collideIndices.push_back(endInd);
+							}
 						}
 					}
 				}
 			}
+				
+				
 		}
-
-#endif
 		
+		
+		// if (GEN_COLLISION) {
+		// 	if (doProcAny) {
+		// 		collideIndices.push_back(i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder);
+		// 	}
+		// }
+		
+		
+		if (fillPolys) {
+			
+			if (
+				(tempHF == E_CD_SOLID) ||
+				(tempHF == E_CD_EMPTY)	
+			) {
+				
+			}
+			else {
+				for (k = 0; k < cellsPerHolder; k++) {
+					
+					for (j = 0; j < cellsPerHolder; j++) {
+						
+						for (i = 0; i < cellsPerHolder; i++) {
+							
+							
+							iX = gphMinInPixels.getIX() + i;
+							iY = gphMinInPixels.getIY() + j;
+							iZ = gphMinInPixels.getIZ() + k;
+							bpX = iX*cellPitch;
+							bpY = iY*cellPitch;
+							bpZ = iZ*cellPitch;
+							
+							if (isBlockHolder) {
+								cellVal = getCellAtCoordsLocal(iX,iY,iZ);
+							}
+							else {
+								cellVal = singleton->gw->getCellAtCoords(iX,iY,iZ);
+							}
+							
+							
+							if ( cellVal == E_CD_SOLID ) {
+								
+								doProcAny = false;
+								
+								for (q = 0; q < NUM_ORIENTATIONS; q++) {
+									
+									if (isBlockHolder) {
+										cellVal2 = getCellAtCoordsLocal(
+											iX + DIR_VECS_I[q][0],
+											iY + DIR_VECS_I[q][1],
+											iZ + DIR_VECS_I[q][2]	
+										);
+									}
+									else {
+										cellVal2 = singleton->gw->getCellAtCoords(
+											iX + DIR_VECS_I[q][0],
+											iY + DIR_VECS_I[q][1],
+											iZ + DIR_VECS_I[q][2]
+										);
+									}
+									
+									
+									doProc[q] = cellVal2 != E_CD_SOLID;
+									
+									doProcAny = doProcAny | doProc[q];
+									
+								}
+								
+								// if (GEN_COLLISION) {
+								// 	if (doProcAny) {
+								// 		collideIndices.push_back(i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder);
+								// 	}
+								// }
+								
+								
+								if (fillPolys) {
+									
+									if (doProc[0]) { // x+
+										
+										getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
+										getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
+										getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
+										getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
+										
+										getIndVal(procCount);
+										procCount++;
+										
+										
+									}
+									if (doProc[1]) { // x-
+										
+										getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
+										getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
+										getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
+										getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
+										
+										getIndVal2(procCount);
+										procCount++;
+										
+									}
+									if (doProc[2]) { // y+
+										
+										getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
+										getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
+										getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
+										getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
+										
+										getIndVal2(procCount);
+										procCount++;
+										
+									}
+									if (doProc[3]) { // y-
+										
+										
+										getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
+										getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
+										getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
+										getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
+										
+										getIndVal(procCount);
+										procCount++;
+									}
+									if (doProc[4]) { // z+
+										
+										getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
+										getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
+										getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
+										getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
+										
+										getIndVal(procCount);
+										procCount++;
+									}
+									if (doProc[5]) { // z-
+										
+										getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
+										getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
+										getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
+										getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
+										
+										getIndVal2(procCount);
+										procCount++;
+									}
+								}
+								
+								
+								
+							}
+						}
+					}
+				}
+			}
+			
+			
+		}
+		
+		
+
 		
 		listEmpty = (vertexVec.size() == 0);
 		holderFlags = tempHF;
 		
-		
-		
-		
-		
-		
+		preGenList = true;
 		
 	}
 

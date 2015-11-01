@@ -10,7 +10,7 @@ uniform vec3 cameraPos;
 uniform vec3 offsetPos;
 uniform float isWire;
 uniform vec3 matVal;
-uniform vec4 rotationZ;
+//uniform vec4 rotationZ;
 
 varying vec3 TexCoord0;
 
@@ -34,22 +34,22 @@ void main() {
     
     mat2 m2x2;
     
-    float rotInv = (M_PI*2.0-rotationZ.w)+M_PI/2.0;
+    //float rotInv = (M_PI*2.0-rotationZ.w)+M_PI/2.0;
     
-    if (rotationZ.w != 0.0) {
-        newPos.xyz -= rotationZ.xyz;
+    // if (rotationZ.w != 0.0) {
+    //     newPos.xyz -= rotationZ.xyz;
         
-        m2x2 = mat2(
-            cos(rotInv),
-            -sin(rotInv),
-            sin(rotInv),
-            cos(rotInv)
-        );
+    //     m2x2 = mat2(
+    //         cos(rotInv),
+    //         -sin(rotInv),
+    //         sin(rotInv),
+    //         cos(rotInv)
+    //     );
         
-        newPos.xy = m2x2*newPos.xy;
+    //     newPos.xy = m2x2*newPos.xy;
         
-        newPos.xyz += rotationZ.xyz;
-    }
+    //     newPos.xyz += rotationZ.xyz;
+    // }
     
     worldPos = newPos;
     

@@ -132,7 +132,7 @@ vec3 getFogColor()
             zv,
             TEX_SKY
         ),
-        (lightVecOrig.z + 1.0)*0.5//timeOfDay
+        timeOfDay // (-lightVecOrig.z + 1.0)*0.5//timeOfDay
     )
     +
     
@@ -140,21 +140,21 @@ vec3 getFogColor()
         (
             pow(
                 clamp(
-                    dot(lightVecOrig,myRay),0.0,1.0
+                    dot(-lightVecOrig,myRay),0.0,1.0
                 ),
                 16.0    
             )*1.0
-            *vec3(1.0,0.5,0.0) //+lightVecOrig.z*0.25
+            *vec3(1.0,0.5,0.0) //+-lightVecOrig.z*0.25
         )
         +
         (
             pow(
                 clamp(
-                    dot(lightVecOrig,myRay),0.0,1.0
+                    dot(-lightVecOrig,myRay),0.0,1.0
                 ),
                 64.0    
             )*1.0
-            *vec3(1.0,1.0,1.0) //+lightVecOrig.z*0.25
+            *vec3(1.0,1.0,1.0) //+-lightVecOrig.z*0.25
         )    
     )*(pow(clamp((timeOfDay+0.4),0.0,1.0),8.0))
     
@@ -165,21 +165,21 @@ vec3 getFogColor()
         (
             pow(
                 clamp(
-                    dot(lightVecOrig*vec3(1.0,1.0,-1.0),myRay),0.0,1.0
+                    dot(-lightVecOrig*vec3(1.0,1.0,-1.0),myRay),0.0,1.0
                 ),
                 64.0    
             )*1.0
-            *vec3(0.5,0.5,1.0) //+lightVecOrig.z*0.25
+            *vec3(0.5,0.5,1.0) //+-lightVecOrig.z*0.25
         )
         +
         (
             pow(
                 clamp(
-                    dot(lightVecOrig*vec3(1.0,1.0,-1.0),myRay),0.0,1.0
+                    dot(-lightVecOrig*vec3(1.0,1.0,-1.0),myRay),0.0,1.0
                 ),
                 256.0    
             )*1.0
-            *vec3(1.0,1.0,1.0) //+lightVecOrig.z*0.25
+            *vec3(1.0,1.0,1.0) //+-lightVecOrig.z*0.25
         )    
     )*(pow(clamp(1.0-(timeOfDay-0.4),0.0,1.0),8.0))
     ;
@@ -196,6 +196,33 @@ const float timeScale = 0.0005;
 
 const float WAVE_SPEED = 0.2;
 const float WAVE_SCALE = 100.0;
+
+
+float amplitude[8] = float[](
+    1.0/256.0,
+    2.0/256.0,
+    4.0/256.0,
+    8.0/256.0,
+    
+    16.0/256.0,
+    32.0/256.0,
+    64.0/256.0,
+    128.0/256.0
+        
+);
+float wavelength[8] = float[](
+    WAVE_SCALE/128.0,
+    WAVE_SCALE/64.0,
+    WAVE_SCALE/32.0,
+    WAVE_SCALE/16.0,
+    
+    WAVE_SCALE/8.0,
+    WAVE_SCALE/4.0,
+    WAVE_SCALE/2.0,
+    WAVE_SCALE/1.0
+    
+);
+
 ^INCLUDE:WaveFuncs^
 
 
@@ -240,6 +267,9 @@ vec4 Noise( in ivec2 x )
 //     return texture2D( Texture7, uv, -100.0 );
 // }
 
+float rand(vec2 co){
+    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
 
 
 
@@ -383,7 +413,7 @@ void main() {
     
     /////////////
     
-    
+    float heightDif = 1.0-clamp((seaLevel - worldPosition.z)/512.0,0.0,1.0);
     
     
     
@@ -416,7 +446,8 @@ void main() {
     
     float waveScale = 0.001;//mix(0.01/camDis,0.05/camDis,camDis/16384.0);
     
-    float waveVal = clamp(
+    float waveVal = 
+    clamp(
         
         waveHeight2(
             //(worldPosition.xy+worldPosition.zy)*mix(0.01,0.0005,camDisNorm)
@@ -531,13 +562,16 @@ void main() {
         fogColor = 
         mix(
             mix(
-                vec3(0.0,0.25,1.0),
-                vec3(0.0,0.1,0.5),
+                vec3(0.0,0.25,0.6),
+                vec3(0.0,0.1,0.4),
                 hfog
             ),
             fogColor,
             0.1    
         );
+        
+        //fogColor.g += (1.0-heightDif)*0.2;
+        
     }
     
     vec3 finalCol = mix(tex2.rgb,tex3.rgb,pow(hfog,2.0)); // increase hfog for more blur
@@ -633,7 +667,32 @@ void main() {
     
     if (isUnderWater == 1.0) {
         finalCol = mix( finalCol, vec3(0.0,0.1,0.5), 0.5);
-        finalCol += pow( waveVal, 2.0)*0.1;
+        
+        
+        waveScale = 0.125;
+        finalCol += pow(
+        
+        
+        (sin(waveHeight3(
+            //(worldPosition.xy+worldPosition.zy)*mix(0.01,0.0005,camDisNorm)
+            
+            
+            sin(worldPosition.xy*waveScale) *
+            sin(worldPosition.yz*waveScale) *
+            sin(worldPosition.zx*waveScale)
+            
+            + (worldPosition.xy + worldPosition.zz*0.5)*waveScale,
+            
+            8.0
+            
+        )*16.0)+1.0)*0.4
+            
+            
+        ,8.0)*0.3*heightDif*float(matVals.a != TEX_WATER);
+        
+        
+        
+        
     }
 
 
@@ -686,7 +745,37 @@ void main() {
     
     
     
-    
+    if (isUnderWater == 1.0) {
+        // bubbles
+        vec3 myRay = getRay();
+        
+        float newTime = (mod(curTime*0.1/1000.0,1.0) + 4.0);
+        
+        vec2 moveVec = -(vec2(TexCoord0.xy-0.5)*2.0)*newTime;
+        vec2 moveVec2 = vec2(0.0,-1.0)*newTime;
+        
+        finalCol += 
+        pow(
+            mix(
+                
+                texture2D(Texture7, TexCoord0.xy + moveVec2  ).rgb,
+                texture2D(Texture7, TexCoord0.xy - moveVec  ).rgb,
+                abs(lookAtVec.z)
+            )
+            *0.85,
+            vec3(10.0)
+        )
+        * 
+        abs(sin(rand(TexCoord0.xy)*1000.0 + newTime))*3.0
+        * float(matVals.a != TEX_WATER)
+        * clamp(
+            distance(cameraPos,worldPosition.xyz)/512.0,
+            0.0,
+            1.0
+        )
+        *heightDif
+        ;
+    }
     
     
     

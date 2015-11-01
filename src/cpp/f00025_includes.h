@@ -10,7 +10,9 @@ int RUN_COUNT;
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "27015"
 
-//#define GEN_POLYS 1
+const static bool GEN_COLLISION = false;
+const static bool GEN_POLYS_HOLDER = false;
+const static bool GEN_POLYS_WORLD = false;
 
 const static bool SINGLE_THREADED = false;
 const static bool DO_RANDOMIZE = false;
@@ -34,7 +36,7 @@ const static bool DO_SHADER_DUMP = false;
 const static int DEF_WIN_W = 1440;
 const static int DEF_WIN_H = 720;
 
-const static int DEF_VOL_SIZE = 64;
+const static int DEF_VOL_SIZE = 128;
 
 const static int DEF_SCALE_FACTOR = 2;
 const static int RENDER_SCALE_FACTOR = 2;
@@ -148,6 +150,8 @@ enum E_DIR_SPECS_SIGN {
 	E_DIR_ZM,
 	E_DIR_MP_LENGTH
 };
+
+
 const static int NUM_ORIENTATIONS = 6;
 const static float DIR_VECS[NUM_ORIENTATIONS][3] = {
 	{1.0f, 0.0f, 0.0f},
@@ -166,34 +170,58 @@ const static int DIR_VECS_I[NUM_ORIENTATIONS][3] = {
 	{0, 0, -1}
 };
 
-const static int NUM_MOVEABLE_DIRS = 20;// 12 20 24
+
+const static int NUM_PLANAR_ORIENTATIONS = 4;
+const static int BASE_MOVEABLE_Z = 2;
+const static int MAX_MOVEABLE_Z = BASE_MOVEABLE_Z*2 + 1;
+const static int NUM_MOVEABLE_DIRS_ONE_AWAY = NUM_PLANAR_ORIENTATIONS*3;
+
+const static int NUM_MOVEABLE_DIRS = MAX_MOVEABLE_Z*NUM_PLANAR_ORIENTATIONS;// 12 20 24
 const static int DIR_VECS_MOVE[NUM_MOVEABLE_DIRS][3] = {
-	{ 1,  0,  1},
-	{-1,  0,  1},
-	{ 0,  1,  1},
-	{ 0, -1,  1},
+	
+	{ 1,  0,  -2},
+	{-1,  0,  -2},
+	{ 0,  1,  -2},
+	{ 0, -1,  -2},
+	
+	{ 1,  0, -1},
+	{-1,  0, -1},
+	{ 0,  1, -1},
+	{ 0, -1, -1},
+	
 	
 	{ 1,  0,  0},
 	{-1,  0,  0},
 	{ 0,  1,  0},
 	{ 0, -1,  0},
 	
-	{ 1,  0, -1},
-	{-1,  0, -1},
-	{ 0,  1, -1},
-	{ 0, -1, -1}
 	
 	
-	,
-	{ 1,  0,  -2},
-	{-1,  0,  -2},
-	{ 0,  1,  -2},
-	{ 0, -1,  -2},
 	
+	{ 1,  0,  1},
+	{-1,  0,  1},
+	{ 0,  1,  1},
+	{ 0, -1,  1},
+		
 	{ 1,  0,  2},
 	{-1,  0,  2},
 	{ 0,  1,  2},
 	{ 0, -1,  2}
+	
+	
+	
+	
+	
+	// ,
+	// { 1,  0,  -3},
+	// {-1,  0,  -3},
+	// { 0,  1,  -3},
+	// { 0, -1,  -3},
+	
+	// { 1,  0,  3},
+	// {-1,  0,  3},
+	// { 0,  1,  3},
+	// { 0, -1,  3}
 	
 	
 	
@@ -551,7 +579,6 @@ bool TRACE_ON = false;
 
 
 
-
 // note - check deprecated source folder
 // make sure to put it back in source
 // if using poco or web services
@@ -630,9 +657,61 @@ struct charArr {
 #endif
 
 
-#if defined(_DEBUG)
-#include <crtdbg.h>
-#endif
+// #if defined(_DEBUG)
+// #include <crtdbg.h>
+// #endif
+
+
+
+
+
+#include "q3.h"
+
+#include <chrono>
+
+typedef std::chrono::high_resolution_clock hr_clock;
+typedef std::chrono::nanoseconds clock_freq;
+const float kClockDivisor = 1.0f / (float)std::chrono::duration_cast<clock_freq>( std::chrono::seconds( 1 ) ).count( );
+
+class Clock {
+public:
+	Clock( ) {
+		m_start = hr_clock::now( );
+		m_stop = hr_clock::now( );
+	}
+
+	float Start( ) {
+		m_start = hr_clock::now( );
+		return std::chrono::duration_cast<clock_freq>( m_start - m_stop ).count( ) * kClockDivisor;
+	}
+	void Stop( ) {
+		m_stop = hr_clock::now( );
+	}
+
+private:
+  hr_clock::time_point m_start;
+  hr_clock::time_point m_stop;
+};
+
+// // Base class for running demos to show off q3
+// struct Demo
+// {
+// 	virtual ~Demo( ) {}
+
+// 	virtual void Init( ) {};
+// 	virtual void Update( ) {};
+// 	virtual void Shutdown( ) {};
+
+// 	virtual void Render( q3Render *debugDrawer ) { (void)debugDrawer; }
+// 	virtual void KeyDown( unsigned char key ) { (void)key; }
+// 	virtual void KeyUp( unsigned char key ) { (void)key; }
+// 	virtual void LeftClick( i32 x, i32 y ) { (void)x; (void)y; }
+// };
+
+
+
+
+
 
 using namespace std;
 
@@ -1040,3 +1119,208 @@ GLuint indexDataQuad[] = {
     0,1,2, // first triangle
     2,1,3  // second triangle
 };
+
+
+
+
+
+
+
+
+// ??????????????????????????????
+
+
+#include "CommonInterfaces/CommonExampleInterface.h"
+#include "CommonInterfaces/CommonGUIHelperInterface.h"
+#include "CommonInterfaces/CommonRigidBodyBase.h"
+
+#include "btBulletDynamicsCommon.h"
+#define ARRAY_SIZE_Y 5
+#define ARRAY_SIZE_X 5
+#define ARRAY_SIZE_Z 5
+
+#include "LinearMath/btVector3.h"
+#include "LinearMath/btAlignedObjectArray.h"
+
+
+
+
+
+struct MyGUIHelper : public GUIHelperInterface
+{
+	MyGUIHelper() {}
+	virtual ~MyGUIHelper() {}
+
+	virtual void createRigidBodyGraphicsObject(btRigidBody* body,const btVector3& color){}
+
+	virtual void createCollisionObjectGraphicsObject(btCollisionObject* obj,const btVector3& color) {}
+
+	virtual void createCollisionShapeGraphicsObject(btCollisionShape* collisionShape){}
+
+	virtual void syncPhysicsToGraphics(const btDiscreteDynamicsWorld* rbWorld){}
+
+	virtual void render(const btDiscreteDynamicsWorld* rbWorld) {}
+
+	virtual void createPhysicsDebugDrawer( btDiscreteDynamicsWorld* rbWorld){}
+
+	virtual int registerGraphicsShape(const float* vertices, int numvertices, const int* indices, int numIndices) { return -1; }
+
+	virtual int registerGraphicsInstance(int shapeIndex, const float* position, const float* quaternion, const float* color, const float* scaling) { return -1;}
+
+	virtual Common2dCanvasInterface* get2dCanvasInterface()
+	{
+		return 0;
+	}
+	
+	virtual CommonParameterInterface* getParameterInterface()
+	{
+		return 0;
+	}
+
+	virtual CommonRenderInterface* getRenderInterface()
+	{
+		return 0;
+	}
+	
+	virtual CommonGraphicsApp* getAppInterface()
+	{
+		return 0;
+	}
+
+
+	virtual void setUpAxis(int axis)
+	{
+	}
+	virtual void resetCamera(float camDist, float pitch, float yaw, float camPosX,float camPosY, float camPosZ)
+	{
+	}
+
+	virtual void autogenerateGraphicsObjects(btDiscreteDynamicsWorld* rbWorld) 
+	{
+	}
+    
+	virtual void drawText3D( const char* txt, float posX, float posZY, float posZ, float size)
+	{
+	}
+	
+};
+
+
+
+
+class CommonExampleInterface*    BasicExampleCreateFunc(struct CommonExampleOptions& options);
+
+struct BasicExample : public CommonRigidBodyBase
+{
+	BasicExample(struct GUIHelperInterface* helper)
+		:CommonRigidBodyBase(helper)
+	{
+	}
+	virtual ~BasicExample(){}
+	virtual void initPhysics();
+	virtual void renderScene();
+	void resetCamera()
+	{
+		float dist = 41;
+		float pitch = 52;
+		float yaw = 35;
+		float targetPos[3]={0,0.46,0};
+		m_guiHelper->resetCamera(dist,pitch,yaw,targetPos[0],targetPos[1],targetPos[2]);
+	}
+};
+
+void BasicExample::initPhysics()
+{
+	m_guiHelper->setUpAxis(1);
+
+	createEmptyDynamicsWorld();
+	
+	m_guiHelper->createPhysicsDebugDrawer(m_dynamicsWorld);
+
+	if (m_dynamicsWorld->getDebugDrawer())
+		m_dynamicsWorld->getDebugDrawer()->setDebugMode(btIDebugDraw::DBG_DrawWireframe+btIDebugDraw::DBG_DrawContactPoints);
+
+	///create a few basic rigid bodies
+	btBoxShape* groundShape = createBoxShape(btVector3(btScalar(50.),btScalar(50.),btScalar(50.)));
+	
+
+	//groundShape->initializePolyhedralFeatures();
+//	btCollisionShape* groundShape = new btStaticPlaneShape(btVector3(0,1,0),50);
+	
+	m_collisionShapes.push_back(groundShape);
+
+	btTransform groundTransform;
+	groundTransform.setIdentity();
+	groundTransform.setOrigin(btVector3(0,-50,0));
+
+	{
+		btScalar mass(0.);
+		createRigidBody(mass,groundTransform,groundShape, btVector4(0,0,1,1));
+	}
+
+
+	{
+		//create a few dynamic rigidbodies
+		// Re-using the same collision is better for memory usage and performance
+
+		btBoxShape* colShape = createBoxShape(btVector3(1,1,1));
+		
+
+		//btCollisionShape* colShape = new btSphereShape(btScalar(1.));
+		m_collisionShapes.push_back(colShape);
+
+		/// Create Dynamic Objects
+		btTransform startTransform;
+		startTransform.setIdentity();
+
+		btScalar	mass(1.f);
+
+		//rigidbody is dynamic if and only if mass is non zero, otherwise static
+		bool isDynamic = (mass != 0.f);
+
+		btVector3 localInertia(0,0,0);
+		if (isDynamic)
+			colShape->calculateLocalInertia(mass,localInertia);
+
+
+		for (int k=0;k<ARRAY_SIZE_Y;k++)
+		{
+			for (int i=0;i<ARRAY_SIZE_X;i++)
+			{
+				for(int j = 0;j<ARRAY_SIZE_Z;j++)
+				{
+					startTransform.setOrigin(btVector3(
+										btScalar(2.0*i),
+										btScalar(20+2.0*k),
+										btScalar(2.0*j)));
+
+			
+					createRigidBody(mass,startTransform,colShape);
+					
+
+				}
+			}
+		}
+	}
+
+	m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);
+}
+
+
+void BasicExample::renderScene()
+{
+	CommonRigidBodyBase::renderScene();
+	
+}
+
+CommonExampleInterface*    BasicExampleCreateFunc(CommonExampleOptions& options)
+{
+	return new BasicExample(options.m_guiHelper);
+}
+
+
+
+
+// ??????????????????????????????
+
+

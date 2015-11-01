@@ -317,7 +317,7 @@ public:
 		
 		while (pmStack.size() > 0) {
 			
-			cout << "flushActionStack()\n";
+			//cout << "flushActionStack()\n";
 			
 			curPM = &(pmStack.back());
 			
@@ -577,12 +577,6 @@ public:
 						tempId = gameEnt->templateId;
 						
 
-						//start.copyFrom( &(gameEnt->moveMinInPixels) );
-						//end.copyFrom( &(gameEnt->moveMaxInPixels) );
-
-						//start.clampZ(0.0,worldSizeInCells.getFZ()-1.0f);
-						//end.clampZ(0.0,worldSizeInCells.getFZ()-1.0f);
-						
 						
 						
 
@@ -740,14 +734,14 @@ public:
 						}
 						
 						if (modifiedUnit||modifiedGeom) {
-							//singleton->refreshPaths = true;
+							singleton->refreshPaths = true;
 						}
 						
 						//DirtyRegion
 						if (modifiedUnit||modifiedGeom||fluidChanged) {
 							
 							if (fluidChanged) {
-								cout << "fluidChanged (max/imobile)" << maxWaterHeight << " " << immobileHeight << "\n";
+								//cout << "fluidChanged (max/imobile)" << maxWaterHeight << " " << immobileHeight << "\n";
 							}
 							
 							
@@ -1078,7 +1072,7 @@ public:
 			newCamPos.copyFrom(singleton->cameraPos);
 		}
 		else {
-			newCamPos.copyFrom(&(singleton->currentActor->centerPointInPixels));
+			newCamPos.copyFrom(singleton->currentActor->getCenterPoint());
 		}
 		
 		if (notThirdPerson&&(volSizePrim < 512)) { // && (mainId==E_FID_SML)
@@ -1410,7 +1404,7 @@ public:
 						
 						
 						ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
-												
+						
 						singleton->gw->setArrAtCoords(
 							i-bufAmount+ox,
 							j-bufAmount+oy,
@@ -1421,9 +1415,14 @@ public:
 							//,doFW
 						);
 					}
-				}	
+				}
 			}
+			
+			
 		}
+		
+		singleton->refreshPaths = false;
+		singleton->gameLogic->searchedForPath = false;
 	}
 	
 	void prereadFluidData() {
@@ -1512,7 +1511,6 @@ public:
 					ind = (i + j*volSizePrimBuf + k*volSizePrimBuf*volSizePrimBuf)*4;
 					
 					singleton->gw->getArrAtCoords(
-						2,
 						(i-bufAmount)+readMIP.getIX(),
 						(j-bufAmount)+readMIP.getIY(),
 						(k-bufAmount)+readMIP.getIZ(),
@@ -3274,45 +3272,51 @@ public:
 									else {
 										*terVal = UNIT_MAX;
 										*watVal = UNIT_MIN;
+										*empVal = UNIT_MIN;
 									}
-									*empVal = UNIT_MIN;
+									
 									
 									
 								break;
 								case E_BRUSH_SUB:
 									
-									touchesBuilding = false;
+									// touchesBuilding = false;
 									
-									for (k2 = -1; k2 <= 1; k2++) {
-										for (j2 = -1; j2 <= 1; j2++) {
-											for (i2 = -1; i2 <= 1; i2++) {
+									// for (k2 = -1; k2 <= 1; k2++) {
+									// 	for (j2 = -1; j2 <= 1; j2++) {
+									// 		for (i2 = -1; i2 <= 1; i2++) {
 												
-												i3 = clamp(i+i2,vspMin,vspMax);
-												j3 = clamp(j+j2,vspMin,vspMax);
-												k3 = clamp(k+k2,vspMin,vspMax);
+									// 			i3 = clamp(i+i2,vspMin,vspMax);
+									// 			j3 = clamp(j+j2,vspMin,vspMax);
+									// 			k3 = clamp(k+k2,vspMin,vspMax);
 												
 												
-												ind2 = 
-													i3 +
-													j3*volSizePrimBuf +
-													k3*volSizePrimBuf*volSizePrimBuf;
+									// 			ind2 = 
+									// 				i3 +
+									// 				j3*volSizePrimBuf +
+									// 				k3*volSizePrimBuf*volSizePrimBuf;
 												
-												touchesBuilding = touchesBuilding || (extraData[ind2*4+E_PTT_BLD] != UNIT_MIN);
+									// 			touchesBuilding = touchesBuilding || (extraData[ind2*4+E_PTT_BLD] != UNIT_MIN);
 												
-											}
-										}
-									}
+									// 		}
+									// 	}
+									// }
 									
-									if (
-										touchesBuilding ||
-										(*terVal != UNIT_MIN) ||
-										(*watVal != UNIT_MIN)
-									) {
-										*empVal = UNIT_MAX;
-										*bldVal = UNIT_MIN;
-										*terVal = UNIT_MIN;
-										*watVal = UNIT_MIN;
-									}
+									// if (
+									// 	touchesBuilding ||
+									// 	(*terVal != UNIT_MIN) ||
+									// 	(*watVal != UNIT_MIN)
+									// ) {
+									// 	*empVal = UNIT_MAX;
+									// 	*bldVal = UNIT_MIN;
+									// 	*terVal = UNIT_MIN;
+									// 	*watVal = UNIT_MIN;
+									// }
+									
+									*empVal = UNIT_MAX;
+									*bldVal = UNIT_MIN;
+									*terVal = UNIT_MIN;
+									*watVal = UNIT_MIN;
 								
 									
 									

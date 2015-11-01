@@ -22,5 +22,6 @@ class GamePageHolder;
 class VolumeWrapper;
 class ThreadPoolWrapper;
 class GameLogic;
+class GamePhysics;
 class GameWorld;
 class DynBuffer;

@@ -3,30 +3,7 @@
 const int numWaves = 8;
 
 const float PI2 = 6.28318;
-float amplitude[8] = float[](
-	1.0/256.0,
-	2.0/256.0,
-	4.0/256.0,
-	8.0/256.0,
-	
-	16.0/256.0,
-	32.0/256.0,
-	64.0/256.0,
-	128.0/256.0
-		
-);
-float wavelength[8] = float[](
-	WAVE_SCALE/128.0,
-	WAVE_SCALE/64.0,
-	WAVE_SCALE/32.0,
-	WAVE_SCALE/16.0,
-	
-	WAVE_SCALE/8.0,
-	WAVE_SCALE/4.0,
-	WAVE_SCALE/2.0,
-	WAVE_SCALE/1.0
-	
-);
+
 float speed[8] = float[](
 	WAVE_SPEED*5.0,
 	WAVE_SPEED*7.0,
@@ -50,11 +27,24 @@ const vec2 direction[8] = vec2[](
 );
 //##
 
-float wave(int i, float x, float y) {
+float wave(int i, float x, float y, float speedMod) {
 		float frequency = 2.0*M_PI/(wavelength[i]);
-		float phase = speed[i] * frequency;
+		float phase = speedMod * speed[i] * frequency;
 		float theta = dot(direction[i], vec2(x, y));
 		return amplitude[i] * sin(theta * frequency + curTime*timeScale * phase);
+}
+
+
+float waveHeight3(vec2 param, float speedMod) {
+
+		float x = param.x;
+		float y = param.y;
+
+		float height = 0.0;
+		for (int i = 0; i < numWaves; ++i) {
+			height += wave(i, x, y, speedMod);
+		}
+		return clamp((height+1.0)*0.5,0.0,1.0);
 }
 
 float waveHeight2(vec2 param) {
@@ -67,7 +57,7 @@ float waveHeight2(vec2 param) {
 		float fiMax = float(4);
 		for (int i = 0; i < 4; ++i) {
 			fi = float(i)/fiMax;
-			height += wave(i, x, y);
+			height += wave(i, x, y, 1.0);
 		}
 		return height;
 }
@@ -82,7 +72,7 @@ float waveHeight(vec2 param, float dv) {
 		float fiMax = float(numWaves);
 		for (int i = 0; i < numWaves; ++i) {
 			fi = float(i)/fiMax;
-			height += mix(wave(i, x, y),0.0,(1.0-fi)*dv);
+			height += mix(wave(i, x, y, 1.0),0.0,(1.0-fi)*dv);
 		}
 		return height;
 }

@@ -193,6 +193,7 @@ enum E_ITEM_CLASS {
 enum E_VOLUME_WRAPPERS {
 	//E_VW_TERGEN,
 	E_VW_HOLDER,
+	E_VW_WORLD,
 	E_VW_VORO,
 	E_VW_LENGTH
 };
@@ -292,6 +293,10 @@ enum E_STATES {
 
 };
 
+enum EVENT_OPS {
+	EV_HIT_GROUND,
+	EV_LENGTH	
+};
 
 // enum E_UI_LIST {
 // 	E_UL_FB_MEM,
@@ -965,9 +970,9 @@ const static uint E_CD_WATER = 2;
 const static uint E_CD_SOLID = 4;
 
 struct ConnectingNodeStruct {
-	//this info already exists in current holder
-	//int blockIdFrom;
-	//int holderIdFrom;
+	
+	int blockIdFrom;
+	int holderIdFrom;
 	
 	int blockIdTo;
 	int holderIdTo;
@@ -1001,6 +1006,9 @@ struct GroupInfoStruct {
 
 
 struct PathResult {
+	
+	ConnectingNodeStruct conNode;
+	
 	int blockId;
 	int holderId;
 	int groupId;
@@ -1008,6 +1016,8 @@ struct PathResult {
 	int lastBlockId;
 	int lastHolderId;
 	int lastGroupId;
+	
+	int lastIndex;
 };
 
 enum E_PATH_FILL_OPS {

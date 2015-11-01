@@ -34,7 +34,9 @@ void main() {
     
     worldPos = vtexcoord;
     gl_Position = proj*modelview*vec4(vposition.xyz,1.0); ///clipDist.y
-    gl_Position.z /= gl_Position.w; //smoothstep(clipDist.x,clipDist.y*4.0,gl_Position.z);
+    
+    //gl_Position.z /= gl_Position.w; //
+    //gl_Position.z = smoothstep(clipDist.y,clipDist.y,gl_Position.z);
     
 }
 

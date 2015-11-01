@@ -1006,6 +1006,11 @@
 																								"template":"fillSlider",
 																								"label":"SphereMap Precision",
 																								"uid":"$options.graphics.sphereMapPrec"
+																							},
+																							{
+																								"template":"fillSlider",
+																								"label":"Max Height",
+																								"uid":"$options.graphics.maxHeight"
 																							}
 																						]
 																					}

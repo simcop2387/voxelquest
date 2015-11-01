@@ -37,6 +37,7 @@ varying vec2 TexCoord0;
 
 
 uniform mat4 modelviewInverse;
+uniform float seaLevel;
 uniform float FOV;
 uniform vec2 clipDist;
 uniform float timeOfDay;
@@ -51,7 +52,7 @@ uniform vec3 lookAtVec;
 
 const float pi = 3.14159;
 
-const int maxEntries = 5;
+const int maxEntries = 6;
 const int maxEntriesM1 = maxEntries-1;
 
 
@@ -222,28 +223,38 @@ void main() {
 
     float distances[maxEntries];
 
-    float difScale = mix(4.0,128.0,camDis);
+    float difScale = mix(8.0,128.0,camDis);
 
     distances[0] = 0.0*difScale;
-    distances[1] = 1.0*difScale;
+    distances[1] = 0.5*difScale;
     distances[2] = 2.0*difScale;
-    distances[3] = 4.0*difScale;
+    distances[3] = 6.0*difScale;
     distances[4] = 8.0*difScale;
+    distances[5] = 12.0*difScale;
 
     vec3 colVecs[maxEntries];
 
-    colVecs[0] = vec3(0.9,0.9,1.0);
-    colVecs[1] = vec3(0.3,1.0,1.0);
-    colVecs[2] = vec3(0.1,0.4,0.8);
-    colVecs[3] = vec3(0.0,0.1,0.5);
-    colVecs[4] = vec3(0.0,0.0,0.2);
+    colVecs[0] = vec3(0.7,0.9,1.0);
+    colVecs[1] = vec3(0.0,1.0,1.0);
+    colVecs[2] = vec3(0.0,0.4,0.8);
+    colVecs[3] = vec3(0.0,0.2,0.5);
+    colVecs[4] = vec3(0.0,0.1,0.3);
+    colVecs[5] = vec3(0.0,0.0,0.1);
+    
+    vec3 waterNorm = -tex3.xyz;//-normalize((tex3.rgb-0.5)*2.0);
+    
+    float fEye = 1.0-clamp(dot(oneVec.xyz,-waterNorm.xyz),0.0,1.0);
+    
+    for (i = 0; i < maxEntries; i++) {
+        colVecs[i].g += fEye*0.1;
+    }
 
     float maxDis = distances[maxEntriesM1];
 
     float heightDif = 0.0;
     float heightDifNoRef = 0.0;
 
-    vec3 waterNorm = -tex3.xyz;//-normalize((tex3.rgb-0.5)*2.0);
+    
 
     //vec2 newTC2 = vec2(0.0);
     vec2 newTC = vec2(0.0);
@@ -321,7 +332,7 @@ void main() {
 
 
     heightDifNoRef = clamp((baseHeightWater - baseHeight)*clipDist.y, 0.0, maxDis);
-    newTC.xy = TexCoord0.xy + 0.02*(waterNorm.xy-waterNorm.z)*heightDifNoRef/maxDis;
+    newTC.xy = TexCoord0.xy + mix(0.06,0.01,clamp(camDis*16.0,0.0,1.0) )*(waterNorm.xy-waterNorm.z)*heightDifNoRef/maxDis;
     
     tex0Ref = texture2D(Texture0, newTC.xy);
     
@@ -473,7 +484,7 @@ void main() {
 
                 
                 finalCol *= 0.5;
-                finalCol += tex5Ref.rgb*0.25;
+                finalCol += tex5Ref.rgb*0.1;
                 
                 finalCol = mix(finalCol,transRendered.rgb,0.3*facingEye);
                 
@@ -537,7 +548,7 @@ void main() {
     //finalCol.rgb = unpackColor(matValsWater.ba, lightRes);
     
     if (wasTrans) {
-        finalCol.rgb += finalCol.rgb*tex11.g*2.0;
+        finalCol.rgb += finalCol.rgb*pow(tex11.g,8.0)*2.0;
         
         //finalCol = vec3(tex11.g);
     }
@@ -561,35 +572,35 @@ void main() {
         //     )    
         // ) {
             
-            myRay = getRay();
+            if (matValsWater.a != TEX_WATER) {
+                heightDif = clamp((seaLevel - worldPosition.z)*0.3,0.0,maxDis);
+                
+                for (i = 0; i < maxEntriesM1; i++) {
+
+                    if (
+                        (heightDif >= distances[i]) &&
+                        (heightDif <= distances[i+1]) 
+                    ) {
+
+                        
+
+                        lerpVal = clamp( (heightDif - distances[i])/(distances[i+1]-distances[i]), 0.0, 1.0);
+                        lerpValNorm = heightDif/maxDis;
+                        
+                        lastCol = mix(colVecs[i], colVecs[i+1], lerpVal);
+                        finalCol = lastCol*lval;       
+
+                    }
+                }
+            }
+            else {
+                finalCol += tex5Ref.rgb*0.25;
+            }
             
-            newTime = (mod(curTime*0.1/1000.0,1.0) + 4.0);
             
-            moveVec = -(vec2(TexCoord0.xy-0.5)*2.0)*newTime;
-            moveVec2 = vec2(0.0,-1.0)*newTime;
             
-            //moveVec2 += -mod( (vec2(TexCoord0.xy-0.5)*2.0)*cameraPos.xy,1.0);
             
-            //finalCol = texture2D(Texture6, TexCoord0.xy + normalize(myRay.xy)*newTime*0.000001  ).rgb; // - moveVec
             
-            finalCol += 
-            pow(
-                mix(
-                    
-                    texture2D(Texture6, TexCoord0.xy + moveVec2  ).rgb,
-                    texture2D(Texture6, TexCoord0.xy - moveVec  ).rgb,
-                    abs(lookAtVec.z)
-                )
-                *0.85,
-                vec3(10.0)
-            )
-            * 
-            abs(sin(rand(TexCoord0.xy)*1000.0 + newTime))*mix(0.75,1.0,curTOD)*3.0*
-            //myDis*
-            clamp(1.0-min(
-                distance(cameraPos,worldPositionWater),
-                distance(cameraPos,worldPosition)
-            )/50.0,0.0,1.0);
 
         //}
     }

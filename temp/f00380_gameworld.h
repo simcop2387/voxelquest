@@ -12,6 +12,8 @@ GameWorld::GameWorld ()
 		// Material: 16 bits
 		// AO val: 8 bits, normal: 24 bits
 
+		blockHolder = NULL;
+
 	}
 void GameWorld::init (Singleton * _singleton)
         {
@@ -142,10 +144,12 @@ void GameWorld::init (Singleton * _singleton)
 
 		renderMethod = (int)E_RENDER_VOL;
 
-		worldSizeInHolders.copyFrom( &(singleton->worldSizeInHolders) );
-		worldSizeInBlocks.copyFrom( &(singleton->worldSizeInBlocks) );
+		cellsPerWorld = singleton->cellsPerWorld;
+		holdersPerWorld = singleton->holdersPerWorld;
+		blocksPerWorld = singleton->blocksPerWorld;
 
-		iBlockSize = worldSizeInBlocks.getIX() * worldSizeInBlocks.getIY() * worldSizeInBlocks.getIZ();
+
+		iBlockSize = blocksPerWorld * blocksPerWorld * blocksPerWorld;
 
 
 
@@ -155,6 +159,11 @@ void GameWorld::init (Singleton * _singleton)
 			blockData[i] = NULL;
 		}
 
+		if (GEN_POLYS_WORLD) {
+			blockHolder = new GamePageHolder();
+			blockHolder->init(singleton, -1, -1, 0,0,0, true);
+		}
+		
 		
 		
 	}
@@ -165,16 +174,16 @@ GameBlock * GameWorld::getBlockAtCoords (int xInBlocks, int yInBlocks, int zInBl
 
 
 
-		int newX = wrapCoord(xInBlocks, worldSizeInBlocks.getIX());
-		int newY = wrapCoord(yInBlocks, worldSizeInBlocks.getIY());
-		int newZ = wrapCoord(zInBlocks, worldSizeInBlocks.getIZ());
+		int newX = wrapCoord(xInBlocks, blocksPerWorld);
+		int newY = wrapCoord(yInBlocks, blocksPerWorld);
+		int newZ = wrapCoord(zInBlocks, blocksPerWorld);
 
 		//zInBlocks;//
 
 
 		int ind =
-			newZ * worldSizeInBlocks.getIY()*worldSizeInBlocks.getIX() +
-			newY * worldSizeInBlocks.getIX() +
+			newZ * blocksPerWorld*blocksPerWorld +
+			newY * blocksPerWorld +
 			newX;
 
 		if (blockData[ind] == NULL) {
@@ -192,8 +201,8 @@ GamePageHolder * GameWorld::getHolderAtCoords (int x, int y, int z, bool createO
 
 		GamePageHolder **holderData;
 
-		int newX = wrapCoord(x, worldSizeInHolders.getIX());
-		int newY = wrapCoord(y, worldSizeInHolders.getIY());
+		int newX = wrapCoord(x, holdersPerWorld);
+		int newY = wrapCoord(y, holdersPerWorld);
 		int newZ = z;
 
 		int holderX = newX - intDiv(newX, holdersPerBlock) * holdersPerBlock;
@@ -281,8 +290,8 @@ int GameWorld::getCellInd (FIVector4 * cParam, GamePageHolder * & curHolder)
 		
 		int cellsPerHolder = singleton->cellsPerHolder;
 		
-		int newX = wrapCoord(xv,singleton->worldSizeInCells.getIX());
-		int newY = wrapCoord(yv,singleton->worldSizeInCells.getIY());
+		int newX = wrapCoord(xv,cellsPerWorld);
+		int newY = wrapCoord(yv,cellsPerWorld);
 		int newZ = zv;
 		
 		int x2 = intDiv(newX,cellsPerHolder);
@@ -307,13 +316,46 @@ int GameWorld::getCellInd (FIVector4 * cParam, GamePageHolder * & curHolder)
 		
 		return (zr*cellsPerHolder*cellsPerHolder + yr*cellsPerHolder + xr);
 	}
-int GameWorld::getCellAtCoords (int debugVal, int xv, int yv, int zv)
+int GameWorld::getCellInd (GamePageHolder * & curHolder, int xv, int yv, int zv)
+          {
+		
+		
+		
+		int cellsPerHolder = singleton->cellsPerHolder;
+		
+		int newX = wrapCoord(xv,cellsPerWorld);
+		int newY = wrapCoord(yv,cellsPerWorld);
+		int newZ = zv;
+		
+		int x2 = intDiv(newX,cellsPerHolder);
+		int y2 = intDiv(newY,cellsPerHolder);
+		int z2 = intDiv(newZ,cellsPerHolder);
+		
+		
+		curHolder = (getHolderAtCoords(x2, y2, z2, true));
+		if (curHolder->wasGenerated) {
+			
+		}
+		else {
+			//cout << "attempted getCellInd without generation\n";
+			//curHolder->genCellData();
+			return -1;
+		}
+		//GamePage* gp = getPageAtCoords(x2, y2, z2, false);
+		
+		int xr = newX - x2*cellsPerHolder;
+		int yr = newY - y2*cellsPerHolder;
+		int zr = newZ - z2*cellsPerHolder;
+		
+		return (zr*cellsPerHolder*cellsPerHolder + yr*cellsPerHolder + xr);
+	}
+int GameWorld::getCellAtCoords (int xv, int yv, int zv)
           {
 		
 		int cellsPerHolder = singleton->cellsPerHolder;
 		
-		int newX = wrapCoord(xv,singleton->worldSizeInCells.getIX());
-		int newY = wrapCoord(yv,singleton->worldSizeInCells.getIY());
+		int newX = wrapCoord(xv,cellsPerWorld);
+		int newY = wrapCoord(yv,cellsPerWorld);
 		int newZ = zv;
 		
 		int x2 = intDiv(newX,cellsPerHolder);
@@ -326,11 +368,18 @@ int GameWorld::getCellAtCoords (int debugVal, int xv, int yv, int zv)
 		GamePageHolder* curHolder = getHolderAtCoords(x2, y2, z2, true);
 		
 		if (curHolder == NULL) {
-			return E_CD_SOLID;
+			return E_CD_EMPTY;
 		}
 		
 		if (curHolder->lockRead) {
-			return E_CD_UNKNOWN;
+			return E_CD_EMPTY;
+		}
+		
+		if (curHolder->wasGenerated) {
+			
+		}
+		else {
+			return E_CD_EMPTY;
 		}
 		
 		int xr = newX - x2*cellsPerHolder;
@@ -346,8 +395,8 @@ void GameWorld::setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int 
           {
 		int cellsPerHolder = singleton->cellsPerHolder;
 		
-		int newX = wrapCoord(xv,singleton->worldSizeInCells.getIX());
-		int newY = wrapCoord(yv,singleton->worldSizeInCells.getIY());
+		int newX = wrapCoord(xv,cellsPerWorld);
+		int newY = wrapCoord(yv,cellsPerWorld);
 		int newZ = zv;
 		
 		int x2 = intDiv(newX,cellsPerHolder);
@@ -364,21 +413,29 @@ void GameWorld::setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int 
 			return;
 		}
 		
+		
 		int xr = newX - x2*cellsPerHolder;
 		int yr = newY - y2*cellsPerHolder;
 		int zr = newZ - z2*cellsPerHolder;
 		
 		int ind = (zr*cellsPerHolder*cellsPerHolder + yr*cellsPerHolder + xr)*4;
 		
+		if (singleton->refreshPaths) {
+			curHolder->pathsInvalid = true;
+			curHolder->idealPathsInvalid = true;
+			curHolder->pathsReady = false;
+			curHolder->idealPathsReady = false;
+		}
+		
 		curHolder->setArrAtInd(ind,tempCellData,tempCellData2);
 	}
-void GameWorld::getArrAtCoords (int debugVal, int xv, int yv, int zv, int * tempCellData, int * tempCellData2)
+void GameWorld::getArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2)
           {
 		
 		int cellsPerHolder = singleton->cellsPerHolder;
 		
-		int newX = wrapCoord(xv,singleton->worldSizeInCells.getIX());
-		int newY = wrapCoord(yv,singleton->worldSizeInCells.getIY());
+		int newX = wrapCoord(xv,cellsPerWorld);
+		int newY = wrapCoord(yv,cellsPerWorld);
 		int newZ = zv;
 		
 		int x2 = intDiv(newX,cellsPerHolder);
@@ -409,318 +466,67 @@ void GameWorld::getArrAtCoords (int debugVal, int xv, int yv, int zv, int * temp
 		curHolder->getArrAtInd(ind,tempCellData,tempCellData2);
 		
 	}
-int GameWorld::testMoveHit (BaseObj * ge, int x, int y, int z)
-                                                          {
-		ge->positionInCells.addXYZ(x,y,z);
-		ge->updateBounds();
-		int res = testHit(ge);
-		ge->positionInCells.addXYZ(-x,-y,-z);
-		ge->updateBounds();
-		
-		return res;
+void GameWorld::fireEvent (BaseObjType uid, int opCode)
+                                                    {
+		BaseObj* ge = &(gameObjects[uid]);
+		switch (opCode) {
+			case EV_HIT_GROUND:
+				singleton->playSoundEnt("land0",ge);
+			break;
+		}
 	}
-bool GameWorld::makeMove (BaseObj * ge)
+void GameWorld::generateBlockHolder ()
                                    {
 		
-		bool hitGround = false;
-		bool onGround = false;
+		if (noiseGenerated || (blockHolder == NULL)) {
+			
+		}
+		else {
+			return;
+		}
 		
-		bool res;
-		int ires;
-		int i;
 		
 		
-		tempVec1.copyFrom(&(ge->positionInCells));
+		if (blockHolder->wasGenerated) {
+			
+		}
+		else {
+			glFlush();
+			glFinish();
+			
+			
+			blockHolder->genCellData();
+			
+			
+			glFlush();
+			glFinish();
+		}
 		
-		ires = testHit(ge);
-		if (ires == E_CD_SOLID) {
-			// make it float
-			ge->toggleGrav(0.0f);
-			ge->vel.setFZ(0.0f);
-			ge->posOffsetInPixels.addXYZ(
-				ge->vel[0]*singleton->timeDelta,
-				ge->vel[1]*singleton->timeDelta,
-				1.0f*singleton->timeDelta
-			);
+		if (blockHolder->preGenList) {
+			
 		}
 		else {
 			
-			if (ires == E_CD_WATER) {
-				
-				
-				if (ge->inWater) {
-					
-				}
-				else {
-					ge->inWater = true;
-					
-					singleton->playSoundEnt(
-						"splash0",
-						ge,
-						0.3f
-					);
-					
-					
-				}
-				
-				// make it float
-				ge->toggleGrav(-0.5f);
-				
-				if ( abs(ge->vel[2]) > 0.5) {
-					ge->vel.multXYZ(0.95);
-				}
-				
-				ge->posOffsetInPixels.addXYZRef(&(ge->vel),singleton->timeDelta);
-			}
-			else {
-				
-				if (ge->inWater) {
-					ge->inWater = false;
-					singleton->playSoundEnt(
-						"splashout0",
-						ge,
-						0.3f
-					);
-					
-					
-				}
-				else {
-					
-				}
-				
-				
-				ge->toggleGrav(-1.0f);
-				ge->vel.addXYZRef(&(ge->acc),singleton->timeDelta);
-				ge->posOffsetInPixels.addXYZRef(&(ge->vel),singleton->timeDelta);
-			}
-			
-			
+			blockHolder->generateList();
 		}
 		
-		
-		
-		if (ge->posOffsetInPixels[2] > 0.0f) {
+		if (blockHolder->listGenerated) {
 			
-			if (testMoveHit(ge,0,0,1) == E_CD_SOLID) {
-				
-				// if (ge->vel[2] > 0.0f) {
-				// 	ge->vel.setFZ(0.0f);
-				// 	ge->posOffsetInPixels.setFZ(0.0f);
-				// }
-				ge->vel.multXYZ(1.0f,1.0f,-ge->bounciness);
-				ge->posOffsetInPixels.setFZ(0.0f);
-			}
-		}
-		if (ge->posOffsetInPixels[2] < 0.0f) {
-			
-			if (testMoveHit(ge,0,0,-1) == E_CD_SOLID) {
-				
-				onGround = abs(ge->vel[2]) < 2.0f;
-				
-				if (ge->vel[2] < 0.0f) {
-					
-					if (ge->vel[2] < -20.0) {
-						hitGround = true;
-					}
-					
-					ge->vel.multXYZ(1.0f,1.0f,-ge->bounciness);
-					ge->posOffsetInPixels.setFZ(0.0f);
-					ge->isFalling = false;
-					ge->isJumping = false;
-				}
-				
-			}
-		}
-		
-		if (onGround) {
-			ge->vel.multXYZ(ge->friction,ge->friction,1.0f);
 		}
 		else {
-			ge->vel.multXYZ(ge->windResistance,ge->windResistance,1.0f);
-		}
-		
-		
-		if (ge->posOffsetInPixels[0] > 0.0f) {
-			res = moveCell(ge,1,0,0);
-			ge->positionInCells.copyFrom(&tempVec1);
-			ge->updateBounds();
-			
-			if (!res) {
-				ge->vel.multXYZ(-ge->bounciness,1.0f,1.0f);
-				ge->posOffsetInPixels.setFX(0.0f);
-			}
-		}
-		if (ge->posOffsetInPixels[0] < 0.0f) {
-			res = moveCell(ge,-1,0,0);
-			ge->positionInCells.copyFrom(&tempVec1);
-			ge->updateBounds();
-			
-			if (!res) {
-				ge->vel.multXYZ(-ge->bounciness,1.0f,1.0f);
-				ge->posOffsetInPixels.setFX(0.0f);
-			}
-		}
-		
-		if (ge->posOffsetInPixels[1] > 0.0f) {
-			res = moveCell(ge,0,1,0);
-			ge->positionInCells.copyFrom(&tempVec1);
-			ge->updateBounds();
-			
-			if (!res) {
-				ge->vel.multXYZ(1.0f,-ge->bounciness,1.0f);
-				ge->posOffsetInPixels.setFY(0.0f);
-			}
-		}
-		if (ge->posOffsetInPixels[1] < 0.0f) {
-			res = moveCell(ge,0,-1,0);
-			ge->positionInCells.copyFrom(&tempVec1);
-			ge->updateBounds();
-			
-			if (!res) {
-				ge->vel.multXYZ(1.0f,-ge->bounciness,1.0f);
-				ge->posOffsetInPixels.setFY(0.0f);
-			}
-		}
-		
-		
-		
-		
-		
-		ge->updateBounds();
-		
-		
-		
-		if (ge->posOffsetInPixels[0] >= 1.0f) {
-			ge->posOffsetInPixels.addXYZ(-1.0f,0.0f,0.0f);
-			res = moveCell(ge,1,0,0);
-		}
-		if (ge->posOffsetInPixels[0] <= -1.0f) {
-			ge->posOffsetInPixels.addXYZ(1.0f,0.0f,0.0f);
-			res = moveCell(ge,-1,0,0);
-		}
-		
-		if (ge->posOffsetInPixels[1] >= 1.0f) {
-			ge->posOffsetInPixels.addXYZ(0.0f,-1.0f,0.0f);
-			res = moveCell(ge,0,1,0);
-		}
-		if (ge->posOffsetInPixels[1] <= -1.0f) {
-			ge->posOffsetInPixels.addXYZ(0.0f,1.0f,0.0f);
-			res = moveCell(ge,0,-1,0);
-		}
-		
-		if (ge->posOffsetInPixels[2] >= 1.0f) {
-			ge->posOffsetInPixels.addXYZ(0.0f,0.0f,-1.0f);
-			res = moveCell(ge,0,0,1);
-		}
-		if (ge->posOffsetInPixels[2] <= -1.0f) {
-			ge->posOffsetInPixels.addXYZ(0.0f,0.0f,1.0f);
-			res = moveCell(ge,0,0,-1);	
-		}
-		
-		
-		
-		ge->updateBounds();
-		
-		return hitGround;
-	}
-void GameWorld::updatePhys ()
-                          {
-		int i;
-		BaseObj* ge;
-		FIVector4 modv;
-		float smoothMod = 0.125f;
-		
-		
-		
-		modv.setFXYZ(smoothMod,smoothMod,smoothMod);
-		
-		bool hitGround;
-		
-		SphereStruct* ss;
-		
-		for(i = 0; i < visObjects.size(); i++) {
-			ge = &(gameObjects[visObjects[i]]);
-			hitGround = false;
-			modv.setFZ(smoothMod);
-			
-			if (ge->isGrabbedById >= 0) {
-				ge->positionInCells.copyFrom(
-					&(gameObjects[ge->isGrabbedById].positionInCells)
-				);
-				
-				ge->positionInCells.addXYZ(0.0f,0.0f,3.0f);
-				ge->updateBounds();
-			}
-			else {
-				
-				hitGround = makeMove(ge);
-				if (ge->vel[2] != 0.0f) {
-					modv.setFZ(1.0f);
-				}
-				
-				if (hitGround) {
-					
-					if (ge->entType == E_ENTTYPE_BULLET) {
-						singleton->playSoundEnt("bump0",ge,0.0,0.25f);
-					}
-					else {
-						singleton->playSoundEnt("land0",ge);
-					}
-					
-					
-					if (ge->entType != E_ENTTYPE_TRACE) {
-						singleton->performCamShake(ge);
-					}
-					
-				}
-				
-			}
+			glFlush();
+			glFinish();
 			
 			
-			ge->updatePixelBounds();
+			blockHolder->fillVBO();
 			
-			ge->updateTargets(&modv);
 			
-			if (
-				(
-					(ge->entType == E_ENTTYPE_BULLET) ||
-					(ge->entType == E_ENTTYPE_TRACE)	
-				) &&
-				(ge->vel.length() < (2.0f) ) &&
-				(ge->isHidden == false)
-				
-			) {
-				if (ge->entType == E_ENTTYPE_BULLET) {
-					singleton->explodeBullet(ge);
-				}
-				else {
-					ge->isHidden = true;
-				}
-				
-			}
+			glFlush();
+			glFinish();
+			
+			
 			
 		}
-		
-		for (i = 0; i < singleton->sphereStack.size(); i++) {
-			ss = &(singleton->sphereStack[i]);
-			
-			ss->radVel += ss->radAcc*singleton->timeDelta;
-			ss->curRad += ss->radVel*singleton->timeDelta;
-			
-			if (ss->curRad >= ss->maxRad) {
-				ss->curRad = ss->maxRad;
-				ss->radVel = 0.0f;
-			}
-		}
-		
-		for (i = 0; i < singleton->sphereStack.size(); i++) {
-			ss = &(singleton->sphereStack[i]);
-			if (ss->curRad <= 0.0) {
-				singleton->sphereStack.erase(singleton->sphereStack.begin() + i);
-			}
-		}
-		
-		
 	}
 void GameWorld::update ()
                       {
@@ -746,6 +552,8 @@ void GameWorld::update ()
 			
 			drawVol((singleton->volumeWrappers[E_VW_VORO]), &tempVec1, &tempVec2, true, true, true);
 			
+			
+			
 		}
 
 		
@@ -759,7 +567,7 @@ void GameWorld::update ()
 			camHolderPos.addXYZRef(&(singleton->lookAtVec),4.0);
 		}
 		else {
-			camHolderPos.copyFrom(&(singleton->currentActor->centerPointInPixels));
+			camHolderPos.copyFrom(singleton->currentActor->getCenterPoint());
 			camHolderPos.intDivXYZ(singleton->cellsPerHolder);
 		}
 
@@ -832,31 +640,40 @@ void GameWorld::update ()
 		}
 		
 		
-#ifdef GEN_POLYS
+		if (GEN_POLYS_WORLD||GEN_POLYS_HOLDER) {
+			glEnable(GL_DEPTH_TEST);
+			//glEnable(GL_CULL_FACE);
+			
+			//back face
+			//glDepthFunc(GL_GREATER);
+			// glCullFace(GL_FRONT);
+			// drawPolys(polyFBOStrings[1], 4,-1);
+			
+			//front face
+			//glDepthFunc(GL_LESS);
+			//glCullFace(GL_BACK);
+			//glDepthFunc(GL_LEQUAL);
+			
+			//glDepthRange(singleton->clipDist[0],singleton->clipDist[1]);
+			singleton->perspectiveOn = true;
+			
+			if (GEN_POLYS_WORLD) {
+				drawPolys(polyFBOStrings[0], 0, 0,true);
+			}
+			if (GEN_POLYS_HOLDER) {
+				drawPolys(polyFBOStrings[0], 0, DEF_VOL_SIZE/singleton->cellsPerHolder + 1,false);
+			}
+			
+			singleton->perspectiveOn = false;
+			
+			//glDisable(GL_CULL_FACE);
+			glDisable(GL_DEPTH_TEST);
+			
+			//polyCombine();
+		}
 		
-		glEnable(GL_DEPTH_TEST);
-		glEnable(GL_CULL_FACE);
-		
-		//back face
-		//glDepthFunc(GL_GREATER);
-		// glCullFace(GL_FRONT);
-		// drawPolys(polyFBOStrings[1], 4,-1);
-		
-		//front face
-		//glDepthFunc(GL_LESS);
-		glCullFace(GL_BACK);
-		
-		glDepthRange(singleton->clipDist[0],singleton->clipDist[1]);
-		
-		drawPolys(polyFBOStrings[0], 0, DEF_VOL_SIZE/singleton->cellsPerHolder + 1);
 		
 		
-		glDisable(GL_CULL_FACE);
-		glDisable(GL_DEPTH_TEST);
-		
-		//polyCombine();
-		
-#endif
 
 
 		drawPrim(false,true,false);
@@ -977,7 +794,7 @@ void GameWorld::findNearestEnt (EntSelection * entSelection, int entType, int ma
 		for (curLoadRadius = 0; curLoadRadius < maxLoadRad; curLoadRadius++) {
 			
 			mink = max(tempVec.getIZ() - curLoadRadius,0);
-			maxk = min(tempVec.getIZ() + curLoadRadius,worldSizeInHolders.getIZ()-1);
+			maxk = min(tempVec.getIZ() + curLoadRadius,holdersPerWorld-1);
 			minj = tempVec.getIY() - curLoadRadius;
 			maxj = tempVec.getIY() + curLoadRadius;
 			mini = tempVec.getIX() - curLoadRadius;
@@ -1128,7 +945,7 @@ void GameWorld::drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * ma
 		
 		singleton->setShaderInt("getVoro", (int)(getVoro));
 		
-		singleton->setShaderfVec3("worldSizeInCells", &(singleton->worldSizeInCells) );
+		singleton->setShaderFloat("cellsPerWorld", cellsPerWorld );
 		
 		singleton->fsQuad.draw();
 		
@@ -1260,12 +1077,12 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		if ((singleton->currentActor == NULL)||singleton->firstPerson) {
 			singleton->setShaderFloat("thirdPerson", 0.0f);
-			singleton->setShaderFloat("CAM_BOX_SIZE", 0.5f);
+			//singleton->setShaderFloat("CAM_BOX_SIZE", 0.5f);
 		}
 		else {
 			singleton->setShaderFloat("thirdPerson", 1.0f);
-			singleton->setShaderFloat("CAM_BOX_SIZE", 0.5f);
-			singleton->setShaderfVec3("entPos", &(singleton->currentActor->centerPointInPixels));
+			//singleton->setShaderFloat("CAM_BOX_SIZE", 0.5f);
+			singleton->setShaderfVec3("entPos", singleton->currentActor->getCenterPoint());
 		}
 		
 		
@@ -1319,7 +1136,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec) );
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
-		singleton->setShaderfVec3("worldSizeInCells", &(singleton->worldSizeInCells) );
+		singleton->setShaderFloat("cellsPerWorld", cellsPerWorld );
 		
 		// singleton->setShaderFloat("volSizePrimSmall", singleton->gameFluid[E_FID_SML]->volSizePrim);
 		// singleton->setShaderfVec3("volMinReadyInPixelsSmall", &(singleton->gameFluid[E_FID_SML]->volMinReadyInPixels) );
@@ -1346,10 +1163,10 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		if (singleton->currentActor != NULL) {
 			
-			singleton->splashArr[0] = singleton->currentActor->centerPointInPixels[0];
-			singleton->splashArr[1] = singleton->currentActor->centerPointInPixels[1];
-			singleton->splashArr[2] = singleton->currentActor->centerPointInPixels[2];
-			singleton->splashArr[3] = singleton->currentActor->vel.length();
+			singleton->splashArr[0] = singleton->currentActor->getCenterPoint()->getFX();
+			singleton->splashArr[1] = singleton->currentActor->getCenterPoint()->getFX();
+			singleton->splashArr[2] = singleton->currentActor->getCenterPoint()->getFX();
+			singleton->splashArr[3] = singleton->currentActor->getVel()->length();
 			
 			singleton->setShaderInt("numSplashes", 1);
 			singleton->setShaderArrayfVec4("splashArr", singleton->splashArr, MAX_SPLASHES);
@@ -1518,229 +1335,52 @@ void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, fl
 		}
 		
 	}
-void GameWorld::makeFloat (BaseObj * ge)
-                                    {
-		
-		bool doProc = false;
-		
-		if (ge == NULL) {
-			return;
-		}
-		
-		// make it float
-		int res = testHit(ge);
-		if (res == E_CD_SOLID) {
-			
-			if (lastHitObjUID == 0) {
-				doProc = true;
-			}
-			else {
-				doProc = (ge->uid > lastHitObjUID);
-			}
-			
-			if (doProc) {
-				ge->positionInCells.addXYZ(0,0,1);
-				ge->updateBounds();
-				//ge->isFalling = true;
-			}
-			else {
-				//ge->isFalling = false;
-			}
-		}
-	}
-void GameWorld::makeFall (BaseObj * ge, bool justTesting)
+void GameWorld::addVisObject (BaseObjType _uid, bool isRecycled)
                                                              {
 		
-		bool doProc = false;
+		BaseObj* ge = &(gameObjects[_uid]);
 		
-		if (ge == NULL) {
-			return;
-		}
-		
-		
-		//make it fall
-		ge->positionInCells.addXYZ(0,0,-1);
-		ge->updateBounds();
-		
-		int res = testHit(ge);
-		
-		if ( (res == E_CD_EMPTY) || (res == E_CD_WATER) ) {
-			// let it fall
-			
-			ge->isFalling = true;
-		}
-		else {
-			// correct the fall
-			
-			ge->isFalling = false;
-			
-			doProc = true;
-			
-		}
-		
-		if (doProc || justTesting) {
-			ge->positionInCells.addXYZ(0,0,1);
-			ge->updateBounds();
-		}
-		
-	}
-bool GameWorld::rotateCell (BaseObj * ge, int dir, int axis)
-          {
-		
-		if (ge == NULL) {
-			return false;
-		}
-		
-		// if (ge->isFalling) {
-		// 	return false;
-		// }
-		
-		bool moveSuccessful = false;
-		bool moveSuc = false;
-		
-		ge->rotate(dir,axis);
-		ge->updateBounds();
-		
-		int res = testHit(ge);
-		int res2 = E_CD_EMPTY;
-		int res3 = E_CD_EMPTY;
-		
-		if (res == E_CD_SOLID) {
-			
-			ge->positionInCells.addXYZ(0,0,1);
-			ge->updateBounds();
-			res2 = testHit(ge);
-			
-			if (res2 == E_CD_SOLID) {
-				
-				ge->positionInCells.addXYZ(0,0,-1);
-				ge->rotate(1-dir,axis);
-				ge->updateBounds();
-				
-				
-			}
-			else {
-				moveSuccessful = true;
-			}
+		if (isRecycled) {
 			
 		}
 		else {
-			moveSuccessful = true;
+			visObjects.push_back(_uid);
 		}
 		
-		return moveSuccessful;
-		
-	}
-bool GameWorld::moveCell (BaseObj * ge, int x, int y, int z)
-          {
-		
-		if (ge == NULL) {
-			return false;
-		}
-		
-		// if (ge->isFalling) {
-		// 	return false;
-		// }
-		
-		if (ge->isGrabbedById >= 0) {
-			return true;
-		}
-		
-		
-		
-		bool moveSuccessful = false;
-		bool moveSuc = false;
-		bool notBullet = (ge->entType != E_ENTTYPE_BULLET)&&((ge->entType != E_ENTTYPE_TRACE));
-		
-		ge->positionInCells.addXYZ(x,y,z);
-		ge->updateBounds();
-		
-		int res = testHit(ge);
-		int res2 = E_CD_EMPTY;
-		int res3 = E_CD_EMPTY;
-		
-		if (res == E_CD_SOLID) {
-			
-			if (notBullet) { ge->positionInCells.addXYZ(0,0,1); }
-			ge->updateBounds();
-			res2 = testHit(ge);
-			
-			//res2 = testMoveHit(ge,0,0,1);
-			
-			if (res2 == E_CD_SOLID) {
-				
-				if (notBullet) { ge->positionInCells.addXYZ(0,0,-1); }
-				ge->positionInCells.addXYZ(-x,-y,-z);
-				ge->updateBounds();
-				
-				if (lastHitObjUID != 0) {
-					moveSuc = moveCell(&(gameObjects[lastHitObjUID]),x,y,z);
-				}
-				
-				if (moveSuc == false) {
-					
-				}
-				else {
-					moveSuccessful = moveCell(ge,x,y,z);
-				}
-				
-			}
-			else {
-				moveSuccessful = true;
-			}
+		if (ge->isHidden) {
 			
 		}
 		else {
-			moveSuccessful = true;
+			singleton->gamePhysics->addBoxFromObj(_uid);
 		}
-		
-		if (notBullet) {
-			if (ge->vel[2] == 0.0f) {
-				res = testMoveHit(ge,0,0,-1);
-				if (res != E_CD_SOLID) {
-						res2 = testMoveHit(ge,0,0,-2);
-						if (res2 == E_CD_SOLID) {
-								ge->positionInCells.addXYZ(0,0,-1);
-								ge->updateBounds();
-						}
-				}
-			}
-		}
-		
-		
-		
-		return moveSuccessful;
 		
 	}
-bool GameWorld::removeVisObject (BaseObjType _uid)
-                                               {
+bool GameWorld::removeVisObject (BaseObjType _uid, bool isRecycled)
+                                                                {
 		int i;
 		
-		for (i = 0; i < visObjects.size(); i++) {
-			if (visObjects[i] == _uid) {
-				visObjects.erase(visObjects.begin() + i);
-				return true;
+		BaseObj* ge = &(gameObjects[_uid]);
+		
+		if (ge->body != NULL) {
+			singleton->gamePhysics->scene->RemoveBody(ge->body);
+			ge->body = NULL;
+		}
+		
+		if (isRecycled) {
+			ge->isHidden = true;
+			return true;
+		}
+		else {
+			for (i = 0; i < visObjects.size(); i++) {
+				if (visObjects[i] == _uid) {
+					visObjects.erase(visObjects.begin() + i);
+					return true;
+				}
 			}
 		}
 		
+		
 		return false;
-	}
-void GameWorld::moveCellRotated (BaseObj * ge, int dirMod)
-                                                      {
-		
-		if (ge == NULL) {
-			return;
-		}
-		
-		int yOrient = ge->orientationXYZ.getIY();
-		
-		moveCell(
-			ge,
-			DIR_VECS[yOrient][0]*dirMod,
-			DIR_VECS[yOrient][1]*dirMod,
-			DIR_VECS[yOrient][2]*dirMod
-		);
-		
 	}
 int GameWorld::getClosestObj (int actorId, FIVector4 * basePoint)
                                                              {
@@ -1762,7 +1402,7 @@ int GameWorld::getClosestObj (int actorId, FIVector4 * basePoint)
 			if (
 				(testInd == actorId) ||
 				(testObj->isGrabbedById >= 0) ||
-				(testObj->vel.length() > 1.0f) ||
+				(testObj->getVel()->length() > 1.0f) ||
 				(testObj->entType == E_ENTTYPE_BULLET) ||
 				(testObj->entType == E_ENTTYPE_TRACE) ||
 				(testObj->isHidden)
@@ -1773,7 +1413,7 @@ int GameWorld::getClosestObj (int actorId, FIVector4 * basePoint)
 				
 				
 				
-				testDis = testObj->positionInCells.distance(basePoint);
+				testDis = testObj->getCenterPoint()->distance(basePoint);
 				
 				if (testDis < bestDis) {
 					bestDis = testDis;
@@ -1783,97 +1423,6 @@ int GameWorld::getClosestObj (int actorId, FIVector4 * basePoint)
 		}
 		
 		return bestInd;
-		
-	}
-int GameWorld::testHit (BaseObj * ge)
-                                 {
-		lastHitObjUID = 0;
-		if (ge == NULL) {
-			return E_CD_EMPTY;
-		}
-		
-		int cellVal;
-		int xmax,ymax,zmax;
-		int xmin,ymin,zmin;
-		
-		int i, j, k;
-		
-		int tempVal = E_CD_EMPTY;
-		
-		bool hitObj = false;
-		
-		BaseObj* testObj;
-		
-		if (
-			(ge->entType == E_ENTTYPE_BULLET) ||
-			(ge->entType == E_ENTTYPE_TRACE) ||
-			(ge->isGrabbedById >= 0)
-		) {
-			
-		}
-		else {
-			for(i = 0; i < visObjects.size(); i++) {
-				
-				testObj = &(gameObjects[visObjects[i]]);
-				
-				if (
-					(visObjects[i] == ge->uid) ||
-					(testObj->isGrabbedById >= 0) ||
-					(testObj->entType == E_ENTTYPE_BULLET) ||
-					(testObj->entType == E_ENTTYPE_TRACE)
-				) {
-					// do not test hit against self or grabbed obj
-				}
-				else {
-					
-					
-					hitObj = FIVector4::intersectInt(
-						&(testObj->boundsMinTransInCells),
-						&(testObj->boundsMaxTransInCells),
-						&(ge->boundsMinTransInCells),
-						&(ge->boundsMaxTransInCells)
-					);
-					
-					if (hitObj) {
-						lastHitObjUID = testObj->uid;
-						return E_CD_SOLID;
-					}
-						
-				}
-			}
-		}
-		
-		
-		
-		
-		
-		xmin = ge->boundsMinTransInCells.getIX();
-		ymin = ge->boundsMinTransInCells.getIY();
-		zmin = ge->boundsMinTransInCells.getIZ();
-		
-		xmax = ge->boundsMaxTransInCells.getIX();
-		ymax = ge->boundsMaxTransInCells.getIY();
-		zmax = ge->boundsMaxTransInCells.getIZ();
-		
-		for (k = zmin; k < zmax; k++) {
-			for (j = ymin; j < ymax; j++) {
-				for (i = xmin; i < xmax; i++) {
-					
-					cellVal = getCellAtCoords(8,i,j,k);
-					
-					if (cellVal == E_CD_SOLID) {
-						return cellVal;
-					}
-					
-					if (cellVal == E_CD_WATER) {
-						tempVal = E_CD_WATER;
-					}
-				}
-			}
-		}
-		
-		return tempVal;
-		
 		
 	}
 void GameWorld::polyCombine ()
@@ -1896,13 +1445,16 @@ void GameWorld::polyCombine ()
 		singleton->unbindFBO();
 		singleton->unbindShader();
 	}
-void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel)
-                                                                 {
+void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel, bool isBlockHolder)
+                                                                                     {
 		
 		//VolumeWrapper* curVW = (singleton->volumeWrappers[E_VW_VORO]);
 		
 		singleton->bindShader("PolyShader");
 		singleton->bindFBO(fboName);
+		
+		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		
 		//singleton->sampleFBO("polyFBO",0,fboNum);
 		
 		///singleton->setShaderTexture3D(0, singleton->gameFluid[E_FID_BIG]->volIdPrim[0]);
@@ -1929,8 +1481,14 @@ void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel)
 		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
 		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 		
+		if (isBlockHolder) {
+			rasterPolysWorld();
+		}
+		else {
+			rasterPolys(minPeel,maxPeel*4, 6);
+		}
 		
-		rasterPolys(minPeel,maxPeel*4, 6);
+		
 		
 		// singleton->setShaderTexture3D(13, 0);
 		// singleton->unsampleFBO("hmFBOLinearBig",2);
@@ -1939,6 +1497,26 @@ void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel)
 		//singleton->unsampleFBO("polyFBO",0,fboNum);
 		singleton->unbindFBO();
 		singleton->unbindShader();
+	}
+void GameWorld::rasterPolysWorld ()
+                                {
+		
+		
+		GamePageHolder* curHolder = blockHolder;
+		
+		if (curHolder == NULL) {
+			return;
+		}
+		
+		if (
+			(curHolder->listGenerated) &&
+			(!(curHolder->listEmpty))
+		) {
+			curHolder->vboWrapper.draw();
+		}
+		
+		
+		
 	}
 void GameWorld::rasterPolys (int minPeel, int maxPeel, int extraRad)
                                                                      {
@@ -2095,6 +1673,11 @@ void GameWorld::renderGeom ()
 		int jj2;
 		int kk2;
 		
+		FIVector4 p0;
+		FIVector4 p1;
+		FIVector4 p2;
+		FIVector4 p3;
+		FIVector4 rotVec;
 		
 		int ind;
 		int lastId;
@@ -2117,6 +1700,7 @@ void GameWorld::renderGeom ()
 		CharStruct* tempCS;
 		
 		BaseObj* curObj;
+		BaseObj* eqObj;
 		
 		bool showHit = false;
 		float dirVecLength = 4.0f;
@@ -2157,57 +1741,63 @@ void GameWorld::renderGeom ()
 			}
 			else {
 								
-				singleton->setShaderFloat("objectId",visObjects[i]);
-				
-				
-				tempVec1.copyFrom( &(curObj->boundsMinTransInPixels) );
-				tempVec2.copyFrom( &(curObj->boundsMaxTransInPixels) );
 				
 				
 				
-				tempVec3.copyFrom(&(curObj->centerPointInPixels));
-				tempVec3.setFW(curObj->ang);
+				// tempVec1.copyFrom( &(curObj->boundsMinTransInPixels) );
+				// tempVec2.copyFrom( &(curObj->boundsMaxTransInPixels) );
 				
-				singleton->setShaderfVec4("rotationZ",&tempVec3);
 				
+				
+				// tempVec3.copyFrom(curObj->getCenterPoint());
+				// tempVec3.setFW(curObj->ang);
+				
+				// singleton->setShaderfVec4("rotationZ",&tempVec3);
+				
+				doProc = false;
 				
 				if (visObjects[i] == singleton->actObjInd) {
 					
 					if (!singleton->firstPerson) {
 						
-						singleton->drawBox(
-							&tempVec1,
-							&tempVec2
-						);
+						// singleton->drawBox(
+						// 	&tempVec1,
+						// 	&tempVec2
+						// );
 						
-						singleton->setShaderFloat("objectId",0);
-						
-						tempVec1.copyFrom( &(curObj->centerPointInPixels) );
+						doProc = true;
 						
 						
-						curOr = curObj->orientationXYZ.getIX();
-						tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
-						tempVec2.multXYZ(2.0f);
-						tempVec2.addXYZRef(&tempVec1);
-						singleton->setShaderVec3("matVal", 255, 0, 0);
-						singleton->drawLine(&tempVec1,&tempVec2);
-						
-						curOr = curObj->orientationXYZ.getIY();
-						tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
-						tempVec2.multXYZ(2.0f);
-						tempVec2.addXYZRef(&tempVec1);
-						singleton->setShaderVec3("matVal", 0, 255, 0);
-						singleton->drawLine(&tempVec1,&tempVec2);
-						
-						curOr = curObj->orientationXYZ.getIZ();
-						tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
-						tempVec2.multXYZ(2.0f);
-						tempVec2.addXYZRef(&tempVec1);
-						singleton->setShaderVec3("matVal", 0, 0, 255);
-						singleton->drawLine(&tempVec1,&tempVec2);
 						
 						
-						singleton->setShaderVec3("matVal", 30, 30, 30);
+						// singleton->setShaderFloat("objectId",0);
+						
+						// tempVec1.copyFrom( curObj->getCenterPoint() );
+						
+						
+						// curOr = curObj->orientationXYZ.getIX();
+						// tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
+						// tempVec2.multXYZ(2.0f);
+						// tempVec2.addXYZRef(&tempVec1);
+						// singleton->setShaderVec3("matVal", 255, 0, 0);
+						// singleton->drawLine(&tempVec1,&tempVec2);
+						
+						// curOr = curObj->orientationXYZ.getIY();
+						// tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
+						// tempVec2.multXYZ(2.0f);
+						// tempVec2.addXYZRef(&tempVec1);
+						// singleton->setShaderVec3("matVal", 0, 255, 0);
+						// singleton->drawLine(&tempVec1,&tempVec2);
+						
+						// curOr = curObj->orientationXYZ.getIZ();
+						// tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
+						// tempVec2.multXYZ(2.0f);
+						// tempVec2.addXYZRef(&tempVec1);
+						// singleton->setShaderVec3("matVal", 0, 0, 255);
+						// singleton->drawLine(&tempVec1,&tempVec2);
+						
+						
+						// singleton->setShaderVec3("matVal", 30, 30, 30);
 					}
 					
 					
@@ -2226,14 +1816,28 @@ void GameWorld::renderGeom ()
 						
 					}
 					else {
-						singleton->drawBox(
-							&tempVec1,
-							&tempVec2
-						);
+						// singleton->drawBox(
+						// 	&tempVec1,
+						// 	&tempVec2
+						// );
+						
+						doProc = true;
 					}
 					
 					
 				}
+				
+				if (doProc) {
+					
+					singleton->setShaderFloat("objectId",visObjects[i]);
+					
+					if (curObj->body != NULL) {
+						glBegin( GL_TRIANGLES );
+						curObj->body->Render(&q3Rend);
+						glEnd( );
+					}
+				}
+				
 			}
 								
 						
@@ -2460,7 +2064,149 @@ void GameWorld::renderGeom ()
 
 
 
+		
+		
+		//~~~~~~~~~~~~~~
+		
+		// singleton->bindShader("BoxShader");
+		// singleton->bindFBO("geomBaseTargFBO", -1, 0);
+		// singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
+		// singleton->setShaderFloat("objectId",0.0);
+		// singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		// singleton->setShaderFloat("isWire", 0.0);
+		// singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
+		// singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
+		// singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
+		// singleton->setShaderVec3("matVal", 50, 128, 10);
+					
+		// glBegin( GL_TRIANGLES );
+		// singleton->gamePhysics->drawAll();
+		// glEnd( );
+		
+		// singleton->unbindFBO();
+		// singleton->unbindShader();
+		
+		
+		
+		
+		
+		//~~~~~~~~~~~~~~
+		
+		
+		
+		
+
 		//////////////////////////////
+		
+		
+		// singleton->bindShader("CylBBShader");
+		// singleton->bindFBO("geomBaseTargFBO", -1, 0);
+		// singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
+		// singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
+		// singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		// singleton->setShaderFloat("curTime", singleton->pauseTime/1000.0f);
+		// singleton->setShaderTexture(0,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
+		
+		// for(i = 0; i < visObjects.size(); i++) {
+			
+		// 	curObj = &(gameObjects[visObjects[i]]);
+			
+		// 	eqObj = singleton->getEquipped(curObj);
+			
+		// 	if (
+		// 		curObj->isHidden ||
+		// 		(eqObj == NULL) ||
+		// 		(
+		// 			(singleton->firstPerson) &&
+		// 			(curObj->uid == singleton->getCurActorUID())
+		// 		)
+		// 	) {
+				
+		// 	}
+		// 	else {
+				
+				
+				
+		// 		/////
+		// 		tempVec1.copyFrom( curObj->getCenterPoint() );
+		// 		curOr = curObj->orientationXYZ.getIY();
+		// 		tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
+		// 		//tempVec2.multXYZ(1.0f);
+		// 		tempVec2.addXYZRef(&tempVec1);
+		// 		//tempVec3.averageXYZ(&tempVec1,&tempVec2);
+				
+				
+		// 		rotVec.copyFrom(curObj->getCenterPoint());
+		// 		//rotVec.addXYZ(0.0,2.0,0.0);
+		// 		rotVec.setFW( curObj->ang + curObj->angRelative );
+		// 		singleton->setShaderfVec4("rotZ",&rotVec);
+		// 		singleton->setShaderfVec4("rotZ2",&tempVec2);
+				
+		// 		p0.copyFrom(&tempVec2);
+		// 		p1.copyFrom(&tempVec2);
+		// 		p2.copyFrom(&tempVec2);
+		// 		p3.copyFrom(&tempVec2);
+				
+		// 		p0.addXYZ(-0.5f, -0.5f,  0.0f);
+		// 		p1.addXYZ( 0.5f, -0.5f,  0.0f);
+		// 		p2.addXYZ( 0.5f,  0.5f,  0.0f);
+		// 		p3.addXYZ(-0.5f,  0.5f,  0.0f);
+				
+		// 		/////
+				
+				
+				
+		// 		tempCS = &(singleton->fontWrappers[EFW_ICONS]->charVals[
+		// 			singleton->entIdToIcon[eqObj->objectType] 
+		// 		]);
+		// 		frameMod = 0;
+		// 		if (eqObj->maxFrames != 0) {
+		// 			frameMod = ((singleton->currentTick/(20))%(eqObj->maxFrames))*16.0f;
+		// 		}
+				
+				
+		// 		x1 = (tempCS->sampX + frameMod )/iw;
+		// 		x2 = (tempCS->sampX + tempCS->sampW + frameMod)/iw;
+		// 		y1 = 1.0f-(tempCS->sampY)/ih;
+		// 		y2 = 1.0f-(tempCS->sampY+tempCS->sampH)/ih;
+				
+		// 		if (
+		// 			(eqObj->entType == E_ENTTYPE_BULLET) ||
+		// 			(eqObj->entType == E_ENTTYPE_TRACE)	
+		// 		) {
+		// 			yval = 1.0f;
+		// 		}
+		// 		else {
+		// 			yval = -1.0f;
+		// 		}
+				
+		// 		// glMultiTexCoord4f(GL_TEXTURE0, visObjects[i], yval, 1.0f, 1.0f);
+		// 		// glMultiTexCoord4f(GL_TEXTURE1, x1,y1,x2,y2);
+				
+				
+				
+		// 		singleton->drawQuadWithCoords(
+		// 				&p0,
+		// 				&p1,
+		// 				&p2,
+		// 				&p3,
+						
+		// 				x1, y1, x2, y2
+		// 		);
+				
+		// 	}
+			
+			
+			
+		// }
+		// singleton->setShaderTexture(0,0);
+		// singleton->unbindFBO();
+		// singleton->unbindShader();
+		
+		
+		
+		
+		
 		
 		singleton->copyFBO2("geomBaseTargFBO","geomTargFBO");
 		
@@ -2517,9 +2263,9 @@ void GameWorld::renderGeom ()
 				glMultiTexCoord4f(GL_TEXTURE0, visObjects[i], yval, 1.0f, 1.0f);
 				glMultiTexCoord4f(GL_TEXTURE1, x1,y1,x2,y2);
 				glVertex3f(
-					curObj->centerPointInPixels[0],
-					curObj->centerPointInPixels[1],
-					curObj->centerPointInPixels[2]
+					curObj->getCenterPoint()->getFX(),
+					curObj->getCenterPoint()->getFY(),
+					curObj->getCenterPoint()->getFZ()
 				);
 			}
 			
@@ -3584,8 +3330,6 @@ void GameWorld::initMap ()
 			if (fbow2->getPixelAtIndex(i, pathChannel) == 0)
 			{
 
-
-
 				for (j = 0; j < 2; j++)
 				{
 					btStack[0] = i;
@@ -4021,8 +3765,8 @@ void GameWorld::initMap ()
 
 
 
-		int wb = worldSizeInBlocks.getIX();
-		int hb = worldSizeInBlocks.getIY();
+		int wb = blocksPerWorld;
+		int hb = blocksPerWorld;
 		int blockInd;
 
 		for (i = 0; i < wb; i++)
@@ -4242,7 +3986,7 @@ void GameWorld::drawMap ()
 
 		singleton->setShaderFloat("mapPitch", singleton->mapPitch);
 		singleton->setShaderFloat("heightMapMaxInCells", singleton->heightMapMaxInCells);
-		singleton->setShaderfVec3("worldSizeInCells", &(singleton->worldSizeInCells) );
+		singleton->setShaderFloat("cellsPerWorld", cellsPerWorld );
 		
 		
 		singleton->mainGUI->renderQuadDirect(singleton->mapComp);
@@ -4325,16 +4069,6 @@ void GameWorld::updateLights ()
 		
 		
 		lightCount = singleton->numDynLights;
-		
-		
-		
-		
-		
-
-		
-		
-
-
 
 		if (singleton->targetTimeOfDay <= 0.5)
 		{
@@ -4595,6 +4329,7 @@ void GameWorld::postProcess ()
 			
 			
 			singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+			singleton->setShaderFloat("seaLevel", singleton->getSeaHeightScaled() );
 			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
@@ -4706,7 +4441,7 @@ void GameWorld::postProcess ()
 			}
 			else {
 				singleton->setShaderFloat("thirdPerson", 1.0f);
-				singleton->setShaderfVec3("entPos", &(singleton->currentActor->centerPointInPixels));
+				singleton->setShaderfVec3("entPos", singleton->currentActor->getCenterPoint());
 				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
 			
@@ -4806,6 +4541,23 @@ void GameWorld::postProcess ()
 			// else {
 			// 	singleton->copyFBO("resultFBO1", "lastFBO");
 			// }
+			
+			
+			if (singleton->fxaaOn) {
+				singleton->bindShader("FXAAShader");
+				singleton->bindFBO("resultFBO",activeFBO);
+				singleton->sampleFBO("resultFBO", 0, activeFBO);
+				singleton->setShaderfVec2("resolution",&(singleton->bufferDim));
+				singleton->drawFSQuad();
+				singleton->unsampleFBO("resultFBO", 0, activeFBO);
+				singleton->unbindFBO();
+				singleton->unbindShader();
+				
+				activeFBO = 1 - activeFBO;
+			}
+			
+			
+			
 			
 			
 			singleton->drawFBO("resultFBO", 0, 1.0f, 1 - activeFBO);

@@ -3279,7 +3279,7 @@ SKIP_ADD_GEOM:
 		if (ind > -1) {
 			fres = ((float)(mapData[ind].terHeight))/fTerDataVisPitchZ; //adjustedHeight
 			
-			res = fres*singleton->worldSizeInHolders.getFZ();
+			res = fres*singleton->holdersPerWorld;
 			
 		} else {
 			res = 0;

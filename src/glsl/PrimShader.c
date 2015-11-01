@@ -24,7 +24,7 @@ uniform float waterLerp;
 
 uniform vec3 entPos;
 uniform float thirdPerson;
-uniform float CAM_BOX_SIZE;
+//uniform float CAM_BOX_SIZE;
 uniform float isUnderWater;
 uniform float SPHEREMAP_SCALE_FACTOR;
 
@@ -45,7 +45,7 @@ uniform vec3 volMaxReadyInPixels;
 uniform vec3 genPosMin;
 uniform vec3 genPosMax;
 
-uniform vec3 worldSizeInCells;
+uniform float cellsPerWorld;
 
 uniform vec4 paramFetch1;
 uniform vec4 paramFetch2;
@@ -188,18 +188,23 @@ $
 #line 1
 
 
+const float CAM_BOX_SIZE = 2.0;
 
 // qqqq
-const int TOT_STEPS = 64;
+const int TOT_STEPS = 128;
 const int TOT_DETAIL_STEPS = 8;
 const int TOT_STEPS_POLY = 16;
+
+const float MAX_SHAD_DIS_PRIM = 64.0;
+const int HARD_STEPS = 8;
+const int SOFT_STEPS = 8;
 
 
 //x: basic pass, y: detail pass
 const float MIN_STEPS = 20.0;
-const float MAX_STEPS = 100.0;
+const float MAX_STEPS = 80.0;
 
-const float WAVE_HEIGHT = 64.0;
+
 
 const float MAX_CLIP = 16384.0;
 
@@ -341,6 +346,7 @@ float globCurSteps;
 float globTotSteps;
 float globIntersect;
 float globTest;
+float globTexTap;
 vec3 globTest3;
 
 //vec4 testObject;
@@ -483,16 +489,76 @@ vec3 opRep( vec3 p, vec3 c )
 // 	return texture(Texture0, (pos)/volSizePrim );
 // }
 
-float getEmpty3D(vec3 pos) {
+vec2 getEmpty3D(vec3 pos) {
 		
-		vec4 samp = getTexLin(Texture0, pos-volMinReadyInPixels, volSizePrim);
+		vec4 samp = getTexCubic(Texture0, pos-volMinReadyInPixels, volSizePrim);
 		float maxDis = mix(0.5,1.0,distance(cameraPos,pos)/MAX_CAM_VOL_DIS);
 		
-		return mix(
-				maxDis,
-				-maxDis,
-				sqrt(samp.a)
+		return vec2(
+			mix(
+					maxDis,
+					-maxDis,
+					sqrt(samp.a)
+			),
+			samp.a
 		);
+}
+
+
+
+float remBox(vec3 pos, float resBase) {
+	float res = resBase;
+	
+	// res = opS(
+	// 	res,
+	// 	sdSphere(pos-(cameraPos+lookAtVec*100.0),200.0)
+	// );
+	
+	vec2 emptyVal = vec2(0.0);
+	
+	if (
+		all(greaterThan(pos,volMinReadyInPixels)) &&
+		all(lessThan(pos,volMaxReadyInPixels))
+	) {
+		
+		emptyVal = getEmpty3D(pos);
+	
+		
+		
+		res = opS(res, emptyVal.x*0.5 );
+		
+		if (emptyVal.y > 0.0) {
+			res = opD(
+				res,
+				(1.0-getTexLin(Texture13, pos*(9.0), voroSize).r)*emptyVal.y*2.0
+			);
+		}
+		
+	}
+	
+	int i;
+	float splashTot = 0.0;
+	float splashDis = 0.0;
+	float maxDis = 10.0;
+	float waveMod = clamp(abs(res-1.0),0.0,1.0);
+	for (i = 0; i < numExplodes; i++) {
+			splashDis = distance(explodeArr[i].xyz+vec3(0.0,0.0,1.0),pos.xyz);
+			splashTot += (
+					
+					(sin(splashDis*2.0+explodeArr[i].w*0.5-curTime*4.0)+1.0)*explodeArr[i].w*0.5
+					
+			) * 
+			clamp(1.0-splashDis/maxDis, 0.0, 1.0);
+	}
+	res = opD(res,splashTot*waveMod*1.5);
+	
+	
+	res = opS(
+		res,
+		sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) ) //8.0 //CAM_BOX_SIZE
+	);
+	
+	return res;
 }
 
 
@@ -1361,13 +1427,9 @@ float mapSolid( vec3 pos ) {
 		///////////////
 		
 		
-		res.x = opS(res.x, getEmpty3D(pos));
-				
 		
-		res.x = opS(
-			res.x,
-			sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) ) //CAM_BOX_SIZE
-		);
+		
+		res.x = remBox(pos, res.x);
 		
 		//
 		
@@ -1405,7 +1467,7 @@ vec2 castSolid( vec3 ro, vec3 rd, vec2 minMaxT, float fNumSteps ) {
 		float t = minMaxT.x;
 		
 		
-		float SOLID_PREC = 0.02;
+		float SOLID_PREC = 0.002;
 		float SOLID_PREC2 = 0.002;
 		
 		vec3 pos;
@@ -1458,7 +1520,7 @@ vec2 castSolid( vec3 ro, vec3 rd, vec2 minMaxT, float fNumSteps ) {
 		//     globTexPrim.xy = vec2(0.0);
 		// }
 		
-		//globCurSteps += float(p);
+		globCurSteps += float(p);
 		
 		return vec2(t,res);
 }
@@ -1505,11 +1567,10 @@ int intMod(int lhs, int rhs)
 		return lhs - ( (lhs / rhs) * rhs );
 }
 
-float lineStep(
+vec3 lineStep(
 		vec3 ro,
 		vec3 rd,
-		float maxDis,
-		float accuracy
+		float maxDis
 		//,int _startIndex
 ) {
 		
@@ -1552,7 +1613,7 @@ float lineStep(
 		vec3 p = p1;
 		
 		
-		vec2 tval = vec2(0.0);
+		
 		vec3 seBoxDis1 = vec3(0.0);
 		vec3 seBoxDis2 = vec3(0.0);
 		
@@ -1560,11 +1621,7 @@ float lineStep(
 		
 		float j = 0.0;
 		
-		float camDis;
-		float curLOD;
-		float minLOD = 0.0;
-		float maxLOD = 1.0;
-		float btSteps = 0.0;
+		
 		
 		
 		float uniqueId = 0.0;
@@ -1630,6 +1687,8 @@ float lineStep(
 		
 		int curInd = 0;
 		int primAlreadyTestedInd = 0;
+		
+		primIdListLength = 0;
 		
 		for (i = 0; i < MAX_PRIM_IDS; i++) {
 				primIdList[i] = -1;
@@ -1959,51 +2018,65 @@ float lineStep(
 				}
 		}
 		
+	
+	return vec3(hitBoxFinal.xy, float(didHitFinal));
 		
-		
-		if (didHitFinal) {
-				
-			// if (primIdList[0] == -1) {
-			//   tempInt = primIdList[primIdListLength-1];
-			//   primIdList[primIdListLength-1] = -1;
-			//   primIdList[0] = tempInt;
-			// }
-			
-			camDis = distance(cameraPos,ro+rd*hitBoxFinal.x);
-			
-			// 1.0 = close, 0.0 = far away
-			curLOD = mix(
-					maxLOD,
-					minLOD,
-					clamp(camDis/(clipDist.y*0.5),minLOD,maxLOD) //MAX_DETAIL_DIS
-			)*accuracy;
-			
-			btSteps = mix(MIN_STEPS,MAX_STEPS,curLOD);
-			
-			tval = castSolid(
-					p1,
-					rd,
-					hitBoxFinal.xy,
-					btSteps
-			);
-
-
-			
-			if (
-					(tval.x < hitBoxFinal.y)
-					&& (tval.x > 0.01)
-					//&& (tval.y < 0.0)
-			) {
-						
-					return tval.x;
-			}
-		}
-		
-		//globTest = 1.0;
-		
-		
-		return MAX_CAM_VOL_DIS;
 }
+
+float postLineStep(
+	float accuracy,
+	vec3 ro,
+	vec3 rd,
+	vec3 hitBoxFinal
+) {
+	
+	bool didHitFinal = (hitBoxFinal.z > 0.0);
+	
+	float camDis;
+	float curLOD;
+	float btSteps = 0.0;
+	vec2 tval = vec2(0.0);
+	
+	if (didHitFinal) {
+			
+		// if (primIdList[0] == -1) {
+		//   tempInt = primIdList[primIdListLength-1];
+		//   primIdList[primIdListLength-1] = -1;
+		//   primIdList[0] = tempInt;
+		// }
+		
+		camDis = distance(cameraPos,ro+rd*hitBoxFinal.x);
+		
+		// 1.0 = close, 0.0 = far away
+		curLOD = mix(
+				1.0,
+				0.0,
+				clamp(camDis/(clipDist.y*0.5),0.0,1.0) //MAX_DETAIL_DIS
+		)*accuracy;
+		
+		btSteps = mix(MIN_STEPS,MAX_STEPS,curLOD);
+		
+		tval = castSolid(
+				ro,
+				rd,
+				hitBoxFinal.xy,
+				btSteps
+		);
+		
+		if (
+				(tval.x < hitBoxFinal.y)
+				&& (tval.x > 0.01)
+				//&& (tval.y < 0.0)
+		) {
+					
+				return tval.x;
+		}
+	}
+	
+	return MAX_CAM_VOL_DIS;
+	
+}
+
 
 vec3 normSolid( vec3 pos )
 {
@@ -2016,6 +2089,78 @@ vec3 normSolid( vec3 pos )
 				mapSolid(pos+eps.yyx) - mapSolid(pos-eps.yyx) );
 		return normalize(nor);
 }
+
+
+float softShadowPrim( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
+{
+		float res = 1.0;
+		float t = tmin;
+		float h;
+		for( int i=0; i<numSteps; i++ )
+		{
+				h = mapSolid( ro + rd*t );
+				res = min( res, 8.0*h/t );
+				t += clamp( h, 0.02, 0.20 );
+				if( h<0.001 || t>tmax ) break;
+		}
+		return clamp( res, 0.0, 1.0 );
+
+}
+
+float hardShadowPrim( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
+{
+		float res = 0.0;
+		float t = tmin;
+		
+		
+		float fNumSteps = float(numSteps);
+		float fi;
+		float h;
+		
+		
+		for( int i=0; i<numSteps; i++ ) {
+				
+				fi = float(i)/fNumSteps;
+				
+				h = mapSolid( ro + rd*t );
+				
+				res += -clamp(h-1.0,-1.0,0.01);
+				t = mix(tmin,tmax,fi);
+				
+				//t += abs(h*2.0);
+				
+				// if (h < 0.1) {
+				// 	res += 1.0;
+				// }
+				
+		}
+		
+		//res /= fNumSteps;
+		
+		return 1.0-clamp( res, 0.0, 1.0 );
+		
+		
+		// for( int i=0; i<numSteps; i++ ) {
+				
+		// 		fi = float(i)/fNumSteps;
+				
+		// 		h = mapSolid( ro + rd*t );
+				
+		// 		//res += -clamp(h-0.1,-1.0,0.01);
+				
+		// 		res = min( res, 8.0*h/t );
+				
+		// 		t += h;//mix(tmin,tmax,fi);
+				
+		// 		if (h < 0.1) {
+		// 			break;
+		// 		}
+				
+		// }
+		// return clamp(h,0.0,1.0);//1.0-clamp( res, 0.0, 1.0 );
+
+}
+
 
 #endif
 // end of DOPRIM
@@ -2158,8 +2303,36 @@ float snoise(vec3 v) {
 
 const float timeScale = 0.4;
 
-const float WAVE_SPEED = 1.0;
-const float WAVE_SCALE = 100.0;
+const float WAVE_HEIGHT = 64.0;
+const float WAVE_SPEED = 1.5;
+const float WAVE_SCALE = 60.0;
+
+
+float amplitude[8] = float[](
+	0.25/256.0,
+	0.5/256.0,
+	1.0/256.0,
+	4.0/256.0,
+	
+	16.0/256.0,
+	32.0/256.0,
+	64.0/256.0,
+	128.0/256.0
+		
+);
+float wavelength[8] = float[](
+	WAVE_SCALE/48.0,
+	WAVE_SCALE/40.0,
+	WAVE_SCALE/32.0,
+	WAVE_SCALE/16.0,
+	
+	WAVE_SCALE/8.0,
+	WAVE_SCALE/4.0,
+	WAVE_SCALE/2.0,
+	WAVE_SCALE/1.0
+	
+);
+
 ^INCLUDE:WaveFuncs^
 
 
@@ -2635,6 +2808,82 @@ vec2 getTerrain(
 ^INCLUDE:TerHeightFunc^
 
 
+
+float mapWater2( vec3 pos ) {
+		
+		vec2 res = vec2(MAX_CAM_DIS,SKY_ID);
+		
+		vec3 wh = vec3(
+				0.0,
+				0.0,
+				(waveHeight(pos.xy*1.0,1.0) + 1.0) * 0.5 * WAVE_HEIGHT
+		);
+		
+		
+		// float watDis = getSeaLevel(pos,wh.z,isUnderWater);
+		// float camDis = distance(cameraPos,pos)/MAX_CAM_VOL_DIS;
+		// float volLerp = pow(clamp(camDis,0.0,1.0),4.0);
+		// // if (camDis < 1.0) {
+		// //     watDis = mix(
+		// //         getWater3D(pos + wh),
+		// //         watDis,
+		// //         volLerp
+		// //     );
+		// // }
+		
+		float watDis = getWater3D(pos + wh);
+		
+		
+		
+		res = opU(
+				res,
+				vec2(
+						watDis,
+						WATER_ID
+				)
+				
+		);
+		
+		
+		int i;
+		float splashTot = 0.0;
+		float splashDis = 0.0;
+		float maxDis = 10.0;
+		float waveMod = clamp(abs(res.x-1.0),0.0,1.0);
+		for (i = 0; i < numSplashes; i++) {
+				splashDis = distance(splashArr[i].xyz+vec3(0.0,0.0,1.0),pos.xyz);
+				splashTot += (
+						
+						(sin(splashDis*2.0+splashArr[i].w*0.5-curTime*4.0)+1.0)*0.4
+						
+				) * 
+				clamp(1.0-splashDis/maxDis, 0.0, 1.0);
+		}
+		res.x = opD(res.x,splashTot*waveMod);
+		
+		if ((isUnderWater < 0.0)) {
+			res.x = opD(res.x,0.2);
+		}
+		
+		
+		res.x = opI(
+			res.x,
+			sdBox(
+				pos-((volMinReadyInPixels + volMaxReadyInPixels)*0.5),
+				vec3((volMaxReadyInPixels - volMinReadyInPixels)*0.5)
+			)
+		);
+		
+		// res.x = opS(
+		// 	res.x,
+		// 	sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) )
+		// );
+		
+		return res.x;
+
+}
+
+
 float mapWater( vec3 pos ) {
 		
 		vec2 res = vec2(MAX_CAM_DIS,SKY_ID);
@@ -2704,6 +2953,12 @@ float mapWater( vec3 pos ) {
 			res.x = opD(res.x,0.2);
 		}
 		
+		// if (
+		// 		all(greaterThanEqual(pos.xyz,volMinReadyInPixels)) &&
+		// 		all(lessThanEqual(pos.xyz,volMaxReadyInPixels))
+		// ) {
+		// 		res.x = min(res.x, mapWater2(pos));
+		// }
 		
 		res.x = opS(
 			res.x,
@@ -2715,79 +2970,7 @@ float mapWater( vec3 pos ) {
 }
 
 
-float mapWater2( vec3 pos ) {
-		
-		vec2 res = vec2(MAX_CAM_DIS,SKY_ID);
-		
-		vec3 wh = vec3(
-				0.0,
-				0.0,
-				(waveHeight(pos.xy*1.0,1.0) + 1.0) * 0.5 * WAVE_HEIGHT
-		);
-		
-		
-		// float watDis = getSeaLevel(pos,wh.z,isUnderWater);
-		// float camDis = distance(cameraPos,pos)/MAX_CAM_VOL_DIS;
-		// float volLerp = pow(clamp(camDis,0.0,1.0),4.0);
-		// // if (camDis < 1.0) {
-		// //     watDis = mix(
-		// //         getWater3D(pos + wh),
-		// //         watDis,
-		// //         volLerp
-		// //     );
-		// // }
-		
-		float watDis = getWater3D(pos + wh);
-		
-		
-		
-		res = opU(
-				res,
-				vec2(
-						watDis,
-						WATER_ID
-				)
-				
-		);
-		
-		
-		int i;
-		float splashTot = 0.0;
-		float splashDis = 0.0;
-		float maxDis = 10.0;
-		float waveMod = clamp(abs(res.x-1.0),0.0,1.0);
-		for (i = 0; i < numSplashes; i++) {
-				splashDis = distance(splashArr[i].xyz+vec3(0.0,0.0,1.0),pos.xyz);
-				splashTot += (
-						
-						(sin(splashDis*2.0+splashArr[i].w*0.5-curTime*4.0)+1.0)*0.4
-						
-				) * 
-				clamp(1.0-splashDis/maxDis, 0.0, 1.0);
-		}
-		res.x = opD(res.x,splashTot*waveMod);
-		
-		if ((isUnderWater < 0.0)) {
-			res.x = opD(res.x,0.2);
-		}
-		
-		
-		res.x = opI(
-			res.x,
-			sdBox(
-				pos-((volMinReadyInPixels + volMaxReadyInPixels)*0.5),
-				vec3((volMaxReadyInPixels - volMinReadyInPixels)*0.5)
-			)
-		);
-		
-		res.x = opS(
-			res.x,
-			sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) )
-		);
-		
-		return res.x;
 
-}
 
 
 
@@ -2873,40 +3056,40 @@ float mapWater2( vec3 pos ) {
 
 // #define DOCLOUDS
 
-#ifdef DOCLOUDS
+// #ifdef DOCLOUDS
 
-vec4 cloudNoise(vec3 pos) {
+// vec4 cloudNoise(vec3 pos) {
 	
-	return getTexLin(Texture13, pos*1.0, voroSize);
+// 	return getTexLin(Texture13, pos*1.0, voroSize);
 	
-}
+// }
 
-float mapClouds(vec3 pos) {
+// float mapClouds(vec3 pos) {
 		
-		float newTime = curTime * 20.0;
+// 		float newTime = curTime * 20.0;
 		
-		float distOrig = (cameraPos.z+2048.0-distance(cameraPos,pos)/10.0)-pos.z; //getSeaLevel(pos,0.0,isUnderWater)-2048.0f; //
+// 		float distOrig = (cameraPos.z+2048.0-distance(cameraPos,pos)/10.0)-pos.z; //getSeaLevel(pos,0.0,isUnderWater)-2048.0f; //
 		
-		float dist = distOrig - 100.0;//(cameraPos.z+20.0)-pos.z;
+// 		float dist = distOrig - 100.0;//(cameraPos.z+20.0)-pos.z;
 		
-		distOrig = clamp(distOrig/400.0,0.0,1.0);
+// 		distOrig = clamp(distOrig/400.0,0.0,1.0);
 		
-		vec3 newPos = pos;
-		newPos.z -= cameraPos.z;
-		newPos.z *= 2.0;
-		
-		
-		
-		dist = opI(dist,cloudNoise(pos/128.0 + newTime*0.125).g*60.0+distOrig*100.0);
+// 		vec3 newPos = pos;
+// 		newPos.z -= cameraPos.z;
+// 		newPos.z *= 2.0;
 		
 		
-		dist -= cloudNoise(newPos/64.0 + newTime*0.25).g*80.0;
-		dist -= cloudNoise(newPos/32.0 + newTime*0.5).g*40.0;
-		dist -= cloudNoise(newPos/16.0 + newTime*1.0).g*20.0;
 		
-		return dist*0.5;
-}
-#endif
+// 		dist = opI(dist,cloudNoise(pos/128.0 + newTime*0.125).g*60.0+distOrig*100.0);
+		
+		
+// 		dist -= cloudNoise(newPos/64.0 + newTime*0.25).g*80.0;
+// 		dist -= cloudNoise(newPos/32.0 + newTime*0.5).g*40.0;
+// 		dist -= cloudNoise(newPos/16.0 + newTime*1.0).g*20.0;
+		
+// 		return dist*0.5;
+// }
+// #endif
 
 
 vec2 mapDyn(vec3 pos) {
@@ -2987,42 +3170,42 @@ vec2 mapDyn(vec3 pos) {
 		);
 		
 		
-		#ifdef DOCLOUDS
-		res = opU(res,vec2(mapClouds(pos), TEX_SKY));
+		// #ifdef DOCLOUDS
+		// res = opU(res,vec2(mapClouds(pos), TEX_SKY));
 		
-		float randVal = mod(
-								abs(
-										sin(pos.z/32.0)*
-										sin(pos.x/32.0)*
-										sin(pos.y/32.0)
-								),
-								1.0
-						);
-		float myVal;
-		float pScale = 0.01;
-		if (res.y == TEX_SKY) {
-				myVal = clamp(
-						pow( (1.0-getTexCubic(Texture13, (pos*1.0 + randVal*16.0)*pScale, voroSize).r), 4.0 )
+		// float randVal = mod(
+		// 						abs(
+		// 								sin(pos.z/32.0)*
+		// 								sin(pos.x/32.0)*
+		// 								sin(pos.y/32.0)
+		// 						),
+		// 						1.0
+		// 				);
+		// float myVal;
+		// float pScale = 0.01;
+		// if (res.y == TEX_SKY) {
+		// 		myVal = clamp(
+		// 				pow( (1.0-getTexCubic(Texture13, (pos*1.0 + randVal*16.0)*pScale, voroSize).r), 4.0 )
 						
-						,0.0,1.0);
+		// 				,0.0,1.0);
 
-				res.x = opD(
-						res.x,
-						myVal*10.0
-				);
+		// 		res.x = opD(
+		// 				res.x,
+		// 				myVal*10.0
+		// 		);
 				
-				// myVal = clamp(
-				// 		pow( (1.0-getTexCubic(Texture13, (pos*4.0 + randVal*16.0)*pScale, voroSize).r), 4.0 )
-				// 		*0.4
-				// 		,0.0,1.0);
+		// 		// myVal = clamp(
+		// 		// 		pow( (1.0-getTexCubic(Texture13, (pos*4.0 + randVal*16.0)*pScale, voroSize).r), 4.0 )
+		// 		// 		*0.4
+		// 		// 		,0.0,1.0);
 
-				// res.x = opD(
-				// 		res.x,
-				// 		myVal*20.0
-				// );
+		// 		// res.x = opD(
+		// 		// 		res.x,
+		// 		// 		myVal*20.0
+		// 		// );
 				
-		}
-		#endif
+		// }
+		// #endif
 		
 		
 		return res;
@@ -3124,11 +3307,13 @@ float newNoise(vec3 pos) {
 
 ^INCLUDE:MapLand^
 
+
 vec2 mapLand(vec3 pos) {
 	
 	vec2 res = vec2(MAX_CAM_DIS, TEX_EARTH);
 	
-	vec2 myTV = getTerVal(pos,distance(cameraPos,pos)/MAX_CLIP);
+	float camDis = distance(cameraPos,pos)/MAX_CLIP;
+	vec2 myTV = getTerVal(pos, camDis);
 	
 	res.x = myTV.x;
 	
@@ -3136,10 +3321,8 @@ vec2 mapLand(vec3 pos) {
 	// float lv1 = mix(1.0,-1.0,baseRes);
 	// res.x = opS(res.x, -lv1);
 	
-	res.x = opS(
-		res.x,
-		sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) ) //8.0 //CAM_BOX_SIZE
-	);
+	
+	res.x = remBox(pos,res.x);
 	
 	
 	
@@ -3153,31 +3336,44 @@ vec3 mapLandMicro(vec3 pos, vec3 terNorm) {
 	vec2 res = vec2(MAX_CAM_DIS, TEX_EARTH);
 	
 	float camDis = distance(cameraPos,pos)/MAX_CLIP;
-	vec2 myTV = getTerVal(pos,camDis);
+	vec2 myTV = getTerVal(pos, camDis);
 	
 	res.x = myTV.x;
 	
 	float camDis3 = clamp(1.0-camDis*128.0,0.0,1.0);
 	float texVal = 0.0;
-	float texSpacing = 10.0;
+	float texSpacing = 10.0;//0.01*cellsPerWorld;
 	vec3 absTerNorm = abs(terNorm);
 	
-	if (camDis3 > 0.0) {
+	vec2 mp = vec2(1.0/mapPitch);
+	vec2 mp2 = vec2(mapPitch);
+	
+	// if (camDis3 > 0.0) {
+		
+	// 	//bilin(in sampler2D t, in vec2 uvIn, in vec2 textureSize, in vec2 texelSize)
+		
+	// 	texVal = 
+	// 			bilin(Texture2, pos.yz/texSpacing, mp2, mp).r*absTerNorm.x*absTerNorm.x +
+	// 			bilin(Texture2, pos.zx/texSpacing, mp2, mp).r*absTerNorm.y*absTerNorm.y +
+	// 			bilin(Texture2, pos.xy/texSpacing, mp2, mp).r*absTerNorm.z*absTerNorm.z;
+		
+	// 	// texVal = 
+	// 	// 		texture(Texture2, pos.yz/texSpacing).r*absTerNorm.x*absTerNorm.x +
+	// 	// 		texture(Texture2, pos.zx/texSpacing).r*absTerNorm.y*absTerNorm.y +
+	// 	// 		texture(Texture2, pos.xy/texSpacing).r*absTerNorm.z*absTerNorm.z;
+		
+	// 	texVal = (sin(texVal*M_PI*2.0)+1.0)*0.5*camDis3;
 		
 		
-		// texVal = 
-		// 		texture(Texture2, pos.yz/texSpacing).r*absTerNorm.x*absTerNorm.x +
-		// 		texture(Texture2, pos.zx/texSpacing).r*absTerNorm.y*absTerNorm.y +
-		// 		texture(Texture2, pos.xy/texSpacing).r*absTerNorm.z*absTerNorm.z;
+	// 	globTexTap += 3.0;
 		
-		
-		// //float texVal = bilin(Texture2, (pos.xy+pos.zy+pos.xz)/32.0, vec2(mapPitch), vec2(1.0/mapPitch)).r*camDis3;
-		// res = opD(
-		// 	res,
-		// 	texVal*0.5
-		// );
-		// myTV.y -= texVal*0.05;
-	}
+	// 	//float texVal = bilin(Texture2, (pos.xy+pos.zy+pos.xz)/32.0, vec2(mapPitch), vec2(1.0/mapPitch)).r*camDis3;
+	// 	res.x = opD(
+	// 		res.x,
+	// 		texVal*0.0625
+	// 	);
+	// 	myTV.y -= texVal*0.05;
+	// }
 	
 	
 	
@@ -3193,10 +3389,7 @@ vec3 mapLandMicro(vec3 pos, vec3 terNorm) {
 	
 	float oldRes = res.x;
 	
-	res.x = opS(
-		res.x,
-		sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) ) //8.0 //CAM_BOX_SIZE
-	);
+	res.x = remBox(pos,res.x);
 	
 	
 	
@@ -3204,38 +3397,36 @@ vec3 mapLandMicro(vec3 pos, vec3 terNorm) {
 	
 }
 
-vec2 mapLand2(vec3 pos) {
+// vec2 mapLand2(vec3 pos) {
 		
-		int i;
+// 		int i;
 		
-		vec2 ov = vec2(0.0,2.0);
-		vec2 res = vec2(MAX_CAM_DIS,SKY_ID);
-		float baseRes = getTexCubic(Texture0,pos-volMinReadyInPixels, volSizePrim).r;
-		float landDis = getLand3D(pos, baseRes);
-		vec3 terNorm = normalize(
-				vec3(baseRes) - 
-				vec3(
+// 		vec2 ov = vec2(0.0,2.0);
+// 		vec2 res = vec2(MAX_CAM_DIS,SKY_ID);
+// 		float baseRes = getTexCubic(Texture0,pos-volMinReadyInPixels, volSizePrim).r;
+// 		float landDis = getLand3D(pos, baseRes);
+// 		vec3 terNorm = normalize(
+// 				vec3(baseRes) - 
+// 				vec3(
 					
-						getTexLin(Texture0, (pos+ov.yxx)-volMinReadyInPixels, volSizePrim).r,
-						getTexLin(Texture0, (pos+ov.xyx)-volMinReadyInPixels, volSizePrim).r,
-						getTexLin(Texture0, (pos+ov.xxy)-volMinReadyInPixels, volSizePrim).r
+// 						getTexLin(Texture0, (pos+ov.yxx)-volMinReadyInPixels, volSizePrim).r,
+// 						getTexLin(Texture0, (pos+ov.xyx)-volMinReadyInPixels, volSizePrim).r,
+// 						getTexLin(Texture0, (pos+ov.xxy)-volMinReadyInPixels, volSizePrim).r
 					
-				)
-		);
+// 				)
+// 		);
 		
-		res = opU(
-				res,
-				vec2(
-						landDis,
-						LAND_ID
-				)
-		);
-		
-		
-		
-		///////////
+// 		res = opU(
+// 				res,
+// 				vec2(
+// 						landDis,
+// 						LAND_ID
+// 				)
+// 		);
 		
 		
+		
+// 		///////////
 		
 		
 		
@@ -3243,104 +3434,106 @@ vec2 mapLand2(vec3 pos) {
 		
 		
 		
-		// float splashTot = 0.0;
-		// float splashDis = 0.0;
-		// float maxDis = 10.0;
-		// float waveMod = clamp(abs(res.x-1.0),0.0,1.0);
-		// for (i = 0; i < numSplashes; i++) {
-		//     splashDis = distance(splashArr[i].xyz+vec3(0.0,0.0,1.0),pos.xyz);
-		//     splashTot += (
+		
+		
+// 		// float splashTot = 0.0;
+// 		// float splashDis = 0.0;
+// 		// float maxDis = 10.0;
+// 		// float waveMod = clamp(abs(res.x-1.0),0.0,1.0);
+// 		// for (i = 0; i < numSplashes; i++) {
+// 		//     splashDis = distance(splashArr[i].xyz+vec3(0.0,0.0,1.0),pos.xyz);
+// 		//     splashTot += (
 						
-		//         (sin(splashDis*2.0+splashArr[i].w*0.5-curTime*4.0)+1.0)*0.4
+// 		//         (sin(splashDis*2.0+splashArr[i].w*0.5-curTime*4.0)+1.0)*0.4
 						
-		//     ) * 
-		//     clamp(1.0-splashDis/maxDis, 0.0, 1.0);
-		// }
-		// res.x = opD(res.x,splashTot*waveMod*1.5);
+// 		//     ) * 
+// 		//     clamp(1.0-splashDis/maxDis, 0.0, 1.0);
+// 		// }
+// 		// res.x = opD(res.x,splashTot*waveMod*1.5);
 		
 		
-		float splashTot = 0.0;
-		float splashDis = 0.0;
-		float maxDis = 10.0;
-		float waveMod = clamp(abs(res.x-1.0),0.0,1.0);
-		for (i = 0; i < numExplodes; i++) {
-				splashDis = distance(explodeArr[i].xyz+vec3(0.0,0.0,1.0),pos.xyz);
-				splashTot += (
+// 		float splashTot = 0.0;
+// 		float splashDis = 0.0;
+// 		float maxDis = 10.0;
+// 		float waveMod = clamp(abs(res.x-1.0),0.0,1.0);
+// 		for (i = 0; i < numExplodes; i++) {
+// 				splashDis = distance(explodeArr[i].xyz+vec3(0.0,0.0,1.0),pos.xyz);
+// 				splashTot += (
 						
-						(sin(splashDis*2.0+explodeArr[i].w*0.5-curTime*4.0)+1.0)*explodeArr[i].w*0.5
+// 						(sin(splashDis*2.0+explodeArr[i].w*0.5-curTime*4.0)+1.0)*explodeArr[i].w*0.5
 						
-				) * 
-				clamp(1.0-splashDis/maxDis, 0.0, 1.0);
-		}
-		res.x = opD(res.x,splashTot*waveMod*1.5);
+// 				) * 
+// 				clamp(1.0-splashDis/maxDis, 0.0, 1.0);
+// 		}
+// 		res.x = opD(res.x,splashTot*waveMod*1.5);
 		
 		
-		if (res.x <= 0.1) {
-				//globTexEarth.x = TEX_EARTH;
-				res = getTerrain(res, terNorm, pos, 0.0);
+// 		if (res.x <= 0.1) {
+// 				//globTexEarth.x = TEX_EARTH;
+// 				res = getTerrain(res, terNorm, pos, 0.0);
 				
 				
 				
-		}
+// 		}
 		
-		res.x = opI(
-			res.x,
-			sdBox(
-				pos-((volMinReadyInPixels + volMaxReadyInPixels)*0.5),
-				vec3((volMaxReadyInPixels - volMinReadyInPixels)*0.5)
-			)
-		);
+// 		res.x = opI(
+// 			res.x,
+// 			sdBox(
+// 				pos-((volMinReadyInPixels + volMaxReadyInPixels)*0.5),
+// 				vec3((volMaxReadyInPixels - volMinReadyInPixels)*0.5)
+// 			)
+// 		);
 		
-		res.x = opS(
-			res.x,
-			sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) ) //8.0 //CAM_BOX_SIZE
-		);
+// 		res.x = opS(
+// 			res.x,
+// 			sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) ) //8.0 //CAM_BOX_SIZE
+// 		);
 		
 		
-		// vec4 nearestPoint = vec4(0.0);
+// 		// vec4 nearestPoint = vec4(0.0);
 		
-		// if (thirdPerson == 1.0) {
-		//     nearestPoint = pointSegDistance(pos, cameraPos, e );
+// 		// if (thirdPerson == 1.0) {
+// 		//     nearestPoint = pointSegDistance(pos, cameraPos, e );
 				
 				
 				
-		//     res.x = opS(
-		//         res.x,
-		//         sdSphere(
-		//             pos-nearestPoint.xyz,
-		//             mix(
-		//                 5.0,
-		//                 20.0,
-		//                 clamp((pos.z-nearestPoint.z)/10.0,0.0,1.0)
-		//             )
-		//             *
-		//             clamp(
-		//                 distance(nearestPoint.xyz,entPos)/10.0,
-		//                 0.25,
-		//                 1.0
-		//             )
-		//         )
-		//     );
+// 		//     res.x = opS(
+// 		//         res.x,
+// 		//         sdSphere(
+// 		//             pos-nearestPoint.xyz,
+// 		//             mix(
+// 		//                 5.0,
+// 		//                 20.0,
+// 		//                 clamp((pos.z-nearestPoint.z)/10.0,0.0,1.0)
+// 		//             )
+// 		//             *
+// 		//             clamp(
+// 		//                 distance(nearestPoint.xyz,entPos)/10.0,
+// 		//                 0.25,
+// 		//                 1.0
+// 		//             )
+// 		//         )
+// 		//     );
 						
 						
-		//     // res.x = opS(
-		//     //     res.x,
-		//     //     sdSphere(
-		//     //         pos-cameraPos,
-		//     //         mix(
-		//     //             2.0,
-		//     //             distance(cameraPos,entPos),
-		//     //             clamp(distance(pos,entPos)/10.0,0.0,1.0)
-		//     //         )
+// 		//     // res.x = opS(
+// 		//     //     res.x,
+// 		//     //     sdSphere(
+// 		//     //         pos-cameraPos,
+// 		//     //         mix(
+// 		//     //             2.0,
+// 		//     //             distance(cameraPos,entPos),
+// 		//     //             clamp(distance(pos,entPos)/10.0,0.0,1.0)
+// 		//     //         )
 								
-		//     //     )
-		//     // );
+// 		//     //     )
+// 		//     // );
 				
-		// }
+// 		// }
 		
 		
-		return res;
-}
+// 		return res;
+// }
 
 
 
@@ -3388,19 +3581,21 @@ vec4 castDyn(
 				
 				res = mapDyn( pos );
 				if (
-						(res.x < DYN_PREC ) ||
-						(t>minMaxT.y)
+						(res.x < DYN_PREC )
+						|| (t>minMaxT.y)
 				) {
 						break;
 				}
 				
-				t += res.x*2.0;
+				t += res.x;
 		}
 		
 		stepCount = float(p);
 		
 		
 		if (res.x < DYN_PREC) {
+				
+				//t -= DYN_PREC*1.5;
 				
 				for( p = 0; p < TOT_DETAIL_STEPS; p++ ) {
 						
@@ -3446,7 +3641,7 @@ vec4 castDyn(
 		
 		
 		
-		//globCurSteps += float(p);
+		globCurSteps += float(p);
 		
 		// if (
 		//     (res.y != SKY_ID)
@@ -3719,19 +3914,20 @@ vec4 castLand(
 				landNorm = normLandMicro(pos, vec3(0.0,0.0,1.0),camDis);
 				
 				float grassMod = 128.0;//mix(2.0,0.000001,camDis);
-				float myVal2 = randf3( floor(pos.xyz*(grassMod))/(grassMod) );
+				float myVal2 = randf3( floor(pos.xyz*(grassMod))/(grassMod) )*clamp(1.0-camDis*4.0,0.0,1.0);
 				
 				
 				
 				
 				
 				
-				float hv = clamp(1.0-(heightMapMaxInCells-pos.z)/8192.0, 0.0,1.0)*0.3
+				float hv = clamp(1.0-(heightMapMaxInCells-pos.z)/heightMapMaxInCells, 0.0,1.0)*0.3
 					+ abs(sin(pos.x/256.0)*sin(pos.y/256.0)*sin(pos.z/256.0))*0.01;
 				
 				float snowVal = (
 					hv
 					+ myTV*0.5
+					- camDis*0.02
 					//- clamp(-landNorm.z,0.0,1.0)*0.05
 					- 0.13 // - camDis*0.1
 				); // + landNorm.z*0.05
@@ -3783,9 +3979,11 @@ float softShadow( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
 {
 		float res = 1.0;
 		float t = tmin;
+		float h;
+		
 		for( int i=0; i<numSteps; i++ )
 		{
-				float h = mapLand( ro + rd*t ).x;
+				h = mapLand( ro + rd*t ).x;
 				res = min( res, 8.0*h/t );
 				t += clamp( h, 0.02, 0.10 );
 				if( h<0.001 || t>tmax ) break;
@@ -3802,12 +4000,13 @@ float hardShadow( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
 		
 		float fNumSteps = float(numSteps);
 		float fi;
+		float h;
 		
 		for( int i=0; i<numSteps; i++ ) {
 				
 				fi = float(i)/fNumSteps;
 				
-				float h = mapLand( ro + rd*t ).x;
+				h = mapLand( ro + rd*t ).x;
 				
 				res += -clamp(h,-1.0,0.01);
 				
@@ -4002,6 +4201,8 @@ float hardShadow( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
 
 void main() {
 		
+		vec4 oneVec = vec4(1.0);
+				
 		float NEAR = clipDist.x;
 		float FAR = clipDist.y;
 		
@@ -4018,48 +4219,51 @@ void main() {
 		
 		vec2 volBounds = vec2(0.0);
 		
-		#ifdef DOPOLY
+		globTexTap = 0.0;
+		
+		
+		// #ifdef DOPOLY
 				
 				
-				volBounds = aabbIntersect(worldPos.xyz, rd, volMinReadyInPixels, volMaxReadyInPixels);
-				if (volBounds.x <= volBounds.y) {
+		// 		volBounds = aabbIntersect(worldPos.xyz, rd, volMinReadyInPixels, volMaxReadyInPixels);
+		// 		if (volBounds.x <= volBounds.y) {
 						
-						if (
-								all(greaterThanEqual(worldPos.xyz,volMinReadyInPixels)) &&
-								all(lessThanEqual(worldPos.xyz,volMaxReadyInPixels))
-						) {
+		// 				if (
+		// 						all(greaterThanEqual(worldPos.xyz,volMinReadyInPixels)) &&
+		// 						all(lessThanEqual(worldPos.xyz,volMaxReadyInPixels))
+		// 				) {
 								
-						}
-						else {
-								MIN_CAM_VOL_DIS = volBounds.x;
-						}
-						MAX_CAM_VOL_DIS = volBounds.y;
+		// 				}
+		// 				else {
+		// 						MIN_CAM_VOL_DIS = volBounds.x;
+		// 				}
+		// 				MAX_CAM_VOL_DIS = volBounds.y;
 						
-				}
+		// 		}
 				
 				
-				rd = normalize(worldPos.xyz-cameraPos.xyz);
-				float testRes = 99999.0;
-				float tempOffset = 0.0;
-				vec3 tempPos = vec3(0.0);
+		// 		rd = normalize(worldPos.xyz-cameraPos.xyz);
+		// 		float testRes = 99999.0;
+		// 		float tempOffset = 0.0;
+		// 		vec3 tempPos = vec3(0.0);
 				
-				for (i = 0; i < TOT_STEPS_POLY; i++) {
-						tempPos = worldPos.xyz + rd*tempOffset;
-						testRes = mapLand(tempPos).x;
-						tempOffset += testRes;
-				}
+		// 		for (i = 0; i < TOT_STEPS_POLY; i++) {
+		// 				tempPos = worldPos.xyz + rd*tempOffset;
+		// 				testRes = mapLand(tempPos).x;
+		// 				tempOffset += testRes;
+		// 		}
 				
-				if (testRes > 0.2) {
-						//discard;
-				}
+		// 		if (testRes > 0.2) {
+		// 				//discard;
+		// 		}
 				
-				FragColor0 = vec4(
-						distance(tempPos,cameraPos.xyz),
-						worldPos.xyz
-				);
+		// 		FragColor0 = vec4(
+		// 				distance(tempPos,cameraPos.xyz),
+		// 				worldPos.xyz
+		// 		);
 
-				return;
-		#endif
+		// 		return;
+		// #endif
 		
 		
 		
@@ -4179,9 +4383,58 @@ void main() {
 								waterStart = volBoundsWater.x-1.0;
 						}
 				}
-				
-				
 		}
+		
+		
+		bool hitWaterMacro = false;
+		float waterStartMacro = MAX_CAM_DIS;
+		float sl = seaLevel*heightMapMaxInCells;
+		float disNeeded = 0.0;
+		
+		if (ro.z < sl) {
+			hitWaterMacro = true;
+			waterStartMacro = 0.0;
+		}
+		else {
+			if (rd.z < 0.0) {
+				disNeeded = abs((sl - ro.z)/rd.z);
+				if (disNeeded < MAX_CAM_DIS) {
+					hitWaterMacro = true;
+					waterStartMacro = disNeeded;
+				}
+			}
+		}
+		
+		bool hitLandMacro = false;
+		float landStartMacro = MAX_CAM_DIS;
+		float landEndMacro = MAX_CAM_DIS;
+		sl = heightMapMaxInCells;
+		disNeeded = abs((sl - ro.z)/rd.z);
+		
+		if (ro.z < sl) {
+			hitLandMacro = true;
+			landStartMacro = 0.0;
+			
+			if (rd.z > 0.0) {
+				landEndMacro = disNeeded;
+			}
+			else {
+				landEndMacro = abs(ro.z/rd.z);
+			}
+			
+		}
+		else {
+			if (rd.z < 0.0) {
+				
+				if (disNeeded < MAX_CAM_DIS) {
+					hitLandMacro = true;
+					landStartMacro = disNeeded;
+				}
+			}
+		}
+		
+		landEndMacro = min(landEndMacro,FAR);
+		
 		
 		
 		float camDis;
@@ -4315,7 +4568,7 @@ void main() {
 		
 		vec4 maxRes = vec4(0.0);
 		
-		cacheLand = vec4(MIN_CAM_VOL_DIS);
+		//cacheLand = vec4(MIN_CAM_VOL_DIS);
 		cacheWater = vec4(MIN_CAM_VOL_DIS);
 		
 		vec4 finalMaxDis = vec4( max(MAX_CAM_DIS,MAX_CAM_VOL_DIS) );
@@ -4369,14 +4622,18 @@ void main() {
 		norArr[0] = vec3(0.0);
 		norArr[1] = vec3(0.0);
 		
+		
 		float shadowRes = 1.0;
-		float explodeMod = 0;
+		
 		float tempf = 0.0;
 		
-		#ifdef DOCLOUDS
-				explodeMod = 1;
-		#endif
+		vec3 tempRes = vec3(0.0);
 		
+		//float explodeMod = 0;
+		// #ifdef DOCLOUDS
+		// 		explodeMod = 1;
+		// #endif
+		//+explodeMod
 		
 		
 		
@@ -4414,9 +4671,9 @@ void main() {
 						
 						
 						
-						// setMax = (volBounds.x > volBounds.y);
-						// texture(Texture14,baseCoords.xy);
-						// wpTex -= (0.75+minPlaneDis)*vec4(notEqual(wpTex,vec4(0.0)));
+						// setMax = false;//(volBounds.x > volBounds.y);
+						// wpTex = texture(Texture14,baseCoords.xy);
+						// //wpTex -= (0.75+minPlaneDis)*vec4(notEqual(wpTex,vec4(0.0)));
 						// cacheLand = max(
 						// 		cacheLand,
 						// 		wpTex
@@ -4424,16 +4681,16 @@ void main() {
 						// if (wpTex.x == 0.0) {
 						// 		setMax = true;
 						// }
-						// cacheLand = mix(cacheLand,finalMaxDis,vec4(
-						// 		greaterThan(
-						// 				wpTex,
-						// 				vec4(volBounds.y)
-						// 		)
-						// ));
-						// if (getTexCubic(Texture0,ro+rd*MIN_CAM_VOL_DIS-volMinReadyInPixels,volSizePrim).r > 0.0) {
-						// 	 setMax = false;//cacheLand.x = MIN_CAM_VOL_DIS;
-						// 	 cacheLand.x = MIN_CAM_VOL_DIS;
-						// }
+						// // cacheLand = imx(cacheLand,finalMaxDis,vec4(
+						// // 		greaterThan(
+						// // 				wpTex,
+						// // 				vec4(volBounds.y)
+						// // 		)
+						// // ));
+						// // if (getTexCubic(Texture0,ro+rd*MIN_CAM_VOL_DIS-volMinReadyInPixels,volSizePrim).r > 0.0) {
+						// // 	 setMax = false;//cacheLand.x = MIN_CAM_VOL_DIS;
+						// // 	 cacheLand.x = MIN_CAM_VOL_DIS;
+						// // }
 						// if (setMax) {
 						// 		cacheLand = finalMaxDis;
 						// }
@@ -4444,7 +4701,7 @@ void main() {
 						
 						
 						
-						setMax = (volBounds.x > volBounds.y);
+						setMax = false;//(volBounds.x > volBounds.y);
 						
 						
 						if (hitWater) {
@@ -4498,8 +4755,8 @@ void main() {
 				rclRes = castLand(
 						ro,
 						rd,
-						vec4(0.0),//cacheLand,
-						FAR,//MAX_CAM_VOL_DIS,
+						max(cacheLand,vec4(landStartMacro)),//vec4(0.0),//vec4(0.0),//
+						min(FAR,landEndMacro),//MAX_CAM_VOL_DIS,
 						TOT_STEPS
 				);
 				
@@ -4514,58 +4771,69 @@ void main() {
 				
 				//if (cacheWater.x < min(MAX_CAM_VOL_DIS,landVal) ) {
 						
+				//}
+				
+				waterStart = min(waterStart,waterStartMacro);
+				
+				if (
+					(hitWaterMacro||hitWater) &&
+					(waterStart < landVal)
+				) {
+					rcwRes = castWater(
+							ro,
+							rd,
+							vec4(waterStart),//cacheWater,
+							min(landVal,FAR),//min(landVal,MAX_CAM_VOL_DIS),
+							TOT_STEPS/2
+					);
+					
+					rcwRes.w += 0.1;
+					
+					if ((isUnderWater < 0.0) ) {
 						
 						
-						rcwRes = castWater(
-								ro,
-								rd,
-								vec4(0.0),//cacheWater,
-								min(landVal,FAR),//min(landVal,MAX_CAM_VOL_DIS),
-								TOT_STEPS
-						);
+						//tempf = mapWater(ro + rd*landVal);
 						
-						if ((isUnderWater < 0.0) ) {
+						
+						if ( 
+							((vec3(rd*landVal).z - vec3(rd*rcwRes.w).z) < 2.0)
 							
-							
-							//tempf = mapWater(ro + rd*landVal);
-							
-							
-							if ( 
-								((vec3(rd*landVal).z - vec3(rd*rcwRes.w).z) < 2.0)
-								
-								//||( tempf < 0.4 )
-							) {
-								rcwRes = vec4(0.0,0.0,0.0,MAX_CAM_DIS);
-							}
-							
-							// && (abs(landVal-rcwRes.w) < 4.0)
-							
-							
+							//||( tempf < 0.4 )
+						) {
+							rcwRes = vec4(0.0,0.0,0.0,MAX_CAM_DIS);
 						}
 						
-						waterVal = rcwRes.w;
-				//}
+						// && (abs(landVal-rcwRes.w) < 4.0)
+						
+						
+					}
+					
+					waterVal = rcwRes.w;
+				}
+				
 				
 				
 				waterMatRes = globTexWater;
 				
-				shadowRes = clamp((
-						hardShadow( ro+rd*(landValForCache-0.1), lightVec, 0.02, 32.0, 12 ) *
-						hardShadow( ro+rd*(landValForCache-0.1), lightVec, 2.0, 512.0, 12 )
+				shadowRes = 
+				//1.0;
+				clamp((
+						hardShadow( ro+rd*(landValForCache-0.1), -lightVec, 0.02, 32.0, HARD_STEPS ) *
+						hardShadow( ro+rd*(landValForCache-0.1), -lightVec, 2.0, 512.0, HARD_STEPS )
 						*
-						softShadow( ro+rd*(landValForCache-0.1), lightVec, 0.02, 16.0, 8 )
+						softShadow( ro+rd*(landValForCache-0.1), -lightVec, 0.02, 16.0, SOFT_STEPS )
 				),0.0,1.0);
 				
 				
 				//shadowRes = 0.0;
 				
 				// todo: put this back in
-				if ((numExplodes+explodeMod) > 0) {
+				if (numExplodes > 0) {
 						dynRes = castDyn(
 								ro,
 								rd,
-								vec2( MIN_CAM_VOL_DIS, min(landVal,MAX_CAM_VOL_DIS) ),
-								100.0
+								vec2( MIN_CAM_DIS, min(landVal,MAX_CAM_DIS) ),
+								16.0
 						);
 						
 						dynVal = dynRes.w;
@@ -4651,7 +4919,12 @@ void main() {
 				if (volBounds.x <= volBounds.y) {
 						
 						if (MAX_PRIM_IDS > 0) {
-								solidVal = lineStep(ro,rd,min(landVal,MAX_CAM_VOL_DIS),1.0); //,-1
+								solidVal = postLineStep(
+									1.0,
+									ro,
+									rd,
+									lineStep(ro,rd,min(landVal,MAX_CAM_VOL_DIS))
+								);
 								solidNorm = normSolid( ro + solidVal*rd );
 								curTexSolid = globTexPrim;
 						}
@@ -4683,9 +4956,10 @@ void main() {
 				
 				tArr[0] = min(landVal,solidVal);
 				posArr[0] = ro + tArr[0]*rd;
-				if (solidVal < landVal) {
+				if ((solidVal+0.05) < landVal) {
 						curTexArr[0] = curTexSolid;
 						norArr[0] = solidNorm;
+						shadowRes = 1.0;
 				}
 				else {
 						curTexArr[0] = terSamp5.xy;
@@ -4703,6 +4977,31 @@ void main() {
 						curTexArr[1] = terSamp5.zw;
 						norArr[1] = terSamp3.xyz;
 				}
+				
+				pos = posArr[0];
+				
+				if (MAX_PRIM_IDS > 0) {
+					tempRes = lineStep(
+						pos - lightVec*MAX_SHAD_DIS_PRIM,
+						lightVec,
+						MAX_SHAD_DIS_PRIM
+					);
+					
+					shadowRes *= clamp((
+							hardShadowPrim(
+								pos-lightVec*MAX_SHAD_DIS_PRIM, 
+								lightVec,
+								0.02,
+								MAX_SHAD_DIS_PRIM,
+								HARD_STEPS*4
+							)
+							*
+							softShadowPrim( pos-rd*0.1, -lightVec, 0.02, 2.0, SOFT_STEPS )
+					),0.0,1.0);
+				}
+				
+				
+				
 				
 		#endif
 		
@@ -4774,7 +5073,7 @@ void main() {
 				
 				if (testOn) {
 						
-						shadowRes = globCurSteps/float(TOT_STEPS);
+						shadowRes = globCurSteps/float(TOT_STEPS*0.5);
 						
 						#ifdef DOTER
 								if (placingGeom||(MAX_PRIMTEST > 0)) {
@@ -4801,7 +5100,12 @@ void main() {
 												
 												//float(volBounds.x <= volBounds.y), 0.0, 0.0,
 												
-												shadowRes,0.0,0.0,
+												//(sin(t/100.0)+1.0)*0.5,0.0,0.0,
+												
+												shadowRes,0.0,
+												0.0,
+												//globTexTap/300.0, //
+												//float(texture(Texture14,baseCoords.xy).x != 0.0)*0.25,
 												
 												// (getTexCubic(Texture13, vec3(
 												// 	baseCoords.x+(sin(curTime)+1.0)/2.0,
@@ -4809,7 +5113,7 @@ void main() {
 												// 	baseCoords.y+(sin(curTime)+1.0)/2.0
 												// )*256.0, voroSize).b), 0.0, 0.0,
 												
-												//mod(texture(Texture14,baseCoords.xy).x*rd+cameraPos + 0.01,1.0),//*float(zbVal > 0.0),
+												//mod(texture(Texture14,baseCoords.xy).x*rd+cameraPos + 1.0,32.0)/32.0,//*float(zbVal > 0.0),
 												
 												
 												1.0
@@ -4819,7 +5123,7 @@ void main() {
 						#endif
 						#ifdef DOPRIM
 								fragRes0 = vec4(
-										terSamp4.w + shadowRes,
+										shadowRes, //tempRes.z,//,////terSamp4.w + shadowRes,
 										0.0,
 										0.15,
 										1.0

@@ -103,7 +103,7 @@ void main() {
 	
 	float divVal = 1.0-clamp( distance(TexCoord0.xy,vec2(0.5,0.5))/0.5 ,0.0,1.0);
 	
-	float maxRad = bufferDim.y*2.0 / mix(32.0,4.0,tex0.w);//mix(1.0,4.0,divVal);
+	float maxRad = bufferDim.y * mix(1.0,64.0,tex0.w*divVal) / 128.0;//mix(1.0,4.0,divVal);
 	float curRad = 0.0;
 
 	float minRotInc = pi;
@@ -150,7 +150,7 @@ void main() {
 		
 
 		testNormOrig = samp1.xyz;//normalize( (samp1.rgb - 0.5) * 2.0 );
-		testNormRef = normalize(reflect(lightVec, testNormOrig));
+		testNormRef = normalize(reflect(-lightVec, testNormOrig));
 
 		disMult = clamp(
 			(samp0.w - worldPosition.w)/256.0,
@@ -173,10 +173,10 @@ void main() {
 		curRot += curRotInc;
 	}
 
-	newRes = clamp(newRes / (totRays / 8.0), 0.0, 1.0);
-	newRes = pow(newRes, vec3(2.0));
+	newRes = clamp(newRes / (totRays / 16.0), 0.0, 1.0);
+	newRes = pow(newRes, vec3(4.0));
 	//newRes = min(newRes,normalize(newRes));
-	gl_FragData[0] = vec4(newRes*divVal, 1.0);
+	gl_FragData[0] = vec4(newRes, 1.0); //*divVal
 
 
 

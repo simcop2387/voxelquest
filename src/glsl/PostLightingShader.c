@@ -177,7 +177,7 @@ vec3 getFogColor()
             zv,
             TEX_SKY
         ),
-        (lightVecOrig.z + 1.0)*0.5//timeOfDay
+        timeOfDay // (-lightVecOrig.z + 1.0)*0.5//timeOfDay
     )
     +
     
@@ -185,21 +185,21 @@ vec3 getFogColor()
         (
             pow(
                 clamp(
-                    dot(lightVecOrig,myRay),0.0,1.0
+                    dot(-lightVecOrig,myRay),0.0,1.0
                 ),
                 16.0    
             )*1.0
-            *vec3(1.0,0.5,0.0) //+lightVecOrig.z*0.25
+            *vec3(1.0,0.5,0.0) //+-lightVecOrig.z*0.25
         )
         +
         (
             pow(
                 clamp(
-                    dot(lightVecOrig,myRay),0.0,1.0
+                    dot(-lightVecOrig,myRay),0.0,1.0
                 ),
                 64.0    
             )*1.0
-            *vec3(1.0,1.0,1.0) //+lightVecOrig.z*0.25
+            *vec3(1.0,1.0,1.0) //+-lightVecOrig.z*0.25
         )    
     )*(pow(clamp((timeOfDay+0.4),0.0,1.0),8.0))
     
@@ -210,21 +210,21 @@ vec3 getFogColor()
         (
             pow(
                 clamp(
-                    dot(lightVecOrig*vec3(1.0,1.0,-1.0),myRay),0.0,1.0
+                    dot(-lightVecOrig*vec3(1.0,1.0,-1.0),myRay),0.0,1.0
                 ),
                 64.0    
             )*1.0
-            *vec3(0.5,0.5,1.0) //+lightVecOrig.z*0.25
+            *vec3(0.5,0.5,1.0) //+-lightVecOrig.z*0.25
         )
         +
         (
             pow(
                 clamp(
-                    dot(lightVecOrig*vec3(1.0,1.0,-1.0),myRay),0.0,1.0
+                    dot(-lightVecOrig*vec3(1.0,1.0,-1.0),myRay),0.0,1.0
                 ),
                 256.0    
             )*1.0
-            *vec3(1.0,1.0,1.0) //+lightVecOrig.z*0.25
+            *vec3(1.0,1.0,1.0) //+-lightVecOrig.z*0.25
         )    
     )*(pow(clamp(1.0-(timeOfDay-0.4),0.0,1.0),8.0))
     ;
@@ -319,10 +319,22 @@ void main()
 			
 		
 		resColor.rgb = vec3(
-			unpackColor(matVals.ba,tex2.r).r,
-			unpackColor(matVals.ba,tex2.g).g,
-			unpackColor(matVals.ba,tex2.b).b
+			unpackColor(matVals.ba,pow(tex2.r,4.0)).r,
+			unpackColor(matVals.ba,pow(tex2.g,4.0)).g,
+			unpackColor(matVals.ba,pow(tex2.b,4.0)).b
 		);
+		
+		hsvVal = rgb2hsv(tex2.rgb);
+		hsvVal2 = rgb2hsv(resColor.rgb);
+		hsvVal2.b = hsvVal.b;
+		
+		resColor.rgb = mix(resColor.rgb,hsv2rgb(hsvVal2),0.25);
+		
+		// resColor.rgb = mix(
+		// 	resColor.rgb,
+		// 	pow(tex2.rgb,vec3(0.25)),
+		// 	1.0
+		// );
 	}
 	
 	
@@ -419,12 +431,12 @@ void main()
 	
 	
 	
-	float cellSize = 1024.0;// *cellsPerBlock;
+	float cellSize = 32.0;// *cellsPerBlock;
 	vec3 grid0 = 
 		//floor(worldPosition.xyz/cellSize);
 		abs(mod(worldPosition.xyz, cellSize) - cellSize / 2.0) * 2.0;
 	
-	float unitBuf = (cellSize - cellSize*0.125);
+	float unitBuf = (cellSize - cellSize/32.0);
 	
 	vec3 gridVec = vec3(
 		float(grid0.x >= unitBuf),
@@ -517,13 +529,13 @@ void main()
 			bestHeight = testHeight;
 		}
 	}
-	float outDif = clamp(bestHeight / 1.0, 0.0, 1.0);
+	float outDif = clamp(bestHeight*2.0 / distance(cameraPos,worldPosition.xyz), 0.0, 1.0);
 	
 	
 	outDif *= mix(
-		0.1,
-		0.01,
-		clamp(distance(worldPosition.xyz, cameraPos.xyz)/64.0,0.0,1.0)
+		1.0,
+		0.0,
+		clamp(distance(worldPosition.xyz, cameraPos.xyz)/256.0,0.0,1.0)
 	);
 	
 	
@@ -533,7 +545,7 @@ void main()
 	// }
 	
 	if (!valIsGeom) {
-		//resColor -= outDif;
+		//resColor -= outDif*0.5;
 	}
 	
 	//resColor = vec3(lightRes);

@@ -22,7 +22,7 @@ uniform vec2 mapDimInPixels;
 
 uniform float mapPitch;
 uniform float heightMapMaxInCells;
-uniform vec3 worldSizeInCells;
+uniform float cellsPerWorld;
 
 ^INCLUDE:MATERIALS^
 
@@ -151,7 +151,7 @@ void main() {
 
     float newTime = curTime/100.0;
 
-    vec2 camPosZO = cameraPos.xy/worldSizeInCells.xy;
+    vec2 camPosZO = cameraPos.xy/cellsPerWorld;
 
     vec2 tcFlip = TexCoord0.xy;
     tcFlip.y = 1.0-tcFlip.y;

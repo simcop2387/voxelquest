@@ -106,6 +106,9 @@ public:
   EntSelection selectedEnts;
   GameEnt * selectedEnt;
   GameEnt * highlightedEnt;
+  bool isPressingMove;
+  bool fxaaOn;
+  bool doPathReport;
   bool refreshPaths;
   bool placingTemplate;
   bool smoothMove;
@@ -252,9 +255,9 @@ public:
   int cellsPerHolder;
   int cellsPerBlock;
   int holdersPerBlock;
-  FIVector4 worldSizeInCells;
-  FIVector4 worldSizeInHolders;
-  FIVector4 worldSizeInBlocks;
+  int cellsPerWorld;
+  int holdersPerWorld;
+  int blocksPerWorld;
   intPair (entIdArr) [1024];
   uint palWidth;
   uint palHeight;
@@ -327,6 +330,7 @@ public:
   double lastMoveTime;
   double timeDelta;
   double curTime;
+  float smoothTime;
   double pauseTime;
   double clickTime;
   double lastTime;
@@ -442,6 +446,7 @@ public:
   Timer scrollTimer;
   Timer moveTimer;
   GameWorld * gw;
+  GamePhysics * gamePhysics;
   GameFluid * (gameFluid) [E_FID_LENGTH];
   GameLogic * gameLogic;
   GameNetwork * gameNetwork;
@@ -494,6 +499,7 @@ public:
   int getRandomObjId ();
   void fillWithRandomObjects (int parentUID, int gen);
   void toggleDDMenu (int x, int y, bool toggled);
+  BaseObj * getEquipped (BaseObj * parentObj);
   void performDrag (bool isReq, int _draggingFromInd, int _draggingFromType, int _draggingToInd, int _draggingToType, FIVector4 * _worldMarker);
   void removeEntity (bool isReq, int ind);
   BaseObjType placeNewEnt (bool isReq, int et, FIVector4 * cellPos, bool isHidden = false);
@@ -553,6 +559,7 @@ public:
   bool shiftDown ();
   bool ctrlDown ();
   bool altDown ();
+  void drawQuadWithCoords (FIVector4 * p0, FIVector4 * p1, FIVector4 * p2, FIVector4 * p3, float tx1, float ty1, float tx2, float ty2);
   void drawQuadBounds (float fx1, float fy1, float fx2, float fy2, float fz);
   void drawFSQuad ();
   void drawFSQuadOffset (float xOff, float yOff, float zm);
@@ -1357,6 +1364,7 @@ private:
   int * cellData;
   int * extrData;
 public:
+  bool preGenList;
   bool listGenerated;
   bool listEmpty;
   bool hasData;
@@ -1367,6 +1375,7 @@ public:
   VolumeWrapper * terVW;
   int blockId;
   int holderId;
+  bool isBlockHolder;
   int pathSize;
   int totIdealNodes;
   int totGroupIds;
@@ -1384,19 +1393,21 @@ public:
   std::vector <ConnectingNodeStruct> bestConnectingNodes;
   std::vector <float> vertexVec;
   std::vector <uint> indexVec;
+  std::vector <int> collideIndices;
   std::vector <GameEnt *> entityGeom;
   int entityGeomCounter;
   FIVector4 offsetInHolders;
   FIVector4 gphMinInPixels;
   FIVector4 gphMaxInPixels;
   FIVector4 gphCenInPixels;
-  FIVector4 offsetInBlocks;
   FIVector4 origOffset;
   Singleton * singleton;
   intPairVec (containsEntIds) [E_ET_LENGTH];
   bool wasGenerated;
+  q3Body * body;
   GamePageHolder ();
-  void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ);
+  void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isBlockHolder = false);
+  int getCellAtCoordsLocal (int xx, int yy, int zz);
   int getCellAtInd (int ind);
   void getArrAtInd (int ind, int * tempCellData, int * tempCellData2);
   void setArrAtInd (int ind, int * tempCellData = NULL, int * tempCellData2 = NULL);
@@ -1408,11 +1419,11 @@ public:
   void findIdealNodes ();
   int getGroupId (int pathDataIndex);
   GroupIdStruct * getInfo (int pathDataIndex);
+  void getInfoReport (int pathDataIndex);
   void linkRegions ();
   bool prepPathRefresh (int rad);
   void refreshPaths ();
   void genCellData ();
-  void fetchHolderGeom ();
   void getIndVal (int procCount);
   void getIndVal2 (int procCount);
   void getPixVal (float xb, float yb, float zb, float xm, float ym, float zm);
@@ -1650,7 +1661,6 @@ public:
   Singleton * singleton;
   std::vector <PathResult> pathSearchStack;
   std::vector <PathResult> pathFinalStack;
-  std::vector <PathResult> pathHolder;
   ThreadPoolWrapper * threadPoolPath;
   ThreadPoolWrapper * threadPoolList;
   FIVector4 minv;
@@ -1658,6 +1668,7 @@ public:
   bool didFindPath;
   bool searchedForPath;
   int idCounter;
+  int pathCount;
   GamePageHolder * globEndHolder;
   int globEndGroupId;
   bool globFoundTarg;
@@ -1669,16 +1680,47 @@ public:
   void addHolderToStack (GamePageHolder * curHolder, int targId);
   void remHolderFromStack (int opCode, int targId);
   void fillAllPaths (GamePageHolder * begHolder, GamePageHolder * endHolder, int begInd, int endInd, int targId, int opCode);
-  void addGroupToStack (GamePageHolder * curHolder, int groupId, GamePageHolder * lastHolder, int lastGroupId, int targId);
+  bool addGroupToStack (ConnectingNodeStruct * testConNode, GamePageHolder * curHolder, int groupId, GamePageHolder * lastHolder, int lastGroupId, int lastIndex, int targId);
   void remGroupFromStack (int opCode, int targId);
   void fillAllGroups (GamePageHolder * begHolder, GamePageHolder * endHolder, int begInd, int endInd, int targId, int opCode);
   bool findBestPath (GamePageHolder * closestHolder, GamePageHolder * closestHolder2, int bestInd, int bestInd2);
   void update ();
-  void drawLineAtIndices (GamePageHolder * curPointHolder, int curPointIndex, GamePageHolder * curPointHolder2, int curPointIndex2, int r, int g, int b);
+  void drawLineAtIndices (GamePageHolder * curPointHolder, int curPointIndex, GamePageHolder * curPointHolder2, int curPointIndex2);
   void drawPointAtIndex (GamePageHolder * curPointHolder, int curPointIndex, int r, int g, int b, float rad);
-  void drawPaths (int offX, int offY, int offZ, GamePageHolder * curPointHolder, int curPointIndex);
+  void drawPathToPoint (GamePageHolder * curHolderFrom, int _curInd);
+  void drawRegions (int offX, int offY, int offZ);
+  void drawPaths (GamePageHolder * curHolderFrom, int groupIdFrom, GamePageHolder * curHolderTo, int groupIdTo);
   int getClosestPathInd (FIVector4 * closestPoint, GamePageHolder * & closestHolder);
   void loadNearestHolders ();
+};
+#undef LZZ_INLINE
+#endif
+// f00375_gamephysics.e
+//
+
+#ifndef LZZ_f00375_gamephysics_e
+#define LZZ_f00375_gamephysics_e
+#define LZZ_INLINE inline
+class GamePhysics
+{
+public:
+  Singleton * singleton;
+  q3Scene * scene;
+  float dt;
+  float acc;
+  f32 accumulator;
+  Clock g_clock;
+  GamePhysics ();
+  void init (Singleton * _singleton);
+  void addRandFloor ();
+  void addBoxFromObj (BaseObjType _uid);
+  void collideWithWorld ();
+  void update ();
+  void shutdown ();
+  void drawAll ();
+  void updateBase (f32 time);
+  void updateAll ();
+  void bulletTest ();
 };
 #undef LZZ_INLINE
 #endif
@@ -1750,10 +1792,12 @@ public:
   vector <ObjDef> objDefs;
   string (curTargFBO) [3];
   string (curDepthFBO) [3];
+  GamePageHolder * blockHolder;
   FIVector4 lScreenCoords;
   FIVector4 cScreenCoords;
-  FIVector4 worldSizeInHolders;
-  FIVector4 worldSizeInBlocks;
+  int cellsPerWorld;
+  int holdersPerWorld;
+  int blocksPerWorld;
   FIVector4 entMin;
   FIVector4 entMax;
   FIVector4 camHolderPos;
@@ -1802,12 +1846,12 @@ public:
   GamePageHolder * getHolderAtId (int blockId, int holderId);
   GameBlock * getBlockAtId (int id);
   int getCellInd (FIVector4 * cParam, GamePageHolder * & curHolder);
-  int getCellAtCoords (int debugVal, int xv, int yv, int zv);
+  int getCellInd (GamePageHolder * & curHolder, int xv, int yv, int zv);
+  int getCellAtCoords (int xv, int yv, int zv);
   void setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
-  void getArrAtCoords (int debugVal, int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
-  int testMoveHit (BaseObj * ge, int x, int y, int z);
-  bool makeMove (BaseObj * ge);
-  void updatePhys ();
+  void getArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
+  void fireEvent (BaseObjType uid, int opCode);
+  void generateBlockHolder ();
   void update ();
   void toggleVis (GameEnt * se);
   void ensureBlocks ();
@@ -1816,16 +1860,12 @@ public:
   void drawPrim (bool doSphereMap, bool doTer, bool doPoly);
   void drawOrg (GameOrg * curOrg, bool drawAll);
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
-  void makeFloat (BaseObj * ge);
-  void makeFall (BaseObj * ge, bool justTesting = false);
-  bool rotateCell (BaseObj * ge, int dir, int axis);
-  bool moveCell (BaseObj * ge, int x, int y, int z);
-  bool removeVisObject (BaseObjType _uid);
-  void moveCellRotated (BaseObj * ge, int dirMod);
+  void addVisObject (BaseObjType _uid, bool isRecycled);
+  bool removeVisObject (BaseObjType _uid, bool isRecycled);
   int getClosestObj (int actorId, FIVector4 * basePoint);
-  int testHit (BaseObj * ge);
   void polyCombine ();
-  void drawPolys (string fboName, int minPeel, int maxPeel);
+  void drawPolys (string fboName, int minPeel, int maxPeel, bool isBlockHolder);
+  void rasterPolysWorld ();
   void rasterPolys (int minPeel, int maxPeel, int extraRad = 0);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);

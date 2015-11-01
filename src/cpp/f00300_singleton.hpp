@@ -78,6 +78,9 @@ public:
 	GameEnt* highlightedEnt;
 	
 	
+	bool isPressingMove;
+	bool fxaaOn;
+	bool doPathReport;
 	bool refreshPaths;
 	bool placingTemplate;
 	bool smoothMove;
@@ -235,9 +238,9 @@ public:
 	int cellsPerBlock;
 	int holdersPerBlock;
 	
-	FIVector4 worldSizeInCells;
-	FIVector4 worldSizeInHolders;
-	FIVector4 worldSizeInBlocks;
+	int cellsPerWorld;
+	int holdersPerWorld;
+	int blocksPerWorld;
 	
 	
 	
@@ -336,6 +339,7 @@ public:
 	double lastMoveTime;
 	double timeDelta;
 	double curTime;
+	float smoothTime;
 	double pauseTime;
 	double clickTime;
 	double lastTime;
@@ -537,6 +541,7 @@ public:
 	Timer scrollTimer;
 	Timer moveTimer;
 	GameWorld* gw;
+	GamePhysics* gamePhysics;
 	GameFluid* gameFluid[E_FID_LENGTH];
 	GameLogic* gameLogic;
 	GameNetwork* gameNetwork;
@@ -695,10 +700,13 @@ public:
 		
 		
 		
-		lightVec.setFXYZ(0.3f,0.4f,1.0f);
+		lightVec.setFXYZ(0.3f,0.4f,-1.0f);
 		lightVec.normalize();
 		lightVecOrig.copyFrom(&lightVec);
 		
+		isPressingMove = false;
+		fxaaOn = false;
+		doPathReport = false;
 		refreshPaths = false;
 		placingTemplate = true;
 		smoothMove = false;
@@ -865,6 +873,8 @@ public:
 		
 		// qqqqqq
 		
+		// was doing: lerp from start to end postions, worlspace per pixel
+		
 		// was doing: exmaine why fluidchange 66 33
 		
 		// was doing: silouhette rendering?
@@ -910,13 +920,17 @@ public:
 		mapPitch = (imageHM0->width)*0.5; //newPitch;// //
 		
 		cellsPerHolder = 32;
-		holdersPerBlock = 4;
+		holdersPerBlock = 8;
 		
-		worldSizeInHolders.setIXYZ(newPitch, newPitch, (heightMapMaxInCells*2.0f)/cellsPerHolder);
-		worldSizeInCells.copyIntMult(&worldSizeInHolders, cellsPerHolder);
+		holdersPerWorld = newPitch;
+		cellsPerWorld = holdersPerWorld*cellsPerHolder;
 		cellsPerBlock = holdersPerBlock * cellsPerHolder;
-		worldSizeInBlocks.copyIntDiv(&worldSizeInHolders, holdersPerBlock);
+		blocksPerWorld = holdersPerWorld/holdersPerBlock;
 		
+		if (blocksPerWorld > 256) {
+			cout << "Too many blocks in world, change holdersPerBlock\n";
+			exit(0);
+		}
 		
 		
 		
@@ -926,14 +940,13 @@ public:
 		amountInvalidMove = 0.0f;
 		amountInvalidRotate = 0.0f;
 		sphereMapPrec = 0.0f;
-		//heightMapMaxInCells = min(heightMapMaxInCells,worldSizeInCells[2]);
 		
 		cellsPerNodeXY = 16;
 		cellsPerNodeZ = 8;
 		
 		
 		
-		clipDist[0] = 0.0f;
+		clipDist[0] = 1.0f;
 		clipDist[1] = 512.0f;
 		
 		terDataTexScale = 1;
@@ -1002,9 +1015,9 @@ public:
 		cout << "terDataBufPitchScaledXY " << terDataBufPitchScaledXY << "\n";
 		cout << "cellsPerHolder: " << cellsPerHolder << "\n";
 
+		cout << "cellsPerWorld: " << cellsPerWorld << "\n";
+		cout << "blocksPerWorld: " << blocksPerWorld << "\n";
 
-		doTraceVecND("worldSizeInBlocks: ", &worldSizeInBlocks);
-		doTraceVecND("worldSizeInHolders: ", &worldSizeInHolders);
 
 		GLint glQuery;
 		glGetIntegerv(GL_MAX_UNIFORM_LOCATIONS, &glQuery);
@@ -1022,8 +1035,8 @@ public:
 		mapAmps.setFXYZW(
 			12.0f/16.0f,
 			2.0f/16.0f,
-			1.0f/16.0f,
-			0.25f/16.0f
+			0.5f/16.0f,
+			0.125f/16.0f
 		); //0.0f, 0.0f, 0.0f);//
 
 
@@ -1059,9 +1072,6 @@ public:
 		int ccb = 0;
 		int curFilter;
 
-		doTraceVecND("worldSizeInCells: ", &worldSizeInCells);
-
-
 		
 		
 		gameNetwork = new GameNetwork();
@@ -1083,6 +1093,8 @@ public:
 		for (i = 0; i < E_FID_LENGTH; i++) {
 			gameFluid[i]->updateTBOData(true, false);
 		}
+		
+		
 		
 		
 		
@@ -1259,7 +1271,7 @@ public:
 			dynObjects.push_back(new DynObject());
 		}
 
-		dynObjects[E_OBJ_CAMERA]->init(0, 0, worldSizeInCells.getIZ() / 2, 0, 0, 0, false, E_MT_NONE, NULL, 4.0f );
+		dynObjects[E_OBJ_CAMERA]->init(0, 0, 0, 0, 0, 0, false, E_MT_NONE, NULL, 4.0f );
 
 		for (i = E_OBJ_LIGHT0; i < E_OBJ_LENGTH; i++)
 		{
@@ -1411,11 +1423,15 @@ public:
 			shaderStrings.push_back("PrimShader_330_DOTER_USESPHEREMAP");
 		}
 		else {
-			shaderStrings.push_back("PrimShader_330_DOTER_DOPOLY");
+			//shaderStrings.push_back("PrimShader_330_DOTER_DOPOLY");
 			shaderStrings.push_back("PrimShader_330_DOTER");
 		}
 		shaderStrings.push_back("PrimShader_330_DOPRIM");
 		
+		
+		
+		shaderStrings.push_back("CylBBShader");
+		shaderStrings.push_back("FXAAShader");
 		shaderStrings.push_back("TerGenShader");
 		shaderStrings.push_back("GUIShader");
 		shaderStrings.push_back("MedianShader");
@@ -1442,6 +1458,7 @@ public:
 		shaderStrings.push_back("RadiosityCombineShader");
 		shaderStrings.push_back("FogShader");
 		shaderStrings.push_back("GeomShader");
+		shaderStrings.push_back("BoxShader");
 		shaderStrings.push_back("PolyShader");
 		shaderStrings.push_back("PolyCombineShader");
 		//shaderStrings.push_back("SphereShader");
@@ -1490,6 +1507,7 @@ public:
 		/////////////////////////
 		/////////////////////////
 		
+		smoothTime = 0.0f;
 		timeMod = true;
 		lastSubjectDistance = 0.0f;
 		resultShake = 0.0f;
@@ -1518,9 +1536,9 @@ public:
 		keyMap[KEYMAP_LEFT] = 's';
 		keyMap[KEYMAP_RIGHT] = 'f';
 		keyMap[KEYMAP_FIRE_PRIMARY] = ' ';
-		keyMapMaxCoolDown[KEYMAP_FIRE_PRIMARY] = 200;
+		keyMapMaxCoolDown[KEYMAP_FIRE_PRIMARY] = 20;
 		keyMap[KEYMAP_GRAB_THROW] = 'c';
-		keyMapMaxCoolDown[KEYMAP_GRAB_THROW] = 200;
+		keyMapMaxCoolDown[KEYMAP_GRAB_THROW] = 20;
 		
 		/////////////////////////
 		/////////////////////////
@@ -1564,9 +1582,11 @@ public:
 		int clampType;
 		
 		int vwChan = 1;
-		
+		bool doProc;
 		
 		for (i = 0; i < E_VW_LENGTH; i++) {
+			
+			doProc = true;
 			
 			switch (i) {
 				
@@ -1581,6 +1601,13 @@ public:
 					tz = cellsPerHolder;
 					clampType = GL_CLAMP_TO_EDGE; //GL_CLAMP_TO_BORDER
 				break;
+				case E_VW_WORLD:
+					tz = blocksPerWorld;
+					clampType = GL_REPEAT; //GL_CLAMP_TO_BORDER
+					if (!GEN_POLYS_WORLD) {
+						doProc = false;
+					}
+				break;
 				// case E_VW_TERGEN:
 				// 	tz = 128;
 				// 	clampType = GL_CLAMP_TO_EDGE;//GL_CLAMP_TO_BORDER
@@ -1591,10 +1618,12 @@ public:
 				break;
 			}
 			
+			if (doProc) {
+				volumeWrappers[i] = new VolumeWrapper();
+				volumeWrappers[i]->init(tz, clampType, (vwChan==4) ); //volumeWrapperStrings[i]
+				//fboMap[volumeWrapperStrings[i]].init(1, tx, ty, vwChan, false);
+			}
 			
-			volumeWrappers[i] = new VolumeWrapper();
-			volumeWrappers[i]->init(tz, clampType, (vwChan==4) ); //volumeWrapperStrings[i]
-			//fboMap[volumeWrapperStrings[i]].init(1, tx, ty, vwChan, false);
 		}
 		
 		
@@ -1634,8 +1663,8 @@ public:
 		fboMap["swapTargFBO1"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, false);
 		
 		
-		fboMap["geomBaseTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
-		fboMap["geomTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
+		fboMap["geomBaseTargFBO"].init( numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
+		fboMap["geomTargFBO"].init(     numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
 		fboMap["combineWithWaterTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
 		
 		
@@ -1662,7 +1691,7 @@ public:
 		fboMap["cityFBO"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 		fboMap["hmFBO"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 		fboMap["hmFBOLinear"].init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
-		fboMap["hmFBOLinearBig"].init(1, mapPitch, mapPitch, 1, false, GL_LINEAR, GL_REPEAT);
+		fboMap["hmFBOLinearBig"].init(1, mapPitch, mapPitch, 1, false, GL_NEAREST, GL_REPEAT);
 		fboMap["simplexFBO"].init(1, newPitch, newPitch, 1, false, GL_LINEAR, GL_REPEAT);
 		fboMap["swapFBO0"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 		fboMap["swapFBO1"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
@@ -1701,9 +1730,12 @@ public:
 		//orientRotation();
 		
 		
-		
 		gw->init(this);
 		gw->initMap();
+		
+		gamePhysics = new GamePhysics();
+		gamePhysics->init(this);
+		gamePhysics->bulletTest();
 		
 		gameAI = new GameAI();
 		gameAI->init(this);
@@ -1981,7 +2013,7 @@ public:
 				
 			}
 			else {
-				playSoundPosAndPitch(soundName,cameraPos,&(ge->centerPointInPixels),variance,volume,doLoop);
+				playSoundPosAndPitch(soundName,cameraPos,ge->getCenterPoint(),variance,volume,doLoop);
 			}
 		}
 		
@@ -2092,7 +2124,7 @@ public:
 			
 			
 			actObjInd = ge->uid;
-			subjectDistance = currentActor->centerPointInPixels.distance(cameraPos);
+			subjectDistance = currentActor->getCenterPoint()->distance(cameraPos);
 			
 			
 		}
@@ -2569,6 +2601,20 @@ public:
 		}
 	}
 	
+	BaseObj* getEquipped(BaseObj* parentObj) {
+		int i;
+		
+		int curChild;
+		
+		for (i = 0; i < parentObj->children.size();i++) {
+			curChild = parentObj->children[i];
+			if (gw->gameObjects[curChild].isEquipped) {
+				return &(gw->gameObjects[curChild]);
+			}
+		}
+		
+		return NULL;
+	}
 	
 	void performDrag(
 		bool isReq,
@@ -2618,8 +2664,8 @@ public:
 						
 						lastCellPos.copyFrom(_worldMarker);
 						lastCellPos.addXYZ(0,0,5);
-						sourceObj->positionInCells.copyFrom(&lastCellPos);
-						sourceObj->updateBounds();
+						sourceObj->setCenterPoint(&lastCellPos);
+						
 						
 					break;
 					case E_DT_WORLD_OBJECT:
@@ -2641,11 +2687,11 @@ public:
 						
 						lastCellPos.copyFrom(_worldMarker);
 						lastCellPos.addXYZ(0,0,5);
-						sourceObj->positionInCells.copyFrom(&lastCellPos);
-						sourceObj->updateBounds();
+						sourceObj->setCenterPoint(&lastCellPos);
+						
 						
 						gw->gameObjects[sourceObj->parentUID].removeChild(sourceObj->uid);
-						gw->visObjects.push_back(sourceObj->uid);
+						gw->addVisObject(sourceObj->uid, false);
 						sourceObj->parentUID = 0;
 						
 						
@@ -2704,7 +2750,7 @@ public:
 			}
 			
 			if (_draggingFromType == E_DT_WORLD_OBJECT) {
-				gw->removeVisObject(sourceObj->uid);
+				gw->removeVisObject(sourceObj->uid, false);
 			}
 			
 		}
@@ -2738,7 +2784,7 @@ PERFORM_DRAG_END:
 		}
 		
 		if (ind >= E_OBJ_LENGTH) {
-			if (gw->removeVisObject(ind)) {
+			if (gw->removeVisObject(ind, false)) {
 				selObjInd = 0;
 			}
 		}
@@ -2833,6 +2879,15 @@ PERFORM_DRAG_END:
 			}
 		}
 		
+		FIVector4 newPos;
+		newPos.copyFrom(cellPos);
+		
+		if (isRecycled) {
+			
+		}
+		else {
+			newPos.addXYZ(0.0f,0.0f,4.0f);
+		}
 		
 		
 		gw->gameObjects[curEntId] = baseObj;
@@ -2842,7 +2897,7 @@ PERFORM_DRAG_END:
 			0,
 			newType,
 			et,
-			cellPos,
+			&newPos,
 			xv,yv,zv
 		);
 		
@@ -2875,12 +2930,10 @@ PERFORM_DRAG_END:
 		BaseObjType thisObjId = curEntId;
 		
 		if (isRecycled) {
-			
+			gw->addVisObject(curEntId, true);
 		}
 		else {
-			
-			
-			gw->visObjects.push_back(curEntId);
+			gw->addVisObject(curEntId, false);
 			
 			gameObjCounter++;
 			
@@ -2978,8 +3031,8 @@ PERFORM_DRAG_END:
 								cameraPos->setFXYZRef(&baseCameraPos);
 								
 								cameraPos->addXYZ(
-									-(x - comp->dragStart.x)*worldSizeInCells.getFX()/(cameraZoom*comp->resultDimInPixels.x),
-									-(y - comp->dragStart.y)*worldSizeInCells.getFY()/(cameraZoom*comp->resultDimInPixels.y),
+									-(x - comp->dragStart.x)*((float)cellsPerWorld)/(cameraZoom*comp->resultDimInPixels.x),
+									-(y - comp->dragStart.y)*((float)cellsPerWorld)/(cameraZoom*comp->resultDimInPixels.y),
 									0.0f
 								);
 								
@@ -3263,8 +3316,10 @@ PERFORM_DRAG_END:
 			
 			clipDist[1] = curValue*4096.0f*4.0;
 			
+		}
+		else if (comp->uid.compare("$options.graphics.maxHeight") == 0) {
 			
-			
+			//heightMapMaxInCells = curValue*8192.0f;
 			
 		}
 		else if (comp->uid.compare("$options.graphics.fov") == 0) {
@@ -4415,11 +4470,44 @@ DISPATCH_EVENT_END:
 	}
 
 
+	void drawQuadWithCoords(
+		FIVector4* p0,
+		FIVector4* p1,
+		FIVector4* p2,
+		FIVector4* p3,
+		
+		float tx1,
+		float ty1,
+		float tx2,
+		float ty2
+		
+	) {
+		//glColor4f(1, 1, 1, 1);
+		//glNormal3f(0, 0, 1);
+		
+		glBegin(GL_QUADS);
+
+		glTexCoord2f(tx1, ty1);
+		glVertex3f(p0->getFX(), p0->getFY(), p0->getFZ());
+
+		glTexCoord2f(tx2, ty1);
+		glVertex3f(p1->getFX(), p1->getFY(), p1->getFZ());
+
+		glTexCoord2f(tx2, ty2);
+		glVertex3f(p2->getFX(), p2->getFY(), p2->getFZ());
+
+		glTexCoord2f(tx1, ty2);
+		glVertex3f(p3->getFX(), p3->getFY(), p3->getFZ());
+
+		glEnd();
+	}
+	
 	void drawQuadBounds(
 		float fx1,
 		float fy1,
 		float fx2,
 		float fy2,
+		
 		float fz
 	) {
 		//glColor4f(1, 1, 1, 1);
@@ -4441,6 +4529,7 @@ DISPATCH_EVENT_END:
 
 		glEnd();
 	}
+	
 
 	void drawFSQuad()
 	{
@@ -4454,26 +4543,26 @@ DISPATCH_EVENT_END:
 		float zm
 	)
 	{
-		float fx1 = (xOff - 1.0f) * zm;
-		float fy1 = (yOff - 1.0f) * zm;
-		float fx2 = (xOff + 1.0f) * zm;
-		float fy2 = (yOff + 1.0f) * zm;
+		float fx0 = (xOff - 1.0f) * zm;
+		float fy0 = (yOff - 1.0f) * zm;
+		float fx1 = (xOff + 1.0f) * zm;
+		float fy1 = (yOff + 1.0f) * zm;
 
 		glBegin(GL_QUADS);
 		//glColor4f(1, 1, 1, 1);
 		//glNormal3f(0, 0, 1);
 
 		glTexCoord2f(0.0f, 0.0f);
-		glVertex3f(fx1, fy1, 0.0f);
+		glVertex3f(fx0, fy0, 0.0f);
 
 		glTexCoord2f(1.0f, 0.0f);
-		glVertex3f(fx2, fy1, 0.0f);
+		glVertex3f(fx1, fy0, 0.0f);
 
 		glTexCoord2f(1.0f, 1.0f);
-		glVertex3f(fx2, fy2, 0.0f);
+		glVertex3f(fx1, fy1, 0.0f);
 
 		glTexCoord2f(0.0f, 1.0f);
-		glVertex3f(fx1, fy2, 0.0f);
+		glVertex3f(fx0, fy1, 0.0f);
 
 		glEnd();
 	}
@@ -4568,8 +4657,8 @@ DISPATCH_EVENT_END:
 		{
 			FBOWrapper *fbow = getFBOWrapper("hmFBO", 0);
 
-			xc = (x / worldSizeInCells.getFX()) * ((float)fbow->width);
-			yc = (y / worldSizeInCells.getFY()) * ((float)fbow->height);
+			xc = (x / ((float)cellsPerWorld)) * ((float)fbow->width);
+			yc = (y / ((float)cellsPerWorld)) * ((float)fbow->height);
 
 			v0 = fbow->getPixelAtLinear((xc * mapFreqs.getFX()), (yc * mapFreqs.getFX()), channel);
 			v1 = fbow->getPixelAtLinear((xc * mapFreqs.getFY()), (yc * mapFreqs.getFY()), channel);
@@ -4675,7 +4764,7 @@ DISPATCH_EVENT_END:
 		//testHuman->basePosition.copyFrom(&(dynObjects[E_OBJ_HUMAN]->pos));
 		
 		if (currentActor != NULL) {
-			testHuman->basePosition.copyFrom(&(currentActor->centerPointInPixels));
+			testHuman->basePosition.copyFrom(currentActor->getCenterPoint());
 		}
 		
 		transformOrg(testHuman);
@@ -4684,39 +4773,39 @@ DISPATCH_EVENT_END:
 	void updateCamVals() {
 		
 		
-		if (camLerpPos.getFX() > worldSizeInCells.getFX() / 2.0)
+		if (camLerpPos.getFX() > ((float)cellsPerWorld) / 2.0)
 		{
-			camLerpPos.setFX( camLerpPos.getFX() - worldSizeInCells.getFX() );
+			camLerpPos.setFX( camLerpPos.getFX() - ((float)cellsPerWorld) );
 		}
-		if (camLerpPos.getFX() < -worldSizeInCells.getFX() / 2.0)
+		if (camLerpPos.getFX() < -((float)cellsPerWorld) / 2.0)
 		{
-			camLerpPos.setFX( camLerpPos.getFX() + worldSizeInCells.getFX() );
+			camLerpPos.setFX( camLerpPos.getFX() + ((float)cellsPerWorld) );
 		}
-		if (camLerpPos.getFY() > worldSizeInCells.getFY() / 2.0)
+		if (camLerpPos.getFY() > ((float)cellsPerWorld) / 2.0)
 		{
-			camLerpPos.setFY( camLerpPos.getFY() - worldSizeInCells.getFY() );
+			camLerpPos.setFY( camLerpPos.getFY() - ((float)cellsPerWorld) );
 		}
-		if (camLerpPos.getFY() < -worldSizeInCells.getFY() / 2.0)
+		if (camLerpPos.getFY() < -((float)cellsPerWorld) / 2.0)
 		{
-			camLerpPos.setFY( camLerpPos.getFY() + worldSizeInCells.getFY() );
+			camLerpPos.setFY( camLerpPos.getFY() + ((float)cellsPerWorld) );
 		}
 		
 		
-		if (cameraPos->getFX() > worldSizeInCells.getFX() / 2.0)
+		if (cameraPos->getFX() > ((float)cellsPerWorld) / 2.0)
 		{
-			cameraPos->setFX( cameraPos->getFX() - worldSizeInCells.getFX() );
+			cameraPos->setFX( cameraPos->getFX() - ((float)cellsPerWorld) );
 		}
-		if (cameraPos->getFX() < -worldSizeInCells.getFX() / 2.0)
+		if (cameraPos->getFX() < -((float)cellsPerWorld) / 2.0)
 		{
-			cameraPos->setFX( cameraPos->getFX() + worldSizeInCells.getFX() );
+			cameraPos->setFX( cameraPos->getFX() + ((float)cellsPerWorld) );
 		}
-		if (cameraPos->getFY() > worldSizeInCells.getFY() / 2.0)
+		if (cameraPos->getFY() > ((float)cellsPerWorld) / 2.0)
 		{
-			cameraPos->setFY( cameraPos->getFY() - worldSizeInCells.getFY() );
+			cameraPos->setFY( cameraPos->getFY() - ((float)cellsPerWorld) );
 		}
-		if (cameraPos->getFY() < -worldSizeInCells.getFY() / 2.0)
+		if (cameraPos->getFY() < -((float)cellsPerWorld) / 2.0)
 		{
-			cameraPos->setFY( cameraPos->getFY() + worldSizeInCells.getFY() );
+			cameraPos->setFY( cameraPos->getFY() + ((float)cellsPerWorld) );
 		}
 		
 		if (smoothMove) {
@@ -5110,7 +5199,7 @@ DISPATCH_EVENT_END:
 		modXYZ.setFXYZ(
 			0.0,
 			0.0,
-			newHeight-curHeight
+			128.0f + newHeight - curHeight
 		);
 		
 		moveCamera(&modXYZ);
@@ -5196,6 +5285,7 @@ DISPATCH_EVENT_END:
 		BaseObj* ge = &(gw->gameObjects[actorId]);
 		
 		
+		
 		if (isUp == 1) {
 			if (ge->inWater) {
 				
@@ -5204,18 +5294,18 @@ DISPATCH_EVENT_END:
 				
 				if (
 					gw->getCellAtCoords(
-						0,
-						ge->centerPointInPixels[0],
-						ge->centerPointInPixels[1],
-						ge->centerPointInPixels[2] + 1.0f
+						ge->getCenterPoint()->getFX(),
+						ge->getCenterPoint()->getFY(),
+						ge->getCenterPoint()->getFZ() + 1.0f
 					) == E_CD_EMPTY
 				) {
 					
 					
 					// at water surface
 					
-					ge->vel.setFZ(40);
-					ge->toggleGrav(-1.0f);
+					
+					
+					ge->setVel(0.0f,0.0f,10.0f);
 					
 					
 				}
@@ -5224,7 +5314,7 @@ DISPATCH_EVENT_END:
 					// underwater
 					
 					
-					ge->vel.setFZ(10);
+					ge->setVel(0.0f,0.0f,10.0f);
 					
 					playSoundEnt(
 						"bubble0",
@@ -5245,7 +5335,8 @@ DISPATCH_EVENT_END:
 					
 					ge->isFalling = true;
 					ge->isJumping = true;
-					ge->vel.setFZ(30);
+					
+					ge->setVel(0.0f,0.0f,10.0f);
 					
 					playSoundEnt(
 						"jump0",
@@ -5258,7 +5349,7 @@ DISPATCH_EVENT_END:
 		}
 		else {
 			if (ge->inWater) {
-				ge->vel.setFZ(-10);
+				ge->setVel(0.0f,0.0f,-10.0f);
 				
 				playSoundEnt(
 					"bubble0",
@@ -5347,14 +5438,17 @@ DISPATCH_EVENT_END:
 				
 				
 				case '1':
+					updateHolders = true;
 					getMarkerPos(x, y);
 					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
 				break;
 				case '2':
+					updateHolders = true;
 					getMarkerPos(x, y);
 					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
 				break;
 				case '3':
+					updateHolders = true;
 					getMarkerPos(x, y);
 					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_OBJ, &lastCellPos);
 				break;
@@ -5432,7 +5526,7 @@ DISPATCH_EVENT_END:
 					}
 					
 					
-					
+					cout << "\n";
 					cout << "pathfindingOn: " << pathfindingOn << "\n";
 					cout << "updateHolders " << updateHolders << "\n";
 					
@@ -5724,22 +5818,24 @@ DISPATCH_EVENT_END:
 					break;
 				
 
-				case 'x':
+				case 'X':
 					fogOn = 1.0 - fogOn;
 					cout << "fog on " << fogOn << "\n";
-				
-					// if (isConnected) {
-						
-					// }
-				
+					break;
+					
+				case 'x':
+					fxaaOn = !fxaaOn;
+					cout << "fxaaOn " << fxaaOn << "\n";
 					break;
 
 				case 'm':
 
-					medianCount++;					
-					if (medianCount == 4) {
-						medianCount = 0;
-					}
+					doPathReport = true;
+
+					// medianCount++;					
+					// if (medianCount == 4) {
+					// 	medianCount = 0;
+					// }
 					
 					//runReport();
 					
@@ -6041,41 +6137,6 @@ DISPATCH_EVENT_END:
 			xv2 *= maxDis;
 			
 			
-			
-			/*
-			if (keysPressed[keyMap[KEYMAP_FORWARD]]) { // || mbDown
-
-				xmod += float(sin(xrotrad));
-				ymod += float(cos(xrotrad));
-				
-				isPressingMove = true;
-			}
-
-			if (keysPressed[keyMap[KEYMAP_BACKWARD]]) {
-				
-				xmod -= float(sin(xrotrad));
-				ymod -= float(cos(xrotrad));
-				
-				isPressingMove = true;
-			}
-
-			if (keysPressed[keyMap[KEYMAP_RIGHT]]) {
-				
-				xmod += float(cos(xrotrad));
-				ymod -= float(sin(xrotrad));
-				
-				isPressingMove = true;
-			}
-
-			if (keysPressed[keyMap[KEYMAP_LEFT]]) {
-				
-				xmod -= float(cos(xrotrad));
-				ymod += float(sin(xrotrad));
-				
-				isPressingMove = true;
-			}
-			*/
-			
 			if (placingTemplate) {
 				switch(i) {
 					case E_GEOM_POINTS_TEMP_ORIGIN:
@@ -6194,6 +6255,8 @@ DISPATCH_EVENT_END:
 
 		mouseMoved = true;
 
+
+
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
 
@@ -6226,7 +6289,7 @@ DISPATCH_EVENT_END:
 		if (mbDown) {
 			angleToVec(&lightVec, fx*2.0, fy*2.0);
 			lightVecOrig.copyFrom(&lightVec);
-			lightVec.setFZ(abs(lightVec.getFZ()));
+			lightVec.setFZ(-abs(lightVec.getFZ()));
 		}
 		
 		
@@ -6528,7 +6591,20 @@ DISPATCH_EVENT_END:
 									moveNodes[0].setFXYZ(0.0,0.0,0.0);
 									moveNodes[1].setFXYZ(0.0,0.0,0.0);
 									gameLogic->searchedForPath = false;
-									//gameLogic->didFindPath = false;
+									gameLogic->didFindPath = false;
+								}
+							}
+							else {
+								if (currentActor != NULL) {
+									
+									upInd = mouseUpOPD.getFW();
+									
+									if (upInd == 0) {
+										currentActor->targAngRelative = -currentActor->targAngRelative;
+										playSoundEnt("swing0", currentActor);
+									}
+									
+									
 								}
 							}
 							
@@ -7100,6 +7176,7 @@ DISPATCH_EVENT_END:
 			
 			if (firstPerson) {
 				ca->ang = camRotX;
+				ca->targAng = ca->ang;
 			}
 			
 			tempVec1.setFXYZ(
@@ -7114,7 +7191,7 @@ DISPATCH_EVENT_END:
 					tempVec2.addXYZ(tempVec1[1],-tempVec1[0],0.0f);
 				}
 				else {
-					ca->ang += (-2.0f*M_PI*timeDelta);
+					ca->targAng += (-2.0f*M_PI*timeDelta);
 				}
 			}
 			
@@ -7123,7 +7200,7 @@ DISPATCH_EVENT_END:
 					tempVec2.addXYZ(-tempVec1[1],tempVec1[0],0.0f);
 				}
 				else {
-					ca->ang += (2.0f*M_PI*timeDelta);
+					ca->targAng += (2.0f*M_PI*timeDelta);
 				}
 			}
 			
@@ -7158,9 +7235,35 @@ DISPATCH_EVENT_END:
 			
 			// actor move curMoveSpeed
 			
-			tempVec2.multXYZ(timeDelta*200.0f);
 			
-			ca->vel.addXYZRef(&tempVec2);
+			
+			tempVec3.copyFrom(&tempVec2);
+			
+			tempVec3.multXYZ(1.0f);
+			
+			// float testVel = (
+			// 	(ca->body->m_linearVelocity.x + tempVec3[0]) *
+			// 	(ca->body->m_linearVelocity.x + tempVec3[0]) +
+			// 	(ca->body->m_linearVelocity.y + tempVec3[1]) *
+			// 	(ca->body->m_linearVelocity.y + tempVec3[1])
+			// );
+			
+			
+			if (ca->body != NULL) {
+				
+				//if (testVel < (ca->angVelMax*ca->angVelMax)) {
+					ca->body->m_linearVelocity.x += tempVec3[0];
+					ca->body->m_linearVelocity.y += tempVec3[1];
+				//}
+				// else {
+				// 	ca->body->m_linearVelocity.x += tempVec3[0];
+				// 	ca->body->m_linearVelocity.y += tempVec3[1];
+				// }
+				
+				ca->body->SetToAwake();
+				
+				//ca->body->AddLinearVelocity(tempVec2.getQ3Vec3());
+			}
 			
 			// if (tempVec2.length() > 0.01) {
 			// 	depthInvalidMove = true;
@@ -7170,8 +7273,8 @@ DISPATCH_EVENT_END:
 		}
 		
 		
-		
-		gw->updatePhys();
+		//gamePhysics->updateAll();
+		//gw->updatePhys();
 		
 	}
 	
@@ -7244,7 +7347,7 @@ DISPATCH_EVENT_END:
 		
 		//unsigned char curKey;
 		
-		bool isPressingMove = false;
+		isPressingMove = false;
 		
 		
 		
@@ -7360,13 +7463,20 @@ DISPATCH_EVENT_END:
 		if (currentActor != NULL) {
 				
 			if (firstPerson) {
-				targetCameraPos.copyFrom(&(currentActor->centerPointInPixels));
+				targetCameraPos.copyFrom(currentActor->getCenterPoint());
 				targetCameraPos.addXYZ(0.0f,0.0f,currentActor->diameterInCells.getFZ()*0.5f);
 			}
 			else {
 				targetCameraPos.copyFrom(&lookAtVec);
 				targetCameraPos.multXYZ( -(subjectDistance)*subjectZoom*tempZoom );
-				targetCameraPos.addXYZRef(&(currentActor->centerPointInPixels));
+				
+				targetCameraPos.addXYZ(
+					currentActor->body->GetCenterPoint().x,
+					currentActor->body->GetCenterPoint().y,
+					currentActor->body->GetCenterPoint().z
+				);
+				
+				//targetCameraPos.addXYZRef(currentActor->getCenterPoint());
 			}
 			
 			
@@ -7375,6 +7485,7 @@ DISPATCH_EVENT_END:
 					keysPressed[keyMap[KEYMAP_FORWARD]] ||
 					keysPressed[keyMap[KEYMAP_BACKWARD]]
 				) {
+					isPressingMove = true;
 					if (!rbDown) {
 						camRotation[0] += 
 							getShortestAngle(camRotation[0],currentActor->ang,timeDelta*1.0);
@@ -7440,7 +7551,7 @@ DISPATCH_EVENT_END:
 		
 		cameraShake = max(
 			cameraShake,
-			1.0f-clampfZO(ge->centerPointInPixels.distance(cameraPos)/(200.0f))
+			1.0f-clampfZO(ge->getCenterPoint()->distance(cameraPos)/(200.0f))
 		);
 		
 		if (cameraShake > lastCamShake) {
@@ -7457,7 +7568,7 @@ DISPATCH_EVENT_END:
 		
 		
 		
-		newPos.copyFrom(&(ge->centerPointInPixels));
+		newPos.copyFrom(ge->getCenterPoint());
 		newPos.addXYZ(0.0f,0.0f,-2.0f);
 		
 		if (waterBulletOn) {
@@ -7479,7 +7590,7 @@ DISPATCH_EVENT_END:
 		}
 		
 		sphereStack.push_back(SphereStruct());
-		sphereStack.back().position.copyFrom(&(ge->centerPointInPixels));
+		sphereStack.back().position.copyFrom(ge->getCenterPoint());
 		sphereStack.back().curRad = 1.0f;
 		sphereStack.back().maxRad = explodeRad;
 		sphereStack.back().radVel = 40.0f;
@@ -7489,7 +7600,12 @@ DISPATCH_EVENT_END:
 		//gameFluid[E_FID_SML]->pushExplodeBullet(true,&newPos,boolToInt(waterBulletOn));
 		gameFluid[E_FID_BIG]->pushExplodeBullet(true,&newPos,boolToInt(waterBulletOn));
 		
-		ge->isHidden = true;
+		
+		gw->removeVisObject(ge->uid, true);
+		
+		//ge->isHidden = true;
+		
+		
 		
 		//gw->removeVisObject(ge->uid);
 	}
@@ -7512,7 +7628,7 @@ DISPATCH_EVENT_END:
 			
 			//##
 			
-			gw->gameObjects[ca->isGrabbingId].vel.setFXYZ(
+			gw->gameObjects[ca->isGrabbingId].setVel(
 				cos(ca->ang)*20.0f,
 				sin(ca->ang)*20.0f,
 				30.0f	
@@ -7535,7 +7651,7 @@ DISPATCH_EVENT_END:
 		else {
 			// find obj to pickup
 			
-			res = gw->getClosestObj(actorId, &(ca->positionInCells));
+			res = gw->getClosestObj(actorId, ca->getCenterPoint());
 			
 			if (res < 0) {
 				
@@ -7580,7 +7696,7 @@ DISPATCH_EVENT_END:
 			
 		}
 		else {
-			newCellPos.copyFrom(&(ca->positionInCells));
+			newCellPos.copyFrom(ca->getCenterPoint());
 			
 			vx = cos(ca->ang)*3.0f;
 			vx = vx;
@@ -7594,13 +7710,11 @@ DISPATCH_EVENT_END:
 			
 			
 			
-			newVel.setFXYZ(
+			gw->gameObjects[entNum].setVel(
 				cos(ca->ang)*20.0f,
 				sin(ca->ang)*20.0f,
 				30.0f
 			);
-			
-			gw->gameObjects[entNum].vel.copyFrom(&newVel);
 			
 			if (bulletType != E_ENTTYPE_TRACE) {
 				playSoundEnt(
@@ -8641,7 +8755,6 @@ DISPATCH_EVENT_END:
 	float getUnderWater() {
 		if (
 			(gw->getCellAtCoords(
-				1,
 				cameraPos->getFX(),
 				cameraPos->getFY(),
 				cameraPos->getFZ() - 1.0f
@@ -8721,7 +8834,17 @@ DISPATCH_EVENT_END:
 			}
 			else {
 				
-				timeDelta = timeDelta*0.999 + ((curMoveTime-lastMoveTime)/1000000.0)*0.001;//TIME_DELTA;
+				if (ignoreFrameLimit) {
+					timeDelta = 
+						timeDelta*0.999 + ((curMoveTime-lastMoveTime)/1000000.0)*0.001;//TIME_DELTA;
+						//1.0/45.0;
+				}
+				else {
+					timeDelta = 1.0/120.0;
+				}
+				
+				
+				
 				
 				// if (smoothMove) {
 				// 	timeDelta = 1.0f/90.0f;
@@ -8887,45 +9010,45 @@ DISPATCH_EVENT_END:
 							setCameraToElevation();
 						}
 						
-						if (currentActor != NULL) {
+						// if (currentActor != NULL) {
 							
-							if (currentActor->inWater) {
-								temp = clampfZO(
-									currentActor->centerPointInPixelsTarg.distance(&(currentActor->centerPointInPixels))
-								)*0.25f;
-								temp2 = 0.0f;
-							}
-							else {
+						// 	if (currentActor->inWater) {
+						// 		temp = clampfZO(
+						// 			currentActor->getVel())
+						// 		)*0.25f;
+						// 		temp2 = 0.0f;
+						// 	}
+						// 	else {
 								
-								if (currentActor->isFalling) {
-									temp2 = 0.0f;
-								}
-								else {
-									temp2 = clampfZO(
-										currentActor->centerPointInPixelsTarg.distance(&(currentActor->centerPointInPixels))
-									);
-								}
+						// 		if (currentActor->isFalling) {
+						// 			temp2 = 0.0f;
+						// 		}
+						// 		else {
+						// 			temp2 = clampfZO(
+						// 				currentActor->getVel())
+						// 			);
+						// 		}
 								
-								temp = 0.0f;
-							}
+						// 		temp = 0.0f;
+						// 	}
 							
 							
 							
-							updateSoundPosAndPitch(
-								"swimming0",
-								cameraPos,
-								&(currentActor->centerPointInPixels),
-								temp,
-								0.01
-							);
-							updateSoundPosAndPitch(
-								"walkinggravel0",
-								cameraPos,
-								&(currentActor->centerPointInPixels),
-								temp2,
-								0.1
-							);
-						}
+						// 	updateSoundPosAndPitch(
+						// 		"swimming0",
+						// 		cameraPos,
+						// 		currentActor->getCenterPoint(),
+						// 		temp,
+						// 		0.01
+						// 	);
+						// 	updateSoundPosAndPitch(
+						// 		"walkinggravel0",
+						// 		cameraPos,
+						// 		currentActor->getCenterPoint(),
+						// 		temp2,
+						// 		0.1
+						// 	);
+						// }
 						
 						
 						// if (
@@ -9029,11 +9152,7 @@ DISPATCH_EVENT_END:
 						}
 						
 						
-						
-						
-						
 					}
-					
 					
 					
 					
@@ -9041,7 +9160,13 @@ DISPATCH_EVENT_END:
 						
 						
 						//gw->drawPrim();
+						
 						gw->update();
+						
+						if (GEN_POLYS_WORLD) {
+							gw->generateBlockHolder();
+						}
+						
 						
 					}
 					
@@ -9077,7 +9202,7 @@ DISPATCH_EVENT_END:
 	}
 
 	float getTargetTimeOfDay() {
-		return (lightVecOrig.getFZ() + 1.0f)*0.5f;
+		return 1.0f;//(lightVecOrig.getFZ() + 1.0f)*0.5f;
 	}
 
 
@@ -9090,6 +9215,7 @@ DISPATCH_EVENT_END:
 		
 		
 		curTime = myTimer.getElapsedTimeInMilliSec();
+		smoothTime = (sin(curTime/300.0)+1.0f)*0.5f;
 		
 		if (timeMod) {
 			pauseTime = curTime;
@@ -9214,6 +9340,9 @@ DISPATCH_EVENT_END:
 				else
 				{
 					
+					
+					
+					
 					frameUpdate();
 					
 					lastDepthInvalidMove = depthInvalidMove;
@@ -9233,6 +9362,7 @@ DISPATCH_EVENT_END:
 					fpsTest = false;
 					
 					cout << "Average Frame Time: " << (fpsTimer.getElapsedTimeInMilliSec()*1000.0/((double)(fpsCountMax))) << "\n";
+					cout << "FPS: " << 1.0/(fpsTimer.getElapsedTimeInSec()/((double)(fpsCountMax))) << "\n";
 					fpsTimer.stop();
 				}
 				

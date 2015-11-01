@@ -110,6 +110,15 @@ vec4 bilin(in sampler2D t, in vec2 uvIn, in vec2 textureSize, in vec2 texelSize)
     return mix( tA, tB, f.y );
 }
 
+// vec4 nearest(in sampler2D t, in vec2 uvIn, in vec2 textureSize, in vec2 texelSize)
+// {
+//     //vec2 f = fract( uvIn * textureSize );
+//     vec2 uv = floor(uvIn * textureSize)/textureSize;
+    
+//     return texture(t, uv);
+    
+// }
+
 vec4 trilin(in sampler3D t, in vec3 uvIn, in vec3 textureSize, in vec3 texelSize)
 {
     vec3 f = fract( uvIn * textureSize );
@@ -141,8 +150,7 @@ vec4 trilin(in sampler3D t, in vec3 uvIn, in vec3 textureSize, in vec3 texelSize
     
 }
 
-
-vec4 bicubic(sampler2D mySampler, vec2 texcoord, vec2 texscale) {
+vec4 bicubicNearest(sampler2D mySampler, vec2 texcoord, vec2 texscale, vec2 tsInv) {
 		float fx = fract(texcoord.x);
 		float fy = fract(texcoord.y);
 		texcoord.x -= fx;
@@ -155,10 +163,46 @@ vec4 bicubic(sampler2D mySampler, vec2 texcoord, vec2 texscale) {
 		vec4 s = vec4(xcubic.x + xcubic.y, xcubic.z + xcubic.w, ycubic.x + ycubic.y, ycubic.z + ycubic.w);
 		vec4 offset = c + vec4(xcubic.y, xcubic.w, ycubic.y, ycubic.w) / s;
 
+		vec4 sample0 = bilin(mySampler, vec2(offset.x, offset.z)*2.0/texscale, texscale, tsInv);
+		vec4 sample1 = bilin(mySampler, vec2(offset.y, offset.z)*2.0/texscale, texscale, tsInv);
+		vec4 sample2 = bilin(mySampler, vec2(offset.x, offset.w)*2.0/texscale, texscale, tsInv);
+		vec4 sample3 = bilin(mySampler, vec2(offset.y, offset.w)*2.0/texscale, texscale, tsInv);
+		
+		
+
+		float sx = s.x / (s.x + s.y);
+		float sy = s.z / (s.z + s.w);
+
+		return mix(
+				mix(sample3, sample2, sx),
+				mix(sample1, sample0, sx), sy
+		);
+}
+
+vec4 bicubic(sampler2D mySampler, vec2 texcoord, vec2 texscale, vec2 tsInv) {
+		float fx = fract(texcoord.x);
+		float fy = fract(texcoord.y);
+		texcoord.x -= fx;
+		texcoord.y -= fy;
+
+		vec4 xcubic = cubic(fx);
+		vec4 ycubic = cubic(fy);
+
+		vec4 c = vec4(texcoord.x - 0.5, texcoord.x + 1.5, texcoord.y - 0.5, texcoord.y + 1.5);
+		vec4 s = vec4(xcubic.x + xcubic.y, xcubic.z + xcubic.w, ycubic.x + ycubic.y, ycubic.z + ycubic.w);
+		vec4 offset = c + vec4(xcubic.y, xcubic.w, ycubic.y, ycubic.w) / s;
+
+		// vec4 sample0 = bilin(mySampler, vec2(offset.x, offset.z)*2.0/texscale, texscale, tsInv);
+		// vec4 sample1 = bilin(mySampler, vec2(offset.y, offset.z)*2.0/texscale, texscale, tsInv);
+		// vec4 sample2 = bilin(mySampler, vec2(offset.x, offset.w)*2.0/texscale, texscale, tsInv);
+		// vec4 sample3 = bilin(mySampler, vec2(offset.y, offset.w)*2.0/texscale, texscale, tsInv);
+		
+		
 		vec4 sample0 = texture(mySampler, vec2(offset.x, offset.z) * texscale);
 		vec4 sample1 = texture(mySampler, vec2(offset.y, offset.z) * texscale);
 		vec4 sample2 = texture(mySampler, vec2(offset.x, offset.w) * texscale);
 		vec4 sample3 = texture(mySampler, vec2(offset.y, offset.w) * texscale);
+		
 
 		float sx = s.x / (s.x + s.y);
 		float sy = s.z / (s.z + s.w);
