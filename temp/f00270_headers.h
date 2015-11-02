@@ -95,6 +95,9 @@ public:
   GLdouble (projMatrixD) [16];
   Matrix4 viewMatrix;
   Matrix4 projMatrix;
+  std::vector <Matrix4> objMatrixStack;
+  Matrix4 curObjMatrix;
+  Matrix4 tempObjMatrix;
   GLint (viewport) [4];
   E_OBJ activeObject;
   E_OBJ tempObj;
@@ -1404,7 +1407,6 @@ public:
   Singleton * singleton;
   intPairVec (containsEntIds) [E_ET_LENGTH];
   bool wasGenerated;
-  q3Body * body;
   GamePageHolder ();
   void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isBlockHolder = false);
   int getCellAtCoordsLocal (int xx, int yy, int zz);
@@ -1695,6 +1697,72 @@ public:
 };
 #undef LZZ_INLINE
 #endif
+// f00373_myshapedrawer.e
+//
+
+#ifndef LZZ_f00373_myshapedrawer_e
+#define LZZ_f00373_myshapedrawer_e
+#define LZZ_INLINE inline
+class MyShapeDrawer
+{
+public:
+  btAlignedObjectArray <ShapeCache*> m_shapecaches;
+  Singleton * singleton;
+  MyShapeDrawer (Singleton * _singleton);
+  void init ();
+  bool enableTexture (bool enable);
+  bool hasTextureEnabled () const;
+  void drawCoordSystem ();
+  void drawSphere (btScalar radius, int lats, int longs);
+  ShapeCache * cache (btConvexShape * shape);
+  void renderSquareA (float x, float y, float z);
+  void glDrawVector (btVector3 const & v);
+  void updateMat ();
+  void updateMat2 ();
+  void pushNewMat (btScalar * m);
+  void popMat ();
+  void drawOpenGL (btScalar * m, btCollisionShape const * shape, btVector3 const & color, int debugMode, btVector3 const & worldBoundsMin, btVector3 const & worldBoundsMax);
+  ~ MyShapeDrawer ();
+  void drawSceneInternal (btDiscreteDynamicsWorld const * dynamicsWorld, int pass);
+  void drawScene (btDiscreteDynamicsWorld const * dynamicsWorld, bool useShadows);
+};
+LZZ_INLINE void MyShapeDrawer::glDrawVector (btVector3 const & v)
+                                                             { glVertex3d(v[0], v[1], v[2]); }
+#undef LZZ_INLINE
+#endif
+// f00374_myglhelper.e
+//
+
+#ifndef LZZ_f00374_myglhelper_e
+#define LZZ_f00374_myglhelper_e
+#define LZZ_INLINE inline
+class MyGLHelper : public GUIHelperInterface
+{
+public:
+  MyGLHelperInternalData * m_data;
+  Singleton * singleton;
+  MyGLHelper (Singleton * _singleton, CommonGraphicsApp * glApp);
+  ~ MyGLHelper ();
+  struct CommonRenderInterface * getRenderInterface ();
+  void createRigidBodyGraphicsObject (btRigidBody * body, btVector3 const & color);
+  void createCollisionObjectGraphicsObject (btCollisionObject * body, btVector3 const & color);
+  int registerGraphicsShape (float const * vertices, int numvertices, int const * indices, int numIndices);
+  int registerGraphicsInstance (int shapeIndex, float const * position, float const * quaternion, float const * color, float const * scaling);
+  static void createCollisionShapeGraphicsObjectInternal (btCollisionShape * collisionShape, btTransform const & parentTransform, btAlignedObjectArray <GLInstanceVertex> & verticesOut, btAlignedObjectArray <int> & indicesOut);
+  void createCollisionShapeGraphicsObject (btCollisionShape * collisionShape);
+  void syncPhysicsToGraphics (btDiscreteDynamicsWorld const * rbWorld);
+  void render (btDiscreteDynamicsWorld const * rbWorld);
+  void createPhysicsDebugDrawer (btDiscreteDynamicsWorld * rbWorld);
+  struct Common2dCanvasInterface * get2dCanvasInterface ();
+  CommonParameterInterface * getParameterInterface ();
+  void setUpAxis (int axis);
+  void resetCamera (float camDist, float pitch, float yaw, float camPosX, float camPosY, float camPosZ);
+  void autogenerateGraphicsObjects (btDiscreteDynamicsWorld * rbWorld);
+  void drawText3D (char const * txt, float posX, float posY, float posZ, float size);
+  struct CommonGraphicsApp * getAppInterface ();
+};
+#undef LZZ_INLINE
+#endif
 // f00375_gamephysics.e
 //
 
@@ -1705,22 +1773,13 @@ class GamePhysics
 {
 public:
   Singleton * singleton;
-  q3Scene * scene;
-  float dt;
-  float acc;
-  f32 accumulator;
-  Clock g_clock;
+  BasicExample * example;
+  MyOGLApp * myOGLApp;
+  GUIHelperInterface * noGfx;
   GamePhysics ();
   void init (Singleton * _singleton);
-  void addRandFloor ();
-  void addBoxFromObj (BaseObjType _uid);
-  void collideWithWorld ();
-  void update ();
-  void shutdown ();
-  void drawAll ();
-  void updateBase (f32 time);
   void updateAll ();
-  void bulletTest ();
+  ~ GamePhysics ();
 };
 #undef LZZ_INLINE
 #endif

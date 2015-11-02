@@ -77,7 +77,7 @@ public:
 
 
 	
-	q3Body* body;
+	//q3Body* body;
 	
 	// q3BodyDef bodyDef;
 	// q3Transform tx;
@@ -192,49 +192,15 @@ public:
 
 		gphCenInPixels.averageXYZ(&gphMaxInPixels,&gphMinInPixels);
 		
-		if (GEN_COLLISION) {
-			// q3BodyDef bodyDef;
-			// bodyDef.position.Set( gphMinInPixels[0], gphMinInPixels[1], gphMinInPixels[2] );
-			// //bodyDef.axis.Set( 0.0f, 0.0f, 1.0f );
-			// //bodyDef.angle = 0.0f;
-			// //bodyDef.bodyType = eStaticBody;
-			// //bodyDef.angularVelocity.Set( 0.0f, 0.0f, 0.0f );
-			// //bodyDef.linearVelocity.Set( 0.0f, 0.0f, 0.0f );
-			// body = singleton->gamePhysics->scene->CreateBody( bodyDef );
-			
-			// q3Transform tx;
-			// q3Identity( tx );
-			// tx.position.Set(
-			// 	cellsPerHolder/2,
-			// 	cellsPerHolder/2,
-			// 	cellsPerHolder/2
-			// );
-			
-			// q3BoxDef boxDef;
-			// boxDef.Set( tx, q3Vec3( 8.0f, 8.0f, 8.0f ) );
-			// boxDef.SetRestitution( 0 );
-			// body->AddBox( boxDef );
-			
-			
-			q3BodyDef bodyDef;
-			bodyDef.position.Set(
-				gphMinInPixels[0], gphMinInPixels[1], gphMinInPixels[2]
-			);
-			body = singleton->gamePhysics->scene->CreateBody( bodyDef );
-			
-			
-			
-			
-		}
-		
 		// if (GEN_COLLISION) {
+			
 		// 	q3BodyDef bodyDef;
 		// 	bodyDef.position.Set(
 		// 		gphMinInPixels[0], gphMinInPixels[1], gphMinInPixels[2]
 		// 	);
 		// 	body = singleton->gamePhysics->scene->CreateBody( bodyDef );
+			
 		// }
-		
 		
 		
 		
@@ -1938,59 +1904,50 @@ public:
 		
 		
 		
-		// if (GEN_COLLISION) {
-		// 	q3BoxDef boxDef;
-		// 	boxDef.SetRestitution( 0 );
-		// 	q3Transform tx;
-		// 	q3Identity( tx );
-		// 	tx.position.Set(2,2,2);
-		// 	boxDef.Set( tx, q3Vec3( 8.0f, 8.0f, 8.0f ) );
-		// 	body->AddBox( boxDef );
-		// }
 		
 		float fk;
 		
-		if (GEN_COLLISION) {
-			for (q = 0; q < collideIndices.size(); q += 2) {
+		// if (GEN_COLLISION) {
+		// 	for (q = 0; q < collideIndices.size(); q += 2) {
 				
-				p = collideIndices[q];
-				p2 = collideIndices[q+1];
+		// 		p = collideIndices[q];
+		// 		p2 = collideIndices[q+1];
 				
-				kk = p/(cellsPerHolder*cellsPerHolder);
-				jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-				ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+		// 		kk = p/(cellsPerHolder*cellsPerHolder);
+		// 		jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+		// 		ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 				
-				kk2 = p2/(cellsPerHolder*cellsPerHolder);
+		// 		kk2 = p2/(cellsPerHolder*cellsPerHolder);
 				
-				fk = (kk2-kk)+1;
+		// 		fk = (kk2-kk)+1;
 				
-				q3BoxDef boxDef;
-				boxDef.SetRestitution( 0 );
-				q3Transform tx;
-				q3Identity( tx );
-				tx.position.Set(ii,jj,(kk+kk2)*0.5f);
-				boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, fk ) );
-				body->AddBox( boxDef );
-				
-				
-				// q3BoxDef boxDef;
-				// boxDef.SetRestitution( 0 );
-				// q3Transform tx;
-				// q3Identity( tx );
-				// tx.position.Set(ii,jj,kk);
-				// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
-				// body->AddBox( boxDef );
+		// 		q3BoxDef boxDef;
+		// 		boxDef.SetRestitution( 0 );
+		// 		q3Transform tx;
+		// 		q3Identity( tx );
+		// 		tx.position.Set(ii,jj,(kk+kk2)*0.5f);
+		// 		boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, fk ) );
+		// 		body->AddBox( boxDef );
 				
 				
-				// q3Identity( tx );
-				// tx.position.Set(ii,jj,kk);
-				// // tranform, extents
-				// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
-				// boxDef.SetRestitution( 0 );
-				// body->AddBox( boxDef );
+		// 		// q3BoxDef boxDef;
+		// 		// boxDef.SetRestitution( 0 );
+		// 		// q3Transform tx;
+		// 		// q3Identity( tx );
+		// 		// tx.position.Set(ii,jj,kk);
+		// 		// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
+		// 		// body->AddBox( boxDef );
 				
-			}
-		}
+				
+		// 		// q3Identity( tx );
+		// 		// tx.position.Set(ii,jj,kk);
+		// 		// // tranform, extents
+		// 		// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
+		// 		// boxDef.SetRestitution( 0 );
+		// 		// body->AddBox( boxDef );
+				
+		// 	}
+		// }
 		
 		//cout << "collideIndices.size() " << collideIndices.size() << "\n";
 		
@@ -2093,9 +2050,9 @@ public:
 
 		uint tempHF = E_CD_UNKNOWN;
 
-		if (GEN_COLLISION) {
-			collideIndices.clear();
-		}
+		// if (GEN_COLLISION) {
+		// 	collideIndices.clear();
+		// }
 		
 		vertexVec.clear();
 		indexVec.clear();
@@ -2183,56 +2140,56 @@ public:
 		int endInd;
 		
 		
-		if (GEN_COLLISION) {
+		// if (GEN_COLLISION) {
 			
-			if (
-				(tempHF == E_CD_SOLID) ||
-				(tempHF == E_CD_EMPTY)	
-			) {
+		// 	if (
+		// 		(tempHF == E_CD_SOLID) ||
+		// 		(tempHF == E_CD_EMPTY)	
+		// 	) {
 				
-			}
-			else {
-				for (i = 0; i < cellsPerHolder; i++) {
-					for (j = 0; j < cellsPerHolder; j++) {
-						for (k = 0; k < cellsPerHolder; k++) {
+		// 	}
+		// 	else {
+		// 		for (i = 0; i < cellsPerHolder; i++) {
+		// 			for (j = 0; j < cellsPerHolder; j++) {
+		// 				for (k = 0; k < cellsPerHolder; k++) {
 							
-							isLast = (k == (cellsPerHolder-1));
+		// 					isLast = (k == (cellsPerHolder-1));
 							
-							curInd = (i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder);
+		// 					curInd = (i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder);
 							
-							cellVal = getCellAtInd(curInd*4);
+		// 					cellVal = getCellAtInd(curInd*4);
 							
-							if (cellVal == E_CD_SOLID) {
-								if (rleOn) {
+		// 					if (cellVal == E_CD_SOLID) {
+		// 						if (rleOn) {
 									
-								}
-								else {
-									rleOn = true;
-									begInd = curInd;
-									collideIndices.push_back(begInd);
-								}
-							}
-							else {
-								if (rleOn) {
-									rleOn = false;
-									endInd = curInd-(cellsPerHolder*cellsPerHolder);
+		// 						}
+		// 						else {
+		// 							rleOn = true;
+		// 							begInd = curInd;
+		// 							collideIndices.push_back(begInd);
+		// 						}
+		// 					}
+		// 					else {
+		// 						if (rleOn) {
+		// 							rleOn = false;
+		// 							endInd = curInd-(cellsPerHolder*cellsPerHolder);
 									
-									collideIndices.push_back(endInd);
-								}
-							}
+		// 							collideIndices.push_back(endInd);
+		// 						}
+		// 					}
 							
-							if (rleOn&&isLast) {
-								rleOn = false;
-								endInd = curInd;
-								collideIndices.push_back(endInd);
-							}
-						}
-					}
-				}
-			}
+		// 					if (rleOn&&isLast) {
+		// 						rleOn = false;
+		// 						endInd = curInd;
+		// 						collideIndices.push_back(endInd);
+		// 					}
+		// 				}
+		// 			}
+		// 		}
+		// 	}
 				
 				
-		}
+		// }
 		
 		
 		// if (GEN_COLLISION) {

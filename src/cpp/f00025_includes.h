@@ -665,50 +665,33 @@ struct charArr {
 
 
 
-#include "q3.h"
+// #include "q3.h"
 
-#include <chrono>
+// #include <chrono>
 
-typedef std::chrono::high_resolution_clock hr_clock;
-typedef std::chrono::nanoseconds clock_freq;
-const float kClockDivisor = 1.0f / (float)std::chrono::duration_cast<clock_freq>( std::chrono::seconds( 1 ) ).count( );
+// typedef std::chrono::high_resolution_clock hr_clock;
+// typedef std::chrono::nanoseconds clock_freq;
+// const float kClockDivisor = 1.0f / (float)std::chrono::duration_cast<clock_freq>( std::chrono::seconds( 1 ) ).count( );
 
-class Clock {
-public:
-	Clock( ) {
-		m_start = hr_clock::now( );
-		m_stop = hr_clock::now( );
-	}
+// class Clock {
+// public:
+// 	Clock( ) {
+// 		m_start = hr_clock::now( );
+// 		m_stop = hr_clock::now( );
+// 	}
 
-	float Start( ) {
-		m_start = hr_clock::now( );
-		return std::chrono::duration_cast<clock_freq>( m_start - m_stop ).count( ) * kClockDivisor;
-	}
-	void Stop( ) {
-		m_stop = hr_clock::now( );
-	}
+// 	float Start( ) {
+// 		m_start = hr_clock::now( );
+// 		return std::chrono::duration_cast<clock_freq>( m_start - m_stop ).count( ) * kClockDivisor;
+// 	}
+// 	void Stop( ) {
+// 		m_stop = hr_clock::now( );
+// 	}
 
-private:
-  hr_clock::time_point m_start;
-  hr_clock::time_point m_stop;
-};
-
-// // Base class for running demos to show off q3
-// struct Demo
-// {
-// 	virtual ~Demo( ) {}
-
-// 	virtual void Init( ) {};
-// 	virtual void Update( ) {};
-// 	virtual void Shutdown( ) {};
-
-// 	virtual void Render( q3Render *debugDrawer ) { (void)debugDrawer; }
-// 	virtual void KeyDown( unsigned char key ) { (void)key; }
-// 	virtual void KeyUp( unsigned char key ) { (void)key; }
-// 	virtual void LeftClick( i32 x, i32 y ) { (void)x; (void)y; }
+// private:
+//   hr_clock::time_point m_start;
+//   hr_clock::time_point m_stop;
 // };
-
-
 
 
 
@@ -1130,9 +1113,12 @@ GLuint indexDataQuad[] = {
 // ??????????????????????????????
 
 
-#include "CommonInterfaces/CommonExampleInterface.h"
-#include "CommonInterfaces/CommonGUIHelperInterface.h"
-#include "CommonInterfaces/CommonRigidBodyBase.h"
+#include "../CommonInterfaces/CommonGraphicsAppInterface.h"
+#include "../CommonInterfaces/CommonRenderInterface.h"
+#include "../CommonInterfaces/CommonExampleInterface.h"
+#include "../CommonInterfaces/CommonGUIHelperInterface.h"
+#include "../CommonInterfaces/CommonRigidBodyBase.h"
+
 
 #include "btBulletDynamicsCommon.h"
 #define ARRAY_SIZE_Y 5
@@ -1146,79 +1132,81 @@ GLuint indexDataQuad[] = {
 
 
 
-struct MyGUIHelper : public GUIHelperInterface
-{
-	MyGUIHelper() {}
-	virtual ~MyGUIHelper() {}
+// struct MyGUIHelper : public GUIHelperInterface
+// {
+// 	MyGUIHelper() {}
+// 	virtual ~MyGUIHelper() {}
 
-	virtual void createRigidBodyGraphicsObject(btRigidBody* body,const btVector3& color){}
+// 	virtual void createRigidBodyGraphicsObject(btRigidBody* body,const btVector3& color){}
 
-	virtual void createCollisionObjectGraphicsObject(btCollisionObject* obj,const btVector3& color) {}
+// 	virtual void createCollisionObjectGraphicsObject(btCollisionObject* obj,const btVector3& color) {}
 
-	virtual void createCollisionShapeGraphicsObject(btCollisionShape* collisionShape){}
+// 	virtual void createCollisionShapeGraphicsObject(btCollisionShape* collisionShape){}
 
-	virtual void syncPhysicsToGraphics(const btDiscreteDynamicsWorld* rbWorld){}
+// 	virtual void syncPhysicsToGraphics(const btDiscreteDynamicsWorld* rbWorld){}
 
-	virtual void render(const btDiscreteDynamicsWorld* rbWorld) {}
+// 	virtual void render(const btDiscreteDynamicsWorld* rbWorld) {}
 
-	virtual void createPhysicsDebugDrawer( btDiscreteDynamicsWorld* rbWorld){}
+// 	virtual void createPhysicsDebugDrawer( btDiscreteDynamicsWorld* rbWorld){}
 
-	virtual int registerGraphicsShape(const float* vertices, int numvertices, const int* indices, int numIndices) { return -1; }
+// 	virtual int registerGraphicsShape(const float* vertices, int numvertices, const int* indices, int numIndices) { return -1; }
 
-	virtual int registerGraphicsInstance(int shapeIndex, const float* position, const float* quaternion, const float* color, const float* scaling) { return -1;}
+// 	virtual int registerGraphicsInstance(int shapeIndex, const float* position, const float* quaternion, const float* color, const float* scaling) { return -1;}
 
-	virtual Common2dCanvasInterface* get2dCanvasInterface()
-	{
-		return 0;
-	}
+// 	virtual Common2dCanvasInterface* get2dCanvasInterface()
+// 	{
+// 		return 0;
+// 	}
 	
-	virtual CommonParameterInterface* getParameterInterface()
-	{
-		return 0;
-	}
+// 	virtual CommonParameterInterface* getParameterInterface()
+// 	{
+// 		return 0;
+// 	}
 
-	virtual CommonRenderInterface* getRenderInterface()
-	{
-		return 0;
-	}
+// 	virtual CommonRenderInterface* getRenderInterface()
+// 	{
+// 		return 0;
+// 	}
 	
-	virtual CommonGraphicsApp* getAppInterface()
-	{
-		return 0;
-	}
+// 	virtual CommonGraphicsApp* getAppInterface()
+// 	{
+// 		return 0;
+// 	}
 
 
-	virtual void setUpAxis(int axis)
-	{
-	}
-	virtual void resetCamera(float camDist, float pitch, float yaw, float camPosX,float camPosY, float camPosZ)
-	{
-	}
+// 	virtual void setUpAxis(int axis)
+// 	{
+// 	}
+// 	virtual void resetCamera(float camDist, float pitch, float yaw, float camPosX,float camPosY, float camPosZ)
+// 	{
+// 	}
 
-	virtual void autogenerateGraphicsObjects(btDiscreteDynamicsWorld* rbWorld) 
-	{
-	}
+// 	virtual void autogenerateGraphicsObjects(btDiscreteDynamicsWorld* rbWorld) 
+// 	{
+// 	}
     
-	virtual void drawText3D( const char* txt, float posX, float posZY, float posZ, float size)
-	{
-	}
+// 	virtual void drawText3D( const char* txt, float posX, float posZY, float posZ, float size)
+// 	{
+// 	}
 	
-};
+// };
 
 
-
-
-class CommonExampleInterface*    BasicExampleCreateFunc(struct CommonExampleOptions& options);
+//class CommonExampleInterface*    BasicExampleCreateFunc(struct CommonExampleOptions& options);
 
 struct BasicExample : public CommonRigidBodyBase
 {
 	BasicExample(struct GUIHelperInterface* helper)
 		:CommonRigidBodyBase(helper)
 	{
+		
 	}
+	
 	virtual ~BasicExample(){}
 	virtual void initPhysics();
 	virtual void renderScene();
+	//virtual btDiscreteDynamicsWorld* getDynamicsWorld();
+	
 	void resetCamera()
 	{
 		float dist = 41;
@@ -1229,9 +1217,13 @@ struct BasicExample : public CommonRigidBodyBase
 	}
 };
 
+// btDiscreteDynamicsWorld* BasicExample::getDynamicsWorld() {
+// 	return m_dynamicsWorld;
+// }
+
 void BasicExample::initPhysics()
 {
-	m_guiHelper->setUpAxis(1);
+	m_guiHelper->setUpAxis(2);
 
 	createEmptyDynamicsWorld();
 	
@@ -1239,6 +1231,8 @@ void BasicExample::initPhysics()
 
 	if (m_dynamicsWorld->getDebugDrawer())
 		m_dynamicsWorld->getDebugDrawer()->setDebugMode(btIDebugDraw::DBG_DrawWireframe+btIDebugDraw::DBG_DrawContactPoints);
+
+	m_dynamicsWorld->setGravity(btVector3(0,-10,0));
 
 	///create a few basic rigid bodies
 	btBoxShape* groundShape = createBoxShape(btVector3(btScalar(50.),btScalar(50.),btScalar(50.)));
@@ -1309,18 +1303,656 @@ void BasicExample::initPhysics()
 
 void BasicExample::renderScene()
 {
+	// m_guiHelper->syncPhysicsToGraphics(m_dynamicsWorld);
+	// m_guiHelper->render(m_dynamicsWorld);
 	CommonRigidBodyBase::renderScene();
-	
 }
 
-CommonExampleInterface*    BasicExampleCreateFunc(CommonExampleOptions& options)
-{
-	return new BasicExample(options.m_guiHelper);
-}
+// CommonExampleInterface* BasicExampleCreateFunc(CommonExampleOptions& options)
+// {
+// 	return new BasicExample(options.m_guiHelper);
+// }
 
 
 
 
 // ??????????????????????????????
+
+
+
+
+
+
+/*
+Bullet Continuous Collision Detection and Physics Library
+Copyright (c) 2003-2006 Erwin Coumans  http://continuousphysics.com/Bullet/
+
+This software is provided 'as-is', without any express or implied warranty.
+In no event will the authors be held liable for any damages arising from the use of this software.
+Permission is granted to anyone to use this software for any purpose, 
+including commercial applications, and to alter it and redistribute it freely, 
+subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+*/
+
+#include "../OpenGLWindow/OpenGL2Include.h"
+
+class btConvexShape;
+class btCollisionShape;
+class btShapeHull;
+class btDiscreteDynamicsWorld;
+
+#include "LinearMath/btAlignedObjectArray.h"
+#include "LinearMath/btVector3.h"
+
+#include "BulletCollision/CollisionShapes/btShapeHull.h"
+
+
+struct ShapeCache
+{
+	struct Edge { btVector3 n[2];int v[2]; };
+	ShapeCache(btConvexShape* s) : m_shapehull(s) {}
+	btShapeHull					m_shapehull;
+	btAlignedObjectArray<Edge>	m_edges;
+};
+
+void OGL_displaylist_register_shape(btCollisionShape * shape);
+void OGL_displaylist_clean();
+
+#include "BulletCollision/CollisionShapes/btPolyhedralConvexShape.h"
+#include "BulletCollision/CollisionShapes/btTriangleMeshShape.h"
+#include "BulletCollision/CollisionShapes/btBoxShape.h"
+#include "BulletCollision/CollisionShapes/btSphereShape.h"
+#include "BulletCollision/CollisionShapes/btConeShape.h"
+#include "BulletCollision/CollisionShapes/btCylinderShape.h"
+#include "BulletCollision/CollisionShapes/btTetrahedronShape.h"
+#include "BulletCollision/CollisionShapes/btCompoundShape.h"
+#include "BulletCollision/CollisionShapes/btCapsuleShape.h"
+#include "BulletCollision/CollisionShapes/btConvexTriangleMeshShape.h"
+#include "BulletCollision/CollisionShapes/btUniformScalingShape.h"
+#include "BulletCollision/CollisionShapes/btStaticPlaneShape.h"
+#include "BulletCollision/CollisionShapes/btMultiSphereShape.h"
+#include "BulletCollision/CollisionShapes/btConvexPolyhedron.h"
+#include "BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h"
+#include "BulletDynamics/Dynamics/btRigidBody.h"
+#include "LinearMath/btDefaultMotionState.h"
+
+///
+#include "BulletCollision/CollisionShapes/btShapeHull.h"
+#include "LinearMath/btTransformUtil.h"
+#include "LinearMath/btIDebugDraw.h"
+
+#include "Bullet3Common/b3Scalar.h"
+#include "../OpenGLWindow/GLInstanceGraphicsShape.h"
+//#include "../OpenGLWindow/SimpleOpenGL2Renderer.h"
+
+// @@@@@
+
+
+
+
+
+
+
+#if defined(BT_USE_DOUBLE_PRECISION)
+#define btglLoadMatrix glLoadMatrixd
+#define btglMultMatrix glMultMatrixd
+#define btglColor3 glColor3d
+#define btglVertex3 glVertex3d
+#else
+#define btglLoadMatrix glLoadMatrixf
+#define btglMultMatrix glMultMatrixf
+#define btglColor3 glColor3f
+#define btglVertex3 glVertex3d
+#endif
+
+
+class GlDrawcallback : public btTriangleCallback
+{
+
+public:
+
+	bool	m_wireframe;
+
+	GlDrawcallback()
+		:m_wireframe(false)
+	{
+	}
+
+	virtual void processTriangle(btVector3* triangle,int partId, int triangleIndex)
+	{
+
+		(void)triangleIndex;
+		(void)partId;
+
+
+		if (m_wireframe)
+		{
+			glBegin(GL_LINES);
+			glColor3f(1, 0, 0);
+			glVertex3d(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
+			glVertex3d(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
+			glColor3f(0, 1, 0);
+			glVertex3d(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
+			glVertex3d(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
+			glColor3f(0, 0, 1);
+			glVertex3d(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
+			glVertex3d(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
+			glEnd();
+		} else
+		{
+			glBegin(GL_TRIANGLES);
+			//glColor3f(1, 1, 1);
+			
+			
+			glVertex3d(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
+			glVertex3d(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
+			glVertex3d(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
+
+			glVertex3d(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
+			glVertex3d(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
+			glVertex3d(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
+			glEnd();
+		}
+	}
+};
+
+class TriangleGlDrawcallback : public btInternalTriangleIndexCallback
+{
+public:
+	virtual void internalProcessTriangleIndex(btVector3* triangle,int partId,int  triangleIndex)
+	{
+		(void)triangleIndex;
+		(void)partId;
+
+
+		glBegin(GL_TRIANGLES);//LINES);
+		glColor3f(1, 0, 0);
+		glVertex3d(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
+		glVertex3d(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
+		glColor3f(0, 1, 0);
+		glVertex3d(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
+		glVertex3d(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
+		glColor3f(0, 0, 1);
+		glVertex3d(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
+		glVertex3d(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
+		glEnd();
+	}
+};
+
+
+// ???????????
+
+
+
+
+
+#include "../CommonInterfaces/CommonRenderInterface.h"
+#include "../OpenGLWindow/SimpleCamera.h"
+#include "Bullet3Common/b3Vector3.h"
+
+
+struct OGLRenderer : public CommonRenderInterface
+{
+    int m_width;
+    int m_height;
+    SimpleCamera	m_camera;
+    
+    OGLRenderer(int width, int height);
+    
+    virtual void init();
+    
+    virtual void updateCamera(int upAxis);
+    
+	virtual const CommonCameraInterface* getActiveCamera() const;
+	virtual CommonCameraInterface* getActiveCamera();
+	virtual void setActiveCamera(CommonCameraInterface* cam);
+
+	virtual void	resize(int width, int height)
+	{
+		m_width = width;
+		m_height = height;
+	}
+
+    virtual void removeAllInstances();
+    
+    
+    virtual void writeSingleInstanceColorToCPU(float* color, int srcIndex);
+    virtual void writeSingleInstanceColorToCPU(double* color, int srcIndex);
+    virtual void	getCameraViewMatrix(float viewMat[16]) const;
+    virtual void	getCameraProjectionMatrix(float projMat[16]) const;
+
+    
+    virtual void renderScene();
+    
+    virtual int getScreenWidth()
+    {
+        return m_width;
+    }
+    virtual int getScreenHeight()
+    {
+        return m_height;
+    }
+	virtual int	registerTexture(const unsigned char* texels, int width, int height)
+	{
+		return -1;
+	}
+    virtual int registerGraphicsInstance(int shapeIndex, const double* position, const double* quaternion, const double* color, const double* scaling);
+    
+    virtual int registerGraphicsInstance(int shapeIndex, const float* position, const float* quaternion, const float* color, const float* scaling);
+    
+    virtual void drawLines(const float* positions, const float color[4], int numPoints, int pointStrideInBytes, const unsigned int* indices, int numIndices, float pointDrawSize);
+    
+    virtual void drawLine(const float from[4], const float to[4], const float color[4], float lineWidth);
+    
+    virtual int registerShape(const float* vertices, int numvertices, const int* indices, int numIndices,int primitiveType=B3_GL_TRIANGLES, int textureIndex=-1);
+    
+    virtual void writeSingleInstanceTransformToCPU(const float* position, const float* orientation, int srcIndex);
+    
+    virtual void writeSingleInstanceTransformToCPU(const double* position, const double* orientation, int srcIndex);
+    
+    virtual void writeTransforms();
+    
+    virtual void drawLine(const double from[4], const double to[4], const double color[4], double lineWidth);
+    
+    virtual void drawPoint(const float* position, const float color[4], float pointDrawSize);
+    
+    virtual void drawPoint(const double* position, const double color[4], double pointDrawSize);
+    
+    virtual void updateShape(int shapeIndex, const float* vertices);
+    
+    virtual void enableBlend(bool blend);
+
+	virtual struct	GLInstanceRendererInternalData* getInternalData()
+	{
+		return 0;
+	}
+    
+};
+
+
+
+
+
+
+
+OGLRenderer::OGLRenderer(int width, int height)
+ :m_width(width),
+ m_height(height)
+{
+    
+}
+
+void OGLRenderer::init()
+{
+}
+
+const CommonCameraInterface* OGLRenderer::getActiveCamera() const
+{
+	return &m_camera;
+}
+CommonCameraInterface* OGLRenderer::getActiveCamera()
+{
+	return &m_camera;
+}
+void OGLRenderer::setActiveCamera(CommonCameraInterface* cam)
+{
+	b3Assert(0);//not supported yet
+}
+
+void OGLRenderer::updateCamera(int upAxis)
+{
+    float projection[16];
+    float view[16];
+    m_camera.setAspectRatio((float)m_width/(float)m_height);
+    m_camera.update();
+    m_camera.getCameraProjectionMatrix(projection);
+    m_camera.getCameraViewMatrix(view);
+    GLfloat projMat[16];
+    GLfloat viewMat[16];
+    for (int i=0;i<16;i++)
+    {
+        viewMat[i] = view[i];
+        projMat[i] = projection[i];
+    }
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMultMatrixf(projMat);
+    
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glMultMatrixf(viewMat);
+}
+
+void OGLRenderer::removeAllInstances()
+{
+}
+
+
+void OGLRenderer::writeSingleInstanceColorToCPU(float* color, int srcIndex)
+{
+}
+void OGLRenderer::writeSingleInstanceColorToCPU(double* color, int srcIndex)
+{
+    
+}
+void	OGLRenderer::getCameraViewMatrix(float viewMat[16]) const
+{
+    b3Assert(0);
+}
+void	OGLRenderer::getCameraProjectionMatrix(float projMat[16]) const
+{
+    b3Assert(0);
+    
+}
+
+
+void OGLRenderer::renderScene()
+{
+    //cout << "asdfasdf\n";
+}
+    
+    
+
+
+int OGLRenderer::registerGraphicsInstance(int shapeIndex, const double* position, const double* quaternion, const double* color, const double* scaling)
+{
+    return 0;
+}
+
+int OGLRenderer::registerGraphicsInstance(int shapeIndex, const float* position, const float* quaternion, const float* color, const float* scaling)
+{
+    return 0;
+}
+
+void OGLRenderer::drawLines(const float* positions, const float color[4], int numPoints, int pointStrideInBytes, const unsigned int* indices, int numIndices, float pointDrawSize)
+{
+    int pointStrideInFloats = pointStrideInBytes/4;
+    glLineWidth(pointDrawSize);
+    for (int i=0;i<numIndices;i+=2)
+    {
+        int index0 = indices[i];
+        int index1 = indices[i+1];
+        
+        b3Vector3 fromColor = b3MakeVector3(color[0],color[1],color[2]);
+        b3Vector3 toColor = b3MakeVector3(color[0],color[1],color[2]);
+        
+        b3Vector3 from= b3MakeVector3(positions[index0*pointStrideInFloats],positions[index0*pointStrideInFloats+1],positions[index0*pointStrideInFloats+2]);
+        b3Vector3 to= b3MakeVector3(positions[index1*pointStrideInFloats],positions[index1*pointStrideInFloats+1],positions[index1*pointStrideInFloats+2]);
+        
+        glBegin(GL_LINES);
+        glColor3f(fromColor.getX(), fromColor.getY(), fromColor.getZ());
+        glVertex3d(from.getX(), from.getY(), from.getZ());
+        glColor3f(toColor.getX(), toColor.getY(), toColor.getZ());
+        glVertex3d(to.getX(), to.getY(), to.getZ());
+        glEnd();
+        
+    }
+}
+
+void OGLRenderer::drawLine(const float from[4], const float to[4], const float color[4], float lineWidth)
+{
+        glLineWidth(lineWidth);
+        glBegin(GL_LINES);
+        glColor3f(color[0],color[1],color[2]);
+        glVertex3d(from[0],from[1],from[2]);
+        glVertex3d(to[0],to[1],to[2]);
+        glEnd();
+}
+int OGLRenderer::registerShape(const float* vertices, int numvertices, const int* indices, int numIndices,int primitiveType, int textureIndex)
+{
+    return 0;
+}
+
+void OGLRenderer::writeSingleInstanceTransformToCPU(const float* position, const float* orientation, int srcIndex)
+{
+}
+void OGLRenderer::writeSingleInstanceTransformToCPU(const double* position, const double* orientation, int srcIndex)
+{
+}
+void OGLRenderer::writeTransforms()
+{
+}
+
+
+void OGLRenderer::drawLine(const double from[4], const double to[4], const double color[4], double lineWidth)
+{
+    
+}
+void OGLRenderer::drawPoint(const float* position, const float color[4], float pointDrawSize)
+{
+}
+void OGLRenderer::drawPoint(const double* position, const double color[4], double pointDrawSize)
+{
+}
+
+void OGLRenderer::updateShape(int shapeIndex, const float* vertices)
+{
+}
+
+void OGLRenderer::enableBlend(bool blend)
+{
+}
+
+
+
+
+// ??????????????
+
+struct MyOGLAppInternalData
+{
+	GLuint m_fontTextureId;
+	GLuint m_largeFontTextureId;
+	
+};
+
+struct MyOGLApp : public CommonGraphicsApp
+{
+protected:
+	struct MyOGLAppInternalData*	m_data;
+
+public:
+	MyOGLApp(const char* title, int width, int height) {
+		m_renderer = new OGLRenderer(width,height);		
+	}
+	virtual ~MyOGLApp() {}
+
+	virtual void drawGrid(DrawGridData data=DrawGridData()) {}
+	virtual void setUpAxis(int axis) {}
+	virtual int getUpAxis() const {return 2;}
+	
+	virtual void swapBuffer() {}
+	virtual void drawText( const char* txt, int posX, int posY) {}
+	virtual void setBackgroundColor(float red, float green, float blue) {}
+	virtual int	registerCubeShape(float halfExtentsX,float halfExtentsY, float halfExtentsZ, int textureIndex = -1,  float textureScaling = 1)
+	{
+		cout << "a\n";
+		return 0;
+	}
+	virtual int	registerGraphicsUnitSphereShape(EnumSphereLevelOfDetail lod, int textureId=-1)
+	{
+		cout << "b\n";
+		return 0;
+	}
+    virtual void drawText3D( const char* txt, float posX, float posZY, float posZ, float size) {}
+    virtual void registerGrid(int xres, int yres, float color0[4], float color1[4]) {
+    	cout << "c\n";
+    }
+    
+    virtual struct	GLInstanceRendererInternalData* getInternalData()
+    {
+    	cout << "d\n";
+    	return 0;
+    }
+    
+};
+
+
+
+
+
+#define BT_LINE_BATCH_SIZE 512
+
+
+static btVector4 sColors[4] =
+{
+	btVector4(0.3,0.3,1,1),
+	btVector4(0.6,0.6,1,1),
+	btVector4(0,1,0,1),
+	btVector4(0,1,1,1),
+	//btVector4(1,1,0,1),
+};
+
+
+struct MyDebugVec3
+{
+	MyDebugVec3(const btVector3& org)
+	:x(org.x()),
+	y(org.y()),
+	z(org.z())
+	{
+	}
+
+	float x;
+	float y;
+	float z;
+};
+class MyDebugDrawer : public btIDebugDraw
+{
+	CommonGraphicsApp* m_glApp;
+	int m_debugMode;
+
+    btAlignedObjectArray<MyDebugVec3> m_linePoints;
+    btAlignedObjectArray<unsigned int> m_lineIndices;
+    btVector3 m_currentLineColor;
+	DefaultColors m_ourColors;
+
+public:
+
+	MyDebugDrawer(CommonGraphicsApp* app)
+		: m_glApp(app)
+		,m_debugMode(btIDebugDraw::DBG_DrawWireframe|btIDebugDraw::DBG_DrawAabb),
+		m_currentLineColor(-1,-1,-1)
+	{
+		
+		
+	}
+	virtual DefaultColors	getDefaultColors() const	
+	{	
+		return m_ourColors;
+	}
+	///the default implementation for setDefaultColors has no effect. A derived class can implement it and store the colors.
+	virtual void setDefaultColors(const DefaultColors& colors) 
+	{
+		m_ourColors = colors;
+	}
+
+
+	virtual void	drawLine(const btVector3& from1,const btVector3& to1,const btVector3& color1)
+	{
+        //float from[4] = {from1[0],from1[1],from1[2],from1[3]};
+        //float to[4] = {to1[0],to1[1],to1[2],to1[3]};
+        //float color[4] = {color1[0],color1[1],color1[2],color1[3]};
+		//m_glApp->m_instancingRenderer->drawLine(from,to,color);
+		if (m_currentLineColor!=color1 || m_linePoints.size() >= BT_LINE_BATCH_SIZE)
+        {
+            flushLines();
+            m_currentLineColor = color1;
+        }
+		MyDebugVec3 from(from1);
+		MyDebugVec3 to(to1);
+			
+		m_linePoints.push_back(from);
+		m_linePoints.push_back(to);
+
+		m_lineIndices.push_back(m_lineIndices.size());
+		m_lineIndices.push_back(m_lineIndices.size());
+
+	}
+
+	virtual void	drawContactPoint(const btVector3& PointOnB,const btVector3& normalOnB,btScalar distance,int lifeTime,const btVector3& color)
+	{
+        drawLine(PointOnB,PointOnB+normalOnB,color);
+	}
+     
+
+	virtual void	reportErrorWarning(const char* warningString)
+	{
+	}
+
+	virtual void	draw3dText(const btVector3& location,const char* textString)
+	{
+	}
+
+	virtual void	setDebugMode(int debugMode)
+	{
+		m_debugMode = debugMode;
+	}
+
+	virtual int		getDebugMode() const
+	{
+		return m_debugMode;
+	}
+
+    virtual void flushLines()
+	{
+	    int sz = m_linePoints.size();
+	    if (sz)
+        {
+			float debugColor[4];
+		debugColor[0] = m_currentLineColor.x();
+		debugColor[1] = m_currentLineColor.y();
+		debugColor[2] = m_currentLineColor.z();
+		debugColor[3] = 1.f;
+		m_glApp->m_renderer->drawLines(&m_linePoints[0].x,debugColor,
+														 m_linePoints.size(),sizeof(MyDebugVec3),
+														 &m_lineIndices[0],
+														 m_lineIndices.size(),
+														 1);
+            m_linePoints.clear();
+            m_lineIndices.clear();
+        }
+	}
+
+};
+
+
+class MyShapeDrawer;
+
+struct MyConvertPointerSizeT
+{
+	union 
+	{
+			const void* m_ptr;
+			size_t m_int;
+	};
+};
+
+bool shapePointerCompareFunc(const btCollisionObject* colA, const btCollisionObject* colB)
+{
+	MyConvertPointerSizeT a,b;
+	a.m_ptr = colA->getCollisionShape();
+	b.m_ptr = colB->getCollisionShape();
+	return (a.m_int<b.m_int);
+}
+
+struct MyGLHelperInternalData
+{
+	struct CommonGraphicsApp* m_glApp;
+	class MyDebugDrawer* m_debugDraw;
+	MyShapeDrawer* m_gl2ShapeDrawer;
+};
+
+
+
+
+
+
+
+
+
 
 

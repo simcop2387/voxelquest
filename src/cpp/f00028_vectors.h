@@ -327,9 +327,9 @@ public:
 		return 0.0f;
 	}
 
-	q3Vec3 getQ3Vec3() {
-		return q3Vec3(fv4.x,fv4.y,fv4.z);
-	}
+	// q3Vec3 getQ3Vec3() {
+	// 	return q3Vec3(fv4.x,fv4.y,fv4.z);
+	// }
 
 	void setIXYZW(int x, int y, int z, int w) {
 		iv4.x = x;
@@ -1782,7 +1782,7 @@ public:
 	BaseObjType parentUID;
 	vector<BaseObjType> children;
 	
-	q3Body* body;
+	//q3Body* body;
 	
 	int isGrabbingId;
 	int isGrabbedById;
@@ -1815,25 +1815,25 @@ public:
 	
 	FIVector4* getVel() {
 		
-		if (body != NULL) {
-			linVelocity.setFXYZ(
-				body->GetLinearVelocity().x,
-				body->GetLinearVelocity().y,
-				body->GetLinearVelocity().z	
-			);
-		}
+		// if (body != NULL) {
+		// 	linVelocity.setFXYZ(
+		// 		body->GetLinearVelocity().x,
+		// 		body->GetLinearVelocity().y,
+		// 		body->GetLinearVelocity().z	
+		// 	);
+		// }
 		
 		
 		return &linVelocity;
 	}
 	void setVel(float x, float y, float z) {
-		if (body != NULL) {
+		// if (body != NULL) {
 			
-			body->m_linearVelocity.x = x;
-			body->m_linearVelocity.y = y;
-			body->m_linearVelocity.z = z;
+		// 	body->m_linearVelocity.x = x;
+		// 	body->m_linearVelocity.y = y;
+		// 	body->m_linearVelocity.z = z;
 			
-		}
+		// }
 	}
 	
 	
@@ -1846,18 +1846,18 @@ public:
 		
 		centerPoint.copyFrom(newPos);
 		
-		if (body == NULL) {
+		// if (body == NULL) {
 			
-		}
-		else {
-			body->SetTransform(
-				q3Vec3(
-					centerPoint[0],
-					centerPoint[1],
-					centerPoint[2]	
-				)	
-			);
-		}
+		// }
+		// else {
+		// 	// body->SetTransform(
+		// 	// 	q3Vec3(
+		// 	// 		centerPoint[0],
+		// 	// 		centerPoint[1],
+		// 	// 		centerPoint[2]	
+		// 	// 	)	
+		// 	// );
+		// }
 	}
 	
 	FIVector4* getCenterPoint() {
@@ -1868,7 +1868,7 @@ public:
 	
 	
 	BaseObj() {
-		body = NULL;
+		//body = NULL;
 	}
 	
 	void removeChild(BaseObjType _uid) {
@@ -1887,17 +1887,17 @@ public:
 		ang += (targAng-ang)/4.0f;
 		angRelative += (targAngRelative-angRelative)/4.0f;
 		
-		if (body == NULL) {
+		// if (body == NULL) {
 			
-		}
-		else {
+		// }
+		// else {
 			
-			if (isUpright) {
-				body->SetAngle(ang);
-			}
+		// 	if (isUpright) {
+		// 		body->SetAngle(ang);
+		// 	}
 			
 			
-		}
+		// }
 		
 	}
 	
@@ -2239,70 +2239,70 @@ struct PushModStruct
 };
 
 
-class Q3Rend : public q3Render {
-public:
-	void SetPenColor( f32 r, f32 g, f32 b, f32 a = 1.0f ) override
-	{
-		// Q3_UNUSED( a );
+// class Q3Rend : public q3Render {
+// public:
+// 	void SetPenColor( f32 r, f32 g, f32 b, f32 a = 1.0f ) override
+// 	{
+// 		// Q3_UNUSED( a );
 
-		// glColor3f( (float)r, (float)g, (float)b );
-	}
+// 		// glColor3f( (float)r, (float)g, (float)b );
+// 	}
 
-	void SetPenPosition( f32 x, f32 y, f32 z ) override
-	{
-		x_ = x, y_ = y, z_ = z;
-	}
+// 	void SetPenPosition( f32 x, f32 y, f32 z ) override
+// 	{
+// 		x_ = x, y_ = y, z_ = z;
+// 	}
 
-	void SetScale( f32 sx, f32 sy, f32 sz ) override
-	{
-		// glPointSize( (float)sx );
-		// sx_ = sx, sy_ = sy, sz_ = sz;
-	}
+// 	void SetScale( f32 sx, f32 sy, f32 sz ) override
+// 	{
+// 		// glPointSize( (float)sx );
+// 		// sx_ = sx, sy_ = sy, sz_ = sz;
+// 	}
 
-	void Line( f32 x, f32 y, f32 z ) override
-	{
-		// glBegin( GL_LINES );
-		// glVertex3f( (float)x_, (float)y_, (float)z_ );
-		// glVertex3f( (float)x, (float)y, (float)z );
-		// SetPenPosition( x, y, z );
-		// glEnd( );
-	}
+// 	void Line( f32 x, f32 y, f32 z ) override
+// 	{
+// 		// glBegin( GL_LINES );
+// 		// glVertex3f( (float)x_, (float)y_, (float)z_ );
+// 		// glVertex3f( (float)x, (float)y, (float)z );
+// 		// SetPenPosition( x, y, z );
+// 		// glEnd( );
+// 	}
 
-	void Triangle(
-		f32 x1, f32 y1, f32 z1,
-		f32 x2, f32 y2, f32 z2,
-		f32 x3, f32 y3, f32 z3
-		) override
-	{
+// 	void Triangle(
+// 		f32 x1, f32 y1, f32 z1,
+// 		f32 x2, f32 y2, f32 z2,
+// 		f32 x3, f32 y3, f32 z3
+// 		) override
+// 	{
 		
-		//glEnable( GL_LIGHTING );
-		//glBegin( GL_TRIANGLES );
-		//glColor4f( 0.2f, 0.4f, 0.7f, 0.5f );
-		glVertex3f( (float)x1, (float)y1, (float)z1 );
-		glVertex3f( (float)x2, (float)y2, (float)z2 );
-		glVertex3f( (float)x3, (float)y3, (float)z3 );
-		//glEnd( );
-		//glDisable( GL_LIGHTING );
-	}
+// 		//glEnable( GL_LIGHTING );
+// 		//glBegin( GL_TRIANGLES );
+// 		//glColor4f( 0.2f, 0.4f, 0.7f, 0.5f );
+// 		glVertex3f( (float)x1, (float)y1, (float)z1 );
+// 		glVertex3f( (float)x2, (float)y2, (float)z2 );
+// 		glVertex3f( (float)x3, (float)y3, (float)z3 );
+// 		//glEnd( );
+// 		//glDisable( GL_LIGHTING );
+// 	}
 
-	void SetTriNormal( f32 x, f32 y, f32 z ) override
-	{
-		glNormal3f( (float)x, (float)y, (float)z );
-	}
+// 	void SetTriNormal( f32 x, f32 y, f32 z ) override
+// 	{
+// 		glNormal3f( (float)x, (float)y, (float)z );
+// 	}
 
-	void Point( ) override
-	{
-		// glBegin( GL_POINTS );
-		// glVertex3f( (float)x_, (float)y_, (float)z_ );
-		// glEnd( );
-	};
+// 	void Point( ) override
+// 	{
+// 		// glBegin( GL_POINTS );
+// 		// glVertex3f( (float)x_, (float)y_, (float)z_ );
+// 		// glEnd( );
+// 	};
 
-private:
-	f32 x_, y_, z_;
-	f32 sx_, sy_, sz_;
-};
+// private:
+// 	f32 x_, y_, z_;
+// 	f32 sx_, sy_, sz_;
+// };
 
-Q3Rend q3Rend;
+// Q3Rend q3Rend;
 
 
 

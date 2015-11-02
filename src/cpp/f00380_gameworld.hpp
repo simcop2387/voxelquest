@@ -1659,7 +1659,7 @@ public:
 			
 		}
 		else {
-			singleton->gamePhysics->addBoxFromObj(_uid);
+			//singleton->gamePhysics->addBoxFromObj(_uid);
 		}
 		
 	}
@@ -1669,10 +1669,10 @@ public:
 		
 		BaseObj* ge = &(gameObjects[_uid]);
 		
-		if (ge->body != NULL) {
-			singleton->gamePhysics->scene->RemoveBody(ge->body);
-			ge->body = NULL;
-		}
+		// if (ge->body != NULL) {
+		// 	//singleton->gamePhysics->scene->RemoveBody(ge->body);
+		// 	ge->body = NULL;
+		// }
 		
 		if (isRecycled) {
 			ge->isHidden = true;
@@ -2037,6 +2037,7 @@ public:
 		singleton->bindFBO("geomBaseTargFBO");
 		singleton->setShaderFloat("objectId",0.0);
 		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderFloat("isWire", 0.0);
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
 		singleton->setShaderfVec3("offsetPos",&(singleton->origin));
@@ -2048,6 +2049,18 @@ public:
 		
 		
 		singleton->setShaderVec3("matVal", 30, 30, 30);
+		
+		
+		
+		// singleton->gamePhysics->myShapeDrawer->drawScene(
+		// 	singleton->gamePhysics->example->getDynamicsWorld(),
+		// 	false
+		// );
+		
+		//singleton->gamePhysics->example->renderScene();
+		
+		
+		
 		
 		for(i = 0; i < visObjects.size(); i++) {
 			
@@ -2150,11 +2163,11 @@ public:
 					
 					singleton->setShaderFloat("objectId",visObjects[i]);
 					
-					if (curObj->body != NULL) {
-						glBegin( GL_TRIANGLES );
-						curObj->body->Render(&q3Rend);
-						glEnd( );
-					}
+					// if (curObj->body != NULL) {
+					// 	glBegin( GL_TRIANGLES );
+					// 	//curObj->body->Render(&q3Rend);
+					// 	glEnd( );
+					// }
 				}
 				
 			}
@@ -2387,23 +2400,35 @@ public:
 		
 		//~~~~~~~~~~~~~~
 		
-		// singleton->bindShader("BoxShader");
-		// singleton->bindFBO("geomBaseTargFBO", -1, 0);
-		// singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
-		// singleton->setShaderFloat("objectId",0.0);
-		// singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
-		// singleton->setShaderFloat("isWire", 0.0);
-		// singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
-		// singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
-		// singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
-		// singleton->setShaderVec3("matVal", 50, 128, 10);
+		singleton->bindShader("BoxShader");
+		singleton->bindFBO("geomBaseTargFBO", -1, 0);
+		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
+		singleton->setShaderFloat("objectId",0.0);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
+		singleton->setShaderFloat("isWire", 0.0);
+		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
+		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
+		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
+		singleton->setShaderVec3("matVal", 50, 128, 10);
 					
 		// glBegin( GL_TRIANGLES );
-		// singleton->gamePhysics->drawAll();
+		// //m_data->m_gl2ShapeDrawer->drawScene(rbWorld,true);
+		// singleton->gamePhysics->myShapeDrawer->drawScene(
+		// 	singleton->gamePhysics->example->getDynamicsWorld(), true); //drawAll();
 		// glEnd( );
 		
-		// singleton->unbindFBO();
-		// singleton->unbindShader();
+		//glMatrixMode(GL_MODELVIEW);		
+		// singleton->gamePhysics->myShapeDrawer->drawScene(
+		// 	singleton->gamePhysics->example->getDynamicsWorld(),
+		// 	false
+		// );
+		
+		singleton->gamePhysics->example->renderScene();
+		
+		
+		singleton->unbindFBO();
+		singleton->unbindShader();
 		
 		
 		
@@ -4862,13 +4887,15 @@ UPDATE_LIGHTS_END:
 			
 			
 			//"solidTargFBO" //"polyFBO"
-			singleton->drawFBO("solidTargFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
+			//singleton->drawFBO("solidTargFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
 			
 			// leave this here to catch errors
 			//cout << "Getting Errors: \n";
-			//glError();
 			
 			
+			
+			
+			glError();
 			
 		}
 		else {

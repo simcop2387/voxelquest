@@ -34,7 +34,7 @@ vec2 getTerVal(vec3 pos, float camParam) {
 									sin(pos.y/128.0)
 							),
 							1.0
-					);
+					)*0.75+0.25;
 	
 	float randVal2 = mod(
 							abs(
@@ -43,7 +43,7 @@ vec2 getTerVal(vec3 pos, float camParam) {
 									sin(pos.y/192.0)
 							),
 							1.0
-					);
+					)*0.75+0.25;
 	
 	float randVal3 = mod(
 							abs(
@@ -52,7 +52,7 @@ vec2 getTerVal(vec3 pos, float camParam) {
 									sin(pos.y/256.0)
 							),
 							1.0
-					);
+					)*0.75+0.25;
 	
 	
 	float camDis0 = clamp(1.0-camDis*1.0,0.0,1.0);

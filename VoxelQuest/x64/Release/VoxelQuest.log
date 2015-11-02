@@ -1,4 +1,4 @@
-﻿Build started 11/1/2015 2:58:54 PM.
+﻿Build started 11/3/2015 2:08:04 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -39,14 +39,16 @@
          .\src\cpp\f00355_volumewrapper.hpp
          .\src\cpp\f00360_threadpoolwrapper.hpp
          .\src\cpp\f00370_gamelogic.hpp
+         .\src\cpp\f00373_myshapedrawer.hpp
+         .\src\cpp\f00374_myglhelper.hpp
          .\src\cpp\f00375_gamephysics.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         37 File(s) copied
+         39 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         22
+         24
          copying headers to one file
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
@@ -68,12 +70,14 @@
          .\f00355_volumewrapper.e
          .\f00360_threadpoolwrapper.e
          .\f00370_gamelogic.e
+         .\f00373_myshapedrawer.e
+         .\f00374_myglhelper.e
          .\f00375_gamephysics.e
          .\f00380_gameworld.e
                  1 file(s) copied.
          Missing operator.
          tot e
-         22
+         24
          .
          copying files to compiled
          .\temp\f00293_gamesound.e
@@ -96,9 +100,11 @@
          .\temp\f00355_volumewrapper.e
          .\temp\f00360_threadpoolwrapper.e
          .\temp\f00370_gamelogic.e
+         .\temp\f00373_myshapedrawer.e
+         .\temp\f00374_myglhelper.e
          .\temp\f00375_gamephysics.e
          .\temp\f00380_gameworld.e
-         22 File(s) copied
+         24 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_mat.h
@@ -134,6 +140,8 @@
          .\temp\f00355_volumewrapper.h
          .\temp\f00360_threadpoolwrapper.h
          .\temp\f00370_gamelogic.h
+         .\temp\f00373_myshapedrawer.h
+         .\temp\f00374_myglhelper.h
          .\temp\f00375_gamephysics.h
          .\temp\f00380_gameworld.h
          .\temp\f00500_mainfuncs.h
@@ -142,7 +150,7 @@
          C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W1 /WX- /sdl /Ox /Oi /GL /D _CRT_SECURE_NO_WARNINGS /D SFML_STATIC /D WIN32 /D NDEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm- /EHsc /MT /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Release\\" /Fd"x64\Release\vc110.pdb" /Gd /TP /errorReport:prompt ..\compiled\main.cpp
          main.cpp
        Link:
-         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.exe" /INCREMENTAL:NO /NOLOGO /LIBPATH:C:\wamp\www\voxelquest\glew\lib /LIBPATH:"C:\Program Files (x86)\Windows Kits\8.0\Lib\win8\um\x64" /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\lib\amd64" /LIBPATH:"C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Lib\x64" /LIBPATH:"C:\SFML-2.3.2\extlibs\libs-msvc\x64" /LIBPATH:"C:\SFML-2.3.2\lib\Release" /LIBPATH:"C:\bullet3-2.83.6\lib" WinMM.lib openal32.lib flac.lib vorbisenc.lib vorbisfile.lib vorbis.lib ogg.lib "sfml-system-s.lib" "sfml-audio-s.lib" qu3e.lib BulletCollision.lib BulletDynamics.lib LinearMath.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.lib" /MACHINE:X64 x64\Release\main.obj
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.exe" /INCREMENTAL:NO /NOLOGO /LIBPATH:C:\wamp\www\voxelquest\glew\lib /LIBPATH:"C:\Program Files (x86)\Windows Kits\8.0\Lib\win8\um\x64" /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\lib\amd64" /LIBPATH:"C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Lib\x64" /LIBPATH:"C:\SFML-2.3.2\extlibs\libs-msvc\x64" /LIBPATH:"C:\SFML-2.3.2\lib\Release" /LIBPATH:"C:\bullet3-2.83.6\lib" WinMM.lib openal32.lib flac.lib vorbisenc.lib vorbisfile.lib vorbis.lib ogg.lib "sfml-system-s.lib" "sfml-audio-s.lib" Bullet3Common.lib BulletSoftBody.lib BulletDynamics.lib BulletCollision.lib LinearMath.lib OpenGLWindow.lib gwen.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\wamp\www\voxelquest\x64\Release\VoxelQuest.lib" /MACHINE:X64 x64\Release\main.obj
          Generating code
          Finished generating code
          VoxelQuest.vcxproj -> C:\wamp\www\voxelquest\x64\Release\VoxelQuest.exe
@@ -254,12 +262,8 @@
                    
          GW DONE          
          curHeight 0 newHeight 2634.04
-         ignoreFrameLimit: 1
-         
-         pathfindingOn: 0
-         updateHolders 1
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:32.98
+Time Elapsed 00:00:27.65

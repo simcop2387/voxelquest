@@ -665,50 +665,33 @@ struct charArr {
 
 
 
-#include "q3.h"
+// #include "q3.h"
 
-#include <chrono>
+// #include <chrono>
 
-typedef std::chrono::high_resolution_clock hr_clock;
-typedef std::chrono::nanoseconds clock_freq;
-const float kClockDivisor = 1.0f / (float)std::chrono::duration_cast<clock_freq>( std::chrono::seconds( 1 ) ).count( );
+// typedef std::chrono::high_resolution_clock hr_clock;
+// typedef std::chrono::nanoseconds clock_freq;
+// const float kClockDivisor = 1.0f / (float)std::chrono::duration_cast<clock_freq>( std::chrono::seconds( 1 ) ).count( );
 
-class Clock {
-public:
-	Clock( ) {
-		m_start = hr_clock::now( );
-		m_stop = hr_clock::now( );
-	}
+// class Clock {
+// public:
+// 	Clock( ) {
+// 		m_start = hr_clock::now( );
+// 		m_stop = hr_clock::now( );
+// 	}
 
-	float Start( ) {
-		m_start = hr_clock::now( );
-		return std::chrono::duration_cast<clock_freq>( m_start - m_stop ).count( ) * kClockDivisor;
-	}
-	void Stop( ) {
-		m_stop = hr_clock::now( );
-	}
+// 	float Start( ) {
+// 		m_start = hr_clock::now( );
+// 		return std::chrono::duration_cast<clock_freq>( m_start - m_stop ).count( ) * kClockDivisor;
+// 	}
+// 	void Stop( ) {
+// 		m_stop = hr_clock::now( );
+// 	}
 
-private:
-  hr_clock::time_point m_start;
-  hr_clock::time_point m_stop;
-};
-
-// // Base class for running demos to show off q3
-// struct Demo
-// {
-// 	virtual ~Demo( ) {}
-
-// 	virtual void Init( ) {};
-// 	virtual void Update( ) {};
-// 	virtual void Shutdown( ) {};
-
-// 	virtual void Render( q3Render *debugDrawer ) { (void)debugDrawer; }
-// 	virtual void KeyDown( unsigned char key ) { (void)key; }
-// 	virtual void KeyUp( unsigned char key ) { (void)key; }
-// 	virtual void LeftClick( i32 x, i32 y ) { (void)x; (void)y; }
+// private:
+//   hr_clock::time_point m_start;
+//   hr_clock::time_point m_stop;
 // };
-
-
 
 
 
@@ -1130,9 +1113,12 @@ GLuint indexDataQuad[] = {
 // ??????????????????????????????
 
 
-#include "CommonInterfaces/CommonExampleInterface.h"
-#include "CommonInterfaces/CommonGUIHelperInterface.h"
-#include "CommonInterfaces/CommonRigidBodyBase.h"
+#include "../CommonInterfaces/CommonGraphicsAppInterface.h"
+#include "../CommonInterfaces/CommonRenderInterface.h"
+#include "../CommonInterfaces/CommonExampleInterface.h"
+#include "../CommonInterfaces/CommonGUIHelperInterface.h"
+#include "../CommonInterfaces/CommonRigidBodyBase.h"
+
 
 #include "btBulletDynamicsCommon.h"
 #define ARRAY_SIZE_Y 5
@@ -1146,79 +1132,81 @@ GLuint indexDataQuad[] = {
 
 
 
-struct MyGUIHelper : public GUIHelperInterface
-{
-	MyGUIHelper() {}
-	virtual ~MyGUIHelper() {}
+// struct MyGUIHelper : public GUIHelperInterface
+// {
+// 	MyGUIHelper() {}
+// 	virtual ~MyGUIHelper() {}
 
-	virtual void createRigidBodyGraphicsObject(btRigidBody* body,const btVector3& color){}
+// 	virtual void createRigidBodyGraphicsObject(btRigidBody* body,const btVector3& color){}
 
-	virtual void createCollisionObjectGraphicsObject(btCollisionObject* obj,const btVector3& color) {}
+// 	virtual void createCollisionObjectGraphicsObject(btCollisionObject* obj,const btVector3& color) {}
 
-	virtual void createCollisionShapeGraphicsObject(btCollisionShape* collisionShape){}
+// 	virtual void createCollisionShapeGraphicsObject(btCollisionShape* collisionShape){}
 
-	virtual void syncPhysicsToGraphics(const btDiscreteDynamicsWorld* rbWorld){}
+// 	virtual void syncPhysicsToGraphics(const btDiscreteDynamicsWorld* rbWorld){}
 
-	virtual void render(const btDiscreteDynamicsWorld* rbWorld) {}
+// 	virtual void render(const btDiscreteDynamicsWorld* rbWorld) {}
 
-	virtual void createPhysicsDebugDrawer( btDiscreteDynamicsWorld* rbWorld){}
+// 	virtual void createPhysicsDebugDrawer( btDiscreteDynamicsWorld* rbWorld){}
 
-	virtual int registerGraphicsShape(const float* vertices, int numvertices, const int* indices, int numIndices) { return -1; }
+// 	virtual int registerGraphicsShape(const float* vertices, int numvertices, const int* indices, int numIndices) { return -1; }
 
-	virtual int registerGraphicsInstance(int shapeIndex, const float* position, const float* quaternion, const float* color, const float* scaling) { return -1;}
+// 	virtual int registerGraphicsInstance(int shapeIndex, const float* position, const float* quaternion, const float* color, const float* scaling) { return -1;}
 
-	virtual Common2dCanvasInterface* get2dCanvasInterface()
-	{
-		return 0;
-	}
+// 	virtual Common2dCanvasInterface* get2dCanvasInterface()
+// 	{
+// 		return 0;
+// 	}
 	
-	virtual CommonParameterInterface* getParameterInterface()
-	{
-		return 0;
-	}
+// 	virtual CommonParameterInterface* getParameterInterface()
+// 	{
+// 		return 0;
+// 	}
 
-	virtual CommonRenderInterface* getRenderInterface()
-	{
-		return 0;
-	}
+// 	virtual CommonRenderInterface* getRenderInterface()
+// 	{
+// 		return 0;
+// 	}
 	
-	virtual CommonGraphicsApp* getAppInterface()
-	{
-		return 0;
-	}
+// 	virtual CommonGraphicsApp* getAppInterface()
+// 	{
+// 		return 0;
+// 	}
 
 
-	virtual void setUpAxis(int axis)
-	{
-	}
-	virtual void resetCamera(float camDist, float pitch, float yaw, float camPosX,float camPosY, float camPosZ)
-	{
-	}
+// 	virtual void setUpAxis(int axis)
+// 	{
+// 	}
+// 	virtual void resetCamera(float camDist, float pitch, float yaw, float camPosX,float camPosY, float camPosZ)
+// 	{
+// 	}
 
-	virtual void autogenerateGraphicsObjects(btDiscreteDynamicsWorld* rbWorld) 
-	{
-	}
+// 	virtual void autogenerateGraphicsObjects(btDiscreteDynamicsWorld* rbWorld) 
+// 	{
+// 	}
     
-	virtual void drawText3D( const char* txt, float posX, float posZY, float posZ, float size)
-	{
-	}
+// 	virtual void drawText3D( const char* txt, float posX, float posZY, float posZ, float size)
+// 	{
+// 	}
 	
-};
+// };
 
 
-
-
-class CommonExampleInterface*    BasicExampleCreateFunc(struct CommonExampleOptions& options);
+//class CommonExampleInterface*    BasicExampleCreateFunc(struct CommonExampleOptions& options);
 
 struct BasicExample : public CommonRigidBodyBase
 {
 	BasicExample(struct GUIHelperInterface* helper)
 		:CommonRigidBodyBase(helper)
 	{
+		
 	}
+	
 	virtual ~BasicExample(){}
 	virtual void initPhysics();
 	virtual void renderScene();
+	//virtual btDiscreteDynamicsWorld* getDynamicsWorld();
+	
 	void resetCamera()
 	{
 		float dist = 41;
@@ -1229,9 +1217,13 @@ struct BasicExample : public CommonRigidBodyBase
 	}
 };
 
+// btDiscreteDynamicsWorld* BasicExample::getDynamicsWorld() {
+// 	return m_dynamicsWorld;
+// }
+
 void BasicExample::initPhysics()
 {
-	m_guiHelper->setUpAxis(1);
+	m_guiHelper->setUpAxis(2);
 
 	createEmptyDynamicsWorld();
 	
@@ -1239,6 +1231,8 @@ void BasicExample::initPhysics()
 
 	if (m_dynamicsWorld->getDebugDrawer())
 		m_dynamicsWorld->getDebugDrawer()->setDebugMode(btIDebugDraw::DBG_DrawWireframe+btIDebugDraw::DBG_DrawContactPoints);
+
+	m_dynamicsWorld->setGravity(btVector3(0,-10,0));
 
 	///create a few basic rigid bodies
 	btBoxShape* groundShape = createBoxShape(btVector3(btScalar(50.),btScalar(50.),btScalar(50.)));
@@ -1309,19 +1303,657 @@ void BasicExample::initPhysics()
 
 void BasicExample::renderScene()
 {
+	// m_guiHelper->syncPhysicsToGraphics(m_dynamicsWorld);
+	// m_guiHelper->render(m_dynamicsWorld);
 	CommonRigidBodyBase::renderScene();
-	
 }
 
-CommonExampleInterface*    BasicExampleCreateFunc(CommonExampleOptions& options)
-{
-	return new BasicExample(options.m_guiHelper);
-}
+// CommonExampleInterface* BasicExampleCreateFunc(CommonExampleOptions& options)
+// {
+// 	return new BasicExample(options.m_guiHelper);
+// }
 
 
 
 
 // ??????????????????????????????
+
+
+
+
+
+
+/*
+Bullet Continuous Collision Detection and Physics Library
+Copyright (c) 2003-2006 Erwin Coumans  http://continuousphysics.com/Bullet/
+
+This software is provided 'as-is', without any express or implied warranty.
+In no event will the authors be held liable for any damages arising from the use of this software.
+Permission is granted to anyone to use this software for any purpose, 
+including commercial applications, and to alter it and redistribute it freely, 
+subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+*/
+
+#include "../OpenGLWindow/OpenGL2Include.h"
+
+class btConvexShape;
+class btCollisionShape;
+class btShapeHull;
+class btDiscreteDynamicsWorld;
+
+#include "LinearMath/btAlignedObjectArray.h"
+#include "LinearMath/btVector3.h"
+
+#include "BulletCollision/CollisionShapes/btShapeHull.h"
+
+
+struct ShapeCache
+{
+	struct Edge { btVector3 n[2];int v[2]; };
+	ShapeCache(btConvexShape* s) : m_shapehull(s) {}
+	btShapeHull					m_shapehull;
+	btAlignedObjectArray<Edge>	m_edges;
+};
+
+void OGL_displaylist_register_shape(btCollisionShape * shape);
+void OGL_displaylist_clean();
+
+#include "BulletCollision/CollisionShapes/btPolyhedralConvexShape.h"
+#include "BulletCollision/CollisionShapes/btTriangleMeshShape.h"
+#include "BulletCollision/CollisionShapes/btBoxShape.h"
+#include "BulletCollision/CollisionShapes/btSphereShape.h"
+#include "BulletCollision/CollisionShapes/btConeShape.h"
+#include "BulletCollision/CollisionShapes/btCylinderShape.h"
+#include "BulletCollision/CollisionShapes/btTetrahedronShape.h"
+#include "BulletCollision/CollisionShapes/btCompoundShape.h"
+#include "BulletCollision/CollisionShapes/btCapsuleShape.h"
+#include "BulletCollision/CollisionShapes/btConvexTriangleMeshShape.h"
+#include "BulletCollision/CollisionShapes/btUniformScalingShape.h"
+#include "BulletCollision/CollisionShapes/btStaticPlaneShape.h"
+#include "BulletCollision/CollisionShapes/btMultiSphereShape.h"
+#include "BulletCollision/CollisionShapes/btConvexPolyhedron.h"
+#include "BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h"
+#include "BulletDynamics/Dynamics/btRigidBody.h"
+#include "LinearMath/btDefaultMotionState.h"
+
+///
+#include "BulletCollision/CollisionShapes/btShapeHull.h"
+#include "LinearMath/btTransformUtil.h"
+#include "LinearMath/btIDebugDraw.h"
+
+#include "Bullet3Common/b3Scalar.h"
+#include "../OpenGLWindow/GLInstanceGraphicsShape.h"
+//#include "../OpenGLWindow/SimpleOpenGL2Renderer.h"
+
+// @@@@@
+
+
+
+
+
+
+
+#if defined(BT_USE_DOUBLE_PRECISION)
+#define btglLoadMatrix glLoadMatrixd
+#define btglMultMatrix glMultMatrixd
+#define btglColor3 glColor3d
+#define btglVertex3 glVertex3d
+#else
+#define btglLoadMatrix glLoadMatrixf
+#define btglMultMatrix glMultMatrixf
+#define btglColor3 glColor3f
+#define btglVertex3 glVertex3d
+#endif
+
+
+class GlDrawcallback : public btTriangleCallback
+{
+
+public:
+
+	bool	m_wireframe;
+
+	GlDrawcallback()
+		:m_wireframe(false)
+	{
+	}
+
+	virtual void processTriangle(btVector3* triangle,int partId, int triangleIndex)
+	{
+
+		(void)triangleIndex;
+		(void)partId;
+
+
+		if (m_wireframe)
+		{
+			glBegin(GL_LINES);
+			glColor3f(1, 0, 0);
+			glVertex3d(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
+			glVertex3d(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
+			glColor3f(0, 1, 0);
+			glVertex3d(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
+			glVertex3d(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
+			glColor3f(0, 0, 1);
+			glVertex3d(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
+			glVertex3d(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
+			glEnd();
+		} else
+		{
+			glBegin(GL_TRIANGLES);
+			//glColor3f(1, 1, 1);
+			
+			
+			glVertex3d(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
+			glVertex3d(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
+			glVertex3d(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
+
+			glVertex3d(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
+			glVertex3d(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
+			glVertex3d(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
+			glEnd();
+		}
+	}
+};
+
+class TriangleGlDrawcallback : public btInternalTriangleIndexCallback
+{
+public:
+	virtual void internalProcessTriangleIndex(btVector3* triangle,int partId,int  triangleIndex)
+	{
+		(void)triangleIndex;
+		(void)partId;
+
+
+		glBegin(GL_TRIANGLES);//LINES);
+		glColor3f(1, 0, 0);
+		glVertex3d(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
+		glVertex3d(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
+		glColor3f(0, 1, 0);
+		glVertex3d(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
+		glVertex3d(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
+		glColor3f(0, 0, 1);
+		glVertex3d(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
+		glVertex3d(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
+		glEnd();
+	}
+};
+
+
+// ???????????
+
+
+
+
+
+#include "../CommonInterfaces/CommonRenderInterface.h"
+#include "../OpenGLWindow/SimpleCamera.h"
+#include "Bullet3Common/b3Vector3.h"
+
+
+struct OGLRenderer : public CommonRenderInterface
+{
+    int m_width;
+    int m_height;
+    SimpleCamera	m_camera;
+    
+    OGLRenderer(int width, int height);
+    
+    virtual void init();
+    
+    virtual void updateCamera(int upAxis);
+    
+	virtual const CommonCameraInterface* getActiveCamera() const;
+	virtual CommonCameraInterface* getActiveCamera();
+	virtual void setActiveCamera(CommonCameraInterface* cam);
+
+	virtual void	resize(int width, int height)
+	{
+		m_width = width;
+		m_height = height;
+	}
+
+    virtual void removeAllInstances();
+    
+    
+    virtual void writeSingleInstanceColorToCPU(float* color, int srcIndex);
+    virtual void writeSingleInstanceColorToCPU(double* color, int srcIndex);
+    virtual void	getCameraViewMatrix(float viewMat[16]) const;
+    virtual void	getCameraProjectionMatrix(float projMat[16]) const;
+
+    
+    virtual void renderScene();
+    
+    virtual int getScreenWidth()
+    {
+        return m_width;
+    }
+    virtual int getScreenHeight()
+    {
+        return m_height;
+    }
+	virtual int	registerTexture(const unsigned char* texels, int width, int height)
+	{
+		return -1;
+	}
+    virtual int registerGraphicsInstance(int shapeIndex, const double* position, const double* quaternion, const double* color, const double* scaling);
+    
+    virtual int registerGraphicsInstance(int shapeIndex, const float* position, const float* quaternion, const float* color, const float* scaling);
+    
+    virtual void drawLines(const float* positions, const float color[4], int numPoints, int pointStrideInBytes, const unsigned int* indices, int numIndices, float pointDrawSize);
+    
+    virtual void drawLine(const float from[4], const float to[4], const float color[4], float lineWidth);
+    
+    virtual int registerShape(const float* vertices, int numvertices, const int* indices, int numIndices,int primitiveType=B3_GL_TRIANGLES, int textureIndex=-1);
+    
+    virtual void writeSingleInstanceTransformToCPU(const float* position, const float* orientation, int srcIndex);
+    
+    virtual void writeSingleInstanceTransformToCPU(const double* position, const double* orientation, int srcIndex);
+    
+    virtual void writeTransforms();
+    
+    virtual void drawLine(const double from[4], const double to[4], const double color[4], double lineWidth);
+    
+    virtual void drawPoint(const float* position, const float color[4], float pointDrawSize);
+    
+    virtual void drawPoint(const double* position, const double color[4], double pointDrawSize);
+    
+    virtual void updateShape(int shapeIndex, const float* vertices);
+    
+    virtual void enableBlend(bool blend);
+
+	virtual struct	GLInstanceRendererInternalData* getInternalData()
+	{
+		return 0;
+	}
+    
+};
+
+
+
+
+
+
+
+OGLRenderer::OGLRenderer(int width, int height)
+ :m_width(width),
+ m_height(height)
+{
+    
+}
+
+void OGLRenderer::init()
+{
+}
+
+const CommonCameraInterface* OGLRenderer::getActiveCamera() const
+{
+	return &m_camera;
+}
+CommonCameraInterface* OGLRenderer::getActiveCamera()
+{
+	return &m_camera;
+}
+void OGLRenderer::setActiveCamera(CommonCameraInterface* cam)
+{
+	b3Assert(0);//not supported yet
+}
+
+void OGLRenderer::updateCamera(int upAxis)
+{
+    float projection[16];
+    float view[16];
+    m_camera.setAspectRatio((float)m_width/(float)m_height);
+    m_camera.update();
+    m_camera.getCameraProjectionMatrix(projection);
+    m_camera.getCameraViewMatrix(view);
+    GLfloat projMat[16];
+    GLfloat viewMat[16];
+    for (int i=0;i<16;i++)
+    {
+        viewMat[i] = view[i];
+        projMat[i] = projection[i];
+    }
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMultMatrixf(projMat);
+    
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glMultMatrixf(viewMat);
+}
+
+void OGLRenderer::removeAllInstances()
+{
+}
+
+
+void OGLRenderer::writeSingleInstanceColorToCPU(float* color, int srcIndex)
+{
+}
+void OGLRenderer::writeSingleInstanceColorToCPU(double* color, int srcIndex)
+{
+    
+}
+void	OGLRenderer::getCameraViewMatrix(float viewMat[16]) const
+{
+    b3Assert(0);
+}
+void	OGLRenderer::getCameraProjectionMatrix(float projMat[16]) const
+{
+    b3Assert(0);
+    
+}
+
+
+void OGLRenderer::renderScene()
+{
+    //cout << "asdfasdf\n";
+}
+    
+    
+
+
+int OGLRenderer::registerGraphicsInstance(int shapeIndex, const double* position, const double* quaternion, const double* color, const double* scaling)
+{
+    return 0;
+}
+
+int OGLRenderer::registerGraphicsInstance(int shapeIndex, const float* position, const float* quaternion, const float* color, const float* scaling)
+{
+    return 0;
+}
+
+void OGLRenderer::drawLines(const float* positions, const float color[4], int numPoints, int pointStrideInBytes, const unsigned int* indices, int numIndices, float pointDrawSize)
+{
+    int pointStrideInFloats = pointStrideInBytes/4;
+    glLineWidth(pointDrawSize);
+    for (int i=0;i<numIndices;i+=2)
+    {
+        int index0 = indices[i];
+        int index1 = indices[i+1];
+        
+        b3Vector3 fromColor = b3MakeVector3(color[0],color[1],color[2]);
+        b3Vector3 toColor = b3MakeVector3(color[0],color[1],color[2]);
+        
+        b3Vector3 from= b3MakeVector3(positions[index0*pointStrideInFloats],positions[index0*pointStrideInFloats+1],positions[index0*pointStrideInFloats+2]);
+        b3Vector3 to= b3MakeVector3(positions[index1*pointStrideInFloats],positions[index1*pointStrideInFloats+1],positions[index1*pointStrideInFloats+2]);
+        
+        glBegin(GL_LINES);
+        glColor3f(fromColor.getX(), fromColor.getY(), fromColor.getZ());
+        glVertex3d(from.getX(), from.getY(), from.getZ());
+        glColor3f(toColor.getX(), toColor.getY(), toColor.getZ());
+        glVertex3d(to.getX(), to.getY(), to.getZ());
+        glEnd();
+        
+    }
+}
+
+void OGLRenderer::drawLine(const float from[4], const float to[4], const float color[4], float lineWidth)
+{
+        glLineWidth(lineWidth);
+        glBegin(GL_LINES);
+        glColor3f(color[0],color[1],color[2]);
+        glVertex3d(from[0],from[1],from[2]);
+        glVertex3d(to[0],to[1],to[2]);
+        glEnd();
+}
+int OGLRenderer::registerShape(const float* vertices, int numvertices, const int* indices, int numIndices,int primitiveType, int textureIndex)
+{
+    return 0;
+}
+
+void OGLRenderer::writeSingleInstanceTransformToCPU(const float* position, const float* orientation, int srcIndex)
+{
+}
+void OGLRenderer::writeSingleInstanceTransformToCPU(const double* position, const double* orientation, int srcIndex)
+{
+}
+void OGLRenderer::writeTransforms()
+{
+}
+
+
+void OGLRenderer::drawLine(const double from[4], const double to[4], const double color[4], double lineWidth)
+{
+    
+}
+void OGLRenderer::drawPoint(const float* position, const float color[4], float pointDrawSize)
+{
+}
+void OGLRenderer::drawPoint(const double* position, const double color[4], double pointDrawSize)
+{
+}
+
+void OGLRenderer::updateShape(int shapeIndex, const float* vertices)
+{
+}
+
+void OGLRenderer::enableBlend(bool blend)
+{
+}
+
+
+
+
+// ??????????????
+
+struct MyOGLAppInternalData
+{
+	GLuint m_fontTextureId;
+	GLuint m_largeFontTextureId;
+	
+};
+
+struct MyOGLApp : public CommonGraphicsApp
+{
+protected:
+	struct MyOGLAppInternalData*	m_data;
+
+public:
+	MyOGLApp(const char* title, int width, int height) {
+		m_renderer = new OGLRenderer(width,height);		
+	}
+	virtual ~MyOGLApp() {}
+
+	virtual void drawGrid(DrawGridData data=DrawGridData()) {}
+	virtual void setUpAxis(int axis) {}
+	virtual int getUpAxis() const {return 2;}
+	
+	virtual void swapBuffer() {}
+	virtual void drawText( const char* txt, int posX, int posY) {}
+	virtual void setBackgroundColor(float red, float green, float blue) {}
+	virtual int	registerCubeShape(float halfExtentsX,float halfExtentsY, float halfExtentsZ, int textureIndex = -1,  float textureScaling = 1)
+	{
+		cout << "a\n";
+		return 0;
+	}
+	virtual int	registerGraphicsUnitSphereShape(EnumSphereLevelOfDetail lod, int textureId=-1)
+	{
+		cout << "b\n";
+		return 0;
+	}
+    virtual void drawText3D( const char* txt, float posX, float posZY, float posZ, float size) {}
+    virtual void registerGrid(int xres, int yres, float color0[4], float color1[4]) {
+    	cout << "c\n";
+    }
+    
+    virtual struct	GLInstanceRendererInternalData* getInternalData()
+    {
+    	cout << "d\n";
+    	return 0;
+    }
+    
+};
+
+
+
+
+
+#define BT_LINE_BATCH_SIZE 512
+
+
+static btVector4 sColors[4] =
+{
+	btVector4(0.3,0.3,1,1),
+	btVector4(0.6,0.6,1,1),
+	btVector4(0,1,0,1),
+	btVector4(0,1,1,1),
+	//btVector4(1,1,0,1),
+};
+
+
+struct MyDebugVec3
+{
+	MyDebugVec3(const btVector3& org)
+	:x(org.x()),
+	y(org.y()),
+	z(org.z())
+	{
+	}
+
+	float x;
+	float y;
+	float z;
+};
+class MyDebugDrawer : public btIDebugDraw
+{
+	CommonGraphicsApp* m_glApp;
+	int m_debugMode;
+
+    btAlignedObjectArray<MyDebugVec3> m_linePoints;
+    btAlignedObjectArray<unsigned int> m_lineIndices;
+    btVector3 m_currentLineColor;
+	DefaultColors m_ourColors;
+
+public:
+
+	MyDebugDrawer(CommonGraphicsApp* app)
+		: m_glApp(app)
+		,m_debugMode(btIDebugDraw::DBG_DrawWireframe|btIDebugDraw::DBG_DrawAabb),
+		m_currentLineColor(-1,-1,-1)
+	{
+		
+		
+	}
+	virtual DefaultColors	getDefaultColors() const	
+	{	
+		return m_ourColors;
+	}
+	///the default implementation for setDefaultColors has no effect. A derived class can implement it and store the colors.
+	virtual void setDefaultColors(const DefaultColors& colors) 
+	{
+		m_ourColors = colors;
+	}
+
+
+	virtual void	drawLine(const btVector3& from1,const btVector3& to1,const btVector3& color1)
+	{
+        //float from[4] = {from1[0],from1[1],from1[2],from1[3]};
+        //float to[4] = {to1[0],to1[1],to1[2],to1[3]};
+        //float color[4] = {color1[0],color1[1],color1[2],color1[3]};
+		//m_glApp->m_instancingRenderer->drawLine(from,to,color);
+		if (m_currentLineColor!=color1 || m_linePoints.size() >= BT_LINE_BATCH_SIZE)
+        {
+            flushLines();
+            m_currentLineColor = color1;
+        }
+		MyDebugVec3 from(from1);
+		MyDebugVec3 to(to1);
+			
+		m_linePoints.push_back(from);
+		m_linePoints.push_back(to);
+
+		m_lineIndices.push_back(m_lineIndices.size());
+		m_lineIndices.push_back(m_lineIndices.size());
+
+	}
+
+	virtual void	drawContactPoint(const btVector3& PointOnB,const btVector3& normalOnB,btScalar distance,int lifeTime,const btVector3& color)
+	{
+        drawLine(PointOnB,PointOnB+normalOnB,color);
+	}
+     
+
+	virtual void	reportErrorWarning(const char* warningString)
+	{
+	}
+
+	virtual void	draw3dText(const btVector3& location,const char* textString)
+	{
+	}
+
+	virtual void	setDebugMode(int debugMode)
+	{
+		m_debugMode = debugMode;
+	}
+
+	virtual int		getDebugMode() const
+	{
+		return m_debugMode;
+	}
+
+    virtual void flushLines()
+	{
+	    int sz = m_linePoints.size();
+	    if (sz)
+        {
+			float debugColor[4];
+		debugColor[0] = m_currentLineColor.x();
+		debugColor[1] = m_currentLineColor.y();
+		debugColor[2] = m_currentLineColor.z();
+		debugColor[3] = 1.f;
+		m_glApp->m_renderer->drawLines(&m_linePoints[0].x,debugColor,
+														 m_linePoints.size(),sizeof(MyDebugVec3),
+														 &m_lineIndices[0],
+														 m_lineIndices.size(),
+														 1);
+            m_linePoints.clear();
+            m_lineIndices.clear();
+        }
+	}
+
+};
+
+
+class MyShapeDrawer;
+
+struct MyConvertPointerSizeT
+{
+	union 
+	{
+			const void* m_ptr;
+			size_t m_int;
+	};
+};
+
+bool shapePointerCompareFunc(const btCollisionObject* colA, const btCollisionObject* colB)
+{
+	MyConvertPointerSizeT a,b;
+	a.m_ptr = colA->getCollisionShape();
+	b.m_ptr = colB->getCollisionShape();
+	return (a.m_int<b.m_int);
+}
+
+struct MyGLHelperInternalData
+{
+	struct CommonGraphicsApp* m_glApp;
+	class MyDebugDrawer* m_debugDraw;
+	MyShapeDrawer* m_gl2ShapeDrawer;
+};
+
+
+
+
+
+
+
+
+
 
 
  
@@ -5390,9 +6022,9 @@ public:
 		return 0.0f;
 	}
 
-	q3Vec3 getQ3Vec3() {
-		return q3Vec3(fv4.x,fv4.y,fv4.z);
-	}
+	// q3Vec3 getQ3Vec3() {
+	// 	return q3Vec3(fv4.x,fv4.y,fv4.z);
+	// }
 
 	void setIXYZW(int x, int y, int z, int w) {
 		iv4.x = x;
@@ -6845,7 +7477,7 @@ public:
 	BaseObjType parentUID;
 	vector<BaseObjType> children;
 	
-	q3Body* body;
+	//q3Body* body;
 	
 	int isGrabbingId;
 	int isGrabbedById;
@@ -6878,25 +7510,25 @@ public:
 	
 	FIVector4* getVel() {
 		
-		if (body != NULL) {
-			linVelocity.setFXYZ(
-				body->GetLinearVelocity().x,
-				body->GetLinearVelocity().y,
-				body->GetLinearVelocity().z	
-			);
-		}
+		// if (body != NULL) {
+		// 	linVelocity.setFXYZ(
+		// 		body->GetLinearVelocity().x,
+		// 		body->GetLinearVelocity().y,
+		// 		body->GetLinearVelocity().z	
+		// 	);
+		// }
 		
 		
 		return &linVelocity;
 	}
 	void setVel(float x, float y, float z) {
-		if (body != NULL) {
+		// if (body != NULL) {
 			
-			body->m_linearVelocity.x = x;
-			body->m_linearVelocity.y = y;
-			body->m_linearVelocity.z = z;
+		// 	body->m_linearVelocity.x = x;
+		// 	body->m_linearVelocity.y = y;
+		// 	body->m_linearVelocity.z = z;
 			
-		}
+		// }
 	}
 	
 	
@@ -6909,18 +7541,18 @@ public:
 		
 		centerPoint.copyFrom(newPos);
 		
-		if (body == NULL) {
+		// if (body == NULL) {
 			
-		}
-		else {
-			body->SetTransform(
-				q3Vec3(
-					centerPoint[0],
-					centerPoint[1],
-					centerPoint[2]	
-				)	
-			);
-		}
+		// }
+		// else {
+		// 	// body->SetTransform(
+		// 	// 	q3Vec3(
+		// 	// 		centerPoint[0],
+		// 	// 		centerPoint[1],
+		// 	// 		centerPoint[2]	
+		// 	// 	)	
+		// 	// );
+		// }
 	}
 	
 	FIVector4* getCenterPoint() {
@@ -6931,7 +7563,7 @@ public:
 	
 	
 	BaseObj() {
-		body = NULL;
+		//body = NULL;
 	}
 	
 	void removeChild(BaseObjType _uid) {
@@ -6950,17 +7582,17 @@ public:
 		ang += (targAng-ang)/4.0f;
 		angRelative += (targAngRelative-angRelative)/4.0f;
 		
-		if (body == NULL) {
+		// if (body == NULL) {
 			
-		}
-		else {
+		// }
+		// else {
 			
-			if (isUpright) {
-				body->SetAngle(ang);
-			}
+		// 	if (isUpright) {
+		// 		body->SetAngle(ang);
+		// 	}
 			
 			
-		}
+		// }
 		
 	}
 	
@@ -7302,70 +7934,70 @@ struct PushModStruct
 };
 
 
-class Q3Rend : public q3Render {
-public:
-	void SetPenColor( f32 r, f32 g, f32 b, f32 a = 1.0f ) override
-	{
-		// Q3_UNUSED( a );
+// class Q3Rend : public q3Render {
+// public:
+// 	void SetPenColor( f32 r, f32 g, f32 b, f32 a = 1.0f ) override
+// 	{
+// 		// Q3_UNUSED( a );
 
-		// glColor3f( (float)r, (float)g, (float)b );
-	}
+// 		// glColor3f( (float)r, (float)g, (float)b );
+// 	}
 
-	void SetPenPosition( f32 x, f32 y, f32 z ) override
-	{
-		x_ = x, y_ = y, z_ = z;
-	}
+// 	void SetPenPosition( f32 x, f32 y, f32 z ) override
+// 	{
+// 		x_ = x, y_ = y, z_ = z;
+// 	}
 
-	void SetScale( f32 sx, f32 sy, f32 sz ) override
-	{
-		// glPointSize( (float)sx );
-		// sx_ = sx, sy_ = sy, sz_ = sz;
-	}
+// 	void SetScale( f32 sx, f32 sy, f32 sz ) override
+// 	{
+// 		// glPointSize( (float)sx );
+// 		// sx_ = sx, sy_ = sy, sz_ = sz;
+// 	}
 
-	void Line( f32 x, f32 y, f32 z ) override
-	{
-		// glBegin( GL_LINES );
-		// glVertex3f( (float)x_, (float)y_, (float)z_ );
-		// glVertex3f( (float)x, (float)y, (float)z );
-		// SetPenPosition( x, y, z );
-		// glEnd( );
-	}
+// 	void Line( f32 x, f32 y, f32 z ) override
+// 	{
+// 		// glBegin( GL_LINES );
+// 		// glVertex3f( (float)x_, (float)y_, (float)z_ );
+// 		// glVertex3f( (float)x, (float)y, (float)z );
+// 		// SetPenPosition( x, y, z );
+// 		// glEnd( );
+// 	}
 
-	void Triangle(
-		f32 x1, f32 y1, f32 z1,
-		f32 x2, f32 y2, f32 z2,
-		f32 x3, f32 y3, f32 z3
-		) override
-	{
+// 	void Triangle(
+// 		f32 x1, f32 y1, f32 z1,
+// 		f32 x2, f32 y2, f32 z2,
+// 		f32 x3, f32 y3, f32 z3
+// 		) override
+// 	{
 		
-		//glEnable( GL_LIGHTING );
-		//glBegin( GL_TRIANGLES );
-		//glColor4f( 0.2f, 0.4f, 0.7f, 0.5f );
-		glVertex3f( (float)x1, (float)y1, (float)z1 );
-		glVertex3f( (float)x2, (float)y2, (float)z2 );
-		glVertex3f( (float)x3, (float)y3, (float)z3 );
-		//glEnd( );
-		//glDisable( GL_LIGHTING );
-	}
+// 		//glEnable( GL_LIGHTING );
+// 		//glBegin( GL_TRIANGLES );
+// 		//glColor4f( 0.2f, 0.4f, 0.7f, 0.5f );
+// 		glVertex3f( (float)x1, (float)y1, (float)z1 );
+// 		glVertex3f( (float)x2, (float)y2, (float)z2 );
+// 		glVertex3f( (float)x3, (float)y3, (float)z3 );
+// 		//glEnd( );
+// 		//glDisable( GL_LIGHTING );
+// 	}
 
-	void SetTriNormal( f32 x, f32 y, f32 z ) override
-	{
-		glNormal3f( (float)x, (float)y, (float)z );
-	}
+// 	void SetTriNormal( f32 x, f32 y, f32 z ) override
+// 	{
+// 		glNormal3f( (float)x, (float)y, (float)z );
+// 	}
 
-	void Point( ) override
-	{
-		// glBegin( GL_POINTS );
-		// glVertex3f( (float)x_, (float)y_, (float)z_ );
-		// glEnd( );
-	};
+// 	void Point( ) override
+// 	{
+// 		// glBegin( GL_POINTS );
+// 		// glVertex3f( (float)x_, (float)y_, (float)z_ );
+// 		// glEnd( );
+// 	};
 
-private:
-	f32 x_, y_, z_;
-	f32 sx_, sy_, sz_;
-};
+// private:
+// 	f32 x_, y_, z_;
+// 	f32 sx_, sy_, sz_;
+// };
 
-Q3Rend q3Rend;
+// Q3Rend q3Rend;
 
 
 
@@ -18523,6 +19155,7 @@ class GamePageHolder;
 class VolumeWrapper;
 class ThreadPoolWrapper;
 class GameLogic;
+class MyGLHelper;
 class GamePhysics;
 class GameWorld;
 class DynBuffer;
@@ -18624,6 +19257,9 @@ public:
   GLdouble (projMatrixD) [16];
   Matrix4 viewMatrix;
   Matrix4 projMatrix;
+  std::vector <Matrix4> objMatrixStack;
+  Matrix4 curObjMatrix;
+  Matrix4 tempObjMatrix;
   GLint (viewport) [4];
   E_OBJ activeObject;
   E_OBJ tempObj;
@@ -19933,7 +20569,6 @@ public:
   Singleton * singleton;
   intPairVec (containsEntIds) [E_ET_LENGTH];
   bool wasGenerated;
-  q3Body * body;
   GamePageHolder ();
   void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isBlockHolder = false);
   int getCellAtCoordsLocal (int xx, int yy, int zz);
@@ -20224,6 +20859,72 @@ public:
 };
 #undef LZZ_INLINE
 #endif
+// f00373_myshapedrawer.e
+//
+
+#ifndef LZZ_f00373_myshapedrawer_e
+#define LZZ_f00373_myshapedrawer_e
+#define LZZ_INLINE inline
+class MyShapeDrawer
+{
+public:
+  btAlignedObjectArray <ShapeCache*> m_shapecaches;
+  Singleton * singleton;
+  MyShapeDrawer (Singleton * _singleton);
+  void init ();
+  bool enableTexture (bool enable);
+  bool hasTextureEnabled () const;
+  void drawCoordSystem ();
+  void drawSphere (btScalar radius, int lats, int longs);
+  ShapeCache * cache (btConvexShape * shape);
+  void renderSquareA (float x, float y, float z);
+  void glDrawVector (btVector3 const & v);
+  void updateMat ();
+  void updateMat2 ();
+  void pushNewMat (btScalar * m);
+  void popMat ();
+  void drawOpenGL (btScalar * m, btCollisionShape const * shape, btVector3 const & color, int debugMode, btVector3 const & worldBoundsMin, btVector3 const & worldBoundsMax);
+  ~ MyShapeDrawer ();
+  void drawSceneInternal (btDiscreteDynamicsWorld const * dynamicsWorld, int pass);
+  void drawScene (btDiscreteDynamicsWorld const * dynamicsWorld, bool useShadows);
+};
+LZZ_INLINE void MyShapeDrawer::glDrawVector (btVector3 const & v)
+                                                             { glVertex3d(v[0], v[1], v[2]); }
+#undef LZZ_INLINE
+#endif
+// f00374_myglhelper.e
+//
+
+#ifndef LZZ_f00374_myglhelper_e
+#define LZZ_f00374_myglhelper_e
+#define LZZ_INLINE inline
+class MyGLHelper : public GUIHelperInterface
+{
+public:
+  MyGLHelperInternalData * m_data;
+  Singleton * singleton;
+  MyGLHelper (Singleton * _singleton, CommonGraphicsApp * glApp);
+  ~ MyGLHelper ();
+  struct CommonRenderInterface * getRenderInterface ();
+  void createRigidBodyGraphicsObject (btRigidBody * body, btVector3 const & color);
+  void createCollisionObjectGraphicsObject (btCollisionObject * body, btVector3 const & color);
+  int registerGraphicsShape (float const * vertices, int numvertices, int const * indices, int numIndices);
+  int registerGraphicsInstance (int shapeIndex, float const * position, float const * quaternion, float const * color, float const * scaling);
+  static void createCollisionShapeGraphicsObjectInternal (btCollisionShape * collisionShape, btTransform const & parentTransform, btAlignedObjectArray <GLInstanceVertex> & verticesOut, btAlignedObjectArray <int> & indicesOut);
+  void createCollisionShapeGraphicsObject (btCollisionShape * collisionShape);
+  void syncPhysicsToGraphics (btDiscreteDynamicsWorld const * rbWorld);
+  void render (btDiscreteDynamicsWorld const * rbWorld);
+  void createPhysicsDebugDrawer (btDiscreteDynamicsWorld * rbWorld);
+  struct Common2dCanvasInterface * get2dCanvasInterface ();
+  CommonParameterInterface * getParameterInterface ();
+  void setUpAxis (int axis);
+  void resetCamera (float camDist, float pitch, float yaw, float camPosX, float camPosY, float camPosZ);
+  void autogenerateGraphicsObjects (btDiscreteDynamicsWorld * rbWorld);
+  void drawText3D (char const * txt, float posX, float posY, float posZ, float size);
+  struct CommonGraphicsApp * getAppInterface ();
+};
+#undef LZZ_INLINE
+#endif
 // f00375_gamephysics.e
 //
 
@@ -20234,22 +20935,13 @@ class GamePhysics
 {
 public:
   Singleton * singleton;
-  q3Scene * scene;
-  float dt;
-  float acc;
-  f32 accumulator;
-  Clock g_clock;
+  BasicExample * example;
+  MyOGLApp * myOGLApp;
+  GUIHelperInterface * noGfx;
   GamePhysics ();
   void init (Singleton * _singleton);
-  void addRandFloor ();
-  void addBoxFromObj (BaseObjType _uid);
-  void collideWithWorld ();
-  void update ();
-  void shutdown ();
-  void drawAll ();
-  void updateBase (f32 time);
   void updateAll ();
-  void bulletTest ();
+  ~ GamePhysics ();
 };
 #undef LZZ_INLINE
 #endif
@@ -21665,7 +22357,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		gamePhysics = new GamePhysics();
 		gamePhysics->init(this);
-		gamePhysics->bulletTest();
+		//gamePhysics->bulletTest();
+		
+		//bulletTest();
 		
 		gameAI = new GameAI();
 		gameAI->init(this);
@@ -26786,39 +27480,18 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 			
 			tempVec3.multXYZ(1.0f);
 			
-			// float testVel = (
-			// 	(ca->body->m_linearVelocity.x + tempVec3[0]) *
-			// 	(ca->body->m_linearVelocity.x + tempVec3[0]) +
-			// 	(ca->body->m_linearVelocity.y + tempVec3[1]) *
-			// 	(ca->body->m_linearVelocity.y + tempVec3[1])
-			// );
 			
 			
-			if (ca->body != NULL) {
-				
-				//if (testVel < (ca->angVelMax*ca->angVelMax)) {
-					ca->body->m_linearVelocity.x += tempVec3[0];
-					ca->body->m_linearVelocity.y += tempVec3[1];
-				//}
-				// else {
-				// 	ca->body->m_linearVelocity.x += tempVec3[0];
-				// 	ca->body->m_linearVelocity.y += tempVec3[1];
-				// }
-				
-				ca->body->SetToAwake();
-				
-				//ca->body->AddLinearVelocity(tempVec2.getQ3Vec3());
-			}
-			
-			// if (tempVec2.length() > 0.01) {
-			// 	depthInvalidMove = true;
-			// 	amountInvalidMove = tempVec2.length();
+			// if (ca->body != NULL) {
+			// 	ca->body->m_linearVelocity.x += tempVec3[0];
+			// 	ca->body->m_linearVelocity.y += tempVec3[1];
+			// 	ca->body->SetToAwake();
 			// }
 			
 		}
 		
 		
-		//gamePhysics->updateAll();
+		
 		//gw->updatePhys();
 		
 	}
@@ -27012,11 +27685,11 @@ void Singleton::handleMovement ()
 				targetCameraPos.copyFrom(&lookAtVec);
 				targetCameraPos.multXYZ( -(subjectDistance)*subjectZoom*tempZoom );
 				
-				targetCameraPos.addXYZ(
-					currentActor->body->GetCenterPoint().x,
-					currentActor->body->GetCenterPoint().y,
-					currentActor->body->GetCenterPoint().z
-				);
+				// targetCameraPos.addXYZ(
+				// 	currentActor->body->GetCenterPoint().x,
+				// 	currentActor->body->GetCenterPoint().y,
+				// 	currentActor->body->GetCenterPoint().z
+				// );
 				
 				//targetCameraPos.addXYZRef(currentActor->getCenterPoint());
 			}
@@ -28753,7 +29426,7 @@ void Singleton::display ()
 				{
 					
 					
-					
+					gamePhysics->updateAll();
 					
 					frameUpdate();
 					
@@ -39717,49 +40390,15 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 
 		gphCenInPixels.averageXYZ(&gphMaxInPixels,&gphMinInPixels);
 		
-		if (GEN_COLLISION) {
-			// q3BodyDef bodyDef;
-			// bodyDef.position.Set( gphMinInPixels[0], gphMinInPixels[1], gphMinInPixels[2] );
-			// //bodyDef.axis.Set( 0.0f, 0.0f, 1.0f );
-			// //bodyDef.angle = 0.0f;
-			// //bodyDef.bodyType = eStaticBody;
-			// //bodyDef.angularVelocity.Set( 0.0f, 0.0f, 0.0f );
-			// //bodyDef.linearVelocity.Set( 0.0f, 0.0f, 0.0f );
-			// body = singleton->gamePhysics->scene->CreateBody( bodyDef );
-			
-			// q3Transform tx;
-			// q3Identity( tx );
-			// tx.position.Set(
-			// 	cellsPerHolder/2,
-			// 	cellsPerHolder/2,
-			// 	cellsPerHolder/2
-			// );
-			
-			// q3BoxDef boxDef;
-			// boxDef.Set( tx, q3Vec3( 8.0f, 8.0f, 8.0f ) );
-			// boxDef.SetRestitution( 0 );
-			// body->AddBox( boxDef );
-			
-			
-			q3BodyDef bodyDef;
-			bodyDef.position.Set(
-				gphMinInPixels[0], gphMinInPixels[1], gphMinInPixels[2]
-			);
-			body = singleton->gamePhysics->scene->CreateBody( bodyDef );
-			
-			
-			
-			
-		}
-		
 		// if (GEN_COLLISION) {
+			
 		// 	q3BodyDef bodyDef;
 		// 	bodyDef.position.Set(
 		// 		gphMinInPixels[0], gphMinInPixels[1], gphMinInPixels[2]
 		// 	);
 		// 	body = singleton->gamePhysics->scene->CreateBody( bodyDef );
+			
 		// }
-		
 		
 		
 		
@@ -41036,59 +41675,50 @@ void GamePageHolder::fillVBO ()
 		
 		
 		
-		// if (GEN_COLLISION) {
-		// 	q3BoxDef boxDef;
-		// 	boxDef.SetRestitution( 0 );
-		// 	q3Transform tx;
-		// 	q3Identity( tx );
-		// 	tx.position.Set(2,2,2);
-		// 	boxDef.Set( tx, q3Vec3( 8.0f, 8.0f, 8.0f ) );
-		// 	body->AddBox( boxDef );
-		// }
 		
 		float fk;
 		
-		if (GEN_COLLISION) {
-			for (q = 0; q < collideIndices.size(); q += 2) {
+		// if (GEN_COLLISION) {
+		// 	for (q = 0; q < collideIndices.size(); q += 2) {
 				
-				p = collideIndices[q];
-				p2 = collideIndices[q+1];
+		// 		p = collideIndices[q];
+		// 		p2 = collideIndices[q+1];
 				
-				kk = p/(cellsPerHolder*cellsPerHolder);
-				jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-				ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+		// 		kk = p/(cellsPerHolder*cellsPerHolder);
+		// 		jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+		// 		ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 				
-				kk2 = p2/(cellsPerHolder*cellsPerHolder);
+		// 		kk2 = p2/(cellsPerHolder*cellsPerHolder);
 				
-				fk = (kk2-kk)+1;
+		// 		fk = (kk2-kk)+1;
 				
-				q3BoxDef boxDef;
-				boxDef.SetRestitution( 0 );
-				q3Transform tx;
-				q3Identity( tx );
-				tx.position.Set(ii,jj,(kk+kk2)*0.5f);
-				boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, fk ) );
-				body->AddBox( boxDef );
-				
-				
-				// q3BoxDef boxDef;
-				// boxDef.SetRestitution( 0 );
-				// q3Transform tx;
-				// q3Identity( tx );
-				// tx.position.Set(ii,jj,kk);
-				// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
-				// body->AddBox( boxDef );
+		// 		q3BoxDef boxDef;
+		// 		boxDef.SetRestitution( 0 );
+		// 		q3Transform tx;
+		// 		q3Identity( tx );
+		// 		tx.position.Set(ii,jj,(kk+kk2)*0.5f);
+		// 		boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, fk ) );
+		// 		body->AddBox( boxDef );
 				
 				
-				// q3Identity( tx );
-				// tx.position.Set(ii,jj,kk);
-				// // tranform, extents
-				// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
-				// boxDef.SetRestitution( 0 );
-				// body->AddBox( boxDef );
+		// 		// q3BoxDef boxDef;
+		// 		// boxDef.SetRestitution( 0 );
+		// 		// q3Transform tx;
+		// 		// q3Identity( tx );
+		// 		// tx.position.Set(ii,jj,kk);
+		// 		// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
+		// 		// body->AddBox( boxDef );
 				
-			}
-		}
+				
+		// 		// q3Identity( tx );
+		// 		// tx.position.Set(ii,jj,kk);
+		// 		// // tranform, extents
+		// 		// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
+		// 		// boxDef.SetRestitution( 0 );
+		// 		// body->AddBox( boxDef );
+				
+		// 	}
+		// }
 		
 		//cout << "collideIndices.size() " << collideIndices.size() << "\n";
 		
@@ -41191,9 +41821,9 @@ void GamePageHolder::generateList ()
 
 		uint tempHF = E_CD_UNKNOWN;
 
-		if (GEN_COLLISION) {
-			collideIndices.clear();
-		}
+		// if (GEN_COLLISION) {
+		// 	collideIndices.clear();
+		// }
 		
 		vertexVec.clear();
 		indexVec.clear();
@@ -41281,56 +41911,56 @@ void GamePageHolder::generateList ()
 		int endInd;
 		
 		
-		if (GEN_COLLISION) {
+		// if (GEN_COLLISION) {
 			
-			if (
-				(tempHF == E_CD_SOLID) ||
-				(tempHF == E_CD_EMPTY)	
-			) {
+		// 	if (
+		// 		(tempHF == E_CD_SOLID) ||
+		// 		(tempHF == E_CD_EMPTY)	
+		// 	) {
 				
-			}
-			else {
-				for (i = 0; i < cellsPerHolder; i++) {
-					for (j = 0; j < cellsPerHolder; j++) {
-						for (k = 0; k < cellsPerHolder; k++) {
+		// 	}
+		// 	else {
+		// 		for (i = 0; i < cellsPerHolder; i++) {
+		// 			for (j = 0; j < cellsPerHolder; j++) {
+		// 				for (k = 0; k < cellsPerHolder; k++) {
 							
-							isLast = (k == (cellsPerHolder-1));
+		// 					isLast = (k == (cellsPerHolder-1));
 							
-							curInd = (i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder);
+		// 					curInd = (i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder);
 							
-							cellVal = getCellAtInd(curInd*4);
+		// 					cellVal = getCellAtInd(curInd*4);
 							
-							if (cellVal == E_CD_SOLID) {
-								if (rleOn) {
+		// 					if (cellVal == E_CD_SOLID) {
+		// 						if (rleOn) {
 									
-								}
-								else {
-									rleOn = true;
-									begInd = curInd;
-									collideIndices.push_back(begInd);
-								}
-							}
-							else {
-								if (rleOn) {
-									rleOn = false;
-									endInd = curInd-(cellsPerHolder*cellsPerHolder);
+		// 						}
+		// 						else {
+		// 							rleOn = true;
+		// 							begInd = curInd;
+		// 							collideIndices.push_back(begInd);
+		// 						}
+		// 					}
+		// 					else {
+		// 						if (rleOn) {
+		// 							rleOn = false;
+		// 							endInd = curInd-(cellsPerHolder*cellsPerHolder);
 									
-									collideIndices.push_back(endInd);
-								}
-							}
+		// 							collideIndices.push_back(endInd);
+		// 						}
+		// 					}
 							
-							if (rleOn&&isLast) {
-								rleOn = false;
-								endInd = curInd;
-								collideIndices.push_back(endInd);
-							}
-						}
-					}
-				}
-			}
+		// 					if (rleOn&&isLast) {
+		// 						rleOn = false;
+		// 						endInd = curInd;
+		// 						collideIndices.push_back(endInd);
+		// 					}
+		// 				}
+		// 			}
+		// 		}
+		// 	}
 				
 				
-		}
+		// }
 		
 		
 		// if (GEN_COLLISION) {
@@ -47151,6 +47781,1202 @@ void GameLogic::loadNearestHolders ()
 	}
 #undef LZZ_INLINE
  
+// f00373_myshapedrawer.h
+//
+
+#include "f00373_myshapedrawer.e"
+#define LZZ_INLINE inline
+MyShapeDrawer::MyShapeDrawer (Singleton * _singleton)
+                {
+			singleton = _singleton;
+			
+			//m_texturehandle			=	0;
+			//m_textureenabled		=	false;
+			//m_textureinitialized	=	false;
+		}
+void MyShapeDrawer::init ()
+                            {
+			
+		}
+bool MyShapeDrawer::enableTexture (bool enable)
+                                                {
+			return false;//bool p=m_textureenabled;m_textureenabled=enable;return(p);
+		}
+bool MyShapeDrawer::hasTextureEnabled () const
+                                               {
+			return false;//m_textureenabled;
+		}
+void MyShapeDrawer::drawCoordSystem ()
+                                        {
+			glBegin(GL_LINES);
+			glColor3f(1, 0, 0);
+			glVertex3d(0, 0, 0);
+			glVertex3d(1, 0, 0);
+			glColor3f(0, 1, 0);
+			glVertex3d(0, 0, 0);
+			glVertex3d(0, 1, 0);
+			glColor3f(0, 0, 1);
+			glVertex3d(0, 0, 0);
+			glVertex3d(0, 0, 1);
+			glEnd();
+
+		}
+void MyShapeDrawer::drawSphere (btScalar radius, int lats, int longs)
+                {
+			int i, j;
+			for(i = 0; i <= lats; i++) {
+				btScalar lat0 = SIMD_PI * (-btScalar(0.5) + (btScalar) (i - 1) / lats);
+				btScalar z0  = radius*sin(lat0);
+				btScalar zr0 =  radius*cos(lat0);
+
+				btScalar lat1 = SIMD_PI * (-btScalar(0.5) + (btScalar) i / lats);
+				btScalar z1 = radius*sin(lat1);
+				btScalar zr1 = radius*cos(lat1);
+
+				glBegin(GL_QUAD_STRIP);
+				for(j = 0; j <= longs; j++) {
+					btScalar lng = 2 * SIMD_PI * (btScalar) (j - 1) / longs;
+					btScalar x = cos(lng);
+					btScalar y = sin(lng);
+					glNormal3f(x * zr1, y * zr1, z1);
+					glVertex3f(x * zr1, y * zr1, z1);
+					glNormal3f(x * zr0, y * zr0, z0);
+					glVertex3f(x * zr0, y * zr0, z0);
+				}
+				glEnd();
+			}
+		}
+ShapeCache * MyShapeDrawer::cache (btConvexShape * shape)
+                {
+			ShapeCache*		sc=(ShapeCache*)shape->getUserPointer();
+			if(!sc)
+			{
+				sc=new(btAlignedAlloc(sizeof(ShapeCache),16)) ShapeCache(shape);
+				sc->m_shapehull.buildHull(shape->getMargin());
+				m_shapecaches.push_back(sc);
+				shape->setUserPointer(sc);
+				/* Build edges	*/ 
+				const int			ni=sc->m_shapehull.numIndices();
+				const int			nv=sc->m_shapehull.numVertices();
+				const unsigned int*	pi=sc->m_shapehull.getIndexPointer();
+				const btVector3*	pv=sc->m_shapehull.getVertexPointer();
+				btAlignedObjectArray<ShapeCache::Edge*>	edges;
+				sc->m_edges.reserve(ni);
+				edges.resize(nv*nv,0);
+				for(int i=0;i<ni;i+=3)
+				{
+					const unsigned int* ti=pi+i;
+					const btVector3		nrm=btCross(pv[ti[1]]-pv[ti[0]],pv[ti[2]]-pv[ti[0]]).normalized();
+					for(int j=2,k=0;k<3;j=k++)
+					{
+						const unsigned int	a=ti[j];
+						const unsigned int	b=ti[k];
+						ShapeCache::Edge*&	e=edges[btMin(a,b)*nv+btMax(a,b)];
+						if(!e)
+						{
+							sc->m_edges.push_back(ShapeCache::Edge());
+							e=&sc->m_edges[sc->m_edges.size()-1];
+							e->n[0]=nrm;e->n[1]=-nrm;
+							e->v[0]=a;e->v[1]=b;
+						}
+						else
+						{
+							e->n[1]=nrm;
+						}
+					}
+				}
+			}
+			return(sc);
+		}
+void MyShapeDrawer::renderSquareA (float x, float y, float z)
+                {
+			glBegin(GL_LINE_LOOP);
+			glVertex3f(x, y, z);
+			glVertex3f(x + 10.f, y, z);
+			glVertex3f(x + 10.f, y + 10.f, z);
+			glVertex3f(x, y + 10.f, z);
+			glEnd();
+		}
+void MyShapeDrawer::updateMat ()
+                                 {
+			int i;
+			
+			singleton->curObjMatrix.identity();
+			
+			for (i = 0; i < singleton->objMatrixStack.size(); i++) {
+				singleton->curObjMatrix *= singleton->objMatrixStack[i];
+			}
+			//glGetFloatv(GL_MODELVIEW_MATRIX, singleton->viewMatrix.get());
+			singleton->setShaderMatrix4x4("objmat",singleton->curObjMatrix.get(),1);
+		}
+void MyShapeDrawer::updateMat2 ()
+                                  {
+			
+			glGetFloatv(GL_MODELVIEW_MATRIX, singleton->viewMatrix.get());
+			singleton->setShaderMatrix4x4("objmat",singleton->viewMatrix.get(),1);
+		}
+void MyShapeDrawer::pushNewMat (btScalar * m)
+                                             {
+			singleton->objMatrixStack.push_back(Matrix4(
+				m[0],
+				m[1],
+				m[2],	
+				m[3],
+				
+				m[4],
+				m[5],
+				m[6],
+				m[7],
+				
+				m[8],
+				m[9],
+				m[10],
+				m[11],
+				
+				m[12],
+				m[13],
+				m[14],
+				m[15]
+			));
+			updateMat();
+		}
+void MyShapeDrawer::popMat ()
+                              {
+			singleton->objMatrixStack.pop_back();
+			updateMat();
+		}
+void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, btVector3 const & color, int debugMode, btVector3 const & worldBoundsMin, btVector3 const & worldBoundsMax)
+                  {
+			
+			if (shape->getShapeType() == CUSTOM_CONVEX_SHAPE_TYPE)
+			{
+				btVector3 org(m[12], m[13], m[14]);
+				btVector3 dx(m[0], m[1], m[2]);
+				btVector3 dy(m[4], m[5], m[6]);
+		//		btVector3 dz(m[8], m[9], m[10]);
+				const btBoxShape* boxShape = static_cast<const btBoxShape*>(shape);
+				btVector3 halfExtent = boxShape->getHalfExtentsWithMargin();
+				dx *= halfExtent[0];
+				dy *= halfExtent[1];
+		//		dz *= halfExtent[2];
+				glColor3f(1,1,1);
+				//glDisable(GL_LIGHTING);
+				glLineWidth(2);
+
+				glBegin(GL_LINE_LOOP);
+				glDrawVector(org - dx - dy);
+				glDrawVector(org - dx + dy);
+				glDrawVector(org + dx + dy);
+				glDrawVector(org + dx - dy);
+				glEnd();
+				return;
+			} 
+			else if((shape->getShapeType() == BOX_SHAPE_PROXYTYPE) && (debugMode & btIDebugDraw::DBG_FastWireframe))
+			{
+				btVector3 org(m[12], m[13], m[14]);
+				btVector3 dx(m[0], m[1], m[2]);
+				btVector3 dy(m[4], m[5], m[6]);
+				btVector3 dz(m[8], m[9], m[10]);
+				const btBoxShape* boxShape = static_cast<const btBoxShape*>(shape);
+				btVector3 halfExtent = boxShape->getHalfExtentsWithMargin();
+				dx *= halfExtent[0];
+				dy *= halfExtent[1];
+				dz *= halfExtent[2];
+				glBegin(GL_LINE_LOOP);
+				glDrawVector(org - dx - dy - dz);
+				glDrawVector(org + dx - dy - dz);
+				glDrawVector(org + dx + dy - dz);
+				glDrawVector(org - dx + dy - dz);
+				glDrawVector(org - dx + dy + dz);
+				glDrawVector(org + dx + dy + dz);
+				glDrawVector(org + dx - dy + dz);
+				glDrawVector(org - dx - dy + dz);
+				glEnd();
+				glBegin(GL_LINES);
+				glDrawVector(org + dx - dy - dz);
+				glDrawVector(org + dx - dy + dz);
+				glDrawVector(org + dx + dy - dz);
+				glDrawVector(org + dx + dy + dz);
+				glDrawVector(org - dx - dy - dz);
+				glDrawVector(org - dx + dy - dz);
+				glDrawVector(org - dx - dy + dz);
+				glDrawVector(org - dx + dy + dz);
+				glEnd();
+				return;
+			}
+
+			//cout << "a\n";
+			//glPushMatrix(); 
+			//btglMultMatrix(m);
+			//updateMat2();
+			pushNewMat(m);
+
+
+			if (shape->getShapeType() == UNIFORM_SCALING_SHAPE_PROXYTYPE)
+			{
+				const btUniformScalingShape* scalingShape = static_cast<const btUniformScalingShape*>(shape);
+				const btConvexShape* convexShape = scalingShape->getChildShape();
+				float	scalingFactor = (float)scalingShape->getUniformScalingFactor();
+				{
+					btScalar tmpScaling[4][4]={{scalingFactor,0,0,0},
+					{0,scalingFactor,0,0},
+					{0,0,scalingFactor,0},
+					{0,0,0,1}};
+
+					drawOpenGL( (btScalar*)tmpScaling,convexShape,color,debugMode,worldBoundsMin,worldBoundsMax);
+				}
+				//cout << "b\n";
+				//glPopMatrix();
+				//updateMat2();
+				popMat();
+				return;
+			}
+
+			if (shape->getShapeType() == COMPOUND_SHAPE_PROXYTYPE)
+			{
+				const btCompoundShape* compoundShape = static_cast<const btCompoundShape*>(shape);
+				for (int i=compoundShape->getNumChildShapes()-1;i>=0;i--)
+				{
+					btTransform childTrans = compoundShape->getChildTransform(i);
+					const btCollisionShape* colShape = compoundShape->getChildShape(i);
+					ATTRIBUTE_ALIGNED16(btScalar) childMat[16];
+					childTrans.getOpenGLMatrix(childMat);
+					drawOpenGL(childMat,colShape,color,debugMode,worldBoundsMin,worldBoundsMax);
+				}
+
+			} else
+			{
+				// if(m_textureenabled&&(!m_textureinitialized))
+				// {
+				// 	GLubyte*	image=new GLubyte[256*256*4];
+				// 	for(int y=0;y<256;++y)
+				// 	{
+				// 		const int	t=y>>4;
+				// 		GLubyte*	pi=image+y*256*3;
+				// 		for(int x=0;x<256;++x)
+				// 		{
+				// 			const int		s=x>>4;
+				// 			const GLubyte	b=180;					
+				// 			GLubyte			c=b+((s+(t&1))&1)*(255-b);
+				// 			pi[0]=pi[1]=pi[2]=pi[3]=c;pi+=3;
+				// 		}
+				// 	}
+
+				// 	glGenTextures(1,(GLuint*)&m_texturehandle);
+				// 	glBindTexture(GL_TEXTURE_2D,m_texturehandle);
+
+
+		  //             glGenTextures(1,(GLuint*)&m_texturehandle);
+		  //              glBindTexture(GL_TEXTURE_2D,m_texturehandle);
+				// glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+		  //               glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+		  //               glTexImage2D(GL_TEXTURE_2D, 0, 3, 256 , 256 , 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+				// //glGenerateMipmap(GL_TEXTURE_2D);
+				//   delete[] image;
+
+					
+				// }
+
+				// glMatrixMode(GL_TEXTURE);
+				// glLoadIdentity();
+				// glScalef(0.025f,0.025f,0.025f);
+				// glMatrixMode(GL_MODELVIEW);
+
+				// static const GLfloat	planex[]={1,0,0,0};
+				// //	static const GLfloat	planey[]={0,1,0,0};
+				// 	static const GLfloat	planez[]={0,0,1,0};
+				// 	glTexGenfv(GL_S,GL_OBJECT_PLANE,planex);
+				// 	glTexGenfv(GL_T,GL_OBJECT_PLANE,planez);
+				// 	glTexGeni(GL_S,GL_TEXTURE_GEN_MODE,GL_OBJECT_LINEAR);
+				// 	glTexGeni(GL_T,GL_TEXTURE_GEN_MODE,GL_OBJECT_LINEAR);
+					//glEnable(GL_TEXTURE_GEN_S);
+					//glEnable(GL_TEXTURE_GEN_T);
+					//glEnable(GL_TEXTURE_GEN_R);
+				//	m_textureinitialized=true;
+
+				
+					
+
+				//drawCoordSystem();
+
+				//glEnable(GL_COLOR_MATERIAL);
+				// if(m_textureenabled) 
+				// {
+				// 	//glEnable(GL_TEXTURE_2D);
+				// 	glBindTexture(GL_TEXTURE_2D,m_texturehandle);
+				// } else
+				// {
+				// 	//glDisable(GL_TEXTURE_2D);
+				// }
+
+
+				glColor3f(color.x(),color.y(), color.z());		
+
+				//bool useWireframeFallback = true;
+
+				if (!(debugMode & btIDebugDraw::DBG_DrawWireframe))
+				{
+					///you can comment out any of the specific cases, and use the default
+
+					///the benefit of 'default' is that it approximates the actual collision shape including collision margin
+					//int shapetype=m_textureenabled?MAX_BROADPHASE_COLLISION_TYPES:shape->getShapeType();
+					int shapetype=shape->getShapeType();
+					switch (shapetype)
+					{
+
+						case SPHERE_SHAPE_PROXYTYPE:
+						{
+							const btSphereShape* sphereShape = static_cast<const btSphereShape*>(shape);
+							float radius = sphereShape->getMargin();//radius doesn't include the margin, so draw with margin
+							drawSphere(radius,10,10);
+							//useWireframeFallback = false;
+							break;
+						}
+
+						case BOX_SHAPE_PROXYTYPE:
+						{
+							//ffffffffff
+							
+							const btBoxShape* boxShape = static_cast<const btBoxShape*>(shape);
+							btVector3 halfExtent = boxShape->getHalfExtentsWithMargin();
+							
+							static int indices[36] = {
+								0,1,2,
+								3,2,1,
+								4,0,6,
+								6,0,2,
+								5,1,4,
+								4,1,0,
+								7,3,1,
+								7,1,5,
+								5,4,7,
+								7,4,6,
+								7,2,3,
+								7,6,2};
+
+							 btVector3 vertices[8]={	
+								btVector3(halfExtent[0],halfExtent[1],halfExtent[2]),
+								btVector3(-halfExtent[0],halfExtent[1],halfExtent[2]),
+								btVector3(halfExtent[0],-halfExtent[1],halfExtent[2]),	
+								btVector3(-halfExtent[0],-halfExtent[1],halfExtent[2]),	
+								btVector3(halfExtent[0],halfExtent[1],-halfExtent[2]),
+								btVector3(-halfExtent[0],halfExtent[1],-halfExtent[2]),	
+								btVector3(halfExtent[0],-halfExtent[1],-halfExtent[2]),	
+								btVector3(-halfExtent[0],-halfExtent[1],-halfExtent[2])};
+		#if 1
+							glBegin (GL_TRIANGLES);
+							int si=36;
+							for (int i=0;i<si;i+=3)
+							{
+								const btVector3& v1 = vertices[indices[i]];;
+								const btVector3& v2 = vertices[indices[i+1]];
+								const btVector3& v3 = vertices[indices[i+2]];
+								btVector3 normal = (v3-v1).cross(v2-v1);
+								normal.normalize ();
+								glNormal3f(normal.getX(),normal.getY(),normal.getZ());
+								glVertex3f (v1.x(), v1.y(), v1.z());
+								glVertex3f (v2.x(), v2.y(), v2.z());
+								glVertex3f (v3.x(), v3.y(), v3.z());
+								
+							}
+							glEnd();
+		#endif
+
+							//useWireframeFallback = false;
+							break;
+						}
+
+
+
+		#if 0
+					
+					case CONE_SHAPE_PROXYTYPE:
+						{
+							const btConeShape* coneShape = static_cast<const btConeShape*>(shape);
+							int upIndex = coneShape->getConeUpIndex();
+							float radius = coneShape->getRadius();//+coneShape->getMargin();
+							float height = coneShape->getHeight();//+coneShape->getMargin();
+							switch (upIndex)
+							{
+							case 0:
+								glRotatef(90.0, 0.0, 1.0, 0.0);
+								break;
+							case 1:
+								glRotatef(-90.0, 1.0, 0.0, 0.0);
+								break;
+							case 2:
+								break;
+							default:
+								{
+								}
+							};
+
+							glTranslatef(0.0, 0.0, -0.5*height);
+							glutSolidCone(radius,height,10,10);
+							//useWireframeFallback = false;
+							break;
+
+						}
+		#endif
+
+					case STATIC_PLANE_PROXYTYPE:
+						{
+							const btStaticPlaneShape* staticPlaneShape = static_cast<const btStaticPlaneShape*>(shape);
+							btScalar planeConst = staticPlaneShape->getPlaneConstant();
+							const btVector3& planeNormal = staticPlaneShape->getPlaneNormal();
+							btVector3 planeOrigin = planeNormal * planeConst;
+							btVector3 vec0,vec1;
+							btPlaneSpace1(planeNormal,vec0,vec1);
+							btScalar vecLen = 100.f;
+							btVector3 pt0 = planeOrigin + vec0*vecLen;
+							btVector3 pt1 = planeOrigin - vec0*vecLen;
+							btVector3 pt2 = planeOrigin + vec1*vecLen;
+							btVector3 pt3 = planeOrigin - vec1*vecLen;
+							glBegin(GL_LINES);
+							glVertex3f(pt0.getX(),pt0.getY(),pt0.getZ());
+							glVertex3f(pt1.getX(),pt1.getY(),pt1.getZ());
+							glVertex3f(pt2.getX(),pt2.getY(),pt2.getZ());
+							glVertex3f(pt3.getX(),pt3.getY(),pt3.getZ());
+							glEnd();
+
+
+							break;
+
+						}
+
+
+					case MULTI_SPHERE_SHAPE_PROXYTYPE:
+					{
+						const btMultiSphereShape* multiSphereShape = static_cast<const btMultiSphereShape*>(shape);
+
+						btTransform childTransform;
+						childTransform.setIdentity();
+
+						
+						for (int i = multiSphereShape->getSphereCount()-1; i>=0;i--)
+						{
+							btSphereShape sc(multiSphereShape->getSphereRadius(i));
+							childTransform.setOrigin(multiSphereShape->getSpherePosition(i));
+							ATTRIBUTE_ALIGNED16(btScalar) childMat[16];
+							childTransform.getOpenGLMatrix(childMat);
+							drawOpenGL(childMat,&sc,color,debugMode,worldBoundsMin,worldBoundsMax);
+						}
+
+						break;
+					}
+
+					default:
+						{
+							if (shape->isConvex())
+							{
+								const btConvexPolyhedron* poly = shape->isPolyhedral() ? ((btPolyhedralConvexShape*) shape)->getConvexPolyhedron() : 0;
+								if (poly)
+								{
+									int i;
+									glBegin (GL_TRIANGLES);
+									for (i=0;i<poly->m_faces.size();i++)
+									{
+										btVector3 centroid(0,0,0);
+										int numVerts = poly->m_faces[i].m_indices.size();
+										if (numVerts>2)
+										{
+											btVector3 v1 = poly->m_vertices[poly->m_faces[i].m_indices[0]];
+											for (int v=0;v<poly->m_faces[i].m_indices.size()-2;v++)
+											{
+												
+												btVector3 v2 = poly->m_vertices[poly->m_faces[i].m_indices[v+1]];
+												btVector3 v3 = poly->m_vertices[poly->m_faces[i].m_indices[v+2]];
+												btVector3 normal = (v3-v1).cross(v2-v1);
+												normal.normalize ();
+												glNormal3f(normal.getX(),normal.getY(),normal.getZ());
+												glVertex3f (v1.x(), v1.y(), v1.z());
+												glVertex3f (v2.x(), v2.y(), v2.z());
+												glVertex3f (v3.x(), v3.y(), v3.z());
+											}
+										}
+									}
+									glEnd ();
+								} else
+								{
+									ShapeCache*	sc=cache((btConvexShape*)shape);
+									//glutSolidCube(1.0);
+									btShapeHull* hull = &sc->m_shapehull/*(btShapeHull*)shape->getUserPointer()*/;
+
+									if (hull->numTriangles () > 0)
+									{
+										int index = 0;
+										const unsigned int* idx = hull->getIndexPointer();
+										const btVector3* vtx = hull->getVertexPointer();
+
+										glBegin (GL_TRIANGLES);
+
+										for (int i = 0; i < hull->numTriangles (); i++)
+										{
+											int i1 = index++;
+											int i2 = index++;
+											int i3 = index++;
+											btAssert(i1 < hull->numIndices () &&
+												i2 < hull->numIndices () &&
+												i3 < hull->numIndices ());
+
+											int index1 = idx[i1];
+											int index2 = idx[i2];
+											int index3 = idx[i3];
+											btAssert(index1 < hull->numVertices () &&
+												index2 < hull->numVertices () &&
+												index3 < hull->numVertices ());
+
+											btVector3 v1 = vtx[index1];
+											btVector3 v2 = vtx[index2];
+											btVector3 v3 = vtx[index3];
+											btVector3 normal = (v3-v1).cross(v2-v1);
+											normal.normalize ();
+											glNormal3f(normal.getX(),normal.getY(),normal.getZ());
+											glVertex3f (v1.x(), v1.y(), v1.z());
+											glVertex3f (v2.x(), v2.y(), v2.z());
+											glVertex3f (v3.x(), v3.y(), v3.z());
+
+										}
+										glEnd ();
+
+									}
+								}
+							}
+						}
+					}
+
+				}
+
+
+				glNormal3f(0,1,0);
+			
+
+				/// for polyhedral shapes
+				if (debugMode==btIDebugDraw::DBG_DrawFeaturesText && (shape->isPolyhedral()))
+				{
+					btPolyhedralConvexShape* polyshape = (btPolyhedralConvexShape*) shape;
+
+					{
+
+						glColor3f(1.f, 1.f, 1.f);
+						int i;
+						for (i=0;i<polyshape->getNumVertices();i++)
+						{
+							btVector3 vtx;
+							polyshape->getVertex(i,vtx);
+							char buf[12];
+							sprintf(buf," %d",i);
+							//btDrawString(BMF_GetFont(BMF_kHelvetica10),buf);
+						}
+
+						for (i=0;i<polyshape->getNumPlanes();i++)
+						{
+							btVector3 normal;
+							btVector3 vtx;
+							polyshape->getPlane(normal,vtx,i);
+							//btScalar d = vtx.dot(normal);
+
+							//char buf[12];
+							//sprintf(buf," plane %d",i);
+							//btDrawString(BMF_GetFont(BMF_kHelvetica10),buf);
+
+						}
+					}
+
+				}
+
+
+
+
+
+
+
+
+			}
+			//cout << "c\n";
+			//glPopMatrix();
+			//updateMat2();
+			popMat();
+
+			//glDisable(GL_TEXTURE_2D);
+		}
+MyShapeDrawer::~ MyShapeDrawer ()
+                {
+			int i;
+			for (i=0;i<m_shapecaches.size();i++)
+			{
+				m_shapecaches[i]->~ShapeCache();
+				btAlignedFree(m_shapecaches[i]);
+			}
+			m_shapecaches.clear();
+			/*if(m_textureinitialized)
+			{
+			//	glDeleteTextures(1,(const GLuint*) &m_texturehandle);
+			}*/
+		}
+void MyShapeDrawer::drawSceneInternal (btDiscreteDynamicsWorld const * dynamicsWorld, int pass)
+                {
+
+			btAssert(dynamicsWorld);
+
+			
+			btScalar	m[16];
+			btMatrix3x3	rot;rot.setIdentity();
+			const int	numObjects=dynamicsWorld->getNumCollisionObjects();
+			btVector3 wireColor(1,0,0);
+			
+			
+			
+			for(int i=0;i<numObjects;i++)
+			{
+				const btCollisionObject*	colObj=dynamicsWorld->getCollisionObjectArray()[i];
+				const btRigidBody*		body=btRigidBody::upcast(colObj);
+				if(body&&body->getMotionState())
+				{
+					btDefaultMotionState* myMotionState = (btDefaultMotionState*)body->getMotionState();
+					myMotionState->m_graphicsWorldTrans.getOpenGLMatrix(m);
+					rot=myMotionState->m_graphicsWorldTrans.getBasis();
+				}
+				else
+				{
+					colObj->getWorldTransform().getOpenGLMatrix(m);
+					rot=colObj->getWorldTransform().getBasis();
+				}
+				btVector3 wireColor(1.f,1.0f,0.5f); //wants deactivation
+				if(i&1) wireColor=btVector3(0.f,0.0f,1.f);
+				///color differently for active, sleeping, wantsdeactivation states
+				if (colObj->getActivationState() == 1) //active
+				{
+					if (i & 1)
+					{
+						wireColor += btVector3 (1.f,0.f,0.f);
+					}
+					else
+					{
+						wireColor += btVector3 (.5f,0.f,0.f);
+					}
+				}
+				if(colObj->getActivationState()==2) //ISLAND_SLEEPING
+				{
+					if(i&1)
+					{
+						wireColor += btVector3 (0.f,1.f, 0.f);
+					}
+					else
+					{
+						wireColor += btVector3 (0.f,0.5f,0.f);
+					}
+				}
+
+				btVector3 aabbMin(0,0,0),aabbMax(0,0,0);
+				//m_dynamicsWorld->getBroadphase()->getBroadphaseAabb(aabbMin,aabbMax);
+
+				aabbMin-=btVector3(BT_LARGE_FLOAT,BT_LARGE_FLOAT,BT_LARGE_FLOAT);
+				aabbMax+=btVector3(BT_LARGE_FLOAT,BT_LARGE_FLOAT,BT_LARGE_FLOAT);
+			//		printf("aabbMin=(%f,%f,%f)\n",aabbMin.getX(),aabbMin.getY(),aabbMin.getZ());
+			//		printf("aabbMax=(%f,%f,%f)\n",aabbMax.getX(),aabbMax.getY(),aabbMax.getZ());
+			//		m_dynamicsWorld->getDebugDrawer()->drawAabb(aabbMin,aabbMax,btVector3(1,1,1));
+
+				//switch(pass)
+				
+				//if (!(getDebugMode()& btIDebugDraw::DBG_DrawWireframe))
+				int debugMode = 0;//getDebugMode()
+				//btVector3 m_sundirection(-1,-1,-1);
+				btVector3 m_sundirection(btVector3(1,-2,1)*1000);
+						
+				// switch(pass)
+				// {
+				// 	// case	0:	drawOpenGL(m,colObj->getCollisionShape(),wireColor,debugMode,aabbMin,aabbMax);break;
+				// 	// case	1:	drawShadow(m,m_sundirection*rot,colObj->getCollisionShape(),aabbMin,aabbMax);break;
+				// 	//case	2:	drawOpenGL(m,colObj->getCollisionShape(),wireColor*btScalar(0.3),0,aabbMin,aabbMax);break;
+					
+					
+				// }
+				
+				drawOpenGL(m,colObj->getCollisionShape(),wireColor,debugMode,aabbMin,aabbMax);
+				//drawOpenGL(m,colObj->getCollisionShape(),wireColor*btScalar(0.3),0,aabbMin,aabbMax);
+			}
+
+		}
+void MyShapeDrawer::drawScene (btDiscreteDynamicsWorld const * dynamicsWorld, bool useShadows)
+                {
+		/*
+			GLfloat light_ambient[] = { btScalar(0.2), btScalar(0.2), btScalar(0.2), btScalar(1.0) };
+			GLfloat light_diffuse[] = { btScalar(1.0), btScalar(1.0), btScalar(1.0), btScalar(1.0) };
+			GLfloat light_specular[] = { btScalar(1.0), btScalar(1.0), btScalar(1.0), btScalar(1.0 )};
+			
+			GLfloat light_position0[] = { btScalar(1.0), btScalar(10.0), btScalar(1.0), btScalar(0.0 )};
+			GLfloat light_position1[] = { btScalar(-1.0), btScalar(-10.0), btScalar(-1.0), btScalar(0.0) };
+
+			glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
+			glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
+			glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
+			glLightfv(GL_LIGHT0, GL_POSITION, light_position0);
+
+			glLightfv(GL_LIGHT1, GL_AMBIENT, light_ambient);
+			glLightfv(GL_LIGHT1, GL_DIFFUSE, light_diffuse);
+			glLightfv(GL_LIGHT1, GL_SPECULAR, light_specular);
+			glLightfv(GL_LIGHT1, GL_POSITION, light_position1);
+
+			glEnable(GL_LIGHTING);
+			glEnable(GL_LIGHT0);
+			glEnable(GL_LIGHT1);
+
+
+			glShadeModel(GL_SMOOTH);
+			glEnable(GL_DEPTH_TEST);
+			glDepthFunc(GL_LESS);
+
+			glClearColor(btScalar(0.7),btScalar(0.7),btScalar(0.7),btScalar(0));
+
+
+			if(useShadows)
+				{
+					glClear(GL_STENCIL_BUFFER_BIT);
+					glEnable(GL_CULL_FACE);
+					drawSceneInternal(dynamicsWorld,0);
+
+					glDisable(GL_LIGHTING);
+					glDepthMask(GL_FALSE);
+					glDepthFunc(GL_LEQUAL);
+					glEnable(GL_STENCIL_TEST);
+					glColorMask(GL_FALSE,GL_FALSE,GL_FALSE,GL_FALSE);
+					glStencilFunc(GL_ALWAYS,1,0xFFFFFFFFL);
+					glFrontFace(GL_CCW);
+					glStencilOp(GL_KEEP,GL_KEEP,GL_INCR);
+					drawSceneInternal(dynamicsWorld,1);
+					glFrontFace(GL_CW);
+					glStencilOp(GL_KEEP,GL_KEEP,GL_DECR);
+					drawSceneInternal(dynamicsWorld,1);
+					glFrontFace(GL_CCW);
+
+					glPolygonMode(GL_FRONT,GL_FILL);
+					glPolygonMode(GL_BACK,GL_FILL);
+					glShadeModel(GL_SMOOTH);
+					glEnable(GL_DEPTH_TEST);
+					glDepthFunc(GL_LESS);
+					glEnable(GL_LIGHTING);
+					glDepthMask(GL_TRUE);
+					glCullFace(GL_BACK);
+					glFrontFace(GL_CCW);
+					glEnable(GL_CULL_FACE);
+					glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
+
+					glDepthFunc(GL_LEQUAL);
+					glStencilFunc( GL_NOTEQUAL, 0, 0xFFFFFFFFL );
+					glStencilOp( GL_KEEP, GL_KEEP, GL_KEEP );
+					glDisable(GL_LIGHTING);
+					drawSceneInternal(dynamicsWorld,2);
+					glEnable(GL_LIGHTING);
+					glDepthFunc(GL_LESS);
+					glDisable(GL_STENCIL_TEST);
+					glDisable(GL_CULL_FACE);
+				}
+				else
+				{
+					glDisable(GL_CULL_FACE);
+					drawSceneInternal(dynamicsWorld,0);
+				}
+			*/
+				
+			drawSceneInternal(dynamicsWorld,0);
+		}
+#undef LZZ_INLINE
+ 
+// f00374_myglhelper.h
+//
+
+#include "f00374_myglhelper.e"
+#define LZZ_INLINE inline
+MyGLHelper::MyGLHelper (Singleton * _singleton, CommonGraphicsApp * glApp)
+        {
+		singleton = _singleton;
+		m_data = new MyGLHelperInternalData;
+		m_data->m_glApp = glApp;
+		m_data->m_debugDraw = 0;
+		
+
+		m_data->m_gl2ShapeDrawer = new MyShapeDrawer(singleton);
+	}
+MyGLHelper::~ MyGLHelper ()
+        {
+		delete m_data->m_gl2ShapeDrawer;
+		delete m_data;
+	}
+struct CommonRenderInterface * MyGLHelper::getRenderInterface ()
+        {
+		return m_data->m_glApp->m_renderer;
+	}
+void MyGLHelper::createRigidBodyGraphicsObject (btRigidBody * body, btVector3 const & color)
+        {
+		createCollisionObjectGraphicsObject(body,color);
+	}
+void MyGLHelper::createCollisionObjectGraphicsObject (btCollisionObject * body, btVector3 const & color)
+        {
+		if (body->getUserIndex()<0)
+		{
+			btCollisionShape* shape = body->getCollisionShape();
+			btTransform startTransform = body->getWorldTransform();
+			int graphicsShapeId = shape->getUserIndex();
+			if (graphicsShapeId>=0)
+			{
+			//	btAssert(graphicsShapeId >= 0);
+				//the graphics shape is already scaled
+				btVector3 localScaling(1,1,1);
+				int graphicsInstanceId = m_data->m_glApp->m_renderer->registerGraphicsInstance(graphicsShapeId, startTransform.getOrigin(), startTransform.getRotation(), color, localScaling);
+				body->setUserIndex(graphicsInstanceId);
+			}
+		}
+	}
+int MyGLHelper::registerGraphicsShape (float const * vertices, int numvertices, int const * indices, int numIndices)
+        {
+		int shapeId = m_data->m_glApp->m_renderer->registerShape(vertices, numvertices,indices,numIndices);
+		return shapeId;
+	}
+int MyGLHelper::registerGraphicsInstance (int shapeIndex, float const * position, float const * quaternion, float const * color, float const * scaling)
+        {
+		return m_data->m_glApp->m_renderer->registerGraphicsInstance(shapeIndex,position,quaternion,color,scaling);
+	}
+void MyGLHelper::createCollisionShapeGraphicsObjectInternal (btCollisionShape * collisionShape, btTransform const & parentTransform, btAlignedObjectArray <GLInstanceVertex> & verticesOut, btAlignedObjectArray <int> & indicesOut)
+        {
+	//todo: support all collision shape types
+		switch (collisionShape->getShapeType())
+		{
+			case SOFTBODY_SHAPE_PROXYTYPE:
+			{
+				//skip the soft body collision shape for now
+				break;
+			}
+			case STATIC_PLANE_PROXYTYPE:
+			{
+				//draw a box, oriented along the plane normal
+				const btStaticPlaneShape* staticPlaneShape = static_cast<const btStaticPlaneShape*>(collisionShape);
+				btScalar planeConst = staticPlaneShape->getPlaneConstant();
+				const btVector3& planeNormal = staticPlaneShape->getPlaneNormal();
+				btVector3 planeOrigin = planeNormal * planeConst;
+				btVector3 vec0,vec1;
+				btPlaneSpace1(planeNormal,vec0,vec1);
+				btScalar vecLen = 100.f;
+				btVector3 verts[4];
+
+				verts[0] = planeOrigin + vec0*vecLen + vec1*vecLen;
+				verts[1] = planeOrigin - vec0*vecLen + vec1*vecLen;
+				verts[2] = planeOrigin - vec0*vecLen - vec1*vecLen;
+				verts[3] = planeOrigin + vec0*vecLen - vec1*vecLen;
+					
+				int startIndex = verticesOut.size();
+				indicesOut.push_back(startIndex+0);
+				indicesOut.push_back(startIndex+1);
+				indicesOut.push_back(startIndex+2);
+				indicesOut.push_back(startIndex+0);
+				indicesOut.push_back(startIndex+2);
+				indicesOut.push_back(startIndex+3);
+
+				btVector3 triNormal = parentTransform.getBasis()*planeNormal;
+					
+
+				for (int i=0;i<4;i++)
+				{
+					GLInstanceVertex vtx;
+					btVector3 pos =parentTransform*verts[i];
+					vtx.xyzw[0] = pos.x();
+					vtx.xyzw[1] = pos.y();
+					vtx.xyzw[2] = pos.z();
+					vtx.xyzw[3] = 0.f;
+
+					vtx.normal[0] =triNormal.x();
+					vtx.normal[1] =triNormal.y();
+					vtx.normal[2] =triNormal.z();
+
+					vtx.uv[0] = 0.5f;
+					vtx.uv[1] = 0.5f;
+					verticesOut.push_back(vtx);
+				}
+				break;
+			}
+			case TRIANGLE_MESH_SHAPE_PROXYTYPE:
+			{
+				
+
+				btBvhTriangleMeshShape* trimesh = (btBvhTriangleMeshShape*) collisionShape;
+				btVector3 trimeshScaling = trimesh->getLocalScaling();
+				btStridingMeshInterface* meshInterface = trimesh->getMeshInterface();
+				btAlignedObjectArray<btVector3> vertices;
+				btAlignedObjectArray<int> indices;
+					
+				for (int partId=0;partId<meshInterface->getNumSubParts();partId++)
+				{
+						
+					const unsigned char *vertexbase = 0;
+					int numverts = 0;
+					PHY_ScalarType type = PHY_INTEGER;
+					int stride = 0;
+					const unsigned char *indexbase = 0;
+					int indexstride = 0;
+					int numfaces = 0;
+					PHY_ScalarType indicestype = PHY_INTEGER;
+					//PHY_ScalarType indexType=0;
+						
+					btVector3 triangleVerts[3];
+					meshInterface->getLockedReadOnlyVertexIndexBase(&vertexbase,numverts,	type,stride,&indexbase,indexstride,numfaces,indicestype,partId);
+					btVector3 aabbMin,aabbMax;
+						
+					for (int triangleIndex = 0 ; triangleIndex < numfaces;triangleIndex++)
+					{
+						unsigned int* gfxbase = (unsigned int*)(indexbase+triangleIndex*indexstride);
+							
+						for (int j=2;j>=0;j--)
+						{
+								
+							int graphicsindex = indicestype==PHY_SHORT?((unsigned short*)gfxbase)[j]:gfxbase[j];
+							if (type == PHY_FLOAT)
+							{
+								float* graphicsbase = (float*)(vertexbase+graphicsindex*stride);
+								triangleVerts[j] = btVector3(
+																graphicsbase[0]*trimeshScaling.getX(),
+																graphicsbase[1]*trimeshScaling.getY(),
+																graphicsbase[2]*trimeshScaling.getZ());
+							}
+							else
+							{
+								double* graphicsbase = (double*)(vertexbase+graphicsindex*stride);
+								triangleVerts[j] = btVector3( btScalar(graphicsbase[0]*trimeshScaling.getX()),
+																btScalar(graphicsbase[1]*trimeshScaling.getY()),
+																btScalar(graphicsbase[2]*trimeshScaling.getZ()));
+							}
+						}
+						indices.push_back(vertices.size());
+						vertices.push_back(triangleVerts[0]);
+						indices.push_back(vertices.size());
+						vertices.push_back(triangleVerts[1]);
+						indices.push_back(vertices.size());
+						vertices.push_back(triangleVerts[2]);
+
+						btVector3 triNormal = (triangleVerts[1]-triangleVerts[0]).cross(triangleVerts[2]-triangleVerts[0]);
+						triNormal.normalize();
+
+						for (int v=0;v<3;v++)
+						{
+							GLInstanceVertex vtx;
+							btVector3 pos =parentTransform*triangleVerts[v];
+							vtx.xyzw[0] = pos.x();
+							vtx.xyzw[1] = pos.y();
+							vtx.xyzw[2] = pos.z();
+							vtx.xyzw[3] = 0.f;
+
+
+							vtx.normal[0] =triNormal.x();
+							vtx.normal[1] =triNormal.y();
+							vtx.normal[2] =triNormal.z();
+
+							vtx.uv[0] = 0.5f;
+							vtx.uv[1] = 0.5f;
+
+							indicesOut.push_back(verticesOut.size());
+							verticesOut.push_back(vtx);
+						}
+
+						
+					}
+				}
+				
+				break;
+			}
+			default:
+			{
+				if (collisionShape->isConvex())
+				{
+					btConvexShape* convex = (btConvexShape*)collisionShape;
+					{
+						btShapeHull* hull = new btShapeHull(convex);
+						hull->buildHull(0.0);
+
+						{
+							//int strideInBytes = 9*sizeof(float);
+							//int numVertices = hull->numVertices();
+							//int numIndices =hull->numIndices();
+
+							for (int t=0;t<hull->numTriangles();t++)
+							{
+
+								btVector3 triNormal;
+
+								int index0 = hull->getIndexPointer()[t*3+0];
+								int index1 = hull->getIndexPointer()[t*3+1];
+								int index2 = hull->getIndexPointer()[t*3+2];
+								btVector3 pos0 =parentTransform*hull->getVertexPointer()[index0];
+								btVector3 pos1 =parentTransform*hull->getVertexPointer()[index1];
+								btVector3 pos2 =parentTransform*hull->getVertexPointer()[index2];
+								triNormal = (pos1-pos0).cross(pos2-pos0);
+								triNormal.normalize();
+
+								for (int v=0;v<3;v++)
+								{
+									int index = hull->getIndexPointer()[t*3+v];
+									GLInstanceVertex vtx;
+									btVector3 pos =parentTransform*hull->getVertexPointer()[index];
+									vtx.xyzw[0] = pos.x();
+									vtx.xyzw[1] = pos.y();
+									vtx.xyzw[2] = pos.z();
+									vtx.xyzw[3] = 0.f;
+
+									vtx.normal[0] =triNormal.x();
+									vtx.normal[1] =triNormal.y();
+									vtx.normal[2] =triNormal.z();
+
+									vtx.uv[0] = 0.5f;
+									vtx.uv[1] = 0.5f;
+
+									indicesOut.push_back(verticesOut.size());
+									verticesOut.push_back(vtx);
+								}
+							}
+						}
+					}
+				} else
+				{
+					if (collisionShape->isCompound())
+					{
+						btCompoundShape* compound = (btCompoundShape*) collisionShape;
+						for (int i=0;i<compound->getNumChildShapes();i++)
+						{
+
+							btTransform childWorldTrans = parentTransform * compound->getChildTransform(i);
+							createCollisionShapeGraphicsObjectInternal(compound->getChildShape(i),childWorldTrans,verticesOut,indicesOut);
+						}
+					} else
+					{
+						btAssert(0);
+					}
+						
+				}
+			}
+		};
+	}
+void MyGLHelper::createCollisionShapeGraphicsObject (btCollisionShape * collisionShape)
+        {
+		//already has a graphics object?
+		if (collisionShape->getUserIndex()>=0)
+			return;
+
+		btAlignedObjectArray<GLInstanceVertex> vertices;
+		btAlignedObjectArray<int> indices;
+		btTransform startTrans;startTrans.setIdentity();
+
+		createCollisionShapeGraphicsObjectInternal(collisionShape,startTrans,vertices,indices);
+
+		if (vertices.size() && indices.size())
+		{
+			int shapeId = m_data->m_glApp->m_renderer->registerShape(&vertices[0].xyzw[0],vertices.size(),&indices[0],indices.size());
+			collisionShape->setUserIndex(shapeId);
+		}
+			
+	}
+void MyGLHelper::syncPhysicsToGraphics (btDiscreteDynamicsWorld const * rbWorld)
+        {
+		int numCollisionObjects = rbWorld->getNumCollisionObjects();
+		for (int i = 0; i<numCollisionObjects; i++)
+		{
+						
+			
+			btCollisionObject* colObj = rbWorld->getCollisionObjectArray()[i];
+			btVector3 pos = colObj->getWorldTransform().getOrigin();
+			btQuaternion orn = colObj->getWorldTransform().getRotation();
+			int index = colObj->getUserIndex();
+			if (index >= 0)
+			{
+				m_data->m_glApp->m_renderer->writeSingleInstanceTransformToCPU(pos, orn, index);
+			}
+		}
+		m_data->m_glApp->m_renderer->writeTransforms();
+	}
+void MyGLHelper::render (btDiscreteDynamicsWorld const * rbWorld)
+        {
+		
+
+		m_data->m_glApp->m_renderer->renderScene();
+		//backwards compatible OpenGL2 rendering
+
+		if (m_data->m_gl2ShapeDrawer && rbWorld)
+		{
+			
+			
+			//m_data->m_gl2ShapeDrawer->enableTexture(true);
+			m_data->m_gl2ShapeDrawer->drawScene(rbWorld,true);
+		}
+	}
+void MyGLHelper::createPhysicsDebugDrawer (btDiscreteDynamicsWorld * rbWorld)
+        {
+		btAssert(rbWorld);
+	    m_data->m_debugDraw = new MyDebugDrawer(m_data->m_glApp);
+	    rbWorld->setDebugDrawer(m_data->m_debugDraw );
+
+
+	    m_data->m_debugDraw->setDebugMode(
+	        btIDebugDraw::DBG_DrawWireframe
+	        +btIDebugDraw::DBG_DrawAabb
+	        //btIDebugDraw::DBG_DrawContactPoints
+	        );
+
+	}
+struct Common2dCanvasInterface * MyGLHelper::get2dCanvasInterface ()
+        {
+		return m_data->m_glApp->m_2dCanvasInterface;
+	}
+CommonParameterInterface * MyGLHelper::getParameterInterface ()
+        {
+		return m_data->m_glApp->m_parameterInterface;
+	}
+void MyGLHelper::setUpAxis (int axis)
+        {
+		m_data->m_glApp->setUpAxis(axis);
+	}
+void MyGLHelper::resetCamera (float camDist, float pitch, float yaw, float camPosX, float camPosY, float camPosZ)
+        {
+		if (getRenderInterface() && getRenderInterface()->getActiveCamera())
+		{
+			getRenderInterface()->getActiveCamera()->setCameraDistance(camDist);
+			getRenderInterface()->getActiveCamera()->setCameraPitch(pitch);
+			getRenderInterface()->getActiveCamera()->setCameraYaw(yaw);
+			getRenderInterface()->getActiveCamera()->setCameraTargetPosition(camPosX,camPosY,camPosZ);
+		}
+	}
+void MyGLHelper::autogenerateGraphicsObjects (btDiscreteDynamicsWorld * rbWorld)
+        {
+		//sort the collision objects based on collision shape, the gfx library requires instances that re-use a shape to be added after eachother
+
+		btAlignedObjectArray<btCollisionObject*> sortedObjects;
+		sortedObjects.reserve(rbWorld->getNumCollisionObjects());
+		for (int i=0;i<rbWorld->getNumCollisionObjects();i++)
+		{
+			btCollisionObject* colObj = rbWorld->getCollisionObjectArray()[i];
+			sortedObjects.push_back(colObj);
+		}
+		sortedObjects.quickSort(shapePointerCompareFunc);
+		for (int i=0;i<sortedObjects.size();i++)
+		{
+			btCollisionObject* colObj = sortedObjects[i];
+			//btRigidBody* body = btRigidBody::upcast(colObj);
+			//does this also work for btMultiBody/btMultiBodyLinkCollider?
+			createCollisionShapeGraphicsObject(colObj->getCollisionShape());
+			int colorIndex = colObj->getBroadphaseHandle()->getUid() & 3;
+
+			btVector3 color= sColors[colorIndex];
+			createCollisionObjectGraphicsObject(colObj,color);
+				
+		}
+	}
+void MyGLHelper::drawText3D (char const * txt, float posX, float posY, float posZ, float size)
+        {
+	    btAssert(m_data->m_glApp);
+	    m_data->m_glApp->drawText3D(txt,posX,posY,posZ,size);
+	}
+struct CommonGraphicsApp * MyGLHelper::getAppInterface ()
+        {
+		return m_data->m_glApp;
+	}
+#undef LZZ_INLINE
+ 
 // f00375_gamephysics.h
 //
 
@@ -47162,410 +48988,44 @@ GamePhysics::GamePhysics ()
 	}
 void GamePhysics::init (Singleton * _singleton)
         {
+		// singleton = _singleton;
+		// myShapeDrawer = new MyShapeDrawer(singleton);
+		
+		// CommonExampleOptions options(&noGfx);
+		// example = new BasicExample(options.m_guiHelper);
+		
+		// example->initPhysics();
+		
+		
+		
 		singleton = _singleton;
+		//myShapeDrawer = new MyShapeDrawer(singleton);
+		//myShapeDrawer->init(singleton);
 		
-		accumulator = 0;
-		dt = 1.0f / 60.0f;
+		//myDummyApp = new DummyApp("yo", 640, 480);
 		
-		q3Vec3 gravVec( r32( 0.0 ), r32( 0.0 ), r32( -9.8 ) );
+		myOGLApp = new MyOGLApp("yo", 640, 480);
 		
-		scene = new q3Scene(dt);
-		scene->SetGravity(gravVec);
-		//scene->SetAllowSleep(false);
-		//scene->SetIterations(1);
+		noGfx = new MyGLHelper(singleton, myOGLApp);
 		
+		//CommonExampleOptions options(noGfx);
+		example = new BasicExample(noGfx);
 		
-		acc = 0;
-
-		// Create the floor
-		// q3BodyDef bodyDef;
-		// q3Body* body = scene->CreateBody( bodyDef );
-		// q3BoxDef boxDef;
-		// boxDef.SetRestitution( 0 );
-		// q3Transform tx;
-		// q3Identity( tx );
-		// boxDef.Set( tx, q3Vec3( 50.0f, 50.0f, 1.0f ) );
-		// body->AddBox( boxDef );
-
-		// Create boxes
-		//for ( i32 i = 0; i < 10; ++i )
-		//{
-		//	bodyDef.position.Set( 0.0f, 1.2f * (i + 1), -0.0f );
-		//	//bodyDef.axis.Set( 0.0f, 1.0f, 0.0f );
-		//	//bodyDef.angle = q3PI * q3RandomFloat( -1.0f, 1.0f );
-		//	//bodyDef.angularVelocity.Set( 3.0f, 3.0f, 3.0f );
-		//	//bodyDef.linearVelocity.Set( 2.0f, 0.0f, 0.0f );
-		//	bodyDef.bodyType = eDynamicBody;
-		//	body = scene->CreateBody( bodyDef );
-		//	boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
-		//	body->AddBox( boxDef );
-		//}
-	}
-void GamePhysics::addRandFloor ()
-                            {
-		
-		q3BodyDef bodyDef;
-		bodyDef.position.Set(
-			singleton->cameraPos->getFX() + singleton->lookAtVec[0]*16.0,
-			singleton->cameraPos->getFY() + singleton->lookAtVec[1]*16.0,
-			singleton->cameraPos->getFZ() + singleton->lookAtVec[2]*16.0	
-		);
-		q3Body* body = scene->CreateBody( bodyDef );
-		q3BoxDef boxDef;
-		boxDef.SetRestitution( 0 );
-		q3Transform tx;
-		q3Identity( tx );
-		boxDef.Set( tx, q3Vec3( 8.0f, 8.0f, 8.0f ) );
-		body->AddBox( boxDef );
-	}
-void GamePhysics::addBoxFromObj (BaseObjType _uid)
-                                             {
-		
-		BaseObj* ge = &(singleton->gw->gameObjects[_uid]);
-		
-		if (ge->isHidden) {
-			return;
-		}
+		example->initPhysics();
 		
 		
-		q3BodyDef bodyDef;
-		bodyDef.position.Set(
-			ge->getCenterPoint()->getFX(),
-			ge->getCenterPoint()->getFY(),
-			ge->getCenterPoint()->getFZ()	
-		);
-		
-		if (ge->isUpright) {
-			bodyDef.lockAxisX = true;
-			bodyDef.lockAxisY = true;
-			bodyDef.lockAxisZ = true;
-		}
-		
-		
-		//bodyDef.axis.Set( q3RandomFloat( -1.0f, 1.0f ), q3RandomFloat( -1.0f, 1.0f ), q3RandomFloat( -1.0f, 1.0f ) );
-		//bodyDef.angle = q3PI * q3RandomFloat( -1.0f, 1.0f );
-		bodyDef.bodyType = eDynamicBody;
-		//bodyDef.angularVelocity.Set( q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ) );
-		//bodyDef.angularVelocity *= q3Sign( q3RandomFloat( -1.0f, 1.0f ) );
-		//bodyDef.linearVelocity.Set( q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ) );
-		//bodyDef.linearVelocity *= q3Sign( q3RandomFloat( -1.0f, 1.0f ) );
-		
-		if (ge->body != NULL) {
-			scene->RemoveBody(ge->body);
-			ge->body = NULL;
-		}
-		
-		ge->body = scene->CreateBody( bodyDef );
-
-		q3Transform tx;
-		q3Identity( tx );
-		q3BoxDef boxDef;
-		boxDef.Set( tx, q3Vec3(
-			ge->diameterInCells.getFX(),
-			ge->diameterInCells.getFY(),
-			ge->diameterInCells.getFZ()
-		) );
-		boxDef.SetRestitution(ge->bounciness);
-		ge->body->AddBox( boxDef );
-		
-		
-	}
-void GamePhysics::collideWithWorld ()
-                                {
-		
-		q3Body* body = scene->m_bodyList;
-		
-		q3Box* box;
-		
-		
-		int i;
-		int j;
-		int k;
-		
-		q3Vec3 corners[8];
-
-		int cellVal[2];
-		bool didHit[2];
-		float avgRest[2];
-		float totHits[2];
-		
-		BaseObj* ge;
-		
-		
-		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
-			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
-			
-			if (ge->isHidden) {
-				
-			}
-			else {
-				
-				body = ge->body;
-				
-				if (body != NULL) {
-					
-					ge->updateTargets();
-					
-					box = body->m_boxes;
-					
-					for (j = 0; j < 2; j++) {
-						avgRest[j] = 0.0f;
-						totHits[j] = 0.0f;
-						didHit[j] = false;
-					}
-					
-					
-					while ( box )
-					{
-						box->GetCorners(body->m_tx,corners);
-						
-						for (i = 0; i < 8; i++) {
-							
-							for (j = 0; j < 2; j++) {
-								cellVal[j] = singleton->gw->getCellAtCoords(
-									(int)(corners[i].x),
-									(int)(corners[i].y),
-									((int)(corners[i].z)) + j
-								);
-								if (cellVal[j] == E_CD_SOLID) {
-									didHit[j] = true;
-									avgRest[j] += box->restitution;
-									totHits[j] += 1.0;
-								}
-							}
-							
-						}
-						
-						box = box->next;
-					}
-					
-					for (j = 0; j < 2; j++) {
-						if (totHits[j] > 0.0f) {
-							avgRest[j] /= totHits[j];
-						}
-					}
-					
-					
-					if (didHit[1]) {
-						// back up to last good position
-						// todo: handle case with no last position
-						
-						body->SetTransform(body->lastPos, body->lastQuat);
-						body->m_linearVelocity = body->m_linearVelocity*(-1.0f)*avgRest[1];
-					}
-					else {
-						
-						if (didHit[0]) {
-							
-							if (ge->isInside) {
-								body->m_linearVelocity.z = 0.0f;
-							}
-							else {
-								if (ge->isFalling) {
-									body->SetTransformZ(
-										body->lastPos.z
-									);
-									body->m_linearVelocity.z = body->m_linearVelocity.z*(-1.0f)*avgRest[0];
-								}
-								
-								if (abs(body->m_linearVelocity.z) < 0.1f) {
-									if (ge->isFalling) {
-										ge->isFalling = false;
-										singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
-									}
-									
-								}
-								
-								
-								ge->isInside = true;
-								
-							}
-							
-							
-						}
-						else {
-							ge->isInside = false;
-							
-							// set last good position
-							
-							body->lastPos = body->m_worldCenter;
-							body->lastQuat = body->m_q;
-						}
-						
-						if (ge->isInside) {
-							
-							body->SetTransformZ(
-								body->m_worldCenter.z + 0.5f
-							);
-						}
-						
-						
-					}
-					
-					
-					if (ge->isFalling) {
-						body->m_linearVelocity.x *= ge->windResistance;
-						body->m_linearVelocity.y *= ge->windResistance;
-					}
-					else {
-						body->m_linearVelocity.x *= ge->friction;
-						body->m_linearVelocity.y *= ge->friction;
-					}
-					
-					
-					ge->setCenterPointXYZ(
-						body->m_worldCenter.x,
-						body->m_worldCenter.y,
-						body->m_worldCenter.z
-						
-					);
-					
-					
-					
-					
-					
-				}
-			}
-			
-		}
-		
-
-		// while ( body )
-		// {
-		// 	if ( body->isStatic() ) {
-				
-		// 	}
-		// 	else {}
-			
-		// 	body = body->m_next;
-		// }
-	}
-void GamePhysics::update ()
-        {
-		
-		
-		collideWithWorld();
-		
-		
-		// if (singleton->lbDown) {
-			
-		// }
-		// else {
-			return;
-		//}
-		
-		acc += dt;
-
-		if ( acc > 0.125f ) {
-			acc = 0;
-			
-			
-			//addRandFloor();
-			
-
-			q3BodyDef bodyDef;
-			bodyDef.position.Set(
-				singleton->cameraPos->getFX() + singleton->lookAtVec[0]*16.0,
-				singleton->cameraPos->getFY() + singleton->lookAtVec[1]*16.0,
-				singleton->cameraPos->getFZ() + singleton->lookAtVec[2]*16.0	
-			);
-			bodyDef.axis.Set( q3RandomFloat( -1.0f, 1.0f ), q3RandomFloat( -1.0f, 1.0f ), q3RandomFloat( -1.0f, 1.0f ) );
-			bodyDef.angle = q3PI * q3RandomFloat( -1.0f, 1.0f );
-			bodyDef.bodyType = eDynamicBody;
-			bodyDef.angularVelocity.Set( q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ) );
-			bodyDef.angularVelocity *= q3Sign( q3RandomFloat( -1.0f, 1.0f ) );
-			bodyDef.linearVelocity.Set( q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ) );
-			bodyDef.linearVelocity *= q3Sign( q3RandomFloat( -1.0f, 1.0f ) );
-			q3Body* body = scene->CreateBody( bodyDef );
-
-			q3Transform tx;
-			q3Identity( tx );
-			q3BoxDef boxDef;
-			boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
-			body->AddBox( boxDef );
-		}
-		
-		// q3Body* body = scene->m_bodyList;
-
-		// while ( body )
-		// {
-		// 	body->Render( render );
-		// 	body = body->m_next;
-		// }
-		
-		
-		/*
-		rayCast.Init( q3Vec3( 3.0f, 5.0f, 3.0f ), q3Vec3( -1.0f, -1.0f, -1.0f ) );
-		scene.RayCast( &rayCast, rayCast.data );
-
-		if ( rayCast.impactBody )
-		{
-			rayCast.impactBody->SetToAwake( );
-			rayCast.impactBody->ApplyForceAtWorldPoint( rayCast.data.dir * 20.0f, rayCast.data.GetImpactPoint( ) );
-		}
-		*/
-		
-		
-	}
-void GamePhysics::shutdown ()
-        {
-		scene->RemoveAllBodies();
-	}
-void GamePhysics::drawAll ()
-                       {
-		scene->Render(&q3Rend);
-	}
-void GamePhysics::updateBase (f32 time)
-        {
-		// The time accumulator is used to allow the application to render at
-		// a frequency different from the constant frequency the physics sim-
-		// ulation is running at (default 60Hz).
-		
-		accumulator += time;
-
-		accumulator = q3Clamp01( accumulator );
-		while ( accumulator >= dt )
-		{
-			
-			scene->Step();
-			update();
-			
-			// if ( !paused )
-			// {
-			// 	scene.Step( );
-			// 	demos[ currentDemo ]->Update( );
-			// }
-
-			// else
-			// {
-			// 	if ( singleStep )
-			// 	{
-			// 		scene.Step( );
-			// 		demos[ currentDemo ]->Update( );
-			// 		singleStep = false;
-			// 	}
-			// }
-
-			accumulator -= dt;
-		}
 	}
 void GamePhysics::updateAll ()
                          {
-		f32 time = g_clock.Start( );
-		updateBase(time);
-		g_clock.Stop( );
-	}
-void GamePhysics::bulletTest ()
-                          {
-		MyGUIHelper noGfx;
-
-		CommonExampleOptions options(&noGfx);
-		CommonExampleInterface*    example = BasicExampleCreateFunc(options);
+		// f32 time = g_clock.Start( );
+		// updateBase(time);
+		// g_clock.Stop( );
 		
-		example->initPhysics();
 		example->stepSimulation(1.f/60.f);
+	}
+GamePhysics::~ GamePhysics ()
+                       {
 		example->exitPhysics();
-
 		delete example;
 	}
 #undef LZZ_INLINE
@@ -48923,7 +50383,7 @@ void GameWorld::addVisObject (BaseObjType _uid, bool isRecycled)
 			
 		}
 		else {
-			singleton->gamePhysics->addBoxFromObj(_uid);
+			//singleton->gamePhysics->addBoxFromObj(_uid);
 		}
 		
 	}
@@ -48933,10 +50393,10 @@ bool GameWorld::removeVisObject (BaseObjType _uid, bool isRecycled)
 		
 		BaseObj* ge = &(gameObjects[_uid]);
 		
-		if (ge->body != NULL) {
-			singleton->gamePhysics->scene->RemoveBody(ge->body);
-			ge->body = NULL;
-		}
+		// if (ge->body != NULL) {
+		// 	//singleton->gamePhysics->scene->RemoveBody(ge->body);
+		// 	ge->body = NULL;
+		// }
 		
 		if (isRecycled) {
 			ge->isHidden = true;
@@ -49290,6 +50750,7 @@ void GameWorld::renderGeom ()
 		singleton->bindFBO("geomBaseTargFBO");
 		singleton->setShaderFloat("objectId",0.0);
 		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderFloat("isWire", 0.0);
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
 		singleton->setShaderfVec3("offsetPos",&(singleton->origin));
@@ -49301,6 +50762,18 @@ void GameWorld::renderGeom ()
 		
 		
 		singleton->setShaderVec3("matVal", 30, 30, 30);
+		
+		
+		
+		// singleton->gamePhysics->myShapeDrawer->drawScene(
+		// 	singleton->gamePhysics->example->getDynamicsWorld(),
+		// 	false
+		// );
+		
+		//singleton->gamePhysics->example->renderScene();
+		
+		
+		
 		
 		for(i = 0; i < visObjects.size(); i++) {
 			
@@ -49403,11 +50876,11 @@ void GameWorld::renderGeom ()
 					
 					singleton->setShaderFloat("objectId",visObjects[i]);
 					
-					if (curObj->body != NULL) {
-						glBegin( GL_TRIANGLES );
-						curObj->body->Render(&q3Rend);
-						glEnd( );
-					}
+					// if (curObj->body != NULL) {
+					// 	glBegin( GL_TRIANGLES );
+					// 	//curObj->body->Render(&q3Rend);
+					// 	glEnd( );
+					// }
 				}
 				
 			}
@@ -49640,23 +51113,35 @@ void GameWorld::renderGeom ()
 		
 		//~~~~~~~~~~~~~~
 		
-		// singleton->bindShader("BoxShader");
-		// singleton->bindFBO("geomBaseTargFBO", -1, 0);
-		// singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
-		// singleton->setShaderFloat("objectId",0.0);
-		// singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
-		// singleton->setShaderFloat("isWire", 0.0);
-		// singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
-		// singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
-		// singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
-		// singleton->setShaderVec3("matVal", 50, 128, 10);
+		singleton->bindShader("BoxShader");
+		singleton->bindFBO("geomBaseTargFBO", -1, 0);
+		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
+		singleton->setShaderFloat("objectId",0.0);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
+		singleton->setShaderFloat("isWire", 0.0);
+		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
+		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
+		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
+		singleton->setShaderVec3("matVal", 50, 128, 10);
 					
 		// glBegin( GL_TRIANGLES );
-		// singleton->gamePhysics->drawAll();
+		// //m_data->m_gl2ShapeDrawer->drawScene(rbWorld,true);
+		// singleton->gamePhysics->myShapeDrawer->drawScene(
+		// 	singleton->gamePhysics->example->getDynamicsWorld(), true); //drawAll();
 		// glEnd( );
 		
-		// singleton->unbindFBO();
-		// singleton->unbindShader();
+		//glMatrixMode(GL_MODELVIEW);		
+		// singleton->gamePhysics->myShapeDrawer->drawScene(
+		// 	singleton->gamePhysics->example->getDynamicsWorld(),
+		// 	false
+		// );
+		
+		singleton->gamePhysics->example->renderScene();
+		
+		
+		singleton->unbindFBO();
+		singleton->unbindShader();
 		
 		
 		
@@ -52083,13 +53568,15 @@ void GameWorld::postProcess ()
 			
 			
 			//"solidTargFBO" //"polyFBO"
-			singleton->drawFBO("solidTargFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
+			//singleton->drawFBO("solidTargFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
 			
 			// leave this here to catch errors
 			//cout << "Getting Errors: \n";
-			//glError();
 			
 			
+			
+			
+			glError();
 			
 		}
 		else {

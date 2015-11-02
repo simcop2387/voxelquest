@@ -3,6 +3,7 @@
 
 uniform mat4 modelview;
 uniform mat4 proj;
+uniform mat4 objmat;
 
 uniform float objectId;
 uniform float curTime;
@@ -10,9 +11,10 @@ uniform vec3 cameraPos;
 uniform vec3 offsetPos;
 uniform float isWire;
 uniform vec3 matVal;
+uniform vec3 lookAtVec;
 //uniform vec4 rotationZ;
 
-varying vec3 TexCoord0;
+//varying vec3 TexCoord0;
 
 varying vec3 finalVec;
 varying vec4 worldPos;
@@ -27,12 +29,15 @@ const float M_PI = 3.14159265359;
 
 void main() {
 
-    TexCoord0 = gl_MultiTexCoord0.xyz;
+    //TexCoord0 = gl_MultiTexCoord0.xyz;
     
     vec4 newPos = gl_Vertex;
+    
+    newPos.xyz += cameraPos + lookAtVec*100.0;
+    
     newPos.xyz += offsetPos;
     
-    mat2 m2x2;
+    // mat2 m2x2;
     
     //float rotInv = (M_PI*2.0-rotationZ.w)+M_PI/2.0;
     
@@ -55,7 +60,7 @@ void main() {
     
     mat4 myMat = proj*modelview;// gl_ModelViewProjectionMatrix;
     
-    screenPos = myMat * newPos;
+    screenPos = myMat * objmat* newPos; //objmat * 
     camDis = distance(cameraPos.xyz,newPos.xyz);
     
     gl_Position = screenPos;
@@ -70,19 +75,19 @@ void main() {
     
     float rad = 0.98;
 
-    if (isWire == 0.0) {
+    // if (isWire == 0.0) {
 
-    }
-    else {
+    // }
+    // else {
 
-        if (
-            ( (abs(TexCoord0.x) < rad) && (abs(TexCoord0.y) < rad) ) ||
-            ( (abs(TexCoord0.y) < rad) && (abs(TexCoord0.z) < rad) ) ||
-            ( (abs(TexCoord0.x) < rad) && (abs(TexCoord0.z) < rad) )
-        ) {
-            discard;
-        }
-    }
+    //     if (
+    //         ( (abs(TexCoord0.x) < rad) && (abs(TexCoord0.y) < rad) ) ||
+    //         ( (abs(TexCoord0.y) < rad) && (abs(TexCoord0.z) < rad) ) ||
+    //         ( (abs(TexCoord0.x) < rad) && (abs(TexCoord0.z) < rad) )
+    //     ) {
+    //         discard;
+    //     }
+    // }
     
     gl_FragDepthEXT = camDis/clipDist;
     vec3 newMat = matVal.rgb/255.0;

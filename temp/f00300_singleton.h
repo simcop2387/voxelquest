@@ -1152,7 +1152,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		gamePhysics = new GamePhysics();
 		gamePhysics->init(this);
-		gamePhysics->bulletTest();
+		//gamePhysics->bulletTest();
+		
+		//bulletTest();
 		
 		gameAI = new GameAI();
 		gameAI->init(this);
@@ -6273,39 +6275,18 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 			
 			tempVec3.multXYZ(1.0f);
 			
-			// float testVel = (
-			// 	(ca->body->m_linearVelocity.x + tempVec3[0]) *
-			// 	(ca->body->m_linearVelocity.x + tempVec3[0]) +
-			// 	(ca->body->m_linearVelocity.y + tempVec3[1]) *
-			// 	(ca->body->m_linearVelocity.y + tempVec3[1])
-			// );
 			
 			
-			if (ca->body != NULL) {
-				
-				//if (testVel < (ca->angVelMax*ca->angVelMax)) {
-					ca->body->m_linearVelocity.x += tempVec3[0];
-					ca->body->m_linearVelocity.y += tempVec3[1];
-				//}
-				// else {
-				// 	ca->body->m_linearVelocity.x += tempVec3[0];
-				// 	ca->body->m_linearVelocity.y += tempVec3[1];
-				// }
-				
-				ca->body->SetToAwake();
-				
-				//ca->body->AddLinearVelocity(tempVec2.getQ3Vec3());
-			}
-			
-			// if (tempVec2.length() > 0.01) {
-			// 	depthInvalidMove = true;
-			// 	amountInvalidMove = tempVec2.length();
+			// if (ca->body != NULL) {
+			// 	ca->body->m_linearVelocity.x += tempVec3[0];
+			// 	ca->body->m_linearVelocity.y += tempVec3[1];
+			// 	ca->body->SetToAwake();
 			// }
 			
 		}
 		
 		
-		//gamePhysics->updateAll();
+		
 		//gw->updatePhys();
 		
 	}
@@ -6499,11 +6480,11 @@ void Singleton::handleMovement ()
 				targetCameraPos.copyFrom(&lookAtVec);
 				targetCameraPos.multXYZ( -(subjectDistance)*subjectZoom*tempZoom );
 				
-				targetCameraPos.addXYZ(
-					currentActor->body->GetCenterPoint().x,
-					currentActor->body->GetCenterPoint().y,
-					currentActor->body->GetCenterPoint().z
-				);
+				// targetCameraPos.addXYZ(
+				// 	currentActor->body->GetCenterPoint().x,
+				// 	currentActor->body->GetCenterPoint().y,
+				// 	currentActor->body->GetCenterPoint().z
+				// );
 				
 				//targetCameraPos.addXYZRef(currentActor->getCenterPoint());
 			}
@@ -8240,7 +8221,7 @@ void Singleton::display ()
 				{
 					
 					
-					
+					gamePhysics->updateAll();
 					
 					frameUpdate();
 					
