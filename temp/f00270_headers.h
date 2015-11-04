@@ -1773,9 +1773,9 @@ class GamePhysics
 {
 public:
   Singleton * singleton;
-  BasicExample * example;
+  BenchmarkDemo * example;
   MyOGLApp * myOGLApp;
-  GUIHelperInterface * noGfx;
+  GUIHelperInterface * guiHelper;
   GamePhysics ();
   void init (Singleton * _singleton);
   void updateAll ();

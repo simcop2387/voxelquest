@@ -1,4 +1,4 @@
-﻿Build started 11/3/2015 2:08:04 AM.
+﻿Build started 11/3/2015 11:54:09 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -262,8 +262,9 @@
                    
          GW DONE          
          curHeight 0 newHeight 2634.04
+         No code for key: @
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:27.65
+Time Elapsed 00:02:16.38

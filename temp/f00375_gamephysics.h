@@ -9,30 +9,15 @@ GamePhysics::GamePhysics ()
 	}
 void GamePhysics::init (Singleton * _singleton)
         {
-		// singleton = _singleton;
-		// myShapeDrawer = new MyShapeDrawer(singleton);
-		
-		// CommonExampleOptions options(&noGfx);
-		// example = new BasicExample(options.m_guiHelper);
-		
-		// example->initPhysics();
-		
-		
 		
 		singleton = _singleton;
-		//myShapeDrawer = new MyShapeDrawer(singleton);
-		//myShapeDrawer->init(singleton);
-		
-		//myDummyApp = new DummyApp("yo", 640, 480);
-		
 		myOGLApp = new MyOGLApp("yo", 640, 480);
-		
-		noGfx = new MyGLHelper(singleton, myOGLApp);
-		
-		//CommonExampleOptions options(noGfx);
-		example = new BasicExample(noGfx);
-		
+		guiHelper = new MyGLHelper(singleton, myOGLApp);
+		example = 
+			new BenchmarkDemo(guiHelper,5);
+			// new BasicExample(guiHelper);
 		example->initPhysics();
+		
 		
 		
 	}

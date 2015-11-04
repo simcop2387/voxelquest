@@ -36,9 +36,11 @@ void main() {
     
     vec4 newPos = gl_Vertex;
     
-    newPos.xyz += cameraPos + lookAtVec*10.0;
+    newPos = objmat * newPos;
     
-    //curColor = gl_Color.rgb;
+    newPos.xyz += cameraPos + lookAtVec*50.0;
+    
+    // /curColor = gl_Color.rgb;
     curNormal = gl_Normal.xyz;
     
     //newPos.xyz = mix(newPos.xyz,cameraPos,(sin(curTime)+1.0)*0.5);
@@ -48,7 +50,7 @@ void main() {
     
     worldPos = newPos;
     
-    mat4 myMat = proj*modelview*objmat; // *objmat;// gl_ModelViewProjectionMatrix;
+    mat4 myMat = proj*modelview; // *objmat;// gl_ModelViewProjectionMatrix;
     
     screenPos = myMat * newPos; //
     camDis = distance(cameraPos.xyz,newPos.xyz);
@@ -110,7 +112,7 @@ void main() {
 
     gl_FragData[0] = vec4((worldPos.xyz),zbVal);//vec4(heightPacked.rg,matPacked.rg);//vec4(bhr,bhg,3.0/255.0,tex0.a);
     gl_FragData[1] = vec4(
-        (curNormal+1.0)*0.5
+        vec3(clamp(dot(curNormal,lightVec),0.0,1.0))
         //curColor.rgb*clamp(dot(curNormal,-lightVec.xyz),0.0,1.0)
         ,objectId
     );//vec4(resNorm.rgb, (TexCoord0.z+tex1.a)/2.0 ); //(TexCoord0.xyz+1.0)/2.0

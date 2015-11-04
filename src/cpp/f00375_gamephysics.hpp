@@ -4,10 +4,10 @@ public:
 	Singleton* singleton;
 	
 	//MyShapeDrawer* myShapeDrawer;
-	BasicExample* example;
+	BenchmarkDemo* example;
 	MyOGLApp* myOGLApp;
 	
-	GUIHelperInterface* noGfx;
+	GUIHelperInterface* guiHelper;
 	
 	//q3Scene* scene;
 	//q3Body* body;
@@ -23,69 +23,20 @@ public:
 	
 	void init(Singleton* _singleton)
 	{
-		// singleton = _singleton;
-		// myShapeDrawer = new MyShapeDrawer(singleton);
-		
-		// CommonExampleOptions options(&noGfx);
-		// example = new BasicExample(options.m_guiHelper);
-		
-		// example->initPhysics();
-		
-		
 		
 		singleton = _singleton;
-		//myShapeDrawer = new MyShapeDrawer(singleton);
-		//myShapeDrawer->init(singleton);
-		
-		//myDummyApp = new DummyApp("yo", 640, 480);
-		
 		myOGLApp = new MyOGLApp("yo", 640, 480);
-		
-		noGfx = new MyGLHelper(singleton, myOGLApp);
-		
-		//CommonExampleOptions options(noGfx);
-		example = new BasicExample(noGfx);
-		
+		guiHelper = new MyGLHelper(singleton, myOGLApp);
+		example = 
+			new BenchmarkDemo(guiHelper,5);
+			// new BasicExample(guiHelper);
 		example->initPhysics();
 		
 		
-	}
-	
-	
-	
-	/*
-	CommonGraphicsApp* myDummyApp;
-	OpenGLGuiHelper* noGfx;
-	
-	//q3Scene* scene;
-	//q3Body* body;
-	
-	//float dt;
-	//float acc;
-	//f32 accumulator;
-	//Clock g_clock;
-	
-	GamePhysics() {
 		
 	}
 	
-	void init(Singleton* _singleton)
-	{
-		singleton = _singleton;
-		myShapeDrawer = new MyShapeDrawer(singleton);
-		//myShapeDrawer->init(singleton);
-		
-		myDummyApp = new DummyApp("yo", 640, 480);
-		
-		noGfx = new OpenGLGuiHelper(myDummyApp, true);
-		
-		//CommonExampleOptions options(noGfx);
-		example = new BasicExample(noGfx);
-		
-		example->initPhysics();
-		
-	}
-	*/
+	
 	
 	// void init(Singleton* _singleton)
 	// {
@@ -493,29 +444,6 @@ public:
 	}
 	
 	
-	
-	// void bulletTest() {
-	// 	CommonGraphicsApp* simpApp = new SimpleOpenGL2App("yo", 640, 480);
-	// 	//CommonGraphicsApp* myApp = new CommonGraphicsApp(simpApp,false);
-		
-	// 	//static CommonGraphicsApp* s_app = (CommonGraphicsApp*)simpApp;
-		
-		
-	// 	OpenGLGuiHelper* oglHelper = NULL;
-	// 	// new OpenGLGuiHelper(
-	// 	// 	simpApp, //(CommonGraphicsApp*)
-	// 	// 	true
-	// 	// );
-
-	// 	CommonExampleOptions options(oglHelper);
-	// 	CommonExampleInterface* example = BasicExampleCreateFunc(options);
-		
-	// 	example->initPhysics();
-	// 	example->stepSimulation(1.f/60.f);
-	// 	example->exitPhysics();
-
-	// 	delete example;
-	// }
 	
 	~GamePhysics() {
 		example->exitPhysics();

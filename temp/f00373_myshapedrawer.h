@@ -25,17 +25,17 @@ bool MyShapeDrawer::hasTextureEnabled () const
 		}
 void MyShapeDrawer::drawCoordSystem ()
                                         {
-			glBegin(GL_LINES);
-			glColor3f(1, 0, 0);
-			glVertex3d(0, 0, 0);
-			glVertex3d(1, 0, 0);
-			glColor3f(0, 1, 0);
-			glVertex3d(0, 0, 0);
-			glVertex3d(0, 1, 0);
-			glColor3f(0, 0, 1);
-			glVertex3d(0, 0, 0);
-			glVertex3d(0, 0, 1);
-			glEnd();
+			// glBegin(GL_LINES);
+			// //glColor3f(1, 0, 0);
+			// glVertex3d(0, 0, 0);
+			// glVertex3d(1, 0, 0);
+			// //glColor3f(0, 1, 0);
+			// glVertex3d(0, 0, 0);
+			// glVertex3d(0, 1, 0);
+			// //glColor3f(0, 0, 1);
+			// glVertex3d(0, 0, 0);
+			// glVertex3d(0, 0, 1);
+			// glEnd();
 
 		}
 void MyShapeDrawer::drawSphere (btScalar radius, int lats, int longs)
@@ -50,17 +50,19 @@ void MyShapeDrawer::drawSphere (btScalar radius, int lats, int longs)
 				btScalar z1 = radius*sin(lat1);
 				btScalar zr1 = radius*cos(lat1);
 
-				glBegin(GL_QUAD_STRIP);
-				for(j = 0; j <= longs; j++) {
-					btScalar lng = 2 * SIMD_PI * (btScalar) (j - 1) / longs;
-					btScalar x = cos(lng);
-					btScalar y = sin(lng);
-					glNormal3f(x * zr1, y * zr1, z1);
-					glVertex3f(x * zr1, y * zr1, z1);
-					glNormal3f(x * zr0, y * zr0, z0);
-					glVertex3f(x * zr0, y * zr0, z0);
-				}
-				glEnd();
+				// TODO: reimplement with tris
+
+				// glBegin(GL_QUAD_STRIP);
+				// for(j = 0; j <= longs; j++) {
+				// 	btScalar lng = 2 * SIMD_PI * (btScalar) (j - 1) / longs;
+				// 	btScalar x = cos(lng);
+				// 	btScalar y = sin(lng);
+				// 	glNormal3f(x * zr1, y * zr1, z1);
+				// 	glVertex3f(x * zr1, y * zr1, z1);
+				// 	glNormal3f(x * zr0, y * zr0, z0);
+				// 	glVertex3f(x * zr0, y * zr0, z0);
+				// }
+				// glEnd();
 			}
 		}
 ShapeCache * MyShapeDrawer::cache (btConvexShape * shape)
@@ -107,12 +109,12 @@ ShapeCache * MyShapeDrawer::cache (btConvexShape * shape)
 		}
 void MyShapeDrawer::renderSquareA (float x, float y, float z)
                 {
-			glBegin(GL_LINE_LOOP);
-			glVertex3f(x, y, z);
-			glVertex3f(x + 10.f, y, z);
-			glVertex3f(x + 10.f, y + 10.f, z);
-			glVertex3f(x, y + 10.f, z);
-			glEnd();
+			// glBegin(GL_LINE_LOOP);
+			// glVertex3f(x, y, z);
+			// glVertex3f(x + 10.f, y, z);
+			// glVertex3f(x + 10.f, y + 10.f, z);
+			// glVertex3f(x, y + 10.f, z);
+			// glEnd();
 		}
 void MyShapeDrawer::updateMat ()
                                  {
@@ -176,16 +178,16 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 				dx *= halfExtent[0];
 				dy *= halfExtent[1];
 		//		dz *= halfExtent[2];
-				glColor3f(1,1,1);
+				//glColor3f(1,1,1);
 				//glDisable(GL_LIGHTING);
 				glLineWidth(2);
 
-				glBegin(GL_LINE_LOOP);
-				glDrawVector(org - dx - dy);
-				glDrawVector(org - dx + dy);
-				glDrawVector(org + dx + dy);
-				glDrawVector(org + dx - dy);
-				glEnd();
+				// glBegin(GL_LINE_LOOP);
+				// glDrawVector(org - dx - dy);
+				// glDrawVector(org - dx + dy);
+				// glDrawVector(org + dx + dy);
+				// glDrawVector(org + dx - dy);
+				// glEnd();
 				return;
 			} 
 			else if((shape->getShapeType() == BOX_SHAPE_PROXYTYPE) && (debugMode & btIDebugDraw::DBG_FastWireframe))
@@ -199,26 +201,26 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 				dx *= halfExtent[0];
 				dy *= halfExtent[1];
 				dz *= halfExtent[2];
-				glBegin(GL_LINE_LOOP);
-				glDrawVector(org - dx - dy - dz);
-				glDrawVector(org + dx - dy - dz);
-				glDrawVector(org + dx + dy - dz);
-				glDrawVector(org - dx + dy - dz);
-				glDrawVector(org - dx + dy + dz);
-				glDrawVector(org + dx + dy + dz);
-				glDrawVector(org + dx - dy + dz);
-				glDrawVector(org - dx - dy + dz);
-				glEnd();
-				glBegin(GL_LINES);
-				glDrawVector(org + dx - dy - dz);
-				glDrawVector(org + dx - dy + dz);
-				glDrawVector(org + dx + dy - dz);
-				glDrawVector(org + dx + dy + dz);
-				glDrawVector(org - dx - dy - dz);
-				glDrawVector(org - dx + dy - dz);
-				glDrawVector(org - dx - dy + dz);
-				glDrawVector(org - dx + dy + dz);
-				glEnd();
+				// glBegin(GL_LINE_LOOP);
+				// glDrawVector(org - dx - dy - dz);
+				// glDrawVector(org + dx - dy - dz);
+				// glDrawVector(org + dx + dy - dz);
+				// glDrawVector(org - dx + dy - dz);
+				// glDrawVector(org - dx + dy + dz);
+				// glDrawVector(org + dx + dy + dz);
+				// glDrawVector(org + dx - dy + dz);
+				// glDrawVector(org - dx - dy + dz);
+				// glEnd();
+				// glBegin(GL_LINES);
+				// glDrawVector(org + dx - dy - dz);
+				// glDrawVector(org + dx - dy + dz);
+				// glDrawVector(org + dx + dy - dz);
+				// glDrawVector(org + dx + dy + dz);
+				// glDrawVector(org - dx - dy - dz);
+				// glDrawVector(org - dx + dy - dz);
+				// glDrawVector(org - dx - dy + dz);
+				// glDrawVector(org - dx + dy + dz);
+				// glEnd();
 				return;
 			}
 
@@ -327,7 +329,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 				// }
 
 
-				glColor3f(color.x(),color.y(), color.z());		
+				//glColor3f(color.x(),color.y(), color.z());		
 
 				//bool useWireframeFallback = true;
 
@@ -449,17 +451,19 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 							btVector3 pt1 = planeOrigin - vec0*vecLen;
 							btVector3 pt2 = planeOrigin + vec1*vecLen;
 							btVector3 pt3 = planeOrigin - vec1*vecLen;
-							glBegin(GL_LINES);
-							glVertex3f(pt0.getX(),pt0.getY(),pt0.getZ());
-							glVertex3f(pt1.getX(),pt1.getY(),pt1.getZ());
-							glVertex3f(pt2.getX(),pt2.getY(),pt2.getZ());
-							glVertex3f(pt3.getX(),pt3.getY(),pt3.getZ());
-							glEnd();
+							// glBegin(GL_LINES);
+							// glVertex3f(pt0.getX(),pt0.getY(),pt0.getZ());
+							// glVertex3f(pt1.getX(),pt1.getY(),pt1.getZ());
+							// glVertex3f(pt2.getX(),pt2.getY(),pt2.getZ());
+							// glVertex3f(pt3.getX(),pt3.getY(),pt3.getZ());
+							// glEnd();
 
 
 							break;
 
 						}
+
+
 
 
 					case MULTI_SPHERE_SHAPE_PROXYTYPE:
@@ -547,7 +551,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 											btVector3 v2 = vtx[index2];
 											btVector3 v3 = vtx[index3];
 											btVector3 normal = (v3-v1).cross(v2-v1);
-											normal.normalize ();
+											normal.normalize();
 											glNormal3f(normal.getX(),normal.getY(),normal.getZ());
 											glVertex3f (v1.x(), v1.y(), v1.z());
 											glVertex3f (v2.x(), v2.y(), v2.z());
@@ -559,13 +563,28 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 									}
 								}
 							}
+							else {
+								
+								
+								btConcaveShape* concaveMesh = (btConcaveShape*) shape;
+								GlDrawcallback drawCallback;
+								drawCallback.m_wireframe = false;
+								
+								glBegin(GL_TRIANGLES);
+								
+								concaveMesh->processAllTriangles(&drawCallback,worldBoundsMin,worldBoundsMax);
+								
+								glEnd();
+								
+								
+							}
 						}
 					}
 
 				}
 
 
-				glNormal3f(0,1,0);
+				//glNormal3f(0,1,0);
 			
 
 				/// for polyhedral shapes
@@ -575,7 +594,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 
 					{
 
-						glColor3f(1.f, 1.f, 1.f);
+						//glColor3f(1.f, 1.f, 1.f);
 						int i;
 						for (i=0;i<polyshape->getNumVertices();i++)
 						{
