@@ -327,9 +327,12 @@ public:
 		return 0.0f;
 	}
 
-	// q3Vec3 getQ3Vec3() {
-	// 	return q3Vec3(fv4.x,fv4.y,fv4.z);
-	// }
+	btVector3 getBTV() {
+		return btVector3(fv4.x,fv4.y,fv4.z);
+	}
+	void setBTV(btVector3 myBTV) {
+		setFXYZ(myBTV.getX(), myBTV.getY(), myBTV.getZ());
+	}
 
 	void setIXYZW(int x, int y, int z, int w) {
 		iv4.x = x;
@@ -1782,7 +1785,7 @@ public:
 	BaseObjType parentUID;
 	vector<BaseObjType> children;
 	
-	//q3Body* body;
+	btRigidBody* body;
 	
 	int isGrabbingId;
 	int isGrabbedById;
@@ -1796,6 +1799,7 @@ public:
 	bool isEquipped;
 	bool isUpright;
 	
+	float mass;
 	
 	float angVel;
 	float angVelMax;
@@ -1815,52 +1819,61 @@ public:
 	
 	FIVector4* getVel() {
 		
-		// if (body != NULL) {
-		// 	linVelocity.setFXYZ(
-		// 		body->GetLinearVelocity().x,
-		// 		body->GetLinearVelocity().y,
-		// 		body->GetLinearVelocity().z	
-		// 	);
-		// }
+		if (body != NULL) {
+			
+			linVelocity.setBTV( body->getLinearVelocity() );
+		}
 		
 		
 		return &linVelocity;
 	}
 	void setVel(float x, float y, float z) {
-		// if (body != NULL) {
+		if (body != NULL) {
 			
-		// 	body->m_linearVelocity.x = x;
-		// 	body->m_linearVelocity.y = y;
-		// 	body->m_linearVelocity.z = z;
+			body->setLinearVelocity(btVector3(x,y,z));
 			
-		// }
+			
+		}
 	}
 	
 	
 	
-	void setCenterPointXYZ(float x, float y, float z) {
-		centerPoint.setFXYZ(x,y,z);
-	}
 	
 	void setCenterPoint(FIVector4* newPos) {
 		
 		centerPoint.copyFrom(newPos);
 		
-		// if (body == NULL) {
+		btTransform trans;
+		
+		if (body == NULL) {
 			
-		// }
-		// else {
-		// 	// body->SetTransform(
-		// 	// 	q3Vec3(
-		// 	// 		centerPoint[0],
-		// 	// 		centerPoint[1],
-		// 	// 		centerPoint[2]	
-		// 	// 	)	
-		// 	// );
-		// }
+		}
+		else {
+			
+			// trans.setOrigin(
+			// 	btVector3(
+			// 		centerPoint[0],
+			// 		centerPoint[1],
+			// 		centerPoint[2]	
+			// 	)	
+			// );
+			
+			// body->setCenterOfMassTransform(
+			// 	trans
+			// );
+		}
 	}
 	
-	FIVector4* getCenterPoint() {
+	FIVector4* getCenterPoint(bool updateCP = true) {
+		if (
+			(body != NULL) && updateCP	
+		) {
+			centerPoint.setFXYZ(
+				body->getCenterOfMassPosition().getX(),
+				body->getCenterOfMassPosition().getY(),
+				body->getCenterOfMassPosition().getZ()
+			);
+		}
 		return &centerPoint;
 	}
 	
@@ -1868,7 +1881,7 @@ public:
 	
 	
 	BaseObj() {
-		//body = NULL;
+		body = NULL;
 	}
 	
 	void removeChild(BaseObjType _uid) {
@@ -1915,7 +1928,7 @@ public:
 	) {
 		
 		
-		
+		mass = 10.0f;
 		
 		isHidden = false;
 		

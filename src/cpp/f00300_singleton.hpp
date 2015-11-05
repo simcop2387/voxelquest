@@ -64,6 +64,7 @@ public:
 	Matrix4 projMatrix;
 	std::vector<Matrix4> objMatrixStack;
 	Matrix4 curObjMatrix;
+	Matrix3 curObjMatrix3;
 	Matrix4 tempObjMatrix;
 	
 	GLint viewport[4];
@@ -588,7 +589,7 @@ public:
 
 	Singleton()
 	{
-		
+		gamePhysics = NULL;
 		allInit = false;
 		
 		fboMap.clear();
@@ -600,12 +601,20 @@ public:
 		gw = NULL;
 		
 		
+		
+		
 		// #ifdef USE_POCO
 		// 	myWS = NULL;
 		// #endif
 		
 	}
 
+	
+	void setSelInd(int ind) {
+		
+		selObjInd = ind;
+		cout << "selObjInd " << selObjInd << "\n";
+	}
 
 	void init(int _defaultWinW, int _defaultWinH, int _scaleFactor
 	
@@ -851,7 +860,7 @@ public:
 		medianCount = 0;
 		lastObjectCount = 0;
 		lastObjInd = 0;
-		selObjInd = 0;
+		setSelInd(0);
 		actObjInd = 0;
 		currentTick = 0;
 		earthMod = E_PTT_TER;
@@ -895,7 +904,7 @@ public:
 		
 		fpsTest = false;
 		pathfindingOn = false;
-		updateHolders = false;
+		updateHolders = true;
 		
 		
 		maxHolderDis = 32;
@@ -1737,9 +1746,7 @@ public:
 		gw->init(this);
 		gw->initMap();
 		
-		gamePhysics = new GamePhysics();
-		gamePhysics->init(this);
-		//gamePhysics->bulletTest();
+		
 		
 		//bulletTest();
 		
@@ -2130,9 +2137,12 @@ public:
 			
 			
 			actObjInd = ge->uid;
+			
+			cout << "actObjInd " << actObjInd << "\n";
+			
 			subjectDistance = currentActor->getCenterPoint()->distance(cameraPos);
 			
-			
+			cout << "subjectDistance " << subjectDistance << "\n"; 
 		}
 		
 	}
@@ -2528,7 +2538,6 @@ public:
 	
 	
 	
-	
 	void toggleDDMenu(int x, int y, bool toggled) {
 		
 		if (placingGeom) {
@@ -2547,12 +2556,12 @@ public:
 			objTargeted = ind >= E_OBJ_LENGTH;	
 			
 			if (objTargeted) {
-				selObjInd = ind;				
+				setSelInd(ind);				
 			}
 			else {
 				getMarkerPos(x, y);
 				markerFound = true;
-				selObjInd = 0;
+				setSelInd(0);
 			}
 			
 			
@@ -2791,7 +2800,7 @@ PERFORM_DRAG_END:
 		
 		if (ind >= E_OBJ_LENGTH) {
 			if (gw->removeVisObject(ind, false)) {
-				selObjInd = 0;
+				setSelInd(0);
 			}
 		}
 	}
@@ -4350,6 +4359,10 @@ DISPATCH_EVENT_END:
 	{
 		curShaderPtr->setShaderMatrix4x4(paramName, x, count);
 	}
+	void setShaderMatrix3x3(string paramName, float *x, int count)
+	{
+		curShaderPtr->setShaderMatrix3x3(paramName, x, count);
+	}
 	void setShaderArray(string paramName, float *x, int count)
 	{
 		curShaderPtr->setShaderArray(paramName, x, count);
@@ -5209,6 +5222,7 @@ DISPATCH_EVENT_END:
 		);
 		
 		moveCamera(&modXYZ);
+		cameraPos->copyFrom(&camLerpPos);
 
 	}
 
@@ -5539,6 +5553,11 @@ DISPATCH_EVENT_END:
 					
 					
 				break;
+				
+				case 'Q':
+					gamePhysics->beginDrop();
+				break;
+				
 				case 'q':
 					
 					targetSubjectZoom = 1.0f;
@@ -6822,7 +6841,7 @@ DISPATCH_EVENT_END:
 						
 						
 						
-						selObjInd = bestInd;
+						setSelInd(bestInd);
 						
 						//setCurrentActor(&(gw->gameObjects[bestInd]));
 						
@@ -7455,13 +7474,8 @@ DISPATCH_EVENT_END:
 				targetCameraPos.copyFrom(&lookAtVec);
 				targetCameraPos.multXYZ( -(subjectDistance)*subjectZoom*tempZoom );
 				
-				// targetCameraPos.addXYZ(
-				// 	currentActor->body->GetCenterPoint().x,
-				// 	currentActor->body->GetCenterPoint().y,
-				// 	currentActor->body->GetCenterPoint().z
-				// );
+				targetCameraPos.addXYZRef(currentActor->getCenterPoint());
 				
-				//targetCameraPos.addXYZRef(currentActor->getCenterPoint());
 			}
 			
 			
@@ -8993,6 +9007,10 @@ DISPATCH_EVENT_END:
 						
 						if (currentTick == 4) {
 							setCameraToElevation();
+							
+							gamePhysics = new GamePhysics();
+							gamePhysics->init(this);
+							
 						}
 						
 						// if (currentActor != NULL) {
@@ -9325,8 +9343,10 @@ DISPATCH_EVENT_END:
 				else
 				{
 					
+					if (gamePhysics != NULL) {
+						gamePhysics->updateAll();
+					}
 					
-					gamePhysics->updateAll();
 					
 					frameUpdate();
 					

@@ -5,7 +5,12 @@ uniform mat4 objmat;
 uniform mat4 modelview;
 uniform mat4 proj;
 
+uniform mat3 normalRot;
+
+//uniform vec4 objQuat;
+
 uniform vec3 lightVec;
+
 
 uniform float objectId;
 uniform float curTime;
@@ -30,6 +35,11 @@ $
 
 const float M_PI = 3.14159265359;
 
+// //source: https://www.opengl.org/discussion_boards/showthread.php/166386-Quaternions-and-hardware-skinning
+// vec3 rotateVec( vec4 quat, vec3 vec ) {
+//     return vec + 2.0 * cross( cross( vec, quat.xyz ) + quat.w * vec, quat.xyz );
+// }
+
 void main() {
 
     //TexCoord0 = gl_MultiTexCoord0.xyz;
@@ -38,10 +48,22 @@ void main() {
     
     newPos = objmat * newPos;
     
-    newPos.xyz += cameraPos + lookAtVec*50.0;
+    // newPos.xyz += cameraPos + lookAtVec*100.0;
     
     // /curColor = gl_Color.rgb;
-    curNormal = gl_Normal.xyz;
+    //vec4 tempNorm =  vec4(gl_Normal.xyz,1.0);
+    //curNormal = gl_Normal.xyz;
+    
+    
+    
+    mat3 normalMatrix = mat3(objmat);
+    //normalMatrix = inverse(normalMatrix);
+    //normalMatrix = transpose(normalMatrix);
+    //curNormal = rotateVec(objQuat,gl_Normal.xyz); //normalize(normalMatrix*gl_Normal.xyz);
+    
+    curNormal = normalize(normalRot*gl_Normal.xyz);
+    
+    
     
     //newPos.xyz = mix(newPos.xyz,cameraPos,(sin(curTime)+1.0)*0.5);
     

@@ -11,7 +11,7 @@ int RUN_COUNT;
 #define DEFAULT_PORT "27015"
 
 const static bool GEN_COLLISION = false;
-const static bool GEN_POLYS_HOLDER = false;
+const static bool GEN_POLYS_HOLDER = true;
 const static bool GEN_POLYS_WORLD = false;
 
 const static bool SINGLE_THREADED = false;
@@ -1041,7 +1041,7 @@ class btDefaultCollisionConfiguration;
 #include "../OpenGLWindow/GLInstanceGraphicsShape.h"
 
 #include "../Benchmarks/TaruData.h"
-#include "../Benchmarks/landscapeData.h"
+//#include "../Benchmarks/landscapeData.h"
 
 
 
@@ -1126,11 +1126,11 @@ public:
 	{
 	}
 
-	virtual void processTriangle(btVector3* triangle,int partId, int triangleIndex)
+	virtual void processTriangle(btVector3* triangle, int partId, int triangleIndex)
 	{
 
-		(void)triangleIndex;
-		(void)partId;
+		// (void)triangleIndex;
+		// (void)partId;
 
 
 		if (m_wireframe)
@@ -1151,20 +1151,27 @@ public:
 			//glBegin(GL_TRIANGLES);
 			//glColor3f(1, 1, 1);
 			
+			//cout << "f\n";
 			
-			btVector3 v1 = triangle[0];
-			btVector3 v2 = triangle[1];
-			btVector3 v3 = triangle[2];
-			btVector3 normal = (v3-v1).cross(v2-v1);
-			normal.normalize ();
+			
+			btVector3 normal = (triangle[2]-triangle[0]).cross(triangle[1]-triangle[0]);
+			normal.normalize();
 			glNormal3f(normal.getX(),normal.getY(),normal.getZ());
 			
-			glVertex3d(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
-			glVertex3d(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
-			glVertex3d(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
-
+			glVertex3f(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
+			glVertex3f(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
+			glVertex3f(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
 			
-
+			// cout << triangle[0].getX() << " " << triangle[0].getY() << " " << triangle[0].getZ() << "\n";
+			// cout << triangle[1].getX() << " " << triangle[1].getY() << " " << triangle[1].getZ() << "\n";
+			// cout << triangle[2].getX() << " " << triangle[2].getY() << " " << triangle[2].getZ() << "\n";
+			// cout << normal.getX() << " " << normal.getY() << " " << normal.getZ() << "\n";
+			// cout << "\n";
+			
+			// normal = (triangle[0]-triangle[2]).cross(triangle[1]-triangle[2]);
+			// normal.normalize();
+			// glNormal3f(normal.getX(),normal.getY(),normal.getZ());
+			
 			// glVertex3d(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
 			// glVertex3d(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
 			// glVertex3d(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
@@ -1180,6 +1187,7 @@ public:
 	{
 		(void)triangleIndex;
 		(void)partId;
+
 
 
 		//glBegin(GL_TRIANGLES);//LINES);
@@ -1668,131 +1676,6 @@ struct MyGLHelperInternalData
 
 
 
-struct BasicExample : public CommonRigidBodyBase
-{
-	BasicExample(struct GUIHelperInterface* helper)
-		:CommonRigidBodyBase(helper)
-	{
-		
-	}
-	
-	virtual ~BasicExample(){}
-	virtual void initPhysics();
-	virtual void renderScene();
-	//virtual btDiscreteDynamicsWorld* getDynamicsWorld();
-	
-	void resetCamera()
-	{
-		float dist = 41;
-		float pitch = 52;
-		float yaw = 35;
-		float targetPos[3]={0,0.46,0};
-		m_guiHelper->resetCamera(dist,pitch,yaw,targetPos[0],targetPos[1],targetPos[2]);
-	}
-};
-
-// btDiscreteDynamicsWorld* BasicExample::getDynamicsWorld() {
-// 	return m_dynamicsWorld;
-// }
-
-void BasicExample::initPhysics()
-{
-	m_guiHelper->setUpAxis(2);
-
-	createEmptyDynamicsWorld();
-	
-	m_guiHelper->createPhysicsDebugDrawer(m_dynamicsWorld);
-
-	if (m_dynamicsWorld->getDebugDrawer())
-		m_dynamicsWorld->getDebugDrawer()->setDebugMode(btIDebugDraw::DBG_DrawWireframe+btIDebugDraw::DBG_DrawContactPoints);
-
-	m_dynamicsWorld->setGravity(btVector3(0,0,-10));
-
-	///create a few basic rigid bodies
-	btBoxShape* groundShape = createBoxShape(btVector3(btScalar(50.),btScalar(50.),btScalar(50.)));
-	
-
-	//groundShape->initializePolyhedralFeatures();
-//	btCollisionShape* groundShape = new btStaticPlaneShape(btVector3(0,1,0),50);
-	
-	m_collisionShapes.push_back(groundShape);
-
-	btTransform groundTransform;
-	groundTransform.setIdentity();
-	groundTransform.setOrigin(btVector3(0,0,-50));
-
-	{
-		btScalar mass(0.);
-		createRigidBody(mass,groundTransform,groundShape, btVector4(0,0,1,1));
-	}
-
-
-	{
-		//create a few dynamic rigidbodies
-		// Re-using the same collision is better for memory usage and performance
-
-		btBoxShape* colShape = createBoxShape(btVector3(1,1,1));
-		
-
-		//btCollisionShape* colShape = new btSphereShape(btScalar(1.));
-		m_collisionShapes.push_back(colShape);
-
-		/// Create Dynamic Objects
-		btTransform startTransform;
-		startTransform.setIdentity();
-
-		btScalar	mass(1.f);
-
-		//rigidbody is dynamic if and only if mass is non zero, otherwise static
-		bool isDynamic = (mass != 0.f);
-
-		btVector3 localInertia(0,0,0);
-		if (isDynamic)
-			colShape->calculateLocalInertia(mass,localInertia);
-
-
-		for (int k = 0; k < ARRAY_SIZE_Y; k++) {
-			for (int i = 0; i<ARRAY_SIZE_X; i++) {
-				for(int j = 0; j < ARRAY_SIZE_Z; j++) {
-					startTransform.setOrigin(btVector3(
-										btScalar(2.0*i),
-										btScalar(2.0*k),
-										btScalar(20+2.0*j)));
-
-			
-					createRigidBody(mass,startTransform,colShape);
-					
-
-				}
-			}
-		}
-	}
-
-	m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);
-}
-
-
-void BasicExample::renderScene()
-{
-	// m_guiHelper->syncPhysicsToGraphics(m_dynamicsWorld);
-	// m_guiHelper->render(m_dynamicsWorld);
-	CommonRigidBodyBase::renderScene();
-}
-
-// CommonExampleInterface* BasicExampleCreateFunc(CommonExampleOptions& options)
-// {
-// 	return new BasicExample(options.m_guiHelper);
-// }
-
-
-
-
-
-
-
-
-
-
 // %%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -1834,6 +1717,8 @@ class BenchmarkDemo : public CommonRigidBodyBase
 
 	btAlignedObjectArray<class RagDoll*>	m_ragdolls;
 	
+	btVector3 initOffset;
+	
 	int	m_benchmark;
 
 	void myinit()
@@ -1853,10 +1738,11 @@ class BenchmarkDemo : public CommonRigidBodyBase
 	void createTest7();
 	void createTest8();
 
+	
 	void createWall(const btVector3& offsetPosition,int stackSize,const btVector3& boxSize);
 	void createPyramid(const btVector3& offsetPosition,int stackSize,const btVector3& boxSize);
 	void createTowerCircle(const btVector3& offsetPosition,int stackSize,int rotSize,const btVector3& boxSize);
-	void createLargeMeshBody();
+	//void createLargeMeshBody();
 
 
 	class SpuBatchRaycaster* m_batchRaycaster;
@@ -1867,6 +1753,7 @@ class BenchmarkDemo : public CommonRigidBodyBase
 
 	public:
 
+	
 	BenchmarkDemo(struct GUIHelperInterface* helper, int benchmark)
 	:CommonRigidBodyBase(helper),
 	m_benchmark(benchmark)
@@ -1876,6 +1763,14 @@ class BenchmarkDemo : public CommonRigidBodyBase
 	{
 		exitPhysics();
 	}
+	
+	void removeRigidBody(btRigidBody* body);
+	
+	void updateGraphicsObjects();
+	
+	void beginDrop(float x, float y, float z);
+	
+	
 	void initPhysics();
 
 	void exitPhysics();
@@ -2121,9 +2016,27 @@ void BenchmarkDemo::stepSimulation(float deltaTime)
 
 }
 
+void BenchmarkDemo::removeRigidBody(btRigidBody* body) {
+	m_dynamicsWorld->removeRigidBody(body);
+}
+
+void BenchmarkDemo::updateGraphicsObjects() {
+	m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);
+}
+
+
+void BenchmarkDemo::beginDrop(float x, float y, float z) {
+	initOffset = btVector3(x,y,z);
+	createTest5();
+	m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);
+}
+
 void BenchmarkDemo::initPhysics()
 {
-	m_guiHelper->setUpAxis(1);
+	cout << "BenchmarkDemo:initPhysics()\n";
+	
+	
+	m_guiHelper->setUpAxis(2);
 
 	setCameraDistance(btScalar(100.));
 
@@ -2141,8 +2054,8 @@ void BenchmarkDemo::initPhysics()
 
 	///the maximum size of the collision world. Make sure objects stay within these boundaries
 	///Don't make the world AABB size too large, it will harm simulation quality and performance
-	btVector3 worldAabbMin(-1000,-1000,-1000);
-	btVector3 worldAabbMax(1000,1000,1000);
+	btVector3 worldAabbMin(-16384,-16384,-16384);
+	btVector3 worldAabbMax(16384,16384,16384);
 	
 	btHashedOverlappingPairCache* pairCache = new btHashedOverlappingPairCache();
 	m_broadphase = new btAxisSweep3(worldAabbMin,worldAabbMax,3500,pairCache);
@@ -2167,19 +2080,19 @@ void BenchmarkDemo::initPhysics()
 	m_guiHelper->createPhysicsDebugDrawer(m_dynamicsWorld);
 	
 
-	m_dynamicsWorld->setGravity(btVector3(0,-10,0));
+	m_dynamicsWorld->setGravity(btVector3(0,0,-10));
 
 	if (m_benchmark<5)
 	{
 		///create a few basic rigid bodies
-		btCollisionShape* groundShape = new btBoxShape(btVector3(btScalar(250.),btScalar(50.),btScalar(250.)));
+		btCollisionShape* groundShape = new btBoxShape(btVector3(btScalar(250.),btScalar(250.),btScalar(50.)));
 	//	btCollisionShape* groundShape = new btStaticPlaneShape(btVector3(0,1,0),0);
 		
 		m_collisionShapes.push_back(groundShape);
 
 		btTransform groundTransform;
 		groundTransform.setIdentity();
-		groundTransform.setOrigin(btVector3(0,-50,0));
+		groundTransform.setOrigin(btVector3(0,0,-50));
 
 		//We can also use DemoApplication::createRigidBody, but for clarity it is provided here:
 		{
@@ -2202,56 +2115,56 @@ void BenchmarkDemo::initPhysics()
 		}
 	}
 
-	switch (m_benchmark)
-	{
-		case 1:
-			{
-				createTest1();
-				break;
-			}
-		case 2:
-			{
-				createTest2();
-				break;
-			}
-		case 3:
-			{
-				createTest3();
-				break;
-			}
-		case 4:
-			{
-				createTest4();
-				break;
-			}
-		case 5:
-			{
-				createTest5();
-				break;
-			}
-		case 6:
-		{
-			createTest6();
-			break;
-		}
-		case 7:
-		{
-			createTest7();
-			break;
-		}
-		case 8:
-		{
-			createTest8();
-			break;
-		}
+	// switch (m_benchmark)
+	// {
+	// 	case 1:
+	// 		{
+	// 			createTest1();
+	// 			break;
+	// 		}
+	// 	case 2:
+	// 		{
+	// 			createTest2();
+	// 			break;
+	// 		}
+	// 	case 3:
+	// 		{
+	// 			createTest3();
+	// 			break;
+	// 		}
+	// 	case 4:
+	// 		{
+	// 			createTest4();
+	// 			break;
+	// 		}
+	// 	case 5:
+	// 		{
+	// 			createTest5();
+	// 			break;
+	// 		}
+	// 	case 6:
+	// 	{
+	// 		createTest6();
+	// 		break;
+	// 	}
+	// 	case 7:
+	// 	{
+	// 		createTest7();
+	// 		break;
+	// 	}
+	// 	case 8:
+	// 	{
+	// 		createTest8();
+	// 		break;
+	// 	}
 
 
-	default:
-		{
-		}			
-	}
+	// default:
+	// 	{
+	// 	}			
+	// }
 
-	m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);
+	
 
 }
 	
@@ -2494,13 +2407,15 @@ class RagDoll
 	btRigidBody* m_bodies[BODYPART_COUNT];
 	btTypedConstraint* m_joints[JOINT_COUNT];
 
-	btRigidBody* createRigidBody (btScalar mass, const btTransform& startTransform, btCollisionShape* shape)
+	btRigidBody* createRigidBody(btScalar mass, const btTransform& startTransform, btCollisionShape* shape)
 	{
 		bool isDynamic = (mass != 0.f);
 
 		btVector3 localInertia(0,0,0);
-		if (isDynamic)
+		if (isDynamic) {
 			shape->calculateLocalInertia(mass,localInertia);
+		}
+			
 
 		btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
 		
@@ -2787,108 +2702,108 @@ void BenchmarkDemo::createTest4()
 ///////////////////////////////////////////////////////////////////////////////
 // LargeMesh
 
-int LandscapeVtxCount[] = {
-	Landscape01VtxCount,
-	Landscape02VtxCount,
-	Landscape03VtxCount,
-	Landscape04VtxCount,
-	Landscape05VtxCount,
-	Landscape06VtxCount,
-	Landscape07VtxCount,
-	Landscape08VtxCount,
-};
+// int LandscapeVtxCount[] = {
+// 	Landscape01VtxCount,
+// 	Landscape02VtxCount,
+// 	Landscape03VtxCount,
+// 	Landscape04VtxCount,
+// 	Landscape05VtxCount,
+// 	Landscape06VtxCount,
+// 	Landscape07VtxCount,
+// 	Landscape08VtxCount,
+// };
 
-int LandscapeIdxCount[] = {
-	Landscape01IdxCount,
-	Landscape02IdxCount,
-	Landscape03IdxCount,
-	Landscape04IdxCount,
-	Landscape05IdxCount,
-	Landscape06IdxCount,
-	Landscape07IdxCount,
-	Landscape08IdxCount,
-};
+// int LandscapeIdxCount[] = {
+// 	Landscape01IdxCount,
+// 	Landscape02IdxCount,
+// 	Landscape03IdxCount,
+// 	Landscape04IdxCount,
+// 	Landscape05IdxCount,
+// 	Landscape06IdxCount,
+// 	Landscape07IdxCount,
+// 	Landscape08IdxCount,
+// };
 
-btScalar *LandscapeVtx[] = {
-	Landscape01Vtx,
-	Landscape02Vtx,
-	Landscape03Vtx,
-	Landscape04Vtx,
-	Landscape05Vtx,
-	Landscape06Vtx,
-	Landscape07Vtx,
-	Landscape08Vtx,
-};
+// btScalar *LandscapeVtx[] = {
+// 	Landscape01Vtx,
+// 	Landscape02Vtx,
+// 	Landscape03Vtx,
+// 	Landscape04Vtx,
+// 	Landscape05Vtx,
+// 	Landscape06Vtx,
+// 	Landscape07Vtx,
+// 	Landscape08Vtx,
+// };
 
-btScalar *LandscapeNml[] = {
-	Landscape01Nml,
-	Landscape02Nml,
-	Landscape03Nml,
-	Landscape04Nml,
-	Landscape05Nml,
-	Landscape06Nml,
-	Landscape07Nml,
-	Landscape08Nml,
-};
+// btScalar *LandscapeNml[] = {
+// 	Landscape01Nml,
+// 	Landscape02Nml,
+// 	Landscape03Nml,
+// 	Landscape04Nml,
+// 	Landscape05Nml,
+// 	Landscape06Nml,
+// 	Landscape07Nml,
+// 	Landscape08Nml,
+// };
 
-btScalar* LandscapeTex[] = {
-	Landscape01Tex,
-	Landscape02Tex,
-	Landscape03Tex,
-	Landscape04Tex,
-	Landscape05Tex,
-	Landscape06Tex,
-	Landscape07Tex,
-	Landscape08Tex,
-};
+// btScalar* LandscapeTex[] = {
+// 	Landscape01Tex,
+// 	Landscape02Tex,
+// 	Landscape03Tex,
+// 	Landscape04Tex,
+// 	Landscape05Tex,
+// 	Landscape06Tex,
+// 	Landscape07Tex,
+// 	Landscape08Tex,
+// };
 
-unsigned short  *LandscapeIdx[] = {
-	Landscape01Idx,
-	Landscape02Idx,
-	Landscape03Idx,
-	Landscape04Idx,
-	Landscape05Idx,
-	Landscape06Idx,
-	Landscape07Idx,
-	Landscape08Idx,
-};
+// unsigned short  *LandscapeIdx[] = {
+// 	Landscape01Idx,
+// 	Landscape02Idx,
+// 	Landscape03Idx,
+// 	Landscape04Idx,
+// 	Landscape05Idx,
+// 	Landscape06Idx,
+// 	Landscape07Idx,
+// 	Landscape08Idx,
+// };
 
-void BenchmarkDemo::createLargeMeshBody()
-{
-	btTransform trans;
-	trans.setIdentity();
+// void BenchmarkDemo::createLargeMeshBody()
+// {
+// 	btTransform trans;
+// 	trans.setIdentity();
 
-	for(int i=0;i<8;i++) {
+// 	for(int i=0;i<8;i++) {
 
-		btTriangleIndexVertexArray* meshInterface = new btTriangleIndexVertexArray();
-		btIndexedMesh part;
+// 		btTriangleIndexVertexArray* meshInterface = new btTriangleIndexVertexArray();
+// 		btIndexedMesh part;
 
-		part.m_vertexBase = (const unsigned char*)LandscapeVtx[i];
-		part.m_vertexStride = sizeof(btScalar) * 3;
-		part.m_numVertices = LandscapeVtxCount[i];
-		part.m_triangleIndexBase = (const unsigned char*)LandscapeIdx[i];
-		part.m_triangleIndexStride = sizeof( short) * 3;
-		part.m_numTriangles = LandscapeIdxCount[i]/3;
-		part.m_indexType = PHY_SHORT;
+// 		part.m_vertexBase = (const unsigned char*)LandscapeVtx[i];
+// 		part.m_vertexStride = sizeof(btScalar) * 3;
+// 		part.m_numVertices = LandscapeVtxCount[i];
+// 		part.m_triangleIndexBase = (const unsigned char*)LandscapeIdx[i];
+// 		part.m_triangleIndexStride = sizeof( short) * 3;
+// 		part.m_numTriangles = LandscapeIdxCount[i]/3;
+// 		part.m_indexType = PHY_SHORT;
 
-		meshInterface->addIndexedMesh(part,PHY_SHORT);
+// 		meshInterface->addIndexedMesh(part,PHY_SHORT);
 
-		bool	useQuantizedAabbCompression = true;
-		btBvhTriangleMeshShape* trimeshShape = new btBvhTriangleMeshShape(meshInterface,useQuantizedAabbCompression);
-		btVector3 localInertia(0,0,0);
-		trans.setOrigin(btVector3(0,-25,0));
+// 		bool	useQuantizedAabbCompression = true;
+// 		btBvhTriangleMeshShape* trimeshShape = new btBvhTriangleMeshShape(meshInterface,useQuantizedAabbCompression);
+// 		btVector3 localInertia(0,0,0);
+// 		trans.setOrigin(btVector3(0,-25,0));
 
-		btRigidBody* body = createRigidBody(0,trans,trimeshShape);
-		body->setFriction (btScalar(0.9));
+// 		btRigidBody* body = createRigidBody(0,trans,trimeshShape);
+// 		body->setFriction (btScalar(0.9));
 		
-	}
+// 	}
 	
-}
+// }
 
 
 void BenchmarkDemo::createTest5()
 {
-	setCameraDistance(btScalar(250.));
+	//setCameraDistance(btScalar(250.));
 	btVector3 boxSize(1.5f,1.5f,1.5f);
 	float boxMass = 1.0f;
 	float sphereRadius = 1.5f;
@@ -2897,23 +2812,25 @@ void BenchmarkDemo::createTest5()
 	float capsuleRadius = 1.0f;
 	float capsuleMass = 1.0f;
 
+	btRigidBody* tempBody = NULL;
+
 	{
 		int size = 10;
 		int height = 10;
 
 		const float cubeSize = boxSize[0];
 		float spacing = 2.0f;
-		btVector3 pos(0.0f, 20.0f, 0.0f);
+		btVector3 pos(0.0f, 0.0f, 20.0f);
 		float offset = -size * (cubeSize * 2.0f + spacing) * 0.5f;
 		
 		int numBodies = 0;
 
 		for(int k=0;k<height;k++) {
 			for(int j=0;j<size;j++) {
-				pos[2] = offset + (float)j * (cubeSize * 2.0f + spacing);
+				pos[1] = offset + (float)j * (cubeSize * 2.0f + spacing);
 				for(int i=0;i<size;i++) {
 					pos[0] = offset + (float)i * (cubeSize * 2.0f + spacing);
-					btVector3 bpos = btVector3(0,25,0) + btVector3(5.0f,1.0f,5.0f)*pos;
+					btVector3 bpos = btVector3(0,0,300) + btVector3(5.0f,5.0f,1.0f)*pos + initOffset;
 					int idx = rand() % 9;
 					btTransform trans;
 					trans.setIdentity();
@@ -2924,7 +2841,7 @@ void BenchmarkDemo::createTest5()
 						{
 							float r = 0.5f * (idx+1);
 							btBoxShape* boxShape = new btBoxShape(boxSize*r);
-							createRigidBody(boxMass*r,trans,boxShape);
+							tempBody = createRigidBody(boxMass*r,trans,boxShape);
 						}
 						break;
 
@@ -2932,7 +2849,7 @@ void BenchmarkDemo::createTest5()
 						{
 							float r = 0.5f * (idx-3+1);
 							btSphereShape* sphereShape = new btSphereShape(sphereRadius*r);
-							createRigidBody(sphereMass*r,trans,sphereShape);
+							tempBody = createRigidBody(sphereMass*r,trans,sphereShape);
 						}
 						break;
 
@@ -2940,11 +2857,13 @@ void BenchmarkDemo::createTest5()
 						{
 							float r = 0.5f * (idx-6+1);
 							btCapsuleShape* capsuleShape = new btCapsuleShape(capsuleRadius*r,capsuleHalf*r);
-							createRigidBody(capsuleMass*r,trans,capsuleShape);
+							tempBody = createRigidBody(capsuleMass*r,trans,capsuleShape);
 						}
 						break;
 					}
-
+					
+					tempBody->bodyId = 0;
+					
 					numBodies++;
 				}
 			}
@@ -2954,7 +2873,7 @@ void BenchmarkDemo::createTest5()
 		}
 	}
 
-	createLargeMeshBody();
+	//createLargeMeshBody();
 }
 void BenchmarkDemo::createTest6()
 {
@@ -3006,7 +2925,7 @@ void BenchmarkDemo::createTest6()
 	}
 
 
-	createLargeMeshBody();
+	//createLargeMeshBody();
 }
 
 
@@ -3099,7 +3018,7 @@ void BenchmarkDemo::createTest8()
 		}
 	}
 
-	createLargeMeshBody();
+	//createLargeMeshBody();
 }
 
 
@@ -5471,6 +5390,7 @@ public:
     void        set(float m0, float m1, float m2,   // 1st column
                     float m3, float m4, float m5,   // 2nd column
                     float m6, float m7, float m8);  // 3rd column
+    void        set4(const float src[16]);
     void        setRow(int index, const float row[3]);
     void        setRow(int index, const Vector3& v);
     void        setColumn(int index, const float col[3]);
@@ -5825,6 +5745,12 @@ inline void Matrix3::set(const float src[9])
     m[6] = src[6];  m[7] = src[7];  m[8] = src[8];
 }
 
+inline void Matrix3::set4(const float src[16])
+{
+    m[0] = src[0];  m[1] = src[1];  m[2] = src[2]; // src[3]
+    m[3] = src[4];  m[4] = src[5];  m[5] = src[6]; // src[7]
+    m[6] = src[8];  m[7] = src[9];  m[8] = src[10]; // src[11]
+}
 
 
 inline void Matrix3::set(float m0, float m1, float m2,
@@ -7196,9 +7122,12 @@ public:
 		return 0.0f;
 	}
 
-	// q3Vec3 getQ3Vec3() {
-	// 	return q3Vec3(fv4.x,fv4.y,fv4.z);
-	// }
+	btVector3 getBTV() {
+		return btVector3(fv4.x,fv4.y,fv4.z);
+	}
+	void setBTV(btVector3 myBTV) {
+		setFXYZ(myBTV.getX(), myBTV.getY(), myBTV.getZ());
+	}
 
 	void setIXYZW(int x, int y, int z, int w) {
 		iv4.x = x;
@@ -8651,7 +8580,7 @@ public:
 	BaseObjType parentUID;
 	vector<BaseObjType> children;
 	
-	//q3Body* body;
+	btRigidBody* body;
 	
 	int isGrabbingId;
 	int isGrabbedById;
@@ -8665,6 +8594,7 @@ public:
 	bool isEquipped;
 	bool isUpright;
 	
+	float mass;
 	
 	float angVel;
 	float angVelMax;
@@ -8684,52 +8614,61 @@ public:
 	
 	FIVector4* getVel() {
 		
-		// if (body != NULL) {
-		// 	linVelocity.setFXYZ(
-		// 		body->GetLinearVelocity().x,
-		// 		body->GetLinearVelocity().y,
-		// 		body->GetLinearVelocity().z	
-		// 	);
-		// }
+		if (body != NULL) {
+			
+			linVelocity.setBTV( body->getLinearVelocity() );
+		}
 		
 		
 		return &linVelocity;
 	}
 	void setVel(float x, float y, float z) {
-		// if (body != NULL) {
+		if (body != NULL) {
 			
-		// 	body->m_linearVelocity.x = x;
-		// 	body->m_linearVelocity.y = y;
-		// 	body->m_linearVelocity.z = z;
+			body->setLinearVelocity(btVector3(x,y,z));
 			
-		// }
+			
+		}
 	}
 	
 	
 	
-	void setCenterPointXYZ(float x, float y, float z) {
-		centerPoint.setFXYZ(x,y,z);
-	}
 	
 	void setCenterPoint(FIVector4* newPos) {
 		
 		centerPoint.copyFrom(newPos);
 		
-		// if (body == NULL) {
+		btTransform trans;
+		
+		if (body == NULL) {
 			
-		// }
-		// else {
-		// 	// body->SetTransform(
-		// 	// 	q3Vec3(
-		// 	// 		centerPoint[0],
-		// 	// 		centerPoint[1],
-		// 	// 		centerPoint[2]	
-		// 	// 	)	
-		// 	// );
-		// }
+		}
+		else {
+			
+			// trans.setOrigin(
+			// 	btVector3(
+			// 		centerPoint[0],
+			// 		centerPoint[1],
+			// 		centerPoint[2]	
+			// 	)	
+			// );
+			
+			// body->setCenterOfMassTransform(
+			// 	trans
+			// );
+		}
 	}
 	
-	FIVector4* getCenterPoint() {
+	FIVector4* getCenterPoint(bool updateCP = true) {
+		if (
+			(body != NULL) && updateCP	
+		) {
+			centerPoint.setFXYZ(
+				body->getCenterOfMassPosition().getX(),
+				body->getCenterOfMassPosition().getY(),
+				body->getCenterOfMassPosition().getZ()
+			);
+		}
 		return &centerPoint;
 	}
 	
@@ -8737,7 +8676,7 @@ public:
 	
 	
 	BaseObj() {
-		//body = NULL;
+		body = NULL;
 	}
 	
 	void removeChild(BaseObjType _uid) {
@@ -8784,7 +8723,7 @@ public:
 	) {
 		
 		
-		
+		mass = 10.0f;
 		
 		isHidden = false;
 		
@@ -20433,6 +20372,7 @@ public:
   Matrix4 projMatrix;
   std::vector <Matrix4> objMatrixStack;
   Matrix4 curObjMatrix;
+  Matrix3 curObjMatrix3;
   Matrix4 tempObjMatrix;
   GLint (viewport) [4];
   E_OBJ activeObject;
@@ -20812,6 +20752,7 @@ public:
   map <string, StyleSheet> styleSheetMap;
   map <string, JSONStruct> externalJSON;
   Singleton ();
+  void setSelInd (int ind);
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
   FIVector4 * cameraGetPos ();
   int placeInStack ();
@@ -20876,6 +20817,7 @@ public:
   void setShaderArrayfVec3 (string paramName, float * x, int count);
   void setShaderArrayfVec4 (string paramName, float * x, int count);
   void setShaderMatrix4x4 (string paramName, float * x, int count);
+  void setShaderMatrix3x3 (string paramName, float * x, int count);
   void setShaderArray (string paramName, float * x, int count);
   GLint getShaderLoc (string paramName);
   void setShaderFloat (string paramName, float x);
@@ -21047,6 +20989,7 @@ public:
   void setVec (GLchar const * name, GLfloat const * vecData, int vecSize);
   void setVecString (string name, GLfloat const * vecData, int vecSize);
   void setShaderMatrix4x4 (string paramName, float * x, int count);
+  void setShaderMatrix3x3 (string paramName, float * x, int count);
   void setShaderArrayfVec4 (string paramName, float * x, int count);
   void setShaderArrayfVec3 (string paramName, float * x, int count);
   void setShaderArray (string paramName, float * x, int count);
@@ -21730,8 +21673,8 @@ public:
   std::vector <GroupIdStruct> groupIdStack;
   std::vector <GroupInfoStruct> groupInfoStack;
   std::vector <ConnectingNodeStruct> bestConnectingNodes;
-  std::vector <float> vertexVec;
-  std::vector <uint> indexVec;
+  std::vector <btScalar> vertexVec;
+  std::vector <unsigned short> indexVec;
   std::vector <int> collideIndices;
   std::vector <GameEnt *> entityGeom;
   int entityGeomCounter;
@@ -21743,6 +21686,10 @@ public:
   Singleton * singleton;
   intPairVec (containsEntIds) [E_ET_LENGTH];
   bool wasGenerated;
+  btTriangleIndexVertexArray * meshInterface;
+  btIndexedMesh part;
+  btRigidBody * body;
+  btBvhTriangleMeshShape * trimeshShape;
   GamePageHolder ();
   void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isBlockHolder = false);
   int getCellAtCoordsLocal (int xx, int yy, int zz);
@@ -21765,6 +21712,7 @@ public:
   void getIndVal (int procCount);
   void getIndVal2 (int procCount);
   void getPixVal (float xb, float yb, float zb, float xm, float ym, float zm);
+  void createMesh ();
   void fillVBO ();
   void generateList ();
 };
@@ -21793,12 +21741,12 @@ LZZ_INLINE void GamePageHolder::getPixVal (float xb, float yb, float zb, float x
 		vertexVec.push_back(xb+xm);
 		vertexVec.push_back(yb+ym);
 		vertexVec.push_back(zb+zm);
-		vertexVec.push_back(1.0f);
+		//vertexVec.push_back(1.0f);
 		
-		vertexVec.push_back(xb+xm);
-		vertexVec.push_back(yb+ym);
-		vertexVec.push_back(zb+zm);
-		vertexVec.push_back(1.0f);
+		// vertexVec.push_back(xb+xm);
+		// vertexVec.push_back(yb+ym);
+		// vertexVec.push_back(zb+zm);
+		//vertexVec.push_back(1.0f);
 		
 		
 		
@@ -22053,6 +22001,7 @@ public:
   ShapeCache * cache (btConvexShape * shape);
   void renderSquareA (float x, float y, float z);
   void glDrawVector (btVector3 const & v);
+  void setId (int id);
   void updateMat ();
   void updateMat2 ();
   void pushNewMat (btScalar * m);
@@ -22114,6 +22063,10 @@ public:
   GUIHelperInterface * guiHelper;
   GamePhysics ();
   void init (Singleton * _singleton);
+  void beginDrop ();
+  void remBoxFromObj (BaseObjType _uid);
+  void addBoxFromObj (BaseObjType _uid);
+  void collideWithWorld ();
   void updateAll ();
   ~ GamePhysics ();
 };
@@ -22388,7 +22341,7 @@ bool Singleton::CompareStruct::operator () (string const & first, string const &
 	    }
 Singleton::Singleton ()
         {
-		
+		gamePhysics = NULL;
 		allInit = false;
 		
 		fboMap.clear();
@@ -22400,10 +22353,18 @@ Singleton::Singleton ()
 		gw = NULL;
 		
 		
+		
+		
 		// #ifdef USE_POCO
 		// 	myWS = NULL;
 		// #endif
 		
+	}
+void Singleton::setSelInd (int ind)
+                                {
+		
+		selObjInd = ind;
+		cout << "selObjInd " << selObjInd << "\n";
 	}
 void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
           {
@@ -22643,7 +22604,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		medianCount = 0;
 		lastObjectCount = 0;
 		lastObjInd = 0;
-		selObjInd = 0;
+		setSelInd(0);
 		actObjInd = 0;
 		currentTick = 0;
 		earthMod = E_PTT_TER;
@@ -22687,7 +22648,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		fpsTest = false;
 		pathfindingOn = false;
-		updateHolders = false;
+		updateHolders = true;
 		
 		
 		maxHolderDis = 32;
@@ -23529,9 +23490,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		gw->init(this);
 		gw->initMap();
 		
-		gamePhysics = new GamePhysics();
-		gamePhysics->init(this);
-		//gamePhysics->bulletTest();
+		
 		
 		//bulletTest();
 		
@@ -23873,9 +23832,12 @@ void Singleton::setCurrentActor (BaseObj * ge)
 			
 			
 			actObjInd = ge->uid;
+			
+			cout << "actObjInd " << actObjInd << "\n";
+			
 			subjectDistance = currentActor->getCenterPoint()->distance(cameraPos);
 			
-			
+			cout << "subjectDistance " << subjectDistance << "\n"; 
 		}
 		
 	}
@@ -24290,12 +24252,12 @@ void Singleton::toggleDDMenu (int x, int y, bool toggled)
 			objTargeted = ind >= E_OBJ_LENGTH;	
 			
 			if (objTargeted) {
-				selObjInd = ind;				
+				setSelInd(ind);				
 			}
 			else {
 				getMarkerPos(x, y);
 				markerFound = true;
-				selObjInd = 0;
+				setSelInd(0);
 			}
 			
 			
@@ -24524,7 +24486,7 @@ void Singleton::removeEntity (bool isReq, int ind)
 		
 		if (ind >= E_OBJ_LENGTH) {
 			if (gw->removeVisObject(ind, false)) {
-				selObjInd = 0;
+				setSelInd(0);
 			}
 		}
 	}
@@ -25946,6 +25908,10 @@ void Singleton::setShaderMatrix4x4 (string paramName, float * x, int count)
         {
 		curShaderPtr->setShaderMatrix4x4(paramName, x, count);
 	}
+void Singleton::setShaderMatrix3x3 (string paramName, float * x, int count)
+        {
+		curShaderPtr->setShaderMatrix3x3(paramName, x, count);
+	}
 void Singleton::setShaderArray (string paramName, float * x, int count)
         {
 		curShaderPtr->setShaderArray(paramName, x, count);
@@ -26715,6 +26681,7 @@ void Singleton::setCameraToElevation ()
 		);
 		
 		moveCamera(&modXYZ);
+		cameraPos->copyFrom(&camLerpPos);
 
 	}
 void Singleton::runReport ()
@@ -27036,6 +27003,11 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					
 				break;
+				
+				case 'Q':
+					gamePhysics->beginDrop();
+				break;
+				
 				case 'q':
 					
 					targetSubjectZoom = 1.0f;
@@ -28297,7 +28269,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 						
 						
 						
-						selObjInd = bestInd;
+						setSelInd(bestInd);
 						
 						//setCurrentActor(&(gw->gameObjects[bestInd]));
 						
@@ -28859,13 +28831,8 @@ void Singleton::handleMovement ()
 				targetCameraPos.copyFrom(&lookAtVec);
 				targetCameraPos.multXYZ( -(subjectDistance)*subjectZoom*tempZoom );
 				
-				// targetCameraPos.addXYZ(
-				// 	currentActor->body->GetCenterPoint().x,
-				// 	currentActor->body->GetCenterPoint().y,
-				// 	currentActor->body->GetCenterPoint().z
-				// );
+				targetCameraPos.addXYZRef(currentActor->getCenterPoint());
 				
-				//targetCameraPos.addXYZRef(currentActor->getCenterPoint());
 			}
 			
 			
@@ -30269,6 +30236,10 @@ void Singleton::frameUpdate ()
 						
 						if (currentTick == 4) {
 							setCameraToElevation();
+							
+							gamePhysics = new GamePhysics();
+							gamePhysics->init(this);
+							
 						}
 						
 						// if (currentActor != NULL) {
@@ -30599,8 +30570,10 @@ void Singleton::display ()
 				else
 				{
 					
+					if (gamePhysics != NULL) {
+						gamePhysics->updateAll();
+					}
 					
-					gamePhysics->updateAll();
 					
 					frameUpdate();
 					
@@ -31997,6 +31970,17 @@ void Shader::setShaderMatrix4x4 (string paramName, float * x, int count)
 		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
 		
 		glUniformMatrix4fv(
+			loc,//GLint location,
+			count,//GLsizei count,
+			false,//GLboolean transpose,
+			x//const GLfloat *value
+		);
+	}
+void Shader::setShaderMatrix3x3 (string paramName, float * x, int count)
+                                                                       {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		
+		glUniformMatrix3fv(
 			loc,//GLint location,
 			count,//GLsizei count,
 			false,//GLboolean transpose,
@@ -41564,20 +41548,7 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 
 		gphCenInPixels.averageXYZ(&gphMaxInPixels,&gphMinInPixels);
 		
-		// if (GEN_COLLISION) {
-			
-		// 	q3BodyDef bodyDef;
-		// 	bodyDef.position.Set(
-		// 		gphMinInPixels[0], gphMinInPixels[1], gphMinInPixels[2]
-		// 	);
-		// 	body = singleton->gamePhysics->scene->CreateBody( bodyDef );
-			
-		// }
-		
-		
-		
-		
-		//fetchHolderGeom();
+
 		
 	}
 int GamePageHolder::getCellAtCoordsLocal (int xx, int yy, int zz)
@@ -42816,8 +42787,45 @@ void GamePageHolder::genCellData ()
 		wasGenerated = true;
 		
 	}
+void GamePageHolder::createMesh ()
+        {
+		btTransform trans;
+		trans.setIdentity();
+
+		meshInterface = new btTriangleIndexVertexArray();
+		
+		part.m_vertexBase = (const unsigned char*)(&(vertexVec[0]));
+		part.m_vertexStride = sizeof(btScalar) * 3;
+		part.m_numVertices = vertexVec.size()/3;
+		part.m_triangleIndexBase = (const unsigned char*)(&(indexVec[0]));
+		part.m_triangleIndexStride = sizeof(short) * 3;
+		part.m_numTriangles = indexVec.size()/3;
+		part.m_indexType = PHY_SHORT;
+
+		meshInterface->addIndexedMesh(part,PHY_SHORT);
+
+		
+		trimeshShape = new btBvhTriangleMeshShape(meshInterface,true,true);
+		
+		trans.setOrigin(btVector3(
+			gphMinInPixels[0],
+			gphMinInPixels[1],
+			gphMinInPixels[2]
+		));
+
+		body = singleton->gamePhysics->example->createRigidBody(0,trans,trimeshShape);
+		body->setFriction (btScalar(0.9));
+		body->bodyId = 0;
+		
+		singleton->gamePhysics->example->updateGraphicsObjects();
+		
+	}
 void GamePageHolder::fillVBO ()
                        {
+		
+		if (singleton->gamePhysics == NULL) {
+			return;
+		}
 		
 		int q;
 		
@@ -42848,7 +42856,7 @@ void GamePageHolder::fillVBO ()
 		/////////////////////
 		
 		
-		
+		//cout << "gph:fillVBO()\n";
 		
 		float fk;
 		
@@ -42866,33 +42874,31 @@ void GamePageHolder::fillVBO ()
 				
 		// 		fk = (kk2-kk)+1;
 				
-		// 		q3BoxDef boxDef;
-		// 		boxDef.SetRestitution( 0 );
-		// 		q3Transform tx;
-		// 		q3Identity( tx );
-		// 		tx.position.Set(ii,jj,(kk+kk2)*0.5f);
-		// 		boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, fk ) );
-		// 		body->AddBox( boxDef );
 				
+		// 		btTransform trans;
+		// 		trans.setOrigin(btVector3(
+		// 			ii,jj,(kk+kk2)*0.5f
+		// 		));
+				
+		// 		// todo: mem leak
+				
+		// 		btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(0.5f,fk);
+		// 		btRigidBody* myBody = singleton->gamePhysics->example->createRigidBody(0,trans,capsuleShape);
+		// 		myBody->setFriction(btScalar(0.9));
 				
 		// 		// q3BoxDef boxDef;
 		// 		// boxDef.SetRestitution( 0 );
 		// 		// q3Transform tx;
 		// 		// q3Identity( tx );
-		// 		// tx.position.Set(ii,jj,kk);
-		// 		// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
+		// 		// tx.position.Set(ii,jj,(kk+kk2)*0.5f);
+		// 		// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, fk ) );
 		// 		// body->AddBox( boxDef );
 				
-				
-		// 		// q3Identity( tx );
-		// 		// tx.position.Set(ii,jj,kk);
-		// 		// // tranform, extents
-		// 		// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
-		// 		// boxDef.SetRestitution( 0 );
-		// 		// body->AddBox( boxDef );
 				
 		// 	}
 		// }
+		
+		singleton->gamePhysics->example->updateGraphicsObjects();
 		
 		//cout << "collideIndices.size() " << collideIndices.size() << "\n";
 		
@@ -42909,12 +42915,18 @@ void GamePageHolder::fillVBO ()
 				
 			}
 			else {
-				vboWrapper.init(
-					&(vertexVec[0]),
-					vertexVec.size(),
-					&(indexVec[0]),
-					indexVec.size()
-				);
+
+				createMesh();
+				
+				
+				// vboWrapper.init(
+				// 	&(vertexVec[0]),
+				// 	vertexVec.size(),
+				// 	&(indexVec[0]),
+				// 	indexVec.size()
+				// );
+				
+				
 				// todo: not needed?
 				//glFlush();
 				//glFinish();
@@ -42930,6 +42942,10 @@ void GamePageHolder::fillVBO ()
 	}
 void GamePageHolder::generateList ()
                             { //int fboNum
+		
+		if (singleton->gamePhysics == NULL) {
+			return;
+		}
 		
 		preGenList = false;
 		
@@ -43132,16 +43148,8 @@ void GamePageHolder::generateList ()
 		// 			}
 		// 		}
 		// 	}
-				
-				
 		// }
 		
-		
-		// if (GEN_COLLISION) {
-		// 	if (doProcAny) {
-		// 		collideIndices.push_back(i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder);
-		// 	}
-		// }
 		
 		
 		if (fillPolys) {
@@ -43163,9 +43171,9 @@ void GamePageHolder::generateList ()
 							iX = gphMinInPixels.getIX() + i;
 							iY = gphMinInPixels.getIY() + j;
 							iZ = gphMinInPixels.getIZ() + k;
-							bpX = iX*cellPitch;
-							bpY = iY*cellPitch;
-							bpZ = iZ*cellPitch;
+							bpX = i*cellPitch;
+							bpY = j*cellPitch;
+							bpZ = k*cellPitch;
 							
 							if (isBlockHolder) {
 								cellVal = getCellAtCoordsLocal(iX,iY,iZ);
@@ -48997,6 +49005,7 @@ void MyShapeDrawer::drawCoordSystem ()
 		}
 void MyShapeDrawer::drawSphere (btScalar radius, int lats, int longs)
                 {
+			
 			int i, j;
 			for(i = 0; i <= lats; i++) {
 				btScalar lat0 = SIMD_PI * (-btScalar(0.5) + (btScalar) (i - 1) / lats);
@@ -49009,17 +49018,17 @@ void MyShapeDrawer::drawSphere (btScalar radius, int lats, int longs)
 
 				// TODO: reimplement with tris
 
-				// glBegin(GL_QUAD_STRIP);
-				// for(j = 0; j <= longs; j++) {
-				// 	btScalar lng = 2 * SIMD_PI * (btScalar) (j - 1) / longs;
-				// 	btScalar x = cos(lng);
-				// 	btScalar y = sin(lng);
-				// 	glNormal3f(x * zr1, y * zr1, z1);
-				// 	glVertex3f(x * zr1, y * zr1, z1);
-				// 	glNormal3f(x * zr0, y * zr0, z0);
-				// 	glVertex3f(x * zr0, y * zr0, z0);
-				// }
-				// glEnd();
+				glBegin(GL_QUAD_STRIP);
+				for(j = 0; j <= longs; j++) {
+					btScalar lng = 2 * SIMD_PI * (btScalar) (j - 1) / longs;
+					btScalar x = cos(lng);
+					btScalar y = sin(lng);
+					glNormal3f(-(x * zr1), -(y * zr1), -z1);
+					glVertex3f(x * zr1, y * zr1, z1);
+					glNormal3f(-(x * zr0), -(y * zr0), -z0);
+					glVertex3f(x * zr0, y * zr0, z0);
+				}
+				glEnd();
 			}
 		}
 ShapeCache * MyShapeDrawer::cache (btConvexShape * shape)
@@ -49073,6 +49082,10 @@ void MyShapeDrawer::renderSquareA (float x, float y, float z)
 			// glVertex3f(x, y + 10.f, z);
 			// glEnd();
 		}
+void MyShapeDrawer::setId (int id)
+                                   {
+			singleton->setShaderFloat("objectId", id);
+		}
 void MyShapeDrawer::updateMat ()
                                  {
 			int i;
@@ -49084,6 +49097,18 @@ void MyShapeDrawer::updateMat ()
 			}
 			//glGetFloatv(GL_MODELVIEW_MATRIX, singleton->viewMatrix.get());
 			singleton->setShaderMatrix4x4("objmat",singleton->curObjMatrix.get(),1);
+			
+			singleton->curObjMatrix3.set4(singleton->curObjMatrix.get());
+			singleton->curObjMatrix3.invert();
+			singleton->curObjMatrix3.transpose();
+			
+			singleton->setShaderMatrix3x3("normalRot",singleton->curObjMatrix3.get(),1);
+			
+			//btTransform tr;
+			// tr.setFromOpenGLMatrix(singleton->curObjMatrix.get());
+			// btQuaternion orn = tr.getRotation();
+			// singleton->setShaderVec4("objQuat",orn.getX(),orn.getY(),orn.getZ(),orn.getW());
+			
 		}
 void MyShapeDrawer::updateMat2 ()
                                   {
@@ -49340,6 +49365,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 								btVector3(halfExtent[0],-halfExtent[1],-halfExtent[2]),	
 								btVector3(-halfExtent[0],-halfExtent[1],-halfExtent[2])};
 		#if 1
+							
 							glBegin (GL_TRIANGLES);
 							int si=36;
 							for (int i=0;i<si;i+=3)
@@ -49451,6 +49477,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 								if (poly)
 								{
 									int i;
+									
 									glBegin (GL_TRIANGLES);
 									for (i=0;i<poly->m_faces.size();i++)
 									{
@@ -49486,6 +49513,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 										const unsigned int* idx = hull->getIndexPointer();
 										const btVector3* vtx = hull->getVertexPointer();
 
+										
 										glBegin (GL_TRIANGLES);
 
 										for (int i = 0; i < hull->numTriangles (); i++)
@@ -49523,15 +49551,15 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 							else {
 								
 								
-								btConcaveShape* concaveMesh = (btConcaveShape*) shape;
-								GlDrawcallback drawCallback;
-								drawCallback.m_wireframe = false;
+								// btBvhTriangleMeshShape* concaveMesh = (btBvhTriangleMeshShape*) shape;
+								// GlDrawcallback drawCallback;
+								// drawCallback.m_wireframe = false;
 								
-								glBegin(GL_TRIANGLES);
+								// glBegin(GL_TRIANGLES);
 								
-								concaveMesh->processAllTriangles(&drawCallback,worldBoundsMin,worldBoundsMax);
+								// concaveMesh->processAllTriangles(&drawCallback,worldBoundsMin,worldBoundsMax);
 								
-								glEnd();
+								// glEnd();
 								
 								
 							}
@@ -49624,6 +49652,9 @@ void MyShapeDrawer::drawSceneInternal (btDiscreteDynamicsWorld const * dynamicsW
 			{
 				const btCollisionObject*	colObj=dynamicsWorld->getCollisionObjectArray()[i];
 				const btRigidBody*		body=btRigidBody::upcast(colObj);
+				
+				setId(body->bodyId);
+				
 				if(body&&body->getMotionState())
 				{
 					btDefaultMotionState* myMotionState = (btDefaultMotionState*)body->getMotionState();
@@ -50182,15 +50213,125 @@ GamePhysics::GamePhysics ()
 void GamePhysics::init (Singleton * _singleton)
         {
 		
+		cout << "GamePhysics:init()\n";
+		
 		singleton = _singleton;
 		myOGLApp = new MyOGLApp("yo", 640, 480);
 		guiHelper = new MyGLHelper(singleton, myOGLApp);
 		example = 
 			new BenchmarkDemo(guiHelper,5);
 			// new BasicExample(guiHelper);
+		
+		
 		example->initPhysics();
 		
+	}
+void GamePhysics::beginDrop ()
+                         {
 		
+		cout << "GamePhysics:beginDrop()\n";
+		
+		example->beginDrop(
+			singleton->cameraPos->getFX(),
+			singleton->cameraPos->getFY(),
+			singleton->cameraPos->getFZ()
+		);
+	}
+void GamePhysics::remBoxFromObj (BaseObjType _uid)
+                                             {
+		
+		BaseObj* ge = &(singleton->gw->gameObjects[_uid]);
+		
+		if (ge->body != NULL) {
+			example->removeRigidBody(ge->body);
+			ge->body = NULL;
+		}
+		
+	}
+void GamePhysics::addBoxFromObj (BaseObjType _uid)
+                                             {
+		
+		BaseObj* ge = &(singleton->gw->gameObjects[_uid]);
+		
+		if (ge->isHidden) {
+			return;
+		}
+		
+		btTransform trans;
+		trans.setIdentity();
+		trans.setOrigin(ge->getCenterPoint(false)->getBTV());
+		btCapsuleShape* capsuleShape = new btCapsuleShapeZ(1.0f,1.0f);
+		ge->body = example->createRigidBody(ge->mass,trans,capsuleShape);
+		ge->body->bodyId = _uid;
+		
+		// q3BodyDef bodyDef;
+		// bodyDef.position.Set(
+		// 	ge->getCenterPoint()->getFX(),
+		// 	ge->getCenterPoint()->getFY(),
+		// 	ge->getCenterPoint()->getFZ()	
+		// );
+		
+		// if (ge->isUpright) {
+		// 	bodyDef.lockAxisX = true;
+		// 	bodyDef.lockAxisY = true;
+		// 	bodyDef.lockAxisZ = true;
+		// }
+		
+		// bodyDef.bodyType = eDynamicBody;
+		
+		// if (ge->body != NULL) {
+		// 	scene->RemoveBody(ge->body);
+		// 	ge->body = NULL;
+		// }
+		
+		// ge->body = scene->CreateBody( bodyDef );
+
+		// q3Transform tx;
+		// q3Identity( tx );
+		// q3BoxDef boxDef;
+		// boxDef.Set( tx, q3Vec3(
+		// 	ge->diameterInCells.getFX(),
+		// 	ge->diameterInCells.getFY(),
+		// 	ge->diameterInCells.getFZ()
+		// ) );
+		// boxDef.SetRestitution(ge->bounciness);
+		// ge->body->AddBox( boxDef );
+		
+		
+	}
+void GamePhysics::collideWithWorld ()
+                                {
+		
+		
+		
+		int i;
+		int j;
+		int k;
+		
+		BaseObj* ge;
+		
+		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
+			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
+			
+			if (
+				(ge->isHidden) ||
+				(ge->body == NULL)
+			) {
+				
+			}
+			else {
+				if (singleton->selObjInd == ge->uid) {
+					
+					ge->body->applyCentralImpulse( btVector3(
+						0.0f,//(ge->body->getCenterOfMassPosition().getX() - (singleton->worldMarker.getFX()))*20.0f,
+						0.0f,//(ge->body->getCenterOfMassPosition().getY() - (singleton->worldMarker.getFY()))*20.0f,
+						200.0f//-(ge->body->getCenterOfMassPosition().getZ() - (4.0f + singleton->worldMarker.getFZ()))*200.0f
+					) );
+					
+				}
+			}
+			
+		}
 		
 	}
 void GamePhysics::updateAll ()
@@ -50198,6 +50339,8 @@ void GamePhysics::updateAll ()
 		// f32 time = g_clock.Start( );
 		// updateBase(time);
 		// g_clock.Stop( );
+		
+		collideWithWorld();
 		
 		example->stepSimulation(1.f/60.f);
 	}
@@ -50850,37 +50993,37 @@ void GameWorld::update ()
 		}
 		
 		
-		if (GEN_POLYS_WORLD||GEN_POLYS_HOLDER) {
-			glEnable(GL_DEPTH_TEST);
-			//glEnable(GL_CULL_FACE);
+		// if (GEN_POLYS_WORLD||GEN_POLYS_HOLDER) {
+		// 	glEnable(GL_DEPTH_TEST);
+		// 	//glEnable(GL_CULL_FACE);
 			
-			//back face
-			//glDepthFunc(GL_GREATER);
-			// glCullFace(GL_FRONT);
-			// drawPolys(polyFBOStrings[1], 4,-1);
+		// 	//back face
+		// 	//glDepthFunc(GL_GREATER);
+		// 	// glCullFace(GL_FRONT);
+		// 	// drawPolys(polyFBOStrings[1], 4,-1);
 			
-			//front face
-			//glDepthFunc(GL_LESS);
-			//glCullFace(GL_BACK);
-			//glDepthFunc(GL_LEQUAL);
+		// 	//front face
+		// 	//glDepthFunc(GL_LESS);
+		// 	//glCullFace(GL_BACK);
+		// 	//glDepthFunc(GL_LEQUAL);
 			
-			//glDepthRange(singleton->clipDist[0],singleton->clipDist[1]);
-			singleton->perspectiveOn = true;
+		// 	//glDepthRange(singleton->clipDist[0],singleton->clipDist[1]);
+		// 	singleton->perspectiveOn = true;
 			
-			if (GEN_POLYS_WORLD) {
-				drawPolys(polyFBOStrings[0], 0, 0,true);
-			}
-			if (GEN_POLYS_HOLDER) {
-				drawPolys(polyFBOStrings[0], 0, DEF_VOL_SIZE/singleton->cellsPerHolder + 1,false);
-			}
+		// 	if (GEN_POLYS_WORLD) {
+		// 		drawPolys(polyFBOStrings[0], 0, 0,true);
+		// 	}
+		// 	if (GEN_POLYS_HOLDER) {
+		// 		drawPolys(polyFBOStrings[0], 0, DEF_VOL_SIZE/singleton->cellsPerHolder + 1,false);
+		// 	}
 			
-			singleton->perspectiveOn = false;
+		// 	singleton->perspectiveOn = false;
 			
-			//glDisable(GL_CULL_FACE);
-			glDisable(GL_DEPTH_TEST);
+		// 	//glDisable(GL_CULL_FACE);
+		// 	glDisable(GL_DEPTH_TEST);
 			
-			//polyCombine();
-		}
+		// 	//polyCombine();
+		// }
 		
 		
 		
@@ -51561,7 +51704,7 @@ void GameWorld::addVisObject (BaseObjType _uid, bool isRecycled)
 			
 		}
 		else {
-			//singleton->gamePhysics->addBoxFromObj(_uid);
+			singleton->gamePhysics->addBoxFromObj(_uid);
 		}
 		
 	}
@@ -51570,6 +51713,8 @@ bool GameWorld::removeVisObject (BaseObjType _uid, bool isRecycled)
 		int i;
 		
 		BaseObj* ge = &(gameObjects[_uid]);
+		
+		singleton->gamePhysics->remBoxFromObj(_uid);
 		
 		// if (ge->body != NULL) {
 		// 	//singleton->gamePhysics->scene->RemoveBody(ge->body);
@@ -51942,12 +52087,6 @@ void GameWorld::renderGeom ()
 		singleton->setShaderVec3("matVal", 30, 30, 30);
 		
 		
-		
-		// singleton->gamePhysics->myShapeDrawer->drawScene(
-		// 	singleton->gamePhysics->example->getDynamicsWorld(),
-		// 	false
-		// );
-		
 		//singleton->gamePhysics->example->renderScene();
 		
 		
@@ -52315,7 +52454,11 @@ void GameWorld::renderGeom ()
 		// 	false
 		// );
 		
-		singleton->gamePhysics->example->renderScene();
+		if (singleton->gamePhysics != NULL) {
+			singleton->gamePhysics->example->renderScene();
+		}
+		
+		
 		
 		
 		singleton->unbindFBO();

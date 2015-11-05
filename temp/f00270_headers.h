@@ -97,6 +97,7 @@ public:
   Matrix4 projMatrix;
   std::vector <Matrix4> objMatrixStack;
   Matrix4 curObjMatrix;
+  Matrix3 curObjMatrix3;
   Matrix4 tempObjMatrix;
   GLint (viewport) [4];
   E_OBJ activeObject;
@@ -476,6 +477,7 @@ public:
   map <string, StyleSheet> styleSheetMap;
   map <string, JSONStruct> externalJSON;
   Singleton ();
+  void setSelInd (int ind);
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
   FIVector4 * cameraGetPos ();
   int placeInStack ();
@@ -540,6 +542,7 @@ public:
   void setShaderArrayfVec3 (string paramName, float * x, int count);
   void setShaderArrayfVec4 (string paramName, float * x, int count);
   void setShaderMatrix4x4 (string paramName, float * x, int count);
+  void setShaderMatrix3x3 (string paramName, float * x, int count);
   void setShaderArray (string paramName, float * x, int count);
   GLint getShaderLoc (string paramName);
   void setShaderFloat (string paramName, float x);
@@ -711,6 +714,7 @@ public:
   void setVec (GLchar const * name, GLfloat const * vecData, int vecSize);
   void setVecString (string name, GLfloat const * vecData, int vecSize);
   void setShaderMatrix4x4 (string paramName, float * x, int count);
+  void setShaderMatrix3x3 (string paramName, float * x, int count);
   void setShaderArrayfVec4 (string paramName, float * x, int count);
   void setShaderArrayfVec3 (string paramName, float * x, int count);
   void setShaderArray (string paramName, float * x, int count);
@@ -1394,8 +1398,8 @@ public:
   std::vector <GroupIdStruct> groupIdStack;
   std::vector <GroupInfoStruct> groupInfoStack;
   std::vector <ConnectingNodeStruct> bestConnectingNodes;
-  std::vector <float> vertexVec;
-  std::vector <uint> indexVec;
+  std::vector <btScalar> vertexVec;
+  std::vector <unsigned short> indexVec;
   std::vector <int> collideIndices;
   std::vector <GameEnt *> entityGeom;
   int entityGeomCounter;
@@ -1407,6 +1411,10 @@ public:
   Singleton * singleton;
   intPairVec (containsEntIds) [E_ET_LENGTH];
   bool wasGenerated;
+  btTriangleIndexVertexArray * meshInterface;
+  btIndexedMesh part;
+  btRigidBody * body;
+  btBvhTriangleMeshShape * trimeshShape;
   GamePageHolder ();
   void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isBlockHolder = false);
   int getCellAtCoordsLocal (int xx, int yy, int zz);
@@ -1429,6 +1437,7 @@ public:
   void getIndVal (int procCount);
   void getIndVal2 (int procCount);
   void getPixVal (float xb, float yb, float zb, float xm, float ym, float zm);
+  void createMesh ();
   void fillVBO ();
   void generateList ();
 };
@@ -1457,12 +1466,12 @@ LZZ_INLINE void GamePageHolder::getPixVal (float xb, float yb, float zb, float x
 		vertexVec.push_back(xb+xm);
 		vertexVec.push_back(yb+ym);
 		vertexVec.push_back(zb+zm);
-		vertexVec.push_back(1.0f);
+		//vertexVec.push_back(1.0f);
 		
-		vertexVec.push_back(xb+xm);
-		vertexVec.push_back(yb+ym);
-		vertexVec.push_back(zb+zm);
-		vertexVec.push_back(1.0f);
+		// vertexVec.push_back(xb+xm);
+		// vertexVec.push_back(yb+ym);
+		// vertexVec.push_back(zb+zm);
+		//vertexVec.push_back(1.0f);
 		
 		
 		
@@ -1717,6 +1726,7 @@ public:
   ShapeCache * cache (btConvexShape * shape);
   void renderSquareA (float x, float y, float z);
   void glDrawVector (btVector3 const & v);
+  void setId (int id);
   void updateMat ();
   void updateMat2 ();
   void pushNewMat (btScalar * m);
@@ -1778,6 +1788,10 @@ public:
   GUIHelperInterface * guiHelper;
   GamePhysics ();
   void init (Singleton * _singleton);
+  void beginDrop ();
+  void remBoxFromObj (BaseObjType _uid);
+  void addBoxFromObj (BaseObjType _uid);
+  void collideWithWorld ();
   void updateAll ();
   ~ GamePhysics ();
 };

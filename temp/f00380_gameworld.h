@@ -640,37 +640,37 @@ void GameWorld::update ()
 		}
 		
 		
-		if (GEN_POLYS_WORLD||GEN_POLYS_HOLDER) {
-			glEnable(GL_DEPTH_TEST);
-			//glEnable(GL_CULL_FACE);
+		// if (GEN_POLYS_WORLD||GEN_POLYS_HOLDER) {
+		// 	glEnable(GL_DEPTH_TEST);
+		// 	//glEnable(GL_CULL_FACE);
 			
-			//back face
-			//glDepthFunc(GL_GREATER);
-			// glCullFace(GL_FRONT);
-			// drawPolys(polyFBOStrings[1], 4,-1);
+		// 	//back face
+		// 	//glDepthFunc(GL_GREATER);
+		// 	// glCullFace(GL_FRONT);
+		// 	// drawPolys(polyFBOStrings[1], 4,-1);
 			
-			//front face
-			//glDepthFunc(GL_LESS);
-			//glCullFace(GL_BACK);
-			//glDepthFunc(GL_LEQUAL);
+		// 	//front face
+		// 	//glDepthFunc(GL_LESS);
+		// 	//glCullFace(GL_BACK);
+		// 	//glDepthFunc(GL_LEQUAL);
 			
-			//glDepthRange(singleton->clipDist[0],singleton->clipDist[1]);
-			singleton->perspectiveOn = true;
+		// 	//glDepthRange(singleton->clipDist[0],singleton->clipDist[1]);
+		// 	singleton->perspectiveOn = true;
 			
-			if (GEN_POLYS_WORLD) {
-				drawPolys(polyFBOStrings[0], 0, 0,true);
-			}
-			if (GEN_POLYS_HOLDER) {
-				drawPolys(polyFBOStrings[0], 0, DEF_VOL_SIZE/singleton->cellsPerHolder + 1,false);
-			}
+		// 	if (GEN_POLYS_WORLD) {
+		// 		drawPolys(polyFBOStrings[0], 0, 0,true);
+		// 	}
+		// 	if (GEN_POLYS_HOLDER) {
+		// 		drawPolys(polyFBOStrings[0], 0, DEF_VOL_SIZE/singleton->cellsPerHolder + 1,false);
+		// 	}
 			
-			singleton->perspectiveOn = false;
+		// 	singleton->perspectiveOn = false;
 			
-			//glDisable(GL_CULL_FACE);
-			glDisable(GL_DEPTH_TEST);
+		// 	//glDisable(GL_CULL_FACE);
+		// 	glDisable(GL_DEPTH_TEST);
 			
-			//polyCombine();
-		}
+		// 	//polyCombine();
+		// }
 		
 		
 		
@@ -1351,7 +1351,7 @@ void GameWorld::addVisObject (BaseObjType _uid, bool isRecycled)
 			
 		}
 		else {
-			//singleton->gamePhysics->addBoxFromObj(_uid);
+			singleton->gamePhysics->addBoxFromObj(_uid);
 		}
 		
 	}
@@ -1360,6 +1360,8 @@ bool GameWorld::removeVisObject (BaseObjType _uid, bool isRecycled)
 		int i;
 		
 		BaseObj* ge = &(gameObjects[_uid]);
+		
+		singleton->gamePhysics->remBoxFromObj(_uid);
 		
 		// if (ge->body != NULL) {
 		// 	//singleton->gamePhysics->scene->RemoveBody(ge->body);
@@ -1732,12 +1734,6 @@ void GameWorld::renderGeom ()
 		singleton->setShaderVec3("matVal", 30, 30, 30);
 		
 		
-		
-		// singleton->gamePhysics->myShapeDrawer->drawScene(
-		// 	singleton->gamePhysics->example->getDynamicsWorld(),
-		// 	false
-		// );
-		
 		//singleton->gamePhysics->example->renderScene();
 		
 		
@@ -2105,7 +2101,11 @@ void GameWorld::renderGeom ()
 		// 	false
 		// );
 		
-		singleton->gamePhysics->example->renderScene();
+		if (singleton->gamePhysics != NULL) {
+			singleton->gamePhysics->example->renderScene();
+		}
+		
+		
 		
 		
 		singleton->unbindFBO();

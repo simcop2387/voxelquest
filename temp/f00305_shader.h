@@ -567,6 +567,17 @@ void Shader::setShaderMatrix4x4 (string paramName, float * x, int count)
 			x//const GLfloat *value
 		);
 	}
+void Shader::setShaderMatrix3x3 (string paramName, float * x, int count)
+                                                                       {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		
+		glUniformMatrix3fv(
+			loc,//GLint location,
+			count,//GLsizei count,
+			false,//GLboolean transpose,
+			x//const GLfloat *value
+		);
+	}
 void Shader::setShaderArrayfVec4 (string paramName, float * x, int count)
                                                                         {
 		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());

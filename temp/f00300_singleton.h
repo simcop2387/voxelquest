@@ -9,7 +9,7 @@ bool Singleton::CompareStruct::operator () (string const & first, string const &
 	    }
 Singleton::Singleton ()
         {
-		
+		gamePhysics = NULL;
 		allInit = false;
 		
 		fboMap.clear();
@@ -21,10 +21,18 @@ Singleton::Singleton ()
 		gw = NULL;
 		
 		
+		
+		
 		// #ifdef USE_POCO
 		// 	myWS = NULL;
 		// #endif
 		
+	}
+void Singleton::setSelInd (int ind)
+                                {
+		
+		selObjInd = ind;
+		cout << "selObjInd " << selObjInd << "\n";
 	}
 void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
           {
@@ -264,7 +272,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		medianCount = 0;
 		lastObjectCount = 0;
 		lastObjInd = 0;
-		selObjInd = 0;
+		setSelInd(0);
 		actObjInd = 0;
 		currentTick = 0;
 		earthMod = E_PTT_TER;
@@ -308,7 +316,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		fpsTest = false;
 		pathfindingOn = false;
-		updateHolders = false;
+		updateHolders = true;
 		
 		
 		maxHolderDis = 32;
@@ -1150,9 +1158,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		gw->init(this);
 		gw->initMap();
 		
-		gamePhysics = new GamePhysics();
-		gamePhysics->init(this);
-		//gamePhysics->bulletTest();
+		
 		
 		//bulletTest();
 		
@@ -1494,9 +1500,12 @@ void Singleton::setCurrentActor (BaseObj * ge)
 			
 			
 			actObjInd = ge->uid;
+			
+			cout << "actObjInd " << actObjInd << "\n";
+			
 			subjectDistance = currentActor->getCenterPoint()->distance(cameraPos);
 			
-			
+			cout << "subjectDistance " << subjectDistance << "\n"; 
 		}
 		
 	}
@@ -1911,12 +1920,12 @@ void Singleton::toggleDDMenu (int x, int y, bool toggled)
 			objTargeted = ind >= E_OBJ_LENGTH;	
 			
 			if (objTargeted) {
-				selObjInd = ind;				
+				setSelInd(ind);				
 			}
 			else {
 				getMarkerPos(x, y);
 				markerFound = true;
-				selObjInd = 0;
+				setSelInd(0);
 			}
 			
 			
@@ -2145,7 +2154,7 @@ void Singleton::removeEntity (bool isReq, int ind)
 		
 		if (ind >= E_OBJ_LENGTH) {
 			if (gw->removeVisObject(ind, false)) {
-				selObjInd = 0;
+				setSelInd(0);
 			}
 		}
 	}
@@ -3567,6 +3576,10 @@ void Singleton::setShaderMatrix4x4 (string paramName, float * x, int count)
         {
 		curShaderPtr->setShaderMatrix4x4(paramName, x, count);
 	}
+void Singleton::setShaderMatrix3x3 (string paramName, float * x, int count)
+        {
+		curShaderPtr->setShaderMatrix3x3(paramName, x, count);
+	}
 void Singleton::setShaderArray (string paramName, float * x, int count)
         {
 		curShaderPtr->setShaderArray(paramName, x, count);
@@ -4336,6 +4349,7 @@ void Singleton::setCameraToElevation ()
 		);
 		
 		moveCamera(&modXYZ);
+		cameraPos->copyFrom(&camLerpPos);
 
 	}
 void Singleton::runReport ()
@@ -4657,6 +4671,11 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					
 				break;
+				
+				case 'Q':
+					gamePhysics->beginDrop();
+				break;
+				
 				case 'q':
 					
 					targetSubjectZoom = 1.0f;
@@ -5918,7 +5937,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 						
 						
 						
-						selObjInd = bestInd;
+						setSelInd(bestInd);
 						
 						//setCurrentActor(&(gw->gameObjects[bestInd]));
 						
@@ -6480,13 +6499,8 @@ void Singleton::handleMovement ()
 				targetCameraPos.copyFrom(&lookAtVec);
 				targetCameraPos.multXYZ( -(subjectDistance)*subjectZoom*tempZoom );
 				
-				// targetCameraPos.addXYZ(
-				// 	currentActor->body->GetCenterPoint().x,
-				// 	currentActor->body->GetCenterPoint().y,
-				// 	currentActor->body->GetCenterPoint().z
-				// );
+				targetCameraPos.addXYZRef(currentActor->getCenterPoint());
 				
-				//targetCameraPos.addXYZRef(currentActor->getCenterPoint());
 			}
 			
 			
@@ -7890,6 +7904,10 @@ void Singleton::frameUpdate ()
 						
 						if (currentTick == 4) {
 							setCameraToElevation();
+							
+							gamePhysics = new GamePhysics();
+							gamePhysics->init(this);
+							
 						}
 						
 						// if (currentActor != NULL) {
@@ -8220,8 +8238,10 @@ void Singleton::display ()
 				else
 				{
 					
+					if (gamePhysics != NULL) {
+						gamePhysics->updateAll();
+					}
 					
-					gamePhysics->updateAll();
 					
 					frameUpdate();
 					

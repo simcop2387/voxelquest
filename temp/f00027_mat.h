@@ -587,6 +587,7 @@ public:
     void        set(float m0, float m1, float m2,   // 1st column
                     float m3, float m4, float m5,   // 2nd column
                     float m6, float m7, float m8);  // 3rd column
+    void        set4(const float src[16]);
     void        setRow(int index, const float row[3]);
     void        setRow(int index, const Vector3& v);
     void        setColumn(int index, const float col[3]);
@@ -941,6 +942,12 @@ inline void Matrix3::set(const float src[9])
     m[6] = src[6];  m[7] = src[7];  m[8] = src[8];
 }
 
+inline void Matrix3::set4(const float src[16])
+{
+    m[0] = src[0];  m[1] = src[1];  m[2] = src[2]; // src[3]
+    m[3] = src[4];  m[4] = src[5];  m[5] = src[6]; // src[7]
+    m[6] = src[8];  m[7] = src[9];  m[8] = src[10]; // src[11]
+}
 
 
 inline void Matrix3::set(float m0, float m1, float m2,

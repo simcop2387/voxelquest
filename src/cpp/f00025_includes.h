@@ -11,7 +11,7 @@ int RUN_COUNT;
 #define DEFAULT_PORT "27015"
 
 const static bool GEN_COLLISION = false;
-const static bool GEN_POLYS_HOLDER = false;
+const static bool GEN_POLYS_HOLDER = true;
 const static bool GEN_POLYS_WORLD = false;
 
 const static bool SINGLE_THREADED = false;
@@ -1041,7 +1041,7 @@ class btDefaultCollisionConfiguration;
 #include "../OpenGLWindow/GLInstanceGraphicsShape.h"
 
 #include "../Benchmarks/TaruData.h"
-#include "../Benchmarks/landscapeData.h"
+//#include "../Benchmarks/landscapeData.h"
 
 
 
@@ -1126,11 +1126,11 @@ public:
 	{
 	}
 
-	virtual void processTriangle(btVector3* triangle,int partId, int triangleIndex)
+	virtual void processTriangle(btVector3* triangle, int partId, int triangleIndex)
 	{
 
-		(void)triangleIndex;
-		(void)partId;
+		// (void)triangleIndex;
+		// (void)partId;
 
 
 		if (m_wireframe)
@@ -1151,20 +1151,27 @@ public:
 			//glBegin(GL_TRIANGLES);
 			//glColor3f(1, 1, 1);
 			
+			//cout << "f\n";
 			
-			btVector3 v1 = triangle[0];
-			btVector3 v2 = triangle[1];
-			btVector3 v3 = triangle[2];
-			btVector3 normal = (v3-v1).cross(v2-v1);
-			normal.normalize ();
+			
+			btVector3 normal = (triangle[2]-triangle[0]).cross(triangle[1]-triangle[0]);
+			normal.normalize();
 			glNormal3f(normal.getX(),normal.getY(),normal.getZ());
 			
-			glVertex3d(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
-			glVertex3d(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
-			glVertex3d(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
-
+			glVertex3f(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
+			glVertex3f(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
+			glVertex3f(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
 			
-
+			// cout << triangle[0].getX() << " " << triangle[0].getY() << " " << triangle[0].getZ() << "\n";
+			// cout << triangle[1].getX() << " " << triangle[1].getY() << " " << triangle[1].getZ() << "\n";
+			// cout << triangle[2].getX() << " " << triangle[2].getY() << " " << triangle[2].getZ() << "\n";
+			// cout << normal.getX() << " " << normal.getY() << " " << normal.getZ() << "\n";
+			// cout << "\n";
+			
+			// normal = (triangle[0]-triangle[2]).cross(triangle[1]-triangle[2]);
+			// normal.normalize();
+			// glNormal3f(normal.getX(),normal.getY(),normal.getZ());
+			
 			// glVertex3d(triangle[2].getX(), triangle[2].getY(), triangle[2].getZ());
 			// glVertex3d(triangle[1].getX(), triangle[1].getY(), triangle[1].getZ());
 			// glVertex3d(triangle[0].getX(), triangle[0].getY(), triangle[0].getZ());
@@ -1180,6 +1187,7 @@ public:
 	{
 		(void)triangleIndex;
 		(void)partId;
+
 
 
 		//glBegin(GL_TRIANGLES);//LINES);
@@ -1668,131 +1676,6 @@ struct MyGLHelperInternalData
 
 
 
-struct BasicExample : public CommonRigidBodyBase
-{
-	BasicExample(struct GUIHelperInterface* helper)
-		:CommonRigidBodyBase(helper)
-	{
-		
-	}
-	
-	virtual ~BasicExample(){}
-	virtual void initPhysics();
-	virtual void renderScene();
-	//virtual btDiscreteDynamicsWorld* getDynamicsWorld();
-	
-	void resetCamera()
-	{
-		float dist = 41;
-		float pitch = 52;
-		float yaw = 35;
-		float targetPos[3]={0,0.46,0};
-		m_guiHelper->resetCamera(dist,pitch,yaw,targetPos[0],targetPos[1],targetPos[2]);
-	}
-};
-
-// btDiscreteDynamicsWorld* BasicExample::getDynamicsWorld() {
-// 	return m_dynamicsWorld;
-// }
-
-void BasicExample::initPhysics()
-{
-	m_guiHelper->setUpAxis(2);
-
-	createEmptyDynamicsWorld();
-	
-	m_guiHelper->createPhysicsDebugDrawer(m_dynamicsWorld);
-
-	if (m_dynamicsWorld->getDebugDrawer())
-		m_dynamicsWorld->getDebugDrawer()->setDebugMode(btIDebugDraw::DBG_DrawWireframe+btIDebugDraw::DBG_DrawContactPoints);
-
-	m_dynamicsWorld->setGravity(btVector3(0,0,-10));
-
-	///create a few basic rigid bodies
-	btBoxShape* groundShape = createBoxShape(btVector3(btScalar(50.),btScalar(50.),btScalar(50.)));
-	
-
-	//groundShape->initializePolyhedralFeatures();
-//	btCollisionShape* groundShape = new btStaticPlaneShape(btVector3(0,1,0),50);
-	
-	m_collisionShapes.push_back(groundShape);
-
-	btTransform groundTransform;
-	groundTransform.setIdentity();
-	groundTransform.setOrigin(btVector3(0,0,-50));
-
-	{
-		btScalar mass(0.);
-		createRigidBody(mass,groundTransform,groundShape, btVector4(0,0,1,1));
-	}
-
-
-	{
-		//create a few dynamic rigidbodies
-		// Re-using the same collision is better for memory usage and performance
-
-		btBoxShape* colShape = createBoxShape(btVector3(1,1,1));
-		
-
-		//btCollisionShape* colShape = new btSphereShape(btScalar(1.));
-		m_collisionShapes.push_back(colShape);
-
-		/// Create Dynamic Objects
-		btTransform startTransform;
-		startTransform.setIdentity();
-
-		btScalar	mass(1.f);
-
-		//rigidbody is dynamic if and only if mass is non zero, otherwise static
-		bool isDynamic = (mass != 0.f);
-
-		btVector3 localInertia(0,0,0);
-		if (isDynamic)
-			colShape->calculateLocalInertia(mass,localInertia);
-
-
-		for (int k = 0; k < ARRAY_SIZE_Y; k++) {
-			for (int i = 0; i<ARRAY_SIZE_X; i++) {
-				for(int j = 0; j < ARRAY_SIZE_Z; j++) {
-					startTransform.setOrigin(btVector3(
-										btScalar(2.0*i),
-										btScalar(2.0*k),
-										btScalar(20+2.0*j)));
-
-			
-					createRigidBody(mass,startTransform,colShape);
-					
-
-				}
-			}
-		}
-	}
-
-	m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);
-}
-
-
-void BasicExample::renderScene()
-{
-	// m_guiHelper->syncPhysicsToGraphics(m_dynamicsWorld);
-	// m_guiHelper->render(m_dynamicsWorld);
-	CommonRigidBodyBase::renderScene();
-}
-
-// CommonExampleInterface* BasicExampleCreateFunc(CommonExampleOptions& options)
-// {
-// 	return new BasicExample(options.m_guiHelper);
-// }
-
-
-
-
-
-
-
-
-
-
 // %%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -1834,6 +1717,8 @@ class BenchmarkDemo : public CommonRigidBodyBase
 
 	btAlignedObjectArray<class RagDoll*>	m_ragdolls;
 	
+	btVector3 initOffset;
+	
 	int	m_benchmark;
 
 	void myinit()
@@ -1853,10 +1738,11 @@ class BenchmarkDemo : public CommonRigidBodyBase
 	void createTest7();
 	void createTest8();
 
+	
 	void createWall(const btVector3& offsetPosition,int stackSize,const btVector3& boxSize);
 	void createPyramid(const btVector3& offsetPosition,int stackSize,const btVector3& boxSize);
 	void createTowerCircle(const btVector3& offsetPosition,int stackSize,int rotSize,const btVector3& boxSize);
-	void createLargeMeshBody();
+	//void createLargeMeshBody();
 
 
 	class SpuBatchRaycaster* m_batchRaycaster;
@@ -1867,6 +1753,7 @@ class BenchmarkDemo : public CommonRigidBodyBase
 
 	public:
 
+	
 	BenchmarkDemo(struct GUIHelperInterface* helper, int benchmark)
 	:CommonRigidBodyBase(helper),
 	m_benchmark(benchmark)
@@ -1876,6 +1763,14 @@ class BenchmarkDemo : public CommonRigidBodyBase
 	{
 		exitPhysics();
 	}
+	
+	void removeRigidBody(btRigidBody* body);
+	
+	void updateGraphicsObjects();
+	
+	void beginDrop(float x, float y, float z);
+	
+	
 	void initPhysics();
 
 	void exitPhysics();
@@ -2121,9 +2016,27 @@ void BenchmarkDemo::stepSimulation(float deltaTime)
 
 }
 
+void BenchmarkDemo::removeRigidBody(btRigidBody* body) {
+	m_dynamicsWorld->removeRigidBody(body);
+}
+
+void BenchmarkDemo::updateGraphicsObjects() {
+	m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);
+}
+
+
+void BenchmarkDemo::beginDrop(float x, float y, float z) {
+	initOffset = btVector3(x,y,z);
+	createTest5();
+	m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);
+}
+
 void BenchmarkDemo::initPhysics()
 {
-	m_guiHelper->setUpAxis(1);
+	cout << "BenchmarkDemo:initPhysics()\n";
+	
+	
+	m_guiHelper->setUpAxis(2);
 
 	setCameraDistance(btScalar(100.));
 
@@ -2141,8 +2054,8 @@ void BenchmarkDemo::initPhysics()
 
 	///the maximum size of the collision world. Make sure objects stay within these boundaries
 	///Don't make the world AABB size too large, it will harm simulation quality and performance
-	btVector3 worldAabbMin(-1000,-1000,-1000);
-	btVector3 worldAabbMax(1000,1000,1000);
+	btVector3 worldAabbMin(-16384,-16384,-16384);
+	btVector3 worldAabbMax(16384,16384,16384);
 	
 	btHashedOverlappingPairCache* pairCache = new btHashedOverlappingPairCache();
 	m_broadphase = new btAxisSweep3(worldAabbMin,worldAabbMax,3500,pairCache);
@@ -2167,19 +2080,19 @@ void BenchmarkDemo::initPhysics()
 	m_guiHelper->createPhysicsDebugDrawer(m_dynamicsWorld);
 	
 
-	m_dynamicsWorld->setGravity(btVector3(0,-10,0));
+	m_dynamicsWorld->setGravity(btVector3(0,0,-10));
 
 	if (m_benchmark<5)
 	{
 		///create a few basic rigid bodies
-		btCollisionShape* groundShape = new btBoxShape(btVector3(btScalar(250.),btScalar(50.),btScalar(250.)));
+		btCollisionShape* groundShape = new btBoxShape(btVector3(btScalar(250.),btScalar(250.),btScalar(50.)));
 	//	btCollisionShape* groundShape = new btStaticPlaneShape(btVector3(0,1,0),0);
 		
 		m_collisionShapes.push_back(groundShape);
 
 		btTransform groundTransform;
 		groundTransform.setIdentity();
-		groundTransform.setOrigin(btVector3(0,-50,0));
+		groundTransform.setOrigin(btVector3(0,0,-50));
 
 		//We can also use DemoApplication::createRigidBody, but for clarity it is provided here:
 		{
@@ -2202,56 +2115,56 @@ void BenchmarkDemo::initPhysics()
 		}
 	}
 
-	switch (m_benchmark)
-	{
-		case 1:
-			{
-				createTest1();
-				break;
-			}
-		case 2:
-			{
-				createTest2();
-				break;
-			}
-		case 3:
-			{
-				createTest3();
-				break;
-			}
-		case 4:
-			{
-				createTest4();
-				break;
-			}
-		case 5:
-			{
-				createTest5();
-				break;
-			}
-		case 6:
-		{
-			createTest6();
-			break;
-		}
-		case 7:
-		{
-			createTest7();
-			break;
-		}
-		case 8:
-		{
-			createTest8();
-			break;
-		}
+	// switch (m_benchmark)
+	// {
+	// 	case 1:
+	// 		{
+	// 			createTest1();
+	// 			break;
+	// 		}
+	// 	case 2:
+	// 		{
+	// 			createTest2();
+	// 			break;
+	// 		}
+	// 	case 3:
+	// 		{
+	// 			createTest3();
+	// 			break;
+	// 		}
+	// 	case 4:
+	// 		{
+	// 			createTest4();
+	// 			break;
+	// 		}
+	// 	case 5:
+	// 		{
+	// 			createTest5();
+	// 			break;
+	// 		}
+	// 	case 6:
+	// 	{
+	// 		createTest6();
+	// 		break;
+	// 	}
+	// 	case 7:
+	// 	{
+	// 		createTest7();
+	// 		break;
+	// 	}
+	// 	case 8:
+	// 	{
+	// 		createTest8();
+	// 		break;
+	// 	}
 
 
-	default:
-		{
-		}			
-	}
+	// default:
+	// 	{
+	// 	}			
+	// }
 
-	m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);
+	
 
 }
 	
@@ -2494,13 +2407,15 @@ class RagDoll
 	btRigidBody* m_bodies[BODYPART_COUNT];
 	btTypedConstraint* m_joints[JOINT_COUNT];
 
-	btRigidBody* createRigidBody (btScalar mass, const btTransform& startTransform, btCollisionShape* shape)
+	btRigidBody* createRigidBody(btScalar mass, const btTransform& startTransform, btCollisionShape* shape)
 	{
 		bool isDynamic = (mass != 0.f);
 
 		btVector3 localInertia(0,0,0);
-		if (isDynamic)
+		if (isDynamic) {
 			shape->calculateLocalInertia(mass,localInertia);
+		}
+			
 
 		btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
 		
@@ -2787,108 +2702,108 @@ void BenchmarkDemo::createTest4()
 ///////////////////////////////////////////////////////////////////////////////
 // LargeMesh
 
-int LandscapeVtxCount[] = {
-	Landscape01VtxCount,
-	Landscape02VtxCount,
-	Landscape03VtxCount,
-	Landscape04VtxCount,
-	Landscape05VtxCount,
-	Landscape06VtxCount,
-	Landscape07VtxCount,
-	Landscape08VtxCount,
-};
+// int LandscapeVtxCount[] = {
+// 	Landscape01VtxCount,
+// 	Landscape02VtxCount,
+// 	Landscape03VtxCount,
+// 	Landscape04VtxCount,
+// 	Landscape05VtxCount,
+// 	Landscape06VtxCount,
+// 	Landscape07VtxCount,
+// 	Landscape08VtxCount,
+// };
 
-int LandscapeIdxCount[] = {
-	Landscape01IdxCount,
-	Landscape02IdxCount,
-	Landscape03IdxCount,
-	Landscape04IdxCount,
-	Landscape05IdxCount,
-	Landscape06IdxCount,
-	Landscape07IdxCount,
-	Landscape08IdxCount,
-};
+// int LandscapeIdxCount[] = {
+// 	Landscape01IdxCount,
+// 	Landscape02IdxCount,
+// 	Landscape03IdxCount,
+// 	Landscape04IdxCount,
+// 	Landscape05IdxCount,
+// 	Landscape06IdxCount,
+// 	Landscape07IdxCount,
+// 	Landscape08IdxCount,
+// };
 
-btScalar *LandscapeVtx[] = {
-	Landscape01Vtx,
-	Landscape02Vtx,
-	Landscape03Vtx,
-	Landscape04Vtx,
-	Landscape05Vtx,
-	Landscape06Vtx,
-	Landscape07Vtx,
-	Landscape08Vtx,
-};
+// btScalar *LandscapeVtx[] = {
+// 	Landscape01Vtx,
+// 	Landscape02Vtx,
+// 	Landscape03Vtx,
+// 	Landscape04Vtx,
+// 	Landscape05Vtx,
+// 	Landscape06Vtx,
+// 	Landscape07Vtx,
+// 	Landscape08Vtx,
+// };
 
-btScalar *LandscapeNml[] = {
-	Landscape01Nml,
-	Landscape02Nml,
-	Landscape03Nml,
-	Landscape04Nml,
-	Landscape05Nml,
-	Landscape06Nml,
-	Landscape07Nml,
-	Landscape08Nml,
-};
+// btScalar *LandscapeNml[] = {
+// 	Landscape01Nml,
+// 	Landscape02Nml,
+// 	Landscape03Nml,
+// 	Landscape04Nml,
+// 	Landscape05Nml,
+// 	Landscape06Nml,
+// 	Landscape07Nml,
+// 	Landscape08Nml,
+// };
 
-btScalar* LandscapeTex[] = {
-	Landscape01Tex,
-	Landscape02Tex,
-	Landscape03Tex,
-	Landscape04Tex,
-	Landscape05Tex,
-	Landscape06Tex,
-	Landscape07Tex,
-	Landscape08Tex,
-};
+// btScalar* LandscapeTex[] = {
+// 	Landscape01Tex,
+// 	Landscape02Tex,
+// 	Landscape03Tex,
+// 	Landscape04Tex,
+// 	Landscape05Tex,
+// 	Landscape06Tex,
+// 	Landscape07Tex,
+// 	Landscape08Tex,
+// };
 
-unsigned short  *LandscapeIdx[] = {
-	Landscape01Idx,
-	Landscape02Idx,
-	Landscape03Idx,
-	Landscape04Idx,
-	Landscape05Idx,
-	Landscape06Idx,
-	Landscape07Idx,
-	Landscape08Idx,
-};
+// unsigned short  *LandscapeIdx[] = {
+// 	Landscape01Idx,
+// 	Landscape02Idx,
+// 	Landscape03Idx,
+// 	Landscape04Idx,
+// 	Landscape05Idx,
+// 	Landscape06Idx,
+// 	Landscape07Idx,
+// 	Landscape08Idx,
+// };
 
-void BenchmarkDemo::createLargeMeshBody()
-{
-	btTransform trans;
-	trans.setIdentity();
+// void BenchmarkDemo::createLargeMeshBody()
+// {
+// 	btTransform trans;
+// 	trans.setIdentity();
 
-	for(int i=0;i<8;i++) {
+// 	for(int i=0;i<8;i++) {
 
-		btTriangleIndexVertexArray* meshInterface = new btTriangleIndexVertexArray();
-		btIndexedMesh part;
+// 		btTriangleIndexVertexArray* meshInterface = new btTriangleIndexVertexArray();
+// 		btIndexedMesh part;
 
-		part.m_vertexBase = (const unsigned char*)LandscapeVtx[i];
-		part.m_vertexStride = sizeof(btScalar) * 3;
-		part.m_numVertices = LandscapeVtxCount[i];
-		part.m_triangleIndexBase = (const unsigned char*)LandscapeIdx[i];
-		part.m_triangleIndexStride = sizeof( short) * 3;
-		part.m_numTriangles = LandscapeIdxCount[i]/3;
-		part.m_indexType = PHY_SHORT;
+// 		part.m_vertexBase = (const unsigned char*)LandscapeVtx[i];
+// 		part.m_vertexStride = sizeof(btScalar) * 3;
+// 		part.m_numVertices = LandscapeVtxCount[i];
+// 		part.m_triangleIndexBase = (const unsigned char*)LandscapeIdx[i];
+// 		part.m_triangleIndexStride = sizeof( short) * 3;
+// 		part.m_numTriangles = LandscapeIdxCount[i]/3;
+// 		part.m_indexType = PHY_SHORT;
 
-		meshInterface->addIndexedMesh(part,PHY_SHORT);
+// 		meshInterface->addIndexedMesh(part,PHY_SHORT);
 
-		bool	useQuantizedAabbCompression = true;
-		btBvhTriangleMeshShape* trimeshShape = new btBvhTriangleMeshShape(meshInterface,useQuantizedAabbCompression);
-		btVector3 localInertia(0,0,0);
-		trans.setOrigin(btVector3(0,-25,0));
+// 		bool	useQuantizedAabbCompression = true;
+// 		btBvhTriangleMeshShape* trimeshShape = new btBvhTriangleMeshShape(meshInterface,useQuantizedAabbCompression);
+// 		btVector3 localInertia(0,0,0);
+// 		trans.setOrigin(btVector3(0,-25,0));
 
-		btRigidBody* body = createRigidBody(0,trans,trimeshShape);
-		body->setFriction (btScalar(0.9));
+// 		btRigidBody* body = createRigidBody(0,trans,trimeshShape);
+// 		body->setFriction (btScalar(0.9));
 		
-	}
+// 	}
 	
-}
+// }
 
 
 void BenchmarkDemo::createTest5()
 {
-	setCameraDistance(btScalar(250.));
+	//setCameraDistance(btScalar(250.));
 	btVector3 boxSize(1.5f,1.5f,1.5f);
 	float boxMass = 1.0f;
 	float sphereRadius = 1.5f;
@@ -2897,23 +2812,25 @@ void BenchmarkDemo::createTest5()
 	float capsuleRadius = 1.0f;
 	float capsuleMass = 1.0f;
 
+	btRigidBody* tempBody = NULL;
+
 	{
 		int size = 10;
 		int height = 10;
 
 		const float cubeSize = boxSize[0];
 		float spacing = 2.0f;
-		btVector3 pos(0.0f, 20.0f, 0.0f);
+		btVector3 pos(0.0f, 0.0f, 20.0f);
 		float offset = -size * (cubeSize * 2.0f + spacing) * 0.5f;
 		
 		int numBodies = 0;
 
 		for(int k=0;k<height;k++) {
 			for(int j=0;j<size;j++) {
-				pos[2] = offset + (float)j * (cubeSize * 2.0f + spacing);
+				pos[1] = offset + (float)j * (cubeSize * 2.0f + spacing);
 				for(int i=0;i<size;i++) {
 					pos[0] = offset + (float)i * (cubeSize * 2.0f + spacing);
-					btVector3 bpos = btVector3(0,25,0) + btVector3(5.0f,1.0f,5.0f)*pos;
+					btVector3 bpos = btVector3(0,0,300) + btVector3(5.0f,5.0f,1.0f)*pos + initOffset;
 					int idx = rand() % 9;
 					btTransform trans;
 					trans.setIdentity();
@@ -2924,7 +2841,7 @@ void BenchmarkDemo::createTest5()
 						{
 							float r = 0.5f * (idx+1);
 							btBoxShape* boxShape = new btBoxShape(boxSize*r);
-							createRigidBody(boxMass*r,trans,boxShape);
+							tempBody = createRigidBody(boxMass*r,trans,boxShape);
 						}
 						break;
 
@@ -2932,7 +2849,7 @@ void BenchmarkDemo::createTest5()
 						{
 							float r = 0.5f * (idx-3+1);
 							btSphereShape* sphereShape = new btSphereShape(sphereRadius*r);
-							createRigidBody(sphereMass*r,trans,sphereShape);
+							tempBody = createRigidBody(sphereMass*r,trans,sphereShape);
 						}
 						break;
 
@@ -2940,11 +2857,13 @@ void BenchmarkDemo::createTest5()
 						{
 							float r = 0.5f * (idx-6+1);
 							btCapsuleShape* capsuleShape = new btCapsuleShape(capsuleRadius*r,capsuleHalf*r);
-							createRigidBody(capsuleMass*r,trans,capsuleShape);
+							tempBody = createRigidBody(capsuleMass*r,trans,capsuleShape);
 						}
 						break;
 					}
-
+					
+					tempBody->bodyId = 0;
+					
 					numBodies++;
 				}
 			}
@@ -2954,7 +2873,7 @@ void BenchmarkDemo::createTest5()
 		}
 	}
 
-	createLargeMeshBody();
+	//createLargeMeshBody();
 }
 void BenchmarkDemo::createTest6()
 {
@@ -3006,7 +2925,7 @@ void BenchmarkDemo::createTest6()
 	}
 
 
-	createLargeMeshBody();
+	//createLargeMeshBody();
 }
 
 
@@ -3099,7 +3018,7 @@ void BenchmarkDemo::createTest8()
 		}
 	}
 
-	createLargeMeshBody();
+	//createLargeMeshBody();
 }
 
 

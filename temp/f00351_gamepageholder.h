@@ -96,20 +96,7 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 
 		gphCenInPixels.averageXYZ(&gphMaxInPixels,&gphMinInPixels);
 		
-		// if (GEN_COLLISION) {
-			
-		// 	q3BodyDef bodyDef;
-		// 	bodyDef.position.Set(
-		// 		gphMinInPixels[0], gphMinInPixels[1], gphMinInPixels[2]
-		// 	);
-		// 	body = singleton->gamePhysics->scene->CreateBody( bodyDef );
-			
-		// }
-		
-		
-		
-		
-		//fetchHolderGeom();
+
 		
 	}
 int GamePageHolder::getCellAtCoordsLocal (int xx, int yy, int zz)
@@ -1348,8 +1335,45 @@ void GamePageHolder::genCellData ()
 		wasGenerated = true;
 		
 	}
+void GamePageHolder::createMesh ()
+        {
+		btTransform trans;
+		trans.setIdentity();
+
+		meshInterface = new btTriangleIndexVertexArray();
+		
+		part.m_vertexBase = (const unsigned char*)(&(vertexVec[0]));
+		part.m_vertexStride = sizeof(btScalar) * 3;
+		part.m_numVertices = vertexVec.size()/3;
+		part.m_triangleIndexBase = (const unsigned char*)(&(indexVec[0]));
+		part.m_triangleIndexStride = sizeof(short) * 3;
+		part.m_numTriangles = indexVec.size()/3;
+		part.m_indexType = PHY_SHORT;
+
+		meshInterface->addIndexedMesh(part,PHY_SHORT);
+
+		
+		trimeshShape = new btBvhTriangleMeshShape(meshInterface,true,true);
+		
+		trans.setOrigin(btVector3(
+			gphMinInPixels[0],
+			gphMinInPixels[1],
+			gphMinInPixels[2]
+		));
+
+		body = singleton->gamePhysics->example->createRigidBody(0,trans,trimeshShape);
+		body->setFriction (btScalar(0.9));
+		body->bodyId = 0;
+		
+		singleton->gamePhysics->example->updateGraphicsObjects();
+		
+	}
 void GamePageHolder::fillVBO ()
                        {
+		
+		if (singleton->gamePhysics == NULL) {
+			return;
+		}
 		
 		int q;
 		
@@ -1380,7 +1404,7 @@ void GamePageHolder::fillVBO ()
 		/////////////////////
 		
 		
-		
+		//cout << "gph:fillVBO()\n";
 		
 		float fk;
 		
@@ -1398,33 +1422,31 @@ void GamePageHolder::fillVBO ()
 				
 		// 		fk = (kk2-kk)+1;
 				
-		// 		q3BoxDef boxDef;
-		// 		boxDef.SetRestitution( 0 );
-		// 		q3Transform tx;
-		// 		q3Identity( tx );
-		// 		tx.position.Set(ii,jj,(kk+kk2)*0.5f);
-		// 		boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, fk ) );
-		// 		body->AddBox( boxDef );
 				
+		// 		btTransform trans;
+		// 		trans.setOrigin(btVector3(
+		// 			ii,jj,(kk+kk2)*0.5f
+		// 		));
+				
+		// 		// todo: mem leak
+				
+		// 		btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(0.5f,fk);
+		// 		btRigidBody* myBody = singleton->gamePhysics->example->createRigidBody(0,trans,capsuleShape);
+		// 		myBody->setFriction(btScalar(0.9));
 				
 		// 		// q3BoxDef boxDef;
 		// 		// boxDef.SetRestitution( 0 );
 		// 		// q3Transform tx;
 		// 		// q3Identity( tx );
-		// 		// tx.position.Set(ii,jj,kk);
-		// 		// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
+		// 		// tx.position.Set(ii,jj,(kk+kk2)*0.5f);
+		// 		// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, fk ) );
 		// 		// body->AddBox( boxDef );
 				
-				
-		// 		// q3Identity( tx );
-		// 		// tx.position.Set(ii,jj,kk);
-		// 		// // tranform, extents
-		// 		// boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
-		// 		// boxDef.SetRestitution( 0 );
-		// 		// body->AddBox( boxDef );
 				
 		// 	}
 		// }
+		
+		singleton->gamePhysics->example->updateGraphicsObjects();
 		
 		//cout << "collideIndices.size() " << collideIndices.size() << "\n";
 		
@@ -1441,12 +1463,18 @@ void GamePageHolder::fillVBO ()
 				
 			}
 			else {
-				vboWrapper.init(
-					&(vertexVec[0]),
-					vertexVec.size(),
-					&(indexVec[0]),
-					indexVec.size()
-				);
+
+				createMesh();
+				
+				
+				// vboWrapper.init(
+				// 	&(vertexVec[0]),
+				// 	vertexVec.size(),
+				// 	&(indexVec[0]),
+				// 	indexVec.size()
+				// );
+				
+				
 				// todo: not needed?
 				//glFlush();
 				//glFinish();
@@ -1462,6 +1490,10 @@ void GamePageHolder::fillVBO ()
 	}
 void GamePageHolder::generateList ()
                             { //int fboNum
+		
+		if (singleton->gamePhysics == NULL) {
+			return;
+		}
 		
 		preGenList = false;
 		
@@ -1664,16 +1696,8 @@ void GamePageHolder::generateList ()
 		// 			}
 		// 		}
 		// 	}
-				
-				
 		// }
 		
-		
-		// if (GEN_COLLISION) {
-		// 	if (doProcAny) {
-		// 		collideIndices.push_back(i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder);
-		// 	}
-		// }
 		
 		
 		if (fillPolys) {
@@ -1695,9 +1719,9 @@ void GamePageHolder::generateList ()
 							iX = gphMinInPixels.getIX() + i;
 							iY = gphMinInPixels.getIY() + j;
 							iZ = gphMinInPixels.getIZ() + k;
-							bpX = iX*cellPitch;
-							bpY = iY*cellPitch;
-							bpZ = iZ*cellPitch;
+							bpX = i*cellPitch;
+							bpY = j*cellPitch;
+							bpZ = k*cellPitch;
 							
 							if (isBlockHolder) {
 								cellVal = getCellAtCoordsLocal(iX,iY,iZ);

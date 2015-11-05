@@ -24,16 +24,30 @@ public:
 	void init(Singleton* _singleton)
 	{
 		
+		cout << "GamePhysics:init()\n";
+		
 		singleton = _singleton;
 		myOGLApp = new MyOGLApp("yo", 640, 480);
 		guiHelper = new MyGLHelper(singleton, myOGLApp);
 		example = 
 			new BenchmarkDemo(guiHelper,5);
 			// new BasicExample(guiHelper);
+		
+		
 		example->initPhysics();
 		
+	}
+	
+	
+	void beginDrop() {
 		
+		cout << "GamePhysics:beginDrop()\n";
 		
+		example->beginDrop(
+			singleton->cameraPos->getFX(),
+			singleton->cameraPos->getFY(),
+			singleton->cameraPos->getFZ()
+		);
 	}
 	
 	
@@ -97,231 +111,104 @@ public:
 	// 	body->AddBox( boxDef );
 	// }
 	
+	void remBoxFromObj(BaseObjType _uid) {
+		
+		BaseObj* ge = &(singleton->gw->gameObjects[_uid]);
+		
+		if (ge->body != NULL) {
+			example->removeRigidBody(ge->body);
+			ge->body = NULL;
+		}
+		
+	}
 	
-	
-	// void addBoxFromObj(BaseObjType _uid) {
+	void addBoxFromObj(BaseObjType _uid) {
 		
-	// 	BaseObj* ge = &(singleton->gw->gameObjects[_uid]);
+		BaseObj* ge = &(singleton->gw->gameObjects[_uid]);
 		
-	// 	if (ge->isHidden) {
-	// 		return;
-	// 	}
+		if (ge->isHidden) {
+			return;
+		}
 		
+		btTransform trans;
+		trans.setIdentity();
+		trans.setOrigin(ge->getCenterPoint(false)->getBTV());
+		btCapsuleShape* capsuleShape = new btCapsuleShapeZ(1.0f,1.0f);
+		ge->body = example->createRigidBody(ge->mass,trans,capsuleShape);
+		ge->body->bodyId = _uid;
 		
-	// 	q3BodyDef bodyDef;
-	// 	bodyDef.position.Set(
-	// 		ge->getCenterPoint()->getFX(),
-	// 		ge->getCenterPoint()->getFY(),
-	// 		ge->getCenterPoint()->getFZ()	
-	// 	);
+		// q3BodyDef bodyDef;
+		// bodyDef.position.Set(
+		// 	ge->getCenterPoint()->getFX(),
+		// 	ge->getCenterPoint()->getFY(),
+		// 	ge->getCenterPoint()->getFZ()	
+		// );
 		
-	// 	if (ge->isUpright) {
-	// 		bodyDef.lockAxisX = true;
-	// 		bodyDef.lockAxisY = true;
-	// 		bodyDef.lockAxisZ = true;
-	// 	}
+		// if (ge->isUpright) {
+		// 	bodyDef.lockAxisX = true;
+		// 	bodyDef.lockAxisY = true;
+		// 	bodyDef.lockAxisZ = true;
+		// }
 		
+		// bodyDef.bodyType = eDynamicBody;
 		
-	// 	//bodyDef.axis.Set( q3RandomFloat( -1.0f, 1.0f ), q3RandomFloat( -1.0f, 1.0f ), q3RandomFloat( -1.0f, 1.0f ) );
-	// 	//bodyDef.angle = q3PI * q3RandomFloat( -1.0f, 1.0f );
-	// 	bodyDef.bodyType = eDynamicBody;
-	// 	//bodyDef.angularVelocity.Set( q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ) );
-	// 	//bodyDef.angularVelocity *= q3Sign( q3RandomFloat( -1.0f, 1.0f ) );
-	// 	//bodyDef.linearVelocity.Set( q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ) );
-	// 	//bodyDef.linearVelocity *= q3Sign( q3RandomFloat( -1.0f, 1.0f ) );
+		// if (ge->body != NULL) {
+		// 	scene->RemoveBody(ge->body);
+		// 	ge->body = NULL;
+		// }
 		
-	// 	if (ge->body != NULL) {
-	// 		scene->RemoveBody(ge->body);
-	// 		ge->body = NULL;
-	// 	}
-		
-	// 	ge->body = scene->CreateBody( bodyDef );
+		// ge->body = scene->CreateBody( bodyDef );
 
-	// 	q3Transform tx;
-	// 	q3Identity( tx );
-	// 	q3BoxDef boxDef;
-	// 	boxDef.Set( tx, q3Vec3(
-	// 		ge->diameterInCells.getFX(),
-	// 		ge->diameterInCells.getFY(),
-	// 		ge->diameterInCells.getFZ()
-	// 	) );
-	// 	boxDef.SetRestitution(ge->bounciness);
-	// 	ge->body->AddBox( boxDef );
+		// q3Transform tx;
+		// q3Identity( tx );
+		// q3BoxDef boxDef;
+		// boxDef.Set( tx, q3Vec3(
+		// 	ge->diameterInCells.getFX(),
+		// 	ge->diameterInCells.getFY(),
+		// 	ge->diameterInCells.getFZ()
+		// ) );
+		// boxDef.SetRestitution(ge->bounciness);
+		// ge->body->AddBox( boxDef );
 		
 		
-	// }
+	}
 	
 
 
-	// void collideWithWorld() {
-		
-	// 	q3Body* body = scene->m_bodyList;
-		
-	// 	q3Box* box;
+	void collideWithWorld() {
 		
 		
-	// 	int i;
-	// 	int j;
-	// 	int k;
 		
-	// 	q3Vec3 corners[8];
-
-	// 	int cellVal[2];
-	// 	bool didHit[2];
-	// 	float avgRest[2];
-	// 	float totHits[2];
+		int i;
+		int j;
+		int k;
 		
-	// 	BaseObj* ge;
+		BaseObj* ge;
 		
-		
-	// 	for(k = 0; k < singleton->gw->visObjects.size(); k++) {
-	// 		ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
+		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
+			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
 			
-	// 		if (ge->isHidden) {
+			if (
+				(ge->isHidden) ||
+				(ge->body == NULL)
+			) {
 				
-	// 		}
-	// 		else {
-				
-	// 			body = ge->body;
-				
-	// 			if (body != NULL) {
+			}
+			else {
+				if (singleton->selObjInd == ge->uid) {
 					
-	// 				ge->updateTargets();
+					// ge->body->applyCentralImpulse( btVector3(
+					// 	0.0f,//(ge->body->getCenterOfMassPosition().getX() - (singleton->worldMarker.getFX()))*20.0f,
+					// 	0.0f,//(ge->body->getCenterOfMassPosition().getY() - (singleton->worldMarker.getFY()))*20.0f,
+					// 	200.0f//-(ge->body->getCenterOfMassPosition().getZ() - (4.0f + singleton->worldMarker.getFZ()))*200.0f
+					// ) );
 					
-	// 				box = body->m_boxes;
-					
-	// 				for (j = 0; j < 2; j++) {
-	// 					avgRest[j] = 0.0f;
-	// 					totHits[j] = 0.0f;
-	// 					didHit[j] = false;
-	// 				}
-					
-					
-	// 				while ( box )
-	// 				{
-	// 					box->GetCorners(body->m_tx,corners);
-						
-	// 					for (i = 0; i < 8; i++) {
-							
-	// 						for (j = 0; j < 2; j++) {
-	// 							cellVal[j] = singleton->gw->getCellAtCoords(
-	// 								(int)(corners[i].x),
-	// 								(int)(corners[i].y),
-	// 								((int)(corners[i].z)) + j
-	// 							);
-	// 							if (cellVal[j] == E_CD_SOLID) {
-	// 								didHit[j] = true;
-	// 								avgRest[j] += box->restitution;
-	// 								totHits[j] += 1.0;
-	// 							}
-	// 						}
-							
-	// 					}
-						
-	// 					box = box->next;
-	// 				}
-					
-	// 				for (j = 0; j < 2; j++) {
-	// 					if (totHits[j] > 0.0f) {
-	// 						avgRest[j] /= totHits[j];
-	// 					}
-	// 				}
-					
-					
-	// 				if (didHit[1]) {
-	// 					// back up to last good position
-	// 					// todo: handle case with no last position
-						
-	// 					body->SetTransform(body->lastPos, body->lastQuat);
-	// 					body->m_linearVelocity = body->m_linearVelocity*(-1.0f)*avgRest[1];
-	// 				}
-	// 				else {
-						
-	// 					if (didHit[0]) {
-							
-	// 						if (ge->isInside) {
-	// 							body->m_linearVelocity.z = 0.0f;
-	// 						}
-	// 						else {
-	// 							if (ge->isFalling) {
-	// 								body->SetTransformZ(
-	// 									body->lastPos.z
-	// 								);
-	// 								body->m_linearVelocity.z = body->m_linearVelocity.z*(-1.0f)*avgRest[0];
-	// 							}
-								
-	// 							if (abs(body->m_linearVelocity.z) < 0.1f) {
-	// 								if (ge->isFalling) {
-	// 									ge->isFalling = false;
-	// 									singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
-	// 								}
-									
-	// 							}
-								
-								
-	// 							ge->isInside = true;
-								
-	// 						}
-							
-							
-	// 					}
-	// 					else {
-	// 						ge->isInside = false;
-							
-	// 						// set last good position
-							
-	// 						body->lastPos = body->m_worldCenter;
-	// 						body->lastQuat = body->m_q;
-	// 					}
-						
-	// 					if (ge->isInside) {
-							
-	// 						body->SetTransformZ(
-	// 							body->m_worldCenter.z + 0.5f
-	// 						);
-	// 					}
-						
-						
-	// 				}
-					
-					
-	// 				if (ge->isFalling) {
-	// 					body->m_linearVelocity.x *= ge->windResistance;
-	// 					body->m_linearVelocity.y *= ge->windResistance;
-	// 				}
-	// 				else {
-	// 					body->m_linearVelocity.x *= ge->friction;
-	// 					body->m_linearVelocity.y *= ge->friction;
-	// 				}
-					
-					
-	// 				ge->setCenterPointXYZ(
-	// 					body->m_worldCenter.x,
-	// 					body->m_worldCenter.y,
-	// 					body->m_worldCenter.z
-						
-	// 				);
-					
-					
-					
-					
-					
-	// 			}
-	// 		}
+				}
+			}
 			
-	// 	}
+		}
 		
-
-	// 	// while ( body )
-	// 	// {
-	// 	// 	if ( body->isStatic() ) {
-				
-	// 	// 	}
-	// 	// 	else {}
-			
-	// 	// 	body = body->m_next;
-	// 	// }
-	// }
+	}
 
 	// void update( )
 	// {
@@ -439,6 +326,8 @@ public:
 		// f32 time = g_clock.Start( );
 		// updateBase(time);
 		// g_clock.Stop( );
+		
+		collideWithWorld();
 		
 		example->stepSimulation(1.f/60.f);
 	}

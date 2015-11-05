@@ -26,7 +26,7 @@ public:
 		}
 
 
-		///drawOpenGL might allocate temporary memoty, stores pointer in shape userpointer
+		///drawOpenGL might allocate temporary memory, stores pointer in shape userpointer
 		
 		bool enableTexture(bool enable) {
 			return false;//bool p=m_textureenabled;m_textureenabled=enable;return(p);
@@ -54,6 +54,7 @@ public:
 
 		void drawSphere(btScalar radius, int lats, int longs) 
 		{
+			
 			int i, j;
 			for(i = 0; i <= lats; i++) {
 				btScalar lat0 = SIMD_PI * (-btScalar(0.5) + (btScalar) (i - 1) / lats);
@@ -66,17 +67,17 @@ public:
 
 				// TODO: reimplement with tris
 
-				// glBegin(GL_QUAD_STRIP);
-				// for(j = 0; j <= longs; j++) {
-				// 	btScalar lng = 2 * SIMD_PI * (btScalar) (j - 1) / longs;
-				// 	btScalar x = cos(lng);
-				// 	btScalar y = sin(lng);
-				// 	glNormal3f(x * zr1, y * zr1, z1);
-				// 	glVertex3f(x * zr1, y * zr1, z1);
-				// 	glNormal3f(x * zr0, y * zr0, z0);
-				// 	glVertex3f(x * zr0, y * zr0, z0);
-				// }
-				// glEnd();
+				glBegin(GL_QUAD_STRIP);
+				for(j = 0; j <= longs; j++) {
+					btScalar lng = 2 * SIMD_PI * (btScalar) (j - 1) / longs;
+					btScalar x = cos(lng);
+					btScalar y = sin(lng);
+					glNormal3f(-(x * zr1), -(y * zr1), -z1);
+					glVertex3f(x * zr1, y * zr1, z1);
+					glNormal3f(-(x * zr0), -(y * zr0), -z0);
+					glVertex3f(x * zr0, y * zr0, z0);
+				}
+				glEnd();
 			}
 		}
 
@@ -136,6 +137,9 @@ public:
 
 		inline void glDrawVector(const btVector3& v) { glVertex3d(v[0], v[1], v[2]); }
 
+		void setId(int id) {
+			singleton->setShaderFloat("objectId", id);
+		}
 
 		void updateMat() {
 			int i;
@@ -147,6 +151,18 @@ public:
 			}
 			//glGetFloatv(GL_MODELVIEW_MATRIX, singleton->viewMatrix.get());
 			singleton->setShaderMatrix4x4("objmat",singleton->curObjMatrix.get(),1);
+			
+			singleton->curObjMatrix3.set4(singleton->curObjMatrix.get());
+			singleton->curObjMatrix3.invert();
+			singleton->curObjMatrix3.transpose();
+			
+			singleton->setShaderMatrix3x3("normalRot",singleton->curObjMatrix3.get(),1);
+			
+			//btTransform tr;
+			// tr.setFromOpenGLMatrix(singleton->curObjMatrix.get());
+			// btQuaternion orn = tr.getRotation();
+			// singleton->setShaderVec4("objQuat",orn.getX(),orn.getY(),orn.getZ(),orn.getW());
+			
 		}
 		
 		void updateMat2() {
@@ -410,6 +426,7 @@ public:
 								btVector3(halfExtent[0],-halfExtent[1],-halfExtent[2]),	
 								btVector3(-halfExtent[0],-halfExtent[1],-halfExtent[2])};
 		#if 1
+							
 							glBegin (GL_TRIANGLES);
 							int si=36;
 							for (int i=0;i<si;i+=3)
@@ -521,6 +538,7 @@ public:
 								if (poly)
 								{
 									int i;
+									
 									glBegin (GL_TRIANGLES);
 									for (i=0;i<poly->m_faces.size();i++)
 									{
@@ -556,6 +574,7 @@ public:
 										const unsigned int* idx = hull->getIndexPointer();
 										const btVector3* vtx = hull->getVertexPointer();
 
+										
 										glBegin (GL_TRIANGLES);
 
 										for (int i = 0; i < hull->numTriangles (); i++)
@@ -593,15 +612,15 @@ public:
 							else {
 								
 								
-								btConcaveShape* concaveMesh = (btConcaveShape*) shape;
-								GlDrawcallback drawCallback;
-								drawCallback.m_wireframe = false;
+								// btBvhTriangleMeshShape* concaveMesh = (btBvhTriangleMeshShape*) shape;
+								// GlDrawcallback drawCallback;
+								// drawCallback.m_wireframe = false;
 								
-								glBegin(GL_TRIANGLES);
+								// glBegin(GL_TRIANGLES);
 								
-								concaveMesh->processAllTriangles(&drawCallback,worldBoundsMin,worldBoundsMax);
+								// concaveMesh->processAllTriangles(&drawCallback,worldBoundsMin,worldBoundsMax);
 								
-								glEnd();
+								// glEnd();
 								
 								
 							}
@@ -774,6 +793,9 @@ public:
 			{
 				const btCollisionObject*	colObj=dynamicsWorld->getCollisionObjectArray()[i];
 				const btRigidBody*		body=btRigidBody::upcast(colObj);
+				
+				setId(body->bodyId);
+				
 				if(body&&body->getMotionState())
 				{
 					btDefaultMotionState* myMotionState = (btDefaultMotionState*)body->getMotionState();

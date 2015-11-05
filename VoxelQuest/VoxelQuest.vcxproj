@@ -73,8 +73,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\poco146\Net\include;C:\poco146\Util\include;C:\poco146\Foundation\include;C:\SFML-2.1\include;C:\wamp\www\voxelquest\include;C:\bullet3-2.83.6\src;$(IncludePath)</IncludePath>
-    <LibraryPath>opengl32.lib;glu32.lib;C:\poco146\lib64;C:\glew\lib\Release\x64;C:\SFML-2.1\lib\;C:\bullet3-2.83.6\lib\Debug;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\poco146\Net\include;C:\poco146\Util\include;C:\poco146\Foundation\include;C:\SFML-2.1\include;C:\wamp\www\voxelquest\include;C:\bullet3-2.83.6\src;C:\bullet3-2.83.6\examples\ExampleBrowser;$(IncludePath)</IncludePath>
+    <LibraryPath>opengl32.lib;glu32.lib;C:\poco146\lib64;C:\glew\lib\Release\x64;C:\SFML-2.3.2\extlibs\libs-msvc\x64;C:\SFML-2.3.2\lib\Debug;C:\bullet3-2.83.6\lib\Debug;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -122,10 +122,10 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\wamp\www\voxelquest\glew\lib;C:\Program Files %28x86%29\Windows Kits\8.0\Lib\win8\um\x64;C:\Program Files %28x86%29\Microsoft Visual Studio 11.0\VC\lib\amd64;C:\SFML-2.1\lib;C:\bullet3-2.83.6\lib\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\wamp\www\voxelquest\glew\lib;C:\Program Files %28x86%29\Windows Kits\8.0\Lib\win8\um\x64;C:\Program Files %28x86%29\Microsoft Visual Studio 11.0\VC\lib\amd64;C:\SFML-2.3.2\extlibs\libs-msvc\x64;C:\SFML-2.3.2\lib\Debug;C:\bullet3-2.83.6\lib\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <StackReserveSize>
       </StackReserveSize>
-      <AdditionalDependencies>sfml-system-s-d.lib;sfml-audio-s-d.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;BulletCollision_Debug.lib;BulletDynamics_Debug.lib;BulletFileLoader_Debug.lib;BulletSoftBody_Debug.lib;LinearMath_Debug.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;WinMM.lib;openal32.lib;flac.lib;vorbisenc.lib;vorbisfile.lib;vorbis.lib;ogg.lib;sfml-system-s-d.lib;sfml-audio-s-d.lib;Bullet3Common_Debug.lib;BulletSoftBody_Debug.lib;BulletDynamics_Debug.lib;BulletCollision_Debug.lib;LinearMath_Debug.lib;OpenGLWindow_Debug.lib;gwen_Debug.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>../combine.bat</Command>

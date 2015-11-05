@@ -40,6 +40,7 @@ void MyShapeDrawer::drawCoordSystem ()
 		}
 void MyShapeDrawer::drawSphere (btScalar radius, int lats, int longs)
                 {
+			
 			int i, j;
 			for(i = 0; i <= lats; i++) {
 				btScalar lat0 = SIMD_PI * (-btScalar(0.5) + (btScalar) (i - 1) / lats);
@@ -52,17 +53,17 @@ void MyShapeDrawer::drawSphere (btScalar radius, int lats, int longs)
 
 				// TODO: reimplement with tris
 
-				// glBegin(GL_QUAD_STRIP);
-				// for(j = 0; j <= longs; j++) {
-				// 	btScalar lng = 2 * SIMD_PI * (btScalar) (j - 1) / longs;
-				// 	btScalar x = cos(lng);
-				// 	btScalar y = sin(lng);
-				// 	glNormal3f(x * zr1, y * zr1, z1);
-				// 	glVertex3f(x * zr1, y * zr1, z1);
-				// 	glNormal3f(x * zr0, y * zr0, z0);
-				// 	glVertex3f(x * zr0, y * zr0, z0);
-				// }
-				// glEnd();
+				glBegin(GL_QUAD_STRIP);
+				for(j = 0; j <= longs; j++) {
+					btScalar lng = 2 * SIMD_PI * (btScalar) (j - 1) / longs;
+					btScalar x = cos(lng);
+					btScalar y = sin(lng);
+					glNormal3f(-(x * zr1), -(y * zr1), -z1);
+					glVertex3f(x * zr1, y * zr1, z1);
+					glNormal3f(-(x * zr0), -(y * zr0), -z0);
+					glVertex3f(x * zr0, y * zr0, z0);
+				}
+				glEnd();
 			}
 		}
 ShapeCache * MyShapeDrawer::cache (btConvexShape * shape)
@@ -116,6 +117,10 @@ void MyShapeDrawer::renderSquareA (float x, float y, float z)
 			// glVertex3f(x, y + 10.f, z);
 			// glEnd();
 		}
+void MyShapeDrawer::setId (int id)
+                                   {
+			singleton->setShaderFloat("objectId", id);
+		}
 void MyShapeDrawer::updateMat ()
                                  {
 			int i;
@@ -127,6 +132,18 @@ void MyShapeDrawer::updateMat ()
 			}
 			//glGetFloatv(GL_MODELVIEW_MATRIX, singleton->viewMatrix.get());
 			singleton->setShaderMatrix4x4("objmat",singleton->curObjMatrix.get(),1);
+			
+			singleton->curObjMatrix3.set4(singleton->curObjMatrix.get());
+			singleton->curObjMatrix3.invert();
+			singleton->curObjMatrix3.transpose();
+			
+			singleton->setShaderMatrix3x3("normalRot",singleton->curObjMatrix3.get(),1);
+			
+			//btTransform tr;
+			// tr.setFromOpenGLMatrix(singleton->curObjMatrix.get());
+			// btQuaternion orn = tr.getRotation();
+			// singleton->setShaderVec4("objQuat",orn.getX(),orn.getY(),orn.getZ(),orn.getW());
+			
 		}
 void MyShapeDrawer::updateMat2 ()
                                   {
@@ -383,6 +400,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 								btVector3(halfExtent[0],-halfExtent[1],-halfExtent[2]),	
 								btVector3(-halfExtent[0],-halfExtent[1],-halfExtent[2])};
 		#if 1
+							
 							glBegin (GL_TRIANGLES);
 							int si=36;
 							for (int i=0;i<si;i+=3)
@@ -494,6 +512,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 								if (poly)
 								{
 									int i;
+									
 									glBegin (GL_TRIANGLES);
 									for (i=0;i<poly->m_faces.size();i++)
 									{
@@ -529,6 +548,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 										const unsigned int* idx = hull->getIndexPointer();
 										const btVector3* vtx = hull->getVertexPointer();
 
+										
 										glBegin (GL_TRIANGLES);
 
 										for (int i = 0; i < hull->numTriangles (); i++)
@@ -566,15 +586,15 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 							else {
 								
 								
-								btConcaveShape* concaveMesh = (btConcaveShape*) shape;
-								GlDrawcallback drawCallback;
-								drawCallback.m_wireframe = false;
+								// btBvhTriangleMeshShape* concaveMesh = (btBvhTriangleMeshShape*) shape;
+								// GlDrawcallback drawCallback;
+								// drawCallback.m_wireframe = false;
 								
-								glBegin(GL_TRIANGLES);
+								// glBegin(GL_TRIANGLES);
 								
-								concaveMesh->processAllTriangles(&drawCallback,worldBoundsMin,worldBoundsMax);
+								// concaveMesh->processAllTriangles(&drawCallback,worldBoundsMin,worldBoundsMax);
 								
-								glEnd();
+								// glEnd();
 								
 								
 							}
@@ -667,6 +687,9 @@ void MyShapeDrawer::drawSceneInternal (btDiscreteDynamicsWorld const * dynamicsW
 			{
 				const btCollisionObject*	colObj=dynamicsWorld->getCollisionObjectArray()[i];
 				const btRigidBody*		body=btRigidBody::upcast(colObj);
+				
+				setId(body->bodyId);
+				
 				if(body&&body->getMotionState())
 				{
 					btDefaultMotionState* myMotionState = (btDefaultMotionState*)body->getMotionState();

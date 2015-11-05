@@ -1,4 +1,4 @@
-﻿Build started 10/29/2015 3:24:03 PM.
+﻿Build started 11/4/2015 8:06:38 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -39,14 +39,16 @@
          .\src\cpp\f00355_volumewrapper.hpp
          .\src\cpp\f00360_threadpoolwrapper.hpp
          .\src\cpp\f00370_gamelogic.hpp
+         .\src\cpp\f00373_myshapedrawer.hpp
+         .\src\cpp\f00374_myglhelper.hpp
          .\src\cpp\f00375_gamephysics.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         37 File(s) copied
+         39 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         22
+         24
          copying headers to one file
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
@@ -68,12 +70,14 @@
          .\f00355_volumewrapper.e
          .\f00360_threadpoolwrapper.e
          .\f00370_gamelogic.e
+         .\f00373_myshapedrawer.e
+         .\f00374_myglhelper.e
          .\f00375_gamephysics.e
          .\f00380_gameworld.e
                  1 file(s) copied.
          Missing operator.
          tot e
-         22
+         24
          .
          copying files to compiled
          .\temp\f00293_gamesound.e
@@ -96,9 +100,11 @@
          .\temp\f00355_volumewrapper.e
          .\temp\f00360_threadpoolwrapper.e
          .\temp\f00370_gamelogic.e
+         .\temp\f00373_myshapedrawer.e
+         .\temp\f00374_myglhelper.e
          .\temp\f00375_gamephysics.e
          .\temp\f00380_gameworld.e
-         22 File(s) copied
+         24 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_mat.h
@@ -134,35 +140,20 @@
          .\temp\f00355_volumewrapper.h
          .\temp\f00360_threadpoolwrapper.h
          .\temp\f00370_gamelogic.h
+         .\temp\f00373_myshapedrawer.h
+         .\temp\f00374_myglhelper.h
          .\temp\f00375_gamephysics.h
          .\temp\f00380_gameworld.h
          .\temp\f00500_mainfuncs.h
                  1 file(s) copied.
        ClCompile:
-         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\CL.exe /c /I"C:\SFML-2.1\include" /Zi /nologo /W1 /WX- /sdl /Od /D _CRT_SECURE_NO_WARNINGS /D SFML_STATIC /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc110.pdb" /Gd /TP /errorReport:prompt ..\compiled\main.cpp
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\CL.exe /c /I"C:\SFML-2.1\include" /Zi /nologo /W1 /WX- /sdl /Od /D _CRT_SECURE_NO_WARNINGS /D SFML_STATIC /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MTd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc110.pdb" /Gd /TP /errorReport:prompt ..\compiled\main.cpp
          main.cpp
        Link:
-         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.exe" /INCREMENTAL /NOLOGO /LIBPATH:C:\wamp\www\voxelquest\glew\lib /LIBPATH:"C:\Program Files (x86)\Windows Kits\8.0\Lib\win8\um\x64" /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\lib\amd64" /LIBPATH:"C:\SFML-2.1\lib" "sfml-system-s-d.lib" "sfml-audio-s-d.lib" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib qu3e.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.lib" /MACHINE:X64 x64\Debug\main.obj
-     1>sfml-system-s-d.lib(Err.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(Err.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
-     1>sfml-system-s-d.lib(Lock.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(Lock.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
-     1>sfml-system-s-d.lib(Mutex.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(Mutex.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
-     1>sfml-system-s-d.lib(Sleep.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(Sleep.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
-     1>sfml-system-s-d.lib(Thread.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(Thread.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
-     1>sfml-system-s-d.lib(Time.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(Time.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
-     1>sfml-system-s-d.lib(MutexImpl.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(MutexImpl.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
-     1>sfml-system-s-d.lib(SleepImpl.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(SleepImpl.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
-     1>sfml-system-s-d.lib(ThreadImpl.cpp.obj) : warning LNK4099: PDB 'sfml-system-s-d.pdb' was not found with 'sfml-system-s-d.lib(ThreadImpl.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-system-s-d.pdb'; linking object as if no debug info
-     1>sfml-audio-s-d.lib(ALCheck.cpp.obj) : warning LNK4099: PDB 'sfml-audio-s-d.pdb' was not found with 'sfml-audio-s-d.lib(ALCheck.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-audio-s-d.pdb'; linking object as if no debug info
-     1>sfml-audio-s-d.lib(AudioDevice.cpp.obj) : warning LNK4099: PDB 'sfml-audio-s-d.pdb' was not found with 'sfml-audio-s-d.lib(AudioDevice.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-audio-s-d.pdb'; linking object as if no debug info
-     1>sfml-audio-s-d.lib(Music.cpp.obj) : warning LNK4099: PDB 'sfml-audio-s-d.pdb' was not found with 'sfml-audio-s-d.lib(Music.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-audio-s-d.pdb'; linking object as if no debug info
-     1>sfml-audio-s-d.lib(Sound.cpp.obj) : warning LNK4099: PDB 'sfml-audio-s-d.pdb' was not found with 'sfml-audio-s-d.lib(Sound.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-audio-s-d.pdb'; linking object as if no debug info
-     1>sfml-audio-s-d.lib(SoundBuffer.cpp.obj) : warning LNK4099: PDB 'sfml-audio-s-d.pdb' was not found with 'sfml-audio-s-d.lib(SoundBuffer.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-audio-s-d.pdb'; linking object as if no debug info
-     1>sfml-audio-s-d.lib(SoundFile.cpp.obj) : warning LNK4099: PDB 'sfml-audio-s-d.pdb' was not found with 'sfml-audio-s-d.lib(SoundFile.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-audio-s-d.pdb'; linking object as if no debug info
-     1>sfml-audio-s-d.lib(SoundSource.cpp.obj) : warning LNK4099: PDB 'sfml-audio-s-d.pdb' was not found with 'sfml-audio-s-d.lib(SoundSource.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-audio-s-d.pdb'; linking object as if no debug info
-     1>sfml-audio-s-d.lib(SoundStream.cpp.obj) : warning LNK4099: PDB 'sfml-audio-s-d.pdb' was not found with 'sfml-audio-s-d.lib(SoundStream.cpp.obj)' or at 'C:\wamp\www\voxelquest\x64\Debug\sfml-audio-s-d.pdb'; linking object as if no debug info
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.exe" /INCREMENTAL /NOLOGO /LIBPATH:C:\wamp\www\voxelquest\glew\lib /LIBPATH:"C:\Program Files (x86)\Windows Kits\8.0\Lib\win8\um\x64" /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\lib\amd64" /LIBPATH:"C:\SFML-2.3.2\extlibs\libs-msvc\x64" /LIBPATH:"C:\SFML-2.3.2\lib\Debug" /LIBPATH:"C:\bullet3-2.83.6\lib\Debug" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib WinMM.lib openal32.lib flac.lib vorbisenc.lib vorbisfile.lib vorbis.lib ogg.lib "sfml-system-s-d.lib" "sfml-audio-s-d.lib" Bullet3Common_Debug.lib BulletSoftBody_Debug.lib BulletDynamics_Debug.lib BulletCollision_Debug.lib LinearMath_Debug.lib OpenGLWindow_Debug.lib gwen_Debug.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.lib" /MACHINE:X64 x64\Debug\main.obj
          VoxelQuest.vcxproj -> C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.exe
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:05.11
+Time Elapsed 00:00:06.25
