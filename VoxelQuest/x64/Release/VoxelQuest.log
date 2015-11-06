@@ -1,4 +1,4 @@
-﻿Build started 11/5/2015 2:53:58 AM.
+﻿Build started 11/5/2015 8:21:36 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -265,17 +265,14 @@
          curHeight 0 newHeight 2634.04
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
+         selObjInd 0
          ignoreFrameLimit: 1
          selObjInd 77
-         selObjInd 77
          from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         selObjInd 77
-         from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         selObjInd 0
          selObjInd 82
          from E_DT_WORLD_OBJECT to E_DT_NOTHING
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:35.14
+Time Elapsed 00:00:52.56

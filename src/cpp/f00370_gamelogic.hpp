@@ -1425,7 +1425,7 @@ public:
 		
 		
 		
-		tempVec.copyFrom(singleton->cameraPos);
+		tempVec.copyFrom(singleton->cameraGetPosNoShake());
 		tempVec.intDivXYZ(singleton->cellsPerHolder);
 
 		GamePageHolder* curHolder;

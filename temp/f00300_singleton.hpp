@@ -1,6 +1,15 @@
 
 class Singleton
 {
+	
+private:
+	FIVector4* cameraPos;
+	FIVector4 tempLerpPos;
+	FIVector4 camLerpPos;
+	FIVector4 resultCameraPos;
+	FIVector4 targetCameraPos;
+	FIVector4 baseCameraPos;
+	
 public:
 	
 	struct UIQuad
@@ -366,27 +375,22 @@ public:
 		
 	FIVector4 geomOrigOffset;
 	FIVector4 lastSend;
-	FIVector4 tempLerpPos;
-	FIVector4 camLerpPos;
-	FIVector4 resultCameraPos;
 	
 	
 	
 	
 	
 	
-	FIVector4* cameraPos;
+	
+	
 	FIVector4 lastHolderPos;
 	FIVector4 lightVec;
 	FIVector4 lightVecOrig;
 	FIVector4 dirVecs[6];
-	FIVector4 targetCameraPos;
 	FIVector4 lastCellPos;
 	FIVector4 worldMarker;
 	FIVector4 lookAtVec;
 	FIVector4 lookAtVec2D;
-	FIVector4 baseCameraPos;
-	FIVector4 cameraPosAdjusted;
 	FIVector4 baseScrollPos;
 	FIVector4 mouseUpPD;
 	FIVector4 mouseUpOPD;
@@ -1823,9 +1827,7 @@ public:
 	// 	//testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0f,0.0f,3.0f*M_PI/2.0f);
 	// }
 	
-	FIVector4* cameraGetPos() {
-		return &resultCameraPos;
-	}
+	
 	
 	int placeInStack() {
 		int curId;
@@ -2016,7 +2018,7 @@ public:
 	) {
 		
 		if (ge == NULL) {
-			playSoundPosAndPitch(soundName,cameraPos,cameraPos,variance,volume,doLoop);
+			playSoundPosAndPitch(soundName,cameraGetPosNoShake(),cameraGetPosNoShake(),variance,volume,doLoop);
 		}
 		else {
 			if (
@@ -2026,7 +2028,7 @@ public:
 				
 			}
 			else {
-				playSoundPosAndPitch(soundName,cameraPos,ge->getCenterPoint(),variance,volume,doLoop);
+				playSoundPosAndPitch(soundName,cameraGetPosNoShake(),ge->getCenterPoint(),variance,volume,doLoop);
 			}
 		}
 		
@@ -2140,7 +2142,7 @@ public:
 			
 			cout << "actObjInd " << actObjInd << "\n";
 			
-			subjectDistance = currentActor->getCenterPoint()->distance(cameraPos);
+			subjectDistance = currentActor->getCenterPoint()->distance(cameraGetPosNoShake());
 			
 			cout << "subjectDistance " << subjectDistance << "\n"; 
 		}
@@ -4767,13 +4769,13 @@ DISPATCH_EVENT_END:
 				tempVec1.multXYZ(dynObjects[i]->posTrackball.getFZ()*0.5f + 2.0f);
 				
 				
-				dynObjects[i]->pos.copyFrom(cameraGetPos());
+				dynObjects[i]->pos.copyFrom(cameraGetPosNoShake());
 				dynObjects[i]->pos.addXYZRef( &(tempVec1) );
 				
 			}
 			else {
 				if (dynObjects[i]->moveType == E_MT_RELATIVE) {
-					dynObjects[i]->pos.copyFrom(cameraGetPos());
+					dynObjects[i]->pos.copyFrom(cameraGetPosNoShake());
 					dynObjects[i]->pos.addXYZRef( &(dynObjects[i]->posRel) );
 				}
 			}
@@ -4844,6 +4846,13 @@ DISPATCH_EVENT_END:
 		
 		lastHolderPos.copyIntDiv(cameraPos,cellsPerHolder);
 		
+		
+		resultShake = -cameraShake*sin(shakeTimer.getElapsedTimeInMilliSec()/20.0f);
+		
+		resultCameraPos.copyFrom(cameraPos);
+		resultCameraPos.addXYZ(0.0f,0.0f,resultShake*0.5f);
+		
+		cameraShake += (0.0f - cameraShake)*timeDelta*8.0f;
 		
 
 	}
@@ -5207,11 +5216,11 @@ DISPATCH_EVENT_END:
 
 	void setCameraToElevation() {
 
-		float newHeight = getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY());
+		float newHeight = getHeightAtPixelPos(cameraGetPosNoShake()->getFX(), cameraGetPosNoShake()->getFY());
 		
 		newHeight = max(newHeight,getSeaHeightScaled()+64.0f);
 		
-		float curHeight = cameraPos->getFZ();
+		float curHeight = cameraGetPosNoShake()->getFZ();
 
 		cout << "curHeight " << curHeight << " newHeight " << newHeight << "\n";
 
@@ -5222,7 +5231,7 @@ DISPATCH_EVENT_END:
 		);
 		
 		moveCamera(&modXYZ);
-		cameraPos->copyFrom(&camLerpPos);
+		cameraGetPosNoShake()->copyFrom(&camLerpPos);
 
 	}
 
@@ -5237,7 +5246,7 @@ DISPATCH_EVENT_END:
 		
 		cout << "polyCount " << polyCount << "\n";
 		
-		doTraceVecND("cameraPos ", cameraPos);
+		doTraceVecND("cameraPos ", cameraGetPosNoShake());
 		doTraceVecND("lookAtVec ", &lookAtVec);
 		cout << "\n";
 		
@@ -6732,7 +6741,7 @@ DISPATCH_EVENT_END:
 											case E_CT_DOOR:
 												playSoundPosAndPitch(
 													"open3",
-													cameraPos,
+													cameraGetPosNoShake(),
 													selectedEnt->getVisMinInPixelsT(),
 													0.3f
 												);
@@ -6740,7 +6749,7 @@ DISPATCH_EVENT_END:
 											case E_CT_WINDOW:
 												playSoundPosAndPitch(
 													"open1",
-													cameraPos,
+													cameraGetPosNoShake(),
 													selectedEnt->getVisMinInPixelsT(),
 													0.3f
 												);
@@ -6755,7 +6764,7 @@ DISPATCH_EVENT_END:
 											case E_CT_DOOR:
 												playSoundPosAndPitch(
 													"close2",
-													cameraPos,
+													cameraGetPosNoShake(),
 													selectedEnt->getVisMinInPixelsT(),
 													0.3f
 												);
@@ -6763,7 +6772,7 @@ DISPATCH_EVENT_END:
 											case E_CT_WINDOW:
 												playSoundPosAndPitch(
 													"close1",
-													cameraPos,
+													cameraGetPosNoShake(),
 													selectedEnt->getVisMinInPixelsT(),
 													0.3f
 												);
@@ -6780,7 +6789,7 @@ DISPATCH_EVENT_END:
 									selectedEnt->light->toggle();
 									playSoundPosAndPitch(
 										"castinet0",
-										cameraPos,
+										cameraGetPosNoShake(),
 										selectedEnt->getVisMinInPixelsT(),
 										0.3f
 									);
@@ -7495,7 +7504,7 @@ DISPATCH_EVENT_END:
 			
 			
 			modXYZ.copyFrom(&targetCameraPos);
-			modXYZ.addXYZRef(cameraPos,-1.0f);
+			modXYZ.addXYZRef(cameraGetPosNoShake(),-1.0f);
 			modXYZ.multXYZ(0.5f);
 			
 			moveCamera(&modXYZ);
@@ -7550,10 +7559,12 @@ DISPATCH_EVENT_END:
 		
 		cameraShake = max(
 			cameraShake,
-			1.0f-clampfZO(ge->getCenterPoint()->distance(cameraPos)/(200.0f))
+			1.0f-clampfZO(ge->getCenterPoint()->distance(cameraGetPosNoShake())/(200.0f))
 		);
 		
 		if (cameraShake > lastCamShake) {
+			
+			
 			shakeTimer.stop();
 			shakeTimer.start();
 		}
@@ -8754,11 +8765,11 @@ DISPATCH_EVENT_END:
 	float getUnderWater() {
 		if (
 			(gw->getCellAtCoords(
-				cameraPos->getFX(),
-				cameraPos->getFY(),
-				cameraPos->getFZ() - 1.0f
+				cameraGetPosNoShake()->getFX(),
+				cameraGetPosNoShake()->getFY(),
+				cameraGetPosNoShake()->getFZ() - 1.0f
 			) == E_CD_WATER) ||
-			(cameraPos->getFZ() < (getSeaHeightScaled()-32.0f))	
+			(cameraGetPosNoShake()->getFZ() < (getSeaHeightScaled()-32.0f))	
 		) {
 			return 1.0;
 		}
@@ -8781,8 +8792,8 @@ DISPATCH_EVENT_END:
 		for (i = -maxRad; i <= maxRad; i++) {
 			for (j = -maxRad; j <= maxRad; j++) {
 				avgHeight += getHeightAtPixelPos(
-					cameraPos->getFX() + i*256.0f,
-					cameraPos->getFY() + j*256.0f
+					cameraGetPosNoShake()->getFX() + i*256.0f,
+					cameraGetPosNoShake()->getFY() + j*256.0f
 				);
 				tot += 1.0f;
 			}
@@ -8796,7 +8807,7 @@ DISPATCH_EVENT_END:
 		
 		float isUnderWater = getUnderWater();
 		
-		// if (cameraPos->getFZ() < seaHeight) {
+		// if (cameraGetPosNoShake()->getFZ() < seaHeight) {
 		// 	isUnderWater = 1.0f;	
 		// }
 		
@@ -8991,7 +9002,6 @@ DISPATCH_EVENT_END:
 						
 						
 						updateCamVals();
-						updateCamShake();
 						
 						
 						
@@ -9001,8 +9011,8 @@ DISPATCH_EVENT_END:
 						// }
 						
 						if (currentTick < 4) {
-							cameraPos->setFXYZ(2048.0,2048.0,0.0);
-							camLerpPos.copyFrom(cameraPos);
+							cameraGetPosNoShake()->setFXYZ(2048.0,2048.0,0.0);
+							camLerpPos.copyFrom(cameraGetPosNoShake());
 						}
 						
 						if (currentTick == 4) {
@@ -9013,45 +9023,45 @@ DISPATCH_EVENT_END:
 							
 						}
 						
-						// if (currentActor != NULL) {
+						if (currentActor != NULL) {
 							
-						// 	if (currentActor->inWater) {
-						// 		temp = clampfZO(
-						// 			currentActor->getVel())
-						// 		)*0.25f;
-						// 		temp2 = 0.0f;
-						// 	}
-						// 	else {
+							if (currentActor->inWater) {
+								temp = clampfZO(
+									currentActor->getVel()->length()
+								)*0.25f;
+								temp2 = 0.0f;
+							}
+							else {
 								
-						// 		if (currentActor->isFalling) {
-						// 			temp2 = 0.0f;
-						// 		}
-						// 		else {
-						// 			temp2 = clampfZO(
-						// 				currentActor->getVel())
-						// 			);
-						// 		}
+								if (currentActor->isFalling) {
+									temp2 = 0.0f;
+								}
+								else {
+									temp2 = clampfZO(
+										currentActor->getVel()->length()
+									);
+								}
 								
-						// 		temp = 0.0f;
-						// 	}
+								temp = 0.0f;
+							}
 							
 							
 							
-						// 	updateSoundPosAndPitch(
-						// 		"swimming0",
-						// 		cameraPos,
-						// 		currentActor->getCenterPoint(),
-						// 		temp,
-						// 		0.01
-						// 	);
-						// 	updateSoundPosAndPitch(
-						// 		"walkinggravel0",
-						// 		cameraPos,
-						// 		currentActor->getCenterPoint(),
-						// 		temp2,
-						// 		0.1
-						// 	);
-						// }
+							updateSoundPosAndPitch(
+								"swimming0",
+								cameraGetPosNoShake(),
+								currentActor->getCenterPoint(),
+								temp,
+								0.01
+							);
+							updateSoundPosAndPitch(
+								"walkinggravel0",
+								cameraGetPosNoShake(),
+								currentActor->getCenterPoint(),
+								temp2,
+								0.1
+							);
+						}
 						
 						
 						// if (
@@ -9195,13 +9205,13 @@ DISPATCH_EVENT_END:
 		frameCount++;
 	}
 	
-	void updateCamShake() {
-		resultShake = -cameraShake*sin(shakeTimer.getElapsedTimeInMilliSec()/20.0f);
-		
-		resultCameraPos.copyFrom(cameraPos);
-		resultCameraPos.addXYZ(0.0f,0.0f,resultShake*0.5f);
-		
-		cameraShake += (0.0f - cameraShake)*timeDelta*8.0f;
+
+	
+	FIVector4* cameraGetPos() {
+		return &resultCameraPos;
+	}	
+	FIVector4* cameraGetPosNoShake() {
+		return cameraPos;
 	}
 
 	float getTargetTimeOfDay() {
@@ -9612,12 +9622,12 @@ DISPATCH_EVENT_END:
 			glLoadIdentity();
 			
 			gluLookAt(
-				cameraPos->getFX(),
-				cameraPos->getFY(),
-				cameraPos->getFZ(),
-				cameraPos->getFX()+lookAtVec[0],
-				cameraPos->getFY()+lookAtVec[1],
-				cameraPos->getFZ()+lookAtVec[2],
+				cameraGetPos()->getFX(),
+				cameraGetPos()->getFY(),
+				cameraGetPos()->getFZ(),
+				cameraGetPos()->getFX()+lookAtVec[0],
+				cameraGetPos()->getFY()+lookAtVec[1],
+				cameraGetPos()->getFZ()+lookAtVec[2],
 				0.0f,
 				0.0f,
 				1.0f

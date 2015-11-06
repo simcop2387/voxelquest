@@ -50,6 +50,13 @@ public:
 #define LZZ_INLINE inline
 class Singleton
 {
+private:
+  FIVector4 * cameraPos;
+  FIVector4 tempLerpPos;
+  FIVector4 camLerpPos;
+  FIVector4 resultCameraPos;
+  FIVector4 targetCameraPos;
+  FIVector4 baseCameraPos;
 public:
   struct UIQuad
   {
@@ -348,21 +355,14 @@ public:
   FIVector4 (colVecs) [16];
   FIVector4 geomOrigOffset;
   FIVector4 lastSend;
-  FIVector4 tempLerpPos;
-  FIVector4 camLerpPos;
-  FIVector4 resultCameraPos;
-  FIVector4 * cameraPos;
   FIVector4 lastHolderPos;
   FIVector4 lightVec;
   FIVector4 lightVecOrig;
   FIVector4 (dirVecs) [6];
-  FIVector4 targetCameraPos;
   FIVector4 lastCellPos;
   FIVector4 worldMarker;
   FIVector4 lookAtVec;
   FIVector4 lookAtVec2D;
-  FIVector4 baseCameraPos;
-  FIVector4 cameraPosAdjusted;
   FIVector4 baseScrollPos;
   FIVector4 mouseUpPD;
   FIVector4 mouseUpOPD;
@@ -479,7 +479,6 @@ public:
   Singleton ();
   void setSelInd (int ind);
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
-  FIVector4 * cameraGetPos ();
   int placeInStack ();
   int placeInLayer (int nodeId, int layer);
   void initAllMatrices ();
@@ -664,7 +663,8 @@ public:
   float getUnderWater ();
   void updateAmbientSounds ();
   void frameUpdate ();
-  void updateCamShake ();
+  FIVector4 * cameraGetPos ();
+  FIVector4 * cameraGetPosNoShake ();
   float getTargetTimeOfDay ();
   void display ();
   bool gluInvertMatrix (double const (m) [16], float (invOut) [16]);

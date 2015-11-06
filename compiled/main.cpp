@@ -33,8 +33,8 @@ const static int MAX_EXPLODES = 8;
 const static bool DO_SHADER_DUMP = false;
 
 
-const static int DEF_WIN_W = 1440;
-const static int DEF_WIN_H = 720;
+const static int DEF_WIN_W = 1920;
+const static int DEF_WIN_H = 1080;
 
 const static int DEF_VOL_SIZE = 128;
 
@@ -1764,6 +1764,8 @@ class BenchmarkDemo : public CommonRigidBodyBase
 		exitPhysics();
 	}
 	
+	btDiscreteDynamicsWorld* getWorld();
+	
 	void removeRigidBody(btRigidBody* body);
 	
 	void updateGraphicsObjects();
@@ -1998,6 +2000,10 @@ public:
 
 
 static btRaycastBar2 raycastBar;
+
+btDiscreteDynamicsWorld* BenchmarkDemo::getWorld() {
+	return m_dynamicsWorld;
+}
 
 void BenchmarkDemo::stepSimulation(float deltaTime)
 {
@@ -2862,7 +2868,7 @@ void BenchmarkDemo::createTest5()
 						break;
 					}
 					
-					tempBody->bodyId = 0;
+					tempBody->bodyUID = -1;
 					
 					numBodies++;
 				}
@@ -8033,6 +8039,8 @@ public:
 
 		return sqrt(dx * dx + dy * dy + dz * dz);
 	}
+	
+	
 
 	float length() {
 		return sqrt(fv4.x * fv4.x + fv4.y * fv4.y + fv4.z * fv4.z);
@@ -8631,6 +8639,10 @@ public:
 		}
 	}
 	
+	void applyImpulse( btVector3 imp) {
+		body->setActivationState(ACTIVE_TAG);
+		body->applyCentralImpulse(imp);
+	}
 	
 	
 	
@@ -20325,6 +20337,13 @@ public:
 #define LZZ_INLINE inline
 class Singleton
 {
+private:
+  FIVector4 * cameraPos;
+  FIVector4 tempLerpPos;
+  FIVector4 camLerpPos;
+  FIVector4 resultCameraPos;
+  FIVector4 targetCameraPos;
+  FIVector4 baseCameraPos;
 public:
   struct UIQuad
   {
@@ -20623,21 +20642,14 @@ public:
   FIVector4 (colVecs) [16];
   FIVector4 geomOrigOffset;
   FIVector4 lastSend;
-  FIVector4 tempLerpPos;
-  FIVector4 camLerpPos;
-  FIVector4 resultCameraPos;
-  FIVector4 * cameraPos;
   FIVector4 lastHolderPos;
   FIVector4 lightVec;
   FIVector4 lightVecOrig;
   FIVector4 (dirVecs) [6];
-  FIVector4 targetCameraPos;
   FIVector4 lastCellPos;
   FIVector4 worldMarker;
   FIVector4 lookAtVec;
   FIVector4 lookAtVec2D;
-  FIVector4 baseCameraPos;
-  FIVector4 cameraPosAdjusted;
   FIVector4 baseScrollPos;
   FIVector4 mouseUpPD;
   FIVector4 mouseUpOPD;
@@ -20754,7 +20766,6 @@ public:
   Singleton ();
   void setSelInd (int ind);
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
-  FIVector4 * cameraGetPos ();
   int placeInStack ();
   int placeInLayer (int nodeId, int layer);
   void initAllMatrices ();
@@ -20939,7 +20950,8 @@ public:
   float getUnderWater ();
   void updateAmbientSounds ();
   void frameUpdate ();
-  void updateCamShake ();
+  FIVector4 * cameraGetPos ();
+  FIVector4 * cameraGetPosNoShake ();
   float getTargetTimeOfDay ();
   void display ();
   bool gluInvertMatrix (double const (m) [16], float (invOut) [16]);
@@ -23556,10 +23568,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 	}
-FIVector4 * Singleton::cameraGetPos ()
-                                  {
-		return &resultCameraPos;
-	}
 int Singleton::placeInStack ()
                            {
 		int curId;
@@ -23726,7 +23734,7 @@ void Singleton::playSoundEnt (string soundName, BaseObj * ge, float variance, fl
           {
 		
 		if (ge == NULL) {
-			playSoundPosAndPitch(soundName,cameraPos,cameraPos,variance,volume,doLoop);
+			playSoundPosAndPitch(soundName,cameraGetPosNoShake(),cameraGetPosNoShake(),variance,volume,doLoop);
 		}
 		else {
 			if (
@@ -23736,7 +23744,7 @@ void Singleton::playSoundEnt (string soundName, BaseObj * ge, float variance, fl
 				
 			}
 			else {
-				playSoundPosAndPitch(soundName,cameraPos,ge->getCenterPoint(),variance,volume,doLoop);
+				playSoundPosAndPitch(soundName,cameraGetPosNoShake(),ge->getCenterPoint(),variance,volume,doLoop);
 			}
 		}
 		
@@ -23835,7 +23843,7 @@ void Singleton::setCurrentActor (BaseObj * ge)
 			
 			cout << "actObjInd " << actObjInd << "\n";
 			
-			subjectDistance = currentActor->getCenterPoint()->distance(cameraPos);
+			subjectDistance = currentActor->getCenterPoint()->distance(cameraGetPosNoShake());
 			
 			cout << "subjectDistance " << subjectDistance << "\n"; 
 		}
@@ -26263,13 +26271,13 @@ void Singleton::syncObjects ()
 				tempVec1.multXYZ(dynObjects[i]->posTrackball.getFZ()*0.5f + 2.0f);
 				
 				
-				dynObjects[i]->pos.copyFrom(cameraGetPos());
+				dynObjects[i]->pos.copyFrom(cameraGetPosNoShake());
 				dynObjects[i]->pos.addXYZRef( &(tempVec1) );
 				
 			}
 			else {
 				if (dynObjects[i]->moveType == E_MT_RELATIVE) {
-					dynObjects[i]->pos.copyFrom(cameraGetPos());
+					dynObjects[i]->pos.copyFrom(cameraGetPosNoShake());
 					dynObjects[i]->pos.addXYZRef( &(dynObjects[i]->posRel) );
 				}
 			}
@@ -26340,6 +26348,13 @@ void Singleton::updateCamVals ()
 		
 		lastHolderPos.copyIntDiv(cameraPos,cellsPerHolder);
 		
+		
+		resultShake = -cameraShake*sin(shakeTimer.getElapsedTimeInMilliSec()/20.0f);
+		
+		resultCameraPos.copyFrom(cameraPos);
+		resultCameraPos.addXYZ(0.0f,0.0f,resultShake*0.5f);
+		
+		cameraShake += (0.0f - cameraShake)*timeDelta*8.0f;
 		
 
 	}
@@ -26666,11 +26681,11 @@ void Singleton::toggleFullScreen ()
 void Singleton::setCameraToElevation ()
                                     {
 
-		float newHeight = getHeightAtPixelPos(cameraPos->getFX(), cameraPos->getFY());
+		float newHeight = getHeightAtPixelPos(cameraGetPosNoShake()->getFX(), cameraGetPosNoShake()->getFY());
 		
 		newHeight = max(newHeight,getSeaHeightScaled()+64.0f);
 		
-		float curHeight = cameraPos->getFZ();
+		float curHeight = cameraGetPosNoShake()->getFZ();
 
 		cout << "curHeight " << curHeight << " newHeight " << newHeight << "\n";
 
@@ -26681,7 +26696,7 @@ void Singleton::setCameraToElevation ()
 		);
 		
 		moveCamera(&modXYZ);
-		cameraPos->copyFrom(&camLerpPos);
+		cameraGetPosNoShake()->copyFrom(&camLerpPos);
 
 	}
 void Singleton::runReport ()
@@ -26691,7 +26706,7 @@ void Singleton::runReport ()
 		
 		cout << "polyCount " << polyCount << "\n";
 		
-		doTraceVecND("cameraPos ", cameraPos);
+		doTraceVecND("cameraPos ", cameraGetPosNoShake());
 		doTraceVecND("lookAtVec ", &lookAtVec);
 		cout << "\n";
 		
@@ -28160,7 +28175,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 											case E_CT_DOOR:
 												playSoundPosAndPitch(
 													"open3",
-													cameraPos,
+													cameraGetPosNoShake(),
 													selectedEnt->getVisMinInPixelsT(),
 													0.3f
 												);
@@ -28168,7 +28183,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 											case E_CT_WINDOW:
 												playSoundPosAndPitch(
 													"open1",
-													cameraPos,
+													cameraGetPosNoShake(),
 													selectedEnt->getVisMinInPixelsT(),
 													0.3f
 												);
@@ -28183,7 +28198,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 											case E_CT_DOOR:
 												playSoundPosAndPitch(
 													"close2",
-													cameraPos,
+													cameraGetPosNoShake(),
 													selectedEnt->getVisMinInPixelsT(),
 													0.3f
 												);
@@ -28191,7 +28206,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 											case E_CT_WINDOW:
 												playSoundPosAndPitch(
 													"close1",
-													cameraPos,
+													cameraGetPosNoShake(),
 													selectedEnt->getVisMinInPixelsT(),
 													0.3f
 												);
@@ -28208,7 +28223,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 									selectedEnt->light->toggle();
 									playSoundPosAndPitch(
 										"castinet0",
-										cameraPos,
+										cameraGetPosNoShake(),
 										selectedEnt->getVisMinInPixelsT(),
 										0.3f
 									);
@@ -28852,7 +28867,7 @@ void Singleton::handleMovement ()
 			
 			
 			modXYZ.copyFrom(&targetCameraPos);
-			modXYZ.addXYZRef(cameraPos,-1.0f);
+			modXYZ.addXYZRef(cameraGetPosNoShake(),-1.0f);
 			modXYZ.multXYZ(0.5f);
 			
 			moveCamera(&modXYZ);
@@ -28904,10 +28919,12 @@ void Singleton::performCamShake (BaseObj * ge)
 		
 		cameraShake = max(
 			cameraShake,
-			1.0f-clampfZO(ge->getCenterPoint()->distance(cameraPos)/(200.0f))
+			1.0f-clampfZO(ge->getCenterPoint()->distance(cameraGetPosNoShake())/(200.0f))
 		);
 		
 		if (cameraShake > lastCamShake) {
+			
+			
 			shakeTimer.stop();
 			shakeTimer.start();
 		}
@@ -29986,11 +30003,11 @@ float Singleton::getUnderWater ()
                               {
 		if (
 			(gw->getCellAtCoords(
-				cameraPos->getFX(),
-				cameraPos->getFY(),
-				cameraPos->getFZ() - 1.0f
+				cameraGetPosNoShake()->getFX(),
+				cameraGetPosNoShake()->getFY(),
+				cameraGetPosNoShake()->getFZ() - 1.0f
 			) == E_CD_WATER) ||
-			(cameraPos->getFZ() < (getSeaHeightScaled()-32.0f))	
+			(cameraGetPosNoShake()->getFZ() < (getSeaHeightScaled()-32.0f))	
 		) {
 			return 1.0;
 		}
@@ -30013,8 +30030,8 @@ void Singleton::updateAmbientSounds ()
 		for (i = -maxRad; i <= maxRad; i++) {
 			for (j = -maxRad; j <= maxRad; j++) {
 				avgHeight += getHeightAtPixelPos(
-					cameraPos->getFX() + i*256.0f,
-					cameraPos->getFY() + j*256.0f
+					cameraGetPosNoShake()->getFX() + i*256.0f,
+					cameraGetPosNoShake()->getFY() + j*256.0f
 				);
 				tot += 1.0f;
 			}
@@ -30028,7 +30045,7 @@ void Singleton::updateAmbientSounds ()
 		
 		float isUnderWater = getUnderWater();
 		
-		// if (cameraPos->getFZ() < seaHeight) {
+		// if (cameraGetPosNoShake()->getFZ() < seaHeight) {
 		// 	isUnderWater = 1.0f;	
 		// }
 		
@@ -30220,7 +30237,6 @@ void Singleton::frameUpdate ()
 						
 						
 						updateCamVals();
-						updateCamShake();
 						
 						
 						
@@ -30230,8 +30246,8 @@ void Singleton::frameUpdate ()
 						// }
 						
 						if (currentTick < 4) {
-							cameraPos->setFXYZ(2048.0,2048.0,0.0);
-							camLerpPos.copyFrom(cameraPos);
+							cameraGetPosNoShake()->setFXYZ(2048.0,2048.0,0.0);
+							camLerpPos.copyFrom(cameraGetPosNoShake());
 						}
 						
 						if (currentTick == 4) {
@@ -30242,45 +30258,45 @@ void Singleton::frameUpdate ()
 							
 						}
 						
-						// if (currentActor != NULL) {
+						if (currentActor != NULL) {
 							
-						// 	if (currentActor->inWater) {
-						// 		temp = clampfZO(
-						// 			currentActor->getVel())
-						// 		)*0.25f;
-						// 		temp2 = 0.0f;
-						// 	}
-						// 	else {
+							if (currentActor->inWater) {
+								temp = clampfZO(
+									currentActor->getVel()->length()
+								)*0.25f;
+								temp2 = 0.0f;
+							}
+							else {
 								
-						// 		if (currentActor->isFalling) {
-						// 			temp2 = 0.0f;
-						// 		}
-						// 		else {
-						// 			temp2 = clampfZO(
-						// 				currentActor->getVel())
-						// 			);
-						// 		}
+								if (currentActor->isFalling) {
+									temp2 = 0.0f;
+								}
+								else {
+									temp2 = clampfZO(
+										currentActor->getVel()->length()
+									);
+								}
 								
-						// 		temp = 0.0f;
-						// 	}
+								temp = 0.0f;
+							}
 							
 							
 							
-						// 	updateSoundPosAndPitch(
-						// 		"swimming0",
-						// 		cameraPos,
-						// 		currentActor->getCenterPoint(),
-						// 		temp,
-						// 		0.01
-						// 	);
-						// 	updateSoundPosAndPitch(
-						// 		"walkinggravel0",
-						// 		cameraPos,
-						// 		currentActor->getCenterPoint(),
-						// 		temp2,
-						// 		0.1
-						// 	);
-						// }
+							updateSoundPosAndPitch(
+								"swimming0",
+								cameraGetPosNoShake(),
+								currentActor->getCenterPoint(),
+								temp,
+								0.01
+							);
+							updateSoundPosAndPitch(
+								"walkinggravel0",
+								cameraGetPosNoShake(),
+								currentActor->getCenterPoint(),
+								temp2,
+								0.1
+							);
+						}
 						
 						
 						// if (
@@ -30423,14 +30439,13 @@ void Singleton::frameUpdate ()
 		
 		frameCount++;
 	}
-void Singleton::updateCamShake ()
-                              {
-		resultShake = -cameraShake*sin(shakeTimer.getElapsedTimeInMilliSec()/20.0f);
-		
-		resultCameraPos.copyFrom(cameraPos);
-		resultCameraPos.addXYZ(0.0f,0.0f,resultShake*0.5f);
-		
-		cameraShake += (0.0f - cameraShake)*timeDelta*8.0f;
+FIVector4 * Singleton::cameraGetPos ()
+                                  {
+		return &resultCameraPos;
+	}
+FIVector4 * Singleton::cameraGetPosNoShake ()
+                                         {
+		return cameraPos;
 	}
 float Singleton::getTargetTimeOfDay ()
                                    {
@@ -30827,12 +30842,12 @@ void Singleton::setMatrices (int w, int h)
 			glLoadIdentity();
 			
 			gluLookAt(
-				cameraPos->getFX(),
-				cameraPos->getFY(),
-				cameraPos->getFZ(),
-				cameraPos->getFX()+lookAtVec[0],
-				cameraPos->getFY()+lookAtVec[1],
-				cameraPos->getFZ()+lookAtVec[2],
+				cameraGetPos()->getFX(),
+				cameraGetPos()->getFY(),
+				cameraGetPos()->getFZ(),
+				cameraGetPos()->getFX()+lookAtVec[0],
+				cameraGetPos()->getFY()+lookAtVec[1],
+				cameraGetPos()->getFZ()+lookAtVec[2],
 				0.0f,
 				0.0f,
 				1.0f
@@ -38278,7 +38293,7 @@ void GameFluid::shiftRegion ()
 		bool notThirdPerson = (singleton->currentActor == NULL);// ||singleton->firstPerson;
 		
 		if (notThirdPerson) {
-			newCamPos.copyFrom(singleton->cameraPos);
+			newCamPos.copyFrom(singleton->cameraGetPosNoShake());
 		}
 		else {
 			newCamPos.copyFrom(singleton->currentActor->getCenterPoint());
@@ -42815,7 +42830,7 @@ void GamePageHolder::createMesh ()
 
 		body = singleton->gamePhysics->example->createRigidBody(0,trans,trimeshShape);
 		body->setFriction (btScalar(0.9));
-		body->bodyId = 0;
+		body->bodyUID = -1;
 		
 		singleton->gamePhysics->example->updateGraphicsObjects();
 		
@@ -48838,7 +48853,7 @@ void GameLogic::loadNearestHolders ()
 		
 		
 		
-		tempVec.copyFrom(singleton->cameraPos);
+		tempVec.copyFrom(singleton->cameraGetPosNoShake());
 		tempVec.intDivXYZ(singleton->cellsPerHolder);
 
 		GamePageHolder* curHolder;
@@ -49653,7 +49668,7 @@ void MyShapeDrawer::drawSceneInternal (btDiscreteDynamicsWorld const * dynamicsW
 				const btCollisionObject*	colObj=dynamicsWorld->getCollisionObjectArray()[i];
 				const btRigidBody*		body=btRigidBody::upcast(colObj);
 				
-				setId(body->bodyId);
+				setId( max(body->bodyUID,0) );
 				
 				if(body&&body->getMotionState())
 				{
@@ -50232,9 +50247,9 @@ void GamePhysics::beginDrop ()
 		cout << "GamePhysics:beginDrop()\n";
 		
 		example->beginDrop(
-			singleton->cameraPos->getFX(),
-			singleton->cameraPos->getFY(),
-			singleton->cameraPos->getFZ()
+			singleton->cameraGetPosNoShake()->getFX(),
+			singleton->cameraGetPosNoShake()->getFY(),
+			singleton->cameraGetPosNoShake()->getFZ()
 		);
 	}
 void GamePhysics::remBoxFromObj (BaseObjType _uid)
@@ -50262,7 +50277,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 		trans.setOrigin(ge->getCenterPoint(false)->getBTV());
 		btCapsuleShape* capsuleShape = new btCapsuleShapeZ(1.0f,1.0f);
 		ge->body = example->createRigidBody(ge->mass,trans,capsuleShape);
-		ge->body->bodyId = _uid;
+		ge->body->bodyUID = _uid;
 		
 		// q3BodyDef bodyDef;
 		// bodyDef.position.Set(
@@ -50308,7 +50323,93 @@ void GamePhysics::collideWithWorld ()
 		int j;
 		int k;
 		
+		bool lastFalling;
+		
 		BaseObj* ge;
+		
+		FIVector4* curCenterPoint;
+		btDiscreteDynamicsWorld* world = example->getWorld();
+		
+		
+		bool hasContact = false;
+		const btCollisionObject* bodies[2];
+		
+		int numManifolds = world->getDispatcher()->getNumManifolds();
+		for (i=0;i<numManifolds;i++) {
+			btPersistentManifold* contactManifold =  world->getDispatcher()->getManifoldByIndexInternal(i);
+			
+			
+			
+			const btCollisionObject* obA = (contactManifold->getBody0());
+			const btCollisionObject* obB = (contactManifold->getBody1());
+
+			bodies[0] = obA;
+			bodies[1] = obB;
+
+			hasContact = false;
+			
+			int numContacts = contactManifold->getNumContacts();
+			for (j=0;j<numContacts;j++) {
+				btManifoldPoint& pt = contactManifold->getContactPoint(j);
+				if (pt.getDistance() < 1.0f) {
+					
+					hasContact = true;
+					
+					// const btVector3& ptA = pt.getPositionWorldOnA();
+					// const btVector3& ptB = pt.getPositionWorldOnB();
+					// const btVector3& normalOnB = pt.m_normalWorldOnB;
+				}
+			}
+			
+			
+			// if (hasContact) {
+				
+				
+				
+			// }
+			
+			
+			for (k = 0; k < 2; k++) {
+				if (bodies[k]->bodyUID > -1) {
+					ge = &(singleton->gw->gameObjects[bodies[k]->bodyUID]);
+					
+					
+					if (
+						(ge->isHidden) ||
+						(ge->body == NULL)
+					) {
+						
+					}
+					else {
+						lastFalling = ge->isFalling;
+						
+						ge->isFalling = 
+							(!hasContact)
+							//&& (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f)
+							;
+						
+						if (ge->isFalling) {
+							
+						}
+						else {
+							if (lastFalling != ge->isFalling) {
+								singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
+							}
+						}
+					}
+					
+					
+					
+				}
+			}
+			
+		}
+		
+		
+		
+		
+		
+		
 		
 		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
 			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
@@ -50320,12 +50421,29 @@ void GamePhysics::collideWithWorld ()
 				
 			}
 			else {
-				if (singleton->selObjInd == ge->uid) {
+				
+				//lastFalling = ge->isFalling;
+				// ge->isFalling = (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f);
+				// if (ge->isFalling) {
+				
+				// }
+				// else {
+				// 	if (lastFalling != ge->isFalling) {
+				// 		singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
+				// 	}
+				// }
+				
+				if (
+					(singleton->selObjInd == ge->uid) &&
+					singleton->markerFound &&
+					singleton->isDraggingObject
+				) {
 					
-					ge->body->applyCentralImpulse( btVector3(
-						0.0f,//(ge->body->getCenterOfMassPosition().getX() - (singleton->worldMarker.getFX()))*20.0f,
-						0.0f,//(ge->body->getCenterOfMassPosition().getY() - (singleton->worldMarker.getFY()))*20.0f,
-						200.0f//-(ge->body->getCenterOfMassPosition().getZ() - (4.0f + singleton->worldMarker.getFZ()))*200.0f
+					
+					ge->applyImpulse( btVector3(
+						( singleton->worldMarker.getFX() - ge->body->getCenterOfMassPosition().getX() )*0.25f,
+						( singleton->worldMarker.getFY() - ge->body->getCenterOfMassPosition().getY() )*0.25f,
+						-(ge->body->getCenterOfMassPosition().getZ() - (4.0f + singleton->worldMarker.getFZ()))*2.0f
 					) );
 					
 				}
@@ -50825,6 +50943,7 @@ void GameWorld::fireEvent (BaseObjType uid, int opCode)
 		switch (opCode) {
 			case EV_HIT_GROUND:
 				singleton->playSoundEnt("land0",ge);
+				singleton->performCamShake(ge);
 			break;
 		}
 	}
@@ -50911,11 +51030,11 @@ void GameWorld::update ()
 
 		
 		
-		camBlockPos.copyFrom( singleton->cameraPos );
+		camBlockPos.copyFrom( singleton->cameraGetPosNoShake() );
 		camBlockPos.intDivXYZ(singleton->cellsPerBlock);
 
 		if (singleton->currentActor == NULL) {
-			camHolderPos.copyFrom( singleton->cameraPos );
+			camHolderPos.copyFrom( singleton->cameraGetPosNoShake() );
 			camHolderPos.intDivXYZ(singleton->cellsPerHolder);
 			camHolderPos.addXYZRef(&(singleton->lookAtVec),4.0);
 		}
@@ -51486,7 +51605,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 		singleton->setShaderFloat("curTime", singleton->pauseTime/1000.0f);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferRenderDim) );
-		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec) );
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 		singleton->setShaderFloat("cellsPerWorld", cellsPerWorld );
@@ -51828,7 +51947,7 @@ void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel, bool isBloc
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferRenderDim) );
-		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("volMinReadyInPixels", &(singleton->gameFluid[E_FID_BIG]->volMinReadyInPixels) );
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec) );
 		
@@ -52072,7 +52191,7 @@ void GameWorld::renderGeom ()
 		singleton->bindShader("GeomShader");
 		singleton->bindFBO("geomBaseTargFBO");
 		singleton->setShaderFloat("objectId",0.0);
-		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderFloat("isWire", 0.0);
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
@@ -52434,7 +52553,7 @@ void GameWorld::renderGeom ()
 		singleton->bindFBO("geomBaseTargFBO", -1, 0);
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 		singleton->setShaderFloat("objectId",0.0);
-		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderFloat("isWire", 0.0);
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
@@ -52481,7 +52600,7 @@ void GameWorld::renderGeom ()
 		// singleton->bindFBO("geomBaseTargFBO", -1, 0);
 		// singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
 		// singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
-		// singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		// singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		// singleton->setShaderFloat("curTime", singleton->pauseTime/1000.0f);
 		// singleton->setShaderTexture(0,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
 		
@@ -52595,7 +52714,7 @@ void GameWorld::renderGeom ()
 		singleton->setShaderFloat("cellsPerHolder",cellsPerHolder);
 		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
-		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderTexture(0,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
 		singleton->sampleFBO("geomBaseTargFBO",1);
 		singleton->bindFBO("geomTargFBO", -1, 0);
@@ -54353,7 +54472,7 @@ void GameWorld::drawMap ()
 		singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 		singleton->setShaderfVec4("mapFreqs", &(singleton->mapFreqs) );
 		singleton->setShaderfVec4("mapAmps", &(singleton->mapAmps) );
-		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
@@ -54452,14 +54571,14 @@ void GameWorld::updateLights ()
 		{
 			
 			
-			findNearestEnt(&(singleton->nearestLights),E_ET_LIGHT,4,2,singleton->cameraPos,false,true);
+			findNearestEnt(&(singleton->nearestLights),E_ET_LIGHT,4,2,singleton->cameraGetPosNoShake(),false,true);
 			
 			
 			for (i = 0; i < singleton->nearestLights.selEntList.size(); i++) {
 				
 				
 				curLight = singleton->nearestLights.selEntList[i];//&(curBlock->gameEnts[E_ET_LIGHT].data[k]);
-				curLight->camDistance = singleton->cameraPos->distance(&(curLight->geomParams[E_LP_POSITION]));
+				curLight->camDistance = singleton->cameraGetPosNoShake()->distance(&(curLight->geomParams[E_LP_POSITION]));
 
 				if (curLight->toggled) {
 					activeLights[lightCount] = singleton->nearestLights.selEntList[i];//&(curBlock->gameEnts[E_ET_LIGHT].data[k]);
@@ -54590,7 +54709,7 @@ void GameWorld::postProcess ()
 			
 			singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
 			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-			singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
 			singleton->setShaderFloat("curTime", singleton->curTime);
 			singleton->drawFSQuad();
@@ -54625,7 +54744,7 @@ void GameWorld::postProcess ()
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
-		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
 		singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
 		singleton->setShaderArrayfVec4("lightArr", singleton->lightArr, (FLOATS_PER_LIGHT * lightCount) / 4);
@@ -54668,7 +54787,7 @@ void GameWorld::postProcess ()
 		
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
-		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderInt("gridOn", (int)(singleton->gridOn));
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
 		singleton->setShaderFloat("curTime", singleton->curTime);
@@ -54715,7 +54834,7 @@ void GameWorld::postProcess ()
 			singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec) );
 			singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-			singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderFloat("curTime", singleton->curTime);
 			singleton->setShaderFloat("isUnderWater", singleton->getUnderWater() );
 			singleton->drawFSQuad();
@@ -54765,7 +54884,7 @@ void GameWorld::postProcess ()
 			singleton->sampleFBO("swapFBOBLin0", 2);
 			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
-			singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 			//singleton->setShaderfVec3("lightPosWS", lightPos);
 			singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
@@ -54837,7 +54956,7 @@ void GameWorld::postProcess ()
 			singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
-			singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 			//singleton->setShaderfVec4("fogPos", fogPos);
 

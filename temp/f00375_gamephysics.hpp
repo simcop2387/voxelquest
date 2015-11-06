@@ -44,9 +44,9 @@ public:
 		cout << "GamePhysics:beginDrop()\n";
 		
 		example->beginDrop(
-			singleton->cameraPos->getFX(),
-			singleton->cameraPos->getFY(),
-			singleton->cameraPos->getFZ()
+			singleton->cameraGetPosNoShake()->getFX(),
+			singleton->cameraGetPosNoShake()->getFY(),
+			singleton->cameraGetPosNoShake()->getFZ()
 		);
 	}
 	
@@ -98,9 +98,9 @@ public:
 		
 	// 	q3BodyDef bodyDef;
 	// 	bodyDef.position.Set(
-	// 		singleton->cameraPos->getFX() + singleton->lookAtVec[0]*16.0,
-	// 		singleton->cameraPos->getFY() + singleton->lookAtVec[1]*16.0,
-	// 		singleton->cameraPos->getFZ() + singleton->lookAtVec[2]*16.0	
+	// 		singleton->cameraGetPosNoShake()->getFX() + singleton->lookAtVec[0]*16.0,
+	// 		singleton->cameraGetPosNoShake()->getFY() + singleton->lookAtVec[1]*16.0,
+	// 		singleton->cameraGetPosNoShake()->getFZ() + singleton->lookAtVec[2]*16.0	
 	// 	);
 	// 	q3Body* body = scene->CreateBody( bodyDef );
 	// 	q3BoxDef boxDef;
@@ -135,7 +135,7 @@ public:
 		trans.setOrigin(ge->getCenterPoint(false)->getBTV());
 		btCapsuleShape* capsuleShape = new btCapsuleShapeZ(1.0f,1.0f);
 		ge->body = example->createRigidBody(ge->mass,trans,capsuleShape);
-		ge->body->bodyId = _uid;
+		ge->body->bodyUID = _uid;
 		
 		// q3BodyDef bodyDef;
 		// bodyDef.position.Set(
@@ -183,7 +183,93 @@ public:
 		int j;
 		int k;
 		
+		bool lastFalling;
+		
 		BaseObj* ge;
+		
+		FIVector4* curCenterPoint;
+		btDiscreteDynamicsWorld* world = example->getWorld();
+		
+		
+		bool hasContact = false;
+		const btCollisionObject* bodies[2];
+		
+		int numManifolds = world->getDispatcher()->getNumManifolds();
+		for (i=0;i<numManifolds;i++) {
+			btPersistentManifold* contactManifold =  world->getDispatcher()->getManifoldByIndexInternal(i);
+			
+			
+			
+			const btCollisionObject* obA = (contactManifold->getBody0());
+			const btCollisionObject* obB = (contactManifold->getBody1());
+
+			bodies[0] = obA;
+			bodies[1] = obB;
+
+			hasContact = false;
+			
+			int numContacts = contactManifold->getNumContacts();
+			for (j=0;j<numContacts;j++) {
+				btManifoldPoint& pt = contactManifold->getContactPoint(j);
+				if (pt.getDistance() < 1.0f) {
+					
+					hasContact = true;
+					
+					// const btVector3& ptA = pt.getPositionWorldOnA();
+					// const btVector3& ptB = pt.getPositionWorldOnB();
+					// const btVector3& normalOnB = pt.m_normalWorldOnB;
+				}
+			}
+			
+			
+			// if (hasContact) {
+				
+				
+				
+			// }
+			
+			
+			for (k = 0; k < 2; k++) {
+				if (bodies[k]->bodyUID > -1) {
+					ge = &(singleton->gw->gameObjects[bodies[k]->bodyUID]);
+					
+					
+					if (
+						(ge->isHidden) ||
+						(ge->body == NULL)
+					) {
+						
+					}
+					else {
+						lastFalling = ge->isFalling;
+						
+						ge->isFalling = 
+							(!hasContact)
+							//&& (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f)
+							;
+						
+						if (ge->isFalling) {
+							
+						}
+						else {
+							if (lastFalling != ge->isFalling) {
+								singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
+							}
+						}
+					}
+					
+					
+					
+				}
+			}
+			
+		}
+		
+		
+		
+		
+		
+		
 		
 		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
 			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
@@ -195,12 +281,29 @@ public:
 				
 			}
 			else {
-				if (singleton->selObjInd == ge->uid) {
+				
+				//lastFalling = ge->isFalling;
+				// ge->isFalling = (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f);
+				// if (ge->isFalling) {
+				
+				// }
+				// else {
+				// 	if (lastFalling != ge->isFalling) {
+				// 		singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
+				// 	}
+				// }
+				
+				if (
+					(singleton->selObjInd == ge->uid) &&
+					singleton->markerFound &&
+					singleton->isDraggingObject
+				) {
 					
-					ge->body->applyCentralImpulse( btVector3(
-						0.0f,//(ge->body->getCenterOfMassPosition().getX() - (singleton->worldMarker.getFX()))*20.0f,
-						0.0f,//(ge->body->getCenterOfMassPosition().getY() - (singleton->worldMarker.getFY()))*20.0f,
-						200.0f//-(ge->body->getCenterOfMassPosition().getZ() - (4.0f + singleton->worldMarker.getFZ()))*200.0f
+					
+					ge->applyImpulse( btVector3(
+						( singleton->worldMarker.getFX() - ge->body->getCenterOfMassPosition().getX() )*0.25f,
+						( singleton->worldMarker.getFY() - ge->body->getCenterOfMassPosition().getY() )*0.25f,
+						-(ge->body->getCenterOfMassPosition().getZ() - (4.0f + singleton->worldMarker.getFZ()))*2.0f
 					) );
 					
 				}
@@ -235,9 +338,9 @@ public:
 
 	// 		q3BodyDef bodyDef;
 	// 		bodyDef.position.Set(
-	// 			singleton->cameraPos->getFX() + singleton->lookAtVec[0]*16.0,
-	// 			singleton->cameraPos->getFY() + singleton->lookAtVec[1]*16.0,
-	// 			singleton->cameraPos->getFZ() + singleton->lookAtVec[2]*16.0	
+	// 			singleton->cameraGetPosNoShake()->getFX() + singleton->lookAtVec[0]*16.0,
+	// 			singleton->cameraGetPosNoShake()->getFY() + singleton->lookAtVec[1]*16.0,
+	// 			singleton->cameraGetPosNoShake()->getFZ() + singleton->lookAtVec[2]*16.0	
 	// 		);
 	// 		bodyDef.axis.Set( q3RandomFloat( -1.0f, 1.0f ), q3RandomFloat( -1.0f, 1.0f ), q3RandomFloat( -1.0f, 1.0f ) );
 	// 		bodyDef.angle = q3PI * q3RandomFloat( -1.0f, 1.0f );

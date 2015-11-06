@@ -737,6 +737,7 @@ public:
 		switch (opCode) {
 			case EV_HIT_GROUND:
 				singleton->playSoundEnt("land0",ge);
+				singleton->performCamShake(ge);
 			break;
 		}
 	}
@@ -827,11 +828,11 @@ public:
 
 		
 		
-		camBlockPos.copyFrom( singleton->cameraPos );
+		camBlockPos.copyFrom( singleton->cameraGetPosNoShake() );
 		camBlockPos.intDivXYZ(singleton->cellsPerBlock);
 
 		if (singleton->currentActor == NULL) {
-			camHolderPos.copyFrom( singleton->cameraPos );
+			camHolderPos.copyFrom( singleton->cameraGetPosNoShake() );
 			camHolderPos.intDivXYZ(singleton->cellsPerHolder);
 			camHolderPos.addXYZRef(&(singleton->lookAtVec),4.0);
 		}
@@ -1430,7 +1431,7 @@ public:
 		singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 		singleton->setShaderFloat("curTime", singleton->pauseTime/1000.0f);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferRenderDim) );
-		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec) );
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 		singleton->setShaderFloat("cellsPerWorld", cellsPerWorld );
@@ -1791,7 +1792,7 @@ public:
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferRenderDim) );
-		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("volMinReadyInPixels", &(singleton->gameFluid[E_FID_BIG]->volMinReadyInPixels) );
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec) );
 		
@@ -2038,7 +2039,7 @@ public:
 		singleton->bindShader("GeomShader");
 		singleton->bindFBO("geomBaseTargFBO");
 		singleton->setShaderFloat("objectId",0.0);
-		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderFloat("isWire", 0.0);
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
@@ -2400,7 +2401,7 @@ public:
 		singleton->bindFBO("geomBaseTargFBO", -1, 0);
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 		singleton->setShaderFloat("objectId",0.0);
-		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderFloat("isWire", 0.0);
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
@@ -2447,7 +2448,7 @@ public:
 		// singleton->bindFBO("geomBaseTargFBO", -1, 0);
 		// singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
 		// singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
-		// singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		// singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		// singleton->setShaderFloat("curTime", singleton->pauseTime/1000.0f);
 		// singleton->setShaderTexture(0,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
 		
@@ -2561,7 +2562,7 @@ public:
 		singleton->setShaderFloat("cellsPerHolder",cellsPerHolder);
 		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
-		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderTexture(0,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
 		singleton->sampleFBO("geomBaseTargFBO",1);
 		singleton->bindFBO("geomTargFBO", -1, 0);
@@ -4329,7 +4330,7 @@ DONE_WITH_MAP:
 		singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 		singleton->setShaderfVec4("mapFreqs", &(singleton->mapFreqs) );
 		singleton->setShaderfVec4("mapAmps", &(singleton->mapAmps) );
-		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		
 		singleton->setShaderFloat("cameraZoom", singleton->cameraZoom);
@@ -4430,14 +4431,14 @@ DONE_WITH_MAP:
 		{
 			
 			
-			findNearestEnt(&(singleton->nearestLights),E_ET_LIGHT,4,2,singleton->cameraPos,false,true);
+			findNearestEnt(&(singleton->nearestLights),E_ET_LIGHT,4,2,singleton->cameraGetPosNoShake(),false,true);
 			
 			
 			for (i = 0; i < singleton->nearestLights.selEntList.size(); i++) {
 				
 				
 				curLight = singleton->nearestLights.selEntList[i];//&(curBlock->gameEnts[E_ET_LIGHT].data[k]);
-				curLight->camDistance = singleton->cameraPos->distance(&(curLight->geomParams[E_LP_POSITION]));
+				curLight->camDistance = singleton->cameraGetPosNoShake()->distance(&(curLight->geomParams[E_LP_POSITION]));
 
 				if (curLight->toggled) {
 					activeLights[lightCount] = singleton->nearestLights.selEntList[i];//&(curBlock->gameEnts[E_ET_LIGHT].data[k]);
@@ -4588,7 +4589,7 @@ UPDATE_LIGHTS_END:
 			
 			singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
 			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-			singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
 			singleton->setShaderFloat("curTime", singleton->curTime);
 			singleton->drawFSQuad();
@@ -4623,7 +4624,7 @@ UPDATE_LIGHTS_END:
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
-		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
 		singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
 		singleton->setShaderArrayfVec4("lightArr", singleton->lightArr, (FLOATS_PER_LIGHT * lightCount) / 4);
@@ -4666,7 +4667,7 @@ UPDATE_LIGHTS_END:
 		
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
-		singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderInt("gridOn", (int)(singleton->gridOn));
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
 		singleton->setShaderFloat("curTime", singleton->curTime);
@@ -4713,7 +4714,7 @@ UPDATE_LIGHTS_END:
 			singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec) );
 			singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-			singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderFloat("curTime", singleton->curTime);
 			singleton->setShaderFloat("isUnderWater", singleton->getUnderWater() );
 			singleton->drawFSQuad();
@@ -4763,7 +4764,7 @@ UPDATE_LIGHTS_END:
 			singleton->sampleFBO("swapFBOBLin0", 2);
 			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
-			singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 			//singleton->setShaderfVec3("lightPosWS", lightPos);
 			singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
@@ -4835,7 +4836,7 @@ UPDATE_LIGHTS_END:
 			singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
-			singleton->setShaderfVec3("cameraPos", singleton->cameraPos);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 			//singleton->setShaderfVec4("fogPos", fogPos);
 

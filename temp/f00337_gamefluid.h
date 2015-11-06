@@ -922,7 +922,7 @@ void GameFluid::shiftRegion ()
 		bool notThirdPerson = (singleton->currentActor == NULL);// ||singleton->firstPerson;
 		
 		if (notThirdPerson) {
-			newCamPos.copyFrom(singleton->cameraPos);
+			newCamPos.copyFrom(singleton->cameraGetPosNoShake());
 		}
 		else {
 			newCamPos.copyFrom(singleton->currentActor->getCenterPoint());

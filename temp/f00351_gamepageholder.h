@@ -1363,7 +1363,7 @@ void GamePageHolder::createMesh ()
 
 		body = singleton->gamePhysics->example->createRigidBody(0,trans,trimeshShape);
 		body->setFriction (btScalar(0.9));
-		body->bodyId = 0;
+		body->bodyUID = -1;
 		
 		singleton->gamePhysics->example->updateGraphicsObjects();
 		

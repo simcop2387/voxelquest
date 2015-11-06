@@ -794,7 +794,7 @@ public:
 				const btCollisionObject*	colObj=dynamicsWorld->getCollisionObjectArray()[i];
 				const btRigidBody*		body=btRigidBody::upcast(colObj);
 				
-				setId(body->bodyId);
+				setId( max(body->bodyUID,0) );
 				
 				if(body&&body->getMotionState())
 				{

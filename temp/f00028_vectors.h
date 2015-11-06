@@ -1238,6 +1238,8 @@ public:
 
 		return sqrt(dx * dx + dy * dy + dz * dz);
 	}
+	
+	
 
 	float length() {
 		return sqrt(fv4.x * fv4.x + fv4.y * fv4.y + fv4.z * fv4.z);
@@ -1836,6 +1838,10 @@ public:
 		}
 	}
 	
+	void applyImpulse( btVector3 imp) {
+		body->setActivationState(ACTIVE_TAG);
+		body->applyCentralImpulse(imp);
+	}
 	
 	
 	

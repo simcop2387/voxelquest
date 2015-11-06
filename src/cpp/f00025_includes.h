@@ -33,8 +33,8 @@ const static int MAX_EXPLODES = 8;
 const static bool DO_SHADER_DUMP = false;
 
 
-const static int DEF_WIN_W = 1440;
-const static int DEF_WIN_H = 720;
+const static int DEF_WIN_W = 1920;
+const static int DEF_WIN_H = 1080;
 
 const static int DEF_VOL_SIZE = 128;
 
@@ -1764,6 +1764,8 @@ class BenchmarkDemo : public CommonRigidBodyBase
 		exitPhysics();
 	}
 	
+	btDiscreteDynamicsWorld* getWorld();
+	
 	void removeRigidBody(btRigidBody* body);
 	
 	void updateGraphicsObjects();
@@ -1998,6 +2000,10 @@ public:
 
 
 static btRaycastBar2 raycastBar;
+
+btDiscreteDynamicsWorld* BenchmarkDemo::getWorld() {
+	return m_dynamicsWorld;
+}
 
 void BenchmarkDemo::stepSimulation(float deltaTime)
 {
@@ -2862,7 +2868,7 @@ void BenchmarkDemo::createTest5()
 						break;
 					}
 					
-					tempBody->bodyId = 0;
+					tempBody->bodyUID = -1;
 					
 					numBodies++;
 				}
