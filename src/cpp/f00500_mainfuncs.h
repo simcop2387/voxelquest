@@ -142,6 +142,7 @@ int main(int argc, char* argv[])
         doTrace("GLEW_OK");
     }
 
+
     
     ////////////
     singleton = new Singleton();

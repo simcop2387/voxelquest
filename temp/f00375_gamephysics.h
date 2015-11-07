@@ -5,7 +5,7 @@
 #define LZZ_INLINE inline
 GamePhysics::GamePhysics ()
                       {
-		
+		stepTimeInMicroSec = 8000; // ~120 times per second
 	}
 void GamePhysics::init (Singleton * _singleton)
         {
@@ -57,9 +57,28 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 		btTransform trans;
 		trans.setIdentity();
 		trans.setOrigin(ge->getCenterPoint(false)->getBTV());
-		btCapsuleShape* capsuleShape = new btCapsuleShapeZ(1.0f,1.0f);
-		ge->body = example->createRigidBody(ge->mass,trans,capsuleShape);
+		
+		
+		
+		
+		if (
+			(ge->entType == E_ENTTYPE_NPC) ||
+			(ge->entType == E_ENTTYPE_MONSTER)	
+		) {
+			btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(1.0f,1.0f);
+			ge->body = example->createRigidBody(ge->mass,trans,capsuleShape);
+			ge->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
+		}
+		else {
+			btBoxShape* boxShape = new btBoxShape(btVector3(0.5f,0.5f,0.5f));
+			ge->body = example->createRigidBody(ge->mass,trans,boxShape);
+		}
+		
+		ge->body->setDamping(0.1f,0.99f);
+		
 		ge->body->bodyUID = _uid;
+		
+		ge->body->setContactProcessingThreshold(0.25f);
 		
 		// q3BodyDef bodyDef;
 		// bodyDef.position.Set(
@@ -112,8 +131,13 @@ void GamePhysics::collideWithWorld ()
 		FIVector4* curCenterPoint;
 		btDiscreteDynamicsWorld* world = example->getWorld();
 		
+		btVector3 nv0;
+		btVector3 nv1;
 		
 		bool hasContact = false;
+		// bool isClose = false;
+		// bool isFar = false;
+		
 		const btCollisionObject* bodies[2];
 		
 		int numManifolds = world->getDispatcher()->getNumManifolds();
@@ -128,12 +152,14 @@ void GamePhysics::collideWithWorld ()
 			bodies[0] = obA;
 			bodies[1] = obB;
 
+			// isClose = false;
+			// isFar = false;
 			hasContact = false;
 			
 			int numContacts = contactManifold->getNumContacts();
 			for (j=0;j<numContacts;j++) {
 				btManifoldPoint& pt = contactManifold->getContactPoint(j);
-				if (pt.getDistance() < 1.0f) {
+				if (pt.getDistance() < 0.1f) {
 					
 					hasContact = true;
 					
@@ -141,19 +167,19 @@ void GamePhysics::collideWithWorld ()
 					// const btVector3& ptB = pt.getPositionWorldOnB();
 					// const btVector3& normalOnB = pt.m_normalWorldOnB;
 				}
+				
+				// if (pt.getDistance() > 0.2f) {
+				// 	isFar = true;
+				// }
 			}
 			
 			
-			// if (hasContact) {
-				
-				
-				
-			// }
 			
 			
 			for (k = 0; k < 2; k++) {
 				if (bodies[k]->bodyUID > -1) {
 					ge = &(singleton->gw->gameObjects[bodies[k]->bodyUID]);
+					
 					
 					
 					if (
@@ -165,19 +191,38 @@ void GamePhysics::collideWithWorld ()
 					else {
 						lastFalling = ge->isFalling;
 						
-						ge->isFalling = 
-							(!hasContact)
-							//&& (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f)
-							;
+						// if (isFar) {
+						// 	ge->isFalling = true;
+						// }
 						
-						if (ge->isFalling) {
+						// if (isClose) {
+						// 	ge->isFalling = false;
+						// }
+						
+						// if (hasContact) {
 							
+						// }
+						// else {
+							
+						// }
+						
+						ge->isFalling = (!hasContact);// && (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f);
+						
+						if (!(ge->isFalling)) {
+							ge->isJumping = false;
 						}
-						else {
-							if (lastFalling != ge->isFalling) {
-								singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
-							}
-						}
+						
+						// 	//&& (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f)
+
+						
+						// if (ge->isFalling) {
+							
+						// }
+						// else {
+						// 	if (lastFalling != ge->isFalling) {
+						// 		singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
+						// 	}
+						// }
 					}
 					
 					
@@ -215,20 +260,54 @@ void GamePhysics::collideWithWorld ()
 				// 	}
 				// }
 				
+				
+				nv0 = ge->body->getLinearVelocity();
+				nv0.normalize();
+				nv1 = ge->lastVel;
+				nv1.normalize();
+				
+				
+				
+				
+				if (
+					(
+						ge->lastVel.length() > 0.5f
+					) &&
+					(
+						(nv0.dot(nv1)) < 0.8f
+					)
+				) {
+					
+					
+					
+					singleton->gw->fireEvent(
+						ge->uid,
+						EV_COLLISION,
+						clampfZO( (ge->lastVel.length()-0.5f)/16.0f )
+					);
+				}
+				
+				
+				ge->lastVel = ge->body->getLinearVelocity();
+				
 				if (
 					(singleton->selObjInd == ge->uid) &&
 					singleton->markerFound &&
-					singleton->isDraggingObject
+					singleton->isDraggingObject &&
+					(singleton->draggingFromType == E_DT_WORLD_OBJECT)
 				) {
 					
 					
 					ge->applyImpulse( btVector3(
 						( singleton->worldMarker.getFX() - ge->body->getCenterOfMassPosition().getX() )*0.25f,
 						( singleton->worldMarker.getFY() - ge->body->getCenterOfMassPosition().getY() )*0.25f,
-						-(ge->body->getCenterOfMassPosition().getZ() - (4.0f + singleton->worldMarker.getFZ()))*2.0f
+						-(ge->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*1.0f
 					) );
 					
 				}
+				
+				ge->getCenterPoint(true);
+				
 			}
 			
 		}
@@ -236,13 +315,12 @@ void GamePhysics::collideWithWorld ()
 	}
 void GamePhysics::updateAll ()
                          {
-		// f32 time = g_clock.Start( );
-		// updateBase(time);
-		// g_clock.Stop( );
 		
-		collideWithWorld();
-		
-		example->stepSimulation(1.f/60.f);
+		while (singleton->totTimePassedPhysics > stepTimeInMicroSec) {
+			collideWithWorld();
+			example->stepSimulation(stepTimeInMicroSec/500000.0f);
+			singleton->totTimePassedPhysics -= stepTimeInMicroSec;
+		}
 	}
 GamePhysics::~ GamePhysics ()
                        {

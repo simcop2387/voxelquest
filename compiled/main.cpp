@@ -33,8 +33,8 @@ const static int MAX_EXPLODES = 8;
 const static bool DO_SHADER_DUMP = false;
 
 
-const static int DEF_WIN_W = 1920;
-const static int DEF_WIN_H = 1080;
+const static int DEF_WIN_W = 1440;
+const static int DEF_WIN_H = 720;
 
 const static int DEF_VOL_SIZE = 128;
 
@@ -387,7 +387,7 @@ bool TRACE_ON = false;
 
 #include <iomanip>
 #include <map>
-#include <ctime>
+//#include <ctime>
 
 
 #include <stdlib.h>
@@ -476,13 +476,268 @@ bool TRACE_ON = false;
 
 
 
+
+
+class HPClock
+{
+public:
+	HPClock();
+
+	HPClock(const HPClock& other);
+	HPClock& operator=(const HPClock& other);
+
+	~HPClock();
+
+	/// Resets the initial reference time.
+	void reset();
+
+	/// Returns the time in ms since the last call to reset or since 
+	/// the HPClock was created.
+	unsigned long int getTimeMilliseconds();
+
+	/// Returns the time in us since the last call to reset or since 
+	/// the Clock was created.
+	unsigned long int getTimeMicroseconds();
+private:
+	struct HPClockData* m_data;
+};
+
+
+
+template <class T>
+const T& HPClockMin(const T& a, const T& b) 
+{
+  return a < b ? a : b ;
+}
+
+
+#ifdef __CELLOS_LV2__
+#include <sys/sys_time.h>
+#include <sys/time_util.h>
+#include <stdio.h>
+#endif
+
+#if defined (SUNOS) || defined (__SUNOS__) 
+#include <stdio.h> 
+#endif
+
+#if defined(WIN32) || defined(_WIN32)
+
+#define B3_USE_WINDOWS_TIMERS
+#define WIN32_LEAN_AND_MEAN
+#define NOWINRES
+#define NOMCX
+#define NOIME 
+
+#ifdef _XBOX
+	#include <Xtl.h>
+#else //_XBOX
+	#include <windows.h>
+#endif //_XBOX
+
+#include <time.h>
+
+
+#else //_WIN32
+#include <sys/time.h>
+#endif //_WIN32
+
+
+
+struct HPClockData
+{
+
+#ifdef B3_USE_WINDOWS_TIMERS
+	LARGE_INTEGER mClockFrequency;
+	DWORD mStartTick;
+	LONGLONG mPrevElapsedTime;
+	LARGE_INTEGER mStartTime;
+#else
+#ifdef __CELLOS_LV2__
+	uint64_t	mStartTime;
+#else
+	struct timeval mStartTime;
+#endif
+#endif //__CELLOS_LV2__
+
+};
+
+///The HPClock is a portable basic clock that measures accurate time in seconds, use for profiling.
+HPClock::HPClock()
+{
+	m_data = new HPClockData;
+#ifdef B3_USE_WINDOWS_TIMERS
+	QueryPerformanceFrequency(&m_data->mClockFrequency);
+#endif
+	reset();
+}
+
+HPClock::~HPClock()
+{
+	delete m_data;
+}
+
+HPClock::HPClock(const HPClock& other)
+{
+	m_data = new HPClockData;
+	*m_data = *other.m_data;
+}
+
+HPClock& HPClock::operator=(const HPClock& other)
+{
+	*m_data = *other.m_data;
+	return *this;
+}
+
+
+	/// Resets the initial reference time.
+void HPClock::reset()
+{
+#ifdef B3_USE_WINDOWS_TIMERS
+	QueryPerformanceCounter(&m_data->mStartTime);
+	m_data->mStartTick = GetTickCount();
+	m_data->mPrevElapsedTime = 0;
+#else
+#ifdef __CELLOS_LV2__
+
+	typedef uint64_t  ClockSize;
+	ClockSize newTime;
+	//__asm __volatile__( "mftb %0" : "=r" (newTime) : : "memory");
+	SYS_TIMEBASE_GET( newTime );
+	m_data->mStartTime = newTime;
+#else
+	gettimeofday(&m_data->mStartTime, 0);
+#endif
+#endif
+}
+
+/// Returns the time in ms since the last call to reset or since 
+/// the HPClock was created.
+unsigned long int HPClock::getTimeMilliseconds()
+{
+#ifdef B3_USE_WINDOWS_TIMERS
+	LARGE_INTEGER currentTime;
+	QueryPerformanceCounter(&currentTime);
+	LONGLONG elapsedTime = currentTime.QuadPart - 
+		m_data->mStartTime.QuadPart;
+		// Compute the number of millisecond ticks elapsed.
+	unsigned long msecTicks = (unsigned long)(1000 * elapsedTime / 
+		m_data->mClockFrequency.QuadPart);
+		// Check for unexpected leaps in the Win32 performance counter.  
+	// (This is caused by unexpected data across the PCI to ISA 
+		// bridge, aka south bridge.  See Microsoft KB274323.)
+		unsigned long elapsedTicks = GetTickCount() - m_data->mStartTick;
+		signed long msecOff = (signed long)(msecTicks - elapsedTicks);
+		if (msecOff < -100 || msecOff > 100)
+		{
+			// Adjust the starting time forwards.
+			LONGLONG msecAdjustment = HPClockMin(msecOff * 
+				m_data->mClockFrequency.QuadPart / 1000, elapsedTime - 
+				m_data->mPrevElapsedTime);
+			m_data->mStartTime.QuadPart += msecAdjustment;
+			elapsedTime -= msecAdjustment;
+
+			// Recompute the number of millisecond ticks elapsed.
+			msecTicks = (unsigned long)(1000 * elapsedTime / 
+				m_data->mClockFrequency.QuadPart);
+		}
+
+		// Store the current elapsed time for adjustments next time.
+		m_data->mPrevElapsedTime = elapsedTime;
+
+		return msecTicks;
+#else
+
+#ifdef __CELLOS_LV2__
+		uint64_t freq=sys_time_get_timebase_frequency();
+		double dFreq=((double) freq) / 1000.0;
+		typedef uint64_t  ClockSize;
+		ClockSize newTime;
+		SYS_TIMEBASE_GET( newTime );
+		//__asm __volatile__( "mftb %0" : "=r" (newTime) : : "memory");
+
+		return (unsigned long int)((double(newTime-m_data->mStartTime)) / dFreq);
+#else
+
+		struct timeval currentTime;
+		gettimeofday(&currentTime, 0);
+		return (currentTime.tv_sec - m_data->mStartTime.tv_sec) * 1000 + 
+			(currentTime.tv_usec - m_data->mStartTime.tv_usec) / 1000;
+#endif //__CELLOS_LV2__
+#endif
+}
+
+	/// Returns the time in us since the last call to reset or since 
+	/// the Clock was created.
+unsigned long int HPClock::getTimeMicroseconds()
+{
+#ifdef B3_USE_WINDOWS_TIMERS
+		LARGE_INTEGER currentTime;
+		QueryPerformanceCounter(&currentTime);
+		LONGLONG elapsedTime = currentTime.QuadPart - 
+			m_data->mStartTime.QuadPart;
+
+		// Compute the number of millisecond ticks elapsed.
+		unsigned long msecTicks = (unsigned long)(1000 * elapsedTime / 
+			m_data->mClockFrequency.QuadPart);
+
+		// Check for unexpected leaps in the Win32 performance counter.  
+		// (This is caused by unexpected data across the PCI to ISA 
+		// bridge, aka south bridge.  See Microsoft KB274323.)
+		unsigned long elapsedTicks = GetTickCount() - m_data->mStartTick;
+		signed long msecOff = (signed long)(msecTicks - elapsedTicks);
+		if (msecOff < -100 || msecOff > 100)
+		{
+			// Adjust the starting time forwards.
+			LONGLONG msecAdjustment = HPClockMin(msecOff * 
+				m_data->mClockFrequency.QuadPart / 1000, elapsedTime - 
+				m_data->mPrevElapsedTime);
+			m_data->mStartTime.QuadPart += msecAdjustment;
+			elapsedTime -= msecAdjustment;
+		}
+
+		// Store the current elapsed time for adjustments next time.
+		m_data->mPrevElapsedTime = elapsedTime;
+
+		// Convert to microseconds.
+		unsigned long usecTicks = (unsigned long)(1000000 * elapsedTime / 
+			m_data->mClockFrequency.QuadPart);
+
+		return usecTicks;
+#else
+
+#ifdef __CELLOS_LV2__
+		uint64_t freq=sys_time_get_timebase_frequency();
+		double dFreq=((double) freq)/ 1000000.0;
+		typedef uint64_t  ClockSize;
+		ClockSize newTime;
+		//__asm __volatile__( "mftb %0" : "=r" (newTime) : : "memory");
+		SYS_TIMEBASE_GET( newTime );
+
+		return (unsigned long int)((double(newTime-m_data->mStartTime)) / dFreq);
+#else
+
+		struct timeval currentTime;
+		gettimeofday(&currentTime, 0);
+		return (currentTime.tv_sec - m_data->mStartTime.tv_sec) * 1000000 + 
+			(currentTime.tv_usec - m_data->mStartTime.tv_usec);
+#endif//__CELLOS_LV2__
+#endif 
+}
+
+
+
+
+
+
+
 struct charArr {
 	long size;
 	char *data;
 };
 
 #ifdef WIN32
-#include <windows.h>
+//#include <windows.h>
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -492,7 +747,7 @@ struct charArr {
 #pragma comment (lib, "AdvApi32.lib")
 
 #else
-#include <sys/time.h>
+// #include <sys/time.h>
 #endif
 
 
@@ -691,7 +946,7 @@ struct glInfo
 
 // WGL specific extensions for v3.0+ //////////////////////////////////////////
 #ifdef _WIN32
-#include <windows.h>
+//#include <windows.h>
 #ifndef WGLGETEXTENSIONSSTRINGARB_DEF
 #define WGLGETEXTENSIONSSTRINGARB_DEF
 typedef const char* (WINAPI * PFNWGLGETEXTENSIONSSTRINGARBPROC)(HDC hdc);
@@ -913,6 +1168,20 @@ PFNWGLGETSWAPINTERVALEXTPROC pwglGetSwapIntervalEXT = 0;
 #endif
 
 
+
+
+// typedef BOOL (APIENTRY *PFNWGLSWAPINTERVALFARPROC)( int );
+// extern PFNWGLSWAPINTERVALFARPROC wglSwapIntervalEXT;
+
+// static inline void init_EXT_Vsync()
+// {
+// wglSwapIntervalEXT = (PFNWGLSWAPINTERVALFARPROC)extgl_GetProcAddress( "wglSwapIntervalEXT" );
+// }
+
+
+
+
+
 const static GLenum bufNames[] = {
 			GL_COLOR_ATTACHMENT0_EXT,
 			GL_COLOR_ATTACHMENT1_EXT,
@@ -999,6 +1268,7 @@ class btDefaultCollisionConfiguration;
 #include "../CommonInterfaces/CommonExampleInterface.h"
 #include "../CommonInterfaces/CommonGUIHelperInterface.h"
 #include "../CommonInterfaces/CommonRigidBodyBase.h"
+
 
 #include "btBulletDynamicsCommon.h"
 
@@ -3352,7 +3622,7 @@ enum E_STATES {
 };
 
 enum EVENT_OPS {
-	EV_HIT_GROUND,
+	EV_COLLISION,
 	EV_LENGTH	
 };
 
@@ -8588,7 +8858,11 @@ public:
 	BaseObjType parentUID;
 	vector<BaseObjType> children;
 	
+	btVector3 lastVel;
+	
 	btRigidBody* body;
+	
+	Matrix3 rotMat;
 	
 	int isGrabbingId;
 	int isGrabbedById;
@@ -8639,9 +8913,25 @@ public:
 		}
 	}
 	
-	void applyImpulse( btVector3 imp) {
+	void applyAngularImpulse(btVector3 newAV) {
+		body->setAngularVelocity(body->getAngularVelocity() + newAV);
 		body->setActivationState(ACTIVE_TAG);
+	}
+	
+	void applyImpulse( btVector3 imp) {
 		body->applyCentralImpulse(imp);
+		body->setActivationState(ACTIVE_TAG);
+	}
+	
+	void applyImpulseRot( btVector3 imp) {
+		btVector3 tempBTV;
+		
+		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
+		Vector3 res = rotMat*myRHS;
+		
+		
+		body->applyCentralImpulse(btVector3(res.x,res.y,res.z));
+		body->setActivationState(ACTIVE_TAG);
 	}
 	
 	
@@ -8702,24 +8992,24 @@ public:
 		}
 	}
 	
-	void updateTargets() { //FIVector4* fv
+	// void updateTargets() { //FIVector4* fv
 		
-		ang += (targAng-ang)/4.0f;
-		angRelative += (targAngRelative-angRelative)/4.0f;
+	// 	ang += (targAng-ang)/4.0f;
+	// 	angRelative += (targAngRelative-angRelative)/4.0f;
 		
-		// if (body == NULL) {
+	// 	// if (body == NULL) {
 			
-		// }
-		// else {
+	// 	// }
+	// 	// else {
 			
-		// 	if (isUpright) {
-		// 		body->SetAngle(ang);
-		// 	}
+	// 	// 	if (isUpright) {
+	// 	// 		body->SetAngle(ang);
+	// 	// 	}
 			
 			
-		// }
+	// 	// }
 		
-	}
+	// }
 	
 	
 	
@@ -8758,9 +9048,9 @@ public:
 		isGrabbingId = -1;
 		inWater = false;
 		
-		isUpright = false;
-		//	(entType == E_ENTTYPE_NPC) ||
-		//	(entType == E_ENTTYPE_MONSTER);
+		isUpright = 
+			(entType == E_ENTTYPE_NPC) ||
+			(entType == E_ENTTYPE_MONSTER);
 		
 		isOpen = false;
 		isEquipped = false;
@@ -20377,6 +20667,7 @@ public:
   CompareStruct compareStruct;
   typedef map <string, UICStruct>::iterator itUICStruct;
   typedef map <string, JSONStruct>::iterator itJSStruct;
+  unsigned long int totTimePassedPhysics;
   bool (keysPressed) [MAX_KEYS];
   double (keyDownTimes) [MAX_KEYS];
   unsigned char (keyMap) [KEYMAP_LENGTH];
@@ -20624,14 +20915,11 @@ public:
   float * paramArrMap;
   float (clipDist) [2];
   float MAX_TRAVEL_DIS;
-  double curMoveTime;
-  double lastMoveTime;
   double timeDelta;
   double curTime;
   float smoothTime;
   double pauseTime;
   double clickTime;
-  double lastTime;
   double mdTime;
   double muTime;
   GameOrgNode * bestNode;
@@ -20731,6 +21019,7 @@ public:
   charArr lastJSONBufferGUI;
   JSONValue * rootObjJS;
   JSONValue * guiRootJS;
+  HPClock bulletTimer;
   Timer fpsTimer;
   Timer shakeTimer;
   Timer myTimer;
@@ -20911,7 +21200,7 @@ public:
   void gatherKeyActions ();
   void handleMovement ();
   bool anyMenuVisible ();
-  void performCamShake (BaseObj * ge);
+  void performCamShake (BaseObj * ge, float fp);
   void explodeBullet (BaseObj * ge);
   void grabThrowObj (int actorId);
   void launchBullet (int actorId, int bulletType);
@@ -22014,11 +22303,12 @@ public:
   void renderSquareA (float x, float y, float z);
   void glDrawVector (btVector3 const & v);
   void setId (int id);
-  void updateMat ();
   void updateMat2 ();
+  void updateMat ();
   void pushNewMat (btScalar * m);
   void popMat ();
-  void drawOpenGL (btScalar * m, btCollisionShape const * shape, btVector3 const & color, int debugMode, btVector3 const & worldBoundsMin, btVector3 const & worldBoundsMax);
+  void drawOrient (int uid);
+  void drawOpenGL (btScalar * m, btCollisionShape const * shape, btVector3 const & color, int debugMode, btVector3 const & worldBoundsMin, btVector3 const & worldBoundsMax, int uid);
   ~ MyShapeDrawer ();
   void drawSceneInternal (btDiscreteDynamicsWorld const * dynamicsWorld, int pass);
   void drawScene (btDiscreteDynamicsWorld const * dynamicsWorld, bool useShadows);
@@ -22073,6 +22363,7 @@ public:
   BenchmarkDemo * example;
   MyOGLApp * myOGLApp;
   GUIHelperInterface * guiHelper;
+  unsigned long int stepTimeInMicroSec;
   GamePhysics ();
   void init (Singleton * _singleton);
   void beginDrop ();
@@ -22210,7 +22501,7 @@ public:
   int getCellAtCoords (int xv, int yv, int zv);
   void setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void getArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
-  void fireEvent (BaseObjType uid, int opCode);
+  void fireEvent (BaseObjType uid, int opCode, float fParam);
   void generateBlockHolder ();
   void update ();
   void toggleVis (GameEnt * se);
@@ -22472,6 +22763,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		lightVec.setFXYZ(0.3f,0.4f,-1.0f);
 		lightVec.normalize();
 		lightVecOrig.copyFrom(&lightVec);
+		
+		//totTimePassedGraphics = 0;
+		totTimePassedPhysics = 0;
 		
 		isPressingMove = false;
 		fxaaOn = false;
@@ -22750,8 +23044,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		draggingFromInd = 0;
 		draggingToInd = 0;
 		gameObjCounter = E_OBJ_LENGTH;
-		curMoveTime = 0.0;
-		lastMoveTime = 0.0;
+		//curMoveTime = 0.0;
+		//lastMoveTime = 0.0;
 		timeDelta = 0.0;
 
 		
@@ -23015,7 +23309,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		activeObject = E_OBJ_CAMERA;
 
 		extraRad = 0;
-		lastTime = 0.0;
+		//lastTime = 0.0;
 
 
 
@@ -23468,7 +23762,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		
+		// LEAVE THIS IN FOR VSYNC
 		myDynBuffer = new DynBuffer();
+
 
 		fontWrappers[EFW_ICONS] = new FontWrapper();
 		fontWrappers[EFW_ICONS]->init(this, "icons", true, 1.0f, 0.0f);
@@ -24979,6 +25275,7 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 				
 				cout << "ival " << i << "\n";
 				
+				playSoundEnt("leather0", NULL, 0.1);
 				gw->gameObjects[i].isOpen = false;
 				refreshContainers(false);
 				
@@ -26769,6 +27066,7 @@ void Singleton::makeJump (int actorId, int isUp)
 		
 		BaseObj* ge = &(gw->gameObjects[actorId]);
 		
+		float JUMP_AMOUNT = 80.0f;
 		
 		
 		if (isUp == 1) {
@@ -26788,9 +27086,8 @@ void Singleton::makeJump (int actorId, int isUp)
 					
 					// at water surface
 					
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
 					
-					
-					ge->setVel(0.0f,0.0f,10.0f);
 					
 					
 				}
@@ -26799,7 +27096,7 @@ void Singleton::makeJump (int actorId, int isUp)
 					// underwater
 					
 					
-					ge->setVel(0.0f,0.0f,10.0f);
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
 					
 					playSoundEnt(
 						"bubble0",
@@ -26821,7 +27118,7 @@ void Singleton::makeJump (int actorId, int isUp)
 					ge->isFalling = true;
 					ge->isJumping = true;
 					
-					ge->setVel(0.0f,0.0f,10.0f);
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
 					
 					playSoundEnt(
 						"jump0",
@@ -26834,7 +27131,7 @@ void Singleton::makeJump (int actorId, int isUp)
 		}
 		else {
 			if (ge->inWater) {
-				ge->setVel(0.0f,0.0f,-10.0f);
+				ge->applyImpulse(btVector3(0.0f,0.0f,-JUMP_AMOUNT));
 				
 				playSoundEnt(
 					"bubble0",
@@ -28506,7 +28803,7 @@ void Singleton::toggleCont (int contIndex, bool onMousePos)
 		if (
 			isContainer[gw->gameObjects[contIndex].objectType]
 		) {
-			
+			playSoundEnt("leather0", NULL, 0.1);
 			gw->gameObjects[contIndex].isOpen = !(gw->gameObjects[contIndex].isOpen);
 			refreshContainers(onMousePos);
 		}
@@ -28586,23 +28883,41 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 			);
 			
 			
+			
 			if (keyMapResultUnzipped[KEYMAP_RIGHT]) {
-				if (firstPerson) {
-					tempVec2.addXYZ(tempVec1[1],-tempVec1[0],0.0f);
-				}
-				else {
-					ca->targAng += (-2.0f*M_PI*timeDelta);
-				}
+				// if (firstPerson) {
+				// 	tempVec2.addXYZ(tempVec1[1],-tempVec1[0],0.0f);
+				// }
+				// else {
+				// 	ca->targAng += (-2.0f*M_PI*timeDelta);
+				// }
+				
+				ca->applyAngularImpulse(btVector3(0,0,-0.2));
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_LEFT]) {
-				if (firstPerson) {
-					tempVec2.addXYZ(-tempVec1[1],tempVec1[0],0.0f);
-				}
-				else {
-					ca->targAng += (2.0f*M_PI*timeDelta);
-				}
+				// if (firstPerson) {
+				// 	tempVec2.addXYZ(-tempVec1[1],tempVec1[0],0.0f);
+				// }
+				// else {
+				// 	ca->targAng += (2.0f*M_PI*timeDelta);
+				// }
+				
+				ca->applyAngularImpulse(btVector3(0,0,0.2));
 			}
+			
+			
+			
+			
+			
+			// btTransform tr;
+			// tr.setIdentity();
+			// btQuaternion quat;
+			// quat.setEuler(yaw,pitch,roll); //or quat.setEulerZYX depending on the ordering you want
+			// tr.setRotation(quat);
+
+			// rigidBody->setCenterOfMassTransform(tr);
+			
 			
 			
 			
@@ -28625,11 +28940,17 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 			if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
 				
 				
-				tempVec2.addXYZ(tempVec1[0],tempVec1[1],0.0f);
+				//tempVec2.addXYZ(tempVec1[0],tempVec1[1],0.0f);
+				
+				ca->applyImpulseRot(btVector3(0,1,0));
+				
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
-				tempVec2.addXYZ(-tempVec1[0],-tempVec1[1],0.0f);
+				//tempVec2.addXYZ(-tempVec1[0],-tempVec1[1],0.0f);
+				
+				ca->applyImpulseRot(btVector3(0,-1,0));
+				
 			}
 			
 			
@@ -28637,9 +28958,9 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 			
 			
 			
-			tempVec3.copyFrom(&tempVec2);
+			// tempVec3.copyFrom(&tempVec2);
 			
-			tempVec3.multXYZ(1.0f);
+			// tempVec3.multXYZ(1.0f);
 			
 			
 			
@@ -28913,13 +29234,13 @@ bool Singleton::anyMenuVisible ()
 		return doProc;
 		
 	}
-void Singleton::performCamShake (BaseObj * ge)
-                                          {
+void Singleton::performCamShake (BaseObj * ge, float fp)
+                                                    {
 		float lastCamShake = cameraShake;
 		
 		cameraShake = max(
 			cameraShake,
-			1.0f-clampfZO(ge->getCenterPoint()->distance(cameraGetPosNoShake())/(200.0f))
+			(1.0f-clampfZO(ge->getCenterPoint()->distance(cameraGetPosNoShake())/(200.0f)))*fp
 		);
 		
 		if (cameraShake > lastCamShake) {
@@ -28956,7 +29277,7 @@ void Singleton::explodeBullet (BaseObj * ge)
 				4.0
 			);
 			
-			performCamShake(ge);
+			performCamShake(ge,1.0f);
 		}
 		
 		sphereStack.push_back(SphereStruct());
@@ -29213,12 +29534,29 @@ void Singleton::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNod
 void Singleton::closeAllContainers ()
                                   {
 		BaseObj* curCont;
+		
+		bool oldOpen;
+		bool didClose = false;
+		
 		for (itBaseObj iterator = gw->gameObjects.begin(); iterator != gw->gameObjects.end(); iterator++) {
 			// iterator->first = key
 			// iterator->second = value
 			
+			
+			
 			curCont = &(gw->gameObjects[iterator->first]);
+			oldOpen = curCont->isOpen;
+			
 			curCont->isOpen = false;
+			
+			
+			if (oldOpen != curCont->isOpen) {
+				didClose = true;
+			}
+		}
+		
+		if (didClose) {
+			playSoundEnt("leather0", NULL, 0.1);
 		}
 	}
 bool Singleton::anyContainerOpen ()
@@ -30066,42 +30404,41 @@ void Singleton::frameUpdate ()
 		
 		//int currentTickMod = 0;
 		
-		if (firstRun)
-		{
+		if (firstRun) {
 			
 		}
-		else
-		{
-			curMoveTime = moveTimer.getElapsedTimeInMicroSec();
+		else {
+			//curMoveTime = moveTimer.getElapsedTimeInMicroSec();
 			
-			if (lastMoveTime == 0.0) {
-				timeDelta = 0.0f;
-			}
-			else {
+			// if (lastMoveTime == 0.0) {
+			// 	//timeDelta = 0.0f;
+			// }
+			// else {
 				
-				if (ignoreFrameLimit) {
-					timeDelta = 
-						timeDelta*0.999 + ((curMoveTime-lastMoveTime)/1000000.0)*0.001;//TIME_DELTA;
-						//1.0/45.0;
-				}
-				else {
-					timeDelta = 1.0/120.0;
-				}
+			// 	if (ignoreFrameLimit) {
+			// 		timeDelta = 
+			// 			timeDelta = bulletTimer.getTimeMicroseconds()/1000000.0;//*0.999 + ((curMoveTime-lastMoveTime)/1000000.0)*0.001;//TIME_DELTA;
+			// 			bulletTimer.reset();
+			// 			//1.0/45.0;
+			// 	}
+			// 	else {
+			// 		timeDelta = 1.0/120.0;
+			// 	}
 				
 				
 				
 				
-				// if (smoothMove) {
-				// 	timeDelta = 1.0f/90.0f;
-				// }
-				// else {
-				// 	timeDelta = 1.0f/90.0f;
-				// }
+			// 	// if (smoothMove) {
+			// 	// 	timeDelta = 1.0f/90.0f;
+			// 	// }
+			// 	// else {
+			// 	// 	timeDelta = 1.0f/90.0f;
+			// 	// }
 				
-				//60.0f;//(curMoveTime-lastMoveTime)/1000000.0;
-			}
+			// 	//60.0f;//(curMoveTime-lastMoveTime)/1000000.0;
+			// }
 			
-			lastMoveTime = curMoveTime;
+			//lastMoveTime = curMoveTime;
 			
 			
 			
@@ -30467,7 +30804,7 @@ void Singleton::display ()
 		}
 		
 
-		float elTime = curTime - lastTime;
+		//float elTime = curTime - lastTime;
 		
 		// #ifdef USE_POCO
 		// 	if (myWS == NULL)
@@ -30513,14 +30850,39 @@ void Singleton::display ()
 			frameMouseMove = true;
 		}
 		
+		if (firstRun) {
+			bulletTimer.reset();
+		}
+		
+		unsigned long int curTimePassed = bulletTimer.getTimeMicroseconds();
+		timeDelta = 1.0/60.0;
+		bulletTimer.reset();
+		
+		//totTimePassedGraphics += curTimePassed;
+		totTimePassedPhysics += curTimePassed;
+		
+		
+		if (currentTick > 4) {
+			if (gamePhysics != NULL) {
+				gamePhysics->updateAll();
+			}
+		}
+		
+		
+		
 
-		if (  
-			( 
-				((frameSkipCount%frameSkip) == 0) &&
-				(frameMouseMove||ignoreFrameLimit)
-			) || fpsTest
+		if (
+			//true  
+			// ( 
+			// 	((frameSkipCount%frameSkip) == 0) &&
+			// 	(frameMouseMove||ignoreFrameLimit)
+			// ) || fpsTest
+			//totTimePassedGraphics > 8000
+			
+			true
 		) {
-
+			//cout << "totTimePassedGraphics " << totTimePassedGraphics << "\n";
+			//totTimePassedGraphics -= 8000;
 			
 			frameMouseMove = false;
 
@@ -30539,7 +30901,7 @@ void Singleton::display ()
 			
 
 
-			lastTime = curTime;
+			//lastTime = curTime;
 			timeOfDay += (getTargetTimeOfDay() - timeOfDay) / 8.0;
 
 			if (
@@ -30585,9 +30947,7 @@ void Singleton::display ()
 				else
 				{
 					
-					if (gamePhysics != NULL) {
-						gamePhysics->updateAll();
-					}
+					
 					
 					
 					frameUpdate();
@@ -30616,6 +30976,7 @@ void Singleton::display ()
 			}
 			
 		}
+		
 
 		if (firstRun)
 		{
@@ -30623,6 +30984,8 @@ void Singleton::display ()
 		}
 
 		firstRun = false;
+		
+		
 
 		//doTrace( "POSSIBLE ERROR: " , i__s(glGetError()) , "\n" );
 
@@ -32162,8 +32525,8 @@ DynBuffer::DynBuffer ()
 		        wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
 		        if(wglSwapIntervalEXT && wglGetSwapIntervalEXT)
 		        {
-		            // disable v-sync
-		            wglSwapIntervalEXT(0);
+		            // enable v-sync
+		            wglSwapIntervalEXT(1);
 		            std::cout << "Video card supports WGL_EXT_swap_control." << std::endl;
 		        }
 		    }
@@ -49101,6 +49464,12 @@ void MyShapeDrawer::setId (int id)
                                    {
 			singleton->setShaderFloat("objectId", id);
 		}
+void MyShapeDrawer::updateMat2 ()
+                                  {
+			
+			glGetFloatv(GL_MODELVIEW_MATRIX, singleton->viewMatrix.get());
+			singleton->setShaderMatrix4x4("objmat",singleton->viewMatrix.get(),1);
+		}
 void MyShapeDrawer::updateMat ()
                                  {
 			int i;
@@ -49119,17 +49488,13 @@ void MyShapeDrawer::updateMat ()
 			
 			singleton->setShaderMatrix3x3("normalRot",singleton->curObjMatrix3.get(),1);
 			
+			
+			
 			//btTransform tr;
 			// tr.setFromOpenGLMatrix(singleton->curObjMatrix.get());
 			// btQuaternion orn = tr.getRotation();
 			// singleton->setShaderVec4("objQuat",orn.getX(),orn.getY(),orn.getZ(),orn.getW());
 			
-		}
-void MyShapeDrawer::updateMat2 ()
-                                  {
-			
-			glGetFloatv(GL_MODELVIEW_MATRIX, singleton->viewMatrix.get());
-			singleton->setShaderMatrix4x4("objmat",singleton->viewMatrix.get(),1);
 		}
 void MyShapeDrawer::pushNewMat (btScalar * m)
                                              {
@@ -49161,7 +49526,46 @@ void MyShapeDrawer::popMat ()
 			singleton->objMatrixStack.pop_back();
 			updateMat();
 		}
-void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, btVector3 const & color, int debugMode, btVector3 const & worldBoundsMin, btVector3 const & worldBoundsMax)
+void MyShapeDrawer::drawOrient (int uid)
+                                         {
+			
+			if (uid == singleton->getCurActorUID()) {
+				
+			}
+			else {
+				return;
+			}
+			
+			int oldUID = uid;
+			
+			setId(0);
+			
+			singleton->setShaderVec3("matVal", 255, 0, 0);
+			glBegin(GL_LINES);
+			glNormal3f(0, 0, 1);
+			glVertex3d(0, 0, 0);
+			glVertex3d(2, 0, 0);
+			glEnd();
+			
+			singleton->setShaderVec3("matVal", 0, 255, 0);
+			glBegin(GL_LINES);
+			glNormal3f(0, 0, 1);
+			glVertex3d(0, 0, 0);
+			glVertex3d(0, 2, 0);
+			glEnd();
+			
+			singleton->setShaderVec3("matVal",0, 0, 255);
+			glBegin(GL_LINES);
+			glNormal3f(0, 0, 1);
+			glVertex3d(0, 0, 0);
+			glVertex3d(0, 0, 2);
+			glEnd();
+			
+			setId(oldUID);
+			singleton->setShaderVec3("matVal", 1, 1, 1);
+			
+		}
+void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, btVector3 const & color, int debugMode, btVector3 const & worldBoundsMin, btVector3 const & worldBoundsMax, int uid)
                   {
 			
 			if (shape->getShapeType() == CUSTOM_CONVEX_SHAPE_TYPE)
@@ -49177,7 +49581,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 		//		dz *= halfExtent[2];
 				//glColor3f(1,1,1);
 				//glDisable(GL_LIGHTING);
-				glLineWidth(2);
+				//glLineWidth(2);
 
 				// glBegin(GL_LINE_LOOP);
 				// glDrawVector(org - dx - dy);
@@ -49226,6 +49630,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 			//btglMultMatrix(m);
 			//updateMat2();
 			pushNewMat(m);
+			singleton->gw->gameObjects[uid].rotMat = singleton->curObjMatrix3;
 
 
 			if (shape->getShapeType() == UNIFORM_SCALING_SHAPE_PROXYTYPE)
@@ -49239,7 +49644,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 					{0,0,scalingFactor,0},
 					{0,0,0,1}};
 
-					drawOpenGL( (btScalar*)tmpScaling,convexShape,color,debugMode,worldBoundsMin,worldBoundsMax);
+					drawOpenGL( (btScalar*)tmpScaling,convexShape,color,debugMode,worldBoundsMin,worldBoundsMax, uid);
 				}
 				//cout << "b\n";
 				//glPopMatrix();
@@ -49257,7 +49662,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 					const btCollisionShape* colShape = compoundShape->getChildShape(i);
 					ATTRIBUTE_ALIGNED16(btScalar) childMat[16];
 					childTrans.getOpenGLMatrix(childMat);
-					drawOpenGL(childMat,colShape,color,debugMode,worldBoundsMin,worldBoundsMax);
+					drawOpenGL(childMat,colShape,color,debugMode,worldBoundsMin,worldBoundsMax, uid);
 				}
 
 			} else
@@ -49381,6 +49786,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 								btVector3(-halfExtent[0],-halfExtent[1],-halfExtent[2])};
 		#if 1
 							
+							drawOrient(uid);
 							glBegin (GL_TRIANGLES);
 							int si=36;
 							for (int i=0;i<si;i+=3)
@@ -49478,7 +49884,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 							childTransform.setOrigin(multiSphereShape->getSpherePosition(i));
 							ATTRIBUTE_ALIGNED16(btScalar) childMat[16];
 							childTransform.getOpenGLMatrix(childMat);
-							drawOpenGL(childMat,&sc,color,debugMode,worldBoundsMin,worldBoundsMax);
+							drawOpenGL(childMat,&sc,color,debugMode,worldBoundsMin,worldBoundsMax, uid);
 						}
 
 						break;
@@ -49492,7 +49898,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 								if (poly)
 								{
 									int i;
-									
+									drawOrient(uid);
 									glBegin (GL_TRIANGLES);
 									for (i=0;i<poly->m_faces.size();i++)
 									{
@@ -49528,7 +49934,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 										const unsigned int* idx = hull->getIndexPointer();
 										const btVector3* vtx = hull->getVertexPointer();
 
-										
+										drawOrient(uid);
 										glBegin (GL_TRIANGLES);
 
 										for (int i = 0; i < hull->numTriangles (); i++)
@@ -49732,7 +50138,7 @@ void MyShapeDrawer::drawSceneInternal (btDiscreteDynamicsWorld const * dynamicsW
 					
 				// }
 				
-				drawOpenGL(m,colObj->getCollisionShape(),wireColor,debugMode,aabbMin,aabbMax);
+				drawOpenGL(m,colObj->getCollisionShape(),wireColor,debugMode,aabbMin,aabbMax, body->bodyUID);
 				//drawOpenGL(m,colObj->getCollisionShape(),wireColor*btScalar(0.3),0,aabbMin,aabbMax);
 			}
 
@@ -50223,7 +50629,7 @@ struct CommonGraphicsApp * MyGLHelper::getAppInterface ()
 #define LZZ_INLINE inline
 GamePhysics::GamePhysics ()
                       {
-		
+		stepTimeInMicroSec = 8000; // ~120 times per second
 	}
 void GamePhysics::init (Singleton * _singleton)
         {
@@ -50275,9 +50681,28 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 		btTransform trans;
 		trans.setIdentity();
 		trans.setOrigin(ge->getCenterPoint(false)->getBTV());
-		btCapsuleShape* capsuleShape = new btCapsuleShapeZ(1.0f,1.0f);
-		ge->body = example->createRigidBody(ge->mass,trans,capsuleShape);
+		
+		
+		
+		
+		if (
+			(ge->entType == E_ENTTYPE_NPC) ||
+			(ge->entType == E_ENTTYPE_MONSTER)	
+		) {
+			btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(1.0f,1.0f);
+			ge->body = example->createRigidBody(ge->mass,trans,capsuleShape);
+			ge->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
+		}
+		else {
+			btBoxShape* boxShape = new btBoxShape(btVector3(0.5f,0.5f,0.5f));
+			ge->body = example->createRigidBody(ge->mass,trans,boxShape);
+		}
+		
+		ge->body->setDamping(0.1f,0.99f);
+		
 		ge->body->bodyUID = _uid;
+		
+		ge->body->setContactProcessingThreshold(0.25f);
 		
 		// q3BodyDef bodyDef;
 		// bodyDef.position.Set(
@@ -50330,8 +50755,13 @@ void GamePhysics::collideWithWorld ()
 		FIVector4* curCenterPoint;
 		btDiscreteDynamicsWorld* world = example->getWorld();
 		
+		btVector3 nv0;
+		btVector3 nv1;
 		
 		bool hasContact = false;
+		// bool isClose = false;
+		// bool isFar = false;
+		
 		const btCollisionObject* bodies[2];
 		
 		int numManifolds = world->getDispatcher()->getNumManifolds();
@@ -50346,12 +50776,14 @@ void GamePhysics::collideWithWorld ()
 			bodies[0] = obA;
 			bodies[1] = obB;
 
+			// isClose = false;
+			// isFar = false;
 			hasContact = false;
 			
 			int numContacts = contactManifold->getNumContacts();
 			for (j=0;j<numContacts;j++) {
 				btManifoldPoint& pt = contactManifold->getContactPoint(j);
-				if (pt.getDistance() < 1.0f) {
+				if (pt.getDistance() < 0.1f) {
 					
 					hasContact = true;
 					
@@ -50359,19 +50791,19 @@ void GamePhysics::collideWithWorld ()
 					// const btVector3& ptB = pt.getPositionWorldOnB();
 					// const btVector3& normalOnB = pt.m_normalWorldOnB;
 				}
+				
+				// if (pt.getDistance() > 0.2f) {
+				// 	isFar = true;
+				// }
 			}
 			
 			
-			// if (hasContact) {
-				
-				
-				
-			// }
 			
 			
 			for (k = 0; k < 2; k++) {
 				if (bodies[k]->bodyUID > -1) {
 					ge = &(singleton->gw->gameObjects[bodies[k]->bodyUID]);
+					
 					
 					
 					if (
@@ -50383,19 +50815,38 @@ void GamePhysics::collideWithWorld ()
 					else {
 						lastFalling = ge->isFalling;
 						
-						ge->isFalling = 
-							(!hasContact)
-							//&& (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f)
-							;
+						// if (isFar) {
+						// 	ge->isFalling = true;
+						// }
 						
-						if (ge->isFalling) {
+						// if (isClose) {
+						// 	ge->isFalling = false;
+						// }
+						
+						// if (hasContact) {
 							
+						// }
+						// else {
+							
+						// }
+						
+						ge->isFalling = (!hasContact);// && (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f);
+						
+						if (!(ge->isFalling)) {
+							ge->isJumping = false;
 						}
-						else {
-							if (lastFalling != ge->isFalling) {
-								singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
-							}
-						}
+						
+						// 	//&& (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f)
+
+						
+						// if (ge->isFalling) {
+							
+						// }
+						// else {
+						// 	if (lastFalling != ge->isFalling) {
+						// 		singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
+						// 	}
+						// }
 					}
 					
 					
@@ -50433,20 +50884,54 @@ void GamePhysics::collideWithWorld ()
 				// 	}
 				// }
 				
+				
+				nv0 = ge->body->getLinearVelocity();
+				nv0.normalize();
+				nv1 = ge->lastVel;
+				nv1.normalize();
+				
+				
+				
+				
+				if (
+					(
+						ge->lastVel.length() > 0.5f
+					) &&
+					(
+						(nv0.dot(nv1)) < 0.8f
+					)
+				) {
+					
+					
+					
+					singleton->gw->fireEvent(
+						ge->uid,
+						EV_COLLISION,
+						clampfZO( (ge->lastVel.length()-0.5f)/16.0f )
+					);
+				}
+				
+				
+				ge->lastVel = ge->body->getLinearVelocity();
+				
 				if (
 					(singleton->selObjInd == ge->uid) &&
 					singleton->markerFound &&
-					singleton->isDraggingObject
+					singleton->isDraggingObject &&
+					(singleton->draggingFromType == E_DT_WORLD_OBJECT)
 				) {
 					
 					
 					ge->applyImpulse( btVector3(
 						( singleton->worldMarker.getFX() - ge->body->getCenterOfMassPosition().getX() )*0.25f,
 						( singleton->worldMarker.getFY() - ge->body->getCenterOfMassPosition().getY() )*0.25f,
-						-(ge->body->getCenterOfMassPosition().getZ() - (4.0f + singleton->worldMarker.getFZ()))*2.0f
+						-(ge->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*1.0f
 					) );
 					
 				}
+				
+				ge->getCenterPoint(true);
+				
 			}
 			
 		}
@@ -50454,13 +50939,12 @@ void GamePhysics::collideWithWorld ()
 	}
 void GamePhysics::updateAll ()
                          {
-		// f32 time = g_clock.Start( );
-		// updateBase(time);
-		// g_clock.Stop( );
 		
-		collideWithWorld();
-		
-		example->stepSimulation(1.f/60.f);
+		while (singleton->totTimePassedPhysics > stepTimeInMicroSec) {
+			collideWithWorld();
+			example->stepSimulation(stepTimeInMicroSec/500000.0f);
+			singleton->totTimePassedPhysics -= stepTimeInMicroSec;
+		}
 	}
 GamePhysics::~ GamePhysics ()
                        {
@@ -50937,13 +51421,13 @@ void GameWorld::getArrAtCoords (int xv, int yv, int zv, int * tempCellData, int 
 		curHolder->getArrAtInd(ind,tempCellData,tempCellData2);
 		
 	}
-void GameWorld::fireEvent (BaseObjType uid, int opCode)
-                                                    {
+void GameWorld::fireEvent (BaseObjType uid, int opCode, float fParam)
+                                                                  {
 		BaseObj* ge = &(gameObjects[uid]);
 		switch (opCode) {
-			case EV_HIT_GROUND:
-				singleton->playSoundEnt("land0",ge);
-				singleton->performCamShake(ge);
+			case EV_COLLISION:
+				singleton->playSoundEnt("land0",ge, 0.1, fParam);
+				singleton->performCamShake(ge, fParam);
 			break;
 		}
 	}
@@ -52559,7 +53043,7 @@ void GameWorld::renderGeom ()
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
 		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
 		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
-		singleton->setShaderVec3("matVal", 50, 128, 10);
+		singleton->setShaderVec3("matVal", 1, 1, 1);
 					
 		// glBegin( GL_TRIANGLES );
 		// //m_data->m_gl2ShapeDrawer->drawScene(rbWorld,true);
@@ -52573,6 +53057,8 @@ void GameWorld::renderGeom ()
 		// 	false
 		// );
 		
+		
+		glLineWidth(4.0f);
 		if (singleton->gamePhysics != NULL) {
 			singleton->gamePhysics->example->renderScene();
 		}
@@ -55248,6 +55734,7 @@ int main(int argc, char* argv[])
     else {
         doTrace("GLEW_OK");
     }
+
 
     
     ////////////

@@ -79,7 +79,7 @@ void main() {
     
     
     
-    float myDepth = camDis/clipDist - 0.01;
+    float myDepth = camDis/clipDist;// - 0.01;
     
     gl_FragDepthEXT = myDepth;
     

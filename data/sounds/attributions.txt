@@ -1,0 +1,10 @@
+OpenGameArt.org attributions
+
+// artisticdude (Ogrebane)
+cloth0.wav
+leather0.wav
+metalclash0.wav
+ring0.wav
+purchase0.wav
+turnpage0.wav
+

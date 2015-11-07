@@ -53,7 +53,8 @@ public:
 	
 	
 	
-	
+	//unsigned long int totTimePassedGraphics;
+	unsigned long int totTimePassedPhysics;
 	
 	
 	
@@ -349,14 +350,14 @@ public:
 	
 	float MAX_TRAVEL_DIS;
 	
-	double curMoveTime;
-	double lastMoveTime;
+	//double curMoveTime;
+	//double lastMoveTime;
 	double timeDelta;
 	double curTime;
 	float smoothTime;
 	double pauseTime;
 	double clickTime;
-	double lastTime;
+	//double lastTime;
 	double mdTime;
 	double muTime;
 	
@@ -544,6 +545,7 @@ public:
 	// 	WebSocketServer *myWS;
 	// #endif
 	
+	HPClock bulletTimer;
 	Timer fpsTimer;
 	Timer shakeTimer;
 	Timer myTimer;
@@ -720,6 +722,9 @@ public:
 		lightVec.setFXYZ(0.3f,0.4f,-1.0f);
 		lightVec.normalize();
 		lightVecOrig.copyFrom(&lightVec);
+		
+		//totTimePassedGraphics = 0;
+		totTimePassedPhysics = 0;
 		
 		isPressingMove = false;
 		fxaaOn = false;
@@ -998,8 +1003,8 @@ public:
 		draggingFromInd = 0;
 		draggingToInd = 0;
 		gameObjCounter = E_OBJ_LENGTH;
-		curMoveTime = 0.0;
-		lastMoveTime = 0.0;
+		//curMoveTime = 0.0;
+		//lastMoveTime = 0.0;
 		timeDelta = 0.0;
 
 		
@@ -1263,7 +1268,7 @@ public:
 		activeObject = E_OBJ_CAMERA;
 
 		extraRad = 0;
-		lastTime = 0.0;
+		//lastTime = 0.0;
 
 
 
@@ -1716,7 +1721,9 @@ public:
 		
 		
 		
+		// LEAVE THIS IN FOR VSYNC
 		myDynBuffer = new DynBuffer();
+
 
 		fontWrappers[EFW_ICONS] = new FontWrapper();
 		fontWrappers[EFW_ICONS]->init(this, "icons", true, 1.0f, 0.0f);
@@ -3297,6 +3304,7 @@ PERFORM_DRAG_END:
 				
 				cout << "ival " << i << "\n";
 				
+				playSoundEnt("leather0", NULL, 0.1);
 				gw->gameObjects[i].isOpen = false;
 				refreshContainers(false);
 				
@@ -5313,6 +5321,7 @@ DISPATCH_EVENT_END:
 		
 		BaseObj* ge = &(gw->gameObjects[actorId]);
 		
+		float JUMP_AMOUNT = 80.0f;
 		
 		
 		if (isUp == 1) {
@@ -5332,9 +5341,8 @@ DISPATCH_EVENT_END:
 					
 					// at water surface
 					
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
 					
-					
-					ge->setVel(0.0f,0.0f,10.0f);
 					
 					
 				}
@@ -5343,7 +5351,7 @@ DISPATCH_EVENT_END:
 					// underwater
 					
 					
-					ge->setVel(0.0f,0.0f,10.0f);
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
 					
 					playSoundEnt(
 						"bubble0",
@@ -5365,7 +5373,7 @@ DISPATCH_EVENT_END:
 					ge->isFalling = true;
 					ge->isJumping = true;
 					
-					ge->setVel(0.0f,0.0f,10.0f);
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
 					
 					playSoundEnt(
 						"jump0",
@@ -5378,7 +5386,7 @@ DISPATCH_EVENT_END:
 		}
 		else {
 			if (ge->inWater) {
-				ge->setVel(0.0f,0.0f,-10.0f);
+				ge->applyImpulse(btVector3(0.0f,0.0f,-JUMP_AMOUNT));
 				
 				playSoundEnt(
 					"bubble0",
@@ -7136,7 +7144,7 @@ DISPATCH_EVENT_END:
 		if (
 			isContainer[gw->gameObjects[contIndex].objectType]
 		) {
-			
+			playSoundEnt("leather0", NULL, 0.1);
 			gw->gameObjects[contIndex].isOpen = !(gw->gameObjects[contIndex].isOpen);
 			refreshContainers(onMousePos);
 		}
@@ -7220,23 +7228,41 @@ DISPATCH_EVENT_END:
 			);
 			
 			
+			
 			if (keyMapResultUnzipped[KEYMAP_RIGHT]) {
-				if (firstPerson) {
-					tempVec2.addXYZ(tempVec1[1],-tempVec1[0],0.0f);
-				}
-				else {
-					ca->targAng += (-2.0f*M_PI*timeDelta);
-				}
+				// if (firstPerson) {
+				// 	tempVec2.addXYZ(tempVec1[1],-tempVec1[0],0.0f);
+				// }
+				// else {
+				// 	ca->targAng += (-2.0f*M_PI*timeDelta);
+				// }
+				
+				ca->applyAngularImpulse(btVector3(0,0,-0.2));
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_LEFT]) {
-				if (firstPerson) {
-					tempVec2.addXYZ(-tempVec1[1],tempVec1[0],0.0f);
-				}
-				else {
-					ca->targAng += (2.0f*M_PI*timeDelta);
-				}
+				// if (firstPerson) {
+				// 	tempVec2.addXYZ(-tempVec1[1],tempVec1[0],0.0f);
+				// }
+				// else {
+				// 	ca->targAng += (2.0f*M_PI*timeDelta);
+				// }
+				
+				ca->applyAngularImpulse(btVector3(0,0,0.2));
 			}
+			
+			
+			
+			
+			
+			// btTransform tr;
+			// tr.setIdentity();
+			// btQuaternion quat;
+			// quat.setEuler(yaw,pitch,roll); //or quat.setEulerZYX depending on the ordering you want
+			// tr.setRotation(quat);
+
+			// rigidBody->setCenterOfMassTransform(tr);
+			
 			
 			
 			
@@ -7259,11 +7285,17 @@ DISPATCH_EVENT_END:
 			if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
 				
 				
-				tempVec2.addXYZ(tempVec1[0],tempVec1[1],0.0f);
+				//tempVec2.addXYZ(tempVec1[0],tempVec1[1],0.0f);
+				
+				ca->applyImpulseRot(btVector3(0,1,0));
+				
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
-				tempVec2.addXYZ(-tempVec1[0],-tempVec1[1],0.0f);
+				//tempVec2.addXYZ(-tempVec1[0],-tempVec1[1],0.0f);
+				
+				ca->applyImpulseRot(btVector3(0,-1,0));
+				
 			}
 			
 			
@@ -7271,9 +7303,9 @@ DISPATCH_EVENT_END:
 			
 			
 			
-			tempVec3.copyFrom(&tempVec2);
+			// tempVec3.copyFrom(&tempVec2);
 			
-			tempVec3.multXYZ(1.0f);
+			// tempVec3.multXYZ(1.0f);
 			
 			
 			
@@ -7554,12 +7586,12 @@ DISPATCH_EVENT_END:
 		
 	}
 	
-	void performCamShake(BaseObj* ge) {
+	void performCamShake(BaseObj* ge, float fp) {
 		float lastCamShake = cameraShake;
 		
 		cameraShake = max(
 			cameraShake,
-			1.0f-clampfZO(ge->getCenterPoint()->distance(cameraGetPosNoShake())/(200.0f))
+			(1.0f-clampfZO(ge->getCenterPoint()->distance(cameraGetPosNoShake())/(200.0f)))*fp
 		);
 		
 		if (cameraShake > lastCamShake) {
@@ -7596,7 +7628,7 @@ DISPATCH_EVENT_END:
 				4.0
 			);
 			
-			performCamShake(ge);
+			performCamShake(ge,1.0f);
 		}
 		
 		sphereStack.push_back(SphereStruct());
@@ -7910,12 +7942,29 @@ DISPATCH_EVENT_END:
 	
 	void closeAllContainers() {
 		BaseObj* curCont;
+		
+		bool oldOpen;
+		bool didClose = false;
+		
 		for (itBaseObj iterator = gw->gameObjects.begin(); iterator != gw->gameObjects.end(); iterator++) {
 			// iterator->first = key
 			// iterator->second = value
 			
+			
+			
 			curCont = &(gw->gameObjects[iterator->first]);
+			oldOpen = curCont->isOpen;
+			
 			curCont->isOpen = false;
+			
+			
+			if (oldOpen != curCont->isOpen) {
+				didClose = true;
+			}
+		}
+		
+		if (didClose) {
+			playSoundEnt("leather0", NULL, 0.1);
 		}
 	}
 	
@@ -8831,42 +8880,41 @@ DISPATCH_EVENT_END:
 		
 		//int currentTickMod = 0;
 		
-		if (firstRun)
-		{
+		if (firstRun) {
 			
 		}
-		else
-		{
-			curMoveTime = moveTimer.getElapsedTimeInMicroSec();
+		else {
+			//curMoveTime = moveTimer.getElapsedTimeInMicroSec();
 			
-			if (lastMoveTime == 0.0) {
-				timeDelta = 0.0f;
-			}
-			else {
+			// if (lastMoveTime == 0.0) {
+			// 	//timeDelta = 0.0f;
+			// }
+			// else {
 				
-				if (ignoreFrameLimit) {
-					timeDelta = 
-						timeDelta*0.999 + ((curMoveTime-lastMoveTime)/1000000.0)*0.001;//TIME_DELTA;
-						//1.0/45.0;
-				}
-				else {
-					timeDelta = 1.0/120.0;
-				}
+			// 	if (ignoreFrameLimit) {
+			// 		timeDelta = 
+			// 			timeDelta = bulletTimer.getTimeMicroseconds()/1000000.0;//*0.999 + ((curMoveTime-lastMoveTime)/1000000.0)*0.001;//TIME_DELTA;
+			// 			bulletTimer.reset();
+			// 			//1.0/45.0;
+			// 	}
+			// 	else {
+			// 		timeDelta = 1.0/120.0;
+			// 	}
 				
 				
 				
 				
-				// if (smoothMove) {
-				// 	timeDelta = 1.0f/90.0f;
-				// }
-				// else {
-				// 	timeDelta = 1.0f/90.0f;
-				// }
+			// 	// if (smoothMove) {
+			// 	// 	timeDelta = 1.0f/90.0f;
+			// 	// }
+			// 	// else {
+			// 	// 	timeDelta = 1.0f/90.0f;
+			// 	// }
 				
-				//60.0f;//(curMoveTime-lastMoveTime)/1000000.0;
-			}
+			// 	//60.0f;//(curMoveTime-lastMoveTime)/1000000.0;
+			// }
 			
-			lastMoveTime = curMoveTime;
+			//lastMoveTime = curMoveTime;
 			
 			
 			
@@ -9001,7 +9049,7 @@ DISPATCH_EVENT_END:
 					if (currentTick > 2) {
 						
 						
-						updateCamVals();
+						
 						
 						
 						
@@ -9235,7 +9283,7 @@ DISPATCH_EVENT_END:
 		}
 		
 
-		float elTime = curTime - lastTime;
+		//float elTime = curTime - lastTime;
 		
 		// #ifdef USE_POCO
 		// 	if (myWS == NULL)
@@ -9281,14 +9329,39 @@ DISPATCH_EVENT_END:
 			frameMouseMove = true;
 		}
 		
+		if (firstRun) {
+			bulletTimer.reset();
+		}
+		
+		unsigned long int curTimePassed = bulletTimer.getTimeMicroseconds();
+		timeDelta = 1.0/60.0;
+		bulletTimer.reset();
+		
+		//totTimePassedGraphics += curTimePassed;
+		totTimePassedPhysics += curTimePassed;
+		
+		
+		if (currentTick > 4) {
+			if (gamePhysics != NULL) {
+				gamePhysics->updateAll();
+			}
+		}
+		
+		
+		
 
-		if (  
-			( 
-				((frameSkipCount%frameSkip) == 0) &&
-				(frameMouseMove||ignoreFrameLimit)
-			) || fpsTest
+		if (
+			//true  
+			// ( 
+			// 	((frameSkipCount%frameSkip) == 0) &&
+			// 	(frameMouseMove||ignoreFrameLimit)
+			// ) || fpsTest
+			//totTimePassedGraphics > 8000
+			
+			true
 		) {
-
+			//cout << "totTimePassedGraphics " << totTimePassedGraphics << "\n";
+			//totTimePassedGraphics -= 8000;
 			
 			frameMouseMove = false;
 
@@ -9307,7 +9380,7 @@ DISPATCH_EVENT_END:
 			
 
 
-			lastTime = curTime;
+			//lastTime = curTime;
 			timeOfDay += (getTargetTimeOfDay() - timeOfDay) / 8.0;
 
 			if (
@@ -9353,9 +9426,7 @@ DISPATCH_EVENT_END:
 				else
 				{
 					
-					if (gamePhysics != NULL) {
-						gamePhysics->updateAll();
-					}
+					
 					
 					
 					frameUpdate();
@@ -9384,6 +9455,7 @@ DISPATCH_EVENT_END:
 			}
 			
 		}
+		
 
 		if (firstRun)
 		{
@@ -9391,6 +9463,8 @@ DISPATCH_EVENT_END:
 		}
 
 		firstRun = false;
+		
+		
 
 		//doTrace( "POSSIBLE ERROR: " , i__s(glGetError()) , "\n" );
 

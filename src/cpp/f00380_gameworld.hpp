@@ -732,12 +732,12 @@ public:
 	}
 	
 	
-	void fireEvent(BaseObjType uid, int opCode) {
+	void fireEvent(BaseObjType uid, int opCode, float fParam) {
 		BaseObj* ge = &(gameObjects[uid]);
 		switch (opCode) {
-			case EV_HIT_GROUND:
-				singleton->playSoundEnt("land0",ge);
-				singleton->performCamShake(ge);
+			case EV_COLLISION:
+				singleton->playSoundEnt("land0",ge, 0.1, fParam);
+				singleton->performCamShake(ge, fParam);
 			break;
 		}
 	}
@@ -2407,7 +2407,7 @@ public:
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
 		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
 		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
-		singleton->setShaderVec3("matVal", 50, 128, 10);
+		singleton->setShaderVec3("matVal", 1, 1, 1);
 					
 		// glBegin( GL_TRIANGLES );
 		// //m_data->m_gl2ShapeDrawer->drawScene(rbWorld,true);
@@ -2421,6 +2421,8 @@ public:
 		// 	false
 		// );
 		
+		
+		glLineWidth(4.0f);
 		if (singleton->gamePhysics != NULL) {
 			singleton->gamePhysics->example->renderScene();
 		}

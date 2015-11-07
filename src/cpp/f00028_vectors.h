@@ -1787,7 +1787,11 @@ public:
 	BaseObjType parentUID;
 	vector<BaseObjType> children;
 	
+	btVector3 lastVel;
+	
 	btRigidBody* body;
+	
+	Matrix3 rotMat;
 	
 	int isGrabbingId;
 	int isGrabbedById;
@@ -1838,9 +1842,25 @@ public:
 		}
 	}
 	
-	void applyImpulse( btVector3 imp) {
+	void applyAngularImpulse(btVector3 newAV) {
+		body->setAngularVelocity(body->getAngularVelocity() + newAV);
 		body->setActivationState(ACTIVE_TAG);
+	}
+	
+	void applyImpulse( btVector3 imp) {
 		body->applyCentralImpulse(imp);
+		body->setActivationState(ACTIVE_TAG);
+	}
+	
+	void applyImpulseRot( btVector3 imp) {
+		btVector3 tempBTV;
+		
+		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
+		Vector3 res = rotMat*myRHS;
+		
+		
+		body->applyCentralImpulse(btVector3(res.x,res.y,res.z));
+		body->setActivationState(ACTIVE_TAG);
 	}
 	
 	
@@ -1901,24 +1921,24 @@ public:
 		}
 	}
 	
-	void updateTargets() { //FIVector4* fv
+	// void updateTargets() { //FIVector4* fv
 		
-		ang += (targAng-ang)/4.0f;
-		angRelative += (targAngRelative-angRelative)/4.0f;
+	// 	ang += (targAng-ang)/4.0f;
+	// 	angRelative += (targAngRelative-angRelative)/4.0f;
 		
-		// if (body == NULL) {
+	// 	// if (body == NULL) {
 			
-		// }
-		// else {
+	// 	// }
+	// 	// else {
 			
-		// 	if (isUpright) {
-		// 		body->SetAngle(ang);
-		// 	}
+	// 	// 	if (isUpright) {
+	// 	// 		body->SetAngle(ang);
+	// 	// 	}
 			
 			
-		// }
+	// 	// }
 		
-	}
+	// }
 	
 	
 	
@@ -1957,9 +1977,9 @@ public:
 		isGrabbingId = -1;
 		inWater = false;
 		
-		isUpright = false;
-		//	(entType == E_ENTTYPE_NPC) ||
-		//	(entType == E_ENTTYPE_MONSTER);
+		isUpright = 
+			(entType == E_ENTTYPE_NPC) ||
+			(entType == E_ENTTYPE_MONSTER);
 		
 		isOpen = false;
 		isEquipped = false;

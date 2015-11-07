@@ -129,6 +129,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		lightVec.normalize();
 		lightVecOrig.copyFrom(&lightVec);
 		
+		//totTimePassedGraphics = 0;
+		totTimePassedPhysics = 0;
+		
 		isPressingMove = false;
 		fxaaOn = false;
 		doPathReport = false;
@@ -406,8 +409,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		draggingFromInd = 0;
 		draggingToInd = 0;
 		gameObjCounter = E_OBJ_LENGTH;
-		curMoveTime = 0.0;
-		lastMoveTime = 0.0;
+		//curMoveTime = 0.0;
+		//lastMoveTime = 0.0;
 		timeDelta = 0.0;
 
 		
@@ -671,7 +674,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		activeObject = E_OBJ_CAMERA;
 
 		extraRad = 0;
-		lastTime = 0.0;
+		//lastTime = 0.0;
 
 
 
@@ -1124,7 +1127,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		
+		// LEAVE THIS IN FOR VSYNC
 		myDynBuffer = new DynBuffer();
+
 
 		fontWrappers[EFW_ICONS] = new FontWrapper();
 		fontWrappers[EFW_ICONS]->init(this, "icons", true, 1.0f, 0.0f);
@@ -2635,6 +2640,7 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 				
 				cout << "ival " << i << "\n";
 				
+				playSoundEnt("leather0", NULL, 0.1);
 				gw->gameObjects[i].isOpen = false;
 				refreshContainers(false);
 				
@@ -4425,6 +4431,7 @@ void Singleton::makeJump (int actorId, int isUp)
 		
 		BaseObj* ge = &(gw->gameObjects[actorId]);
 		
+		float JUMP_AMOUNT = 80.0f;
 		
 		
 		if (isUp == 1) {
@@ -4444,9 +4451,8 @@ void Singleton::makeJump (int actorId, int isUp)
 					
 					// at water surface
 					
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
 					
-					
-					ge->setVel(0.0f,0.0f,10.0f);
 					
 					
 				}
@@ -4455,7 +4461,7 @@ void Singleton::makeJump (int actorId, int isUp)
 					// underwater
 					
 					
-					ge->setVel(0.0f,0.0f,10.0f);
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
 					
 					playSoundEnt(
 						"bubble0",
@@ -4477,7 +4483,7 @@ void Singleton::makeJump (int actorId, int isUp)
 					ge->isFalling = true;
 					ge->isJumping = true;
 					
-					ge->setVel(0.0f,0.0f,10.0f);
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
 					
 					playSoundEnt(
 						"jump0",
@@ -4490,7 +4496,7 @@ void Singleton::makeJump (int actorId, int isUp)
 		}
 		else {
 			if (ge->inWater) {
-				ge->setVel(0.0f,0.0f,-10.0f);
+				ge->applyImpulse(btVector3(0.0f,0.0f,-JUMP_AMOUNT));
 				
 				playSoundEnt(
 					"bubble0",
@@ -6162,7 +6168,7 @@ void Singleton::toggleCont (int contIndex, bool onMousePos)
 		if (
 			isContainer[gw->gameObjects[contIndex].objectType]
 		) {
-			
+			playSoundEnt("leather0", NULL, 0.1);
 			gw->gameObjects[contIndex].isOpen = !(gw->gameObjects[contIndex].isOpen);
 			refreshContainers(onMousePos);
 		}
@@ -6242,23 +6248,41 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 			);
 			
 			
+			
 			if (keyMapResultUnzipped[KEYMAP_RIGHT]) {
-				if (firstPerson) {
-					tempVec2.addXYZ(tempVec1[1],-tempVec1[0],0.0f);
-				}
-				else {
-					ca->targAng += (-2.0f*M_PI*timeDelta);
-				}
+				// if (firstPerson) {
+				// 	tempVec2.addXYZ(tempVec1[1],-tempVec1[0],0.0f);
+				// }
+				// else {
+				// 	ca->targAng += (-2.0f*M_PI*timeDelta);
+				// }
+				
+				ca->applyAngularImpulse(btVector3(0,0,-0.2));
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_LEFT]) {
-				if (firstPerson) {
-					tempVec2.addXYZ(-tempVec1[1],tempVec1[0],0.0f);
-				}
-				else {
-					ca->targAng += (2.0f*M_PI*timeDelta);
-				}
+				// if (firstPerson) {
+				// 	tempVec2.addXYZ(-tempVec1[1],tempVec1[0],0.0f);
+				// }
+				// else {
+				// 	ca->targAng += (2.0f*M_PI*timeDelta);
+				// }
+				
+				ca->applyAngularImpulse(btVector3(0,0,0.2));
 			}
+			
+			
+			
+			
+			
+			// btTransform tr;
+			// tr.setIdentity();
+			// btQuaternion quat;
+			// quat.setEuler(yaw,pitch,roll); //or quat.setEulerZYX depending on the ordering you want
+			// tr.setRotation(quat);
+
+			// rigidBody->setCenterOfMassTransform(tr);
+			
 			
 			
 			
@@ -6281,11 +6305,17 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 			if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
 				
 				
-				tempVec2.addXYZ(tempVec1[0],tempVec1[1],0.0f);
+				//tempVec2.addXYZ(tempVec1[0],tempVec1[1],0.0f);
+				
+				ca->applyImpulseRot(btVector3(0,1,0));
+				
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
-				tempVec2.addXYZ(-tempVec1[0],-tempVec1[1],0.0f);
+				//tempVec2.addXYZ(-tempVec1[0],-tempVec1[1],0.0f);
+				
+				ca->applyImpulseRot(btVector3(0,-1,0));
+				
 			}
 			
 			
@@ -6293,9 +6323,9 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 			
 			
 			
-			tempVec3.copyFrom(&tempVec2);
+			// tempVec3.copyFrom(&tempVec2);
 			
-			tempVec3.multXYZ(1.0f);
+			// tempVec3.multXYZ(1.0f);
 			
 			
 			
@@ -6569,13 +6599,13 @@ bool Singleton::anyMenuVisible ()
 		return doProc;
 		
 	}
-void Singleton::performCamShake (BaseObj * ge)
-                                          {
+void Singleton::performCamShake (BaseObj * ge, float fp)
+                                                    {
 		float lastCamShake = cameraShake;
 		
 		cameraShake = max(
 			cameraShake,
-			1.0f-clampfZO(ge->getCenterPoint()->distance(cameraGetPosNoShake())/(200.0f))
+			(1.0f-clampfZO(ge->getCenterPoint()->distance(cameraGetPosNoShake())/(200.0f)))*fp
 		);
 		
 		if (cameraShake > lastCamShake) {
@@ -6612,7 +6642,7 @@ void Singleton::explodeBullet (BaseObj * ge)
 				4.0
 			);
 			
-			performCamShake(ge);
+			performCamShake(ge,1.0f);
 		}
 		
 		sphereStack.push_back(SphereStruct());
@@ -6869,12 +6899,29 @@ void Singleton::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNod
 void Singleton::closeAllContainers ()
                                   {
 		BaseObj* curCont;
+		
+		bool oldOpen;
+		bool didClose = false;
+		
 		for (itBaseObj iterator = gw->gameObjects.begin(); iterator != gw->gameObjects.end(); iterator++) {
 			// iterator->first = key
 			// iterator->second = value
 			
+			
+			
 			curCont = &(gw->gameObjects[iterator->first]);
+			oldOpen = curCont->isOpen;
+			
 			curCont->isOpen = false;
+			
+			
+			if (oldOpen != curCont->isOpen) {
+				didClose = true;
+			}
+		}
+		
+		if (didClose) {
+			playSoundEnt("leather0", NULL, 0.1);
 		}
 	}
 bool Singleton::anyContainerOpen ()
@@ -7722,42 +7769,41 @@ void Singleton::frameUpdate ()
 		
 		//int currentTickMod = 0;
 		
-		if (firstRun)
-		{
+		if (firstRun) {
 			
 		}
-		else
-		{
-			curMoveTime = moveTimer.getElapsedTimeInMicroSec();
+		else {
+			//curMoveTime = moveTimer.getElapsedTimeInMicroSec();
 			
-			if (lastMoveTime == 0.0) {
-				timeDelta = 0.0f;
-			}
-			else {
+			// if (lastMoveTime == 0.0) {
+			// 	//timeDelta = 0.0f;
+			// }
+			// else {
 				
-				if (ignoreFrameLimit) {
-					timeDelta = 
-						timeDelta*0.999 + ((curMoveTime-lastMoveTime)/1000000.0)*0.001;//TIME_DELTA;
-						//1.0/45.0;
-				}
-				else {
-					timeDelta = 1.0/120.0;
-				}
+			// 	if (ignoreFrameLimit) {
+			// 		timeDelta = 
+			// 			timeDelta = bulletTimer.getTimeMicroseconds()/1000000.0;//*0.999 + ((curMoveTime-lastMoveTime)/1000000.0)*0.001;//TIME_DELTA;
+			// 			bulletTimer.reset();
+			// 			//1.0/45.0;
+			// 	}
+			// 	else {
+			// 		timeDelta = 1.0/120.0;
+			// 	}
 				
 				
 				
 				
-				// if (smoothMove) {
-				// 	timeDelta = 1.0f/90.0f;
-				// }
-				// else {
-				// 	timeDelta = 1.0f/90.0f;
-				// }
+			// 	// if (smoothMove) {
+			// 	// 	timeDelta = 1.0f/90.0f;
+			// 	// }
+			// 	// else {
+			// 	// 	timeDelta = 1.0f/90.0f;
+			// 	// }
 				
-				//60.0f;//(curMoveTime-lastMoveTime)/1000000.0;
-			}
+			// 	//60.0f;//(curMoveTime-lastMoveTime)/1000000.0;
+			// }
 			
-			lastMoveTime = curMoveTime;
+			//lastMoveTime = curMoveTime;
 			
 			
 			
@@ -8123,7 +8169,7 @@ void Singleton::display ()
 		}
 		
 
-		float elTime = curTime - lastTime;
+		//float elTime = curTime - lastTime;
 		
 		// #ifdef USE_POCO
 		// 	if (myWS == NULL)
@@ -8169,14 +8215,39 @@ void Singleton::display ()
 			frameMouseMove = true;
 		}
 		
+		if (firstRun) {
+			bulletTimer.reset();
+		}
+		
+		unsigned long int curTimePassed = bulletTimer.getTimeMicroseconds();
+		timeDelta = 1.0/60.0;
+		bulletTimer.reset();
+		
+		//totTimePassedGraphics += curTimePassed;
+		totTimePassedPhysics += curTimePassed;
+		
+		
+		if (currentTick > 4) {
+			if (gamePhysics != NULL) {
+				gamePhysics->updateAll();
+			}
+		}
+		
+		
+		
 
-		if (  
-			( 
-				((frameSkipCount%frameSkip) == 0) &&
-				(frameMouseMove||ignoreFrameLimit)
-			) || fpsTest
+		if (
+			//true  
+			// ( 
+			// 	((frameSkipCount%frameSkip) == 0) &&
+			// 	(frameMouseMove||ignoreFrameLimit)
+			// ) || fpsTest
+			//totTimePassedGraphics > 8000
+			
+			true
 		) {
-
+			//cout << "totTimePassedGraphics " << totTimePassedGraphics << "\n";
+			//totTimePassedGraphics -= 8000;
 			
 			frameMouseMove = false;
 
@@ -8195,7 +8266,7 @@ void Singleton::display ()
 			
 
 
-			lastTime = curTime;
+			//lastTime = curTime;
 			timeOfDay += (getTargetTimeOfDay() - timeOfDay) / 8.0;
 
 			if (
@@ -8241,9 +8312,7 @@ void Singleton::display ()
 				else
 				{
 					
-					if (gamePhysics != NULL) {
-						gamePhysics->updateAll();
-					}
+					
 					
 					
 					frameUpdate();
@@ -8272,6 +8341,7 @@ void Singleton::display ()
 			}
 			
 		}
+		
 
 		if (firstRun)
 		{
@@ -8279,6 +8349,8 @@ void Singleton::display ()
 		}
 
 		firstRun = false;
+		
+		
 
 		//doTrace( "POSSIBLE ERROR: " , i__s(glGetError()) , "\n" );
 

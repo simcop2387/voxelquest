@@ -90,6 +90,7 @@ public:
   CompareStruct compareStruct;
   typedef map <string, UICStruct>::iterator itUICStruct;
   typedef map <string, JSONStruct>::iterator itJSStruct;
+  unsigned long int totTimePassedPhysics;
   bool (keysPressed) [MAX_KEYS];
   double (keyDownTimes) [MAX_KEYS];
   unsigned char (keyMap) [KEYMAP_LENGTH];
@@ -337,14 +338,11 @@ public:
   float * paramArrMap;
   float (clipDist) [2];
   float MAX_TRAVEL_DIS;
-  double curMoveTime;
-  double lastMoveTime;
   double timeDelta;
   double curTime;
   float smoothTime;
   double pauseTime;
   double clickTime;
-  double lastTime;
   double mdTime;
   double muTime;
   GameOrgNode * bestNode;
@@ -444,6 +442,7 @@ public:
   charArr lastJSONBufferGUI;
   JSONValue * rootObjJS;
   JSONValue * guiRootJS;
+  HPClock bulletTimer;
   Timer fpsTimer;
   Timer shakeTimer;
   Timer myTimer;
@@ -624,7 +623,7 @@ public:
   void gatherKeyActions ();
   void handleMovement ();
   bool anyMenuVisible ();
-  void performCamShake (BaseObj * ge);
+  void performCamShake (BaseObj * ge, float fp);
   void explodeBullet (BaseObj * ge);
   void grabThrowObj (int actorId);
   void launchBullet (int actorId, int bulletType);
@@ -1727,11 +1726,12 @@ public:
   void renderSquareA (float x, float y, float z);
   void glDrawVector (btVector3 const & v);
   void setId (int id);
-  void updateMat ();
   void updateMat2 ();
+  void updateMat ();
   void pushNewMat (btScalar * m);
   void popMat ();
-  void drawOpenGL (btScalar * m, btCollisionShape const * shape, btVector3 const & color, int debugMode, btVector3 const & worldBoundsMin, btVector3 const & worldBoundsMax);
+  void drawOrient (int uid);
+  void drawOpenGL (btScalar * m, btCollisionShape const * shape, btVector3 const & color, int debugMode, btVector3 const & worldBoundsMin, btVector3 const & worldBoundsMax, int uid);
   ~ MyShapeDrawer ();
   void drawSceneInternal (btDiscreteDynamicsWorld const * dynamicsWorld, int pass);
   void drawScene (btDiscreteDynamicsWorld const * dynamicsWorld, bool useShadows);
@@ -1786,6 +1786,7 @@ public:
   BenchmarkDemo * example;
   MyOGLApp * myOGLApp;
   GUIHelperInterface * guiHelper;
+  unsigned long int stepTimeInMicroSec;
   GamePhysics ();
   void init (Singleton * _singleton);
   void beginDrop ();
@@ -1923,7 +1924,7 @@ public:
   int getCellAtCoords (int xv, int yv, int zv);
   void setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void getArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
-  void fireEvent (BaseObjType uid, int opCode);
+  void fireEvent (BaseObjType uid, int opCode, float fParam);
   void generateBlockHolder ();
   void update ();
   void toggleVis (GameEnt * se);

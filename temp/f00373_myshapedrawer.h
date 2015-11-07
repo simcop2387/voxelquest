@@ -121,6 +121,12 @@ void MyShapeDrawer::setId (int id)
                                    {
 			singleton->setShaderFloat("objectId", id);
 		}
+void MyShapeDrawer::updateMat2 ()
+                                  {
+			
+			glGetFloatv(GL_MODELVIEW_MATRIX, singleton->viewMatrix.get());
+			singleton->setShaderMatrix4x4("objmat",singleton->viewMatrix.get(),1);
+		}
 void MyShapeDrawer::updateMat ()
                                  {
 			int i;
@@ -139,17 +145,13 @@ void MyShapeDrawer::updateMat ()
 			
 			singleton->setShaderMatrix3x3("normalRot",singleton->curObjMatrix3.get(),1);
 			
+			
+			
 			//btTransform tr;
 			// tr.setFromOpenGLMatrix(singleton->curObjMatrix.get());
 			// btQuaternion orn = tr.getRotation();
 			// singleton->setShaderVec4("objQuat",orn.getX(),orn.getY(),orn.getZ(),orn.getW());
 			
-		}
-void MyShapeDrawer::updateMat2 ()
-                                  {
-			
-			glGetFloatv(GL_MODELVIEW_MATRIX, singleton->viewMatrix.get());
-			singleton->setShaderMatrix4x4("objmat",singleton->viewMatrix.get(),1);
 		}
 void MyShapeDrawer::pushNewMat (btScalar * m)
                                              {
@@ -181,7 +183,46 @@ void MyShapeDrawer::popMat ()
 			singleton->objMatrixStack.pop_back();
 			updateMat();
 		}
-void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, btVector3 const & color, int debugMode, btVector3 const & worldBoundsMin, btVector3 const & worldBoundsMax)
+void MyShapeDrawer::drawOrient (int uid)
+                                         {
+			
+			if (uid == singleton->getCurActorUID()) {
+				
+			}
+			else {
+				return;
+			}
+			
+			int oldUID = uid;
+			
+			setId(0);
+			
+			singleton->setShaderVec3("matVal", 255, 0, 0);
+			glBegin(GL_LINES);
+			glNormal3f(0, 0, 1);
+			glVertex3d(0, 0, 0);
+			glVertex3d(2, 0, 0);
+			glEnd();
+			
+			singleton->setShaderVec3("matVal", 0, 255, 0);
+			glBegin(GL_LINES);
+			glNormal3f(0, 0, 1);
+			glVertex3d(0, 0, 0);
+			glVertex3d(0, 2, 0);
+			glEnd();
+			
+			singleton->setShaderVec3("matVal",0, 0, 255);
+			glBegin(GL_LINES);
+			glNormal3f(0, 0, 1);
+			glVertex3d(0, 0, 0);
+			glVertex3d(0, 0, 2);
+			glEnd();
+			
+			setId(oldUID);
+			singleton->setShaderVec3("matVal", 1, 1, 1);
+			
+		}
+void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, btVector3 const & color, int debugMode, btVector3 const & worldBoundsMin, btVector3 const & worldBoundsMax, int uid)
                   {
 			
 			if (shape->getShapeType() == CUSTOM_CONVEX_SHAPE_TYPE)
@@ -197,7 +238,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 		//		dz *= halfExtent[2];
 				//glColor3f(1,1,1);
 				//glDisable(GL_LIGHTING);
-				glLineWidth(2);
+				//glLineWidth(2);
 
 				// glBegin(GL_LINE_LOOP);
 				// glDrawVector(org - dx - dy);
@@ -246,6 +287,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 			//btglMultMatrix(m);
 			//updateMat2();
 			pushNewMat(m);
+			singleton->gw->gameObjects[uid].rotMat = singleton->curObjMatrix3;
 
 
 			if (shape->getShapeType() == UNIFORM_SCALING_SHAPE_PROXYTYPE)
@@ -259,7 +301,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 					{0,0,scalingFactor,0},
 					{0,0,0,1}};
 
-					drawOpenGL( (btScalar*)tmpScaling,convexShape,color,debugMode,worldBoundsMin,worldBoundsMax);
+					drawOpenGL( (btScalar*)tmpScaling,convexShape,color,debugMode,worldBoundsMin,worldBoundsMax, uid);
 				}
 				//cout << "b\n";
 				//glPopMatrix();
@@ -277,7 +319,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 					const btCollisionShape* colShape = compoundShape->getChildShape(i);
 					ATTRIBUTE_ALIGNED16(btScalar) childMat[16];
 					childTrans.getOpenGLMatrix(childMat);
-					drawOpenGL(childMat,colShape,color,debugMode,worldBoundsMin,worldBoundsMax);
+					drawOpenGL(childMat,colShape,color,debugMode,worldBoundsMin,worldBoundsMax, uid);
 				}
 
 			} else
@@ -401,6 +443,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 								btVector3(-halfExtent[0],-halfExtent[1],-halfExtent[2])};
 		#if 1
 							
+							drawOrient(uid);
 							glBegin (GL_TRIANGLES);
 							int si=36;
 							for (int i=0;i<si;i+=3)
@@ -498,7 +541,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 							childTransform.setOrigin(multiSphereShape->getSpherePosition(i));
 							ATTRIBUTE_ALIGNED16(btScalar) childMat[16];
 							childTransform.getOpenGLMatrix(childMat);
-							drawOpenGL(childMat,&sc,color,debugMode,worldBoundsMin,worldBoundsMax);
+							drawOpenGL(childMat,&sc,color,debugMode,worldBoundsMin,worldBoundsMax, uid);
 						}
 
 						break;
@@ -512,7 +555,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 								if (poly)
 								{
 									int i;
-									
+									drawOrient(uid);
 									glBegin (GL_TRIANGLES);
 									for (i=0;i<poly->m_faces.size();i++)
 									{
@@ -548,7 +591,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 										const unsigned int* idx = hull->getIndexPointer();
 										const btVector3* vtx = hull->getVertexPointer();
 
-										
+										drawOrient(uid);
 										glBegin (GL_TRIANGLES);
 
 										for (int i = 0; i < hull->numTriangles (); i++)
@@ -752,7 +795,7 @@ void MyShapeDrawer::drawSceneInternal (btDiscreteDynamicsWorld const * dynamicsW
 					
 				// }
 				
-				drawOpenGL(m,colObj->getCollisionShape(),wireColor,debugMode,aabbMin,aabbMax);
+				drawOpenGL(m,colObj->getCollisionShape(),wireColor,debugMode,aabbMin,aabbMax, body->bodyUID);
 				//drawOpenGL(m,colObj->getCollisionShape(),wireColor*btScalar(0.3),0,aabbMin,aabbMax);
 			}
 

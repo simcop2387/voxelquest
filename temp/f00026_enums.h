@@ -294,7 +294,7 @@ enum E_STATES {
 };
 
 enum EVENT_OPS {
-	EV_HIT_GROUND,
+	EV_COLLISION,
 	EV_LENGTH	
 };
 

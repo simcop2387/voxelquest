@@ -79,8 +79,8 @@ DynBuffer::DynBuffer ()
 		        wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
 		        if(wglSwapIntervalEXT && wglGetSwapIntervalEXT)
 		        {
-		            // disable v-sync
-		            wglSwapIntervalEXT(0);
+		            // enable v-sync
+		            wglSwapIntervalEXT(1);
 		            std::cout << "Video card supports WGL_EXT_swap_control." << std::endl;
 		        }
 		    }
