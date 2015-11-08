@@ -3125,6 +3125,19 @@ void GameFluid::applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int br
 									// 	*watVal = UNIT_MIN;
 									// }
 									
+									if (
+										(*bldVal != UNIT_MIN) ||
+										(*terVal != UNIT_MIN)
+									) {
+										singleton->debrisStack.push_back(DebrisStruct());
+										singleton->debrisStack.back().pos = btVector3(
+											i + volMinReadyInPixels[0] - bufAmount,
+											j + volMinReadyInPixels[1] - bufAmount,
+											k + volMinReadyInPixels[2] - bufAmount
+										);
+										
+									}
+									
 									*empVal = UNIT_MAX;
 									*bldVal = UNIT_MIN;
 									*terVal = UNIT_MIN;

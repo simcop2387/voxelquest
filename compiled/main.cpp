@@ -3597,6 +3597,7 @@ enum ENT_TYPE {
 	E_ENTTYPE_NPC,
 	E_ENTTYPE_BULLET,
 	E_ENTTYPE_TRACE,
+	E_ENTTYPE_DEBRIS,
 	E_ENTTYPE_LENGTH
 };
 
@@ -3646,6 +3647,16 @@ enum EVENT_OPS {
 // 	E_ENTPOOL_TRACE,
 // 	E_ENTPOOL_LENGTH
 // };
+
+struct DebrisStruct {
+	btVector3 pos;
+};
+
+struct ExplodeStruct {
+	btVector3 pos;
+	float radius;
+	float power;	
+};
 
 struct EntPool {
 	int curIndex;
@@ -8904,14 +8915,14 @@ public:
 		
 		return &linVelocity;
 	}
-	void setVel(float x, float y, float z) {
-		if (body != NULL) {
+	// void setVel(float x, float y, float z) {
+	// 	if (body != NULL) {
 			
-			body->setLinearVelocity(btVector3(x,y,z));
+	// 		body->setLinearVelocity(btVector3(x,y,z));
 			
 			
-		}
-	}
+	// 	}
+	// }
 	
 	void applyAngularImpulse(btVector3 newAV) {
 		body->setAngularVelocity(body->getAngularVelocity() + newAV);
@@ -8924,7 +8935,7 @@ public:
 	}
 	
 	void applyImpulseRot( btVector3 imp) {
-		btVector3 tempBTV;
+		
 		
 		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
 		Vector3 res = rotMat*myRHS;
@@ -8934,31 +8945,47 @@ public:
 		body->setActivationState(ACTIVE_TAG);
 	}
 	
+	void applyImpulseOtherRot( btVector3 imp, Matrix3 otherRot) {
+		
+		
+		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
+		Vector3 res = otherRot*myRHS;
+		
+		
+		body->applyCentralImpulse(btVector3(res.x,res.y,res.z));
+		body->setActivationState(ACTIVE_TAG);
+	}
+	
+	btVector3 multByOtherRot( btVector3 imp, Matrix3 otherRot) {
+		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
+		Vector3 res = otherRot*myRHS;
+		
+		return btVector3(res.x,res.y,res.z);
+	}
 	
 	
-	void setCenterPoint(FIVector4* newPos) {
-		
-		centerPoint.copyFrom(newPos);
-		
+	
+	void moveToPoint(btVector3 newPoint) {
 		btTransform trans;
+		
 		
 		if (body == NULL) {
 			
 		}
 		else {
 			
-			// trans.setOrigin(
-			// 	btVector3(
-			// 		centerPoint[0],
-			// 		centerPoint[1],
-			// 		centerPoint[2]	
-			// 	)	
-			// );
-			
-			// body->setCenterOfMassTransform(
-			// 	trans
-			// );
+			trans.setIdentity();
+			trans.setOrigin(newPoint);
+			body->setCenterOfMassTransform(
+				trans
+			);
 		}
+	}
+	
+	void setCenterPoint(FIVector4* newPos) {
+		
+		centerPoint.copyFrom(newPos);
+				
 	}
 	
 	FIVector4* getCenterPoint(bool updateCP = true) {
@@ -20972,6 +20999,8 @@ public:
   ThreadWrapper threadNetRecv;
   std::list <KeyStackEvent> keyStack;
   EntPool (entPoolStack) [E_ENTTYPE_LENGTH];
+  std::vector <ExplodeStruct> explodeStack;
+  std::vector <DebrisStruct> debrisStack;
   std::vector <FIVector4> primTemplateStack;
   std::vector <SphereStruct> sphereStack;
   std::vector <int> (guiLayers) [MAX_UI_LAYERS];
@@ -21242,6 +21271,7 @@ public:
   FIVector4 * cameraGetPos ();
   FIVector4 * cameraGetPosNoShake ();
   float getTargetTimeOfDay ();
+  void updateBullets ();
   void display ();
   bool gluInvertMatrix (double const (m) [16], float (invOut) [16]);
   int getMatrixInd (int col, int row);
@@ -22667,7 +22697,6 @@ void Singleton::setSelInd (int ind)
                                 {
 		
 		selObjInd = ind;
-		cout << "selObjInd " << selObjInd << "\n";
 	}
 void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
           {
@@ -23838,6 +23867,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 					k = 20;
 				break;
 				case E_ENTTYPE_TRACE:
+					k = 0;
+				break;
+				case E_ENTTYPE_DEBRIS:
 					k = 50;
 				break;
 				default:
@@ -24668,9 +24700,9 @@ void Singleton::performDrag (bool isReq, int _draggingFromInd, int _draggingFrom
 				switch (_draggingToType) {
 					case E_DT_NOTHING:
 						
-						lastCellPos.copyFrom(_worldMarker);
-						lastCellPos.addXYZ(0,0,5);
-						sourceObj->setCenterPoint(&lastCellPos);
+						// lastCellPos.copyFrom(_worldMarker);
+						// lastCellPos.addXYZ(0,0,5);
+						// sourceObj->setCenterPoint(&lastCellPos);
 						
 						
 					break;
@@ -24795,7 +24827,7 @@ void Singleton::removeEntity (bool isReq, int ind)
 		}
 	}
 BaseObjType Singleton::placeNewEnt (bool isReq, int et, FIVector4 * cellPos, bool isHidden)
-                                                                                               {
+          {
 		
 		
 		BaseObj* tmpObj = NULL;
@@ -24857,6 +24889,10 @@ BaseObjType Singleton::placeNewEnt (bool isReq, int et, FIVector4 * cellPos, boo
 					
 				// }
 				
+			break;
+			
+			case E_ENTTYPE_DEBRIS:
+				newType = 0;
 			break;
 			
 		}
@@ -29291,8 +29327,18 @@ void Singleton::explodeBullet (BaseObj * ge)
 		//gameFluid[E_FID_SML]->pushExplodeBullet(true,&newPos,boolToInt(waterBulletOn));
 		gameFluid[E_FID_BIG]->pushExplodeBullet(true,&newPos,boolToInt(waterBulletOn));
 		
+		explodeStack.push_back(ExplodeStruct());
+		
+		if (ge->body != NULL) {
+			explodeStack.back().pos = ge->body->getCenterOfMassPosition();
+			explodeStack.back().radius = 20.0f;
+			explodeStack.back().power = 200.0f;
+		}
+		
 		
 		gw->removeVisObject(ge->uid, true);
+		
+		
 		
 		//ge->isHidden = true;
 		
@@ -29318,10 +29364,15 @@ void Singleton::grabThrowObj (int actorId)
 			
 			//##
 			
-			gw->gameObjects[ca->isGrabbingId].setVel(
-				cos(ca->ang)*20.0f,
-				sin(ca->ang)*20.0f,
-				30.0f	
+			// gw->gameObjects[ca->isGrabbingId].setVel(
+			// 	cos(ca->ang)*20.0f,
+			// 	sin(ca->ang)*20.0f,
+			// 	30.0f	
+			// );
+			
+			gw->gameObjects[ca->isGrabbingId].applyImpulseOtherRot(
+				btVector3(0.0,20.0,30.0),
+				ca->rotMat
 			);
 			
 			playSoundEnt(
@@ -29388,23 +29439,32 @@ void Singleton::launchBullet (int actorId, int bulletType)
 		else {
 			newCellPos.copyFrom(ca->getCenterPoint());
 			
-			vx = cos(ca->ang)*3.0f;
-			vx = vx;
+			// vx = cos(ca->ang)*3.0f;
+			// vx = vx;
 			
-			vy = sin(ca->ang)*3.0f;
-			vy = vy;
+			// vy = sin(ca->ang)*3.0f;
+			// vy = vy;
 			
-			newCellPos.addXYZ(vx, vy, 2);
+			
+			btVector3 tempBTV = ca->multByOtherRot(btVector3(0.0f,3.0f,3.0f),ca->rotMat);
+			newCellPos.addXYZ(tempBTV.getX(), tempBTV.getY(), tempBTV.getZ());
 			
 			entNum = placeNewEnt(false, bulletType, &newCellPos);
 			
 			
 			
-			gw->gameObjects[entNum].setVel(
-				cos(ca->ang)*20.0f,
-				sin(ca->ang)*20.0f,
-				30.0f
+			// gw->gameObjects[entNum].setVel(
+			// 	cos(ca->ang)*20.0f,
+			// 	sin(ca->ang)*20.0f,
+			// 	30.0f
+			// );
+			
+			gw->gameObjects[entNum].applyImpulseOtherRot(
+				btVector3(0.0,120.0,120.0),
+				ca->rotMat
 			);
+			
+			
 			
 			if (bulletType != E_ENTTYPE_TRACE) {
 				playSoundEnt(
@@ -30788,6 +30848,30 @@ float Singleton::getTargetTimeOfDay ()
                                    {
 		return 1.0f;//(lightVecOrig.getFZ() + 1.0f)*0.5f;
 	}
+void Singleton::updateBullets ()
+                             {
+		int i;
+		SphereStruct* ss;
+		
+		for (i = 0; i < sphereStack.size(); i++) {
+			ss = &(sphereStack[i]);
+			
+			ss->radVel += ss->radAcc*timeDelta;
+			ss->curRad += ss->radVel*timeDelta;
+			
+			if (ss->curRad >= ss->maxRad) {
+				ss->curRad = ss->maxRad;
+				ss->radVel = 0.0f;
+			}
+		}
+		
+		for (i = 0; i < sphereStack.size(); i++) {
+			ss = &(sphereStack[i]);
+			if (ss->curRad <= 0.0) {
+				sphereStack.erase(sphereStack.begin() + i);
+			}
+		}
+	}
 void Singleton::display ()
         {
 		
@@ -30868,7 +30952,7 @@ void Singleton::display ()
 			}
 		}
 		
-		
+		updateBullets();
 		
 
 		if (
@@ -40859,6 +40943,19 @@ void GameFluid::applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int br
 									// 	*watVal = UNIT_MIN;
 									// }
 									
+									if (
+										(*bldVal != UNIT_MIN) ||
+										(*terVal != UNIT_MIN)
+									) {
+										singleton->debrisStack.push_back(DebrisStruct());
+										singleton->debrisStack.back().pos = btVector3(
+											i + volMinReadyInPixels[0] - bufAmount,
+											j + volMinReadyInPixels[1] - bufAmount,
+											k + volMinReadyInPixels[2] - bufAmount
+										);
+										
+									}
+									
 									*empVal = UNIT_MAX;
 									*bldVal = UNIT_MIN;
 									*terVal = UNIT_MIN;
@@ -41835,6 +41932,10 @@ void GamePlant::applyRules (PlantRules * rules, GamePlantNode * curParent, int c
 #define LZZ_INLINE inline
 GamePageHolder::GamePageHolder ()
                          {
+		
+		trimeshShape = NULL;
+		meshInterface = NULL;
+		body = NULL;
 		
 		hasData = true;
 		hasPath = true;
@@ -43169,6 +43270,32 @@ void GamePageHolder::createMesh ()
         {
 		btTransform trans;
 		trans.setIdentity();
+		
+		
+		if (trimeshShape == NULL) {
+			
+		}
+		else {
+			
+			//cout << "regen\n";
+			
+			singleton->gamePhysics->example->removeRigidBody(body);
+			delete meshInterface;
+			meshInterface = NULL;
+			delete trimeshShape;
+			trimeshShape = NULL;
+			//delete body;
+			//body = NULL;
+			
+			if (body != NULL) {
+				
+				delete body;
+				body = NULL;
+				
+				//cout << "body not null\n";
+			}
+		}
+		
 
 		meshInterface = new btTriangleIndexVertexArray();
 		
@@ -50639,11 +50766,7 @@ void GamePhysics::init (Singleton * _singleton)
 		singleton = _singleton;
 		myOGLApp = new MyOGLApp("yo", 640, 480);
 		guiHelper = new MyGLHelper(singleton, myOGLApp);
-		example = 
-			new BenchmarkDemo(guiHelper,5);
-			// new BasicExample(guiHelper);
-		
-		
+		example = new BenchmarkDemo(guiHelper,5);
 		example->initPhysics();
 		
 	}
@@ -50683,7 +50806,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 		trans.setOrigin(ge->getCenterPoint(false)->getBTV());
 		
 		
-		
+		float objRad = 0.5f;
 		
 		if (
 			(ge->entType == E_ENTTYPE_NPC) ||
@@ -50694,49 +50817,29 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 			ge->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
 		}
 		else {
-			btBoxShape* boxShape = new btBoxShape(btVector3(0.5f,0.5f,0.5f));
+			
+			if (ge->entType == E_ENTTYPE_DEBRIS) {
+				objRad = 0.25f;
+			}
+			else {
+				
+			}
+			
+			btBoxShape* boxShape = new btBoxShape(btVector3(objRad,objRad,objRad));
 			ge->body = example->createRigidBody(ge->mass,trans,boxShape);
+			
+			if (ge->entType == E_ENTTYPE_DEBRIS) {
+				// ge->body->setAngularVelocity(btVector3(
+				// 	fGenRand2()*2.0f-1.0f,
+				// 	fGenRand2()*2.0f-1.0f,
+				// 	fGenRand2()*2.0f-1.0f	
+				// ));
+			}
 		}
 		
-		ge->body->setDamping(0.1f,0.99f);
-		
 		ge->body->bodyUID = _uid;
-		
+		ge->body->setDamping(0.1f,0.99f);
 		ge->body->setContactProcessingThreshold(0.25f);
-		
-		// q3BodyDef bodyDef;
-		// bodyDef.position.Set(
-		// 	ge->getCenterPoint()->getFX(),
-		// 	ge->getCenterPoint()->getFY(),
-		// 	ge->getCenterPoint()->getFZ()	
-		// );
-		
-		// if (ge->isUpright) {
-		// 	bodyDef.lockAxisX = true;
-		// 	bodyDef.lockAxisY = true;
-		// 	bodyDef.lockAxisZ = true;
-		// }
-		
-		// bodyDef.bodyType = eDynamicBody;
-		
-		// if (ge->body != NULL) {
-		// 	scene->RemoveBody(ge->body);
-		// 	ge->body = NULL;
-		// }
-		
-		// ge->body = scene->CreateBody( bodyDef );
-
-		// q3Transform tx;
-		// q3Identity( tx );
-		// q3BoxDef boxDef;
-		// boxDef.Set( tx, q3Vec3(
-		// 	ge->diameterInCells.getFX(),
-		// 	ge->diameterInCells.getFY(),
-		// 	ge->diameterInCells.getFZ()
-		// ) );
-		// boxDef.SetRestitution(ge->bounciness);
-		// ge->body->AddBox( boxDef );
-		
 		
 	}
 void GamePhysics::collideWithWorld ()
@@ -50747,6 +50850,9 @@ void GamePhysics::collideWithWorld ()
 		int i;
 		int j;
 		int k;
+		int m;
+		
+		int cellVal;
 		
 		bool lastFalling;
 		
@@ -50755,12 +50861,29 @@ void GamePhysics::collideWithWorld ()
 		FIVector4* curCenterPoint;
 		btDiscreteDynamicsWorld* world = example->getWorld();
 		
+		btVector3 tempBTV;
+		btVector3 tempBTV2;
 		btVector3 nv0;
 		btVector3 nv1;
 		
+		
 		bool hasContact = false;
-		// bool isClose = false;
-		// bool isFar = false;
+		
+		int entNum;
+		
+		FIVector4 tempVec;
+		
+		
+		for (i = 0; i < singleton->debrisStack.size(); i++) {
+			
+			tempVec.setBTV(singleton->debrisStack[i].pos);
+			entNum = singleton->placeNewEnt(false, E_ENTTYPE_DEBRIS, &tempVec);
+			
+			//addDebris(singleton->debrisStack[i].pos);
+		}
+		singleton->debrisStack.clear();
+		
+		
 		
 		const btCollisionObject* bodies[2];
 		
@@ -50776,8 +50899,6 @@ void GamePhysics::collideWithWorld ()
 			bodies[0] = obA;
 			bodies[1] = obB;
 
-			// isClose = false;
-			// isFar = false;
 			hasContact = false;
 			
 			int numContacts = contactManifold->getNumContacts();
@@ -50791,10 +50912,6 @@ void GamePhysics::collideWithWorld ()
 					// const btVector3& ptB = pt.getPositionWorldOnB();
 					// const btVector3& normalOnB = pt.m_normalWorldOnB;
 				}
-				
-				// if (pt.getDistance() > 0.2f) {
-				// 	isFar = true;
-				// }
 			}
 			
 			
@@ -50815,41 +50932,13 @@ void GamePhysics::collideWithWorld ()
 					else {
 						lastFalling = ge->isFalling;
 						
-						// if (isFar) {
-						// 	ge->isFalling = true;
-						// }
-						
-						// if (isClose) {
-						// 	ge->isFalling = false;
-						// }
-						
-						// if (hasContact) {
-							
-						// }
-						// else {
-							
-						// }
-						
 						ge->isFalling = (!hasContact);// && (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f);
 						
 						if (!(ge->isFalling)) {
 							ge->isJumping = false;
 						}
 						
-						// 	//&& (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f)
-
-						
-						// if (ge->isFalling) {
-							
-						// }
-						// else {
-						// 	if (lastFalling != ge->isFalling) {
-						// 		singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
-						// 	}
-						// }
 					}
-					
-					
 					
 				}
 			}
@@ -50859,7 +50948,8 @@ void GamePhysics::collideWithWorld ()
 		
 		
 		
-		
+		float totForce;
+		btVector3 dirForce;
 		
 		
 		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
@@ -50873,46 +50963,30 @@ void GamePhysics::collideWithWorld ()
 			}
 			else {
 				
-				//lastFalling = ge->isFalling;
-				// ge->isFalling = (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f);
-				// if (ge->isFalling) {
 				
-				// }
-				// else {
-				// 	if (lastFalling != ge->isFalling) {
-				// 		singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
-				// 	}
-				// }
+				//////////////////////
+				// APPLY FORCES
+				//////////////////////
 				
+				tempBTV = ge->body->getCenterOfMassPosition();
 				
-				nv0 = ge->body->getLinearVelocity();
-				nv0.normalize();
-				nv1 = ge->lastVel;
-				nv1.normalize();
+				cellVal = singleton->gw->getCellAtCoords(
+					tempBTV.getX(),
+					tempBTV.getY(),
+					tempBTV.getZ()
+				);
 				
 				
+				ge->inWater = (cellVal == E_CD_WATER);
+				ge->isInside = (cellVal == E_CD_SOLID);
 				
-				
-				if (
-					(
-						ge->lastVel.length() > 0.5f
-					) &&
-					(
-						(nv0.dot(nv1)) < 0.8f
-					)
-				) {
+				if (ge->isInside) {
 					
+					ge->moveToPoint(tempBTV + btVector3(0,0,1));
 					
-					
-					singleton->gw->fireEvent(
-						ge->uid,
-						EV_COLLISION,
-						clampfZO( (ge->lastVel.length()-0.5f)/16.0f )
-					);
+					ge->applyImpulse(btVector3(0,0,5));
+					ge->lastVel = ge->body->getLinearVelocity();
 				}
-				
-				
-				ge->lastVel = ge->body->getLinearVelocity();
 				
 				if (
 					(singleton->selObjInd == ge->uid) &&
@@ -50928,13 +51002,100 @@ void GamePhysics::collideWithWorld ()
 						-(ge->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*1.0f
 					) );
 					
+					
+					
 				}
 				
+				
+				
+				// for (m = 0; m < singleton->sphereStack.size(); m++) {
+				// 	tempBTV = ge->body->getCenterOfMassPosition();
+				// 	tempBTV2 = singleton->sphereStack[m].position.getBTV();
+					
+				// 	totForce = (
+				// 		1.0f-clampfZO(
+				// 			tempBTV.distance(tempBTV2)/(singleton->sphereStack[m].curRad*5.0f)	
+				// 		)
+				// 	)*10.0f; // * singleton->sphereStack[m].power;
+				// 	dirForce = tempBTV-tempBTV2;
+				// 	dirForce.normalize();
+				// 	dirForce = dirForce*totForce;
+					
+				// 	dirForce.setZ(totForce);
+					
+				// 	ge->applyImpulse(dirForce);
+				// }
+				
+				// for (m = 0; m < singleton->explodeStack.size(); m++) {
+				// 	tempBTV = ge->body->getCenterOfMassPosition();
+				// 	totForce = (
+				// 		1.0f-clampfZO(
+				// 			tempBTV.distance(singleton->explodeStack[m].pos)/singleton->explodeStack[m].radius	
+				// 		)
+				// 	)*singleton->explodeStack[m].power;
+				// 	dirForce = tempBTV-singleton->explodeStack[m].pos;
+				// 	dirForce.normalize();
+				// 	dirForce = dirForce*totForce;
+					
+				// 	dirForce.setZ(totForce);
+					
+				// 	ge->applyImpulse(dirForce);
+				// }
+				
+				
+				//////////////////////
+				// END APPLY FORCES
+				//////////////////////
+				
+				
+				
+				
+				
+				nv0 = ge->body->getLinearVelocity();
+				nv0.normalize();
+				nv1 = ge->lastVel;
+				nv1.normalize();
+				
+				
+				if (
+					(!(ge->isInside)) &&
+					(
+						ge->lastVel.length() > 0.5f
+					) &&
+					(
+						(nv0.dot(nv1)) < 0.8f
+					)
+					
+				) {
+					
+					singleton->gw->fireEvent(
+						ge->uid,
+						EV_COLLISION,
+						clampfZO( (ge->lastVel.length()-0.5f)/16.0f )
+					);
+				}
+				
+				
+				ge->lastVel = ge->body->getLinearVelocity();
+				
 				ge->getCenterPoint(true);
+				
+				
+				if (ge->entType == E_ENTTYPE_BULLET) {
+					if (
+						(!(ge->isFalling)) && 
+						(ge->body->getLinearVelocity().length() < 0.5)
+					) {
+							singleton->explodeBullet(ge);
+					}
+				}
+				
 				
 			}
 			
 		}
+		
+		singleton->explodeStack.clear();
 		
 	}
 void GamePhysics::updateAll ()
@@ -51379,7 +51540,8 @@ void GameWorld::setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int 
 			curHolder->pathsInvalid = true;
 			curHolder->idealPathsInvalid = true;
 			curHolder->pathsReady = false;
-			curHolder->idealPathsReady = false;
+			curHolder->idealPathsReady = false;			
+			curHolder->listGenerated = false;
 		}
 		
 		curHolder->setArrAtInd(ind,tempCellData,tempCellData2);
@@ -51426,7 +51588,17 @@ void GameWorld::fireEvent (BaseObjType uid, int opCode, float fParam)
 		BaseObj* ge = &(gameObjects[uid]);
 		switch (opCode) {
 			case EV_COLLISION:
-				singleton->playSoundEnt("land0",ge, 0.1, fParam);
+			
+				switch(ge->entType) {
+					case E_ENTTYPE_BULLET:
+						singleton->playSoundEnt("bump0",ge,0.0,0.25f);
+					break;
+					default:
+						singleton->playSoundEnt("land0", ge, 0.1, fParam);
+					break;
+				}
+			
+				
 				singleton->performCamShake(ge, fParam);
 			break;
 		}
@@ -53212,10 +53384,14 @@ void GameWorld::renderGeom ()
 			
 			curObj = &(gameObjects[visObjects[i]]);
 			
-			if (curObj->isHidden || (
-				(singleton->firstPerson) &&
-				(curObj->uid == singleton->getCurActorUID())
-			)) {
+			if (
+				curObj->isHidden ||
+				(curObj->objectType <= 0) ||
+				(
+					(singleton->firstPerson) &&
+					(curObj->uid == singleton->getCurActorUID())
+				)
+			) {
 				
 			}
 			else {

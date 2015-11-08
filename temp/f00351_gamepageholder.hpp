@@ -105,6 +105,10 @@ public:
 
 	GamePageHolder() {
 		
+		trimeshShape = NULL;
+		meshInterface = NULL;
+		body = NULL;
+		
 		hasData = true;
 		hasPath = true;
 		
@@ -1880,6 +1884,32 @@ public:
 	{
 		btTransform trans;
 		trans.setIdentity();
+		
+		
+		if (trimeshShape == NULL) {
+			
+		}
+		else {
+			
+			//cout << "regen\n";
+			
+			singleton->gamePhysics->example->removeRigidBody(body);
+			delete meshInterface;
+			meshInterface = NULL;
+			delete trimeshShape;
+			trimeshShape = NULL;
+			//delete body;
+			//body = NULL;
+			
+			if (body != NULL) {
+				
+				delete body;
+				body = NULL;
+				
+				//cout << "body not null\n";
+			}
+		}
+		
 
 		meshInterface = new btTriangleIndexVertexArray();
 		

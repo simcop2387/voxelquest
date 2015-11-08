@@ -269,6 +269,7 @@ enum ENT_TYPE {
 	E_ENTTYPE_NPC,
 	E_ENTTYPE_BULLET,
 	E_ENTTYPE_TRACE,
+	E_ENTTYPE_DEBRIS,
 	E_ENTTYPE_LENGTH
 };
 
@@ -318,6 +319,16 @@ enum EVENT_OPS {
 // 	E_ENTPOOL_TRACE,
 // 	E_ENTPOOL_LENGTH
 // };
+
+struct DebrisStruct {
+	btVector3 pos;
+};
+
+struct ExplodeStruct {
+	btVector3 pos;
+	float radius;
+	float power;	
+};
 
 struct EntPool {
 	int curIndex;

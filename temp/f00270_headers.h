@@ -395,6 +395,8 @@ public:
   ThreadWrapper threadNetRecv;
   std::list <KeyStackEvent> keyStack;
   EntPool (entPoolStack) [E_ENTTYPE_LENGTH];
+  std::vector <ExplodeStruct> explodeStack;
+  std::vector <DebrisStruct> debrisStack;
   std::vector <FIVector4> primTemplateStack;
   std::vector <SphereStruct> sphereStack;
   std::vector <int> (guiLayers) [MAX_UI_LAYERS];
@@ -665,6 +667,7 @@ public:
   FIVector4 * cameraGetPos ();
   FIVector4 * cameraGetPosNoShake ();
   float getTargetTimeOfDay ();
+  void updateBullets ();
   void display ();
   bool gluInvertMatrix (double const (m) [16], float (invOut) [16]);
   int getMatrixInd (int col, int row);

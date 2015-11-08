@@ -3,18 +3,9 @@ class GamePhysics {
 public:
 	Singleton* singleton;
 	
-	//MyShapeDrawer* myShapeDrawer;
 	BenchmarkDemo* example;
 	MyOGLApp* myOGLApp;
 	GUIHelperInterface* guiHelper;
-	
-	//q3Scene* scene;
-	//q3Body* body;
-	
-	//float dt;
-	//float acc;
-	//f32 accumulator;
-	//Clock g_clock;
 	
 	
 	unsigned long int stepTimeInMicroSec;
@@ -31,11 +22,7 @@ public:
 		singleton = _singleton;
 		myOGLApp = new MyOGLApp("yo", 640, 480);
 		guiHelper = new MyGLHelper(singleton, myOGLApp);
-		example = 
-			new BenchmarkDemo(guiHelper,5);
-			// new BasicExample(guiHelper);
-		
-		
+		example = new BenchmarkDemo(guiHelper,5);
 		example->initPhysics();
 		
 	}
@@ -52,66 +39,6 @@ public:
 		);
 	}
 	
-	
-	
-	// void init(Singleton* _singleton)
-	// {
-	// 	singleton = _singleton;
-		
-	// 	accumulator = 0;
-	// 	dt = 1.0f / 60.0f;
-		
-	// 	q3Vec3 gravVec( r32( 0.0 ), r32( 0.0 ), r32( -9.8 ) );
-		
-	// 	scene = new q3Scene(dt);
-	// 	scene->SetGravity(gravVec);
-	// 	//scene->SetAllowSleep(false);
-	// 	//scene->SetIterations(1);
-		
-		
-	// 	acc = 0;
-
-	// 	// Create the floor
-	// 	// q3BodyDef bodyDef;
-	// 	// q3Body* body = scene->CreateBody( bodyDef );
-	// 	// q3BoxDef boxDef;
-	// 	// boxDef.SetRestitution( 0 );
-	// 	// q3Transform tx;
-	// 	// q3Identity( tx );
-	// 	// boxDef.Set( tx, q3Vec3( 50.0f, 50.0f, 1.0f ) );
-	// 	// body->AddBox( boxDef );
-
-	// 	// Create boxes
-	// 	//for ( i32 i = 0; i < 10; ++i )
-	// 	//{
-	// 	//	bodyDef.position.Set( 0.0f, 1.2f * (i + 1), -0.0f );
-	// 	//	//bodyDef.axis.Set( 0.0f, 1.0f, 0.0f );
-	// 	//	//bodyDef.angle = q3PI * q3RandomFloat( -1.0f, 1.0f );
-	// 	//	//bodyDef.angularVelocity.Set( 3.0f, 3.0f, 3.0f );
-	// 	//	//bodyDef.linearVelocity.Set( 2.0f, 0.0f, 0.0f );
-	// 	//	bodyDef.bodyType = eDynamicBody;
-	// 	//	body = scene->CreateBody( bodyDef );
-	// 	//	boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
-	// 	//	body->AddBox( boxDef );
-	// 	//}
-	// }
-
-	// void addRandFloor() {
-		
-	// 	q3BodyDef bodyDef;
-	// 	bodyDef.position.Set(
-	// 		singleton->cameraGetPosNoShake()->getFX() + singleton->lookAtVec[0]*16.0,
-	// 		singleton->cameraGetPosNoShake()->getFY() + singleton->lookAtVec[1]*16.0,
-	// 		singleton->cameraGetPosNoShake()->getFZ() + singleton->lookAtVec[2]*16.0	
-	// 	);
-	// 	q3Body* body = scene->CreateBody( bodyDef );
-	// 	q3BoxDef boxDef;
-	// 	boxDef.SetRestitution( 0 );
-	// 	q3Transform tx;
-	// 	q3Identity( tx );
-	// 	boxDef.Set( tx, q3Vec3( 8.0f, 8.0f, 8.0f ) );
-	// 	body->AddBox( boxDef );
-	// }
 	
 	void remBoxFromObj(BaseObjType _uid) {
 		
@@ -137,7 +64,7 @@ public:
 		trans.setOrigin(ge->getCenterPoint(false)->getBTV());
 		
 		
-		
+		float objRad = 0.5f;
 		
 		if (
 			(ge->entType == E_ENTTYPE_NPC) ||
@@ -148,51 +75,48 @@ public:
 			ge->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
 		}
 		else {
-			btBoxShape* boxShape = new btBoxShape(btVector3(0.5f,0.5f,0.5f));
+			
+			if (ge->entType == E_ENTTYPE_DEBRIS) {
+				objRad = 0.25f;
+			}
+			else {
+				
+			}
+			
+			btBoxShape* boxShape = new btBoxShape(btVector3(objRad,objRad,objRad));
 			ge->body = example->createRigidBody(ge->mass,trans,boxShape);
+			
+			if (ge->entType == E_ENTTYPE_DEBRIS) {
+				// ge->body->setAngularVelocity(btVector3(
+				// 	fGenRand2()*2.0f-1.0f,
+				// 	fGenRand2()*2.0f-1.0f,
+				// 	fGenRand2()*2.0f-1.0f	
+				// ));
+			}
 		}
 		
-		ge->body->setDamping(0.1f,0.99f);
-		
 		ge->body->bodyUID = _uid;
-		
+		ge->body->setDamping(0.1f,0.99f);
 		ge->body->setContactProcessingThreshold(0.25f);
 		
-		// q3BodyDef bodyDef;
-		// bodyDef.position.Set(
-		// 	ge->getCenterPoint()->getFX(),
-		// 	ge->getCenterPoint()->getFY(),
-		// 	ge->getCenterPoint()->getFZ()	
-		// );
-		
-		// if (ge->isUpright) {
-		// 	bodyDef.lockAxisX = true;
-		// 	bodyDef.lockAxisY = true;
-		// 	bodyDef.lockAxisZ = true;
-		// }
-		
-		// bodyDef.bodyType = eDynamicBody;
-		
-		// if (ge->body != NULL) {
-		// 	scene->RemoveBody(ge->body);
-		// 	ge->body = NULL;
-		// }
-		
-		// ge->body = scene->CreateBody( bodyDef );
-
-		// q3Transform tx;
-		// q3Identity( tx );
-		// q3BoxDef boxDef;
-		// boxDef.Set( tx, q3Vec3(
-		// 	ge->diameterInCells.getFX(),
-		// 	ge->diameterInCells.getFY(),
-		// 	ge->diameterInCells.getFZ()
-		// ) );
-		// boxDef.SetRestitution(ge->bounciness);
-		// ge->body->AddBox( boxDef );
-		
-		
 	}
+	
+	
+/*	void addDebris(btVector3 newPos) {
+		
+		btTransform trans;
+		trans.setIdentity();
+		trans.setOrigin(newPos);
+		
+		
+		btBoxShape* boxShape = new btBoxShape(btVector3(0.25f,0.25f,0.25f));
+		singleton->debrisBodies.push_back(example->createRigidBody(10.0f,trans,boxShape));
+		
+		singleton->debrisBodies.back()->bodyUID = -1;
+		singleton->debrisBodies.back()->setDamping(0.1f,0.99f);
+		singleton->debrisBodies.back()->setContactProcessingThreshold(0.25f);
+		
+	}*/
 	
 
 
@@ -203,6 +127,9 @@ public:
 		int i;
 		int j;
 		int k;
+		int m;
+		
+		int cellVal;
 		
 		bool lastFalling;
 		
@@ -211,12 +138,29 @@ public:
 		FIVector4* curCenterPoint;
 		btDiscreteDynamicsWorld* world = example->getWorld();
 		
+		btVector3 tempBTV;
+		btVector3 tempBTV2;
 		btVector3 nv0;
 		btVector3 nv1;
 		
+		
 		bool hasContact = false;
-		// bool isClose = false;
-		// bool isFar = false;
+		
+		int entNum;
+		
+		FIVector4 tempVec;
+		
+		
+		for (i = 0; i < singleton->debrisStack.size(); i++) {
+			
+			tempVec.setBTV(singleton->debrisStack[i].pos);
+			entNum = singleton->placeNewEnt(false, E_ENTTYPE_DEBRIS, &tempVec);
+			
+			//addDebris(singleton->debrisStack[i].pos);
+		}
+		singleton->debrisStack.clear();
+		
+		
 		
 		const btCollisionObject* bodies[2];
 		
@@ -232,8 +176,6 @@ public:
 			bodies[0] = obA;
 			bodies[1] = obB;
 
-			// isClose = false;
-			// isFar = false;
 			hasContact = false;
 			
 			int numContacts = contactManifold->getNumContacts();
@@ -247,10 +189,6 @@ public:
 					// const btVector3& ptB = pt.getPositionWorldOnB();
 					// const btVector3& normalOnB = pt.m_normalWorldOnB;
 				}
-				
-				// if (pt.getDistance() > 0.2f) {
-				// 	isFar = true;
-				// }
 			}
 			
 			
@@ -271,41 +209,13 @@ public:
 					else {
 						lastFalling = ge->isFalling;
 						
-						// if (isFar) {
-						// 	ge->isFalling = true;
-						// }
-						
-						// if (isClose) {
-						// 	ge->isFalling = false;
-						// }
-						
-						// if (hasContact) {
-							
-						// }
-						// else {
-							
-						// }
-						
 						ge->isFalling = (!hasContact);// && (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f);
 						
 						if (!(ge->isFalling)) {
 							ge->isJumping = false;
 						}
 						
-						// 	//&& (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f)
-
-						
-						// if (ge->isFalling) {
-							
-						// }
-						// else {
-						// 	if (lastFalling != ge->isFalling) {
-						// 		singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
-						// 	}
-						// }
 					}
-					
-					
 					
 				}
 			}
@@ -315,7 +225,8 @@ public:
 		
 		
 		
-		
+		float totForce;
+		btVector3 dirForce;
 		
 		
 		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
@@ -329,46 +240,32 @@ public:
 			}
 			else {
 				
-				//lastFalling = ge->isFalling;
-				// ge->isFalling = (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f);
-				// if (ge->isFalling) {
 				
-				// }
-				// else {
-				// 	if (lastFalling != ge->isFalling) {
-				// 		singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
-				// 	}
-				// }
+				//////////////////////
+				// APPLY FORCES
+				//////////////////////
 				
+				tempBTV = ge->body->getCenterOfMassPosition();
 				
-				nv0 = ge->body->getLinearVelocity();
-				nv0.normalize();
-				nv1 = ge->lastVel;
-				nv1.normalize();
+				cellVal = singleton->gw->getCellAtCoords(
+					tempBTV.getX(),
+					tempBTV.getY(),
+					tempBTV.getZ()
+				);
 				
 				
+				ge->inWater = (cellVal == E_CD_WATER);
+				ge->isInside = (cellVal == E_CD_SOLID);
 				
-				
-				if (
-					(
-						ge->lastVel.length() > 0.5f
-					) &&
-					(
-						(nv0.dot(nv1)) < 0.8f
-					)
-				) {
+				if (ge->isInside) {
 					
+					cout << "a\n";
 					
+					ge->moveToPoint(tempBTV + btVector3(0,0,1));
 					
-					singleton->gw->fireEvent(
-						ge->uid,
-						EV_COLLISION,
-						clampfZO( (ge->lastVel.length()-0.5f)/16.0f )
-					);
+					ge->applyImpulse(btVector3(0,0,5));
+					ge->lastVel = ge->body->getLinearVelocity();
 				}
-				
-				
-				ge->lastVel = ge->body->getLinearVelocity();
 				
 				if (
 					(singleton->selObjInd == ge->uid) &&
@@ -384,127 +281,103 @@ public:
 						-(ge->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*1.0f
 					) );
 					
+					
+					
 				}
 				
+				
+				
+				// for (m = 0; m < singleton->sphereStack.size(); m++) {
+				// 	tempBTV = ge->body->getCenterOfMassPosition();
+				// 	tempBTV2 = singleton->sphereStack[m].position.getBTV();
+					
+				// 	totForce = (
+				// 		1.0f-clampfZO(
+				// 			tempBTV.distance(tempBTV2)/(singleton->sphereStack[m].curRad*5.0f)	
+				// 		)
+				// 	)*10.0f; // * singleton->sphereStack[m].power;
+				// 	dirForce = tempBTV-tempBTV2;
+				// 	dirForce.normalize();
+				// 	dirForce = dirForce*totForce;
+					
+				// 	dirForce.setZ(totForce);
+					
+				// 	ge->applyImpulse(dirForce);
+				// }
+				
+				// for (m = 0; m < singleton->explodeStack.size(); m++) {
+				// 	tempBTV = ge->body->getCenterOfMassPosition();
+				// 	totForce = (
+				// 		1.0f-clampfZO(
+				// 			tempBTV.distance(singleton->explodeStack[m].pos)/singleton->explodeStack[m].radius	
+				// 		)
+				// 	)*singleton->explodeStack[m].power;
+				// 	dirForce = tempBTV-singleton->explodeStack[m].pos;
+				// 	dirForce.normalize();
+				// 	dirForce = dirForce*totForce;
+					
+				// 	dirForce.setZ(totForce);
+					
+				// 	ge->applyImpulse(dirForce);
+				// }
+				
+				
+				//////////////////////
+				// END APPLY FORCES
+				//////////////////////
+				
+				
+				
+				
+				
+				nv0 = ge->body->getLinearVelocity();
+				nv0.normalize();
+				nv1 = ge->lastVel;
+				nv1.normalize();
+				
+				
+				if (
+					(!(ge->isInside)) &&
+					(
+						ge->lastVel.length() > 0.5f
+					) &&
+					(
+						(nv0.dot(nv1)) < 0.8f
+					)
+					
+				) {
+					
+					singleton->gw->fireEvent(
+						ge->uid,
+						EV_COLLISION,
+						clampfZO( (ge->lastVel.length()-0.5f)/16.0f )
+					);
+				}
+				
+				
+				ge->lastVel = ge->body->getLinearVelocity();
+				
 				ge->getCenterPoint(true);
+				
+				
+				if (ge->entType == E_ENTTYPE_BULLET) {
+					if (
+						(!(ge->isFalling)) && 
+						(ge->body->getLinearVelocity().length() < 0.5)
+					) {
+							singleton->explodeBullet(ge);
+					}
+				}
+				
 				
 			}
 			
 		}
 		
+		singleton->explodeStack.clear();
+		
 	}
 
-	// void update( )
-	// {
-		
-		
-	// 	collideWithWorld();
-		
-		
-	// 	// if (singleton->lbDown) {
-			
-	// 	// }
-	// 	// else {
-	// 		return;
-	// 	//}
-		
-	// 	acc += dt;
-
-	// 	if ( acc > 0.125f ) {
-	// 		acc = 0;
-			
-			
-	// 		//addRandFloor();
-			
-
-	// 		q3BodyDef bodyDef;
-	// 		bodyDef.position.Set(
-	// 			singleton->cameraGetPosNoShake()->getFX() + singleton->lookAtVec[0]*16.0,
-	// 			singleton->cameraGetPosNoShake()->getFY() + singleton->lookAtVec[1]*16.0,
-	// 			singleton->cameraGetPosNoShake()->getFZ() + singleton->lookAtVec[2]*16.0	
-	// 		);
-	// 		bodyDef.axis.Set( q3RandomFloat( -1.0f, 1.0f ), q3RandomFloat( -1.0f, 1.0f ), q3RandomFloat( -1.0f, 1.0f ) );
-	// 		bodyDef.angle = q3PI * q3RandomFloat( -1.0f, 1.0f );
-	// 		bodyDef.bodyType = eDynamicBody;
-	// 		bodyDef.angularVelocity.Set( q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ) );
-	// 		bodyDef.angularVelocity *= q3Sign( q3RandomFloat( -1.0f, 1.0f ) );
-	// 		bodyDef.linearVelocity.Set( q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ) );
-	// 		bodyDef.linearVelocity *= q3Sign( q3RandomFloat( -1.0f, 1.0f ) );
-	// 		q3Body* body = scene->CreateBody( bodyDef );
-
-	// 		q3Transform tx;
-	// 		q3Identity( tx );
-	// 		q3BoxDef boxDef;
-	// 		boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
-	// 		body->AddBox( boxDef );
-	// 	}
-		
-	// 	// q3Body* body = scene->m_bodyList;
-
-	// 	// while ( body )
-	// 	// {
-	// 	// 	body->Render( render );
-	// 	// 	body = body->m_next;
-	// 	// }
-		
-		
-	// 	/*
-	// 	rayCast.Init( q3Vec3( 3.0f, 5.0f, 3.0f ), q3Vec3( -1.0f, -1.0f, -1.0f ) );
-	// 	scene.RayCast( &rayCast, rayCast.data );
-
-	// 	if ( rayCast.impactBody )
-	// 	{
-	// 		rayCast.impactBody->SetToAwake( );
-	// 		rayCast.impactBody->ApplyForceAtWorldPoint( rayCast.data.dir * 20.0f, rayCast.data.GetImpactPoint( ) );
-	// 	}
-	// 	*/
-		
-		
-	// }
-
-	// void shutdown( )
-	// {
-	// 	scene->RemoveAllBodies();
-	// }
-	
-	// void drawAll() {
-	// 	scene->Render(&q3Rend);
-	// }
-	
-	// void updateBase( f32 time )
-	// {
-	// 	// The time accumulator is used to allow the application to render at
-	// 	// a frequency different from the constant frequency the physics sim-
-	// 	// ulation is running at (default 60Hz).
-		
-	// 	accumulator += time;
-
-	// 	accumulator = q3Clamp01( accumulator );
-	// 	while ( accumulator >= dt )
-	// 	{
-			
-	// 		scene->Step();
-	// 		update();
-			
-	// 		// if ( !paused )
-	// 		// {
-	// 		// 	scene.Step( );
-	// 		// 	demos[ currentDemo ]->Update( );
-	// 		// }
-
-	// 		// else
-	// 		// {
-	// 		// 	if ( singleStep )
-	// 		// 	{
-	// 		// 		scene.Step( );
-	// 		// 		demos[ currentDemo ]->Update( );
-	// 		// 		singleStep = false;
-	// 		// 	}
-	// 		// }
-
-	// 		accumulator -= dt;
-	// 	}
-	// }
 	
 	void updateAll() {
 		
@@ -524,6 +397,160 @@ public:
 	
 	
 };
+
+
+
+// if (isFar) {
+// 	ge->isFalling = true;
+// }
+
+// if (isClose) {
+// 	ge->isFalling = false;
+// }
+
+// if (hasContact) {
+	
+// }
+// else {
+	
+// }
+
+// 	//&& (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f)
+
+
+// if (ge->isFalling) {
+	
+// }
+// else {
+// 	if (lastFalling != ge->isFalling) {
+// 		singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
+// 	}
+// }
+
+//lastFalling = ge->isFalling;
+// ge->isFalling = (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f);
+// if (ge->isFalling) {
+
+// }
+// else {
+// 	if (lastFalling != ge->isFalling) {
+// 		singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
+// 	}
+// }
+
+// void update( )
+// {
+	
+	
+// 	collideWithWorld();
+	
+	
+// 	// if (singleton->lbDown) {
+		
+// 	// }
+// 	// else {
+// 		return;
+// 	//}
+	
+// 	acc += dt;
+
+// 	if ( acc > 0.125f ) {
+// 		acc = 0;
+		
+		
+// 		//addRandFloor();
+		
+
+// 		q3BodyDef bodyDef;
+// 		bodyDef.position.Set(
+// 			singleton->cameraGetPosNoShake()->getFX() + singleton->lookAtVec[0]*16.0,
+// 			singleton->cameraGetPosNoShake()->getFY() + singleton->lookAtVec[1]*16.0,
+// 			singleton->cameraGetPosNoShake()->getFZ() + singleton->lookAtVec[2]*16.0	
+// 		);
+// 		bodyDef.axis.Set( q3RandomFloat( -1.0f, 1.0f ), q3RandomFloat( -1.0f, 1.0f ), q3RandomFloat( -1.0f, 1.0f ) );
+// 		bodyDef.angle = q3PI * q3RandomFloat( -1.0f, 1.0f );
+// 		bodyDef.bodyType = eDynamicBody;
+// 		bodyDef.angularVelocity.Set( q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ) );
+// 		bodyDef.angularVelocity *= q3Sign( q3RandomFloat( -1.0f, 1.0f ) );
+// 		bodyDef.linearVelocity.Set( q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ), q3RandomFloat( 1.0f, 3.0f ) );
+// 		bodyDef.linearVelocity *= q3Sign( q3RandomFloat( -1.0f, 1.0f ) );
+// 		q3Body* body = scene->CreateBody( bodyDef );
+
+// 		q3Transform tx;
+// 		q3Identity( tx );
+// 		q3BoxDef boxDef;
+// 		boxDef.Set( tx, q3Vec3( 1.0f, 1.0f, 1.0f ) );
+// 		body->AddBox( boxDef );
+// 	}
+	
+// 	// q3Body* body = scene->m_bodyList;
+
+// 	// while ( body )
+// 	// {
+// 	// 	body->Render( render );
+// 	// 	body = body->m_next;
+// 	// }
+	
+	
+// 	/*
+// 	rayCast.Init( q3Vec3( 3.0f, 5.0f, 3.0f ), q3Vec3( -1.0f, -1.0f, -1.0f ) );
+// 	scene.RayCast( &rayCast, rayCast.data );
+
+// 	if ( rayCast.impactBody )
+// 	{
+// 		rayCast.impactBody->SetToAwake( );
+// 		rayCast.impactBody->ApplyForceAtWorldPoint( rayCast.data.dir * 20.0f, rayCast.data.GetImpactPoint( ) );
+// 	}
+// 	*/
+	
+	
+// }
+
+// void shutdown( )
+// {
+// 	scene->RemoveAllBodies();
+// }
+
+// void drawAll() {
+// 	scene->Render(&q3Rend);
+// }
+
+// void updateBase( f32 time )
+// {
+// 	// The time accumulator is used to allow the application to render at
+// 	// a frequency different from the constant frequency the physics sim-
+// 	// ulation is running at (default 60Hz).
+	
+// 	accumulator += time;
+
+// 	accumulator = q3Clamp01( accumulator );
+// 	while ( accumulator >= dt )
+// 	{
+		
+// 		scene->Step();
+// 		update();
+		
+// 		// if ( !paused )
+// 		// {
+// 		// 	scene.Step( );
+// 		// 	demos[ currentDemo ]->Update( );
+// 		// }
+
+// 		// else
+// 		// {
+// 		// 	if ( singleStep )
+// 		// 	{
+// 		// 		scene.Step( );
+// 		// 		demos[ currentDemo ]->Update( );
+// 		// 		singleStep = false;
+// 		// 	}
+// 		// }
+
+// 		accumulator -= dt;
+// 	}
+// }
+
+
 
 
 

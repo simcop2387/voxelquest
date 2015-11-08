@@ -440,7 +440,9 @@ public:
 	EntPool entPoolStack[E_ENTTYPE_LENGTH];
 	
 	
-	
+	std::vector<ExplodeStruct> explodeStack;
+	std::vector<DebrisStruct> debrisStack;
+	//std::vector<btRigidBody*> debrisBodies;
 	
 	std::vector<FIVector4> primTemplateStack;
 	std::vector<SphereStruct> sphereStack;
@@ -619,7 +621,6 @@ public:
 	void setSelInd(int ind) {
 		
 		selObjInd = ind;
-		cout << "selObjInd " << selObjInd << "\n";
 	}
 
 	void init(int _defaultWinW, int _defaultWinH, int _scaleFactor
@@ -1797,6 +1798,9 @@ public:
 					k = 20;
 				break;
 				case E_ENTTYPE_TRACE:
+					k = 0;
+				break;
+				case E_ENTTYPE_DEBRIS:
 					k = 50;
 				break;
 				default:
@@ -2686,9 +2690,9 @@ public:
 				switch (_draggingToType) {
 					case E_DT_NOTHING:
 						
-						lastCellPos.copyFrom(_worldMarker);
-						lastCellPos.addXYZ(0,0,5);
-						sourceObj->setCenterPoint(&lastCellPos);
+						// lastCellPos.copyFrom(_worldMarker);
+						// lastCellPos.addXYZ(0,0,5);
+						// sourceObj->setCenterPoint(&lastCellPos);
 						
 						
 					break;
@@ -2814,7 +2818,12 @@ PERFORM_DRAG_END:
 		}
 	}
 	
-	BaseObjType placeNewEnt(bool isReq, int et, FIVector4* cellPos, bool isHidden = false) {
+	BaseObjType placeNewEnt(
+		bool isReq,
+		int et,
+		FIVector4* cellPos,
+		bool isHidden = false
+	) {
 		
 		
 		BaseObj* tmpObj = NULL;
@@ -2876,6 +2885,10 @@ PERFORM_DRAG_END:
 					
 				// }
 				
+			break;
+			
+			case E_ENTTYPE_DEBRIS:
+				newType = 0;
 			break;
 			
 		}
@@ -7642,8 +7655,18 @@ DISPATCH_EVENT_END:
 		//gameFluid[E_FID_SML]->pushExplodeBullet(true,&newPos,boolToInt(waterBulletOn));
 		gameFluid[E_FID_BIG]->pushExplodeBullet(true,&newPos,boolToInt(waterBulletOn));
 		
+		explodeStack.push_back(ExplodeStruct());
+		
+		if (ge->body != NULL) {
+			explodeStack.back().pos = ge->body->getCenterOfMassPosition();
+			explodeStack.back().radius = 20.0f;
+			explodeStack.back().power = 200.0f;
+		}
+		
 		
 		gw->removeVisObject(ge->uid, true);
+		
+		
 		
 		//ge->isHidden = true;
 		
@@ -7670,10 +7693,15 @@ DISPATCH_EVENT_END:
 			
 			//##
 			
-			gw->gameObjects[ca->isGrabbingId].setVel(
-				cos(ca->ang)*20.0f,
-				sin(ca->ang)*20.0f,
-				30.0f	
+			// gw->gameObjects[ca->isGrabbingId].setVel(
+			// 	cos(ca->ang)*20.0f,
+			// 	sin(ca->ang)*20.0f,
+			// 	30.0f	
+			// );
+			
+			gw->gameObjects[ca->isGrabbingId].applyImpulseOtherRot(
+				btVector3(0.0,20.0,30.0),
+				ca->rotMat
 			);
 			
 			playSoundEnt(
@@ -7740,23 +7768,32 @@ DISPATCH_EVENT_END:
 		else {
 			newCellPos.copyFrom(ca->getCenterPoint());
 			
-			vx = cos(ca->ang)*3.0f;
-			vx = vx;
+			// vx = cos(ca->ang)*3.0f;
+			// vx = vx;
 			
-			vy = sin(ca->ang)*3.0f;
-			vy = vy;
+			// vy = sin(ca->ang)*3.0f;
+			// vy = vy;
 			
-			newCellPos.addXYZ(vx, vy, 2);
+			
+			btVector3 tempBTV = ca->multByOtherRot(btVector3(0.0f,3.0f,3.0f),ca->rotMat);
+			newCellPos.addXYZ(tempBTV.getX(), tempBTV.getY(), tempBTV.getZ());
 			
 			entNum = placeNewEnt(false, bulletType, &newCellPos);
 			
 			
 			
-			gw->gameObjects[entNum].setVel(
-				cos(ca->ang)*20.0f,
-				sin(ca->ang)*20.0f,
-				30.0f
+			// gw->gameObjects[entNum].setVel(
+			// 	cos(ca->ang)*20.0f,
+			// 	sin(ca->ang)*20.0f,
+			// 	30.0f
+			// );
+			
+			gw->gameObjects[entNum].applyImpulseOtherRot(
+				btVector3(0.0,120.0,120.0),
+				ca->rotMat
 			);
+			
+			
 			
 			if (bulletType != E_ENTTYPE_TRACE) {
 				playSoundEnt(
@@ -9049,7 +9086,7 @@ DISPATCH_EVENT_END:
 					if (currentTick > 2) {
 						
 						
-						
+						updateCamVals();
 						
 						
 						
@@ -9266,6 +9303,29 @@ DISPATCH_EVENT_END:
 		return 1.0f;//(lightVecOrig.getFZ() + 1.0f)*0.5f;
 	}
 
+	void updateBullets() {
+		int i;
+		SphereStruct* ss;
+		
+		for (i = 0; i < sphereStack.size(); i++) {
+			ss = &(sphereStack[i]);
+			
+			ss->radVel += ss->radAcc*timeDelta;
+			ss->curRad += ss->radVel*timeDelta;
+			
+			if (ss->curRad >= ss->maxRad) {
+				ss->curRad = ss->maxRad;
+				ss->radVel = 0.0f;
+			}
+		}
+		
+		for (i = 0; i < sphereStack.size(); i++) {
+			ss = &(sphereStack[i]);
+			if (ss->curRad <= 0.0) {
+				sphereStack.erase(sphereStack.begin() + i);
+			}
+		}
+	}
 
 	void display(void)
 	{
@@ -9347,7 +9407,7 @@ DISPATCH_EVENT_END:
 			}
 		}
 		
-		
+		updateBullets();
 		
 
 		if (

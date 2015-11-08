@@ -680,7 +680,8 @@ public:
 			curHolder->pathsInvalid = true;
 			curHolder->idealPathsInvalid = true;
 			curHolder->pathsReady = false;
-			curHolder->idealPathsReady = false;
+			curHolder->idealPathsReady = false;			
+			curHolder->listGenerated = false;
 		}
 		
 		curHolder->setArrAtInd(ind,tempCellData,tempCellData2);
@@ -736,7 +737,17 @@ public:
 		BaseObj* ge = &(gameObjects[uid]);
 		switch (opCode) {
 			case EV_COLLISION:
-				singleton->playSoundEnt("land0",ge, 0.1, fParam);
+			
+				switch(ge->entType) {
+					case E_ENTTYPE_BULLET:
+						singleton->playSoundEnt("bump0",ge,0.0,0.25f);
+					break;
+					default:
+						singleton->playSoundEnt("land0", ge, 0.1, fParam);
+					break;
+				}
+			
+				
 				singleton->performCamShake(ge, fParam);
 			break;
 		}
@@ -2576,10 +2587,14 @@ public:
 			
 			curObj = &(gameObjects[visObjects[i]]);
 			
-			if (curObj->isHidden || (
-				(singleton->firstPerson) &&
-				(curObj->uid == singleton->getCurActorUID())
-			)) {
+			if (
+				curObj->isHidden ||
+				(curObj->objectType <= 0) ||
+				(
+					(singleton->firstPerson) &&
+					(curObj->uid == singleton->getCurActorUID())
+				)
+			) {
 				
 			}
 			else {

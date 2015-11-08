@@ -1833,14 +1833,14 @@ public:
 		
 		return &linVelocity;
 	}
-	void setVel(float x, float y, float z) {
-		if (body != NULL) {
+	// void setVel(float x, float y, float z) {
+	// 	if (body != NULL) {
 			
-			body->setLinearVelocity(btVector3(x,y,z));
+	// 		body->setLinearVelocity(btVector3(x,y,z));
 			
 			
-		}
-	}
+	// 	}
+	// }
 	
 	void applyAngularImpulse(btVector3 newAV) {
 		body->setAngularVelocity(body->getAngularVelocity() + newAV);
@@ -1853,7 +1853,7 @@ public:
 	}
 	
 	void applyImpulseRot( btVector3 imp) {
-		btVector3 tempBTV;
+		
 		
 		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
 		Vector3 res = rotMat*myRHS;
@@ -1863,31 +1863,47 @@ public:
 		body->setActivationState(ACTIVE_TAG);
 	}
 	
+	void applyImpulseOtherRot( btVector3 imp, Matrix3 otherRot) {
+		
+		
+		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
+		Vector3 res = otherRot*myRHS;
+		
+		
+		body->applyCentralImpulse(btVector3(res.x,res.y,res.z));
+		body->setActivationState(ACTIVE_TAG);
+	}
+	
+	btVector3 multByOtherRot( btVector3 imp, Matrix3 otherRot) {
+		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
+		Vector3 res = otherRot*myRHS;
+		
+		return btVector3(res.x,res.y,res.z);
+	}
 	
 	
-	void setCenterPoint(FIVector4* newPos) {
-		
-		centerPoint.copyFrom(newPos);
-		
+	
+	void moveToPoint(btVector3 newPoint) {
 		btTransform trans;
+		
 		
 		if (body == NULL) {
 			
 		}
 		else {
 			
-			// trans.setOrigin(
-			// 	btVector3(
-			// 		centerPoint[0],
-			// 		centerPoint[1],
-			// 		centerPoint[2]	
-			// 	)	
-			// );
-			
-			// body->setCenterOfMassTransform(
-			// 	trans
-			// );
+			trans.setIdentity();
+			trans.setOrigin(newPoint);
+			body->setCenterOfMassTransform(
+				trans
+			);
 		}
+	}
+	
+	void setCenterPoint(FIVector4* newPos) {
+		
+		centerPoint.copyFrom(newPos);
+				
 	}
 	
 	FIVector4* getCenterPoint(bool updateCP = true) {

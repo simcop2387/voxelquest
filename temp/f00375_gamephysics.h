@@ -15,11 +15,7 @@ void GamePhysics::init (Singleton * _singleton)
 		singleton = _singleton;
 		myOGLApp = new MyOGLApp("yo", 640, 480);
 		guiHelper = new MyGLHelper(singleton, myOGLApp);
-		example = 
-			new BenchmarkDemo(guiHelper,5);
-			// new BasicExample(guiHelper);
-		
-		
+		example = new BenchmarkDemo(guiHelper,5);
 		example->initPhysics();
 		
 	}
@@ -59,7 +55,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 		trans.setOrigin(ge->getCenterPoint(false)->getBTV());
 		
 		
-		
+		float objRad = 0.5f;
 		
 		if (
 			(ge->entType == E_ENTTYPE_NPC) ||
@@ -70,49 +66,29 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 			ge->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
 		}
 		else {
-			btBoxShape* boxShape = new btBoxShape(btVector3(0.5f,0.5f,0.5f));
+			
+			if (ge->entType == E_ENTTYPE_DEBRIS) {
+				objRad = 0.25f;
+			}
+			else {
+				
+			}
+			
+			btBoxShape* boxShape = new btBoxShape(btVector3(objRad,objRad,objRad));
 			ge->body = example->createRigidBody(ge->mass,trans,boxShape);
+			
+			if (ge->entType == E_ENTTYPE_DEBRIS) {
+				// ge->body->setAngularVelocity(btVector3(
+				// 	fGenRand2()*2.0f-1.0f,
+				// 	fGenRand2()*2.0f-1.0f,
+				// 	fGenRand2()*2.0f-1.0f	
+				// ));
+			}
 		}
 		
-		ge->body->setDamping(0.1f,0.99f);
-		
 		ge->body->bodyUID = _uid;
-		
+		ge->body->setDamping(0.1f,0.99f);
 		ge->body->setContactProcessingThreshold(0.25f);
-		
-		// q3BodyDef bodyDef;
-		// bodyDef.position.Set(
-		// 	ge->getCenterPoint()->getFX(),
-		// 	ge->getCenterPoint()->getFY(),
-		// 	ge->getCenterPoint()->getFZ()	
-		// );
-		
-		// if (ge->isUpright) {
-		// 	bodyDef.lockAxisX = true;
-		// 	bodyDef.lockAxisY = true;
-		// 	bodyDef.lockAxisZ = true;
-		// }
-		
-		// bodyDef.bodyType = eDynamicBody;
-		
-		// if (ge->body != NULL) {
-		// 	scene->RemoveBody(ge->body);
-		// 	ge->body = NULL;
-		// }
-		
-		// ge->body = scene->CreateBody( bodyDef );
-
-		// q3Transform tx;
-		// q3Identity( tx );
-		// q3BoxDef boxDef;
-		// boxDef.Set( tx, q3Vec3(
-		// 	ge->diameterInCells.getFX(),
-		// 	ge->diameterInCells.getFY(),
-		// 	ge->diameterInCells.getFZ()
-		// ) );
-		// boxDef.SetRestitution(ge->bounciness);
-		// ge->body->AddBox( boxDef );
-		
 		
 	}
 void GamePhysics::collideWithWorld ()
@@ -123,6 +99,9 @@ void GamePhysics::collideWithWorld ()
 		int i;
 		int j;
 		int k;
+		int m;
+		
+		int cellVal;
 		
 		bool lastFalling;
 		
@@ -131,12 +110,29 @@ void GamePhysics::collideWithWorld ()
 		FIVector4* curCenterPoint;
 		btDiscreteDynamicsWorld* world = example->getWorld();
 		
+		btVector3 tempBTV;
+		btVector3 tempBTV2;
 		btVector3 nv0;
 		btVector3 nv1;
 		
+		
 		bool hasContact = false;
-		// bool isClose = false;
-		// bool isFar = false;
+		
+		int entNum;
+		
+		FIVector4 tempVec;
+		
+		
+		for (i = 0; i < singleton->debrisStack.size(); i++) {
+			
+			tempVec.setBTV(singleton->debrisStack[i].pos);
+			entNum = singleton->placeNewEnt(false, E_ENTTYPE_DEBRIS, &tempVec);
+			
+			//addDebris(singleton->debrisStack[i].pos);
+		}
+		singleton->debrisStack.clear();
+		
+		
 		
 		const btCollisionObject* bodies[2];
 		
@@ -152,8 +148,6 @@ void GamePhysics::collideWithWorld ()
 			bodies[0] = obA;
 			bodies[1] = obB;
 
-			// isClose = false;
-			// isFar = false;
 			hasContact = false;
 			
 			int numContacts = contactManifold->getNumContacts();
@@ -167,10 +161,6 @@ void GamePhysics::collideWithWorld ()
 					// const btVector3& ptB = pt.getPositionWorldOnB();
 					// const btVector3& normalOnB = pt.m_normalWorldOnB;
 				}
-				
-				// if (pt.getDistance() > 0.2f) {
-				// 	isFar = true;
-				// }
 			}
 			
 			
@@ -191,41 +181,13 @@ void GamePhysics::collideWithWorld ()
 					else {
 						lastFalling = ge->isFalling;
 						
-						// if (isFar) {
-						// 	ge->isFalling = true;
-						// }
-						
-						// if (isClose) {
-						// 	ge->isFalling = false;
-						// }
-						
-						// if (hasContact) {
-							
-						// }
-						// else {
-							
-						// }
-						
 						ge->isFalling = (!hasContact);// && (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f);
 						
 						if (!(ge->isFalling)) {
 							ge->isJumping = false;
 						}
 						
-						// 	//&& (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f)
-
-						
-						// if (ge->isFalling) {
-							
-						// }
-						// else {
-						// 	if (lastFalling != ge->isFalling) {
-						// 		singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
-						// 	}
-						// }
 					}
-					
-					
 					
 				}
 			}
@@ -235,7 +197,8 @@ void GamePhysics::collideWithWorld ()
 		
 		
 		
-		
+		float totForce;
+		btVector3 dirForce;
 		
 		
 		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
@@ -249,46 +212,30 @@ void GamePhysics::collideWithWorld ()
 			}
 			else {
 				
-				//lastFalling = ge->isFalling;
-				// ge->isFalling = (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f);
-				// if (ge->isFalling) {
 				
-				// }
-				// else {
-				// 	if (lastFalling != ge->isFalling) {
-				// 		singleton->gw->fireEvent(ge->uid, EV_HIT_GROUND);
-				// 	}
-				// }
+				//////////////////////
+				// APPLY FORCES
+				//////////////////////
 				
+				tempBTV = ge->body->getCenterOfMassPosition();
 				
-				nv0 = ge->body->getLinearVelocity();
-				nv0.normalize();
-				nv1 = ge->lastVel;
-				nv1.normalize();
+				cellVal = singleton->gw->getCellAtCoords(
+					tempBTV.getX(),
+					tempBTV.getY(),
+					tempBTV.getZ()
+				);
 				
 				
+				ge->inWater = (cellVal == E_CD_WATER);
+				ge->isInside = (cellVal == E_CD_SOLID);
 				
-				
-				if (
-					(
-						ge->lastVel.length() > 0.5f
-					) &&
-					(
-						(nv0.dot(nv1)) < 0.8f
-					)
-				) {
+				if (ge->isInside) {
 					
+					ge->moveToPoint(tempBTV + btVector3(0,0,1));
 					
-					
-					singleton->gw->fireEvent(
-						ge->uid,
-						EV_COLLISION,
-						clampfZO( (ge->lastVel.length()-0.5f)/16.0f )
-					);
+					ge->applyImpulse(btVector3(0,0,5));
+					ge->lastVel = ge->body->getLinearVelocity();
 				}
-				
-				
-				ge->lastVel = ge->body->getLinearVelocity();
 				
 				if (
 					(singleton->selObjInd == ge->uid) &&
@@ -304,13 +251,100 @@ void GamePhysics::collideWithWorld ()
 						-(ge->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*1.0f
 					) );
 					
+					
+					
 				}
 				
+				
+				
+				// for (m = 0; m < singleton->sphereStack.size(); m++) {
+				// 	tempBTV = ge->body->getCenterOfMassPosition();
+				// 	tempBTV2 = singleton->sphereStack[m].position.getBTV();
+					
+				// 	totForce = (
+				// 		1.0f-clampfZO(
+				// 			tempBTV.distance(tempBTV2)/(singleton->sphereStack[m].curRad*5.0f)	
+				// 		)
+				// 	)*10.0f; // * singleton->sphereStack[m].power;
+				// 	dirForce = tempBTV-tempBTV2;
+				// 	dirForce.normalize();
+				// 	dirForce = dirForce*totForce;
+					
+				// 	dirForce.setZ(totForce);
+					
+				// 	ge->applyImpulse(dirForce);
+				// }
+				
+				// for (m = 0; m < singleton->explodeStack.size(); m++) {
+				// 	tempBTV = ge->body->getCenterOfMassPosition();
+				// 	totForce = (
+				// 		1.0f-clampfZO(
+				// 			tempBTV.distance(singleton->explodeStack[m].pos)/singleton->explodeStack[m].radius	
+				// 		)
+				// 	)*singleton->explodeStack[m].power;
+				// 	dirForce = tempBTV-singleton->explodeStack[m].pos;
+				// 	dirForce.normalize();
+				// 	dirForce = dirForce*totForce;
+					
+				// 	dirForce.setZ(totForce);
+					
+				// 	ge->applyImpulse(dirForce);
+				// }
+				
+				
+				//////////////////////
+				// END APPLY FORCES
+				//////////////////////
+				
+				
+				
+				
+				
+				nv0 = ge->body->getLinearVelocity();
+				nv0.normalize();
+				nv1 = ge->lastVel;
+				nv1.normalize();
+				
+				
+				if (
+					(!(ge->isInside)) &&
+					(
+						ge->lastVel.length() > 0.5f
+					) &&
+					(
+						(nv0.dot(nv1)) < 0.8f
+					)
+					
+				) {
+					
+					singleton->gw->fireEvent(
+						ge->uid,
+						EV_COLLISION,
+						clampfZO( (ge->lastVel.length()-0.5f)/16.0f )
+					);
+				}
+				
+				
+				ge->lastVel = ge->body->getLinearVelocity();
+				
 				ge->getCenterPoint(true);
+				
+				
+				if (ge->entType == E_ENTTYPE_BULLET) {
+					if (
+						(!(ge->isFalling)) && 
+						(ge->body->getLinearVelocity().length() < 0.5)
+					) {
+							singleton->explodeBullet(ge);
+					}
+				}
+				
 				
 			}
 			
 		}
+		
+		singleton->explodeStack.clear();
 		
 	}
 void GamePhysics::updateAll ()

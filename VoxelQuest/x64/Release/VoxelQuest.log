@@ -1,4 +1,4 @@
-﻿Build started 11/7/2015 1:48:13 AM.
+﻿Build started 11/8/2015 1:10:53 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -163,7 +163,6 @@
          2 File(s) copied
          Could Not Find c:\wamp\www\voxelquest\x64\Release\*.ilk
          running EXE
-         selObjInd 0
          
          
          
@@ -265,17 +264,10 @@
          curHeight 0 newHeight 2634.04
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
-         selObjInd 77
          actObjInd 77
-         subjectDistance 6.87847
-         selObjInd 0
-         selObjInd 0
-         firstPerson 0
-         selObjInd 0
-         selObjInd 0
-         GamePhysics:beginDrop()
+         subjectDistance 14.7406
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:04:18.00
+Time Elapsed 00:03:02.34
