@@ -394,8 +394,8 @@ void main() {
     vec4 oneVec = vec4(1.0);
     
     vec4 tex5 = texture2D(Texture5, TexCoord0.xy);    
-    vec4 matValsGeom = tex5;
-    bool valIsGeom = dot(matValsGeom.rgb,oneVec.rgb) != 0.0;
+    //vec4 matValsGeom = tex5;
+    //bool valIsGeom = dot(matValsGeom.rgb,oneVec.rgb) != 0.0;
     
     
     
@@ -647,7 +647,7 @@ void main() {
             
         }
         else {
-            finalCol += vec3(1.0,1.0,1.0)*0.25;
+            // finalCol += vec3(1.0,1.0,1.0)*0.25;
         }
         
         // if (tex4.w < tex0.w) {
@@ -780,9 +780,9 @@ void main() {
     
     
 
-    if (valIsGeom&&(!isOutline)) {
-        finalCol = tex2.rgb;
-    }
+    // if (valIsGeom&&(!isOutline)) {
+    //     finalCol = tex2.rgb;
+    // }
     
     //finalCol = vec3(tex7.a);
     

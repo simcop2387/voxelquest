@@ -16,6 +16,10 @@ uniform sampler2D Texture5;
 uniform sampler2D Texture6;
 uniform sampler2D Texture7;
 
+uniform mat3 rotMat;
+uniform mat4 modelview;
+uniform mat4 proj;
+
 uniform float timeOfDay;
 uniform vec2 bufferDim;
 
@@ -55,12 +59,20 @@ vec2 dirModXY[4] = vec2[](
 	vec2(0.0, -1.0)
 );
 
+varying vec3 newLight;
+//varying vec4 v0;
+//varying vec4 v1;
 varying vec2 TexCoord0;
+//varying mat4 myMat;
 
 $
 
 void main()
 {
+
+	
+
+	newLight = normalize(rotMat*(-baseLightVec));
 
 	TexCoord0 = gl_MultiTexCoord0.xy;
 	gl_Position = gl_Vertex;
@@ -106,7 +118,7 @@ vec3 getGlobLightCol()
 
 void main()
 {
-	
+	float shadTest = 0.0;
 
 	float specularSolid = 0.0;
 	float specularWater = 0.0;
@@ -128,9 +140,31 @@ void main()
 	vec4 wCurPos;
 	vec4 testTex = vec4(0.0);
 	
-	vec3 sStartPos = vec3(TexCoord0.xy,worldPosition.w);
-	vec3 sEndPos = vec3(0.0);	
-	vec3 sCurPos;
+	
+	
+	// mat4 myMat = proj*modelview;
+	// vec4 v0 = myMat * vec4(worldPosition.xyz-baseLightVec.xyz*1.0,1.0);
+	// vec4 v1 = myMat * vec4(worldPosition.xyz-baseLightVec.xyz*20.0,1.0);
+	//vec3 newLight = normalize(v1.xyz-v0.xyz);
+	
+	float rayDepth = 0.0;
+	float shadPower = clamp(1.0-(
+		max(
+			distance(TexCoord0.x,(0.5)),
+			distance(TexCoord0.y,(0.5))
+		)			
+	)*2.0, 0.0 , 1.0) * 
+	clamp(1.0-distance(worldPosition.xyz,cameraPos.xyz)/100.0,0.0,1.0);
+	
+	vec2 sStartPos = TexCoord0.xy;
+	vec2 sEndPos = TexCoord0.xy+newLight.xy*0.5; //*shadPower
+	vec2 sCurPos;
+	
+	vec3 sWP = worldPosition.xyz-baseLightVec.xyz*0.0;
+	vec3 eWP = worldPosition.xyz-baseLightVec.xyz*20.0;
+	vec3 curWP;
+	
+	
 	vec3 resColGS = vec3(0.0);
 	vec3 tempVec = vec3(0.0);
 	vec3 tempVec2 = vec3(0.0);
@@ -288,7 +322,9 @@ void main()
 				samp = texture2D(Texture0, newTC );
 				
 				testVec = normalize(samp.xyz - (worldPosition.xyz + myVec * curOff));
-				curAO = clamp ( clamp(  ( dot(testVec, myVec) ), 0.0, 1.0), 0.0, 1.0);
+				curAO = clamp ( clamp(  ( dot(testVec, myVec) ), 0.0, 1.0), 0.0, 1.0)*clamp(
+					1.0-distance(worldPosition.xyz,samp.xyz)/5.0, 0.0, 1.0	
+				);
 				totHits += curAO;
 				
 				
@@ -337,7 +373,7 @@ void main()
 				
 				
 
-				sEndPos = lightPosSS;
+				//sEndPos = lightPosSS;
 
 
 				//lightIntensity = lightArr[baseInd + 2].w;
@@ -357,10 +393,10 @@ void main()
 				// shadows
 
 
-				if (k == 0) {
-					resComp = tex6.w;
-				}
-				else {
+				//if (k == 0) {
+				//	resComp = tex6.w;
+				//}
+				//else {
 					totHits = 0.0;
 					totHits2 = 0.0;
 					totRays = 0.0;
@@ -372,24 +408,53 @@ void main()
 
 						sCurPos = mix(sStartPos, sEndPos, flerp);
 
-						samp = texture2D(Texture0, sCurPos.xy);
+						samp = texture2D(Texture4, sCurPos.xy);
+						curWP = mix(sWP, eWP, flerp);
+						rayDepth = (distance(cameraPos,samp.xyz)-distance(cameraPos,curWP.xyz));
 						//samp2 = texture2D(Texture4, sCurPos.xy);
-						wasHit = float( 
-							samp.w
+						if ( 
+							
+							(rayDepth < -0.1) &&
+							(rayDepth > -3.0)
+							
 							//max(samp.w,samp2.w)
-							> sCurPos.z
-						);
+							//< 
+						) {
+							totHits += abs(rayDepth-1.5)/1.5;
+							//(1.0-clamp(distance(cameraPos.z,curWP.z)/1.0,0.0,1.0))
+							// * clamp(
+							// 	(distance(cameraPos,curWP.xyz) - distance(cameraPos,samp.xyz))/100.0,
+							// 	0.0,
+							// 	1.0
+							// )
+							;
+						}
+						else {
+							//totHits -= 0.02;
+						}
 						
-						totHits += wasHit;
+						//totHits += wasHit;
 						hitCount += 1.0;
 						
 						
 
 					}
-					resComp = mix(1.0, 0.0, clamp(totHits*2.0/hitCount,0.0,1.0));
+					resComp = mix(1.0, 0.0, clamp(totHits*1.0/hitCount,0.0,1.0));
 					resComp = clamp(pow(resComp,2.0), 0.0, 1.0);
 					
-				}
+					//resComp = 1.0-clamp(totHits/hitCount,0.0,1.0);
+					
+					//shadTest = resComp;
+					
+					
+					
+					resComp = 1.0 - (1.0-resComp)*shadPower;
+					
+					resComp *= tex6.w;
+					
+					resComp = 1.0;
+					
+				//}
 
 				
 				
@@ -444,7 +509,10 @@ void main()
 		// LIGHT LOOP END
 
 		resColor.xyz =
-		pow(totLightColor.xyz*0.75+newAO*0.25,vec3(0.5));
+		//vec3(resComp);
+		
+		//vec3(shadPower);
+		pow(totLightColor.xyz*0.75+newAO*0.25,vec3(0.5))*(resComp*0.75+0.25);
 		//(totLightColor.xyz+newAO*0.25)/1.25;//*0.75+newAO*0.25;
 		// pow(
 			

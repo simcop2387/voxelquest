@@ -31,6 +31,8 @@ varying vec4 screenPos;
 varying float camDis;
 uniform float clipDist;
 
+
+
 $
 
 const float M_PI = 3.14159265359;
@@ -131,12 +133,14 @@ void main() {
     //float zbVal = 1.0-screenPos.z/clipDist;
 
     //
+    
 
     gl_FragData[0] = vec4((worldPos.xyz),zbVal);//vec4(heightPacked.rg,matPacked.rg);//vec4(bhr,bhg,3.0/255.0,tex0.a);
     gl_FragData[1] = vec4(
-        vec3(clamp(dot(curNormal,lightVec),0.0,1.0)) + matVal.rgb/255.0
-        //curColor.rgb*clamp(dot(curNormal,-lightVec.xyz),0.0,1.0)
-        ,objectId
+        -curNormal, //todo fix this
+        objectId//curMat
+        //vec3(clamp(dot(curNormal,lightVec),0.0,1.0)) + matVal.rgb/255.0
+        //,objectId
     );//vec4(resNorm.rgb, (TexCoord0.z+tex1.a)/2.0 ); //(TexCoord0.xyz+1.0)/2.0
 
 }

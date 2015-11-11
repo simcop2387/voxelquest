@@ -1540,7 +1540,9 @@ void GamePageHolder::generateList ()
 		bool edgeI;
 		
 		
-		
+		int ii;
+		int jj;
+		int kk;
 		
 		
 		float cellPitch;
@@ -1678,6 +1680,11 @@ void GamePageHolder::generateList ()
 		int begInd;
 		int endInd;
 		
+		int baseInd;
+		int tempVal;
+		int cellGrid[27];
+		int maskVals[8];
+		
 		
 		// if (GEN_COLLISION) {
 			
@@ -1796,74 +1803,128 @@ void GamePageHolder::generateList ()
 								// }
 								
 								
-								if (fillPolys) {
+								
+								if (doProcAny) {
 									
-									if (doProc[0]) { // x+
-										
-										getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
-										getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
-										getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
-										getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
-										
-										getIndVal(procCount);
-										procCount++;
-										
-										
+									// gather nearest 27 points for mask
+									
+									for (kk = -1; kk <= 1; kk++) {
+										for (jj = -1; jj <= 1; jj++) {
+											for (ii = -1; ii <= 1; ii++) {
+												
+												if (
+													singleton->gw->getCellAtCoords(
+														iX + ii,
+														iY + jj,
+														iZ + kk
+													) == E_CD_SOLID
+												) {
+													tempVal = 1;
+												}
+												else {
+													tempVal = 0;
+												}
+												
+												
+												cellGrid[
+													(ii+1) +
+													(jj+1)*3 +
+													(kk+1)*9	
+												] = tempVal;
+											}	
+										}
 									}
-									if (doProc[1]) { // x-
-										
-										getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
-										getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
-										getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
-										getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
-										
-										getIndVal2(procCount);
-										procCount++;
-										
+									
+									for (kk = 0; kk < 2; kk++) {
+										for (jj = 0; jj < 2; jj++) {
+											for (ii = 0; ii < 2; ii++) {
+												baseInd = ii + jj*3 + kk*9;
+												
+												
+												maskVals[ii+jj*2+kk*4] = 
+												((cellGrid[baseInd+0+0+0])<<0) |
+												((cellGrid[baseInd+1+0+0])<<1) |
+												((cellGrid[baseInd+0+3+0])<<2) |
+												((cellGrid[baseInd+1+3+0])<<3) |
+												
+												((cellGrid[baseInd+0+0+9])<<4) |
+												((cellGrid[baseInd+1+0+9])<<5) |
+												((cellGrid[baseInd+0+3+9])<<6) |
+												((cellGrid[baseInd+1+3+9])<<7);
+												
+											}	
+										}
 									}
-									if (doProc[2]) { // y+
-										
-										getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
-										getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
-										getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
-										getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
-										
-										getIndVal2(procCount);
-										procCount++;
-										
-									}
-									if (doProc[3]) { // y-
-										
-										
-										getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
-										getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
-										getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
-										getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
-										
-										getIndVal(procCount);
-										procCount++;
-									}
-									if (doProc[4]) { // z+
-										
-										getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
-										getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
-										getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
-										getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
-										
-										getIndVal(procCount);
-										procCount++;
-									}
-									if (doProc[5]) { // z-
-										
-										getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
-										getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
-										getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
-										getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
-										
-										getIndVal2(procCount);
-										procCount++;
-									}
+									
 								}
+								
+								
+								if (doProc[0]) { // x+
+									
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0, maskVals);
+									
+									getIndVal(procCount);
+									procCount++;
+									
+									
+								}
+								if (doProc[1]) { // x-
+									
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0, maskVals);
+									
+									getIndVal2(procCount);
+									procCount++;
+									
+								}
+								if (doProc[2]) { // y+
+									
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0, maskVals);
+									
+									getIndVal2(procCount);
+									procCount++;
+									
+								}
+								if (doProc[3]) { // y-
+									
+									
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0, maskVals);
+									
+									getIndVal(procCount);
+									procCount++;
+								}
+								if (doProc[4]) { // z+
+									
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1, maskVals);
+									
+									getIndVal(procCount);
+									procCount++;
+								}
+								if (doProc[5]) { // z-
+									
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0, maskVals);
+									
+									getIndVal2(procCount);
+									procCount++;
+								}
+								
 								
 								
 								

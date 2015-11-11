@@ -621,35 +621,33 @@ void GameWorld::update ()
 		
 		
 		
-		glEnable(GL_DEPTH_TEST);
 		
+		
+		
+		glEnable(GL_DEPTH_TEST);
 		singleton->perspectiveOn = true;
 		renderGeom();
 		singleton->perspectiveOn = false;
-		
 		glDisable(GL_DEPTH_TEST);
 		
 		
 		
-		
-		
-		
-		if (
+		// if (
 			
-			(
+		// 	(
 			
-				( shiftCounter == 1 ) ||
-				(
-					(singleton->lastDepthInvalidMove) &&
-					(!singleton->depthInvalidMove)
-				)	
+		// 		( shiftCounter == 1 ) ||
+		// 		(
+		// 			(singleton->lastDepthInvalidMove) &&
+		// 			(!singleton->depthInvalidMove)
+		// 		)	
 				
-			)
-			&&
-			USE_SPHERE_MAP
-		) {
-			drawPrim(true,true,false);
-		}
+		// 	)
+		// 	&&
+		// 	USE_SPHERE_MAP
+		// ) {
+		// 	drawPrim(true,true,false);
+		// }
 		
 		
 		// if (GEN_POLYS_WORLD||GEN_POLYS_HOLDER) {
@@ -689,9 +687,26 @@ void GameWorld::update ()
 
 
 		drawPrim(false,true,false);
-		
-		
 		drawPrim(false,false,false);
+		
+		
+		
+		
+		
+		
+		
+		
+		//singleton->copyFBO2("solidBaseTargFBO","solidTargFBO");
+		
+		singleton->bindShader("SolidCombineShader");
+		singleton->bindFBO("solidTargFBO");//, -1, 0);
+		singleton->sampleFBO("solidBaseTargFBO",0);
+		singleton->sampleFBO("geomTargFBO",2);
+		singleton->drawFSQuad();
+		singleton->unsampleFBO("geomTargFBO",2);
+		singleton->unsampleFBO("solidBaseTargFBO",0);
+		singleton->unbindFBO();
+		singleton->unbindShader();
 		
 	
 		
@@ -1020,7 +1035,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 			ind = 2;
 			
 			if ((curGeomCount == 0)&&(singleton->placingGeom == false)) {
-				singleton->copyFBO2("terTargFBO","solidTargFBO", 0, 1);
+				singleton->copyFBO2("terTargFBO","solidBaseTargFBO", 0, 1);
 				singleton->copyFBO2("terTargFBO","waterTargFBO", 2, 3);
 				singleton->copyFBO2("terTargFBO","prmDepthFBO", 4, 5);
 				return;
@@ -1070,9 +1085,11 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		singleton->sampleFBO("hmFBOLinearBig",2);
 		singleton->sampleFBO("terDepthFBO",3);
 		
-		if (USE_SPHERE_MAP) {
-			singleton->sampleFBO("sphDepthFBO",5);
-		}
+		//if (USE_SPHERE_MAP) {
+		//	singleton->sampleFBO("sphDepthFBO",5);
+		//}
+		
+		singleton->sampleFBO("geomTargFBO",5);
 		
 		if (doPrim) {
 			singleton->sampleFBO("terTargFBO",7);
@@ -1225,9 +1242,10 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 			singleton->unsampleFBO("terTargFBO",7);
 		}
 		
-		if (USE_SPHERE_MAP) {
-			singleton->unsampleFBO("sphDepthFBO",5);
-		}
+		// if (USE_SPHERE_MAP) {
+		// 	singleton->unsampleFBO("sphDepthFBO",5);
+		// }
+		singleton->unsampleFBO("geomTargFBO",5);
 		
 		singleton->unsampleFBO("terDepthFBO",3);
 		singleton->unsampleFBO("hmFBOLinearBig",2);
@@ -1250,7 +1268,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		if (doPrim) {
 			singleton->copyFBO2("prmTargFBO","waterTargFBO", 2, 3);
-			singleton->copyFBO2("prmTargFBO","solidTargFBO", 0, 1);
+			singleton->copyFBO2("prmTargFBO","solidBaseTargFBO", 0, 1);
 		}
 		
 		
@@ -1728,356 +1746,356 @@ void GameWorld::renderGeom ()
 
 
 
-		singleton->bindShader("GeomShader");
-		singleton->bindFBO("geomBaseTargFBO");
-		singleton->setShaderFloat("objectId",0.0);
-		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
-		singleton->setShaderFloat("isWire", 0.0);
-		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
-		singleton->setShaderfVec3("offsetPos",&(singleton->origin));
-		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
-		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
+		// singleton->bindShader("GeomShader");
+		// singleton->bindFBO("geomBaseTargFBO");
+		// singleton->setShaderFloat("objectId",0.0);
+		// singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+		// singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
+		// singleton->setShaderFloat("isWire", 0.0);
+		// singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
+		// singleton->setShaderfVec3("offsetPos",&(singleton->origin));
+		// singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
+		// singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 		
 		
-		glLineWidth(4.0f);
+		// glLineWidth(4.0f);
 		
 		
-		singleton->setShaderVec3("matVal", 30, 30, 30);
+		// singleton->setShaderVec3("matVal", 30, 30, 30);
 		
 		
-		//singleton->gamePhysics->example->renderScene();
+		// //singleton->gamePhysics->example->renderScene();
 		
 		
 		
 		
-		for(i = 0; i < visObjects.size(); i++) {
+		// for(i = 0; i < visObjects.size(); i++) {
 			
-			curObj = &(gameObjects[visObjects[i]]);
+		// 	curObj = &(gameObjects[visObjects[i]]);
 			
-			objCount++;
+		// 	objCount++;
 			
-			if (curObj->isHidden) {
+		// 	if (curObj->isHidden) {
 				
-			}
-			else {
+		// 	}
+		// 	else {
 								
 				
 				
 				
-				// tempVec1.copyFrom( &(curObj->boundsMinTransInPixels) );
-				// tempVec2.copyFrom( &(curObj->boundsMaxTransInPixels) );
+		// 		// tempVec1.copyFrom( &(curObj->boundsMinTransInPixels) );
+		// 		// tempVec2.copyFrom( &(curObj->boundsMaxTransInPixels) );
 				
 				
 				
-				// tempVec3.copyFrom(curObj->getCenterPoint());
-				// tempVec3.setFW(curObj->ang);
+		// 		// tempVec3.copyFrom(curObj->getCenterPoint());
+		// 		// tempVec3.setFW(curObj->ang);
 				
-				// singleton->setShaderfVec4("rotationZ",&tempVec3);
+		// 		// singleton->setShaderfVec4("rotationZ",&tempVec3);
 				
-				doProc = false;
+		// 		doProc = false;
 				
-				if (visObjects[i] == singleton->actObjInd) {
+		// 		if (visObjects[i] == singleton->actObjInd) {
 					
-					if (!singleton->firstPerson) {
+		// 			if (!singleton->firstPerson) {
 						
-						// singleton->drawBox(
-						// 	&tempVec1,
-						// 	&tempVec2
-						// );
+		// 				// singleton->drawBox(
+		// 				// 	&tempVec1,
+		// 				// 	&tempVec2
+		// 				// );
 						
-						doProc = true;
-						
-						
+		// 				doProc = true;
 						
 						
-						// singleton->setShaderFloat("objectId",0);
-						
-						// tempVec1.copyFrom( curObj->getCenterPoint() );
 						
 						
-						// curOr = curObj->orientationXYZ.getIX();
-						// tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
-						// tempVec2.multXYZ(2.0f);
-						// tempVec2.addXYZRef(&tempVec1);
-						// singleton->setShaderVec3("matVal", 255, 0, 0);
-						// singleton->drawLine(&tempVec1,&tempVec2);
+		// 				// singleton->setShaderFloat("objectId",0);
 						
-						// curOr = curObj->orientationXYZ.getIY();
-						// tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
-						// tempVec2.multXYZ(2.0f);
-						// tempVec2.addXYZRef(&tempVec1);
-						// singleton->setShaderVec3("matVal", 0, 255, 0);
-						// singleton->drawLine(&tempVec1,&tempVec2);
-						
-						// curOr = curObj->orientationXYZ.getIZ();
-						// tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
-						// tempVec2.multXYZ(2.0f);
-						// tempVec2.addXYZRef(&tempVec1);
-						// singleton->setShaderVec3("matVal", 0, 0, 255);
-						// singleton->drawLine(&tempVec1,&tempVec2);
+		// 				// tempVec1.copyFrom( curObj->getCenterPoint() );
 						
 						
-						// singleton->setShaderVec3("matVal", 30, 30, 30);
-					}
-					
-					
-					
-				}
-				else {
-					
-					if (
-						(curObj->entType == E_ENTTYPE_BULLET) ||
-						(curObj->entType == E_ENTTYPE_TRACE) ||
-						(
-							(singleton->firstPerson) &&
-							(curObj->uid == singleton->getCurActorUID())
-						)
-					) {
+		// 				// curOr = curObj->orientationXYZ.getIX();
+		// 				// tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
+		// 				// tempVec2.multXYZ(2.0f);
+		// 				// tempVec2.addXYZRef(&tempVec1);
+		// 				// singleton->setShaderVec3("matVal", 255, 0, 0);
+		// 				// singleton->drawLine(&tempVec1,&tempVec2);
 						
-					}
-					else {
-						// singleton->drawBox(
-						// 	&tempVec1,
-						// 	&tempVec2
-						// );
+		// 				// curOr = curObj->orientationXYZ.getIY();
+		// 				// tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
+		// 				// tempVec2.multXYZ(2.0f);
+		// 				// tempVec2.addXYZRef(&tempVec1);
+		// 				// singleton->setShaderVec3("matVal", 0, 255, 0);
+		// 				// singleton->drawLine(&tempVec1,&tempVec2);
 						
-						doProc = true;
-					}
+		// 				// curOr = curObj->orientationXYZ.getIZ();
+		// 				// tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
+		// 				// tempVec2.multXYZ(2.0f);
+		// 				// tempVec2.addXYZRef(&tempVec1);
+		// 				// singleton->setShaderVec3("matVal", 0, 0, 255);
+		// 				// singleton->drawLine(&tempVec1,&tempVec2);
+						
+						
+		// 				// singleton->setShaderVec3("matVal", 30, 30, 30);
+		// 			}
 					
 					
-				}
+					
+		// 		}
+		// 		else {
+					
+		// 			if (
+		// 				(curObj->entType == E_ENTTYPE_BULLET) ||
+		// 				(curObj->entType == E_ENTTYPE_TRACE) ||
+		// 				(
+		// 					(singleton->firstPerson) &&
+		// 					(curObj->uid == singleton->getCurActorUID())
+		// 				)
+		// 			) {
+						
+		// 			}
+		// 			else {
+		// 				// singleton->drawBox(
+		// 				// 	&tempVec1,
+		// 				// 	&tempVec2
+		// 				// );
+						
+		// 				doProc = true;
+		// 			}
+					
+					
+		// 		}
 				
-				if (doProc) {
+		// 		if (doProc) {
 					
-					singleton->setShaderFloat("objectId",visObjects[i]);
+		// 			singleton->setShaderFloat("objectId",visObjects[i]);
 					
-					// if (curObj->body != NULL) {
-					// 	glBegin( GL_TRIANGLES );
-					// 	//curObj->body->Render(&q3Rend);
-					// 	glEnd( );
-					// }
-				}
+		// 			// if (curObj->body != NULL) {
+		// 			// 	glBegin( GL_TRIANGLES );
+		// 			// 	//curObj->body->Render(&q3Rend);
+		// 			// 	glEnd( );
+		// 			// }
+		// 		}
 				
-			}
+		// 	}
 								
 						
 			
 			
 			
 			
-		}
-		
-		
-		
-		tempVec3.setFXYZW(0.0f,0.0f,0.0f,0.0f);
-		singleton->setShaderfVec4("rotationZ",&tempVec3);
-		singleton->setShaderFloat("objectId",0.0);
-		
-		glLineWidth(1.0f);
-
-
-		//cout << "objectCount " << objCount << "\n";
-		singleton->lastObjectCount = objCount;		
-
-
-		
-		// singleton->setShaderFloat("isWire", 1.0);
-		// singleton->setShaderVec3("matVal", 255, 0, 0);
-		// minv.setFXYZRef(&(singleton->gameFluid[E_FID_BIG]->curDirtyMin));
-		// maxv.setFXYZRef(&(singleton->gameFluid[E_FID_BIG]->curDirtyMax));
-		// minv.addXYZRef(&(singleton->gameFluid[E_FID_BIG]->volMinReadyInPixels));
-		// maxv.addXYZRef(&(singleton->gameFluid[E_FID_BIG]->volMinReadyInPixels));
-		// minv.addXYZ(-4.0f,-4.0f,0.0f);
-		// maxv.addXYZ(4.0f,4.0f,0.0f);
-		// singleton->drawBox(&minv, &maxv);
-		
-		
-		// singleton->setShaderFloat("isWire", 1.0);
-		// singleton->setShaderVec3("matVal", 255, 0, 0);
-		// minv.setFXYZRef(&(singleton->gameFluid[E_FID_BIG]->curWaterMin));
-		// maxv.setFXYZRef(&(singleton->gameFluid[E_FID_BIG]->curWaterMax));
-		// minv.addXYZ(-4.0f,-4.0f,0.0f);
-		// maxv.addXYZ(4.0f,4.0f,0.0f);
-		// singleton->drawBox(&minv, &maxv);
-		
-		
-		
-
-		switch (singleton->mouseState)
-		{
-
-		case E_MOUSE_STATE_MOVE:
-			
-			
-		
-			// if (singleton->placingGeom) {
-				
-				
-			// 	singleton->setShaderVec3("matVal", 255, 0, 0);
-			// 	singleton->setShaderFloat("isWire", 0.0);
-				
-			// 	for (i = 0; i <= singleton->geomStep; i++) {
-					
-			// 		singleton->drawCubeCentered(
-			// 			&singleton->geomPoints[i],
-			// 			0.25f	
-			// 		);
-			// 	}
-			// }
-		
-			break;
-		
-		case E_MOUSE_STATE_BRUSH:
-			
-			
-			if (singleton->earthMod == E_PTT_TER) {
-				singleton->setShaderVec3("matVal", 255, 0, 0);
-			}
-			else {
-				singleton->setShaderVec3("matVal", 0, 0, 255);
-			}
-			
-			
-			singleton->setShaderFloat("isWire", 1.0);
-			singleton->drawCubeCentered(
-				&lastUnitPos,
-				((int)singleton->curBrushRad)
-			);
-			
-			
-			//glClear(GL_DEPTH_BUFFER_BIT);
-		break;
-		case E_MOUSE_STATE_PICKING:
-
-			
-			
-
-			if (singleton->highlightedEnt == NULL)
-			{
-
-			}
-			else
-			{
-				singleton->setShaderVec3("matVal", 254, 254, 254);
-				singleton->setShaderFloat("isWire", 1.0);
-
-				minv.setFXYZRef(singleton->highlightedEnt->getVisMinInPixelsT());
-				maxv.setFXYZRef(singleton->highlightedEnt->getVisMaxInPixelsT());
-
-				minv.addXYZ(-0.25);
-				maxv.addXYZ(0.25);
-
-
-				singleton->drawBox(&minv, &maxv);
-			}
-
-			if (singleton->selectedEnts.getSelectedEnt() == NULL)
-			{
-
-			}
-			else
-			{
-				singleton->setShaderVec3("matVal", 255, 255, 0);
-				singleton->setShaderFloat("isWire", 1.0);
-
-				minv.setFXYZRef(singleton->selectedEnts.getSelectedEnt()->getVisMinInPixelsT());
-				maxv.setFXYZRef(singleton->selectedEnts.getSelectedEnt()->getVisMaxInPixelsT());
-
-				singleton->drawBox(&minv, &maxv);
-			}
-
-
-			break;
-
-		}
-		
-		if (singleton->pathfindingOn) {
-			singleton->gameLogic->update();
-		}
-		
-		
-		
-		if (
-			(singleton->bCtrl) &&
-			(singleton->mouseState != E_MOUSE_STATE_BRUSH) &&
-			(!(singleton->anyMenuVisible()))	
-		) {
-			for (i = 1; i < singleton->dynObjects.size(); i++) {
-				if (singleton->dynObjects[i]->doRender)
-				{
-
-					doProc = false;
-
-					if (i >= E_OBJ_LIGHT0)
-					{
-						if (i - E_OBJ_LIGHT0 < singleton->numDynLights)
-						{
-							doProc = true;
-						}
-					}
-					else
-					{
-						doProc = true;
-					}
-
-					if (doProc)
-					{
-						singleton->setShaderFloat("objectId",i);
-						singleton->setShaderfVec3("matVal", &(singleton->dynObjects[i]->color) );
-						curBoxPos = &(singleton->dynObjects[i]->pos);
-						singleton->drawCubeCentered(curBoxPos, singleton->dynObjects[i]->radius);
-
-
-						if (i == singleton->activeObject)
-						{
-							//singleton->drawCrossHairs(singleton->dynObjects[i]->pos,4.0f);
-						}
-					}
-
-
-				}
-			}
-		}
-		
-		
-		// singleton->setShaderVec3("matVal", 254, 0, 0);
-		// singleton->setShaderFloat("isWire", 1.0);
-		// for (i = 0; i < singleton->nearestLights.selEntList.size(); i++) {
-			
-
-		// 	minv.setFXYZRef(singleton->nearestLights.selEntList[i]->getVisMinInPixelsT());
-		// 	maxv.setFXYZRef(singleton->nearestLights.selEntList[i]->getVisMaxInPixelsT());
-
-
-		// 	singleton->drawBox(&minv, &maxv);
 		// }
+		
+		
+		
+		// tempVec3.setFXYZW(0.0f,0.0f,0.0f,0.0f);
+		// singleton->setShaderfVec4("rotationZ",&tempVec3);
+		// singleton->setShaderFloat("objectId",0.0);
+		
+		// glLineWidth(1.0f);
 
 
+		// //cout << "objectCount " << objCount << "\n";
+		// singleton->lastObjectCount = objCount;		
 
-		// draw volume around organism
-		// GameOrg* activeOrg = singleton->testHuman;
-		// GamePageHolder* gphOrg = activeOrg->gph;
-		// if (singleton->orgOn) {
+
+		
+		// // singleton->setShaderFloat("isWire", 1.0);
+		// // singleton->setShaderVec3("matVal", 255, 0, 0);
+		// // minv.setFXYZRef(&(singleton->gameFluid[E_FID_BIG]->curDirtyMin));
+		// // maxv.setFXYZRef(&(singleton->gameFluid[E_FID_BIG]->curDirtyMax));
+		// // minv.addXYZRef(&(singleton->gameFluid[E_FID_BIG]->volMinReadyInPixels));
+		// // maxv.addXYZRef(&(singleton->gameFluid[E_FID_BIG]->volMinReadyInPixels));
+		// // minv.addXYZ(-4.0f,-4.0f,0.0f);
+		// // maxv.addXYZ(4.0f,4.0f,0.0f);
+		// // singleton->drawBox(&minv, &maxv);
+		
+		
+		// // singleton->setShaderFloat("isWire", 1.0);
+		// // singleton->setShaderVec3("matVal", 255, 0, 0);
+		// // minv.setFXYZRef(&(singleton->gameFluid[E_FID_BIG]->curWaterMin));
+		// // maxv.setFXYZRef(&(singleton->gameFluid[E_FID_BIG]->curWaterMax));
+		// // minv.addXYZ(-4.0f,-4.0f,0.0f);
+		// // maxv.addXYZ(4.0f,4.0f,0.0f);
+		// // singleton->drawBox(&minv, &maxv);
+		
+		
+		
+
+		// switch (singleton->mouseState)
+		// {
+
+		// case E_MOUSE_STATE_MOVE:
 			
-		// 	singleton->setShaderFloat("objectId",0.0);
-		// 	drawOrg(singleton->testHuman, false);
 			
-		// 	tempVec.copyFrom(&(activeOrg->basePosition));
-		// 	tempVec.addXYZRef(&gphOrg->gphCenInPixels,-1.0f);
-		// 	singleton->setShaderfVec3("offsetPos",&tempVec);
+		
+		// 	// if (singleton->placingGeom) {
+				
+				
+		// 	// 	singleton->setShaderVec3("matVal", 255, 0, 0);
+		// 	// 	singleton->setShaderFloat("isWire", 0.0);
+				
+		// 	// 	for (i = 0; i <= singleton->geomStep; i++) {
+					
+		// 	// 		singleton->drawCubeCentered(
+		// 	// 			&singleton->geomPoints[i],
+		// 	// 			0.25f	
+		// 	// 		);
+		// 	// 	}
+		// 	// }
+		
+		// 	break;
+		
+		// case E_MOUSE_STATE_BRUSH:
+			
+			
+		// 	if (singleton->earthMod == E_PTT_TER) {
+		// 		singleton->setShaderVec3("matVal", 255, 0, 0);
+		// 	}
+		// 	else {
+		// 		singleton->setShaderVec3("matVal", 0, 0, 255);
+		// 	}
+			
 			
 		// 	singleton->setShaderFloat("isWire", 1.0);
-		// 	singleton->setShaderVec3("matVal", 255, 0, 0 );
+		// 	singleton->drawCubeCentered(
+		// 		&lastUnitPos,
+		// 		((int)singleton->curBrushRad)
+		// 	);
 			
-		// 	singleton->drawBox( &(gphOrg->gphMinInPixels), &(gphOrg->gphMaxInPixels) );
 			
+		// 	//glClear(GL_DEPTH_BUFFER_BIT);
+		// break;
+		// case E_MOUSE_STATE_PICKING:
+
+			
+			
+
+		// 	if (singleton->highlightedEnt == NULL)
+		// 	{
+
+		// 	}
+		// 	else
+		// 	{
+		// 		singleton->setShaderVec3("matVal", 254, 254, 254);
+		// 		singleton->setShaderFloat("isWire", 1.0);
+
+		// 		minv.setFXYZRef(singleton->highlightedEnt->getVisMinInPixelsT());
+		// 		maxv.setFXYZRef(singleton->highlightedEnt->getVisMaxInPixelsT());
+
+		// 		minv.addXYZ(-0.25);
+		// 		maxv.addXYZ(0.25);
+
+
+		// 		singleton->drawBox(&minv, &maxv);
+		// 	}
+
+		// 	if (singleton->selectedEnts.getSelectedEnt() == NULL)
+		// 	{
+
+		// 	}
+		// 	else
+		// 	{
+		// 		singleton->setShaderVec3("matVal", 255, 255, 0);
+		// 		singleton->setShaderFloat("isWire", 1.0);
+
+		// 		minv.setFXYZRef(singleton->selectedEnts.getSelectedEnt()->getVisMinInPixelsT());
+		// 		maxv.setFXYZRef(singleton->selectedEnts.getSelectedEnt()->getVisMaxInPixelsT());
+
+		// 		singleton->drawBox(&minv, &maxv);
+		// 	}
+
+
+		// 	break;
+
 		// }
+		
+		// if (singleton->pathfindingOn) {
+		// 	singleton->gameLogic->update();
+		// }
+		
+		
+		
+		// if (
+		// 	(singleton->bCtrl) &&
+		// 	(singleton->mouseState != E_MOUSE_STATE_BRUSH) &&
+		// 	(!(singleton->anyMenuVisible()))	
+		// ) {
+		// 	for (i = 1; i < singleton->dynObjects.size(); i++) {
+		// 		if (singleton->dynObjects[i]->doRender)
+		// 		{
+
+		// 			doProc = false;
+
+		// 			if (i >= E_OBJ_LIGHT0)
+		// 			{
+		// 				if (i - E_OBJ_LIGHT0 < singleton->numDynLights)
+		// 				{
+		// 					doProc = true;
+		// 				}
+		// 			}
+		// 			else
+		// 			{
+		// 				doProc = true;
+		// 			}
+
+		// 			if (doProc)
+		// 			{
+		// 				singleton->setShaderFloat("objectId",i);
+		// 				singleton->setShaderfVec3("matVal", &(singleton->dynObjects[i]->color) );
+		// 				curBoxPos = &(singleton->dynObjects[i]->pos);
+		// 				singleton->drawCubeCentered(curBoxPos, singleton->dynObjects[i]->radius);
+
+
+		// 				if (i == singleton->activeObject)
+		// 				{
+		// 					//singleton->drawCrossHairs(singleton->dynObjects[i]->pos,4.0f);
+		// 				}
+		// 			}
+
+
+		// 		}
+		// 	}
+		// }
+		
+		
+		// // singleton->setShaderVec3("matVal", 254, 0, 0);
+		// // singleton->setShaderFloat("isWire", 1.0);
+		// // for (i = 0; i < singleton->nearestLights.selEntList.size(); i++) {
+			
+
+		// // 	minv.setFXYZRef(singleton->nearestLights.selEntList[i]->getVisMinInPixelsT());
+		// // 	maxv.setFXYZRef(singleton->nearestLights.selEntList[i]->getVisMaxInPixelsT());
+
+
+		// // 	singleton->drawBox(&minv, &maxv);
+		// // }
+
+
+
+		// // draw volume around organism
+		// // GameOrg* activeOrg = singleton->testHuman;
+		// // GamePageHolder* gphOrg = activeOrg->gph;
+		// // if (singleton->orgOn) {
+			
+		// // 	singleton->setShaderFloat("objectId",0.0);
+		// // 	drawOrg(singleton->testHuman, false);
+			
+		// // 	tempVec.copyFrom(&(activeOrg->basePosition));
+		// // 	tempVec.addXYZRef(&gphOrg->gphCenInPixels,-1.0f);
+		// // 	singleton->setShaderfVec3("offsetPos",&tempVec);
+			
+		// // 	singleton->setShaderFloat("isWire", 1.0);
+		// // 	singleton->setShaderVec3("matVal", 255, 0, 0 );
+			
+		// // 	singleton->drawBox( &(gphOrg->gphMinInPixels), &(gphOrg->gphMaxInPixels) );
+			
+		// // }
 
 		
 		
-		singleton->unbindFBO();
-		singleton->unbindShader();
+		// singleton->unbindFBO();
+		// singleton->unbindShader();
 
 
 
@@ -2090,7 +2108,7 @@ void GameWorld::renderGeom ()
 		//~~~~~~~~~~~~~~
 		
 		singleton->bindShader("BoxShader");
-		singleton->bindFBO("geomBaseTargFBO", -1, 0);
+		singleton->bindFBO("geomTargFBO");//, -1, 0); //solidTargFBO
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 		singleton->setShaderFloat("objectId",0.0);
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
@@ -2130,6 +2148,7 @@ void GameWorld::renderGeom ()
 		
 		
 		//~~~~~~~~~~~~~~
+		
 		
 		
 		
@@ -2247,82 +2266,87 @@ void GameWorld::renderGeom ()
 		
 		
 		
-		singleton->copyFBO2("geomBaseTargFBO","geomTargFBO");
-		
-		//glDisable(GL_DEPTH_TEST);
-		
-		singleton->bindShader("BillboardShader");
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
-		singleton->setShaderFloat("cellsPerHolder",cellsPerHolder);
-		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
-		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
-		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-		singleton->setShaderTexture(0,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
-		singleton->sampleFBO("geomBaseTargFBO",1);
-		singleton->bindFBO("geomTargFBO", -1, 0);
 		
 		
-		glBegin(GL_POINTS);
 		
-		for(i = 0; i < visObjects.size(); i++) {
+		
+		
+		
+		// singleton->copyFBO2("geomBaseTargFBO","geomTargFBO");
+		
+		
+		// singleton->bindShader("BillboardShader");
+		// singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
+		// singleton->setShaderFloat("cellsPerHolder",cellsPerHolder);
+		// singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+		// singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
+		// singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+		// singleton->setShaderTexture(0,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
+		// singleton->sampleFBO("geomBaseTargFBO",1);
+		// singleton->bindFBO("geomTargFBO", -1, 0);
+		
+		
+		// glBegin(GL_POINTS);
+		
+		// for(i = 0; i < visObjects.size(); i++) {
 			
-			curObj = &(gameObjects[visObjects[i]]);
+		// 	curObj = &(gameObjects[visObjects[i]]);
 			
-			if (
-				curObj->isHidden ||
-				(curObj->objectType <= 0) ||
-				(
-					(singleton->firstPerson) &&
-					(curObj->uid == singleton->getCurActorUID())
-				)
-			) {
+		// 	if (
+		// 		curObj->isHidden ||
+		// 		(curObj->objectType <= 0) ||
+		// 		(
+		// 			(singleton->firstPerson) &&
+		// 			(curObj->uid == singleton->getCurActorUID())
+		// 		)
+		// 	) {
 				
-			}
-			else {
-				tempCS = &(singleton->fontWrappers[EFW_ICONS]->charVals[
-					singleton->entIdToIcon[curObj->objectType] 
-				]);
-				frameMod = 0;
-				if (curObj->maxFrames != 0) {
-					frameMod = ((singleton->currentTick/(20))%(curObj->maxFrames))*16.0f;
-				}
+		// 	}
+		// 	else {
+		// 		tempCS = &(singleton->fontWrappers[EFW_ICONS]->charVals[
+		// 			singleton->entIdToIcon[curObj->objectType] 
+		// 		]);
+		// 		frameMod = 0;
+		// 		if (curObj->maxFrames != 0) {
+		// 			frameMod = ((singleton->currentTick/(20))%(curObj->maxFrames))*16.0f;
+		// 		}
 				
 				
-				x1 = (tempCS->sampX + frameMod )/iw;
-				x2 = (tempCS->sampX + tempCS->sampW + frameMod)/iw;
-				y1 = 1.0f-(tempCS->sampY)/ih;
-				y2 = 1.0f-(tempCS->sampY+tempCS->sampH)/ih;
+		// 		x1 = (tempCS->sampX + frameMod )/iw;
+		// 		x2 = (tempCS->sampX + tempCS->sampW + frameMod)/iw;
+		// 		y1 = 1.0f-(tempCS->sampY)/ih;
+		// 		y2 = 1.0f-(tempCS->sampY+tempCS->sampH)/ih;
 				
-				if (
-					(curObj->entType == E_ENTTYPE_BULLET) ||
-					(curObj->entType == E_ENTTYPE_TRACE)	
-				) {
-					yval = 1.0f;
-				}
-				else {
-					yval = -1.0f;
-				}
+		// 		if (
+		// 			(curObj->entType == E_ENTTYPE_BULLET) ||
+		// 			(curObj->entType == E_ENTTYPE_TRACE)	
+		// 		) {
+		// 			yval = 1.0f;
+		// 		}
+		// 		else {
+		// 			yval = -1.0f;
+		// 		}
 				
-				glMultiTexCoord4f(GL_TEXTURE0, visObjects[i], yval, 1.0f, 1.0f);
-				glMultiTexCoord4f(GL_TEXTURE1, x1,y1,x2,y2);
-				glVertex3f(
-					curObj->getCenterPoint()->getFX(),
-					curObj->getCenterPoint()->getFY(),
-					curObj->getCenterPoint()->getFZ()
-				);
-			}
+		// 		glMultiTexCoord4f(GL_TEXTURE0, visObjects[i], yval, 1.0f, 1.0f);
+		// 		glMultiTexCoord4f(GL_TEXTURE1, x1,y1,x2,y2);
+		// 		glVertex3f(
+		// 			curObj->getCenterPoint()->getFX(),
+		// 			curObj->getCenterPoint()->getFY(),
+		// 			curObj->getCenterPoint()->getFZ()
+		// 		);
+		// 	}
 			
 			
 			
-		}
-		glEnd();
+		// }
+		// glEnd();
 		
 		
 		
-		singleton->unsampleFBO("geomBaseTargFBO",1);
-		singleton->setShaderTexture(0,0);
-		singleton->unbindFBO();
-		singleton->unbindShader();
+		// singleton->unsampleFBO("geomBaseTargFBO",1);
+		// singleton->setShaderTexture(0,0);
+		// singleton->unbindFBO();
+		// singleton->unbindShader();
 		
 		//////////////////////////////
 		
@@ -4250,18 +4274,18 @@ void GameWorld::postProcess ()
 			singleton->bindFBO("combineWithWaterTargFBO");
 			singleton->sampleFBO("solidTargFBO",0);
 			singleton->sampleFBO("waterTargFBO",2);
-			singleton->sampleFBO("geomTargFBO", 4);
+			//singleton->sampleFBO("geomTargFBO", 4);
 			//singleton->sampleFBO("waveFBO", 6);
 			
-			singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
-			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
-			singleton->setShaderFloat("curTime", singleton->curTime);
+			// singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
+			// singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			// singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			// singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
+			// singleton->setShaderFloat("curTime", singleton->curTime);
 			singleton->drawFSQuad();
 			
 			//singleton->unsampleFBO("waveFBO", 6);
-			singleton->unsampleFBO("geomTargFBO", 4);
+			//singleton->unsampleFBO("geomTargFBO", 4);
 			singleton->unsampleFBO("waterTargFBO",2);
 			singleton->unsampleFBO("solidTargFBO",0);
 			singleton->unbindFBO();
@@ -4277,7 +4301,14 @@ void GameWorld::postProcess ()
 			singleton->copyFBO2("solidTargFBO","combineWithWaterTargFBO");
 			
 		}
+		
+		
+		//singleton->projMatrix*
 
+		singleton->curMVP = singleton->viewMatrix;
+		singleton->curObjMatrix3.set4(singleton->curMVP.get());
+		singleton->curObjMatrix3.invert();
+		singleton->curObjMatrix3.transpose();
 
 		
 
@@ -4287,6 +4318,9 @@ void GameWorld::postProcess ()
 		singleton->sampleFBO("combineWithWaterTargFBO",2);
 		singleton->sampleFBO("geomTargFBO",4);
 		singleton->sampleFBO("prmDepthFBO",6);
+		singleton->setShaderMatrix3x3("rotMat",singleton->curObjMatrix3.get(),1);
+		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
+		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND

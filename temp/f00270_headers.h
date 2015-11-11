@@ -105,6 +105,7 @@ public:
   Matrix4 projMatrix;
   std::vector <Matrix4> objMatrixStack;
   Matrix4 curObjMatrix;
+  Matrix4 curMVP;
   Matrix3 curObjMatrix3;
   Matrix4 tempObjMatrix;
   GLint (viewport) [4];
@@ -410,7 +411,6 @@ public:
   Image * imageHM1;
   Image * cloudImage;
   BaseObj * currentActor;
-  BaseObj baseObj;
   GamePageHolder * closestHolder;
   GamePlant * (gamePlants) [E_PT_LENGTH/2];
   Shader * curShaderPtr;
@@ -1438,7 +1438,7 @@ public:
   void genCellData ();
   void getIndVal (int procCount);
   void getIndVal2 (int procCount);
-  void getPixVal (float xb, float yb, float zb, float xm, float ym, float zm);
+  void getPixVal (float xb, float yb, float zb, int xm, int ym, int zm, int * mv);
   void createMesh ();
   void fillVBO ();
   void generateList ();
@@ -1461,13 +1461,13 @@ LZZ_INLINE void GamePageHolder::getIndVal2 (int procCount)
 		indexVec.push_back(1+procCount*4);
 		indexVec.push_back(2+procCount*4);
 	}
-LZZ_INLINE void GamePageHolder::getPixVal (float xb, float yb, float zb, float xm, float ym, float zm)
+LZZ_INLINE void GamePageHolder::getPixVal (float xb, float yb, float zb, int xm, int ym, int zm, int * mv)
           {
+		int maskInd = xm + ym*2 + zm*4;
 		
-		
-		vertexVec.push_back(xb+xm);
-		vertexVec.push_back(yb+ym);
-		vertexVec.push_back(zb+zm);
+		vertexVec.push_back(xb+xm+NET_MASKS[mv[maskInd]].getX());
+		vertexVec.push_back(yb+ym+NET_MASKS[mv[maskInd]].getY());
+		vertexVec.push_back(zb+zm+NET_MASKS[mv[maskInd]].getZ());
 		//vertexVec.push_back(1.0f);
 		
 		// vertexVec.push_back(xb+xm);
@@ -1792,6 +1792,7 @@ public:
   unsigned long int stepTimeInMicroSec;
   GamePhysics ();
   void init (Singleton * _singleton);
+  void collectDebris ();
   void beginDrop ();
   void remBoxFromObj (BaseObjType _uid);
   void addBoxFromObj (BaseObjType _uid);

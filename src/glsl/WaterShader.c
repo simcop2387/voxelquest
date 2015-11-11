@@ -609,35 +609,35 @@ void main() {
     
     vec4 charTest;
     
-    vec4 objSamp = texture2D(Texture13, TexCoord0.xy);
+    // vec4 objSamp = texture2D(Texture13, TexCoord0.xy);
     
-    if (matValsWater.a == TEX_WATER) {
+    // if (matValsWater.a == TEX_WATER) {
         
         
-        if (
-            (objSamp.w < baseHeightWater)
-        ) {
-            charTest = texture2D(Texture14, mix(newTC.xy,TexCoord0,0.75) );
-            if (charTest.a == 0.0) {
+    //     if (
+    //         (objSamp.w < baseHeightWater)
+    //     ) {
+    //         charTest = texture2D(Texture14, mix(newTC.xy,TexCoord0,0.75) );
+    //         if (charTest.a == 0.0) {
                 
-            }
-            else {
-                finalCol = mix(charTest.rgb,finalCol,0.9);
-            }
+    //         }
+    //         else {
+    //             finalCol = mix(charTest.rgb,finalCol,0.9);
+    //         }
             
-        }
+    //     }
         
-        finalCol.rgb = mix(pow(finalCol.rgb,vec3(2.0)), finalCol.rgb, timeOfDay);
+    //     finalCol.rgb = mix(pow(finalCol.rgb,vec3(2.0)), finalCol.rgb, timeOfDay);
         
-    }
-    else {
-        if (objSamp.w > baseHeight) {
-            finalCol = texture2D(Texture14, TexCoord0.xy).rgb;
+    // }
+    // else {
+    //     if (objSamp.w > baseHeight) {
+    //         finalCol = texture2D(Texture14, TexCoord0.xy).rgb;
             
-            finalCol = mix(finalCol, transRendered.rgb*0.75 + tex5.rgb*0.25 + tex4.rgb*0.25, 0.25);
+    //         finalCol = mix(finalCol, transRendered.rgb*0.75 + tex5.rgb*0.25 + tex4.rgb*0.25, 0.25);
             
-        }
-    }
+    //     }
+    // }
     
     
     

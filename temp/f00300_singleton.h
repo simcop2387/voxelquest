@@ -47,7 +47,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		RUN_COUNT = 0;
 		TEMP_DEBUG = false;
 		
-		
+		initNetMasks();
 		
 		
 		if (DO_RANDOMIZE) {
@@ -857,6 +857,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		
+		shaderStrings.push_back("SolidCombineShader");
 		shaderStrings.push_back("CylBBShader");
 		shaderStrings.push_back("FXAAShader");
 		shaderStrings.push_back("TerGenShader");
@@ -1080,8 +1081,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		}
 		
 		
-		
+		fboMap["solidBaseTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
 		fboMap["solidTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
+		
+		
 		fboMap["waterTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
 		
 		
@@ -1170,7 +1173,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		gameAI->init(this);
 		
 		
-		// gw->gameObjects[E_OBJ_CAMERA] = baseObj;
+		// gw->gameObjects[E_OBJ_CAMERA] = BaseObj();
 		// gw->gameObjects[E_OBJ_CAMERA].init(
 		// 	E_OBJ_CAMERA,
 		// 	0,
@@ -1205,7 +1208,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 					k = 0;
 				break;
 				case E_ENTTYPE_DEBRIS:
-					k = 50;
+					k = 400;
 				break;
 				default:
 					k = 0;
@@ -1868,7 +1871,7 @@ void Singleton::fillWithRandomObjects (int parentUID, int gen)
 		
 		
 		for (i = 0; i < maxObj; i++) {
-			gw->gameObjects[gameObjCounter] = baseObj;
+			gw->gameObjects[gameObjCounter] = BaseObj();
 			tmpObj = &(gw->gameObjects[gameObjCounter]);
 			
 			curId = getRandomObjId();
@@ -2259,14 +2262,16 @@ BaseObjType Singleton::placeNewEnt (bool isReq, int et, FIVector4 * cellPos, boo
 		newPos.copyFrom(cellPos);
 		
 		if (isRecycled) {
-			
+			gw->removeVisObject(curEntId,true);
 		}
 		else {
 			newPos.addXYZ(0.0f,0.0f,4.0f);
 		}
 		
 		
-		gw->gameObjects[curEntId] = baseObj;
+		
+		
+		gw->gameObjects[curEntId] = BaseObj();
 		tmpObj = &(gw->gameObjects[curEntId]);
 		tmpObj->init(
 			curEntId,
@@ -6611,7 +6616,7 @@ void Singleton::performCamShake (BaseObj * ge, float fp)
 		
 		cameraShake = max(
 			cameraShake,
-			(1.0f-clampfZO(ge->getCenterPoint()->distance(cameraGetPosNoShake())/(200.0f)))*fp
+			fp
 		);
 		
 		if (cameraShake > lastCamShake) {

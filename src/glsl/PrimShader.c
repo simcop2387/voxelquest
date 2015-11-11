@@ -75,6 +75,7 @@ uniform sampler2D Texture3;
 uniform sampler2D Texture4;
 
 // depth targ fbo sphereMap
+// now is geomTargFBO
 uniform sampler2D Texture5;
 uniform sampler2D Texture6;
 
@@ -385,6 +386,27 @@ struct Ray {
 		vec3 Dir;
 };
 
+
+int intMod(int lhs, int rhs)
+{
+	return lhs - ( (lhs / rhs) * rhs );
+}
+
+
+vec2 pack16(float num) {
+
+	int iz = int(num);
+	int ir = intMod(iz, 256);
+	int ig = (iz) / 256;
+
+	vec2 res;
+
+	res.r = float(ir) / 255.0;
+	res.g = float(ig) / 255.0;
+
+	return res;
+
+}
 
 vec2 aabbIntersect(vec3 rayOrig, vec3 rayDir, vec3 minv, vec3 maxv) {
 		float t0;
@@ -1562,10 +1584,7 @@ bool testHitDiag(vec3 ro, vec3 rd, vec3 centerPoint) {
 		return (res.x <= res.y);
 }
 
-int intMod(int lhs, int rhs)
-{
-		return lhs - ( (lhs / rhs) * rhs );
-}
+
 
 vec3 lineStep(
 		vec3 ro,
@@ -4513,31 +4532,33 @@ void main() {
 		float newInv = clamp(invalidCount,0.125,0.25);
 		
 		
-		#ifdef USESPHEREMAP
+		// #ifdef USESPHEREMAP
 		
-		for (j = -T_RAD; j <= T_RAD; j++) {
-				fj = float(j);
-				for (i = -T_RAD; i <= T_RAD; i++) {
-						fi = float(i);
+		// for (j = -T_RAD; j <= T_RAD; j++) {
+		// 		fj = float(j);
+		// 		for (i = -T_RAD; i <= T_RAD; i++) {
+		// 				fi = float(i);
 						
-						// dtexLast = min(
-						//     dtexLast,
-						//     texture(Texture3, tcl.xy + vec2(fi,fj)*
-						//         1.0*newInv / 
-						//         bufferDim.xy ).xyzw   
-						// );
+		// 				// dtexLast = min(
+		// 				//     dtexLast,
+		// 				//     texture(Texture3, tcl.xy + vec2(fi,fj)*
+		// 				//         1.0*newInv / 
+		// 				//         bufferDim.xy ).xyzw   
+		// 				// );
 						
 						
-						dtexSphere = min(
-								dtexSphere,
-								texture(Texture5, tcs.xy + vec2(fi,fj) *
-										4.0*(newInv/SPHEREMAP_SCALE_FACTOR) / 
-										bufferDim.xy ).xyzw   
-						);
-				}
-		}
+		// 				dtexSphere = min(
+		// 						dtexSphere,
+		// 						texture(Texture5, tcs.xy + vec2(fi,fj) *
+		// 								4.0*(newInv/SPHEREMAP_SCALE_FACTOR) / 
+		// 								bufferDim.xy ).xyzw   
+		// 				);
+		// 		}
+		// }
 		
-		#endif
+		// #endif
+		
+		
 		
 		
 		
@@ -4638,6 +4659,11 @@ void main() {
 		
 		
 		#ifdef DOTER
+				
+				
+				vec3 landPos = vec3(0.0);
+				vec4 objTex1 = texture(Texture5,baseCoords.xy);
+				vec4 objTex2 = texture(Texture6,baseCoords.xy);
 				
 				//if (volBounds.x < volBounds.y) {}
 				
@@ -4752,6 +4778,7 @@ void main() {
 				///////////////////
 				
 				
+				
 				rclRes = castLand(
 						ro,
 						rd,
@@ -4764,9 +4791,11 @@ void main() {
 				
 				earthMatRes = globTexEarth;
 				
+				//landPos = ro+rd*;
+				
+				
 				landVal = rclRes.w;
 				landValForCache = landVal;
-				
 				
 				
 				//if (cacheWater.x < min(MAX_CAM_VOL_DIS,landVal) ) {
@@ -4815,13 +4844,24 @@ void main() {
 				
 				waterMatRes = globTexWater;
 				
+				float shadDis = landValForCache;
+				
+				if (
+					(dot(oneVec,objTex1) > 0.0) &&
+					(distance(objTex1.xyz,ro) < rclRes.w)	
+				) {
+					shadDis = distance(objTex1.xyz,ro);
+					//rclRes = vec4(objTex2.xyz, distance(objTex1.xyz,ro));
+					//earthMatRes = vec2(TEX_EARTH,0.5);//pack16(objTex2.w);
+				}
+				
 				shadowRes = 
 				//1.0;
 				clamp((
-						hardShadow( ro+rd*(landValForCache-0.1), -lightVec, 0.02, 32.0, HARD_STEPS ) *
-						hardShadow( ro+rd*(landValForCache-0.1), -lightVec, 2.0, 512.0, HARD_STEPS )
+						hardShadow( ro+rd*(shadDis-0.1), -lightVec, 0.02, 32.0, HARD_STEPS ) *
+						hardShadow( ro+rd*(shadDis-0.1), -lightVec, 2.0, 512.0, HARD_STEPS )
 						*
-						softShadow( ro+rd*(landValForCache-0.1), -lightVec, 0.02, 16.0, SOFT_STEPS )
+						softShadow( ro+rd*(shadDis-0.1), -lightVec, 0.02, 16.0, SOFT_STEPS )
 				),0.0,1.0);
 				
 				

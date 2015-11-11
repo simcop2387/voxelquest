@@ -19,6 +19,21 @@ void GamePhysics::init (Singleton * _singleton)
 		example->initPhysics();
 		
 	}
+void GamePhysics::collectDebris ()
+                             {
+		int i;
+		FIVector4 tempVec;
+		int entNum;
+		
+		for (i = 0; i < singleton->debrisStack.size(); i++) {
+			
+			tempVec.setBTV(singleton->debrisStack[i].pos);
+			entNum = singleton->placeNewEnt(false, E_ENTTYPE_DEBRIS, &tempVec);
+			
+			//addDebris(singleton->debrisStack[i].pos);
+		}
+		singleton->debrisStack.clear();
+	}
 void GamePhysics::beginDrop ()
                          {
 		
@@ -67,22 +82,22 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 		}
 		else {
 			
-			if (ge->entType == E_ENTTYPE_DEBRIS) {
-				objRad = 0.25f;
-			}
-			else {
+			// if (ge->entType == E_ENTTYPE_DEBRIS) {
+			// 	objRad = 0.25f;
+			// }
+			// else {
 				
-			}
+			// }
 			
 			btBoxShape* boxShape = new btBoxShape(btVector3(objRad,objRad,objRad));
 			ge->body = example->createRigidBody(ge->mass,trans,boxShape);
 			
 			if (ge->entType == E_ENTTYPE_DEBRIS) {
-				// ge->body->setAngularVelocity(btVector3(
-				// 	fGenRand2()*2.0f-1.0f,
-				// 	fGenRand2()*2.0f-1.0f,
-				// 	fGenRand2()*2.0f-1.0f	
-				// ));
+				ge->body->setAngularVelocity(btVector3(
+					(fGenRand2()*2.0f-1.0f),
+					(fGenRand2()*2.0f-1.0f),
+					(fGenRand2()*2.0f-1.0f)	
+				)*4.0f);
 			}
 		}
 		
@@ -123,14 +138,7 @@ void GamePhysics::collideWithWorld ()
 		FIVector4 tempVec;
 		
 		
-		for (i = 0; i < singleton->debrisStack.size(); i++) {
-			
-			tempVec.setBTV(singleton->debrisStack[i].pos);
-			entNum = singleton->placeNewEnt(false, E_ENTTYPE_DEBRIS, &tempVec);
-			
-			//addDebris(singleton->debrisStack[i].pos);
-		}
-		singleton->debrisStack.clear();
+		collectDebris();
 		
 		
 		
@@ -201,6 +209,7 @@ void GamePhysics::collideWithWorld ()
 		btVector3 dirForce;
 		
 		
+		
 		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
 			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
 			
@@ -231,7 +240,8 @@ void GamePhysics::collideWithWorld ()
 				
 				if (ge->isInside) {
 					
-					ge->moveToPoint(tempBTV + btVector3(0,0,1));
+					
+					ge->moveToPoint(tempBTV + btVector3(0,0,2));
 					
 					ge->applyImpulse(btVector3(0,0,5));
 					ge->lastVel = ge->body->getLinearVelocity();
@@ -257,23 +267,23 @@ void GamePhysics::collideWithWorld ()
 				
 				
 				
-				// for (m = 0; m < singleton->sphereStack.size(); m++) {
-				// 	tempBTV = ge->body->getCenterOfMassPosition();
-				// 	tempBTV2 = singleton->sphereStack[m].position.getBTV();
+				for (m = 0; m < singleton->sphereStack.size(); m++) {
+					tempBTV = ge->body->getCenterOfMassPosition();
+					tempBTV2 = singleton->sphereStack[m].position.getBTV();
 					
-				// 	totForce = (
-				// 		1.0f-clampfZO(
-				// 			tempBTV.distance(tempBTV2)/(singleton->sphereStack[m].curRad*5.0f)	
-				// 		)
-				// 	)*10.0f; // * singleton->sphereStack[m].power;
-				// 	dirForce = tempBTV-tempBTV2;
-				// 	dirForce.normalize();
-				// 	dirForce = dirForce*totForce;
+					totForce = (
+						1.0f-clampfZO(
+							tempBTV.distance(tempBTV2)/(singleton->sphereStack[m].curRad*5.0f)	
+						)
+					)*5.0f; // * singleton->sphereStack[m].power;
+					dirForce = tempBTV-tempBTV2;
+					dirForce.normalize();
+					dirForce = dirForce*totForce;
 					
-				// 	dirForce.setZ(totForce);
+					dirForce.setZ(totForce);
 					
-				// 	ge->applyImpulse(dirForce);
-				// }
+					ge->applyImpulse(dirForce);
+				}
 				
 				// for (m = 0; m < singleton->explodeStack.size(); m++) {
 				// 	tempBTV = ge->body->getCenterOfMassPosition();
@@ -320,7 +330,8 @@ void GamePhysics::collideWithWorld ()
 					singleton->gw->fireEvent(
 						ge->uid,
 						EV_COLLISION,
-						clampfZO( (ge->lastVel.length()-0.5f)/16.0f )
+						clampfZO( (ge->lastVel.length()-0.5f)/16.0f )*
+						(1.0f-clampfZO(ge->getCenterPoint()->distance(singleton->cameraGetPosNoShake())/(50.0f)))
 					);
 				}
 				

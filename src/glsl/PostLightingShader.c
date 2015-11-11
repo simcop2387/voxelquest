@@ -253,15 +253,15 @@ void main()
 	
 	vec4 texSpec = texture2D(Texture4, TexCoord0.xy);
 	
-	vec4 tex4 = texture2D(Texture6, TexCoord0.xy);
-	vec4 tex5 = texture2D(Texture7, TexCoord0.xy);
+	// vec4 tex4 = texture2D(Texture6, TexCoord0.xy);
+	// vec4 tex5 = texture2D(Texture7, TexCoord0.xy);
 
 	float tot = float(tex1.r + tex1.g + tex1.b + tex1.a > 0.0);
 
 	vec4 matVals = vec4(0.0,0.0,pack16(tex1.w));
 	
-	vec4 matValsGeom = tex5;
-	bool valIsGeom = (dot(matValsGeom.rgb,oneVec.rgb) != 0.0);
+	// vec4 matValsGeom = tex5;
+	// bool valIsGeom = (dot(matValsGeom.rgb,oneVec.rgb) != 0.0);
 
 	vec4 worldPosition = tex0;
 	vec3 fogCol = getFogColor();
@@ -468,24 +468,24 @@ void main()
 		gridVal0 = vec3(0.0);
 	}
 	
-	float temp = float(valIsGeom)*(
-		0.25 + float(tex4.w > tex0.w)*0.5
-	);
+	// float temp = float(valIsGeom)*(
+	// 	0.25 + float(tex4.w > tex0.w)*0.5
+	// );
 	//;
 	
-	if (tex4.w > tex0.w) {
-		resColor.rgb = mix(resColor.rgb, matValsGeom.rgb,temp);
-	}
+	// if (tex4.w > tex0.w) {
+	// 	resColor.rgb = mix(resColor.rgb, matValsGeom.rgb,temp);
+	// }
 	
 	
-	if (temp > 0.5) {
+	// if (temp > 0.5) {
 		
-		tot = 1.0;
+	// 	tot = 1.0;
 		
-	}
-	else {
+	// }
+	// else {
 		resColor.rgb += gridVal0;
-	}
+	//}
 	
 
 	
@@ -544,9 +544,9 @@ void main()
 	// 	outDif = 0.0;
 	// }
 	
-	if (!valIsGeom) {
-		//resColor -= outDif*0.5;
-	}
+	// if (!valIsGeom) {
+	// 	//resColor -= outDif*0.5;
+	// }
 	
 	//resColor = vec3(lightRes);
 	

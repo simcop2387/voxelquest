@@ -18,10 +18,10 @@ uniform sampler2D Texture5;
 
 varying vec2 TexCoord0;
 
-uniform float clipDist;
-uniform float curTime;
-uniform vec3 cameraPos;
-uniform vec2 bufferDim;
+// uniform float clipDist;
+// uniform float curTime;
+// uniform vec3 cameraPos;
+// uniform vec2 bufferDim;
 
 
 ^INCLUDE:MATERIALS^
@@ -54,6 +54,14 @@ void main() {
     vec4 tex3 = texture2D(Texture3, TexCoord0.xy);
     vec4 tex4 = texture2D(Texture4, TexCoord0.xy);
     vec4 tex5 = texture2D(Texture5, TexCoord0.xy);
+    
+    
+    vec2 curTex = vec2(TEX_EARTH,0.0);
+    float curMat = floor(curTex.x*256.0*255.0) + floor(curTex.y*255.0);
+    
+    tex5.w = curMat;
+    
+    
     
     // vec4 matValsGeom = tex5;
     // bool valIsGeom = (dot(matValsGeom.rgb,oneVec.rgb) != 0.0);
@@ -274,23 +282,28 @@ void main() {
     // // }
 
 
-
-    if (
-        (tex0.w >= tex2.w) || (tex4.w > tex2.w)
-    ) {
-        
-        gl_FragData[0] = tex0;
-        gl_FragData[1] = tex1;
-        
-        
+    vec4 res0 = vec4(0.0);
+    vec4 res1 = vec4(0.0);
+    
+    if (tex0.w >= tex2.w) {
+        res0 = tex0;
+        res1 = tex1;
     }
     else {
-        
-        gl_FragData[0] = tex2;
-        gl_FragData[1] = tex3;
-        
-        
+        res0 = tex2;
+        res1 = tex3;
     }
+    
+    // if (res0.w >= tex4.w) {
+        
+    // }
+    // else {
+    //     res0 = tex4;
+    //     res1 = tex5;
+    // }
+    
+    gl_FragData[0] = res0;
+    gl_FragData[1] = res1;
 
     
     

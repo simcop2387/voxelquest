@@ -669,6 +669,9 @@ public:
 		return threadLoader.threadRunning||threadTex.threadRunning||threadFluid.threadRunning;
 	}
 	
+	
+	
+	
 	bool updateAll() {
 		
 		
@@ -800,6 +803,7 @@ public:
 							&(volDataPrim[0])
 						);
 					//}
+					
 					
 					
 					curDirtyMax.copyFrom(&(dirtyMax));
@@ -3314,15 +3318,25 @@ public:
 									// }
 									
 									if (
-										(*bldVal != UNIT_MIN) ||
-										(*terVal != UNIT_MIN)
+										(*bldVal == UNIT_MAX) ||
+										(*terVal == UNIT_MAX)
 									) {
-										singleton->debrisStack.push_back(DebrisStruct());
-										singleton->debrisStack.back().pos = btVector3(
-											i + volMinReadyInPixels[0] - bufAmount,
-											j + volMinReadyInPixels[1] - bufAmount,
-											k + volMinReadyInPixels[2] - bufAmount
-										);
+										
+										if (
+											((i%2)==0) &&
+											((j%2)==0) &&
+											((k%2)==0)	
+											
+										) {
+											singleton->debrisStack.push_back(DebrisStruct());
+											singleton->debrisStack.back().pos = btVector3(
+												i + volMinReadyInPixels[0] - bufAmount,
+												j + volMinReadyInPixels[1] - bufAmount,
+												k + volMinReadyInPixels[2] - bufAmount
+											);
+										}
+										
+										
 										
 									}
 									

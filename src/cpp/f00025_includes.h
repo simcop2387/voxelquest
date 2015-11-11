@@ -3314,6 +3314,104 @@ void BenchmarkDemo::exitPhysics()
 	
 }
 
+
+
+btVector3 NET_MASKS[256];
+void initNetMasks() {
+	btVector3 nmDirs[8];
+	
+	int i;
+	int j;
+	int k;
+	
+	int ii;
+	int jj;
+	int kk;
+	
+	int tot;
+	
+	for (i = 0; i < 256; i++) {
+		NET_MASKS[i] = btVector3(0.0f,0.0f,0.0f);
+	}
+	
+	
+	for (k = -1; k <= 1; k += 2) {
+		for (j = -1; j <= 1; j += 2) {
+			for (i = -1; i <= 1; i += 2) {
+				ii = (i + 1)/2;
+				jj = (j + 1)/2;
+				kk = (k + 1)/2;
+				
+				nmDirs[ii+jj*2+kk*4] = btVector3(i,j,k);
+				
+			}	
+		}
+	}
+	
+	for (i = 0; i < 8; i++) {
+		nmDirs[i].normalize();
+	}
+	
+	
+	for (i = 0; i < 256; i++) {
+		tot = 0;
+		for (j = 0; j < 8; j++) {
+			if ((i&(1<<j)) > 0) {
+				NET_MASKS[i] += nmDirs[j];
+				tot++;
+			}
+		}
+		
+		if (
+			(
+				abs(NET_MASKS[i].getX()) +
+				abs(NET_MASKS[i].getY()) +
+				abs(NET_MASKS[i].getZ())		
+			) == 0.0
+		) {
+			NET_MASKS[i] = btVector3(0.0f,0.0f,0.0f);
+		}
+		else {
+			NET_MASKS[i].normalize();
+			
+			 // sqrt(0.5)/2 //0.35355339059f
+			
+			switch (tot) {
+				
+				case 1:
+				case 7:
+					NET_MASKS[i] = NET_MASKS[i] * (1.0f-0.43301270189f);//1.73205080757f / 4.0f; // sqrt(3)/4
+				break;
+				case 2:
+				case 6:
+					NET_MASKS[i] = NET_MASKS[i] * 1.41421356237f / 4.0f; // sqrt(2)/4
+				break;
+				// case 3:
+				// 	NET_MASKS[i] = NET_MASKS[i] * -(1.0f-0.43301270189f);
+				// break;
+				default:
+					NET_MASKS[i] = btVector3(0.0f,0.0f,0.0f);
+				break;
+				
+			}
+			
+			if (tot > 4) {
+				NET_MASKS[i] = -(NET_MASKS[i]);
+			}
+			
+		}
+		
+		
+		
+		
+		
+	}
+	
+	
+}
+
+
+
 // struct CommonExampleInterface*    BenchmarkCreateFunc(struct CommonExampleOptions& options)
 // {
 // 	return new BenchmarkDemo(options.m_guiHelper,options.m_option);

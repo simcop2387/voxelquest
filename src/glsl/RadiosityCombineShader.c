@@ -8,8 +8,8 @@ uniform sampler2D Texture1;
 uniform sampler2D Texture2;
 
 // geom fbo
-uniform sampler2D Texture4;
-uniform sampler2D Texture5;
+// uniform sampler2D Texture4;
+// uniform sampler2D Texture5;
 
 uniform bool testOn;
 
@@ -32,10 +32,10 @@ void main() {
 	vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
 	vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
 	vec4 tex2 = texture2D(Texture2, TexCoord0.xy);
-	vec4 tex5 = texture2D(Texture5, TexCoord0.xy);
+	//vec4 tex5 = texture2D(Texture5, TexCoord0.xy);
 	
-	vec4 matValsGeom = tex5;
-	bool valIsGeom = (dot(matValsGeom.rgb,oneVec.rgb) != 0.0);
+	// vec4 matValsGeom = tex5;
+	// bool valIsGeom = (dot(matValsGeom.rgb,oneVec.rgb) != 0.0);
 
 	vec3 newRad = tex1.rgb;//pow(tex1.rgb, vec3(2.0) );
 
@@ -63,9 +63,10 @@ void main() {
 	
 	//finalCol = tex1.rgb;
 	
-	if (valIsGeom) {
-		finalCol.rgb = tex0.rgb;
-	}
+	// if (valIsGeom) {
+	// 	finalCol.rgb = tex0.rgb;
+	// }
+	
 	
 	
 	

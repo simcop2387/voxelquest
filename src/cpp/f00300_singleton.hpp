@@ -74,6 +74,7 @@ public:
 	Matrix4 projMatrix;
 	std::vector<Matrix4> objMatrixStack;
 	Matrix4 curObjMatrix;
+	Matrix4 curMVP;
 	Matrix3 curObjMatrix3;
 	Matrix4 tempObjMatrix;
 	
@@ -472,7 +473,6 @@ public:
 	Image *cloudImage;
 
 	BaseObj* currentActor;
-	BaseObj baseObj;
 	
 	GamePageHolder* closestHolder;
 	
@@ -643,7 +643,7 @@ public:
 		RUN_COUNT = 0;
 		TEMP_DEBUG = false;
 		
-		
+		initNetMasks();
 		
 		
 		if (DO_RANDOMIZE) {
@@ -1453,6 +1453,7 @@ public:
 		
 		
 		
+		shaderStrings.push_back("SolidCombineShader");
 		shaderStrings.push_back("CylBBShader");
 		shaderStrings.push_back("FXAAShader");
 		shaderStrings.push_back("TerGenShader");
@@ -1676,8 +1677,10 @@ public:
 		}
 		
 		
-		
+		fboMap["solidBaseTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
 		fboMap["solidTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
+		
+		
 		fboMap["waterTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
 		
 		
@@ -1766,7 +1769,7 @@ public:
 		gameAI->init(this);
 		
 		
-		// gw->gameObjects[E_OBJ_CAMERA] = baseObj;
+		// gw->gameObjects[E_OBJ_CAMERA] = BaseObj();
 		// gw->gameObjects[E_OBJ_CAMERA].init(
 		// 	E_OBJ_CAMERA,
 		// 	0,
@@ -1801,7 +1804,7 @@ public:
 					k = 0;
 				break;
 				case E_ENTTYPE_DEBRIS:
-					k = 50;
+					k = 400;
 				break;
 				default:
 					k = 0;
@@ -2512,7 +2515,7 @@ public:
 		
 		
 		for (i = 0; i < maxObj; i++) {
-			gw->gameObjects[gameObjCounter] = baseObj;
+			gw->gameObjects[gameObjCounter] = BaseObj();
 			tmpObj = &(gw->gameObjects[gameObjCounter]);
 			
 			curId = getRandomObjId();
@@ -2920,14 +2923,16 @@ PERFORM_DRAG_END:
 		newPos.copyFrom(cellPos);
 		
 		if (isRecycled) {
-			
+			gw->removeVisObject(curEntId,true);
 		}
 		else {
 			newPos.addXYZ(0.0f,0.0f,4.0f);
 		}
 		
 		
-		gw->gameObjects[curEntId] = baseObj;
+		
+		
+		gw->gameObjects[curEntId] = BaseObj();
 		tmpObj = &(gw->gameObjects[curEntId]);
 		tmpObj->init(
 			curEntId,
@@ -7604,7 +7609,7 @@ DISPATCH_EVENT_END:
 		
 		cameraShake = max(
 			cameraShake,
-			(1.0f-clampfZO(ge->getCenterPoint()->distance(cameraGetPosNoShake())/(200.0f)))*fp
+			fp
 		);
 		
 		if (cameraShake > lastCamShake) {

@@ -1,4 +1,4 @@
-﻿Build started 11/8/2015 1:10:53 AM.
+﻿Build started 11/11/2015 2:35:28 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -264,10 +264,20 @@
          curHeight 0 newHeight 2634.04
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
-         actObjInd 77
-         subjectDistance 14.7406
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         actObjInd 427
+         subjectDistance 7.78936
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:03:02.34
+Time Elapsed 00:01:46.17
