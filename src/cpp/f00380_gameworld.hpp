@@ -4873,6 +4873,14 @@ UPDATE_LIGHTS_END:
 				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
 			
+			if (singleton->currentActor == NULL) {
+				singleton->setShaderInt("isFalling",false);
+			}
+			else {
+				singleton->setShaderInt("isFalling",singleton->currentActor->isFalling);
+			}
+			
+			
 			singleton->setShaderFloat("seaLevel", singleton->getSeaHeightScaled() );
 			singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
 			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);

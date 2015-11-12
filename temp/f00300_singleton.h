@@ -4442,14 +4442,14 @@ void Singleton::makeJump (int actorId, int isUp)
 		
 		BaseObj* ge = &(gw->gameObjects[actorId]);
 		
-		float JUMP_AMOUNT = 80.0f;
+		float JUMP_AMOUNT = 30.0f/STEP_TIME_IN_SEC;
 		
 		
 		if (isUp == 1) {
 			if (ge->inWater) {
 				
 				ge->isFalling = true;
-				ge->isJumping = true;
+				//ge->isJumping = true;
 				
 				if (
 					gw->getCellAtCoords(
@@ -4462,7 +4462,7 @@ void Singleton::makeJump (int actorId, int isUp)
 					
 					// at water surface
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true);
 					
 					
 					
@@ -4472,7 +4472,7 @@ void Singleton::makeJump (int actorId, int isUp)
 					// underwater
 					
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true);
 					
 					playSoundEnt(
 						"bubble0",
@@ -4492,9 +4492,9 @@ void Singleton::makeJump (int actorId, int isUp)
 					
 					
 					ge->isFalling = true;
-					ge->isJumping = true;
+					//ge->isJumping = true;
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true);
 					
 					playSoundEnt(
 						"jump0",
@@ -4507,7 +4507,7 @@ void Singleton::makeJump (int actorId, int isUp)
 		}
 		else {
 			if (ge->inWater) {
-				ge->applyImpulse(btVector3(0.0f,0.0f,-JUMP_AMOUNT));
+				ge->applyImpulse(btVector3(0.0f,0.0f,-JUMP_AMOUNT), true);
 				
 				playSoundEnt(
 					"bubble0",
@@ -6268,7 +6268,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	ca->targAng += (-2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,-0.2));
+				ca->applyAngularImpulse(btVector3(0,0,-0.2)/STEP_TIME_IN_SEC, true);
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_LEFT]) {
@@ -6279,7 +6279,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	ca->targAng += (2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,0.2));
+				ca->applyAngularImpulse(btVector3(0,0,0.2)/STEP_TIME_IN_SEC, true);
 			}
 			
 			
@@ -6318,33 +6318,17 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				
 				//tempVec2.addXYZ(tempVec1[0],tempVec1[1],0.0f);
 				
-				ca->applyImpulseRot(btVector3(0,1,0));
+				ca->applyImpulseRot(btVector3(0,1,0)/STEP_TIME_IN_SEC, true);
 				
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
 				//tempVec2.addXYZ(-tempVec1[0],-tempVec1[1],0.0f);
 				
-				ca->applyImpulseRot(btVector3(0,-1,0));
+				ca->applyImpulseRot(btVector3(0,-1,0)/STEP_TIME_IN_SEC, true);
 				
 			}
 			
-			
-			// actor move curMoveSpeed
-			
-			
-			
-			// tempVec3.copyFrom(&tempVec2);
-			
-			// tempVec3.multXYZ(1.0f);
-			
-			
-			
-			// if (ca->body != NULL) {
-			// 	ca->body->m_linearVelocity.x += tempVec3[0];
-			// 	ca->body->m_linearVelocity.y += tempVec3[1];
-			// 	ca->body->SetToAwake();
-			// }
 			
 		}
 		
@@ -6711,8 +6695,9 @@ void Singleton::grabThrowObj (int actorId)
 			// );
 			
 			gw->gameObjects[ca->isGrabbingId].applyImpulseOtherRot(
-				btVector3(0.0,20.0,30.0),
-				ca->rotMat
+				btVector3(0.0,30.0,40.0)/STEP_TIME_IN_SEC,
+				ca->rotMat,
+				true
 			);
 			
 			playSoundEnt(
@@ -6800,8 +6785,9 @@ void Singleton::launchBullet (int actorId, int bulletType)
 			// );
 			
 			gw->gameObjects[entNum].applyImpulseOtherRot(
-				btVector3(0.0,120.0,120.0),
-				ca->rotMat
+				btVector3(0.0,30.0,40.0)/STEP_TIME_IN_SEC,
+				ca->rotMat,
+				true
 			);
 			
 			
@@ -8212,7 +8198,7 @@ void Singleton::updateBullets ()
 			}
 		}
 	}
-void Singleton::display ()
+void Singleton::display (bool doFrameRender)
         {
 		
 		bool noTravel = false;
@@ -8373,12 +8359,13 @@ void Singleton::display ()
 					
 					
 					
+					//if (doFrameRender) {
+						frameUpdate();
+						lastDepthInvalidMove = depthInvalidMove;
+						depthInvalidMove = false;
+						depthInvalidRotate = false;
+					//}
 					
-					frameUpdate();
-					
-					lastDepthInvalidMove = depthInvalidMove;
-					depthInvalidMove = false;
-					depthInvalidRotate = false;
 				}
 			}
 			
@@ -8718,10 +8705,6 @@ void Singleton::reshape (int w, int h)
 		screenHeight = h;
 		
 		setMatrices(baseW, baseH);
-	}
-void Singleton::idleFunc ()
-        {
-
 	}
 void Singleton::initAllObjects ()
                               {

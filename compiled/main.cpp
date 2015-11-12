@@ -23,6 +23,9 @@ const static int MAX_PRIMTEST = 8;
 
 const static int MAX_DEPTH_PEELS = 4;
 
+const static unsigned long int STEP_TIME_IN_MICRO_SEC = 8000;
+const static double STEP_TIME_IN_SEC = STEP_TIME_IN_MICRO_SEC/1000000.0;
+
 const static float OFFSET_X[4] = {-0.5,0.5,0.5,-0.5};
 const static float OFFSET_Y[4] = {-0.5,-0.5,0.5,0.5};
 
@@ -33,8 +36,8 @@ const static int MAX_EXPLODES = 8;
 const static bool DO_SHADER_DUMP = false;
 
 
-const static int DEF_WIN_W = 1440;
-const static int DEF_WIN_H = 720;
+const static int DEF_WIN_W = 1920;
+const static int DEF_WIN_H = 1080;
 
 const static int DEF_VOL_SIZE = 128;
 
@@ -2691,7 +2694,7 @@ class RagDoll
 		if (isDynamic) {
 			shape->calculateLocalInertia(mass,localInertia);
 		}
-			
+		
 
 		btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
 		
@@ -8968,8 +8971,11 @@ public:
 	vector<BaseObjType> children;
 	
 	btVector3 lastVel;
+	btVector3 totAV;
+	btVector3 totLV;
 	
 	btRigidBody* body;
+	std::vector<btRigidBody*> limbs;
 	
 	Matrix3 rotMat;
 	
@@ -8978,8 +8984,9 @@ public:
 	int entType;
 	bool isHidden;
 	bool isFalling;
+	bool hasContact;
 	bool isInside;
-	bool isJumping;
+	//bool isJumping;
 	bool isOpen;
 	bool inWater;
 	bool isEquipped;
@@ -9002,6 +9009,8 @@ public:
 	float friction;
 	float windResistance;
 	
+	//class GameRagDoll* grd;
+	
 	
 	FIVector4* getVel() {
 		
@@ -9022,36 +9031,125 @@ public:
 	// 	}
 	// }
 	
-	void applyAngularImpulse(btVector3 newAV) {
-		body->setAngularVelocity(body->getAngularVelocity() + newAV);
-		body->setActivationState(ACTIVE_TAG);
-	}
-	
-	void applyImpulse( btVector3 imp) {
-		body->applyCentralImpulse(imp);
-		body->setActivationState(ACTIVE_TAG);
-	}
-	
-	void applyImpulseRot( btVector3 imp) {
+	void applyImpulses(float timeDelta) {
 		
+		int i;
+		
+		if (totAV.isZero()&&totLV.isZero()) {
+			
+		}
+		else {
+			body->setActivationState(ACTIVE_TAG);
+			
+			for (i = 0; i < limbs.size(); i++) {
+				limbs[i]->setAngularVelocity(limbs[i]->getAngularVelocity() + totAV*timeDelta);
+				limbs[i]->applyCentralImpulse(totLV*timeDelta);
+				limbs[i]->setActivationState(ACTIVE_TAG);
+			}
+		}
+		
+		
+		
+		body->setAngularVelocity(body->getAngularVelocity() + totAV*timeDelta);
+		body->applyCentralImpulse(totLV*timeDelta);
+		
+	}
+	
+	void flushImpulses() {
+		totAV = btVector3(0.0f,0.0f,0.0f);
+		totLV = btVector3(0.0f,0.0f,0.0f);
+	}
+	
+	
+	void applyAngularImpulse(btVector3 newAV, bool delayed) {
+		int i;
+		
+		if (delayed) {
+			totAV += newAV;
+		}
+		else {
+			
+			for (i = 0; i < limbs.size(); i++) {
+				limbs[i]->setAngularVelocity(limbs[i]->getAngularVelocity() + newAV);
+				limbs[i]->setActivationState(ACTIVE_TAG);
+			}
+			
+			body->setAngularVelocity(body->getAngularVelocity() + newAV);
+			body->setActivationState(ACTIVE_TAG);
+		}
+		
+		
+		
+		
+	}
+	
+	void applyImpulse(btVector3 imp, bool delayed) {
+		
+		int i;
+		
+		if (delayed) {
+			totLV += imp;
+		}
+		else {
+			body->applyCentralImpulse(imp);
+			body->setActivationState(ACTIVE_TAG);
+			
+			for (i = 0; i < limbs.size(); i++) {
+				limbs[i]->applyCentralImpulse(imp);
+				limbs[i]->setActivationState(ACTIVE_TAG);
+			}
+		}
+		
+	}
+	
+	void applyImpulseRot(btVector3 imp, bool delayed) {
+		int i;
 		
 		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
 		Vector3 res = rotMat*myRHS;
+		btVector3 newImp = btVector3(res.x,res.y,res.z);
+		
+		if (delayed) {
+			totLV += newImp;
+		}
+		else {
+			for (i = 0; i < limbs.size(); i++) {
+				limbs[i]->applyCentralImpulse(newImp);
+				limbs[i]->setActivationState(ACTIVE_TAG);
+			}
+			
+			body->applyCentralImpulse(newImp);
+			body->setActivationState(ACTIVE_TAG);
+		}
 		
 		
-		body->applyCentralImpulse(btVector3(res.x,res.y,res.z));
-		body->setActivationState(ACTIVE_TAG);
+		
+		
 	}
 	
-	void applyImpulseOtherRot( btVector3 imp, Matrix3 otherRot) {
-		
+	void applyImpulseOtherRot(btVector3 imp, Matrix3 otherRot, bool delayed) {
+		int i;
 		
 		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
 		Vector3 res = otherRot*myRHS;
+		btVector3 newImp = btVector3(res.x,res.y,res.z);
 		
 		
-		body->applyCentralImpulse(btVector3(res.x,res.y,res.z));
-		body->setActivationState(ACTIVE_TAG);
+		if (delayed) {
+			totLV += newImp;
+		}
+		else {
+			for (i = 0; i < limbs.size(); i++) {
+				limbs[i]->applyCentralImpulse(newImp);
+				limbs[i]->setActivationState(ACTIVE_TAG);
+			}
+			
+			body->applyCentralImpulse(newImp);
+			body->setActivationState(ACTIVE_TAG);
+		}
+		
+		
+		
 	}
 	
 	btVector3 multByOtherRot( btVector3 imp, Matrix3 otherRot) {
@@ -9149,6 +9247,8 @@ public:
 		int zs
 	) {
 		
+		totAV = btVector3(0.0f,0.0f,0.0f);
+		totLV = btVector3(0.0f,0.0f,0.0f);
 		
 		mass = 10.0f;
 		
@@ -9167,8 +9267,9 @@ public:
 		objectType = _objectType;
 		entType = _entType;
 		isFalling = false;
+		hasContact = false;
 		isInside = false;
-		isJumping = false;
+		//isJumping = false;
 		isGrabbedById = -1;
 		isGrabbingId = -1;
 		inWater = false;
@@ -20690,6 +20791,7 @@ class GameOrg;
 class GamePlantNode;
 class GamePlant;
 class GameEnt;
+class GameRagDoll;
 class GameBlock;
 class GamePageHolder;
 class VolumeWrapper;
@@ -21370,13 +21472,12 @@ public:
   FIVector4 * cameraGetPosNoShake ();
   float getTargetTimeOfDay ();
   void updateBullets ();
-  void display ();
+  void display (bool doFrameRender);
   bool gluInvertMatrix (double const (m) [16], float (invOut) [16]);
   int getMatrixInd (int col, int row);
   void ComputeFOVProjection (float * result, float fov, float aspect, float nearDist, float farDist, bool leftHanded);
   void setMatrices (int w, int h);
   void reshape (int w, int h);
-  void idleFunc ();
   void initAllObjects ();
 };
 #undef LZZ_INLINE
@@ -22062,6 +22163,55 @@ public:
 };
 #undef LZZ_INLINE
 #endif
+// f00345_gameragdoll.e
+//
+
+#ifndef LZZ_f00345_gameragdoll_e
+#define LZZ_f00345_gameragdoll_e
+#define LZZ_INLINE inline
+class GameRagDoll
+{
+public:
+  enum
+  {
+    BODYPART_PELVIS = 0,
+    BODYPART_SPINE,
+    BODYPART_HEAD,
+    BODYPART_LEFT_UPPER_LEG,
+    BODYPART_LEFT_LOWER_LEG,
+    BODYPART_RIGHT_UPPER_LEG,
+    BODYPART_RIGHT_LOWER_LEG,
+    BODYPART_LEFT_UPPER_ARM,
+    BODYPART_LEFT_LOWER_ARM,
+    BODYPART_RIGHT_UPPER_ARM,
+    BODYPART_RIGHT_LOWER_ARM,
+    BODYPART_COUNT
+  };
+  enum
+  {
+    JOINT_PELVIS_SPINE = 0,
+    JOINT_SPINE_HEAD,
+    JOINT_LEFT_HIP,
+    JOINT_LEFT_KNEE,
+    JOINT_RIGHT_HIP,
+    JOINT_RIGHT_KNEE,
+    JOINT_LEFT_SHOULDER,
+    JOINT_LEFT_ELBOW,
+    JOINT_RIGHT_SHOULDER,
+    JOINT_RIGHT_ELBOW,
+    JOINT_COUNT
+  };
+  int uid;
+  btDynamicsWorld * m_ownerWorld;
+  btCollisionShape * (m_shapes) [BODYPART_COUNT];
+  btRigidBody * (m_bodies) [BODYPART_COUNT];
+  btTypedConstraint * (m_joints) [JOINT_COUNT];
+  btRigidBody * createRigidBody (btScalar mass, btTransform const & startTransform, btCollisionShape * shape);
+  GameRagDoll (btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, btScalar scale, int _uid);
+  virtual ~ GameRagDoll ();
+};
+#undef LZZ_INLINE
+#endif
 // f00351_gamepageholder.e
 //
 
@@ -22491,14 +22641,15 @@ public:
   BenchmarkDemo * example;
   MyOGLApp * myOGLApp;
   GUIHelperInterface * guiHelper;
-  unsigned long int stepTimeInMicroSec;
+  GameRagDoll * ragDoll;
   GamePhysics ();
   void init (Singleton * _singleton);
   void collectDebris ();
   void beginDrop ();
   void remBoxFromObj (BaseObjType _uid);
   void addBoxFromObj (BaseObjType _uid);
-  void collideWithWorld ();
+  void flushImpulses ();
+  void collideWithWorld (double curStepTime);
   void updateAll ();
   ~ GamePhysics ();
 };
@@ -27206,14 +27357,14 @@ void Singleton::makeJump (int actorId, int isUp)
 		
 		BaseObj* ge = &(gw->gameObjects[actorId]);
 		
-		float JUMP_AMOUNT = 80.0f;
+		float JUMP_AMOUNT = 30.0f/STEP_TIME_IN_SEC;
 		
 		
 		if (isUp == 1) {
 			if (ge->inWater) {
 				
 				ge->isFalling = true;
-				ge->isJumping = true;
+				//ge->isJumping = true;
 				
 				if (
 					gw->getCellAtCoords(
@@ -27226,7 +27377,7 @@ void Singleton::makeJump (int actorId, int isUp)
 					
 					// at water surface
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true);
 					
 					
 					
@@ -27236,7 +27387,7 @@ void Singleton::makeJump (int actorId, int isUp)
 					// underwater
 					
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true);
 					
 					playSoundEnt(
 						"bubble0",
@@ -27256,9 +27407,9 @@ void Singleton::makeJump (int actorId, int isUp)
 					
 					
 					ge->isFalling = true;
-					ge->isJumping = true;
+					//ge->isJumping = true;
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true);
 					
 					playSoundEnt(
 						"jump0",
@@ -27271,7 +27422,7 @@ void Singleton::makeJump (int actorId, int isUp)
 		}
 		else {
 			if (ge->inWater) {
-				ge->applyImpulse(btVector3(0.0f,0.0f,-JUMP_AMOUNT));
+				ge->applyImpulse(btVector3(0.0f,0.0f,-JUMP_AMOUNT), true);
 				
 				playSoundEnt(
 					"bubble0",
@@ -29032,7 +29183,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	ca->targAng += (-2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,-0.2));
+				ca->applyAngularImpulse(btVector3(0,0,-0.2)/STEP_TIME_IN_SEC, true);
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_LEFT]) {
@@ -29043,7 +29194,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	ca->targAng += (2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,0.2));
+				ca->applyAngularImpulse(btVector3(0,0,0.2)/STEP_TIME_IN_SEC, true);
 			}
 			
 			
@@ -29082,33 +29233,17 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				
 				//tempVec2.addXYZ(tempVec1[0],tempVec1[1],0.0f);
 				
-				ca->applyImpulseRot(btVector3(0,1,0));
+				ca->applyImpulseRot(btVector3(0,1,0)/STEP_TIME_IN_SEC, true);
 				
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
 				//tempVec2.addXYZ(-tempVec1[0],-tempVec1[1],0.0f);
 				
-				ca->applyImpulseRot(btVector3(0,-1,0));
+				ca->applyImpulseRot(btVector3(0,-1,0)/STEP_TIME_IN_SEC, true);
 				
 			}
 			
-			
-			// actor move curMoveSpeed
-			
-			
-			
-			// tempVec3.copyFrom(&tempVec2);
-			
-			// tempVec3.multXYZ(1.0f);
-			
-			
-			
-			// if (ca->body != NULL) {
-			// 	ca->body->m_linearVelocity.x += tempVec3[0];
-			// 	ca->body->m_linearVelocity.y += tempVec3[1];
-			// 	ca->body->SetToAwake();
-			// }
 			
 		}
 		
@@ -29475,8 +29610,9 @@ void Singleton::grabThrowObj (int actorId)
 			// );
 			
 			gw->gameObjects[ca->isGrabbingId].applyImpulseOtherRot(
-				btVector3(0.0,20.0,30.0),
-				ca->rotMat
+				btVector3(0.0,30.0,40.0)/STEP_TIME_IN_SEC,
+				ca->rotMat,
+				true
 			);
 			
 			playSoundEnt(
@@ -29564,8 +29700,9 @@ void Singleton::launchBullet (int actorId, int bulletType)
 			// );
 			
 			gw->gameObjects[entNum].applyImpulseOtherRot(
-				btVector3(0.0,120.0,120.0),
-				ca->rotMat
+				btVector3(0.0,30.0,40.0)/STEP_TIME_IN_SEC,
+				ca->rotMat,
+				true
 			);
 			
 			
@@ -30976,7 +31113,7 @@ void Singleton::updateBullets ()
 			}
 		}
 	}
-void Singleton::display ()
+void Singleton::display (bool doFrameRender)
         {
 		
 		bool noTravel = false;
@@ -31137,12 +31274,13 @@ void Singleton::display ()
 					
 					
 					
+					//if (doFrameRender) {
+						frameUpdate();
+						lastDepthInvalidMove = depthInvalidMove;
+						depthInvalidMove = false;
+						depthInvalidRotate = false;
+					//}
 					
-					frameUpdate();
-					
-					lastDepthInvalidMove = depthInvalidMove;
-					depthInvalidMove = false;
-					depthInvalidRotate = false;
 				}
 			}
 			
@@ -31482,10 +31620,6 @@ void Singleton::reshape (int w, int h)
 		screenHeight = h;
 		
 		setMatrices(baseW, baseH);
-	}
-void Singleton::idleFunc ()
-        {
-
 	}
 void Singleton::initAllObjects ()
                               {
@@ -42040,6 +42174,229 @@ void GamePlant::applyRules (PlantRules * rules, GamePlantNode * curParent, int c
 	}
 #undef LZZ_INLINE
  
+// f00345_gameragdoll.h
+//
+
+#include "f00345_gameragdoll.e"
+#define LZZ_INLINE inline
+btRigidBody * GameRagDoll::createRigidBody (btScalar mass, btTransform const & startTransform, btCollisionShape * shape)
+        {
+		bool isDynamic = (mass != 0.f);
+
+		btVector3 localInertia(0,0,0);
+		if (isDynamic) {
+			shape->calculateLocalInertia(mass,localInertia);
+		}
+		
+
+		btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
+		
+		btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,shape,localInertia);
+		btRigidBody* body = new btRigidBody(rbInfo);
+		body->bodyUID = uid;
+
+		m_ownerWorld->addRigidBody(body);
+
+		return body;
+	}
+GameRagDoll::GameRagDoll (btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, btScalar scale, int _uid)
+  : m_ownerWorld (ownerWorld)
+        {
+		
+		uid = _uid;
+		
+		// Setup the geometry
+		m_shapes[BODYPART_PELVIS] = new btCapsuleShape(btScalar(0.15)*scale, btScalar(0.20)*scale);
+		m_shapes[BODYPART_SPINE] = new btCapsuleShape(btScalar(0.15)*scale, btScalar(0.28)*scale);
+		m_shapes[BODYPART_HEAD] = new btCapsuleShape(btScalar(0.10)*scale, btScalar(0.05)*scale);
+		m_shapes[BODYPART_LEFT_UPPER_LEG] = new btCapsuleShape(btScalar(0.07)*scale, btScalar(0.45)*scale);
+		m_shapes[BODYPART_LEFT_LOWER_LEG] = new btCapsuleShape(btScalar(0.05)*scale, btScalar(0.37)*scale);
+		m_shapes[BODYPART_RIGHT_UPPER_LEG] = new btCapsuleShape(btScalar(0.07)*scale, btScalar(0.45)*scale);
+		m_shapes[BODYPART_RIGHT_LOWER_LEG] = new btCapsuleShape(btScalar(0.05)*scale, btScalar(0.37)*scale);
+		m_shapes[BODYPART_LEFT_UPPER_ARM] = new btCapsuleShape(btScalar(0.05)*scale, btScalar(0.33)*scale);
+		m_shapes[BODYPART_LEFT_LOWER_ARM] = new btCapsuleShape(btScalar(0.04)*scale, btScalar(0.25)*scale);
+		m_shapes[BODYPART_RIGHT_UPPER_ARM] = new btCapsuleShape(btScalar(0.05)*scale, btScalar(0.33)*scale);
+		m_shapes[BODYPART_RIGHT_LOWER_ARM] = new btCapsuleShape(btScalar(0.04)*scale, btScalar(0.25)*scale);
+
+		// Setup all the rigid bodies
+		btTransform offset; offset.setIdentity();
+		offset.setOrigin(positionOffset);
+
+		float massPerLimb = 10.0f;
+
+		btTransform transform;
+		transform.setIdentity();
+		transform.setOrigin(scale*btVector3(btScalar(0.), btScalar(1.), btScalar(0.)));
+		m_bodies[BODYPART_PELVIS] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_PELVIS]);
+
+		transform.setIdentity();
+		transform.setOrigin(scale*btVector3(btScalar(0.), btScalar(1.2), btScalar(0.)));
+		m_bodies[BODYPART_SPINE] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_SPINE]);
+
+		transform.setIdentity();
+		transform.setOrigin(scale*btVector3(btScalar(0.), btScalar(1.6), btScalar(0.)));
+		m_bodies[BODYPART_HEAD] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_HEAD]);
+
+		transform.setIdentity();
+		transform.setOrigin(scale*btVector3(btScalar(-0.18), btScalar(0.65), btScalar(0.)));
+		m_bodies[BODYPART_LEFT_UPPER_LEG] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_LEFT_UPPER_LEG]);
+
+		transform.setIdentity();
+		transform.setOrigin(scale*btVector3(btScalar(-0.18), btScalar(0.2), btScalar(0.)));
+		m_bodies[BODYPART_LEFT_LOWER_LEG] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_LEFT_LOWER_LEG]);
+
+		transform.setIdentity();
+		transform.setOrigin(scale*btVector3(btScalar(0.18), btScalar(0.65), btScalar(0.)));
+		m_bodies[BODYPART_RIGHT_UPPER_LEG] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_RIGHT_UPPER_LEG]);
+
+		transform.setIdentity();
+		transform.setOrigin(scale*btVector3(btScalar(0.18), btScalar(0.2), btScalar(0.)));
+		m_bodies[BODYPART_RIGHT_LOWER_LEG] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_RIGHT_LOWER_LEG]);
+
+		transform.setIdentity();
+		transform.setOrigin(scale*btVector3(btScalar(-0.35), btScalar(1.45), btScalar(0.)));
+		transform.getBasis().setEulerZYX(0,0,M_PI_2);
+		m_bodies[BODYPART_LEFT_UPPER_ARM] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_LEFT_UPPER_ARM]);
+
+		transform.setIdentity();
+		transform.setOrigin(scale*btVector3(btScalar(-0.7), btScalar(1.45), btScalar(0.)));
+		transform.getBasis().setEulerZYX(0,0,M_PI_2);
+		m_bodies[BODYPART_LEFT_LOWER_ARM] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_LEFT_LOWER_ARM]);
+
+		transform.setIdentity();
+		transform.setOrigin(scale*btVector3(btScalar(0.35), btScalar(1.45), btScalar(0.)));
+		transform.getBasis().setEulerZYX(0,0,-M_PI_2);
+		m_bodies[BODYPART_RIGHT_UPPER_ARM] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_RIGHT_UPPER_ARM]);
+
+		transform.setIdentity();
+		transform.setOrigin(scale*btVector3(btScalar(0.7), btScalar(1.45), btScalar(0.)));
+		transform.getBasis().setEulerZYX(0,0,-M_PI_2);
+		m_bodies[BODYPART_RIGHT_LOWER_ARM] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_RIGHT_LOWER_ARM]);
+
+		// Setup some damping on the m_bodies
+		for (int i = 0; i < BODYPART_COUNT; ++i)
+		{
+			m_bodies[i]->setDamping(btScalar(0.05), btScalar(0.85));
+			m_bodies[i]->setDeactivationTime(btScalar(0.8));
+			m_bodies[i]->setSleepingThresholds(btScalar(1.6), btScalar(2.5));
+		}
+
+		// Now setup the constraints
+		btHingeConstraint* hingeC;
+		btConeTwistConstraint* coneC;
+
+		btTransform localA, localB;
+
+		localA.setIdentity(); localB.setIdentity();
+		localA.getBasis().setEulerZYX(0,M_PI_2,0); localA.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.15), btScalar(0.)));
+		localB.getBasis().setEulerZYX(0,M_PI_2,0); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.15), btScalar(0.)));
+		hingeC =  new btHingeConstraint(*m_bodies[BODYPART_PELVIS], *m_bodies[BODYPART_SPINE], localA, localB);
+		hingeC->setLimit(btScalar(-M_PI_4), btScalar(M_PI_2));
+		m_joints[JOINT_PELVIS_SPINE] = hingeC;
+		m_ownerWorld->addConstraint(m_joints[JOINT_PELVIS_SPINE], true);
+
+
+		localA.setIdentity(); localB.setIdentity();
+		localA.getBasis().setEulerZYX(0,0,M_PI_2); localA.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.30), btScalar(0.)));
+		localB.getBasis().setEulerZYX(0,0,M_PI_2); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.14), btScalar(0.)));
+		coneC = new btConeTwistConstraint(*m_bodies[BODYPART_SPINE], *m_bodies[BODYPART_HEAD], localA, localB);
+		coneC->setLimit(M_PI_4, M_PI_4, M_PI_2);
+		m_joints[JOINT_SPINE_HEAD] = coneC;
+		m_ownerWorld->addConstraint(m_joints[JOINT_SPINE_HEAD], true);
+
+
+		localA.setIdentity(); localB.setIdentity();
+		localA.getBasis().setEulerZYX(0,0,-M_PI_4*5); localA.setOrigin(scale*btVector3(btScalar(-0.18), btScalar(-0.10), btScalar(0.)));
+		localB.getBasis().setEulerZYX(0,0,-M_PI_4*5); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.225), btScalar(0.)));
+		coneC = new btConeTwistConstraint(*m_bodies[BODYPART_PELVIS], *m_bodies[BODYPART_LEFT_UPPER_LEG], localA, localB);
+		coneC->setLimit(M_PI_4, M_PI_4, 0);
+		m_joints[JOINT_LEFT_HIP] = coneC;
+		m_ownerWorld->addConstraint(m_joints[JOINT_LEFT_HIP], true);
+
+		localA.setIdentity(); localB.setIdentity();
+		localA.getBasis().setEulerZYX(0,M_PI_2,0); localA.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.225), btScalar(0.)));
+		localB.getBasis().setEulerZYX(0,M_PI_2,0); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.185), btScalar(0.)));
+		hingeC =  new btHingeConstraint(*m_bodies[BODYPART_LEFT_UPPER_LEG], *m_bodies[BODYPART_LEFT_LOWER_LEG], localA, localB);
+		hingeC->setLimit(btScalar(0), btScalar(M_PI_2));
+		m_joints[JOINT_LEFT_KNEE] = hingeC;
+		m_ownerWorld->addConstraint(m_joints[JOINT_LEFT_KNEE], true);
+
+
+		localA.setIdentity(); localB.setIdentity();
+		localA.getBasis().setEulerZYX(0,0,M_PI_4); localA.setOrigin(scale*btVector3(btScalar(0.18), btScalar(-0.10), btScalar(0.)));
+		localB.getBasis().setEulerZYX(0,0,M_PI_4); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.225), btScalar(0.)));
+		coneC = new btConeTwistConstraint(*m_bodies[BODYPART_PELVIS], *m_bodies[BODYPART_RIGHT_UPPER_LEG], localA, localB);
+		coneC->setLimit(M_PI_4, M_PI_4, 0);
+		m_joints[JOINT_RIGHT_HIP] = coneC;
+		m_ownerWorld->addConstraint(m_joints[JOINT_RIGHT_HIP], true);
+
+		localA.setIdentity(); localB.setIdentity();
+		localA.getBasis().setEulerZYX(0,M_PI_2,0); localA.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.225), btScalar(0.)));
+		localB.getBasis().setEulerZYX(0,M_PI_2,0); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.185), btScalar(0.)));
+		hingeC =  new btHingeConstraint(*m_bodies[BODYPART_RIGHT_UPPER_LEG], *m_bodies[BODYPART_RIGHT_LOWER_LEG], localA, localB);
+		hingeC->setLimit(btScalar(0), btScalar(M_PI_2));
+		m_joints[JOINT_RIGHT_KNEE] = hingeC;
+		m_ownerWorld->addConstraint(m_joints[JOINT_RIGHT_KNEE], true);
+
+
+		localA.setIdentity(); localB.setIdentity();
+		localA.getBasis().setEulerZYX(0,0,M_PI); localA.setOrigin(scale*btVector3(btScalar(-0.2), btScalar(0.15), btScalar(0.)));
+		localB.getBasis().setEulerZYX(0,0,M_PI_2); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.18), btScalar(0.)));
+		coneC = new btConeTwistConstraint(*m_bodies[BODYPART_SPINE], *m_bodies[BODYPART_LEFT_UPPER_ARM], localA, localB);
+		coneC->setLimit(M_PI_2, M_PI_2, 0);
+		m_joints[JOINT_LEFT_SHOULDER] = coneC;
+		m_ownerWorld->addConstraint(m_joints[JOINT_LEFT_SHOULDER], true);
+
+		localA.setIdentity(); localB.setIdentity();
+		localA.getBasis().setEulerZYX(0,M_PI_2,0); localA.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.18), btScalar(0.)));
+		localB.getBasis().setEulerZYX(0,M_PI_2,0); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.14), btScalar(0.)));
+		hingeC =  new btHingeConstraint(*m_bodies[BODYPART_LEFT_UPPER_ARM], *m_bodies[BODYPART_LEFT_LOWER_ARM], localA, localB);
+		hingeC->setLimit(btScalar(-M_PI_2), btScalar(0));
+		m_joints[JOINT_LEFT_ELBOW] = hingeC;
+		m_ownerWorld->addConstraint(m_joints[JOINT_LEFT_ELBOW], true);
+
+
+
+		localA.setIdentity(); localB.setIdentity();
+		localA.getBasis().setEulerZYX(0,0,0); localA.setOrigin(scale*btVector3(btScalar(0.2), btScalar(0.15), btScalar(0.)));
+		localB.getBasis().setEulerZYX(0,0,M_PI_2); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.18), btScalar(0.)));
+		coneC = new btConeTwistConstraint(*m_bodies[BODYPART_SPINE], *m_bodies[BODYPART_RIGHT_UPPER_ARM], localA, localB);
+		coneC->setLimit(M_PI_2, M_PI_2, 0);
+		m_joints[JOINT_RIGHT_SHOULDER] = coneC;
+		m_ownerWorld->addConstraint(m_joints[JOINT_RIGHT_SHOULDER], true);
+
+		localA.setIdentity(); localB.setIdentity();
+		localA.getBasis().setEulerZYX(0,M_PI_2,0); localA.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.18), btScalar(0.)));
+		localB.getBasis().setEulerZYX(0,M_PI_2,0); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.14), btScalar(0.)));
+		hingeC =  new btHingeConstraint(*m_bodies[BODYPART_RIGHT_UPPER_ARM], *m_bodies[BODYPART_RIGHT_LOWER_ARM], localA, localB);
+		hingeC->setLimit(btScalar(-M_PI_2), btScalar(0));
+		m_joints[JOINT_RIGHT_ELBOW] = hingeC;
+		m_ownerWorld->addConstraint(m_joints[JOINT_RIGHT_ELBOW], true);
+	}
+GameRagDoll::~ GameRagDoll ()
+        {
+		int i;
+
+		// Remove all constraints
+		for ( i = 0; i < JOINT_COUNT; ++i)
+		{
+			m_ownerWorld->removeConstraint(m_joints[i]);
+			delete m_joints[i]; m_joints[i] = 0;
+		}
+
+		// Remove all bodies and shapes
+		for ( i = 0; i < BODYPART_COUNT; ++i)
+		{
+			m_ownerWorld->removeRigidBody(m_bodies[i]);
+			
+			delete m_bodies[i]->getMotionState();
+
+			delete m_bodies[i]; m_bodies[i] = 0;
+			delete m_shapes[i]; m_shapes[i] = 0;
+		}
+	}
+#undef LZZ_INLINE
+ 
 // f00351_gamepageholder.h
 //
 
@@ -49831,6 +50188,7 @@ void MyShapeDrawer::popMat ()
 		}
 void MyShapeDrawer::drawOrient (int uid)
                                          {
+			return;
 			
 			if (uid == singleton->getCurActorUID()) {
 				
@@ -50932,7 +51290,7 @@ struct CommonGraphicsApp * MyGLHelper::getAppInterface ()
 #define LZZ_INLINE inline
 GamePhysics::GamePhysics ()
                       {
-		stepTimeInMicroSec = 8000; // ~120 times per second
+		//8000; // ~120 times per second
 	}
 void GamePhysics::init (Singleton * _singleton)
         {
@@ -50986,6 +51344,8 @@ void GamePhysics::remBoxFromObj (BaseObjType _uid)
 void GamePhysics::addBoxFromObj (BaseObjType _uid)
                                              {
 		
+		int i;
+		
 		BaseObj* ge = &(singleton->gw->gameObjects[_uid]);
 		
 		if (ge->isHidden) {
@@ -51003,18 +51363,31 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 			(ge->entType == E_ENTTYPE_NPC) ||
 			(ge->entType == E_ENTTYPE_MONSTER)	
 		) {
-			btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(1.0f,1.0f);
-			ge->body = example->createRigidBody(ge->mass,trans,capsuleShape);
-			ge->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
+			// btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(1.0f,1.0f);
+			// ge->body = example->createRigidBody(ge->mass,trans,capsuleShape);
+			// ge->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
+			//ge->body->setLinearFactor(btVector3(0.0f,0.0f,0.0f));
+			
+			ragDoll = new GameRagDoll(
+				example->getWorld(),
+				ge->getCenterPoint(false)->getBTV(),
+				4.0f,
+				_uid
+			);
+			
+			for (i = 0; i < ragDoll->BODYPART_COUNT; i++) {
+				if (i == 0) {
+					ge->body = ragDoll->m_bodies[i];
+				}
+				else {
+					ge->limbs.push_back(ragDoll->m_bodies[i]);
+				}
+				
+			}
+			
 		}
 		else {
 			
-			// if (ge->entType == E_ENTTYPE_DEBRIS) {
-			// 	objRad = 0.25f;
-			// }
-			// else {
-				
-			// }
 			
 			btBoxShape* boxShape = new btBoxShape(btVector3(objRad,objRad,objRad));
 			ge->body = example->createRigidBody(ge->mass,trans,boxShape);
@@ -51026,6 +51399,11 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 					(fGenRand2()*2.0f-1.0f)	
 				)*4.0f);
 			}
+			
+			
+			
+			
+			
 		}
 		
 		ge->body->bodyUID = _uid;
@@ -51033,8 +51411,28 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 		ge->body->setContactProcessingThreshold(0.25f);
 		
 	}
-void GamePhysics::collideWithWorld ()
-                                {
+void GamePhysics::flushImpulses ()
+                             {
+		
+		int k;
+		BaseObj* ge;
+		
+		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
+			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
+			
+			if (
+				(ge->isHidden) ||
+				(ge->body == NULL)
+			) {
+				
+			}
+			else {
+				ge->flushImpulses();
+			}
+		}
+	}
+void GamePhysics::collideWithWorld (double curStepTime)
+                                                  {
 		
 		
 		
@@ -51067,6 +51465,20 @@ void GamePhysics::collideWithWorld ()
 		
 		collectDebris();
 		
+		
+		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
+			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
+			
+			if (
+				(ge->isHidden) ||
+				(ge->body == NULL)
+			) {
+				
+			}
+			else {
+				ge->hasContact = false;
+			}
+		}
 		
 		
 		const btCollisionObject* bodies[2];
@@ -51114,13 +51526,18 @@ void GamePhysics::collideWithWorld ()
 						
 					}
 					else {
+						
+						if (hasContact) {
+							ge->hasContact = true;
+						}
+						
 						lastFalling = ge->isFalling;
 						
-						ge->isFalling = (!hasContact);// && (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f);
+						ge->isFalling = (!(ge->hasContact));// && (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f);
 						
-						if (!(ge->isFalling)) {
-							ge->isJumping = false;
-						}
+						// if (!(ge->isFalling)) {
+						// 	//ge->isJumping = false;
+						// }
 						
 					}
 					
@@ -51153,6 +51570,8 @@ void GamePhysics::collideWithWorld ()
 				// APPLY FORCES
 				//////////////////////
 				
+				ge->applyImpulses(curStepTime);
+				
 				tempBTV = ge->body->getCenterOfMassPosition();
 				
 				cellVal = singleton->gw->getCellAtCoords(
@@ -51170,7 +51589,7 @@ void GamePhysics::collideWithWorld ()
 					
 					ge->moveToPoint(tempBTV + btVector3(0,0,2));
 					
-					ge->applyImpulse(btVector3(0,0,5));
+					ge->applyImpulse(btVector3(0,0,5),false);
 					ge->lastVel = ge->body->getLinearVelocity();
 				}
 				
@@ -51182,11 +51601,14 @@ void GamePhysics::collideWithWorld ()
 				) {
 					
 					
-					ge->applyImpulse( btVector3(
-						( singleton->worldMarker.getFX() - ge->body->getCenterOfMassPosition().getX() )*0.25f,
-						( singleton->worldMarker.getFY() - ge->body->getCenterOfMassPosition().getY() )*0.25f,
-						-(ge->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*1.0f
-					) );
+					ge->applyImpulse(
+						btVector3(
+							( singleton->worldMarker.getFX() - ge->body->getCenterOfMassPosition().getX() )*0.25f,
+							( singleton->worldMarker.getFY() - ge->body->getCenterOfMassPosition().getY() )*0.25f,
+							-(ge->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*1.0f
+						),
+						false
+					);
 					
 					
 					
@@ -51209,7 +51631,7 @@ void GamePhysics::collideWithWorld ()
 					
 					dirForce.setZ(totForce);
 					
-					ge->applyImpulse(dirForce);
+					ge->applyImpulse(dirForce, false);
 				}
 				
 				// for (m = 0; m < singleton->explodeStack.size(); m++) {
@@ -51225,7 +51647,7 @@ void GamePhysics::collideWithWorld ()
 					
 				// 	dirForce.setZ(totForce);
 					
-				// 	ge->applyImpulse(dirForce);
+				// 	ge->applyImpulse(dirForce, false);
 				// }
 				
 				
@@ -51288,11 +51710,13 @@ void GamePhysics::collideWithWorld ()
 void GamePhysics::updateAll ()
                          {
 		
-		while (singleton->totTimePassedPhysics > stepTimeInMicroSec) {
-			collideWithWorld();
-			example->stepSimulation(stepTimeInMicroSec/500000.0f);
-			singleton->totTimePassedPhysics -= stepTimeInMicroSec;
+		while (singleton->totTimePassedPhysics > STEP_TIME_IN_MICRO_SEC) {
+			collideWithWorld(STEP_TIME_IN_MICRO_SEC/500000.0f);
+			example->stepSimulation(STEP_TIME_IN_MICRO_SEC/500000.0f);
+			singleton->totTimePassedPhysics -= STEP_TIME_IN_MICRO_SEC;
 		}
+		
+		flushImpulses();
 	}
 GamePhysics::~ GamePhysics ()
                        {
@@ -55825,6 +56249,14 @@ void GameWorld::postProcess ()
 				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
 			
+			if (singleton->currentActor == NULL) {
+				singleton->setShaderInt("isFalling",false);
+			}
+			else {
+				singleton->setShaderInt("isFalling",singleton->currentActor->isFalling);
+			}
+			
+			
 			singleton->setShaderFloat("seaLevel", singleton->getSeaHeightScaled() );
 			singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
 			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
@@ -56017,14 +56449,14 @@ void mouseClick(int button, int state, int x, int y) {
 }
 
 void display(void) {
-    singleton->display();
+    singleton->display(true);
 }
 
 void reshape (int w, int h) {
     singleton->reshape(w,h);
 }
 void idleFunc(void) {
-    singleton->display();
+    singleton->display(false);
 }
 
 int MAX_CONSOLE_LINES = 500;

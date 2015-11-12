@@ -26,6 +26,7 @@ uniform vec3 lightVec;
 uniform vec3 lightVecOrig;
 uniform vec2 clipDist;
 
+uniform bool isFalling;
 uniform int iNumSteps;
 uniform float seaLevel;
 uniform float volSizePrim;
@@ -640,6 +641,10 @@ void main() {
                 }
                 else {
                     finalCol += vec3(0.0,1.0,0.0);
+                }
+                
+                if (isFalling) {
+                    finalCol = vec3(1.0,0.0,0.0);
                 }
                 
                 

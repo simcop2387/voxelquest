@@ -27,14 +27,14 @@ void mouseClick(int button, int state, int x, int y) {
 }
 
 void display(void) {
-    singleton->display();
+    singleton->display(true);
 }
 
 void reshape (int w, int h) {
     singleton->reshape(w,h);
 }
 void idleFunc(void) {
-    singleton->display();
+    singleton->display(false);
 }
 
 int MAX_CONSOLE_LINES = 500;

@@ -668,13 +668,12 @@ public:
   FIVector4 * cameraGetPosNoShake ();
   float getTargetTimeOfDay ();
   void updateBullets ();
-  void display ();
+  void display (bool doFrameRender);
   bool gluInvertMatrix (double const (m) [16], float (invOut) [16]);
   int getMatrixInd (int col, int row);
   void ComputeFOVProjection (float * result, float fov, float aspect, float nearDist, float farDist, bool leftHanded);
   void setMatrices (int w, int h);
   void reshape (int w, int h);
-  void idleFunc ();
   void initAllObjects ();
 };
 #undef LZZ_INLINE
@@ -1360,6 +1359,55 @@ public:
 };
 #undef LZZ_INLINE
 #endif
+// f00345_gameragdoll.e
+//
+
+#ifndef LZZ_f00345_gameragdoll_e
+#define LZZ_f00345_gameragdoll_e
+#define LZZ_INLINE inline
+class GameRagDoll
+{
+public:
+  enum
+  {
+    BODYPART_PELVIS = 0,
+    BODYPART_SPINE,
+    BODYPART_HEAD,
+    BODYPART_LEFT_UPPER_LEG,
+    BODYPART_LEFT_LOWER_LEG,
+    BODYPART_RIGHT_UPPER_LEG,
+    BODYPART_RIGHT_LOWER_LEG,
+    BODYPART_LEFT_UPPER_ARM,
+    BODYPART_LEFT_LOWER_ARM,
+    BODYPART_RIGHT_UPPER_ARM,
+    BODYPART_RIGHT_LOWER_ARM,
+    BODYPART_COUNT
+  };
+  enum
+  {
+    JOINT_PELVIS_SPINE = 0,
+    JOINT_SPINE_HEAD,
+    JOINT_LEFT_HIP,
+    JOINT_LEFT_KNEE,
+    JOINT_RIGHT_HIP,
+    JOINT_RIGHT_KNEE,
+    JOINT_LEFT_SHOULDER,
+    JOINT_LEFT_ELBOW,
+    JOINT_RIGHT_SHOULDER,
+    JOINT_RIGHT_ELBOW,
+    JOINT_COUNT
+  };
+  int uid;
+  btDynamicsWorld * m_ownerWorld;
+  btCollisionShape * (m_shapes) [BODYPART_COUNT];
+  btRigidBody * (m_bodies) [BODYPART_COUNT];
+  btTypedConstraint * (m_joints) [JOINT_COUNT];
+  btRigidBody * createRigidBody (btScalar mass, btTransform const & startTransform, btCollisionShape * shape);
+  GameRagDoll (btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, btScalar scale, int _uid);
+  virtual ~ GameRagDoll ();
+};
+#undef LZZ_INLINE
+#endif
 // f00351_gamepageholder.e
 //
 
@@ -1789,14 +1837,15 @@ public:
   BenchmarkDemo * example;
   MyOGLApp * myOGLApp;
   GUIHelperInterface * guiHelper;
-  unsigned long int stepTimeInMicroSec;
+  GameRagDoll * ragDoll;
   GamePhysics ();
   void init (Singleton * _singleton);
   void collectDebris ();
   void beginDrop ();
   void remBoxFromObj (BaseObjType _uid);
   void addBoxFromObj (BaseObjType _uid);
-  void collideWithWorld ();
+  void flushImpulses ();
+  void collideWithWorld (double curStepTime);
   void updateAll ();
   ~ GamePhysics ();
 };

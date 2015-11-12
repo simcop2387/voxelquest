@@ -1,4 +1,4 @@
-﻿Build started 11/4/2015 8:06:38 PM.
+﻿Build started 11/12/2015 1:40:33 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -34,6 +34,7 @@
          .\src\cpp\f00339_gameorg.hpp
          .\src\cpp\f00340_gameplantnode.hpp
          .\src\cpp\f00341_gameplant.hpp
+         .\src\cpp\f00345_gameragdoll.hpp
          .\src\cpp\f00351_gamepageholder.hpp
          .\src\cpp\f00352_gameblock.hpp
          .\src\cpp\f00355_volumewrapper.hpp
@@ -44,11 +45,11 @@
          .\src\cpp\f00375_gamephysics.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         39 File(s) copied
+         40 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         24
+         25
          copying headers to one file
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
@@ -65,6 +66,7 @@
          .\f00339_gameorg.e
          .\f00340_gameplantnode.e
          .\f00341_gameplant.e
+         .\f00345_gameragdoll.e
          .\f00351_gamepageholder.e
          .\f00352_gameblock.e
          .\f00355_volumewrapper.e
@@ -77,7 +79,7 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         24
+         25
          .
          copying files to compiled
          .\temp\f00293_gamesound.e
@@ -95,6 +97,7 @@
          .\temp\f00339_gameorg.e
          .\temp\f00340_gameplantnode.e
          .\temp\f00341_gameplant.e
+         .\temp\f00345_gameragdoll.e
          .\temp\f00351_gamepageholder.e
          .\temp\f00352_gameblock.e
          .\temp\f00355_volumewrapper.e
@@ -104,7 +107,7 @@
          .\temp\f00374_myglhelper.e
          .\temp\f00375_gamephysics.e
          .\temp\f00380_gameworld.e
-         24 File(s) copied
+         25 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_mat.h
@@ -135,6 +138,7 @@
          .\temp\f00339_gameorg.h
          .\temp\f00340_gameplantnode.h
          .\temp\f00341_gameplant.h
+         .\temp\f00345_gameragdoll.h
          .\temp\f00351_gamepageholder.h
          .\temp\f00352_gameblock.h
          .\temp\f00355_volumewrapper.h
@@ -156,4 +160,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:06.25
+Time Elapsed 00:00:06.38

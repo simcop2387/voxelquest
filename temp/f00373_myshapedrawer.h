@@ -185,6 +185,7 @@ void MyShapeDrawer::popMat ()
 		}
 void MyShapeDrawer::drawOrient (int uid)
                                          {
+			return;
 			
 			if (uid == singleton->getCurActorUID()) {
 				

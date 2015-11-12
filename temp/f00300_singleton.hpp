@@ -5339,14 +5339,14 @@ DISPATCH_EVENT_END:
 		
 		BaseObj* ge = &(gw->gameObjects[actorId]);
 		
-		float JUMP_AMOUNT = 80.0f;
+		float JUMP_AMOUNT = 30.0f/STEP_TIME_IN_SEC;
 		
 		
 		if (isUp == 1) {
 			if (ge->inWater) {
 				
 				ge->isFalling = true;
-				ge->isJumping = true;
+				//ge->isJumping = true;
 				
 				if (
 					gw->getCellAtCoords(
@@ -5359,7 +5359,7 @@ DISPATCH_EVENT_END:
 					
 					// at water surface
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true);
 					
 					
 					
@@ -5369,7 +5369,7 @@ DISPATCH_EVENT_END:
 					// underwater
 					
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true);
 					
 					playSoundEnt(
 						"bubble0",
@@ -5389,9 +5389,9 @@ DISPATCH_EVENT_END:
 					
 					
 					ge->isFalling = true;
-					ge->isJumping = true;
+					//ge->isJumping = true;
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT));
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true);
 					
 					playSoundEnt(
 						"jump0",
@@ -5404,7 +5404,7 @@ DISPATCH_EVENT_END:
 		}
 		else {
 			if (ge->inWater) {
-				ge->applyImpulse(btVector3(0.0f,0.0f,-JUMP_AMOUNT));
+				ge->applyImpulse(btVector3(0.0f,0.0f,-JUMP_AMOUNT), true);
 				
 				playSoundEnt(
 					"bubble0",
@@ -7255,7 +7255,7 @@ DISPATCH_EVENT_END:
 				// 	ca->targAng += (-2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,-0.2));
+				ca->applyAngularImpulse(btVector3(0,0,-0.2)/STEP_TIME_IN_SEC, true);
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_LEFT]) {
@@ -7266,7 +7266,7 @@ DISPATCH_EVENT_END:
 				// 	ca->targAng += (2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,0.2));
+				ca->applyAngularImpulse(btVector3(0,0,0.2)/STEP_TIME_IN_SEC, true);
 			}
 			
 			
@@ -7305,33 +7305,17 @@ DISPATCH_EVENT_END:
 				
 				//tempVec2.addXYZ(tempVec1[0],tempVec1[1],0.0f);
 				
-				ca->applyImpulseRot(btVector3(0,1,0));
+				ca->applyImpulseRot(btVector3(0,1,0)/STEP_TIME_IN_SEC, true);
 				
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
 				//tempVec2.addXYZ(-tempVec1[0],-tempVec1[1],0.0f);
 				
-				ca->applyImpulseRot(btVector3(0,-1,0));
+				ca->applyImpulseRot(btVector3(0,-1,0)/STEP_TIME_IN_SEC, true);
 				
 			}
 			
-			
-			// actor move curMoveSpeed
-			
-			
-			
-			// tempVec3.copyFrom(&tempVec2);
-			
-			// tempVec3.multXYZ(1.0f);
-			
-			
-			
-			// if (ca->body != NULL) {
-			// 	ca->body->m_linearVelocity.x += tempVec3[0];
-			// 	ca->body->m_linearVelocity.y += tempVec3[1];
-			// 	ca->body->SetToAwake();
-			// }
 			
 		}
 		
@@ -7705,8 +7689,9 @@ DISPATCH_EVENT_END:
 			// );
 			
 			gw->gameObjects[ca->isGrabbingId].applyImpulseOtherRot(
-				btVector3(0.0,20.0,30.0),
-				ca->rotMat
+				btVector3(0.0,30.0,40.0)/STEP_TIME_IN_SEC,
+				ca->rotMat,
+				true
 			);
 			
 			playSoundEnt(
@@ -7794,8 +7779,9 @@ DISPATCH_EVENT_END:
 			// );
 			
 			gw->gameObjects[entNum].applyImpulseOtherRot(
-				btVector3(0.0,120.0,120.0),
-				ca->rotMat
+				btVector3(0.0,30.0,40.0)/STEP_TIME_IN_SEC,
+				ca->rotMat,
+				true
 			);
 			
 			
@@ -9332,7 +9318,7 @@ DISPATCH_EVENT_END:
 		}
 	}
 
-	void display(void)
+	void display(bool doFrameRender)
 	{
 		
 		bool noTravel = false;
@@ -9493,12 +9479,13 @@ DISPATCH_EVENT_END:
 					
 					
 					
+					//if (doFrameRender) {
+						frameUpdate();
+						lastDepthInvalidMove = depthInvalidMove;
+						depthInvalidMove = false;
+						depthInvalidRotate = false;
+					//}
 					
-					frameUpdate();
-					
-					lastDepthInvalidMove = depthInvalidMove;
-					depthInvalidMove = false;
-					depthInvalidRotate = false;
 				}
 			}
 			
@@ -9852,11 +9839,7 @@ DISPATCH_EVENT_END:
 		
 		setMatrices(baseW, baseH);
 	}
-	void idleFunc(void)
-	{
-
-	}
-
+	
 	void initAllObjects() {
 		int i;
 		int j;

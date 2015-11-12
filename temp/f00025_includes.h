@@ -23,6 +23,9 @@ const static int MAX_PRIMTEST = 8;
 
 const static int MAX_DEPTH_PEELS = 4;
 
+const static unsigned long int STEP_TIME_IN_MICRO_SEC = 8000;
+const static double STEP_TIME_IN_SEC = STEP_TIME_IN_MICRO_SEC/1000000.0;
+
 const static float OFFSET_X[4] = {-0.5,0.5,0.5,-0.5};
 const static float OFFSET_Y[4] = {-0.5,-0.5,0.5,0.5};
 
@@ -33,8 +36,8 @@ const static int MAX_EXPLODES = 8;
 const static bool DO_SHADER_DUMP = false;
 
 
-const static int DEF_WIN_W = 1440;
-const static int DEF_WIN_H = 720;
+const static int DEF_WIN_W = 1920;
+const static int DEF_WIN_H = 1080;
 
 const static int DEF_VOL_SIZE = 128;
 
@@ -2691,7 +2694,7 @@ class RagDoll
 		if (isDynamic) {
 			shape->calculateLocalInertia(mass,localInertia);
 		}
-			
+		
 
 		btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
 		

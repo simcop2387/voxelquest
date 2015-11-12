@@ -1788,8 +1788,11 @@ public:
 	vector<BaseObjType> children;
 	
 	btVector3 lastVel;
+	btVector3 totAV;
+	btVector3 totLV;
 	
 	btRigidBody* body;
+	std::vector<btRigidBody*> limbs;
 	
 	Matrix3 rotMat;
 	
@@ -1798,8 +1801,9 @@ public:
 	int entType;
 	bool isHidden;
 	bool isFalling;
+	bool hasContact;
 	bool isInside;
-	bool isJumping;
+	//bool isJumping;
 	bool isOpen;
 	bool inWater;
 	bool isEquipped;
@@ -1822,6 +1826,8 @@ public:
 	float friction;
 	float windResistance;
 	
+	//class GameRagDoll* grd;
+	
 	
 	FIVector4* getVel() {
 		
@@ -1842,36 +1848,125 @@ public:
 	// 	}
 	// }
 	
-	void applyAngularImpulse(btVector3 newAV) {
-		body->setAngularVelocity(body->getAngularVelocity() + newAV);
-		body->setActivationState(ACTIVE_TAG);
-	}
-	
-	void applyImpulse( btVector3 imp) {
-		body->applyCentralImpulse(imp);
-		body->setActivationState(ACTIVE_TAG);
-	}
-	
-	void applyImpulseRot( btVector3 imp) {
+	void applyImpulses(float timeDelta) {
 		
+		int i;
+		
+		if (totAV.isZero()&&totLV.isZero()) {
+			
+		}
+		else {
+			body->setActivationState(ACTIVE_TAG);
+			
+			for (i = 0; i < limbs.size(); i++) {
+				limbs[i]->setAngularVelocity(limbs[i]->getAngularVelocity() + totAV*timeDelta);
+				limbs[i]->applyCentralImpulse(totLV*timeDelta);
+				limbs[i]->setActivationState(ACTIVE_TAG);
+			}
+		}
+		
+		
+		
+		body->setAngularVelocity(body->getAngularVelocity() + totAV*timeDelta);
+		body->applyCentralImpulse(totLV*timeDelta);
+		
+	}
+	
+	void flushImpulses() {
+		totAV = btVector3(0.0f,0.0f,0.0f);
+		totLV = btVector3(0.0f,0.0f,0.0f);
+	}
+	
+	
+	void applyAngularImpulse(btVector3 newAV, bool delayed) {
+		int i;
+		
+		if (delayed) {
+			totAV += newAV;
+		}
+		else {
+			
+			for (i = 0; i < limbs.size(); i++) {
+				limbs[i]->setAngularVelocity(limbs[i]->getAngularVelocity() + newAV);
+				limbs[i]->setActivationState(ACTIVE_TAG);
+			}
+			
+			body->setAngularVelocity(body->getAngularVelocity() + newAV);
+			body->setActivationState(ACTIVE_TAG);
+		}
+		
+		
+		
+		
+	}
+	
+	void applyImpulse(btVector3 imp, bool delayed) {
+		
+		int i;
+		
+		if (delayed) {
+			totLV += imp;
+		}
+		else {
+			body->applyCentralImpulse(imp);
+			body->setActivationState(ACTIVE_TAG);
+			
+			for (i = 0; i < limbs.size(); i++) {
+				limbs[i]->applyCentralImpulse(imp);
+				limbs[i]->setActivationState(ACTIVE_TAG);
+			}
+		}
+		
+	}
+	
+	void applyImpulseRot(btVector3 imp, bool delayed) {
+		int i;
 		
 		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
 		Vector3 res = rotMat*myRHS;
+		btVector3 newImp = btVector3(res.x,res.y,res.z);
+		
+		if (delayed) {
+			totLV += newImp;
+		}
+		else {
+			for (i = 0; i < limbs.size(); i++) {
+				limbs[i]->applyCentralImpulse(newImp);
+				limbs[i]->setActivationState(ACTIVE_TAG);
+			}
+			
+			body->applyCentralImpulse(newImp);
+			body->setActivationState(ACTIVE_TAG);
+		}
 		
 		
-		body->applyCentralImpulse(btVector3(res.x,res.y,res.z));
-		body->setActivationState(ACTIVE_TAG);
+		
+		
 	}
 	
-	void applyImpulseOtherRot( btVector3 imp, Matrix3 otherRot) {
-		
+	void applyImpulseOtherRot(btVector3 imp, Matrix3 otherRot, bool delayed) {
+		int i;
 		
 		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
 		Vector3 res = otherRot*myRHS;
+		btVector3 newImp = btVector3(res.x,res.y,res.z);
 		
 		
-		body->applyCentralImpulse(btVector3(res.x,res.y,res.z));
-		body->setActivationState(ACTIVE_TAG);
+		if (delayed) {
+			totLV += newImp;
+		}
+		else {
+			for (i = 0; i < limbs.size(); i++) {
+				limbs[i]->applyCentralImpulse(newImp);
+				limbs[i]->setActivationState(ACTIVE_TAG);
+			}
+			
+			body->applyCentralImpulse(newImp);
+			body->setActivationState(ACTIVE_TAG);
+		}
+		
+		
+		
 	}
 	
 	btVector3 multByOtherRot( btVector3 imp, Matrix3 otherRot) {
@@ -1969,6 +2064,8 @@ public:
 		int zs
 	) {
 		
+		totAV = btVector3(0.0f,0.0f,0.0f);
+		totLV = btVector3(0.0f,0.0f,0.0f);
 		
 		mass = 10.0f;
 		
@@ -1987,8 +2084,9 @@ public:
 		objectType = _objectType;
 		entType = _entType;
 		isFalling = false;
+		hasContact = false;
 		isInside = false;
-		isJumping = false;
+		//isJumping = false;
 		isGrabbedById = -1;
 		isGrabbingId = -1;
 		inWater = false;

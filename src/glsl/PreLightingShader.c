@@ -452,7 +452,7 @@ void main()
 					
 					resComp *= tex6.w;
 					
-					resComp = 1.0;
+					//resComp = 1.0;
 					
 				//}
 

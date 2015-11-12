@@ -206,6 +206,7 @@ public:
 		}
 		
 		void drawOrient(int uid) {
+			return;
 			
 			if (uid == singleton->getCurActorUID()) {
 				
