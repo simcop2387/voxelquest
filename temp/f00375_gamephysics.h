@@ -5,6 +5,8 @@
 #define LZZ_INLINE inline
 GamePhysics::GamePhysics ()
                       {
+		gameActor = NULL;
+		ragDoll = NULL;
 		//8000; // ~120 times per second
 	}
 void GamePhysics::init (Singleton * _singleton)
@@ -83,22 +85,41 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 			// ge->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
 			//ge->body->setLinearFactor(btVector3(0.0f,0.0f,0.0f));
 			
-			ragDoll = new GameRagDoll(
+			
+			
+			gameActor = new GameActor(
 				example->getWorld(),
 				ge->getCenterPoint(false)->getBTV(),
-				4.0f,
+				false,
 				_uid
 			);
-			
-			for (i = 0; i < ragDoll->BODYPART_COUNT; i++) {
+			for (i = 0; i < BODYPART_COUNT_GA; i++) {
 				if (i == 0) {
-					ge->body = ragDoll->m_bodies[i];
+					ge->body = gameActor->m_bodies[i];
 				}
 				else {
-					ge->limbs.push_back(ragDoll->m_bodies[i]);
+					ge->limbs.push_back(gameActor->m_bodies[i]);
 				}
-				
 			}
+			
+			
+			
+			// ragDoll = new GameRagDoll(
+			// 	example->getWorld(),
+			// 	ge->getCenterPoint(false)->getBTV(),
+			// 	4.0f,
+			// 	_uid
+			// );
+			
+			// for (i = 0; i < ragDoll->BODYPART_COUNT; i++) {
+			// 	if (i == 0) {
+			// 		ge->body = ragDoll->m_bodies[i];
+			// 	}
+			// 	else {
+			// 		ge->limbs.push_back(ragDoll->m_bodies[i]);
+			// 	}
+				
+			// }
 			
 		}
 		else {
@@ -125,6 +146,35 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 		ge->body->setDamping(0.1f,0.99f);
 		ge->body->setContactProcessingThreshold(0.25f);
 		
+	}
+void GamePhysics::motorPreTickCallback (btScalar timeStep, GameActor * curActor)
+                                                                          {
+		
+		if (curActor == NULL) {
+			return;
+		}
+		
+		
+		float m_fMuscleStrength = 0.5f;//(sin(singleton->curTime/2000.0)+1.0f)*0.5f;
+		float ms = timeStep*1000000.0;
+		float minFPS = 1000000.f/60.f;
+		if (ms > minFPS) {
+			ms = minFPS;
+		}
+
+		//m_Time += ms;
+
+		for (int i=0; i<2*NUM_LEGS_GA; i++) {
+			btHingeConstraint* hingeC = static_cast<btHingeConstraint*>(curActor->GetJoints()[i]);
+			btScalar fCurAngle      = hingeC->getHingeAngle();
+			
+			btScalar fTargetPercent = 0.5f;//(int(m_Time / 1000) % int(m_fCyclePeriod)) / m_fCyclePeriod;
+			btScalar fTargetAngle   = 0.5 * (1 + sin(2 * M_PI * fTargetPercent));
+			btScalar fTargetLimitAngle = hingeC->getLowerLimit() + fTargetAngle * (hingeC->getUpperLimit() - hingeC->getLowerLimit());
+			btScalar fAngleError  = (fTargetLimitAngle - fCurAngle)*0.25;
+			btScalar fDesiredAngularVel = 1000000.f * fAngleError/ms;
+			hingeC->enableAngularMotor(true, fDesiredAngularVel, m_fMuscleStrength);
+		}
 	}
 void GamePhysics::flushImpulses ()
                              {
@@ -179,6 +229,8 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		
 		
 		collectDebris();
+		
+		motorPreTickCallback(curStepTime, gameActor);
 		
 		
 		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
@@ -299,9 +351,9 @@ void GamePhysics::collideWithWorld (double curStepTime)
 				ge->inWater = (cellVal == E_CD_WATER);
 				ge->isInside = (cellVal == E_CD_SOLID);
 				
+				// push out from underground
+				
 				if (ge->isInside) {
-					
-					
 					ge->moveToPoint(tempBTV + btVector3(0,0,2));
 					
 					ge->applyImpulse(btVector3(0,0,5),false);
@@ -318,9 +370,9 @@ void GamePhysics::collideWithWorld (double curStepTime)
 					
 					ge->applyImpulse(
 						btVector3(
-							( singleton->worldMarker.getFX() - ge->body->getCenterOfMassPosition().getX() )*0.25f,
-							( singleton->worldMarker.getFY() - ge->body->getCenterOfMassPosition().getY() )*0.25f,
-							-(ge->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*1.0f
+							( singleton->worldMarker.getFX() - ge->body->getCenterOfMassPosition().getX() )*0.05f,
+							( singleton->worldMarker.getFY() - ge->body->getCenterOfMassPosition().getY() )*0.05f,
+							-(ge->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*0.05f
 						),
 						false
 					);

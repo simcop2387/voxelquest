@@ -1408,6 +1408,27 @@ public:
 };
 #undef LZZ_INLINE
 #endif
+// f00346_gameactor.e
+//
+
+#ifndef LZZ_f00346_gameactor_e
+#define LZZ_f00346_gameactor_e
+#define LZZ_INLINE inline
+class GameActor
+{
+public:
+  btDynamicsWorld * m_ownerWorld;
+  btCollisionShape * (m_shapes) [BODYPART_COUNT_GA];
+  btRigidBody * (m_bodies) [BODYPART_COUNT_GA];
+  btTypedConstraint * (m_joints) [JOINT_COUNT_GA];
+  int uid;
+  btRigidBody * localCreateRigidBody (btScalar mass, btTransform const & startTransform, btCollisionShape * shape);
+  GameActor (btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed, int _uid);
+  virtual ~ GameActor ();
+  btTypedConstraint * * GetJoints ();
+};
+#undef LZZ_INLINE
+#endif
 // f00351_gamepageholder.e
 //
 
@@ -1838,12 +1859,14 @@ public:
   MyOGLApp * myOGLApp;
   GUIHelperInterface * guiHelper;
   GameRagDoll * ragDoll;
+  GameActor * gameActor;
   GamePhysics ();
   void init (Singleton * _singleton);
   void collectDebris ();
   void beginDrop ();
   void remBoxFromObj (BaseObjType _uid);
   void addBoxFromObj (BaseObjType _uid);
+  void motorPreTickCallback (btScalar timeStep, GameActor * curActor);
   void flushImpulses ();
   void collideWithWorld (double curStepTime);
   void updateAll ();

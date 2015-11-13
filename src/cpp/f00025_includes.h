@@ -36,8 +36,8 @@ const static int MAX_EXPLODES = 8;
 const static bool DO_SHADER_DUMP = false;
 
 
-const static int DEF_WIN_W = 1440;
-const static int DEF_WIN_H = 720;
+const static int DEF_WIN_W = 1920;
+const static int DEF_WIN_H = 1080;
 
 const static int DEF_VOL_SIZE = 128;
 
@@ -1247,6 +1247,28 @@ GLuint indexDataQuad[] = {
 #define btglColor3 glColor3f
 #define btglVertex3 glVertex3d
 #endif
+
+// #ifndef M_PI
+// #define M_PI       btScalar(3.14159265358979323846)
+// #endif
+
+// #ifndef M_PI_2
+// #define M_PI_2     btScalar(1.57079632679489661923)
+// #endif
+
+// #ifndef M_PI_4
+// #define M_PI_4     btScalar(0.785398163397448309616)
+// #endif
+
+#ifndef M_PI_8
+#define M_PI_8     0.5 * M_PI_4
+#endif
+
+#define NUM_LEGS_GA 6
+#define BODYPART_COUNT_GA 2 * NUM_LEGS_GA + 1
+#define JOINT_COUNT_GA BODYPART_COUNT_GA - 1
+
+
 
 class btConvexShape;
 class btCollisionShape;
@@ -2623,20 +2645,6 @@ void BenchmarkDemo::createTest2()
 
 
 
-
-// Enrico: Shouldn't these three variables be real constants and not defines?
-
-#ifndef M_PI
-#define M_PI       btScalar(3.14159265358979323846)
-#endif
-
-#ifndef M_PI_2
-#define M_PI_2     btScalar(1.57079632679489661923)
-#endif
-
-#ifndef M_PI_4
-#define M_PI_4     btScalar(0.785398163397448309616)
-#endif
 
 class RagDoll
 {

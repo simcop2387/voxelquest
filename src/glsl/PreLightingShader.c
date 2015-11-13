@@ -512,7 +512,7 @@ void main()
 		//vec3(resComp);
 		
 		//vec3(shadPower);
-		pow(totLightColor.xyz*0.75+newAO*0.25,vec3(0.5))*(resComp*0.75+0.25);
+		pow(totLightColor.xyz*0.75+newAO*0.25,vec3(0.5))*(resComp*0.5+0.5);
 		//(totLightColor.xyz+newAO*0.25)/1.25;//*0.75+newAO*0.25;
 		// pow(
 			

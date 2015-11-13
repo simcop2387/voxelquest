@@ -85,7 +85,6 @@ public:
 	std::vector<int> ocThreads;
 
 
-	//std::vector<GameEnt> gameActors;
 	
 	map<BaseObjType, BaseObj> gameObjects;
 	vector<BaseObjType> visObjects;

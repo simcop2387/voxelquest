@@ -1248,6 +1248,28 @@ GLuint indexDataQuad[] = {
 #define btglVertex3 glVertex3d
 #endif
 
+// #ifndef M_PI
+// #define M_PI       btScalar(3.14159265358979323846)
+// #endif
+
+// #ifndef M_PI_2
+// #define M_PI_2     btScalar(1.57079632679489661923)
+// #endif
+
+// #ifndef M_PI_4
+// #define M_PI_4     btScalar(0.785398163397448309616)
+// #endif
+
+#ifndef M_PI_8
+#define M_PI_8     0.5 * M_PI_4
+#endif
+
+#define NUM_LEGS_GA 6
+#define BODYPART_COUNT_GA 2 * NUM_LEGS_GA + 1
+#define JOINT_COUNT_GA BODYPART_COUNT_GA - 1
+
+
+
 class btConvexShape;
 class btCollisionShape;
 class btShapeHull;
@@ -2623,20 +2645,6 @@ void BenchmarkDemo::createTest2()
 
 
 
-
-// Enrico: Shouldn't these three variables be real constants and not defines?
-
-#ifndef M_PI
-#define M_PI       btScalar(3.14159265358979323846)
-#endif
-
-#ifndef M_PI_2
-#define M_PI_2     btScalar(1.57079632679489661923)
-#endif
-
-#ifndef M_PI_4
-#define M_PI_4     btScalar(0.785398163397448309616)
-#endif
 
 class RagDoll
 {
