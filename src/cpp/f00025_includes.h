@@ -1266,7 +1266,7 @@ GLuint indexDataQuad[] = {
 
 #define NUM_LEGS_GA 6
 #define BODYPART_COUNT_GA 2 * NUM_LEGS_GA + 1
-#define JOINT_COUNT_GA BODYPART_COUNT_GA - 1
+//#define JOINT_COUNT_GA BODYPART_COUNT_GA - 1
 
 
 

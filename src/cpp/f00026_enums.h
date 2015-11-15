@@ -1037,6 +1037,20 @@ enum E_PATH_FILL_OPS {
 	E_PFO_LENGTH
 };
 
+struct ActorJointStruct {
+	float rad;
+	float length;
+	
+	btVector3 axis;
+	float angle;
+	
+	int jointId;
+	int parentId;
+	std::vector<int> children;
+	btCollisionShape* shape;
+	btRigidBody* body;
+	btTypedConstraint* joint;
+};
 
 // struct PathNode {
 // 	// uint flags;

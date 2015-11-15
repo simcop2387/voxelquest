@@ -98,6 +98,7 @@ public:
 			
 			
 			
+			
 			gameActor = new GameActor(
 				example->getWorld(),
 				ge->getCenterPoint(false)->getBTV(),
@@ -106,10 +107,12 @@ public:
 			);
 			for (i = 0; i < BODYPART_COUNT_GA; i++) {
 				if (i == 0) {
-					ge->body = gameActor->m_bodies[i];
+					ge->body = gameActor->actorJoints[i].body;
+					//ge->body->setLinearFactor(btVector3(0.0f,0.0f,0.0f));
+					ge->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
 				}
 				else {
-					ge->limbs.push_back(gameActor->m_bodies[i]);
+					ge->limbs.push_back(gameActor->actorJoints[i].body);
 				}
 			}
 			
@@ -184,27 +187,8 @@ public:
 			return;
 		}
 		
+		curActor->stepSim(timeStep);
 		
-		float m_fMuscleStrength = 0.5f;//(sin(singleton->curTime/2000.0)+1.0f)*0.5f;
-		float ms = timeStep*1000000.0;
-		float minFPS = 1000000.f/60.f;
-		if (ms > minFPS) {
-			ms = minFPS;
-		}
-
-		//m_Time += ms;
-
-		for (int i=0; i<2*NUM_LEGS_GA; i++) {
-			btHingeConstraint* hingeC = static_cast<btHingeConstraint*>(curActor->GetJoints()[i]);
-			btScalar fCurAngle      = hingeC->getHingeAngle();
-			
-			btScalar fTargetPercent = 0.5f;//(int(m_Time / 1000) % int(m_fCyclePeriod)) / m_fCyclePeriod;
-			btScalar fTargetAngle   = 0.5 * (1 + sin(2 * M_PI * fTargetPercent));
-			btScalar fTargetLimitAngle = hingeC->getLowerLimit() + fTargetAngle * (hingeC->getUpperLimit() - hingeC->getLowerLimit());
-			btScalar fAngleError  = (fTargetLimitAngle - fCurAngle)*0.25;
-			btScalar fDesiredAngularVel = 1000000.f * fAngleError/ms;
-			hingeC->enableAngularMotor(true, fDesiredAngularVel, m_fMuscleStrength);
-		}
 	}
 
 
@@ -401,9 +385,9 @@ public:
 					
 					ge->applyImpulse(
 						btVector3(
-							( singleton->worldMarker.getFX() - ge->body->getCenterOfMassPosition().getX() )*0.05f,
-							( singleton->worldMarker.getFY() - ge->body->getCenterOfMassPosition().getY() )*0.05f,
-							-(ge->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*0.05f
+							( singleton->worldMarker.getFX() - ge->body->getCenterOfMassPosition().getX() )*0.2f,
+							( singleton->worldMarker.getFY() - ge->body->getCenterOfMassPosition().getY() )*0.2f,
+							-(ge->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*0.2f
 						),
 						false
 					);

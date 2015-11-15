@@ -1,4 +1,4 @@
-﻿Build started 11/13/2015 1:20:10 AM.
+﻿Build started 11/15/2015 3:58:11 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -35,7 +35,8 @@
          .\src\cpp\f00340_gameplantnode.hpp
          .\src\cpp\f00341_gameplant.hpp
          .\src\cpp\f00345_gameragdoll.hpp
-         .\src\cpp\f00346_gameactor.hpp
+         .\src\cpp\f00346_gameactorjoint.hpp
+         .\src\cpp\f00347_gameactor.hpp
          .\src\cpp\f00351_gamepageholder.hpp
          .\src\cpp\f00352_gameblock.hpp
          .\src\cpp\f00355_volumewrapper.hpp
@@ -46,11 +47,11 @@
          .\src\cpp\f00375_gamephysics.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         41 File(s) copied
+         42 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         26
+         27
          copying headers to one file
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
@@ -68,7 +69,8 @@
          .\f00340_gameplantnode.e
          .\f00341_gameplant.e
          .\f00345_gameragdoll.e
-         .\f00346_gameactor.e
+         .\f00346_gameactorjoint.e
+         .\f00347_gameactor.e
          .\f00351_gamepageholder.e
          .\f00352_gameblock.e
          .\f00355_volumewrapper.e
@@ -81,7 +83,7 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         26
+         27
          .
          copying files to compiled
          .\temp\f00293_gamesound.e
@@ -100,7 +102,8 @@
          .\temp\f00340_gameplantnode.e
          .\temp\f00341_gameplant.e
          .\temp\f00345_gameragdoll.e
-         .\temp\f00346_gameactor.e
+         .\temp\f00346_gameactorjoint.e
+         .\temp\f00347_gameactor.e
          .\temp\f00351_gamepageholder.e
          .\temp\f00352_gameblock.e
          .\temp\f00355_volumewrapper.e
@@ -110,7 +113,7 @@
          .\temp\f00374_myglhelper.e
          .\temp\f00375_gamephysics.e
          .\temp\f00380_gameworld.e
-         26 File(s) copied
+         27 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_mat.h
@@ -142,7 +145,8 @@
          .\temp\f00340_gameplantnode.h
          .\temp\f00341_gameplant.h
          .\temp\f00345_gameragdoll.h
-         .\temp\f00346_gameactor.h
+         .\temp\f00346_gameactorjoint.h
+         .\temp\f00347_gameactor.h
          .\temp\f00351_gamepageholder.h
          .\temp\f00352_gameblock.h
          .\temp\f00355_volumewrapper.h
@@ -272,73 +276,15 @@
          curHeight 0 newHeight 2634.04
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
          from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         iNumSteps:  32         
-         iNumSteps:  64         
+         actObjInd 759
+         subjectDistance 29.2519
          from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         from E_DT_WORLD_OBJECT to E_DT_NOTHING
+         firstPerson 0
+         actObjInd 765
+         subjectDistance 40.0603
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:06:19.44
+Time Elapsed 00:03:06.86

@@ -1408,24 +1408,44 @@ public:
 };
 #undef LZZ_INLINE
 #endif
-// f00346_gameactor.e
+// f00346_gameactorjoint.e
 //
 
-#ifndef LZZ_f00346_gameactor_e
-#define LZZ_f00346_gameactor_e
+#ifndef LZZ_f00346_gameactorjoint_e
+#define LZZ_f00346_gameactorjoint_e
+#define LZZ_INLINE inline
+class GameActorJoint
+{
+public:
+  btDynamicsWorld * m_ownerWorld;
+  int uid;
+  GameActorJoint * parentJoint;
+  std::vector <GameActorJoint*> childrenJoints;
+  btCollisionShape * ajShape;
+  btRigidBody * ajBody;
+  btTypedConstraint * ajJoint;
+  GameActorJoint ();
+  void init ();
+};
+#undef LZZ_INLINE
+#endif
+// f00347_gameactor.e
+//
+
+#ifndef LZZ_f00347_gameactor_e
+#define LZZ_f00347_gameactor_e
 #define LZZ_INLINE inline
 class GameActor
 {
 public:
   btDynamicsWorld * m_ownerWorld;
-  btCollisionShape * (m_shapes) [BODYPART_COUNT_GA];
-  btRigidBody * (m_bodies) [BODYPART_COUNT_GA];
-  btTypedConstraint * (m_joints) [JOINT_COUNT_GA];
+  std::vector <ActorJointStruct> actorJoints;
   int uid;
   btRigidBody * localCreateRigidBody (btScalar mass, btTransform const & startTransform, btCollisionShape * shape);
+  int addJoint (int bodyUID, int parentId, btVector3 positionOffset, float rad, float len, float mass, float theta, float phi);
   GameActor (btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed, int _uid);
+  void stepSim (btScalar timeStep);
   virtual ~ GameActor ();
-  btTypedConstraint * * GetJoints ();
 };
 #undef LZZ_INLINE
 #endif

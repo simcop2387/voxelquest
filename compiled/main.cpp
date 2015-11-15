@@ -1266,7 +1266,7 @@ GLuint indexDataQuad[] = {
 
 #define NUM_LEGS_GA 6
 #define BODYPART_COUNT_GA 2 * NUM_LEGS_GA + 1
-#define JOINT_COUNT_GA BODYPART_COUNT_GA - 1
+//#define JOINT_COUNT_GA BODYPART_COUNT_GA - 1
 
 
 
@@ -4474,6 +4474,20 @@ enum E_PATH_FILL_OPS {
 	E_PFO_LENGTH
 };
 
+struct ActorJointStruct {
+	float rad;
+	float length;
+	
+	btVector3 axis;
+	float angle;
+	
+	int jointId;
+	int parentId;
+	std::vector<int> children;
+	btCollisionShape* shape;
+	btRigidBody* body;
+	btTypedConstraint* joint;
+};
 
 // struct PathNode {
 // 	// uint flags;
@@ -22221,24 +22235,44 @@ public:
 };
 #undef LZZ_INLINE
 #endif
-// f00346_gameactor.e
+// f00346_gameactorjoint.e
 //
 
-#ifndef LZZ_f00346_gameactor_e
-#define LZZ_f00346_gameactor_e
+#ifndef LZZ_f00346_gameactorjoint_e
+#define LZZ_f00346_gameactorjoint_e
+#define LZZ_INLINE inline
+class GameActorJoint
+{
+public:
+  btDynamicsWorld * m_ownerWorld;
+  int uid;
+  GameActorJoint * parentJoint;
+  std::vector <GameActorJoint*> childrenJoints;
+  btCollisionShape * ajShape;
+  btRigidBody * ajBody;
+  btTypedConstraint * ajJoint;
+  GameActorJoint ();
+  void init ();
+};
+#undef LZZ_INLINE
+#endif
+// f00347_gameactor.e
+//
+
+#ifndef LZZ_f00347_gameactor_e
+#define LZZ_f00347_gameactor_e
 #define LZZ_INLINE inline
 class GameActor
 {
 public:
   btDynamicsWorld * m_ownerWorld;
-  btCollisionShape * (m_shapes) [BODYPART_COUNT_GA];
-  btRigidBody * (m_bodies) [BODYPART_COUNT_GA];
-  btTypedConstraint * (m_joints) [JOINT_COUNT_GA];
+  std::vector <ActorJointStruct> actorJoints;
   int uid;
   btRigidBody * localCreateRigidBody (btScalar mass, btTransform const & startTransform, btCollisionShape * shape);
+  int addJoint (int bodyUID, int parentId, btVector3 positionOffset, float rad, float len, float mass, float theta, float phi);
   GameActor (btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed, int _uid);
+  void stepSim (btScalar timeStep);
   virtual ~ GameActor ();
-  btTypedConstraint * * GetJoints ();
 };
 #undef LZZ_INLINE
 #endif
@@ -42429,13 +42463,28 @@ GameRagDoll::~ GameRagDoll ()
 	}
 #undef LZZ_INLINE
  
-// f00346_gameactor.h
+// f00346_gameactorjoint.h
 //
 
-#include "f00346_gameactor.e"
+#include "f00346_gameactorjoint.e"
+#define LZZ_INLINE inline
+GameActorJoint::GameActorJoint ()
+                         {
+		
+	}
+void GameActorJoint::init ()
+                    {
+		
+	}
+#undef LZZ_INLINE
+ 
+// f00347_gameactor.h
+//
+
+#include "f00347_gameactor.e"
 #define LZZ_INLINE inline
 btRigidBody * GameActor::localCreateRigidBody (btScalar mass, btTransform const & startTransform, btCollisionShape * shape)
-        {
+                                                                                                                     {
 		bool isDynamic = (mass != 0.f);
 
 		btVector3 localInertia(0,0,0);
@@ -42450,78 +42499,240 @@ btRigidBody * GameActor::localCreateRigidBody (btScalar mass, btTransform const 
 
 		return body;
 	}
+int GameActor::addJoint (int bodyUID, int parentId, btVector3 positionOffset, float rad, float len, float mass, float theta, float phi)
+          {
+		
+		
+		
+		int i;
+		float shapeScale = 4.0f;
+		float jointSpace  = 0.25f*shapeScale;
+		float fLegLength = 0.45f*shapeScale;
+		btVector3 vUp(0, 0, 1);
+		
+		
+		actorJoints.push_back(ActorJointStruct());
+		int curId = actorJoints.size()-1;
+		
+		ActorJointStruct* curJoint = &(actorJoints.back());
+		ActorJointStruct* parJoint = curJoint;
+		ActorJointStruct* grdJoint = curJoint;
+		
+		curJoint->jointId = curId;
+		curJoint->parentId = parentId;
+		curJoint->shape = new btCapsuleShapeZ(rad, len);
+		
+		
+		
+		
+		btTransform offset;
+		offset.setIdentity();
+		offset.setOrigin(positionOffset);
+		btVector3 vRoot = btVector3(0.0f, 0.0f, 0.0f);
+		btTransform transform;
+		transform.setIdentity();
+		transform.setOrigin(vRoot);
+		
+		float fAngle = theta;//2 * M_PI * i / NUM_LEGS_GA;
+		float fSin = sin(fAngle);
+		float fCos = cos(fAngle);
+		
+		btVector3 vBoneOrigin = btVector3(
+			btScalar(fCos*(jointSpace+0.5*fLegLength)),
+			btScalar(fSin*(jointSpace+0.5*fLegLength)),
+			btScalar(0.0)
+		);
+		btVector3 vToBone = (vBoneOrigin - vRoot).normalize();
+		btVector3 vAxis = vToBone.cross(vUp);	
+		
+		
+		if (parentId < 0) {
+			curJoint->body = localCreateRigidBody(mass, offset*transform, curJoint->shape);
+		}
+		else {
+			
+			
+			// thigh
+			transform.setIdentity();
+			transform.setOrigin(vBoneOrigin);
+			transform.setRotation(btQuaternion(vAxis, M_PI_2));
+			curJoint->body = localCreateRigidBody(btScalar(10.0), offset*transform, curJoint->shape);
+
+			// shin
+			transform.setIdentity();
+			transform.setOrigin(btVector3(
+				btScalar(fCos*(jointSpace+fLegLength)),
+				btScalar(fSin*(jointSpace+fLegLength)),
+				btScalar(-0.5*fLegLength)
+			));
+			curJoint->body = localCreateRigidBody(btScalar(10.0), offset*transform, curJoint->shape);
+			
+		}
+		
+		curJoint->body->bodyUID = bodyUID;
+		
+		curJoint->body->setDamping(0.05, 0.85);
+		curJoint->body->setDeactivationTime(0.8);
+		curJoint->body->setSleepingThresholds(0.5f, 0.5f);
+		
+		
+		btHingeConstraint* hingeC;
+		//btConeTwistConstraint* coneC;
+
+		btTransform localA, localB, localC;
+
+		if (parentId < 0) {
+			curJoint->joint = NULL;
+		}
+		else {
+			
+			
+			
+			
+			// hip joints
+			localA.setIdentity();
+			localB.setIdentity();
+			localA.getBasis().setEulerZYX(0,-fAngle,0);	localA.setOrigin(btVector3(
+				btScalar(fCos*jointSpace),
+				btScalar(fSin*jointSpace),
+				btScalar(0.)
+			));
+			localB = 
+				curJoint->body->getWorldTransform().inverse() *
+				parJoint->body->getWorldTransform() *
+				localA;
+			hingeC = new btHingeConstraint(
+				*(parJoint->body),
+				*(curJoint->body),
+				localA,
+				localB
+			);
+			
+			hingeC->setLimit(btScalar(-0.75 * M_PI_4), btScalar(M_PI_8));
+			curJoint->joint = hingeC;
+			m_ownerWorld->addConstraint(curJoint->joint, true);
+
+			
+			// knee joints
+			localA.setIdentity();
+			localB.setIdentity();
+			localC.setIdentity();
+			localA.getBasis().setEulerZYX(0,-fAngle,0);
+			localA.setOrigin(btVector3(
+				btScalar(fCos*(jointSpace+fLegLength)),
+				btScalar(fSin*(jointSpace+fLegLength)),
+				btScalar(0.)
+			));
+			localB = 
+				parJoint->body->getWorldTransform().inverse() * 
+				grdJoint->body->getWorldTransform() * 
+				localA;
+			localC = 
+				curJoint->body->getWorldTransform().inverse() *
+				grdJoint->body->getWorldTransform() *
+				localA;
+			hingeC = new btHingeConstraint(
+				*(parJoint->body),
+				*(curJoint->body),
+				localB,
+				localC
+			);
+			hingeC->setLimit(btScalar(-M_PI_8), btScalar(0.2));
+			curJoint->joint = hingeC;
+			m_ownerWorld->addConstraint(curJoint->joint, true);
+			
+			
+			
+			
+		}
+		
+		
+	}
 GameActor::GameActor (btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed, int _uid)
-  : m_ownerWorld (ownerWorld)
-        {
+                                                                                                       {
+		
+		m_ownerWorld = ownerWorld;
 		
 		uid = _uid;
-		btVector3 vUp(0, 1, 0);
+		btVector3 vUp(0, 0, 1);
 
 		//
 		// Setup geometry
 		//
 		
+		int i;
 		float shapeScale = 4.0f;
 		float fBodySize  = 0.25f*shapeScale;
 		float fLegLength = 0.45f*shapeScale;
-		float fForeLegLength = 0.75f*shapeScale;
-		m_shapes[0] = new btCapsuleShape(btScalar(fBodySize), btScalar(0.10));
-		int i;
-		for ( i=0; i<NUM_LEGS_GA; i++)
-		{
-			m_shapes[1 + 2*i] = new btCapsuleShape(btScalar(0.10*shapeScale), btScalar(fLegLength));
-			m_shapes[2 + 2*i] = new btCapsuleShape(btScalar(0.08*shapeScale), btScalar(fForeLegLength));
+		float fHeight = 0.0;
+		
+		actorJoints.push_back(ActorJointStruct());
+		actorJoints.back().shape = new btCapsuleShapeZ(btScalar(fBodySize), btScalar(0.10));
+		actorJoints.back().jointId = actorJoints.size()-1;
+				
+		for ( i = 0; i < NUM_LEGS_GA; i++ ) {
+			actorJoints.push_back(ActorJointStruct());
+			actorJoints.back().shape = new btCapsuleShapeZ(btScalar(0.10*shapeScale), btScalar(fLegLength));
+			actorJoints.back().jointId = actorJoints.size()-1;
+			
+			actorJoints.push_back(ActorJointStruct());
+			actorJoints.back().shape = new btCapsuleShapeZ(btScalar(0.08*shapeScale), btScalar(fLegLength));
+			actorJoints.back().jointId = actorJoints.size()-1;
 		}
 
 		//
 		// Setup rigid bodies
 		//
-		float fHeight = 0.5;
+		
 		btTransform offset; offset.setIdentity();
-		offset.setOrigin(positionOffset);		
+		offset.setOrigin(positionOffset);
 
 		// root
-		btVector3 vRoot = btVector3(btScalar(0.), btScalar(fHeight), btScalar(0.));
+		btVector3 vRoot = btVector3(btScalar(0.0), btScalar(0.0), btScalar(fHeight));
 		btTransform transform;
 		transform.setIdentity();
 		transform.setOrigin(vRoot);
-		if (bFixed)
-		{
-			m_bodies[0] = localCreateRigidBody(btScalar(0.0), offset*transform, m_shapes[0]);
-		} else
-		{
-			m_bodies[0] = localCreateRigidBody(btScalar(10.0), offset*transform, m_shapes[0]);
+		if (bFixed) {
+			actorJoints[0].body = localCreateRigidBody(btScalar(0.0), offset*transform, actorJoints[0].shape);
+		} else {
+			actorJoints[0].body = localCreateRigidBody(btScalar(10.0), offset*transform, actorJoints[0].shape);
 		}
+		
 		// legs
-		for ( i=0; i<NUM_LEGS_GA; i++)
-		{
+		for ( i=0; i<NUM_LEGS_GA; i++) {
 			float fAngle = 2 * M_PI * i / NUM_LEGS_GA;
 			float fSin = sin(fAngle);
 			float fCos = cos(fAngle);
 
 			transform.setIdentity();
-			btVector3 vBoneOrigin = btVector3(btScalar(fCos*(fBodySize+0.5*fLegLength)), btScalar(fHeight), btScalar(fSin*(fBodySize+0.5*fLegLength)));
+			btVector3 vBoneOrigin = btVector3(
+				btScalar(fCos*(fBodySize+0.5*fLegLength)),
+				btScalar(fSin*(fBodySize+0.5*fLegLength)),
+				btScalar(fHeight)
+			);
 			transform.setOrigin(vBoneOrigin);
 
 			// thigh
 			btVector3 vToBone = (vBoneOrigin - vRoot).normalize();
 			btVector3 vAxis = vToBone.cross(vUp);			
 			transform.setRotation(btQuaternion(vAxis, M_PI_2));
-			m_bodies[1+2*i] = localCreateRigidBody(btScalar(1.), offset*transform, m_shapes[1+2*i]);
+			actorJoints[2*i+1].body = localCreateRigidBody(btScalar(10.0), offset*transform, actorJoints[2*i+1].shape);
 
 			// shin
 			transform.setIdentity();
-			transform.setOrigin(btVector3(btScalar(fCos*(fBodySize+fLegLength)), btScalar(fHeight-0.5*fForeLegLength), btScalar(fSin*(fBodySize+fLegLength))));
-			m_bodies[2+2*i] = localCreateRigidBody(btScalar(1.), offset*transform, m_shapes[2+2*i]);
+			transform.setOrigin(btVector3(
+				btScalar(fCos*(fBodySize+fLegLength)),
+				btScalar(fSin*(fBodySize+fLegLength)),
+				btScalar(fHeight-0.5*fLegLength)
+			));
+			actorJoints[2*i+2].body = localCreateRigidBody(btScalar(10.0), offset*transform, actorJoints[2*i+2].shape);
 		}
 
-		// Setup some damping on the m_bodies
-		for (i = 0; i < BODYPART_COUNT_GA; ++i)
-		{
-			m_bodies[i]->setDamping(0.05, 0.85);
-			m_bodies[i]->setDeactivationTime(0.8);
-			//m_bodies[i]->setSleepingThresholds(1.6, 2.5);
-			m_bodies[i]->setSleepingThresholds(0.5f, 0.5f);
+		// Setup some damping on the bodies
+		for (i = 0; i < BODYPART_COUNT_GA; ++i) {
+			actorJoints[i].body->setDamping(0.05, 0.85);
+			actorJoints[i].body->setDeactivationTime(0.8);
+			actorJoints[i].body->setSleepingThresholds(0.5f, 0.5f);
 		}
 
 
@@ -42533,64 +42744,130 @@ GameActor::GameActor (btDynamicsWorld * ownerWorld, btVector3 const & positionOf
 
 		btTransform localA, localB, localC;
 
-		for ( i=0; i<NUM_LEGS_GA; i++)
-		{
+		actorJoints[0].joint = NULL;
+
+		for ( i=0; i<NUM_LEGS_GA; i++) {
 			float fAngle = 2 * M_PI * i / NUM_LEGS_GA;
 			float fSin = sin(fAngle);
 			float fCos = cos(fAngle);
 
 			// hip joints
-			localA.setIdentity(); localB.setIdentity();
-			localA.getBasis().setEulerZYX(0,-fAngle,0);	localA.setOrigin(btVector3(btScalar(fCos*fBodySize), btScalar(0.), btScalar(fSin*fBodySize)));
-			localB = m_bodies[1+2*i]->getWorldTransform().inverse() * m_bodies[0]->getWorldTransform() * localA;
-			hingeC = new btHingeConstraint(*m_bodies[0], *m_bodies[1+2*i], localA, localB);
+			localA.setIdentity();
+			localB.setIdentity();
+			localA.getBasis().setEulerZYX(0,-fAngle,0);	localA.setOrigin(btVector3(
+				btScalar(fCos*fBodySize),
+				btScalar(fSin*fBodySize),
+				btScalar(0.)
+			));
+			localB = 
+				actorJoints[2*i+1].body->getWorldTransform().inverse() *
+				actorJoints[0].body->getWorldTransform() *
+				localA;
+			hingeC = new btHingeConstraint(
+				*(actorJoints[0].body),
+				*(actorJoints[1+2*i].body),
+				localA,
+				localB
+			);
+			
 			hingeC->setLimit(btScalar(-0.75 * M_PI_4), btScalar(M_PI_8));
-			//hingeC->setLimit(btScalar(-0.1), btScalar(0.1));
-			m_joints[2*i] = hingeC;
-			m_ownerWorld->addConstraint(m_joints[2*i], true);
+			
+			actorJoints[2*i+1].joint = hingeC;
+			m_ownerWorld->addConstraint(actorJoints[2*i+1].joint, true);
 
 			// knee joints
-			localA.setIdentity(); localB.setIdentity(); localC.setIdentity();
-			localA.getBasis().setEulerZYX(0,-fAngle,0);	localA.setOrigin(btVector3(btScalar(fCos*(fBodySize+fLegLength)), btScalar(0.), btScalar(fSin*(fBodySize+fLegLength))));
-			localB = m_bodies[1+2*i]->getWorldTransform().inverse() * m_bodies[0]->getWorldTransform() * localA;
-			localC = m_bodies[2+2*i]->getWorldTransform().inverse() * m_bodies[0]->getWorldTransform() * localA;
-			hingeC = new btHingeConstraint(*m_bodies[1+2*i], *m_bodies[2+2*i], localB, localC);
-			//hingeC->setLimit(btScalar(-0.01), btScalar(0.01));
+			localA.setIdentity();
+			localB.setIdentity();
+			localC.setIdentity();
+			localA.getBasis().setEulerZYX(0,-fAngle,0);
+			localA.setOrigin(btVector3(
+				btScalar(fCos*(fBodySize+fLegLength)),
+				btScalar(fSin*(fBodySize+fLegLength)),
+				btScalar(0.)
+			));
+			localB = 
+				actorJoints[2*i+1].body->getWorldTransform().inverse() * 
+				actorJoints[0].body->getWorldTransform() * 
+				localA;
+			localC = 
+				actorJoints[2*i+2].body->getWorldTransform().inverse() *
+				actorJoints[0].body->getWorldTransform() *
+				localA;
+			hingeC = new btHingeConstraint(
+				*(actorJoints[1+2*i].body),
+				*(actorJoints[2+2*i].body),
+				localB,
+				localC
+			);
+			
 			hingeC->setLimit(btScalar(-M_PI_8), btScalar(0.2));
-			m_joints[1+2*i] = hingeC;
-			m_ownerWorld->addConstraint(m_joints[1+2*i], true);
+			
+			actorJoints[2*i+2].joint = hingeC;
+			m_ownerWorld->addConstraint(actorJoints[2*i+2].joint, true);
 		}
 		
 		
 		for (i = 0; i < BODYPART_COUNT_GA; i++) {
-			m_bodies[i]->bodyUID = uid;
+			actorJoints[i].body->bodyUID = uid;
 		}
 		
+	}
+void GameActor::stepSim (btScalar timeStep)
+                                        {
+		float m_fMuscleStrength = 10.0f;//(sin(singleton->curTime/2000.0)+1.0f)*0.5f;
+		float ms = timeStep*1000000.0;
+		float minFPS = 1000000.f/60.f;
+		if (ms > minFPS) {
+			ms = minFPS;
+		}
+
+		//m_Time += ms;
+
+		for (int i=0; i < BODYPART_COUNT_GA; i++) {
+			
+			if (actorJoints[i].joint == NULL) {
+				
+			}
+			else {
+				btHingeConstraint* hingeC = static_cast<btHingeConstraint*>(actorJoints[i].joint);
+				btScalar fCurAngle = hingeC->getHingeAngle();
+				
+				btScalar fTargetPercent = 0.5f;//(int(m_Time / 1000) % int(m_fCyclePeriod)) / m_fCyclePeriod;
+				btScalar fTargetAngle   = 0.5 * (1 + sin(2 * M_PI * fTargetPercent));
+				btScalar fTargetLimitAngle = hingeC->getLowerLimit() + fTargetAngle * (hingeC->getUpperLimit() - hingeC->getLowerLimit());
+				btScalar fAngleError  = (fTargetLimitAngle - fCurAngle)*0.25;
+				btScalar fDesiredAngularVel = 1000000.f * fAngleError/ms;
+				hingeC->enableAngularMotor(true, fDesiredAngularVel, m_fMuscleStrength);
+			}
+			
+			
+		}
 	}
 GameActor::~ GameActor ()
         {
 		int i;
 
 		// Remove all constraints
-		for ( i = 0; i < JOINT_COUNT_GA; ++i)
-		{
-			m_ownerWorld->removeConstraint(m_joints[i]);
-			delete m_joints[i]; m_joints[i] = 0;
-		}
-
-		// Remove all bodies and shapes
 		for ( i = 0; i < BODYPART_COUNT_GA; ++i)
 		{
-			m_ownerWorld->removeRigidBody(m_bodies[i]);
-			
-			delete m_bodies[i]->getMotionState();
+			if (actorJoints[i].joint == NULL) {
+				
+			}
+			else {
+				m_ownerWorld->removeConstraint(actorJoints[i].joint);
+				delete actorJoints[i].joint; actorJoints[i].joint = NULL;
+			}
+		}
 
-			delete m_bodies[i]; m_bodies[i] = 0;
-			delete m_shapes[i]; m_shapes[i] = 0;
+		for ( i = 0; i < BODYPART_COUNT_GA; ++i)
+		{
+			m_ownerWorld->removeRigidBody(actorJoints[i].body);
+			
+			delete actorJoints[i].body->getMotionState();
+			delete actorJoints[i].body; actorJoints[i].body = NULL;
+			delete actorJoints[i].shape; actorJoints[i].shape = NULL;
 		}
 	}
-btTypedConstraint * * GameActor::GetJoints ()
-                                        {return &m_joints[0];}
 #undef LZZ_INLINE
  
 // f00351_gamepageholder.h
@@ -51568,6 +51845,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 			
 			
 			
+			
 			gameActor = new GameActor(
 				example->getWorld(),
 				ge->getCenterPoint(false)->getBTV(),
@@ -51576,10 +51854,12 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 			);
 			for (i = 0; i < BODYPART_COUNT_GA; i++) {
 				if (i == 0) {
-					ge->body = gameActor->m_bodies[i];
+					ge->body = gameActor->actorJoints[i].body;
+					//ge->body->setLinearFactor(btVector3(0.0f,0.0f,0.0f));
+					ge->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
 				}
 				else {
-					ge->limbs.push_back(gameActor->m_bodies[i]);
+					ge->limbs.push_back(gameActor->actorJoints[i].body);
 				}
 			}
 			
@@ -51635,27 +51915,8 @@ void GamePhysics::motorPreTickCallback (btScalar timeStep, GameActor * curActor)
 			return;
 		}
 		
+		curActor->stepSim(timeStep);
 		
-		float m_fMuscleStrength = 0.5f;//(sin(singleton->curTime/2000.0)+1.0f)*0.5f;
-		float ms = timeStep*1000000.0;
-		float minFPS = 1000000.f/60.f;
-		if (ms > minFPS) {
-			ms = minFPS;
-		}
-
-		//m_Time += ms;
-
-		for (int i=0; i<2*NUM_LEGS_GA; i++) {
-			btHingeConstraint* hingeC = static_cast<btHingeConstraint*>(curActor->GetJoints()[i]);
-			btScalar fCurAngle      = hingeC->getHingeAngle();
-			
-			btScalar fTargetPercent = 0.5f;//(int(m_Time / 1000) % int(m_fCyclePeriod)) / m_fCyclePeriod;
-			btScalar fTargetAngle   = 0.5 * (1 + sin(2 * M_PI * fTargetPercent));
-			btScalar fTargetLimitAngle = hingeC->getLowerLimit() + fTargetAngle * (hingeC->getUpperLimit() - hingeC->getLowerLimit());
-			btScalar fAngleError  = (fTargetLimitAngle - fCurAngle)*0.25;
-			btScalar fDesiredAngularVel = 1000000.f * fAngleError/ms;
-			hingeC->enableAngularMotor(true, fDesiredAngularVel, m_fMuscleStrength);
-		}
 	}
 void GamePhysics::flushImpulses ()
                              {
@@ -51851,9 +52112,9 @@ void GamePhysics::collideWithWorld (double curStepTime)
 					
 					ge->applyImpulse(
 						btVector3(
-							( singleton->worldMarker.getFX() - ge->body->getCenterOfMassPosition().getX() )*0.05f,
-							( singleton->worldMarker.getFY() - ge->body->getCenterOfMassPosition().getY() )*0.05f,
-							-(ge->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*0.05f
+							( singleton->worldMarker.getFX() - ge->body->getCenterOfMassPosition().getX() )*0.2f,
+							( singleton->worldMarker.getFY() - ge->body->getCenterOfMassPosition().getY() )*0.2f,
+							-(ge->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*0.2f
 						),
 						false
 					);
