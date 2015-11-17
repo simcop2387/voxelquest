@@ -288,7 +288,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 			//btglMultMatrix(m);
 			//updateMat2();
 			pushNewMat(m);
-			singleton->gw->gameObjects[uid].rotMat = singleton->curObjMatrix3;
+			//singleton->gw->gameObjects[uid].rotMat = singleton->curObjMatrix3;
 
 
 			if (shape->getShapeType() == UNIFORM_SCALING_SHAPE_PROXYTYPE)

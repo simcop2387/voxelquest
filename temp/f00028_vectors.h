@@ -1786,239 +1786,253 @@ public:
 	BaseObjType uid;
 	BaseObjType parentUID;
 	vector<BaseObjType> children;
+	btVector3 startPoint;
 	
-	btVector3 lastVel;
-	btVector3 totAV;
-	btVector3 totLV;
 	
-	btRigidBody* body;
-	std::vector<btRigidBody*> limbs;
+	// btRigidBody* body;
+	// std::vector<btRigidBody*> limbs;
+	std::vector<BodyStruct> bodies;
 	
-	Matrix3 rotMat;
+	
+	//Matrix3 rotMat;
 	
 	int isGrabbingId;
 	int isGrabbedById;
 	int entType;
 	bool isHidden;
-	bool isFalling;
-	bool hasContact;
-	bool isInside;
 	//bool isJumping;
 	bool isOpen;
-	bool inWater;
 	bool isEquipped;
 	bool isUpright;
 	
-	float mass;
 	
-	float angVel;
-	float angVelMax;
 	
+	
+	//float mass;
+		
 	float ang;
 	float angRelative;
 	
 	float targAng;
 	float targAngRelative;
 	
-	FIVector4 diameterInCells;
 	
 	float bounciness;
 	float friction;
 	float windResistance;
 	
-	//class GameRagDoll* grd;
 	
 	
-	FIVector4* getVel() {
+	bool hasBodies() {
+		return (bodies.size() > 0);
+	}
+	
+	FIVector4* getVel(int i) {
 		
-		if (body != NULL) {
+		if (i < bodies.size()) {
 			
-			linVelocity.setBTV( body->getLinearVelocity() );
+			linVelocity.setBTV( bodies[i].body->getLinearVelocity() );
 		}
 		
 		
 		return &linVelocity;
 	}
-	// void setVel(float x, float y, float z) {
-	// 	if (body != NULL) {
-			
-	// 		body->setLinearVelocity(btVector3(x,y,z));
-			
-			
-	// 	}
-	// }
 	
-	void applyImpulses(float timeDelta) {
-		
+	float getTotalMass() {
 		int i;
 		
-		if (totAV.isZero()&&totLV.isZero()) {
-			
+		float tot = 0.0f;
+		
+		for (i = 0; i < bodies.size(); i++) {
+			tot += bodies[i].mass;
 		}
-		else {
-			body->setActivationState(ACTIVE_TAG);
+		
+		return tot;
+	}
+	
+	bool allFalling() {
+		int i;
+		
+		for (i = 0; i < bodies.size(); i++) {
+			if (bodies[i].isFalling) {
+				
+			}
+			else {
+				return false;
+			}
+		}
+		
+		return true;
+	}
+	
+	void applyImpulses(float timeDelta, int i) {
+		
+		if (i < bodies.size()) {
+			if (bodies[i].totAV.isZero()&&bodies[i].totLV.isZero()) {
+				
+			}
+			else {
+				
+				bodies[i].body->setAngularVelocity(bodies[i].body->getAngularVelocity() + bodies[i].totAV*timeDelta);
+				bodies[i].body->applyCentralImpulse(bodies[i].totLV*timeDelta);
+				bodies[i].body->setActivationState(ACTIVE_TAG);
 			
-			for (i = 0; i < limbs.size(); i++) {
-				limbs[i]->setAngularVelocity(limbs[i]->getAngularVelocity() + totAV*timeDelta);
-				limbs[i]->applyCentralImpulse(totLV*timeDelta);
-				limbs[i]->setActivationState(ACTIVE_TAG);
 			}
 		}
 		
 		
-		
-		body->setAngularVelocity(body->getAngularVelocity() + totAV*timeDelta);
-		body->applyCentralImpulse(totLV*timeDelta);
 		
 	}
 	
 	void flushImpulses() {
-		totAV = btVector3(0.0f,0.0f,0.0f);
-		totLV = btVector3(0.0f,0.0f,0.0f);
-	}
-	
-	
-	void applyAngularImpulse(btVector3 newAV, bool delayed) {
-		int i;
-		
-		if (delayed) {
-			totAV += newAV;
-		}
-		else {
-			
-			for (i = 0; i < limbs.size(); i++) {
-				limbs[i]->setAngularVelocity(limbs[i]->getAngularVelocity() + newAV);
-				limbs[i]->setActivationState(ACTIVE_TAG);
-			}
-			
-			body->setAngularVelocity(body->getAngularVelocity() + newAV);
-			body->setActivationState(ACTIVE_TAG);
-		}
-		
-		
-		
-		
-	}
-	
-	void applyImpulse(btVector3 imp, bool delayed) {
 		
 		int i;
 		
-		if (delayed) {
-			totLV += imp;
+		for (i = 0; i < bodies.size(); i++) {
+			bodies[i].totAV = btVector3(0.0f,0.0f,0.0f);
+			bodies[i].totLV = btVector3(0.0f,0.0f,0.0f);
 		}
-		else {
-			body->applyCentralImpulse(imp);
-			body->setActivationState(ACTIVE_TAG);
+		
+		
+	}
+	
+	
+	void applyAngularImpulse(btVector3 newAV, bool delayed, int i) {
+		
+		
+		if (i < bodies.size()) {
+			if (delayed) {
+				bodies[i].totAV += newAV;
+			}
+			else {
+				
+				bodies[i].body->setAngularVelocity(bodies[i].body->getAngularVelocity() + newAV);
+				bodies[i].body->setActivationState(ACTIVE_TAG);
+			}
+
+		}
+		
+	}
+	
+	void applyImpulse(btVector3 imp, bool delayed, int i) {
+		if (i < bodies.size()) {
 			
-			for (i = 0; i < limbs.size(); i++) {
-				limbs[i]->applyCentralImpulse(imp);
-				limbs[i]->setActivationState(ACTIVE_TAG);
+			if (delayed) {
+				bodies[i].totLV += imp;
+			}
+			else {
+			
+			
+				bodies[i].body->applyCentralImpulse(imp);
+				bodies[i].body->setActivationState(ACTIVE_TAG);
 			}
 		}
 		
 	}
 	
-	void applyImpulseRot(btVector3 imp, bool delayed) {
-		int i;
+	// void applyImpulseRot(btVector3 imp,  bool delayed, int i) {
 		
-		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
-		Vector3 res = rotMat*myRHS;
-		btVector3 newImp = btVector3(res.x,res.y,res.z);
+	// 	Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
+	// 	Vector3 res = rotMat*myRHS;
+	// 	btVector3 newImp = btVector3(res.x,res.y,res.z);
 		
-		if (delayed) {
-			totLV += newImp;
-		}
-		else {
-			for (i = 0; i < limbs.size(); i++) {
-				limbs[i]->applyCentralImpulse(newImp);
-				limbs[i]->setActivationState(ACTIVE_TAG);
-			}
+	// 	if (delayed) {
+	// 		totLV += newImp;
+	// 	}
+	// 	else {
+	// 		if (i < bodies.size()) {
+	// 			bodies[i].applyCentralImpulse(newImp);
+	// 			bodies[i].setActivationState(ACTIVE_TAG);
+	// 		}
 			
-			body->applyCentralImpulse(newImp);
-			body->setActivationState(ACTIVE_TAG);
-		}
-		
-		
-		
-		
-	}
-	
-	void applyImpulseOtherRot(btVector3 imp, Matrix3 otherRot, bool delayed) {
-		int i;
-		
-		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
-		Vector3 res = otherRot*myRHS;
-		btVector3 newImp = btVector3(res.x,res.y,res.z);
-		
-		
-		if (delayed) {
-			totLV += newImp;
-		}
-		else {
-			for (i = 0; i < limbs.size(); i++) {
-				limbs[i]->applyCentralImpulse(newImp);
-				limbs[i]->setActivationState(ACTIVE_TAG);
-			}
 			
-			body->applyCentralImpulse(newImp);
-			body->setActivationState(ACTIVE_TAG);
+	// 	}
+		
+		
+		
+		
+	// }
+	
+	void applyImpulseOtherRot(btVector3 imp, btMatrix3x3 otherRot, bool delayed, int i) {
+		
+		//Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
+		//Vector3 res = otherRot*myRHS;
+		btVector3 newImp = otherRot*imp;//btVector3(res.x,res.y,res.z);
+		
+		if (i < bodies.size()) {
+			if (delayed) {
+				bodies[i].totLV += newImp;
+			}
+			else {
+				
+				bodies[i].body->applyCentralImpulse(newImp);
+				bodies[i].body->setActivationState(ACTIVE_TAG);
+			}
 		}
 		
 		
-		
 	}
 	
-	btVector3 multByOtherRot( btVector3 imp, Matrix3 otherRot) {
-		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
-		Vector3 res = otherRot*myRHS;
+	btVector3 multByOtherRot( btVector3 imp, btMatrix3x3 otherRot) {
+		// Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
+		// Vector3 res = otherRot*myRHS;
 		
-		return btVector3(res.x,res.y,res.z);
+		// return btVector3(res.x,res.y,res.z);
+		
+		return otherRot*imp;
 	}
 	
 	
 	
-	void moveToPoint(btVector3 newPoint) {
+	void moveToPoint(btVector3 newPoint, int ind) {
 		btTransform trans;
 		
 		
-		if (body == NULL) {
-			
-		}
-		else {
+		if (ind < bodies.size()) {
 			
 			trans.setIdentity();
 			trans.setOrigin(newPoint);
-			body->setCenterOfMassTransform(
+			bodies[ind].body->setActivationState(ACTIVE_TAG);
+			bodies[ind].body->setCenterOfMassTransform(
 				trans
 			);
+			
 		}
 	}
 	
-	void setCenterPoint(FIVector4* newPos) {
+	// void setCenterPoint(FIVector4* newPos) {
 		
-		centerPoint.copyFrom(newPos);
+	// 	centerPoint.copyFrom(newPos);
 				
+	// }
+	
+	btVector3 getCenterPoint(int ind) {
+		if (
+			ind < bodies.size()
+		) {
+			return bodies[ind].body->getCenterOfMassPosition();
+		}
+		else {
+			return btVector3(0.0f,0.0f,0.0f);
+		}
 	}
 	
-	FIVector4* getCenterPoint(bool updateCP = true) {
+	FIVector4* getCenterPointFIV(int ind) {
 		if (
-			(body != NULL) && updateCP	
+			ind < bodies.size()
 		) {
-			centerPoint.setFXYZ(
-				body->getCenterOfMassPosition().getX(),
-				body->getCenterOfMassPosition().getY(),
-				body->getCenterOfMassPosition().getZ()
-			);
+			centerPoint.setBTV( bodies[ind].body->getCenterOfMassPosition() );
 		}
+		else {
+			centerPoint.setFXYZ(0.0f,0.0f,0.0f);
+		}
+		
 		return &centerPoint;
 	}
 	
 	
-	
-	
 	BaseObj() {
-		body = NULL;
+		
 	}
 	
 	void removeChild(BaseObjType _uid) {
@@ -2053,26 +2067,19 @@ public:
 	
 	
 	
+	
 	void init(
 		BaseObjType _uid,
 		BaseObjType _parentUID,
 		int _objectType,
 		int _entType,
-		FIVector4* cellPos,
-		int xs,
-		int ys,
-		int zs
+		FIVector4* cellPos
 	) {
 		
-		totAV = btVector3(0.0f,0.0f,0.0f);
-		totLV = btVector3(0.0f,0.0f,0.0f);
 		
-		mass = 10.0f;
+		//mass = 10.0f;
 		
 		isHidden = false;
-		
-		angVel = 0.0f;
-		angVelMax = 10.0f;
 		
 		ang = 0.0f;
 		angRelative = 0.0f;
@@ -2083,13 +2090,11 @@ public:
 		maxFrames = 0;
 		objectType = _objectType;
 		entType = _entType;
-		isFalling = false;
-		hasContact = false;
-		isInside = false;
-		//isJumping = false;
+		
+		
 		isGrabbedById = -1;
 		isGrabbingId = -1;
-		inWater = false;
+		
 		
 		isUpright = 
 			(entType == E_ENTTYPE_NPC) ||
@@ -2100,8 +2105,7 @@ public:
 		parentUID = _parentUID;
 		uid = _uid;
 		
-		centerPoint.copyFrom(cellPos);
-		diameterInCells.setIXYZ(xs,ys,zs);
+		startPoint = cellPos->getBTV();//centerPoint.copyFrom(cellPos);
 		
 		bounciness = 0.0f;
 		friction = 0.9;

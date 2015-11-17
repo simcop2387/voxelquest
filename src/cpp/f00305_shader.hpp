@@ -654,6 +654,13 @@ public:
 		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
 		glUniform4f(loc,f->getFX(),f->getFY(),f->getFZ(),f->getFW());
 	}
+	
+	
+	void setShaderbtVec3(string paramName, btVector3 f) {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform3f(loc,f.getX(),f.getY(),f.getZ());
+	}
+	
 
 	void setShaderFloatUB(string paramName, float x) {
 		int cp = uniVec[curUBIndex].uniPosition;

@@ -166,7 +166,6 @@ public:
 		//maxToggleStates = 2;
 		toggled = false;
 		visible = true;
-		//isFalling = false;
 	}
 	
 	

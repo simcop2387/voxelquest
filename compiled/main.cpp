@@ -51,6 +51,8 @@ const static float TIME_DELTA = 1.0f/60.0f;
 
 const static int THREAD_DATA_COUNT = 16;
 
+const static float MASS_PER_LIMB = 10.0f;
+
 // #define DEBUG_BOUNDS 1
 
 const static float explodeRad = 5.0f;
@@ -1264,8 +1266,8 @@ GLuint indexDataQuad[] = {
 #define M_PI_8     0.5 * M_PI_4
 #endif
 
-#define NUM_LEGS_GA 6
-#define BODYPART_COUNT_GA 2 * NUM_LEGS_GA + 1
+//#define NUM_LEGS_GA 6
+//#define BODYPART_COUNT_GA 2 * NUM_LEGS_GA + 1
 //#define JOINT_COUNT_GA BODYPART_COUNT_GA - 1
 
 
@@ -3150,6 +3152,7 @@ void BenchmarkDemo::createTest5()
 					}
 					
 					tempBody->bodyUID = -1;
+					tempBody->limbUID = -1;
 					
 					numBodies++;
 				}
@@ -4474,12 +4477,29 @@ enum E_PATH_FILL_OPS {
 	E_PFO_LENGTH
 };
 
+struct BodyStruct {
+	btRigidBody* body;
+	btVector3 lastVel;
+	btVector3 totAV;
+	btVector3 totLV;
+	
+	float mass;
+	
+	bool inWater;
+	bool isFalling;
+	bool hasContact;
+	bool isInside;
+};
+
 struct ActorJointStruct {
 	float rad;
 	float length;
-	
-	btVector3 axis;
-	float angle;
+	btVector3 begOrig;
+	btVector3 midOrig;
+	btVector3 endOrig;
+	btVector3 targAlign;
+	btQuaternion quat;
+	//btVector3 pivotAxis;
 	
 	int jointId;
 	int parentId;
@@ -8991,239 +9011,253 @@ public:
 	BaseObjType uid;
 	BaseObjType parentUID;
 	vector<BaseObjType> children;
+	btVector3 startPoint;
 	
-	btVector3 lastVel;
-	btVector3 totAV;
-	btVector3 totLV;
 	
-	btRigidBody* body;
-	std::vector<btRigidBody*> limbs;
+	// btRigidBody* body;
+	// std::vector<btRigidBody*> limbs;
+	std::vector<BodyStruct> bodies;
 	
-	Matrix3 rotMat;
+	
+	//Matrix3 rotMat;
 	
 	int isGrabbingId;
 	int isGrabbedById;
 	int entType;
 	bool isHidden;
-	bool isFalling;
-	bool hasContact;
-	bool isInside;
 	//bool isJumping;
 	bool isOpen;
-	bool inWater;
 	bool isEquipped;
 	bool isUpright;
 	
-	float mass;
 	
-	float angVel;
-	float angVelMax;
 	
+	
+	//float mass;
+		
 	float ang;
 	float angRelative;
 	
 	float targAng;
 	float targAngRelative;
 	
-	FIVector4 diameterInCells;
 	
 	float bounciness;
 	float friction;
 	float windResistance;
 	
-	//class GameRagDoll* grd;
 	
 	
-	FIVector4* getVel() {
+	bool hasBodies() {
+		return (bodies.size() > 0);
+	}
+	
+	FIVector4* getVel(int i) {
 		
-		if (body != NULL) {
+		if (i < bodies.size()) {
 			
-			linVelocity.setBTV( body->getLinearVelocity() );
+			linVelocity.setBTV( bodies[i].body->getLinearVelocity() );
 		}
 		
 		
 		return &linVelocity;
 	}
-	// void setVel(float x, float y, float z) {
-	// 	if (body != NULL) {
-			
-	// 		body->setLinearVelocity(btVector3(x,y,z));
-			
-			
-	// 	}
-	// }
 	
-	void applyImpulses(float timeDelta) {
-		
+	float getTotalMass() {
 		int i;
 		
-		if (totAV.isZero()&&totLV.isZero()) {
-			
+		float tot = 0.0f;
+		
+		for (i = 0; i < bodies.size(); i++) {
+			tot += bodies[i].mass;
 		}
-		else {
-			body->setActivationState(ACTIVE_TAG);
+		
+		return tot;
+	}
+	
+	bool allFalling() {
+		int i;
+		
+		for (i = 0; i < bodies.size(); i++) {
+			if (bodies[i].isFalling) {
+				
+			}
+			else {
+				return false;
+			}
+		}
+		
+		return true;
+	}
+	
+	void applyImpulses(float timeDelta, int i) {
+		
+		if (i < bodies.size()) {
+			if (bodies[i].totAV.isZero()&&bodies[i].totLV.isZero()) {
+				
+			}
+			else {
+				
+				bodies[i].body->setAngularVelocity(bodies[i].body->getAngularVelocity() + bodies[i].totAV*timeDelta);
+				bodies[i].body->applyCentralImpulse(bodies[i].totLV*timeDelta);
+				bodies[i].body->setActivationState(ACTIVE_TAG);
 			
-			for (i = 0; i < limbs.size(); i++) {
-				limbs[i]->setAngularVelocity(limbs[i]->getAngularVelocity() + totAV*timeDelta);
-				limbs[i]->applyCentralImpulse(totLV*timeDelta);
-				limbs[i]->setActivationState(ACTIVE_TAG);
 			}
 		}
 		
 		
-		
-		body->setAngularVelocity(body->getAngularVelocity() + totAV*timeDelta);
-		body->applyCentralImpulse(totLV*timeDelta);
 		
 	}
 	
 	void flushImpulses() {
-		totAV = btVector3(0.0f,0.0f,0.0f);
-		totLV = btVector3(0.0f,0.0f,0.0f);
-	}
-	
-	
-	void applyAngularImpulse(btVector3 newAV, bool delayed) {
-		int i;
-		
-		if (delayed) {
-			totAV += newAV;
-		}
-		else {
-			
-			for (i = 0; i < limbs.size(); i++) {
-				limbs[i]->setAngularVelocity(limbs[i]->getAngularVelocity() + newAV);
-				limbs[i]->setActivationState(ACTIVE_TAG);
-			}
-			
-			body->setAngularVelocity(body->getAngularVelocity() + newAV);
-			body->setActivationState(ACTIVE_TAG);
-		}
-		
-		
-		
-		
-	}
-	
-	void applyImpulse(btVector3 imp, bool delayed) {
 		
 		int i;
 		
-		if (delayed) {
-			totLV += imp;
+		for (i = 0; i < bodies.size(); i++) {
+			bodies[i].totAV = btVector3(0.0f,0.0f,0.0f);
+			bodies[i].totLV = btVector3(0.0f,0.0f,0.0f);
 		}
-		else {
-			body->applyCentralImpulse(imp);
-			body->setActivationState(ACTIVE_TAG);
+		
+		
+	}
+	
+	
+	void applyAngularImpulse(btVector3 newAV, bool delayed, int i) {
+		
+		
+		if (i < bodies.size()) {
+			if (delayed) {
+				bodies[i].totAV += newAV;
+			}
+			else {
+				
+				bodies[i].body->setAngularVelocity(bodies[i].body->getAngularVelocity() + newAV);
+				bodies[i].body->setActivationState(ACTIVE_TAG);
+			}
+
+		}
+		
+	}
+	
+	void applyImpulse(btVector3 imp, bool delayed, int i) {
+		if (i < bodies.size()) {
 			
-			for (i = 0; i < limbs.size(); i++) {
-				limbs[i]->applyCentralImpulse(imp);
-				limbs[i]->setActivationState(ACTIVE_TAG);
+			if (delayed) {
+				bodies[i].totLV += imp;
+			}
+			else {
+			
+			
+				bodies[i].body->applyCentralImpulse(imp);
+				bodies[i].body->setActivationState(ACTIVE_TAG);
 			}
 		}
 		
 	}
 	
-	void applyImpulseRot(btVector3 imp, bool delayed) {
-		int i;
+	// void applyImpulseRot(btVector3 imp,  bool delayed, int i) {
 		
-		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
-		Vector3 res = rotMat*myRHS;
-		btVector3 newImp = btVector3(res.x,res.y,res.z);
+	// 	Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
+	// 	Vector3 res = rotMat*myRHS;
+	// 	btVector3 newImp = btVector3(res.x,res.y,res.z);
 		
-		if (delayed) {
-			totLV += newImp;
-		}
-		else {
-			for (i = 0; i < limbs.size(); i++) {
-				limbs[i]->applyCentralImpulse(newImp);
-				limbs[i]->setActivationState(ACTIVE_TAG);
-			}
+	// 	if (delayed) {
+	// 		totLV += newImp;
+	// 	}
+	// 	else {
+	// 		if (i < bodies.size()) {
+	// 			bodies[i].applyCentralImpulse(newImp);
+	// 			bodies[i].setActivationState(ACTIVE_TAG);
+	// 		}
 			
-			body->applyCentralImpulse(newImp);
-			body->setActivationState(ACTIVE_TAG);
-		}
-		
-		
-		
-		
-	}
-	
-	void applyImpulseOtherRot(btVector3 imp, Matrix3 otherRot, bool delayed) {
-		int i;
-		
-		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
-		Vector3 res = otherRot*myRHS;
-		btVector3 newImp = btVector3(res.x,res.y,res.z);
-		
-		
-		if (delayed) {
-			totLV += newImp;
-		}
-		else {
-			for (i = 0; i < limbs.size(); i++) {
-				limbs[i]->applyCentralImpulse(newImp);
-				limbs[i]->setActivationState(ACTIVE_TAG);
-			}
 			
-			body->applyCentralImpulse(newImp);
-			body->setActivationState(ACTIVE_TAG);
+	// 	}
+		
+		
+		
+		
+	// }
+	
+	void applyImpulseOtherRot(btVector3 imp, btMatrix3x3 otherRot, bool delayed, int i) {
+		
+		//Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
+		//Vector3 res = otherRot*myRHS;
+		btVector3 newImp = otherRot*imp;//btVector3(res.x,res.y,res.z);
+		
+		if (i < bodies.size()) {
+			if (delayed) {
+				bodies[i].totLV += newImp;
+			}
+			else {
+				
+				bodies[i].body->applyCentralImpulse(newImp);
+				bodies[i].body->setActivationState(ACTIVE_TAG);
+			}
 		}
 		
 		
-		
 	}
 	
-	btVector3 multByOtherRot( btVector3 imp, Matrix3 otherRot) {
-		Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
-		Vector3 res = otherRot*myRHS;
+	btVector3 multByOtherRot( btVector3 imp, btMatrix3x3 otherRot) {
+		// Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
+		// Vector3 res = otherRot*myRHS;
 		
-		return btVector3(res.x,res.y,res.z);
+		// return btVector3(res.x,res.y,res.z);
+		
+		return otherRot*imp;
 	}
 	
 	
 	
-	void moveToPoint(btVector3 newPoint) {
+	void moveToPoint(btVector3 newPoint, int ind) {
 		btTransform trans;
 		
 		
-		if (body == NULL) {
-			
-		}
-		else {
+		if (ind < bodies.size()) {
 			
 			trans.setIdentity();
 			trans.setOrigin(newPoint);
-			body->setCenterOfMassTransform(
+			bodies[ind].body->setActivationState(ACTIVE_TAG);
+			bodies[ind].body->setCenterOfMassTransform(
 				trans
 			);
+			
 		}
 	}
 	
-	void setCenterPoint(FIVector4* newPos) {
+	// void setCenterPoint(FIVector4* newPos) {
 		
-		centerPoint.copyFrom(newPos);
+	// 	centerPoint.copyFrom(newPos);
 				
+	// }
+	
+	btVector3 getCenterPoint(int ind) {
+		if (
+			ind < bodies.size()
+		) {
+			return bodies[ind].body->getCenterOfMassPosition();
+		}
+		else {
+			return btVector3(0.0f,0.0f,0.0f);
+		}
 	}
 	
-	FIVector4* getCenterPoint(bool updateCP = true) {
+	FIVector4* getCenterPointFIV(int ind) {
 		if (
-			(body != NULL) && updateCP	
+			ind < bodies.size()
 		) {
-			centerPoint.setFXYZ(
-				body->getCenterOfMassPosition().getX(),
-				body->getCenterOfMassPosition().getY(),
-				body->getCenterOfMassPosition().getZ()
-			);
+			centerPoint.setBTV( bodies[ind].body->getCenterOfMassPosition() );
 		}
+		else {
+			centerPoint.setFXYZ(0.0f,0.0f,0.0f);
+		}
+		
 		return &centerPoint;
 	}
 	
 	
-	
-	
 	BaseObj() {
-		body = NULL;
+		
 	}
 	
 	void removeChild(BaseObjType _uid) {
@@ -9258,26 +9292,19 @@ public:
 	
 	
 	
+	
 	void init(
 		BaseObjType _uid,
 		BaseObjType _parentUID,
 		int _objectType,
 		int _entType,
-		FIVector4* cellPos,
-		int xs,
-		int ys,
-		int zs
+		FIVector4* cellPos
 	) {
 		
-		totAV = btVector3(0.0f,0.0f,0.0f);
-		totLV = btVector3(0.0f,0.0f,0.0f);
 		
-		mass = 10.0f;
+		//mass = 10.0f;
 		
 		isHidden = false;
-		
-		angVel = 0.0f;
-		angVelMax = 10.0f;
 		
 		ang = 0.0f;
 		angRelative = 0.0f;
@@ -9288,13 +9315,11 @@ public:
 		maxFrames = 0;
 		objectType = _objectType;
 		entType = _entType;
-		isFalling = false;
-		hasContact = false;
-		isInside = false;
-		//isJumping = false;
+		
+		
 		isGrabbedById = -1;
 		isGrabbingId = -1;
-		inWater = false;
+		
 		
 		isUpright = 
 			(entType == E_ENTTYPE_NPC) ||
@@ -9305,8 +9330,7 @@ public:
 		parentUID = _parentUID;
 		uid = _uid;
 		
-		centerPoint.copyFrom(cellPos);
-		diameterInCells.setIXYZ(xs,ys,zs);
+		startPoint = cellPos->getBTV();//centerPoint.copyFrom(cellPos);
 		
 		bounciness = 0.0f;
 		friction = 0.9;
@@ -10036,7 +10060,6 @@ public:
 		//maxToggleStates = 2;
 		toggled = false;
 		visible = true;
-		//isFalling = false;
 	}
 	
 	
@@ -18612,6 +18635,11 @@ void doTraceVecND(std::string traceVal0, FIVector4 *fv) {
 	doTraceND(traceVal0, " ", f__s(fv->getFX()), " ", f__s(fv->getFY()), " ", f__s(fv->getFZ())  );
 	
 }
+void traceBTV(std::string traceVal0, btVector3 myBTV) {
+	
+	doTraceND(traceVal0, " ", f__s(myBTV.getX()), " ", f__s(myBTV.getY()), " ", f__s(myBTV.getZ())  );
+	
+}
 void doTraceVecND4(std::string traceVal0, FIVector4 *fv) {
 	
 	doTraceND(traceVal0, " ", f__s(fv->getFX()), " ", f__s(fv->getFY()), " ", f__s(fv->getFZ()), " ", f__s(fv->getFW())  );
@@ -20813,7 +20841,6 @@ class GameOrg;
 class GamePlantNode;
 class GamePlant;
 class GameEnt;
-class GameRagDoll;
 class GameActor;
 class GameBlock;
 class GamePageHolder;
@@ -21305,6 +21332,8 @@ public:
   map <string, StyleSheet> styleSheetMap;
   map <string, JSONStruct> externalJSON;
   Singleton ();
+  FIVector4 btvConv;
+  FIVector4 * BTV2FIV (btVector3 btv);
   void setSelInd (int ind);
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
   int placeInStack ();
@@ -21378,6 +21407,7 @@ public:
   void setShaderVec2 (string paramName, float x, float y);
   void setShaderVec3 (string paramName, float x, float y, float z);
   void setShaderfVec3 (string paramName, FIVector4 * v);
+  void setShaderbtVec3 (string paramName, btVector3 v);
   void setShaderVec4 (string paramName, float x, float y, float z, float w);
   void setShaderfVec4 (string paramName, FIVector4 * v);
   void setShaderFloatUB (string paramName, float x);
@@ -21555,6 +21585,7 @@ public:
   void setShaderfVec2 (string paramName, FIVector4 * f);
   void setShaderfVec3 (string paramName, FIVector4 * f);
   void setShaderfVec4 (string paramName, FIVector4 * f);
+  void setShaderbtVec3 (string paramName, btVector3 f);
   void setShaderFloatUB (string paramName, float x);
   void setShaderfVec4UB (string paramName, FIVector4 * f);
 };
@@ -22186,76 +22217,6 @@ public:
 };
 #undef LZZ_INLINE
 #endif
-// f00345_gameragdoll.e
-//
-
-#ifndef LZZ_f00345_gameragdoll_e
-#define LZZ_f00345_gameragdoll_e
-#define LZZ_INLINE inline
-class GameRagDoll
-{
-public:
-  enum
-  {
-    BODYPART_PELVIS = 0,
-    BODYPART_SPINE,
-    BODYPART_HEAD,
-    BODYPART_LEFT_UPPER_LEG,
-    BODYPART_LEFT_LOWER_LEG,
-    BODYPART_RIGHT_UPPER_LEG,
-    BODYPART_RIGHT_LOWER_LEG,
-    BODYPART_LEFT_UPPER_ARM,
-    BODYPART_LEFT_LOWER_ARM,
-    BODYPART_RIGHT_UPPER_ARM,
-    BODYPART_RIGHT_LOWER_ARM,
-    BODYPART_COUNT
-  };
-  enum
-  {
-    JOINT_PELVIS_SPINE = 0,
-    JOINT_SPINE_HEAD,
-    JOINT_LEFT_HIP,
-    JOINT_LEFT_KNEE,
-    JOINT_RIGHT_HIP,
-    JOINT_RIGHT_KNEE,
-    JOINT_LEFT_SHOULDER,
-    JOINT_LEFT_ELBOW,
-    JOINT_RIGHT_SHOULDER,
-    JOINT_RIGHT_ELBOW,
-    JOINT_COUNT
-  };
-  int uid;
-  btDynamicsWorld * m_ownerWorld;
-  btCollisionShape * (m_shapes) [BODYPART_COUNT];
-  btRigidBody * (m_bodies) [BODYPART_COUNT];
-  btTypedConstraint * (m_joints) [JOINT_COUNT];
-  btRigidBody * createRigidBody (btScalar mass, btTransform const & startTransform, btCollisionShape * shape);
-  GameRagDoll (btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, btScalar scale, int _uid);
-  virtual ~ GameRagDoll ();
-};
-#undef LZZ_INLINE
-#endif
-// f00346_gameactorjoint.e
-//
-
-#ifndef LZZ_f00346_gameactorjoint_e
-#define LZZ_f00346_gameactorjoint_e
-#define LZZ_INLINE inline
-class GameActorJoint
-{
-public:
-  btDynamicsWorld * m_ownerWorld;
-  int uid;
-  GameActorJoint * parentJoint;
-  std::vector <GameActorJoint*> childrenJoints;
-  btCollisionShape * ajShape;
-  btRigidBody * ajBody;
-  btTypedConstraint * ajJoint;
-  GameActorJoint ();
-  void init ();
-};
-#undef LZZ_INLINE
-#endif
 // f00347_gameactor.e
 //
 
@@ -22267,10 +22228,11 @@ class GameActor
 public:
   btDynamicsWorld * m_ownerWorld;
   std::vector <ActorJointStruct> actorJoints;
-  int uid;
+  btVector3 origOffset;
   btRigidBody * localCreateRigidBody (btScalar mass, btTransform const & startTransform, btCollisionShape * shape);
-  int addJoint (int bodyUID, int parentId, btVector3 positionOffset, float rad, float len, float mass, float theta, float phi);
-  GameActor (btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed, int _uid);
+  btVector3 getStartPosition (int jointId);
+  int addJoint (int parentId, float rad, float len, float mass, btVector3 targAlign, float theta, float phi);
+  GameActor (btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed);
   void stepSim (btScalar timeStep);
   virtual ~ GameActor ();
 };
@@ -22705,7 +22667,6 @@ public:
   BenchmarkDemo * example;
   MyOGLApp * myOGLApp;
   GUIHelperInterface * guiHelper;
-  GameRagDoll * ragDoll;
   GameActor * gameActor;
   GamePhysics ();
   void init (Singleton * _singleton);
@@ -23008,6 +22969,11 @@ Singleton::Singleton ()
 		// 	myWS = NULL;
 		// #endif
 		
+	}
+FIVector4 * Singleton::BTV2FIV (btVector3 btv)
+                                          {
+		btvConv.setFXYZ(btv.getX(),btv.getY(),btv.getZ());
+		return &btvConv;
 	}
 void Singleton::setSelInd (int ind)
                                 {
@@ -24391,7 +24357,7 @@ void Singleton::playSoundEnt (string soundName, BaseObj * ge, float variance, fl
 				
 			}
 			else {
-				playSoundPosAndPitch(soundName,cameraGetPosNoShake(),ge->getCenterPoint(),variance,volume,doLoop);
+				playSoundPosAndPitch(soundName,cameraGetPosNoShake(),BTV2FIV(ge->getCenterPoint(0)),variance,volume,doLoop);
 			}
 		}
 		
@@ -24490,7 +24456,7 @@ void Singleton::setCurrentActor (BaseObj * ge)
 			
 			cout << "actObjInd " << actObjInd << "\n";
 			
-			subjectDistance = currentActor->getCenterPoint()->distance(cameraGetPosNoShake());
+			subjectDistance = BTV2FIV(currentActor->getCenterPoint(0))->distance(cameraGetPosNoShake());
 			
 			cout << "subjectDistance " << subjectDistance << "\n"; 
 		}
@@ -24871,10 +24837,7 @@ void Singleton::fillWithRandomObjects (int parentUID, int gen)
 				parentUID,
 				curId,
 				E_ENTTYPE_OBJ,
-				&lastCellPos,
-				1,
-				1,
-				1
+				&lastCellPos
 			);
 			
 			gw->gameObjects[parentUID].children.push_back(gameObjCounter);
@@ -25044,7 +25007,7 @@ void Singleton::performDrag (bool isReq, int _draggingFromInd, int _draggingFrom
 						
 						lastCellPos.copyFrom(_worldMarker);
 						lastCellPos.addXYZ(0,0,5);
-						sourceObj->setCenterPoint(&lastCellPos);
+						sourceObj->startPoint = lastCellPos.getBTV();
 						
 						
 						gw->gameObjects[sourceObj->parentUID].removeChild(sourceObj->uid);
@@ -25259,8 +25222,7 @@ BaseObjType Singleton::placeNewEnt (bool isReq, int et, FIVector4 * cellPos, boo
 			0,
 			newType,
 			et,
-			&newPos,
-			xv,yv,zv
+			&newPos
 		);
 		
 		if (
@@ -26606,6 +26568,10 @@ void Singleton::setShaderfVec3 (string paramName, FIVector4 * v)
         {
 		curShaderPtr->setShaderfVec3(paramName, v);
 	}
+void Singleton::setShaderbtVec3 (string paramName, btVector3 v)
+        {
+		curShaderPtr->setShaderbtVec3(paramName, v);
+	}
 void Singleton::setShaderVec4 (string paramName, float x, float y, float z, float w)
         {
 		curShaderPtr->setShaderVec4(paramName, x, y, z, w);
@@ -26887,9 +26853,9 @@ void Singleton::transformOrg (GameOrg * curOrg)
 void Singleton::angleToVec (FIVector4 * fv, float xr, float yr)
                                                            {
 		fv->setFXYZ(
-			 cos(xr)*sin(yr),
-			 sin(xr)*sin(yr),
-			 cos(yr)
+			cos(xr)*sin(yr),
+			sin(xr)*sin(yr),
+			cos(yr)
 		);
 		fv->normalize();
 	}
@@ -26941,7 +26907,7 @@ void Singleton::syncObjects ()
 		//testHuman->basePosition.copyFrom(&(dynObjects[E_OBJ_HUMAN]->pos));
 		
 		if (currentActor != NULL) {
-			testHuman->basePosition.copyFrom(currentActor->getCenterPoint());
+			testHuman->basePosition.setBTV(currentActor->getCenterPoint(0));
 		}
 		
 		transformOrg(testHuman);
@@ -27423,27 +27389,29 @@ void Singleton::makeJump (int actorId, int isUp)
 		
 		BaseObj* ge = &(gw->gameObjects[actorId]);
 		
-		float JUMP_AMOUNT = 30.0f/STEP_TIME_IN_SEC;
+		if (ge->bodies.size() < 0) {
+			return;
+		}
+		
+		float JUMP_AMOUNT = 1.0f*ge->getTotalMass()/STEP_TIME_IN_SEC;
 		
 		
 		if (isUp == 1) {
-			if (ge->inWater) {
+			if (ge->bodies[0].inWater) {
 				
-				ge->isFalling = true;
-				//ge->isJumping = true;
 				
 				if (
 					gw->getCellAtCoords(
-						ge->getCenterPoint()->getFX(),
-						ge->getCenterPoint()->getFY(),
-						ge->getCenterPoint()->getFZ() + 1.0f
+						ge->getCenterPoint(0).getX(),
+						ge->getCenterPoint(0).getY(),
+						ge->getCenterPoint(0).getZ() + 1.0f
 					) == E_CD_EMPTY
 				) {
 					
 					
 					// at water surface
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true);
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true, 0);
 					
 					
 					
@@ -27453,7 +27421,7 @@ void Singleton::makeJump (int actorId, int isUp)
 					// underwater
 					
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true);
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true, 0);
 					
 					playSoundEnt(
 						"bubble0",
@@ -27466,16 +27434,13 @@ void Singleton::makeJump (int actorId, int isUp)
 				
 			}
 			else {
-				if (ge->isFalling) {
+				if (ge->allFalling()) {
 					
 				}
 				else {
 					
 					
-					ge->isFalling = true;
-					//ge->isJumping = true;
-					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true);
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true, 0);
 					
 					playSoundEnt(
 						"jump0",
@@ -27487,8 +27452,8 @@ void Singleton::makeJump (int actorId, int isUp)
 			}
 		}
 		else {
-			if (ge->inWater) {
-				ge->applyImpulse(btVector3(0.0f,0.0f,-JUMP_AMOUNT), true);
+			if (ge->bodies[0].inWater) {
+				ge->applyImpulse(btVector3(0.0f,0.0f,-JUMP_AMOUNT), true, 0);
 				
 				playSoundEnt(
 					"bubble0",
@@ -29249,7 +29214,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	ca->targAng += (-2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,-0.2)/STEP_TIME_IN_SEC, true);
+				ca->applyAngularImpulse(btVector3(0,0,-0.2)/STEP_TIME_IN_SEC, true, 0);
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_LEFT]) {
@@ -29260,7 +29225,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	ca->targAng += (2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,0.2)/STEP_TIME_IN_SEC, true);
+				ca->applyAngularImpulse(btVector3(0,0,0.2)/STEP_TIME_IN_SEC, true, 0);
 			}
 			
 			
@@ -29299,14 +29264,32 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				
 				//tempVec2.addXYZ(tempVec1[0],tempVec1[1],0.0f);
 				
-				ca->applyImpulseRot(btVector3(0,1,0)/STEP_TIME_IN_SEC, true);
+				if (ca->hasBodies()) {
+					ca->applyImpulseOtherRot(
+						btVector3(0,0.1,0)*ca->getTotalMass()/STEP_TIME_IN_SEC,
+						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
+						true,
+						0
+					);
+				}
+				
+				
 				
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
 				//tempVec2.addXYZ(-tempVec1[0],-tempVec1[1],0.0f);
 				
-				ca->applyImpulseRot(btVector3(0,-1,0)/STEP_TIME_IN_SEC, true);
+				if (ca->hasBodies()) {
+					ca->applyImpulseOtherRot(
+						btVector3(0,-0.1,0)*ca->getTotalMass()/STEP_TIME_IN_SEC,
+						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
+						true,
+						0
+					);
+				}
+				
+				
 				
 			}
 			
@@ -29501,14 +29484,14 @@ void Singleton::handleMovement ()
 		if (currentActor != NULL) {
 				
 			if (firstPerson) {
-				targetCameraPos.copyFrom(currentActor->getCenterPoint());
-				targetCameraPos.addXYZ(0.0f,0.0f,currentActor->diameterInCells.getFZ()*0.5f);
+				targetCameraPos.setBTV(currentActor->getCenterPoint(0));
+				targetCameraPos.addXYZ(0.0f,0.0f,2.0f);
 			}
 			else {
 				targetCameraPos.copyFrom(&lookAtVec);
 				targetCameraPos.multXYZ( -(subjectDistance)*subjectZoom*tempZoom );
 				
-				targetCameraPos.addXYZRef(currentActor->getCenterPoint());
+				targetCameraPos.addXYZRef(BTV2FIV(currentActor->getCenterPoint(0)));
 				
 			}
 			
@@ -29600,7 +29583,7 @@ void Singleton::explodeBullet (BaseObj * ge)
 		
 		
 		
-		newPos.copyFrom(ge->getCenterPoint());
+		newPos.setBTV(ge->getCenterPoint(0));
 		newPos.addXYZ(0.0f,0.0f,-2.0f);
 		
 		if (waterBulletOn) {
@@ -29622,7 +29605,7 @@ void Singleton::explodeBullet (BaseObj * ge)
 		}
 		
 		sphereStack.push_back(SphereStruct());
-		sphereStack.back().position.copyFrom(ge->getCenterPoint());
+		sphereStack.back().position.setBTV(ge->getCenterPoint(0));
 		sphereStack.back().curRad = 1.0f;
 		sphereStack.back().maxRad = explodeRad;
 		sphereStack.back().radVel = 40.0f;
@@ -29634,8 +29617,8 @@ void Singleton::explodeBullet (BaseObj * ge)
 		
 		explodeStack.push_back(ExplodeStruct());
 		
-		if (ge->body != NULL) {
-			explodeStack.back().pos = ge->body->getCenterOfMassPosition();
+		if (ge->hasBodies()) {
+			explodeStack.back().pos = ge->bodies[0].body->getCenterOfMassPosition();
 			explodeStack.back().radius = 20.0f;
 			explodeStack.back().power = 200.0f;
 		}
@@ -29675,11 +29658,16 @@ void Singleton::grabThrowObj (int actorId)
 			// 	30.0f	
 			// );
 			
-			gw->gameObjects[ca->isGrabbingId].applyImpulseOtherRot(
-				btVector3(0.0,30.0,40.0)/STEP_TIME_IN_SEC,
-				ca->rotMat,
-				true
-			);
+			
+			if (ca->hasBodies()) {
+				gw->gameObjects[ca->isGrabbingId].applyImpulseOtherRot(
+					btVector3(0.0,4.0,4.0)*gw->gameObjects[ca->isGrabbingId].getTotalMass()/STEP_TIME_IN_SEC,
+					ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
+					true,
+					0
+				);
+			}
+			
 			
 			playSoundEnt(
 				"woosh0",
@@ -29698,7 +29686,8 @@ void Singleton::grabThrowObj (int actorId)
 		else {
 			// find obj to pickup
 			
-			res = gw->getClosestObj(actorId, ca->getCenterPoint());
+			
+			res = gw->getClosestObj(actorId, BTV2FIV(ca->getCenterPoint(0)));
 			
 			if (res < 0) {
 				
@@ -29743,33 +29732,42 @@ void Singleton::launchBullet (int actorId, int bulletType)
 			
 		}
 		else {
-			newCellPos.copyFrom(ca->getCenterPoint());
 			
-			// vx = cos(ca->ang)*3.0f;
-			// vx = vx;
+			if (ca->hasBodies()) {
 			
-			// vy = sin(ca->ang)*3.0f;
-			// vy = vy;
+				newCellPos.setBTV(ca->getCenterPoint(0));
+				
+				// vx = cos(ca->ang)*3.0f;
+				// vx = vx;
+				
+				// vy = sin(ca->ang)*3.0f;
+				// vy = vy;
+				
+				
+				btVector3 tempBTV = ca->multByOtherRot(
+					btVector3(0.0f,3.0f,3.0f),
+					ca->bodies[0].body->getCenterOfMassTransform().getBasis()
+				);
+				newCellPos.addXYZ(tempBTV.getX(), tempBTV.getY(), tempBTV.getZ());
+				
+				entNum = placeNewEnt(false, bulletType, &newCellPos);
+				
+				
+				
+				// gw->gameObjects[entNum].setVel(
+				// 	cos(ca->ang)*20.0f,
+				// 	sin(ca->ang)*20.0f,
+				// 	30.0f
+				// );
 			
 			
-			btVector3 tempBTV = ca->multByOtherRot(btVector3(0.0f,3.0f,3.0f),ca->rotMat);
-			newCellPos.addXYZ(tempBTV.getX(), tempBTV.getY(), tempBTV.getZ());
-			
-			entNum = placeNewEnt(false, bulletType, &newCellPos);
-			
-			
-			
-			// gw->gameObjects[entNum].setVel(
-			// 	cos(ca->ang)*20.0f,
-			// 	sin(ca->ang)*20.0f,
-			// 	30.0f
-			// );
-			
-			gw->gameObjects[entNum].applyImpulseOtherRot(
-				btVector3(0.0,30.0,40.0)/STEP_TIME_IN_SEC,
-				ca->rotMat,
-				true
-			);
+				gw->gameObjects[entNum].applyImpulseOtherRot(
+					btVector3(0.0,4.0,4.0)*gw->gameObjects[entNum].getTotalMass()/STEP_TIME_IN_SEC,
+					ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
+					true,
+					0
+				);
+			}
 			
 			
 			
@@ -30962,22 +30960,25 @@ void Singleton::frameUpdate ()
 							
 						}
 						
-						if (currentActor != NULL) {
+						if (
+							(currentActor != NULL) &&
+							currentActor->hasBodies()	
+						) {
 							
-							if (currentActor->inWater) {
+							if (currentActor->bodies[0].inWater) {
 								temp = clampfZO(
-									currentActor->getVel()->length()
+									currentActor->getVel(0)->length()
 								)*0.25f;
 								temp2 = 0.0f;
 							}
 							else {
 								
-								if (currentActor->isFalling) {
+								if (currentActor->allFalling()) {
 									temp2 = 0.0f;
 								}
 								else {
 									temp2 = clampfZO(
-										currentActor->getVel()->length()
+										currentActor->getVel(0)->length()
 									);
 								}
 								
@@ -30989,14 +30990,14 @@ void Singleton::frameUpdate ()
 							updateSoundPosAndPitch(
 								"swimming0",
 								cameraGetPosNoShake(),
-								currentActor->getCenterPoint(),
+								BTV2FIV(currentActor->getCenterPoint(0)),
 								temp,
 								0.01
 							);
 							updateSoundPosAndPitch(
 								"walkinggravel0",
 								cameraGetPosNoShake(),
-								currentActor->getCenterPoint(),
+								BTV2FIV(currentActor->getCenterPoint(0)),
 								temp2,
 								0.1
 							);
@@ -32811,6 +32812,11 @@ void Shader::setShaderfVec4 (string paramName, FIVector4 * f)
                                                             {
 		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
 		glUniform4f(loc,f->getFX(),f->getFY(),f->getFZ(),f->getFW());
+	}
+void Shader::setShaderbtVec3 (string paramName, btVector3 f)
+                                                            {
+		GLint loc = glGetUniformLocation(shader_id, paramName.c_str());
+		glUniform3f(loc,f.getX(),f.getY(),f.getZ());
 	}
 void Shader::setShaderFloatUB (string paramName, float x)
                                                          {
@@ -39048,7 +39054,7 @@ void GameFluid::shiftRegion ()
 			newCamPos.copyFrom(singleton->cameraGetPosNoShake());
 		}
 		else {
-			newCamPos.copyFrom(singleton->currentActor->getCenterPoint());
+			newCamPos.setBTV(singleton->currentActor->getCenterPoint(0));
 		}
 		
 		if (notThirdPerson&&(volSizePrim < 512)) { // && (mainId==E_FID_SML)
@@ -42240,244 +42246,6 @@ void GamePlant::applyRules (PlantRules * rules, GamePlantNode * curParent, int c
 	}
 #undef LZZ_INLINE
  
-// f00345_gameragdoll.h
-//
-
-#include "f00345_gameragdoll.e"
-#define LZZ_INLINE inline
-btRigidBody * GameRagDoll::createRigidBody (btScalar mass, btTransform const & startTransform, btCollisionShape * shape)
-        {
-		bool isDynamic = (mass != 0.f);
-
-		btVector3 localInertia(0,0,0);
-		if (isDynamic) {
-			shape->calculateLocalInertia(mass,localInertia);
-		}
-		
-
-		btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
-		
-		btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,shape,localInertia);
-		btRigidBody* body = new btRigidBody(rbInfo);
-		body->bodyUID = uid;
-
-		m_ownerWorld->addRigidBody(body);
-
-		return body;
-	}
-GameRagDoll::GameRagDoll (btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, btScalar scale, int _uid)
-  : m_ownerWorld (ownerWorld)
-        {
-		
-		uid = _uid;
-		
-		// Setup the geometry
-		m_shapes[BODYPART_PELVIS] = new btCapsuleShape(btScalar(0.15)*scale, btScalar(0.20)*scale);
-		m_shapes[BODYPART_SPINE] = new btCapsuleShape(btScalar(0.15)*scale, btScalar(0.28)*scale);
-		m_shapes[BODYPART_HEAD] = new btCapsuleShape(btScalar(0.10)*scale, btScalar(0.05)*scale);
-		m_shapes[BODYPART_LEFT_UPPER_LEG] = new btCapsuleShape(btScalar(0.07)*scale, btScalar(0.45)*scale);
-		m_shapes[BODYPART_LEFT_LOWER_LEG] = new btCapsuleShape(btScalar(0.05)*scale, btScalar(0.37)*scale);
-		m_shapes[BODYPART_RIGHT_UPPER_LEG] = new btCapsuleShape(btScalar(0.07)*scale, btScalar(0.45)*scale);
-		m_shapes[BODYPART_RIGHT_LOWER_LEG] = new btCapsuleShape(btScalar(0.05)*scale, btScalar(0.37)*scale);
-		m_shapes[BODYPART_LEFT_UPPER_ARM] = new btCapsuleShape(btScalar(0.05)*scale, btScalar(0.33)*scale);
-		m_shapes[BODYPART_LEFT_LOWER_ARM] = new btCapsuleShape(btScalar(0.04)*scale, btScalar(0.25)*scale);
-		m_shapes[BODYPART_RIGHT_UPPER_ARM] = new btCapsuleShape(btScalar(0.05)*scale, btScalar(0.33)*scale);
-		m_shapes[BODYPART_RIGHT_LOWER_ARM] = new btCapsuleShape(btScalar(0.04)*scale, btScalar(0.25)*scale);
-
-		// Setup all the rigid bodies
-		btTransform offset; offset.setIdentity();
-		offset.setOrigin(positionOffset);
-
-		float massPerLimb = 10.0f;
-
-		btTransform transform;
-		transform.setIdentity();
-		transform.setOrigin(scale*btVector3(btScalar(0.), btScalar(1.), btScalar(0.)));
-		m_bodies[BODYPART_PELVIS] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_PELVIS]);
-
-		transform.setIdentity();
-		transform.setOrigin(scale*btVector3(btScalar(0.), btScalar(1.2), btScalar(0.)));
-		m_bodies[BODYPART_SPINE] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_SPINE]);
-
-		transform.setIdentity();
-		transform.setOrigin(scale*btVector3(btScalar(0.), btScalar(1.6), btScalar(0.)));
-		m_bodies[BODYPART_HEAD] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_HEAD]);
-
-		transform.setIdentity();
-		transform.setOrigin(scale*btVector3(btScalar(-0.18), btScalar(0.65), btScalar(0.)));
-		m_bodies[BODYPART_LEFT_UPPER_LEG] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_LEFT_UPPER_LEG]);
-
-		transform.setIdentity();
-		transform.setOrigin(scale*btVector3(btScalar(-0.18), btScalar(0.2), btScalar(0.)));
-		m_bodies[BODYPART_LEFT_LOWER_LEG] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_LEFT_LOWER_LEG]);
-
-		transform.setIdentity();
-		transform.setOrigin(scale*btVector3(btScalar(0.18), btScalar(0.65), btScalar(0.)));
-		m_bodies[BODYPART_RIGHT_UPPER_LEG] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_RIGHT_UPPER_LEG]);
-
-		transform.setIdentity();
-		transform.setOrigin(scale*btVector3(btScalar(0.18), btScalar(0.2), btScalar(0.)));
-		m_bodies[BODYPART_RIGHT_LOWER_LEG] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_RIGHT_LOWER_LEG]);
-
-		transform.setIdentity();
-		transform.setOrigin(scale*btVector3(btScalar(-0.35), btScalar(1.45), btScalar(0.)));
-		transform.getBasis().setEulerZYX(0,0,M_PI_2);
-		m_bodies[BODYPART_LEFT_UPPER_ARM] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_LEFT_UPPER_ARM]);
-
-		transform.setIdentity();
-		transform.setOrigin(scale*btVector3(btScalar(-0.7), btScalar(1.45), btScalar(0.)));
-		transform.getBasis().setEulerZYX(0,0,M_PI_2);
-		m_bodies[BODYPART_LEFT_LOWER_ARM] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_LEFT_LOWER_ARM]);
-
-		transform.setIdentity();
-		transform.setOrigin(scale*btVector3(btScalar(0.35), btScalar(1.45), btScalar(0.)));
-		transform.getBasis().setEulerZYX(0,0,-M_PI_2);
-		m_bodies[BODYPART_RIGHT_UPPER_ARM] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_RIGHT_UPPER_ARM]);
-
-		transform.setIdentity();
-		transform.setOrigin(scale*btVector3(btScalar(0.7), btScalar(1.45), btScalar(0.)));
-		transform.getBasis().setEulerZYX(0,0,-M_PI_2);
-		m_bodies[BODYPART_RIGHT_LOWER_ARM] = createRigidBody(massPerLimb, offset*transform, m_shapes[BODYPART_RIGHT_LOWER_ARM]);
-
-		// Setup some damping on the m_bodies
-		for (int i = 0; i < BODYPART_COUNT; ++i)
-		{
-			m_bodies[i]->setDamping(btScalar(0.05), btScalar(0.85));
-			m_bodies[i]->setDeactivationTime(btScalar(0.8));
-			m_bodies[i]->setSleepingThresholds(btScalar(1.6), btScalar(2.5));
-		}
-
-		// Now setup the constraints
-		btHingeConstraint* hingeC;
-		btConeTwistConstraint* coneC;
-
-		btTransform localA, localB;
-
-		localA.setIdentity(); localB.setIdentity();
-		localA.getBasis().setEulerZYX(0,M_PI_2,0); localA.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.15), btScalar(0.)));
-		localB.getBasis().setEulerZYX(0,M_PI_2,0); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.15), btScalar(0.)));
-		hingeC =  new btHingeConstraint(*m_bodies[BODYPART_PELVIS], *m_bodies[BODYPART_SPINE], localA, localB);
-		hingeC->setLimit(btScalar(-M_PI_4), btScalar(M_PI_2));
-		m_joints[JOINT_PELVIS_SPINE] = hingeC;
-		m_ownerWorld->addConstraint(m_joints[JOINT_PELVIS_SPINE], true);
-
-
-		localA.setIdentity(); localB.setIdentity();
-		localA.getBasis().setEulerZYX(0,0,M_PI_2); localA.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.30), btScalar(0.)));
-		localB.getBasis().setEulerZYX(0,0,M_PI_2); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.14), btScalar(0.)));
-		coneC = new btConeTwistConstraint(*m_bodies[BODYPART_SPINE], *m_bodies[BODYPART_HEAD], localA, localB);
-		coneC->setLimit(M_PI_4, M_PI_4, M_PI_2);
-		m_joints[JOINT_SPINE_HEAD] = coneC;
-		m_ownerWorld->addConstraint(m_joints[JOINT_SPINE_HEAD], true);
-
-
-		localA.setIdentity(); localB.setIdentity();
-		localA.getBasis().setEulerZYX(0,0,-M_PI_4*5); localA.setOrigin(scale*btVector3(btScalar(-0.18), btScalar(-0.10), btScalar(0.)));
-		localB.getBasis().setEulerZYX(0,0,-M_PI_4*5); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.225), btScalar(0.)));
-		coneC = new btConeTwistConstraint(*m_bodies[BODYPART_PELVIS], *m_bodies[BODYPART_LEFT_UPPER_LEG], localA, localB);
-		coneC->setLimit(M_PI_4, M_PI_4, 0);
-		m_joints[JOINT_LEFT_HIP] = coneC;
-		m_ownerWorld->addConstraint(m_joints[JOINT_LEFT_HIP], true);
-
-		localA.setIdentity(); localB.setIdentity();
-		localA.getBasis().setEulerZYX(0,M_PI_2,0); localA.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.225), btScalar(0.)));
-		localB.getBasis().setEulerZYX(0,M_PI_2,0); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.185), btScalar(0.)));
-		hingeC =  new btHingeConstraint(*m_bodies[BODYPART_LEFT_UPPER_LEG], *m_bodies[BODYPART_LEFT_LOWER_LEG], localA, localB);
-		hingeC->setLimit(btScalar(0), btScalar(M_PI_2));
-		m_joints[JOINT_LEFT_KNEE] = hingeC;
-		m_ownerWorld->addConstraint(m_joints[JOINT_LEFT_KNEE], true);
-
-
-		localA.setIdentity(); localB.setIdentity();
-		localA.getBasis().setEulerZYX(0,0,M_PI_4); localA.setOrigin(scale*btVector3(btScalar(0.18), btScalar(-0.10), btScalar(0.)));
-		localB.getBasis().setEulerZYX(0,0,M_PI_4); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.225), btScalar(0.)));
-		coneC = new btConeTwistConstraint(*m_bodies[BODYPART_PELVIS], *m_bodies[BODYPART_RIGHT_UPPER_LEG], localA, localB);
-		coneC->setLimit(M_PI_4, M_PI_4, 0);
-		m_joints[JOINT_RIGHT_HIP] = coneC;
-		m_ownerWorld->addConstraint(m_joints[JOINT_RIGHT_HIP], true);
-
-		localA.setIdentity(); localB.setIdentity();
-		localA.getBasis().setEulerZYX(0,M_PI_2,0); localA.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.225), btScalar(0.)));
-		localB.getBasis().setEulerZYX(0,M_PI_2,0); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.185), btScalar(0.)));
-		hingeC =  new btHingeConstraint(*m_bodies[BODYPART_RIGHT_UPPER_LEG], *m_bodies[BODYPART_RIGHT_LOWER_LEG], localA, localB);
-		hingeC->setLimit(btScalar(0), btScalar(M_PI_2));
-		m_joints[JOINT_RIGHT_KNEE] = hingeC;
-		m_ownerWorld->addConstraint(m_joints[JOINT_RIGHT_KNEE], true);
-
-
-		localA.setIdentity(); localB.setIdentity();
-		localA.getBasis().setEulerZYX(0,0,M_PI); localA.setOrigin(scale*btVector3(btScalar(-0.2), btScalar(0.15), btScalar(0.)));
-		localB.getBasis().setEulerZYX(0,0,M_PI_2); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.18), btScalar(0.)));
-		coneC = new btConeTwistConstraint(*m_bodies[BODYPART_SPINE], *m_bodies[BODYPART_LEFT_UPPER_ARM], localA, localB);
-		coneC->setLimit(M_PI_2, M_PI_2, 0);
-		m_joints[JOINT_LEFT_SHOULDER] = coneC;
-		m_ownerWorld->addConstraint(m_joints[JOINT_LEFT_SHOULDER], true);
-
-		localA.setIdentity(); localB.setIdentity();
-		localA.getBasis().setEulerZYX(0,M_PI_2,0); localA.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.18), btScalar(0.)));
-		localB.getBasis().setEulerZYX(0,M_PI_2,0); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.14), btScalar(0.)));
-		hingeC =  new btHingeConstraint(*m_bodies[BODYPART_LEFT_UPPER_ARM], *m_bodies[BODYPART_LEFT_LOWER_ARM], localA, localB);
-		hingeC->setLimit(btScalar(-M_PI_2), btScalar(0));
-		m_joints[JOINT_LEFT_ELBOW] = hingeC;
-		m_ownerWorld->addConstraint(m_joints[JOINT_LEFT_ELBOW], true);
-
-
-
-		localA.setIdentity(); localB.setIdentity();
-		localA.getBasis().setEulerZYX(0,0,0); localA.setOrigin(scale*btVector3(btScalar(0.2), btScalar(0.15), btScalar(0.)));
-		localB.getBasis().setEulerZYX(0,0,M_PI_2); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.18), btScalar(0.)));
-		coneC = new btConeTwistConstraint(*m_bodies[BODYPART_SPINE], *m_bodies[BODYPART_RIGHT_UPPER_ARM], localA, localB);
-		coneC->setLimit(M_PI_2, M_PI_2, 0);
-		m_joints[JOINT_RIGHT_SHOULDER] = coneC;
-		m_ownerWorld->addConstraint(m_joints[JOINT_RIGHT_SHOULDER], true);
-
-		localA.setIdentity(); localB.setIdentity();
-		localA.getBasis().setEulerZYX(0,M_PI_2,0); localA.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.18), btScalar(0.)));
-		localB.getBasis().setEulerZYX(0,M_PI_2,0); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.14), btScalar(0.)));
-		hingeC =  new btHingeConstraint(*m_bodies[BODYPART_RIGHT_UPPER_ARM], *m_bodies[BODYPART_RIGHT_LOWER_ARM], localA, localB);
-		hingeC->setLimit(btScalar(-M_PI_2), btScalar(0));
-		m_joints[JOINT_RIGHT_ELBOW] = hingeC;
-		m_ownerWorld->addConstraint(m_joints[JOINT_RIGHT_ELBOW], true);
-	}
-GameRagDoll::~ GameRagDoll ()
-        {
-		int i;
-
-		// Remove all constraints
-		for ( i = 0; i < JOINT_COUNT; ++i)
-		{
-			m_ownerWorld->removeConstraint(m_joints[i]);
-			delete m_joints[i]; m_joints[i] = 0;
-		}
-
-		// Remove all bodies and shapes
-		for ( i = 0; i < BODYPART_COUNT; ++i)
-		{
-			m_ownerWorld->removeRigidBody(m_bodies[i]);
-			
-			delete m_bodies[i]->getMotionState();
-
-			delete m_bodies[i]; m_bodies[i] = 0;
-			delete m_shapes[i]; m_shapes[i] = 0;
-		}
-	}
-#undef LZZ_INLINE
- 
-// f00346_gameactorjoint.h
-//
-
-#include "f00346_gameactorjoint.e"
-#define LZZ_INLINE inline
-GameActorJoint::GameActorJoint ()
-                         {
-		
-	}
-void GameActorJoint::init ()
-                    {
-		
-	}
-#undef LZZ_INLINE
- 
 // f00347_gameactor.h
 //
 
@@ -42499,119 +42267,278 @@ btRigidBody * GameActor::localCreateRigidBody (btScalar mass, btTransform const 
 
 		return body;
 	}
-int GameActor::addJoint (int bodyUID, int parentId, btVector3 positionOffset, float rad, float len, float mass, float theta, float phi)
+btVector3 GameActor::getStartPosition (int jointId)
+                                                {
+		int parentId = actorJoints[jointId].parentId;
+		ActorJointStruct* parJoint;
+		
+		btVector3 res;
+		
+		if (parentId < 0) {
+			res = btVector3(0.0f,0.0f,0.0f);
+		}
+		else {
+			parJoint = &(actorJoints[parentId]);
+			res = parJoint->endOrig;
+		}
+		
+		//traceBTV("Joint ", res);
+		
+		return res;
+	}
+int GameActor::addJoint (int parentId, float rad, float len, float mass, btVector3 targAlign, float theta, float phi)
           {
 		
 		
 		
 		int i;
-		float shapeScale = 4.0f;
-		float jointSpace  = 0.25f*shapeScale;
-		float fLegLength = 0.45f*shapeScale;
 		btVector3 vUp(0, 0, 1);
 		
+		btHingeConstraint* hingeC;
+		btConeTwistConstraint* coneC;
+
+		btTransform localA, localB, localC;
 		
 		actorJoints.push_back(ActorJointStruct());
 		int curId = actorJoints.size()-1;
 		
 		ActorJointStruct* curJoint = &(actorJoints.back());
-		ActorJointStruct* parJoint = curJoint;
-		ActorJointStruct* grdJoint = curJoint;
+		ActorJointStruct* parJoint;
+		ActorJointStruct* grdJoint;
 		
-		curJoint->jointId = curId;
+		curJoint->rad = rad;
+		curJoint->length = len;
+		//begOrig
+		//endOrig
+		curJoint->targAlign = targAlign;
+		curJoint->jointId = curId;	
 		curJoint->parentId = parentId;
-		curJoint->shape = new btCapsuleShapeZ(rad, len);
 		
+		//float jointSpace  = curJoint->rad*2.0f;
 		
-		
-		
-		btTransform offset;
-		offset.setIdentity();
-		offset.setOrigin(positionOffset);
-		btVector3 vRoot = btVector3(0.0f, 0.0f, 0.0f);
-		btTransform transform;
-		transform.setIdentity();
-		transform.setOrigin(vRoot);
-		
-		float fAngle = theta;//2 * M_PI * i / NUM_LEGS_GA;
-		float fSin = sin(fAngle);
-		float fCos = cos(fAngle);
-		
-		btVector3 vBoneOrigin = btVector3(
-			btScalar(fCos*(jointSpace+0.5*fLegLength)),
-			btScalar(fSin*(jointSpace+0.5*fLegLength)),
-			btScalar(0.0)
-		);
-		btVector3 vToBone = (vBoneOrigin - vRoot).normalize();
-		btVector3 vAxis = vToBone.cross(vUp);	
-		
+		float curLength = curJoint->length - curJoint->rad*4.0;
 		
 		if (parentId < 0) {
-			curJoint->body = localCreateRigidBody(mass, offset*transform, curJoint->shape);
+			curLength = curJoint->length;
+		}
+		
+		curJoint->shape = new btCapsuleShapeZ(curJoint->rad, curLength);
+		
+		btTransform transform;
+		btTransform offset;
+		
+		
+		
+		
+		
+		offset.setIdentity();
+		offset.setOrigin(origOffset);
+		
+		btVector3 begPos = getStartPosition(curId);
+		btVector3 endPos = begPos + curJoint->targAlign*(curJoint->length);
+		btVector3 midPos = (begPos+endPos)*0.5f;
+		
+		curJoint->begOrig = begPos;
+		curJoint->midOrig = midPos;
+		curJoint->endOrig = endPos;
+
+
+		
+		transform.setIdentity();
+		transform.setOrigin(midPos);
+		
+		btVector3 vectorA = vUp;
+		btVector3 vectorB = targAlign;
+		
+		if ( abs(vectorA.dot(vectorB)) == 1.0f ) {
+			// todo: handle (anti)parallel case
+			//curJoint->pivotAxis = btVector3(0.0f,0.0f,0.0f);
+			curJoint->quat = btQuaternion(btVector3(0.0f,0.0f,1.0f), 0.0f);
 		}
 		else {
-			
-			
-			// thigh
-			transform.setIdentity();
-			transform.setOrigin(vBoneOrigin);
-			transform.setRotation(btQuaternion(vAxis, M_PI_2));
-			curJoint->body = localCreateRigidBody(btScalar(10.0), offset*transform, curJoint->shape);
-
-			// shin
-			transform.setIdentity();
-			transform.setOrigin(btVector3(
-				btScalar(fCos*(jointSpace+fLegLength)),
-				btScalar(fSin*(jointSpace+fLegLength)),
-				btScalar(-0.5*fLegLength)
-			));
-			curJoint->body = localCreateRigidBody(btScalar(10.0), offset*transform, curJoint->shape);
-			
+			btVector3 axis = (vectorA.cross(vectorB)).normalized();
+			btScalar angle = btAcos(vectorA.dot(vectorB)) / (vectorA.length() * vectorB.length());
+			curJoint->quat = btQuaternion(axis, angle);
+			transform.setRotation(curJoint->quat);
+			//curJoint->pivotAxis = axis;
 		}
 		
-		curJoint->body->bodyUID = bodyUID;
 		
+		
+		
+		
+		curJoint->body = localCreateRigidBody(mass, offset*transform, curJoint->shape);
+		//curJoint->body->bodyUID = uid;
 		curJoint->body->setDamping(0.05, 0.85);
 		curJoint->body->setDeactivationTime(0.8);
 		curJoint->body->setSleepingThresholds(0.5f, 0.5f);
 		
 		
-		btHingeConstraint* hingeC;
-		//btConeTwistConstraint* coneC;
-
-		btTransform localA, localB, localC;
+		
+		// curJoint->joint = NULL;
+		// return curId;
+		
 
 		if (parentId < 0) {
 			curJoint->joint = NULL;
 		}
 		else {
+			parJoint = &(actorJoints[parentId]);
 			
 			
 			
 			
-			// hip joints
+			
+			
+			
 			localA.setIdentity();
 			localB.setIdentity();
-			localA.getBasis().setEulerZYX(0,-fAngle,0);	localA.setOrigin(btVector3(
-				btScalar(fCos*jointSpace),
-				btScalar(fSin*jointSpace),
-				btScalar(0.)
-			));
-			localB = 
-				curJoint->body->getWorldTransform().inverse() *
-				parJoint->body->getWorldTransform() *
-				localA;
-			hingeC = new btHingeConstraint(
+			//localA.getBasis().setEulerZYX(0,0,M_PI);
+			//localB.getBasis().setEulerZYX(0,0,M_PI);
+			localA.setRotation(parJoint->quat);
+			localB.setRotation(curJoint->quat);
+			
+			localA.setOrigin(
+				btVector3(0.0,0.0,-parJoint->length*0.5f)	
+			);
+			localB.setOrigin(
+				btVector3(0.0,0.0,curJoint->length*0.5f)
+			);
+			
+			
+			// coneC = new btConeTwistConstraint(*(parJoint->body), *(curJoint->body), localA, localB);
+			// coneC->setLimit(0.1, 0.1, 0);
+			// curJoint->joint = coneC;
+			// m_ownerWorld->addConstraint(curJoint->joint, true);
+			
+			hingeC =  new btHingeConstraint(
 				*(parJoint->body),
 				*(curJoint->body),
 				localA,
 				localB
 			);
-			
-			hingeC->setLimit(btScalar(-0.75 * M_PI_4), btScalar(M_PI_8));
+			hingeC->setLimit(-M_PI_8, M_PI_8);
 			curJoint->joint = hingeC;
 			m_ownerWorld->addConstraint(curJoint->joint, true);
+			
+			
+			
+			
+			
+			// hingeC = new btHingeConstraint(
+			// 	*(parJoint->body),
+			// 	*(curJoint->body),
+			// 	btVector3(0.0,0.0,-parJoint->length*0.5f),
+			// 	btVector3(0.0,0.0,curJoint->length*0.5f),
+			// 	//parJoint->endOrig - parJoint->midOrig,
+			// 	//curJoint->begOrig - curJoint->midOrig,
+			// 	curJoint->pivotAxis,
+			// 	curJoint->pivotAxis
+			// 	//parJoint->body->getWorldTransform(),
+			// 	//curJoint->body->getWorldTransform()
+			// 	// parJoint->begOrig,
+			// 	// curJoint->begOrig,
+			// 	// parJoint->targAlign,
+			// 	// curJoint->targAlign
+			// );
+			
+			
+			// localA.setIdentity();
+			// localB.setIdentity();
+			// localA.getBasis().setEulerZYX(0,-theta,0);
+			// localA.setOrigin(btVector3(0.0,0.0,-parJoint->length*0.5f));
+			// localB.getBasis().setEulerZYX(0,-theta,0);
+			// localB.setOrigin(btVector3(0.0,0.0,curJoint->length*0.5f));
+			// hingeC =  new btHingeConstraint(
+			// 	*(parJoint->body),
+			// 	*(curJoint->body),
+			// 	localA,
+			// 	localB
+			// );
+			
+			
+			// hingeC->setLimit(btScalar(-0.1), btScalar(0.1));
+			// curJoint->joint = hingeC;
+			// m_ownerWorld->addConstraint(curJoint->joint, true);
+			
+			
+			
 
+			
+			
+			// hingeC->setLimit(btScalar(-M_PI), btScalar(M_PI));
+			// curJoint->joint = hingeC;
+			// m_ownerWorld->addConstraint(hingeC, true);
+			
+			
+			// hingeC->setLimit(btScalar(0), btScalar(M_PI_2));
+			// m_joints[JOINT_LEFT_KNEE] = hingeC;
+			// m_ownerWorld->addConstraint(m_joints[JOINT_LEFT_KNEE], true);
+			
+			// localA.setIdentity(); localB.setIdentity();
+			// localA.getBasis().setEulerZYX(0,M_PI_2,0); localA.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.225), btScalar(0.)));
+			// localB.getBasis().setEulerZYX(0,M_PI_2,0); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.185), btScalar(0.)));
+			// hingeC =  new btHingeConstraint(*m_bodies[BODYPART_RIGHT_UPPER_LEG], *m_bodies[BODYPART_RIGHT_LOWER_LEG], localA, localB);
+			// hingeC->setLimit(btScalar(0), btScalar(M_PI_2));
+			// m_joints[JOINT_RIGHT_KNEE] = hingeC;
+			// m_ownerWorld->addConstraint(m_joints[JOINT_RIGHT_KNEE], true);
+			
+			
+			
+			// // hip joints
+			// localA.setIdentity();
+			// localB.setIdentity();
+			// localA.getBasis().setEulerZYX(0,-theta,0);
+			// localA.setOrigin(
+			// 	curJoint->begOrig + curJoint->targAlign*jointSpace
+			// 	/*
+			// 	btVector3(
+			// 					btScalar(fCos*jointSpace),
+			// 					btScalar(fSin*jointSpace),
+			// 					btScalar(0.)
+			// 				)
+			// 	*/	
+			// );
+			// localB = 
+			// 	curJoint->body->getWorldTransform().inverse() *
+			// 	parJoint->body->getWorldTransform() *
+			// 	localA;
+			// hingeC = new btHingeConstraint(
+			// 	*(parJoint->body),
+			// 	*(curJoint->body),
+			// 	localA,
+			// 	localB
+			// );
+			
+			
+			
+			
+			
+			// hingeC->setLimit(btScalar(-M_PI), btScalar(M_PI));
+			// curJoint->joint = hingeC;
+			// m_ownerWorld->addConstraint(curJoint->joint, true);
+
+			
+			/*
+			
+			// hip joints
+			localA.setIdentity();
+			localB.setIdentity();
+			localA.getBasis().setEulerZYX(0,-fAngle,0);	localA.setOrigin(btVector3(
+				btScalar(fCos*fBodySize),
+				btScalar(fSin*fBodySize),
+				btScalar(0.)
+			));
+			localB = 
+				actorJoints[2*i+1].body->getWorldTransform().inverse() *
+				actorJoints[0].body->getWorldTransform() *
+				localA;
+			hingeC = new btHingeConstraint(
+				*(actorJoints[0].body),
+				*(actorJoints[1+2*i].body),
+				localA,
+				localB
+			);
 			
 			// knee joints
 			localA.setIdentity();
@@ -42639,28 +42566,168 @@ int GameActor::addJoint (int bodyUID, int parentId, btVector3 positionOffset, fl
 			);
 			hingeC->setLimit(btScalar(-M_PI_8), btScalar(0.2));
 			curJoint->joint = hingeC;
-			m_ownerWorld->addConstraint(curJoint->joint, true);
+			m_ownerWorld->addConstraint(curJoint->joint, true);*/
 			
 			
+			
+			/*
+
+			btTransform offset; offset.setIdentity();
+			offset.setOrigin(positionOffset);
+
+			// root
+			btVector3 vRoot = btVector3(btScalar(0.0), btScalar(0.0), btScalar(fHeight));
+			btTransform transform;
+			transform.setIdentity();
+			transform.setOrigin(vRoot);
+			if (bFixed) {
+				actorJoints[0].body = localCreateRigidBody(btScalar(0.0), offset*transform, actorJoints[0].shape);
+			} else {
+				actorJoints[0].body = localCreateRigidBody(btScalar(10.0), offset*transform, actorJoints[0].shape);
+			}
+
+			// legs
+			for ( i=0; i<NUM_LEGS_GA; i++) {
+				float fAngle = 2 * M_PI * i / NUM_LEGS_GA;
+				float fSin = sin(fAngle);
+				float fCos = cos(fAngle);
+
+				transform.setIdentity();
+				btVector3 vBoneOrigin = btVector3(
+					btScalar(fCos*(fBodySize+0.5*fLegLength)),
+					btScalar(fSin*(fBodySize+0.5*fLegLength)),
+					btScalar(fHeight)
+				);
+				transform.setOrigin(vBoneOrigin);
+
+				// thigh
+				btVector3 vToBone = (vBoneOrigin - vRoot).normalize();
+				btVector3 vAxis = vToBone.cross(vUp);			
+				transform.setRotation(btQuaternion(vAxis, M_PI_2));
+				actorJoints[2*i+1].body = localCreateRigidBody(btScalar(10.0), offset*transform, actorJoints[2*i+1].shape);
+
+				// shin
+				transform.setIdentity();
+				transform.setOrigin(btVector3(
+					btScalar(fCos*(fBodySize+fLegLength)),
+					btScalar(fSin*(fBodySize+fLegLength)),
+					btScalar(fHeight-0.5*fLegLength)
+				));
+				actorJoints[2*i+2].body = localCreateRigidBody(btScalar(10.0), offset*transform, actorJoints[2*i+2].shape);
+			}
+			*/
+
+
+
+
+
+					
+					//transform.setOrigin(midPos);
+					//transform.setRotation(btQuaternion(curJoint->targAlign, curJoint->angOrig));
+					
+					// btVector3 vBoneOrigin = midPos;
+					// transform.setOrigin(vBoneOrigin);
+					// btVector3 vToBone = (vBoneOrigin - vRoot).normalize();
+					// btVector3 vAxis = vToBone.cross(vUp);
+					// transform.setRotation(btQuaternion(vAxis, M_PI_2));
+					
 			
 			
 		}
 		
 		
+		return curId;
+		
 	}
-GameActor::GameActor (btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed, int _uid)
-                                                                                                       {
+GameActor::GameActor (btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed)
+          {
+		
+		int i;
 		
 		m_ownerWorld = ownerWorld;
+		//uid = _uid;
 		
-		uid = _uid;
-		btVector3 vUp(0, 0, 1);
+		origOffset = positionOffset;// - btVector3(0.0f,0.0f,16.0f);
+		float actorScale = 1.0f;
 
+		int curGrandParent = addJoint(
+			-1,							//int parentId,
+			1.0f*actorScale,				//float rad,
+			1.1f*actorScale,				//float len,
+			MASS_PER_LIMB,				//float mass,
+			btVector3(0.0f,0.0f,1.0f),	//btVector3 targAlign,
+			0.0f, 0.0f
+		);
+		
+		int curChild;
+		int curParent;
+		float curTheta;
+		float curPhi;
+		
+		btVector3 targAlign;
+		
+		for (i = 0; i < 6; i++) {
+			
+			curTheta = M_PI*((float)i)/3.0f;
+			
+			curPhi = M_PI_4 + 0.1;
+			targAlign = btVector3(
+				cos(curTheta)*sin(curPhi),
+				sin(curTheta)*sin(curPhi),
+				cos(curPhi)	
+			);
+			curParent = addJoint(
+				curGrandParent,				//int parentId,
+				1.0f*actorScale,			//float rad,
+				8.0f*actorScale,			//float len,
+				MASS_PER_LIMB,				//float mass,
+				targAlign,					//btVector3 targAlign
+				curTheta,
+				curPhi
+			);
+			
+			curPhi = M_PI_8 + 0.1;
+			targAlign = btVector3(
+				cos(curTheta)*sin(curPhi),
+				sin(curTheta)*sin(curPhi),
+				cos(curPhi)	
+			);
+			curChild = addJoint(
+				curParent,					//int parentId,
+				1.0f*actorScale,			//float rad,
+				8.0f*actorScale,			//float len,
+				MASS_PER_LIMB,				//float mass,
+				targAlign,					//btVector3 targAlign
+				curTheta,
+				curPhi
+			);
+			
+			
+			curPhi = M_PI_4 + 0.1;
+			targAlign = btVector3(
+				cos(curTheta)*sin(curPhi),
+				sin(curTheta)*sin(curPhi),
+				cos(curPhi)	
+			);
+			addJoint(
+				curChild,					//int parentId,
+				1.0f*actorScale,			//float rad,
+				8.0f*actorScale,			//float len,
+				MASS_PER_LIMB,				//float mass,
+				targAlign,					//btVector3 targAlign
+				curTheta,
+				curPhi
+			);
+			
+		}
+		
+		/*
+		
+		
 		//
 		// Setup geometry
 		//
-		
-		int i;
+		btVector3 vUp(0, 0, 1);
 		float shapeScale = 4.0f;
 		float fBodySize  = 0.25f*shapeScale;
 		float fLegLength = 0.45f*shapeScale;
@@ -42809,11 +42876,14 @@ GameActor::GameActor (btDynamicsWorld * ownerWorld, btVector3 const & positionOf
 		
 		for (i = 0; i < BODYPART_COUNT_GA; i++) {
 			actorJoints[i].body->bodyUID = uid;
-		}
+		}*/
 		
 	}
 void GameActor::stepSim (btScalar timeStep)
                                         {
+		
+		//return;
+		
 		float m_fMuscleStrength = 10.0f;//(sin(singleton->curTime/2000.0)+1.0f)*0.5f;
 		float ms = timeStep*1000000.0;
 		float minFPS = 1000000.f/60.f;
@@ -42823,7 +42893,7 @@ void GameActor::stepSim (btScalar timeStep)
 
 		//m_Time += ms;
 
-		for (int i=0; i < BODYPART_COUNT_GA; i++) {
+		for (int i = 0; i < actorJoints.size(); i++) {
 			
 			if (actorJoints[i].joint == NULL) {
 				
@@ -42848,7 +42918,7 @@ GameActor::~ GameActor ()
 		int i;
 
 		// Remove all constraints
-		for ( i = 0; i < BODYPART_COUNT_GA; ++i)
+		for ( i = 0; i < actorJoints.size(); ++i)
 		{
 			if (actorJoints[i].joint == NULL) {
 				
@@ -42859,7 +42929,7 @@ GameActor::~ GameActor ()
 			}
 		}
 
-		for ( i = 0; i < BODYPART_COUNT_GA; ++i)
+		for ( i = 0; i < actorJoints.size(); ++i)
 		{
 			m_ownerWorld->removeRigidBody(actorJoints[i].body);
 			
@@ -44266,6 +44336,7 @@ void GamePageHolder::createMesh ()
 		body = singleton->gamePhysics->example->createRigidBody(0,trans,trimeshShape);
 		body->setFriction (btScalar(0.9));
 		body->bodyUID = -1;
+		body->limbUID = -1;
 		
 		singleton->gamePhysics->example->updateGraphicsObjects();
 		
@@ -50764,7 +50835,7 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 			//btglMultMatrix(m);
 			//updateMat2();
 			pushNewMat(m);
-			singleton->gw->gameObjects[uid].rotMat = singleton->curObjMatrix3;
+			//singleton->gw->gameObjects[uid].rotMat = singleton->curObjMatrix3;
 
 
 			if (shape->getShapeType() == UNIFORM_SCALING_SHAPE_PROXYTYPE)
@@ -51764,7 +51835,6 @@ struct CommonGraphicsApp * MyGLHelper::getAppInterface ()
 GamePhysics::GamePhysics ()
                       {
 		gameActor = NULL;
-		ragDoll = NULL;
 		//8000; // ~120 times per second
 	}
 void GamePhysics::init (Singleton * _singleton)
@@ -51810,11 +51880,11 @@ void GamePhysics::remBoxFromObj (BaseObjType _uid)
 		
 		BaseObj* ge = &(singleton->gw->gameObjects[_uid]);
 		
-		if (ge->body != NULL) {
-			example->removeRigidBody(ge->body);
-			ge->body = NULL;
+		int bodInd;
+		for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
+			example->removeRigidBody(ge->bodies[bodInd].body);
 		}
-		
+		ge->bodies.clear();
 	}
 void GamePhysics::addBoxFromObj (BaseObjType _uid)
                                              {
@@ -51829,7 +51899,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 		
 		btTransform trans;
 		trans.setIdentity();
-		trans.setOrigin(ge->getCenterPoint(false)->getBTV());
+		trans.setOrigin(ge->startPoint);
 		
 		
 		float objRad = 0.5f;
@@ -51841,56 +51911,44 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 			// btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(1.0f,1.0f);
 			// ge->body = example->createRigidBody(ge->mass,trans,capsuleShape);
 			// ge->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
-			//ge->body->setLinearFactor(btVector3(0.0f,0.0f,0.0f));
+			// ge->body->setLinearFactor(btVector3(0.0f,0.0f,0.0f));
 			
 			
 			
 			
 			gameActor = new GameActor(
 				example->getWorld(),
-				ge->getCenterPoint(false)->getBTV(),
-				false,
-				_uid
+				ge->startPoint,
+				false
 			);
-			for (i = 0; i < BODYPART_COUNT_GA; i++) {
+			for (i = 0; i < gameActor->actorJoints.size(); i++) {
+				
+				
+				ge->bodies.push_back(BodyStruct());
+				ge->bodies.back().body = gameActor->actorJoints[i].body;
+				
 				if (i == 0) {
-					ge->body = gameActor->actorJoints[i].body;
+					//ge->body = gameActor->actorJoints[i].body;
 					//ge->body->setLinearFactor(btVector3(0.0f,0.0f,0.0f));
-					ge->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
+					ge->bodies.back().body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
 				}
 				else {
-					ge->limbs.push_back(gameActor->actorJoints[i].body);
+					
 				}
 			}
 			
-			
-			
-			// ragDoll = new GameRagDoll(
-			// 	example->getWorld(),
-			// 	ge->getCenterPoint(false)->getBTV(),
-			// 	4.0f,
-			// 	_uid
-			// );
-			
-			// for (i = 0; i < ragDoll->BODYPART_COUNT; i++) {
-			// 	if (i == 0) {
-			// 		ge->body = ragDoll->m_bodies[i];
-			// 	}
-			// 	else {
-			// 		ge->limbs.push_back(ragDoll->m_bodies[i]);
-			// 	}
-				
-			// }
 			
 		}
 		else {
 			
 			
 			btBoxShape* boxShape = new btBoxShape(btVector3(objRad,objRad,objRad));
-			ge->body = example->createRigidBody(ge->mass,trans,boxShape);
+			ge->bodies.push_back(BodyStruct());
+			ge->bodies.back().body = example->createRigidBody(MASS_PER_LIMB,trans,boxShape);
 			
 			if (ge->entType == E_ENTTYPE_DEBRIS) {
-				ge->body->setAngularVelocity(btVector3(
+				
+				ge->bodies[0].body->setAngularVelocity(btVector3(
 					(fGenRand2()*2.0f-1.0f),
 					(fGenRand2()*2.0f-1.0f),
 					(fGenRand2()*2.0f-1.0f)	
@@ -51903,9 +51961,27 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 			
 		}
 		
-		ge->body->bodyUID = _uid;
-		ge->body->setDamping(0.1f,0.99f);
-		ge->body->setContactProcessingThreshold(0.25f);
+		int bodInd;
+		for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
+			ge->bodies[bodInd].body->bodyUID = _uid;
+			ge->bodies[bodInd].body->limbUID = bodInd;
+			ge->bodies[bodInd].body->setDamping(0.1f,0.99f);
+			ge->bodies[bodInd].body->setContactProcessingThreshold(0.25f);
+			
+			
+			ge->bodies[bodInd].mass = MASS_PER_LIMB;
+			ge->bodies[bodInd].hasContact = false;
+			ge->bodies[bodInd].isInside = false;
+			ge->bodies[bodInd].isFalling = false;
+			ge->bodies[bodInd].inWater = false;
+			ge->bodies[bodInd].lastVel = btVector3(0.0f,0.0f,0.0f);
+			ge->bodies[bodInd].totAV = btVector3(0.0f,0.0f,0.0f);
+			ge->bodies[bodInd].totLV = btVector3(0.0f,0.0f,0.0f);
+			
+			
+		}
+		
+		
 		
 	}
 void GamePhysics::motorPreTickCallback (btScalar timeStep, GameActor * curActor)
@@ -51928,8 +52004,7 @@ void GamePhysics::flushImpulses ()
 			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
 			
 			if (
-				(ge->isHidden) ||
-				(ge->body == NULL)
+				(ge->isHidden)
 			) {
 				
 			}
@@ -51948,9 +52023,9 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		int k;
 		int m;
 		
+		int bodInd;
 		int cellVal;
-		
-		bool lastFalling;
+		BodyStruct* curBody;
 		
 		BaseObj* ge;
 		
@@ -51979,13 +52054,17 @@ void GamePhysics::collideWithWorld (double curStepTime)
 			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
 			
 			if (
-				(ge->isHidden) ||
-				(ge->body == NULL)
+				(ge->isHidden)
 			) {
 				
 			}
 			else {
-				ge->hasContact = false;
+				
+				for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
+					ge->bodies[bodInd].hasContact = false;
+				}
+				
+				
 			}
 		}
 		
@@ -52023,30 +52102,28 @@ void GamePhysics::collideWithWorld (double curStepTime)
 			
 			
 			for (k = 0; k < 2; k++) {
-				if (bodies[k]->bodyUID > -1) {
-					ge = &(singleton->gw->gameObjects[bodies[k]->bodyUID]);
-					
+				if (
+					(bodies[k]->bodyUID > -1) &&
+					(bodies[k]->limbUID > -1)
+				) {
+					ge = &(singleton->gw->gameObjects[ bodies[k]->bodyUID ]);
+					curBody =  &(ge->bodies[ bodies[k]->limbUID ]);
 					
 					
 					if (
-						(ge->isHidden) ||
-						(ge->body == NULL)
+						(ge->isHidden)
 					) {
 						
 					}
 					else {
 						
 						if (hasContact) {
-							ge->hasContact = true;
+							curBody->hasContact = true;
 						}
 						
-						lastFalling = ge->isFalling;
 						
-						ge->isFalling = (!(ge->hasContact));// && (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f);
+						curBody->isFalling = (!(curBody->hasContact));
 						
-						// if (!(ge->isFalling)) {
-						// 	//ge->isJumping = false;
-						// }
 						
 					}
 					
@@ -52062,153 +52139,153 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		btVector3 dirForce;
 		
 		
-		
 		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
 			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
 			
 			if (
-				(ge->isHidden) ||
-				(ge->body == NULL)
+				(ge->isHidden)
 			) {
 				
 			}
 			else {
 				
-				
-				//////////////////////
-				// APPLY FORCES
-				//////////////////////
-				
-				ge->applyImpulses(curStepTime);
-				
-				tempBTV = ge->body->getCenterOfMassPosition();
-				
-				cellVal = singleton->gw->getCellAtCoords(
-					tempBTV.getX(),
-					tempBTV.getY(),
-					tempBTV.getZ()
-				);
-				
-				
-				ge->inWater = (cellVal == E_CD_WATER);
-				ge->isInside = (cellVal == E_CD_SOLID);
-				
-				// push out from underground
-				
-				if (ge->isInside) {
-					ge->moveToPoint(tempBTV + btVector3(0,0,2));
-					
-					ge->applyImpulse(btVector3(0,0,5),false);
-					ge->lastVel = ge->body->getLinearVelocity();
-				}
-				
-				if (
-					(singleton->selObjInd == ge->uid) &&
-					singleton->markerFound &&
-					singleton->isDraggingObject &&
-					(singleton->draggingFromType == E_DT_WORLD_OBJECT)
-				) {
+				for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
+					curBody = &(ge->bodies[bodInd]);
 					
 					
-					ge->applyImpulse(
-						btVector3(
-							( singleton->worldMarker.getFX() - ge->body->getCenterOfMassPosition().getX() )*0.2f,
-							( singleton->worldMarker.getFY() - ge->body->getCenterOfMassPosition().getY() )*0.2f,
-							-(ge->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*0.2f
-						),
-						false
+					
+					
+					//$$$$$$$$$$$
+					
+					
+					
+					//////////////////////
+					// APPLY FORCES
+					//////////////////////
+					
+					ge->applyImpulses(curStepTime, bodInd);
+					
+					tempBTV = curBody->body->getCenterOfMassPosition();
+					
+					cellVal = singleton->gw->getCellAtCoords(
+						tempBTV.getX(),
+						tempBTV.getY(),
+						tempBTV.getZ()
 					);
 					
 					
+					curBody->inWater = (cellVal == E_CD_WATER);
+					curBody->isInside = (cellVal == E_CD_SOLID);
 					
-				}
-				
-				
-				
-				for (m = 0; m < singleton->sphereStack.size(); m++) {
-					tempBTV = ge->body->getCenterOfMassPosition();
-					tempBTV2 = singleton->sphereStack[m].position.getBTV();
+					// push out from underground
 					
-					totForce = (
-						1.0f-clampfZO(
-							tempBTV.distance(tempBTV2)/(singleton->sphereStack[m].curRad*5.0f)	
-						)
-					)*5.0f; // * singleton->sphereStack[m].power;
-					dirForce = tempBTV-tempBTV2;
-					dirForce.normalize();
-					dirForce = dirForce*totForce;
-					
-					dirForce.setZ(totForce);
-					
-					ge->applyImpulse(dirForce, false);
-				}
-				
-				// for (m = 0; m < singleton->explodeStack.size(); m++) {
-				// 	tempBTV = ge->body->getCenterOfMassPosition();
-				// 	totForce = (
-				// 		1.0f-clampfZO(
-				// 			tempBTV.distance(singleton->explodeStack[m].pos)/singleton->explodeStack[m].radius	
-				// 		)
-				// 	)*singleton->explodeStack[m].power;
-				// 	dirForce = tempBTV-singleton->explodeStack[m].pos;
-				// 	dirForce.normalize();
-				// 	dirForce = dirForce*totForce;
-					
-				// 	dirForce.setZ(totForce);
-					
-				// 	ge->applyImpulse(dirForce, false);
-				// }
-				
-				
-				//////////////////////
-				// END APPLY FORCES
-				//////////////////////
-				
-				
-				
-				
-				
-				nv0 = ge->body->getLinearVelocity();
-				nv0.normalize();
-				nv1 = ge->lastVel;
-				nv1.normalize();
-				
-				
-				if (
-					(!(ge->isInside)) &&
-					(
-						ge->lastVel.length() > 0.5f
-					) &&
-					(
-						(nv0.dot(nv1)) < 0.8f
-					)
-					
-				) {
-					
-					singleton->gw->fireEvent(
-						ge->uid,
-						EV_COLLISION,
-						clampfZO( (ge->lastVel.length()-0.5f)/16.0f )*
-						(1.0f-clampfZO(ge->getCenterPoint()->distance(singleton->cameraGetPosNoShake())/(50.0f)))
-					);
-				}
-				
-				
-				ge->lastVel = ge->body->getLinearVelocity();
-				
-				ge->getCenterPoint(true);
-				
-				
-				if (ge->entType == E_ENTTYPE_BULLET) {
-					if (
-						(!(ge->isFalling)) && 
-						(ge->body->getLinearVelocity().length() < 0.5)
-					) {
-							singleton->explodeBullet(ge);
+					if (curBody->isInside) {
+						
+						
+						ge->moveToPoint(tempBTV + btVector3(0,0,1.0), bodInd);
+						ge->applyImpulse(btVector3(0,0,1.0),false, bodInd);
+						curBody->lastVel = curBody->body->getLinearVelocity();
 					}
+					
+					if (
+						(singleton->selObjInd == ge->uid) &&
+						singleton->markerFound &&
+						singleton->isDraggingObject &&
+						(singleton->draggingFromType == E_DT_WORLD_OBJECT)
+					) {
+						
+						
+						ge->applyImpulse(
+							btVector3(
+								( singleton->worldMarker.getFX() - curBody->body->getCenterOfMassPosition().getX() )*0.2f,
+								( singleton->worldMarker.getFY() - curBody->body->getCenterOfMassPosition().getY() )*0.2f,
+								-(curBody->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*0.2f
+							),
+							false,
+							bodInd
+						);
+						
+						
+						
+					}
+					
+					
+					
+					for (m = 0; m < singleton->sphereStack.size(); m++) {
+						tempBTV = curBody->body->getCenterOfMassPosition();
+						tempBTV2 = singleton->sphereStack[m].position.getBTV();
+						
+						totForce = (
+							1.0f-clampfZO(
+								tempBTV.distance(tempBTV2)/(singleton->sphereStack[m].curRad*5.0f)	
+							)
+						)*5.0f; // * singleton->sphereStack[m].power;
+						dirForce = tempBTV-tempBTV2;
+						dirForce.normalize();
+						dirForce = dirForce*totForce;
+						
+						dirForce.setZ(totForce);
+						
+						ge->applyImpulse(dirForce, false, bodInd);
+					}
+					
+					
+					//////////////////////
+					// END APPLY FORCES
+					//////////////////////
+					
+					
+					
+					
+					
+					nv0 = curBody->body->getLinearVelocity();
+					nv0.normalize();
+					nv1 = curBody->lastVel;
+					nv1.normalize();
+					
+					
+					if (
+						(!(curBody->isInside)) &&
+						(
+							curBody->lastVel.length() > 0.5f
+						) &&
+						(
+							(nv0.dot(nv1)) < 0.8f
+						)
+						
+					) {
+						
+						
+						singleton->gw->fireEvent(
+							ge->uid,
+							EV_COLLISION,
+							clampfZO( (curBody->lastVel.length()-0.5f)/16.0f )*
+							(1.0f-clampfZO(ge->getCenterPointFIV(bodInd)->distance(singleton->cameraGetPosNoShake())/(50.0f)))
+						);
+					}
+					
+					
+					curBody->lastVel = curBody->body->getLinearVelocity();
+					
+					
+					
+					if (ge->entType == E_ENTTYPE_BULLET) {
+						if (
+							(!(curBody->isFalling)) && 
+							(curBody->body->getLinearVelocity().length() < 0.5)
+						) {
+								singleton->explodeBullet(ge);
+						}
+					}
+					
+					
+					
+					
+					//$$$$$$$$$$$
+					
+					
+						
 				}
-				
-				
 			}
 			
 		}
@@ -52815,7 +52892,7 @@ void GameWorld::update ()
 			camHolderPos.addXYZRef(&(singleton->lookAtVec),4.0);
 		}
 		else {
-			camHolderPos.copyFrom(singleton->currentActor->getCenterPoint());
+			camHolderPos.setBTV(singleton->currentActor->getCenterPoint(0));
 			camHolderPos.intDivXYZ(singleton->cellsPerHolder);
 		}
 
@@ -53347,7 +53424,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		else {
 			singleton->setShaderFloat("thirdPerson", 1.0f);
 			//singleton->setShaderFloat("CAM_BOX_SIZE", 0.5f);
-			singleton->setShaderfVec3("entPos", singleton->currentActor->getCenterPoint());
+			singleton->setShaderfVec3("entPos", singleton->currentActor->getCenterPointFIV(0));
 		}
 		
 		
@@ -53428,10 +53505,10 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		if (singleton->currentActor != NULL) {
 			
-			singleton->splashArr[0] = singleton->currentActor->getCenterPoint()->getFX();
-			singleton->splashArr[1] = singleton->currentActor->getCenterPoint()->getFX();
-			singleton->splashArr[2] = singleton->currentActor->getCenterPoint()->getFX();
-			singleton->splashArr[3] = singleton->currentActor->getVel()->length();
+			singleton->splashArr[0] = singleton->currentActor->getCenterPointFIV(0)->getFX();
+			singleton->splashArr[1] = singleton->currentActor->getCenterPointFIV(0)->getFX();
+			singleton->splashArr[2] = singleton->currentActor->getCenterPointFIV(0)->getFX();
+			singleton->splashArr[3] = singleton->currentActor->getVel(0)->length();
 			
 			singleton->setShaderInt("numSplashes", 1);
 			singleton->setShaderArrayfVec4("splashArr", singleton->splashArr, MAX_SPLASHES);
@@ -53670,7 +53747,7 @@ int GameWorld::getClosestObj (int actorId, FIVector4 * basePoint)
 			if (
 				(testInd == actorId) ||
 				(testObj->isGrabbedById >= 0) ||
-				(testObj->getVel()->length() > 1.0f) ||
+				(testObj->getVel(0)->length() > 1.0f) ||
 				(testObj->entType == E_ENTTYPE_BULLET) ||
 				(testObj->entType == E_ENTTYPE_TRACE) ||
 				(testObj->isHidden)
@@ -53681,7 +53758,7 @@ int GameWorld::getClosestObj (int actorId, FIVector4 * basePoint)
 				
 				
 				
-				testDis = testObj->getCenterPoint()->distance(basePoint);
+				testDis = testObj->getCenterPointFIV(0)->distance(basePoint);
 				
 				if (testDis < bestDis) {
 					bestDis = testDis;
@@ -54024,7 +54101,7 @@ void GameWorld::renderGeom ()
 				
 				
 				
-		// 		// tempVec3.copyFrom(curObj->getCenterPoint());
+		// 		// tempVec3.copyFrom(curObj->getCenterPointFIV(0));
 		// 		// tempVec3.setFW(curObj->ang);
 				
 		// 		// singleton->setShaderfVec4("rotationZ",&tempVec3);
@@ -54047,7 +54124,7 @@ void GameWorld::renderGeom ()
 						
 		// 				// singleton->setShaderFloat("objectId",0);
 						
-		// 				// tempVec1.copyFrom( curObj->getCenterPoint() );
+		// 				// tempVec1.copyFrom( curObj->getCenterPointFIV(0) );
 						
 						
 		// 				// curOr = curObj->orientationXYZ.getIX();
@@ -54422,7 +54499,7 @@ void GameWorld::renderGeom ()
 				
 				
 		// 		/////
-		// 		tempVec1.copyFrom( curObj->getCenterPoint() );
+		// 		tempVec1.copyFrom( curObj->getCenterPointFIV(0) );
 		// 		curOr = curObj->orientationXYZ.getIY();
 		// 		tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
 		// 		//tempVec2.multXYZ(1.0f);
@@ -54430,7 +54507,7 @@ void GameWorld::renderGeom ()
 		// 		//tempVec3.averageXYZ(&tempVec1,&tempVec2);
 				
 				
-		// 		rotVec.copyFrom(curObj->getCenterPoint());
+		// 		rotVec.copyFrom(curObj->getCenterPointFIV(0));
 		// 		//rotVec.addXYZ(0.0,2.0,0.0);
 		// 		rotVec.setFW( curObj->ang + curObj->angRelative );
 		// 		singleton->setShaderfVec4("rotZ",&rotVec);
@@ -54566,9 +54643,9 @@ void GameWorld::renderGeom ()
 		// 		glMultiTexCoord4f(GL_TEXTURE0, visObjects[i], yval, 1.0f, 1.0f);
 		// 		glMultiTexCoord4f(GL_TEXTURE1, x1,y1,x2,y2);
 		// 		glVertex3f(
-		// 			curObj->getCenterPoint()->getFX(),
-		// 			curObj->getCenterPoint()->getFY(),
-		// 			curObj->getCenterPoint()->getFZ()
+		// 			curObj->getCenterPointFIV(0)->getFX(),
+		// 			curObj->getCenterPointFIV(0)->getFY(),
+		// 			curObj->getCenterPointFIV(0)->getFZ()
 		// 		);
 		// 	}
 			
@@ -56754,7 +56831,7 @@ void GameWorld::postProcess ()
 			}
 			else {
 				singleton->setShaderFloat("thirdPerson", 1.0f);
-				singleton->setShaderfVec3("entPos", singleton->currentActor->getCenterPoint());
+				singleton->setShaderfVec3("entPos", singleton->currentActor->getCenterPointFIV(0));
 				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
 			
@@ -56762,7 +56839,7 @@ void GameWorld::postProcess ()
 				singleton->setShaderInt("isFalling",false);
 			}
 			else {
-				singleton->setShaderInt("isFalling",singleton->currentActor->isFalling);
+				singleton->setShaderInt("isFalling",singleton->currentActor->allFalling());
 			}
 			
 			

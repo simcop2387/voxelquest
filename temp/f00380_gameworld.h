@@ -579,7 +579,7 @@ void GameWorld::update ()
 			camHolderPos.addXYZRef(&(singleton->lookAtVec),4.0);
 		}
 		else {
-			camHolderPos.copyFrom(singleton->currentActor->getCenterPoint());
+			camHolderPos.setBTV(singleton->currentActor->getCenterPoint(0));
 			camHolderPos.intDivXYZ(singleton->cellsPerHolder);
 		}
 
@@ -1111,7 +1111,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		else {
 			singleton->setShaderFloat("thirdPerson", 1.0f);
 			//singleton->setShaderFloat("CAM_BOX_SIZE", 0.5f);
-			singleton->setShaderfVec3("entPos", singleton->currentActor->getCenterPoint());
+			singleton->setShaderfVec3("entPos", singleton->currentActor->getCenterPointFIV(0));
 		}
 		
 		
@@ -1192,10 +1192,10 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		if (singleton->currentActor != NULL) {
 			
-			singleton->splashArr[0] = singleton->currentActor->getCenterPoint()->getFX();
-			singleton->splashArr[1] = singleton->currentActor->getCenterPoint()->getFX();
-			singleton->splashArr[2] = singleton->currentActor->getCenterPoint()->getFX();
-			singleton->splashArr[3] = singleton->currentActor->getVel()->length();
+			singleton->splashArr[0] = singleton->currentActor->getCenterPointFIV(0)->getFX();
+			singleton->splashArr[1] = singleton->currentActor->getCenterPointFIV(0)->getFX();
+			singleton->splashArr[2] = singleton->currentActor->getCenterPointFIV(0)->getFX();
+			singleton->splashArr[3] = singleton->currentActor->getVel(0)->length();
 			
 			singleton->setShaderInt("numSplashes", 1);
 			singleton->setShaderArrayfVec4("splashArr", singleton->splashArr, MAX_SPLASHES);
@@ -1434,7 +1434,7 @@ int GameWorld::getClosestObj (int actorId, FIVector4 * basePoint)
 			if (
 				(testInd == actorId) ||
 				(testObj->isGrabbedById >= 0) ||
-				(testObj->getVel()->length() > 1.0f) ||
+				(testObj->getVel(0)->length() > 1.0f) ||
 				(testObj->entType == E_ENTTYPE_BULLET) ||
 				(testObj->entType == E_ENTTYPE_TRACE) ||
 				(testObj->isHidden)
@@ -1445,7 +1445,7 @@ int GameWorld::getClosestObj (int actorId, FIVector4 * basePoint)
 				
 				
 				
-				testDis = testObj->getCenterPoint()->distance(basePoint);
+				testDis = testObj->getCenterPointFIV(0)->distance(basePoint);
 				
 				if (testDis < bestDis) {
 					bestDis = testDis;
@@ -1788,7 +1788,7 @@ void GameWorld::renderGeom ()
 				
 				
 				
-		// 		// tempVec3.copyFrom(curObj->getCenterPoint());
+		// 		// tempVec3.copyFrom(curObj->getCenterPointFIV(0));
 		// 		// tempVec3.setFW(curObj->ang);
 				
 		// 		// singleton->setShaderfVec4("rotationZ",&tempVec3);
@@ -1811,7 +1811,7 @@ void GameWorld::renderGeom ()
 						
 		// 				// singleton->setShaderFloat("objectId",0);
 						
-		// 				// tempVec1.copyFrom( curObj->getCenterPoint() );
+		// 				// tempVec1.copyFrom( curObj->getCenterPointFIV(0) );
 						
 						
 		// 				// curOr = curObj->orientationXYZ.getIX();
@@ -2186,7 +2186,7 @@ void GameWorld::renderGeom ()
 				
 				
 		// 		/////
-		// 		tempVec1.copyFrom( curObj->getCenterPoint() );
+		// 		tempVec1.copyFrom( curObj->getCenterPointFIV(0) );
 		// 		curOr = curObj->orientationXYZ.getIY();
 		// 		tempVec2.setFXYZRef( &(singleton->dirVecs[curOr]) );
 		// 		//tempVec2.multXYZ(1.0f);
@@ -2194,7 +2194,7 @@ void GameWorld::renderGeom ()
 		// 		//tempVec3.averageXYZ(&tempVec1,&tempVec2);
 				
 				
-		// 		rotVec.copyFrom(curObj->getCenterPoint());
+		// 		rotVec.copyFrom(curObj->getCenterPointFIV(0));
 		// 		//rotVec.addXYZ(0.0,2.0,0.0);
 		// 		rotVec.setFW( curObj->ang + curObj->angRelative );
 		// 		singleton->setShaderfVec4("rotZ",&rotVec);
@@ -2330,9 +2330,9 @@ void GameWorld::renderGeom ()
 		// 		glMultiTexCoord4f(GL_TEXTURE0, visObjects[i], yval, 1.0f, 1.0f);
 		// 		glMultiTexCoord4f(GL_TEXTURE1, x1,y1,x2,y2);
 		// 		glVertex3f(
-		// 			curObj->getCenterPoint()->getFX(),
-		// 			curObj->getCenterPoint()->getFY(),
-		// 			curObj->getCenterPoint()->getFZ()
+		// 			curObj->getCenterPointFIV(0)->getFX(),
+		// 			curObj->getCenterPointFIV(0)->getFY(),
+		// 			curObj->getCenterPointFIV(0)->getFZ()
 		// 		);
 		// 	}
 			
@@ -4518,7 +4518,7 @@ void GameWorld::postProcess ()
 			}
 			else {
 				singleton->setShaderFloat("thirdPerson", 1.0f);
-				singleton->setShaderfVec3("entPos", singleton->currentActor->getCenterPoint());
+				singleton->setShaderfVec3("entPos", singleton->currentActor->getCenterPointFIV(0));
 				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
 			
@@ -4526,7 +4526,7 @@ void GameWorld::postProcess ()
 				singleton->setShaderInt("isFalling",false);
 			}
 			else {
-				singleton->setShaderInt("isFalling",singleton->currentActor->isFalling);
+				singleton->setShaderInt("isFalling",singleton->currentActor->allFalling());
 			}
 			
 			

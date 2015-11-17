@@ -1938,6 +1938,7 @@ public:
 		body = singleton->gamePhysics->example->createRigidBody(0,trans,trimeshShape);
 		body->setFriction (btScalar(0.9));
 		body->bodyUID = -1;
+		body->limbUID = -1;
 		
 		singleton->gamePhysics->example->updateGraphicsObjects();
 		

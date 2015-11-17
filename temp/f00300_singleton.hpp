@@ -617,6 +617,11 @@ public:
 		
 	}
 
+	FIVector4 btvConv;
+	FIVector4* BTV2FIV(btVector3 btv) {
+		btvConv.setFXYZ(btv.getX(),btv.getY(),btv.getZ());
+		return &btvConv;
+	}
 	
 	void setSelInd(int ind) {
 		
@@ -2042,7 +2047,7 @@ public:
 				
 			}
 			else {
-				playSoundPosAndPitch(soundName,cameraGetPosNoShake(),ge->getCenterPoint(),variance,volume,doLoop);
+				playSoundPosAndPitch(soundName,cameraGetPosNoShake(),BTV2FIV(ge->getCenterPoint(0)),variance,volume,doLoop);
 			}
 		}
 		
@@ -2156,7 +2161,7 @@ public:
 			
 			cout << "actObjInd " << actObjInd << "\n";
 			
-			subjectDistance = currentActor->getCenterPoint()->distance(cameraGetPosNoShake());
+			subjectDistance = BTV2FIV(currentActor->getCenterPoint(0))->distance(cameraGetPosNoShake());
 			
 			cout << "subjectDistance " << subjectDistance << "\n"; 
 		}
@@ -2534,10 +2539,7 @@ public:
 				parentUID,
 				curId,
 				E_ENTTYPE_OBJ,
-				&lastCellPos,
-				1,
-				1,
-				1
+				&lastCellPos
 			);
 			
 			gw->gameObjects[parentUID].children.push_back(gameObjCounter);
@@ -2718,7 +2720,7 @@ public:
 						
 						lastCellPos.copyFrom(_worldMarker);
 						lastCellPos.addXYZ(0,0,5);
-						sourceObj->setCenterPoint(&lastCellPos);
+						sourceObj->startPoint = lastCellPos.getBTV();
 						
 						
 						gw->gameObjects[sourceObj->parentUID].removeChild(sourceObj->uid);
@@ -2939,8 +2941,7 @@ PERFORM_DRAG_END:
 			0,
 			newType,
 			et,
-			&newPos,
-			xv,yv,zv
+			&newPos
 		);
 		
 		if (
@@ -4424,6 +4425,10 @@ DISPATCH_EVENT_END:
 	{
 		curShaderPtr->setShaderfVec3(paramName, v);
 	}
+	void setShaderbtVec3(string paramName, btVector3 v)
+	{
+		curShaderPtr->setShaderbtVec3(paramName, v);
+	}
 
 	void setShaderVec4(string paramName, float x, float y, float z, float w)
 	{
@@ -4756,9 +4761,9 @@ DISPATCH_EVENT_END:
 	
 	void angleToVec(FIVector4* fv, float xr, float yr) {
 		fv->setFXYZ(
-			 cos(xr)*sin(yr),
-			 sin(xr)*sin(yr),
-			 cos(yr)
+			cos(xr)*sin(yr),
+			sin(xr)*sin(yr),
+			cos(yr)
 		);
 		fv->normalize();
 	}
@@ -4811,7 +4816,7 @@ DISPATCH_EVENT_END:
 		//testHuman->basePosition.copyFrom(&(dynObjects[E_OBJ_HUMAN]->pos));
 		
 		if (currentActor != NULL) {
-			testHuman->basePosition.copyFrom(currentActor->getCenterPoint());
+			testHuman->basePosition.setBTV(currentActor->getCenterPoint(0));
 		}
 		
 		transformOrg(testHuman);
@@ -5339,27 +5344,29 @@ DISPATCH_EVENT_END:
 		
 		BaseObj* ge = &(gw->gameObjects[actorId]);
 		
-		float JUMP_AMOUNT = 30.0f/STEP_TIME_IN_SEC;
+		if (ge->bodies.size() < 0) {
+			return;
+		}
+		
+		float JUMP_AMOUNT = 1.0f*ge->getTotalMass()/STEP_TIME_IN_SEC;
 		
 		
 		if (isUp == 1) {
-			if (ge->inWater) {
+			if (ge->bodies[0].inWater) {
 				
-				ge->isFalling = true;
-				//ge->isJumping = true;
 				
 				if (
 					gw->getCellAtCoords(
-						ge->getCenterPoint()->getFX(),
-						ge->getCenterPoint()->getFY(),
-						ge->getCenterPoint()->getFZ() + 1.0f
+						ge->getCenterPoint(0).getX(),
+						ge->getCenterPoint(0).getY(),
+						ge->getCenterPoint(0).getZ() + 1.0f
 					) == E_CD_EMPTY
 				) {
 					
 					
 					// at water surface
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true);
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true, 0);
 					
 					
 					
@@ -5369,7 +5376,7 @@ DISPATCH_EVENT_END:
 					// underwater
 					
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true);
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true, 0);
 					
 					playSoundEnt(
 						"bubble0",
@@ -5382,16 +5389,13 @@ DISPATCH_EVENT_END:
 				
 			}
 			else {
-				if (ge->isFalling) {
+				if (ge->allFalling()) {
 					
 				}
 				else {
 					
 					
-					ge->isFalling = true;
-					//ge->isJumping = true;
-					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true);
+					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true, 0);
 					
 					playSoundEnt(
 						"jump0",
@@ -5403,8 +5407,8 @@ DISPATCH_EVENT_END:
 			}
 		}
 		else {
-			if (ge->inWater) {
-				ge->applyImpulse(btVector3(0.0f,0.0f,-JUMP_AMOUNT), true);
+			if (ge->bodies[0].inWater) {
+				ge->applyImpulse(btVector3(0.0f,0.0f,-JUMP_AMOUNT), true, 0);
 				
 				playSoundEnt(
 					"bubble0",
@@ -7255,7 +7259,7 @@ DISPATCH_EVENT_END:
 				// 	ca->targAng += (-2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,-0.2)/STEP_TIME_IN_SEC, true);
+				ca->applyAngularImpulse(btVector3(0,0,-0.2)/STEP_TIME_IN_SEC, true, 0);
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_LEFT]) {
@@ -7266,7 +7270,7 @@ DISPATCH_EVENT_END:
 				// 	ca->targAng += (2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,0.2)/STEP_TIME_IN_SEC, true);
+				ca->applyAngularImpulse(btVector3(0,0,0.2)/STEP_TIME_IN_SEC, true, 0);
 			}
 			
 			
@@ -7305,14 +7309,32 @@ DISPATCH_EVENT_END:
 				
 				//tempVec2.addXYZ(tempVec1[0],tempVec1[1],0.0f);
 				
-				ca->applyImpulseRot(btVector3(0,1,0)/STEP_TIME_IN_SEC, true);
+				if (ca->hasBodies()) {
+					ca->applyImpulseOtherRot(
+						btVector3(0,0.1,0)*ca->getTotalMass()/STEP_TIME_IN_SEC,
+						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
+						true,
+						0
+					);
+				}
+				
+				
 				
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
 				//tempVec2.addXYZ(-tempVec1[0],-tempVec1[1],0.0f);
 				
-				ca->applyImpulseRot(btVector3(0,-1,0)/STEP_TIME_IN_SEC, true);
+				if (ca->hasBodies()) {
+					ca->applyImpulseOtherRot(
+						btVector3(0,-0.1,0)*ca->getTotalMass()/STEP_TIME_IN_SEC,
+						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
+						true,
+						0
+					);
+				}
+				
+				
 				
 			}
 			
@@ -7510,14 +7532,14 @@ DISPATCH_EVENT_END:
 		if (currentActor != NULL) {
 				
 			if (firstPerson) {
-				targetCameraPos.copyFrom(currentActor->getCenterPoint());
-				targetCameraPos.addXYZ(0.0f,0.0f,currentActor->diameterInCells.getFZ()*0.5f);
+				targetCameraPos.setBTV(currentActor->getCenterPoint(0));
+				targetCameraPos.addXYZ(0.0f,0.0f,2.0f);
 			}
 			else {
 				targetCameraPos.copyFrom(&lookAtVec);
 				targetCameraPos.multXYZ( -(subjectDistance)*subjectZoom*tempZoom );
 				
-				targetCameraPos.addXYZRef(currentActor->getCenterPoint());
+				targetCameraPos.addXYZRef(BTV2FIV(currentActor->getCenterPoint(0)));
 				
 			}
 			
@@ -7612,7 +7634,7 @@ DISPATCH_EVENT_END:
 		
 		
 		
-		newPos.copyFrom(ge->getCenterPoint());
+		newPos.setBTV(ge->getCenterPoint(0));
 		newPos.addXYZ(0.0f,0.0f,-2.0f);
 		
 		if (waterBulletOn) {
@@ -7634,7 +7656,7 @@ DISPATCH_EVENT_END:
 		}
 		
 		sphereStack.push_back(SphereStruct());
-		sphereStack.back().position.copyFrom(ge->getCenterPoint());
+		sphereStack.back().position.setBTV(ge->getCenterPoint(0));
 		sphereStack.back().curRad = 1.0f;
 		sphereStack.back().maxRad = explodeRad;
 		sphereStack.back().radVel = 40.0f;
@@ -7646,8 +7668,8 @@ DISPATCH_EVENT_END:
 		
 		explodeStack.push_back(ExplodeStruct());
 		
-		if (ge->body != NULL) {
-			explodeStack.back().pos = ge->body->getCenterOfMassPosition();
+		if (ge->hasBodies()) {
+			explodeStack.back().pos = ge->bodies[0].body->getCenterOfMassPosition();
 			explodeStack.back().radius = 20.0f;
 			explodeStack.back().power = 200.0f;
 		}
@@ -7688,11 +7710,16 @@ DISPATCH_EVENT_END:
 			// 	30.0f	
 			// );
 			
-			gw->gameObjects[ca->isGrabbingId].applyImpulseOtherRot(
-				btVector3(0.0,30.0,40.0)/STEP_TIME_IN_SEC,
-				ca->rotMat,
-				true
-			);
+			
+			if (ca->hasBodies()) {
+				gw->gameObjects[ca->isGrabbingId].applyImpulseOtherRot(
+					btVector3(0.0,4.0,4.0)*gw->gameObjects[ca->isGrabbingId].getTotalMass()/STEP_TIME_IN_SEC,
+					ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
+					true,
+					0
+				);
+			}
+			
 			
 			playSoundEnt(
 				"woosh0",
@@ -7711,7 +7738,8 @@ DISPATCH_EVENT_END:
 		else {
 			// find obj to pickup
 			
-			res = gw->getClosestObj(actorId, ca->getCenterPoint());
+			
+			res = gw->getClosestObj(actorId, BTV2FIV(ca->getCenterPoint(0)));
 			
 			if (res < 0) {
 				
@@ -7756,33 +7784,42 @@ DISPATCH_EVENT_END:
 			
 		}
 		else {
-			newCellPos.copyFrom(ca->getCenterPoint());
 			
-			// vx = cos(ca->ang)*3.0f;
-			// vx = vx;
+			if (ca->hasBodies()) {
 			
-			// vy = sin(ca->ang)*3.0f;
-			// vy = vy;
+				newCellPos.setBTV(ca->getCenterPoint(0));
+				
+				// vx = cos(ca->ang)*3.0f;
+				// vx = vx;
+				
+				// vy = sin(ca->ang)*3.0f;
+				// vy = vy;
+				
+				
+				btVector3 tempBTV = ca->multByOtherRot(
+					btVector3(0.0f,3.0f,3.0f),
+					ca->bodies[0].body->getCenterOfMassTransform().getBasis()
+				);
+				newCellPos.addXYZ(tempBTV.getX(), tempBTV.getY(), tempBTV.getZ());
+				
+				entNum = placeNewEnt(false, bulletType, &newCellPos);
+				
+				
+				
+				// gw->gameObjects[entNum].setVel(
+				// 	cos(ca->ang)*20.0f,
+				// 	sin(ca->ang)*20.0f,
+				// 	30.0f
+				// );
 			
 			
-			btVector3 tempBTV = ca->multByOtherRot(btVector3(0.0f,3.0f,3.0f),ca->rotMat);
-			newCellPos.addXYZ(tempBTV.getX(), tempBTV.getY(), tempBTV.getZ());
-			
-			entNum = placeNewEnt(false, bulletType, &newCellPos);
-			
-			
-			
-			// gw->gameObjects[entNum].setVel(
-			// 	cos(ca->ang)*20.0f,
-			// 	sin(ca->ang)*20.0f,
-			// 	30.0f
-			// );
-			
-			gw->gameObjects[entNum].applyImpulseOtherRot(
-				btVector3(0.0,30.0,40.0)/STEP_TIME_IN_SEC,
-				ca->rotMat,
-				true
-			);
+				gw->gameObjects[entNum].applyImpulseOtherRot(
+					btVector3(0.0,4.0,4.0)*gw->gameObjects[entNum].getTotalMass()/STEP_TIME_IN_SEC,
+					ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
+					true,
+					0
+				);
+			}
 			
 			
 			
@@ -9099,22 +9136,25 @@ DISPATCH_EVENT_END:
 							
 						}
 						
-						if (currentActor != NULL) {
+						if (
+							(currentActor != NULL) &&
+							currentActor->hasBodies()	
+						) {
 							
-							if (currentActor->inWater) {
+							if (currentActor->bodies[0].inWater) {
 								temp = clampfZO(
-									currentActor->getVel()->length()
+									currentActor->getVel(0)->length()
 								)*0.25f;
 								temp2 = 0.0f;
 							}
 							else {
 								
-								if (currentActor->isFalling) {
+								if (currentActor->allFalling()) {
 									temp2 = 0.0f;
 								}
 								else {
 									temp2 = clampfZO(
-										currentActor->getVel()->length()
+										currentActor->getVel(0)->length()
 									);
 								}
 								
@@ -9126,14 +9166,14 @@ DISPATCH_EVENT_END:
 							updateSoundPosAndPitch(
 								"swimming0",
 								cameraGetPosNoShake(),
-								currentActor->getCenterPoint(),
+								BTV2FIV(currentActor->getCenterPoint(0)),
 								temp,
 								0.01
 							);
 							updateSoundPosAndPitch(
 								"walkinggravel0",
 								cameraGetPosNoShake(),
-								currentActor->getCenterPoint(),
+								BTV2FIV(currentActor->getCenterPoint(0)),
 								temp2,
 								0.1
 							);

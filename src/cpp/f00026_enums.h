@@ -1037,12 +1037,29 @@ enum E_PATH_FILL_OPS {
 	E_PFO_LENGTH
 };
 
+struct BodyStruct {
+	btRigidBody* body;
+	btVector3 lastVel;
+	btVector3 totAV;
+	btVector3 totLV;
+	
+	float mass;
+	
+	bool inWater;
+	bool isFalling;
+	bool hasContact;
+	bool isInside;
+};
+
 struct ActorJointStruct {
 	float rad;
 	float length;
-	
-	btVector3 axis;
-	float angle;
+	btVector3 begOrig;
+	btVector3 midOrig;
+	btVector3 endOrig;
+	btVector3 targAlign;
+	btQuaternion quat;
+	//btVector3 pivotAxis;
 	
 	int jointId;
 	int parentId;

@@ -6,7 +6,6 @@
 GamePhysics::GamePhysics ()
                       {
 		gameActor = NULL;
-		ragDoll = NULL;
 		//8000; // ~120 times per second
 	}
 void GamePhysics::init (Singleton * _singleton)
@@ -52,11 +51,11 @@ void GamePhysics::remBoxFromObj (BaseObjType _uid)
 		
 		BaseObj* ge = &(singleton->gw->gameObjects[_uid]);
 		
-		if (ge->body != NULL) {
-			example->removeRigidBody(ge->body);
-			ge->body = NULL;
+		int bodInd;
+		for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
+			example->removeRigidBody(ge->bodies[bodInd].body);
 		}
-		
+		ge->bodies.clear();
 	}
 void GamePhysics::addBoxFromObj (BaseObjType _uid)
                                              {
@@ -71,7 +70,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 		
 		btTransform trans;
 		trans.setIdentity();
-		trans.setOrigin(ge->getCenterPoint(false)->getBTV());
+		trans.setOrigin(ge->startPoint);
 		
 		
 		float objRad = 0.5f;
@@ -83,56 +82,44 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 			// btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(1.0f,1.0f);
 			// ge->body = example->createRigidBody(ge->mass,trans,capsuleShape);
 			// ge->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
-			//ge->body->setLinearFactor(btVector3(0.0f,0.0f,0.0f));
+			// ge->body->setLinearFactor(btVector3(0.0f,0.0f,0.0f));
 			
 			
 			
 			
 			gameActor = new GameActor(
 				example->getWorld(),
-				ge->getCenterPoint(false)->getBTV(),
-				false,
-				_uid
+				ge->startPoint,
+				false
 			);
-			for (i = 0; i < BODYPART_COUNT_GA; i++) {
+			for (i = 0; i < gameActor->actorJoints.size(); i++) {
+				
+				
+				ge->bodies.push_back(BodyStruct());
+				ge->bodies.back().body = gameActor->actorJoints[i].body;
+				
 				if (i == 0) {
-					ge->body = gameActor->actorJoints[i].body;
+					//ge->body = gameActor->actorJoints[i].body;
 					//ge->body->setLinearFactor(btVector3(0.0f,0.0f,0.0f));
-					ge->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
+					ge->bodies.back().body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
 				}
 				else {
-					ge->limbs.push_back(gameActor->actorJoints[i].body);
+					
 				}
 			}
 			
-			
-			
-			// ragDoll = new GameRagDoll(
-			// 	example->getWorld(),
-			// 	ge->getCenterPoint(false)->getBTV(),
-			// 	4.0f,
-			// 	_uid
-			// );
-			
-			// for (i = 0; i < ragDoll->BODYPART_COUNT; i++) {
-			// 	if (i == 0) {
-			// 		ge->body = ragDoll->m_bodies[i];
-			// 	}
-			// 	else {
-			// 		ge->limbs.push_back(ragDoll->m_bodies[i]);
-			// 	}
-				
-			// }
 			
 		}
 		else {
 			
 			
 			btBoxShape* boxShape = new btBoxShape(btVector3(objRad,objRad,objRad));
-			ge->body = example->createRigidBody(ge->mass,trans,boxShape);
+			ge->bodies.push_back(BodyStruct());
+			ge->bodies.back().body = example->createRigidBody(MASS_PER_LIMB,trans,boxShape);
 			
 			if (ge->entType == E_ENTTYPE_DEBRIS) {
-				ge->body->setAngularVelocity(btVector3(
+				
+				ge->bodies[0].body->setAngularVelocity(btVector3(
 					(fGenRand2()*2.0f-1.0f),
 					(fGenRand2()*2.0f-1.0f),
 					(fGenRand2()*2.0f-1.0f)	
@@ -145,9 +132,27 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 			
 		}
 		
-		ge->body->bodyUID = _uid;
-		ge->body->setDamping(0.1f,0.99f);
-		ge->body->setContactProcessingThreshold(0.25f);
+		int bodInd;
+		for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
+			ge->bodies[bodInd].body->bodyUID = _uid;
+			ge->bodies[bodInd].body->limbUID = bodInd;
+			ge->bodies[bodInd].body->setDamping(0.1f,0.99f);
+			ge->bodies[bodInd].body->setContactProcessingThreshold(0.25f);
+			
+			
+			ge->bodies[bodInd].mass = MASS_PER_LIMB;
+			ge->bodies[bodInd].hasContact = false;
+			ge->bodies[bodInd].isInside = false;
+			ge->bodies[bodInd].isFalling = false;
+			ge->bodies[bodInd].inWater = false;
+			ge->bodies[bodInd].lastVel = btVector3(0.0f,0.0f,0.0f);
+			ge->bodies[bodInd].totAV = btVector3(0.0f,0.0f,0.0f);
+			ge->bodies[bodInd].totLV = btVector3(0.0f,0.0f,0.0f);
+			
+			
+		}
+		
+		
 		
 	}
 void GamePhysics::motorPreTickCallback (btScalar timeStep, GameActor * curActor)
@@ -170,8 +175,7 @@ void GamePhysics::flushImpulses ()
 			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
 			
 			if (
-				(ge->isHidden) ||
-				(ge->body == NULL)
+				(ge->isHidden)
 			) {
 				
 			}
@@ -190,9 +194,9 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		int k;
 		int m;
 		
+		int bodInd;
 		int cellVal;
-		
-		bool lastFalling;
+		BodyStruct* curBody;
 		
 		BaseObj* ge;
 		
@@ -221,13 +225,17 @@ void GamePhysics::collideWithWorld (double curStepTime)
 			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
 			
 			if (
-				(ge->isHidden) ||
-				(ge->body == NULL)
+				(ge->isHidden)
 			) {
 				
 			}
 			else {
-				ge->hasContact = false;
+				
+				for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
+					ge->bodies[bodInd].hasContact = false;
+				}
+				
+				
 			}
 		}
 		
@@ -265,30 +273,28 @@ void GamePhysics::collideWithWorld (double curStepTime)
 			
 			
 			for (k = 0; k < 2; k++) {
-				if (bodies[k]->bodyUID > -1) {
-					ge = &(singleton->gw->gameObjects[bodies[k]->bodyUID]);
-					
+				if (
+					(bodies[k]->bodyUID > -1) &&
+					(bodies[k]->limbUID > -1)
+				) {
+					ge = &(singleton->gw->gameObjects[ bodies[k]->bodyUID ]);
+					curBody =  &(ge->bodies[ bodies[k]->limbUID ]);
 					
 					
 					if (
-						(ge->isHidden) ||
-						(ge->body == NULL)
+						(ge->isHidden)
 					) {
 						
 					}
 					else {
 						
 						if (hasContact) {
-							ge->hasContact = true;
+							curBody->hasContact = true;
 						}
 						
-						lastFalling = ge->isFalling;
 						
-						ge->isFalling = (!(ge->hasContact));// && (abs((float)(ge->body->getLinearVelocity().getZ())) > 4.0f);
+						curBody->isFalling = (!(curBody->hasContact));
 						
-						// if (!(ge->isFalling)) {
-						// 	//ge->isJumping = false;
-						// }
 						
 					}
 					
@@ -304,153 +310,153 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		btVector3 dirForce;
 		
 		
-		
 		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
 			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
 			
 			if (
-				(ge->isHidden) ||
-				(ge->body == NULL)
+				(ge->isHidden)
 			) {
 				
 			}
 			else {
 				
-				
-				//////////////////////
-				// APPLY FORCES
-				//////////////////////
-				
-				ge->applyImpulses(curStepTime);
-				
-				tempBTV = ge->body->getCenterOfMassPosition();
-				
-				cellVal = singleton->gw->getCellAtCoords(
-					tempBTV.getX(),
-					tempBTV.getY(),
-					tempBTV.getZ()
-				);
-				
-				
-				ge->inWater = (cellVal == E_CD_WATER);
-				ge->isInside = (cellVal == E_CD_SOLID);
-				
-				// push out from underground
-				
-				if (ge->isInside) {
-					ge->moveToPoint(tempBTV + btVector3(0,0,2));
-					
-					ge->applyImpulse(btVector3(0,0,5),false);
-					ge->lastVel = ge->body->getLinearVelocity();
-				}
-				
-				if (
-					(singleton->selObjInd == ge->uid) &&
-					singleton->markerFound &&
-					singleton->isDraggingObject &&
-					(singleton->draggingFromType == E_DT_WORLD_OBJECT)
-				) {
+				for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
+					curBody = &(ge->bodies[bodInd]);
 					
 					
-					ge->applyImpulse(
-						btVector3(
-							( singleton->worldMarker.getFX() - ge->body->getCenterOfMassPosition().getX() )*0.2f,
-							( singleton->worldMarker.getFY() - ge->body->getCenterOfMassPosition().getY() )*0.2f,
-							-(ge->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*0.2f
-						),
-						false
+					
+					
+					//$$$$$$$$$$$
+					
+					
+					
+					//////////////////////
+					// APPLY FORCES
+					//////////////////////
+					
+					ge->applyImpulses(curStepTime, bodInd);
+					
+					tempBTV = curBody->body->getCenterOfMassPosition();
+					
+					cellVal = singleton->gw->getCellAtCoords(
+						tempBTV.getX(),
+						tempBTV.getY(),
+						tempBTV.getZ()
 					);
 					
 					
+					curBody->inWater = (cellVal == E_CD_WATER);
+					curBody->isInside = (cellVal == E_CD_SOLID);
 					
-				}
-				
-				
-				
-				for (m = 0; m < singleton->sphereStack.size(); m++) {
-					tempBTV = ge->body->getCenterOfMassPosition();
-					tempBTV2 = singleton->sphereStack[m].position.getBTV();
+					// push out from underground
 					
-					totForce = (
-						1.0f-clampfZO(
-							tempBTV.distance(tempBTV2)/(singleton->sphereStack[m].curRad*5.0f)	
-						)
-					)*5.0f; // * singleton->sphereStack[m].power;
-					dirForce = tempBTV-tempBTV2;
-					dirForce.normalize();
-					dirForce = dirForce*totForce;
-					
-					dirForce.setZ(totForce);
-					
-					ge->applyImpulse(dirForce, false);
-				}
-				
-				// for (m = 0; m < singleton->explodeStack.size(); m++) {
-				// 	tempBTV = ge->body->getCenterOfMassPosition();
-				// 	totForce = (
-				// 		1.0f-clampfZO(
-				// 			tempBTV.distance(singleton->explodeStack[m].pos)/singleton->explodeStack[m].radius	
-				// 		)
-				// 	)*singleton->explodeStack[m].power;
-				// 	dirForce = tempBTV-singleton->explodeStack[m].pos;
-				// 	dirForce.normalize();
-				// 	dirForce = dirForce*totForce;
-					
-				// 	dirForce.setZ(totForce);
-					
-				// 	ge->applyImpulse(dirForce, false);
-				// }
-				
-				
-				//////////////////////
-				// END APPLY FORCES
-				//////////////////////
-				
-				
-				
-				
-				
-				nv0 = ge->body->getLinearVelocity();
-				nv0.normalize();
-				nv1 = ge->lastVel;
-				nv1.normalize();
-				
-				
-				if (
-					(!(ge->isInside)) &&
-					(
-						ge->lastVel.length() > 0.5f
-					) &&
-					(
-						(nv0.dot(nv1)) < 0.8f
-					)
-					
-				) {
-					
-					singleton->gw->fireEvent(
-						ge->uid,
-						EV_COLLISION,
-						clampfZO( (ge->lastVel.length()-0.5f)/16.0f )*
-						(1.0f-clampfZO(ge->getCenterPoint()->distance(singleton->cameraGetPosNoShake())/(50.0f)))
-					);
-				}
-				
-				
-				ge->lastVel = ge->body->getLinearVelocity();
-				
-				ge->getCenterPoint(true);
-				
-				
-				if (ge->entType == E_ENTTYPE_BULLET) {
-					if (
-						(!(ge->isFalling)) && 
-						(ge->body->getLinearVelocity().length() < 0.5)
-					) {
-							singleton->explodeBullet(ge);
+					if (curBody->isInside) {
+						
+						
+						ge->moveToPoint(tempBTV + btVector3(0,0,1.0), bodInd);
+						ge->applyImpulse(btVector3(0,0,1.0),false, bodInd);
+						curBody->lastVel = curBody->body->getLinearVelocity();
 					}
+					
+					if (
+						(singleton->selObjInd == ge->uid) &&
+						singleton->markerFound &&
+						singleton->isDraggingObject &&
+						(singleton->draggingFromType == E_DT_WORLD_OBJECT)
+					) {
+						
+						
+						ge->applyImpulse(
+							btVector3(
+								( singleton->worldMarker.getFX() - curBody->body->getCenterOfMassPosition().getX() )*0.2f,
+								( singleton->worldMarker.getFY() - curBody->body->getCenterOfMassPosition().getY() )*0.2f,
+								-(curBody->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*0.2f
+							),
+							false,
+							bodInd
+						);
+						
+						
+						
+					}
+					
+					
+					
+					for (m = 0; m < singleton->sphereStack.size(); m++) {
+						tempBTV = curBody->body->getCenterOfMassPosition();
+						tempBTV2 = singleton->sphereStack[m].position.getBTV();
+						
+						totForce = (
+							1.0f-clampfZO(
+								tempBTV.distance(tempBTV2)/(singleton->sphereStack[m].curRad*5.0f)	
+							)
+						)*5.0f; // * singleton->sphereStack[m].power;
+						dirForce = tempBTV-tempBTV2;
+						dirForce.normalize();
+						dirForce = dirForce*totForce;
+						
+						dirForce.setZ(totForce);
+						
+						ge->applyImpulse(dirForce, false, bodInd);
+					}
+					
+					
+					//////////////////////
+					// END APPLY FORCES
+					//////////////////////
+					
+					
+					
+					
+					
+					nv0 = curBody->body->getLinearVelocity();
+					nv0.normalize();
+					nv1 = curBody->lastVel;
+					nv1.normalize();
+					
+					
+					if (
+						(!(curBody->isInside)) &&
+						(
+							curBody->lastVel.length() > 0.5f
+						) &&
+						(
+							(nv0.dot(nv1)) < 0.8f
+						)
+						
+					) {
+						
+						
+						singleton->gw->fireEvent(
+							ge->uid,
+							EV_COLLISION,
+							clampfZO( (curBody->lastVel.length()-0.5f)/16.0f )*
+							(1.0f-clampfZO(ge->getCenterPointFIV(bodInd)->distance(singleton->cameraGetPosNoShake())/(50.0f)))
+						);
+					}
+					
+					
+					curBody->lastVel = curBody->body->getLinearVelocity();
+					
+					
+					
+					if (ge->entType == E_ENTTYPE_BULLET) {
+						if (
+							(!(curBody->isFalling)) && 
+							(curBody->body->getLinearVelocity().length() < 0.5)
+						) {
+								singleton->explodeBullet(ge);
+						}
+					}
+					
+					
+					
+					
+					//$$$$$$$$$$$
+					
+					
+						
 				}
-				
-				
 			}
 			
 		}

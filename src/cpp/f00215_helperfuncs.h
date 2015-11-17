@@ -154,6 +154,11 @@ void doTraceVecND(std::string traceVal0, FIVector4 *fv) {
 	doTraceND(traceVal0, " ", f__s(fv->getFX()), " ", f__s(fv->getFY()), " ", f__s(fv->getFZ())  );
 	
 }
+void traceBTV(std::string traceVal0, btVector3 myBTV) {
+	
+	doTraceND(traceVal0, " ", f__s(myBTV.getX()), " ", f__s(myBTV.getY()), " ", f__s(myBTV.getZ())  );
+	
+}
 void doTraceVecND4(std::string traceVal0, FIVector4 *fv) {
 	
 	doTraceND(traceVal0, " ", f__s(fv->getFX()), " ", f__s(fv->getFY()), " ", f__s(fv->getFZ()), " ", f__s(fv->getFW())  );

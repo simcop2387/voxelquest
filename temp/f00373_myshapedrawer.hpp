@@ -317,7 +317,7 @@ public:
 			//btglMultMatrix(m);
 			//updateMat2();
 			pushNewMat(m);
-			singleton->gw->gameObjects[uid].rotMat = singleton->curObjMatrix3;
+			//singleton->gw->gameObjects[uid].rotMat = singleton->curObjMatrix3;
 
 
 			if (shape->getShapeType() == UNIFORM_SCALING_SHAPE_PROXYTYPE)

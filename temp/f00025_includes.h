@@ -51,6 +51,8 @@ const static float TIME_DELTA = 1.0f/60.0f;
 
 const static int THREAD_DATA_COUNT = 16;
 
+const static float MASS_PER_LIMB = 10.0f;
+
 // #define DEBUG_BOUNDS 1
 
 const static float explodeRad = 5.0f;
@@ -1264,8 +1266,8 @@ GLuint indexDataQuad[] = {
 #define M_PI_8     0.5 * M_PI_4
 #endif
 
-#define NUM_LEGS_GA 6
-#define BODYPART_COUNT_GA 2 * NUM_LEGS_GA + 1
+//#define NUM_LEGS_GA 6
+//#define BODYPART_COUNT_GA 2 * NUM_LEGS_GA + 1
 //#define JOINT_COUNT_GA BODYPART_COUNT_GA - 1
 
 
@@ -3150,6 +3152,7 @@ void BenchmarkDemo::createTest5()
 					}
 					
 					tempBody->bodyUID = -1;
+					tempBody->limbUID = -1;
 					
 					numBodies++;
 				}

@@ -1076,7 +1076,7 @@ public:
 			newCamPos.copyFrom(singleton->cameraGetPosNoShake());
 		}
 		else {
-			newCamPos.copyFrom(singleton->currentActor->getCenterPoint());
+			newCamPos.setBTV(singleton->currentActor->getCenterPoint(0));
 		}
 		
 		if (notThirdPerson&&(volSizePrim < 512)) { // && (mainId==E_FID_SML)
