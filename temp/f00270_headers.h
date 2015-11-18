@@ -282,6 +282,8 @@ public:
   uint (naUintData) [8];
   int (naIntData) [8];
   float (naFloatData) [8];
+  float lastMouseOrigX;
+  float lastMouseOrigY;
   float globWheelDelta;
   float amountInvalidMove;
   float amountInvalidRotate;
@@ -592,6 +594,7 @@ public:
   void updateMultiLights ();
   void toggleFullScreen ();
   void setCameraToElevation ();
+  btVector3 getRayTo (float x, float y);
   void runReport ();
   void setFirstPerson (bool _newVal);
   int getCurActorUID ();
@@ -1372,13 +1375,14 @@ public:
 class GameActor
 {
 public:
+  Singleton * singleton;
   btDynamicsWorld * m_ownerWorld;
   std::vector <ActorJointStruct> actorJoints;
   btVector3 origOffset;
   btRigidBody * localCreateRigidBody (btScalar mass, btTransform const & startTransform, btCollisionShape * shape);
   btVector3 getStartPosition (int jointId);
   int addJoint (int parentId, float rad, float len, float mass, btVector3 targAlign, float theta, float phi);
-  GameActor (btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed);
+  GameActor (Singleton * _singleton, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed);
   void stepSim (btScalar timeStep);
   virtual ~ GameActor ();
 };
@@ -1814,8 +1818,10 @@ public:
   MyOGLApp * myOGLApp;
   GUIHelperInterface * guiHelper;
   GameActor * gameActor;
+  btRigidBody * lastBodyPick;
   GamePhysics ();
   void init (Singleton * _singleton);
+  void pickBody (btVector3 posWS1, btVector3 posWS2);
   void collectDebris ();
   void beginDrop ();
   void remBoxFromObj (BaseObjType _uid);
@@ -1979,6 +1985,7 @@ public:
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
   void updateLights ();
+  void renderDebug ();
   void postProcess ();
   ~ GameWorld ();
 };

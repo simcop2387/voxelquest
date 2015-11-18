@@ -102,14 +102,19 @@ int GameActor::addJoint (int parentId, float rad, float len, float mass, btVecto
 		btVector3 vectorA = vUp;
 		btVector3 vectorB = targAlign;
 		
+		btVector3 axis;
+		btScalar angle;
+		
+		btQuaternion quat;
+		
 		if ( abs(vectorA.dot(vectorB)) == 1.0f ) {
 			// todo: handle (anti)parallel case
 			//curJoint->pivotAxis = btVector3(0.0f,0.0f,0.0f);
 			curJoint->quat = btQuaternion(btVector3(0.0f,0.0f,1.0f), 0.0f);
 		}
 		else {
-			btVector3 axis = (vectorA.cross(vectorB)).normalized();
-			btScalar angle = btAcos(vectorA.dot(vectorB)) / (vectorA.length() * vectorB.length());
+			axis = (vectorA.cross(vectorB)).normalized();
+			angle = btAcos(vectorA.dot(vectorB)) / (vectorA.length() * vectorB.length());
 			curJoint->quat = btQuaternion(axis, angle);
 			transform.setRotation(curJoint->quat);
 			//curJoint->pivotAxis = axis;
@@ -147,15 +152,35 @@ int GameActor::addJoint (int parentId, float rad, float len, float mass, btVecto
 			localB.setIdentity();
 			//localA.getBasis().setEulerZYX(0,0,M_PI);
 			//localB.getBasis().setEulerZYX(0,0,M_PI);
-			localA.setRotation(parJoint->quat);
-			localB.setRotation(curJoint->quat);
 			
-			localA.setOrigin(
-				btVector3(0.0,0.0,-parJoint->length*0.5f)	
-			);
-			localB.setOrigin(
-				btVector3(0.0,0.0,curJoint->length*0.5f)
-			);
+			
+			
+			// vectorA = curJoint->targAlign;
+			// vectorB = parJoint->targAlign;
+			// axis = (vectorA.cross(vectorB)).normalized();
+			// angle = btAcos(vectorA.dot(vectorB)) / (vectorA.length() * vectorB.length());
+			// quat = btQuaternion(axis, angle);
+			// transform.setRotation(quat);
+			// localA.setRotation(quat);
+			
+			
+			// vectorA = parJoint->targAlign;
+			// vectorB = curJoint->targAlign;
+			// axis = (vectorA.cross(vectorB)).normalized();
+			// angle = btAcos(vectorA.dot(vectorB)) / (vectorA.length() * vectorB.length());
+			// quat = btQuaternion(axis, angle);
+			// transform.setRotation(quat);
+			// localB.setRotation(quat);
+			
+			// localA.setRotation(quat);
+			// localB.setRotation(curJoint->quat);
+			
+			// localA.setOrigin(
+			// 	btVector3(0.0,0.0,-parJoint->length*0.5f)	
+			// );
+			// localB.setOrigin(
+			// 	btVector3(0.0,0.0,curJoint->length*0.5f)
+			// );
 			
 			
 			// coneC = new btConeTwistConstraint(*(parJoint->body), *(curJoint->body), localA, localB);
@@ -163,11 +188,20 @@ int GameActor::addJoint (int parentId, float rad, float len, float mass, btVecto
 			// curJoint->joint = coneC;
 			// m_ownerWorld->addConstraint(curJoint->joint, true);
 			
+			vectorA = parJoint->targAlign;
+			vectorB = curJoint->targAlign;
+			
 			hingeC =  new btHingeConstraint(
 				*(parJoint->body),
 				*(curJoint->body),
-				localA,
-				localB
+				//localA,
+				//localB
+				
+				btVector3(0.0,0.0,-parJoint->length*0.5f),
+				btVector3(0.0,0.0,curJoint->length*0.5f),
+				(vectorA.cross(vectorB)).normalized(),
+				(vectorA.cross(vectorB)).normalized()
+				
 			);
 			hingeC->setLimit(-M_PI_8, M_PI_8);
 			curJoint->joint = hingeC;
@@ -391,11 +425,12 @@ int GameActor::addJoint (int parentId, float rad, float len, float mass, btVecto
 		return curId;
 		
 	}
-GameActor::GameActor (btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed)
+GameActor::GameActor (Singleton * _singleton, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed)
           {
 		
 		int i;
 		
+		singleton = _singleton;
 		m_ownerWorld = ownerWorld;
 		//uid = _uid;
 		
@@ -403,11 +438,11 @@ GameActor::GameActor (btDynamicsWorld * ownerWorld, btVector3 const & positionOf
 		float actorScale = 1.0f;
 
 		int curGrandParent = addJoint(
-			-1,							//int parentId,
+			-1,								//int parentId,
 			1.0f*actorScale,				//float rad,
 			1.1f*actorScale,				//float len,
-			MASS_PER_LIMB,				//float mass,
-			btVector3(0.0f,0.0f,1.0f),	//btVector3 targAlign,
+			MASS_PER_LIMB,					//float mass,
+			btVector3(0.0f,0.0f,1.0f),		//btVector3 targAlign,
 			0.0f, 0.0f
 		);
 		
@@ -422,7 +457,7 @@ GameActor::GameActor (btDynamicsWorld * ownerWorld, btVector3 const & positionOf
 			
 			curTheta = M_PI*((float)i)/3.0f;
 			
-			curPhi = M_PI_4 + 0.1;
+			curPhi = M_PI_2 + 0.1;
 			targAlign = btVector3(
 				cos(curTheta)*sin(curPhi),
 				sin(curTheta)*sin(curPhi),
@@ -438,7 +473,7 @@ GameActor::GameActor (btDynamicsWorld * ownerWorld, btVector3 const & positionOf
 				curPhi
 			);
 			
-			curPhi = M_PI_8 + 0.1;
+			curPhi = M_PI_4 + 0.1;
 			targAlign = btVector3(
 				cos(curTheta)*sin(curPhi),
 				sin(curTheta)*sin(curPhi),
@@ -455,7 +490,7 @@ GameActor::GameActor (btDynamicsWorld * ownerWorld, btVector3 const & positionOf
 			);
 			
 			
-			curPhi = M_PI_4 + 0.1;
+			curPhi = M_PI_2 + 0.1;
 			targAlign = btVector3(
 				cos(curTheta)*sin(curPhi),
 				sin(curTheta)*sin(curPhi),
@@ -636,7 +671,7 @@ void GameActor::stepSim (btScalar timeStep)
 		
 		//return;
 		
-		float m_fMuscleStrength = 10.0f;//(sin(singleton->curTime/2000.0)+1.0f)*0.5f;
+		float m_fMuscleStrength = 100.0f;//(sin(singleton->curTime/2000.0)+1.0f)*0.5f;
 		float ms = timeStep*1000000.0;
 		float minFPS = 1000000.f/60.f;
 		if (ms > minFPS) {
@@ -651,10 +686,13 @@ void GameActor::stepSim (btScalar timeStep)
 				
 			}
 			else {
+				
+				
+				
 				btHingeConstraint* hingeC = static_cast<btHingeConstraint*>(actorJoints[i].joint);
 				btScalar fCurAngle = hingeC->getHingeAngle();
 				
-				btScalar fTargetPercent = 0.5f;//(int(m_Time / 1000) % int(m_fCyclePeriod)) / m_fCyclePeriod;
+				btScalar fTargetPercent = singleton->smoothTime;//(int(m_Time / 1000) % int(m_fCyclePeriod)) / m_fCyclePeriod;
 				btScalar fTargetAngle   = 0.5 * (1 + sin(2 * M_PI * fTargetPercent));
 				btScalar fTargetLimitAngle = hingeC->getLowerLimit() + fTargetAngle * (hingeC->getUpperLimit() - hingeC->getLowerLimit());
 				btScalar fAngleError  = (fTargetLimitAngle - fCurAngle)*0.25;

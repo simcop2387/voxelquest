@@ -292,6 +292,9 @@ public:
 	int naIntData[8];
 	float naFloatData[8];
 	
+	
+	float lastMouseOrigX;
+	float lastMouseOrigY;
 	float globWheelDelta;
 	float amountInvalidMove;
 	float amountInvalidRotate;
@@ -752,7 +755,8 @@ public:
 		guiDirty = true;
 		
 		
-		
+		lastMouseOrigX = 0.0f;
+		lastMouseOrigY = 0.0f;
 		
 		threadNetSend.init();
 		threadNetRecv.init();
@@ -1234,7 +1238,6 @@ public:
 
 
 
-
 		defaultWinW = _defaultWinW / _scaleFactor;
 		defaultWinH = _defaultWinH / _scaleFactor;
 		scaleFactor = _scaleFactor;
@@ -1698,7 +1701,7 @@ public:
 		fboMap["geomTargFBO"].init(     numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
 		fboMap["combineWithWaterTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
 		
-		
+		fboMap["debugTargFBO"].init(     numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
 		
 		
 		
@@ -5266,14 +5269,111 @@ DISPATCH_EVENT_END:
 
 	}
 
-
 	
+
+	btVector3 getRayTo(float x, float y) {
+
+		//float top = 1.f;
+		//float bottom = -1.f;
+		//float nearPlane = 1.f;
+		// float tanFov = //(top-bottom)*0.5f / nearPlane;
+		// float fov = FOV//btScalar(2.0) * btAtan(tanFov);
+
+		//btVector3 camPos,camTarget;
+		
+
+		btVector3 rayFrom = cameraGetPosNoShake()->getBTV();
+		btVector3 rayForward = lookAtVec.getBTV();
+		rayForward.normalize();
+		float farPlane = clipDist[1];// 10000.f;
+		rayForward*= farPlane;
+
+		btVector3 rightOffset;
+		btVector3 cameraUp=btVector3(0,0,1);
+
+		btVector3 vertical = cameraUp;
+
+		btVector3 hor;
+		hor = rayForward.cross(vertical);
+		hor.safeNormalize();
+		vertical = hor.cross(rayForward);
+		vertical.safeNormalize();
+
+		float tanfov = tanf(0.5f*FOV);
+
+
+		hor *= 2.f * farPlane * tanfov;
+		vertical *= 2.f * farPlane * tanfov;
+
+		btScalar aspect;
+		float width = origWinW;
+		float height = origWinH;
+
+		aspect =  width / height;
+
+		hor*=aspect;
+
+
+		btVector3 rayToCenter = rayFrom + rayForward;
+		btVector3 dHor = hor * 1.f/width;
+		btVector3 dVert = vertical * 1.f/height;
+
+
+		btVector3 rayTo = rayToCenter - 0.5f * hor + 0.5f * vertical;
+		//rayTo += btScalar(x) * dHor;
+		//rayTo -= btScalar(y) * dVert;
+		return rayTo;
+	}
+
+
+
+	// void getRay(
+	// 	float mx,
+	// 	float my,
+	// 	btVector3 &begPos,
+	// 	btVector3 &endPos,
+	// 	btVector3 &rayDir
+	// ) {
+	// 	float aspect = bufferDim[1]/bufferDim[0];
+	// 	float myNear = clipDist[0];
+	// 	float myFar = clipDist[1];
+
+
+	// 	float newX = mx/bufferDim[0];
+	// 	float newY = my/bufferDim[1];
+
+	// 	newX = newX-0.5;
+	// 	newY = newY-0.5;
+
+	// 	float dx = tan(FOV*0.5f)*(newX*2.0-1.0f)/aspect;
+	// 	float dy = tan(FOV*0.5f)*((1.0f-newY)*2.0-1.0f);
+
+	// 	dx = -dx;
+
+	// 	Vector4 p1s = Vector4(dx*myNear,dy*myNear,myNear,1.0);
+	// 	Vector4 p2s = Vector4(dx*myFar,dy*myFar,myFar,1.0);
+
+	// 	Matrix4 modelviewInverse(viewMatrixDI);
+
+	// 	Vector4 p1 = modelviewInverse*p1s;
+	// 	Vector4 p2 = modelviewInverse*p2s;
+
+	// 	begPos = btVector3(p1.x, p1.y, p1.z);
+	// 	endPos = btVector3(p2.x, p2.y, p2.z);
+
+	// 	rayDir = (begPos-endPos);
+	// 	rayDir.normalize();
+
+	// }
 	
 	
 
 	void runReport() {
 		
 		//mainGUI->runReport();
+		
+		cout << "lastMouseX" << lastMouseX << "\n";
+		cout << "lastMouseY" << lastMouseY << "\n";
 		
 		cout << "polyCount " << polyCount << "\n";
 		
@@ -5894,14 +5994,14 @@ DISPATCH_EVENT_END:
 
 				case 'm':
 
-					doPathReport = true;
+					//doPathReport = true;
 
 					// medianCount++;					
 					// if (medianCount == 4) {
 					// 	medianCount = 0;
 					// }
 					
-					//runReport();
+					runReport();
 					
 					// refreshPaths = true;
 					
@@ -6319,7 +6419,8 @@ DISPATCH_EVENT_END:
 
 		mouseMoved = true;
 
-
+		lastMouseOrigX = _x;
+		lastMouseOrigY = _y;
 
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
@@ -6568,7 +6669,15 @@ DISPATCH_EVENT_END:
 			getPixData(&mouseUpOPD, x, y, true, true);
 		}
 		
+		if (lbDown) {
+			if (gamePhysics != NULL) {
+				gamePhysics->pickBody(mouseDownPD.getBTV(),mouseDownOPD.getBTV());
+			}
+		}
 		
+		if (lbClicked) {
+			gamePhysics->lastBodyPick = NULL;
+		}
 		
 		
 
@@ -9367,7 +9476,7 @@ DISPATCH_EVENT_END:
 		
 		
 		curTime = myTimer.getElapsedTimeInMilliSec();
-		smoothTime = (sin(curTime/300.0)+1.0f)*0.5f;
+		smoothTime = (sin(curTime/1000.0)+1.0f)*0.5f;
 		
 		if (timeMod) {
 			pauseTime = curTime;

@@ -1,4 +1,4 @@
-﻿Build started 11/17/2015 12:32:25 AM.
+﻿Build started 11/18/2015 2:38:20 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -265,20 +265,14 @@
          Valid JSON
                    
          GW DONE          
-         iNumSteps:  16         
          curHeight 0 newHeight 2634.04
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
-         iNumSteps:  16         
-         iNumSteps:  16         
-         iNumSteps:  16         
-         iNumSteps:  16         
-         iNumSteps:  16         
-         iNumSteps:  16         
          actObjInd 427
-         subjectDistance 30.7167
+         subjectDistance 30.3193
+         firstPerson 0
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:08:49.59
+Time Elapsed 00:01:26.71

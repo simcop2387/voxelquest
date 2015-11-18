@@ -6,9 +6,7 @@ uniform mat4 proj;
 uniform mat4 objmat;
 
 uniform float objectId;
-uniform float curTime;
 uniform vec3 cameraPos;
-uniform vec3 offsetPos;
 uniform float isWire;
 uniform vec3 matVal;
 uniform vec3 lookAtVec;
@@ -16,7 +14,6 @@ uniform vec3 lookAtVec;
 
 //varying vec3 TexCoord0;
 
-varying vec3 finalVec;
 varying vec4 worldPos;
 
 varying vec4 screenPos;
@@ -33,9 +30,9 @@ void main() {
     
     vec4 newPos = gl_Vertex;
     
-    newPos.xyz += cameraPos + lookAtVec*100.0;
+    //newPos.xyz += cameraPos + lookAtVec*100.0;
     
-    newPos.xyz += offsetPos;
+    //newPos.xyz += offsetPos;
     
     // mat2 m2x2;
     
@@ -60,7 +57,7 @@ void main() {
     
     mat4 myMat = proj*modelview;// gl_ModelViewProjectionMatrix;
     
-    screenPos = myMat * objmat* newPos; //objmat * 
+    screenPos = myMat * newPos; //objmat * 
     camDis = distance(cameraPos.xyz,newPos.xyz);
     
     gl_Position = screenPos;

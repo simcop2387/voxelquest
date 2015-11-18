@@ -895,6 +895,7 @@ public:
 		glEnable(GL_DEPTH_TEST);
 		singleton->perspectiveOn = true;
 		renderGeom();
+		renderDebug();
 		singleton->perspectiveOn = false;
 		glDisable(GL_DEPTH_TEST);
 		
@@ -4538,6 +4539,108 @@ UPDATE_LIGHTS_END:
 	// 	singleton->unbindShader();
 	// }
 
+
+	void renderDebug() {
+		
+		glLineWidth(4.0f);
+		
+		singleton->bindShader("GeomShader");
+		singleton->bindFBO("debugTargFBO");
+		
+		
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
+		singleton->setShaderFloat("isWire", 0.0);
+		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
+		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
+		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
+		
+		
+		
+		
+		
+		
+		
+		// btVector3 begPos = btVector3(0.0f,0.0f,0.0f);
+		// btVector3 endPos = btVector3(0.0f,0.0f,0.0f);
+		// btVector3 rayDir = btVector3(0.0f,0.0f,0.0f);
+		
+		// singleton->getRay(
+		// 	singleton->lastMouseX,
+		// 	singleton->lastMouseY,
+		// 	begPos,
+		// 	endPos,
+		// 	rayDir
+		// );
+		//lastBodyPick = example->bodyPick(begPos,endPos);
+		
+		// tempVec1.setBTV(rayDir);
+		// tempVec2.setBTV(rayDir);
+		
+		
+		
+		
+		
+		// tempVec1.setBTV(rayFrom*0.99 + rayTo*0.01);
+		// tempVec2.setBTV(rayTo);
+		
+		// singleton->setShaderFloat("objectId",0.0);
+		// singleton->setShaderVec3("matVal", 255, 0, 0);
+		// singleton->drawBox(&tempVec1,&tempVec2);
+		
+		
+		
+		
+		// tempVec1.copyFrom(singleton->cameraGetPosNoShake());
+		// tempVec2.copyFrom(singleton->cameraGetPosNoShake());
+		
+		// tempVec1.addXYZ(
+		// 	20.0f,
+		// 	20.0f,
+		// 	20.0f	
+		// );
+		
+		// tempVec2.addXYZ(
+		// 	200.0f,
+		// 	200.0f,
+		// 	singleton->smoothTime*200.0f	
+		// );
+		
+		// singleton->drawLine(&tempVec1,&tempVec2);
+		
+		
+		
+		
+		
+		
+		
+		// btVector3 rayFrom = singleton->cameraGetPosNoShake()->getBTV();
+		// btVector3 rayTo = singleton->getRayTo(
+		// 	singleton->origWinW - singleton->lastMouseOrigX,
+		// 	singleton->origWinH - singleton->lastMouseOrigY
+		// );
+		
+		// tempVec1.setBTV(rayFrom*(0.995+singleton->smoothTime*0.005) + rayTo*(0.005-(1.0-singleton->smoothTime)*0.005));
+		// tempVec2.copyFrom(&tempVec1);
+		// //tempVec3.setBTV(rayDir);
+		
+		
+		// tempVec1.addXYZ(-1.0f);
+		// tempVec2.addXYZ( 1.0f);
+		
+		// singleton->setShaderFloat("objectId",0.0);
+		// singleton->setShaderVec3("matVal", 255, 0, 0);
+		// singleton->drawBox(&tempVec1,&tempVec2);
+		
+		
+		
+		
+		
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		
+	}
+
 	void postProcess()
 	{
 
@@ -4702,7 +4805,8 @@ UPDATE_LIGHTS_END:
 		singleton->sampleFBO("solidTargFBO",0);
 		singleton->sampleFBO("prelightFBO", 2);
 		singleton->sampleFBO("geomTargFBO", 6);
-		singleton->setShaderTexture3D(8,singleton->volIdMat);
+		singleton->sampleFBO("debugTargFBO", 8);
+		singleton->setShaderTexture3D(10,singleton->volIdMat);
 		
 		singleton->setShaderfVec4("worldMarker",&(singleton->worldMarker));
 		singleton->setShaderInt("markerFound", (int)(singleton->markerFound));
@@ -4725,7 +4829,8 @@ UPDATE_LIGHTS_END:
 		singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 		singleton->drawFSQuad();
 		
-		singleton->setShaderTexture3D(8,0);
+		singleton->setShaderTexture3D(10,0);
+		singleton->unsampleFBO("debugTargFBO", 8);
 		singleton->unsampleFBO("geomTargFBO", 6);
 		singleton->unsampleFBO("prelightFBO", 2);
 		singleton->unsampleFBO("solidTargFBO",0);
@@ -4861,6 +4966,7 @@ UPDATE_LIGHTS_END:
 			singleton->sampleFBO("geomTargFBO", 4);
 			singleton->setShaderTexture3D(6,singleton->volIdMat);
 			singleton->sampleFBO("noiseFBOLinear", 7);
+			singleton->sampleFBO("debugTargFBO", 8);
 			
 			
 			if ((singleton->currentActor == NULL)||singleton->firstPerson) {
@@ -4900,6 +5006,8 @@ UPDATE_LIGHTS_END:
 
 			singleton->drawFSQuad();
 
+			
+			singleton->unsampleFBO("debugTargFBO", 8);
 			singleton->unsampleFBO("noiseFBOLinear", 7);
 			singleton->setShaderTexture3D(6,0);
 			singleton->unsampleFBO("geomTargFBO", 4);

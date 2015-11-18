@@ -20,6 +20,10 @@ uniform sampler3D Texture6;
 // noise fbo
 uniform sampler2D Texture7;
 
+// debug fbo
+uniform sampler2D Texture8;
+uniform sampler2D Texture9;
+
 uniform mat4 modelviewInverse;
 uniform float FOV;
 uniform vec3 lightVec;
@@ -395,8 +399,11 @@ void main() {
     vec4 oneVec = vec4(1.0);
     
     vec4 tex5 = texture2D(Texture5, TexCoord0.xy);    
-    //vec4 matValsGeom = tex5;
-    //bool valIsGeom = dot(matValsGeom.rgb,oneVec.rgb) != 0.0;
+    
+    vec4 tex8 = texture2D(Texture8, TexCoord0.xy);
+    vec4 tex9 = texture2D(Texture9, TexCoord0.xy);    
+    vec4 matValsGeom = tex9;
+    bool valIsGeom = dot(matValsGeom.rgb,oneVec.rgb) != 0.0;
     
     
     
@@ -405,6 +412,10 @@ void main() {
     if (tex4.w > tex0.w) {
         worldPosition = tex4;
     }
+    
+    // if (tex8.w > tex0.w) {
+    //     worldPosition = tex8;
+    // }
     
     
     
@@ -785,9 +796,14 @@ void main() {
     
     
 
-    // if (valIsGeom&&(!isOutline)) {
-    //     finalCol = tex2.rgb;
-    // }
+    if (valIsGeom&&(!isOutline)) {
+        
+        if (worldPosition.w < tex8.w) {
+            finalCol = tex9.rgb;
+        }
+        
+        
+    }
     
     //finalCol = vec3(tex7.a);
     

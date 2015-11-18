@@ -14,8 +14,14 @@ uniform sampler2D Texture5;
 uniform sampler2D Texture6;
 uniform sampler2D Texture7;
 
+// debug fbo
+uniform sampler2D Texture8;
+uniform sampler2D Texture9;
+
 // pal fbo
-uniform sampler3D Texture8;
+uniform sampler3D Texture10;
+
+
 
 
 //uniform float holderMod;
@@ -120,7 +126,7 @@ float randf(vec2 co)
 
 vec3 unpackColor(vec2 num, float lightVal)
 {
-	return texture3D( Texture8, vec3(lightVal, num.r, num.g + 0.5/255.0) ).rgb;
+	return texture3D( Texture10, vec3(lightVal, num.r, num.g + 0.5/255.0) ).rgb;
 }
 
 vec3 rgb2hsv(vec3 c)
@@ -256,12 +262,15 @@ void main()
 	// vec4 tex4 = texture2D(Texture6, TexCoord0.xy);
 	// vec4 tex5 = texture2D(Texture7, TexCoord0.xy);
 
+	vec4 tex8 = texture2D(Texture8, TexCoord0.xy);
+	vec4 tex9 = texture2D(Texture9, TexCoord0.xy);
+
 	float tot = float(tex1.r + tex1.g + tex1.b + tex1.a > 0.0);
 
 	vec4 matVals = vec4(0.0,0.0,pack16(tex1.w));
 	
-	// vec4 matValsGeom = tex5;
-	// bool valIsGeom = (dot(matValsGeom.rgb,oneVec.rgb) != 0.0);
+	//vec4 matValsGeom = tex9;
+	//bool valIsGeom = (dot(matValsGeom.rgb,oneVec.rgb) != 0.0);
 
 	vec4 worldPosition = tex0;
 	vec3 fogCol = getFogColor();
@@ -469,12 +478,11 @@ void main()
 	}
 	
 	// float temp = float(valIsGeom)*(
-	// 	0.25 + float(tex4.w > tex0.w)*0.5
+	// 	0.25 + float(tex8.w < tex0.w)*0.5
 	// );
-	//;
 	
-	// if (tex4.w > tex0.w) {
-	// 	resColor.rgb = mix(resColor.rgb, matValsGeom.rgb,temp);
+	// if (tex8.w > tex0.w) {
+	// 	resColor.rgb = mix(resColor.rgb, matValsGeom.rgb, temp);
 	// }
 	
 	
@@ -564,6 +572,8 @@ void main()
 	
 
 	//resColor.rgb = tex2.rgb;
+	
+	//resColor.rgb = texture2D(Texture9, TexCoord0.xy).rgb;
 
 	gl_FragData[0] = vec4(resColor.rgb,tot);
 }

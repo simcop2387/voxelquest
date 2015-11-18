@@ -1754,6 +1754,20 @@ public:
 AxisRotation axisRotationInstance;
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 struct SphereStruct {
 	FIVector4 position;
 	float maxRad;
@@ -1854,10 +1868,7 @@ public:
 		int i;
 		
 		for (i = 0; i < bodies.size(); i++) {
-			if (bodies[i].isFalling) {
-				
-			}
-			else {
+			if (bodies[i].hasContact) {
 				return false;
 			}
 		}

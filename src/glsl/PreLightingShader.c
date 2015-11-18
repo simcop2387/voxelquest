@@ -154,7 +154,7 @@ void main()
 			distance(TexCoord0.y,(0.5))
 		)			
 	)*2.0, 0.0 , 1.0) * 
-	clamp(1.0-distance(worldPosition.xyz,cameraPos.xyz)/100.0,0.0,1.0);
+	clamp(1.0-distance(worldPosition.xyz,cameraPos.xyz)/300.0,0.0,1.0);
 	
 	vec2 sStartPos = TexCoord0.xy;
 	vec2 sEndPos = TexCoord0.xy+newLight.xy*0.5; //*shadPower

@@ -156,7 +156,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		guiDirty = true;
 		
 		
-		
+		lastMouseOrigX = 0.0f;
+		lastMouseOrigY = 0.0f;
 		
 		threadNetSend.init();
 		threadNetRecv.init();
@@ -638,7 +639,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 
-
 		defaultWinW = _defaultWinW / _scaleFactor;
 		defaultWinH = _defaultWinH / _scaleFactor;
 		scaleFactor = _scaleFactor;
@@ -1102,7 +1102,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		fboMap["geomTargFBO"].init(     numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
 		fboMap["combineWithWaterTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
 		
-		
+		fboMap["debugTargFBO"].init(     numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
 		
 		
 		
@@ -4377,10 +4377,67 @@ void Singleton::setCameraToElevation ()
 		cameraGetPosNoShake()->copyFrom(&camLerpPos);
 
 	}
+btVector3 Singleton::getRayTo (float x, float y)
+                                             {
+
+		//float top = 1.f;
+		//float bottom = -1.f;
+		//float nearPlane = 1.f;
+		// float tanFov = //(top-bottom)*0.5f / nearPlane;
+		// float fov = FOV//btScalar(2.0) * btAtan(tanFov);
+
+		//btVector3 camPos,camTarget;
+		
+
+		btVector3 rayFrom = cameraGetPosNoShake()->getBTV();
+		btVector3 rayForward = lookAtVec.getBTV();
+		rayForward.normalize();
+		float farPlane = clipDist[1];// 10000.f;
+		rayForward*= farPlane;
+
+		btVector3 rightOffset;
+		btVector3 cameraUp=btVector3(0,0,1);
+
+		btVector3 vertical = cameraUp;
+
+		btVector3 hor;
+		hor = rayForward.cross(vertical);
+		hor.safeNormalize();
+		vertical = hor.cross(rayForward);
+		vertical.safeNormalize();
+
+		float tanfov = tanf(0.5f*FOV);
+
+
+		hor *= 2.f * farPlane * tanfov;
+		vertical *= 2.f * farPlane * tanfov;
+
+		btScalar aspect;
+		float width = origWinW;
+		float height = origWinH;
+
+		aspect =  width / height;
+
+		hor*=aspect;
+
+
+		btVector3 rayToCenter = rayFrom + rayForward;
+		btVector3 dHor = hor * 1.f/width;
+		btVector3 dVert = vertical * 1.f/height;
+
+
+		btVector3 rayTo = rayToCenter - 0.5f * hor + 0.5f * vertical;
+		//rayTo += btScalar(x) * dHor;
+		//rayTo -= btScalar(y) * dVert;
+		return rayTo;
+	}
 void Singleton::runReport ()
                          {
 		
 		//mainGUI->runReport();
+		
+		cout << "lastMouseX" << lastMouseX << "\n";
+		cout << "lastMouseY" << lastMouseY << "\n";
 		
 		cout << "polyCount " << polyCount << "\n";
 		
@@ -4997,14 +5054,14 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				case 'm':
 
-					doPathReport = true;
+					//doPathReport = true;
 
 					// medianCount++;					
 					// if (medianCount == 4) {
 					// 	medianCount = 0;
 					// }
 					
-					//runReport();
+					runReport();
 					
 					// refreshPaths = true;
 					
@@ -5400,7 +5457,8 @@ void Singleton::mouseMove (int _x, int _y)
 
 		mouseMoved = true;
 
-
+		lastMouseOrigX = _x;
+		lastMouseOrigY = _y;
 
 		int x = _x / scaleFactor;
 		int y = _y / scaleFactor;
@@ -5649,7 +5707,15 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 			getPixData(&mouseUpOPD, x, y, true, true);
 		}
 		
+		if (lbDown) {
+			if (gamePhysics != NULL) {
+				gamePhysics->pickBody(mouseDownPD.getBTV(),mouseDownOPD.getBTV());
+			}
+		}
 		
+		if (lbClicked) {
+			gamePhysics->lastBodyPick = NULL;
+		}
 		
 		
 
@@ -8247,7 +8313,7 @@ void Singleton::display (bool doFrameRender)
 		
 		
 		curTime = myTimer.getElapsedTimeInMilliSec();
-		smoothTime = (sin(curTime/300.0)+1.0f)*0.5f;
+		smoothTime = (sin(curTime/1000.0)+1.0f)*0.5f;
 		
 		if (timeMod) {
 			pauseTime = curTime;

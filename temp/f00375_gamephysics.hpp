@@ -8,10 +8,12 @@ public:
 	GUIHelperInterface* guiHelper;
 	
 	GameActor* gameActor;
+	btRigidBody* lastBodyPick;
 	
 	//unsigned long int stepTimeInMicroSec;
 	
 	GamePhysics() {
+		lastBodyPick = NULL;
 		gameActor = NULL;
 		//8000; // ~120 times per second
 	}
@@ -26,6 +28,49 @@ public:
 		guiHelper = new MyGLHelper(singleton, myOGLApp);
 		example = new BenchmarkDemo(guiHelper,5);
 		example->initPhysics();
+		
+	}
+	
+	void pickBody(btVector3 posWS1, btVector3 posWS2) {
+		
+		// btVector3 begPos = btVector3(0.0f,0.0f,0.0f);
+		// btVector3 endPos = btVector3(0.0f,0.0f,0.0f);
+		// btVector3 rayDir = btVector3(0.0f,0.0f,0.0f);
+		
+		// singleton->getRay(
+		// 	singleton->lastMouseX,
+		// 	singleton->lastMouseY,
+		// 	begPos,
+		// 	endPos,
+		// 	rayDir
+		// );
+		
+		
+		btVector3 begPos = singleton->cameraGetPosNoShake()->getBTV();
+		btVector3 endPos;
+		
+		if (posWS1.distance(begPos) < posWS2.distance(begPos)) {
+			endPos = posWS1;
+		}
+		else {
+			endPos = posWS2;
+		}
+		
+		
+		
+		
+		// singleton->getRayTo(
+		// 	singleton->lastMouseX,
+		// 	singleton->lastMouseY
+		// );
+		
+		lastBodyPick = example->bodyPick(begPos,endPos);
+		
+		// if (lastBodyPick != NULL) {
+		// 	cout << "objID " << lastBodyPick->bodyUID << "\n";
+		// 	cout << "limbUID " << lastBodyPick->limbUID << "\n\n";
+		// }
+		
 		
 	}
 	
@@ -98,6 +143,7 @@ public:
 			
 			
 			gameActor = new GameActor(
+				singleton,
 				example->getWorld(),
 				ge->startPoint,
 				false
@@ -153,7 +199,7 @@ public:
 			ge->bodies[bodInd].mass = MASS_PER_LIMB;
 			ge->bodies[bodInd].hasContact = false;
 			ge->bodies[bodInd].isInside = false;
-			ge->bodies[bodInd].isFalling = false;
+			ge->bodies[bodInd].isFalling = true;
 			ge->bodies[bodInd].inWater = false;
 			ge->bodies[bodInd].lastVel = btVector3(0.0f,0.0f,0.0f);
 			ge->bodies[bodInd].totAV = btVector3(0.0f,0.0f,0.0f);
@@ -246,6 +292,7 @@ public:
 				
 				for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
 					ge->bodies[bodInd].hasContact = false;
+					ge->bodies[bodInd].isFalling = true;
 				}
 				
 				
@@ -283,42 +330,45 @@ public:
 			}
 			
 			
-			
-			
-			for (k = 0; k < 2; k++) {
-				if (
-					(bodies[k]->bodyUID > -1) &&
-					(bodies[k]->limbUID > -1)
-				) {
-					ge = &(singleton->gw->gameObjects[ bodies[k]->bodyUID ]);
-					curBody =  &(ge->bodies[ bodies[k]->limbUID ]);
-					
-					
+			if (bodies[0]->bodyUID == bodies[1]->bodyUID) {
+				// don't register contacts within same entity
+			}
+			else {
+				for (k = 0; k < 2; k++) {
 					if (
-						(ge->isHidden)
+						(bodies[k]->bodyUID > -1) &&
+						(bodies[k]->limbUID > -1)
 					) {
+						ge = &(singleton->gw->gameObjects[ bodies[k]->bodyUID ]);
+						curBody =  &(ge->bodies[ bodies[k]->limbUID ]);
 						
-					}
-					else {
 						
-						if (hasContact) {
-							curBody->hasContact = true;
+						if (
+							(ge->isHidden)
+						) {
+							
+						}
+						else {
+							
+							if (hasContact) {
+								curBody->hasContact = true;
+								curBody->isFalling = false;
+							}
+							
+							
 						}
 						
-						
-						curBody->isFalling = (!(curBody->hasContact));
-						
-						
 					}
-					
 				}
 			}
+			
+			
 			
 		}
 		
 		
 		
-		
+		float totMass;
 		float totForce;
 		btVector3 dirForce;
 		
@@ -378,16 +428,35 @@ public:
 						(singleton->draggingFromType == E_DT_WORLD_OBJECT)
 					) {
 						
+						if (lastBodyPick == NULL) {
+							
+						}
+						else {
+							
+							
+							
+							if (
+								lastBodyPick->limbUID ==
+								curBody->body->limbUID
+							) {
+								
+								totMass = ge->getTotalMass();
+								
+								
+								// ge->applyImpulse(
+								// 	btVector3(
+								// 		( singleton->worldMarker.getFX() - curBody->body->getCenterOfMassPosition().getX() ),
+								// 		( singleton->worldMarker.getFY() - curBody->body->getCenterOfMassPosition().getY() ),
+								// 		-(curBody->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))
+								// 	)*totMass*0.01f,
+								// 	false,
+								// 	bodInd
+								// );
+							}
+						}
 						
-						ge->applyImpulse(
-							btVector3(
-								( singleton->worldMarker.getFX() - curBody->body->getCenterOfMassPosition().getX() )*0.2f,
-								( singleton->worldMarker.getFY() - curBody->body->getCenterOfMassPosition().getY() )*0.2f,
-								-(curBody->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))*0.2f
-							),
-							false,
-							bodInd
-						);
+						
+						
 						
 						
 						
@@ -482,8 +551,8 @@ public:
 	void updateAll() {
 		
 		while (singleton->totTimePassedPhysics > STEP_TIME_IN_MICRO_SEC) {
-			collideWithWorld(STEP_TIME_IN_MICRO_SEC/500000.0f);
-			example->stepSimulation(STEP_TIME_IN_MICRO_SEC/500000.0f);
+			collideWithWorld(STEP_TIME_IN_MICRO_SEC/400000.0f);
+			example->stepSimulation(STEP_TIME_IN_MICRO_SEC/400000.0f);
 			singleton->totTimePassedPhysics -= STEP_TIME_IN_MICRO_SEC;
 		}
 		

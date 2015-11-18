@@ -23,7 +23,7 @@ const static int MAX_PRIMTEST = 8;
 
 const static int MAX_DEPTH_PEELS = 4;
 
-const static unsigned long int STEP_TIME_IN_MICRO_SEC = 8000;
+const static unsigned long int STEP_TIME_IN_MICRO_SEC = 4000;
 const static double STEP_TIME_IN_SEC = STEP_TIME_IN_MICRO_SEC/1000000.0;
 
 const static float OFFSET_X[4] = {-0.5,0.5,0.5,-0.5};
@@ -36,8 +36,8 @@ const static int MAX_EXPLODES = 8;
 const static bool DO_SHADER_DUMP = false;
 
 
-const static int DEF_WIN_W = 1920;
-const static int DEF_WIN_H = 1080;
+const static int DEF_WIN_W = 1440;
+const static int DEF_WIN_H = 720;
 
 const static int DEF_VOL_SIZE = 128;
 
@@ -2069,6 +2069,7 @@ class BenchmarkDemo : public CommonRigidBodyBase
 	
 	void beginDrop(float x, float y, float z);
 	
+	btRigidBody* bodyPick(const btVector3& rayFromWorld, const btVector3& rayToWorld);
 	
 	void initPhysics();
 
@@ -2086,7 +2087,52 @@ class BenchmarkDemo : public CommonRigidBodyBase
 	}
 };
 
+btRigidBody* BenchmarkDemo::bodyPick(const btVector3& rayFromWorld, const btVector3& rayToWorld) {
+	
+	if (m_dynamicsWorld==0) {
+		cout << "world not ready\n";
+		return NULL;
+	}
 
+	btCollisionWorld::ClosestRayResultCallback rayCallback(rayFromWorld, rayToWorld);
+
+	m_dynamicsWorld->rayTest(rayFromWorld, rayToWorld, rayCallback);
+	if (rayCallback.hasHit())
+	{
+
+		btVector3 pickPos = rayCallback.m_hitPointWorld;
+		btRigidBody* body = (btRigidBody*)btRigidBody::upcast(rayCallback.m_collisionObject);
+		if (body)
+		{
+			//other exclusions?
+			if (!(body->isStaticObject() || body->isKinematicObject()))
+			{
+				
+				return body;
+				
+				// m_pickedBody = body;
+				// m_savedState = m_pickedBody->getActivationState();
+				// m_pickedBody->setActivationState(DISABLE_DEACTIVATION);
+				// //printf("pickPos=%f,%f,%f\n",pickPos.getX(),pickPos.getY(),pickPos.getZ());
+				// btVector3 localPivot = body->getCenterOfMassTransform().inverse() * pickPos;
+				// btPoint2PointConstraint* p2p = new btPoint2PointConstraint(*body, localPivot);
+				// m_dynamicsWorld->addConstraint(p2p, true);
+				// m_pickedConstraint = p2p;
+				// btScalar mousePickClamping = 30.f;
+				// p2p->m_setting.m_impulseClamp = mousePickClamping;
+				// //very weak constraint for picking
+				// p2p->m_setting.m_tau = 0.001f;
+			}
+		}
+		
+		
+		// m_oldPickingPos = rayToWorld;
+		// m_hitPos = pickPos;
+		// m_oldPickingDist = (pickPos - rayFromWorld).length();
+	}
+	return NULL;
+	
+}
 
 
 class btRaycastBar2
