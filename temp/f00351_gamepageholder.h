@@ -1391,7 +1391,13 @@ void GamePageHolder::createMesh ()
 			gphMinInPixels[2]
 		));
 
-		body = singleton->gamePhysics->example->createRigidBody(0,trans,trimeshShape);
+		body = singleton->gamePhysics->example->createRigidBodyMask(
+			0,
+			trans,
+			trimeshShape
+			,COL_STATIC,
+			1|2|4|8
+		);
 		body->setFriction (btScalar(0.9));
 		body->bodyUID = -1;
 		body->limbUID = -1;

@@ -136,6 +136,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		//totTimePassedGraphics = 0;
 		totTimePassedPhysics = 0;
 		
+		identMatrix.identity();
+		
 		isPressingMove = false;
 		fxaaOn = false;
 		doPathReport = false;
@@ -246,7 +248,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		curPrimMod = 0.0f;
 		curPrimTemplate = 1;
 		geomStep = 0;
+		highlightedLimb = -1;
 
+		drawOrient = false;
 		noBounce = true;
 		firstPerson = false;
 		applyToChildren = false;
@@ -1161,8 +1165,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		
-		testHuman = new GameOrg();
-		testHuman->init(this);
 		//TODO: fix this for proper angle alignment to model
 		//orientRotation();
 		
@@ -3961,14 +3963,21 @@ void Singleton::syncObjects ()
 			}
 		}
 		
-		//!!!
-		//testHuman->basePosition.copyFrom(&(dynObjects[E_OBJ_HUMAN]->pos));
 		
-		if (currentActor != NULL) {
-			testHuman->basePosition.setBTV(currentActor->getCenterPoint(0));
+		
+		for (i = 0; i < gameOrgs.size(); i++) {
+			if (currentActor != NULL) {
+				
+				if (i == currentActor->orgId) {
+					gameOrgs[i]->basePosition.setBTV(currentActor->getCenterPoint(0));
+				}
+				
+			}
+			
+			transformOrg(gameOrgs[i]);
 		}
 		
-		transformOrg(testHuman);
+		
 	}
 void Singleton::updateCamVals ()
                              {
@@ -4066,6 +4075,11 @@ void Singleton::moveCamera (FIVector4 * pModXYZ)
 	}
 GameOrgNode * Singleton::getMirroredNode (GameOrgNode * curNode)
                                                            {
+		if (getCurOrg() == NULL) {
+			return NULL;
+		}
+		GameOrg* testHuman = getCurOrg();
+		
 		if ((curNode->nodeName < E_BONE_C_BEG)&&mirrorOn) {
 			if (curNode->nodeName <= E_BONE_L_END) {
 				return testHuman->baseNode->getNode(
@@ -4255,7 +4269,7 @@ void Singleton::moveObject (float dx, float dy)
 			editPose
 			
 		) {
-				
+			
 			applyNodeChanges(activeNode, dx, dy);
 			
 		}
@@ -4508,7 +4522,7 @@ void Singleton::makeJump (int actorId, int isUp)
 			return;
 		}
 		
-		float JUMP_AMOUNT = 1.0f*ge->getTotalMass()/STEP_TIME_IN_SEC;
+		float JUMP_AMOUNT = 0.5f*ge->getMarkerMass()/STEP_TIME_IN_SEC;
 		
 		
 		if (isUp == 1) {
@@ -5489,11 +5503,7 @@ void Singleton::mouseMove (int _x, int _y)
 		float fx = ((float)x)*M_PI*2.0f / bufferDim[0];
 		float fy = ((float)y)*M_PI / bufferDim[1];
 		
-		if (mbDown) {
-			angleToVec(&lightVec, fx*2.0, fy*2.0);
-			lightVecOrig.copyFrom(&lightVec);
-			lightVec.setFZ(-abs(lightVec.getFZ()));
-		}
+		
 		
 		
 		
@@ -5539,37 +5549,45 @@ void Singleton::mouseMove (int _x, int _y)
 			//////////////
 
 
-			if (placingGeom) {
-				updateCurGeom(x, y);
+			if (
+				orgOn &&
+				editPose
+				&& (!ddVis)
+			) {
+				updateNearestOrgNode(false, &mouseMovePD);
 			}
 			else {
-				
-				if (
-					orgOn &&
-					editPose
-					&& (!ddVis)
-				) {
-					updateNearestOrgNode(false, &mouseMovePD);
+				if (!ddVis) {
+					activeNode = NULL;
+					setSelNode(NULL);
+				}
+				if (mbDown) {
+					angleToVec(&lightVec, fx*2.0, fy*2.0);
+					lightVecOrig.copyFrom(&lightVec);
+					lightVec.setFZ(-abs(lightVec.getFZ()));
 				}
 				else {
-					if (!ddVis) {
-						activeNode = NULL;
-						setSelNode(NULL);
+					if (placingGeom) {
+						updateCurGeom(x, y);
+					}
+					else {
+						
+						gw->findNearestEnt(
+							&highlightedEnts,
+							E_ET_GEOM,
+							2,
+							1,
+							&mouseMovePD
+						);
+						highlightedEnt = highlightedEnts.getSelectedEnt();
+
+
 					}
 				}
-				
-				
-				gw->findNearestEnt(
-					&highlightedEnts,
-					E_ET_GEOM,
-					2,
-					1,
-					&mouseMovePD
-				);
-				highlightedEnt = highlightedEnts.getSelectedEnt();
-
-
 			}
+			
+
+			
 
 			//////////////
 
@@ -5707,11 +5725,11 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 			getPixData(&mouseUpOPD, x, y, true, true);
 		}
 		
-		if (lbDown) {
-			if (gamePhysics != NULL) {
-				gamePhysics->pickBody(mouseDownPD.getBTV(),mouseDownOPD.getBTV());
-			}
-		}
+		// if (lbDown) {
+		// 	if (gamePhysics != NULL) {
+		// 		gamePhysics->pickBody(mouseDownPD.getBTV(),mouseDownOPD.getBTV());
+		// 	}
+		// }
 		
 		if (lbClicked) {
 			gamePhysics->lastBodyPick = NULL;
@@ -6338,7 +6356,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	ca->targAng += (-2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,-0.2)/STEP_TIME_IN_SEC, true, 0);
+				ca->applyAngularImpulse(btVector3(0,0,-0.02)/STEP_TIME_IN_SEC, true, 0);
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_LEFT]) {
@@ -6349,7 +6367,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	ca->targAng += (2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,0.2)/STEP_TIME_IN_SEC, true, 0);
+				ca->applyAngularImpulse(btVector3(0,0,0.02)/STEP_TIME_IN_SEC, true, 0);
 			}
 			
 			
@@ -6390,7 +6408,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,0.1,0)*ca->getTotalMass()/STEP_TIME_IN_SEC,
+						btVector3(0,0.02,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
 						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
@@ -6406,7 +6424,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,-0.1,0)*ca->getTotalMass()/STEP_TIME_IN_SEC,
+						btVector3(0,-0.02,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
 						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
@@ -6785,7 +6803,7 @@ void Singleton::grabThrowObj (int actorId)
 			
 			if (ca->hasBodies()) {
 				gw->gameObjects[ca->isGrabbingId].applyImpulseOtherRot(
-					btVector3(0.0,4.0,4.0)*gw->gameObjects[ca->isGrabbingId].getTotalMass()/STEP_TIME_IN_SEC,
+					btVector3(0.0,0.5,0.5)*gw->gameObjects[ca->isGrabbingId].getTotalMass()/STEP_TIME_IN_SEC,
 					ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 					true,
 					0
@@ -6886,7 +6904,7 @@ void Singleton::launchBullet (int actorId, int bulletType)
 			
 			
 				gw->gameObjects[entNum].applyImpulseOtherRot(
-					btVector3(0.0,4.0,4.0)*gw->gameObjects[entNum].getTotalMass()/STEP_TIME_IN_SEC,
+					btVector3(0.0,0.5,0.5)*gw->gameObjects[entNum].getTotalMass()/STEP_TIME_IN_SEC,
 					ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 					true,
 					0
@@ -6937,51 +6955,68 @@ bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
 		
 		//worldToScreenBase(&tempVec1, mousePosWS);
 		
+		if (getCurOrg() == NULL) {
+			return false;
+		}
+		GameOrg* testHuman = getCurOrg();
+		
 		bestNode = NULL;
-		bestNodeDis = 99999.0f;
-		findNearestOrgNode(
-			testHuman->baseNode,
-			mousePosWS//&tempVec1
-		);
 		
-		//cout << "bestNodeDis " << bestNodeDis << "\n";
+		int boneId;
 		
-		if (bestNodeDis >= 3.0f) {
-			bestNode = NULL;
-			activeNode = NULL;
-			setSelNode(NULL);
-		}
+		gamePhysics->pickBody(mouseDownPD.getBTV(),mouseDownOPD.getBTV());
 		
-		if (bestNode != NULL) {
+		if (gamePhysics->lastBodyPick == NULL) {
 			
-			setSelNode(bestNode);
-			if (setActive) {
-				activeNode = bestNode;				
+		}
+		else {
+			highlightedLimb = gamePhysics->lastBodyPick->limbUID;
+			
+			if (highlightedLimb > -1) {
+				boneId = currentActor->bodies[highlightedLimb].boneId;
+				
+				
+				if (boneId > -1) {
+					bestNode = testHuman->allNodes[boneId];
+					if (setActive) {
+						activeNode = bestNode;
+					}
+					return true;
+				}
 			}
+			
 		}
 		
-		return (bestNode != NULL);
-	}
-void Singleton::findNearestOrgNode (GameOrgNode * curNode, FIVector4 * mousePosWS)
-          {
 		
-		tempVec3.setFXYZRef(&(curNode->orgTrans[1]));
-		tempVec3.addXYZRef(&(testHuman->basePosition));
+		bestNode = NULL;
+		activeNode = NULL;
+		setSelNode(NULL);
+		return false;
 		
-		//worldToScreenBase(&tempVec2, &tempVec3);
-		float curDis = mousePosWS->distance(&tempVec3);//&tempVec2);
 		
-		if (curDis < bestNodeDis) {
-			bestNodeDis = curDis;
-			bestNode = curNode;
-		}
+		// bestNodeDis = 99999.0f;
+		// findNearestOrgNode(
+		// 	testHuman->baseNode,
+		// 	mousePosWS//&tempVec1
+		// );
 		
-		int i;
+		// //cout << "bestNodeDis " << bestNodeDis << "\n";
 		
-		for (i = 0; i < curNode->children.size(); i++) {
-			findNearestOrgNode(curNode->children[i],mousePosWS);
-		}
+		// if (bestNodeDis >= 3.0f) {
+		// 	bestNode = NULL;
+		// 	activeNode = NULL;
+		// 	setSelNode(NULL);
+		// }
 		
+		// if (bestNode != NULL) {
+			
+		// 	setSelNode(bestNode);
+		// 	if (setActive) {
+		// 		activeNode = bestNode;				
+		// 	}
+		// }
+		
+		//return (bestNode != NULL);
 	}
 void Singleton::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit)
           {
@@ -7562,8 +7597,24 @@ void Singleton::processFieldInput (unsigned char key)
 			}
 		}
 	}
+GameOrg * Singleton::getCurOrg ()
+                             {
+		if (currentActor == NULL) {
+			return NULL;
+		}
+		if (currentActor->orgId < 0) {
+			return NULL;
+		}
+		return gameOrgs[currentActor->orgId];
+	}
 void Singleton::endFieldInput (bool success)
                                          {
+		
+		if (getCurOrg() == NULL) {
+			return;
+		}
+		GameOrg* testHuman = getCurOrg();
+		
 		inputOn = false;
 		fieldMenu->visible = false;
 		

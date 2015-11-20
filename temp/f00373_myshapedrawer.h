@@ -185,7 +185,7 @@ void MyShapeDrawer::popMat ()
 		}
 void MyShapeDrawer::drawOrient (int uid)
                                          {
-			return;
+			
 			
 			if (uid == singleton->getCurActorUID()) {
 				
@@ -194,32 +194,34 @@ void MyShapeDrawer::drawOrient (int uid)
 				return;
 			}
 			
+			//cout << "yay\n";
+			
 			int oldUID = uid;
 			
-			setId(0);
+			//setId(0);
 			
 			singleton->setShaderVec3("matVal", 255, 0, 0);
 			glBegin(GL_LINES);
-			glNormal3f(0, 0, 1);
+			//glNormal3f(0, 0, 1);
 			glVertex3d(0, 0, 0);
-			glVertex3d(2, 0, 0);
+			glVertex3d(4, 0, 0);
 			glEnd();
 			
 			singleton->setShaderVec3("matVal", 0, 255, 0);
 			glBegin(GL_LINES);
-			glNormal3f(0, 0, 1);
+			//glNormal3f(0, 0, 1);
 			glVertex3d(0, 0, 0);
-			glVertex3d(0, 2, 0);
+			glVertex3d(0, 4, 0);
 			glEnd();
 			
 			singleton->setShaderVec3("matVal",0, 0, 255);
 			glBegin(GL_LINES);
-			glNormal3f(0, 0, 1);
+			//glNormal3f(0, 0, 1);
 			glVertex3d(0, 0, 0);
-			glVertex3d(0, 0, 2);
+			glVertex3d(0, 0, 4);
 			glEnd();
 			
-			setId(oldUID);
+			//setId(oldUID);
 			singleton->setShaderVec3("matVal", 1, 1, 1);
 			
 		}
@@ -444,23 +446,30 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 								btVector3(-halfExtent[0],-halfExtent[1],-halfExtent[2])};
 		#if 1
 							
-							drawOrient(uid);
-							glBegin (GL_TRIANGLES);
-							int si=36;
-							for (int i=0;i<si;i+=3)
-							{
-								const btVector3& v1 = vertices[indices[i]];;
-								const btVector3& v2 = vertices[indices[i+1]];
-								const btVector3& v3 = vertices[indices[i+2]];
-								btVector3 normal = (v3-v1).cross(v2-v1);
-								normal.normalize ();
-								glNormal3f(normal.getX(),normal.getY(),normal.getZ());
-								glVertex3f (v1.x(), v1.y(), v1.z());
-								glVertex3f (v2.x(), v2.y(), v2.z());
-								glVertex3f (v3.x(), v3.y(), v3.z());
-								
+							if (singleton->drawOrient) {
+								drawOrient(uid);
 							}
-							glEnd();
+							else {
+								glBegin (GL_TRIANGLES);
+								int si=36;
+								for (int i=0;i<si;i+=3)
+								{
+									const btVector3& v1 = vertices[indices[i]];;
+									const btVector3& v2 = vertices[indices[i+1]];
+									const btVector3& v3 = vertices[indices[i+2]];
+									btVector3 normal = (v3-v1).cross(v2-v1);
+									normal.normalize ();
+									glNormal3f(normal.getX(),normal.getY(),normal.getZ());
+									glVertex3f (v1.x(), v1.y(), v1.z());
+									glVertex3f (v2.x(), v2.y(), v2.z());
+									glVertex3f (v3.x(), v3.y(), v3.z());
+									
+								}
+								glEnd();
+							}
+							
+							
+							
 		#endif
 
 							//useWireframeFallback = false;
@@ -556,30 +565,38 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 								if (poly)
 								{
 									int i;
-									drawOrient(uid);
-									glBegin (GL_TRIANGLES);
-									for (i=0;i<poly->m_faces.size();i++)
-									{
-										btVector3 centroid(0,0,0);
-										int numVerts = poly->m_faces[i].m_indices.size();
-										if (numVerts>2)
+									
+									if (singleton->drawOrient) {
+										drawOrient(uid);
+									}
+									else {
+										
+										glBegin (GL_TRIANGLES);
+										for (i=0;i<poly->m_faces.size();i++)
 										{
-											btVector3 v1 = poly->m_vertices[poly->m_faces[i].m_indices[0]];
-											for (int v=0;v<poly->m_faces[i].m_indices.size()-2;v++)
+											btVector3 centroid(0,0,0);
+											int numVerts = poly->m_faces[i].m_indices.size();
+											if (numVerts>2)
 											{
-												
-												btVector3 v2 = poly->m_vertices[poly->m_faces[i].m_indices[v+1]];
-												btVector3 v3 = poly->m_vertices[poly->m_faces[i].m_indices[v+2]];
-												btVector3 normal = (v3-v1).cross(v2-v1);
-												normal.normalize ();
-												glNormal3f(normal.getX(),normal.getY(),normal.getZ());
-												glVertex3f (v1.x(), v1.y(), v1.z());
-												glVertex3f (v2.x(), v2.y(), v2.z());
-												glVertex3f (v3.x(), v3.y(), v3.z());
+												btVector3 v1 = poly->m_vertices[poly->m_faces[i].m_indices[0]];
+												for (int v=0;v<poly->m_faces[i].m_indices.size()-2;v++)
+												{
+													
+													btVector3 v2 = poly->m_vertices[poly->m_faces[i].m_indices[v+1]];
+													btVector3 v3 = poly->m_vertices[poly->m_faces[i].m_indices[v+2]];
+													btVector3 normal = (v3-v1).cross(v2-v1);
+													normal.normalize ();
+													glNormal3f(normal.getX(),normal.getY(),normal.getZ());
+													glVertex3f (v1.x(), v1.y(), v1.z());
+													glVertex3f (v2.x(), v2.y(), v2.z());
+													glVertex3f (v3.x(), v3.y(), v3.z());
+												}
 											}
 										}
+										glEnd ();
 									}
-									glEnd ();
+									
+									
 								} else
 								{
 									ShapeCache*	sc=cache((btConvexShape*)shape);
@@ -592,37 +609,42 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 										const unsigned int* idx = hull->getIndexPointer();
 										const btVector3* vtx = hull->getVertexPointer();
 
-										drawOrient(uid);
-										glBegin (GL_TRIANGLES);
-
-										for (int i = 0; i < hull->numTriangles (); i++)
-										{
-											int i1 = index++;
-											int i2 = index++;
-											int i3 = index++;
-											btAssert(i1 < hull->numIndices () &&
-												i2 < hull->numIndices () &&
-												i3 < hull->numIndices ());
-
-											int index1 = idx[i1];
-											int index2 = idx[i2];
-											int index3 = idx[i3];
-											btAssert(index1 < hull->numVertices () &&
-												index2 < hull->numVertices () &&
-												index3 < hull->numVertices ());
-
-											btVector3 v1 = vtx[index1];
-											btVector3 v2 = vtx[index2];
-											btVector3 v3 = vtx[index3];
-											btVector3 normal = (v3-v1).cross(v2-v1);
-											normal.normalize();
-											glNormal3f(normal.getX(),normal.getY(),normal.getZ());
-											glVertex3f (v1.x(), v1.y(), v1.z());
-											glVertex3f (v2.x(), v2.y(), v2.z());
-											glVertex3f (v3.x(), v3.y(), v3.z());
-
+										if (singleton->drawOrient) {
+											drawOrient(uid);
 										}
-										glEnd ();
+										else {
+											glBegin (GL_TRIANGLES);
+
+											for (int i = 0; i < hull->numTriangles (); i++)
+											{
+												int i1 = index++;
+												int i2 = index++;
+												int i3 = index++;
+												btAssert(i1 < hull->numIndices () &&
+													i2 < hull->numIndices () &&
+													i3 < hull->numIndices ());
+
+												int index1 = idx[i1];
+												int index2 = idx[i2];
+												int index3 = idx[i3];
+												btAssert(index1 < hull->numVertices () &&
+													index2 < hull->numVertices () &&
+													index3 < hull->numVertices ());
+
+												btVector3 v1 = vtx[index1];
+												btVector3 v2 = vtx[index2];
+												btVector3 v3 = vtx[index3];
+												btVector3 normal = (v3-v1).cross(v2-v1);
+												normal.normalize();
+												glNormal3f(normal.getX(),normal.getY(),normal.getZ());
+												glVertex3f (v1.x(), v1.y(), v1.z());
+												glVertex3f (v2.x(), v2.y(), v2.z());
+												glVertex3f (v3.x(), v3.y(), v3.z());
+
+											}
+											glEnd ();
+										}
+										
 
 									}
 								}
@@ -796,7 +818,34 @@ void MyShapeDrawer::drawSceneInternal (btDiscreteDynamicsWorld const * dynamicsW
 					
 				// }
 				
-				drawOpenGL(m,colObj->getCollisionShape(),wireColor,debugMode,aabbMin,aabbMax, body->bodyUID);
+				
+				bool doProc = true;
+				
+				if (body->bodyUID >= 0) {
+					BaseObj* ge = &(singleton->gw->gameObjects[body->bodyUID]);
+					
+					if (body->limbUID >= 0) {
+						doProc = ge->bodies[body->limbUID].isVisible;
+					}
+				}
+				
+				
+				
+				// if (
+				// 	(body->bodyUID == singleton->getCurActorUID())&&singleton->orgOn
+				// ) {
+					
+				// }
+				// else {
+				
+				if (doProc) {
+					drawOpenGL(m,colObj->getCollisionShape(),wireColor,debugMode,aabbMin,aabbMax, body->bodyUID);
+				}
+				
+					
+				//}
+				
+				
 				//drawOpenGL(m,colObj->getCollisionShape(),wireColor*btScalar(0.3),0,aabbMin,aabbMax);
 			}
 

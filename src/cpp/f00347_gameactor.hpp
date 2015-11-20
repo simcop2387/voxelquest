@@ -5,62 +5,82 @@ public:
 	Singleton* singleton;
 	btDynamicsWorld*	m_ownerWorld;
 	std::vector<ActorJointStruct> actorJoints;
+	int geId;
 	
 	//int uid;
 	btVector3 origOffset;
 
-	btRigidBody* localCreateRigidBody(btScalar mass, const btTransform& startTransform, btCollisionShape* shape) {
-		bool isDynamic = (mass != 0.f);
+	// btRigidBody* localCreateRigidBody(
+	// 	btScalar mass,
+	// 	const btTransform& startTransform,
+	// 	btCollisionShape* shape,
+	// 	int maskFrom,
+	// 	int maskTo
+	// ) {
+	// 	bool isDynamic = (mass != 0.f);
 
-		btVector3 localInertia(0,0,0);
-		if (isDynamic)
-			shape->calculateLocalInertia(mass,localInertia);
+	// 	btVector3 localInertia(0,0,0);
+	// 	if (isDynamic)
+	// 		shape->calculateLocalInertia(mass,localInertia);
 
-		btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
-		btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,shape,localInertia);
-		btRigidBody* body = new btRigidBody(rbInfo);
+	// 	btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
+	// 	btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,shape,localInertia);
+	// 	btRigidBody* body = new btRigidBody(rbInfo);
 
-		m_ownerWorld->addRigidBody(body);
+	// 	m_ownerWorld->addRigidBody(body);//, maskFrom, maskTo);
 
-		return body;
-	}
+	// 	return body;
+	// }
 	
-	btVector3 getStartPosition(int jointId) {
-		int parentId = actorJoints[jointId].parentId;
-		ActorJointStruct* parJoint;
+	// btVector3 getStartPosition(int jointId) {
+	// 	int parentId = actorJoints[jointId].parentId;
+	// 	ActorJointStruct* parJoint;
 		
-		btVector3 res;
+	// 	btVector3 res;
 		
-		if (parentId < 0) {
-			res = btVector3(0.0f,0.0f,0.0f);
-		}
-		else {
-			parJoint = &(actorJoints[parentId]);
-			res = parJoint->endOrig;
-		}
+	// 	if (parentId < 0) {
+	// 		res = btVector3(0.0f,0.0f,0.0f);
+	// 	}
+	// 	else {
+	// 		parJoint = &(actorJoints[parentId]);
+	// 		res = parJoint->endOrig;
+	// 	}
 		
-		//traceBTV("Joint ", res);
+	// 	//traceBTV("Joint ", res);
 		
-		return res;
-	}
+	// 	return res;
+	// }
 	
 	
 	int addJoint(
+		int nodeName,
 		int parentId,
+		bool isBall,
 		float rad,
 		float len,
 		float mass,
-		btVector3 targAlign,
-		float theta,
-		float phi
+		btVector3 targAlignT,
+		btVector3 targAlignB,
+		btVector3 targAlignN,
+		
+		btVector3 begPos,
+		btVector3 midPos,
+		btVector3 endPos
+		
+		//,float theta,
+		//float phi
 	) {
 		
 		
 		
 		int i;
 		btVector3 vUp(0, 0, 1);
+		btVector3 pivotA;
+		btVector3 pivotB;
 		
+		btGeneric6DofSpringConstraint* springC;
 		btHingeConstraint* hingeC;
+		btPoint2PointConstraint* ballC; //btFixedConstraint
 		btConeTwistConstraint* coneC;
 
 		btTransform localA, localB, localC;
@@ -70,25 +90,29 @@ public:
 		
 		ActorJointStruct* curJoint = &(actorJoints.back());
 		ActorJointStruct* parJoint;
-		ActorJointStruct* grdJoint;
+		//ActorJointStruct* grdJoint;
 		
+		curJoint->boneId = nodeName;
+		curJoint->isBall = isBall;
 		curJoint->rad = rad;
 		curJoint->length = len;
 		//begOrig
 		//endOrig
-		curJoint->targAlign = targAlign;
-		curJoint->jointId = curId;	
+		curJoint->targAlignT = targAlignT;
+		curJoint->targAlignB = targAlignB;
+		curJoint->targAlignN = targAlignN;
+		curJoint->jointId = curId;
 		curJoint->parentId = parentId;
 		
 		//float jointSpace  = curJoint->rad*2.0f;
 		
-		float curLength = curJoint->length - curJoint->rad*4.0;
+		float curLength = curJoint->length;// - curJoint->rad*4.0;
 		
 		if (parentId < 0) {
 			curLength = curJoint->length;
 		}
 		
-		curJoint->shape = new btCapsuleShapeZ(curJoint->rad, curLength);
+		curJoint->shape = new btCapsuleShapeX(curJoint->rad, curLength);
 		
 		btTransform transform;
 		btTransform offset;
@@ -100,9 +124,9 @@ public:
 		offset.setIdentity();
 		offset.setOrigin(origOffset);
 		
-		btVector3 begPos = getStartPosition(curId);
-		btVector3 endPos = begPos + curJoint->targAlign*(curJoint->length);
-		btVector3 midPos = (begPos+endPos)*0.5f;
+		//btVector3 begPos = getStartPosition(curId);
+		//btVector3 endPos = begPos + curJoint->targAlignT*(curJoint->length);
+		//btVector3 midPos = (begPos+endPos)*0.5f;
 		
 		curJoint->begOrig = begPos;
 		curJoint->midOrig = midPos;
@@ -113,36 +137,72 @@ public:
 		transform.setIdentity();
 		transform.setOrigin(midPos);
 		
-		btVector3 vectorA = vUp;
-		btVector3 vectorB = targAlign;
+		
 		
 		btVector3 axis;
 		btScalar angle;
-		
 		btQuaternion quat;
 		
-		if ( abs(vectorA.dot(vectorB)) == 1.0f ) {
-			// todo: handle (anti)parallel case
-			//curJoint->pivotAxis = btVector3(0.0f,0.0f,0.0f);
-			curJoint->quat = btQuaternion(btVector3(0.0f,0.0f,1.0f), 0.0f);
-		}
-		else {
-			axis = (vectorA.cross(vectorB)).normalized();
-			angle = btAcos(vectorA.dot(vectorB)) / (vectorA.length() * vectorB.length());
-			curJoint->quat = btQuaternion(axis, angle);
-			transform.setRotation(curJoint->quat);
-			//curJoint->pivotAxis = axis;
-		}
+		
+		btVector3 vectorA = vUp;
+		btVector3 vectorB = endPos-begPos;
+		vectorB.normalize();
+		
+		// if ( abs(vectorA.dot(vectorB)) == 1.0f ) {
+		// 	// todo: handle (anti)parallel case
+		// 	//curJoint->pivotAxis = btVector3(0.0f,0.0f,0.0f);
+		// 	curJoint->quat = btQuaternion(btVector3(0.0f,0.0f,1.0f), 0.0f);
+		// }
+		// else {
+		// 	axis = (vectorA.cross(vectorB)).normalized();
+		// 	angle = btAcos(vectorA.dot(vectorB)) / (vectorA.length() * vectorB.length());
+		// 	curJoint->quat = btQuaternion(axis, angle);
+		// 	transform.setRotation(curJoint->quat);
+		// 	//curJoint->pivotAxis = axis;
+		// }
+		
+		btMatrix3x3 basis = btMatrix3x3(
+			targAlignT.getX(), targAlignT.getY(), targAlignT.getZ(),
+			targAlignB.getX(), targAlignB.getY(), targAlignB.getZ(),
+			targAlignN.getX(), targAlignN.getY(), targAlignN.getZ()
+		);
+		curJoint->basis = basis;
+		transform.getBasis() = basis;
 		
 		
+		/*
+		setEulerZYX params in order: 
+		eulerX	Roll about X axis
+		eulerY	Pitch about Y axis
+		eulerZ	Yaw about Z axis
+
+		*/
 		
 		
+		// xx, xy, xz,
+		// yx, yy, yz,
+		// zx, zy, zz
 		
-		curJoint->body = localCreateRigidBody(mass, offset*transform, curJoint->shape);
+		// transform.getBasis().setValue(
+			
+		// );
+		
+		
+		int bodyCollidesWith = COL_STATIC|COL_DYN;
+		curJoint->body = singleton->gamePhysics->example->createRigidBodyMask(
+			mass,
+			offset*transform,
+			curJoint->shape,
+			COL_BODY,
+			bodyCollidesWith
+		);
 		//curJoint->body->bodyUID = uid;
 		curJoint->body->setDamping(0.05, 0.85);
 		curJoint->body->setDeactivationTime(0.8);
 		curJoint->body->setSleepingThresholds(0.5f, 0.5f);
+		// if (curJoint->isBall) {	
+		// 	curJoint->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
+		// }
 		
 		
 		
@@ -150,20 +210,93 @@ public:
 		// return curId;
 		
 
-		if (parentId < 0) {
+		if (parentId < 0) { //
 			curJoint->joint = NULL;
+			//curJoint->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
+			//curJoint->body->setLinearFactor(btVector3(0.1f,0.1f,0.1f));
+			
 		}
 		else {
 			parJoint = &(actorJoints[parentId]);
+			pivotA = btVector3(-parJoint->length*0.5f,0.0,0.0);
+			pivotB = btVector3(curJoint->length*0.5f,0.0,0.0);
+			
+			if (curJoint->isBall) {
+				
+				localA.setIdentity();
+				localB.setIdentity();
+				localA.setOrigin(pivotA);
+				localB.setOrigin(pivotB);
+				localA.getBasis() = parJoint->basis; 
+				localB.getBasis() = curJoint->basis; 
+				//localA.setRotation(parJoint->quat);
+				//localB.setRotation(curJoint->quat);
+				
+				
+				// hingeC = new btHingeConstraint(
+				// 	*(parJoint->body),
+				// 	*(curJoint->body),
+				// 	pivotA,
+				// 	pivotB,
+				// 	// parJoint->targAlignB,
+				// 	// curJoint->targAlignB,
+				// 	// false
+				// );
+				//hingeC->setLimit(-0.1, 0.1);
+				
+				// springC->enableSpring(0,false);
+				// springC->enableSpring(1,false);
+				// springC->enableSpring(2,false);
+				// springC->enableSpring(3,true);
+				// springC->enableSpring(4,true);
+				// springC->enableSpring(5,true);
+				
+				// springC->setStiffness(3,10.0f);
+				// springC->setStiffness(4,10.0f);
+				// springC->setStiffness(5,10.0f);
+				
+				//curJoint->joint = hingeC;
+				
+				ballC = new btPoint2PointConstraint(
+					*(parJoint->body),
+					*(curJoint->body),
+					pivotA,
+					pivotB
+					//localA,
+					//localB
+				);
+				curJoint->joint = ballC;
+			}
+			else {
+				// localA.setIdentity();
+				// localB.setIdentity();
+				// vectorA = parJoint->targAlign;
+				// vectorB = curJoint->targAlign;
+				
+				// hingeC =  new btHingeConstraint(
+				// 	*(parJoint->body),
+				// 	*(curJoint->body),
+				// 	//localA,
+				// 	//localB
+					
+				// 	pivotA,
+				// 	pivotB,
+				// 	(vectorA.cross(vectorB)).normalized(),
+				// 	(vectorA.cross(vectorB)).normalized()
+					
+				// );
+				// hingeC->setLimit(-M_PI_4, M_PI_4);
+				// curJoint->joint = hingeC;
+				
+			}
+			
+			
+			m_ownerWorld->addConstraint(curJoint->joint, true);
 			
 			
 			
 			
 			
-			
-			
-			localA.setIdentity();
-			localB.setIdentity();
 			//localA.getBasis().setEulerZYX(0,0,M_PI);
 			//localB.getBasis().setEulerZYX(0,0,M_PI);
 			
@@ -202,24 +335,7 @@ public:
 			// curJoint->joint = coneC;
 			// m_ownerWorld->addConstraint(curJoint->joint, true);
 			
-			vectorA = parJoint->targAlign;
-			vectorB = curJoint->targAlign;
 			
-			hingeC =  new btHingeConstraint(
-				*(parJoint->body),
-				*(curJoint->body),
-				//localA,
-				//localB
-				
-				btVector3(0.0,0.0,-parJoint->length*0.5f),
-				btVector3(0.0,0.0,curJoint->length*0.5f),
-				(vectorA.cross(vectorB)).normalized(),
-				(vectorA.cross(vectorB)).normalized()
-				
-			);
-			hingeC->setLimit(-M_PI_8, M_PI_8);
-			curJoint->joint = hingeC;
-			m_ownerWorld->addConstraint(curJoint->joint, true);
 			
 			
 			
@@ -440,9 +556,100 @@ public:
 		
 	}
 	
+	
+	
+	
+	void initFromOrg(
+		GameOrgNode* curNode,
+		int curParent
+		//FIVector4* basePosition,
+		// float scale,
+		// int drawMode,
+		// bool drawAll
+	) {
+		
+		
+		int i;
+		
+		FIVector4 lineSeg0;
+		FIVector4 lineSeg1;
+		FIVector4 lineSeg2;
+		
+		lineSeg0.setFXYZRef(&(curNode->orgTrans[0]));
+
+		
+		//lineSeg1.setFXYZRef(&(curNode->tbnRotC[0]));
+		//lineSeg1.multXYZ(  (curNode->orgVecs[E_OV_TBNRAD0][0])  );
+		//lineSeg1.addXYZRef(&(lineSeg0));
+		
+		
+		
+		
+		//float curRad = 0.025f;
+		
+		// lineSeg1.setFXYZRef(&(curNode->tbnTrans[0]));
+		// lineSeg2.copyFrom(&lineSeg1);
+		// lineSeg2.addXYZRef(&lineSeg0,-1.0f);
+		// lineSeg2.normalize();
+		// btVector3 tn = lineSeg2.getBTV();
+		
+		// float curLen = lineSeg0.distance(&lineSeg1);
+		
+		// lineSeg1.setFXYZRef(&(curNode->tbnTrans[1]));
+		// lineSeg2.copyFrom(&lineSeg1);
+		// lineSeg2.addXYZRef(&lineSeg0,-1.0f);
+		// lineSeg2.normalize();
+		// btVector3 bn = lineSeg2.getBTV();
+		
+		// lineSeg1.setFXYZRef(&(curNode->tbnTrans[2]));
+		// lineSeg2.copyFrom(&lineSeg1);
+		// lineSeg2.addXYZRef(&lineSeg0,-1.0f);
+		// lineSeg2.normalize();
+		// btVector3 nn = lineSeg2.getBTV();
+		
+		
+		int curChild = addJoint(
+			curNode->nodeName,
+			curParent,					//int parentId,
+			true,
+			0.25f,			//float rad,
+			curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV()), //curLen, // +curRad*4.0f,			//float len,
+			MASS_PER_LIMB,				//float mass,
+			//tn, bn, nn,
+		
+			curNode->tbnRotC[0].getBTV(),
+			curNode->tbnRotC[1].getBTV(),
+			curNode->tbnRotC[2].getBTV(),
+			
+			curNode->orgTrans[0].getBTV(),
+			curNode->orgTrans[1].getBTV(),
+			curNode->orgTrans[2].getBTV()
+			
+		);
+		
+		
+		
+		
+		for (i = 0; i < curNode->children.size(); i++) {
+			initFromOrg(
+				curNode->children[i],
+				curChild
+				//basePosition,
+				//scale,
+				//drawMode,
+				//drawAll
+			);
+		}
+		
+	}
+	
+	
+	
+	
 
 	GameActor(
 		Singleton* _singleton,
+		int _geId,
 		btDynamicsWorld* ownerWorld,
 		const btVector3& positionOffset,
 		bool bFixed
@@ -453,81 +660,103 @@ public:
 		
 		singleton = _singleton;
 		m_ownerWorld = ownerWorld;
+		geId = _geId;
 		//uid = _uid;
 		
 		origOffset = positionOffset;// - btVector3(0.0f,0.0f,16.0f);
 		float actorScale = 1.0f;
 
-		int curGrandParent = addJoint(
-			-1,								//int parentId,
-			1.0f*actorScale,				//float rad,
-			1.1f*actorScale,				//float len,
-			MASS_PER_LIMB,					//float mass,
-			btVector3(0.0f,0.0f,1.0f),		//btVector3 targAlign,
-			0.0f, 0.0f
+
+		initFromOrg(
+			singleton->gameOrgs[
+				singleton->gw->gameObjects[geId].orgId	
+			]->baseNode,
+			-1
 		);
+
+
+
+
+		return;
+
+
+
+
+
+		// int curGrandParent = addJoint(
+		// 	-1,								//int parentId,
+		// 	true,
+		// 	1.0f*actorScale,				//float rad,
+		// 	1.1f*actorScale,				//float len,
+		// 	MASS_PER_LIMB,					//float mass,
+		// 	btVector3(0.0f,0.0f,1.0f)		//btVector3 targAlign,
+		// 	//,0.0f, 0.0f
+		// );
 		
-		int curChild;
-		int curParent;
-		float curTheta;
-		float curPhi;
+		// int curChild;
+		// int curParent;
+		// float curTheta;
+		// float curPhi;
 		
-		btVector3 targAlign;
+		// btVector3 targAlign;
 		
-		for (i = 0; i < 6; i++) {
+		// for (i = 0; i < 6; i++) {
 			
-			curTheta = M_PI*((float)i)/3.0f;
+		// 	curTheta = M_PI*((float)i)/3.0f;
 			
-			curPhi = M_PI_2 + 0.1;
-			targAlign = btVector3(
-				cos(curTheta)*sin(curPhi),
-				sin(curTheta)*sin(curPhi),
-				cos(curPhi)	
-			);
-			curParent = addJoint(
-				curGrandParent,				//int parentId,
-				1.0f*actorScale,			//float rad,
-				8.0f*actorScale,			//float len,
-				MASS_PER_LIMB,				//float mass,
-				targAlign,					//btVector3 targAlign
-				curTheta,
-				curPhi
-			);
+		// 	curPhi = M_PI_2 + 0.1;
+		// 	targAlign = btVector3(
+		// 		cos(curTheta)*sin(curPhi),
+		// 		sin(curTheta)*sin(curPhi),
+		// 		cos(curPhi)	
+		// 	);
+		// 	curParent = addJoint(
+		// 		curGrandParent,				//int parentId,
+		// 		true,
+		// 		1.0f*actorScale,			//float rad,
+		// 		8.0f*actorScale,			//float len,
+		// 		MASS_PER_LIMB,				//float mass,
+		// 		targAlign					//btVector3 targAlign
+		// 		//,curTheta,
+		// 		//curPhi
+		// 	);
 			
-			curPhi = M_PI_4 + 0.1;
-			targAlign = btVector3(
-				cos(curTheta)*sin(curPhi),
-				sin(curTheta)*sin(curPhi),
-				cos(curPhi)	
-			);
-			curChild = addJoint(
-				curParent,					//int parentId,
-				1.0f*actorScale,			//float rad,
-				8.0f*actorScale,			//float len,
-				MASS_PER_LIMB,				//float mass,
-				targAlign,					//btVector3 targAlign
-				curTheta,
-				curPhi
-			);
+		// 	curPhi = M_PI_4 + 0.1;
+		// 	targAlign = btVector3(
+		// 		cos(curTheta)*sin(curPhi),
+		// 		sin(curTheta)*sin(curPhi),
+		// 		cos(curPhi)	
+		// 	);
+		// 	curChild = addJoint(
+		// 		curParent,					//int parentId,
+		// 		true,
+		// 		1.0f*actorScale,			//float rad,
+		// 		8.0f*actorScale,			//float len,
+		// 		MASS_PER_LIMB,				//float mass,
+		// 		targAlign					//btVector3 targAlign
+		// 		//,curTheta,
+		// 		//curPhi
+		// 	);
 			
 			
-			curPhi = M_PI_2 + 0.1;
-			targAlign = btVector3(
-				cos(curTheta)*sin(curPhi),
-				sin(curTheta)*sin(curPhi),
-				cos(curPhi)	
-			);
-			addJoint(
-				curChild,					//int parentId,
-				1.0f*actorScale,			//float rad,
-				8.0f*actorScale,			//float len,
-				MASS_PER_LIMB,				//float mass,
-				targAlign,					//btVector3 targAlign
-				curTheta,
-				curPhi
-			);
+		// 	curPhi = M_PI_2 + 0.1;
+		// 	targAlign = btVector3(
+		// 		cos(curTheta)*sin(curPhi),
+		// 		sin(curTheta)*sin(curPhi),
+		// 		cos(curPhi)	
+		// 	);
+		// 	addJoint(
+		// 		curChild,					//int parentId,
+		// 		true,
+		// 		1.0f*actorScale,			//float rad,
+		// 		8.0f*actorScale,			//float len,
+		// 		MASS_PER_LIMB,				//float mass,
+		// 		targAlign					//btVector3 targAlign
+		// 		//,curTheta,
+		// 		//curPhi
+		// 	);
 			
-		}
+		// }
 		
 		/*
 		
@@ -692,7 +921,7 @@ public:
 		
 		//return;
 		
-		float m_fMuscleStrength = 100.0f;//(sin(singleton->curTime/2000.0)+1.0f)*0.5f;
+		float m_fMuscleStrength = 10.0f;//(sin(singleton->curTime/2000.0)+1.0f)*0.5f;
 		float ms = timeStep*1000000.0;
 		float minFPS = 1000000.f/60.f;
 		if (ms > minFPS) {
@@ -701,6 +930,25 @@ public:
 
 		//m_Time += ms;
 
+		// ge->applyImpulse(
+		// 	btVector3(
+		// 		( singleton->worldMarker.getFX() - curBody->body->getCenterOfMassPosition().getX() ),
+		// 		( singleton->worldMarker.getFY() - curBody->body->getCenterOfMassPosition().getY() ),
+		// 		-(curBody->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))
+		// 	)*totMass*0.01f,
+		// 	false,
+		// 	bodInd
+		// );
+
+
+		// GameOrgNode* curNode;
+		// BaseObj* ge = &(singleton->gw->gameObjects[geId]);
+
+		// for (int i = 0; i < actorJoints.size(); i++) {
+		// 	curNode = singleton->gameOrgs[ge->orgId]->allNodes[actorJoints[i].nodeName];
+			
+		// }		
+
 		for (int i = 0; i < actorJoints.size(); i++) {
 			
 			if (actorJoints[i].joint == NULL) {
@@ -708,17 +956,24 @@ public:
 			}
 			else {
 				
+				// if (actorJoints[i].isBall) {
+					
+				// }
+				// else {
+					
+					
+					btHingeConstraint* hingeC = static_cast<btHingeConstraint*>(actorJoints[i].joint);
+					btScalar fCurAngle = hingeC->getHingeAngle();
+					
+					btScalar fTargetPercent = 0.5;//singleton->smoothTime;//(int(m_Time / 1000) % int(m_fCyclePeriod)) / m_fCyclePeriod;
+					btScalar fTargetAngle   = 0.5 * (1 + sin(2 * M_PI * fTargetPercent));
+					btScalar fTargetLimitAngle = hingeC->getLowerLimit() + fTargetAngle * (hingeC->getUpperLimit() - hingeC->getLowerLimit());
+					btScalar fAngleError  = (fTargetLimitAngle - fCurAngle)*0.25;
+					btScalar fDesiredAngularVel = 1000000.f * fAngleError/ms;
+					hingeC->enableAngularMotor(true, fDesiredAngularVel, m_fMuscleStrength);
+				//}
 				
 				
-				btHingeConstraint* hingeC = static_cast<btHingeConstraint*>(actorJoints[i].joint);
-				btScalar fCurAngle = hingeC->getHingeAngle();
-				
-				btScalar fTargetPercent = singleton->smoothTime;//(int(m_Time / 1000) % int(m_fCyclePeriod)) / m_fCyclePeriod;
-				btScalar fTargetAngle   = 0.5 * (1 + sin(2 * M_PI * fTargetPercent));
-				btScalar fTargetLimitAngle = hingeC->getLowerLimit() + fTargetAngle * (hingeC->getUpperLimit() - hingeC->getLowerLimit());
-				btScalar fAngleError  = (fTargetLimitAngle - fCurAngle)*0.25;
-				btScalar fDesiredAngularVel = 1000000.f * fAngleError/ms;
-				hingeC->enableAngularMotor(true, fDesiredAngularVel, m_fMuscleStrength);
 			}
 			
 			

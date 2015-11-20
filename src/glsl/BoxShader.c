@@ -18,7 +18,6 @@ uniform vec3 cameraPos;
 uniform vec3 lookAtVec;
 uniform float isWire;
 uniform vec3 matVal;
-uniform vec4 rotationZ;
 
 //varying vec3 TexCoord0;
 

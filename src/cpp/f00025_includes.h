@@ -36,8 +36,8 @@ const static int MAX_EXPLODES = 8;
 const static bool DO_SHADER_DUMP = false;
 
 
-const static int DEF_WIN_W = 1440;
-const static int DEF_WIN_H = 720;
+const static int DEF_WIN_W = 1920;
+const static int DEF_WIN_H = 1080;
 
 const static int DEF_VOL_SIZE = 128;
 
@@ -2063,6 +2063,10 @@ class BenchmarkDemo : public CommonRigidBodyBase
 	
 	btDiscreteDynamicsWorld* getWorld();
 	
+	btRigidBody* createRigidBodyMask(
+		btScalar mass, const btTransform& startTransform, btCollisionShape* shape, int maskFrom, int maskTo
+	);
+	
 	void removeRigidBody(btRigidBody* body);
 	
 	void updateGraphicsObjects();
@@ -2368,6 +2372,32 @@ void BenchmarkDemo::stepSimulation(float deltaTime)
 void BenchmarkDemo::removeRigidBody(btRigidBody* body) {
 	m_dynamicsWorld->removeRigidBody(body);
 }
+
+
+btRigidBody* BenchmarkDemo::createRigidBodyMask(
+	btScalar mass, const btTransform& startTransform, btCollisionShape* shape, int maskFrom, int maskTo
+) {
+
+	//rigidbody is dynamic if and only if mass is non zero, otherwise static
+	bool isDynamic = (mass != 0.f);
+
+	btVector3 localInertia(0,0,0);
+	if (isDynamic) {
+		shape->calculateLocalInertia(mass,localInertia);
+	}
+		
+
+	//using motionstate is recommended, it provides interpolation capabilities, and only synchronizes 'active' objects
+	btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
+	btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,shape,localInertia);
+	btRigidBody* body = new btRigidBody(rbInfo);
+
+	//add the body to the dynamics world 
+	m_dynamicsWorld->addRigidBody(body, maskFrom, maskTo); //
+	
+	return body;
+}
+
 
 void BenchmarkDemo::updateGraphicsObjects() {
 	m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);

@@ -1037,6 +1037,18 @@ enum E_PATH_FILL_OPS {
 	E_PFO_LENGTH
 };
 
+
+
+enum E_COL_TYPES {
+    COL_NOTHING = 0,
+    COL_STATIC = 1,
+    COL_DYN = 2,
+    COL_BODY = 4,
+    COL_MARKER = 8
+};
+
+
+
 struct BodyStruct {
 	btRigidBody* body;
 	btVector3 lastVel;
@@ -1044,7 +1056,9 @@ struct BodyStruct {
 	btVector3 totLV;
 	
 	float mass;
+	int boneId;
 	
+	bool isVisible;
 	bool inWater;
 	bool isFalling;
 	bool hasContact;
@@ -1052,13 +1066,18 @@ struct BodyStruct {
 };
 
 struct ActorJointStruct {
+	int boneId;
+	bool isBall;
 	float rad;
 	float length;
 	btVector3 begOrig;
 	btVector3 midOrig;
 	btVector3 endOrig;
-	btVector3 targAlign;
+	btVector3 targAlignT;
+	btVector3 targAlignB;
+	btVector3 targAlignN;
 	btQuaternion quat;
+	btMatrix3x3 basis;
 	//btVector3 pivotAxis;
 	
 	int jointId;

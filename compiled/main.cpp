@@ -36,8 +36,8 @@ const static int MAX_EXPLODES = 8;
 const static bool DO_SHADER_DUMP = false;
 
 
-const static int DEF_WIN_W = 1440;
-const static int DEF_WIN_H = 720;
+const static int DEF_WIN_W = 1920;
+const static int DEF_WIN_H = 1080;
 
 const static int DEF_VOL_SIZE = 128;
 
@@ -2063,6 +2063,10 @@ class BenchmarkDemo : public CommonRigidBodyBase
 	
 	btDiscreteDynamicsWorld* getWorld();
 	
+	btRigidBody* createRigidBodyMask(
+		btScalar mass, const btTransform& startTransform, btCollisionShape* shape, int maskFrom, int maskTo
+	);
+	
 	void removeRigidBody(btRigidBody* body);
 	
 	void updateGraphicsObjects();
@@ -2368,6 +2372,32 @@ void BenchmarkDemo::stepSimulation(float deltaTime)
 void BenchmarkDemo::removeRigidBody(btRigidBody* body) {
 	m_dynamicsWorld->removeRigidBody(body);
 }
+
+
+btRigidBody* BenchmarkDemo::createRigidBodyMask(
+	btScalar mass, const btTransform& startTransform, btCollisionShape* shape, int maskFrom, int maskTo
+) {
+
+	//rigidbody is dynamic if and only if mass is non zero, otherwise static
+	bool isDynamic = (mass != 0.f);
+
+	btVector3 localInertia(0,0,0);
+	if (isDynamic) {
+		shape->calculateLocalInertia(mass,localInertia);
+	}
+		
+
+	//using motionstate is recommended, it provides interpolation capabilities, and only synchronizes 'active' objects
+	btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
+	btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,shape,localInertia);
+	btRigidBody* body = new btRigidBody(rbInfo);
+
+	//add the body to the dynamics world 
+	m_dynamicsWorld->addRigidBody(body, maskFrom, maskTo); //
+	
+	return body;
+}
+
 
 void BenchmarkDemo::updateGraphicsObjects() {
 	m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);
@@ -4523,6 +4553,18 @@ enum E_PATH_FILL_OPS {
 	E_PFO_LENGTH
 };
 
+
+
+enum E_COL_TYPES {
+    COL_NOTHING = 0,
+    COL_STATIC = 1,
+    COL_DYN = 2,
+    COL_BODY = 4,
+    COL_MARKER = 8
+};
+
+
+
 struct BodyStruct {
 	btRigidBody* body;
 	btVector3 lastVel;
@@ -4530,7 +4572,9 @@ struct BodyStruct {
 	btVector3 totLV;
 	
 	float mass;
+	int boneId;
 	
+	bool isVisible;
 	bool inWater;
 	bool isFalling;
 	bool hasContact;
@@ -4538,13 +4582,18 @@ struct BodyStruct {
 };
 
 struct ActorJointStruct {
+	int boneId;
+	bool isBall;
 	float rad;
 	float length;
 	btVector3 begOrig;
 	btVector3 midOrig;
 	btVector3 endOrig;
-	btVector3 targAlign;
+	btVector3 targAlignT;
+	btVector3 targAlignB;
+	btVector3 targAlignN;
 	btQuaternion quat;
+	btMatrix3x3 basis;
 	//btVector3 pivotAxis;
 	
 	int jointId;
@@ -9080,7 +9129,9 @@ public:
 	
 	
 	//Matrix3 rotMat;
-	
+	int boneId;
+	int actorId;
+	int orgId;
 	int isGrabbingId;
 	int isGrabbedById;
 	int entType;
@@ -9133,6 +9184,10 @@ public:
 		}
 		
 		return tot;
+	}
+	
+	float getMarkerMass() {
+		return bodies[0].mass;
 	}
 	
 	bool allFalling() {
@@ -9360,7 +9415,8 @@ public:
 		
 		
 		//mass = 10.0f;
-		
+		orgId = -1;
+		actorId = -1;
 		isHidden = false;
 		
 		ang = 0.0f;
@@ -21012,6 +21068,7 @@ public:
   GLdouble (viewMatrixD) [16];
   float (viewMatrixDI) [16];
   GLdouble (projMatrixD) [16];
+  Matrix4 identMatrix;
   Matrix4 viewMatrix;
   Matrix4 projMatrix;
   std::vector <Matrix4> objMatrixStack;
@@ -21101,10 +21158,12 @@ public:
   bool depthInvalidRotate;
   bool depthInvalidMove;
   bool lastDepthInvalidMove;
+  bool drawOrient;
   int (entIdToIcon) [MAX_OBJ_TYPES];
   int (iconToEntId) [MAX_ICON_ID];
   bool (isContainer) [MAX_OBJ_TYPES];
   string (objStrings) [MAX_OBJ_TYPES];
+  int highlightedLimb;
   int curPrimTemplate;
   int geomStep;
   int earthMod;
@@ -21309,6 +21368,8 @@ public:
   ThreadWrapper threadNetRecv;
   std::list <KeyStackEvent> keyStack;
   EntPool (entPoolStack) [E_ENTTYPE_LENGTH];
+  std::vector <GameActor*> gameActors;
+  std::vector <GameOrg*> gameOrgs;
   std::vector <ExplodeStruct> explodeStack;
   std::vector <DebrisStruct> debrisStack;
   std::vector <FIVector4> primTemplateStack;
@@ -21375,7 +21436,6 @@ public:
   int * rbStack;
   int * rbHeightStack;
   TerTexture (terTextures) [MAX_TER_TEX];
-  GameOrg * testHuman;
   GameGUI * mainGUI;
   UIComponent * mapComp;
   UIComponent * mainMenu;
@@ -21548,7 +21608,6 @@ public:
   void launchBullet (int actorId, int bulletType);
   void resetActiveNode ();
   bool updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS);
-  void findNearestOrgNode (GameOrgNode * curNode, FIVector4 * mousePosWS);
   void getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit);
   void closeAllContainers ();
   bool anyContainerOpen ();
@@ -21569,6 +21628,7 @@ public:
   void updateGUI ();
   void beginFieldInput (string defString, int cb);
   void processFieldInput (unsigned char key);
+  GameOrg * getCurOrg ();
   void endFieldInput (bool success);
   void saveOrg ();
   void loadOrg ();
@@ -22201,6 +22261,7 @@ class GameOrg
 public:
   Singleton * singleton;
   GameOrgNode * baseNode;
+  GameOrgNode * (allNodes) [E_BONE_C_END];
   FIVector4 basePosition;
   JSONValue * rootObj;
   float defVecLength;
@@ -22289,11 +22350,11 @@ public:
   Singleton * singleton;
   btDynamicsWorld * m_ownerWorld;
   std::vector <ActorJointStruct> actorJoints;
+  int geId;
   btVector3 origOffset;
-  btRigidBody * localCreateRigidBody (btScalar mass, btTransform const & startTransform, btCollisionShape * shape);
-  btVector3 getStartPosition (int jointId);
-  int addJoint (int parentId, float rad, float len, float mass, btVector3 targAlign, float theta, float phi);
-  GameActor (Singleton * _singleton, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed);
+  int addJoint (int nodeName, int parentId, bool isBall, float rad, float len, float mass, btVector3 targAlignT, btVector3 targAlignB, btVector3 targAlignN, btVector3 begPos, btVector3 midPos, btVector3 endPos);
+  void initFromOrg (GameOrgNode * curNode, int curParent);
+  GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed);
   void stepSim (btScalar timeStep);
   virtual ~ GameActor ();
 };
@@ -22728,7 +22789,10 @@ public:
   BenchmarkDemo * example;
   MyOGLApp * myOGLApp;
   GUIHelperInterface * guiHelper;
-  GameActor * gameActor;
+  float (myMat) [16];
+  Matrix4 myMatrix4;
+  Vector4 myVector4;
+  Vector4 resVector4;
   btRigidBody * lastBodyPick;
   GamePhysics ();
   void init (Singleton * _singleton);
@@ -22737,7 +22801,7 @@ public:
   void beginDrop ();
   void remBoxFromObj (BaseObjType _uid);
   void addBoxFromObj (BaseObjType _uid);
-  void motorPreTickCallback (btScalar timeStep, GameActor * curActor);
+  void motorPreTickCallback (btScalar timeStep);
   void flushImpulses ();
   void collideWithWorld (double curStepTime);
   void updateAll ();
@@ -23142,6 +23206,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		//totTimePassedGraphics = 0;
 		totTimePassedPhysics = 0;
 		
+		identMatrix.identity();
+		
 		isPressingMove = false;
 		fxaaOn = false;
 		doPathReport = false;
@@ -23252,7 +23318,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		curPrimMod = 0.0f;
 		curPrimTemplate = 1;
 		geomStep = 0;
+		highlightedLimb = -1;
 
+		drawOrient = false;
 		noBounce = true;
 		firstPerson = false;
 		applyToChildren = false;
@@ -24167,8 +24235,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		
-		testHuman = new GameOrg();
-		testHuman->init(this);
 		//TODO: fix this for proper angle alignment to model
 		//orientRotation();
 		
@@ -26967,14 +27033,21 @@ void Singleton::syncObjects ()
 			}
 		}
 		
-		//!!!
-		//testHuman->basePosition.copyFrom(&(dynObjects[E_OBJ_HUMAN]->pos));
 		
-		if (currentActor != NULL) {
-			testHuman->basePosition.setBTV(currentActor->getCenterPoint(0));
+		
+		for (i = 0; i < gameOrgs.size(); i++) {
+			if (currentActor != NULL) {
+				
+				if (i == currentActor->orgId) {
+					gameOrgs[i]->basePosition.setBTV(currentActor->getCenterPoint(0));
+				}
+				
+			}
+			
+			transformOrg(gameOrgs[i]);
 		}
 		
-		transformOrg(testHuman);
+		
 	}
 void Singleton::updateCamVals ()
                              {
@@ -27072,6 +27145,11 @@ void Singleton::moveCamera (FIVector4 * pModXYZ)
 	}
 GameOrgNode * Singleton::getMirroredNode (GameOrgNode * curNode)
                                                            {
+		if (getCurOrg() == NULL) {
+			return NULL;
+		}
+		GameOrg* testHuman = getCurOrg();
+		
 		if ((curNode->nodeName < E_BONE_C_BEG)&&mirrorOn) {
 			if (curNode->nodeName <= E_BONE_L_END) {
 				return testHuman->baseNode->getNode(
@@ -27261,7 +27339,7 @@ void Singleton::moveObject (float dx, float dy)
 			editPose
 			
 		) {
-				
+			
 			applyNodeChanges(activeNode, dx, dy);
 			
 		}
@@ -27514,7 +27592,7 @@ void Singleton::makeJump (int actorId, int isUp)
 			return;
 		}
 		
-		float JUMP_AMOUNT = 1.0f*ge->getTotalMass()/STEP_TIME_IN_SEC;
+		float JUMP_AMOUNT = 0.5f*ge->getMarkerMass()/STEP_TIME_IN_SEC;
 		
 		
 		if (isUp == 1) {
@@ -28495,11 +28573,7 @@ void Singleton::mouseMove (int _x, int _y)
 		float fx = ((float)x)*M_PI*2.0f / bufferDim[0];
 		float fy = ((float)y)*M_PI / bufferDim[1];
 		
-		if (mbDown) {
-			angleToVec(&lightVec, fx*2.0, fy*2.0);
-			lightVecOrig.copyFrom(&lightVec);
-			lightVec.setFZ(-abs(lightVec.getFZ()));
-		}
+		
 		
 		
 		
@@ -28545,37 +28619,45 @@ void Singleton::mouseMove (int _x, int _y)
 			//////////////
 
 
-			if (placingGeom) {
-				updateCurGeom(x, y);
+			if (
+				orgOn &&
+				editPose
+				&& (!ddVis)
+			) {
+				updateNearestOrgNode(false, &mouseMovePD);
 			}
 			else {
-				
-				if (
-					orgOn &&
-					editPose
-					&& (!ddVis)
-				) {
-					updateNearestOrgNode(false, &mouseMovePD);
+				if (!ddVis) {
+					activeNode = NULL;
+					setSelNode(NULL);
+				}
+				if (mbDown) {
+					angleToVec(&lightVec, fx*2.0, fy*2.0);
+					lightVecOrig.copyFrom(&lightVec);
+					lightVec.setFZ(-abs(lightVec.getFZ()));
 				}
 				else {
-					if (!ddVis) {
-						activeNode = NULL;
-						setSelNode(NULL);
+					if (placingGeom) {
+						updateCurGeom(x, y);
+					}
+					else {
+						
+						gw->findNearestEnt(
+							&highlightedEnts,
+							E_ET_GEOM,
+							2,
+							1,
+							&mouseMovePD
+						);
+						highlightedEnt = highlightedEnts.getSelectedEnt();
+
+
 					}
 				}
-				
-				
-				gw->findNearestEnt(
-					&highlightedEnts,
-					E_ET_GEOM,
-					2,
-					1,
-					&mouseMovePD
-				);
-				highlightedEnt = highlightedEnts.getSelectedEnt();
-
-
 			}
+			
+
+			
 
 			//////////////
 
@@ -28713,11 +28795,11 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 			getPixData(&mouseUpOPD, x, y, true, true);
 		}
 		
-		if (lbDown) {
-			if (gamePhysics != NULL) {
-				gamePhysics->pickBody(mouseDownPD.getBTV(),mouseDownOPD.getBTV());
-			}
-		}
+		// if (lbDown) {
+		// 	if (gamePhysics != NULL) {
+		// 		gamePhysics->pickBody(mouseDownPD.getBTV(),mouseDownOPD.getBTV());
+		// 	}
+		// }
 		
 		if (lbClicked) {
 			gamePhysics->lastBodyPick = NULL;
@@ -29344,7 +29426,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	ca->targAng += (-2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,-0.2)/STEP_TIME_IN_SEC, true, 0);
+				ca->applyAngularImpulse(btVector3(0,0,-0.02)/STEP_TIME_IN_SEC, true, 0);
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_LEFT]) {
@@ -29355,7 +29437,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	ca->targAng += (2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,0.2)/STEP_TIME_IN_SEC, true, 0);
+				ca->applyAngularImpulse(btVector3(0,0,0.02)/STEP_TIME_IN_SEC, true, 0);
 			}
 			
 			
@@ -29396,7 +29478,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,0.1,0)*ca->getTotalMass()/STEP_TIME_IN_SEC,
+						btVector3(0,0.02,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
 						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
@@ -29412,7 +29494,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,-0.1,0)*ca->getTotalMass()/STEP_TIME_IN_SEC,
+						btVector3(0,-0.02,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
 						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
@@ -29791,7 +29873,7 @@ void Singleton::grabThrowObj (int actorId)
 			
 			if (ca->hasBodies()) {
 				gw->gameObjects[ca->isGrabbingId].applyImpulseOtherRot(
-					btVector3(0.0,4.0,4.0)*gw->gameObjects[ca->isGrabbingId].getTotalMass()/STEP_TIME_IN_SEC,
+					btVector3(0.0,0.5,0.5)*gw->gameObjects[ca->isGrabbingId].getTotalMass()/STEP_TIME_IN_SEC,
 					ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 					true,
 					0
@@ -29892,7 +29974,7 @@ void Singleton::launchBullet (int actorId, int bulletType)
 			
 			
 				gw->gameObjects[entNum].applyImpulseOtherRot(
-					btVector3(0.0,4.0,4.0)*gw->gameObjects[entNum].getTotalMass()/STEP_TIME_IN_SEC,
+					btVector3(0.0,0.5,0.5)*gw->gameObjects[entNum].getTotalMass()/STEP_TIME_IN_SEC,
 					ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 					true,
 					0
@@ -29943,51 +30025,68 @@ bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
 		
 		//worldToScreenBase(&tempVec1, mousePosWS);
 		
+		if (getCurOrg() == NULL) {
+			return false;
+		}
+		GameOrg* testHuman = getCurOrg();
+		
 		bestNode = NULL;
-		bestNodeDis = 99999.0f;
-		findNearestOrgNode(
-			testHuman->baseNode,
-			mousePosWS//&tempVec1
-		);
 		
-		//cout << "bestNodeDis " << bestNodeDis << "\n";
+		int boneId;
 		
-		if (bestNodeDis >= 3.0f) {
-			bestNode = NULL;
-			activeNode = NULL;
-			setSelNode(NULL);
-		}
+		gamePhysics->pickBody(mouseDownPD.getBTV(),mouseDownOPD.getBTV());
 		
-		if (bestNode != NULL) {
+		if (gamePhysics->lastBodyPick == NULL) {
 			
-			setSelNode(bestNode);
-			if (setActive) {
-				activeNode = bestNode;				
+		}
+		else {
+			highlightedLimb = gamePhysics->lastBodyPick->limbUID;
+			
+			if (highlightedLimb > -1) {
+				boneId = currentActor->bodies[highlightedLimb].boneId;
+				
+				
+				if (boneId > -1) {
+					bestNode = testHuman->allNodes[boneId];
+					if (setActive) {
+						activeNode = bestNode;
+					}
+					return true;
+				}
 			}
+			
 		}
 		
-		return (bestNode != NULL);
-	}
-void Singleton::findNearestOrgNode (GameOrgNode * curNode, FIVector4 * mousePosWS)
-          {
 		
-		tempVec3.setFXYZRef(&(curNode->orgTrans[1]));
-		tempVec3.addXYZRef(&(testHuman->basePosition));
+		bestNode = NULL;
+		activeNode = NULL;
+		setSelNode(NULL);
+		return false;
 		
-		//worldToScreenBase(&tempVec2, &tempVec3);
-		float curDis = mousePosWS->distance(&tempVec3);//&tempVec2);
 		
-		if (curDis < bestNodeDis) {
-			bestNodeDis = curDis;
-			bestNode = curNode;
-		}
+		// bestNodeDis = 99999.0f;
+		// findNearestOrgNode(
+		// 	testHuman->baseNode,
+		// 	mousePosWS//&tempVec1
+		// );
 		
-		int i;
+		// //cout << "bestNodeDis " << bestNodeDis << "\n";
 		
-		for (i = 0; i < curNode->children.size(); i++) {
-			findNearestOrgNode(curNode->children[i],mousePosWS);
-		}
+		// if (bestNodeDis >= 3.0f) {
+		// 	bestNode = NULL;
+		// 	activeNode = NULL;
+		// 	setSelNode(NULL);
+		// }
 		
+		// if (bestNode != NULL) {
+			
+		// 	setSelNode(bestNode);
+		// 	if (setActive) {
+		// 		activeNode = bestNode;				
+		// 	}
+		// }
+		
+		//return (bestNode != NULL);
 	}
 void Singleton::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit)
           {
@@ -30568,8 +30667,24 @@ void Singleton::processFieldInput (unsigned char key)
 			}
 		}
 	}
+GameOrg * Singleton::getCurOrg ()
+                             {
+		if (currentActor == NULL) {
+			return NULL;
+		}
+		if (currentActor->orgId < 0) {
+			return NULL;
+		}
+		return gameOrgs[currentActor->orgId];
+	}
 void Singleton::endFieldInput (bool success)
                                          {
+		
+		if (getCurOrg() == NULL) {
+			return;
+		}
+		GameOrg* testHuman = getCurOrg();
+		
 		inputOn = false;
 		fieldMenu->visible = false;
 		
@@ -41865,11 +41980,15 @@ void GameOrg::initHuman ()
 		curNode = baseNode;
 		
 		
+		for (i = 0; i < E_BONE_C_END; i++) {
+			allNodes[i] = NULL;
+		}
+		
 
 		float numSpineSegs = E_BONE_C_SKULL-E_BONE_C_SPINE0;
 		
 		for (i = E_BONE_C_SPINE0; i < E_BONE_C_SKULL; i++) {
-			curNode = curNode->addChild(
+			curNode = allNodes[i] = curNode->addChild(
 				i,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -41883,7 +42002,7 @@ void GameOrg::initHuman ()
 			);
 		}
 		
-		curNode = curNode->addChild(
+		curNode = allNodes[E_BONE_C_SKULL] = curNode->addChild(
 			E_BONE_C_SKULL,
 			
 			baseMat, 0.0f, 0.0f, 0.0f,
@@ -41910,7 +42029,7 @@ void GameOrg::initHuman ()
 			curNode = baseNode->getNode(E_BONE_C_SKULL-2);
 			
 			
-			curNode = curNode->addChild(
+			curNode = allNodes[E_BONE_L_SHOULDER + lrMod] = curNode->addChild(
 				E_BONE_L_SHOULDER + lrMod,
 
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -41921,7 +42040,7 @@ void GameOrg::initHuman ()
 				0.0f,1.0f,0.0f,
 				0.0f,0.0f,1.0f
 			);
-			curNode = curNode->addChild(
+			curNode = allNodes[E_BONE_L_UPPERARM + lrMod] = curNode->addChild(
 				E_BONE_L_UPPERARM + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -41932,7 +42051,7 @@ void GameOrg::initHuman ()
 				0.0f,1.0f,0.0f,
 				0.0f,0.0f,1.0f
 			);
-			curNode = curNode->addChild(
+			curNode = allNodes[E_BONE_L_LOWERARM + lrMod] = curNode->addChild(
 				E_BONE_L_LOWERARM + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -41943,7 +42062,7 @@ void GameOrg::initHuman ()
 				0.0f,1.0f,0.0f,
 				0.0f,0.0f,1.0f
 			);
-			curNode = curNode->addChild(
+			curNode = allNodes[E_BONE_L_METACARPALS + lrMod] = curNode->addChild(
 				E_BONE_L_METACARPALS + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -41958,7 +42077,7 @@ void GameOrg::initHuman ()
 			
 			curNode = baseNode;
 			
-			curNode = curNode->addChild(
+			curNode = allNodes[E_BONE_L_HIP + lrMod] = curNode->addChild(
 				E_BONE_L_HIP + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -41969,7 +42088,7 @@ void GameOrg::initHuman ()
 				0.0f,1.0f,0.0f,
 				0.0f,0.0f,1.0f
 			);
-			curNode = curNode->addChild(
+			curNode = allNodes[E_BONE_L_UPPERLEG + lrMod] = curNode->addChild(
 				E_BONE_L_UPPERLEG + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -41980,7 +42099,7 @@ void GameOrg::initHuman ()
 				0.0f,1.0f,0.0f,
 				dirMod*1.0f,0.0f,0.0f
 			);
-			curNode = curNode->addChild(
+			curNode = allNodes[E_BONE_L_LOWERLEG + lrMod] = curNode->addChild(
 				E_BONE_L_LOWERLEG + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -41991,7 +42110,7 @@ void GameOrg::initHuman ()
 				0.0f,1.0f,0.0f,
 				dirMod*1.0f,0.0f,0.0f
 			);
-			curNode = curNode->addChild(
+			curNode = allNodes[E_BONE_L_TALUS + lrMod] = curNode->addChild(
 				E_BONE_L_TALUS + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -42005,9 +42124,7 @@ void GameOrg::initHuman ()
 			
 		}
 		
-		
 		baseNode->doTransform(singleton);
-		
 		
 		
 	}
@@ -42381,50 +42498,19 @@ void GamePlant::applyRules (PlantRules * rules, GamePlantNode * curParent, int c
 
 #include "f00347_gameactor.e"
 #define LZZ_INLINE inline
-btRigidBody * GameActor::localCreateRigidBody (btScalar mass, btTransform const & startTransform, btCollisionShape * shape)
-                                                                                                                     {
-		bool isDynamic = (mass != 0.f);
-
-		btVector3 localInertia(0,0,0);
-		if (isDynamic)
-			shape->calculateLocalInertia(mass,localInertia);
-
-		btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
-		btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,shape,localInertia);
-		btRigidBody* body = new btRigidBody(rbInfo);
-
-		m_ownerWorld->addRigidBody(body);
-
-		return body;
-	}
-btVector3 GameActor::getStartPosition (int jointId)
-                                                {
-		int parentId = actorJoints[jointId].parentId;
-		ActorJointStruct* parJoint;
-		
-		btVector3 res;
-		
-		if (parentId < 0) {
-			res = btVector3(0.0f,0.0f,0.0f);
-		}
-		else {
-			parJoint = &(actorJoints[parentId]);
-			res = parJoint->endOrig;
-		}
-		
-		//traceBTV("Joint ", res);
-		
-		return res;
-	}
-int GameActor::addJoint (int parentId, float rad, float len, float mass, btVector3 targAlign, float theta, float phi)
+int GameActor::addJoint (int nodeName, int parentId, bool isBall, float rad, float len, float mass, btVector3 targAlignT, btVector3 targAlignB, btVector3 targAlignN, btVector3 begPos, btVector3 midPos, btVector3 endPos)
           {
 		
 		
 		
 		int i;
 		btVector3 vUp(0, 0, 1);
+		btVector3 pivotA;
+		btVector3 pivotB;
 		
+		btGeneric6DofSpringConstraint* springC;
 		btHingeConstraint* hingeC;
+		btPoint2PointConstraint* ballC; //btFixedConstraint
 		btConeTwistConstraint* coneC;
 
 		btTransform localA, localB, localC;
@@ -42434,25 +42520,29 @@ int GameActor::addJoint (int parentId, float rad, float len, float mass, btVecto
 		
 		ActorJointStruct* curJoint = &(actorJoints.back());
 		ActorJointStruct* parJoint;
-		ActorJointStruct* grdJoint;
+		//ActorJointStruct* grdJoint;
 		
+		curJoint->boneId = nodeName;
+		curJoint->isBall = isBall;
 		curJoint->rad = rad;
 		curJoint->length = len;
 		//begOrig
 		//endOrig
-		curJoint->targAlign = targAlign;
-		curJoint->jointId = curId;	
+		curJoint->targAlignT = targAlignT;
+		curJoint->targAlignB = targAlignB;
+		curJoint->targAlignN = targAlignN;
+		curJoint->jointId = curId;
 		curJoint->parentId = parentId;
 		
 		//float jointSpace  = curJoint->rad*2.0f;
 		
-		float curLength = curJoint->length - curJoint->rad*4.0;
+		float curLength = curJoint->length;// - curJoint->rad*4.0;
 		
 		if (parentId < 0) {
 			curLength = curJoint->length;
 		}
 		
-		curJoint->shape = new btCapsuleShapeZ(curJoint->rad, curLength);
+		curJoint->shape = new btCapsuleShapeX(curJoint->rad, curLength);
 		
 		btTransform transform;
 		btTransform offset;
@@ -42464,9 +42554,9 @@ int GameActor::addJoint (int parentId, float rad, float len, float mass, btVecto
 		offset.setIdentity();
 		offset.setOrigin(origOffset);
 		
-		btVector3 begPos = getStartPosition(curId);
-		btVector3 endPos = begPos + curJoint->targAlign*(curJoint->length);
-		btVector3 midPos = (begPos+endPos)*0.5f;
+		//btVector3 begPos = getStartPosition(curId);
+		//btVector3 endPos = begPos + curJoint->targAlignT*(curJoint->length);
+		//btVector3 midPos = (begPos+endPos)*0.5f;
 		
 		curJoint->begOrig = begPos;
 		curJoint->midOrig = midPos;
@@ -42477,36 +42567,72 @@ int GameActor::addJoint (int parentId, float rad, float len, float mass, btVecto
 		transform.setIdentity();
 		transform.setOrigin(midPos);
 		
-		btVector3 vectorA = vUp;
-		btVector3 vectorB = targAlign;
+		
 		
 		btVector3 axis;
 		btScalar angle;
-		
 		btQuaternion quat;
 		
-		if ( abs(vectorA.dot(vectorB)) == 1.0f ) {
-			// todo: handle (anti)parallel case
-			//curJoint->pivotAxis = btVector3(0.0f,0.0f,0.0f);
-			curJoint->quat = btQuaternion(btVector3(0.0f,0.0f,1.0f), 0.0f);
-		}
-		else {
-			axis = (vectorA.cross(vectorB)).normalized();
-			angle = btAcos(vectorA.dot(vectorB)) / (vectorA.length() * vectorB.length());
-			curJoint->quat = btQuaternion(axis, angle);
-			transform.setRotation(curJoint->quat);
-			//curJoint->pivotAxis = axis;
-		}
+		
+		btVector3 vectorA = vUp;
+		btVector3 vectorB = endPos-begPos;
+		vectorB.normalize();
+		
+		// if ( abs(vectorA.dot(vectorB)) == 1.0f ) {
+		// 	// todo: handle (anti)parallel case
+		// 	//curJoint->pivotAxis = btVector3(0.0f,0.0f,0.0f);
+		// 	curJoint->quat = btQuaternion(btVector3(0.0f,0.0f,1.0f), 0.0f);
+		// }
+		// else {
+		// 	axis = (vectorA.cross(vectorB)).normalized();
+		// 	angle = btAcos(vectorA.dot(vectorB)) / (vectorA.length() * vectorB.length());
+		// 	curJoint->quat = btQuaternion(axis, angle);
+		// 	transform.setRotation(curJoint->quat);
+		// 	//curJoint->pivotAxis = axis;
+		// }
+		
+		btMatrix3x3 basis = btMatrix3x3(
+			targAlignT.getX(), targAlignT.getY(), targAlignT.getZ(),
+			targAlignB.getX(), targAlignB.getY(), targAlignB.getZ(),
+			targAlignN.getX(), targAlignN.getY(), targAlignN.getZ()
+		);
+		curJoint->basis = basis;
+		transform.getBasis() = basis;
 		
 		
+		/*
+		setEulerZYX params in order: 
+		eulerX	Roll about X axis
+		eulerY	Pitch about Y axis
+		eulerZ	Yaw about Z axis
+
+		*/
 		
 		
+		// xx, xy, xz,
+		// yx, yy, yz,
+		// zx, zy, zz
 		
-		curJoint->body = localCreateRigidBody(mass, offset*transform, curJoint->shape);
+		// transform.getBasis().setValue(
+			
+		// );
+		
+		
+		int bodyCollidesWith = COL_STATIC|COL_DYN;
+		curJoint->body = singleton->gamePhysics->example->createRigidBodyMask(
+			mass,
+			offset*transform,
+			curJoint->shape,
+			COL_BODY,
+			bodyCollidesWith
+		);
 		//curJoint->body->bodyUID = uid;
 		curJoint->body->setDamping(0.05, 0.85);
 		curJoint->body->setDeactivationTime(0.8);
 		curJoint->body->setSleepingThresholds(0.5f, 0.5f);
+		// if (curJoint->isBall) {	
+		// 	curJoint->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
+		// }
 		
 		
 		
@@ -42514,20 +42640,93 @@ int GameActor::addJoint (int parentId, float rad, float len, float mass, btVecto
 		// return curId;
 		
 
-		if (parentId < 0) {
+		if (parentId < 0) { //
 			curJoint->joint = NULL;
+			//curJoint->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
+			//curJoint->body->setLinearFactor(btVector3(0.1f,0.1f,0.1f));
+			
 		}
 		else {
 			parJoint = &(actorJoints[parentId]);
+			pivotA = btVector3(-parJoint->length*0.5f,0.0,0.0);
+			pivotB = btVector3(curJoint->length*0.5f,0.0,0.0);
+			
+			if (curJoint->isBall) {
+				
+				localA.setIdentity();
+				localB.setIdentity();
+				localA.setOrigin(pivotA);
+				localB.setOrigin(pivotB);
+				localA.getBasis() = parJoint->basis; 
+				localB.getBasis() = curJoint->basis; 
+				//localA.setRotation(parJoint->quat);
+				//localB.setRotation(curJoint->quat);
+				
+				
+				// hingeC = new btHingeConstraint(
+				// 	*(parJoint->body),
+				// 	*(curJoint->body),
+				// 	pivotA,
+				// 	pivotB,
+				// 	// parJoint->targAlignB,
+				// 	// curJoint->targAlignB,
+				// 	// false
+				// );
+				//hingeC->setLimit(-0.1, 0.1);
+				
+				// springC->enableSpring(0,false);
+				// springC->enableSpring(1,false);
+				// springC->enableSpring(2,false);
+				// springC->enableSpring(3,true);
+				// springC->enableSpring(4,true);
+				// springC->enableSpring(5,true);
+				
+				// springC->setStiffness(3,10.0f);
+				// springC->setStiffness(4,10.0f);
+				// springC->setStiffness(5,10.0f);
+				
+				//curJoint->joint = hingeC;
+				
+				ballC = new btPoint2PointConstraint(
+					*(parJoint->body),
+					*(curJoint->body),
+					pivotA,
+					pivotB
+					//localA,
+					//localB
+				);
+				curJoint->joint = ballC;
+			}
+			else {
+				// localA.setIdentity();
+				// localB.setIdentity();
+				// vectorA = parJoint->targAlign;
+				// vectorB = curJoint->targAlign;
+				
+				// hingeC =  new btHingeConstraint(
+				// 	*(parJoint->body),
+				// 	*(curJoint->body),
+				// 	//localA,
+				// 	//localB
+					
+				// 	pivotA,
+				// 	pivotB,
+				// 	(vectorA.cross(vectorB)).normalized(),
+				// 	(vectorA.cross(vectorB)).normalized()
+					
+				// );
+				// hingeC->setLimit(-M_PI_4, M_PI_4);
+				// curJoint->joint = hingeC;
+				
+			}
+			
+			
+			m_ownerWorld->addConstraint(curJoint->joint, true);
 			
 			
 			
 			
 			
-			
-			
-			localA.setIdentity();
-			localB.setIdentity();
 			//localA.getBasis().setEulerZYX(0,0,M_PI);
 			//localB.getBasis().setEulerZYX(0,0,M_PI);
 			
@@ -42566,24 +42765,7 @@ int GameActor::addJoint (int parentId, float rad, float len, float mass, btVecto
 			// curJoint->joint = coneC;
 			// m_ownerWorld->addConstraint(curJoint->joint, true);
 			
-			vectorA = parJoint->targAlign;
-			vectorB = curJoint->targAlign;
 			
-			hingeC =  new btHingeConstraint(
-				*(parJoint->body),
-				*(curJoint->body),
-				//localA,
-				//localB
-				
-				btVector3(0.0,0.0,-parJoint->length*0.5f),
-				btVector3(0.0,0.0,curJoint->length*0.5f),
-				(vectorA.cross(vectorB)).normalized(),
-				(vectorA.cross(vectorB)).normalized()
-				
-			);
-			hingeC->setLimit(-M_PI_8, M_PI_8);
-			curJoint->joint = hingeC;
-			m_ownerWorld->addConstraint(curJoint->joint, true);
 			
 			
 			
@@ -42803,88 +42985,187 @@ int GameActor::addJoint (int parentId, float rad, float len, float mass, btVecto
 		return curId;
 		
 	}
-GameActor::GameActor (Singleton * _singleton, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed)
+void GameActor::initFromOrg (GameOrgNode * curNode, int curParent)
+          {
+		
+		
+		int i;
+		
+		FIVector4 lineSeg0;
+		FIVector4 lineSeg1;
+		FIVector4 lineSeg2;
+		
+		lineSeg0.setFXYZRef(&(curNode->orgTrans[0]));
+
+		
+		//lineSeg1.setFXYZRef(&(curNode->tbnRotC[0]));
+		//lineSeg1.multXYZ(  (curNode->orgVecs[E_OV_TBNRAD0][0])  );
+		//lineSeg1.addXYZRef(&(lineSeg0));
+		
+		
+		
+		
+		//float curRad = 0.025f;
+		
+		// lineSeg1.setFXYZRef(&(curNode->tbnTrans[0]));
+		// lineSeg2.copyFrom(&lineSeg1);
+		// lineSeg2.addXYZRef(&lineSeg0,-1.0f);
+		// lineSeg2.normalize();
+		// btVector3 tn = lineSeg2.getBTV();
+		
+		// float curLen = lineSeg0.distance(&lineSeg1);
+		
+		// lineSeg1.setFXYZRef(&(curNode->tbnTrans[1]));
+		// lineSeg2.copyFrom(&lineSeg1);
+		// lineSeg2.addXYZRef(&lineSeg0,-1.0f);
+		// lineSeg2.normalize();
+		// btVector3 bn = lineSeg2.getBTV();
+		
+		// lineSeg1.setFXYZRef(&(curNode->tbnTrans[2]));
+		// lineSeg2.copyFrom(&lineSeg1);
+		// lineSeg2.addXYZRef(&lineSeg0,-1.0f);
+		// lineSeg2.normalize();
+		// btVector3 nn = lineSeg2.getBTV();
+		
+		
+		int curChild = addJoint(
+			curNode->nodeName,
+			curParent,					//int parentId,
+			true,
+			0.25f,			//float rad,
+			curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV()), //curLen, // +curRad*4.0f,			//float len,
+			MASS_PER_LIMB,				//float mass,
+			//tn, bn, nn,
+		
+			curNode->tbnRotC[0].getBTV(),
+			curNode->tbnRotC[1].getBTV(),
+			curNode->tbnRotC[2].getBTV(),
+			
+			curNode->orgTrans[0].getBTV(),
+			curNode->orgTrans[1].getBTV(),
+			curNode->orgTrans[2].getBTV()
+			
+		);
+		
+		
+		
+		
+		for (i = 0; i < curNode->children.size(); i++) {
+			initFromOrg(
+				curNode->children[i],
+				curChild
+				//basePosition,
+				//scale,
+				//drawMode,
+				//drawAll
+			);
+		}
+		
+	}
+GameActor::GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed)
           {
 		
 		int i;
 		
 		singleton = _singleton;
 		m_ownerWorld = ownerWorld;
+		geId = _geId;
 		//uid = _uid;
 		
 		origOffset = positionOffset;// - btVector3(0.0f,0.0f,16.0f);
 		float actorScale = 1.0f;
 
-		int curGrandParent = addJoint(
-			-1,								//int parentId,
-			1.0f*actorScale,				//float rad,
-			1.1f*actorScale,				//float len,
-			MASS_PER_LIMB,					//float mass,
-			btVector3(0.0f,0.0f,1.0f),		//btVector3 targAlign,
-			0.0f, 0.0f
+
+		initFromOrg(
+			singleton->gameOrgs[
+				singleton->gw->gameObjects[geId].orgId	
+			]->baseNode,
+			-1
 		);
+
+
+
+
+		return;
+
+
+
+
+
+		// int curGrandParent = addJoint(
+		// 	-1,								//int parentId,
+		// 	true,
+		// 	1.0f*actorScale,				//float rad,
+		// 	1.1f*actorScale,				//float len,
+		// 	MASS_PER_LIMB,					//float mass,
+		// 	btVector3(0.0f,0.0f,1.0f)		//btVector3 targAlign,
+		// 	//,0.0f, 0.0f
+		// );
 		
-		int curChild;
-		int curParent;
-		float curTheta;
-		float curPhi;
+		// int curChild;
+		// int curParent;
+		// float curTheta;
+		// float curPhi;
 		
-		btVector3 targAlign;
+		// btVector3 targAlign;
 		
-		for (i = 0; i < 6; i++) {
+		// for (i = 0; i < 6; i++) {
 			
-			curTheta = M_PI*((float)i)/3.0f;
+		// 	curTheta = M_PI*((float)i)/3.0f;
 			
-			curPhi = M_PI_2 + 0.1;
-			targAlign = btVector3(
-				cos(curTheta)*sin(curPhi),
-				sin(curTheta)*sin(curPhi),
-				cos(curPhi)	
-			);
-			curParent = addJoint(
-				curGrandParent,				//int parentId,
-				1.0f*actorScale,			//float rad,
-				8.0f*actorScale,			//float len,
-				MASS_PER_LIMB,				//float mass,
-				targAlign,					//btVector3 targAlign
-				curTheta,
-				curPhi
-			);
+		// 	curPhi = M_PI_2 + 0.1;
+		// 	targAlign = btVector3(
+		// 		cos(curTheta)*sin(curPhi),
+		// 		sin(curTheta)*sin(curPhi),
+		// 		cos(curPhi)	
+		// 	);
+		// 	curParent = addJoint(
+		// 		curGrandParent,				//int parentId,
+		// 		true,
+		// 		1.0f*actorScale,			//float rad,
+		// 		8.0f*actorScale,			//float len,
+		// 		MASS_PER_LIMB,				//float mass,
+		// 		targAlign					//btVector3 targAlign
+		// 		//,curTheta,
+		// 		//curPhi
+		// 	);
 			
-			curPhi = M_PI_4 + 0.1;
-			targAlign = btVector3(
-				cos(curTheta)*sin(curPhi),
-				sin(curTheta)*sin(curPhi),
-				cos(curPhi)	
-			);
-			curChild = addJoint(
-				curParent,					//int parentId,
-				1.0f*actorScale,			//float rad,
-				8.0f*actorScale,			//float len,
-				MASS_PER_LIMB,				//float mass,
-				targAlign,					//btVector3 targAlign
-				curTheta,
-				curPhi
-			);
+		// 	curPhi = M_PI_4 + 0.1;
+		// 	targAlign = btVector3(
+		// 		cos(curTheta)*sin(curPhi),
+		// 		sin(curTheta)*sin(curPhi),
+		// 		cos(curPhi)	
+		// 	);
+		// 	curChild = addJoint(
+		// 		curParent,					//int parentId,
+		// 		true,
+		// 		1.0f*actorScale,			//float rad,
+		// 		8.0f*actorScale,			//float len,
+		// 		MASS_PER_LIMB,				//float mass,
+		// 		targAlign					//btVector3 targAlign
+		// 		//,curTheta,
+		// 		//curPhi
+		// 	);
 			
 			
-			curPhi = M_PI_2 + 0.1;
-			targAlign = btVector3(
-				cos(curTheta)*sin(curPhi),
-				sin(curTheta)*sin(curPhi),
-				cos(curPhi)	
-			);
-			addJoint(
-				curChild,					//int parentId,
-				1.0f*actorScale,			//float rad,
-				8.0f*actorScale,			//float len,
-				MASS_PER_LIMB,				//float mass,
-				targAlign,					//btVector3 targAlign
-				curTheta,
-				curPhi
-			);
+		// 	curPhi = M_PI_2 + 0.1;
+		// 	targAlign = btVector3(
+		// 		cos(curTheta)*sin(curPhi),
+		// 		sin(curTheta)*sin(curPhi),
+		// 		cos(curPhi)	
+		// 	);
+		// 	addJoint(
+		// 		curChild,					//int parentId,
+		// 		true,
+		// 		1.0f*actorScale,			//float rad,
+		// 		8.0f*actorScale,			//float len,
+		// 		MASS_PER_LIMB,				//float mass,
+		// 		targAlign					//btVector3 targAlign
+		// 		//,curTheta,
+		// 		//curPhi
+		// 	);
 			
-		}
+		// }
 		
 		/*
 		
@@ -43049,7 +43330,7 @@ void GameActor::stepSim (btScalar timeStep)
 		
 		//return;
 		
-		float m_fMuscleStrength = 100.0f;//(sin(singleton->curTime/2000.0)+1.0f)*0.5f;
+		float m_fMuscleStrength = 10.0f;//(sin(singleton->curTime/2000.0)+1.0f)*0.5f;
 		float ms = timeStep*1000000.0;
 		float minFPS = 1000000.f/60.f;
 		if (ms > minFPS) {
@@ -43058,6 +43339,25 @@ void GameActor::stepSim (btScalar timeStep)
 
 		//m_Time += ms;
 
+		// ge->applyImpulse(
+		// 	btVector3(
+		// 		( singleton->worldMarker.getFX() - curBody->body->getCenterOfMassPosition().getX() ),
+		// 		( singleton->worldMarker.getFY() - curBody->body->getCenterOfMassPosition().getY() ),
+		// 		-(curBody->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))
+		// 	)*totMass*0.01f,
+		// 	false,
+		// 	bodInd
+		// );
+
+
+		// GameOrgNode* curNode;
+		// BaseObj* ge = &(singleton->gw->gameObjects[geId]);
+
+		// for (int i = 0; i < actorJoints.size(); i++) {
+		// 	curNode = singleton->gameOrgs[ge->orgId]->allNodes[actorJoints[i].nodeName];
+			
+		// }		
+
 		for (int i = 0; i < actorJoints.size(); i++) {
 			
 			if (actorJoints[i].joint == NULL) {
@@ -43065,17 +43365,24 @@ void GameActor::stepSim (btScalar timeStep)
 			}
 			else {
 				
+				// if (actorJoints[i].isBall) {
+					
+				// }
+				// else {
+					
+					
+					btHingeConstraint* hingeC = static_cast<btHingeConstraint*>(actorJoints[i].joint);
+					btScalar fCurAngle = hingeC->getHingeAngle();
+					
+					btScalar fTargetPercent = 0.5;//singleton->smoothTime;//(int(m_Time / 1000) % int(m_fCyclePeriod)) / m_fCyclePeriod;
+					btScalar fTargetAngle   = 0.5 * (1 + sin(2 * M_PI * fTargetPercent));
+					btScalar fTargetLimitAngle = hingeC->getLowerLimit() + fTargetAngle * (hingeC->getUpperLimit() - hingeC->getLowerLimit());
+					btScalar fAngleError  = (fTargetLimitAngle - fCurAngle)*0.25;
+					btScalar fDesiredAngularVel = 1000000.f * fAngleError/ms;
+					hingeC->enableAngularMotor(true, fDesiredAngularVel, m_fMuscleStrength);
+				//}
 				
 				
-				btHingeConstraint* hingeC = static_cast<btHingeConstraint*>(actorJoints[i].joint);
-				btScalar fCurAngle = hingeC->getHingeAngle();
-				
-				btScalar fTargetPercent = singleton->smoothTime;//(int(m_Time / 1000) % int(m_fCyclePeriod)) / m_fCyclePeriod;
-				btScalar fTargetAngle   = 0.5 * (1 + sin(2 * M_PI * fTargetPercent));
-				btScalar fTargetLimitAngle = hingeC->getLowerLimit() + fTargetAngle * (hingeC->getUpperLimit() - hingeC->getLowerLimit());
-				btScalar fAngleError  = (fTargetLimitAngle - fCurAngle)*0.25;
-				btScalar fDesiredAngularVel = 1000000.f * fAngleError/ms;
-				hingeC->enableAngularMotor(true, fDesiredAngularVel, m_fMuscleStrength);
 			}
 			
 			
@@ -44501,7 +44808,13 @@ void GamePageHolder::createMesh ()
 			gphMinInPixels[2]
 		));
 
-		body = singleton->gamePhysics->example->createRigidBody(0,trans,trimeshShape);
+		body = singleton->gamePhysics->example->createRigidBodyMask(
+			0,
+			trans,
+			trimeshShape
+			,COL_STATIC,
+			1|2|4|8
+		);
 		body->setFriction (btScalar(0.9));
 		body->bodyUID = -1;
 		body->limbUID = -1;
@@ -50900,7 +51213,7 @@ void MyShapeDrawer::popMat ()
 		}
 void MyShapeDrawer::drawOrient (int uid)
                                          {
-			return;
+			
 			
 			if (uid == singleton->getCurActorUID()) {
 				
@@ -50909,32 +51222,34 @@ void MyShapeDrawer::drawOrient (int uid)
 				return;
 			}
 			
+			//cout << "yay\n";
+			
 			int oldUID = uid;
 			
-			setId(0);
+			//setId(0);
 			
 			singleton->setShaderVec3("matVal", 255, 0, 0);
 			glBegin(GL_LINES);
-			glNormal3f(0, 0, 1);
+			//glNormal3f(0, 0, 1);
 			glVertex3d(0, 0, 0);
-			glVertex3d(2, 0, 0);
+			glVertex3d(4, 0, 0);
 			glEnd();
 			
 			singleton->setShaderVec3("matVal", 0, 255, 0);
 			glBegin(GL_LINES);
-			glNormal3f(0, 0, 1);
+			//glNormal3f(0, 0, 1);
 			glVertex3d(0, 0, 0);
-			glVertex3d(0, 2, 0);
+			glVertex3d(0, 4, 0);
 			glEnd();
 			
 			singleton->setShaderVec3("matVal",0, 0, 255);
 			glBegin(GL_LINES);
-			glNormal3f(0, 0, 1);
+			//glNormal3f(0, 0, 1);
 			glVertex3d(0, 0, 0);
-			glVertex3d(0, 0, 2);
+			glVertex3d(0, 0, 4);
 			glEnd();
 			
-			setId(oldUID);
+			//setId(oldUID);
 			singleton->setShaderVec3("matVal", 1, 1, 1);
 			
 		}
@@ -51159,23 +51474,30 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 								btVector3(-halfExtent[0],-halfExtent[1],-halfExtent[2])};
 		#if 1
 							
-							drawOrient(uid);
-							glBegin (GL_TRIANGLES);
-							int si=36;
-							for (int i=0;i<si;i+=3)
-							{
-								const btVector3& v1 = vertices[indices[i]];;
-								const btVector3& v2 = vertices[indices[i+1]];
-								const btVector3& v3 = vertices[indices[i+2]];
-								btVector3 normal = (v3-v1).cross(v2-v1);
-								normal.normalize ();
-								glNormal3f(normal.getX(),normal.getY(),normal.getZ());
-								glVertex3f (v1.x(), v1.y(), v1.z());
-								glVertex3f (v2.x(), v2.y(), v2.z());
-								glVertex3f (v3.x(), v3.y(), v3.z());
-								
+							if (singleton->drawOrient) {
+								drawOrient(uid);
 							}
-							glEnd();
+							else {
+								glBegin (GL_TRIANGLES);
+								int si=36;
+								for (int i=0;i<si;i+=3)
+								{
+									const btVector3& v1 = vertices[indices[i]];;
+									const btVector3& v2 = vertices[indices[i+1]];
+									const btVector3& v3 = vertices[indices[i+2]];
+									btVector3 normal = (v3-v1).cross(v2-v1);
+									normal.normalize ();
+									glNormal3f(normal.getX(),normal.getY(),normal.getZ());
+									glVertex3f (v1.x(), v1.y(), v1.z());
+									glVertex3f (v2.x(), v2.y(), v2.z());
+									glVertex3f (v3.x(), v3.y(), v3.z());
+									
+								}
+								glEnd();
+							}
+							
+							
+							
 		#endif
 
 							//useWireframeFallback = false;
@@ -51271,30 +51593,38 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 								if (poly)
 								{
 									int i;
-									drawOrient(uid);
-									glBegin (GL_TRIANGLES);
-									for (i=0;i<poly->m_faces.size();i++)
-									{
-										btVector3 centroid(0,0,0);
-										int numVerts = poly->m_faces[i].m_indices.size();
-										if (numVerts>2)
+									
+									if (singleton->drawOrient) {
+										drawOrient(uid);
+									}
+									else {
+										
+										glBegin (GL_TRIANGLES);
+										for (i=0;i<poly->m_faces.size();i++)
 										{
-											btVector3 v1 = poly->m_vertices[poly->m_faces[i].m_indices[0]];
-											for (int v=0;v<poly->m_faces[i].m_indices.size()-2;v++)
+											btVector3 centroid(0,0,0);
+											int numVerts = poly->m_faces[i].m_indices.size();
+											if (numVerts>2)
 											{
-												
-												btVector3 v2 = poly->m_vertices[poly->m_faces[i].m_indices[v+1]];
-												btVector3 v3 = poly->m_vertices[poly->m_faces[i].m_indices[v+2]];
-												btVector3 normal = (v3-v1).cross(v2-v1);
-												normal.normalize ();
-												glNormal3f(normal.getX(),normal.getY(),normal.getZ());
-												glVertex3f (v1.x(), v1.y(), v1.z());
-												glVertex3f (v2.x(), v2.y(), v2.z());
-												glVertex3f (v3.x(), v3.y(), v3.z());
+												btVector3 v1 = poly->m_vertices[poly->m_faces[i].m_indices[0]];
+												for (int v=0;v<poly->m_faces[i].m_indices.size()-2;v++)
+												{
+													
+													btVector3 v2 = poly->m_vertices[poly->m_faces[i].m_indices[v+1]];
+													btVector3 v3 = poly->m_vertices[poly->m_faces[i].m_indices[v+2]];
+													btVector3 normal = (v3-v1).cross(v2-v1);
+													normal.normalize ();
+													glNormal3f(normal.getX(),normal.getY(),normal.getZ());
+													glVertex3f (v1.x(), v1.y(), v1.z());
+													glVertex3f (v2.x(), v2.y(), v2.z());
+													glVertex3f (v3.x(), v3.y(), v3.z());
+												}
 											}
 										}
+										glEnd ();
 									}
-									glEnd ();
+									
+									
 								} else
 								{
 									ShapeCache*	sc=cache((btConvexShape*)shape);
@@ -51307,37 +51637,42 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 										const unsigned int* idx = hull->getIndexPointer();
 										const btVector3* vtx = hull->getVertexPointer();
 
-										drawOrient(uid);
-										glBegin (GL_TRIANGLES);
-
-										for (int i = 0; i < hull->numTriangles (); i++)
-										{
-											int i1 = index++;
-											int i2 = index++;
-											int i3 = index++;
-											btAssert(i1 < hull->numIndices () &&
-												i2 < hull->numIndices () &&
-												i3 < hull->numIndices ());
-
-											int index1 = idx[i1];
-											int index2 = idx[i2];
-											int index3 = idx[i3];
-											btAssert(index1 < hull->numVertices () &&
-												index2 < hull->numVertices () &&
-												index3 < hull->numVertices ());
-
-											btVector3 v1 = vtx[index1];
-											btVector3 v2 = vtx[index2];
-											btVector3 v3 = vtx[index3];
-											btVector3 normal = (v3-v1).cross(v2-v1);
-											normal.normalize();
-											glNormal3f(normal.getX(),normal.getY(),normal.getZ());
-											glVertex3f (v1.x(), v1.y(), v1.z());
-											glVertex3f (v2.x(), v2.y(), v2.z());
-											glVertex3f (v3.x(), v3.y(), v3.z());
-
+										if (singleton->drawOrient) {
+											drawOrient(uid);
 										}
-										glEnd ();
+										else {
+											glBegin (GL_TRIANGLES);
+
+											for (int i = 0; i < hull->numTriangles (); i++)
+											{
+												int i1 = index++;
+												int i2 = index++;
+												int i3 = index++;
+												btAssert(i1 < hull->numIndices () &&
+													i2 < hull->numIndices () &&
+													i3 < hull->numIndices ());
+
+												int index1 = idx[i1];
+												int index2 = idx[i2];
+												int index3 = idx[i3];
+												btAssert(index1 < hull->numVertices () &&
+													index2 < hull->numVertices () &&
+													index3 < hull->numVertices ());
+
+												btVector3 v1 = vtx[index1];
+												btVector3 v2 = vtx[index2];
+												btVector3 v3 = vtx[index3];
+												btVector3 normal = (v3-v1).cross(v2-v1);
+												normal.normalize();
+												glNormal3f(normal.getX(),normal.getY(),normal.getZ());
+												glVertex3f (v1.x(), v1.y(), v1.z());
+												glVertex3f (v2.x(), v2.y(), v2.z());
+												glVertex3f (v3.x(), v3.y(), v3.z());
+
+											}
+											glEnd ();
+										}
+										
 
 									}
 								}
@@ -51511,7 +51846,34 @@ void MyShapeDrawer::drawSceneInternal (btDiscreteDynamicsWorld const * dynamicsW
 					
 				// }
 				
-				drawOpenGL(m,colObj->getCollisionShape(),wireColor,debugMode,aabbMin,aabbMax, body->bodyUID);
+				
+				bool doProc = true;
+				
+				if (body->bodyUID >= 0) {
+					BaseObj* ge = &(singleton->gw->gameObjects[body->bodyUID]);
+					
+					if (body->limbUID >= 0) {
+						doProc = ge->bodies[body->limbUID].isVisible;
+					}
+				}
+				
+				
+				
+				// if (
+				// 	(body->bodyUID == singleton->getCurActorUID())&&singleton->orgOn
+				// ) {
+					
+				// }
+				// else {
+				
+				if (doProc) {
+					drawOpenGL(m,colObj->getCollisionShape(),wireColor,debugMode,aabbMin,aabbMax, body->bodyUID);
+				}
+				
+					
+				//}
+				
+				
 				//drawOpenGL(m,colObj->getCollisionShape(),wireColor*btScalar(0.3),0,aabbMin,aabbMax);
 			}
 
@@ -52003,7 +52365,7 @@ struct CommonGraphicsApp * MyGLHelper::getAppInterface ()
 GamePhysics::GamePhysics ()
                       {
 		lastBodyPick = NULL;
-		gameActor = NULL;
+		//gameActor = NULL;
 		//8000; // ~120 times per second
 	}
 void GamePhysics::init (Singleton * _singleton)
@@ -52113,41 +52475,66 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 		trans.setIdentity();
 		trans.setOrigin(ge->startPoint);
 		
+		GameActor* curActor;
 		
 		float objRad = 0.5f;
+		
+		int bodyCollidesWith = COL_STATIC|COL_DYN;
+		int terCollidesWith = COL_NOTHING;
+		int markerCollidesWith = COL_STATIC|COL_DYN;
+		int dynCollidesWith = COL_STATIC|COL_DYN|COL_BODY|COL_MARKER;
+		
+		bool isOrg = false;
 		
 		if (
 			(ge->entType == E_ENTTYPE_NPC) ||
 			(ge->entType == E_ENTTYPE_MONSTER)	
 		) {
-			// btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(1.0f,1.0f);
-			// ge->body = example->createRigidBody(ge->mass,trans,capsuleShape);
-			// ge->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
-			// ge->body->setLinearFactor(btVector3(0.0f,0.0f,0.0f));
+			
+			isOrg = true;
+			
+			btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(1.0f,1.5f);
+			ge->bodies.push_back(BodyStruct());
+			ge->bodies.back().body = example->createRigidBodyMask(
+				MASS_PER_LIMB,
+				trans,
+				capsuleShape,
+				COL_MARKER,
+				markerCollidesWith
+			);
+			ge->bodies.back().body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
 			
 			
+			singleton->gameOrgs.push_back(new GameOrg());
+			singleton->gameOrgs.back()->init(singleton);
+			ge->orgId = singleton->gameOrgs.size()-1;
 			
-			
-			gameActor = new GameActor(
+			singleton->gameActors.push_back(new GameActor(
 				singleton,
+				ge->uid,
 				example->getWorld(),
 				ge->startPoint,
-				false
-			);
-			for (i = 0; i < gameActor->actorJoints.size(); i++) {
+				false	
+			));
+			
+			curActor = (singleton->gameActors.back());
+			ge->actorId = singleton->gameActors.size()-1;
+			
+			for (i = 0; i < curActor->actorJoints.size(); i++) {
 				
 				
 				ge->bodies.push_back(BodyStruct());
-				ge->bodies.back().body = gameActor->actorJoints[i].body;
+				ge->bodies.back().body = curActor->actorJoints[i].body;
+				ge->bodies.back().boneId = curActor->actorJoints[i].boneId;
 				
-				if (i == 0) {
-					//ge->body = gameActor->actorJoints[i].body;
-					//ge->body->setLinearFactor(btVector3(0.0f,0.0f,0.0f));
-					ge->bodies.back().body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
-				}
-				else {
+				// if (i == 0) {
+				// 	//ge->body = curActor->actorJoints[i].body;
+				// 	//ge->body->setLinearFactor(btVector3(0.0f,0.0f,0.0f));
+				// 	ge->bodies.back().body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
+				// }
+				// else {
 					
-				}
+				// }
 			}
 			
 			
@@ -52157,7 +52544,13 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 			
 			btBoxShape* boxShape = new btBoxShape(btVector3(objRad,objRad,objRad));
 			ge->bodies.push_back(BodyStruct());
-			ge->bodies.back().body = example->createRigidBody(MASS_PER_LIMB,trans,boxShape);
+			ge->bodies.back().body = example->createRigidBodyMask(
+				MASS_PER_LIMB,
+				trans,
+				boxShape
+				,COL_DYN,
+				dynCollidesWith
+			);
 			
 			if (ge->entType == E_ENTTYPE_DEBRIS) {
 				
@@ -52166,6 +52559,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 					(fGenRand2()*2.0f-1.0f),
 					(fGenRand2()*2.0f-1.0f)	
 				)*4.0f);
+				ge->bodies[0].boneId = -1;
 			}
 			
 			
@@ -52178,10 +52572,27 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 		for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
 			ge->bodies[bodInd].body->bodyUID = _uid;
 			ge->bodies[bodInd].body->limbUID = bodInd;
-			ge->bodies[bodInd].body->setDamping(0.1f,0.99f);
+			
+			if (bodInd == 0) {
+				ge->bodies[bodInd].body->setDamping(0.1f,0.99f);
+				
+			}
+			else {
+				
+				if (bodInd < 7) {
+					ge->bodies[bodInd].body->setDamping(0.99f,0.9f);
+				}
+				else {
+					ge->bodies[bodInd].body->setDamping(0.85f,0.9f);
+				}
+				
+				
+			}
+			
+			
 			ge->bodies[bodInd].body->setContactProcessingThreshold(0.25f);
 			
-			
+			ge->bodies[bodInd].isVisible = ((bodInd > 0)&&isOrg)||(!isOrg);
 			ge->bodies[bodInd].mass = MASS_PER_LIMB;
 			ge->bodies[bodInd].hasContact = false;
 			ge->bodies[bodInd].isInside = false;
@@ -52197,14 +52608,16 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 		
 		
 	}
-void GamePhysics::motorPreTickCallback (btScalar timeStep, GameActor * curActor)
-                                                                          {
+void GamePhysics::motorPreTickCallback (btScalar timeStep)
+                                                     {
 		
-		if (curActor == NULL) {
-			return;
-		}
+		// int i;
 		
-		curActor->stepSim(timeStep);
+		// for (i = 0; i < singleton->gameActors.size(); i++) {
+		// 	singleton->gameActors[i]->stepSim(timeStep);
+		// }
+		
+		
 		
 	}
 void GamePhysics::flushImpulses ()
@@ -52260,7 +52673,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		
 		collectDebris();
 		
-		motorPreTickCallback(curStepTime, gameActor);
+		motorPreTickCallback(curStepTime);
 		
 		
 		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
@@ -52354,6 +52767,10 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		float totMass;
 		float totForce;
 		btVector3 dirForce;
+		GameOrg* curOrg;
+		GameOrgNode* curOrgNode;
+		GameActor* curActor;
+		btVector3 basePos;
 		
 		
 		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
@@ -52404,6 +52821,71 @@ void GamePhysics::collideWithWorld (double curStepTime)
 						curBody->lastVel = curBody->body->getLinearVelocity();
 					}
 					
+					
+					if (
+						(ge->orgId > -1) &&
+						(ge->actorId > -1) &&
+						(curBody->boneId > -1) &&
+						(ge->bodies.size() > 0)
+						&& (bodInd > 1)
+						// && (curBody->boneId == E_BONE_C_SKULL)
+						//false
+					) {
+						curActor = singleton->gameActors[ge->actorId];
+						curOrg = singleton->gameOrgs[ge->orgId];
+						curOrgNode = curOrg->allNodes[curBody->boneId];
+						
+						
+						// if (bodInd == 0) {
+						// 	//basePos = curOrgNode->orgTrans[1].getBTV();
+						// }
+						// else {
+							
+						// }
+						
+						
+						// if (bodInd == 0) {
+						// 	basePos = btVector3(0.0,0.0,0.0);
+						// }
+						// else {
+						// 	basePos = 
+						// 		curOrgNode->orgTrans[1].getBTV() * 
+						// 		ge->bodies[0].body->getWorldTransform().getBasis() +
+						// 		ge->bodies[0].body->getWorldTransform().getOrigin();
+						// }
+						
+						
+						
+						ge->bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
+						myMatrix4 = Matrix4(myMat);
+						tempBTV = curOrgNode->orgTrans[1].getBTV();
+						myVector4 = Vector4(
+							tempBTV.getX(),
+							tempBTV.getY(),
+							tempBTV.getZ(),
+							1.0f
+						);
+						resVector4 = myMatrix4*myVector4;
+						basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
+						
+						
+						
+						ge->applyImpulse(
+							(
+								basePos - 
+								(
+									curBody->body->getCenterOfMassPosition()
+									// - ge->bodies[0].body->getWorldTransform().getOrigin()
+								)
+							)*curStepTime*MASS_PER_LIMB*50.0f, // *MASS_PER_LIMB*2.0f*10.0f*curStepTime,
+							false,
+							bodInd
+						);
+						
+						//
+						
+					}
+					
 					if (
 						(singleton->selObjInd == ge->uid) &&
 						singleton->markerFound &&
@@ -52415,29 +52897,29 @@ void GamePhysics::collideWithWorld (double curStepTime)
 							
 						}
 						else {
-							
-							
-							
 							if (
 								lastBodyPick->limbUID ==
 								curBody->body->limbUID
 							) {
 								
-								totMass = ge->getTotalMass();
+								//totMass = ge->getTotalMass();
+								
+								//ge->applyAngularImpulse(btVector3(0,0,-0.02)/STEP_TIME_IN_SEC, false, curBody->body->limbUID);
 								
 								
-								// ge->applyImpulse(
-								// 	btVector3(
-								// 		( singleton->worldMarker.getFX() - curBody->body->getCenterOfMassPosition().getX() ),
-								// 		( singleton->worldMarker.getFY() - curBody->body->getCenterOfMassPosition().getY() ),
-								// 		-(curBody->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))
-								// 	)*totMass*0.01f,
-								// 	false,
-								// 	bodInd
-								// );
 							}
 						}
 						
+						
+						// ge->applyImpulse(
+						// 	btVector3(
+						// 		( singleton->worldMarker.getFX() - curBody->body->getCenterOfMassPosition().getX() ),
+						// 		( singleton->worldMarker.getFY() - curBody->body->getCenterOfMassPosition().getY() ),
+						// 		-(curBody->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))
+						// 	)*totMass*100.0f*curStepTime,
+						// 	false,
+						// 	0
+						// );
 						
 						
 						
@@ -52462,7 +52944,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 						
 						dirForce.setZ(totForce);
 						
-						ge->applyImpulse(dirForce, false, bodInd);
+						ge->applyImpulse(dirForce*curStepTime*60.0, false, bodInd);
 					}
 					
 					
@@ -52475,30 +52957,39 @@ void GamePhysics::collideWithWorld (double curStepTime)
 					
 					
 					nv0 = curBody->body->getLinearVelocity();
-					nv0.normalize();
 					nv1 = curBody->lastVel;
-					nv1.normalize();
 					
-					
-					if (
-						(!(curBody->isInside)) &&
-						(
-							curBody->lastVel.length() > 0.5f
-						) &&
-						(
-							(nv0.dot(nv1)) < 0.8f
-						)
+					if (nv0.isZero() || nv1.isZero()) {
 						
-					) {
-						
-						
-						singleton->gw->fireEvent(
-							ge->uid,
-							EV_COLLISION,
-							clampfZO( (curBody->lastVel.length()-0.5f)/16.0f )*
-							(1.0f-clampfZO(ge->getCenterPointFIV(bodInd)->distance(singleton->cameraGetPosNoShake())/(50.0f)))
-						);
 					}
+					else {
+						nv0.normalize();
+						nv1.normalize();
+						
+						
+						if (
+							(!(curBody->isInside)) &&
+							(
+								curBody->lastVel.length() > 0.5f
+							) &&
+							(
+								(nv0.dot(nv1)) < 0.8f
+							) &&
+							(bodInd == 0)
+							
+						) {
+							
+							
+							singleton->gw->fireEvent(
+								ge->uid,
+								EV_COLLISION,
+								clampfZO( (curBody->lastVel.length()-0.5f)/16.0f )*
+								(1.0f-clampfZO(ge->getCenterPointFIV(bodInd)->distance(singleton->cameraGetPosNoShake())/(50.0f)))
+							);
+						}
+					}
+					
+					
 					
 					
 					curBody->lastVel = curBody->body->getLinearVelocity();
@@ -53828,6 +54319,9 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 void GameWorld::drawOrg (GameOrg * curOrg, bool drawAll)
                                                     {
 		
+		if (curOrg == NULL) {
+			return;
+		}
 		
 		float scale = 1.0f;
 		
@@ -53861,6 +54355,8 @@ void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, fl
           {
 		
 		
+		
+		
 		bool doProc = false;
 		
 		if (drawAll) {
@@ -53879,20 +54375,20 @@ void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, fl
 			lineSeg[0].setFXYZRef(&(curNode->orgTrans[0]));
 			lineSeg[0].multXYZ(  scale  );
 			
-			if (drawAll) {
-				lineSeg[1].setFXYZRef(&(curNode->tbnTrans[drawMode%3]));
-				lineSeg[1].multXYZ(  scale  );
-			}
-			else {
+			// if (drawAll) {
+			// 	lineSeg[1].setFXYZRef(&(curNode->tbnTrans[drawMode%3]));
+			// 	lineSeg[1].multXYZ(  scale  );
+			// }
+			// else {
 				lineSeg[1].setFXYZRef(&(curNode->tbnRotC[drawMode%3]));
-				lineSeg[1].multXYZ(  (curNode->orgVecs[E_OV_TBNRAD0][drawMode%3]*scale*16.0f)  );
+				lineSeg[1].multXYZ(  (curNode->orgVecs[E_OV_TBNRAD0][drawMode%3]*scale)  ); //*16.0f
 				//lineSeg[1].multXYZ(&(curNode->tbnRadScale0));
 				lineSeg[1].addXYZRef(&(lineSeg[0]));
-			}
+			//}
 			
 			
-			lineSeg[0].addXYZRef(basePosition);
-			lineSeg[1].addXYZRef(basePosition);
+			//lineSeg[0].addXYZRef(basePosition);
+			//lineSeg[1].addXYZRef(basePosition);
 			
 			
 			
@@ -54623,25 +55119,6 @@ void GameWorld::renderGeom ()
 
 
 
-		// // draw volume around organism
-		// // GameOrg* activeOrg = singleton->testHuman;
-		// // GamePageHolder* gphOrg = activeOrg->gph;
-		// // if (singleton->orgOn) {
-			
-		// // 	singleton->setShaderFloat("objectId",0.0);
-		// // 	drawOrg(singleton->testHuman, false);
-			
-		// // 	tempVec.copyFrom(&(activeOrg->basePosition));
-		// // 	tempVec.addXYZRef(&gphOrg->gphCenInPixels,-1.0f);
-		// // 	singleton->setShaderfVec3("offsetPos",&tempVec);
-			
-		// // 	singleton->setShaderFloat("isWire", 1.0);
-		// // 	singleton->setShaderVec3("matVal", 255, 0, 0 );
-			
-		// // 	singleton->drawBox( &(gphOrg->gphMinInPixels), &(gphOrg->gphMaxInPixels) );
-			
-		// // }
-
 		
 		
 		// singleton->unbindFBO();
@@ -54684,6 +55161,7 @@ void GameWorld::renderGeom ()
 		
 		glLineWidth(4.0f);
 		if (singleton->gamePhysics != NULL) {
+			singleton->drawOrient = false;
 			singleton->gamePhysics->example->renderScene();
 		}
 		
@@ -56741,6 +57219,8 @@ UPDATE_LIGHTS_END:
 void GameWorld::renderDebug ()
                            {
 		
+		float myMat[16];
+		
 		glLineWidth(4.0f);
 		
 		singleton->bindShader("GeomShader");
@@ -56753,6 +57233,54 @@ void GameWorld::renderDebug ()
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
 		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
 		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
+		singleton->setShaderFloat("objectId",0.0);
+		
+		
+		
+		// if (singleton->gamePhysics != NULL) {
+		// 	singleton->drawOrient = true;
+		// 	singleton->gamePhysics->example->renderScene();
+		// }
+		
+		
+		
+		
+		// draw volume around organism
+		//GameOrg* activeOrg = singleton->testHuman;
+		//GamePageHolder* gphOrg = activeOrg->gph;
+		if (singleton->orgOn) {
+			
+			if (singleton->currentActor != NULL) {
+				
+				if (singleton->currentActor->orgId > -1) {
+					singleton->currentActor->bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
+					
+					singleton->setShaderMatrix4x4("objmat",myMat,1);
+					
+					singleton->setShaderFloat("objectId",0.0);
+					drawOrg(singleton->gameOrgs[singleton->currentActor->orgId], true);
+				}
+				
+				
+			}
+			
+			
+			
+			// tempVec.copyFrom(&(activeOrg->basePosition));
+			// tempVec.addXYZRef(&gphOrg->gphCenInPixels,-1.0f);
+			// singleton->setShaderfVec3("offsetPos",&tempVec);
+			
+			// singleton->setShaderFloat("isWire", 1.0);
+			// singleton->setShaderVec3("matVal", 255, 0, 0 );
+			
+			// singleton->drawBox( &(gphOrg->gphMinInPixels), &(gphOrg->gphMaxInPixels) );
+			
+		}
+		
+		
+		
+		
+		
 		
 		
 		

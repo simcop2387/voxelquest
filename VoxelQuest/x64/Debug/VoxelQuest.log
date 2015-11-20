@@ -1,4 +1,4 @@
-﻿Build started 11/14/2015 3:41:17 AM.
+﻿Build started 11/19/2015 10:25:33 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -34,8 +34,6 @@
          .\src\cpp\f00339_gameorg.hpp
          .\src\cpp\f00340_gameplantnode.hpp
          .\src\cpp\f00341_gameplant.hpp
-         .\src\cpp\f00345_gameragdoll.hpp
-         .\src\cpp\f00346_gameactorjoint.hpp
          .\src\cpp\f00347_gameactor.hpp
          .\src\cpp\f00351_gamepageholder.hpp
          .\src\cpp\f00352_gameblock.hpp
@@ -47,11 +45,11 @@
          .\src\cpp\f00375_gamephysics.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         42 File(s) copied
+         40 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         27
+         25
          copying headers to one file
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
@@ -68,8 +66,6 @@
          .\f00339_gameorg.e
          .\f00340_gameplantnode.e
          .\f00341_gameplant.e
-         .\f00345_gameragdoll.e
-         .\f00346_gameactorjoint.e
          .\f00347_gameactor.e
          .\f00351_gamepageholder.e
          .\f00352_gameblock.e
@@ -83,7 +79,7 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         27
+         25
          .
          copying files to compiled
          .\temp\f00293_gamesound.e
@@ -101,8 +97,6 @@
          .\temp\f00339_gameorg.e
          .\temp\f00340_gameplantnode.e
          .\temp\f00341_gameplant.e
-         .\temp\f00345_gameragdoll.e
-         .\temp\f00346_gameactorjoint.e
          .\temp\f00347_gameactor.e
          .\temp\f00351_gamepageholder.e
          .\temp\f00352_gameblock.e
@@ -113,7 +107,7 @@
          .\temp\f00374_myglhelper.e
          .\temp\f00375_gamephysics.e
          .\temp\f00380_gameworld.e
-         27 File(s) copied
+         25 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_mat.h
@@ -144,8 +138,6 @@
          .\temp\f00339_gameorg.h
          .\temp\f00340_gameplantnode.h
          .\temp\f00341_gameplant.h
-         .\temp\f00345_gameragdoll.h
-         .\temp\f00346_gameactorjoint.h
          .\temp\f00347_gameactor.h
          .\temp\f00351_gamepageholder.h
          .\temp\f00352_gameblock.h
@@ -168,4 +160,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:06.57
+Time Elapsed 00:00:06.33

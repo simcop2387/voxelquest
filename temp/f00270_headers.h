@@ -101,6 +101,7 @@ public:
   GLdouble (viewMatrixD) [16];
   float (viewMatrixDI) [16];
   GLdouble (projMatrixD) [16];
+  Matrix4 identMatrix;
   Matrix4 viewMatrix;
   Matrix4 projMatrix;
   std::vector <Matrix4> objMatrixStack;
@@ -190,10 +191,12 @@ public:
   bool depthInvalidRotate;
   bool depthInvalidMove;
   bool lastDepthInvalidMove;
+  bool drawOrient;
   int (entIdToIcon) [MAX_OBJ_TYPES];
   int (iconToEntId) [MAX_ICON_ID];
   bool (isContainer) [MAX_OBJ_TYPES];
   string (objStrings) [MAX_OBJ_TYPES];
+  int highlightedLimb;
   int curPrimTemplate;
   int geomStep;
   int earthMod;
@@ -398,6 +401,8 @@ public:
   ThreadWrapper threadNetRecv;
   std::list <KeyStackEvent> keyStack;
   EntPool (entPoolStack) [E_ENTTYPE_LENGTH];
+  std::vector <GameActor*> gameActors;
+  std::vector <GameOrg*> gameOrgs;
   std::vector <ExplodeStruct> explodeStack;
   std::vector <DebrisStruct> debrisStack;
   std::vector <FIVector4> primTemplateStack;
@@ -464,7 +469,6 @@ public:
   int * rbStack;
   int * rbHeightStack;
   TerTexture (terTextures) [MAX_TER_TEX];
-  GameOrg * testHuman;
   GameGUI * mainGUI;
   UIComponent * mapComp;
   UIComponent * mainMenu;
@@ -637,7 +641,6 @@ public:
   void launchBullet (int actorId, int bulletType);
   void resetActiveNode ();
   bool updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS);
-  void findNearestOrgNode (GameOrgNode * curNode, FIVector4 * mousePosWS);
   void getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit);
   void closeAllContainers ();
   bool anyContainerOpen ();
@@ -658,6 +661,7 @@ public:
   void updateGUI ();
   void beginFieldInput (string defString, int cb);
   void processFieldInput (unsigned char key);
+  GameOrg * getCurOrg ();
   void endFieldInput (bool success);
   void saveOrg ();
   void loadOrg ();
@@ -1290,6 +1294,7 @@ class GameOrg
 public:
   Singleton * singleton;
   GameOrgNode * baseNode;
+  GameOrgNode * (allNodes) [E_BONE_C_END];
   FIVector4 basePosition;
   JSONValue * rootObj;
   float defVecLength;
@@ -1378,11 +1383,11 @@ public:
   Singleton * singleton;
   btDynamicsWorld * m_ownerWorld;
   std::vector <ActorJointStruct> actorJoints;
+  int geId;
   btVector3 origOffset;
-  btRigidBody * localCreateRigidBody (btScalar mass, btTransform const & startTransform, btCollisionShape * shape);
-  btVector3 getStartPosition (int jointId);
-  int addJoint (int parentId, float rad, float len, float mass, btVector3 targAlign, float theta, float phi);
-  GameActor (Singleton * _singleton, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed);
+  int addJoint (int nodeName, int parentId, bool isBall, float rad, float len, float mass, btVector3 targAlignT, btVector3 targAlignB, btVector3 targAlignN, btVector3 begPos, btVector3 midPos, btVector3 endPos);
+  void initFromOrg (GameOrgNode * curNode, int curParent);
+  GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed);
   void stepSim (btScalar timeStep);
   virtual ~ GameActor ();
 };
@@ -1817,7 +1822,10 @@ public:
   BenchmarkDemo * example;
   MyOGLApp * myOGLApp;
   GUIHelperInterface * guiHelper;
-  GameActor * gameActor;
+  float (myMat) [16];
+  Matrix4 myMatrix4;
+  Vector4 myVector4;
+  Vector4 resVector4;
   btRigidBody * lastBodyPick;
   GamePhysics ();
   void init (Singleton * _singleton);
@@ -1826,7 +1834,7 @@ public:
   void beginDrop ();
   void remBoxFromObj (BaseObjType _uid);
   void addBoxFromObj (BaseObjType _uid);
-  void motorPreTickCallback (btScalar timeStep, GameActor * curActor);
+  void motorPreTickCallback (btScalar timeStep);
   void flushImpulses ();
   void collideWithWorld (double curStepTime);
   void updateAll ();

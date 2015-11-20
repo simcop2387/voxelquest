@@ -1279,6 +1279,9 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 void GameWorld::drawOrg (GameOrg * curOrg, bool drawAll)
                                                     {
 		
+		if (curOrg == NULL) {
+			return;
+		}
 		
 		float scale = 1.0f;
 		
@@ -1312,6 +1315,8 @@ void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, fl
           {
 		
 		
+		
+		
 		bool doProc = false;
 		
 		if (drawAll) {
@@ -1330,20 +1335,20 @@ void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, fl
 			lineSeg[0].setFXYZRef(&(curNode->orgTrans[0]));
 			lineSeg[0].multXYZ(  scale  );
 			
-			if (drawAll) {
-				lineSeg[1].setFXYZRef(&(curNode->tbnTrans[drawMode%3]));
-				lineSeg[1].multXYZ(  scale  );
-			}
-			else {
+			// if (drawAll) {
+			// 	lineSeg[1].setFXYZRef(&(curNode->tbnTrans[drawMode%3]));
+			// 	lineSeg[1].multXYZ(  scale  );
+			// }
+			// else {
 				lineSeg[1].setFXYZRef(&(curNode->tbnRotC[drawMode%3]));
-				lineSeg[1].multXYZ(  (curNode->orgVecs[E_OV_TBNRAD0][drawMode%3]*scale*16.0f)  );
+				lineSeg[1].multXYZ(  (curNode->orgVecs[E_OV_TBNRAD0][drawMode%3]*scale)  ); //*16.0f
 				//lineSeg[1].multXYZ(&(curNode->tbnRadScale0));
 				lineSeg[1].addXYZRef(&(lineSeg[0]));
-			}
+			//}
 			
 			
-			lineSeg[0].addXYZRef(basePosition);
-			lineSeg[1].addXYZRef(basePosition);
+			//lineSeg[0].addXYZRef(basePosition);
+			//lineSeg[1].addXYZRef(basePosition);
 			
 			
 			
@@ -2074,25 +2079,6 @@ void GameWorld::renderGeom ()
 
 
 
-		// // draw volume around organism
-		// // GameOrg* activeOrg = singleton->testHuman;
-		// // GamePageHolder* gphOrg = activeOrg->gph;
-		// // if (singleton->orgOn) {
-			
-		// // 	singleton->setShaderFloat("objectId",0.0);
-		// // 	drawOrg(singleton->testHuman, false);
-			
-		// // 	tempVec.copyFrom(&(activeOrg->basePosition));
-		// // 	tempVec.addXYZRef(&gphOrg->gphCenInPixels,-1.0f);
-		// // 	singleton->setShaderfVec3("offsetPos",&tempVec);
-			
-		// // 	singleton->setShaderFloat("isWire", 1.0);
-		// // 	singleton->setShaderVec3("matVal", 255, 0, 0 );
-			
-		// // 	singleton->drawBox( &(gphOrg->gphMinInPixels), &(gphOrg->gphMaxInPixels) );
-			
-		// // }
-
 		
 		
 		// singleton->unbindFBO();
@@ -2135,6 +2121,7 @@ void GameWorld::renderGeom ()
 		
 		glLineWidth(4.0f);
 		if (singleton->gamePhysics != NULL) {
+			singleton->drawOrient = false;
 			singleton->gamePhysics->example->renderScene();
 		}
 		
@@ -4192,6 +4179,8 @@ UPDATE_LIGHTS_END:
 void GameWorld::renderDebug ()
                            {
 		
+		float myMat[16];
+		
 		glLineWidth(4.0f);
 		
 		singleton->bindShader("GeomShader");
@@ -4204,6 +4193,54 @@ void GameWorld::renderDebug ()
 		singleton->setShaderFloat("clipDist",singleton->clipDist[1]);
 		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
 		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
+		singleton->setShaderFloat("objectId",0.0);
+		
+		
+		
+		// if (singleton->gamePhysics != NULL) {
+		// 	singleton->drawOrient = true;
+		// 	singleton->gamePhysics->example->renderScene();
+		// }
+		
+		
+		
+		
+		// draw volume around organism
+		//GameOrg* activeOrg = singleton->testHuman;
+		//GamePageHolder* gphOrg = activeOrg->gph;
+		if (singleton->orgOn) {
+			
+			if (singleton->currentActor != NULL) {
+				
+				if (singleton->currentActor->orgId > -1) {
+					singleton->currentActor->bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
+					
+					singleton->setShaderMatrix4x4("objmat",myMat,1);
+					
+					singleton->setShaderFloat("objectId",0.0);
+					drawOrg(singleton->gameOrgs[singleton->currentActor->orgId], true);
+				}
+				
+				
+			}
+			
+			
+			
+			// tempVec.copyFrom(&(activeOrg->basePosition));
+			// tempVec.addXYZRef(&gphOrg->gphCenInPixels,-1.0f);
+			// singleton->setShaderfVec3("offsetPos",&tempVec);
+			
+			// singleton->setShaderFloat("isWire", 1.0);
+			// singleton->setShaderVec3("matVal", 255, 0, 0 );
+			
+			// singleton->drawBox( &(gphOrg->gphMinInPixels), &(gphOrg->gphMaxInPixels) );
+			
+		}
+		
+		
+		
+		
+		
 		
 		
 		

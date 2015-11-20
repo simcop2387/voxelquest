@@ -1809,7 +1809,9 @@ public:
 	
 	
 	//Matrix3 rotMat;
-	
+	int boneId;
+	int actorId;
+	int orgId;
 	int isGrabbingId;
 	int isGrabbedById;
 	int entType;
@@ -1862,6 +1864,10 @@ public:
 		}
 		
 		return tot;
+	}
+	
+	float getMarkerMass() {
+		return bodies[0].mass;
 	}
 	
 	bool allFalling() {
@@ -2089,7 +2095,8 @@ public:
 		
 		
 		//mass = 10.0f;
-		
+		orgId = -1;
+		actorId = -1;
 		isHidden = false;
 		
 		ang = 0.0f;

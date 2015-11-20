@@ -194,11 +194,15 @@ void GameOrg::initHuman ()
 		curNode = baseNode;
 		
 		
+		for (i = 0; i < E_BONE_C_END; i++) {
+			allNodes[i] = NULL;
+		}
+		
 
 		float numSpineSegs = E_BONE_C_SKULL-E_BONE_C_SPINE0;
 		
 		for (i = E_BONE_C_SPINE0; i < E_BONE_C_SKULL; i++) {
-			curNode = curNode->addChild(
+			curNode = allNodes[i] = curNode->addChild(
 				i,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -212,7 +216,7 @@ void GameOrg::initHuman ()
 			);
 		}
 		
-		curNode = curNode->addChild(
+		curNode = allNodes[E_BONE_C_SKULL] = curNode->addChild(
 			E_BONE_C_SKULL,
 			
 			baseMat, 0.0f, 0.0f, 0.0f,
@@ -239,7 +243,7 @@ void GameOrg::initHuman ()
 			curNode = baseNode->getNode(E_BONE_C_SKULL-2);
 			
 			
-			curNode = curNode->addChild(
+			curNode = allNodes[E_BONE_L_SHOULDER + lrMod] = curNode->addChild(
 				E_BONE_L_SHOULDER + lrMod,
 
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -250,7 +254,7 @@ void GameOrg::initHuman ()
 				0.0f,1.0f,0.0f,
 				0.0f,0.0f,1.0f
 			);
-			curNode = curNode->addChild(
+			curNode = allNodes[E_BONE_L_UPPERARM + lrMod] = curNode->addChild(
 				E_BONE_L_UPPERARM + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -261,7 +265,7 @@ void GameOrg::initHuman ()
 				0.0f,1.0f,0.0f,
 				0.0f,0.0f,1.0f
 			);
-			curNode = curNode->addChild(
+			curNode = allNodes[E_BONE_L_LOWERARM + lrMod] = curNode->addChild(
 				E_BONE_L_LOWERARM + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -272,7 +276,7 @@ void GameOrg::initHuman ()
 				0.0f,1.0f,0.0f,
 				0.0f,0.0f,1.0f
 			);
-			curNode = curNode->addChild(
+			curNode = allNodes[E_BONE_L_METACARPALS + lrMod] = curNode->addChild(
 				E_BONE_L_METACARPALS + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -287,7 +291,7 @@ void GameOrg::initHuman ()
 			
 			curNode = baseNode;
 			
-			curNode = curNode->addChild(
+			curNode = allNodes[E_BONE_L_HIP + lrMod] = curNode->addChild(
 				E_BONE_L_HIP + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -298,7 +302,7 @@ void GameOrg::initHuman ()
 				0.0f,1.0f,0.0f,
 				0.0f,0.0f,1.0f
 			);
-			curNode = curNode->addChild(
+			curNode = allNodes[E_BONE_L_UPPERLEG + lrMod] = curNode->addChild(
 				E_BONE_L_UPPERLEG + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -309,7 +313,7 @@ void GameOrg::initHuman ()
 				0.0f,1.0f,0.0f,
 				dirMod*1.0f,0.0f,0.0f
 			);
-			curNode = curNode->addChild(
+			curNode = allNodes[E_BONE_L_LOWERLEG + lrMod] = curNode->addChild(
 				E_BONE_L_LOWERLEG + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -320,7 +324,7 @@ void GameOrg::initHuman ()
 				0.0f,1.0f,0.0f,
 				dirMod*1.0f,0.0f,0.0f
 			);
-			curNode = curNode->addChild(
+			curNode = allNodes[E_BONE_L_TALUS + lrMod] = curNode->addChild(
 				E_BONE_L_TALUS + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
@@ -334,9 +338,7 @@ void GameOrg::initHuman ()
 			
 		}
 		
-		
 		baseNode->doTransform(singleton);
-		
 		
 		
 	}
