@@ -1687,7 +1687,6 @@ int OGLRenderer::registerGraphicsInstance(int shapeIndex, const float* position,
 void OGLRenderer::drawLines(const float* positions, const float color[4], int numPoints, int pointStrideInBytes, const unsigned int* indices, int numIndices, float pointDrawSize)
 {
     int pointStrideInFloats = pointStrideInBytes/4;
-    glLineWidth(pointDrawSize);
     for (int i=0;i<numIndices;i+=2)
     {
         int index0 = indices[i];
@@ -1711,7 +1710,6 @@ void OGLRenderer::drawLines(const float* positions, const float color[4], int nu
 
 void OGLRenderer::drawLine(const float from[4], const float to[4], const float color[4], float lineWidth)
 {
-        glLineWidth(lineWidth);
         // glBegin(GL_LINES);
         // glColor3f(color[0],color[1],color[2]);
         // glVertex3d(from[0],from[1],from[2]);

@@ -27,14 +27,14 @@ float flatten(
 vec2 getTerVal(vec3 pos, float camParam) {
 	float camDis = clamp(camParam,0.0,1.0);
 	
-	float randVal = mod(
+	float randVal1 = mod(
 							abs(
-									sin(pos.z/128.0)*
-									sin(pos.x/128.0)*
-									sin(pos.y/128.0)
+									sin(pos.z/152.0)*
+									sin(pos.x/152.0)*
+									sin(pos.y/152.0)
 							),
 							1.0
-					)*0.75+0.25;
+					);
 	
 	float randVal2 = mod(
 							abs(
@@ -43,20 +43,26 @@ vec2 getTerVal(vec3 pos, float camParam) {
 									sin(pos.y/192.0)
 							),
 							1.0
-					)*0.75+0.25;
+					);
 	
 	float randVal3 = mod(
 							abs(
-									sin(pos.z/256.0)*
-									sin(pos.x/256.0)*
-									sin(pos.y/256.0)
+									sin(pos.z/64.0)*
+									sin(pos.x/64.0)*
+									sin(pos.y/64.0)
 							),
 							1.0
-					)*0.75+0.25;
+					);
+	
+	
+	randVal1 = clamp((randVal1-0.5)*2.0+1.0+(clamp((pos-3192.0)/4096.0,0.0,1.0)*1.0),0.0,1.0);
+	randVal2 = clamp((randVal2-0.5)*2.0+1.0,0.0,1.0);
+	randVal3 = clamp((randVal3-0.5)*2.0+1.0,0.0,1.0);
+	
 	
 	
 	float camDis0 = clamp(1.0-camDis*1.0,0.0,1.0);
-	float camDis1 = clamp(1.0-camDis*3.0,0.0,1.0)*(randVal);
+	float camDis1 = clamp(1.0-camDis*3.0,0.0,1.0)*(randVal1);
 	float camDis2 = clamp(1.0-camDis*32.0,0.0,1.0)*(randVal2);
 	float camDis3 = clamp(1.0-camDis*128.0,0.0,1.0)*(randVal3);
 	
@@ -119,7 +125,7 @@ vec2 getTerVal(vec3 pos, float camParam) {
 	// }
 	
 	if (camDis1 > 0.0) {
-		samp1 = getTexLin(Texture13, pos*texScale*(vec3(0.25,0.25,0.0625)+randVal3*0.005), voroSize);
+		samp1 = getTexLin(Texture13, pos*texScale*(vec3(0.25,0.25,0.0625)+randVal1*0.005), voroSize);
 		//samp1 = trilin(Texture13, pos*vec3(128.0,128.0,32.0)/(cellsPerWorld), vec3(voroSize),1.0/vec3(voroSize));
 		//globTexTap += 1.0;
 		
@@ -128,11 +134,11 @@ vec2 getTerVal(vec3 pos, float camParam) {
 	
 	
 	if (camDis2 > 0.0) {
-		samp2 = getTexLin(Texture13, pos*texScale*(1.0+randVal*0.025), voroSize);
+		samp2 = getTexLin(Texture13, pos*texScale*(1.0+randVal2*0.025), voroSize);
 		//globTexTap += 1.0;
 	}
 	if (camDis3 > 0.0) {
-		samp3 = getTexLin(Texture13, pos*texScale*(6.0+randVal*0.125), voroSize);
+		samp3 = getTexLin(Texture13, pos*texScale*(6.0+randVal3*0.05), voroSize);
 		//globTexTap += 1.0;
 	}
 	
@@ -164,7 +170,7 @@ vec2 getTerVal(vec3 pos, float camParam) {
 	
 	
 	if (camDis1 > 0.0) {
-		res = opD(res,(clamp(pow(1.0-samp1.r,8.0),0.0,1.0))*32.0*camDis1/texScale);
+		res = opD(res,(clamp(pow(1.0-samp1.r,8.0),0.0,1.0))*16.0*camDis1/texScale);
 		
 		//(heightRes+8.0) - (gradVal2.x)*32.0*float((pos.z-cellSize2.z*0.0) < cellVal2.z);
 		//res = (res+16.0) - (samp1.r)*32.0*float(samp1.b < 0.5);

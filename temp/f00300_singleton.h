@@ -344,7 +344,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 		}
 		
-		
+		glLineWidth(4.0f);
 		
 		// This var determines how high the z val can go,
 		// but also increases load times for each block
@@ -1102,7 +1102,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		fboMap["swapTargFBO1"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, false);
 		
 		
-		fboMap["geomBaseTargFBO"].init( numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
+		fboMap["geomBaseTargFBO"].init( numMaps+1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
 		fboMap["geomTargFBO"].init(     numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
 		fboMap["combineWithWaterTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
 		
@@ -4522,7 +4522,7 @@ void Singleton::makeJump (int actorId, int isUp)
 			return;
 		}
 		
-		float JUMP_AMOUNT = 0.5f*ge->getMarkerMass()/STEP_TIME_IN_SEC;
+		float JUMP_AMOUNT = 1.0f*ge->getMarkerMass()/STEP_TIME_IN_SEC;
 		
 		
 		if (isUp == 1) {
@@ -4744,19 +4744,21 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				case 'u':
 					
-					if (updateHolders) {
-						if (pathfindingOn) {
-							updateHolders = false;
-							pathfindingOn = false;
-						}
-						else {
-							pathfindingOn = true;
+					// if (updateHolders) {
+					// 	if (pathfindingOn) {
+					// 		updateHolders = false;
+					// 		pathfindingOn = false;
+					// 	}
+					// 	else {
+					// 		pathfindingOn = true;
 							
-						}
-					}
-					else {
-						updateHolders = true;
-					}
+					// 	}
+					// }
+					// else {
+					// 	updateHolders = true;
+					// }
+				
+					updateHolders = !updateHolders;
 					
 					
 					cout << "\n";
@@ -5038,7 +5040,11 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				case 'C':
 					
+					break;
 				case 'c':
+					
+					editPose = !editPose;
+					cout << "editPose " << editPose << "\n";
 					
 					//setCameraToElevation();
 				
@@ -5054,6 +5060,15 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 									
 				
 					break;
+					
+				case 'v':
+					
+					mirrorOn = !mirrorOn;
+					cout << "mirrorOn " << mirrorOn << "\n";
+					
+					//waterBulletOn = !waterBulletOn;
+					//gw->toggleVis(selectedEnts.getSelectedEnt());
+					break;
 				
 
 				case 'X':
@@ -5068,6 +5083,9 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				case 'm':
 
+
+					
+					
 					//doPathReport = true;
 
 					// medianCount++;					
@@ -5075,7 +5093,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					// 	medianCount = 0;
 					// }
 					
-					runReport();
+					//runReport();
 					
 					// refreshPaths = true;
 					
@@ -5084,11 +5102,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				
 
-				case 'v':
-					
-					waterBulletOn = !waterBulletOn;
-					//gw->toggleVis(selectedEnts.getSelectedEnt());
-					break;
+				
 
 				case 'A':
 				case 'Z':
@@ -5131,7 +5145,7 @@ void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUp
 		if (wsBufferInvalid || forceUpdate || forceGetPD)
 		{
 			if (isObj) {
-				getFBOWrapper("geomTargFBO", 1)->getPixels();
+				getFBOWrapper("geomBaseTargFBO", 2)->getPixels();
 			}
 			else {
 				getFBOWrapper("solidTargFBO", 0)->getPixels();
@@ -5148,7 +5162,7 @@ void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUp
 
 
 		if (isObj) {
-			fbow = getFBOWrapper("geomTargFBO", 1);
+			fbow = getFBOWrapper("geomBaseTargFBO", 2);
 			fbow->getPixelAtF(toVector, newX, (bufferDim.getIY() - 1) - newY);
 		}
 		else {
@@ -5505,7 +5519,11 @@ void Singleton::mouseMove (int _x, int _y)
 		
 		
 		
-		
+		if (mbDown) {
+			angleToVec(&lightVec, fx*2.0, fy*2.0);
+			lightVecOrig.copyFrom(&lightVec);
+			lightVec.setFZ(-abs(lightVec.getFZ()));
+		}
 		
 		
 		
@@ -5523,9 +5541,10 @@ void Singleton::mouseMove (int _x, int _y)
 		else
 		{
 
-			if (placingGeom||RT_TRANSFORM||orgOn||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
+			if (placingGeom||RT_TRANSFORM||editPose||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
 			//if (true) {
 				getPixData(&mouseMovePD, x, y, false, false);
+				getPixData(&mouseMoveOPD, x, y, true, true);
 			}
 			
 
@@ -5538,8 +5557,6 @@ void Singleton::mouseMove (int _x, int _y)
 					if (pathFindingStep < 2) {
 						moveNodes[pathFindingStep].copyFrom(&(mouseMovePD));
 					}
-					
-					
 				}
 				
 				
@@ -5548,6 +5565,7 @@ void Singleton::mouseMove (int _x, int _y)
 
 			//////////////
 
+			
 
 			if (
 				orgOn &&
@@ -5561,29 +5579,24 @@ void Singleton::mouseMove (int _x, int _y)
 					activeNode = NULL;
 					setSelNode(NULL);
 				}
-				if (mbDown) {
-					angleToVec(&lightVec, fx*2.0, fy*2.0);
-					lightVecOrig.copyFrom(&lightVec);
-					lightVec.setFZ(-abs(lightVec.getFZ()));
-				}
-				else {
-					if (placingGeom) {
-						updateCurGeom(x, y);
-					}
-					else {
-						
-						gw->findNearestEnt(
-							&highlightedEnts,
-							E_ET_GEOM,
-							2,
-							1,
-							&mouseMovePD
-						);
-						highlightedEnt = highlightedEnts.getSelectedEnt();
+				
+			}
+			
+			if (placingGeom) {
+				updateCurGeom(x, y);
+			}
+			else {
+				
+				gw->findNearestEnt(
+					&highlightedEnts,
+					E_ET_GEOM,
+					2,
+					1,
+					&mouseMovePD
+				);
+				highlightedEnt = highlightedEnts.getSelectedEnt();
 
 
-					}
-				}
 			}
 			
 
@@ -5830,7 +5843,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 									
 									if (upInd == 0) {
 										currentActor->targAngRelative = -currentActor->targAngRelative;
-										playSoundEnt("swing0", currentActor);
+										//playSoundEnt("swing0", currentActor);
 									}
 									
 									
@@ -6216,6 +6229,11 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 	}
 void Singleton::makeDirty ()
                          {
+		
+		if (currentActor != NULL) {
+			currentActor->wakeAll();
+		}
+		
 		//testHuman->gph->childrenDirty = true;
 	}
 void Singleton::setSelNode (GameOrgNode * newNode)
@@ -6408,7 +6426,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,0.02,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
+						btVector3(0,0.05,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
 						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
@@ -6424,7 +6442,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,-0.02,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
+						btVector3(0,-0.05,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
 						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
@@ -6955,6 +6973,8 @@ bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
 		
 		//worldToScreenBase(&tempVec1, mousePosWS);
 		
+		GameOrgNode* mirNode = NULL;
+		
 		if (getCurOrg() == NULL) {
 			return false;
 		}
@@ -6964,10 +6984,13 @@ bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
 		
 		int boneId;
 		
-		gamePhysics->pickBody(mouseDownPD.getBTV(),mouseDownOPD.getBTV());
+		highlightedLimb2 = -1;
+		highlightedLimb = -1;
+		
+		gamePhysics->pickBody(&mouseMoveOPD);  //mouseDownPD.getBTV(),mouseDownOPD.getBTV());
 		
 		if (gamePhysics->lastBodyPick == NULL) {
-			
+						
 		}
 		else {
 			highlightedLimb = gamePhysics->lastBodyPick->limbUID;
@@ -6978,6 +7001,19 @@ bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
 				
 				if (boneId > -1) {
 					bestNode = testHuman->allNodes[boneId];
+					
+					// if (mirrorOn) {
+					// 	mirNode = getMirroredNode(bestNode);
+						
+					// 	if (mirNode == NULL) {
+							
+					// 	}
+					// 	else {
+					// 		mirNode->nodeName
+					// 	}
+						
+					// }
+					
 					if (setActive) {
 						activeNode = bestNode;
 					}
@@ -8329,7 +8365,7 @@ FIVector4 * Singleton::cameraGetPosNoShake ()
 	}
 float Singleton::getTargetTimeOfDay ()
                                    {
-		return 1.0f;//(lightVecOrig.getFZ() + 1.0f)*0.5f;
+		return 1.0f-(lightVecOrig.getFZ() + 1.0f)*0.5f;
 	}
 void Singleton::updateBullets ()
                              {
@@ -8475,7 +8511,8 @@ void Singleton::display (bool doFrameRender)
 				lbDown &&
 				isDraggingObject && 
 				(draggingFromType != E_DT_NOTHING) &&
-				((curTime-mdTime) > 300)
+				((curTime-mdTime) > 300) &&
+				(!editPose)
 			) {
 				glutSetCursor(GLUT_CURSOR_CROSSHAIR);
 			

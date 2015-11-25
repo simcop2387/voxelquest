@@ -11,12 +11,12 @@ uniform sampler2D Texture4;
 uniform sampler2D Texture5;
 
 // geom fbo
-uniform sampler2D Texture6;
-uniform sampler2D Texture7;
+// uniform sampler2D Texture6;
+// uniform sampler2D Texture7;
 
-// debug fbo
-uniform sampler2D Texture8;
-uniform sampler2D Texture9;
+// // debug fbo
+// uniform sampler2D Texture8;
+// uniform sampler2D Texture9;
 
 // pal fbo
 uniform sampler3D Texture10;
@@ -262,8 +262,8 @@ void main()
 	// vec4 tex4 = texture2D(Texture6, TexCoord0.xy);
 	// vec4 tex5 = texture2D(Texture7, TexCoord0.xy);
 
-	vec4 tex8 = texture2D(Texture8, TexCoord0.xy);
-	vec4 tex9 = texture2D(Texture9, TexCoord0.xy);
+	//vec4 tex8 = texture2D(Texture8, TexCoord0.xy);
+	//vec4 tex9 = texture2D(Texture9, TexCoord0.xy);
 
 	float tot = float(tex1.r + tex1.g + tex1.b + tex1.a > 0.0);
 
@@ -328,9 +328,9 @@ void main()
 			
 		
 		resColor.rgb = vec3(
-			unpackColor(matVals.ba,pow(tex2.r,4.0)).r,
-			unpackColor(matVals.ba,pow(tex2.g,4.0)).g,
-			unpackColor(matVals.ba,pow(tex2.b,4.0)).b
+			unpackColor(matVals.ba,pow(tex2.r,1.0)).r,
+			unpackColor(matVals.ba,pow(tex2.g,1.0)).g,
+			unpackColor(matVals.ba,pow(tex2.b,1.0)).b
 		);
 		
 		hsvVal = rgb2hsv(tex2.rgb);
@@ -421,9 +421,9 @@ void main()
 	
 	
 	
-	resColor = mix(pow(resColor,vec3(1.0)), resColor, timeOfDay);
+	resColor = mix(pow(resColor,vec3(2.0))*0.5, resColor, timeOfDay);
 	
-	resColor = mix(resColor*0.5,resColor,tex2.rgb);
+	//resColor = mix(resColor*0.5,resColor,tex2.rgb);
 	
 	resColor += resColor*mix(texSpec.r,1.0,0.25)*texSpec.r;
 	
@@ -546,6 +546,7 @@ void main()
 		clamp(distance(worldPosition.xyz, cameraPos.xyz)/256.0,0.0,1.0)
 	);
 	
+	//resColor.rgb -= outDif;
 	
 	
 	// if (tex0.a == TEX_WATER || tex0.a == TEX_NULL) {
@@ -571,7 +572,11 @@ void main()
 	//unpackColor(matVals.ba, lightRes );
 	
 
-	//resColor.rgb = tex2.rgb;
+	//resColor.rgb = tex2.rgb + modColor;
+	
+	resColor.rgb += modColor*0.1;
+	
+	//resColor = vec3(newAO);
 	
 	//resColor.rgb = texture2D(Texture9, TexCoord0.xy).rgb;
 

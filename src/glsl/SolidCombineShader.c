@@ -4,7 +4,7 @@
 uniform sampler2D Texture0;
 uniform sampler2D Texture1;
 
-//geomBaseTargFBO
+//geomTargFBO
 uniform sampler2D Texture2;
 uniform sampler2D Texture3;
 
@@ -28,10 +28,10 @@ void main() {
     vec4 tex2 = texture2D(Texture2, TexCoord0.xy);
     vec4 tex3 = texture2D(Texture3, TexCoord0.xy);
     
-    vec2 curTex = vec2(TEX_EARTH,0.5);
-    float curMat = floor(curTex.x*256.0*255.0) + floor(curTex.y*255.0);
+    // vec2 curTex = vec2(TEX_EARTH,0.5);
+    // float curMat = floor(curTex.x*256.0*255.0) + floor(curTex.y*255.0);
     
-    tex3.w = curMat;
+    //tex3.w = curMat;
     
     if (tex2.w > tex0.w) {
     	tex0 = tex2;

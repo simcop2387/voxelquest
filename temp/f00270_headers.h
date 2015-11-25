@@ -197,6 +197,7 @@ public:
   bool (isContainer) [MAX_OBJ_TYPES];
   string (objStrings) [MAX_OBJ_TYPES];
   int highlightedLimb;
+  int highlightedLimb2;
   int curPrimTemplate;
   int geomStep;
   int earthMod;
@@ -374,6 +375,7 @@ public:
   FIVector4 mouseDownPD;
   FIVector4 mouseDownOPD;
   FIVector4 mouseMovePD;
+  FIVector4 mouseMoveOPD;
   FIVector4 tempVec1;
   FIVector4 tempVec2;
   FIVector4 tempVec3;
@@ -1761,7 +1763,7 @@ public:
   ShapeCache * cache (btConvexShape * shape);
   void renderSquareA (float x, float y, float z);
   void glDrawVector (btVector3 const & v);
-  void setId (int id);
+  void setId (int bodyUID, int limbUID);
   void updateMat2 ();
   void updateMat ();
   void pushNewMat (btScalar * m);
@@ -1829,7 +1831,7 @@ public:
   btRigidBody * lastBodyPick;
   GamePhysics ();
   void init (Singleton * _singleton);
-  void pickBody (btVector3 posWS1, btVector3 posWS2);
+  void pickBody (FIVector4 * mouseDownOPD);
   void collectDebris ();
   void beginDrop ();
   void remBoxFromObj (BaseObjType _uid);

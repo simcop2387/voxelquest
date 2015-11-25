@@ -3955,12 +3955,18 @@ vec4 castLand(
 				
 				float isGrass = snowVal - myVal2*0.01 - clamp(hv-0.12,0.0,0.1)*2.0;
 				
+				isGrass -= mod(
+										abs(
+												sin(pos.z/160.0)*
+												sin(pos.x/160.0)*
+												sin(pos.y/160.0)
+										),
+										1.0
+								)*0.1;
+				
 				if (isGrass*(1.0-isInTer) > 0.01) {
 					globTexEarth.x = TEX_GRASS;
 					globTexEarth.y = clamp(myVal2,0.0,1.0);
-				}
-				else {
-					
 				}
 				
 				if (snowVal*(1.0-isInTer) > 0.04) {

@@ -175,6 +175,7 @@ public:
 	string objStrings[MAX_OBJ_TYPES];
 	
 	int highlightedLimb;
+	int highlightedLimb2;
 	
 	int curPrimTemplate;
 	int geomStep;
@@ -407,6 +408,7 @@ public:
 	FIVector4 mouseDownPD;
 	FIVector4 mouseDownOPD;
 	FIVector4 mouseMovePD;
+	FIVector4 mouseMoveOPD;
 	FIVector4 tempVec1;
 	FIVector4 tempVec2;
 	FIVector4 tempVec3;
@@ -948,7 +950,7 @@ public:
 			glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 		}
 		
-		
+		glLineWidth(4.0f);
 		
 		// This var determines how high the z val can go,
 		// but also increases load times for each block
@@ -1706,7 +1708,7 @@ public:
 		fboMap["swapTargFBO1"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, false);
 		
 		
-		fboMap["geomBaseTargFBO"].init( numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
+		fboMap["geomBaseTargFBO"].init( numMaps+1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
 		fboMap["geomTargFBO"].init(     numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
 		fboMap["combineWithWaterTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
 		
@@ -5467,7 +5469,7 @@ DISPATCH_EVENT_END:
 			return;
 		}
 		
-		float JUMP_AMOUNT = 0.5f*ge->getMarkerMass()/STEP_TIME_IN_SEC;
+		float JUMP_AMOUNT = 1.0f*ge->getMarkerMass()/STEP_TIME_IN_SEC;
 		
 		
 		if (isUp == 1) {
@@ -5689,19 +5691,21 @@ DISPATCH_EVENT_END:
 
 				case 'u':
 					
-					if (updateHolders) {
-						if (pathfindingOn) {
-							updateHolders = false;
-							pathfindingOn = false;
-						}
-						else {
-							pathfindingOn = true;
+					// if (updateHolders) {
+					// 	if (pathfindingOn) {
+					// 		updateHolders = false;
+					// 		pathfindingOn = false;
+					// 	}
+					// 	else {
+					// 		pathfindingOn = true;
 							
-						}
-					}
-					else {
-						updateHolders = true;
-					}
+					// 	}
+					// }
+					// else {
+					// 	updateHolders = true;
+					// }
+				
+					updateHolders = !updateHolders;
 					
 					
 					cout << "\n";
@@ -5983,7 +5987,11 @@ DISPATCH_EVENT_END:
 				
 				case 'C':
 					
+					break;
 				case 'c':
+					
+					editPose = !editPose;
+					cout << "editPose " << editPose << "\n";
 					
 					//setCameraToElevation();
 				
@@ -5999,6 +6007,15 @@ DISPATCH_EVENT_END:
 									
 				
 					break;
+					
+				case 'v':
+					
+					mirrorOn = !mirrorOn;
+					cout << "mirrorOn " << mirrorOn << "\n";
+					
+					//waterBulletOn = !waterBulletOn;
+					//gw->toggleVis(selectedEnts.getSelectedEnt());
+					break;
 				
 
 				case 'X':
@@ -6013,6 +6030,9 @@ DISPATCH_EVENT_END:
 
 				case 'm':
 
+
+					
+					
 					//doPathReport = true;
 
 					// medianCount++;					
@@ -6020,7 +6040,7 @@ DISPATCH_EVENT_END:
 					// 	medianCount = 0;
 					// }
 					
-					runReport();
+					//runReport();
 					
 					// refreshPaths = true;
 					
@@ -6029,11 +6049,7 @@ DISPATCH_EVENT_END:
 
 				
 
-				case 'v':
-					
-					waterBulletOn = !waterBulletOn;
-					//gw->toggleVis(selectedEnts.getSelectedEnt());
-					break;
+				
 
 				case 'A':
 				case 'Z':
@@ -6085,7 +6101,7 @@ DISPATCH_EVENT_END:
 		if (wsBufferInvalid || forceUpdate || forceGetPD)
 		{
 			if (isObj) {
-				getFBOWrapper("geomTargFBO", 1)->getPixels();
+				getFBOWrapper("geomBaseTargFBO", 2)->getPixels();
 			}
 			else {
 				getFBOWrapper("solidTargFBO", 0)->getPixels();
@@ -6102,7 +6118,7 @@ DISPATCH_EVENT_END:
 
 
 		if (isObj) {
-			fbow = getFBOWrapper("geomTargFBO", 1);
+			fbow = getFBOWrapper("geomBaseTargFBO", 2);
 			fbow->getPixelAtF(toVector, newX, (bufferDim.getIY() - 1) - newY);
 		}
 		else {
@@ -6472,7 +6488,11 @@ DISPATCH_EVENT_END:
 		
 		
 		
-		
+		if (mbDown) {
+			angleToVec(&lightVec, fx*2.0, fy*2.0);
+			lightVecOrig.copyFrom(&lightVec);
+			lightVec.setFZ(-abs(lightVec.getFZ()));
+		}
 		
 		
 		
@@ -6490,9 +6510,10 @@ DISPATCH_EVENT_END:
 		else
 		{
 
-			if (placingGeom||RT_TRANSFORM||orgOn||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
+			if (placingGeom||RT_TRANSFORM||editPose||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
 			//if (true) {
 				getPixData(&mouseMovePD, x, y, false, false);
+				getPixData(&mouseMoveOPD, x, y, true, true);
 			}
 			
 
@@ -6505,8 +6526,6 @@ DISPATCH_EVENT_END:
 					if (pathFindingStep < 2) {
 						moveNodes[pathFindingStep].copyFrom(&(mouseMovePD));
 					}
-					
-					
 				}
 				
 				
@@ -6515,6 +6534,7 @@ DISPATCH_EVENT_END:
 
 			//////////////
 
+			
 
 			if (
 				orgOn &&
@@ -6528,29 +6548,24 @@ DISPATCH_EVENT_END:
 					activeNode = NULL;
 					setSelNode(NULL);
 				}
-				if (mbDown) {
-					angleToVec(&lightVec, fx*2.0, fy*2.0);
-					lightVecOrig.copyFrom(&lightVec);
-					lightVec.setFZ(-abs(lightVec.getFZ()));
-				}
-				else {
-					if (placingGeom) {
-						updateCurGeom(x, y);
-					}
-					else {
-						
-						gw->findNearestEnt(
-							&highlightedEnts,
-							E_ET_GEOM,
-							2,
-							1,
-							&mouseMovePD
-						);
-						highlightedEnt = highlightedEnts.getSelectedEnt();
+				
+			}
+			
+			if (placingGeom) {
+				updateCurGeom(x, y);
+			}
+			else {
+				
+				gw->findNearestEnt(
+					&highlightedEnts,
+					E_ET_GEOM,
+					2,
+					1,
+					&mouseMovePD
+				);
+				highlightedEnt = highlightedEnts.getSelectedEnt();
 
 
-					}
-				}
 			}
 			
 
@@ -6797,7 +6812,7 @@ DISPATCH_EVENT_END:
 									
 									if (upInd == 0) {
 										currentActor->targAngRelative = -currentActor->targAngRelative;
-										playSoundEnt("swing0", currentActor);
+										//playSoundEnt("swing0", currentActor);
 									}
 									
 									
@@ -7198,6 +7213,11 @@ DISPATCH_EVENT_END:
 
 
 	void makeDirty() {
+		
+		if (currentActor != NULL) {
+			currentActor->wakeAll();
+		}
+		
 		//testHuman->gph->childrenDirty = true;
 	}
 
@@ -7443,7 +7463,7 @@ DISPATCH_EVENT_END:
 				
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,0.02,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
+						btVector3(0,0.05,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
 						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
@@ -7459,7 +7479,7 @@ DISPATCH_EVENT_END:
 				
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,-0.02,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
+						btVector3(0,-0.05,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
 						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
@@ -8001,6 +8021,8 @@ DISPATCH_EVENT_END:
 		
 		//worldToScreenBase(&tempVec1, mousePosWS);
 		
+		GameOrgNode* mirNode = NULL;
+		
 		if (getCurOrg() == NULL) {
 			return false;
 		}
@@ -8010,10 +8032,13 @@ DISPATCH_EVENT_END:
 		
 		int boneId;
 		
-		gamePhysics->pickBody(mouseDownPD.getBTV(),mouseDownOPD.getBTV());
+		highlightedLimb2 = -1;
+		highlightedLimb = -1;
+		
+		gamePhysics->pickBody(&mouseMoveOPD);  //mouseDownPD.getBTV(),mouseDownOPD.getBTV());
 		
 		if (gamePhysics->lastBodyPick == NULL) {
-			
+						
 		}
 		else {
 			highlightedLimb = gamePhysics->lastBodyPick->limbUID;
@@ -8024,6 +8049,19 @@ DISPATCH_EVENT_END:
 				
 				if (boneId > -1) {
 					bestNode = testHuman->allNodes[boneId];
+					
+					// if (mirrorOn) {
+					// 	mirNode = getMirroredNode(bestNode);
+						
+					// 	if (mirNode == NULL) {
+							
+					// 	}
+					// 	else {
+					// 		mirNode->nodeName
+					// 	}
+						
+					// }
+					
 					if (setActive) {
 						activeNode = bestNode;
 					}
@@ -9522,7 +9560,7 @@ DISPATCH_EVENT_END:
 	}
 
 	float getTargetTimeOfDay() {
-		return 1.0f;//(lightVecOrig.getFZ() + 1.0f)*0.5f;
+		return 1.0f-(lightVecOrig.getFZ() + 1.0f)*0.5f;
 	}
 
 	void updateBullets() {
@@ -9669,7 +9707,8 @@ DISPATCH_EVENT_END:
 				lbDown &&
 				isDraggingObject && 
 				(draggingFromType != E_DT_NOTHING) &&
-				((curTime-mdTime) > 300)
+				((curTime-mdTime) > 300) &&
+				(!editPose)
 			) {
 				glutSetCursor(GLUT_CURSOR_CROSSHAIR);
 			

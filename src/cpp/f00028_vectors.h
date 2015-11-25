@@ -1801,7 +1801,7 @@ public:
 	BaseObjType parentUID;
 	vector<BaseObjType> children;
 	btVector3 startPoint;
-	
+	btVector3 skelOffset;
 	
 	// btRigidBody* body;
 	// std::vector<btRigidBody*> limbs;
@@ -1868,6 +1868,14 @@ public:
 	
 	float getMarkerMass() {
 		return bodies[0].mass;
+	}
+	
+	void wakeAll() {
+		int i;
+		
+		for (i = 0; i < bodies.size(); i++) {
+			bodies[i].body->setActivationState(ACTIVE_TAG);
+		}
 	}
 	
 	bool allFalling() {
@@ -2123,6 +2131,7 @@ public:
 		parentUID = _parentUID;
 		uid = _uid;
 		
+		skelOffset = btVector3(0.0f,0.0f,0.0f);
 		startPoint = cellPos->getBTV();//centerPoint.copyFrom(cellPos);
 		
 		bounciness = 0.0f;

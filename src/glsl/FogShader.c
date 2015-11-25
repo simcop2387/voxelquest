@@ -10,19 +10,20 @@ uniform sampler2D Texture2;
 // result fbo blurred
 uniform sampler2D Texture3;
 
-// geom fbo
+// geom base fbo
 uniform sampler2D Texture4;
 uniform sampler2D Texture5;
+uniform sampler2D Texture6;
 
 // pal fbo
-uniform sampler3D Texture6;
+uniform sampler3D Texture7;
 
 // noise fbo
-uniform sampler2D Texture7;
+uniform sampler2D Texture8;
 
 // debug fbo
-uniform sampler2D Texture8;
 uniform sampler2D Texture9;
+uniform sampler2D Texture10;
 
 uniform mat4 modelviewInverse;
 uniform float FOV;
@@ -35,6 +36,7 @@ uniform int iNumSteps;
 uniform float seaLevel;
 uniform float volSizePrim;
 uniform float curTime;
+uniform float selLimbInd;
 uniform float selObjInd;
 uniform float actObjInd;
 uniform float isUnderWater;
@@ -93,7 +95,7 @@ vec2 pack16(float num)
 
 vec3 unpackColor(vec2 num, float lightVal)
 {
-    return texture3D( Texture6, vec3(lightVal, num.r, num.g + 0.5/255.0) ).rgb;
+    return texture3D( Texture7, vec3(lightVal, num.r, num.g + 0.5/255.0) ).rgb;
 }
 
 
@@ -261,7 +263,7 @@ vec4 Noise( in ivec2 x )
     vec2 coords = (vec2(x)+0.5)/bufferDim;
     
     
-    return texture2D( Texture7, coords ); //, -100.0
+    return texture2D( Texture8, coords ); //, -100.0
 }
 
 // vec4 Rand( in int x )
@@ -269,7 +271,7 @@ vec4 Noise( in ivec2 x )
 //     vec2 uv;
 //     uv.x = (float(x)+0.5)/256.0;
 //     uv.y = (floor(uv.x)+0.5)/256.0;
-//     return texture2D( Texture7, uv, -100.0 );
+//     return texture2D( Texture8, uv, -100.0 );
 // }
 
 float rand(vec2 co){
@@ -382,6 +384,7 @@ vec4 particles( vec2 fragCoord, vec4 wp, float dir, float partSpeed, float partL
 void main() {
 
     int i;
+    vec4 oneVec = vec4(1.0);
 
     vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
     vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
@@ -390,19 +393,13 @@ void main() {
     vec4 tex3 = texture2D(Texture3, TexCoord0.xy);
     
     
-    vec4 tex4 = texture2D(Texture4, TexCoord0.xy);
+    vec4 tex4 = texture2D(Texture4, TexCoord0.xy);    
+    //vec4 tex5 = texture2D(Texture5, TexCoord0.xy);
+    vec4 tex6 = texture2D(Texture6, TexCoord0.xy);
     
-    //vec4 tex7 = texture2D(Texture7, TexCoord0.xy);
-    
-
-    
-    vec4 oneVec = vec4(1.0);
-    
-    vec4 tex5 = texture2D(Texture5, TexCoord0.xy);    
-    
-    vec4 tex8 = texture2D(Texture8, TexCoord0.xy);
-    vec4 tex9 = texture2D(Texture9, TexCoord0.xy);    
-    vec4 matValsGeom = tex9;
+    vec4 tex9 = texture2D(Texture9, TexCoord0.xy);
+    vec4 tex10 = texture2D(Texture10, TexCoord0.xy);    
+    vec4 matValsGeom = tex10;
     bool valIsGeom = dot(matValsGeom.rgb,oneVec.rgb) != 0.0;
     
     
@@ -413,8 +410,8 @@ void main() {
         worldPosition = tex4;
     }
     
-    // if (tex8.w > tex0.w) {
-    //     worldPosition = tex8;
+    // if (tex9.w > tex0.w) {
+    //     worldPosition = tex9;
     // }
     
     
@@ -594,19 +591,22 @@ void main() {
     bool isOutline = false;
     bool isSelObj = false;
     bool isActObj = false;
+    bool isSelLimb = false;
     
+    if (tex6.z == selLimbInd) {
+        isSelLimb = true;
+    }
     
-    
-    if (tex5.w == selObjInd) {
+    if (tex6.w == selObjInd) {
         isSelObj = true;
     }
-    if (tex5.w == actObjInd) {
+    if (tex6.w == actObjInd) {
         isActObj = true;
     }
     for (i = 0; i < 4; i++) {
         newTC = TexCoord0.xy + dirVecs[i].xy*1.0/bufferDim;
-        samp = texture2D(Texture5, newTC );
-        if (samp.w != tex5.w) {
+        samp = texture2D(Texture6, newTC );
+        if (samp.w != tex6.w) {
             isOutline = true;
         }
         if (samp.w == selObjInd) {
@@ -635,7 +635,16 @@ void main() {
     if (actObjInd == 0) {
         isActObj = false;
     }
+    
+    if (isSelLimb) {
+        finalCol = vec3(1.0,1.0,0.0);
+    }
+    else {}
+    
     if (isOutline) {
+        
+        
+        
         
         if (isSelObj||isActObj) {
             if (isSelObj) {
@@ -658,13 +667,13 @@ void main() {
                     finalCol = vec3(1.0,0.0,0.0);
                 }
                 
-                
             }
             
         }
         else {
             // finalCol += vec3(1.0,1.0,1.0)*0.25;
         }
+        
         
         // if (tex4.w < tex0.w) {
         //     finalCol = mix(finalCol,finalColOrig,0.9);
@@ -774,8 +783,8 @@ void main() {
         pow(
             mix(
                 
-                texture2D(Texture7, TexCoord0.xy + moveVec2  ).rgb,
-                texture2D(Texture7, TexCoord0.xy - moveVec  ).rgb,
+                texture2D(Texture8, TexCoord0.xy + moveVec2  ).rgb,
+                texture2D(Texture8, TexCoord0.xy - moveVec  ).rgb,
                 abs(lookAtVec.z)
             )
             *0.85,
@@ -798,8 +807,8 @@ void main() {
 
     if (valIsGeom&&(!isOutline)) {
         
-        if (worldPosition.w < tex8.w) {
-            finalCol = tex9.rgb;
+        if (worldPosition.w < tex9.w) {
+            finalCol = tex10.rgb;
         }
         
         

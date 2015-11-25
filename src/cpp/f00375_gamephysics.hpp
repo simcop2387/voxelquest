@@ -36,7 +36,28 @@ public:
 		
 	}
 	
-	void pickBody(btVector3 posWS1, btVector3 posWS2) {
+	void pickBody(FIVector4* mouseDownOPD) { //btVector3 posWS1, btVector3 posWS2) {
+		
+		if (!(singleton->editPose)) {
+			lastBodyPick = NULL;
+			return;
+		}
+		
+		int bodyUID = mouseDownOPD->getFW();
+		int limbUID = mouseDownOPD->getFZ();
+		BaseObj* ge;
+		
+		if (
+			(bodyUID > 0) &&
+			(limbUID > -1)	
+		) {
+			ge = &(singleton->gw->gameObjects[bodyUID]);
+			lastBodyPick = ge->bodies[limbUID].body;
+		}
+		else {
+			lastBodyPick = NULL;
+		}
+		
 		
 		// btVector3 begPos = btVector3(0.0f,0.0f,0.0f);
 		// btVector3 endPos = btVector3(0.0f,0.0f,0.0f);
@@ -51,17 +72,17 @@ public:
 		// );
 		
 		
-		btVector3 begPos = singleton->cameraGetPosNoShake()->getBTV();
-		btVector3 endPos;
+		// btVector3 begPos = singleton->cameraGetPosNoShake()->getBTV();
+		// btVector3 endPos;
 		
-		if (posWS1.distance(begPos) < posWS2.distance(begPos)) {
-			endPos = posWS1;
-		}
-		else {
-			endPos = posWS2;
-		}
+		// if (posWS1.distance(begPos) < posWS2.distance(begPos)) {
+		// 	endPos = posWS1;
+		// }
+		// else {
+		// 	endPos = posWS2;
+		// }
 		
-		
+		// lastBodyPick = example->bodyPick(begPos,endPos);
 		
 		
 		// singleton->getRayTo(
@@ -69,7 +90,7 @@ public:
 		// 	singleton->lastMouseY
 		// );
 		
-		lastBodyPick = example->bodyPick(begPos,endPos);
+		
 		
 		// if (lastBodyPick != NULL) {
 		// 	cout << "objID " << lastBodyPick->bodyUID << "\n";
@@ -150,7 +171,7 @@ public:
 			
 			isOrg = true;
 			
-			btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(1.0f,1.5f);
+			btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(0.25f,0.25f);
 			ge->bodies.push_back(BodyStruct());
 			ge->bodies.back().body = example->createRigidBodyMask(
 				MASS_PER_LIMB,
@@ -183,6 +204,7 @@ public:
 				ge->bodies.push_back(BodyStruct());
 				ge->bodies.back().body = curActor->actorJoints[i].body;
 				ge->bodies.back().boneId = curActor->actorJoints[i].boneId;
+				ge->bodies.back().isBall = curActor->actorJoints[i].isBall;
 				
 				// if (i == 0) {
 				// 	//ge->body = curActor->actorJoints[i].body;
@@ -231,7 +253,7 @@ public:
 			ge->bodies[bodInd].body->limbUID = bodInd;
 			
 			if (bodInd == 0) {
-				ge->bodies[bodInd].body->setDamping(0.1f,0.99f);
+				ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
 				
 			}
 			else {
@@ -240,7 +262,7 @@ public:
 					ge->bodies[bodInd].body->setDamping(0.99f,0.9f);
 				}
 				else {
-					ge->bodies[bodInd].body->setDamping(0.85f,0.9f);
+					ge->bodies[bodInd].body->setDamping(0.99f,0.9f);
 				}
 				
 				
@@ -432,6 +454,9 @@ public:
 		GameActor* curActor;
 		btVector3 basePos;
 		
+		btVector3 difVec = btVector3(0.0,0.0,0.0);
+		btVector3 totVec = btVector3(0.0,0.0,0.0);
+		
 		
 		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
 			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
@@ -442,6 +467,8 @@ public:
 				
 			}
 			else {
+				
+				totVec = btVector3(0.0,0.0,0.0);
 				
 				for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
 					curBody = &(ge->bodies[bodInd]);
@@ -476,9 +503,9 @@ public:
 					if (curBody->isInside) {
 						
 						
-						ge->moveToPoint(tempBTV + btVector3(0,0,1.0), bodInd);
-						ge->applyImpulse(btVector3(0,0,1.0),false, bodInd);
-						curBody->lastVel = curBody->body->getLinearVelocity();
+						// ge->moveToPoint(tempBTV + btVector3(0,0,1.0), bodInd);
+						// ge->applyImpulse(btVector3(0,0,1.0),false, bodInd);
+						//curBody->lastVel = curBody->body->getLinearVelocity();
 					}
 					
 					
@@ -495,54 +522,78 @@ public:
 						curOrg = singleton->gameOrgs[ge->orgId];
 						curOrgNode = curOrg->allNodes[curBody->boneId];
 						
-						
-						// if (bodInd == 0) {
-						// 	//basePos = curOrgNode->orgTrans[1].getBTV();
-						// }
-						// else {
+						if (curOrgNode == NULL) {
 							
-						// }
+						}
+						else {
+							
+							
+							// if (bodInd == 0) {
+							// 	//basePos = curOrgNode->orgTrans[1].getBTV();
+							// }
+							// else {
+								
+							// }
+							
+							
+							// if (bodInd == 0) {
+							// 	basePos = btVector3(0.0,0.0,0.0);
+							// }
+							// else {
+							// 	basePos = 
+							// 		curOrgNode->orgTrans[1].getBTV() * 
+							// 		ge->bodies[0].body->getWorldTransform().getBasis() +
+							// 		ge->bodies[0].body->getWorldTransform().getOrigin();
+							// }
+							
+							
+							
+							
+							ge->bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
+							myMatrix4 = Matrix4(myMat);
+							
+							if (curBody->isBall) {
+								tempBTV = curOrgNode->orgTrans[2].getBTV();
+								
+								
+								
+							// }
+							// else {
+							// 	tempBTV = curOrgNode->orgTrans[1].getBTV();
+							// }
+							
+							
+								myVector4 = Vector4(
+									tempBTV.getX(),
+									tempBTV.getY(),
+									tempBTV.getZ(),
+									1.0f
+								);
+								resVector4 = myMatrix4*myVector4;
+								basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
+								basePos += ge->skelOffset;
+								
+								// move limbs towards pose
+								
+								difVec = basePos - 
+										(
+											curBody->body->getCenterOfMassPosition()
+											// - ge->bodies[0].body->getWorldTransform().getOrigin()
+										);
+										
+								totVec += difVec;
+								
+								ge->applyImpulse(
+									difVec*curStepTime*MASS_PER_LIMB*200.0f, // *MASS_PER_LIMB*2.0f*10.0f*curStepTime,
+									false,
+									bodInd
+								);
+							
+							
+							}
+							//
+						}
 						
-						
-						// if (bodInd == 0) {
-						// 	basePos = btVector3(0.0,0.0,0.0);
-						// }
-						// else {
-						// 	basePos = 
-						// 		curOrgNode->orgTrans[1].getBTV() * 
-						// 		ge->bodies[0].body->getWorldTransform().getBasis() +
-						// 		ge->bodies[0].body->getWorldTransform().getOrigin();
-						// }
-						
-						
-						
-						ge->bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
-						myMatrix4 = Matrix4(myMat);
-						tempBTV = curOrgNode->orgTrans[1].getBTV();
-						myVector4 = Vector4(
-							tempBTV.getX(),
-							tempBTV.getY(),
-							tempBTV.getZ(),
-							1.0f
-						);
-						resVector4 = myMatrix4*myVector4;
-						basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
-						
-						
-						
-						ge->applyImpulse(
-							(
-								basePos - 
-								(
-									curBody->body->getCenterOfMassPosition()
-									// - ge->bodies[0].body->getWorldTransform().getOrigin()
-								)
-							)*curStepTime*MASS_PER_LIMB*50.0f, // *MASS_PER_LIMB*2.0f*10.0f*curStepTime,
-							false,
-							bodInd
-						);
-						
-						//
 						
 					}
 					
@@ -673,6 +724,58 @@ public:
 					
 						
 				}
+				
+				//ge->otherImpulses *= 0.4;
+				
+				ge->skelOffset *= 0.99;
+				
+				// ge->curGrav -= btVector3(0.0f, 0.0f, 0.01f);
+				// if (ge->curGrav.getZ() < -10.0f) {
+				// 	ge->curGrav = btVector3(0.0f,0.0f,-10.0f);
+				// }
+				
+				if (ge->allFalling()) {
+					
+					//ge->curGrav -= btVector3(0.0f, 0.0f, 0.03f);
+					
+					//ge->curGrav = btVector3(0.0f,0.0f,-10.0f);
+					
+					//ge->bodies[0].body->setDamping(0.5f,0.9f);
+				}
+				else {
+					
+					//ge->bodies[0].body->setDamping(0.99f,0.9f);
+					
+					if (difVec.getZ() < 0.0f) {
+						
+						// ge->otherImpulses += 0.1;
+						// ge->otherImpulses *= 2.0;
+						
+						//ge->bodies[0].body->setGravity(btVector3(0.0,0.0,-10.0));
+						
+						//ge->curGrav += btVector3(0.0f, 0.0f, 0.03f);
+						
+						
+						ge->skelOffset += btVector3(
+								0.0f,
+								0.0f,
+								-difVec.getZ()	
+						);
+						
+						// ge->applyImpulse(
+						// 	btVector3(
+						// 		0.0f,
+						// 		0.0f,
+						// 		-difVec.getZ()*100.0f	
+						// 	),
+						// 	false,
+						// 	0
+						// );
+					}
+				}
+				
+				//ge->bodies[0].body->setGravity(ge->curGrav);
+				
 			}
 			
 		}

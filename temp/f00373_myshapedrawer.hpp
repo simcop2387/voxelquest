@@ -138,8 +138,14 @@ public:
 
 		inline void glDrawVector(const btVector3& v) { glVertex3d(v[0], v[1], v[2]); }
 
-		void setId(int id) {
-			singleton->setShaderFloat("objectId", id);
+		void setId(
+			
+			int bodyUID,
+			int limbUID
+			
+		) {
+			singleton->setShaderFloat("bodyUID", bodyUID);
+			singleton->setShaderFloat("limbUID", limbUID);
 		}
 
 
@@ -271,7 +277,6 @@ public:
 		//		dz *= halfExtent[2];
 				//glColor3f(1,1,1);
 				//glDisable(GL_LIGHTING);
-				//glLineWidth(2);
 
 				// glBegin(GL_LINE_LOOP);
 				// glDrawVector(org - dx - dy);
@@ -864,7 +869,7 @@ public:
 				const btCollisionObject*	colObj=dynamicsWorld->getCollisionObjectArray()[i];
 				const btRigidBody*		body=btRigidBody::upcast(colObj);
 				
-				setId( max(body->bodyUID,0) );
+				setId( body->bodyUID, body->limbUID );//max(,0) );
 				
 				if(body&&body->getMotionState())
 				{

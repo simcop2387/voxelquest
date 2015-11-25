@@ -12,7 +12,8 @@ uniform mat3 normalRot;
 uniform vec3 lightVec;
 
 
-uniform float objectId;
+uniform float bodyUID;
+uniform float limbUID;
 uniform float curTime;
 uniform vec3 cameraPos;
 uniform vec3 lookAtVec;
@@ -30,6 +31,7 @@ varying vec4 screenPos;
 varying float camDis;
 uniform float clipDist;
 
+^INCLUDE:MATERIALS^
 
 
 $
@@ -132,14 +134,21 @@ void main() {
     //float zbVal = 1.0-screenPos.z/clipDist;
 
     //
-    
+    vec2 curTex = vec2(TEX_EARTH,0.5);
+    float curMat = floor(curTex.x*256.0*255.0) + floor(curTex.y*255.0);
 
     gl_FragData[0] = vec4((worldPos.xyz),zbVal);//vec4(heightPacked.rg,matPacked.rg);//vec4(bhr,bhg,3.0/255.0,tex0.a);
     gl_FragData[1] = vec4(
         -curNormal, //todo fix this
-        objectId//curMat
+        curMat//bodyUID//curMat
         //vec3(clamp(dot(curNormal,lightVec),0.0,1.0)) + matVal.rgb/255.0
         //,objectId
     );//vec4(resNorm.rgb, (TexCoord0.z+tex1.a)/2.0 ); //(TexCoord0.xyz+1.0)/2.0
-
+    gl_FragData[2] = vec4(
+        0.0,
+        0.0,
+        limbUID,
+        bodyUID
+    );
+    
 }

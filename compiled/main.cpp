@@ -1687,7 +1687,6 @@ int OGLRenderer::registerGraphicsInstance(int shapeIndex, const float* position,
 void OGLRenderer::drawLines(const float* positions, const float color[4], int numPoints, int pointStrideInBytes, const unsigned int* indices, int numIndices, float pointDrawSize)
 {
     int pointStrideInFloats = pointStrideInBytes/4;
-    glLineWidth(pointDrawSize);
     for (int i=0;i<numIndices;i+=2)
     {
         int index0 = indices[i];
@@ -1711,7 +1710,6 @@ void OGLRenderer::drawLines(const float* positions, const float color[4], int nu
 
 void OGLRenderer::drawLine(const float from[4], const float to[4], const float color[4], float lineWidth)
 {
-        glLineWidth(lineWidth);
         // glBegin(GL_LINES);
         // glColor3f(color[0],color[1],color[2]);
         // glVertex3d(from[0],from[1],from[2]);
@@ -4573,6 +4571,7 @@ struct BodyStruct {
 	
 	float mass;
 	int boneId;
+	bool isBall;
 	
 	bool isVisible;
 	bool inWater;
@@ -9121,7 +9120,7 @@ public:
 	BaseObjType parentUID;
 	vector<BaseObjType> children;
 	btVector3 startPoint;
-	
+	btVector3 skelOffset;
 	
 	// btRigidBody* body;
 	// std::vector<btRigidBody*> limbs;
@@ -9188,6 +9187,14 @@ public:
 	
 	float getMarkerMass() {
 		return bodies[0].mass;
+	}
+	
+	void wakeAll() {
+		int i;
+		
+		for (i = 0; i < bodies.size(); i++) {
+			bodies[i].body->setActivationState(ACTIVE_TAG);
+		}
 	}
 	
 	bool allFalling() {
@@ -9443,6 +9450,7 @@ public:
 		parentUID = _parentUID;
 		uid = _uid;
 		
+		skelOffset = btVector3(0.0f,0.0f,0.0f);
 		startPoint = cellPos->getBTV();//centerPoint.copyFrom(cellPos);
 		
 		bounciness = 0.0f;
@@ -21164,6 +21172,7 @@ public:
   bool (isContainer) [MAX_OBJ_TYPES];
   string (objStrings) [MAX_OBJ_TYPES];
   int highlightedLimb;
+  int highlightedLimb2;
   int curPrimTemplate;
   int geomStep;
   int earthMod;
@@ -21341,6 +21350,7 @@ public:
   FIVector4 mouseDownPD;
   FIVector4 mouseDownOPD;
   FIVector4 mouseMovePD;
+  FIVector4 mouseMoveOPD;
   FIVector4 tempVec1;
   FIVector4 tempVec2;
   FIVector4 tempVec3;
@@ -22728,7 +22738,7 @@ public:
   ShapeCache * cache (btConvexShape * shape);
   void renderSquareA (float x, float y, float z);
   void glDrawVector (btVector3 const & v);
-  void setId (int id);
+  void setId (int bodyUID, int limbUID);
   void updateMat2 ();
   void updateMat ();
   void pushNewMat (btScalar * m);
@@ -22796,7 +22806,7 @@ public:
   btRigidBody * lastBodyPick;
   GamePhysics ();
   void init (Singleton * _singleton);
-  void pickBody (btVector3 posWS1, btVector3 posWS2);
+  void pickBody (FIVector4 * mouseDownOPD);
   void collectDebris ();
   void beginDrop ();
   void remBoxFromObj (BaseObjType _uid);
@@ -23414,7 +23424,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 		}
 		
-		
+		glLineWidth(4.0f);
 		
 		// This var determines how high the z val can go,
 		// but also increases load times for each block
@@ -24172,7 +24182,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		fboMap["swapTargFBO1"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, false);
 		
 		
-		fboMap["geomBaseTargFBO"].init( numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
+		fboMap["geomBaseTargFBO"].init( numMaps+1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
 		fboMap["geomTargFBO"].init(     numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, true);
 		fboMap["combineWithWaterTargFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth);
 		
@@ -27592,7 +27602,7 @@ void Singleton::makeJump (int actorId, int isUp)
 			return;
 		}
 		
-		float JUMP_AMOUNT = 0.5f*ge->getMarkerMass()/STEP_TIME_IN_SEC;
+		float JUMP_AMOUNT = 1.0f*ge->getMarkerMass()/STEP_TIME_IN_SEC;
 		
 		
 		if (isUp == 1) {
@@ -27814,19 +27824,21 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				case 'u':
 					
-					if (updateHolders) {
-						if (pathfindingOn) {
-							updateHolders = false;
-							pathfindingOn = false;
-						}
-						else {
-							pathfindingOn = true;
+					// if (updateHolders) {
+					// 	if (pathfindingOn) {
+					// 		updateHolders = false;
+					// 		pathfindingOn = false;
+					// 	}
+					// 	else {
+					// 		pathfindingOn = true;
 							
-						}
-					}
-					else {
-						updateHolders = true;
-					}
+					// 	}
+					// }
+					// else {
+					// 	updateHolders = true;
+					// }
+				
+					updateHolders = !updateHolders;
 					
 					
 					cout << "\n";
@@ -28108,7 +28120,11 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				case 'C':
 					
+					break;
 				case 'c':
+					
+					editPose = !editPose;
+					cout << "editPose " << editPose << "\n";
 					
 					//setCameraToElevation();
 				
@@ -28124,6 +28140,15 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 									
 				
 					break;
+					
+				case 'v':
+					
+					mirrorOn = !mirrorOn;
+					cout << "mirrorOn " << mirrorOn << "\n";
+					
+					//waterBulletOn = !waterBulletOn;
+					//gw->toggleVis(selectedEnts.getSelectedEnt());
+					break;
 				
 
 				case 'X':
@@ -28138,6 +28163,9 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				case 'm':
 
+
+					
+					
 					//doPathReport = true;
 
 					// medianCount++;					
@@ -28145,7 +28173,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					// 	medianCount = 0;
 					// }
 					
-					runReport();
+					//runReport();
 					
 					// refreshPaths = true;
 					
@@ -28154,11 +28182,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				
 
-				case 'v':
-					
-					waterBulletOn = !waterBulletOn;
-					//gw->toggleVis(selectedEnts.getSelectedEnt());
-					break;
+				
 
 				case 'A':
 				case 'Z':
@@ -28201,7 +28225,7 @@ void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUp
 		if (wsBufferInvalid || forceUpdate || forceGetPD)
 		{
 			if (isObj) {
-				getFBOWrapper("geomTargFBO", 1)->getPixels();
+				getFBOWrapper("geomBaseTargFBO", 2)->getPixels();
 			}
 			else {
 				getFBOWrapper("solidTargFBO", 0)->getPixels();
@@ -28218,7 +28242,7 @@ void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUp
 
 
 		if (isObj) {
-			fbow = getFBOWrapper("geomTargFBO", 1);
+			fbow = getFBOWrapper("geomBaseTargFBO", 2);
 			fbow->getPixelAtF(toVector, newX, (bufferDim.getIY() - 1) - newY);
 		}
 		else {
@@ -28575,7 +28599,11 @@ void Singleton::mouseMove (int _x, int _y)
 		
 		
 		
-		
+		if (mbDown) {
+			angleToVec(&lightVec, fx*2.0, fy*2.0);
+			lightVecOrig.copyFrom(&lightVec);
+			lightVec.setFZ(-abs(lightVec.getFZ()));
+		}
 		
 		
 		
@@ -28593,9 +28621,10 @@ void Singleton::mouseMove (int _x, int _y)
 		else
 		{
 
-			if (placingGeom||RT_TRANSFORM||orgOn||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
+			if (placingGeom||RT_TRANSFORM||editPose||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
 			//if (true) {
 				getPixData(&mouseMovePD, x, y, false, false);
+				getPixData(&mouseMoveOPD, x, y, true, true);
 			}
 			
 
@@ -28608,8 +28637,6 @@ void Singleton::mouseMove (int _x, int _y)
 					if (pathFindingStep < 2) {
 						moveNodes[pathFindingStep].copyFrom(&(mouseMovePD));
 					}
-					
-					
 				}
 				
 				
@@ -28618,6 +28645,7 @@ void Singleton::mouseMove (int _x, int _y)
 
 			//////////////
 
+			
 
 			if (
 				orgOn &&
@@ -28631,29 +28659,24 @@ void Singleton::mouseMove (int _x, int _y)
 					activeNode = NULL;
 					setSelNode(NULL);
 				}
-				if (mbDown) {
-					angleToVec(&lightVec, fx*2.0, fy*2.0);
-					lightVecOrig.copyFrom(&lightVec);
-					lightVec.setFZ(-abs(lightVec.getFZ()));
-				}
-				else {
-					if (placingGeom) {
-						updateCurGeom(x, y);
-					}
-					else {
-						
-						gw->findNearestEnt(
-							&highlightedEnts,
-							E_ET_GEOM,
-							2,
-							1,
-							&mouseMovePD
-						);
-						highlightedEnt = highlightedEnts.getSelectedEnt();
+				
+			}
+			
+			if (placingGeom) {
+				updateCurGeom(x, y);
+			}
+			else {
+				
+				gw->findNearestEnt(
+					&highlightedEnts,
+					E_ET_GEOM,
+					2,
+					1,
+					&mouseMovePD
+				);
+				highlightedEnt = highlightedEnts.getSelectedEnt();
 
 
-					}
-				}
 			}
 			
 
@@ -28900,7 +28923,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 									
 									if (upInd == 0) {
 										currentActor->targAngRelative = -currentActor->targAngRelative;
-										playSoundEnt("swing0", currentActor);
+										//playSoundEnt("swing0", currentActor);
 									}
 									
 									
@@ -29286,6 +29309,11 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 	}
 void Singleton::makeDirty ()
                          {
+		
+		if (currentActor != NULL) {
+			currentActor->wakeAll();
+		}
+		
 		//testHuman->gph->childrenDirty = true;
 	}
 void Singleton::setSelNode (GameOrgNode * newNode)
@@ -29478,7 +29506,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,0.02,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
+						btVector3(0,0.05,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
 						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
@@ -29494,7 +29522,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,-0.02,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
+						btVector3(0,-0.05,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
 						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
@@ -30025,6 +30053,8 @@ bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
 		
 		//worldToScreenBase(&tempVec1, mousePosWS);
 		
+		GameOrgNode* mirNode = NULL;
+		
 		if (getCurOrg() == NULL) {
 			return false;
 		}
@@ -30034,10 +30064,13 @@ bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
 		
 		int boneId;
 		
-		gamePhysics->pickBody(mouseDownPD.getBTV(),mouseDownOPD.getBTV());
+		highlightedLimb2 = -1;
+		highlightedLimb = -1;
+		
+		gamePhysics->pickBody(&mouseMoveOPD);  //mouseDownPD.getBTV(),mouseDownOPD.getBTV());
 		
 		if (gamePhysics->lastBodyPick == NULL) {
-			
+						
 		}
 		else {
 			highlightedLimb = gamePhysics->lastBodyPick->limbUID;
@@ -30048,6 +30081,19 @@ bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
 				
 				if (boneId > -1) {
 					bestNode = testHuman->allNodes[boneId];
+					
+					// if (mirrorOn) {
+					// 	mirNode = getMirroredNode(bestNode);
+						
+					// 	if (mirNode == NULL) {
+							
+					// 	}
+					// 	else {
+					// 		mirNode->nodeName
+					// 	}
+						
+					// }
+					
 					if (setActive) {
 						activeNode = bestNode;
 					}
@@ -31399,7 +31445,7 @@ FIVector4 * Singleton::cameraGetPosNoShake ()
 	}
 float Singleton::getTargetTimeOfDay ()
                                    {
-		return 1.0f;//(lightVecOrig.getFZ() + 1.0f)*0.5f;
+		return 1.0f-(lightVecOrig.getFZ() + 1.0f)*0.5f;
 	}
 void Singleton::updateBullets ()
                              {
@@ -31545,7 +31591,8 @@ void Singleton::display (bool doFrameRender)
 				lbDown &&
 				isDraggingObject && 
 				(draggingFromType != E_DT_NOTHING) &&
-				((curTime-mdTime) > 300)
+				((curTime-mdTime) > 300) &&
+				(!editPose)
 			) {
 				glutSetCursor(GLUT_CURSOR_CROSSHAIR);
 			
@@ -42542,7 +42589,14 @@ int GameActor::addJoint (int nodeName, int parentId, bool isBall, float rad, flo
 			curLength = curJoint->length;
 		}
 		
-		curJoint->shape = new btCapsuleShapeX(curJoint->rad, curLength);
+		if (isBall) {
+			curJoint->shape = new btSphereShape(curJoint->rad);
+		}
+		else {
+			curJoint->shape = new btCapsuleShapeX(curJoint->rad, curLength);
+		}
+		
+		
 		
 		btTransform transform;
 		btTransform offset;
@@ -42576,7 +42630,11 @@ int GameActor::addJoint (int nodeName, int parentId, bool isBall, float rad, flo
 		
 		btVector3 vectorA = vUp;
 		btVector3 vectorB = endPos-begPos;
-		vectorB.normalize();
+		
+		if (!isBall) {
+			vectorB.normalize();
+		}
+		
 		
 		// if ( abs(vectorA.dot(vectorB)) == 1.0f ) {
 		// 	// todo: handle (anti)parallel case
@@ -42627,7 +42685,7 @@ int GameActor::addJoint (int nodeName, int parentId, bool isBall, float rad, flo
 			bodyCollidesWith
 		);
 		//curJoint->body->bodyUID = uid;
-		curJoint->body->setDamping(0.05, 0.85);
+		//curJoint->body->setDamping(0.05, 0.85);
 		curJoint->body->setDeactivationTime(0.8);
 		curJoint->body->setSleepingThresholds(0.5f, 0.5f);
 		// if (curJoint->isBall) {	
@@ -42651,7 +42709,7 @@ int GameActor::addJoint (int nodeName, int parentId, bool isBall, float rad, flo
 			pivotA = btVector3(-parJoint->length*0.5f,0.0,0.0);
 			pivotB = btVector3(curJoint->length*0.5f,0.0,0.0);
 			
-			if (curJoint->isBall) {
+
 				
 				localA.setIdentity();
 				localB.setIdentity();
@@ -42663,30 +42721,6 @@ int GameActor::addJoint (int nodeName, int parentId, bool isBall, float rad, flo
 				//localB.setRotation(curJoint->quat);
 				
 				
-				// hingeC = new btHingeConstraint(
-				// 	*(parJoint->body),
-				// 	*(curJoint->body),
-				// 	pivotA,
-				// 	pivotB,
-				// 	// parJoint->targAlignB,
-				// 	// curJoint->targAlignB,
-				// 	// false
-				// );
-				//hingeC->setLimit(-0.1, 0.1);
-				
-				// springC->enableSpring(0,false);
-				// springC->enableSpring(1,false);
-				// springC->enableSpring(2,false);
-				// springC->enableSpring(3,true);
-				// springC->enableSpring(4,true);
-				// springC->enableSpring(5,true);
-				
-				// springC->setStiffness(3,10.0f);
-				// springC->setStiffness(4,10.0f);
-				// springC->setStiffness(5,10.0f);
-				
-				//curJoint->joint = hingeC;
-				
 				ballC = new btPoint2PointConstraint(
 					*(parJoint->body),
 					*(curJoint->body),
@@ -42696,287 +42730,12 @@ int GameActor::addJoint (int nodeName, int parentId, bool isBall, float rad, flo
 					//localB
 				);
 				curJoint->joint = ballC;
-			}
-			else {
-				// localA.setIdentity();
-				// localB.setIdentity();
-				// vectorA = parJoint->targAlign;
-				// vectorB = curJoint->targAlign;
-				
-				// hingeC =  new btHingeConstraint(
-				// 	*(parJoint->body),
-				// 	*(curJoint->body),
-				// 	//localA,
-				// 	//localB
-					
-				// 	pivotA,
-				// 	pivotB,
-				// 	(vectorA.cross(vectorB)).normalized(),
-				// 	(vectorA.cross(vectorB)).normalized()
-					
-				// );
-				// hingeC->setLimit(-M_PI_4, M_PI_4);
-				// curJoint->joint = hingeC;
-				
-			}
 			
 			
 			m_ownerWorld->addConstraint(curJoint->joint, true);
 			
 			
 			
-			
-			
-			//localA.getBasis().setEulerZYX(0,0,M_PI);
-			//localB.getBasis().setEulerZYX(0,0,M_PI);
-			
-			
-			
-			// vectorA = curJoint->targAlign;
-			// vectorB = parJoint->targAlign;
-			// axis = (vectorA.cross(vectorB)).normalized();
-			// angle = btAcos(vectorA.dot(vectorB)) / (vectorA.length() * vectorB.length());
-			// quat = btQuaternion(axis, angle);
-			// transform.setRotation(quat);
-			// localA.setRotation(quat);
-			
-			
-			// vectorA = parJoint->targAlign;
-			// vectorB = curJoint->targAlign;
-			// axis = (vectorA.cross(vectorB)).normalized();
-			// angle = btAcos(vectorA.dot(vectorB)) / (vectorA.length() * vectorB.length());
-			// quat = btQuaternion(axis, angle);
-			// transform.setRotation(quat);
-			// localB.setRotation(quat);
-			
-			// localA.setRotation(quat);
-			// localB.setRotation(curJoint->quat);
-			
-			// localA.setOrigin(
-			// 	btVector3(0.0,0.0,-parJoint->length*0.5f)	
-			// );
-			// localB.setOrigin(
-			// 	btVector3(0.0,0.0,curJoint->length*0.5f)
-			// );
-			
-			
-			// coneC = new btConeTwistConstraint(*(parJoint->body), *(curJoint->body), localA, localB);
-			// coneC->setLimit(0.1, 0.1, 0);
-			// curJoint->joint = coneC;
-			// m_ownerWorld->addConstraint(curJoint->joint, true);
-			
-			
-			
-			
-			
-			
-			
-			// hingeC = new btHingeConstraint(
-			// 	*(parJoint->body),
-			// 	*(curJoint->body),
-			// 	btVector3(0.0,0.0,-parJoint->length*0.5f),
-			// 	btVector3(0.0,0.0,curJoint->length*0.5f),
-			// 	//parJoint->endOrig - parJoint->midOrig,
-			// 	//curJoint->begOrig - curJoint->midOrig,
-			// 	curJoint->pivotAxis,
-			// 	curJoint->pivotAxis
-			// 	//parJoint->body->getWorldTransform(),
-			// 	//curJoint->body->getWorldTransform()
-			// 	// parJoint->begOrig,
-			// 	// curJoint->begOrig,
-			// 	// parJoint->targAlign,
-			// 	// curJoint->targAlign
-			// );
-			
-			
-			// localA.setIdentity();
-			// localB.setIdentity();
-			// localA.getBasis().setEulerZYX(0,-theta,0);
-			// localA.setOrigin(btVector3(0.0,0.0,-parJoint->length*0.5f));
-			// localB.getBasis().setEulerZYX(0,-theta,0);
-			// localB.setOrigin(btVector3(0.0,0.0,curJoint->length*0.5f));
-			// hingeC =  new btHingeConstraint(
-			// 	*(parJoint->body),
-			// 	*(curJoint->body),
-			// 	localA,
-			// 	localB
-			// );
-			
-			
-			// hingeC->setLimit(btScalar(-0.1), btScalar(0.1));
-			// curJoint->joint = hingeC;
-			// m_ownerWorld->addConstraint(curJoint->joint, true);
-			
-			
-			
-
-			
-			
-			// hingeC->setLimit(btScalar(-M_PI), btScalar(M_PI));
-			// curJoint->joint = hingeC;
-			// m_ownerWorld->addConstraint(hingeC, true);
-			
-			
-			// hingeC->setLimit(btScalar(0), btScalar(M_PI_2));
-			// m_joints[JOINT_LEFT_KNEE] = hingeC;
-			// m_ownerWorld->addConstraint(m_joints[JOINT_LEFT_KNEE], true);
-			
-			// localA.setIdentity(); localB.setIdentity();
-			// localA.getBasis().setEulerZYX(0,M_PI_2,0); localA.setOrigin(scale*btVector3(btScalar(0.), btScalar(-0.225), btScalar(0.)));
-			// localB.getBasis().setEulerZYX(0,M_PI_2,0); localB.setOrigin(scale*btVector3(btScalar(0.), btScalar(0.185), btScalar(0.)));
-			// hingeC =  new btHingeConstraint(*m_bodies[BODYPART_RIGHT_UPPER_LEG], *m_bodies[BODYPART_RIGHT_LOWER_LEG], localA, localB);
-			// hingeC->setLimit(btScalar(0), btScalar(M_PI_2));
-			// m_joints[JOINT_RIGHT_KNEE] = hingeC;
-			// m_ownerWorld->addConstraint(m_joints[JOINT_RIGHT_KNEE], true);
-			
-			
-			
-			// // hip joints
-			// localA.setIdentity();
-			// localB.setIdentity();
-			// localA.getBasis().setEulerZYX(0,-theta,0);
-			// localA.setOrigin(
-			// 	curJoint->begOrig + curJoint->targAlign*jointSpace
-			// 	/*
-			// 	btVector3(
-			// 					btScalar(fCos*jointSpace),
-			// 					btScalar(fSin*jointSpace),
-			// 					btScalar(0.)
-			// 				)
-			// 	*/	
-			// );
-			// localB = 
-			// 	curJoint->body->getWorldTransform().inverse() *
-			// 	parJoint->body->getWorldTransform() *
-			// 	localA;
-			// hingeC = new btHingeConstraint(
-			// 	*(parJoint->body),
-			// 	*(curJoint->body),
-			// 	localA,
-			// 	localB
-			// );
-			
-			
-			
-			
-			
-			// hingeC->setLimit(btScalar(-M_PI), btScalar(M_PI));
-			// curJoint->joint = hingeC;
-			// m_ownerWorld->addConstraint(curJoint->joint, true);
-
-			
-			/*
-			
-			// hip joints
-			localA.setIdentity();
-			localB.setIdentity();
-			localA.getBasis().setEulerZYX(0,-fAngle,0);	localA.setOrigin(btVector3(
-				btScalar(fCos*fBodySize),
-				btScalar(fSin*fBodySize),
-				btScalar(0.)
-			));
-			localB = 
-				actorJoints[2*i+1].body->getWorldTransform().inverse() *
-				actorJoints[0].body->getWorldTransform() *
-				localA;
-			hingeC = new btHingeConstraint(
-				*(actorJoints[0].body),
-				*(actorJoints[1+2*i].body),
-				localA,
-				localB
-			);
-			
-			// knee joints
-			localA.setIdentity();
-			localB.setIdentity();
-			localC.setIdentity();
-			localA.getBasis().setEulerZYX(0,-fAngle,0);
-			localA.setOrigin(btVector3(
-				btScalar(fCos*(jointSpace+fLegLength)),
-				btScalar(fSin*(jointSpace+fLegLength)),
-				btScalar(0.)
-			));
-			localB = 
-				parJoint->body->getWorldTransform().inverse() * 
-				grdJoint->body->getWorldTransform() * 
-				localA;
-			localC = 
-				curJoint->body->getWorldTransform().inverse() *
-				grdJoint->body->getWorldTransform() *
-				localA;
-			hingeC = new btHingeConstraint(
-				*(parJoint->body),
-				*(curJoint->body),
-				localB,
-				localC
-			);
-			hingeC->setLimit(btScalar(-M_PI_8), btScalar(0.2));
-			curJoint->joint = hingeC;
-			m_ownerWorld->addConstraint(curJoint->joint, true);*/
-			
-			
-			
-			/*
-
-			btTransform offset; offset.setIdentity();
-			offset.setOrigin(positionOffset);
-
-			// root
-			btVector3 vRoot = btVector3(btScalar(0.0), btScalar(0.0), btScalar(fHeight));
-			btTransform transform;
-			transform.setIdentity();
-			transform.setOrigin(vRoot);
-			if (bFixed) {
-				actorJoints[0].body = localCreateRigidBody(btScalar(0.0), offset*transform, actorJoints[0].shape);
-			} else {
-				actorJoints[0].body = localCreateRigidBody(btScalar(10.0), offset*transform, actorJoints[0].shape);
-			}
-
-			// legs
-			for ( i=0; i<NUM_LEGS_GA; i++) {
-				float fAngle = 2 * M_PI * i / NUM_LEGS_GA;
-				float fSin = sin(fAngle);
-				float fCos = cos(fAngle);
-
-				transform.setIdentity();
-				btVector3 vBoneOrigin = btVector3(
-					btScalar(fCos*(fBodySize+0.5*fLegLength)),
-					btScalar(fSin*(fBodySize+0.5*fLegLength)),
-					btScalar(fHeight)
-				);
-				transform.setOrigin(vBoneOrigin);
-
-				// thigh
-				btVector3 vToBone = (vBoneOrigin - vRoot).normalize();
-				btVector3 vAxis = vToBone.cross(vUp);			
-				transform.setRotation(btQuaternion(vAxis, M_PI_2));
-				actorJoints[2*i+1].body = localCreateRigidBody(btScalar(10.0), offset*transform, actorJoints[2*i+1].shape);
-
-				// shin
-				transform.setIdentity();
-				transform.setOrigin(btVector3(
-					btScalar(fCos*(fBodySize+fLegLength)),
-					btScalar(fSin*(fBodySize+fLegLength)),
-					btScalar(fHeight-0.5*fLegLength)
-				));
-				actorJoints[2*i+2].body = localCreateRigidBody(btScalar(10.0), offset*transform, actorJoints[2*i+2].shape);
-			}
-			*/
-
-
-
-
-
-					
-					//transform.setOrigin(midPos);
-					//transform.setRotation(btQuaternion(curJoint->targAlign, curJoint->angOrig));
-					
-					// btVector3 vBoneOrigin = midPos;
-					// transform.setOrigin(vBoneOrigin);
-					// btVector3 vToBone = (vBoneOrigin - vRoot).normalize();
-					// btVector3 vAxis = vToBone.cross(vUp);
-					// transform.setRotation(btQuaternion(vAxis, M_PI_2));
-					
 			
 			
 		}
@@ -42991,48 +42750,18 @@ void GameActor::initFromOrg (GameOrgNode * curNode, int curParent)
 		
 		int i;
 		
-		FIVector4 lineSeg0;
-		FIVector4 lineSeg1;
-		FIVector4 lineSeg2;
-		
-		lineSeg0.setFXYZRef(&(curNode->orgTrans[0]));
+		// FIVector4 lineSeg0;
+		// FIVector4 lineSeg1;
+		// FIVector4 lineSeg2;
+		// lineSeg0.setFXYZRef(&(curNode->orgTrans[0]));
 
-		
-		//lineSeg1.setFXYZRef(&(curNode->tbnRotC[0]));
-		//lineSeg1.multXYZ(  (curNode->orgVecs[E_OV_TBNRAD0][0])  );
-		//lineSeg1.addXYZRef(&(lineSeg0));
-		
-		
-		
-		
-		//float curRad = 0.025f;
-		
-		// lineSeg1.setFXYZRef(&(curNode->tbnTrans[0]));
-		// lineSeg2.copyFrom(&lineSeg1);
-		// lineSeg2.addXYZRef(&lineSeg0,-1.0f);
-		// lineSeg2.normalize();
-		// btVector3 tn = lineSeg2.getBTV();
-		
-		// float curLen = lineSeg0.distance(&lineSeg1);
-		
-		// lineSeg1.setFXYZRef(&(curNode->tbnTrans[1]));
-		// lineSeg2.copyFrom(&lineSeg1);
-		// lineSeg2.addXYZRef(&lineSeg0,-1.0f);
-		// lineSeg2.normalize();
-		// btVector3 bn = lineSeg2.getBTV();
-		
-		// lineSeg1.setFXYZRef(&(curNode->tbnTrans[2]));
-		// lineSeg2.copyFrom(&lineSeg1);
-		// lineSeg2.addXYZRef(&lineSeg0,-1.0f);
-		// lineSeg2.normalize();
-		// btVector3 nn = lineSeg2.getBTV();
 		
 		
 		int curChild = addJoint(
 			curNode->nodeName,
 			curParent,					//int parentId,
-			true,
-			0.25f,			//float rad,
+			false,
+			0.15f,			//float rad,
 			curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV()), //curLen, // +curRad*4.0f,			//float len,
 			MASS_PER_LIMB,				//float mass,
 			//tn, bn, nn,
@@ -43047,13 +42776,31 @@ void GameActor::initFromOrg (GameOrgNode * curNode, int curParent)
 			
 		);
 		
+		int curChild2 = addJoint(
+			curNode->nodeName,
+			curChild,					//int parentId,
+			true,
+			0.2f,			//float rad,
+			0.0f,//curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV()), //curLen,
+			MASS_PER_LIMB,				//float mass,
+			//tn, bn, nn,
+		
+			curNode->tbnRotC[0].getBTV(),
+			curNode->tbnRotC[1].getBTV(),
+			curNode->tbnRotC[2].getBTV(),
+			
+			curNode->orgTrans[2].getBTV(), // beg
+			curNode->orgTrans[2].getBTV(), // mid
+			curNode->orgTrans[2].getBTV()  // end
+			
+		);
 		
 		
 		
 		for (i = 0; i < curNode->children.size(); i++) {
 			initFromOrg(
 				curNode->children[i],
-				curChild
+				curChild2
 				//basePosition,
 				//scale,
 				//drawMode,
@@ -43089,241 +42836,6 @@ GameActor::GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * owner
 		return;
 
 
-
-
-
-		// int curGrandParent = addJoint(
-		// 	-1,								//int parentId,
-		// 	true,
-		// 	1.0f*actorScale,				//float rad,
-		// 	1.1f*actorScale,				//float len,
-		// 	MASS_PER_LIMB,					//float mass,
-		// 	btVector3(0.0f,0.0f,1.0f)		//btVector3 targAlign,
-		// 	//,0.0f, 0.0f
-		// );
-		
-		// int curChild;
-		// int curParent;
-		// float curTheta;
-		// float curPhi;
-		
-		// btVector3 targAlign;
-		
-		// for (i = 0; i < 6; i++) {
-			
-		// 	curTheta = M_PI*((float)i)/3.0f;
-			
-		// 	curPhi = M_PI_2 + 0.1;
-		// 	targAlign = btVector3(
-		// 		cos(curTheta)*sin(curPhi),
-		// 		sin(curTheta)*sin(curPhi),
-		// 		cos(curPhi)	
-		// 	);
-		// 	curParent = addJoint(
-		// 		curGrandParent,				//int parentId,
-		// 		true,
-		// 		1.0f*actorScale,			//float rad,
-		// 		8.0f*actorScale,			//float len,
-		// 		MASS_PER_LIMB,				//float mass,
-		// 		targAlign					//btVector3 targAlign
-		// 		//,curTheta,
-		// 		//curPhi
-		// 	);
-			
-		// 	curPhi = M_PI_4 + 0.1;
-		// 	targAlign = btVector3(
-		// 		cos(curTheta)*sin(curPhi),
-		// 		sin(curTheta)*sin(curPhi),
-		// 		cos(curPhi)	
-		// 	);
-		// 	curChild = addJoint(
-		// 		curParent,					//int parentId,
-		// 		true,
-		// 		1.0f*actorScale,			//float rad,
-		// 		8.0f*actorScale,			//float len,
-		// 		MASS_PER_LIMB,				//float mass,
-		// 		targAlign					//btVector3 targAlign
-		// 		//,curTheta,
-		// 		//curPhi
-		// 	);
-			
-			
-		// 	curPhi = M_PI_2 + 0.1;
-		// 	targAlign = btVector3(
-		// 		cos(curTheta)*sin(curPhi),
-		// 		sin(curTheta)*sin(curPhi),
-		// 		cos(curPhi)	
-		// 	);
-		// 	addJoint(
-		// 		curChild,					//int parentId,
-		// 		true,
-		// 		1.0f*actorScale,			//float rad,
-		// 		8.0f*actorScale,			//float len,
-		// 		MASS_PER_LIMB,				//float mass,
-		// 		targAlign					//btVector3 targAlign
-		// 		//,curTheta,
-		// 		//curPhi
-		// 	);
-			
-		// }
-		
-		/*
-		
-		
-		//
-		// Setup geometry
-		//
-		btVector3 vUp(0, 0, 1);
-		float shapeScale = 4.0f;
-		float fBodySize  = 0.25f*shapeScale;
-		float fLegLength = 0.45f*shapeScale;
-		float fHeight = 0.0;
-		
-		actorJoints.push_back(ActorJointStruct());
-		actorJoints.back().shape = new btCapsuleShapeZ(btScalar(fBodySize), btScalar(0.10));
-		actorJoints.back().jointId = actorJoints.size()-1;
-				
-		for ( i = 0; i < NUM_LEGS_GA; i++ ) {
-			actorJoints.push_back(ActorJointStruct());
-			actorJoints.back().shape = new btCapsuleShapeZ(btScalar(0.10*shapeScale), btScalar(fLegLength));
-			actorJoints.back().jointId = actorJoints.size()-1;
-			
-			actorJoints.push_back(ActorJointStruct());
-			actorJoints.back().shape = new btCapsuleShapeZ(btScalar(0.08*shapeScale), btScalar(fLegLength));
-			actorJoints.back().jointId = actorJoints.size()-1;
-		}
-
-		//
-		// Setup rigid bodies
-		//
-		
-		btTransform offset; offset.setIdentity();
-		offset.setOrigin(positionOffset);
-
-		// root
-		btVector3 vRoot = btVector3(btScalar(0.0), btScalar(0.0), btScalar(fHeight));
-		btTransform transform;
-		transform.setIdentity();
-		transform.setOrigin(vRoot);
-		if (bFixed) {
-			actorJoints[0].body = localCreateRigidBody(btScalar(0.0), offset*transform, actorJoints[0].shape);
-		} else {
-			actorJoints[0].body = localCreateRigidBody(btScalar(10.0), offset*transform, actorJoints[0].shape);
-		}
-		
-		// legs
-		for ( i=0; i<NUM_LEGS_GA; i++) {
-			float fAngle = 2 * M_PI * i / NUM_LEGS_GA;
-			float fSin = sin(fAngle);
-			float fCos = cos(fAngle);
-
-			transform.setIdentity();
-			btVector3 vBoneOrigin = btVector3(
-				btScalar(fCos*(fBodySize+0.5*fLegLength)),
-				btScalar(fSin*(fBodySize+0.5*fLegLength)),
-				btScalar(fHeight)
-			);
-			transform.setOrigin(vBoneOrigin);
-
-			// thigh
-			btVector3 vToBone = (vBoneOrigin - vRoot).normalize();
-			btVector3 vAxis = vToBone.cross(vUp);			
-			transform.setRotation(btQuaternion(vAxis, M_PI_2));
-			actorJoints[2*i+1].body = localCreateRigidBody(btScalar(10.0), offset*transform, actorJoints[2*i+1].shape);
-
-			// shin
-			transform.setIdentity();
-			transform.setOrigin(btVector3(
-				btScalar(fCos*(fBodySize+fLegLength)),
-				btScalar(fSin*(fBodySize+fLegLength)),
-				btScalar(fHeight-0.5*fLegLength)
-			));
-			actorJoints[2*i+2].body = localCreateRigidBody(btScalar(10.0), offset*transform, actorJoints[2*i+2].shape);
-		}
-
-		// Setup some damping on the bodies
-		for (i = 0; i < BODYPART_COUNT_GA; ++i) {
-			actorJoints[i].body->setDamping(0.05, 0.85);
-			actorJoints[i].body->setDeactivationTime(0.8);
-			actorJoints[i].body->setSleepingThresholds(0.5f, 0.5f);
-		}
-
-
-		//
-		// Setup the constraints
-		//
-		btHingeConstraint* hingeC;
-		//btConeTwistConstraint* coneC;
-
-		btTransform localA, localB, localC;
-
-		actorJoints[0].joint = NULL;
-
-		for ( i=0; i<NUM_LEGS_GA; i++) {
-			float fAngle = 2 * M_PI * i / NUM_LEGS_GA;
-			float fSin = sin(fAngle);
-			float fCos = cos(fAngle);
-
-			// hip joints
-			localA.setIdentity();
-			localB.setIdentity();
-			localA.getBasis().setEulerZYX(0,-fAngle,0);	localA.setOrigin(btVector3(
-				btScalar(fCos*fBodySize),
-				btScalar(fSin*fBodySize),
-				btScalar(0.)
-			));
-			localB = 
-				actorJoints[2*i+1].body->getWorldTransform().inverse() *
-				actorJoints[0].body->getWorldTransform() *
-				localA;
-			hingeC = new btHingeConstraint(
-				*(actorJoints[0].body),
-				*(actorJoints[1+2*i].body),
-				localA,
-				localB
-			);
-			
-			hingeC->setLimit(btScalar(-0.75 * M_PI_4), btScalar(M_PI_8));
-			
-			actorJoints[2*i+1].joint = hingeC;
-			m_ownerWorld->addConstraint(actorJoints[2*i+1].joint, true);
-
-			// knee joints
-			localA.setIdentity();
-			localB.setIdentity();
-			localC.setIdentity();
-			localA.getBasis().setEulerZYX(0,-fAngle,0);
-			localA.setOrigin(btVector3(
-				btScalar(fCos*(fBodySize+fLegLength)),
-				btScalar(fSin*(fBodySize+fLegLength)),
-				btScalar(0.)
-			));
-			localB = 
-				actorJoints[2*i+1].body->getWorldTransform().inverse() * 
-				actorJoints[0].body->getWorldTransform() * 
-				localA;
-			localC = 
-				actorJoints[2*i+2].body->getWorldTransform().inverse() *
-				actorJoints[0].body->getWorldTransform() *
-				localA;
-			hingeC = new btHingeConstraint(
-				*(actorJoints[1+2*i].body),
-				*(actorJoints[2+2*i].body),
-				localB,
-				localC
-			);
-			
-			hingeC->setLimit(btScalar(-M_PI_8), btScalar(0.2));
-			
-			actorJoints[2*i+2].joint = hingeC;
-			m_ownerWorld->addConstraint(actorJoints[2*i+2].joint, true);
-		}
-		
-		
-		for (i = 0; i < BODYPART_COUNT_GA; i++) {
-			actorJoints[i].body->bodyUID = uid;
-		}*/
-		
 	}
 void GameActor::stepSim (btScalar timeStep)
                                         {
@@ -50064,7 +49576,6 @@ void GameLogic::update ()
 			
 			if (didFindPath) {
 				
-				glLineWidth(4.0f);
 				
 				for (i = 0; i < pathFinalStack.size(); i++) {
 					curPR = &(pathFinalStack[i]);
@@ -51145,9 +50656,10 @@ void MyShapeDrawer::renderSquareA (float x, float y, float z)
 			// glVertex3f(x, y + 10.f, z);
 			// glEnd();
 		}
-void MyShapeDrawer::setId (int id)
-                                   {
-			singleton->setShaderFloat("objectId", id);
+void MyShapeDrawer::setId (int bodyUID, int limbUID)
+                  {
+			singleton->setShaderFloat("bodyUID", bodyUID);
+			singleton->setShaderFloat("limbUID", limbUID);
 		}
 void MyShapeDrawer::updateMat2 ()
                                   {
@@ -51269,7 +50781,6 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 		//		dz *= halfExtent[2];
 				//glColor3f(1,1,1);
 				//glDisable(GL_LIGHTING);
-				//glLineWidth(2);
 
 				// glBegin(GL_LINE_LOOP);
 				// glDrawVector(org - dx - dy);
@@ -51782,7 +51293,7 @@ void MyShapeDrawer::drawSceneInternal (btDiscreteDynamicsWorld const * dynamicsW
 				const btCollisionObject*	colObj=dynamicsWorld->getCollisionObjectArray()[i];
 				const btRigidBody*		body=btRigidBody::upcast(colObj);
 				
-				setId( max(body->bodyUID,0) );
+				setId( body->bodyUID, body->limbUID );//max(,0) );
 				
 				if(body&&body->getMotionState())
 				{
@@ -52380,8 +51891,29 @@ void GamePhysics::init (Singleton * _singleton)
 		example->initPhysics();
 		
 	}
-void GamePhysics::pickBody (btVector3 posWS1, btVector3 posWS2)
-                                                          {
+void GamePhysics::pickBody (FIVector4 * mouseDownOPD)
+                                               { //btVector3 posWS1, btVector3 posWS2) {
+		
+		if (!(singleton->editPose)) {
+			lastBodyPick = NULL;
+			return;
+		}
+		
+		int bodyUID = mouseDownOPD->getFW();
+		int limbUID = mouseDownOPD->getFZ();
+		BaseObj* ge;
+		
+		if (
+			(bodyUID > 0) &&
+			(limbUID > -1)	
+		) {
+			ge = &(singleton->gw->gameObjects[bodyUID]);
+			lastBodyPick = ge->bodies[limbUID].body;
+		}
+		else {
+			lastBodyPick = NULL;
+		}
+		
 		
 		// btVector3 begPos = btVector3(0.0f,0.0f,0.0f);
 		// btVector3 endPos = btVector3(0.0f,0.0f,0.0f);
@@ -52396,17 +51928,17 @@ void GamePhysics::pickBody (btVector3 posWS1, btVector3 posWS2)
 		// );
 		
 		
-		btVector3 begPos = singleton->cameraGetPosNoShake()->getBTV();
-		btVector3 endPos;
+		// btVector3 begPos = singleton->cameraGetPosNoShake()->getBTV();
+		// btVector3 endPos;
 		
-		if (posWS1.distance(begPos) < posWS2.distance(begPos)) {
-			endPos = posWS1;
-		}
-		else {
-			endPos = posWS2;
-		}
+		// if (posWS1.distance(begPos) < posWS2.distance(begPos)) {
+		// 	endPos = posWS1;
+		// }
+		// else {
+		// 	endPos = posWS2;
+		// }
 		
-		
+		// lastBodyPick = example->bodyPick(begPos,endPos);
 		
 		
 		// singleton->getRayTo(
@@ -52414,7 +51946,7 @@ void GamePhysics::pickBody (btVector3 posWS1, btVector3 posWS2)
 		// 	singleton->lastMouseY
 		// );
 		
-		lastBodyPick = example->bodyPick(begPos,endPos);
+		
 		
 		// if (lastBodyPick != NULL) {
 		// 	cout << "objID " << lastBodyPick->bodyUID << "\n";
@@ -52493,7 +52025,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 			
 			isOrg = true;
 			
-			btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(1.0f,1.5f);
+			btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(0.25f,0.25f);
 			ge->bodies.push_back(BodyStruct());
 			ge->bodies.back().body = example->createRigidBodyMask(
 				MASS_PER_LIMB,
@@ -52526,6 +52058,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 				ge->bodies.push_back(BodyStruct());
 				ge->bodies.back().body = curActor->actorJoints[i].body;
 				ge->bodies.back().boneId = curActor->actorJoints[i].boneId;
+				ge->bodies.back().isBall = curActor->actorJoints[i].isBall;
 				
 				// if (i == 0) {
 				// 	//ge->body = curActor->actorJoints[i].body;
@@ -52574,7 +52107,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 			ge->bodies[bodInd].body->limbUID = bodInd;
 			
 			if (bodInd == 0) {
-				ge->bodies[bodInd].body->setDamping(0.1f,0.99f);
+				ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
 				
 			}
 			else {
@@ -52583,7 +52116,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 					ge->bodies[bodInd].body->setDamping(0.99f,0.9f);
 				}
 				else {
-					ge->bodies[bodInd].body->setDamping(0.85f,0.9f);
+					ge->bodies[bodInd].body->setDamping(0.99f,0.9f);
 				}
 				
 				
@@ -52772,6 +52305,9 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		GameActor* curActor;
 		btVector3 basePos;
 		
+		btVector3 difVec = btVector3(0.0,0.0,0.0);
+		btVector3 totVec = btVector3(0.0,0.0,0.0);
+		
 		
 		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
 			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
@@ -52782,6 +52318,8 @@ void GamePhysics::collideWithWorld (double curStepTime)
 				
 			}
 			else {
+				
+				totVec = btVector3(0.0,0.0,0.0);
 				
 				for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
 					curBody = &(ge->bodies[bodInd]);
@@ -52816,9 +52354,9 @@ void GamePhysics::collideWithWorld (double curStepTime)
 					if (curBody->isInside) {
 						
 						
-						ge->moveToPoint(tempBTV + btVector3(0,0,1.0), bodInd);
-						ge->applyImpulse(btVector3(0,0,1.0),false, bodInd);
-						curBody->lastVel = curBody->body->getLinearVelocity();
+						// ge->moveToPoint(tempBTV + btVector3(0,0,1.0), bodInd);
+						// ge->applyImpulse(btVector3(0,0,1.0),false, bodInd);
+						//curBody->lastVel = curBody->body->getLinearVelocity();
 					}
 					
 					
@@ -52835,54 +52373,78 @@ void GamePhysics::collideWithWorld (double curStepTime)
 						curOrg = singleton->gameOrgs[ge->orgId];
 						curOrgNode = curOrg->allNodes[curBody->boneId];
 						
-						
-						// if (bodInd == 0) {
-						// 	//basePos = curOrgNode->orgTrans[1].getBTV();
-						// }
-						// else {
+						if (curOrgNode == NULL) {
 							
-						// }
+						}
+						else {
+							
+							
+							// if (bodInd == 0) {
+							// 	//basePos = curOrgNode->orgTrans[1].getBTV();
+							// }
+							// else {
+								
+							// }
+							
+							
+							// if (bodInd == 0) {
+							// 	basePos = btVector3(0.0,0.0,0.0);
+							// }
+							// else {
+							// 	basePos = 
+							// 		curOrgNode->orgTrans[1].getBTV() * 
+							// 		ge->bodies[0].body->getWorldTransform().getBasis() +
+							// 		ge->bodies[0].body->getWorldTransform().getOrigin();
+							// }
+							
+							
+							
+							
+							ge->bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
+							myMatrix4 = Matrix4(myMat);
+							
+							if (curBody->isBall) {
+								tempBTV = curOrgNode->orgTrans[2].getBTV();
+								
+								
+								
+							// }
+							// else {
+							// 	tempBTV = curOrgNode->orgTrans[1].getBTV();
+							// }
+							
+							
+								myVector4 = Vector4(
+									tempBTV.getX(),
+									tempBTV.getY(),
+									tempBTV.getZ(),
+									1.0f
+								);
+								resVector4 = myMatrix4*myVector4;
+								basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
+								basePos += ge->skelOffset;
+								
+								// move limbs towards pose
+								
+								difVec = basePos - 
+										(
+											curBody->body->getCenterOfMassPosition()
+											// - ge->bodies[0].body->getWorldTransform().getOrigin()
+										);
+										
+								totVec += difVec;
+								
+								ge->applyImpulse(
+									difVec*curStepTime*MASS_PER_LIMB*200.0f, // *MASS_PER_LIMB*2.0f*10.0f*curStepTime,
+									false,
+									bodInd
+								);
+							
+							
+							}
+							//
+						}
 						
-						
-						// if (bodInd == 0) {
-						// 	basePos = btVector3(0.0,0.0,0.0);
-						// }
-						// else {
-						// 	basePos = 
-						// 		curOrgNode->orgTrans[1].getBTV() * 
-						// 		ge->bodies[0].body->getWorldTransform().getBasis() +
-						// 		ge->bodies[0].body->getWorldTransform().getOrigin();
-						// }
-						
-						
-						
-						ge->bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
-						myMatrix4 = Matrix4(myMat);
-						tempBTV = curOrgNode->orgTrans[1].getBTV();
-						myVector4 = Vector4(
-							tempBTV.getX(),
-							tempBTV.getY(),
-							tempBTV.getZ(),
-							1.0f
-						);
-						resVector4 = myMatrix4*myVector4;
-						basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
-						
-						
-						
-						ge->applyImpulse(
-							(
-								basePos - 
-								(
-									curBody->body->getCenterOfMassPosition()
-									// - ge->bodies[0].body->getWorldTransform().getOrigin()
-								)
-							)*curStepTime*MASS_PER_LIMB*50.0f, // *MASS_PER_LIMB*2.0f*10.0f*curStepTime,
-							false,
-							bodInd
-						);
-						
-						//
 						
 					}
 					
@@ -53013,6 +52575,58 @@ void GamePhysics::collideWithWorld (double curStepTime)
 					
 						
 				}
+				
+				//ge->otherImpulses *= 0.4;
+				
+				ge->skelOffset *= 0.99;
+				
+				// ge->curGrav -= btVector3(0.0f, 0.0f, 0.01f);
+				// if (ge->curGrav.getZ() < -10.0f) {
+				// 	ge->curGrav = btVector3(0.0f,0.0f,-10.0f);
+				// }
+				
+				if (ge->allFalling()) {
+					
+					//ge->curGrav -= btVector3(0.0f, 0.0f, 0.03f);
+					
+					//ge->curGrav = btVector3(0.0f,0.0f,-10.0f);
+					
+					//ge->bodies[0].body->setDamping(0.5f,0.9f);
+				}
+				else {
+					
+					//ge->bodies[0].body->setDamping(0.99f,0.9f);
+					
+					if (difVec.getZ() < 0.0f) {
+						
+						// ge->otherImpulses += 0.1;
+						// ge->otherImpulses *= 2.0;
+						
+						//ge->bodies[0].body->setGravity(btVector3(0.0,0.0,-10.0));
+						
+						//ge->curGrav += btVector3(0.0f, 0.0f, 0.03f);
+						
+						
+						ge->skelOffset += btVector3(
+								0.0f,
+								0.0f,
+								-difVec.getZ()	
+						);
+						
+						// ge->applyImpulse(
+						// 	btVector3(
+						// 		0.0f,
+						// 		0.0f,
+						// 		-difVec.getZ()*100.0f	
+						// 	),
+						// 	false,
+						// 	0
+						// );
+					}
+				}
+				
+				//ge->bodies[0].body->setGravity(ge->curGrav);
+				
 			}
 			
 		}
@@ -54326,7 +53940,6 @@ void GameWorld::drawOrg (GameOrg * curOrg, bool drawAll)
 		float scale = 1.0f;
 		
 		
-		glLineWidth(1.0f);
 		
 		
 		
@@ -54804,7 +54417,6 @@ void GameWorld::renderGeom ()
 		// singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 		
 		
-		// glLineWidth(4.0f);
 		
 		
 		// singleton->setShaderVec3("matVal", 30, 30, 30);
@@ -54938,7 +54550,6 @@ void GameWorld::renderGeom ()
 		// singleton->setShaderfVec4("rotationZ",&tempVec3);
 		// singleton->setShaderFloat("objectId",0.0);
 		
-		// glLineWidth(1.0f);
 
 
 		// //cout << "objectCount " << objCount << "\n";
@@ -55135,7 +54746,7 @@ void GameWorld::renderGeom ()
 		//~~~~~~~~~~~~~~
 		
 		singleton->bindShader("BoxShader");
-		singleton->bindFBO("geomTargFBO");//, -1, 0); //solidTargFBO
+		singleton->bindFBO("geomBaseTargFBO");//, -1, 0); //solidTargFBO
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 		singleton->setShaderFloat("objectId",0.0);
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
@@ -55159,20 +54770,18 @@ void GameWorld::renderGeom ()
 		// );
 		
 		
-		glLineWidth(4.0f);
+		
 		if (singleton->gamePhysics != NULL) {
 			singleton->drawOrient = false;
 			singleton->gamePhysics->example->renderScene();
 		}
 		
 		
-		
-		
 		singleton->unbindFBO();
 		singleton->unbindShader();
 		
 		
-		
+		singleton->copyFBO2("geomBaseTargFBO","geomTargFBO", 0, 1);
 		
 		
 		//~~~~~~~~~~~~~~
@@ -57221,7 +56830,7 @@ void GameWorld::renderDebug ()
 		
 		float myMat[16];
 		
-		glLineWidth(4.0f);
+		
 		
 		singleton->bindShader("GeomShader");
 		singleton->bindFBO("debugTargFBO");
@@ -57245,37 +56854,22 @@ void GameWorld::renderDebug ()
 		
 		
 		
-		// draw volume around organism
-		//GameOrg* activeOrg = singleton->testHuman;
-		//GamePageHolder* gphOrg = activeOrg->gph;
-		if (singleton->orgOn) {
+		
+		// skeleton outline		
+		// if (singleton->orgOn) {
 			
-			if (singleton->currentActor != NULL) {
+		// 	if (singleton->currentActor != NULL) {
 				
-				if (singleton->currentActor->orgId > -1) {
-					singleton->currentActor->bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
+		// 		if (singleton->currentActor->orgId > -1) {
+		// 			singleton->currentActor->bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
 					
-					singleton->setShaderMatrix4x4("objmat",myMat,1);
+		// 			singleton->setShaderMatrix4x4("objmat",myMat,1);
 					
-					singleton->setShaderFloat("objectId",0.0);
-					drawOrg(singleton->gameOrgs[singleton->currentActor->orgId], true);
-				}
-				
-				
-			}
-			
-			
-			
-			// tempVec.copyFrom(&(activeOrg->basePosition));
-			// tempVec.addXYZRef(&gphOrg->gphCenInPixels,-1.0f);
-			// singleton->setShaderfVec3("offsetPos",&tempVec);
-			
-			// singleton->setShaderFloat("isWire", 1.0);
-			// singleton->setShaderVec3("matVal", 255, 0, 0 );
-			
-			// singleton->drawBox( &(gphOrg->gphMinInPixels), &(gphOrg->gphMaxInPixels) );
-			
-		}
+		// 			singleton->setShaderFloat("objectId",0.0);
+		// 			drawOrg(singleton->gameOrgs[singleton->currentActor->orgId], true);
+		// 		}
+		// 	}
+		// }
 		
 		
 		
@@ -57484,7 +57078,8 @@ void GameWorld::postProcess ()
 		
 		//singleton->projMatrix*
 
-		singleton->curMVP = singleton->viewMatrix;
+		singleton->curMVP = singleton->projMatrix*singleton->viewMatrix;
+		
 		singleton->curObjMatrix3.set4(singleton->curMVP.get());
 		singleton->curObjMatrix3.invert();
 		singleton->curObjMatrix3.transpose();
@@ -57530,8 +57125,8 @@ void GameWorld::postProcess ()
 		
 		singleton->sampleFBO("solidTargFBO",0);
 		singleton->sampleFBO("prelightFBO", 2);
-		singleton->sampleFBO("geomTargFBO", 6);
-		singleton->sampleFBO("debugTargFBO", 8);
+		// singleton->sampleFBO("geomTargFBO", 6);
+		// singleton->sampleFBO("debugTargFBO", 8);
 		singleton->setShaderTexture3D(10,singleton->volIdMat);
 		
 		singleton->setShaderfVec4("worldMarker",&(singleton->worldMarker));
@@ -57556,8 +57151,8 @@ void GameWorld::postProcess ()
 		singleton->drawFSQuad();
 		
 		singleton->setShaderTexture3D(10,0);
-		singleton->unsampleFBO("debugTargFBO", 8);
-		singleton->unsampleFBO("geomTargFBO", 6);
+		// singleton->unsampleFBO("debugTargFBO", 8);
+		// singleton->unsampleFBO("geomTargFBO", 6);
 		singleton->unsampleFBO("prelightFBO", 2);
 		singleton->unsampleFBO("solidTargFBO",0);
 		
@@ -57583,7 +57178,7 @@ void GameWorld::postProcess ()
 			//singleton->sampleFBO("waveFBO", 7);
 			singleton->setShaderTexture3D(7,singleton->volIdMat);
 			singleton->sampleFBO("prelightFBO", 9);
-			singleton->sampleFBO("geomTargFBO", 13);
+			//singleton->sampleFBO("geomTargFBO", 13);
 			
 			
 			singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
@@ -57601,7 +57196,7 @@ void GameWorld::postProcess ()
 			singleton->drawFSQuad();
 			
 			
-			singleton->unsampleFBO("geomTargFBO", 13);
+			//singleton->unsampleFBO("geomTargFBO", 13);
 			singleton->unsampleFBO("prelightFBO", 9);
 			singleton->setShaderTexture3D(7,0);
 			//singleton->unsampleFBO("waveFBO", 7);
@@ -57663,10 +57258,10 @@ void GameWorld::postProcess ()
 			singleton->sampleFBO("resultFBO", 0, activeFBO);
 			singleton->sampleFBO("swapFBOLinHalf0", 1);
 			singleton->sampleFBO("combineWithWaterTargFBO",2);
-			singleton->sampleFBO("geomTargFBO", 4);
+			//singleton->sampleFBO("geomTargFBO", 4);
 			singleton->setShaderInt("testOn", (int)(singleton->testOn));
 			singleton->drawFSQuad();
-			singleton->unsampleFBO("geomTargFBO", 4);
+			//singleton->unsampleFBO("geomTargFBO", 4);
 			singleton->unsampleFBO("combineWithWaterTargFBO",2);
 			singleton->unsampleFBO("swapFBOLinHalf0", 1);
 			singleton->unsampleFBO("resultFBO", 0, activeFBO);
@@ -57689,10 +57284,10 @@ void GameWorld::postProcess ()
 			singleton->sampleFBO("combineWithWaterTargFBO",0);
 			singleton->sampleFBO("resultFBO", 2, activeFBO);
 			singleton->sampleFBO("swapFBOBLin0", 3);
-			singleton->sampleFBO("geomTargFBO", 4);
-			singleton->setShaderTexture3D(6,singleton->volIdMat);
-			singleton->sampleFBO("noiseFBOLinear", 7);
-			singleton->sampleFBO("debugTargFBO", 8);
+			singleton->sampleFBO("geomBaseTargFBO", 4);
+			singleton->setShaderTexture3D(7,singleton->volIdMat);
+			singleton->sampleFBO("noiseFBOLinear", 8);
+			singleton->sampleFBO("debugTargFBO", 9);
 			
 			
 			if ((singleton->currentActor == NULL)||singleton->firstPerson) {
@@ -57720,6 +57315,7 @@ void GameWorld::postProcess ()
 			singleton->setShaderfVec3("lightVecOrig", &(singleton->lightVecOrig) );
 			singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
 			singleton->setShaderFloat("curTime", singleton->curTime);
+			singleton->setShaderFloat("selLimbInd",singleton->highlightedLimb);
 			singleton->setShaderFloat("selObjInd",singleton->selObjInd);
 			singleton->setShaderFloat("actObjInd",singleton->actObjInd);
 			singleton->setShaderFloat("isUnderWater", singleton->getUnderWater() );
@@ -57733,9 +57329,9 @@ void GameWorld::postProcess ()
 			singleton->drawFSQuad();
 
 			
-			singleton->unsampleFBO("debugTargFBO", 8);
-			singleton->unsampleFBO("noiseFBOLinear", 7);
-			singleton->setShaderTexture3D(6,0);
+			singleton->unsampleFBO("debugTargFBO", 9);
+			singleton->unsampleFBO("noiseFBOLinear", 8);
+			singleton->setShaderTexture3D(7,0);
 			singleton->unsampleFBO("geomTargFBO", 4);
 			singleton->unsampleFBO("swapFBOBLin0", 3);
 			singleton->unsampleFBO("resultFBO", 2, activeFBO);

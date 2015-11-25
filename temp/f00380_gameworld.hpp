@@ -1586,7 +1586,6 @@ public:
 		float scale = 1.0f;
 		
 		
-		glLineWidth(1.0f);
 		
 		
 		
@@ -2082,7 +2081,6 @@ public:
 		// singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 		
 		
-		// glLineWidth(4.0f);
 		
 		
 		// singleton->setShaderVec3("matVal", 30, 30, 30);
@@ -2216,7 +2214,6 @@ public:
 		// singleton->setShaderfVec4("rotationZ",&tempVec3);
 		// singleton->setShaderFloat("objectId",0.0);
 		
-		// glLineWidth(1.0f);
 
 
 		// //cout << "objectCount " << objCount << "\n";
@@ -2413,7 +2410,7 @@ public:
 		//~~~~~~~~~~~~~~
 		
 		singleton->bindShader("BoxShader");
-		singleton->bindFBO("geomTargFBO");//, -1, 0); //solidTargFBO
+		singleton->bindFBO("geomBaseTargFBO");//, -1, 0); //solidTargFBO
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 		singleton->setShaderFloat("objectId",0.0);
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
@@ -2437,20 +2434,18 @@ public:
 		// );
 		
 		
-		glLineWidth(4.0f);
+		
 		if (singleton->gamePhysics != NULL) {
 			singleton->drawOrient = false;
 			singleton->gamePhysics->example->renderScene();
 		}
 		
 		
-		
-		
 		singleton->unbindFBO();
 		singleton->unbindShader();
 		
 		
-		
+		singleton->copyFBO2("geomBaseTargFBO","geomTargFBO", 0, 1);
 		
 		
 		//~~~~~~~~~~~~~~
@@ -4531,7 +4526,7 @@ UPDATE_LIGHTS_END:
 		
 		float myMat[16];
 		
-		glLineWidth(4.0f);
+		
 		
 		singleton->bindShader("GeomShader");
 		singleton->bindFBO("debugTargFBO");
@@ -4555,37 +4550,22 @@ UPDATE_LIGHTS_END:
 		
 		
 		
-		// draw volume around organism
-		//GameOrg* activeOrg = singleton->testHuman;
-		//GamePageHolder* gphOrg = activeOrg->gph;
-		if (singleton->orgOn) {
+		
+		// skeleton outline		
+		// if (singleton->orgOn) {
 			
-			if (singleton->currentActor != NULL) {
+		// 	if (singleton->currentActor != NULL) {
 				
-				if (singleton->currentActor->orgId > -1) {
-					singleton->currentActor->bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
+		// 		if (singleton->currentActor->orgId > -1) {
+		// 			singleton->currentActor->bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
 					
-					singleton->setShaderMatrix4x4("objmat",myMat,1);
+		// 			singleton->setShaderMatrix4x4("objmat",myMat,1);
 					
-					singleton->setShaderFloat("objectId",0.0);
-					drawOrg(singleton->gameOrgs[singleton->currentActor->orgId], true);
-				}
-				
-				
-			}
-			
-			
-			
-			// tempVec.copyFrom(&(activeOrg->basePosition));
-			// tempVec.addXYZRef(&gphOrg->gphCenInPixels,-1.0f);
-			// singleton->setShaderfVec3("offsetPos",&tempVec);
-			
-			// singleton->setShaderFloat("isWire", 1.0);
-			// singleton->setShaderVec3("matVal", 255, 0, 0 );
-			
-			// singleton->drawBox( &(gphOrg->gphMinInPixels), &(gphOrg->gphMaxInPixels) );
-			
-		}
+		// 			singleton->setShaderFloat("objectId",0.0);
+		// 			drawOrg(singleton->gameOrgs[singleton->currentActor->orgId], true);
+		// 		}
+		// 	}
+		// }
 		
 		
 		
@@ -4795,7 +4775,8 @@ UPDATE_LIGHTS_END:
 		
 		//singleton->projMatrix*
 
-		singleton->curMVP = singleton->viewMatrix;
+		singleton->curMVP = singleton->projMatrix*singleton->viewMatrix;
+		
 		singleton->curObjMatrix3.set4(singleton->curMVP.get());
 		singleton->curObjMatrix3.invert();
 		singleton->curObjMatrix3.transpose();
@@ -4841,8 +4822,8 @@ UPDATE_LIGHTS_END:
 		
 		singleton->sampleFBO("solidTargFBO",0);
 		singleton->sampleFBO("prelightFBO", 2);
-		singleton->sampleFBO("geomTargFBO", 6);
-		singleton->sampleFBO("debugTargFBO", 8);
+		// singleton->sampleFBO("geomTargFBO", 6);
+		// singleton->sampleFBO("debugTargFBO", 8);
 		singleton->setShaderTexture3D(10,singleton->volIdMat);
 		
 		singleton->setShaderfVec4("worldMarker",&(singleton->worldMarker));
@@ -4867,8 +4848,8 @@ UPDATE_LIGHTS_END:
 		singleton->drawFSQuad();
 		
 		singleton->setShaderTexture3D(10,0);
-		singleton->unsampleFBO("debugTargFBO", 8);
-		singleton->unsampleFBO("geomTargFBO", 6);
+		// singleton->unsampleFBO("debugTargFBO", 8);
+		// singleton->unsampleFBO("geomTargFBO", 6);
 		singleton->unsampleFBO("prelightFBO", 2);
 		singleton->unsampleFBO("solidTargFBO",0);
 		
@@ -4894,7 +4875,7 @@ UPDATE_LIGHTS_END:
 			//singleton->sampleFBO("waveFBO", 7);
 			singleton->setShaderTexture3D(7,singleton->volIdMat);
 			singleton->sampleFBO("prelightFBO", 9);
-			singleton->sampleFBO("geomTargFBO", 13);
+			//singleton->sampleFBO("geomTargFBO", 13);
 			
 			
 			singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
@@ -4912,7 +4893,7 @@ UPDATE_LIGHTS_END:
 			singleton->drawFSQuad();
 			
 			
-			singleton->unsampleFBO("geomTargFBO", 13);
+			//singleton->unsampleFBO("geomTargFBO", 13);
 			singleton->unsampleFBO("prelightFBO", 9);
 			singleton->setShaderTexture3D(7,0);
 			//singleton->unsampleFBO("waveFBO", 7);
@@ -4974,10 +4955,10 @@ UPDATE_LIGHTS_END:
 			singleton->sampleFBO("resultFBO", 0, activeFBO);
 			singleton->sampleFBO("swapFBOLinHalf0", 1);
 			singleton->sampleFBO("combineWithWaterTargFBO",2);
-			singleton->sampleFBO("geomTargFBO", 4);
+			//singleton->sampleFBO("geomTargFBO", 4);
 			singleton->setShaderInt("testOn", (int)(singleton->testOn));
 			singleton->drawFSQuad();
-			singleton->unsampleFBO("geomTargFBO", 4);
+			//singleton->unsampleFBO("geomTargFBO", 4);
 			singleton->unsampleFBO("combineWithWaterTargFBO",2);
 			singleton->unsampleFBO("swapFBOLinHalf0", 1);
 			singleton->unsampleFBO("resultFBO", 0, activeFBO);
@@ -5000,10 +4981,10 @@ UPDATE_LIGHTS_END:
 			singleton->sampleFBO("combineWithWaterTargFBO",0);
 			singleton->sampleFBO("resultFBO", 2, activeFBO);
 			singleton->sampleFBO("swapFBOBLin0", 3);
-			singleton->sampleFBO("geomTargFBO", 4);
-			singleton->setShaderTexture3D(6,singleton->volIdMat);
-			singleton->sampleFBO("noiseFBOLinear", 7);
-			singleton->sampleFBO("debugTargFBO", 8);
+			singleton->sampleFBO("geomBaseTargFBO", 4);
+			singleton->setShaderTexture3D(7,singleton->volIdMat);
+			singleton->sampleFBO("noiseFBOLinear", 8);
+			singleton->sampleFBO("debugTargFBO", 9);
 			
 			
 			if ((singleton->currentActor == NULL)||singleton->firstPerson) {
@@ -5031,6 +5012,7 @@ UPDATE_LIGHTS_END:
 			singleton->setShaderfVec3("lightVecOrig", &(singleton->lightVecOrig) );
 			singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
 			singleton->setShaderFloat("curTime", singleton->curTime);
+			singleton->setShaderFloat("selLimbInd",singleton->highlightedLimb);
 			singleton->setShaderFloat("selObjInd",singleton->selObjInd);
 			singleton->setShaderFloat("actObjInd",singleton->actObjInd);
 			singleton->setShaderFloat("isUnderWater", singleton->getUnderWater() );
@@ -5044,9 +5026,9 @@ UPDATE_LIGHTS_END:
 			singleton->drawFSQuad();
 
 			
-			singleton->unsampleFBO("debugTargFBO", 8);
-			singleton->unsampleFBO("noiseFBOLinear", 7);
-			singleton->setShaderTexture3D(6,0);
+			singleton->unsampleFBO("debugTargFBO", 9);
+			singleton->unsampleFBO("noiseFBOLinear", 8);
+			singleton->setShaderTexture3D(7,0);
 			singleton->unsampleFBO("geomTargFBO", 4);
 			singleton->unsampleFBO("swapFBOBLin0", 3);
 			singleton->unsampleFBO("resultFBO", 2, activeFBO);

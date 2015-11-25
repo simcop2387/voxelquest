@@ -1057,6 +1057,7 @@ struct BodyStruct {
 	
 	float mass;
 	int boneId;
+	bool isBall;
 	
 	bool isVisible;
 	bool inWater;

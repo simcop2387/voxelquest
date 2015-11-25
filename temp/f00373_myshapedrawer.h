@@ -117,9 +117,10 @@ void MyShapeDrawer::renderSquareA (float x, float y, float z)
 			// glVertex3f(x, y + 10.f, z);
 			// glEnd();
 		}
-void MyShapeDrawer::setId (int id)
-                                   {
-			singleton->setShaderFloat("objectId", id);
+void MyShapeDrawer::setId (int bodyUID, int limbUID)
+                  {
+			singleton->setShaderFloat("bodyUID", bodyUID);
+			singleton->setShaderFloat("limbUID", limbUID);
 		}
 void MyShapeDrawer::updateMat2 ()
                                   {
@@ -241,7 +242,6 @@ void MyShapeDrawer::drawOpenGL (btScalar * m, btCollisionShape const * shape, bt
 		//		dz *= halfExtent[2];
 				//glColor3f(1,1,1);
 				//glDisable(GL_LIGHTING);
-				//glLineWidth(2);
 
 				// glBegin(GL_LINE_LOOP);
 				// glDrawVector(org - dx - dy);
@@ -754,7 +754,7 @@ void MyShapeDrawer::drawSceneInternal (btDiscreteDynamicsWorld const * dynamicsW
 				const btCollisionObject*	colObj=dynamicsWorld->getCollisionObjectArray()[i];
 				const btRigidBody*		body=btRigidBody::upcast(colObj);
 				
-				setId( max(body->bodyUID,0) );
+				setId( body->bodyUID, body->limbUID );//max(,0) );
 				
 				if(body&&body->getMotionState())
 				{

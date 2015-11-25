@@ -7,9 +7,6 @@ uniform sampler2D Texture1;
 // combineFBOWithWater
 uniform sampler2D Texture2;
 
-// geom fbo
-// uniform sampler2D Texture4;
-// uniform sampler2D Texture5;
 
 uniform bool testOn;
 

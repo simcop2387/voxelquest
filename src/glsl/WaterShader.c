@@ -30,8 +30,8 @@ uniform sampler2D Texture11;
 uniform sampler2D Texture12;
 
 // geom fbo
-uniform sampler2D Texture13;
-uniform sampler2D Texture14;
+// uniform sampler2D Texture13;
+// uniform sampler2D Texture14;
 
 varying vec2 TexCoord0;
 

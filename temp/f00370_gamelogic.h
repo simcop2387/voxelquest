@@ -453,7 +453,6 @@ void GameLogic::update ()
 			
 			if (didFindPath) {
 				
-				glLineWidth(4.0f);
 				
 				for (i = 0; i < pathFinalStack.size(); i++) {
 					curPR = &(pathFinalStack[i]);

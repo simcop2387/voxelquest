@@ -1,4 +1,4 @@
-﻿Build started 11/20/2015 5:20:23 AM.
+﻿Build started 11/25/2015 3:22:09 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -268,13 +268,45 @@
          curHeight 0 newHeight 2634.04
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
-         E_MOUSE_STATE_BRUSH
-         E_MOUSE_STATE_BRUSH
-         E_MOUSE_STATE_MOVE
+         iNumSteps:  16         
+         iNumSteps:  16         
          actObjInd 427
-         subjectDistance 5.73876
+         subjectDistance 10.5383
+         editPose 1
+         iNumSteps:  16         
+         iNumSteps:  16         
+         mirrorOn 0
+         from E_DT_WORLD_OBJECT to E_DT_WORLD_OBJECT
+         iNumSteps:  16         
+         iNumSteps:  16         
+         iNumSteps:  16         
+         iNumSteps:  16         
+         mirrorOn 1
+         mirrorOn 0
+         iNumSteps:  16         
+         iNumSteps:  16         
+         iNumSteps:  16         
+         iNumSteps:  16         
+         iNumSteps:  16         
+         iNumSteps:  16         
+         iNumSteps:  16         
+         iNumSteps:  16         
+         mirrorOn 1
+         iNumSteps:  16         
+         iNumSteps:  16         
+         iNumSteps:  16         
+         iNumSteps:  16         
+         mirrorOn 0
+         No code for key: ▒
+         iNumSteps:  16         
+         No code for key: │
+         No code for key: ▒
+         iNumSteps:  16         
+         No code for key: │
+         iNumSteps:  16         
+         iNumSteps:  16         
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:03:20.68
+Time Elapsed 00:29:42.28
