@@ -11,13 +11,19 @@ float GameOrg::gv (float * vals)
 float const GameOrg::baseMat = 12.0f;
 GameOrg::GameOrg ()
                   {
+		
+		targetPoseGroup = -1;
+		targetPose = -1;
 		rootObj = NULL;
 		defVecLength = 0.05f;
 	}
-void GameOrg::init (Singleton * _singleton)
+void GameOrg::init (Singleton * _singleton, int _ownerUID)
           {
 		singleton = _singleton;
 
+		stepCount = 0;
+
+		ownerUID = _ownerUID;
 
 		// GameOrgNode(
 		// 	GameOrgNode* _parent,
@@ -64,7 +70,6 @@ void GameOrg::loadFromFile (string fileName)
 		);
 		
 		jsonToNode(&rootObj, baseNode);
-		
 		
 	}
 void GameOrg::jsonToNode (JSONValue * * parentObj, GameOrgNode * curNode)
@@ -136,6 +141,148 @@ void GameOrg::saveToFile (string fileName)
 			&(rootObj->Stringify())
 		);
 		
+		
+	}
+BaseObj * GameOrg::getOwner ()
+                            {
+		
+		if (ownerUID < 0) {
+			return NULL;
+		}
+		
+		return &(singleton->gw->gameObjects[ownerUID]);
+	}
+void GameOrg::setToPose (GameOrg * otherOrg, float lerpAmount, int boneId)
+                                                                             {
+		int i;
+		int j;
+		
+		int begInd;
+		int endInd;
+		
+		GameOrgNode* sourceNode;
+		GameOrgNode* destNode;
+		
+		if (boneId == -1) {
+			begInd = 0;
+			endInd = E_BONE_C_END;
+		}
+		else {
+			begInd = boneId;
+			endInd = boneId+1;
+		}
+		
+		
+		for (i = begInd; i < endInd; i++) {
+			sourceNode = otherOrg->allNodes[i];
+			destNode = allNodes[i];
+			
+			if (
+				(sourceNode != NULL) &&
+				(destNode != NULL)	
+			) {
+				for (j = 0; j < E_OV_LENGTH; j++) {
+					destNode->orgVecs[j].lerpXYZW(&(sourceNode->orgVecs[j]), lerpAmount);
+				}
+			}
+		}
+	}
+void GameOrg::updatePose (double curTimeStep)
+                                            {
+		totTime += curTimeStep;
+		
+		float timeInterval = 1.0f;
+		float lerpSpeed = 0.005f;
+		
+		BaseObj* curOwner = getOwner();
+		
+		if (singleton->editPose) {
+			
+		}
+		else {
+			if (targetPoseGroup > -1) {
+				
+				
+				
+				switch (targetPoseGroup) {
+					case E_PG_IDLE:
+						lerpSpeed = 0.003f;
+						targetPose = E_PK_IDLE_LOW + (stepCount%2);
+						timeInterval = 1.0;
+					break;
+					case E_PG_WALK:
+						lerpSpeed = 0.005f;
+						timeInterval = 0.5;
+						targetPose = E_PK_L_FORWARD + (stepCount%4);
+					break;
+					case E_PG_JUMP:
+						lerpSpeed = 0.005f;
+						timeInterval = 1.5;
+						targetPose = E_PK_JUMP;
+					break;
+				}
+				
+				if (totTime > timeInterval) {
+					totTime -= timeInterval;
+					stepCount++;
+					
+					switch (targetPoseGroup) {
+						case E_PG_JUMP:
+							if (curOwner != NULL) {
+								curOwner->isJumping = false;
+							}
+							
+						break;
+					}
+					
+				}
+				
+				setToPose(singleton->gamePoses[targetPose],lerpSpeed);
+			}
+		}
+		
+		
+		
+		
+		
+		
+		// float angMod1 = sin(totTime)*0.5f;
+		// float angMod2 = sin(totTime)*0.5f;
+		// float angMod3 = -(sin(totTime*2.0)+1.0f)*0.5f;
+		// float angMod4 = (sin(totTime*2.0)+1.0f)*0.5f;
+		
+		// GameOrgNode* curNode;
+		
+		// curNode = allNodes[E_BONE_L_UPPERLEG];
+		// curNode->orgVecs[E_OV_THETAPHIRHO].copyFrom(&(
+		// 	curNode->orgVecs[E_OV_TPRORIG]
+		// ));
+		// curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0,0.0,angMod1);
+		
+		// curNode = allNodes[E_BONE_R_UPPERLEG];
+		// curNode->orgVecs[E_OV_THETAPHIRHO].copyFrom(&(
+		// 	curNode->orgVecs[E_OV_TPRORIG]
+		// ));
+		// curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0,0.0,angMod2);
+		
+		
+		// curNode = allNodes[E_BONE_L_LOWERLEG];
+		// curNode->orgVecs[E_OV_THETAPHIRHO].copyFrom(&(
+		// 	curNode->orgVecs[E_OV_TPRORIG]
+		// ));
+		// curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0,0.0,angMod3);
+		
+		// curNode = allNodes[E_BONE_R_LOWERLEG];
+		// curNode->orgVecs[E_OV_THETAPHIRHO].copyFrom(&(
+		// 	curNode->orgVecs[E_OV_TPRORIG]
+		// ));
+		// curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0,0.0,angMod4);
+		
+		
+		
+		
+		
+		singleton->transformOrg(this);
 		
 	}
 void GameOrg::nodeToJSON (JSONValue * * parentObj, GameOrgNode * curNode)

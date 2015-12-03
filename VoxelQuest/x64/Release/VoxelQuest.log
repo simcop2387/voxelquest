@@ -1,4 +1,4 @@
-﻿Build started 11/25/2015 3:22:09 AM.
+﻿Build started 12/3/2015 2:54:51 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -264,49 +264,62 @@
          
          Valid JSON
                    
+         Loading:  ..\data\orgdata\E_PK_T_POSE.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_JUMP.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_IDLE_LOW.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_IDLE_HIGH.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_L_FORWARD.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_R_CROSS.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_R_FORWARD.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_L_CROSS.js         
+         Load Successful          
+         
+         Valid JSON
+                   
          GW DONE          
          curHeight 0 newHeight 2634.04
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
-         iNumSteps:  16         
-         iNumSteps:  16         
+         
+         pathfindingOn: 0
+         updateHolders 0
+         iNumSteps:  32         
+         
+         pathfindingOn: 0
+         updateHolders 1
          actObjInd 427
-         subjectDistance 10.5383
-         editPose 1
-         iNumSteps:  16         
-         iNumSteps:  16         
-         mirrorOn 0
-         from E_DT_WORLD_OBJECT to E_DT_WORLD_OBJECT
-         iNumSteps:  16         
-         iNumSteps:  16         
-         iNumSteps:  16         
-         iNumSteps:  16         
-         mirrorOn 1
-         mirrorOn 0
-         iNumSteps:  16         
-         iNumSteps:  16         
-         iNumSteps:  16         
-         iNumSteps:  16         
-         iNumSteps:  16         
-         iNumSteps:  16         
-         iNumSteps:  16         
-         iNumSteps:  16         
-         mirrorOn 1
-         iNumSteps:  16         
-         iNumSteps:  16         
-         iNumSteps:  16         
-         iNumSteps:  16         
-         mirrorOn 0
-         No code for key: ▒
-         iNumSteps:  16         
-         No code for key: │
-         No code for key: ▒
-         iNumSteps:  16         
-         No code for key: │
-         iNumSteps:  16         
-         iNumSteps:  16         
+         subjectDistance 11.6366
+         iNumSteps:  64         
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:29:42.28
+Time Elapsed 00:07:32.90

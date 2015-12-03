@@ -134,7 +134,7 @@ int GameActor::addJoint (int nodeName, int parentId, bool isBall, float rad, flo
 		// );
 		
 		
-		int bodyCollidesWith = COL_STATIC|COL_DYN;
+		
 		curJoint->body = singleton->gamePhysics->example->createRigidBodyMask(
 			mass,
 			offset*transform,

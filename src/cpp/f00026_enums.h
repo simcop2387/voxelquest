@@ -267,6 +267,7 @@ enum ENT_TYPE {
 	E_ENTTYPE_OBJ,
 	E_ENTTYPE_MONSTER,
 	E_ENTTYPE_NPC,
+	E_ENTTYPE_WEAPON,
 	E_ENTTYPE_BULLET,
 	E_ENTTYPE_TRACE,
 	E_ENTTYPE_DEBRIS,
@@ -651,6 +652,7 @@ enum E_ORG_VECS {
 	E_OV_TBNRAD0,
 	E_OV_TBNRAD1,
 	E_OV_THETAPHIRHO,
+	E_OV_TPRORIG,
 	E_OV_MATPARAMS,
 	E_OV_LENGTH
 };
@@ -1044,8 +1046,15 @@ enum E_COL_TYPES {
     COL_STATIC = 1,
     COL_DYN = 2,
     COL_BODY = 4,
-    COL_MARKER = 8
+    COL_MARKER = 8,
+    COL_WEAPON = 16
 };
+
+const static int terCollidesWith = COL_STATIC|COL_DYN|COL_BODY|COL_MARKER|COL_WEAPON;
+const static int bodyCollidesWith = COL_STATIC|COL_DYN;//COL_NOTHING;//
+const static int markerCollidesWith = COL_STATIC|COL_DYN;
+const static int dynCollidesWith = COL_STATIC|COL_DYN|COL_BODY|COL_MARKER|COL_WEAPON;
+const static int weaponCollidesWith = COL_STATIC|COL_DYN|COL_WEAPON;
 
 
 
@@ -1100,8 +1109,37 @@ struct ActorJointStruct {
 // };
 
 
+enum E_POSE_GROUPS {
+	E_PG_JUMP,
+	E_PG_IDLE,
+	E_PG_WALK,
+	E_PG_LENGTH	
+};
 
+enum E_POSE_KEYS {
+	E_PK_T_POSE,
+	E_PK_JUMP,
+	E_PK_IDLE_LOW,
+	E_PK_IDLE_HIGH,
+	E_PK_L_FORWARD,
+	E_PK_R_CROSS,
+	E_PK_R_FORWARD,
+	E_PK_L_CROSS,
+	E_PK_LENGTH
+	
+};
 
+string poseStrings[] = {
+	"E_PK_T_POSE",
+	"E_PK_JUMP",
+	"E_PK_IDLE_LOW",
+	"E_PK_IDLE_HIGH",
+	"E_PK_L_FORWARD",
+	"E_PK_R_CROSS",
+	"E_PK_R_FORWARD",
+	"E_PK_L_CROSS",
+	"E_PK_LENGTH"
+};
 
 struct materialNode {
 	float h;

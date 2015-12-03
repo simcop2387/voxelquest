@@ -619,6 +619,19 @@ public:
 		iv4.z = (int)fv4.z;
 	}
 	
+	void lerpXYZW(FIVector4 *v2, float amount) {
+		float iamount = 1.0f-amount;
+		fv4.x = fv4.x*iamount + v2->getFX()*amount;
+		fv4.y = fv4.y*iamount + v2->getFY()*amount;
+		fv4.z = fv4.z*iamount + v2->getFZ()*amount;
+		fv4.w = fv4.w*iamount + v2->getFW()*amount;
+
+		iv4.x = (int)fv4.x;
+		iv4.y = (int)fv4.y;
+		iv4.z = (int)fv4.z;
+		iv4.w = (int)fv4.w;
+	}
+	
 	void lerpXYZ(FIVector4 *v2, FIVector4* av) {
 		
 		float xa;
@@ -1809,6 +1822,7 @@ public:
 	
 	
 	//Matrix3 rotMat;
+	int contactCount;
 	int boneId;
 	int actorId;
 	int orgId;
@@ -1820,9 +1834,16 @@ public:
 	bool isOpen;
 	bool isEquipped;
 	bool isUpright;
+	bool zeroZ;
+	bool isJumping;
 	
 	
-	
+	bool weaponActive;
+	bool rightHandTop;
+	btVector3 leftVec;
+	btVector3 rightVec;
+	btVector3 weaponVec0;
+	btVector3 weaponVec1;
 	
 	//float mass;
 		
@@ -1837,6 +1858,34 @@ public:
 	float friction;
 	float windResistance;
 	
+	btVector3 aabbMin;
+	btVector3 aabbMax;
+	
+	
+	void clearAABB() {
+		aabbMin = btVector3(FLT_MAX,FLT_MAX,FLT_MAX);
+		aabbMax = btVector3(FLT_MIN,FLT_MIN,FLT_MIN);	
+	}
+	
+	void addAABBPoint(btVector3 newPoint) {
+		btVector3 tempv;
+		
+		tempv = btVector3(
+			max(newPoint.getX(), aabbMax.getX()),
+			max(newPoint.getY(), aabbMax.getY()),
+			max(newPoint.getZ(), aabbMax.getZ())
+		);
+		
+		aabbMax = tempv;
+		
+		tempv = btVector3(
+			min(newPoint.getX(), aabbMin.getX()),
+			min(newPoint.getY(), aabbMin.getY()),
+			min(newPoint.getZ(), aabbMin.getZ())
+		);
+		
+		aabbMin = tempv;
+	}
 	
 	
 	bool hasBodies() {
@@ -1854,6 +1903,18 @@ public:
 		return &linVelocity;
 	}
 	
+	BodyStruct* getBodyByBoneId(int id) {
+		int i;
+		
+		for (i = 0; i < bodies.size(); i++) {
+			if (bodies[i].boneId == id) {
+				return &(bodies[i]);
+			}
+		}
+		
+		return NULL;
+	}
+	
 	float getTotalMass() {
 		int i;
 		
@@ -1869,6 +1930,8 @@ public:
 	float getMarkerMass() {
 		return bodies[0].mass;
 	}
+	
+	
 	
 	void wakeAll() {
 		int i;
@@ -1890,6 +1953,11 @@ public:
 		return true;
 	}
 	
+	bool baseContact() {
+		return bodies[0].hasContact;
+	}
+	
+	
 	void applyImpulses(float timeDelta, int i) {
 		
 		if (i < bodies.size()) {
@@ -1897,6 +1965,14 @@ public:
 				
 			}
 			else {
+				
+				if (zeroZ) {
+					bodies[i].body->setLinearVelocity(btVector3(
+						bodies[i].body->getLinearVelocity().getX(),
+						bodies[i].body->getLinearVelocity().getY(),
+						0.0f	
+					));
+				}
 				
 				bodies[i].body->setAngularVelocity(bodies[i].body->getAngularVelocity() + bodies[i].totAV*timeDelta);
 				bodies[i].body->applyCentralImpulse(bodies[i].totLV*timeDelta);
@@ -1908,6 +1984,92 @@ public:
 		
 		
 	}
+	
+	void updateWeapon(double totTime) {
+		
+		float myMat[16];
+		Matrix4 myMatrix4;
+		Vector3 myVector0;
+		Vector3 myVector1;
+		Vector3 normVec;
+		Vector4 resVector0;
+		Vector4 resVector1;
+		
+		Vector4 vf0;
+		Vector4 vf1;
+		
+		btVector3 basePos;
+		float rad0 = 1.0f;
+		float rad1 = 3.0f;
+		
+		float lrBounds = sin(totTime/4.0);
+		float udBounds = sin(totTime);
+		float udBounds2 = sin(totTime/8.0);
+		
+		if (bodies.size() < 1) {
+			return;
+		}
+		
+		
+		
+		
+		float weaponTheta = M_PI_2 + lrBounds*M_PI_8;
+		float weaponPhi = M_PI_4 + udBounds*M_PI_4;
+		
+		float weaponTheta2 = M_PI_2 - lrBounds*M_PI_2;
+		float weaponPhi2 = 0 + udBounds*M_PI_4;
+		
+		
+		bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
+		myMatrix4 = Matrix4(myMat);
+		
+		myVector0 = Vector3(
+			cos(weaponTheta)*sin(weaponPhi)*rad0,
+			sin(weaponTheta)*sin(weaponPhi)*rad0 + 0.5f,
+			cos(weaponPhi)*rad0 + (1.0f-udBounds2)*0.75f
+		);
+		myVector1 = Vector3(
+			cos(weaponTheta2)*sin(weaponPhi2)*rad1,
+			sin(weaponTheta2)*sin(weaponPhi2)*rad1 + 0.5f,
+			cos(weaponPhi2)*rad1
+		);
+		
+		normVec = myVector1 - myVector0;
+		normVec.normalize();
+		normVec = normVec*(rad1-rad0);
+		myVector1 = myVector0 + normVec;
+		
+		rightHandTop = true;//(myVector0.x < 0.0f);
+		
+		vf0 = Vector4(myVector0.x, myVector0.y, myVector0.z, 1.0);
+		vf1 = Vector4(myVector1.x, myVector1.y, myVector1.z, 1.0);
+		
+		resVector0 = myMatrix4*vf0;
+		resVector1 = myMatrix4*vf1;
+		
+		weaponVec0 = btVector3(resVector0.x,resVector0.y,resVector0.z);
+		weaponVec1 = btVector3(resVector1.x,resVector1.y,resVector1.z);
+		
+		
+		
+		
+				
+		vf0 = Vector4( 1.0f,0.0f,0.0f,1.0);
+		vf1 = Vector4(-1.0f,0.0f,0.0f,1.0);
+		
+		resVector0 = myMatrix4*vf0;
+		resVector1 = myMatrix4*vf1;
+		
+		rightVec = btVector3(resVector0.x,resVector0.y,resVector0.z);
+		leftVec = btVector3(resVector1.x,resVector1.y,resVector1.z);
+		
+		
+		
+		
+		
+		
+	}
+	
 	
 	void flushImpulses() {
 		
@@ -2101,6 +2263,7 @@ public:
 		FIVector4* cellPos
 	) {
 		
+		contactCount = 0;
 		
 		//mass = 10.0f;
 		orgId = -1;
@@ -2121,6 +2284,11 @@ public:
 		isGrabbedById = -1;
 		isGrabbingId = -1;
 		
+		rightHandTop = false;
+		weaponActive = false;
+		
+		zeroZ = false;
+		isJumping = false;
 		
 		isUpright = 
 			(entType == E_ENTTYPE_NPC) ||

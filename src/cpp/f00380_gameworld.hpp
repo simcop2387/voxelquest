@@ -4524,8 +4524,17 @@ UPDATE_LIGHTS_END:
 
 	void renderDebug() {
 		
-		float myMat[16];
+		BaseObj* ge = singleton->currentActor;
 		
+		float myMat[16];
+		Matrix4 myMatrix4;
+		Vector4 myVector0;
+		Vector4 myVector1;
+		Vector4 resVector0;
+		Vector4 resVector1;
+		btVector3 basePos;
+		float rad0 = 1.0f;
+		float rad1 = 3.0f;
 		
 		
 		singleton->bindShader("GeomShader");
@@ -4539,7 +4548,14 @@ UPDATE_LIGHTS_END:
 		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
 		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 		singleton->setShaderFloat("objectId",0.0);
+		singleton->setShaderVec3("matVal", 255, 0, 0);
 		
+		if (ge != NULL) {
+			
+			tempVec1.setBTV(ge->weaponVec0);
+			tempVec2.setBTV(ge->weaponVec1);	
+			singleton->drawLine(&tempVec1,&tempVec2);
+		}
 		
 		
 		// if (singleton->gamePhysics != NULL) {
@@ -4998,9 +5014,11 @@ UPDATE_LIGHTS_END:
 			
 			if (singleton->currentActor == NULL) {
 				singleton->setShaderInt("isFalling",false);
+				singleton->setShaderInt("isJumping",false);
 			}
 			else {
 				singleton->setShaderInt("isFalling",singleton->currentActor->allFalling());
+				singleton->setShaderInt("isJumping",singleton->currentActor->isJumping);
 			}
 			
 			

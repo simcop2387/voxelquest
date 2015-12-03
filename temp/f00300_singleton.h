@@ -138,6 +138,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		identMatrix.identity();
 		
+		isWalking = false;
 		isPressingMove = false;
 		fxaaOn = false;
 		doPathReport = false;
@@ -323,6 +324,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		// todo: probe area ahead of current ray step to see if near edge
 		
+		currentPose = E_PK_T_POSE;
 		polyCount = 0;
 		fpsCountMax = 500;
 		
@@ -1228,6 +1230,14 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			for (j = 0; j < entPoolStack[i].maxCount; j++) {
 				placeNewEnt(false, i, &origin, true);
 			}
+		}
+		
+		
+		for (i = 0; i < E_PK_LENGTH; i++) {
+			gamePoses.push_back(new GameOrg());
+			gamePoses.back()->init(this,-1);
+			gamePoses.back()->loadFromFile(poseStrings[i]);
+			transformOrg(gamePoses.back());
 		}
 		
 
@@ -2234,8 +2244,11 @@ BaseObjType Singleton::placeNewEnt (bool isReq, int et, FIVector4 * cellPos, boo
 			break;
 			
 			case E_ENTTYPE_DEBRIS:
+			case E_ENTTYPE_WEAPON:
+				newType = 0;
 				newType = 0;
 			break;
+			
 			
 		}
 		
@@ -4522,7 +4535,7 @@ void Singleton::makeJump (int actorId, int isUp)
 			return;
 		}
 		
-		float JUMP_AMOUNT = 1.0f*ge->getMarkerMass()/STEP_TIME_IN_SEC;
+		float JUMP_AMOUNT = 400.0f*ge->getMarkerMass();
 		
 		
 		if (isUp == 1) {
@@ -4560,6 +4573,8 @@ void Singleton::makeJump (int actorId, int isUp)
 					);
 				}
 				
+				ge->isJumping = true;
+				
 				
 			}
 			else {
@@ -4570,12 +4585,15 @@ void Singleton::makeJump (int actorId, int isUp)
 					
 					
 					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true, 0);
+					ge->zeroZ = true;
 					
 					playSoundEnt(
 						"jump0",
 						ge,
 						0.0f
 					);
+					
+					ge->isJumping = true;
 					
 				}
 			}
@@ -4607,6 +4625,44 @@ void Singleton::resetGeom ()
 			paramArrGeom[i] = defaultTemplate[i];
 		}
 	}
+void Singleton::saveCurrentPose ()
+                               {
+		GameOrg* testHuman = getCurOrg();
+		
+		if (editPose) {
+			
+			if (testHuman != NULL) {
+				testHuman->saveToFile(poseStrings[currentPose]);
+				gamePoses[currentPose]->loadFromFile(poseStrings[currentPose]);
+				transformOrg(gamePoses[currentPose]);
+				
+				cout << "Saved Pose " << poseStrings[currentPose] << "\n";
+				
+			}
+			
+			
+		}
+	}
+void Singleton::loadCurrentPose ()
+                               {
+		GameOrg* testHuman = getCurOrg();
+		
+		if (editPose) {
+			
+			if (testHuman != NULL) {
+				
+				gamePoses[currentPose]->loadFromFile(poseStrings[currentPose]);
+				transformOrg(gamePoses[currentPose]);
+				testHuman->setToPose(gamePoses[currentPose],1.0f);
+				transformOrg(testHuman);
+				makeDirty();
+				cout << "Loaded Pose " << poseStrings[currentPose] << "\n";
+				
+			}
+			
+			
+		}
+	}
 void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
                                                                          {
 		
@@ -4635,7 +4691,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 		
 		keysPressed[newKey] = keyDown;
 		
-		
+		GameOrg* testHuman = getCurOrg();
 		
 		
 		if (keyDown) {
@@ -4685,6 +4741,11 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					getMarkerPos(x, y);
 					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_OBJ, &lastCellPos);
 				break;
+				case '4':
+					updateHolders = true;
+					getMarkerPos(x, y);
+					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_WEAPON, &lastCellPos);
+				break;				
 				case '`':
 					placingGeom = !placingGeom;
 					if (placingGeom) {
@@ -4713,6 +4774,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				case 19: //ctrl-s
 					saveExternalJSON();
 					saveGUIValues();
+					saveCurrentPose();
 					//cout << "Use s key in web editor to save\n";
 					break;
 
@@ -4820,14 +4882,16 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				case 'w':
 					
+					if (currentActor != NULL) {
+						currentActor->weaponActive = !(currentActor->weaponActive);
+					}
+					
+					//setFirstPerson(!firstPerson);
 					
 					
-					setFirstPerson(!firstPerson);
 					
 					
 					
-					
-					//resetActiveNode();
 				break;
 
 				case 27: // esc
@@ -4875,10 +4939,19 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					loadValuesGUI();
 				break;
 				case 'r':
-					doShaderRefresh(bakeParamsOn);
+				
+					if (editPose) {
+						resetActiveNode();
+					}
+					else {
+						doShaderRefresh(bakeParamsOn);
+						cout << "Shaders Refreshed\n";
+					}
+				
+					
 					
 
-					cout << "Shaders Refreshed\n";
+					
 					
 					break;
 					
@@ -5044,7 +5117,12 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				case 'c':
 					
 					editPose = !editPose;
+					
 					cout << "editPose " << editPose << "\n";
+					
+					if (editPose) {
+						loadCurrentPose();
+					}
 					
 					//setCameraToElevation();
 				
@@ -5077,8 +5155,34 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 					
 				case 'x':
-					fxaaOn = !fxaaOn;
-					cout << "fxaaOn " << fxaaOn << "\n";
+					currentPose++;
+					
+					// if (currentPose == E_PK_L_FORWARD) {
+					// 	currentPose = E_PK_IDLE_LOW;
+					// }
+					
+					if (currentPose == E_PK_LENGTH) {
+						currentPose = E_PK_T_POSE;
+					}
+					
+					cout << "Current Pose: " << poseStrings[currentPose] << "\n";
+					
+					
+					
+					if (testHuman != NULL) {
+						testHuman->targetPose = currentPose;
+						
+						if (editPose) {
+							loadCurrentPose();
+						}
+						
+						//testHuman->setToPose(gamePoses[currentPose]);
+						//transformOrg(testHuman);
+						//currentActor->wakeAll();
+					}
+					
+					//fxaaOn = !fxaaOn;
+					//cout << "fxaaOn " << fxaaOn << "\n";
 					break;
 
 				case 'm':
@@ -5130,6 +5234,8 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj)
         {
 
+		
+
 		if (fpsTest) {
 			return;
 		}
@@ -5144,6 +5250,9 @@ void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUp
 
 		if (wsBufferInvalid || forceUpdate || forceGetPD)
 		{
+			
+			//cout << "getPixData\n";
+			
 			if (isObj) {
 				getFBOWrapper("geomBaseTargFBO", 2)->getPixels();
 			}
@@ -6295,6 +6404,37 @@ void Singleton::toggleCont (int contIndex, bool onMousePos)
 		
 		
 	}
+bool Singleton::feetContact (BaseObj * ge)
+                                      {
+		BodyStruct* curBody;
+		
+		curBody = ge->getBodyByBoneId(E_BONE_L_LOWERLEG);
+		if (curBody != NULL) {
+			if (curBody->hasContact) {
+				return true;
+			}
+		}
+		curBody = ge->getBodyByBoneId(E_BONE_R_LOWERLEG);
+		if (curBody != NULL) {
+			if (curBody->hasContact) {
+				return true;
+			}
+		}
+		curBody = ge->getBodyByBoneId(E_BONE_L_TALUS);
+		if (curBody != NULL) {
+			if (curBody->hasContact) {
+				return true;
+			}
+		}
+		curBody = ge->getBodyByBoneId(E_BONE_R_TALUS);
+		if (curBody != NULL) {
+			if (curBody->hasContact) {
+				return true;
+			}
+		}
+		
+		return false;
+	}
 float Singleton::getShortestAngle (float begInRad, float endInRad, float amount)
                                                                              {
 		int begInDeg = begInRad*180/M_PI;
@@ -6374,7 +6514,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	ca->targAng += (-2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,-0.02)/STEP_TIME_IN_SEC, true, 0);
+				ca->applyAngularImpulse(btVector3(0,0,-4.0f), true, 0);
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_LEFT]) {
@@ -6385,7 +6525,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	ca->targAng += (2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,0.02)/STEP_TIME_IN_SEC, true, 0);
+				ca->applyAngularImpulse(btVector3(0,0,4.0f), true, 0);
 			}
 			
 			
@@ -6419,14 +6559,17 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				makeJump(actorId,0);
 			}
 			
+			isWalking = false;
+			
 			if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
 				
+				isWalking = true;
 				
 				//tempVec2.addXYZ(tempVec1[0],tempVec1[1],0.0f);
 				
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,0.05,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
+						btVector3(0,10.0,0)*ca->getMarkerMass(),
 						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
@@ -6440,9 +6583,11 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 			if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
 				//tempVec2.addXYZ(-tempVec1[0],-tempVec1[1],0.0f);
 				
+				isWalking = true;
+				
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,-0.05,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
+						btVector3(0,-10.0,0)*ca->getMarkerMass(),
 						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
@@ -6821,7 +6966,7 @@ void Singleton::grabThrowObj (int actorId)
 			
 			if (ca->hasBodies()) {
 				gw->gameObjects[ca->isGrabbingId].applyImpulseOtherRot(
-					btVector3(0.0,0.5,0.5)*gw->gameObjects[ca->isGrabbingId].getTotalMass()/STEP_TIME_IN_SEC,
+					btVector3(0.0,200,200)*gw->gameObjects[ca->isGrabbingId].getTotalMass(),
 					ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 					true,
 					0
@@ -6922,7 +7067,7 @@ void Singleton::launchBullet (int actorId, int bulletType)
 			
 			
 				gw->gameObjects[entNum].applyImpulseOtherRot(
-					btVector3(0.0,0.5,0.5)*gw->gameObjects[entNum].getTotalMass()/STEP_TIME_IN_SEC,
+					btVector3(0.0,200,200)*gw->gameObjects[entNum].getTotalMass(),
 					ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 					true,
 					0
@@ -6948,14 +7093,30 @@ void Singleton::resetActiveNode ()
 		
 		GameOrgNode* curNode = NULL;
 		
+		GameOrg* testHuman = getCurOrg();
+		
 		if (selectedNode == NULL) {
+			
 			curNode = lastSelNode;
 		}
 		else {
+			
 			curNode = selectedNode;
 		}
 		
+		
+		
 		if (curNode != NULL) {
+			
+			
+			
+			if (testHuman != NULL) {
+				
+				
+				
+				testHuman->setToPose(gamePoses[E_PK_T_POSE],1.0,curNode->nodeName);
+			}
+			
 			//curNode->rotThe = 0.0f;
 			//curNode->rotPhi = 0.0f;
 			//curNode->rotRho = 0.0f;
@@ -6963,7 +7124,10 @@ void Singleton::resetActiveNode ()
 			
 			//curNode->tbnRadScale0.setFXYZ(1.0f,1.0f,1.0f);
 			//curNode->tbnRadScale1.setFXYZ(1.0f,1.0f,1.0f);
-			makeDirty();
+			//makeDirty();
+			
+			
+			
 		}
 	}
 bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
@@ -7014,6 +7178,7 @@ bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
 						
 					// }
 					
+					setSelNode(bestNode);
 					if (setActive) {
 						activeNode = bestNode;
 					}
@@ -8462,7 +8627,7 @@ void Singleton::display (bool doFrameRender)
 		bulletTimer.reset();
 		
 		//totTimePassedGraphics += curTimePassed;
-		totTimePassedPhysics += curTimePassed;
+		totTimePassedPhysics += curTimePassed*SPEEDUP_FACTOR;
 		
 		
 		if (currentTick > 4) {

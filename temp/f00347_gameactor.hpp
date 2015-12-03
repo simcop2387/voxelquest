@@ -199,7 +199,7 @@ public:
 		// );
 		
 		
-		int bodyCollidesWith = COL_STATIC|COL_DYN;
+		
 		curJoint->body = singleton->gamePhysics->example->createRigidBodyMask(
 			mass,
 			offset*transform,

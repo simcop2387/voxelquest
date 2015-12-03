@@ -94,7 +94,7 @@ public:
 	GameEnt* selectedEnt;
 	GameEnt* highlightedEnt;
 	
-	
+	bool isWalking;
 	bool isPressingMove;
 	bool fxaaOn;
 	bool doPathReport;
@@ -186,6 +186,8 @@ public:
 	int draggingToInd;
 	int draggingFromType;
 	int draggingToType;
+	
+	int currentPose;
 	
 	int polyCount;
 	int fdWritePos;
@@ -451,6 +453,8 @@ public:
 	
 	std::vector<GameActor*> gameActors;
 	std::vector<GameOrg*> gameOrgs;
+	
+	std::vector<GameOrg*> gamePoses;
 	
 	std::vector<ExplodeStruct> explodeStack;
 	std::vector<DebrisStruct> debrisStack;
@@ -744,6 +748,7 @@ public:
 		
 		identMatrix.identity();
 		
+		isWalking = false;
 		isPressingMove = false;
 		fxaaOn = false;
 		doPathReport = false;
@@ -929,6 +934,7 @@ public:
 		
 		// todo: probe area ahead of current ray step to see if near edge
 		
+		currentPose = E_PK_T_POSE;
 		polyCount = 0;
 		fpsCountMax = 500;
 		
@@ -1834,6 +1840,14 @@ public:
 			for (j = 0; j < entPoolStack[i].maxCount; j++) {
 				placeNewEnt(false, i, &origin, true);
 			}
+		}
+		
+		
+		for (i = 0; i < E_PK_LENGTH; i++) {
+			gamePoses.push_back(new GameOrg());
+			gamePoses.back()->init(this,-1);
+			gamePoses.back()->loadFromFile(poseStrings[i]);
+			transformOrg(gamePoses.back());
 		}
 		
 
@@ -2905,8 +2919,11 @@ PERFORM_DRAG_END:
 			break;
 			
 			case E_ENTTYPE_DEBRIS:
+			case E_ENTTYPE_WEAPON:
+				newType = 0;
 				newType = 0;
 			break;
+			
 			
 		}
 		
@@ -5469,7 +5486,7 @@ DISPATCH_EVENT_END:
 			return;
 		}
 		
-		float JUMP_AMOUNT = 1.0f*ge->getMarkerMass()/STEP_TIME_IN_SEC;
+		float JUMP_AMOUNT = 400.0f*ge->getMarkerMass();
 		
 		
 		if (isUp == 1) {
@@ -5507,6 +5524,8 @@ DISPATCH_EVENT_END:
 					);
 				}
 				
+				ge->isJumping = true;
+				
 				
 			}
 			else {
@@ -5517,12 +5536,15 @@ DISPATCH_EVENT_END:
 					
 					
 					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true, 0);
+					ge->zeroZ = true;
 					
 					playSoundEnt(
 						"jump0",
 						ge,
 						0.0f
 					);
+					
+					ge->isJumping = true;
 					
 				}
 			}
@@ -5555,6 +5577,46 @@ DISPATCH_EVENT_END:
 		}
 	}
 	
+	
+	void saveCurrentPose() {
+		GameOrg* testHuman = getCurOrg();
+		
+		if (editPose) {
+			
+			if (testHuman != NULL) {
+				testHuman->saveToFile(poseStrings[currentPose]);
+				gamePoses[currentPose]->loadFromFile(poseStrings[currentPose]);
+				transformOrg(gamePoses[currentPose]);
+				
+				cout << "Saved Pose " << poseStrings[currentPose] << "\n";
+				
+			}
+			
+			
+		}
+	}
+	
+	void loadCurrentPose() {
+		GameOrg* testHuman = getCurOrg();
+		
+		if (editPose) {
+			
+			if (testHuman != NULL) {
+				
+				gamePoses[currentPose]->loadFromFile(poseStrings[currentPose]);
+				transformOrg(gamePoses[currentPose]);
+				testHuman->setToPose(gamePoses[currentPose],1.0f);
+				transformOrg(testHuman);
+				makeDirty();
+				cout << "Loaded Pose " << poseStrings[currentPose] << "\n";
+				
+			}
+			
+			
+		}
+	}
+	
+	
 	void processInput(unsigned char key, bool keyDown, int x, int y) {
 		
 		int i;
@@ -5582,7 +5644,7 @@ DISPATCH_EVENT_END:
 		
 		keysPressed[newKey] = keyDown;
 		
-		
+		GameOrg* testHuman = getCurOrg();
 		
 		
 		if (keyDown) {
@@ -5632,6 +5694,11 @@ DISPATCH_EVENT_END:
 					getMarkerPos(x, y);
 					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_OBJ, &lastCellPos);
 				break;
+				case '4':
+					updateHolders = true;
+					getMarkerPos(x, y);
+					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_WEAPON, &lastCellPos);
+				break;				
 				case '`':
 					placingGeom = !placingGeom;
 					if (placingGeom) {
@@ -5660,6 +5727,7 @@ DISPATCH_EVENT_END:
 				case 19: //ctrl-s
 					saveExternalJSON();
 					saveGUIValues();
+					saveCurrentPose();
 					//cout << "Use s key in web editor to save\n";
 					break;
 
@@ -5767,14 +5835,16 @@ DISPATCH_EVENT_END:
 				
 				case 'w':
 					
+					if (currentActor != NULL) {
+						currentActor->weaponActive = !(currentActor->weaponActive);
+					}
+					
+					//setFirstPerson(!firstPerson);
 					
 					
-					setFirstPerson(!firstPerson);
 					
 					
 					
-					
-					//resetActiveNode();
 				break;
 
 				case 27: // esc
@@ -5822,10 +5892,19 @@ DISPATCH_EVENT_END:
 					loadValuesGUI();
 				break;
 				case 'r':
-					doShaderRefresh(bakeParamsOn);
+				
+					if (editPose) {
+						resetActiveNode();
+					}
+					else {
+						doShaderRefresh(bakeParamsOn);
+						cout << "Shaders Refreshed\n";
+					}
+				
+					
 					
 
-					cout << "Shaders Refreshed\n";
+					
 					
 					break;
 					
@@ -5991,7 +6070,12 @@ DISPATCH_EVENT_END:
 				case 'c':
 					
 					editPose = !editPose;
+					
 					cout << "editPose " << editPose << "\n";
+					
+					if (editPose) {
+						loadCurrentPose();
+					}
 					
 					//setCameraToElevation();
 				
@@ -6024,8 +6108,34 @@ DISPATCH_EVENT_END:
 					break;
 					
 				case 'x':
-					fxaaOn = !fxaaOn;
-					cout << "fxaaOn " << fxaaOn << "\n";
+					currentPose++;
+					
+					// if (currentPose == E_PK_L_FORWARD) {
+					// 	currentPose = E_PK_IDLE_LOW;
+					// }
+					
+					if (currentPose == E_PK_LENGTH) {
+						currentPose = E_PK_T_POSE;
+					}
+					
+					cout << "Current Pose: " << poseStrings[currentPose] << "\n";
+					
+					
+					
+					if (testHuman != NULL) {
+						testHuman->targetPose = currentPose;
+						
+						if (editPose) {
+							loadCurrentPose();
+						}
+						
+						//testHuman->setToPose(gamePoses[currentPose]);
+						//transformOrg(testHuman);
+						//currentActor->wakeAll();
+					}
+					
+					//fxaaOn = !fxaaOn;
+					//cout << "fxaaOn " << fxaaOn << "\n";
 					break;
 
 				case 'm':
@@ -6086,6 +6196,8 @@ DISPATCH_EVENT_END:
 	void getPixData(FIVector4 *toVector, int _xv, int _yv, bool forceUpdate, bool isObj)
 	{
 
+		
+
 		if (fpsTest) {
 			return;
 		}
@@ -6100,6 +6212,9 @@ DISPATCH_EVENT_END:
 
 		if (wsBufferInvalid || forceUpdate || forceGetPD)
 		{
+			
+			//cout << "getPixData\n";
+			
 			if (isObj) {
 				getFBOWrapper("geomBaseTargFBO", 2)->getPixels();
 			}
@@ -7329,6 +7444,37 @@ DISPATCH_EVENT_END:
 		
 	}
 
+	bool feetContact(BaseObj* ge) {
+		BodyStruct* curBody;
+		
+		curBody = ge->getBodyByBoneId(E_BONE_L_LOWERLEG);
+		if (curBody != NULL) {
+			if (curBody->hasContact) {
+				return true;
+			}
+		}
+		curBody = ge->getBodyByBoneId(E_BONE_R_LOWERLEG);
+		if (curBody != NULL) {
+			if (curBody->hasContact) {
+				return true;
+			}
+		}
+		curBody = ge->getBodyByBoneId(E_BONE_L_TALUS);
+		if (curBody != NULL) {
+			if (curBody->hasContact) {
+				return true;
+			}
+		}
+		curBody = ge->getBodyByBoneId(E_BONE_R_TALUS);
+		if (curBody != NULL) {
+			if (curBody->hasContact) {
+				return true;
+			}
+		}
+		
+		return false;
+	}
+
 
 	float getShortestAngle(float begInRad, float endInRad, float amount) {
 		int begInDeg = begInRad*180/M_PI;
@@ -7411,7 +7557,7 @@ DISPATCH_EVENT_END:
 				// 	ca->targAng += (-2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,-0.02)/STEP_TIME_IN_SEC, true, 0);
+				ca->applyAngularImpulse(btVector3(0,0,-4.0f), true, 0);
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_LEFT]) {
@@ -7422,7 +7568,7 @@ DISPATCH_EVENT_END:
 				// 	ca->targAng += (2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,0.02)/STEP_TIME_IN_SEC, true, 0);
+				ca->applyAngularImpulse(btVector3(0,0,4.0f), true, 0);
 			}
 			
 			
@@ -7456,14 +7602,17 @@ DISPATCH_EVENT_END:
 				makeJump(actorId,0);
 			}
 			
+			isWalking = false;
+			
 			if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
 				
+				isWalking = true;
 				
 				//tempVec2.addXYZ(tempVec1[0],tempVec1[1],0.0f);
 				
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,0.05,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
+						btVector3(0,10.0,0)*ca->getMarkerMass(),
 						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
@@ -7477,9 +7626,11 @@ DISPATCH_EVENT_END:
 			if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
 				//tempVec2.addXYZ(-tempVec1[0],-tempVec1[1],0.0f);
 				
+				isWalking = true;
+				
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,-0.05,0)*ca->getMarkerMass()/STEP_TIME_IN_SEC,
+						btVector3(0,-10.0,0)*ca->getMarkerMass(),
 						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
@@ -7865,7 +8016,7 @@ DISPATCH_EVENT_END:
 			
 			if (ca->hasBodies()) {
 				gw->gameObjects[ca->isGrabbingId].applyImpulseOtherRot(
-					btVector3(0.0,0.5,0.5)*gw->gameObjects[ca->isGrabbingId].getTotalMass()/STEP_TIME_IN_SEC,
+					btVector3(0.0,200,200)*gw->gameObjects[ca->isGrabbingId].getTotalMass(),
 					ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 					true,
 					0
@@ -7966,7 +8117,7 @@ DISPATCH_EVENT_END:
 			
 			
 				gw->gameObjects[entNum].applyImpulseOtherRot(
-					btVector3(0.0,0.5,0.5)*gw->gameObjects[entNum].getTotalMass()/STEP_TIME_IN_SEC,
+					btVector3(0.0,200,200)*gw->gameObjects[entNum].getTotalMass(),
 					ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
 					true,
 					0
@@ -7996,14 +8147,30 @@ DISPATCH_EVENT_END:
 		
 		GameOrgNode* curNode = NULL;
 		
+		GameOrg* testHuman = getCurOrg();
+		
 		if (selectedNode == NULL) {
+			
 			curNode = lastSelNode;
 		}
 		else {
+			
 			curNode = selectedNode;
 		}
 		
+		
+		
 		if (curNode != NULL) {
+			
+			
+			
+			if (testHuman != NULL) {
+				
+				
+				
+				testHuman->setToPose(gamePoses[E_PK_T_POSE],1.0,curNode->nodeName);
+			}
+			
 			//curNode->rotThe = 0.0f;
 			//curNode->rotPhi = 0.0f;
 			//curNode->rotRho = 0.0f;
@@ -8011,7 +8178,10 @@ DISPATCH_EVENT_END:
 			
 			//curNode->tbnRadScale0.setFXYZ(1.0f,1.0f,1.0f);
 			//curNode->tbnRadScale1.setFXYZ(1.0f,1.0f,1.0f);
-			makeDirty();
+			//makeDirty();
+			
+			
+			
 		}
 	}
 	
@@ -8062,6 +8232,7 @@ DISPATCH_EVENT_END:
 						
 					// }
 					
+					setSelNode(bestNode);
 					if (setActive) {
 						activeNode = bestNode;
 					}
@@ -9658,7 +9829,7 @@ DISPATCH_EVENT_END:
 		bulletTimer.reset();
 		
 		//totTimePassedGraphics += curTimePassed;
-		totTimePassedPhysics += curTimePassed;
+		totTimePassedPhysics += curTimePassed*SPEEDUP_FACTOR;
 		
 		
 		if (currentTick > 4) {

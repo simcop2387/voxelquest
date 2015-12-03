@@ -1396,9 +1396,9 @@ void GamePageHolder::createMesh ()
 			trans,
 			trimeshShape
 			,COL_STATIC,
-			1|2|4|8
+			terCollidesWith
 		);
-		body->setFriction (btScalar(0.9));
+		body->setFriction (btScalar(0.9994));
 		body->bodyUID = -1;
 		body->limbUID = -1;
 		

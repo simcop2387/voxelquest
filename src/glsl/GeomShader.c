@@ -30,7 +30,7 @@ void main() {
     
     vec4 newPos = gl_Vertex;
     
-    newPos = objmat * newPos; //
+    //newPos = objmat * newPos; //
     
     //newPos.xyz += cameraPos + lookAtVec*100.0;
     
@@ -59,7 +59,7 @@ void main() {
     
     mat4 myMat = proj*modelview;// gl_ModelViewProjectionMatrix;
     
-    screenPos = myMat * newPos; //objmat * 
+    screenPos = myMat * newPos;
     camDis = distance(cameraPos.xyz,newPos.xyz);
     
     gl_Position = screenPos;

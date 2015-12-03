@@ -18,6 +18,7 @@ private:
 public:
 	
 	
+	
 	int nodeName;
 	GameOrgNode* parent;
 	std::vector<GameOrgNode*> children;
@@ -88,6 +89,7 @@ public:
 		nodeName = _nodeName;
 		
 		orgVecs[E_OV_THETAPHIRHO].setFXYZ(_rotThe,_rotPhi,_rotRho);
+		orgVecs[E_OV_TPRORIG].setFXYZ(_rotThe,_rotPhi,_rotRho);
 		
 		// rotThe = _rotThe;
 		// rotPhi = _rotPhi;

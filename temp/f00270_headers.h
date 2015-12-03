@@ -120,6 +120,7 @@ public:
   EntSelection selectedEnts;
   GameEnt * selectedEnt;
   GameEnt * highlightedEnt;
+  bool isWalking;
   bool isPressingMove;
   bool fxaaOn;
   bool doPathReport;
@@ -206,6 +207,7 @@ public:
   int draggingToInd;
   int draggingFromType;
   int draggingToType;
+  int currentPose;
   int polyCount;
   int fdWritePos;
   int fdReadPos;
@@ -405,6 +407,7 @@ public:
   EntPool (entPoolStack) [E_ENTTYPE_LENGTH];
   std::vector <GameActor*> gameActors;
   std::vector <GameOrg*> gameOrgs;
+  std::vector <GameOrg*> gamePoses;
   std::vector <ExplodeStruct> explodeStack;
   std::vector <DebrisStruct> debrisStack;
   std::vector <FIVector4> primTemplateStack;
@@ -608,6 +611,8 @@ public:
   void getMarkerPos (int x, int y);
   void makeJump (int actorId, int isUp);
   void resetGeom ();
+  void saveCurrentPose ();
+  void loadCurrentPose ();
   void processInput (unsigned char key, bool keyDown, int x, int y);
   void getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj);
   float getMinGeom (int baseIndex);
@@ -631,6 +636,7 @@ public:
   void setSelNode (GameOrgNode * newNode);
   void refreshContainers (bool onMousePos);
   void toggleCont (int contIndex, bool onMousePos);
+  bool feetContact (BaseObj * ge);
   float getShortestAngle (float begInRad, float endInRad, float amount);
   void flushKeyStack ();
   void applyKeyAction (bool isReq, int actorId, uint keyFlags, float camRotX, float camRotY);
@@ -1299,14 +1305,22 @@ public:
   GameOrgNode * (allNodes) [E_BONE_C_END];
   FIVector4 basePosition;
   JSONValue * rootObj;
+  int ownerUID;
+  int stepCount;
+  int targetPose;
+  int targetPoseGroup;
+  double totTime;
   float defVecLength;
   float gv (float * vals);
   static float const baseMat;
   GameOrg ();
-  void init (Singleton * _singleton);
+  void init (Singleton * _singleton, int _ownerUID);
   void loadFromFile (string fileName);
   void jsonToNode (JSONValue * * parentObj, GameOrgNode * curNode);
   void saveToFile (string fileName);
+  BaseObj * getOwner ();
+  void setToPose (GameOrg * otherOrg, float lerpAmount, int boneId = -1);
+  void updatePose (double curTimeStep);
   void nodeToJSON (JSONValue * * parentObj, GameOrgNode * curNode);
   void initHuman ();
 };
@@ -1825,6 +1839,8 @@ public:
   MyOGLApp * myOGLApp;
   GUIHelperInterface * guiHelper;
   float (myMat) [16];
+  float BASE_ENT_HEIGHT;
+  double totTime;
   Matrix4 myMatrix4;
   Vector4 myVector4;
   Vector4 resVector4;
@@ -1836,7 +1852,6 @@ public:
   void beginDrop ();
   void remBoxFromObj (BaseObjType _uid);
   void addBoxFromObj (BaseObjType _uid);
-  void motorPreTickCallback (btScalar timeStep);
   void flushImpulses ();
   void collideWithWorld (double curStepTime);
   void updateAll ();
