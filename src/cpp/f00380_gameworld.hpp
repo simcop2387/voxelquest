@@ -4552,9 +4552,9 @@ UPDATE_LIGHTS_END:
 		
 		if (ge != NULL) {
 			
-			tempVec1.setBTV(ge->weaponVec0);
-			tempVec2.setBTV(ge->weaponVec1);	
-			singleton->drawLine(&tempVec1,&tempVec2);
+			// tempVec1.setBTV(ge->weaponVec0);
+			// tempVec2.setBTV(ge->weaponVec1);	
+			// singleton->drawLine(&tempVec1,&tempVec2);
 		}
 		
 		

@@ -976,7 +976,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		keyMap[KEYMAP_RIGHT] = 'f';
 		keyMap[KEYMAP_FIRE_PRIMARY] = ' ';
 		keyMapMaxCoolDown[KEYMAP_FIRE_PRIMARY] = 20;
-		keyMap[KEYMAP_GRAB_THROW] = 'c';
+		keyMap[KEYMAP_GRAB_THROW] = 'w';
 		keyMapMaxCoolDown[KEYMAP_GRAB_THROW] = 20;
 		
 		/////////////////////////
@@ -1235,7 +1235,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		for (i = 0; i < E_PK_LENGTH; i++) {
 			gamePoses.push_back(new GameOrg());
-			gamePoses.back()->init(this,-1);
+			gamePoses.back()->init(this,-1,E_ORGTYPE_HUMAN);
 			gamePoses.back()->loadFromFile(poseStrings[i]);
 			transformOrg(gamePoses.back());
 		}
@@ -4832,7 +4832,8 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				break;
 				
 				case 'Q':
-					gamePhysics->beginDrop();
+					
+					//gamePhysics->beginDrop();
 				break;
 				
 				case 'q':
@@ -4880,19 +4881,15 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					fpsTimer.start();
 				break;
 				
-				case 'w':
+				// case 'w': // grab / throw
 					
-					if (currentActor != NULL) {
-						currentActor->weaponActive = !(currentActor->weaponActive);
-					}
-					
-					//setFirstPerson(!firstPerson);
+				// 	//setFirstPerson(!firstPerson);
 					
 					
+				// 	// grab
 					
 					
-					
-				break;
+				// break;
 
 				case 27: // esc
 					//std::exit(0);
@@ -6950,6 +6947,11 @@ void Singleton::grabThrowObj (int actorId)
 		
 		BaseObj* ca = &(gw->gameObjects[actorId]);
 		
+		// ca->weaponActive = !ca->weaponActive;
+		
+		// return;
+		
+		
 		if (ca->isGrabbingId >= 0) {
 			// throw current obj
 			
@@ -6980,6 +6982,12 @@ void Singleton::grabThrowObj (int actorId)
 				0.2f
 			);
 			
+			ca->weaponActive = false;
+			
+			
+			
+			//gw->gameObjects[ca->isGrabbingId].setDamping(0.1f,0.9f);
+			
 			//##
 			
 			
@@ -7005,6 +7013,9 @@ void Singleton::grabThrowObj (int actorId)
 					0.2f
 				);
 				
+				
+				//gw->gameObjects[ca->isGrabbingId].setDamping(999.0f,999.0f);
+				ca->weaponActive = true;
 				ca->isGrabbingId = res;
 				gw->gameObjects[res].isGrabbedById = actorId;
 			}
@@ -8195,33 +8206,7 @@ void Singleton::frameUpdate ()
 			
 			////////////////////////////////
 			
-			if (threadNetRecv.isReady()) {
-				stopNT2();
-				
-				gameNetwork->applyNetworkActions();
-				
-				if (gameNetwork->isConnected) {
-					startNT2();
-				}
-				
-			}
 			
-			
-			if (threadNetSend.isReady()) {
-				stopNT();
-				
-				gameNetwork->flushNetworkActions();
-				
-				if (gameNetwork->isConnected) {
-					startNT();
-				}
-				
-			}
-			
-			
-			flushKeyStack();
-			gatherKeyActions();
-			handleMovement();
 			
 			// #######
 			
@@ -8632,6 +8617,37 @@ void Singleton::display (bool doFrameRender)
 		
 		if (currentTick > 4) {
 			if (gamePhysics != NULL) {
+				
+				
+				if (threadNetRecv.isReady()) {
+					stopNT2();
+					
+					gameNetwork->applyNetworkActions();
+					
+					if (gameNetwork->isConnected) {
+						startNT2();
+					}
+					
+				}
+				
+				
+				if (threadNetSend.isReady()) {
+					stopNT();
+					
+					gameNetwork->flushNetworkActions();
+					
+					if (gameNetwork->isConnected) {
+						startNT();
+					}
+					
+				}
+				
+				
+				flushKeyStack();
+				gatherKeyActions();
+				handleMovement();
+				
+				
 				gamePhysics->updateAll();
 			}
 		}

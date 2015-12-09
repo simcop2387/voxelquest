@@ -1586,7 +1586,7 @@ public:
 		keyMap[KEYMAP_RIGHT] = 'f';
 		keyMap[KEYMAP_FIRE_PRIMARY] = ' ';
 		keyMapMaxCoolDown[KEYMAP_FIRE_PRIMARY] = 20;
-		keyMap[KEYMAP_GRAB_THROW] = 'c';
+		keyMap[KEYMAP_GRAB_THROW] = 'w';
 		keyMapMaxCoolDown[KEYMAP_GRAB_THROW] = 20;
 		
 		/////////////////////////
@@ -1845,7 +1845,7 @@ public:
 		
 		for (i = 0; i < E_PK_LENGTH; i++) {
 			gamePoses.push_back(new GameOrg());
-			gamePoses.back()->init(this,-1);
+			gamePoses.back()->init(this,-1,E_ORGTYPE_HUMAN);
 			gamePoses.back()->loadFromFile(poseStrings[i]);
 			transformOrg(gamePoses.back());
 		}
@@ -5785,7 +5785,8 @@ DISPATCH_EVENT_END:
 				break;
 				
 				case 'Q':
-					gamePhysics->beginDrop();
+					
+					//gamePhysics->beginDrop();
 				break;
 				
 				case 'q':
@@ -5833,19 +5834,15 @@ DISPATCH_EVENT_END:
 					fpsTimer.start();
 				break;
 				
-				case 'w':
+				// case 'w': // grab / throw
 					
-					if (currentActor != NULL) {
-						currentActor->weaponActive = !(currentActor->weaponActive);
-					}
-					
-					//setFirstPerson(!firstPerson);
+				// 	//setFirstPerson(!firstPerson);
 					
 					
+				// 	// grab
 					
 					
-					
-				break;
+				// break;
 
 				case 27: // esc
 					//std::exit(0);
@@ -8000,6 +7997,11 @@ DISPATCH_EVENT_END:
 		
 		BaseObj* ca = &(gw->gameObjects[actorId]);
 		
+		// ca->weaponActive = !ca->weaponActive;
+		
+		// return;
+		
+		
 		if (ca->isGrabbingId >= 0) {
 			// throw current obj
 			
@@ -8030,6 +8032,12 @@ DISPATCH_EVENT_END:
 				0.2f
 			);
 			
+			ca->weaponActive = false;
+			
+			
+			
+			//gw->gameObjects[ca->isGrabbingId].setDamping(0.1f,0.9f);
+			
 			//##
 			
 			
@@ -8055,6 +8063,9 @@ DISPATCH_EVENT_END:
 					0.2f
 				);
 				
+				
+				//gw->gameObjects[ca->isGrabbingId].setDamping(999.0f,999.0f);
+				ca->weaponActive = true;
 				ca->isGrabbingId = res;
 				gw->gameObjects[res].isGrabbedById = actorId;
 			}
@@ -9395,33 +9406,7 @@ DISPATCH_EVENT_END:
 			
 			////////////////////////////////
 			
-			if (threadNetRecv.isReady()) {
-				stopNT2();
-				
-				gameNetwork->applyNetworkActions();
-				
-				if (gameNetwork->isConnected) {
-					startNT2();
-				}
-				
-			}
 			
-			
-			if (threadNetSend.isReady()) {
-				stopNT();
-				
-				gameNetwork->flushNetworkActions();
-				
-				if (gameNetwork->isConnected) {
-					startNT();
-				}
-				
-			}
-			
-			
-			flushKeyStack();
-			gatherKeyActions();
-			handleMovement();
 			
 			// #######
 			
@@ -9834,6 +9819,37 @@ DISPATCH_EVENT_END:
 		
 		if (currentTick > 4) {
 			if (gamePhysics != NULL) {
+				
+				
+				if (threadNetRecv.isReady()) {
+					stopNT2();
+					
+					gameNetwork->applyNetworkActions();
+					
+					if (gameNetwork->isConnected) {
+						startNT2();
+					}
+					
+				}
+				
+				
+				if (threadNetSend.isReady()) {
+					stopNT();
+					
+					gameNetwork->flushNetworkActions();
+					
+					if (gameNetwork->isConnected) {
+						startNT();
+					}
+					
+				}
+				
+				
+				flushKeyStack();
+				gatherKeyActions();
+				handleMovement();
+				
+				
 				gamePhysics->updateAll();
 			}
 		}

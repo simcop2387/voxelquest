@@ -462,7 +462,11 @@ enum E_MAT_PARAM {
 };
 
 
-
+enum E_ORGTYPE {
+	E_ORGTYPE_HUMAN,
+	E_ORGTYPE_WEAPON,
+	E_ORGTYPE_LENGTH	
+};
 
 enum E_ORG_SUBPARAM {
 	E_ORG_SUBPARAM_NOT_SEL,
@@ -619,6 +623,11 @@ enum E_BONES_HUMAN {
 	E_BONE_C_SPINE3,
 	E_BONE_C_SPINE4, // neck
 	E_BONE_C_SKULL,
+	
+	E_BONE_WEAPON_BASE,
+	E_BONE_WEAPON_END,
+	
+	
 	E_BONE_C_END //////////////////
 	
 };
@@ -722,6 +731,10 @@ string boneStrings[] = {
 	"E_BONE_C_SPINE5",
 	"E_BONE_C_SPINE6", // neck
 	"E_BONE_C_SKULL",
+	
+	"E_BONE_WEAPON_BASE",
+	"E_BONE_WEAPON_END",
+	
 	"E_BONE_C_END" //////////////////
 	
 	

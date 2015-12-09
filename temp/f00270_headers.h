@@ -1306,6 +1306,7 @@ public:
   FIVector4 basePosition;
   JSONValue * rootObj;
   int ownerUID;
+  int orgType;
   int stepCount;
   int targetPose;
   int targetPoseGroup;
@@ -1314,7 +1315,7 @@ public:
   float gv (float * vals);
   static float const baseMat;
   GameOrg ();
-  void init (Singleton * _singleton, int _ownerUID);
+  void init (Singleton * _singleton, int _ownerUID, int _orgType);
   void loadFromFile (string fileName);
   void jsonToNode (JSONValue * * parentObj, GameOrgNode * curNode);
   void saveToFile (string fileName);
@@ -1322,6 +1323,7 @@ public:
   void setToPose (GameOrg * otherOrg, float lerpAmount, int boneId = -1);
   void updatePose (double curTimeStep);
   void nodeToJSON (JSONValue * * parentObj, GameOrgNode * curNode);
+  void initWeapon ();
   void initHuman ();
 };
 #undef LZZ_INLINE
@@ -1404,7 +1406,6 @@ public:
   int addJoint (int nodeName, int parentId, bool isBall, float rad, float len, float mass, btVector3 targAlignT, btVector3 targAlignB, btVector3 targAlignN, btVector3 begPos, btVector3 midPos, btVector3 endPos);
   void initFromOrg (GameOrgNode * curNode, int curParent);
   GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed);
-  void stepSim (btScalar timeStep);
   virtual ~ GameActor ();
 };
 #undef LZZ_INLINE

@@ -382,68 +382,68 @@ public:
 
 	}
 
-	void stepSim(btScalar timeStep) {
+	// void stepSim(btScalar timeStep) {
 		
-		//return;
+	// 	//return;
 		
-		float m_fMuscleStrength = 10.0f;//(sin(singleton->curTime/2000.0)+1.0f)*0.5f;
-		float ms = timeStep*1000000.0;
-		float minFPS = 1000000.f/60.f;
-		if (ms > minFPS) {
-			ms = minFPS;
-		}
+	// 	float m_fMuscleStrength = 10.0f;//(sin(singleton->curTime/2000.0)+1.0f)*0.5f;
+	// 	float ms = timeStep*1000000.0;
+	// 	float minFPS = 1000000.f/60.f;
+	// 	if (ms > minFPS) {
+	// 		ms = minFPS;
+	// 	}
 
-		//m_Time += ms;
+	// 	//m_Time += ms;
 
-		// ge->applyImpulse(
-		// 	btVector3(
-		// 		( singleton->worldMarker.getFX() - curBody->body->getCenterOfMassPosition().getX() ),
-		// 		( singleton->worldMarker.getFY() - curBody->body->getCenterOfMassPosition().getY() ),
-		// 		-(curBody->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))
-		// 	)*totMass*0.01f,
-		// 	false,
-		// 	bodInd
-		// );
+	// 	// ge->applyImpulse(
+	// 	// 	btVector3(
+	// 	// 		( singleton->worldMarker.getFX() - curBody->body->getCenterOfMassPosition().getX() ),
+	// 	// 		( singleton->worldMarker.getFY() - curBody->body->getCenterOfMassPosition().getY() ),
+	// 	// 		-(curBody->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))
+	// 	// 	)*totMass*0.01f,
+	// 	// 	false,
+	// 	// 	bodInd
+	// 	// );
 
 
-		// GameOrgNode* curNode;
-		// BaseObj* ge = &(singleton->gw->gameObjects[geId]);
+	// 	// GameOrgNode* curNode;
+	// 	// BaseObj* ge = &(singleton->gw->gameObjects[geId]);
 
-		// for (int i = 0; i < actorJoints.size(); i++) {
-		// 	curNode = singleton->gameOrgs[ge->orgId]->allNodes[actorJoints[i].nodeName];
+	// 	// for (int i = 0; i < actorJoints.size(); i++) {
+	// 	// 	curNode = singleton->gameOrgs[ge->orgId]->allNodes[actorJoints[i].nodeName];
 			
-		// }		
+	// 	// }		
 
-		for (int i = 0; i < actorJoints.size(); i++) {
+	// 	for (int i = 0; i < actorJoints.size(); i++) {
 			
-			if (actorJoints[i].joint == NULL) {
+	// 		if (actorJoints[i].joint == NULL) {
 				
-			}
-			else {
+	// 		}
+	// 		else {
 				
-				// if (actorJoints[i].isBall) {
+	// 			// if (actorJoints[i].isBall) {
 					
-				// }
-				// else {
+	// 			// }
+	// 			// else {
 					
 					
-					btHingeConstraint* hingeC = static_cast<btHingeConstraint*>(actorJoints[i].joint);
-					btScalar fCurAngle = hingeC->getHingeAngle();
+	// 				btHingeConstraint* hingeC = static_cast<btHingeConstraint*>(actorJoints[i].joint);
+	// 				btScalar fCurAngle = hingeC->getHingeAngle();
 					
-					btScalar fTargetPercent = 0.5;//singleton->smoothTime;//(int(m_Time / 1000) % int(m_fCyclePeriod)) / m_fCyclePeriod;
-					btScalar fTargetAngle   = 0.5 * (1 + sin(2 * M_PI * fTargetPercent));
-					btScalar fTargetLimitAngle = hingeC->getLowerLimit() + fTargetAngle * (hingeC->getUpperLimit() - hingeC->getLowerLimit());
-					btScalar fAngleError  = (fTargetLimitAngle - fCurAngle)*0.25;
-					btScalar fDesiredAngularVel = 1000000.f * fAngleError/ms;
-					hingeC->enableAngularMotor(true, fDesiredAngularVel, m_fMuscleStrength);
-				//}
+	// 				btScalar fTargetPercent = 0.5;//singleton->smoothTime;//(int(m_Time / 1000) % int(m_fCyclePeriod)) / m_fCyclePeriod;
+	// 				btScalar fTargetAngle   = 0.5 * (1 + sin(2 * M_PI * fTargetPercent));
+	// 				btScalar fTargetLimitAngle = hingeC->getLowerLimit() + fTargetAngle * (hingeC->getUpperLimit() - hingeC->getLowerLimit());
+	// 				btScalar fAngleError  = (fTargetLimitAngle - fCurAngle)*0.25;
+	// 				btScalar fDesiredAngularVel = 1000000.f * fAngleError/ms;
+	// 				hingeC->enableAngularMotor(true, fDesiredAngularVel, m_fMuscleStrength);
+	// 			//}
 				
 				
-			}
+	// 		}
 			
 			
-		}
-	}
+	// 	}
+	// }
 
 	virtual	~GameActor ()
 	{

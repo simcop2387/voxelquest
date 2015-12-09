@@ -1861,6 +1861,13 @@ public:
 	btVector3 aabbMin;
 	btVector3 aabbMax;
 	
+	void setDamping(float linear, float angular) {
+		int i;
+		
+		for (i = 0; i < bodies.size(); i++) {
+			bodies[i].body->setDamping(linear,angular);
+		}
+	}
 	
 	void clearAABB() {
 		aabbMin = btVector3(FLT_MAX,FLT_MAX,FLT_MAX);
@@ -1941,6 +1948,8 @@ public:
 		}
 	}
 	
+	
+	
 	bool allFalling() {
 		int i;
 		
@@ -1957,6 +1966,23 @@ public:
 		return bodies[0].hasContact;
 	}
 	
+	float getPlanarVel() {
+		
+		if (bodies.size() < 1) {
+			return 0.0f;
+		}
+		
+		btVector3 sourceVel = bodies[0].body->getLinearVelocity();
+		
+		return sqrt( sourceVel.getX()*sourceVel.getX() + sourceVel.getY()*sourceVel.getY() );
+	}
+	
+	void setLinVel(btVector3 newVel, int i) {
+		if (i < bodies.size()) {
+			bodies[i].body->setLinearVelocity(newVel);
+			bodies[i].body->setActivationState(ACTIVE_TAG);
+		}
+	}
 	
 	void applyImpulses(float timeDelta, int i) {
 		
@@ -1985,7 +2011,11 @@ public:
 		
 	}
 	
-	void updateWeapon(double totTime) {
+	void updateWeapon(
+		//double totTime
+		float lrBounds,
+		float udBounds
+	) {
 		
 		float myMat[16];
 		Matrix4 myMatrix4;
@@ -2002,9 +2032,9 @@ public:
 		float rad0 = 1.0f;
 		float rad1 = 3.0f;
 		
-		float lrBounds = sin(totTime/4.0);
-		float udBounds = sin(totTime);
-		float udBounds2 = sin(totTime/8.0);
+		//float lrBounds = sin(totTime/4.0);
+		//float udBounds = sin(totTime);
+		float udBounds2 = udBounds;//sin(totTime/8.0);
 		
 		if (bodies.size() < 1) {
 			return;
@@ -2016,8 +2046,8 @@ public:
 		float weaponTheta = M_PI_2 + lrBounds*M_PI_8;
 		float weaponPhi = M_PI_4 + udBounds*M_PI_4;
 		
-		float weaponTheta2 = M_PI_2 - lrBounds*M_PI_2;
-		float weaponPhi2 = 0 + udBounds*M_PI_4;
+		float weaponTheta2 = M_PI - lrBounds*M_PI;
+		float weaponPhi2 = 0 + udBounds*M_PI_2*1.5f;
 		
 		
 		bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
@@ -2034,6 +2064,20 @@ public:
 			cos(weaponPhi2)*rad1
 		);
 		
+		myVector0.x -= (myVector0.x*0.5f + myVector1.x*0.5f)*0.25f;
+		myVector0.y -= (myVector0.y*0.5f + myVector0.y*0.5f)*0.25f;
+		
+		myVector0 *= 0.75f;
+		
+		myVector0.y += 0.25f;
+		
+		//if (myVector1.x > 0.0f) {
+			myVector0.x += myVector1.x*0.25f;
+		//}
+		
+		myVector1.y += 1.0f-abs(cos(weaponPhi2));
+		
+		
 		normVec = myVector1 - myVector0;
 		normVec.normalize();
 		normVec = normVec*(rad1-rad0);
@@ -2041,8 +2085,8 @@ public:
 		
 		rightHandTop = true;//(myVector0.x < 0.0f);
 		
-		vf0 = Vector4(myVector0.x, myVector0.y, myVector0.z, 1.0);
-		vf1 = Vector4(myVector1.x, myVector1.y, myVector1.z, 1.0);
+		vf0 = Vector4(myVector0.x, myVector0.y, myVector0.z, 1.0f);
+		vf1 = Vector4(myVector1.x, myVector1.y, myVector1.z, 1.0f);
 		
 		resVector0 = myMatrix4*vf0;
 		resVector1 = myMatrix4*vf1;
@@ -2054,8 +2098,8 @@ public:
 		
 		
 				
-		vf0 = Vector4( 1.0f,0.0f,0.0f,1.0);
-		vf1 = Vector4(-1.0f,0.0f,0.0f,1.0);
+		vf0 = Vector4( 1.0f,0.0f,0.0f,1.0f);
+		vf1 = Vector4(-1.0f,0.0f,0.0f,1.0f);
 		
 		resVector0 = myMatrix4*vf0;
 		resVector1 = myMatrix4*vf1;
@@ -2116,29 +2160,6 @@ public:
 		}
 		
 	}
-	
-	// void applyImpulseRot(btVector3 imp,  bool delayed, int i) {
-		
-	// 	Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
-	// 	Vector3 res = rotMat*myRHS;
-	// 	btVector3 newImp = btVector3(res.x,res.y,res.z);
-		
-	// 	if (delayed) {
-	// 		totLV += newImp;
-	// 	}
-	// 	else {
-	// 		if (i < bodies.size()) {
-	// 			bodies[i].applyCentralImpulse(newImp);
-	// 			bodies[i].setActivationState(ACTIVE_TAG);
-	// 		}
-			
-			
-	// 	}
-		
-		
-		
-		
-	// }
 	
 	void applyImpulseOtherRot(btVector3 imp, btMatrix3x3 otherRot, bool delayed, int i) {
 		

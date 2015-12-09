@@ -13,7 +13,7 @@ public:
 	JSONValue *rootObj;
 	
 	int ownerUID;
-	
+	int orgType;	
 	int stepCount;
 	int targetPose;
 	int targetPoseGroup;
@@ -40,13 +40,16 @@ public:
 
 	void init(
 		Singleton* _singleton,
-		int _ownerUID
+		int _ownerUID,
+		int _orgType
 	) {
 		singleton = _singleton;
 
 		stepCount = 0;
 
 		ownerUID = _ownerUID;
+
+		orgType = _orgType;
 
 		// GameOrgNode(
 		// 	GameOrgNode* _parent,
@@ -63,23 +66,20 @@ public:
 			
 		// )
 		
+		int i;
 		
-
-		baseNode = new GameOrgNode(
-			NULL,
-			E_BONE_C_BASE,
-			
-			baseMat, 0.0f, 0.0f, 0.0f,
-			0.01f, defVecLength, defVecLength,
-			0.01f, defVecLength, defVecLength,
-			
-			0.0f, 1.0f, 0.0f,			
-			1.0f, 0.0f, 0.0f,
-			0.0f,0.0f,1.0f
-		);
+		for (i = 0; i < E_BONE_C_END; i++) {
+			allNodes[i] = NULL;
+		}
 		
-		initHuman();
-		
+		switch (orgType) {
+			case E_ORGTYPE_HUMAN:
+				initHuman();
+			break;
+			case E_ORGTYPE_WEAPON:
+				initWeapon();
+			break;
+		}
 		
 		singleton->curOrgId++;
 		
@@ -357,6 +357,46 @@ public:
 		
 	}
 	
+	void initWeapon() {
+		
+		int i;
+		int j;
+		int lrMod;
+		
+		float dirMod = 1.0f;
+		
+		
+		baseNode = allNodes[E_BONE_WEAPON_BASE] = new GameOrgNode(
+			NULL,
+			E_BONE_WEAPON_BASE,
+			
+			baseMat, 0.0f, 0.0f, 0.0f,
+			0.01f, defVecLength, defVecLength,
+			0.01f, defVecLength, defVecLength,
+			
+			0.0f, 1.0f, 0.0f,
+			1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f
+		);
+		
+		GameOrgNode* curNode = baseNode;
+		
+		curNode = allNodes[E_BONE_WEAPON_END] = curNode->addChild(
+			E_BONE_WEAPON_END,
+			
+			baseMat, 0.0f, 0.0f, 0.0f,
+			1.0f, defVecLength, defVecLength,
+			1.0f, defVecLength, defVecLength,
+			
+			0.0f,0.0f,1.0f,
+			0.0f,1.0f,0.0f,
+			1.0f,0.0f,0.0f
+		);
+		
+		baseNode->doTransform(singleton);
+		
+	}
+	
 	
 	void initHuman() {
 		
@@ -366,13 +406,21 @@ public:
 		
 		float dirMod = 1.0f;
 		
-		GameOrgNode* curNode;
-		curNode = baseNode;
 		
+		baseNode = allNodes[E_BONE_C_BASE] = new GameOrgNode(
+			NULL,
+			E_BONE_C_BASE,
+			
+			baseMat, 0.0f, 0.0f, 0.0f,
+			0.01f, defVecLength, defVecLength,
+			0.01f, defVecLength, defVecLength,
+			
+			0.0f, 1.0f, 0.0f,			
+			1.0f, 0.0f, 0.0f,
+			0.0f,0.0f,1.0f
+		);
 		
-		for (i = 0; i < E_BONE_C_END; i++) {
-			allNodes[i] = NULL;
-		}
+		GameOrgNode* curNode = baseNode;
 		
 
 		float numSpineSegs = E_BONE_C_SKULL-E_BONE_C_SPINE0;

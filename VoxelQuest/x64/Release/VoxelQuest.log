@@ -1,4 +1,4 @@
-﻿Build started 12/3/2015 2:54:51 AM.
+﻿Build started 12/9/2015 1:01:03 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -311,15 +311,14 @@
          
          pathfindingOn: 0
          updateHolders 0
-         iNumSteps:  32         
          
          pathfindingOn: 0
          updateHolders 1
          actObjInd 427
-         subjectDistance 11.6366
-         iNumSteps:  64         
+         subjectDistance 11.1178
+         No code for key: w
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:07:32.90
+Time Elapsed 00:46:03.03
