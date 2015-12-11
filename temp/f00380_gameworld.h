@@ -567,6 +567,8 @@ void GameWorld::update ()
 			
 			
 		}
+		
+		updateLimbTBOData();
 
 		
 		
@@ -1008,6 +1010,143 @@ void GameWorld::drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * ma
 		
 		
 	}
+void GameWorld::updateLimbTBOData ()
+                                 {
+		int i;
+		int j;
+		
+		BodyStruct* curBody;
+		
+		BaseObj* ge;
+		
+		btVector3 centerPoint;
+		btVector3 tanVec;
+		btVector3 bitVec;
+		btVector3 norVec;
+		btVector3 len0;
+		btVector3 len1;
+		btMatrix3x3 basis;
+		
+		GameOrg* curOrg = NULL;
+		GameOrgNode* curOrgNode = NULL;
+		
+		float buffer = 0.25f;
+		
+		int dataInd = 0;
+		int actorCount = 0;
+		int headerStart;
+		
+		for (i = 0; i < visObjects.size(); i++) {
+			ge = &(gameObjects[visObjects[i]]);
+			
+			if (
+				(!(ge->isHidden)) &&
+				(ge->orgId > -1) &&
+				(ge->actorId > -1)	
+			) {
+				
+				actorCount++;
+				
+				curOrg = singleton->gameOrgs[ge->orgId];
+				
+				// header info
+				headerStart = dataInd;
+				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+			
+				singleton->limbTBOData[dataInd] = ge->aabbMin.getX() - buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMin.getY() - buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMin.getZ() - buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+				
+				singleton->limbTBOData[dataInd] = ge->aabbMax.getX() + buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMax.getY() + buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMax.getZ() + buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+				
+				for (j = 0; j < ge->bodies.size(); j++) {
+					curBody = &(ge->bodies[j]);
+					
+					if (
+						(curBody->isBall) ||
+						(curBody->boneId < 0)	
+					) {
+						
+					}
+					else {
+						
+						curOrgNode = curOrg->allNodes[curBody->boneId];
+						
+						centerPoint = curBody->body->getCenterOfMassPosition();
+						basis = curBody->body->getCenterOfMassTransform().getBasis();
+						
+						tanVec = basis.getColumn(0);//basis*curOrgNode->orgVecs[0].getBTV();
+						bitVec = basis.getColumn(1);//basis*curOrgNode->orgVecs[1].getBTV();
+						norVec = basis.getColumn(2);//basis*curOrgNode->orgVecs[2].getBTV();
+						
+						len0 = curOrgNode->orgVecs[E_OV_TBNRAD0].getBTV();
+						len1 = curOrgNode->orgVecs[E_OV_TBNRAD1].getBTV();
+						
+						
+						
+						singleton->limbTBOData[dataInd] = centerPoint.getX(); dataInd++;
+						singleton->limbTBOData[dataInd] = centerPoint.getY(); dataInd++;
+						singleton->limbTBOData[dataInd] = centerPoint.getZ(); dataInd++;
+						singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+						
+						singleton->limbTBOData[dataInd] = tanVec.getX(); dataInd++;
+						singleton->limbTBOData[dataInd] = tanVec.getY(); dataInd++;
+						singleton->limbTBOData[dataInd] = tanVec.getZ(); dataInd++;
+						singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+						
+						singleton->limbTBOData[dataInd] = bitVec.getX(); dataInd++;
+						singleton->limbTBOData[dataInd] = bitVec.getY(); dataInd++;
+						singleton->limbTBOData[dataInd] = bitVec.getZ(); dataInd++;
+						singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+						
+						singleton->limbTBOData[dataInd] = norVec.getX(); dataInd++;
+						singleton->limbTBOData[dataInd] = norVec.getY(); dataInd++;
+						singleton->limbTBOData[dataInd] = norVec.getZ(); dataInd++;
+						singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+						
+						singleton->limbTBOData[dataInd] = len0.getX(); dataInd++;
+						singleton->limbTBOData[dataInd] = len0.getY(); dataInd++;
+						singleton->limbTBOData[dataInd] = len0.getZ(); dataInd++;
+						singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+						
+						singleton->limbTBOData[dataInd] = len1.getX(); dataInd++;
+						singleton->limbTBOData[dataInd] = len1.getY(); dataInd++;
+						singleton->limbTBOData[dataInd] = len1.getZ(); dataInd++;
+						singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+						
+						
+					}
+				}
+				
+				singleton->limbTBOData[headerStart+0] = dataInd;
+				singleton->limbTBOData[headerStart+1] = 0.0f;
+				singleton->limbTBOData[headerStart+2] = 0.0f;
+				singleton->limbTBOData[headerStart+3] = 0.0f;
+				
+				
+				
+			}
+		}
+		
+		// pad end with blank data
+		
+		singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+		singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+		singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+		singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+		
+		singleton->limbDataDebug = dataInd*4;
+		singleton->actorCount = actorCount;
+		
+		singleton->limbTBO.update(singleton->limbTBOData,dataInd*4);
+	}
 void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
                                                                  {
 		int i;
@@ -1077,11 +1216,23 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		for (i = 0; i < E_PL_LENGTH; i++) {
 			singleton->setShaderTexture3D(i, singleton->gameFluid[E_FID_BIG]->volIdPrim[i]);
 		}
-		singleton->setShaderTBO(
-			E_PL_LENGTH,
-			singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_tex,
-			singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_buf
-		);
+		
+		if (doPrim) {
+			singleton->setShaderTBO(
+				E_PL_LENGTH,
+				singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_tex,
+				singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_buf
+			);
+		}
+		else {
+			singleton->setShaderTBO(
+				E_PL_LENGTH,
+				singleton->limbTBO.tbo_tex,
+				singleton->limbTBO.tbo_buf
+			);
+		}
+		
+		
 		
 		singleton->sampleFBO("hmFBOLinearBig",2);
 		singleton->sampleFBO("terDepthFBO",3);
@@ -1128,6 +1279,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		singleton->setShaderFloat("voroSize",singleton->volumeWrappers[E_VW_VORO]->terGenDim.getFZ());
 		
+		singleton->setShaderInt("actorCount",singleton->actorCount);
 		singleton->setShaderInt("MAX_PRIM_IDS", min(curGeomCount,MAX_PRIM_IDS));
 		singleton->setShaderInt("MAX_PRIMTEST", min(curGeomCount,MAX_PRIMTEST));
 		
@@ -4740,7 +4892,7 @@ void GameWorld::postProcess ()
 			
 			
 			//"solidTargFBO" //"polyFBO"
-			//singleton->drawFBO("solidTargFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
+			singleton->drawFBO("solidBaseTargFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
 			
 			// leave this here to catch errors
 			//cout << "Getting Errors: \n";
@@ -4748,7 +4900,7 @@ void GameWorld::postProcess ()
 			
 			
 			
-			glError();
+			//glError();
 			
 		}
 		else {

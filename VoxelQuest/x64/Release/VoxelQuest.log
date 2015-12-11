@@ -1,4 +1,4 @@
-﻿Build started 12/9/2015 1:01:03 AM.
+﻿Build started 12/11/2015 6:46:45 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -308,17 +308,84 @@
          curHeight 0 newHeight 2634.04
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
-         
-         pathfindingOn: 0
-         updateHolders 0
-         
-         pathfindingOn: 0
-         updateHolders 1
          actObjInd 427
-         subjectDistance 11.1178
-         No code for key: w
+         subjectDistance 3.53966
+         from E_DT_WORLD_OBJECT to E_DT_NOTHING
+         editPose 1
+         Loading:  ..\data\orgdata\E_PK_T_POSE.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PK_T_POSE
+         editPose 0
+         editPose 1
+         Loading:  ..\data\orgdata\E_PK_T_POSE.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PK_T_POSE
+         Current Pose: E_PK_JUMP
+         Loading:  ..\data\orgdata\E_PK_JUMP.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PK_JUMP
+         Current Pose: E_PK_IDLE_LOW
+         Loading:  ..\data\orgdata\E_PK_IDLE_LOW.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PK_IDLE_LOW
+         editPose 0
+         editPose 1
+         Loading:  ..\data\orgdata\E_PK_IDLE_LOW.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PK_IDLE_LOW
+         Saving External JSON Values
+         Save Successful          
+         Save Successful          
+         Save Successful          
+         Save Successful          
+         End Saving External JSON Values
+         Saving GUI Values
+         Save Successful          
+         End Saving GUI Values
+         Save Successful          
+         Loading:  ..\data\orgdata\E_PK_IDLE_LOW.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Saved Pose E_PK_IDLE_LOW
+         editPose 0
+         Current Pose: E_PK_IDLE_HIGH
+         editPose 1
+         Loading:  ..\data\orgdata\E_PK_IDLE_HIGH.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PK_IDLE_HIGH
+         editPose 0
+         firstPerson 0
+         actObjInd 427
+         subjectDistance 2.57429
+         editPose 1
+         Loading:  ..\data\orgdata\E_PK_IDLE_HIGH.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PK_IDLE_HIGH
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:46:03.03
+Time Elapsed 00:03:47.08

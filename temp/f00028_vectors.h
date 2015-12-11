@@ -1777,7 +1777,14 @@ AxisRotation axisRotationInstance;
 
 
 
-
+btVector3 multByOtherRot( btVector3 imp, btMatrix3x3 otherRot) {
+	// Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
+	// Vector3 res = otherRot*myRHS;
+	
+	// return btVector3(res.x,res.y,res.z);
+	
+	return otherRot*imp;
+}
 
 
 
@@ -1816,12 +1823,10 @@ public:
 	btVector3 startPoint;
 	btVector3 skelOffset;
 	
-	// btRigidBody* body;
-	// std::vector<btRigidBody*> limbs;
+	std::vector<int> targWeaponStack;
 	std::vector<BodyStruct> bodies;
 	
 	
-	//Matrix3 rotMat;
 	int contactCount;
 	int boneId;
 	int actorId;
@@ -1830,7 +1835,6 @@ public:
 	int isGrabbedById;
 	int entType;
 	bool isHidden;
-	//bool isJumping;
 	bool isOpen;
 	bool isEquipped;
 	bool isUpright;
@@ -1847,12 +1851,16 @@ public:
 	
 	//float mass;
 		
-	float ang;
-	float angRelative;
+	//float ang;
+	//float angRelative;
 	
-	float targAng;
-	float targAngRelative;
+	//float targAng;
+	//float targAngRelative;
 	
+	double totTime;
+	double totWeaponTime;
+	float lrBounds;
+	float udBounds;
 	
 	float bounciness;
 	float friction;
@@ -2011,11 +2019,197 @@ public:
 		
 	}
 	
+	
+	
+	void begSwing() {
+		targWeaponStack.push_back(E_WEAPON_STATE_BEG);
+	}
+	void endSwing() {
+		targWeaponStack.push_back(E_WEAPON_STATE_END);
+		targWeaponStack.push_back(E_WEAPON_STATE_IDLE);
+		//targWeaponStack.push_back(E_WEAPON_POS_RELAXED);
+	}
+	
+	// int getStackElem(int n) {
+	// 	std::list<int>::iterator ptr;
+	// 	int i;
+
+	// 	for( i = 0 , ptr = targWeaponStack.begin() ; i < n && ptr != targWeaponStack.end() ; i++ , ptr++ );
+
+	// 	if( ptr == targWeaponStack.end() ) {
+	// 	    // list too short 
+	// 	    return -1;
+	// 	}
+	// 	else {
+	// 	    // 'ptr' points to n-th element of list
+	// 	    return *ptr;
+	// 	}
+	// }
+	
+	
+	btVector3 getWeaponPos(int curPos) {
+		
+		float newLR = 0.0f;
+		float newUD = 0.0f;
+		
+		switch (curPos) {
+			case E_WEAPON_POS_RELAXED:
+				newLR = 0.5f;
+				newUD = 0.25f;
+			break;
+			case E_WEAPON_POS_LEFT:
+				newLR = 0.0f;
+				newUD = 0.5f;
+			break;
+			case E_WEAPON_POS_RIGHT:
+				newLR = 1.0f;
+				newUD = 0.5f;
+			break;
+			case E_WEAPON_POS_UP:
+				newLR = 0.5f;
+				newUD = 0.0f;
+			break;
+			case E_WEAPON_POS_DOWN:
+				newLR = 0.5f;
+				newUD = 1.0f;
+			break;
+			
+			case E_WEAPON_POS_UP_LEFT:
+				newLR = 0.0f;
+				newUD = 0.25f;
+			break;
+			case E_WEAPON_POS_UP_RIGHT:
+				newLR = 1.0f;
+				newUD = 0.25f;
+			break;
+			case E_WEAPON_POS_DOWN_LEFT:
+				newLR = 0.0f;
+				newUD = 0.75f;
+			break;
+			case E_WEAPON_POS_DOWN_RIGHT:
+				newLR = 1.0f;
+				newUD = 0.75f;
+			break;
+			case E_WEAPON_POS_FORWARD:
+				newLR = 0.5f;
+				newUD = 0.5f;
+			break;
+			
+		}
+		
+		return btVector3(newLR,newUD,0.0f);
+	}
+	
+	void updateWeaponTargs(double curStepTime) {
+		
+		
+		totWeaponTime += curStepTime;
+		
+		
+		if (totWeaponTime >= 1.0) {
+			totWeaponTime = 1.0;
+			
+			if (targWeaponStack.size() > 1) {
+				//targWeaponStack.pop_front();
+				targWeaponStack.erase(targWeaponStack.begin() + 0);
+				totWeaponTime = 0.0f;
+			}
+		}
+		
+		int curStep = E_WEAPON_STATE_IDLE;
+		int nextStep = E_WEAPON_STATE_IDLE;
+		
+		if (targWeaponStack.size() > 0) {
+			curStep = targWeaponStack[0];
+		}
+		
+		if (targWeaponStack.size() > 1) {
+			nextStep = targWeaponStack[1];
+		}
+		else {
+			nextStep = curStep;
+		}
+		
+		
+		
+		
+		
+		
+		float lerpTime = totWeaponTime;
+		
+		btVector3 res0;
+		btVector3 res1;
+		
+		
+		if (
+			(curStep == E_WEAPON_STATE_IDLE) &&
+			(nextStep == E_WEAPON_STATE_IDLE)	
+		) {
+			res0 = getWeaponPos(E_WEAPON_POS_RELAXED);
+			res1 = getWeaponPos(E_WEAPON_POS_RELAXED);
+		}
+		
+		if (
+			(curStep == E_WEAPON_STATE_BEG) &&
+			(nextStep == E_WEAPON_STATE_BEG)
+		) {
+			res0 = getWeaponPos(E_WEAPON_POS_UP_LEFT);
+			res1 = getWeaponPos(E_WEAPON_POS_UP_LEFT);
+		}
+		
+		if (
+			(curStep == E_WEAPON_STATE_IDLE) &&
+			(nextStep == E_WEAPON_STATE_BEG)	
+		) {
+			res0 = getWeaponPos(E_WEAPON_POS_RELAXED);
+			res1 = getWeaponPos(E_WEAPON_POS_UP_LEFT);
+		}
+		
+		
+		if (
+			(curStep == E_WEAPON_STATE_BEG) &&
+			(nextStep == E_WEAPON_STATE_END)	
+		) {
+			if (totWeaponTime < 0.5f) {
+				res0 = getWeaponPos(E_WEAPON_POS_UP_LEFT);
+				res1 = getWeaponPos(E_WEAPON_POS_FORWARD);
+				lerpTime = totWeaponTime*2.0f;
+			}
+			else {
+				res0 = getWeaponPos(E_WEAPON_POS_FORWARD);
+				res1 = getWeaponPos(E_WEAPON_POS_RIGHT);
+				lerpTime = (totWeaponTime-0.5f)*2.0f;
+			}
+		}
+	
+		if (
+			(curStep == E_WEAPON_STATE_END) &&
+			(nextStep == E_WEAPON_STATE_IDLE)	
+		) {
+			res0 = getWeaponPos(E_WEAPON_POS_RELAXED);
+			res1 = getWeaponPos(E_WEAPON_POS_RIGHT);
+		}
+		
+		
+		
+		lrBounds = mixf(res0.getX(), res1.getX(), lerpTime);
+		udBounds = mixf(res0.getY(), res1.getY(), lerpTime);
+		
+		
+	}
+	
+	
 	void updateWeapon(
-		//double totTime
-		float lrBounds,
-		float udBounds
+		double curStepTime,
+		// float lrBounds,
+		// float udBounds,
+		float weaponLen
 	) {
+		
+		totTime += curStepTime;
+		
+		updateWeaponTargs(curStepTime);
+		
 		
 		float myMat[16];
 		Matrix4 myMatrix4;
@@ -2030,7 +2224,7 @@ public:
 		
 		btVector3 basePos;
 		float rad0 = 1.0f;
-		float rad1 = 3.0f;
+		float rad1 = rad0 + weaponLen;
 		
 		//float lrBounds = sin(totTime/4.0);
 		//float udBounds = sin(totTime);
@@ -2046,8 +2240,8 @@ public:
 		float weaponTheta = M_PI_2 + lrBounds*M_PI_8;
 		float weaponPhi = M_PI_4 + udBounds*M_PI_4;
 		
-		float weaponTheta2 = M_PI - lrBounds*M_PI;
-		float weaponPhi2 = 0 + udBounds*M_PI_2*1.5f;
+		float weaponTheta2 = (1.0f - lrBounds)*M_PI + cos(totTime/2.0f)*0.1f;
+		float weaponPhi2 = 0 + udBounds*M_PI_2*1.5f + sin(totTime/3.0f)*0.1f;
 		
 		
 		bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
@@ -2096,8 +2290,6 @@ public:
 		
 		
 		
-		
-				
 		vf0 = Vector4( 1.0f,0.0f,0.0f,1.0f);
 		vf1 = Vector4(-1.0f,0.0f,0.0f,1.0f);
 		
@@ -2181,14 +2373,7 @@ public:
 		
 	}
 	
-	btVector3 multByOtherRot( btVector3 imp, btMatrix3x3 otherRot) {
-		// Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
-		// Vector3 res = otherRot*myRHS;
-		
-		// return btVector3(res.x,res.y,res.z);
-		
-		return otherRot*imp;
-	}
+	
 	
 	
 	
@@ -2291,11 +2476,17 @@ public:
 		actorId = -1;
 		isHidden = false;
 		
-		ang = 0.0f;
-		angRelative = 0.0f;
+		//ang = 0.0f;
+		//angRelative = 0.0f;
 		
-		targAng = 0.0f;
-		targAngRelative = 0.75f;
+		//targAng = 0.0f;
+		//targAngRelative = 0.75f;
+		
+		totWeaponTime = 0.0;
+		totTime = 0.0;
+		lrBounds = 0.5f;
+		udBounds = 0.5f;
+		//targWeaponStack.push_back(E_WEAPON_POS_RELAXED);
 		
 		maxFrames = 0;
 		objectType = _objectType;
@@ -2546,9 +2737,24 @@ public:
 		glBindBuffer(GL_TEXTURE_BUFFER, 0);
 	}
 	
-	void update(float* tbo_data) {
+	void update(float* tbo_data, int newDataSize) {
+		
+		int tempDataSize;
+		
+		if (newDataSize < 0) {
+			tempDataSize = dataSize;
+		}
+		else {
+			tempDataSize = newDataSize;
+		}
+		
+		
+		tempDataSize = min(tempDataSize,dataSize);
+		
+		
+		
 		glBindBuffer(GL_TEXTURE_BUFFER, tbo_buf);
-		glBufferSubData(GL_TEXTURE_BUFFER, 0, dataSize, tbo_data);
+		glBufferSubData(GL_TEXTURE_BUFFER, 0, tempDataSize, tbo_data);
 		glBindBuffer(GL_TEXTURE_BUFFER, 0);
 	}
 	

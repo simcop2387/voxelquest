@@ -626,10 +626,43 @@ enum E_BONES_HUMAN {
 	
 	E_BONE_WEAPON_BASE,
 	E_BONE_WEAPON_END,
-	
+	E_BONE_WEAPON_0,
+	E_BONE_WEAPON_1,
+	E_BONE_WEAPON_2,
+	E_BONE_WEAPON_3,
+	E_BONE_WEAPON_4,
+	E_BONE_WEAPON_5,
+	E_BONE_WEAPON_6,
+	E_BONE_WEAPON_7,
+	E_BONE_WEAPON_8,
 	
 	E_BONE_C_END //////////////////
 	
+};
+
+enum E_WEAPON_STATES {
+	E_WEAPON_STATE_IDLE,
+	E_WEAPON_STATE_BEG,
+	E_WEAPON_STATE_END,
+	E_WEAPON_STATE_LENGTH	
+};
+
+enum E_WEAPON_POS {
+	E_WEAPON_POS_RELAXED,
+	
+	E_WEAPON_POS_FORWARD,
+	
+	E_WEAPON_POS_LEFT,
+	E_WEAPON_POS_RIGHT,
+	E_WEAPON_POS_UP,
+	E_WEAPON_POS_DOWN,
+	
+	E_WEAPON_POS_UP_LEFT,
+	E_WEAPON_POS_UP_RIGHT,
+	E_WEAPON_POS_DOWN_LEFT,
+	E_WEAPON_POS_DOWN_RIGHT,
+	
+	E_WEAPON_POS_LENGTH
 };
 
 enum E_GUI {
@@ -734,6 +767,15 @@ string boneStrings[] = {
 	
 	"E_BONE_WEAPON_BASE",
 	"E_BONE_WEAPON_END",
+	"E_BONE_WEAPON_0",
+	"E_BONE_WEAPON_1",
+	"E_BONE_WEAPON_2",
+	"E_BONE_WEAPON_3",
+	"E_BONE_WEAPON_4",
+	"E_BONE_WEAPON_5",
+	"E_BONE_WEAPON_6",
+	"E_BONE_WEAPON_7",
+	"E_BONE_WEAPON_8",
 	
 	"E_BONE_C_END" //////////////////
 	
@@ -1067,7 +1109,7 @@ const static int terCollidesWith = COL_STATIC|COL_DYN|COL_BODY|COL_MARKER|COL_WE
 const static int bodyCollidesWith = COL_STATIC|COL_DYN;//COL_NOTHING;//
 const static int markerCollidesWith = COL_STATIC|COL_DYN;
 const static int dynCollidesWith = COL_STATIC|COL_DYN|COL_BODY|COL_MARKER|COL_WEAPON;
-const static int weaponCollidesWith = COL_STATIC|COL_DYN|COL_WEAPON;
+const static int weaponCollidesWith = COL_STATIC|COL_DYN;// |COL_WEAPON;
 
 
 
@@ -1093,6 +1135,9 @@ struct ActorJointStruct {
 	bool isBall;
 	float rad;
 	float length;
+	
+	
+	
 	btVector3 begOrig;
 	btVector3 midOrig;
 	btVector3 endOrig;

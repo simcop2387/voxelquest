@@ -120,6 +120,8 @@ public:
   EntSelection selectedEnts;
   GameEnt * selectedEnt;
   GameEnt * highlightedEnt;
+  TBOWrapper limbTBO;
+  float (limbTBOData) [MAX_LIMB_DATA_IN_BYTES];
   bool isWalking;
   bool isPressingMove;
   bool fxaaOn;
@@ -208,6 +210,8 @@ public:
   int draggingFromType;
   int draggingToType;
   int currentPose;
+  int actorCount;
+  int limbDataDebug;
   int polyCount;
   int fdWritePos;
   int fdReadPos;
@@ -1403,7 +1407,7 @@ public:
   std::vector <ActorJointStruct> actorJoints;
   int geId;
   btVector3 origOffset;
-  int addJoint (int nodeName, int parentId, bool isBall, float rad, float len, float mass, btVector3 targAlignT, btVector3 targAlignB, btVector3 targAlignN, btVector3 begPos, btVector3 midPos, btVector3 endPos);
+  int addJoint (int nodeName, int parentId, bool isBall, float mass, GameOrgNode * curNode);
   void initFromOrg (GameOrgNode * curNode, int curParent);
   GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed);
   virtual ~ GameActor ();
@@ -1993,6 +1997,7 @@ public:
   void ensureBlocks ();
   void findNearestEnt (EntSelection * entSelection, int entType, int maxLoadRad, int radStep, FIVector4 * testPoint, bool onlyInteractive = false, bool ignoreDistance = false);
   void drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * maxc, bool copyToTex, bool forceFinish, bool getVoro = false);
+  void updateLimbTBOData ();
   void drawPrim (bool doSphereMap, bool doTer, bool doPoly);
   void drawOrg (GameOrg * curOrg, bool drawAll);
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);

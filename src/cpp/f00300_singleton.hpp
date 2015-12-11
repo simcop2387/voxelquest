@@ -94,6 +94,9 @@ public:
 	GameEnt* selectedEnt;
 	GameEnt* highlightedEnt;
 	
+	TBOWrapper limbTBO;
+	float limbTBOData[MAX_LIMB_DATA_IN_BYTES];
+	
 	bool isWalking;
 	bool isPressingMove;
 	bool fxaaOn;
@@ -188,7 +191,8 @@ public:
 	int draggingToType;
 	
 	int currentPose;
-	
+	int actorCount;
+	int limbDataDebug;
 	int polyCount;
 	int fdWritePos;
 	int fdReadPos;
@@ -830,7 +834,7 @@ public:
 		cloudImage->getTextureId(GL_LINEAR);
 
 		
-		
+		limbTBO.init(limbTBOData,MAX_LIMB_DATA_IN_BYTES);
 		
 		numLights = MAX_LIGHTS;//min(MAX_LIGHTS,E_OBJ_LENGTH-E_OBJ_LIGHT0);
 
@@ -935,6 +939,8 @@ public:
 		// todo: probe area ahead of current ray step to see if near edge
 		
 		currentPose = E_PK_T_POSE;
+		limbDataDebug = 0;
+		actorCount = 0;
 		polyCount = 0;
 		fpsCountMax = 500;
 		
@@ -1587,7 +1593,7 @@ public:
 		keyMap[KEYMAP_FIRE_PRIMARY] = ' ';
 		keyMapMaxCoolDown[KEYMAP_FIRE_PRIMARY] = 20;
 		keyMap[KEYMAP_GRAB_THROW] = 'w';
-		keyMapMaxCoolDown[KEYMAP_GRAB_THROW] = 20;
+		keyMapMaxCoolDown[KEYMAP_GRAB_THROW] = 200;
 		
 		/////////////////////////
 		/////////////////////////
@@ -5410,14 +5416,16 @@ DISPATCH_EVENT_END:
 		
 		//mainGUI->runReport();
 		
-		cout << "lastMouseX" << lastMouseX << "\n";
-		cout << "lastMouseY" << lastMouseY << "\n";
+		cout << "num limbs " << limbDataDebug << "\n";
 		
-		cout << "polyCount " << polyCount << "\n";
+		// cout << "lastMouseX" << lastMouseX << "\n";
+		// cout << "lastMouseY" << lastMouseY << "\n";
 		
-		doTraceVecND("cameraPos ", cameraGetPosNoShake());
-		doTraceVecND("lookAtVec ", &lookAtVec);
-		cout << "\n";
+		// cout << "polyCount " << polyCount << "\n";
+		
+		// doTraceVecND("cameraPos ", cameraGetPosNoShake());
+		// doTraceVecND("lookAtVec ", &lookAtVec);
+		// cout << "\n";
 		
 		//cout << "Object Count: " << lastObjectCount << "\n";
 		// cout << "lightCount: " << gw->lightCount << "\n";
@@ -6147,7 +6155,7 @@ DISPATCH_EVENT_END:
 					// 	medianCount = 0;
 					// }
 					
-					//runReport();
+					runReport();
 					
 					// refreshPaths = true;
 					
@@ -6825,6 +6833,26 @@ DISPATCH_EVENT_END:
 		// 	}
 		// }
 		
+		
+		if (currentActor != NULL) {
+			
+			if (currentActor->weaponActive) {
+				
+				if (lbDown) {
+					currentActor->begSwing();
+				}
+				if (lbClicked) {
+					currentActor->endSwing();
+					playSoundEnt("swing0", currentActor);
+				}
+				
+				//
+			}
+			
+		}
+		
+		
+		
 		if (lbClicked) {
 			gamePhysics->lastBodyPick = NULL;
 		}
@@ -6898,87 +6926,81 @@ DISPATCH_EVENT_END:
 					}
 					else {
 						
+						doProc = true;
 						
 						
 						
-						
-						if (noTravel) {
-							
-							
-							if (pathfindingOn) {
+						if (doProc) {
+							if (noTravel) {
 								
-								pathFindingStep++;
 								
-								if (pathFindingStep == 3) {
-									pathFindingStep = 0;
-									moveNodes[0].setFXYZ(0.0,0.0,0.0);
-									moveNodes[1].setFXYZ(0.0,0.0,0.0);
-									gameLogic->searchedForPath = false;
-									gameLogic->didFindPath = false;
+								if (pathfindingOn) {
+									
+									pathFindingStep++;
+									
+									if (pathFindingStep == 3) {
+										pathFindingStep = 0;
+										moveNodes[0].setFXYZ(0.0,0.0,0.0);
+										moveNodes[1].setFXYZ(0.0,0.0,0.0);
+										gameLogic->searchedForPath = false;
+										gameLogic->didFindPath = false;
+									}
 								}
+								else {
+									
+								}
+								
+								
 							}
 							else {
-								if (currentActor != NULL) {
+								if (isDraggingObject) {
 									
 									upInd = mouseUpOPD.getFW();
 									
+									//cout << "UP IND " << upInd << "\n";
+									
 									if (upInd == 0) {
-										currentActor->targAngRelative = -currentActor->targAngRelative;
-										//playSoundEnt("swing0", currentActor);
+										draggingToInd = 0;
+										draggingToType = E_DT_NOTHING;
+										performDrag(
+										gameNetwork->isConnected,
+											draggingFromInd,
+											draggingFromType,
+											draggingToInd,
+											draggingToType,
+											&(worldMarker)
+										);
+									}
+									else {
+										if (upInd >= E_OBJ_LENGTH) {
+											
+												if (isContainer[gw->gameObjects[upInd].objectType]) {
+													draggingToInd = upInd;
+													draggingToType = E_DT_WORLD_OBJECT;
+												}
+												else {
+													draggingToInd = 0;
+													draggingToType = E_DT_NOTHING;
+												}
+												
+												performDrag(
+													gameNetwork->isConnected,
+													draggingFromInd,
+													draggingFromType,
+													draggingToInd,
+													draggingToType,
+													&(worldMarker)
+												);
+										}						
 									}
 									
 									
+									
 								}
 							}
-							
-							
 						}
-						else {
-							if (isDraggingObject) {
-								
-								upInd = mouseUpOPD.getFW();
-								
-								//cout << "UP IND " << upInd << "\n";
-								
-								if (upInd == 0) {
-									draggingToInd = 0;
-									draggingToType = E_DT_NOTHING;
-									performDrag(
-									gameNetwork->isConnected,
-										draggingFromInd,
-										draggingFromType,
-										draggingToInd,
-										draggingToType,
-										&(worldMarker)
-									);
-								}
-								else {
-									if (upInd >= E_OBJ_LENGTH) {
-										
-											if (isContainer[gw->gameObjects[upInd].objectType]) {
-												draggingToInd = upInd;
-												draggingToType = E_DT_WORLD_OBJECT;
-											}
-											else {
-												draggingToInd = 0;
-												draggingToType = E_DT_NOTHING;
-											}
-											
-											performDrag(
-												gameNetwork->isConnected,
-												draggingFromInd,
-												draggingFromType,
-												draggingToInd,
-												draggingToType,
-												&(worldMarker)
-											);
-									}						
-								}
-								
-								
-								
-							}
-						}
+						
+						
 						
 						
 						
@@ -7531,18 +7553,18 @@ DISPATCH_EVENT_END:
 			// 	}
 			// }
 			
-			tempVec2.setFXYZ(0.0f,0.0f,0.0);
+			//tempVec2.setFXYZ(0.0f,0.0f,0.0);
 			
-			if (firstPerson) {
-				ca->ang = camRotX;
-				ca->targAng = ca->ang;
-			}
+			// if (firstPerson) {
+			// 	ca->ang = camRotX;
+			// 	ca->targAng = ca->ang;
+			// }
 			
-			tempVec1.setFXYZ(
-				cos(ca->ang),
-				sin(ca->ang),
-				0.0f
-			);
+			// tempVec1.setFXYZ(
+			// 	cos(ca->ang),
+			// 	sin(ca->ang),
+			// 	0.0f
+			// );
 			
 			
 			
@@ -7718,7 +7740,7 @@ DISPATCH_EVENT_END:
 		
 		isPressingMove = false;
 		
-		
+		btVector3 tempBTV;
 		
 		amountInvalidRotate = (abs(curCamRotation[0]-camRotation[0]) + abs(curCamRotation[1]-camRotation[1]));
 		depthInvalidRotate = (amountInvalidRotate > 0.001f);
@@ -7851,8 +7873,18 @@ DISPATCH_EVENT_END:
 				) {
 					isPressingMove = true;
 					if (!rbDown) {
+						
+						tempBTV = multByOtherRot(
+							btVector3(0.0f,1.0f,0.0f),
+							currentActor->bodies[0].body->getCenterOfMassTransform().getBasis()
+						);
+						
 						camRotation[0] += 
-							getShortestAngle(camRotation[0],currentActor->ang,timeDelta*1.0);
+							getShortestAngle(
+								camRotation[0],
+								atan2(tempBTV.getY(), tempBTV.getX()),
+								timeDelta*1.0
+							);
 					}
 				}
 			}
@@ -8110,7 +8142,7 @@ DISPATCH_EVENT_END:
 				// vy = vy;
 				
 				
-				btVector3 tempBTV = ca->multByOtherRot(
+				btVector3 tempBTV = multByOtherRot(
 					btVector3(0.0f,3.0f,3.0f),
 					ca->bodies[0].body->getCenterOfMassTransform().getBasis()
 				);

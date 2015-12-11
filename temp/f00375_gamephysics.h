@@ -287,6 +287,15 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 				case -1:
 				case E_BONE_WEAPON_BASE:
 				case E_BONE_WEAPON_END:
+				case E_BONE_WEAPON_0:
+				case E_BONE_WEAPON_1:
+				case E_BONE_WEAPON_2:
+				case E_BONE_WEAPON_3:
+				case E_BONE_WEAPON_4:
+				case E_BONE_WEAPON_5:
+				case E_BONE_WEAPON_6:
+				case E_BONE_WEAPON_7:
+				case E_BONE_WEAPON_8:
 					ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
 				break;
 				
@@ -316,6 +325,8 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 					) {
 						ge->bodies[bodInd].isVisible = false;
 					}
+					
+					//ge->bodies[bodInd].isVisible = false;
 				}
 				
 				if (curOrg->orgType == E_ORGTYPE_WEAPON) {
@@ -573,17 +584,19 @@ void GamePhysics::collideWithWorld (double curStepTime)
 						
 						curOrg->updatePose(curStepTime);
 						
-						//if (singleton->lbDown) {
+						if (ge->isGrabbingId > -1) {
 							ge->updateWeapon(
-								//totTime
-								clampfZO(
-									(singleton->lastMouseX-singleton->bufferDim.getFX()*0.25f)
-									*4.0f/singleton->bufferDim.getFX()),
-								clampfZO(
-									(singleton->lastMouseY-singleton->bufferDim.getFY()*0.25f)
-									*4.0f/singleton->bufferDim.getFY())
+								curStepTime,
+								// clampfZO(
+								// 	(singleton->lastMouseX-singleton->bufferDim.getFX()*0.25f)
+								// 	*4.0f/singleton->bufferDim.getFX()),
+								// clampfZO(
+								// 	(singleton->lastMouseY-singleton->bufferDim.getFY()*0.25f)
+								// 	*4.0f/singleton->bufferDim.getFY()),
+								
+								2.0f // todo: update this to actual weapon length
 							);
-						//}
+						}
 						
 						
 						ge->wakeAll();
@@ -691,6 +704,8 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								);
 								resVector4 = myMatrix4*myVector4;
 								basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
+								
+								
 								
 								ge->addAABBPoint(basePos);
 								
@@ -929,7 +944,8 @@ void GamePhysics::collideWithWorld (double curStepTime)
 							(
 								(nv0.dot(nv1)) < 0.8f
 							) &&
-							(bodInd == 0)
+							(bodInd == 0) &&
+							(ge->isGrabbedById < 0) 
 							
 						) {
 							

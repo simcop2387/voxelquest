@@ -788,7 +788,7 @@ public:
 					if (readyForTBOUpdate) {
 						readyForTBOUpdate = false;
 						fetchGeom();
-						tboWrapper.update(tboData);
+						tboWrapper.update(tboData,-1);
 					}
 					
 					waterTick = 0;

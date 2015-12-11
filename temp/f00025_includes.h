@@ -10,6 +10,8 @@ int RUN_COUNT;
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "27015"
 
+const static int MAX_LIMB_DATA_IN_BYTES = 16384;
+
 const static bool GEN_COLLISION = false;
 const static bool GEN_POLYS_HOLDER = true;
 const static bool GEN_POLYS_WORLD = false;
@@ -37,8 +39,8 @@ const static int MAX_EXPLODES = 8;
 const static bool DO_SHADER_DUMP = false;
 
 
-const static int DEF_WIN_W = 1920;
-const static int DEF_WIN_H = 1080;
+const static int DEF_WIN_W = 1440;
+const static int DEF_WIN_H = 720;
 
 const static int DEF_VOL_SIZE = 128;
 

@@ -3,12 +3,41 @@
 
 #include "f00347_gameactor.e"
 #define LZZ_INLINE inline
-int GameActor::addJoint (int nodeName, int parentId, bool isBall, float rad, float len, float mass, btVector3 targAlignT, btVector3 targAlignB, btVector3 targAlignN, btVector3 begPos, btVector3 midPos, btVector3 endPos)
+int GameActor::addJoint (int nodeName, int parentId, bool isBall, float mass, GameOrgNode * curNode)
           {
 		
-		
-		
 		int i;
+		
+		
+		float rad = 0.0f;
+		float len = 0.0f;
+		
+		btVector3 begPos;
+		btVector3 midPos;
+		btVector3 endPos;
+		
+		if (isBall) {
+			rad = 0.05f;
+			begPos = curNode->orgTrans[2].getBTV();
+			midPos = curNode->orgTrans[2].getBTV();
+			endPos = curNode->orgTrans[2].getBTV();
+		}
+		else {
+			rad = 0.1f;
+			len = curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV());
+			begPos = curNode->orgTrans[0].getBTV();
+			midPos = curNode->orgTrans[1].getBTV();
+			endPos = curNode->orgTrans[2].getBTV();
+		}
+		
+		btVector3 targAlignT = curNode->tbnRotC[0].getBTV();
+		btVector3 targAlignB = curNode->tbnRotC[1].getBTV();
+		btVector3 targAlignN = curNode->tbnRotC[2].getBTV();
+		
+		
+		
+		
+		
 		btVector3 vUp(0, 0, 1);
 		btVector3 pivotA;
 		btVector3 pivotB;
@@ -219,18 +248,22 @@ void GameActor::initFromOrg (GameOrgNode * curNode, int curParent)
 			curNode->nodeName,
 			curParent,					//int parentId,
 			false,
-			0.15f,			//float rad,
-			curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV()), //curLen, // +curRad*4.0f,			//float len,
 			MASS_PER_LIMB,				//float mass,
 			//tn, bn, nn,
 		
-			curNode->tbnRotC[0].getBTV(),
-			curNode->tbnRotC[1].getBTV(),
-			curNode->tbnRotC[2].getBTV(),
+			curNode
+		
+			// 0.15f,						//float rad,
+			// curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV()), //curLen, // +curRad*4.0f,			//float len,
 			
-			curNode->orgTrans[0].getBTV(),
-			curNode->orgTrans[1].getBTV(),
-			curNode->orgTrans[2].getBTV()
+		
+			// curNode->tbnRotC[0].getBTV(),
+			// curNode->tbnRotC[1].getBTV(),
+			// curNode->tbnRotC[2].getBTV(),
+			
+			// curNode->orgTrans[0].getBTV(),
+			// curNode->orgTrans[1].getBTV(),
+			// curNode->orgTrans[2].getBTV()
 			
 		);
 		
@@ -238,18 +271,22 @@ void GameActor::initFromOrg (GameOrgNode * curNode, int curParent)
 			curNode->nodeName,
 			curChild,					//int parentId,
 			true,
-			0.2f,			//float rad,
-			0.0f,//curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV()), //curLen,
 			MASS_PER_LIMB,				//float mass,
 			//tn, bn, nn,
-		
-			curNode->tbnRotC[0].getBTV(),
-			curNode->tbnRotC[1].getBTV(),
-			curNode->tbnRotC[2].getBTV(),
 			
-			curNode->orgTrans[2].getBTV(), // beg
-			curNode->orgTrans[2].getBTV(), // mid
-			curNode->orgTrans[2].getBTV()  // end
+			curNode
+		
+			// 0.2f,			//float rad,
+			// 0.0f,			//curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV()), //curLen,
+			
+		
+			// curNode->tbnRotC[0].getBTV(),
+			// curNode->tbnRotC[1].getBTV(),
+			// curNode->tbnRotC[2].getBTV(),
+			
+			// curNode->orgTrans[2].getBTV(), // beg
+			// curNode->orgTrans[2].getBTV(), // mid
+			// curNode->orgTrans[2].getBTV()  // end
 			
 		);
 		

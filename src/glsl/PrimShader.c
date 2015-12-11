@@ -6,6 +6,7 @@ uniform bool depthInvalidRotate;
 uniform bool doSphereMap;
 //uniform bool readPoly;
 
+uniform int actorCount;
 uniform int MAX_PRIM_IDS;
 uniform int MAX_PRIMTEST;
 
@@ -2190,6 +2191,87 @@ float hardShadowPrim( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
 ////////////////
 
 
+// source http://geomalgorithms.com/a07-_distance.html#dist3D_Segment_to_Segment()
+// dist3D_Segment_to_Segment(): get the 3D minimum distance between 2 segments
+//    Input:  two 3D line segments S1 and S2
+//    Return: the shortest distance between S1 and S2
+float segSegDis(
+	vec3 S1_P0,
+	vec3 S1_P1,
+	vec3 S2_P0,
+	vec3 S2_P1
+) {
+	
+		float SMALL_NUM = 0.000001;
+	
+    vec3   u = S1_P1 - S1_P0;
+    vec3   v = S2_P1 - S2_P0;
+    vec3   w = S1_P0 - S2_P0;
+    float    a = dot(u,u);         // always >= 0
+    float    b = dot(u,v);
+    float    c = dot(v,v);         // always >= 0
+    float    d = dot(u,w);
+    float    e = dot(v,w);
+    float    D = a*c - b*b;        // always >= 0
+    float    sc, sN, sD = D;       // sc = sN / sD, default sD = D >= 0
+    float    tc, tN, tD = D;       // tc = tN / tD, default tD = D >= 0
+
+    // compute the line parameters of the two closest points
+    if (D < SMALL_NUM) { // the lines are almost parallel
+        sN = 0.0;         // force using point P0 on segment S1
+        sD = 1.0;         // to prevent possible division by 0.0 later
+        tN = e;
+        tD = c;
+    }
+    else {                 // get the closest points on the infinite lines
+        sN = (b*e - c*d);
+        tN = (a*e - b*d);
+        if (sN < 0.0) {        // sc < 0 => the s=0 edge is visible
+            sN = 0.0;
+            tN = e;
+            tD = c;
+        }
+        else if (sN > sD) {  // sc > 1  => the s=1 edge is visible
+            sN = sD;
+            tN = e + b;
+            tD = c;
+        }
+    }
+
+    if (tN < 0.0) {            // tc < 0 => the t=0 edge is visible
+        tN = 0.0;
+        // recompute sc for this edge
+        if (-d < 0.0)
+            sN = 0.0;
+        else if (-d > a)
+            sN = sD;
+        else {
+            sN = -d;
+            sD = a;
+        }
+    }
+    else if (tN > tD) {      // tc > 1  => the t=1 edge is visible
+        tN = tD;
+        // recompute sc for this edge
+        if ((-d + b) < 0.0)
+            sN = 0;
+        else if ((-d + b) > a)
+            sN = sD;
+        else {
+            sN = (-d +  b);
+            sD = a;
+        }
+    }
+    // finally do the division to get sc and tc
+    sc = (abs(sN) < SMALL_NUM ? 0.0 : sN / sD);
+    tc = (abs(tN) < SMALL_NUM ? 0.0 : tN / tD);
+
+    // get the difference of the two closest points
+    vec3 dP = w + (sc * u) - (tc * v);  //
+
+    return length(dP);   // return the closest distance
+}
+
 float getTree(vec3 pos, vec3 tp0, vec3 tp1, vec3 tp2, vec2 thickVals) {
 		// p0: start point
 		// p1: end point
@@ -2207,6 +2289,169 @@ float getTree(vec3 pos, vec3 tp0, vec3 tp1, vec3 tp2, vec2 thickVals) {
 		float curThickness = mix(thickVals.x, thickVals.y, t);
 
 		return resArr.x - curThickness;
+}
+
+
+void getLimbsPre(vec3 ro, vec3 rd) {
+	
+	int i;
+	int j;
+	
+	primIdListLength = 0;
+	
+	for (i = 0; i < MAX_PRIM_IDS; i++) {
+			primIdList[i] = -1;
+			primAlreadyTested[i] = -1.0;
+	}
+	
+	int primDataInd = 0;
+	int endInd = 0;
+	int firstInd = 0;
+	
+	vec4 header0;
+	vec4 header1;
+	vec4 header2;
+	
+	vec4 cenVec;
+	vec4 tanVec;
+	vec4 bitVec;
+	vec4 norVec;
+	vec4 ln0Vec;
+	vec4 ln1Vec;
+	
+	vec3 seg0a = ro;
+	vec3 seg0b = ro + rd*MAX_CAM_DIS;
+	vec3 seg1a = vec3(0.0);
+	vec3 seg1b = vec3(0.0);
+	
+	vec2 hitBox;
+	
+	float curDis;
+	float maxDis;
+	
+	//globTest = float(actorCount)*0.125;
+	
+	for (i = 0; i < actorCount; i++) {
+		header0 = texelFetch(Texture1, primDataInd); primDataInd++;
+		header1 = texelFetch(Texture1, primDataInd); primDataInd++;
+		header2 = texelFetch(Texture1, primDataInd); primDataInd++;
+		
+		endInd = int(header0.x);
+		
+		if (endInd <= 0) {
+			
+			
+			break;
+		}
+		
+		hitBox = aabbIntersect(ro,rd,header1.xyz,header2.xyz);
+		
+		if (hitBox.x <= hitBox.y) {
+			//globTest += 0.25f;
+			
+			while (primDataInd < endInd) {
+				
+				firstInd = primDataInd;
+				
+				cenVec = texelFetch(Texture1, primDataInd); primDataInd++;
+				tanVec = texelFetch(Texture1, primDataInd); primDataInd++;
+				bitVec = texelFetch(Texture1, primDataInd); primDataInd++;
+				norVec = texelFetch(Texture1, primDataInd); primDataInd++;
+				ln0Vec = texelFetch(Texture1, primDataInd); primDataInd++;
+				ln1Vec = texelFetch(Texture1, primDataInd); primDataInd++;
+				
+				seg1a = cenVec.xyz - tanVec.xyz*ln0Vec.x;
+				seg1b = cenVec.xyz + tanVec.xyz*ln0Vec.x;
+				
+				maxDis = max(
+					max(ln0Vec.z,ln0Vec.y),
+					max(ln1Vec.z,ln1Vec.y)
+				);
+				
+				//curDis = pointSegDistance(cenVec.xyz, seg0a, seg0b).w;
+				curDis = segSegDis(seg0a,seg0b,seg1a,seg1b);
+				
+				
+				
+				if (curDis < maxDis*2.0) {
+					globTest += 0.25f;
+					
+					primIdList[primIdListLength] = firstInd;
+					primIdListLength++;
+					
+					if (primIdListLength == MAX_PRIM_IDS) {
+							return;
+					}
+					
+				}
+				
+			}
+			
+		}
+		else {
+			primDataInd = endInd;
+		}
+		
+		if (endInd <= 0) {
+			return;
+		}
+		
+		
+		
+	}
+	
+	
+}
+
+float getLimbsPost(vec3 pos) {
+	
+	vec4 cenVec;
+	vec4 tanVec;
+	vec4 bitVec;
+	vec4 norVec;
+	vec4 ln0Vec;
+	vec4 ln1Vec;
+	
+	vec4 lnVec;
+	
+	vec3 seg1a = vec3(0.0);
+	vec3 seg1b = vec3(0.0);
+	
+	int i;
+	int primDataInd = 0;
+	
+	vec4 closestPoint = vec4(0.0);
+	
+	float lerpVal;
+	float curRad;
+	float minDis = MAX_CAM_DIS;
+	
+	for (i = 0; i < primIdListLength; i++) {
+		primDataInd = primIdList[i];
+		
+		cenVec = texelFetch(Texture1, primDataInd); primDataInd++;
+		tanVec = texelFetch(Texture1, primDataInd); primDataInd++;
+		bitVec = texelFetch(Texture1, primDataInd); primDataInd++;
+		norVec = texelFetch(Texture1, primDataInd); primDataInd++;
+		ln0Vec = texelFetch(Texture1, primDataInd); primDataInd++;
+		ln1Vec = texelFetch(Texture1, primDataInd); primDataInd++;
+		
+		seg1a = cenVec.xyz - tanVec.xyz*ln0Vec.x;
+		seg1b = cenVec.xyz + tanVec.xyz*ln0Vec.x;
+		
+		closestPoint = pointSegDistance(pos, seg1a, seg1b);
+		
+		lerpVal = distance(closestPoint.xyz,seg1a)/(ln0Vec.x*2.0);
+		
+		lnVec = mix(ln0Vec,ln1Vec,lerpVal);
+		
+		curRad = lnVec.y*2.0;
+		
+		minDis = min(minDis,closestPoint.w-curRad);
+		
+	}
+	
+	return minDis;
 }
 
 
@@ -3181,12 +3426,17 @@ vec2 mapDyn(vec3 pos) {
 		
 		
 		
+		res = opU(res, vec2(
+		    getLimbsPost(pos),
+		    TEX_EARTH
+		));
 		
 		
-		res.x = opS(
-			res.x,
-			sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) ) //8.0 //CAM_BOX_SIZE
-		);
+		
+		// res.x = opS(
+		// 	res.x,
+		// 	sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) ) //8.0 //CAM_BOX_SIZE
+		// );
 		
 		
 		// #ifdef DOCLOUDS
@@ -4793,7 +5043,7 @@ void main() {
 						TOT_STEPS
 				);
 				
-				
+				getLimbsPre(ro, rd);
 				
 				earthMatRes = globTexEarth;
 				
@@ -4874,7 +5124,7 @@ void main() {
 				//shadowRes = 0.0;
 				
 				// todo: put this back in
-				if (numExplodes > 0) {
+				//if (numExplodes > 0) {
 						dynRes = castDyn(
 								ro,
 								rd,
@@ -4897,7 +5147,7 @@ void main() {
 								//}
 								
 						}
-				}
+				//}
 				
 				
 				
@@ -4944,6 +5194,7 @@ void main() {
 				tArr[1] = waterVal;
 				posArr[1] = ro + tArr[1]*rd;
 				curTexArr[1] = waterMatRes;
+				
 				
 				
 		#endif
@@ -5148,7 +5399,9 @@ void main() {
 												
 												//(sin(t/100.0)+1.0)*0.5,0.0,0.0,
 												
-												shadowRes,0.0,
+												globTest,
+												//shadowRes,
+												0.0,
 												0.0,
 												//globTexTap/300.0, //
 												//float(texture(Texture14,baseCoords.xy).x != 0.0)*0.25,
