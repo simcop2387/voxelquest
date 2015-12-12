@@ -1,4 +1,4 @@
-﻿Build started 12/11/2015 6:46:45 AM.
+﻿Build started 12/12/2015 1:17:57 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -308,9 +308,100 @@
          curHeight 0 newHeight 2634.04
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
+         editPose 1
+         editPose 0
          actObjInd 427
-         subjectDistance 3.53966
-         from E_DT_WORLD_OBJECT to E_DT_NOTHING
+         subjectDistance 2.47696
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         firstPerson 0
+         actObjInd 427
+         subjectDistance 2.4771
+         editPose 1
+         Loading:  ..\data\orgdata\E_PK_T_POSE.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PK_T_POSE
+         from E_DT_WORLD_OBJECT to E_DT_WORLD_OBJECT
+         editPose 0
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+     1>EXEC : Shader  473  ( ../src/glsl/PrimShader.c ) compile error : 0(2582) : error C7011: implicit cast from "vec4" to "vec3"
+              
+     1>EXEC : Program  474  link error : Fragment info
+         -------------
+     1>0(2582): error C7011: implicit cast from "vec4" to "vec3"
+                
+         Shaders Refreshed
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         editPose 1
+         Loading:  ..\data\orgdata\E_PK_T_POSE.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PK_T_POSE
+         editPose 0
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         editPose 1
+         Loading:  ..\data\orgdata\E_PK_T_POSE.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PK_T_POSE
+         editPose 0
+         editPose 1
+         Loading:  ..\data\orgdata\E_PK_T_POSE.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PK_T_POSE
+         from E_DT_NOTHING to E_DT_WORLD_OBJECT
+         editPose 0
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
          editPose 1
          Loading:  ..\data\orgdata\E_PK_T_POSE.js         
          Load Successful          
@@ -365,27 +456,18 @@
                    
          Saved Pose E_PK_IDLE_LOW
          editPose 0
-         Current Pose: E_PK_IDLE_HIGH
          editPose 1
-         Loading:  ..\data\orgdata\E_PK_IDLE_HIGH.js         
+         Loading:  ..\data\orgdata\E_PK_IDLE_LOW.js         
          Load Successful          
          
          Valid JSON
                    
-         Loaded Pose E_PK_IDLE_HIGH
-         editPose 0
-         firstPerson 0
-         actObjInd 427
-         subjectDistance 2.57429
-         editPose 1
-         Loading:  ..\data\orgdata\E_PK_IDLE_HIGH.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_IDLE_HIGH
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
+         Loaded Pose E_PK_IDLE_LOW
+         from E_DT_WORLD_OBJECT to E_DT_WORLD_OBJECT
+     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
+C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -1.
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
 
-Build succeeded.
+Build FAILED.
 
-Time Elapsed 00:03:47.08
+Time Elapsed 00:21:43.05

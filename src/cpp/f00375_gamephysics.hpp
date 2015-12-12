@@ -41,15 +41,15 @@ public:
 		
 	}
 	
-	void pickBody(FIVector4* mouseDownOPD) { //btVector3 posWS1, btVector3 posWS2) {
+	void pickBody(FIVector4* mouseMoveOPD) { //btVector3 posWS1, btVector3 posWS2) {
 		
 		if (!(singleton->editPose)) {
 			lastBodyPick = NULL;
 			return;
 		}
 		
-		int bodyUID = mouseDownOPD->getFW();
-		int limbUID = mouseDownOPD->getFZ();
+		int bodyUID = mouseMoveOPD->getFW();
+		int limbUID = mouseMoveOPD->getFZ();
 		BaseObj* ge;
 		
 		if (
@@ -335,17 +335,17 @@ public:
 				
 				curOrg = singleton->gameOrgs[ge->orgId];
 				if (curOrg->orgType == E_ORGTYPE_HUMAN) {
-					if (
-						(bodInd == 0)
-						|| (
-							(ge->bodies[bodInd].boneId == E_BONE_C_BASE) &&
-							(!(ge->bodies[bodInd].isBall))	
-						)
-					) {
-						ge->bodies[bodInd].isVisible = false;
-					}
+					// if (
+					// 	(bodInd == 0)
+					// 	|| (
+					// 		(ge->bodies[bodInd].boneId == E_BONE_C_BASE) &&
+					// 		(!(ge->bodies[bodInd].isBall))	
+					// 	)
+					// ) {
+					// 	ge->bodies[bodInd].isVisible = false;
+					// }
 					
-					//ge->bodies[bodInd].isVisible = false;
+					ge->bodies[bodInd].isVisible = false;
 				}
 				
 				if (curOrg->orgType == E_ORGTYPE_WEAPON) {

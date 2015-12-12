@@ -1089,17 +1089,17 @@ void GameWorld::updateLimbTBOData ()
 						len0 = curOrgNode->orgVecs[E_OV_TBNRAD0].getBTV();
 						len1 = curOrgNode->orgVecs[E_OV_TBNRAD1].getBTV();
 						
-						
+						//cenVec
 						
 						singleton->limbTBOData[dataInd] = centerPoint.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = centerPoint.getY(); dataInd++;
 						singleton->limbTBOData[dataInd] = centerPoint.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+						singleton->limbTBOData[dataInd] = ge->uid; dataInd++;
 						
 						singleton->limbTBOData[dataInd] = tanVec.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = tanVec.getY(); dataInd++;
 						singleton->limbTBOData[dataInd] = tanVec.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+						singleton->limbTBOData[dataInd] = curBody->body->limbUID; dataInd++;
 						
 						singleton->limbTBOData[dataInd] = bitVec.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = bitVec.getY(); dataInd++;
@@ -1244,7 +1244,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		singleton->sampleFBO("geomTargFBO",5);
 		
 		if (doPrim) {
-			singleton->sampleFBO("terTargFBO",7);
+			singleton->sampleFBO("terTargFBO",7, -1, 0, 6);
 		}
 		
 		singleton->setShaderTexture3D(13, curVW->volId);
@@ -1392,7 +1392,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		singleton->setShaderTexture3D(13, 0);
 		
 		if (doPrim) {
-			singleton->unsampleFBO("terTargFBO",7);
+			singleton->unsampleFBO("terTargFBO",7, -1, 0, 6);
 		}
 		
 		// if (USE_SPHERE_MAP) {
@@ -1415,6 +1415,9 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 			return;
 		}
 		
+		if (doTer) {
+			singleton->copyFBO("terTargFBO", "limbFBO", 6);
+		}
 		
 		
 		singleton->copyFBO2(curTargFBO[ind],curDepthFBO[ind], 4, 5);
@@ -4798,7 +4801,10 @@ void GameWorld::postProcess ()
 			singleton->sampleFBO("combineWithWaterTargFBO",0);
 			singleton->sampleFBO("resultFBO", 2, activeFBO);
 			singleton->sampleFBO("swapFBOBLin0", 3);
-			singleton->sampleFBO("geomBaseTargFBO", 4);
+			
+			singleton->sampleFBO("limbFBO", 4);//, -1, 4, 7);
+			//singleton->sampleFBO("geomBaseTargFBO", 4);
+			
 			singleton->setShaderTexture3D(7,singleton->volIdMat);
 			singleton->sampleFBO("noiseFBOLinear", 8);
 			singleton->sampleFBO("debugTargFBO", 9);
@@ -4848,7 +4854,10 @@ void GameWorld::postProcess ()
 			singleton->unsampleFBO("debugTargFBO", 9);
 			singleton->unsampleFBO("noiseFBOLinear", 8);
 			singleton->setShaderTexture3D(7,0);
-			singleton->unsampleFBO("geomTargFBO", 4);
+			
+			singleton->unsampleFBO("limbFBO", 4);//, -1, 4, 7);
+			//singleton->unsampleFBO("geomBaseTargFBO", 4);
+			
 			singleton->unsampleFBO("swapFBOBLin0", 3);
 			singleton->unsampleFBO("resultFBO", 2, activeFBO);
 			singleton->unsampleFBO("combineWithWaterTargFBO",0);
@@ -4890,9 +4899,9 @@ void GameWorld::postProcess ()
 			
 			
 			
-			
+			//solidBaseTargFBO
 			//"solidTargFBO" //"polyFBO"
-			singleton->drawFBO("solidBaseTargFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
+			singleton->drawFBO("limbFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
 			
 			// leave this here to catch errors
 			//cout << "Getting Errors: \n";

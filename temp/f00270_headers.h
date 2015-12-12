@@ -542,12 +542,12 @@ public:
   void refreshIncludeMap ();
   void doShaderRefresh (bool doBake);
   void setWH (int w, int h);
-  void sampleFBODirect (FBOSet * fbos, int offset = 0);
-  void unsampleFBODirect (FBOSet * fbos, int offset = 0);
+  void sampleFBODirect (FBOSet * fbos, int offset = 0, int _minOff = 0, int _maxOff = -1 /* read max */);
+  void unsampleFBODirect (FBOSet * fbos, int offset = 0, int _minOff = 0, int _maxOff = -1 /* read max */);
   void bindFBODirect (FBOSet * fbos, int doClear = 1);
   FBOSet * getFBOByName (string & fboName);
-  void sampleFBO (string fboName, int offset = 0, int swapFlag = -1);
-  void unsampleFBO (string fboName, int offset = 0, int swapFlag = -1);
+  void sampleFBO (string fboName, int offset = 0, int swapFlag = -1, int minOff = 0, int maxOff = -1);
+  void unsampleFBO (string fboName, int offset = 0, int swapFlag = -1, int minOff = 0, int maxOff = -1);
   FBOSet * getFBOSet (string fboName);
   FBOWrapper * getFBOWrapper (string fboName, int offset);
   void copyFBO (string src, string dest, int num = 0);
@@ -1852,7 +1852,7 @@ public:
   btRigidBody * lastBodyPick;
   GamePhysics ();
   void init (Singleton * _singleton);
-  void pickBody (FIVector4 * mouseDownOPD);
+  void pickBody (FIVector4 * mouseMoveOPD);
   void collectDebris ();
   void beginDrop ();
   void remBoxFromObj (BaseObjType _uid);

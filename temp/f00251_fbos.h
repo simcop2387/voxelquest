@@ -242,7 +242,7 @@ public:
 
 		if (isFloat) {
 
-
+			
 			if ( (pixelsFloat == NULL) ) {
 				getPixels();
 			}
@@ -259,7 +259,7 @@ public:
 
 		}
 		else {
-			doTrace("Attempted to call getPixelAtF on char buffer.");
+			doTraceND("Attempted to call getPixelAtF on char buffer.");
 		}
 
 	}

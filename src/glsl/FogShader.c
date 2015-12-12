@@ -394,9 +394,9 @@ void main() {
     vec4 tex3 = texture2D(Texture3, TexCoord0.xy);
     
     
-    vec4 tex4 = texture2D(Texture4, TexCoord0.xy);    
+    //vec4 tex4 = texture2D(Texture4, TexCoord0.xy);    
     //vec4 tex5 = texture2D(Texture5, TexCoord0.xy);
-    vec4 tex6 = texture2D(Texture6, TexCoord0.xy);
+    vec4 tex4 = texture2D(Texture4, TexCoord0.xy);
     
     vec4 tex9 = texture2D(Texture9, TexCoord0.xy);
     vec4 tex10 = texture2D(Texture10, TexCoord0.xy);    
@@ -407,9 +407,9 @@ void main() {
     
     
     vec4 worldPosition = tex0;
-    if (tex4.w > tex0.w) {
-        worldPosition = tex4;
-    }
+    // if (tex4.w > tex0.w) {
+    //     worldPosition = tex4;
+    // }
     
     // if (tex9.w > tex0.w) {
     //     worldPosition = tex9;
@@ -594,20 +594,20 @@ void main() {
     bool isActObj = false;
     bool isSelLimb = false;
     
-    if (tex6.z == selLimbInd) {
+    if (tex4.z == selLimbInd) {
         isSelLimb = true;
     }
     
-    if (tex6.w == selObjInd) {
+    if (tex4.w == selObjInd) {
         isSelObj = true;
     }
-    if (tex6.w == actObjInd) {
+    if (tex4.w == actObjInd) {
         isActObj = true;
     }
     for (i = 0; i < 4; i++) {
         newTC = TexCoord0.xy + dirVecs[i].xy*1.0/bufferDim;
-        samp = texture2D(Texture6, newTC );
-        if (samp.w != tex6.w) {
+        samp = texture2D(Texture4, newTC );
+        if (samp.w != tex4.w) {
             isOutline = true;
         }
         if (samp.w == selObjInd) {
@@ -640,14 +640,13 @@ void main() {
     if (isSelLimb) {
         finalCol = vec3(1.0,1.0,0.0);
     }
-    else {}
     
     if (isOutline) {
         
         
         
         
-        if (isSelObj||isActObj) {
+        if (isSelObj) { //&&isActObj
             if (isSelObj) {
                 
                 
@@ -830,6 +829,11 @@ void main() {
     // }
     
     
+    // if (tex4.w > 0.0) {
+    //     finalCol = vec3(1.0,0.0,0.0);
+    // }
+    
+    //finalCol = vec3(tex4.w/1000.0);
 
     gl_FragData[0] = vec4(finalCol,1.0);
 

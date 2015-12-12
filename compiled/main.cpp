@@ -1191,15 +1191,15 @@ PFNWGLGETSWAPINTERVALEXTPROC pwglGetSwapIntervalEXT = 0;
 
 
 const static GLenum bufNames[] = {
-			GL_COLOR_ATTACHMENT0_EXT,
-			GL_COLOR_ATTACHMENT1_EXT,
-			GL_COLOR_ATTACHMENT2_EXT,
-			GL_COLOR_ATTACHMENT3_EXT,
-			GL_COLOR_ATTACHMENT4_EXT,
-			GL_COLOR_ATTACHMENT5_EXT,
-			GL_COLOR_ATTACHMENT6_EXT,
-			GL_COLOR_ATTACHMENT7_EXT
-		};
+	GL_COLOR_ATTACHMENT0_EXT,
+	GL_COLOR_ATTACHMENT1_EXT,
+	GL_COLOR_ATTACHMENT2_EXT,
+	GL_COLOR_ATTACHMENT3_EXT,
+	GL_COLOR_ATTACHMENT4_EXT,
+	GL_COLOR_ATTACHMENT5_EXT,
+	GL_COLOR_ATTACHMENT6_EXT,
+	GL_COLOR_ATTACHMENT7_EXT
+};
 
 
 
@@ -20646,7 +20646,7 @@ public:
 
 		if (isFloat) {
 
-
+			
 			if ( (pixelsFloat == NULL) ) {
 				getPixels();
 			}
@@ -20663,7 +20663,7 @@ public:
 
 		}
 		else {
-			doTrace("Attempted to call getPixelAtF on char buffer.");
+			doTraceND("Attempted to call getPixelAtF on char buffer.");
 		}
 
 	}
@@ -22011,12 +22011,12 @@ public:
   void refreshIncludeMap ();
   void doShaderRefresh (bool doBake);
   void setWH (int w, int h);
-  void sampleFBODirect (FBOSet * fbos, int offset = 0);
-  void unsampleFBODirect (FBOSet * fbos, int offset = 0);
+  void sampleFBODirect (FBOSet * fbos, int offset = 0, int _minOff = 0, int _maxOff = -1 /* read max */);
+  void unsampleFBODirect (FBOSet * fbos, int offset = 0, int _minOff = 0, int _maxOff = -1 /* read max */);
   void bindFBODirect (FBOSet * fbos, int doClear = 1);
   FBOSet * getFBOByName (string & fboName);
-  void sampleFBO (string fboName, int offset = 0, int swapFlag = -1);
-  void unsampleFBO (string fboName, int offset = 0, int swapFlag = -1);
+  void sampleFBO (string fboName, int offset = 0, int swapFlag = -1, int minOff = 0, int maxOff = -1);
+  void unsampleFBO (string fboName, int offset = 0, int swapFlag = -1, int minOff = 0, int maxOff = -1);
   FBOSet * getFBOSet (string fboName);
   FBOWrapper * getFBOWrapper (string fboName, int offset);
   void copyFBO (string src, string dest, int num = 0);
@@ -23321,7 +23321,7 @@ public:
   btRigidBody * lastBodyPick;
   GamePhysics ();
   void init (Singleton * _singleton);
-  void pickBody (FIVector4 * mouseDownOPD);
+  void pickBody (FIVector4 * mouseMoveOPD);
   void collectDebris ();
   void beginDrop ();
   void remBoxFromObj (BaseObjType _uid);
@@ -24671,10 +24671,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		// fboMap["allDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
 		
 		
-		fboMap["prmTargFBO"].init(6, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
+		fboMap["prmTargFBO"].init(8, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
 		fboMap["prmDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
 		
-		fboMap["terTargFBO"].init(6, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
+		fboMap["terTargFBO"].init(8, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
+		fboMap["limbFBO"].init(1, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
 		fboMap["terDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
 		
 		for (i = 0; i <= NUM_POLY_STRINGS; i++) {
@@ -24684,7 +24685,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		if (USE_SPHERE_MAP) {
-			fboMap["sphTargFBO"].init(6, bufferRenderDim.getIX()*SPHEREMAP_SCALE_FACTOR, bufferRenderDim.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth);
+			fboMap["sphTargFBO"].init(8, bufferRenderDim.getIX()*SPHEREMAP_SCALE_FACTOR, bufferRenderDim.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth);
 			fboMap["sphDepthFBO"].init(numMaps, bufferDimTarg.getIX()*SPHEREMAP_SCALE_FACTOR, bufferDimTarg.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth, GL_LINEAR, GL_REPEAT);
 		}
 		
@@ -26964,25 +26965,35 @@ void Singleton::setWH (int w, int h)
 		baseW = w;
 		baseH = h;
 	}
-void Singleton::sampleFBODirect (FBOSet * fbos, int offset)
-        {
+void Singleton::sampleFBODirect (FBOSet * fbos, int offset, int _minOff, int _maxOff)
+          {
 		int i;
-		if (shadersAreLoaded)
-		{
-			for (i = 0; i < fbos->numBufs; i++)
-			{
-				setShaderTexture(i + offset, fbos->fbos[i].color_tex);
+		
+		int minOff = _minOff;
+		int maxOff = _maxOff;
+		if (maxOff == -1) {
+			maxOff = fbos->numBufs;
+		}
+		
+		if (shadersAreLoaded) {
+			for (i = minOff; i < maxOff; i++) {
+				setShaderTexture(i - minOff + offset, fbos->fbos[i].color_tex);
 			}
 		}
 	}
-void Singleton::unsampleFBODirect (FBOSet * fbos, int offset)
-        {
+void Singleton::unsampleFBODirect (FBOSet * fbos, int offset, int _minOff, int _maxOff)
+          {
 		int i;
-		if (shadersAreLoaded)
-		{
-			for (i = fbos->numBufs - 1; i >= 0; i--)
-			{
-				setShaderTexture(i + offset, 0);
+		
+		int minOff = _minOff;
+		int maxOff = _maxOff;
+		if (maxOff == -1) {
+			maxOff = fbos->numBufs;
+		}
+		
+		if (shadersAreLoaded) {
+			for (i = maxOff - 1; i >= minOff; i--) {
+				setShaderTexture(i - minOff + offset, 0);
 			}
 		}
 	}
@@ -27004,8 +27015,8 @@ FBOSet * Singleton::getFBOByName (string & fboName)
 		
 		return &(fboMap[fboName]);
 	}
-void Singleton::sampleFBO (string fboName, int offset, int swapFlag)
-        {
+void Singleton::sampleFBO (string fboName, int offset, int swapFlag, int minOff, int maxOff)
+          {
 		FBOSet *fbos;
 
 		if (swapFlag == -1)
@@ -27028,7 +27039,7 @@ void Singleton::sampleFBO (string fboName, int offset, int swapFlag)
 
 		if (fbos)
 		{
-			sampleFBODirect(fbos, offset);
+			sampleFBODirect(fbos, offset, minOff, maxOff);
 		}
 		else
 		{
@@ -27037,8 +27048,8 @@ void Singleton::sampleFBO (string fboName, int offset, int swapFlag)
 
 
 	}
-void Singleton::unsampleFBO (string fboName, int offset, int swapFlag)
-        {
+void Singleton::unsampleFBO (string fboName, int offset, int swapFlag, int minOff, int maxOff)
+                {
 
 		FBOSet *fbos;
 
@@ -27062,7 +27073,7 @@ void Singleton::unsampleFBO (string fboName, int offset, int swapFlag)
 
 		if (fbos)
 		{
-			unsampleFBODirect(fbos, offset);
+			unsampleFBODirect(fbos, offset, minOff, maxOff);
 		}
 		else
 		{
@@ -28134,7 +28145,7 @@ void Singleton::makeJump (int actorId, int isUp)
 			return;
 		}
 		
-		float JUMP_AMOUNT = 400.0f*ge->getMarkerMass();
+		float JUMP_AMOUNT = 600.0f*ge->getMarkerMass();
 		
 		
 		if (isUp == 1) {
@@ -28842,38 +28853,45 @@ void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUp
 		
 		float xv = _xv;
 		float yv = _yv;
-
-
-		if (wsBufferInvalid || forceUpdate || forceGetPD)
-		{
-			
-			//cout << "getPixData\n";
-			
-			if (isObj) {
-				getFBOWrapper("geomBaseTargFBO", 2)->getPixels();
-			}
-			else {
-				getFBOWrapper("solidTargFBO", 0)->getPixels();
-			}
-			
-			//cout << "getBuf\n";
-			
-		}
-
 		
-		
-		newX = clamp(xv, 0, bufferDim.getIX() - 1);
-		newY = clamp(yv, 0, bufferDim.getIY() - 1);
-
+		float bufx;
+		float bufy;
 
 		if (isObj) {
-			fbow = getFBOWrapper("geomBaseTargFBO", 2);
-			fbow->getPixelAtF(toVector, newX, (bufferDim.getIY() - 1) - newY);
+			//fbow = getFBOWrapper("geomBaseTargFBO",2);
+			fbow = getFBOWrapper("limbFBO", 0);
 		}
 		else {
 			fbow = getFBOWrapper("solidTargFBO", 0);
-			fbow->getPixelAtF(toVector, newX, (bufferDim.getIY() - 1) - newY);
 		}
+		
+		float srcW = fbow->width;
+		float srcH = fbow->height;
+		
+		bufx = xv/bufferDim.getFX();
+		bufy = 1.0f-yv/bufferDim.getFY();
+
+		if (wsBufferInvalid || forceUpdate || forceGetPD) {
+			
+			// glFlush();
+			// glFinish();
+			
+			fbow->getPixels();
+			
+			// glFlush();
+			// glFinish();
+			
+		}
+
+		// newX = clamp(xv, 0, bufx - 1);
+		// newY = clamp(yv, 0, bufy - 1);
+
+		fbow->getPixelAtF(
+			toVector, 
+			bufx*srcW,
+			bufy*srcH
+		);
+			//newX, ((bufy - 1) - newY));
 
 		wsBufferInvalid = false;
 		forceGetPD = false;
@@ -52801,7 +52819,7 @@ void GamePhysics::init (Singleton * _singleton)
 		example->initPhysics();
 		
 	}
-void GamePhysics::pickBody (FIVector4 * mouseDownOPD)
+void GamePhysics::pickBody (FIVector4 * mouseMoveOPD)
                                                { //btVector3 posWS1, btVector3 posWS2) {
 		
 		if (!(singleton->editPose)) {
@@ -52809,8 +52827,8 @@ void GamePhysics::pickBody (FIVector4 * mouseDownOPD)
 			return;
 		}
 		
-		int bodyUID = mouseDownOPD->getFW();
-		int limbUID = mouseDownOPD->getFZ();
+		int bodyUID = mouseMoveOPD->getFW();
+		int limbUID = mouseMoveOPD->getFZ();
 		BaseObj* ge;
 		
 		if (
@@ -53094,17 +53112,17 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 				
 				curOrg = singleton->gameOrgs[ge->orgId];
 				if (curOrg->orgType == E_ORGTYPE_HUMAN) {
-					if (
-						(bodInd == 0)
-						|| (
-							(ge->bodies[bodInd].boneId == E_BONE_C_BASE) &&
-							(!(ge->bodies[bodInd].isBall))	
-						)
-					) {
-						ge->bodies[bodInd].isVisible = false;
-					}
+					// if (
+					// 	(bodInd == 0)
+					// 	|| (
+					// 		(ge->bodies[bodInd].boneId == E_BONE_C_BASE) &&
+					// 		(!(ge->bodies[bodInd].isBall))	
+					// 	)
+					// ) {
+					// 	ge->bodies[bodInd].isVisible = false;
+					// }
 					
-					//ge->bodies[bodInd].isVisible = false;
+					ge->bodies[bodInd].isVisible = false;
 				}
 				
 				if (curOrg->orgType == E_ORGTYPE_WEAPON) {
@@ -54946,17 +54964,17 @@ void GameWorld::updateLimbTBOData ()
 						len0 = curOrgNode->orgVecs[E_OV_TBNRAD0].getBTV();
 						len1 = curOrgNode->orgVecs[E_OV_TBNRAD1].getBTV();
 						
-						
+						//cenVec
 						
 						singleton->limbTBOData[dataInd] = centerPoint.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = centerPoint.getY(); dataInd++;
 						singleton->limbTBOData[dataInd] = centerPoint.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+						singleton->limbTBOData[dataInd] = ge->uid; dataInd++;
 						
 						singleton->limbTBOData[dataInd] = tanVec.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = tanVec.getY(); dataInd++;
 						singleton->limbTBOData[dataInd] = tanVec.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+						singleton->limbTBOData[dataInd] = curBody->body->limbUID; dataInd++;
 						
 						singleton->limbTBOData[dataInd] = bitVec.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = bitVec.getY(); dataInd++;
@@ -55101,7 +55119,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		singleton->sampleFBO("geomTargFBO",5);
 		
 		if (doPrim) {
-			singleton->sampleFBO("terTargFBO",7);
+			singleton->sampleFBO("terTargFBO",7, -1, 0, 6);
 		}
 		
 		singleton->setShaderTexture3D(13, curVW->volId);
@@ -55249,7 +55267,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		singleton->setShaderTexture3D(13, 0);
 		
 		if (doPrim) {
-			singleton->unsampleFBO("terTargFBO",7);
+			singleton->unsampleFBO("terTargFBO",7, -1, 0, 6);
 		}
 		
 		// if (USE_SPHERE_MAP) {
@@ -55272,6 +55290,9 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 			return;
 		}
 		
+		if (doTer) {
+			singleton->copyFBO("terTargFBO", "limbFBO", 6);
+		}
 		
 		
 		singleton->copyFBO2(curTargFBO[ind],curDepthFBO[ind], 4, 5);
@@ -58655,7 +58676,10 @@ void GameWorld::postProcess ()
 			singleton->sampleFBO("combineWithWaterTargFBO",0);
 			singleton->sampleFBO("resultFBO", 2, activeFBO);
 			singleton->sampleFBO("swapFBOBLin0", 3);
-			singleton->sampleFBO("geomBaseTargFBO", 4);
+			
+			singleton->sampleFBO("limbFBO", 4);//, -1, 4, 7);
+			//singleton->sampleFBO("geomBaseTargFBO", 4);
+			
 			singleton->setShaderTexture3D(7,singleton->volIdMat);
 			singleton->sampleFBO("noiseFBOLinear", 8);
 			singleton->sampleFBO("debugTargFBO", 9);
@@ -58705,7 +58729,10 @@ void GameWorld::postProcess ()
 			singleton->unsampleFBO("debugTargFBO", 9);
 			singleton->unsampleFBO("noiseFBOLinear", 8);
 			singleton->setShaderTexture3D(7,0);
-			singleton->unsampleFBO("geomTargFBO", 4);
+			
+			singleton->unsampleFBO("limbFBO", 4);//, -1, 4, 7);
+			//singleton->unsampleFBO("geomBaseTargFBO", 4);
+			
 			singleton->unsampleFBO("swapFBOBLin0", 3);
 			singleton->unsampleFBO("resultFBO", 2, activeFBO);
 			singleton->unsampleFBO("combineWithWaterTargFBO",0);
@@ -58747,9 +58774,9 @@ void GameWorld::postProcess ()
 			
 			
 			
-			
+			//solidBaseTargFBO
 			//"solidTargFBO" //"polyFBO"
-			singleton->drawFBO("solidBaseTargFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
+			singleton->drawFBO("limbFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
 			
 			// leave this here to catch errors
 			//cout << "Getting Errors: \n";

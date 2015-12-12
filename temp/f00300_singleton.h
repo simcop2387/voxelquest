@@ -1076,10 +1076,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		// fboMap["allDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
 		
 		
-		fboMap["prmTargFBO"].init(6, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
+		fboMap["prmTargFBO"].init(8, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
 		fboMap["prmDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
 		
-		fboMap["terTargFBO"].init(6, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
+		fboMap["terTargFBO"].init(8, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
+		fboMap["limbFBO"].init(1, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
 		fboMap["terDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
 		
 		for (i = 0; i <= NUM_POLY_STRINGS; i++) {
@@ -1089,7 +1090,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		if (USE_SPHERE_MAP) {
-			fboMap["sphTargFBO"].init(6, bufferRenderDim.getIX()*SPHEREMAP_SCALE_FACTOR, bufferRenderDim.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth);
+			fboMap["sphTargFBO"].init(8, bufferRenderDim.getIX()*SPHEREMAP_SCALE_FACTOR, bufferRenderDim.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth);
 			fboMap["sphDepthFBO"].init(numMaps, bufferDimTarg.getIX()*SPHEREMAP_SCALE_FACTOR, bufferDimTarg.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth, GL_LINEAR, GL_REPEAT);
 		}
 		
@@ -3369,25 +3370,35 @@ void Singleton::setWH (int w, int h)
 		baseW = w;
 		baseH = h;
 	}
-void Singleton::sampleFBODirect (FBOSet * fbos, int offset)
-        {
+void Singleton::sampleFBODirect (FBOSet * fbos, int offset, int _minOff, int _maxOff)
+          {
 		int i;
-		if (shadersAreLoaded)
-		{
-			for (i = 0; i < fbos->numBufs; i++)
-			{
-				setShaderTexture(i + offset, fbos->fbos[i].color_tex);
+		
+		int minOff = _minOff;
+		int maxOff = _maxOff;
+		if (maxOff == -1) {
+			maxOff = fbos->numBufs;
+		}
+		
+		if (shadersAreLoaded) {
+			for (i = minOff; i < maxOff; i++) {
+				setShaderTexture(i - minOff + offset, fbos->fbos[i].color_tex);
 			}
 		}
 	}
-void Singleton::unsampleFBODirect (FBOSet * fbos, int offset)
-        {
+void Singleton::unsampleFBODirect (FBOSet * fbos, int offset, int _minOff, int _maxOff)
+          {
 		int i;
-		if (shadersAreLoaded)
-		{
-			for (i = fbos->numBufs - 1; i >= 0; i--)
-			{
-				setShaderTexture(i + offset, 0);
+		
+		int minOff = _minOff;
+		int maxOff = _maxOff;
+		if (maxOff == -1) {
+			maxOff = fbos->numBufs;
+		}
+		
+		if (shadersAreLoaded) {
+			for (i = maxOff - 1; i >= minOff; i--) {
+				setShaderTexture(i - minOff + offset, 0);
 			}
 		}
 	}
@@ -3409,8 +3420,8 @@ FBOSet * Singleton::getFBOByName (string & fboName)
 		
 		return &(fboMap[fboName]);
 	}
-void Singleton::sampleFBO (string fboName, int offset, int swapFlag)
-        {
+void Singleton::sampleFBO (string fboName, int offset, int swapFlag, int minOff, int maxOff)
+          {
 		FBOSet *fbos;
 
 		if (swapFlag == -1)
@@ -3433,7 +3444,7 @@ void Singleton::sampleFBO (string fboName, int offset, int swapFlag)
 
 		if (fbos)
 		{
-			sampleFBODirect(fbos, offset);
+			sampleFBODirect(fbos, offset, minOff, maxOff);
 		}
 		else
 		{
@@ -3442,8 +3453,8 @@ void Singleton::sampleFBO (string fboName, int offset, int swapFlag)
 
 
 	}
-void Singleton::unsampleFBO (string fboName, int offset, int swapFlag)
-        {
+void Singleton::unsampleFBO (string fboName, int offset, int swapFlag, int minOff, int maxOff)
+                {
 
 		FBOSet *fbos;
 
@@ -3467,7 +3478,7 @@ void Singleton::unsampleFBO (string fboName, int offset, int swapFlag)
 
 		if (fbos)
 		{
-			unsampleFBODirect(fbos, offset);
+			unsampleFBODirect(fbos, offset, minOff, maxOff);
 		}
 		else
 		{
@@ -4539,7 +4550,7 @@ void Singleton::makeJump (int actorId, int isUp)
 			return;
 		}
 		
-		float JUMP_AMOUNT = 400.0f*ge->getMarkerMass();
+		float JUMP_AMOUNT = 600.0f*ge->getMarkerMass();
 		
 		
 		if (isUp == 1) {
@@ -5247,38 +5258,45 @@ void Singleton::getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUp
 		
 		float xv = _xv;
 		float yv = _yv;
-
-
-		if (wsBufferInvalid || forceUpdate || forceGetPD)
-		{
-			
-			//cout << "getPixData\n";
-			
-			if (isObj) {
-				getFBOWrapper("geomBaseTargFBO", 2)->getPixels();
-			}
-			else {
-				getFBOWrapper("solidTargFBO", 0)->getPixels();
-			}
-			
-			//cout << "getBuf\n";
-			
-		}
-
 		
-		
-		newX = clamp(xv, 0, bufferDim.getIX() - 1);
-		newY = clamp(yv, 0, bufferDim.getIY() - 1);
-
+		float bufx;
+		float bufy;
 
 		if (isObj) {
-			fbow = getFBOWrapper("geomBaseTargFBO", 2);
-			fbow->getPixelAtF(toVector, newX, (bufferDim.getIY() - 1) - newY);
+			//fbow = getFBOWrapper("geomBaseTargFBO",2);
+			fbow = getFBOWrapper("limbFBO", 0);
 		}
 		else {
 			fbow = getFBOWrapper("solidTargFBO", 0);
-			fbow->getPixelAtF(toVector, newX, (bufferDim.getIY() - 1) - newY);
 		}
+		
+		float srcW = fbow->width;
+		float srcH = fbow->height;
+		
+		bufx = xv/bufferDim.getFX();
+		bufy = 1.0f-yv/bufferDim.getFY();
+
+		if (wsBufferInvalid || forceUpdate || forceGetPD) {
+			
+			// glFlush();
+			// glFinish();
+			
+			fbow->getPixels();
+			
+			// glFlush();
+			// glFinish();
+			
+		}
+
+		// newX = clamp(xv, 0, bufx - 1);
+		// newY = clamp(yv, 0, bufy - 1);
+
+		fbow->getPixelAtF(
+			toVector, 
+			bufx*srcW,
+			bufy*srcH
+		);
+			//newX, ((bufy - 1) - newY));
 
 		wsBufferInvalid = false;
 		forceGetPD = false;

@@ -1690,10 +1690,11 @@ public:
 		// fboMap["allDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
 		
 		
-		fboMap["prmTargFBO"].init(6, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
+		fboMap["prmTargFBO"].init(8, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
 		fboMap["prmDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
 		
-		fboMap["terTargFBO"].init(6, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
+		fboMap["terTargFBO"].init(8, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
+		fboMap["limbFBO"].init(1, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
 		fboMap["terDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
 		
 		for (i = 0; i <= NUM_POLY_STRINGS; i++) {
@@ -1703,7 +1704,7 @@ public:
 		
 		
 		if (USE_SPHERE_MAP) {
-			fboMap["sphTargFBO"].init(6, bufferRenderDim.getIX()*SPHEREMAP_SCALE_FACTOR, bufferRenderDim.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth);
+			fboMap["sphTargFBO"].init(8, bufferRenderDim.getIX()*SPHEREMAP_SCALE_FACTOR, bufferRenderDim.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth);
 			fboMap["sphDepthFBO"].init(numMaps, bufferDimTarg.getIX()*SPHEREMAP_SCALE_FACTOR, bufferDimTarg.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth, GL_LINEAR, GL_REPEAT);
 		}
 		
@@ -4162,26 +4163,46 @@ DISPATCH_EVENT_END:
 		baseH = h;
 	}
 
-	void sampleFBODirect(FBOSet *fbos, int offset = 0)
-	{
+	void sampleFBODirect(
+		FBOSet *fbos,
+		int offset = 0, /* write offset */
+		int _minOff = 0, /* read min */
+		int _maxOff = -1 /* read max */
+		
+	) {
 		int i;
-		if (shadersAreLoaded)
-		{
-			for (i = 0; i < fbos->numBufs; i++)
-			{
-				setShaderTexture(i + offset, fbos->fbos[i].color_tex);
+		
+		int minOff = _minOff;
+		int maxOff = _maxOff;
+		if (maxOff == -1) {
+			maxOff = fbos->numBufs;
+		}
+		
+		if (shadersAreLoaded) {
+			for (i = minOff; i < maxOff; i++) {
+				setShaderTexture(i - minOff + offset, fbos->fbos[i].color_tex);
 			}
 		}
 	}
 
-	void unsampleFBODirect(FBOSet *fbos, int offset = 0)
-	{
+	void unsampleFBODirect(
+		FBOSet *fbos,
+		int offset = 0, /* write offset */
+		int _minOff = 0, /* read min */
+		int _maxOff = -1 /* read max */ 
+		
+	) {
 		int i;
-		if (shadersAreLoaded)
-		{
-			for (i = fbos->numBufs - 1; i >= 0; i--)
-			{
-				setShaderTexture(i + offset, 0);
+		
+		int minOff = _minOff;
+		int maxOff = _maxOff;
+		if (maxOff == -1) {
+			maxOff = fbos->numBufs;
+		}
+		
+		if (shadersAreLoaded) {
+			for (i = maxOff - 1; i >= minOff; i--) {
+				setShaderTexture(i - minOff + offset, 0);
 			}
 		}
 	}
@@ -4211,8 +4232,13 @@ DISPATCH_EVENT_END:
 		return &(fboMap[fboName]);
 	}
 
-	void sampleFBO(string fboName, int offset = 0, int swapFlag = -1)
-	{
+	void sampleFBO(
+		string fboName,
+		int offset = 0,
+		int swapFlag = -1,
+		int minOff = 0,
+		int maxOff = -1
+	) {
 		FBOSet *fbos;
 
 		if (swapFlag == -1)
@@ -4235,7 +4261,7 @@ DISPATCH_EVENT_END:
 
 		if (fbos)
 		{
-			sampleFBODirect(fbos, offset);
+			sampleFBODirect(fbos, offset, minOff, maxOff);
 		}
 		else
 		{
@@ -4245,8 +4271,13 @@ DISPATCH_EVENT_END:
 
 	}
 
-	void unsampleFBO(string fboName, int offset = 0, int swapFlag = -1)
-	{
+	void unsampleFBO(
+		string fboName,
+		int offset = 0,
+		int swapFlag = -1,
+		int minOff = 0,
+		int maxOff = -1
+	)	{
 
 		FBOSet *fbos;
 
@@ -4270,7 +4301,7 @@ DISPATCH_EVENT_END:
 
 		if (fbos)
 		{
-			unsampleFBODirect(fbos, offset);
+			unsampleFBODirect(fbos, offset, minOff, maxOff);
 		}
 		else
 		{
@@ -5023,8 +5054,8 @@ DISPATCH_EVENT_END:
 				makeDirty();
 			}
 			
-			xm = dx/50.0f;
-			ym = dy/50.0f;
+			xm = dx/100.0f;
+			ym = dy/100.0f;
 			
 			if (shiftDown()) { // || altDown()
 								
@@ -5494,7 +5525,7 @@ DISPATCH_EVENT_END:
 			return;
 		}
 		
-		float JUMP_AMOUNT = 400.0f*ge->getMarkerMass();
+		float JUMP_AMOUNT = 600.0f*ge->getMarkerMass();
 		
 		
 		if (isUp == 1) {
@@ -6213,38 +6244,45 @@ DISPATCH_EVENT_END:
 		
 		float xv = _xv;
 		float yv = _yv;
-
-
-		if (wsBufferInvalid || forceUpdate || forceGetPD)
-		{
-			
-			//cout << "getPixData\n";
-			
-			if (isObj) {
-				getFBOWrapper("geomBaseTargFBO", 2)->getPixels();
-			}
-			else {
-				getFBOWrapper("solidTargFBO", 0)->getPixels();
-			}
-			
-			//cout << "getBuf\n";
-			
-		}
-
 		
-		
-		newX = clamp(xv, 0, bufferDim.getIX() - 1);
-		newY = clamp(yv, 0, bufferDim.getIY() - 1);
-
+		float bufx;
+		float bufy;
 
 		if (isObj) {
-			fbow = getFBOWrapper("geomBaseTargFBO", 2);
-			fbow->getPixelAtF(toVector, newX, (bufferDim.getIY() - 1) - newY);
+			//fbow = getFBOWrapper("geomBaseTargFBO",2);
+			fbow = getFBOWrapper("limbFBO", 0);
 		}
 		else {
 			fbow = getFBOWrapper("solidTargFBO", 0);
-			fbow->getPixelAtF(toVector, newX, (bufferDim.getIY() - 1) - newY);
 		}
+		
+		float srcW = fbow->width;
+		float srcH = fbow->height;
+		
+		bufx = xv/bufferDim.getFX();
+		bufy = 1.0f-yv/bufferDim.getFY();
+
+		if (wsBufferInvalid || forceUpdate || forceGetPD) {
+			
+			// glFlush();
+			// glFinish();
+			
+			fbow->getPixels();
+			
+			// glFlush();
+			// glFinish();
+			
+		}
+
+		// newX = clamp(xv, 0, bufx - 1);
+		// newY = clamp(yv, 0, bufy - 1);
+
+		fbow->getPixelAtF(
+			toVector, 
+			bufx*srcW,
+			bufy*srcH
+		);
+			//newX, ((bufy - 1) - newY));
 
 		wsBufferInvalid = false;
 		forceGetPD = false;

@@ -340,6 +340,7 @@ vec2 globTexWater;
 float globWoodDir;
 vec3 globWoodCoords;
 
+int globBestLimbInd;
 int globNumPrims;
 float globWaterMod;
 float globLastScenePos;
@@ -376,6 +377,8 @@ layout(location = 2) out vec4 FragColor2;
 layout(location = 3) out vec4 FragColor3;
 layout(location = 4) out vec4 FragColor4;
 layout(location = 5) out vec4 FragColor5;
+layout(location = 6) out vec4 FragColor6;
+layout(location = 7) out vec4 FragColor7;
 
 
 
@@ -2419,15 +2422,20 @@ float getLimbsPost(vec3 pos) {
 	
 	int i;
 	int primDataInd = 0;
+	int firstInd;
 	
 	vec4 closestPoint = vec4(0.0);
 	
 	float lerpVal;
+	float lerpVal2;
 	float curRad;
-	float minDis = MAX_CAM_DIS;
+	vec2 minDis = vec2(MAX_CAM_DIS,-1);
+	
+	vec3 offVec;
 	
 	for (i = 0; i < primIdListLength; i++) {
 		primDataInd = primIdList[i];
+		firstInd = primDataInd;
 		
 		cenVec = texelFetch(Texture1, primDataInd); primDataInd++;
 		tanVec = texelFetch(Texture1, primDataInd); primDataInd++;
@@ -2441,17 +2449,40 @@ float getLimbsPost(vec3 pos) {
 		
 		closestPoint = pointSegDistance(pos, seg1a, seg1b);
 		
+		offVec = normalize(pos.xyz - closestPoint.xyz);
+		
+		
+		
 		lerpVal = distance(closestPoint.xyz,seg1a)/(ln0Vec.x*2.0);
+		lerpVal2 = abs(dot(offVec,bitVec.xyz));
+		
+		lerpVal = pow(lerpVal,2.0);
+		lerpVal2 = pow(lerpVal2,2.0);
 		
 		lnVec = mix(ln0Vec,ln1Vec,lerpVal);
 		
-		curRad = lnVec.y*2.0;
+		curRad = mix(lnVec.y,lnVec.z,lerpVal2);
 		
-		minDis = min(minDis,closestPoint.w-curRad);
+		minDis = opU(
+			minDis,
+			vec2(
+				closestPoint.w-curRad,
+				float(firstInd)
+			) 
+		);
 		
 	}
 	
-	return minDis;
+	float DYN_PREC = 0.02;
+	
+	if (
+		(minDis.x <= DYN_PREC*1.5)	&&
+		(minDis.y >= 0.0)		
+	) {
+		globBestLimbInd = int(minDis.y);
+	}
+	
+	return minDis.x;
 }
 
 
@@ -3810,7 +3841,7 @@ vec3 mapLandMicro(vec3 pos, vec3 terNorm) {
 vec3 normDyn( vec3 pos )
 {
 		vec3 eps = vec3( 0.0, 0.0, 0.0 );
-		eps.x = 0.1;
+		eps.x = 0.05;
 		
 		vec3 nor = vec3(
 				mapDyn(pos+eps.xyy).x - mapDyn(pos-eps.xyy).x,
@@ -3835,7 +3866,7 @@ vec4 castDyn(
 		vec3 pos;
 		
 		
-		float DYN_PREC = 0.1;
+		float DYN_PREC = 0.02;
 		float DYN_PREC2 = 0.002;
 		
 		float stepCount;
@@ -4552,6 +4583,7 @@ void main() {
 		globTest = 0.0;
 		globTest3 = vec3(0.0);
 		globNumPrims = 0;
+		globBestLimbInd = -1;
 		primIdListLength = 0;
 		
 		globWoodDir = 0.0;
@@ -5129,7 +5161,7 @@ void main() {
 								ro,
 								rd,
 								vec2( MIN_CAM_DIS, min(landVal,MAX_CAM_DIS) ),
-								16.0
+								32.0
 						);
 						
 						dynVal = dynRes.w;
@@ -5422,7 +5454,7 @@ void main() {
 						#endif
 						#ifdef DOPRIM
 								fragRes0 = vec4(
-										shadowRes, //tempRes.z,//,////terSamp4.w + shadowRes,
+										shadowRes,
 										0.0,
 										0.15,
 										1.0
@@ -5446,14 +5478,32 @@ void main() {
 		
 		
 		
+		vec4 limbRes = vec4(0.0);
+		
+#ifdef DOTER
+		if (globBestLimbInd > -1) {
+			
+			int primDataInd = globBestLimbInd;
+			
+			vec4 cenVec = texelFetch(Texture1, primDataInd); primDataInd++;
+			vec4 tanVec = texelFetch(Texture1, primDataInd); primDataInd++;
+			// bitVec = texelFetch(Texture1, primDataInd); primDataInd++;
+			// norVec = texelFetch(Texture1, primDataInd); primDataInd++;
+			// ln0Vec = texelFetch(Texture1, primDataInd); primDataInd++;
+			// ln1Vec = texelFetch(Texture1, primDataInd); primDataInd++;
+			
+			limbRes.w = cenVec.w;
+			limbRes.z = tanVec.w;
+		}
+#endif
 		
 		
+		// cache 
+		FragColor4 = vec4(landValForCache, waterVal, dynVal, shadowRes); //terSamp4
+		FragColor5 = vec4(curTexArr[0].xy,curTexArr[1].xy); //terSamp5
 		
-		// cache
-		FragColor4 = vec4(landValForCache, waterVal, dynVal, shadowRes);
-		FragColor5 = vec4(curTexArr[0].xy,curTexArr[1].xy);
-		
-		
+		FragColor6 = limbRes;
+		FragColor7 = vec4(0.0,0.0,0.0,0.0);
 		
 		
 		
