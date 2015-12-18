@@ -547,13 +547,13 @@ void GameLogic::update ()
 			}
 			
 			
-			if (
-				singleton->doPathReport
-			) {
-				singleton->doPathReport = false;
+			// if (
+			// 	singleton->doPathReport
+			// ) {
+			// 	singleton->doPathReport = false;
 				
-				cout << "Path Count " << pathCount << "\n";
-			}
+			// 	cout << "Path Count " << pathCount << "\n";
+			// }
 			
 			
 			

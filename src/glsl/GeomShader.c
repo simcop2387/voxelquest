@@ -30,7 +30,7 @@ void main() {
     
     vec4 newPos = gl_Vertex;
     
-    //newPos = objmat * newPos; //
+    newPos = objmat * newPos; //
     
     //newPos.xyz += cameraPos + lookAtVec*100.0;
     

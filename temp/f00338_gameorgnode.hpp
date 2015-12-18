@@ -115,12 +115,12 @@ public:
 		//boneLengthScale = 1.0f;
 		
 		
-		(orgVecs[0]).setFXYZ(_tanX,_tanY,_tanZ);
-		(orgVecs[1]).setFXYZ(_bitX,_bitY,_bitZ);
-		(orgVecs[2]).setFXYZ(_norX,_norY,_norZ);
-		(orgVecs[0]).normalize();
-		(orgVecs[1]).normalize();
-		(orgVecs[2]).normalize();
+		(orgVecs[E_OV_TANGENT]).setFXYZ(_tanX,_tanY,_tanZ);
+		(orgVecs[E_OV_BITANGENT]).setFXYZ(_bitX,_bitY,_bitZ);
+		(orgVecs[E_OV_NORMAL]).setFXYZ(_norX,_norY,_norZ);
+		(orgVecs[E_OV_TANGENT]).normalize();
+		(orgVecs[E_OV_BITANGENT]).normalize();
+		(orgVecs[E_OV_NORMAL]).normalize();
 		
 	}
 	
@@ -308,7 +308,7 @@ public:
 		
 		for (i = 0; i < 3; i++) {
 			(tbnTrans[i]).setFXYZRef(&(tbnRotC[i]));
-			(tbnTrans[i]).multXYZ(orgVecs[E_OV_TBNRAD0][i]); //*tbnRadScale0[i]
+			//(tbnTrans[i]).multXYZ(orgVecs[E_OV_TBNRAD0][i]); //*tbnRadScale0[i]
 			(tbnTrans[i]).addXYZRef(&(orgTrans[1]));
 		}
 		

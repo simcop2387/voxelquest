@@ -302,7 +302,7 @@ public:
 	uint naUintData[8];
 	int naIntData[8];
 	float naFloatData[8];
-	
+	float conVals[E_CONST_LENGTH];
 	
 	float lastMouseOrigX;
 	float lastMouseOrigY;
@@ -457,7 +457,6 @@ public:
 	
 	std::vector<GameActor*> gameActors;
 	std::vector<GameOrg*> gameOrgs;
-	
 	std::vector<GameOrg*> gamePoses;
 	
 	std::vector<ExplodeStruct> explodeStack;
@@ -561,6 +560,7 @@ public:
 	
 	JSONValue *rootObjJS;
 	JSONValue *guiRootJS;
+	JSONValue *constRootJS;
 
 	// #ifdef USE_POCO
 	// 	WebSocketServer *myWS;
@@ -804,6 +804,7 @@ public:
 		
 		rootObjJS = NULL;
 		guiRootJS = NULL;
+		constRootJS = NULL;
 		rbStack = NULL;
 		rbHeightStack = NULL;
 
@@ -1853,7 +1854,7 @@ public:
 		for (i = 0; i < E_PK_LENGTH; i++) {
 			gamePoses.push_back(new GameOrg());
 			gamePoses.back()->init(this,-1,E_ORGTYPE_HUMAN);
-			gamePoses.back()->loadFromFile(poseStrings[i]);
+			gamePoses.back()->loadFromFile(poseStrings[i], false);
 			transformOrg(gamePoses.back());
 		}
 		
@@ -3345,6 +3346,8 @@ PERFORM_DRAG_END:
 			}
 			else if (comp->uid.compare("#materialPicker") == 0) {
 				if (selectedNode != NULL) {
+					cout << "yqay" << comp->index << " " << boneStrings[selectedNode->nodeName] << "\n";
+					
 					selectedNode->orgVecs[E_OV_MATPARAMS].setFX(comp->index);
 					tmpNode = getMirroredNode(selectedNode);
 					if (tmpNode != NULL) {
@@ -3403,7 +3406,7 @@ PERFORM_DRAG_END:
 			
 		}
 		else if (comp->uid.compare("$options.graphics.fov") == 0) {
-			FOV = mixf(25.0f,120.0f,curValue);
+			FOV = mixf(5.0f,120.0f,curValue);
 			focalLength = 1.0f / tan(FOV / 2.0f);
 			
 		}
@@ -4072,6 +4075,8 @@ DISPATCH_EVENT_END:
 
 	void doShaderRefresh(bool doBake)
 	{
+
+		loadConstants();
 
 		LAST_COMPILE_ERROR = false;
 
@@ -5014,7 +5019,7 @@ DISPATCH_EVENT_END:
 		
 	}
 
-
+	
 
 	void applyNodeChanges(GameOrgNode* _curNode, float dx, float dy) {
 		
@@ -5054,8 +5059,8 @@ DISPATCH_EVENT_END:
 				makeDirty();
 			}
 			
-			xm = dx/50.0f;
-			ym = dy/50.0f;
+			xm = dx/100.0f;
+			ym = dy/100.0f;
 			
 			if (shiftDown()) { // || altDown()
 								
@@ -5525,11 +5530,15 @@ DISPATCH_EVENT_END:
 			return;
 		}
 		
-		float JUMP_AMOUNT = 600.0f*ge->getMarkerMass();
+		if (ge->isJumping) {
+			return;
+		}
+		
+		float jumpAmount = conVals[E_CONST_JUMP_AMOUNT]*ge->getMarkerMass();
 		
 		
 		if (isUp == 1) {
-			if (ge->bodies[0].inWater) {
+			if (ge->bodies[E_BDG_CENTER].inWater) {
 				
 				
 				if (
@@ -5543,7 +5552,7 @@ DISPATCH_EVENT_END:
 					
 					// at water surface
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true, 0);
+					ge->applyImpulse(btVector3(0.0f,0.0f,jumpAmount), false, 0);
 					
 					
 					
@@ -5553,7 +5562,7 @@ DISPATCH_EVENT_END:
 					// underwater
 					
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true, 0);
+					ge->applyImpulse(btVector3(0.0f,0.0f,jumpAmount), false, 0);
 					
 					playSoundEnt(
 						"bubble0",
@@ -5574,7 +5583,7 @@ DISPATCH_EVENT_END:
 				else {
 					
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true, 0);
+					ge->applyImpulse(btVector3(0.0f,0.0f,jumpAmount), false, 0);
 					ge->zeroZ = true;
 					
 					playSoundEnt(
@@ -5589,8 +5598,8 @@ DISPATCH_EVENT_END:
 			}
 		}
 		else {
-			if (ge->bodies[0].inWater) {
-				ge->applyImpulse(btVector3(0.0f,0.0f,-JUMP_AMOUNT), true, 0);
+			if (ge->bodies[E_BDG_CENTER].inWater) {
+				ge->applyImpulse(btVector3(0.0f,0.0f,-jumpAmount), false, 0);
 				
 				playSoundEnt(
 					"bubble0",
@@ -5617,6 +5626,36 @@ DISPATCH_EVENT_END:
 	}
 	
 	
+	void changePose(int amount) {
+		
+		GameOrg* testHuman = getCurOrg();
+		
+		currentPose += amount;
+		
+		if (currentPose == E_PK_LENGTH) {
+			currentPose = E_PK_T_POSE;
+		}
+		if (currentPose < 0) {
+			currentPose = E_PK_LENGTH-1;
+		}
+		
+		cout << "Current Pose: " << poseStrings[currentPose] << "\n";
+		
+		
+		
+		if (testHuman != NULL) {
+			testHuman->targetPose = currentPose;
+			
+			if (editPose) {
+				loadCurrentPose();
+			}
+			
+			//testHuman->setToPose(gamePoses[currentPose]);
+			//transformOrg(testHuman);
+			//currentActor->wakeAll();
+		}
+	}
+	
 	void saveCurrentPose() {
 		GameOrg* testHuman = getCurOrg();
 		
@@ -5624,25 +5663,54 @@ DISPATCH_EVENT_END:
 			
 			if (testHuman != NULL) {
 				testHuman->saveToFile(poseStrings[currentPose]);
-				gamePoses[currentPose]->loadFromFile(poseStrings[currentPose]);
+				gamePoses[currentPose]->loadFromFile(poseStrings[currentPose], false);
 				transformOrg(gamePoses[currentPose]);
 				
 				cout << "Saved Pose " << poseStrings[currentPose] << "\n";
 				
 			}
-			
-			
 		}
 	}
+	
+	
+	
+	void loadNonPoseData(int currentNPD) {
+		GameOrg* testHuman = getCurOrg();
+		
+		int i;
+		
+		if (editPose) {
+			if (testHuman != NULL) {
+				
+				for (i = 0; i < E_PK_LENGTH; i++) {
+					//if (i != E_PK_NON_POSE) {
+						currentPose = i;
+						loadCurrentPose();
+						
+						gamePoses[currentPose]->loadFromFile(poseStrings[currentNPD], true);
+						transformOrg(gamePoses[currentPose]);
+						testHuman->setToPose(gamePoses[currentPose],1.0f);
+						transformOrg(testHuman);
+						makeDirty();
+						cout << "Loaded Non Pose " << poseStrings[currentPose] << "\n";
+						saveCurrentPose();
+						
+					//}
+				}
+				currentPose = E_PK_NON_POSE;
+				loadCurrentPose();
+			}
+		}
+	}
+	
 	
 	void loadCurrentPose() {
 		GameOrg* testHuman = getCurOrg();
 		
 		if (editPose) {
-			
 			if (testHuman != NULL) {
 				
-				gamePoses[currentPose]->loadFromFile(poseStrings[currentPose]);
+				gamePoses[currentPose]->loadFromFile(poseStrings[currentPose], false);
 				transformOrg(gamePoses[currentPose]);
 				testHuman->setToPose(gamePoses[currentPose],1.0f);
 				transformOrg(testHuman);
@@ -5650,8 +5718,6 @@ DISPATCH_EVENT_END:
 				cout << "Loaded Pose " << poseStrings[currentPose] << "\n";
 				
 			}
-			
-			
 		}
 	}
 	
@@ -5928,17 +5994,11 @@ DISPATCH_EVENT_END:
 					loadValuesGUI();
 				break;
 				case 'r':
-				
-					if (editPose) {
-						resetActiveNode();
-					}
-					else {
-						doShaderRefresh(bakeParamsOn);
-						cout << "Shaders Refreshed\n";
-					}
-				
 					
 					
+					
+					doShaderRefresh(bakeParamsOn);
+					cout << "Shaders Refreshed\n";
 
 					
 					
@@ -5946,7 +6006,14 @@ DISPATCH_EVENT_END:
 					
 				case 'j':
 				
-					smoothMove = !smoothMove;
+					if (editPose) {
+						resetActiveNode();
+					}
+					else {
+						smoothMove = !smoothMove;
+					}
+				
+					
 				
 					// doShaderRefresh(bakeParamsOn);
 					// mapInvalid = true;
@@ -6101,8 +6168,16 @@ DISPATCH_EVENT_END:
 				
 				
 				case 'C':
+					if (currentPose == E_PK_NON_POSE) {
+						saveCurrentPose();
+						loadNonPoseData(E_PK_NON_POSE);
+					}
+					else {
+						cout << "Error, switch to E_PK_NON_POSE\n";
+					}
+				
 					
-					break;
+				break;
 				case 'c':
 					
 					editPose = !editPose;
@@ -6139,36 +6214,13 @@ DISPATCH_EVENT_END:
 				
 
 				case 'X':
-					fogOn = 1.0 - fogOn;
-					cout << "fog on " << fogOn << "\n";
+					//fogOn = 1.0 - fogOn;
+					//cout << "fog on " << fogOn << "\n";
+					changePose(-1);
 					break;
 					
 				case 'x':
-					currentPose++;
-					
-					// if (currentPose == E_PK_L_FORWARD) {
-					// 	currentPose = E_PK_IDLE_LOW;
-					// }
-					
-					if (currentPose == E_PK_LENGTH) {
-						currentPose = E_PK_T_POSE;
-					}
-					
-					cout << "Current Pose: " << poseStrings[currentPose] << "\n";
-					
-					
-					
-					if (testHuman != NULL) {
-						testHuman->targetPose = currentPose;
-						
-						if (editPose) {
-							loadCurrentPose();
-						}
-						
-						//testHuman->setToPose(gamePoses[currentPose]);
-						//transformOrg(testHuman);
-						//currentActor->wakeAll();
-					}
+					changePose(1);
 					
 					//fxaaOn = !fxaaOn;
 					//cout << "fxaaOn " << fxaaOn << "\n";
@@ -6179,14 +6231,14 @@ DISPATCH_EVENT_END:
 
 					
 					
-					//doPathReport = true;
+					// doPathReport = true;
 
-					// medianCount++;					
-					// if (medianCount == 4) {
-					// 	medianCount = 0;
-					// }
+					medianCount++;					
+					if (medianCount == 4) {
+						medianCount = 0;
+					}
 					
-					runReport();
+					//runReport();
 					
 					// refreshPaths = true;
 					
@@ -6645,13 +6697,16 @@ DISPATCH_EVENT_END:
 		float fy = ((float)y)*M_PI / bufferDim[1];
 		
 		
+		if (hitGUI) {
+			return;
+		}
 		
-		if (mbDown) {
+		
+		if ((highlightedLimb==-1)&&mbDown) {
 			angleToVec(&lightVec, fx*2.0, fy*2.0);
 			lightVecOrig.copyFrom(&lightVec);
 			lightVec.setFZ(-abs(lightVec.getFZ()));
 		}
-		
 		
 		
 		if (abDown)
@@ -6737,6 +6792,29 @@ DISPATCH_EVENT_END:
 		lastPosX = _x;
 		lastPosY = _y;
 
+		
+	}
+	
+	void doSwing(BaseObj* ca) {
+		
+		GameOrg* curOrg;
+		
+		if (ca->isSwinging) {
+			
+		}
+		else {
+			
+			if (ca->weaponActive) {
+				ca->isSwinging = true;
+				curOrg = gameOrgs[ca->orgId];
+				curOrg->stepCount = 0;
+				curOrg->totTime = 0;
+				playSoundEnt("swing0", ca);
+			}
+			
+			
+		}
+		
 		
 	}
 	
@@ -6874,17 +6952,18 @@ DISPATCH_EVENT_END:
 		
 		if (currentActor != NULL) {
 			
-			if (currentActor->weaponActive) {
+			// if (currentActor->weaponActive) {
 				
-				if (lbDown) {
-					currentActor->begSwing();
-				}
-				if (lbClicked) {
-					currentActor->endSwing();
-					playSoundEnt("swing0", currentActor);
-				}
+			// 	// if (lbDown) {
+			// 	// 	currentActor->begSwing();
+			// 	// }
 				
-				//
+				
+			// 	//
+			// }
+			
+			if (lbClicked) {
+				doSwing(currentActor);
 			}
 			
 		}
@@ -7659,44 +7738,62 @@ DISPATCH_EVENT_END:
 				makeJump(actorId,0);
 			}
 			
-			isWalking = false;
+			
+			ca->isWalking = false;
+			
 			
 			if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
-				
-				isWalking = true;
-				
-				//tempVec2.addXYZ(tempVec1[0],tempVec1[1],0.0f);
-				
+				ca->isWalking = true;
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,10.0,0)*ca->getMarkerMass(),
-						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
+						btVector3(0,conVals[E_CONST_WALK_AMOUNT],0)*ca->getMarkerMass(),
+						ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
 					);
 				}
-				
-				
-				
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
-				//tempVec2.addXYZ(-tempVec1[0],-tempVec1[1],0.0f);
-				
-				isWalking = true;
-				
+				ca->isWalking = true;
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,-10.0,0)*ca->getMarkerMass(),
-						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
+						btVector3(0,-conVals[E_CONST_WALK_AMOUNT],0)*ca->getMarkerMass(),
+						ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
 					);
 				}
-				
-				
-				
 			}
+			
+			
+			// if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
+			// 	ca->isWalking = true;
+			// 	if (ca->hasBodies()) {
+			// 		ca->makeWalk(
+			// 			btVector3(
+			// 				0,
+			// 				conVals[E_CONST_WALK_AMOUNT],
+			// 				conVals[E_CONST_WALK_AMOUNT]
+			// 			),
+			// 			ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()
+			// 		);
+			// 	}
+			// }
+			
+			// if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
+			// 	ca->isWalking = true;
+			// 	if (ca->hasBodies()) {
+			// 		ca->makeWalk(
+			// 			btVector3(
+			// 				0,
+			// 				-conVals[E_CONST_WALK_AMOUNT],
+			// 				conVals[E_CONST_WALK_AMOUNT]
+			// 			),
+			// 			ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()
+			// 		);
+			// 	}
+			// }
 			
 			
 		}
@@ -7914,7 +8011,7 @@ DISPATCH_EVENT_END:
 						
 						tempBTV = multByOtherRot(
 							btVector3(0.0f,1.0f,0.0f),
-							currentActor->bodies[0].body->getCenterOfMassTransform().getBasis()
+							currentActor->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()
 						);
 						
 						camRotation[0] += 
@@ -8039,7 +8136,7 @@ DISPATCH_EVENT_END:
 		explodeStack.push_back(ExplodeStruct());
 		
 		if (ge->hasBodies()) {
-			explodeStack.back().pos = ge->bodies[0].body->getCenterOfMassPosition();
+			explodeStack.back().pos = ge->bodies[E_BDG_CENTER].body->getCenterOfMassPosition();
 			explodeStack.back().radius = 20.0f;
 			explodeStack.back().power = 200.0f;
 		}
@@ -8066,6 +8163,7 @@ DISPATCH_EVENT_END:
 		}
 		
 		BaseObj* ca = &(gw->gameObjects[actorId]);
+		GameOrg* curOrg = gameOrgs[ca->orgId];
 		
 		// ca->weaponActive = !ca->weaponActive;
 		
@@ -8089,7 +8187,7 @@ DISPATCH_EVENT_END:
 			if (ca->hasBodies()) {
 				gw->gameObjects[ca->isGrabbingId].applyImpulseOtherRot(
 					btVector3(0.0,200,200)*gw->gameObjects[ca->isGrabbingId].getTotalMass(),
-					ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
+					ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
 					true,
 					0
 				);
@@ -8120,12 +8218,22 @@ DISPATCH_EVENT_END:
 			// find obj to pickup
 			
 			
+			
+			
+			
+			
+			
+			
 			res = gw->getClosestObj(actorId, BTV2FIV(ca->getCenterPoint(0)));
 			
 			if (res < 0) {
 				
 			}
 			else {
+				
+				curOrg->stepCount = 0;
+				curOrg->totTime = 0;
+				ca->isPickingUp = true;
 				
 				playSoundEnt(
 					"scrape0",
@@ -8182,7 +8290,7 @@ DISPATCH_EVENT_END:
 				
 				btVector3 tempBTV = multByOtherRot(
 					btVector3(0.0f,3.0f,3.0f),
-					ca->bodies[0].body->getCenterOfMassTransform().getBasis()
+					ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()
 				);
 				newCellPos.addXYZ(tempBTV.getX(), tempBTV.getY(), tempBTV.getZ());
 				
@@ -8199,7 +8307,7 @@ DISPATCH_EVENT_END:
 			
 				gw->gameObjects[entNum].applyImpulseOtherRot(
 					btVector3(0.0,200,200)*gw->gameObjects[entNum].getTotalMass(),
-					ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
+					ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
 					true,
 					0
 				);
@@ -9081,7 +9189,7 @@ DISPATCH_EVENT_END:
 					
 				break;
 				case E_FC_LOADORG:
-					testHuman->loadFromFile(currentFieldString);
+					testHuman->loadFromFile(currentFieldString, false);
 					//orientRotation();
 					if (currentActor != NULL) {
 						//currentActor->curRot = 1;
@@ -9104,6 +9212,32 @@ DISPATCH_EVENT_END:
 		beginFieldInput("",E_FC_LOADORG);
 	}
 	
+	
+	float getConst(string conName) {
+		if (constRootJS == NULL) {
+			
+		}
+		else {
+			if (constRootJS->HasChild(conName)) {
+				return constRootJS->Child(conName)->number_value;
+			}
+			else {
+				
+			}
+		}
+		return 0.0f;
+	}
+	
+	void loadConstants() {
+		int i;
+		if (loadJSON("..\\data\\constants.js", &constRootJS)) {
+			
+			for (i = 0; i < E_CONST_LENGTH; i++) {
+				conVals[i] = getConst(constStrings[i]);
+			}
+			
+		}
+	}
 
 	void loadGUI() {
 		externalJSON.clear();
@@ -9596,7 +9730,7 @@ DISPATCH_EVENT_END:
 							currentActor->hasBodies()	
 						) {
 							
-							if (currentActor->bodies[0].inWater) {
+							if (currentActor->bodies[E_BDG_CENTER].inWater) {
 								temp = clampfZO(
 									currentActor->getVel(0)->length()
 								)*0.25f;

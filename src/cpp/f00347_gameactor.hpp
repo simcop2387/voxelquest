@@ -7,60 +7,15 @@ public:
 	std::vector<ActorJointStruct> actorJoints;
 	int geId;
 	
-	//int uid;
 	btVector3 origOffset;
-
-	// btRigidBody* localCreateRigidBody(
-	// 	btScalar mass,
-	// 	const btTransform& startTransform,
-	// 	btCollisionShape* shape,
-	// 	int maskFrom,
-	// 	int maskTo
-	// ) {
-	// 	bool isDynamic = (mass != 0.f);
-
-	// 	btVector3 localInertia(0,0,0);
-	// 	if (isDynamic)
-	// 		shape->calculateLocalInertia(mass,localInertia);
-
-	// 	btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
-	// 	btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,shape,localInertia);
-	// 	btRigidBody* body = new btRigidBody(rbInfo);
-
-	// 	m_ownerWorld->addRigidBody(body);//, maskFrom, maskTo);
-
-	// 	return body;
-	// }
-	
-	// btVector3 getStartPosition(int jointId) {
-	// 	int parentId = actorJoints[jointId].parentId;
-	// 	ActorJointStruct* parJoint;
-		
-	// 	btVector3 res;
-		
-	// 	if (parentId < 0) {
-	// 		res = btVector3(0.0f,0.0f,0.0f);
-	// 	}
-	// 	else {
-	// 		parJoint = &(actorJoints[parentId]);
-	// 		res = parJoint->endOrig;
-	// 	}
-		
-	// 	//traceBTV("Joint ", res);
-		
-	// 	return res;
-	// }
-	
+	GameOrg* baseOrg;
 	
 	int addJoint(
 		int nodeName,
 		int parentId,
-		bool isBall,
+		int jointType,
 		float mass,
-		
 		GameOrgNode* curNode
-		
-		
 	) {
 		
 		int i;
@@ -73,19 +28,63 @@ public:
 		btVector3 midPos;
 		btVector3 endPos;
 		
-		if (isBall) {
-			rad = 0.05f;
-			begPos = curNode->orgTrans[2].getBTV();
-			midPos = curNode->orgTrans[2].getBTV();
-			endPos = curNode->orgTrans[2].getBTV();
+		int colInd = geId % MAX_COL_BODY;
+		int colType = bodyCollidesWith[colInd];
+		int colBase = COL_BODY0<<(colInd);
+		
+		switch (nodeName) {
+			case E_BONE_L_LOWERARM:
+			case E_BONE_R_LOWERARM:
+			case E_BONE_L_METACARPALS:
+			case E_BONE_R_METACARPALS:
+				colBase = COL_HAND;
+				colType = handCollidesWith;
+			break;
+			default:
+			
+			break;
 		}
-		else {
-			rad = 0.1f;
-			len = curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV());
-			begPos = curNode->orgTrans[0].getBTV();
-			midPos = curNode->orgTrans[1].getBTV();
-			endPos = curNode->orgTrans[2].getBTV();
+		
+		// if (baseOrg->orgType == E_ORGTYPE_WEAPON) {
+		// 	colType = weaponCollidesWith;
+		// }
+		
+		
+		// switch(jointType) {
+		// 	case E_JT_LIMB:
+				
+		// 	break;
+		// 	case E_JT_BALL:
+				
+		// 	break;
+		// 	case E_JT_NORM:
+				
+		// 	break;
+		// }
+		
+		
+		switch(jointType) {
+			case E_JT_LIMB:
+				rad = 0.1f;
+				len = curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV());
+				begPos = curNode->orgTrans[0].getBTV();
+				midPos = curNode->orgTrans[1].getBTV();
+				endPos = curNode->orgTrans[2].getBTV();
+			break;
+			case E_JT_BALL:
+				rad = 0.05f;
+				begPos = curNode->orgTrans[2].getBTV();
+				midPos = curNode->orgTrans[2].getBTV();
+				endPos = curNode->orgTrans[2].getBTV();
+			break;
+			case E_JT_NORM:
+				// rad = 0.05f;
+				// begPos = curNode->orgTrans[1].getBTV() + curNode->orgVecs[E_OV_NORMAL];
+				// midPos = begPos;
+				// endPos = begPos;
+			break;
 		}
+		
 		
 		btVector3 targAlignT = curNode->tbnRotC[0].getBTV();
 		btVector3 targAlignB = curNode->tbnRotC[1].getBTV();
@@ -114,7 +113,7 @@ public:
 		//ActorJointStruct* grdJoint;
 		
 		curJoint->boneId = nodeName;
-		curJoint->isBall = isBall;
+		curJoint->jointType = jointType;
 		curJoint->rad = rad;
 		curJoint->length = len;
 		//begOrig
@@ -133,11 +132,16 @@ public:
 			curLength = curJoint->length;
 		}
 		
-		if (isBall) {
-			curJoint->shape = new btSphereShape(curJoint->rad);
-		}
-		else {
-			curJoint->shape = new btCapsuleShapeX(curJoint->rad, curLength);
+		switch(jointType) {
+			case E_JT_LIMB:
+				curJoint->shape = new btCapsuleShapeX(curJoint->rad, curLength);
+			break;
+			case E_JT_BALL:
+				curJoint->shape = new btSphereShape(curJoint->rad);
+			break;
+			case E_JT_NORM:
+				
+			break;
 		}
 		
 		
@@ -175,8 +179,17 @@ public:
 		btVector3 vectorA = vUp;
 		btVector3 vectorB = endPos-begPos;
 		
-		if (!isBall) {
-			vectorB.normalize();
+		
+		switch(jointType) {
+			case E_JT_LIMB:
+				vectorB.normalize();
+			break;
+			case E_JT_BALL:
+				
+			break;
+			case E_JT_NORM:
+				
+			break;
 		}
 		
 		
@@ -221,21 +234,21 @@ public:
 		
 		
 		
+		
+		
+		
 		curJoint->body = singleton->gamePhysics->example->createRigidBodyMask(
 			mass,
 			offset*transform,
 			curJoint->shape,
-			COL_BODY,
-			bodyCollidesWith
+			colBase,
+			colType
 		);
 		//curJoint->body->bodyUID = uid;
 		//curJoint->body->setDamping(0.05, 0.85);
 		curJoint->body->setDeactivationTime(0.8);
 		curJoint->body->setSleepingThresholds(0.5f, 0.5f);
-		// if (curJoint->isBall) {	
-		// 	curJoint->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
-		// }
-		
+
 		
 		
 		// curJoint->joint = NULL;
@@ -295,67 +308,37 @@ public:
 	void initFromOrg(
 		GameOrgNode* curNode,
 		int curParent
-		//FIVector4* basePosition,
-		// float scale,
-		// int drawMode,
-		// bool drawAll
 	) {
 		
 		
 		int i;
 		
-		// FIVector4 lineSeg0;
-		// FIVector4 lineSeg1;
-		// FIVector4 lineSeg2;
-		// lineSeg0.setFXYZRef(&(curNode->orgTrans[0]));
-
 		
 		
 		int curChild = addJoint(
 			curNode->nodeName,
-			curParent,					//int parentId,
-			false,
-			MASS_PER_LIMB,				//float mass,
-			//tn, bn, nn,
-		
+			curParent,
+			E_JT_LIMB,
+			MASS_PER_LIMB,
 			curNode
-		
-			// 0.15f,						//float rad,
-			// curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV()), //curLen, // +curRad*4.0f,			//float len,
-			
-		
-			// curNode->tbnRotC[0].getBTV(),
-			// curNode->tbnRotC[1].getBTV(),
-			// curNode->tbnRotC[2].getBTV(),
-			
-			// curNode->orgTrans[0].getBTV(),
-			// curNode->orgTrans[1].getBTV(),
-			// curNode->orgTrans[2].getBTV()
-			
 		);
 		
 		int curChild2 = addJoint(
 			curNode->nodeName,
-			curChild,					//int parentId,
-			true,
-			MASS_PER_LIMB,				//float mass,
-			//tn, bn, nn,
-			
+			curChild,
+			E_JT_BALL,
+			MASS_PER_LIMB,
 			curNode
-		
-			// 0.2f,			//float rad,
-			// 0.0f,			//curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV()), //curLen,
-			
-		
-			// curNode->tbnRotC[0].getBTV(),
-			// curNode->tbnRotC[1].getBTV(),
-			// curNode->tbnRotC[2].getBTV(),
-			
-			// curNode->orgTrans[2].getBTV(), // beg
-			// curNode->orgTrans[2].getBTV(), // mid
-			// curNode->orgTrans[2].getBTV()  // end
 			
 		);
+		
+		// int curChild3 = addJoint(
+		// 	curNode->nodeName,
+		// 	curChild,
+		// 	E_JT_NORM,
+		// 	MASS_PER_LIMB,
+		// 	curNode
+		// );
 		
 		
 		
@@ -363,10 +346,6 @@ public:
 			initFromOrg(
 				curNode->children[i],
 				curChild2
-				//basePosition,
-				//scale,
-				//drawMode,
-				//drawAll
 			);
 		}
 		
@@ -381,8 +360,7 @@ public:
 		int _geId,
 		btDynamicsWorld* ownerWorld,
 		const btVector3& positionOffset,
-		bool bFixed
-		//, int _uid	
+		bool bFixed	
 	) {
 		
 		int i;
@@ -395,84 +373,16 @@ public:
 		origOffset = positionOffset;// - btVector3(0.0f,0.0f,16.0f);
 		float actorScale = 1.0f;
 
+		baseOrg = singleton->gameOrgs[
+			singleton->gw->gameObjects[geId].orgId	
+		];
 
 		initFromOrg(
-			singleton->gameOrgs[
-				singleton->gw->gameObjects[geId].orgId	
-			]->baseNode,
+			baseOrg->baseNode,
 			-1
 		);
 
-
-
-
-		return;
-
-
 	}
-
-	// void stepSim(btScalar timeStep) {
-		
-	// 	//return;
-		
-	// 	float m_fMuscleStrength = 10.0f;//(sin(singleton->curTime/2000.0)+1.0f)*0.5f;
-	// 	float ms = timeStep*1000000.0;
-	// 	float minFPS = 1000000.f/60.f;
-	// 	if (ms > minFPS) {
-	// 		ms = minFPS;
-	// 	}
-
-	// 	//m_Time += ms;
-
-	// 	// ge->applyImpulse(
-	// 	// 	btVector3(
-	// 	// 		( singleton->worldMarker.getFX() - curBody->body->getCenterOfMassPosition().getX() ),
-	// 	// 		( singleton->worldMarker.getFY() - curBody->body->getCenterOfMassPosition().getY() ),
-	// 	// 		-(curBody->body->getCenterOfMassPosition().getZ() - (8.0f + singleton->worldMarker.getFZ()))
-	// 	// 	)*totMass*0.01f,
-	// 	// 	false,
-	// 	// 	bodInd
-	// 	// );
-
-
-	// 	// GameOrgNode* curNode;
-	// 	// BaseObj* ge = &(singleton->gw->gameObjects[geId]);
-
-	// 	// for (int i = 0; i < actorJoints.size(); i++) {
-	// 	// 	curNode = singleton->gameOrgs[ge->orgId]->allNodes[actorJoints[i].nodeName];
-			
-	// 	// }		
-
-	// 	for (int i = 0; i < actorJoints.size(); i++) {
-			
-	// 		if (actorJoints[i].joint == NULL) {
-				
-	// 		}
-	// 		else {
-				
-	// 			// if (actorJoints[i].isBall) {
-					
-	// 			// }
-	// 			// else {
-					
-					
-	// 				btHingeConstraint* hingeC = static_cast<btHingeConstraint*>(actorJoints[i].joint);
-	// 				btScalar fCurAngle = hingeC->getHingeAngle();
-					
-	// 				btScalar fTargetPercent = 0.5;//singleton->smoothTime;//(int(m_Time / 1000) % int(m_fCyclePeriod)) / m_fCyclePeriod;
-	// 				btScalar fTargetAngle   = 0.5 * (1 + sin(2 * M_PI * fTargetPercent));
-	// 				btScalar fTargetLimitAngle = hingeC->getLowerLimit() + fTargetAngle * (hingeC->getUpperLimit() - hingeC->getLowerLimit());
-	// 				btScalar fAngleError  = (fTargetLimitAngle - fCurAngle)*0.25;
-	// 				btScalar fDesiredAngularVel = 1000000.f * fAngleError/ms;
-	// 				hingeC->enableAngularMotor(true, fDesiredAngularVel, m_fMuscleStrength);
-	// 			//}
-				
-				
-	// 		}
-			
-			
-	// 	}
-	// }
 
 	virtual	~GameActor ()
 	{

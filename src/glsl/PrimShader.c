@@ -1,6 +1,7 @@
 
 uniform bool placingGeom;
 uniform bool testOn;
+uniform bool skipPrim;
 uniform bool depthInvalidMove;
 uniform bool depthInvalidRotate;
 uniform bool doSphereMap;
@@ -80,7 +81,7 @@ uniform sampler2D Texture4;
 uniform sampler2D Texture5;
 uniform sampler2D Texture6;
 
-// terTargFBO
+// terTargFBO or primTargFBO
 uniform sampler2D Texture7;
 uniform sampler2D Texture8;
 uniform sampler2D Texture9;
@@ -216,7 +217,7 @@ const float S2O2 = 0.70710678118;
 const float MAX_DIAG_RAD = 40.0;
 const float MAX_DIAG_RAD2 = MAX_DIAG_RAD*S2O2*S2O2;
 
-int primIdList[8]; // this is related to MAX_PRIM_IDS
+int primIdList[16]; // this is related to MAX_PRIM_IDS
 float primAlreadyTested[8]; // this is related to MAX_PRIMTEST
 int primIdListLength;
 
@@ -350,7 +351,6 @@ float globTotSteps;
 float globIntersect;
 float globTest;
 float globTexTap;
-vec3 globTest3;
 
 //vec4 testObject;
 
@@ -384,6 +384,24 @@ layout(location = 7) out vec4 FragColor7;
 
 
 // >>>>>>>>>>> COMMON <<<<<<<<<<<<<
+
+float smin( float a, float b, float k )
+{
+	float h = clamp( 0.5 + 0.5*(b-a)/k, 0.0, 1.0 );
+	return mix( b, a, h ) - k*h*(1.0-h);
+}
+
+vec2 smin( vec2 a, vec2 b, float k )
+{
+	float h = clamp( 0.5 + 0.5*(b.x-a.x)/k, 0.0, 1.0 );
+	return vec2( mix( b.x, a.x, h ) - k*h*(1.0-h), mix( b.y, a.y, h ) );
+}
+
+float smax( float a, float b, float k )
+{
+	float h = clamp( 0.5 + 0.5*(b-a)/k, 0.0, 1.0 );
+	return mix( a, b, h ) + k*h*(1.0-h);
+}
 
 struct Ray {
 		vec3 Origin;
@@ -841,7 +859,6 @@ vec4 getUVW(
 				(uvwScale.w*2.0/M_PI) *
 				(max(floor(sqrt(box_dim.w*box_dim.w*2.0)),1.0));
 		
-		//globTest3.xy = vec2(curPhi,curThe)/M_PI;
 		
 		// side corner
 		if (newNorm1.x*newNorm1.y != 0.0) {
@@ -1991,9 +2008,6 @@ vec3 lineStep(
 												
 												if (didHit) {
 														
-														//globTest = 1.0;
-														
-														//globTest += 1.0/float(MAX_PRIM_IDS);
 														
 														seBoxDis2 = udRoundBox(
 																(cameraPos)-boxCenterPoint,
@@ -2130,59 +2144,69 @@ float softShadowPrim( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
 
 }
 
-float hardShadowPrim( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
-{
-		float res = 0.0;
-		float t = tmin;
+float hardShadowPrim(
+		vec3 ro,
+		vec3 rd,
+		vec2 minMaxT,
+		float fNumSteps
+) {
+		int p = 0;
+		int numSteps;
 		
+		float res = (0.0);
+		float t;
+		float fp;
 		
-		float fNumSteps = float(numSteps);
-		float fi;
-		float h;
+		vec3 pos;
 		
+		float SHAD_PREC = 0.1;
 		
-		for( int i=0; i<numSteps; i++ ) {
+		t = minMaxT.x;
+		numSteps = int(fNumSteps);
+		for( p = 0; p < numSteps; p++ ) {
 				
-				fi = float(i)/fNumSteps;
+				fp = float(p)/fNumSteps;
 				
-				h = mapSolid( ro + rd*t );
+				pos = ro+rd*t;
 				
-				res += -clamp(h-1.0,-1.0,0.01);
-				t = mix(tmin,tmax,fi);
+				res = mapSolid( pos );
 				
-				//t += abs(h*2.0);
+				if (res < SHAD_PREC ) {
+						break;
+				}
 				
-				// if (h < 0.1) {
-				// 	res += 1.0;
-				// }
-				
+				t += res;
 		}
 		
-		//res /= fNumSteps;
+		return t;
 		
-		return 1.0-clamp( res, 0.0, 1.0 );
-		
-		
-		// for( int i=0; i<numSteps; i++ ) {
-				
-		// 		fi = float(i)/fNumSteps;
-				
-		// 		h = mapSolid( ro + rd*t );
-				
-		// 		//res += -clamp(h-0.1,-1.0,0.01);
-				
-		// 		res = min( res, 8.0*h/t );
-				
-		// 		t += h;//mix(tmin,tmax,fi);
-				
-		// 		if (h < 0.1) {
-		// 			break;
-		// 		}
-				
-		// }
-		// return clamp(h,0.0,1.0);//1.0-clamp( res, 0.0, 1.0 );
-
 }
+
+// float hardShadowPrim( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
+// {
+// 		float res = 0.0;
+// 		float t = tmin;
+		
+		
+// 		float fNumSteps = float(numSteps);
+// 		float fi;
+// 		float h;
+		
+		
+// 		for( int i=0; i<numSteps; i++ ) {
+				
+// 				fi = float(i)/fNumSteps;
+				
+// 				h = mapSolid( ro + rd*t );
+				
+// 				res += -clamp(h-1.0,-1.0,0.01);
+// 				t = mix(tmin,tmax,fi);
+								
+// 		}
+		
+// 		return 1.0-clamp( res, 0.0, 1.0 );
+		
+// }
 
 
 #endif
@@ -2295,7 +2319,7 @@ float getTree(vec3 pos, vec3 tp0, vec3 tp1, vec3 tp2, vec2 thickVals) {
 }
 
 
-void getLimbsPre(vec3 ro, vec3 rd) {
+void preLimb(vec3 ro, vec3 rd) {
 	
 	int i;
 	int j;
@@ -2315,6 +2339,7 @@ void getLimbsPre(vec3 ro, vec3 rd) {
 	vec4 header1;
 	vec4 header2;
 	
+	vec4 datVec;
 	vec4 cenVec;
 	vec4 tanVec;
 	vec4 bitVec;
@@ -2332,30 +2357,31 @@ void getLimbsPre(vec3 ro, vec3 rd) {
 	float curDis;
 	float maxDis;
 	
-	//globTest = float(actorCount)*0.125;
+	
+	
 	
 	for (i = 0; i < actorCount; i++) {
 		header0 = texelFetch(Texture1, primDataInd); primDataInd++;
 		header1 = texelFetch(Texture1, primDataInd); primDataInd++;
 		header2 = texelFetch(Texture1, primDataInd); primDataInd++;
 		
+		
 		endInd = int(header0.x);
 		
-		if (endInd <= 0) {
-			
-			
-			break;
-		}
+		// if (endInd <= 0) {
+		// 	break;
+		// }
 		
 		hitBox = aabbIntersect(ro,rd,header1.xyz,header2.xyz);
 		
 		if (hitBox.x <= hitBox.y) {
-			//globTest += 0.25f;
+			
 			
 			while (primDataInd < endInd) {
 				
 				firstInd = primDataInd;
 				
+				datVec = texelFetch(Texture1, primDataInd); primDataInd++;
 				cenVec = texelFetch(Texture1, primDataInd); primDataInd++;
 				tanVec = texelFetch(Texture1, primDataInd); primDataInd++;
 				bitVec = texelFetch(Texture1, primDataInd); primDataInd++;
@@ -2376,13 +2402,13 @@ void getLimbsPre(vec3 ro, vec3 rd) {
 				
 				
 				
-				if (curDis < maxDis*2.0) {
-					globTest += 0.25f;
+				if (curDis < maxDis) {
 					
 					primIdList[primIdListLength] = firstInd;
 					primIdListLength++;
 					
 					if (primIdListLength == MAX_PRIM_IDS) {
+						
 							return;
 					}
 					
@@ -2392,12 +2418,18 @@ void getLimbsPre(vec3 ro, vec3 rd) {
 			
 		}
 		else {
+			
+			
+			if (hitBox.x <= hitBox.y) {
+				
+			}
+			
 			primDataInd = endInd;
 		}
 		
-		if (endInd <= 0) {
-			return;
-		}
+		// if (endInd <= 0) {
+		// 	return;
+		// }
 		
 		
 		
@@ -2406,8 +2438,9 @@ void getLimbsPre(vec3 ro, vec3 rd) {
 	
 }
 
-float getLimbsPost(vec3 pos) {
+float postLimb(vec3 pos) {
 	
+	vec4 datVec;
 	vec4 cenVec;
 	vec4 tanVec;
 	vec4 bitVec;
@@ -2428,6 +2461,7 @@ float getLimbsPost(vec3 pos) {
 	
 	float lerpVal;
 	float lerpVal2;
+	float lerpVal3;
 	float curRad;
 	vec2 minDis = vec2(MAX_CAM_DIS,-1);
 	
@@ -2437,6 +2471,7 @@ float getLimbsPost(vec3 pos) {
 		primDataInd = primIdList[i];
 		firstInd = primDataInd;
 		
+		datVec = texelFetch(Texture1, primDataInd); primDataInd++;
 		cenVec = texelFetch(Texture1, primDataInd); primDataInd++;
 		tanVec = texelFetch(Texture1, primDataInd); primDataInd++;
 		bitVec = texelFetch(Texture1, primDataInd); primDataInd++;
@@ -2455,13 +2490,18 @@ float getLimbsPost(vec3 pos) {
 		
 		lerpVal = distance(closestPoint.xyz,seg1a)/(ln0Vec.x*2.0);
 		lerpVal2 = abs(dot(offVec,bitVec.xyz));
+		lerpVal3 = abs(dot(offVec,tanVec.xyz));
 		
 		lerpVal = pow(lerpVal,2.0);
 		lerpVal2 = pow(lerpVal2,2.0);
+		lerpVal3 = pow(lerpVal3,2.0);
+		
+		lerpVal3 = mix(0.0,0.5,lerpVal3);
+		
 		
 		lnVec = mix(ln0Vec,ln1Vec,lerpVal);
 		
-		curRad = mix(lnVec.y,lnVec.z,lerpVal2);
+		curRad = mix(lnVec.y,lnVec.z,lerpVal2)*(1.0-lerpVal3);
 		
 		minDis = opU(
 			minDis,
@@ -2473,6 +2513,8 @@ float getLimbsPost(vec3 pos) {
 		
 	}
 	
+	
+	
 	float DYN_PREC = 0.02;
 	
 	if (
@@ -2482,7 +2524,7 @@ float getLimbsPost(vec3 pos) {
 		globBestLimbInd = int(minDis.y);
 	}
 	
-	return minDis.x;
+	return minDis.x*0.5;
 }
 
 
@@ -2962,8 +3004,6 @@ vec2 getTerrain(
 
 		texVal *= 0.75;
 						
-
-		//globTest3 = pos; //abs(normalize(pos-bestBoxCenterPoint));//abs(normalize(pos-bestaBoxCenterPoint));//
 
 		float scaleFactor = 2.0;
 
@@ -3458,7 +3498,7 @@ vec2 mapDyn(vec3 pos) {
 		
 		
 		res = opU(res, vec2(
-		    getLimbsPost(pos),
+		    postLimb(pos),
 		    TEX_EARTH
 		));
 		
@@ -4245,10 +4285,10 @@ vec4 castLand(
 										1.0
 								)*0.1;
 				
-				if (isGrass*(1.0-isInTer) > 0.01) {
-					globTexEarth.x = TEX_GRASS;
-					globTexEarth.y = clamp(myVal2,0.0,1.0);
-				}
+				// if (isGrass*(1.0-isInTer) > 0.01) {
+				// 	globTexEarth.x = TEX_GRASS;
+				// 	globTexEarth.y = clamp(myVal2,0.0,1.0);
+				// }
 				
 				if (snowVal*(1.0-isInTer) > 0.04) {
 					globTexEarth.x = TEX_SNOW;
@@ -4289,13 +4329,56 @@ float softShadow( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
 		
 		for( int i=0; i<numSteps; i++ )
 		{
-				h = mapLand( ro + rd*t ).x;
+				h = 
+				//min(
+					mapLand( ro + rd*t ).x
+				//	,mapDyn(ro + rd*t).x
+				//)
+				;
 				res = min( res, 8.0*h/t );
 				t += clamp( h, 0.02, 0.10 );
 				if( h<0.001 || t>tmax ) break;
 		}
 		return clamp( res, 0.0, 1.0 );
 
+}
+
+float hardShadowDyn(
+		vec3 ro,
+		vec3 rd,
+		vec2 minMaxT,
+		float fNumSteps
+) {
+		int p = 0;
+		int numSteps;
+		
+		float res = (0.0);
+		float t;
+		float fp;
+		
+		vec3 pos;
+		
+		float SHAD_PREC = 0.1;
+		
+		t = minMaxT.x;
+		numSteps = int(fNumSteps);
+		for( p = 0; p < numSteps; p++ ) {
+				
+				fp = float(p)/fNumSteps;
+				
+				pos = ro+rd*t;
+				
+				res = mapDyn( pos ).x;
+				
+				if (res < SHAD_PREC ) {
+						break;
+				}
+				
+				t += res;
+		}
+		
+		return t;
+		
 }
 
 float hardShadow( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
@@ -4312,7 +4395,12 @@ float hardShadow( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
 				
 				fi = float(i)/fNumSteps;
 				
-				h = mapLand( ro + rd*t ).x;
+				h = 
+				//min(
+					mapLand( ro + rd*t ).x
+				// 	,mapDyn(ro + rd*t).x
+				// )
+				;
 				
 				res += -clamp(h,-1.0,0.01);
 				
@@ -4515,6 +4603,14 @@ void main() {
 		int i;
 		int j;
 		
+		int primDataInd = 0;
+		vec4 datVec;
+		// vec4 cenVec;
+		// vec4 tanVec;
+		// vec4 bitVec;
+		float maxT = 20.0;
+		float hardShadowDynRes = 0.0;
+		
 		vec3 rd = vec3(0.0);
 		
 		float MIN_CAM_DIS = 0.0;
@@ -4581,7 +4677,6 @@ void main() {
 		globTotSteps = 0.0;
 		globIntersect = 0.0;
 		globTest = 0.0;
-		globTest3 = vec3(0.0);
 		globNumPrims = 0;
 		globBestLimbInd = -1;
 		primIdListLength = 0;
@@ -4632,6 +4727,16 @@ void main() {
 		
 		
 		
+		
+		vec4 terSamp4;
+		
+			if (skipPrim) {
+				terSamp4 = vec4(MAX_CAM_DIS);
+			}
+			else {
+				terSamp4 = texture(Texture11,baseCoords.xy);
+			}
+			
 		
 		if (doSphereMap) {
 				rd = normalize(vec3(
@@ -4765,7 +4870,6 @@ void main() {
 		float t;
 		float landVal = 0.0;
 		float dynVal = 0.0;
-		float landValForCache = 0.0;
 		float solidVal = 0.0;
 		float waterVal = 0.0;
 		float transVal = 0.0;
@@ -4909,7 +5013,6 @@ void main() {
 		
 		
 		
-		landValForCache = MAX_CAM_VOL_DIS;
 		dynVal = MAX_CAM_DIS;
 		landVal = MAX_CAM_VOL_DIS;//MAX_CAM_DIS;
 		solidVal = MAX_CAM_VOL_DIS;
@@ -4944,6 +5047,10 @@ void main() {
 		// #endif
 		//+explodeMod
 		
+		
+				
+				
+		vec4 limbRes = vec4(0.0);
 		
 		
 		#ifdef DOTER
@@ -5075,7 +5182,7 @@ void main() {
 						TOT_STEPS
 				);
 				
-				getLimbsPre(ro, rd);
+				preLimb(ro, rd);
 				
 				earthMatRes = globTexEarth;
 				
@@ -5083,7 +5190,6 @@ void main() {
 				
 				
 				landVal = rclRes.w;
-				landValForCache = landVal;
 				
 				
 				//if (cacheWater.x < min(MAX_CAM_VOL_DIS,landVal) ) {
@@ -5132,25 +5238,9 @@ void main() {
 				
 				waterMatRes = globTexWater;
 				
-				float shadDis = landValForCache;
 				
-				if (
-					(dot(oneVec,objTex1) > 0.0) &&
-					(distance(objTex1.xyz,ro) < rclRes.w)	
-				) {
-					shadDis = distance(objTex1.xyz,ro);
-					//rclRes = vec4(objTex2.xyz, distance(objTex1.xyz,ro));
-					//earthMatRes = vec2(TEX_EARTH,0.5);//pack16(objTex2.w);
-				}
 				
-				shadowRes = 
-				//1.0;
-				clamp((
-						hardShadow( ro+rd*(shadDis-0.1), -lightVec, 0.02, 32.0, HARD_STEPS ) *
-						hardShadow( ro+rd*(shadDis-0.1), -lightVec, 2.0, 512.0, HARD_STEPS )
-						*
-						softShadow( ro+rd*(shadDis-0.1), -lightVec, 0.02, 16.0, SOFT_STEPS )
-				),0.0,1.0);
+				
 				
 				
 				//shadowRes = 0.0;
@@ -5175,11 +5265,64 @@ void main() {
 								earthMatRes = globTexDyn;
 								
 								//if (earthMatRes.x == TEX_EXPLOSION) {
-										shadowRes = 1.0;
+								//		shadowRes = 1.0;
 								//}
+								
+								if (globBestLimbInd > -1) {
+									
+									primDataInd = globBestLimbInd;
+									
+									datVec = texelFetch(Texture1, primDataInd); primDataInd++;
+									
+									limbRes.w = datVec.x;
+									limbRes.z = datVec.y;
+									
+									earthMatRes = vec2(
+										datVec.z/255.0,
+										datVec.w
+									);
+									
+								}
 								
 						}
 				//}
+				
+				
+				
+				
+				float shadDis = min(landVal,terSamp4.x);
+				
+				
+				
+				if (
+					(dot(oneVec,objTex1) > 0.0) &&
+					(distance(objTex1.xyz,ro) < rclRes.w)	
+				) {
+					shadDis = distance(objTex1.xyz,ro);
+					//rclRes = vec4(objTex2.xyz, distance(objTex1.xyz,ro));
+					//earthMatRes = vec2(TEX_EARTH,0.5);//pack16(objTex2.w);
+				}
+				
+				preLimb(ro+rd*(shadDis-0.1), -lightVec);
+				
+				
+				// distance from light
+				hardShadowDynRes = hardShadowDyn(
+					ro+rd*shadDis-lightVec*maxT,
+					lightVec,
+					vec2(0.0, maxT),
+					HARD_STEPS
+				);
+				
+				
+				shadowRes = 
+				//1.0;
+				clamp((
+						(clamp((hardShadowDynRes+1.0-maxT)/1.0,0.0,1.0))
+						* hardShadow( ro+rd*(shadDis-0.1), -lightVec, 0.02, 32.0, HARD_STEPS ) 
+						* hardShadow( ro+rd*(shadDis-0.1), -lightVec, 2.0, 512.0, HARD_STEPS )
+						* softShadow( ro+rd*(shadDis-0.1), -lightVec, 0.02, 16.0, SOFT_STEPS )
+				),0.0,1.0);
 				
 				
 				
@@ -5189,7 +5332,7 @@ void main() {
 				//     (earthMatRes.x == TEX_EARTH) &&
 				//     (rclRes.z > 0.5)    
 				// ) {
-				//     sceneRes = scene(ro,rd, ro+rd*landValForCache);
+				//     sceneRes = scene(ro,rd, ro+rd*landVal);
 				
 				//     if (sceneRes.a + rclRes.z > 1.25) {
 				//         earthMatRes.x = TEX_GRASS;
@@ -5233,16 +5376,17 @@ void main() {
 		
 		#ifdef DOPRIM
 				
+				
 				vec4 terSamp0 = texture(Texture7,baseCoords.xy);
 				vec4 terSamp1 = texture(Texture8,baseCoords.xy);
 				vec4 terSamp2 = texture(Texture9,baseCoords.xy);
 				vec4 terSamp3 = texture(Texture10,baseCoords.xy);
-				vec4 terSamp4 = texture(Texture11,baseCoords.xy);
+				// terSamp4
 				vec4 terSamp5 = texture(Texture12,baseCoords.xy);
 				
 				shadowRes = terSamp4.w;
 				
-				landVal = min(terSamp4.x,terSamp4.z);
+				landVal = terSamp4.x;
 				waterVal = terSamp4.y;
 				
 				if (volBounds.x <= volBounds.y) {
@@ -5288,7 +5432,7 @@ void main() {
 				if ((solidVal+0.05) < landVal) {
 						curTexArr[0] = curTexSolid;
 						norArr[0] = solidNorm;
-						shadowRes = 1.0;
+						//shadowRes = 1.0;
 				}
 				else {
 						curTexArr[0] = terSamp5.xy;
@@ -5316,16 +5460,30 @@ void main() {
 						MAX_SHAD_DIS_PRIM
 					);
 					
+					// distance from light
+					
+					
+					hardShadowDynRes = hardShadowPrim(
+						pos-lightVec*maxT,
+						lightVec,
+						vec2(0.0, maxT),
+						HARD_STEPS*2
+					);
+					
+					
 					shadowRes *= clamp((
-							hardShadowPrim(
-								pos-lightVec*MAX_SHAD_DIS_PRIM, 
-								lightVec,
-								0.02,
-								MAX_SHAD_DIS_PRIM,
-								HARD_STEPS*4
-							)
-							*
-							softShadowPrim( pos-rd*0.1, -lightVec, 0.02, 2.0, SOFT_STEPS )
+							// hardShadowPrim(
+							// 	pos-lightVec*MAX_SHAD_DIS_PRIM, 
+							// 	lightVec,
+							// 	0.02,
+							// 	MAX_SHAD_DIS_PRIM,
+							// 	HARD_STEPS*4
+							// )
+						
+							(clamp((hardShadowDynRes+1.0-maxT)/0.2,0.0,1.0))
+						
+							
+							// * softShadowPrim( pos-rd*0.1, -lightVec, 0.02, 2.0, SOFT_STEPS )
 					),0.0,1.0);
 				}
 				
@@ -5402,9 +5560,12 @@ void main() {
 				
 				if (testOn) {
 						
-						shadowRes = globCurSteps/float(TOT_STEPS*0.5);
+						
 						
 						#ifdef DOTER
+					
+								shadowRes = globCurSteps/float(TOT_STEPS*0.5);
+					
 								if (placingGeom||(MAX_PRIMTEST > 0)) {
 										// dont do anything since we are doing a geometry pass
 								}
@@ -5431,8 +5592,8 @@ void main() {
 												
 												//(sin(t/100.0)+1.0)*0.5,0.0,0.0,
 												
-												globTest,
-												//shadowRes,
+												//globTest,
+												shadowRes,
 												0.0,
 												0.0,
 												//globTexTap/300.0, //
@@ -5454,7 +5615,7 @@ void main() {
 						#endif
 						#ifdef DOPRIM
 								fragRes0 = vec4(
-										shadowRes,
+										shadowRes + terSamp4.w,
 										0.0,
 										0.15,
 										1.0
@@ -5476,30 +5637,11 @@ void main() {
 		
 		
 		
-		
-		
-		vec4 limbRes = vec4(0.0);
-		
-#ifdef DOTER
-		if (globBestLimbInd > -1) {
-			
-			int primDataInd = globBestLimbInd;
-			
-			vec4 cenVec = texelFetch(Texture1, primDataInd); primDataInd++;
-			vec4 tanVec = texelFetch(Texture1, primDataInd); primDataInd++;
-			// bitVec = texelFetch(Texture1, primDataInd); primDataInd++;
-			// norVec = texelFetch(Texture1, primDataInd); primDataInd++;
-			// ln0Vec = texelFetch(Texture1, primDataInd); primDataInd++;
-			// ln1Vec = texelFetch(Texture1, primDataInd); primDataInd++;
-			
-			limbRes.w = cenVec.w;
-			limbRes.z = tanVec.w;
-		}
-#endif
+
 		
 		
 		// cache 
-		FragColor4 = vec4(landValForCache, waterVal, dynVal, shadowRes); //terSamp4
+		FragColor4 = vec4(min(landVal,solidVal), waterVal, hardShadowDynRes, shadowRes); //terSamp4
 		FragColor5 = vec4(curTexArr[0].xy,curTexArr[1].xy); //terSamp5
 		
 		FragColor6 = limbRes;

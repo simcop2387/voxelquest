@@ -618,6 +618,22 @@ void main() {
         }
     }
     
+    if (tex4.w == 0.0) {
+        
+    }
+    else {
+        isOutline = false;
+    }
+    
+    // for (i = 0; i < 4; i++) {
+    //     newTC = TexCoord0.xy + dirVecs[i].xy*1.0/bufferDim;
+    //     samp = texture2D(Texture0, newTC );
+    //     if (distance(samp.xyz,tex0.xyz) > 0.1 ) {
+    //         isOutline = true;
+    //     }
+    // }
+    
+    
     // if (tex4.w < tex0.w) {
     //     isActObj = false;
     //     isSelObj = false;
@@ -638,7 +654,7 @@ void main() {
     }
     
     if (isSelLimb) {
-        finalCol = vec3(1.0,1.0,0.0);
+        finalCol += vec3(1.0,0.0,1.0)*0.25;
     }
     
     if (isOutline) {
@@ -674,6 +690,7 @@ void main() {
             
         }
         else {
+            finalCol *= vec3(0.25);
             // finalCol += vec3(1.0,1.0,1.0)*0.25;
         }
         

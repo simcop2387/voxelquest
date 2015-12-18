@@ -292,6 +292,7 @@ public:
   uint (naUintData) [8];
   int (naIntData) [8];
   float (naFloatData) [8];
+  float (conVals) [E_CONST_LENGTH];
   float lastMouseOrigX;
   float lastMouseOrigY;
   float globWheelDelta;
@@ -460,6 +461,7 @@ public:
   charArr lastJSONBufferGUI;
   JSONValue * rootObjJS;
   JSONValue * guiRootJS;
+  JSONValue * constRootJS;
   HPClock bulletTimer;
   Timer fpsTimer;
   Timer shakeTimer;
@@ -615,7 +617,9 @@ public:
   void getMarkerPos (int x, int y);
   void makeJump (int actorId, int isUp);
   void resetGeom ();
+  void changePose (int amount);
   void saveCurrentPose ();
+  void loadNonPoseData (int currentNPD);
   void loadCurrentPose ();
   void processInput (unsigned char key, bool keyDown, int x, int y);
   void getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj);
@@ -635,6 +639,7 @@ public:
   void keyboardDown (unsigned char key, int _x, int _y);
   void updateCurGeom (int x, int y);
   void mouseMove (int _x, int _y);
+  void doSwing (BaseObj * ca);
   void mouseClick (int button, int state, int _x, int _y);
   void makeDirty ();
   void setSelNode (GameOrgNode * newNode);
@@ -677,6 +682,8 @@ public:
   void endFieldInput (bool success);
   void saveOrg ();
   void loadOrg ();
+  float getConst (string conName);
+  void loadConstants ();
   void loadGUI ();
   string loadFileString (string fnString);
   std::ifstream::pos_type filesize (char const * filename);
@@ -1320,8 +1327,8 @@ public:
   static float const baseMat;
   GameOrg ();
   void init (Singleton * _singleton, int _ownerUID, int _orgType);
-  void loadFromFile (string fileName);
-  void jsonToNode (JSONValue * * parentObj, GameOrgNode * curNode);
+  void loadFromFile (string fileName, bool notThePose);
+  void jsonToNode (JSONValue * * parentObj, GameOrgNode * curNode, bool notThePose);
   void saveToFile (string fileName);
   BaseObj * getOwner ();
   void setToPose (GameOrg * otherOrg, float lerpAmount, int boneId = -1);
@@ -1407,7 +1414,8 @@ public:
   std::vector <ActorJointStruct> actorJoints;
   int geId;
   btVector3 origOffset;
-  int addJoint (int nodeName, int parentId, bool isBall, float mass, GameOrgNode * curNode);
+  GameOrg * baseOrg;
+  int addJoint (int nodeName, int parentId, int jointType, float mass, GameOrgNode * curNode);
   void initFromOrg (GameOrgNode * curNode, int curParent);
   GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed);
   virtual ~ GameActor ();
@@ -1997,7 +2005,7 @@ public:
   void ensureBlocks ();
   void findNearestEnt (EntSelection * entSelection, int entType, int maxLoadRad, int radStep, FIVector4 * testPoint, bool onlyInteractive = false, bool ignoreDistance = false);
   void drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * maxc, bool copyToTex, bool forceFinish, bool getVoro = false);
-  void updateLimbTBOData ();
+  void updateLimbTBOData (bool showLimbs);
   void drawPrim (bool doSphereMap, bool doTer, bool doPoly);
   void drawOrg (GameOrg * curOrg, bool drawAll);
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);

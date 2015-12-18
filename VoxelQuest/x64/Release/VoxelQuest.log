@@ -1,4 +1,4 @@
-﻿Build started 12/12/2015 1:17:57 AM.
+﻿Build started 12/18/2015 5:51:02 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -195,6 +195,11 @@
          
          Valid JSON
                    
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
          load jv data materials.js
          Loading:  ..\data\materials.js         
          Load Successful          
@@ -231,6 +236,11 @@
                    
          Sea Level: 80
          DONE WITH MAP
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
          load jv data materials.js
          Loading:  ..\data\materials.js         
          Load Successful          
@@ -255,6 +265,11 @@
          Loading:  ..\data\saves\save0\compMap.txt         
          Load Successful          
          End Loading GUI Values
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
          load jv data primTemplates.js
          Loading:  ..\data\primTemplates.js         
          Load Successful          
@@ -269,7 +284,17 @@
          
          Valid JSON
                    
+         Loading:  ..\data\orgdata\E_PK_NON_POSE.js         
+         Load Successful          
+         
+         Valid JSON
+                   
          Loading:  ..\data\orgdata\E_PK_JUMP.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_PICKUP.js         
          Load Successful          
          
          Valid JSON
@@ -304,14 +329,179 @@
          
          Valid JSON
                    
+         Loading:  ..\data\orgdata\E_PK_SLSH_R0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_SLSH_R1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_SLSH_R2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_SLSH_L0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_SLSH_L1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_SLSH_L2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_SLSH_B0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_SLSH_B1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_SLSH_B2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_HACK_R0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_HACK_R1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_HACK_R2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_HACK_L0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_HACK_L1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_HACK_L2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_HACK_B0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_HACK_B1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_HACK_B2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_STAB_R0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_STAB_R1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_STAB_R2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_STAB_L0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_STAB_L1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_STAB_L2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_STAB_B0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_STAB_B1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_STAB_B2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
          GW DONE          
          curHeight 0 newHeight 2634.04
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
-         editPose 1
-         editPose 0
-         actObjInd 427
-         subjectDistance 2.47696
+         Loading:  ..\data\orgdata\E_PK_NON_POSE.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PK_NON_POSE.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         actObjInd 432
+         subjectDistance 7.23795
+         No code for key: w
+         Loading:  ..\data\orgdata\E_PK_NON_POSE.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         actObjInd 481
+         subjectDistance 7.24317
+         No code for key: w
+         actObjInd 432
+         subjectDistance 5.80695
+         actObjInd 481
+         subjectDistance 7.29933
+         No code for key: w
+         No code for key: w
+         No code for key: w
+         from E_DT_NOTHING to E_DT_NOTHING
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
          load jv data primTemplates.js
          Loading:  ..\data\primTemplates.js         
          Load Successful          
@@ -322,152 +512,11 @@
          Valid JSON
                    
          Shaders Refreshed
-         firstPerson 0
-         actObjInd 427
-         subjectDistance 2.4771
-         editPose 1
-         Loading:  ..\data\orgdata\E_PK_T_POSE.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_T_POSE
-         from E_DT_WORLD_OBJECT to E_DT_WORLD_OBJECT
-         editPose 0
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-     1>EXEC : Shader  473  ( ../src/glsl/PrimShader.c ) compile error : 0(2582) : error C7011: implicit cast from "vec4" to "vec3"
-              
-     1>EXEC : Program  474  link error : Fragment info
-         -------------
-     1>0(2582): error C7011: implicit cast from "vec4" to "vec3"
-                
-         Shaders Refreshed
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         editPose 1
-         Loading:  ..\data\orgdata\E_PK_T_POSE.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_T_POSE
-         editPose 0
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         editPose 1
-         Loading:  ..\data\orgdata\E_PK_T_POSE.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_T_POSE
-         editPose 0
-         editPose 1
-         Loading:  ..\data\orgdata\E_PK_T_POSE.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_T_POSE
-         from E_DT_NOTHING to E_DT_WORLD_OBJECT
-         editPose 0
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         editPose 1
-         Loading:  ..\data\orgdata\E_PK_T_POSE.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_T_POSE
-         editPose 0
-         editPose 1
-         Loading:  ..\data\orgdata\E_PK_T_POSE.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_T_POSE
-         Current Pose: E_PK_JUMP
-         Loading:  ..\data\orgdata\E_PK_JUMP.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_JUMP
-         Current Pose: E_PK_IDLE_LOW
-         Loading:  ..\data\orgdata\E_PK_IDLE_LOW.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_IDLE_LOW
-         editPose 0
-         editPose 1
-         Loading:  ..\data\orgdata\E_PK_IDLE_LOW.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_IDLE_LOW
-         Saving External JSON Values
-         Save Successful          
-         Save Successful          
-         Save Successful          
-         Save Successful          
-         End Saving External JSON Values
-         Saving GUI Values
-         Save Successful          
-         End Saving GUI Values
-         Save Successful          
-         Loading:  ..\data\orgdata\E_PK_IDLE_LOW.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Saved Pose E_PK_IDLE_LOW
-         editPose 0
-         editPose 1
-         Loading:  ..\data\orgdata\E_PK_IDLE_LOW.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_IDLE_LOW
-         from E_DT_WORLD_OBJECT to E_DT_WORLD_OBJECT
-     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
-C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -1.
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
+         iNumSteps:  16         
+         iNumSteps:  16         
+         iNumSteps:  16         
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
-Build FAILED.
+Build succeeded.
 
-Time Elapsed 00:21:43.05
+Time Elapsed 00:52:21.33

@@ -10,7 +10,7 @@ int RUN_COUNT;
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "27015"
 
-const static int MAX_LIMB_DATA_IN_BYTES = 16384;
+const static int MAX_LIMB_DATA_IN_BYTES = 65536;
 
 const static bool GEN_COLLISION = false;
 const static bool GEN_POLYS_HOLDER = true;
@@ -19,8 +19,8 @@ const static bool GEN_POLYS_WORLD = false;
 const static bool SINGLE_THREADED = false;
 const static bool DO_RANDOMIZE = false;
 
-// no greater than 8 unless shader changed
-const static int MAX_PRIM_IDS = 8;
+// no greater than 8 unless shader changed (primIdList[8])
+const static int MAX_PRIM_IDS = 16;
 const static int MAX_PRIMTEST = 8;
 
 const static int MAX_DEPTH_PEELS = 4;
@@ -39,13 +39,16 @@ const static int MAX_EXPLODES = 8;
 const static bool DO_SHADER_DUMP = false;
 
 
-const static int DEF_WIN_W = 1440;
-const static int DEF_WIN_H = 720;
+// const static int DEF_WIN_W = 1440;
+// const static int DEF_WIN_H = 720;
+
+const static int DEF_WIN_W = 1920;
+const static int DEF_WIN_H = 1080;
 
 const static int DEF_VOL_SIZE = 128;
 
-const static int DEF_SCALE_FACTOR = 2;
-const static int RENDER_SCALE_FACTOR = 2;
+const static int DEF_SCALE_FACTOR = 4;
+const static int RENDER_SCALE_FACTOR = 1;
 const static float SPHEREMAP_SCALE_FACTOR = 0.5f; // lower is faster
 
 const static bool USE_SPHERE_MAP = false;

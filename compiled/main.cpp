@@ -10,7 +10,7 @@ int RUN_COUNT;
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "27015"
 
-const static int MAX_LIMB_DATA_IN_BYTES = 16384;
+const static int MAX_LIMB_DATA_IN_BYTES = 65536;
 
 const static bool GEN_COLLISION = false;
 const static bool GEN_POLYS_HOLDER = true;
@@ -19,8 +19,8 @@ const static bool GEN_POLYS_WORLD = false;
 const static bool SINGLE_THREADED = false;
 const static bool DO_RANDOMIZE = false;
 
-// no greater than 8 unless shader changed
-const static int MAX_PRIM_IDS = 8;
+// no greater than 8 unless shader changed (primIdList[8])
+const static int MAX_PRIM_IDS = 16;
 const static int MAX_PRIMTEST = 8;
 
 const static int MAX_DEPTH_PEELS = 4;
@@ -39,13 +39,16 @@ const static int MAX_EXPLODES = 8;
 const static bool DO_SHADER_DUMP = false;
 
 
-const static int DEF_WIN_W = 1440;
-const static int DEF_WIN_H = 720;
+// const static int DEF_WIN_W = 1440;
+// const static int DEF_WIN_H = 720;
+
+const static int DEF_WIN_W = 1920;
+const static int DEF_WIN_H = 1080;
 
 const static int DEF_VOL_SIZE = 128;
 
-const static int DEF_SCALE_FACTOR = 2;
-const static int RENDER_SCALE_FACTOR = 2;
+const static int DEF_SCALE_FACTOR = 4;
+const static int RENDER_SCALE_FACTOR = 1;
 const static float SPHEREMAP_SCALE_FACTOR = 0.5f; // lower is faster
 
 const static bool USE_SPHERE_MAP = false;
@@ -3517,6 +3520,23 @@ void initNetMasks() {
  
 
 
+
+enum E_CONST_VALS {
+	E_CONST_JUMP_AMOUNT,
+	E_CONST_WALK_AMOUNT,
+	E_CONST_LENGTH
+};
+
+string constStrings[] = {
+	"E_CONST_JUMP_AMOUNT",
+	"E_CONST_WALK_AMOUNT",
+	"E_CONST_LENGTH"
+};
+
+
+
+
+
 enum E_GUI_DATA_STRINGS {
 	E_GDS_DATA_SOURCE,
 	E_GDS_DATA_FILE,
@@ -4077,6 +4097,16 @@ enum E_CONNECTION_TYPES {
 // 	E_BT_LENGTH
 // };
 
+enum E_BODY_GUIDES {
+	E_BDG_CENTER,
+	//E_BDG_LFOOT,
+	//E_BDG_RFOOT,
+	E_BDG_LENGTH
+};
+
+const static int E_BDG_LFOOT = -99;
+const static int E_BDG_RFOOT = -98;
+
 
 enum E_BONES_HUMAN {
 	
@@ -4085,6 +4115,8 @@ enum E_BONES_HUMAN {
 	E_BONE_L_UPPERARM,
 	E_BONE_L_LOWERARM,
 	E_BONE_L_METACARPALS,
+	// E_BONE_L_HOLDBASE,
+	// E_BONE_L_HOLDEND,
 	E_BONE_L_PROXIMAL0, // pinky
 	E_BONE_L_PROXIMAL1, // ring
 	E_BONE_L_PROXIMAL2, // middle
@@ -4106,11 +4138,14 @@ enum E_BONES_HUMAN {
 	E_BONE_L_TALUS,
 	E_BONE_L_PHALANGE,
 	E_BONE_L_END, //////////////
+	
 	E_BONE_R_BEG, //////////////
 	E_BONE_R_SHOULDER,
 	E_BONE_R_UPPERARM,
 	E_BONE_R_LOWERARM,
 	E_BONE_R_METACARPALS,
+	// E_BONE_R_HOLDBASE,
+	// E_BONE_R_HOLDEND,
 	E_BONE_R_PROXIMAL0, // pinky
 	E_BONE_R_PROXIMAL1, // ring
 	E_BONE_R_PROXIMAL2, // middle
@@ -4617,18 +4652,48 @@ enum E_COL_TYPES {
     COL_NOTHING = 0,
     COL_STATIC = 1,
     COL_DYN = 2,
-    COL_BODY = 4,
-    COL_MARKER = 8,
-    COL_WEAPON = 16
+    COL_MARKER = 4,
+    COL_HAND = 8,
+    COL_BODY0 = 16,
+    COL_BODY1 = 32,
+    COL_BODY2 = 64,
+    COL_BODY3 = 128,
+    COL_BODY4 = 256,
+    COL_BODY5 = 512,
+    COL_BODY6 = 1024,
+    COL_BODY7 = 2048
+    
+    
+    //COL_WEAPON = 16
 };
 
-const static int terCollidesWith = COL_STATIC|COL_DYN|COL_BODY|COL_MARKER|COL_WEAPON;
-const static int bodyCollidesWith = COL_STATIC|COL_DYN;//COL_NOTHING;//
+const static int MAX_COL_BODY = 8;
+const static int bodyCollidesWith[] = {
+	COL_STATIC|COL_DYN|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY6|COL_BODY7,
+	COL_STATIC|COL_DYN|COL_BODY0|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY6|COL_BODY7,
+	COL_STATIC|COL_DYN|COL_BODY0|COL_BODY1|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY6|COL_BODY7,
+	COL_STATIC|COL_DYN|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY4|COL_BODY5|COL_BODY6|COL_BODY7,
+	
+	COL_STATIC|COL_DYN|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY5|COL_BODY6|COL_BODY7,
+	COL_STATIC|COL_DYN|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY6|COL_BODY7,
+	COL_STATIC|COL_DYN|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY7,
+	COL_STATIC|COL_DYN|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY6
+};
+
+
+const static int handCollidesWith = COL_STATIC|COL_DYN;
+const static int terCollidesWith = COL_STATIC|COL_DYN|COL_MARKER|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY6|COL_BODY7; //|COL_WEAPON
 const static int markerCollidesWith = COL_STATIC|COL_DYN;
-const static int dynCollidesWith = COL_STATIC|COL_DYN|COL_BODY|COL_MARKER|COL_WEAPON;
-const static int weaponCollidesWith = COL_STATIC|COL_DYN;// |COL_WEAPON;
+const static int dynCollidesWith = COL_STATIC|COL_DYN|COL_MARKER|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY6|COL_BODY7; //|COL_WEAPON
+//const static int weaponCollidesWith = COL_STATIC|COL_DYN;// |COL_WEAPON;
 
 
+enum E_JOINT_TYPES {
+	E_JT_LIMB,
+	E_JT_BALL,
+	E_JT_NORM,
+	E_JT_LENGTH
+};
 
 struct BodyStruct {
 	btRigidBody* body;
@@ -4638,7 +4703,7 @@ struct BodyStruct {
 	
 	float mass;
 	int boneId;
-	bool isBall;
+	int jointType;
 	
 	bool isVisible;
 	bool inWater;
@@ -4649,7 +4714,7 @@ struct BodyStruct {
 
 struct ActorJointStruct {
 	int boneId;
-	bool isBall;
+	int jointType;
 	float rad;
 	float length;
 	
@@ -4688,31 +4753,76 @@ enum E_POSE_GROUPS {
 	E_PG_JUMP,
 	E_PG_IDLE,
 	E_PG_WALK,
+	E_PG_PICKUP,
+	
+	E_PG_SLSH_R,
+	E_PG_SLSH_L,
+	E_PG_SLSH_B,
+	
+	E_PG_HACK_R,
+	E_PG_HACK_L,
+	E_PG_HACK_B,
+	
+	E_PG_STAB_R,
+	E_PG_STAB_L,
+	E_PG_STAB_B,
+	
 	E_PG_LENGTH	
 };
 
 enum E_POSE_KEYS {
 	E_PK_T_POSE,
+	E_PK_NON_POSE,
 	E_PK_JUMP,
+	E_PK_PICKUP,
 	E_PK_IDLE_LOW,
 	E_PK_IDLE_HIGH,
 	E_PK_L_FORWARD,
 	E_PK_R_CROSS,
 	E_PK_R_FORWARD,
 	E_PK_L_CROSS,
+	
+	E_PK_SLSH_R0, E_PK_SLSH_R1, E_PK_SLSH_R2,
+	E_PK_SLSH_L0, E_PK_SLSH_L1, E_PK_SLSH_L2,
+	E_PK_SLSH_B0, E_PK_SLSH_B1, E_PK_SLSH_B2,
+	
+	E_PK_HACK_R0, E_PK_HACK_R1, E_PK_HACK_R2,
+	E_PK_HACK_L0, E_PK_HACK_L1, E_PK_HACK_L2,
+	E_PK_HACK_B0, E_PK_HACK_B1, E_PK_HACK_B2,
+	
+	E_PK_STAB_R0, E_PK_STAB_R1, E_PK_STAB_R2,
+	E_PK_STAB_L0, E_PK_STAB_L1, E_PK_STAB_L2,
+	E_PK_STAB_B0, E_PK_STAB_B1, E_PK_STAB_B2,
+	
+	
 	E_PK_LENGTH
 	
 };
 
 string poseStrings[] = {
 	"E_PK_T_POSE",
+	"E_PK_NON_POSE",
 	"E_PK_JUMP",
+	"E_PK_PICKUP",
 	"E_PK_IDLE_LOW",
 	"E_PK_IDLE_HIGH",
 	"E_PK_L_FORWARD",
 	"E_PK_R_CROSS",
 	"E_PK_R_FORWARD",
 	"E_PK_L_CROSS",
+	
+	"E_PK_SLSH_R0", "E_PK_SLSH_R1", "E_PK_SLSH_R2",
+	"E_PK_SLSH_L0", "E_PK_SLSH_L1", "E_PK_SLSH_L2",
+	"E_PK_SLSH_B0", "E_PK_SLSH_B1", "E_PK_SLSH_B2",
+	
+	"E_PK_HACK_R0", "E_PK_HACK_R1", "E_PK_HACK_R2",
+	"E_PK_HACK_L0", "E_PK_HACK_L1", "E_PK_HACK_L2",
+	"E_PK_HACK_B0", "E_PK_HACK_B1", "E_PK_HACK_B2",
+	
+	"E_PK_STAB_R0", "E_PK_STAB_R1", "E_PK_STAB_R2",
+	"E_PK_STAB_L0", "E_PK_STAB_L1", "E_PK_STAB_L2",
+	"E_PK_STAB_B0", "E_PK_STAB_B1", "E_PK_STAB_B2",
+	
 	"E_PK_LENGTH"
 };
 
@@ -9258,6 +9368,10 @@ public:
 	bool isUpright;
 	bool zeroZ;
 	bool isJumping;
+	bool isWalking;
+	bool leftActive;
+	bool isSwinging;
+	bool isPickingUp;
 	
 	
 	bool weaponActive;
@@ -9361,7 +9475,7 @@ public:
 	}
 	
 	float getMarkerMass() {
-		return bodies[0].mass;
+		return bodies[E_BDG_CENTER].mass;
 	}
 	
 	
@@ -9389,7 +9503,7 @@ public:
 	}
 	
 	bool baseContact() {
-		return bodies[0].hasContact;
+		return bodies[E_BDG_CENTER].hasContact;
 	}
 	
 	float getPlanarVel() {
@@ -9398,7 +9512,7 @@ public:
 			return 0.0f;
 		}
 		
-		btVector3 sourceVel = bodies[0].body->getLinearVelocity();
+		btVector3 sourceVel = bodies[E_BDG_CENTER].body->getLinearVelocity();
 		
 		return sqrt( sourceVel.getX()*sourceVel.getX() + sourceVel.getY()*sourceVel.getY() );
 	}
@@ -9418,13 +9532,13 @@ public:
 			}
 			else {
 				
-				if (zeroZ) {
-					bodies[i].body->setLinearVelocity(btVector3(
-						bodies[i].body->getLinearVelocity().getX(),
-						bodies[i].body->getLinearVelocity().getY(),
-						0.0f	
-					));
-				}
+				// if (zeroZ) {
+				// 	bodies[i].body->setLinearVelocity(btVector3(
+				// 		bodies[i].body->getLinearVelocity().getX(),
+				// 		bodies[i].body->getLinearVelocity().getY(),
+				// 		0.0f	
+				// 	));
+				// }
 				
 				bodies[i].body->setAngularVelocity(bodies[i].body->getAngularVelocity() + bodies[i].totAV*timeDelta);
 				bodies[i].body->applyCentralImpulse(bodies[i].totLV*timeDelta);
@@ -9433,20 +9547,18 @@ public:
 			}
 		}
 		
-		
-		
 	}
 	
 	
 	
-	void begSwing() {
-		targWeaponStack.push_back(E_WEAPON_STATE_BEG);
-	}
-	void endSwing() {
-		targWeaponStack.push_back(E_WEAPON_STATE_END);
-		targWeaponStack.push_back(E_WEAPON_STATE_IDLE);
-		//targWeaponStack.push_back(E_WEAPON_POS_RELAXED);
-	}
+	// void begSwing() {
+	// 	targWeaponStack.push_back(E_WEAPON_STATE_BEG);
+	// }
+	// void endSwing() {
+	// 	targWeaponStack.push_back(E_WEAPON_STATE_END);
+	// 	targWeaponStack.push_back(E_WEAPON_STATE_IDLE);
+	// 	//targWeaponStack.push_back(E_WEAPON_POS_RELAXED);
+	// }
 	
 	// int getStackElem(int n) {
 	// 	std::list<int>::iterator ptr;
@@ -9618,6 +9730,8 @@ public:
 	
 	
 	void updateWeapon(
+		btVector3 weaponBeg,
+		btVector3 weaponEnd,
 		double curStepTime,
 		// float lrBounds,
 		// float udBounds,
@@ -9626,7 +9740,7 @@ public:
 		
 		totTime += curStepTime;
 		
-		updateWeaponTargs(curStepTime);
+		//updateWeaponTargs(curStepTime);
 		
 		
 		float myMat[16];
@@ -9646,48 +9760,53 @@ public:
 		
 		//float lrBounds = sin(totTime/4.0);
 		//float udBounds = sin(totTime);
-		float udBounds2 = udBounds;//sin(totTime/8.0);
+		//float udBounds2 = udBounds;//sin(totTime/8.0);
 		
 		if (bodies.size() < 1) {
 			return;
 		}
 		
 		
+		// float weaponTheta = M_PI_2 + lrBounds*M_PI_8;
+		// float weaponPhi = M_PI_4 + udBounds*M_PI_4;
+		
+		// float weaponTheta2 = (1.0f - lrBounds)*M_PI + cos(totTime/2.0f)*0.1f;
+		// float weaponPhi2 = 0 + udBounds*M_PI_2*1.5f + sin(totTime/3.0f)*0.1f;
 		
 		
-		float weaponTheta = M_PI_2 + lrBounds*M_PI_8;
-		float weaponPhi = M_PI_4 + udBounds*M_PI_4;
-		
-		float weaponTheta2 = (1.0f - lrBounds)*M_PI + cos(totTime/2.0f)*0.1f;
-		float weaponPhi2 = 0 + udBounds*M_PI_2*1.5f + sin(totTime/3.0f)*0.1f;
-		
-		
-		bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
+		bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
 		myMatrix4 = Matrix4(myMat);
 		
-		myVector0 = Vector3(
-			cos(weaponTheta)*sin(weaponPhi)*rad0,
-			sin(weaponTheta)*sin(weaponPhi)*rad0 + 0.5f,
-			cos(weaponPhi)*rad0 + (1.0f-udBounds2)*0.75f
-		);
-		myVector1 = Vector3(
-			cos(weaponTheta2)*sin(weaponPhi2)*rad1,
-			sin(weaponTheta2)*sin(weaponPhi2)*rad1 + 0.5f,
-			cos(weaponPhi2)*rad1
-		);
+		// myVector0 = Vector3(
+		// 	cos(weaponTheta)*sin(weaponPhi)*rad0,
+		// 	sin(weaponTheta)*sin(weaponPhi)*rad0 + 0.5f,
+		// 	cos(weaponPhi)*rad0 + (1.0f-udBounds2)*0.75f
+		// );
+		// myVector1 = Vector3(
+		// 	cos(weaponTheta2)*sin(weaponPhi2)*rad1,
+		// 	sin(weaponTheta2)*sin(weaponPhi2)*rad1 + 0.5f,
+		// 	cos(weaponPhi2)*rad1
+		// );
 		
-		myVector0.x -= (myVector0.x*0.5f + myVector1.x*0.5f)*0.25f;
-		myVector0.y -= (myVector0.y*0.5f + myVector0.y*0.5f)*0.25f;
+		// myVector0.x -= (myVector0.x*0.5f + myVector1.x*0.5f)*0.25f;
+		// myVector0.y -= (myVector0.y*0.5f + myVector0.y*0.5f)*0.25f;
 		
-		myVector0 *= 0.75f;
+		// myVector0 *= 0.75f;
 		
-		myVector0.y += 0.25f;
+		// myVector0.y += 0.25f;
 		
-		//if (myVector1.x > 0.0f) {
-			myVector0.x += myVector1.x*0.25f;
-		//}
+		// //if (myVector1.x > 0.0f) {
+		// 	myVector0.x += myVector1.x*0.25f;
+		// //}
 		
-		myVector1.y += 1.0f-abs(cos(weaponPhi2));
+		// myVector1.y += 1.0f-abs(cos(weaponPhi2));
+		
+		BodyStruct* handBody = getBodyByBoneId(E_BONE_L_METACARPALS);
+		
+		btVector3 handCenter = handBody->body->getCenterOfMassPosition();
+		
+		myVector0 = Vector3(weaponBeg.getX(), weaponBeg.getY(),weaponBeg.getZ());
+		myVector1 = Vector3(weaponEnd.getX(), weaponEnd.getY(),weaponEnd.getZ());
 		
 		
 		normVec = myVector1 - myVector0;
@@ -9696,6 +9815,8 @@ public:
 		myVector1 = myVector0 + normVec;
 		
 		rightHandTop = true;//(myVector0.x < 0.0f);
+		
+		
 		
 		vf0 = Vector4(myVector0.x, myVector0.y, myVector0.z, 1.0f);
 		vf1 = Vector4(myVector1.x, myVector1.y, myVector1.z, 1.0f);
@@ -9706,6 +9827,10 @@ public:
 		weaponVec0 = btVector3(resVector0.x,resVector0.y,resVector0.z);
 		weaponVec1 = btVector3(resVector1.x,resVector1.y,resVector1.z);
 		
+		btVector3 weapDif = handCenter-weaponVec0;
+		
+		weaponVec0 += weapDif;
+		weaponVec1 += weapDif;
 		
 		
 		vf0 = Vector4( 1.0f,0.0f,0.0f,1.0f);
@@ -9787,6 +9912,66 @@ public:
 				bodies[i].body->setActivationState(ACTIVE_TAG);
 			}
 		}
+		
+		
+	}
+	
+	bool isHumanoid() {
+		return (
+			(entType == E_ENTTYPE_NPC) ||
+			(entType == E_ENTTYPE_MONSTER)
+		);
+	}
+	
+	void makeWalk(btVector3 imp, btMatrix3x3 otherRot) {
+		
+		if (isHumanoid()) {
+			
+		}
+		else {
+			return;
+		}
+		
+		
+		bool lfDown = bodies[E_BDG_LFOOT].hasContact && 
+			(bodies[E_BDG_LFOOT].body->getLinearVelocity().length() < 0.1f);
+		bool rfDown = bodies[E_BDG_RFOOT].hasContact && 
+			(bodies[E_BDG_RFOOT].body->getLinearVelocity().length() < 0.1f);
+		
+		int resInd = -1;
+		
+		if (lfDown && rfDown) {
+			leftActive = !leftActive;
+			//resInd = E_BDG_LFOOT;
+			
+			if (leftActive) {
+				resInd = E_BDG_LFOOT;
+			}
+			else {
+				resInd = E_BDG_RFOOT;
+			}
+			
+		}
+		// else {
+		// 	if (lfDown) {
+		// 		resInd = E_BDG_LFOOT;
+		// 	}
+		// 	else {
+		// 		if (rfDown) {
+		// 			resInd = E_BDG_RFOOT;
+		// 		}
+		// 	}
+		// }
+		
+		if (resInd == -1) {
+			return;
+		}
+		
+		
+		btVector3 newImp = otherRot*imp*bodies[resInd].mass;
+		
+		bodies[resInd].body->applyCentralImpulse(newImp);
+		bodies[resInd].body->setActivationState(ACTIVE_TAG);
 		
 		
 	}
@@ -9919,6 +10104,10 @@ public:
 		
 		zeroZ = false;
 		isJumping = false;
+		isWalking = false;
+		leftActive = false;
+		isSwinging = false;
+		isPickingUp = false;
 		
 		isUpright = 
 			(entType == E_ENTTYPE_NPC) ||
@@ -9984,6 +10173,90 @@ struct AssignStruct {
 
 
 
+inline float qSign(float x) {return (x >= 0.0f) ? +1.0f : -1.0f;}
+inline float qNorm(float a, float b, float c, float d) {return sqrt(a * a + b * b + c * c + d * d);}
+
+
+btQuaternion matToQuat(
+	float r11, float r12, float r13,
+	float r21, float r22, float r23,
+	float r31, float r32, float r33 	
+) {
+	float q0 = ( r11 + r22 + r33 + 1.0f) / 4.0f;
+	float q1 = ( r11 - r22 - r33 + 1.0f) / 4.0f;
+	float q2 = (-r11 + r22 - r33 + 1.0f) / 4.0f;
+	float q3 = (-r11 - r22 + r33 + 1.0f) / 4.0f;
+	if(q0 < 0.0f) q0 = 0.0f;
+	if(q1 < 0.0f) q1 = 0.0f;
+	if(q2 < 0.0f) q2 = 0.0f;
+	if(q3 < 0.0f) q3 = 0.0f;
+	q0 = sqrt(q0);
+	q1 = sqrt(q1);
+	q2 = sqrt(q2);
+	q3 = sqrt(q3);
+	if(q0 >= q1 && q0 >= q2 && q0 >= q3) {
+	    q0 *= +1.0f;
+	    q1 *= qSign(r32 - r23);
+	    q2 *= qSign(r13 - r31);
+	    q3 *= qSign(r21 - r12);
+	} else if(q1 >= q0 && q1 >= q2 && q1 >= q3) {
+	    q0 *= qSign(r32 - r23);
+	    q1 *= +1.0f;
+	    q2 *= qSign(r21 + r12);
+	    q3 *= qSign(r13 + r31);
+	} else if(q2 >= q0 && q2 >= q1 && q2 >= q3) {
+	    q0 *= qSign(r13 - r31);
+	    q1 *= qSign(r21 + r12);
+	    q2 *= +1.0f;
+	    q3 *= qSign(r32 + r23);
+	} else if(q3 >= q0 && q3 >= q1 && q3 >= q2) {
+	    q0 *= qSign(r21 - r12);
+	    q1 *= qSign(r31 + r13);
+	    q2 *= qSign(r32 + r23);
+	    q3 *= +1.0f;
+	} else {
+	    cout << "Quaternion error\n";
+	}
+	float r = qNorm(q0, q1, q2, q3);
+	q0 /= r;
+	q1 /= r;
+	q2 /= r;
+	q3 /= r;
+	
+	return btQuaternion(q0,q1,q2,q3);
+}
+
+btVector3 quatToEulerXYZ(const btQuaternion &quat) {
+	btVector3 euler;
+	float w=quat.getW();   float x=quat.getX();   float y=quat.getY();   float z=quat.getZ();
+	double sqw = w*w; double sqx = x*x; double sqy = y*y; double sqz = z*z; 
+	euler.setZ((atan2(2.0 * (x*y + z*w),(sqx - sqy - sqz + sqw))));
+	euler.setX((atan2(2.0 * (y*z + x*w),(-sqx - sqy + sqz + sqw))));
+	euler.setY((asin(-2.0 * (x*z - y*w))));
+	
+	return euler;
+}
+
+
+void moveToOrientation(
+	btRigidBody* myBody,
+	btVector3 tanAxis,
+	btVector3 bitAxis,
+	btVector3 norAxis,
+	float kv = 0.5f
+) {
+	btQuaternion targetOrientation = matToQuat(
+		tanAxis.getX(),	bitAxis.getX(), norAxis.getX(),
+		tanAxis.getX(),	bitAxis.getX(), norAxis.getX(),
+		tanAxis.getX(),	bitAxis.getX(), norAxis.getX()
+	);
+	btQuaternion currentOrientation = myBody->getOrientation();
+	btQuaternion deltaOrientation = targetOrientation * currentOrientation.inverse();
+	btVector3 deltaEuler = quatToEulerXYZ(deltaOrientation);
+	btVector3 torqueToApply = (-1.0f*kv)*deltaEuler;
+	myBody->applyTorque(torqueToApply);
+	
+}
 
 
 class VBOWrapper {
@@ -10150,7 +10423,7 @@ public:
 
 		glGenBuffers(1, &tbo_buf);
 		glBindBuffer(GL_TEXTURE_BUFFER, tbo_buf);
-		glBufferData(GL_TEXTURE_BUFFER, dataSize, tbo_data, GL_STATIC_DRAW);
+		glBufferData(GL_TEXTURE_BUFFER, dataSize, tbo_data, GL_DYNAMIC_DRAW); // todo: dynamic draw? //GL_STATIC_DRAW
 		glGenTextures(1, &tbo_tex);
 		glBindBuffer(GL_TEXTURE_BUFFER, 0);
 	}
@@ -21761,6 +22034,7 @@ public:
   uint (naUintData) [8];
   int (naIntData) [8];
   float (naFloatData) [8];
+  float (conVals) [E_CONST_LENGTH];
   float lastMouseOrigX;
   float lastMouseOrigY;
   float globWheelDelta;
@@ -21929,6 +22203,7 @@ public:
   charArr lastJSONBufferGUI;
   JSONValue * rootObjJS;
   JSONValue * guiRootJS;
+  JSONValue * constRootJS;
   HPClock bulletTimer;
   Timer fpsTimer;
   Timer shakeTimer;
@@ -22084,7 +22359,9 @@ public:
   void getMarkerPos (int x, int y);
   void makeJump (int actorId, int isUp);
   void resetGeom ();
+  void changePose (int amount);
   void saveCurrentPose ();
+  void loadNonPoseData (int currentNPD);
   void loadCurrentPose ();
   void processInput (unsigned char key, bool keyDown, int x, int y);
   void getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj);
@@ -22104,6 +22381,7 @@ public:
   void keyboardDown (unsigned char key, int _x, int _y);
   void updateCurGeom (int x, int y);
   void mouseMove (int _x, int _y);
+  void doSwing (BaseObj * ca);
   void mouseClick (int button, int state, int _x, int _y);
   void makeDirty ();
   void setSelNode (GameOrgNode * newNode);
@@ -22146,6 +22424,8 @@ public:
   void endFieldInput (bool success);
   void saveOrg ();
   void loadOrg ();
+  float getConst (string conName);
+  void loadConstants ();
   void loadGUI ();
   string loadFileString (string fnString);
   std::ifstream::pos_type filesize (char const * filename);
@@ -22789,8 +23069,8 @@ public:
   static float const baseMat;
   GameOrg ();
   void init (Singleton * _singleton, int _ownerUID, int _orgType);
-  void loadFromFile (string fileName);
-  void jsonToNode (JSONValue * * parentObj, GameOrgNode * curNode);
+  void loadFromFile (string fileName, bool notThePose);
+  void jsonToNode (JSONValue * * parentObj, GameOrgNode * curNode, bool notThePose);
   void saveToFile (string fileName);
   BaseObj * getOwner ();
   void setToPose (GameOrg * otherOrg, float lerpAmount, int boneId = -1);
@@ -22876,7 +23156,8 @@ public:
   std::vector <ActorJointStruct> actorJoints;
   int geId;
   btVector3 origOffset;
-  int addJoint (int nodeName, int parentId, bool isBall, float mass, GameOrgNode * curNode);
+  GameOrg * baseOrg;
+  int addJoint (int nodeName, int parentId, int jointType, float mass, GameOrgNode * curNode);
   void initFromOrg (GameOrgNode * curNode, int curParent);
   GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed);
   virtual ~ GameActor ();
@@ -23466,7 +23747,7 @@ public:
   void ensureBlocks ();
   void findNearestEnt (EntSelection * entSelection, int entType, int maxLoadRad, int radStep, FIVector4 * testPoint, bool onlyInteractive = false, bool ignoreDistance = false);
   void drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * maxc, bool copyToTex, bool forceFinish, bool getVoro = false);
-  void updateLimbTBOData ();
+  void updateLimbTBOData (bool showLimbs);
   void drawPrim (bool doSphereMap, bool doTer, bool doPoly);
   void drawOrg (GameOrg * curOrg, bool drawAll);
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
@@ -23785,6 +24066,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		rootObjJS = NULL;
 		guiRootJS = NULL;
+		constRootJS = NULL;
 		rbStack = NULL;
 		rbHeightStack = NULL;
 
@@ -24834,7 +25116,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		for (i = 0; i < E_PK_LENGTH; i++) {
 			gamePoses.push_back(new GameOrg());
 			gamePoses.back()->init(this,-1,E_ORGTYPE_HUMAN);
-			gamePoses.back()->loadFromFile(poseStrings[i]);
+			gamePoses.back()->loadFromFile(poseStrings[i], false);
 			transformOrg(gamePoses.back());
 		}
 		
@@ -26251,6 +26533,8 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 			}
 			else if (comp->uid.compare("#materialPicker") == 0) {
 				if (selectedNode != NULL) {
+					cout << "yqay" << comp->index << " " << boneStrings[selectedNode->nodeName] << "\n";
+					
 					selectedNode->orgVecs[E_OV_MATPARAMS].setFX(comp->index);
 					tmpNode = getMirroredNode(selectedNode);
 					if (tmpNode != NULL) {
@@ -26309,7 +26593,7 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 			
 		}
 		else if (comp->uid.compare("$options.graphics.fov") == 0) {
-			FOV = mixf(25.0f,120.0f,curValue);
+			FOV = mixf(5.0f,120.0f,curValue);
 			focalLength = 1.0f / tan(FOV / 2.0f);
 			
 		}
@@ -26882,6 +27166,8 @@ void Singleton::refreshIncludeMap ()
 	}
 void Singleton::doShaderRefresh (bool doBake)
         {
+
+		loadConstants();
 
 		LAST_COMPILE_ERROR = false;
 
@@ -27757,8 +28043,8 @@ void Singleton::applyNodeChanges (GameOrgNode * _curNode, float dx, float dy)
 				makeDirty();
 			}
 			
-			xm = dx/50.0f;
-			ym = dy/50.0f;
+			xm = dx/100.0f;
+			ym = dy/100.0f;
 			
 			if (shiftDown()) { // || altDown()
 								
@@ -28145,11 +28431,15 @@ void Singleton::makeJump (int actorId, int isUp)
 			return;
 		}
 		
-		float JUMP_AMOUNT = 600.0f*ge->getMarkerMass();
+		if (ge->isJumping) {
+			return;
+		}
+		
+		float jumpAmount = conVals[E_CONST_JUMP_AMOUNT]*ge->getMarkerMass();
 		
 		
 		if (isUp == 1) {
-			if (ge->bodies[0].inWater) {
+			if (ge->bodies[E_BDG_CENTER].inWater) {
 				
 				
 				if (
@@ -28163,7 +28453,7 @@ void Singleton::makeJump (int actorId, int isUp)
 					
 					// at water surface
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true, 0);
+					ge->applyImpulse(btVector3(0.0f,0.0f,jumpAmount), false, 0);
 					
 					
 					
@@ -28173,7 +28463,7 @@ void Singleton::makeJump (int actorId, int isUp)
 					// underwater
 					
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true, 0);
+					ge->applyImpulse(btVector3(0.0f,0.0f,jumpAmount), false, 0);
 					
 					playSoundEnt(
 						"bubble0",
@@ -28194,7 +28484,7 @@ void Singleton::makeJump (int actorId, int isUp)
 				else {
 					
 					
-					ge->applyImpulse(btVector3(0.0f,0.0f,JUMP_AMOUNT), true, 0);
+					ge->applyImpulse(btVector3(0.0f,0.0f,jumpAmount), false, 0);
 					ge->zeroZ = true;
 					
 					playSoundEnt(
@@ -28209,8 +28499,8 @@ void Singleton::makeJump (int actorId, int isUp)
 			}
 		}
 		else {
-			if (ge->bodies[0].inWater) {
-				ge->applyImpulse(btVector3(0.0f,0.0f,-JUMP_AMOUNT), true, 0);
+			if (ge->bodies[E_BDG_CENTER].inWater) {
+				ge->applyImpulse(btVector3(0.0f,0.0f,-jumpAmount), false, 0);
 				
 				playSoundEnt(
 					"bubble0",
@@ -28235,6 +28525,36 @@ void Singleton::resetGeom ()
 			paramArrGeom[i] = defaultTemplate[i];
 		}
 	}
+void Singleton::changePose (int amount)
+                                    {
+		
+		GameOrg* testHuman = getCurOrg();
+		
+		currentPose += amount;
+		
+		if (currentPose == E_PK_LENGTH) {
+			currentPose = E_PK_T_POSE;
+		}
+		if (currentPose < 0) {
+			currentPose = E_PK_LENGTH-1;
+		}
+		
+		cout << "Current Pose: " << poseStrings[currentPose] << "\n";
+		
+		
+		
+		if (testHuman != NULL) {
+			testHuman->targetPose = currentPose;
+			
+			if (editPose) {
+				loadCurrentPose();
+			}
+			
+			//testHuman->setToPose(gamePoses[currentPose]);
+			//transformOrg(testHuman);
+			//currentActor->wakeAll();
+		}
+	}
 void Singleton::saveCurrentPose ()
                                {
 		GameOrg* testHuman = getCurOrg();
@@ -28243,14 +28563,41 @@ void Singleton::saveCurrentPose ()
 			
 			if (testHuman != NULL) {
 				testHuman->saveToFile(poseStrings[currentPose]);
-				gamePoses[currentPose]->loadFromFile(poseStrings[currentPose]);
+				gamePoses[currentPose]->loadFromFile(poseStrings[currentPose], false);
 				transformOrg(gamePoses[currentPose]);
 				
 				cout << "Saved Pose " << poseStrings[currentPose] << "\n";
 				
 			}
-			
-			
+		}
+	}
+void Singleton::loadNonPoseData (int currentNPD)
+                                             {
+		GameOrg* testHuman = getCurOrg();
+		
+		int i;
+		
+		if (editPose) {
+			if (testHuman != NULL) {
+				
+				for (i = 0; i < E_PK_LENGTH; i++) {
+					//if (i != E_PK_NON_POSE) {
+						currentPose = i;
+						loadCurrentPose();
+						
+						gamePoses[currentPose]->loadFromFile(poseStrings[currentNPD], true);
+						transformOrg(gamePoses[currentPose]);
+						testHuman->setToPose(gamePoses[currentPose],1.0f);
+						transformOrg(testHuman);
+						makeDirty();
+						cout << "Loaded Non Pose " << poseStrings[currentPose] << "\n";
+						saveCurrentPose();
+						
+					//}
+				}
+				currentPose = E_PK_NON_POSE;
+				loadCurrentPose();
+			}
 		}
 	}
 void Singleton::loadCurrentPose ()
@@ -28258,10 +28605,9 @@ void Singleton::loadCurrentPose ()
 		GameOrg* testHuman = getCurOrg();
 		
 		if (editPose) {
-			
 			if (testHuman != NULL) {
 				
-				gamePoses[currentPose]->loadFromFile(poseStrings[currentPose]);
+				gamePoses[currentPose]->loadFromFile(poseStrings[currentPose], false);
 				transformOrg(gamePoses[currentPose]);
 				testHuman->setToPose(gamePoses[currentPose],1.0f);
 				transformOrg(testHuman);
@@ -28269,8 +28615,6 @@ void Singleton::loadCurrentPose ()
 				cout << "Loaded Pose " << poseStrings[currentPose] << "\n";
 				
 			}
-			
-			
 		}
 	}
 void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
@@ -28546,17 +28890,11 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					loadValuesGUI();
 				break;
 				case 'r':
-				
-					if (editPose) {
-						resetActiveNode();
-					}
-					else {
-						doShaderRefresh(bakeParamsOn);
-						cout << "Shaders Refreshed\n";
-					}
-				
 					
 					
+					
+					doShaderRefresh(bakeParamsOn);
+					cout << "Shaders Refreshed\n";
 
 					
 					
@@ -28564,7 +28902,14 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 				case 'j':
 				
-					smoothMove = !smoothMove;
+					if (editPose) {
+						resetActiveNode();
+					}
+					else {
+						smoothMove = !smoothMove;
+					}
+				
+					
 				
 					// doShaderRefresh(bakeParamsOn);
 					// mapInvalid = true;
@@ -28719,8 +29064,16 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				
 				case 'C':
+					if (currentPose == E_PK_NON_POSE) {
+						saveCurrentPose();
+						loadNonPoseData(E_PK_NON_POSE);
+					}
+					else {
+						cout << "Error, switch to E_PK_NON_POSE\n";
+					}
+				
 					
-					break;
+				break;
 				case 'c':
 					
 					editPose = !editPose;
@@ -28757,36 +29110,13 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 
 				case 'X':
-					fogOn = 1.0 - fogOn;
-					cout << "fog on " << fogOn << "\n";
+					//fogOn = 1.0 - fogOn;
+					//cout << "fog on " << fogOn << "\n";
+					changePose(-1);
 					break;
 					
 				case 'x':
-					currentPose++;
-					
-					// if (currentPose == E_PK_L_FORWARD) {
-					// 	currentPose = E_PK_IDLE_LOW;
-					// }
-					
-					if (currentPose == E_PK_LENGTH) {
-						currentPose = E_PK_T_POSE;
-					}
-					
-					cout << "Current Pose: " << poseStrings[currentPose] << "\n";
-					
-					
-					
-					if (testHuman != NULL) {
-						testHuman->targetPose = currentPose;
-						
-						if (editPose) {
-							loadCurrentPose();
-						}
-						
-						//testHuman->setToPose(gamePoses[currentPose]);
-						//transformOrg(testHuman);
-						//currentActor->wakeAll();
-					}
+					changePose(1);
 					
 					//fxaaOn = !fxaaOn;
 					//cout << "fxaaOn " << fxaaOn << "\n";
@@ -28797,14 +29127,14 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 					
 					
-					//doPathReport = true;
+					// doPathReport = true;
 
-					// medianCount++;					
-					// if (medianCount == 4) {
-					// 	medianCount = 0;
-					// }
+					medianCount++;					
+					if (medianCount == 4) {
+						medianCount = 0;
+					}
 					
-					runReport();
+					//runReport();
 					
 					// refreshPaths = true;
 					
@@ -29241,13 +29571,16 @@ void Singleton::mouseMove (int _x, int _y)
 		float fy = ((float)y)*M_PI / bufferDim[1];
 		
 		
+		if (hitGUI) {
+			return;
+		}
 		
-		if (mbDown) {
+		
+		if ((highlightedLimb==-1)&&mbDown) {
 			angleToVec(&lightVec, fx*2.0, fy*2.0);
 			lightVecOrig.copyFrom(&lightVec);
 			lightVec.setFZ(-abs(lightVec.getFZ()));
 		}
-		
 		
 		
 		if (abDown)
@@ -29333,6 +29666,29 @@ void Singleton::mouseMove (int _x, int _y)
 		lastPosX = _x;
 		lastPosY = _y;
 
+		
+	}
+void Singleton::doSwing (BaseObj * ca)
+                                  {
+		
+		GameOrg* curOrg;
+		
+		if (ca->isSwinging) {
+			
+		}
+		else {
+			
+			if (ca->weaponActive) {
+				ca->isSwinging = true;
+				curOrg = gameOrgs[ca->orgId];
+				curOrg->stepCount = 0;
+				curOrg->totTime = 0;
+				playSoundEnt("swing0", ca);
+			}
+			
+			
+		}
+		
 		
 	}
 void Singleton::mouseClick (int button, int state, int _x, int _y)
@@ -29470,17 +29826,18 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		
 		if (currentActor != NULL) {
 			
-			if (currentActor->weaponActive) {
+			// if (currentActor->weaponActive) {
 				
-				if (lbDown) {
-					currentActor->begSwing();
-				}
-				if (lbClicked) {
-					currentActor->endSwing();
-					playSoundEnt("swing0", currentActor);
-				}
+			// 	// if (lbDown) {
+			// 	// 	currentActor->begSwing();
+			// 	// }
 				
-				//
+				
+			// 	//
+			// }
+			
+			if (lbClicked) {
+				doSwing(currentActor);
 			}
 			
 		}
@@ -30187,44 +30544,62 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				makeJump(actorId,0);
 			}
 			
-			isWalking = false;
+			
+			ca->isWalking = false;
+			
 			
 			if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
-				
-				isWalking = true;
-				
-				//tempVec2.addXYZ(tempVec1[0],tempVec1[1],0.0f);
-				
+				ca->isWalking = true;
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,10.0,0)*ca->getMarkerMass(),
-						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
+						btVector3(0,conVals[E_CONST_WALK_AMOUNT],0)*ca->getMarkerMass(),
+						ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
 					);
 				}
-				
-				
-				
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
-				//tempVec2.addXYZ(-tempVec1[0],-tempVec1[1],0.0f);
-				
-				isWalking = true;
-				
+				ca->isWalking = true;
 				if (ca->hasBodies()) {
 					ca->applyImpulseOtherRot(
-						btVector3(0,-10.0,0)*ca->getMarkerMass(),
-						ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
+						btVector3(0,-conVals[E_CONST_WALK_AMOUNT],0)*ca->getMarkerMass(),
+						ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
 						true,
 						0
 					);
 				}
-				
-				
-				
 			}
+			
+			
+			// if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
+			// 	ca->isWalking = true;
+			// 	if (ca->hasBodies()) {
+			// 		ca->makeWalk(
+			// 			btVector3(
+			// 				0,
+			// 				conVals[E_CONST_WALK_AMOUNT],
+			// 				conVals[E_CONST_WALK_AMOUNT]
+			// 			),
+			// 			ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()
+			// 		);
+			// 	}
+			// }
+			
+			// if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
+			// 	ca->isWalking = true;
+			// 	if (ca->hasBodies()) {
+			// 		ca->makeWalk(
+			// 			btVector3(
+			// 				0,
+			// 				-conVals[E_CONST_WALK_AMOUNT],
+			// 				conVals[E_CONST_WALK_AMOUNT]
+			// 			),
+			// 			ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()
+			// 		);
+			// 	}
+			// }
 			
 			
 		}
@@ -30439,7 +30814,7 @@ void Singleton::handleMovement ()
 						
 						tempBTV = multByOtherRot(
 							btVector3(0.0f,1.0f,0.0f),
-							currentActor->bodies[0].body->getCenterOfMassTransform().getBasis()
+							currentActor->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()
 						);
 						
 						camRotation[0] += 
@@ -30561,7 +30936,7 @@ void Singleton::explodeBullet (BaseObj * ge)
 		explodeStack.push_back(ExplodeStruct());
 		
 		if (ge->hasBodies()) {
-			explodeStack.back().pos = ge->bodies[0].body->getCenterOfMassPosition();
+			explodeStack.back().pos = ge->bodies[E_BDG_CENTER].body->getCenterOfMassPosition();
 			explodeStack.back().radius = 20.0f;
 			explodeStack.back().power = 200.0f;
 		}
@@ -30587,6 +30962,7 @@ void Singleton::grabThrowObj (int actorId)
 		}
 		
 		BaseObj* ca = &(gw->gameObjects[actorId]);
+		GameOrg* curOrg = gameOrgs[ca->orgId];
 		
 		// ca->weaponActive = !ca->weaponActive;
 		
@@ -30610,7 +30986,7 @@ void Singleton::grabThrowObj (int actorId)
 			if (ca->hasBodies()) {
 				gw->gameObjects[ca->isGrabbingId].applyImpulseOtherRot(
 					btVector3(0.0,200,200)*gw->gameObjects[ca->isGrabbingId].getTotalMass(),
-					ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
+					ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
 					true,
 					0
 				);
@@ -30641,12 +31017,22 @@ void Singleton::grabThrowObj (int actorId)
 			// find obj to pickup
 			
 			
+			
+			
+			
+			
+			
+			
 			res = gw->getClosestObj(actorId, BTV2FIV(ca->getCenterPoint(0)));
 			
 			if (res < 0) {
 				
 			}
 			else {
+				
+				curOrg->stepCount = 0;
+				curOrg->totTime = 0;
+				ca->isPickingUp = true;
 				
 				playSoundEnt(
 					"scrape0",
@@ -30703,7 +31089,7 @@ void Singleton::launchBullet (int actorId, int bulletType)
 				
 				btVector3 tempBTV = multByOtherRot(
 					btVector3(0.0f,3.0f,3.0f),
-					ca->bodies[0].body->getCenterOfMassTransform().getBasis()
+					ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()
 				);
 				newCellPos.addXYZ(tempBTV.getX(), tempBTV.getY(), tempBTV.getZ());
 				
@@ -30720,7 +31106,7 @@ void Singleton::launchBullet (int actorId, int bulletType)
 			
 				gw->gameObjects[entNum].applyImpulseOtherRot(
 					btVector3(0.0,200,200)*gw->gameObjects[entNum].getTotalMass(),
-					ca->bodies[0].body->getCenterOfMassTransform().getBasis(),
+					ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
 					true,
 					0
 				);
@@ -31489,7 +31875,7 @@ void Singleton::endFieldInput (bool success)
 					
 				break;
 				case E_FC_LOADORG:
-					testHuman->loadFromFile(currentFieldString);
+					testHuman->loadFromFile(currentFieldString, false);
 					//orientRotation();
 					if (currentActor != NULL) {
 						//currentActor->curRot = 1;
@@ -31510,6 +31896,32 @@ void Singleton::saveOrg ()
 void Singleton::loadOrg ()
                        {
 		beginFieldInput("",E_FC_LOADORG);
+	}
+float Singleton::getConst (string conName)
+                                       {
+		if (constRootJS == NULL) {
+			
+		}
+		else {
+			if (constRootJS->HasChild(conName)) {
+				return constRootJS->Child(conName)->number_value;
+			}
+			else {
+				
+			}
+		}
+		return 0.0f;
+	}
+void Singleton::loadConstants ()
+                             {
+		int i;
+		if (loadJSON("..\\data\\constants.js", &constRootJS)) {
+			
+			for (i = 0; i < E_CONST_LENGTH; i++) {
+				conVals[i] = getConst(constStrings[i]);
+			}
+			
+		}
 	}
 void Singleton::loadGUI ()
                        {
@@ -31967,7 +32379,7 @@ void Singleton::frameUpdate ()
 							currentActor->hasBodies()	
 						) {
 							
-							if (currentActor->bodies[0].inWater) {
+							if (currentActor->bodies[E_BDG_CENTER].inWater) {
 								temp = clampfZO(
 									currentActor->getVel(0)->length()
 								)*0.25f;
@@ -42386,12 +42798,12 @@ GameOrgNode::GameOrgNode (GameOrgNode * _parent, int _nodeName, float _material,
 		//boneLengthScale = 1.0f;
 		
 		
-		(orgVecs[0]).setFXYZ(_tanX,_tanY,_tanZ);
-		(orgVecs[1]).setFXYZ(_bitX,_bitY,_bitZ);
-		(orgVecs[2]).setFXYZ(_norX,_norY,_norZ);
-		(orgVecs[0]).normalize();
-		(orgVecs[1]).normalize();
-		(orgVecs[2]).normalize();
+		(orgVecs[E_OV_TANGENT]).setFXYZ(_tanX,_tanY,_tanZ);
+		(orgVecs[E_OV_BITANGENT]).setFXYZ(_bitX,_bitY,_bitZ);
+		(orgVecs[E_OV_NORMAL]).setFXYZ(_norX,_norY,_norZ);
+		(orgVecs[E_OV_TANGENT]).normalize();
+		(orgVecs[E_OV_BITANGENT]).normalize();
+		(orgVecs[E_OV_NORMAL]).normalize();
 		
 	}
 GameOrgNode * GameOrgNode::addChild (int _nodeName, float _material, float _rotThe, float _rotPhi, float _rotRho, float _tanLengthInCells0, float _bitLengthInCells0, float _norLengthInCells0, float _tanLengthInCells1, float _bitLengthInCells1, float _norLengthInCells1, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ)
@@ -42554,7 +42966,7 @@ void GameOrgNode::doTransform (Singleton * singleton)
 		
 		for (i = 0; i < 3; i++) {
 			(tbnTrans[i]).setFXYZRef(&(tbnRotC[i]));
-			(tbnTrans[i]).multXYZ(orgVecs[E_OV_TBNRAD0][i]); //*tbnRadScale0[i]
+			//(tbnTrans[i]).multXYZ(orgVecs[E_OV_TBNRAD0][i]); //*tbnRadScale0[i]
 			(tbnTrans[i]).addXYZRef(&(orgTrans[1]));
 		}
 		
@@ -42637,18 +43049,18 @@ void GameOrg::init (Singleton * _singleton, int _ownerUID, int _orgType)
 		
 		
 	}
-void GameOrg::loadFromFile (string fileName)
-                                           {
+void GameOrg::loadFromFile (string fileName, bool notThePose)
+                                                            {
 		singleton->loadJSON(
 			"..\\data\\orgdata\\" + fileName + ".js",
 			&rootObj
 		);
 		
-		jsonToNode(&rootObj, baseNode);
+		jsonToNode(&rootObj, baseNode, notThePose);
 		
 	}
-void GameOrg::jsonToNode (JSONValue * * parentObj, GameOrgNode * curNode)
-                                                                     {
+void GameOrg::jsonToNode (JSONValue * * parentObj, GameOrgNode * curNode, bool notThePose)
+                                                                                      {
 		
 		int i;
 		
@@ -42657,16 +43069,40 @@ void GameOrg::jsonToNode (JSONValue * * parentObj, GameOrgNode * curNode)
 		
 		JSONValue* tempVal;
 		
+		bool doProc;
 		
 		for (i = 0; i < E_OV_LENGTH; i++) {	
 		
-			tempVal = (*parentObj)->Child("orgVecs");
-			curNode->orgVecs[i].setFXYZW(
-				tempVal->array_value[i*4 + 0]->number_value,
-				tempVal->array_value[i*4 + 1]->number_value,
-				tempVal->array_value[i*4 + 2]->number_value,
-				tempVal->array_value[i*4 + 3]->number_value
-			);
+			doProc = false;
+			if (notThePose) {
+				switch (i) {
+					//case E_OV_TANGENT:
+					//case E_OV_BITANGENT:
+					//case E_OV_NORMAL:
+					case E_OV_TBNRAD0:
+					case E_OV_TBNRAD1:
+					//case E_OV_THETAPHIRHO:
+					//case E_OV_TPRORIG:
+					case E_OV_MATPARAMS:
+						doProc = true;
+					break;
+				}
+			}
+			else {
+				doProc = true;
+			}
+		
+			if (doProc) {
+				tempVal = (*parentObj)->Child("orgVecs");
+				curNode->orgVecs[i].setFXYZW(
+					tempVal->array_value[i*4 + 0]->number_value,
+					tempVal->array_value[i*4 + 1]->number_value,
+					tempVal->array_value[i*4 + 2]->number_value,
+					tempVal->array_value[i*4 + 3]->number_value
+				);
+			}
+		
+			
 			
 		}
 		
@@ -42687,7 +43123,8 @@ void GameOrg::jsonToNode (JSONValue * * parentObj, GameOrgNode * curNode)
 				
 				jsonToNode(
 					&( (*parentObj)->Child("children")->array_value[i] ),
-					curNode->children[i]
+					curNode->children[i],
+					notThePose
 				);
 				
 				
@@ -42748,6 +43185,7 @@ void GameOrg::setToPose (GameOrg * otherOrg, float lerpAmount, int boneId)
 		}
 		
 		
+		
 		for (i = begInd; i < endInd; i++) {
 			sourceNode = otherOrg->allNodes[i];
 			destNode = allNodes[i];
@@ -42757,7 +43195,15 @@ void GameOrg::setToPose (GameOrg * otherOrg, float lerpAmount, int boneId)
 				(destNode != NULL)	
 			) {
 				for (j = 0; j < E_OV_LENGTH; j++) {
-					destNode->orgVecs[j].lerpXYZW(&(sourceNode->orgVecs[j]), lerpAmount);
+					
+					if (j == E_OV_MATPARAMS) {
+						destNode->orgVecs[j].copyFrom(&(sourceNode->orgVecs[j]));
+					}
+					else {
+						destNode->orgVecs[j].lerpXYZW(&(sourceNode->orgVecs[j]), lerpAmount);
+					}
+					
+					
 				}
 			}
 		}
@@ -42794,6 +43240,24 @@ void GameOrg::updatePose (double curTimeStep)
 						lerpSpeed = 0.005f;
 						timeInterval = 1.5;
 						targetPose = E_PK_JUMP;
+					break;
+					case E_PG_SLSH_R:
+						lerpSpeed = 0.02f;
+						timeInterval = 0.2;
+						targetPose = E_PK_SLSH_R0 + stepCount;
+						if (targetPose > E_PK_SLSH_R2) {
+							curOwner->isSwinging = false;
+							targetPoseGroup = E_PG_IDLE;
+						}
+					break;
+					case E_PG_PICKUP:
+						lerpSpeed = 0.01f;
+						timeInterval = 0.4;
+						targetPose = E_PK_PICKUP + stepCount;
+						if (targetPose > E_PK_PICKUP) {
+							curOwner->isPickingUp = false;
+							targetPoseGroup = E_PG_IDLE;
+						}
 					break;
 				}
 				
@@ -43497,7 +43961,7 @@ void GamePlant::applyRules (PlantRules * rules, GamePlantNode * curParent, int c
 
 #include "f00347_gameactor.e"
 #define LZZ_INLINE inline
-int GameActor::addJoint (int nodeName, int parentId, bool isBall, float mass, GameOrgNode * curNode)
+int GameActor::addJoint (int nodeName, int parentId, int jointType, float mass, GameOrgNode * curNode)
           {
 		
 		int i;
@@ -43510,19 +43974,63 @@ int GameActor::addJoint (int nodeName, int parentId, bool isBall, float mass, Ga
 		btVector3 midPos;
 		btVector3 endPos;
 		
-		if (isBall) {
-			rad = 0.05f;
-			begPos = curNode->orgTrans[2].getBTV();
-			midPos = curNode->orgTrans[2].getBTV();
-			endPos = curNode->orgTrans[2].getBTV();
+		int colInd = geId % MAX_COL_BODY;
+		int colType = bodyCollidesWith[colInd];
+		int colBase = COL_BODY0<<(colInd);
+		
+		switch (nodeName) {
+			case E_BONE_L_LOWERARM:
+			case E_BONE_R_LOWERARM:
+			case E_BONE_L_METACARPALS:
+			case E_BONE_R_METACARPALS:
+				colBase = COL_HAND;
+				colType = handCollidesWith;
+			break;
+			default:
+			
+			break;
 		}
-		else {
-			rad = 0.1f;
-			len = curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV());
-			begPos = curNode->orgTrans[0].getBTV();
-			midPos = curNode->orgTrans[1].getBTV();
-			endPos = curNode->orgTrans[2].getBTV();
+		
+		// if (baseOrg->orgType == E_ORGTYPE_WEAPON) {
+		// 	colType = weaponCollidesWith;
+		// }
+		
+		
+		// switch(jointType) {
+		// 	case E_JT_LIMB:
+				
+		// 	break;
+		// 	case E_JT_BALL:
+				
+		// 	break;
+		// 	case E_JT_NORM:
+				
+		// 	break;
+		// }
+		
+		
+		switch(jointType) {
+			case E_JT_LIMB:
+				rad = 0.1f;
+				len = curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV());
+				begPos = curNode->orgTrans[0].getBTV();
+				midPos = curNode->orgTrans[1].getBTV();
+				endPos = curNode->orgTrans[2].getBTV();
+			break;
+			case E_JT_BALL:
+				rad = 0.05f;
+				begPos = curNode->orgTrans[2].getBTV();
+				midPos = curNode->orgTrans[2].getBTV();
+				endPos = curNode->orgTrans[2].getBTV();
+			break;
+			case E_JT_NORM:
+				// rad = 0.05f;
+				// begPos = curNode->orgTrans[1].getBTV() + curNode->orgVecs[E_OV_NORMAL];
+				// midPos = begPos;
+				// endPos = begPos;
+			break;
 		}
+		
 		
 		btVector3 targAlignT = curNode->tbnRotC[0].getBTV();
 		btVector3 targAlignB = curNode->tbnRotC[1].getBTV();
@@ -43551,7 +44059,7 @@ int GameActor::addJoint (int nodeName, int parentId, bool isBall, float mass, Ga
 		//ActorJointStruct* grdJoint;
 		
 		curJoint->boneId = nodeName;
-		curJoint->isBall = isBall;
+		curJoint->jointType = jointType;
 		curJoint->rad = rad;
 		curJoint->length = len;
 		//begOrig
@@ -43570,11 +44078,16 @@ int GameActor::addJoint (int nodeName, int parentId, bool isBall, float mass, Ga
 			curLength = curJoint->length;
 		}
 		
-		if (isBall) {
-			curJoint->shape = new btSphereShape(curJoint->rad);
-		}
-		else {
-			curJoint->shape = new btCapsuleShapeX(curJoint->rad, curLength);
+		switch(jointType) {
+			case E_JT_LIMB:
+				curJoint->shape = new btCapsuleShapeX(curJoint->rad, curLength);
+			break;
+			case E_JT_BALL:
+				curJoint->shape = new btSphereShape(curJoint->rad);
+			break;
+			case E_JT_NORM:
+				
+			break;
 		}
 		
 		
@@ -43612,8 +44125,17 @@ int GameActor::addJoint (int nodeName, int parentId, bool isBall, float mass, Ga
 		btVector3 vectorA = vUp;
 		btVector3 vectorB = endPos-begPos;
 		
-		if (!isBall) {
-			vectorB.normalize();
+		
+		switch(jointType) {
+			case E_JT_LIMB:
+				vectorB.normalize();
+			break;
+			case E_JT_BALL:
+				
+			break;
+			case E_JT_NORM:
+				
+			break;
 		}
 		
 		
@@ -43658,21 +44180,21 @@ int GameActor::addJoint (int nodeName, int parentId, bool isBall, float mass, Ga
 		
 		
 		
+		
+		
+		
 		curJoint->body = singleton->gamePhysics->example->createRigidBodyMask(
 			mass,
 			offset*transform,
 			curJoint->shape,
-			COL_BODY,
-			bodyCollidesWith
+			colBase,
+			colType
 		);
 		//curJoint->body->bodyUID = uid;
 		//curJoint->body->setDamping(0.05, 0.85);
 		curJoint->body->setDeactivationTime(0.8);
 		curJoint->body->setSleepingThresholds(0.5f, 0.5f);
-		// if (curJoint->isBall) {	
-		// 	curJoint->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
-		// }
-		
+
 		
 		
 		// curJoint->joint = NULL;
@@ -43731,58 +44253,32 @@ void GameActor::initFromOrg (GameOrgNode * curNode, int curParent)
 		
 		int i;
 		
-		// FIVector4 lineSeg0;
-		// FIVector4 lineSeg1;
-		// FIVector4 lineSeg2;
-		// lineSeg0.setFXYZRef(&(curNode->orgTrans[0]));
-
 		
 		
 		int curChild = addJoint(
 			curNode->nodeName,
-			curParent,					//int parentId,
-			false,
-			MASS_PER_LIMB,				//float mass,
-			//tn, bn, nn,
-		
+			curParent,
+			E_JT_LIMB,
+			MASS_PER_LIMB,
 			curNode
-		
-			// 0.15f,						//float rad,
-			// curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV()), //curLen, // +curRad*4.0f,			//float len,
-			
-		
-			// curNode->tbnRotC[0].getBTV(),
-			// curNode->tbnRotC[1].getBTV(),
-			// curNode->tbnRotC[2].getBTV(),
-			
-			// curNode->orgTrans[0].getBTV(),
-			// curNode->orgTrans[1].getBTV(),
-			// curNode->orgTrans[2].getBTV()
-			
 		);
 		
 		int curChild2 = addJoint(
 			curNode->nodeName,
-			curChild,					//int parentId,
-			true,
-			MASS_PER_LIMB,				//float mass,
-			//tn, bn, nn,
-			
+			curChild,
+			E_JT_BALL,
+			MASS_PER_LIMB,
 			curNode
-		
-			// 0.2f,			//float rad,
-			// 0.0f,			//curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV()), //curLen,
-			
-		
-			// curNode->tbnRotC[0].getBTV(),
-			// curNode->tbnRotC[1].getBTV(),
-			// curNode->tbnRotC[2].getBTV(),
-			
-			// curNode->orgTrans[2].getBTV(), // beg
-			// curNode->orgTrans[2].getBTV(), // mid
-			// curNode->orgTrans[2].getBTV()  // end
 			
 		);
+		
+		// int curChild3 = addJoint(
+		// 	curNode->nodeName,
+		// 	curChild,
+		// 	E_JT_NORM,
+		// 	MASS_PER_LIMB,
+		// 	curNode
+		// );
 		
 		
 		
@@ -43790,10 +44286,6 @@ void GameActor::initFromOrg (GameOrgNode * curNode, int curParent)
 			initFromOrg(
 				curNode->children[i],
 				curChild2
-				//basePosition,
-				//scale,
-				//drawMode,
-				//drawAll
 			);
 		}
 		
@@ -43811,19 +44303,14 @@ GameActor::GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * owner
 		origOffset = positionOffset;// - btVector3(0.0f,0.0f,16.0f);
 		float actorScale = 1.0f;
 
+		baseOrg = singleton->gameOrgs[
+			singleton->gw->gameObjects[geId].orgId	
+		];
 
 		initFromOrg(
-			singleton->gameOrgs[
-				singleton->gw->gameObjects[geId].orgId	
-			]->baseNode,
+			baseOrg->baseNode,
 			-1
 		);
-
-
-
-
-		return;
-
 
 	}
 GameActor::~ GameActor ()
@@ -50596,13 +51083,13 @@ void GameLogic::update ()
 			}
 			
 			
-			if (
-				singleton->doPathReport
-			) {
-				singleton->doPathReport = false;
+			// if (
+			// 	singleton->doPathReport
+			// ) {
+			// 	singleton->doPathReport = false;
 				
-				cout << "Path Count " << pathCount << "\n";
-			}
+			// 	cout << "Path Count " << pathCount << "\n";
+			// }
 			
 			
 			
@@ -52924,7 +53411,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
                                              {
 		
 		int i;
-		int curOrgType;
+		int curOrgType = -1;
 		GameOrg* curOrg = NULL;
 		
 		BaseObj* ge = &(singleton->gw->gameObjects[_uid]);
@@ -52963,17 +53450,62 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 					else {
 						curOrgType = E_ORGTYPE_HUMAN;
 						
-						btCapsuleShapeZ* capsuleShapeZ = new btCapsuleShapeZ(1.0f,BASE_ENT_HEIGHT);
-						ge->bodies.push_back(BodyStruct());
-						ge->bodies.back().body = example->createRigidBodyMask(
-							MASS_PER_LIMB, // 0.1
-							trans,
-							capsuleShapeZ,
-							COL_MARKER,
-							markerCollidesWith
-						);
-						ge->bodies.back().body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
-						ge->bodies.back().boneId = -1;
+						for (i = 0; i < E_BDG_LENGTH; i++) {
+							//btCapsuleShapeZ* capsuleShapeZ = new btCapsuleShapeZ(1.0f,BASE_ENT_HEIGHT);
+							
+							switch (i) {
+								case E_BDG_CENTER:
+									trans.setIdentity();
+									trans.setOrigin(ge->startPoint);
+								break;
+								case E_BDG_LFOOT:
+									trans.setIdentity();
+									trans.setOrigin(ge->startPoint + btVector3(-1.0f, 0.0f, -1.0f));
+								break;
+								case E_BDG_RFOOT:
+									trans.setIdentity();
+									trans.setOrigin(ge->startPoint + btVector3( 1.0f, 0.0f, -1.0f));
+								break;
+							}
+							
+							ge->bodies.push_back(BodyStruct());
+							
+							if (i == E_BDG_CENTER) {
+								ge->bodies.back().body = example->createRigidBodyMask(
+									MASS_PER_LIMB, // 0.1
+									trans,
+									new btCapsuleShapeZ(1.0f,BASE_ENT_HEIGHT),//capsuleShapeZ,
+									COL_MARKER,
+									markerCollidesWith
+								);
+							}
+							else {
+								ge->bodies.back().body = example->createRigidBodyMask(
+									MASS_PER_LIMB, // 0.1
+									trans,
+									new btSphereShape(0.25f),//new btCapsuleShapeZ(1.0f,BASE_ENT_HEIGHT),//capsuleShapeZ,
+									COL_MARKER,
+									markerCollidesWith
+								);
+							}
+							
+							
+							ge->bodies.back().body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
+							ge->bodies.back().boneId = -1;
+						}
+						
+						switch (i) {
+							case E_BDG_CENTER:
+								//ge->bodies.back().body->setGravity(btVector3(0.0f,0.0f,0.0f));
+							break;
+							case E_BDG_LFOOT:
+								ge->bodies.back().body->setFriction(btScalar(1.0f));
+							break;
+							case E_BDG_RFOOT:
+								ge->bodies.back().body->setFriction(btScalar(1.0f));
+							break;
+						}
+						
 						
 					}
 					
@@ -52999,7 +53531,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 						ge->bodies.push_back(BodyStruct());
 						ge->bodies.back().body = curActor->actorJoints[i].body;
 						ge->bodies.back().boneId = curActor->actorJoints[i].boneId;
-						ge->bodies.back().isBall = curActor->actorJoints[i].isBall;
+						ge->bodies.back().jointType = curActor->actorJoints[i].jointType;
 						
 						// if (i == 0) {
 						// 	//ge->body = curActor->actorJoints[i].body;
@@ -53012,23 +53544,6 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 					}
 				}
 			break;
-			// case E_ENTTYPE_WEAPON:
-			// 	{
-			// 		btCapsuleShapeX* capsuleShapeX = new btCapsuleShapeX(0.25f,2.0f);
-					
-			// 		ge->bodies.push_back(BodyStruct());
-			// 		ge->bodies.back().body = example->createRigidBodyMask(
-			// 			MASS_PER_LIMB,
-			// 			trans,
-			// 			capsuleShapeX
-			// 			,COL_WEAPON,
-			// 			weaponCollidesWith
-			// 		);
-					
-			// 		ge->bodies[0].boneId = -1;
-			// 		ge->bodies[0].body->setDamping(0.99f,0.9f);
-			// 	}
-			// break;
 			default:
 				{
 					btBoxShape* boxShape = new btBoxShape(btVector3(objRad,objRad,objRad));
@@ -53040,11 +53555,11 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 						,COL_DYN,
 						dynCollidesWith
 					);
-					ge->bodies[0].boneId = -1;
+					ge->bodies.back().boneId = -1;
 					
 					if (ge->entType == E_ENTTYPE_DEBRIS) {
 						
-						ge->bodies[0].body->setAngularVelocity(btVector3(
+						ge->bodies.back().body->setAngularVelocity(btVector3(
 							(fGenRand2()*2.0f-1.0f),
 							(fGenRand2()*2.0f-1.0f),
 							(fGenRand2()*2.0f-1.0f)	
@@ -53063,43 +53578,58 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 			ge->bodies[bodInd].body->limbUID = bodInd;
 			
 			
-			switch(ge->bodies[bodInd].boneId) {
-				
-				case E_BONE_L_UPPERARM:
-				case E_BONE_L_LOWERARM:
-				case E_BONE_L_METACARPALS:
-				case E_BONE_L_UPPERLEG:
-				case E_BONE_L_LOWERLEG:
-				case E_BONE_L_TALUS:
-				
-				case E_BONE_R_UPPERARM:
-				case E_BONE_R_LOWERARM:
-				case E_BONE_R_METACARPALS:
-				case E_BONE_R_UPPERLEG:
-				case E_BONE_R_LOWERLEG:
-				case E_BONE_R_TALUS:
-					ge->bodies[bodInd].body->setDamping(0.99f,0.9f);
-				break;
-				case -1:
-				case E_BONE_WEAPON_BASE:
-				case E_BONE_WEAPON_END:
-				case E_BONE_WEAPON_0:
-				case E_BONE_WEAPON_1:
-				case E_BONE_WEAPON_2:
-				case E_BONE_WEAPON_3:
-				case E_BONE_WEAPON_4:
-				case E_BONE_WEAPON_5:
-				case E_BONE_WEAPON_6:
-				case E_BONE_WEAPON_7:
-				case E_BONE_WEAPON_8:
+			switch (bodInd) {
+				case E_BDG_CENTER:
 					ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
 				break;
-				
+				case E_BDG_LFOOT:
+					ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
+				break;
+				case E_BDG_RFOOT:
+					ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
+				break;
 				default:
-					// linear, angular
-					ge->bodies[bodInd].body->setDamping(0.999f,0.9f);
+					switch(ge->bodies[bodInd].boneId) {
+						
+						case E_BONE_L_UPPERARM:
+						case E_BONE_L_LOWERARM:
+						case E_BONE_L_METACARPALS:
+						case E_BONE_L_UPPERLEG:
+						case E_BONE_L_LOWERLEG:
+						case E_BONE_L_TALUS:
+						
+						case E_BONE_R_UPPERARM:
+						case E_BONE_R_LOWERARM:
+						case E_BONE_R_METACARPALS:
+						case E_BONE_R_UPPERLEG:
+						case E_BONE_R_LOWERLEG:
+						case E_BONE_R_TALUS:
+							ge->bodies[bodInd].body->setDamping(0.99f,0.9f);
+						break;
+						case -1:
+						case E_BONE_WEAPON_BASE:
+						case E_BONE_WEAPON_END:
+						case E_BONE_WEAPON_0:
+						case E_BONE_WEAPON_1:
+						case E_BONE_WEAPON_2:
+						case E_BONE_WEAPON_3:
+						case E_BONE_WEAPON_4:
+						case E_BONE_WEAPON_5:
+						case E_BONE_WEAPON_6:
+						case E_BONE_WEAPON_7:
+						case E_BONE_WEAPON_8:
+							ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
+						break;
+						
+						default:
+							// linear, angular
+							ge->bodies[bodInd].body->setDamping(0.999f,0.9f);
+						break;
+					}
 				break;
 			}
+			
+			
 			
 			
 			
@@ -53111,28 +53641,35 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 			if (isOrg) {
 				
 				curOrg = singleton->gameOrgs[ge->orgId];
-				if (curOrg->orgType == E_ORGTYPE_HUMAN) {
-					// if (
-					// 	(bodInd == 0)
-					// 	|| (
-					// 		(ge->bodies[bodInd].boneId == E_BONE_C_BASE) &&
-					// 		(!(ge->bodies[bodInd].isBall))	
-					// 	)
-					// ) {
-					// 	ge->bodies[bodInd].isVisible = false;
-					// }
+				
+				// if (curOrg->orgType == E_ORGTYPE_HUMAN) {
+				// 	// if (
+				// 	// 	(bodInd == 0)
+				// 	// 	|| (
+				// 	// 		(ge->bodies[bodInd].boneId == E_BONE_C_BASE) &&
+				// 	// 		(!(ge->bodies[bodInd].isBall))	
+				// 	// 	)
+				// 	// ) {
+				// 	// 	ge->bodies[bodInd].isVisible = false;
+				// 	// }
 					
-					ge->bodies[bodInd].isVisible = false;
-				}
+				// 	ge->bodies[bodInd].isVisible = false;
+				// }
 				
-				if (curOrg->orgType == E_ORGTYPE_WEAPON) {
-					if (ge->bodies[bodInd].isBall || (ge->bodies[bodInd].boneId == E_BONE_WEAPON_BASE) ) {
-						ge->bodies[bodInd].isVisible = false;
-					}
-				}
+				// if (curOrg->orgType == E_ORGTYPE_WEAPON) {
+				// 	if (ge->bodies[bodInd].boneId == E_BONE_WEAPON_BASE) {
+				// 		ge->bodies[bodInd].isVisible = false;
+				// 	}
+				// }
 				
+				// if (ge->bodies[bodInd].jointType != E_JT_LIMB) {
+				// 	ge->bodies[bodInd].isVisible = false;
+				// }
+				
+				ge->bodies[bodInd].isVisible = false;//(bodInd < E_BDG_LENGTH);//
 				
 			}
+			
 			
 			ge->bodies[bodInd].mass = MASS_PER_LIMB;
 			ge->bodies[bodInd].hasContact = false;
@@ -53146,7 +53683,9 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 			
 		}
 		
-		
+		if (curOrgType == E_ORGTYPE_HUMAN) {
+			singleton->gameOrgs[ge->orgId]->loadFromFile(poseStrings[E_PK_NON_POSE], true);
+		}
 		
 	}
 void GamePhysics::flushImpulses ()
@@ -53224,7 +53763,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		}
 		
 		
-		const btCollisionObject* bodies[2];
+		const btCollisionObject* bds[2];
 		
 		int numManifolds = world->getDispatcher()->getNumManifolds();
 		for (i=0;i<numManifolds;i++) {
@@ -53235,8 +53774,8 @@ void GamePhysics::collideWithWorld (double curStepTime)
 			const btCollisionObject* obA = (contactManifold->getBody0());
 			const btCollisionObject* obB = (contactManifold->getBody1());
 
-			bodies[0] = obA;
-			bodies[1] = obB;
+			bds[0] = obA;
+			bds[1] = obB;
 
 			hasContact = false;
 			
@@ -53254,17 +53793,17 @@ void GamePhysics::collideWithWorld (double curStepTime)
 			}
 			
 			
-			if (bodies[0]->bodyUID == bodies[1]->bodyUID) {
+			if (bds[0]->bodyUID == bds[1]->bodyUID) {
 				// don't register contacts within same entity
 			}
 			else {
 				for (k = 0; k < 2; k++) {
 					if (
-						(bodies[k]->bodyUID > -1) &&
-						(bodies[k]->limbUID > -1)
+						(bds[k]->bodyUID > -1) &&
+						(bds[k]->limbUID > -1)
 					) {
-						ge = &(singleton->gw->gameObjects[ bodies[k]->bodyUID ]);
-						curBody =  &(ge->bodies[ bodies[k]->limbUID ]);
+						ge = &(singleton->gw->gameObjects[ bds[k]->bodyUID ]);
+						curBody =  &(ge->bodies[ bds[k]->limbUID ]);
 						
 						
 						if (
@@ -53279,19 +53818,14 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								curBody->isFalling = false;
 							}
 							
-							
 						}
-						
 					}
 				}
 			}
-			
-			
-			
 		}
 		
 		
-		
+		float curDis;
 		float totMass;
 		float totForce;
 		btVector3 dirForce;
@@ -53299,6 +53833,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		GameOrgNode* curOrgNode = NULL;
 		GameActor* curActor = NULL;
 		btVector3 basePos;
+		btVector3 targPos;
 		
 		btVector3 difVec = btVector3(0.0,0.0,0.0);
 		btVector3 totVec = btVector3(0.0,0.0,0.0);
@@ -53320,12 +53855,10 @@ void GamePhysics::collideWithWorld (double curStepTime)
 			else {
 				
 				
-				
 				hasRig = (
 					(ge->orgId > -1) &&
 					(ge->actorId > -1)	
 				);
-				
 				
 				
 				totVec = btVector3(0.0,0.0,0.0);
@@ -53335,44 +53868,48 @@ void GamePhysics::collideWithWorld (double curStepTime)
 					curActor = singleton->gameActors[ge->actorId];
 					curOrg = singleton->gameOrgs[ge->orgId];
 					animatedRig = (curOrg->orgType == E_ORGTYPE_HUMAN);
-					
+					ge->clearAABB();
 					
 					if (animatedRig) {
 						
 						if (ge->baseContact()) {
 							
-							// ge->contactCount++;
-							
-							// if (ge->contactCount > 50) {
-							// 	//ge->isJumping = false;
-							// }
-							
-							//if (ge->bodies[0].body->getLinearVelocity().getZ() < 0.01) {
-								
-							//}
-							
-							ge->bodies[0].body->setGravity(btVector3(0.0f,0.0f,-2.0f));
+							ge->bodies[E_BDG_CENTER].body->setGravity(btVector3(0.0f,0.0f,-2.0f));
 						}
 						else {
 							
 							//ge->contactCount = 0;
 							
-							ge->bodies[0].body->setGravity(btVector3(0.0f,0.0f,-10.0f));
+							ge->bodies[E_BDG_CENTER].body->setGravity(btVector3(0.0f,0.0f,-10.0f));
 						}
 						
-						if (ge->isJumping) {
-							curOrg->targetPoseGroup = E_PG_JUMP;
+						
+						if (ge->isPickingUp) {
+							curOrg->targetPoseGroup = E_PG_PICKUP;
 						}
 						else {
-							
-							if (singleton->isWalking || (ge->getPlanarVel() > 0.1f)) { //ge->bodies[0].body->getLinearVelocity().length() > 0.1f
-								curOrg->targetPoseGroup = E_PG_WALK;
+							if (ge->isSwinging) {
+								curOrg->targetPoseGroup = E_PG_SLSH_R;
 							}
 							else {
-								curOrg->targetPoseGroup = E_PG_IDLE;
+								if (ge->isJumping) {
+									curOrg->targetPoseGroup = E_PG_JUMP;
+								}
+								else {
+									
+									if (singleton->isWalking || (ge->getPlanarVel() > 0.1f)) {
+										curOrg->targetPoseGroup = E_PG_WALK;
+									}
+									else {
+										curOrg->targetPoseGroup = E_PG_IDLE;
+									}
+									
+								}
 							}
-							
 						}
+						
+						
+						
 						
 						//ge->isJumping = (curOrg->targetPoseGroup == E_PG_JUMP);
 						
@@ -53380,23 +53917,19 @@ void GamePhysics::collideWithWorld (double curStepTime)
 						
 						curOrg->updatePose(curStepTime);
 						
+						
 						if (ge->isGrabbingId > -1) {
 							ge->updateWeapon(
+								curOrg->allNodes[E_BONE_L_METACARPALS]->orgTrans[1].getBTV(),
+								curOrg->allNodes[E_BONE_L_METACARPALS]->tbnTrans[1].getBTV(),
 								curStepTime,
-								// clampfZO(
-								// 	(singleton->lastMouseX-singleton->bufferDim.getFX()*0.25f)
-								// 	*4.0f/singleton->bufferDim.getFX()),
-								// clampfZO(
-								// 	(singleton->lastMouseY-singleton->bufferDim.getFY()*0.25f)
-								// 	*4.0f/singleton->bufferDim.getFY()),
-								
 								2.0f // todo: update this to actual weapon length
 							);
 						}
 						
 						
 						ge->wakeAll();
-						ge->clearAABB();
+						
 						
 						
 					}
@@ -53444,52 +53977,87 @@ void GamePhysics::collideWithWorld (double curStepTime)
 					
 					
 					if (
-						hasRig &&
-						(curBody->boneId > -1) &&
-						(ge->bodies.size() > 0)
-						&& (bodInd > 0)
+						hasRig
 						&& animatedRig
-						// && (curBody->boneId == E_BONE_C_SKULL)
-						//false
 					) {
-						curOrgNode = curOrg->allNodes[curBody->boneId];
+						
+						if (curBody->boneId > -1) {
+							curOrgNode = curOrg->allNodes[curBody->boneId];
+						}
+						else {
+							curOrgNode = NULL;
+						}
+						
+						
 						
 						if (curOrgNode == NULL) {
+							
+							difVec = btVector3(0.0f,0.0f,0.0f);
+							
+							switch (bodInd) {
+								case E_BDG_CENTER:
+									
+									// targPos = 
+									// 	ge->bodies[E_BDG_LFOOT].body->getCenterOfMassPosition()*0.5f +
+									// 	ge->bodies[E_BDG_RFOOT].body->getCenterOfMassPosition()*0.5f
+									// 	//+ btVector3(0.0f, 0.0f, 1.5f)
+									// ;
+									
+									// difVec = targPos - curBody->body->getCenterOfMassPosition();
+									// //difVec = basePos - curBody->body->getCenterOfMassPosition();
+								break;
+								case E_BDG_LFOOT:
+									targPos = ge->bodies[E_BDG_CENTER].body->getCenterOfMassPosition();
+									curDis = ge->bodies[E_BDG_LFOOT].body->getCenterOfMassPosition().distance(
+										targPos
+									);
+									if (curDis > 2.5f) {
+										difVec = targPos - curBody->body->getCenterOfMassPosition();
+									}
+									if (curDis < 0.5f) {
+										difVec = -(targPos - curBody->body->getCenterOfMassPosition());
+									}
+									
+								break;
+								case E_BDG_RFOOT:
+									targPos = ge->bodies[E_BDG_CENTER].body->getCenterOfMassPosition();
+									curDis = ge->bodies[E_BDG_RFOOT].body->getCenterOfMassPosition().distance(
+										targPos
+									);
+									if (curDis > 2.5f) {
+										difVec = targPos - curBody->body->getCenterOfMassPosition();
+									}
+									if (curDis < 0.5f) {
+										difVec = -(targPos - curBody->body->getCenterOfMassPosition());
+									}
+								break;
+							}
+							
+							ge->applyImpulse(
+								difVec*curStepTime*curBody->mass*200.0f, // *MASS_PER_LIMB*2.0f*10.0f*curStepTime,
+								false,
+								bodInd
+							);
 							
 						}
 						else {
 							
 							
-							// if (bodInd == 0) {
-							// 	//basePos = curOrgNode->orgTrans[1].getBTV();
-							// }
-							// else {
-								
-							// }
-							
-							
-							// if (bodInd == 0) {
-							// 	basePos = btVector3(0.0,0.0,0.0);
-							// }
-							// else {
-							// 	basePos = 
-							// 		curOrgNode->orgTrans[1].getBTV() * 
-							// 		ge->bodies[0].body->getWorldTransform().getBasis() +
-							// 		ge->bodies[0].body->getWorldTransform().getOrigin();
-							// }
-							
-							
-							
-							
-							ge->bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
+							ge->bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
 							myMatrix4 = Matrix4(myMat);
 							
-							if (curBody->isBall) {
-								tempBTV = curOrgNode->orgTrans[2].getBTV();
+							switch(curBody->jointType) {
+								case E_JT_LIMB:
+									tempBTV = curOrgNode->orgTrans[1].getBTV();
+								break;
+								case E_JT_BALL:
+									tempBTV = curOrgNode->orgTrans[2].getBTV();
+								break;
+								case E_JT_NORM:
+									
+								break;
 							}
-							else {
-								tempBTV = curOrgNode->orgTrans[1].getBTV();
-							}
+							
 							
 							
 								myVector4 = Vector4(
@@ -53507,89 +54075,70 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								
 								basePos += ge->skelOffset;// - btVector3(0.0f, 0.0f, BASE_ENT_HEIGHT*0.5f);
 								
-								// move limbs towards pose
 								
-								if (ge->weaponActive) {
+								
+								// if (ge->weaponActive) {
 									
-									switch (curBody->boneId) {
+								// 	switch (curBody->boneId) {
 										
 										
 										
-										case E_BONE_L_METACARPALS:
+								// 		case E_BONE_L_METACARPALS:
 										
-											if (true) {//(curBody->isBall) {
-												if (ge->rightHandTop) {
-													difVec = ge->weaponVec0 - curBody->body->getCenterOfMassPosition();
-												}
-												else {
-													difVec = ge->weaponVec0*0.8 + ge->weaponVec1*0.2 - curBody->body->getCenterOfMassPosition();
-												}
-											}
-											else {
-												difVec = btVector3(0.0f,0.0f,0.0f);
+								// 			if (true) {
+								// 				if (ge->rightHandTop) {
+								// 					difVec = ge->weaponVec0 - curBody->body->getCenterOfMassPosition();
+								// 				}
+								// 				else {
+								// 					difVec = ge->weaponVec0*0.8 + ge->weaponVec1*0.2 - curBody->body->getCenterOfMassPosition();
+								// 				}
+								// 			}
+								// 			else {
+								// 				difVec = btVector3(0.0f,0.0f,0.0f);
 												
-											}
+								// 			}
 										
 											
 										
 											
-										break;
-										case E_BONE_R_METACARPALS:
+								// 		break;
+								// 		case E_BONE_R_METACARPALS:
 										
-											if (true) {//(curBody->isBall) {
-												if (ge->rightHandTop) {
-													difVec = ge->weaponVec0*0.8 + ge->weaponVec1*0.2 - curBody->body->getCenterOfMassPosition();
-												}
-												else {
-													difVec = ge->weaponVec0 - curBody->body->getCenterOfMassPosition();
-												}
-											}
-											else {
-												difVec = btVector3(0.0f,0.0f,0.0f);
+								// 			if (true) {
+								// 				if (ge->rightHandTop) {
+								// 					difVec = ge->weaponVec0*0.8 + ge->weaponVec1*0.2 - curBody->body->getCenterOfMassPosition();
+								// 				}
+								// 				else {
+								// 					difVec = ge->weaponVec0 - curBody->body->getCenterOfMassPosition();
+								// 				}
+								// 			}
+								// 			else {
+								// 				difVec = btVector3(0.0f,0.0f,0.0f);
 												
-											}
+								// 			}
 										
 											
-										
-											
-										break;
-										// case E_BONE_L_UPPERARM:
-										// 	if (curBody->isBall) {
-										// 		difVec = ge->leftVec*0.0002f;
-										// 	}
-										// 	else {
-										// 		difVec = btVector3(0.0f,0.0f,0.0f);
-										// 	}
-											
-										// break;
-										// case E_BONE_R_UPPERARM:
-										
-										// 	if (curBody->isBall) {
-										// 		difVec = ge->rightVec*0.0002f;
-										// 	}
-										// 	else {
-										// 		difVec = btVector3(0.0f,0.0f,0.0f);
-										// 	}
-											
-										// break;
-										case E_BONE_L_LOWERARM:
-										case E_BONE_R_LOWERARM:
-										case E_BONE_L_UPPERARM:
-										case E_BONE_R_UPPERARM:
-											difVec = btVector3(0.0f,0.0f,0.0f);
-										break;
-										default:
-											difVec = basePos - curBody->body->getCenterOfMassPosition();
-										break;
-									}
+								// 		break;
+								// 		case E_BONE_L_LOWERARM:
+								// 		case E_BONE_R_LOWERARM:
+								// 		case E_BONE_L_UPPERARM:
+								// 		case E_BONE_R_UPPERARM:
+								// 			difVec = btVector3(0.0f,0.0f,0.0f);
+								// 		break;
+								// 		default:
+								// 			difVec = basePos - curBody->body->getCenterOfMassPosition();
+								// 		break;
+								// 	}
 									
 									
-								}
-								else {
+								// }
+								// else {
 									difVec = basePos - curBody->body->getCenterOfMassPosition();
-								}
+								//}
 								
 								
+								
+								// move limbs towards pose
 										
 								totVec += difVec;
 								
@@ -53598,6 +54147,27 @@ void GamePhysics::collideWithWorld (double curStepTime)
 									false,
 									bodInd
 								);
+								
+								
+								// switch(curBody->jointType) {
+								// 	case E_JT_LIMB:
+								// 		moveToOrientation(
+								// 			curBody->body,
+								// 			curOrgNode->tbnTrans[0].getBTV().normalize(),
+								// 			curOrgNode->tbnTrans[1].getBTV().normalize(),
+								// 			curOrgNode->tbnTrans[2].getBTV().normalize(),
+								// 			0.1f
+								// 		);
+								// 	break;
+								// 	case E_JT_BALL:
+										
+								// 	break;
+								// 	case E_JT_NORM:
+										
+								// 	break;
+								// }
+								
+								
 							
 							
 							
@@ -53614,12 +54184,19 @@ void GamePhysics::collideWithWorld (double curStepTime)
 						doProc = true;
 						
 						if (curBody->boneId == E_BONE_WEAPON_END) {
-							if (curBody->isBall) {
-								basePos = grabber->weaponVec1;
+							
+							switch(curBody->jointType) {
+								case E_JT_LIMB:
+									basePos = grabber->weaponVec0*0.5f + grabber->weaponVec1*0.5f;
+								break;
+								case E_JT_BALL:
+									basePos = grabber->weaponVec1;
+								break;
+								case E_JT_NORM:
+									
+								break;
 							}
-							else {
-								basePos = grabber->weaponVec0*0.5f + grabber->weaponVec1*0.5f;
-							}
+							
 						}
 						else {
 							if (curBody->boneId == E_BONE_WEAPON_BASE) {
@@ -53757,7 +54334,6 @@ void GamePhysics::collideWithWorld (double curStepTime)
 					
 					
 					
-					
 					curBody->lastVel = curBody->body->getLinearVelocity();
 					
 					
@@ -53808,7 +54384,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 						ge->skelOffset += btVector3(
 							0.0,
 							0.0,
-							-1.0f	
+							-1.0f
 						);
 					}
 					
@@ -53852,6 +54428,8 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		}
 		
 		singleton->explodeStack.clear();
+		
+		
 		
 	}
 void GamePhysics::updateAll ()
@@ -54443,7 +55021,7 @@ void GameWorld::update ()
 			
 		}
 		
-		updateLimbTBOData();
+		updateLimbTBOData(true);
 
 		
 		
@@ -54883,12 +55461,12 @@ void GameWorld::drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * ma
 			}
 		}
 		
-		
 	}
-void GameWorld::updateLimbTBOData ()
-                                 {
+void GameWorld::updateLimbTBOData (bool showLimbs)
+                                               {
 		int i;
 		int j;
+		int q;
 		
 		BodyStruct* curBody;
 		
@@ -54905,11 +55483,36 @@ void GameWorld::updateLimbTBOData ()
 		GameOrg* curOrg = NULL;
 		GameOrgNode* curOrgNode = NULL;
 		
-		float buffer = 0.25f;
+		float buffer = 0.5f;
 		
 		int dataInd = 0;
 		int actorCount = 0;
 		int headerStart;
+		
+		float myMat[16];
+		btVector3 basePos[3];
+		btVector3 tempBTV;
+		Matrix4 myMatrix4;
+		Vector4 myVector4;
+		Vector4 resVector4;
+		
+		// if (singleton->doPathReport) {
+		// 	cout << "\n\n";
+		// }
+		
+		
+		singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+		singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+		singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+		singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+		
+		dataInd = 0;
+		
+		if (!showLimbs) {
+			return;
+		}
+		
+		
 		
 		for (i = 0; i < visObjects.size(); i++) {
 			ge = &(gameObjects[visObjects[i]]);
@@ -54924,6 +55527,10 @@ void GameWorld::updateLimbTBOData ()
 				
 				curOrg = singleton->gameOrgs[ge->orgId];
 				
+				ge->bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
+				myMatrix4 = Matrix4(myMat);
+				
+				
 				// header info
 				headerStart = dataInd;
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
@@ -54933,53 +55540,100 @@ void GameWorld::updateLimbTBOData ()
 			
 				singleton->limbTBOData[dataInd] = ge->aabbMin.getX() - buffer; dataInd++;
 				singleton->limbTBOData[dataInd] = ge->aabbMin.getY() - buffer; dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMin.getZ() - buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMin.getZ() + ge->skelOffset.getZ() - buffer; dataInd++;
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+				
 				
 				singleton->limbTBOData[dataInd] = ge->aabbMax.getX() + buffer; dataInd++;
 				singleton->limbTBOData[dataInd] = ge->aabbMax.getY() + buffer; dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMax.getZ() + buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMax.getZ() + ge->skelOffset.getZ() + buffer; dataInd++;
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+				
+				float randOff;
 				
 				for (j = 0; j < ge->bodies.size(); j++) {
 					curBody = &(ge->bodies[j]);
 					
 					if (
-						(curBody->isBall) ||
+						(curBody->jointType != E_JT_LIMB) ||
 						(curBody->boneId < 0)	
 					) {
 						
 					}
 					else {
 						
+						
+						
 						curOrgNode = curOrg->allNodes[curBody->boneId];
 						
 						centerPoint = curBody->body->getCenterOfMassPosition();
+						//centerPoint += btVector3(0.0,0.0,-0.5f);
 						basis = curBody->body->getCenterOfMassTransform().getBasis();
 						
+						for (q = 1; q <= 1; q++) {
+							tempBTV = curOrgNode->tbnTrans[q].getBTV();
+							myVector4 = Vector4(
+								tempBTV.getX(),
+								tempBTV.getY(),
+								tempBTV.getZ(),
+								1.0f
+							);
+							resVector4 = myMatrix4*myVector4;
+							basePos[q] = btVector3(resVector4.x,resVector4.y,resVector4.z);
+							basePos[q] += ge->skelOffset;
+							basePos[q] -= centerPoint;
+							basePos[q].normalize();
+						}
+						
+						
+						
 						tanVec = basis.getColumn(0);//basis*curOrgNode->orgVecs[0].getBTV();
-						bitVec = basis.getColumn(1);//basis*curOrgNode->orgVecs[1].getBTV();
-						norVec = basis.getColumn(2);//basis*curOrgNode->orgVecs[2].getBTV();
+						tanVec.normalize();
+						// bitVec = basis.getColumn(1);//basis*curOrgNode->orgVecs[1].getBTV();
+						// norVec = basis.getColumn(2);//basis*curOrgNode->orgVecs[2].getBTV();
+						
+						//tanVec = basePos[0];//basis*curOrgNode->orgVecs[0].getBTV();
+						bitVec = basePos[1];//basis*curOrgNode->orgVecs[1].getBTV();
+						//norVec = basePos[2];//basis*curOrgNode->orgVecs[2].getBTV();
+						
+						norVec = tanVec.cross(bitVec);
+						norVec.normalize();
+						
+						bitVec = norVec.cross(tanVec);
+						bitVec.normalize();
+						
 						
 						len0 = curOrgNode->orgVecs[E_OV_TBNRAD0].getBTV();
 						len1 = curOrgNode->orgVecs[E_OV_TBNRAD1].getBTV();
+						
+						// datVec
+						randOff = abs( fSeedRand2((ge->uid*37.19232f),(curOrgNode->orgVecs[E_OV_MATPARAMS].getFX()*17.89923f)) );
+						
+						singleton->limbTBOData[dataInd] = ge->uid; dataInd++;
+						singleton->limbTBOData[dataInd] = curBody->body->limbUID; dataInd++;
+						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_MATPARAMS].getFX(); dataInd++;
+						singleton->limbTBOData[dataInd] = randOff; dataInd++;
 						
 						//cenVec
 						
 						singleton->limbTBOData[dataInd] = centerPoint.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = centerPoint.getY(); dataInd++;
 						singleton->limbTBOData[dataInd] = centerPoint.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = ge->uid; dataInd++;
+						singleton->limbTBOData[dataInd] = 0.0; dataInd++;
 						
 						singleton->limbTBOData[dataInd] = tanVec.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = tanVec.getY(); dataInd++;
 						singleton->limbTBOData[dataInd] = tanVec.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = curBody->body->limbUID; dataInd++;
+						singleton->limbTBOData[dataInd] = 0.0; dataInd++;
 						
 						singleton->limbTBOData[dataInd] = bitVec.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = bitVec.getY(); dataInd++;
 						singleton->limbTBOData[dataInd] = bitVec.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+						singleton->limbTBOData[dataInd] = 0.0; dataInd++;
+						
+						// if (singleton->doPathReport) {
+						// 	cout << curOrgNode->orgVecs[E_OV_MATPARAMS].getFX() << "\n";
+						// }
 						
 						singleton->limbTBOData[dataInd] = norVec.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = norVec.getY(); dataInd++;
@@ -55000,7 +55654,7 @@ void GameWorld::updateLimbTBOData ()
 					}
 				}
 				
-				singleton->limbTBOData[headerStart+0] = dataInd;
+				singleton->limbTBOData[headerStart+0] = dataInd/4;
 				singleton->limbTBOData[headerStart+1] = 0.0f;
 				singleton->limbTBOData[headerStart+2] = 0.0f;
 				singleton->limbTBOData[headerStart+3] = 0.0f;
@@ -55021,6 +55675,11 @@ void GameWorld::updateLimbTBOData ()
 		singleton->actorCount = actorCount;
 		
 		singleton->limbTBO.update(singleton->limbTBOData,dataInd*4);
+		
+		// if (singleton->doPathReport) {
+		// 	cout << "\n\n";
+		// }
+		// singleton->doPathReport = false;
 	}
 void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
                                                                  {
@@ -55036,26 +55695,36 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		}
 		
 		
+		bool skipPrim =			
+			(singleton->gameFluid[E_FID_BIG]->curGeomCount == 0) &&
+			(singleton->placingGeom == false);
 		
 		
 		VolumeWrapper* curVW = (singleton->volumeWrappers[E_VW_VORO]);
 		
 		bool doPrim = !doTer;
 		
-		int curGeomCount = singleton->gameFluid[E_FID_BIG]->curGeomCount;
+		int curGeomCount = 0;
+		
+		
 		
 		
 		
 		if (doPrim) {
 			ind = 2;
 			
-			if ((curGeomCount == 0)&&(singleton->placingGeom == false)) {
+			curGeomCount = singleton->gameFluid[E_FID_BIG]->curGeomCount;
+			
+			if (skipPrim) {
 				singleton->copyFBO2("terTargFBO","solidBaseTargFBO", 0, 1);
 				singleton->copyFBO2("terTargFBO","waterTargFBO", 2, 3);
 				singleton->copyFBO2("terTargFBO","prmDepthFBO", 4, 5);
 				return;
 			}
 			
+		}
+		else {
+			curGeomCount = MAX_PRIM_IDS;
 		}
 		
 		
@@ -55088,20 +55757,18 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		
 		
-		for (i = 0; i < E_PL_LENGTH; i++) {
-			singleton->setShaderTexture3D(i, singleton->gameFluid[E_FID_BIG]->volIdPrim[i]);
-		}
+		singleton->setShaderTexture3D(0, singleton->gameFluid[E_FID_BIG]->volIdPrim[0]);
 		
 		if (doPrim) {
 			singleton->setShaderTBO(
-				E_PL_LENGTH,
+				1,
 				singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_tex,
 				singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_buf
 			);
 		}
 		else {
 			singleton->setShaderTBO(
-				E_PL_LENGTH,
+				1,
 				singleton->limbTBO.tbo_tex,
 				singleton->limbTBO.tbo_buf
 			);
@@ -55118,8 +55785,12 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		singleton->sampleFBO("geomTargFBO",5);
 		
+		// sample opposite pass
 		if (doPrim) {
 			singleton->sampleFBO("terTargFBO",7, -1, 0, 6);
+		}
+		else {
+			singleton->sampleFBO("prmTargFBO",7, -1, 0, 6);
 		}
 		
 		singleton->setShaderTexture3D(13, curVW->volId);
@@ -55162,6 +55833,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		singleton->setShaderFloat("invalidCount", invalidCount/invalidCountMax);
 		singleton->setShaderInt("doSphereMap", (int)(doSphereMap));
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
+		singleton->setShaderInt("skipPrim", (int)(skipPrim));
 		singleton->setShaderInt("placingGeom", (int)(singleton->placingGeom));
 		
 		singleton->setShaderfVec3("genPosMin", &(curVW->genPosMin) );
@@ -55269,6 +55941,9 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		if (doPrim) {
 			singleton->unsampleFBO("terTargFBO",7, -1, 0, 6);
 		}
+		else {
+			singleton->unsampleFBO("prmTargFBO",7, -1, 0, 6);
+		}
 		
 		// if (USE_SPHERE_MAP) {
 		// 	singleton->unsampleFBO("sphDepthFBO",5);
@@ -55278,10 +55953,8 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		singleton->unsampleFBO("terDepthFBO",3);
 		singleton->unsampleFBO("hmFBOLinearBig",2);
 		
-		singleton->setShaderTBO(E_PL_LENGTH,0,0);
-		for (i = 0; i < E_PL_LENGTH; i++) {
-			singleton->setShaderTexture3D(i, 0);
-		}
+		singleton->setShaderTBO(1,0,0);
+		singleton->setShaderTexture3D(1, 0);
 		
 		singleton->unbindFBO();
 		singleton->unbindShader();
@@ -55370,14 +56043,16 @@ void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, fl
 			// }
 			// else {
 				lineSeg[1].setFXYZRef(&(curNode->tbnRotC[drawMode%3]));
-				lineSeg[1].multXYZ(  (curNode->orgVecs[E_OV_TBNRAD0][drawMode%3]*scale)  ); //*16.0f
+				lineSeg[1].multXYZ( 1.0f );//(curNode->orgVecs[E_OV_TBNRAD0][drawMode%3]*scale)  ); //*16.0f
 				//lineSeg[1].multXYZ(&(curNode->tbnRadScale0));
 				lineSeg[1].addXYZRef(&(lineSeg[0]));
 			//}
 			
+			if (singleton->currentActor != NULL) {
+				lineSeg[0].addXYZ(0.0f,0.0f,singleton->currentActor->skelOffset.getZ());
+				lineSeg[1].addXYZ(0.0f,0.0f,singleton->currentActor->skelOffset.getZ());
+			}
 			
-			//lineSeg[0].addXYZRef(basePosition);
-			//lineSeg[1].addXYZRef(basePosition);
 			
 			
 			
@@ -58245,25 +58920,21 @@ void GameWorld::renderDebug ()
 		
 		
 		
-		
+		glLineWidth(1.0f);
 		
 		// skeleton outline		
-		// if (singleton->orgOn) {
-			
-		// 	if (singleton->currentActor != NULL) {
+		if (singleton->currentActor != NULL) {
+			if (singleton->currentActor->orgId > -1) {
+				singleton->currentActor->bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
 				
-		// 		if (singleton->currentActor->orgId > -1) {
-		// 			singleton->currentActor->bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
-					
-		// 			singleton->setShaderMatrix4x4("objmat",myMat,1);
-					
-		// 			singleton->setShaderFloat("objectId",0.0);
-		// 			drawOrg(singleton->gameOrgs[singleton->currentActor->orgId], true);
-		// 		}
-		// 	}
-		// }
+				singleton->setShaderMatrix4x4("objmat",myMat,1);
+				
+				singleton->setShaderFloat("objectId",0.0);
+				drawOrg(singleton->gameOrgs[singleton->currentActor->orgId], false);
+			}
+		}
 		
-		
+		glLineWidth(4.0f);
 		
 		
 		
@@ -58776,7 +59447,7 @@ void GameWorld::postProcess ()
 			
 			//solidBaseTargFBO
 			//"solidTargFBO" //"polyFBO"
-			singleton->drawFBO("limbFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
+			singleton->drawFBO("solidTargFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
 			
 			// leave this here to catch errors
 			//cout << "Getting Errors: \n";

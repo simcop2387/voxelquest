@@ -836,7 +836,7 @@ public:
 			
 		}
 		
-		updateLimbTBOData();
+		updateLimbTBOData(true);
 
 		
 		
@@ -1302,12 +1302,12 @@ public:
 			}
 		}
 		
-		
 	}
 
-	void updateLimbTBOData() {
+	void updateLimbTBOData(bool showLimbs) {
 		int i;
 		int j;
+		int q;
 		
 		BodyStruct* curBody;
 		
@@ -1324,11 +1324,36 @@ public:
 		GameOrg* curOrg = NULL;
 		GameOrgNode* curOrgNode = NULL;
 		
-		float buffer = 0.25f;
+		float buffer = 0.5f;
 		
 		int dataInd = 0;
 		int actorCount = 0;
 		int headerStart;
+		
+		float myMat[16];
+		btVector3 basePos[3];
+		btVector3 tempBTV;
+		Matrix4 myMatrix4;
+		Vector4 myVector4;
+		Vector4 resVector4;
+		
+		// if (singleton->doPathReport) {
+		// 	cout << "\n\n";
+		// }
+		
+		
+		singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+		singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+		singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+		singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+		
+		dataInd = 0;
+		
+		if (!showLimbs) {
+			return;
+		}
+		
+		
 		
 		for (i = 0; i < visObjects.size(); i++) {
 			ge = &(gameObjects[visObjects[i]]);
@@ -1343,6 +1368,10 @@ public:
 				
 				curOrg = singleton->gameOrgs[ge->orgId];
 				
+				ge->bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
+				myMatrix4 = Matrix4(myMat);
+				
+				
 				// header info
 				headerStart = dataInd;
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
@@ -1352,53 +1381,100 @@ public:
 			
 				singleton->limbTBOData[dataInd] = ge->aabbMin.getX() - buffer; dataInd++;
 				singleton->limbTBOData[dataInd] = ge->aabbMin.getY() - buffer; dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMin.getZ() - buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMin.getZ() + ge->skelOffset.getZ() - buffer; dataInd++;
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+				
 				
 				singleton->limbTBOData[dataInd] = ge->aabbMax.getX() + buffer; dataInd++;
 				singleton->limbTBOData[dataInd] = ge->aabbMax.getY() + buffer; dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMax.getZ() + buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMax.getZ() + ge->skelOffset.getZ() + buffer; dataInd++;
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+				
+				float randOff;
 				
 				for (j = 0; j < ge->bodies.size(); j++) {
 					curBody = &(ge->bodies[j]);
 					
 					if (
-						(curBody->isBall) ||
+						(curBody->jointType != E_JT_LIMB) ||
 						(curBody->boneId < 0)	
 					) {
 						
 					}
 					else {
 						
+						
+						
 						curOrgNode = curOrg->allNodes[curBody->boneId];
 						
 						centerPoint = curBody->body->getCenterOfMassPosition();
+						//centerPoint += btVector3(0.0,0.0,-0.5f);
 						basis = curBody->body->getCenterOfMassTransform().getBasis();
 						
+						for (q = 1; q <= 1; q++) {
+							tempBTV = curOrgNode->tbnTrans[q].getBTV();
+							myVector4 = Vector4(
+								tempBTV.getX(),
+								tempBTV.getY(),
+								tempBTV.getZ(),
+								1.0f
+							);
+							resVector4 = myMatrix4*myVector4;
+							basePos[q] = btVector3(resVector4.x,resVector4.y,resVector4.z);
+							basePos[q] += ge->skelOffset;
+							basePos[q] -= centerPoint;
+							basePos[q].normalize();
+						}
+						
+						
+						
 						tanVec = basis.getColumn(0);//basis*curOrgNode->orgVecs[0].getBTV();
-						bitVec = basis.getColumn(1);//basis*curOrgNode->orgVecs[1].getBTV();
-						norVec = basis.getColumn(2);//basis*curOrgNode->orgVecs[2].getBTV();
+						tanVec.normalize();
+						// bitVec = basis.getColumn(1);//basis*curOrgNode->orgVecs[1].getBTV();
+						// norVec = basis.getColumn(2);//basis*curOrgNode->orgVecs[2].getBTV();
+						
+						//tanVec = basePos[0];//basis*curOrgNode->orgVecs[0].getBTV();
+						bitVec = basePos[1];//basis*curOrgNode->orgVecs[1].getBTV();
+						//norVec = basePos[2];//basis*curOrgNode->orgVecs[2].getBTV();
+						
+						norVec = tanVec.cross(bitVec);
+						norVec.normalize();
+						
+						bitVec = norVec.cross(tanVec);
+						bitVec.normalize();
+						
 						
 						len0 = curOrgNode->orgVecs[E_OV_TBNRAD0].getBTV();
 						len1 = curOrgNode->orgVecs[E_OV_TBNRAD1].getBTV();
+						
+						// datVec
+						randOff = abs( fSeedRand2((ge->uid*37.19232f),(curOrgNode->orgVecs[E_OV_MATPARAMS].getFX()*17.89923f)) );
+						
+						singleton->limbTBOData[dataInd] = ge->uid; dataInd++;
+						singleton->limbTBOData[dataInd] = curBody->body->limbUID; dataInd++;
+						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_MATPARAMS].getFX(); dataInd++;
+						singleton->limbTBOData[dataInd] = randOff; dataInd++;
 						
 						//cenVec
 						
 						singleton->limbTBOData[dataInd] = centerPoint.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = centerPoint.getY(); dataInd++;
 						singleton->limbTBOData[dataInd] = centerPoint.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = ge->uid; dataInd++;
+						singleton->limbTBOData[dataInd] = 0.0; dataInd++;
 						
 						singleton->limbTBOData[dataInd] = tanVec.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = tanVec.getY(); dataInd++;
 						singleton->limbTBOData[dataInd] = tanVec.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = curBody->body->limbUID; dataInd++;
+						singleton->limbTBOData[dataInd] = 0.0; dataInd++;
 						
 						singleton->limbTBOData[dataInd] = bitVec.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = bitVec.getY(); dataInd++;
 						singleton->limbTBOData[dataInd] = bitVec.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+						singleton->limbTBOData[dataInd] = 0.0; dataInd++;
+						
+						// if (singleton->doPathReport) {
+						// 	cout << curOrgNode->orgVecs[E_OV_MATPARAMS].getFX() << "\n";
+						// }
 						
 						singleton->limbTBOData[dataInd] = norVec.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = norVec.getY(); dataInd++;
@@ -1419,7 +1495,7 @@ public:
 					}
 				}
 				
-				singleton->limbTBOData[headerStart+0] = dataInd;
+				singleton->limbTBOData[headerStart+0] = dataInd/4;
 				singleton->limbTBOData[headerStart+1] = 0.0f;
 				singleton->limbTBOData[headerStart+2] = 0.0f;
 				singleton->limbTBOData[headerStart+3] = 0.0f;
@@ -1440,6 +1516,11 @@ public:
 		singleton->actorCount = actorCount;
 		
 		singleton->limbTBO.update(singleton->limbTBOData,dataInd*4);
+		
+		// if (singleton->doPathReport) {
+		// 	cout << "\n\n";
+		// }
+		// singleton->doPathReport = false;
 	}
 
 	void drawPrim(bool doSphereMap, bool doTer, bool doPoly) {
@@ -1455,26 +1536,36 @@ public:
 		}
 		
 		
+		bool skipPrim =			
+			(singleton->gameFluid[E_FID_BIG]->curGeomCount == 0) &&
+			(singleton->placingGeom == false);
 		
 		
 		VolumeWrapper* curVW = (singleton->volumeWrappers[E_VW_VORO]);
 		
 		bool doPrim = !doTer;
 		
-		int curGeomCount = singleton->gameFluid[E_FID_BIG]->curGeomCount;
+		int curGeomCount = 0;
+		
+		
 		
 		
 		
 		if (doPrim) {
 			ind = 2;
 			
-			if ((curGeomCount == 0)&&(singleton->placingGeom == false)) {
+			curGeomCount = singleton->gameFluid[E_FID_BIG]->curGeomCount;
+			
+			if (skipPrim) {
 				singleton->copyFBO2("terTargFBO","solidBaseTargFBO", 0, 1);
 				singleton->copyFBO2("terTargFBO","waterTargFBO", 2, 3);
 				singleton->copyFBO2("terTargFBO","prmDepthFBO", 4, 5);
 				return;
 			}
 			
+		}
+		else {
+			curGeomCount = MAX_PRIM_IDS;
 		}
 		
 		
@@ -1507,20 +1598,18 @@ public:
 		
 		
 		
-		for (i = 0; i < E_PL_LENGTH; i++) {
-			singleton->setShaderTexture3D(i, singleton->gameFluid[E_FID_BIG]->volIdPrim[i]);
-		}
+		singleton->setShaderTexture3D(0, singleton->gameFluid[E_FID_BIG]->volIdPrim[0]);
 		
 		if (doPrim) {
 			singleton->setShaderTBO(
-				E_PL_LENGTH,
+				1,
 				singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_tex,
 				singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_buf
 			);
 		}
 		else {
 			singleton->setShaderTBO(
-				E_PL_LENGTH,
+				1,
 				singleton->limbTBO.tbo_tex,
 				singleton->limbTBO.tbo_buf
 			);
@@ -1537,8 +1626,12 @@ public:
 		
 		singleton->sampleFBO("geomTargFBO",5);
 		
+		// sample opposite pass
 		if (doPrim) {
 			singleton->sampleFBO("terTargFBO",7, -1, 0, 6);
+		}
+		else {
+			singleton->sampleFBO("prmTargFBO",7, -1, 0, 6);
 		}
 		
 		singleton->setShaderTexture3D(13, curVW->volId);
@@ -1581,6 +1674,7 @@ public:
 		singleton->setShaderFloat("invalidCount", invalidCount/invalidCountMax);
 		singleton->setShaderInt("doSphereMap", (int)(doSphereMap));
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
+		singleton->setShaderInt("skipPrim", (int)(skipPrim));
 		singleton->setShaderInt("placingGeom", (int)(singleton->placingGeom));
 		
 		singleton->setShaderfVec3("genPosMin", &(curVW->genPosMin) );
@@ -1688,6 +1782,9 @@ public:
 		if (doPrim) {
 			singleton->unsampleFBO("terTargFBO",7, -1, 0, 6);
 		}
+		else {
+			singleton->unsampleFBO("prmTargFBO",7, -1, 0, 6);
+		}
 		
 		// if (USE_SPHERE_MAP) {
 		// 	singleton->unsampleFBO("sphDepthFBO",5);
@@ -1697,10 +1794,8 @@ public:
 		singleton->unsampleFBO("terDepthFBO",3);
 		singleton->unsampleFBO("hmFBOLinearBig",2);
 		
-		singleton->setShaderTBO(E_PL_LENGTH,0,0);
-		for (i = 0; i < E_PL_LENGTH; i++) {
-			singleton->setShaderTexture3D(i, 0);
-		}
+		singleton->setShaderTBO(1,0,0);
+		singleton->setShaderTexture3D(1, 0);
 		
 		singleton->unbindFBO();
 		singleton->unbindShader();
@@ -1800,14 +1895,16 @@ public:
 			// }
 			// else {
 				lineSeg[1].setFXYZRef(&(curNode->tbnRotC[drawMode%3]));
-				lineSeg[1].multXYZ(  (curNode->orgVecs[E_OV_TBNRAD0][drawMode%3]*scale)  ); //*16.0f
+				lineSeg[1].multXYZ( 1.0f );//(curNode->orgVecs[E_OV_TBNRAD0][drawMode%3]*scale)  ); //*16.0f
 				//lineSeg[1].multXYZ(&(curNode->tbnRadScale0));
 				lineSeg[1].addXYZRef(&(lineSeg[0]));
 			//}
 			
+			if (singleton->currentActor != NULL) {
+				lineSeg[0].addXYZ(0.0f,0.0f,singleton->currentActor->skelOffset.getZ());
+				lineSeg[1].addXYZ(0.0f,0.0f,singleton->currentActor->skelOffset.getZ());
+			}
 			
-			//lineSeg[0].addXYZRef(basePosition);
-			//lineSeg[1].addXYZRef(basePosition);
 			
 			
 			
@@ -4718,25 +4815,21 @@ UPDATE_LIGHTS_END:
 		
 		
 		
-		
+		glLineWidth(1.0f);
 		
 		// skeleton outline		
-		// if (singleton->orgOn) {
-			
-		// 	if (singleton->currentActor != NULL) {
+		if (singleton->currentActor != NULL) {
+			if (singleton->currentActor->orgId > -1) {
+				singleton->currentActor->bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
 				
-		// 		if (singleton->currentActor->orgId > -1) {
-		// 			singleton->currentActor->bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
-					
-		// 			singleton->setShaderMatrix4x4("objmat",myMat,1);
-					
-		// 			singleton->setShaderFloat("objectId",0.0);
-		// 			drawOrg(singleton->gameOrgs[singleton->currentActor->orgId], true);
-		// 		}
-		// 	}
-		// }
+				singleton->setShaderMatrix4x4("objmat",myMat,1);
+				
+				singleton->setShaderFloat("objectId",0.0);
+				drawOrg(singleton->gameOrgs[singleton->currentActor->orgId], false);
+			}
+		}
 		
-		
+		glLineWidth(4.0f);
 		
 		
 		
@@ -5250,7 +5343,7 @@ UPDATE_LIGHTS_END:
 			
 			//solidBaseTargFBO
 			//"solidTargFBO" //"polyFBO"
-			singleton->drawFBO("limbFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
+			singleton->drawFBO("solidTargFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
 			
 			// leave this here to catch errors
 			//cout << "Getting Errors: \n";

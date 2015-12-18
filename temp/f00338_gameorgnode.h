@@ -40,12 +40,12 @@ GameOrgNode::GameOrgNode (GameOrgNode * _parent, int _nodeName, float _material,
 		//boneLengthScale = 1.0f;
 		
 		
-		(orgVecs[0]).setFXYZ(_tanX,_tanY,_tanZ);
-		(orgVecs[1]).setFXYZ(_bitX,_bitY,_bitZ);
-		(orgVecs[2]).setFXYZ(_norX,_norY,_norZ);
-		(orgVecs[0]).normalize();
-		(orgVecs[1]).normalize();
-		(orgVecs[2]).normalize();
+		(orgVecs[E_OV_TANGENT]).setFXYZ(_tanX,_tanY,_tanZ);
+		(orgVecs[E_OV_BITANGENT]).setFXYZ(_bitX,_bitY,_bitZ);
+		(orgVecs[E_OV_NORMAL]).setFXYZ(_norX,_norY,_norZ);
+		(orgVecs[E_OV_TANGENT]).normalize();
+		(orgVecs[E_OV_BITANGENT]).normalize();
+		(orgVecs[E_OV_NORMAL]).normalize();
 		
 	}
 GameOrgNode * GameOrgNode::addChild (int _nodeName, float _material, float _rotThe, float _rotPhi, float _rotRho, float _tanLengthInCells0, float _bitLengthInCells0, float _norLengthInCells0, float _tanLengthInCells1, float _bitLengthInCells1, float _norLengthInCells1, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ)
@@ -208,7 +208,7 @@ void GameOrgNode::doTransform (Singleton * singleton)
 		
 		for (i = 0; i < 3; i++) {
 			(tbnTrans[i]).setFXYZRef(&(tbnRotC[i]));
-			(tbnTrans[i]).multXYZ(orgVecs[E_OV_TBNRAD0][i]); //*tbnRadScale0[i]
+			//(tbnTrans[i]).multXYZ(orgVecs[E_OV_TBNRAD0][i]); //*tbnRadScale0[i]
 			(tbnTrans[i]).addXYZRef(&(orgTrans[1]));
 		}
 		

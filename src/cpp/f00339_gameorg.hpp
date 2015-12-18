@@ -89,17 +89,17 @@ public:
 	
 	
 	
-	void loadFromFile(string fileName) {
+	void loadFromFile(string fileName, bool notThePose) {
 		singleton->loadJSON(
 			"..\\data\\orgdata\\" + fileName + ".js",
 			&rootObj
 		);
 		
-		jsonToNode(&rootObj, baseNode);
+		jsonToNode(&rootObj, baseNode, notThePose);
 		
 	}
 	
-	void jsonToNode(JSONValue** parentObj, GameOrgNode* curNode) {
+	void jsonToNode(JSONValue** parentObj, GameOrgNode* curNode, bool notThePose) {
 		
 		int i;
 		
@@ -108,16 +108,40 @@ public:
 		
 		JSONValue* tempVal;
 		
+		bool doProc;
 		
 		for (i = 0; i < E_OV_LENGTH; i++) {	
 		
-			tempVal = (*parentObj)->Child("orgVecs");
-			curNode->orgVecs[i].setFXYZW(
-				tempVal->array_value[i*4 + 0]->number_value,
-				tempVal->array_value[i*4 + 1]->number_value,
-				tempVal->array_value[i*4 + 2]->number_value,
-				tempVal->array_value[i*4 + 3]->number_value
-			);
+			doProc = false;
+			if (notThePose) {
+				switch (i) {
+					//case E_OV_TANGENT:
+					//case E_OV_BITANGENT:
+					//case E_OV_NORMAL:
+					case E_OV_TBNRAD0:
+					case E_OV_TBNRAD1:
+					//case E_OV_THETAPHIRHO:
+					//case E_OV_TPRORIG:
+					case E_OV_MATPARAMS:
+						doProc = true;
+					break;
+				}
+			}
+			else {
+				doProc = true;
+			}
+		
+			if (doProc) {
+				tempVal = (*parentObj)->Child("orgVecs");
+				curNode->orgVecs[i].setFXYZW(
+					tempVal->array_value[i*4 + 0]->number_value,
+					tempVal->array_value[i*4 + 1]->number_value,
+					tempVal->array_value[i*4 + 2]->number_value,
+					tempVal->array_value[i*4 + 3]->number_value
+				);
+			}
+		
+			
 			
 		}
 		
@@ -138,7 +162,8 @@ public:
 				
 				jsonToNode(
 					&( (*parentObj)->Child("children")->array_value[i] ),
-					curNode->children[i]
+					curNode->children[i],
+					notThePose
 				);
 				
 				
@@ -201,6 +226,7 @@ public:
 		}
 		
 		
+		
 		for (i = begInd; i < endInd; i++) {
 			sourceNode = otherOrg->allNodes[i];
 			destNode = allNodes[i];
@@ -210,7 +236,15 @@ public:
 				(destNode != NULL)	
 			) {
 				for (j = 0; j < E_OV_LENGTH; j++) {
-					destNode->orgVecs[j].lerpXYZW(&(sourceNode->orgVecs[j]), lerpAmount);
+					
+					if (j == E_OV_MATPARAMS) {
+						destNode->orgVecs[j].copyFrom(&(sourceNode->orgVecs[j]));
+					}
+					else {
+						destNode->orgVecs[j].lerpXYZW(&(sourceNode->orgVecs[j]), lerpAmount);
+					}
+					
+					
 				}
 			}
 		}
@@ -247,6 +281,24 @@ public:
 						lerpSpeed = 0.005f;
 						timeInterval = 1.5;
 						targetPose = E_PK_JUMP;
+					break;
+					case E_PG_SLSH_R:
+						lerpSpeed = 0.02f;
+						timeInterval = 0.2;
+						targetPose = E_PK_SLSH_R0 + stepCount;
+						if (targetPose > E_PK_SLSH_R2) {
+							curOwner->isSwinging = false;
+							targetPoseGroup = E_PG_IDLE;
+						}
+					break;
+					case E_PG_PICKUP:
+						lerpSpeed = 0.01f;
+						timeInterval = 0.4;
+						targetPose = E_PK_PICKUP + stepCount;
+						if (targetPose > E_PK_PICKUP) {
+							curOwner->isPickingUp = false;
+							targetPoseGroup = E_PG_IDLE;
+						}
 					break;
 				}
 				

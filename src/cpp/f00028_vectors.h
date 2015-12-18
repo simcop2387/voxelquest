@@ -1840,6 +1840,10 @@ public:
 	bool isUpright;
 	bool zeroZ;
 	bool isJumping;
+	bool isWalking;
+	bool leftActive;
+	bool isSwinging;
+	bool isPickingUp;
 	
 	
 	bool weaponActive;
@@ -1943,7 +1947,7 @@ public:
 	}
 	
 	float getMarkerMass() {
-		return bodies[0].mass;
+		return bodies[E_BDG_CENTER].mass;
 	}
 	
 	
@@ -1971,7 +1975,7 @@ public:
 	}
 	
 	bool baseContact() {
-		return bodies[0].hasContact;
+		return bodies[E_BDG_CENTER].hasContact;
 	}
 	
 	float getPlanarVel() {
@@ -1980,7 +1984,7 @@ public:
 			return 0.0f;
 		}
 		
-		btVector3 sourceVel = bodies[0].body->getLinearVelocity();
+		btVector3 sourceVel = bodies[E_BDG_CENTER].body->getLinearVelocity();
 		
 		return sqrt( sourceVel.getX()*sourceVel.getX() + sourceVel.getY()*sourceVel.getY() );
 	}
@@ -2000,13 +2004,13 @@ public:
 			}
 			else {
 				
-				if (zeroZ) {
-					bodies[i].body->setLinearVelocity(btVector3(
-						bodies[i].body->getLinearVelocity().getX(),
-						bodies[i].body->getLinearVelocity().getY(),
-						0.0f	
-					));
-				}
+				// if (zeroZ) {
+				// 	bodies[i].body->setLinearVelocity(btVector3(
+				// 		bodies[i].body->getLinearVelocity().getX(),
+				// 		bodies[i].body->getLinearVelocity().getY(),
+				// 		0.0f	
+				// 	));
+				// }
 				
 				bodies[i].body->setAngularVelocity(bodies[i].body->getAngularVelocity() + bodies[i].totAV*timeDelta);
 				bodies[i].body->applyCentralImpulse(bodies[i].totLV*timeDelta);
@@ -2015,20 +2019,18 @@ public:
 			}
 		}
 		
-		
-		
 	}
 	
 	
 	
-	void begSwing() {
-		targWeaponStack.push_back(E_WEAPON_STATE_BEG);
-	}
-	void endSwing() {
-		targWeaponStack.push_back(E_WEAPON_STATE_END);
-		targWeaponStack.push_back(E_WEAPON_STATE_IDLE);
-		//targWeaponStack.push_back(E_WEAPON_POS_RELAXED);
-	}
+	// void begSwing() {
+	// 	targWeaponStack.push_back(E_WEAPON_STATE_BEG);
+	// }
+	// void endSwing() {
+	// 	targWeaponStack.push_back(E_WEAPON_STATE_END);
+	// 	targWeaponStack.push_back(E_WEAPON_STATE_IDLE);
+	// 	//targWeaponStack.push_back(E_WEAPON_POS_RELAXED);
+	// }
 	
 	// int getStackElem(int n) {
 	// 	std::list<int>::iterator ptr;
@@ -2200,6 +2202,8 @@ public:
 	
 	
 	void updateWeapon(
+		btVector3 weaponBeg,
+		btVector3 weaponEnd,
 		double curStepTime,
 		// float lrBounds,
 		// float udBounds,
@@ -2208,7 +2212,7 @@ public:
 		
 		totTime += curStepTime;
 		
-		updateWeaponTargs(curStepTime);
+		//updateWeaponTargs(curStepTime);
 		
 		
 		float myMat[16];
@@ -2228,48 +2232,53 @@ public:
 		
 		//float lrBounds = sin(totTime/4.0);
 		//float udBounds = sin(totTime);
-		float udBounds2 = udBounds;//sin(totTime/8.0);
+		//float udBounds2 = udBounds;//sin(totTime/8.0);
 		
 		if (bodies.size() < 1) {
 			return;
 		}
 		
 		
+		// float weaponTheta = M_PI_2 + lrBounds*M_PI_8;
+		// float weaponPhi = M_PI_4 + udBounds*M_PI_4;
+		
+		// float weaponTheta2 = (1.0f - lrBounds)*M_PI + cos(totTime/2.0f)*0.1f;
+		// float weaponPhi2 = 0 + udBounds*M_PI_2*1.5f + sin(totTime/3.0f)*0.1f;
 		
 		
-		float weaponTheta = M_PI_2 + lrBounds*M_PI_8;
-		float weaponPhi = M_PI_4 + udBounds*M_PI_4;
-		
-		float weaponTheta2 = (1.0f - lrBounds)*M_PI + cos(totTime/2.0f)*0.1f;
-		float weaponPhi2 = 0 + udBounds*M_PI_2*1.5f + sin(totTime/3.0f)*0.1f;
-		
-		
-		bodies[0].body->getWorldTransform().getOpenGLMatrix(myMat);
+		bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
 		myMatrix4 = Matrix4(myMat);
 		
-		myVector0 = Vector3(
-			cos(weaponTheta)*sin(weaponPhi)*rad0,
-			sin(weaponTheta)*sin(weaponPhi)*rad0 + 0.5f,
-			cos(weaponPhi)*rad0 + (1.0f-udBounds2)*0.75f
-		);
-		myVector1 = Vector3(
-			cos(weaponTheta2)*sin(weaponPhi2)*rad1,
-			sin(weaponTheta2)*sin(weaponPhi2)*rad1 + 0.5f,
-			cos(weaponPhi2)*rad1
-		);
+		// myVector0 = Vector3(
+		// 	cos(weaponTheta)*sin(weaponPhi)*rad0,
+		// 	sin(weaponTheta)*sin(weaponPhi)*rad0 + 0.5f,
+		// 	cos(weaponPhi)*rad0 + (1.0f-udBounds2)*0.75f
+		// );
+		// myVector1 = Vector3(
+		// 	cos(weaponTheta2)*sin(weaponPhi2)*rad1,
+		// 	sin(weaponTheta2)*sin(weaponPhi2)*rad1 + 0.5f,
+		// 	cos(weaponPhi2)*rad1
+		// );
 		
-		myVector0.x -= (myVector0.x*0.5f + myVector1.x*0.5f)*0.25f;
-		myVector0.y -= (myVector0.y*0.5f + myVector0.y*0.5f)*0.25f;
+		// myVector0.x -= (myVector0.x*0.5f + myVector1.x*0.5f)*0.25f;
+		// myVector0.y -= (myVector0.y*0.5f + myVector0.y*0.5f)*0.25f;
 		
-		myVector0 *= 0.75f;
+		// myVector0 *= 0.75f;
 		
-		myVector0.y += 0.25f;
+		// myVector0.y += 0.25f;
 		
-		//if (myVector1.x > 0.0f) {
-			myVector0.x += myVector1.x*0.25f;
-		//}
+		// //if (myVector1.x > 0.0f) {
+		// 	myVector0.x += myVector1.x*0.25f;
+		// //}
 		
-		myVector1.y += 1.0f-abs(cos(weaponPhi2));
+		// myVector1.y += 1.0f-abs(cos(weaponPhi2));
+		
+		BodyStruct* handBody = getBodyByBoneId(E_BONE_L_METACARPALS);
+		
+		btVector3 handCenter = handBody->body->getCenterOfMassPosition();
+		
+		myVector0 = Vector3(weaponBeg.getX(), weaponBeg.getY(),weaponBeg.getZ());
+		myVector1 = Vector3(weaponEnd.getX(), weaponEnd.getY(),weaponEnd.getZ());
 		
 		
 		normVec = myVector1 - myVector0;
@@ -2278,6 +2287,8 @@ public:
 		myVector1 = myVector0 + normVec;
 		
 		rightHandTop = true;//(myVector0.x < 0.0f);
+		
+		
 		
 		vf0 = Vector4(myVector0.x, myVector0.y, myVector0.z, 1.0f);
 		vf1 = Vector4(myVector1.x, myVector1.y, myVector1.z, 1.0f);
@@ -2288,6 +2299,10 @@ public:
 		weaponVec0 = btVector3(resVector0.x,resVector0.y,resVector0.z);
 		weaponVec1 = btVector3(resVector1.x,resVector1.y,resVector1.z);
 		
+		btVector3 weapDif = handCenter-weaponVec0;
+		
+		weaponVec0 += weapDif;
+		weaponVec1 += weapDif;
 		
 		
 		vf0 = Vector4( 1.0f,0.0f,0.0f,1.0f);
@@ -2369,6 +2384,66 @@ public:
 				bodies[i].body->setActivationState(ACTIVE_TAG);
 			}
 		}
+		
+		
+	}
+	
+	bool isHumanoid() {
+		return (
+			(entType == E_ENTTYPE_NPC) ||
+			(entType == E_ENTTYPE_MONSTER)
+		);
+	}
+	
+	void makeWalk(btVector3 imp, btMatrix3x3 otherRot) {
+		
+		if (isHumanoid()) {
+			
+		}
+		else {
+			return;
+		}
+		
+		
+		bool lfDown = bodies[E_BDG_LFOOT].hasContact && 
+			(bodies[E_BDG_LFOOT].body->getLinearVelocity().length() < 0.1f);
+		bool rfDown = bodies[E_BDG_RFOOT].hasContact && 
+			(bodies[E_BDG_RFOOT].body->getLinearVelocity().length() < 0.1f);
+		
+		int resInd = -1;
+		
+		if (lfDown && rfDown) {
+			leftActive = !leftActive;
+			//resInd = E_BDG_LFOOT;
+			
+			if (leftActive) {
+				resInd = E_BDG_LFOOT;
+			}
+			else {
+				resInd = E_BDG_RFOOT;
+			}
+			
+		}
+		// else {
+		// 	if (lfDown) {
+		// 		resInd = E_BDG_LFOOT;
+		// 	}
+		// 	else {
+		// 		if (rfDown) {
+		// 			resInd = E_BDG_RFOOT;
+		// 		}
+		// 	}
+		// }
+		
+		if (resInd == -1) {
+			return;
+		}
+		
+		
+		btVector3 newImp = otherRot*imp*bodies[resInd].mass;
+		
+		bodies[resInd].body->applyCentralImpulse(newImp);
+		bodies[resInd].body->setActivationState(ACTIVE_TAG);
 		
 		
 	}
@@ -2501,6 +2576,10 @@ public:
 		
 		zeroZ = false;
 		isJumping = false;
+		isWalking = false;
+		leftActive = false;
+		isSwinging = false;
+		isPickingUp = false;
 		
 		isUpright = 
 			(entType == E_ENTTYPE_NPC) ||
@@ -2566,6 +2645,90 @@ struct AssignStruct {
 
 
 
+inline float qSign(float x) {return (x >= 0.0f) ? +1.0f : -1.0f;}
+inline float qNorm(float a, float b, float c, float d) {return sqrt(a * a + b * b + c * c + d * d);}
+
+
+btQuaternion matToQuat(
+	float r11, float r12, float r13,
+	float r21, float r22, float r23,
+	float r31, float r32, float r33 	
+) {
+	float q0 = ( r11 + r22 + r33 + 1.0f) / 4.0f;
+	float q1 = ( r11 - r22 - r33 + 1.0f) / 4.0f;
+	float q2 = (-r11 + r22 - r33 + 1.0f) / 4.0f;
+	float q3 = (-r11 - r22 + r33 + 1.0f) / 4.0f;
+	if(q0 < 0.0f) q0 = 0.0f;
+	if(q1 < 0.0f) q1 = 0.0f;
+	if(q2 < 0.0f) q2 = 0.0f;
+	if(q3 < 0.0f) q3 = 0.0f;
+	q0 = sqrt(q0);
+	q1 = sqrt(q1);
+	q2 = sqrt(q2);
+	q3 = sqrt(q3);
+	if(q0 >= q1 && q0 >= q2 && q0 >= q3) {
+	    q0 *= +1.0f;
+	    q1 *= qSign(r32 - r23);
+	    q2 *= qSign(r13 - r31);
+	    q3 *= qSign(r21 - r12);
+	} else if(q1 >= q0 && q1 >= q2 && q1 >= q3) {
+	    q0 *= qSign(r32 - r23);
+	    q1 *= +1.0f;
+	    q2 *= qSign(r21 + r12);
+	    q3 *= qSign(r13 + r31);
+	} else if(q2 >= q0 && q2 >= q1 && q2 >= q3) {
+	    q0 *= qSign(r13 - r31);
+	    q1 *= qSign(r21 + r12);
+	    q2 *= +1.0f;
+	    q3 *= qSign(r32 + r23);
+	} else if(q3 >= q0 && q3 >= q1 && q3 >= q2) {
+	    q0 *= qSign(r21 - r12);
+	    q1 *= qSign(r31 + r13);
+	    q2 *= qSign(r32 + r23);
+	    q3 *= +1.0f;
+	} else {
+	    cout << "Quaternion error\n";
+	}
+	float r = qNorm(q0, q1, q2, q3);
+	q0 /= r;
+	q1 /= r;
+	q2 /= r;
+	q3 /= r;
+	
+	return btQuaternion(q0,q1,q2,q3);
+}
+
+btVector3 quatToEulerXYZ(const btQuaternion &quat) {
+	btVector3 euler;
+	float w=quat.getW();   float x=quat.getX();   float y=quat.getY();   float z=quat.getZ();
+	double sqw = w*w; double sqx = x*x; double sqy = y*y; double sqz = z*z; 
+	euler.setZ((atan2(2.0 * (x*y + z*w),(sqx - sqy - sqz + sqw))));
+	euler.setX((atan2(2.0 * (y*z + x*w),(-sqx - sqy + sqz + sqw))));
+	euler.setY((asin(-2.0 * (x*z - y*w))));
+	
+	return euler;
+}
+
+
+void moveToOrientation(
+	btRigidBody* myBody,
+	btVector3 tanAxis,
+	btVector3 bitAxis,
+	btVector3 norAxis,
+	float kv = 0.5f
+) {
+	btQuaternion targetOrientation = matToQuat(
+		tanAxis.getX(),	bitAxis.getX(), norAxis.getX(),
+		tanAxis.getX(),	bitAxis.getX(), norAxis.getX(),
+		tanAxis.getX(),	bitAxis.getX(), norAxis.getX()
+	);
+	btQuaternion currentOrientation = myBody->getOrientation();
+	btQuaternion deltaOrientation = targetOrientation * currentOrientation.inverse();
+	btVector3 deltaEuler = quatToEulerXYZ(deltaOrientation);
+	btVector3 torqueToApply = (-1.0f*kv)*deltaEuler;
+	myBody->applyTorque(torqueToApply);
+	
+}
 
 
 class VBOWrapper {
@@ -2732,7 +2895,7 @@ public:
 
 		glGenBuffers(1, &tbo_buf);
 		glBindBuffer(GL_TEXTURE_BUFFER, tbo_buf);
-		glBufferData(GL_TEXTURE_BUFFER, dataSize, tbo_data, GL_STATIC_DRAW);
+		glBufferData(GL_TEXTURE_BUFFER, dataSize, tbo_data, GL_DYNAMIC_DRAW); // todo: dynamic draw? //GL_STATIC_DRAW
 		glGenTextures(1, &tbo_tex);
 		glBindBuffer(GL_TEXTURE_BUFFER, 0);
 	}
