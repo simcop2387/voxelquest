@@ -1691,7 +1691,7 @@ public:
   bool isFloat;
   bool isReady;
   VolumeWrapper ();
-  void init (int z, GLenum clampMethod, bool _isFloat);
+  void init (int z, GLenum clampMethod, bool _isFloat, int filterType);
   void copyFloatArr (float * floatArr);
   void copyCharArr (unsigned char * charArr);
 };
@@ -2004,7 +2004,7 @@ public:
   void toggleVis (GameEnt * se);
   void ensureBlocks ();
   void findNearestEnt (EntSelection * entSelection, int entType, int maxLoadRad, int radStep, FIVector4 * testPoint, bool onlyInteractive = false, bool ignoreDistance = false);
-  void drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * maxc, bool copyToTex, bool forceFinish, bool getVoro = false);
+  void drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * maxc, bool copyToTex, bool forceFinish, bool getVoro = false, bool getBlockHolders = false);
   void updateLimbTBOData (bool showLimbs);
   void drawPrim (bool doSphereMap, bool doTer, bool doPoly);
   void drawOrg (GameOrg * curOrg, bool drawAll);

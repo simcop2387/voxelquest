@@ -1870,8 +1870,13 @@ public:
 	float friction;
 	float windResistance;
 	
-	btVector3 aabbMin;
-	btVector3 aabbMax;
+	// skeleton
+	btVector3 aabbMinSkel;
+	btVector3 aabbMaxSkel;
+	
+	// visual objects
+	btVector3 aabbMinVis;
+	btVector3 aabbMaxVis;
 	
 	void setDamping(float linear, float angular) {
 		int i;
@@ -1881,29 +1886,29 @@ public:
 		}
 	}
 	
-	void clearAABB() {
-		aabbMin = btVector3(FLT_MAX,FLT_MAX,FLT_MAX);
-		aabbMax = btVector3(FLT_MIN,FLT_MIN,FLT_MIN);	
+	void clearAABB(btVector3* aabbMin, btVector3* aabbMax) {
+		*aabbMin = btVector3(FLT_MAX,FLT_MAX,FLT_MAX);
+		*aabbMax = btVector3(FLT_MIN,FLT_MIN,FLT_MIN);	
 	}
 	
-	void addAABBPoint(btVector3 newPoint) {
+	void addAABBPoint(btVector3* aabbMin, btVector3* aabbMax, btVector3 newPoint) {
 		btVector3 tempv;
 		
 		tempv = btVector3(
-			max(newPoint.getX(), aabbMax.getX()),
-			max(newPoint.getY(), aabbMax.getY()),
-			max(newPoint.getZ(), aabbMax.getZ())
+			max(newPoint.getX(), aabbMax->getX()),
+			max(newPoint.getY(), aabbMax->getY()),
+			max(newPoint.getZ(), aabbMax->getZ())
 		);
 		
-		aabbMax = tempv;
+		*aabbMax = tempv;
 		
 		tempv = btVector3(
-			min(newPoint.getX(), aabbMin.getX()),
-			min(newPoint.getY(), aabbMin.getY()),
-			min(newPoint.getZ(), aabbMin.getZ())
+			min(newPoint.getX(), aabbMin->getX()),
+			min(newPoint.getY(), aabbMin->getY()),
+			min(newPoint.getZ(), aabbMin->getZ())
 		);
 		
-		aabbMin = tempv;
+		*aabbMin = tempv;
 	}
 	
 	

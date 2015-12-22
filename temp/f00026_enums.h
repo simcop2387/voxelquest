@@ -4,12 +4,14 @@
 enum E_CONST_VALS {
 	E_CONST_JUMP_AMOUNT,
 	E_CONST_WALK_AMOUNT,
+	E_CONST_LIMB_IMPULSE,
 	E_CONST_LENGTH
 };
 
 string constStrings[] = {
 	"E_CONST_JUMP_AMOUNT",
 	"E_CONST_WALK_AMOUNT",
+	"E_CONST_LIMB_IMPULSE",
 	"E_CONST_LENGTH"
 };
 
@@ -1163,7 +1165,7 @@ const static int bodyCollidesWith[] = {
 
 const static int handCollidesWith = COL_STATIC|COL_DYN;
 const static int terCollidesWith = COL_STATIC|COL_DYN|COL_MARKER|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY6|COL_BODY7; //|COL_WEAPON
-const static int markerCollidesWith = COL_STATIC|COL_DYN;
+const static int markerCollidesWith = COL_STATIC|COL_DYN|COL_MARKER;
 const static int dynCollidesWith = COL_STATIC|COL_DYN|COL_MARKER|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY6|COL_BODY7; //|COL_WEAPON
 //const static int weaponCollidesWith = COL_STATIC|COL_DYN;// |COL_WEAPON;
 

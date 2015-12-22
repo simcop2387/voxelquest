@@ -65,7 +65,12 @@ public:
 		
 		switch(jointType) {
 			case E_JT_LIMB:
-				rad = 0.1f;
+				rad = 0.35f;
+				
+				// if (nodeName == E_BONE_WEAPON_END) {
+				// 	rad = 0.5f;
+				// }
+				
 				len = curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV());
 				begPos = curNode->orgTrans[0].getBTV();
 				midPos = curNode->orgTrans[1].getBTV();

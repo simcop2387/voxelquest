@@ -781,31 +781,31 @@ public:
 			glFinish();
 		}
 		
-		if (blockHolder->preGenList) {
+		// if (blockHolder->preGenList) {
 			
-		}
-		else {
+		// }
+		// else {
 			
-			blockHolder->generateList();
-		}
+		// 	blockHolder->generateList();
+		// }
 		
-		if (blockHolder->listGenerated) {
+		// if (blockHolder->listGenerated) {
 			
-		}
-		else {
-			glFlush();
-			glFinish();
-			
-			
-			blockHolder->fillVBO();
+		// }
+		// else {
+		// 	glFlush();
+		// 	glFinish();
 			
 			
-			glFlush();
-			glFinish();
+		// 	blockHolder->fillVBO();
+			
+			
+		// 	glFlush();
+		// 	glFinish();
 			
 			
 			
-		}
+		// }
 	}
 	
 
@@ -1234,7 +1234,8 @@ public:
 		FIVector4* maxc,
 		bool copyToTex,
 		bool forceFinish,
-		bool getVoro = false
+		bool getVoro = false,
+		bool getBlockHolders = false
 	) {
 		
 		
@@ -1250,6 +1251,10 @@ public:
 		
 		if (!getVoro) {
 			singleton->setShaderTexture3D(13, singleton->volumeWrappers[E_VW_VORO]->volId);
+		}
+		
+		if (!getBlockHolders) {
+			singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
 		}
 		
 		singleton->setShaderfVec3("bufferDim", &(curVW->terGenDim) );
@@ -1268,11 +1273,15 @@ public:
 		//singleton->setShaderfVec3("volMaxReadyInPixels", &(singleton->gameFluid[E_FID_BIG]->volMaxInPixels) );
 		
 		singleton->setShaderInt("getVoro", (int)(getVoro));
+		singleton->setShaderInt("getBlockHolders", (int)(getBlockHolders));
 		
 		singleton->setShaderFloat("cellsPerWorld", cellsPerWorld );
 		
 		singleton->fsQuad.draw();
 		
+		if (!getBlockHolders) {
+			singleton->setShaderTexture3D(14, 0);
+		}
 		if (!getVoro) {
 			singleton->setShaderTexture3D(13, 0);
 		}
@@ -1366,6 +1375,16 @@ public:
 				
 				actorCount++;
 				
+				ge->clearAABB(&(ge->aabbMinVis),&(ge->aabbMaxVis));
+				for (j = 0; j < ge->bodies.size(); j++) {
+					curBody = &(ge->bodies[j]);
+					ge->addAABBPoint(
+						&(ge->aabbMinSkel),
+						&(ge->aabbMaxSkel),
+						curBody->body->getCenterOfMassPosition()
+					);
+				}
+				
 				curOrg = singleton->gameOrgs[ge->orgId];
 				
 				ge->bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
@@ -1379,15 +1398,15 @@ public:
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
 			
-				singleton->limbTBOData[dataInd] = ge->aabbMin.getX() - buffer; dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMin.getY() - buffer; dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMin.getZ() + ge->skelOffset.getZ() - buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getX() - buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getY() - buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getZ() - buffer; dataInd++;
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
 				
 				
-				singleton->limbTBOData[dataInd] = ge->aabbMax.getX() + buffer; dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMax.getY() + buffer; dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMax.getZ() + ge->skelOffset.getZ() + buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getX() + buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getY() + buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getZ() + buffer; dataInd++;
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
 				
 				float randOff;
@@ -1541,8 +1560,6 @@ public:
 			(singleton->placingGeom == false);
 		
 		
-		VolumeWrapper* curVW = (singleton->volumeWrappers[E_VW_VORO]);
-		
 		bool doPrim = !doTer;
 		
 		int curGeomCount = 0;
@@ -1634,11 +1651,12 @@ public:
 			singleton->sampleFBO("prmTargFBO",7, -1, 0, 6);
 		}
 		
-		singleton->setShaderTexture3D(13, curVW->volId);
+		singleton->setShaderTexture3D(13, singleton->volumeWrappers[E_VW_VORO]->volId);
+		singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
 		
-		if (!doPoly) {
-			singleton->sampleFBO(polyFBOStrings[NUM_POLY_STRINGS],14);
-		}
+		// if (!doPoly) {
+		// 	singleton->sampleFBO(polyFBOStrings[NUM_POLY_STRINGS],14);
+		// }
 		
 		
 		
@@ -1677,11 +1695,7 @@ public:
 		singleton->setShaderInt("skipPrim", (int)(skipPrim));
 		singleton->setShaderInt("placingGeom", (int)(singleton->placingGeom));
 		
-		singleton->setShaderfVec3("genPosMin", &(curVW->genPosMin) );
-		singleton->setShaderfVec3("genPosMax", &(curVW->genPosMax) );
 		
-		// singleton->setShaderfVec3("volMinReadyInPixels", &(curVW->genPosMin) );
-		// singleton->setShaderfVec3("volMaxReadyInPixels", &(curVW->genPosMax) );
 		
 		singleton->setShaderfVec3("waterMin", &(singleton->gameFluid[E_FID_BIG]->curWaterMin) );
 		singleton->setShaderfVec3("waterMax", &(singleton->gameFluid[E_FID_BIG]->curWaterMax) );
@@ -1772,12 +1786,15 @@ public:
 			singleton->fsQuad.draw();
 		}
 		
-		if (!doPoly) {
-			singleton->unsampleFBO(polyFBOStrings[NUM_POLY_STRINGS],14);
-		}
+		// if (!doPoly) {
+		// 	singleton->unsampleFBO(polyFBOStrings[NUM_POLY_STRINGS],14);
+		// }
 		
 		
+		
+		singleton->setShaderTexture3D(14, 0);
 		singleton->setShaderTexture3D(13, 0);
+		
 		
 		if (doPrim) {
 			singleton->unsampleFBO("terTargFBO",7, -1, 0, 6);

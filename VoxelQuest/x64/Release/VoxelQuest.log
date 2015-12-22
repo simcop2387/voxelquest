@@ -1,4 +1,4 @@
-﻿Build started 12/18/2015 5:51:02 AM.
+﻿Build started 12/22/2015 1:50:59 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -234,6 +234,8 @@
          
          Valid JSON
                    
+         gphMin   0.000000   0.000000   0.000000    
+         gphMax   65536.000000   65536.000000   65536.000000    
          Sea Level: 80
          DONE WITH MAP
          Loading:  ..\data\constants.js         
@@ -468,35 +470,725 @@
          curHeight 0 newHeight 2634.04
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
-         Loading:  ..\data\orgdata\E_PK_NON_POSE.js         
+         genBlockHolder
+         Loading:  ..\data\constants.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_NON_POSE.js         
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
          Load Successful          
          
          Valid JSON
                    
-         actObjInd 432
-         subjectDistance 7.23795
-         No code for key: w
-         Loading:  ..\data\orgdata\E_PK_NON_POSE.js         
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
          Load Successful          
          
          Valid JSON
                    
-         actObjInd 481
-         subjectDistance 7.24317
-         No code for key: w
-         actObjInd 432
-         subjectDistance 5.80695
-         actObjInd 481
-         subjectDistance 7.29933
-         No code for key: w
-         No code for key: w
-         No code for key: w
-         from E_DT_NOTHING to E_DT_NOTHING
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+     1>EXEC : Shader  1820  ( ../src/glsl/TerGenShader.c ) compile error : 0(1225) : error C0000: syntax error, unexpected ';', expecting ')' at token ";"
+              
+     1>EXEC : Program  1821  link error : Fragment info
+         -------------
+     1>0(1225): error C0000: syntax error, unexpected ';', expecting ')' at token ";"
+                
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         attempted to load shaderParams
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data materials.js
+         Loading:  ..\data\materials.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Loading:  ..\data\lastJSONBufferGUI.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading GUI Values
+         Loading:  ..\data\saves\save0\compMap.txt         
+         Load Successful          
+         End Loading GUI Values
+         genBlockHolder
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+     1>EXEC : Shader  2717  ( ../src/glsl/PrimShader.c ) compile error : 0(4361) : error C7011: implicit cast from "float" to "vec4"
+              
+     1>EXEC : Program  2718  link error : Fragment info
+         -------------
+     1>0(4361): error C7011: implicit cast from "float" to "vec4"
+                
+     1>EXEC : Shader  2738  ( ../src/glsl/TerGenShader.c ) compile error : 0(1334) : error C7011: implicit cast from "float" to "vec4"
+              
+     1>EXEC : Program  2739  link error : Fragment info
+         -------------
+     1>0(1334): error C7011: implicit cast from "float" to "vec4"
+                
+         Shaders Refreshed
          Loading:  ..\data\constants.js         
          Load Successful          
          
@@ -512,11 +1204,418 @@
          Valid JSON
                    
          Shaders Refreshed
-         iNumSteps:  16         
-         iNumSteps:  16         
-         iNumSteps:  16         
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+     1>EXEC : Shader  3125  ( ../src/glsl/PrimShader.c ) compile error : 0(4355) : error C0000: syntax error, unexpected ';', expecting ',' or ')' at token ";"
+              
+     1>EXEC : Program  3126  link error : Fragment info
+         -------------
+     1>0(4355): error C0000: syntax error, unexpected ';', expecting ',' or ')' at token ";"
+                
+     1>EXEC : Shader  3146  ( ../src/glsl/TerGenShader.c ) compile error : 0(1328) : error C0000: syntax error, unexpected ';', expecting ',' or ')' at token ";"
+              
+     1>EXEC : Program  3147  link error : Fragment info
+         -------------
+     1>0(1328): error C0000: syntax error, unexpected ';', expecting ',' or ')' at token ";"
+                
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+     1>EXEC : Shader  4451  ( ../src/glsl/PrimShader.c ) compile error : 0(4383) : error C0000: syntax error, unexpected ';', expecting ')' at token ";"
+              
+     1>EXEC : Program  4452  link error : Fragment info
+         -------------
+     1>0(4383): error C0000: syntax error, unexpected ';', expecting ')' at token ";"
+                
+     1>EXEC : Shader  4472  ( ../src/glsl/TerGenShader.c ) compile error : 0(1356) : error C0000: syntax error, unexpected ';', expecting ')' at token ";"
+              
+     1>EXEC : Program  4473  link error : Fragment info
+         -------------
+     1>0(1356): error C0000: syntax error, unexpected ';', expecting ')' at token ";"
+                
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
+C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -1.
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
 
-Build succeeded.
+Build FAILED.
 
-Time Elapsed 00:52:21.33
+Time Elapsed 02:02:47.87

@@ -1263,8 +1263,21 @@ void GamePageHolder::genCellData ()
 		}
 		
 		
-		singleton->gw->drawVol(curVW, &gphMinInPixels, &gphMaxInPixels, true, true);
+		singleton->gw->drawVol(
+			curVW,
+			&gphMinInPixels,
+			&gphMaxInPixels,
+			true,
+			true,
+			false,
+			isBlockHolder
+		);
 		FBOWrapper* fbow = curVW->fboSet.getFBOWrapper(0);
+		
+		if (isBlockHolder) {
+			wasGenerated = true;
+			return;
+		}
 		
 		// if (terVW == NULL) {
 		// 	terVW = new VolumeWrapper();
@@ -1493,7 +1506,7 @@ void GamePageHolder::fillVBO ()
 		
 		
 		if (
-			(isBlockHolder&&GEN_POLYS_WORLD) ||
+			// (isBlockHolder&&GEN_POLYS_WORLD) ||
 			((!isBlockHolder)&&GEN_POLYS_HOLDER)	
 		) {
 			if (listEmpty) {
@@ -1677,7 +1690,7 @@ void GamePageHolder::generateList ()
 		}
 		
 		bool fillPolys = 
-			(isBlockHolder&&GEN_POLYS_WORLD) ||
+			// (isBlockHolder&&GEN_POLYS_WORLD) ||
 			((!isBlockHolder)&&GEN_POLYS_HOLDER);
 		
 		

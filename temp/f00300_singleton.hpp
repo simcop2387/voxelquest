@@ -947,7 +947,7 @@ public:
 		
 		fpsTest = false;
 		pathfindingOn = false;
-		updateHolders = true;
+		updateHolders = false;
 		
 		
 		maxHolderDis = 32;
@@ -1639,9 +1639,12 @@ public:
 		
 		int vwChan = 1;
 		bool doProc;
+		int filterType;
 		
 		for (i = 0; i < E_VW_LENGTH; i++) {
 			
+			filterType = GL_LINEAR;
+			vwChan = 1;
 			doProc = true;
 			
 			switch (i) {
@@ -1658,6 +1661,8 @@ public:
 					clampType = GL_CLAMP_TO_EDGE; //GL_CLAMP_TO_BORDER
 				break;
 				case E_VW_WORLD:
+					vwChan = 4;
+					filterType = GL_NEAREST,
 					tz = blocksPerWorld;
 					clampType = GL_REPEAT; //GL_CLAMP_TO_BORDER
 					if (!GEN_POLYS_WORLD) {
@@ -1676,7 +1681,7 @@ public:
 			
 			if (doProc) {
 				volumeWrappers[i] = new VolumeWrapper();
-				volumeWrappers[i]->init(tz, clampType, (vwChan==4) ); //volumeWrapperStrings[i]
+				volumeWrappers[i]->init(tz, clampType, (vwChan==4), filterType ); //volumeWrapperStrings[i]
 				//fboMap[volumeWrapperStrings[i]].init(1, tx, ty, vwChan, false);
 			}
 			
@@ -5989,6 +5994,7 @@ DISPATCH_EVENT_END:
 				
 					//loadValuesGUI(false);
 					gw->noiseGenerated = false;
+					gw->blockHolder->wasGenerated = false;
 					
 					loadGUI();
 					loadValuesGUI();

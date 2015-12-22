@@ -44,8 +44,6 @@ uniform vec3 waterMax;
 uniform vec3 volMinReadyInPixels;
 uniform vec3 volMaxReadyInPixels;
 
-uniform vec3 genPosMin;
-uniform vec3 genPosMax;
 
 uniform float cellsPerWorld;
 
@@ -92,8 +90,13 @@ uniform sampler2D Texture12;
 //E_VW_VORO
 uniform sampler3D Texture13;
 
-// polyFBO
-uniform sampler2D Texture14;
+//E_VW_WORLD
+uniform sampler3D Texture14;
+
+// // polyFBO
+// uniform sampler2D Texture14;
+
+
 
 
 $
@@ -122,6 +125,9 @@ void main() {
 		
 		
 }
+
+
+
 
 $
 
@@ -384,6 +390,39 @@ layout(location = 7) out vec4 FragColor7;
 
 
 // >>>>>>>>>>> COMMON <<<<<<<<<<<<<
+
+/*
+// from shadertoy
+
+#ifdef USE_PROCEDURAL
+*/
+float hash( float n ) { return fract(sin(n)*753.5453123); }
+float hnoise( in vec3 x )
+{
+    vec3 p = floor(x);
+    vec3 f = fract(x);
+    f = f*f*(3.0-2.0*f);
+	
+    float n = p.x + p.y*157.0 + 113.0*p.z;
+    return mix(mix(mix( hash(n+  0.0), hash(n+  1.0),f.x),
+                   mix( hash(n+157.0), hash(n+158.0),f.x),f.y),
+               mix(mix( hash(n+113.0), hash(n+114.0),f.x),
+                   mix( hash(n+270.0), hash(n+271.0),f.x),f.y),f.z);
+}
+/*
+#else
+float noise( in vec3 x )
+{
+    vec3 p = floor(x);
+    vec3 f = fract(x);
+	f = f*f*(3.0-2.0*f);
+	
+	vec2 uv = (p.xy+vec2(37.0,17.0)*p.z) + f.xy;
+	vec2 rg = texture2D( iChannel0, (uv+0.5)/256.0, -100.0 ).yx;
+	return mix( rg.x, rg.y, f.z );
+}
+#endif
+*/
 
 float smin( float a, float b, float k )
 {
@@ -656,6 +695,23 @@ vec2 psDistanceV2(vec3 testPoint, vec3 sp0, vec3 sp1)
 		float b = c1 / c2;
 		vec3 testPoint2 = sp0 + b * v; // testPoint2 is the nearest point on the line
 		return vec2(distance(testPoint, testPoint2), distance(testPoint2, sp0) / d2 );
+}
+
+float lineSphereDis(
+	vec3 p1, // line seg 1
+	vec3 p2, // line seg 2
+	vec3 p3, // sphere center 
+	float r // sphere rad	
+) {
+	// from stack overflow
+	
+	vec3 d = p2 - p1;
+
+	float a = dot(d, d);
+	float b = 2.0 * dot(d, p1 - p3);
+	float c = dot(p3, p3) + dot(p1, p1) - 2.0 * dot(p3, p1) - r*r;
+	
+	return c;
 }
 
 
@@ -3653,7 +3709,7 @@ vec2 mapLand(vec3 pos) {
 	vec2 res = vec2(MAX_CAM_DIS, TEX_EARTH);
 	
 	float camDis = distance(cameraPos,pos)/MAX_CLIP;
-	vec2 myTV = getTerVal(pos, camDis);
+	vec2 myTV = getTerVal(pos, camDis, false);
 	
 	res.x = myTV.x;
 	
@@ -3676,7 +3732,7 @@ vec3 mapLandMicro(vec3 pos, vec3 terNorm) {
 	vec2 res = vec2(MAX_CAM_DIS, TEX_EARTH);
 	
 	float camDis = distance(cameraPos,pos)/MAX_CLIP;
-	vec2 myTV = getTerVal(pos, camDis);
+	vec2 myTV = getTerVal(pos, camDis, false);
 	
 	res.x = myTV.x;
 	
@@ -4278,17 +4334,17 @@ vec4 castLand(
 				
 				isGrass -= mod(
 										abs(
-												sin(pos.z/160.0)*
-												sin(pos.x/160.0)*
+												sin(pos.z/256.0)*
+												sin(pos.x/512.0)*
 												sin(pos.y/160.0)
 										),
 										1.0
-								)*0.1;
+								)*0.75*hv;
 				
-				// if (isGrass*(1.0-isInTer) > 0.01) {
-				// 	globTexEarth.x = TEX_GRASS;
-				// 	globTexEarth.y = clamp(myVal2,0.0,1.0);
-				// }
+				if (isGrass*(1.0-isInTer) > 0.01) {
+					globTexEarth.x = TEX_GRASS;
+					globTexEarth.y = clamp(myVal2,0.0,1.0);
+				}
 				
 				if (snowVal*(1.0-isInTer) > 0.04) {
 					globTexEarth.x = TEX_SNOW;
@@ -5516,10 +5572,6 @@ void main() {
 								
 								//true
 								
-								// || (
-								//     all(greaterThanEqual(pos,genPosMin)) &&
-								//     all(lessThanEqual(pos,genPosMax))
-								// )
 						)
 						
 						&& ((curTex.x + curTex.y) > 0.0)

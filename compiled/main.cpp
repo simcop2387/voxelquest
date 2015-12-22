@@ -14,7 +14,7 @@ const static int MAX_LIMB_DATA_IN_BYTES = 65536;
 
 const static bool GEN_COLLISION = false;
 const static bool GEN_POLYS_HOLDER = true;
-const static bool GEN_POLYS_WORLD = false;
+const static bool GEN_POLYS_WORLD = true;
 
 const static bool SINGLE_THREADED = false;
 const static bool DO_RANDOMIZE = false;
@@ -42,8 +42,18 @@ const static bool DO_SHADER_DUMP = false;
 // const static int DEF_WIN_W = 1440;
 // const static int DEF_WIN_H = 720;
 
-const static int DEF_WIN_W = 1920;
-const static int DEF_WIN_H = 1080;
+
+//#define STREAM_RES 1
+
+#ifdef STREAM_RES
+	const static int DEF_WIN_W = 1920;
+	const static int DEF_WIN_H = 1080;
+#else
+	const static int DEF_WIN_W = 1440;
+	const static int DEF_WIN_H = 720;
+#endif
+
+
 
 const static int DEF_VOL_SIZE = 128;
 
@@ -3524,12 +3534,14 @@ void initNetMasks() {
 enum E_CONST_VALS {
 	E_CONST_JUMP_AMOUNT,
 	E_CONST_WALK_AMOUNT,
+	E_CONST_LIMB_IMPULSE,
 	E_CONST_LENGTH
 };
 
 string constStrings[] = {
 	"E_CONST_JUMP_AMOUNT",
 	"E_CONST_WALK_AMOUNT",
+	"E_CONST_LIMB_IMPULSE",
 	"E_CONST_LENGTH"
 };
 
@@ -4683,7 +4695,7 @@ const static int bodyCollidesWith[] = {
 
 const static int handCollidesWith = COL_STATIC|COL_DYN;
 const static int terCollidesWith = COL_STATIC|COL_DYN|COL_MARKER|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY6|COL_BODY7; //|COL_WEAPON
-const static int markerCollidesWith = COL_STATIC|COL_DYN;
+const static int markerCollidesWith = COL_STATIC|COL_DYN|COL_MARKER;
 const static int dynCollidesWith = COL_STATIC|COL_DYN|COL_MARKER|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY6|COL_BODY7; //|COL_WEAPON
 //const static int weaponCollidesWith = COL_STATIC|COL_DYN;// |COL_WEAPON;
 
@@ -9398,8 +9410,13 @@ public:
 	float friction;
 	float windResistance;
 	
-	btVector3 aabbMin;
-	btVector3 aabbMax;
+	// skeleton
+	btVector3 aabbMinSkel;
+	btVector3 aabbMaxSkel;
+	
+	// visual objects
+	btVector3 aabbMinVis;
+	btVector3 aabbMaxVis;
 	
 	void setDamping(float linear, float angular) {
 		int i;
@@ -9409,29 +9426,29 @@ public:
 		}
 	}
 	
-	void clearAABB() {
-		aabbMin = btVector3(FLT_MAX,FLT_MAX,FLT_MAX);
-		aabbMax = btVector3(FLT_MIN,FLT_MIN,FLT_MIN);	
+	void clearAABB(btVector3* aabbMin, btVector3* aabbMax) {
+		*aabbMin = btVector3(FLT_MAX,FLT_MAX,FLT_MAX);
+		*aabbMax = btVector3(FLT_MIN,FLT_MIN,FLT_MIN);	
 	}
 	
-	void addAABBPoint(btVector3 newPoint) {
+	void addAABBPoint(btVector3* aabbMin, btVector3* aabbMax, btVector3 newPoint) {
 		btVector3 tempv;
 		
 		tempv = btVector3(
-			max(newPoint.getX(), aabbMax.getX()),
-			max(newPoint.getY(), aabbMax.getY()),
-			max(newPoint.getZ(), aabbMax.getZ())
+			max(newPoint.getX(), aabbMax->getX()),
+			max(newPoint.getY(), aabbMax->getY()),
+			max(newPoint.getZ(), aabbMax->getZ())
 		);
 		
-		aabbMax = tempv;
+		*aabbMax = tempv;
 		
 		tempv = btVector3(
-			min(newPoint.getX(), aabbMin.getX()),
-			min(newPoint.getY(), aabbMin.getY()),
-			min(newPoint.getZ(), aabbMin.getZ())
+			min(newPoint.getX(), aabbMin->getX()),
+			min(newPoint.getY(), aabbMin->getY()),
+			min(newPoint.getZ(), aabbMin->getZ())
 		);
 		
-		aabbMin = tempv;
+		*aabbMin = tempv;
 	}
 	
 	
@@ -23433,7 +23450,7 @@ public:
   bool isFloat;
   bool isReady;
   VolumeWrapper ();
-  void init (int z, GLenum clampMethod, bool _isFloat);
+  void init (int z, GLenum clampMethod, bool _isFloat, int filterType);
   void copyFloatArr (float * floatArr);
   void copyCharArr (unsigned char * charArr);
 };
@@ -23746,7 +23763,7 @@ public:
   void toggleVis (GameEnt * se);
   void ensureBlocks ();
   void findNearestEnt (EntSelection * entSelection, int entType, int maxLoadRad, int radStep, FIVector4 * testPoint, bool onlyInteractive = false, bool ignoreDistance = false);
-  void drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * maxc, bool copyToTex, bool forceFinish, bool getVoro = false);
+  void drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * maxc, bool copyToTex, bool forceFinish, bool getVoro = false, bool getBlockHolders = false);
   void updateLimbTBOData (bool showLimbs);
   void drawPrim (bool doSphereMap, bool doTer, bool doPoly);
   void drawOrg (GameOrg * curOrg, bool drawAll);
@@ -24209,7 +24226,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		fpsTest = false;
 		pathfindingOn = false;
-		updateHolders = true;
+		updateHolders = false;
 		
 		
 		maxHolderDis = 32;
@@ -24901,9 +24918,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		int vwChan = 1;
 		bool doProc;
+		int filterType;
 		
 		for (i = 0; i < E_VW_LENGTH; i++) {
 			
+			filterType = GL_LINEAR;
+			vwChan = 1;
 			doProc = true;
 			
 			switch (i) {
@@ -24920,6 +24940,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 					clampType = GL_CLAMP_TO_EDGE; //GL_CLAMP_TO_BORDER
 				break;
 				case E_VW_WORLD:
+					vwChan = 4;
+					filterType = GL_NEAREST,
 					tz = blocksPerWorld;
 					clampType = GL_REPEAT; //GL_CLAMP_TO_BORDER
 					if (!GEN_POLYS_WORLD) {
@@ -24938,7 +24960,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			
 			if (doProc) {
 				volumeWrappers[i] = new VolumeWrapper();
-				volumeWrappers[i]->init(tz, clampType, (vwChan==4) ); //volumeWrapperStrings[i]
+				volumeWrappers[i]->init(tz, clampType, (vwChan==4), filterType ); //volumeWrapperStrings[i]
 				//fboMap[volumeWrapperStrings[i]].init(1, tx, ty, vwChan, false);
 			}
 			
@@ -28885,6 +28907,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 					//loadValuesGUI(false);
 					gw->noiseGenerated = false;
+					gw->blockHolder->wasGenerated = false;
 					
 					loadGUI();
 					loadValuesGUI();
@@ -44011,7 +44034,12 @@ int GameActor::addJoint (int nodeName, int parentId, int jointType, float mass, 
 		
 		switch(jointType) {
 			case E_JT_LIMB:
-				rad = 0.1f;
+				rad = 0.35f;
+				
+				// if (nodeName == E_BONE_WEAPON_END) {
+				// 	rad = 0.5f;
+				// }
+				
 				len = curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV());
 				begPos = curNode->orgTrans[0].getBTV();
 				midPos = curNode->orgTrans[1].getBTV();
@@ -45605,8 +45633,21 @@ void GamePageHolder::genCellData ()
 		}
 		
 		
-		singleton->gw->drawVol(curVW, &gphMinInPixels, &gphMaxInPixels, true, true);
+		singleton->gw->drawVol(
+			curVW,
+			&gphMinInPixels,
+			&gphMaxInPixels,
+			true,
+			true,
+			false,
+			isBlockHolder
+		);
 		FBOWrapper* fbow = curVW->fboSet.getFBOWrapper(0);
+		
+		if (isBlockHolder) {
+			wasGenerated = true;
+			return;
+		}
 		
 		// if (terVW == NULL) {
 		// 	terVW = new VolumeWrapper();
@@ -45835,7 +45876,7 @@ void GamePageHolder::fillVBO ()
 		
 		
 		if (
-			(isBlockHolder&&GEN_POLYS_WORLD) ||
+			// (isBlockHolder&&GEN_POLYS_WORLD) ||
 			((!isBlockHolder)&&GEN_POLYS_HOLDER)	
 		) {
 			if (listEmpty) {
@@ -46019,7 +46060,7 @@ void GamePageHolder::generateList ()
 		}
 		
 		bool fillPolys = 
-			(isBlockHolder&&GEN_POLYS_WORLD) ||
+			// (isBlockHolder&&GEN_POLYS_WORLD) ||
 			((!isBlockHolder)&&GEN_POLYS_HOLDER);
 		
 		
@@ -50218,8 +50259,8 @@ VolumeWrapper::VolumeWrapper ()
                         {
 		isReady = false;
 	}
-void VolumeWrapper::init (int z, GLenum clampMethod, bool _isFloat)
-                                                            {
+void VolumeWrapper::init (int z, GLenum clampMethod, bool _isFloat, int filterType)
+                                                                            {
 		
 		int tx = 0;
 		int ty = 0;
@@ -50293,8 +50334,8 @@ void VolumeWrapper::init (int z, GLenum clampMethod, bool _isFloat)
 		}
 		
 		
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, filterType);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, filterType);
 		//glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0); // causes crash on getError()?
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, clampMethod);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, clampMethod);
@@ -53474,7 +53515,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 								ge->bodies.back().body = example->createRigidBodyMask(
 									MASS_PER_LIMB, // 0.1
 									trans,
-									new btCapsuleShapeZ(1.0f,BASE_ENT_HEIGHT),//capsuleShapeZ,
+									new btCapsuleShapeZ(0.25f,BASE_ENT_HEIGHT),//capsuleShapeZ,
 									COL_MARKER,
 									markerCollidesWith
 								);
@@ -53532,6 +53573,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 						ge->bodies.back().body = curActor->actorJoints[i].body;
 						ge->bodies.back().boneId = curActor->actorJoints[i].boneId;
 						ge->bodies.back().jointType = curActor->actorJoints[i].jointType;
+						ge->bodies.back().body->setGravity(btVector3(0.0f,0.0f,-1.0f));
 						
 						// if (i == 0) {
 						// 	//ge->body = curActor->actorJoints[i].body;
@@ -53578,56 +53620,74 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 			ge->bodies[bodInd].body->limbUID = bodInd;
 			
 			
-			switch (bodInd) {
-				case E_BDG_CENTER:
-					ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-				break;
-				case E_BDG_LFOOT:
-					ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-				break;
-				case E_BDG_RFOOT:
-					ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-				break;
-				default:
-					switch(ge->bodies[bodInd].boneId) {
-						
-						case E_BONE_L_UPPERARM:
-						case E_BONE_L_LOWERARM:
-						case E_BONE_L_METACARPALS:
-						case E_BONE_L_UPPERLEG:
-						case E_BONE_L_LOWERLEG:
-						case E_BONE_L_TALUS:
-						
-						case E_BONE_R_UPPERARM:
-						case E_BONE_R_LOWERARM:
-						case E_BONE_R_METACARPALS:
-						case E_BONE_R_UPPERLEG:
-						case E_BONE_R_LOWERLEG:
-						case E_BONE_R_TALUS:
-							ge->bodies[bodInd].body->setDamping(0.99f,0.9f);
-						break;
-						case -1:
-						case E_BONE_WEAPON_BASE:
-						case E_BONE_WEAPON_END:
-						case E_BONE_WEAPON_0:
-						case E_BONE_WEAPON_1:
-						case E_BONE_WEAPON_2:
-						case E_BONE_WEAPON_3:
-						case E_BONE_WEAPON_4:
-						case E_BONE_WEAPON_5:
-						case E_BONE_WEAPON_6:
-						case E_BONE_WEAPON_7:
-						case E_BONE_WEAPON_8:
-							ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-						break;
-						
-						default:
-							// linear, angular
-							ge->bodies[bodInd].body->setDamping(0.999f,0.9f);
-						break;
-					}
-				break;
+			if (ge->bodies[bodInd].boneId > -1) {
+				switch(ge->bodies[bodInd].boneId) {
+					default:
+						ge->bodies[bodInd].body->setDamping(0.999f,0.9f);
+					break;
+				}
 			}
+			else {
+				switch (bodInd) {
+					case E_BDG_CENTER:
+						ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
+						
+					break;
+					case E_BDG_LFOOT:
+						ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
+					break;
+					case E_BDG_RFOOT:
+						ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
+					break;
+					default:
+					
+						ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
+						
+						// switch(ge->bodies[bodInd].boneId) {
+							
+						// 	case E_BONE_L_UPPERARM:
+						// 	case E_BONE_L_LOWERARM:
+						// 	case E_BONE_L_METACARPALS:
+						// 	case E_BONE_L_UPPERLEG:
+						// 	case E_BONE_L_LOWERLEG:
+						// 	case E_BONE_L_TALUS:
+							
+						// 	case E_BONE_R_UPPERARM:
+						// 	case E_BONE_R_LOWERARM:
+						// 	case E_BONE_R_METACARPALS:
+						// 	case E_BONE_R_UPPERLEG:
+						// 	case E_BONE_R_LOWERLEG:
+						// 	case E_BONE_R_TALUS:
+						// 		ge->bodies[bodInd].body->setDamping(0.99f,0.9f);
+						// 	break;
+						// 	case -1:
+						// 	case E_BONE_WEAPON_BASE:
+						// 	case E_BONE_WEAPON_END:
+						// 	case E_BONE_WEAPON_0:
+						// 	case E_BONE_WEAPON_1:
+						// 	case E_BONE_WEAPON_2:
+						// 	case E_BONE_WEAPON_3:
+						// 	case E_BONE_WEAPON_4:
+						// 	case E_BONE_WEAPON_5:
+						// 	case E_BONE_WEAPON_6:
+						// 	case E_BONE_WEAPON_7:
+						// 	case E_BONE_WEAPON_8:
+						// 		ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
+						// 	break;
+							
+						// 	default:
+						// 		// linear, angular
+						// 		ge->bodies[bodInd].body->setDamping(0.999f,0.9f);
+						// 	break;
+						// }
+					
+						
+					
+					break;
+				}
+			}
+			
+			
 			
 			
 			
@@ -53836,7 +53896,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		btVector3 targPos;
 		
 		btVector3 difVec = btVector3(0.0,0.0,0.0);
-		btVector3 totVec = btVector3(0.0,0.0,0.0);
+		//btVector3 totVec = btVector3(0.0,0.0,0.0);
 		bool hasRig = false;
 		bool animatedRig = false;
 		bool doProc = false;
@@ -53861,14 +53921,14 @@ void GamePhysics::collideWithWorld (double curStepTime)
 				);
 				
 				
-				totVec = btVector3(0.0,0.0,0.0);
+				//totVec = btVector3(0.0,0.0,0.0);
 				
 				
 				if (hasRig) {
 					curActor = singleton->gameActors[ge->actorId];
 					curOrg = singleton->gameOrgs[ge->orgId];
 					animatedRig = (curOrg->orgType == E_ORGTYPE_HUMAN);
-					ge->clearAABB();
+					ge->clearAABB(&(ge->aabbMinSkel),&(ge->aabbMaxSkel));
 					
 					if (animatedRig) {
 						
@@ -53992,52 +54052,52 @@ void GamePhysics::collideWithWorld (double curStepTime)
 						
 						if (curOrgNode == NULL) {
 							
-							difVec = btVector3(0.0f,0.0f,0.0f);
+							// difVec = btVector3(0.0f,0.0f,0.0f);
 							
-							switch (bodInd) {
-								case E_BDG_CENTER:
+							// switch (bodInd) {
+							// 	case E_BDG_CENTER:
 									
-									// targPos = 
-									// 	ge->bodies[E_BDG_LFOOT].body->getCenterOfMassPosition()*0.5f +
-									// 	ge->bodies[E_BDG_RFOOT].body->getCenterOfMassPosition()*0.5f
-									// 	//+ btVector3(0.0f, 0.0f, 1.5f)
-									// ;
+							// 		// targPos = 
+							// 		// 	ge->bodies[E_BDG_LFOOT].body->getCenterOfMassPosition()*0.5f +
+							// 		// 	ge->bodies[E_BDG_RFOOT].body->getCenterOfMassPosition()*0.5f
+							// 		// 	//+ btVector3(0.0f, 0.0f, 1.5f)
+							// 		// ;
 									
-									// difVec = targPos - curBody->body->getCenterOfMassPosition();
-									// //difVec = basePos - curBody->body->getCenterOfMassPosition();
-								break;
-								case E_BDG_LFOOT:
-									targPos = ge->bodies[E_BDG_CENTER].body->getCenterOfMassPosition();
-									curDis = ge->bodies[E_BDG_LFOOT].body->getCenterOfMassPosition().distance(
-										targPos
-									);
-									if (curDis > 2.5f) {
-										difVec = targPos - curBody->body->getCenterOfMassPosition();
-									}
-									if (curDis < 0.5f) {
-										difVec = -(targPos - curBody->body->getCenterOfMassPosition());
-									}
+							// 		// difVec = targPos - curBody->body->getCenterOfMassPosition();
+							// 		// //difVec = basePos - curBody->body->getCenterOfMassPosition();
+							// 	break;
+							// 	case E_BDG_LFOOT:
+							// 		targPos = ge->bodies[E_BDG_CENTER].body->getCenterOfMassPosition();
+							// 		curDis = ge->bodies[E_BDG_LFOOT].body->getCenterOfMassPosition().distance(
+							// 			targPos
+							// 		);
+							// 		if (curDis > 2.5f) {
+							// 			difVec = targPos - curBody->body->getCenterOfMassPosition();
+							// 		}
+							// 		if (curDis < 0.5f) {
+							// 			difVec = -(targPos - curBody->body->getCenterOfMassPosition());
+							// 		}
 									
-								break;
-								case E_BDG_RFOOT:
-									targPos = ge->bodies[E_BDG_CENTER].body->getCenterOfMassPosition();
-									curDis = ge->bodies[E_BDG_RFOOT].body->getCenterOfMassPosition().distance(
-										targPos
-									);
-									if (curDis > 2.5f) {
-										difVec = targPos - curBody->body->getCenterOfMassPosition();
-									}
-									if (curDis < 0.5f) {
-										difVec = -(targPos - curBody->body->getCenterOfMassPosition());
-									}
-								break;
-							}
+							// 	break;
+							// 	case E_BDG_RFOOT:
+							// 		targPos = ge->bodies[E_BDG_CENTER].body->getCenterOfMassPosition();
+							// 		curDis = ge->bodies[E_BDG_RFOOT].body->getCenterOfMassPosition().distance(
+							// 			targPos
+							// 		);
+							// 		if (curDis > 2.5f) {
+							// 			difVec = targPos - curBody->body->getCenterOfMassPosition();
+							// 		}
+							// 		if (curDis < 0.5f) {
+							// 			difVec = -(targPos - curBody->body->getCenterOfMassPosition());
+							// 		}
+							// 	break;
+							// }
 							
-							ge->applyImpulse(
-								difVec*curStepTime*curBody->mass*200.0f, // *MASS_PER_LIMB*2.0f*10.0f*curStepTime,
-								false,
-								bodInd
-							);
+							// ge->applyImpulse(
+							// 	difVec*curStepTime*curBody->mass*200.0f, // *MASS_PER_LIMB*2.0f*10.0f*curStepTime,
+							// 	false,
+							// 	bodInd
+							// );
 							
 						}
 						else {
@@ -54071,7 +54131,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								
 								
 								
-								ge->addAABBPoint(basePos);
+								ge->addAABBPoint(&(ge->aabbMinSkel), &(ge->aabbMaxSkel), basePos);
 								
 								basePos += ge->skelOffset;// - btVector3(0.0f, 0.0f, BASE_ENT_HEIGHT*0.5f);
 								
@@ -54140,10 +54200,10 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								
 								// move limbs towards pose
 										
-								totVec += difVec;
+								//totVec += difVec;
 								
 								ge->applyImpulse(
-									difVec*curStepTime*curBody->mass*200.0f, // *MASS_PER_LIMB*2.0f*10.0f*curStepTime,
+									difVec*curStepTime*curBody->mass*singleton->conVals[E_CONST_LIMB_IMPULSE], // *MASS_PER_LIMB*2.0f*10.0f*curStepTime,
 									false,
 									bodInd
 								);
@@ -54210,16 +54270,26 @@ void GamePhysics::collideWithWorld (double curStepTime)
 						if (doProc) {
 							difVec = basePos - curBody->body->getCenterOfMassPosition();
 							
-							// ge->applyImpulse(
-							// 	difVec*curStepTime*curBody->mass*20.0f, // *MASS_PER_LIMB*2.0f*10.0f*curStepTime,
-							// 	false,
-							// 	bodInd
-							// );
+							// move limbs weapon
 							
-							ge->setLinVel(
-								difVec*20.0f,
-								bodInd
-							);
+							//if (curBody->boneId == E_BONE_WEAPON_BASE) {
+								ge->setLinVel(
+									difVec*20.0f,
+									bodInd
+								);
+							// }
+							// else {
+							// 	ge->applyImpulse(
+							// 		difVec*curStepTime*curBody->mass*singleton->conVals[E_CONST_LIMB_IMPULSE], // *MASS_PER_LIMB*2.0f*10.0f*curStepTime,
+							// 		false,
+							// 		bodInd
+							// 	);
+							// }
+							
+							
+							
+							
+							
 						}
 						
 						
@@ -54370,7 +54440,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 							
 						(
 							(ge->getCenterPoint(0).getZ()-BASE_ENT_HEIGHT*0.5f) -
-							ge->aabbMin.getZ()	
+							ge->aabbMinSkel.getZ()	
 						)
 							
 						
@@ -54378,14 +54448,18 @@ void GamePhysics::collideWithWorld (double curStepTime)
 					);
 					
 					if (singleton->editPose) {
-						
-					}
-					else {
 						ge->skelOffset += btVector3(
 							0.0,
 							0.0,
-							-1.0f
+							1.0f
 						);
+					}
+					else {
+						// ge->skelOffset += btVector3(
+						// 	0.0,
+						// 	0.0,
+						// 	-0.75f
+						// );
 					}
 					
 										
@@ -54967,31 +55041,31 @@ void GameWorld::generateBlockHolder ()
 			glFinish();
 		}
 		
-		if (blockHolder->preGenList) {
+		// if (blockHolder->preGenList) {
 			
-		}
-		else {
+		// }
+		// else {
 			
-			blockHolder->generateList();
-		}
+		// 	blockHolder->generateList();
+		// }
 		
-		if (blockHolder->listGenerated) {
+		// if (blockHolder->listGenerated) {
 			
-		}
-		else {
-			glFlush();
-			glFinish();
-			
-			
-			blockHolder->fillVBO();
+		// }
+		// else {
+		// 	glFlush();
+		// 	glFinish();
 			
 			
-			glFlush();
-			glFinish();
+		// 	blockHolder->fillVBO();
+			
+			
+		// 	glFlush();
+		// 	glFinish();
 			
 			
 			
-		}
+		// }
 	}
 void GameWorld::update ()
                       {
@@ -55393,7 +55467,7 @@ void GameWorld::findNearestEnt (EntSelection * entSelection, int entType, int ma
 		
 		//return resEnt;
 	}
-void GameWorld::drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * maxc, bool copyToTex, bool forceFinish, bool getVoro)
+void GameWorld::drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * maxc, bool copyToTex, bool forceFinish, bool getVoro, bool getBlockHolders)
           {
 		
 		
@@ -55409,6 +55483,10 @@ void GameWorld::drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * ma
 		
 		if (!getVoro) {
 			singleton->setShaderTexture3D(13, singleton->volumeWrappers[E_VW_VORO]->volId);
+		}
+		
+		if (!getBlockHolders) {
+			singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
 		}
 		
 		singleton->setShaderfVec3("bufferDim", &(curVW->terGenDim) );
@@ -55427,11 +55505,15 @@ void GameWorld::drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * ma
 		//singleton->setShaderfVec3("volMaxReadyInPixels", &(singleton->gameFluid[E_FID_BIG]->volMaxInPixels) );
 		
 		singleton->setShaderInt("getVoro", (int)(getVoro));
+		singleton->setShaderInt("getBlockHolders", (int)(getBlockHolders));
 		
 		singleton->setShaderFloat("cellsPerWorld", cellsPerWorld );
 		
 		singleton->fsQuad.draw();
 		
+		if (!getBlockHolders) {
+			singleton->setShaderTexture3D(14, 0);
+		}
 		if (!getVoro) {
 			singleton->setShaderTexture3D(13, 0);
 		}
@@ -55525,6 +55607,16 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 				
 				actorCount++;
 				
+				ge->clearAABB(&(ge->aabbMinVis),&(ge->aabbMaxVis));
+				for (j = 0; j < ge->bodies.size(); j++) {
+					curBody = &(ge->bodies[j]);
+					ge->addAABBPoint(
+						&(ge->aabbMinSkel),
+						&(ge->aabbMaxSkel),
+						curBody->body->getCenterOfMassPosition()
+					);
+				}
+				
 				curOrg = singleton->gameOrgs[ge->orgId];
 				
 				ge->bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
@@ -55538,15 +55630,15 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
 			
-				singleton->limbTBOData[dataInd] = ge->aabbMin.getX() - buffer; dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMin.getY() - buffer; dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMin.getZ() + ge->skelOffset.getZ() - buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getX() - buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getY() - buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMinVis.getZ() - buffer; dataInd++;
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
 				
 				
-				singleton->limbTBOData[dataInd] = ge->aabbMax.getX() + buffer; dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMax.getY() + buffer; dataInd++;
-				singleton->limbTBOData[dataInd] = ge->aabbMax.getZ() + ge->skelOffset.getZ() + buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getX() + buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getY() + buffer; dataInd++;
+				singleton->limbTBOData[dataInd] = ge->aabbMaxVis.getZ() + buffer; dataInd++;
 				singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
 				
 				float randOff;
@@ -55700,8 +55792,6 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 			(singleton->placingGeom == false);
 		
 		
-		VolumeWrapper* curVW = (singleton->volumeWrappers[E_VW_VORO]);
-		
 		bool doPrim = !doTer;
 		
 		int curGeomCount = 0;
@@ -55793,11 +55883,12 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 			singleton->sampleFBO("prmTargFBO",7, -1, 0, 6);
 		}
 		
-		singleton->setShaderTexture3D(13, curVW->volId);
+		singleton->setShaderTexture3D(13, singleton->volumeWrappers[E_VW_VORO]->volId);
+		singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
 		
-		if (!doPoly) {
-			singleton->sampleFBO(polyFBOStrings[NUM_POLY_STRINGS],14);
-		}
+		// if (!doPoly) {
+		// 	singleton->sampleFBO(polyFBOStrings[NUM_POLY_STRINGS],14);
+		// }
 		
 		
 		
@@ -55836,11 +55927,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		singleton->setShaderInt("skipPrim", (int)(skipPrim));
 		singleton->setShaderInt("placingGeom", (int)(singleton->placingGeom));
 		
-		singleton->setShaderfVec3("genPosMin", &(curVW->genPosMin) );
-		singleton->setShaderfVec3("genPosMax", &(curVW->genPosMax) );
 		
-		// singleton->setShaderfVec3("volMinReadyInPixels", &(curVW->genPosMin) );
-		// singleton->setShaderfVec3("volMaxReadyInPixels", &(curVW->genPosMax) );
 		
 		singleton->setShaderfVec3("waterMin", &(singleton->gameFluid[E_FID_BIG]->curWaterMin) );
 		singleton->setShaderfVec3("waterMax", &(singleton->gameFluid[E_FID_BIG]->curWaterMax) );
@@ -55931,12 +56018,15 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 			singleton->fsQuad.draw();
 		}
 		
-		if (!doPoly) {
-			singleton->unsampleFBO(polyFBOStrings[NUM_POLY_STRINGS],14);
-		}
+		// if (!doPoly) {
+		// 	singleton->unsampleFBO(polyFBOStrings[NUM_POLY_STRINGS],14);
+		// }
 		
 		
+		
+		singleton->setShaderTexture3D(14, 0);
 		singleton->setShaderTexture3D(13, 0);
+		
 		
 		if (doPrim) {
 			singleton->unsampleFBO("terTargFBO",7, -1, 0, 6);

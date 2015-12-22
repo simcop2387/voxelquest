@@ -14,6 +14,7 @@ uniform vec3 volMaxReadyInPixels;
 uniform float cellsPerWorld;
 
 uniform bool getVoro;
+uniform bool getBlockHolders;
 
 uniform sampler3D Texture0; // E_PL_TERRAIN
 //uniform sampler3D Texture1; // E_PL_PRIMIDS
@@ -26,6 +27,9 @@ uniform sampler2D Texture2;
 
 //E_VW_VORO
 uniform sampler3D Texture13;
+
+//E_VW_WORLD
+uniform sampler3D Texture14;
 
 $
 
@@ -506,107 +510,107 @@ float opS( float d1, float d2 )
     return max(-d2,d1);
 }
 
-float mapLandMacro( vec3 pos ) {
+// float mapLandMacro( vec3 pos ) {
     
-    // landDis += ;
+//     // landDis += ;
     
-    vec3 cellSize = vec3(8.0);
+//     vec3 cellSize = vec3(8.0);
     
-    vec3 gradVal2 = vec3(0.0);
-    vec3 gradVal = vec3(0.0);
-    vec3 norVal = vec3(0.0);
-    vec4 cellVal = cell2D(
-        pos,
-        cellSize,
-        0.1,
-        0.3,
-        gradVal,
-        norVal
-    );
+//     vec3 gradVal2 = vec3(0.0);
+//     vec3 gradVal = vec3(0.0);
+//     vec3 norVal = vec3(0.0);
+//     vec4 cellVal = cell2D(
+//         pos,
+//         cellSize,
+//         0.1,
+//         0.3,
+//         gradVal,
+//         norVal
+//     );
     
-    float randVal = 1.0 -
-      clamp(
-        abs(
-          pow(
-            (
-              sin(pos.z/32.0)*
-              sin(pos.x/32.0)*
-              sin(pos.y/32.0)  
-            )*2.0 + 0.2,
-            4.0
-          )  
-        ),  
-        0.0,
-        1.0
-      );
-    
-    
-    vec3 cellSize2 = vec3(64.0,64.0,32.0);
-    vec4 cellVal2 = cell2D(
-        vec3(pos.xy+pos.z*0.5,pos.z),//+pos.z*0.5,pos.z),
-        cellSize2,
-        0.1,
-        0.3,
-        gradVal2,
-        norVal
-    );
-    
-    // gradval.x is biggest near center
-    // gradval.y is biggest near edge
-    
-    //float lerpVal = pow(gradVal2.y,4.0);
-    // vec3 mapPos = vec3(
-    //   cellVal2.xy,
-    //   pos.z
-    // );//pos;//mix(cellVal2.xyz,pos,pow(clamp(1.0-gradVal2.x,0.0,1.0),4.0));//pos;
+//     float randVal = 1.0 -
+//       clamp(
+//         abs(
+//           pow(
+//             (
+//               sin(pos.z/32.0)*
+//               sin(pos.x/32.0)*
+//               sin(pos.y/32.0)  
+//             )*2.0 + 0.2,
+//             4.0
+//           )  
+//         ),  
+//         0.0,
+//         1.0
+//       );
     
     
-    vec3 offsetPos = pos + vec3(0.0,0.0,0.25);
+//     vec3 cellSize2 = vec3(64.0,64.0,32.0);
+//     vec4 cellVal2 = cell2D(
+//         vec3(pos.xy+pos.z*0.5,pos.z),//+pos.z*0.5,pos.z),
+//         cellSize2,
+//         0.1,
+//         0.3,
+//         gradVal2,
+//         norVal
+//     );
     
-    vec2 newTC = pos.xy/cellsPerWorld;
+//     // gradval.x is biggest near center
+//     // gradval.y is biggest near edge
     
-    float heightRes = getTerHeight(Texture2,newTC,pos.z).x;//mix(getTerHeight(pos),getTerHeight(mapPos),lerpVal);
-    
-    float heightMod = clamp(-heightRes/64.0,0.0,1.0);
-    
-    float noiseVal = getNoise(pos);
-    float baseRes = heightRes + noiseVal*256.0*heightMod;// *(1.0-lerpVal);
-    
-    float heightMod2 = clamp((-baseRes)/4.0,0.0,1.0);
+//     //float lerpVal = pow(gradVal2.y,4.0);
+//     // vec3 mapPos = vec3(
+//     //   cellVal2.xy,
+//     //   pos.z
+//     // );//pos;//mix(cellVal2.xyz,pos,pow(clamp(1.0-gradVal2.x,0.0,1.0),4.0));//pos;
     
     
+//     vec3 offsetPos = pos + vec3(0.0,0.0,0.25);
     
-    //float baseRes2 = getTerHeight(offsetPos) + getNoise(offsetPos)*128.0;
-    //float randVal = 1.0-clamp((baseRes2-baseRes)*100.0,0.0,1.0);
+//     vec2 newTC = pos.xy/cellsPerWorld;
+    
+//     float heightRes = getTerHeight(Texture2,newTC,pos.z).x;//mix(getTerHeight(pos),getTerHeight(mapPos),lerpVal);
+    
+//     float heightMod = clamp(-heightRes/64.0,0.0,1.0);
+    
+//     float noiseVal = getNoise(pos);
+//     float baseRes = heightRes + noiseVal*256.0*heightMod;// *(1.0-lerpVal);
+    
+//     float heightMod2 = clamp((-baseRes)/4.0,0.0,1.0);
     
     
-    float tempVal = (gradVal.x)*64.0*float(baseRes < 2.0)*randVal;
     
-    float baseRes3 = (heightRes+8.0) - (gradVal2.x)*32.0*float((pos.z-cellSize2.z*0.0) < cellVal2.z);
-    float tempVal2 = (gradVal.x)*32.0*float(baseRes3 < 2.0)*randVal;
-    float heightMod3 = clamp((-baseRes3)/8.0,0.0,1.0);
+//     //float baseRes2 = getTerHeight(offsetPos) + getNoise(offsetPos)*128.0;
+//     //float randVal = 1.0-clamp((baseRes2-baseRes)*100.0,0.0,1.0);
     
-    return 
-    //max(
-      //(baseRes+6.0) - (gradVal.x)*32.0*float(baseRes < 2.0)*randVal*(heightMod2)
-      //,
     
-      mix(
-      baseRes3 - tempVal2*heightMod3 - tempVal*heightMod3
-      ,(baseRes+8.0) - tempVal*heightMod2
-      ,clamp( (sin(snoise(pos/43.0)*4.0)+1.0)*0.5,0.0,1.0)
-      )
+//     float tempVal = (gradVal.x)*64.0*float(baseRes < 2.0)*randVal;
+    
+//     float baseRes3 = (heightRes+8.0) - (gradVal2.x)*32.0*float((pos.z-cellSize2.z*0.0) < cellVal2.z);
+//     float tempVal2 = (gradVal.x)*32.0*float(baseRes3 < 2.0)*randVal;
+//     float heightMod3 = clamp((-baseRes3)/8.0,0.0,1.0);
+    
+//     return 
+//     //max(
+//       //(baseRes+6.0) - (gradVal.x)*32.0*float(baseRes < 2.0)*randVal*(heightMod2)
+//       //,
+    
+//       mix(
+//       baseRes3 - tempVal2*heightMod3 - tempVal*heightMod3
+//       ,(baseRes+8.0) - tempVal*heightMod2
+//       ,clamp( (sin(snoise(pos/43.0)*4.0)+1.0)*0.5,0.0,1.0)
+//       )
       
-      //+ getNoise(pos)*256.0*heightMod - (gradVal.x)*32.0*float(baseRes < 2.0)*randVal*(heightMod2)
+//       //+ getNoise(pos)*256.0*heightMod - (gradVal.x)*32.0*float(baseRes < 2.0)*randVal*(heightMod2)
       
-      // + clamp(1.0 - ((pos.z-cellSize2.z*0.25) - cellVal2.z)/cellSize2.z,0.0,1.0)*32.0
+//       // + clamp(1.0 - ((pos.z-cellSize2.z*0.25) - cellVal2.z)/cellSize2.z,0.0,1.0)*32.0
       
-      //,(baseRes+6.0) - *32.0
+//       //,(baseRes+6.0) - *32.0
       
-      //,(heightRes+12.0) - gradVal2.x*64.0*float(heightRes < 0.0)*(1.0-heightMod)
-    //)
-    ;
-}
+//       //,(heightRes+12.0) - gradVal2.x*64.0*float(heightRes < 0.0)*(1.0-heightMod)
+//     //)
+//     ;
+// }
 
 
 float seamlessNoise(vec3 pos, float scale) {
@@ -690,12 +694,6 @@ vec4 genVoro( vec3 pos ) {
 
 
 
-
-
-
-
-
-
 void main() {
     
     globTest = 0.0;
@@ -732,7 +730,32 @@ void main() {
       finalRes = genVoro(pos);
     }
     else {
-      terVal = getTerVal(pos,0.0).x;//mapLandMacro( pos );
+      
+      terVal = getTerVal(pos, 0.0, getBlockHolders).x;
+      
+      if (getBlockHolders) {
+        
+        finalRes = vec4(
+            terVal,
+            0.0, //terVal
+            0.0,
+            0.0
+            // float(watVal<0.25),
+            // watVal
+        );
+      }
+      else {
+        
+        finalRes = vec4(
+            float(terVal < 0.3),
+            0.0, //terVal
+            0.0,
+            0.0
+            // float(watVal<0.25),
+            // watVal
+        );
+      }
+      
       
       // if (terVal < threshVal) {
       //   if (
@@ -753,14 +776,7 @@ void main() {
       //   }
       // }
       
-      finalRes = vec4(
-          float(terVal < 0.3),
-          0.0, //terVal
-          0.0,
-          0.0
-          // float(watVal<0.25),
-          // watVal
-      );
+      
     }
     
     

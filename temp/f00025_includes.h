@@ -14,7 +14,7 @@ const static int MAX_LIMB_DATA_IN_BYTES = 65536;
 
 const static bool GEN_COLLISION = false;
 const static bool GEN_POLYS_HOLDER = true;
-const static bool GEN_POLYS_WORLD = false;
+const static bool GEN_POLYS_WORLD = true;
 
 const static bool SINGLE_THREADED = false;
 const static bool DO_RANDOMIZE = false;
@@ -42,8 +42,18 @@ const static bool DO_SHADER_DUMP = false;
 // const static int DEF_WIN_W = 1440;
 // const static int DEF_WIN_H = 720;
 
-const static int DEF_WIN_W = 1920;
-const static int DEF_WIN_H = 1080;
+
+//#define STREAM_RES 1
+
+#ifdef STREAM_RES
+	const static int DEF_WIN_W = 1920;
+	const static int DEF_WIN_H = 1080;
+#else
+	const static int DEF_WIN_W = 1440;
+	const static int DEF_WIN_H = 720;
+#endif
+
+
 
 const static int DEF_VOL_SIZE = 128;
 

@@ -333,7 +333,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		fpsTest = false;
 		pathfindingOn = false;
-		updateHolders = true;
+		updateHolders = false;
 		
 		
 		maxHolderDis = 32;
@@ -1025,9 +1025,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		int vwChan = 1;
 		bool doProc;
+		int filterType;
 		
 		for (i = 0; i < E_VW_LENGTH; i++) {
 			
+			filterType = GL_LINEAR;
+			vwChan = 1;
 			doProc = true;
 			
 			switch (i) {
@@ -1044,6 +1047,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 					clampType = GL_CLAMP_TO_EDGE; //GL_CLAMP_TO_BORDER
 				break;
 				case E_VW_WORLD:
+					vwChan = 4;
+					filterType = GL_NEAREST,
 					tz = blocksPerWorld;
 					clampType = GL_REPEAT; //GL_CLAMP_TO_BORDER
 					if (!GEN_POLYS_WORLD) {
@@ -1062,7 +1067,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			
 			if (doProc) {
 				volumeWrappers[i] = new VolumeWrapper();
-				volumeWrappers[i]->init(tz, clampType, (vwChan==4) ); //volumeWrapperStrings[i]
+				volumeWrappers[i]->init(tz, clampType, (vwChan==4), filterType ); //volumeWrapperStrings[i]
 				//fboMap[volumeWrapperStrings[i]].init(1, tx, ty, vwChan, false);
 			}
 			
@@ -5009,6 +5014,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 					//loadValuesGUI(false);
 					gw->noiseGenerated = false;
+					gw->blockHolder->wasGenerated = false;
 					
 					loadGUI();
 					loadValuesGUI();

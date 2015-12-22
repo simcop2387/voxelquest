@@ -188,7 +188,7 @@ void main() {
 
     
 
-    float testHeight = getTerHeight(Texture3,newTC,0.0).y;
+    float testHeight = getTerHeight(Texture3,newTC,newTC,0.0).y;
     float seaHeight = seaLevel;        
 
     float isAboveWater = float(testHeight > seaHeight);

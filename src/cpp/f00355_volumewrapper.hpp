@@ -17,7 +17,7 @@ public:
 	VolumeWrapper() {
 		isReady = false;
 	}
-	void init(int z, GLenum clampMethod, bool _isFloat) {
+	void init(int z, GLenum clampMethod, bool _isFloat, int filterType) {
 		
 		int tx = 0;
 		int ty = 0;
@@ -91,8 +91,8 @@ public:
 		}
 		
 		
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, filterType);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, filterType);
 		//glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, 0); // causes crash on getError()?
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, clampMethod);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, clampMethod);
