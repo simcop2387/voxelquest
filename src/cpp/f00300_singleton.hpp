@@ -97,7 +97,6 @@ public:
 	TBOWrapper limbTBO;
 	float limbTBOData[MAX_LIMB_DATA_IN_BYTES];
 	
-	bool isWalking;
 	bool isPressingMove;
 	bool fxaaOn;
 	bool doPathReport;
@@ -752,7 +751,6 @@ public:
 		
 		identMatrix.identity();
 		
-		isWalking = false;
 		isPressingMove = false;
 		fxaaOn = false;
 		doPathReport = false;
@@ -947,7 +945,7 @@ public:
 		
 		fpsTest = false;
 		pathfindingOn = false;
-		updateHolders = false;
+		updateHolders = true;
 		
 		
 		maxHolderDis = 32;
@@ -1089,7 +1087,7 @@ public:
 			32.0f
 		);
 		mapAmps.setFXYZW(
-			12.0f/16.0f,
+			16.0f/16.0f,
 			2.0f/16.0f,
 			0.5f/16.0f,
 			0.125f/16.0f
@@ -2904,11 +2902,11 @@ PERFORM_DRAG_END:
 				windResistance = 1.0f;
 				bounciness = 0.3;
 			break;
-			case E_ENTTYPE_MONSTER:
-				newType = getRandomMonsterId();
-				mf = 2;
-				zv = 2;
-			break;
+			// case E_ENTTYPE_MONSTER:
+			// 	newType = getRandomMonsterId();
+			// 	mf = 2;
+			// 	zv = 2;
+			// break;
 			case E_ENTTYPE_NPC:
 				newType = getRandomNPCId();
 				mf = 4;
@@ -3316,9 +3314,9 @@ PERFORM_DRAG_END:
 			else if (comp->uid.compare("ddMenu.placeEntity.npc") == 0) {
 				placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
 			}
-			else if (comp->uid.compare("ddMenu.placeEntity.monster") == 0) {
-				placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
-			}
+			// else if (comp->uid.compare("ddMenu.placeEntity.monster") == 0) {
+			// 	placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
+			// }
 			else if (comp->uid.compare("ddMenu.placeEntity.object") == 0) {
 				placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_OBJ, &lastCellPos);
 			}
@@ -5527,6 +5525,39 @@ DISPATCH_EVENT_END:
 	}
 	
 	
+	void makeTurn(int actorId, float dirFactor) {
+		
+		BaseObj* ca = &(gw->gameObjects[actorId]);
+		
+		if (ca->bodies.size() < 0) {
+			return;
+		}
+		
+		ca->applyAngularImpulse(btVector3(0,0,dirFactor), true, 0);
+	}
+	
+	void makeMove(int actorId, float dirFactor) {
+		BaseObj* ca = &(gw->gameObjects[actorId]);
+		
+		if (ca->bodies.size() < 0) {
+			return;
+		}
+		
+		ca->isWalking = true;
+		if (ca->hasBodies()) {
+			ca->applyImpulseOtherRot(
+				btVector3(
+					0.0f,
+					dirFactor*conVals[E_CONST_WALK_AMOUNT],
+					0.0f // conVals[E_CONST_WALK_UP_AMOUNT]
+				)*ca->getMarkerMass(),
+				ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
+				true,
+				0
+			);
+		}
+	}
+	
 	void makeJump(int actorId, int isUp) {
 		
 		BaseObj* ge = &(gw->gameObjects[actorId]);
@@ -5795,9 +5826,14 @@ DISPATCH_EVENT_END:
 					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
 				break;
 				case '2':
+					// updateHolders = true;
+					// getMarkerPos(x, y);
+					// placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
+					
 					updateHolders = true;
 					getMarkerPos(x, y);
-					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
+					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_WEAPON, &lastCellPos);
+				
 				break;
 				case '3':
 					updateHolders = true;
@@ -5805,9 +5841,7 @@ DISPATCH_EVENT_END:
 					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_OBJ, &lastCellPos);
 				break;
 				case '4':
-					updateHolders = true;
-					getMarkerPos(x, y);
-					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_WEAPON, &lastCellPos);
+					
 				break;				
 				case '`':
 					placingGeom = !placingGeom;
@@ -7618,14 +7652,7 @@ DISPATCH_EVENT_END:
 	}
 
 
-	float getShortestAngle(float begInRad, float endInRad, float amount) {
-		int begInDeg = begInRad*180/M_PI;
-		int endInDeg = endInRad*180/M_PI;
-		
-		float shortest_angle = ((((endInDeg - begInDeg) % 360) + 540) % 360) - 180;
-		
-		return shortest_angle * amount * M_PI / 180.0f;
-	}
+	
 
 
 	void flushKeyStack() {
@@ -7699,7 +7726,8 @@ DISPATCH_EVENT_END:
 				// 	ca->targAng += (-2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,-4.0f), true, 0);
+				makeTurn(actorId, -4.0f);
+				
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_LEFT]) {
@@ -7710,7 +7738,7 @@ DISPATCH_EVENT_END:
 				// 	ca->targAng += (2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,4.0f), true, 0);
+				makeTurn(actorId, 4.0f);
 			}
 			
 			
@@ -7744,32 +7772,12 @@ DISPATCH_EVENT_END:
 				makeJump(actorId,0);
 			}
 			
-			
-			ca->isWalking = false;
-			
-			
 			if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
-				ca->isWalking = true;
-				if (ca->hasBodies()) {
-					ca->applyImpulseOtherRot(
-						btVector3(0,conVals[E_CONST_WALK_AMOUNT],0)*ca->getMarkerMass(),
-						ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
-						true,
-						0
-					);
-				}
+				makeMove(actorId, 1.0f);
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
-				ca->isWalking = true;
-				if (ca->hasBodies()) {
-					ca->applyImpulseOtherRot(
-						btVector3(0,-conVals[E_CONST_WALK_AMOUNT],0)*ca->getMarkerMass(),
-						ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
-						true,
-						0
-					);
-				}
+				makeMove(actorId, -1.0f);
 			}
 			
 			
@@ -10054,6 +10062,7 @@ DISPATCH_EVENT_END:
 					
 				}
 				
+				gameLogic->applyBehavior();
 				
 				flushKeyStack();
 				gatherKeyActions();

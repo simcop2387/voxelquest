@@ -23,6 +23,122 @@ void GameLogic::init (Singleton * _singleton)
 		threadPoolList->init(singleton, 8, false||SINGLE_THREADED);
 		
 	}
+void GameLogic::applyBehavior ()
+                             {
+		int i;
+		int j;
+		float targCount = 0.0f;
+		float deltaAng;
+		float curDis;
+		
+		int curActor = singleton->getCurActorUID();
+		
+		BaseObj* writeObj;
+		BaseObj* readObj;
+		
+		for (i = 0; i < singleton->gw->visObjects.size(); i++) {
+			writeObj = &(singleton->gw->gameObjects[
+				singleton->gw->visObjects[i]	
+			]);
+			writeObj->behaviorTarget = btVector3(0.0f,0.0f,0.0f);
+			targCount = 0.0f;
+			
+			if (
+				(writeObj->isHidden) ||
+				(writeObj->entType != E_ENTTYPE_NPC)
+			) {
+				
+			}
+			else {
+				for (j = 0; j < singleton->gw->visObjects.size(); j++) {
+					readObj = &(singleton->gw->gameObjects[
+						singleton->gw->visObjects[j]
+					]);
+					
+					if (
+						(readObj->isHidden) ||
+						(readObj->entType != E_ENTTYPE_NPC) ||
+						(readObj->uid == writeObj->uid)
+					) {
+						
+					}
+					else {
+						
+						// found a unique pair of NPCs
+						// determine seek, avoid, neutral
+						
+						if (readObj->uid == curActor) {
+							writeObj->behaviorTarget += readObj->getCenterPoint(E_BDG_CENTER);
+							targCount += 1.0f;
+						}
+					}
+					
+				}
+				
+				if (targCount > 0.0f) {
+					writeObj->behaviorTarget /= targCount;
+				}
+				
+			}
+		}
+		
+		
+		for (i = 0; i < singleton->gw->visObjects.size(); i++) {
+			writeObj = &(singleton->gw->gameObjects[
+				singleton->gw->visObjects[i]	
+			]);
+			
+			if (
+				(writeObj->isHidden) ||
+				(writeObj->entType != E_ENTTYPE_NPC)
+			) {
+				
+			}
+			else {
+				
+				writeObj->isWalking = false;
+				
+				if (writeObj->behaviorTarget.isZero()) {
+					
+				}
+				else {
+					deltaAng = writeObj->turnTowardsPointDelta(writeObj->behaviorTarget);
+					
+					singleton->makeTurn(writeObj->uid,deltaAng*4.0f);
+					
+					curDis = writeObj->behaviorTarget.distance(writeObj->getCenterPoint(E_BDG_CENTER));
+					
+					if (curDis > 4.0f) {
+						singleton->makeMove(writeObj->uid, clampfZO(curDis-4.0f));
+					}
+					if (curDis < 2.0f) {
+						singleton->makeMove(writeObj->uid, -1.0f);
+					}
+					
+					if (curDis > 6.0f) {
+						writeObj->blockCount += clampfZO(1.0 - abs(curDis - writeObj->lastBlockDis)*10.0f);
+						
+					}
+					
+					
+					
+					if (writeObj->blockCount > 30.0f) {
+						writeObj->blockCount = 0.0f;
+						singleton->makeJump(writeObj->uid, true);
+					}
+					writeObj->blockCount *= 0.999f;
+					writeObj->lastBlockDis = curDis;
+					
+					
+				}
+				
+			}
+			
+			
+			
+		}
+		
+	}
 GamePageHolder * GameLogic::getHolderById (int blockId, int holderId)
                                                                  {
 		

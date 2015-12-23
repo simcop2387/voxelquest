@@ -43,7 +43,7 @@ const static bool DO_SHADER_DUMP = false;
 // const static int DEF_WIN_H = 720;
 
 
-//#define STREAM_RES 1
+#define STREAM_RES 1
 
 #ifdef STREAM_RES
 	const static int DEF_WIN_W = 1920;
@@ -3534,6 +3534,7 @@ void initNetMasks() {
 enum E_CONST_VALS {
 	E_CONST_JUMP_AMOUNT,
 	E_CONST_WALK_AMOUNT,
+	E_CONST_WALK_UP_AMOUNT,
 	E_CONST_LIMB_IMPULSE,
 	E_CONST_LENGTH
 };
@@ -3541,6 +3542,7 @@ enum E_CONST_VALS {
 string constStrings[] = {
 	"E_CONST_JUMP_AMOUNT",
 	"E_CONST_WALK_AMOUNT",
+	"E_CONST_WALK_UP_AMOUNT",
 	"E_CONST_LIMB_IMPULSE",
 	"E_CONST_LENGTH"
 };
@@ -3814,7 +3816,7 @@ enum E_KEYMAP {
 
 enum ENT_TYPE {
 	E_ENTTYPE_OBJ,
-	E_ENTTYPE_MONSTER,
+	//E_ENTTYPE_MONSTER,
 	E_ENTTYPE_NPC,
 	E_ENTTYPE_WEAPON,
 	E_ENTTYPE_BULLET,
@@ -9315,7 +9317,14 @@ AxisRotation axisRotationInstance;
 
 
 
-
+float getShortestAngle(float begInRad, float endInRad, float amount) {
+	int begInDeg = begInRad*180/M_PI;
+	int endInDeg = endInRad*180/M_PI;
+	
+	float shortest_angle = ((((endInDeg - begInDeg) % 360) + 540) % 360) - 180;
+	
+	return shortest_angle * amount * M_PI / 180.0f;
+}
 
 btVector3 multByOtherRot( btVector3 imp, btMatrix3x3 otherRot) {
 	// Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
@@ -9379,6 +9388,7 @@ public:
 	bool isEquipped;
 	bool isUpright;
 	bool zeroZ;
+	
 	bool isJumping;
 	bool isWalking;
 	bool leftActive;
@@ -9388,6 +9398,11 @@ public:
 	
 	bool weaponActive;
 	bool rightHandTop;
+	
+	float blockCount;
+	float lastBlockDis;
+	
+	btVector3 behaviorTarget;
 	btVector3 leftVec;
 	btVector3 rightVec;
 	btVector3 weaponVec0;
@@ -9760,6 +9775,8 @@ public:
 		//updateWeaponTargs(curStepTime);
 		
 		
+		
+		
 		float myMat[16];
 		Matrix4 myMatrix4;
 		Vector3 myVector0;
@@ -9879,6 +9896,40 @@ public:
 		
 	}
 	
+	float turnTowardsPointDelta(btVector3 targPoint) {
+		btVector3 centerPoint = getCenterPoint(E_BDG_CENTER);
+		
+		btVector3 targVec = targPoint-centerPoint;
+		targVec.setZ(0.0f);
+		targVec.normalize();
+		
+		float targAng = atan2(targVec.getY(),targVec.getX());
+		
+		btVector3 curVec = bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()*btVector3(0.0f,1.0f,0.0f);
+		curVec.setZ(0.0f);
+		curVec.normalize();
+		
+		float curAng = atan2(curVec.getY(),curVec.getX());
+		
+		return getShortestAngle(curAng,targAng,1.0f);
+		
+		//return targAng-curAng;
+		
+		// btQuaternion quat;
+		
+		// if ( abs(vectorA.dot(vectorB)) == 1.0f ) {
+		// 	// todo: handle (anti)parallel case
+		// 	//curJoint->pivotAxis = btVector3(0.0f,0.0f,0.0f);
+		// 	//curJoint->quat = btQuaternion(btVector3(0.0f,0.0f,1.0f), 0.0f);
+		// }
+		// else {
+		// 	axis = (vectorA.cross(vectorB)).normalized();
+		// 	angle = btAcos(vectorA.dot(vectorB)) / (vectorA.length() * vectorB.length());
+		// 	quat = btQuaternion(axis, angle);
+		// 	transform.setRotation(curJoint->quat);
+		// 	//curJoint->pivotAxis = axis;
+		// }
+	}
 	
 	void applyAngularImpulse(btVector3 newAV, bool delayed, int i) {
 		
@@ -9935,8 +9986,8 @@ public:
 	
 	bool isHumanoid() {
 		return (
-			(entType == E_ENTTYPE_NPC) ||
-			(entType == E_ENTTYPE_MONSTER)
+			(entType == E_ENTTYPE_NPC)
+			//|| (entType == E_ENTTYPE_MONSTER)
 		);
 	}
 	
@@ -10112,9 +10163,13 @@ public:
 		objectType = _objectType;
 		entType = _entType;
 		
+		behaviorTarget = btVector3(0.0f,0.0f,0.0f);
 		
 		isGrabbedById = -1;
 		isGrabbingId = -1;
+		
+		lastBlockDis = 0.0f;
+		blockCount = 0.0f;
 		
 		rightHandTop = false;
 		weaponActive = false;
@@ -10127,8 +10182,9 @@ public:
 		isPickingUp = false;
 		
 		isUpright = 
-			(entType == E_ENTTYPE_NPC) ||
-			(entType == E_ENTTYPE_MONSTER);
+			(entType == E_ENTTYPE_NPC)
+			// || (entType == E_ENTTYPE_MONSTER)
+			;
 		
 		isOpen = false;
 		isEquipped = false;
@@ -21881,7 +21937,6 @@ public:
   GameEnt * highlightedEnt;
   TBOWrapper limbTBO;
   float (limbTBOData) [MAX_LIMB_DATA_IN_BYTES];
-  bool isWalking;
   bool isPressingMove;
   bool fxaaOn;
   bool doPathReport;
@@ -22374,6 +22429,8 @@ public:
   int getCurActorUID ();
   void updateCS ();
   void getMarkerPos (int x, int y);
+  void makeTurn (int actorId, float dirFactor);
+  void makeMove (int actorId, float dirFactor);
   void makeJump (int actorId, int isUp);
   void resetGeom ();
   void changePose (int amount);
@@ -22405,7 +22462,6 @@ public:
   void refreshContainers (bool onMousePos);
   void toggleCont (int contIndex, bool onMousePos);
   bool feetContact (BaseObj * ge);
-  float getShortestAngle (float begInRad, float endInRad, float amount);
   void flushKeyStack ();
   void applyKeyAction (bool isReq, int actorId, uint keyFlags, float camRotX, float camRotY);
   void gatherKeyActions ();
@@ -23508,6 +23564,7 @@ public:
   bool globFoundTarg;
   GameLogic ();
   void init (Singleton * _singleton);
+  void applyBehavior ();
   GamePageHolder * getHolderById (int blockId, int holderId);
   GamePageHolder * getHolderByPR (PathResult * pr);
   bool holdersEqual (GamePageHolder * h0, GamePageHolder * h1);
@@ -24031,7 +24088,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		identMatrix.identity();
 		
-		isWalking = false;
 		isPressingMove = false;
 		fxaaOn = false;
 		doPathReport = false;
@@ -24226,7 +24282,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		fpsTest = false;
 		pathfindingOn = false;
-		updateHolders = false;
+		updateHolders = true;
 		
 		
 		maxHolderDis = 32;
@@ -24368,7 +24424,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			32.0f
 		);
 		mapAmps.setFXYZW(
-			12.0f/16.0f,
+			16.0f/16.0f,
 			2.0f/16.0f,
 			0.5f/16.0f,
 			0.125f/16.0f
@@ -26118,11 +26174,11 @@ BaseObjType Singleton::placeNewEnt (bool isReq, int et, FIVector4 * cellPos, boo
 				windResistance = 1.0f;
 				bounciness = 0.3;
 			break;
-			case E_ENTTYPE_MONSTER:
-				newType = getRandomMonsterId();
-				mf = 2;
-				zv = 2;
-			break;
+			// case E_ENTTYPE_MONSTER:
+			// 	newType = getRandomMonsterId();
+			// 	mf = 2;
+			// 	zv = 2;
+			// break;
 			case E_ENTTYPE_NPC:
 				newType = getRandomNPCId();
 				mf = 4;
@@ -26520,9 +26576,9 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 			else if (comp->uid.compare("ddMenu.placeEntity.npc") == 0) {
 				placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
 			}
-			else if (comp->uid.compare("ddMenu.placeEntity.monster") == 0) {
-				placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
-			}
+			// else if (comp->uid.compare("ddMenu.placeEntity.monster") == 0) {
+			// 	placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
+			// }
 			else if (comp->uid.compare("ddMenu.placeEntity.object") == 0) {
 				placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_OBJ, &lastCellPos);
 			}
@@ -28444,6 +28500,39 @@ void Singleton::getMarkerPos (int x, int y)
 		worldMarker.copyFrom(&spaceUpPD);
 		lastCellPos.copyFrom(&(worldMarker));
 	}
+void Singleton::makeTurn (int actorId, float dirFactor)
+                                                    {
+		
+		BaseObj* ca = &(gw->gameObjects[actorId]);
+		
+		if (ca->bodies.size() < 0) {
+			return;
+		}
+		
+		ca->applyAngularImpulse(btVector3(0,0,dirFactor), true, 0);
+	}
+void Singleton::makeMove (int actorId, float dirFactor)
+                                                    {
+		BaseObj* ca = &(gw->gameObjects[actorId]);
+		
+		if (ca->bodies.size() < 0) {
+			return;
+		}
+		
+		ca->isWalking = true;
+		if (ca->hasBodies()) {
+			ca->applyImpulseOtherRot(
+				btVector3(
+					0.0f,
+					dirFactor*conVals[E_CONST_WALK_AMOUNT],
+					0.0f // conVals[E_CONST_WALK_UP_AMOUNT]
+				)*ca->getMarkerMass(),
+				ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
+				true,
+				0
+			);
+		}
+	}
 void Singleton::makeJump (int actorId, int isUp)
                                              {
 		
@@ -28708,9 +28797,14 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
 				break;
 				case '2':
+					// updateHolders = true;
+					// getMarkerPos(x, y);
+					// placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
+					
 					updateHolders = true;
 					getMarkerPos(x, y);
-					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
+					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_WEAPON, &lastCellPos);
+				
 				break;
 				case '3':
 					updateHolders = true;
@@ -28718,9 +28812,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_OBJ, &lastCellPos);
 				break;
 				case '4':
-					updateHolders = true;
-					getMarkerPos(x, y);
-					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_WEAPON, &lastCellPos);
+					
 				break;				
 				case '`':
 					placingGeom = !placingGeom;
@@ -30443,15 +30535,6 @@ bool Singleton::feetContact (BaseObj * ge)
 		
 		return false;
 	}
-float Singleton::getShortestAngle (float begInRad, float endInRad, float amount)
-                                                                             {
-		int begInDeg = begInRad*180/M_PI;
-		int endInDeg = endInRad*180/M_PI;
-		
-		float shortest_angle = ((((endInDeg - begInDeg) % 360) + 540) % 360) - 180;
-		
-		return shortest_angle * amount * M_PI / 180.0f;
-	}
 void Singleton::flushKeyStack ()
                              {
 		while (keyStack.size() > 0) {
@@ -30522,7 +30605,8 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	ca->targAng += (-2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,-4.0f), true, 0);
+				makeTurn(actorId, -4.0f);
+				
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_LEFT]) {
@@ -30533,7 +30617,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	ca->targAng += (2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,4.0f), true, 0);
+				makeTurn(actorId, 4.0f);
 			}
 			
 			
@@ -30567,32 +30651,12 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				makeJump(actorId,0);
 			}
 			
-			
-			ca->isWalking = false;
-			
-			
 			if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
-				ca->isWalking = true;
-				if (ca->hasBodies()) {
-					ca->applyImpulseOtherRot(
-						btVector3(0,conVals[E_CONST_WALK_AMOUNT],0)*ca->getMarkerMass(),
-						ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
-						true,
-						0
-					);
-				}
+				makeMove(actorId, 1.0f);
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
-				ca->isWalking = true;
-				if (ca->hasBodies()) {
-					ca->applyImpulseOtherRot(
-						btVector3(0,-conVals[E_CONST_WALK_AMOUNT],0)*ca->getMarkerMass(),
-						ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
-						true,
-						0
-					);
-				}
+				makeMove(actorId, -1.0f);
 			}
 			
 			
@@ -32718,6 +32782,7 @@ void Singleton::display (bool doFrameRender)
 					
 				}
 				
+				gameLogic->applyBehavior();
 				
 				flushKeyStack();
 				gatherKeyActions();
@@ -50600,6 +50665,122 @@ void GameLogic::init (Singleton * _singleton)
 		threadPoolList->init(singleton, 8, false||SINGLE_THREADED);
 		
 	}
+void GameLogic::applyBehavior ()
+                             {
+		int i;
+		int j;
+		float targCount = 0.0f;
+		float deltaAng;
+		float curDis;
+		
+		int curActor = singleton->getCurActorUID();
+		
+		BaseObj* writeObj;
+		BaseObj* readObj;
+		
+		for (i = 0; i < singleton->gw->visObjects.size(); i++) {
+			writeObj = &(singleton->gw->gameObjects[
+				singleton->gw->visObjects[i]	
+			]);
+			writeObj->behaviorTarget = btVector3(0.0f,0.0f,0.0f);
+			targCount = 0.0f;
+			
+			if (
+				(writeObj->isHidden) ||
+				(writeObj->entType != E_ENTTYPE_NPC)
+			) {
+				
+			}
+			else {
+				for (j = 0; j < singleton->gw->visObjects.size(); j++) {
+					readObj = &(singleton->gw->gameObjects[
+						singleton->gw->visObjects[j]
+					]);
+					
+					if (
+						(readObj->isHidden) ||
+						(readObj->entType != E_ENTTYPE_NPC) ||
+						(readObj->uid == writeObj->uid)
+					) {
+						
+					}
+					else {
+						
+						// found a unique pair of NPCs
+						// determine seek, avoid, neutral
+						
+						if (readObj->uid == curActor) {
+							writeObj->behaviorTarget += readObj->getCenterPoint(E_BDG_CENTER);
+							targCount += 1.0f;
+						}
+					}
+					
+				}
+				
+				if (targCount > 0.0f) {
+					writeObj->behaviorTarget /= targCount;
+				}
+				
+			}
+		}
+		
+		
+		for (i = 0; i < singleton->gw->visObjects.size(); i++) {
+			writeObj = &(singleton->gw->gameObjects[
+				singleton->gw->visObjects[i]	
+			]);
+			
+			if (
+				(writeObj->isHidden) ||
+				(writeObj->entType != E_ENTTYPE_NPC)
+			) {
+				
+			}
+			else {
+				
+				writeObj->isWalking = false;
+				
+				if (writeObj->behaviorTarget.isZero()) {
+					
+				}
+				else {
+					deltaAng = writeObj->turnTowardsPointDelta(writeObj->behaviorTarget);
+					
+					singleton->makeTurn(writeObj->uid,deltaAng*4.0f);
+					
+					curDis = writeObj->behaviorTarget.distance(writeObj->getCenterPoint(E_BDG_CENTER));
+					
+					if (curDis > 4.0f) {
+						singleton->makeMove(writeObj->uid, clampfZO(curDis-4.0f));
+					}
+					if (curDis < 2.0f) {
+						singleton->makeMove(writeObj->uid, -1.0f);
+					}
+					
+					if (curDis > 6.0f) {
+						writeObj->blockCount += clampfZO(1.0 - abs(curDis - writeObj->lastBlockDis)*10.0f);
+						
+					}
+					
+					
+					
+					if (writeObj->blockCount > 30.0f) {
+						writeObj->blockCount = 0.0f;
+						singleton->makeJump(writeObj->uid, true);
+					}
+					writeObj->blockCount *= 0.999f;
+					writeObj->lastBlockDis = curDis;
+					
+					
+				}
+				
+			}
+			
+			
+			
+		}
+		
+	}
 GamePageHolder * GameLogic::getHolderById (int blockId, int holderId)
                                                                  {
 		
@@ -53468,14 +53649,11 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 		GameActor* curActor;
 		
 		float objRad = 1.0f;
-		
-		
-		
 		bool isOrg = false;
 		
 		switch (ge->entType) {
 			case E_ENTTYPE_NPC:
-			case E_ENTTYPE_MONSTER:
+			// case E_ENTTYPE_MONSTER:
 			case E_ENTTYPE_WEAPON:
 				{
 					
@@ -53932,15 +54110,22 @@ void GamePhysics::collideWithWorld (double curStepTime)
 					
 					if (animatedRig) {
 						
+						if (ge->isWalking) {
+							ge->bodies[E_BDG_CENTER].body->setFriction(btScalar(0.0f));
+						}
+						else {
+							ge->bodies[E_BDG_CENTER].body->setFriction(btScalar(1.0f));
+						}
+						
 						if (ge->baseContact()) {
 							
-							ge->bodies[E_BDG_CENTER].body->setGravity(btVector3(0.0f,0.0f,-2.0f));
+							//ge->bodies[E_BDG_CENTER].body->setGravity(btVector3(0.0f,0.0f,-2.0f));
 						}
 						else {
 							
 							//ge->contactCount = 0;
 							
-							ge->bodies[E_BDG_CENTER].body->setGravity(btVector3(0.0f,0.0f,-10.0f));
+							//ge->bodies[E_BDG_CENTER].body->setGravity(btVector3(0.0f,0.0f,-10.0f));
 						}
 						
 						
@@ -53957,7 +54142,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								}
 								else {
 									
-									if (singleton->isWalking || (ge->getPlanarVel() > 0.1f)) {
+									if (ge->isWalking || (ge->getPlanarVel() > 0.1f)) {
 										curOrg->targetPoseGroup = E_PG_WALK;
 									}
 									else {
@@ -55659,7 +55844,7 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 						curOrgNode = curOrg->allNodes[curBody->boneId];
 						
 						centerPoint = curBody->body->getCenterOfMassPosition();
-						//centerPoint += btVector3(0.0,0.0,-0.5f);
+						centerPoint += btVector3(0.0,0.0,-0.4f);
 						basis = curBody->body->getCenterOfMassTransform().getBasis();
 						
 						for (q = 1; q <= 1; q++) {

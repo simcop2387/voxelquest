@@ -1775,7 +1775,14 @@ AxisRotation axisRotationInstance;
 
 
 
-
+float getShortestAngle(float begInRad, float endInRad, float amount) {
+	int begInDeg = begInRad*180/M_PI;
+	int endInDeg = endInRad*180/M_PI;
+	
+	float shortest_angle = ((((endInDeg - begInDeg) % 360) + 540) % 360) - 180;
+	
+	return shortest_angle * amount * M_PI / 180.0f;
+}
 
 btVector3 multByOtherRot( btVector3 imp, btMatrix3x3 otherRot) {
 	// Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
@@ -1839,6 +1846,7 @@ public:
 	bool isEquipped;
 	bool isUpright;
 	bool zeroZ;
+	
 	bool isJumping;
 	bool isWalking;
 	bool leftActive;
@@ -1848,6 +1856,11 @@ public:
 	
 	bool weaponActive;
 	bool rightHandTop;
+	
+	float blockCount;
+	float lastBlockDis;
+	
+	btVector3 behaviorTarget;
 	btVector3 leftVec;
 	btVector3 rightVec;
 	btVector3 weaponVec0;
@@ -2220,6 +2233,8 @@ public:
 		//updateWeaponTargs(curStepTime);
 		
 		
+		
+		
 		float myMat[16];
 		Matrix4 myMatrix4;
 		Vector3 myVector0;
@@ -2339,6 +2354,40 @@ public:
 		
 	}
 	
+	float turnTowardsPointDelta(btVector3 targPoint) {
+		btVector3 centerPoint = getCenterPoint(E_BDG_CENTER);
+		
+		btVector3 targVec = targPoint-centerPoint;
+		targVec.setZ(0.0f);
+		targVec.normalize();
+		
+		float targAng = atan2(targVec.getY(),targVec.getX());
+		
+		btVector3 curVec = bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()*btVector3(0.0f,1.0f,0.0f);
+		curVec.setZ(0.0f);
+		curVec.normalize();
+		
+		float curAng = atan2(curVec.getY(),curVec.getX());
+		
+		return getShortestAngle(curAng,targAng,1.0f);
+		
+		//return targAng-curAng;
+		
+		// btQuaternion quat;
+		
+		// if ( abs(vectorA.dot(vectorB)) == 1.0f ) {
+		// 	// todo: handle (anti)parallel case
+		// 	//curJoint->pivotAxis = btVector3(0.0f,0.0f,0.0f);
+		// 	//curJoint->quat = btQuaternion(btVector3(0.0f,0.0f,1.0f), 0.0f);
+		// }
+		// else {
+		// 	axis = (vectorA.cross(vectorB)).normalized();
+		// 	angle = btAcos(vectorA.dot(vectorB)) / (vectorA.length() * vectorB.length());
+		// 	quat = btQuaternion(axis, angle);
+		// 	transform.setRotation(curJoint->quat);
+		// 	//curJoint->pivotAxis = axis;
+		// }
+	}
 	
 	void applyAngularImpulse(btVector3 newAV, bool delayed, int i) {
 		
@@ -2395,8 +2444,8 @@ public:
 	
 	bool isHumanoid() {
 		return (
-			(entType == E_ENTTYPE_NPC) ||
-			(entType == E_ENTTYPE_MONSTER)
+			(entType == E_ENTTYPE_NPC)
+			//|| (entType == E_ENTTYPE_MONSTER)
 		);
 	}
 	
@@ -2572,9 +2621,13 @@ public:
 		objectType = _objectType;
 		entType = _entType;
 		
+		behaviorTarget = btVector3(0.0f,0.0f,0.0f);
 		
 		isGrabbedById = -1;
 		isGrabbingId = -1;
+		
+		lastBlockDis = 0.0f;
+		blockCount = 0.0f;
 		
 		rightHandTop = false;
 		weaponActive = false;
@@ -2587,8 +2640,9 @@ public:
 		isPickingUp = false;
 		
 		isUpright = 
-			(entType == E_ENTTYPE_NPC) ||
-			(entType == E_ENTTYPE_MONSTER);
+			(entType == E_ENTTYPE_NPC)
+			// || (entType == E_ENTTYPE_MONSTER)
+			;
 		
 		isOpen = false;
 		isEquipped = false;

@@ -39,8 +39,7 @@ vec2 getTerHeight(sampler2D mySampler, vec2 newTC, vec2 newTC2, float zval) { //
 
 	float dotVal = dot(texHM,mapAmps);
 	
-	dotVal += bilin(mySampler, newTC.xy*1024.0 + 0.3, mp2, mp).r/2048.0;
-	dotVal += bilin(mySampler, newTC.xy*2048.0, mp2, mp).r/4096.0;
+	
 	
 	
 	

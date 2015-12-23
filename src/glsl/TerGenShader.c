@@ -44,7 +44,7 @@ void main() {
 
 $
 
-
+^INCLUDE:MATERIALS^
 
 
 const float M_PI = 3.14159265359;
@@ -261,9 +261,37 @@ float opD( float d1, float d2 )
 {
     return d1+d2;
 }
+vec2 opU( vec2 d1, vec2 d2 )
+{
+    return mix(d2,d1,float(d1.x<d2.x));
+}
 vec3 opRep( vec3 p, vec3 c )
 {
     return mod(p,c)-0.5*c;
+}
+
+vec2 psDistanceV2(vec3 testPoint, vec3 sp0, vec3 sp1)
+{
+    vec3 v = sp1 - sp0;
+    vec3 w = testPoint - sp0;
+
+    float d0 = distance(testPoint, sp0);
+    float d1 = distance(testPoint, sp1);
+    float d2 = distance(sp0, sp1);
+
+    float c1 = dot(w, v);
+    if ( c1 <= 0 ) {
+        return vec2(d0, 0.0);
+    }
+
+    float c2 = dot(v, v);
+    if ( c2 <= c1 ) {
+        return vec2(d1, 1.0);
+    }
+
+    float b = c1 / c2;
+    vec3 testPoint2 = sp0 + b * v; // testPoint2 is the nearest point on the line
+    return vec2(distance(testPoint, testPoint2), distance(testPoint2, sp0) / d2 );
 }
 
 // >>>>>>>>>>> END COMMON <<<<<<<<<<<<<

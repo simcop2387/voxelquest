@@ -122,7 +122,6 @@ public:
   GameEnt * highlightedEnt;
   TBOWrapper limbTBO;
   float (limbTBOData) [MAX_LIMB_DATA_IN_BYTES];
-  bool isWalking;
   bool isPressingMove;
   bool fxaaOn;
   bool doPathReport;
@@ -615,6 +614,8 @@ public:
   int getCurActorUID ();
   void updateCS ();
   void getMarkerPos (int x, int y);
+  void makeTurn (int actorId, float dirFactor);
+  void makeMove (int actorId, float dirFactor);
   void makeJump (int actorId, int isUp);
   void resetGeom ();
   void changePose (int amount);
@@ -646,7 +647,6 @@ public:
   void refreshContainers (bool onMousePos);
   void toggleCont (int contIndex, bool onMousePos);
   bool feetContact (BaseObj * ge);
-  float getShortestAngle (float begInRad, float endInRad, float amount);
   void flushKeyStack ();
   void applyKeyAction (bool isReq, int actorId, uint keyFlags, float camRotX, float camRotY);
   void gatherKeyActions ();
@@ -1749,6 +1749,7 @@ public:
   bool globFoundTarg;
   GameLogic ();
   void init (Singleton * _singleton);
+  void applyBehavior ();
   GamePageHolder * getHolderById (int blockId, int holderId);
   GamePageHolder * getHolderByPR (PathResult * pr);
   bool holdersEqual (GamePageHolder * h0, GamePageHolder * h1);

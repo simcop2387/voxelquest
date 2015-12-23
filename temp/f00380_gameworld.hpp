@@ -1427,7 +1427,7 @@ public:
 						curOrgNode = curOrg->allNodes[curBody->boneId];
 						
 						centerPoint = curBody->body->getCenterOfMassPosition();
-						//centerPoint += btVector3(0.0,0.0,-0.5f);
+						centerPoint += btVector3(0.0,0.0,-0.4f);
 						basis = curBody->body->getCenterOfMassTransform().getBasis();
 						
 						for (q = 1; q <= 1; q++) {

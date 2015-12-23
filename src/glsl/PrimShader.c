@@ -2974,219 +2974,6 @@ vec4 cell2D(
 
 
 
-vec2 getTerrain(
-		vec2 pRes,
-		vec3 terNorm,
-		vec3 pos,
-		float thVal
-) {
-		
-		
-		int i;
-		float fi;
-		
-		vec2 res = pRes;
-		
-		float primRes = res.x;
-		
-		
-		vec3 absTerNorm = abs(terNorm);
-		
-		
-		vec3 cellSize = vec3(0.5);
-		float jutDis = 0.0;
-		vec3 gradVal;
-		
-		
-		float texVal;
-		float lerpVal;
-		
-		vec3 norVal = vec3(0.0);
-		
-		vec3 repPos = vec3(0.0);
-		// vec3 texPos = pos.xyz*mix(
-		//     0.0125,
-		//     0.0325,
-		//     abs(sin((pos.x*3.1 - pos.y*2.2 + pos.z*1.5)/500.0))    
-		// );
-		
-		
-		// vec3 offPos = (pos - bestBoxCenterPoint);
-		// vec3 innerBoxSize = bestBoxDim.xyz;
-		// vec3 closestInnerPoint = clamp(offPos,-innerBoxSize,innerBoxSize);
-		// vec3 myNorm = (normalize(offPos-closestInnerPoint));
-		
-		float oldX = res.x;
-		float cellX;
-		
-		//????
-		
-		//float powVal;
-		
-		float randVal = mod(
-								abs(
-										sin(pos.z/32.0)*
-										sin(pos.x/32.0)*
-										sin(pos.y/32.0)
-								),
-								1.0
-						);
-		
-		float upTex;
-		
-		vec3 posSamp = pos/2.0;
-		
-		float seedRand = (sin((posSamp.x*6.2 - posSamp.y*2.6)/20.0)+1.0) + 
-										(sin((posSamp.y*3.4 + posSamp.z*1.1)/30.0)+1.0) +
-										(sin((posSamp.z*4.4 + posSamp.x*2.1)/30.0)+1.0);
-		seedRand = mix(seedRand/6.0,randVal,0.5);
-		
-		seedRand = (sin(seedRand*8.0)+1.0)/2.0;
-		
-		float camDetail = clamp(distance(pos,cameraPos)*0.25/MAX_CAM_DIS,0.0,1.0);
-		
-		float texSpacing = 10.0;
-
-
-
-
-		oldX = res.x;
-
-		upTex = texture(Texture2, pos.xy/texSpacing).r;
-		texVal = 
-				texture(Texture2, pos.yz/texSpacing).r*absTerNorm.x*absTerNorm.x +
-				texture(Texture2, pos.zx/texSpacing).r*absTerNorm.y*absTerNorm.y +
-				upTex*absTerNorm.z*absTerNorm.z;
-
-		texVal *= 0.75;
-						
-
-		float scaleFactor = 2.0;
-
-
-
-
-
-
-		oldX = res.x;
-
-		//vec4 newSamp = getTexCubic(Texture13, pos*3.0, voroSize);
-		float tv = 0.5;//newSamp.r;
-		
-		tv = min(tv,0.3);
-
-		float myVal = clamp(
-				pow( (1.0-tv), 4.0 )
-				*0.7,0.0,1.0);
-
-		
-
-		// res.x = opD(
-		// 		res.x,
-		// 		myVal*pow(1.0-camDetail,4.0) // + newSamp.g
-		// );
-
-		
-
-		// res.x = opD(
-		// 		res.x,
-		// 		pow(texVal,2.0) * mix(0.4,0.5,camDetail)
-		// );
-		
-
-
-		// res.x = mix(res.x,opD(pRes.x,texVal*0.5),pow(seedRand,3.0));
-
-		
-		
-		float mAmount = pow(seedRand,2.0);
-
-		// res.x = mix(
-		// 		res.x,
-		// 		oldX + texVal*(0.15+seedRand*0.35),
-		// 		mAmount
-		// );
-
-
-
-		globTexEarth.x = TEX_EARTH;
-
-		
-		
-		
-		
-		
-		float myVal2 = 
-				randf3( floor(pos.xyz*32.0)/32.0 )
-				// clamp(
-				// pow( (1.0-getTexCubic(Texture13, pos*128.0 + randVal*16.0 + texVal*4.0, voroSize).r), 4.0 )
-				// *0.1*pow(1.0-camDetail,4.0),0.0,1.0)*10.0
-		;
-		
-		
-		float isGrass = 
-		(
-		    (1.0-abs(cos((upTex)*3.0)))*2.0 + 
-		    (1.0-gradVal.x*(1.0-seedRand))
-		)*smoothstep(0.7,1.0,terNorm.z)*seedRand*upTex*2.0
-		/3.0;
-		
-		if ( (
-			
-			isGrass*20.0*(mix(0.0,0.5,myVal)+isGrass*0.2) - myVal2*2.0 + (terNorm.z-1.0)*4.0 // - (1.0-myVal)*0.5//- randf3( floor(pos.xyz*16.0)/16.0 )*(1.0-isGrass)*0.5
-			) > (-3.1 + thVal*10.0) ) {
-			globTexEarth.x = TEX_GRASS;
-			globTexEarth.y = clamp(myVal2,0.0,1.0);//(randf3( floor((pos.xyz+33.21)*16.0)/16.0 )+isGrass)*0.5;
-			
-			//res.x = opD(res.x,myVal2*0.2);
-			
-		}
-		
-		
-		
-		
-		
-		
-		
-		
-		if (globTexEarth.x == TEX_EARTH) {
-				globTexEarth.y = (sin(mix(myVal+randVal,randVal,mAmount)*2.0)+1.0)*0.5;
-		}
-		
-		
-		
-
-
-		// res.x = opD(
-		//     res.x,
-		//     texture(Texture2, (pos.xy+pos.yz)*0.5 ).r*0.1
-		// );
-
-
-
-		// if (res.x < -0.05) {
-		//     res.x = MAX_CAM_DIS;
-		// }
-
-
-
-		//cellVal.xyz += pos;
-
-		//res.x += cellVal.w;//pow(1.0-cellVal.w, 0.5)*0.2;
-
-
-
-
-
-
-		
-
-
-		
-		
-		return res;
-}
-
 
 
 
@@ -3709,7 +3496,7 @@ vec2 mapLand(vec3 pos) {
 	vec2 res = vec2(MAX_CAM_DIS, TEX_EARTH);
 	
 	float camDis = distance(cameraPos,pos)/MAX_CLIP;
-	vec2 myTV = getTerVal(pos, camDis, false);
+	vec3 myTV = getTerVal(pos, camDis, false);
 	
 	res.x = myTV.x;
 	
@@ -3727,12 +3514,12 @@ vec2 mapLand(vec3 pos) {
 	
 }
 
-vec3 mapLandMicro(vec3 pos, vec3 terNorm) {
+vec4 mapLandMicro(vec3 pos, vec3 terNorm) {
 	
 	vec2 res = vec2(MAX_CAM_DIS, TEX_EARTH);
 	
 	float camDis = distance(cameraPos,pos)/MAX_CLIP;
-	vec2 myTV = getTerVal(pos, camDis, false);
+	vec3 myTV = getTerVal(pos, camDis, false);
 	
 	res.x = myTV.x;
 	
@@ -3776,12 +3563,6 @@ vec3 mapLandMicro(vec3 pos, vec3 terNorm) {
 	
 	
 	
-	// globTexEarth.x = TEX_EARTH;
-	
-	
-	//res = getTerrain(res, terNorm, pos, myTV.y);
-	
-	
 	
 	float oldRes = res.x;
 	
@@ -3789,7 +3570,7 @@ vec3 mapLandMicro(vec3 pos, vec3 terNorm) {
 	
 	
 	
-	return vec3(res.x, float((oldRes) < res.x),myTV.y);
+	return vec4(res.x, float((oldRes) < res.x),myTV.zy);
 	
 }
 
@@ -4192,7 +3973,7 @@ vec4 castLand(
 		int q = 0;
 		float fNumSteps = float(numSteps);
 		
-		vec3 res2 = vec3(0.0);
+		vec4 res2 = vec4(0.0);
 		vec2 res = vec2(0.0);
 		float t;
 		float fp;
@@ -4300,12 +4081,14 @@ vec4 castLand(
 				
 				
 				
-				globTexEarth.x = TEX_EARTH;
+				globTexEarth.x = res2.w;
 				globTexEarth.y = clamp((sin(pos.z/512.0)+1.0)*0.5,0.0,1.0);
 				
-				
 				float isInTer = res2.y;
-				float myTV = res2.z;
+				
+				
+				
+				float snowSource = res2.z;
 				float camDis = clamp(distance(cameraPos,pos)*4.0/MAX_CLIP,0.0,1.0);
 				landNorm = normLandMicro(pos, vec3(0.0,0.0,1.0),camDis);
 				
@@ -4318,35 +4101,35 @@ vec4 castLand(
 				
 				
 				float hv = clamp(1.0-(heightMapMaxInCells-pos.z)/heightMapMaxInCells, 0.0,1.0)*0.3
-					+ abs(sin(pos.x/256.0)*sin(pos.y/256.0)*sin(pos.z/256.0))*0.01;
+					+ abs(sin(pos.x/512.0)*sin(pos.y/512.0)*sin(pos.z/512.0))*0.01;
 				
 				float snowVal = (
 					hv
-					+ myTV*0.5
+					+ snowSource*0.4
 					- camDis*0.02
 					//- clamp(-landNorm.z,0.0,1.0)*0.05
-					- 0.13 // - camDis*0.1
+					- 0.15 // - camDis*0.1
 				); // + landNorm.z*0.05
 				
 				snowVal += landNorm.z*0.05*float((hv) > 0.1);
 				
 				float isGrass = snowVal - myVal2*0.01 - clamp(hv-0.12,0.0,0.1)*2.0;
 				
-				isGrass -= mod(
-										abs(
-												sin(pos.z/256.0)*
-												sin(pos.x/512.0)*
-												sin(pos.y/160.0)
-										),
-										1.0
-								)*0.75*hv;
+				// isGrass -= mod(
+				// 						abs(
+				// 								sin(pos.z/256.0)*
+				// 								sin(pos.x/512.0)*
+				// 								sin(pos.y/160.0)
+				// 						),
+				// 						1.0
+				// 				)*0.75*hv;
 				
-				if (isGrass*(1.0-isInTer) > 0.01) {
-					globTexEarth.x = TEX_GRASS;
-					globTexEarth.y = clamp(myVal2,0.0,1.0);
-				}
+				// if (isGrass*(1.0-isInTer)+float(res2.y == -2.0) > 0.001) {
+				// 	globTexEarth.x = TEX_GRASS;
+				// 	globTexEarth.y = clamp(myVal2,0.0,1.0);
+				// }
 				
-				if (snowVal*(1.0-isInTer) > 0.04) {
+				if ((snowVal*(1.0-isInTer) > 0.04)&&(globTexEarth.x != TEX_BARK)) {
 					globTexEarth.x = TEX_SNOW;
 					globTexEarth.y = clamp(snowVal*4.0,0.0,1.0);
 				}

@@ -144,14 +144,11 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 		GameActor* curActor;
 		
 		float objRad = 1.0f;
-		
-		
-		
 		bool isOrg = false;
 		
 		switch (ge->entType) {
 			case E_ENTTYPE_NPC:
-			case E_ENTTYPE_MONSTER:
+			// case E_ENTTYPE_MONSTER:
 			case E_ENTTYPE_WEAPON:
 				{
 					
@@ -608,15 +605,22 @@ void GamePhysics::collideWithWorld (double curStepTime)
 					
 					if (animatedRig) {
 						
+						if (ge->isWalking) {
+							ge->bodies[E_BDG_CENTER].body->setFriction(btScalar(0.0f));
+						}
+						else {
+							ge->bodies[E_BDG_CENTER].body->setFriction(btScalar(1.0f));
+						}
+						
 						if (ge->baseContact()) {
 							
-							ge->bodies[E_BDG_CENTER].body->setGravity(btVector3(0.0f,0.0f,-2.0f));
+							//ge->bodies[E_BDG_CENTER].body->setGravity(btVector3(0.0f,0.0f,-2.0f));
 						}
 						else {
 							
 							//ge->contactCount = 0;
 							
-							ge->bodies[E_BDG_CENTER].body->setGravity(btVector3(0.0f,0.0f,-10.0f));
+							//ge->bodies[E_BDG_CENTER].body->setGravity(btVector3(0.0f,0.0f,-10.0f));
 						}
 						
 						
@@ -633,7 +637,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								}
 								else {
 									
-									if (singleton->isWalking || (ge->getPlanarVel() > 0.1f)) {
+									if (ge->isWalking || (ge->getPlanarVel() > 0.1f)) {
 										curOrg->targetPoseGroup = E_PG_WALK;
 									}
 									else {

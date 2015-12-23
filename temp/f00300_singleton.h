@@ -138,7 +138,6 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		identMatrix.identity();
 		
-		isWalking = false;
 		isPressingMove = false;
 		fxaaOn = false;
 		doPathReport = false;
@@ -333,7 +332,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		fpsTest = false;
 		pathfindingOn = false;
-		updateHolders = false;
+		updateHolders = true;
 		
 		
 		maxHolderDis = 32;
@@ -475,7 +474,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			32.0f
 		);
 		mapAmps.setFXYZW(
-			12.0f/16.0f,
+			16.0f/16.0f,
 			2.0f/16.0f,
 			0.5f/16.0f,
 			0.125f/16.0f
@@ -2225,11 +2224,11 @@ BaseObjType Singleton::placeNewEnt (bool isReq, int et, FIVector4 * cellPos, boo
 				windResistance = 1.0f;
 				bounciness = 0.3;
 			break;
-			case E_ENTTYPE_MONSTER:
-				newType = getRandomMonsterId();
-				mf = 2;
-				zv = 2;
-			break;
+			// case E_ENTTYPE_MONSTER:
+			// 	newType = getRandomMonsterId();
+			// 	mf = 2;
+			// 	zv = 2;
+			// break;
 			case E_ENTTYPE_NPC:
 				newType = getRandomNPCId();
 				mf = 4;
@@ -2627,9 +2626,9 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 			else if (comp->uid.compare("ddMenu.placeEntity.npc") == 0) {
 				placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
 			}
-			else if (comp->uid.compare("ddMenu.placeEntity.monster") == 0) {
-				placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
-			}
+			// else if (comp->uid.compare("ddMenu.placeEntity.monster") == 0) {
+			// 	placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
+			// }
 			else if (comp->uid.compare("ddMenu.placeEntity.object") == 0) {
 				placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_OBJ, &lastCellPos);
 			}
@@ -4551,6 +4550,39 @@ void Singleton::getMarkerPos (int x, int y)
 		worldMarker.copyFrom(&spaceUpPD);
 		lastCellPos.copyFrom(&(worldMarker));
 	}
+void Singleton::makeTurn (int actorId, float dirFactor)
+                                                    {
+		
+		BaseObj* ca = &(gw->gameObjects[actorId]);
+		
+		if (ca->bodies.size() < 0) {
+			return;
+		}
+		
+		ca->applyAngularImpulse(btVector3(0,0,dirFactor), true, 0);
+	}
+void Singleton::makeMove (int actorId, float dirFactor)
+                                                    {
+		BaseObj* ca = &(gw->gameObjects[actorId]);
+		
+		if (ca->bodies.size() < 0) {
+			return;
+		}
+		
+		ca->isWalking = true;
+		if (ca->hasBodies()) {
+			ca->applyImpulseOtherRot(
+				btVector3(
+					0.0f,
+					dirFactor*conVals[E_CONST_WALK_AMOUNT],
+					0.0f // conVals[E_CONST_WALK_UP_AMOUNT]
+				)*ca->getMarkerMass(),
+				ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
+				true,
+				0
+			);
+		}
+	}
 void Singleton::makeJump (int actorId, int isUp)
                                              {
 		
@@ -4815,9 +4847,14 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
 				break;
 				case '2':
+					// updateHolders = true;
+					// getMarkerPos(x, y);
+					// placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
+					
 					updateHolders = true;
 					getMarkerPos(x, y);
-					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
+					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_WEAPON, &lastCellPos);
+				
 				break;
 				case '3':
 					updateHolders = true;
@@ -4825,9 +4862,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_OBJ, &lastCellPos);
 				break;
 				case '4':
-					updateHolders = true;
-					getMarkerPos(x, y);
-					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_WEAPON, &lastCellPos);
+					
 				break;				
 				case '`':
 					placingGeom = !placingGeom;
@@ -6550,15 +6585,6 @@ bool Singleton::feetContact (BaseObj * ge)
 		
 		return false;
 	}
-float Singleton::getShortestAngle (float begInRad, float endInRad, float amount)
-                                                                             {
-		int begInDeg = begInRad*180/M_PI;
-		int endInDeg = endInRad*180/M_PI;
-		
-		float shortest_angle = ((((endInDeg - begInDeg) % 360) + 540) % 360) - 180;
-		
-		return shortest_angle * amount * M_PI / 180.0f;
-	}
 void Singleton::flushKeyStack ()
                              {
 		while (keyStack.size() > 0) {
@@ -6629,7 +6655,8 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	ca->targAng += (-2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,-4.0f), true, 0);
+				makeTurn(actorId, -4.0f);
+				
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_LEFT]) {
@@ -6640,7 +6667,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				// 	ca->targAng += (2.0f*M_PI*timeDelta);
 				// }
 				
-				ca->applyAngularImpulse(btVector3(0,0,4.0f), true, 0);
+				makeTurn(actorId, 4.0f);
 			}
 			
 			
@@ -6674,32 +6701,12 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				makeJump(actorId,0);
 			}
 			
-			
-			ca->isWalking = false;
-			
-			
 			if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
-				ca->isWalking = true;
-				if (ca->hasBodies()) {
-					ca->applyImpulseOtherRot(
-						btVector3(0,conVals[E_CONST_WALK_AMOUNT],0)*ca->getMarkerMass(),
-						ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
-						true,
-						0
-					);
-				}
+				makeMove(actorId, 1.0f);
 			}
 			
 			if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
-				ca->isWalking = true;
-				if (ca->hasBodies()) {
-					ca->applyImpulseOtherRot(
-						btVector3(0,-conVals[E_CONST_WALK_AMOUNT],0)*ca->getMarkerMass(),
-						ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
-						true,
-						0
-					);
-				}
+				makeMove(actorId, -1.0f);
 			}
 			
 			
@@ -8825,6 +8832,7 @@ void Singleton::display (bool doFrameRender)
 					
 				}
 				
+				gameLogic->applyBehavior();
 				
 				flushKeyStack();
 				gatherKeyActions();
