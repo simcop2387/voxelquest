@@ -227,6 +227,8 @@ void GameOrg::updatePose (double curTimeStep)
 		float timeInterval = 1.0f;
 		float lerpSpeed = 0.005f;
 		
+		int stepCountMod;
+		
 		BaseObj* curOwner = getOwner();
 		
 		if (singleton->editPose) {
@@ -253,15 +255,62 @@ void GameOrg::updatePose (double curTimeStep)
 						timeInterval = 1.5;
 						targetPose = E_PK_JUMP;
 					break;
+					case E_PG_DEAD:
+						lerpSpeed = 0.005f;
+						timeInterval = 1.5;
+						targetPose = E_PK_DEAD;
+					break;
 					case E_PG_SLSH_R:
-						lerpSpeed = 0.02f;
-						timeInterval = 0.2;
-						targetPose = E_PK_SLSH_R0 + stepCount;
-						if (targetPose > E_PK_SLSH_R2) {
-							curOwner->isSwinging = false;
+					case E_PG_SLSH_L:
+					case E_PG_SLSH_B:
+					case E_PG_BACK_R:
+					case E_PG_BACK_L:
+					case E_PG_BACK_B:
+					case E_PG_HACK_R:
+					case E_PG_HACK_L:
+					case E_PG_HACK_B:
+					case E_PG_STAB_R:
+					case E_PG_STAB_L:
+					case E_PG_STAB_B:
+					
+					case E_PG_HOOK_R:
+					case E_PG_HOOK_L:
+					case E_PG_ELBO_R:
+					case E_PG_ELBO_L:
+					case E_PG_UPPR_R:
+					case E_PG_UPPR_L:
+					case E_PG_JABP_R:
+					case E_PG_JABP_L:
+					case E_PG_ROUN_R:
+					case E_PG_ROUN_L:
+					case E_PG_REVR_R:
+					case E_PG_REVR_L:
+					case E_PG_BKIK_R:
+					case E_PG_BKIK_L:
+					case E_PG_FRNT_R:
+					case E_PG_FRNT_L:
+					
+						lerpSpeed = singleton->conVals[E_CONST_ATTACK_LERP_SPEED];//0.02f;
+						timeInterval = singleton->conVals[E_CONST_ATTACK_KEY_INTERVAL];//0.3;
+						
+						stepCountMod = stepCount;
+						if (stepCountMod > 2) {
+							stepCountMod = 2;
+						}
+						
+						targetPose = 
+							E_PK_SLSH_R0 + 
+							(targetPoseGroup-E_PG_SLSH_R)*3 +
+							stepCountMod;
+						
+						if (stepCount > 4) {
+							curOwner->isSwinging[getPoseSide(targetPoseGroup)] = false;
 							targetPoseGroup = E_PG_IDLE;
 						}
 					break;
+					
+					
+					
 					case E_PG_PICKUP:
 						lerpSpeed = 0.01f;
 						timeInterval = 0.4;
@@ -282,7 +331,6 @@ void GameOrg::updatePose (double curTimeStep)
 							if (curOwner != NULL) {
 								curOwner->isJumping = false;
 							}
-							
 						break;
 					}
 					
@@ -333,7 +381,7 @@ void GameOrg::updatePose (double curTimeStep)
 		
 		
 		
-		singleton->transformOrg(this);
+		singleton->transformOrg(this, NULL);
 		
 	}
 void GameOrg::nodeToJSON (JSONValue * * parentObj, GameOrgNode * curNode)
@@ -431,7 +479,7 @@ void GameOrg::initWeapon ()
 		// }
 		
 		
-		baseNode->doTransform(singleton);
+		baseNode->doTransform(singleton, NULL);
 		
 	}
 void GameOrg::initHuman ()
@@ -599,7 +647,7 @@ void GameOrg::initHuman ()
 			
 		}
 		
-		baseNode->doTransform(singleton);
+		baseNode->doTransform(singleton, NULL);
 		
 		
 	}

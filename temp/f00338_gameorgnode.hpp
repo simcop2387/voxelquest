@@ -204,7 +204,8 @@ public:
 	//void rotate(FIVector4 axis, )
 	
 	void doTransform(
-		Singleton* singleton
+		Singleton* singleton,
+		GameOrgNode* tempParent
 	) {
 		
 		int i;
@@ -212,13 +213,21 @@ public:
 		int popCount = 0;
 		int modCount;
 		
+		GameOrgNode* resultParent;
+		
+		if (tempParent == NULL) {
+			resultParent = parent;
+		}
+		else {
+			resultParent = tempParent;
+		}
 		
 		// start
-		if (parent == NULL) {
+		if (resultParent == NULL) {
 			orgTrans[0].setFXYZ(0.0f,0.0f,0.0f);
 		}
 		else {
-			orgTrans[0].setFXYZRef(&(parent->orgTrans[2]));
+			orgTrans[0].setFXYZRef(&(resultParent->orgTrans[2]));
 		}
 		
 		
@@ -315,7 +324,7 @@ public:
 		
 		
 		for (i = 0; i < children.size(); i++) {
-			children[i]->doTransform(singleton);
+			children[i]->doTransform(singleton, NULL);
 		}
 		
 		

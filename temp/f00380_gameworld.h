@@ -391,6 +391,52 @@ int GameWorld::getCellAtCoords (int xv, int yv, int zv)
 		return curHolder->getCellAtInd(ind);
 		
 	}
+float GameWorld::getCellAtCoordsLin (btVector3 pos)
+                                                {
+		
+		int xv = pos.getX();
+		int yv = pos.getY();
+		int zv = pos.getZ();
+		
+		float fx = pos.getX()-xv;
+		float fy = pos.getY()-yv;
+		float fz = pos.getZ()-zv;
+		
+		float res[8];
+		
+		int q;
+		int i;
+		int j;
+		int k;
+		
+		int curRes;
+		
+		for (q = 0; q < 8; q++) {
+			k = q/4;
+			j = q - (k*4);
+			i = q - (k*4+j*2);
+			
+			curRes = getCellAtCoords(xv+i,yv+j,zv+k);
+			
+			if (curRes == E_CD_SOLID) {
+				res[q] = 1.0f;
+			}
+			else {
+				res[q] = 0.0f;
+			}
+			
+		}
+		
+		res[0] = res[0]*(1.0f-fz) + res[4]*fz;
+		res[1] = res[1]*(1.0f-fz) + res[5]*fz;
+		res[2] = res[2]*(1.0f-fz) + res[6]*fz;
+		res[3] = res[3]*(1.0f-fz) + res[7]*fz;
+		
+		res[0] = res[0]*(1.0f-fy) + res[2]*fy;
+		res[1] = res[1]*(1.0f-fy) + res[3]*fy;
+		
+		return res[0]*(1.0f-fx) + res[1]*fx;
+	}
 void GameWorld::setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2)
           {
 		int cellsPerHolder = singleton->cellsPerHolder;
@@ -475,10 +521,13 @@ void GameWorld::fireEvent (BaseObjType uid, int opCode, float fParam)
 			
 				switch(ge->entType) {
 					case E_ENTTYPE_BULLET:
-						singleton->playSoundEnt("bump0",ge,0.0,0.25f);
+						singleton->playSoundEnt("bump0", ge,0.0,0.25f);
+					break;
+					case E_ENTTYPE_WEAPON:
+						singleton->playSoundEnt("metalclash0", ge, 0.25, 0.25f);
 					break;
 					default:
-						singleton->playSoundEnt("land0", ge, 0.1, fParam);
+						singleton->playSoundEnt("land0", ge, 0.1, fParam*0.2);
 					break;
 				}
 			
@@ -1045,7 +1094,7 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 		int headerStart;
 		
 		float myMat[16];
-		btVector3 basePos[3];
+		btVector3 basePos;
 		btVector3 tempBTV;
 		Matrix4 myMatrix4;
 		Vector4 myVector4;
@@ -1121,7 +1170,12 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 					
 					if (
 						(curBody->jointType != E_JT_LIMB) ||
-						(curBody->boneId < 0)	
+						(curBody->boneId < 0) ||
+						(
+							singleton->firstPerson &&
+							(curBody->boneId == E_BONE_C_SKULL) &&
+							(ge->uid == singleton->getCurActorUID())
+						)
 					) {
 						
 					}
@@ -1132,23 +1186,23 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 						curOrgNode = curOrg->allNodes[curBody->boneId];
 						
 						centerPoint = curBody->body->getCenterOfMassPosition();
-						centerPoint += btVector3(0.0,0.0,-0.4f);
+						//centerPoint += btVector3(0.0,0.0,-0.4f);
 						basis = curBody->body->getCenterOfMassTransform().getBasis();
 						
-						for (q = 1; q <= 1; q++) {
-							tempBTV = curOrgNode->tbnTrans[q].getBTV();
-							myVector4 = Vector4(
-								tempBTV.getX(),
-								tempBTV.getY(),
-								tempBTV.getZ(),
-								1.0f
-							);
-							resVector4 = myMatrix4*myVector4;
-							basePos[q] = btVector3(resVector4.x,resVector4.y,resVector4.z);
-							basePos[q] += ge->skelOffset;
-							basePos[q] -= centerPoint;
-							basePos[q].normalize();
-						}
+						
+						
+						tempBTV = curOrgNode->tbnTrans[1].getBTV();
+						myVector4 = Vector4(
+							tempBTV.getX(),
+							tempBTV.getY(),
+							tempBTV.getZ(),
+							1.0f
+						);
+						resVector4 = myMatrix4*myVector4;
+						basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
+						basePos += ge->skelOffset;
+						basePos -= centerPoint;
+						basePos.normalize();
 						
 						
 						
@@ -1158,7 +1212,7 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 						// norVec = basis.getColumn(2);//basis*curOrgNode->orgVecs[2].getBTV();
 						
 						//tanVec = basePos[0];//basis*curOrgNode->orgVecs[0].getBTV();
-						bitVec = basePos[1];//basis*curOrgNode->orgVecs[1].getBTV();
+						bitVec = basePos;//basis*curOrgNode->orgVecs[1].getBTV();
 						//norVec = basePos[2];//basis*curOrgNode->orgVecs[2].getBTV();
 						
 						norVec = tanVec.cross(bitVec);
@@ -1687,11 +1741,11 @@ bool GameWorld::removeVisObject (BaseObjType _uid, bool isRecycled)
 		
 		return false;
 	}
-int GameWorld::getClosestObj (int actorId, FIVector4 * basePoint)
-                                                             {
+int GameWorld::getClosestObj (int actorId, FIVector4 * basePoint, bool ignoreNPC, float maxDis)
+          {
 		
 		int i;
-		float bestDis = 5.0;
+		float bestDis = maxDis;
 		float testDis;
 		int testInd;
 		int bestInd = -1;
@@ -1707,10 +1761,14 @@ int GameWorld::getClosestObj (int actorId, FIVector4 * basePoint)
 			if (
 				(testInd == actorId) ||
 				(testObj->isGrabbedById >= 0) ||
-				(testObj->getVel(0)->length() > 1.0f) ||
+				(testObj->getVel(0)->length() > 2.0f) ||
 				(testObj->entType == E_ENTTYPE_BULLET) ||
 				(testObj->entType == E_ENTTYPE_TRACE) ||
-				(testObj->isHidden)
+				(testObj->isHidden) ||
+				
+				(
+					ignoreNPC && (testObj->entType == E_ENTTYPE_NPC)	
+				)
 			) {
 				
 			}
@@ -4444,6 +4502,19 @@ void GameWorld::renderDebug ()
 		
 		BaseObj* ge = singleton->currentActor;
 		
+		int i;
+		
+		float identMat[16];
+		
+		for (i = 0; i < 16; i++) {
+			identMat[i] = 0.0f;
+		}
+		
+		identMat[0] = 1.0f;
+		identMat[5] = 1.0f;
+		identMat[10] = 1.0f;
+		identMat[15] = 1.0f;
+		
 		float myMat[16];
 		Matrix4 myMatrix4;
 		Vector4 myVector0;
@@ -4454,11 +4525,18 @@ void GameWorld::renderDebug ()
 		float rad0 = 1.0f;
 		float rad1 = 3.0f;
 		
+		btVector3 boxCenter;
+		btVector3 boxRadius;
+		
+		float xrotrad = singleton->getCamRot(0);
 		
 		singleton->bindShader("GeomShader");
 		singleton->bindFBO("debugTargFBO");
 		
 		
+		singleton->setShaderVec4(
+			"rotationZ",0.0f,0.0f,0.0f,0.0f
+		);
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderFloat("isWire", 0.0);
@@ -4468,12 +4546,6 @@ void GameWorld::renderDebug ()
 		singleton->setShaderFloat("objectId",0.0);
 		singleton->setShaderVec3("matVal", 255, 0, 0);
 		
-		if (ge != NULL) {
-			
-			// tempVec1.setBTV(ge->weaponVec0);
-			// tempVec2.setBTV(ge->weaponVec1);	
-			// singleton->drawLine(&tempVec1,&tempVec2);
-		}
 		
 		
 		// if (singleton->gamePhysics != NULL) {
@@ -4485,6 +4557,8 @@ void GameWorld::renderDebug ()
 		
 		glLineWidth(1.0f);
 		
+		singleton->setShaderFloat("objectId",0.0);
+		
 		// skeleton outline		
 		if (singleton->currentActor != NULL) {
 			if (singleton->currentActor->orgId > -1) {
@@ -4492,7 +4566,7 @@ void GameWorld::renderDebug ()
 				
 				singleton->setShaderMatrix4x4("objmat",myMat,1);
 				
-				singleton->setShaderFloat("objectId",0.0);
+				
 				drawOrg(singleton->gameOrgs[singleton->currentActor->orgId], false);
 			}
 		}
@@ -4500,7 +4574,45 @@ void GameWorld::renderDebug ()
 		glLineWidth(4.0f);
 		
 		
+		singleton->setShaderMatrix4x4("objmat",identMat,1);
 		
+		float healthMeterScale = 0.5f;
+		
+		for (i = 0; i < visObjects.size(); i++) {
+			ge = &(gameObjects[visObjects[i]]);
+			if (ge->entType == E_ENTTYPE_NPC) {
+				
+				//ge->bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
+				
+				if (ge->isAlive()) {
+					singleton->setShaderVec3("matVal", 1, 1, 1);
+					boxCenter = ge->getCenterPoint(E_BDG_CENTER);
+					boxCenter += btVector3(0.0f,0.0f,5.0f);
+					boxRadius = btVector3(1.95f,0.2f,0.2f)*healthMeterScale;
+					
+					singleton->setShaderVec4(
+						"rotationZ",
+						boxCenter.getX(),
+						boxCenter.getY(),
+						boxCenter.getZ(),
+						xrotrad	
+					);
+					
+					singleton->drawBoxRad(boxCenter,boxRadius);
+					
+					singleton->setShaderVec3("matVal", 255, 0, 0);
+					boxCenter = ge->getCenterPoint(E_BDG_CENTER);
+					boxCenter += btVector3(-2.0f*(1.0f-ge->healthPerc())*healthMeterScale,0.0f,5.0f);
+					boxRadius = btVector3(2.0f*ge->healthPerc(),0.25f,0.25f)*healthMeterScale;
+					singleton->drawBoxRad(boxCenter,boxRadius);
+				}
+				
+			}
+		}
+		
+		singleton->setShaderVec4(
+			"rotationZ",0.0f,0.0f,0.0f,0.0f
+		);
 		
 		
 		
@@ -5010,7 +5122,7 @@ void GameWorld::postProcess ()
 			
 			//solidBaseTargFBO
 			//"solidTargFBO" //"polyFBO"
-			singleton->drawFBO("solidTargFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
+			singleton->drawFBO("terTargFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
 			
 			// leave this here to catch errors
 			//cout << "Getting Errors: \n";

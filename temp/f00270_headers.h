@@ -122,6 +122,9 @@ public:
   GameEnt * highlightedEnt;
   TBOWrapper limbTBO;
   float (limbTBOData) [MAX_LIMB_DATA_IN_BYTES];
+  int destructCount;
+  bool waitingOnDestruction;
+  bool combatOn;
   bool isPressingMove;
   bool fxaaOn;
   bool doPathReport;
@@ -358,6 +361,9 @@ public:
   double clickTime;
   double mdTime;
   double muTime;
+  double (clickTimeLR) [2];
+  double (mdTimeLR) [2];
+  double (muTimeLR) [2];
   GameOrgNode * bestNode;
   GameOrgNode * selectedNode;
   GameOrgNode * lastSelNode;
@@ -537,6 +543,7 @@ public:
   void drawLine (FIVector4 * p0, FIVector4 * p1);
   void drawCubeCentered (FIVector4 * originVec, float radius);
   void drawBoxUp (FIVector4 originVec, float radiusX, float radiusY, float diamZ);
+  void drawBoxRad (btVector3 v0, btVector3 v1);
   void drawBox (FIVector4 * v0, FIVector4 * v1, int faceFlag = 2);
   void getMaterialString ();
   bool getPrimTemplateString ();
@@ -595,7 +602,7 @@ public:
   float getSLNormalized ();
   float getSeaHeightScaled ();
   float getHeightAtPixelPos (float x, float y, bool dd = false);
-  void transformOrg (GameOrg * curOrg);
+  void transformOrg (GameOrg * curOrg, GameOrgNode * tempParent);
   void angleToVec (FIVector4 * fv, float xr, float yr);
   void vecToAngle (FIVector4 * fv, FIVector4 * ta);
   void syncObjects ();
@@ -608,15 +615,26 @@ public:
   void updateMultiLights ();
   void toggleFullScreen ();
   void setCameraToElevation ();
+  btVector3 screenToWorld (float mx, float my, float camAng);
   btVector3 getRayTo (float x, float y);
   void runReport ();
   void setFirstPerson (bool _newVal);
   int getCurActorUID ();
   void updateCS ();
   void getMarkerPos (int x, int y);
+  BaseObj * getActorRef (int uid);
+  bool combatMode ();
+  void makeHit (int attackerId, int victimId, int weaponId);
+  bool isSwingingWeapon (int actorId, int handNum);
+  bool isPunching (int actorId, int handNum);
+  bool isKicking (int actorId, int handNum);
+  void setSwing (float _mx, float _my, int actorId, int handNum, bool isKick);
+  void nextSwing (int actorId, int handNum);
+  void makeSwing (int actorId, int handNum);
   void makeTurn (int actorId, float dirFactor);
-  void makeMove (int actorId, float dirFactor);
-  void makeJump (int actorId, int isUp);
+  void makeMoveVec (int actorId, btVector3 moveVec);
+  void makeMove (int actorId, btVector3 moveDir, bool relative);
+  void makeJump (int actorId, int isUp, float jumpFactor);
   void resetGeom ();
   void changePose (int amount);
   void saveCurrentPose ();
@@ -640,7 +658,6 @@ public:
   void keyboardDown (unsigned char key, int _x, int _y);
   void updateCurGeom (int x, int y);
   void mouseMove (int _x, int _y);
-  void doSwing (BaseObj * ca);
   void mouseClick (int button, int state, int _x, int _y);
   void makeDirty ();
   void setSelNode (GameOrgNode * newNode);
@@ -654,7 +671,7 @@ public:
   bool anyMenuVisible ();
   void performCamShake (BaseObj * ge, float fp);
   void explodeBullet (BaseObj * ge);
-  void grabThrowObj (int actorId);
+  void grabThrowObj (int actorId, int _handNum);
   void launchBullet (int actorId, int bulletType);
   void resetActiveNode ();
   bool updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS);
@@ -1224,7 +1241,7 @@ public:
   GameFluid ();
   void init (Singleton * _singleton, int _mainId);
   void flushActionStack ();
-  void pushExplodeBullet (bool isReq, FIVector4 * newPos, int waterBulletOn);
+  void pushExplodeBullet (bool isReq, FIVector4 * newPos, int waterBulletOn, float newRad);
   void pushModifyUnit (bool isReq, FIVector4 * mp, int buttonNum, int earthMod, int curBrushRad);
   void pushPlaceTemplate (bool isReq, FIVector4 * newPos, int pt);
   bool addPrimObj (FIVector4 * pos, int tempId, int uid);
@@ -1298,7 +1315,7 @@ public:
   GameOrgNode (GameOrgNode * _parent, int _nodeName, float _material, float _rotThe, float _rotPhi, float _rotRho, float _tanLengthInCells0, float _bitLengthInCells0, float _norLengthInCells0, float _tanLengthInCells1, float _bitLengthInCells1, float _norLengthInCells1, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
   GameOrgNode * addChild (int _nodeName, float _material, float _rotThe, float _rotPhi, float _rotRho, float _tanLengthInCells0, float _bitLengthInCells0, float _norLengthInCells0, float _tanLengthInCells1, float _bitLengthInCells1, float _norLengthInCells1, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
   GameOrgNode * getNode (int _nodeName);
-  void doTransform (Singleton * singleton);
+  void doTransform (Singleton * singleton, GameOrgNode * tempParent);
 };
 #undef LZZ_INLINE
 #endif
@@ -1479,6 +1496,7 @@ public:
   btIndexedMesh part;
   btRigidBody * body;
   btBvhTriangleMeshShape * trimeshShape;
+  btBoxShape * boxShape;
   GamePageHolder ();
   void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isBlockHolder = false);
   int getCellAtCoordsLocal (int xx, int yy, int zz);
@@ -1854,11 +1872,14 @@ public:
   GUIHelperInterface * guiHelper;
   float (myMat) [16];
   float BASE_ENT_HEIGHT;
+  float BASE_ENT_RAD;
+  float CONTACT_THRESH;
   double totTime;
   Matrix4 myMatrix4;
   Vector4 myVector4;
   Vector4 resVector4;
   btRigidBody * lastBodyPick;
+  int lastBodyUID;
   GamePhysics ();
   void init (Singleton * _singleton);
   void pickBody (FIVector4 * mouseMoveOPD);
@@ -1997,6 +2018,7 @@ public:
   int getCellInd (FIVector4 * cParam, GamePageHolder * & curHolder);
   int getCellInd (GamePageHolder * & curHolder, int xv, int yv, int zv);
   int getCellAtCoords (int xv, int yv, int zv);
+  float getCellAtCoordsLin (btVector3 pos);
   void setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void getArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void fireEvent (BaseObjType uid, int opCode, float fParam);
@@ -2012,7 +2034,7 @@ public:
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void addVisObject (BaseObjType _uid, bool isRecycled);
   bool removeVisObject (BaseObjType _uid, bool isRecycled);
-  int getClosestObj (int actorId, FIVector4 * basePoint);
+  int getClosestObj (int actorId, FIVector4 * basePoint, bool ignoreNPC, float maxDis);
   void polyCombine ();
   void drawPolys (string fboName, int minPeel, int maxPeel, bool isBlockHolder);
   void rasterPolysWorld ();

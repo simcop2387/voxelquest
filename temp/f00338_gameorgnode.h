@@ -104,7 +104,7 @@ GameOrgNode * GameOrgNode::getNode (int _nodeName)
 		
 		return NULL;
 	}
-void GameOrgNode::doTransform (Singleton * singleton)
+void GameOrgNode::doTransform (Singleton * singleton, GameOrgNode * tempParent)
           {
 		
 		int i;
@@ -112,13 +112,21 @@ void GameOrgNode::doTransform (Singleton * singleton)
 		int popCount = 0;
 		int modCount;
 		
+		GameOrgNode* resultParent;
+		
+		if (tempParent == NULL) {
+			resultParent = parent;
+		}
+		else {
+			resultParent = tempParent;
+		}
 		
 		// start
-		if (parent == NULL) {
+		if (resultParent == NULL) {
 			orgTrans[0].setFXYZ(0.0f,0.0f,0.0f);
 		}
 		else {
-			orgTrans[0].setFXYZRef(&(parent->orgTrans[2]));
+			orgTrans[0].setFXYZRef(&(resultParent->orgTrans[2]));
 		}
 		
 		
@@ -215,7 +223,7 @@ void GameOrgNode::doTransform (Singleton * singleton)
 		
 		
 		for (i = 0; i < children.size(); i++) {
-			children[i]->doTransform(singleton);
+			children[i]->doTransform(singleton, NULL);
 		}
 		
 		

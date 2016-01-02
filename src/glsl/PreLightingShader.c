@@ -124,6 +124,11 @@ void main()
 	float specularSolid = 0.0;
 	float specularWater = 0.0;
 
+	
+	
+	
+	
+
 	vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
 	vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
 	

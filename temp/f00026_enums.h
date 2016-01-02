@@ -2,18 +2,50 @@
 
 
 enum E_CONST_VALS {
+	E_CONST_ATTACK_LERP_SPEED,
+	E_CONST_ATTACK_KEY_INTERVAL,
+	E_CONST_WALKING_FRIC,
+	E_CONST_STANDING_FRIC,
+	E_CONST_WALKING_GRAV,
 	E_CONST_JUMP_AMOUNT,
 	E_CONST_WALK_AMOUNT,
 	E_CONST_WALK_UP_AMOUNT,
 	E_CONST_LIMB_IMPULSE,
+	E_CONST_HIT_STRENGTH,
+	E_CONST_DASH_AMOUNT,
+	E_CONST_DASH_UP_AMOUNT,
+	E_CONST_MAPFREQ0,
+	E_CONST_MAPFREQ1,
+	E_CONST_MAPFREQ2,
+	E_CONST_MAPFREQ3,
+	E_CONST_MAPAMP0,
+	E_CONST_MAPAMP1,
+	E_CONST_MAPAMP2,
+	E_CONST_MAPAMP3,
 	E_CONST_LENGTH
 };
 
 string constStrings[] = {
+	"E_CONST_ATTACK_LERP_SPEED",
+	"E_CONST_ATTACK_KEY_INTERVAL",
+	"E_CONST_WALKING_FRIC",
+	"E_CONST_STANDING_FRIC",
+	"E_CONST_WALKING_GRAV",
 	"E_CONST_JUMP_AMOUNT",
 	"E_CONST_WALK_AMOUNT",
 	"E_CONST_WALK_UP_AMOUNT",
 	"E_CONST_LIMB_IMPULSE",
+	"E_CONST_HIT_STRENGTH",
+	"E_CONST_DASH_AMOUNT",
+	"E_CONST_DASH_UP_AMOUNT",
+	"E_CONST_MAPFREQ0",
+	"E_CONST_MAPFREQ1",
+	"E_CONST_MAPFREQ2",
+	"E_CONST_MAPFREQ3",
+	"E_CONST_MAPAMP0",
+	"E_CONST_MAPAMP1",
+	"E_CONST_MAPAMP2",
+	"E_CONST_MAPAMP3",
 	"E_CONST_LENGTH"
 };
 
@@ -588,8 +620,8 @@ enum E_BODY_GUIDES {
 	E_BDG_LENGTH
 };
 
-const static int E_BDG_LFOOT = -99;
-const static int E_BDG_RFOOT = -98;
+// const static int E_BDG_LFOOT = -99;
+// const static int E_BDG_RFOOT = -98;
 
 
 enum E_BONES_HUMAN {
@@ -735,6 +767,26 @@ enum E_ORG_VECS {
 	E_OV_LENGTH
 };
 
+// TODO: FIX THIS SLOP
+// MUST CALL THIS, BONE NAMES GOT REVERSED
+int getCorrectedName(int curNodeName) {
+	
+	if (curNodeName < E_BONE_C_BEG) {
+		if (curNodeName <= E_BONE_L_END) {
+			return (
+				curNodeName+(E_BONE_R_BEG-E_BONE_L_BEG)
+			);
+		}
+		else {
+			return (
+				curNodeName-(E_BONE_R_BEG-E_BONE_L_BEG)
+			);
+		}
+	}
+	else {
+		return curNodeName;
+	}	
+}
 
 string boneStrings[] = {
 	
@@ -1130,54 +1182,38 @@ enum E_PATH_FILL_OPS {
 	E_PFO_LENGTH
 };
 
-
+enum E_HAND_LR {
+	E_HAND_R,
+	E_HAND_L,
+	E_HAND_LENGTH	
+};
 
 enum E_COL_TYPES {
     COL_NOTHING = 0,
     COL_STATIC = 1,
     COL_DYN = 2,
     COL_MARKER = 4,
-    COL_HAND = 8,
-    COL_BODY0 = 16,
-    COL_BODY1 = 32,
-    COL_BODY2 = 64,
-    COL_BODY3 = 128,
-    COL_BODY4 = 256,
-    COL_BODY5 = 512,
-    COL_BODY6 = 1024,
-    COL_BODY7 = 2048
-    
-    
-    //COL_WEAPON = 16
+    COL_BODY = 8
 };
 
-const static int MAX_COL_BODY = 8;
-const static int bodyCollidesWith[] = {
-	COL_STATIC|COL_DYN|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY6|COL_BODY7,
-	COL_STATIC|COL_DYN|COL_BODY0|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY6|COL_BODY7,
-	COL_STATIC|COL_DYN|COL_BODY0|COL_BODY1|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY6|COL_BODY7,
-	COL_STATIC|COL_DYN|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY4|COL_BODY5|COL_BODY6|COL_BODY7,
-	
-	COL_STATIC|COL_DYN|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY5|COL_BODY6|COL_BODY7,
-	COL_STATIC|COL_DYN|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY6|COL_BODY7,
-	COL_STATIC|COL_DYN|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY7,
-	COL_STATIC|COL_DYN|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY6
-};
-
-
-const static int handCollidesWith = COL_STATIC|COL_DYN;
-const static int terCollidesWith = COL_STATIC|COL_DYN|COL_MARKER|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY6|COL_BODY7; //|COL_WEAPON
-const static int markerCollidesWith = COL_STATIC|COL_DYN|COL_MARKER;
-const static int dynCollidesWith = COL_STATIC|COL_DYN|COL_MARKER|COL_BODY0|COL_BODY1|COL_BODY2|COL_BODY3|COL_BODY4|COL_BODY5|COL_BODY6|COL_BODY7; //|COL_WEAPON
-//const static int weaponCollidesWith = COL_STATIC|COL_DYN;// |COL_WEAPON;
+const static int terCollidesWith = COL_DYN|COL_MARKER|COL_BODY;
+const static int markerCollidesWith = COL_STATIC;
+const static int dynCollidesWith = COL_STATIC|COL_DYN|COL_BODY;
+const static int bodyCollidesWith = COL_STATIC|COL_DYN|COL_BODY;
 
 
 enum E_JOINT_TYPES {
 	E_JT_LIMB,
 	E_JT_BALL,
 	E_JT_NORM,
+	E_JT_CONT,
 	E_JT_LENGTH
 };
+
+// enum E_LIMB_CLASSES {
+// 	E_LIMB_CLASS_FIST_R,
+// 	E_LIMB_CLASS_
+// };
 
 struct BodyStruct {
 	btRigidBody* body;
@@ -1186,19 +1222,28 @@ struct BodyStruct {
 	btVector3 totLV;
 	
 	float mass;
+	float rad;
+	float length;
+	
 	int boneId;
 	int jointType;
+	//int classType;
 	
 	bool isVisible;
 	bool inWater;
 	bool isFalling;
 	bool hasContact;
 	bool isInside;
+	
+	
+	
 };
 
 struct ActorJointStruct {
 	int boneId;
 	int jointType;
+	//int classType;
+	
 	float rad;
 	float length;
 	
@@ -1236,12 +1281,20 @@ struct ActorJointStruct {
 enum E_POSE_GROUPS {
 	E_PG_JUMP,
 	E_PG_IDLE,
+	E_PG_DEAD,
 	E_PG_WALK,
 	E_PG_PICKUP,
+	
+	
+	// weapons
 	
 	E_PG_SLSH_R,
 	E_PG_SLSH_L,
 	E_PG_SLSH_B,
+	
+	E_PG_BACK_R,
+	E_PG_BACK_L,
+	E_PG_BACK_B,
 	
 	E_PG_HACK_R,
 	E_PG_HACK_L,
@@ -1251,13 +1304,85 @@ enum E_POSE_GROUPS {
 	E_PG_STAB_L,
 	E_PG_STAB_B,
 	
+	
+	// punches
+	
+	E_PG_HOOK_R,
+	E_PG_HOOK_L,
+	
+	E_PG_ELBO_R,
+	E_PG_ELBO_L,
+	
+	E_PG_UPPR_R,
+	E_PG_UPPR_L,
+	
+	E_PG_JABP_R,
+	E_PG_JABP_L,
+	
+	
+	// kicks
+	
+	E_PG_ROUN_R,
+	E_PG_ROUN_L,
+	
+	E_PG_REVR_R,
+	E_PG_REVR_L,
+	
+	E_PG_BKIK_R,
+	E_PG_BKIK_L,
+	
+	E_PG_FRNT_R,
+	E_PG_FRNT_L,
+	
+	
 	E_PG_LENGTH	
 };
+
+int getPoseSide(int poseNum) {
+	switch(poseNum) {
+		case E_PG_SLSH_R:
+		case E_PG_BACK_R:
+		case E_PG_HACK_R:
+		case E_PG_STAB_R:
+		case E_PG_HOOK_R:
+		case E_PG_ELBO_R:
+		case E_PG_UPPR_R:
+		case E_PG_JABP_R:
+		case E_PG_ROUN_R:
+		case E_PG_REVR_R:
+		case E_PG_BKIK_R:
+		case E_PG_FRNT_R:
+			return E_HAND_R;
+		break;
+		
+		case E_PG_SLSH_L:
+		case E_PG_BACK_L:
+		case E_PG_HACK_L:
+		case E_PG_STAB_L:
+		case E_PG_HOOK_L:
+		case E_PG_ELBO_L:
+		case E_PG_UPPR_L:
+		case E_PG_JABP_L:
+		case E_PG_ROUN_L:
+		case E_PG_REVR_L:
+		case E_PG_BKIK_L:
+		case E_PG_FRNT_L:
+			return E_HAND_L;
+		break;
+		default:
+			cout << "ERROR SHOULD NOT HIT THIS " << poseNum << "\n";
+			return 2;
+		break;
+		
+	}	
+}
+
 
 enum E_POSE_KEYS {
 	E_PK_T_POSE,
 	E_PK_NON_POSE,
 	E_PK_JUMP,
+	E_PK_DEAD,
 	E_PK_PICKUP,
 	E_PK_IDLE_LOW,
 	E_PK_IDLE_HIGH,
@@ -1266,9 +1391,15 @@ enum E_POSE_KEYS {
 	E_PK_R_FORWARD,
 	E_PK_L_CROSS,
 	
+	// weapons
+	
 	E_PK_SLSH_R0, E_PK_SLSH_R1, E_PK_SLSH_R2,
 	E_PK_SLSH_L0, E_PK_SLSH_L1, E_PK_SLSH_L2,
 	E_PK_SLSH_B0, E_PK_SLSH_B1, E_PK_SLSH_B2,
+	
+	E_PK_BACK_R0, E_PK_BACK_R1, E_PK_BACK_R2,
+	E_PK_BACK_L0, E_PK_BACK_L1, E_PK_BACK_L2,
+	E_PK_BACK_B0, E_PK_BACK_B1, E_PK_BACK_B2,
 	
 	E_PK_HACK_R0, E_PK_HACK_R1, E_PK_HACK_R2,
 	E_PK_HACK_L0, E_PK_HACK_L1, E_PK_HACK_L2,
@@ -1279,6 +1410,40 @@ enum E_POSE_KEYS {
 	E_PK_STAB_B0, E_PK_STAB_B1, E_PK_STAB_B2,
 	
 	
+	
+	// punches
+	
+	E_PK_HOOK_R0, E_PK_HOOK_R1, E_PK_HOOK_R2,
+	E_PK_HOOK_L0, E_PK_HOOK_L1, E_PK_HOOK_L2,
+	
+	E_PK_ELBO_R0, E_PK_ELBO_R1, E_PK_ELBO_R2,
+	E_PK_ELBO_L0, E_PK_ELBO_L1, E_PK_ELBO_L2,
+	
+	E_PK_UPPR_R0, E_PK_UPPR_R1, E_PK_UPPR_R2,
+	E_PK_UPPR_L0, E_PK_UPPR_L1, E_PK_UPPR_L2,
+	
+	E_PK_JABP_R0, E_PK_JABP_R1, E_PK_JABP_R2,
+	E_PK_JABP_L0, E_PK_JABP_L1, E_PK_JABP_L2,
+	
+	
+	// kicks
+	
+	E_PK_ROUN_R0, E_PK_ROUN_R1, E_PK_ROUN_R2,
+	E_PK_ROUN_L0, E_PK_ROUN_L1, E_PK_ROUN_L2,
+	
+	E_PK_REVR_R0, E_PK_REVR_R1, E_PK_REVR_R2,
+	E_PK_REVR_L0, E_PK_REVR_L1, E_PK_REVR_L2,
+	
+	E_PK_BKIK_R0, E_PK_BKIK_R1, E_PK_BKIK_R2,
+	E_PK_BKIK_L0, E_PK_BKIK_L1, E_PK_BKIK_L2,
+	
+	E_PK_FRNT_R0, E_PK_FRNT_R1, E_PK_FRNT_R2,
+	E_PK_FRNT_L0, E_PK_FRNT_L1, E_PK_FRNT_L2,
+	
+	
+	
+	
+	
 	E_PK_LENGTH
 	
 };
@@ -1287,6 +1452,7 @@ string poseStrings[] = {
 	"E_PK_T_POSE",
 	"E_PK_NON_POSE",
 	"E_PK_JUMP",
+	"E_PK_DEAD",
 	"E_PK_PICKUP",
 	"E_PK_IDLE_LOW",
 	"E_PK_IDLE_HIGH",
@@ -1295,9 +1461,15 @@ string poseStrings[] = {
 	"E_PK_R_FORWARD",
 	"E_PK_L_CROSS",
 	
+	// weapons
+	
 	"E_PK_SLSH_R0", "E_PK_SLSH_R1", "E_PK_SLSH_R2",
 	"E_PK_SLSH_L0", "E_PK_SLSH_L1", "E_PK_SLSH_L2",
 	"E_PK_SLSH_B0", "E_PK_SLSH_B1", "E_PK_SLSH_B2",
+	
+	"E_PK_BACK_R0", "E_PK_BACK_R1", "E_PK_BACK_R2",
+	"E_PK_BACK_L0", "E_PK_BACK_L1", "E_PK_BACK_L2",
+	"E_PK_BACK_B0", "E_PK_BACK_B1", "E_PK_BACK_B2",
 	
 	"E_PK_HACK_R0", "E_PK_HACK_R1", "E_PK_HACK_R2",
 	"E_PK_HACK_L0", "E_PK_HACK_L1", "E_PK_HACK_L2",
@@ -1306,6 +1478,39 @@ string poseStrings[] = {
 	"E_PK_STAB_R0", "E_PK_STAB_R1", "E_PK_STAB_R2",
 	"E_PK_STAB_L0", "E_PK_STAB_L1", "E_PK_STAB_L2",
 	"E_PK_STAB_B0", "E_PK_STAB_B1", "E_PK_STAB_B2",
+	
+	
+	// punches
+	
+	"E_PK_HOOK_R0", "E_PK_HOOK_R1", "E_PK_HOOK_R2",
+	"E_PK_HOOK_L0", "E_PK_HOOK_L1", "E_PK_HOOK_L2",
+	
+	"E_PK_ELBO_R0", "E_PK_ELBO_R1", "E_PK_ELBO_R2",
+	"E_PK_ELBO_L0", "E_PK_ELBO_L1", "E_PK_ELBO_L2",
+	
+	"E_PK_UPPR_R0", "E_PK_UPPR_R1", "E_PK_UPPR_R2",
+	"E_PK_UPPR_L0", "E_PK_UPPR_L1", "E_PK_UPPR_L2",
+	
+	"E_PK_JABP_R0", "E_PK_JABP_R1", "E_PK_JABP_R2",
+	"E_PK_JABP_L0", "E_PK_JABP_L1", "E_PK_JABP_L2",
+	
+	
+	// kicks
+	
+	"E_PK_ROUN_R0", "E_PK_ROUN_R1", "E_PK_ROUN_R2",
+	"E_PK_ROUN_L0", "E_PK_ROUN_L1", "E_PK_ROUN_L2",
+	
+	"E_PK_REVR_R0", "E_PK_REVR_R1", "E_PK_REVR_R2",
+	"E_PK_REVR_L0", "E_PK_REVR_L1", "E_PK_REVR_L2",
+	
+	"E_PK_BKIK_R0", "E_PK_BKIK_R1", "E_PK_BKIK_R2",
+	"E_PK_BKIK_L0", "E_PK_BKIK_L1", "E_PK_BKIK_L2",
+	
+	"E_PK_FRNT_R0", "E_PK_FRNT_R1", "E_PK_FRNT_R2",
+	"E_PK_FRNT_L0", "E_PK_FRNT_L1", "E_PK_FRNT_L2",
+	
+	
+	
 	
 	"E_PK_LENGTH"
 };

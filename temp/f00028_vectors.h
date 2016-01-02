@@ -1793,7 +1793,24 @@ btVector3 multByOtherRot( btVector3 imp, btMatrix3x3 otherRot) {
 	return otherRot*imp;
 }
 
+btVector3 rotBTV2D(btVector3 source, float ang) {
+	float baseAng = atan2(source.getY(),source.getX());
+	baseAng += ang + M_PI/2.0f;
+	
+	
 
+	return -btVector3(cos(baseAng),sin(baseAng),0.0f);
+}
+
+bool isFuzzy( btVector3 inp ) {
+	return (
+		(
+			abs(inp.getX()) +
+			abs(inp.getY()) +
+			abs(inp.getZ())
+		) < 0.0000001f	
+	);
+}
 
 struct SphereStruct {
 	FIVector4 position;
@@ -1818,6 +1835,8 @@ private:
 	FIVector4 centerPoint;
 	FIVector4 linVelocity;
 	
+	
+	
 public:
 	
 	
@@ -1833,51 +1852,18 @@ public:
 	std::vector<int> targWeaponStack;
 	std::vector<BodyStruct> bodies;
 	
-	
-	int contactCount;
-	int boneId;
 	int actorId;
 	int orgId;
-	int isGrabbingId;
+	
+	int contactCount;
 	int isGrabbedById;
+	int isGrabbedByHand;
 	int entType;
 	bool isHidden;
 	bool isOpen;
 	bool isEquipped;
 	bool isUpright;
 	bool zeroZ;
-	
-	bool isJumping;
-	bool isWalking;
-	bool leftActive;
-	bool isSwinging;
-	bool isPickingUp;
-	
-	
-	bool weaponActive;
-	bool rightHandTop;
-	
-	float blockCount;
-	float lastBlockDis;
-	
-	btVector3 behaviorTarget;
-	btVector3 leftVec;
-	btVector3 rightVec;
-	btVector3 weaponVec0;
-	btVector3 weaponVec1;
-	
-	//float mass;
-		
-	//float ang;
-	//float angRelative;
-	
-	//float targAng;
-	//float targAngRelative;
-	
-	double totTime;
-	double totWeaponTime;
-	float lrBounds;
-	float udBounds;
 	
 	float bounciness;
 	float friction;
@@ -1890,6 +1876,64 @@ public:
 	// visual objects
 	btVector3 aabbMinVis;
 	btVector3 aabbMaxVis;
+	
+	
+	
+	
+	//////////////////
+	// NPC SPECIFIC //
+	//////////////////
+	
+	int swingType[2];
+	int jumpCooldown;
+	int curHealth;
+	int maxHealth;
+	
+	
+	//bool combatReady;
+	//bool weaponActive;
+	int isGrabbingId[2];
+	bool isHit;
+	bool isJumping;
+	bool isWalking;
+	bool leftActive;
+	bool isSwinging[2];
+	bool isPickingUp;
+	bool rightHandTop;
+	float bindingPower;
+	float swingCount;
+	float blockCount;
+	float lastBlockDis;
+	float lrBounds;
+	float udBounds;
+	double totTime;
+	double totWeaponTime;
+	btVector3 behaviorTarget;
+	btVector3 npcRepel;
+	btVector3 leftVec;
+	btVector3 rightVec;
+	btVector3 weaponVec0[2];
+	btVector3 weaponVec1[2];
+	
+	//////////////////
+	// END SPECIFIC //
+	//////////////////
+	
+	bool holdingWeapon(int handNum) {
+		
+		if (handNum == -1) {
+			return (
+				( isGrabbingId[E_HAND_L] > -1 ) ||
+				( isGrabbingId[E_HAND_R] > -1 )
+			);
+		}
+		else {
+			return ( isGrabbingId[handNum] > -1 );
+		}
+		
+		
+	}
+	
 	
 	void setDamping(float linear, float angular) {
 		int i;
@@ -1927,6 +1971,19 @@ public:
 	
 	bool hasBodies() {
 		return (bodies.size() > 0);
+	}
+	
+	void multVel(int i, btVector3 velMod) {
+		
+		bodies[i].body->setLinearVelocity(
+			bodies[i].body->getLinearVelocity() * velMod
+		);
+	}
+	void addVel(int i, btVector3 velMod) {
+		
+		bodies[i].body->setLinearVelocity(
+			bodies[i].body->getLinearVelocity() + velMod
+		);
 	}
 	
 	FIVector4* getVel(int i) {
@@ -2120,106 +2177,124 @@ public:
 		return btVector3(newLR,newUD,0.0f);
 	}
 	
-	void updateWeaponTargs(double curStepTime) {
+	void setGrabbedBy(int newId, int handNum) {
+		int i;
 		
+		isGrabbedByHand = handNum;
+		isGrabbedById = newId;
 		
-		totWeaponTime += curStepTime;
+		int heldUID = newId;
 		
-		
-		if (totWeaponTime >= 1.0) {
-			totWeaponTime = 1.0;
-			
-			if (targWeaponStack.size() > 1) {
-				//targWeaponStack.pop_front();
-				targWeaponStack.erase(targWeaponStack.begin() + 0);
-				totWeaponTime = 0.0f;
-			}
+		if (heldUID < 0) {
+			heldUID = -3;
 		}
 		
-		int curStep = E_WEAPON_STATE_IDLE;
-		int nextStep = E_WEAPON_STATE_IDLE;
-		
-		if (targWeaponStack.size() > 0) {
-			curStep = targWeaponStack[0];
+		for (i = 0; i < bodies.size(); i++) {
+			bodies[i].body->heldByUID = heldUID;
 		}
-		
-		if (targWeaponStack.size() > 1) {
-			nextStep = targWeaponStack[1];
-		}
-		else {
-			nextStep = curStep;
-		}
-		
-		
-		
-		
-		
-		
-		float lerpTime = totWeaponTime;
-		
-		btVector3 res0;
-		btVector3 res1;
-		
-		
-		if (
-			(curStep == E_WEAPON_STATE_IDLE) &&
-			(nextStep == E_WEAPON_STATE_IDLE)	
-		) {
-			res0 = getWeaponPos(E_WEAPON_POS_RELAXED);
-			res1 = getWeaponPos(E_WEAPON_POS_RELAXED);
-		}
-		
-		if (
-			(curStep == E_WEAPON_STATE_BEG) &&
-			(nextStep == E_WEAPON_STATE_BEG)
-		) {
-			res0 = getWeaponPos(E_WEAPON_POS_UP_LEFT);
-			res1 = getWeaponPos(E_WEAPON_POS_UP_LEFT);
-		}
-		
-		if (
-			(curStep == E_WEAPON_STATE_IDLE) &&
-			(nextStep == E_WEAPON_STATE_BEG)	
-		) {
-			res0 = getWeaponPos(E_WEAPON_POS_RELAXED);
-			res1 = getWeaponPos(E_WEAPON_POS_UP_LEFT);
-		}
-		
-		
-		if (
-			(curStep == E_WEAPON_STATE_BEG) &&
-			(nextStep == E_WEAPON_STATE_END)	
-		) {
-			if (totWeaponTime < 0.5f) {
-				res0 = getWeaponPos(E_WEAPON_POS_UP_LEFT);
-				res1 = getWeaponPos(E_WEAPON_POS_FORWARD);
-				lerpTime = totWeaponTime*2.0f;
-			}
-			else {
-				res0 = getWeaponPos(E_WEAPON_POS_FORWARD);
-				res1 = getWeaponPos(E_WEAPON_POS_RIGHT);
-				lerpTime = (totWeaponTime-0.5f)*2.0f;
-			}
-		}
-	
-		if (
-			(curStep == E_WEAPON_STATE_END) &&
-			(nextStep == E_WEAPON_STATE_IDLE)	
-		) {
-			res0 = getWeaponPos(E_WEAPON_POS_RELAXED);
-			res1 = getWeaponPos(E_WEAPON_POS_RIGHT);
-		}
-		
-		
-		
-		lrBounds = mixf(res0.getX(), res1.getX(), lerpTime);
-		udBounds = mixf(res0.getY(), res1.getY(), lerpTime);
-		
-		
 	}
+	
+	// void updateWeaponTargs(double curStepTime) {
+		
+		
+	// 	totWeaponTime += curStepTime;
+		
+		
+	// 	if (totWeaponTime >= 1.0) {
+	// 		totWeaponTime = 1.0;
+			
+	// 		if (targWeaponStack.size() > 1) {
+	// 			//targWeaponStack.pop_front();
+	// 			targWeaponStack.erase(targWeaponStack.begin() + 0);
+	// 			totWeaponTime = 0.0f;
+	// 		}
+	// 	}
+		
+	// 	int curStep = E_WEAPON_STATE_IDLE;
+	// 	int nextStep = E_WEAPON_STATE_IDLE;
+		
+	// 	if (targWeaponStack.size() > 0) {
+	// 		curStep = targWeaponStack[0];
+	// 	}
+		
+	// 	if (targWeaponStack.size() > 1) {
+	// 		nextStep = targWeaponStack[1];
+	// 	}
+	// 	else {
+	// 		nextStep = curStep;
+	// 	}
+		
+		
+		
+		
+		
+		
+	// 	float lerpTime = totWeaponTime;
+		
+	// 	btVector3 res0;
+	// 	btVector3 res1;
+		
+		
+	// 	if (
+	// 		(curStep == E_WEAPON_STATE_IDLE) &&
+	// 		(nextStep == E_WEAPON_STATE_IDLE)	
+	// 	) {
+	// 		res0 = getWeaponPos(E_WEAPON_POS_RELAXED);
+	// 		res1 = getWeaponPos(E_WEAPON_POS_RELAXED);
+	// 	}
+		
+	// 	if (
+	// 		(curStep == E_WEAPON_STATE_BEG) &&
+	// 		(nextStep == E_WEAPON_STATE_BEG)
+	// 	) {
+	// 		res0 = getWeaponPos(E_WEAPON_POS_UP_LEFT);
+	// 		res1 = getWeaponPos(E_WEAPON_POS_UP_LEFT);
+	// 	}
+		
+	// 	if (
+	// 		(curStep == E_WEAPON_STATE_IDLE) &&
+	// 		(nextStep == E_WEAPON_STATE_BEG)	
+	// 	) {
+	// 		res0 = getWeaponPos(E_WEAPON_POS_RELAXED);
+	// 		res1 = getWeaponPos(E_WEAPON_POS_UP_LEFT);
+	// 	}
+		
+		
+	// 	if (
+	// 		(curStep == E_WEAPON_STATE_BEG) &&
+	// 		(nextStep == E_WEAPON_STATE_END)	
+	// 	) {
+	// 		if (totWeaponTime < 0.5f) {
+	// 			res0 = getWeaponPos(E_WEAPON_POS_UP_LEFT);
+	// 			res1 = getWeaponPos(E_WEAPON_POS_FORWARD);
+	// 			lerpTime = totWeaponTime*2.0f;
+	// 		}
+	// 		else {
+	// 			res0 = getWeaponPos(E_WEAPON_POS_FORWARD);
+	// 			res1 = getWeaponPos(E_WEAPON_POS_RIGHT);
+	// 			lerpTime = (totWeaponTime-0.5f)*2.0f;
+	// 		}
+	// 	}
+	
+	// 	if (
+	// 		(curStep == E_WEAPON_STATE_END) &&
+	// 		(nextStep == E_WEAPON_STATE_IDLE)	
+	// 	) {
+	// 		res0 = getWeaponPos(E_WEAPON_POS_RELAXED);
+	// 		res1 = getWeaponPos(E_WEAPON_POS_RIGHT);
+	// 	}
+		
+		
+		
+	// 	lrBounds = mixf(res0.getX(), res1.getX(), lerpTime);
+	// 	udBounds = mixf(res0.getY(), res1.getY(), lerpTime);
+		
+		
+	// }
 	
 	
 	void updateWeapon(
+		int handNum,
 		btVector3 weaponBeg,
 		btVector3 weaponEnd,
 		double curStepTime,
@@ -2293,7 +2368,16 @@ public:
 		
 		// myVector1.y += 1.0f-abs(cos(weaponPhi2));
 		
-		BodyStruct* handBody = getBodyByBoneId(E_BONE_L_METACARPALS);
+		BodyStruct* handBody;
+		
+		if (handNum == E_HAND_L) {
+			handBody = getBodyByBoneId(getCorrectedName(E_BONE_L_METACARPALS));
+		}
+		else {
+			handBody = getBodyByBoneId(getCorrectedName(E_BONE_R_METACARPALS));
+		}
+		
+		
 		
 		btVector3 handCenter = handBody->body->getCenterOfMassPosition();
 		
@@ -2316,13 +2400,13 @@ public:
 		resVector0 = myMatrix4*vf0;
 		resVector1 = myMatrix4*vf1;
 		
-		weaponVec0 = btVector3(resVector0.x,resVector0.y,resVector0.z);
-		weaponVec1 = btVector3(resVector1.x,resVector1.y,resVector1.z);
+		weaponVec0[handNum] = btVector3(resVector0.x,resVector0.y,resVector0.z);
+		weaponVec1[handNum] = btVector3(resVector1.x,resVector1.y,resVector1.z);
 		
-		btVector3 weapDif = handCenter-weaponVec0;
+		btVector3 weapDif = handCenter-weaponVec0[handNum];
 		
-		weaponVec0 += weapDif;
-		weaponVec1 += weapDif;
+		weaponVec0[handNum] += weapDif;
+		weaponVec1[handNum] += weapDif;
 		
 		
 		vf0 = Vector4( 1.0f,0.0f,0.0f,1.0f);
@@ -2449,58 +2533,58 @@ public:
 		);
 	}
 	
-	void makeWalk(btVector3 imp, btMatrix3x3 otherRot) {
+	// void makeWalk(btVector3 imp, btMatrix3x3 otherRot) {
 		
-		if (isHumanoid()) {
+	// 	if (isHumanoid()) {
 			
-		}
-		else {
-			return;
-		}
+	// 	}
+	// 	else {
+	// 		return;
+	// 	}
 		
 		
-		bool lfDown = bodies[E_BDG_LFOOT].hasContact && 
-			(bodies[E_BDG_LFOOT].body->getLinearVelocity().length() < 0.1f);
-		bool rfDown = bodies[E_BDG_RFOOT].hasContact && 
-			(bodies[E_BDG_RFOOT].body->getLinearVelocity().length() < 0.1f);
+	// 	bool lfDown = bodies[E_BDG_LFOOT].hasContact && 
+	// 		(bodies[E_BDG_LFOOT].body->getLinearVelocity().length() < 0.1f);
+	// 	bool rfDown = bodies[E_BDG_RFOOT].hasContact && 
+	// 		(bodies[E_BDG_RFOOT].body->getLinearVelocity().length() < 0.1f);
 		
-		int resInd = -1;
+	// 	int resInd = -1;
 		
-		if (lfDown && rfDown) {
-			leftActive = !leftActive;
-			//resInd = E_BDG_LFOOT;
+	// 	if (lfDown && rfDown) {
+	// 		leftActive = !leftActive;
+	// 		//resInd = E_BDG_LFOOT;
 			
-			if (leftActive) {
-				resInd = E_BDG_LFOOT;
-			}
-			else {
-				resInd = E_BDG_RFOOT;
-			}
+	// 		if (leftActive) {
+	// 			resInd = E_BDG_LFOOT;
+	// 		}
+	// 		else {
+	// 			resInd = E_BDG_RFOOT;
+	// 		}
 			
-		}
-		// else {
-		// 	if (lfDown) {
-		// 		resInd = E_BDG_LFOOT;
-		// 	}
-		// 	else {
-		// 		if (rfDown) {
-		// 			resInd = E_BDG_RFOOT;
-		// 		}
-		// 	}
-		// }
+	// 	}
+	// 	// else {
+	// 	// 	if (lfDown) {
+	// 	// 		resInd = E_BDG_LFOOT;
+	// 	// 	}
+	// 	// 	else {
+	// 	// 		if (rfDown) {
+	// 	// 			resInd = E_BDG_RFOOT;
+	// 	// 		}
+	// 	// 	}
+	// 	// }
 		
-		if (resInd == -1) {
-			return;
-		}
-		
-		
-		btVector3 newImp = otherRot*imp*bodies[resInd].mass;
-		
-		bodies[resInd].body->applyCentralImpulse(newImp);
-		bodies[resInd].body->setActivationState(ACTIVE_TAG);
+	// 	if (resInd == -1) {
+	// 		return;
+	// 	}
 		
 		
-	}
+	// 	btVector3 newImp = otherRot*imp*bodies[resInd].mass;
+		
+	// 	bodies[resInd].body->applyCentralImpulse(newImp);
+	// 	bodies[resInd].body->setActivationState(ACTIVE_TAG);
+		
+		
+	// }
 	
 	
 	
@@ -2587,7 +2671,17 @@ public:
 		
 	// }
 	
+	float healthPerc() {
+		return ((float)curHealth)/((float)maxHealth);
+	}
 	
+	bool isDead() {
+		return (curHealth <= 0);
+	}
+	
+	bool isAlive() {
+		return (curHealth > 0);
+	}
 	
 	
 	void init(
@@ -2622,21 +2716,33 @@ public:
 		entType = _entType;
 		
 		behaviorTarget = btVector3(0.0f,0.0f,0.0f);
+		npcRepel = btVector3(0.0f,0.0f,0.0f);
 		
+		isGrabbedByHand = -1;
 		isGrabbedById = -1;
-		isGrabbingId = -1;
+		isGrabbingId[0] = -1;
+		isGrabbingId[1] = -1;
 		
+		maxHealth = 255;
+		curHealth = maxHealth;
 		lastBlockDis = 0.0f;
 		blockCount = 0.0f;
+		swingCount = 0.0f;
+		bindingPower = 1.0f;
 		
 		rightHandTop = false;
-		weaponActive = false;
+		//weaponActive = false;
 		
+		swingType[E_HAND_R] = E_PG_SLSH_R;
+		swingType[E_HAND_L] = E_PG_SLSH_L;
 		zeroZ = false;
+		isHit = false;
+		jumpCooldown = 0;
 		isJumping = false;
 		isWalking = false;
 		leftActive = false;
-		isSwinging = false;
+		isSwinging[0] = false;
+		isSwinging[1] = false;
 		isPickingUp = false;
 		
 		isUpright = 

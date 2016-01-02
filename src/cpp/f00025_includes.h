@@ -12,8 +12,10 @@ int RUN_COUNT;
 
 const static int MAX_LIMB_DATA_IN_BYTES = 65536;
 
+const static bool GEN_DEBRIS = true;
+const static int  MAX_DEBRIS = 100;
 const static bool GEN_COLLISION = false;
-const static bool GEN_POLYS_HOLDER = true;
+const static bool GEN_POLYS_HOLDER = false;
 const static bool GEN_POLYS_WORLD = true;
 
 const static bool SINGLE_THREADED = false;
@@ -43,14 +45,14 @@ const static bool DO_SHADER_DUMP = false;
 // const static int DEF_WIN_H = 720;
 
 
-#define STREAM_RES 1
+// #define STREAM_RES 1
 
 #ifdef STREAM_RES
-	const static int DEF_WIN_W = 1920;
-	const static int DEF_WIN_H = 1080;
+	const static int DEF_WIN_W = 2048;//1920;
+	const static int DEF_WIN_H = 1024;//1080;
 #else
-	const static int DEF_WIN_W = 1440;
-	const static int DEF_WIN_H = 720;
+	const static int DEF_WIN_W = 1536;
+	const static int DEF_WIN_H = 768;
 #endif
 
 
@@ -2018,6 +2020,52 @@ subject to the following restrictions:
 
 
 
+struct CustFilterCallback : public btOverlapFilterCallback
+{
+	
+	// CustFilterCallback()
+	// {
+	// }
+	// virtual ~CustFilterCallback()
+	// {
+	// }
+	
+	// return true when pairs need collision
+	virtual bool needBroadphaseCollision(
+		btBroadphaseProxy* proxy0,
+		btBroadphaseProxy* proxy1) const
+	{
+		bool collides = 
+		(
+			((proxy0->m_collisionFilterGroup & proxy1->m_collisionFilterMask) != 0) &&
+			((proxy1->m_collisionFilterGroup & proxy0->m_collisionFilterMask) != 0)
+		);
+
+
+		
+		btCollisionObject* colObj0 = (btCollisionObject*)(proxy0->m_clientObject);
+		btCollisionObject* colObj1 = (btCollisionObject*)(proxy1->m_clientObject);
+		
+		
+		
+		// if (colObj0->bodyUID != colObj1->bodyUID) {
+		// 	cout << colObj0->bodyUID << " " << colObj1->bodyUID << "\n";
+		// }
+		
+		collides = collides && (
+			(colObj0->bodyUID != colObj1->bodyUID) &&
+			(colObj0->bodyUID > -2) &&
+			(colObj1->bodyUID > -2) &&
+			(colObj0->heldByUID != colObj1->bodyUID) &&
+			(colObj1->heldByUID != colObj0->bodyUID)
+		);
+		
+		
+		
+		return collides;
+	}
+};
+
 
 
 
@@ -2027,6 +2075,8 @@ class BenchmarkDemo : public CommonRigidBodyBase
 	//keep the collision shapes, for deletion/cleanup
 
 	btAlignedObjectArray<class RagDoll*>	m_ragdolls;
+	
+	//btOverlapFilterCallback * filterCallback;
 	
 	btVector3 initOffset;
 	
@@ -2087,7 +2137,7 @@ class BenchmarkDemo : public CommonRigidBodyBase
 	
 	void beginDrop(float x, float y, float z);
 	
-	btRigidBody* bodyPick(const btVector3& rayFromWorld, const btVector3& rayToWorld);
+	// btRigidBody* bodyPick(const btVector3& rayFromWorld, const btVector3& rayToWorld);
 	
 	void initPhysics();
 
@@ -2105,52 +2155,52 @@ class BenchmarkDemo : public CommonRigidBodyBase
 	}
 };
 
-btRigidBody* BenchmarkDemo::bodyPick(const btVector3& rayFromWorld, const btVector3& rayToWorld) {
+// btRigidBody* BenchmarkDemo::bodyPick(const btVector3& rayFromWorld, const btVector3& rayToWorld) {
 	
-	if (m_dynamicsWorld==0) {
-		cout << "world not ready\n";
-		return NULL;
-	}
+// 	if (m_dynamicsWorld==0) {
+// 		cout << "world not ready\n";
+// 		return NULL;
+// 	}
 
-	btCollisionWorld::ClosestRayResultCallback rayCallback(rayFromWorld, rayToWorld);
+// 	btCollisionWorld::ClosestRayResultCallback rayCallback(rayFromWorld, rayToWorld);
 
-	m_dynamicsWorld->rayTest(rayFromWorld, rayToWorld, rayCallback);
-	if (rayCallback.hasHit())
-	{
+// 	m_dynamicsWorld->rayTest(rayFromWorld, rayToWorld, rayCallback);
+// 	if (rayCallback.hasHit())
+// 	{
 
-		btVector3 pickPos = rayCallback.m_hitPointWorld;
-		btRigidBody* body = (btRigidBody*)btRigidBody::upcast(rayCallback.m_collisionObject);
-		if (body)
-		{
-			//other exclusions?
-			if (!(body->isStaticObject() || body->isKinematicObject()))
-			{
+// 		btVector3 pickPos = rayCallback.m_hitPointWorld;
+// 		btRigidBody* body = (btRigidBody*)btRigidBody::upcast(rayCallback.m_collisionObject);
+// 		if (body)
+// 		{
+// 			//other exclusions?
+// 			if (!(body->isStaticObject() || body->isKinematicObject()))
+// 			{
 				
-				return body;
+// 				return body;
 				
-				// m_pickedBody = body;
-				// m_savedState = m_pickedBody->getActivationState();
-				// m_pickedBody->setActivationState(DISABLE_DEACTIVATION);
-				// //printf("pickPos=%f,%f,%f\n",pickPos.getX(),pickPos.getY(),pickPos.getZ());
-				// btVector3 localPivot = body->getCenterOfMassTransform().inverse() * pickPos;
-				// btPoint2PointConstraint* p2p = new btPoint2PointConstraint(*body, localPivot);
-				// m_dynamicsWorld->addConstraint(p2p, true);
-				// m_pickedConstraint = p2p;
-				// btScalar mousePickClamping = 30.f;
-				// p2p->m_setting.m_impulseClamp = mousePickClamping;
-				// //very weak constraint for picking
-				// p2p->m_setting.m_tau = 0.001f;
-			}
-		}
+// 				// m_pickedBody = body;
+// 				// m_savedState = m_pickedBody->getActivationState();
+// 				// m_pickedBody->setActivationState(DISABLE_DEACTIVATION);
+// 				// //printf("pickPos=%f,%f,%f\n",pickPos.getX(),pickPos.getY(),pickPos.getZ());
+// 				// btVector3 localPivot = body->getCenterOfMassTransform().inverse() * pickPos;
+// 				// btPoint2PointConstraint* p2p = new btPoint2PointConstraint(*body, localPivot);
+// 				// m_dynamicsWorld->addConstraint(p2p, true);
+// 				// m_pickedConstraint = p2p;
+// 				// btScalar mousePickClamping = 30.f;
+// 				// p2p->m_setting.m_impulseClamp = mousePickClamping;
+// 				// //very weak constraint for picking
+// 				// p2p->m_setting.m_tau = 0.001f;
+// 			}
+// 		}
 		
 		
-		// m_oldPickingPos = rayToWorld;
-		// m_hitPos = pickPos;
-		// m_oldPickingDist = (pickPos - rayFromWorld).length();
-	}
-	return NULL;
+// 		// m_oldPickingPos = rayToWorld;
+// 		// m_hitPos = pickPos;
+// 		// m_oldPickingDist = (pickPos - rayFromWorld).length();
+// 	}
+// 	return NULL;
 	
-}
+// }
 
 
 class btRaycastBar2
@@ -2450,10 +2500,10 @@ void BenchmarkDemo::initPhysics()
 	btVector3 worldAabbMin(-16384,-16384,-16384);
 	btVector3 worldAabbMax(16384,16384,16384);
 	
-	btHashedOverlappingPairCache* pairCache = new btHashedOverlappingPairCache();
-	m_broadphase = new btAxisSweep3(worldAabbMin,worldAabbMax,3500,pairCache);
+//	btHashedOverlappingPairCache* pairCache = new btHashedOverlappingPairCache();
+//	m_broadphase = new btAxisSweep3(worldAabbMin,worldAabbMax,3500,pairCache);
 //	m_broadphase = new btSimpleBroadphase();
-//	m_broadphase = new btDbvtBroadphase();
+	m_broadphase = new btDbvtBroadphase();
 	
 
 	///the default constraint solver. For parallel processing you can use a different solver (see Extras/BulletMultiThreaded)
@@ -2474,39 +2524,43 @@ void BenchmarkDemo::initPhysics()
 	
 
 	m_dynamicsWorld->setGravity(btVector3(0,0,-10));
+	
+	
+	
+	
 
-	if (m_benchmark<5)
-	{
-		///create a few basic rigid bodies
-		btCollisionShape* groundShape = new btBoxShape(btVector3(btScalar(250.),btScalar(250.),btScalar(50.)));
-	//	btCollisionShape* groundShape = new btStaticPlaneShape(btVector3(0,1,0),0);
+	// if (m_benchmark<5)
+	// {
+	// 	///create a few basic rigid bodies
+	// 	btCollisionShape* groundShape = new btBoxShape(btVector3(btScalar(250.),btScalar(250.),btScalar(50.)));
+	// //	btCollisionShape* groundShape = new btStaticPlaneShape(btVector3(0,1,0),0);
 		
-		m_collisionShapes.push_back(groundShape);
+	// 	m_collisionShapes.push_back(groundShape);
 
-		btTransform groundTransform;
-		groundTransform.setIdentity();
-		groundTransform.setOrigin(btVector3(0,0,-50));
+	// 	btTransform groundTransform;
+	// 	groundTransform.setIdentity();
+	// 	groundTransform.setOrigin(btVector3(0,0,-50));
 
-		//We can also use DemoApplication::createRigidBody, but for clarity it is provided here:
-		{
-			btScalar mass(0.);
+	// 	//We can also use DemoApplication::createRigidBody, but for clarity it is provided here:
+	// 	{
+	// 		btScalar mass(0.);
 
-			//rigidbody is dynamic if and only if mass is non zero, otherwise static
-			bool isDynamic = (mass != 0.f);
+	// 		//rigidbody is dynamic if and only if mass is non zero, otherwise static
+	// 		bool isDynamic = (mass != 0.f);
 
-			btVector3 localInertia(0,0,0);
-			if (isDynamic)
-				groundShape->calculateLocalInertia(mass,localInertia);
+	// 		btVector3 localInertia(0,0,0);
+	// 		if (isDynamic)
+	// 			groundShape->calculateLocalInertia(mass,localInertia);
 
-			//using motionstate is recommended, it provides interpolation capabilities, and only synchronizes 'active' objects
-			btDefaultMotionState* myMotionState = new btDefaultMotionState(groundTransform);
-			btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,groundShape,localInertia);
-			btRigidBody* body = new btRigidBody(rbInfo);
+	// 		//using motionstate is recommended, it provides interpolation capabilities, and only synchronizes 'active' objects
+	// 		btDefaultMotionState* myMotionState = new btDefaultMotionState(groundTransform);
+	// 		btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,groundShape,localInertia);
+	// 		btRigidBody* body = new btRigidBody(rbInfo);
 
-			//add the body to the dynamics world
-			m_dynamicsWorld->addRigidBody(body);
-		}
-	}
+	// 		//add the body to the dynamics world
+	// 		m_dynamicsWorld->addRigidBody(body);
+	// 	}
+	// }
 
 	// switch (m_benchmark)
 	// {

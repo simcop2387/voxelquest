@@ -6,6 +6,7 @@
 GamePageHolder::GamePageHolder ()
                          {
 		
+		boxShape = NULL;
 		trimeshShape = NULL;
 		meshInterface = NULL;
 		body = NULL;
@@ -1357,6 +1358,7 @@ void GamePageHolder::createMesh ()
 		btTransform trans;
 		trans.setIdentity();
 		
+		float objRad;
 		
 		if (trimeshShape == NULL) {
 			
@@ -1382,40 +1384,78 @@ void GamePageHolder::createMesh ()
 			}
 		}
 		
-
-		meshInterface = new btTriangleIndexVertexArray();
+		if (boxShape == NULL) {
+			
+		}
+		else {
+			singleton->gamePhysics->example->removeRigidBody(body);
+			delete boxShape;
+			boxShape = NULL;
+		}
 		
-		part.m_vertexBase = (const unsigned char*)(&(vertexVec[0]));
-		part.m_vertexStride = sizeof(btScalar) * 3;
-		part.m_numVertices = vertexVec.size()/3;
-		part.m_triangleIndexBase = (const unsigned char*)(&(indexVec[0]));
-		part.m_triangleIndexStride = sizeof(short) * 3;
-		part.m_numTriangles = indexVec.size()/3;
-		part.m_indexType = PHY_SHORT;
+		
+		if ((holderFlags == E_CD_SOLID)&&listEmpty) {
+			objRad = (gphMaxInPixels[0]-gphMinInPixels[0])*0.5f;
+			
+			boxShape = new btBoxShape(btVector3(objRad,objRad,objRad));
+			trans.setOrigin(btVector3(
+				(gphMinInPixels[0]+gphMaxInPixels[0])*0.5f,
+				(gphMinInPixels[1]+gphMaxInPixels[1])*0.5f,
+				(gphMinInPixels[2]+gphMaxInPixels[2])*0.5f
+			));
 
-		meshInterface->addIndexedMesh(part,PHY_SHORT);
+			body = singleton->gamePhysics->example->createRigidBodyMask(
+				0,
+				trans,
+				boxShape
+				,COL_STATIC,
+				terCollidesWith
+			);
+			
+		}
+		else {
+			
+			meshInterface = new btTriangleIndexVertexArray();
+			
+			part.m_vertexBase = (const unsigned char*)(&(vertexVec[0]));
+			part.m_vertexStride = sizeof(btScalar) * 3;
+			part.m_numVertices = vertexVec.size()/3;
+			part.m_triangleIndexBase = (const unsigned char*)(&(indexVec[0]));
+			part.m_triangleIndexStride = sizeof(short) * 3;
+			part.m_numTriangles = indexVec.size()/3;
+			part.m_indexType = PHY_SHORT;
+
+			meshInterface->addIndexedMesh(part,PHY_SHORT);
+
+			
+			trimeshShape = new btBvhTriangleMeshShape(meshInterface,true,true);
+			
+			trans.setOrigin(btVector3(
+				gphMinInPixels[0],
+				gphMinInPixels[1],
+				gphMinInPixels[2]
+			));
+
+			body = singleton->gamePhysics->example->createRigidBodyMask(
+				0,
+				trans,
+				trimeshShape
+				,COL_STATIC,
+				terCollidesWith
+			);
+			
+			
+		}
+		
 
 		
-		trimeshShape = new btBvhTriangleMeshShape(meshInterface,true,true);
-		
-		trans.setOrigin(btVector3(
-			gphMinInPixels[0],
-			gphMinInPixels[1],
-			gphMinInPixels[2]
-		));
-
-		body = singleton->gamePhysics->example->createRigidBodyMask(
-			0,
-			trans,
-			trimeshShape
-			,COL_STATIC,
-			terCollidesWith
-		);
-		body->setFriction (btScalar(0.9994));
+		body->setFriction(btScalar(0.9));
 		body->bodyUID = -1;
 		body->limbUID = -1;
 		
 		singleton->gamePhysics->example->updateGraphicsObjects();
+		
+		
 		
 	}
 void GamePageHolder::fillVBO ()
@@ -1437,6 +1477,12 @@ void GamePageHolder::fillVBO ()
 		// int jj2;
 		int kk2;
 		
+		
+		
+		
+		
+		/////////////////////
+		
 		if (
 			(holderFlags == E_CD_SOLID) ||
 			(holderFlags == E_CD_EMPTY)	
@@ -1451,10 +1497,9 @@ void GamePageHolder::fillVBO ()
 		}
 		
 		
+		
 		/////////////////////
 		
-		
-		//cout << "gph:fillVBO()\n";
 		
 		float fk;
 		
@@ -1496,7 +1541,7 @@ void GamePageHolder::fillVBO ()
 		// 	}
 		// }
 		
-		singleton->gamePhysics->example->updateGraphicsObjects();
+		//singleton->gamePhysics->example->updateGraphicsObjects();
 		
 		//cout << "collideIndices.size() " << collideIndices.size() << "\n";
 		
@@ -1509,7 +1554,10 @@ void GamePageHolder::fillVBO ()
 			// (isBlockHolder&&GEN_POLYS_WORLD) ||
 			((!isBlockHolder)&&GEN_POLYS_HOLDER)	
 		) {
-			if (listEmpty) {
+			if (
+				listEmpty
+				// && (holderFlags != E_CD_SOLID)
+			) {
 				
 			}
 			else {

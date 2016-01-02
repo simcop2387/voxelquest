@@ -339,6 +339,8 @@ float randf3(vec3 co) {
 float MAX_CAM_DIS;
 float MAX_CAM_VOL_DIS;
 
+
+float globGrassPos;
 vec3 globExplodeVec;
 vec2 globTexDyn;
 vec2 globTexEarth;
@@ -572,14 +574,14 @@ vec3 opRep( vec3 p, vec3 c )
 // 	return texture(Texture0, (pos)/volSizePrim );
 // }
 
-vec2 getEmpty3D(vec3 pos) {
+vec2 getEmpty3D(vec3 pos, float strength) {
 		
 		vec4 samp = getTexCubic(Texture0, pos-volMinReadyInPixels, volSizePrim);
 		float maxDis = mix(0.5,1.0,distance(cameraPos,pos)/MAX_CAM_VOL_DIS);
 		
 		return vec2(
 			mix(
-					maxDis,
+					maxDis*strength,
 					-maxDis,
 					sqrt(samp.a)
 			),
@@ -589,7 +591,7 @@ vec2 getEmpty3D(vec3 pos) {
 
 
 
-float remBox(vec3 pos, float resBase) {
+float remBox(vec3 pos, float resBase, float strength) {
 	float res = resBase;
 	
 	// res = opS(
@@ -600,20 +602,28 @@ float remBox(vec3 pos, float resBase) {
 	vec2 emptyVal = vec2(0.0);
 	
 	if (
+		//hasDestruction &&
 		all(greaterThan(pos,volMinReadyInPixels)) &&
 		all(lessThan(pos,volMaxReadyInPixels))
 	) {
 		
-		emptyVal = getEmpty3D(pos);
+		emptyVal = getEmpty3D(pos, strength);
 	
 		
 		
-		res = opS(res, emptyVal.x*0.5 );
+		res = opS(
+			res,
+			emptyVal.x*0.5
+		);
+		
+		// *clamp(1.0-length(pos - (volMinReadyInPixels+volMaxReadyInPixels)*0.5)/(
+		// 		(volMaxReadyInPixels-volMinReadyInPixels)*0.5
+		// ),0.0,1.0)
 		
 		if (emptyVal.y > 0.0) {
 			res = opD(
 				res,
-				(1.0-getTexLin(Texture13, pos*(9.0), voroSize).r)*emptyVal.y*2.0
+				(1.0-getTexLin(Texture13, pos*(9.0), voroSize).r)*emptyVal.y*2.0*strength
 			);
 		}
 		
@@ -1528,7 +1538,7 @@ float mapSolid( vec3 pos ) {
 		
 		
 		
-		res.x = remBox(pos, res.x);
+		res.x = remBox(pos, res.x, 0.5);
 		
 		//
 		
@@ -1587,6 +1597,7 @@ vec2 castSolid( vec3 ro, vec3 rd, vec2 minMaxT, float fNumSteps ) {
 		}
 		
 		
+		globCurSteps += float(p);
 		
 		
 		if (res < SOLID_PREC) {
@@ -1605,7 +1616,10 @@ vec2 castSolid( vec3 ro, vec3 rd, vec2 minMaxT, float fNumSteps ) {
 						t += res*0.5;
 				}
 				
-				p += TOT_DETAIL_STEPS;
+				
+				globCurSteps += float(p);
+				
+				//p += TOT_DETAIL_STEPS;
 		}
 		else {
 				globTexPrim.xy = vec2(0.0);
@@ -1619,7 +1633,6 @@ vec2 castSolid( vec3 ro, vec3 rd, vec2 minMaxT, float fNumSteps ) {
 		//     globTexPrim.xy = vec2(0.0);
 		// }
 		
-		globCurSteps += float(p);
 		
 		return vec2(t,res);
 }
@@ -3269,6 +3282,8 @@ float mapWater( vec3 pos ) {
 // }
 // #endif
 
+^INCLUDE:MapLand^
+
 
 vec2 mapDyn(vec3 pos) {
 		
@@ -3338,12 +3353,32 @@ vec2 mapDyn(vec3 pos) {
 		//     TEX_EARTH
 		// ));
 		
+		// float camDis = distance(cameraPos,pos)/MAX_CLIP;
+		// vec3 myTV = getTerVal(pos, camDis, false);
+		// if (myTV.x < 2.0) {
+			
+		// 	vec3 cenPoint2 = vec3(0.5);
+		// 	vec3 repPos2 = opRep(pos,cenPoint2);
+		// 	res = opU(
+		// 		res,
+		// 		vec2(
+		// 			sdSphere(vec3(repPos2.xy,0.0),0.25*clamp(0.25-myTV.x,0.0,1.0)),
+		// 			TEX_GRASS	
+		// 		)
+		// 	);
+			
+		// }
 		
 		
 		res = opU(res, vec2(
 		    postLimb(pos),
 		    TEX_EARTH
 		));
+		
+		res.x = opS(
+			res.x,
+			sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) ) //8.0 //CAM_BOX_SIZE
+		);
 		
 		
 		
@@ -3488,7 +3523,7 @@ float newNoise(vec3 pos) {
 
 
 
-^INCLUDE:MapLand^
+
 
 
 vec2 mapLand(vec3 pos) {
@@ -3505,7 +3540,7 @@ vec2 mapLand(vec3 pos) {
 	// res.x = opS(res.x, -lv1);
 	
 	
-	res.x = remBox(pos,res.x);
+	res.x = remBox(pos,res.x, 4.0);
 	
 	
 	
@@ -3514,7 +3549,7 @@ vec2 mapLand(vec3 pos) {
 	
 }
 
-vec4 mapLandMicro(vec3 pos, vec3 terNorm) {
+vec4 mapLandMicro(vec3 pos) { //, vec3 terNorm
 	
 	vec2 res = vec2(MAX_CAM_DIS, TEX_EARTH);
 	
@@ -3526,7 +3561,7 @@ vec4 mapLandMicro(vec3 pos, vec3 terNorm) {
 	float camDis3 = clamp(1.0-camDis*128.0,0.0,1.0);
 	float texVal = 0.0;
 	float texSpacing = 10.0;//0.01*cellsPerWorld;
-	vec3 absTerNorm = abs(terNorm);
+	//vec3 absTerNorm = abs(terNorm);
 	
 	vec2 mp = vec2(1.0/mapPitch);
 	vec2 mp2 = vec2(mapPitch);
@@ -3566,11 +3601,11 @@ vec4 mapLandMicro(vec3 pos, vec3 terNorm) {
 	
 	float oldRes = res.x;
 	
-	res.x = remBox(pos,res.x);
+	res.x = remBox(pos,res.x, 4.0);
 	
 	
 	
-	return vec4(res.x, float((oldRes) < res.x),myTV.zy);
+	return vec4(res.x, oldRes, myTV.zy);
 	
 }
 
@@ -3767,6 +3802,8 @@ vec4 castDyn(
 				t += res.x;
 		}
 		
+		globCurSteps += float(p);
+		
 		stepCount = float(p);
 		
 		
@@ -3786,6 +3823,7 @@ vec4 castDyn(
 						
 						t += res.x;
 				}
+				globCurSteps += float(p);
 				
 				stepCount += float(p);
 				
@@ -3806,7 +3844,7 @@ vec4 castDyn(
 						
 				}
 				
-				p += TOT_DETAIL_STEPS;
+				//p += TOT_DETAIL_STEPS;
 		}
 		else {
 				globTexDyn.xy = vec2(0.0);
@@ -3818,7 +3856,7 @@ vec4 castDyn(
 		
 		
 		
-		globCurSteps += float(p);
+		
 		
 		// if (
 		//     (res.y != SKY_ID)
@@ -3895,7 +3933,7 @@ vec4 castWater(
 				
 				t += res;
 		}
-		
+		globCurSteps += float(p);
 		
 		
 		
@@ -3917,8 +3955,10 @@ vec4 castWater(
 						
 						t += res;
 				}
+				globCurSteps += float(p);
+				
 				globTexWater.x = TEX_WATER;
-				p += TOT_DETAIL_STEPS;
+				//p += TOT_DETAIL_STEPS;
 		}
 		else {
 				globTexWater.xy = vec2(0.0);
@@ -3929,7 +3969,7 @@ vec4 castWater(
 		
 		
 		
-		globCurSteps += float(p);
+		
 		
 		return vec4(normWater(pos),t);
 		
@@ -3943,9 +3983,9 @@ vec3 normLandMicro( vec3 pos, vec3 terNorm, float camDis )
 		eps.x = mix(0.1,20.0,camDis);
 		
 		vec3 nor = vec3(
-				mapLandMicro(pos+eps.xyy, terNorm).x - mapLandMicro(pos-eps.xyy, terNorm).x,
-				mapLandMicro(pos+eps.yxy, terNorm).x - mapLandMicro(pos-eps.yxy, terNorm).x,
-				mapLandMicro(pos+eps.yyx, terNorm).x - mapLandMicro(pos-eps.yyx, terNorm).x );
+				mapLandMicro(pos+eps.xyy).x - mapLandMicro(pos-eps.xyy).x,
+				mapLandMicro(pos+eps.yxy).x - mapLandMicro(pos-eps.yxy).x,
+				mapLandMicro(pos+eps.yyx).x - mapLandMicro(pos-eps.yyx).x );
 		return normalize(nor);
 }
 
@@ -3960,6 +4000,62 @@ vec3 normLand( vec3 pos )
 				mapLand(pos+eps.yyx).x - mapLand(pos-eps.yyx).x );
 		return normalize(nor);
 }
+
+// #ifdef DOGRASS
+
+// 		float mapGrass( vec3 pos ) {
+			
+// 			vec3 cenPoint2 = vec3(0.5);
+// 			vec3 repPos2 = opRep(pos,cenPoint2);
+// 			return sdSphere(repPos2,0.1);	
+			
+// 		}
+
+// 		vec3 normGrass( vec3 pos )
+// 		{
+// 				vec3 eps = vec3( 0.0, 0.0, 0.0 );
+// 				eps.x = 0.01;
+				
+// 				vec3 nor = vec3(
+// 						mapGrass(pos+eps.xyy) - mapGrass(pos-eps.xyy),
+// 						mapGrass(pos+eps.yxy) - mapGrass(pos-eps.yxy),
+// 						mapGrass(pos+eps.yyx) - mapGrass(pos-eps.yyx) );
+// 				return normalize(nor);
+// 		}
+
+// 		vec4 castGrass(
+// 				vec3 ro,
+// 				vec3 rd,
+// 				float minT,
+// 				float maxT,
+// 				int numSteps
+// 		) {
+// 			//float fNumSteps = float(numSteps);
+			
+// 			float t = minT;
+// 			int p = 0;
+// 			vec3 pos;
+// 			float res;
+			
+// 			float GRASS_PREC = 0.01;
+			
+// 			for( p = 0; p < numSteps; p++ ) {
+					
+// 					pos = ro+rd*t;
+// 					res = mapGrass( pos );
+					
+// 					if (res < GRASS_PREC) {
+// 							break;
+// 					}
+					
+// 					t += res;
+// 			}
+			
+// 			return vec4(normGrass(pos),t);
+			
+// 		}
+
+// #endif
 
 vec4 castLand(
 		vec3 ro,
@@ -3986,6 +4082,8 @@ vec4 castLand(
 
 		float TER_PREC = 0.3;
 		float TER_PREC2 = 0.002;
+		
+		bool notFoundGrass = true;
 		
 		float tvals[4];
 		tvals[0] = minT.x;
@@ -4017,12 +4115,15 @@ vec4 castLand(
 						pos = ro+rd*t;
 						
 						camDis = clamp(distance(cameraPos,pos)/MAX_CLIP,0.0,1.0);
-						TER_PREC = mix(-64.0,64.0, max(camDis,fp) ); //max(camDis,fp)
-						TER_PREC = max(TER_PREC,mix(0.05,1.0,camDis));
+						TER_PREC = mix(-64.0,64.0, max(camDis,fp) ); //
+						TER_PREC = max(TER_PREC,mix(0.2,1.0, max(camDis,fp) ));
 						
 						res = mapLand( pos );
 						
-						
+						// if (notFoundGrass&&(res.x < 2.0)) {
+						// 	notFoundGrass = false;
+						// 	globGrassPos = t;
+						// }
 						
 						if (
 								(abs(res.x) < TER_PREC)
@@ -4031,9 +4132,17 @@ vec4 castLand(
 								break;
 						}
 						
+						// res.x *= mix(0.25,0.125,max(fp,
+						// 	1.0-clamp(
+						// 		res.x/50.0,
+						// 		0.0,
+						// 		1.0	
+						// 	)
+						// ) );
 						
-						t += res.x;
+						t += res.x*0.25;
 				}
+				globCurSteps += float(p);
 				
 		//     if (
 		//         (res.x < TER_PREC)
@@ -4045,14 +4154,20 @@ vec4 castLand(
 				
 		// }
 		
+		// if (res.x <= 0.0) {
+		// 	globTest = 1.0;
+			
+		// 	t -= 4.0;
+			
+		// }
 		
 		
 		
-		int newDetailSteps = int( mix(float(TOT_DETAIL_STEPS),2.0,camDis) );
+		int newDetailSteps = 8;//int( mix(float(TOT_DETAIL_STEPS),2.0,camDis) );
 		
-		TER_PREC2 = max(TER_PREC*0.01,0.002);
+		TER_PREC2 = 0.002;//max(TER_PREC*0.001,0.002);
 		
-		if ((res.x < TER_PREC)&&(t < maxT)) {
+		if ((abs(res.x) < TER_PREC)&&(t < maxT)) {
 				
 				//t -= 4.0;
 				
@@ -4064,35 +4179,36 @@ vec4 castLand(
 						
 						pos = ro+rd*t;
 						
-						res2 = mapLandMicro( pos, landNorm );
+						res2 = mapLandMicro( pos );
 						
 						if (abs(res2.x) < TER_PREC2) {
 							break;
 						}
 						
-						t += res2.x*0.5;
+						t += res2.x*0.125;
 				}
+				globCurSteps += float(p);
 				
-				if (res2.x < 0.0) {
-					t -= TER_PREC2;
-				}
-				pos = ro+rd*t;
-				res2 = mapLandMicro( pos, landNorm );
+				// if (res2.x < 0.0) {
+				// 	t = TER_PREC2;
+				// }
+				//pos = ro+rd*t;
+				res2 = mapLandMicro( pos );
 				
 				
 				
 				globTexEarth.x = res2.w;
 				globTexEarth.y = clamp((sin(pos.z/512.0)+1.0)*0.5,0.0,1.0);
 				
-				float isInTer = res2.y;
+				float isInTer = float( res2.y < (-0.25) );//res2.y; //
 				
 				
 				
 				float snowSource = res2.z;
 				float camDis = clamp(distance(cameraPos,pos)*4.0/MAX_CLIP,0.0,1.0);
-				landNorm = normLandMicro(pos, vec3(0.0,0.0,1.0),camDis);
+				landNorm = normLandMicro(pos, vec3(0.0,0.0,1.0), camDis);
 				
-				float grassMod = 128.0;//mix(2.0,0.000001,camDis);
+				float grassMod = 32.0;//mix(2.0,0.000001,camDis);
 				float myVal2 = randf3( floor(pos.xyz*(grassMod))/(grassMod) )*clamp(1.0-camDis*4.0,0.0,1.0);
 				
 				
@@ -4124,18 +4240,33 @@ vec4 castLand(
 				// 						1.0
 				// 				)*0.75*hv;
 				
-				// if (isGrass*(1.0-isInTer)+float(res2.y == -2.0) > 0.001) {
-				// 	globTexEarth.x = TEX_GRASS;
-				// 	globTexEarth.y = clamp(myVal2,0.0,1.0);
+				
+				if (globTexEarth.x == TEX_BARK) {
+					if (res2.y > -0.4) {
+						
+					}
+					else {
+						globTexEarth.x = TEX_TREEWOOD;
+						globTexEarth.y = (sin(res2.y*4.0)+1.0)*0.5;
+					}
+				}
+				// else {
+					
 				// }
+				
+				if (isGrass*(1.0-isInTer) > 0.001) { //+float(res2.y == -2.0)
+					globTexEarth.x = TEX_GRASS;
+					globTexEarth.y = clamp(myVal2,0.0,1.0);
+				}
+				
+				//
 				
 				if ((snowVal*(1.0-isInTer) > 0.04)&&(globTexEarth.x != TEX_BARK)) {
 					globTexEarth.x = TEX_SNOW;
 					globTexEarth.y = clamp(snowVal*4.0,0.0,1.0);
 				}
-				else {
-					
-				}
+				
+				
 				
 				
 				
@@ -4145,14 +4276,14 @@ vec4 castLand(
 				
 				//globTexEarth.x = TEX_EARTH;
 				
-				p += newDetailSteps;
+				//p += newDetailSteps;
 		}
 		else {
 				globTexEarth.xy = vec2(0.0);
 		}
 		
 		
-		globCurSteps += float(p);
+		
 		
 		
 		return vec4(normLandMicro(pos,landNorm,camDis),t);
@@ -4525,6 +4656,7 @@ void main() {
 		globTexEarth = vec2(0.0);
 		globTexDyn = vec2(0.0);
 		globExplodeVec = vec3(0.0);
+		globGrassPos = -999.0;
 		globTexPrim = vec2(0.0);
 		globTexWater = vec2(0.0);
 		
@@ -4825,23 +4957,23 @@ void main() {
 		
 		vec4 finalMaxDis = vec4( max(MAX_CAM_DIS,MAX_CAM_VOL_DIS) );
 		
-		#ifdef USESPHEREMAP
-				if (doSphereMap) {
+		// #ifdef USESPHEREMAP
+		// 		if (doSphereMap) {
 						
-				}
-				else {
+		// 		}
+		// 		else {
 						
-						if (depthInvalidMove) {
+		// 				if (depthInvalidMove) {
 								
-						}
-						else {
-								// cache = max(
-								//     cache,
-								//     dtexSphere.xxyy - vec4(0.5,0.5,4.0,4.0)
-								// );
-						}
-				}
-		#endif
+		// 				}
+		// 				else {
+		// 						// cache = max(
+		// 						//     cache,
+		// 						//     dtexSphere.xxyy - vec4(0.5,0.5,4.0,4.0)
+		// 						// );
+		// 				}
+		// 		}
+		// #endif
 						
 		
 
@@ -4861,6 +4993,7 @@ void main() {
 		
 		vec4 dynRes = vec4(0.0,0.0,0.0,MAX_CAM_DIS);
 		vec4 rclRes = dynRes;
+		vec4 grassRes = dynRes;
 		vec4 rcwRes = dynRes;
 		
 		//vec3 tempNor = vec3(0.0);
@@ -4905,10 +5038,10 @@ void main() {
 				
 				
 				
-				if (doSphereMap) {
+				// if (doSphereMap) {
 
-				}
-				else {
+				// }
+				// else {
 						
 						
 						
@@ -4989,7 +5122,7 @@ void main() {
 						}
 						
 						setMaxWater = setMax;
-				}
+//				}
 				
 				
 				
@@ -5020,6 +5153,28 @@ void main() {
 						min(FAR,landEndMacro),//MAX_CAM_VOL_DIS,
 						TOT_STEPS
 				);
+				
+// #ifdef DOGRASS
+				
+// 				if (globGrassPos >= 0.0) {
+// 					grassRes = castGrass(
+// 						ro,
+// 						rd,
+// 						globGrassPos,
+// 						globGrassPos+10.0,
+// 						32
+// 					);
+// 				}
+				
+// 				if (grassRes.w < rclRes.w) {
+// 					rclRes = grassRes;
+// 					globTexEarth = vec2(TEX_GRASS,0.0);
+// 				}
+				
+// #endif
+				
+				
+				
 				
 				preLimb(ro, rd);
 				
@@ -5129,7 +5284,7 @@ void main() {
 				
 				
 				
-				float shadDis = min(landVal,terSamp4.x);
+				float shadDis = min(landVal,min(terSamp4.x,terSamp4.z) );
 				
 				
 				
@@ -5399,9 +5554,10 @@ void main() {
 						
 						#ifdef DOTER
 					
-								shadowRes = globCurSteps/float(TOT_STEPS*0.5);
+								shadowRes = globCurSteps/float(TOT_STEPS*2.0);
 					
-								if (placingGeom||(MAX_PRIMTEST > 0)) {
+								if (false) {// placingGeom||(MAX_PRIM_IDS > 0)) {
+									
 										// dont do anything since we are doing a geometry pass
 								}
 								else {
@@ -5427,8 +5583,8 @@ void main() {
 												
 												//(sin(t/100.0)+1.0)*0.5,0.0,0.0,
 												
-												//globTest,
 												shadowRes,
+												//globTest,
 												0.0,
 												0.0,
 												//globTexTap/300.0, //
@@ -5450,7 +5606,7 @@ void main() {
 						#endif
 						#ifdef DOPRIM
 								fragRes0 = vec4(
-										shadowRes + terSamp4.w,
+										0.0, // shadowRes + terSamp4.w,
 										0.0,
 										0.15,
 										1.0
@@ -5476,7 +5632,12 @@ void main() {
 		
 		
 		// cache 
-		FragColor4 = vec4(min(landVal,solidVal), waterVal, hardShadowDynRes, shadowRes); //terSamp4
+		FragColor4 = vec4(
+			landVal,
+			waterVal,
+			solidVal,//hardShadowDynRes,
+			shadowRes
+		); //terSamp4
 		FragColor5 = vec4(curTexArr[0].xy,curTexArr[1].xy); //terSamp5
 		
 		FragColor6 = limbRes;

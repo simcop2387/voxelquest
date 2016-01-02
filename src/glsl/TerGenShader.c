@@ -270,6 +270,11 @@ vec3 opRep( vec3 p, vec3 c )
     return mod(p,c)-0.5*c;
 }
 
+float sdSphere( vec3 p, float s )
+{
+    return length(p)-s;
+}
+
 vec2 psDistanceV2(vec3 testPoint, vec3 sp0, vec3 sp1)
 {
     vec3 v = sp1 - sp0;

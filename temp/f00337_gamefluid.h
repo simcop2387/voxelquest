@@ -185,7 +185,8 @@ void GameFluid::flushActionStack ()
 					pushExplodeBullet(
 						false,
 						&(curPM->data[0]),
-						curPM->data[1].getIX()
+						curPM->data[1].getIX(),
+						curPM->data[2].getFX()
 					);
 				break;
 				case E_PM_MODIFY_UNIT:
@@ -205,8 +206,8 @@ void GameFluid::flushActionStack ()
 			pmStack.pop_back();
 		}
 	}
-void GameFluid::pushExplodeBullet (bool isReq, FIVector4 * newPos, int waterBulletOn)
-                                                                                 {
+void GameFluid::pushExplodeBullet (bool isReq, FIVector4 * newPos, int waterBulletOn, float newRad)
+                                                                                               {
 		
 		
 		if (isReq) {
@@ -214,15 +215,19 @@ void GameFluid::pushExplodeBullet (bool isReq, FIVector4 * newPos, int waterBull
 			pmStack.back().actionType = E_PM_EXPLODE_BULLET;
 			pmStack.back().data[0].copyFrom(newPos);
 			pmStack.back().data[1].setIX(waterBulletOn);
+			pmStack.back().data[2].setFX(newRad);
 			return;
 		}
 		
 		if (waterBulletOn > 0) {
-			modifyUnit(newPos, E_BRUSH_ADD, E_PTT_WAT, explodeRad);
+			modifyUnit(newPos, E_BRUSH_ADD, E_PTT_WAT, newRad);
 		}
 		else {
-			modifyUnit(newPos, E_BRUSH_SUB, E_PTT_TER, explodeRad);
+			modifyUnit(newPos, E_BRUSH_SUB, E_PTT_TER, newRad);
 		}
+		
+		singleton->waitingOnDestruction = true;
+		singleton->destructCount = 0;
 		
 		modifiedUnit = true;
 		
@@ -3137,12 +3142,16 @@ void GameFluid::applyUnitModification (FIVector4 * fPixelWorldCoordsBase, int br
 											((k%2)==0)	
 											
 										) {
-											singleton->debrisStack.push_back(DebrisStruct());
-											singleton->debrisStack.back().pos = btVector3(
-												i + volMinReadyInPixels[0] - bufAmount,
-												j + volMinReadyInPixels[1] - bufAmount,
-												k + volMinReadyInPixels[2] - bufAmount
-											);
+											
+											if (GEN_DEBRIS) {
+												singleton->debrisStack.push_back(DebrisStruct());
+												singleton->debrisStack.back().pos = btVector3(
+													i + volMinReadyInPixels[0] - bufAmount,
+													j + volMinReadyInPixels[1] - bufAmount,
+													k + volMinReadyInPixels[2] - bufAmount
+												);
+											}
+																					
 										}
 										
 										

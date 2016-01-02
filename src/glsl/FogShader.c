@@ -557,7 +557,7 @@ void main() {
     
     
     if (isUnderWater == 1.0) {
-        hfog = clamp(hfog*2.0,0.0,1.0);
+        //hfog = clamp(hfog*2.0,0.0,1.0);
     }
     
     if (dot(worldPosition.xyz,oneVec.xyz) == 0.0) {

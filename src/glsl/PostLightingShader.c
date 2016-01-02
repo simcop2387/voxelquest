@@ -96,6 +96,12 @@ int intMod(int lhs, int rhs)
 	return lhs - ( (lhs / rhs) * rhs );
 }
 
+float getMat(float num) {
+	int iz = int(num);
+	int ig = (iz) / 256;
+	return float(ig);
+}
+
 vec2 pack16(float num)
 {
 
@@ -171,10 +177,10 @@ vec3 getRay() {
     return rd;
 }
 
-vec3 getFogColor()
+vec3 getFogColor(vec3 myRay)
 {
     
-    vec3 myRay = getRay();
+    
     
     float zv = pow(1.0-(myRay.z+1.0)/2.0,2.0);
     
@@ -247,23 +253,81 @@ void main()
 	float fj;
 	float fi;
 
+	vec3 myRay = getRay();
+	
+	
+	float testHeight = 0.0;
+	float bestHeight = 0.0;
+	vec4 testTex = vec4(0.0);
+	vec4 testTex2 = vec4(0.0);
+	vec2 testMat = vec2(0.0);
+	
+	vec2 testTC = vec2(0.0);
+	vec2 finalTC = TexCoord0.xy;
+	
+	
+	// float maxGrassHeight = (
+	// 	1.0-clamp(
+	// 		abs(dot(
+	// 			myRay,
+	// 			vec3(0.0,0.0,1.0)
+	// 		)),
+	// 		0.0,
+	// 		1.0
+	// 	)	
+	// )*16.0;
+	
+	// int iMGH = int(maxGrassHeight);
+	
+	// for (i = 0; i < iMGH; i++) {
+
+	// 	testTC = TexCoord0.xy + vec2(0.0,float(i)) / (bufferDim);
+
+	// 	testTex = texture2D(Texture1, testTC);
+	// 	testTex2 = texture2D(Texture0, testTC);
+		
+	// 	if (getMat(testTex.w) == 6.0) {
+			
+	// 		// testmat.x = variance
+	// 		// testmat.y = texture
+	// 		testMat = pack16(testTex.w);
+			
+	// 		testHeight = maxGrassHeight*testMat.x*(
+	// 			(sin(curTime/300.0 + testMat.x*5.3 ) - 1.0)*0.5 + 
+	// 			1.0 - clamp(
+	// 				(distance(testTex2.xyz,cameraPos.xyz)/16.0),
+	// 				0.0,
+	// 				1.0	
+	// 			)	
+	// 		);
+			
+	// 		if (testHeight > float(i)) {
+	// 			bestHeight = testHeight;
+	// 			finalTC = testTC;
+	// 		}
+			
+	// 	}
+		
+	// }
+	
+	
 	
 	
 	vec4 oneVec = vec4(1.0);
 
-	vec4 tex0 = texture2D(Texture0, TexCoord0.xy);
-	vec4 tex1 = texture2D(Texture1, TexCoord0.xy);
+	vec4 tex0 = texture2D(Texture0, finalTC.xy);
+	vec4 tex1 = texture2D(Texture1, finalTC.xy);
 	
-	vec4 tex2 = texture2D(Texture2, TexCoord0.xy);
-	//vec4 tex3 = texture2D(Texture3, TexCoord0.xy);
+	vec4 tex2 = texture2D(Texture2, finalTC.xy);
+	//vec4 tex3 = texture2D(Texture3, finalTC.xy);
 	
-	vec4 texSpec = texture2D(Texture4, TexCoord0.xy);
+	vec4 texSpec = texture2D(Texture4, finalTC.xy);
 	
-	// vec4 tex4 = texture2D(Texture6, TexCoord0.xy);
-	// vec4 tex5 = texture2D(Texture7, TexCoord0.xy);
+	// vec4 tex4 = texture2D(Texture6, finalTC.xy);
+	// vec4 tex5 = texture2D(Texture7, finalTC.xy);
 
-	//vec4 tex8 = texture2D(Texture8, TexCoord0.xy);
-	//vec4 tex9 = texture2D(Texture9, TexCoord0.xy);
+	//vec4 tex8 = texture2D(Texture8, finalTC.xy);
+	//vec4 tex9 = texture2D(Texture9, finalTC.xy);
 
 	float tot = float(tex1.r + tex1.g + tex1.b + tex1.a > 0.0);
 
@@ -273,7 +337,7 @@ void main()
 	//bool valIsGeom = (dot(matValsGeom.rgb,oneVec.rgb) != 0.0);
 
 	vec4 worldPosition = tex0;
-	vec3 fogCol = getFogColor();
+	vec3 fogCol = getFogColor(myRay);
 	vec3 resColor = vec3(0.0);
 	vec3 rcOrig = vec3(0.0);
 	vec3 resColorTemp = vec3(0.0);
@@ -404,7 +468,7 @@ void main()
 		resColorTemp += modColor*mix(
 			0.2,
 			0.5,
-			clamp(1.0-distance(TexCoord0.xy,vec2(0.5)),0.0,1.0)
+			clamp(1.0-distance(finalTC.xy,vec2(0.5)),0.0,1.0)
 		)*0.5;
 		
 		
@@ -520,16 +584,14 @@ void main()
 			) == 1)*0.5;
 		
 		}
-		
-		
 	}
 	
-	float testHeight = 0.0;
-	float bestHeight = 0.0;
-	vec4 testTex = vec4(0.0);
+	testHeight = 0.0;
+	bestHeight = 0.0;
+	testTex = vec4(0.0);
 	for (i = 0; i < 4; i++) {
 
-		testTex = texture2D(Texture0, TexCoord0.xy + dirModXY[i].xy / (bufferDim) );
+		testTex = texture2D(Texture0, finalTC.xy + dirModXY[i].xy / (bufferDim) );
 
 		testHeight = distance(worldPosition.xyz,testTex.xyz);
 		if (testHeight > bestHeight)
@@ -578,7 +640,7 @@ void main()
 	
 	//resColor = vec3(newAO);
 	
-	//resColor.rgb = texture2D(Texture9, TexCoord0.xy).rgb;
+	//resColor.rgb = texture2D(Texture9, finalTC.xy).rgb;
 
 	gl_FragData[0] = vec4(resColor.rgb,tot);
 }

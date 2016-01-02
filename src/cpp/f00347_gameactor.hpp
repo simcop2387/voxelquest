@@ -28,22 +28,22 @@ public:
 		btVector3 midPos;
 		btVector3 endPos;
 		
-		int colInd = geId % MAX_COL_BODY;
-		int colType = bodyCollidesWith[colInd];
-		int colBase = COL_BODY0<<(colInd);
+		//int colInd = geId % MAX_COL_BODY;
+		int colType = bodyCollidesWith;//[colInd];
+		int colBase = COL_BODY;//0<<(colInd);
 		
-		switch (nodeName) {
-			case E_BONE_L_LOWERARM:
-			case E_BONE_R_LOWERARM:
-			case E_BONE_L_METACARPALS:
-			case E_BONE_R_METACARPALS:
-				colBase = COL_HAND;
-				colType = handCollidesWith;
-			break;
-			default:
+		// switch (nodeName) {
+		// 	case E_BONE_L_LOWERARM:
+		// 	case E_BONE_R_LOWERARM:
+		// 	case E_BONE_L_METACARPALS:
+		// 	case E_BONE_R_METACARPALS:
+		// 		colBase = COL_HAND;
+		// 		colType = handCollidesWith;
+		// 	break;
+		// 	default:
 			
-			break;
-		}
+		// 	break;
+		// }
 		
 		// if (baseOrg->orgType == E_ORGTYPE_WEAPON) {
 		// 	colType = weaponCollidesWith;
@@ -65,7 +65,7 @@ public:
 		
 		switch(jointType) {
 			case E_JT_LIMB:
-				rad = 0.35f;
+				rad = 0.25f;
 				
 				// if (nodeName == E_BONE_WEAPON_END) {
 				// 	rad = 0.5f;
@@ -318,13 +318,18 @@ public:
 		
 		int i;
 		
+		float curMass = MASS_PER_LIMB;
+		
+		// if (baseOrg->orgType == E_ORGTYPE_WEAPON) {
+		// 	curMass = MASS_PER_LIMB*4.0f;
+		// }
 		
 		
 		int curChild = addJoint(
 			curNode->nodeName,
 			curParent,
 			E_JT_LIMB,
-			MASS_PER_LIMB,
+			curMass,
 			curNode
 		);
 		
@@ -332,7 +337,7 @@ public:
 			curNode->nodeName,
 			curChild,
 			E_JT_BALL,
-			MASS_PER_LIMB,
+			curMass,
 			curNode
 			
 		);

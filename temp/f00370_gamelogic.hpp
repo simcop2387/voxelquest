@@ -53,6 +53,10 @@ public:
 		
 		int curActor = singleton->getCurActorUID();
 		
+		btVector3 offsetVec;
+		btVector3 readCenter;
+		btVector3 writeCenter;
+		
 		BaseObj* writeObj;
 		BaseObj* readObj;
 		
@@ -60,16 +64,21 @@ public:
 			writeObj = &(singleton->gw->gameObjects[
 				singleton->gw->visObjects[i]	
 			]);
+			writeObj->npcRepel = btVector3(0.0f,0.0f,0.0f);
 			writeObj->behaviorTarget = btVector3(0.0f,0.0f,0.0f);
 			targCount = 0.0f;
 			
 			if (
 				(writeObj->isHidden) ||
-				(writeObj->entType != E_ENTTYPE_NPC)
+				(writeObj->entType != E_ENTTYPE_NPC) ||
+				(writeObj->uid == curActor) // dont apply behavior to active actor
 			) {
 				
 			}
 			else {
+				
+				writeCenter = writeObj->getCenterPoint(E_BDG_CENTER);
+				
 				for (j = 0; j < singleton->gw->visObjects.size(); j++) {
 					readObj = &(singleton->gw->gameObjects[
 						singleton->gw->visObjects[j]
@@ -77,7 +86,6 @@ public:
 					
 					if (
 						(readObj->isHidden) ||
-						(readObj->entType != E_ENTTYPE_NPC) ||
 						(readObj->uid == writeObj->uid)
 					) {
 						
@@ -87,10 +95,61 @@ public:
 						// found a unique pair of NPCs
 						// determine seek, avoid, neutral
 						
-						if (readObj->uid == curActor) {
-							writeObj->behaviorTarget += readObj->getCenterPoint(E_BDG_CENTER);
-							targCount += 1.0f;
+						readCenter = readObj->getCenterPoint(E_BDG_CENTER);
+						
+						if (readObj->entType == E_ENTTYPE_NPC) {
+							
+							offsetVec = writeCenter-readCenter;
+							if (isFuzzy(offsetVec)) {
+								
+							}
+							else {
+								offsetVec.normalize();
+								curDis = readCenter.distance(writeCenter);
+								writeObj->npcRepel += offsetVec*clampf(4.0f-curDis,-0.05f, 1.0f);
+							}
+							
+							
+							if (writeObj->holdingWeapon(-1)) {
+								
+								if (
+									(readObj->isAlive()) &&
+									(readObj->uid == curActor) 	
+								) {
+									
+									// has weapon, seek out human opponent
+									
+									writeObj->behaviorTarget += readObj->getCenterPoint(E_BDG_CENTER);
+									targCount += 1.0f;
+								}
+								
+							}
+							else {
+								
+							}
 						}
+						else {
+							
+							if (writeObj->holdingWeapon(-1)) {
+								
+							}
+							else {
+								// find a weapon
+								
+								if (
+									(readObj->entType == E_ENTTYPE_WEAPON) &&
+									(readObj->isGrabbedById < 0)
+								) {
+									writeObj->behaviorTarget += readObj->getCenterPoint(E_BDG_CENTER);
+									targCount += 1.0f;
+								}
+							}
+							
+							
+							
+						}
+						
+						
 					}
 					
 				}
@@ -116,41 +175,99 @@ public:
 			}
 			else {
 				
+				writeObj->bindingPower += 0.0001f;
+				
+				if (writeObj->isDead()) {
+					writeObj->bindingPower = min(writeObj->bindingPower,0.0125f);
+				}
+				
+				if (writeObj->bindingPower > 1.0f) {
+					writeObj->bindingPower = 1.0f;
+				}
+				
+				writeObj->jumpCooldown--;
+				if (writeObj->jumpCooldown < 0) {
+					writeObj->jumpCooldown = 0;
+				}
+				
 				writeObj->isWalking = false;
 				
-				if (writeObj->behaviorTarget.isZero()) {
+				
+				if (writeObj->isAlive()) {
 					
-				}
-				else {
-					deltaAng = writeObj->turnTowardsPointDelta(writeObj->behaviorTarget);
-					
-					singleton->makeTurn(writeObj->uid,deltaAng*4.0f);
-					
-					curDis = writeObj->behaviorTarget.distance(writeObj->getCenterPoint(E_BDG_CENTER));
-					
-					if (curDis > 4.0f) {
-						singleton->makeMove(writeObj->uid, clampfZO(curDis-4.0f));
+					if (writeObj->behaviorTarget.isZero()) {
+						
 					}
-					if (curDis < 2.0f) {
-						singleton->makeMove(writeObj->uid, -1.0f);
-					}
-					
-					if (curDis > 6.0f) {
-						writeObj->blockCount += clampfZO(1.0 - abs(curDis - writeObj->lastBlockDis)*10.0f);
+					else {
+						deltaAng = writeObj->turnTowardsPointDelta(writeObj->behaviorTarget);
+						
+						singleton->makeTurn(writeObj->uid,deltaAng*16.0f);
+						
+						curDis = writeObj->behaviorTarget.distance(writeObj->getCenterPoint(E_BDG_CENTER));
+						
+						if (curDis > 4.0f) {
+							singleton->makeMove(writeObj->uid, btVector3(0.0f,1.0f,0.0f)*clampfZO(curDis-4.0f), true);
+						}
+						if (curDis < 2.0f) {
+							singleton->makeMove(writeObj->uid, btVector3(0.0f,-1.0f,0.0f), true);
+						}
+						
+						singleton->makeMoveVec(writeObj->uid,writeObj->npcRepel);
+						
+						if (curDis > 6.0f) {
+							writeObj->blockCount += clampfZO(1.0 - abs(curDis - writeObj->lastBlockDis)*100.0f);
+							
+						}
+						
+						if (writeObj->holdingWeapon(-1)) {
+							if (
+								(curDis > 1.0f) &&
+								(curDis < 5.0f)	
+							) {
+								writeObj->swingCount += 1.0f;
+							
+								if (writeObj->swingCount > 200.0f) {
+									writeObj->swingCount = 0.0f;
+									singleton->makeSwing(writeObj->uid,iGenRand(0,1));
+								}
+								
+							}
+						}
+						else {
+							if (
+								(curDis > 1.0f) &&
+								(curDis < 5.0f)	
+							) {
+								singleton->grabThrowObj(writeObj->uid, -1);
+							}
+						}
+						
+						
+						
+						if (writeObj->blockCount > 100.0f) {
+							writeObj->blockCount = 0.0f;
+							singleton->makeJump(writeObj->uid, true,
+								clampfZO(curDis-6.0f)*0.75f + 0.25f	
+							);
+						}
+						writeObj->blockCount *= 0.999f;
+						writeObj->lastBlockDis = curDis;
+						
 						
 					}
 					
-					
-					
-					if (writeObj->blockCount > 30.0f) {
-						writeObj->blockCount = 0.0f;
-						singleton->makeJump(writeObj->uid, true);
-					}
-					writeObj->blockCount *= 0.999f;
-					writeObj->lastBlockDis = curDis;
-					
-					
 				}
+				else { // is dead
+					if (writeObj->holdingWeapon(E_HAND_L)) {
+						singleton->grabThrowObj(writeObj->uid, E_HAND_L);
+					}
+					
+					if (writeObj->holdingWeapon(E_HAND_R)) {
+						singleton->grabThrowObj(writeObj->uid, E_HAND_R);
+					}
+				}
+				
+				
 				
 			}
 			
@@ -1529,7 +1646,12 @@ public:
 		bool doPaths;
 		
 		// check if any are done running and stop them if necessary
-		threadPoolList->anyRunning();
+		if (threadPoolList->anyRunning()) {
+			
+		}
+		else {
+			
+		}
 		if (threadPoolPath->anyRunning()) {
 			doPaths = false;
 		}
