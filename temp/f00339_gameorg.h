@@ -459,10 +459,31 @@ void GameOrg::initWeapon ()
 			1.0f, defVecLength, defVecLength,
 			1.0f, defVecLength, defVecLength,
 			
-			0.0f,0.0f,1.0f,
-			0.0f,1.0f,0.0f,
-			1.0f,0.0f,0.0f
+			// 0.0f,0.0f,1.0f,
+			// 0.0f,1.0f,0.0f,
+			// 1.0f,0.0f,0.0f
+			
+			0.0f, 1.0f, 0.0f,
+			1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f
 		);
+		
+		curNode = allNodes[E_BONE_WEAPON_0] = curNode->addChild(
+			E_BONE_WEAPON_0,
+			
+			baseMat, 0.0f, 0.0f, 0.0f,
+			0.25f, defVecLength, defVecLength,
+			0.25f, defVecLength, defVecLength,
+			
+			// 0.0f,0.0f,1.0f,
+			// 0.0f,1.0f,0.0f,
+			// 1.0f,0.0f,0.0f
+			
+			1.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 1.0f
+		);
+		
 		
 		// for (i = E_BONE_WEAPON_0; i <= E_BONE_WEAPON_8; i++ ) {
 		// 	curNode = allNodes[i] = curNode->addChild(

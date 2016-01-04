@@ -83,7 +83,8 @@ public:
 
 
 	std::vector<int> ocThreads;
-
+	
+	btVector3 offsetVal[4];
 
 	
 	map<BaseObjType, BaseObj> gameObjects;
@@ -227,6 +228,12 @@ public:
 		noiseGenerated = false;
 
 		//finalPath = NULL;
+		
+		float deltVal = -0.1f;
+		offsetVal[0] = btVector3(deltVal,0.0f,0.0f);
+		offsetVal[1] = btVector3(0.0f,deltVal,0.0f);
+		offsetVal[2] = btVector3(0.0f,0.0f,deltVal);
+		offsetVal[3] = btVector3(0.0f,0.0f,0.0f);
 
 		holdersPerBlock = singleton->holdersPerBlock;
 
@@ -686,6 +693,34 @@ public:
 		res[1] = res[1]*(1.0f-fy) + res[3]*fy;
 		
 		return res[0]*(1.0f-fx) + res[1]*fx;
+	}
+	
+	btVector3 getNormalAtCoord(btVector3 coord, float* cellVal) {
+		
+		btVector3 norVal;
+		int q;
+		
+		for (q = 0; q < 4; q++) {
+			cellVal[q] = singleton->gw->getCellAtCoordsLin(
+				coord + offsetVal[q]
+			);
+		}
+		
+		norVal = btVector3(
+			(cellVal[0]-cellVal[3]),
+			(cellVal[1]-cellVal[3]),
+			(cellVal[2]-cellVal[3])
+		);
+		
+		if (isFuzzy(norVal)) {
+			
+		}
+		else {
+			norVal.normalize();
+		}
+		
+		
+		return norVal;
 	}
 	
 	

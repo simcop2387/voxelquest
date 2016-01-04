@@ -2293,137 +2293,137 @@ public:
 	// }
 	
 	
-	void updateWeapon(
-		int handNum,
-		btVector3 weaponBeg,
-		btVector3 weaponEnd,
-		double curStepTime,
-		// float lrBounds,
-		// float udBounds,
-		float weaponLen
-	) {
+	// void updateWeapon(
+	// 	int handNum,
+	// 	btVector3 weaponBeg,
+	// 	btVector3 weaponEnd,
+	// 	double curStepTime,
+	// 	// float lrBounds,
+	// 	// float udBounds,
+	// 	float weaponLen
+	// ) {
 		
-		totTime += curStepTime;
+	// 	totTime += curStepTime;
 		
-		//updateWeaponTargs(curStepTime);
-		
-		
-		
-		
-		float myMat[16];
-		Matrix4 myMatrix4;
-		Vector3 myVector0;
-		Vector3 myVector1;
-		Vector3 normVec;
-		Vector4 resVector0;
-		Vector4 resVector1;
-		
-		Vector4 vf0;
-		Vector4 vf1;
-		
-		btVector3 basePos;
-		float rad0 = 1.0f;
-		float rad1 = rad0 + weaponLen;
-		
-		//float lrBounds = sin(totTime/4.0);
-		//float udBounds = sin(totTime);
-		//float udBounds2 = udBounds;//sin(totTime/8.0);
-		
-		if (bodies.size() < 1) {
-			return;
-		}
-		
-		
-		// float weaponTheta = M_PI_2 + lrBounds*M_PI_8;
-		// float weaponPhi = M_PI_4 + udBounds*M_PI_4;
-		
-		// float weaponTheta2 = (1.0f - lrBounds)*M_PI + cos(totTime/2.0f)*0.1f;
-		// float weaponPhi2 = 0 + udBounds*M_PI_2*1.5f + sin(totTime/3.0f)*0.1f;
-		
-		
-		bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
-		myMatrix4 = Matrix4(myMat);
-		
-		// myVector0 = Vector3(
-		// 	cos(weaponTheta)*sin(weaponPhi)*rad0,
-		// 	sin(weaponTheta)*sin(weaponPhi)*rad0 + 0.5f,
-		// 	cos(weaponPhi)*rad0 + (1.0f-udBounds2)*0.75f
-		// );
-		// myVector1 = Vector3(
-		// 	cos(weaponTheta2)*sin(weaponPhi2)*rad1,
-		// 	sin(weaponTheta2)*sin(weaponPhi2)*rad1 + 0.5f,
-		// 	cos(weaponPhi2)*rad1
-		// );
-		
-		// myVector0.x -= (myVector0.x*0.5f + myVector1.x*0.5f)*0.25f;
-		// myVector0.y -= (myVector0.y*0.5f + myVector0.y*0.5f)*0.25f;
-		
-		// myVector0 *= 0.75f;
-		
-		// myVector0.y += 0.25f;
-		
-		// //if (myVector1.x > 0.0f) {
-		// 	myVector0.x += myVector1.x*0.25f;
-		// //}
-		
-		// myVector1.y += 1.0f-abs(cos(weaponPhi2));
-		
-		BodyStruct* handBody;
-		
-		if (handNum == E_HAND_L) {
-			handBody = getBodyByBoneId(getCorrectedName(E_BONE_L_METACARPALS));
-		}
-		else {
-			handBody = getBodyByBoneId(getCorrectedName(E_BONE_R_METACARPALS));
-		}
-		
-		
-		
-		btVector3 handCenter = handBody->body->getCenterOfMassPosition();
-		
-		myVector0 = Vector3(weaponBeg.getX(), weaponBeg.getY(),weaponBeg.getZ());
-		myVector1 = Vector3(weaponEnd.getX(), weaponEnd.getY(),weaponEnd.getZ());
-		
-		
-		normVec = myVector1 - myVector0;
-		normVec.normalize();
-		normVec = normVec*(rad1-rad0);
-		myVector1 = myVector0 + normVec;
-		
-		rightHandTop = true;//(myVector0.x < 0.0f);
-		
-		
-		
-		vf0 = Vector4(myVector0.x, myVector0.y, myVector0.z, 1.0f);
-		vf1 = Vector4(myVector1.x, myVector1.y, myVector1.z, 1.0f);
-		
-		resVector0 = myMatrix4*vf0;
-		resVector1 = myMatrix4*vf1;
-		
-		weaponVec0[handNum] = btVector3(resVector0.x,resVector0.y,resVector0.z);
-		weaponVec1[handNum] = btVector3(resVector1.x,resVector1.y,resVector1.z);
-		
-		btVector3 weapDif = handCenter-weaponVec0[handNum];
-		
-		weaponVec0[handNum] += weapDif;
-		weaponVec1[handNum] += weapDif;
-		
-		
-		vf0 = Vector4( 1.0f,0.0f,0.0f,1.0f);
-		vf1 = Vector4(-1.0f,0.0f,0.0f,1.0f);
-		
-		resVector0 = myMatrix4*vf0;
-		resVector1 = myMatrix4*vf1;
-		
-		rightVec = btVector3(resVector0.x,resVector0.y,resVector0.z);
-		leftVec = btVector3(resVector1.x,resVector1.y,resVector1.z);
+	// 	//updateWeaponTargs(curStepTime);
 		
 		
 		
 		
+	// 	float myMat[16];
+	// 	Matrix4 myMatrix4;
+	// 	Vector3 myVector0;
+	// 	Vector3 myVector1;
+	// 	Vector3 normVec;
+	// 	Vector4 resVector0;
+	// 	Vector4 resVector1;
+		
+	// 	Vector4 vf0;
+	// 	Vector4 vf1;
+		
+	// 	btVector3 basePos;
+	// 	float rad0 = 1.0f;
+	// 	float rad1 = rad0 + weaponLen;
+		
+	// 	//float lrBounds = sin(totTime/4.0);
+	// 	//float udBounds = sin(totTime);
+	// 	//float udBounds2 = udBounds;//sin(totTime/8.0);
+		
+	// 	if (bodies.size() < 1) {
+	// 		return;
+	// 	}
 		
 		
-	}
+	// 	// float weaponTheta = M_PI_2 + lrBounds*M_PI_8;
+	// 	// float weaponPhi = M_PI_4 + udBounds*M_PI_4;
+		
+	// 	// float weaponTheta2 = (1.0f - lrBounds)*M_PI + cos(totTime/2.0f)*0.1f;
+	// 	// float weaponPhi2 = 0 + udBounds*M_PI_2*1.5f + sin(totTime/3.0f)*0.1f;
+		
+		
+	// 	bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
+	// 	myMatrix4 = Matrix4(myMat);
+		
+	// 	// myVector0 = Vector3(
+	// 	// 	cos(weaponTheta)*sin(weaponPhi)*rad0,
+	// 	// 	sin(weaponTheta)*sin(weaponPhi)*rad0 + 0.5f,
+	// 	// 	cos(weaponPhi)*rad0 + (1.0f-udBounds2)*0.75f
+	// 	// );
+	// 	// myVector1 = Vector3(
+	// 	// 	cos(weaponTheta2)*sin(weaponPhi2)*rad1,
+	// 	// 	sin(weaponTheta2)*sin(weaponPhi2)*rad1 + 0.5f,
+	// 	// 	cos(weaponPhi2)*rad1
+	// 	// );
+		
+	// 	// myVector0.x -= (myVector0.x*0.5f + myVector1.x*0.5f)*0.25f;
+	// 	// myVector0.y -= (myVector0.y*0.5f + myVector0.y*0.5f)*0.25f;
+		
+	// 	// myVector0 *= 0.75f;
+		
+	// 	// myVector0.y += 0.25f;
+		
+	// 	// //if (myVector1.x > 0.0f) {
+	// 	// 	myVector0.x += myVector1.x*0.25f;
+	// 	// //}
+		
+	// 	// myVector1.y += 1.0f-abs(cos(weaponPhi2));
+		
+	// 	BodyStruct* handBody;
+		
+	// 	if (handNum == E_HAND_L) {
+	// 		handBody = getBodyByBoneId(getCorrectedName(E_BONE_L_METACARPALS));
+	// 	}
+	// 	else {
+	// 		handBody = getBodyByBoneId(getCorrectedName(E_BONE_R_METACARPALS));
+	// 	}
+		
+		
+		
+	// 	btVector3 handCenter = handBody->body->getCenterOfMassPosition();
+		
+	// 	myVector0 = Vector3(weaponBeg.getX(), weaponBeg.getY(),weaponBeg.getZ());
+	// 	myVector1 = Vector3(weaponEnd.getX(), weaponEnd.getY(),weaponEnd.getZ());
+		
+		
+	// 	normVec = myVector1 - myVector0;
+	// 	normVec.normalize();
+	// 	normVec = normVec*(rad1-rad0);
+	// 	myVector1 = myVector0 + normVec;
+		
+	// 	rightHandTop = true;//(myVector0.x < 0.0f);
+		
+		
+		
+	// 	vf0 = Vector4(myVector0.x, myVector0.y, myVector0.z, 1.0f);
+	// 	vf1 = Vector4(myVector1.x, myVector1.y, myVector1.z, 1.0f);
+		
+	// 	resVector0 = myMatrix4*vf0;
+	// 	resVector1 = myMatrix4*vf1;
+		
+	// 	weaponVec0[handNum] = btVector3(resVector0.x,resVector0.y,resVector0.z);
+	// 	weaponVec1[handNum] = btVector3(resVector1.x,resVector1.y,resVector1.z);
+		
+	// 	btVector3 weapDif = handCenter-weaponVec0[handNum];
+		
+	// 	weaponVec0[handNum] += weapDif;
+	// 	weaponVec1[handNum] += weapDif;
+		
+		
+	// 	vf0 = Vector4( 1.0f,0.0f,0.0f,1.0f);
+	// 	vf1 = Vector4(-1.0f,0.0f,0.0f,1.0f);
+		
+	// 	resVector0 = myMatrix4*vf0;
+	// 	resVector1 = myMatrix4*vf1;
+		
+	// 	rightVec = btVector3(resVector0.x,resVector0.y,resVector0.z);
+	// 	leftVec = btVector3(resVector1.x,resVector1.y,resVector1.z);
+		
+		
+		
+		
+		
+		
+	// }
 	
 	
 	void flushImpulses() {
@@ -2588,7 +2588,23 @@ public:
 	
 	
 	
-	
+	void moveOffset(btVector3 offset, int ind) {
+		btTransform trans;
+		
+		
+		if (ind < bodies.size()) {
+			
+			trans.setIdentity();
+			trans.setOrigin(
+				bodies[ind].body->getCenterOfMassPosition() + offset
+			);
+			bodies[ind].body->setActivationState(ACTIVE_TAG);
+			bodies[ind].body->setCenterOfMassTransform(
+				trans
+			);
+			
+		}
+	}
 	
 	void moveToPoint(btVector3 newPoint, int ind) {
 		btTransform trans;

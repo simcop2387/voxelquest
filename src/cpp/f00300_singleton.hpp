@@ -5705,17 +5705,14 @@ DISPATCH_EVENT_END:
 									geVictim->curHealth = 0;
 								}
 								
-								//cout << "health " << geVictim->health << " " << lastHealth << "\n";
-								
 								if (geVictim->isDead() && (lastHealth > 0)) {
 									// just died
 									
-									//cout << "DEADDDDD\n";
 									
 									geVictim->bodies[E_BDG_CENTER].body->setAngularFactor(
 										btVector3(1.0f,1.0f,1.0f)
 									);
-									geVictim->bodies[E_BDG_CENTER].body->setAngularVelocity(btVector3(1.0f,1.0f,1.0f)*20.0f);
+									geVictim->bodies[E_BDG_CENTER].body->setAngularVelocity(btVector3(1.0f,1.0f,0.0f)*10.0f);
 									
 									playSoundEnt("dyingm0",geVictim,0.15,0.2f);
 									
@@ -8764,6 +8761,9 @@ DISPATCH_EVENT_END:
 		BaseObj* ca = &(gw->gameObjects[actorId]);
 		GameOrg* curOrg = gameOrgs[ca->orgId];
 		
+		BaseObj* grabObj;
+		GameOrg* grabObjOrg;
+		
 		if (handNum < 0) {
 			handNum = 0;
 			
@@ -8791,6 +8791,9 @@ DISPATCH_EVENT_END:
 			// 	30.0f	
 			// );
 			
+			grabObj = &(gw->gameObjects[ca->isGrabbingId[handNum]]);
+			grabObjOrg = gameOrgs[grabObj->orgId];
+			
 			
 			if (ca->hasBodies()) {
 				gw->gameObjects[ca->isGrabbingId[handNum]].applyImpulseOtherRot(
@@ -8807,6 +8810,18 @@ DISPATCH_EVENT_END:
 				ca,
 				0.2f
 			);
+			
+			if (handNum == E_HAND_L) {
+				curOrg->allNodes[
+					getCorrectedName(E_BONE_L_METACARPALS)
+				]->children.pop_back();
+			}
+			else {
+				curOrg->allNodes[
+					getCorrectedName(E_BONE_R_METACARPALS)
+				]->children.pop_back();
+			}
+			grabObjOrg->allNodes[E_BONE_WEAPON_BASE]->parent = NULL;
 			
 			//ca->weaponActive = false;
 			
@@ -8844,6 +8859,9 @@ DISPATCH_EVENT_END:
 				curOrg->totTime = 0;
 				ca->isPickingUp = true;
 				
+				grabObj = &(gw->gameObjects[res]);
+				grabObjOrg = gameOrgs[grabObj->orgId];
+				
 				playSoundEnt(
 					"scrape0",
 					ca,
@@ -8854,9 +8872,34 @@ DISPATCH_EVENT_END:
 				//gw->gameObjects[ca->isGrabbingId[handNum]].setDamping(0.999f,0.9f);
 				//ca->weaponActive = true;
 				ca->isGrabbingId[handNum] = res;
-				gw->gameObjects[res].setGrabbedBy(actorId, handNum);
+				grabObj->setGrabbedBy(actorId, handNum);
 				
-				//cout << "grab " << ca->isGrabbingId[handNum] << " " << gw->gameObjects[res].isGrabbedById << "\n";
+				if (handNum == E_HAND_L) {
+					curOrg->allNodes[
+						getCorrectedName(E_BONE_L_METACARPALS)
+					]->children.push_back(
+						grabObjOrg->allNodes[E_BONE_WEAPON_BASE]
+					);
+					grabObjOrg->allNodes[E_BONE_WEAPON_BASE]->parent = 
+						curOrg->allNodes[
+							getCorrectedName(E_BONE_L_METACARPALS)
+						];
+				}
+				else {
+					curOrg->allNodes[
+						getCorrectedName(E_BONE_R_METACARPALS)
+					]->children.push_back(
+						grabObjOrg->allNodes[E_BONE_WEAPON_BASE]
+					);
+					grabObjOrg->allNodes[E_BONE_WEAPON_BASE]->parent = 
+						curOrg->allNodes[
+							getCorrectedName(E_BONE_R_METACARPALS)
+						];
+				}
+				
+				
+				
+				//cout << "grab " << ca->isGrabbingId[handNum] << " " << grabObj->isGrabbedById << "\n";
 				
 			}
 			

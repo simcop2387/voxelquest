@@ -1888,6 +1888,7 @@ public:
   void remBoxFromObj (BaseObjType _uid);
   void addBoxFromObj (BaseObjType _uid);
   void flushImpulses ();
+  void procCol (BaseObj * * geArr, BodyStruct * * curBodyArr);
   void collideWithWorld (double curStepTime);
   void updateAll ();
   ~ GamePhysics ();
@@ -1957,6 +1958,7 @@ public:
   bool noiseGenerated;
   std::vector <coordAndIndex> roadCoords;
   std::vector <int> ocThreads;
+  btVector3 (offsetVal) [4];
   map <BaseObjType, BaseObj> gameObjects;
   vector <BaseObjType> visObjects;
   vector <ObjDef> objDefs;
@@ -2019,6 +2021,7 @@ public:
   int getCellInd (GamePageHolder * & curHolder, int xv, int yv, int zv);
   int getCellAtCoords (int xv, int yv, int zv);
   float getCellAtCoordsLin (btVector3 pos);
+  btVector3 getNormalAtCoord (btVector3 coord, float * cellVal);
   void setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void getArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void fireEvent (BaseObjType uid, int opCode, float fParam);
