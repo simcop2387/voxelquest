@@ -371,88 +371,6 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 			
 			
 			ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-			/*
-			if (ge->bodies[bodInd].boneId > -1) {
-				switch(ge->bodies[bodInd].boneId) {
-					default:
-					
-						if (ge->entType == E_ENTTYPE_WEAPON) {
-							ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-						}
-						else {
-							ge->bodies[bodInd].body->setDamping(0.999f,0.9f);
-						}
-					
-						
-					break;
-				}
-			}
-			else {
-				switch (bodInd) {
-					case E_BDG_CENTER:
-						ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-						
-					break;
-					case E_BDG_LFOOT:
-						ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-					break;
-					case E_BDG_RFOOT:
-						ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-					break;
-					default:
-					
-						ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-						
-						// switch(ge->bodies[bodInd].boneId) {
-							
-						// 	case E_BONE_L_UPPERARM:
-						// 	case E_BONE_L_LOWERARM:
-						// 	case E_BONE_L_METACARPALS:
-						// 	case E_BONE_L_UPPERLEG:
-						// 	case E_BONE_L_LOWERLEG:
-						// 	case E_BONE_L_TALUS:
-							
-						// 	case E_BONE_R_UPPERARM:
-						// 	case E_BONE_R_LOWERARM:
-						// 	case E_BONE_R_METACARPALS:
-						// 	case E_BONE_R_UPPERLEG:
-						// 	case E_BONE_R_LOWERLEG:
-						// 	case E_BONE_R_TALUS:
-						// 		ge->bodies[bodInd].body->setDamping(0.99f,0.9f);
-						// 	break;
-						// 	case -1:
-						// 	case E_BONE_WEAPON_BASE:
-						// 	case E_BONE_WEAPON_END:
-						// 	case E_BONE_WEAPON_0:
-						// 	case E_BONE_WEAPON_1:
-						// 	case E_BONE_WEAPON_2:
-						// 	case E_BONE_WEAPON_3:
-						// 	case E_BONE_WEAPON_4:
-						// 	case E_BONE_WEAPON_5:
-						// 	case E_BONE_WEAPON_6:
-						// 	case E_BONE_WEAPON_7:
-						// 	case E_BONE_WEAPON_8:
-						// 		ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-						// 	break;
-							
-						// 	default:
-						// 		// linear, angular
-						// 		ge->bodies[bodInd].body->setDamping(0.999f,0.9f);
-						// 	break;
-						// }
-					
-						
-					
-					break;
-				}
-			}
-			*/
-			
-			
-			
-			
-			
-			
 			
 			ge->bodies[bodInd].body->setContactProcessingThreshold(CONTACT_THRESH);
 			
@@ -461,31 +379,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 			if (isOrg) {
 				
 				curOrg = singleton->gameOrgs[ge->orgId];
-				
-				// if (curOrg->orgType == E_ORGTYPE_HUMAN) {
-				// 	// if (
-				// 	// 	(bodInd == 0)
-				// 	// 	|| (
-				// 	// 		(ge->bodies[bodInd].boneId == E_BONE_C_BASE) &&
-				// 	// 		(!(ge->bodies[bodInd].isBall))	
-				// 	// 	)
-				// 	// ) {
-				// 	// 	ge->bodies[bodInd].isVisible = false;
-				// 	// }
-					
-				// 	ge->bodies[bodInd].isVisible = false;
-				// }
-				
-				// if (curOrg->orgType == E_ORGTYPE_WEAPON) {
-				// 	if (ge->bodies[bodInd].boneId == E_BONE_WEAPON_BASE) {
-				// 		ge->bodies[bodInd].isVisible = false;
-				// 	}
-				// }
-				
-				// if (ge->bodies[bodInd].jointType != E_JT_LIMB) {
-				// 	ge->bodies[bodInd].isVisible = false;
-				// }
-				
+								
 				ge->bodies[bodInd].isVisible = false;//(bodInd == 0);// false;//(bodInd < E_BDG_LENGTH);//
 				
 			}
@@ -1195,59 +1089,15 @@ void GamePhysics::collideWithWorld (double curStepTime)
 							curOrg->setTPG(E_PG_IDLE,RLBN_NEIT);
 						}
 						
-						if (curOrg->targetPoseGroup != E_PG_JUMP) {
+						if (curOrg->targetPose.group != E_PG_JUMP) {
 							ge->setActionState(E_ACT_ISJUMPING,RLBN_NEIT,false);
 						}
 						
 						
 						curOrg->updatePose(curStepTime);
 						
-						
-						// if (ge->isGrabbingId[RLBN_LEFT] > -1) {
-						// 	ge->updateWeapon(
-						// 		RLBN_LEFT,
-						// 		curOrg->allNodes[getCorrectedName(E_BONE_L_METACARPALS)]->orgTrans[1].getBTV(),
-						// 		curOrg->allNodes[getCorrectedName(E_BONE_L_METACARPALS)]->tbnTrans[1].getBTV(),
-						// 		curStepTime,
-						// 		2.0f // todo: update this to actual weapon length
-						// 	);
-						// }
-						
-						// if (ge->isGrabbingId[RLBN_RIGT] > -1) {
-						// 	ge->updateWeapon(
-						// 		RLBN_RIGT,
-						// 		curOrg->allNodes[getCorrectedName(E_BONE_R_METACARPALS)]->orgTrans[1].getBTV(),
-						// 		curOrg->allNodes[getCorrectedName(E_BONE_R_METACARPALS)]->tbnTrans[1].getBTV(),
-						// 		curStepTime,
-						// 		2.0f // todo: update this to actual weapon length
-						// 	);
-						// }
-						
-						
 						ge->wakeAll();
 						
-						
-						
-					}
-					else {
-						// if (ge->entType == E_ENTTYPE_WEAPON) {
-							
-						// 	if (ge->isGrabbedById > -1) {
-						// 		grabber = &(singleton->gw->gameObjects[ge->isGrabbedById]);
-						// 		grabberOrg = singleton->gameOrgs[grabber->orgId];
-								
-						// 		if (grabber->isGrabbingId[RLBN_LEFT] == ge->uid) {
-						// 			singleton->transformOrg(curOrg, grabberOrg->allNodes[getCorrectedName(E_BONE_L_METACARPALS)]);
-						// 		}
-						// 		else {
-						// 			singleton->transformOrg(curOrg, grabberOrg->allNodes[getCorrectedName(E_BONE_R_METACARPALS)]);
-						// 		}
-								
-						// 	}
-							
-							
-						// 	ge->wakeAll();
-						// }
 					}
 					
 					
@@ -1378,86 +1228,15 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								resVector4 = myMatrix4*myVector4;
 								basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
 								
-								
-								
 								ge->addAABBPoint(&(ge->aabbMinSkel), &(ge->aabbMaxSkel), basePos);
 								
-								basePos += grabber->skelOffset;// - btVector3(0.0f, 0.0f, BASE_ENT_HEIGHT*0.5f);
+								basePos += grabber->skelOffset;
 								
-								
-								
-								// if (ge->weaponActive) {
-									
-								// 	switch (curBody->boneId) {
-										
-										
-										
-								// 		case E_BONE_L_METACARPALS:
-										
-								// 			if (true) {
-								// 				if (ge->rightHandTop) {
-								// 					difVec = ge->weaponVec0 - curBody->body->getCenterOfMassPosition();
-								// 				}
-								// 				else {
-								// 					difVec = ge->weaponVec0*0.8 + ge->weaponVec1*0.2 - curBody->body->getCenterOfMassPosition();
-								// 				}
-								// 			}
-								// 			else {
-								// 				difVec = btVector3(0.0f,0.0f,0.0f);
-												
-								// 			}
-										
-											
-										
-											
-								// 		break;
-								// 		case E_BONE_R_METACARPALS:
-										
-								// 			if (true) {
-								// 				if (ge->rightHandTop) {
-								// 					difVec = ge->weaponVec0*0.8 + ge->weaponVec1*0.2 - curBody->body->getCenterOfMassPosition();
-								// 				}
-								// 				else {
-								// 					difVec = ge->weaponVec0 - curBody->body->getCenterOfMassPosition();
-								// 				}
-								// 			}
-								// 			else {
-								// 				difVec = btVector3(0.0f,0.0f,0.0f);
-												
-								// 			}
-										
-											
-								// 		break;
-								// 		case E_BONE_L_LOWERARM:
-								// 		case E_BONE_R_LOWERARM:
-								// 		case E_BONE_L_UPPERARM:
-								// 		case E_BONE_R_UPPERARM:
-								// 			difVec = btVector3(0.0f,0.0f,0.0f);
-								// 		break;
-								// 		default:
-								// 			difVec = basePos - curBody->body->getCenterOfMassPosition();
-								// 		break;
-								// 	}
-									
-									
-								// }
-								// else {
-									difVec = basePos - curBody->body->getCenterOfMassPosition();
-								//}
-								
+								difVec = basePos - curBody->body->getCenterOfMassPosition();
 								
 								
 								// move limbs towards pose
-										
-								//totVec += difVec;
 								
-								
-								
-								// ge->applyImpulse(
-								// 	difVec*curStepTime*curBody->mass*singleton->conVals[E_CONST_LIMB_IMPULSE]*ge->bindingPower, // *MASS_PER_LIMB*2.0f*10.0f*curStepTime,
-								// 	false,
-								// 	bodInd
-								// );
 								
 								ge->setLinVel(
 									curBody->body->getLinearVelocity()*(1.0f-bindingPower)
@@ -1466,99 +1245,10 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								);
 								
 								
-								
-								// switch(curBody->jointType) {
-								// 	case E_JT_LIMB:
-								// 		moveToOrientation(
-								// 			curBody->body,
-								// 			curOrgNode->tbnTrans[0].getBTV().normalize(),
-								// 			curOrgNode->tbnTrans[1].getBTV().normalize(),
-								// 			curOrgNode->tbnTrans[2].getBTV().normalize(),
-								// 			0.1f
-								// 		);
-								// 	break;
-								// 	case E_JT_BALL:
-										
-								// 	break;
-								// 	case E_JT_NORM:
-										
-								// 	break;
-								// }
-								
-								
-							
-							
-							
-							//
 						}
 						
 						
 					}
-					
-					// if (
-					// 	(ge->isGrabbedById > -1) &&
-					// 	(ge->isGrabbedByHand > -1)	
-					// ) {
-						
-					// 	grabber = &(singleton->gw->gameObjects[ge->isGrabbedById]);
-						
-					// 	doProc = true;
-						
-					// 	if (curBody->boneId == E_BONE_WEAPON_END) {
-							
-					// 		switch(curBody->jointType) {
-					// 			case E_JT_LIMB:
-					// 				basePos = 
-					// 					grabber->weaponVec0[ge->isGrabbedByHand]*0.5f +
-					// 					grabber->weaponVec1[ge->isGrabbedByHand]*0.5f;
-					// 			break;
-					// 			case E_JT_BALL:
-					// 				basePos = grabber->weaponVec1[ge->isGrabbedByHand];
-					// 			break;
-					// 			case E_JT_NORM:
-									
-					// 			break;
-					// 		}
-							
-					// 	}
-					// 	else {
-					// 		if (curBody->boneId == E_BONE_WEAPON_BASE) {
-					// 			basePos = grabber->weaponVec0[ge->isGrabbedByHand];
-					// 		}
-					// 		else {
-					// 			doProc = false;
-					// 		}
-					// 	}
-						
-					// 	if (doProc) {
-					// 		difVec = basePos - curBody->body->getCenterOfMassPosition();
-							
-					// 		// move limbs weapon
-							
-					// 		//if (curBody->boneId == E_BONE_WEAPON_BASE) {
-					// 			ge->setLinVel(
-					// 				difVec*20.0f,
-					// 				bodInd
-					// 			);
-					// 		// }
-					// 		// else {
-					// 		// 	ge->applyImpulse(
-					// 		// 		difVec*curStepTime*curBody->mass*singleton->conVals[E_CONST_LIMB_IMPULSE], // *MASS_PER_LIMB*2.0f*10.0f*curStepTime,
-					// 		// 		false,
-					// 		// 		bodInd
-					// 		// 	);
-					// 		// }
-							
-							
-							
-							
-							
-					// 	}
-						
-						
-						
-						
-					// }
 					
 					
 					if (

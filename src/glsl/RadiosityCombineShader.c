@@ -39,7 +39,7 @@ void main() {
 	vec3 finalCol = 
 		
 		//mix(tex0.rgb, tex0.rgb + newRad*0.5, newRad); //tex0.rgb + newRad*0.25;//
-		tex0.rgb + tex1.rgb*0.1;//mix(tex0.rgb, tex1.rgb,0.25);
+		tex0.rgb + tex1.rgb*0.05;//mix(tex0.rgb, tex1.rgb,0.25);
 	
 	// vec3 resColGS = vec3( clamp(dot(finalCol, oneVec.xyz) / 3.0, 0.0, 1.0) );
 	// finalCol = mix(

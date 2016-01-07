@@ -745,8 +745,8 @@ enum E_BONES_HUMAN {
 	E_BONE_C_SPINE4, // neck
 	E_BONE_C_SKULL,
 	
-	E_BONE_WEAPON_BASE,
-	E_BONE_WEAPON_HANDLE,
+	E_BONE_WEAPON_HANDLEUP,
+	E_BONE_WEAPON_HANDLEDOWN,
 	E_BONE_WEAPON_0,
 	E_BONE_WEAPON_1,
 	E_BONE_WEAPON_2,
@@ -901,13 +901,11 @@ string boneStrings[] = {
 	"E_BONE_C_SPINE1",
 	"E_BONE_C_SPINE2",
 	"E_BONE_C_SPINE3",
-	"E_BONE_C_SPINE4",
-	"E_BONE_C_SPINE5",
-	"E_BONE_C_SPINE6", // neck
+	"E_BONE_C_SPINE4", // neck
 	"E_BONE_C_SKULL",
 	
-	"E_BONE_WEAPON_BASE",
-	"E_BONE_WEAPON_HANDLE",
+	"E_BONE_WEAPON_HANDLEUP",
+	"E_BONE_WEAPON_HANDLEDOWN",
 	"E_BONE_WEAPON_0",
 	"E_BONE_WEAPON_1",
 	"E_BONE_WEAPON_2",
@@ -1335,7 +1333,12 @@ std::cout << FruitDescription[Banana] << " is enum #" << Banana << "\n";
 */
 
 
-
+struct PoseKey {
+	int index;
+	int group;
+	int RLBN;
+	int step;
+};
 
 enum E_POSE_GROUPS {
 
@@ -1367,6 +1370,8 @@ enum E_POSE_GROUPS {
 	E_PG_REVR,
 	E_PG_BKIK,
 	E_PG_FRNT,
+	
+	E_PG_SWORD,
 	
 	E_PG_LENGTH	
 };
@@ -1400,8 +1405,9 @@ string poseGroupStrings[] = {
 	"E_PG_ROUN",
 	"E_PG_REVR",
 	"E_PG_BKIK",
-	"E_PG_FRNT"
+	"E_PG_FRNT",
 	
+	"E_PG_SWORD"
 		
 };
 

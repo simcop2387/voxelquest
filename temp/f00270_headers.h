@@ -212,10 +212,8 @@ public:
   int draggingToInd;
   int draggingFromType;
   int draggingToType;
-  int curPoseIndex;
-  int curPoseGroup;
-  int curPoseRLBN;
-  int curPoseStep;
+  int curPoseType;
+  PoseKey (curPose) [E_ENTTYPE_LENGTH];
   int actorCount;
   int limbDataDebug;
   int polyCount;
@@ -651,7 +649,7 @@ public:
   void loadPoseInfo ();
   void changePose (int amount);
   void saveCurrentPose ();
-  void getIndexFromCurrentPose ();
+  void getIndexForPose (PoseKey * tempPose);
   void setPoseFromIndex (int i);
   void loadNonPoseData (int npdPose, int npdSide, int npdStep);
   void loadCurrentPose ();
@@ -1349,14 +1347,11 @@ public:
   GameOrgNode * (allNodes) [E_BONE_C_END];
   FIVector4 basePosition;
   JSONValue * rootObj;
-  int basePoseGroup;
-  int basePoseRLBN;
-  int basePoseStep;
+  PoseKey basePose;
+  PoseKey targetPose;
   int ownerUID;
   int orgType;
   int stepCount;
-  int targetPoseGroup;
-  int targetPoseRLBN;
   double totTime;
   float defVecLength;
   float gv (float * vals);

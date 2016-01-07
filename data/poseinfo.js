@@ -7,7 +7,9 @@
 		
 		"Pose types ---",
 		"0: human",
-		"1: weapon"
+		"1: weapon",
+		
+		"E_PIK_POSETYPE corresponds to E_ENTTYPE"
 		
 	],
 	
@@ -60,6 +62,16 @@
 			"E_PIK_DOLOOP":0,
 			"E_PIK_LERPSPEED":0.02,
 			"E_PIK_TIMEINTERVAL":0.2
+		},
+		"weapon":{
+			"E_PIK_POSETYPE":1,
+			"E_PIK_SUBTYPE":"E_SUB_WEAPON",
+			"E_PIK_NUMSTEPS":1,
+			"E_PIK_EXTRASTEPS":0,
+			"E_PIK_RLBN":8,
+			"E_PIK_DOLOOP":0,
+			"E_PIK_LERPSPEED":1.0,
+			"E_PIK_TIMEINTERVAL":0.1
 		}
 	},
 	
@@ -139,6 +151,12 @@
 		},
 		"E_PG_FRNT":{
 			"template":"attackKick"
+		},
+		
+		
+		"E_PG_SWORD":{
+			"template":"weapon",
+			"E_PIK_SUBTYPE":"E_SUB_SWORD"
 		}
 	}
 }

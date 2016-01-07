@@ -535,7 +535,7 @@ void main()
 	
 	//resColor = mix(resColor*0.5,resColor,tex2.rgb);
 	
-	resColor += resColor*mix(texSpec.r,1.0,0.25)*texSpec.r;
+	resColor += resColor*texSpec.r;
 	
 	if (testOn) {
 		
@@ -685,9 +685,12 @@ void main()
 
 	//resColor.rgb = tex2.rgb + modColor;
 	
+	resColor = mix(resColor*0.75,resColor,texSpec.b);
+	
 	resColor.rgb += modColor*0.25;
 	
 	resColor.rgb = pow(resColor.rgb,vec3(0.85));
+	
 	
 	
 	//resColor = vec3(matVals.a,0.0,0.0);

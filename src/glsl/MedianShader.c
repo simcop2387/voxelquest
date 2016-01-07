@@ -72,7 +72,7 @@ void main() {
   
   vec3 finalRes;
   
-  if (distance(tex0.rgb,v[4].rgb) < 0.25) {
+  if (distance(tex0.rgb,v[4].rgb) < 0.5) {
     finalRes = tex0.rgb;
   }
   else {

@@ -53,8 +53,8 @@ const static bool DO_SHADER_DUMP = false;
 #define STREAM_RES 1
 
 #ifdef STREAM_RES
-	const static int DEF_WIN_W = 2048;//
-	const static int DEF_WIN_H = 1024;//
+	const static int DEF_WIN_W = 1920; //2048;//
+	const static int DEF_WIN_H = 1080; //1024;//
 #else
 	const static int DEF_WIN_W = 1536;
 	const static int DEF_WIN_H = 768;
@@ -4334,8 +4334,8 @@ enum E_BONES_HUMAN {
 	E_BONE_C_SPINE4, // neck
 	E_BONE_C_SKULL,
 	
-	E_BONE_WEAPON_BASE,
-	E_BONE_WEAPON_HANDLE,
+	E_BONE_WEAPON_HANDLEUP,
+	E_BONE_WEAPON_HANDLEDOWN,
 	E_BONE_WEAPON_0,
 	E_BONE_WEAPON_1,
 	E_BONE_WEAPON_2,
@@ -4490,13 +4490,11 @@ string boneStrings[] = {
 	"E_BONE_C_SPINE1",
 	"E_BONE_C_SPINE2",
 	"E_BONE_C_SPINE3",
-	"E_BONE_C_SPINE4",
-	"E_BONE_C_SPINE5",
-	"E_BONE_C_SPINE6", // neck
+	"E_BONE_C_SPINE4", // neck
 	"E_BONE_C_SKULL",
 	
-	"E_BONE_WEAPON_BASE",
-	"E_BONE_WEAPON_HANDLE",
+	"E_BONE_WEAPON_HANDLEUP",
+	"E_BONE_WEAPON_HANDLEDOWN",
 	"E_BONE_WEAPON_0",
 	"E_BONE_WEAPON_1",
 	"E_BONE_WEAPON_2",
@@ -4924,7 +4922,12 @@ std::cout << FruitDescription[Banana] << " is enum #" << Banana << "\n";
 */
 
 
-
+struct PoseKey {
+	int index;
+	int group;
+	int RLBN;
+	int step;
+};
 
 enum E_POSE_GROUPS {
 
@@ -4956,6 +4959,8 @@ enum E_POSE_GROUPS {
 	E_PG_REVR,
 	E_PG_BKIK,
 	E_PG_FRNT,
+	
+	E_PG_SWORD,
 	
 	E_PG_LENGTH	
 };
@@ -4989,8 +4994,9 @@ string poseGroupStrings[] = {
 	"E_PG_ROUN",
 	"E_PG_REVR",
 	"E_PG_BKIK",
-	"E_PG_FRNT"
+	"E_PG_FRNT",
 	
+	"E_PG_SWORD"
 		
 };
 
@@ -22381,10 +22387,8 @@ public:
   int draggingToInd;
   int draggingFromType;
   int draggingToType;
-  int curPoseIndex;
-  int curPoseGroup;
-  int curPoseRLBN;
-  int curPoseStep;
+  int curPoseType;
+  PoseKey (curPose) [E_ENTTYPE_LENGTH];
   int actorCount;
   int limbDataDebug;
   int polyCount;
@@ -22820,7 +22824,7 @@ public:
   void loadPoseInfo ();
   void changePose (int amount);
   void saveCurrentPose ();
-  void getIndexFromCurrentPose ();
+  void getIndexForPose (PoseKey * tempPose);
   void setPoseFromIndex (int i);
   void loadNonPoseData (int npdPose, int npdSide, int npdStep);
   void loadCurrentPose ();
@@ -23518,14 +23522,11 @@ public:
   GameOrgNode * (allNodes) [E_BONE_C_END];
   FIVector4 basePosition;
   JSONValue * rootObj;
-  int basePoseGroup;
-  int basePoseRLBN;
-  int basePoseStep;
+  PoseKey basePose;
+  PoseKey targetPose;
   int ownerUID;
   int orgType;
   int stepCount;
-  int targetPoseGroup;
-  int targetPoseRLBN;
   double totTime;
   float defVecLength;
   float gv (float * vals);
@@ -24682,10 +24683,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		// todo: probe area ahead of current ray step to see if near edge
 		
-		curPoseIndex = 0;
-		curPoseGroup = E_PG_TPOSE;
-		curPoseRLBN = RLBN_NEIT;
-		curPoseStep = 0;
+		curPoseType = -1;
+		
+		
+		
 		
 		
 		limbDataDebug = 0;
@@ -25894,12 +25895,12 @@ void Singleton::setCurrentActor (BaseObj * ge)
 			
 			
 			actObjInd = ge->uid;
-			
-			cout << "actObjInd " << actObjInd << "\n";
-			
 			subjectDistance = BTV2FIV(currentActor->getCenterPoint(E_BDG_CENTER))->distance(cameraGetPosNoShake());
 			
-			cout << "subjectDistance " << subjectDistance << "\n"; 
+			curPoseType = currentActor->entType;
+			
+			
+			
 		}
 		
 	}
@@ -28370,19 +28371,6 @@ void Singleton::syncObjects ()
 		
 		
 		
-		// for (i = 0; i < gameOrgs.size(); i++) {
-		// 	if (currentActor != NULL) {
-				
-		// 		if (i == currentActor->orgId) {
-		// 			gameOrgs[i]->basePosition.setBTV(currentActor->getCenterPoint(E_BDG_CENTER));
-		// 		}
-				
-		// 	}
-			
-		// 	transformOrg(gameOrgs[i]);
-		// }
-		
-		
 	}
 void Singleton::updateCamVals ()
                              {
@@ -29252,11 +29240,11 @@ string Singleton::getPoseString (int targPoseGroup, int targRLBN, int targStep)
 	}
 GameOrg * Singleton::getCurrentPose ()
                                   {
-		return getPose(curPoseGroup,curPoseRLBN,curPoseStep);
+		return getPose(curPose[curPoseType].group,curPose[curPoseType].RLBN,curPose[curPoseType].step);
 	}
 string Singleton::getCurrentPoseString ()
                                       {
-		return getPoseString(curPoseGroup,curPoseRLBN,curPoseStep);
+		return getPoseString(curPose[curPoseType].group,curPose[curPoseType].RLBN,curPose[curPoseType].step);
 	}
 int Singleton::getActionStateFromPose (int poseNum)
                                                 {
@@ -29654,34 +29642,69 @@ void Singleton::loadPoseInfo ()
 					}
 				}
 				
-				for ( k = 0; k < 4; k++ ) {
+				if (gamePoseInfo[i].data[E_PIK_POSETYPE] == E_ENTTYPE_WEAPON) {
+					cout << "weapon\n";
+				}
+				else {
+					cout << "not weapon\n";
 					
-					if (hasRLBN(rlbnRes,k)) {
+					for ( k = 0; k < 4; k++ ) {
 						
-						for (m = 0; m < numSteps; m++) {
-							curString = poseGroupStrings[i];
-							curString.append("_");
-							curString.append(poseSideStrings[k]);
-							curString.append(std::to_string(m));
+						if (hasRLBN(rlbnRes,k)) {
 							
-							gamePoseInfo[i].poseSteps[k].fileString[m] = curString;
-							gamePoseInfo[i].poseSteps[k].gamePoseIndex[m] = gamePoses.size();
-							
-							
-							gamePoses.push_back(new GameOrg());
-							gamePoses.back()->init(this,-1,E_ORGTYPE_HUMAN);
-							gamePoses.back()->loadFromFile(curString, false);
-							transformOrg(gamePoses.back(), NULL);
-							
-							gamePoses.back()->basePoseGroup = i;
-							gamePoses.back()->basePoseRLBN = k;
-							gamePoses.back()->basePoseStep = m;
+							for (m = 0; m < numSteps; m++) {
+								curString = poseGroupStrings[i];
+								curString.append("_");
+								curString.append(poseSideStrings[k]);
+								curString.append(std::to_string(m));
+								
+								gamePoseInfo[i].poseSteps[k].fileString[m] = curString;
+								gamePoseInfo[i].poseSteps[k].gamePoseIndex[m] = gamePoses.size();
+								
+								
+								gamePoses.push_back(new GameOrg());
+								gamePoses.back()->init(this,-1,E_ORGTYPE_HUMAN);
+								gamePoses.back()->loadFromFile(curString, false);
+								transformOrg(gamePoses.back(), NULL);
+								
+								gamePoses.back()->basePose.group = i;
+								gamePoses.back()->basePose.RLBN = k;
+								gamePoses.back()->basePose.step = m;
+							}
 						}
+						
 					}
-					
 				}
 				
+				
+				
 			}
+			
+			
+			cout << "GAMEPOSESIZE " << gamePoses.size() << "\n";
+			
+			
+			for (i = 0; i < E_ENTTYPE_LENGTH; i++) {
+				
+				curPose[i].RLBN = RLBN_NEIT;
+				curPose[i].step = 0;
+				
+				switch (i) {
+					case E_ENTTYPE_NPC:
+						curPose[i].group = E_PG_TPOSE;
+					break;
+					case E_ENTTYPE_WEAPON:
+						curPose[i].group = E_PG_SWORD;
+					break;
+					default:
+						curPose[i].group = E_PG_TPOSE;
+					break;
+					
+				}
+				getIndexForPose(&(curPose[i]));
+				
+			}
+			
 			
 		}
 		
@@ -29693,50 +29716,39 @@ void Singleton::changePose (int amount)
 		
 		GameOrg* testOrg = getCurOrg();
 		
-		curPoseIndex += amount;
+		int testPoseType = -1;
+		int testPoseInd;
 		
-		if (curPoseIndex == gamePoses.size()) {
-			curPoseIndex = 0;
-		}
-		if (curPoseIndex < 0) {
-			curPoseIndex = gamePoses.size()-1;
-		}
+		do {
+			curPose[curPoseType].index += amount;
+			
+			cout << "poseInd " << " " << curPoseType << " " << curPose[curPoseType].index << "\n";
+			
+			if (curPose[curPoseType].index == gamePoses.size()) {
+				curPose[curPoseType].index = 0;
+			}
+			if (curPose[curPoseType].index < 0) {
+				curPose[curPoseType].index = gamePoses.size()-1;
+			}
+			
+			testPoseInd = gamePoses[curPose[curPoseType].index]->basePose.group;
+			testPoseType = gamePoseInfo[testPoseInd].data[E_PIK_POSETYPE];
+			
+		} while(testPoseType != curPoseType);
 		
-		/*
 		
-		curPoseGroup = E_PG_TPOSE;
-		curPoseRLBN = RLBN_NEIT;
-		curPoseStep = 0;
-		
-		*/
 		
 		int j;
 		float* curData;
 		
 		cout << "Current Pose: " << getCurrentPoseString() << "\n";
 		
-		setPoseFromIndex(curPoseIndex);
-		
-		// curPoseGroup = gamePoses[curPoseIndex].basePoseGroup;
-		// curPoseRLBN = gamePoses[curPoseIndex].basePoseRLBN;
-		// curPoseStep = gamePoses[curPoseIndex].basePoseStep;
+		setPoseFromIndex(curPose[curPoseType].index);
 		
 		
 		if (testOrg != NULL) {
-			
-			
-			// curData = &(gamePoseInfo[curPoseGroup].data[0]);
-			
-			// for (j = 0; j < RLBN_LENGTH; j++) {
-				
-			// 	if ( hasRLBN(curData[E_PIK_RLBN],j) ) {
-			// 		curPoseRLBN = j;
-			// 		curPoseStep = 0;
-			// 		break;
-			// 	}
-			// }
 					
-			testOrg->setTPG(curPoseGroup, curPoseRLBN);
+			testOrg->setTPG(curPose[curPoseType].group, curPose[curPoseType].RLBN);
 			
 			if (editPose) {
 				loadCurrentPose();
@@ -29760,16 +29772,23 @@ void Singleton::saveCurrentPose ()
 			}
 		}
 	}
-void Singleton::getIndexFromCurrentPose ()
-                                       {
-		curPoseIndex = gamePoseInfo[curPoseGroup].poseSteps[curPoseRLBN].gamePoseIndex[curPoseStep];
+void Singleton::getIndexForPose (PoseKey * tempPose)
+                                                {
+		
+		tempPose->index = gamePoseInfo[
+			tempPose->group
+		].poseSteps[
+			tempPose->RLBN
+		].gamePoseIndex[
+			tempPose->step
+		];
 	}
 void Singleton::setPoseFromIndex (int i)
                                      {
-		curPoseIndex = i;
-		curPoseGroup = gamePoses[curPoseIndex]->basePoseGroup;
-		curPoseRLBN = gamePoses[curPoseIndex]->basePoseRLBN;
-		curPoseStep = gamePoses[curPoseIndex]->basePoseStep;
+		curPose[curPoseType].index = i;
+		curPose[curPoseType].group = gamePoses[curPose[curPoseType].index]->basePose.group;
+		curPose[curPoseType].RLBN = gamePoses[curPose[curPoseType].index]->basePose.RLBN;
+		curPose[curPoseType].step = gamePoses[curPose[curPoseType].index]->basePose.step;
 	}
 void Singleton::loadNonPoseData (int npdPose, int npdSide, int npdStep)
                                                                     {
@@ -29800,41 +29819,10 @@ void Singleton::loadNonPoseData (int npdPose, int npdSide, int npdStep)
 					
 				}
 				
-				
-				// for (i = 0; i < E_PG_LENGTH; i++) {
-				// 	curPoseGroup = i;
-				// 	curData = &(gamePoseInfo[curPoseGroup].data[0]);
-					
-				// 	for (j = 0; j < RLBN_LENGTH; j++) {
-						
-				// 		curPoseRLBN = j;
-						
-				// 		if ( hasRLBN(curData[E_PIK_RLBN],j) ) {
-							
-				// 			for (k = 0; k < curData[E_PIK_NUMSTEPS]; k++) {
-				// 				curPoseStep = k;
-								
-				// 				loadCurrentPose();
-				// 				getCurrentPose()->loadFromFile(getPoseString(npdPose,npdSide,npdStep), true);
-				// 				transformOrg(getCurrentPose(), NULL);
-				// 				testOrg->setToPose(getCurrentPose(),1.0f);
-				// 				transformOrg(testOrg, NULL);
-				// 				makeDirty();
-				// 				cout << "Loaded Non Pose " << getCurrentPoseString() << "\n";
-				// 				saveCurrentPose();
-								
-								
-				// 			}
-							
-				// 		}
-						
-				// 	}
-					
-				// }
-				curPoseGroup = npdPose;
-				curPoseRLBN = npdSide;
-				curPoseStep = npdStep;
-				getIndexFromCurrentPose();
+				curPose[curPoseType].group = npdPose;
+				curPose[curPoseType].RLBN = npdSide;
+				curPose[curPoseType].step = npdStep;
+				getIndexForPose(&(curPose[curPoseType]));
 				
 				loadCurrentPose();
 			}
@@ -30320,7 +30308,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				
 				case 'C':
-					if (curPoseGroup == E_PG_NONPOSE) {
+					if (curPose[curPoseType].group == E_PG_NONPOSE) {
 						saveCurrentPose();
 						loadNonPoseData(E_PG_NONPOSE, RLBN_NEIT, 0);
 					}
@@ -31624,6 +31612,13 @@ void Singleton::setSelNode (GameOrgNode * newNode)
                                               {
 		
 		selectedNode = newNode;
+		
+		if (selectedNode != NULL) {
+			cout << boneStrings[selectedNode->nodeName] << "\n";
+		}
+		
+		
+		
 		if (selectedNode != lastSelNode) {
 			makeDirty();
 		}
@@ -32342,7 +32337,7 @@ void Singleton::grabThrowObj (int actorId, int _handNum)
 					getCorrectedName(E_BONE_R_METACARPALS)
 				]->children.pop_back();
 			}
-			grabObjOrg->allNodes[E_BONE_WEAPON_BASE]->parent = NULL;
+			grabObjOrg->allNodes[E_BONE_C_BASE]->parent = NULL;
 			
 			//ca->weaponActive = false;
 			
@@ -32399,27 +32394,27 @@ void Singleton::grabThrowObj (int actorId, int _handNum)
 					curOrg->allNodes[
 						getCorrectedName(E_BONE_L_METACARPALS)
 					]->children.push_back(
-						grabObjOrg->allNodes[E_BONE_WEAPON_BASE]
+						grabObjOrg->allNodes[E_BONE_C_BASE]
 					);
-					grabObjOrg->allNodes[E_BONE_WEAPON_BASE]->parent = 
+					grabObjOrg->allNodes[E_BONE_C_BASE]->parent = 
 						curOrg->allNodes[
 							getCorrectedName(E_BONE_L_METACARPALS)
 						];
 					
-					//grabObjOrg->allNodes[E_BONE_WEAPON_BASE]->setTangent(-1.0f);
+					//grabObjOrg->allNodes[E_BONE_C_BASE]->setTangent(-1.0f);
 				}
 				else {
 					curOrg->allNodes[
 						getCorrectedName(E_BONE_R_METACARPALS)
 					]->children.push_back(
-						grabObjOrg->allNodes[E_BONE_WEAPON_BASE]
+						grabObjOrg->allNodes[E_BONE_C_BASE]
 					);
-					grabObjOrg->allNodes[E_BONE_WEAPON_BASE]->parent = 
+					grabObjOrg->allNodes[E_BONE_C_BASE]->parent = 
 						curOrg->allNodes[
 							getCorrectedName(E_BONE_R_METACARPALS)
 						];
 					
-					//grabObjOrg->allNodes[E_BONE_WEAPON_BASE]->setTangent(1.0f);
+					//grabObjOrg->allNodes[E_BONE_C_BASE]->setTangent(1.0f);
 				}
 				
 				
@@ -44435,11 +44430,11 @@ float GameOrg::gv (float * vals)
 float const GameOrg::baseMat = 12.0f;
 GameOrg::GameOrg ()
                   {
-		basePoseGroup = -1;
-		basePoseRLBN = -1;
-		basePoseStep = -1;
-		targetPoseRLBN = RLBN_NEIT;
-		targetPoseGroup = -1;
+		basePose.group = -1;
+		basePose.RLBN = -1;
+		basePose.step = -1;
+		targetPose.RLBN = RLBN_NEIT;
+		targetPose.group = -1;
 		rootObj = NULL;
 		defVecLength = 0.05f;
 	}
@@ -44606,17 +44601,15 @@ void GameOrg::setTPG (int _targetPoseGroup, int _targetPoseRLBN)
                                                                {
 		
 		if (
-			(targetPoseGroup == _targetPoseGroup) &&
-			(targetPoseRLBN == _targetPoseRLBN)	
+			(targetPose.group == _targetPoseGroup) &&
+			(targetPose.RLBN == _targetPoseRLBN)	
 		) {
 			// same pose, let it finish
 		}
 		else {
 			
-			//cout << "setTPG()" << targetPoseGroup << " " << targetPoseRLBN << "\n";
-			
-			targetPoseGroup = _targetPoseGroup;
-			targetPoseRLBN = _targetPoseRLBN;
+			targetPose.group = _targetPoseGroup;
+			targetPose.RLBN = _targetPoseRLBN;
 			stepCount = 0;
 			
 			totTime = 0.0;
@@ -44681,7 +44674,6 @@ void GameOrg::updatePose (double curTimeStep)
 		float timeInterval = 1.0f;
 		float lerpSpeed = 0.005f;
 		
-		int stepCountMod;
 		
 		float* curData;
 		
@@ -44691,32 +44683,32 @@ void GameOrg::updatePose (double curTimeStep)
 			
 		}
 		else {
-			if (targetPoseGroup > -1) {
+			if (targetPose.group > -1) {
 				
-				curData = &(singleton->gamePoseInfo[targetPoseGroup].data[0]);
+				curData = &(singleton->gamePoseInfo[targetPose.group].data[0]);
 				
 				
 				lerpSpeed = curData[E_PIK_LERPSPEED];
 				timeInterval = curData[E_PIK_TIMEINTERVAL];
 				
-				stepCountMod = stepCount;
+				targetPose.step = stepCount;
 				
 				if (curData[E_PIK_DOLOOP] == 1.0f) {
-					stepCountMod = stepCount%((int)(curData[E_PIK_NUMSTEPS]));
+					targetPose.step = stepCount%((int)(curData[E_PIK_NUMSTEPS]));
 				}
 				else {
-					if (stepCountMod >= curData[E_PIK_NUMSTEPS]) {
-						stepCountMod = curData[E_PIK_NUMSTEPS]-1;
+					if (targetPose.step >= curData[E_PIK_NUMSTEPS]) {
+						targetPose.step = curData[E_PIK_NUMSTEPS]-1;
 					}
 					
 					if (stepCount > (curData[E_PIK_NUMSTEPS] + curData[E_PIK_EXTRASTEPS])) {
 						curOwner->setActionState(
-							singleton->getActionStateFromPose(targetPoseGroup),
-							targetPoseRLBN,
+							singleton->getActionStateFromPose(targetPose.group),
+							targetPose.RLBN,
 							false
 						);
 						setTPG(E_PG_IDLE,RLBN_NEIT);
-						stepCountMod = 0;
+						targetPose.step = 0;
 					}
 				}
 				
@@ -44728,7 +44720,7 @@ void GameOrg::updatePose (double curTimeStep)
 				setToPose(
 					
 					singleton->getPose(
-						targetPoseGroup,targetPoseRLBN,stepCountMod
+						targetPose.group,targetPose.RLBN,targetPose.step
 					),
 					
 					lerpSpeed
@@ -44795,9 +44787,9 @@ void GameOrg::initWeapon ()
 		float dirMod = 1.0f;
 		
 		
-		baseNode = allNodes[E_BONE_WEAPON_BASE] = new GameOrgNode(
+		baseNode = allNodes[E_BONE_C_BASE] = new GameOrgNode(
 			NULL,
-			E_BONE_WEAPON_BASE,
+			E_BONE_C_BASE,
 			
 			baseMat, 0.0f, 0.0f, M_PI/2.0f, 
 			0.01f, defVecLength, defVecLength,
@@ -44810,8 +44802,8 @@ void GameOrg::initWeapon ()
 		
 		GameOrgNode* curNode = baseNode;
 		
-		curNode = allNodes[E_BONE_WEAPON_HANDLE] = curNode->addChild(
-			E_BONE_WEAPON_HANDLE,
+		curNode = allNodes[E_BONE_WEAPON_HANDLEUP] = curNode->addChild(
+			E_BONE_WEAPON_HANDLEUP,
 			
 			baseMat, 0.0f, 0.0f, 0.0f,
 			1.0f, defVecLength, defVecLength,
@@ -44854,6 +44846,24 @@ void GameOrg::initWeapon ()
 			// 1.0f,0.0f,0.0f
 			
 			1.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 1.0f
+		);
+		
+		curNode = baseNode;
+		
+		curNode = allNodes[E_BONE_WEAPON_HANDLEDOWN] = curNode->addChild(
+			E_BONE_WEAPON_HANDLEDOWN,
+			
+			baseMat, 0.0f, 0.0f, 0.0f,
+			1.0f, defVecLength, defVecLength,
+			1.0f, defVecLength, defVecLength,
+			
+			// 0.0f,0.0f,1.0f,
+			// 0.0f,1.0f,0.0f,
+			// 1.0f,0.0f,0.0f
+			
+			-1.0f, 0.0f, 0.0f,
 			0.0f, 1.0f, 0.0f,
 			0.0f, 0.0f, 1.0f
 		);
@@ -55427,88 +55437,6 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 			
 			
 			ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-			/*
-			if (ge->bodies[bodInd].boneId > -1) {
-				switch(ge->bodies[bodInd].boneId) {
-					default:
-					
-						if (ge->entType == E_ENTTYPE_WEAPON) {
-							ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-						}
-						else {
-							ge->bodies[bodInd].body->setDamping(0.999f,0.9f);
-						}
-					
-						
-					break;
-				}
-			}
-			else {
-				switch (bodInd) {
-					case E_BDG_CENTER:
-						ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-						
-					break;
-					case E_BDG_LFOOT:
-						ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-					break;
-					case E_BDG_RFOOT:
-						ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-					break;
-					default:
-					
-						ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-						
-						// switch(ge->bodies[bodInd].boneId) {
-							
-						// 	case E_BONE_L_UPPERARM:
-						// 	case E_BONE_L_LOWERARM:
-						// 	case E_BONE_L_METACARPALS:
-						// 	case E_BONE_L_UPPERLEG:
-						// 	case E_BONE_L_LOWERLEG:
-						// 	case E_BONE_L_TALUS:
-							
-						// 	case E_BONE_R_UPPERARM:
-						// 	case E_BONE_R_LOWERARM:
-						// 	case E_BONE_R_METACARPALS:
-						// 	case E_BONE_R_UPPERLEG:
-						// 	case E_BONE_R_LOWERLEG:
-						// 	case E_BONE_R_TALUS:
-						// 		ge->bodies[bodInd].body->setDamping(0.99f,0.9f);
-						// 	break;
-						// 	case -1:
-						// 	case E_BONE_WEAPON_BASE:
-						// 	case E_BONE_WEAPON_END:
-						// 	case E_BONE_WEAPON_0:
-						// 	case E_BONE_WEAPON_1:
-						// 	case E_BONE_WEAPON_2:
-						// 	case E_BONE_WEAPON_3:
-						// 	case E_BONE_WEAPON_4:
-						// 	case E_BONE_WEAPON_5:
-						// 	case E_BONE_WEAPON_6:
-						// 	case E_BONE_WEAPON_7:
-						// 	case E_BONE_WEAPON_8:
-						// 		ge->bodies[bodInd].body->setDamping(0.1f,0.9f);
-						// 	break;
-							
-						// 	default:
-						// 		// linear, angular
-						// 		ge->bodies[bodInd].body->setDamping(0.999f,0.9f);
-						// 	break;
-						// }
-					
-						
-					
-					break;
-				}
-			}
-			*/
-			
-			
-			
-			
-			
-			
 			
 			ge->bodies[bodInd].body->setContactProcessingThreshold(CONTACT_THRESH);
 			
@@ -55517,31 +55445,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 			if (isOrg) {
 				
 				curOrg = singleton->gameOrgs[ge->orgId];
-				
-				// if (curOrg->orgType == E_ORGTYPE_HUMAN) {
-				// 	// if (
-				// 	// 	(bodInd == 0)
-				// 	// 	|| (
-				// 	// 		(ge->bodies[bodInd].boneId == E_BONE_C_BASE) &&
-				// 	// 		(!(ge->bodies[bodInd].isBall))	
-				// 	// 	)
-				// 	// ) {
-				// 	// 	ge->bodies[bodInd].isVisible = false;
-				// 	// }
-					
-				// 	ge->bodies[bodInd].isVisible = false;
-				// }
-				
-				// if (curOrg->orgType == E_ORGTYPE_WEAPON) {
-				// 	if (ge->bodies[bodInd].boneId == E_BONE_WEAPON_BASE) {
-				// 		ge->bodies[bodInd].isVisible = false;
-				// 	}
-				// }
-				
-				// if (ge->bodies[bodInd].jointType != E_JT_LIMB) {
-				// 	ge->bodies[bodInd].isVisible = false;
-				// }
-				
+								
 				ge->bodies[bodInd].isVisible = false;//(bodInd == 0);// false;//(bodInd < E_BDG_LENGTH);//
 				
 			}
@@ -56251,59 +56155,15 @@ void GamePhysics::collideWithWorld (double curStepTime)
 							curOrg->setTPG(E_PG_IDLE,RLBN_NEIT);
 						}
 						
-						if (curOrg->targetPoseGroup != E_PG_JUMP) {
+						if (curOrg->targetPose.group != E_PG_JUMP) {
 							ge->setActionState(E_ACT_ISJUMPING,RLBN_NEIT,false);
 						}
 						
 						
 						curOrg->updatePose(curStepTime);
 						
-						
-						// if (ge->isGrabbingId[RLBN_LEFT] > -1) {
-						// 	ge->updateWeapon(
-						// 		RLBN_LEFT,
-						// 		curOrg->allNodes[getCorrectedName(E_BONE_L_METACARPALS)]->orgTrans[1].getBTV(),
-						// 		curOrg->allNodes[getCorrectedName(E_BONE_L_METACARPALS)]->tbnTrans[1].getBTV(),
-						// 		curStepTime,
-						// 		2.0f // todo: update this to actual weapon length
-						// 	);
-						// }
-						
-						// if (ge->isGrabbingId[RLBN_RIGT] > -1) {
-						// 	ge->updateWeapon(
-						// 		RLBN_RIGT,
-						// 		curOrg->allNodes[getCorrectedName(E_BONE_R_METACARPALS)]->orgTrans[1].getBTV(),
-						// 		curOrg->allNodes[getCorrectedName(E_BONE_R_METACARPALS)]->tbnTrans[1].getBTV(),
-						// 		curStepTime,
-						// 		2.0f // todo: update this to actual weapon length
-						// 	);
-						// }
-						
-						
 						ge->wakeAll();
 						
-						
-						
-					}
-					else {
-						// if (ge->entType == E_ENTTYPE_WEAPON) {
-							
-						// 	if (ge->isGrabbedById > -1) {
-						// 		grabber = &(singleton->gw->gameObjects[ge->isGrabbedById]);
-						// 		grabberOrg = singleton->gameOrgs[grabber->orgId];
-								
-						// 		if (grabber->isGrabbingId[RLBN_LEFT] == ge->uid) {
-						// 			singleton->transformOrg(curOrg, grabberOrg->allNodes[getCorrectedName(E_BONE_L_METACARPALS)]);
-						// 		}
-						// 		else {
-						// 			singleton->transformOrg(curOrg, grabberOrg->allNodes[getCorrectedName(E_BONE_R_METACARPALS)]);
-						// 		}
-								
-						// 	}
-							
-							
-						// 	ge->wakeAll();
-						// }
 					}
 					
 					
@@ -56434,86 +56294,15 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								resVector4 = myMatrix4*myVector4;
 								basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
 								
-								
-								
 								ge->addAABBPoint(&(ge->aabbMinSkel), &(ge->aabbMaxSkel), basePos);
 								
-								basePos += grabber->skelOffset;// - btVector3(0.0f, 0.0f, BASE_ENT_HEIGHT*0.5f);
+								basePos += grabber->skelOffset;
 								
-								
-								
-								// if (ge->weaponActive) {
-									
-								// 	switch (curBody->boneId) {
-										
-										
-										
-								// 		case E_BONE_L_METACARPALS:
-										
-								// 			if (true) {
-								// 				if (ge->rightHandTop) {
-								// 					difVec = ge->weaponVec0 - curBody->body->getCenterOfMassPosition();
-								// 				}
-								// 				else {
-								// 					difVec = ge->weaponVec0*0.8 + ge->weaponVec1*0.2 - curBody->body->getCenterOfMassPosition();
-								// 				}
-								// 			}
-								// 			else {
-								// 				difVec = btVector3(0.0f,0.0f,0.0f);
-												
-								// 			}
-										
-											
-										
-											
-								// 		break;
-								// 		case E_BONE_R_METACARPALS:
-										
-								// 			if (true) {
-								// 				if (ge->rightHandTop) {
-								// 					difVec = ge->weaponVec0*0.8 + ge->weaponVec1*0.2 - curBody->body->getCenterOfMassPosition();
-								// 				}
-								// 				else {
-								// 					difVec = ge->weaponVec0 - curBody->body->getCenterOfMassPosition();
-								// 				}
-								// 			}
-								// 			else {
-								// 				difVec = btVector3(0.0f,0.0f,0.0f);
-												
-								// 			}
-										
-											
-								// 		break;
-								// 		case E_BONE_L_LOWERARM:
-								// 		case E_BONE_R_LOWERARM:
-								// 		case E_BONE_L_UPPERARM:
-								// 		case E_BONE_R_UPPERARM:
-								// 			difVec = btVector3(0.0f,0.0f,0.0f);
-								// 		break;
-								// 		default:
-								// 			difVec = basePos - curBody->body->getCenterOfMassPosition();
-								// 		break;
-								// 	}
-									
-									
-								// }
-								// else {
-									difVec = basePos - curBody->body->getCenterOfMassPosition();
-								//}
-								
+								difVec = basePos - curBody->body->getCenterOfMassPosition();
 								
 								
 								// move limbs towards pose
-										
-								//totVec += difVec;
 								
-								
-								
-								// ge->applyImpulse(
-								// 	difVec*curStepTime*curBody->mass*singleton->conVals[E_CONST_LIMB_IMPULSE]*ge->bindingPower, // *MASS_PER_LIMB*2.0f*10.0f*curStepTime,
-								// 	false,
-								// 	bodInd
-								// );
 								
 								ge->setLinVel(
 									curBody->body->getLinearVelocity()*(1.0f-bindingPower)
@@ -56522,99 +56311,10 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								);
 								
 								
-								
-								// switch(curBody->jointType) {
-								// 	case E_JT_LIMB:
-								// 		moveToOrientation(
-								// 			curBody->body,
-								// 			curOrgNode->tbnTrans[0].getBTV().normalize(),
-								// 			curOrgNode->tbnTrans[1].getBTV().normalize(),
-								// 			curOrgNode->tbnTrans[2].getBTV().normalize(),
-								// 			0.1f
-								// 		);
-								// 	break;
-								// 	case E_JT_BALL:
-										
-								// 	break;
-								// 	case E_JT_NORM:
-										
-								// 	break;
-								// }
-								
-								
-							
-							
-							
-							//
 						}
 						
 						
 					}
-					
-					// if (
-					// 	(ge->isGrabbedById > -1) &&
-					// 	(ge->isGrabbedByHand > -1)	
-					// ) {
-						
-					// 	grabber = &(singleton->gw->gameObjects[ge->isGrabbedById]);
-						
-					// 	doProc = true;
-						
-					// 	if (curBody->boneId == E_BONE_WEAPON_END) {
-							
-					// 		switch(curBody->jointType) {
-					// 			case E_JT_LIMB:
-					// 				basePos = 
-					// 					grabber->weaponVec0[ge->isGrabbedByHand]*0.5f +
-					// 					grabber->weaponVec1[ge->isGrabbedByHand]*0.5f;
-					// 			break;
-					// 			case E_JT_BALL:
-					// 				basePos = grabber->weaponVec1[ge->isGrabbedByHand];
-					// 			break;
-					// 			case E_JT_NORM:
-									
-					// 			break;
-					// 		}
-							
-					// 	}
-					// 	else {
-					// 		if (curBody->boneId == E_BONE_WEAPON_BASE) {
-					// 			basePos = grabber->weaponVec0[ge->isGrabbedByHand];
-					// 		}
-					// 		else {
-					// 			doProc = false;
-					// 		}
-					// 	}
-						
-					// 	if (doProc) {
-					// 		difVec = basePos - curBody->body->getCenterOfMassPosition();
-							
-					// 		// move limbs weapon
-							
-					// 		//if (curBody->boneId == E_BONE_WEAPON_BASE) {
-					// 			ge->setLinVel(
-					// 				difVec*20.0f,
-					// 				bodInd
-					// 			);
-					// 		// }
-					// 		// else {
-					// 		// 	ge->applyImpulse(
-					// 		// 		difVec*curStepTime*curBody->mass*singleton->conVals[E_CONST_LIMB_IMPULSE], // *MASS_PER_LIMB*2.0f*10.0f*curStepTime,
-					// 		// 		false,
-					// 		// 		bodInd
-					// 		// 	);
-					// 		// }
-							
-							
-							
-							
-							
-					// 	}
-						
-						
-						
-						
-					// }
 					
 					
 					if (

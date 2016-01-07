@@ -53,8 +53,8 @@ const static bool DO_SHADER_DUMP = false;
 #define STREAM_RES 1
 
 #ifdef STREAM_RES
-	const static int DEF_WIN_W = 2048;//
-	const static int DEF_WIN_H = 1024;//
+	const static int DEF_WIN_W = 1920; //2048;//
+	const static int DEF_WIN_H = 1080; //1024;//
 #else
 	const static int DEF_WIN_W = 1536;
 	const static int DEF_WIN_H = 768;

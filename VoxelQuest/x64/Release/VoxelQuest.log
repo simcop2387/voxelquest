@@ -1,4 +1,4 @@
-﻿Build started 1/7/2016 4:04:22 AM.
+﻿Build started 1/7/2016 2:31:01 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -286,31 +286,37 @@
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_TPOSE_N0.js         
          Load Successful          
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
          Load Successful          
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_JUMP_N0.js         
          Load Successful          
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_DEAD_N0.js         
          Load Successful          
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_PICKUP_N0.js         
          Load Successful          
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_IDLE_N0.js         
          Load Successful          
          
@@ -321,6 +327,7 @@
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_WALKFORWARD_N0.js         
          Load Successful          
          
@@ -341,6 +348,7 @@
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_SLSH_R0.js         
          Load Successful          
          
@@ -386,6 +394,7 @@
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_BACK_R0.js         
          Load Successful          
          
@@ -431,6 +440,7 @@
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_HACK_R0.js         
          Load Successful          
          
@@ -476,6 +486,7 @@
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_STAB_R0.js         
          Load Successful          
          
@@ -521,6 +532,7 @@
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_HOOK_R0.js         
          Load Successful          
          
@@ -551,6 +563,7 @@
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_ELBO_R0.js         
          Load Successful          
          
@@ -581,6 +594,7 @@
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_UPPR_R0.js         
          Load Successful          
          
@@ -611,6 +625,7 @@
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_JABP_R0.js         
          Load Successful          
          
@@ -641,6 +656,7 @@
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_ROUN_R0.js         
          Load Successful          
          
@@ -671,6 +687,7 @@
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_REVR_R0.js         
          Load Successful          
          
@@ -701,6 +718,7 @@
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_BKIK_R0.js         
          Load Successful          
          
@@ -731,6 +749,7 @@
          
          Valid JSON
                    
+         not weapon
          Loading:  ..\data\orgdata\E_PG_FRNT_R0.js         
          Load Successful          
          
@@ -761,25 +780,819 @@
          
          Valid JSON
                    
+         weapon
+         GAMEPOSESIZE 95
          GW DONE          
          curHeight 0 newHeight 3644.24
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          genBlockHolder
-         iNumSteps:  32         
-         iNumSteps:  64         
          Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
          Load Successful          
          
          Valid JSON
                    
-         actObjInd 27
-         subjectDistance 7.10923
-         No code for key: 119
-     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
-C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -805306369.
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
+         editPose 1
+         Loading:  ..\data\orgdata\E_PG_TPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_TPOSE_N0
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         poseInd  0 1
+         Current Pose: E_PG_TPOSE_N0
+         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_NONPOSE_N0
+         E_BONE_L_LOWERARM
+         E_BONE_L_LOWERARM
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_C_SPINE2
+         E_BONE_C_SPINE2
+         E_BONE_C_SPINE2
+         E_BONE_C_SPINE2
+         E_BONE_C_SPINE1
+         E_BONE_C_SPINE1
+         E_BONE_L_LOWERARM
+         E_BONE_L_LOWERARM
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_UPPERLEG
+         E_BONE_L_UPPERLEG
+         E_BONE_L_LOWERLEG
+         E_BONE_L_LOWERLEG
+         E_BONE_L_LOWERLEG
+         E_BONE_L_TALUS
+         E_BONE_L_TALUS
+         E_BONE_L_TALUS
+         E_BONE_L_TALUS
+         poseInd  0 2
+         Current Pose: E_PG_NONPOSE_N0
+         Loading:  ..\data\orgdata\E_PG_JUMP_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_JUMP_N0
+         poseInd  0 3
+         Current Pose: E_PG_JUMP_N0
+         Loading:  ..\data\orgdata\E_PG_DEAD_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_DEAD_N0
+         poseInd  0 4
+         Current Pose: E_PG_DEAD_N0
+         Loading:  ..\data\orgdata\E_PG_PICKUP_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_PICKUP_N0
+         poseInd  0 5
+         Current Pose: E_PG_PICKUP_N0
+         Loading:  ..\data\orgdata\E_PG_IDLE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_IDLE_N0
+         poseInd  0 6
+         Current Pose: E_PG_IDLE_N0
+         Loading:  ..\data\orgdata\E_PG_IDLE_N1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_IDLE_N1
+         poseInd  0 7
+         Current Pose: E_PG_IDLE_N1
+         Loading:  ..\data\orgdata\E_PG_WALKFORWARD_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_WALKFORWARD_N0
+         poseInd  0 8
+         Current Pose: E_PG_WALKFORWARD_N0
+         Loading:  ..\data\orgdata\E_PG_WALKFORWARD_N1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_WALKFORWARD_N1
+         poseInd  0 9
+         Current Pose: E_PG_WALKFORWARD_N1
+         Loading:  ..\data\orgdata\E_PG_WALKFORWARD_N2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_WALKFORWARD_N2
+         poseInd  0 10
+         Current Pose: E_PG_WALKFORWARD_N2
+         Loading:  ..\data\orgdata\E_PG_WALKFORWARD_N3.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_WALKFORWARD_N3
+         poseInd  0 11
+         Current Pose: E_PG_WALKFORWARD_N3
+         Loading:  ..\data\orgdata\E_PG_SLSH_R0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_SLSH_R0
+         poseInd  0 12
+         Current Pose: E_PG_SLSH_R0
+         Loading:  ..\data\orgdata\E_PG_SLSH_R1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_SLSH_R1
+         poseInd  0 13
+         Current Pose: E_PG_SLSH_R1
+         Loading:  ..\data\orgdata\E_PG_SLSH_R2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_SLSH_R2
+         poseInd  0 14
+         Current Pose: E_PG_SLSH_R2
+         Loading:  ..\data\orgdata\E_PG_SLSH_L0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_SLSH_L0
+         poseInd  0 15
+         Current Pose: E_PG_SLSH_L0
+         Loading:  ..\data\orgdata\E_PG_SLSH_L1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_SLSH_L1
+         poseInd  0 16
+         Current Pose: E_PG_SLSH_L1
+         Loading:  ..\data\orgdata\E_PG_SLSH_L2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_SLSH_L2
+         poseInd  0 17
+         Current Pose: E_PG_SLSH_L2
+         Loading:  ..\data\orgdata\E_PG_SLSH_B0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_SLSH_B0
+         poseInd  0 18
+         Current Pose: E_PG_SLSH_B0
+         Loading:  ..\data\orgdata\E_PG_SLSH_B1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_SLSH_B1
+         poseInd  0 19
+         Current Pose: E_PG_SLSH_B1
+         Loading:  ..\data\orgdata\E_PG_SLSH_B2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_SLSH_B2
+         E_BONE_C_SKULL
+         E_BONE_C_SKULL
+         E_BONE_C_SPINE4
+         E_BONE_C_SPINE3
+         E_BONE_C_SPINE3
+         E_BONE_C_SPINE3
+         E_BONE_L_SHOULDER
+         E_BONE_L_SHOULDER
+         E_BONE_L_SHOULDER
+         E_BONE_L_SHOULDER
+         E_BONE_L_SHOULDER
+         E_BONE_L_SHOULDER
+         E_BONE_L_SHOULDER
+         E_BONE_L_SHOULDER
+         E_BONE_L_SHOULDER
+         E_BONE_L_SHOULDER
+         E_BONE_L_SHOULDER
+         E_BONE_L_SHOULDER
+         E_BONE_L_SHOULDER
+         poseInd  0 20
+         Current Pose: E_PG_SLSH_B2
+         Loading:  ..\data\orgdata\E_PG_BACK_R0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_BACK_R0
+         poseInd  0 21
+         Current Pose: E_PG_BACK_R0
+         Loading:  ..\data\orgdata\E_PG_BACK_R1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_BACK_R1
+         poseInd  0 22
+         Current Pose: E_PG_BACK_R1
+         Loading:  ..\data\orgdata\E_PG_BACK_R2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_BACK_R2
+         poseInd  0 23
+         Current Pose: E_PG_BACK_R2
+         Loading:  ..\data\orgdata\E_PG_BACK_L0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_BACK_L0
+         poseInd  0 24
+         Current Pose: E_PG_BACK_L0
+         Loading:  ..\data\orgdata\E_PG_BACK_L1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_BACK_L1
+         poseInd  0 25
+         Current Pose: E_PG_BACK_L1
+         Loading:  ..\data\orgdata\E_PG_BACK_L2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_BACK_L2
+         poseInd  0 26
+         Current Pose: E_PG_BACK_L2
+         Loading:  ..\data\orgdata\E_PG_BACK_B0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_BACK_B0
+         poseInd  0 27
+         Current Pose: E_PG_BACK_B0
+         Loading:  ..\data\orgdata\E_PG_BACK_B1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_BACK_B1
+         poseInd  0 28
+         Current Pose: E_PG_BACK_B1
+         Loading:  ..\data\orgdata\E_PG_BACK_B2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_BACK_B2
+         poseInd  0 29
+         Current Pose: E_PG_BACK_B2
+         Loading:  ..\data\orgdata\E_PG_HACK_R0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_HACK_R0
+         poseInd  0 30
+         Current Pose: E_PG_HACK_R0
+         Loading:  ..\data\orgdata\E_PG_HACK_R1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_HACK_R1
+         poseInd  0 31
+         Current Pose: E_PG_HACK_R1
+         Loading:  ..\data\orgdata\E_PG_HACK_R2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_HACK_R2
+         poseInd  0 32
+         Current Pose: E_PG_HACK_R2
+         Loading:  ..\data\orgdata\E_PG_HACK_L0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_HACK_L0
+         poseInd  0 33
+         Current Pose: E_PG_HACK_L0
+         Loading:  ..\data\orgdata\E_PG_HACK_L1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_HACK_L1
+         poseInd  0 34
+         Current Pose: E_PG_HACK_L1
+         Loading:  ..\data\orgdata\E_PG_HACK_L2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_HACK_L2
+         poseInd  0 35
+         Current Pose: E_PG_HACK_L2
+         Loading:  ..\data\orgdata\E_PG_HACK_B0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_HACK_B0
+         poseInd  0 36
+         Current Pose: E_PG_HACK_B0
+         Loading:  ..\data\orgdata\E_PG_HACK_B1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_HACK_B1
+         poseInd  0 37
+         Current Pose: E_PG_HACK_B1
+         Loading:  ..\data\orgdata\E_PG_HACK_B2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_HACK_B2
+         poseInd  0 38
+         Current Pose: E_PG_HACK_B2
+         Loading:  ..\data\orgdata\E_PG_STAB_R0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_STAB_R0
+         poseInd  0 39
+         Current Pose: E_PG_STAB_R0
+         Loading:  ..\data\orgdata\E_PG_STAB_R1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_STAB_R1
+         poseInd  0 40
+         Current Pose: E_PG_STAB_R1
+         Loading:  ..\data\orgdata\E_PG_STAB_R2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_STAB_R2
+         poseInd  0 41
+         Current Pose: E_PG_STAB_R2
+         Loading:  ..\data\orgdata\E_PG_STAB_L0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_STAB_L0
+         poseInd  0 42
+         Current Pose: E_PG_STAB_L0
+         Loading:  ..\data\orgdata\E_PG_STAB_L1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_STAB_L1
+         poseInd  0 43
+         Current Pose: E_PG_STAB_L1
+         Loading:  ..\data\orgdata\E_PG_STAB_L2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_STAB_L2
+         poseInd  0 44
+         Current Pose: E_PG_STAB_L2
+         Loading:  ..\data\orgdata\E_PG_STAB_B0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_STAB_B0
+         poseInd  0 45
+         Current Pose: E_PG_STAB_B0
+         Loading:  ..\data\orgdata\E_PG_STAB_B1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_STAB_B1
+         poseInd  0 46
+         Current Pose: E_PG_STAB_B1
+         Loading:  ..\data\orgdata\E_PG_STAB_B2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_STAB_B2
+         poseInd  0 47
+         Current Pose: E_PG_STAB_B2
+         Loading:  ..\data\orgdata\E_PG_HOOK_R0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_HOOK_R0
+         poseInd  0 48
+         Current Pose: E_PG_HOOK_R0
+         Loading:  ..\data\orgdata\E_PG_HOOK_R1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_HOOK_R1
+         poseInd  0 49
+         Current Pose: E_PG_HOOK_R1
+         Loading:  ..\data\orgdata\E_PG_HOOK_R2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_HOOK_R2
+         poseInd  0 50
+         Current Pose: E_PG_HOOK_R2
+         Loading:  ..\data\orgdata\E_PG_HOOK_L0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_HOOK_L0
+         poseInd  0 51
+         Current Pose: E_PG_HOOK_L0
+         Loading:  ..\data\orgdata\E_PG_HOOK_L1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_HOOK_L1
+         poseInd  0 52
+         Current Pose: E_PG_HOOK_L1
+         Loading:  ..\data\orgdata\E_PG_HOOK_L2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_HOOK_L2
+         E_BONE_C_SPINE3
+         E_BONE_C_SPINE3
+         E_BONE_C_SPINE3
+         E_BONE_C_SPINE3
+         E_BONE_L_LOWERARM
+         E_BONE_L_LOWERARM
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         E_BONE_L_METACARPALS
+         editPose 0
+         editPose 1
+         Loading:  ..\data\orgdata\E_PG_HOOK_L2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_HOOK_L2
+         editPose 0
+         iNumSteps:  16         
+         iNumSteps:  16         
+         editPose 1
+         Loading:  ..\data\orgdata\E_PG_HOOK_L2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_HOOK_L2
+         poseInd  0 53
+         Current Pose: E_PG_HOOK_L2
+         Loading:  ..\data\orgdata\E_PG_ELBO_R0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_ELBO_R0
+         poseInd  0 54
+         Current Pose: E_PG_ELBO_R0
+         Loading:  ..\data\orgdata\E_PG_ELBO_R1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_ELBO_R1
+         poseInd  0 55
+         Current Pose: E_PG_ELBO_R1
+         Loading:  ..\data\orgdata\E_PG_ELBO_R2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_ELBO_R2
+         poseInd  0 56
+         Current Pose: E_PG_ELBO_R2
+         Loading:  ..\data\orgdata\E_PG_ELBO_L0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_ELBO_L0
+         poseInd  0 57
+         Current Pose: E_PG_ELBO_L0
+         Loading:  ..\data\orgdata\E_PG_ELBO_L1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_ELBO_L1
+         poseInd  0 58
+         Current Pose: E_PG_ELBO_L1
+         Loading:  ..\data\orgdata\E_PG_ELBO_L2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_ELBO_L2
+         poseInd  0 59
+         Current Pose: E_PG_ELBO_L2
+         Loading:  ..\data\orgdata\E_PG_UPPR_R0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_UPPR_R0
+         poseInd  0 60
+         Current Pose: E_PG_UPPR_R0
+         Loading:  ..\data\orgdata\E_PG_UPPR_R1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_UPPR_R1
+         poseInd  0 61
+         Current Pose: E_PG_UPPR_R1
+         Loading:  ..\data\orgdata\E_PG_UPPR_R2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_UPPR_R2
+         poseInd  0 62
+         Current Pose: E_PG_UPPR_R2
+         Loading:  ..\data\orgdata\E_PG_UPPR_L0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_UPPR_L0
+         poseInd  0 63
+         Current Pose: E_PG_UPPR_L0
+         Loading:  ..\data\orgdata\E_PG_UPPR_L1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_UPPR_L1
+         poseInd  0 64
+         Current Pose: E_PG_UPPR_L1
+         Loading:  ..\data\orgdata\E_PG_UPPR_L2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_UPPR_L2
+         poseInd  0 65
+         Current Pose: E_PG_UPPR_L2
+         Loading:  ..\data\orgdata\E_PG_JABP_R0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_JABP_R0
+         poseInd  0 66
+         Current Pose: E_PG_JABP_R0
+         Loading:  ..\data\orgdata\E_PG_JABP_R1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_JABP_R1
+         poseInd  0 67
+         Current Pose: E_PG_JABP_R1
+         Loading:  ..\data\orgdata\E_PG_JABP_R2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_JABP_R2
+         poseInd  0 68
+         Current Pose: E_PG_JABP_R2
+         Loading:  ..\data\orgdata\E_PG_JABP_L0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_JABP_L0
+         poseInd  0 69
+         Current Pose: E_PG_JABP_L0
+         Loading:  ..\data\orgdata\E_PG_JABP_L1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_JABP_L1
+         poseInd  0 70
+         Current Pose: E_PG_JABP_L1
+         Loading:  ..\data\orgdata\E_PG_JABP_L2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_JABP_L2
+         poseInd  0 71
+         Current Pose: E_PG_JABP_L2
+         Loading:  ..\data\orgdata\E_PG_ROUN_R0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_ROUN_R0
+         poseInd  0 72
+         Current Pose: E_PG_ROUN_R0
+         Loading:  ..\data\orgdata\E_PG_ROUN_R1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_ROUN_R1
+         poseInd  0 73
+         Current Pose: E_PG_ROUN_R1
+         Loading:  ..\data\orgdata\E_PG_ROUN_R2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_ROUN_R2
+         poseInd  0 74
+         Current Pose: E_PG_ROUN_R2
+         Loading:  ..\data\orgdata\E_PG_ROUN_L0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_ROUN_L0
+         poseInd  0 75
+         Current Pose: E_PG_ROUN_L0
+         Loading:  ..\data\orgdata\E_PG_ROUN_L1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_ROUN_L1
+         poseInd  0 76
+         Current Pose: E_PG_ROUN_L1
+         Loading:  ..\data\orgdata\E_PG_ROUN_L2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_ROUN_L2
+         poseInd  0 77
+         Current Pose: E_PG_ROUN_L2
+         Loading:  ..\data\orgdata\E_PG_REVR_R0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_REVR_R0
+         poseInd  0 78
+         Current Pose: E_PG_REVR_R0
+         Loading:  ..\data\orgdata\E_PG_REVR_R1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_REVR_R1
+         poseInd  0 79
+         Current Pose: E_PG_REVR_R1
+         Loading:  ..\data\orgdata\E_PG_REVR_R2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_REVR_R2
+         poseInd  0 80
+         Current Pose: E_PG_REVR_R2
+         Loading:  ..\data\orgdata\E_PG_REVR_L0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_REVR_L0
+         poseInd  0 81
+         Current Pose: E_PG_REVR_L0
+         Loading:  ..\data\orgdata\E_PG_REVR_L1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_REVR_L1
+         poseInd  0 82
+         Current Pose: E_PG_REVR_L1
+         Loading:  ..\data\orgdata\E_PG_REVR_L2.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_REVR_L2
+         poseInd  0 83
+         Current Pose: E_PG_REVR_L2
+         Loading:  ..\data\orgdata\E_PG_BKIK_R0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_BKIK_R0
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
-Build FAILED.
+Build succeeded.
 
-Time Elapsed 00:02:37.03
+Time Elapsed 00:12:59.36

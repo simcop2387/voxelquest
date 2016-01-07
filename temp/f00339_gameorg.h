@@ -11,11 +11,11 @@ float GameOrg::gv (float * vals)
 float const GameOrg::baseMat = 12.0f;
 GameOrg::GameOrg ()
                   {
-		basePoseGroup = -1;
-		basePoseRLBN = -1;
-		basePoseStep = -1;
-		targetPoseRLBN = RLBN_NEIT;
-		targetPoseGroup = -1;
+		basePose.group = -1;
+		basePose.RLBN = -1;
+		basePose.step = -1;
+		targetPose.RLBN = RLBN_NEIT;
+		targetPose.group = -1;
 		rootObj = NULL;
 		defVecLength = 0.05f;
 	}
@@ -182,17 +182,15 @@ void GameOrg::setTPG (int _targetPoseGroup, int _targetPoseRLBN)
                                                                {
 		
 		if (
-			(targetPoseGroup == _targetPoseGroup) &&
-			(targetPoseRLBN == _targetPoseRLBN)	
+			(targetPose.group == _targetPoseGroup) &&
+			(targetPose.RLBN == _targetPoseRLBN)	
 		) {
 			// same pose, let it finish
 		}
 		else {
 			
-			//cout << "setTPG()" << targetPoseGroup << " " << targetPoseRLBN << "\n";
-			
-			targetPoseGroup = _targetPoseGroup;
-			targetPoseRLBN = _targetPoseRLBN;
+			targetPose.group = _targetPoseGroup;
+			targetPose.RLBN = _targetPoseRLBN;
 			stepCount = 0;
 			
 			totTime = 0.0;
@@ -257,7 +255,6 @@ void GameOrg::updatePose (double curTimeStep)
 		float timeInterval = 1.0f;
 		float lerpSpeed = 0.005f;
 		
-		int stepCountMod;
 		
 		float* curData;
 		
@@ -267,32 +264,32 @@ void GameOrg::updatePose (double curTimeStep)
 			
 		}
 		else {
-			if (targetPoseGroup > -1) {
+			if (targetPose.group > -1) {
 				
-				curData = &(singleton->gamePoseInfo[targetPoseGroup].data[0]);
+				curData = &(singleton->gamePoseInfo[targetPose.group].data[0]);
 				
 				
 				lerpSpeed = curData[E_PIK_LERPSPEED];
 				timeInterval = curData[E_PIK_TIMEINTERVAL];
 				
-				stepCountMod = stepCount;
+				targetPose.step = stepCount;
 				
 				if (curData[E_PIK_DOLOOP] == 1.0f) {
-					stepCountMod = stepCount%((int)(curData[E_PIK_NUMSTEPS]));
+					targetPose.step = stepCount%((int)(curData[E_PIK_NUMSTEPS]));
 				}
 				else {
-					if (stepCountMod >= curData[E_PIK_NUMSTEPS]) {
-						stepCountMod = curData[E_PIK_NUMSTEPS]-1;
+					if (targetPose.step >= curData[E_PIK_NUMSTEPS]) {
+						targetPose.step = curData[E_PIK_NUMSTEPS]-1;
 					}
 					
 					if (stepCount > (curData[E_PIK_NUMSTEPS] + curData[E_PIK_EXTRASTEPS])) {
 						curOwner->setActionState(
-							singleton->getActionStateFromPose(targetPoseGroup),
-							targetPoseRLBN,
+							singleton->getActionStateFromPose(targetPose.group),
+							targetPose.RLBN,
 							false
 						);
 						setTPG(E_PG_IDLE,RLBN_NEIT);
-						stepCountMod = 0;
+						targetPose.step = 0;
 					}
 				}
 				
@@ -304,7 +301,7 @@ void GameOrg::updatePose (double curTimeStep)
 				setToPose(
 					
 					singleton->getPose(
-						targetPoseGroup,targetPoseRLBN,stepCountMod
+						targetPose.group,targetPose.RLBN,targetPose.step
 					),
 					
 					lerpSpeed
@@ -371,9 +368,9 @@ void GameOrg::initWeapon ()
 		float dirMod = 1.0f;
 		
 		
-		baseNode = allNodes[E_BONE_WEAPON_BASE] = new GameOrgNode(
+		baseNode = allNodes[E_BONE_C_BASE] = new GameOrgNode(
 			NULL,
-			E_BONE_WEAPON_BASE,
+			E_BONE_C_BASE,
 			
 			baseMat, 0.0f, 0.0f, M_PI/2.0f, 
 			0.01f, defVecLength, defVecLength,
@@ -386,8 +383,8 @@ void GameOrg::initWeapon ()
 		
 		GameOrgNode* curNode = baseNode;
 		
-		curNode = allNodes[E_BONE_WEAPON_HANDLE] = curNode->addChild(
-			E_BONE_WEAPON_HANDLE,
+		curNode = allNodes[E_BONE_WEAPON_HANDLEUP] = curNode->addChild(
+			E_BONE_WEAPON_HANDLEUP,
 			
 			baseMat, 0.0f, 0.0f, 0.0f,
 			1.0f, defVecLength, defVecLength,
@@ -430,6 +427,24 @@ void GameOrg::initWeapon ()
 			// 1.0f,0.0f,0.0f
 			
 			1.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 1.0f
+		);
+		
+		curNode = baseNode;
+		
+		curNode = allNodes[E_BONE_WEAPON_HANDLEDOWN] = curNode->addChild(
+			E_BONE_WEAPON_HANDLEDOWN,
+			
+			baseMat, 0.0f, 0.0f, 0.0f,
+			1.0f, defVecLength, defVecLength,
+			1.0f, defVecLength, defVecLength,
+			
+			// 0.0f,0.0f,1.0f,
+			// 0.0f,1.0f,0.0f,
+			// 1.0f,0.0f,0.0f
+			
+			-1.0f, 0.0f, 0.0f,
 			0.0f, 1.0f, 0.0f,
 			0.0f, 0.0f, 1.0f
 		);

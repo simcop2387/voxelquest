@@ -193,10 +193,8 @@ public:
 	int draggingFromType;
 	int draggingToType;
 	
-	int curPoseIndex;
-	int curPoseGroup;
-	int curPoseRLBN;
-	int curPoseStep;
+	int curPoseType;
+	PoseKey curPose[E_ENTTYPE_LENGTH];
 	
 	int actorCount;
 	int limbDataDebug;
@@ -960,10 +958,10 @@ public:
 		
 		// todo: probe area ahead of current ray step to see if near edge
 		
-		curPoseIndex = 0;
-		curPoseGroup = E_PG_TPOSE;
-		curPoseRLBN = RLBN_NEIT;
-		curPoseStep = 0;
+		curPoseType = -1;
+		
+		
+		
 		
 		
 		limbDataDebug = 0;
@@ -2223,12 +2221,12 @@ public:
 			
 			
 			actObjInd = ge->uid;
-			
-			cout << "actObjInd " << actObjInd << "\n";
-			
 			subjectDistance = BTV2FIV(currentActor->getCenterPoint(E_BDG_CENTER))->distance(cameraGetPosNoShake());
 			
-			cout << "subjectDistance " << subjectDistance << "\n"; 
+			curPoseType = currentActor->entType;
+			
+			
+			
 		}
 		
 	}
@@ -4928,19 +4926,6 @@ DISPATCH_EVENT_END:
 		
 		
 		
-		// for (i = 0; i < gameOrgs.size(); i++) {
-		// 	if (currentActor != NULL) {
-				
-		// 		if (i == currentActor->orgId) {
-		// 			gameOrgs[i]->basePosition.setBTV(currentActor->getCenterPoint(E_BDG_CENTER));
-		// 		}
-				
-		// 	}
-			
-		// 	transformOrg(gameOrgs[i]);
-		// }
-		
-		
 	}
 
 	void updateCamVals() {
@@ -5941,11 +5926,11 @@ DISPATCH_EVENT_END:
 	}
 	
 	GameOrg* getCurrentPose() {
-		return getPose(curPoseGroup,curPoseRLBN,curPoseStep);
+		return getPose(curPose[curPoseType].group,curPose[curPoseType].RLBN,curPose[curPoseType].step);
 	}
 	
 	string getCurrentPoseString() {
-		return getPoseString(curPoseGroup,curPoseRLBN,curPoseStep);
+		return getPoseString(curPose[curPoseType].group,curPose[curPoseType].RLBN,curPose[curPoseType].step);
 	}
 	
 	
@@ -6344,34 +6329,69 @@ DISPATCH_EVENT_END:
 					}
 				}
 				
-				for ( k = 0; k < 4; k++ ) {
+				if (gamePoseInfo[i].data[E_PIK_POSETYPE] == E_ENTTYPE_WEAPON) {
+					cout << "weapon\n";
+				}
+				else {
+					cout << "not weapon\n";
 					
-					if (hasRLBN(rlbnRes,k)) {
+					for ( k = 0; k < 4; k++ ) {
 						
-						for (m = 0; m < numSteps; m++) {
-							curString = poseGroupStrings[i];
-							curString.append("_");
-							curString.append(poseSideStrings[k]);
-							curString.append(std::to_string(m));
+						if (hasRLBN(rlbnRes,k)) {
 							
-							gamePoseInfo[i].poseSteps[k].fileString[m] = curString;
-							gamePoseInfo[i].poseSteps[k].gamePoseIndex[m] = gamePoses.size();
-							
-							
-							gamePoses.push_back(new GameOrg());
-							gamePoses.back()->init(this,-1,E_ORGTYPE_HUMAN);
-							gamePoses.back()->loadFromFile(curString, false);
-							transformOrg(gamePoses.back(), NULL);
-							
-							gamePoses.back()->basePoseGroup = i;
-							gamePoses.back()->basePoseRLBN = k;
-							gamePoses.back()->basePoseStep = m;
+							for (m = 0; m < numSteps; m++) {
+								curString = poseGroupStrings[i];
+								curString.append("_");
+								curString.append(poseSideStrings[k]);
+								curString.append(std::to_string(m));
+								
+								gamePoseInfo[i].poseSteps[k].fileString[m] = curString;
+								gamePoseInfo[i].poseSteps[k].gamePoseIndex[m] = gamePoses.size();
+								
+								
+								gamePoses.push_back(new GameOrg());
+								gamePoses.back()->init(this,-1,E_ORGTYPE_HUMAN);
+								gamePoses.back()->loadFromFile(curString, false);
+								transformOrg(gamePoses.back(), NULL);
+								
+								gamePoses.back()->basePose.group = i;
+								gamePoses.back()->basePose.RLBN = k;
+								gamePoses.back()->basePose.step = m;
+							}
 						}
+						
 					}
-					
 				}
 				
+				
+				
 			}
+			
+			
+			cout << "GAMEPOSESIZE " << gamePoses.size() << "\n";
+			
+			
+			for (i = 0; i < E_ENTTYPE_LENGTH; i++) {
+				
+				curPose[i].RLBN = RLBN_NEIT;
+				curPose[i].step = 0;
+				
+				switch (i) {
+					case E_ENTTYPE_NPC:
+						curPose[i].group = E_PG_TPOSE;
+					break;
+					case E_ENTTYPE_WEAPON:
+						curPose[i].group = E_PG_SWORD;
+					break;
+					default:
+						curPose[i].group = E_PG_TPOSE;
+					break;
+					
+				}
+				getIndexForPose(&(curPose[i]));
+				
+			}
+			
 			
 		}
 		
@@ -6387,50 +6407,39 @@ DISPATCH_EVENT_END:
 		
 		GameOrg* testOrg = getCurOrg();
 		
-		curPoseIndex += amount;
+		int testPoseType = -1;
+		int testPoseInd;
 		
-		if (curPoseIndex == gamePoses.size()) {
-			curPoseIndex = 0;
-		}
-		if (curPoseIndex < 0) {
-			curPoseIndex = gamePoses.size()-1;
-		}
+		do {
+			curPose[curPoseType].index += amount;
+			
+			cout << "poseInd " << " " << curPoseType << " " << curPose[curPoseType].index << "\n";
+			
+			if (curPose[curPoseType].index == gamePoses.size()) {
+				curPose[curPoseType].index = 0;
+			}
+			if (curPose[curPoseType].index < 0) {
+				curPose[curPoseType].index = gamePoses.size()-1;
+			}
+			
+			testPoseInd = gamePoses[curPose[curPoseType].index]->basePose.group;
+			testPoseType = gamePoseInfo[testPoseInd].data[E_PIK_POSETYPE];
+			
+		} while(testPoseType != curPoseType);
 		
-		/*
 		
-		curPoseGroup = E_PG_TPOSE;
-		curPoseRLBN = RLBN_NEIT;
-		curPoseStep = 0;
-		
-		*/
 		
 		int j;
 		float* curData;
 		
 		cout << "Current Pose: " << getCurrentPoseString() << "\n";
 		
-		setPoseFromIndex(curPoseIndex);
-		
-		// curPoseGroup = gamePoses[curPoseIndex].basePoseGroup;
-		// curPoseRLBN = gamePoses[curPoseIndex].basePoseRLBN;
-		// curPoseStep = gamePoses[curPoseIndex].basePoseStep;
+		setPoseFromIndex(curPose[curPoseType].index);
 		
 		
 		if (testOrg != NULL) {
-			
-			
-			// curData = &(gamePoseInfo[curPoseGroup].data[0]);
-			
-			// for (j = 0; j < RLBN_LENGTH; j++) {
-				
-			// 	if ( hasRLBN(curData[E_PIK_RLBN],j) ) {
-			// 		curPoseRLBN = j;
-			// 		curPoseStep = 0;
-			// 		break;
-			// 	}
-			// }
 					
-			testOrg->setTPG(curPoseGroup, curPoseRLBN);
+			testOrg->setTPG(curPose[curPoseType].group, curPose[curPoseType].RLBN);
 			
 			if (editPose) {
 				loadCurrentPose();
@@ -6457,15 +6466,22 @@ DISPATCH_EVENT_END:
 	}
 	
 	
-	void getIndexFromCurrentPose() {
-		curPoseIndex = gamePoseInfo[curPoseGroup].poseSteps[curPoseRLBN].gamePoseIndex[curPoseStep];
+	void getIndexForPose(PoseKey* tempPose) {
+		
+		tempPose->index = gamePoseInfo[
+			tempPose->group
+		].poseSteps[
+			tempPose->RLBN
+		].gamePoseIndex[
+			tempPose->step
+		];
 	}
 	
 	void setPoseFromIndex(int i) {
-		curPoseIndex = i;
-		curPoseGroup = gamePoses[curPoseIndex]->basePoseGroup;
-		curPoseRLBN = gamePoses[curPoseIndex]->basePoseRLBN;
-		curPoseStep = gamePoses[curPoseIndex]->basePoseStep;
+		curPose[curPoseType].index = i;
+		curPose[curPoseType].group = gamePoses[curPose[curPoseType].index]->basePose.group;
+		curPose[curPoseType].RLBN = gamePoses[curPose[curPoseType].index]->basePose.RLBN;
+		curPose[curPoseType].step = gamePoses[curPose[curPoseType].index]->basePose.step;
 	}
 	
 	void loadNonPoseData(int npdPose, int npdSide, int npdStep) {
@@ -6496,41 +6512,10 @@ DISPATCH_EVENT_END:
 					
 				}
 				
-				
-				// for (i = 0; i < E_PG_LENGTH; i++) {
-				// 	curPoseGroup = i;
-				// 	curData = &(gamePoseInfo[curPoseGroup].data[0]);
-					
-				// 	for (j = 0; j < RLBN_LENGTH; j++) {
-						
-				// 		curPoseRLBN = j;
-						
-				// 		if ( hasRLBN(curData[E_PIK_RLBN],j) ) {
-							
-				// 			for (k = 0; k < curData[E_PIK_NUMSTEPS]; k++) {
-				// 				curPoseStep = k;
-								
-				// 				loadCurrentPose();
-				// 				getCurrentPose()->loadFromFile(getPoseString(npdPose,npdSide,npdStep), true);
-				// 				transformOrg(getCurrentPose(), NULL);
-				// 				testOrg->setToPose(getCurrentPose(),1.0f);
-				// 				transformOrg(testOrg, NULL);
-				// 				makeDirty();
-				// 				cout << "Loaded Non Pose " << getCurrentPoseString() << "\n";
-				// 				saveCurrentPose();
-								
-								
-				// 			}
-							
-				// 		}
-						
-				// 	}
-					
-				// }
-				curPoseGroup = npdPose;
-				curPoseRLBN = npdSide;
-				curPoseStep = npdStep;
-				getIndexFromCurrentPose();
+				curPose[curPoseType].group = npdPose;
+				curPose[curPoseType].RLBN = npdSide;
+				curPose[curPoseType].step = npdStep;
+				getIndexForPose(&(curPose[curPoseType]));
 				
 				loadCurrentPose();
 			}
@@ -7018,7 +7003,7 @@ DISPATCH_EVENT_END:
 				
 				
 				case 'C':
-					if (curPoseGroup == E_PG_NONPOSE) {
+					if (curPose[curPoseType].group == E_PG_NONPOSE) {
 						saveCurrentPose();
 						loadNonPoseData(E_PG_NONPOSE, RLBN_NEIT, 0);
 					}
@@ -8362,6 +8347,13 @@ DISPATCH_EVENT_END:
 	void setSelNode(GameOrgNode* newNode) {
 		
 		selectedNode = newNode;
+		
+		if (selectedNode != NULL) {
+			cout << boneStrings[selectedNode->nodeName] << "\n";
+		}
+		
+		
+		
 		if (selectedNode != lastSelNode) {
 			makeDirty();
 		}
@@ -9142,7 +9134,7 @@ DISPATCH_EVENT_END:
 					getCorrectedName(E_BONE_R_METACARPALS)
 				]->children.pop_back();
 			}
-			grabObjOrg->allNodes[E_BONE_WEAPON_BASE]->parent = NULL;
+			grabObjOrg->allNodes[E_BONE_C_BASE]->parent = NULL;
 			
 			//ca->weaponActive = false;
 			
@@ -9199,27 +9191,27 @@ DISPATCH_EVENT_END:
 					curOrg->allNodes[
 						getCorrectedName(E_BONE_L_METACARPALS)
 					]->children.push_back(
-						grabObjOrg->allNodes[E_BONE_WEAPON_BASE]
+						grabObjOrg->allNodes[E_BONE_C_BASE]
 					);
-					grabObjOrg->allNodes[E_BONE_WEAPON_BASE]->parent = 
+					grabObjOrg->allNodes[E_BONE_C_BASE]->parent = 
 						curOrg->allNodes[
 							getCorrectedName(E_BONE_L_METACARPALS)
 						];
 					
-					//grabObjOrg->allNodes[E_BONE_WEAPON_BASE]->setTangent(-1.0f);
+					//grabObjOrg->allNodes[E_BONE_C_BASE]->setTangent(-1.0f);
 				}
 				else {
 					curOrg->allNodes[
 						getCorrectedName(E_BONE_R_METACARPALS)
 					]->children.push_back(
-						grabObjOrg->allNodes[E_BONE_WEAPON_BASE]
+						grabObjOrg->allNodes[E_BONE_C_BASE]
 					);
-					grabObjOrg->allNodes[E_BONE_WEAPON_BASE]->parent = 
+					grabObjOrg->allNodes[E_BONE_C_BASE]->parent = 
 						curOrg->allNodes[
 							getCorrectedName(E_BONE_R_METACARPALS)
 						];
 					
-					//grabObjOrg->allNodes[E_BONE_WEAPON_BASE]->setTangent(1.0f);
+					//grabObjOrg->allNodes[E_BONE_C_BASE]->setTangent(1.0f);
 				}
 				
 				
