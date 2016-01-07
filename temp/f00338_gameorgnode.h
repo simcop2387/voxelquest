@@ -104,6 +104,16 @@ GameOrgNode * GameOrgNode::getNode (int _nodeName)
 		
 		return NULL;
 	}
+void GameOrgNode::setTangent (float newVal)
+                                      {
+		int i;
+		
+		orgVecs[E_OV_TANGENT].setFX(newVal);
+		
+		for (i = 0; i < children.size(); i++) {
+			children[i]->setTangent(newVal);
+		}
+	}
 void GameOrgNode::doTransform (Singleton * singleton, GameOrgNode * tempParent)
           {
 		

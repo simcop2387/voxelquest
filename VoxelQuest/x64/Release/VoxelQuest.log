@@ -1,4 +1,4 @@
-﻿Build started 1/4/2016 4:05:06 AM.
+﻿Build started 1/7/2016 4:04:22 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -236,7 +236,7 @@
                    
          gphMin   0.000000   0.000000   0.000000    
          gphMax   65536.000000   65536.000000   65536.000000    
-         Sea Level: 80
+         Sea Level: 100
          DONE WITH MAP
          Loading:  ..\data\constants.js         
          Load Successful          
@@ -281,477 +281,482 @@
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_T_POSE.js         
+         Loading:  ..\data\poseinfo.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_NON_POSE.js         
+         Loading:  ..\data\orgdata\E_PG_TPOSE_N0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_JUMP.js         
+         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_DEAD.js         
+         Loading:  ..\data\orgdata\E_PG_JUMP_N0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_PICKUP.js         
+         Loading:  ..\data\orgdata\E_PG_DEAD_N0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_IDLE_LOW.js         
+         Loading:  ..\data\orgdata\E_PG_PICKUP_N0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_IDLE_HIGH.js         
+         Loading:  ..\data\orgdata\E_PG_IDLE_N0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_L_FORWARD.js         
+         Loading:  ..\data\orgdata\E_PG_IDLE_N1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_R_CROSS.js         
+         Loading:  ..\data\orgdata\E_PG_WALKFORWARD_N0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_R_FORWARD.js         
+         Loading:  ..\data\orgdata\E_PG_WALKFORWARD_N1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_L_CROSS.js         
+         Loading:  ..\data\orgdata\E_PG_WALKFORWARD_N2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_SLSH_R0.js         
+         Loading:  ..\data\orgdata\E_PG_WALKFORWARD_N3.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_SLSH_R1.js         
+         Loading:  ..\data\orgdata\E_PG_SLSH_R0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_SLSH_R2.js         
+         Loading:  ..\data\orgdata\E_PG_SLSH_R1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_SLSH_L0.js         
+         Loading:  ..\data\orgdata\E_PG_SLSH_R2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_SLSH_L1.js         
+         Loading:  ..\data\orgdata\E_PG_SLSH_L0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_SLSH_L2.js         
+         Loading:  ..\data\orgdata\E_PG_SLSH_L1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_SLSH_B0.js         
+         Loading:  ..\data\orgdata\E_PG_SLSH_L2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_SLSH_B1.js         
+         Loading:  ..\data\orgdata\E_PG_SLSH_B0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_SLSH_B2.js         
+         Loading:  ..\data\orgdata\E_PG_SLSH_B1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_BACK_R0.js         
+         Loading:  ..\data\orgdata\E_PG_SLSH_B2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_BACK_R1.js         
+         Loading:  ..\data\orgdata\E_PG_BACK_R0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_BACK_R2.js         
+         Loading:  ..\data\orgdata\E_PG_BACK_R1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_BACK_L0.js         
+         Loading:  ..\data\orgdata\E_PG_BACK_R2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_BACK_L1.js         
+         Loading:  ..\data\orgdata\E_PG_BACK_L0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_BACK_L2.js         
+         Loading:  ..\data\orgdata\E_PG_BACK_L1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_BACK_B0.js         
+         Loading:  ..\data\orgdata\E_PG_BACK_L2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_BACK_B1.js         
+         Loading:  ..\data\orgdata\E_PG_BACK_B0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_BACK_B2.js         
+         Loading:  ..\data\orgdata\E_PG_BACK_B1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_HACK_R0.js         
+         Loading:  ..\data\orgdata\E_PG_BACK_B2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_HACK_R1.js         
+         Loading:  ..\data\orgdata\E_PG_HACK_R0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_HACK_R2.js         
+         Loading:  ..\data\orgdata\E_PG_HACK_R1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_HACK_L0.js         
+         Loading:  ..\data\orgdata\E_PG_HACK_R2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_HACK_L1.js         
+         Loading:  ..\data\orgdata\E_PG_HACK_L0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_HACK_L2.js         
+         Loading:  ..\data\orgdata\E_PG_HACK_L1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_HACK_B0.js         
+         Loading:  ..\data\orgdata\E_PG_HACK_L2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_HACK_B1.js         
+         Loading:  ..\data\orgdata\E_PG_HACK_B0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_HACK_B2.js         
+         Loading:  ..\data\orgdata\E_PG_HACK_B1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_STAB_R0.js         
+         Loading:  ..\data\orgdata\E_PG_HACK_B2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_STAB_R1.js         
+         Loading:  ..\data\orgdata\E_PG_STAB_R0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_STAB_R2.js         
+         Loading:  ..\data\orgdata\E_PG_STAB_R1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_STAB_L0.js         
+         Loading:  ..\data\orgdata\E_PG_STAB_R2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_STAB_L1.js         
+         Loading:  ..\data\orgdata\E_PG_STAB_L0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_STAB_L2.js         
+         Loading:  ..\data\orgdata\E_PG_STAB_L1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_STAB_B0.js         
+         Loading:  ..\data\orgdata\E_PG_STAB_L2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_STAB_B1.js         
+         Loading:  ..\data\orgdata\E_PG_STAB_B0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_STAB_B2.js         
+         Loading:  ..\data\orgdata\E_PG_STAB_B1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_HOOK_R0.js         
+         Loading:  ..\data\orgdata\E_PG_STAB_B2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_HOOK_R1.js         
+         Loading:  ..\data\orgdata\E_PG_HOOK_R0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_HOOK_R2.js         
+         Loading:  ..\data\orgdata\E_PG_HOOK_R1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_HOOK_L0.js         
+         Loading:  ..\data\orgdata\E_PG_HOOK_R2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_HOOK_L1.js         
+         Loading:  ..\data\orgdata\E_PG_HOOK_L0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_HOOK_L2.js         
+         Loading:  ..\data\orgdata\E_PG_HOOK_L1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_ELBO_R0.js         
+         Loading:  ..\data\orgdata\E_PG_HOOK_L2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_ELBO_R1.js         
+         Loading:  ..\data\orgdata\E_PG_ELBO_R0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_ELBO_R2.js         
+         Loading:  ..\data\orgdata\E_PG_ELBO_R1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_ELBO_L0.js         
+         Loading:  ..\data\orgdata\E_PG_ELBO_R2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_ELBO_L1.js         
+         Loading:  ..\data\orgdata\E_PG_ELBO_L0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_ELBO_L2.js         
+         Loading:  ..\data\orgdata\E_PG_ELBO_L1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_UPPR_R0.js         
+         Loading:  ..\data\orgdata\E_PG_ELBO_L2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_UPPR_R1.js         
+         Loading:  ..\data\orgdata\E_PG_UPPR_R0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_UPPR_R2.js         
+         Loading:  ..\data\orgdata\E_PG_UPPR_R1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_UPPR_L0.js         
+         Loading:  ..\data\orgdata\E_PG_UPPR_R2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_UPPR_L1.js         
+         Loading:  ..\data\orgdata\E_PG_UPPR_L0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_UPPR_L2.js         
+         Loading:  ..\data\orgdata\E_PG_UPPR_L1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_JABP_R0.js         
+         Loading:  ..\data\orgdata\E_PG_UPPR_L2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_JABP_R1.js         
+         Loading:  ..\data\orgdata\E_PG_JABP_R0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_JABP_R2.js         
+         Loading:  ..\data\orgdata\E_PG_JABP_R1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_JABP_L0.js         
+         Loading:  ..\data\orgdata\E_PG_JABP_R2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_JABP_L1.js         
+         Loading:  ..\data\orgdata\E_PG_JABP_L0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_JABP_L2.js         
+         Loading:  ..\data\orgdata\E_PG_JABP_L1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_ROUN_R0.js         
+         Loading:  ..\data\orgdata\E_PG_JABP_L2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_ROUN_R1.js         
+         Loading:  ..\data\orgdata\E_PG_ROUN_R0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_ROUN_R2.js         
+         Loading:  ..\data\orgdata\E_PG_ROUN_R1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_ROUN_L0.js         
+         Loading:  ..\data\orgdata\E_PG_ROUN_R2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_ROUN_L1.js         
+         Loading:  ..\data\orgdata\E_PG_ROUN_L0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_ROUN_L2.js         
+         Loading:  ..\data\orgdata\E_PG_ROUN_L1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_REVR_R0.js         
+         Loading:  ..\data\orgdata\E_PG_ROUN_L2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_REVR_R1.js         
+         Loading:  ..\data\orgdata\E_PG_REVR_R0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_REVR_R2.js         
+         Loading:  ..\data\orgdata\E_PG_REVR_R1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_REVR_L0.js         
+         Loading:  ..\data\orgdata\E_PG_REVR_R2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_REVR_L1.js         
+         Loading:  ..\data\orgdata\E_PG_REVR_L0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_REVR_L2.js         
+         Loading:  ..\data\orgdata\E_PG_REVR_L1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_BKIK_R0.js         
+         Loading:  ..\data\orgdata\E_PG_REVR_L2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_BKIK_R1.js         
+         Loading:  ..\data\orgdata\E_PG_BKIK_R0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_BKIK_R2.js         
+         Loading:  ..\data\orgdata\E_PG_BKIK_R1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_BKIK_L0.js         
+         Loading:  ..\data\orgdata\E_PG_BKIK_R2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_BKIK_L1.js         
+         Loading:  ..\data\orgdata\E_PG_BKIK_L0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_BKIK_L2.js         
+         Loading:  ..\data\orgdata\E_PG_BKIK_L1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_FRNT_R0.js         
+         Loading:  ..\data\orgdata\E_PG_BKIK_L2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_FRNT_R1.js         
+         Loading:  ..\data\orgdata\E_PG_FRNT_R0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_FRNT_R2.js         
+         Loading:  ..\data\orgdata\E_PG_FRNT_R1.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_FRNT_L0.js         
+         Loading:  ..\data\orgdata\E_PG_FRNT_R2.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_FRNT_L1.js         
+         Loading:  ..\data\orgdata\E_PG_FRNT_L0.js         
          Load Successful          
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PK_FRNT_L2.js         
+         Loading:  ..\data\orgdata\E_PG_FRNT_L1.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_FRNT_L2.js         
          Load Successful          
          
          Valid JSON
@@ -761,744 +766,20 @@
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          genBlockHolder
-         Loading:  ..\data\orgdata\E_PK_NON_POSE.js         
+         iNumSteps:  32         
+         iNumSteps:  64         
+         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
          Load Successful          
          
          Valid JSON
                    
-         actObjInd 127
-         subjectDistance 8.89341
-         editPose 1
-         Loading:  ..\data\orgdata\E_PK_T_POSE.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_T_POSE
-         Current Pose: E_PK_NON_POSE
-         Loading:  ..\data\orgdata\E_PK_NON_POSE.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_NON_POSE
-         Current Pose: E_PK_JUMP
-         Loading:  ..\data\orgdata\E_PK_JUMP.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_JUMP
-         Current Pose: E_PK_DEAD
-         Loading:  ..\data\orgdata\E_PK_DEAD.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_DEAD
-         Current Pose: E_PK_PICKUP
-         Loading:  ..\data\orgdata\E_PK_PICKUP.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_PICKUP
-         Current Pose: E_PK_IDLE_LOW
-         Loading:  ..\data\orgdata\E_PK_IDLE_LOW.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_IDLE_LOW
-         Current Pose: E_PK_IDLE_HIGH
-         Loading:  ..\data\orgdata\E_PK_IDLE_HIGH.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_IDLE_HIGH
-         Current Pose: E_PK_L_FORWARD
-         Loading:  ..\data\orgdata\E_PK_L_FORWARD.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_L_FORWARD
-         Current Pose: E_PK_R_CROSS
-         Loading:  ..\data\orgdata\E_PK_R_CROSS.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_R_CROSS
-         Current Pose: E_PK_R_FORWARD
-         Loading:  ..\data\orgdata\E_PK_R_FORWARD.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_R_FORWARD
-         Current Pose: E_PK_L_CROSS
-         Loading:  ..\data\orgdata\E_PK_L_CROSS.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_L_CROSS
-         Current Pose: E_PK_SLSH_R0
-         Loading:  ..\data\orgdata\E_PK_SLSH_R0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_SLSH_R0
-         Current Pose: E_PK_SLSH_R1
-         Loading:  ..\data\orgdata\E_PK_SLSH_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_SLSH_R1
-         Current Pose: E_PK_SLSH_R2
-         Loading:  ..\data\orgdata\E_PK_SLSH_R2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_SLSH_R2
-         Current Pose: E_PK_SLSH_L0
-         Loading:  ..\data\orgdata\E_PK_SLSH_L0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_SLSH_L0
-         Current Pose: E_PK_SLSH_L1
-         Loading:  ..\data\orgdata\E_PK_SLSH_L1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_SLSH_L1
-         Current Pose: E_PK_SLSH_L2
-         Loading:  ..\data\orgdata\E_PK_SLSH_L2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_SLSH_L2
-         Current Pose: E_PK_SLSH_B0
-         Loading:  ..\data\orgdata\E_PK_SLSH_B0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_SLSH_B0
-         Current Pose: E_PK_SLSH_B1
-         Loading:  ..\data\orgdata\E_PK_SLSH_B1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_SLSH_B1
-         Current Pose: E_PK_SLSH_B2
-         Loading:  ..\data\orgdata\E_PK_SLSH_B2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_SLSH_B2
-         Current Pose: E_PK_BACK_R0
-         Loading:  ..\data\orgdata\E_PK_BACK_R0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_R0
-         Current Pose: E_PK_BACK_R1
-         Loading:  ..\data\orgdata\E_PK_BACK_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_R1
-         Current Pose: E_PK_BACK_R2
-         Loading:  ..\data\orgdata\E_PK_BACK_R2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_R2
-         Current Pose: E_PK_BACK_R1
-         Loading:  ..\data\orgdata\E_PK_BACK_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_R1
-         Current Pose: E_PK_BACK_R0
-         Loading:  ..\data\orgdata\E_PK_BACK_R0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_R0
-         Current Pose: E_PK_BACK_R1
-         Loading:  ..\data\orgdata\E_PK_BACK_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_R1
-         Current Pose: E_PK_BACK_R2
-         Loading:  ..\data\orgdata\E_PK_BACK_R2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_R2
-         Current Pose: E_PK_BACK_R1
-         Loading:  ..\data\orgdata\E_PK_BACK_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_R1
-         Current Pose: E_PK_BACK_R0
-         Loading:  ..\data\orgdata\E_PK_BACK_R0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_R0
-         Current Pose: E_PK_BACK_R1
-         Loading:  ..\data\orgdata\E_PK_BACK_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_R1
-         Current Pose: E_PK_BACK_R0
-         Loading:  ..\data\orgdata\E_PK_BACK_R0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_R0
-         Current Pose: E_PK_BACK_R1
-         Loading:  ..\data\orgdata\E_PK_BACK_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_R1
-         Current Pose: E_PK_BACK_R2
-         Loading:  ..\data\orgdata\E_PK_BACK_R2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_R2
-         Current Pose: E_PK_BACK_R1
-         Loading:  ..\data\orgdata\E_PK_BACK_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_R1
-         Current Pose: E_PK_BACK_R0
-         Loading:  ..\data\orgdata\E_PK_BACK_R0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_R0
-         Current Pose: E_PK_BACK_R1
-         Loading:  ..\data\orgdata\E_PK_BACK_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_R1
-         Current Pose: E_PK_BACK_R2
-         Loading:  ..\data\orgdata\E_PK_BACK_R2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_R2
-         Current Pose: E_PK_BACK_L0
-         Loading:  ..\data\orgdata\E_PK_BACK_L0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_L0
-         Current Pose: E_PK_BACK_L1
-         Loading:  ..\data\orgdata\E_PK_BACK_L1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_L1
-         Current Pose: E_PK_BACK_L2
-         Loading:  ..\data\orgdata\E_PK_BACK_L2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_L2
-         Current Pose: E_PK_BACK_B0
-         Loading:  ..\data\orgdata\E_PK_BACK_B0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_B0
-         Current Pose: E_PK_BACK_B1
-         Loading:  ..\data\orgdata\E_PK_BACK_B1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_B1
-         Current Pose: E_PK_BACK_B2
-         Loading:  ..\data\orgdata\E_PK_BACK_B2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_BACK_B2
-         Current Pose: E_PK_HACK_R0
-         Loading:  ..\data\orgdata\E_PK_HACK_R0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_HACK_R0
-         Current Pose: E_PK_HACK_R1
-         Loading:  ..\data\orgdata\E_PK_HACK_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_HACK_R1
-         Current Pose: E_PK_HACK_R2
-         Loading:  ..\data\orgdata\E_PK_HACK_R2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_HACK_R2
-         Current Pose: E_PK_HACK_L0
-         Loading:  ..\data\orgdata\E_PK_HACK_L0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_HACK_L0
-         Current Pose: E_PK_HACK_L1
-         Loading:  ..\data\orgdata\E_PK_HACK_L1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_HACK_L1
-         Current Pose: E_PK_HACK_L2
-         Loading:  ..\data\orgdata\E_PK_HACK_L2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_HACK_L2
-         Current Pose: E_PK_HACK_B0
-         Loading:  ..\data\orgdata\E_PK_HACK_B0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_HACK_B0
-         Current Pose: E_PK_HACK_B1
-         Loading:  ..\data\orgdata\E_PK_HACK_B1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_HACK_B1
-         Current Pose: E_PK_HACK_B2
-         Loading:  ..\data\orgdata\E_PK_HACK_B2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_HACK_B2
-         Current Pose: E_PK_STAB_R0
-         Loading:  ..\data\orgdata\E_PK_STAB_R0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_STAB_R0
-         Current Pose: E_PK_STAB_R1
-         Loading:  ..\data\orgdata\E_PK_STAB_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_STAB_R1
-         Current Pose: E_PK_STAB_R2
-         Loading:  ..\data\orgdata\E_PK_STAB_R2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_STAB_R2
-         Current Pose: E_PK_STAB_L0
-         Loading:  ..\data\orgdata\E_PK_STAB_L0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_STAB_L0
-         Current Pose: E_PK_STAB_L1
-         Loading:  ..\data\orgdata\E_PK_STAB_L1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_STAB_L1
-         Current Pose: E_PK_STAB_L2
-         Loading:  ..\data\orgdata\E_PK_STAB_L2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_STAB_L2
-         Current Pose: E_PK_STAB_B0
-         Loading:  ..\data\orgdata\E_PK_STAB_B0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_STAB_B0
-         Current Pose: E_PK_STAB_B1
-         Loading:  ..\data\orgdata\E_PK_STAB_B1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_STAB_B1
-         Current Pose: E_PK_STAB_B2
-         Loading:  ..\data\orgdata\E_PK_STAB_B2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_STAB_B2
-         Current Pose: E_PK_HOOK_R0
-         Loading:  ..\data\orgdata\E_PK_HOOK_R0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_HOOK_R0
-         Current Pose: E_PK_HOOK_R1
-         Loading:  ..\data\orgdata\E_PK_HOOK_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_HOOK_R1
-         Current Pose: E_PK_HOOK_R2
-         Loading:  ..\data\orgdata\E_PK_HOOK_R2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_HOOK_R2
-         Current Pose: E_PK_HOOK_L0
-         Loading:  ..\data\orgdata\E_PK_HOOK_L0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_HOOK_L0
-         Current Pose: E_PK_HOOK_L1
-         Loading:  ..\data\orgdata\E_PK_HOOK_L1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_HOOK_L1
-         Current Pose: E_PK_HOOK_L2
-         Loading:  ..\data\orgdata\E_PK_HOOK_L2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_HOOK_L2
-         Current Pose: E_PK_ELBO_R0
-         Loading:  ..\data\orgdata\E_PK_ELBO_R0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ELBO_R0
-         Current Pose: E_PK_ELBO_R1
-         Loading:  ..\data\orgdata\E_PK_ELBO_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ELBO_R1
-         Current Pose: E_PK_ELBO_R2
-         Loading:  ..\data\orgdata\E_PK_ELBO_R2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ELBO_R2
-         Current Pose: E_PK_ELBO_L0
-         Loading:  ..\data\orgdata\E_PK_ELBO_L0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ELBO_L0
-         Current Pose: E_PK_ELBO_L1
-         Loading:  ..\data\orgdata\E_PK_ELBO_L1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ELBO_L1
-         Current Pose: E_PK_ELBO_L0
-         Loading:  ..\data\orgdata\E_PK_ELBO_L0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ELBO_L0
-         Current Pose: E_PK_ELBO_R2
-         Loading:  ..\data\orgdata\E_PK_ELBO_R2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ELBO_R2
-         Current Pose: E_PK_ELBO_R1
-         Loading:  ..\data\orgdata\E_PK_ELBO_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ELBO_R1
-         Current Pose: E_PK_ELBO_R2
-         Loading:  ..\data\orgdata\E_PK_ELBO_R2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ELBO_R2
-         Current Pose: E_PK_ELBO_R1
-         Loading:  ..\data\orgdata\E_PK_ELBO_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ELBO_R1
-         Current Pose: E_PK_ELBO_R2
-         Loading:  ..\data\orgdata\E_PK_ELBO_R2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ELBO_R2
-         Current Pose: E_PK_ELBO_L0
-         Loading:  ..\data\orgdata\E_PK_ELBO_L0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ELBO_L0
-         Current Pose: E_PK_ELBO_L1
-         Loading:  ..\data\orgdata\E_PK_ELBO_L1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ELBO_L1
-         Current Pose: E_PK_ELBO_L2
-         Loading:  ..\data\orgdata\E_PK_ELBO_L2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ELBO_L2
-         Current Pose: E_PK_UPPR_R0
-         Loading:  ..\data\orgdata\E_PK_UPPR_R0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_UPPR_R0
-         Current Pose: E_PK_UPPR_R1
-         Loading:  ..\data\orgdata\E_PK_UPPR_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_UPPR_R1
-         Current Pose: E_PK_UPPR_R2
-         Loading:  ..\data\orgdata\E_PK_UPPR_R2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_UPPR_R2
-         Current Pose: E_PK_UPPR_L0
-         Loading:  ..\data\orgdata\E_PK_UPPR_L0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_UPPR_L0
-         Current Pose: E_PK_UPPR_L1
-         Loading:  ..\data\orgdata\E_PK_UPPR_L1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_UPPR_L1
-         Current Pose: E_PK_UPPR_L2
-         Loading:  ..\data\orgdata\E_PK_UPPR_L2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_UPPR_L2
-         Current Pose: E_PK_JABP_R0
-         Loading:  ..\data\orgdata\E_PK_JABP_R0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_JABP_R0
-         Current Pose: E_PK_JABP_R1
-         Loading:  ..\data\orgdata\E_PK_JABP_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_JABP_R1
-         Current Pose: E_PK_JABP_R2
-         Loading:  ..\data\orgdata\E_PK_JABP_R2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_JABP_R2
-         Current Pose: E_PK_JABP_L0
-         Loading:  ..\data\orgdata\E_PK_JABP_L0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_JABP_L0
-         Current Pose: E_PK_JABP_L1
-         Loading:  ..\data\orgdata\E_PK_JABP_L1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_JABP_L1
-         Current Pose: E_PK_JABP_L2
-         Loading:  ..\data\orgdata\E_PK_JABP_L2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_JABP_L2
-         Current Pose: E_PK_ROUN_R0
-         Loading:  ..\data\orgdata\E_PK_ROUN_R0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ROUN_R0
-         Current Pose: E_PK_ROUN_R1
-         Loading:  ..\data\orgdata\E_PK_ROUN_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ROUN_R1
-         Current Pose: E_PK_ROUN_R2
-         Loading:  ..\data\orgdata\E_PK_ROUN_R2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ROUN_R2
-         Current Pose: E_PK_ROUN_L0
-         Loading:  ..\data\orgdata\E_PK_ROUN_L0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ROUN_L0
-         Current Pose: E_PK_ROUN_L1
-         Loading:  ..\data\orgdata\E_PK_ROUN_L1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ROUN_L1
-         Current Pose: E_PK_ROUN_L2
-         Loading:  ..\data\orgdata\E_PK_ROUN_L2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_ROUN_L2
-         Current Pose: E_PK_REVR_R0
-         Loading:  ..\data\orgdata\E_PK_REVR_R0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_REVR_R0
-         Current Pose: E_PK_REVR_R1
-         Loading:  ..\data\orgdata\E_PK_REVR_R1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_REVR_R1
-         Current Pose: E_PK_REVR_R2
-         Loading:  ..\data\orgdata\E_PK_REVR_R2.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_REVR_R2
-         Current Pose: E_PK_REVR_L0
-         Loading:  ..\data\orgdata\E_PK_REVR_L0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_REVR_L0
-         Current Pose: E_PK_REVR_L1
-         Loading:  ..\data\orgdata\E_PK_REVR_L1.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loaded Pose E_PK_REVR_L1
-         editPose 0
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
+         actObjInd 27
+         subjectDistance 7.10923
+         No code for key: 119
+     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
+C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -805306369.
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
 
-Build succeeded.
+Build FAILED.
 
-Time Elapsed 00:02:52.18
+Time Elapsed 00:02:37.03

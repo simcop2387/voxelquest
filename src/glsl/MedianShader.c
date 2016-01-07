@@ -6,6 +6,7 @@ uniform sampler2D Texture0;
 uniform sampler2D Texture1;
 uniform sampler2D Texture2;
 
+uniform vec3 cameraPos;
 uniform vec2 bufferDim;
 
 varying vec2 TexCoord0;
@@ -57,23 +58,34 @@ void main() {
   
   float dval = pow(tex1.w,5.0);
   
-  float mixVal = clamp(
-    mix(1.25,0.2,dval),
-    0.0,
-    1.0
-  );
+  // float mixVal = clamp(
+  //   mix(1.25,0.2,dval),
+  //   0.0,
+  //   1.0
+  // );
+  
+  float mixVal = clamp(distance(cameraPos,tex1.xyz)/100.0,0.0,1.0);
+  
+  //mixVal = mix(mixVal,0.25,0.75);
   
   //gl_FragColor = vec4(vec3(mixVal),1.0);
   
-  gl_FragColor = vec4(
-    mix(
+  vec3 finalRes;
+  
+  if (distance(tex0.rgb,v[4].rgb) < 0.25) {
+    finalRes = tex0.rgb;
+  }
+  else {
+    finalRes = mix(
       v[4].rgb,
       tex0.rgb,
-      0.75//float(distance(tex0.rgb,v[4].rgb) > 0.5)//mixVal
-    )
-  ,1.0);
+      0.0 // *float(distance(tex0.rgb,v[4].rgb) > 0.5)//mixVal
+    );
+  }
   
+  gl_FragColor = vec4(finalRes,1.0);
   
+  //gl_FragColor = vec4(mixVal,mixVal,mixVal,1.0);
   
   //gl_FragColor = texture2D(Texture0, TexCoord0);
 

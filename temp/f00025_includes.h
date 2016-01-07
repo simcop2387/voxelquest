@@ -6,16 +6,21 @@
 
 int RUN_COUNT;
 
+bool ND_TRACE_OFF = false;
+
 
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "27015"
 
 const static int MAX_LIMB_DATA_IN_BYTES = 65536;
 
-const static bool GEN_DEBRIS = true;
-const static int  MAX_DEBRIS = 100;
+
+const static bool POLY_COLLISION = false;
+const static bool VOXEL_COLLISION = true;
+
+const static bool GEN_DEBRIS = false;
+const static int  MAX_DEBRIS = 0;
 const static bool GEN_COLLISION = false;
-const static bool GEN_POLYS_HOLDER = false;
 const static bool GEN_POLYS_WORLD = true;
 
 const static bool SINGLE_THREADED = false;
@@ -45,11 +50,11 @@ const static bool DO_SHADER_DUMP = false;
 // const static int DEF_WIN_H = 720;
 
 
-// #define STREAM_RES 1
+#define STREAM_RES 1
 
 #ifdef STREAM_RES
-	const static int DEF_WIN_W = 2048;//1920;
-	const static int DEF_WIN_H = 1024;//1080;
+	const static int DEF_WIN_W = 2048;//
+	const static int DEF_WIN_H = 1024;//
 #else
 	const static int DEF_WIN_W = 1536;
 	const static int DEF_WIN_H = 768;

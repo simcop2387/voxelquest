@@ -1552,7 +1552,7 @@ void GamePageHolder::fillVBO ()
 		
 		if (
 			// (isBlockHolder&&GEN_POLYS_WORLD) ||
-			((!isBlockHolder)&&GEN_POLYS_HOLDER)	
+			((!isBlockHolder)&&POLY_COLLISION)	
 		) {
 			if (
 				listEmpty
@@ -1739,7 +1739,7 @@ void GamePageHolder::generateList ()
 		
 		bool fillPolys = 
 			// (isBlockHolder&&GEN_POLYS_WORLD) ||
-			((!isBlockHolder)&&GEN_POLYS_HOLDER);
+			((!isBlockHolder)&&POLY_COLLISION);
 		
 		
 		

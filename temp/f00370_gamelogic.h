@@ -170,7 +170,7 @@ void GameLogic::applyBehavior ()
 					writeObj->jumpCooldown = 0;
 				}
 				
-				writeObj->isWalking = false;
+				writeObj->setActionState(E_ACT_ISWALKING,RLBN_NEIT,false);
 				
 				
 				if (writeObj->isAlive()) {
@@ -238,12 +238,12 @@ void GameLogic::applyBehavior ()
 					
 				}
 				else { // is dead
-					if (writeObj->holdingWeapon(E_HAND_L)) {
-						singleton->grabThrowObj(writeObj->uid, E_HAND_L);
+					if (writeObj->holdingWeapon(RLBN_LEFT)) {
+						singleton->grabThrowObj(writeObj->uid, RLBN_LEFT);
 					}
 					
-					if (writeObj->holdingWeapon(E_HAND_R)) {
-						singleton->grabThrowObj(writeObj->uid, E_HAND_R);
+					if (writeObj->holdingWeapon(RLBN_RIGT)) {
+						singleton->grabThrowObj(writeObj->uid, RLBN_RIGT);
 					}
 				}
 				

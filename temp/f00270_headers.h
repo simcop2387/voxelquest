@@ -123,6 +123,7 @@ public:
   TBOWrapper limbTBO;
   float (limbTBOData) [MAX_LIMB_DATA_IN_BYTES];
   int destructCount;
+  bool sphereMapOn;
   bool waitingOnDestruction;
   bool combatOn;
   bool isPressingMove;
@@ -211,7 +212,10 @@ public:
   int draggingToInd;
   int draggingFromType;
   int draggingToType;
-  int currentPose;
+  int curPoseIndex;
+  int curPoseGroup;
+  int curPoseRLBN;
+  int curPoseStep;
   int actorCount;
   int limbDataDebug;
   int polyCount;
@@ -418,6 +422,7 @@ public:
   std::vector <GameActor*> gameActors;
   std::vector <GameOrg*> gameOrgs;
   std::vector <GameOrg*> gamePoses;
+  PoseInfo (gamePoseInfo) [E_PG_LENGTH];
   std::vector <ExplodeStruct> explodeStack;
   std::vector <DebrisStruct> debrisStack;
   std::vector <FIVector4> primTemplateStack;
@@ -467,6 +472,7 @@ public:
   JSONValue * rootObjJS;
   JSONValue * guiRootJS;
   JSONValue * constRootJS;
+  JSONValue * poseRootJS;
   HPClock bulletTimer;
   Timer fpsTimer;
   Timer shakeTimer;
@@ -630,15 +636,24 @@ public:
   bool isKicking (int actorId, int handNum);
   void setSwing (float _mx, float _my, int actorId, int handNum, bool isKick);
   void nextSwing (int actorId, int handNum);
+  GameOrg * getPose (int targPoseGroup, int targRLBN, int targStep);
+  string getPoseString (int targPoseGroup, int targRLBN, int targStep);
+  GameOrg * getCurrentPose ();
+  string getCurrentPoseString ();
+  int getActionStateFromPose (int poseNum);
   void makeSwing (int actorId, int handNum);
   void makeTurn (int actorId, float dirFactor);
   void makeMoveVec (int actorId, btVector3 moveVec);
   void makeMove (int actorId, btVector3 moveDir, bool relative);
   void makeJump (int actorId, int isUp, float jumpFactor);
   void resetGeom ();
+  bool hasRLBN (int rlbnRes, int k);
+  void loadPoseInfo ();
   void changePose (int amount);
   void saveCurrentPose ();
-  void loadNonPoseData (int currentNPD);
+  void getIndexFromCurrentPose ();
+  void setPoseFromIndex (int i);
+  void loadNonPoseData (int npdPose, int npdSide, int npdStep);
   void loadCurrentPose ();
   void processInput (unsigned char key, bool keyDown, int x, int y);
   void getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj);
@@ -1315,6 +1330,7 @@ public:
   GameOrgNode (GameOrgNode * _parent, int _nodeName, float _material, float _rotThe, float _rotPhi, float _rotRho, float _tanLengthInCells0, float _bitLengthInCells0, float _norLengthInCells0, float _tanLengthInCells1, float _bitLengthInCells1, float _norLengthInCells1, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
   GameOrgNode * addChild (int _nodeName, float _material, float _rotThe, float _rotPhi, float _rotRho, float _tanLengthInCells0, float _bitLengthInCells0, float _norLengthInCells0, float _tanLengthInCells1, float _bitLengthInCells1, float _norLengthInCells1, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
   GameOrgNode * getNode (int _nodeName);
+  void setTangent (float newVal);
   void doTransform (Singleton * singleton, GameOrgNode * tempParent);
 };
 #undef LZZ_INLINE
@@ -1333,11 +1349,14 @@ public:
   GameOrgNode * (allNodes) [E_BONE_C_END];
   FIVector4 basePosition;
   JSONValue * rootObj;
+  int basePoseGroup;
+  int basePoseRLBN;
+  int basePoseStep;
   int ownerUID;
   int orgType;
   int stepCount;
-  int targetPose;
   int targetPoseGroup;
+  int targetPoseRLBN;
   double totTime;
   float defVecLength;
   float gv (float * vals);
@@ -1348,6 +1367,7 @@ public:
   void jsonToNode (JSONValue * * parentObj, GameOrgNode * curNode, bool notThePose);
   void saveToFile (string fileName);
   BaseObj * getOwner ();
+  void setTPG (int _targetPoseGroup, int _targetPoseRLBN);
   void setToPose (GameOrg * otherOrg, float lerpAmount, int boneId = -1);
   void updatePose (double curTimeStep);
   void nodeToJSON (JSONValue * * parentObj, GameOrgNode * curNode);
@@ -1434,7 +1454,9 @@ public:
   GameOrg * baseOrg;
   int addJoint (int nodeName, int parentId, int jointType, float mass, GameOrgNode * curNode);
   void initFromOrg (GameOrgNode * curNode, int curParent);
+  void reinit ();
   GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed);
+  void removeAllBodies ();
   virtual ~ GameActor ();
 };
 #undef LZZ_INLINE
@@ -1886,7 +1908,7 @@ public:
   void collectDebris ();
   void beginDrop ();
   void remBoxFromObj (BaseObjType _uid);
-  void addBoxFromObj (BaseObjType _uid);
+  void addBoxFromObj (BaseObjType _uid, bool refreshLimbs);
   void flushImpulses ();
   void procCol (BaseObj * * geArr, BodyStruct * * curBodyArr);
   void collideWithWorld (double curStepTime);

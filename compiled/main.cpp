@@ -6,16 +6,21 @@
 
 int RUN_COUNT;
 
+bool ND_TRACE_OFF = false;
+
 
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "27015"
 
 const static int MAX_LIMB_DATA_IN_BYTES = 65536;
 
-const static bool GEN_DEBRIS = true;
-const static int  MAX_DEBRIS = 100;
+
+const static bool POLY_COLLISION = false;
+const static bool VOXEL_COLLISION = true;
+
+const static bool GEN_DEBRIS = false;
+const static int  MAX_DEBRIS = 0;
 const static bool GEN_COLLISION = false;
-const static bool GEN_POLYS_HOLDER = false;
 const static bool GEN_POLYS_WORLD = true;
 
 const static bool SINGLE_THREADED = false;
@@ -45,11 +50,11 @@ const static bool DO_SHADER_DUMP = false;
 // const static int DEF_WIN_H = 720;
 
 
-// #define STREAM_RES 1
+#define STREAM_RES 1
 
 #ifdef STREAM_RES
-	const static int DEF_WIN_W = 2048;//1920;
-	const static int DEF_WIN_H = 1024;//1080;
+	const static int DEF_WIN_W = 2048;//
+	const static int DEF_WIN_H = 1024;//
 #else
 	const static int DEF_WIN_W = 1536;
 	const static int DEF_WIN_H = 768;
@@ -3584,62 +3589,102 @@ void initNetMasks() {
  
 
 
+#define DO_DESCRIPTION(e)  #e,
+#define DO_ENUM(e)  e,
+
+
+#define E_CONST(DDD) \
+DDD(E_CONST_ANGDAMP) \
+DDD(E_CONST_ANTIGRAV) \
+DDD(E_CONST_COLDEPTH_LIMB) \
+DDD(E_CONST_COLDEPTH_CONT) \
+DDD(E_CONST_PUSH_UP_AMOUNT) \
+DDD(E_CONST_ATTACK_LERP_SPEED) \
+DDD(E_CONST_ATTACK_KEY_INTERVAL) \
+DDD(E_CONST_WALKING_FRIC) \
+DDD(E_CONST_STANDING_FRIC) \
+DDD(E_CONST_WALKING_GRAV) \
+DDD(E_CONST_JUMP_AMOUNT) \
+DDD(E_CONST_WALK_AMOUNT) \
+DDD(E_CONST_WALK_UP_AMOUNT) \
+DDD(E_CONST_LIMB_IMPULSE) \
+DDD(E_CONST_HIT_STRENGTH) \
+DDD(E_CONST_DASH_AMOUNT) \
+DDD(E_CONST_DASH_UP_AMOUNT) \
+DDD(E_CONST_MAPFREQ0) \
+DDD(E_CONST_MAPFREQ1) \
+DDD(E_CONST_MAPFREQ2) \
+DDD(E_CONST_MAPFREQ3) \
+DDD(E_CONST_MAPAMP0) \
+DDD(E_CONST_MAPAMP1) \
+DDD(E_CONST_MAPAMP2) \
+DDD(E_CONST_MAPAMP3) \
+DDD(E_CONST_LENGTH)
+
+
+string E_CONST_STRINGS[] = {
+	E_CONST(DO_DESCRIPTION)
+};
 
 enum E_CONST_VALS {
-	E_CONST_ANTIGRAV,
-	E_CONST_COLDEPTH_LIMB,
-	E_CONST_COLDEPTH_CONT,	
-	E_CONST_PUSH_UP_AMOUNT,
-	E_CONST_ATTACK_LERP_SPEED,
-	E_CONST_ATTACK_KEY_INTERVAL,
-	E_CONST_WALKING_FRIC,
-	E_CONST_STANDING_FRIC,
-	E_CONST_WALKING_GRAV,
-	E_CONST_JUMP_AMOUNT,
-	E_CONST_WALK_AMOUNT,
-	E_CONST_WALK_UP_AMOUNT,
-	E_CONST_LIMB_IMPULSE,
-	E_CONST_HIT_STRENGTH,
-	E_CONST_DASH_AMOUNT,
-	E_CONST_DASH_UP_AMOUNT,
-	E_CONST_MAPFREQ0,
-	E_CONST_MAPFREQ1,
-	E_CONST_MAPFREQ2,
-	E_CONST_MAPFREQ3,
-	E_CONST_MAPAMP0,
-	E_CONST_MAPAMP1,
-	E_CONST_MAPAMP2,
-	E_CONST_MAPAMP3,
-	E_CONST_LENGTH
+	E_CONST(DO_ENUM)
 };
 
-string constStrings[] = {
-	"E_CONST_ANTIGRAV",
-	"E_CONST_COLDEPTH_LIMB",
-	"E_CONST_COLDEPTH_CONT",
-	"E_CONST_PUSH_UP_AMOUNT",
-	"E_CONST_ATTACK_LERP_SPEED",
-	"E_CONST_ATTACK_KEY_INTERVAL",
-	"E_CONST_WALKING_FRIC",
-	"E_CONST_STANDING_FRIC",
-	"E_CONST_WALKING_GRAV",
-	"E_CONST_JUMP_AMOUNT",
-	"E_CONST_WALK_AMOUNT",
-	"E_CONST_WALK_UP_AMOUNT",
-	"E_CONST_LIMB_IMPULSE",
-	"E_CONST_HIT_STRENGTH",
-	"E_CONST_DASH_AMOUNT",
-	"E_CONST_DASH_UP_AMOUNT",
-	"E_CONST_MAPFREQ0",
-	"E_CONST_MAPFREQ1",
-	"E_CONST_MAPFREQ2",
-	"E_CONST_MAPFREQ3",
-	"E_CONST_MAPAMP0",
-	"E_CONST_MAPAMP1",
-	"E_CONST_MAPAMP2",
-	"E_CONST_MAPAMP3",
-	"E_CONST_LENGTH"
-};
+// enum E_CONST_VALS {
+// 	E_CONST_ANTIGRAV
+// 	E_CONST_COLDEPTH_LIMB
+// 	E_CONST_COLDEPTH_CONT	
+// 	E_CONST_PUSH_UP_AMOUNT
+// 	E_CONST_ATTACK_LERP_SPEED
+// 	E_CONST_ATTACK_KEY_INTERVAL
+// 	E_CONST_WALKING_FRIC
+// 	E_CONST_STANDING_FRIC
+// 	E_CONST_WALKING_GRAV
+// 	E_CONST_JUMP_AMOUNT
+// 	E_CONST_WALK_AMOUNT
+// 	E_CONST_WALK_UP_AMOUNT
+// 	E_CONST_LIMB_IMPULSE
+// 	E_CONST_HIT_STRENGTH
+// 	E_CONST_DASH_AMOUNT
+// 	E_CONST_DASH_UP_AMOUNT
+// 	E_CONST_MAPFREQ0
+// 	E_CONST_MAPFREQ1
+// 	E_CONST_MAPFREQ2
+// 	E_CONST_MAPFREQ3
+// 	E_CONST_MAPAMP0
+// 	E_CONST_MAPAMP1
+// 	E_CONST_MAPAMP2
+// 	E_CONST_MAPAMP3
+// 	E_CONST_LENGTH
+// };
+
+// string constStrings[] = {
+// 	"E_CONST_ANTIGRAV",
+// 	"E_CONST_COLDEPTH_LIMB",
+// 	"E_CONST_COLDEPTH_CONT",
+// 	"E_CONST_PUSH_UP_AMOUNT",
+// 	"E_CONST_ATTACK_LERP_SPEED",
+// 	"E_CONST_ATTACK_KEY_INTERVAL",
+// 	"E_CONST_WALKING_FRIC",
+// 	"E_CONST_STANDING_FRIC",
+// 	"E_CONST_WALKING_GRAV",
+// 	"E_CONST_JUMP_AMOUNT",
+// 	"E_CONST_WALK_AMOUNT",
+// 	"E_CONST_WALK_UP_AMOUNT",
+// 	"E_CONST_LIMB_IMPULSE",
+// 	"E_CONST_HIT_STRENGTH",
+// 	"E_CONST_DASH_AMOUNT",
+// 	"E_CONST_DASH_UP_AMOUNT",
+// 	"E_CONST_MAPFREQ0",
+// 	"E_CONST_MAPFREQ1",
+// 	"E_CONST_MAPFREQ2",
+// 	"E_CONST_MAPFREQ3",
+// 	"E_CONST_MAPAMP0",
+// 	"E_CONST_MAPAMP1",
+// 	"E_CONST_MAPAMP2",
+// 	"E_CONST_MAPAMP3",
+// 	"E_CONST_LENGTH"
+// };
 
 
 
@@ -3908,15 +3953,20 @@ enum E_KEYMAP {
 	KEYMAP_LENGTH
 };
 
+// do not rearrange
 enum ENT_TYPE {
-	E_ENTTYPE_OBJ,
-	//E_ENTTYPE_MONSTER,
 	E_ENTTYPE_NPC,
 	E_ENTTYPE_WEAPON,
+	E_ENTTYPE_OBJ,
 	E_ENTTYPE_BULLET,
 	E_ENTTYPE_TRACE,
 	E_ENTTYPE_DEBRIS,
 	E_ENTTYPE_LENGTH
+};
+
+enum ENT_SUBTYPE {
+	
+	E_ENTSUB_LENGTH
 };
 
 enum E_STATES {
@@ -4285,7 +4335,7 @@ enum E_BONES_HUMAN {
 	E_BONE_C_SKULL,
 	
 	E_BONE_WEAPON_BASE,
-	E_BONE_WEAPON_END,
+	E_BONE_WEAPON_HANDLE,
 	E_BONE_WEAPON_0,
 	E_BONE_WEAPON_1,
 	E_BONE_WEAPON_2,
@@ -4446,7 +4496,7 @@ string boneStrings[] = {
 	"E_BONE_C_SKULL",
 	
 	"E_BONE_WEAPON_BASE",
-	"E_BONE_WEAPON_END",
+	"E_BONE_WEAPON_HANDLE",
 	"E_BONE_WEAPON_0",
 	"E_BONE_WEAPON_1",
 	"E_BONE_WEAPON_2",
@@ -4774,11 +4824,6 @@ enum E_PATH_FILL_OPS {
 	E_PFO_LENGTH
 };
 
-enum E_HAND_LR {
-	E_HAND_R,
-	E_HAND_L,
-	E_HAND_LENGTH	
-};
 
 enum E_COL_TYPES {
     COL_NOTHING = 0,
@@ -4838,9 +4883,7 @@ struct ActorJointStruct {
 	
 	float rad;
 	float length;
-	
-	
-	
+		
 	btVector3 begOrig;
 	btVector3 midOrig;
 	btVector3 endOrig;
@@ -4870,241 +4913,164 @@ struct ActorJointStruct {
 // };
 
 
+/*
+
+enum string method
+
+// Client code:
+
+std::cout << FruitDescription[Banana] << " is enum #" << Banana << "\n";
+
+*/
+
+
+
+
 enum E_POSE_GROUPS {
+
+	E_PG_TPOSE,
+	E_PG_NONPOSE,
 	E_PG_JUMP,
-	E_PG_IDLE,
 	E_PG_DEAD,
-	E_PG_WALK,
 	E_PG_PICKUP,
-	
+	E_PG_IDLE,
+	E_PG_WALKFORWARD,
 	
 	// weapons
 	
-	E_PG_SLSH_R,
-	E_PG_SLSH_L,
-	E_PG_SLSH_B,
-	
-	E_PG_BACK_R,
-	E_PG_BACK_L,
-	E_PG_BACK_B,
-	
-	E_PG_HACK_R,
-	E_PG_HACK_L,
-	E_PG_HACK_B,
-	
-	E_PG_STAB_R,
-	E_PG_STAB_L,
-	E_PG_STAB_B,
-	
+	E_PG_SLSH,
+	E_PG_BACK,
+	E_PG_HACK,
+	E_PG_STAB,
 	
 	// punches
 	
-	E_PG_HOOK_R,
-	E_PG_HOOK_L,
-	
-	E_PG_ELBO_R,
-	E_PG_ELBO_L,
-	
-	E_PG_UPPR_R,
-	E_PG_UPPR_L,
-	
-	E_PG_JABP_R,
-	E_PG_JABP_L,
-	
+	E_PG_HOOK,
+	E_PG_ELBO,
+	E_PG_UPPR,
+	E_PG_JABP,
 	
 	// kicks
 	
-	E_PG_ROUN_R,
-	E_PG_ROUN_L,
-	
-	E_PG_REVR_R,
-	E_PG_REVR_L,
-	
-	E_PG_BKIK_R,
-	E_PG_BKIK_L,
-	
-	E_PG_FRNT_R,
-	E_PG_FRNT_L,
-	
+	E_PG_ROUN,
+	E_PG_REVR,
+	E_PG_BKIK,
+	E_PG_FRNT,
 	
 	E_PG_LENGTH	
 };
 
-int getPoseSide(int poseNum) {
-	switch(poseNum) {
-		case E_PG_SLSH_R:
-		case E_PG_BACK_R:
-		case E_PG_HACK_R:
-		case E_PG_STAB_R:
-		case E_PG_HOOK_R:
-		case E_PG_ELBO_R:
-		case E_PG_UPPR_R:
-		case E_PG_JABP_R:
-		case E_PG_ROUN_R:
-		case E_PG_REVR_R:
-		case E_PG_BKIK_R:
-		case E_PG_FRNT_R:
-			return E_HAND_R;
-		break;
-		
-		case E_PG_SLSH_L:
-		case E_PG_BACK_L:
-		case E_PG_HACK_L:
-		case E_PG_STAB_L:
-		case E_PG_HOOK_L:
-		case E_PG_ELBO_L:
-		case E_PG_UPPR_L:
-		case E_PG_JABP_L:
-		case E_PG_ROUN_L:
-		case E_PG_REVR_L:
-		case E_PG_BKIK_L:
-		case E_PG_FRNT_L:
-			return E_HAND_L;
-		break;
-		default:
-			cout << "ERROR SHOULD NOT HIT THIS " << poseNum << "\n";
-			return 2;
-		break;
-		
-	}	
-}
+string poseGroupStrings[] = {
 
-
-enum E_POSE_KEYS {
-	E_PK_T_POSE,
-	E_PK_NON_POSE,
-	E_PK_JUMP,
-	E_PK_DEAD,
-	E_PK_PICKUP,
-	E_PK_IDLE_LOW,
-	E_PK_IDLE_HIGH,
-	E_PK_L_FORWARD,
-	E_PK_R_CROSS,
-	E_PK_R_FORWARD,
-	E_PK_L_CROSS,
+	"E_PG_TPOSE",
+	"E_PG_NONPOSE",
+	"E_PG_JUMP",
+	"E_PG_DEAD",
+	"E_PG_PICKUP",
+	"E_PG_IDLE",
+	"E_PG_WALKFORWARD",
 	
 	// weapons
 	
-	E_PK_SLSH_R0, E_PK_SLSH_R1, E_PK_SLSH_R2,
-	E_PK_SLSH_L0, E_PK_SLSH_L1, E_PK_SLSH_L2,
-	E_PK_SLSH_B0, E_PK_SLSH_B1, E_PK_SLSH_B2,
-	
-	E_PK_BACK_R0, E_PK_BACK_R1, E_PK_BACK_R2,
-	E_PK_BACK_L0, E_PK_BACK_L1, E_PK_BACK_L2,
-	E_PK_BACK_B0, E_PK_BACK_B1, E_PK_BACK_B2,
-	
-	E_PK_HACK_R0, E_PK_HACK_R1, E_PK_HACK_R2,
-	E_PK_HACK_L0, E_PK_HACK_L1, E_PK_HACK_L2,
-	E_PK_HACK_B0, E_PK_HACK_B1, E_PK_HACK_B2,
-	
-	E_PK_STAB_R0, E_PK_STAB_R1, E_PK_STAB_R2,
-	E_PK_STAB_L0, E_PK_STAB_L1, E_PK_STAB_L2,
-	E_PK_STAB_B0, E_PK_STAB_B1, E_PK_STAB_B2,
-	
-	
+	"E_PG_SLSH",
+	"E_PG_BACK",
+	"E_PG_HACK",
+	"E_PG_STAB",
 	
 	// punches
 	
-	E_PK_HOOK_R0, E_PK_HOOK_R1, E_PK_HOOK_R2,
-	E_PK_HOOK_L0, E_PK_HOOK_L1, E_PK_HOOK_L2,
-	
-	E_PK_ELBO_R0, E_PK_ELBO_R1, E_PK_ELBO_R2,
-	E_PK_ELBO_L0, E_PK_ELBO_L1, E_PK_ELBO_L2,
-	
-	E_PK_UPPR_R0, E_PK_UPPR_R1, E_PK_UPPR_R2,
-	E_PK_UPPR_L0, E_PK_UPPR_L1, E_PK_UPPR_L2,
-	
-	E_PK_JABP_R0, E_PK_JABP_R1, E_PK_JABP_R2,
-	E_PK_JABP_L0, E_PK_JABP_L1, E_PK_JABP_L2,
-	
+	"E_PG_HOOK",
+	"E_PG_ELBO",
+	"E_PG_UPPR",
+	"E_PG_JABP",
 	
 	// kicks
 	
-	E_PK_ROUN_R0, E_PK_ROUN_R1, E_PK_ROUN_R2,
-	E_PK_ROUN_L0, E_PK_ROUN_L1, E_PK_ROUN_L2,
+	"E_PG_ROUN",
+	"E_PG_REVR",
+	"E_PG_BKIK",
+	"E_PG_FRNT"
 	
-	E_PK_REVR_R0, E_PK_REVR_R1, E_PK_REVR_R2,
-	E_PK_REVR_L0, E_PK_REVR_L1, E_PK_REVR_L2,
-	
-	E_PK_BKIK_R0, E_PK_BKIK_R1, E_PK_BKIK_R2,
-	E_PK_BKIK_L0, E_PK_BKIK_L1, E_PK_BKIK_L2,
-	
-	E_PK_FRNT_R0, E_PK_FRNT_R1, E_PK_FRNT_R2,
-	E_PK_FRNT_L0, E_PK_FRNT_L1, E_PK_FRNT_L2,
-	
-	
-	
-	
-	
-	E_PK_LENGTH
-	
+		
 };
 
-string poseStrings[] = {
-	"E_PK_T_POSE",
-	"E_PK_NON_POSE",
-	"E_PK_JUMP",
-	"E_PK_DEAD",
-	"E_PK_PICKUP",
-	"E_PK_IDLE_LOW",
-	"E_PK_IDLE_HIGH",
-	"E_PK_L_FORWARD",
-	"E_PK_R_CROSS",
-	"E_PK_R_FORWARD",
-	"E_PK_L_CROSS",
-	
-	// weapons
-	
-	"E_PK_SLSH_R0", "E_PK_SLSH_R1", "E_PK_SLSH_R2",
-	"E_PK_SLSH_L0", "E_PK_SLSH_L1", "E_PK_SLSH_L2",
-	"E_PK_SLSH_B0", "E_PK_SLSH_B1", "E_PK_SLSH_B2",
-	
-	"E_PK_BACK_R0", "E_PK_BACK_R1", "E_PK_BACK_R2",
-	"E_PK_BACK_L0", "E_PK_BACK_L1", "E_PK_BACK_L2",
-	"E_PK_BACK_B0", "E_PK_BACK_B1", "E_PK_BACK_B2",
-	
-	"E_PK_HACK_R0", "E_PK_HACK_R1", "E_PK_HACK_R2",
-	"E_PK_HACK_L0", "E_PK_HACK_L1", "E_PK_HACK_L2",
-	"E_PK_HACK_B0", "E_PK_HACK_B1", "E_PK_HACK_B2",
-	
-	"E_PK_STAB_R0", "E_PK_STAB_R1", "E_PK_STAB_R2",
-	"E_PK_STAB_L0", "E_PK_STAB_L1", "E_PK_STAB_L2",
-	"E_PK_STAB_B0", "E_PK_STAB_B1", "E_PK_STAB_B2",
-	
-	
-	// punches
-	
-	"E_PK_HOOK_R0", "E_PK_HOOK_R1", "E_PK_HOOK_R2",
-	"E_PK_HOOK_L0", "E_PK_HOOK_L1", "E_PK_HOOK_L2",
-	
-	"E_PK_ELBO_R0", "E_PK_ELBO_R1", "E_PK_ELBO_R2",
-	"E_PK_ELBO_L0", "E_PK_ELBO_L1", "E_PK_ELBO_L2",
-	
-	"E_PK_UPPR_R0", "E_PK_UPPR_R1", "E_PK_UPPR_R2",
-	"E_PK_UPPR_L0", "E_PK_UPPR_L1", "E_PK_UPPR_L2",
-	
-	"E_PK_JABP_R0", "E_PK_JABP_R1", "E_PK_JABP_R2",
-	"E_PK_JABP_L0", "E_PK_JABP_L1", "E_PK_JABP_L2",
-	
-	
-	// kicks
-	
-	"E_PK_ROUN_R0", "E_PK_ROUN_R1", "E_PK_ROUN_R2",
-	"E_PK_ROUN_L0", "E_PK_ROUN_L1", "E_PK_ROUN_L2",
-	
-	"E_PK_REVR_R0", "E_PK_REVR_R1", "E_PK_REVR_R2",
-	"E_PK_REVR_L0", "E_PK_REVR_L1", "E_PK_REVR_L2",
-	
-	"E_PK_BKIK_R0", "E_PK_BKIK_R1", "E_PK_BKIK_R2",
-	"E_PK_BKIK_L0", "E_PK_BKIK_L1", "E_PK_BKIK_L2",
-	
-	"E_PK_FRNT_R0", "E_PK_FRNT_R1", "E_PK_FRNT_R2",
-	"E_PK_FRNT_L0", "E_PK_FRNT_L1", "E_PK_FRNT_L2",
-	
-	
-	
-	
-	"E_PK_LENGTH"
+
+enum E_POSETYPES {
+	E_POSETYPE_HUMAN,
+	E_POSETYPE_WEAPON,
+	E_POSETYPE_LENGTH
+};
+
+enum RLBN_FLAGS {
+	RLBN_FLAG_RIGHT = 1,
+	RLBN_FLAG_LEFT = 2,
+	RLBN_FLAG_BOTH = 4,
+	RLBN_FLAG_NEITHER = 8
+};
+
+// do not rearrange
+enum RLBN_ENUMS {
+	RLBN_RIGT,
+	RLBN_LEFT,
+	RLBN_BOTH,
+	RLBN_NEIT,
+	RLBN_LENGTH
+};
+// do not rearrange
+enum E_ACTION_STATES {
+	E_ACT_NULL,
+	E_ACT_ISHIT,
+	E_ACT_ISJUMPING,
+	E_ACT_ISWALKING,
+	E_ACT_ISSWINGING,
+	E_ACT_ISPICKINGUP,
+	E_ACT_LENGTH
+};
+
+
+/////////////////////////////
+
+#define E_PIK(DDD) \
+DDD(E_PIK_POSETYPE) \
+DDD(E_PIK_SUBTYPE) \
+DDD(E_PIK_NUMSTEPS) \
+DDD(E_PIK_EXTRASTEPS) \
+DDD(E_PIK_RLBN) \
+DDD(E_PIK_DOLOOP) \
+DDD(E_PIK_LERPSPEED) \
+DDD(E_PIK_TIMEINTERVAL) \
+DDD(E_PIK_LENGTH)
+
+string E_PIK_STRINGS[] = {
+	E_PIK(DO_DESCRIPTION)
+};
+
+enum E_PIK_ENUMS {
+	E_PIK(DO_ENUM)
+};
+
+/////////////////////////////
+
+
+
+string poseSideStrings[] = {
+	"R", // right
+	"L", // left
+	"B", // both
+	"N"	 // neither
+};
+
+const static int MAX_POSE_STEPS = 8;
+
+struct PoseStepInfo {
+	string fileString[MAX_POSE_STEPS];
+	int gamePoseIndex[MAX_POSE_STEPS];
+};
+
+struct PoseInfo {
+	float data[E_PIK_LENGTH];
+	string stringData[E_PIK_LENGTH];
+	PoseStepInfo poseSteps[RLBN_LENGTH];
 };
 
 struct materialNode {
@@ -9644,7 +9610,7 @@ private:
 	FIVector4 centerPoint;
 	FIVector4 linVelocity;
 	
-	
+	bool actionStates[E_ACT_LENGTH*RLBN_LENGTH];
 	
 public:
 	
@@ -9693,36 +9659,22 @@ public:
 	// NPC SPECIFIC //
 	//////////////////
 	
-	int swingType[2];
+	int swingType[4];
+	int isGrabbingId[4];
+	
 	int jumpCooldown;
 	int curHealth;
 	int maxHealth;
-	
-	
-	//bool combatReady;
-	//bool weaponActive;
-	int isGrabbingId[2];
-	bool isHit;
-	bool isJumping;
-	bool isWalking;
-	bool leftActive;
-	bool isSwinging[2];
-	bool isPickingUp;
-	bool rightHandTop;
+		
 	float bindingPower;
 	float swingCount;
 	float blockCount;
 	float lastBlockDis;
-	float lrBounds;
-	float udBounds;
-	double totTime;
-	double totWeaponTime;
+	
 	btVector3 behaviorTarget;
 	btVector3 npcRepel;
-	btVector3 leftVec;
-	btVector3 rightVec;
-	btVector3 weaponVec0[2];
-	btVector3 weaponVec1[2];
+	
+	
 	
 	//////////////////
 	// END SPECIFIC //
@@ -9732,8 +9684,8 @@ public:
 		
 		if (handNum == -1) {
 			return (
-				( isGrabbingId[E_HAND_L] > -1 ) ||
-				( isGrabbingId[E_HAND_R] > -1 )
+				( isGrabbingId[RLBN_LEFT] > -1 ) ||
+				( isGrabbingId[RLBN_RIGT] > -1 )
 			);
 		}
 		else {
@@ -9788,6 +9740,14 @@ public:
 			bodies[i].body->getLinearVelocity() * velMod
 		);
 	}
+	
+	void multVelAng(int i, btVector3 velMod) {
+		
+		bodies[i].body->setAngularVelocity(
+			bodies[i].body->getAngularVelocity() * velMod
+		);
+	}
+	
 	void addVel(int i, btVector3 velMod) {
 		
 		bodies[i].body->setLinearVelocity(
@@ -10179,7 +10139,7 @@ public:
 		
 	// 	BodyStruct* handBody;
 		
-	// 	if (handNum == E_HAND_L) {
+	// 	if (handNum == RLBN_LEFT) {
 	// 		handBody = getBodyByBoneId(getCorrectedName(E_BONE_L_METACARPALS));
 	// 	}
 	// 	else {
@@ -10508,6 +10468,23 @@ public:
 		return (curHealth > 0);
 	}
 	
+	bool getActionState(int action, int handNum) {
+		return actionStates[action*RLBN_LENGTH + handNum];
+	}
+	
+	void setActionState(int action, int handNum, bool newVal) {
+		actionStates[action*RLBN_LENGTH + handNum] = newVal;
+	}
+	
+	void clearActionStates() {
+		int i;
+		
+		for (i = 0; i < E_ACT_LENGTH*RLBN_LENGTH; i++) {
+			actionStates[i] = false;
+		}
+		
+	}
+	
 	
 	void init(
 		BaseObjType _uid,
@@ -10517,24 +10494,14 @@ public:
 		FIVector4* cellPos
 	) {
 		
+		int i;
+		
 		contactCount = 0;
 		
 		//mass = 10.0f;
 		orgId = -1;
 		actorId = -1;
 		isHidden = false;
-		
-		//ang = 0.0f;
-		//angRelative = 0.0f;
-		
-		//targAng = 0.0f;
-		//targAngRelative = 0.75f;
-		
-		totWeaponTime = 0.0;
-		totTime = 0.0;
-		lrBounds = 0.5f;
-		udBounds = 0.5f;
-		//targWeaponStack.push_back(E_WEAPON_POS_RELAXED);
 		
 		maxFrames = 0;
 		objectType = _objectType;
@@ -10545,8 +10512,6 @@ public:
 		
 		isGrabbedByHand = -1;
 		isGrabbedById = -1;
-		isGrabbingId[0] = -1;
-		isGrabbingId[1] = -1;
 		
 		maxHealth = 255;
 		curHealth = maxHealth;
@@ -10555,20 +10520,16 @@ public:
 		swingCount = 0.0f;
 		bindingPower = 1.0f;
 		
-		rightHandTop = false;
-		//weaponActive = false;
+		for (i = 0; i < RLBN_LENGTH; i++) {
+			isGrabbingId[i] = -1;
+			swingType[i] = E_PG_SLSH;
+		}
 		
-		swingType[E_HAND_R] = E_PG_SLSH_R;
-		swingType[E_HAND_L] = E_PG_SLSH_L;
 		zeroZ = false;
-		isHit = false;
 		jumpCooldown = 0;
-		isJumping = false;
-		isWalking = false;
-		leftActive = false;
-		isSwinging[0] = false;
-		isSwinging[1] = false;
-		isPickingUp = false;
+		
+		
+		clearActionStates();
 		
 		isUpright = 
 			(entType == E_ENTTYPE_NPC)
@@ -10581,7 +10542,7 @@ public:
 		uid = _uid;
 		
 		skelOffset = btVector3(0.0f,0.0f,0.0f);
-		startPoint = cellPos->getBTV();//centerPoint.copyFrom(cellPos);
+		startPoint = cellPos->getBTV();
 		
 		bounciness = 0.0f;
 		friction = 0.9;
@@ -19973,6 +19934,10 @@ void doTraceND(std::string traceVal0 = "", std::string traceVal1 = "",std::strin
 	
 	int i;
 	
+	if (ND_TRACE_OFF) {
+		return;
+	}
+	
 	for (i = 0; i < traceLevel; i++) {
 		std::cout << "|  ";
 	}
@@ -22327,6 +22292,7 @@ public:
   TBOWrapper limbTBO;
   float (limbTBOData) [MAX_LIMB_DATA_IN_BYTES];
   int destructCount;
+  bool sphereMapOn;
   bool waitingOnDestruction;
   bool combatOn;
   bool isPressingMove;
@@ -22415,7 +22381,10 @@ public:
   int draggingToInd;
   int draggingFromType;
   int draggingToType;
-  int currentPose;
+  int curPoseIndex;
+  int curPoseGroup;
+  int curPoseRLBN;
+  int curPoseStep;
   int actorCount;
   int limbDataDebug;
   int polyCount;
@@ -22622,6 +22591,7 @@ public:
   std::vector <GameActor*> gameActors;
   std::vector <GameOrg*> gameOrgs;
   std::vector <GameOrg*> gamePoses;
+  PoseInfo (gamePoseInfo) [E_PG_LENGTH];
   std::vector <ExplodeStruct> explodeStack;
   std::vector <DebrisStruct> debrisStack;
   std::vector <FIVector4> primTemplateStack;
@@ -22671,6 +22641,7 @@ public:
   JSONValue * rootObjJS;
   JSONValue * guiRootJS;
   JSONValue * constRootJS;
+  JSONValue * poseRootJS;
   HPClock bulletTimer;
   Timer fpsTimer;
   Timer shakeTimer;
@@ -22834,15 +22805,24 @@ public:
   bool isKicking (int actorId, int handNum);
   void setSwing (float _mx, float _my, int actorId, int handNum, bool isKick);
   void nextSwing (int actorId, int handNum);
+  GameOrg * getPose (int targPoseGroup, int targRLBN, int targStep);
+  string getPoseString (int targPoseGroup, int targRLBN, int targStep);
+  GameOrg * getCurrentPose ();
+  string getCurrentPoseString ();
+  int getActionStateFromPose (int poseNum);
   void makeSwing (int actorId, int handNum);
   void makeTurn (int actorId, float dirFactor);
   void makeMoveVec (int actorId, btVector3 moveVec);
   void makeMove (int actorId, btVector3 moveDir, bool relative);
   void makeJump (int actorId, int isUp, float jumpFactor);
   void resetGeom ();
+  bool hasRLBN (int rlbnRes, int k);
+  void loadPoseInfo ();
   void changePose (int amount);
   void saveCurrentPose ();
-  void loadNonPoseData (int currentNPD);
+  void getIndexFromCurrentPose ();
+  void setPoseFromIndex (int i);
+  void loadNonPoseData (int npdPose, int npdSide, int npdStep);
   void loadCurrentPose ();
   void processInput (unsigned char key, bool keyDown, int x, int y);
   void getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj);
@@ -23519,6 +23499,7 @@ public:
   GameOrgNode (GameOrgNode * _parent, int _nodeName, float _material, float _rotThe, float _rotPhi, float _rotRho, float _tanLengthInCells0, float _bitLengthInCells0, float _norLengthInCells0, float _tanLengthInCells1, float _bitLengthInCells1, float _norLengthInCells1, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
   GameOrgNode * addChild (int _nodeName, float _material, float _rotThe, float _rotPhi, float _rotRho, float _tanLengthInCells0, float _bitLengthInCells0, float _norLengthInCells0, float _tanLengthInCells1, float _bitLengthInCells1, float _norLengthInCells1, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
   GameOrgNode * getNode (int _nodeName);
+  void setTangent (float newVal);
   void doTransform (Singleton * singleton, GameOrgNode * tempParent);
 };
 #undef LZZ_INLINE
@@ -23537,11 +23518,14 @@ public:
   GameOrgNode * (allNodes) [E_BONE_C_END];
   FIVector4 basePosition;
   JSONValue * rootObj;
+  int basePoseGroup;
+  int basePoseRLBN;
+  int basePoseStep;
   int ownerUID;
   int orgType;
   int stepCount;
-  int targetPose;
   int targetPoseGroup;
+  int targetPoseRLBN;
   double totTime;
   float defVecLength;
   float gv (float * vals);
@@ -23552,6 +23536,7 @@ public:
   void jsonToNode (JSONValue * * parentObj, GameOrgNode * curNode, bool notThePose);
   void saveToFile (string fileName);
   BaseObj * getOwner ();
+  void setTPG (int _targetPoseGroup, int _targetPoseRLBN);
   void setToPose (GameOrg * otherOrg, float lerpAmount, int boneId = -1);
   void updatePose (double curTimeStep);
   void nodeToJSON (JSONValue * * parentObj, GameOrgNode * curNode);
@@ -23638,7 +23623,9 @@ public:
   GameOrg * baseOrg;
   int addJoint (int nodeName, int parentId, int jointType, float mass, GameOrgNode * curNode);
   void initFromOrg (GameOrgNode * curNode, int curParent);
+  void reinit ();
   GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed);
+  void removeAllBodies ();
   virtual ~ GameActor ();
 };
 #undef LZZ_INLINE
@@ -24090,7 +24077,7 @@ public:
   void collectDebris ();
   void beginDrop ();
   void remBoxFromObj (BaseObjType _uid);
-  void addBoxFromObj (BaseObjType _uid);
+  void addBoxFromObj (BaseObjType _uid, bool refreshLimbs);
   void flushImpulses ();
   void procCol (BaseObj * * geArr, BodyStruct * * curBodyArr);
   void collideWithWorld (double curStepTime);
@@ -24505,6 +24492,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		destructCount = 0;
 		
+		sphereMapOn = false;
 		waitingOnDestruction = false;
 		combatOn = true;
 		isPressingMove = false;
@@ -24559,6 +24547,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		rootObjJS = NULL;
 		guiRootJS = NULL;
 		constRootJS = NULL;
+		poseRootJS = NULL;
 		rbStack = NULL;
 		rbHeightStack = NULL;
 
@@ -24693,7 +24682,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		// todo: probe area ahead of current ray step to see if near edge
 		
-		currentPose = E_PK_T_POSE;
+		curPoseIndex = 0;
+		curPoseGroup = E_PG_TPOSE;
+		curPoseRLBN = RLBN_NEIT;
+		curPoseStep = 0;
+		
+		
 		limbDataDebug = 0;
 		actorCount = 0;
 		polyCount = 0;
@@ -24727,7 +24721,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		heightMapMaxInCells = 8192.0f;
 		mapSampScale = 2.0f;
 		int newPitch = (imageHM0->width) * mapSampScale; //*2;
-		mapPitch = (imageHM0->width)*0.5; //newPitch;// //
+		mapPitch = (imageHM0->width); //newPitch;// //
 		
 		cellsPerHolder = 32;
 		holdersPerBlock = 8;
@@ -24744,7 +24738,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		
-		
+		//gamePoseInfo.reserve(E_PG_LENGTH);
 		
 		globWheelDelta = 0.0f;
 		amountInvalidMove = 0.0f;
@@ -25615,12 +25609,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		}
 		
 		
-		for (i = 0; i < E_PK_LENGTH; i++) {
-			gamePoses.push_back(new GameOrg());
-			gamePoses.back()->init(this,-1,E_ORGTYPE_HUMAN);
-			gamePoses.back()->loadFromFile(poseStrings[i], false);
-			transformOrg(gamePoses.back(), NULL);
-		}
+		loadPoseInfo();
 		
 
 		allInit = true;
@@ -26306,7 +26295,7 @@ void Singleton::fillWithRandomObjects (int parentUID, int gen)
 void Singleton::toggleDDMenu (int x, int y, bool toggled)
                                                       {
 		
-		if (placingGeom) {
+		if (placingGeom||combatMode()) {
 			return;
 		}
 		
@@ -26321,18 +26310,16 @@ void Singleton::toggleDDMenu (int x, int y, bool toggled)
 			
 			objTargeted = ind >= E_OBJ_LENGTH;	
 			
-			if (combatMode()) {
-				if (objTargeted) {
-					setSelInd(ind);				
-				}
-				else {
-					getMarkerPos(x, y);
-					markerFound = true;
-					setSelInd(0);
-				}
+			
+			
+			if (objTargeted) {
+				setSelInd(ind);				
 			}
-			
-			
+			else {
+				getMarkerPos(x, y);
+				markerFound = true;
+				setSelInd(0);
+			}
 			
 			
 			actOnSel = 
@@ -28496,16 +28483,16 @@ GameOrgNode * Singleton::getMirroredNode (GameOrgNode * curNode)
 		if (getCurOrg() == NULL) {
 			return NULL;
 		}
-		GameOrg* testHuman = getCurOrg();
+		GameOrg* testOrg = getCurOrg();
 		
 		if ((curNode->nodeName < E_BONE_C_BEG)&&mirrorOn) {
 			if (curNode->nodeName <= E_BONE_L_END) {
-				return testHuman->baseNode->getNode(
+				return testOrg->baseNode->getNode(
 					curNode->nodeName+(E_BONE_R_BEG-E_BONE_L_BEG)
 				);
 			}
 			else {
-				return testHuman->baseNode->getNode(
+				return testOrg->baseNode->getNode(
 					curNode->nodeName-(E_BONE_R_BEG-E_BONE_L_BEG)
 				);
 			}
@@ -28651,8 +28638,7 @@ void Singleton::moveObject (float dx, float dy)
 		
 		
 		
-		
-		
+				
 
 		if (abDown) {
 			
@@ -29023,15 +29009,15 @@ void Singleton::makeHit (int attackerId, int victimId, int weaponId)
 		
 		
 		
-		for (i = 0; i < E_HAND_LENGTH; i++) {
+		for (i = 0; i < RLBN_LENGTH; i++) {
 			
 			
-			if (geAttacker->isSwinging[i]) {
+			if (geAttacker->getActionState(E_ACT_ISSWINGING,i)) {
 				if (geAttacker->orgId > -1) {
 					curOrg = gameOrgs[geAttacker->orgId];
 					
 					if (curOrg->stepCount > 1) {
-						geAttacker->isSwinging[i] = false;
+						geAttacker->setActionState(E_ACT_ISSWINGING,i,false);
 						
 						
 						if (geVictim == NULL) {
@@ -29040,7 +29026,7 @@ void Singleton::makeHit (int attackerId, int victimId, int weaponId)
 							if (geWeapon != NULL) {
 								playSoundEnt("metalhit5",geAttacker,0.2,0.5f);
 								tempVec1.setBTV(geWeapon->getCenterPoint(E_BDG_CENTER));
-								gameFluid[E_FID_BIG]->pushExplodeBullet(true,&tempVec1,0,3.0f);
+								gameFluid[E_FID_BIG]->pushExplodeBullet(true,&tempVec1,0,4.0f);
 							}
 							
 							
@@ -29062,7 +29048,7 @@ void Singleton::makeHit (int attackerId, int victimId, int weaponId)
 							
 							
 							if (geVictim->entType == E_ENTTYPE_NPC) {
-								geVictim->isHit = true;
+								geVictim->setActionState(E_ACT_ISHIT,RLBN_NEIT,true);
 								geVictim->bindingPower = 0.0f;
 								lastHealth = geVictim->curHealth;
 								geVictim->curHealth -= 32;
@@ -29077,7 +29063,7 @@ void Singleton::makeHit (int attackerId, int victimId, int weaponId)
 									geVictim->bodies[E_BDG_CENTER].body->setAngularFactor(
 										btVector3(1.0f,1.0f,1.0f)
 									);
-									geVictim->bodies[E_BDG_CENTER].body->setAngularVelocity(btVector3(1.0f,1.0f,0.0f)*10.0f);
+									geVictim->bodies[E_BDG_CENTER].body->setAngularVelocity(btVector3(1.0f,1.0f,0.0f)*40.0f);
 									
 									playSoundEnt("dyingm0",geVictim,0.15,0.2f);
 									
@@ -29108,8 +29094,8 @@ bool Singleton::isSwingingWeapon (int actorId, int handNum)
 			return false;
 		}
 		BaseObj* ca = &(gw->gameObjects[actorId]);
-		
-		return (ca->swingType[handNum] >= E_PG_SLSH_R)&&(ca->swingType[handNum] <= E_PG_STAB_B);
+		PoseInfo* curPI = &(gamePoseInfo[ca->swingType[handNum]]);
+		return (curPI->stringData[E_PIK_SUBTYPE].compare("E_SUB_WEAPON") == 0);
 	}
 bool Singleton::isPunching (int actorId, int handNum)
                                                   {
@@ -29117,8 +29103,8 @@ bool Singleton::isPunching (int actorId, int handNum)
 			return false;
 		}
 		BaseObj* ca = &(gw->gameObjects[actorId]);
-		
-		return (ca->swingType[handNum] >= E_PG_HOOK_R)&&(ca->swingType[handNum] <= E_PG_JABP_L);
+		PoseInfo* curPI = &(gamePoseInfo[ca->swingType[handNum]]);
+		return (curPI->stringData[E_PIK_SUBTYPE].compare("E_SUB_PUNCH") == 0);
 	}
 bool Singleton::isKicking (int actorId, int handNum)
                                                  {
@@ -29126,8 +29112,8 @@ bool Singleton::isKicking (int actorId, int handNum)
 			return false;
 		}
 		BaseObj* ca = &(gw->gameObjects[actorId]);
-		
-		return (ca->swingType[handNum] >= E_PG_ROUN_R)&&(ca->swingType[handNum] <= E_PG_FRNT_L);
+		PoseInfo* curPI = &(gamePoseInfo[ca->swingType[handNum]]);
+		return (curPI->stringData[E_PIK_SUBTYPE].compare("E_SUB_KICK") == 0);
 	}
 void Singleton::setSwing (float _mx, float _my, int actorId, int handNum, bool isKick)
           {
@@ -29141,35 +29127,35 @@ void Singleton::setSwing (float _mx, float _my, int actorId, int handNum, bool i
 			return;
 		}
 		
-		int handMod = 0;
+		//int handMod = 0;
 		
 		BaseObj* ca = &(gw->gameObjects[actorId]);
 		
 		bool isHolding = (ca->isGrabbingId[handNum] > -1);
 		
-		// if (handNum == E_HAND_R) {
+		// if (handNum == RLBN_RIGT) {
 		// 	mx *= -1.0f;
 		// }
 		
-		if (handNum == E_HAND_L) {
-			handMod = 1;
-		}
+		// if (handNum == RLBN_LEFT) {
+		// 	handMod = 1;
+		// }
 		
-		int curAttack = E_PG_SLSH_R;
+		int curAttack = E_PG_SLSH;
 		
 		if (abs(my) > abs(mx)) {
 			if (my > 0.0f) {
 				// top
 				
 				if (isKick) {
-					curAttack = E_PG_BKIK_R;
+					curAttack = E_PG_BKIK;
 				}
 				else {
 					if (isHolding) {
-						curAttack = E_PG_HACK_R;
+						curAttack = E_PG_HACK;
 					}
 					else {
-						curAttack = E_PG_UPPR_R;
+						curAttack = E_PG_UPPR;
 					}
 				}
 				
@@ -29179,14 +29165,14 @@ void Singleton::setSwing (float _mx, float _my, int actorId, int handNum, bool i
 				// bottom
 				
 				if (isKick) {
-					curAttack = E_PG_FRNT_R;
+					curAttack = E_PG_FRNT;
 				}
 				else {
 					if (isHolding) {
-						curAttack = E_PG_STAB_R;
+						curAttack = E_PG_STAB;
 					}
 					else {
-						curAttack = E_PG_JABP_R;
+						curAttack = E_PG_JABP;
 					}
 				}
 				
@@ -29197,14 +29183,14 @@ void Singleton::setSwing (float _mx, float _my, int actorId, int handNum, bool i
 				// right
 				
 				if (isKick) {
-					curAttack = E_PG_ROUN_R;
+					curAttack = E_PG_ROUN;
 				}
 				else {
 					if (isHolding) {
-						curAttack = E_PG_SLSH_R;
+						curAttack = E_PG_SLSH;
 					}
 					else {
-						curAttack = E_PG_HOOK_R;
+						curAttack = E_PG_HOOK;
 					}
 				}
 				
@@ -29213,21 +29199,21 @@ void Singleton::setSwing (float _mx, float _my, int actorId, int handNum, bool i
 				// left
 				
 				if (isKick) {
-					curAttack = E_PG_REVR_R;
+					curAttack = E_PG_REVR;
 				}
 				else {
 					if (isHolding) {
-						curAttack = E_PG_BACK_R;
+						curAttack = E_PG_BACK;
 					}
 					else {
-						curAttack = E_PG_ELBO_R;
+						curAttack = E_PG_ELBO;
 					}
 				}
 				
 			}
 		}
 		
-		curAttack += handMod;
+		//curAttack += handMod;
 		
 		ca->swingType[handNum] = curAttack;
 		
@@ -29241,19 +29227,70 @@ void Singleton::nextSwing (int actorId, int handNum)
 		
 		BaseObj* ca = &(gw->gameObjects[actorId]);
 		
-		if (ca->swingType[handNum] < (E_PG_HOOK_R+handNum)) {
-			ca->swingType[handNum] += 3;
+		ca->swingType[handNum]++;
+		
+		if (ca->swingType[handNum] > (E_PG_FRNT)) {
+			ca->swingType[handNum] = (E_PG_SLSH);
+		}
+		
+		
+	}
+GameOrg * Singleton::getPose (int targPoseGroup, int targRLBN, int targStep)
+          {
+		int targPose = gamePoseInfo[targPoseGroup].poseSteps[targRLBN].gamePoseIndex[targStep];
+		
+		if (targPose > -1) {
+			return gamePoses[targPose];
 		}
 		else {
-			ca->swingType[handNum] += 2;
+			return NULL;
 		}
-		
-		if (ca->swingType[handNum] > (E_PG_FRNT_R+handNum)) {
-			ca->swingType[handNum] = (E_PG_SLSH_R+handNum);
+	}
+string Singleton::getPoseString (int targPoseGroup, int targRLBN, int targStep)
+          {
+		return gamePoseInfo[targPoseGroup].poseSteps[targRLBN].fileString[targStep];
+	}
+GameOrg * Singleton::getCurrentPose ()
+                                  {
+		return getPose(curPoseGroup,curPoseRLBN,curPoseStep);
+	}
+string Singleton::getCurrentPoseString ()
+                                      {
+		return getPoseString(curPoseGroup,curPoseRLBN,curPoseStep);
+	}
+int Singleton::getActionStateFromPose (int poseNum)
+                                                {
+		switch (poseNum) {
+			
+			case E_PG_JUMP:
+				return E_ACT_ISJUMPING;
+			break;
+			case E_PG_PICKUP:
+				return E_ACT_ISPICKINGUP;
+			break;
+			case E_PG_WALKFORWARD:
+				return E_ACT_ISWALKING;
+			break;
+			
+			case E_PG_SLSH:
+			case E_PG_BACK:
+			case E_PG_HACK:
+			case E_PG_STAB:
+			case E_PG_HOOK:
+			case E_PG_ELBO:
+			case E_PG_UPPR:
+			case E_PG_JABP:
+			case E_PG_ROUN:
+			case E_PG_REVR:
+			case E_PG_BKIK:
+			case E_PG_FRNT:
+				return E_ACT_ISSWINGING;
+			break;
+			
+			default:
+				return E_ACT_NULL;
+			break;
 		}
-		
-		// cout << "curSwing " << poseStrings[ca->swingType[handNum]] << "\n";
-		
 	}
 void Singleton::makeSwing (int actorId, int handNum)
                                                  {
@@ -29273,16 +29310,20 @@ void Singleton::makeSwing (int actorId, int handNum)
 			return;
 		}
 		
-		// if (actorId == getCurActorUID()) {
-		// 	cout << "yay" << ca->bindingPower << " " << ca->isSwinging[handNum] << "\n";
-		// }
+		int i;
 		
-		if (ca->isSwinging[handNum] || (ca->bindingPower < 0.01f)) {
+		if (ca->getActionState(E_ACT_ISSWINGING,handNum) || (ca->bindingPower < 0.01f)) {
 			
 		}
 		else {
 			
-			ca->isSwinging[1-handNum] = false;
+			for (i = 0; i < RLBN_LENGTH; i++) {
+				if (i != handNum) {
+					ca->setActionState(E_ACT_ISSWINGING,i,false);
+				}
+			}
+			
+			
 			
 			//if (ca->weaponActive) {
 				
@@ -29290,7 +29331,7 @@ void Singleton::makeSwing (int actorId, int handNum)
 				// 	cout << "yay2\n";
 				// }
 				
-				ca->isSwinging[handNum] = true;
+				ca->setActionState(E_ACT_ISSWINGING,handNum,true);
 				curOrg = gameOrgs[ca->orgId];
 				curOrg->stepCount = 0;
 				curOrg->totTime = 0;
@@ -29311,8 +29352,8 @@ void Singleton::makeSwing (int actorId, int handNum)
 				}
 				
 				if (ca->uid != getCurActorUID()) {
-					nextSwing(actorId,E_HAND_L);
-					nextSwing(actorId,E_HAND_R);
+					nextSwing(actorId,RLBN_LEFT);
+					nextSwing(actorId,RLBN_RIGT);
 				}
 				
 				
@@ -29344,7 +29385,7 @@ void Singleton::makeMoveVec (int actorId, btVector3 moveVec)
 		}
 		
 		if (ca->hasBodies()) {
-			ca->isWalking = true;
+			ca->setActionState(E_ACT_ISWALKING,RLBN_NEIT,true);
 			ca->applyImpulse(
 				moveVec*conVals[E_CONST_WALK_AMOUNT]*ca->getMarkerMass(),
 				true,
@@ -29363,7 +29404,7 @@ void Singleton::makeMove (int actorId, btVector3 moveDir, bool relative)
 		}
 		
 		if (ca->hasBodies()) {
-			ca->isWalking = true;
+			ca->setActionState(E_ACT_ISWALKING,RLBN_NEIT,true);
 			
 			
 			newMoveDir *= conVals[E_CONST_WALK_AMOUNT];
@@ -29454,7 +29495,7 @@ void Singleton::makeJump (int actorId, int isUp, float jumpFactor)
 					);
 				}
 				
-				ge->isJumping = true;
+				ge->setActionState(E_ACT_ISJUMPING,RLBN_NEIT,true);
 				ge->jumpCooldown = 100;
 				
 			}
@@ -29475,7 +29516,7 @@ void Singleton::makeJump (int actorId, int isUp, float jumpFactor)
 						0.2f
 					);
 					
-					ge->isJumping = true;
+					ge->setActionState(E_ACT_ISJUMPING,RLBN_NEIT,true);
 					ge->jumpCooldown = 100;
 					
 				}
@@ -29508,26 +29549,194 @@ void Singleton::resetGeom ()
 			paramArrGeom[i] = defaultTemplate[i];
 		}
 	}
+bool Singleton::hasRLBN (int rlbnRes, int k)
+                                         {
+		
+		bool doProc = false;
+		
+		
+		
+		switch (k) {
+			case 0:
+				doProc = ((rlbnRes&RLBN_FLAG_RIGHT) > 0);
+			break;
+			case 1:
+				doProc = ((rlbnRes&RLBN_FLAG_LEFT) > 0);
+			break;
+			case 2:
+				doProc = ((rlbnRes&RLBN_FLAG_BOTH) > 0);
+			break;
+			case 3:
+				doProc = ((rlbnRes&RLBN_FLAG_NEITHER) > 0);
+			break;
+		}
+		
+		return doProc;
+		
+	}
+void Singleton::loadPoseInfo ()
+                            {
+		int i;
+		int j;
+		int k;
+		int m;
+		
+		bool doProc;
+		
+		int numChildren;
+		int numSteps;
+		
+		JSONValue* jv = NULL;
+		JSONValue* curTempl = NULL;
+		JSONValue* tempJV = NULL;
+		JSONValue* poses = NULL;
+		JSONValue* templates = NULL;
+		int rlbnRes;
+		
+		string curString;
+		
+		gamePoses.clear();
+		
+		
+		if (loadJSON("..\\data\\poseinfo.js", &poseRootJS)) {
+			
+			templates = poseRootJS->Child("templates");
+			poses = poseRootJS->Child("poses");
+			//numChildren = poses->CountChildren();
+			
+			for (i = 0; i < E_PG_LENGTH; i++) {
+				jv = poses->Child(poseGroupStrings[i]);
+				
+				curTempl = NULL;
+				
+				if (jv->HasChild("template")) {
+					if (
+						templates->HasChild(jv->Child("template")->string_value)
+					) {
+						curTempl = templates->Child(jv->Child("template")->string_value);
+					}
+					else {
+						cout << "invalid template \n";
+					}
+				}
+				
+				// gamePoseInfo.push_back(PoseInfo());
+				
+				
+				for (j = 0; j < 2; j++) {
+					if (curTempl != NULL) {
+						
+						
+						for (k = 0; k < E_PIK_LENGTH; k++) {
+							if (
+								curTempl->HasChild(E_PIK_STRINGS[k])
+							) {
+								
+								if (curTempl->Child(E_PIK_STRINGS[k])->IsNumber()) {
+									gamePoseInfo[i].data[k] = curTempl->Child(E_PIK_STRINGS[k])->number_value;
+								}
+								else {
+									gamePoseInfo[i].stringData[k] = curTempl->Child(E_PIK_STRINGS[k])->string_value;
+								}
+							}
+						}
+					}
+					curTempl = jv;
+				}
+				
+				rlbnRes = gamePoseInfo[i].data[E_PIK_RLBN];
+				numSteps = gamePoseInfo[i].data[E_PIK_NUMSTEPS];
+				
+				for (k = 0; k < 4; k++) {
+					for (m = 0; m < MAX_POSE_STEPS; m++) {
+						gamePoseInfo[i].poseSteps[k].fileString[m] = "";
+						gamePoseInfo[i].poseSteps[k].gamePoseIndex[m] = -1;
+					}
+				}
+				
+				for ( k = 0; k < 4; k++ ) {
+					
+					if (hasRLBN(rlbnRes,k)) {
+						
+						for (m = 0; m < numSteps; m++) {
+							curString = poseGroupStrings[i];
+							curString.append("_");
+							curString.append(poseSideStrings[k]);
+							curString.append(std::to_string(m));
+							
+							gamePoseInfo[i].poseSteps[k].fileString[m] = curString;
+							gamePoseInfo[i].poseSteps[k].gamePoseIndex[m] = gamePoses.size();
+							
+							
+							gamePoses.push_back(new GameOrg());
+							gamePoses.back()->init(this,-1,E_ORGTYPE_HUMAN);
+							gamePoses.back()->loadFromFile(curString, false);
+							transformOrg(gamePoses.back(), NULL);
+							
+							gamePoses.back()->basePoseGroup = i;
+							gamePoses.back()->basePoseRLBN = k;
+							gamePoses.back()->basePoseStep = m;
+						}
+					}
+					
+				}
+				
+			}
+			
+		}
+		
+		
+		
+	}
 void Singleton::changePose (int amount)
                                     {
 		
-		GameOrg* testHuman = getCurOrg();
+		GameOrg* testOrg = getCurOrg();
 		
-		currentPose += amount;
+		curPoseIndex += amount;
 		
-		if (currentPose == E_PK_LENGTH) {
-			currentPose = E_PK_T_POSE;
+		if (curPoseIndex == gamePoses.size()) {
+			curPoseIndex = 0;
 		}
-		if (currentPose < 0) {
-			currentPose = E_PK_LENGTH-1;
+		if (curPoseIndex < 0) {
+			curPoseIndex = gamePoses.size()-1;
 		}
 		
-		cout << "Current Pose: " << poseStrings[currentPose] << "\n";
+		/*
+		
+		curPoseGroup = E_PG_TPOSE;
+		curPoseRLBN = RLBN_NEIT;
+		curPoseStep = 0;
+		
+		*/
+		
+		int j;
+		float* curData;
+		
+		cout << "Current Pose: " << getCurrentPoseString() << "\n";
+		
+		setPoseFromIndex(curPoseIndex);
+		
+		// curPoseGroup = gamePoses[curPoseIndex].basePoseGroup;
+		// curPoseRLBN = gamePoses[curPoseIndex].basePoseRLBN;
+		// curPoseStep = gamePoses[curPoseIndex].basePoseStep;
 		
 		
-		
-		if (testHuman != NULL) {
-			testHuman->targetPose = currentPose;
+		if (testOrg != NULL) {
+			
+			
+			// curData = &(gamePoseInfo[curPoseGroup].data[0]);
+			
+			// for (j = 0; j < RLBN_LENGTH; j++) {
+				
+			// 	if ( hasRLBN(curData[E_PIK_RLBN],j) ) {
+			// 		curPoseRLBN = j;
+			// 		curPoseStep = 0;
+			// 		break;
+			// 	}
+			// }
+					
+			testOrg->setTPG(curPoseGroup, curPoseRLBN);
 			
 			if (editPose) {
 				loadCurrentPose();
@@ -29537,62 +29746,113 @@ void Singleton::changePose (int amount)
 	}
 void Singleton::saveCurrentPose ()
                                {
-		GameOrg* testHuman = getCurOrg();
+		GameOrg* testOrg = getCurOrg();
 		
 		if (editPose) {
 			
-			if (testHuman != NULL) {
-				testHuman->saveToFile(poseStrings[currentPose]);
-				gamePoses[currentPose]->loadFromFile(poseStrings[currentPose], false);
-				transformOrg(gamePoses[currentPose], NULL);
+			if (testOrg != NULL) {
+				testOrg->saveToFile(getCurrentPoseString());
+				getCurrentPose()->loadFromFile(getCurrentPoseString(), false);
+				transformOrg(getCurrentPose(), NULL);
 				
-				cout << "Saved Pose " << poseStrings[currentPose] << "\n";
+				cout << "Saved Pose " << getCurrentPoseString() << "\n";
 				
 			}
 		}
 	}
-void Singleton::loadNonPoseData (int currentNPD)
-                                             {
-		GameOrg* testHuman = getCurOrg();
+void Singleton::getIndexFromCurrentPose ()
+                                       {
+		curPoseIndex = gamePoseInfo[curPoseGroup].poseSteps[curPoseRLBN].gamePoseIndex[curPoseStep];
+	}
+void Singleton::setPoseFromIndex (int i)
+                                     {
+		curPoseIndex = i;
+		curPoseGroup = gamePoses[curPoseIndex]->basePoseGroup;
+		curPoseRLBN = gamePoses[curPoseIndex]->basePoseRLBN;
+		curPoseStep = gamePoses[curPoseIndex]->basePoseStep;
+	}
+void Singleton::loadNonPoseData (int npdPose, int npdSide, int npdStep)
+                                                                    {
+		GameOrg* testOrg = getCurOrg();
 		
 		int i;
+		int j;
+		int k;
+		
+		float* curData;/// = gamePoseInfo[targetPose].data;
 		
 		if (editPose) {
-			if (testHuman != NULL) {
+			if (testOrg != NULL) {
 				
-				for (i = 0; i < E_PK_LENGTH; i++) {
-					//if (i != E_PK_NON_POSE) {
-						currentPose = i;
-						loadCurrentPose();
-						
-						gamePoses[currentPose]->loadFromFile(poseStrings[currentNPD], true);
-						transformOrg(gamePoses[currentPose], NULL);
-						testHuman->setToPose(gamePoses[currentPose],1.0f);
-						transformOrg(testHuman, NULL);
-						makeDirty();
-						cout << "Loaded Non Pose " << poseStrings[currentPose] << "\n";
-						saveCurrentPose();
-						
-					//}
+				for (i = 0; i < gamePoses.size(); i++) {
+					setPoseFromIndex(i);
+					
+					loadCurrentPose();
+					getCurrentPose()->loadFromFile(getPoseString(npdPose,npdSide,npdStep), true);
+					transformOrg(getCurrentPose(), NULL);
+					testOrg->setToPose(getCurrentPose(),1.0f);
+					transformOrg(testOrg, NULL);
+					makeDirty();
+					cout << "Loaded Non Pose " << getCurrentPoseString() << "\n";
+					saveCurrentPose();
+					
+					
+					
 				}
-				currentPose = E_PK_NON_POSE;
+				
+				
+				// for (i = 0; i < E_PG_LENGTH; i++) {
+				// 	curPoseGroup = i;
+				// 	curData = &(gamePoseInfo[curPoseGroup].data[0]);
+					
+				// 	for (j = 0; j < RLBN_LENGTH; j++) {
+						
+				// 		curPoseRLBN = j;
+						
+				// 		if ( hasRLBN(curData[E_PIK_RLBN],j) ) {
+							
+				// 			for (k = 0; k < curData[E_PIK_NUMSTEPS]; k++) {
+				// 				curPoseStep = k;
+								
+				// 				loadCurrentPose();
+				// 				getCurrentPose()->loadFromFile(getPoseString(npdPose,npdSide,npdStep), true);
+				// 				transformOrg(getCurrentPose(), NULL);
+				// 				testOrg->setToPose(getCurrentPose(),1.0f);
+				// 				transformOrg(testOrg, NULL);
+				// 				makeDirty();
+				// 				cout << "Loaded Non Pose " << getCurrentPoseString() << "\n";
+				// 				saveCurrentPose();
+								
+								
+				// 			}
+							
+				// 		}
+						
+				// 	}
+					
+				// }
+				curPoseGroup = npdPose;
+				curPoseRLBN = npdSide;
+				curPoseStep = npdStep;
+				getIndexFromCurrentPose();
+				
 				loadCurrentPose();
 			}
 		}
 	}
 void Singleton::loadCurrentPose ()
                                {
-		GameOrg* testHuman = getCurOrg();
+		GameOrg* testOrg = getCurOrg();
 		
 		if (editPose) {
-			if (testHuman != NULL) {
+			if (testOrg != NULL) {
 				
-				gamePoses[currentPose]->loadFromFile(poseStrings[currentPose], false);
-				transformOrg(gamePoses[currentPose], NULL);
-				testHuman->setToPose(gamePoses[currentPose],1.0f);
-				transformOrg(testHuman, NULL);
+				getCurrentPose()->loadFromFile(getCurrentPoseString(), false);
+				transformOrg(getCurrentPose(), NULL);
+				testOrg->setToPose(getCurrentPose(),1.0f);
+				transformOrg(testOrg, NULL);
 				makeDirty();
-				cout << "Loaded Pose " << poseStrings[currentPose] << "\n";
+				cout << "Loaded Pose " << getCurrentPoseString() << "\n";
 				
 			}
 		}
@@ -29625,7 +29885,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 		
 		keysPressed[newKey] = keyDown;
 		
-		GameOrg* testHuman = getCurOrg();
+		GameOrg* testOrg = getCurOrg();
 		
 		
 		if (keyDown) {
@@ -29750,7 +30010,6 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					// 	}
 					// 	else {
 					// 		pathfindingOn = true;
-							
 					// 	}
 					// }
 					// else {
@@ -29786,6 +30045,11 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						}
 						else {
 							setCurrentActor(&(gw->gameObjects[selObjInd]));
+							
+							if (currentActor != NULL) {
+								
+							}
+							
 							
 							playSoundEnt(
 								"swimming0",
@@ -29886,8 +30150,8 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 				
 				case 'n':
-					nextSwing(getCurActorUID(),E_HAND_L);
-					nextSwing(getCurActorUID(),E_HAND_R);
+					nextSwing(getCurActorUID(),RLBN_LEFT);
+					nextSwing(getCurActorUID(),RLBN_RIGT);
 					
 				break;
 				
@@ -29979,6 +30243,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				case 'o':
 					//targetTimeOfDay = 1.0f-targetTimeOfDay;
+					sphereMapOn = !sphereMapOn;
 					
 					break;
 
@@ -30055,12 +30320,12 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				
 				case 'C':
-					if (currentPose == E_PK_NON_POSE) {
+					if (curPoseGroup == E_PG_NONPOSE) {
 						saveCurrentPose();
-						loadNonPoseData(E_PK_NON_POSE);
+						loadNonPoseData(E_PG_NONPOSE, RLBN_NEIT, 0);
 					}
 					else {
-						cout << "Error, switch to E_PK_NON_POSE\n";
+						cout << "Error, switch to E_PG_NONPOSE\n";
 					}
 				
 					
@@ -30150,9 +30415,12 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				case 'd':
 					// reserved for movement
 				break;
+				
+				// 127 del
+				// 8 backspace
 
 				default:
-					cout << "No code for key: " << key << "\n";
+					cout << "No code for key: " << ((int)key) << "\n";
 					break;
 			}
 		}
@@ -30776,11 +31044,11 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		int curHand = -1;
 		
 		if (lbClicked) {
-			curHand = E_HAND_L;
+			curHand = RLBN_LEFT;
 			
 		}
 		if (rbClicked) {
-			curHand = E_HAND_R;
+			curHand = RLBN_RIGT;
 			
 		}
 		
@@ -30821,10 +31089,10 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 					mx*2.0f - 1.0f,
 					my*2.0f - 1.0f,
 					currentActor->uid,
-					E_HAND_L,
-					bCtrl //wasDoubleClick[E_HAND_L]
+					RLBN_LEFT,
+					bCtrl //wasDoubleClick[RLBN_LEFT]
 				);
-				makeSwing(currentActor->uid, E_HAND_L);
+				makeSwing(currentActor->uid, RLBN_LEFT);
 				return;
 			}
 			if (rbClicked) {
@@ -30832,10 +31100,10 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 					mx*2.0f - 1.0f,
 					my*2.0f - 1.0f,
 					currentActor->uid,
-					E_HAND_R,
-					bCtrl //wasDoubleClick[E_HAND_R]
+					RLBN_RIGT,
+					bCtrl //wasDoubleClick[RLBN_RIGT]
 				);
-				makeSwing(currentActor->uid, E_HAND_R);
+				makeSwing(currentActor->uid, RLBN_RIGT);
 				return;
 			}
 			
@@ -31197,7 +31465,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 						draggingFromInd = 0;
 						draggingFromType = E_DT_NOTHING;
 						
-						if (wasDoubleClick[E_HAND_L]&&(currentActor == NULL)) {
+						if (wasDoubleClick[RLBN_LEFT]&&(currentActor == NULL)) {
 							toggleCont(selObjInd, true);
 						}
 						
@@ -31350,7 +31618,7 @@ void Singleton::makeDirty ()
 			currentActor->wakeAll();
 		}
 		
-		//testHuman->gph->childrenDirty = true;
+		//testOrg->gph->childrenDirty = true;
 	}
 void Singleton::setSelNode (GameOrgNode * newNode)
                                               {
@@ -31613,7 +31881,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 		
 		
 		// if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
-		// 	ca->isWalking = true;
+		// 	ca->setActionState(E_ACT_ISWALKING,RLBN_NEIT,true);
 		// 	if (ca->hasBodies()) {
 		// 		ca->makeWalk(
 		// 			btVector3(
@@ -31627,7 +31895,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 		// }
 		
 		// if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
-		// 	ca->isWalking = true;
+		// 	ca->setActionState(E_ACT_ISWALKING,RLBN_NEIT,true);
 		// 	if (ca->hasBodies()) {
 		// 		ca->makeWalk(
 		// 			btVector3(
@@ -32064,7 +32332,7 @@ void Singleton::grabThrowObj (int actorId, int _handNum)
 				0.2f
 			);
 			
-			if (handNum == E_HAND_L) {
+			if (handNum == RLBN_LEFT) {
 				curOrg->allNodes[
 					getCorrectedName(E_BONE_L_METACARPALS)
 				]->children.pop_back();
@@ -32110,7 +32378,7 @@ void Singleton::grabThrowObj (int actorId, int _handNum)
 				
 				curOrg->stepCount = 0;
 				curOrg->totTime = 0;
-				ca->isPickingUp = true;
+				ca->setActionState(E_ACT_ISPICKINGUP,RLBN_NEIT,true);
 				
 				grabObj = &(gw->gameObjects[res]);
 				grabObjOrg = gameOrgs[grabObj->orgId];
@@ -32127,7 +32395,7 @@ void Singleton::grabThrowObj (int actorId, int _handNum)
 				ca->isGrabbingId[handNum] = res;
 				grabObj->setGrabbedBy(actorId, handNum);
 				
-				if (handNum == E_HAND_L) {
+				if (handNum == RLBN_LEFT) {
 					curOrg->allNodes[
 						getCorrectedName(E_BONE_L_METACARPALS)
 					]->children.push_back(
@@ -32137,6 +32405,8 @@ void Singleton::grabThrowObj (int actorId, int _handNum)
 						curOrg->allNodes[
 							getCorrectedName(E_BONE_L_METACARPALS)
 						];
+					
+					//grabObjOrg->allNodes[E_BONE_WEAPON_BASE]->setTangent(-1.0f);
 				}
 				else {
 					curOrg->allNodes[
@@ -32148,6 +32418,8 @@ void Singleton::grabThrowObj (int actorId, int _handNum)
 						curOrg->allNodes[
 							getCorrectedName(E_BONE_R_METACARPALS)
 						];
+					
+					//grabObjOrg->allNodes[E_BONE_WEAPON_BASE]->setTangent(1.0f);
 				}
 				
 				
@@ -32155,7 +32427,6 @@ void Singleton::grabThrowObj (int actorId, int _handNum)
 				//cout << "grab " << ca->isGrabbingId[handNum] << " " << grabObj->isGrabbedById << "\n";
 				
 			}
-			
 			
 		}
 		
@@ -32240,7 +32511,7 @@ void Singleton::resetActiveNode ()
 		
 		GameOrgNode* curNode = NULL;
 		
-		GameOrg* testHuman = getCurOrg();
+		GameOrg* testOrg = getCurOrg();
 		
 		if (selectedNode == NULL) {
 			
@@ -32257,11 +32528,9 @@ void Singleton::resetActiveNode ()
 			
 			
 			
-			if (testHuman != NULL) {
+			if (testOrg != NULL) {
 				
-				
-				
-				testHuman->setToPose(gamePoses[E_PK_T_POSE],1.0,curNode->nodeName);
+				testOrg->setToPose(getPose(E_PG_TPOSE,RLBN_NEIT,0),1.0,curNode->nodeName);
 			}
 			
 			//curNode->rotThe = 0.0f;
@@ -32280,7 +32549,7 @@ void Singleton::resetActiveNode ()
 bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
                                                                          {
 		// tempVec3.setFXYZRef(mousePosWS);
-		// tempVec3.addXYZRef(&(testHuman->basePosition),-1.0f);
+		// tempVec3.addXYZRef(&(testOrg->basePosition),-1.0f);
 		
 		//worldToScreenBase(&tempVec1, mousePosWS);
 		
@@ -32289,7 +32558,7 @@ bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
 		if (getCurOrg() == NULL) {
 			return false;
 		}
-		GameOrg* testHuman = getCurOrg();
+		GameOrg* testOrg = getCurOrg();
 		
 		bestNode = NULL;
 		
@@ -32315,7 +32584,7 @@ bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
 				
 				
 				if (boneId > -1) {
-					bestNode = testHuman->allNodes[boneId];
+					bestNode = testOrg->allNodes[boneId];
 					
 					// if (mirrorOn) {
 					// 	mirNode = getMirroredNode(bestNode);
@@ -32348,7 +32617,7 @@ bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
 		
 		// bestNodeDis = 99999.0f;
 		// findNearestOrgNode(
-		// 	testHuman->baseNode,
+		// 	testOrg->baseNode,
 		// 	mousePosWS//&tempVec1
 		// );
 		
@@ -32586,7 +32855,7 @@ bool Singleton::processJSONFromString (string * sourceBuffer, JSONValue * * dest
 		if (*destObj == NULL)
 		{
 			doTraceND("Invalid JSON\n\n");
-			cout << sourceBuffer << "\n\n";
+			//cout << sourceBuffer << "\n\n";
 			return false;
 		}
 		else
@@ -32965,7 +33234,7 @@ void Singleton::endFieldInput (bool success)
 		if (getCurOrg() == NULL) {
 			return;
 		}
-		GameOrg* testHuman = getCurOrg();
+		GameOrg* testOrg = getCurOrg();
 		
 		inputOn = false;
 		fieldMenu->visible = false;
@@ -32976,24 +33245,24 @@ void Singleton::endFieldInput (bool success)
 			switch (fieldCallback) {
 				case E_FC_SAVEORG:
 				
-					tempVal = testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].getFZ();
+					tempVal = testOrg->baseNode->orgVecs[E_OV_THETAPHIRHO].getFZ();
 				
-					testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].setFZ(0.0f);
-					transformOrg(testHuman, NULL);
+					testOrg->baseNode->orgVecs[E_OV_THETAPHIRHO].setFZ(0.0f);
+					transformOrg(testOrg, NULL);
 									
-					testHuman->saveToFile(currentFieldString);
+					testOrg->saveToFile(currentFieldString);
 					
-					testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].setFZ(tempVal);
-					transformOrg(testHuman, NULL);
+					testOrg->baseNode->orgVecs[E_OV_THETAPHIRHO].setFZ(tempVal);
+					transformOrg(testOrg, NULL);
 					
 				break;
 				case E_FC_LOADORG:
-					testHuman->loadFromFile(currentFieldString, false);
+					testOrg->loadFromFile(currentFieldString, false);
 					//orientRotation();
 					if (currentActor != NULL) {
 						//currentActor->curRot = 1;
 					}
-					transformOrg(testHuman, NULL);
+					transformOrg(testOrg, NULL);
 					makeDirty();
 					
 				break;
@@ -33031,7 +33300,7 @@ void Singleton::loadConstants ()
 		if (loadJSON("..\\data\\constants.js", &constRootJS)) {
 			
 			for (i = 0; i < E_CONST_LENGTH; i++) {
-				conVals[i] = getConst(constStrings[i]);
+				conVals[i] = getConst(E_CONST_STRINGS[i]);
 			}
 			
 		}
@@ -44011,6 +44280,16 @@ GameOrgNode * GameOrgNode::getNode (int _nodeName)
 		
 		return NULL;
 	}
+void GameOrgNode::setTangent (float newVal)
+                                      {
+		int i;
+		
+		orgVecs[E_OV_TANGENT].setFX(newVal);
+		
+		for (i = 0; i < children.size(); i++) {
+			children[i]->setTangent(newVal);
+		}
+	}
 void GameOrgNode::doTransform (Singleton * singleton, GameOrgNode * tempParent)
           {
 		
@@ -44156,9 +44435,11 @@ float GameOrg::gv (float * vals)
 float const GameOrg::baseMat = 12.0f;
 GameOrg::GameOrg ()
                   {
-		
+		basePoseGroup = -1;
+		basePoseRLBN = -1;
+		basePoseStep = -1;
+		targetPoseRLBN = RLBN_NEIT;
 		targetPoseGroup = -1;
-		targetPose = -1;
 		rootObj = NULL;
 		defVecLength = 0.05f;
 	}
@@ -44321,13 +44602,41 @@ BaseObj * GameOrg::getOwner ()
 		
 		return &(singleton->gw->gameObjects[ownerUID]);
 	}
+void GameOrg::setTPG (int _targetPoseGroup, int _targetPoseRLBN)
+                                                               {
+		
+		if (
+			(targetPoseGroup == _targetPoseGroup) &&
+			(targetPoseRLBN == _targetPoseRLBN)	
+		) {
+			// same pose, let it finish
+		}
+		else {
+			
+			//cout << "setTPG()" << targetPoseGroup << " " << targetPoseRLBN << "\n";
+			
+			targetPoseGroup = _targetPoseGroup;
+			targetPoseRLBN = _targetPoseRLBN;
+			stepCount = 0;
+			
+			totTime = 0.0;
+		}
+		
+		
+	}
 void GameOrg::setToPose (GameOrg * otherOrg, float lerpAmount, int boneId)
-                                                                             {
+          {
 		int i;
 		int j;
 		
 		int begInd;
 		int endInd;
+		
+		if (otherOrg == NULL) {
+			cout << "ARGH\n";
+			//return;
+		}
+		
 		
 		GameOrgNode* sourceNode;
 		GameOrgNode* destNode;
@@ -44374,6 +44683,8 @@ void GameOrg::updatePose (double curTimeStep)
 		
 		int stepCountMod;
 		
+		float* curData;
+		
 		BaseObj* curOwner = getOwner();
 		
 		if (singleton->editPose) {
@@ -44382,146 +44693,48 @@ void GameOrg::updatePose (double curTimeStep)
 		else {
 			if (targetPoseGroup > -1) {
 				
+				curData = &(singleton->gamePoseInfo[targetPoseGroup].data[0]);
 				
 				
-				switch (targetPoseGroup) {
-					case E_PG_IDLE:
-						lerpSpeed = 0.003f;
-						targetPose = E_PK_IDLE_LOW + (stepCount%2);
-						timeInterval = 1.0;
-					break;
-					case E_PG_WALK:
-						lerpSpeed = 0.005f;
-						timeInterval = 0.5;
-						targetPose = E_PK_L_FORWARD + (stepCount%4);
-					break;
-					case E_PG_JUMP:
-						lerpSpeed = 0.005f;
-						timeInterval = 1.5;
-						targetPose = E_PK_JUMP;
-					break;
-					case E_PG_DEAD:
-						lerpSpeed = 0.005f;
-						timeInterval = 1.5;
-						targetPose = E_PK_DEAD;
-					break;
-					case E_PG_SLSH_R:
-					case E_PG_SLSH_L:
-					case E_PG_SLSH_B:
-					case E_PG_BACK_R:
-					case E_PG_BACK_L:
-					case E_PG_BACK_B:
-					case E_PG_HACK_R:
-					case E_PG_HACK_L:
-					case E_PG_HACK_B:
-					case E_PG_STAB_R:
-					case E_PG_STAB_L:
-					case E_PG_STAB_B:
+				lerpSpeed = curData[E_PIK_LERPSPEED];
+				timeInterval = curData[E_PIK_TIMEINTERVAL];
+				
+				stepCountMod = stepCount;
+				
+				if (curData[E_PIK_DOLOOP] == 1.0f) {
+					stepCountMod = stepCount%((int)(curData[E_PIK_NUMSTEPS]));
+				}
+				else {
+					if (stepCountMod >= curData[E_PIK_NUMSTEPS]) {
+						stepCountMod = curData[E_PIK_NUMSTEPS]-1;
+					}
 					
-					case E_PG_HOOK_R:
-					case E_PG_HOOK_L:
-					case E_PG_ELBO_R:
-					case E_PG_ELBO_L:
-					case E_PG_UPPR_R:
-					case E_PG_UPPR_L:
-					case E_PG_JABP_R:
-					case E_PG_JABP_L:
-					case E_PG_ROUN_R:
-					case E_PG_ROUN_L:
-					case E_PG_REVR_R:
-					case E_PG_REVR_L:
-					case E_PG_BKIK_R:
-					case E_PG_BKIK_L:
-					case E_PG_FRNT_R:
-					case E_PG_FRNT_L:
-					
-						lerpSpeed = singleton->conVals[E_CONST_ATTACK_LERP_SPEED];//0.02f;
-						timeInterval = singleton->conVals[E_CONST_ATTACK_KEY_INTERVAL];//0.3;
-						
-						stepCountMod = stepCount;
-						if (stepCountMod > 2) {
-							stepCountMod = 2;
-						}
-						
-						targetPose = 
-							E_PK_SLSH_R0 + 
-							(targetPoseGroup-E_PG_SLSH_R)*3 +
-							stepCountMod;
-						
-						if (stepCount > 4) {
-							curOwner->isSwinging[getPoseSide(targetPoseGroup)] = false;
-							targetPoseGroup = E_PG_IDLE;
-						}
-					break;
-					
-					
-					
-					case E_PG_PICKUP:
-						lerpSpeed = 0.01f;
-						timeInterval = 0.4;
-						targetPose = E_PK_PICKUP + stepCount;
-						if (targetPose > E_PK_PICKUP) {
-							curOwner->isPickingUp = false;
-							targetPoseGroup = E_PG_IDLE;
-						}
-					break;
+					if (stepCount > (curData[E_PIK_NUMSTEPS] + curData[E_PIK_EXTRASTEPS])) {
+						curOwner->setActionState(
+							singleton->getActionStateFromPose(targetPoseGroup),
+							targetPoseRLBN,
+							false
+						);
+						setTPG(E_PG_IDLE,RLBN_NEIT);
+						stepCountMod = 0;
+					}
 				}
 				
 				if (totTime > timeInterval) {
 					totTime -= timeInterval;
-					stepCount++;
-					
-					switch (targetPoseGroup) {
-						case E_PG_JUMP:
-							if (curOwner != NULL) {
-								curOwner->isJumping = false;
-							}
-						break;
-					}
-					
+					stepCount++;					
 				}
 				
-				setToPose(singleton->gamePoses[targetPose],lerpSpeed);
+				setToPose(
+					
+					singleton->getPose(
+						targetPoseGroup,targetPoseRLBN,stepCountMod
+					),
+					
+					lerpSpeed
+				);
 			}
 		}
-		
-		
-		
-		
-		
-		
-		// float angMod1 = sin(totTime)*0.5f;
-		// float angMod2 = sin(totTime)*0.5f;
-		// float angMod3 = -(sin(totTime*2.0)+1.0f)*0.5f;
-		// float angMod4 = (sin(totTime*2.0)+1.0f)*0.5f;
-		
-		// GameOrgNode* curNode;
-		
-		// curNode = allNodes[E_BONE_L_UPPERLEG];
-		// curNode->orgVecs[E_OV_THETAPHIRHO].copyFrom(&(
-		// 	curNode->orgVecs[E_OV_TPRORIG]
-		// ));
-		// curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0,0.0,angMod1);
-		
-		// curNode = allNodes[E_BONE_R_UPPERLEG];
-		// curNode->orgVecs[E_OV_THETAPHIRHO].copyFrom(&(
-		// 	curNode->orgVecs[E_OV_TPRORIG]
-		// ));
-		// curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0,0.0,angMod2);
-		
-		
-		// curNode = allNodes[E_BONE_L_LOWERLEG];
-		// curNode->orgVecs[E_OV_THETAPHIRHO].copyFrom(&(
-		// 	curNode->orgVecs[E_OV_TPRORIG]
-		// ));
-		// curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0,0.0,angMod3);
-		
-		// curNode = allNodes[E_BONE_R_LOWERLEG];
-		// curNode->orgVecs[E_OV_THETAPHIRHO].copyFrom(&(
-		// 	curNode->orgVecs[E_OV_TPRORIG]
-		// ));
-		// curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0,0.0,angMod4);
-		
 		
 		
 		
@@ -44586,19 +44799,19 @@ void GameOrg::initWeapon ()
 			NULL,
 			E_BONE_WEAPON_BASE,
 			
-			baseMat, 0.0f, 0.0f, 0.0f,
+			baseMat, 0.0f, 0.0f, M_PI/2.0f, 
 			0.01f, defVecLength, defVecLength,
 			0.01f, defVecLength, defVecLength,
 			
-			0.0f, 1.0f, 0.0f,
 			1.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f,
 			0.0f, 0.0f, 1.0f
 		);
 		
 		GameOrgNode* curNode = baseNode;
 		
-		curNode = allNodes[E_BONE_WEAPON_END] = curNode->addChild(
-			E_BONE_WEAPON_END,
+		curNode = allNodes[E_BONE_WEAPON_HANDLE] = curNode->addChild(
+			E_BONE_WEAPON_HANDLE,
 			
 			baseMat, 0.0f, 0.0f, 0.0f,
 			1.0f, defVecLength, defVecLength,
@@ -44608,13 +44821,29 @@ void GameOrg::initWeapon ()
 			// 0.0f,1.0f,0.0f,
 			// 1.0f,0.0f,0.0f
 			
-			0.0f, 1.0f, 0.0f,
 			1.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f,
 			0.0f, 0.0f, 1.0f
 		);
 		
-		curNode = allNodes[E_BONE_WEAPON_0] = curNode->addChild(
+		allNodes[E_BONE_WEAPON_0] = curNode->addChild(
 			E_BONE_WEAPON_0,
+			
+			baseMat, 0.0f, 0.0f, 0.0f,
+			0.25f, defVecLength, defVecLength,
+			0.25f, defVecLength, defVecLength,
+			
+			// 0.0f,0.0f,1.0f,
+			// 0.0f,1.0f,0.0f,
+			// 1.0f,0.0f,0.0f
+			
+			1.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 1.0f
+		);
+		
+		allNodes[E_BONE_WEAPON_1] = curNode->addChild(
+			E_BONE_WEAPON_1,
 			
 			baseMat, 0.0f, 0.0f, 0.0f,
 			0.25f, defVecLength, defVecLength,
@@ -45238,11 +45467,6 @@ int GameActor::addJoint (int nodeName, int parentId, int jointType, float mass, 
 		switch(jointType) {
 			case E_JT_LIMB:
 				rad = 0.25f;
-				
-				// if (nodeName == E_BONE_WEAPON_END) {
-				// 	rad = 0.5f;
-				// }
-				
 				len = curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV());
 				begPos = curNode->orgTrans[0].getBTV();
 				midPos = curNode->orgTrans[1].getBTV();
@@ -45526,6 +45750,14 @@ void GameActor::initFromOrg (GameOrgNode * curNode, int curParent)
 		}
 		
 	}
+void GameActor::reinit ()
+                      {
+		removeAllBodies();
+		initFromOrg(
+			baseOrg->baseNode,
+			-1
+		);
+	}
 GameActor::GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed)
           {
 		
@@ -45549,8 +45781,8 @@ GameActor::GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * owner
 		);
 
 	}
-GameActor::~ GameActor ()
-        {
+void GameActor::removeAllBodies ()
+                               {
 		int i;
 
 		// Remove all constraints
@@ -45573,6 +45805,12 @@ GameActor::~ GameActor ()
 			delete actorJoints[i].body; actorJoints[i].body = NULL;
 			delete actorJoints[i].shape; actorJoints[i].shape = NULL;
 		}
+		
+		actorJoints.clear();
+	}
+GameActor::~ GameActor ()
+        {
+		removeAllBodies();
 	}
 #undef LZZ_INLINE
  
@@ -47130,7 +47368,7 @@ void GamePageHolder::fillVBO ()
 		
 		if (
 			// (isBlockHolder&&GEN_POLYS_WORLD) ||
-			((!isBlockHolder)&&GEN_POLYS_HOLDER)	
+			((!isBlockHolder)&&POLY_COLLISION)	
 		) {
 			if (
 				listEmpty
@@ -47317,7 +47555,7 @@ void GamePageHolder::generateList ()
 		
 		bool fillPolys = 
 			// (isBlockHolder&&GEN_POLYS_WORLD) ||
-			((!isBlockHolder)&&GEN_POLYS_HOLDER);
+			((!isBlockHolder)&&POLY_COLLISION);
 		
 		
 		
@@ -52003,7 +52241,7 @@ void GameLogic::applyBehavior ()
 					writeObj->jumpCooldown = 0;
 				}
 				
-				writeObj->isWalking = false;
+				writeObj->setActionState(E_ACT_ISWALKING,RLBN_NEIT,false);
 				
 				
 				if (writeObj->isAlive()) {
@@ -52071,12 +52309,12 @@ void GameLogic::applyBehavior ()
 					
 				}
 				else { // is dead
-					if (writeObj->holdingWeapon(E_HAND_L)) {
-						singleton->grabThrowObj(writeObj->uid, E_HAND_L);
+					if (writeObj->holdingWeapon(RLBN_LEFT)) {
+						singleton->grabThrowObj(writeObj->uid, RLBN_LEFT);
 					}
 					
-					if (writeObj->holdingWeapon(E_HAND_R)) {
-						singleton->grabThrowObj(writeObj->uid, E_HAND_R);
+					if (writeObj->holdingWeapon(RLBN_RIGT)) {
+						singleton->grabThrowObj(writeObj->uid, RLBN_RIGT);
 					}
 				}
 				
@@ -54953,13 +55191,58 @@ void GamePhysics::remBoxFromObj (BaseObjType _uid)
 		BaseObj* ge = &(singleton->gw->gameObjects[_uid]);
 		
 		int bodInd;
-		for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
+		
+		bool hasRig = (
+			(ge->orgId > -1) &&
+			(ge->actorId > -1)	
+		);
+		
+		GameActor* curActor;
+		
+		int i;
+		
+		for (i = 0; i < 2; i++) {
+			if (ge->isGrabbingId[i] > -1) {
+				singleton->grabThrowObj(ge->uid,i);
+			}
+		}
+		
+		
+		
+		if (hasRig) {
+			curActor = singleton->gameActors[ge->actorId];
+			curActor->removeAllBodies();
+			
+			while (ge->bodies.size() > E_BDG_LENGTH ) {
+				ge->bodies.pop_back();
+			}
+			
+		}
+		
+		for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) { // E_BDG_LENGTH
 			example->removeRigidBody(ge->bodies[bodInd].body);
 		}
+		
+		
+		
+		
+		
+		// if (hasRig) {
+		// 	//curActor = singleton->gameActors[ge->actorId];
+		// 	delete singleton->gameActors[ge->actorId];
+		// 	singleton->gameActors[ge->actorId] = NULL;
+			
+		// 	delete singleton->gameOrgs[ge->orgId];
+		// 	singleton->gameOrgs[ge->orgId] = NULL;
+		// }
+		
+		// ge->actorId = -1;
+		// ge->orgId = -1;
+		
 		ge->bodies.clear();
 	}
-void GamePhysics::addBoxFromObj (BaseObjType _uid)
-                                             {
+void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
+                                                                {
 		
 		//cout << "\n\nADD BOX\n\n";
 		
@@ -55000,51 +55283,56 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 						
 						////////////////////////////
 						
-						
-						for (i = 0; i < E_BDG_LENGTH; i++) {
-							//btCapsuleShapeZ* capsuleShapeZ = new btCapsuleShapeZ(1.0f,BASE_ENT_HEIGHT);
-							
-							switch (i) {
-								case E_BDG_CENTER:
-									trans.setIdentity();
-									trans.setOrigin(ge->startPoint);
-								break;
-								// case E_BDG_LFOOT:
-								// 	trans.setIdentity();
-								// 	trans.setOrigin(ge->startPoint + btVector3(-1.0f, 0.0f, -1.0f));
-								// break;
-								// case E_BDG_RFOOT:
-								// 	trans.setIdentity();
-								// 	trans.setOrigin(ge->startPoint + btVector3( 1.0f, 0.0f, -1.0f));
-								// break;
-							}
-							
-							ge->bodies.push_back(BodyStruct());
-							
-							if (i == E_BDG_CENTER) {
-								ge->bodies.back().body = example->createRigidBodyMask(
-									MASS_PER_LIMB, // 0.1
-									trans,
-									new btCapsuleShapeZ(BASE_ENT_RAD,BASE_ENT_HEIGHT),//capsuleShapeZ, //btSphereShape(BASE_ENT_HEIGHT),//
-									COL_MARKER,
-									markerCollidesWith
-								);
-							}
-							else {
-								// ge->bodies.back().body = example->createRigidBodyMask(
-								// 	MASS_PER_LIMB, // 0.1
-								// 	trans,
-								// 	new btSphereShape(0.25f),//new btCapsuleShapeZ(1.0f,BASE_ENT_HEIGHT),//capsuleShapeZ,
-								// 	COL_MARKER,
-								// 	markerCollidesWith
-								// );
-							}
-							
-							
-							ge->bodies.back().body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
-							ge->bodies.back().boneId = -1;
-							ge->bodies.back().jointType = E_JT_CONT;
+						if (refreshLimbs) {
+							// todo: add stuff
 						}
+						else {
+							for (i = 0; i < E_BDG_LENGTH; i++) {
+								//btCapsuleShapeZ* capsuleShapeZ = new btCapsuleShapeZ(1.0f,BASE_ENT_HEIGHT);
+								
+								switch (i) {
+									case E_BDG_CENTER:
+										trans.setIdentity();
+										trans.setOrigin(ge->startPoint);
+									break;
+									// case E_BDG_LFOOT:
+									// 	trans.setIdentity();
+									// 	trans.setOrigin(ge->startPoint + btVector3(-1.0f, 0.0f, -1.0f));
+									// break;
+									// case E_BDG_RFOOT:
+									// 	trans.setIdentity();
+									// 	trans.setOrigin(ge->startPoint + btVector3( 1.0f, 0.0f, -1.0f));
+									// break;
+								}
+								
+								ge->bodies.push_back(BodyStruct());
+								
+								if (i == E_BDG_CENTER) {
+									ge->bodies.back().body = example->createRigidBodyMask(
+										MASS_PER_LIMB, // 0.1
+										trans,
+										new btCapsuleShapeZ(BASE_ENT_RAD,BASE_ENT_HEIGHT),//capsuleShapeZ, //btSphereShape(BASE_ENT_HEIGHT),//
+										COL_MARKER,
+										markerCollidesWith
+									);
+								}
+								else {
+									// ge->bodies.back().body = example->createRigidBodyMask(
+									// 	MASS_PER_LIMB, // 0.1
+									// 	trans,
+									// 	new btSphereShape(0.25f),//new btCapsuleShapeZ(1.0f,BASE_ENT_HEIGHT),//capsuleShapeZ,
+									// 	COL_MARKER,
+									// 	markerCollidesWith
+									// );
+								}
+								
+								
+								ge->bodies.back().body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
+								ge->bodies.back().boneId = -1;
+								ge->bodies.back().jointType = E_JT_CONT;
+							}
+						}
+						
 						
 						
 						
@@ -55056,22 +55344,31 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 					
 					
 					
+					if (refreshLimbs) {
+						
+					}
+					else {
+						singleton->gameOrgs.push_back(new GameOrg());
+						singleton->gameOrgs.back()->init(singleton, ge->uid,curOrgType);
+						ge->orgId = singleton->gameOrgs.size()-1;
+						
+						singleton->gameActors.push_back(new GameActor(
+							singleton,
+							ge->uid,
+							example->getWorld(),
+							ge->startPoint,
+							false	
+						));
+						ge->actorId = singleton->gameActors.size()-1;
+					}
 					
 					
-					singleton->gameOrgs.push_back(new GameOrg());
-					singleton->gameOrgs.back()->init(singleton, ge->uid,curOrgType);
-					ge->orgId = singleton->gameOrgs.size()-1;
+					curActor = (singleton->gameActors[ge->actorId]);
 					
-					singleton->gameActors.push_back(new GameActor(
-						singleton,
-						ge->uid,
-						example->getWorld(),
-						ge->startPoint,
-						false	
-					));
+					if (refreshLimbs) {
+						curActor->reinit();	
+					}
 					
-					curActor = (singleton->gameActors.back());
-					ge->actorId = singleton->gameActors.size()-1;
 					
 					for (i = 0; i < curActor->actorJoints.size(); i++) {
 						
@@ -55263,7 +55560,10 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid)
 		}
 		
 		if (curOrgType == E_ORGTYPE_HUMAN) {
-			singleton->gameOrgs[ge->orgId]->loadFromFile(poseStrings[E_PK_NON_POSE], true);
+			singleton->gameOrgs[ge->orgId]->loadFromFile(
+				singleton->getPoseString(E_PG_NONPOSE, RLBN_NEIT, 0),
+				true
+			);
 		}
 		
 	}
@@ -55329,14 +55629,14 @@ void GamePhysics::procCol (BaseObj * * geArr, BodyStruct * * curBodyArr)
 							switch(curBone) {
 								case E_BONE_L_METACARPALS:
 								case E_BONE_L_TALUS:
-									if (geArr[k]->isSwinging[E_HAND_L]) {
+									if (geArr[k]->getActionState(E_ACT_ISSWINGING,RLBN_LEFT)) {
 										if (curBone == E_BONE_L_METACARPALS) {
-											if (singleton->isPunching(geArr[k]->uid, E_HAND_L)) {
+											if (singleton->isPunching(geArr[k]->uid, RLBN_LEFT)) {
 												doProc = true;
 											}
 										}
 										else {
-											if (singleton->isKicking(geArr[k]->uid, E_HAND_L)) {
+											if (singleton->isKicking(geArr[k]->uid, RLBN_LEFT)) {
 												doProc = true;
 											}
 										}
@@ -55344,14 +55644,14 @@ void GamePhysics::procCol (BaseObj * * geArr, BodyStruct * * curBodyArr)
 								break;
 								case E_BONE_R_TALUS:
 								case E_BONE_R_METACARPALS:
-									if (geArr[k]->isSwinging[E_HAND_R]) {
+									if (geArr[k]->getActionState(E_ACT_ISSWINGING,RLBN_RIGT)) {
 										if (curBone == E_BONE_R_METACARPALS) {
-											if (singleton->isPunching(geArr[k]->uid, E_HAND_R)) {
+											if (singleton->isPunching(geArr[k]->uid, RLBN_RIGT)) {
 												doProc = true;
 											}
 										}
 										else {
-											if (singleton->isKicking(geArr[k]->uid, E_HAND_R)) {
+											if (singleton->isKicking(geArr[k]->uid, RLBN_RIGT)) {
 												doProc = true;
 											}
 										}
@@ -55376,13 +55676,13 @@ void GamePhysics::procCol (BaseObj * * geArr, BodyStruct * * curBodyArr)
 						grabber = &(singleton->gw->gameObjects[geArr[k]->isGrabbedById]);
 						
 						doProc = false;
-						if (grabber->isSwinging[E_HAND_L]) {
-							if (singleton->isSwingingWeapon(grabber->uid,E_HAND_L)) {
+						if (grabber->getActionState(E_ACT_ISSWINGING,RLBN_LEFT)) {
+							if (singleton->isSwingingWeapon(grabber->uid,RLBN_LEFT)) {
 								doProc = true;
 							}
 						}
-						if (grabber->isSwinging[E_HAND_R]) {
-							if (singleton->isSwingingWeapon(grabber->uid,E_HAND_R)) {
+						if (grabber->getActionState(E_ACT_ISSWINGING,RLBN_RIGT)) {
+							if (singleton->isSwingingWeapon(grabber->uid,RLBN_RIGT)) {
 								doProc = true;
 							}
 						}
@@ -55582,296 +55882,304 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		bool hasRig = false;
 		bool animatedRig = false;
 		doProc = false;
+		float angDamp = singleton->conVals[E_CONST_ANGDAMP];
 		
 		
-		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
-			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
-			
-			if (
-				(ge->isHidden)
-			) {
+		if (VOXEL_COLLISION) {
+			for(k = 0; k < singleton->gw->visObjects.size(); k++) {
+				ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
 				
-			}
-			else {
-				for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
-					curBody = &(ge->bodies[bodInd]);
+				if (
+					(ge->isHidden)
+				) {
 					
-					switch (curBody->jointType) {
-						case E_JT_LIMB:
-							segCount = 1;
-							segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
-								btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_LIMB]);
-						break;
-						case E_JT_BALL:
-							segCount = 1;
-							segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
-								btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_LIMB]);
-						break;
-						case E_JT_NORM:
-							segCount = 0;
-						break;
-						case E_JT_CONT:
-							segCount = 2;
-							segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
-								btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_CONT]);
-								
-							newVel = curBody->body->getLinearVelocity();
-							if (isFuzzy(newVel)) {
-								
-							}
-							else {
-								newVel.normalize();
-							}
-							
-								
-							segPos[1] = 
-								curBody->body->getCenterOfMassPosition() +
-								halfOffset +
-								newVel;
-								
-							// segPos[1] = curBody->body->getCenterOfMassPosition() +
-							// 	btVector3(0.0f,0.0f,1.0f);
-							
-							
-							
-						break;
-					}
-					
-					
-					for (p = 0; p < segCount; p++) {
+				}
+				else {
+					for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
+						curBody = &(ge->bodies[bodInd]);
 						
-						norVal = singleton->gw->getNormalAtCoord(
-							segPos[p], cellVal
-						);
-						
-						if (p == 0) {
-							// collision below body
-							
-							lastInside = curBody->isInside;
-							curBody->isInside = (cellVal[3] > 0.5f);
-							
-							curBody->hasContact = (curBody->hasContact)||(cellVal[3] > 0.01f);
-							curBody->isFalling = !(curBody->hasContact);
-							
-							if (cellVal[3] > 0.01f) {
-								ge->multVel(bodInd, btVector3(0.999f,0.999f,1.0f));
-							}
-							
-							if (cellVal[3] > 0.1f) {
-								
-								curBody->body->setGravity(
-									btVector3(
-										0.0f,
-										0.0f,
-										cellVal[3]*singleton->conVals[E_CONST_ANTIGRAV]
-									)
-								);
-								
-								if (
-									(curBody->body->getLinearVelocity().getZ() < 0.0f)	
-								) {
-									ge->multVel(bodInd, btVector3(1.0f,1.0f,0.0f));
-									//ge->moveOffset(btVector3(0,0,clampfZO(cellVal[3]-0.1f)), bodInd);
-								}
-								
-								
-								if (
-									(ge->entType == E_ENTTYPE_WEAPON) &&
-									(ge->isGrabbedById > -1)									
-								) {
-									geArr[0] = ge;
-									geArr[1] = NULL;
-									curBodyArr[0] = curBody;
-									curBodyArr[1] = NULL;
-									procCol(geArr,curBodyArr);
-								}
-								
-								// if (cellVal[3] > 0.2f) {
-								// 	ge->multVel(bodInd, btVector3(1.0f,1.0f,-1.0f));
-								// }
-								
-								
-							}
-							else {
-								curBody->body->setGravity(
-									btVector3(
-										0.0f,
-										0.0f,
-										-10.0f
-									)
-								);
-							}
-							curBody->body->setActivationState(ACTIVE_TAG);
-						}
-						else {
-							// collision in direction of body velocity
-							
-							if (isFuzzy(norVal)) {
-								
-							}
-							else {
+						switch (curBody->jointType) {
+							case E_JT_LIMB:
+								segCount = 1;
+								segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
+									btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_LIMB]);
+							break;
+							case E_JT_BALL:
+								segCount = 1;
+								segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
+									btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_LIMB]);
+							break;
+							case E_JT_NORM:
+								segCount = 0;
+							break;
+							case E_JT_CONT:
+								segCount = 2;
+								segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
+									btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_CONT]);
+									
 								newVel = curBody->body->getLinearVelocity();
 								if (isFuzzy(newVel)) {
 									
 								}
 								else {
 									newVel.normalize();
-									ge->multVel(
-										bodInd,
+								}
+								
+									
+								segPos[1] = 
+									curBody->body->getCenterOfMassPosition() +
+									halfOffset +
+									newVel;
+									
+								// segPos[1] = curBody->body->getCenterOfMassPosition() +
+								// 	btVector3(0.0f,0.0f,1.0f);
+								
+								
+								
+							break;
+						}
+						
+						
+						for (p = 0; p < segCount; p++) {
+							
+							norVal = singleton->gw->getNormalAtCoord(
+								segPos[p], cellVal
+							);
+							
+							if (p == 0) {
+								// collision below body
+								
+								lastInside = curBody->isInside;
+								curBody->isInside = (cellVal[3] > 0.5f);
+								
+								curBody->hasContact = (curBody->hasContact)||(cellVal[3] > 0.01f);
+								curBody->isFalling = !(curBody->hasContact);
+								
+								if (cellVal[3] > 0.01f) {
+									ge->multVel(bodInd, btVector3(0.999f,0.999f,1.0f));
+								}
+								
+								if (cellVal[3] > 0.1f) {
+									
+									ge->multVelAng(bodInd, btVector3(angDamp,angDamp,angDamp));
+									
+									curBody->body->setGravity(
 										btVector3(
-											newVel.getX()*norVal.getX(),
-											newVel.getY()*norVal.getY(),
-											1.0f // newVel.getZ()*norVal.getZ()	
+											0.0f,
+											0.0f,
+											cellVal[3]*singleton->conVals[E_CONST_ANTIGRAV]
+										)
+									);
+									
+									if (
+										(curBody->body->getLinearVelocity().getZ() < 0.0f)	
+									) {
+										ge->multVel(bodInd, btVector3(1.0f,1.0f,0.0f));
+										//ge->moveOffset(btVector3(0,0,clampfZO(cellVal[3]-0.1f)), bodInd);
+									}
+									
+									
+									if (
+										(ge->entType == E_ENTTYPE_WEAPON) &&
+										(ge->isGrabbedById > -1) &&
+										(cellVal[3] > 0.5f)								
+									) {
+										geArr[0] = ge;
+										geArr[1] = NULL;
+										curBodyArr[0] = curBody;
+										curBodyArr[1] = NULL;
+										procCol(geArr,curBodyArr);
+									}
+									
+									// if (cellVal[3] > 0.2f) {
+									// 	ge->multVel(bodInd, btVector3(1.0f,1.0f,-1.0f));
+									// }
+									
+									
+								}
+								else {
+									curBody->body->setGravity(
+										btVector3(
+											0.0f,
+											0.0f,
+											-10.0f
 										)
 									);
 								}
+								curBody->body->setActivationState(ACTIVE_TAG);
 							}
+							else {
+								// collision in direction of body velocity
+								
+								if (isFuzzy(norVal)) {
+									
+								}
+								else {
+									newVel = curBody->body->getLinearVelocity();
+									if (isFuzzy(newVel)) {
+										
+									}
+									else {
+										newVel.normalize();
+										ge->multVel(
+											bodInd,
+											btVector3(
+												newVel.getX()*norVal.getX(),
+												newVel.getY()*norVal.getY(),
+												1.0f // newVel.getZ()*norVal.getZ()	
+											)
+										);
+									}
+								}
+								
+								
+							}
+							
+							
+							// newVel = curBody->body->getLinearVelocity();
+							// if (isFuzzy(newVel)) {
+								
+							// }
+							// else {
+							// 	newVel.normalize();
+								
+							// 	if (
+							// 		(cellVal[3] > 0.5f)
+							// 		//&& (newVel.dot(norVal) < -0.2f)	
+							// 	) {
+							// 		ge->setLinVel(norVal*10.0f,bodInd);
+							// 	}
+								
+							// }
+							
+							// if (norVal.getZ() > 0.0f) {
+							// 	ge->multVel(bodInd, btVector3(abs(norVal.getZ()),abs(norVal.getZ()),1.0f));
+								
+							// 	//ge->addVel(bodInd, btVector3(0.0f,0.0f,(1.0-norVal.getZ()));
+							// }
+							
+							
+							
+							
+							
+							// ge->applyImpulse(
+							// 	cellVal[3]*norVal*curStepTime*singleton->conVals[E_CONST_PUSH_UP_AMOUNT],
+							// 	bodInd,
+							// 	false
+							// );
+							
+							
+							// ge->multVel(bodInd, btVector3(
+							// 	1.0f-cellVal[0],
+							// 	1.0f-cellVal[1],
+							// 	1.0f-cellVal[2]
+							// ));
+							
+							//ge->addVel(bodInd, norVal2*curStepTime*200.0f);
+							
+							// curBody->body->setGravity(
+							// 	btVector3(
+							// 		0.0f,
+							// 		0.0f,
+							// 		mixf(-10.0f,10.0f,cellVal[3])
+							// 	)
+							// );
+							// if (
+							// 	(cellVal[3] > 0.5f)
+							// 	// && (curBody->body->getLinearVelocity().getZ() < 0.0)
+							// ) {
+							// 	ge->multVel(bodInd, btVector3(-1.0f,-1.0f,-1.0f));
+							// }
+							
+							//ge->addVel(bodInd, norVal*curStepTime*20.0f);
+							
+							
+							
+							
+							// tempBTV = curBody->body->getLinearVelocity();
+							// tempBTV *= btVector3(1.0f,1.0f,0.0f);
+							
+							// if (isFuzzy(tempBTV)) {
+								
+							// }
+							// else {
+							// 	tempBTV.normalize();
+							// }
+							// tempBTV *= 0.5f;
+							
+							
+							// cellVal[0] = singleton->gw->getCellAtCoordsLin(
+							// 	segPos[p] + btVector3(0.0,0.0,-0.5f)
+							// );
+							
+							
+							// tempBTV += btVector3(0.0f,0.0f,1.5f);
+							
+							
+							// cellVal[1] = singleton->gw->getCellAtCoordsLin(
+							// 	segPos[p] + tempBTV
+							// );
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							// curBody->body->setGravity(
+							// 	btVector3(
+							// 		0.0f,
+							// 		0.0f,
+							// 		mixf(-10.0f,10.0f,cellVal[0])
+							// 	)
+							// );
+							// if (
+							// 	(cellVal[0] > 0.5f) &&
+							// 	(curBody->body->getLinearVelocity().getZ() < 0.0)
+							// ) {
+							// 	ge->multVel(bodInd, btVector3(1.0f,1.0f,0.0f));
+							// }
+							
+							// if (cellVal[1] > 0.1) {
+							// 	ge->multVel(bodInd, btVector3(1.0f-cellVal[1],1.0f-cellVal[1],1.0f));
+							// 	ge->addVel(bodInd, btVector3(1.0f,1.0f,0.0f));
+							// }
+							
+							
+							
+							//if (lastInside != curBody->isInside) {
+								// if (curBody->isInside) {
+									
+								// 	if (q == 0) {
+								// 		//ge->multVelocity(bodInd, btVector3(1.0f,1.0f,0.0f));
+								// 		curBody->body->setGravity(btVector3(0.0f,0.0f,10.0f));
+								// 	}
+								// 	else {
+								// 		//ge->multVelocity(bodInd, btVector3(-0.9f,-0.9f,1.0f));
+								// 	}
+									
+									
+								// }
+								// else {
+								// 	curBody->body->setGravity(btVector3(0.0f,0.0f,-10.0f));
+								// }
+							//}
+							
+							
+							
 							
 							
 						}
 						
 						
-						// newVel = curBody->body->getLinearVelocity();
-						// if (isFuzzy(newVel)) {
-							
-						// }
-						// else {
-						// 	newVel.normalize();
-							
-						// 	if (
-						// 		(cellVal[3] > 0.5f)
-						// 		//&& (newVel.dot(norVal) < -0.2f)	
-						// 	) {
-						// 		ge->setLinVel(norVal*10.0f,bodInd);
-						// 	}
-							
-						// }
-						
-						// if (norVal.getZ() > 0.0f) {
-						// 	ge->multVel(bodInd, btVector3(abs(norVal.getZ()),abs(norVal.getZ()),1.0f));
-							
-						// 	//ge->addVel(bodInd, btVector3(0.0f,0.0f,(1.0-norVal.getZ()));
-						// }
-						
-						
-						
-						
-						
-						// ge->applyImpulse(
-						// 	cellVal[3]*norVal*curStepTime*singleton->conVals[E_CONST_PUSH_UP_AMOUNT],
-						// 	bodInd,
-						// 	false
-						// );
-						
-						
-						// ge->multVel(bodInd, btVector3(
-						// 	1.0f-cellVal[0],
-						// 	1.0f-cellVal[1],
-						// 	1.0f-cellVal[2]
-						// ));
-						
-						//ge->addVel(bodInd, norVal2*curStepTime*200.0f);
-						
-						// curBody->body->setGravity(
-						// 	btVector3(
-						// 		0.0f,
-						// 		0.0f,
-						// 		mixf(-10.0f,10.0f,cellVal[3])
-						// 	)
-						// );
-						// if (
-						// 	(cellVal[3] > 0.5f)
-						// 	// && (curBody->body->getLinearVelocity().getZ() < 0.0)
-						// ) {
-						// 	ge->multVel(bodInd, btVector3(-1.0f,-1.0f,-1.0f));
-						// }
-						
-						//ge->addVel(bodInd, norVal*curStepTime*20.0f);
-						
-						
-						
-						
-						// tempBTV = curBody->body->getLinearVelocity();
-						// tempBTV *= btVector3(1.0f,1.0f,0.0f);
-						
-						// if (isFuzzy(tempBTV)) {
-							
-						// }
-						// else {
-						// 	tempBTV.normalize();
-						// }
-						// tempBTV *= 0.5f;
-						
-						
-						// cellVal[0] = singleton->gw->getCellAtCoordsLin(
-						// 	segPos[p] + btVector3(0.0,0.0,-0.5f)
-						// );
-						
-						
-						// tempBTV += btVector3(0.0f,0.0f,1.5f);
-						
-						
-						// cellVal[1] = singleton->gw->getCellAtCoordsLin(
-						// 	segPos[p] + tempBTV
-						// );
-						
-						
-						
-						
-						
-						
-						
-						
-						
-						// curBody->body->setGravity(
-						// 	btVector3(
-						// 		0.0f,
-						// 		0.0f,
-						// 		mixf(-10.0f,10.0f,cellVal[0])
-						// 	)
-						// );
-						// if (
-						// 	(cellVal[0] > 0.5f) &&
-						// 	(curBody->body->getLinearVelocity().getZ() < 0.0)
-						// ) {
-						// 	ge->multVel(bodInd, btVector3(1.0f,1.0f,0.0f));
-						// }
-						
-						// if (cellVal[1] > 0.1) {
-						// 	ge->multVel(bodInd, btVector3(1.0f-cellVal[1],1.0f-cellVal[1],1.0f));
-						// 	ge->addVel(bodInd, btVector3(1.0f,1.0f,0.0f));
-						// }
-						
-						
-						
-						//if (lastInside != curBody->isInside) {
-							// if (curBody->isInside) {
-								
-							// 	if (q == 0) {
-							// 		//ge->multVelocity(bodInd, btVector3(1.0f,1.0f,0.0f));
-							// 		curBody->body->setGravity(btVector3(0.0f,0.0f,10.0f));
-							// 	}
-							// 	else {
-							// 		//ge->multVelocity(bodInd, btVector3(-0.9f,-0.9f,1.0f));
-							// 	}
-								
-								
-							// }
-							// else {
-							// 	curBody->body->setGravity(btVector3(0.0f,0.0f,-10.0f));
-							// }
-						//}
-						
-						
-						
-						
-						
 					}
-					
-					
 				}
 			}
 		}
+		
+		
 		
 		
 		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
@@ -55905,79 +56213,55 @@ void GamePhysics::collideWithWorld (double curStepTime)
 					
 					if (animatedRig) {
 						
-						if (ge->isWalking) {
+						if (ge->getActionState(E_ACT_ISWALKING,RLBN_NEIT)) {
 							ge->bodies[E_BDG_CENTER].body->setFriction(singleton->conVals[E_CONST_WALKING_FRIC]);
 						}
 						else {
 							ge->bodies[E_BDG_CENTER].body->setFriction(singleton->conVals[E_CONST_STANDING_FRIC]);
 						}
 						
-						// if (ge->baseContact()&&ge->isWalking) {
-							
-						// 	ge->bodies[E_BDG_CENTER].body->setGravity(btVector3(
-						// 		0.0f,
-						// 		0.0f,
-						// 		singleton->conVals[E_CONST_WALKING_GRAV]
-						// 	));
-						// }
-						// else {
-							
-						// 	//ge->contactCount = 0;
-							
-						// 	ge->bodies[E_BDG_CENTER].body->setGravity(btVector3(0.0f,0.0f,-10.0f));
-						// }
+						
+						
 						
 						if (ge->isDead()) {
-							curOrg->targetPoseGroup = E_PG_DEAD;
+							curOrg->setTPG(E_PG_DEAD,RLBN_NEIT);
+						}
+						else if (ge->getActionState(E_ACT_ISSWINGING,RLBN_RIGT)) {
+							curOrg->setTPG(ge->swingType[RLBN_RIGT], RLBN_RIGT);
+						}
+						else if (ge->getActionState(E_ACT_ISSWINGING,RLBN_LEFT)) {
+							curOrg->setTPG(ge->swingType[RLBN_LEFT], RLBN_LEFT);
+						}
+						else if (
+							ge->getActionState(E_ACT_ISJUMPING,RLBN_NEIT) &&
+							(ge->bodies[E_BDG_CENTER].body->getLinearVelocity().getZ() >= 0.0f)
+						) {
+							curOrg->setTPG(E_PG_JUMP,RLBN_NEIT);
+						}
+						else if (ge->getActionState(E_ACT_ISPICKINGUP,RLBN_NEIT)) {
+							curOrg->setTPG(E_PG_PICKUP,RLBN_NEIT);
+						}
+						else if (
+							ge->getActionState(E_ACT_ISWALKING,RLBN_NEIT) ||
+							(ge->getPlanarVel() > 0.1f)
+						) {
+							curOrg->setTPG(E_PG_WALKFORWARD,RLBN_NEIT);
 						}
 						else {
-							
-							
-							if (
-								ge->isJumping &&
-								(ge->bodies[E_BDG_CENTER].body->getLinearVelocity().getZ() >= 0.0f)
-							) {
-								curOrg->targetPoseGroup = E_PG_JUMP;
-							}
-							else {
-								if (ge->isWalking || (ge->getPlanarVel() > 0.1f)) {
-									curOrg->targetPoseGroup = E_PG_WALK;
-								}
-								else {
-									curOrg->targetPoseGroup = E_PG_IDLE;
-								}
-							}
-							
-							if (ge->isPickingUp) {
-								curOrg->targetPoseGroup = E_PG_PICKUP;
-							}
-							else {
-								if (ge->isSwinging[E_HAND_R]) {
-									curOrg->targetPoseGroup = ge->swingType[E_HAND_R];
-								}
-								else {
-									if (ge->isSwinging[E_HAND_L]) {
-										curOrg->targetPoseGroup = ge->swingType[E_HAND_L];
-									}
-								}
-							}
+							curOrg->setTPG(E_PG_IDLE,RLBN_NEIT);
 						}
 						
 						if (curOrg->targetPoseGroup != E_PG_JUMP) {
-							ge->isJumping = false;
+							ge->setActionState(E_ACT_ISJUMPING,RLBN_NEIT,false);
 						}
-						
-						
-						
-						
 						
 						
 						curOrg->updatePose(curStepTime);
 						
 						
-						// if (ge->isGrabbingId[E_HAND_L] > -1) {
+						// if (ge->isGrabbingId[RLBN_LEFT] > -1) {
 						// 	ge->updateWeapon(
-						// 		E_HAND_L,
+						// 		RLBN_LEFT,
 						// 		curOrg->allNodes[getCorrectedName(E_BONE_L_METACARPALS)]->orgTrans[1].getBTV(),
 						// 		curOrg->allNodes[getCorrectedName(E_BONE_L_METACARPALS)]->tbnTrans[1].getBTV(),
 						// 		curStepTime,
@@ -55985,9 +56269,9 @@ void GamePhysics::collideWithWorld (double curStepTime)
 						// 	);
 						// }
 						
-						// if (ge->isGrabbingId[E_HAND_R] > -1) {
+						// if (ge->isGrabbingId[RLBN_RIGT] > -1) {
 						// 	ge->updateWeapon(
-						// 		E_HAND_R,
+						// 		RLBN_RIGT,
 						// 		curOrg->allNodes[getCorrectedName(E_BONE_R_METACARPALS)]->orgTrans[1].getBTV(),
 						// 		curOrg->allNodes[getCorrectedName(E_BONE_R_METACARPALS)]->tbnTrans[1].getBTV(),
 						// 		curStepTime,
@@ -56008,7 +56292,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 						// 		grabber = &(singleton->gw->gameObjects[ge->isGrabbedById]);
 						// 		grabberOrg = singleton->gameOrgs[grabber->orgId];
 								
-						// 		if (grabber->isGrabbingId[E_HAND_L] == ge->uid) {
+						// 		if (grabber->isGrabbingId[RLBN_LEFT] == ge->uid) {
 						// 			singleton->transformOrg(curOrg, grabberOrg->allNodes[getCorrectedName(E_BONE_L_METACARPALS)]);
 						// 		}
 						// 		else {
@@ -57298,7 +57582,7 @@ void GameWorld::update ()
 		// }
 		
 		
-		// if (GEN_POLYS_WORLD||GEN_POLYS_HOLDER) {
+		// if (GEN_POLYS_WORLD||POLY_COLLISION) {
 		// 	glEnable(GL_DEPTH_TEST);
 		// 	//glEnable(GL_CULL_FACE);
 			
@@ -57318,7 +57602,7 @@ void GameWorld::update ()
 		// 	if (GEN_POLYS_WORLD) {
 		// 		drawPolys(polyFBOStrings[0], 0, 0,true);
 		// 	}
-		// 	if (GEN_POLYS_HOLDER) {
+		// 	if (POLY_COLLISION) {
 		// 		drawPolys(polyFBOStrings[0], 0, DEF_VOL_SIZE/singleton->cellsPerHolder + 1,false);
 		// 	}
 			
@@ -58045,7 +58329,10 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		
 		singleton->setShaderFloat("invalidCount", invalidCount/invalidCountMax);
-		singleton->setShaderInt("doSphereMap", (int)(doSphereMap));
+		singleton->setShaderInt("doSphereMap",
+			// (int)(doSphereMap)
+			(int)(singleton->sphereMapOn)
+		);
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
 		singleton->setShaderInt("skipPrim", (int)(skipPrim));
 		singleton->setShaderInt("placingGeom", (int)(singleton->placingGeom));
@@ -58230,6 +58517,7 @@ void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, fl
           {
 		
 		
+		BaseObj* grabber;
 		
 		
 		bool doProc = false;
@@ -58262,8 +58550,18 @@ void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, fl
 			//}
 			
 			if (singleton->currentActor != NULL) {
-				lineSeg[0].addXYZ(0.0f,0.0f,singleton->currentActor->skelOffset.getZ());
-				lineSeg[1].addXYZ(0.0f,0.0f,singleton->currentActor->skelOffset.getZ());
+				
+				
+				if (singleton->currentActor->isGrabbedById > -1) {
+					grabber = &(singleton->gw->gameObjects[singleton->currentActor->isGrabbedById]);
+				}
+				else {
+					grabber = singleton->currentActor;
+				}
+				
+				
+				lineSeg[0].addXYZ(0.0f,0.0f,grabber->skelOffset.getZ());
+				lineSeg[1].addXYZ(0.0f,0.0f,grabber->skelOffset.getZ());
 			}
 			
 			
@@ -58304,7 +58602,7 @@ void GameWorld::addVisObject (BaseObjType _uid, bool isRecycled)
 			
 		}
 		else {
-			singleton->gamePhysics->addBoxFromObj(_uid);
+			singleton->gamePhysics->addBoxFromObj(_uid, false);
 		}
 		
 	}
@@ -59754,7 +60052,7 @@ void GameWorld::initMap ()
 			avgSL = (minSL+maxSL)/2;
 		}
 
-		seaLevel = 80;
+		seaLevel = 100;
 
 		
 		singleton->copyFBO("hmFBOLinear", "hmFBOLinearBig");
@@ -61123,6 +61421,8 @@ void GameWorld::renderDebug ()
 		
 		btVector3 boxCenter;
 		btVector3 boxRadius;
+		BaseObj* grabber;
+		
 		
 		float xrotrad = singleton->getCamRot(0);
 		
@@ -61155,10 +61455,21 @@ void GameWorld::renderDebug ()
 		
 		singleton->setShaderFloat("objectId",0.0);
 		
+		
+		
 		// skeleton outline		
 		if (singleton->currentActor != NULL) {
 			if (singleton->currentActor->orgId > -1) {
-				singleton->currentActor->bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
+				
+				if (singleton->currentActor->isGrabbedById > -1) {
+					grabber = &(singleton->gw->gameObjects[singleton->currentActor->isGrabbedById]);
+				}
+				else {
+					grabber = singleton->currentActor;
+				}
+				
+				
+				grabber->bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
 				
 				singleton->setShaderMatrix4x4("objmat",myMat,1);
 				
@@ -61636,14 +61947,14 @@ void GameWorld::postProcess ()
 				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
 			
-			if (singleton->currentActor == NULL) {
+			//if (singleton->currentActor == NULL) {
 				singleton->setShaderInt("isFalling",false);
 				singleton->setShaderInt("isJumping",false);
-			}
-			else {
-				singleton->setShaderInt("isFalling",singleton->currentActor->allFalling());
-				singleton->setShaderInt("isJumping",singleton->currentActor->isJumping);
-			}
+			// }
+			// else {
+			// 	singleton->setShaderInt("isFalling",singleton->currentActor->allFalling());
+			// 	singleton->setShaderInt("isJumping",singleton->currentActor->isJumping);
+			// }
 			
 			
 			singleton->setShaderFloat("seaLevel", singleton->getSeaHeightScaled() );
@@ -61693,6 +62004,7 @@ void GameWorld::postProcess ()
 			singleton->bindFBO("resultFBO",activeFBO);
 			singleton->sampleFBO("resultFBO", 0, activeFBO);
 			singleton->sampleFBO("solidTargFBO", 1);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
 			
 			singleton->drawFSQuad();

@@ -66,11 +66,6 @@ public:
 		switch(jointType) {
 			case E_JT_LIMB:
 				rad = 0.25f;
-				
-				// if (nodeName == E_BONE_WEAPON_END) {
-				// 	rad = 0.5f;
-				// }
-				
 				len = curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV());
 				begPos = curNode->orgTrans[0].getBTV();
 				midPos = curNode->orgTrans[1].getBTV();
@@ -363,7 +358,13 @@ public:
 	
 	
 	
-	
+	void reinit() {
+		removeAllBodies();
+		initFromOrg(
+			baseOrg->baseNode,
+			-1
+		);
+	}
 
 	GameActor(
 		Singleton* _singleton,
@@ -394,8 +395,8 @@ public:
 
 	}
 
-	virtual	~GameActor ()
-	{
+
+	void removeAllBodies() {
 		int i;
 
 		// Remove all constraints
@@ -418,6 +419,13 @@ public:
 			delete actorJoints[i].body; actorJoints[i].body = NULL;
 			delete actorJoints[i].shape; actorJoints[i].shape = NULL;
 		}
+		
+		actorJoints.clear();
+	}
+
+	virtual	~GameActor ()
+	{
+		removeAllBodies();
 	}
 
 	//btTypedConstraint** GetJoints() {return &m_joints[0];}

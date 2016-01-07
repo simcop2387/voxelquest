@@ -361,6 +361,8 @@ void main()
 	
 	float facingCam = (dot(myVec,lookAtVec) + 1.0)/2.0;
 	
+	vec2 matMod = vec2(newAO,1.0);
+	
 
 	if (tot == 0.0) {
 		resColor = fogCol;
@@ -392,9 +394,9 @@ void main()
 			
 		
 		resColor.rgb = vec3(
-			unpackColor(matVals.ba,pow(tex2.r,1.0)).r,
-			unpackColor(matVals.ba,pow(tex2.g,1.0)).g,
-			unpackColor(matVals.ba,pow(tex2.b,1.0)).b
+			unpackColor(matVals.ba*matMod,pow(tex2.r,1.0)).r,
+			unpackColor(matVals.ba*matMod,pow(tex2.g,1.0)).g,
+			unpackColor(matVals.ba*matMod,pow(tex2.b,1.0)).b
 		);
 		
 		hsvVal = rgb2hsv(tex2.rgb);
@@ -408,11 +410,55 @@ void main()
 		// 	pow(tex2.rgb,vec3(0.25)),
 		// 	1.0
 		// );
+		
+		resColor.rgb *= newAO;
 	}
 	
 	
+	// if (getMat(tex1.w) == (TEX_EARTH*255.0)) {
+	// 	hsvVal = rgb2hsv(resColor.rgb);
+	// 	// h
+	// 	hsvVal.r += (
+	// 			sin(worldPosition.z/211.0*0.125)*
+	// 			sin(worldPosition.x/322.0*0.125)*
+	// 			sin(worldPosition.y/111.0*0.125)
+	// 	)*0.1;
+		
+	// 	// s
+	// 	hsvVal.g += (
+	// 			sin(worldPosition.z/133.0*0.5)*
+	// 			sin(worldPosition.x/322.0*0.5)*
+	// 			sin(worldPosition.y/199.0*0.5)
+	// 	)*0.1;
+		
+	// 	// v
+	// 	hsvVal.b += (
+	// 			sin(worldPosition.z/299.0*0.25)*
+	// 			sin(worldPosition.x/533.0*0.25)*
+	// 			sin(worldPosition.y/225.0*0.25)
+	// 	)*0.1;
+		
+	// 	// hsvVal = mix(
+	// 	// 	hsvVal2,
+	// 	// 	hsvVal,
+	// 	// 	vec3(
+	// 	// 		// h  s  v
+	// 	// 		0.25
+	// 	// 	)
+	// 	// );
+		
+	// 	hsvVal = clamp(hsvVal,vec3(0.0),vec3(1.0));
+		
+	// 	resColor = hsv2rgb(hsvVal)*tex2.rgb*newAO + tex2.rgb*0.1;
+		
+		
+		
+	// }
 	
-	modVal = pow(1.0-lightRes,1.0)*facingCam;
+	
+	
+	
+	modVal = pow(1.0-lightRes,10.0)*facingCam;
 	// modColor = hsv2rgb(vec3(
 	// 	mix(0.75, 0.4, modVal)
 	// 	,1.0,1.0))*modVal;
@@ -594,7 +640,10 @@ void main()
 		testTex = texture2D(Texture0, finalTC.xy + dirModXY[i].xy / (bufferDim) );
 
 		testHeight = distance(worldPosition.xyz,testTex.xyz);
-		if (testHeight > bestHeight)
+		if (
+			(testHeight > bestHeight) &&
+			(worldPosition.w >= testTex.w)	
+		)
 		{
 			bestHeight = testHeight;
 		}
@@ -608,7 +657,7 @@ void main()
 		clamp(distance(worldPosition.xyz, cameraPos.xyz)/256.0,0.0,1.0)
 	);
 	
-	//resColor.rgb -= outDif;
+	//resColor.rgb -= outDif*0.5;
 	
 	
 	// if (tex0.a == TEX_WATER || tex0.a == TEX_NULL) {
@@ -636,7 +685,12 @@ void main()
 
 	//resColor.rgb = tex2.rgb + modColor;
 	
-	resColor.rgb += modColor*0.1;
+	resColor.rgb += modColor*0.25;
+	
+	resColor.rgb = pow(resColor.rgb,vec3(0.85));
+	
+	
+	//resColor = vec3(matVals.a,0.0,0.0);
 	
 	//resColor = vec3(newAO);
 	

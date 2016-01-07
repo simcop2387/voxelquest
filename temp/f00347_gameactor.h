@@ -54,11 +54,6 @@ int GameActor::addJoint (int nodeName, int parentId, int jointType, float mass, 
 		switch(jointType) {
 			case E_JT_LIMB:
 				rad = 0.25f;
-				
-				// if (nodeName == E_BONE_WEAPON_END) {
-				// 	rad = 0.5f;
-				// }
-				
 				len = curNode->orgTrans[0].getBTV().distance(curNode->orgTrans[2].getBTV());
 				begPos = curNode->orgTrans[0].getBTV();
 				midPos = curNode->orgTrans[1].getBTV();
@@ -342,6 +337,14 @@ void GameActor::initFromOrg (GameOrgNode * curNode, int curParent)
 		}
 		
 	}
+void GameActor::reinit ()
+                      {
+		removeAllBodies();
+		initFromOrg(
+			baseOrg->baseNode,
+			-1
+		);
+	}
 GameActor::GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed)
           {
 		
@@ -365,8 +368,8 @@ GameActor::GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * owner
 		);
 
 	}
-GameActor::~ GameActor ()
-        {
+void GameActor::removeAllBodies ()
+                               {
 		int i;
 
 		// Remove all constraints
@@ -389,6 +392,12 @@ GameActor::~ GameActor ()
 			delete actorJoints[i].body; actorJoints[i].body = NULL;
 			delete actorJoints[i].shape; actorJoints[i].shape = NULL;
 		}
+		
+		actorJoints.clear();
+	}
+GameActor::~ GameActor ()
+        {
+		removeAllBodies();
 	}
 #undef LZZ_INLINE
  

@@ -1835,7 +1835,7 @@ private:
 	FIVector4 centerPoint;
 	FIVector4 linVelocity;
 	
-	
+	bool actionStates[E_ACT_LENGTH*RLBN_LENGTH];
 	
 public:
 	
@@ -1884,36 +1884,22 @@ public:
 	// NPC SPECIFIC //
 	//////////////////
 	
-	int swingType[2];
+	int swingType[4];
+	int isGrabbingId[4];
+	
 	int jumpCooldown;
 	int curHealth;
 	int maxHealth;
-	
-	
-	//bool combatReady;
-	//bool weaponActive;
-	int isGrabbingId[2];
-	bool isHit;
-	bool isJumping;
-	bool isWalking;
-	bool leftActive;
-	bool isSwinging[2];
-	bool isPickingUp;
-	bool rightHandTop;
+		
 	float bindingPower;
 	float swingCount;
 	float blockCount;
 	float lastBlockDis;
-	float lrBounds;
-	float udBounds;
-	double totTime;
-	double totWeaponTime;
+	
 	btVector3 behaviorTarget;
 	btVector3 npcRepel;
-	btVector3 leftVec;
-	btVector3 rightVec;
-	btVector3 weaponVec0[2];
-	btVector3 weaponVec1[2];
+	
+	
 	
 	//////////////////
 	// END SPECIFIC //
@@ -1923,8 +1909,8 @@ public:
 		
 		if (handNum == -1) {
 			return (
-				( isGrabbingId[E_HAND_L] > -1 ) ||
-				( isGrabbingId[E_HAND_R] > -1 )
+				( isGrabbingId[RLBN_LEFT] > -1 ) ||
+				( isGrabbingId[RLBN_RIGT] > -1 )
 			);
 		}
 		else {
@@ -1979,6 +1965,14 @@ public:
 			bodies[i].body->getLinearVelocity() * velMod
 		);
 	}
+	
+	void multVelAng(int i, btVector3 velMod) {
+		
+		bodies[i].body->setAngularVelocity(
+			bodies[i].body->getAngularVelocity() * velMod
+		);
+	}
+	
 	void addVel(int i, btVector3 velMod) {
 		
 		bodies[i].body->setLinearVelocity(
@@ -2370,7 +2364,7 @@ public:
 		
 	// 	BodyStruct* handBody;
 		
-	// 	if (handNum == E_HAND_L) {
+	// 	if (handNum == RLBN_LEFT) {
 	// 		handBody = getBodyByBoneId(getCorrectedName(E_BONE_L_METACARPALS));
 	// 	}
 	// 	else {
@@ -2699,6 +2693,23 @@ public:
 		return (curHealth > 0);
 	}
 	
+	bool getActionState(int action, int handNum) {
+		return actionStates[action*RLBN_LENGTH + handNum];
+	}
+	
+	void setActionState(int action, int handNum, bool newVal) {
+		actionStates[action*RLBN_LENGTH + handNum] = newVal;
+	}
+	
+	void clearActionStates() {
+		int i;
+		
+		for (i = 0; i < E_ACT_LENGTH*RLBN_LENGTH; i++) {
+			actionStates[i] = false;
+		}
+		
+	}
+	
 	
 	void init(
 		BaseObjType _uid,
@@ -2708,24 +2719,14 @@ public:
 		FIVector4* cellPos
 	) {
 		
+		int i;
+		
 		contactCount = 0;
 		
 		//mass = 10.0f;
 		orgId = -1;
 		actorId = -1;
 		isHidden = false;
-		
-		//ang = 0.0f;
-		//angRelative = 0.0f;
-		
-		//targAng = 0.0f;
-		//targAngRelative = 0.75f;
-		
-		totWeaponTime = 0.0;
-		totTime = 0.0;
-		lrBounds = 0.5f;
-		udBounds = 0.5f;
-		//targWeaponStack.push_back(E_WEAPON_POS_RELAXED);
 		
 		maxFrames = 0;
 		objectType = _objectType;
@@ -2736,8 +2737,6 @@ public:
 		
 		isGrabbedByHand = -1;
 		isGrabbedById = -1;
-		isGrabbingId[0] = -1;
-		isGrabbingId[1] = -1;
 		
 		maxHealth = 255;
 		curHealth = maxHealth;
@@ -2746,20 +2745,16 @@ public:
 		swingCount = 0.0f;
 		bindingPower = 1.0f;
 		
-		rightHandTop = false;
-		//weaponActive = false;
+		for (i = 0; i < RLBN_LENGTH; i++) {
+			isGrabbingId[i] = -1;
+			swingType[i] = E_PG_SLSH;
+		}
 		
-		swingType[E_HAND_R] = E_PG_SLSH_R;
-		swingType[E_HAND_L] = E_PG_SLSH_L;
 		zeroZ = false;
-		isHit = false;
 		jumpCooldown = 0;
-		isJumping = false;
-		isWalking = false;
-		leftActive = false;
-		isSwinging[0] = false;
-		isSwinging[1] = false;
-		isPickingUp = false;
+		
+		
+		clearActionStates();
 		
 		isUpright = 
 			(entType == E_ENTTYPE_NPC)
@@ -2772,7 +2767,7 @@ public:
 		uid = _uid;
 		
 		skelOffset = btVector3(0.0f,0.0f,0.0f);
-		startPoint = cellPos->getBTV();//centerPoint.copyFrom(cellPos);
+		startPoint = cellPos->getBTV();
 		
 		bounciness = 0.0f;
 		friction = 0.9;

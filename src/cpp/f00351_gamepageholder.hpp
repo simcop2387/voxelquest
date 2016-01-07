@@ -2096,7 +2096,7 @@ public:
 		
 		if (
 			// (isBlockHolder&&GEN_POLYS_WORLD) ||
-			((!isBlockHolder)&&GEN_POLYS_HOLDER)	
+			((!isBlockHolder)&&POLY_COLLISION)	
 		) {
 			if (
 				listEmpty
@@ -2283,7 +2283,7 @@ public:
 		
 		bool fillPolys = 
 			// (isBlockHolder&&GEN_POLYS_WORLD) ||
-			((!isBlockHolder)&&GEN_POLYS_HOLDER);
+			((!isBlockHolder)&&POLY_COLLISION);
 		
 		
 		

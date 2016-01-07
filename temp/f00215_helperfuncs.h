@@ -142,6 +142,10 @@ void doTraceND(std::string traceVal0 = "", std::string traceVal1 = "",std::strin
 	
 	int i;
 	
+	if (ND_TRACE_OFF) {
+		return;
+	}
+	
 	for (i = 0; i < traceLevel; i++) {
 		std::cout << "|  ";
 	}

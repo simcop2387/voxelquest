@@ -203,6 +203,16 @@ public:
 	
 	//void rotate(FIVector4 axis, )
 	
+	void setTangent(float newVal) {
+		int i;
+		
+		orgVecs[E_OV_TANGENT].setFX(newVal);
+		
+		for (i = 0; i < children.size(); i++) {
+			children[i]->setTangent(newVal);
+		}
+	}
+	
 	void doTransform(
 		Singleton* singleton,
 		GameOrgNode* tempParent

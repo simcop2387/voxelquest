@@ -11,9 +11,11 @@ float GameOrg::gv (float * vals)
 float const GameOrg::baseMat = 12.0f;
 GameOrg::GameOrg ()
                   {
-		
+		basePoseGroup = -1;
+		basePoseRLBN = -1;
+		basePoseStep = -1;
+		targetPoseRLBN = RLBN_NEIT;
 		targetPoseGroup = -1;
-		targetPose = -1;
 		rootObj = NULL;
 		defVecLength = 0.05f;
 	}
@@ -176,13 +178,41 @@ BaseObj * GameOrg::getOwner ()
 		
 		return &(singleton->gw->gameObjects[ownerUID]);
 	}
+void GameOrg::setTPG (int _targetPoseGroup, int _targetPoseRLBN)
+                                                               {
+		
+		if (
+			(targetPoseGroup == _targetPoseGroup) &&
+			(targetPoseRLBN == _targetPoseRLBN)	
+		) {
+			// same pose, let it finish
+		}
+		else {
+			
+			//cout << "setTPG()" << targetPoseGroup << " " << targetPoseRLBN << "\n";
+			
+			targetPoseGroup = _targetPoseGroup;
+			targetPoseRLBN = _targetPoseRLBN;
+			stepCount = 0;
+			
+			totTime = 0.0;
+		}
+		
+		
+	}
 void GameOrg::setToPose (GameOrg * otherOrg, float lerpAmount, int boneId)
-                                                                             {
+          {
 		int i;
 		int j;
 		
 		int begInd;
 		int endInd;
+		
+		if (otherOrg == NULL) {
+			cout << "ARGH\n";
+			//return;
+		}
+		
 		
 		GameOrgNode* sourceNode;
 		GameOrgNode* destNode;
@@ -229,6 +259,8 @@ void GameOrg::updatePose (double curTimeStep)
 		
 		int stepCountMod;
 		
+		float* curData;
+		
 		BaseObj* curOwner = getOwner();
 		
 		if (singleton->editPose) {
@@ -237,146 +269,48 @@ void GameOrg::updatePose (double curTimeStep)
 		else {
 			if (targetPoseGroup > -1) {
 				
+				curData = &(singleton->gamePoseInfo[targetPoseGroup].data[0]);
 				
 				
-				switch (targetPoseGroup) {
-					case E_PG_IDLE:
-						lerpSpeed = 0.003f;
-						targetPose = E_PK_IDLE_LOW + (stepCount%2);
-						timeInterval = 1.0;
-					break;
-					case E_PG_WALK:
-						lerpSpeed = 0.005f;
-						timeInterval = 0.5;
-						targetPose = E_PK_L_FORWARD + (stepCount%4);
-					break;
-					case E_PG_JUMP:
-						lerpSpeed = 0.005f;
-						timeInterval = 1.5;
-						targetPose = E_PK_JUMP;
-					break;
-					case E_PG_DEAD:
-						lerpSpeed = 0.005f;
-						timeInterval = 1.5;
-						targetPose = E_PK_DEAD;
-					break;
-					case E_PG_SLSH_R:
-					case E_PG_SLSH_L:
-					case E_PG_SLSH_B:
-					case E_PG_BACK_R:
-					case E_PG_BACK_L:
-					case E_PG_BACK_B:
-					case E_PG_HACK_R:
-					case E_PG_HACK_L:
-					case E_PG_HACK_B:
-					case E_PG_STAB_R:
-					case E_PG_STAB_L:
-					case E_PG_STAB_B:
+				lerpSpeed = curData[E_PIK_LERPSPEED];
+				timeInterval = curData[E_PIK_TIMEINTERVAL];
+				
+				stepCountMod = stepCount;
+				
+				if (curData[E_PIK_DOLOOP] == 1.0f) {
+					stepCountMod = stepCount%((int)(curData[E_PIK_NUMSTEPS]));
+				}
+				else {
+					if (stepCountMod >= curData[E_PIK_NUMSTEPS]) {
+						stepCountMod = curData[E_PIK_NUMSTEPS]-1;
+					}
 					
-					case E_PG_HOOK_R:
-					case E_PG_HOOK_L:
-					case E_PG_ELBO_R:
-					case E_PG_ELBO_L:
-					case E_PG_UPPR_R:
-					case E_PG_UPPR_L:
-					case E_PG_JABP_R:
-					case E_PG_JABP_L:
-					case E_PG_ROUN_R:
-					case E_PG_ROUN_L:
-					case E_PG_REVR_R:
-					case E_PG_REVR_L:
-					case E_PG_BKIK_R:
-					case E_PG_BKIK_L:
-					case E_PG_FRNT_R:
-					case E_PG_FRNT_L:
-					
-						lerpSpeed = singleton->conVals[E_CONST_ATTACK_LERP_SPEED];//0.02f;
-						timeInterval = singleton->conVals[E_CONST_ATTACK_KEY_INTERVAL];//0.3;
-						
-						stepCountMod = stepCount;
-						if (stepCountMod > 2) {
-							stepCountMod = 2;
-						}
-						
-						targetPose = 
-							E_PK_SLSH_R0 + 
-							(targetPoseGroup-E_PG_SLSH_R)*3 +
-							stepCountMod;
-						
-						if (stepCount > 4) {
-							curOwner->isSwinging[getPoseSide(targetPoseGroup)] = false;
-							targetPoseGroup = E_PG_IDLE;
-						}
-					break;
-					
-					
-					
-					case E_PG_PICKUP:
-						lerpSpeed = 0.01f;
-						timeInterval = 0.4;
-						targetPose = E_PK_PICKUP + stepCount;
-						if (targetPose > E_PK_PICKUP) {
-							curOwner->isPickingUp = false;
-							targetPoseGroup = E_PG_IDLE;
-						}
-					break;
+					if (stepCount > (curData[E_PIK_NUMSTEPS] + curData[E_PIK_EXTRASTEPS])) {
+						curOwner->setActionState(
+							singleton->getActionStateFromPose(targetPoseGroup),
+							targetPoseRLBN,
+							false
+						);
+						setTPG(E_PG_IDLE,RLBN_NEIT);
+						stepCountMod = 0;
+					}
 				}
 				
 				if (totTime > timeInterval) {
 					totTime -= timeInterval;
-					stepCount++;
-					
-					switch (targetPoseGroup) {
-						case E_PG_JUMP:
-							if (curOwner != NULL) {
-								curOwner->isJumping = false;
-							}
-						break;
-					}
-					
+					stepCount++;					
 				}
 				
-				setToPose(singleton->gamePoses[targetPose],lerpSpeed);
+				setToPose(
+					
+					singleton->getPose(
+						targetPoseGroup,targetPoseRLBN,stepCountMod
+					),
+					
+					lerpSpeed
+				);
 			}
 		}
-		
-		
-		
-		
-		
-		
-		// float angMod1 = sin(totTime)*0.5f;
-		// float angMod2 = sin(totTime)*0.5f;
-		// float angMod3 = -(sin(totTime*2.0)+1.0f)*0.5f;
-		// float angMod4 = (sin(totTime*2.0)+1.0f)*0.5f;
-		
-		// GameOrgNode* curNode;
-		
-		// curNode = allNodes[E_BONE_L_UPPERLEG];
-		// curNode->orgVecs[E_OV_THETAPHIRHO].copyFrom(&(
-		// 	curNode->orgVecs[E_OV_TPRORIG]
-		// ));
-		// curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0,0.0,angMod1);
-		
-		// curNode = allNodes[E_BONE_R_UPPERLEG];
-		// curNode->orgVecs[E_OV_THETAPHIRHO].copyFrom(&(
-		// 	curNode->orgVecs[E_OV_TPRORIG]
-		// ));
-		// curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0,0.0,angMod2);
-		
-		
-		// curNode = allNodes[E_BONE_L_LOWERLEG];
-		// curNode->orgVecs[E_OV_THETAPHIRHO].copyFrom(&(
-		// 	curNode->orgVecs[E_OV_TPRORIG]
-		// ));
-		// curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0,0.0,angMod3);
-		
-		// curNode = allNodes[E_BONE_R_LOWERLEG];
-		// curNode->orgVecs[E_OV_THETAPHIRHO].copyFrom(&(
-		// 	curNode->orgVecs[E_OV_TPRORIG]
-		// ));
-		// curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0,0.0,angMod4);
-		
 		
 		
 		
@@ -441,19 +375,19 @@ void GameOrg::initWeapon ()
 			NULL,
 			E_BONE_WEAPON_BASE,
 			
-			baseMat, 0.0f, 0.0f, 0.0f,
+			baseMat, 0.0f, 0.0f, M_PI/2.0f, 
 			0.01f, defVecLength, defVecLength,
 			0.01f, defVecLength, defVecLength,
 			
-			0.0f, 1.0f, 0.0f,
 			1.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f,
 			0.0f, 0.0f, 1.0f
 		);
 		
 		GameOrgNode* curNode = baseNode;
 		
-		curNode = allNodes[E_BONE_WEAPON_END] = curNode->addChild(
-			E_BONE_WEAPON_END,
+		curNode = allNodes[E_BONE_WEAPON_HANDLE] = curNode->addChild(
+			E_BONE_WEAPON_HANDLE,
 			
 			baseMat, 0.0f, 0.0f, 0.0f,
 			1.0f, defVecLength, defVecLength,
@@ -463,13 +397,29 @@ void GameOrg::initWeapon ()
 			// 0.0f,1.0f,0.0f,
 			// 1.0f,0.0f,0.0f
 			
-			0.0f, 1.0f, 0.0f,
 			1.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f,
 			0.0f, 0.0f, 1.0f
 		);
 		
-		curNode = allNodes[E_BONE_WEAPON_0] = curNode->addChild(
+		allNodes[E_BONE_WEAPON_0] = curNode->addChild(
 			E_BONE_WEAPON_0,
+			
+			baseMat, 0.0f, 0.0f, 0.0f,
+			0.25f, defVecLength, defVecLength,
+			0.25f, defVecLength, defVecLength,
+			
+			// 0.0f,0.0f,1.0f,
+			// 0.0f,1.0f,0.0f,
+			// 1.0f,0.0f,0.0f
+			
+			1.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 1.0f
+		);
+		
+		allNodes[E_BONE_WEAPON_1] = curNode->addChild(
+			E_BONE_WEAPON_1,
 			
 			baseMat, 0.0f, 0.0f, 0.0f,
 			0.25f, defVecLength, defVecLength,

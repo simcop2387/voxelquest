@@ -141,6 +141,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		destructCount = 0;
 		
+		sphereMapOn = false;
 		waitingOnDestruction = false;
 		combatOn = true;
 		isPressingMove = false;
@@ -195,6 +196,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		rootObjJS = NULL;
 		guiRootJS = NULL;
 		constRootJS = NULL;
+		poseRootJS = NULL;
 		rbStack = NULL;
 		rbHeightStack = NULL;
 
@@ -329,7 +331,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		// todo: probe area ahead of current ray step to see if near edge
 		
-		currentPose = E_PK_T_POSE;
+		curPoseIndex = 0;
+		curPoseGroup = E_PG_TPOSE;
+		curPoseRLBN = RLBN_NEIT;
+		curPoseStep = 0;
+		
+		
 		limbDataDebug = 0;
 		actorCount = 0;
 		polyCount = 0;
@@ -363,7 +370,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		heightMapMaxInCells = 8192.0f;
 		mapSampScale = 2.0f;
 		int newPitch = (imageHM0->width) * mapSampScale; //*2;
-		mapPitch = (imageHM0->width)*0.5; //newPitch;// //
+		mapPitch = (imageHM0->width); //newPitch;// //
 		
 		cellsPerHolder = 32;
 		holdersPerBlock = 8;
@@ -380,7 +387,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		
-		
+		//gamePoseInfo.reserve(E_PG_LENGTH);
 		
 		globWheelDelta = 0.0f;
 		amountInvalidMove = 0.0f;
@@ -1251,12 +1258,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		}
 		
 		
-		for (i = 0; i < E_PK_LENGTH; i++) {
-			gamePoses.push_back(new GameOrg());
-			gamePoses.back()->init(this,-1,E_ORGTYPE_HUMAN);
-			gamePoses.back()->loadFromFile(poseStrings[i], false);
-			transformOrg(gamePoses.back(), NULL);
-		}
+		loadPoseInfo();
 		
 
 		allInit = true;
@@ -1942,7 +1944,7 @@ void Singleton::fillWithRandomObjects (int parentUID, int gen)
 void Singleton::toggleDDMenu (int x, int y, bool toggled)
                                                       {
 		
-		if (placingGeom) {
+		if (placingGeom||combatMode()) {
 			return;
 		}
 		
@@ -1957,18 +1959,16 @@ void Singleton::toggleDDMenu (int x, int y, bool toggled)
 			
 			objTargeted = ind >= E_OBJ_LENGTH;	
 			
-			if (combatMode()) {
-				if (objTargeted) {
-					setSelInd(ind);				
-				}
-				else {
-					getMarkerPos(x, y);
-					markerFound = true;
-					setSelInd(0);
-				}
+			
+			
+			if (objTargeted) {
+				setSelInd(ind);				
 			}
-			
-			
+			else {
+				getMarkerPos(x, y);
+				markerFound = true;
+				setSelInd(0);
+			}
 			
 			
 			actOnSel = 
@@ -4132,16 +4132,16 @@ GameOrgNode * Singleton::getMirroredNode (GameOrgNode * curNode)
 		if (getCurOrg() == NULL) {
 			return NULL;
 		}
-		GameOrg* testHuman = getCurOrg();
+		GameOrg* testOrg = getCurOrg();
 		
 		if ((curNode->nodeName < E_BONE_C_BEG)&&mirrorOn) {
 			if (curNode->nodeName <= E_BONE_L_END) {
-				return testHuman->baseNode->getNode(
+				return testOrg->baseNode->getNode(
 					curNode->nodeName+(E_BONE_R_BEG-E_BONE_L_BEG)
 				);
 			}
 			else {
-				return testHuman->baseNode->getNode(
+				return testOrg->baseNode->getNode(
 					curNode->nodeName-(E_BONE_R_BEG-E_BONE_L_BEG)
 				);
 			}
@@ -4287,8 +4287,7 @@ void Singleton::moveObject (float dx, float dy)
 		
 		
 		
-		
-		
+				
 
 		if (abDown) {
 			
@@ -4659,15 +4658,15 @@ void Singleton::makeHit (int attackerId, int victimId, int weaponId)
 		
 		
 		
-		for (i = 0; i < E_HAND_LENGTH; i++) {
+		for (i = 0; i < RLBN_LENGTH; i++) {
 			
 			
-			if (geAttacker->isSwinging[i]) {
+			if (geAttacker->getActionState(E_ACT_ISSWINGING,i)) {
 				if (geAttacker->orgId > -1) {
 					curOrg = gameOrgs[geAttacker->orgId];
 					
 					if (curOrg->stepCount > 1) {
-						geAttacker->isSwinging[i] = false;
+						geAttacker->setActionState(E_ACT_ISSWINGING,i,false);
 						
 						
 						if (geVictim == NULL) {
@@ -4676,7 +4675,7 @@ void Singleton::makeHit (int attackerId, int victimId, int weaponId)
 							if (geWeapon != NULL) {
 								playSoundEnt("metalhit5",geAttacker,0.2,0.5f);
 								tempVec1.setBTV(geWeapon->getCenterPoint(E_BDG_CENTER));
-								gameFluid[E_FID_BIG]->pushExplodeBullet(true,&tempVec1,0,3.0f);
+								gameFluid[E_FID_BIG]->pushExplodeBullet(true,&tempVec1,0,4.0f);
 							}
 							
 							
@@ -4698,7 +4697,7 @@ void Singleton::makeHit (int attackerId, int victimId, int weaponId)
 							
 							
 							if (geVictim->entType == E_ENTTYPE_NPC) {
-								geVictim->isHit = true;
+								geVictim->setActionState(E_ACT_ISHIT,RLBN_NEIT,true);
 								geVictim->bindingPower = 0.0f;
 								lastHealth = geVictim->curHealth;
 								geVictim->curHealth -= 32;
@@ -4713,7 +4712,7 @@ void Singleton::makeHit (int attackerId, int victimId, int weaponId)
 									geVictim->bodies[E_BDG_CENTER].body->setAngularFactor(
 										btVector3(1.0f,1.0f,1.0f)
 									);
-									geVictim->bodies[E_BDG_CENTER].body->setAngularVelocity(btVector3(1.0f,1.0f,0.0f)*10.0f);
+									geVictim->bodies[E_BDG_CENTER].body->setAngularVelocity(btVector3(1.0f,1.0f,0.0f)*40.0f);
 									
 									playSoundEnt("dyingm0",geVictim,0.15,0.2f);
 									
@@ -4744,8 +4743,8 @@ bool Singleton::isSwingingWeapon (int actorId, int handNum)
 			return false;
 		}
 		BaseObj* ca = &(gw->gameObjects[actorId]);
-		
-		return (ca->swingType[handNum] >= E_PG_SLSH_R)&&(ca->swingType[handNum] <= E_PG_STAB_B);
+		PoseInfo* curPI = &(gamePoseInfo[ca->swingType[handNum]]);
+		return (curPI->stringData[E_PIK_SUBTYPE].compare("E_SUB_WEAPON") == 0);
 	}
 bool Singleton::isPunching (int actorId, int handNum)
                                                   {
@@ -4753,8 +4752,8 @@ bool Singleton::isPunching (int actorId, int handNum)
 			return false;
 		}
 		BaseObj* ca = &(gw->gameObjects[actorId]);
-		
-		return (ca->swingType[handNum] >= E_PG_HOOK_R)&&(ca->swingType[handNum] <= E_PG_JABP_L);
+		PoseInfo* curPI = &(gamePoseInfo[ca->swingType[handNum]]);
+		return (curPI->stringData[E_PIK_SUBTYPE].compare("E_SUB_PUNCH") == 0);
 	}
 bool Singleton::isKicking (int actorId, int handNum)
                                                  {
@@ -4762,8 +4761,8 @@ bool Singleton::isKicking (int actorId, int handNum)
 			return false;
 		}
 		BaseObj* ca = &(gw->gameObjects[actorId]);
-		
-		return (ca->swingType[handNum] >= E_PG_ROUN_R)&&(ca->swingType[handNum] <= E_PG_FRNT_L);
+		PoseInfo* curPI = &(gamePoseInfo[ca->swingType[handNum]]);
+		return (curPI->stringData[E_PIK_SUBTYPE].compare("E_SUB_KICK") == 0);
 	}
 void Singleton::setSwing (float _mx, float _my, int actorId, int handNum, bool isKick)
           {
@@ -4777,35 +4776,35 @@ void Singleton::setSwing (float _mx, float _my, int actorId, int handNum, bool i
 			return;
 		}
 		
-		int handMod = 0;
+		//int handMod = 0;
 		
 		BaseObj* ca = &(gw->gameObjects[actorId]);
 		
 		bool isHolding = (ca->isGrabbingId[handNum] > -1);
 		
-		// if (handNum == E_HAND_R) {
+		// if (handNum == RLBN_RIGT) {
 		// 	mx *= -1.0f;
 		// }
 		
-		if (handNum == E_HAND_L) {
-			handMod = 1;
-		}
+		// if (handNum == RLBN_LEFT) {
+		// 	handMod = 1;
+		// }
 		
-		int curAttack = E_PG_SLSH_R;
+		int curAttack = E_PG_SLSH;
 		
 		if (abs(my) > abs(mx)) {
 			if (my > 0.0f) {
 				// top
 				
 				if (isKick) {
-					curAttack = E_PG_BKIK_R;
+					curAttack = E_PG_BKIK;
 				}
 				else {
 					if (isHolding) {
-						curAttack = E_PG_HACK_R;
+						curAttack = E_PG_HACK;
 					}
 					else {
-						curAttack = E_PG_UPPR_R;
+						curAttack = E_PG_UPPR;
 					}
 				}
 				
@@ -4815,14 +4814,14 @@ void Singleton::setSwing (float _mx, float _my, int actorId, int handNum, bool i
 				// bottom
 				
 				if (isKick) {
-					curAttack = E_PG_FRNT_R;
+					curAttack = E_PG_FRNT;
 				}
 				else {
 					if (isHolding) {
-						curAttack = E_PG_STAB_R;
+						curAttack = E_PG_STAB;
 					}
 					else {
-						curAttack = E_PG_JABP_R;
+						curAttack = E_PG_JABP;
 					}
 				}
 				
@@ -4833,14 +4832,14 @@ void Singleton::setSwing (float _mx, float _my, int actorId, int handNum, bool i
 				// right
 				
 				if (isKick) {
-					curAttack = E_PG_ROUN_R;
+					curAttack = E_PG_ROUN;
 				}
 				else {
 					if (isHolding) {
-						curAttack = E_PG_SLSH_R;
+						curAttack = E_PG_SLSH;
 					}
 					else {
-						curAttack = E_PG_HOOK_R;
+						curAttack = E_PG_HOOK;
 					}
 				}
 				
@@ -4849,21 +4848,21 @@ void Singleton::setSwing (float _mx, float _my, int actorId, int handNum, bool i
 				// left
 				
 				if (isKick) {
-					curAttack = E_PG_REVR_R;
+					curAttack = E_PG_REVR;
 				}
 				else {
 					if (isHolding) {
-						curAttack = E_PG_BACK_R;
+						curAttack = E_PG_BACK;
 					}
 					else {
-						curAttack = E_PG_ELBO_R;
+						curAttack = E_PG_ELBO;
 					}
 				}
 				
 			}
 		}
 		
-		curAttack += handMod;
+		//curAttack += handMod;
 		
 		ca->swingType[handNum] = curAttack;
 		
@@ -4877,19 +4876,70 @@ void Singleton::nextSwing (int actorId, int handNum)
 		
 		BaseObj* ca = &(gw->gameObjects[actorId]);
 		
-		if (ca->swingType[handNum] < (E_PG_HOOK_R+handNum)) {
-			ca->swingType[handNum] += 3;
+		ca->swingType[handNum]++;
+		
+		if (ca->swingType[handNum] > (E_PG_FRNT)) {
+			ca->swingType[handNum] = (E_PG_SLSH);
+		}
+		
+		
+	}
+GameOrg * Singleton::getPose (int targPoseGroup, int targRLBN, int targStep)
+          {
+		int targPose = gamePoseInfo[targPoseGroup].poseSteps[targRLBN].gamePoseIndex[targStep];
+		
+		if (targPose > -1) {
+			return gamePoses[targPose];
 		}
 		else {
-			ca->swingType[handNum] += 2;
+			return NULL;
 		}
-		
-		if (ca->swingType[handNum] > (E_PG_FRNT_R+handNum)) {
-			ca->swingType[handNum] = (E_PG_SLSH_R+handNum);
+	}
+string Singleton::getPoseString (int targPoseGroup, int targRLBN, int targStep)
+          {
+		return gamePoseInfo[targPoseGroup].poseSteps[targRLBN].fileString[targStep];
+	}
+GameOrg * Singleton::getCurrentPose ()
+                                  {
+		return getPose(curPoseGroup,curPoseRLBN,curPoseStep);
+	}
+string Singleton::getCurrentPoseString ()
+                                      {
+		return getPoseString(curPoseGroup,curPoseRLBN,curPoseStep);
+	}
+int Singleton::getActionStateFromPose (int poseNum)
+                                                {
+		switch (poseNum) {
+			
+			case E_PG_JUMP:
+				return E_ACT_ISJUMPING;
+			break;
+			case E_PG_PICKUP:
+				return E_ACT_ISPICKINGUP;
+			break;
+			case E_PG_WALKFORWARD:
+				return E_ACT_ISWALKING;
+			break;
+			
+			case E_PG_SLSH:
+			case E_PG_BACK:
+			case E_PG_HACK:
+			case E_PG_STAB:
+			case E_PG_HOOK:
+			case E_PG_ELBO:
+			case E_PG_UPPR:
+			case E_PG_JABP:
+			case E_PG_ROUN:
+			case E_PG_REVR:
+			case E_PG_BKIK:
+			case E_PG_FRNT:
+				return E_ACT_ISSWINGING;
+			break;
+			
+			default:
+				return E_ACT_NULL;
+			break;
 		}
-		
-		// cout << "curSwing " << poseStrings[ca->swingType[handNum]] << "\n";
-		
 	}
 void Singleton::makeSwing (int actorId, int handNum)
                                                  {
@@ -4909,16 +4959,20 @@ void Singleton::makeSwing (int actorId, int handNum)
 			return;
 		}
 		
-		// if (actorId == getCurActorUID()) {
-		// 	cout << "yay" << ca->bindingPower << " " << ca->isSwinging[handNum] << "\n";
-		// }
+		int i;
 		
-		if (ca->isSwinging[handNum] || (ca->bindingPower < 0.01f)) {
+		if (ca->getActionState(E_ACT_ISSWINGING,handNum) || (ca->bindingPower < 0.01f)) {
 			
 		}
 		else {
 			
-			ca->isSwinging[1-handNum] = false;
+			for (i = 0; i < RLBN_LENGTH; i++) {
+				if (i != handNum) {
+					ca->setActionState(E_ACT_ISSWINGING,i,false);
+				}
+			}
+			
+			
 			
 			//if (ca->weaponActive) {
 				
@@ -4926,7 +4980,7 @@ void Singleton::makeSwing (int actorId, int handNum)
 				// 	cout << "yay2\n";
 				// }
 				
-				ca->isSwinging[handNum] = true;
+				ca->setActionState(E_ACT_ISSWINGING,handNum,true);
 				curOrg = gameOrgs[ca->orgId];
 				curOrg->stepCount = 0;
 				curOrg->totTime = 0;
@@ -4947,8 +5001,8 @@ void Singleton::makeSwing (int actorId, int handNum)
 				}
 				
 				if (ca->uid != getCurActorUID()) {
-					nextSwing(actorId,E_HAND_L);
-					nextSwing(actorId,E_HAND_R);
+					nextSwing(actorId,RLBN_LEFT);
+					nextSwing(actorId,RLBN_RIGT);
 				}
 				
 				
@@ -4980,7 +5034,7 @@ void Singleton::makeMoveVec (int actorId, btVector3 moveVec)
 		}
 		
 		if (ca->hasBodies()) {
-			ca->isWalking = true;
+			ca->setActionState(E_ACT_ISWALKING,RLBN_NEIT,true);
 			ca->applyImpulse(
 				moveVec*conVals[E_CONST_WALK_AMOUNT]*ca->getMarkerMass(),
 				true,
@@ -4999,7 +5053,7 @@ void Singleton::makeMove (int actorId, btVector3 moveDir, bool relative)
 		}
 		
 		if (ca->hasBodies()) {
-			ca->isWalking = true;
+			ca->setActionState(E_ACT_ISWALKING,RLBN_NEIT,true);
 			
 			
 			newMoveDir *= conVals[E_CONST_WALK_AMOUNT];
@@ -5090,7 +5144,7 @@ void Singleton::makeJump (int actorId, int isUp, float jumpFactor)
 					);
 				}
 				
-				ge->isJumping = true;
+				ge->setActionState(E_ACT_ISJUMPING,RLBN_NEIT,true);
 				ge->jumpCooldown = 100;
 				
 			}
@@ -5111,7 +5165,7 @@ void Singleton::makeJump (int actorId, int isUp, float jumpFactor)
 						0.2f
 					);
 					
-					ge->isJumping = true;
+					ge->setActionState(E_ACT_ISJUMPING,RLBN_NEIT,true);
 					ge->jumpCooldown = 100;
 					
 				}
@@ -5144,26 +5198,194 @@ void Singleton::resetGeom ()
 			paramArrGeom[i] = defaultTemplate[i];
 		}
 	}
+bool Singleton::hasRLBN (int rlbnRes, int k)
+                                         {
+		
+		bool doProc = false;
+		
+		
+		
+		switch (k) {
+			case 0:
+				doProc = ((rlbnRes&RLBN_FLAG_RIGHT) > 0);
+			break;
+			case 1:
+				doProc = ((rlbnRes&RLBN_FLAG_LEFT) > 0);
+			break;
+			case 2:
+				doProc = ((rlbnRes&RLBN_FLAG_BOTH) > 0);
+			break;
+			case 3:
+				doProc = ((rlbnRes&RLBN_FLAG_NEITHER) > 0);
+			break;
+		}
+		
+		return doProc;
+		
+	}
+void Singleton::loadPoseInfo ()
+                            {
+		int i;
+		int j;
+		int k;
+		int m;
+		
+		bool doProc;
+		
+		int numChildren;
+		int numSteps;
+		
+		JSONValue* jv = NULL;
+		JSONValue* curTempl = NULL;
+		JSONValue* tempJV = NULL;
+		JSONValue* poses = NULL;
+		JSONValue* templates = NULL;
+		int rlbnRes;
+		
+		string curString;
+		
+		gamePoses.clear();
+		
+		
+		if (loadJSON("..\\data\\poseinfo.js", &poseRootJS)) {
+			
+			templates = poseRootJS->Child("templates");
+			poses = poseRootJS->Child("poses");
+			//numChildren = poses->CountChildren();
+			
+			for (i = 0; i < E_PG_LENGTH; i++) {
+				jv = poses->Child(poseGroupStrings[i]);
+				
+				curTempl = NULL;
+				
+				if (jv->HasChild("template")) {
+					if (
+						templates->HasChild(jv->Child("template")->string_value)
+					) {
+						curTempl = templates->Child(jv->Child("template")->string_value);
+					}
+					else {
+						cout << "invalid template \n";
+					}
+				}
+				
+				// gamePoseInfo.push_back(PoseInfo());
+				
+				
+				for (j = 0; j < 2; j++) {
+					if (curTempl != NULL) {
+						
+						
+						for (k = 0; k < E_PIK_LENGTH; k++) {
+							if (
+								curTempl->HasChild(E_PIK_STRINGS[k])
+							) {
+								
+								if (curTempl->Child(E_PIK_STRINGS[k])->IsNumber()) {
+									gamePoseInfo[i].data[k] = curTempl->Child(E_PIK_STRINGS[k])->number_value;
+								}
+								else {
+									gamePoseInfo[i].stringData[k] = curTempl->Child(E_PIK_STRINGS[k])->string_value;
+								}
+							}
+						}
+					}
+					curTempl = jv;
+				}
+				
+				rlbnRes = gamePoseInfo[i].data[E_PIK_RLBN];
+				numSteps = gamePoseInfo[i].data[E_PIK_NUMSTEPS];
+				
+				for (k = 0; k < 4; k++) {
+					for (m = 0; m < MAX_POSE_STEPS; m++) {
+						gamePoseInfo[i].poseSteps[k].fileString[m] = "";
+						gamePoseInfo[i].poseSteps[k].gamePoseIndex[m] = -1;
+					}
+				}
+				
+				for ( k = 0; k < 4; k++ ) {
+					
+					if (hasRLBN(rlbnRes,k)) {
+						
+						for (m = 0; m < numSteps; m++) {
+							curString = poseGroupStrings[i];
+							curString.append("_");
+							curString.append(poseSideStrings[k]);
+							curString.append(std::to_string(m));
+							
+							gamePoseInfo[i].poseSteps[k].fileString[m] = curString;
+							gamePoseInfo[i].poseSteps[k].gamePoseIndex[m] = gamePoses.size();
+							
+							
+							gamePoses.push_back(new GameOrg());
+							gamePoses.back()->init(this,-1,E_ORGTYPE_HUMAN);
+							gamePoses.back()->loadFromFile(curString, false);
+							transformOrg(gamePoses.back(), NULL);
+							
+							gamePoses.back()->basePoseGroup = i;
+							gamePoses.back()->basePoseRLBN = k;
+							gamePoses.back()->basePoseStep = m;
+						}
+					}
+					
+				}
+				
+			}
+			
+		}
+		
+		
+		
+	}
 void Singleton::changePose (int amount)
                                     {
 		
-		GameOrg* testHuman = getCurOrg();
+		GameOrg* testOrg = getCurOrg();
 		
-		currentPose += amount;
+		curPoseIndex += amount;
 		
-		if (currentPose == E_PK_LENGTH) {
-			currentPose = E_PK_T_POSE;
+		if (curPoseIndex == gamePoses.size()) {
+			curPoseIndex = 0;
 		}
-		if (currentPose < 0) {
-			currentPose = E_PK_LENGTH-1;
+		if (curPoseIndex < 0) {
+			curPoseIndex = gamePoses.size()-1;
 		}
 		
-		cout << "Current Pose: " << poseStrings[currentPose] << "\n";
+		/*
+		
+		curPoseGroup = E_PG_TPOSE;
+		curPoseRLBN = RLBN_NEIT;
+		curPoseStep = 0;
+		
+		*/
+		
+		int j;
+		float* curData;
+		
+		cout << "Current Pose: " << getCurrentPoseString() << "\n";
+		
+		setPoseFromIndex(curPoseIndex);
+		
+		// curPoseGroup = gamePoses[curPoseIndex].basePoseGroup;
+		// curPoseRLBN = gamePoses[curPoseIndex].basePoseRLBN;
+		// curPoseStep = gamePoses[curPoseIndex].basePoseStep;
 		
 		
-		
-		if (testHuman != NULL) {
-			testHuman->targetPose = currentPose;
+		if (testOrg != NULL) {
+			
+			
+			// curData = &(gamePoseInfo[curPoseGroup].data[0]);
+			
+			// for (j = 0; j < RLBN_LENGTH; j++) {
+				
+			// 	if ( hasRLBN(curData[E_PIK_RLBN],j) ) {
+			// 		curPoseRLBN = j;
+			// 		curPoseStep = 0;
+			// 		break;
+			// 	}
+			// }
+					
+			testOrg->setTPG(curPoseGroup, curPoseRLBN);
 			
 			if (editPose) {
 				loadCurrentPose();
@@ -5173,62 +5395,113 @@ void Singleton::changePose (int amount)
 	}
 void Singleton::saveCurrentPose ()
                                {
-		GameOrg* testHuman = getCurOrg();
+		GameOrg* testOrg = getCurOrg();
 		
 		if (editPose) {
 			
-			if (testHuman != NULL) {
-				testHuman->saveToFile(poseStrings[currentPose]);
-				gamePoses[currentPose]->loadFromFile(poseStrings[currentPose], false);
-				transformOrg(gamePoses[currentPose], NULL);
+			if (testOrg != NULL) {
+				testOrg->saveToFile(getCurrentPoseString());
+				getCurrentPose()->loadFromFile(getCurrentPoseString(), false);
+				transformOrg(getCurrentPose(), NULL);
 				
-				cout << "Saved Pose " << poseStrings[currentPose] << "\n";
+				cout << "Saved Pose " << getCurrentPoseString() << "\n";
 				
 			}
 		}
 	}
-void Singleton::loadNonPoseData (int currentNPD)
-                                             {
-		GameOrg* testHuman = getCurOrg();
+void Singleton::getIndexFromCurrentPose ()
+                                       {
+		curPoseIndex = gamePoseInfo[curPoseGroup].poseSteps[curPoseRLBN].gamePoseIndex[curPoseStep];
+	}
+void Singleton::setPoseFromIndex (int i)
+                                     {
+		curPoseIndex = i;
+		curPoseGroup = gamePoses[curPoseIndex]->basePoseGroup;
+		curPoseRLBN = gamePoses[curPoseIndex]->basePoseRLBN;
+		curPoseStep = gamePoses[curPoseIndex]->basePoseStep;
+	}
+void Singleton::loadNonPoseData (int npdPose, int npdSide, int npdStep)
+                                                                    {
+		GameOrg* testOrg = getCurOrg();
 		
 		int i;
+		int j;
+		int k;
+		
+		float* curData;/// = gamePoseInfo[targetPose].data;
 		
 		if (editPose) {
-			if (testHuman != NULL) {
+			if (testOrg != NULL) {
 				
-				for (i = 0; i < E_PK_LENGTH; i++) {
-					//if (i != E_PK_NON_POSE) {
-						currentPose = i;
-						loadCurrentPose();
-						
-						gamePoses[currentPose]->loadFromFile(poseStrings[currentNPD], true);
-						transformOrg(gamePoses[currentPose], NULL);
-						testHuman->setToPose(gamePoses[currentPose],1.0f);
-						transformOrg(testHuman, NULL);
-						makeDirty();
-						cout << "Loaded Non Pose " << poseStrings[currentPose] << "\n";
-						saveCurrentPose();
-						
-					//}
+				for (i = 0; i < gamePoses.size(); i++) {
+					setPoseFromIndex(i);
+					
+					loadCurrentPose();
+					getCurrentPose()->loadFromFile(getPoseString(npdPose,npdSide,npdStep), true);
+					transformOrg(getCurrentPose(), NULL);
+					testOrg->setToPose(getCurrentPose(),1.0f);
+					transformOrg(testOrg, NULL);
+					makeDirty();
+					cout << "Loaded Non Pose " << getCurrentPoseString() << "\n";
+					saveCurrentPose();
+					
+					
+					
 				}
-				currentPose = E_PK_NON_POSE;
+				
+				
+				// for (i = 0; i < E_PG_LENGTH; i++) {
+				// 	curPoseGroup = i;
+				// 	curData = &(gamePoseInfo[curPoseGroup].data[0]);
+					
+				// 	for (j = 0; j < RLBN_LENGTH; j++) {
+						
+				// 		curPoseRLBN = j;
+						
+				// 		if ( hasRLBN(curData[E_PIK_RLBN],j) ) {
+							
+				// 			for (k = 0; k < curData[E_PIK_NUMSTEPS]; k++) {
+				// 				curPoseStep = k;
+								
+				// 				loadCurrentPose();
+				// 				getCurrentPose()->loadFromFile(getPoseString(npdPose,npdSide,npdStep), true);
+				// 				transformOrg(getCurrentPose(), NULL);
+				// 				testOrg->setToPose(getCurrentPose(),1.0f);
+				// 				transformOrg(testOrg, NULL);
+				// 				makeDirty();
+				// 				cout << "Loaded Non Pose " << getCurrentPoseString() << "\n";
+				// 				saveCurrentPose();
+								
+								
+				// 			}
+							
+				// 		}
+						
+				// 	}
+					
+				// }
+				curPoseGroup = npdPose;
+				curPoseRLBN = npdSide;
+				curPoseStep = npdStep;
+				getIndexFromCurrentPose();
+				
 				loadCurrentPose();
 			}
 		}
 	}
 void Singleton::loadCurrentPose ()
                                {
-		GameOrg* testHuman = getCurOrg();
+		GameOrg* testOrg = getCurOrg();
 		
 		if (editPose) {
-			if (testHuman != NULL) {
+			if (testOrg != NULL) {
 				
-				gamePoses[currentPose]->loadFromFile(poseStrings[currentPose], false);
-				transformOrg(gamePoses[currentPose], NULL);
-				testHuman->setToPose(gamePoses[currentPose],1.0f);
-				transformOrg(testHuman, NULL);
+				getCurrentPose()->loadFromFile(getCurrentPoseString(), false);
+				transformOrg(getCurrentPose(), NULL);
+				testOrg->setToPose(getCurrentPose(),1.0f);
+				transformOrg(testOrg, NULL);
 				makeDirty();
-				cout << "Loaded Pose " << poseStrings[currentPose] << "\n";
+				cout << "Loaded Pose " << getCurrentPoseString() << "\n";
 				
 			}
 		}
@@ -5261,7 +5534,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 		
 		keysPressed[newKey] = keyDown;
 		
-		GameOrg* testHuman = getCurOrg();
+		GameOrg* testOrg = getCurOrg();
 		
 		
 		if (keyDown) {
@@ -5386,7 +5659,6 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					// 	}
 					// 	else {
 					// 		pathfindingOn = true;
-							
 					// 	}
 					// }
 					// else {
@@ -5422,6 +5694,11 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						}
 						else {
 							setCurrentActor(&(gw->gameObjects[selObjInd]));
+							
+							if (currentActor != NULL) {
+								
+							}
+							
 							
 							playSoundEnt(
 								"swimming0",
@@ -5522,8 +5799,8 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 				
 				case 'n':
-					nextSwing(getCurActorUID(),E_HAND_L);
-					nextSwing(getCurActorUID(),E_HAND_R);
+					nextSwing(getCurActorUID(),RLBN_LEFT);
+					nextSwing(getCurActorUID(),RLBN_RIGT);
 					
 				break;
 				
@@ -5615,6 +5892,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				case 'o':
 					//targetTimeOfDay = 1.0f-targetTimeOfDay;
+					sphereMapOn = !sphereMapOn;
 					
 					break;
 
@@ -5691,12 +5969,12 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				
 				case 'C':
-					if (currentPose == E_PK_NON_POSE) {
+					if (curPoseGroup == E_PG_NONPOSE) {
 						saveCurrentPose();
-						loadNonPoseData(E_PK_NON_POSE);
+						loadNonPoseData(E_PG_NONPOSE, RLBN_NEIT, 0);
 					}
 					else {
-						cout << "Error, switch to E_PK_NON_POSE\n";
+						cout << "Error, switch to E_PG_NONPOSE\n";
 					}
 				
 					
@@ -5786,9 +6064,12 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				case 'd':
 					// reserved for movement
 				break;
+				
+				// 127 del
+				// 8 backspace
 
 				default:
-					cout << "No code for key: " << key << "\n";
+					cout << "No code for key: " << ((int)key) << "\n";
 					break;
 			}
 		}
@@ -6412,11 +6693,11 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		int curHand = -1;
 		
 		if (lbClicked) {
-			curHand = E_HAND_L;
+			curHand = RLBN_LEFT;
 			
 		}
 		if (rbClicked) {
-			curHand = E_HAND_R;
+			curHand = RLBN_RIGT;
 			
 		}
 		
@@ -6457,10 +6738,10 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 					mx*2.0f - 1.0f,
 					my*2.0f - 1.0f,
 					currentActor->uid,
-					E_HAND_L,
-					bCtrl //wasDoubleClick[E_HAND_L]
+					RLBN_LEFT,
+					bCtrl //wasDoubleClick[RLBN_LEFT]
 				);
-				makeSwing(currentActor->uid, E_HAND_L);
+				makeSwing(currentActor->uid, RLBN_LEFT);
 				return;
 			}
 			if (rbClicked) {
@@ -6468,10 +6749,10 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 					mx*2.0f - 1.0f,
 					my*2.0f - 1.0f,
 					currentActor->uid,
-					E_HAND_R,
-					bCtrl //wasDoubleClick[E_HAND_R]
+					RLBN_RIGT,
+					bCtrl //wasDoubleClick[RLBN_RIGT]
 				);
-				makeSwing(currentActor->uid, E_HAND_R);
+				makeSwing(currentActor->uid, RLBN_RIGT);
 				return;
 			}
 			
@@ -6833,7 +7114,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 						draggingFromInd = 0;
 						draggingFromType = E_DT_NOTHING;
 						
-						if (wasDoubleClick[E_HAND_L]&&(currentActor == NULL)) {
+						if (wasDoubleClick[RLBN_LEFT]&&(currentActor == NULL)) {
 							toggleCont(selObjInd, true);
 						}
 						
@@ -6986,7 +7267,7 @@ void Singleton::makeDirty ()
 			currentActor->wakeAll();
 		}
 		
-		//testHuman->gph->childrenDirty = true;
+		//testOrg->gph->childrenDirty = true;
 	}
 void Singleton::setSelNode (GameOrgNode * newNode)
                                               {
@@ -7249,7 +7530,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 		
 		
 		// if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
-		// 	ca->isWalking = true;
+		// 	ca->setActionState(E_ACT_ISWALKING,RLBN_NEIT,true);
 		// 	if (ca->hasBodies()) {
 		// 		ca->makeWalk(
 		// 			btVector3(
@@ -7263,7 +7544,7 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 		// }
 		
 		// if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
-		// 	ca->isWalking = true;
+		// 	ca->setActionState(E_ACT_ISWALKING,RLBN_NEIT,true);
 		// 	if (ca->hasBodies()) {
 		// 		ca->makeWalk(
 		// 			btVector3(
@@ -7700,7 +7981,7 @@ void Singleton::grabThrowObj (int actorId, int _handNum)
 				0.2f
 			);
 			
-			if (handNum == E_HAND_L) {
+			if (handNum == RLBN_LEFT) {
 				curOrg->allNodes[
 					getCorrectedName(E_BONE_L_METACARPALS)
 				]->children.pop_back();
@@ -7746,7 +8027,7 @@ void Singleton::grabThrowObj (int actorId, int _handNum)
 				
 				curOrg->stepCount = 0;
 				curOrg->totTime = 0;
-				ca->isPickingUp = true;
+				ca->setActionState(E_ACT_ISPICKINGUP,RLBN_NEIT,true);
 				
 				grabObj = &(gw->gameObjects[res]);
 				grabObjOrg = gameOrgs[grabObj->orgId];
@@ -7763,7 +8044,7 @@ void Singleton::grabThrowObj (int actorId, int _handNum)
 				ca->isGrabbingId[handNum] = res;
 				grabObj->setGrabbedBy(actorId, handNum);
 				
-				if (handNum == E_HAND_L) {
+				if (handNum == RLBN_LEFT) {
 					curOrg->allNodes[
 						getCorrectedName(E_BONE_L_METACARPALS)
 					]->children.push_back(
@@ -7773,6 +8054,8 @@ void Singleton::grabThrowObj (int actorId, int _handNum)
 						curOrg->allNodes[
 							getCorrectedName(E_BONE_L_METACARPALS)
 						];
+					
+					//grabObjOrg->allNodes[E_BONE_WEAPON_BASE]->setTangent(-1.0f);
 				}
 				else {
 					curOrg->allNodes[
@@ -7784,6 +8067,8 @@ void Singleton::grabThrowObj (int actorId, int _handNum)
 						curOrg->allNodes[
 							getCorrectedName(E_BONE_R_METACARPALS)
 						];
+					
+					//grabObjOrg->allNodes[E_BONE_WEAPON_BASE]->setTangent(1.0f);
 				}
 				
 				
@@ -7791,7 +8076,6 @@ void Singleton::grabThrowObj (int actorId, int _handNum)
 				//cout << "grab " << ca->isGrabbingId[handNum] << " " << grabObj->isGrabbedById << "\n";
 				
 			}
-			
 			
 		}
 		
@@ -7876,7 +8160,7 @@ void Singleton::resetActiveNode ()
 		
 		GameOrgNode* curNode = NULL;
 		
-		GameOrg* testHuman = getCurOrg();
+		GameOrg* testOrg = getCurOrg();
 		
 		if (selectedNode == NULL) {
 			
@@ -7893,11 +8177,9 @@ void Singleton::resetActiveNode ()
 			
 			
 			
-			if (testHuman != NULL) {
+			if (testOrg != NULL) {
 				
-				
-				
-				testHuman->setToPose(gamePoses[E_PK_T_POSE],1.0,curNode->nodeName);
+				testOrg->setToPose(getPose(E_PG_TPOSE,RLBN_NEIT,0),1.0,curNode->nodeName);
 			}
 			
 			//curNode->rotThe = 0.0f;
@@ -7916,7 +8198,7 @@ void Singleton::resetActiveNode ()
 bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
                                                                          {
 		// tempVec3.setFXYZRef(mousePosWS);
-		// tempVec3.addXYZRef(&(testHuman->basePosition),-1.0f);
+		// tempVec3.addXYZRef(&(testOrg->basePosition),-1.0f);
 		
 		//worldToScreenBase(&tempVec1, mousePosWS);
 		
@@ -7925,7 +8207,7 @@ bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
 		if (getCurOrg() == NULL) {
 			return false;
 		}
-		GameOrg* testHuman = getCurOrg();
+		GameOrg* testOrg = getCurOrg();
 		
 		bestNode = NULL;
 		
@@ -7951,7 +8233,7 @@ bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
 				
 				
 				if (boneId > -1) {
-					bestNode = testHuman->allNodes[boneId];
+					bestNode = testOrg->allNodes[boneId];
 					
 					// if (mirrorOn) {
 					// 	mirNode = getMirroredNode(bestNode);
@@ -7984,7 +8266,7 @@ bool Singleton::updateNearestOrgNode (bool setActive, FIVector4 * mousePosWS)
 		
 		// bestNodeDis = 99999.0f;
 		// findNearestOrgNode(
-		// 	testHuman->baseNode,
+		// 	testOrg->baseNode,
 		// 	mousePosWS//&tempVec1
 		// );
 		
@@ -8222,7 +8504,7 @@ bool Singleton::processJSONFromString (string * sourceBuffer, JSONValue * * dest
 		if (*destObj == NULL)
 		{
 			doTraceND("Invalid JSON\n\n");
-			cout << sourceBuffer << "\n\n";
+			//cout << sourceBuffer << "\n\n";
 			return false;
 		}
 		else
@@ -8601,7 +8883,7 @@ void Singleton::endFieldInput (bool success)
 		if (getCurOrg() == NULL) {
 			return;
 		}
-		GameOrg* testHuman = getCurOrg();
+		GameOrg* testOrg = getCurOrg();
 		
 		inputOn = false;
 		fieldMenu->visible = false;
@@ -8612,24 +8894,24 @@ void Singleton::endFieldInput (bool success)
 			switch (fieldCallback) {
 				case E_FC_SAVEORG:
 				
-					tempVal = testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].getFZ();
+					tempVal = testOrg->baseNode->orgVecs[E_OV_THETAPHIRHO].getFZ();
 				
-					testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].setFZ(0.0f);
-					transformOrg(testHuman, NULL);
+					testOrg->baseNode->orgVecs[E_OV_THETAPHIRHO].setFZ(0.0f);
+					transformOrg(testOrg, NULL);
 									
-					testHuman->saveToFile(currentFieldString);
+					testOrg->saveToFile(currentFieldString);
 					
-					testHuman->baseNode->orgVecs[E_OV_THETAPHIRHO].setFZ(tempVal);
-					transformOrg(testHuman, NULL);
+					testOrg->baseNode->orgVecs[E_OV_THETAPHIRHO].setFZ(tempVal);
+					transformOrg(testOrg, NULL);
 					
 				break;
 				case E_FC_LOADORG:
-					testHuman->loadFromFile(currentFieldString, false);
+					testOrg->loadFromFile(currentFieldString, false);
 					//orientRotation();
 					if (currentActor != NULL) {
 						//currentActor->curRot = 1;
 					}
-					transformOrg(testHuman, NULL);
+					transformOrg(testOrg, NULL);
 					makeDirty();
 					
 				break;
@@ -8667,7 +8949,7 @@ void Singleton::loadConstants ()
 		if (loadJSON("..\\data\\constants.js", &constRootJS)) {
 			
 			for (i = 0; i < E_CONST_LENGTH; i++) {
-				conVals[i] = getConst(constStrings[i]);
+				conVals[i] = getConst(E_CONST_STRINGS[i]);
 			}
 			
 		}

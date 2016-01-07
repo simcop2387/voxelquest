@@ -206,7 +206,8 @@ const int TOT_STEPS_POLY = 16;
 
 const float MAX_SHAD_DIS_PRIM = 64.0;
 const int HARD_STEPS = 8;
-const int SOFT_STEPS = 8;
+const int HARD_STEPS_PRIM = 16;
+const int SOFT_STEPS = 32;
 
 
 //x: basic pass, y: detail pass
@@ -349,6 +350,9 @@ vec2 globTexWater;
 float globWoodDir;
 vec3 globWoodCoords;
 
+float globBestLimbDepth;
+float globBoneRad;
+bool globPrimaryRay;
 int globBestLimbInd;
 int globNumPrims;
 float globWaterMod;
@@ -2186,6 +2190,8 @@ float postLineStep(
 
 vec3 normSolid( vec3 pos )
 {
+		globPrimaryRay = false;
+	
 		vec3 eps = vec3( 0.0, 0.0, 0.0 );
 		eps.x = 0.025;
 		
@@ -2193,12 +2199,15 @@ vec3 normSolid( vec3 pos )
 				mapSolid(pos+eps.xyy) - mapSolid(pos-eps.xyy),
 				mapSolid(pos+eps.yxy) - mapSolid(pos-eps.yxy),
 				mapSolid(pos+eps.yyx) - mapSolid(pos-eps.yyx) );
+		
+		globPrimaryRay = true;
 		return normalize(nor);
 }
 
 
 float softShadowPrim( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
 {
+		globPrimaryRay = false;
 		float res = 1.0;
 		float t = tmin;
 		float h;
@@ -2209,6 +2218,7 @@ float softShadowPrim( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
 				t += clamp( h, 0.02, 0.20 );
 				if( h<0.001 || t>tmax ) break;
 		}
+		globPrimaryRay = true;
 		return clamp( res, 0.0, 1.0 );
 
 }
@@ -2219,6 +2229,7 @@ float hardShadowPrim(
 		vec2 minMaxT,
 		float fNumSteps
 ) {
+		globPrimaryRay = false;
 		int p = 0;
 		int numSteps;
 		
@@ -2246,6 +2257,8 @@ float hardShadowPrim(
 				
 				t += res;
 		}
+		
+		globPrimaryRay = true;
 		
 		return t;
 		
@@ -2555,6 +2568,9 @@ float postLimb(vec3 pos) {
 		
 		offVec = normalize(pos.xyz - closestPoint.xyz);
 		
+		if (globPrimaryRay) {
+			globBoneRad = min(globBoneRad,closestPoint.w);
+		}
 		
 		
 		lerpVal = distance(closestPoint.xyz,seg1a)/(ln0Vec.x*2.0);
@@ -2590,7 +2606,10 @@ float postLimb(vec3 pos) {
 		(minDis.x <= DYN_PREC*1.5)	&&
 		(minDis.y >= 0.0)		
 	) {
-		globBestLimbInd = int(minDis.y);
+		if (globPrimaryRay) {
+			globBestLimbInd = int(minDis.y);
+		}
+		
 	}
 	
 	return minDis.x*0.5;
@@ -3285,7 +3304,7 @@ float mapWater( vec3 pos ) {
 ^INCLUDE:MapLand^
 
 
-vec2 mapDyn(vec3 pos) {
+vec3 mapDyn(vec3 pos) {
 		
 		int i;
 		float multVal = 1.5;
@@ -3374,6 +3393,8 @@ vec2 mapDyn(vec3 pos) {
 		    postLimb(pos),
 		    TEX_EARTH
 		));
+				
+		float oldX = res.x;
 		
 		res.x = opS(
 			res.x,
@@ -3426,7 +3447,7 @@ vec2 mapDyn(vec3 pos) {
 		// #endif
 		
 		
-		return res;
+		return vec3(res,oldX);
 }
 
 
@@ -3752,6 +3773,7 @@ vec4 mapLandMicro(vec3 pos) { //, vec3 terNorm
 
 vec3 normDyn( vec3 pos )
 {
+		globPrimaryRay = false;
 		vec3 eps = vec3( 0.0, 0.0, 0.0 );
 		eps.x = 0.05;
 		
@@ -3759,6 +3781,7 @@ vec3 normDyn( vec3 pos )
 				mapDyn(pos+eps.xyy).x - mapDyn(pos-eps.xyy).x,
 				mapDyn(pos+eps.yxy).x - mapDyn(pos-eps.yxy).x,
 				mapDyn(pos+eps.yyx).x - mapDyn(pos-eps.yyx).x );
+		globPrimaryRay = true;
 		return normalize(nor);
 }
 
@@ -3771,7 +3794,7 @@ vec4 castDyn(
 		int p = 0;
 		int numSteps;
 		
-		vec2 res = vec2(0.0);
+		vec3 res = vec3(0.0);
 		float t;
 		float fp;
 		
@@ -3823,6 +3846,11 @@ vec4 castDyn(
 						
 						t += res.x;
 				}
+				
+				if (res.z < res.x) {
+					globBestLimbDepth = res.z;
+				}
+				
 				globCurSteps += float(p);
 				
 				stepCount += float(p);
@@ -3880,6 +3908,7 @@ vec4 castDyn(
 
 vec3 normWater( vec3 pos )
 {
+		globPrimaryRay = false;
 		vec3 eps = vec3( 0.0, 0.0, 0.0 );
 		eps.x = 0.1;
 		
@@ -3887,6 +3916,7 @@ vec3 normWater( vec3 pos )
 				mapWater(pos+eps.xyy) - mapWater(pos-eps.xyy),
 				mapWater(pos+eps.yxy) - mapWater(pos-eps.yxy),
 				mapWater(pos+eps.yyx) - mapWater(pos-eps.yyx) );
+		globPrimaryRay = true;
 		return normalize(nor);
 }
 
@@ -3979,6 +4009,7 @@ vec4 castWater(
 
 vec3 normLandMicro( vec3 pos, vec3 terNorm, float camDis )
 {
+		globPrimaryRay = false;
 		vec3 eps = vec3( 0.0, 0.0, 0.0 );
 		eps.x = mix(0.1,20.0,camDis);
 		
@@ -3986,11 +4017,13 @@ vec3 normLandMicro( vec3 pos, vec3 terNorm, float camDis )
 				mapLandMicro(pos+eps.xyy).x - mapLandMicro(pos-eps.xyy).x,
 				mapLandMicro(pos+eps.yxy).x - mapLandMicro(pos-eps.yxy).x,
 				mapLandMicro(pos+eps.yyx).x - mapLandMicro(pos-eps.yyx).x );
+		globPrimaryRay = true;
 		return normalize(nor);
 }
 
 vec3 normLand( vec3 pos )
 {
+		globPrimaryRay = false;
 		vec3 eps = vec3( 0.0, 0.0, 0.0 );
 		eps.x = 0.1;
 		
@@ -3998,6 +4031,7 @@ vec3 normLand( vec3 pos )
 				mapLand(pos+eps.xyy).x - mapLand(pos-eps.xyy).x,
 				mapLand(pos+eps.yxy).x - mapLand(pos-eps.yxy).x,
 				mapLand(pos+eps.yyx).x - mapLand(pos-eps.yyx).x );
+		globPrimaryRay = true;
 		return normalize(nor);
 }
 
@@ -4247,26 +4281,35 @@ vec4 castLand(
 					}
 					else {
 						globTexEarth.x = TEX_TREEWOOD;
-						globTexEarth.y = (sin(res2.y*4.0)+1.0)*0.5;
+						globTexEarth.y = 
+							abs(
+									sin(pos.z/256.0)*
+									sin(pos.x/512.0)*
+									sin(pos.y/160.0)
+							);
+							//(sin(res2.y*4.0)+1.0)*0.5;
 					}
 				}
-				// else {
-					
-				// }
 				
-				if (isGrass*(1.0-isInTer) > 0.001) { //+float(res2.y == -2.0)
-					globTexEarth.x = TEX_GRASS;
-					globTexEarth.y = clamp(myVal2,0.0,1.0);
+				
+				
+				if (isGrass*(1.0-isInTer) > 0.001) {
+					if ((pos.z-100.0) > ((seaLevel+myVal2*0.01)*heightMapMaxInCells)) {
+						globTexEarth.x = TEX_GRASS;
+						globTexEarth.y = clamp(myVal2,0.0,1.0);
+					}
 				}
 				
-				//
+				if ((pos.z-20.0) < ((seaLevel+myVal2*0.005)*heightMapMaxInCells)) {
+					if (landNorm.z > 0.5) {
+						globTexEarth.x = TEX_SAND;
+					}
+				}
 				
 				if ((snowVal*(1.0-isInTer) > 0.04)&&(globTexEarth.x != TEX_BARK)) {
 					globTexEarth.x = TEX_SNOW;
 					globTexEarth.y = clamp(snowVal*4.0,0.0,1.0);
 				}
-				
-				
 				
 				
 				
@@ -4293,6 +4336,7 @@ vec4 castLand(
 
 float softShadow( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
 {
+		globPrimaryRay = false;
 		float res = 1.0;
 		float t = tmin;
 		float h;
@@ -4300,56 +4344,57 @@ float softShadow( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
 		for( int i=0; i<numSteps; i++ )
 		{
 				h = 
-				//min(
-					mapLand( ro + rd*t ).x
-				//	,mapDyn(ro + rd*t).x
-				//)
+				min(
+					mapLand( ro + rd*t ).x*0.25
+					,mapDyn(ro + rd*t).x*2.0
+				)
 				;
-				res = min( res, 8.0*h/t );
-				t += clamp( h, 0.02, 0.10 );
+				res = min( res, 2.0*h/t );
+				t += clamp( h, 0.02, 0.5 );
 				if( h<0.001 || t>tmax ) break;
 		}
+		globPrimaryRay = true;
 		return clamp( res, 0.0, 1.0 );
 
 }
 
-float hardShadowDyn(
-		vec3 ro,
-		vec3 rd,
-		vec2 minMaxT,
-		float fNumSteps
-) {
-		int p = 0;
-		int numSteps;
+// float hardShadowDyn(
+// 		vec3 ro,
+// 		vec3 rd,
+// 		vec2 minMaxT,
+// 		float fNumSteps
+// ) {
+// 		int p = 0;
+// 		int numSteps;
 		
-		float res = (0.0);
-		float t;
-		float fp;
+// 		float res = (0.0);
+// 		float t;
+// 		float fp;
 		
-		vec3 pos;
+// 		vec3 pos;
 		
-		float SHAD_PREC = 0.1;
+// 		float SHAD_PREC = 0.1;
 		
-		t = minMaxT.x;
-		numSteps = int(fNumSteps);
-		for( p = 0; p < numSteps; p++ ) {
+// 		t = minMaxT.x;
+// 		numSteps = int(fNumSteps);
+// 		for( p = 0; p < numSteps; p++ ) {
 				
-				fp = float(p)/fNumSteps;
+// 				fp = float(p)/fNumSteps;
 				
-				pos = ro+rd*t;
+// 				pos = ro+rd*t;
 				
-				res = mapDyn( pos ).x;
+// 				res = mapDyn( pos ).x;
 				
-				if (res < SHAD_PREC ) {
-						break;
-				}
+// 				if (res < SHAD_PREC ) {
+// 						break;
+// 				}
 				
-				t += res;
-		}
+// 				t += res;
+// 		}
 		
-		return t;
+// 		return t;
 		
-}
+// }
 
 float hardShadow( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
 {
@@ -4372,7 +4417,7 @@ float hardShadow( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
 				// )
 				;
 				
-				res += -clamp(h,-1.0,0.01);
+				res += -clamp(h*0.1,-1.0,0.0);
 				
 				//res = min( res, 8.0*h/t );
 				
@@ -4649,6 +4694,9 @@ void main() {
 		globTest = 0.0;
 		globNumPrims = 0;
 		globBestLimbInd = -1;
+		globPrimaryRay = true;
+		globBoneRad = 99999.0;
+		globBestLimbDepth = 99999.0;
 		primIdListLength = 0;
 		
 		globWoodDir = 0.0;
@@ -5276,12 +5324,30 @@ void main() {
 										datVec.w
 									);
 									
+									if (globBestLimbDepth < -0.01) {
+										
+										earthMatRes = vec2(
+											TEX_MEAT,
+											datVec.w
+										);
+										
+										
+										if (globBoneRad < 0.05) {
+											earthMatRes = vec2(
+												TEX_BONE,
+												datVec.w
+											);
+										}
+										
+									}
+									
+									
+									
+									
 								}
 								
 						}
 				//}
-				
-				
 				
 				
 				float shadDis = min(landVal,min(terSamp4.x,terSamp4.z) );
@@ -5300,22 +5366,23 @@ void main() {
 				preLimb(ro+rd*(shadDis-0.1), -lightVec);
 				
 				
-				// distance from light
-				hardShadowDynRes = hardShadowDyn(
-					ro+rd*shadDis-lightVec*maxT,
-					lightVec,
-					vec2(0.0, maxT),
-					HARD_STEPS
-				);
+				// // distance from light
+				// hardShadowDynRes = hardShadowDyn(
+				// 	ro+rd*shadDis-lightVec*maxT,
+				// 	lightVec,
+				// 	vec2(0.0, maxT),
+				// 	HARD_STEPS
+				// );
 				
 				
 				shadowRes = 
 				//1.0;
 				clamp((
-						(clamp((hardShadowDynRes+1.0-maxT)/1.0,0.0,1.0))
-						* hardShadow( ro+rd*(shadDis-0.1), -lightVec, 0.02, 32.0, HARD_STEPS ) 
-						* hardShadow( ro+rd*(shadDis-0.1), -lightVec, 2.0, 512.0, HARD_STEPS )
-						* softShadow( ro+rd*(shadDis-0.1), -lightVec, 0.02, 16.0, SOFT_STEPS )
+						//(clamp((hardShadowDynRes+1.0-maxT)/1.0,0.0,1.0))fe
+						// * hardShadow( ro+rd*(shadDis), -lightVec, 0.02, 32.0, HARD_STEPS*4 ) 
+						(hardShadow( ro+rd*(shadDis-0.1), -lightVec, 20.0, 512.0, HARD_STEPS )*0.75+0.25)
+						*
+						pow(softShadow( ro+rd*(shadDis-0.02), -lightVec, 0.02, 20.0, SOFT_STEPS ),2.0)
 				),0.0,1.0);
 				
 				
@@ -5410,7 +5477,6 @@ void main() {
 				}
 				
 				
-				
 				if (solidVal == MAX_CAM_VOL_DIS) {
 						solidVal = MAX_CAM_DIS;
 				}
@@ -5461,7 +5527,7 @@ void main() {
 						pos-lightVec*maxT,
 						lightVec,
 						vec2(0.0, maxT),
-						HARD_STEPS*2
+						HARD_STEPS_PRIM
 					);
 					
 					
@@ -5547,6 +5613,8 @@ void main() {
 				// if (i == 0) {
 				//     tempNor = nor;
 				// }
+				
+				//shadowRes *= clamp(globCurSteps/float(TOT_STEPS*2.0),0.0,1.0);
 				
 				if (testOn) {
 						

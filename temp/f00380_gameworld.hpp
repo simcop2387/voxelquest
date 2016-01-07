@@ -1005,7 +1005,7 @@ public:
 		// }
 		
 		
-		// if (GEN_POLYS_WORLD||GEN_POLYS_HOLDER) {
+		// if (GEN_POLYS_WORLD||POLY_COLLISION) {
 		// 	glEnable(GL_DEPTH_TEST);
 		// 	//glEnable(GL_CULL_FACE);
 			
@@ -1025,7 +1025,7 @@ public:
 		// 	if (GEN_POLYS_WORLD) {
 		// 		drawPolys(polyFBOStrings[0], 0, 0,true);
 		// 	}
-		// 	if (GEN_POLYS_HOLDER) {
+		// 	if (POLY_COLLISION) {
 		// 		drawPolys(polyFBOStrings[0], 0, DEF_VOL_SIZE/singleton->cellsPerHolder + 1,false);
 		// 	}
 			
@@ -1779,7 +1779,10 @@ public:
 		
 		
 		singleton->setShaderFloat("invalidCount", invalidCount/invalidCountMax);
-		singleton->setShaderInt("doSphereMap", (int)(doSphereMap));
+		singleton->setShaderInt("doSphereMap",
+			// (int)(doSphereMap)
+			(int)(singleton->sphereMapOn)
+		);
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
 		singleton->setShaderInt("skipPrim", (int)(skipPrim));
 		singleton->setShaderInt("placingGeom", (int)(singleton->placingGeom));
@@ -1975,6 +1978,7 @@ public:
 	) {
 		
 		
+		BaseObj* grabber;
 		
 		
 		bool doProc = false;
@@ -2007,8 +2011,18 @@ public:
 			//}
 			
 			if (singleton->currentActor != NULL) {
-				lineSeg[0].addXYZ(0.0f,0.0f,singleton->currentActor->skelOffset.getZ());
-				lineSeg[1].addXYZ(0.0f,0.0f,singleton->currentActor->skelOffset.getZ());
+				
+				
+				if (singleton->currentActor->isGrabbedById > -1) {
+					grabber = &(singleton->gw->gameObjects[singleton->currentActor->isGrabbedById]);
+				}
+				else {
+					grabber = singleton->currentActor;
+				}
+				
+				
+				lineSeg[0].addXYZ(0.0f,0.0f,grabber->skelOffset.getZ());
+				lineSeg[1].addXYZ(0.0f,0.0f,grabber->skelOffset.getZ());
 			}
 			
 			
@@ -2049,7 +2063,7 @@ public:
 			
 		}
 		else {
-			singleton->gamePhysics->addBoxFromObj(_uid);
+			singleton->gamePhysics->addBoxFromObj(_uid, false);
 		}
 		
 	}
@@ -3523,7 +3537,7 @@ public:
 			avgSL = (minSL+maxSL)/2;
 		}
 
-		seaLevel = 80;
+		seaLevel = 100;
 
 		
 		singleton->copyFBO("hmFBOLinear", "hmFBOLinearBig");
@@ -4916,6 +4930,8 @@ UPDATE_LIGHTS_END:
 		
 		btVector3 boxCenter;
 		btVector3 boxRadius;
+		BaseObj* grabber;
+		
 		
 		float xrotrad = singleton->getCamRot(0);
 		
@@ -4948,10 +4964,21 @@ UPDATE_LIGHTS_END:
 		
 		singleton->setShaderFloat("objectId",0.0);
 		
+		
+		
 		// skeleton outline		
 		if (singleton->currentActor != NULL) {
 			if (singleton->currentActor->orgId > -1) {
-				singleton->currentActor->bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
+				
+				if (singleton->currentActor->isGrabbedById > -1) {
+					grabber = &(singleton->gw->gameObjects[singleton->currentActor->isGrabbedById]);
+				}
+				else {
+					grabber = singleton->currentActor;
+				}
+				
+				
+				grabber->bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
 				
 				singleton->setShaderMatrix4x4("objmat",myMat,1);
 				
@@ -5430,14 +5457,14 @@ UPDATE_LIGHTS_END:
 				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
 			
-			if (singleton->currentActor == NULL) {
+			//if (singleton->currentActor == NULL) {
 				singleton->setShaderInt("isFalling",false);
 				singleton->setShaderInt("isJumping",false);
-			}
-			else {
-				singleton->setShaderInt("isFalling",singleton->currentActor->allFalling());
-				singleton->setShaderInt("isJumping",singleton->currentActor->isJumping);
-			}
+			// }
+			// else {
+			// 	singleton->setShaderInt("isFalling",singleton->currentActor->allFalling());
+			// 	singleton->setShaderInt("isJumping",singleton->currentActor->isJumping);
+			// }
 			
 			
 			singleton->setShaderFloat("seaLevel", singleton->getSeaHeightScaled() );
@@ -5487,6 +5514,7 @@ UPDATE_LIGHTS_END:
 			singleton->bindFBO("resultFBO",activeFBO);
 			singleton->sampleFBO("resultFBO", 0, activeFBO);
 			singleton->sampleFBO("solidTargFBO", 1);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
 			
 			singleton->drawFSQuad();
