@@ -38,7 +38,9 @@ public:
 	FIVector4 orgVecs[E_OV_LENGTH];
 	
 	
-	
+	FIVector4 tempFI;
+	btVector3 tbnOffset;
+	btVector3 tempOffset;
 	
 	// computed results
 	
@@ -80,8 +82,8 @@ public:
 		
 		
 	) {
-		
-		
+		orgVecs[E_OV_POWVALS].setFXYZW(2.0f,2.0f,2.0f,0.5f);
+		orgVecs[E_OV_TBNOFFSET].setFXYZW(0.0f,0.0f,0.0f,0.0f);
 		
 		orgVecs[E_OV_MATPARAMS].setFX(_material);//8.0;
 		
@@ -109,10 +111,6 @@ public:
 			_bitLengthInCells1, // *multiplier,
 			_norLengthInCells1 // *multiplier
 		);
-		//orgVecs[E_OV_TBNRAD1].setFXYZRef(&orgVecs[E_OV_TBNRAD0]);
-		//tbnRadScale0.setFXYZ(1.0f,1.0f,1.0f);
-		//tbnRadScale1.setFXYZ(1.0f,1.0f,1.0f);
-		//boneLengthScale = 1.0f;
 		
 		
 		(orgVecs[E_OV_TANGENT]).setFXYZ(_tanX,_tanY,_tanZ);
@@ -241,7 +239,11 @@ public:
 		}
 		
 		
-		
+		/*
+		E_OV_TANGENT,
+		E_OV_BITANGENT,
+		E_OV_NORMAL,
+		*/
 		for (i = 0; i < 3; i++) {
 			tbnBaseTrans[i].copyFrom(&(orgVecs[i]));
 			//tbnBaseTrans[i].addXYZRef(&(orgTrans[0]));
@@ -314,7 +316,7 @@ public:
 		
 		// middle
 		orgTrans[1].setFXYZRef(&(tbnRotC[0]));
-		orgTrans[1].multXYZ(orgVecs[E_OV_TBNRAD0].getFX()); //*boneLengthScale
+		orgTrans[1].multXYZ(orgVecs[E_OV_TBNRAD0].getFX());
 		orgTrans[1].addXYZRef(&(orgTrans[0]));
 		
 		// end
@@ -322,8 +324,26 @@ public:
 		orgTrans[2].multXYZ(
 			orgVecs[E_OV_TBNRAD0].getFX() +
 			orgVecs[E_OV_TBNRAD1].getFX()
-		); //*boneLengthScale
+		);
 		orgTrans[2].addXYZRef(&(orgTrans[0]));
+		
+		
+		
+		if (orgVecs[E_OV_TBNOFFSET].any()) {
+			tbnOffset = orgVecs[E_OV_TBNOFFSET].getBTV();
+			tempOffset = 
+				tbnOffset.getX()*tbnRotC[0].getBTV() + 
+				tbnOffset.getY()*tbnRotC[1].getBTV() + 
+				tbnOffset.getZ()*tbnRotC[2].getBTV();
+			tempFI.setBTV(tempOffset);
+			for (i = 0; i < 3; i++) {
+				orgTrans[i].addXYZRef(&tempFI);
+			}
+		}
+		
+		
+		
+		
 		
 		for (i = 0; i < 3; i++) {
 			(tbnTrans[i]).setFXYZRef(&(tbnRotC[i]));

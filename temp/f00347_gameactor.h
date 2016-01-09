@@ -3,6 +3,65 @@
 
 #include "f00347_gameactor.e"
 #define LZZ_INLINE inline
+void GameActor::updatePivot (int jointId)
+                                      {
+		
+		ActorJointStruct* curJoint = &(actorJoints[jointId]);
+		ActorJointStruct* parJoint;
+		
+		btPoint2PointConstraint* ballC; //btFixedConstraint
+		btVector3 pivotA;
+		btVector3 pivotB;
+		btTransform localA, localB, localC;
+		
+		if (curJoint->joint == NULL) {
+			
+		}
+		else {
+			m_ownerWorld->removeConstraint(curJoint->joint);
+			delete curJoint->joint;
+			curJoint->joint = NULL;
+		}
+		
+		if (curJoint->parentId < 0) { //
+			curJoint->joint = NULL;
+			//curJoint->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
+			//curJoint->body->setLinearFactor(btVector3(0.1f,0.1f,0.1f));
+			
+		}
+		else {
+			parJoint = &(actorJoints[curJoint->parentId]);
+			pivotA = btVector3(-parJoint->length*0.5f,0.0,0.0);
+			pivotB = btVector3( curJoint->length*0.5f,0.0,0.0);
+			
+
+			
+			localA.setIdentity();
+			localB.setIdentity();
+			localA.setOrigin(pivotA);
+			localB.setOrigin(pivotB);
+			localA.getBasis() = parJoint->basis; 
+			localB.getBasis() = curJoint->basis; 
+			//localA.setRotation(parJoint->quat);
+			//localB.setRotation(curJoint->quat);
+			
+			
+			ballC = new btPoint2PointConstraint(
+				*(parJoint->body),
+				*(curJoint->body),
+				pivotA,
+				pivotB
+				//localA,
+				//localB
+			);
+			curJoint->joint = ballC;
+			
+			
+			m_ownerWorld->addConstraint(curJoint->joint, true);
+			
+			
+		}
+	}
 int GameActor::addJoint (int nodeName, int parentId, int jointType, float mass, GameOrgNode * curNode)
           {
 		
@@ -20,35 +79,6 @@ int GameActor::addJoint (int nodeName, int parentId, int jointType, float mass, 
 		int colType = bodyCollidesWith;//[colInd];
 		int colBase = COL_BODY;//0<<(colInd);
 		
-		// switch (nodeName) {
-		// 	case E_BONE_L_LOWERARM:
-		// 	case E_BONE_R_LOWERARM:
-		// 	case E_BONE_L_METACARPALS:
-		// 	case E_BONE_R_METACARPALS:
-		// 		colBase = COL_HAND;
-		// 		colType = handCollidesWith;
-		// 	break;
-		// 	default:
-			
-		// 	break;
-		// }
-		
-		// if (baseOrg->orgType == E_ORGTYPE_WEAPON) {
-		// 	colType = weaponCollidesWith;
-		// }
-		
-		
-		// switch(jointType) {
-		// 	case E_JT_LIMB:
-				
-		// 	break;
-		// 	case E_JT_BALL:
-				
-		// 	break;
-		// 	case E_JT_NORM:
-				
-		// 	break;
-		// }
 		
 		
 		switch(jointType) {
@@ -83,13 +113,10 @@ int GameActor::addJoint (int nodeName, int parentId, int jointType, float mass, 
 		
 		
 		btVector3 vUp(0, 0, 1);
-		btVector3 pivotA;
-		btVector3 pivotB;
 		
-		btGeneric6DofSpringConstraint* springC;
-		btHingeConstraint* hingeC;
-		btPoint2PointConstraint* ballC; //btFixedConstraint
-		btConeTwistConstraint* coneC;
+		// btGeneric6DofSpringConstraint* springC;
+		// btHingeConstraint* hingeC;
+		// btConeTwistConstraint* coneC;
 
 		btTransform localA, localB, localC;
 		
@@ -242,48 +269,8 @@ int GameActor::addJoint (int nodeName, int parentId, int jointType, float mass, 
 		// curJoint->joint = NULL;
 		// return curId;
 		
-
-		if (parentId < 0) { //
-			curJoint->joint = NULL;
-			//curJoint->body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
-			//curJoint->body->setLinearFactor(btVector3(0.1f,0.1f,0.1f));
-			
-		}
-		else {
-			parJoint = &(actorJoints[parentId]);
-			pivotA = btVector3(-parJoint->length*0.5f,0.0,0.0);
-			pivotB = btVector3(curJoint->length*0.5f,0.0,0.0);
-			
-
-				
-				localA.setIdentity();
-				localB.setIdentity();
-				localA.setOrigin(pivotA);
-				localB.setOrigin(pivotB);
-				localA.getBasis() = parJoint->basis; 
-				localB.getBasis() = curJoint->basis; 
-				//localA.setRotation(parJoint->quat);
-				//localB.setRotation(curJoint->quat);
-				
-				
-				ballC = new btPoint2PointConstraint(
-					*(parJoint->body),
-					*(curJoint->body),
-					pivotA,
-					pivotB
-					//localA,
-					//localB
-				);
-				curJoint->joint = ballC;
-			
-			
-			m_ownerWorld->addConstraint(curJoint->joint, true);
-			
-			
-			
-			
-			
-		}
+		curJoint->joint = NULL;
+		updatePivot(curJoint->jointId);
 		
 		
 		return curId;
@@ -297,9 +284,6 @@ void GameActor::initFromOrg (GameOrgNode * curNode, int curParent)
 		
 		float curMass = MASS_PER_LIMB;
 		
-		// if (baseOrg->orgType == E_ORGTYPE_WEAPON) {
-		// 	curMass = MASS_PER_LIMB*4.0f;
-		// }
 		
 		
 		int curChild = addJoint(
@@ -345,7 +329,7 @@ void GameActor::reinit ()
 			-1
 		);
 	}
-GameActor::GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset, bool bFixed)
+GameActor::GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset)
           {
 		
 		int i;
@@ -358,8 +342,8 @@ GameActor::GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * owner
 		origOffset = positionOffset;// - btVector3(0.0f,0.0f,16.0f);
 		float actorScale = 1.0f;
 
-		baseOrg = singleton->gameOrgs[
-			singleton->gw->gameObjects[geId].orgId	
+		baseOrg = singleton->gem->gameOrgs[
+			singleton->gem->gameObjects[geId].orgId	
 		];
 
 		initFromOrg(
@@ -380,7 +364,8 @@ void GameActor::removeAllBodies ()
 			}
 			else {
 				m_ownerWorld->removeConstraint(actorJoints[i].joint);
-				delete actorJoints[i].joint; actorJoints[i].joint = NULL;
+				delete actorJoints[i].joint;
+				actorJoints[i].joint = NULL;
 			}
 		}
 
@@ -389,8 +374,10 @@ void GameActor::removeAllBodies ()
 			m_ownerWorld->removeRigidBody(actorJoints[i].body);
 			
 			delete actorJoints[i].body->getMotionState();
-			delete actorJoints[i].body; actorJoints[i].body = NULL;
-			delete actorJoints[i].shape; actorJoints[i].shape = NULL;
+			delete actorJoints[i].body;
+			actorJoints[i].body = NULL;
+			delete actorJoints[i].shape;
+			actorJoints[i].shape = NULL;
 		}
 		
 		actorJoints.clear();

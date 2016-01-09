@@ -162,13 +162,13 @@ void GameNetwork::applyNetworkActions ()
 					);
 				break;
 				case E_NO_ADD_ENT:
-					singleton->placeNewEnt(false, *(intPtr[0]), &(tempVecs[0]));
+					singleton->gem->placeNewEnt(false, *(intPtr[0]), &(tempVecs[0]));
 				break;
 				case E_NO_REM_ENT:
-					singleton->removeEntity(false,*(intPtr[0]));
+					singleton->gem->removeEntity(false,*(intPtr[0]));
 				break;
 				case E_NO_DRAG_ENT:
-					singleton->performDrag(
+					singleton->gem->performDrag(
 						false,
 						*(intPtr[0]),
 						*(intPtr[1]),

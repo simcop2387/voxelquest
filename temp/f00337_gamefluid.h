@@ -925,13 +925,13 @@ void GameFluid::shiftRegion ()
                            {
 		
 		
-		bool notThirdPerson = (singleton->currentActor == NULL);// ||singleton->firstPerson;
+		bool notThirdPerson = (singleton->gem->currentActor == NULL);
 		
 		if (notThirdPerson) {
 			newCamPos.copyFrom(singleton->cameraGetPosNoShake());
 		}
 		else {
-			newCamPos.setBTV(singleton->currentActor->getCenterPoint(0));
+			newCamPos.setBTV(singleton->gem->currentActor->getCenterPoint(0));
 		}
 		
 		if (notThirdPerson&&(volSizePrim < 512)) { // && (mainId==E_FID_SML)

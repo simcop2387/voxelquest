@@ -51,7 +51,7 @@ public:
 		float deltaAng;
 		float curDis;
 		
-		int curActor = singleton->getCurActorUID();
+		int curActor = singleton->gem->getCurActorUID();
 		
 		btVector3 offsetVec;
 		btVector3 readCenter;
@@ -60,9 +60,9 @@ public:
 		BaseObj* writeObj;
 		BaseObj* readObj;
 		
-		for (i = 0; i < singleton->gw->visObjects.size(); i++) {
-			writeObj = &(singleton->gw->gameObjects[
-				singleton->gw->visObjects[i]	
+		for (i = 0; i < singleton->gem->visObjects.size(); i++) {
+			writeObj = &(singleton->gem->gameObjects[
+				singleton->gem->visObjects[i]	
 			]);
 			writeObj->npcRepel = btVector3(0.0f,0.0f,0.0f);
 			writeObj->behaviorTarget = btVector3(0.0f,0.0f,0.0f);
@@ -79,9 +79,9 @@ public:
 				
 				writeCenter = writeObj->getCenterPoint(E_BDG_CENTER);
 				
-				for (j = 0; j < singleton->gw->visObjects.size(); j++) {
-					readObj = &(singleton->gw->gameObjects[
-						singleton->gw->visObjects[j]
+				for (j = 0; j < singleton->gem->visObjects.size(); j++) {
+					readObj = &(singleton->gem->gameObjects[
+						singleton->gem->visObjects[j]
 					]);
 					
 					if (
@@ -100,13 +100,13 @@ public:
 						if (readObj->entType == E_ENTTYPE_NPC) {
 							
 							offsetVec = writeCenter-readCenter;
-							if (isFuzzy(offsetVec)) {
+							if (offsetVec.fuzzyZero()) {
 								
 							}
 							else {
 								offsetVec.normalize();
 								curDis = readCenter.distance(writeCenter);
-								writeObj->npcRepel += offsetVec*clampf(4.0f-curDis,-0.05f, 1.0f);
+								writeObj->npcRepel += offsetVec*clampf(3.0f-curDis,-0.05f, 1.0f);
 							}
 							
 							
@@ -162,9 +162,9 @@ public:
 		}
 		
 		
-		for (i = 0; i < singleton->gw->visObjects.size(); i++) {
-			writeObj = &(singleton->gw->gameObjects[
-				singleton->gw->visObjects[i]	
+		for (i = 0; i < singleton->gem->visObjects.size(); i++) {
+			writeObj = &(singleton->gem->gameObjects[
+				singleton->gem->visObjects[i]	
 			]);
 			
 			if (
@@ -201,18 +201,18 @@ public:
 					else {
 						deltaAng = writeObj->turnTowardsPointDelta(writeObj->behaviorTarget);
 						
-						singleton->makeTurn(writeObj->uid,deltaAng*16.0f);
+						singleton->gem->makeTurn(writeObj->uid,deltaAng*16.0f);
 						
 						curDis = writeObj->behaviorTarget.distance(writeObj->getCenterPoint(E_BDG_CENTER));
 						
-						if (curDis > 4.0f) {
-							singleton->makeMove(writeObj->uid, btVector3(0.0f,1.0f,0.0f)*clampfZO(curDis-4.0f), true);
+						if (curDis > singleton->conVals[E_CONST_AI_SEEK_THRESH]) {
+							singleton->gem->makeMove(writeObj->uid, btVector3(0.0f,1.0f,0.0f), true);
 						}
-						if (curDis < 2.0f) {
-							singleton->makeMove(writeObj->uid, btVector3(0.0f,-1.0f,0.0f), true);
+						if (curDis < singleton->conVals[E_CONST_AI_REPEL_THRESH]) {
+							singleton->gem->makeMove(writeObj->uid, btVector3(0.0f,-1.0f,0.0f), true);
 						}
 						
-						singleton->makeMoveVec(writeObj->uid,writeObj->npcRepel);
+						singleton->gem->makeMoveVec(writeObj->uid,writeObj->npcRepel);
 						
 						if (curDis > 6.0f) {
 							writeObj->blockCount += clampfZO(1.0 - abs(curDis - writeObj->lastBlockDis)*100.0f);
@@ -228,7 +228,7 @@ public:
 							
 								if (writeObj->swingCount > 200.0f) {
 									writeObj->swingCount = 0.0f;
-									singleton->makeSwing(writeObj->uid,iGenRand(0,1));
+									singleton->gem->makeSwing(writeObj->uid,iGenRand(0,1));
 								}
 								
 							}
@@ -238,7 +238,7 @@ public:
 								(curDis > 1.0f) &&
 								(curDis < 5.0f)	
 							) {
-								singleton->grabThrowObj(writeObj->uid, -1);
+								singleton->gem->makeGrabThrow(writeObj->uid, -1);
 							}
 						}
 						
@@ -246,7 +246,7 @@ public:
 						
 						if (writeObj->blockCount > 100.0f) {
 							writeObj->blockCount = 0.0f;
-							singleton->makeJump(writeObj->uid, true,
+							singleton->gem->makeJump(writeObj->uid, true,
 								clampfZO(curDis-6.0f)*0.75f + 0.25f	
 							);
 						}
@@ -259,11 +259,11 @@ public:
 				}
 				else { // is dead
 					if (writeObj->holdingWeapon(RLBN_LEFT)) {
-						singleton->grabThrowObj(writeObj->uid, RLBN_LEFT);
+						singleton->gem->makeGrabThrow(writeObj->uid, RLBN_LEFT);
 					}
 					
 					if (writeObj->holdingWeapon(RLBN_RIGT)) {
-						singleton->grabThrowObj(writeObj->uid, RLBN_RIGT);
+						singleton->gem->makeGrabThrow(writeObj->uid, RLBN_RIGT);
 					}
 				}
 				

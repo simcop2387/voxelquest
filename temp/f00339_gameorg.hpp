@@ -8,6 +8,8 @@ public:
 	
 	GameOrgNode* allNodes[E_BONE_C_END];
 	
+	float wepLengths[E_BONE_C_END];
+	
 	FIVector4 basePosition;
 	
 	JSONValue *rootObj;
@@ -20,7 +22,8 @@ public:
 	
 	
 	int ownerUID;
-	int orgType;	
+	int entType;
+	int subType;
 	int stepCount;
 	
 	
@@ -50,7 +53,8 @@ public:
 	void init(
 		Singleton* _singleton,
 		int _ownerUID,
-		int _orgType
+		int _entType,
+		int _subType
 	) {
 		singleton = _singleton;
 
@@ -58,7 +62,8 @@ public:
 
 		ownerUID = _ownerUID;
 
-		orgType = _orgType;
+		entType = _entType;
+		subType = _subType;
 
 		// GameOrgNode(
 		// 	GameOrgNode* _parent,
@@ -81,11 +86,11 @@ public:
 			allNodes[i] = NULL;
 		}
 		
-		switch (orgType) {
-			case E_ORGTYPE_HUMAN:
+		switch (entType) {
+			case E_ENTTYPE_NPC:
 				initHuman();
 			break;
-			case E_ORGTYPE_WEAPON:
+			case E_ENTTYPE_WEAPON:
 				initWeapon();
 			break;
 		}
@@ -98,15 +103,7 @@ public:
 	
 	
 	
-	void loadFromFile(string fileName, bool notThePose) {
-		singleton->loadJSON(
-			"..\\data\\orgdata\\" + fileName + ".js",
-			&rootObj
-		);
-		
-		jsonToNode(&rootObj, baseNode, notThePose);
-		
-	}
+	
 	
 	void jsonToNode(JSONValue** parentObj, GameOrgNode* curNode, bool notThePose) {
 		
@@ -119,7 +116,14 @@ public:
 		
 		bool doProc;
 		
-		for (i = 0; i < E_OV_LENGTH; i++) {	
+		tempVal = (*parentObj)->Child("orgVecs");
+		
+		int mv1 = tempVal->CountChildren()/4;
+		int mv2 = E_OV_LENGTH;
+		
+		int numChildren = min(mv1, mv2);
+		
+		for (i = 0; i < numChildren; i++) {	
 		
 			doProc = false;
 			if (notThePose) {
@@ -139,9 +143,10 @@ public:
 			else {
 				doProc = true;
 			}
+			
 		
 			if (doProc) {
-				tempVal = (*parentObj)->Child("orgVecs");
+				
 				curNode->orgVecs[i].setFXYZW(
 					tempVal->array_value[i*4 + 0]->number_value,
 					tempVal->array_value[i*4 + 1]->number_value,
@@ -185,8 +190,60 @@ public:
 	}
 	
 	
+	void setBinding(int actorId, bool val) {
+		
+		if (actorId < 0) {
+			return;
+		}
+		
+		int i;
+		for (i = 0; i < RLBN_LENGTH; i++) {
+			singleton->gem->bindPose(actorId, i, val);
+		}
+	}
 	
-	void saveToFile(string fileName) { //
+	int getPoseUID() {
+		
+		BaseObj* ca;
+		
+		if (singleton->gem->currentActorUID < 0) {
+			return -1;
+		}
+		else {
+			ca = &(singleton->gem->gameObjects[singleton->gem->currentActorUID]);
+			if (ca->entType != E_ENTTYPE_NPC) {
+				return -1;
+			}
+		}
+		
+		return singleton->gem->currentActorUID;
+	}
+	
+	void loadOrgFromFile(string fileName, bool notThePose) {
+		
+		
+		int actorId = getPoseUID();
+		
+		setBinding(actorId,false);
+		
+		singleton->loadJSON(
+			"..\\data\\orgdata\\" + fileName + ".js",
+			&rootObj
+		);
+		
+		jsonToNode(&rootObj, baseNode, notThePose);
+		
+		setBinding(actorId,true);
+		
+	}
+	
+	
+	void saveOrgToFile(string fileName) {
+		int actorId = getPoseUID();
+		
+		
+		setBinding(actorId,false);
+		
 		if (rootObj != NULL)
 		{
 			delete rootObj;
@@ -203,6 +260,7 @@ public:
 			&(rootObj->Stringify())
 		);
 		
+		setBinding(actorId,true);
 		
 	}
 	
@@ -212,7 +270,7 @@ public:
 			return NULL;
 		}
 		
-		return &(singleton->gw->gameObjects[ownerUID]);
+		return &(singleton->gem->gameObjects[ownerUID]);
 	}
 	
 	void setTPG(int _targetPoseGroup, int _targetPoseRLBN) {
@@ -300,13 +358,13 @@ public:
 		
 		BaseObj* curOwner = getOwner();
 		
-		if (singleton->editPose) {
+		if (singleton->gem->editPose) {
 			
 		}
 		else {
 			if (targetPose.group > -1) {
 				
-				curData = &(singleton->gamePoseInfo[targetPose.group].data[0]);
+				curData = &(singleton->gem->gamePoseInfo[targetPose.group].data[0]);
 				
 				
 				lerpSpeed = curData[E_PIK_LERPSPEED];
@@ -324,7 +382,7 @@ public:
 					
 					if (stepCount > (curData[E_PIK_NUMSTEPS] + curData[E_PIK_EXTRASTEPS])) {
 						curOwner->setActionState(
-							singleton->getActionStateFromPose(targetPose.group),
+							singleton->gem->getActionStateFromPose(targetPose.group),
 							targetPose.RLBN,
 							false
 						);
@@ -340,7 +398,7 @@ public:
 				
 				setToPose(
 					
-					singleton->getPose(
+					singleton->gem->getPose(
 						targetPose.group,targetPose.RLBN,targetPose.step
 					),
 					
@@ -352,7 +410,7 @@ public:
 		
 		
 		
-		singleton->transformOrg(this, NULL);
+		singleton->gem->transformOrg(this, NULL);
 		
 	}
 	
@@ -403,7 +461,7 @@ public:
 		
 		int i;
 		int j;
-		int lrMod;
+		int curName;
 		
 		float dirMod = 1.0f;
 		
@@ -423,86 +481,106 @@ public:
 		
 		GameOrgNode* curNode = baseNode;
 		
-		curNode = allNodes[E_BONE_WEAPON_HANDLEUP] = curNode->addChild(
-			E_BONE_WEAPON_HANDLEUP,
-			
-			baseMat, 0.0f, 0.0f, 0.0f,
-			1.0f, defVecLength, defVecLength,
-			1.0f, defVecLength, defVecLength,
-			
-			// 0.0f,0.0f,1.0f,
-			// 0.0f,1.0f,0.0f,
-			// 1.0f,0.0f,0.0f
-			
-			1.0f, 0.0f, 0.0f,
-			0.0f, 1.0f, 0.0f,
-			0.0f, 0.0f, 1.0f
-		);
+		GameOrgNode* centerNode;
 		
-		allNodes[E_BONE_WEAPON_0] = curNode->addChild(
-			E_BONE_WEAPON_0,
-			
-			baseMat, 0.0f, 0.0f, 0.0f,
-			0.25f, defVecLength, defVecLength,
-			0.25f, defVecLength, defVecLength,
-			
-			// 0.0f,0.0f,1.0f,
-			// 0.0f,1.0f,0.0f,
-			// 1.0f,0.0f,0.0f
-			
-			1.0f, 0.0f, 0.0f,
-			0.0f, 1.0f, 0.0f,
-			0.0f, 0.0f, 1.0f
-		);
+		curNode->orgVecs[E_OV_TBNOFFSET].setFXYZ(-0.625f,0.0f,0.0f);
 		
-		allNodes[E_BONE_WEAPON_1] = curNode->addChild(
-			E_BONE_WEAPON_1,
+		// switch (subType) {
+		// 	case E_SUB_SWORD:
 			
-			baseMat, 0.0f, 0.0f, 0.0f,
-			0.25f, defVecLength, defVecLength,
-			0.25f, defVecLength, defVecLength,
+		// 	break;
 			
-			// 0.0f,0.0f,1.0f,
-			// 0.0f,1.0f,0.0f,
-			// 1.0f,0.0f,0.0f
-			
-			1.0f, 0.0f, 0.0f,
-			0.0f, 1.0f, 0.0f,
-			0.0f, 0.0f, 1.0f
-		);
-		
-		curNode = baseNode;
-		
-		curNode = allNodes[E_BONE_WEAPON_HANDLEDOWN] = curNode->addChild(
-			E_BONE_WEAPON_HANDLEDOWN,
-			
-			baseMat, 0.0f, 0.0f, 0.0f,
-			1.0f, defVecLength, defVecLength,
-			1.0f, defVecLength, defVecLength,
-			
-			// 0.0f,0.0f,1.0f,
-			// 0.0f,1.0f,0.0f,
-			// 1.0f,0.0f,0.0f
-			
-			-1.0f, 0.0f, 0.0f,
-			0.0f, 1.0f, 0.0f,
-			0.0f, 0.0f, 1.0f
-		);
-		
-		
-		// for (i = E_BONE_WEAPON_0; i <= E_BONE_WEAPON_8; i++ ) {
-		// 	curNode = allNodes[i] = curNode->addChild(
-		// 		i,
+		// 	case E_SUB_AXE:
 				
-		// 		baseMat, 0.0f, 0.0f, 0.0f,
-		// 		0.25f, defVecLength, defVecLength,
-		// 		0.25f, defVecLength, defVecLength,
+		// 	break;
+		// 	case E_SUB_MACE:
 				
-		// 		0.0f,0.0f,1.0f,
-		// 		0.0f,1.0f,0.0f,
-		// 		1.0f,0.0f,0.0f
-		// 	);
+		// 	break;
+		// 	case E_SUB_HAMMER:
+				
+		// 	break;
+		// 	case E_SUB_STAFF:
+				
+		// 	break;
+			
 		// }
+		
+		wepLengths[E_BONE_WEAPON_POMMEL] = 0.125f;
+		wepLengths[E_BONE_WEAPON_HANDLE] = 0.3f;
+		wepLengths[E_BONE_WEAPON_CENTER] = 0.125f;
+		wepLengths[E_BONE_WEAPON_CROSSR] = 0.5f;
+		wepLengths[E_BONE_WEAPON_BLADER] = 0.5f;
+		wepLengths[E_BONE_WEAPON_CROSSL] = 0.5f;
+		wepLengths[E_BONE_WEAPON_BLADEL] = 0.5f;
+		wepLengths[E_BONE_WEAPON_BLADEU] = 1.0f;
+		
+		
+		
+		
+		curName = E_BONE_WEAPON_POMMEL;
+		curNode = allNodes[curName] = curNode->addChild( curName,
+			baseMat, 0.0f, 0.0f, 0.0f,
+			wepLengths[curName], defVecLength, defVecLength,
+			wepLengths[curName], defVecLength, defVecLength,
+			1.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f, 1.0f
+		);
+		
+		curName = E_BONE_WEAPON_HANDLE;
+		curNode = allNodes[curName] = curNode->addChild( curName,
+			baseMat, 0.0f, 0.0f, 0.0f,
+			wepLengths[curName], defVecLength, defVecLength,
+			wepLengths[curName], defVecLength, defVecLength,
+			1.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f, 1.0f
+		);
+		
+		curName = E_BONE_WEAPON_CENTER;
+		centerNode = curNode = allNodes[curName] = curNode->addChild( curName,
+			baseMat, 0.0f, 0.0f, 0.0f,
+			0.125f, defVecLength, defVecLength,
+			0.125f, defVecLength, defVecLength,
+			1.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f, 1.0f
+		);
+		
+		curName = E_BONE_WEAPON_CROSSR;
+		curNode = allNodes[curName] = centerNode->addChild( curName,
+			baseMat, 0.0f, 0.0f, M_PI/2.0f,
+			wepLengths[curName], defVecLength, defVecLength,
+			wepLengths[curName], defVecLength, defVecLength,
+			1.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f, 1.0f
+		);
+		
+		curName = E_BONE_WEAPON_BLADER;
+		curNode = allNodes[curName] = curNode->addChild( curName,
+			baseMat, 0.0f, 0.0f, 0.0f,
+			wepLengths[curName], defVecLength, defVecLength,
+			wepLengths[curName], defVecLength, defVecLength,
+			1.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f, 1.0f
+		);
+		
+		curName = E_BONE_WEAPON_CROSSL;
+		curNode = allNodes[curName] = centerNode->addChild( curName,
+			baseMat, 0.0f, 0.0f, -M_PI/2.0f,
+			wepLengths[curName], defVecLength, defVecLength,
+			wepLengths[curName], defVecLength, defVecLength,
+			1.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f, 1.0f
+		);
+		
+		curName = E_BONE_WEAPON_BLADEL;
+		curNode = allNodes[curName] = curNode->addChild( curName,
+			baseMat, 0.0f, 0.0f, 0.0f,
+			wepLengths[curName], defVecLength, defVecLength,
+			wepLengths[curName], defVecLength, defVecLength,
+			1.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f, 1.0f
+		);
+		
+		curName = E_BONE_WEAPON_BLADEU;
+		curNode = allNodes[curName] = centerNode->addChild( curName,
+			baseMat, 0.0f, 0.0f, 0.0f,
+			wepLengths[curName], defVecLength, defVecLength,
+			wepLengths[curName], defVecLength, defVecLength,
+			1.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f, 1.0f
+		);
+		
 		
 		
 		baseNode->doTransform(singleton, NULL);

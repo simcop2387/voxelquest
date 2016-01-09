@@ -13,14 +13,6 @@
 		
 	],
 	
-	"enums" : [
-		[
-			"E_SUB_DEFAULT",
-			"E_SUB_WEAPON",
-			"E_SUB_PUNCH",
-			"E_SUB_KICK"
-		]
-	],
 	
 	"templates" : {
 		"default":{
@@ -35,7 +27,7 @@
 		},
 		"attackWeapon":{
 			"E_PIK_POSETYPE":0,
-			"E_PIK_SUBTYPE":"E_SUB_WEAPON",
+			"E_PIK_SUBTYPE":"E_SUB_SWING",
 			"E_PIK_NUMSTEPS":3,
 			"E_PIK_EXTRASTEPS":1,
 			"E_PIK_RLBN":7,
@@ -65,7 +57,7 @@
 		},
 		"weapon":{
 			"E_PIK_POSETYPE":1,
-			"E_PIK_SUBTYPE":"E_SUB_WEAPON",
+			"E_PIK_SUBTYPE":"E_SUB_DEFAULT",
 			"E_PIK_NUMSTEPS":1,
 			"E_PIK_EXTRASTEPS":0,
 			"E_PIK_RLBN":8,
@@ -154,7 +146,32 @@
 		},
 		
 		
-		"E_PG_SWORD":{
+		"E_PG_WPSWORD":{
+			"template":"weapon",
+			"E_PIK_SUBTYPE":"E_SUB_SWORD"
+		},
+		
+		"E_PG_WPAXE":{
+			"template":"weapon",
+			"E_PIK_SUBTYPE":"E_SUB_SWORD"
+		},
+		
+		"E_PG_WPMACE":{
+			"template":"weapon",
+			"E_PIK_SUBTYPE":"E_SUB_SWORD"
+		},
+		
+		"E_PG_WPHAMMER":{
+			"template":"weapon",
+			"E_PIK_SUBTYPE":"E_SUB_SWORD"
+		},
+		
+		"E_PG_WPSTAFF":{
+			"template":"weapon",
+			"E_PIK_SUBTYPE":"E_SUB_SWORD"
+		},
+		
+		"E_PG_WPSPEAR":{
 			"template":"weapon",
 			"E_PIK_SUBTYPE":"E_SUB_SWORD"
 		}

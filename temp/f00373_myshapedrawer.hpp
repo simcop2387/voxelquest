@@ -215,7 +215,7 @@ public:
 		void drawOrient(int uid) {
 			
 			
-			if (uid == singleton->getCurActorUID()) {
+			if (uid == singleton->gem->getCurActorUID()) {
 				
 			}
 			else {
@@ -325,7 +325,7 @@ public:
 			//btglMultMatrix(m);
 			//updateMat2();
 			pushNewMat(m);
-			//singleton->gw->gameObjects[uid].rotMat = singleton->curObjMatrix3;
+			//singleton->gem->gameObjects[uid].rotMat = singleton->curObjMatrix3;
 
 
 			if (shape->getShapeType() == UNIFORM_SCALING_SHAPE_PROXYTYPE)
@@ -937,7 +937,7 @@ public:
 				bool doProc = true;
 				
 				if (body->bodyUID >= 0) {
-					BaseObj* ge = &(singleton->gw->gameObjects[body->bodyUID]);
+					BaseObj* ge = &(singleton->gem->gameObjects[body->bodyUID]);
 					
 					if (body->limbUID >= 0) {
 						doProc = ge->bodies[body->limbUID].isVisible;
@@ -947,7 +947,7 @@ public:
 				
 				
 				// if (
-				// 	(body->bodyUID == singleton->getCurActorUID())&&singleton->orgOn
+				// 	(body->bodyUID == singleton->gem->getCurActorUID())&&singleton->orgOn
 				// ) {
 					
 				// }

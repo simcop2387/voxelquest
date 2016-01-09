@@ -200,14 +200,14 @@ $
 const float CAM_BOX_SIZE = 2.0;
 
 // qqqq
-const int TOT_STEPS = 128;
+const int TOT_STEPS = 64;
 const int TOT_DETAIL_STEPS = 8;
 const int TOT_STEPS_POLY = 16;
 
 const float MAX_SHAD_DIS_PRIM = 64.0;
 const int HARD_STEPS = 8;
-const int HARD_STEPS_PRIM = 16;
-const int SOFT_STEPS = 32;
+const int HARD_STEPS_PRIM = 8;
+const int SOFT_STEPS = 16;
 
 
 //x: basic pass, y: detail pass
@@ -2541,9 +2541,9 @@ float postLimb(vec3 pos) {
 	
 	vec4 closestPoint = vec4(0.0);
 	
-	float lerpVal;
-	float lerpVal2;
-	float lerpVal3;
+	float lerpValP0toP1;
+	float lerpValBit;
+	float lerpValTan;
 	float curRad;
 	vec2 minDis = vec2(MAX_CAM_DIS,-1);
 	
@@ -2573,20 +2573,21 @@ float postLimb(vec3 pos) {
 		}
 		
 		
-		lerpVal = distance(closestPoint.xyz,seg1a)/(ln0Vec.x*2.0);
-		lerpVal2 = abs(dot(offVec,bitVec.xyz));
-		lerpVal3 = abs(dot(offVec,tanVec.xyz));
+		lerpValP0toP1 = distance(closestPoint.xyz,seg1a)/(ln0Vec.x*2.0);
+		lerpValBit = abs(dot(offVec,bitVec.xyz));
+		lerpValTan = abs(dot(offVec,tanVec.xyz));
 		
-		lerpVal = pow(lerpVal,2.0);
-		lerpVal2 = pow(lerpVal2,2.0);
-		lerpVal3 = pow(lerpVal3,2.0);
+		lerpValP0toP1 = pow(lerpValP0toP1,cenVec.w);
+		lerpValBit = pow(lerpValBit,tanVec.w);
+		lerpValTan = pow(lerpValTan,bitVec.w);
 		
-		lerpVal3 = mix(0.0,0.5,lerpVal3);
+		lerpValTan = mix(0.0,norVec.w,lerpValTan);
 		
 		
-		lnVec = mix(ln0Vec,ln1Vec,lerpVal);
 		
-		curRad = mix(lnVec.y,lnVec.z,lerpVal2)*(1.0-lerpVal3);
+		lnVec = mix(ln0Vec,ln1Vec,lerpValP0toP1);
+		
+		curRad = mix(lnVec.y,lnVec.z,lerpValBit)*(1.0-lerpValTan);
 		
 		minDis = opU(
 			minDis,
@@ -4620,6 +4621,7 @@ void main() {
 		
 		int primDataInd = 0;
 		vec4 datVec;
+		vec4 ln0Vec;
 		// vec4 cenVec;
 		// vec4 tanVec;
 		// vec4 bitVec;
@@ -5314,7 +5316,8 @@ void main() {
 									
 									primDataInd = globBestLimbInd;
 									
-									datVec = texelFetch(Texture1, primDataInd); primDataInd++;
+									datVec = texelFetch(Texture1, primDataInd+0);
+									ln0Vec = texelFetch(Texture1, primDataInd+5);
 									
 									limbRes.w = datVec.x;
 									limbRes.z = datVec.y;
@@ -5324,7 +5327,10 @@ void main() {
 										datVec.w
 									);
 									
-									if (globBestLimbDepth < -0.01) {
+									if (
+										(globBestLimbDepth < -0.01) &&
+										(ln0Vec.w == 0.0)	
+									) {
 										
 										earthMatRes = vec2(
 											TEX_MEAT,

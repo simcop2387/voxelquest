@@ -18,6 +18,7 @@ class GamePlantNode;
 class GamePlant;
 class GameEnt;
 class GameActor;
+class GameEntManager;
 class GameBlock;
 class GamePageHolder;
 class VolumeWrapper;

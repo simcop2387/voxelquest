@@ -100,7 +100,7 @@ public:
 	int destructCount;
 	bool sphereMapOn;
 	bool waitingOnDestruction;
-	bool combatOn;
+	
 	bool isPressingMove;
 	bool fxaaOn;
 	bool doPathReport;
@@ -111,8 +111,6 @@ public:
 	bool ignoreFrameLimit;
 	bool autoMove;
 	bool allInit;
-	bool noBounce;
-	bool firstPerson;
 	bool updateMatFlag;
 	bool matVolLock;
 	bool isMoving;
@@ -123,7 +121,6 @@ public:
 	bool pathfindingOn;
 	bool placingGeom;
 	bool isMacro;
-	bool orgOn;
 	bool cavesOn;
 	bool bakeParamsOn;
 	bool dragging;
@@ -131,7 +128,6 @@ public:
 	bool hitGUI;
 	bool draggingMap;
 	bool guiDirty;
-	bool mirrorOn;
 	bool applyToChildren;
 	bool bShiftOld;
 	bool bCtrlOld;
@@ -164,8 +160,7 @@ public:
 	bool rotOn;
 	bool doPageRender;
 	bool markerFound;
-	bool editPose;
-	bool isDraggingObject;
+	
 	bool updateHolders;
 	bool fpsTest;
 	bool frameMouseMove;
@@ -175,29 +170,18 @@ public:
 	bool drawOrient;
 	
 	
-	int entIdToIcon[MAX_OBJ_TYPES];
-	int iconToEntId[MAX_ICON_ID];
-	bool isContainer[MAX_OBJ_TYPES];
-	string objStrings[MAX_OBJ_TYPES];
 	
-	int highlightedLimb;
-	int highlightedLimb2;
 	
 	int curPrimTemplate;
 	int geomStep;
 	int earthMod;
 	int currentTick;
 	
-	int draggingFromInd;
-	int draggingToInd;
-	int draggingFromType;
-	int draggingToType;
 	
-	int curPoseType;
-	PoseKey curPose[E_ENTTYPE_LENGTH];
+	
+	
 	
 	int actorCount;
-	int limbDataDebug;
 	int polyCount;
 	int fdWritePos;
 	int fdReadPos;
@@ -205,11 +189,6 @@ public:
 	int fpsCount;
 	int medianCount;
 	int maxHolderDis;
-	int gameObjCounter;
-	int lastObjectCount;
-	int lastObjInd;
-	int selObjInd;
-	int actObjInd;
 	int fieldCallback;
 	int mouseState;
 	int lastW;
@@ -318,8 +297,6 @@ public:
 	float heightMapMaxInCells;
 	float resultShake;
 	float cameraShake;
-	float subjectDistance;
-	float lastSubjectDistance;
 	float lastx;
 	float lasty;
 	float FOV;
@@ -386,10 +363,7 @@ public:
 	double muTimeLR[2];
 	
 	
-	GameOrgNode* bestNode;
-	GameOrgNode* selectedNode;
-	GameOrgNode* lastSelNode;
-	GameOrgNode* activeNode;
+	
 
 	FIVector4 geomPoints[E_GEOM_POINTS_LENGTH];
 
@@ -461,14 +435,9 @@ public:
 	
 	std::list<KeyStackEvent> keyStack;
 	
-	EntPool entPoolStack[E_ENTTYPE_LENGTH];
 	
-	std::vector<GameActor*> gameActors;
-	std::vector<GameOrg*> gameOrgs;
-	std::vector<GameOrg*> gamePoses;
-	//std::vector<PoseInfo> gamePoseInfo;
 	
-	PoseInfo gamePoseInfo[E_PG_LENGTH];
+	
 	
 	
 	std::vector<ExplodeStruct> explodeStack;
@@ -495,14 +464,12 @@ public:
 	float wallRadInCells;
 
 	
-	
-	
 
 	Image *imageHM0;
 	Image *imageHM1;
 	Image *cloudImage;
 
-	BaseObj* currentActor;
+	
 	
 	GamePageHolder* closestHolder;
 	
@@ -573,7 +540,6 @@ public:
 	JSONValue *rootObjJS;
 	JSONValue *guiRootJS;
 	JSONValue *constRootJS;
-	JSONValue *poseRootJS;
 
 	// #ifdef USE_POCO
 	// 	WebSocketServer *myWS;
@@ -586,6 +552,7 @@ public:
 	Timer scrollTimer;
 	Timer moveTimer;
 	GameWorld* gw;
+	GameEntManager* gem;
 	GamePhysics* gamePhysics;
 	GameFluid* gameFluid[E_FID_LENGTH];
 	GameLogic* gameLogic;
@@ -654,10 +621,7 @@ public:
 		return &btvConv;
 	}
 	
-	void setSelInd(int ind) {
-		
-		selObjInd = ind;
-	}
+	
 
 	void init(int _defaultWinW, int _defaultWinH, int _scaleFactor
 	
@@ -711,7 +675,7 @@ public:
 		}
 		
 		
-		initAllObjects();
+		
 		initAllMatrices();
 		
 		fsQuad.init(vertexDataQuad, 32, indexDataQuad, 6);
@@ -770,7 +734,7 @@ public:
 		
 		sphereMapOn = false;
 		waitingOnDestruction = false;
-		combatOn = true;
+		
 		isPressingMove = false;
 		fxaaOn = false;
 		doPathReport = false;
@@ -782,7 +746,7 @@ public:
 		autoMove = false;
 		inputOn = false;
 		isMacro = false;
-		orgOn = false;
+		
 		cavesOn = false;
 		bakeParamsOn = true;
 		dragging = false;
@@ -797,7 +761,7 @@ public:
 		threadNetSend.init();
 		threadNetRecv.init();
 		
-		currentActor = NULL;
+		
 		mapComp = NULL;
 		mainMenu = NULL;
 		ddMenu = NULL;
@@ -814,16 +778,13 @@ public:
 
 		totalPointCount = 0;
 		
-		activeNode = NULL;
-		selectedNode = NULL;
-		lastSelNode = NULL;
+		
 		
 		curOrgId = 0;
 		
 		rootObjJS = NULL;
 		guiRootJS = NULL;
 		constRootJS = NULL;
-		poseRootJS = NULL;
 		rbStack = NULL;
 		rbHeightStack = NULL;
 
@@ -883,13 +844,9 @@ public:
 		curPrimMod = 0.0f;
 		curPrimTemplate = 1;
 		geomStep = 0;
-		highlightedLimb = -1;
 
 		drawOrient = false;
-		noBounce = true;
-		firstPerson = false;
 		applyToChildren = false;
-		mirrorOn = true;
 		//guiOn = false;
 		bCtrlOld = false;
 		bShiftOld = false;
@@ -901,8 +858,6 @@ public:
 		treesOn = true;
 		rotOn = false;
 		markerFound = false;
-		isDraggingObject = false;
-		editPose = false;
 		doPageRender = true;
 		placingGeom = false;
 		
@@ -917,10 +872,6 @@ public:
 		// IMPORTANT: Maximum height must be less than 2^16, max world pitch must be less than 2^32
 		
 		medianCount = 0;
-		lastObjectCount = 0;
-		lastObjInd = 0;
-		setSelInd(0);
-		actObjInd = 0;
 		currentTick = 0;
 		earthMod = E_PTT_TER;
 		
@@ -958,13 +909,12 @@ public:
 		
 		// todo: probe area ahead of current ray step to see if near edge
 		
-		curPoseType = -1;
 		
 		
 		
 		
 		
-		limbDataDebug = 0;
+		
 		actorCount = 0;
 		polyCount = 0;
 		fpsCountMax = 500;
@@ -1014,7 +964,6 @@ public:
 		
 		
 		
-		//gamePoseInfo.reserve(E_PG_LENGTH);
 		
 		globWheelDelta = 0.0f;
 		amountInvalidMove = 0.0f;
@@ -1058,11 +1007,7 @@ public:
 
 
 		
-		draggingFromInd = 0;
-		draggingToInd = 0;
-		gameObjCounter = E_OBJ_LENGTH;
-		//curMoveTime = 0.0;
-		//lastMoveTime = 0.0;
+		
 		timeDelta = 0.0;
 		
 		mdTimeLR[0] = 0.0f;
@@ -1594,7 +1539,6 @@ public:
 		
 		smoothTime = 0.0f;
 		timeMod = true;
-		lastSubjectDistance = 0.0f;
 		resultShake = 0.0f;
 		cameraShake = 0.0f;
 		lastx = 0;
@@ -1814,6 +1758,8 @@ public:
 		}
 
 
+		gem = new GameEntManager();
+		gem->init(this);
 		gw = new GameWorld();
 		
 		
@@ -1834,8 +1780,8 @@ public:
 		gameAI->init(this);
 		
 		
-		// gw->gameObjects[E_OBJ_CAMERA] = BaseObj();
-		// gw->gameObjects[E_OBJ_CAMERA].init(
+		// gem->gameObjects[E_OBJ_CAMERA] = BaseObj();
+		// gem->gameObjects[E_OBJ_CAMERA].init(
 		// 	E_OBJ_CAMERA,
 		// 	0,
 		// 	0,
@@ -1858,34 +1804,10 @@ public:
 		}
 		
 		
-		for (i = 0; i < E_ENTTYPE_LENGTH; i++) {
-			entPoolStack[i].curIndex = 0;
-			
-			switch (i) {
-				case E_ENTTYPE_BULLET:
-					k = 10;
-				break;
-				case E_ENTTYPE_TRACE:
-					k = 10;
-				break;
-				case E_ENTTYPE_DEBRIS:
-					k = MAX_DEBRIS;
-				break;
-				default:
-					k = 0;
-				break;
-				
-			}
-
-			entPoolStack[i].maxCount = k;
-			
-			for (j = 0; j < entPoolStack[i].maxCount; j++) {
-				placeNewEnt(false, i, &origin, true);
-			}
-		}
 		
 		
-		loadPoseInfo();
+		
+		
 		
 
 		allInit = true;
@@ -1982,36 +1904,7 @@ public:
 		
 	}
 	
-	int numberIcons(int pCurCount, int x1, int y1, int x2, int y2) {
-	  int i;
-	  int j;
-	  int curCount = pCurCount;
-	  
-	  for (j = y1; j <= y2; j++) {
-	    for (i = x1; i <= x2; i++) {
-				if (curCount >= MAX_OBJ_TYPES) {
-					cout << "error curCount " << curCount << "\n";
-				}
-				else {
-					entIdToIcon[curCount] = i + j * ITEMS_PER_ROW;
-				}
-	    	
-	    	if ((i + j * ITEMS_PER_ROW) >= MAX_ICON_ID) {
-	    		cout << "error i + j * ITEMS_PER_ROW "  << (i + j * ITEMS_PER_ROW) << "\n";
-	    	}
-	    	else {
-	    		iconToEntId[i + j * ITEMS_PER_ROW] = curCount;
-	    	}
-	      
-	      
-	      curCount++;
-	    }
-	  }
-	  
-	  
-	  return curCount;
-	  
-	}
+	
 	
 	
 	
@@ -2209,27 +2102,7 @@ public:
 		
 	}
 	
-	void setCurrentActor(BaseObj* ge) {
-		
-		
-		currentActor = ge;
-		if (currentActor == NULL) {
-			actObjInd = 0;
-			setFirstPerson(false);
-		}
-		else {
-			
-			
-			actObjInd = ge->uid;
-			subjectDistance = BTV2FIV(currentActor->getCenterPoint(E_BDG_CENTER))->distance(cameraGetPosNoShake());
-			
-			curPoseType = currentActor->entType;
-			
-			
-			
-		}
-		
-	}
+	
 	
 	void updateMatVol() {
 		
@@ -2559,69 +2432,20 @@ public:
 		
 	}
 	
-	int getRandomContId() {
-		return iGenRand2(360,419);
-	}
-	int getRandomNPCId() {
-		return (iGenRand2(1432,1671)/4)*4;
-	}
-	int getRandomMonsterId() {
-		return (iGenRand2(1240,1431)/2)*2;
-	}
-	int getRandomObjId() {
-		return iGenRand2(0,907);
-		
-	}
-	
-	void fillWithRandomObjects(int parentUID, int gen) {
-		
-		int i;
-		int maxObj = iGenRand2(2,16);
-		BaseObj* tmpObj = NULL;
-		
-		int curId;
-		
-		
-		for (i = 0; i < maxObj; i++) {
-			gw->gameObjects[gameObjCounter] = BaseObj();
-			tmpObj = &(gw->gameObjects[gameObjCounter]);
-			
-			curId = getRandomObjId();
-			
-			
-			// if (
-			// 	(curId%5 == 0) &&
-			// 	(gen <= 1)
-			// ) {
-				
-			// 	curId = getRandomContId();
-			// }
-			
-			tmpObj->init(
-				gameObjCounter,
-				parentUID,
-				curId,
-				E_ENTTYPE_OBJ,
-				&lastCellPos
-			);
-			
-			gw->gameObjects[parentUID].children.push_back(gameObjCounter);
-			
-			gameObjCounter++;
-			
-			if (isContainer[curId] && (gen < 1)) {
-				fillWithRandomObjects(gameObjCounter-1, gen + 1);
-			}
-			
-		}
-		
-	}
 	
 	
 	
+	
+	
+	
+	
+	
+	
+	
+
 	void toggleDDMenu(int x, int y, bool toggled) {
 		
-		if (placingGeom||combatMode()) {
+		if (placingGeom||gem->combatMode()) {
 			return;
 		}
 		
@@ -2639,19 +2463,19 @@ public:
 			
 			
 			if (objTargeted) {
-				setSelInd(ind);				
+				gem->setSelInd(ind);				
 			}
 			else {
 				getMarkerPos(x, y);
 				markerFound = true;
-				setSelInd(0);
+				gem->setSelInd(0);
 			}
 			
 			
 			actOnSel = 
 				objTargeted &&
-				(selObjInd != actObjInd) &&
-				(actObjInd >= E_OBJ_LENGTH);
+				(gem->selObjInd != gem->actObjInd) &&
+				(gem->actObjInd >= E_OBJ_LENGTH);
 			
 			tempComp = getGUIComp("ddMenu.placeEntity");
 			if (tempComp != NULL) {tempComp->enabled = !objTargeted;}
@@ -2678,7 +2502,7 @@ public:
 			tempComp = getGUIComp("ddMenu.menuBar");
 			if (tempComp != NULL) {
 				if (objTargeted) {
-					tempComp->setText(objStrings[gw->gameObjects[selObjInd].objectType ]);
+					tempComp->setText(gem->objStrings[gem->gameObjects[gem->selObjInd].objectType ]);
 				}
 				else {
 					tempComp->setText("Context Menu");
@@ -2698,367 +2522,6 @@ public:
 			markerFound = false;
 		}
 	}
-	
-	BaseObj* getEquipped(BaseObj* parentObj) {
-		int i;
-		
-		int curChild;
-		
-		for (i = 0; i < parentObj->children.size();i++) {
-			curChild = parentObj->children[i];
-			if (gw->gameObjects[curChild].isEquipped) {
-				return &(gw->gameObjects[curChild]);
-			}
-		}
-		
-		return NULL;
-	}
-	
-	void performDrag(
-		bool isReq,
-		
-		int _draggingFromInd,
-		int _draggingFromType,
-		int _draggingToInd,
-		int _draggingToType,
-		
-		FIVector4* _worldMarker
-	) {
-		
-		int i;
-		int bestPos;
-		bool moveCont = false;
-		bool draggedIntoWorldObj = false;
-		BaseObj* sourceObj = NULL;
-		BaseObj* destObj = NULL;
-		
-		vector<BaseObjType>* myVec;
-		
-		if (isReq) {
-			naFloatData[0] = _worldMarker->getFX();
-			naFloatData[1] = _worldMarker->getFY();
-			naFloatData[2] = _worldMarker->getFZ();
-			naIntData[0] = _draggingFromInd;
-			naIntData[1] = _draggingFromType;
-			naIntData[2] = _draggingToInd;
-			naIntData[3] = _draggingToType;
-			gameNetwork->addNetworkAction(E_NO_DRAG_ENT,naUintData,naIntData,naFloatData);
-			return;
-		}
-		
-		
-		cout << "from " << dragStrings[_draggingFromType] << " to " << dragStrings[_draggingToType] << "\n";
-		
-		switch (_draggingFromType) {
-			case E_DT_NOTHING:
-				
-			break;
-			case E_DT_WORLD_OBJECT:
-			
-				sourceObj = &(gw->gameObjects[_draggingFromInd]);
-			
-				switch (_draggingToType) {
-					case E_DT_NOTHING:
-						
-						// lastCellPos.copyFrom(_worldMarker);
-						// lastCellPos.addXYZ(0,0,5);
-						// sourceObj->setCenterPoint(&lastCellPos);
-						
-						
-					break;
-					case E_DT_WORLD_OBJECT:
-					case E_DT_INV_OBJECT:
-					case E_DT_INV_OBJECT_PARENT:
-						destObj = &(gw->gameObjects[_draggingToInd]);
-						moveCont = true;
-					break;
-				}
-			break;
-			
-			case E_DT_INV_OBJECT:
-			
-				sourceObj = &(gw->gameObjects[_draggingFromInd]);
-			
-				switch (_draggingToType) {
-					case E_DT_NOTHING:
-						
-						
-						lastCellPos.copyFrom(_worldMarker);
-						lastCellPos.addXYZ(0,0,5);
-						sourceObj->startPoint = lastCellPos.getBTV();
-						
-						
-						gw->gameObjects[sourceObj->parentUID].removeChild(sourceObj->uid);
-						gw->addVisObject(sourceObj->uid, false);
-						sourceObj->parentUID = 0;
-						
-						
-					break;
-					case E_DT_WORLD_OBJECT:
-					case E_DT_INV_OBJECT:
-					case E_DT_INV_OBJECT_PARENT:
-						destObj = &(gw->gameObjects[_draggingToInd]);
-						moveCont = true;
-					break;
-				}
-			break;
-			case E_DT_INV_OBJECT_PARENT:
-				
-			break;
-		}
-		
-		
-		if (moveCont) {
-			
-			if (isContainer[destObj->objectType]) {	
-				if (_draggingFromInd == _draggingToInd) {
-					goto PERFORM_DRAG_END;
-				}
-			}
-			else {
-				if (_draggingFromInd == destObj->parentUID) {
-					goto PERFORM_DRAG_END;
-				}
-			}
-			
-			
-			gw->gameObjects[sourceObj->parentUID].removeChild(sourceObj->uid);
-			
-			if (isContainer[destObj->objectType]) {
-				destObj->children.push_back(sourceObj->uid);
-				sourceObj->parentUID = destObj->uid;
-				draggedIntoWorldObj = true;
-			}
-			else {
-				
-				myVec = &(gw->gameObjects[destObj->parentUID].children);
-				
-				bestPos = 0;
-				for (i = 0; i < myVec->size(); i++) {
-					if ((*myVec)[i] == destObj->uid) {
-						bestPos = i+1;
-					}
-				}
-				myVec->insert(
-					myVec->begin()+bestPos,
-					sourceObj->uid
-				);
-				
-				sourceObj->parentUID = destObj->parentUID;
-			}
-			
-			if (_draggingFromType == E_DT_WORLD_OBJECT) {
-				gw->removeVisObject(sourceObj->uid, false);
-			}
-			
-		}
-		
-		
-		
-		
-		
-		if (
-			(_draggingFromType == E_DT_INV_OBJECT) ||
-			(_draggingToType == E_DT_INV_OBJECT) ||
-			(_draggingToType == E_DT_INV_OBJECT_PARENT) ||
-			draggedIntoWorldObj
-		) {
-			refreshContainers(false);
-		}
-		
-		
-PERFORM_DRAG_END:		
-		markerFound = false;
-		isDraggingObject = false;
-	}
-	
-	
-	void removeEntity(bool isReq, int ind) {
-		
-		if (isReq) {
-			naIntData[0] = ind;
-			gameNetwork->addNetworkAction(E_NO_REM_ENT,naUintData,naIntData,naFloatData);
-			return;
-		}
-		
-		if (ind >= E_OBJ_LENGTH) {
-			if (gw->removeVisObject(ind, false)) {
-				setSelInd(0);
-			}
-		}
-	}
-	
-	BaseObjType placeNewEnt(
-		bool isReq,
-		int et,
-		FIVector4* cellPos,
-		bool isHidden = false
-	) {
-		
-		
-		BaseObj* tmpObj = NULL;
-		
-		int newType = 0;
-		int poolId = et;
-		int xv = 1;
-		int yv = 1;
-		int zv = 1;
-		
-		int curEntId;
-		
-		int mf = 0;
-		
-		bool isRecycled = false;
-		
-		if (isReq) {
-			naFloatData[0] = cellPos->getFX();
-			naFloatData[1] = cellPos->getFY();
-			naFloatData[2] = cellPos->getFZ();
-			naIntData[0] = et;
-			gameNetwork->addNetworkAction(E_NO_ADD_ENT,naUintData,naIntData,naFloatData);
-			return - 1;
-		}
-		
-		float bounciness = 0.0f;
-		float friction = 0.9;
-		float windResistance = 0.9;
-		
-		switch (et) {
-			case E_ENTTYPE_OBJ:
-				newType = getRandomObjId();
-				friction = 0.1;
-				windResistance = 1.0f;
-				bounciness = 0.3;
-			break;
-			// case E_ENTTYPE_MONSTER:
-			// 	newType = getRandomMonsterId();
-			// 	mf = 2;
-			// 	zv = 2;
-			// break;
-			case E_ENTTYPE_NPC:
-				newType = getRandomNPCId();
-				mf = 4;
-				zv = 2;
-			break;
-			
-			case E_ENTTYPE_BULLET:
-			case E_ENTTYPE_TRACE:
-				
-				if (waterBulletOn) {
-					newType = 1103;
-				}
-				else {
-					newType = 1139;
-				}
-				
-				// if (et == E_ENTTYPE_TRACE) {
-					
-				// }
-				
-			break;
-			
-			case E_ENTTYPE_DEBRIS:
-			case E_ENTTYPE_WEAPON:
-				newType = 0;
-			break;
-			
-			
-		}
-		
-		
-		if (
-			(entPoolStack[poolId].maxCount == 0) ||
-			(entPoolStack[poolId].entIds.size() < entPoolStack[poolId].maxCount)
-		) {
-			isRecycled = false;
-			curEntId = gameObjCounter;
-			entPoolStack[poolId].entIds.push_back(gameObjCounter);
-			
-		}
-		else {
-			
-			isRecycled = true;
-			curEntId = entPoolStack[poolId].entIds[
-				entPoolStack[poolId].curIndex
-			];
-			
-			entPoolStack[poolId].curIndex++;
-			if (entPoolStack[poolId].curIndex == entPoolStack[poolId].maxCount) {
-				entPoolStack[poolId].curIndex = 0;
-			}
-		}
-		
-		FIVector4 newPos;
-		newPos.copyFrom(cellPos);
-		
-		if (isRecycled) {
-			gw->removeVisObject(curEntId,true);
-		}
-		else {
-			newPos.addXYZ(0.0f,0.0f,4.0f);
-		}
-		
-		
-		
-		
-		gw->gameObjects[curEntId] = BaseObj();
-		tmpObj = &(gw->gameObjects[curEntId]);
-		tmpObj->init(
-			curEntId,
-			0,
-			newType,
-			et,
-			&newPos
-		);
-		
-		if (
-			(et == E_ENTTYPE_BULLET) ||
-			(et == E_ENTTYPE_TRACE)
-		) {
-			
-			if (noBounce) {
-				bounciness = 0.0f;
-				friction = 0.0f;
-				windResistance = 1.0f;
-			}
-			else {
-				bounciness = 0.7f;
-				friction = 0.1f;
-				windResistance = 1.0f;
-			}
-			
-		}
-		
-		
-		tmpObj->isHidden = isHidden;
-		tmpObj->bounciness = bounciness;
-		tmpObj->friction = friction;
-		tmpObj->windResistance = windResistance;
-		
-		tmpObj->maxFrames = mf;
-		
-		BaseObjType thisObjId = curEntId;
-		
-		if (isRecycled) {
-			gw->addVisObject(curEntId, true);
-		}
-		else {
-			gw->addVisObject(curEntId, false);
-			
-			gameObjCounter++;
-			
-			if (isContainer[newType]) {
-				fillWithRandomObjects(gameObjCounter-1, 0);
-			}
-		}
-		
-		
-		
-		return thisObjId;
-		
-	}
-
-
 
 	void dispatchEvent(
 		int button,
@@ -3074,7 +2537,6 @@ PERFORM_DRAG_END:
 		
 		
 		BaseObj* tmpObj = NULL;
-		GameOrgNode* tmpNode = NULL;
 		
 		bool hitPicker = false;
 		bool wasDoubleClick = false;
@@ -3240,130 +2702,38 @@ PERFORM_DRAG_END:
 			
 		}
 		
-		if (comp->uid.compare("#contItemParent") == 0) {
-			if (comp->jvNodeNoTemplate != NULL) {
-				if (comp->jvNodeNoTemplate->HasChild("objectId")) {
-					if (mouseUpEvent) {
-						if (isDraggingObject) {
-							if (noTravel) {
-								
-							}
-							else {
-								draggingToType = E_DT_INV_OBJECT_PARENT;
-								draggingToInd = comp->jvNodeNoTemplate->Child("objectId")->number_value;
-								performDrag(
-									gameNetwork->isConnected,
-									draggingFromInd,
-									draggingFromType,
-									draggingToInd,
-									draggingToType,
-									&(worldMarker)
-								);
-							}
-						}
-					}
-				}
-			}
-			
+		if (gem->handleGUI(
+			comp, mouseUpEvent, mouseDownEvent, noTravel, wasDoubleClick	
+		)) {
 			goto DISPATCH_EVENT_END;
 		}
 		
-		if (comp->uid.compare("#contItem") == 0) {
-			
-			
-			
-			if (comp->jvNodeNoTemplate != NULL) {
-				
-				
-				if (comp->jvNodeNoTemplate->HasChild("objectId")) {
-					
-					// !!
-					
-					if (mouseUpEvent) {
-						
-						if (wasDoubleClick) {
-							i = comp->jvNodeNoTemplate->Child("objectId")->number_value;
-							if (isContainer[gw->gameObjects[i].objectType]) {
-								toggleCont(i, false);
-							}
-							else {
-								gw->gameObjects[i].isEquipped = !(gw->gameObjects[i].isEquipped);
-								if (gw->gameObjects[i].isEquipped) {
-									playSoundEvent("showGUI");
-								}
-								else {
-									playSoundEvent("hideGUI");
-								}
-								refreshContainers(false);
-							}
-							
-							
-						}
-						else if (isDraggingObject) {
-							if (noTravel) {
-								
-							}
-							else {
-								draggingToType = E_DT_INV_OBJECT;
-								draggingToInd = comp->jvNodeNoTemplate->Child("objectId")->number_value;
-								performDrag(
-									gameNetwork->isConnected,
-									draggingFromInd,
-									draggingFromType,
-									draggingToInd,
-									draggingToType,
-									&(worldMarker)
-								);
-							}
-							
-						}
-					}
-					else if (mouseDownEvent) {
-						
-						isDraggingObject = true;
-						draggingFromType = E_DT_INV_OBJECT;
-						draggingFromInd = comp->jvNodeNoTemplate->Child("objectId")->number_value;
-					}
-				}
-			}
-			
-			goto DISPATCH_EVENT_END;
-			
-		}
+		
+		
 		
 		
 		
 		if (mouseUpEvent) {
 			
-			if (comp->uid.compare("ddMenu.removeEntity") == 0) {
-				removeEntity(gameNetwork->isConnected, selObjInd);
-			}
-			else if (comp->uid.compare("ddMenu.placeEntity.npc") == 0) {
-				placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
-			}
-			// else if (comp->uid.compare("ddMenu.placeEntity.monster") == 0) {
-			// 	placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
-			// }
-			else if (comp->uid.compare("ddMenu.placeEntity.object") == 0) {
-				placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_OBJ, &lastCellPos);
-			}
-			else if (comp->uid.compare("charEdit.savePose") == 0) {
+			
+			if (comp->uid.compare("charEdit.savePose") == 0) {
 				saveOrg();
 			}
 			else if (comp->uid.compare("charEdit.loadPose") == 0) {
 				loadOrg();
 			}
 			else if (comp->uid.compare("$charEdit.orgOn") == 0) {
-				orgOn = curValue != 0.0f;
+				gem->orgOn = curValue != 0.0f;
 			}
 			else if (comp->uid.compare("$charEdit.pathfindingOn") == 0) {
 				//pathfindingOn = curValue != 0.0f;
 			}
 			else if (comp->uid.compare("$charEdit.editPose") == 0) {
-				editPose = curValue != 0.0f;
+				gem->editPose = curValue != 0.0f;
+				EDIT_POSE = gem->editPose;
 			}
 			else if (comp->uid.compare("$charEdit.mirrorOn") == 0) {
-				mirrorOn = curValue != 0.0f;
+				gem->mirrorOn = curValue != 0.0f;
 			}
 			else if (comp->uid.compare("$charEdit.applyToChildren") == 0) {
 				applyToChildren = curValue != 0.0f;
@@ -3375,30 +2745,8 @@ PERFORM_DRAG_END:
 				endFieldInput(false);
 			}
 			else if (comp->uid.compare("#materialPicker") == 0) {
-				if (selectedNode != NULL) {
-					cout << "yqay" << comp->index << " " << boneStrings[selectedNode->nodeName] << "\n";
-					
-					selectedNode->orgVecs[E_OV_MATPARAMS].setFX(comp->index);
-					tmpNode = getMirroredNode(selectedNode);
-					if (tmpNode != NULL) {
-						tmpNode->orgVecs[E_OV_MATPARAMS].setFX(comp->index);
-					}
-					makeDirty();
-				}
+				gem->updateOrgMat(comp);
 			}
-			else if (comp->uid.compare("#contMenu.close") == 0) {
-				
-				i = comp->getParent()->getChild(1)->jvNodeNoTemplate->Child("objectId")->number_value;
-				
-				cout << "ival " << i << "\n";
-				
-				playSoundEnt("leather0", NULL, 0.1);
-				gw->gameObjects[i].isOpen = false;
-				refreshContainers(false);
-				
-			}
-			
-			
 			
 			
 			if (comp->guiClass == E_GT_BUTTON) {
@@ -3506,7 +2854,7 @@ DISPATCH_EVENT_END:
 			mouseMoved = false;
 		}
 		if (mouseUpEvent) {
-			isDraggingObject = false;
+			gem->isDraggingObject = false;
 		}
 	}
 
@@ -4777,10 +4125,8 @@ DISPATCH_EVENT_END:
 	
 	float getTerHeightScaled(float val)
 	{
-		return val*heightMapMaxInCells; //mixf(0.125f,0.875f,val)
-		
+		return val*heightMapMaxInCells;
 	}
-
 
 	float getSLNormalized()
 	{
@@ -4864,12 +4210,7 @@ DISPATCH_EVENT_END:
 	}
 	
 	
-	void transformOrg(
-		GameOrg* curOrg,
-		GameOrgNode* tempParent
-	) {
-		curOrg->baseNode->doTransform(this, tempParent);
-	}
+	
 	
 	void angleToVec(FIVector4* fv, float xr, float yr) {
 		fv->setFXYZ(
@@ -5024,117 +4365,8 @@ DISPATCH_EVENT_END:
 	}
 	
 	
-	
-	GameOrgNode* getMirroredNode(GameOrgNode* curNode) {
-		if (getCurOrg() == NULL) {
-			return NULL;
-		}
-		GameOrg* testOrg = getCurOrg();
-		
-		if ((curNode->nodeName < E_BONE_C_BEG)&&mirrorOn) {
-			if (curNode->nodeName <= E_BONE_L_END) {
-				return testOrg->baseNode->getNode(
-					curNode->nodeName+(E_BONE_R_BEG-E_BONE_L_BEG)
-				);
-			}
-			else {
-				return testOrg->baseNode->getNode(
-					curNode->nodeName-(E_BONE_R_BEG-E_BONE_L_BEG)
-				);
-			}
-		}
-		else {
-			return NULL;
-		}
-		
-	}
 
 	
-
-	void applyNodeChanges(GameOrgNode* _curNode, float dx, float dy) {
-		
-		GameOrgNode* curNode = _curNode;
-		
-		int i;
-		int j;
-		int k;
-		
-		float xm = 0.0f;
-		float ym = 0.0f;
-		float zm = 0.0f;
-		
-		float dirMod = 1.0f;
-		
-		
-		if (
-			(curNode->nodeName < E_BONE_C_BEG) &&
-			(mirrorOn)
-		) {
-			j = 2;
-		}
-		else {
-			j = 1;
-		}
-		
-		for (i = 0; i < j; i++) {
-			
-			
-			if (i == 1) {
-				curNode = getMirroredNode(curNode);
-				
-				dirMod = -1.0f;
-			}
-			
-			
-			if (abDown) {
-				makeDirty();
-			}
-			
-			xm = dx/100.0f;
-			ym = dy/100.0f;
-			
-			if (shiftDown()) { // || altDown()
-								
-				if (lbDown) {
-					curNode->orgVecs[E_OV_TBNRAD0].addXYZ(0.0f,xm,ym);
-				}
-				if (rbDown) {
-					curNode->orgVecs[E_OV_TBNRAD1].addXYZ(0.0f,xm,ym);
-				}
-				if (mbDown) {
-					
-					curNode->orgVecs[E_OV_TBNRAD0].addXYZ(ym, 0.0f, 0.0f);
-					curNode->orgVecs[E_OV_TBNRAD1].addXYZ(ym, 0.0f, 0.0f);
-					
-					//curNode->boneLengthScale += ym;
-				}
-			}
-			else {
-				
-				if (lbDown) {
-					curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(dirMod*ym,0.0,0.0); //dirMod*ym
-				}
-				if (rbDown) {
-					curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0,0.0,dirMod*ym);
-				}
-				if (mbDown) {
-					curNode->orgVecs[E_OV_THETAPHIRHO].addXYZ(0.0,dirMod*ym,0.0);
-				}
-				
-				
-			}
-			
-			if (applyToChildren) {
-				for (k = 0; k < curNode->children.size(); k++) {
-					applyNodeChanges(curNode->children[k], dx, dy);
-				}
-			}
-			
-			
-		}
-			
-		
-	}
 	
 	
 	GLfloat getCamRot(int ind) {
@@ -5142,24 +4374,6 @@ DISPATCH_EVENT_END:
 		return curCamRotation[ind];
 		
 	}
-	
-	
-	// void remNode() {
-		
-	// }
-	
-	// void addNode() {
-	// 	if (
-	// 		(orgOn) && 
-	// 		(activeNode != NULL) &&
-	// 		editPose
-	// 	) {
-			
-			
-	// 		applyNodeChanges(activeNode, dx, dy);
-			
-	// 	}
-	// }
 	
 
 	void moveObject(float dx, float dy)
@@ -5238,14 +4452,11 @@ DISPATCH_EVENT_END:
 		
 		
 		if (
-			(orgOn) && 
-			(activeNode != NULL) &&
-			editPose
-			
+			(gem->orgOn) && 
+			(gem->activeNode != NULL) &&
+			gem->editPose
 		) {
-			
-			applyNodeChanges(activeNode, dx, dy);
-			
+			gem->applyNodeChanges(gem->activeNode, dx, dy);
 		}
 		else {
 			if (
@@ -5299,7 +4510,7 @@ DISPATCH_EVENT_END:
 					
 					if (
 						rbDown
-						//&&( (currentActor==NULL) || (editPose)	)
+						//&&( (gem->currentActor==NULL) || (gem->editPose)	)
 					) {
 						
 						camRotation[0] -= dx*0.01f;
@@ -5541,7 +4752,6 @@ DISPATCH_EVENT_END:
 		
 		//mainGUI->runReport();
 		
-		cout << "num limbs " << limbDataDebug << "\n";
 		
 		// cout << "lastMouseX" << lastMouseX << "\n";
 		// cout << "lastMouseY" << lastMouseY << "\n";
@@ -5552,7 +4762,6 @@ DISPATCH_EVENT_END:
 		// doTraceVecND("lookAtVec ", &lookAtVec);
 		// cout << "\n";
 		
-		//cout << "Object Count: " << lastObjectCount << "\n";
 		// cout << "lightCount: " << gw->lightCount << "\n";
 		//cout << "TOT GPU MEM USED (MB): " << TOT_GPU_MEM_USAGE << "\n";
 		// cout << "HolderSize (MB): " << holderSizeMB << "\n";
@@ -5561,35 +4770,7 @@ DISPATCH_EVENT_END:
 	
 	
 	
-	void setFirstPerson(bool _newVal) {
-		
-		bool newVal = _newVal;
-		
-		if (currentActor == NULL) {
-			newVal = false;	
-		}
-		
-		if (firstPerson) {
-			subjectDistance = lastSubjectDistance;
-		}
-		
-		firstPerson = newVal;
-		
-		if (firstPerson) {
-			lastSubjectDistance = subjectDistance;
-		}
-		
-		cout << "firstPerson " << firstPerson << "\n";
-	}
 	
-	int getCurActorUID() {
-		if (currentActor == NULL) {
-			return -1;
-		}
-		else {
-			return currentActor->uid;
-		}
-	}
 	
 	void updateCS() {
 		if (
@@ -5613,606 +4794,6 @@ DISPATCH_EVENT_END:
 	
 	
 	
-	BaseObj* getActorRef(int uid) {
-		if (uid < 0) {
-			return NULL;
-		}
-		else {
-			return &(gw->gameObjects[uid]);
-		}
-	}
-	
-	bool combatMode() {
-		return (currentActor!=NULL)&&combatOn;
-	}
-	
-	void makeHit(
-		int attackerId,
-		int victimId,
-		int weaponId
-	) {
-		
-		btVector3 impVec;
-		
-		BaseObj* geAttacker = getActorRef(attackerId);
-		BaseObj* geVictim = getActorRef(victimId);
-		BaseObj* geWeapon = getActorRef(weaponId);
-		
-		int lastHealth;
-		
-		GameOrg* curOrg = NULL;
-		
-		int i;
-		
-		if (geAttacker == NULL) {
-			return;
-		}
-		
-		if (geAttacker->isDead()) {
-			return;
-		}
-		
-		if (geVictim == NULL) {
-			
-		}
-		else {
-			if (
-				(geVictim->entType == E_ENTTYPE_WEAPON) &&
-				(geWeapon != NULL)
-			) {
-				if (geWeapon->isGrabbedById == geVictim->isGrabbedById) {
-					// owners two weapons hit each other
-					return;
-				}
-			}
-		}
-		
-		
-		
-		
-		for (i = 0; i < RLBN_LENGTH; i++) {
-			
-			
-			if (geAttacker->getActionState(E_ACT_ISSWINGING,i)) {
-				if (geAttacker->orgId > -1) {
-					curOrg = gameOrgs[geAttacker->orgId];
-					
-					if (curOrg->stepCount > 1) {
-						geAttacker->setActionState(E_ACT_ISSWINGING,i,false);
-						
-						
-						if (geVictim == NULL) {
-							// hit static obj
-							
-							if (geWeapon != NULL) {
-								playSoundEnt("metalhit5",geAttacker,0.2,0.5f);
-								tempVec1.setBTV(geWeapon->getCenterPoint(E_BDG_CENTER));
-								gameFluid[E_FID_BIG]->pushExplodeBullet(true,&tempVec1,0,4.0f);
-							}
-							
-							
-						}
-						else {
-							
-							if (geVictim->entType == E_ENTTYPE_WEAPON) {
-								playSoundEnt("clang0",geAttacker,0.1,1.0f);
-							}
-							
-							if (geVictim->entType == E_ENTTYPE_NPC) {
-								playSoundEnt("hit0",geVictim,0.3,1.0f);
-								if (geVictim->isAlive()) {
-									playSoundEnt("grunthitm0",geVictim,0.15,0.2f);
-								}
-							}
-							
-							
-							
-							
-							if (geVictim->entType == E_ENTTYPE_NPC) {
-								geVictim->setActionState(E_ACT_ISHIT,RLBN_NEIT,true);
-								geVictim->bindingPower = 0.0f;
-								lastHealth = geVictim->curHealth;
-								geVictim->curHealth -= 32;
-								if (geVictim->curHealth < 0) {
-									geVictim->curHealth = 0;
-								}
-								
-								if (geVictim->isDead() && (lastHealth > 0)) {
-									// just died
-									
-									
-									geVictim->bodies[E_BDG_CENTER].body->setAngularFactor(
-										btVector3(1.0f,1.0f,1.0f)
-									);
-									geVictim->bodies[E_BDG_CENTER].body->setAngularVelocity(btVector3(1.0f,1.0f,0.0f)*40.0f);
-									
-									playSoundEnt("dyingm0",geVictim,0.15,0.2f);
-									
-								}
-								
-								impVec = geVictim->getCenterPoint(E_BDG_CENTER) - geAttacker->getCenterPoint(E_BDG_CENTER);
-								impVec.normalize();
-								impVec += btVector3(0.0f,0.0f,2.0f);
-								geVictim->applyImpulse(
-									impVec*geVictim->getMarkerMass()*conVals[E_CONST_HIT_STRENGTH],
-									false,
-									E_BDG_CENTER
-								);
-							}
-						}
-					}
-				}
-			}
-			
-			
-			
-		}
-		
-	}
-	
-	
-	bool isSwingingWeapon(int actorId, int handNum) {
-		if (actorId < 0) {
-			return false;
-		}
-		BaseObj* ca = &(gw->gameObjects[actorId]);
-		PoseInfo* curPI = &(gamePoseInfo[ca->swingType[handNum]]);
-		return (curPI->stringData[E_PIK_SUBTYPE].compare("E_SUB_WEAPON") == 0);
-	}
-	bool isPunching(int actorId, int handNum) {
-		if (actorId < 0) {
-			return false;
-		}
-		BaseObj* ca = &(gw->gameObjects[actorId]);
-		PoseInfo* curPI = &(gamePoseInfo[ca->swingType[handNum]]);
-		return (curPI->stringData[E_PIK_SUBTYPE].compare("E_SUB_PUNCH") == 0);
-	}
-	bool isKicking(int actorId, int handNum) {
-		if (actorId < 0) {
-			return false;
-		}
-		BaseObj* ca = &(gw->gameObjects[actorId]);
-		PoseInfo* curPI = &(gamePoseInfo[ca->swingType[handNum]]);
-		return (curPI->stringData[E_PIK_SUBTYPE].compare("E_SUB_KICK") == 0);
-	}
-	
-	void setSwing(
-		float _mx,
-		float _my,
-		int actorId,
-		int handNum,
-		bool isKick
-	) {
-		
-		float mx = _mx;
-		float my = -_my;
-		
-		
-		
-		if (actorId < 0 ) {
-			return;
-		}
-		
-		//int handMod = 0;
-		
-		BaseObj* ca = &(gw->gameObjects[actorId]);
-		
-		bool isHolding = (ca->isGrabbingId[handNum] > -1);
-		
-		// if (handNum == RLBN_RIGT) {
-		// 	mx *= -1.0f;
-		// }
-		
-		// if (handNum == RLBN_LEFT) {
-		// 	handMod = 1;
-		// }
-		
-		int curAttack = E_PG_SLSH;
-		
-		if (abs(my) > abs(mx)) {
-			if (my > 0.0f) {
-				// top
-				
-				if (isKick) {
-					curAttack = E_PG_BKIK;
-				}
-				else {
-					if (isHolding) {
-						curAttack = E_PG_HACK;
-					}
-					else {
-						curAttack = E_PG_UPPR;
-					}
-				}
-				
-				
-			}
-			else {
-				// bottom
-				
-				if (isKick) {
-					curAttack = E_PG_FRNT;
-				}
-				else {
-					if (isHolding) {
-						curAttack = E_PG_STAB;
-					}
-					else {
-						curAttack = E_PG_JABP;
-					}
-				}
-				
-			}
-		}
-		else {
-			if (mx > 0.0f) {
-				// right
-				
-				if (isKick) {
-					curAttack = E_PG_ROUN;
-				}
-				else {
-					if (isHolding) {
-						curAttack = E_PG_SLSH;
-					}
-					else {
-						curAttack = E_PG_HOOK;
-					}
-				}
-				
-			}
-			else {
-				// left
-				
-				if (isKick) {
-					curAttack = E_PG_REVR;
-				}
-				else {
-					if (isHolding) {
-						curAttack = E_PG_BACK;
-					}
-					else {
-						curAttack = E_PG_ELBO;
-					}
-				}
-				
-			}
-		}
-		
-		//curAttack += handMod;
-		
-		ca->swingType[handNum] = curAttack;
-		
-	}
-	
-	void nextSwing(int actorId, int handNum) {
-		
-		if (actorId < 0 ) {
-			return;
-		}
-		
-		BaseObj* ca = &(gw->gameObjects[actorId]);
-		
-		ca->swingType[handNum]++;
-		
-		if (ca->swingType[handNum] > (E_PG_FRNT)) {
-			ca->swingType[handNum] = (E_PG_SLSH);
-		}
-		
-		
-	}
-	
-	GameOrg* getPose(
-		int targPoseGroup,
-		int targRLBN,
-		int targStep
-	) {
-		int targPose = gamePoseInfo[targPoseGroup].poseSteps[targRLBN].gamePoseIndex[targStep];
-		
-		if (targPose > -1) {
-			return gamePoses[targPose];
-		}
-		else {
-			return NULL;
-		}
-	}
-	
-	string getPoseString(
-		int targPoseGroup,
-		int targRLBN,
-		int targStep	
-	) {
-		return gamePoseInfo[targPoseGroup].poseSteps[targRLBN].fileString[targStep];
-	}
-	
-	GameOrg* getCurrentPose() {
-		return getPose(curPose[curPoseType].group,curPose[curPoseType].RLBN,curPose[curPoseType].step);
-	}
-	
-	string getCurrentPoseString() {
-		return getPoseString(curPose[curPoseType].group,curPose[curPoseType].RLBN,curPose[curPoseType].step);
-	}
-	
-	
-	int getActionStateFromPose(int poseNum) {
-		switch (poseNum) {
-			
-			case E_PG_JUMP:
-				return E_ACT_ISJUMPING;
-			break;
-			case E_PG_PICKUP:
-				return E_ACT_ISPICKINGUP;
-			break;
-			case E_PG_WALKFORWARD:
-				return E_ACT_ISWALKING;
-			break;
-			
-			case E_PG_SLSH:
-			case E_PG_BACK:
-			case E_PG_HACK:
-			case E_PG_STAB:
-			case E_PG_HOOK:
-			case E_PG_ELBO:
-			case E_PG_UPPR:
-			case E_PG_JABP:
-			case E_PG_ROUN:
-			case E_PG_REVR:
-			case E_PG_BKIK:
-			case E_PG_FRNT:
-				return E_ACT_ISSWINGING;
-			break;
-			
-			default:
-				return E_ACT_NULL;
-			break;
-		}
-	}
-	
-	void makeSwing(int actorId, int handNum) {
-		
-		if (editPose) {
-			return;
-		}
-		
-		if (actorId < 0 ) {
-			return;
-		}
-		
-		BaseObj* ca = &(gw->gameObjects[actorId]);
-		GameOrg* curOrg;
-		
-		if (ca->isDead()) {
-			return;
-		}
-		
-		int i;
-		
-		if (ca->getActionState(E_ACT_ISSWINGING,handNum) || (ca->bindingPower < 0.01f)) {
-			
-		}
-		else {
-			
-			for (i = 0; i < RLBN_LENGTH; i++) {
-				if (i != handNum) {
-					ca->setActionState(E_ACT_ISSWINGING,i,false);
-				}
-			}
-			
-			
-			
-			//if (ca->weaponActive) {
-				
-				// if (actorId == getCurActorUID()) {
-				// 	cout << "yay2\n";
-				// }
-				
-				ca->setActionState(E_ACT_ISSWINGING,handNum,true);
-				curOrg = gameOrgs[ca->orgId];
-				curOrg->stepCount = 0;
-				curOrg->totTime = 0;
-				playSoundEnt("woosh0", ca, 0.25f);
-				playSoundEnt("gruntm0", ca, 0.25f, 0.1f);
-				
-				
-				
-				if (ca->baseContact()) {
-					makeMove( actorId,
-						btVector3(
-							0.0f,
-							conVals[E_CONST_DASH_AMOUNT],
-							conVals[E_CONST_DASH_UP_AMOUNT]
-						),
-						true
-					);
-				}
-				
-				if (ca->uid != getCurActorUID()) {
-					nextSwing(actorId,RLBN_LEFT);
-					nextSwing(actorId,RLBN_RIGT);
-				}
-				
-				
-				
-			//}
-			
-			
-		}
-		
-		
-	}
-	
-	void makeTurn(int actorId, float dirFactor) {
-		
-		BaseObj* ca = &(gw->gameObjects[actorId]);
-		
-		if (ca->bodies.size() < 0) {
-			return;
-		}
-		
-		ca->applyAngularImpulse(btVector3(0,0,dirFactor), true, 0);
-	}
-	
-	void makeMoveVec(int actorId, btVector3 moveVec) {
-		BaseObj* ca = &(gw->gameObjects[actorId]);
-		
-		if (ca->bodies.size() < 0) {
-			return;
-		}
-		
-		if (ca->hasBodies()) {
-			ca->setActionState(E_ACT_ISWALKING,RLBN_NEIT,true);
-			ca->applyImpulse(
-				moveVec*conVals[E_CONST_WALK_AMOUNT]*ca->getMarkerMass(),
-				true,
-				0
-			);
-		}
-	}
-	
-	void makeMove(int actorId, btVector3 moveDir, bool relative) {
-		BaseObj* ca = &(gw->gameObjects[actorId]);
-		
-		btVector3 newMoveDir = moveDir;
-		
-		if (ca->bodies.size() < 0) {
-			return;
-		}
-		
-		if (ca->hasBodies()) {
-			ca->setActionState(E_ACT_ISWALKING,RLBN_NEIT,true);
-			
-			
-			newMoveDir *= conVals[E_CONST_WALK_AMOUNT];
-			
-			if (ca->baseContact()) {
-				newMoveDir +=	btVector3(
-					0.0f,
-					0.0f,
-					conVals[E_CONST_WALK_UP_AMOUNT]
-				);
-			}
-			
-			
-			if (relative) {
-				ca->applyImpulseOtherRot(
-					newMoveDir*ca->getMarkerMass(),
-					ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
-					true,
-					0
-				);
-			}
-			else {
-				ca->applyImpulse(
-					newMoveDir*ca->getMarkerMass(),
-					true,
-					0
-				);
-			}
-			
-			
-		}
-	}
-	
-	void makeJump(int actorId, int isUp, float jumpFactor) {
-		
-		BaseObj* ge = &(gw->gameObjects[actorId]);
-		
-		if (ge->bodies.size() < 0) {
-			return;
-		}
-		
-		if (ge->jumpCooldown > 0) {
-			return;
-		}
-		
-		if (ge->baseContact()) {
-			
-		}
-		else {
-			return;
-		}
-		
-		float jumpAmount = conVals[E_CONST_JUMP_AMOUNT]*ge->getMarkerMass()*jumpFactor;
-		
-		
-		if (isUp == 1) {
-			if (ge->bodies[E_BDG_CENTER].inWater) {
-				
-				
-				if (
-					gw->getCellAtCoords(
-						ge->getCenterPoint(E_BDG_CENTER).getX(),
-						ge->getCenterPoint(E_BDG_CENTER).getY(),
-						ge->getCenterPoint(E_BDG_CENTER).getZ() + 1.0f
-					) == E_CD_EMPTY
-				) {
-					
-					
-					// at water surface
-					
-					ge->applyImpulse(btVector3(0.0f,0.0f,jumpAmount), false, 0);
-					
-					
-					
-				}
-				else {
-					
-					// underwater
-					
-					
-					ge->applyImpulse(btVector3(0.0f,0.0f,jumpAmount), false, 0);
-					
-					playSoundEnt(
-						"bubble0",
-						ge,
-						0.3f,
-						0.5f
-					);
-				}
-				
-				ge->setActionState(E_ACT_ISJUMPING,RLBN_NEIT,true);
-				ge->jumpCooldown = 100;
-				
-			}
-			else {
-				if (ge->allFalling()) {
-					
-				}
-				else {
-					
-					
-					ge->applyImpulse(btVector3(0.0f,0.0f,jumpAmount), false, 0);
-					ge->zeroZ = true;
-					
-					playSoundEnt(
-						"jump0",
-						ge,
-						0.1f,
-						0.2f
-					);
-					
-					ge->setActionState(E_ACT_ISJUMPING,RLBN_NEIT,true);
-					ge->jumpCooldown = 100;
-					
-				}
-			}
-		}
-		else {
-			if (ge->bodies[E_BDG_CENTER].inWater) {
-				ge->applyImpulse(btVector3(0.0f,0.0f,-jumpAmount), false, 0);
-				
-				playSoundEnt(
-					"bubble0",
-					ge,
-					0.3f,
-					0.5f
-				);
-			}
-		}
-		
-		
-		
-	}
 	
 	void resetGeom() {
 		int i;
@@ -6225,320 +4806,6 @@ DISPATCH_EVENT_END:
 		}
 	}
 	
-	bool hasRLBN(int rlbnRes, int k) {
-		
-		bool doProc = false;
-		
-		
-		
-		switch (k) {
-			case 0:
-				doProc = ((rlbnRes&RLBN_FLAG_RIGHT) > 0);
-			break;
-			case 1:
-				doProc = ((rlbnRes&RLBN_FLAG_LEFT) > 0);
-			break;
-			case 2:
-				doProc = ((rlbnRes&RLBN_FLAG_BOTH) > 0);
-			break;
-			case 3:
-				doProc = ((rlbnRes&RLBN_FLAG_NEITHER) > 0);
-			break;
-		}
-		
-		return doProc;
-		
-	}
-	
-	void loadPoseInfo() {
-		int i;
-		int j;
-		int k;
-		int m;
-		
-		bool doProc;
-		
-		int numChildren;
-		int numSteps;
-		
-		JSONValue* jv = NULL;
-		JSONValue* curTempl = NULL;
-		JSONValue* tempJV = NULL;
-		JSONValue* poses = NULL;
-		JSONValue* templates = NULL;
-		int rlbnRes;
-		
-		string curString;
-		
-		gamePoses.clear();
-		
-		
-		if (loadJSON("..\\data\\poseinfo.js", &poseRootJS)) {
-			
-			templates = poseRootJS->Child("templates");
-			poses = poseRootJS->Child("poses");
-			//numChildren = poses->CountChildren();
-			
-			for (i = 0; i < E_PG_LENGTH; i++) {
-				jv = poses->Child(poseGroupStrings[i]);
-				
-				curTempl = NULL;
-				
-				if (jv->HasChild("template")) {
-					if (
-						templates->HasChild(jv->Child("template")->string_value)
-					) {
-						curTempl = templates->Child(jv->Child("template")->string_value);
-					}
-					else {
-						cout << "invalid template \n";
-					}
-				}
-				
-				// gamePoseInfo.push_back(PoseInfo());
-				
-				
-				for (j = 0; j < 2; j++) {
-					if (curTempl != NULL) {
-						
-						
-						for (k = 0; k < E_PIK_LENGTH; k++) {
-							if (
-								curTempl->HasChild(E_PIK_STRINGS[k])
-							) {
-								
-								if (curTempl->Child(E_PIK_STRINGS[k])->IsNumber()) {
-									gamePoseInfo[i].data[k] = curTempl->Child(E_PIK_STRINGS[k])->number_value;
-								}
-								else {
-									gamePoseInfo[i].stringData[k] = curTempl->Child(E_PIK_STRINGS[k])->string_value;
-								}
-							}
-						}
-					}
-					curTempl = jv;
-				}
-				
-				rlbnRes = gamePoseInfo[i].data[E_PIK_RLBN];
-				numSteps = gamePoseInfo[i].data[E_PIK_NUMSTEPS];
-				
-				for (k = 0; k < 4; k++) {
-					for (m = 0; m < MAX_POSE_STEPS; m++) {
-						gamePoseInfo[i].poseSteps[k].fileString[m] = "";
-						gamePoseInfo[i].poseSteps[k].gamePoseIndex[m] = -1;
-					}
-				}
-				
-				if (gamePoseInfo[i].data[E_PIK_POSETYPE] == E_ENTTYPE_WEAPON) {
-					cout << "weapon\n";
-				}
-				else {
-					cout << "not weapon\n";
-					
-					for ( k = 0; k < 4; k++ ) {
-						
-						if (hasRLBN(rlbnRes,k)) {
-							
-							for (m = 0; m < numSteps; m++) {
-								curString = poseGroupStrings[i];
-								curString.append("_");
-								curString.append(poseSideStrings[k]);
-								curString.append(std::to_string(m));
-								
-								gamePoseInfo[i].poseSteps[k].fileString[m] = curString;
-								gamePoseInfo[i].poseSteps[k].gamePoseIndex[m] = gamePoses.size();
-								
-								
-								gamePoses.push_back(new GameOrg());
-								gamePoses.back()->init(this,-1,E_ORGTYPE_HUMAN);
-								gamePoses.back()->loadFromFile(curString, false);
-								transformOrg(gamePoses.back(), NULL);
-								
-								gamePoses.back()->basePose.group = i;
-								gamePoses.back()->basePose.RLBN = k;
-								gamePoses.back()->basePose.step = m;
-							}
-						}
-						
-					}
-				}
-				
-				
-				
-			}
-			
-			
-			cout << "GAMEPOSESIZE " << gamePoses.size() << "\n";
-			
-			
-			for (i = 0; i < E_ENTTYPE_LENGTH; i++) {
-				
-				curPose[i].RLBN = RLBN_NEIT;
-				curPose[i].step = 0;
-				
-				switch (i) {
-					case E_ENTTYPE_NPC:
-						curPose[i].group = E_PG_TPOSE;
-					break;
-					case E_ENTTYPE_WEAPON:
-						curPose[i].group = E_PG_SWORD;
-					break;
-					default:
-						curPose[i].group = E_PG_TPOSE;
-					break;
-					
-				}
-				getIndexForPose(&(curPose[i]));
-				
-			}
-			
-			
-		}
-		
-		
-		
-	}
-	
-	
-	
-	
-	
-	void changePose(int amount) {
-		
-		GameOrg* testOrg = getCurOrg();
-		
-		int testPoseType = -1;
-		int testPoseInd;
-		
-		do {
-			curPose[curPoseType].index += amount;
-			
-			cout << "poseInd " << " " << curPoseType << " " << curPose[curPoseType].index << "\n";
-			
-			if (curPose[curPoseType].index == gamePoses.size()) {
-				curPose[curPoseType].index = 0;
-			}
-			if (curPose[curPoseType].index < 0) {
-				curPose[curPoseType].index = gamePoses.size()-1;
-			}
-			
-			testPoseInd = gamePoses[curPose[curPoseType].index]->basePose.group;
-			testPoseType = gamePoseInfo[testPoseInd].data[E_PIK_POSETYPE];
-			
-		} while(testPoseType != curPoseType);
-		
-		
-		
-		int j;
-		float* curData;
-		
-		cout << "Current Pose: " << getCurrentPoseString() << "\n";
-		
-		setPoseFromIndex(curPose[curPoseType].index);
-		
-		
-		if (testOrg != NULL) {
-					
-			testOrg->setTPG(curPose[curPoseType].group, curPose[curPoseType].RLBN);
-			
-			if (editPose) {
-				loadCurrentPose();
-			}
-			
-		}
-	}
-	
-	
-	void saveCurrentPose() {
-		GameOrg* testOrg = getCurOrg();
-		
-		if (editPose) {
-			
-			if (testOrg != NULL) {
-				testOrg->saveToFile(getCurrentPoseString());
-				getCurrentPose()->loadFromFile(getCurrentPoseString(), false);
-				transformOrg(getCurrentPose(), NULL);
-				
-				cout << "Saved Pose " << getCurrentPoseString() << "\n";
-				
-			}
-		}
-	}
-	
-	
-	void getIndexForPose(PoseKey* tempPose) {
-		
-		tempPose->index = gamePoseInfo[
-			tempPose->group
-		].poseSteps[
-			tempPose->RLBN
-		].gamePoseIndex[
-			tempPose->step
-		];
-	}
-	
-	void setPoseFromIndex(int i) {
-		curPose[curPoseType].index = i;
-		curPose[curPoseType].group = gamePoses[curPose[curPoseType].index]->basePose.group;
-		curPose[curPoseType].RLBN = gamePoses[curPose[curPoseType].index]->basePose.RLBN;
-		curPose[curPoseType].step = gamePoses[curPose[curPoseType].index]->basePose.step;
-	}
-	
-	void loadNonPoseData(int npdPose, int npdSide, int npdStep) {
-		GameOrg* testOrg = getCurOrg();
-		
-		int i;
-		int j;
-		int k;
-		
-		float* curData;/// = gamePoseInfo[targetPose].data;
-		
-		if (editPose) {
-			if (testOrg != NULL) {
-				
-				for (i = 0; i < gamePoses.size(); i++) {
-					setPoseFromIndex(i);
-					
-					loadCurrentPose();
-					getCurrentPose()->loadFromFile(getPoseString(npdPose,npdSide,npdStep), true);
-					transformOrg(getCurrentPose(), NULL);
-					testOrg->setToPose(getCurrentPose(),1.0f);
-					transformOrg(testOrg, NULL);
-					makeDirty();
-					cout << "Loaded Non Pose " << getCurrentPoseString() << "\n";
-					saveCurrentPose();
-					
-					
-					
-				}
-				
-				curPose[curPoseType].group = npdPose;
-				curPose[curPoseType].RLBN = npdSide;
-				curPose[curPoseType].step = npdStep;
-				getIndexForPose(&(curPose[curPoseType]));
-				
-				loadCurrentPose();
-			}
-		}
-	}
-	
-	
-	void loadCurrentPose() {
-		GameOrg* testOrg = getCurOrg();
-		
-		if (editPose) {
-			if (testOrg != NULL) {
-				
-				getCurrentPose()->loadFromFile(getCurrentPoseString(), false);
-				transformOrg(getCurrentPose(), NULL);
-				testOrg->setToPose(getCurrentPose(),1.0f);
-				transformOrg(testOrg, NULL);
-				makeDirty();
-				cout << "Loaded Pose " << getCurrentPoseString() << "\n";
-				
-			}
-		}
-	}
 	
 	
 	void processInput(unsigned char key, bool keyDown, int x, int y) {
@@ -6568,7 +4835,7 @@ DISPATCH_EVENT_END:
 		
 		keysPressed[newKey] = keyDown;
 		
-		GameOrg* testOrg = getCurOrg();
+		GameOrg* testOrg = gem->getCurOrg();
 		
 		
 		if (keyDown) {
@@ -6606,7 +4873,7 @@ DISPATCH_EVENT_END:
 				case '1':
 					updateHolders = true;
 					getMarkerPos(x, y);
-					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
+					gem->placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
 				break;
 				case '2':
 					// updateHolders = true;
@@ -6615,13 +4882,13 @@ DISPATCH_EVENT_END:
 					
 					updateHolders = true;
 					getMarkerPos(x, y);
-					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_WEAPON, &lastCellPos);
+					gem->placeNewEnt(gameNetwork->isConnected, E_ENTTYPE_WEAPON, &lastCellPos);
 				
 				break;
 				case '3':
 					updateHolders = true;
 					getMarkerPos(x, y);
-					placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_OBJ, &lastCellPos);
+					gem->placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_OBJ, (int)E_SUB_DEFAULT, &lastCellPos);
 				break;
 				case '4':
 					
@@ -6638,23 +4905,14 @@ DISPATCH_EVENT_END:
 				
 				
 				case 'i':
-						//isMacro = !isMacro;
-						//mirrorOn = !mirrorOn;
 						
 						ignoreFrameLimit = !ignoreFrameLimit;
 						cout << "ignoreFrameLimit: " << ignoreFrameLimit << "\n";
 					break;
-
-
-				// case '9':
-				// 	saveAllData();
-				// 	cout << "data saved\n";
-				// break;
-				
 				case 19: //ctrl-s
 					saveExternalJSON();
 					saveGUIValues();
-					saveCurrentPose();
+					gem->saveCurrentPose();
 					//cout << "Use s key in web editor to save\n";
 					break;
 
@@ -6711,50 +4969,12 @@ DISPATCH_EVENT_END:
 				break;
 				
 				case 'Q':
-					setFirstPerson(!firstPerson);
-					//gamePhysics->beginDrop();
+					gem->toggleFirstPerson();
 				break;
 				
 				case 'q':
 					
-					targetSubjectZoom = 1.0f;
-					if (!ignoreFrameLimit) {
-						subjectZoom = targetSubjectZoom;
-					}
-					
-					if (selObjInd >= E_OBJ_LENGTH) {
-						if (selObjInd == actObjInd) {
-							setCurrentActor(NULL);
-						}
-						else {
-							setCurrentActor(&(gw->gameObjects[selObjInd]));
-							
-							if (currentActor != NULL) {
-								
-							}
-							
-							
-							playSoundEnt(
-								"swimming0",
-								currentActor,
-								0.0f,
-								0.0f,
-								true
-							);
-							
-							playSoundEnt(
-								"walkinggravel0",
-								currentActor,
-								0.0f,
-								0.0f,
-								true
-							);
-							
-						}
-					}
-					else {
-						setCurrentActor(NULL);
-					}
+					gem->toggleActorSel();
 					
 					break;
 
@@ -6766,15 +4986,6 @@ DISPATCH_EVENT_END:
 					fpsTimer.start();
 				break;
 				
-				// case 'w': // grab / throw
-					
-				// 	//setFirstPerson(!firstPerson);
-					
-					
-				// 	// grab
-					
-					
-				// break;
 
 				case 27: // esc
 					//std::exit(0);
@@ -6782,7 +4993,7 @@ DISPATCH_EVENT_END:
 					if (ddMenu->visible || contMenu->visible) {
 						toggleDDMenu(x,y,false);
 						contMenu->visible = false;
-						closeAllContainers();
+						gem->closeAllContainers();
 						escCount = 0;
 					}
 					else {
@@ -6833,22 +5044,16 @@ DISPATCH_EVENT_END:
 					break;
 				
 				case 'n':
-					nextSwing(getCurActorUID(),RLBN_LEFT);
-					nextSwing(getCurActorUID(),RLBN_RIGT);
+					gem->nextSwing(gem->getCurActorUID(),RLBN_LEFT);
+					gem->nextSwing(gem->getCurActorUID(),RLBN_RIGT);
 					
 				break;
 				
 				case 'j':
 				
-					if (editPose) {
-						resetActiveNode();
-					}
-					else {
-						smoothMove = !smoothMove;
-					}
+					gem->resetActiveNode();
 				
-					
-				
+					// smoothMove = !smoothMove;
 					// doShaderRefresh(bakeParamsOn);
 					// mapInvalid = true;
 					// gw->initMap();
@@ -6965,7 +5170,7 @@ DISPATCH_EVENT_END:
 					if (ddMenu->visible || contMenu->visible) {
 						toggleDDMenu(x,y,false);
 						contMenu->visible = false;
-						closeAllContainers();
+						gem->closeAllContainers();
 						
 						escCount = 0;
 					}
@@ -7003,45 +5208,25 @@ DISPATCH_EVENT_END:
 				
 				
 				case 'C':
-					if (curPose[curPoseType].group == E_PG_NONPOSE) {
-						saveCurrentPose();
-						loadNonPoseData(E_PG_NONPOSE, RLBN_NEIT, 0);
-					}
-					else {
-						cout << "Error, switch to E_PG_NONPOSE\n";
-					}
+					
+					gem->applyNonPoseData();
 				
 					
 				break;
 				case 'c':
 					
-					editPose = !editPose;
-					
-					cout << "editPose " << editPose << "\n";
-					
-					if (editPose) {
-						loadCurrentPose();
-					}
+					gem->togglePoseEdit();
 					
 					//setCameraToElevation();
 				
 					//doShaderRefresh(bakeParamsOn);
 
-					// noBounce = !noBounce;
-					
-					// if (currentActor == NULL) {
-					// 	noBounce = false;
-					// }
-					
-					// cout << "noBounce " << noBounce << "\n";
-									
-				
 					break;
 					
 				case 'v':
 					
-					mirrorOn = !mirrorOn;
-					cout << "mirrorOn " << mirrorOn << "\n";
+					gem->mirrorOn = !gem->mirrorOn;
+					cout << "gem->mirrorOn " << gem->mirrorOn << "\n";
 					
 					//waterBulletOn = !waterBulletOn;
 					//gw->toggleVis(selectedEnts.getSelectedEnt());
@@ -7051,11 +5236,11 @@ DISPATCH_EVENT_END:
 				case 'X':
 					//fogOn = 1.0 - fogOn;
 					//cout << "fog on " << fogOn << "\n";
-					changePose(-1);
+					gem->changePose(-1);
 					break;
 					
 				case 'x':
-					changePose(1);
+					gem->changePose(1);
 					
 					//fxaaOn = !fxaaOn;
 					//cout << "fxaaOn " << fxaaOn << "\n";
@@ -7499,7 +5684,6 @@ DISPATCH_EVENT_END:
 		int j;
 
 		
-		
 
 		frameMouseMove = true;
 
@@ -7543,7 +5727,7 @@ DISPATCH_EVENT_END:
 		}
 		
 		
-		if ((highlightedLimb==-1)&&mbDown) {
+		if ((gem->highlightedLimb==-1)&&mbDown) {
 			angleToVec(&lightVec, fx*2.0, fy*2.0);
 			lightVecOrig.copyFrom(&lightVec);
 			lightVec.setFZ(-abs(lightVec.getFZ()));
@@ -7553,19 +5737,21 @@ DISPATCH_EVENT_END:
 		if (abDown)
 		{
 			
-			if (bCtrl&&(mouseState == E_MOUSE_STATE_BRUSH)) {
+			// if (bCtrl&&(mouseState == E_MOUSE_STATE_BRUSH)) {
 				
-			}
-			else {
-				moveObject((float)dx, (float)dy);
-			}
+			// }
+			// else {
+				
+			// }
+			
+			moveObject((float)dx, (float)dy);
 			
 		}
 		else
 		{
 			
 			// if (
-			// 	(currentActor != NULL) && (!editPose)	
+			// 	(gem->currentActor != NULL) && (!gem->editPose)	
 			// ) {
 			// 	camRotation[0] -= dx*0.02f;
 			// 	camRotation[1] += dy*0.02f;
@@ -7574,7 +5760,7 @@ DISPATCH_EVENT_END:
 			
 			
 
-			if (placingGeom||RT_TRANSFORM||editPose||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
+			if (placingGeom||RT_TRANSFORM||gem->editPose||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
 			//if (true) {
 				getPixData(&mouseMovePD, x, y, false, false);
 				getPixData(&mouseMoveOPD, x, y, true, true);
@@ -7601,16 +5787,16 @@ DISPATCH_EVENT_END:
 			
 
 			if (
-				orgOn &&
-				editPose
+				gem->orgOn &&
+				gem->editPose
 				&& (!ddVis)
 			) {
-				updateNearestOrgNode(false, &mouseMovePD);
+				gem->updateNearestOrgNode(false, &mouseMovePD);
 			}
 			else {
 				if (!ddVis) {
-					activeNode = NULL;
-					setSelNode(NULL);
+					gem->activeNode = NULL;
+					gem->setSelNode(NULL);
 				}
 				
 			}
@@ -7739,6 +5925,10 @@ DISPATCH_EVENT_END:
 		abClicked = lbClicked || rbClicked || mbClicked;
 		
 		
+		if (mbClicked) {
+			gem->checkActorRefresh();
+		}
+		
 		if (abDown) {
 			mdTime = myTimer.getElapsedTimeInMilliSec();
 			
@@ -7790,32 +5980,34 @@ DISPATCH_EVENT_END:
 			return;
 		}
 		
-		if (combatMode()) {
+		
+		if (gem->combatMode()) {
 			
 			if (lbClicked) {
-				setSwing(
+				gem->setSwing(
 					mx*2.0f - 1.0f,
 					my*2.0f - 1.0f,
-					currentActor->uid,
+					gem->currentActor->uid,
 					RLBN_LEFT,
-					bCtrl //wasDoubleClick[RLBN_LEFT]
+					bCtrl
 				);
-				makeSwing(currentActor->uid, RLBN_LEFT);
+				gem->makeSwing(gem->currentActor->uid, RLBN_LEFT);
 				return;
 			}
 			if (rbClicked) {
-				setSwing(
+				gem->setSwing(
 					mx*2.0f - 1.0f,
 					my*2.0f - 1.0f,
-					currentActor->uid,
+					gem->currentActor->uid,
 					RLBN_RIGT,
-					bCtrl //wasDoubleClick[RLBN_RIGT]
+					bCtrl
 				);
-				makeSwing(currentActor->uid, RLBN_RIGT);
+				gem->makeSwing(gem->currentActor->uid, RLBN_RIGT);
 				return;
 			}
 			
 		}
+		
 		
 		
 		//cout << "NO GUI HIT\n";
@@ -7944,50 +6136,7 @@ DISPATCH_EVENT_END:
 								
 							}
 							else {
-								if (isDraggingObject) {
-									
-									upInd = mouseUpOPD.getFW();
-									
-									//cout << "UP IND " << upInd << "\n";
-									
-									if (upInd == 0) {
-										draggingToInd = 0;
-										draggingToType = E_DT_NOTHING;
-										performDrag(
-										gameNetwork->isConnected,
-											draggingFromInd,
-											draggingFromType,
-											draggingToInd,
-											draggingToType,
-											&(worldMarker)
-										);
-									}
-									else {
-										if (upInd >= E_OBJ_LENGTH) {
-											
-												if (isContainer[gw->gameObjects[upInd].objectType]) {
-													draggingToInd = upInd;
-													draggingToType = E_DT_WORLD_OBJECT;
-												}
-												else {
-													draggingToInd = 0;
-													draggingToType = E_DT_NOTHING;
-												}
-												
-												performDrag(
-													gameNetwork->isConnected,
-													draggingFromInd,
-													draggingFromType,
-													draggingToInd,
-													draggingToType,
-													&(worldMarker)
-												);
-										}						
-									}
-									
-									
-									
-								}
+								gem->endDrag(mouseUpOPD.getFW());
 							}
 						}
 						
@@ -8133,81 +6282,20 @@ DISPATCH_EVENT_END:
 				
 				if (mouseState == E_MOUSE_STATE_MOVE) {
 					if (
-						orgOn &&
-						editPose
+						gem->orgOn &&
+						gem->editPose
 						&& (!ddVis)
 						
 					) {
-						findObject = !(updateNearestOrgNode(true, &mouseDownPD));
+						findObject = !(gem->updateNearestOrgNode(true, &mouseDownPD));
 					}
 					else {
 						findObject = true;
 					}
 					
 					if (findObject&&lbDown) {
-						
-						
-						
-						bestInd = mouseDownOPD.getFW();
-						
-						
-						
-						setSelInd(bestInd);
-						
-						//setCurrentActor(&(gw->gameObjects[bestInd]));
-						
-						
-						
-						
-						
-						if (selObjInd != 0) {
-							if (lastObjInd == selObjInd) {
-								
-							}
-						}
-						
-						lastObjInd = selObjInd;
-						
-						
-						
-						draggingFromInd = 0;
-						draggingFromType = E_DT_NOTHING;
-						
-						if (wasDoubleClick[RLBN_LEFT]&&(currentActor == NULL)) {
-							toggleCont(selObjInd, true);
-						}
-						
-						if (bestInd >= E_OBJ_LENGTH) {
-							
-							isDraggingObject = true;
-							//markerFound = true;
-							draggingFromInd = selObjInd;
-							draggingFromType = E_DT_WORLD_OBJECT;
-							
-							// todo: make sure bestInd exists
-							
-						}
-						else {
-							
-							if (bCtrl) {
-								if (bestInd <= 0) {
-									
-								}
-								else {
-									activeObject = (E_OBJ)(bestInd);
-									hitObject = true;
-								}
-							}
-							
-							if (hitObject) {
-								
-							}
-							else {
-								//setCurrentActor(NULL);
-							}
-							
-							
-						}
+												
+						gem->updateDragInfo(mouseDownOPD.getFW(), wasDoubleClick[RLBN_LEFT]);
 						
 					}
 				}
@@ -8335,31 +6423,7 @@ DISPATCH_EVENT_END:
 	
 
 
-	void makeDirty() {
-		
-		if (currentActor != NULL) {
-			currentActor->wakeAll();
-		}
-		
-		//testOrg->gph->childrenDirty = true;
-	}
-
-	void setSelNode(GameOrgNode* newNode) {
-		
-		selectedNode = newNode;
-		
-		if (selectedNode != NULL) {
-			cout << boneStrings[selectedNode->nodeName] << "\n";
-		}
-		
-		
-		
-		if (selectedNode != lastSelNode) {
-			makeDirty();
-		}
-		lastSelNode = newNode;
-		
-	}
+	
 
 	
 
@@ -8422,7 +6486,7 @@ DISPATCH_EVENT_END:
 			externalJSON.erase("objectData"); // mem leak?
 			
 			oldVis = contMenu->visible;
-			contMenu->visible = anyContainerOpen();
+			contMenu->visible = gem->anyContainerOpen();
 
 			objCont = mainGUI->findNodeByString("objectContainer");
 			//objCont->jvNodeNoTemplate->Child("dataParams")->number_value = contIndex;
@@ -8443,21 +6507,7 @@ DISPATCH_EVENT_END:
 		}
 	}
 
-	void toggleCont(int contIndex, bool onMousePos) {
-		
-		if (
-			isContainer[gw->gameObjects[contIndex].objectType]
-		) {
-			playSoundEnt("leather0", NULL, 0.1);
-			gw->gameObjects[contIndex].isOpen = !(gw->gameObjects[contIndex].isOpen);
-			refreshContainers(onMousePos);
-		}
-		else {
-			playSoundEnt("bump0");	
-		}
-		
-		
-	}
+	
 
 	bool feetContact(BaseObj* ge) {
 		BodyStruct* curBody;
@@ -8532,7 +6582,7 @@ DISPATCH_EVENT_END:
 		}
 		else {
 			
-			ca = &(gw->gameObjects[actorId]);
+			ca = &(gem->gameObjects[actorId]);
 			
 			unzipBits(keyFlags,keyMapResultUnzipped,KEYMAP_LENGTH);
 			
@@ -8541,10 +6591,10 @@ DISPATCH_EVENT_END:
 				if (keyMapResultUnzipped[KEYMAP_RIGHT]) {
 					
 					if (bShift) {
-						makeMove( actorId, btVector3( 1.0f,0.0f,0.0f), true );
+						gem->makeMove( actorId, btVector3( 1.0f,0.0f,0.0f), true );
 					}
 					else {
-						makeTurn(actorId, -4.0f);
+						gem->makeTurn(actorId, -4.0f);
 					}
 					
 					//
@@ -8552,37 +6602,37 @@ DISPATCH_EVENT_END:
 				
 				if (keyMapResultUnzipped[KEYMAP_LEFT]) {
 					if (bShift) {
-						makeMove( actorId, btVector3(-1.0f,0.0f,0.0f), true );
+						gem->makeMove( actorId, btVector3(-1.0f,0.0f,0.0f), true );
 					}
 					else {
-						makeTurn(actorId, 4.0f);
+						gem->makeTurn(actorId, 4.0f);
 					}
 					
 					//
 				}
 				
 				if (keyMapResultUnzipped[KEYMAP_FIRE_PRIMARY]) {
-					launchBullet(actorId, E_ENTTYPE_BULLET);
+					gem->makeShoot(actorId, E_ENTTYPE_BULLET);
 				}
 				
 				if (keyMapResultUnzipped[KEYMAP_GRAB_THROW]) {
-					grabThrowObj(actorId,-1);
+					gem->makeGrabThrow(actorId,-1);
 				}
 				
 				if (keyMapResultUnzipped[KEYMAP_UP]) {
-					makeJump(actorId, 1, 1.0f);
+					gem->makeJump(actorId, 1, 1.0f);
 				}
 				
 				if (keyMapResultUnzipped[KEYMAP_DOWN]) {
-					makeJump(actorId, 0, 1.0f);
+					gem->makeJump(actorId, 0, 1.0f);
 				}
 				
 				if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
-					makeMove( actorId, btVector3(0.0f, 1.0f,0.0f), true );
+					gem->makeMove( actorId, btVector3(0.0f, 1.0f,0.0f), true );
 				}
 				
 				if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
-					makeMove( actorId, btVector3(0.0f,-1.0f,0.0f), true );
+					gem->makeMove( actorId, btVector3(0.0f,-1.0f,0.0f), true );
 				}
 				
 				// mouseWP = screenToWorld(
@@ -8604,8 +6654,8 @@ DISPATCH_EVENT_END:
 						
 					);
 					
-					if (!editPose) {
-						makeTurn(actorId, deltaAng*16.0f);
+					if (!gem->editPose) {
+						gem->makeTurn(actorId, deltaAng*16.0f);
 					}
 				}
 				
@@ -8617,81 +6667,6 @@ DISPATCH_EVENT_END:
 		}
 		
 		
-		
-		
-		
-		// for (i = 0; i < KEYMAP_LENGTH; i++) {
-		// 	if (keyMapResultUnzipped[i]) {
-		// 		cout << i << "\n";
-		// 	}
-		// }
-		
-		//tempVec2.setFXYZ(0.0f,0.0f,0.0);
-		
-		// if (firstPerson) {
-		// 	ca->ang = camRotX;
-		// 	ca->targAng = ca->ang;
-		// }
-		
-		// tempVec1.setFXYZ(
-		// 	cos(ca->ang),
-		// 	sin(ca->ang),
-		// 	0.0f
-		// );
-		
-		
-		// if (firstPerson) {
-		// 	tempVec2.addXYZ(tempVec1[1],-tempVec1[0],0.0f);
-		// }
-		// else {
-		// 	ca->targAng += (-2.0f*M_PI*timeDelta);
-		// }
-		// if (firstPerson) {
-		// 	tempVec2.addXYZ(-tempVec1[1],tempVec1[0],0.0f);
-		// }
-		// else {
-		// 	ca->targAng += (2.0f*M_PI*timeDelta);
-		// }
-		
-		
-		// btTransform tr;
-		// tr.setIdentity();
-		// btQuaternion quat;
-		// quat.setEuler(yaw,pitch,roll); //or quat.setEulerZYX depending on the ordering you want
-		// tr.setRotation(quat);
-
-		// rigidBody->setCenterOfMassTransform(tr);
-		
-		
-		
-		
-		// if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
-		// 	ca->setActionState(E_ACT_ISWALKING,RLBN_NEIT,true);
-		// 	if (ca->hasBodies()) {
-		// 		ca->makeWalk(
-		// 			btVector3(
-		// 				0,
-		// 				conVals[E_CONST_WALK_AMOUNT],
-		// 				conVals[E_CONST_WALK_AMOUNT]
-		// 			),
-		// 			ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()
-		// 		);
-		// 	}
-		// }
-		
-		// if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
-		// 	ca->setActionState(E_ACT_ISWALKING,RLBN_NEIT,true);
-		// 	if (ca->hasBodies()) {
-		// 		ca->makeWalk(
-		// 			btVector3(
-		// 				0,
-		// 				-conVals[E_CONST_WALK_AMOUNT],
-		// 				conVals[E_CONST_WALK_AMOUNT]
-		// 			),
-		// 			ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()
-		// 		);
-		// 	}
-		// }
 		
 		
 	}
@@ -8724,7 +6699,7 @@ DISPATCH_EVENT_END:
 		
 		applyKeyAction(
 			gameNetwork->isConnected,
-			getCurActorUID(),
+			gem->getCurActorUID(),
 			zipBits(keyMapResultZipped, KEYMAP_LENGTH),
 			getCamRot(0),
 			getCamRot(1)
@@ -8773,8 +6748,8 @@ DISPATCH_EVENT_END:
 		depthInvalidRotate = (amountInvalidRotate > 0.001f);
 		
 		if (smoothMove||(
-			(!firstPerson) &&
-			(currentActor != NULL)	
+			(!gem->firstPerson) &&
+			(gem->currentActor != NULL)	
 		)) {
 			curCamRotation[0] += (camRotation[0]-curCamRotation[0])*timeDelta*8.0f;
 			curCamRotation[1] += (camRotation[1]-curCamRotation[1])*timeDelta*8.0f;
@@ -8786,7 +6761,7 @@ DISPATCH_EVENT_END:
 		
 		
 		
-		if (currentActor == NULL) {
+		if (gem->currentActor == NULL) {
 			if (keysPressed[keyMap[KEYMAP_UP]]) {
 				zmod += 1.0f;
 				isPressingMove = true;
@@ -8879,16 +6854,16 @@ DISPATCH_EVENT_END:
 		
 		
 		
-		if (currentActor != NULL) {
-			if (currentActor->entType == E_ENTTYPE_NPC) {
-				skullPos = currentActor->getBodyByBoneId(E_BONE_C_SKULL)->body->getCenterOfMassPosition();
+		if (gem->currentActor != NULL) {
+			if (gem->currentActor->entType == E_ENTTYPE_NPC) {
+				skullPos = gem->currentActor->getBodyByBoneId(E_BONE_C_SKULL)->body->getCenterOfMassPosition();
 			}
 			else {
-				skullPos = currentActor->getCenterPoint(E_BDG_CENTER);
+				skullPos = gem->currentActor->getCenterPoint(E_BDG_CENTER);
 			}
 			
 			
-			if (firstPerson) {
+			if (gem->firstPerson) {
 				targetCameraPos.setBTV(
 					skullPos
 				);
@@ -8896,7 +6871,7 @@ DISPATCH_EVENT_END:
 			}
 			else {
 				targetCameraPos.copyFrom(&lookAtVec);
-				targetCameraPos.multXYZ( -(subjectDistance)*subjectZoom*tempZoom );
+				targetCameraPos.multXYZ( -(gem->subjectDistance)*subjectZoom*tempZoom );
 				
 				targetCameraPos.addXYZRef(BTV2FIV(
 					skullPos
@@ -8905,7 +6880,7 @@ DISPATCH_EVENT_END:
 			}
 			
 			
-			if (!firstPerson) {
+			if (!gem->firstPerson) {
 				if (
 					keysPressed[keyMap[KEYMAP_FORWARD]] ||
 					keysPressed[keyMap[KEYMAP_BACKWARD]]
@@ -8915,7 +6890,7 @@ DISPATCH_EVENT_END:
 						
 						tempBTV = multByOtherRot(
 							btVector3(0.0f,1.0f,0.0f),
-							currentActor->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()
+							gem->currentActor->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()
 						);
 						
 						camRotation[0] += 
@@ -9046,425 +7021,19 @@ DISPATCH_EVENT_END:
 		}
 		
 		
-		gw->removeVisObject(ge->uid, true);
-		
-		
-		
-		//ge->isHidden = true;
-		
-		
-		
-		//gw->removeVisObject(ge->uid);
-	}
-	
-	
-	void grabThrowObj(int actorId, int _handNum) {
-		
-		int res;
-		
-		if (actorId < 0) {
-			return;
-		}
-		
-		int handNum = _handNum;
-		
-		
-		
-		
-		BaseObj* ca = &(gw->gameObjects[actorId]);
-		GameOrg* curOrg = gameOrgs[ca->orgId];
-		
-		BaseObj* grabObj;
-		GameOrg* grabObjOrg;
-		
-		if (handNum < 0) {
-			handNum = 0;
-			
-			if (ca->isGrabbingId[handNum] > -1) {
-				handNum = 1;
-			}
-			
-		}
-		
-		// ca->weaponActive = !ca->weaponActive;
-		
-		// return;
-		
-		
-		if (ca->isGrabbingId[handNum] > -1) {
-			// throw current obj
-			
-			
-			
-			//##
-			
-			// gw->gameObjects[ca->isGrabbingId[handNum]].setVel(
-			// 	cos(ca->ang)*20.0f,
-			// 	sin(ca->ang)*20.0f,
-			// 	30.0f	
-			// );
-			
-			grabObj = &(gw->gameObjects[ca->isGrabbingId[handNum]]);
-			grabObjOrg = gameOrgs[grabObj->orgId];
-			
-			
-			if (ca->hasBodies()) {
-				gw->gameObjects[ca->isGrabbingId[handNum]].applyImpulseOtherRot(
-					btVector3(0.0,200,200)*gw->gameObjects[ca->isGrabbingId[handNum]].getTotalMass(),
-					ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
-					true,
-					0
-				);
-			}
-			
-			
-			playSoundEnt(
-				"woosh0",
-				ca,
-				0.2f
-			);
-			
-			if (handNum == RLBN_LEFT) {
-				curOrg->allNodes[
-					getCorrectedName(E_BONE_L_METACARPALS)
-				]->children.pop_back();
-			}
-			else {
-				curOrg->allNodes[
-					getCorrectedName(E_BONE_R_METACARPALS)
-				]->children.pop_back();
-			}
-			grabObjOrg->allNodes[E_BONE_C_BASE]->parent = NULL;
-			
-			//ca->weaponActive = false;
-			
-			
-			
-			//gw->gameObjects[ca->isGrabbingId[handNum]].setDamping(0.1f,0.9f);
-			
-			//##
-			
-			
-			//gw->gameObjects[ca->isGrabbingId[handNum]].isGrabbedById = -1;
-			gw->gameObjects[ca->isGrabbingId[handNum]].setGrabbedBy(-1, -1);
-			ca->isGrabbingId[handNum] = -1;
-			
-			
-		}
-		else {
-			// find obj to pickup
-			
-			
-			
-			res = gw->getClosestObj(
-				actorId,
-				BTV2FIV(ca->getCenterPoint(E_BDG_CENTER)),
-				true,
-				5.0f
-			);
-			
-			if (res < 0) {
-				
-			}
-			else {
-				
-				curOrg->stepCount = 0;
-				curOrg->totTime = 0;
-				ca->setActionState(E_ACT_ISPICKINGUP,RLBN_NEIT,true);
-				
-				grabObj = &(gw->gameObjects[res]);
-				grabObjOrg = gameOrgs[grabObj->orgId];
-				
-				playSoundEnt(
-					"scrape0",
-					ca,
-					0.2f
-				);
-				
-				
-				//gw->gameObjects[ca->isGrabbingId[handNum]].setDamping(0.999f,0.9f);
-				//ca->weaponActive = true;
-				ca->isGrabbingId[handNum] = res;
-				grabObj->setGrabbedBy(actorId, handNum);
-				
-				if (handNum == RLBN_LEFT) {
-					curOrg->allNodes[
-						getCorrectedName(E_BONE_L_METACARPALS)
-					]->children.push_back(
-						grabObjOrg->allNodes[E_BONE_C_BASE]
-					);
-					grabObjOrg->allNodes[E_BONE_C_BASE]->parent = 
-						curOrg->allNodes[
-							getCorrectedName(E_BONE_L_METACARPALS)
-						];
-					
-					//grabObjOrg->allNodes[E_BONE_C_BASE]->setTangent(-1.0f);
-				}
-				else {
-					curOrg->allNodes[
-						getCorrectedName(E_BONE_R_METACARPALS)
-					]->children.push_back(
-						grabObjOrg->allNodes[E_BONE_C_BASE]
-					);
-					grabObjOrg->allNodes[E_BONE_C_BASE]->parent = 
-						curOrg->allNodes[
-							getCorrectedName(E_BONE_R_METACARPALS)
-						];
-					
-					//grabObjOrg->allNodes[E_BONE_C_BASE]->setTangent(1.0f);
-				}
-				
-				
-				
-				//cout << "grab " << ca->isGrabbingId[handNum] << " " << grabObj->isGrabbedById << "\n";
-				
-			}
-			
-		}
+		gem->removeVisObject(ge->uid, true);
 		
 	}
 	
-	void launchBullet(int actorId, int bulletType) {
-		
-		int entNum;
-		
-		int vx;
-		int vy;
-		
-		
-		FIVector4 newCellPos;
-		FIVector4 newVel;
-		
-		if (actorId < 0) {
-			return;
-		}
-		
-		
-		
-		BaseObj* ca = &(gw->gameObjects[actorId]);
-		
-		if (ca == NULL) {
-			
-		}
-		else {
-			
-			if (ca->hasBodies()) {
-			
-				newCellPos.setBTV(ca->getCenterPoint(E_BDG_CENTER));
-				
-				// vx = cos(ca->ang)*3.0f;
-				// vx = vx;
-				
-				// vy = sin(ca->ang)*3.0f;
-				// vy = vy;
-				
-				
-				btVector3 tempBTV = multByOtherRot(
-					btVector3(0.0f,3.0f,3.0f),
-					ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()
-				);
-				newCellPos.addXYZ(tempBTV.getX(), tempBTV.getY(), tempBTV.getZ());
-				
-				entNum = placeNewEnt(false, bulletType, &newCellPos);
-				
-				
-				
-				// gw->gameObjects[entNum].setVel(
-				// 	cos(ca->ang)*20.0f,
-				// 	sin(ca->ang)*20.0f,
-				// 	30.0f
-				// );
-			
-			
-				gw->gameObjects[entNum].applyImpulseOtherRot(
-					btVector3(0.0,200,200)*gw->gameObjects[entNum].getTotalMass(),
-					ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
-					true,
-					0
-				);
-			}
-			
-			
-			
-			if (bulletType != E_ENTTYPE_TRACE) {
-				playSoundEnt(
-					"woosh0",
-					ca,
-					0.2f
-				);
-			}
-			
-			
-			
-		}
-	}
+	
+	
+	
+	
 	
 
 	
 
 	
-	void resetActiveNode() {
-		
-		GameOrgNode* curNode = NULL;
-		
-		GameOrg* testOrg = getCurOrg();
-		
-		if (selectedNode == NULL) {
-			
-			curNode = lastSelNode;
-		}
-		else {
-			
-			curNode = selectedNode;
-		}
-		
-		
-		
-		if (curNode != NULL) {
-			
-			
-			
-			if (testOrg != NULL) {
-				
-				testOrg->setToPose(getPose(E_PG_TPOSE,RLBN_NEIT,0),1.0,curNode->nodeName);
-			}
-			
-			//curNode->rotThe = 0.0f;
-			//curNode->rotPhi = 0.0f;
-			//curNode->rotRho = 0.0f;
-			//curNode->boneLengthScale = 1.0f;
-			
-			//curNode->tbnRadScale0.setFXYZ(1.0f,1.0f,1.0f);
-			//curNode->tbnRadScale1.setFXYZ(1.0f,1.0f,1.0f);
-			//makeDirty();
-			
-			
-			
-		}
-	}
-	
-	bool updateNearestOrgNode(bool setActive, FIVector4* mousePosWS) {
-		// tempVec3.setFXYZRef(mousePosWS);
-		// tempVec3.addXYZRef(&(testOrg->basePosition),-1.0f);
-		
-		//worldToScreenBase(&tempVec1, mousePosWS);
-		
-		GameOrgNode* mirNode = NULL;
-		
-		if (getCurOrg() == NULL) {
-			return false;
-		}
-		GameOrg* testOrg = getCurOrg();
-		
-		bestNode = NULL;
-		
-		int boneId;
-		
-		highlightedLimb2 = -1;
-		highlightedLimb = -1;
-		
-		gamePhysics->pickBody(&mouseMoveOPD);  //mouseDownPD.getBTV(),mouseDownOPD.getBTV());
-		
-		if (
-			(gamePhysics->lastBodyPick == NULL) ||
-			(gamePhysics->lastBodyUID == -1) ||
-			(gamePhysics->lastBodyUID != getCurActorUID())
-		) {
-			
-		}
-		else {
-			highlightedLimb = gamePhysics->lastBodyPick->limbUID;
-			
-			if (highlightedLimb > -1) {
-				boneId = currentActor->bodies[highlightedLimb].boneId;
-				
-				
-				if (boneId > -1) {
-					bestNode = testOrg->allNodes[boneId];
-					
-					// if (mirrorOn) {
-					// 	mirNode = getMirroredNode(bestNode);
-						
-					// 	if (mirNode == NULL) {
-							
-					// 	}
-					// 	else {
-					// 		mirNode->nodeName
-					// 	}
-						
-					// }
-					
-					setSelNode(bestNode);
-					if (setActive) {
-						activeNode = bestNode;
-					}
-					return true;
-				}
-			}
-			
-		}
-		
-		
-		bestNode = NULL;
-		activeNode = NULL;
-		setSelNode(NULL);
-		return false;
-		
-		
-		// bestNodeDis = 99999.0f;
-		// findNearestOrgNode(
-		// 	testOrg->baseNode,
-		// 	mousePosWS//&tempVec1
-		// );
-		
-		// //cout << "bestNodeDis " << bestNodeDis << "\n";
-		
-		// if (bestNodeDis >= 3.0f) {
-		// 	bestNode = NULL;
-		// 	activeNode = NULL;
-		// 	setSelNode(NULL);
-		// }
-		
-		// if (bestNode != NULL) {
-			
-		// 	setSelNode(bestNode);
-		// 	if (setActive) {
-		// 		activeNode = bestNode;				
-		// 	}
-		// }
-		
-		//return (bestNode != NULL);
-	}
-	
-	// void findNearestOrgNode(
-	// 	GameOrgNode* curNode,
-	// 	FIVector4* mousePosWS
-	// ) {
-		
-	// 	if (getCurOrg() == NULL) {
-	// 		return;
-	// 	}
-	// 	GameOrg* testOrg = getCurOrg();
-		
-	// 	tempVec3.setFXYZRef(&(curNode->orgTrans[1]));
-	// 	tempVec3.addXYZRef(&(testOrg->basePosition));
-		
-	// 	//worldToScreenBase(&tempVec2, &tempVec3);
-	// 	float curDis = mousePosWS->distance(&tempVec3);//&tempVec2);
-		
-	// 	if (curDis < bestNodeDis) {
-	// 		bestNodeDis = curDis;
-	// 		bestNode = curNode;
-	// 	}
-		
-	// 	int i;
-		
-	// 	for (i = 0; i < curNode->children.size(); i++) {
-	// 		findNearestOrgNode(curNode->children[i],mousePosWS);
-	// 	}
-		
-	// }
-
 
 	// void processB64(charArr *sourceBuffer, charArr *saveBuffer)
 	// {
@@ -9551,48 +7120,7 @@ DISPATCH_EVENT_END:
 	}
 	
 	
-	void closeAllContainers() {
-		BaseObj* curCont;
-		
-		bool oldOpen;
-		bool didClose = false;
-		
-		for (itBaseObj iterator = gw->gameObjects.begin(); iterator != gw->gameObjects.end(); iterator++) {
-			// iterator->first = key
-			// iterator->second = value
-			
-			
-			
-			curCont = &(gw->gameObjects[iterator->first]);
-			oldOpen = curCont->isOpen;
-			
-			curCont->isOpen = false;
-			
-			
-			if (oldOpen != curCont->isOpen) {
-				didClose = true;
-			}
-		}
-		
-		if (didClose) {
-			playSoundEnt("leather0", NULL, 0.1);
-		}
-	}
 	
-	bool anyContainerOpen() {
-		BaseObj* curCont;
-		for (itBaseObj iterator = gw->gameObjects.begin(); iterator != gw->gameObjects.end(); iterator++) {
-			// iterator->first = key
-			// iterator->second = value
-			
-			curCont = &(gw->gameObjects[iterator->first]);
-			
-			if (curCont->isOpen) {
-				return true;
-			}
-		}
-		return false;
-	}
 
 	void cleanJVPointer(JSONValue** jv) {
 		
@@ -9601,31 +7129,6 @@ DISPATCH_EVENT_END:
 		}
 		
 		*jv = NULL;
-		
-	}
-
-	string getStringForObjectId(int objectId) {
-		int objType = gw->gameObjects[objectId].objectType;
-		int iconNum = entIdToIcon[objType];
-		
-		// if (isContainer[objType]) {
-		// 	return i__s(iconNum) + "& Test Container ";
-		// }
-		// else {
-		// 	if (gw->gameObjects[objectId].isEquipped) {
-		// 		return "(E) " + i__s(iconNum) + "& Test Object ";
-		// 	}
-		// 	else {
-		// 		return i__s(iconNum) + "& Test Object ";
-		// 	}
-		// }
-		
-		if (gw->gameObjects[objectId].isEquipped) {
-			return "(E) " + i__s(iconNum) + "& "+objStrings[objType]+" ";
-		}
-		else {
-			return i__s(iconNum) + "& "+objStrings[objType]+" ";
-		}
 		
 	}
 
@@ -9646,11 +7149,11 @@ DISPATCH_EVENT_END:
 		externalJSON["objectData"].jv->object_value["objects"] = new JSONValue(JSONArray());
 		tempVal0 = externalJSON["objectData"].jv->object_value["objects"];
 		
-		for (itBaseObj iterator = gw->gameObjects.begin(); iterator != gw->gameObjects.end(); iterator++) {
+		for (itBaseObj iterator = gem->gameObjects.begin(); iterator != gem->gameObjects.end(); iterator++) {
 			// iterator->first = key
 			// iterator->second = value
 			
-			curCont = &(gw->gameObjects[iterator->first]);
+			curCont = &(gem->gameObjects[iterator->first]);
 			
 			if (curCont->isOpen) {
 				
@@ -9664,7 +7167,7 @@ DISPATCH_EVENT_END:
 				for (i = 0; i < curCont->children.size(); i++) {
 					tempVal1->array_value.push_back(new JSONValue(JSONObject()));
 					childId = curCont->children[i];
-					objectType = gw->gameObjects[childId].objectType;
+					objectType = gem->gameObjects[childId].objectType;
 					tempVal1->array_value.back()->object_value["objectType"] = new JSONValue( ((double)(objectType)) );
 					tempVal1->array_value.back()->object_value["objectId"] = new JSONValue( ((double)(childId)) );
 				}
@@ -10124,52 +7627,20 @@ DISPATCH_EVENT_END:
 		}
 	}
 	
-	GameOrg* getCurOrg() {
-		if (currentActor == NULL) {
-			return NULL;
-		}
-		if (currentActor->orgId < 0) {
-			return NULL;
-		}
-		return gameOrgs[currentActor->orgId];
-	}
+	
 	
 	void endFieldInput(bool success) {
-		
-		if (getCurOrg() == NULL) {
-			return;
-		}
-		GameOrg* testOrg = getCurOrg();
 		
 		inputOn = false;
 		fieldMenu->visible = false;
 		
-		float tempVal;
-		
 		if (success) {
 			switch (fieldCallback) {
 				case E_FC_SAVEORG:
-				
-					tempVal = testOrg->baseNode->orgVecs[E_OV_THETAPHIRHO].getFZ();
-				
-					testOrg->baseNode->orgVecs[E_OV_THETAPHIRHO].setFZ(0.0f);
-					transformOrg(testOrg, NULL);
-									
-					testOrg->saveToFile(currentFieldString);
-					
-					testOrg->baseNode->orgVecs[E_OV_THETAPHIRHO].setFZ(tempVal);
-					transformOrg(testOrg, NULL);
-					
+					gem->saveOrgFromMenu(currentFieldString);
 				break;
 				case E_FC_LOADORG:
-					testOrg->loadFromFile(currentFieldString, false);
-					//orientRotation();
-					if (currentActor != NULL) {
-						//currentActor->curRot = 1;
-					}
-					transformOrg(testOrg, NULL);
-					makeDirty();
-					
+					gem->loadOrgFromMenu(currentFieldString);					
 				break;
 				
 			}
@@ -10623,7 +8094,7 @@ DISPATCH_EVENT_END:
 		
 		if (!placingGeom) {
 			if (abs(globWheelDelta) > 0.001f) {
-				if (currentActor != NULL) {
+				if (gem->currentActor != NULL) {
 					subjectDelta -= globWheelDelta;
 					targetSubjectZoom = pow(2.0, subjectDelta);
 					if (!ignoreFrameLimit) {
@@ -10676,11 +8147,11 @@ DISPATCH_EVENT_END:
 					
 					
 					
-					if (currentActor != NULL) {
+					if (gem->currentActor != NULL) {
 						if ((currentTick%10) == 0) {
 							
 							// if (rbDown) {
-							// 	launchBullet(currentActor->uid, E_ENTTYPE_TRACE);
+							// 	makeShoot(gem->currentActor->uid, E_ENTTYPE_TRACE);
 							// }
 							
 							
@@ -10713,24 +8184,24 @@ DISPATCH_EVENT_END:
 						}
 						
 						if (
-							(currentActor != NULL) &&
-							currentActor->hasBodies()	
+							(gem->currentActor != NULL) &&
+							gem->currentActor->hasBodies()	
 						) {
 							
-							if (currentActor->bodies[E_BDG_CENTER].inWater) {
+							if (gem->currentActor->bodies[E_BDG_CENTER].inWater) {
 								temp = clampfZO(
-									currentActor->getVel(0)->length()
+									gem->currentActor->getVel(0)->length()
 								)*0.25f;
 								temp2 = 0.0f;
 							}
 							else {
 								
-								if (currentActor->allFalling()) {
+								if (gem->currentActor->allFalling()) {
 									temp2 = 0.0f;
 								}
 								else {
 									temp2 = clampfZO(
-										currentActor->getVel(0)->length()
+										gem->currentActor->getVel(0)->length()
 									);
 								}
 								
@@ -10742,14 +8213,14 @@ DISPATCH_EVENT_END:
 							updateSoundPosAndPitch(
 								"swimming0",
 								cameraGetPosNoShake(),
-								BTV2FIV(currentActor->getCenterPoint(E_BDG_CENTER)),
+								BTV2FIV(gem->currentActor->getCenterPoint(E_BDG_CENTER)),
 								temp*0.2,
 								0.01
 							);
 							updateSoundPosAndPitch(
 								"walkinggravel0",
 								cameraGetPosNoShake(),
-								BTV2FIV(currentActor->getCenterPoint(E_BDG_CENTER)),
+								BTV2FIV(gem->currentActor->getCenterPoint(E_BDG_CENTER)),
 								temp2*0.2,
 								0.1
 							);
@@ -11096,10 +8567,10 @@ DISPATCH_EVENT_END:
 
 			if (
 				lbDown &&
-				isDraggingObject && 
-				(draggingFromType != E_DT_NOTHING) &&
+				gem->isDraggingObject && 
+				(gem->draggingFromType != E_DT_NOTHING) &&
 				((curTime-mdTime) > 300) &&
-				(!editPose)
+				(!gem->editPose)
 			) {
 				glutSetCursor(GLUT_CURSOR_CROSSHAIR);
 			
@@ -11110,7 +8581,7 @@ DISPATCH_EVENT_END:
 			
 			}
 			else {
-				markerFound = (ddMenu->visible)&&(selObjInd < E_OBJ_LENGTH);
+				markerFound = (ddMenu->visible)&&(gem->selObjInd < E_OBJ_LENGTH);
 				glutSetCursor(GLUT_CURSOR_RIGHT_ARROW);
 			}
 
@@ -11501,488 +8972,6 @@ DISPATCH_EVENT_END:
 		setMatrices(baseW, baseH);
 	}
 	
-	void initAllObjects() {
-		int i;
-		int j;
-		int k;
-		int itemCount = 0;
-		
-		for (i = 0; i < MAX_ICON_ID; i++) {
-			iconToEntId[i] = 0;
-		}
-		
-		for (i = 0; i < MAX_OBJ_TYPES; i++) {
-			entIdToIcon[i] = 0;
-		}
-		
-		
-		
-		itemCount = numberIcons(itemCount,0,0,11,20);
-		itemCount = numberIcons(itemCount,12,0,23,15);
-		itemCount = numberIcons(itemCount,24,0,35,16);
-		itemCount = numberIcons(itemCount,12,16,21,20);
-		itemCount = numberIcons(itemCount,22,17,35,31);
-		itemCount = numberIcons(itemCount,0,21,15,31);
-		itemCount = numberIcons(itemCount,16,21,21,22);
-		itemCount = numberIcons(itemCount,0,32,35,35);
-		itemCount = numberIcons(itemCount,0,36,15,47);
-		itemCount = numberIcons(itemCount,16,36,35,47);
-		
-		
-		for (i = 0; i < MAX_OBJ_TYPES; i++) {
-			isContainer[i] = false;
-			objStrings[i] = "";
-		}
-		for (i = 360; i <= 419; i++ ) {
-			isContainer[i] = true;
-		}
-		for (i = 1240; i <= 1671; i++ ) {
-			isContainer[i] = true;
-		}
-		for (i = 525; i <= 527; i++ ) {
-			isContainer[i] = true;
-		}
-		for (i = 537; i <= 539; i++ ) {
-			isContainer[i] = true;
-		}
-		
-		
-		for (i = 0; i <= 35; i++) {
-			objStrings[i] = gemStrings[i%12] + " and Gold Ring";
-		}
-		
-		for (i = 36; i <= 71; i++) {
-			objStrings[i] = gemStrings[i%12] + " and Silver Ring";
-		}
-		
-		for (i = 180; i <= 191; i++) {
-			objStrings[i] = gemStrings[i%12] + " Necklace";
-		}
-		
-		for (i = 420; i <= 431; i++) {
-			objStrings[i] = gemStrings[i%12] + " Ore";
-		}
-		
-		for (i = 432; i <= 443; i++) {
-			objStrings[i] = "Polished " + gemStrings[i%12];
-		}
-		
-		for (i = 72; i <= 419; i++) {
-			
-			j = i/12;
-			
-			if (j == 15) {
-				
-			}
-			else {
-				objStrings[i] = colorStrings[i%12] + " ";
-			}
-			
-			
-			switch (j) {
-				case 6:
-				case 7:
-				case 8:
-				case 9:
-				case 10:
-					objStrings[i] += "Cloak";
-				break;
-				case 11:
-					objStrings[i] += "Plate Armor";
-				break;
-				case 12:
-					objStrings[i] += "Leather Armor";
-				break;
-				case 13:
-					objStrings[i] += "Buckler";
-				break;
-				case 14:
-					objStrings[i] += "Kite Shield";
-				break;
-				case 15:
-				
-				break;
-				case 16:
-					objStrings[i] += "Bandana";
-				break;
-				case 17:
-					objStrings[i] += "Boot";
-				break;
-				case 18:
-					objStrings[i] += "Pointed Cap";
-				break;
-				case 19:
-					objStrings[i] += "Plumed Helm";
-				break;
-				case 20:
-					objStrings[i] += "Sailor Cap";
-				break;
-				case 21:
-				case 22:
-				case 23:
-					objStrings[i] += "Book";
-				break;
-				case 24:
-					objStrings[i] += "Bound Scroll";
-				break;
-				case 25:
-					objStrings[i] += "Scroll";
-				break;
-				case 26:
-				case 27:
-					objStrings[i] += "Parchment";
-				break;
-				case 28:
-				case 29:
-					objStrings[i] += "Scroll";
-				break;
-				case 30:
-					objStrings[i] += "Bag";
-				break;
-				case 31:
-				case 32:
-					objStrings[i] += "Satchel";
-				break;
-				case 33:
-				case 34:
-					objStrings[i] += "Gift Box";
-				break;
-			}
-		}
-		
-		for (i = 698; i <= 907; i++) {
-			objStrings[i] = colorStrings[(i+2)%14] + " Potion";
-		}
-		
-		
-		for (i = 648; i <= 697; i++) {
-			
-			j = (i+2)%10;
-			
-			k = ((i+2)/10) - 65;
-			
-			objStrings[i] = metalStrings[k] + " ";
-			
-			
-			switch (j) {
-				case 0:
-					objStrings[i] += "Bullion";
-				break;
-				case 1:
-					objStrings[i] += "Denarii (100)";
-				break;
-				case 2:
-					objStrings[i] += "Denarii (10)";
-				break;
-				case 3:
-					objStrings[i] += "Denarius";
-				break;
-				case 4:
-					objStrings[i] += "Decima";
-				break;
-				case 5:
-					objStrings[i] += "Cent";
-				break;
-				case 6:
-					objStrings[i] += "Medal";
-				break;
-				case 7:
-				case 8:
-				case 9:
-					objStrings[i] += "Key";
-				break;
-			}
-		}
-		
-		for (i = 1084; i <= 1095; i++) {
-			objStrings[i] = "Parchment";
-		}
-		
-		
-		
-		for (i = 908; i <= 1083; i++) {
-			
-			j = (i+4)%16;
-			k = ((i+4)/16) - 57;
-			
-			
-			objStrings[i] = elementStrings[j] + " " + weaponStrings[k];
-		}
-		
-		
-		objStrings[444] = "Leather Helm";
-		objStrings[445] = "Leather Helm";
-		objStrings[446] = "Leather Helm";
-		objStrings[447] = "Leather Helm";
-		objStrings[448] = "Iron Helm";
-		objStrings[449] = "Iron Helm";
-		objStrings[450] = "Iron Helm";
-		objStrings[451] = "Artifact Helm";
-		objStrings[452] = "Artifact Helm";
-		objStrings[453] = "Artifact Helm";
-		objStrings[454] = "Pointed Cap";
-		objStrings[455] = "Feathered Cap";
-		objStrings[456] = "Cap";
-		objStrings[457] = "Mask";
-		objStrings[458] = "Top Hat";
-		objStrings[459] = "Feathered Hat";
-		objStrings[460] = "Cat Ears";
-		objStrings[461] = "Rabbit Ears";
-		objStrings[462] = "Headband";
-		objStrings[463] = "Crown";
-		objStrings[464] = "Fur Cap";
-		objStrings[465] = "Cap";
-		objStrings[466] = "Hat";
-		objStrings[467] = "Leather Cap";
-		objStrings[468] = "Tunic";
-		objStrings[469] = "Tunic";
-		objStrings[470] = "Fur Coat";
-		objStrings[471] = "Overcoat";
-		objStrings[472] = "Leather Armor";
-		objStrings[473] = "Leather Armor";
-		objStrings[474] = "Iron Plated Armor";
-		objStrings[475] = "Iron Plated Armor";
-		objStrings[476] = "Iron Plated Armor";
-		objStrings[477] = "Artifact Armor";
-		objStrings[478] = "Artifact Armor";
-		objStrings[479] = "Artifact Armor";
-		objStrings[480] = "Slipper";
-		objStrings[481] = "Boot";
-		objStrings[482] = "Buckled Boot";
-		objStrings[483] = "Fur Boot";
-		objStrings[484] = "Buckled Boot";
-		objStrings[485] = "Shoe";
-		objStrings[486] = "Iron Plated Boot";
-		objStrings[487] = "Iron Plated Boot";
-		objStrings[488] = "Iron Plated Boot";
-		objStrings[489] = "Artifact Boot";
-		objStrings[490] = "Artifact Boot";
-		objStrings[491] = "Artifact Boot";
-		objStrings[492] = "Wooden Buckler";
-		objStrings[493] = "Wooden Divoted Buckler";
-		objStrings[494] = "Wood and Iron Buckler";
-		objStrings[495] = "Iron Buckler";
-		objStrings[496] = "Iron Buckler";
-		objStrings[497] = "Iron Tower Shield";
-		objStrings[498] = "Wooden Heater Shield";
-		objStrings[499] = "Wood and Iron Heater Shield";
-		objStrings[500] = "Iron Heater Shield";
-		objStrings[501] = "Decorated Heater Shield";
-		objStrings[502] = "Kite Shield";
-		objStrings[503] = "Decorated Kite Shield";
-		objStrings[504] = "Artifact Shield";
-		objStrings[505] = "Artifact Shield";
-		objStrings[506] = "Artifact Shield";
-		objStrings[507] = "Artifact Shield";
-		objStrings[508] = "Belt";
-		objStrings[509] = "Belt";
-		objStrings[510] = "Belt";
-		objStrings[511] = "Artifact Necklace";
-		objStrings[512] = "Artifact Necklace";
-		objStrings[513] = "Artifact Necklace";
-		objStrings[514] = "Artifact Necklace";
-		objStrings[515] = "Artifact Necklace";
-		objStrings[516] = "Gold Ring";
-		objStrings[517] = "Gold Ring";
-		objStrings[518] = "Gold Ring";
-		objStrings[519] = "Gold Ring";
-		objStrings[520] = "Gold Ring";
-		objStrings[521] = "Gold Ring";
-		objStrings[522] = "Gold Ring";
-		objStrings[523] = "Gold Ring";
-		objStrings[524] = "Gold Ring";
-		objStrings[525] = "Box";
-		objStrings[526] = "Box";
-		objStrings[527] = "Bag";
-		objStrings[528] = "Silver Ring";
-		objStrings[529] = "Silver Ring";
-		objStrings[530] = "Silver Ring";
-		objStrings[531] = "Silver Ring";
-		objStrings[532] = "Silver Ring";
-		objStrings[533] = "Silver Ring";
-		objStrings[534] = "Silver Ring";
-		objStrings[535] = "Silver Ring";
-		objStrings[536] = "Silver Ring";
-		objStrings[537] = "Box";
-		objStrings[538] = "Box";
-		objStrings[539] = "Bag";
-		
-		objStrings[540] = "Canine";
-		objStrings[541] = "Patch of Fur";
-		objStrings[542] = "Hide";
-		objStrings[543] = "Claw";
-		objStrings[544] = "Feather";
-		objStrings[545] = "Horn";
-		objStrings[546] = "Mushroom Cap";
-		objStrings[547] = "Shell";
-		objStrings[548] = "Bone";
-		objStrings[549] = "Eyeball";
-		objStrings[550] = "Tentacle";
-		objStrings[551] = "Bat Wing";
-		
-		objStrings[552] = "Molar";
-		objStrings[553] = "Patch of Fur";
-		objStrings[554] = "Hide";
-		objStrings[555] = "Claw";
-		objStrings[556] = "Feather";
-		objStrings[557] = "Horn";
-		objStrings[558] = "Mushroom Cap";
-		objStrings[559] = "Shell";
-		objStrings[560] = "Bone";
-		objStrings[561] = "Eyeball";
-		objStrings[562] = "Tentacle";
-		objStrings[563] = "Bat Wing";
-		
-		objStrings[564] = "Candle";
-		objStrings[565] = "Jelly";
-		objStrings[566] = "Mirror";
-		objStrings[567] = "Flask";
-		objStrings[568] = "Yarn";
-		objStrings[569] = "Button";
-		objStrings[570] = "Cloth";
-		objStrings[571] = "Bell";
-		objStrings[572] = "Wood";
-		objStrings[573] = "Beak";
-		objStrings[574] = "Tail";
-		objStrings[575] = "Claw";
-		
-		objStrings[576] = "Candle";
-		objStrings[577] = "Jelly";
-		objStrings[578] = "Mirror";
-		objStrings[579] = "Flask";
-		objStrings[580] = "Yarn";
-		objStrings[581] = "Button";
-		objStrings[582] = "Cloth";
-		objStrings[583] = "Bell";
-		objStrings[584] = "Wood";
-		objStrings[585] = "Beak";
-		objStrings[586] = "Tail";
-		objStrings[587] = "Claw";
-		
-		objStrings[588] = "Apple";
-		objStrings[589] = "Lime";
-		objStrings[590] = "Orange";
-		objStrings[591] = "Passion Fruit";
-		objStrings[592] = "Pineapple";
-		objStrings[593] = "Banana";
-		objStrings[594] = "Cherries";
-		objStrings[595] = "Watermelon";
-		objStrings[596] = "Bread";
-		objStrings[597] = "Cooked Lamb Shank";
-		objStrings[598] = "Cooked Egg";
-		objStrings[599] = "Cooked Fish";
-		objStrings[600] = "Cooked Chicken";
-		objStrings[601] = "Sandwich";
-		objStrings[602] = "Sliced Potato";
-		objStrings[603] = "Steak";
-		objStrings[604] = "Sliced Apple";
-		objStrings[605] = "Sliced Lime";
-		objStrings[606] = "Sliced Orange";
-		objStrings[607] = "Sliced Passion Fruit";
-		objStrings[608] = "Sliced Pineapple";
-		objStrings[609] = "Peeled Banana";
-		objStrings[610] = "Cherry";
-		objStrings[611] = "Sliced Watermelon";
-		objStrings[612] = "Cookie";
-		objStrings[613] = "Candy";
-		objStrings[614] = "Candy Cane";
-		objStrings[615] = "Slice of Cake";
-		objStrings[616] = "Dark Chocolate";
-		objStrings[617] = "Lollipop";
-		objStrings[618] = "Icecream";
-		objStrings[619] = "Honey";
-		objStrings[620] = "Half Cookie";
-		objStrings[621] = "Candy";
-		objStrings[622] = "Candy Cane";
-		objStrings[623] = "Cake";
-		objStrings[624] = "Milk Chocolate";
-		objStrings[625] = "Lollipop";
-		objStrings[626] = "Icecream";
-		objStrings[627] = "Water";
-		objStrings[628] = "Cheese";
-		objStrings[629] = "Raw Lamb Shank";
-		objStrings[630] = "Raw Egg";
-		objStrings[631] = "Raw Fish";
-		objStrings[632] = "Cooked Chicken";
-		objStrings[633] = "Sandwich";
-		objStrings[634] = "Potato";
-		objStrings[635] = "Raw Steak";
-		objStrings[636] = "Cut Emerald";
-		objStrings[637] = "Cut Ruby";
-		objStrings[638] = "Cut Sapphire";
-		objStrings[639] = "Cut Amethyst";
-		objStrings[640] = "Cut Beryl";
-		objStrings[641] = "Cut Topaz";
-		objStrings[642] = "Cut Onyx";
-		objStrings[643] = "Cut Diamond";
-		objStrings[644] = "Glass";
-		objStrings[645] = "Pearl";
-		objStrings[646] = "Ash";
-		objStrings[647] = "Flint";
-		
-		
-		
-		for (i = 0; i < 3; i++) {
-			j = i*16;
-			objStrings[1240 + j] = "Giant Ant";
-			objStrings[1242 + j] = "Giant Rat";
-			objStrings[1244 + j] = "Slime";
-			objStrings[1246 + j] = "Giant Larva";
-			objStrings[1248 + j] = "Giant Wasp";
-			objStrings[1250 + j] = "Dread Knight";
-			objStrings[1252 + j] = "Carnivorous Plant";
-			objStrings[1254 + j] = "Haunted Stump";
-			
-			objStrings[1288 + j] = "Floating Eye";
-			objStrings[1290 + j] = "Gazer";
-			objStrings[1292 + j] = "Skeleton";
-			objStrings[1294 + j] = "Ghost";
-			objStrings[1296 + j] = "Animated Fungus";
-			objStrings[1298 + j] = "Necromancer";
-			objStrings[1300 + j] = "Electric Eye";
-			objStrings[1302 + j] = "Mimic";
-			
-			objStrings[1336 + j] = "Fire Elemental";
-			objStrings[1338 + j] = "Wind Elemental";
-			objStrings[1340 + j] = "Earth Elemental";
-			objStrings[1342 + j] = "Water Elemental";
-			objStrings[1344 + j] = "Golem";
-			objStrings[1346 + j] = "Zombie";
-			objStrings[1348 + j] = "Imp";
-			objStrings[1350 + j] = "Cyclopes";
-			
-			objStrings[1384 + j] = "Hatchling";
-			objStrings[1386 + j] = "Giant Crab";
-			objStrings[1388 + j] = "Giant Snake";
-			objStrings[1390 + j] = "Giant Frog";
-			objStrings[1392 + j] = "Giant Snail";
-			objStrings[1394 + j] = "Dark Lord";
-			objStrings[1396 + j] = "Animated Armor";
-			objStrings[1398 + j] = "Banshee";
-		}
-		
-		for (i = 0; i < 4; i++) {
-			j = i*20;
-			
-			objStrings[1432 + j] = "Female Townsperson";
-			objStrings[1436 + j] = "Male Townsperson";
-			objStrings[1440 + j] = "Priest";
-			objStrings[1444 + j] = "Rogue";
-			objStrings[1448 + j] = "Theif";
-			
-			objStrings[1512 + j] = "Guard";
-			objStrings[1516 + j] = "Townsperson";
-			objStrings[1520 + j] = "Knight";
-			objStrings[1524 + j] = "Assassin";
-			objStrings[1528 + j] = "Warlord";
-			
-			objStrings[1592 + j] = "Ninja";
-			objStrings[1596 + j] = "Old Man";
-			objStrings[1600 + j] = "Old Woman";
-			objStrings[1604 + j] = "Paladin";
-			objStrings[1608 + j] = "Wizard";
-			
-		}
-	}
+	
 
 };

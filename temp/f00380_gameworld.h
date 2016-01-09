@@ -461,12 +461,7 @@ btVector3 GameWorld::getNormalAtCoord (btVector3 coord, float * cellVal)
 			(cellVal[2]-cellVal[3])
 		);
 		
-		if (isFuzzy(norVal)) {
-			
-		}
-		else {
-			norVal.normalize();
-		}
+		safeNorm(norVal);
 		
 		
 		return norVal;
@@ -549,7 +544,7 @@ void GameWorld::getArrAtCoords (int xv, int yv, int zv, int * tempCellData, int 
 	}
 void GameWorld::fireEvent (BaseObjType uid, int opCode, float fParam)
                                                                   {
-		BaseObj* ge = &(gameObjects[uid]);
+		BaseObj* ge = &(singleton->gem->gameObjects[uid]);
 		switch (opCode) {
 			case EV_COLLISION:
 			
@@ -658,13 +653,13 @@ void GameWorld::update ()
 		camBlockPos.copyFrom( singleton->cameraGetPosNoShake() );
 		camBlockPos.intDivXYZ(singleton->cellsPerBlock);
 
-		if (singleton->currentActor == NULL) {
+		if (singleton->gem->currentActor == NULL) {
 			camHolderPos.copyFrom( singleton->cameraGetPosNoShake() );
 			camHolderPos.intDivXYZ(singleton->cellsPerHolder);
 			camHolderPos.addXYZRef(&(singleton->lookAtVec),4.0);
 		}
 		else {
-			camHolderPos.setBTV(singleton->currentActor->getCenterPoint(0));
+			camHolderPos.setBTV(singleton->gem->currentActor->getCenterPoint(0));
 			camHolderPos.intDivXYZ(singleton->cellsPerHolder);
 		}
 
@@ -1134,6 +1129,9 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 		Vector4 myVector4;
 		Vector4 resVector4;
 		
+		
+		BaseObj* grabber;
+		
 		// if (singleton->doPathReport) {
 		// 	cout << "\n\n";
 		// }
@@ -1152,8 +1150,8 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 		
 		
 		
-		for (i = 0; i < visObjects.size(); i++) {
-			ge = &(gameObjects[visObjects[i]]);
+		for (i = 0; i < singleton->gem->visObjects.size(); i++) {
+			ge = &(singleton->gem->gameObjects[singleton->gem->visObjects[i]]);
 			
 			if (
 				(!(ge->isHidden)) &&
@@ -1173,9 +1171,16 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 					);
 				}
 				
-				curOrg = singleton->gameOrgs[ge->orgId];
+				curOrg = singleton->gem->gameOrgs[ge->orgId];
 				
-				ge->bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
+				if (ge->isGrabbedById > -1) {
+					grabber = &(singleton->gem->gameObjects[ge->isGrabbedById]);
+				}
+				else {
+					grabber = ge;
+				}
+				
+				grabber->bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
 				myMatrix4 = Matrix4(myMat);
 				
 				
@@ -1205,11 +1210,13 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 					if (
 						(curBody->jointType != E_JT_LIMB) ||
 						(curBody->boneId < 0) ||
+						(curBody->boneId == E_BONE_C_BASE) ||
 						(
-							singleton->firstPerson &&
+							singleton->gem->firstPerson &&
 							(curBody->boneId == E_BONE_C_SKULL) &&
-							(ge->uid == singleton->getCurActorUID())
+							(ge->uid == singleton->gem->getCurActorUID())
 						)
+						
 					) {
 						
 					}
@@ -1234,14 +1241,14 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 						);
 						resVector4 = myMatrix4*myVector4;
 						basePos = btVector3(resVector4.x,resVector4.y,resVector4.z);
-						basePos += ge->skelOffset;
+						basePos += grabber->skelOffset;
 						basePos -= centerPoint;
-						basePos.normalize();
+						safeNorm(basePos);
 						
 						
 						
 						tanVec = basis.getColumn(0);//basis*curOrgNode->orgVecs[0].getBTV();
-						tanVec.normalize();
+						safeNorm(tanVec);
 						// bitVec = basis.getColumn(1);//basis*curOrgNode->orgVecs[1].getBTV();
 						// norVec = basis.getColumn(2);//basis*curOrgNode->orgVecs[2].getBTV();
 						
@@ -1250,14 +1257,15 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 						//norVec = basePos[2];//basis*curOrgNode->orgVecs[2].getBTV();
 						
 						norVec = tanVec.cross(bitVec);
-						norVec.normalize();
+						safeNorm(norVec);
 						
 						bitVec = norVec.cross(tanVec);
-						bitVec.normalize();
+						safeNorm(bitVec);
 						
 						
 						len0 = curOrgNode->orgVecs[E_OV_TBNRAD0].getBTV();
 						len1 = curOrgNode->orgVecs[E_OV_TBNRAD1].getBTV();
+						
 						
 						// datVec
 						randOff = abs( fSeedRand2((ge->uid*37.19232f),(curOrgNode->orgVecs[E_OV_MATPARAMS].getFX()*17.89923f)) );
@@ -1272,17 +1280,17 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 						singleton->limbTBOData[dataInd] = centerPoint.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = centerPoint.getY(); dataInd++;
 						singleton->limbTBOData[dataInd] = centerPoint.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = 0.0; dataInd++;
+						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFX(); dataInd++;
 						
 						singleton->limbTBOData[dataInd] = tanVec.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = tanVec.getY(); dataInd++;
 						singleton->limbTBOData[dataInd] = tanVec.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = 0.0; dataInd++;
+						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFY(); dataInd++;
 						
 						singleton->limbTBOData[dataInd] = bitVec.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = bitVec.getY(); dataInd++;
 						singleton->limbTBOData[dataInd] = bitVec.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = 0.0; dataInd++;
+						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFZ(); dataInd++;
 						
 						// if (singleton->doPathReport) {
 						// 	cout << curOrgNode->orgVecs[E_OV_MATPARAMS].getFX() << "\n";
@@ -1291,12 +1299,16 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 						singleton->limbTBOData[dataInd] = norVec.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = norVec.getY(); dataInd++;
 						singleton->limbTBOData[dataInd] = norVec.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_POWVALS].getFW(); dataInd++;
+						
+						// ln0Vec
 						
 						singleton->limbTBOData[dataInd] = len0.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = len0.getY(); dataInd++;
 						singleton->limbTBOData[dataInd] = len0.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+						singleton->limbTBOData[dataInd] = ge->entType; dataInd++;
+						
+						// ln1Vec
 						
 						singleton->limbTBOData[dataInd] = len1.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = len1.getY(); dataInd++;
@@ -1324,7 +1336,6 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 		singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
 		singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
 		
-		singleton->limbDataDebug = dataInd*4;
 		singleton->actorCount = actorCount;
 		
 		singleton->limbTBO.update(singleton->limbTBOData,dataInd*4);
@@ -1454,14 +1465,14 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		
 		
-		if ((singleton->currentActor == NULL)||singleton->firstPerson) {
+		if ((singleton->gem->currentActor == NULL)||singleton->gem->firstPerson) {
 			singleton->setShaderFloat("thirdPerson", 0.0f);
 			//singleton->setShaderFloat("CAM_BOX_SIZE", 0.5f);
 		}
 		else {
 			singleton->setShaderFloat("thirdPerson", 1.0f);
 			//singleton->setShaderFloat("CAM_BOX_SIZE", 0.5f);
-			singleton->setShaderfVec3("entPos", singleton->currentActor->getCenterPointFIV(0));
+			singleton->setShaderfVec3("entPos", singleton->gem->currentActor->getCenterPointFIV(0));
 		}
 		
 		
@@ -1541,12 +1552,12 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		singleton->setShaderArrayfVec4("paramArrGeom", singleton->paramArrGeom, E_PRIMTEMP_LENGTH);
 		
 		
-		if (singleton->currentActor != NULL) {
+		if (singleton->gem->currentActor != NULL) {
 			
-			singleton->splashArr[0] = singleton->currentActor->getCenterPointFIV(0)->getFX();
-			singleton->splashArr[1] = singleton->currentActor->getCenterPointFIV(0)->getFX();
-			singleton->splashArr[2] = singleton->currentActor->getCenterPointFIV(0)->getFX();
-			singleton->splashArr[3] = singleton->currentActor->getVel(0)->length();
+			singleton->splashArr[0] = singleton->gem->currentActor->getCenterPointFIV(0)->getFX();
+			singleton->splashArr[1] = singleton->gem->currentActor->getCenterPointFIV(0)->getFX();
+			singleton->splashArr[2] = singleton->gem->currentActor->getCenterPointFIV(0)->getFX();
+			singleton->splashArr[3] = singleton->gem->currentActor->getVel(0)->length();
 			
 			singleton->setShaderInt("numSplashes", 1);
 			singleton->setShaderArrayfVec4("splashArr", singleton->splashArr, MAX_SPLASHES);
@@ -1680,7 +1691,7 @@ void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, fl
 			doProc = true;
 		}
 		else {
-			if (curNode == singleton->selectedNode) {
+			if (curNode == singleton->gem->selectedNode) {
 				doProc = true;
 			}
 		}
@@ -1689,7 +1700,7 @@ void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, fl
 		
 		
 		if (doProc) {
-			lineSeg[0].setFXYZRef(&(curNode->orgTrans[0]));
+			lineSeg[0].setFXYZRef(&(curNode->orgTrans[1]));
 			lineSeg[0].multXYZ(  scale  );
 			
 			// if (drawAll) {
@@ -1703,14 +1714,14 @@ void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, fl
 				lineSeg[1].addXYZRef(&(lineSeg[0]));
 			//}
 			
-			if (singleton->currentActor != NULL) {
+			if (singleton->gem->currentActor != NULL) {
 				
 				
-				if (singleton->currentActor->isGrabbedById > -1) {
-					grabber = &(singleton->gw->gameObjects[singleton->currentActor->isGrabbedById]);
+				if (singleton->gem->currentActor->isGrabbedById > -1) {
+					grabber = &(singleton->gem->gameObjects[singleton->gem->currentActor->isGrabbedById]);
 				}
 				else {
-					grabber = singleton->currentActor;
+					grabber = singleton->gem->currentActor;
 				}
 				
 				
@@ -1738,102 +1749,6 @@ void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, fl
 		for (i = 0; i < curNode->children.size(); i++) {
 			drawNodeEnt(curNode->children[i], basePosition, scale, drawMode, drawAll);
 		}
-		
-	}
-void GameWorld::addVisObject (BaseObjType _uid, bool isRecycled)
-                                                             {
-		
-		BaseObj* ge = &(gameObjects[_uid]);
-		
-		if (isRecycled) {
-			
-		}
-		else {
-			visObjects.push_back(_uid);
-		}
-		
-		if (ge->isHidden) {
-			
-		}
-		else {
-			singleton->gamePhysics->addBoxFromObj(_uid, false);
-		}
-		
-	}
-bool GameWorld::removeVisObject (BaseObjType _uid, bool isRecycled)
-                                                                {
-		int i;
-		
-		BaseObj* ge = &(gameObjects[_uid]);
-		
-		singleton->gamePhysics->remBoxFromObj(_uid);
-		
-		// if (ge->body != NULL) {
-		// 	//singleton->gamePhysics->scene->RemoveBody(ge->body);
-		// 	ge->body = NULL;
-		// }
-		
-		if (isRecycled) {
-			ge->isHidden = true;
-			return true;
-		}
-		else {
-			for (i = 0; i < visObjects.size(); i++) {
-				if (visObjects[i] == _uid) {
-					visObjects.erase(visObjects.begin() + i);
-					return true;
-				}
-			}
-		}
-		
-		
-		return false;
-	}
-int GameWorld::getClosestObj (int actorId, FIVector4 * basePoint, bool ignoreNPC, float maxDis)
-          {
-		
-		int i;
-		float bestDis = maxDis;
-		float testDis;
-		int testInd;
-		int bestInd = -1;
-		
-		BaseObj* testObj;
-		
-		for(i = 0; i < visObjects.size(); i++) {
-			
-			testInd = visObjects[i];
-			testObj = &(gameObjects[testInd]);
-			
-			// dont grab self, or another grabbed object
-			if (
-				(testInd == actorId) ||
-				(testObj->isGrabbedById >= 0) ||
-				(testObj->getVel(0)->length() > 2.0f) ||
-				(testObj->entType == E_ENTTYPE_BULLET) ||
-				(testObj->entType == E_ENTTYPE_TRACE) ||
-				(testObj->isHidden) ||
-				
-				(
-					ignoreNPC && (testObj->entType == E_ENTTYPE_NPC)	
-				)
-			) {
-				
-			}
-			else {
-				
-				
-				
-				testDis = testObj->getCenterPointFIV(0)->distance(basePoint);
-				
-				if (testDis < bestDis) {
-					bestDis = testDis;
-					bestInd = testInd;
-				}
-			}
-		}
-		
-		return bestInd;
 		
 	}
 void GameWorld::polyCombine ()
@@ -2147,9 +2062,9 @@ void GameWorld::renderGeom ()
 		
 		
 		
-		// for(i = 0; i < visObjects.size(); i++) {
+		// for(i = 0; i < singleton->gem->visObjects.size(); i++) {
 			
-		// 	curObj = &(gameObjects[visObjects[i]]);
+		// 	curObj = &(singleton->gem->gameObjects[visObjects[i]]);
 			
 		// 	objCount++;
 			
@@ -2175,7 +2090,7 @@ void GameWorld::renderGeom ()
 				
 		// 		if (visObjects[i] == singleton->actObjInd) {
 					
-		// 			if (!singleton->firstPerson) {
+		// 			if (!singleton->gem->firstPerson) {
 						
 		// 				// singleton->drawBox(
 		// 				// 	&tempVec1,
@@ -2226,8 +2141,8 @@ void GameWorld::renderGeom ()
 		// 				(curObj->entType == E_ENTTYPE_BULLET) ||
 		// 				(curObj->entType == E_ENTTYPE_TRACE) ||
 		// 				(
-		// 					(singleton->firstPerson) &&
-		// 					(curObj->uid == singleton->getCurActorUID())
+		// 					(singleton->gem->firstPerson) &&
+		// 					(curObj->uid == singleton->gem->getCurActorUID())
 		// 				)
 		// 			) {
 						
@@ -2272,8 +2187,6 @@ void GameWorld::renderGeom ()
 		
 
 
-		// //cout << "objectCount " << objCount << "\n";
-		// singleton->lastObjectCount = objCount;		
 
 
 		
@@ -2522,9 +2435,9 @@ void GameWorld::renderGeom ()
 		// singleton->setShaderFloat("curTime", singleton->pauseTime/1000.0f);
 		// singleton->setShaderTexture(0,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
 		
-		// for(i = 0; i < visObjects.size(); i++) {
+		// for(i = 0; i < singleton->gem->visObjects.size(); i++) {
 			
-		// 	curObj = &(gameObjects[visObjects[i]]);
+		// 	curObj = &(singleton->gem->gameObjects[visObjects[i]]);
 			
 		// 	eqObj = singleton->getEquipped(curObj);
 			
@@ -2532,8 +2445,8 @@ void GameWorld::renderGeom ()
 		// 		curObj->isHidden ||
 		// 		(eqObj == NULL) ||
 		// 		(
-		// 			(singleton->firstPerson) &&
-		// 			(curObj->uid == singleton->getCurActorUID())
+		// 			(singleton->gem->firstPerson) &&
+		// 			(curObj->uid == singleton->gem->getCurActorUID())
 		// 		)
 		// 	) {
 				
@@ -2572,7 +2485,7 @@ void GameWorld::renderGeom ()
 				
 				
 		// 		tempCS = &(singleton->fontWrappers[EFW_ICONS]->charVals[
-		// 			singleton->entIdToIcon[eqObj->objectType] 
+		// 			singleton->gem->entIdToIcon[eqObj->objectType] 
 		// 		]);
 		// 		frameMod = 0;
 		// 		if (eqObj->maxFrames != 0) {
@@ -2645,23 +2558,23 @@ void GameWorld::renderGeom ()
 		
 		// glBegin(GL_POINTS);
 		
-		// for(i = 0; i < visObjects.size(); i++) {
+		// for(i = 0; i < singleton->gem->visObjects.size(); i++) {
 			
-		// 	curObj = &(gameObjects[visObjects[i]]);
+		// 	curObj = &(singleton->gem->gameObjects[visObjects[i]]);
 			
 		// 	if (
 		// 		curObj->isHidden ||
 		// 		(curObj->objectType <= 0) ||
 		// 		(
-		// 			(singleton->firstPerson) &&
-		// 			(curObj->uid == singleton->getCurActorUID())
+		// 			(singleton->gem->firstPerson) &&
+		// 			(curObj->uid == singleton->gem->getCurActorUID())
 		// 		)
 		// 	) {
 				
 		// 	}
 		// 	else {
 		// 		tempCS = &(singleton->fontWrappers[EFW_ICONS]->charVals[
-		// 			singleton->entIdToIcon[curObj->objectType] 
+		// 			singleton->gem->entIdToIcon[curObj->objectType] 
 		// 		]);
 		// 		frameMod = 0;
 		// 		if (curObj->maxFrames != 0) {
@@ -4548,7 +4461,7 @@ UPDATE_LIGHTS_END:
 void GameWorld::renderDebug ()
                            {
 		
-		BaseObj* ge = singleton->currentActor;
+		BaseObj* ge = singleton->gem->currentActor;
 		
 		int i;
 		
@@ -4612,14 +4525,14 @@ void GameWorld::renderDebug ()
 		
 		
 		// skeleton outline		
-		if (singleton->currentActor != NULL) {
-			if (singleton->currentActor->orgId > -1) {
+		if (singleton->gem->currentActor != NULL) {
+			if (singleton->gem->currentActor->orgId > -1) {
 				
-				if (singleton->currentActor->isGrabbedById > -1) {
-					grabber = &(singleton->gw->gameObjects[singleton->currentActor->isGrabbedById]);
+				if (singleton->gem->currentActor->isGrabbedById > -1) {
+					grabber = &(singleton->gem->gameObjects[singleton->gem->currentActor->isGrabbedById]);
 				}
 				else {
-					grabber = singleton->currentActor;
+					grabber = singleton->gem->currentActor;
 				}
 				
 				
@@ -4628,7 +4541,7 @@ void GameWorld::renderDebug ()
 				singleton->setShaderMatrix4x4("objmat",myMat,1);
 				
 				
-				drawOrg(singleton->gameOrgs[singleton->currentActor->orgId], false);
+				drawOrg(singleton->gem->gameOrgs[singleton->gem->currentActor->orgId], false);
 			}
 		}
 		
@@ -4639,8 +4552,8 @@ void GameWorld::renderDebug ()
 		
 		float healthMeterScale = 0.5f;
 		
-		for (i = 0; i < visObjects.size(); i++) {
-			ge = &(gameObjects[visObjects[i]]);
+		for (i = 0; i < singleton->gem->visObjects.size(); i++) {
+			ge = &(singleton->gem->gameObjects[singleton->gem->visObjects[i]]);
 			if (ge->entType == E_ENTTYPE_NPC) {
 				
 				//ge->bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
@@ -5092,22 +5005,22 @@ void GameWorld::postProcess ()
 			singleton->sampleFBO("debugTargFBO", 9);
 			
 			
-			if ((singleton->currentActor == NULL)||singleton->firstPerson) {
+			if ((singleton->gem->currentActor == NULL)||singleton->gem->firstPerson) {
 				singleton->setShaderFloat("thirdPerson", 0.0f);
 			}
 			else {
 				singleton->setShaderFloat("thirdPerson", 1.0f);
-				singleton->setShaderfVec3("entPos", singleton->currentActor->getCenterPointFIV(0));
+				singleton->setShaderfVec3("entPos", singleton->gem->currentActor->getCenterPointFIV(0));
 				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
 			
-			//if (singleton->currentActor == NULL) {
+			//if (singleton->gem->currentActor == NULL) {
 				singleton->setShaderInt("isFalling",false);
 				singleton->setShaderInt("isJumping",false);
 			// }
 			// else {
-			// 	singleton->setShaderInt("isFalling",singleton->currentActor->allFalling());
-			// 	singleton->setShaderInt("isJumping",singleton->currentActor->isJumping);
+			// 	singleton->setShaderInt("isFalling",singleton->gem->currentActor->allFalling());
+			// 	singleton->setShaderInt("isJumping",singleton->gem->currentActor->isJumping);
 			// }
 			
 			
@@ -5119,9 +5032,9 @@ void GameWorld::postProcess ()
 			singleton->setShaderfVec3("lightVecOrig", &(singleton->lightVecOrig) );
 			singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
 			singleton->setShaderFloat("curTime", singleton->curTime);
-			singleton->setShaderFloat("selLimbInd",singleton->highlightedLimb);
-			singleton->setShaderFloat("selObjInd",singleton->selObjInd);
-			singleton->setShaderFloat("actObjInd",singleton->actObjInd);
+			singleton->setShaderFloat("selLimbInd",singleton->gem->highlightedLimb);
+			singleton->setShaderFloat("selObjInd",singleton->gem->selObjInd);
+			singleton->setShaderFloat("actObjInd",singleton->gem->actObjInd);
 			singleton->setShaderFloat("isUnderWater", singleton->getUnderWater() );
 			singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
 			singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND

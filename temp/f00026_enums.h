@@ -5,6 +5,8 @@
 
 
 #define E_CONST(DDD) \
+DDD(E_CONST_AI_SEEK_THRESH) \
+DDD(E_CONST_AI_REPEL_THRESH) \
 DDD(E_CONST_ANGDAMP) \
 DDD(E_CONST_ANTIGRAV) \
 DDD(E_CONST_COLDEPTH_LIMB) \
@@ -12,6 +14,7 @@ DDD(E_CONST_COLDEPTH_CONT) \
 DDD(E_CONST_PUSH_UP_AMOUNT) \
 DDD(E_CONST_ATTACK_LERP_SPEED) \
 DDD(E_CONST_ATTACK_KEY_INTERVAL) \
+DDD(E_CONST_AIR_RESIST) \
 DDD(E_CONST_WALKING_FRIC) \
 DDD(E_CONST_STANDING_FRIC) \
 DDD(E_CONST_WALKING_GRAV) \
@@ -568,12 +571,6 @@ enum E_MAT_PARAM {
 };
 
 
-enum E_ORGTYPE {
-	E_ORGTYPE_HUMAN,
-	E_ORGTYPE_WEAPON,
-	E_ORGTYPE_LENGTH	
-};
-
 enum E_ORG_SUBPARAM {
 	E_ORG_SUBPARAM_NOT_SEL,
 	E_ORG_SUBPARAM_SEL,
@@ -745,17 +742,14 @@ enum E_BONES_HUMAN {
 	E_BONE_C_SPINE4, // neck
 	E_BONE_C_SKULL,
 	
-	E_BONE_WEAPON_HANDLEUP,
-	E_BONE_WEAPON_HANDLEDOWN,
-	E_BONE_WEAPON_0,
-	E_BONE_WEAPON_1,
-	E_BONE_WEAPON_2,
-	E_BONE_WEAPON_3,
-	E_BONE_WEAPON_4,
-	E_BONE_WEAPON_5,
-	E_BONE_WEAPON_6,
-	E_BONE_WEAPON_7,
-	E_BONE_WEAPON_8,
+	E_BONE_WEAPON_POMMEL,
+	E_BONE_WEAPON_HANDLE,
+	E_BONE_WEAPON_CENTER,
+	E_BONE_WEAPON_CROSSR,
+	E_BONE_WEAPON_CROSSL,
+	E_BONE_WEAPON_BLADER,
+	E_BONE_WEAPON_BLADEL,
+	E_BONE_WEAPON_BLADEU,
 	
 	E_BONE_C_END //////////////////
 	
@@ -817,6 +811,8 @@ enum E_ORG_VECS {
 	E_OV_THETAPHIRHO,
 	E_OV_TPRORIG,
 	E_OV_MATPARAMS,
+	E_OV_TBNOFFSET,
+	E_OV_POWVALS, // x: lerpValP0toP1, y: lerpValBit, z: lerpValTan
 	E_OV_LENGTH
 };
 
@@ -904,23 +900,22 @@ string boneStrings[] = {
 	"E_BONE_C_SPINE4", // neck
 	"E_BONE_C_SKULL",
 	
-	"E_BONE_WEAPON_HANDLEUP",
-	"E_BONE_WEAPON_HANDLEDOWN",
-	"E_BONE_WEAPON_0",
-	"E_BONE_WEAPON_1",
-	"E_BONE_WEAPON_2",
-	"E_BONE_WEAPON_3",
-	"E_BONE_WEAPON_4",
-	"E_BONE_WEAPON_5",
-	"E_BONE_WEAPON_6",
-	"E_BONE_WEAPON_7",
-	"E_BONE_WEAPON_8",
+	
+	"E_BONE_WEAPON_POMMEL",
+	"E_BONE_WEAPON_HANDLE",
+	"E_BONE_WEAPON_CENTER",
+	"E_BONE_WEAPON_CROSSR",
+	"E_BONE_WEAPON_CROSSL",
+	"E_BONE_WEAPON_BLADER",
+	"E_BONE_WEAPON_BLADEL",
+	"E_BONE_WEAPON_BLADEU",
 	
 	"E_BONE_C_END" //////////////////
 	
 	
 	
 };
+
 
 
 // NEVER REORDER
@@ -1271,6 +1266,7 @@ struct BodyStruct {
 	float rad;
 	float length;
 	
+	int actorJointId;
 	int boneId;
 	int jointType;
 	//int classType;
@@ -1322,16 +1318,6 @@ struct ActorJointStruct {
 // };
 
 
-/*
-
-enum string method
-
-// Client code:
-
-std::cout << FruitDescription[Banana] << " is enum #" << Banana << "\n";
-
-*/
-
 
 struct PoseKey {
 	int index;
@@ -1340,76 +1326,84 @@ struct PoseKey {
 	int step;
 };
 
-enum E_POSE_GROUPS {
 
-	E_PG_TPOSE,
-	E_PG_NONPOSE,
-	E_PG_JUMP,
-	E_PG_DEAD,
-	E_PG_PICKUP,
-	E_PG_IDLE,
-	E_PG_WALKFORWARD,
-	
-	// weapons
-	
-	E_PG_SLSH,
-	E_PG_BACK,
-	E_PG_HACK,
-	E_PG_STAB,
-	
-	// punches
-	
-	E_PG_HOOK,
-	E_PG_ELBO,
-	E_PG_UPPR,
-	E_PG_JABP,
-	
-	// kicks
-	
-	E_PG_ROUN,
-	E_PG_REVR,
-	E_PG_BKIK,
-	E_PG_FRNT,
-	
-	E_PG_SWORD,
-	
-	E_PG_LENGTH	
+
+#define E_POSE_GROUPS(DDD) \
+DDD(E_PG_TPOSE) \
+DDD(E_PG_NONPOSE) \
+DDD(E_PG_JUMP) \
+DDD(E_PG_DEAD) \
+DDD(E_PG_PICKUP) \
+DDD(E_PG_IDLE) \
+DDD(E_PG_WALKFORWARD) \
+DDD(E_PG_SLSH) \
+DDD(E_PG_BACK) \
+DDD(E_PG_HACK) \
+DDD(E_PG_STAB) \
+DDD(E_PG_HOOK) \
+DDD(E_PG_ELBO) \
+DDD(E_PG_UPPR) \
+DDD(E_PG_JABP) \
+DDD(E_PG_ROUN) \
+DDD(E_PG_REVR) \
+DDD(E_PG_BKIK) \
+DDD(E_PG_FRNT) \
+DDD(E_PG_WPSWORD) \
+DDD(E_PG_WPAXE) \
+DDD(E_PG_WPMACE) \
+DDD(E_PG_WPHAMMER) \
+DDD(E_PG_WPSTAFF) \
+DDD(E_PG_WPSPEAR) \
+DDD(E_PG_LENGTH)
+
+string E_POSE_GROUP_STRINGS[] = {
+	E_POSE_GROUPS(DO_DESCRIPTION)
 };
 
-string poseGroupStrings[] = {
-
-	"E_PG_TPOSE",
-	"E_PG_NONPOSE",
-	"E_PG_JUMP",
-	"E_PG_DEAD",
-	"E_PG_PICKUP",
-	"E_PG_IDLE",
-	"E_PG_WALKFORWARD",
-	
-	// weapons
-	
-	"E_PG_SLSH",
-	"E_PG_BACK",
-	"E_PG_HACK",
-	"E_PG_STAB",
-	
-	// punches
-	
-	"E_PG_HOOK",
-	"E_PG_ELBO",
-	"E_PG_UPPR",
-	"E_PG_JABP",
-	
-	// kicks
-	
-	"E_PG_ROUN",
-	"E_PG_REVR",
-	"E_PG_BKIK",
-	"E_PG_FRNT",
-	
-	"E_PG_SWORD"
-		
+enum E_POSE_GROUP_VALS {
+	E_POSE_GROUPS(DO_ENUM)
 };
+
+
+
+#define E_SUBTYPES(DDD) \
+DDD(E_SUB_DEFAULT) \
+DDD(E_SUB_SWING) \
+DDD(E_SUB_PUNCH) \
+DDD(E_SUB_KICK) \
+DDD(E_SUB_SWORD) \
+DDD(E_SUB_AXE) \
+DDD(E_SUB_MACE) \
+DDD(E_SUB_HAMMER) \
+DDD(E_SUB_STAFF) \
+DDD(E_SUB_LENGTH)
+
+string E_SUBTYPE_STRINGS[] = {
+	E_SUBTYPES(DO_DESCRIPTION)
+};
+
+enum E_SUBTYPE_VALS {
+	E_SUBTYPES(DO_ENUM)
+};
+
+
+int stringToEnum(
+	string* enumStringArr,
+	int enumStringArrLength,
+	string testString
+) {
+	int i;
+	
+	for (i = 0; i < enumStringArrLength; i++) {
+		if (enumStringArr[i].compare(testString) == 0) {
+			return i;
+		}
+	}
+	
+	return -1;
+	
+}
+
 
 
 enum E_POSETYPES {

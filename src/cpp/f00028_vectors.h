@@ -588,6 +588,19 @@ public:
 		iv4.y = (int)fv4.y;
 		iv4.z = (int)fv4.z;
 	}
+	
+	void addXYZW(float scalarX, float scalarY, float scalarZ, float scalarW, float multiplier = 1.0f) {
+		fv4.x += scalarX * multiplier;
+		fv4.y += scalarY * multiplier;
+		fv4.z += scalarZ * multiplier;
+		fv4.w += scalarW * multiplier;
+
+		iv4.x = (int)fv4.x;
+		iv4.y = (int)fv4.y;
+		iv4.z = (int)fv4.z;
+		iv4.w = (int)fv4.w;
+	}
+	
 	void addXYZRef(FIVector4 *scalar, float multiplier = 1.0f) {
 		fv4.x += scalar->getFX() * multiplier;
 		fv4.y += scalar->getFY() * multiplier;
@@ -1773,7 +1786,14 @@ AxisRotation axisRotationInstance;
 
 
 
-
+void safeNorm(btVector3 &normRef) {
+	if (normRef.fuzzyZero()) {
+		
+	}
+	else {
+		normRef.normalize();
+	}
+}
 
 float getShortestAngle(float begInRad, float endInRad, float amount) {
 	int begInDeg = begInRad*180/M_PI;
@@ -1800,16 +1820,6 @@ btVector3 rotBTV2D(btVector3 source, float ang) {
 	
 
 	return -btVector3(cos(baseAng),sin(baseAng),0.0f);
-}
-
-bool isFuzzy( btVector3 inp ) {
-	return (
-		(
-			abs(inp.getX()) +
-			abs(inp.getY()) +
-			abs(inp.getZ())
-		) < 0.0000001f	
-	);
 }
 
 struct SphereStruct {
@@ -1859,6 +1869,7 @@ public:
 	int isGrabbedById;
 	int isGrabbedByHand;
 	int entType;
+	int subType;
 	bool isHidden;
 	bool isOpen;
 	bool isEquipped;
@@ -2716,6 +2727,7 @@ public:
 		BaseObjType _parentUID,
 		int _objectType,
 		int _entType,
+		int _subType,
 		FIVector4* cellPos
 	) {
 		
@@ -2731,6 +2743,7 @@ public:
 		maxFrames = 0;
 		objectType = _objectType;
 		entType = _entType;
+		subType = _subType;
 		
 		behaviorTarget = btVector3(0.0f,0.0f,0.0f);
 		npcRepel = btVector3(0.0f,0.0f,0.0f);
@@ -2779,16 +2792,6 @@ public:
 
 typedef map<BaseObjType, BaseObj>::iterator itBaseObj;
 
-class ObjDef {
-public:
-	
-	string classId;
-	
-	ObjDef() {
-		
-	}
-	
-};
 
 class VNode {
 public:

@@ -44,13 +44,13 @@ const static int MAX_EXPLODES = 8;
 
 //const static bool DO_CONNECT = true;
 const static bool DO_SHADER_DUMP = false;
-
+bool EDIT_POSE = false;
 
 // const static int DEF_WIN_W = 1440;
 // const static int DEF_WIN_H = 720;
 
 
-#define STREAM_RES 1
+//#define STREAM_RES 1
 
 #ifdef STREAM_RES
 	const static int DEF_WIN_W = 1920; //2048;//
@@ -62,7 +62,7 @@ const static bool DO_SHADER_DUMP = false;
 
 
 
-const static int DEF_VOL_SIZE = 128;
+const static int DEF_VOL_SIZE = 64;
 
 const static int DEF_SCALE_FACTOR = 4;
 const static int RENDER_SCALE_FACTOR = 1;
@@ -2040,6 +2040,11 @@ struct CustFilterCallback : public btOverlapFilterCallback
 		btBroadphaseProxy* proxy0,
 		btBroadphaseProxy* proxy1) const
 	{
+		
+		if (EDIT_POSE) {
+			return false;
+		}
+		
 		bool collides = 
 		(
 			((proxy0->m_collisionFilterGroup & proxy1->m_collisionFilterMask) != 0) &&

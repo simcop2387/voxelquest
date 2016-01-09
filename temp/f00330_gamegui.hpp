@@ -338,7 +338,7 @@ public:
 							case E_GCT_INV_ITEM:
 								tempStrings[E_GDS_CHILD_NAME] = curData->Child("name")->string_value;
 								
-								curIcon = singleton->entIdToIcon[
+								curIcon = singleton->gem->entIdToIcon[
 									(int)(jvRoot->
 									Child("itemDefs")->
 									Child(tempStrings[E_GDS_CHILD_NAME])->
@@ -431,12 +431,12 @@ public:
 							
 							case E_GTC_CONTAINER:
 							
-								// curIcon = singleton->entIdToIcon[
+								// curIcon = singleton->gem->entIdToIcon[
 								// 	(int)(curData->Child("objectType")->number_value)
 								// ];
 								objectId = curData->Child("objectId")->number_value;
 								jvChildTemplate->Child("objectId")->number_value = objectId;
-								jvChildTemplate->Child("label")->string_value = singleton->getStringForObjectId(objectId);
+								jvChildTemplate->Child("label")->string_value = singleton->gem->getStringForObjectId(objectId);
 							break;
 							
 							case E_GTC_CONTAINER_PARENT:

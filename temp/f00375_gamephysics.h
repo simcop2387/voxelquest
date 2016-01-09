@@ -39,7 +39,7 @@ void GamePhysics::init (Singleton * _singleton)
 void GamePhysics::pickBody (FIVector4 * mouseMoveOPD)
                                                { //btVector3 posWS1, btVector3 posWS2) {
 		
-		if (!(singleton->editPose)) {
+		if (!(singleton->gem->editPose)) {
 			lastBodyPick = NULL;
 			lastBodyUID = -1;
 			return;
@@ -53,7 +53,7 @@ void GamePhysics::pickBody (FIVector4 * mouseMoveOPD)
 			(bodyUID > 0) &&
 			(limbUID > -1)	
 		) {
-			ge = &(singleton->gw->gameObjects[bodyUID]);
+			ge = &(singleton->gem->gameObjects[bodyUID]);
 			lastBodyPick = ge->bodies[limbUID].body;
 			lastBodyUID = bodyUID;
 		}
@@ -112,7 +112,7 @@ void GamePhysics::collectDebris ()
 		for (i = 0; i < singleton->debrisStack.size(); i++) {
 			
 			tempVec.setBTV(singleton->debrisStack[i].pos);
-			entNum = singleton->placeNewEnt(false, E_ENTTYPE_DEBRIS, &tempVec);
+			entNum = singleton->gem->placeNewEnt(false, E_ENTTYPE_DEBRIS, &tempVec);
 			
 			//addDebris(singleton->debrisStack[i].pos);
 		}
@@ -132,7 +132,7 @@ void GamePhysics::beginDrop ()
 void GamePhysics::remBoxFromObj (BaseObjType _uid)
                                              {
 		
-		BaseObj* ge = &(singleton->gw->gameObjects[_uid]);
+		BaseObj* ge = &(singleton->gem->gameObjects[_uid]);
 		
 		int bodInd;
 		
@@ -147,14 +147,14 @@ void GamePhysics::remBoxFromObj (BaseObjType _uid)
 		
 		for (i = 0; i < 2; i++) {
 			if (ge->isGrabbingId[i] > -1) {
-				singleton->grabThrowObj(ge->uid,i);
+				singleton->gem->makeGrabThrow(ge->uid,i);
 			}
 		}
 		
 		
 		
 		if (hasRig) {
-			curActor = singleton->gameActors[ge->actorId];
+			curActor = singleton->gem->gameActors[ge->actorId];
 			curActor->removeAllBodies();
 			
 			while (ge->bodies.size() > E_BDG_LENGTH ) {
@@ -172,12 +172,12 @@ void GamePhysics::remBoxFromObj (BaseObjType _uid)
 		
 		
 		// if (hasRig) {
-		// 	//curActor = singleton->gameActors[ge->actorId];
-		// 	delete singleton->gameActors[ge->actorId];
-		// 	singleton->gameActors[ge->actorId] = NULL;
+		// 	//curActor = singleton->gem->gameActors[ge->actorId];
+		// 	delete singleton->gem->gameActors[ge->actorId];
+		// 	singleton->gem->gameActors[ge->actorId] = NULL;
 			
-		// 	delete singleton->gameOrgs[ge->orgId];
-		// 	singleton->gameOrgs[ge->orgId] = NULL;
+		// 	delete singleton->gem->gameOrgs[ge->orgId];
+		// 	singleton->gem->gameOrgs[ge->orgId] = NULL;
 		// }
 		
 		// ge->actorId = -1;
@@ -191,10 +191,14 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 		//cout << "\n\nADD BOX\n\n";
 		
 		int i;
-		int curOrgType = -1;
+		int bodInd;
 		GameOrg* curOrg = NULL;
 		
-		BaseObj* ge = &(singleton->gw->gameObjects[_uid]);
+		if (_uid < 0) {
+			return;
+		}
+		
+		BaseObj* ge = &(singleton->gem->gameObjects[_uid]);
 		
 		if (ge->isHidden) {
 			return;
@@ -209,6 +213,8 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 		float objRad = 0.25f;
 		bool isOrg = false;
 		
+		int bodyOffset = 0;
+		
 		switch (ge->entType) {
 			case E_ENTTYPE_NPC:
 			// case E_ENTTYPE_MONSTER:
@@ -219,10 +225,9 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 					
 					
 					if (ge->entType == E_ENTTYPE_WEAPON) {
-						curOrgType = E_ORGTYPE_WEAPON;
+						
 					}
 					else {
-						curOrgType = E_ORGTYPE_HUMAN;
 						
 						
 						////////////////////////////
@@ -252,7 +257,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 								ge->bodies.push_back(BodyStruct());
 								
 								if (i == E_BDG_CENTER) {
-									ge->bodies.back().body = example->createRigidBodyMask(
+									ge->bodies[i].body = example->createRigidBodyMask(
 										MASS_PER_LIMB, // 0.1
 										trans,
 										new btCapsuleShapeZ(BASE_ENT_RAD,BASE_ENT_HEIGHT),//capsuleShapeZ, //btSphereShape(BASE_ENT_HEIGHT),//
@@ -261,7 +266,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 									);
 								}
 								else {
-									// ge->bodies.back().body = example->createRigidBodyMask(
+									// ge->bodies[i].body = example->createRigidBodyMask(
 									// 	MASS_PER_LIMB, // 0.1
 									// 	trans,
 									// 	new btSphereShape(0.25f),//new btCapsuleShapeZ(1.0f,BASE_ENT_HEIGHT),//capsuleShapeZ,
@@ -271,10 +276,13 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 								}
 								
 								
-								ge->bodies.back().body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
-								ge->bodies.back().boneId = -1;
-								ge->bodies.back().jointType = E_JT_CONT;
+								ge->bodies[i].body->setAngularFactor(btVector3(0.0f,0.0f,0.0f));
+								ge->bodies[i].boneId = -1;
+								ge->bodies[i].jointType = E_JT_CONT;
 							}
+							
+							bodyOffset = E_BDG_LENGTH;
+							
 						}
 						
 						
@@ -290,24 +298,32 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 					
 					if (refreshLimbs) {
 						
-					}
-					else {
-						singleton->gameOrgs.push_back(new GameOrg());
-						singleton->gameOrgs.back()->init(singleton, ge->uid,curOrgType);
-						ge->orgId = singleton->gameOrgs.size()-1;
+						delete singleton->gem->gameActors[ge->actorId];
 						
-						singleton->gameActors.push_back(new GameActor(
+						singleton->gem->gameActors[ge->actorId] = new GameActor(
 							singleton,
 							ge->uid,
 							example->getWorld(),
-							ge->startPoint,
-							false	
+							ge->getCenterPoint(E_BDG_CENTER)
+						);
+						
+					}
+					else {
+						singleton->gem->gameOrgs.push_back(new GameOrg());
+						singleton->gem->gameOrgs.back()->init(singleton, ge->uid, ge->entType, ge->subType);
+						ge->orgId = singleton->gem->gameOrgs.size()-1;
+						
+						singleton->gem->gameActors.push_back(new GameActor(
+							singleton,
+							ge->uid,
+							example->getWorld(),
+							ge->startPoint
 						));
-						ge->actorId = singleton->gameActors.size()-1;
+						ge->actorId = singleton->gem->gameActors.size()-1;
 					}
 					
 					
-					curActor = (singleton->gameActors[ge->actorId]);
+					curActor = (singleton->gem->gameActors[ge->actorId]);
 					
 					if (refreshLimbs) {
 						curActor->reinit();	
@@ -316,14 +332,18 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 					
 					for (i = 0; i < curActor->actorJoints.size(); i++) {
 						
+						if (!refreshLimbs) {
+							ge->bodies.push_back(BodyStruct());
+						}
 						
-						ge->bodies.push_back(BodyStruct());
-						ge->bodies.back().body = curActor->actorJoints[i].body;
-						ge->bodies.back().boneId = curActor->actorJoints[i].boneId;
-						ge->bodies.back().jointType = curActor->actorJoints[i].jointType;
-						ge->bodies.back().rad = curActor->actorJoints[i].rad;
-						ge->bodies.back().length = curActor->actorJoints[i].length;
+						bodInd = i + bodyOffset;
 						
+						ge->bodies[bodInd].body = curActor->actorJoints[i].body;
+						ge->bodies[bodInd].boneId = curActor->actorJoints[i].boneId;
+						ge->bodies[bodInd].jointType = curActor->actorJoints[i].jointType;
+						ge->bodies[bodInd].rad = curActor->actorJoints[i].rad;
+						ge->bodies[bodInd].length = curActor->actorJoints[i].length;
+						ge->bodies[bodInd].actorJointId = i;
 						
 						// if (i == 0) {
 						// 	//ge->body = curActor->actorJoints[i].body;
@@ -338,6 +358,12 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 			break;
 			default:
 				{
+					
+					if (refreshLimbs) {
+						cout << "Error, should not hit this point (refreshLimbs)\n";
+						return;
+					}
+					
 					btBoxShape* boxShape = new btBoxShape(btVector3(objRad,objRad,objRad));
 					ge->bodies.push_back(BodyStruct());
 					ge->bodies.back().body = example->createRigidBodyMask(
@@ -364,7 +390,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 		}
 		
 		
-		int bodInd;
+		
 		for (bodInd = 0; bodInd < ge->bodies.size(); bodInd++) {
 			ge->bodies[bodInd].body->bodyUID = _uid;
 			ge->bodies[bodInd].body->limbUID = bodInd;
@@ -376,10 +402,8 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 			
 			ge->bodies[bodInd].isVisible = true;
 			
-			if (isOrg) {
-				
-				curOrg = singleton->gameOrgs[ge->orgId];
-								
+			if (isOrg) {				
+				curOrg = singleton->gem->gameOrgs[ge->orgId];
 				ge->bodies[bodInd].isVisible = false;//(bodInd == 0);// false;//(bodInd < E_BDG_LENGTH);//
 				
 			}
@@ -397,12 +421,10 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 			
 		}
 		
-		if (curOrgType == E_ORGTYPE_HUMAN) {
-			singleton->gameOrgs[ge->orgId]->loadFromFile(
-				singleton->getPoseString(E_PG_NONPOSE, RLBN_NEIT, 0),
-				true
-			);
+		if (!refreshLimbs) {
+			singleton->gem->loadDefaultPose(ge->uid);
 		}
+		
 		
 	}
 void GamePhysics::flushImpulses ()
@@ -411,8 +433,8 @@ void GamePhysics::flushImpulses ()
 		int k;
 		BaseObj* ge;
 		
-		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
-			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
+		for(k = 0; k < singleton->gem->visObjects.size(); k++) {
+			ge = &(singleton->gem->gameObjects[singleton->gem->visObjects[k]]);
 			
 			if (
 				(ge->isHidden)
@@ -469,12 +491,12 @@ void GamePhysics::procCol (BaseObj * * geArr, BodyStruct * * curBodyArr)
 								case E_BONE_L_TALUS:
 									if (geArr[k]->getActionState(E_ACT_ISSWINGING,RLBN_LEFT)) {
 										if (curBone == E_BONE_L_METACARPALS) {
-											if (singleton->isPunching(geArr[k]->uid, RLBN_LEFT)) {
+											if (singleton->gem->isPunching(geArr[k]->uid, RLBN_LEFT)) {
 												doProc = true;
 											}
 										}
 										else {
-											if (singleton->isKicking(geArr[k]->uid, RLBN_LEFT)) {
+											if (singleton->gem->isKicking(geArr[k]->uid, RLBN_LEFT)) {
 												doProc = true;
 											}
 										}
@@ -484,12 +506,12 @@ void GamePhysics::procCol (BaseObj * * geArr, BodyStruct * * curBodyArr)
 								case E_BONE_R_METACARPALS:
 									if (geArr[k]->getActionState(E_ACT_ISSWINGING,RLBN_RIGT)) {
 										if (curBone == E_BONE_R_METACARPALS) {
-											if (singleton->isPunching(geArr[k]->uid, RLBN_RIGT)) {
+											if (singleton->gem->isPunching(geArr[k]->uid, RLBN_RIGT)) {
 												doProc = true;
 											}
 										}
 										else {
-											if (singleton->isKicking(geArr[k]->uid, RLBN_RIGT)) {
+											if (singleton->gem->isKicking(geArr[k]->uid, RLBN_RIGT)) {
 												doProc = true;
 											}
 										}
@@ -498,7 +520,7 @@ void GamePhysics::procCol (BaseObj * * geArr, BodyStruct * * curBodyArr)
 							}
 						}
 						if (doProc) {
-							singleton->makeHit(geArr[k]->uid, geArr[otherK]->uid, -1);
+							singleton->gem->makeHit(geArr[k]->uid, geArr[otherK]->uid, -1);
 						}
 					}
 				}
@@ -511,26 +533,26 @@ void GamePhysics::procCol (BaseObj * * geArr, BodyStruct * * curBodyArr)
 						(geArr[k]->isGrabbedById > -1) &&
 						(geArr[k]->isGrabbedById != otherUID)
 					) {
-						grabber = &(singleton->gw->gameObjects[geArr[k]->isGrabbedById]);
+						grabber = &(singleton->gem->gameObjects[geArr[k]->isGrabbedById]);
 						
 						doProc = false;
 						if (grabber->getActionState(E_ACT_ISSWINGING,RLBN_LEFT)) {
-							if (singleton->isSwingingWeapon(grabber->uid,RLBN_LEFT)) {
+							if (singleton->gem->isSwingingWeapon(grabber->uid,RLBN_LEFT)) {
 								doProc = true;
 							}
 						}
 						if (grabber->getActionState(E_ACT_ISSWINGING,RLBN_RIGT)) {
-							if (singleton->isSwingingWeapon(grabber->uid,RLBN_RIGT)) {
+							if (singleton->gem->isSwingingWeapon(grabber->uid,RLBN_RIGT)) {
 								doProc = true;
 							}
 						}
 						
 						if (doProc) {
 							if (geArr[otherK] == NULL) {
-								singleton->makeHit(grabber->uid, -1, geArr[k]->uid);
+								singleton->gem->makeHit(grabber->uid, -1, geArr[k]->uid);
 							}
 							else {
-								singleton->makeHit(grabber->uid, geArr[otherK]->uid, geArr[k]->uid);
+								singleton->gem->makeHit(grabber->uid, geArr[otherK]->uid, geArr[k]->uid);
 							}
 						}
 					}
@@ -608,8 +630,8 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		
 		
 		
-		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
-			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
+		for(k = 0; k < singleton->gem->visObjects.size(); k++) {
+			ge = &(singleton->gem->gameObjects[singleton->gem->visObjects[k]]);
 			
 			if (
 				(ge->isHidden)
@@ -671,7 +693,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 						(bds[k]->bodyUID > -1) &&
 						(bds[k]->limbUID > -1)
 					) {
-						ge = &(singleton->gw->gameObjects[ bds[k]->bodyUID ]);
+						ge = &(singleton->gem->gameObjects[ bds[k]->bodyUID ]);
 						curBody = &(ge->bodies[ bds[k]->limbUID ]);
 						
 						
@@ -724,8 +746,8 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		
 		
 		if (VOXEL_COLLISION) {
-			for(k = 0; k < singleton->gw->visObjects.size(); k++) {
-				ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
+			for(k = 0; k < singleton->gem->visObjects.size(); k++) {
+				ge = &(singleton->gem->gameObjects[singleton->gem->visObjects[k]]);
 				
 				if (
 					(ge->isHidden)
@@ -756,7 +778,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 									btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_CONT]);
 									
 								newVel = curBody->body->getLinearVelocity();
-								if (isFuzzy(newVel)) {
+								if (newVel.fuzzyZero()) {
 									
 								}
 								else {
@@ -794,12 +816,26 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								curBody->isFalling = !(curBody->hasContact);
 								
 								if (cellVal[3] > 0.01f) {
-									ge->multVel(bodInd, btVector3(0.999f,0.999f,1.0f));
+									ge->multVel(bodInd, btVector3(
+										singleton->conVals[E_CONST_WALKING_FRIC],
+										singleton->conVals[E_CONST_WALKING_FRIC],
+										1.0f
+									));
+								}
+								else {
+									ge->multVel(bodInd, btVector3(
+										singleton->conVals[E_CONST_AIR_RESIST],
+										singleton->conVals[E_CONST_AIR_RESIST],
+										1.0f
+									));
 								}
 								
 								if (cellVal[3] > 0.1f) {
 									
-									ge->multVelAng(bodInd, btVector3(angDamp,angDamp,angDamp));
+									if (!ge->isDead()) {
+										ge->multVelAng(bodInd, btVector3(angDamp,angDamp,angDamp));
+									}
+									
 									
 									curBody->body->setGravity(
 										btVector3(
@@ -849,12 +885,12 @@ void GamePhysics::collideWithWorld (double curStepTime)
 							else {
 								// collision in direction of body velocity
 								
-								if (isFuzzy(norVal)) {
+								if (norVal.fuzzyZero()) {
 									
 								}
 								else {
 									newVel = curBody->body->getLinearVelocity();
-									if (isFuzzy(newVel)) {
+									if (newVel.fuzzyZero()) {
 										
 									}
 									else {
@@ -875,7 +911,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 							
 							
 							// newVel = curBody->body->getLinearVelocity();
-							// if (isFuzzy(newVel)) {
+							// if ((newVel.fuzzyZero())) {
 								
 							// }
 							// else {
@@ -937,7 +973,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 							// tempBTV = curBody->body->getLinearVelocity();
 							// tempBTV *= btVector3(1.0f,1.0f,0.0f);
 							
-							// if (isFuzzy(tempBTV)) {
+							// if ((tempBTV.fuzzyZero())) {
 								
 							// }
 							// else {
@@ -1020,8 +1056,8 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		
 		
 		
-		for(k = 0; k < singleton->gw->visObjects.size(); k++) {
-			ge = &(singleton->gw->gameObjects[singleton->gw->visObjects[k]]);
+		for(k = 0; k < singleton->gem->visObjects.size(); k++) {
+			ge = &(singleton->gem->gameObjects[singleton->gem->visObjects[k]]);
 			
 			hasRig = false;
 			animatedRig = false;
@@ -1044,19 +1080,19 @@ void GamePhysics::collideWithWorld (double curStepTime)
 				
 				
 				if (hasRig) {
-					curActor = singleton->gameActors[ge->actorId];
-					curOrg = singleton->gameOrgs[ge->orgId];
-					animatedRig = (curOrg->orgType == E_ORGTYPE_HUMAN);
+					curActor = singleton->gem->gameActors[ge->actorId];
+					curOrg = singleton->gem->gameOrgs[ge->orgId];
+					animatedRig = (ge->entType == E_ENTTYPE_NPC);
 					ge->clearAABB(&(ge->aabbMinSkel),&(ge->aabbMaxSkel));
 					
 					if (animatedRig) {
 						
-						if (ge->getActionState(E_ACT_ISWALKING,RLBN_NEIT)) {
-							ge->bodies[E_BDG_CENTER].body->setFriction(singleton->conVals[E_CONST_WALKING_FRIC]);
-						}
-						else {
-							ge->bodies[E_BDG_CENTER].body->setFriction(singleton->conVals[E_CONST_STANDING_FRIC]);
-						}
+						// if (ge->getActionState(E_ACT_ISWALKING,RLBN_NEIT)) {
+						// 	ge->bodies[E_BDG_CENTER].body->setFriction(singleton->conVals[E_CONST_WALKING_FRIC]);
+						// }
+						// else {
+						// 	ge->bodies[E_BDG_CENTER].body->setFriction(singleton->conVals[E_CONST_STANDING_FRIC]);
+						// }
 						
 						
 						
@@ -1192,7 +1228,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 							
 							
 							if (ge->isGrabbedById > -1) {
-								grabber = &(singleton->gw->gameObjects[ge->isGrabbedById]);
+								grabber = &(singleton->gem->gameObjects[ge->isGrabbedById]);
 								bindingPower = 1.0f;
 							}
 							else {
@@ -1252,10 +1288,10 @@ void GamePhysics::collideWithWorld (double curStepTime)
 					
 					
 					if (
-						(singleton->selObjInd == ge->uid) &&
+						(singleton->gem->selObjInd == ge->uid) &&
 						singleton->markerFound &&
-						singleton->isDraggingObject &&
-						(singleton->draggingFromType == E_DT_WORLD_OBJECT)
+						singleton->gem->isDraggingObject &&
+						(singleton->gem->draggingFromType == E_DT_WORLD_OBJECT)
 					) {
 						
 						if (lastBodyPick == NULL) {
@@ -1324,7 +1360,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 					nv0 = curBody->body->getLinearVelocity();
 					nv1 = curBody->lastVel;
 					
-					if (isFuzzy(nv0) || isFuzzy(nv1)) {
+					if ((nv0.fuzzyZero()) || (nv1.fuzzyZero())) {
 						
 					}
 					else {
@@ -1400,7 +1436,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 							
 					);
 					
-					if (singleton->editPose) {
+					if (singleton->gem->editPose) {
 						ge->skelOffset += btVector3(
 							0.0,
 							0.0,
