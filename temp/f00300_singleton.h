@@ -3897,24 +3897,23 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				
 				case '1':
-					updateHolders = true;
 					getMarkerPos(x, y);
 					gem->placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
 				break;
 				case '2':
-					// updateHolders = true;
-					// getMarkerPos(x, y);
-					// placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
-					
-					updateHolders = true;
 					getMarkerPos(x, y);
 					gem->placeNewEnt(gameNetwork->isConnected, E_ENTTYPE_WEAPON, &lastCellPos);
-				
+					gem->weaponToPlace++;
+					
+					if (gem->weaponToPlace > E_PG_WPSPEAR) {
+						gem->weaponToPlace = E_PG_WPSWORD;
+					}
+					
 				break;
 				case '3':
-					updateHolders = true;
-					getMarkerPos(x, y);
-					gem->placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_OBJ, (int)E_SUB_DEFAULT, &lastCellPos);
+					// getMarkerPos(x, y);
+					// gem->weaponToPlace = E_PG_WPSPEAR;
+					// gem->placeNewEnt(gameNetwork->isConnected, E_ENTTYPE_WEAPON, &lastCellPos);
 				break;
 				case '4':
 					
@@ -4057,6 +4056,8 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					loadGUI();
 					loadValuesGUI();
+					gem->loadPoseInfo(true);
+					
 				break;
 				case 'r':
 					
@@ -4079,7 +4080,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 					gem->resetActiveNode();
 				
-					// smoothMove = !smoothMove;
+					// 
 					// doShaderRefresh(bakeParamsOn);
 					// mapInvalid = true;
 					// gw->initMap();
@@ -4094,8 +4095,11 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				break;
 
 				case 'G':
-					gridOn = 1.0 - gridOn;
-					cout << "Grid On: " << gridOn << "\n";
+				
+					smoothMove = !smoothMove;
+				
+					//gridOn = 1.0 - gridOn;
+					//cout << "Grid On: " << gridOn << "\n";
 
 					break;
 
@@ -5518,10 +5522,10 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				if (keyMapResultUnzipped[KEYMAP_RIGHT]) {
 					
 					if (bShift) {
-						gem->makeMove( actorId, btVector3( 1.0f,0.0f,0.0f), true );
+						gem->makeMove( actorId, btVector3( 1.0f,0.0f,0.0f), true, true );
 					}
 					else {
-						gem->makeTurn(actorId, -4.0f);
+						gem->makeTurn(actorId, -conVals[E_CONST_TURN_AMOUNT]);
 					}
 					
 					//
@@ -5529,10 +5533,10 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				
 				if (keyMapResultUnzipped[KEYMAP_LEFT]) {
 					if (bShift) {
-						gem->makeMove( actorId, btVector3(-1.0f,0.0f,0.0f), true );
+						gem->makeMove( actorId, btVector3(-1.0f,0.0f,0.0f), true, true );
 					}
 					else {
-						gem->makeTurn(actorId, 4.0f);
+						gem->makeTurn(actorId, conVals[E_CONST_TURN_AMOUNT]);
 					}
 					
 					//
@@ -5555,11 +5559,11 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 				}
 				
 				if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
-					gem->makeMove( actorId, btVector3(0.0f, 1.0f,0.0f), true );
+					gem->makeMove( actorId, btVector3(0.0f, 1.0f,0.0f), true, true );
 				}
 				
 				if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
-					gem->makeMove( actorId, btVector3(0.0f,-1.0f,0.0f), true );
+					gem->makeMove( actorId, btVector3(0.0f,-1.0f,0.0f), true, true );
 				}
 				
 				// mouseWP = screenToWorld(
@@ -6093,6 +6097,7 @@ bool Singleton::processJSONFromString (string * sourceBuffer, JSONValue * * dest
 		if (*destObj == NULL)
 		{
 			doTraceND("Invalid JSON\n\n");
+			doAlert();
 			//cout << sourceBuffer << "\n\n";
 			return false;
 		}
@@ -6149,6 +6154,7 @@ bool Singleton::processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONV
 		if (*destObj == NULL)
 		{
 			doTraceND("Invalid JSON\n\n");
+			doAlert();
 			return false;
 		}
 		else
@@ -6158,6 +6164,10 @@ bool Singleton::processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONV
 		}
 
 
+	}
+void Singleton::doAlert ()
+                       {
+		playSound("xylo0", 1.0f);
 	}
 bool Singleton::loadJSON (string path, JSONValue * * destObj)
           {
@@ -6521,6 +6531,9 @@ void Singleton::loadConstants ()
 			conVals[E_CONST_MAPFREQ2],
 			conVals[E_CONST_MAPFREQ3]
 		);
+		
+		STEP_TIME_IN_SEC = conVals[E_CONST_STEP_TIME_IN_MICRO_SEC]/1000000.0;
+		
 		
 	}
 void Singleton::loadGUI ()
@@ -7265,7 +7278,7 @@ void Singleton::display (bool doFrameRender)
 		bulletTimer.reset();
 		
 		//totTimePassedGraphics += curTimePassed;
-		totTimePassedPhysics += curTimePassed*SPEEDUP_FACTOR;
+		totTimePassedPhysics += curTimePassed*conVals[E_CONST_SPEEDUP_FACTOR];
 		
 		
 		if (currentTick > 4) {

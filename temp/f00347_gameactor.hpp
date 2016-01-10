@@ -9,14 +9,38 @@ public:
 	
 	btVector3 origOffset;
 	GameOrg* baseOrg;
+	BaseObj* baseEnt;
+	
+	
+	
+	/*
+	
+	rbA = parentRigidBody
+	rbB = childRigidBody
+	frameInA = parentTransform - pivot relative to parent
+	frameInB = childTransform - pivot relative to child
+	
+	btFixedConstraint::btFixedConstraint(
+		btRigidBody& rbA,
+		btRigidBody& rbB,
+		const btTransform& frameInA,
+		const btTransform& frameInB
+	)
+	
+	*/
 	
 	
 	void updatePivot(int jointId) {
 		
+		
+		
 		ActorJointStruct* curJoint = &(actorJoints[jointId]);
 		ActorJointStruct* parJoint;
 		
-		btPoint2PointConstraint* ballC; //btFixedConstraint
+		curJoint->isFixed = (baseEnt->entType == E_ENTTYPE_WEAPON);
+		
+		// btPoint2PointConstraint* ballC; //btFixedConstraint
+		// btFixedConstraint* fixedC;
 		btVector3 pivotA;
 		btVector3 pivotB;
 		btTransform localA, localB, localC;
@@ -53,15 +77,24 @@ public:
 			//localB.setRotation(curJoint->quat);
 			
 			
-			ballC = new btPoint2PointConstraint(
-				*(parJoint->body),
-				*(curJoint->body),
-				pivotA,
-				pivotB
-				//localA,
-				//localB
-			);
-			curJoint->joint = ballC;
+			// if (curJoint->isFixed) {
+			// 	curJoint->joint = new btFixedConstraint(
+			// 		*(parJoint->body),
+			// 		*(curJoint->body),
+			// 		localA,
+			// 		localB
+			// 	);
+			// }
+			// else {
+				curJoint->joint = new btPoint2PointConstraint(
+					*(parJoint->body),
+					*(curJoint->body),
+					pivotA,
+					pivotB
+				);
+			//}
+			
+			
 			
 			
 			m_ownerWorld->addConstraint(curJoint->joint, true);
@@ -371,6 +404,8 @@ public:
 		baseOrg = singleton->gem->gameOrgs[
 			singleton->gem->gameObjects[geId].orgId	
 		];
+		
+		baseEnt = &(singleton->gem->gameObjects[geId]);
 
 		initFromOrg(
 			baseOrg->baseNode,

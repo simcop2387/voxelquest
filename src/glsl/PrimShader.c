@@ -200,14 +200,14 @@ $
 const float CAM_BOX_SIZE = 2.0;
 
 // qqqq
-const int TOT_STEPS = 64;
+const int TOT_STEPS = 128;
 const int TOT_DETAIL_STEPS = 8;
 const int TOT_STEPS_POLY = 16;
 
 const float MAX_SHAD_DIS_PRIM = 64.0;
 const int HARD_STEPS = 8;
-const int HARD_STEPS_PRIM = 8;
-const int SOFT_STEPS = 16;
+const int HARD_STEPS_PRIM = 16;
+const int SOFT_STEPS = 32;
 
 
 //x: basic pass, y: detail pass
@@ -2204,6 +2204,20 @@ vec3 normSolid( vec3 pos )
 		return normalize(nor);
 }
 
+/*
+for( int i=0; i<numSteps; i++ )
+{
+		h = 
+		min(
+			mapLand( ro + rd*t ).x*0.5
+			,mapDyn(ro + rd*t).x*2.0
+		)
+		;
+		res = min( res, 2.0*h/t );
+		t += clamp( h, 0.0, 0.5 );
+		if( h<0.001 || t>tmax ) break;
+}
+*/
 
 float softShadowPrim( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
 {
@@ -2213,9 +2227,9 @@ float softShadowPrim( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
 		float h;
 		for( int i=0; i<numSteps; i++ )
 		{
-				h = mapSolid( ro + rd*t );
-				res = min( res, 8.0*h/t );
-				t += clamp( h, 0.02, 0.20 );
+				h = mapSolid( ro + rd*t )*4.0;
+				res = min( res, 2.0*h/t );
+				t += clamp( h, 0.0, 0.5 );
 				if( h<0.001 || t>tmax ) break;
 		}
 		globPrimaryRay = true;
@@ -2545,9 +2559,13 @@ float postLimb(vec3 pos) {
 	float lerpValBit;
 	float lerpValTan;
 	float curRad;
+	
+	vec2 xyVal;
+	
 	vec2 minDis = vec2(MAX_CAM_DIS,-1);
 	
 	vec3 offVec;
+	vec3 xyzAmount;
 	
 	for (i = 0; i < primIdListLength; i++) {
 		primDataInd = primIdList[i];
@@ -2572,10 +2590,18 @@ float postLimb(vec3 pos) {
 			globBoneRad = min(globBoneRad,closestPoint.w);
 		}
 		
+		xyzAmount = abs(vec3(
+			dot(offVec, tanVec.xyz),
+			dot(offVec, bitVec.xyz),
+			dot(offVec, norVec.xyz)
+		));
 		
 		lerpValP0toP1 = distance(closestPoint.xyz,seg1a)/(ln0Vec.x*2.0);
 		lerpValBit = abs(dot(offVec,bitVec.xyz));
 		lerpValTan = abs(dot(offVec,tanVec.xyz));
+		
+		xyVal.x = cos(lerpValBit*M_PI*0.5);
+		xyVal.y = sin(lerpValBit*M_PI*0.5);
 		
 		lerpValP0toP1 = pow(lerpValP0toP1,cenVec.w);
 		lerpValBit = pow(lerpValBit,tanVec.w);
@@ -2588,6 +2614,15 @@ float postLimb(vec3 pos) {
 		lnVec = mix(ln0Vec,ln1Vec,lerpValP0toP1);
 		
 		curRad = mix(lnVec.y,lnVec.z,lerpValBit)*(1.0-lerpValTan);
+		
+		curRad *= clamp(1.0-xyzAmount.z,1.0-ln1Vec.w,1.0);
+		
+		// if (xyzAmount.z > 0.1) {
+		// 	curRad = min(curRad,0.1);
+		// }
+		
+		
+		
 		
 		minDis = opU(
 			minDis,
@@ -4346,12 +4381,12 @@ float softShadow( vec3 ro, vec3 rd, float tmin, float tmax, int numSteps )
 		{
 				h = 
 				min(
-					mapLand( ro + rd*t ).x*0.25
+					mapLand( ro + rd*t ).x*0.5
 					,mapDyn(ro + rd*t).x*2.0
 				)
 				;
 				res = min( res, 2.0*h/t );
-				t += clamp( h, 0.02, 0.5 );
+				t += clamp( h, 0.0, 0.5 );
 				if( h<0.001 || t>tmax ) break;
 		}
 		globPrimaryRay = true;
@@ -5529,12 +5564,12 @@ void main() {
 					// distance from light
 					
 					
-					hardShadowDynRes = hardShadowPrim(
-						pos-lightVec*maxT,
-						lightVec,
-						vec2(0.0, maxT),
-						HARD_STEPS_PRIM
-					);
+					// hardShadowDynRes = hardShadowPrim(
+					// 	pos-lightVec*maxT,
+					// 	lightVec,
+					// 	vec2(0.0, maxT),
+					// 	HARD_STEPS_PRIM
+					// );
 					
 					
 					shadowRes *= clamp((
@@ -5546,10 +5581,10 @@ void main() {
 							// 	HARD_STEPS*4
 							// )
 						
-							(clamp((hardShadowDynRes+1.0-maxT)/0.2,0.0,1.0))
-						
-							
-							// * softShadowPrim( pos-rd*0.1, -lightVec, 0.02, 2.0, SOFT_STEPS )
+							//(clamp((hardShadowDynRes+1.0-maxT)/0.2,0.0,1.0))
+							//* 
+							//pow(softShadow( ro+rd*(shadDis-0.02), -lightVec, 0.02, 20.0, SOFT_STEPS ),2.0)
+							pow(softShadowPrim( pos-rd*0.1, -lightVec, 0.1, 20.0, SOFT_STEPS ),2.0)
 					),0.0,1.0);
 				}
 				
@@ -5628,7 +5663,7 @@ void main() {
 						
 						#ifdef DOTER
 					
-								shadowRes = globCurSteps/float(TOT_STEPS*2.0);
+								//shadowRes = globCurSteps/float(TOT_STEPS*2.0);
 					
 								if (false) {// placingGeom||(MAX_PRIM_IDS > 0)) {
 									

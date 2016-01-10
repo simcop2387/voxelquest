@@ -607,6 +607,7 @@ public:
   JSONValue * fetchJSONData (string dataFile, bool doClean, JSONValue * params = NULL);
   bool processJSONFromString (string * sourceBuffer, JSONValue * * destObj);
   bool processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONValue * * destObj);
+  void doAlert ();
   bool loadJSON (string path, JSONValue * * destObj);
   void setGUIText (string key, string stringValue, float floatValue = 0.0f, bool applyVal = false, bool applyString = true);
   float getGUIValue (string key);
@@ -1281,6 +1282,7 @@ public:
   void setToPose (GameOrg * otherOrg, float lerpAmount, int boneId = -1);
   void updatePose (double curTimeStep);
   void nodeToJSON (JSONValue * * parentObj, GameOrgNode * curNode);
+  void updateHandleOffset ();
   void initWeapon ();
   void initHuman ();
 };
@@ -1362,6 +1364,7 @@ public:
   int geId;
   btVector3 origOffset;
   GameOrg * baseOrg;
+  BaseObj * baseEnt;
   void updatePivot (int jointId);
   int addJoint (int nodeName, int parentId, int jointType, float mass, GameOrgNode * curNode);
   void initFromOrg (GameOrgNode * curNode, int curParent);
@@ -1390,6 +1393,7 @@ public:
   bool orgOn;
   bool isDraggingObject;
   bool firstPerson;
+  int weaponToPlace;
   int currentActorUID;
   int curPoseType;
   int highlightedLimb;
@@ -1472,7 +1476,7 @@ public:
   void makeSwing (int actorId, int handNum);
   void makeTurn (int actorId, float dirFactor);
   void makeMoveVec (int actorId, btVector3 moveVec);
-  void makeMove (int actorId, btVector3 moveDir, bool relative);
+  void makeMove (int actorId, btVector3 moveDir, bool relative, bool delayed);
   void makeJump (int actorId, int isUp, float jumpFactor);
   void makeHit (int attackerId, int victimId, int weaponId);
   GameOrgNode * getMirroredNode (GameOrgNode * curNode);
@@ -1486,7 +1490,7 @@ public:
   void makeDirty ();
   void setSelNode (GameOrgNode * newNode);
   bool hasRLBN (int rlbnRes, int k);
-  void loadPoseInfo ();
+  void loadPoseInfo (bool justRefresh);
   GameOrg * getPose (int targPoseGroup, int targRLBN, int targStep);
   string getPoseString (int targPoseGroup, int targRLBN, int targStep);
   GameOrg * getCurrentPose ();

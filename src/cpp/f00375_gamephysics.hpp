@@ -17,23 +17,14 @@ public:
 	Vector4 myVector4;
 	Vector4 resVector4;
 	
-	//GameActor* gameActor;
 	btRigidBody* lastBodyPick;
 	int lastBodyUID;
 	
 	
-	
-	//unsigned long int stepTimeInMicroSec;
-	
 	GamePhysics() {
+		
 		lastBodyPick = NULL;
-		//gameActor = NULL;
-		//8000; // ~120 times per second
-		
 		lastBodyUID = -1;
-		
-		
-		
 		
 		
 	}
@@ -59,7 +50,8 @@ public:
 		
 	}
 	
-	void pickBody(FIVector4* mouseMoveOPD) { //btVector3 posWS1, btVector3 posWS2) {
+	
+	void pickBody(FIVector4* mouseMoveOPD) {
 		
 		if (!(singleton->gem->editPose)) {
 			lastBodyPick = NULL;
@@ -83,47 +75,6 @@ public:
 			lastBodyPick = NULL;
 			lastBodyUID = -1;
 		}
-		
-		
-		// btVector3 begPos = btVector3(0.0f,0.0f,0.0f);
-		// btVector3 endPos = btVector3(0.0f,0.0f,0.0f);
-		// btVector3 rayDir = btVector3(0.0f,0.0f,0.0f);
-		
-		// singleton->getRay(
-		// 	singleton->lastMouseX,
-		// 	singleton->lastMouseY,
-		// 	begPos,
-		// 	endPos,
-		// 	rayDir
-		// );
-		
-		
-		// btVector3 begPos = singleton->cameraGetPosNoShake()->getBTV();
-		// btVector3 endPos;
-		
-		// if (posWS1.distance(begPos) < posWS2.distance(begPos)) {
-		// 	endPos = posWS1;
-		// }
-		// else {
-		// 	endPos = posWS2;
-		// }
-		
-		// lastBodyPick = example->bodyPick(begPos,endPos);
-		
-		
-		// singleton->getRayTo(
-		// 	singleton->lastMouseX,
-		// 	singleton->lastMouseY
-		// );
-		
-		
-		
-		// if (lastBodyPick != NULL) {
-		// 	cout << "objID " << lastBodyPick->bodyUID << "\n";
-		// 	cout << "limbUID " << lastBodyPick->limbUID << "\n\n";
-		// }
-		
-		
 	}
 	
 	
@@ -338,6 +289,8 @@ public:
 						singleton->gem->gameOrgs.back()->init(singleton, ge->uid, ge->entType, ge->subType);
 						ge->orgId = singleton->gem->gameOrgs.size()-1;
 						
+						singleton->gem->loadDefaultPose(ge->uid);
+						
 						singleton->gem->gameActors.push_back(new GameActor(
 							singleton,
 							ge->uid,
@@ -446,9 +399,7 @@ public:
 			
 		}
 		
-		if (!refreshLimbs) {
-			singleton->gem->loadDefaultPose(ge->uid);
-		}
+		
 		
 		
 	}
@@ -1546,11 +1497,11 @@ public:
 	
 	void updateAll() {
 		
-		while (singleton->totTimePassedPhysics > STEP_TIME_IN_MICRO_SEC) {
+		while (singleton->totTimePassedPhysics > singleton->conVals[E_CONST_STEP_TIME_IN_MICRO_SEC]) {
 			totTime += STEP_TIME_IN_SEC;
-			collideWithWorld(STEP_TIME_IN_SEC); //STEP_TIME_IN_MICRO_SEC/400000.0f
-			example->stepSimulation(STEP_TIME_IN_SEC); //STEP_TIME_IN_MICRO_SEC/400000.0f
-			singleton->totTimePassedPhysics -= STEP_TIME_IN_MICRO_SEC;
+			collideWithWorld(STEP_TIME_IN_SEC);
+			example->stepSimulation(STEP_TIME_IN_SEC);
+			singleton->totTimePassedPhysics -= singleton->conVals[E_CONST_STEP_TIME_IN_MICRO_SEC];
 		}
 		
 		flushImpulses();

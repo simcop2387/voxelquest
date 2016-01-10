@@ -535,6 +535,8 @@ void main()
 	
 	//resColor = mix(resColor*0.5,resColor,tex2.rgb);
 	
+	resColor.rgb = pow(resColor.rgb*0.9,vec3(0.85));
+	
 	resColor += resColor*texSpec.r;
 	
 	if (testOn) {
@@ -685,12 +687,17 @@ void main()
 
 	//resColor.rgb = tex2.rgb + modColor;
 	
-	resColor = mix(resColor*0.75,resColor,texSpec.b);
+	
+	float shadVal = texSpec.b;
+	
+	
 	
 	resColor.rgb += modColor*0.25;
 	
-	resColor.rgb = pow(resColor.rgb,vec3(0.85));
+	resColor = mix(resColor*0.75,resColor,shadVal);	
+	//
 	
+	//resColor.rgb = tex2.rgb;
 	
 	
 	//resColor = vec3(matVals.a,0.0,0.0);

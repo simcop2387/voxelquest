@@ -1042,6 +1042,14 @@ public:
 
 	}
 	
+	bool anyXYZ() {
+		return (
+			(fv4.x != 0.0f) ||
+			(fv4.y != 0.0f) ||
+			(fv4.z != 0.0f)
+		);
+	}
+	
 	bool any() {
 		return (
 			(fv4.x != 0.0f) ||
@@ -1852,6 +1860,8 @@ public:
 	
 	int objectType;
 	int maxFrames;
+	
+	PoseKey defaultPose;
 	
 	BaseObjType uid;
 	BaseObjType parentUID;

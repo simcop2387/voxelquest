@@ -353,6 +353,7 @@ public:
 		float timeInterval = 1.0f;
 		float lerpSpeed = 0.005f;
 		
+		int actionToStop;
 		
 		float* curData;
 		
@@ -367,8 +368,8 @@ public:
 				curData = &(singleton->gem->gamePoseInfo[targetPose.group].data[0]);
 				
 				
-				lerpSpeed = curData[E_PIK_LERPSPEED];
-				timeInterval = curData[E_PIK_TIMEINTERVAL];
+				lerpSpeed = curData[E_PIK_LERPSPEED]*singleton->conVals[E_CONST_ANIMLERP_MULT];
+				timeInterval = curData[E_PIK_TIMEINTERVAL]*singleton->conVals[E_CONST_TIMEINTERVAL_MULT];
 				
 				targetPose.step = stepCount;
 				
@@ -380,12 +381,25 @@ public:
 						targetPose.step = curData[E_PIK_NUMSTEPS]-1;
 					}
 					
+					
+					
 					if (stepCount > (curData[E_PIK_NUMSTEPS] + curData[E_PIK_EXTRASTEPS])) {
+						
+						actionToStop = singleton->gem->getActionStateFromPose(targetPose.group);
+						
 						curOwner->setActionState(
-							singleton->gem->getActionStateFromPose(targetPose.group),
+							actionToStop,
 							targetPose.RLBN,
 							false
 						);
+						if (actionToStop == E_ACT_ISSWINGING) {
+							curOwner->setActionState(
+								E_ACT_HASNOTHIT,
+								targetPose.RLBN,
+								false
+							);
+						}
+						
 						setTPG(E_PG_IDLE,RLBN_NEIT);
 						targetPose.step = 0;
 					}
@@ -457,6 +471,26 @@ public:
 		
 	}
 	
+	void updateHandleOffset() {
+		
+		if (entType != E_ENTTYPE_WEAPON) {
+			return;
+		}
+		
+		
+		allNodes[E_BONE_C_BASE]->orgVecs[E_OV_TBNOFFSET].setFXYZ(
+			-(
+					allNodes[E_BONE_WEAPON_POMMEL]->orgVecs[E_OV_TBNRAD0].getFX() +
+					allNodes[E_BONE_WEAPON_POMMEL]->orgVecs[E_OV_TBNRAD1].getFX() +
+					allNodes[E_BONE_WEAPON_HANDLE]->orgVecs[E_OV_TBNRAD0].getFX()
+			),
+			0.0f,
+			0.0f
+		);
+		
+	}
+	
+	
 	void initWeapon() {
 		
 		int i;
@@ -483,27 +517,8 @@ public:
 		
 		GameOrgNode* centerNode;
 		
-		curNode->orgVecs[E_OV_TBNOFFSET].setFXYZ(-0.625f,0.0f,0.0f);
 		
-		// switch (subType) {
-		// 	case E_SUB_SWORD:
-			
-		// 	break;
-			
-		// 	case E_SUB_AXE:
-				
-		// 	break;
-		// 	case E_SUB_MACE:
-				
-		// 	break;
-		// 	case E_SUB_HAMMER:
-				
-		// 	break;
-		// 	case E_SUB_STAFF:
-				
-		// 	break;
-			
-		// }
+		
 		
 		wepLengths[E_BONE_WEAPON_POMMEL] = 0.125f;
 		wepLengths[E_BONE_WEAPON_HANDLE] = 0.3f;

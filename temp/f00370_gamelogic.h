@@ -158,7 +158,7 @@ void GameLogic::applyBehavior ()
 				writeObj->bindingPower += 0.0001f;
 				
 				if (writeObj->isDead()) {
-					writeObj->bindingPower = min(writeObj->bindingPower,0.0125f);
+					// writeObj->bindingPower = min(writeObj->bindingPower,0.0125f);
 				}
 				
 				if (writeObj->bindingPower > 1.0f) {
@@ -186,10 +186,10 @@ void GameLogic::applyBehavior ()
 						curDis = writeObj->behaviorTarget.distance(writeObj->getCenterPoint(E_BDG_CENTER));
 						
 						if (curDis > singleton->conVals[E_CONST_AI_SEEK_THRESH]) {
-							singleton->gem->makeMove(writeObj->uid, btVector3(0.0f,1.0f,0.0f), true);
+							singleton->gem->makeMove(writeObj->uid, btVector3(0.0f,1.0f,0.0f), true, true);
 						}
 						if (curDis < singleton->conVals[E_CONST_AI_REPEL_THRESH]) {
-							singleton->gem->makeMove(writeObj->uid, btVector3(0.0f,-1.0f,0.0f), true);
+							singleton->gem->makeMove(writeObj->uid, btVector3(0.0f,-1.0f,0.0f), true, true);
 						}
 						
 						singleton->gem->makeMoveVec(writeObj->uid,writeObj->npcRepel);

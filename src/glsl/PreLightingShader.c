@@ -556,11 +556,12 @@ void main()
 		resColor.w = newAO;
 	}
 	
+	//resColor.rgb += (myVec+1.0)*0.5*0.1;
 	
 
 	gl_FragData[0] = resColor;
 	gl_FragData[1] = vec4(totLightColorWater,newAO);
-	gl_FragData[2] = vec4(specularSolid*0.25+newAO*0.25,specularWater,resComp,0.0);
+	gl_FragData[2] = vec4(specularSolid*0.25+newAO*0.5,specularWater,resComp,0.0);
 	gl_FragData[3] = vec4(0.0);
 
 }

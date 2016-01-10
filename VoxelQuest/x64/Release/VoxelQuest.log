@@ -1,4 +1,4 @@
-﻿Build started 1/9/2016 12:15:43 PM.
+﻿Build started 1/10/2016 7:57:46 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -718,6 +718,11 @@
          
          Valid JSON
                    
+         Loading:  ..\data\orgdata\E_PG_WPTPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
          Loading:  ..\data\orgdata\E_PG_WPSWORD_N0.js         
          Load Successful          
          
@@ -748,7 +753,6 @@
          
          Valid JSON
                    
-         GAMEPOSESIZE 101
          gphMin   0.000000   0.000000   0.000000    
          gphMax   65536.000000   65536.000000   65536.000000    
          Sea Level: 100
@@ -801,8 +805,62 @@
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          genBlockHolder
-         FFFFFFFFFFFFFUUUCK
+         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
          Loading:  ..\data\orgdata\E_PG_WPSWORD_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_WPAXE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_WPMACE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_WPHAMMER_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_WPSTAFF_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_WPSPEAR_N0.js         
          Load Successful          
          
          Valid JSON
@@ -813,4 +871,4 @@ C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targe
 
 Build FAILED.
 
-Time Elapsed 00:00:25.06
+Time Elapsed 00:00:59.09

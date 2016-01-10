@@ -4871,24 +4871,23 @@ DISPATCH_EVENT_END:
 				
 				
 				case '1':
-					updateHolders = true;
 					getMarkerPos(x, y);
 					gem->placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
 				break;
 				case '2':
-					// updateHolders = true;
-					// getMarkerPos(x, y);
-					// placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_MONSTER, &lastCellPos);
-					
-					updateHolders = true;
 					getMarkerPos(x, y);
 					gem->placeNewEnt(gameNetwork->isConnected, E_ENTTYPE_WEAPON, &lastCellPos);
-				
+					gem->weaponToPlace++;
+					
+					if (gem->weaponToPlace > E_PG_WPSPEAR) {
+						gem->weaponToPlace = E_PG_WPSWORD;
+					}
+					
 				break;
 				case '3':
-					updateHolders = true;
-					getMarkerPos(x, y);
-					gem->placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_OBJ, (int)E_SUB_DEFAULT, &lastCellPos);
+					// getMarkerPos(x, y);
+					// gem->weaponToPlace = E_PG_WPSPEAR;
+					// gem->placeNewEnt(gameNetwork->isConnected, E_ENTTYPE_WEAPON, &lastCellPos);
 				break;
 				case '4':
 					
@@ -5031,6 +5030,8 @@ DISPATCH_EVENT_END:
 					
 					loadGUI();
 					loadValuesGUI();
+					gem->loadPoseInfo(true);
+					
 				break;
 				case 'r':
 					
@@ -5053,7 +5054,7 @@ DISPATCH_EVENT_END:
 				
 					gem->resetActiveNode();
 				
-					// smoothMove = !smoothMove;
+					// 
 					// doShaderRefresh(bakeParamsOn);
 					// mapInvalid = true;
 					// gw->initMap();
@@ -5068,8 +5069,11 @@ DISPATCH_EVENT_END:
 				break;
 
 				case 'G':
-					gridOn = 1.0 - gridOn;
-					cout << "Grid On: " << gridOn << "\n";
+				
+					smoothMove = !smoothMove;
+				
+					//gridOn = 1.0 - gridOn;
+					//cout << "Grid On: " << gridOn << "\n";
 
 					break;
 
@@ -6591,10 +6595,10 @@ DISPATCH_EVENT_END:
 				if (keyMapResultUnzipped[KEYMAP_RIGHT]) {
 					
 					if (bShift) {
-						gem->makeMove( actorId, btVector3( 1.0f,0.0f,0.0f), true );
+						gem->makeMove( actorId, btVector3( 1.0f,0.0f,0.0f), true, true );
 					}
 					else {
-						gem->makeTurn(actorId, -4.0f);
+						gem->makeTurn(actorId, -conVals[E_CONST_TURN_AMOUNT]);
 					}
 					
 					//
@@ -6602,10 +6606,10 @@ DISPATCH_EVENT_END:
 				
 				if (keyMapResultUnzipped[KEYMAP_LEFT]) {
 					if (bShift) {
-						gem->makeMove( actorId, btVector3(-1.0f,0.0f,0.0f), true );
+						gem->makeMove( actorId, btVector3(-1.0f,0.0f,0.0f), true, true );
 					}
 					else {
-						gem->makeTurn(actorId, 4.0f);
+						gem->makeTurn(actorId, conVals[E_CONST_TURN_AMOUNT]);
 					}
 					
 					//
@@ -6628,11 +6632,11 @@ DISPATCH_EVENT_END:
 				}
 				
 				if (keyMapResultUnzipped[KEYMAP_FORWARD]) {
-					gem->makeMove( actorId, btVector3(0.0f, 1.0f,0.0f), true );
+					gem->makeMove( actorId, btVector3(0.0f, 1.0f,0.0f), true, true );
 				}
 				
 				if (keyMapResultUnzipped[KEYMAP_BACKWARD]) {
-					gem->makeMove( actorId, btVector3(0.0f,-1.0f,0.0f), true );
+					gem->makeMove( actorId, btVector3(0.0f,-1.0f,0.0f), true, true );
 				}
 				
 				// mouseWP = screenToWorld(
@@ -7237,6 +7241,7 @@ DISPATCH_EVENT_END:
 		if (*destObj == NULL)
 		{
 			doTraceND("Invalid JSON\n\n");
+			doAlert();
 			//cout << sourceBuffer << "\n\n";
 			return false;
 		}
@@ -7297,6 +7302,7 @@ DISPATCH_EVENT_END:
 		if (*destObj == NULL)
 		{
 			doTraceND("Invalid JSON\n\n");
+			doAlert();
 			return false;
 		}
 		else
@@ -7308,6 +7314,9 @@ DISPATCH_EVENT_END:
 
 	}
 	
+	void doAlert() {
+		playSound("xylo0", 1.0f);
+	}
 	
 	bool loadJSON(
 		string path,
@@ -7694,6 +7703,9 @@ DISPATCH_EVENT_END:
 			conVals[E_CONST_MAPFREQ2],
 			conVals[E_CONST_MAPFREQ3]
 		);
+		
+		STEP_TIME_IN_SEC = conVals[E_CONST_STEP_TIME_IN_MICRO_SEC]/1000000.0;
+		
 		
 	}
 
@@ -8476,7 +8488,7 @@ DISPATCH_EVENT_END:
 		bulletTimer.reset();
 		
 		//totTimePassedGraphics += curTimePassed;
-		totTimePassedPhysics += curTimePassed*SPEEDUP_FACTOR;
+		totTimePassedPhysics += curTimePassed*conVals[E_CONST_SPEEDUP_FACTOR];
 		
 		
 		if (currentTick > 4) {

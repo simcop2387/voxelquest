@@ -1313,7 +1313,7 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 						singleton->limbTBOData[dataInd] = len1.getX(); dataInd++;
 						singleton->limbTBOData[dataInd] = len1.getY(); dataInd++;
 						singleton->limbTBOData[dataInd] = len1.getZ(); dataInd++;
-						singleton->limbTBOData[dataInd] = 0.0f; dataInd++;
+						singleton->limbTBOData[dataInd] = curOrgNode->orgVecs[E_OV_TBNOFFSET].getFW(); dataInd++;
 						
 						
 					}
@@ -1700,7 +1700,7 @@ void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, fl
 		
 		
 		if (doProc) {
-			lineSeg[0].setFXYZRef(&(curNode->orgTrans[1]));
+			lineSeg[0].setFXYZRef(&(curNode->orgTrans[0]));
 			lineSeg[0].multXYZ(  scale  );
 			
 			// if (drawAll) {

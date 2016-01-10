@@ -18,8 +18,8 @@ const static int MAX_LIMB_DATA_IN_BYTES = 65536;
 const static bool POLY_COLLISION = false;
 const static bool VOXEL_COLLISION = true;
 
-const static bool GEN_DEBRIS = false;
-const static int  MAX_DEBRIS = 0;
+const static bool GEN_DEBRIS = true;
+const static int  MAX_DEBRIS = 400;
 const static bool GEN_COLLISION = false;
 const static bool GEN_POLYS_WORLD = true;
 
@@ -32,9 +32,7 @@ const static int MAX_PRIMTEST = 8;
 
 const static int MAX_DEPTH_PEELS = 4;
 
-const static unsigned long int SPEEDUP_FACTOR = 2;
-const static unsigned long int STEP_TIME_IN_MICRO_SEC = 2000;
-const static double STEP_TIME_IN_SEC = STEP_TIME_IN_MICRO_SEC/1000000.0;
+double STEP_TIME_IN_SEC;
 
 const static float OFFSET_X[4] = {-0.5,0.5,0.5,-0.5};
 const static float OFFSET_Y[4] = {-0.5,-0.5,0.5,0.5};

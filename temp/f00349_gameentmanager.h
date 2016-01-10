@@ -15,6 +15,8 @@ void GameEntManager::init (Singleton * _singleton)
 		int j;
 		int k;
 		
+		weaponToPlace = E_PG_WPSWORD;
+		
 		currentActorUID = -1;
 		
 		activeNode = NULL;
@@ -27,7 +29,7 @@ void GameEntManager::init (Singleton * _singleton)
 		highlightedLimb = -1;
 		
 		curActorNeedsRefresh = false;
-		destroyTerrain = false;
+		destroyTerrain = true;
 		editPose = false;
 		EDIT_POSE = editPose;
 		combatOn = true;
@@ -77,7 +79,7 @@ void GameEntManager::init (Singleton * _singleton)
 		}
 		
 		initAllObjects();
-		loadPoseInfo();
+		loadPoseInfo(false);
 		
 	}
 void GameEntManager::checkActorRefresh ()
@@ -145,23 +147,15 @@ void GameEntManager::loadDefaultPose (int actorId)
                                           {
 		BaseObj* ca = &(gameObjects[actorId]);
 		
-		string tempPoseString = "";
-		bool refPose = false;
-		
-		switch (ca->entType) {
-			case E_ENTTYPE_NPC:
-				tempPoseString = getPoseString(E_PG_NONPOSE, RLBN_NEIT, 0);
-			break;
-			case E_ENTTYPE_WEAPON:
-				switch (ca->subType) {
-					case E_SUB_SWORD:
-						cout << "FFFFFFFFFFFFFUUUCK\n";
-						//tempPoseString = getPoseString(E_PG_WPSWORD, RLBN_NEIT, 0);
-					break;
-				}
-				refPose = true;
-			break;
+		if (ca->defaultPose.group < 0) {
+			return;
 		}
+		
+		string tempPoseString = getPoseString(
+			ca->defaultPose.group,
+			ca->defaultPose.RLBN,
+			ca->defaultPose.step
+		);
 		
 		if ( tempPoseString.compare("") == 0 ) {
 			
@@ -169,12 +163,10 @@ void GameEntManager::loadDefaultPose (int actorId)
 		else {
 			gameOrgs[ca->orgId]->loadOrgFromFile(
 				tempPoseString,
-				!refPose
+				false
 			);
-			
-			if (refPose) {
-				refreshActor(actorId);
-			}
+			gameOrgs[ca->orgId]->updateHandleOffset();
+			transformOrg(gameOrgs[ca->orgId], NULL);
 		}
 		
 		
@@ -292,6 +284,8 @@ void GameEntManager::endDrag (int upInd)
 bool GameEntManager::handleGUI (UIComponent * comp, bool mouseUpEvent, bool mouseDownEvent, bool noTravel, bool wasDoubleClick)
           {
 		
+		bool isCon = singleton->gameNetwork->isConnected;
+		
 		int i;
 		
 		if (comp->uid.compare("#contItemParent") == 0) {
@@ -374,14 +368,39 @@ bool GameEntManager::handleGUI (UIComponent * comp, bool mouseUpEvent, bool mous
 				closeContainer(i);
 			}
 			else if (comp->uid.compare("ddMenu.removeEntity") == 0) {
-				removeEntity(singleton->gameNetwork->isConnected, selObjInd);
+				removeEntity(isCon, selObjInd);
 			}
 			else if (comp->uid.compare("ddMenu.placeEntity.npc") == 0) {
-				placeNewEnt(singleton->gameNetwork->isConnected,E_ENTTYPE_NPC, (int)E_SUB_DEFAULT, &singleton->lastCellPos);
+				placeNewEnt(isCon, E_ENTTYPE_NPC, &singleton->lastCellPos);
 			}
-			else if (comp->uid.compare("ddMenu.placeEntity.object") == 0) {
-				placeNewEnt(singleton->gameNetwork->isConnected,E_ENTTYPE_OBJ, (int)E_SUB_DEFAULT, &singleton->lastCellPos);
+			else if (comp->uid.compare("ddMenu.placeEntity.sword") == 0) {
+				weaponToPlace = E_PG_WPSWORD;
+				placeNewEnt(isCon, E_ENTTYPE_WEAPON, &singleton->lastCellPos);
 			}
+			else if (comp->uid.compare("ddMenu.placeEntity.axe") == 0) {
+				weaponToPlace = E_PG_WPAXE;
+				placeNewEnt(isCon, E_ENTTYPE_WEAPON, &singleton->lastCellPos);
+			}
+			else if (comp->uid.compare("ddMenu.placeEntity.mace") == 0) {
+				weaponToPlace = E_PG_WPMACE;
+				placeNewEnt(isCon, E_ENTTYPE_WEAPON, &singleton->lastCellPos);
+			}
+			else if (comp->uid.compare("ddMenu.placeEntity.hammer") == 0) {
+				weaponToPlace = E_PG_WPHAMMER;
+				placeNewEnt(isCon, E_ENTTYPE_WEAPON, &singleton->lastCellPos);
+			}
+			else if (comp->uid.compare("ddMenu.placeEntity.staff") == 0) {
+				weaponToPlace = E_PG_WPSTAFF;
+				placeNewEnt(isCon, E_ENTTYPE_WEAPON, &singleton->lastCellPos);
+			}
+			else if (comp->uid.compare("ddMenu.placeEntity.spear") == 0) {
+				weaponToPlace = E_PG_WPSPEAR;
+				placeNewEnt(isCon, E_ENTTYPE_WEAPON, &singleton->lastCellPos);
+			}
+			
+			// else if (comp->uid.compare("ddMenu.placeEntity.object") == 0) {
+			// 	placeNewEnt(singleton->gameNetwork->isConnected,E_ENTTYPE_OBJ, (int)E_SUB_DEFAULT, &singleton->lastCellPos);
+			// }
 			else {
 				return false;
 			}
@@ -614,7 +633,7 @@ BaseObjType GameEntManager::placeNewEnt (bool isReq, int et, FIVector4 * cellPos
 			break;
 			case E_ENTTYPE_WEAPON:
 				newType = 0;
-				curSubType = E_SUB_SWORD;
+				
 			break;
 			
 			
@@ -666,6 +685,20 @@ BaseObjType GameEntManager::placeNewEnt (bool isReq, int et, FIVector4 * cellPos
 			curSubType,
 			&newPos
 		);
+		
+		tmpObj->defaultPose.group = -1;
+		tmpObj->defaultPose.RLBN = RLBN_NEIT;
+		tmpObj->defaultPose.step = 0;
+		
+		switch (et) {
+			case E_ENTTYPE_NPC:
+				tmpObj->defaultPose.group = E_PG_NONPOSE;
+			break;
+			case E_ENTTYPE_WEAPON:
+				tmpObj->defaultPose.group = weaponToPlace;
+			break;
+		}
+		
 		
 		if (
 			(et == E_ENTTYPE_BULLET) ||
@@ -1517,6 +1550,7 @@ void GameEntManager::makeSwing (int actorId, int handNum)
 			for (i = 0; i < RLBN_LENGTH; i++) {
 				if (i != handNum) {
 					ca->setActionState(E_ACT_ISSWINGING,i,false);
+					ca->setActionState(E_ACT_HASNOTHIT,i,false);
 				}
 			}
 			
@@ -1524,11 +1558,8 @@ void GameEntManager::makeSwing (int actorId, int handNum)
 			
 			//if (ca->weaponActive) {
 				
-				// if (actorId == getCurActorUID()) {
-				// 	cout << "yay2\n";
-				// }
-				
 				ca->setActionState(E_ACT_ISSWINGING,handNum,true);
+				ca->setActionState(E_ACT_HASNOTHIT,handNum,true);
 				curOrg = gameOrgs[ca->orgId];
 				curOrg->stepCount = 0;
 				curOrg->totTime = 0;
@@ -1544,7 +1575,8 @@ void GameEntManager::makeSwing (int actorId, int handNum)
 							singleton->conVals[E_CONST_DASH_AMOUNT],
 							singleton->conVals[E_CONST_DASH_UP_AMOUNT]
 						),
-						true
+						true,
+						false
 					);
 				}
 				
@@ -1590,8 +1622,8 @@ void GameEntManager::makeMoveVec (int actorId, btVector3 moveVec)
 			);
 		}
 	}
-void GameEntManager::makeMove (int actorId, btVector3 moveDir, bool relative)
-                                                                     {
+void GameEntManager::makeMove (int actorId, btVector3 moveDir, bool relative, bool delayed)
+                                                                                   {
 		BaseObj* ca = &(gameObjects[actorId]);
 		
 		btVector3 newMoveDir = moveDir;
@@ -1619,14 +1651,14 @@ void GameEntManager::makeMove (int actorId, btVector3 moveDir, bool relative)
 				ca->applyImpulseOtherRot(
 					newMoveDir*ca->getMarkerMass(),
 					ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
-					true,
+					delayed,
 					0
 				);
 			}
 			else {
 				ca->applyImpulse(
 					newMoveDir*ca->getMarkerMass(),
-					true,
+					delayed,
 					0
 				);
 			}
@@ -1777,12 +1809,12 @@ void GameEntManager::makeHit (int attackerId, int victimId, int weaponId)
 		for (i = 0; i < RLBN_LENGTH; i++) {
 			
 			
-			if (geAttacker->getActionState(E_ACT_ISSWINGING,i)) {
+			if (geAttacker->getActionState(E_ACT_HASNOTHIT,i)) {
 				if (geAttacker->orgId > -1) {
 					curOrg = gameOrgs[geAttacker->orgId];
 					
 					if (curOrg->stepCount > 1) {
-						geAttacker->setActionState(E_ACT_ISSWINGING,i,false);
+						geAttacker->setActionState(E_ACT_HASNOTHIT,i,false);
 						
 						
 						if (geVictim == NULL) {
@@ -1805,6 +1837,7 @@ void GameEntManager::makeHit (int attackerId, int victimId, int weaponId)
 							
 							if (geVictim->entType == E_ENTTYPE_WEAPON) {
 								singleton->playSoundEnt("clang0",geAttacker,0.1,1.0f);
+								geAttacker->setActionState(E_ACT_ISSWINGING,i,false);
 							}
 							
 							if (geVictim->entType == E_ENTTYPE_NPC) {
@@ -1866,21 +1899,47 @@ GameOrgNode * GameEntManager::getMirroredNode (GameOrgNode * curNode)
 		}
 		GameOrg* testOrg = getCurOrg();
 		
-		if ((curNode->nodeName < E_BONE_C_BEG)&&mirrorOn) {
-			if (curNode->nodeName <= E_BONE_L_END) {
-				return testOrg->baseNode->getNode(
-					curNode->nodeName+(E_BONE_R_BEG-E_BONE_L_BEG)
-				);
+		if (mirrorOn) {
+			
+			
+			if (curNode->nodeName < E_BONE_C_BEG) {
+				if (curNode->nodeName <= E_BONE_L_END) {
+					return testOrg->baseNode->getNode(
+						curNode->nodeName+(E_BONE_R_BEG-E_BONE_L_BEG)
+					);
+				}
+				else {
+					return testOrg->baseNode->getNode(
+						curNode->nodeName-(E_BONE_R_BEG-E_BONE_L_BEG)
+					);
+				}
 			}
 			else {
-				return testOrg->baseNode->getNode(
-					curNode->nodeName-(E_BONE_R_BEG-E_BONE_L_BEG)
-				);
+				
+				
+				switch(curNode->nodeName) {
+					
+					case E_BONE_WEAPON_CROSSR:
+						return testOrg->allNodes[E_BONE_WEAPON_CROSSL];
+					break;
+					case E_BONE_WEAPON_CROSSL:
+						return testOrg->allNodes[E_BONE_WEAPON_CROSSR];
+					break;
+					case E_BONE_WEAPON_BLADER:
+						return testOrg->allNodes[E_BONE_WEAPON_BLADEL];
+					break;
+					case E_BONE_WEAPON_BLADEL:
+						return testOrg->allNodes[E_BONE_WEAPON_BLADER];
+					break;
+					
+				}
+				
 			}
 		}
-		else {
-			return NULL;
-		}
+		
+		
+		
+		return NULL;
 		
 	}
 void GameEntManager::refreshActor (int actorId)
@@ -1901,6 +1960,8 @@ void GameEntManager::refreshActor (int actorId)
 		}
 		
 		transformOrg(curOrg, NULL);
+		
+		curOrg->updateHandleOffset();
 		
 		singleton->gamePhysics->addBoxFromObj(actorId, true);
 		
@@ -1942,7 +2003,13 @@ void GameEntManager::applyNodeChanges (GameOrgNode * _curNode, float dx, float d
 		GameOrg* testOrg = getCurOrg();
 		
 		if (
-			(curNode->nodeName < E_BONE_C_BEG) &&
+			(
+				(curNode->nodeName < E_BONE_C_BEG) ||
+				(
+					(curNode->nodeName >= E_BONE_WEAPON_CROSSR) &&
+					(curNode->nodeName <= E_BONE_WEAPON_BLADEL)	
+				)
+			) &&
 			(mirrorOn)
 		) {
 			j = 2;
@@ -1990,6 +2057,11 @@ void GameEntManager::applyNodeChanges (GameOrgNode * _curNode, float dx, float d
 				if (singleton->rbDown) {
 					curNode->orgVecs[E_OV_POWVALS].addXYZW(0.0f, 0.0f, xm, ym);
 				}
+				
+				if (singleton->mbDown) {
+					curNode->orgVecs[E_OV_TBNOFFSET].addXYZW(0.0f, 0.0f, 0.0f, ym);
+				}
+				
 				// if (singleton->mbDown) {
 				// 	curNode->orgVecs[E_OV_POWVALS].addXYZ(ym, 0.0f, 0.0f);
 				// 	curNode->orgVecs[E_OV_POWVALS].addXYZ(ym, 0.0f, 0.0f);
@@ -2052,7 +2124,8 @@ void GameEntManager::resetActiveNode ()
 							testOrg->setToPose(getPose(E_PG_TPOSE,RLBN_NEIT,0),1.0,curNode->nodeName);
 						break;
 						case E_ENTTYPE_WEAPON:
-							testOrg->setToPose(getPose(E_PG_WPSWORD,RLBN_NEIT,0),1.0,curNode->nodeName);
+							testOrg->setToPose(getPose(E_PG_WPTPOSE,RLBN_NEIT,0),1.0,curNode->nodeName);
+							refreshActor(getCurActorUID());
 						break;
 					}
 					
@@ -2230,8 +2303,8 @@ bool GameEntManager::hasRLBN (int rlbnRes, int k)
 		return doProc;
 		
 	}
-void GameEntManager::loadPoseInfo ()
-                            {
+void GameEntManager::loadPoseInfo (bool justRefresh)
+                                            {
 		int i;
 		int j;
 		int k;
@@ -2249,6 +2322,7 @@ void GameEntManager::loadPoseInfo ()
 		JSONValue* poses = NULL;
 		JSONValue* templates = NULL;
 		int rlbnRes;
+		int poseCount = 0;
 		
 		string curString;
 		
@@ -2336,13 +2410,18 @@ void GameEntManager::loadPoseInfo ()
 							curString.append(std::to_string(m));
 							
 							gamePoseInfo[i].poseSteps[k].fileString[m] = curString;
-							gamePoseInfo[i].poseSteps[k].gamePoseIndex[m] = gamePoses.size();
+							gamePoseInfo[i].poseSteps[k].gamePoseIndex[m] = poseCount;
+							
+							if (justRefresh) {
+								
+							}
+							else {
+								gamePoses.push_back(new GameOrg());
+							}
 							
 							
-							gamePoses.push_back(new GameOrg());
 							
-							
-							gamePoses.back()->init(
+							gamePoses[poseCount]->init(
 								singleton,
 								-1,
 								gamePoseInfo[i].data[E_PIK_POSETYPE],
@@ -2351,16 +2430,18 @@ void GameEntManager::loadPoseInfo ()
 							);
 							
 							if (allowLoad) {
-								gamePoses.back()->loadOrgFromFile(curString, false);
+								gamePoses[poseCount]->loadOrgFromFile(curString, false);
 							}
 							
-							transformOrg(gamePoses.back(), NULL);
+							transformOrg(gamePoses[poseCount], NULL);
 							
 							
 							
-							gamePoses.back()->basePose.group = i;
-							gamePoses.back()->basePose.RLBN = k;
-							gamePoses.back()->basePose.step = m;
+							gamePoses[poseCount]->basePose.group = i;
+							gamePoses[poseCount]->basePose.RLBN = k;
+							gamePoses[poseCount]->basePose.step = m;
+							
+							poseCount++;
 						}
 					}
 					
@@ -2376,8 +2457,6 @@ void GameEntManager::loadPoseInfo ()
 				
 			}
 			
-			
-			cout << "GAMEPOSESIZE " << gamePoses.size() << "\n";
 			
 			
 			for (i = 0; i < E_ENTTYPE_LENGTH; i++) {

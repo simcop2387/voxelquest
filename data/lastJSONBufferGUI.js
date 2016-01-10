@@ -588,13 +588,33 @@
 																},
 																{
 																	"template":"fillButtonCenter",
-																	"label":"Monster",
-																	"uid":"ddMenu.placeEntity.monster"
+																	"label":"Sword",
+																	"uid":"ddMenu.placeEntity.sword"
 																},
 																{
 																	"template":"fillButtonCenter",
-																	"label":"Object",
-																	"uid":"ddMenu.placeEntity.object"
+																	"label":"Axe",
+																	"uid":"ddMenu.placeEntity.axe"
+																},
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Mace",
+																	"uid":"ddMenu.placeEntity.mace"
+																},
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Hammer",
+																	"uid":"ddMenu.placeEntity.hammer"
+																},
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Staff",
+																	"uid":"ddMenu.placeEntity.staff"
+																},
+																{
+																	"template":"fillButtonCenter",
+																	"label":"Spear",
+																	"uid":"ddMenu.placeEntity.spear"
 																},
 																{
 																	"template":"fillButtonCenter",

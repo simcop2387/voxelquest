@@ -226,7 +226,7 @@ void GameOrgNode::doTransform (Singleton * singleton, GameOrgNode * tempParent)
 		
 		
 		
-		if (orgVecs[E_OV_TBNOFFSET].any()) {
+		if (orgVecs[E_OV_TBNOFFSET].anyXYZ()) {
 			tbnOffset = orgVecs[E_OV_TBNOFFSET].getBTV();
 			tempOffset = 
 				tbnOffset.getX()*tbnRotC[0].getBTV() + 
