@@ -47,7 +47,13 @@ public:
 	void applyBehavior() {
 		int i;
 		int j;
-		float targCount = 0.0f;
+		//float targCount = 0.0f;
+		float bestWepDis;
+		float bestNPCDis;
+		int bestWepUID;
+		int bestNPCUID;
+		
+		float testDis;
 		float deltaAng;
 		float curDis;
 		
@@ -66,7 +72,7 @@ public:
 			]);
 			writeObj->npcRepel = btVector3(0.0f,0.0f,0.0f);
 			writeObj->behaviorTarget = btVector3(0.0f,0.0f,0.0f);
-			targCount = 0.0f;
+			//targCount = 0.0f;
 			
 			if (
 				(writeObj->isHidden) ||
@@ -78,6 +84,12 @@ public:
 			else {
 				
 				writeCenter = writeObj->getCenterPoint(E_BDG_CENTER);
+				
+				
+				bestWepDis = 99999.0f;
+				bestNPCDis = 99999.0f;
+				bestWepUID = -1;
+				bestNPCUID = -1;
 				
 				for (j = 0; j < singleton->gem->visObjects.size(); j++) {
 					readObj = &(singleton->gem->gameObjects[
@@ -113,14 +125,30 @@ public:
 							if (writeObj->holdingWeapon(-1)) {
 								
 								if (
-									(readObj->isAlive()) &&
-									(readObj->uid == curActor) 	
+									(readObj->isAlive())
+									// && (readObj->uid == curActor) 	
 								) {
 									
 									// has weapon, seek out human opponent
 									
-									writeObj->behaviorTarget += readObj->getCenterPoint(E_BDG_CENTER);
-									targCount += 1.0f;
+									testDis = readObj->getCenterPoint(E_BDG_CENTER).distance(
+										writeObj->getCenterPoint(E_BDG_CENTER)
+									);
+								
+									if (bestNPCUID == curActor) {
+										
+									}
+									else {
+										if ((testDis < bestNPCDis)||(readObj->uid == curActor)) {
+											bestNPCDis = testDis;
+											bestNPCUID = readObj->uid;
+											writeObj->behaviorTarget = readObj->getCenterPoint(E_BDG_CENTER);
+										}
+									}
+									
+									
+									
+									//targCount += 1.0f;
 								}
 								
 							}
@@ -140,8 +168,18 @@ public:
 									(readObj->entType == E_ENTTYPE_WEAPON) &&
 									(readObj->isGrabbedById < 0)
 								) {
-									writeObj->behaviorTarget += readObj->getCenterPoint(E_BDG_CENTER);
-									targCount += 1.0f;
+									
+									testDis = readObj->getCenterPoint(E_BDG_CENTER).distance(
+										writeObj->getCenterPoint(E_BDG_CENTER)
+									);
+									if (testDis < bestWepDis) {
+										bestWepDis = testDis;
+										bestWepUID = readObj->uid;
+										writeObj->behaviorTarget = readObj->getCenterPoint(E_BDG_CENTER);
+									}
+									
+									
+									//targCount += 1.0f;
 								}
 							}
 							
@@ -154,9 +192,9 @@ public:
 					
 				}
 				
-				if (targCount > 0.0f) {
-					writeObj->behaviorTarget /= targCount;
-				}
+				// if (targCount > 0.0f) {
+				// 	writeObj->behaviorTarget /= targCount;
+				// }
 				
 			}
 		}
@@ -188,10 +226,24 @@ public:
 					writeObj->bindingPower = 1.0f;
 				}
 				
+				if (writeObj->baseContact()) {
+					writeObj->airCount = 0.0f;
+				}
+				else {
+					writeObj->airCount += 1.0f;
+				}
+				
 				writeObj->jumpCooldown--;
 				if (writeObj->jumpCooldown < 0) {
 					writeObj->jumpCooldown = 0;
 				}
+				
+				writeObj->hitCooldown--;
+				if (writeObj->hitCooldown < 0) {
+					writeObj->hitCooldown = 0;
+				}
+				
+				writeObj->setActionState(E_ACT_ISHIT,RLBN_NEIT,(writeObj->hitCooldown > 0));
 				
 				writeObj->setActionState(E_ACT_ISWALKING,RLBN_NEIT,false);
 				

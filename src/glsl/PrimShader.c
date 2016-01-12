@@ -585,7 +585,7 @@ vec2 getEmpty3D(vec3 pos, float strength) {
 		
 		return vec2(
 			mix(
-					maxDis,
+					maxDis*strength,
 					-maxDis,
 					sqrt(samp.a)
 			),
@@ -593,7 +593,32 @@ vec2 getEmpty3D(vec3 pos, float strength) {
 		);
 }
 
-
+float remBoxCommon(vec3 pos, float _res) {
+	float res = _res;
+	int i;
+	float splashTot = 0.0;
+	float splashDis = 0.0;
+	float maxDis = 10.0;
+	float waveMod = clamp(abs(res-1.0),0.0,1.0);
+	for (i = 0; i < numExplodes; i++) {
+			splashDis = distance(explodeArr[i].xyz+vec3(0.0,0.0,1.0),pos.xyz);
+			splashTot += (
+					
+					(sin(splashDis*2.0+explodeArr[i].w*0.5-curTime*4.0)+1.0)*explodeArr[i].w*0.5
+					
+			) * 
+			clamp(1.0-splashDis/maxDis, 0.0, 1.0);
+	}
+	res = opD(res,splashTot*waveMod*1.5);
+	
+	
+	res = opS(
+		res,
+		sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) ) //8.0 //CAM_BOX_SIZE
+	);
+	
+	return res;
+}
 
 float remBox(vec3 pos, float resBase, float strength) {
 	float res = resBase;
@@ -618,51 +643,46 @@ float remBox(vec3 pos, float resBase, float strength) {
 				res,
 				-(emptyVal.x)*8.0
 			);
-			
-			// res = opD(
-			// 	res,
-			// 	(1.0-getTexLin(Texture13, pos*(9.0), voroSize).r)*emptyVal.y*16.0	
-			// );
 		}
 		
+	}
+	
+	res = remBoxCommon(pos,res);
+	
+	return res;
+	
+}
+
+
+
+float remBoxPrim(vec3 pos, float resBase, float strength) {
+	float res = resBase;
+	
+	
+	vec2 emptyVal = vec2(0.0);
+	
+	if (
+		all(greaterThan(pos,volMinReadyInPixels)) &&
+		all(lessThan(pos,volMaxReadyInPixels))
+	) {
 		
+		emptyVal = getEmpty3D(pos, strength);
+	
+		res = opS(
+			res,
+			emptyVal.x*0.5
+		);
 		
-		// *clamp(1.0-length(pos - (volMinReadyInPixels+volMaxReadyInPixels)*0.5)/(
-		// 		(volMaxReadyInPixels-volMinReadyInPixels)*0.5
-		// ),0.0,1.0)
-		
-		//emptyVal.y*
-		
-		// if (emptyVal.y > 0.0) {
-		// 	res = opD(
-		// 		res,
-		// 		2.0*strength
-		// 	);
-		// }
+		if (emptyVal.y > 0.0) {
+			res = opD(
+				res,
+				(1.0-getTexLin(Texture13, pos*(9.0), voroSize).r)*emptyVal.y*2.0*strength
+			);
+		}
 		
 	}
 	
-	int i;
-	float splashTot = 0.0;
-	float splashDis = 0.0;
-	float maxDis = 10.0;
-	float waveMod = clamp(abs(res-1.0),0.0,1.0);
-	for (i = 0; i < numExplodes; i++) {
-			splashDis = distance(explodeArr[i].xyz+vec3(0.0,0.0,1.0),pos.xyz);
-			splashTot += (
-					
-					(sin(splashDis*2.0+explodeArr[i].w*0.5-curTime*4.0)+1.0)*explodeArr[i].w*0.5
-					
-			) * 
-			clamp(1.0-splashDis/maxDis, 0.0, 1.0);
-	}
-	res = opD(res,splashTot*waveMod*1.5);
-	
-	
-	res = opS(
-		res,
-		sdBox(pos-cameraPos, vec3(CAM_BOX_SIZE) ) //8.0 //CAM_BOX_SIZE
-	);
+	res = remBoxCommon(pos,res);
 	
 	return res;
 }
@@ -1551,7 +1571,7 @@ float mapSolid( vec3 pos ) {
 		
 		
 		
-		res.x = remBox(pos, res.x, 0.5);
+		res.x = remBoxPrim(pos, res.x, 0.5);
 		
 		//
 		
@@ -5527,10 +5547,11 @@ void main() {
 				}
 				
 				
-				if (solidVal == MAX_CAM_VOL_DIS) {
+				if (solidVal >= MAX_CAM_VOL_DIS) {
 						solidVal = MAX_CAM_DIS;
+						
 				}
-				if (transVal == MAX_CAM_VOL_DIS) {
+				if (transVal >= MAX_CAM_VOL_DIS) {
 						transVal = MAX_CAM_DIS;
 				}
 				
@@ -5550,16 +5571,20 @@ void main() {
 				}
 				
 				
-				tArr[1] = min(waterVal,transVal);
-				posArr[1] = ro + tArr[1]*rd;
-				if (transVal < waterVal) {
+				// = min(waterVal,transVal);
+				
+				if ((transVal+0.1) < waterVal) {
+						tArr[1] = transVal;
 						curTexArr[1] = curTexTrans;
 						norArr[1] = transNorm;
 				}
 				else {
+						tArr[1] = waterVal;
 						curTexArr[1] = terSamp5.zw;
 						norArr[1] = terSamp3.xyz;
 				}
+				
+				posArr[1] = ro + tArr[1]*rd;
 				
 				pos = posArr[0];
 				

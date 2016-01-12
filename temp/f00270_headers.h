@@ -1240,7 +1240,7 @@ public:
   GameOrgNode (GameOrgNode * _parent, int _nodeName, float _material, float _rotThe, float _rotPhi, float _rotRho, float _tanLengthInCells0, float _bitLengthInCells0, float _norLengthInCells0, float _tanLengthInCells1, float _bitLengthInCells1, float _norLengthInCells1, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
   GameOrgNode * addChild (int _nodeName, float _material, float _rotThe, float _rotPhi, float _rotRho, float _tanLengthInCells0, float _bitLengthInCells0, float _norLengthInCells0, float _tanLengthInCells1, float _bitLengthInCells1, float _norLengthInCells1, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
   GameOrgNode * getNode (int _nodeName);
-  void setTangent (float newVal);
+  void flipOrient (float newVal);
   void doTransform (Singleton * singleton, GameOrgNode * tempParent);
 };
 #undef LZZ_INLINE
@@ -1463,7 +1463,7 @@ public:
   void toggleCont (int contIndex, bool onMousePos);
   void addVisObject (BaseObjType _uid, bool isRecycled);
   bool removeVisObject (BaseObjType _uid, bool isRecycled);
-  int getClosestObj (int actorId, FIVector4 * basePoint, bool ignoreNPC, float maxDis);
+  int getClosestObj (int actorId, FIVector4 * basePoint, int objType, float maxDis);
   GameOrg * getCurOrg ();
   BaseObj * getActorRef (int uid);
   bool combatMode ();

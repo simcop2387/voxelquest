@@ -48,7 +48,7 @@ bool EDIT_POSE = false;
 // const static int DEF_WIN_H = 720;
 
 
-// #define STREAM_RES 1
+#define STREAM_RES 1
 
 #ifdef STREAM_RES
 	const static int DEF_WIN_W = 1920; //2048;//
@@ -3600,6 +3600,9 @@ void initNetMasks() {
 // const static unsigned long int STEP_TIME_IN_MICRO_SEC = 32000;
 
 #define E_CONST(DDD) \
+DDD(E_CONST_HIT_COOLDOWN_MAX) \
+DDD(E_CONST_BINDING_MULT) \
+DDD(E_CONST_AIRANIM_THRESH) \
 DDD(E_CONST_MIN_WALK_ANIM_VEL) \
 DDD(E_CONST_WALKANIM_LERP_MOD) \
 DDD(E_CONST_WALKANIM_INTERVAL_MOD) \
@@ -4811,6 +4814,7 @@ enum E_JOINT_TYPES {
 	E_JT_BALL,
 	E_JT_NORM,
 	E_JT_CONT,
+	E_JT_OBJ,
 	E_JT_LENGTH
 };
 
@@ -4898,6 +4902,7 @@ DDD(E_PG_TPOSE) \
 DDD(E_PG_NONPOSE) \
 DDD(E_PG_JUMP) \
 DDD(E_PG_DEAD) \
+DDD(E_PG_FLAIL) \
 DDD(E_PG_PICKUP) \
 DDD(E_PG_IDLE) \
 DDD(E_PG_WALKFORWARD) \
@@ -9657,10 +9662,13 @@ public:
 	int swingType[4];
 	int isGrabbingId[4];
 	
+	int hitCooldown;
 	int jumpCooldown;
 	int curHealth;
 	int maxHealth;
-		
+	
+	
+	float airCount;	
 	float bindingPower;
 	float swingCount;
 	float blockCount;
@@ -10516,6 +10524,7 @@ public:
 		blockCount = 0.0f;
 		swingCount = 0.0f;
 		bindingPower = 1.0f;
+		airCount = 0.0f;
 		
 		for (i = 0; i < RLBN_LENGTH; i++) {
 			isGrabbingId[i] = -1;
@@ -10524,6 +10533,7 @@ public:
 		
 		zeroZ = false;
 		jumpCooldown = 0;
+		hitCooldown = 0;
 		
 		
 		clearActionStates();
@@ -23397,7 +23407,7 @@ public:
   GameOrgNode (GameOrgNode * _parent, int _nodeName, float _material, float _rotThe, float _rotPhi, float _rotRho, float _tanLengthInCells0, float _bitLengthInCells0, float _norLengthInCells0, float _tanLengthInCells1, float _bitLengthInCells1, float _norLengthInCells1, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
   GameOrgNode * addChild (int _nodeName, float _material, float _rotThe, float _rotPhi, float _rotRho, float _tanLengthInCells0, float _bitLengthInCells0, float _norLengthInCells0, float _tanLengthInCells1, float _bitLengthInCells1, float _norLengthInCells1, float _tanX, float _tanY, float _tanZ, float _bitX, float _bitY, float _bitZ, float _norX, float _norY, float _norZ);
   GameOrgNode * getNode (int _nodeName);
-  void setTangent (float newVal);
+  void flipOrient (float newVal);
   void doTransform (Singleton * singleton, GameOrgNode * tempParent);
 };
 #undef LZZ_INLINE
@@ -23620,7 +23630,7 @@ public:
   void toggleCont (int contIndex, bool onMousePos);
   void addVisObject (BaseObjType _uid, bool isRecycled);
   bool removeVisObject (BaseObjType _uid, bool isRecycled);
-  int getClosestObj (int actorId, FIVector4 * basePoint, bool ignoreNPC, float maxDis);
+  int getClosestObj (int actorId, FIVector4 * basePoint, int objType, float maxDis);
   GameOrg * getCurOrg ();
   BaseObj * getActorRef (int uid);
   bool combatMode ();
@@ -28310,9 +28320,10 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 				break;
 				case '3':
-					// getMarkerPos(x, y);
-					// gem->weaponToPlace = E_PG_WPSPEAR;
-					// gem->placeNewEnt(gameNetwork->isConnected, E_ENTTYPE_WEAPON, &lastCellPos);
+					gem->weaponToPlace = E_PG_WPSPEAR;
+					getMarkerPos(x, y);
+					gem->placeNewEnt(gameNetwork->isConnected, E_ENTTYPE_WEAPON, &lastCellPos);
+				
 				break;
 				case '4':
 					
@@ -41427,14 +41438,20 @@ GameOrgNode * GameOrgNode::getNode (int _nodeName)
 		
 		return NULL;
 	}
-void GameOrgNode::setTangent (float newVal)
+void GameOrgNode::flipOrient (float newVal)
                                       {
 		int i;
 		
-		orgVecs[E_OV_TANGENT].setFX(newVal);
+		if (nodeName == E_BONE_WEAPON_CROSSR) {
+			orgVecs[E_OV_THETAPHIRHO].setFZ( newVal*M_PI/2.0f );
+		}
+		if (nodeName == E_BONE_WEAPON_CROSSL) {
+			orgVecs[E_OV_THETAPHIRHO].setFZ( -newVal*M_PI/2.0f );
+		}
+		
 		
 		for (i = 0; i < children.size(); i++) {
-			children[i]->setTangent(newVal);
+			children[i]->flipOrient(newVal);
 		}
 	}
 void GameOrgNode::doTransform (Singleton * singleton, GameOrgNode * tempParent)
@@ -41927,10 +41944,7 @@ void GameOrg::updatePose (double curTimeStep)
 						curVelXY = max(curVelXY,singleton->conVals[E_CONST_MIN_WALK_ANIM_VEL]);
 					}
 					
-					if (curOwner->baseContact()) {
-						
-					}
-					else {
+					if (curOwner->airCount > singleton->conVals[E_CONST_AIRANIM_THRESH]) {
 						curVelXY = 0.0f;
 					}
 					
@@ -41971,8 +41985,15 @@ void GameOrg::updatePose (double curTimeStep)
 							);
 						}
 						
-						setTPG(E_PG_IDLE,RLBN_NEIT);
-						targetPose.step = 0;
+						if (curOwner->isDead()) {
+							
+						}
+						else {
+							setTPG(E_PG_IDLE,RLBN_NEIT);
+							targetPose.step = 0;
+						}
+						
+						
 					}
 				}
 				
@@ -43142,7 +43163,7 @@ void GameEntManager::init (Singleton * _singleton)
 		highlightedLimb = -1;
 		
 		curActorNeedsRefresh = false;
-		destroyTerrain = GEN_DEBRIS;
+		destroyTerrain = false;
 		editPose = false;
 		EDIT_POSE = editPose;
 		combatOn = true;
@@ -44152,7 +44173,7 @@ bool GameEntManager::removeVisObject (BaseObjType _uid, bool isRecycled)
 		
 		return false;
 	}
-int GameEntManager::getClosestObj (int actorId, FIVector4 * basePoint, bool ignoreNPC, float maxDis)
+int GameEntManager::getClosestObj (int actorId, FIVector4 * basePoint, int objType, float maxDis)
           {
 		
 		int i;
@@ -44176,10 +44197,7 @@ int GameEntManager::getClosestObj (int actorId, FIVector4 * basePoint, bool igno
 				(testObj->entType == E_ENTTYPE_BULLET) ||
 				(testObj->entType == E_ENTTYPE_TRACE) ||
 				(testObj->isHidden) ||
-				
-				(
-					ignoreNPC && (testObj->entType == E_ENTTYPE_NPC)	
-				)
+				(testObj->entType != objType)	
 			) {
 				
 			}
@@ -44361,10 +44379,11 @@ void GameEntManager::nextSwing (int actorId, int handNum)
 		
 		BaseObj* ca = &(gameObjects[actorId]);
 		
-		ca->swingType[handNum]++;
+		ca->swingType[handNum] += iGenRand2(1,10);
 		
 		if (ca->swingType[handNum] > (E_PG_FRNT)) {
-			ca->swingType[handNum] = (E_PG_SLSH);
+			ca->swingType[handNum] -= E_PG_FRNT;
+			ca->swingType[handNum] += (E_PG_SLSH);
 		}
 		
 		
@@ -44481,7 +44500,8 @@ void GameEntManager::bindPose (int actorId, int handNum, bool bindOn)
 							getCorrectedName(E_BONE_L_METACARPALS)
 						];
 					
-					//grabObjOrg->allNodes[E_BONE_C_BASE]->setTangent(-1.0f);
+					grabObjOrg->allNodes[E_BONE_C_BASE]->flipOrient(-1.0f);
+					transformOrg(curOrg, NULL);
 				}
 				else {
 					curOrg->allNodes[
@@ -44494,7 +44514,8 @@ void GameEntManager::bindPose (int actorId, int handNum, bool bindOn)
 							getCorrectedName(E_BONE_R_METACARPALS)
 						];
 					
-					//grabObjOrg->allNodes[E_BONE_C_BASE]->setTangent(1.0f);
+					grabObjOrg->allNodes[E_BONE_C_BASE]->flipOrient(1.0f);
+					transformOrg(curOrg, NULL);
 				}
 			}
 			else {
@@ -44551,7 +44572,7 @@ void GameEntManager::makeGrab (int actorId, int _handNum)
 			res = getClosestObj(
 				actorId,
 				singleton->BTV2FIV(ca->getCenterPoint(E_BDG_CENTER)),
-				true,
+				E_ENTTYPE_WEAPON,
 				5.0f
 			);
 			
@@ -45021,7 +45042,10 @@ void GameEntManager::makeHit (int attackerId, int victimId, int weaponId)
 							
 							
 							if (geVictim->entType == E_ENTTYPE_NPC) {
-								geVictim->setActionState(E_ACT_ISHIT,RLBN_NEIT,true);
+								
+								geVictim->hitCooldown = singleton->conVals[E_CONST_HIT_COOLDOWN_MAX];
+								
+								//geVictim->setActionState(E_ACT_ISHIT,RLBN_NEIT,true);
 								geVictim->bindingPower = singleton->conVals[E_CONST_BINDING_POW_ON_HIT];
 								lastHealth = geVictim->curHealth;
 								geVictim->curHealth -= 32;
@@ -45693,6 +45717,9 @@ int GameEntManager::getActionStateFromPose (int poseNum)
 			break;
 			case E_PG_WALKFORWARD:
 				return E_ACT_ISWALKING;
+			break;
+			case E_PG_FLAIL:
+				return E_ACT_ISHIT;
 			break;
 			
 			case E_PG_SLSH:
@@ -52682,7 +52709,13 @@ void GameLogic::applyBehavior ()
                              {
 		int i;
 		int j;
-		float targCount = 0.0f;
+		//float targCount = 0.0f;
+		float bestWepDis;
+		float bestNPCDis;
+		int bestWepUID;
+		int bestNPCUID;
+		
+		float testDis;
 		float deltaAng;
 		float curDis;
 		
@@ -52701,7 +52734,7 @@ void GameLogic::applyBehavior ()
 			]);
 			writeObj->npcRepel = btVector3(0.0f,0.0f,0.0f);
 			writeObj->behaviorTarget = btVector3(0.0f,0.0f,0.0f);
-			targCount = 0.0f;
+			//targCount = 0.0f;
 			
 			if (
 				(writeObj->isHidden) ||
@@ -52713,6 +52746,12 @@ void GameLogic::applyBehavior ()
 			else {
 				
 				writeCenter = writeObj->getCenterPoint(E_BDG_CENTER);
+				
+				
+				bestWepDis = 99999.0f;
+				bestNPCDis = 99999.0f;
+				bestWepUID = -1;
+				bestNPCUID = -1;
 				
 				for (j = 0; j < singleton->gem->visObjects.size(); j++) {
 					readObj = &(singleton->gem->gameObjects[
@@ -52748,14 +52787,30 @@ void GameLogic::applyBehavior ()
 							if (writeObj->holdingWeapon(-1)) {
 								
 								if (
-									(readObj->isAlive()) &&
-									(readObj->uid == curActor) 	
+									(readObj->isAlive())
+									// && (readObj->uid == curActor) 	
 								) {
 									
 									// has weapon, seek out human opponent
 									
-									writeObj->behaviorTarget += readObj->getCenterPoint(E_BDG_CENTER);
-									targCount += 1.0f;
+									testDis = readObj->getCenterPoint(E_BDG_CENTER).distance(
+										writeObj->getCenterPoint(E_BDG_CENTER)
+									);
+								
+									if (bestNPCUID == curActor) {
+										
+									}
+									else {
+										if ((testDis < bestNPCDis)||(readObj->uid == curActor)) {
+											bestNPCDis = testDis;
+											bestNPCUID = readObj->uid;
+											writeObj->behaviorTarget = readObj->getCenterPoint(E_BDG_CENTER);
+										}
+									}
+									
+									
+									
+									//targCount += 1.0f;
 								}
 								
 							}
@@ -52775,8 +52830,18 @@ void GameLogic::applyBehavior ()
 									(readObj->entType == E_ENTTYPE_WEAPON) &&
 									(readObj->isGrabbedById < 0)
 								) {
-									writeObj->behaviorTarget += readObj->getCenterPoint(E_BDG_CENTER);
-									targCount += 1.0f;
+									
+									testDis = readObj->getCenterPoint(E_BDG_CENTER).distance(
+										writeObj->getCenterPoint(E_BDG_CENTER)
+									);
+									if (testDis < bestWepDis) {
+										bestWepDis = testDis;
+										bestWepUID = readObj->uid;
+										writeObj->behaviorTarget = readObj->getCenterPoint(E_BDG_CENTER);
+									}
+									
+									
+									//targCount += 1.0f;
 								}
 							}
 							
@@ -52789,9 +52854,9 @@ void GameLogic::applyBehavior ()
 					
 				}
 				
-				if (targCount > 0.0f) {
-					writeObj->behaviorTarget /= targCount;
-				}
+				// if (targCount > 0.0f) {
+				// 	writeObj->behaviorTarget /= targCount;
+				// }
 				
 			}
 		}
@@ -52823,10 +52888,24 @@ void GameLogic::applyBehavior ()
 					writeObj->bindingPower = 1.0f;
 				}
 				
+				if (writeObj->baseContact()) {
+					writeObj->airCount = 0.0f;
+				}
+				else {
+					writeObj->airCount += 1.0f;
+				}
+				
 				writeObj->jumpCooldown--;
 				if (writeObj->jumpCooldown < 0) {
 					writeObj->jumpCooldown = 0;
 				}
+				
+				writeObj->hitCooldown--;
+				if (writeObj->hitCooldown < 0) {
+					writeObj->hitCooldown = 0;
+				}
+				
+				writeObj->setActionState(E_ACT_ISHIT,RLBN_NEIT,(writeObj->hitCooldown > 0));
 				
 				writeObj->setActionState(E_ACT_ISWALKING,RLBN_NEIT,false);
 				
@@ -55809,7 +55888,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 		
 		GameActor* curActor;
 		
-		float objRad = 0.25f;
+		float objRad = 0.5f;
 		bool isOrg = false;
 		
 		int bodyOffset = 0;
@@ -55975,6 +56054,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 						dynCollidesWith
 					);
 					ge->bodies.back().boneId = -1;
+					ge->bodies.back().jointType = E_JT_OBJ;
 					
 					if (ge->entType == E_ENTTYPE_DEBRIS) {
 						
@@ -56384,14 +56464,12 @@ void GamePhysics::collideWithWorld (double curStepTime)
 						
 						switch (curBody->jointType) {
 							case E_JT_LIMB:
+							case E_JT_BALL:
+							case E_JT_OBJ:
 								segCount = 1;
 								segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
 									btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_LIMB]);
 							break;
-							case E_JT_BALL:
-								segCount = 1;
-								segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
-									btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_LIMB]);
 							break;
 							case E_JT_NORM:
 								segCount = 0;
@@ -56427,6 +56505,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								
 								
 							break;
+							
 						}
 						
 						
@@ -56445,7 +56524,17 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								curBody->hasContact = (curBody->hasContact)||(cellVal[3] > 0.01f);
 								curBody->isFalling = !(curBody->hasContact);
 								
-								if (cellVal[3] > 0.01f) {
+								if (
+									(cellVal[3] > 0.01f) &&
+									(
+										//(curBody->jointType == E_JT_CONT) ||
+										(
+											(ge->entType == E_ENTTYPE_WEAPON) &&
+											(ge->isGrabbedById < 0)
+										) ||
+										(curBody->boneId < 0)
+									)
+								) {
 									ge->multVel(bodInd, btVector3(
 										singleton->conVals[E_CONST_WALKING_FRIC],
 										singleton->conVals[E_CONST_WALKING_FRIC],
@@ -56466,7 +56555,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								if (cellVal[3] > 0.01f) {
 									
 									if (!ge->isDead()) {
-										// ge->multVelAng(bodInd, btVector3(angDamp,angDamp,angDamp));
+										ge->multVelAng(bodInd, btVector3(angDamp,angDamp,angDamp));
 									}
 									
 									
@@ -56792,6 +56881,9 @@ void GamePhysics::collideWithWorld (double curStepTime)
 						if (ge->isDead()) {
 							curOrg->setTPG(E_PG_DEAD,RLBN_NEIT);
 						}
+						else if (ge->getActionState(E_ACT_ISHIT,RLBN_NEIT)) {
+							curOrg->setTPG(E_PG_FLAIL,RLBN_NEIT);
+						}
 						else if (ge->getActionState(E_ACT_ISSWINGING,RLBN_RIGT)) {
 							curOrg->setTPG(ge->swingType[RLBN_RIGT], RLBN_RIGT);
 						}
@@ -56809,6 +56901,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 						}
 						else if (
 							ge->getActionState(E_ACT_ISWALKING,RLBN_NEIT)
+							
 							// && (ge->getPlanarVel() > E_CONST_WALKANIM_THRESH)
 						) {
 							curOrg->setTPG(E_PG_WALKFORWARD,RLBN_NEIT);
@@ -56968,7 +57061,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								
 								ge->setLinVel(
 									curBody->body->getLinearVelocity()*(1.0f-bindingPower)
-									+ difVec*20.0f*bindingPower,
+									+ difVec*singleton->conVals[E_CONST_BINDING_MULT]*bindingPower,
 									bodInd
 								);
 								
@@ -57036,6 +57129,10 @@ void GamePhysics::collideWithWorld (double curStepTime)
 						dirForce = dirForce*totForce;
 						
 						dirForce.setZ(totForce);
+						
+						if (dirForce.length() > 2.0f) {
+							ge->hitCooldown = max(ge->hitCooldown,2);
+						}
 						
 						ge->applyImpulse(dirForce*curStepTime*5.0f*curBody->mass, false, bodInd);
 					}

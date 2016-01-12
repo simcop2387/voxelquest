@@ -334,10 +334,7 @@ void GameOrg::updatePose (double curTimeStep)
 						curVelXY = max(curVelXY,singleton->conVals[E_CONST_MIN_WALK_ANIM_VEL]);
 					}
 					
-					if (curOwner->baseContact()) {
-						
-					}
-					else {
+					if (curOwner->airCount > singleton->conVals[E_CONST_AIRANIM_THRESH]) {
 						curVelXY = 0.0f;
 					}
 					
@@ -378,8 +375,15 @@ void GameOrg::updatePose (double curTimeStep)
 							);
 						}
 						
-						setTPG(E_PG_IDLE,RLBN_NEIT);
-						targetPose.step = 0;
+						if (curOwner->isDead()) {
+							
+						}
+						else {
+							setTPG(E_PG_IDLE,RLBN_NEIT);
+							targetPose.step = 0;
+						}
+						
+						
 					}
 				}
 				

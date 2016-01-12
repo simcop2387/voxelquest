@@ -192,7 +192,7 @@ public:
 		
 		GameActor* curActor;
 		
-		float objRad = 0.25f;
+		float objRad = 0.5f;
 		bool isOrg = false;
 		
 		int bodyOffset = 0;
@@ -358,6 +358,7 @@ public:
 						dynCollidesWith
 					);
 					ge->bodies.back().boneId = -1;
+					ge->bodies.back().jointType = E_JT_OBJ;
 					
 					if (ge->entType == E_ENTTYPE_DEBRIS) {
 						
@@ -789,14 +790,12 @@ public:
 						
 						switch (curBody->jointType) {
 							case E_JT_LIMB:
+							case E_JT_BALL:
+							case E_JT_OBJ:
 								segCount = 1;
 								segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
 									btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_LIMB]);
 							break;
-							case E_JT_BALL:
-								segCount = 1;
-								segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
-									btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_LIMB]);
 							break;
 							case E_JT_NORM:
 								segCount = 0;
@@ -832,6 +831,7 @@ public:
 								
 								
 							break;
+							
 						}
 						
 						
@@ -850,7 +850,17 @@ public:
 								curBody->hasContact = (curBody->hasContact)||(cellVal[3] > 0.01f);
 								curBody->isFalling = !(curBody->hasContact);
 								
-								if (cellVal[3] > 0.01f) {
+								if (
+									(cellVal[3] > 0.01f) &&
+									(
+										//(curBody->jointType == E_JT_CONT) ||
+										(
+											(ge->entType == E_ENTTYPE_WEAPON) &&
+											(ge->isGrabbedById < 0)
+										) ||
+										(curBody->boneId < 0)
+									)
+								) {
 									ge->multVel(bodInd, btVector3(
 										singleton->conVals[E_CONST_WALKING_FRIC],
 										singleton->conVals[E_CONST_WALKING_FRIC],
@@ -871,7 +881,7 @@ public:
 								if (cellVal[3] > 0.01f) {
 									
 									if (!ge->isDead()) {
-										// ge->multVelAng(bodInd, btVector3(angDamp,angDamp,angDamp));
+										ge->multVelAng(bodInd, btVector3(angDamp,angDamp,angDamp));
 									}
 									
 									
@@ -1197,6 +1207,9 @@ public:
 						if (ge->isDead()) {
 							curOrg->setTPG(E_PG_DEAD,RLBN_NEIT);
 						}
+						else if (ge->getActionState(E_ACT_ISHIT,RLBN_NEIT)) {
+							curOrg->setTPG(E_PG_FLAIL,RLBN_NEIT);
+						}
 						else if (ge->getActionState(E_ACT_ISSWINGING,RLBN_RIGT)) {
 							curOrg->setTPG(ge->swingType[RLBN_RIGT], RLBN_RIGT);
 						}
@@ -1214,6 +1227,7 @@ public:
 						}
 						else if (
 							ge->getActionState(E_ACT_ISWALKING,RLBN_NEIT)
+							
 							// && (ge->getPlanarVel() > E_CONST_WALKANIM_THRESH)
 						) {
 							curOrg->setTPG(E_PG_WALKFORWARD,RLBN_NEIT);
@@ -1373,7 +1387,7 @@ public:
 								
 								ge->setLinVel(
 									curBody->body->getLinearVelocity()*(1.0f-bindingPower)
-									+ difVec*20.0f*bindingPower,
+									+ difVec*singleton->conVals[E_CONST_BINDING_MULT]*bindingPower,
 									bodInd
 								);
 								
@@ -1441,6 +1455,10 @@ public:
 						dirForce = dirForce*totForce;
 						
 						dirForce.setZ(totForce);
+						
+						if (dirForce.length() > 2.0f) {
+							ge->hitCooldown = max(ge->hitCooldown,2);
+						}
 						
 						ge->applyImpulse(dirForce*curStepTime*5.0f*curBody->mass, false, bodInd);
 					}

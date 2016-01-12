@@ -4897,9 +4897,10 @@ DISPATCH_EVENT_END:
 					
 				break;
 				case '3':
-					// getMarkerPos(x, y);
-					// gem->weaponToPlace = E_PG_WPSPEAR;
-					// gem->placeNewEnt(gameNetwork->isConnected, E_ENTTYPE_WEAPON, &lastCellPos);
+					gem->weaponToPlace = E_PG_WPSPEAR;
+					getMarkerPos(x, y);
+					gem->placeNewEnt(gameNetwork->isConnected, E_ENTTYPE_WEAPON, &lastCellPos);
+				
 				break;
 				case '4':
 					

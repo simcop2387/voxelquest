@@ -201,13 +201,19 @@ public:
 	
 	//void rotate(FIVector4 axis, )
 	
-	void setTangent(float newVal) {
+	void flipOrient(float newVal) {
 		int i;
 		
-		orgVecs[E_OV_TANGENT].setFX(newVal);
+		if (nodeName == E_BONE_WEAPON_CROSSR) {
+			orgVecs[E_OV_THETAPHIRHO].setFZ( newVal*M_PI/2.0f );
+		}
+		if (nodeName == E_BONE_WEAPON_CROSSL) {
+			orgVecs[E_OV_THETAPHIRHO].setFZ( -newVal*M_PI/2.0f );
+		}
+		
 		
 		for (i = 0; i < children.size(); i++) {
-			children[i]->setTangent(newVal);
+			children[i]->flipOrient(newVal);
 		}
 	}
 	

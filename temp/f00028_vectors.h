@@ -1908,10 +1908,13 @@ public:
 	int swingType[4];
 	int isGrabbingId[4];
 	
+	int hitCooldown;
 	int jumpCooldown;
 	int curHealth;
 	int maxHealth;
-		
+	
+	
+	float airCount;	
 	float bindingPower;
 	float swingCount;
 	float blockCount;
@@ -2767,6 +2770,7 @@ public:
 		blockCount = 0.0f;
 		swingCount = 0.0f;
 		bindingPower = 1.0f;
+		airCount = 0.0f;
 		
 		for (i = 0; i < RLBN_LENGTH; i++) {
 			isGrabbingId[i] = -1;
@@ -2775,6 +2779,7 @@ public:
 		
 		zeroZ = false;
 		jumpCooldown = 0;
+		hitCooldown = 0;
 		
 		
 		clearActionStates();

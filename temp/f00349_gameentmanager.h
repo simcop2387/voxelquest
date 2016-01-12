@@ -29,7 +29,7 @@ void GameEntManager::init (Singleton * _singleton)
 		highlightedLimb = -1;
 		
 		curActorNeedsRefresh = false;
-		destroyTerrain = GEN_DEBRIS;
+		destroyTerrain = false;
 		editPose = false;
 		EDIT_POSE = editPose;
 		combatOn = true;
@@ -1039,7 +1039,7 @@ bool GameEntManager::removeVisObject (BaseObjType _uid, bool isRecycled)
 		
 		return false;
 	}
-int GameEntManager::getClosestObj (int actorId, FIVector4 * basePoint, bool ignoreNPC, float maxDis)
+int GameEntManager::getClosestObj (int actorId, FIVector4 * basePoint, int objType, float maxDis)
           {
 		
 		int i;
@@ -1063,10 +1063,7 @@ int GameEntManager::getClosestObj (int actorId, FIVector4 * basePoint, bool igno
 				(testObj->entType == E_ENTTYPE_BULLET) ||
 				(testObj->entType == E_ENTTYPE_TRACE) ||
 				(testObj->isHidden) ||
-				
-				(
-					ignoreNPC && (testObj->entType == E_ENTTYPE_NPC)	
-				)
+				(testObj->entType != objType)	
 			) {
 				
 			}
@@ -1248,10 +1245,11 @@ void GameEntManager::nextSwing (int actorId, int handNum)
 		
 		BaseObj* ca = &(gameObjects[actorId]);
 		
-		ca->swingType[handNum]++;
+		ca->swingType[handNum] += iGenRand2(1,10);
 		
 		if (ca->swingType[handNum] > (E_PG_FRNT)) {
-			ca->swingType[handNum] = (E_PG_SLSH);
+			ca->swingType[handNum] -= E_PG_FRNT;
+			ca->swingType[handNum] += (E_PG_SLSH);
 		}
 		
 		
@@ -1368,7 +1366,8 @@ void GameEntManager::bindPose (int actorId, int handNum, bool bindOn)
 							getCorrectedName(E_BONE_L_METACARPALS)
 						];
 					
-					//grabObjOrg->allNodes[E_BONE_C_BASE]->setTangent(-1.0f);
+					grabObjOrg->allNodes[E_BONE_C_BASE]->flipOrient(-1.0f);
+					transformOrg(curOrg, NULL);
 				}
 				else {
 					curOrg->allNodes[
@@ -1381,7 +1380,8 @@ void GameEntManager::bindPose (int actorId, int handNum, bool bindOn)
 							getCorrectedName(E_BONE_R_METACARPALS)
 						];
 					
-					//grabObjOrg->allNodes[E_BONE_C_BASE]->setTangent(1.0f);
+					grabObjOrg->allNodes[E_BONE_C_BASE]->flipOrient(1.0f);
+					transformOrg(curOrg, NULL);
 				}
 			}
 			else {
@@ -1438,7 +1438,7 @@ void GameEntManager::makeGrab (int actorId, int _handNum)
 			res = getClosestObj(
 				actorId,
 				singleton->BTV2FIV(ca->getCenterPoint(E_BDG_CENTER)),
-				true,
+				E_ENTTYPE_WEAPON,
 				5.0f
 			);
 			
@@ -1908,7 +1908,10 @@ void GameEntManager::makeHit (int attackerId, int victimId, int weaponId)
 							
 							
 							if (geVictim->entType == E_ENTTYPE_NPC) {
-								geVictim->setActionState(E_ACT_ISHIT,RLBN_NEIT,true);
+								
+								geVictim->hitCooldown = singleton->conVals[E_CONST_HIT_COOLDOWN_MAX];
+								
+								//geVictim->setActionState(E_ACT_ISHIT,RLBN_NEIT,true);
 								geVictim->bindingPower = singleton->conVals[E_CONST_BINDING_POW_ON_HIT];
 								lastHealth = geVictim->curHealth;
 								geVictim->curHealth -= 32;
@@ -2580,6 +2583,9 @@ int GameEntManager::getActionStateFromPose (int poseNum)
 			break;
 			case E_PG_WALKFORWARD:
 				return E_ACT_ISWALKING;
+			break;
+			case E_PG_FLAIL:
+				return E_ACT_ISHIT;
 			break;
 			
 			case E_PG_SLSH:
