@@ -224,11 +224,13 @@ public:
 
 		//finalPath = NULL;
 		
-		float deltVal = -0.1f;
+		
+		float deltVal = -1.5f;
 		offsetVal[0] = btVector3(deltVal,0.0f,0.0f);
 		offsetVal[1] = btVector3(0.0f,deltVal,0.0f);
 		offsetVal[2] = btVector3(0.0f,0.0f,deltVal);
 		offsetVal[3] = btVector3(0.0f,0.0f,0.0f);
+		
 
 		holdersPerBlock = singleton->holdersPerBlock;
 
@@ -4893,37 +4895,41 @@ UPDATE_LIGHTS_END:
 		
 		float healthMeterScale = 0.5f;
 		
-		for (i = 0; i < singleton->gem->visObjects.size(); i++) {
-			ge = &(singleton->gem->gameObjects[singleton->gem->visObjects[i]]);
-			if (ge->entType == E_ENTTYPE_NPC) {
-				
-				//ge->bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
-				
-				if (ge->isAlive()) {
-					singleton->setShaderVec3("matVal", 1, 1, 1);
-					boxCenter = ge->getCenterPoint(E_BDG_CENTER);
-					boxCenter += btVector3(0.0f,0.0f,5.0f);
-					boxRadius = btVector3(1.95f,0.2f,0.2f)*healthMeterScale;
+		if (singleton->gem->showHealth) {
+			for (i = 0; i < singleton->gem->visObjects.size(); i++) {
+				ge = &(singleton->gem->gameObjects[singleton->gem->visObjects[i]]);
+				if (ge->entType == E_ENTTYPE_NPC) {
 					
-					singleton->setShaderVec4(
-						"rotationZ",
-						boxCenter.getX(),
-						boxCenter.getY(),
-						boxCenter.getZ(),
-						xrotrad	
-					);
+					//ge->bodies[E_BDG_CENTER].body->getWorldTransform().getOpenGLMatrix(myMat);
 					
-					singleton->drawBoxRad(boxCenter,boxRadius);
+					if (ge->isAlive()) {
+						singleton->setShaderVec3("matVal", 1, 1, 1);
+						boxCenter = ge->getCenterPoint(E_BDG_CENTER);
+						boxCenter += btVector3(0.0f,0.0f,5.0f);
+						boxRadius = btVector3(1.95f,0.2f,0.2f)*healthMeterScale;
+						
+						singleton->setShaderVec4(
+							"rotationZ",
+							boxCenter.getX(),
+							boxCenter.getY(),
+							boxCenter.getZ(),
+							xrotrad	
+						);
+						
+						singleton->drawBoxRad(boxCenter,boxRadius);
+						
+						singleton->setShaderVec3("matVal", 255, 0, 0);
+						boxCenter = ge->getCenterPoint(E_BDG_CENTER);
+						boxCenter += btVector3(-2.0f*(1.0f-ge->healthPerc())*healthMeterScale,0.0f,5.0f);
+						boxRadius = btVector3(2.0f*ge->healthPerc(),0.25f,0.25f)*healthMeterScale;
+						singleton->drawBoxRad(boxCenter,boxRadius);
+					}
 					
-					singleton->setShaderVec3("matVal", 255, 0, 0);
-					boxCenter = ge->getCenterPoint(E_BDG_CENTER);
-					boxCenter += btVector3(-2.0f*(1.0f-ge->healthPerc())*healthMeterScale,0.0f,5.0f);
-					boxRadius = btVector3(2.0f*ge->healthPerc(),0.25f,0.25f)*healthMeterScale;
-					singleton->drawBoxRad(boxCenter,boxRadius);
 				}
-				
 			}
 		}
+		
+		
 		
 		singleton->setShaderVec4(
 			"rotationZ",0.0f,0.0f,0.0f,0.0f

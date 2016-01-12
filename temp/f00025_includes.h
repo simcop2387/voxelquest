@@ -18,8 +18,8 @@ const static int MAX_LIMB_DATA_IN_BYTES = 65536;
 const static bool POLY_COLLISION = false;
 const static bool VOXEL_COLLISION = true;
 
-const static bool GEN_DEBRIS = true;
-const static int  MAX_DEBRIS = 400;
+const static bool GEN_DEBRIS = false;
+const static int  MAX_DEBRIS = 0;
 const static bool GEN_COLLISION = false;
 const static bool GEN_POLYS_WORLD = true;
 
@@ -48,19 +48,19 @@ bool EDIT_POSE = false;
 // const static int DEF_WIN_H = 720;
 
 
-//#define STREAM_RES 1
+// #define STREAM_RES 1
 
 #ifdef STREAM_RES
 	const static int DEF_WIN_W = 1920; //2048;//
 	const static int DEF_WIN_H = 1080; //1024;//
 #else
-	const static int DEF_WIN_W = 1536;
-	const static int DEF_WIN_H = 768;
+	const static int DEF_WIN_W = 1440;//1536;
+	const static int DEF_WIN_H = 720;//768;
 #endif
 
 
 
-const static int DEF_VOL_SIZE = 64;
+const static int DEF_VOL_SIZE = 128;
 
 const static int DEF_SCALE_FACTOR = 4;
 const static int RENDER_SCALE_FACTOR = 1;

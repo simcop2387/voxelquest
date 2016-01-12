@@ -1,4 +1,4 @@
-﻿Build started 1/10/2016 7:57:46 AM.
+﻿Build started 1/12/2016 2:00:52 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -216,6 +216,11 @@
          
          Valid JSON
                    
+         
+         Valid JSON
+                   
+         Loading:  ..\data\constants.js         
+         Load Successful          
          
          Valid JSON
                    
@@ -815,21 +820,6 @@
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
          Loading:  ..\data\orgdata\E_PG_WPSWORD_N0.js         
          Load Successful          
          
@@ -840,35 +830,10 @@
          
          Valid JSON
                    
-         Loading:  ..\data\orgdata\E_PG_WPMACE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loading:  ..\data\orgdata\E_PG_WPHAMMER_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loading:  ..\data\orgdata\E_PG_WPSTAFF_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loading:  ..\data\orgdata\E_PG_WPSPEAR_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
-C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -1073741819.
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
+         firstPerson 0
+         firstPerson 0
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
-Build FAILED.
+Build succeeded.
 
-Time Elapsed 00:00:59.09
+Time Elapsed 00:03:50.27

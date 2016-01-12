@@ -2043,11 +2043,11 @@ public:
 	
 	
 	void wakeAll() {
-		int i;
+		// int i;
 		
-		for (i = 0; i < bodies.size(); i++) {
-			bodies[i].body->setActivationState(ACTIVE_TAG);
-		}
+		// for (i = 0; i < bodies.size(); i++) {
+		// 	bodies[i].body->setActivationState(ACTIVE_TAG);
+		// }
 	}
 	
 	

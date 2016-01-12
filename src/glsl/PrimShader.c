@@ -206,8 +206,8 @@ const int TOT_STEPS_POLY = 16;
 
 const float MAX_SHAD_DIS_PRIM = 64.0;
 const int HARD_STEPS = 8;
-const int HARD_STEPS_PRIM = 16;
-const int SOFT_STEPS = 32;
+const int HARD_STEPS_PRIM = 8;
+const int SOFT_STEPS = 16;
 
 
 //x: basic pass, y: detail pass
@@ -585,7 +585,7 @@ vec2 getEmpty3D(vec3 pos, float strength) {
 		
 		return vec2(
 			mix(
-					maxDis*strength,
+					maxDis,
 					-maxDis,
 					sqrt(samp.a)
 			),
@@ -613,23 +613,32 @@ float remBox(vec3 pos, float resBase, float strength) {
 		
 		emptyVal = getEmpty3D(pos, strength);
 	
+		if (emptyVal.y > 0.0) {
+			res = opI(
+				res,
+				-(emptyVal.x)*8.0
+			);
+			
+			// res = opD(
+			// 	res,
+			// 	(1.0-getTexLin(Texture13, pos*(9.0), voroSize).r)*emptyVal.y*16.0	
+			// );
+		}
 		
 		
-		res = opS(
-			res,
-			emptyVal.x*0.5
-		);
 		
 		// *clamp(1.0-length(pos - (volMinReadyInPixels+volMaxReadyInPixels)*0.5)/(
 		// 		(volMaxReadyInPixels-volMinReadyInPixels)*0.5
 		// ),0.0,1.0)
 		
-		if (emptyVal.y > 0.0) {
-			res = opD(
-				res,
-				(1.0-getTexLin(Texture13, pos*(9.0), voroSize).r)*emptyVal.y*2.0*strength
-			);
-		}
+		//emptyVal.y*
+		
+		// if (emptyVal.y > 0.0) {
+		// 	res = opD(
+		// 		res,
+		// 		2.0*strength
+		// 	);
+		// }
 		
 	}
 	

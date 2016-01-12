@@ -155,10 +155,13 @@ void GameLogic::applyBehavior ()
 			}
 			else {
 				
-				writeObj->bindingPower += 0.0001f;
+				writeObj->bindingPower += singleton->conVals[E_CONST_BINDING_POW_INC];
 				
 				if (writeObj->isDead()) {
-					// writeObj->bindingPower = min(writeObj->bindingPower,0.0125f);
+					writeObj->bindingPower += (
+						singleton->conVals[E_CONST_BINDING_POW_ON_DEATH] -
+						writeObj->bindingPower						
+					)/128.0f;
 				}
 				
 				if (writeObj->bindingPower > 1.0f) {
@@ -206,7 +209,7 @@ void GameLogic::applyBehavior ()
 							) {
 								writeObj->swingCount += 1.0f;
 							
-								if (writeObj->swingCount > 200.0f) {
+								if (writeObj->swingCount > singleton->conVals[E_CONST_SWING_DELAY]) {
 									writeObj->swingCount = 0.0f;
 									singleton->gem->makeSwing(writeObj->uid,iGenRand(0,1));
 								}
@@ -216,9 +219,9 @@ void GameLogic::applyBehavior ()
 						else {
 							if (
 								(curDis > 1.0f) &&
-								(curDis < 5.0f)	
+								(curDis < 4.0f)	
 							) {
-								singleton->gem->makeGrabThrow(writeObj->uid, -1);
+								singleton->gem->makeGrab(writeObj->uid, -1);
 							}
 						}
 						
@@ -239,11 +242,11 @@ void GameLogic::applyBehavior ()
 				}
 				else { // is dead
 					if (writeObj->holdingWeapon(RLBN_LEFT)) {
-						singleton->gem->makeGrabThrow(writeObj->uid, RLBN_LEFT);
+						singleton->gem->makeGrab(writeObj->uid, RLBN_LEFT);
 					}
 					
 					if (writeObj->holdingWeapon(RLBN_RIGT)) {
-						singleton->gem->makeGrabThrow(writeObj->uid, RLBN_RIGT);
+						singleton->gem->makeGrab(writeObj->uid, RLBN_RIGT);
 					}
 				}
 				

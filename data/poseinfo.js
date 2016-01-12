@@ -88,12 +88,18 @@
 		"E_PG_IDLE":{
 			"template":"default",
 			"E_PIK_DOLOOP":1,
-			"E_PIK_LERPSPEED":0.003,
+			"E_PIK_LERPSPEED":0.001,
 			"E_PIK_TIMEINTERVAL":1.0,
 			"E_PIK_NUMSTEPS":2
 			
 		},
 		"E_PG_WALKFORWARD":{
+			"template":"default",
+			"E_PIK_DOLOOP":1,
+			"E_PIK_TIMEINTERVAL":0.5,
+			"E_PIK_NUMSTEPS":4
+		},
+		"E_PG_FLAIL":{
 			"template":"default",
 			"E_PIK_DOLOOP":1,
 			"E_PIK_TIMEINTERVAL":0.5,
@@ -136,7 +142,9 @@
 			"template":"attackKick"
 		},
 		"E_PG_REVR":{
-			"template":"attackKick"
+			"template":"attackKick",
+			"E_PIK_LERPSPEED":0.005,
+			"E_PIK_TIMEINTERVAL":0.3
 		},
 		"E_PG_BKIK":{
 			"template":"attackKick"

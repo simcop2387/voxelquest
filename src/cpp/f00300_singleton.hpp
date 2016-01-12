@@ -54,7 +54,7 @@ public:
 	
 	
 	//unsigned long int totTimePassedGraphics;
-	unsigned long int totTimePassedPhysics;
+	//unsigned long int totTimePassedPhysics;
 	
 	
 	
@@ -101,6 +101,7 @@ public:
 	bool sphereMapOn;
 	bool waitingOnDestruction;
 	
+	bool physicsOn;
 	bool isPressingMove;
 	bool fxaaOn;
 	bool doPathReport;
@@ -725,7 +726,7 @@ public:
 		lightVecOrig.copyFrom(&lightVec);
 		
 		//totTimePassedGraphics = 0;
-		totTimePassedPhysics = 0;
+		//totTimePassedPhysics = 0;
 		
 		identMatrix.identity();
 		
@@ -735,12 +736,13 @@ public:
 		sphereMapOn = false;
 		waitingOnDestruction = false;
 		
+		physicsOn = true;
 		isPressingMove = false;
 		fxaaOn = false;
 		doPathReport = false;
 		refreshPaths = false;
 		placingTemplate = true;
-		smoothMove = false;
+		smoothMove = true;
 		waterBulletOn = false;
 		ignoreFrameLimit = false;
 		autoMove = false;
@@ -1566,8 +1568,10 @@ public:
 		keyMap[KEYMAP_RIGHT] = 'f';
 		keyMap[KEYMAP_FIRE_PRIMARY] = ' ';
 		keyMapMaxCoolDown[KEYMAP_FIRE_PRIMARY] = 20;
-		keyMap[KEYMAP_GRAB_THROW] = 'w';
-		keyMapMaxCoolDown[KEYMAP_GRAB_THROW] = 200;
+		keyMap[KEYMAP_GRAB] = 'w';
+		keyMapMaxCoolDown[KEYMAP_GRAB] = 200;
+		keyMap[KEYMAP_THROW] = 'y';
+		keyMapMaxCoolDown[KEYMAP_THROW] = 200;
 		
 		/////////////////////////
 		/////////////////////////
@@ -1734,7 +1738,7 @@ public:
 		fboMap["swapFBO1"].init(1, newPitch, newPitch, 1, false, GL_NEAREST, GL_REPEAT);
 		
 		
-		
+		loadConstants();
 		
 		// LEAVE THIS IN FOR VSYNC
 		myDynBuffer = new DynBuffer();
@@ -4308,14 +4312,22 @@ DISPATCH_EVENT_END:
 		}
 		
 		if (smoothMove) {
-			tempLerpPos.copyFrom(&camLerpPos);
-			tempLerpPos.addXYZRef(cameraPos,-1.0f);
-			tempLerpPos.multXYZ(timeDelta*8.0f);
 			
-			amountInvalidMove = tempLerpPos.length();
+			
+			// tempLerpPos.copyFrom(cameraPos);
+			// tempLerpPos.lerpXYZ(&camLerpPos,0.1f);
+			
+			//&camLerpPos);
+			// tempLerpPos.addXYZRef(cameraPos,-1.0f);
+			// tempLerpPos.multXYZ(timeDelta*8.0f);
+			
+			cameraPos->lerpXYZ(&camLerpPos,conVals[E_CONST_CAM_LERP_AMOUNT]);
+			
+			amountInvalidMove = camLerpPos.length();
 			depthInvalidMove = amountInvalidMove > 0.01f;
 			
-			cameraPos->addXYZRef(&tempLerpPos);
+			//cameraPos->addXYZRef(&tempLerpPos);
+			
 		}
 		else {
 			cameraPos->copyFrom(&camLerpPos);
@@ -5110,7 +5122,9 @@ DISPATCH_EVENT_END:
 				break;
 				
 				case 'k':
-					gameAI->getKB();
+					gem->destroyTerrain = !(gem->destroyTerrain);
+					cout << "destroyTerrain: " << gem->destroyTerrain << "\n";
+					//gameAI->getKB();
 				break;
 				
 				case 'l':
@@ -5124,8 +5138,8 @@ DISPATCH_EVENT_END:
 					break;
 
 				case ';':
-					doPageRender = !doPageRender;
-					cout << "doPageRender: " << doPageRender << "\n";
+					physicsOn = !physicsOn;
+					cout << "physicsOn: " << physicsOn << "\n";
 				break;
 				case 'p':
 					
@@ -5148,13 +5162,14 @@ DISPATCH_EVENT_END:
 					// }
 					
 					//gameFluid[E_FID_SML]->updateTBOData(false,true);
-					gameFluid[E_FID_BIG]->updateTBOData(false,true);
+					//gameFluid[E_FID_BIG]->updateTBOData(false,true);
 					
+					gem->showHealth = !(gem->showHealth);
 					
 					break;
 					
 				case 'y':
-					
+					// throw
 				break;
 				case 't':
 					testOn = !testOn;
@@ -6619,8 +6634,12 @@ DISPATCH_EVENT_END:
 					gem->makeShoot(actorId, E_ENTTYPE_BULLET);
 				}
 				
-				if (keyMapResultUnzipped[KEYMAP_GRAB_THROW]) {
-					gem->makeGrabThrow(actorId,-1);
+				if (keyMapResultUnzipped[KEYMAP_GRAB]) {
+					gem->makeGrab(actorId,-1);
+				}
+				
+				if (keyMapResultUnzipped[KEYMAP_THROW]) {
+					gem->makeThrow(actorId,-1);
 				}
 				
 				if (keyMapResultUnzipped[KEYMAP_UP]) {
@@ -6738,7 +6757,6 @@ DISPATCH_EVENT_END:
 		float ymod = 0.0f;
 		float zmod = 0.0f;
 		
-		float tempZoom = 1.0;
 		
 		float tempMoveSpeed;
 		
@@ -6875,7 +6893,7 @@ DISPATCH_EVENT_END:
 			}
 			else {
 				targetCameraPos.copyFrom(&lookAtVec);
-				targetCameraPos.multXYZ( -(gem->subjectDistance)*subjectZoom*tempZoom );
+				targetCameraPos.multXYZ( -(gem->subjectDistance)*subjectZoom );
 				
 				targetCameraPos.addXYZRef(BTV2FIV(
 					skullPos
@@ -6911,7 +6929,7 @@ DISPATCH_EVENT_END:
 			
 			modXYZ.copyFrom(&targetCameraPos);
 			modXYZ.addXYZRef(cameraGetPosNoShake(),-1.0f);
-			modXYZ.multXYZ(0.5f);
+			//modXYZ.multXYZ(0.25f);
 			
 			moveCamera(&modXYZ);
 			
@@ -7675,7 +7693,8 @@ DISPATCH_EVENT_END:
 				return constRootJS->Child(conName)->number_value;
 			}
 			else {
-				
+				doAlert();
+				cout << "Missing: " << conName << "\n";
 			}
 		}
 		return 0.0f;
@@ -8422,6 +8441,11 @@ DISPATCH_EVENT_END:
 		
 		bool noTravel = false;
 		
+		float maxPhysTime = 
+			conVals[E_CONST_STEP_TIME_IN_MICRO_SEC]*
+			conVals[E_CONST_PHYS_STEPS_PER_FRAME];
+		
+		
 		frameSkipCount++;
 		
 		
@@ -8488,7 +8512,11 @@ DISPATCH_EVENT_END:
 		bulletTimer.reset();
 		
 		//totTimePassedGraphics += curTimePassed;
-		totTimePassedPhysics += curTimePassed*conVals[E_CONST_SPEEDUP_FACTOR];
+		// totTimePassedPhysics += curTimePassed*conVals[E_CONST_SPEEDUP_FACTOR];
+		
+		// if (totTimePassedPhysics > maxPhysTime) {
+		// 	totTimePassedPhysics = maxPhysTime;
+		// }
 		
 		
 		if (currentTick > 4) {
@@ -8536,7 +8564,10 @@ DISPATCH_EVENT_END:
 					
 				// }
 				
-				gamePhysics->updateAll();
+				if (physicsOn) {
+					gamePhysics->updateAll();
+				}
+				
 				
 			}
 		}

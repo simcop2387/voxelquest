@@ -90,7 +90,6 @@ public:
   CompareStruct compareStruct;
   typedef map <string, UICStruct>::iterator itUICStruct;
   typedef map <string, JSONStruct>::iterator itJSStruct;
-  unsigned long int totTimePassedPhysics;
   bool (keysPressed) [MAX_KEYS];
   double (keyDownTimes) [MAX_KEYS];
   unsigned char (keyMap) [KEYMAP_LENGTH];
@@ -125,6 +124,7 @@ public:
   int destructCount;
   bool sphereMapOn;
   bool waitingOnDestruction;
+  bool physicsOn;
   bool isPressingMove;
   bool fxaaOn;
   bool doPathReport;
@@ -1393,6 +1393,7 @@ public:
   bool orgOn;
   bool isDraggingObject;
   bool firstPerson;
+  bool showHealth;
   int weaponToPlace;
   int currentActorUID;
   int curPoseType;
@@ -1451,6 +1452,7 @@ public:
   int getRandomObjId ();
   void fillWithRandomObjects (int parentUID, int gen);
   void removeEntity (bool isReq, int ind);
+  bool isRecycledFunc (int poolId);
   BaseObjType placeNewEnt (bool isReq, int et, FIVector4 * cellPos, bool isHidden = false);
   void performDrag (bool isReq, int _draggingFromInd, int _draggingFromType, int _draggingToInd, int _draggingToType, FIVector4 * _worldMarker);
   void setCurrentActor (BaseObj * ge);
@@ -1472,7 +1474,9 @@ public:
   void nextSwing (int actorId, int handNum);
   void makeShoot (int actorId, int bulletType);
   void bindPose (int actorId, int handNum, bool bindOn);
-  void makeGrabThrow (int actorId, int _handNum);
+  void makeGrab (int actorId, int _handNum);
+  void makeDropAll (int actorId);
+  void makeThrow (int actorId, int _handNum);
   void makeSwing (int actorId, int handNum);
   void makeTurn (int actorId, float dirFactor);
   void makeMoveVec (int actorId, btVector3 moveVec);
@@ -1944,12 +1948,14 @@ public:
   float BASE_ENT_HEIGHT;
   float BASE_ENT_RAD;
   float CONTACT_THRESH;
-  double totTime;
   Matrix4 myMatrix4;
   Vector4 myVector4;
   Vector4 resVector4;
   btRigidBody * lastBodyPick;
   int lastBodyUID;
+  btVector3 orig;
+  btVector3 xyMask;
+  btVector3 zMask;
   GamePhysics ();
   void init (Singleton * _singleton);
   void pickBody (FIVector4 * mouseMoveOPD);
@@ -1960,6 +1966,7 @@ public:
   void flushImpulses ();
   void procCol (BaseObj * * geArr, BodyStruct * * curBodyArr);
   void collideWithWorld (double curStepTime);
+  void remFarAway ();
   void updateAll ();
   ~ GamePhysics ();
 };

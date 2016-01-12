@@ -694,7 +694,7 @@ void main()
 	
 	resColor.rgb += modColor*0.25;
 	
-	resColor = mix(resColor*0.75,resColor,shadVal);	
+	//resColor = mix(resColor*0.75,resColor,shadVal);	
 	//
 	
 	//resColor.rgb = tex2.rgb;

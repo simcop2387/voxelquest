@@ -357,6 +357,8 @@ public:
 		
 		float* curData;
 		
+		float curVelXY;
+		
 		BaseObj* curOwner = getOwner();
 		
 		if (singleton->gem->editPose) {
@@ -370,6 +372,28 @@ public:
 				
 				lerpSpeed = curData[E_PIK_LERPSPEED]*singleton->conVals[E_CONST_ANIMLERP_MULT];
 				timeInterval = curData[E_PIK_TIMEINTERVAL]*singleton->conVals[E_CONST_TIMEINTERVAL_MULT];
+				
+				if (targetPose.group == E_PG_WALKFORWARD) {
+					curVelXY = curOwner->getPlanarVel();
+					
+					if (curOwner->getActionState(E_ACT_ISWALKING,RLBN_NEIT)) {
+						curVelXY = max(curVelXY,singleton->conVals[E_CONST_MIN_WALK_ANIM_VEL]);
+					}
+					
+					if (curOwner->baseContact()) {
+						
+					}
+					else {
+						curVelXY = 0.0f;
+					}
+					
+					lerpSpeed *= (curVelXY*singleton->conVals[E_CONST_WALKANIM_LERP_MOD]);
+					
+					if (curVelXY > 0.0) {
+						timeInterval /= (curVelXY*singleton->conVals[E_CONST_WALKANIM_INTERVAL_MOD]);
+					}
+					
+				}
 				
 				targetPose.step = stepCount;
 				

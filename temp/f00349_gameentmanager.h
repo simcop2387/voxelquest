@@ -29,7 +29,7 @@ void GameEntManager::init (Singleton * _singleton)
 		highlightedLimb = -1;
 		
 		curActorNeedsRefresh = false;
-		destroyTerrain = true;
+		destroyTerrain = GEN_DEBRIS;
 		editPose = false;
 		EDIT_POSE = editPose;
 		combatOn = true;
@@ -37,7 +37,7 @@ void GameEntManager::init (Singleton * _singleton)
 		orgOn = false;
 		isDraggingObject = false;
 		firstPerson = false;
-		
+		showHealth = false;
 		
 		lastSubjectDistance = 0.0f;
 		
@@ -562,6 +562,18 @@ void GameEntManager::removeEntity (bool isReq, int ind)
 			}
 		}
 	}
+bool GameEntManager::isRecycledFunc (int poolId)
+                                        {
+		if (
+			(entPoolStack[poolId].maxCount == 0) ||
+			(entPoolStack[poolId].entIds.size() < entPoolStack[poolId].maxCount)	
+		) {
+			return false;
+		}
+		else {
+			return true;
+		}
+	}
 BaseObjType GameEntManager::placeNewEnt (bool isReq, int et, FIVector4 * cellPos, bool isHidden)
           {
 		
@@ -641,15 +653,9 @@ BaseObjType GameEntManager::placeNewEnt (bool isReq, int et, FIVector4 * cellPos
 		
 		
 		if (
-			(entPoolStack[poolId].maxCount == 0) ||
-			(entPoolStack[poolId].entIds.size() < entPoolStack[poolId].maxCount)
+			isRecycledFunc(et)
 		) {
-			isRecycled = false;
-			curEntId = gameObjCounter;
-			entPoolStack[poolId].entIds.push_back(gameObjCounter);
 			
-		}
-		else {
 			
 			isRecycled = true;
 			curEntId = entPoolStack[poolId].entIds[
@@ -660,6 +666,13 @@ BaseObjType GameEntManager::placeNewEnt (bool isReq, int et, FIVector4 * cellPos
 			if (entPoolStack[poolId].curIndex == entPoolStack[poolId].maxCount) {
 				entPoolStack[poolId].curIndex = 0;
 			}
+			
+		}
+		else {
+			isRecycled = false;
+			curEntId = gameObjCounter;
+			entPoolStack[poolId].entIds.push_back(gameObjCounter);
+			
 		}
 		
 		FIVector4 newPos;
@@ -1392,8 +1405,8 @@ void GameEntManager::bindPose (int actorId, int handNum, bool bindOn)
 		}
 		
 	}
-void GameEntManager::makeGrabThrow (int actorId, int _handNum)
-                                                      {
+void GameEntManager::makeGrab (int actorId, int _handNum)
+                                                 {
 		
 		int res;
 		
@@ -1402,9 +1415,6 @@ void GameEntManager::makeGrabThrow (int actorId, int _handNum)
 		}
 		
 		int handNum = _handNum;
-		
-		
-		
 		
 		BaseObj* ca = &(gameObjects[actorId]);
 		GameOrg* curOrg = gameOrgs[ca->orgId];
@@ -1421,64 +1431,9 @@ void GameEntManager::makeGrabThrow (int actorId, int _handNum)
 			
 		}
 		
-		// ca->weaponActive = !ca->weaponActive;
-		
-		// return;
-		
-		
-		if (ca->isGrabbingId[handNum] > -1) {
-			// throw current obj
+		if (ca->isGrabbingId[handNum] < 0) {
 			
-			
-			
-			//##
-			
-			// gameObjects[ca->isGrabbingId[handNum]].setVel(
-			// 	cos(ca->ang)*20.0f,
-			// 	sin(ca->ang)*20.0f,
-			// 	30.0f	
-			// );
-			
-			grabObj = &(gameObjects[ca->isGrabbingId[handNum]]);
-			grabObjOrg = gameOrgs[grabObj->orgId];
-			
-			
-			if (ca->hasBodies()) {
-				gameObjects[ca->isGrabbingId[handNum]].applyImpulseOtherRot(
-					btVector3(0.0,200,200)*gameObjects[ca->isGrabbingId[handNum]].getTotalMass(),
-					ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
-					true,
-					0
-				);
-			}
-			
-			singleton->playSoundEnt(
-				"woosh0",
-				ca,
-				0.2f
-			);
-			
-			bindPose(actorId,handNum,false);
-			
-			//ca->weaponActive = false;
-			
-			
-			
-			//gameObjects[ca->isGrabbingId[handNum]].setDamping(0.1f,0.9f);
-			
-			//##
-			
-			
-			//gameObjects[ca->isGrabbingId[handNum]].isGrabbedById = -1;
-			gameObjects[ca->isGrabbingId[handNum]].setGrabbedBy(-1, -1);
-			ca->isGrabbingId[handNum] = -1;
-			
-			
-		}
-		else {
 			// find obj to pickup
-			
-			
 			
 			res = getClosestObj(
 				actorId,
@@ -1505,19 +1460,98 @@ void GameEntManager::makeGrabThrow (int actorId, int _handNum)
 					0.2f
 				);
 				
-				
-				//gameObjects[ca->isGrabbingId[handNum]].setDamping(0.999f,0.9f);
-				//ca->weaponActive = true;
 				ca->isGrabbingId[handNum] = res;
 				grabObj->setGrabbedBy(actorId, handNum);
 				
 				bindPose(actorId,handNum,true);
 				
 				
-				
-				//cout << "grab " << ca->isGrabbingId[handNum] << " " << grabObj->isGrabbedById << "\n";
-				
 			}
+			
+			
+		}
+		
+		
+	}
+void GameEntManager::makeDropAll (int actorId)
+                                      {
+		int i;
+		
+		
+		
+		if (actorId < 0) {
+			return;
+		}
+		
+		BaseObj* ca = &(gameObjects[actorId]);
+		
+		for (i = 0; i < 2; i++) {
+			if (ca->isGrabbingId[i] > -1) {
+				makeThrow(ca->uid,i);
+			}
+		}
+	}
+void GameEntManager::makeThrow (int actorId, int _handNum)
+                                                  {
+		
+		int res;
+		
+		if (actorId < 0) {
+			return;
+		}
+		
+		int handNum = _handNum;
+		
+		BaseObj* ca = &(gameObjects[actorId]);
+		GameOrg* curOrg = gameOrgs[ca->orgId];
+		
+		if (ca->entType != E_ENTTYPE_NPC) {
+			return;
+		}
+		
+		BaseObj* grabObj;
+		GameOrg* grabObjOrg;
+		
+		if (handNum < 0) {
+			handNum = 0;
+			
+			if (ca->isGrabbingId[handNum] < 0) {
+				handNum = 1;
+			}
+			
+		}
+		
+		
+		if (ca->isGrabbingId[handNum] > -1) {
+			// throw current obj
+			
+			grabObj = &(gameObjects[ca->isGrabbingId[handNum]]);
+			grabObjOrg = gameOrgs[grabObj->orgId];
+			
+			
+			if (ca->hasBodies()) {
+				grabObj->applyImpulseOtherRot(
+					btVector3(
+						0.0,
+						singleton->conVals[E_CONST_THROW_STRENGTHXY],
+						singleton->conVals[E_CONST_THROW_STRENGTHZ]
+					)*grabObj->getMarkerMass(),
+					ca->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis(),
+					false,
+					0
+				);
+			}
+			
+			singleton->playSoundEnt(
+				"woosh0",
+				ca,
+				0.2f
+			);
+			
+			bindPose(actorId,handNum,false);
+			grabObj->setGrabbedBy(-1, -1);
+			ca->isGrabbingId[handNum] = -1;
+			
 			
 		}
 		
@@ -1534,6 +1568,11 @@ void GameEntManager::makeSwing (int actorId, int handNum)
 		}
 		
 		BaseObj* ca = &(gameObjects[actorId]);
+		
+		if (ca->entType != E_ENTTYPE_NPC) {
+			return;
+		}
+		
 		GameOrg* curOrg;
 		
 		if (ca->isDead()) {
@@ -1613,10 +1652,19 @@ void GameEntManager::makeMoveVec (int actorId, btVector3 moveVec)
 			return;
 		}
 		
+		float walkAmount; 
+		
+		if (ca->baseContact()) {
+			walkAmount = singleton->conVals[E_CONST_WALK_AMOUNT];
+		}
+		else {
+			walkAmount = singleton->conVals[E_CONST_WALK_AMOUNT_AIR];
+		}
+		
 		if (ca->hasBodies()) {
 			ca->setActionState(E_ACT_ISWALKING,RLBN_NEIT,true);
 			ca->applyImpulse(
-				moveVec*singleton->conVals[E_CONST_WALK_AMOUNT]*ca->getMarkerMass(),
+				moveVec*walkAmount*ca->getMarkerMass(),
 				true,
 				0
 			);
@@ -1632,11 +1680,20 @@ void GameEntManager::makeMove (int actorId, btVector3 moveDir, bool relative, bo
 			return;
 		}
 		
+		float walkAmount; 
+		
+		if (ca->baseContact()) {
+			walkAmount = singleton->conVals[E_CONST_WALK_AMOUNT];
+		}
+		else {
+			walkAmount = singleton->conVals[E_CONST_WALK_AMOUNT_AIR];
+		}
+		
 		if (ca->hasBodies()) {
 			ca->setActionState(E_ACT_ISWALKING,RLBN_NEIT,true);
 			
 			
-			newMoveDir *= singleton->conVals[E_CONST_WALK_AMOUNT];
+			newMoveDir *= walkAmount;
 			
 			if (ca->baseContact()) {
 				newMoveDir +=	btVector3(
@@ -1852,7 +1909,7 @@ void GameEntManager::makeHit (int attackerId, int victimId, int weaponId)
 							
 							if (geVictim->entType == E_ENTTYPE_NPC) {
 								geVictim->setActionState(E_ACT_ISHIT,RLBN_NEIT,true);
-								//geVictim->bindingPower = 0.0f;
+								geVictim->bindingPower = singleton->conVals[E_CONST_BINDING_POW_ON_HIT];
 								lastHealth = geVictim->curHealth;
 								geVictim->curHealth -= 32;
 								if (geVictim->curHealth < 0) {
@@ -1867,6 +1924,8 @@ void GameEntManager::makeHit (int attackerId, int victimId, int weaponId)
 									// 	btVector3(1.0f,1.0f,1.0f)
 									// );
 									// geVictim->bodies[E_BDG_CENTER].body->setAngularVelocity(btVector3(1.0f,1.0f,0.0f)*20.0f);
+									
+									makeDropAll(geVictim->uid);
 									
 									singleton->playSoundEnt("dyingm0",geVictim,0.15,0.2f);
 									
@@ -2255,9 +2314,9 @@ void GameEntManager::loadOrgFromMenu (string currentFieldString)
 void GameEntManager::makeDirty ()
                          {
 		
-		if (currentActor != NULL) {
-			currentActor->wakeAll();
-		}
+		// if (currentActor != NULL) {
+		// 	currentActor->wakeAll();
+		// }
 		
 		//testOrg->gph->childrenDirty = true;
 	}

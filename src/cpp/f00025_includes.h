@@ -48,19 +48,19 @@ bool EDIT_POSE = false;
 // const static int DEF_WIN_H = 720;
 
 
-//#define STREAM_RES 1
+// #define STREAM_RES 1
 
 #ifdef STREAM_RES
 	const static int DEF_WIN_W = 1920; //2048;//
 	const static int DEF_WIN_H = 1080; //1024;//
 #else
-	const static int DEF_WIN_W = 1536;
-	const static int DEF_WIN_H = 768;
+	const static int DEF_WIN_W = 1440;//1536;
+	const static int DEF_WIN_H = 720;//768;
 #endif
 
 
 
-const static int DEF_VOL_SIZE = 64;
+const static int DEF_VOL_SIZE = 128;
 
 const static int DEF_SCALE_FACTOR = 4;
 const static int RENDER_SCALE_FACTOR = 1;
