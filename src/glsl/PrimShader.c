@@ -93,6 +93,9 @@ uniform sampler3D Texture13;
 //E_VW_WORLD
 uniform sampler3D Texture14;
 
+//noisefbolinear
+uniform sampler2D Texture15;
+
 // // polyFBO
 // uniform sampler2D Texture14;
 
@@ -207,7 +210,7 @@ const int TOT_STEPS_POLY = 16;
 const float MAX_SHAD_DIS_PRIM = 64.0;
 const int HARD_STEPS = 8;
 const int HARD_STEPS_PRIM = 8;
-const int SOFT_STEPS = 16;
+const int SOFT_STEPS = 32;
 
 
 //x: basic pass, y: detail pass
@@ -3608,9 +3611,50 @@ float newNoise(vec3 pos) {
 // }
 
 
+// vec3 opRep( vec3 p, vec3 c )
+// {
+// 		return mod(p,c)-0.5*c;
+// }
 
-
-
+float getGV(vec3 pos, float _res, float camDis) {
+	float res = _res;
+	// float grassMod = 4.0;
+	
+	// vec3 newPos = pos;//opRep(pos*grassMod, vec3(1.0));
+	// newPos.z = 0.0;
+	
+	// // vec3 newPos2 = floor(newPos.xyz*(grassMod))/(grassMod);
+	// // newPos2.z = 0.0;
+	
+	// //float myVal2 = randf3( newPos2 );
+	
+	// vec3 newPos2 = floor(newPos.xyz*(grassMod))/(grassMod);
+	// newPos2.z = 0.0;
+	
+	// float myVal2 = randf3( newPos2 );
+	
+	
+	
+	// float lenMod = clamp(
+	// 	((newPos-newPos2)*grassMod - 0.5)*2.0,
+	// 	0.0,
+	// 	1.0
+	// );
+	
+	float lenMod = 0.0;
+	camDis = clamp(1.0-camDis*256.0,0.0,1.0);
+	
+	if (camDis > 0.0) {
+		lenMod = texture(Texture15, pos.xy*(1.0/8.0)).r*camDis;
+	}
+	
+	
+	
+	
+	res = opD(res,lenMod);
+	
+	return res;
+}
 
 vec2 mapLand(vec3 pos) {
 	
@@ -3626,6 +3670,8 @@ vec2 mapLand(vec3 pos) {
 	// res.x = opS(res.x, -lv1);
 	
 	
+	//res.x = getGV(pos, res.x, camDis);
+	
 	res.x = remBox(pos,res.x, 4.0);
 	
 	
@@ -3634,6 +3680,8 @@ vec2 mapLand(vec3 pos) {
 	return res;
 	
 }
+
+
 
 vec4 mapLandMicro(vec3 pos) { //, vec3 terNorm
 	
@@ -3681,9 +3729,7 @@ vec4 mapLandMicro(vec3 pos) { //, vec3 terNorm
 	
 	
 	
-	
-	
-	
+	//res.x = getGV(pos, res.x, camDis);
 	
 	float oldRes = res.x;
 	
@@ -4076,7 +4122,7 @@ vec3 normLandMicro( vec3 pos, vec3 terNorm, float camDis )
 {
 		globPrimaryRay = false;
 		vec3 eps = vec3( 0.0, 0.0, 0.0 );
-		eps.x = mix(0.1,20.0,camDis);
+		eps.x = mix(0.2,20.0,camDis);
 		
 		vec3 nor = vec3(
 				mapLandMicro(pos+eps.xyy).x - mapLandMicro(pos-eps.xyy).x,
@@ -4309,11 +4355,6 @@ vec4 castLand(
 				
 				float grassMod = 32.0;//mix(2.0,0.000001,camDis);
 				float myVal2 = randf3( floor(pos.xyz*(grassMod))/(grassMod) )*clamp(1.0-camDis*4.0,0.0,1.0);
-				
-				
-				
-				
-				
 				
 				float hv = clamp(1.0-(heightMapMaxInCells-pos.z)/heightMapMaxInCells, 0.0,1.0)*0.3
 					+ abs(sin(pos.x/512.0)*sin(pos.y/512.0)*sin(pos.z/512.0))*0.01;
@@ -5697,6 +5738,7 @@ void main() {
 						
 						#ifdef DOTER
 					
+								//shadowRes = texture(Texture15, baseCoords.xy).r;
 								//shadowRes = globCurSteps/float(TOT_STEPS*2.0);
 					
 								if (false) {// placingGeom||(MAX_PRIM_IDS > 0)) {

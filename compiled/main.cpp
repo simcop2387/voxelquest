@@ -48,7 +48,7 @@ bool EDIT_POSE = false;
 // const static int DEF_WIN_H = 720;
 
 
-#define STREAM_RES 1
+//#define STREAM_RES 1
 
 #ifdef STREAM_RES
 	const static int DEF_WIN_W = 1920; //2048;//
@@ -1418,10 +1418,6 @@ void OGL_displaylist_clean();
 
 
 ///
-
-
-
-// @@@@@
 
 
 
@@ -3576,7 +3572,13 @@ void initNetMasks() {
 	
 }
 
-
+bool replaceStr(std::string& str, const std::string& from, const std::string& to) {
+    size_t start_pos = str.find(from);
+    if(start_pos == std::string::npos)
+        return false;
+    str.replace(start_pos, from.length(), to);
+    return true;
+}
 
 // struct CommonExampleInterface*    BenchmarkCreateFunc(struct CommonExampleOptions& options)
 // {
@@ -3600,6 +3602,7 @@ void initNetMasks() {
 // const static unsigned long int STEP_TIME_IN_MICRO_SEC = 32000;
 
 #define E_CONST(DDD) \
+DDD(E_CONST_JUMP_COOLDOWN_MAX) \
 DDD(E_CONST_HIT_COOLDOWN_MAX) \
 DDD(E_CONST_BINDING_MULT) \
 DDD(E_CONST_AIRANIM_THRESH) \
@@ -3874,15 +3877,61 @@ enum E_VOLUME_WRAPPERS {
 // 	"E_VW_LENGTH"
 // };
 
-// do not reorder
-enum E_GUI_CHILD_TYPES {
-	E_GCT_INV_ITEM,			// 0
-	E_GCT_SHADER_PARAM,		// 1
-	E_GTC_GENERIC, 			// 2
-	E_GTC_CONTAINER,		// 3
-	E_GTC_CONTAINER_PARENT, // 4
-	E_GCT_LENGTH			// 5
+
+
+const static int MAX_STAT_VALUE = 10;
+
+#define E_CHAR_STAT(DDD) \
+DDD(E_CS_STRENGTH) \
+DDD(E_CS_DEXTERITY) \
+DDD(E_CS_AGILITY) \
+DDD(E_CS_INTELLIGENCE) \
+DDD(E_CS_DISCIPLINE) \
+DDD(E_CS_CHARISMA) \
+DDD(E_CS_LENGTH)
+
+string E_CHAR_STAT_STRINGS[] = {
+	E_CHAR_STAT(DO_DESCRIPTION)
 };
+
+enum E_CHAR_STAT_VALS {
+	E_CHAR_STAT(DO_ENUM)
+};
+
+
+
+
+#define E_GUI_CHILD_TYPE(DDD) \
+DDD(E_GCT_INV_ITEM) \
+DDD(E_GCT_SHADER_PARAM) \
+DDD(E_GCT_GENERIC) \
+DDD(E_GCT_CONTAINER) \
+DDD(E_GCT_CONTAINER_PARENT) \
+DDD(E_GCT_STATS) \
+DDD(E_GCT_LENGTH)
+
+string E_GUI_CHILD_TYPE_STRINGS[] = {
+	E_GUI_CHILD_TYPE(DO_DESCRIPTION)
+};
+
+enum E_GUI_CHILD_TYPE_VALS {
+	E_GUI_CHILD_TYPE(DO_ENUM)
+};
+
+
+
+
+// // do not reorder
+// // childType
+// enum E_GUI_CHILD_TYPES {
+// 	E_GCT_INV_ITEM,			// 0
+// 	E_GCT_SHADER_PARAM,		// 1
+// 	E_GCT_GENERIC, 			// 2
+// 	E_GCT_CONTAINER,		// 3
+// 	E_GCT_CONTAINER_PARENT, // 4
+// 	E_GCT_STATS, 			// 6
+// 	E_GCT_LENGTH			// 5
+// };
 
 enum E_FONT_WRAPPERS {
 	EFW_TEXT,
@@ -4876,15 +4925,43 @@ struct ActorJointStruct {
 	btTypedConstraint* joint;
 };
 
-// struct PathNode {
-// 	// uint flags;
-// 	// int cameFromInd;
-// 	// int pathCost;
-// 	// int groupId;
-	
-// 	giIndex
-	
-// };
+
+
+
+#define E_SPECIAL_DATA_TYPE(DDD) \
+DDD(E_SDT_SHADERPARAMS) \
+DDD(E_SDT_OBJECTDATA) \
+DDD(E_SDT_STATDATA) \
+DDD(E_SDT_LENGTH)
+
+string E_SPECIAL_DATA_TYPE_STRINGS[] = {
+	E_SPECIAL_DATA_TYPE(DO_DESCRIPTION)
+};
+
+enum E_SPECIAL_DATA_TYPE_VALS {
+	E_SPECIAL_DATA_TYPE(DO_ENUM)
+};
+
+
+
+#define E_FLOATING_MENU(DDD) \
+DDD(E_FM_MAINMENU) \
+DDD(E_FM_DDMENU) \
+DDD(E_FM_CONTMENU) \
+DDD(E_FM_FIELDMENU) \
+DDD(E_FM_STATMENU) \
+DDD(E_FM_LENGTH)
+
+string E_FLOATING_MENU_STRINGS[] = {
+	E_FLOATING_MENU(DO_DESCRIPTION)
+};
+
+enum E_FLOATING_MENU_VALS {
+	E_FLOATING_MENU(DO_ENUM)
+};
+
+
+
 
 
 
@@ -4894,6 +4971,13 @@ struct PoseKey {
 	int RLBN;
 	int step;
 };
+
+
+
+
+
+
+
 
 
 
@@ -4933,6 +5017,21 @@ string E_POSE_GROUP_STRINGS[] = {
 
 enum E_POSE_GROUP_VALS {
 	E_POSE_GROUPS(DO_ENUM)
+};
+
+
+
+#define E_JSON_PARAMS(DDD) \
+DDD(E_JP_STATMENUAVAILDIV) \
+DDD(E_JP_STATMENUAVAILPOINTS) \
+DDD(E_JP_LENGTH)
+
+string E_JSON_PARAM_STRINGS[] = {
+	E_JSON_PARAMS(DO_DESCRIPTION)
+};
+
+enum E_JSON_PARAM_VALS {
+	E_JSON_PARAMS(DO_ENUM)
 };
 
 
@@ -9595,11 +9694,38 @@ struct SphereStruct {
 typedef int BaseObjType;
 
 
-// states:
-// explore
-// seek
-// avoid
-// return
+
+
+struct SkillCard {
+	
+	// whenever x, do y
+	
+	
+	
+	// condition
+	// subject
+	// action
+	// subject
+	
+	// gain / lose
+	
+	
+	std::vector<int> triggers;
+};
+
+struct StatSheet {
+	std::vector<int> availableSkills;
+	std::vector<int> activeSkills;
+	std::vector<int> statusList;
+	
+	int baseStats[E_CS_LENGTH];
+	int availPoints;
+	
+	
+};
+
+
+
 
 class BaseObj
 {
@@ -9611,6 +9737,8 @@ private:
 	
 public:
 	
+	
+	StatSheet statSheet;
 	
 	int objectType;
 	int maxFrames;
@@ -10530,6 +10658,11 @@ public:
 			isGrabbingId[i] = -1;
 			swingType[i] = E_PG_SLSH;
 		}
+		
+		for (i = 0; i < E_CS_LENGTH; i++) {
+			statSheet.baseStats[i] = 5;
+		}
+		statSheet.availPoints = 10;
 		
 		zeroZ = false;
 		jumpCooldown = 0;
@@ -22569,6 +22702,7 @@ public:
   GamePageHolder * closestHolder;
   GamePlant * (gamePlants) [E_PT_LENGTH/2];
   Shader * curShaderPtr;
+  string jsonPostString;
   string currentFieldString;
   string curShader;
   string allText;
@@ -22579,6 +22713,7 @@ public:
   VolumeWrapper * (volumeWrappers) [E_VW_LENGTH];
   vector <CompStruct> compStack;
   vector <int> emptyStack;
+  vector <string> jsonPostStack;
   vector <string> splitStrings;
   vector <string> shaderStrings;
   vector <string> shaderTextureIds;
@@ -22621,12 +22756,9 @@ public:
   TerTexture (terTextures) [MAX_TER_TEX];
   GameGUI * mainGUI;
   UIComponent * mapComp;
-  UIComponent * mainMenu;
-  UIComponent * contMenu;
+  UIComponent * (menuList) [E_FM_LENGTH];
   UIComponent * contMenuBar;
-  UIComponent * ddMenu;
   UIComponent * ddMenuBar;
-  UIComponent * fieldMenu;
   UIComponent * fieldText;
   FontWrapper * (fontWrappers) [EFW_LENGTH];
   GameMusic * (music) [EML_LENGTH];
@@ -22759,7 +22891,6 @@ public:
   void updateCurGeom (int x, int y);
   void mouseMove (int _x, int _y);
   void mouseClick (int button, int state, int _x, int _y);
-  void refreshContainers (bool onMousePos);
   bool feetContact (BaseObj * ge);
   void flushKeyStack ();
   void applyKeyAction (bool isReq, int actorId, uint keyFlags, float camRotX, float camRotY);
@@ -22769,10 +22900,15 @@ public:
   void performCamShake (BaseObj * ge, float fp);
   void explodeBullet (BaseObj * ge);
   void getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit);
+  string makePretty (string sourceString, string remString);
   void cleanJVPointer (JSONValue * * jv);
-  void getObjectData ();
+  void getSpecialData (int datEnum, string datString);
+  void showStatMenu (bool visible);
+  void refreshContainers (bool onMousePos);
   JSONValue * fetchJSONData (string dataFile, bool doClean, JSONValue * params = NULL);
   bool processJSONFromString (string * sourceBuffer, JSONValue * * destObj);
+  void specialReplace (string & allTextString, string preDelim, string pstDelim);
+  void jsonPostProc ();
   bool processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONValue * * destObj);
   void doAlert ();
   bool loadJSON (string path, JSONValue * * destObj);
@@ -23612,7 +23748,7 @@ public:
   void endDrag (int upInd);
   bool handleGUI (UIComponent * comp, bool mouseUpEvent, bool mouseDownEvent, bool noTravel, bool wasDoubleClick);
   BaseObj * getEquipped (BaseObj * parentObj);
-  void updateDragInfo (int bestInd, bool wasDoubleClick);
+  void updateDragInfo (int bestInd, bool lbDown, bool wasDoubleClick);
   int getRandomContId ();
   int getRandomNPCId ();
   int getRandomMonsterId ();
@@ -24457,8 +24593,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		// todo: mem leak, should delete?
-		externalJSON["shaderParams"].jv = NULL;
-		externalJSON["objectData"].jv = NULL;
+		
+		for (i = 0; i < E_SDT_LENGTH; i++) {
+			externalJSON[E_SPECIAL_DATA_TYPE_STRINGS[i]].jv = NULL;
+		}
+		
 		externalJSON["kb.js"].jv = NULL;
 		
 		
@@ -24565,11 +24704,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		threadNetRecv.init();
 		
 		
+		for (i = 0; i < E_FM_LENGTH; i++) {
+			menuList[i] = NULL;
+		}
+		
 		mapComp = NULL;
-		mainMenu = NULL;
-		ddMenu = NULL;
-		contMenu = NULL;
-		fieldMenu = NULL;
 		fieldText = NULL;
 		selectedEnt = NULL;
 		highlightedEnt = NULL;
@@ -25367,7 +25506,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		keyMap[KEYMAP_BACKWARD] = 'd';
 		keyMap[KEYMAP_LEFT] = 's';
 		keyMap[KEYMAP_RIGHT] = 'f';
-		keyMap[KEYMAP_FIRE_PRIMARY] = ' ';
+		keyMap[KEYMAP_FIRE_PRIMARY] = '7';
 		keyMapMaxCoolDown[KEYMAP_FIRE_PRIMARY] = 20;
 		keyMap[KEYMAP_GRAB] = 'w';
 		keyMapMaxCoolDown[KEYMAP_GRAB] = 200;
@@ -26249,15 +26388,15 @@ void Singleton::toggleDDMenu (int x, int y, bool toggled)
 				
 			}
 			
-			ddMenu->isDirty = true;
-			ddMenu->visible = true;
-			ddMenuBar = ddMenu->getChild(0)->getChild(0);
+			menuList[E_FM_DDMENU]->isDirty = true;
+			menuList[E_FM_DDMENU]->visible = true;
+			ddMenuBar = menuList[E_FM_DDMENU]->getChild(0)->getChild(0);
 			ddMenuBar->lastDrag.x = (guiX);
-			ddMenuBar->lastDrag.y = min((float)(guiY), (float)( (guiWinH - ddMenu->getChild(0)->resultDimInPixels.y) ));
+			ddMenuBar->lastDrag.y = min((float)(guiY), (float)( (guiWinH - menuList[E_FM_DDMENU]->getChild(0)->resultDimInPixels.y) ));
 			ddMenuBar->forceDragUpdate = true;
 		}
 		else {
-			ddMenu->visible = false;
+			menuList[E_FM_DDMENU]->visible = false;
 			markerFound = false;
 		}
 	}
@@ -26268,6 +26407,8 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		
 		
 		BaseObj* tmpObj = NULL;
+		
+		StatSheet* curStatSheet;
 		
 		bool hitPicker = false;
 		bool wasDoubleClick = false;
@@ -26295,6 +26436,9 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		bool isInteractiveComp = false;
 		bool suppressSound = false;
 		
+		float newVal;
+		float oldVal;
+		float difVal;
 		
 		
 		switch (comp->guiClass) {
@@ -26522,6 +26666,41 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 		else if (comp->uid.compare("$options.graphics.sphereMapPrec") == 0) {
 			sphereMapPrec = mixf(0.0f,200.0f,curValue);
 		}
+		else if (comp->uid.compare("#statMenu.stat") == 0) {
+			if (gem->currentActor != NULL) {
+				
+				curStatSheet = &(gem->currentActor->statSheet);
+				
+				oldVal = curStatSheet->baseStats[comp->index];
+				newVal = roundf(curValue*comp->divisions);
+				difVal = newVal-oldVal;
+				
+				tempComp = getGUIComp("statMenu.availPoints");
+				
+				curStatSheet->availPoints -= difVal;
+				curStatSheet->baseStats[comp->index] = newVal;
+				
+				while (curStatSheet->availPoints < 0) {
+					curStatSheet->availPoints += 1;
+					curStatSheet->baseStats[comp->index] -= 1;
+				}
+				
+				comp->setValue(
+					curStatSheet->baseStats[comp->index]/comp->divisions
+				);
+				tempComp->setValue(
+					curStatSheet->availPoints/tempComp->divisions
+				);
+				
+				
+				
+				
+				
+			}
+			
+		}
+		
+		
 		
 		if (
 			(button == GLUT_LEFT_BUTTON) ||
@@ -26597,6 +26776,7 @@ void Singleton::initStyleSheet ()
                               {
 		
 		int i;
+		int j;
 		
 		StyleSheet* mainSS = getNewStyleSheet("defaultSS");
 		StyleSheetState* curState = &(mainSS->compStates[E_COMP_UP]);
@@ -26673,8 +26853,8 @@ void Singleton::initStyleSheet ()
 		headerSS->copyFrom(mainSS);
 		
 		curState = &(headerSS->compStates[E_COMP_UP]);
-		curState->setVal(E_SS_BGCOL0_R, 0.0f, 0.2f, 0.5f, 1.0f);
-		curState->setVal(E_SS_BGCOL1_R, 0.0f, 0.4f, 0.8f, 0.5f);
+		curState->setVal(E_SS_BGCOL0_R, 0.2f, 0.1f, 0.0f, 1.0f);
+		curState->setVal(E_SS_BGCOL1_R, 0.1f, 0.05f, 0.0f, 1.0f);
 		curState->setVal(E_SS_FGCOLTEXT0_R, 1.0f, 0.75f, 0.0f, 1.0f);
 		curState->setVal(E_SS_FGCOLTEXT1_R, 1.0f, 0.75f, 0.0f, 1.0f);
 		curState->setVal(E_SS_BDCOL_R, 1.0f, 0.75f, 0.0f, 1.0f);
@@ -26686,13 +26866,24 @@ void Singleton::initStyleSheet ()
 		
 		
 		
+		StyleSheet* sectionSS = getNewStyleSheet("sectionSS");
+		sectionSS->copyFrom(mainSS);
+		
+		for (i = 0; i < E_COMP_TOTAL; i++) {
+			curState = &(sectionSS->compStates[i]);
+			curState->setVal(E_SS_FGCOLTEXT0_R, 0.5f, 0.5f, 0.5f, 1.0f);
+			curState->setVal(E_SS_FGCOLTEXT1_R, 0.4f, 0.4f, 0.4f, 1.0f);
+			curState->setVal(E_SS_BGCOL0_R, 0.2f, 0.2f, 0.2f, 1.0f);
+			curState->setVal(E_SS_BGCOL1_R, 0.1f, 0.1f, 0.1f, 0.5f);
+		}
+		
 		StyleSheet* redSS = getNewStyleSheet("redSS");
 		redSS->copyFrom(mainSS);
 		
 		for (i = 0; i < E_COMP_TOTAL; i++) {
 			curState = &(redSS->compStates[i]);
-			curState->setVal(E_SS_BGCOL0_R, 1.0f, 0.2f, 0.5f, 1.0f);
-			curState->setVal(E_SS_BGCOL1_R, 0.8f, 0.4f, 0.8f, 0.5f);
+			curState->setVal(E_SS_BGCOL0_R, 1.0f, 0.1f, 0.2f, 1.0f);
+			curState->setVal(E_SS_BGCOL1_R, 0.8f, 0.05f, 0.1f, 0.75f);
 		}
 		
 		
@@ -26707,6 +26898,17 @@ void Singleton::initStyleSheet ()
 		}
 		
 		
+		StyleSheet* spacerSS = getNewStyleSheet("spacerSS");
+		spacerSS->copyFrom(mainSS);
+		
+		for (i = 0; i < E_COMP_TOTAL; i++) {
+			curState = &(spacerSS->compStates[i]);
+			
+			for (j = 0; j <= E_SS_BDCOL_R; j += 4) {
+				curState->setVal(j, 0.0f, 0.0f, 0.0f, 0.0f);
+			}
+			
+		}
 		
 		
 		
@@ -27164,7 +27366,7 @@ void Singleton::doShaderRefresh (bool doBake)
 			
 			processJSONFromString(
 				&stringBuf,
-				&(externalJSON["shaderParams"].jv)
+				&(externalJSON["E_SDT_SHADERPARAMS"].jv)
 			);
 			
 			
@@ -28425,9 +28627,9 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				case 27: // esc
 					//std::exit(0);
 					
-					if (ddMenu->visible || contMenu->visible) {
+					if (menuList[E_FM_DDMENU]->visible || menuList[E_FM_CONTMENU]->visible) {
 						toggleDDMenu(x,y,false);
-						contMenu->visible = false;
+						menuList[E_FM_CONTMENU]->visible = false;
 						gem->closeAllContainers();
 						escCount = 0;
 					}
@@ -28595,11 +28797,11 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				case 'y':
 					// throw
 				break;
-				case 't':
+				case 'T':
 					testOn = !testOn;
 					
 				break;
-				case 'T':
+				case 't':
 					testOn2 = !testOn2;
 					
 				break;
@@ -28610,26 +28812,26 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				case '\t':
 				
-					if (ddMenu->visible || contMenu->visible) {
+					if (menuList[E_FM_DDMENU]->visible || menuList[E_FM_CONTMENU]->visible) {
 						toggleDDMenu(x,y,false);
-						contMenu->visible = false;
+						menuList[E_FM_CONTMENU]->visible = false;
 						gem->closeAllContainers();
 						
 						escCount = 0;
 					}
 					else {
 						if (mainGUI->isReady) {
-							if (mainMenu == NULL) {
+							if (menuList[E_FM_MAINMENU] == NULL) {
 								
 							}
 							else {
-								if (mainMenu->visible) {
+								if (menuList[E_FM_MAINMENU]->visible) {
 									playSoundEvent("hideGUI");
 								}
 								
-								mainMenu->visible = !(mainMenu->visible);
+								menuList[E_FM_MAINMENU]->visible = !(menuList[E_FM_MAINMENU]->visible);
 								
-								if (mainMenu->visible) {
+								if (menuList[E_FM_MAINMENU]->visible) {
 									playSoundEvent("showGUI");
 								}
 							}
@@ -28646,19 +28848,26 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					// 	selectedEnts.cycleEnts();
 					// }
 					
+					showStatMenu( !(menuList[E_FM_STATMENU]->visible) );
+					
+					//cout << makePretty("E_TEST_STRING_VALUE", "E_TEST_") << "\n";
+					
 					
 				break;
 				
 				
 				case 'C':
 					
-					gem->applyNonPoseData();
+					
+					
 				
 					
 				break;
 				case 'c':
 					
-					gem->togglePoseEdit();
+					gem->combatOn = !(gem->combatOn);
+					cout << "gem->combatOn " << gem->combatOn << "\n";
+					
 					
 					//setCameraToElevation();
 				
@@ -28667,13 +28876,16 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 					
 				case 'v':
+					gem->togglePoseEdit();
 					
-					gem->mirrorOn = !gem->mirrorOn;
-					cout << "gem->mirrorOn " << gem->mirrorOn << "\n";
 					
 					//waterBulletOn = !waterBulletOn;
 					//gw->toggleVis(selectedEnts.getSelectedEnt());
 					break;
+					
+				case 'V':
+					gem->applyNonPoseData();
+				break;
 				
 
 				case 'X':
@@ -28692,14 +28904,15 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				case 'm':
 
 
-					
+					gem->mirrorOn = !gem->mirrorOn;
+					cout << "gem->mirrorOn " << gem->mirrorOn << "\n";
 					
 					// doPathReport = true;
 
-					medianCount++;					
-					if (medianCount == 4) {
-						medianCount = 0;
-					}
+					// medianCount++;					
+					// if (medianCount == 4) {
+					// 	medianCount = 0;
+					// }
 					
 					//runReport();
 					
@@ -29135,8 +29348,8 @@ void Singleton::mouseMove (int _x, int _y)
 		bool ddVis = false;
 		bool noTravel = false;
 		
-		if (ddMenu != NULL) {
-			ddVis = ddMenu->visible;
+		if (menuList[E_FM_DDMENU] != NULL) {
+			ddVis = menuList[E_FM_DDMENU]->visible;
 		}
 		
 		float fx = ((float)x)*M_PI*2.0f / bufferDim[0];
@@ -29292,8 +29505,8 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		wasDoubleClick[1] = false;
 		
 		bool ddVis = false;
-		if (ddMenu != NULL) {
-			ddVis = ddMenu->visible;
+		if (menuList[E_FM_DDMENU] != NULL) {
+			ddVis = menuList[E_FM_DDMENU]->visible;
 		}
 
 		float wheelDelta = 0.0f;
@@ -29359,24 +29572,31 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		
 		int curHand = -1;
 		
+		
+		
+		
 		if (lbClicked) {
 			curHand = RLBN_LEFT;
 			
 		}
 		if (rbClicked) {
-			curHand = RLBN_RIGT;
-			
+			curHand = RLBN_RIGT;	
 		}
 		
-		if (curHand > -1) {
-			mdTimeLR[curHand] = myTimer.getElapsedTimeInMilliSec();
-			
-			if ( (mdTimeLR[curHand]-clickTimeLR[curHand]) < 500 ) {
-				wasDoubleClick[curHand] = true;
+		if (state == GLUT_UP) {
+			if (curHand > -1) {
+				mdTimeLR[curHand] = myTimer.getElapsedTimeInMilliSec();
+				
+				if ( (mdTimeLR[curHand]-clickTimeLR[curHand]) < 500 ) {
+					wasDoubleClick[curHand] = true;
+				}
+				
+				
+				clickTimeLR[curHand] = mdTimeLR[curHand];
 			}
-			
-			clickTimeLR[curHand] = mdTimeLR[curHand];
 		}
+		
+		
 		
 		
 		
@@ -29462,7 +29682,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 
 		if (abClicked) {
 
-			if (ddMenu != NULL) {
+			if (menuList[E_FM_DDMENU] != NULL) {
 				if (noTravel) {
 					toggleDDMenu(x,y,false);
 				}
@@ -29690,45 +29910,37 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 				mouseMovingLoc = 0;
 				mouseCount = 0;
 				
-				
-
 				if (rbDown&&(!lbDown)) {
 					activeObject = E_OBJ_CAMERA;
 				}
-				
-				
-				
-				if (mouseState == E_MOUSE_STATE_MOVE) {
-					if (
-						gem->orgOn &&
-						gem->editPose
-						&& (!ddVis)
-						
-					) {
-						findObject = !(gem->updateNearestOrgNode(true, &mouseDownPD));
-					}
-					else {
-						findObject = true;
-					}
-					
-					if (findObject&&lbDown) {
-												
-						gem->updateDragInfo(mouseDownOPD.getFW(), wasDoubleClick[RLBN_LEFT]);
-						
-					}
-				}
-				
-				
-				
-				
-				
-				
-				
-				
-
-
 			}
 		}
+		
+		
+		if (mouseState == E_MOUSE_STATE_MOVE) {
+			
+			if (
+				gem->orgOn &&
+				gem->editPose
+				&& (!ddVis)
+				
+			) {
+				findObject = !(gem->updateNearestOrgNode(true, &mouseDownPD));
+			}
+			else {
+				findObject = true;
+			}
+			
+			if (findObject) {
+				
+				gem->updateDragInfo(mouseDownOPD.getFW(), lbDown, wasDoubleClick[RLBN_LEFT]);
+				
+			}
+		}
+		
+		
+		
+		
 
 		
 		if (!bShift) {
@@ -29824,39 +30036,6 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 		
 		
 
-	}
-void Singleton::refreshContainers (bool onMousePos)
-                                                {
-		UIComponent* objCont = NULL;
-		
-		bool oldVis = false;
-		
-		if (contMenu != NULL) {
-			
-			cout << "refreshContainers\n";
-			
-			externalJSON.erase("objectData"); // mem leak?
-			
-			oldVis = contMenu->visible;
-			contMenu->visible = gem->anyContainerOpen();
-
-			objCont = mainGUI->findNodeByString("objectContainer");
-			//objCont->jvNodeNoTemplate->Child("dataParams")->number_value = contIndex;
-			
-			mainGUI->refreshNode(objCont);
-			
-			if (onMousePos&&(oldVis == false)) {
-				
-				// contMenu->dragOffset.x = 0.0f;
-				// contMenu->dragOffset.y = 0.0f;
-				contMenuBar = contMenu->getChild(0)->getChild(0);
-				
-				contMenuBar->lastDrag.x = (guiX);
-				contMenuBar->lastDrag.y = min((float)(guiY), (float)( (guiWinH - contMenu->getChild(0)->resultDimInPixels.y) ));
-				contMenuBar->forceDragUpdate = true;
-			}
-			
-		}
 	}
 bool Singleton::feetContact (BaseObj * ge)
                                       {
@@ -30261,34 +30440,22 @@ void Singleton::handleMovement ()
 bool Singleton::anyMenuVisible ()
                               {
 		bool doProc = false;
+		int i;
+		
+		
+		
 		
 		if ((mainGUI != NULL)) {
 			if (mainGUI->isReady) {
-				if (mainMenu != NULL) {
-					if (mainMenu->visible){
-						doProc = true;
+				
+				for (i = 0; i < E_FM_LENGTH; i++) {
+					if (menuList[i] != NULL) {
+						if (menuList[i]->visible){
+							doProc = true;
+						}
 					}
 				}
-				if (ddMenu != NULL) {
-					if (ddMenu->visible){
-						doProc = true;
-					}
-				}
-				if (contMenu != NULL) {
-					if (contMenu->visible){
-						doProc = true;
-					}
-				}
-				// if (pickerMenu != NULL) {
-				// 	if (pickerMenu->visible){
-				// 		doProc = true;
-				// 	}
-				// }
-				if (fieldMenu != NULL) {
-					if (fieldMenu->visible) {
-						doProc = true;
-					}
-				}
+				
 				
 			}
 		}
@@ -30402,6 +30569,37 @@ void Singleton::getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNod
 		}
 		
 	}
+string Singleton::makePretty (string sourceString, string remString)
+                                                                 {
+		string newString = sourceString.substr(remString.size());
+		
+		
+		std::string::size_type i;
+		
+		for (i = 0; i < newString.length(); i++) {
+			if (i == 0) {
+				
+			}
+			else {
+				if (newString[i-1] == '_') {
+					newString[i] = toupper(newString[i]);
+				}
+				else {
+					newString[i] = tolower(newString[i]);
+				}
+			}
+			
+		}
+		
+		for (i = 0; i < newString.length(); i++) {
+			if (newString[i] == '_') {
+				newString[i] = ' ';
+			}
+		}
+		
+		return newString;
+		
+	}
 void Singleton::cleanJVPointer (JSONValue * * jv)
                                             {
 		
@@ -30412,8 +30610,8 @@ void Singleton::cleanJVPointer (JSONValue * * jv)
 		*jv = NULL;
 		
 	}
-void Singleton::getObjectData ()
-                             {//int paramVal) {
+void Singleton::getSpecialData (int datEnum, string datString)
+                                                           {
 		int i;
 		int objectType;
 		int childId;
@@ -30423,36 +30621,139 @@ void Singleton::getObjectData ()
 		BaseObj* curCont;
 		
 		
-		cleanJVPointer(&(externalJSON["objectData"].jv));
+		cleanJVPointer(&(externalJSON[datString].jv));
+				
+		externalJSON[datString].jv = new JSONValue(JSONObject());
 		
 		
-		externalJSON["objectData"].jv = new JSONValue(JSONObject());
-		externalJSON["objectData"].jv->object_value["objects"] = new JSONValue(JSONArray());
-		tempVal0 = externalJSON["objectData"].jv->object_value["objects"];
 		
-		for (itBaseObj iterator = gem->gameObjects.begin(); iterator != gem->gameObjects.end(); iterator++) {
-			// iterator->first = key
-			// iterator->second = value
-			
-			curCont = &(gem->gameObjects[iterator->first]);
-			
-			if (curCont->isOpen) {
+		StatSheet* curSS;
+		
+		
+		switch (datEnum) {
+			case E_SDT_OBJECTDATA:
+				externalJSON[datString].jv->object_value["objects"] = new JSONValue(JSONArray());
+				tempVal0 = externalJSON[datString].jv->object_value["objects"];
 				
-				tempVal0->array_value.push_back( new JSONValue(JSONObject()) );
-				
-				tempVal0->array_value.back()->object_value["children"] = new JSONValue(JSONArray());
-				tempVal0->array_value.back()->object_value["objectId"] = new JSONValue( ((double)(iterator->first)) );
-				tempVal1 = tempVal0->array_value.back()->Child("children");
-				
-				
-				for (i = 0; i < curCont->children.size(); i++) {
-					tempVal1->array_value.push_back(new JSONValue(JSONObject()));
-					childId = curCont->children[i];
-					objectType = gem->gameObjects[childId].objectType;
-					tempVal1->array_value.back()->object_value["objectType"] = new JSONValue( ((double)(objectType)) );
-					tempVal1->array_value.back()->object_value["objectId"] = new JSONValue( ((double)(childId)) );
+				for (itBaseObj iterator = gem->gameObjects.begin(); iterator != gem->gameObjects.end(); iterator++) {
+					// iterator->first = key
+					// iterator->second = value
+					
+					curCont = &(gem->gameObjects[iterator->first]);
+					
+					if (curCont->isOpen) {
+						
+						tempVal0->array_value.push_back( new JSONValue(JSONObject()) );
+						
+						tempVal0->array_value.back()->object_value["children"] = new JSONValue(JSONArray());
+						tempVal0->array_value.back()->object_value["objectId"] = new JSONValue( ((double)(iterator->first)) );
+						tempVal1 = tempVal0->array_value.back()->Child("children");
+						
+						
+						for (i = 0; i < curCont->children.size(); i++) {
+							tempVal1->array_value.push_back(new JSONValue(JSONObject()));
+							childId = curCont->children[i];
+							objectType = gem->gameObjects[childId].objectType;
+							tempVal1->array_value.back()->object_value["objectType"] = new JSONValue( ((double)(objectType)) );
+							tempVal1->array_value.back()->object_value["objectId"] = new JSONValue( ((double)(childId)) );
+						}
+					}
 				}
+			break;
+			case E_SDT_STATDATA:
+				
+				externalJSON[datString].jv->object_value["stats"] = new JSONValue(JSONArray());
+				tempVal0 = externalJSON[datString].jv->object_value["stats"];
+				
+				if (gem->currentActor == NULL) {
+					cout << "NULL STATS\n";
+					return;
+				}
+				else {
+					
+					curSS = &(gem->currentActor->statSheet);
+					
+					for (i = 0; i < E_CS_LENGTH; i++) {
+						tempVal0->array_value.push_back( new JSONValue(JSONObject()) );
+						
+						tempVal0->array_value.back()->object_value["label"] = new JSONValue( makePretty(E_CHAR_STAT_STRINGS[i],"E_CS_") );
+						tempVal0->array_value.back()->object_value["value"] = new JSONValue( ((double)(curSS->baseStats[i]))/((double)(MAX_STAT_VALUE)) );
+						tempVal0->array_value.back()->object_value["divisions"] = new JSONValue( ((double)(MAX_STAT_VALUE)) );
+						
+						
+					}
+					
+					
+				}
+				
+				
+				
+			break;
+			default:
+				cout << "ERROR: unexpected type in getSpecialData(): " << datEnum << "\n";
+			break;
+		}
+		
+		
+		
+		
+		
+	}
+void Singleton::showStatMenu (bool visible)
+                                        {
+		
+		
+		cout << "refreshStats\n";
+		
+		if (menuList[E_FM_STATMENU] != NULL) {
+			menuList[E_FM_STATMENU]->visible = visible;
+			externalJSON.erase("E_SDT_STATDATA"); // mem leak?
+			
+			mainGUI->refreshNode(
+				mainGUI->findNodeByString("statMenu.statContainer")	
+			);
+						
+			if (visible) {
+				
 			}
+			
+			
+		}
+		
+	}
+void Singleton::refreshContainers (bool onMousePos)
+                                                {
+		UIComponent* objCont = NULL;
+		
+		bool oldVis = false;
+		
+		if (menuList[E_FM_CONTMENU] != NULL) {
+			
+			cout << "refreshContainers\n";
+			
+			externalJSON.erase("E_SDT_OBJECTDATA"); // mem leak?
+			
+			
+			
+			oldVis = menuList[E_FM_CONTMENU]->visible;
+			menuList[E_FM_CONTMENU]->visible = gem->anyContainerOpen();
+
+			objCont = mainGUI->findNodeByString("objectContainer");
+			//objCont->jvNodeNoTemplate->Child("dataParams")->number_value = contIndex;
+			
+			mainGUI->refreshNode(objCont);
+			
+			if (onMousePos&&(oldVis == false)) {
+				
+				// menuList[E_FM_CONTMENU]->dragOffset.x = 0.0f;
+				// menuList[E_FM_CONTMENU]->dragOffset.y = 0.0f;
+				contMenuBar = menuList[E_FM_CONTMENU]->getChild(0)->getChild(0);
+				
+				contMenuBar->lastDrag.x = (guiX);
+				contMenuBar->lastDrag.y = min((float)(guiY), (float)( (guiWinH - menuList[E_FM_CONTMENU]->getChild(0)->resultDimInPixels.y) ));
+				contMenuBar->forceDragUpdate = true;
+			}
+			
 		}
 	}
 JSONValue * Singleton::fetchJSONData (string dataFile, bool doClean, JSONValue * params)
@@ -30461,6 +30762,7 @@ JSONValue * Singleton::fetchJSONData (string dataFile, bool doClean, JSONValue *
 		
 		bool doLoad = false;
 		bool loadRes = false;
+		int dataFileEnum;
 		
 		if (externalJSON.find( dataFile ) == externalJSON.end()) {
 			doLoad = true;
@@ -30478,24 +30780,34 @@ JSONValue * Singleton::fetchJSONData (string dataFile, bool doClean, JSONValue *
 		}
 			
 		if (doLoad) {
-			if (dataFile.compare("shaderParams") == 0) {
-				cout << "attempted to load shaderParams\n";
+			
+			dataFileEnum = stringToEnum(
+				E_SPECIAL_DATA_TYPE_STRINGS,
+				E_SDT_LENGTH,
+				dataFile
+			);
+			
+			switch (dataFileEnum) {
+				case E_SDT_SHADERPARAMS:
+					cout << "attempted to load shaderParams\n";
+				break;
+				case -1:
+					cout << "load jv data "  + dataFile << "\n";
+					loadRes = loadJSON(
+						"..\\data\\" + dataFile,
+						&((externalJSON[dataFile]).jv)
+					);
+					
+					if (loadRes == false) {
+						return NULL;	
+					}
+				break;
+				default:
+					getSpecialData(dataFileEnum, dataFile);
+				break;
 			}
-			else if (dataFile.compare("objectData") == 0) {
-				getObjectData();//params->number_value);
-			}
-			else {
-				cout << "load jv data "  + dataFile << "\n";
-				loadRes = loadJSON(
-					"..\\data\\" + dataFile,
-					&((externalJSON[dataFile]).jv)
-				);
-				
-				if (loadRes == false) {
-					return NULL;	
-				}
-				
-			}
+			
+			
 			
 			
 		}
@@ -30522,6 +30834,127 @@ bool Singleton::processJSONFromString (string * sourceBuffer, JSONValue * * dest
 			doTraceND("\nValid JSON\n");
 			return true;
 		}
+		
+	}
+void Singleton::specialReplace (string & allTextString, string preDelim, string pstDelim)
+          {
+		
+		string paramName;
+		
+		jsonPostStack.clear();
+		
+		std::size_t found;
+		std::size_t found2;
+		std::size_t found3;
+		
+		int baseIndex = 0;
+		bool doCont = true;
+		
+		int preLen = preDelim.size();
+		int pstLen = pstDelim.size();
+		
+		while (doCont) {
+			found = allTextString.find(preDelim, baseIndex);
+			if (found != std::string::npos) {
+				
+				
+				baseIndex = found+preLen;
+				//allTextString[found] = ' ';
+				
+				found3 = allTextString.find(' ', baseIndex);
+				found2 = allTextString.find(pstDelim, baseIndex);
+				
+				if (found2 != std::string::npos) {
+					
+					if ( 
+						((found2-found) > 32) || // max var length of 32
+						(found3 < found2) // found a space between the delimitters
+					) { 
+						
+					}
+					else {
+						baseIndex = found2+pstLen;
+						//allTextString[found2] = ' ';
+						
+						paramName = allTextString.substr(found + preLen, (found2-found) - pstLen);
+						
+						jsonPostStack.push_back(paramName);
+						
+						cout << "PARAM NAME " << paramName << "\n";
+						
+					}
+					
+					doCont = true;
+				}
+				else {
+					doCont = false;
+				}
+				
+				
+			}
+			else {
+				doCont = false;
+			}
+		}
+		
+	}
+void Singleton::jsonPostProc ()
+                            {
+		
+		std::size_t found = jsonPostString.find("@@", 0);
+		if (found == std::string::npos) {
+			return;	
+		}
+		
+		string preStr = "\"@@";
+		string pstStr = "@@\"";
+		
+		
+		
+		specialReplace(jsonPostString,preStr,pstStr);
+		
+		int i;
+		int enumVal;
+		bool doProc;
+		
+		string newString = "";
+		
+		for (i = 0; i < jsonPostStack.size(); i++) {
+			enumVal = stringToEnum(E_JSON_PARAM_STRINGS,E_JP_LENGTH,jsonPostStack[i]);
+			
+			doProc = true;
+			
+			switch(enumVal) {
+				case E_JP_STATMENUAVAILDIV:
+					newString = i__s(E_CS_LENGTH*MAX_STAT_VALUE);
+				break;
+				case E_JP_STATMENUAVAILPOINTS:
+				
+					if (gem->currentActor == NULL) {
+						newString = "0";
+					}
+					else {
+						newString = i__s(gem->currentActor->statSheet.availPoints);
+					}
+				
+					
+				break;
+				default:
+					doProc = false;
+					cout << "invalid JSON Post Process Enum " << jsonPostStack[i] << "\n";
+				break;
+			}
+			
+			if (doProc) {
+				replaceStr(jsonPostString, preStr+jsonPostStack[i]+pstStr, newString);
+			}
+			
+			
+			
+			
+		}
+		
+		jsonPostStack.clear();
 		
 	}
 bool Singleton::processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONValue * * destObj)
@@ -30560,7 +30993,12 @@ bool Singleton::processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONV
 		else
 		{
 			//doTraceND("buf is not NULL");
-			*destObj = JSON::Parse(buf);
+			
+			jsonPostString = string(buf);
+			jsonPostProc();
+			
+			
+			*destObj = JSON::Parse(jsonPostString.c_str());
 		}
 
 
@@ -30576,6 +31014,9 @@ bool Singleton::processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONV
 		else
 		{
 			doTraceND("\nValid JSON\n");
+			
+			
+			
 			return true;
 		}
 
@@ -30790,7 +31231,7 @@ void Singleton::saveGUIValues ()
 					
 				}
 				else {
-					if (iterator->first[0] ==  '$') {
+					if (iterator->first[0] ==  '$') { // values with $ are saved
 						stringBuf.append(
 							iterator->first + "^" + floatToHex(compStack[iterator->second.nodeId].data->getValue()) + "^"
 						);
@@ -30842,7 +31283,7 @@ void Singleton::beginFieldInput (string defString, int cb)
 		fieldCallback = cb;
 		
 		inputOn = true;
-		fieldMenu->visible = true;
+		menuList[E_FM_FIELDMENU]->visible = true;
 		
 		if (fieldText != NULL) {
 			if (currentFieldString.compare("") == 0) {
@@ -30886,7 +31327,7 @@ void Singleton::endFieldInput (bool success)
                                          {
 		
 		inputOn = false;
-		fieldMenu->visible = false;
+		menuList[E_FM_FIELDMENU]->visible = false;
 		
 		if (success) {
 			switch (fieldCallback) {
@@ -30955,6 +31396,8 @@ void Singleton::loadConstants ()
 	}
 void Singleton::loadGUI ()
                        {
+		int i;
+		
 		externalJSON.clear();
 		doShaderRefresh(bakeParamsOn);
 		
@@ -30982,26 +31425,17 @@ void Singleton::loadGUI ()
 		
 		}
 		
+		for (i = 0; i < E_FM_LENGTH; i++) {
+			menuList[i] = getGUIComp("guiHandles." + E_FLOATING_MENU_STRINGS[i]);
+			if (menuList[i] != NULL) {
+				menuList[i]->visible = false;
+			}
+		}
+		
+		
 		mapComp = getGUIComp("map.mapHolder");
-		mainMenu = getGUIComp("guiHandles.mainMenu");
-		ddMenu = getGUIComp("guiHandles.ddMenu");
-		contMenu = getGUIComp("guiHandles.contMenu");
-		//pickerMenu = getGUIComp("guiHandles.pickerMenu");
-		fieldMenu = getGUIComp("guiHandles.fieldMenu");
 		fieldText = getGUIComp("fieldMenu.field");
 		
-		// if (pickerMenu != NULL) {
-		// 	pickerMenu->visible = false;
-		// }
-		if (mainMenu != NULL) {
-			mainMenu->visible = false;
-		}
-		if (ddMenu != NULL) {
-			ddMenu->visible = false;
-		}
-		if (fieldMenu != NULL) {
-			fieldMenu->visible = false;
-		}
 		
 		updateMatFlag = true;
 		
@@ -31812,7 +32246,7 @@ void Singleton::display (bool doFrameRender)
 			
 			}
 			else {
-				markerFound = (ddMenu->visible)&&(gem->selObjInd < E_OBJ_LENGTH);
+				markerFound = (menuList[E_FM_DDMENU]->visible)&&(gem->selObjInd < E_OBJ_LENGTH);
 				glutSetCursor(GLUT_CURSOR_RIGHT_ARROW);
 			}
 
@@ -32344,7 +32778,7 @@ void Shader::init (string shaderName, bool doBake, map <string, string> * includ
 		shader_vp = glCreateShader(GL_VERTEX_SHADER);
 		shader_fp = glCreateShader(GL_FRAGMENT_SHADER);
 	    
-	    std::size_t foundTF;
+	  std::size_t foundTF;
 	    
 		std::size_t found;
 		std::size_t found2;
@@ -34376,9 +34810,11 @@ void UIComponent::applyHeight ()
 					}
 				}
 				else {
-					getChild(i)->resultDimInPixels.y =
+					getChild(i)->resultDimInPixels.y = ceil(
 						getChild(i)->rmDimInPixels.y + 
-						(availSpace*getChild(i)->fillRatioDim.y)/totalRatios.y;	
+						(availSpace*getChild(i)->fillRatioDim.y)/totalRatios.y
+					);
+					
 					
 				}
 			}
@@ -34432,12 +34868,14 @@ void UIComponent::applyWidth ()
 					
 					
 					
-					getChild(i)->resultDimInPixels.x =
+					getChild(i)->resultDimInPixels.x = ceil(
 						max(
 							getChild(i)->rmDimInPixels.x +
 							(availSpace*getChild(i)->fillRatioDim.x)/totalRatios.x,
 							getChild(i)->minDimInPixels.x
-						);
+						)
+					);
+					
 						
 				}
 				else {
@@ -35587,6 +36025,9 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 		int i;
 		int j;
 		int k;
+		//int q;
+		joi_type iterator;
+		//int numEntries;
 		int curIcon = 0;
 		int objectId = 0;
 		
@@ -35697,7 +36138,11 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 		
 		
 		if (jv->HasChild("childType")) {
-			childType = jv->Child("childType")->number_value;
+			childType = stringToEnum(
+				E_GUI_CHILD_TYPE_STRINGS,
+				E_GCT_LENGTH,
+				jv->Child("childType")->string_value
+			);
 			//tempStrings[E_GDS_CHILD_TYPE] = jv->Child("childType")->string_value;
 			
 			
@@ -35772,8 +36217,8 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 				// else if (compChildStr("E_GCT_SHADER_PARAM")) {
 				// 	curCT = E_GCT_SHADER_PARAM;
 				// }
-				// else if (compChildStr("E_GTC_GENERIC")) {
-				// 	curCT = E_GTC_GENERIC;
+				// else if (compChildStr("E_GCT_GENERIC")) {
+				// 	curCT = E_GCT_GENERIC;
 				// }
 				
 				//////////////////////////////////////////////////////////////////////
@@ -35873,7 +36318,7 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 									
 							break;
 							
-							case E_GTC_GENERIC:
+							case E_GCT_GENERIC:
 							
 								singleton->splitStrings.clear();
 								singleton->splitStrings = split(tempStrings[E_GDS_LAST_KEY], '_');
@@ -35913,7 +36358,7 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 								
 							break;
 							
-							case E_GTC_CONTAINER:
+							case E_GCT_CONTAINER:
 							
 								// curIcon = singleton->gem->entIdToIcon[
 								// 	(int)(curData->Child("objectType")->number_value)
@@ -35923,7 +36368,7 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 								jvChildTemplate->Child("label")->string_value = singleton->gem->getStringForObjectId(objectId);
 							break;
 							
-							case E_GTC_CONTAINER_PARENT:
+							case E_GCT_CONTAINER_PARENT:
 								
 								
 								tempJV = findNearestKey(jvChildTemplate,"objectId");
@@ -35937,7 +36382,36 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 								}
 							break;
 							
-							case E_GCT_LENGTH:
+							default:
+								//numEntries = curData->CountChildren();
+								// for (q = 0; q < numEntries; q++) {
+								// 	jvChildTemplate->Child("label")->string_value = singleton->gem->getStringForObjectId(objectId);
+								// }
+								
+								for (
+									iterator = curData->object_value.begin();
+									iterator != curData->object_value.end();
+									iterator++
+								) {
+									// iterator->first = key
+									// iterator->second = value
+									
+									// if (jvChildTemplate->HasChild(iterator->first)) {
+									// 	// todo: report error if key does not exist?
+									// }
+									
+									if (iterator->second->IsNumber()) {
+										jvChildTemplate->Child(iterator->first)->number_value = iterator->second->number_value;
+									}
+									else {
+										// todo: support additional JSON types
+										jvChildTemplate->Child(iterator->first)->string_value = iterator->second->string_value;
+									}
+									
+									
+								}
+								
+								
 								
 							break;
 						}
@@ -36574,7 +37048,7 @@ void GameGUI::renderGUI ()
 								
 								for (m = 0; m < maxLoop; m++) {
 									
-									shadowOffset = ((1-m)*i)*4.0f;
+									shadowOffset = ((1-m)*i)*2.0f;
 									
 									
 									// only shadow text
@@ -43166,7 +43640,7 @@ void GameEntManager::init (Singleton * _singleton)
 		destroyTerrain = false;
 		editPose = false;
 		EDIT_POSE = editPose;
-		combatOn = true;
+		combatOn = false;
 		mirrorOn = true;
 		orgOn = false;
 		isDraggingObject = false;
@@ -43422,6 +43896,9 @@ bool GameEntManager::handleGUI (UIComponent * comp, bool mouseUpEvent, bool mous
 		
 		int i;
 		
+		//cout << "COMPINDEX: " << comp->index << "\n";
+		
+		
 		if (comp->uid.compare("#contItemParent") == 0) {
 			if (comp->jvNodeNoTemplate != NULL) {
 				if (comp->jvNodeNoTemplate->HasChild("objectId")) {
@@ -43457,9 +43934,12 @@ bool GameEntManager::handleGUI (UIComponent * comp, bool mouseUpEvent, bool mous
 						if (wasDoubleClick) {
 							i = comp->jvNodeNoTemplate->Child("objectId")->number_value;
 							if (isContainer[gameObjects[i].objectType]) {
+								cout << "isCont\n";
 								toggleCont(i, false);
 							}
 							else {
+								cout << "notCont\n";
+								
 								gameObjects[i].isEquipped = !(gameObjects[i].isEquipped);
 								if (gameObjects[i].isEquipped) {
 									singleton->playSoundEvent("showGUI");
@@ -43500,6 +43980,11 @@ bool GameEntManager::handleGUI (UIComponent * comp, bool mouseUpEvent, bool mous
 			if (comp->uid.compare("#contMenu.close") == 0) {		
 				i = comp->getParent()->getChild(1)->jvNodeNoTemplate->Child("objectId")->number_value;
 				closeContainer(i);
+			}
+			else if (comp->uid.compare("statMenu.close") == 0) {		
+				singleton->menuList[E_FM_STATMENU]->visible = false;
+				//i = comp->getParent()->getChild(1)->jvNodeNoTemplate->Child("objectId")->number_value;
+				//closeContainer(i);
 			}
 			else if (comp->uid.compare("ddMenu.removeEntity") == 0) {
 				removeEntity(isCon, selObjInd);
@@ -43561,58 +44046,66 @@ BaseObj * GameEntManager::getEquipped (BaseObj * parentObj)
 		
 		return NULL;
 	}
-void GameEntManager::updateDragInfo (int bestInd, bool wasDoubleClick)
-                                                              {
-		setSelInd(bestInd);
+void GameEntManager::updateDragInfo (int bestInd, bool lbDown, bool wasDoubleClick)
+                                                                           {
 		
-		if (selObjInd != 0) {
-			if (lastObjInd == selObjInd) {
+		if (lbDown) {
+			setSelInd(bestInd);
+			
+			if (selObjInd != 0) {
+				if (lastObjInd == selObjInd) {
+					
+				}
+			}
+			
+			lastObjInd = selObjInd;
+			
+			
+			
+			draggingFromInd = 0;
+			draggingFromType = E_DT_NOTHING;
+			
+			
+			
+			if ((bestInd >= E_OBJ_LENGTH)&&(!editPose)) {
+				
+				isDraggingObject = true;
+				//singleton->markerFound = true;
+				draggingFromInd = selObjInd;
+				draggingFromType = E_DT_WORLD_OBJECT;
+				
+				// todo: make sure bestInd exists
+				
+			}
+			else {
+				
+				// if (bCtrl) {
+				// 	if (bestInd <= 0) {
+						
+				// 	}
+				// 	else {
+				// 		activeObject = (E_OBJ)(bestInd);
+				// 		hitObject = true;
+				// 	}
+				// }
+				
+				// if (hitObject) {
+					
+				// }
+				// else {
+				// 	//setCurrentActor(NULL);
+				// }
+				
 				
 			}
 		}
-		
-		lastObjInd = selObjInd;
-		
-		
-		
-		draggingFromInd = 0;
-		draggingFromType = E_DT_NOTHING;
-		
-		if (wasDoubleClick&&(currentActor == NULL)) {
-			toggleCont(selObjInd, true);
-		}
-		
-		if ((bestInd >= E_OBJ_LENGTH)&&(!editPose)) {
-			
-			isDraggingObject = true;
-			//singleton->markerFound = true;
-			draggingFromInd = selObjInd;
-			draggingFromType = E_DT_WORLD_OBJECT;
-			
-			// todo: make sure bestInd exists
-			
-		}
 		else {
-			
-			// if (bCtrl) {
-			// 	if (bestInd <= 0) {
-					
-			// 	}
-			// 	else {
-			// 		activeObject = (E_OBJ)(bestInd);
-			// 		hitObject = true;
-			// 	}
-			// }
-			
-			// if (hitObject) {
-				
-			// }
-			// else {
-			// 	//setCurrentActor(NULL);
-			// }
-			
-			
+			if (wasDoubleClick) {
+				toggleCont(selObjInd, true);
+			}
 		}
+		
+		
 	}
 int GameEntManager::getRandomContId ()
                               {
@@ -44110,6 +44603,10 @@ void GameEntManager::closeContainer (int i)
 	}
 void GameEntManager::toggleCont (int contIndex, bool onMousePos)
                                                         {
+		
+		if (contIndex < E_OBJ_LENGTH) {
+			return;
+		}
 		
 		if (
 			isContainer[gameObjects[contIndex].objectType]
@@ -44914,7 +45411,7 @@ void GameEntManager::makeJump (int actorId, int isUp, float jumpFactor)
 				}
 				
 				ge->setActionState(E_ACT_ISJUMPING,RLBN_NEIT,true);
-				ge->jumpCooldown = 100;
+				ge->jumpCooldown = singleton->conVals[E_CONST_JUMP_COOLDOWN_MAX];
 				
 			}
 			else {
@@ -44935,7 +45432,7 @@ void GameEntManager::makeJump (int actorId, int isUp, float jumpFactor)
 					);
 					
 					ge->setActionState(E_ACT_ISJUMPING,RLBN_NEIT,true);
-					ge->jumpCooldown = 100;
+					ge->jumpCooldown = singleton->conVals[E_CONST_JUMP_COOLDOWN_MAX];
 					
 				}
 			}
@@ -52797,16 +53294,16 @@ void GameLogic::applyBehavior ()
 										writeObj->getCenterPoint(E_BDG_CENTER)
 									);
 								
-									if (bestNPCUID == curActor) {
+									// if (bestNPCUID == curActor) {
 										
-									}
-									else {
-										if ((testDis < bestNPCDis)||(readObj->uid == curActor)) {
+									// }
+									// else {
+										if ((testDis < bestNPCDis)) { //||(readObj->uid == curActor)
 											bestNPCDis = testDis;
 											bestNPCUID = readObj->uid;
 											writeObj->behaviorTarget = readObj->getCenterPoint(E_BDG_CENTER);
 										}
-									}
+									//}
 									
 									
 									
@@ -58773,6 +59270,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		singleton->setShaderTexture3D(13, singleton->volumeWrappers[E_VW_VORO]->volId);
 		singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
+		singleton->sampleFBO("noiseFBOLinear", 15);
 		
 		// if (!doPoly) {
 		// 	singleton->sampleFBO(polyFBOStrings[NUM_POLY_STRINGS],14);
@@ -58914,7 +59412,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		// }
 		
 		
-		
+		singleton->unsampleFBO("noiseFBOLinear", 15);
 		singleton->setShaderTexture3D(14, 0);
 		singleton->setShaderTexture3D(13, 0);
 		
@@ -61588,10 +62086,10 @@ DONE_WITH_MAP:
 void GameWorld::drawMap ()
         {
 
-		if (singleton->mainMenu == NULL) {
+		if (singleton->menuList[E_FM_MAINMENU] == NULL) {
 			return;
 		}
-		if (singleton->mainMenu->visible){
+		if (singleton->menuList[E_FM_MAINMENU]->visible){
 			
 		}
 		else {
@@ -62177,6 +62675,7 @@ void GameWorld::postProcess ()
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderInt("gridOn", (int)(singleton->gridOn));
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
+		singleton->setShaderInt("testOn2", (int)(singleton->testOn2));
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("cellsPerBlock", singleton->cellsPerBlock);
 		singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
@@ -62334,14 +62833,14 @@ void GameWorld::postProcess ()
 				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
 			
-			//if (singleton->gem->currentActor == NULL) {
+			if (singleton->gem->currentActor == NULL) {
 				singleton->setShaderInt("isFalling",false);
 				singleton->setShaderInt("isJumping",false);
-			// }
-			// else {
-			// 	singleton->setShaderInt("isFalling",singleton->gem->currentActor->allFalling());
-			// 	singleton->setShaderInt("isJumping",singleton->gem->currentActor->isJumping);
-			// }
+			}
+			else {
+				singleton->setShaderInt("isFalling",singleton->gem->currentActor->allFalling());
+				singleton->setShaderInt("isJumping",singleton->gem->currentActor->getActionState(E_ACT_ISJUMPING,RLBN_NEIT));
+			}
 			
 			
 			singleton->setShaderFloat("seaLevel", singleton->getSeaHeightScaled() );

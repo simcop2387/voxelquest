@@ -402,6 +402,7 @@ public:
   GamePageHolder * closestHolder;
   GamePlant * (gamePlants) [E_PT_LENGTH/2];
   Shader * curShaderPtr;
+  string jsonPostString;
   string currentFieldString;
   string curShader;
   string allText;
@@ -412,6 +413,7 @@ public:
   VolumeWrapper * (volumeWrappers) [E_VW_LENGTH];
   vector <CompStruct> compStack;
   vector <int> emptyStack;
+  vector <string> jsonPostStack;
   vector <string> splitStrings;
   vector <string> shaderStrings;
   vector <string> shaderTextureIds;
@@ -454,12 +456,9 @@ public:
   TerTexture (terTextures) [MAX_TER_TEX];
   GameGUI * mainGUI;
   UIComponent * mapComp;
-  UIComponent * mainMenu;
-  UIComponent * contMenu;
+  UIComponent * (menuList) [E_FM_LENGTH];
   UIComponent * contMenuBar;
-  UIComponent * ddMenu;
   UIComponent * ddMenuBar;
-  UIComponent * fieldMenu;
   UIComponent * fieldText;
   FontWrapper * (fontWrappers) [EFW_LENGTH];
   GameMusic * (music) [EML_LENGTH];
@@ -592,7 +591,6 @@ public:
   void updateCurGeom (int x, int y);
   void mouseMove (int _x, int _y);
   void mouseClick (int button, int state, int _x, int _y);
-  void refreshContainers (bool onMousePos);
   bool feetContact (BaseObj * ge);
   void flushKeyStack ();
   void applyKeyAction (bool isReq, int actorId, uint keyFlags, float camRotX, float camRotY);
@@ -602,10 +600,15 @@ public:
   void performCamShake (BaseObj * ge, float fp);
   void explodeBullet (BaseObj * ge);
   void getJVNodeByString (JSONValue * rootNode, JSONValue * * resultNode, string stringToSplit);
+  string makePretty (string sourceString, string remString);
   void cleanJVPointer (JSONValue * * jv);
-  void getObjectData ();
+  void getSpecialData (int datEnum, string datString);
+  void showStatMenu (bool visible);
+  void refreshContainers (bool onMousePos);
   JSONValue * fetchJSONData (string dataFile, bool doClean, JSONValue * params = NULL);
   bool processJSONFromString (string * sourceBuffer, JSONValue * * destObj);
+  void specialReplace (string & allTextString, string preDelim, string pstDelim);
+  void jsonPostProc ();
   bool processJSON (charArr * sourceBuffer, charArr * saveBuffer, JSONValue * * destObj);
   void doAlert ();
   bool loadJSON (string path, JSONValue * * destObj);
@@ -1445,7 +1448,7 @@ public:
   void endDrag (int upInd);
   bool handleGUI (UIComponent * comp, bool mouseUpEvent, bool mouseDownEvent, bool noTravel, bool wasDoubleClick);
   BaseObj * getEquipped (BaseObj * parentObj);
-  void updateDragInfo (int bestInd, bool wasDoubleClick);
+  void updateDragInfo (int bestInd, bool lbDown, bool wasDoubleClick);
   int getRandomContId ();
   int getRandomNPCId ();
   int getRandomMonsterId ();

@@ -117,6 +117,16 @@ vec3 getGlobLightCol()
 
 
 
+// vec3 toneMap(vec3 sCol) {
+//    vec3 texColor = sCol;
+//    texColor *= 1.0;
+//    //texColor = texColor/(1.0+texColor);
+//    vec3 x = max(vec3(0.0),vec3(texColor-0.004));
+//    vec3 retColor = (x*(6.2*x+0.5))/(x*(6.2*x+1.7)+0.06);
+   
+//    return retColor;//pow(texColor,vec3(1.0/2.2));
+// }
+
 void main()
 {
 	float shadTest = 0.0;
@@ -272,7 +282,7 @@ void main()
 
 
 
-
+	float cenOff = pow(abs((TexCoord0.y-0.5)*2.0),2.0);
 
 	float frontLight = 0.0;
 	float frontLightWater = 0.0;
@@ -531,10 +541,12 @@ void main()
 		//vec3(sEndPos.xy,0.0);
 		
 		pow(
-			mix(vec3(newAO)*0.3+totLightColor.xyz*0.1,totLightColor.xyz, totLightColor.xyz)
+			mix(vec3(newAO)*0.2+totLightColor.xyz*0.1,totLightColor.xyz-(1.0-newAO), totLightColor.xyz)
 			*(resComp*0.5+0.5),
-			vec3(1.0)
+			vec3(0.5+newAO)//vec3(1.5*cenOff + 0.5)
 		);// ;
+		
+		//resColor.xyz = resColor.xyz * 0.5 + 0.5;
 		
 		//pow(totLightColor.xyz*0.75+newAO*0.25,vec3(0.5))*(resComp*0.5+0.5);
 		//vec3(newAO);
@@ -554,6 +566,10 @@ void main()
 		// 	)
 		// );////mix(newAO*totLightColor.xyz,totLightColor.xyz, max(max(totLightColor.x, totLightColor.y), totLightColor.z) ); // 
 		resColor.w = newAO;
+
+		//resColor.rgb = vec3(cenOff);
+		
+		//resColor.rgb = toneMap(resColor.rgb);
 	}
 	
 	//resColor.rgb += (myVec+1.0)*0.5*0.1;

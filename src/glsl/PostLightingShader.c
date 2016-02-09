@@ -36,6 +36,7 @@ uniform vec4 worldMarker;
 uniform bool markerFound;
 
 uniform bool testOn;
+uniform bool testOn2;
 uniform bool gridOn;
 uniform float curTime;
 
@@ -473,7 +474,7 @@ void main()
 	
 	
 	
-	if (tot != 0.0)//(false)//
+	if (tot != 0.0)//
 	{
 
 		resColorTemp = resColor;
@@ -519,7 +520,7 @@ void main()
 		
 		
 		//resColorTemp += pow( clamp(lightRes, 0.0, 1.0), 4.0) * (1.0-timeOfDay)*0.5;
-		resColorTemp += pow(lightRes,4.0)*0.1;
+		resColorTemp += pow(tex2.rgb,vec3(4.0))*0.1;
 		
 		
 		
@@ -539,12 +540,6 @@ void main()
 	
 	resColor += resColor*texSpec.r;
 	
-	if (testOn) {
-		
-		//resColor = vec3(newAO);
-		//resColor = vec3(lightRes);//mix(resColor*lightRes,resColor,clamp( (worldPosition.w)*0.5,0.0,1.0) );//vec3(newAO*lightRes + lightRes*0.2);//mix(tex2.a,tex2.a*0.5+0.5,lightRes);
-		//resColor = vec3(tex1.w);
-	}
 	
 	//resColor = vec3(newAO);
 	//resColor = vec3(lightRes);
@@ -690,14 +685,18 @@ void main()
 	
 	float shadVal = texSpec.b;
 	
-	
+	if (testOn2) {
+		resColor.rgb = tex2.rgb;
+	}
 	
 	resColor.rgb += modColor*0.25;
 	
 	//resColor = mix(resColor*0.75,resColor,shadVal);	
 	//
 	
-	//resColor.rgb = tex2.rgb;
+	
+	
+	//
 	
 	
 	//resColor = vec3(matVals.a,0.0,0.0);

@@ -135,16 +135,16 @@ public:
 										writeObj->getCenterPoint(E_BDG_CENTER)
 									);
 								
-									if (bestNPCUID == curActor) {
+									// if (bestNPCUID == curActor) {
 										
-									}
-									else {
-										if ((testDis < bestNPCDis)||(readObj->uid == curActor)) {
+									// }
+									// else {
+										if ((testDis < bestNPCDis)) { //||(readObj->uid == curActor)
 											bestNPCDis = testDis;
 											bestNPCUID = readObj->uid;
 											writeObj->behaviorTarget = readObj->getCenterPoint(E_BDG_CENTER);
 										}
-									}
+									//}
 									
 									
 									
@@ -455,9 +455,6 @@ public:
 	
 	
 	
-	// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-	
-	
 	bool addGroupToStack(
 		ConnectingNodeStruct* testConNode,
 		GamePageHolder* curHolder,
@@ -684,8 +681,6 @@ public:
 		
 		
 	}
-	
-	// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 	
 	
 	

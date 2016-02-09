@@ -14,7 +14,7 @@
 // 	return vec2(res*0.5,0.0);
 // }
 
-//#define DOTREES
+// #define DOTREES
 
 float hash2( float n ) { return abs( fract(sin(n)*753.5453123) ); }
 

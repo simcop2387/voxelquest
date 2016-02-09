@@ -1,4 +1,4 @@
-﻿Build started 1/12/2016 11:27:30 AM.
+﻿Build started 2/9/2016 2:22:59 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -804,9 +804,12 @@
                    
          Loading:  ..\data\lastJSONBufferGUI.js         
          Load Successful          
+         PARAM NAME E_JP_STATMENUAVAILPOINTS
+         PARAM NAME E_JP_STATMENUAVAILDIV
          
          Valid JSON
                    
+         NULL STATS
          Loading GUI Values
          Loading:  ..\data\saves\save0\compMap.txt         
          Load Successful          
@@ -830,9 +833,30 @@
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          genBlockHolder
-         iNumSteps:  16         
+         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         refreshStats
+         from E_DT_WORLD_OBJECT to E_DT_NOTHING
+         refreshContainers
+         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         refreshContainers
+         refreshContainers
+         refreshContainers
+         refreshContainers
+         refreshContainers
+         refreshContainers
+         refreshContainers
+         refreshContainers
+         refreshContainers
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:21.57
+Time Elapsed 00:01:38.18

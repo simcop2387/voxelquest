@@ -48,7 +48,7 @@ bool EDIT_POSE = false;
 // const static int DEF_WIN_H = 720;
 
 
-#define STREAM_RES 1
+//#define STREAM_RES 1
 
 #ifdef STREAM_RES
 	const static int DEF_WIN_W = 1920; //2048;//
@@ -1418,10 +1418,6 @@ void OGL_displaylist_clean();
 
 
 ///
-
-
-
-// @@@@@
 
 
 
@@ -3576,7 +3572,13 @@ void initNetMasks() {
 	
 }
 
-
+bool replaceStr(std::string& str, const std::string& from, const std::string& to) {
+    size_t start_pos = str.find(from);
+    if(start_pos == std::string::npos)
+        return false;
+    str.replace(start_pos, from.length(), to);
+    return true;
+}
 
 // struct CommonExampleInterface*    BenchmarkCreateFunc(struct CommonExampleOptions& options)
 // {

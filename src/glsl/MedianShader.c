@@ -72,16 +72,16 @@ void main() {
   
   vec3 finalRes;
   
-  if (distance(tex0.rgb,v[4].rgb) < 0.5) {
-    finalRes = tex0.rgb;
-  }
-  else {
+  // if (distance(tex0.rgb,v[4].rgb) < 0.5) {
+  //   finalRes = tex0.rgb;
+  // }
+  // else {
     finalRes = mix(
       v[4].rgb,
       tex0.rgb,
-      0.0 // *float(distance(tex0.rgb,v[4].rgb) > 0.5)//mixVal
+      @medianStrength@ // *float(distance(tex0.rgb,v[4].rgb) > 0.5)//mixVal
     );
-  }
+  //}
   
   gl_FragColor = vec4(finalRes,1.0);
   

@@ -94,7 +94,7 @@ public:
 		destroyTerrain = false;
 		editPose = false;
 		EDIT_POSE = editPose;
-		combatOn = true;
+		combatOn = false;
 		mirrorOn = true;
 		orgOn = false;
 		isDraggingObject = false;
@@ -358,6 +358,9 @@ public:
 		
 		int i;
 		
+		//cout << "COMPINDEX: " << comp->index << "\n";
+		
+		
 		if (comp->uid.compare("#contItemParent") == 0) {
 			if (comp->jvNodeNoTemplate != NULL) {
 				if (comp->jvNodeNoTemplate->HasChild("objectId")) {
@@ -393,9 +396,12 @@ public:
 						if (wasDoubleClick) {
 							i = comp->jvNodeNoTemplate->Child("objectId")->number_value;
 							if (isContainer[gameObjects[i].objectType]) {
+								cout << "isCont\n";
 								toggleCont(i, false);
 							}
 							else {
+								cout << "notCont\n";
+								
 								gameObjects[i].isEquipped = !(gameObjects[i].isEquipped);
 								if (gameObjects[i].isEquipped) {
 									singleton->playSoundEvent("showGUI");
@@ -436,6 +442,11 @@ public:
 			if (comp->uid.compare("#contMenu.close") == 0) {		
 				i = comp->getParent()->getChild(1)->jvNodeNoTemplate->Child("objectId")->number_value;
 				closeContainer(i);
+			}
+			else if (comp->uid.compare("statMenu.close") == 0) {		
+				singleton->menuList[E_FM_STATMENU]->visible = false;
+				//i = comp->getParent()->getChild(1)->jvNodeNoTemplate->Child("objectId")->number_value;
+				//closeContainer(i);
 			}
 			else if (comp->uid.compare("ddMenu.removeEntity") == 0) {
 				removeEntity(isCon, selObjInd);
@@ -500,57 +511,65 @@ public:
 		return NULL;
 	}
 	
-	void updateDragInfo(int bestInd, bool wasDoubleClick) {
-		setSelInd(bestInd);
+	void updateDragInfo(int bestInd, bool lbDown, bool wasDoubleClick) {
 		
-		if (selObjInd != 0) {
-			if (lastObjInd == selObjInd) {
+		if (lbDown) {
+			setSelInd(bestInd);
+			
+			if (selObjInd != 0) {
+				if (lastObjInd == selObjInd) {
+					
+				}
+			}
+			
+			lastObjInd = selObjInd;
+			
+			
+			
+			draggingFromInd = 0;
+			draggingFromType = E_DT_NOTHING;
+			
+			
+			
+			if ((bestInd >= E_OBJ_LENGTH)&&(!editPose)) {
+				
+				isDraggingObject = true;
+				//singleton->markerFound = true;
+				draggingFromInd = selObjInd;
+				draggingFromType = E_DT_WORLD_OBJECT;
+				
+				// todo: make sure bestInd exists
+				
+			}
+			else {
+				
+				// if (bCtrl) {
+				// 	if (bestInd <= 0) {
+						
+				// 	}
+				// 	else {
+				// 		activeObject = (E_OBJ)(bestInd);
+				// 		hitObject = true;
+				// 	}
+				// }
+				
+				// if (hitObject) {
+					
+				// }
+				// else {
+				// 	//setCurrentActor(NULL);
+				// }
+				
 				
 			}
 		}
-		
-		lastObjInd = selObjInd;
-		
-		
-		
-		draggingFromInd = 0;
-		draggingFromType = E_DT_NOTHING;
-		
-		if (wasDoubleClick&&(currentActor == NULL)) {
-			toggleCont(selObjInd, true);
-		}
-		
-		if ((bestInd >= E_OBJ_LENGTH)&&(!editPose)) {
-			
-			isDraggingObject = true;
-			//singleton->markerFound = true;
-			draggingFromInd = selObjInd;
-			draggingFromType = E_DT_WORLD_OBJECT;
-			
-			// todo: make sure bestInd exists
-			
-		}
 		else {
-			
-			// if (bCtrl) {
-			// 	if (bestInd <= 0) {
-					
-			// 	}
-			// 	else {
-			// 		activeObject = (E_OBJ)(bestInd);
-			// 		hitObject = true;
-			// 	}
-			// }
-			
-			// if (hitObject) {
-				
-			// }
-			// else {
-			// 	//setCurrentActor(NULL);
-			// }
-			
-			
+			if (wasDoubleClick) {
+				toggleCont(selObjInd, true);
+			}
 		}
+		
+		
 	}
 	
 	
@@ -1064,6 +1083,10 @@ public:
 	}
 	
 	void toggleCont(int contIndex, bool onMousePos) {
+		
+		if (contIndex < E_OBJ_LENGTH) {
+			return;
+		}
 		
 		if (
 			isContainer[gameObjects[contIndex].objectType]
@@ -1883,7 +1906,7 @@ public:
 				}
 				
 				ge->setActionState(E_ACT_ISJUMPING,RLBN_NEIT,true);
-				ge->jumpCooldown = 100;
+				ge->jumpCooldown = singleton->conVals[E_CONST_JUMP_COOLDOWN_MAX];
 				
 			}
 			else {
@@ -1904,7 +1927,7 @@ public:
 					);
 					
 					ge->setActionState(E_ACT_ISJUMPING,RLBN_NEIT,true);
-					ge->jumpCooldown = 100;
+					ge->jumpCooldown = singleton->conVals[E_CONST_JUMP_COOLDOWN_MAX];
 					
 				}
 			}

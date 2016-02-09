@@ -1841,11 +1841,38 @@ struct SphereStruct {
 typedef int BaseObjType;
 
 
-// states:
-// explore
-// seek
-// avoid
-// return
+
+
+struct SkillCard {
+	
+	// whenever x, do y
+	
+	
+	
+	// condition
+	// subject
+	// action
+	// subject
+	
+	// gain / lose
+	
+	
+	std::vector<int> triggers;
+};
+
+struct StatSheet {
+	std::vector<int> availableSkills;
+	std::vector<int> activeSkills;
+	std::vector<int> statusList;
+	
+	int baseStats[E_CS_LENGTH];
+	int availPoints;
+	
+	
+};
+
+
+
 
 class BaseObj
 {
@@ -1857,6 +1884,8 @@ private:
 	
 public:
 	
+	
+	StatSheet statSheet;
 	
 	int objectType;
 	int maxFrames;
@@ -2776,6 +2805,11 @@ public:
 			isGrabbingId[i] = -1;
 			swingType[i] = E_PG_SLSH;
 		}
+		
+		for (i = 0; i < E_CS_LENGTH; i++) {
+			statSheet.baseStats[i] = 5;
+		}
+		statSheet.availPoints = 10;
 		
 		zeroZ = false;
 		jumpCooldown = 0;

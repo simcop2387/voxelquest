@@ -8,6 +8,7 @@
 // const static unsigned long int STEP_TIME_IN_MICRO_SEC = 32000;
 
 #define E_CONST(DDD) \
+DDD(E_CONST_JUMP_COOLDOWN_MAX) \
 DDD(E_CONST_HIT_COOLDOWN_MAX) \
 DDD(E_CONST_BINDING_MULT) \
 DDD(E_CONST_AIRANIM_THRESH) \
@@ -282,15 +283,61 @@ enum E_VOLUME_WRAPPERS {
 // 	"E_VW_LENGTH"
 // };
 
-// do not reorder
-enum E_GUI_CHILD_TYPES {
-	E_GCT_INV_ITEM,			// 0
-	E_GCT_SHADER_PARAM,		// 1
-	E_GTC_GENERIC, 			// 2
-	E_GTC_CONTAINER,		// 3
-	E_GTC_CONTAINER_PARENT, // 4
-	E_GCT_LENGTH			// 5
+
+
+const static int MAX_STAT_VALUE = 10;
+
+#define E_CHAR_STAT(DDD) \
+DDD(E_CS_STRENGTH) \
+DDD(E_CS_DEXTERITY) \
+DDD(E_CS_AGILITY) \
+DDD(E_CS_INTELLIGENCE) \
+DDD(E_CS_DISCIPLINE) \
+DDD(E_CS_CHARISMA) \
+DDD(E_CS_LENGTH)
+
+string E_CHAR_STAT_STRINGS[] = {
+	E_CHAR_STAT(DO_DESCRIPTION)
 };
+
+enum E_CHAR_STAT_VALS {
+	E_CHAR_STAT(DO_ENUM)
+};
+
+
+
+
+#define E_GUI_CHILD_TYPE(DDD) \
+DDD(E_GCT_INV_ITEM) \
+DDD(E_GCT_SHADER_PARAM) \
+DDD(E_GCT_GENERIC) \
+DDD(E_GCT_CONTAINER) \
+DDD(E_GCT_CONTAINER_PARENT) \
+DDD(E_GCT_STATS) \
+DDD(E_GCT_LENGTH)
+
+string E_GUI_CHILD_TYPE_STRINGS[] = {
+	E_GUI_CHILD_TYPE(DO_DESCRIPTION)
+};
+
+enum E_GUI_CHILD_TYPE_VALS {
+	E_GUI_CHILD_TYPE(DO_ENUM)
+};
+
+
+
+
+// // do not reorder
+// // childType
+// enum E_GUI_CHILD_TYPES {
+// 	E_GCT_INV_ITEM,			// 0
+// 	E_GCT_SHADER_PARAM,		// 1
+// 	E_GCT_GENERIC, 			// 2
+// 	E_GCT_CONTAINER,		// 3
+// 	E_GCT_CONTAINER_PARENT, // 4
+// 	E_GCT_STATS, 			// 6
+// 	E_GCT_LENGTH			// 5
+// };
 
 enum E_FONT_WRAPPERS {
 	EFW_TEXT,
@@ -1284,15 +1331,43 @@ struct ActorJointStruct {
 	btTypedConstraint* joint;
 };
 
-// struct PathNode {
-// 	// uint flags;
-// 	// int cameFromInd;
-// 	// int pathCost;
-// 	// int groupId;
-	
-// 	giIndex
-	
-// };
+
+
+
+#define E_SPECIAL_DATA_TYPE(DDD) \
+DDD(E_SDT_SHADERPARAMS) \
+DDD(E_SDT_OBJECTDATA) \
+DDD(E_SDT_STATDATA) \
+DDD(E_SDT_LENGTH)
+
+string E_SPECIAL_DATA_TYPE_STRINGS[] = {
+	E_SPECIAL_DATA_TYPE(DO_DESCRIPTION)
+};
+
+enum E_SPECIAL_DATA_TYPE_VALS {
+	E_SPECIAL_DATA_TYPE(DO_ENUM)
+};
+
+
+
+#define E_FLOATING_MENU(DDD) \
+DDD(E_FM_MAINMENU) \
+DDD(E_FM_DDMENU) \
+DDD(E_FM_CONTMENU) \
+DDD(E_FM_FIELDMENU) \
+DDD(E_FM_STATMENU) \
+DDD(E_FM_LENGTH)
+
+string E_FLOATING_MENU_STRINGS[] = {
+	E_FLOATING_MENU(DO_DESCRIPTION)
+};
+
+enum E_FLOATING_MENU_VALS {
+	E_FLOATING_MENU(DO_ENUM)
+};
+
+
+
 
 
 
@@ -1302,6 +1377,13 @@ struct PoseKey {
 	int RLBN;
 	int step;
 };
+
+
+
+
+
+
+
 
 
 
@@ -1341,6 +1423,21 @@ string E_POSE_GROUP_STRINGS[] = {
 
 enum E_POSE_GROUP_VALS {
 	E_POSE_GROUPS(DO_ENUM)
+};
+
+
+
+#define E_JSON_PARAMS(DDD) \
+DDD(E_JP_STATMENUAVAILDIV) \
+DDD(E_JP_STATMENUAVAILPOINTS) \
+DDD(E_JP_LENGTH)
+
+string E_JSON_PARAM_STRINGS[] = {
+	E_JSON_PARAMS(DO_DESCRIPTION)
+};
+
+enum E_JSON_PARAM_VALS {
+	E_JSON_PARAMS(DO_ENUM)
 };
 
 

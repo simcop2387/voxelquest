@@ -151,7 +151,7 @@ void Shader::init (string shaderName, bool doBake, map <string, string> * includ
 		shader_vp = glCreateShader(GL_VERTEX_SHADER);
 		shader_fp = glCreateShader(GL_FRAGMENT_SHADER);
 	    
-	    std::size_t foundTF;
+	  std::size_t foundTF;
 	    
 		std::size_t found;
 		std::size_t found2;

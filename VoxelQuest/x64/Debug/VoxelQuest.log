@@ -1,5 +1,167 @@
-﻿Build started 1/12/2016 4:09:28 AM.
+﻿Build started 2/3/2016 4:30:19 AM.
+     1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
+     1>PreBuildEvent:
+         ../combine.bat
+         :VCEnd
+         cleaning files
+         copying files to source
+         .\src\cpp\f00025_includes.h
+         .\src\cpp\f00026_enums.h
+         .\src\cpp\f00027_mat.h
+         .\src\cpp\f00028_vectors.h
+         .\src\cpp\f00029_gameent.h
+         .\src\cpp\f00030_json.h
+         .\src\cpp\f00040_png.h
+         .\src\cpp\f00215_helperfuncs.h
+         .\src\cpp\f00217_helperclasses.h
+         .\src\cpp\f00220_timer.h
+         .\src\cpp\f00240_simplex.h
+         .\src\cpp\f00250_imageloader.h
+         .\src\cpp\f00251_fbos.h
+         .\src\cpp\f00260_classdefs.h
+         .\src\cpp\f00293_gamesound.hpp
+         .\src\cpp\f00294_gamemusic.hpp
+         .\src\cpp\f00300_singleton.hpp
+         .\src\cpp\f00305_shader.hpp
+         .\src\cpp\f00307_dynbuffer.hpp
+         .\src\cpp\f00320_fontwrapper.hpp
+         .\src\cpp\f00325_uicomponent.hpp
+         .\src\cpp\f00330_gamegui.hpp
+         .\src\cpp\f00332_gamenetwork.hpp
+         .\src\cpp\f00335_gameai.hpp
+         .\src\cpp\f00337_gamefluid.hpp
+         .\src\cpp\f00338_gameorgnode.hpp
+         .\src\cpp\f00339_gameorg.hpp
+         .\src\cpp\f00340_gameplantnode.hpp
+         .\src\cpp\f00341_gameplant.hpp
+         .\src\cpp\f00347_gameactor.hpp
+         .\src\cpp\f00349_gameentmanager.hpp
+         .\src\cpp\f00351_gamepageholder.hpp
+         .\src\cpp\f00352_gameblock.hpp
+         .\src\cpp\f00355_volumewrapper.hpp
+         .\src\cpp\f00360_threadpoolwrapper.hpp
+         .\src\cpp\f00370_gamelogic.hpp
+         .\src\cpp\f00373_myshapedrawer.hpp
+         .\src\cpp\f00374_myglhelper.hpp
+         .\src\cpp\f00375_gamephysics.hpp
+         .\src\cpp\f00380_gameworld.hpp
+         .\src\cpp\f00500_mainfuncs.h
+         41 File(s) copied
+         running lzz
+         Missing operator.
+         tot hpp
+         26
+         copying headers to one file
+         .\f00293_gamesound.e
+         .\f00294_gamemusic.e
+         .\f00300_singleton.e
+         .\f00305_shader.e
+         .\f00307_dynbuffer.e
+         .\f00320_fontwrapper.e
+         .\f00325_uicomponent.e
+         .\f00330_gamegui.e
+         .\f00332_gamenetwork.e
+         .\f00335_gameai.e
+         .\f00337_gamefluid.e
+         .\f00338_gameorgnode.e
+         .\f00339_gameorg.e
+         .\f00340_gameplantnode.e
+         .\f00341_gameplant.e
+         .\f00347_gameactor.e
+         .\f00349_gameentmanager.e
+         .\f00351_gamepageholder.e
+         .\f00352_gameblock.e
+         .\f00355_volumewrapper.e
+         .\f00360_threadpoolwrapper.e
+         .\f00370_gamelogic.e
+         .\f00373_myshapedrawer.e
+         .\f00374_myglhelper.e
+         .\f00375_gamephysics.e
+         .\f00380_gameworld.e
+                 1 file(s) copied.
+         Missing operator.
+         tot e
+         26
+         .
+         copying files to compiled
+         .\temp\f00293_gamesound.e
+         .\temp\f00294_gamemusic.e
+         .\temp\f00300_singleton.e
+         .\temp\f00305_shader.e
+         .\temp\f00307_dynbuffer.e
+         .\temp\f00320_fontwrapper.e
+         .\temp\f00325_uicomponent.e
+         .\temp\f00330_gamegui.e
+         .\temp\f00332_gamenetwork.e
+         .\temp\f00335_gameai.e
+         .\temp\f00337_gamefluid.e
+         .\temp\f00338_gameorgnode.e
+         .\temp\f00339_gameorg.e
+         .\temp\f00340_gameplantnode.e
+         .\temp\f00341_gameplant.e
+         .\temp\f00347_gameactor.e
+         .\temp\f00349_gameentmanager.e
+         .\temp\f00351_gamepageholder.e
+         .\temp\f00352_gameblock.e
+         .\temp\f00355_volumewrapper.e
+         .\temp\f00360_threadpoolwrapper.e
+         .\temp\f00370_gamelogic.e
+         .\temp\f00373_myshapedrawer.e
+         .\temp\f00374_myglhelper.e
+         .\temp\f00375_gamephysics.e
+         .\temp\f00380_gameworld.e
+         26 File(s) copied
+         .\temp\f00025_includes.h
+         .\temp\f00026_enums.h
+         .\temp\f00027_mat.h
+         .\temp\f00028_vectors.h
+         .\temp\f00029_gameent.h
+         .\temp\f00030_json.h
+         .\temp\f00040_png.h
+         .\temp\f00215_helperfuncs.h
+         .\temp\f00217_helperclasses.h
+         .\temp\f00220_timer.h
+         .\temp\f00240_simplex.h
+         .\temp\f00250_imageloader.h
+         .\temp\f00251_fbos.h
+         .\temp\f00260_classdefs.h
+         .\temp\f00270_headers.h
+         .\temp\f00293_gamesound.h
+         .\temp\f00294_gamemusic.h
+         .\temp\f00300_singleton.h
+         .\temp\f00305_shader.h
+         .\temp\f00307_dynbuffer.h
+         .\temp\f00320_fontwrapper.h
+         .\temp\f00325_uicomponent.h
+         .\temp\f00330_gamegui.h
+         .\temp\f00332_gamenetwork.h
+         .\temp\f00335_gameai.h
+         .\temp\f00337_gamefluid.h
+         .\temp\f00338_gameorgnode.h
+         .\temp\f00339_gameorg.h
+         .\temp\f00340_gameplantnode.h
+         .\temp\f00341_gameplant.h
+         .\temp\f00347_gameactor.h
+         .\temp\f00349_gameentmanager.h
+         .\temp\f00351_gamepageholder.h
+         .\temp\f00352_gameblock.h
+         .\temp\f00355_volumewrapper.h
+         .\temp\f00360_threadpoolwrapper.h
+         .\temp\f00370_gamelogic.h
+         .\temp\f00373_myshapedrawer.h
+         .\temp\f00374_myglhelper.h
+         .\temp\f00375_gamephysics.h
+         .\temp\f00380_gameworld.h
+         .\temp\f00500_mainfuncs.h
+                 1 file(s) copied.
+       ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\CL.exe /c /I"C:\SFML-2.1\include" /Zi /nologo /W1 /WX- /sdl /Od /D _CRT_SECURE_NO_WARNINGS /D SFML_STATIC /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MTd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc110.pdb" /Gd /TP /errorReport:prompt ..\compiled\main.cpp
+         main.cpp
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.exe" /INCREMENTAL /NOLOGO /LIBPATH:C:\wamp\www\voxelquest\glew\lib /LIBPATH:"C:\Program Files (x86)\Windows Kits\8.0\Lib\win8\um\x64" /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\lib\amd64" /LIBPATH:"C:\SFML-2.3.2\extlibs\libs-msvc\x64" /LIBPATH:"C:\SFML-2.3.2\lib\Debug" /LIBPATH:"C:\bullet3-2.83.6\lib\Debug" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib WinMM.lib openal32.lib flac.lib vorbisenc.lib vorbisfile.lib vorbis.lib ogg.lib "sfml-system-s-d.lib" "sfml-audio-s-d.lib" Bullet3Common_Debug.lib BulletSoftBody_Debug.lib BulletDynamics_Debug.lib BulletCollision_Debug.lib LinearMath_Debug.lib OpenGLWindow_Debug.lib gwen_Debug.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.lib" /MACHINE:X64 x64\Debug\main.obj
+         VoxelQuest.vcxproj -> C:\wamp\www\voxelquest\x64\Debug\VoxelQuest.exe
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:00.01
+Time Elapsed 00:00:06.44

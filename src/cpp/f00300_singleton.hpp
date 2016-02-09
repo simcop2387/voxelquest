@@ -477,6 +477,7 @@ public:
 	GamePlant* gamePlants[E_PT_LENGTH/2];
 
 	Shader *curShaderPtr;
+	string jsonPostString;
 	string currentFieldString;
 	string curShader;
 	string allText;
@@ -493,7 +494,7 @@ public:
 	vector<int> emptyStack;
 	
 	
-	
+	vector<string> jsonPostStack;
 	vector<string> splitStrings;
 	vector<string> shaderStrings;
 	vector<string> shaderTextureIds;
@@ -578,12 +579,12 @@ public:
 	GameGUI* mainGUI;
 	
 	UIComponent* mapComp;
-	UIComponent* mainMenu;
-	UIComponent* contMenu;
+	
+	UIComponent* menuList[E_FM_LENGTH];
+	
+	
 	UIComponent* contMenuBar;
-	UIComponent* ddMenu;
 	UIComponent* ddMenuBar;
-	UIComponent* fieldMenu;
 	UIComponent* fieldText;
 	
 	FontWrapper* fontWrappers[EFW_LENGTH];
@@ -656,8 +657,11 @@ public:
 		
 		
 		// todo: mem leak, should delete?
-		externalJSON["shaderParams"].jv = NULL;
-		externalJSON["objectData"].jv = NULL;
+		
+		for (i = 0; i < E_SDT_LENGTH; i++) {
+			externalJSON[E_SPECIAL_DATA_TYPE_STRINGS[i]].jv = NULL;
+		}
+		
 		externalJSON["kb.js"].jv = NULL;
 		
 		
@@ -764,11 +768,11 @@ public:
 		threadNetRecv.init();
 		
 		
+		for (i = 0; i < E_FM_LENGTH; i++) {
+			menuList[i] = NULL;
+		}
+		
 		mapComp = NULL;
-		mainMenu = NULL;
-		ddMenu = NULL;
-		contMenu = NULL;
-		fieldMenu = NULL;
 		fieldText = NULL;
 		selectedEnt = NULL;
 		highlightedEnt = NULL;
@@ -1566,7 +1570,7 @@ public:
 		keyMap[KEYMAP_BACKWARD] = 'd';
 		keyMap[KEYMAP_LEFT] = 's';
 		keyMap[KEYMAP_RIGHT] = 'f';
-		keyMap[KEYMAP_FIRE_PRIMARY] = ' ';
+		keyMap[KEYMAP_FIRE_PRIMARY] = '7';
 		keyMapMaxCoolDown[KEYMAP_FIRE_PRIMARY] = 20;
 		keyMap[KEYMAP_GRAB] = 'w';
 		keyMapMaxCoolDown[KEYMAP_GRAB] = 200;
@@ -2514,15 +2518,15 @@ public:
 				
 			}
 			
-			ddMenu->isDirty = true;
-			ddMenu->visible = true;
-			ddMenuBar = ddMenu->getChild(0)->getChild(0);
+			menuList[E_FM_DDMENU]->isDirty = true;
+			menuList[E_FM_DDMENU]->visible = true;
+			ddMenuBar = menuList[E_FM_DDMENU]->getChild(0)->getChild(0);
 			ddMenuBar->lastDrag.x = (guiX);
-			ddMenuBar->lastDrag.y = min((float)(guiY), (float)( (guiWinH - ddMenu->getChild(0)->resultDimInPixels.y) ));
+			ddMenuBar->lastDrag.y = min((float)(guiY), (float)( (guiWinH - menuList[E_FM_DDMENU]->getChild(0)->resultDimInPixels.y) ));
 			ddMenuBar->forceDragUpdate = true;
 		}
 		else {
-			ddMenu->visible = false;
+			menuList[E_FM_DDMENU]->visible = false;
 			markerFound = false;
 		}
 	}
@@ -2541,6 +2545,8 @@ public:
 		
 		
 		BaseObj* tmpObj = NULL;
+		
+		StatSheet* curStatSheet;
 		
 		bool hitPicker = false;
 		bool wasDoubleClick = false;
@@ -2568,6 +2574,9 @@ public:
 		bool isInteractiveComp = false;
 		bool suppressSound = false;
 		
+		float newVal;
+		float oldVal;
+		float difVal;
 		
 		
 		switch (comp->guiClass) {
@@ -2795,6 +2804,41 @@ public:
 		else if (comp->uid.compare("$options.graphics.sphereMapPrec") == 0) {
 			sphereMapPrec = mixf(0.0f,200.0f,curValue);
 		}
+		else if (comp->uid.compare("#statMenu.stat") == 0) {
+			if (gem->currentActor != NULL) {
+				
+				curStatSheet = &(gem->currentActor->statSheet);
+				
+				oldVal = curStatSheet->baseStats[comp->index];
+				newVal = roundf(curValue*comp->divisions);
+				difVal = newVal-oldVal;
+				
+				tempComp = getGUIComp("statMenu.availPoints");
+				
+				curStatSheet->availPoints -= difVal;
+				curStatSheet->baseStats[comp->index] = newVal;
+				
+				while (curStatSheet->availPoints < 0) {
+					curStatSheet->availPoints += 1;
+					curStatSheet->baseStats[comp->index] -= 1;
+				}
+				
+				comp->setValue(
+					curStatSheet->baseStats[comp->index]/comp->divisions
+				);
+				tempComp->setValue(
+					curStatSheet->availPoints/tempComp->divisions
+				);
+				
+				
+				
+				
+				
+			}
+			
+		}
+		
+		
 		
 		if (
 			(button == GLUT_LEFT_BUTTON) ||
@@ -2870,6 +2914,7 @@ DISPATCH_EVENT_END:
 	void initStyleSheet() {
 		
 		int i;
+		int j;
 		
 		StyleSheet* mainSS = getNewStyleSheet("defaultSS");
 		StyleSheetState* curState = &(mainSS->compStates[E_COMP_UP]);
@@ -2946,8 +2991,8 @@ DISPATCH_EVENT_END:
 		headerSS->copyFrom(mainSS);
 		
 		curState = &(headerSS->compStates[E_COMP_UP]);
-		curState->setVal(E_SS_BGCOL0_R, 0.0f, 0.2f, 0.5f, 1.0f);
-		curState->setVal(E_SS_BGCOL1_R, 0.0f, 0.4f, 0.8f, 0.5f);
+		curState->setVal(E_SS_BGCOL0_R, 0.2f, 0.1f, 0.0f, 1.0f);
+		curState->setVal(E_SS_BGCOL1_R, 0.1f, 0.05f, 0.0f, 1.0f);
 		curState->setVal(E_SS_FGCOLTEXT0_R, 1.0f, 0.75f, 0.0f, 1.0f);
 		curState->setVal(E_SS_FGCOLTEXT1_R, 1.0f, 0.75f, 0.0f, 1.0f);
 		curState->setVal(E_SS_BDCOL_R, 1.0f, 0.75f, 0.0f, 1.0f);
@@ -2959,13 +3004,24 @@ DISPATCH_EVENT_END:
 		
 		
 		
+		StyleSheet* sectionSS = getNewStyleSheet("sectionSS");
+		sectionSS->copyFrom(mainSS);
+		
+		for (i = 0; i < E_COMP_TOTAL; i++) {
+			curState = &(sectionSS->compStates[i]);
+			curState->setVal(E_SS_FGCOLTEXT0_R, 0.5f, 0.5f, 0.5f, 1.0f);
+			curState->setVal(E_SS_FGCOLTEXT1_R, 0.4f, 0.4f, 0.4f, 1.0f);
+			curState->setVal(E_SS_BGCOL0_R, 0.2f, 0.2f, 0.2f, 1.0f);
+			curState->setVal(E_SS_BGCOL1_R, 0.1f, 0.1f, 0.1f, 0.5f);
+		}
+		
 		StyleSheet* redSS = getNewStyleSheet("redSS");
 		redSS->copyFrom(mainSS);
 		
 		for (i = 0; i < E_COMP_TOTAL; i++) {
 			curState = &(redSS->compStates[i]);
-			curState->setVal(E_SS_BGCOL0_R, 1.0f, 0.2f, 0.5f, 1.0f);
-			curState->setVal(E_SS_BGCOL1_R, 0.8f, 0.4f, 0.8f, 0.5f);
+			curState->setVal(E_SS_BGCOL0_R, 1.0f, 0.1f, 0.2f, 1.0f);
+			curState->setVal(E_SS_BGCOL1_R, 0.8f, 0.05f, 0.1f, 0.75f);
 		}
 		
 		
@@ -2980,6 +3036,17 @@ DISPATCH_EVENT_END:
 		}
 		
 		
+		StyleSheet* spacerSS = getNewStyleSheet("spacerSS");
+		spacerSS->copyFrom(mainSS);
+		
+		for (i = 0; i < E_COMP_TOTAL; i++) {
+			curState = &(spacerSS->compStates[i]);
+			
+			for (j = 0; j <= E_SS_BDCOL_R; j += 4) {
+				curState->setVal(j, 0.0f, 0.0f, 0.0f, 0.0f);
+			}
+			
+		}
 		
 		
 		
@@ -3535,7 +3602,7 @@ DISPATCH_EVENT_END:
 			
 			processJSONFromString(
 				&stringBuf,
-				&(externalJSON["shaderParams"].jv)
+				&(externalJSON["E_SDT_SHADERPARAMS"].jv)
 			);
 			
 			
@@ -5002,9 +5069,9 @@ DISPATCH_EVENT_END:
 				case 27: // esc
 					//std::exit(0);
 					
-					if (ddMenu->visible || contMenu->visible) {
+					if (menuList[E_FM_DDMENU]->visible || menuList[E_FM_CONTMENU]->visible) {
 						toggleDDMenu(x,y,false);
-						contMenu->visible = false;
+						menuList[E_FM_CONTMENU]->visible = false;
 						gem->closeAllContainers();
 						escCount = 0;
 					}
@@ -5172,11 +5239,11 @@ DISPATCH_EVENT_END:
 				case 'y':
 					// throw
 				break;
-				case 't':
+				case 'T':
 					testOn = !testOn;
 					
 				break;
-				case 'T':
+				case 't':
 					testOn2 = !testOn2;
 					
 				break;
@@ -5187,26 +5254,26 @@ DISPATCH_EVENT_END:
 
 				case '\t':
 				
-					if (ddMenu->visible || contMenu->visible) {
+					if (menuList[E_FM_DDMENU]->visible || menuList[E_FM_CONTMENU]->visible) {
 						toggleDDMenu(x,y,false);
-						contMenu->visible = false;
+						menuList[E_FM_CONTMENU]->visible = false;
 						gem->closeAllContainers();
 						
 						escCount = 0;
 					}
 					else {
 						if (mainGUI->isReady) {
-							if (mainMenu == NULL) {
+							if (menuList[E_FM_MAINMENU] == NULL) {
 								
 							}
 							else {
-								if (mainMenu->visible) {
+								if (menuList[E_FM_MAINMENU]->visible) {
 									playSoundEvent("hideGUI");
 								}
 								
-								mainMenu->visible = !(mainMenu->visible);
+								menuList[E_FM_MAINMENU]->visible = !(menuList[E_FM_MAINMENU]->visible);
 								
-								if (mainMenu->visible) {
+								if (menuList[E_FM_MAINMENU]->visible) {
 									playSoundEvent("showGUI");
 								}
 							}
@@ -5223,19 +5290,26 @@ DISPATCH_EVENT_END:
 					// 	selectedEnts.cycleEnts();
 					// }
 					
+					showStatMenu( !(menuList[E_FM_STATMENU]->visible) );
+					
+					//cout << makePretty("E_TEST_STRING_VALUE", "E_TEST_") << "\n";
+					
 					
 				break;
 				
 				
 				case 'C':
 					
-					gem->applyNonPoseData();
+					
+					
 				
 					
 				break;
 				case 'c':
 					
-					gem->togglePoseEdit();
+					gem->combatOn = !(gem->combatOn);
+					cout << "gem->combatOn " << gem->combatOn << "\n";
+					
 					
 					//setCameraToElevation();
 				
@@ -5244,13 +5318,16 @@ DISPATCH_EVENT_END:
 					break;
 					
 				case 'v':
+					gem->togglePoseEdit();
 					
-					gem->mirrorOn = !gem->mirrorOn;
-					cout << "gem->mirrorOn " << gem->mirrorOn << "\n";
 					
 					//waterBulletOn = !waterBulletOn;
 					//gw->toggleVis(selectedEnts.getSelectedEnt());
 					break;
+					
+				case 'V':
+					gem->applyNonPoseData();
+				break;
 				
 
 				case 'X':
@@ -5269,14 +5346,15 @@ DISPATCH_EVENT_END:
 				case 'm':
 
 
-					
+					gem->mirrorOn = !gem->mirrorOn;
+					cout << "gem->mirrorOn " << gem->mirrorOn << "\n";
 					
 					// doPathReport = true;
 
-					medianCount++;					
-					if (medianCount == 4) {
-						medianCount = 0;
-					}
+					// medianCount++;					
+					// if (medianCount == 4) {
+					// 	medianCount = 0;
+					// }
 					
 					//runReport();
 					
@@ -5734,8 +5812,8 @@ DISPATCH_EVENT_END:
 		bool ddVis = false;
 		bool noTravel = false;
 		
-		if (ddMenu != NULL) {
-			ddVis = ddMenu->visible;
+		if (menuList[E_FM_DDMENU] != NULL) {
+			ddVis = menuList[E_FM_DDMENU]->visible;
 		}
 		
 		float fx = ((float)x)*M_PI*2.0f / bufferDim[0];
@@ -5894,8 +5972,8 @@ DISPATCH_EVENT_END:
 		wasDoubleClick[1] = false;
 		
 		bool ddVis = false;
-		if (ddMenu != NULL) {
-			ddVis = ddMenu->visible;
+		if (menuList[E_FM_DDMENU] != NULL) {
+			ddVis = menuList[E_FM_DDMENU]->visible;
 		}
 
 		float wheelDelta = 0.0f;
@@ -5961,24 +6039,31 @@ DISPATCH_EVENT_END:
 		
 		int curHand = -1;
 		
+		
+		
+		
 		if (lbClicked) {
 			curHand = RLBN_LEFT;
 			
 		}
 		if (rbClicked) {
-			curHand = RLBN_RIGT;
-			
+			curHand = RLBN_RIGT;	
 		}
 		
-		if (curHand > -1) {
-			mdTimeLR[curHand] = myTimer.getElapsedTimeInMilliSec();
-			
-			if ( (mdTimeLR[curHand]-clickTimeLR[curHand]) < 500 ) {
-				wasDoubleClick[curHand] = true;
+		if (state == GLUT_UP) {
+			if (curHand > -1) {
+				mdTimeLR[curHand] = myTimer.getElapsedTimeInMilliSec();
+				
+				if ( (mdTimeLR[curHand]-clickTimeLR[curHand]) < 500 ) {
+					wasDoubleClick[curHand] = true;
+				}
+				
+				
+				clickTimeLR[curHand] = mdTimeLR[curHand];
 			}
-			
-			clickTimeLR[curHand] = mdTimeLR[curHand];
 		}
+		
+		
 		
 		
 		
@@ -6064,7 +6149,7 @@ DISPATCH_EVENT_END:
 
 		if (abClicked) {
 
-			if (ddMenu != NULL) {
+			if (menuList[E_FM_DDMENU] != NULL) {
 				if (noTravel) {
 					toggleDDMenu(x,y,false);
 				}
@@ -6292,45 +6377,37 @@ DISPATCH_EVENT_END:
 				mouseMovingLoc = 0;
 				mouseCount = 0;
 				
-				
-
 				if (rbDown&&(!lbDown)) {
 					activeObject = E_OBJ_CAMERA;
 				}
-				
-				
-				
-				if (mouseState == E_MOUSE_STATE_MOVE) {
-					if (
-						gem->orgOn &&
-						gem->editPose
-						&& (!ddVis)
-						
-					) {
-						findObject = !(gem->updateNearestOrgNode(true, &mouseDownPD));
-					}
-					else {
-						findObject = true;
-					}
-					
-					if (findObject&&lbDown) {
-												
-						gem->updateDragInfo(mouseDownOPD.getFW(), wasDoubleClick[RLBN_LEFT]);
-						
-					}
-				}
-				
-				
-				
-				
-				
-				
-				
-				
-
-
 			}
 		}
+		
+		
+		if (mouseState == E_MOUSE_STATE_MOVE) {
+			
+			if (
+				gem->orgOn &&
+				gem->editPose
+				&& (!ddVis)
+				
+			) {
+				findObject = !(gem->updateNearestOrgNode(true, &mouseDownPD));
+			}
+			else {
+				findObject = true;
+			}
+			
+			if (findObject) {
+				
+				gem->updateDragInfo(mouseDownOPD.getFW(), lbDown, wasDoubleClick[RLBN_LEFT]);
+				
+			}
+		}
+		
+		
+		
+		
 
 		
 		if (!bShift) {
@@ -6494,38 +6571,9 @@ DISPATCH_EVENT_END:
 
 	// }
 
-	void refreshContainers(bool onMousePos) {
-		UIComponent* objCont = NULL;
-		
-		bool oldVis = false;
-		
-		if (contMenu != NULL) {
-			
-			cout << "refreshContainers\n";
-			
-			externalJSON.erase("objectData"); // mem leak?
-			
-			oldVis = contMenu->visible;
-			contMenu->visible = gem->anyContainerOpen();
 
-			objCont = mainGUI->findNodeByString("objectContainer");
-			//objCont->jvNodeNoTemplate->Child("dataParams")->number_value = contIndex;
-			
-			mainGUI->refreshNode(objCont);
-			
-			if (onMousePos&&(oldVis == false)) {
-				
-				// contMenu->dragOffset.x = 0.0f;
-				// contMenu->dragOffset.y = 0.0f;
-				contMenuBar = contMenu->getChild(0)->getChild(0);
-				
-				contMenuBar->lastDrag.x = (guiX);
-				contMenuBar->lastDrag.y = min((float)(guiY), (float)( (guiWinH - contMenu->getChild(0)->resultDimInPixels.y) ));
-				contMenuBar->forceDragUpdate = true;
-			}
-			
-		}
-	}
+
+  
 
 	
 
@@ -6943,34 +6991,22 @@ DISPATCH_EVENT_END:
 	
 	bool anyMenuVisible() {
 		bool doProc = false;
+		int i;
+		
+		
+		
 		
 		if ((mainGUI != NULL)) {
 			if (mainGUI->isReady) {
-				if (mainMenu != NULL) {
-					if (mainMenu->visible){
-						doProc = true;
+				
+				for (i = 0; i < E_FM_LENGTH; i++) {
+					if (menuList[i] != NULL) {
+						if (menuList[i]->visible){
+							doProc = true;
+						}
 					}
 				}
-				if (ddMenu != NULL) {
-					if (ddMenu->visible){
-						doProc = true;
-					}
-				}
-				if (contMenu != NULL) {
-					if (contMenu->visible){
-						doProc = true;
-					}
-				}
-				// if (pickerMenu != NULL) {
-				// 	if (pickerMenu->visible){
-				// 		doProc = true;
-				// 	}
-				// }
-				if (fieldMenu != NULL) {
-					if (fieldMenu->visible) {
-						doProc = true;
-					}
-				}
+				
 				
 			}
 		}
@@ -7143,7 +7179,36 @@ DISPATCH_EVENT_END:
 	}
 	
 	
-	
+	string makePretty(string sourceString, string remString) {
+		string newString = sourceString.substr(remString.size());
+		
+		
+		std::string::size_type i;
+		
+		for (i = 0; i < newString.length(); i++) {
+			if (i == 0) {
+				
+			}
+			else {
+				if (newString[i-1] == '_') {
+					newString[i] = toupper(newString[i]);
+				}
+				else {
+					newString[i] = tolower(newString[i]);
+				}
+			}
+			
+		}
+		
+		for (i = 0; i < newString.length(); i++) {
+			if (newString[i] == '_') {
+				newString[i] = ' ';
+			}
+		}
+		
+		return newString;
+		
+	}
 
 	void cleanJVPointer(JSONValue** jv) {
 		
@@ -7155,7 +7220,8 @@ DISPATCH_EVENT_END:
 		
 	}
 
-	void getObjectData() {//int paramVal) {
+
+	void getSpecialData(int datEnum, string datString) {
 		int i;
 		int objectType;
 		int childId;
@@ -7165,36 +7231,142 @@ DISPATCH_EVENT_END:
 		BaseObj* curCont;
 		
 		
-		cleanJVPointer(&(externalJSON["objectData"].jv));
+		cleanJVPointer(&(externalJSON[datString].jv));
+				
+		externalJSON[datString].jv = new JSONValue(JSONObject());
 		
 		
-		externalJSON["objectData"].jv = new JSONValue(JSONObject());
-		externalJSON["objectData"].jv->object_value["objects"] = new JSONValue(JSONArray());
-		tempVal0 = externalJSON["objectData"].jv->object_value["objects"];
 		
-		for (itBaseObj iterator = gem->gameObjects.begin(); iterator != gem->gameObjects.end(); iterator++) {
-			// iterator->first = key
-			// iterator->second = value
-			
-			curCont = &(gem->gameObjects[iterator->first]);
-			
-			if (curCont->isOpen) {
+		StatSheet* curSS;
+		
+		
+		switch (datEnum) {
+			case E_SDT_OBJECTDATA:
+				externalJSON[datString].jv->object_value["objects"] = new JSONValue(JSONArray());
+				tempVal0 = externalJSON[datString].jv->object_value["objects"];
 				
-				tempVal0->array_value.push_back( new JSONValue(JSONObject()) );
-				
-				tempVal0->array_value.back()->object_value["children"] = new JSONValue(JSONArray());
-				tempVal0->array_value.back()->object_value["objectId"] = new JSONValue( ((double)(iterator->first)) );
-				tempVal1 = tempVal0->array_value.back()->Child("children");
-				
-				
-				for (i = 0; i < curCont->children.size(); i++) {
-					tempVal1->array_value.push_back(new JSONValue(JSONObject()));
-					childId = curCont->children[i];
-					objectType = gem->gameObjects[childId].objectType;
-					tempVal1->array_value.back()->object_value["objectType"] = new JSONValue( ((double)(objectType)) );
-					tempVal1->array_value.back()->object_value["objectId"] = new JSONValue( ((double)(childId)) );
+				for (itBaseObj iterator = gem->gameObjects.begin(); iterator != gem->gameObjects.end(); iterator++) {
+					// iterator->first = key
+					// iterator->second = value
+					
+					curCont = &(gem->gameObjects[iterator->first]);
+					
+					if (curCont->isOpen) {
+						
+						tempVal0->array_value.push_back( new JSONValue(JSONObject()) );
+						
+						tempVal0->array_value.back()->object_value["children"] = new JSONValue(JSONArray());
+						tempVal0->array_value.back()->object_value["objectId"] = new JSONValue( ((double)(iterator->first)) );
+						tempVal1 = tempVal0->array_value.back()->Child("children");
+						
+						
+						for (i = 0; i < curCont->children.size(); i++) {
+							tempVal1->array_value.push_back(new JSONValue(JSONObject()));
+							childId = curCont->children[i];
+							objectType = gem->gameObjects[childId].objectType;
+							tempVal1->array_value.back()->object_value["objectType"] = new JSONValue( ((double)(objectType)) );
+							tempVal1->array_value.back()->object_value["objectId"] = new JSONValue( ((double)(childId)) );
+						}
+					}
 				}
+			break;
+			case E_SDT_STATDATA:
+				
+				externalJSON[datString].jv->object_value["stats"] = new JSONValue(JSONArray());
+				tempVal0 = externalJSON[datString].jv->object_value["stats"];
+				
+				if (gem->currentActor == NULL) {
+					cout << "NULL STATS\n";
+					return;
+				}
+				else {
+					
+					curSS = &(gem->currentActor->statSheet);
+					
+					for (i = 0; i < E_CS_LENGTH; i++) {
+						tempVal0->array_value.push_back( new JSONValue(JSONObject()) );
+						
+						tempVal0->array_value.back()->object_value["label"] = new JSONValue( makePretty(E_CHAR_STAT_STRINGS[i],"E_CS_") );
+						tempVal0->array_value.back()->object_value["value"] = new JSONValue( ((double)(curSS->baseStats[i]))/((double)(MAX_STAT_VALUE)) );
+						tempVal0->array_value.back()->object_value["divisions"] = new JSONValue( ((double)(MAX_STAT_VALUE)) );
+						
+						
+					}
+					
+					
+				}
+				
+				
+				
+			break;
+			default:
+				cout << "ERROR: unexpected type in getSpecialData(): " << datEnum << "\n";
+			break;
+		}
+		
+		
+		
+		
+		
+	}
+
+
+
+	void showStatMenu(bool visible) {
+		
+		
+		cout << "refreshStats\n";
+		
+		if (menuList[E_FM_STATMENU] != NULL) {
+			menuList[E_FM_STATMENU]->visible = visible;
+			externalJSON.erase("E_SDT_STATDATA"); // mem leak?
+			
+			mainGUI->refreshNode(
+				mainGUI->findNodeByString("statMenu.statContainer")	
+			);
+						
+			if (visible) {
+				
 			}
+			
+			
+		}
+		
+	}
+
+	// qvq
+	void refreshContainers(bool onMousePos) {
+		UIComponent* objCont = NULL;
+		
+		bool oldVis = false;
+		
+		if (menuList[E_FM_CONTMENU] != NULL) {
+			
+			cout << "refreshContainers\n";
+			
+			externalJSON.erase("E_SDT_OBJECTDATA"); // mem leak?
+			
+			
+			
+			oldVis = menuList[E_FM_CONTMENU]->visible;
+			menuList[E_FM_CONTMENU]->visible = gem->anyContainerOpen();
+
+			objCont = mainGUI->findNodeByString("objectContainer");
+			//objCont->jvNodeNoTemplate->Child("dataParams")->number_value = contIndex;
+			
+			mainGUI->refreshNode(objCont);
+			
+			if (onMousePos&&(oldVis == false)) {
+				
+				// menuList[E_FM_CONTMENU]->dragOffset.x = 0.0f;
+				// menuList[E_FM_CONTMENU]->dragOffset.y = 0.0f;
+				contMenuBar = menuList[E_FM_CONTMENU]->getChild(0)->getChild(0);
+				
+				contMenuBar->lastDrag.x = (guiX);
+				contMenuBar->lastDrag.y = min((float)(guiY), (float)( (guiWinH - menuList[E_FM_CONTMENU]->getChild(0)->resultDimInPixels.y) ));
+				contMenuBar->forceDragUpdate = true;
+			}
+			
 		}
 	}
 	
@@ -7205,6 +7377,7 @@ DISPATCH_EVENT_END:
 		
 		bool doLoad = false;
 		bool loadRes = false;
+		int dataFileEnum;
 		
 		if (externalJSON.find( dataFile ) == externalJSON.end()) {
 			doLoad = true;
@@ -7222,24 +7395,34 @@ DISPATCH_EVENT_END:
 		}
 			
 		if (doLoad) {
-			if (dataFile.compare("shaderParams") == 0) {
-				cout << "attempted to load shaderParams\n";
+			
+			dataFileEnum = stringToEnum(
+				E_SPECIAL_DATA_TYPE_STRINGS,
+				E_SDT_LENGTH,
+				dataFile
+			);
+			
+			switch (dataFileEnum) {
+				case E_SDT_SHADERPARAMS:
+					cout << "attempted to load shaderParams\n";
+				break;
+				case -1:
+					cout << "load jv data "  + dataFile << "\n";
+					loadRes = loadJSON(
+						"..\\data\\" + dataFile,
+						&((externalJSON[dataFile]).jv)
+					);
+					
+					if (loadRes == false) {
+						return NULL;	
+					}
+				break;
+				default:
+					getSpecialData(dataFileEnum, dataFile);
+				break;
 			}
-			else if (dataFile.compare("objectData") == 0) {
-				getObjectData();//params->number_value);
-			}
-			else {
-				cout << "load jv data "  + dataFile << "\n";
-				loadRes = loadJSON(
-					"..\\data\\" + dataFile,
-					&((externalJSON[dataFile]).jv)
-				);
-				
-				if (loadRes == false) {
-					return NULL;	
-				}
-				
-			}
+			
+			
 			
 			
 		}
@@ -7269,6 +7452,133 @@ DISPATCH_EVENT_END:
 			doTraceND("\nValid JSON\n");
 			return true;
 		}
+		
+	}
+
+
+
+	void specialReplace(
+		string &allTextString,
+		string preDelim,
+		string pstDelim
+	) {
+		
+		string paramName;
+		
+		jsonPostStack.clear();
+		
+		std::size_t found;
+		std::size_t found2;
+		std::size_t found3;
+		
+		int baseIndex = 0;
+		bool doCont = true;
+		
+		int preLen = preDelim.size();
+		int pstLen = pstDelim.size();
+		
+		while (doCont) {
+			found = allTextString.find(preDelim, baseIndex);
+			if (found != std::string::npos) {
+				
+				
+				baseIndex = found+preLen;
+				//allTextString[found] = ' ';
+				
+				found3 = allTextString.find(' ', baseIndex);
+				found2 = allTextString.find(pstDelim, baseIndex);
+				
+				if (found2 != std::string::npos) {
+					
+					if ( 
+						((found2-found) > 32) || // max var length of 32
+						(found3 < found2) // found a space between the delimitters
+					) { 
+						
+					}
+					else {
+						baseIndex = found2+pstLen;
+						//allTextString[found2] = ' ';
+						
+						paramName = allTextString.substr(found + preLen, (found2-found) - pstLen);
+						
+						jsonPostStack.push_back(paramName);
+						
+						cout << "PARAM NAME " << paramName << "\n";
+						
+					}
+					
+					doCont = true;
+				}
+				else {
+					doCont = false;
+				}
+				
+				
+			}
+			else {
+				doCont = false;
+			}
+		}
+		
+	}
+
+	void jsonPostProc() {
+		
+		std::size_t found = jsonPostString.find("@@", 0);
+		if (found == std::string::npos) {
+			return;	
+		}
+		
+		string preStr = "\"@@";
+		string pstStr = "@@\"";
+		
+		
+		
+		specialReplace(jsonPostString,preStr,pstStr);
+		
+		int i;
+		int enumVal;
+		bool doProc;
+		
+		string newString = "";
+		
+		for (i = 0; i < jsonPostStack.size(); i++) {
+			enumVal = stringToEnum(E_JSON_PARAM_STRINGS,E_JP_LENGTH,jsonPostStack[i]);
+			
+			doProc = true;
+			
+			switch(enumVal) {
+				case E_JP_STATMENUAVAILDIV:
+					newString = i__s(E_CS_LENGTH*MAX_STAT_VALUE);
+				break;
+				case E_JP_STATMENUAVAILPOINTS:
+				
+					if (gem->currentActor == NULL) {
+						newString = "0";
+					}
+					else {
+						newString = i__s(gem->currentActor->statSheet.availPoints);
+					}
+				
+					
+				break;
+				default:
+					doProc = false;
+					cout << "invalid JSON Post Process Enum " << jsonPostStack[i] << "\n";
+				break;
+			}
+			
+			if (doProc) {
+				replaceStr(jsonPostString, preStr+jsonPostStack[i]+pstStr, newString);
+			}
+			
+			
+			
+			
+		}
+		
+		jsonPostStack.clear();
 		
 	}
 
@@ -7311,7 +7621,12 @@ DISPATCH_EVENT_END:
 		else
 		{
 			//doTraceND("buf is not NULL");
-			*destObj = JSON::Parse(buf);
+			
+			jsonPostString = string(buf);
+			jsonPostProc();
+			
+			
+			*destObj = JSON::Parse(jsonPostString.c_str());
 		}
 
 
@@ -7327,6 +7642,9 @@ DISPATCH_EVENT_END:
 		else
 		{
 			doTraceND("\nValid JSON\n");
+			
+			
+			
 			return true;
 		}
 
@@ -7559,7 +7877,7 @@ DISPATCH_EVENT_END:
 					
 				}
 				else {
-					if (iterator->first[0] ==  '$') {
+					if (iterator->first[0] ==  '$') { // values with $ are saved
 						stringBuf.append(
 							iterator->first + "^" + floatToHex(compStack[iterator->second.nodeId].data->getValue()) + "^"
 						);
@@ -7614,7 +7932,7 @@ DISPATCH_EVENT_END:
 		fieldCallback = cb;
 		
 		inputOn = true;
-		fieldMenu->visible = true;
+		menuList[E_FM_FIELDMENU]->visible = true;
 		
 		if (fieldText != NULL) {
 			if (currentFieldString.compare("") == 0) {
@@ -7660,7 +7978,7 @@ DISPATCH_EVENT_END:
 	void endFieldInput(bool success) {
 		
 		inputOn = false;
-		fieldMenu->visible = false;
+		menuList[E_FM_FIELDMENU]->visible = false;
 		
 		if (success) {
 			switch (fieldCallback) {
@@ -7730,6 +8048,8 @@ DISPATCH_EVENT_END:
 	}
 
 	void loadGUI() {
+		int i;
+		
 		externalJSON.clear();
 		doShaderRefresh(bakeParamsOn);
 		
@@ -7757,26 +8077,17 @@ DISPATCH_EVENT_END:
 		
 		}
 		
+		for (i = 0; i < E_FM_LENGTH; i++) {
+			menuList[i] = getGUIComp("guiHandles." + E_FLOATING_MENU_STRINGS[i]);
+			if (menuList[i] != NULL) {
+				menuList[i]->visible = false;
+			}
+		}
+		
+		
 		mapComp = getGUIComp("map.mapHolder");
-		mainMenu = getGUIComp("guiHandles.mainMenu");
-		ddMenu = getGUIComp("guiHandles.ddMenu");
-		contMenu = getGUIComp("guiHandles.contMenu");
-		//pickerMenu = getGUIComp("guiHandles.pickerMenu");
-		fieldMenu = getGUIComp("guiHandles.fieldMenu");
 		fieldText = getGUIComp("fieldMenu.field");
 		
-		// if (pickerMenu != NULL) {
-		// 	pickerMenu->visible = false;
-		// }
-		if (mainMenu != NULL) {
-			mainMenu->visible = false;
-		}
-		if (ddMenu != NULL) {
-			ddMenu->visible = false;
-		}
-		if (fieldMenu != NULL) {
-			fieldMenu->visible = false;
-		}
 		
 		updateMatFlag = true;
 		
@@ -8625,7 +8936,7 @@ DISPATCH_EVENT_END:
 			
 			}
 			else {
-				markerFound = (ddMenu->visible)&&(gem->selObjInd < E_OBJ_LENGTH);
+				markerFound = (menuList[E_FM_DDMENU]->visible)&&(gem->selObjInd < E_OBJ_LENGTH);
 				glutSetCursor(GLUT_CURSOR_RIGHT_ARROW);
 			}
 

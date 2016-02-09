@@ -9,6 +9,19 @@
 			"alignX":1,
 			"fillRatioX":1
 		},
+		"sectionBar": {
+			"type":0,
+			"ss":"sectionSS",
+			"alignX":1,
+			"fillRatioX":1
+		},
+		"spacerBar": {
+			"type":0,
+			"ss":"spacerSS",
+			"alignX":1,
+			"fillRatioX":1,
+			"label":" "
+		},
 		"cont": {
 			"type":0
 		},
@@ -40,6 +53,12 @@
 			"label":" ",
 			"fillRatioX":1
 		},
+		"fillLabelCenter": {
+			"type":0,
+			"label":" ",
+			"fillRatioX":1,
+			"alignX":1
+		},
 		"fillButton": {
 			"type":2,
 			"fillRatioX":1
@@ -53,7 +72,8 @@
 			"type":1,
 			"label":" ",
 			"fillRatioX":1,
-			"divisions":10
+			"divisions":10,
+			"alignX":1
 		},
 		"tooltip": {
 			"type":0,
@@ -298,7 +318,7 @@
 			
 			
 			{
-				"uid":"guiHandles.fieldMenu",
+				"uid":"guiHandles.E_FM_FIELDMENU",
 				"template":"rootCont",
 				"hasBackground":0,
 				"alignX":1,
@@ -353,7 +373,7 @@
 
 			
 			{
-				"uid":"guiHandles.ddMenu",
+				"uid":"guiHandles.E_FM_DDMENU",
 				"template":"rootCont",
 				"hasBackground":0,
 				"children":[
@@ -669,7 +689,7 @@
 															"maxDimY": 512,
 															"dataFile":"materials.js",
 															"dataSource":"materials",
-															"childType":2,
+															"childType":"E_GCT_GENERIC",
 															"children": [],
 															"childTemplate":{
 																"template":"radioFillCenter",
@@ -677,7 +697,6 @@
 																"uid":"#materialPicker"
 															}
 														}
-													
 													]
 												}
 											]
@@ -696,10 +715,8 @@
 			
 			
 			
-			
-			
 			{
-				"uid":"guiHandles.contMenu",
+				"uid":"guiHandles.E_FM_CONTMENU",
 				"template":"rootCont",
 				"hasBackground":0,
 				"children":[
@@ -719,9 +736,9 @@
 								"fillDir":0,
 								
 								"uid":"objectContainer",
-								"dataFile":"objectData",
+								"dataFile":"E_SDT_OBJECTDATA",
 								"dataSource":"objects",
-								"childType":4,
+								"childType":"E_GCT_CONTAINER_PARENT",
 								"children":[],
 								
 								"childTemplate": {
@@ -749,9 +766,9 @@
 												"uid":"#contItemParent",
 												"interactive":1,
 												
-												"dataFile":"objectData",
+												"dataFile":"E_SDT_OBJECTDATA",
 												"dataSource":"",
-												"childType":3,
+												"childType":"E_GCT_CONTAINER",
 												"children":[],
 												
 												"childTemplate":{
@@ -781,10 +798,145 @@
 			
 			
 			
+			{
+				"uid":"guiHandles.E_FM_STATMENU",
+				"template":"rootCont",
+				"hasBackground":0,
+				"children":[
+					
+					{
+						"template":"cont",
+						"fillDir":1,
+						"children": [
+						
+						
+							{
+								"template":"cont",
+								"fillRatioX":1,
+								"fillDir":0,
+								"children":[
+									{
+										"template":"menuBar",
+										"label":"Character",
+										"fillRatioX":5
+									},
+									{
+										"template":"fillButton",
+										"label":"X",
+										"fillRatioX":1,
+										"alignX":1,
+										"uid":"statMenu.close",
+										"ss":"redSS"
+									}
+								]	
+							},
+							
+							{
+								"template":"cont",
+								"fillRatioX":1,
+								"fillDir":0,
+								"uid":"statMenu.statContainer",								
+								
+								"children":[
+									{
+										"template":"cont",
+										"fillRatioX":1,
+										"fillDir":1,
+										"children":[
+											{
+												"template":"sectionBar",
+												"label":"Stats"
+											},
+											
+											{
+												"template":"spacerBar"
+											},
+											
+											
+											
+											{
+												"template":"cont",
+												"fillDir":1,
+												"fillRatioX":1,
+												"maxDimY": 512,
+												"minDimY": 32,
+												
+												
+												"uid":"statMenu.statsParent",
+												"interactive":1,
+												
+												"dataFile":"E_SDT_STATDATA",
+												"dataSource":"stats",
+												"childType":"E_GCT_STATS",
+												"children":[],
+												
+												"childTemplate":{
+													"template":"statSlider",
+													"label":"",
+													"value":0,
+													"divisions":10,
+													"uid":"#statMenu.stat"
+												}
+											},
+											
+											{
+												"template":"spacerBar"
+											},
+											
+											{
+												"template":"fillLabelCenter",
+												"label":"Available Points",
+												"value":"@@E_JP_STATMENUAVAILPOINTS@@",
+												"divisions":"@@E_JP_STATMENUAVAILDIV@@",
+												"uid":"statMenu.availPoints"
+											}
+											
+											
+											
+											
+											
+											
+											
+										]
+									},
+									{
+										"template":"cont",
+										"fillRatioX":1,
+										"fillDir":1,
+										"children":[
+											{
+												"template":"sectionBar",
+												"label":"Status"
+											}
+											
+											
+											
+											
+										]
+									}
+																
+								]
+								
+							}
+						]
+					}
+					
+					
+					
+					
+				]
+			},
+			
+			
+			
+			
+			
+			
+			
 			
 			
 			{
-				"uid":"guiHandles.mainMenu",
+				"uid":"guiHandles.E_FM_MAINMENU",
 				"template":"rootCont",
 				"hasBackground":0,
 				"children":[
@@ -803,171 +955,7 @@
 								"fillDir":1,
 								"children":[
 									
-									{
-										"template":"radioFillCenter",
-										"label":"Inventory",
-										"floatingChildren": [{
-											"template":"popout",
-											"fillRatioX":1,
-											"children": [
-												{
-													"template":"cont",
-													"fillDir":1,
-													"children": [
-													
-														{
-															"template":"menuBar",
-															"label":"Equipped"
-															
-														},
-														{
-															"template":"cont",
-															"fillDir":1,
-															"fillRatioX":1,
-															"dataSource":"inventoryData.items",
-															"whereAllEqual":[
-																["eq",1]
-															],
-															"whereAnyEqual":[
-															
-															],
-															"childType":0,
-															"childTemplate":{
-																"fillRatioX":1,
-																"template":"radio",
-																"label":"",
-																"floatingChildren":[
-																	{
-																		"template":"tooltip",
-																		"children":[
-																			{
-																				"template":"cont",
-																				"label":"",
-																				"ss":"tooltipSS"
-																			}
-																		]
-																	}
-																]
-																
-															},
-															"children": []
-														},
-														{
-															"template":"menuBar",
-															"label":"Inventory"
-															
-														},
-														{
-															"template":"cont",
-															"fillDir":1,
-															"dataSource":"inventoryData.items",
-															"fillRatioX":1,
-															"maxDimY":384,
-															"whereAllEqual":[
-																["eq",0]
-															],
-															"whereAnyEqual":[
-															
-															],
-															"childType":0,
-															"childTemplate":{
-																"fillRatioX":1,
-																"template":"radio",
-																"label":"",
-																"floatingChildren":[
-																	{
-																		"template":"tooltip",
-																		"children":[
-																			{
-																				"template":"cont",
-																				"label":"",
-																				"ss":"tooltipSS"
-																			}
-																		]
-																	}
-																]
-																							
-															},
-															"children": []
-														}
-													
-													]
-												}
-											]
-										}]
-									},
-									{
-										"template":"radioFillCenter",
-										"label":"Character Stats",
-										"floatingChildren": [{
-											"template":"popout",
-											"fillRatioX":1,
-											"children": [
-												
-												{
-													"template":"cont",
-													"fillDir":1,
-													"children": [
-													
-														{
-															"template":"menuBar",
-															"label":"Stats"
-															
-														},
-														{
-															"template":"cont",
-															"fillDir":1,
-															"fillRatioX":1,
-															"children":[
-																{
-																	"template":"statSlider",
-																	"label":"Strength",
-																	"uid":"$stats.strength"
-																},
-																{
-																	"template":"statSlider",
-																	"label":"Dexterity",
-																	"uid":"$stats.dexterity"
-																},
-																{
-																	"template":"statSlider",
-																	"label":"Celerity",
-																	"uid":"$stats.celerity"
-																},
-																{
-																	"template":"statSlider",
-																	"label":"Vitality",
-																	"uid":"$stats.vitality"
-																},
-																{
-																	"template":"statSlider",
-																	"label":"Intelligence",
-																	"uid":"$stats.intelligence"
-																},
-																{
-																	"template":"statSlider",
-																	"label":"Charisma",
-																	"uid":"$stats.charisma"
-																},
-																{
-																	"template":"statSlider",
-																	"label":"Perception",
-																	"uid":"$stats.perception"
-																},
-																{
-																	"template":"statSlider",
-																	"label":"Discipline",
-																	"uid":"$stats.discipline"
-																}
-															]
-														}
-													]
-												}
-												
-											]
-										}]
-										
-									},
+																		
 									{
 										"template":"radioFillCenter",
 										"label":"Options",
@@ -1150,7 +1138,7 @@
 															"uid":"materialEditor",
 															"dataFile":"materials.js",
 															"dataSource":"materials",
-															"childType":2,
+															"childType":"E_GCT_GENERIC",
 															"children": [],
 															"childTemplate":{
 																"template":"radioFillCenter",
@@ -1186,7 +1174,7 @@
 																						"fillRatioX":1,
 																						"dataFile":"materials.js",
 																						"dataSource":"",
-																						"childType":2,
+																						"childType":"E_GCT_GENERIC",
 																						"children": [],
 																						"childTemplate":{
 																							"template":"cont",
@@ -1194,7 +1182,7 @@
 																							"fillRatioX":1,
 																							"dataFile":"materials.js",
 																							"dataSource":"",
-																							"childType":2,
+																							"childType":"E_GCT_GENERIC",
 																							"children": [],
 																							"childTemplate":
 																							
@@ -1513,9 +1501,9 @@
 															"template":"cont",
 															"maxDimY": 512,
 															"fillDir":1,
-															"dataFile":"shaderParams",
+															"dataFile":"E_SDT_SHADERPARAMS",
 															"dataSource":"params",
-															"childType":1,
+															"childType":"E_GCT_SHADER_PARAM",
 															"children": [],
 															"childTemplate":{
 																"fillRatioX":1,

@@ -118,7 +118,7 @@ void main() {
 	bool isHSL = bool(TexCoord7.w == 1.0);
 	bool isMat = bool(TexCoord7.w == 2.0);
 	
-	vec4 shadowCol = vec4(0.0,0.0,0.0,0.5*alphaMult);
+	vec4 shadowCol = vec4(0.0,0.0,0.0,0.9*alphaMult);
 	texel1.a *= alphaMult;
 	
 	if (isIcon) {

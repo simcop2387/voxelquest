@@ -913,9 +913,11 @@ void UIComponent::applyHeight ()
 					}
 				}
 				else {
-					getChild(i)->resultDimInPixels.y =
+					getChild(i)->resultDimInPixels.y = ceil(
 						getChild(i)->rmDimInPixels.y + 
-						(availSpace*getChild(i)->fillRatioDim.y)/totalRatios.y;	
+						(availSpace*getChild(i)->fillRatioDim.y)/totalRatios.y
+					);
+					
 					
 				}
 			}
@@ -969,12 +971,14 @@ void UIComponent::applyWidth ()
 					
 					
 					
-					getChild(i)->resultDimInPixels.x =
+					getChild(i)->resultDimInPixels.x = ceil(
 						max(
 							getChild(i)->rmDimInPixels.x +
 							(availSpace*getChild(i)->fillRatioDim.x)/totalRatios.x,
 							getChild(i)->minDimInPixels.x
-						);
+						)
+					);
+					
 						
 				}
 				else {

@@ -61,6 +61,9 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 		int i;
 		int j;
 		int k;
+		//int q;
+		joi_type iterator;
+		//int numEntries;
 		int curIcon = 0;
 		int objectId = 0;
 		
@@ -171,7 +174,11 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 		
 		
 		if (jv->HasChild("childType")) {
-			childType = jv->Child("childType")->number_value;
+			childType = stringToEnum(
+				E_GUI_CHILD_TYPE_STRINGS,
+				E_GCT_LENGTH,
+				jv->Child("childType")->string_value
+			);
 			//tempStrings[E_GDS_CHILD_TYPE] = jv->Child("childType")->string_value;
 			
 			
@@ -246,8 +253,8 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 				// else if (compChildStr("E_GCT_SHADER_PARAM")) {
 				// 	curCT = E_GCT_SHADER_PARAM;
 				// }
-				// else if (compChildStr("E_GTC_GENERIC")) {
-				// 	curCT = E_GTC_GENERIC;
+				// else if (compChildStr("E_GCT_GENERIC")) {
+				// 	curCT = E_GCT_GENERIC;
 				// }
 				
 				//////////////////////////////////////////////////////////////////////
@@ -347,7 +354,7 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 									
 							break;
 							
-							case E_GTC_GENERIC:
+							case E_GCT_GENERIC:
 							
 								singleton->splitStrings.clear();
 								singleton->splitStrings = split(tempStrings[E_GDS_LAST_KEY], '_');
@@ -387,7 +394,7 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 								
 							break;
 							
-							case E_GTC_CONTAINER:
+							case E_GCT_CONTAINER:
 							
 								// curIcon = singleton->gem->entIdToIcon[
 								// 	(int)(curData->Child("objectType")->number_value)
@@ -397,7 +404,7 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 								jvChildTemplate->Child("label")->string_value = singleton->gem->getStringForObjectId(objectId);
 							break;
 							
-							case E_GTC_CONTAINER_PARENT:
+							case E_GCT_CONTAINER_PARENT:
 								
 								
 								tempJV = findNearestKey(jvChildTemplate,"objectId");
@@ -411,7 +418,36 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 								}
 							break;
 							
-							case E_GCT_LENGTH:
+							default:
+								//numEntries = curData->CountChildren();
+								// for (q = 0; q < numEntries; q++) {
+								// 	jvChildTemplate->Child("label")->string_value = singleton->gem->getStringForObjectId(objectId);
+								// }
+								
+								for (
+									iterator = curData->object_value.begin();
+									iterator != curData->object_value.end();
+									iterator++
+								) {
+									// iterator->first = key
+									// iterator->second = value
+									
+									// if (jvChildTemplate->HasChild(iterator->first)) {
+									// 	// todo: report error if key does not exist?
+									// }
+									
+									if (iterator->second->IsNumber()) {
+										jvChildTemplate->Child(iterator->first)->number_value = iterator->second->number_value;
+									}
+									else {
+										// todo: support additional JSON types
+										jvChildTemplate->Child(iterator->first)->string_value = iterator->second->string_value;
+									}
+									
+									
+								}
+								
+								
 								
 							break;
 						}
@@ -1048,7 +1084,7 @@ void GameGUI::renderGUI ()
 								
 								for (m = 0; m < maxLoop; m++) {
 									
-									shadowOffset = ((1-m)*i)*4.0f;
+									shadowOffset = ((1-m)*i)*2.0f;
 									
 									
 									// only shadow text

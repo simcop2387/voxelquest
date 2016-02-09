@@ -1750,6 +1750,7 @@ public:
 		
 		singleton->setShaderTexture3D(13, singleton->volumeWrappers[E_VW_VORO]->volId);
 		singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
+		singleton->sampleFBO("noiseFBOLinear", 15);
 		
 		// if (!doPoly) {
 		// 	singleton->sampleFBO(polyFBOStrings[NUM_POLY_STRINGS],14);
@@ -1891,7 +1892,7 @@ public:
 		// }
 		
 		
-		
+		singleton->unsampleFBO("noiseFBOLinear", 15);
 		singleton->setShaderTexture3D(14, 0);
 		singleton->setShaderTexture3D(13, 0);
 		
@@ -4593,10 +4594,10 @@ DONE_WITH_MAP:
 	void drawMap()
 	{
 
-		if (singleton->mainMenu == NULL) {
+		if (singleton->menuList[E_FM_MAINMENU] == NULL) {
 			return;
 		}
-		if (singleton->mainMenu->visible){
+		if (singleton->menuList[E_FM_MAINMENU]->visible){
 			
 		}
 		else {
@@ -5205,6 +5206,7 @@ UPDATE_LIGHTS_END:
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderInt("gridOn", (int)(singleton->gridOn));
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
+		singleton->setShaderInt("testOn2", (int)(singleton->testOn2));
 		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("cellsPerBlock", singleton->cellsPerBlock);
 		singleton->setShaderFloat("timeOfDay", singleton->timeOfDay);
@@ -5362,14 +5364,14 @@ UPDATE_LIGHTS_END:
 				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
 			
-			//if (singleton->gem->currentActor == NULL) {
+			if (singleton->gem->currentActor == NULL) {
 				singleton->setShaderInt("isFalling",false);
 				singleton->setShaderInt("isJumping",false);
-			// }
-			// else {
-			// 	singleton->setShaderInt("isFalling",singleton->gem->currentActor->allFalling());
-			// 	singleton->setShaderInt("isJumping",singleton->gem->currentActor->isJumping);
-			// }
+			}
+			else {
+				singleton->setShaderInt("isFalling",singleton->gem->currentActor->allFalling());
+				singleton->setShaderInt("isJumping",singleton->gem->currentActor->getActionState(E_ACT_ISJUMPING,RLBN_NEIT));
+			}
 			
 			
 			singleton->setShaderFloat("seaLevel", singleton->getSeaHeightScaled() );
