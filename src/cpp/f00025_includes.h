@@ -60,6 +60,15 @@ bool EDIT_POSE = false;
 
 
 
+// warning: changing this changes the size of saved poses
+// should be a one time change, then revereted to 1.0 after save
+const static float ORG_SCALE_DELTA = 1.0f;
+
+// base scale applied to base org generation
+// only change this after changing ORG_SCALE_DELTA from 1.0
+const static float ORG_SCALE_BASE = 0.5f;
+
+
 const static int DEF_VOL_SIZE = 128;
 
 const static int DEF_SCALE_FACTOR = 4;
@@ -364,6 +373,14 @@ const static int MAX_VGT_FBOS = 2;
 int CUR_VGT_FBO = 0;
 
 const static float M_PI = 3.14159265359;
+
+const static float TBDIR_ARR[] = {
+	0.0f,
+	M_PI*0.5f,
+	M_PI,
+	M_PI*1.5f
+};
+
 
 int PAGE_COUNT = 0;
 // set to 0 to disable

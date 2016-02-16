@@ -11,6 +11,18 @@ std::string f__s(float f) {
 	return std::to_string(f);
 }
 
+string getPaddedInt(int curInt, int maxInt) {
+	string res = i__s(curInt);
+	string maxRes = i__s(maxInt);
+	
+	while(res.size() < maxRes.size()) {
+		res = '0' + res;
+	}
+	
+	return res;
+	
+}
+
 
 union hex_converter{
 	float f_val;

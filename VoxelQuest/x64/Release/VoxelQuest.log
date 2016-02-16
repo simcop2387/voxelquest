@@ -1,4 +1,4 @@
-﻿Build started 2/9/2016 2:22:59 AM.
+﻿Build started 2/15/2016 10:09:56 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -804,11 +804,12 @@
                    
          Loading:  ..\data\lastJSONBufferGUI.js         
          Load Successful          
-         PARAM NAME E_JP_STATMENUAVAILPOINTS
+         jsonPostProc
          PARAM NAME E_JP_STATMENUAVAILDIV
          
          Valid JSON
                    
+         NULL STATUSS
          NULL STATS
          Loading GUI Values
          Loading:  ..\data\saves\save0\compMap.txt         
@@ -838,25 +839,8 @@
          
          Valid JSON
                    
-         refreshStats
-         from E_DT_WORLD_OBJECT to E_DT_NOTHING
-         refreshContainers
-         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         refreshContainers
-         refreshContainers
-         refreshContainers
-         refreshContainers
-         refreshContainers
-         refreshContainers
-         refreshContainers
-         refreshContainers
-         refreshContainers
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:01:38.18
+Time Elapsed 00:01:01.01

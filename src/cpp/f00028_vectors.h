@@ -126,7 +126,18 @@ float mixb(float v1, float v2, bool lerpVal) {
 }
 
 
-float roundf(float val) {
+float roundVal(float val) {
+	//return floor(val);
+	if (val < 0.0) {
+		return -floor(abs(val)+0.5f);
+	}
+	else {
+		return floor(val+0.5f);
+	}
+}
+
+
+float signedFloor(float val) {
 	//return floor(val);
 	if (val < 0.0) {
 		return -floor(abs(val));
@@ -1866,6 +1877,11 @@ struct StatSheet {
 	std::vector<int> statusList;
 	
 	int baseStats[E_CS_LENGTH];
+	int unapplyedStats[E_CS_LENGTH];
+	
+	int curStatus[E_STATUS_LENGTH];
+	int maxStatus[E_STATUS_LENGTH];
+	
 	int availPoints;
 	
 	
@@ -1912,7 +1928,6 @@ public:
 	bool isHidden;
 	bool isOpen;
 	bool isEquipped;
-	bool isUpright;
 	bool zeroZ;
 	
 	float bounciness;
@@ -1934,13 +1949,14 @@ public:
 	// NPC SPECIFIC //
 	//////////////////
 	
+	int tbDir;
+	btVector3 tbPos;
+	
 	int swingType[4];
 	int isGrabbingId[4];
 	
 	int hitCooldown;
 	int jumpCooldown;
-	int curHealth;
-	int maxHealth;
 	
 	
 	float airCount;	
@@ -1957,6 +1973,38 @@ public:
 	//////////////////
 	// END SPECIFIC //
 	//////////////////
+	
+	
+	btVector3 getUnitBounds(bool getMax) {
+		btVector3 cp = getCenterPoint( E_BDG_CENTER );
+		
+		float diamXY = 2.0f;
+		float diamZ = 4.0f;
+		
+		btVector3 newRad = btVector3(diamXY*0.5f,diamXY*0.5f,diamZ*0.5f);
+		
+		
+		switch (entType) {
+			case E_ENTTYPE_NPC:
+				
+			break;
+			default:
+			
+			break;
+		}
+		
+		cp = btVector3(floor(cp.getX()),floor(cp.getY()),cp.getZ());
+		
+		if (getMax) {
+			cp += btVector3(1.0f,1.0f,newRad.getZ());
+		}
+		else {
+			cp -= btVector3(0.0f,0.0f,newRad.getZ());
+		}
+		
+		return cp;
+		
+	}
 	
 	bool holdingWeapon(int handNum) {
 		
@@ -2485,6 +2533,16 @@ public:
 		
 	}
 	
+	float turnTowardsTargAng( float targAng ) {
+		btVector3 curVec = bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()*btVector3(0.0f,1.0f,0.0f);
+		curVec.setZ(0.0f);
+		curVec.normalize();
+		
+		float curAng = atan2(curVec.getY(),curVec.getX());
+		
+		return getShortestAngle(curAng,targAng,1.0f);
+	}
+	
 	float turnTowardsPointDelta(btVector3 targPoint) {
 		btVector3 centerPoint = getCenterPoint(E_BDG_CENTER);
 		
@@ -2494,13 +2552,8 @@ public:
 		
 		float targAng = atan2(targVec.getY(),targVec.getX());
 		
-		btVector3 curVec = bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()*btVector3(0.0f,1.0f,0.0f);
-		curVec.setZ(0.0f);
-		curVec.normalize();
+		return turnTowardsTargAng(targAng);
 		
-		float curAng = atan2(curVec.getY(),curVec.getX());
-		
-		return getShortestAngle(curAng,targAng,1.0f);
 		
 		//return targAng-curAng;
 		
@@ -2576,7 +2629,6 @@ public:
 	bool isHumanoid() {
 		return (
 			(entType == E_ENTTYPE_NPC)
-			//|| (entType == E_ENTTYPE_MONSTER)
 		);
 	}
 	
@@ -2715,35 +2767,17 @@ public:
 		}
 	}
 	
-	// void updateTargets() { //FIVector4* fv
-		
-	// 	ang += (targAng-ang)/4.0f;
-	// 	angRelative += (targAngRelative-angRelative)/4.0f;
-		
-	// 	// if (body == NULL) {
-			
-	// 	// }
-	// 	// else {
-			
-	// 	// 	if (isUpright) {
-	// 	// 		body->SetAngle(ang);
-	// 	// 	}
-			
-			
-	// 	// }
-		
-	// }
 	
 	float healthPerc() {
-		return ((float)curHealth)/((float)maxHealth);
+		return ((float)statSheet.curStatus[E_STATUS_HEALTH])/((float)statSheet.maxStatus[E_STATUS_HEALTH]);
 	}
 	
 	bool isDead() {
-		return (curHealth <= 0);
+		return (statSheet.curStatus[E_STATUS_HEALTH] <= 0);
 	}
 	
 	bool isAlive() {
-		return (curHealth > 0);
+		return (statSheet.curStatus[E_STATUS_HEALTH] > 0);
 	}
 	
 	bool getActionState(int action, int handNum) {
@@ -2793,13 +2827,13 @@ public:
 		isGrabbedByHand = -1;
 		isGrabbedById = -1;
 		
-		maxHealth = 255;
-		curHealth = maxHealth;
 		lastBlockDis = 0.0f;
 		blockCount = 0.0f;
 		swingCount = 0.0f;
 		bindingPower = 1.0f;
 		airCount = 0.0f;
+		
+		tbDir = 0;
 		
 		for (i = 0; i < RLBN_LENGTH; i++) {
 			isGrabbingId[i] = -1;
@@ -2808,8 +2842,15 @@ public:
 		
 		for (i = 0; i < E_CS_LENGTH; i++) {
 			statSheet.baseStats[i] = 5;
+			statSheet.unapplyedStats[i] = 5;	
 		}
 		statSheet.availPoints = 10;
+		
+		for (i = 0; i < E_STATUS_LENGTH; i++) {
+			statSheet.curStatus[i] = 10;
+			statSheet.maxStatus[i] = 10;
+		}
+		
 		
 		zeroZ = false;
 		jumpCooldown = 0;
@@ -2818,10 +2859,6 @@ public:
 		
 		clearActionStates();
 		
-		isUpright = 
-			(entType == E_ENTTYPE_NPC)
-			// || (entType == E_ENTTYPE_MONSTER)
-			;
 		
 		isOpen = false;
 		isEquipped = false;
@@ -2834,6 +2871,9 @@ public:
 		bounciness = 0.0f;
 		friction = 0.9;
 		windResistance = 0.9;
+		
+		
+		tbPos = getUnitBounds(false);
 		
 	}
 	

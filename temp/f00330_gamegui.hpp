@@ -460,7 +460,7 @@ public:
 								}
 							break;
 							
-							default:
+							case E_GCT_AUTOMATIC:
 								//numEntries = curData->CountChildren();
 								// for (q = 0; q < numEntries; q++) {
 								// 	jvChildTemplate->Child("label")->string_value = singleton->gem->getStringForObjectId(objectId);
@@ -491,6 +491,9 @@ public:
 								
 								
 								
+							break;
+							default:
+								cout << "Error: unexpected GTC type\n";
 							break;
 						}
 						

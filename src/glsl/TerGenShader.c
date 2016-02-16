@@ -780,7 +780,7 @@ void main() {
       else {
         
         finalRes = vec4(
-            float(terVal < 0.3),
+            float(terVal < -0.5),
             0.0, //terVal
             0.0,
             0.0

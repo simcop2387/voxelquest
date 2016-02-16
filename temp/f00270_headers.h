@@ -124,6 +124,7 @@ public:
   int destructCount;
   bool sphereMapOn;
   bool waitingOnDestruction;
+  bool gridOn;
   bool physicsOn;
   bool isPressingMove;
   bool fxaaOn;
@@ -292,7 +293,6 @@ public:
   float cameraZoom;
   float targetZoom;
   float fogOn;
-  float gridOn;
   float mapSampScale;
   float curBrushRad;
   float timeOfDay;
@@ -497,6 +497,7 @@ public:
   void drawLine (FIVector4 * p0, FIVector4 * p1);
   void drawCubeCentered (FIVector4 * originVec, float radius);
   void drawBoxUp (FIVector4 originVec, float radiusX, float radiusY, float diamZ);
+  void drawBoxMinMax (btVector3 v0, btVector3 v1);
   void drawBoxRad (btVector3 v0, btVector3 v1);
   void drawBox (FIVector4 * v0, FIVector4 * v1, int faceFlag = 2);
   void getMaterialString ();
@@ -603,6 +604,8 @@ public:
   string makePretty (string sourceString, string remString);
   void cleanJVPointer (JSONValue * * jv);
   void getSpecialData (int datEnum, string datString);
+  void updateStatGUI ();
+  void showHudMenu (bool visible);
   void showStatMenu (bool visible);
   void refreshContainers (bool onMousePos);
   JSONValue * fetchJSONData (string dataFile, bool doClean, JSONValue * params = NULL);
@@ -882,6 +885,7 @@ public:
   void setValueIndex (int ind, float val);
   float getValueIndex (int ind);
   float getValueIndexPtr (int ind);
+  void updateTextNumber ();
   void setValue (float _value, bool doEventDispatch = false, bool preventRefresh = false);
   float getValue ();
   void setValueY (float _value, bool doEventDispatch = false, bool preventRefresh = false);
@@ -1392,6 +1396,7 @@ public:
   bool destroyTerrain;
   bool mirrorOn;
   bool combatOn;
+  bool turnBased;
   bool editPose;
   bool orgOn;
   bool isDraggingObject;
@@ -1410,6 +1415,7 @@ public:
   int draggingToInd;
   int draggingFromType;
   int draggingToType;
+  int turnListInd;
   float subjectDistance;
   float lastSubjectDistance;
   FIVector4 tempVec1;
@@ -1417,6 +1423,7 @@ public:
   FIVector4 tempVec3;
   map <BaseObjType, BaseObj> gameObjects;
   vector <BaseObjType> visObjects;
+  vector <int> turnList;
   BaseObj * currentActor;
   GameOrgNode * bestNode;
   GameOrgNode * selectedNode;
@@ -1435,6 +1442,8 @@ public:
   string (objStrings) [MAX_OBJ_TYPES];
   GameEntManager ();
   void init (Singleton * _singleton);
+  void refreshTurnList ();
+  void setTurnBased (bool newVal);
   void checkActorRefresh ();
   void closeAllContainers ();
   bool anyContainerOpen ();
@@ -1481,6 +1490,8 @@ public:
   void makeDropAll (int actorId);
   void makeThrow (int actorId, int _handNum);
   void makeSwing (int actorId, int handNum);
+  void makeTurnUnit (int actorId, int modVal);
+  void makeMoveUnit (int actorId, int modVal);
   void makeTurn (int actorId, float dirFactor);
   void makeMoveVec (int actorId, btVector3 moveVec);
   void makeMove (int actorId, btVector3 moveDir, bool relative, bool delayed);
@@ -1508,6 +1519,7 @@ public:
   void getIndexForPose (PoseKey * tempPose);
   void setPoseFromIndex (int i);
   int getPoseType (int poseIndex);
+  void saveEveryPose ();
   void loadNonPoseData (int npdPose, int npdSide, int npdStep);
   void loadCurrentPose ();
   int numberIcons (int pCurCount, int x1, int y1, int x2, int y2);

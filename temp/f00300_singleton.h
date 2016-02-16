@@ -494,7 +494,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		depthInvalidMove = true;
 		lastDepthInvalidMove = true;
 		depthInvalidRotate = true;
-		gridOn = 0.0f;
+		gridOn = false;
 		fogOn = 1.0f;
 		cameraZoom = 1.0f;
 		targetZoom = cameraZoom;
@@ -2088,7 +2088,44 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 			else if (comp->uid.compare("#materialPicker") == 0) {
 				gem->updateOrgMat(comp);
 			}
-			
+			else if (comp->uid.compare("statMenu.apply") == 0) {
+				if (gem->currentActor != NULL) {	
+					curStatSheet = &(gem->currentActor->statSheet);
+					
+					for (i = 0; i < E_CS_LENGTH; i++) {
+						curStatSheet->baseStats[i] = curStatSheet->unapplyedStats[i];
+					}
+					
+				}
+			}
+			else if (comp->uid.compare("statMenu.reset") == 0) {
+				if (gem->currentActor != NULL) {
+					curStatSheet = &(gem->currentActor->statSheet);
+					
+					
+					
+					for (i = 0; i < E_CS_LENGTH; i++) {
+						
+						while (curStatSheet->unapplyedStats[i] > curStatSheet->baseStats[i]) {
+							curStatSheet->unapplyedStats[i] -= 1;
+							curStatSheet->availPoints += 1;
+						}
+						
+						tempComp = getGUIComp("statMenu.statParent")->getChild(i);
+						tempComp->setValue(
+							curStatSheet->unapplyedStats[i]/tempComp->divisions
+						);
+						
+					}
+					
+					tempComp = getGUIComp("statMenu.availPoints");
+					tempComp->setValue(
+						curStatSheet->availPoints/tempComp->divisions
+					);
+					
+					
+				}
+			}
 			
 			if (comp->guiClass == E_GT_BUTTON) {
 				toggleDDMenu(x,y,false);
@@ -2137,22 +2174,28 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 				
 				curStatSheet = &(gem->currentActor->statSheet);
 				
-				oldVal = curStatSheet->baseStats[comp->index];
-				newVal = roundf(curValue*comp->divisions);
+				oldVal = curStatSheet->unapplyedStats[comp->index];
+				newVal = roundVal(curValue*comp->divisions);
 				difVal = newVal-oldVal;
 				
 				tempComp = getGUIComp("statMenu.availPoints");
 				
 				curStatSheet->availPoints -= difVal;
-				curStatSheet->baseStats[comp->index] = newVal;
+				curStatSheet->unapplyedStats[comp->index] = newVal;
 				
 				while (curStatSheet->availPoints < 0) {
 					curStatSheet->availPoints += 1;
-					curStatSheet->baseStats[comp->index] -= 1;
+					curStatSheet->unapplyedStats[comp->index] -= 1;
 				}
 				
+				while (curStatSheet->unapplyedStats[comp->index] < curStatSheet->baseStats[comp->index]) {
+					curStatSheet->availPoints -= 1;
+					curStatSheet->unapplyedStats[comp->index] += 1;
+				}
+				
+				
 				comp->setValue(
-					curStatSheet->baseStats[comp->index]/comp->divisions
+					curStatSheet->unapplyedStats[comp->index]/comp->divisions
 				);
 				tempComp->setValue(
 					curStatSheet->availPoints/tempComp->divisions
@@ -2518,6 +2561,12 @@ void Singleton::drawBoxUp (FIVector4 originVec, float radiusX, float radiusY, fl
 		);
 
 		drawBox(&minV, &maxV);
+	}
+void Singleton::drawBoxMinMax (btVector3 v0, btVector3 v1)
+          {
+		tempVec1.setBTV(v0);
+		tempVec2.setBTV(v1);
+		drawBox(&tempVec1,&tempVec2);
 	}
 void Singleton::drawBoxRad (btVector3 v0, btVector3 v1)
           {
@@ -3947,7 +3996,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 		else {
 			switch (key) {
 
-
+				
 
 
 
@@ -4154,6 +4203,10 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 				break;
 				
+				case 'N':
+					gem->saveEveryPose();
+				break;
+				
 				case 'j':
 				
 					gem->resetActiveNode();
@@ -4174,10 +4227,10 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				case 'G':
 				
-					smoothMove = !smoothMove;
+					
 				
-					//gridOn = 1.0 - gridOn;
-					//cout << "Grid On: " << gridOn << "\n";
+					gridOn = !gridOn;
+					cout << "Grid On: " << gridOn << "\n";
 
 					break;
 
@@ -4314,7 +4367,9 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					// 	selectedEnts.cycleEnts();
 					// }
 					
-					showStatMenu( !(menuList[E_FM_STATMENU]->visible) );
+					showHudMenu( !(menuList[E_FM_HUDMENU]->visible) );
+					
+					//showStatMenu( !(menuList[E_FM_STATMENU]->visible) );
 					
 					//cout << makePretty("E_TEST_STRING_VALUE", "E_TEST_") << "\n";
 					
@@ -4323,16 +4378,16 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				
 				case 'C':
-					
-					
-					
 				
 					
 				break;
 				case 'c':
 					
-					gem->combatOn = !(gem->combatOn);
-					cout << "gem->combatOn " << gem->combatOn << "\n";
+					
+					gem->setTurnBased(!(gem->turnBased));
+					gem->combatOn = (gem->turnBased);
+					//gem->combatOn = !(gem->combatOn);
+					//cout << "gem->combatOn " << gem->combatOn << "\n";
 					
 					
 					//setCameraToElevation();
@@ -4386,7 +4441,9 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 
 					break;
-
+				case 'M':
+					smoothMove = !smoothMove;
+				break;
 				
 
 				
@@ -4413,6 +4470,35 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					cout << "No code for key: " << ((int)key) << "\n";
 					break;
 			}
+			
+			
+			if (gem->turnBased&&(gem->currentActor != NULL)) {
+				switch(key) {
+					case 'a':
+						
+					break;
+					case 'z':
+						
+					break;
+					
+					
+					case 's':
+						gem->makeTurnUnit(gem->currentActor->uid, 1);
+					break;
+					case 'f':
+						gem->makeTurnUnit(gem->currentActor->uid, -1);
+					break;
+					
+					
+					case 'e':
+						gem->makeMoveUnit(gem->currentActor->uid, 1);
+					break;
+					case 'd':
+						gem->makeMoveUnit(gem->currentActor->uid, -1);
+					break;
+				}
+			}
+			
 		}
 		
 		
@@ -4687,13 +4773,13 @@ void Singleton::updateCurGeom (int x, int y)
 					
 					
 						geomOrigOffset.setFXYZ(
-							-roundf(
+							-signedFloor(
 								cos(xrotrad)*yv2 + -sin(xrotrad)*xv2
 							),
-							-roundf(
+							-signedFloor(
 								sin(xrotrad)*yv2 + cos(xrotrad)*xv2
 							),
-							roundf(curPrimMod)
+							signedFloor(curPrimMod)
 						);
 					break;
 				}
@@ -4710,24 +4796,24 @@ void Singleton::updateCurGeom (int x, int y)
 						
 					break;
 					case E_GEOM_POINTS_RAD_XYZ:
-						setFXYGeom(E_PRIMTEMP_BOUNDSMIN, roundf(-xv), roundf(-yv));
-						setFXYGeom(E_PRIMTEMP_BOUNDSMAX, roundf( xv), roundf( yv));
+						setFXYGeom(E_PRIMTEMP_BOUNDSMIN, signedFloor(-xv), signedFloor(-yv));
+						setFXYGeom(E_PRIMTEMP_BOUNDSMAX, signedFloor( xv), signedFloor( yv));
 						
-						setFXYGeom(E_PRIMTEMP_VISMIN, roundf(-xv), roundf(-yv));
-						setFXYGeom(E_PRIMTEMP_VISMAX, roundf( xv), roundf( yv));
+						setFXYGeom(E_PRIMTEMP_VISMIN, signedFloor(-xv), signedFloor(-yv));
+						setFXYGeom(E_PRIMTEMP_VISMAX, signedFloor( xv), signedFloor( yv));
 						
-						setFZGeom(E_PRIMTEMP_BOUNDSMIN, roundf(-curPrimMod));
-						setFZGeom(E_PRIMTEMP_BOUNDSMAX, roundf( curPrimMod));
+						setFZGeom(E_PRIMTEMP_BOUNDSMIN, signedFloor(-curPrimMod));
+						setFZGeom(E_PRIMTEMP_BOUNDSMAX, signedFloor( curPrimMod));
 						
-						setFZGeom(E_PRIMTEMP_VISMIN, roundf(-curPrimMod));
-						setFZGeom(E_PRIMTEMP_VISMAX, roundf( curPrimMod));
+						setFZGeom(E_PRIMTEMP_VISMIN, signedFloor(-curPrimMod));
+						setFZGeom(E_PRIMTEMP_VISMAX, signedFloor( curPrimMod));
 						
 					break;
 					case E_GEOM_POINTS_OFFSET:
 						geomOrigOffset.setFXYZ(
-							roundf(xv2),
-							roundf(yv2),
-							roundf(curPrimMod)
+							signedFloor(xv2),
+							signedFloor(yv2),
+							signedFloor(curPrimMod)
 						);
 					break;
 					case E_GEOM_POINTS_CORNER:
@@ -4736,7 +4822,7 @@ void Singleton::updateCurGeom (int x, int y)
 						maxCornerDis = getMinGeom(E_PRIMTEMP_BOUNDSMAX);
 						
 						setFXGeom(E_PRIMTEMP_CORNERDIS, 
-							roundf(mixf(
+							signedFloor(mixf(
 								minCornerDis,
 								maxCornerDis,
 								clampfZO(yv/(maxDis*0.5f))	
@@ -4749,25 +4835,25 @@ void Singleton::updateCurGeom (int x, int y)
 					break;
 					case E_GEOM_POINTS_NEG_RAD_XY:
 						setFXYGeom(E_PRIMTEMP_VISMIN, 
-							roundf(max(xv2,getFXGeom(E_PRIMTEMP_BOUNDSMIN))),
-							roundf(max(yv2,getFYGeom(E_PRIMTEMP_BOUNDSMIN)))
+							signedFloor(max(xv2,getFXGeom(E_PRIMTEMP_BOUNDSMIN))),
+							signedFloor(max(yv2,getFYGeom(E_PRIMTEMP_BOUNDSMIN)))
 						);
 					break;
 					case E_GEOM_POINTS_POS_RAD_XY:						
 						setFXYGeom(E_PRIMTEMP_VISMAX, 
-							roundf(min(xv2,getFXGeom(E_PRIMTEMP_BOUNDSMAX))),
-							roundf(min(yv2,getFYGeom(E_PRIMTEMP_BOUNDSMAX)))
+							signedFloor(min(xv2,getFXGeom(E_PRIMTEMP_BOUNDSMAX))),
+							signedFloor(min(yv2,getFYGeom(E_PRIMTEMP_BOUNDSMAX)))
 						);
 					
 					break;
 					case E_GEOM_POINTS_NEG_RAD_Z:
-						setFZGeom(E_PRIMTEMP_VISMIN, roundf(max(yv2,getFZGeom(E_PRIMTEMP_BOUNDSMIN))) );
+						setFZGeom(E_PRIMTEMP_VISMIN, signedFloor(max(yv2,getFZGeom(E_PRIMTEMP_BOUNDSMIN))) );
 					break;
 					case E_GEOM_POINTS_POS_RAD_Z:
-						setFZGeom(E_PRIMTEMP_VISMAX, roundf(min(yv2,getFZGeom(E_PRIMTEMP_BOUNDSMAX))) );
+						setFZGeom(E_PRIMTEMP_VISMAX, signedFloor(min(yv2,getFZGeom(E_PRIMTEMP_BOUNDSMAX))) );
 					break;
 					case E_GEOM_POINTS_THICKNESS:
-						setFYGeom(E_PRIMTEMP_CORNERDIS, roundf(yv));
+						setFYGeom(E_PRIMTEMP_CORNERDIS, signedFloor(yv));
 					break;
 				}
 			}
@@ -5549,6 +5635,8 @@ void Singleton::flushKeyStack ()
 void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float camRotX, float camRotY)
                                                                                                   {
 		
+		
+		
 		int i;
 		BaseObj* ca;
 		
@@ -5563,6 +5651,10 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 			naFloatData[0] = camRotX;
 			naFloatData[1] = camRotY;
 			gameNetwork->addNetworkAction(E_NO_KEY_ACTION,naUintData,naIntData,naFloatData);
+			return;
+		}
+		
+		if (gem->turnBased) {
 			return;
 		}
 		
@@ -6143,17 +6235,36 @@ void Singleton::getSpecialData (int datEnum, string datString)
 						tempVal0->array_value.push_back( new JSONValue(JSONObject()) );
 						
 						tempVal0->array_value.back()->object_value["label"] = new JSONValue( makePretty(E_CHAR_STAT_STRINGS[i],"E_CS_") );
-						tempVal0->array_value.back()->object_value["value"] = new JSONValue( ((double)(curSS->baseStats[i]))/((double)(MAX_STAT_VALUE)) );
+						tempVal0->array_value.back()->object_value["value"] = new JSONValue( ((double)(curSS->unapplyedStats[i]))/((double)(MAX_STAT_VALUE)) );
 						tempVal0->array_value.back()->object_value["divisions"] = new JSONValue( ((double)(MAX_STAT_VALUE)) );
 						
 						
 					}
-					
-					
 				}
+			break;
+			case E_SDT_STATUSDATA:
 				
+				externalJSON[datString].jv->object_value["status"] = new JSONValue(JSONArray());
+				tempVal0 = externalJSON[datString].jv->object_value["status"];
 				
-				
+				if (gem->currentActor == NULL) {
+					cout << "NULL STATUSS\n";
+					return;
+				}
+				else {
+					
+					curSS = &(gem->currentActor->statSheet);
+					
+					for (i = 0; i < E_STATUS_LENGTH; i++) {
+						tempVal0->array_value.push_back( new JSONValue(JSONObject()) );
+						
+						tempVal0->array_value.back()->object_value["label"] = new JSONValue( makePretty(E_CHAR_STATUS_STRINGS[i],"E_STATUS_") );
+						tempVal0->array_value.back()->object_value["value"] = new JSONValue( ((double)(curSS->curStatus[i]))/((double)(curSS->maxStatus[i])) );
+						tempVal0->array_value.back()->object_value["divisions"] = new JSONValue( ((double)(curSS->maxStatus[i])) );
+						
+						
+					}
+				}
 			break;
 			default:
 				cout << "ERROR: unexpected type in getSpecialData(): " << datEnum << "\n";
@@ -6165,6 +6276,45 @@ void Singleton::getSpecialData (int datEnum, string datString)
 		
 		
 	}
+void Singleton::updateStatGUI ()
+                             {
+		UIComponent* tempComp;
+		
+		
+		if (gem->currentActor == NULL) {
+			return;
+		}
+		
+		StatSheet* curSS = &(gem->currentActor->statSheet);
+		
+		tempComp = getGUIComp("statMenu.availPoints");
+		tempComp->setValue(
+			((float)curSS->availPoints)/((float)(tempComp->divisions))
+		);
+		
+		
+		
+	}
+void Singleton::showHudMenu (bool visible)
+                                       {
+		if (menuList[E_FM_HUDMENU] != NULL) {
+			menuList[E_FM_HUDMENU]->visible = visible;
+			
+			externalJSON.erase("E_SDT_STATUSDATA"); // mem leak?
+			
+			mainGUI->refreshNode(
+				mainGUI->findNodeByString("hudMenu.hudContainer")	
+			);
+						
+			if (visible) {
+				
+				updateStatGUI();
+				
+			}
+			
+			
+		}
+	}
 void Singleton::showStatMenu (bool visible)
                                         {
 		
@@ -6174,12 +6324,15 @@ void Singleton::showStatMenu (bool visible)
 		if (menuList[E_FM_STATMENU] != NULL) {
 			menuList[E_FM_STATMENU]->visible = visible;
 			externalJSON.erase("E_SDT_STATDATA"); // mem leak?
+			externalJSON.erase("E_SDT_STATUSDATA"); // mem leak?
 			
 			mainGUI->refreshNode(
 				mainGUI->findNodeByString("statMenu.statContainer")	
 			);
 						
 			if (visible) {
+				
+				updateStatGUI();
 				
 			}
 			
@@ -6375,7 +6528,7 @@ void Singleton::jsonPostProc ()
 		string preStr = "\"@@";
 		string pstStr = "@@\"";
 		
-		
+		cout << "jsonPostProc\n";
 		
 		specialReplace(jsonPostString,preStr,pstStr);
 		
@@ -6393,17 +6546,6 @@ void Singleton::jsonPostProc ()
 			switch(enumVal) {
 				case E_JP_STATMENUAVAILDIV:
 					newString = i__s(E_CS_LENGTH*MAX_STAT_VALUE);
-				break;
-				case E_JP_STATMENUAVAILPOINTS:
-				
-					if (gem->currentActor == NULL) {
-						newString = "0";
-					}
-					else {
-						newString = i__s(gem->currentActor->statSheet.availPoints);
-					}
-				
-					
 				break;
 				default:
 					doProc = false;
@@ -7635,6 +7777,14 @@ void Singleton::display (bool doFrameRender)
 				}
 				
 				gameLogic->applyBehavior();
+				
+				if (gem->turnBased) {
+					
+				}
+				else {
+								
+				}
+								
 				
 				flushKeyStack();
 				gatherKeyActions();

@@ -38,6 +38,11 @@
 			"type":1,
 			"fillRatioX":1
 		},
+		"fillSliderCenter": {
+			"type":1,
+			"fillRatioX":1,
+			"alignX":1
+		},
 		"fillSliderHSV": {
 			"type":1,
 			"fillRatioX":1,
@@ -794,7 +799,106 @@
 			
 			
 			
-			
+			{
+				"uid":"guiHandles.E_FM_HUDMENU",
+				"template":"rootCont",
+				"hasBackground":0,
+				"children":[
+					
+					{
+						"template":"cont",
+						"fillDir":1,
+						"uid":"hudMenu.hudContainer",
+						"children": [
+						
+						
+							{
+								"template":"cont",
+								"fillRatioX":1,
+								"fillDir":0,
+								"children":[
+									{
+										"template":"menuBar",
+										"label":"HUD",
+										"fillRatioX":5
+									},
+									{
+										"template":"fillButton",
+										"label":"X",
+										"fillRatioX":1,
+										"alignX":1,
+										"uid":"hudMenu.close",
+										"ss":"redSS"
+									}
+								]
+							},
+							
+							{
+								"template":"cont",
+								"fillRatioX":1,
+								"fillDir":0,						
+								
+								"children":[
+									
+									{
+										"template":"cont",
+										"fillRatioX":1,
+										"fillDir":1,
+										"children":[
+											{
+												"template":"sectionBar",
+												"label":"Status"
+											},
+											
+											
+											{
+												"template":"spacerBar"
+											},
+											
+											{
+												"template":"cont",
+												"fillDir":1,
+												"fillRatioX":1,
+												"maxDimY": 512,
+												"minDimY": 32,
+												
+												
+												"dataFile":"E_SDT_STATUSDATA",
+												"dataSource":"status",
+												"childType":"E_GCT_AUTOMATIC",
+												"children":[],
+												
+												"childTemplate":{
+													"template":"fillLabelCenter",
+													"label":"",
+													"value":0,
+													"divisions":10,
+													"uid":"#hudMenu.status"
+												}
+											},
+
+											{
+												"template":"spacerBar"
+											}
+
+
+
+											
+											
+										]
+									}
+																
+								]
+								
+							}
+						]
+					}
+					
+					
+					
+					
+				]
+			},
 			
 			
 			
@@ -807,6 +911,7 @@
 					{
 						"template":"cont",
 						"fillDir":1,
+						"uid":"statMenu.statContainer",
 						"children": [
 						
 						
@@ -834,14 +939,14 @@
 							{
 								"template":"cont",
 								"fillRatioX":1,
-								"fillDir":0,
-								"uid":"statMenu.statContainer",								
+								"fillDir":0,						
 								
 								"children":[
 									{
 										"template":"cont",
 										"fillRatioX":1,
 										"fillDir":1,
+										"minDimX": 250,
 										"children":[
 											{
 												"template":"sectionBar",
@@ -861,13 +966,10 @@
 												"maxDimY": 512,
 												"minDimY": 32,
 												
-												
-												"uid":"statMenu.statsParent",
-												"interactive":1,
-												
+												"uid":"statMenu.statParent",
 												"dataFile":"E_SDT_STATDATA",
 												"dataSource":"stats",
-												"childType":"E_GCT_STATS",
+												"childType":"E_GCT_AUTOMATIC",
 												"children":[],
 												
 												"childTemplate":{
@@ -886,13 +988,49 @@
 											{
 												"template":"fillLabelCenter",
 												"label":"Available Points",
-												"value":"@@E_JP_STATMENUAVAILPOINTS@@",
+												"value":0,
 												"divisions":"@@E_JP_STATMENUAVAILDIV@@",
 												"uid":"statMenu.availPoints"
+											},
+											
+											
+											{
+												"template":"cont",
+												"fillDir":0,
+												"fillRatioX":1,
+												"children":[
+													{
+														"template":"fillButtonCenter",
+														"label":"Apply",
+														"uid":"statMenu.apply"
+													},
+													{
+														"template":"fillButtonCenter",
+														"label":"Reset",
+														"uid":"statMenu.reset"
+													}
+												]	
+											},
+											
+											
+											{
+												"template":"spacerBar"
+											},
+											
+											{
+												"template":"fillLabelCenter",
+												"label":"Curent XP",
+												"value":0.75,
+												"divisions":1000,
+												"uid":"statMenu.xp"
+											},
+											{
+												"template":"fillLabelCenter",
+												"label":"Curent Level",
+												"divisions":60,
+												"value":0.25,
+												"uid":"statMenu.level"
 											}
-											
-											
-											
 											
 											
 											
@@ -907,9 +1045,41 @@
 											{
 												"template":"sectionBar",
 												"label":"Status"
+											},
+											
+											
+											{
+												"template":"spacerBar"
+											},
+											
+											{
+												"template":"cont",
+												"fillDir":1,
+												"fillRatioX":1,
+												"maxDimY": 512,
+												"minDimY": 32,
+												
+												
+												"dataFile":"E_SDT_STATUSDATA",
+												"dataSource":"status",
+												"childType":"E_GCT_AUTOMATIC",
+												"children":[],
+												
+												"childTemplate":{
+													"template":"fillLabelCenter",
+													"label":"",
+													"value":0,
+													"divisions":10,
+													"uid":"#statMenu.status"
+												}
+											},
+
+											{
+												"template":"spacerBar"
 											}
-											
-											
+
+
+
 											
 											
 										]

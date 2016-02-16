@@ -8,15 +8,17 @@ public:
 	bool destroyTerrain;
 	bool mirrorOn;
 	bool combatOn;
+	bool turnBased;
 	bool editPose;
 	bool orgOn;
 	bool isDraggingObject;
 	bool firstPerson;
 	bool showHealth;
 	
-	int weaponToPlace;
 	
-	int currentActorUID;
+	int weaponToPlace;
+	int activeActorUID; // actor whose turn it is
+	int currentActorUID; // actor selected by human player
 	int curPoseType;
 	int highlightedLimb;
 	int highlightedLimb2;
@@ -28,7 +30,7 @@ public:
 	int draggingToInd;
 	int draggingFromType;
 	int draggingToType;
-	
+	int turnListInd;
 	
 	
 	
@@ -44,6 +46,7 @@ public:
 	
 	map<BaseObjType, BaseObj> gameObjects;
 	vector<BaseObjType> visObjects;
+	vector<int> turnList;
 	
 	BaseObj* currentActor;
 	
@@ -79,6 +82,7 @@ public:
 		
 		weaponToPlace = E_PG_WPSWORD;
 		
+		activeActorUID = -1;
 		currentActorUID = -1;
 		
 		activeNode = NULL;
@@ -143,6 +147,81 @@ public:
 		initAllObjects();
 		loadPoseInfo(false);
 		
+	}
+	
+	BaseObj* getActiveActor() {
+		if (activeActorUID < 0) {
+			return NULL;
+		}
+		else {
+			return gameObjects[activeActorUID];
+		}
+	}
+	
+	void applyLogicForTurn() {
+		
+		nextTurn();
+	}
+	
+	void nextTurn() {
+		turnListInd++;
+		if (turnListInd >= turnList.size()) {
+			turnListInd = 0;
+		}
+		
+		if (turnList.size() == 0) {
+			activeActorUID = -1;
+		}
+		else {
+			activeActorUID = turnList[turnListInd];
+		}
+		
+		if (currentActorUID == activeActorUID) {
+			// human turn
+		}
+		else {
+			applyLogicForTurn();
+		}
+		
+	}
+	
+	void refreshTurnList() {
+		int i;
+		int testInd;
+		BaseObj* testObj;
+		
+		turnListInd = 0;
+		turnList.clear();
+		
+		for (i = 0; i < visObjects.size(); i++) {
+			testInd = visObjects[i];
+			testObj = &(gameObjects[testInd]);
+			
+			// todo: sort by initiative
+			
+			if (testObj->entType == E_ENTTYPE_NPC) {
+				turnList.push_back(testInd);
+			}
+		}
+	}
+	
+	void setTurnBased(bool newVal) {
+		turnBased = newVal;
+		
+		int i;
+		int testInd;
+		BaseObj* testObj;
+		
+		for (i = 0; i < visObjects.size(); i++) {
+			testInd = visObjects[i];
+			testObj = &(gameObjects[testInd]);
+			
+			testObj->tbPos = testObj->getUnitBounds(false);	
+		}
+		
+		refreshTurnList();
+		
+		cout << "turnBased " << turnBased << "\n";
 	}
 	
 	void checkActorRefresh() {
@@ -448,6 +527,11 @@ public:
 				//i = comp->getParent()->getChild(1)->jvNodeNoTemplate->Child("objectId")->number_value;
 				//closeContainer(i);
 			}
+			else if (comp->uid.compare("hudMenu.close") == 0) {		
+				singleton->menuList[E_FM_HUDMENU]->visible = false;
+				//i = comp->getParent()->getChild(1)->jvNodeNoTemplate->Child("objectId")->number_value;
+				//closeContainer(i);
+			}
 			else if (comp->uid.compare("ddMenu.removeEntity") == 0) {
 				removeEntity(isCon, selObjInd);
 			}
@@ -710,11 +794,6 @@ public:
 				windResistance = 1.0f;
 				bounciness = 0.3;
 			break;
-			// case E_ENTTYPE_MONSTER:
-			// 	newType = getRandomMonsterId();
-			// 	mf = 2;
-			// 	zv = 2;
-			// break;
 			case E_ENTTYPE_NPC:
 				newType = getRandomNPCId();
 				mf = 4;
@@ -1760,6 +1839,53 @@ public:
 		
 	}
 	
+	void makeTurnUnit(int actorId, int modVal) {
+		BaseObj* ca = &(gameObjects[actorId]);
+		
+		ca->tbDir += modVal;
+		
+		if (ca->tbDir < 0) {
+			ca->tbDir = 3;
+		}
+		if (ca->tbDir > 3) {
+			ca->tbDir = 0;
+		}
+		
+		
+	}
+	void makeMoveUnit(int actorId, int modVal) {
+		BaseObj* ca = &(gameObjects[actorId]);
+		
+		float ang = TBDIR_ARR[ca->tbDir];
+		
+		ca->tbPos += btVector3(
+			roundVal(cos(ang)*modVal),
+			roundVal(sin(ang)*modVal),
+			0.0f
+		);
+		
+		while (
+			singleton->gw->getCellAtCoords(
+				ca->tbPos.getX(),
+				ca->tbPos.getY(),
+				ca->tbPos.getZ()
+			) == E_CD_EMPTY
+		) {
+			ca->tbPos += btVector3(0.0f,0.0f,-1.0f);
+		}
+		
+		while (
+			singleton->gw->getCellAtCoords(
+				ca->tbPos.getX(),
+				ca->tbPos.getY(),
+				ca->tbPos.getZ()
+			) != E_CD_EMPTY
+		) {
+			ca->tbPos += btVector3(0.0f,0.0f,1.0f);
+		}
+		
+	}
+	
 	void makeTurn(int actorId, float dirFactor) {
 		
 		BaseObj* ca = &(gameObjects[actorId]);
@@ -2043,10 +2169,10 @@ public:
 								
 								//geVictim->setActionState(E_ACT_ISHIT,RLBN_NEIT,true);
 								geVictim->bindingPower = singleton->conVals[E_CONST_BINDING_POW_ON_HIT];
-								lastHealth = geVictim->curHealth;
-								geVictim->curHealth -= 32;
-								if (geVictim->curHealth < 0) {
-									geVictim->curHealth = 0;
+								lastHealth = geVictim->statSheet.curStatus[E_STATUS_HEALTH];
+								geVictim->statSheet.curStatus[E_STATUS_HEALTH] -= 32;
+								if (geVictim->statSheet.curStatus[E_STATUS_HEALTH] < 0) {
+									geVictim->statSheet.curStatus[E_STATUS_HEALTH] = 0;
 								}
 								
 								if (geVictim->isDead() && (lastHealth > 0)) {
@@ -2843,6 +2969,23 @@ public:
 	int getPoseType(int poseIndex) {
 		int testPoseInd = gamePoses[poseIndex]->basePose.group;
 		return gamePoseInfo[testPoseInd].data[E_PIK_POSETYPE];
+	}
+	
+	
+	void saveEveryPose() {
+		int i;
+		
+		
+		for (i = 0; i < gamePoses.size(); i++) {
+			
+			gamePoses[i]->saveOrgToFile(
+				getPoseString(
+					gamePoses[i]->basePose.group,
+					gamePoses[i]->basePose.RLBN,
+					gamePoses[i]->basePose.step
+				)	
+			);
+		}
 	}
 	
 	void loadNonPoseData(int npdPose, int npdSide, int npdStep) {

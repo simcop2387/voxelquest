@@ -260,8 +260,10 @@ public:
 		curFontIcons = singleton->fontWrappers[EFW_ICONS];
 		
 		wasHit = false;
-		privValueX = floatVals[E_GFT_VALUE];
+		
 		divisions = floatVals[E_GFT_DIVISIONS];
+		privValueX = floatVals[E_GFT_VALUE];
+		updateTextNumber();
 
 		mouseDown = false;
 		mouseOver = false;
@@ -330,6 +332,7 @@ public:
 		}
 		
 		//
+		
 		
 		
 	}
@@ -539,6 +542,21 @@ public:
 		
 	}
 	
+	void updateTextNumber() {
+		if (
+			//(guiClass == E_GT_SLIDER) &&
+			(divisions > 1.0f)
+		) {
+			setText(
+					label + ": " +
+					i__s(privValueX*divisions) +
+					//getPaddedInt(privValueX*divisions, divisions) +
+					" / " +
+					i__s(divisions)
+			);
+		}
+	}
+	
 	void setValue(float _value, bool doEventDispatch = false, bool preventRefresh = false) {
 		UIComponent* curValuePtr = getValuePtr();
 		
@@ -561,6 +579,9 @@ public:
 		}
 		else {
 			privValueX = _value;
+			
+			updateTextNumber();
+			
 			
 			updateLinkedValues();
 			
@@ -1347,12 +1368,11 @@ public:
 					//visible = (curParent->selected)&&(curParent->visible);
 				}
 				
-				
-				
-				
 			break;
-
 		}
+		
+		
+		
 		
 		for (i = 0; i < getChildCount(); i++) {
 			

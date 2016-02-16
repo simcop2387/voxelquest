@@ -41,8 +41,8 @@ public:
 		
 		CONTACT_THRESH = 0.2f;
 		//totTime = 0.0;
-		BASE_ENT_HEIGHT = 2.0f;
-		BASE_ENT_RAD = 1.0f;
+		BASE_ENT_HEIGHT = 2.0f*ORG_SCALE_BASE;
+		BASE_ENT_RAD = 1.0f*ORG_SCALE_BASE;
 		
 		cout << "GamePhysics:init()\n";
 		
@@ -199,7 +199,6 @@ public:
 		
 		switch (ge->entType) {
 			case E_ENTTYPE_NPC:
-			// case E_ENTTYPE_MONSTER:
 			case E_ENTTYPE_WEAPON:
 				{
 					
@@ -801,32 +800,60 @@ public:
 								segCount = 0;
 							break;
 							case E_JT_CONT:
-								segCount = 2;
-								segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
-									btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_CONT]);
+							
+								if (singleton->gem->turnBased) {
+									segCount = 0;
 									
-								newVel = curBody->body->getLinearVelocity();
-								newVel *= xyMask;
-								if (newVel.fuzzyZero()) {
-									//segCount = 1;
+									curBody->hasContact = true;
+									curBody->isFalling = !(curBody->hasContact);
+									basePos = (ge->tbPos+btVector3(0.5f,0.5f,0.5f+singleton->conVals[E_CONST_TBSNAP_ZOFFSET]));
+									difVec = basePos - curBody->body->getCenterOfMassPosition();
+									
+									
+									// move limbs towards pose
+									
+									
+									ge->setLinVel(
+										difVec*singleton->conVals[E_CONST_TBSNAP_MULT],
+										bodInd
+									);
+									
+									if (ge->getPlanarVel() > 0.1) {
+										ge->setActionState(E_ACT_ISWALKING,RLBN_NEIT,true);
+									}
+									
+									
 								}
 								else {
-									newVel.normalize();
+									segCount = 2;
+									segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
+										btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_CONT]);
+										
+									newVel = curBody->body->getLinearVelocity();
+									newVel *= xyMask;
+									if (newVel.fuzzyZero()) {
+										//segCount = 1;
+									}
+									else {
+										newVel.normalize();
+										
+									}
 									
+									
+									newVel *= singleton->conVals[E_CONST_COLDEPTH_WALL_XY];
+									newVel += btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_WALL_Z]);
+									
+									segPos[1] = 
+										curBody->body->getCenterOfMassPosition() +
+										halfOffset +
+										newVel;
+									
+										
+									// segPos[1] = curBody->body->getCenterOfMassPosition() +
+									// 	zMask;
 								}
+							
 								
-								
-								newVel *= singleton->conVals[E_CONST_COLDEPTH_WALL_XY];
-								newVel += btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_WALL_Z]);
-								
-								segPos[1] = 
-									curBody->body->getCenterOfMassPosition() +
-									halfOffset +
-									newVel;
-								
-									
-								// segPos[1] = curBody->body->getCenterOfMassPosition() +
-								// 	zMask;
 								
 								
 								
@@ -1391,7 +1418,6 @@ public:
 									bodInd
 								);
 								
-								
 						}
 						
 						
@@ -1543,7 +1569,7 @@ public:
 						
 							
 						(
-							(ge->getCenterPoint(0).getZ()-(BASE_ENT_HEIGHT+BASE_ENT_RAD)*0.5f) -
+							(ge->getCenterPoint(E_BDG_CENTER).getZ()-(BASE_ENT_HEIGHT+BASE_ENT_RAD)*0.5f) -
 							ge->aabbMinSkel.getZ()	
 						)
 							

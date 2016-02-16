@@ -60,6 +60,15 @@ bool EDIT_POSE = false;
 
 
 
+// warning: changing this changes the size of saved poses
+// should be a one time change, then revereted to 1.0 after save
+const static float ORG_SCALE_DELTA = 1.0f;
+
+// base scale applied to base org generation
+// only change this after changing ORG_SCALE_DELTA from 1.0
+const static float ORG_SCALE_BASE = 0.5f;
+
+
 const static int DEF_VOL_SIZE = 128;
 
 const static int DEF_SCALE_FACTOR = 4;
@@ -364,6 +373,14 @@ const static int MAX_VGT_FBOS = 2;
 int CUR_VGT_FBO = 0;
 
 const static float M_PI = 3.14159265359;
+
+const static float TBDIR_ARR[] = {
+	0.0f,
+	M_PI*0.5f,
+	M_PI,
+	M_PI*1.5f
+};
+
 
 int PAGE_COUNT = 0;
 // set to 0 to disable
@@ -3604,6 +3621,8 @@ bool replaceStr(std::string& str, const std::string& from, const std::string& to
 #define E_CONST(DDD) \
 DDD(E_CONST_JUMP_COOLDOWN_MAX) \
 DDD(E_CONST_HIT_COOLDOWN_MAX) \
+DDD(E_CONST_TBSNAP_MULT) \
+DDD(E_CONST_TBSNAP_ZOFFSET) \
 DDD(E_CONST_BINDING_MULT) \
 DDD(E_CONST_AIRANIM_THRESH) \
 DDD(E_CONST_MIN_WALK_ANIM_VEL) \
@@ -3898,6 +3917,20 @@ enum E_CHAR_STAT_VALS {
 	E_CHAR_STAT(DO_ENUM)
 };
 
+#define E_CHAR_STATUS(DDD) \
+DDD(E_STATUS_HEALTH) \
+DDD(E_STATUS_ACTION_POINTS) \
+DDD(E_STATUS_MANA) \
+DDD(E_STATUS_LENGTH)
+
+string E_CHAR_STATUS_STRINGS[] = {
+	E_CHAR_STATUS(DO_DESCRIPTION)
+};
+
+enum E_CHAR_STATUS_VALS {
+	E_CHAR_STATUS(DO_ENUM)
+};
+
 
 
 
@@ -3907,7 +3940,7 @@ DDD(E_GCT_SHADER_PARAM) \
 DDD(E_GCT_GENERIC) \
 DDD(E_GCT_CONTAINER) \
 DDD(E_GCT_CONTAINER_PARENT) \
-DDD(E_GCT_STATS) \
+DDD(E_GCT_AUTOMATIC) \
 DDD(E_GCT_LENGTH)
 
 string E_GUI_CHILD_TYPE_STRINGS[] = {
@@ -4932,6 +4965,7 @@ struct ActorJointStruct {
 DDD(E_SDT_SHADERPARAMS) \
 DDD(E_SDT_OBJECTDATA) \
 DDD(E_SDT_STATDATA) \
+DDD(E_SDT_STATUSDATA) \
 DDD(E_SDT_LENGTH)
 
 string E_SPECIAL_DATA_TYPE_STRINGS[] = {
@@ -4950,6 +4984,7 @@ DDD(E_FM_DDMENU) \
 DDD(E_FM_CONTMENU) \
 DDD(E_FM_FIELDMENU) \
 DDD(E_FM_STATMENU) \
+DDD(E_FM_HUDMENU) \
 DDD(E_FM_LENGTH)
 
 string E_FLOATING_MENU_STRINGS[] = {
@@ -5023,7 +5058,6 @@ enum E_POSE_GROUP_VALS {
 
 #define E_JSON_PARAMS(DDD) \
 DDD(E_JP_STATMENUAVAILDIV) \
-DDD(E_JP_STATMENUAVAILPOINTS) \
 DDD(E_JP_LENGTH)
 
 string E_JSON_PARAM_STRINGS[] = {
@@ -7979,7 +8013,18 @@ float mixb(float v1, float v2, bool lerpVal) {
 }
 
 
-float roundf(float val) {
+float roundVal(float val) {
+	//return floor(val);
+	if (val < 0.0) {
+		return -floor(abs(val)+0.5f);
+	}
+	else {
+		return floor(val+0.5f);
+	}
+}
+
+
+float signedFloor(float val) {
 	//return floor(val);
 	if (val < 0.0) {
 		return -floor(abs(val));
@@ -9719,6 +9764,11 @@ struct StatSheet {
 	std::vector<int> statusList;
 	
 	int baseStats[E_CS_LENGTH];
+	int unapplyedStats[E_CS_LENGTH];
+	
+	int curStatus[E_STATUS_LENGTH];
+	int maxStatus[E_STATUS_LENGTH];
+	
 	int availPoints;
 	
 	
@@ -9765,7 +9815,6 @@ public:
 	bool isHidden;
 	bool isOpen;
 	bool isEquipped;
-	bool isUpright;
 	bool zeroZ;
 	
 	float bounciness;
@@ -9787,13 +9836,14 @@ public:
 	// NPC SPECIFIC //
 	//////////////////
 	
+	int tbDir;
+	btVector3 tbPos;
+	
 	int swingType[4];
 	int isGrabbingId[4];
 	
 	int hitCooldown;
 	int jumpCooldown;
-	int curHealth;
-	int maxHealth;
 	
 	
 	float airCount;	
@@ -9810,6 +9860,38 @@ public:
 	//////////////////
 	// END SPECIFIC //
 	//////////////////
+	
+	
+	btVector3 getUnitBounds(bool getMax) {
+		btVector3 cp = getCenterPoint( E_BDG_CENTER );
+		
+		float diamXY = 2.0f;
+		float diamZ = 4.0f;
+		
+		btVector3 newRad = btVector3(diamXY*0.5f,diamXY*0.5f,diamZ*0.5f);
+		
+		
+		switch (entType) {
+			case E_ENTTYPE_NPC:
+				
+			break;
+			default:
+			
+			break;
+		}
+		
+		cp = btVector3(floor(cp.getX()),floor(cp.getY()),cp.getZ());
+		
+		if (getMax) {
+			cp += btVector3(1.0f,1.0f,newRad.getZ());
+		}
+		else {
+			cp -= btVector3(0.0f,0.0f,newRad.getZ());
+		}
+		
+		return cp;
+		
+	}
 	
 	bool holdingWeapon(int handNum) {
 		
@@ -10338,6 +10420,16 @@ public:
 		
 	}
 	
+	float turnTowardsTargAng( float targAng ) {
+		btVector3 curVec = bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()*btVector3(0.0f,1.0f,0.0f);
+		curVec.setZ(0.0f);
+		curVec.normalize();
+		
+		float curAng = atan2(curVec.getY(),curVec.getX());
+		
+		return getShortestAngle(curAng,targAng,1.0f);
+	}
+	
 	float turnTowardsPointDelta(btVector3 targPoint) {
 		btVector3 centerPoint = getCenterPoint(E_BDG_CENTER);
 		
@@ -10347,13 +10439,8 @@ public:
 		
 		float targAng = atan2(targVec.getY(),targVec.getX());
 		
-		btVector3 curVec = bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()*btVector3(0.0f,1.0f,0.0f);
-		curVec.setZ(0.0f);
-		curVec.normalize();
+		return turnTowardsTargAng(targAng);
 		
-		float curAng = atan2(curVec.getY(),curVec.getX());
-		
-		return getShortestAngle(curAng,targAng,1.0f);
 		
 		//return targAng-curAng;
 		
@@ -10429,7 +10516,6 @@ public:
 	bool isHumanoid() {
 		return (
 			(entType == E_ENTTYPE_NPC)
-			//|| (entType == E_ENTTYPE_MONSTER)
 		);
 	}
 	
@@ -10568,35 +10654,17 @@ public:
 		}
 	}
 	
-	// void updateTargets() { //FIVector4* fv
-		
-	// 	ang += (targAng-ang)/4.0f;
-	// 	angRelative += (targAngRelative-angRelative)/4.0f;
-		
-	// 	// if (body == NULL) {
-			
-	// 	// }
-	// 	// else {
-			
-	// 	// 	if (isUpright) {
-	// 	// 		body->SetAngle(ang);
-	// 	// 	}
-			
-			
-	// 	// }
-		
-	// }
 	
 	float healthPerc() {
-		return ((float)curHealth)/((float)maxHealth);
+		return ((float)statSheet.curStatus[E_STATUS_HEALTH])/((float)statSheet.maxStatus[E_STATUS_HEALTH]);
 	}
 	
 	bool isDead() {
-		return (curHealth <= 0);
+		return (statSheet.curStatus[E_STATUS_HEALTH] <= 0);
 	}
 	
 	bool isAlive() {
-		return (curHealth > 0);
+		return (statSheet.curStatus[E_STATUS_HEALTH] > 0);
 	}
 	
 	bool getActionState(int action, int handNum) {
@@ -10646,13 +10714,13 @@ public:
 		isGrabbedByHand = -1;
 		isGrabbedById = -1;
 		
-		maxHealth = 255;
-		curHealth = maxHealth;
 		lastBlockDis = 0.0f;
 		blockCount = 0.0f;
 		swingCount = 0.0f;
 		bindingPower = 1.0f;
 		airCount = 0.0f;
+		
+		tbDir = 0;
 		
 		for (i = 0; i < RLBN_LENGTH; i++) {
 			isGrabbingId[i] = -1;
@@ -10661,8 +10729,15 @@ public:
 		
 		for (i = 0; i < E_CS_LENGTH; i++) {
 			statSheet.baseStats[i] = 5;
+			statSheet.unapplyedStats[i] = 5;	
 		}
 		statSheet.availPoints = 10;
+		
+		for (i = 0; i < E_STATUS_LENGTH; i++) {
+			statSheet.curStatus[i] = 10;
+			statSheet.maxStatus[i] = 10;
+		}
+		
 		
 		zeroZ = false;
 		jumpCooldown = 0;
@@ -10671,10 +10746,6 @@ public:
 		
 		clearActionStates();
 		
-		isUpright = 
-			(entType == E_ENTTYPE_NPC)
-			// || (entType == E_ENTTYPE_MONSTER)
-			;
 		
 		isOpen = false;
 		isEquipped = false;
@@ -10687,6 +10758,9 @@ public:
 		bounciness = 0.0f;
 		friction = 0.9;
 		windResistance = 0.9;
+		
+		
+		tbPos = getUnitBounds(false);
 		
 	}
 	
@@ -19933,6 +20007,18 @@ std::string f__s(float f) {
 	return std::to_string(f);
 }
 
+string getPaddedInt(int curInt, int maxInt) {
+	string res = i__s(curInt);
+	string maxRes = i__s(maxInt);
+	
+	while(res.size() < maxRes.size()) {
+		res = '0' + res;
+	}
+	
+	return res;
+	
+}
+
 
 union hex_converter{
 	float f_val;
@@ -22424,6 +22510,7 @@ public:
   int destructCount;
   bool sphereMapOn;
   bool waitingOnDestruction;
+  bool gridOn;
   bool physicsOn;
   bool isPressingMove;
   bool fxaaOn;
@@ -22592,7 +22679,6 @@ public:
   float cameraZoom;
   float targetZoom;
   float fogOn;
-  float gridOn;
   float mapSampScale;
   float curBrushRad;
   float timeOfDay;
@@ -22797,6 +22883,7 @@ public:
   void drawLine (FIVector4 * p0, FIVector4 * p1);
   void drawCubeCentered (FIVector4 * originVec, float radius);
   void drawBoxUp (FIVector4 originVec, float radiusX, float radiusY, float diamZ);
+  void drawBoxMinMax (btVector3 v0, btVector3 v1);
   void drawBoxRad (btVector3 v0, btVector3 v1);
   void drawBox (FIVector4 * v0, FIVector4 * v1, int faceFlag = 2);
   void getMaterialString ();
@@ -22903,6 +22990,8 @@ public:
   string makePretty (string sourceString, string remString);
   void cleanJVPointer (JSONValue * * jv);
   void getSpecialData (int datEnum, string datString);
+  void updateStatGUI ();
+  void showHudMenu (bool visible);
   void showStatMenu (bool visible);
   void refreshContainers (bool onMousePos);
   JSONValue * fetchJSONData (string dataFile, bool doClean, JSONValue * params = NULL);
@@ -23182,6 +23271,7 @@ public:
   void setValueIndex (int ind, float val);
   float getValueIndex (int ind);
   float getValueIndexPtr (int ind);
+  void updateTextNumber ();
   void setValue (float _value, bool doEventDispatch = false, bool preventRefresh = false);
   float getValue ();
   void setValueY (float _value, bool doEventDispatch = false, bool preventRefresh = false);
@@ -23692,6 +23782,7 @@ public:
   bool destroyTerrain;
   bool mirrorOn;
   bool combatOn;
+  bool turnBased;
   bool editPose;
   bool orgOn;
   bool isDraggingObject;
@@ -23710,6 +23801,7 @@ public:
   int draggingToInd;
   int draggingFromType;
   int draggingToType;
+  int turnListInd;
   float subjectDistance;
   float lastSubjectDistance;
   FIVector4 tempVec1;
@@ -23717,6 +23809,7 @@ public:
   FIVector4 tempVec3;
   map <BaseObjType, BaseObj> gameObjects;
   vector <BaseObjType> visObjects;
+  vector <int> turnList;
   BaseObj * currentActor;
   GameOrgNode * bestNode;
   GameOrgNode * selectedNode;
@@ -23735,6 +23828,8 @@ public:
   string (objStrings) [MAX_OBJ_TYPES];
   GameEntManager ();
   void init (Singleton * _singleton);
+  void refreshTurnList ();
+  void setTurnBased (bool newVal);
   void checkActorRefresh ();
   void closeAllContainers ();
   bool anyContainerOpen ();
@@ -23781,6 +23876,8 @@ public:
   void makeDropAll (int actorId);
   void makeThrow (int actorId, int _handNum);
   void makeSwing (int actorId, int handNum);
+  void makeTurnUnit (int actorId, int modVal);
+  void makeMoveUnit (int actorId, int modVal);
   void makeTurn (int actorId, float dirFactor);
   void makeMoveVec (int actorId, btVector3 moveVec);
   void makeMove (int actorId, btVector3 moveDir, bool relative, bool delayed);
@@ -23808,6 +23905,7 @@ public:
   void getIndexForPose (PoseKey * tempPose);
   void setPoseFromIndex (int i);
   int getPoseType (int poseIndex);
+  void saveEveryPose ();
   void loadNonPoseData (int npdPose, int npdSide, int npdStep);
   void loadCurrentPose ();
   int numberIcons (int pCurCount, int x1, int y1, int x2, int y2);
@@ -25028,7 +25126,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		depthInvalidMove = true;
 		lastDepthInvalidMove = true;
 		depthInvalidRotate = true;
-		gridOn = 0.0f;
+		gridOn = false;
 		fogOn = 1.0f;
 		cameraZoom = 1.0f;
 		targetZoom = cameraZoom;
@@ -26622,7 +26720,44 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 			else if (comp->uid.compare("#materialPicker") == 0) {
 				gem->updateOrgMat(comp);
 			}
-			
+			else if (comp->uid.compare("statMenu.apply") == 0) {
+				if (gem->currentActor != NULL) {	
+					curStatSheet = &(gem->currentActor->statSheet);
+					
+					for (i = 0; i < E_CS_LENGTH; i++) {
+						curStatSheet->baseStats[i] = curStatSheet->unapplyedStats[i];
+					}
+					
+				}
+			}
+			else if (comp->uid.compare("statMenu.reset") == 0) {
+				if (gem->currentActor != NULL) {
+					curStatSheet = &(gem->currentActor->statSheet);
+					
+					
+					
+					for (i = 0; i < E_CS_LENGTH; i++) {
+						
+						while (curStatSheet->unapplyedStats[i] > curStatSheet->baseStats[i]) {
+							curStatSheet->unapplyedStats[i] -= 1;
+							curStatSheet->availPoints += 1;
+						}
+						
+						tempComp = getGUIComp("statMenu.statParent")->getChild(i);
+						tempComp->setValue(
+							curStatSheet->unapplyedStats[i]/tempComp->divisions
+						);
+						
+					}
+					
+					tempComp = getGUIComp("statMenu.availPoints");
+					tempComp->setValue(
+						curStatSheet->availPoints/tempComp->divisions
+					);
+					
+					
+				}
+			}
 			
 			if (comp->guiClass == E_GT_BUTTON) {
 				toggleDDMenu(x,y,false);
@@ -26671,22 +26806,28 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 				
 				curStatSheet = &(gem->currentActor->statSheet);
 				
-				oldVal = curStatSheet->baseStats[comp->index];
-				newVal = roundf(curValue*comp->divisions);
+				oldVal = curStatSheet->unapplyedStats[comp->index];
+				newVal = roundVal(curValue*comp->divisions);
 				difVal = newVal-oldVal;
 				
 				tempComp = getGUIComp("statMenu.availPoints");
 				
 				curStatSheet->availPoints -= difVal;
-				curStatSheet->baseStats[comp->index] = newVal;
+				curStatSheet->unapplyedStats[comp->index] = newVal;
 				
 				while (curStatSheet->availPoints < 0) {
 					curStatSheet->availPoints += 1;
-					curStatSheet->baseStats[comp->index] -= 1;
+					curStatSheet->unapplyedStats[comp->index] -= 1;
 				}
 				
+				while (curStatSheet->unapplyedStats[comp->index] < curStatSheet->baseStats[comp->index]) {
+					curStatSheet->availPoints -= 1;
+					curStatSheet->unapplyedStats[comp->index] += 1;
+				}
+				
+				
 				comp->setValue(
-					curStatSheet->baseStats[comp->index]/comp->divisions
+					curStatSheet->unapplyedStats[comp->index]/comp->divisions
 				);
 				tempComp->setValue(
 					curStatSheet->availPoints/tempComp->divisions
@@ -27052,6 +27193,12 @@ void Singleton::drawBoxUp (FIVector4 originVec, float radiusX, float radiusY, fl
 		);
 
 		drawBox(&minV, &maxV);
+	}
+void Singleton::drawBoxMinMax (btVector3 v0, btVector3 v1)
+          {
+		tempVec1.setBTV(v0);
+		tempVec2.setBTV(v1);
+		drawBox(&tempVec1,&tempVec2);
 	}
 void Singleton::drawBoxRad (btVector3 v0, btVector3 v1)
           {
@@ -28481,7 +28628,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 		else {
 			switch (key) {
 
-
+				
 
 
 
@@ -28688,6 +28835,10 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 				break;
 				
+				case 'N':
+					gem->saveEveryPose();
+				break;
+				
 				case 'j':
 				
 					gem->resetActiveNode();
@@ -28708,10 +28859,10 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 				case 'G':
 				
-					smoothMove = !smoothMove;
+					
 				
-					//gridOn = 1.0 - gridOn;
-					//cout << "Grid On: " << gridOn << "\n";
+					gridOn = !gridOn;
+					cout << "Grid On: " << gridOn << "\n";
 
 					break;
 
@@ -28848,7 +28999,9 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					// 	selectedEnts.cycleEnts();
 					// }
 					
-					showStatMenu( !(menuList[E_FM_STATMENU]->visible) );
+					showHudMenu( !(menuList[E_FM_HUDMENU]->visible) );
+					
+					//showStatMenu( !(menuList[E_FM_STATMENU]->visible) );
 					
 					//cout << makePretty("E_TEST_STRING_VALUE", "E_TEST_") << "\n";
 					
@@ -28857,16 +29010,16 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				
 				case 'C':
-					
-					
-					
 				
 					
 				break;
 				case 'c':
 					
-					gem->combatOn = !(gem->combatOn);
-					cout << "gem->combatOn " << gem->combatOn << "\n";
+					
+					gem->setTurnBased(!(gem->turnBased));
+					gem->combatOn = (gem->turnBased);
+					//gem->combatOn = !(gem->combatOn);
+					//cout << "gem->combatOn " << gem->combatOn << "\n";
 					
 					
 					//setCameraToElevation();
@@ -28920,7 +29073,9 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 
 					break;
-
+				case 'M':
+					smoothMove = !smoothMove;
+				break;
 				
 
 				
@@ -28947,6 +29102,35 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					cout << "No code for key: " << ((int)key) << "\n";
 					break;
 			}
+			
+			
+			if (gem->turnBased&&(gem->currentActor != NULL)) {
+				switch(key) {
+					case 'a':
+						
+					break;
+					case 'z':
+						
+					break;
+					
+					
+					case 's':
+						gem->makeTurnUnit(gem->currentActor->uid, 1);
+					break;
+					case 'f':
+						gem->makeTurnUnit(gem->currentActor->uid, -1);
+					break;
+					
+					
+					case 'e':
+						gem->makeMoveUnit(gem->currentActor->uid, 1);
+					break;
+					case 'd':
+						gem->makeMoveUnit(gem->currentActor->uid, -1);
+					break;
+				}
+			}
+			
 		}
 		
 		
@@ -29221,13 +29405,13 @@ void Singleton::updateCurGeom (int x, int y)
 					
 					
 						geomOrigOffset.setFXYZ(
-							-roundf(
+							-signedFloor(
 								cos(xrotrad)*yv2 + -sin(xrotrad)*xv2
 							),
-							-roundf(
+							-signedFloor(
 								sin(xrotrad)*yv2 + cos(xrotrad)*xv2
 							),
-							roundf(curPrimMod)
+							signedFloor(curPrimMod)
 						);
 					break;
 				}
@@ -29244,24 +29428,24 @@ void Singleton::updateCurGeom (int x, int y)
 						
 					break;
 					case E_GEOM_POINTS_RAD_XYZ:
-						setFXYGeom(E_PRIMTEMP_BOUNDSMIN, roundf(-xv), roundf(-yv));
-						setFXYGeom(E_PRIMTEMP_BOUNDSMAX, roundf( xv), roundf( yv));
+						setFXYGeom(E_PRIMTEMP_BOUNDSMIN, signedFloor(-xv), signedFloor(-yv));
+						setFXYGeom(E_PRIMTEMP_BOUNDSMAX, signedFloor( xv), signedFloor( yv));
 						
-						setFXYGeom(E_PRIMTEMP_VISMIN, roundf(-xv), roundf(-yv));
-						setFXYGeom(E_PRIMTEMP_VISMAX, roundf( xv), roundf( yv));
+						setFXYGeom(E_PRIMTEMP_VISMIN, signedFloor(-xv), signedFloor(-yv));
+						setFXYGeom(E_PRIMTEMP_VISMAX, signedFloor( xv), signedFloor( yv));
 						
-						setFZGeom(E_PRIMTEMP_BOUNDSMIN, roundf(-curPrimMod));
-						setFZGeom(E_PRIMTEMP_BOUNDSMAX, roundf( curPrimMod));
+						setFZGeom(E_PRIMTEMP_BOUNDSMIN, signedFloor(-curPrimMod));
+						setFZGeom(E_PRIMTEMP_BOUNDSMAX, signedFloor( curPrimMod));
 						
-						setFZGeom(E_PRIMTEMP_VISMIN, roundf(-curPrimMod));
-						setFZGeom(E_PRIMTEMP_VISMAX, roundf( curPrimMod));
+						setFZGeom(E_PRIMTEMP_VISMIN, signedFloor(-curPrimMod));
+						setFZGeom(E_PRIMTEMP_VISMAX, signedFloor( curPrimMod));
 						
 					break;
 					case E_GEOM_POINTS_OFFSET:
 						geomOrigOffset.setFXYZ(
-							roundf(xv2),
-							roundf(yv2),
-							roundf(curPrimMod)
+							signedFloor(xv2),
+							signedFloor(yv2),
+							signedFloor(curPrimMod)
 						);
 					break;
 					case E_GEOM_POINTS_CORNER:
@@ -29270,7 +29454,7 @@ void Singleton::updateCurGeom (int x, int y)
 						maxCornerDis = getMinGeom(E_PRIMTEMP_BOUNDSMAX);
 						
 						setFXGeom(E_PRIMTEMP_CORNERDIS, 
-							roundf(mixf(
+							signedFloor(mixf(
 								minCornerDis,
 								maxCornerDis,
 								clampfZO(yv/(maxDis*0.5f))	
@@ -29283,25 +29467,25 @@ void Singleton::updateCurGeom (int x, int y)
 					break;
 					case E_GEOM_POINTS_NEG_RAD_XY:
 						setFXYGeom(E_PRIMTEMP_VISMIN, 
-							roundf(max(xv2,getFXGeom(E_PRIMTEMP_BOUNDSMIN))),
-							roundf(max(yv2,getFYGeom(E_PRIMTEMP_BOUNDSMIN)))
+							signedFloor(max(xv2,getFXGeom(E_PRIMTEMP_BOUNDSMIN))),
+							signedFloor(max(yv2,getFYGeom(E_PRIMTEMP_BOUNDSMIN)))
 						);
 					break;
 					case E_GEOM_POINTS_POS_RAD_XY:						
 						setFXYGeom(E_PRIMTEMP_VISMAX, 
-							roundf(min(xv2,getFXGeom(E_PRIMTEMP_BOUNDSMAX))),
-							roundf(min(yv2,getFYGeom(E_PRIMTEMP_BOUNDSMAX)))
+							signedFloor(min(xv2,getFXGeom(E_PRIMTEMP_BOUNDSMAX))),
+							signedFloor(min(yv2,getFYGeom(E_PRIMTEMP_BOUNDSMAX)))
 						);
 					
 					break;
 					case E_GEOM_POINTS_NEG_RAD_Z:
-						setFZGeom(E_PRIMTEMP_VISMIN, roundf(max(yv2,getFZGeom(E_PRIMTEMP_BOUNDSMIN))) );
+						setFZGeom(E_PRIMTEMP_VISMIN, signedFloor(max(yv2,getFZGeom(E_PRIMTEMP_BOUNDSMIN))) );
 					break;
 					case E_GEOM_POINTS_POS_RAD_Z:
-						setFZGeom(E_PRIMTEMP_VISMAX, roundf(min(yv2,getFZGeom(E_PRIMTEMP_BOUNDSMAX))) );
+						setFZGeom(E_PRIMTEMP_VISMAX, signedFloor(min(yv2,getFZGeom(E_PRIMTEMP_BOUNDSMAX))) );
 					break;
 					case E_GEOM_POINTS_THICKNESS:
-						setFYGeom(E_PRIMTEMP_CORNERDIS, roundf(yv));
+						setFYGeom(E_PRIMTEMP_CORNERDIS, signedFloor(yv));
 					break;
 				}
 			}
@@ -30083,6 +30267,8 @@ void Singleton::flushKeyStack ()
 void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float camRotX, float camRotY)
                                                                                                   {
 		
+		
+		
 		int i;
 		BaseObj* ca;
 		
@@ -30097,6 +30283,10 @@ void Singleton::applyKeyAction (bool isReq, int actorId, uint keyFlags, float ca
 			naFloatData[0] = camRotX;
 			naFloatData[1] = camRotY;
 			gameNetwork->addNetworkAction(E_NO_KEY_ACTION,naUintData,naIntData,naFloatData);
+			return;
+		}
+		
+		if (gem->turnBased) {
 			return;
 		}
 		
@@ -30677,17 +30867,36 @@ void Singleton::getSpecialData (int datEnum, string datString)
 						tempVal0->array_value.push_back( new JSONValue(JSONObject()) );
 						
 						tempVal0->array_value.back()->object_value["label"] = new JSONValue( makePretty(E_CHAR_STAT_STRINGS[i],"E_CS_") );
-						tempVal0->array_value.back()->object_value["value"] = new JSONValue( ((double)(curSS->baseStats[i]))/((double)(MAX_STAT_VALUE)) );
+						tempVal0->array_value.back()->object_value["value"] = new JSONValue( ((double)(curSS->unapplyedStats[i]))/((double)(MAX_STAT_VALUE)) );
 						tempVal0->array_value.back()->object_value["divisions"] = new JSONValue( ((double)(MAX_STAT_VALUE)) );
 						
 						
 					}
-					
-					
 				}
+			break;
+			case E_SDT_STATUSDATA:
 				
+				externalJSON[datString].jv->object_value["status"] = new JSONValue(JSONArray());
+				tempVal0 = externalJSON[datString].jv->object_value["status"];
 				
-				
+				if (gem->currentActor == NULL) {
+					cout << "NULL STATUSS\n";
+					return;
+				}
+				else {
+					
+					curSS = &(gem->currentActor->statSheet);
+					
+					for (i = 0; i < E_STATUS_LENGTH; i++) {
+						tempVal0->array_value.push_back( new JSONValue(JSONObject()) );
+						
+						tempVal0->array_value.back()->object_value["label"] = new JSONValue( makePretty(E_CHAR_STATUS_STRINGS[i],"E_STATUS_") );
+						tempVal0->array_value.back()->object_value["value"] = new JSONValue( ((double)(curSS->curStatus[i]))/((double)(curSS->maxStatus[i])) );
+						tempVal0->array_value.back()->object_value["divisions"] = new JSONValue( ((double)(curSS->maxStatus[i])) );
+						
+						
+					}
+				}
 			break;
 			default:
 				cout << "ERROR: unexpected type in getSpecialData(): " << datEnum << "\n";
@@ -30699,6 +30908,45 @@ void Singleton::getSpecialData (int datEnum, string datString)
 		
 		
 	}
+void Singleton::updateStatGUI ()
+                             {
+		UIComponent* tempComp;
+		
+		
+		if (gem->currentActor == NULL) {
+			return;
+		}
+		
+		StatSheet* curSS = &(gem->currentActor->statSheet);
+		
+		tempComp = getGUIComp("statMenu.availPoints");
+		tempComp->setValue(
+			((float)curSS->availPoints)/((float)(tempComp->divisions))
+		);
+		
+		
+		
+	}
+void Singleton::showHudMenu (bool visible)
+                                       {
+		if (menuList[E_FM_HUDMENU] != NULL) {
+			menuList[E_FM_HUDMENU]->visible = visible;
+			
+			externalJSON.erase("E_SDT_STATUSDATA"); // mem leak?
+			
+			mainGUI->refreshNode(
+				mainGUI->findNodeByString("hudMenu.hudContainer")	
+			);
+						
+			if (visible) {
+				
+				updateStatGUI();
+				
+			}
+			
+			
+		}
+	}
 void Singleton::showStatMenu (bool visible)
                                         {
 		
@@ -30708,12 +30956,15 @@ void Singleton::showStatMenu (bool visible)
 		if (menuList[E_FM_STATMENU] != NULL) {
 			menuList[E_FM_STATMENU]->visible = visible;
 			externalJSON.erase("E_SDT_STATDATA"); // mem leak?
+			externalJSON.erase("E_SDT_STATUSDATA"); // mem leak?
 			
 			mainGUI->refreshNode(
 				mainGUI->findNodeByString("statMenu.statContainer")	
 			);
 						
 			if (visible) {
+				
+				updateStatGUI();
 				
 			}
 			
@@ -30909,7 +31160,7 @@ void Singleton::jsonPostProc ()
 		string preStr = "\"@@";
 		string pstStr = "@@\"";
 		
-		
+		cout << "jsonPostProc\n";
 		
 		specialReplace(jsonPostString,preStr,pstStr);
 		
@@ -30927,17 +31178,6 @@ void Singleton::jsonPostProc ()
 			switch(enumVal) {
 				case E_JP_STATMENUAVAILDIV:
 					newString = i__s(E_CS_LENGTH*MAX_STAT_VALUE);
-				break;
-				case E_JP_STATMENUAVAILPOINTS:
-				
-					if (gem->currentActor == NULL) {
-						newString = "0";
-					}
-					else {
-						newString = i__s(gem->currentActor->statSheet.availPoints);
-					}
-				
-					
 				break;
 				default:
 					doProc = false;
@@ -32169,6 +32409,14 @@ void Singleton::display (bool doFrameRender)
 				}
 				
 				gameLogic->applyBehavior();
+				
+				if (gem->turnBased) {
+					
+				}
+				else {
+								
+				}
+								
 				
 				flushKeyStack();
 				gatherKeyActions();
@@ -34034,8 +34282,10 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		curFontIcons = singleton->fontWrappers[EFW_ICONS];
 		
 		wasHit = false;
-		privValueX = floatVals[E_GFT_VALUE];
+		
 		divisions = floatVals[E_GFT_DIVISIONS];
+		privValueX = floatVals[E_GFT_VALUE];
+		updateTextNumber();
 
 		mouseDown = false;
 		mouseOver = false;
@@ -34104,6 +34354,7 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		}
 		
 		//
+		
 		
 		
 	}
@@ -34302,6 +34553,21 @@ float UIComponent::getValueIndexPtr (int ind)
 		
 		
 	}
+void UIComponent::updateTextNumber ()
+                                {
+		if (
+			//(guiClass == E_GT_SLIDER) &&
+			(divisions > 1.0f)
+		) {
+			setText(
+					label + ": " +
+					i__s(privValueX*divisions) +
+					//getPaddedInt(privValueX*divisions, divisions) +
+					" / " +
+					i__s(divisions)
+			);
+		}
+	}
 void UIComponent::setValue (float _value, bool doEventDispatch, bool preventRefresh)
                                                                                                {
 		UIComponent* curValuePtr = getValuePtr();
@@ -34325,6 +34591,9 @@ void UIComponent::setValue (float _value, bool doEventDispatch, bool preventRefr
 		}
 		else {
 			privValueX = _value;
+			
+			updateTextNumber();
+			
 			
 			updateLinkedValues();
 			
@@ -35096,12 +35365,11 @@ void UIComponent::updateValue (float x, float y)
 					//visible = (curParent->selected)&&(curParent->visible);
 				}
 				
-				
-				
-				
 			break;
-
 		}
+		
+		
+		
 		
 		for (i = 0; i < getChildCount(); i++) {
 			
@@ -36382,7 +36650,7 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 								}
 							break;
 							
-							default:
+							case E_GCT_AUTOMATIC:
 								//numEntries = curData->CountChildren();
 								// for (q = 0; q < numEntries; q++) {
 								// 	jvChildTemplate->Child("label")->string_value = singleton->gem->getStringForObjectId(objectId);
@@ -36413,6 +36681,9 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 								
 								
 								
+							break;
+							default:
+								cout << "Error: unexpected GTC type\n";
 							break;
 						}
 						
@@ -42101,7 +42372,7 @@ GameOrg::GameOrg ()
 		targetPose.RLBN = RLBN_NEIT;
 		targetPose.group = -1;
 		rootObj = NULL;
-		defVecLength = 0.05f;
+		defVecLength = 0.05f*ORG_SCALE_BASE;
 	}
 void GameOrg::init (Singleton * _singleton, int _ownerUID, int _entType, int _subType)
           {
@@ -42281,6 +42552,9 @@ void GameOrg::loadOrgFromFile (string fileName, bool notThePose)
 	}
 void GameOrg::saveOrgToFile (string fileName)
                                             {
+		
+		cout << "saveOrgToFile " << fileName << "\n";
+		
 		int actorId = getPoseUID();
 		
 		
@@ -42499,6 +42773,7 @@ void GameOrg::nodeToJSON (JSONValue * * parentObj, GameOrgNode * curNode)
 		int i;
 		int j;
 		
+		float mult = 1.0f;
 		
 		JSONValue* tempVal;
 		
@@ -42510,10 +42785,33 @@ void GameOrg::nodeToJSON (JSONValue * * parentObj, GameOrgNode * curNode)
 		
 		for (i = 0; i < E_OV_LENGTH; i++) {
 			
+			mult = 1.0f;
+			
+			switch (i) {
+				//case E_OV_TANGENT:
+				//case E_OV_BITANGENT:
+				//case E_OV_NORMAL:
+				case E_OV_TBNRAD0:
+				case E_OV_TBNRAD1:
+				//case E_OV_THETAPHIRHO:
+				//case E_OV_TPRORIG:
+				//case E_OV_MATPARAMS:
+				case E_OV_TBNOFFSET:
+					mult = ORG_SCALE_DELTA;
+				break;
+			}
+			
+			
 			for (j = 0; j < 4; j++) {
+				
+				if (j == 3) {
+					mult = 1.0f;
+				}
+				
 				(*parentObj)->object_value["orgVecs"]->array_value.push_back(new JSONValue(
-					(double)(curNode->orgVecs[i][j])	
+					(double)(curNode->orgVecs[i][j]*mult)	
 				));
+				
 			}
 			
 		}
@@ -42585,14 +42883,14 @@ void GameOrg::initWeapon ()
 		
 		
 		
-		wepLengths[E_BONE_WEAPON_POMMEL] = 0.125f;
-		wepLengths[E_BONE_WEAPON_HANDLE] = 0.3f;
-		wepLengths[E_BONE_WEAPON_CENTER] = 0.125f;
-		wepLengths[E_BONE_WEAPON_CROSSR] = 0.5f;
-		wepLengths[E_BONE_WEAPON_BLADER] = 0.5f;
-		wepLengths[E_BONE_WEAPON_CROSSL] = 0.5f;
-		wepLengths[E_BONE_WEAPON_BLADEL] = 0.5f;
-		wepLengths[E_BONE_WEAPON_BLADEU] = 1.0f;
+		wepLengths[E_BONE_WEAPON_POMMEL] = 0.125f*ORG_SCALE_BASE;
+		wepLengths[E_BONE_WEAPON_HANDLE] = 0.3f*ORG_SCALE_BASE;
+		wepLengths[E_BONE_WEAPON_CENTER] = 0.125f*ORG_SCALE_BASE;
+		wepLengths[E_BONE_WEAPON_CROSSR] = 0.5f*ORG_SCALE_BASE;
+		wepLengths[E_BONE_WEAPON_BLADER] = 0.5f*ORG_SCALE_BASE;
+		wepLengths[E_BONE_WEAPON_CROSSL] = 0.5f*ORG_SCALE_BASE;
+		wepLengths[E_BONE_WEAPON_BLADEL] = 0.5f*ORG_SCALE_BASE;
+		wepLengths[E_BONE_WEAPON_BLADEU] = 1.0f*ORG_SCALE_BASE;
 		
 		
 		
@@ -42699,8 +42997,8 @@ void GameOrg::initHuman ()
 				i,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.75f/numSpineSegs, defVecLength, defVecLength,
-				0.75f/numSpineSegs, defVecLength, defVecLength,
+				0.75f*ORG_SCALE_BASE/numSpineSegs, defVecLength, defVecLength,
+				0.75f*ORG_SCALE_BASE/numSpineSegs, defVecLength, defVecLength,
 				
 				0.0f,0.0f,1.0f,
 				0.0f,1.0f,0.0f,
@@ -42713,8 +43011,8 @@ void GameOrg::initHuman ()
 			E_BONE_C_SKULL,
 			
 			baseMat, 0.0f, 0.0f, 0.0f,
-			0.25f,  defVecLength, defVecLength,
-			0.25f,  defVecLength, defVecLength,
+			0.25f*ORG_SCALE_BASE,  defVecLength, defVecLength,
+			0.25f*ORG_SCALE_BASE,  defVecLength, defVecLength,
 			
 			0.0f,0.0f,1.0f,
 			0.0f,1.0f,0.0f,
@@ -42740,8 +43038,8 @@ void GameOrg::initHuman ()
 				E_BONE_L_SHOULDER + lrMod,
 
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.20f,  defVecLength, defVecLength,
-				0.20f,  defVecLength, defVecLength,
+				0.20f*ORG_SCALE_BASE,  defVecLength, defVecLength,
+				0.20f*ORG_SCALE_BASE,  defVecLength, defVecLength,
 				
 				dirMod*1.0f,0.0f,0.0f,
 				0.0f,1.0f,0.0f,
@@ -42751,8 +43049,8 @@ void GameOrg::initHuman ()
 				E_BONE_L_UPPERARM + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.25f, defVecLength, defVecLength,
-				0.25f, defVecLength, defVecLength,
+				0.25f*ORG_SCALE_BASE, defVecLength, defVecLength,
+				0.25f*ORG_SCALE_BASE, defVecLength, defVecLength,
 				
 				dirMod*1.0f,0.0f,0.0f,
 				0.0f,1.0f,0.0f,
@@ -42762,8 +43060,8 @@ void GameOrg::initHuman ()
 				E_BONE_L_LOWERARM + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.25f, defVecLength, defVecLength,
-				0.25f, defVecLength, defVecLength,
+				0.25f*ORG_SCALE_BASE, defVecLength, defVecLength,
+				0.25f*ORG_SCALE_BASE, defVecLength, defVecLength,
 				
 				dirMod*1.0f,0.0f,0.0f,
 				0.0f,1.0f,0.0f,
@@ -42773,8 +43071,8 @@ void GameOrg::initHuman ()
 				E_BONE_L_METACARPALS + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.1f, defVecLength, defVecLength,
-				0.1f, defVecLength, defVecLength,
+				0.1f*ORG_SCALE_BASE, defVecLength, defVecLength,
+				0.1f*ORG_SCALE_BASE, defVecLength, defVecLength,
 				
 				dirMod*1.0f,0.0f,0.0f,
 				0.0f,1.0f,0.0f,
@@ -42788,8 +43086,8 @@ void GameOrg::initHuman ()
 				E_BONE_L_HIP + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.1f, defVecLength, defVecLength,
-				0.1f, defVecLength, defVecLength,
+				0.1f*ORG_SCALE_BASE, defVecLength, defVecLength,
+				0.1f*ORG_SCALE_BASE, defVecLength, defVecLength,
 				
 				dirMod*1.0f,0.0f,0.0f,
 				0.0f,1.0f,0.0f,
@@ -42799,8 +43097,8 @@ void GameOrg::initHuman ()
 				E_BONE_L_UPPERLEG + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.45f, defVecLength, defVecLength,
-				0.45f, defVecLength, defVecLength,
+				0.45f*ORG_SCALE_BASE, defVecLength, defVecLength,
+				0.45f*ORG_SCALE_BASE, defVecLength, defVecLength,
 				
 				0.0f,0.0f,-1.0f,
 				0.0f,1.0f,0.0f,
@@ -42810,8 +43108,8 @@ void GameOrg::initHuman ()
 				E_BONE_L_LOWERLEG + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.45f, defVecLength, defVecLength,
-				0.45f, defVecLength, defVecLength,
+				0.45f*ORG_SCALE_BASE, defVecLength, defVecLength,
+				0.45f*ORG_SCALE_BASE, defVecLength, defVecLength,
 				
 				0.0f,0.0f,-1.0f,
 				0.0f,1.0f,0.0f,
@@ -42821,8 +43119,8 @@ void GameOrg::initHuman ()
 				E_BONE_L_TALUS + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.2f, defVecLength, defVecLength,
-				0.2f, defVecLength, defVecLength,
+				0.2f*ORG_SCALE_BASE, defVecLength, defVecLength,
+				0.2f*ORG_SCALE_BASE, defVecLength, defVecLength,
 				
 				0.0f,1.0f,0.0f,
 				dirMod*1.0f,0.0f,0.0f,
@@ -43690,6 +43988,45 @@ void GameEntManager::init (Singleton * _singleton)
 		loadPoseInfo(false);
 		
 	}
+void GameEntManager::refreshTurnList ()
+                               {
+		int i;
+		int testInd;
+		BaseObj* testObj;
+		
+		turnListInd = 0;
+		turnList.clear();
+		
+		for (i = 0; i < visObjects.size(); i++) {
+			testInd = visObjects[i];
+			testObj = &(gameObjects[testInd]);
+			
+			// todo: sort by initiative
+			
+			if (testObj->entType == E_ENTTYPE_NPC) {
+				turnList.push_back(testInd);
+			}
+		}
+	}
+void GameEntManager::setTurnBased (bool newVal)
+                                       {
+		turnBased = newVal;
+		
+		int i;
+		int testInd;
+		BaseObj* testObj;
+		
+		for (i = 0; i < visObjects.size(); i++) {
+			testInd = visObjects[i];
+			testObj = &(gameObjects[testInd]);
+			
+			testObj->tbPos = testObj->getUnitBounds(false);	
+		}
+		
+		refreshTurnList();
+		
+		cout << "turnBased " << turnBased << "\n";
+	}
 void GameEntManager::checkActorRefresh ()
                                  {
 		if (curActorNeedsRefresh&&editPose) {
@@ -43986,6 +44323,11 @@ bool GameEntManager::handleGUI (UIComponent * comp, bool mouseUpEvent, bool mous
 				//i = comp->getParent()->getChild(1)->jvNodeNoTemplate->Child("objectId")->number_value;
 				//closeContainer(i);
 			}
+			else if (comp->uid.compare("hudMenu.close") == 0) {		
+				singleton->menuList[E_FM_STATMENU]->visible = false;
+				//i = comp->getParent()->getChild(1)->jvNodeNoTemplate->Child("objectId")->number_value;
+				//closeContainer(i);
+			}
 			else if (comp->uid.compare("ddMenu.removeEntity") == 0) {
 				removeEntity(isCon, selObjInd);
 			}
@@ -44240,11 +44582,6 @@ BaseObjType GameEntManager::placeNewEnt (bool isReq, int et, FIVector4 * cellPos
 				windResistance = 1.0f;
 				bounciness = 0.3;
 			break;
-			// case E_ENTTYPE_MONSTER:
-			// 	newType = getRandomMonsterId();
-			// 	mf = 2;
-			// 	zv = 2;
-			// break;
 			case E_ENTTYPE_NPC:
 				newType = getRandomNPCId();
 				mf = 4;
@@ -45264,6 +45601,54 @@ void GameEntManager::makeSwing (int actorId, int handNum)
 		
 		
 	}
+void GameEntManager::makeTurnUnit (int actorId, int modVal)
+                                                   {
+		BaseObj* ca = &(gameObjects[actorId]);
+		
+		ca->tbDir += modVal;
+		
+		if (ca->tbDir < 0) {
+			ca->tbDir = 3;
+		}
+		if (ca->tbDir > 3) {
+			ca->tbDir = 0;
+		}
+		
+		
+	}
+void GameEntManager::makeMoveUnit (int actorId, int modVal)
+                                                   {
+		BaseObj* ca = &(gameObjects[actorId]);
+		
+		float ang = TBDIR_ARR[ca->tbDir];
+		
+		ca->tbPos += btVector3(
+			roundVal(cos(ang)*modVal),
+			roundVal(sin(ang)*modVal),
+			0.0f
+		);
+		
+		while (
+			singleton->gw->getCellAtCoords(
+				ca->tbPos.getX(),
+				ca->tbPos.getY(),
+				ca->tbPos.getZ()
+			) == E_CD_EMPTY
+		) {
+			ca->tbPos += btVector3(0.0f,0.0f,-1.0f);
+		}
+		
+		while (
+			singleton->gw->getCellAtCoords(
+				ca->tbPos.getX(),
+				ca->tbPos.getY(),
+				ca->tbPos.getZ()
+			) != E_CD_EMPTY
+		) {
+			ca->tbPos += btVector3(0.0f,0.0f,1.0f);
+		}
+		
+	}
 void GameEntManager::makeTurn (int actorId, float dirFactor)
                                                     {
 		
@@ -45544,10 +45929,10 @@ void GameEntManager::makeHit (int attackerId, int victimId, int weaponId)
 								
 								//geVictim->setActionState(E_ACT_ISHIT,RLBN_NEIT,true);
 								geVictim->bindingPower = singleton->conVals[E_CONST_BINDING_POW_ON_HIT];
-								lastHealth = geVictim->curHealth;
-								geVictim->curHealth -= 32;
-								if (geVictim->curHealth < 0) {
-									geVictim->curHealth = 0;
+								lastHealth = geVictim->statSheet.curStatus[E_STATUS_HEALTH];
+								geVictim->statSheet.curStatus[E_STATUS_HEALTH] -= 32;
+								if (geVictim->statSheet.curStatus[E_STATUS_HEALTH] < 0) {
+									geVictim->statSheet.curStatus[E_STATUS_HEALTH] = 0;
 								}
 								
 								if (geVictim->isDead() && (lastHealth > 0)) {
@@ -46321,6 +46706,22 @@ int GameEntManager::getPoseType (int poseIndex)
                                        {
 		int testPoseInd = gamePoses[poseIndex]->basePose.group;
 		return gamePoseInfo[testPoseInd].data[E_PIK_POSETYPE];
+	}
+void GameEntManager::saveEveryPose ()
+                             {
+		int i;
+		
+		
+		for (i = 0; i < gamePoses.size(); i++) {
+			
+			gamePoses[i]->saveOrgToFile(
+				getPoseString(
+					gamePoses[i]->basePose.group,
+					gamePoses[i]->basePose.RLBN,
+					gamePoses[i]->basePose.step
+				)	
+			);
+		}
 	}
 void GameEntManager::loadNonPoseData (int npdPose, int npdSide, int npdStep)
                                                                     {
@@ -53218,6 +53619,7 @@ void GameLogic::applyBehavior ()
 		
 		int curActor = singleton->gem->getCurActorUID();
 		
+		btVector3 tVec;
 		btVector3 offsetVec;
 		btVector3 readCenter;
 		btVector3 writeCenter;
@@ -53409,65 +53811,81 @@ void GameLogic::applyBehavior ()
 				
 				if (writeObj->isAlive()) {
 					
-					if (writeObj->behaviorTarget.isZero()) {
+					if (singleton->gem->turnBased) {
 						
+						deltaAng = writeObj->turnTowardsTargAng(TBDIR_ARR[writeObj->tbDir]);
+						
+						singleton->gem->makeTurn(writeObj->uid,deltaAng*4.0f);
+						
+						// tVec = (writeObj->tbPos+btVector3(0.5f,0.5f,0.5f))-writeObj->getCenterPoint(E_BDG_CENTER);
+						// tVec *= btVector3(1.0f,1.0f,0.0f);
+						
+						// singleton->gem->makeMoveVec(
+						// 	writeObj->uid,
+						// 	tVec
+						// );
 					}
 					else {
-						deltaAng = writeObj->turnTowardsPointDelta(writeObj->behaviorTarget);
-						
-						singleton->gem->makeTurn(writeObj->uid,deltaAng*16.0f);
-						
-						curDis = writeObj->behaviorTarget.distance(writeObj->getCenterPoint(E_BDG_CENTER));
-						
-						if (curDis > singleton->conVals[E_CONST_AI_SEEK_THRESH]) {
-							singleton->gem->makeMove(writeObj->uid, btVector3(0.0f,1.0f,0.0f), true, true);
-						}
-						if (curDis < singleton->conVals[E_CONST_AI_REPEL_THRESH]) {
-							singleton->gem->makeMove(writeObj->uid, btVector3(0.0f,-1.0f,0.0f), true, true);
-						}
-						
-						singleton->gem->makeMoveVec(writeObj->uid,writeObj->npcRepel);
-						
-						if (curDis > 6.0f) {
-							writeObj->blockCount += clampfZO(1.0 - abs(curDis - writeObj->lastBlockDis)*100.0f);
+						if (writeObj->behaviorTarget.isZero()) {
 							
-						}
-						
-						if (writeObj->holdingWeapon(-1)) {
-							if (
-								(curDis > 1.0f) &&
-								(curDis < 5.0f)	
-							) {
-								writeObj->swingCount += 1.0f;
-							
-								if (writeObj->swingCount > singleton->conVals[E_CONST_SWING_DELAY]) {
-									writeObj->swingCount = 0.0f;
-									singleton->gem->makeSwing(writeObj->uid,iGenRand(0,1));
-								}
-								
-							}
 						}
 						else {
-							if (
-								(curDis > 1.0f) &&
-								(curDis < 4.0f)	
-							) {
-								singleton->gem->makeGrab(writeObj->uid, -1);
+							deltaAng = writeObj->turnTowardsPointDelta(writeObj->behaviorTarget);
+							
+							singleton->gem->makeTurn(writeObj->uid,deltaAng*16.0f);
+							
+							curDis = writeObj->behaviorTarget.distance(writeObj->getCenterPoint(E_BDG_CENTER));
+							
+							if (curDis > singleton->conVals[E_CONST_AI_SEEK_THRESH]) {
+								singleton->gem->makeMove(writeObj->uid, btVector3(0.0f,1.0f,0.0f), true, true);
 							}
+							if (curDis < singleton->conVals[E_CONST_AI_REPEL_THRESH]) {
+								singleton->gem->makeMove(writeObj->uid, btVector3(0.0f,-1.0f,0.0f), true, true);
+							}
+							
+							singleton->gem->makeMoveVec(writeObj->uid,writeObj->npcRepel);
+							
+							if (curDis > 6.0f) {
+								writeObj->blockCount += clampfZO(1.0 - abs(curDis - writeObj->lastBlockDis)*100.0f);
+								
+							}
+							
+							if (writeObj->holdingWeapon(-1)) {
+								if (
+									(curDis > 1.0f) &&
+									(curDis < 5.0f)	
+								) {
+									writeObj->swingCount += 1.0f;
+								
+									if (writeObj->swingCount > singleton->conVals[E_CONST_SWING_DELAY]) {
+										writeObj->swingCount = 0.0f;
+										singleton->gem->makeSwing(writeObj->uid,iGenRand(0,1));
+									}
+									
+								}
+							}
+							else {
+								if (
+									(curDis > 1.0f) &&
+									(curDis < 4.0f)	
+								) {
+									singleton->gem->makeGrab(writeObj->uid, -1);
+								}
+							}
+							
+							
+							
+							if (writeObj->blockCount > 100.0f) {
+								writeObj->blockCount = 0.0f;
+								singleton->gem->makeJump(writeObj->uid, true,
+									clampfZO(curDis-6.0f)*0.75f + 0.25f	
+								);
+							}
+							writeObj->blockCount *= 0.999f;
+							writeObj->lastBlockDis = curDis;
+							
+							
 						}
-						
-						
-						
-						if (writeObj->blockCount > 100.0f) {
-							writeObj->blockCount = 0.0f;
-							singleton->gem->makeJump(writeObj->uid, true,
-								clampfZO(curDis-6.0f)*0.75f + 0.25f	
-							);
-						}
-						writeObj->blockCount *= 0.999f;
-						writeObj->lastBlockDis = curDis;
-						
-						
 					}
 					
 				}
@@ -56238,8 +56656,8 @@ void GamePhysics::init (Singleton * _singleton)
 		
 		CONTACT_THRESH = 0.2f;
 		//totTime = 0.0;
-		BASE_ENT_HEIGHT = 2.0f;
-		BASE_ENT_RAD = 1.0f;
+		BASE_ENT_HEIGHT = 2.0f*ORG_SCALE_BASE;
+		BASE_ENT_RAD = 1.0f*ORG_SCALE_BASE;
 		
 		cout << "GamePhysics:init()\n";
 		
@@ -56392,7 +56810,6 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 		
 		switch (ge->entType) {
 			case E_ENTTYPE_NPC:
-			// case E_ENTTYPE_MONSTER:
 			case E_ENTTYPE_WEAPON:
 				{
 					
@@ -56972,32 +57389,60 @@ void GamePhysics::collideWithWorld (double curStepTime)
 								segCount = 0;
 							break;
 							case E_JT_CONT:
-								segCount = 2;
-								segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
-									btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_CONT]);
+							
+								if (singleton->gem->turnBased) {
+									segCount = 0;
 									
-								newVel = curBody->body->getLinearVelocity();
-								newVel *= xyMask;
-								if (newVel.fuzzyZero()) {
-									//segCount = 1;
+									curBody->hasContact = true;
+									curBody->isFalling = !(curBody->hasContact);
+									basePos = (ge->tbPos+btVector3(0.5f,0.5f,0.5f+singleton->conVals[E_CONST_TBSNAP_ZOFFSET]));
+									difVec = basePos - curBody->body->getCenterOfMassPosition();
+									
+									
+									// move limbs towards pose
+									
+									
+									ge->setLinVel(
+										difVec*singleton->conVals[E_CONST_TBSNAP_MULT],
+										bodInd
+									);
+									
+									if (ge->getPlanarVel() > 0.1) {
+										ge->setActionState(E_ACT_ISWALKING,RLBN_NEIT,true);
+									}
+									
+									
 								}
 								else {
-									newVel.normalize();
+									segCount = 2;
+									segPos[0] = curBody->body->getCenterOfMassPosition() + halfOffset -
+										btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_CONT]);
+										
+									newVel = curBody->body->getLinearVelocity();
+									newVel *= xyMask;
+									if (newVel.fuzzyZero()) {
+										//segCount = 1;
+									}
+									else {
+										newVel.normalize();
+										
+									}
 									
+									
+									newVel *= singleton->conVals[E_CONST_COLDEPTH_WALL_XY];
+									newVel += btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_WALL_Z]);
+									
+									segPos[1] = 
+										curBody->body->getCenterOfMassPosition() +
+										halfOffset +
+										newVel;
+									
+										
+									// segPos[1] = curBody->body->getCenterOfMassPosition() +
+									// 	zMask;
 								}
+							
 								
-								
-								newVel *= singleton->conVals[E_CONST_COLDEPTH_WALL_XY];
-								newVel += btVector3(0.0f,0.0f,singleton->conVals[E_CONST_COLDEPTH_WALL_Z]);
-								
-								segPos[1] = 
-									curBody->body->getCenterOfMassPosition() +
-									halfOffset +
-									newVel;
-								
-									
-								// segPos[1] = curBody->body->getCenterOfMassPosition() +
-								// 	zMask;
 								
 								
 								
@@ -57562,7 +58007,6 @@ void GamePhysics::collideWithWorld (double curStepTime)
 									bodInd
 								);
 								
-								
 						}
 						
 						
@@ -57714,7 +58158,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 						
 							
 						(
-							(ge->getCenterPoint(0).getZ()-(BASE_ENT_HEIGHT+BASE_ENT_RAD)*0.5f) -
+							(ge->getCenterPoint(E_BDG_CENTER).getZ()-(BASE_ENT_HEIGHT+BASE_ENT_RAD)*0.5f) -
 							ge->aabbMinSkel.getZ()	
 						)
 							
@@ -62396,6 +62840,21 @@ void GameWorld::renderDebug ()
 						singleton->drawBoxRad(boxCenter,boxRadius);
 					}
 					
+					if (singleton->gem->turnBased) {
+						boxCenter = (ge->tbPos + btVector3(0.5f,0.5f,0.5f));
+						singleton->setShaderVec4(
+							"rotationZ",
+							boxCenter.getX(),
+							boxCenter.getY(),
+							boxCenter.getZ(),
+							0.0f	
+						);
+						singleton->setShaderVec3("matVal", 255, 0, 0);
+						singleton->drawBoxMinMax(ge->tbPos, ge->tbPos + btVector3(1.0f,1.0f,1.0f));
+					}
+					
+					
+					
 				}
 			}
 		}
@@ -62673,7 +63132,6 @@ void GameWorld::postProcess ()
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-		singleton->setShaderInt("gridOn", (int)(singleton->gridOn));
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
 		singleton->setShaderInt("testOn2", (int)(singleton->testOn2));
 		singleton->setShaderFloat("curTime", singleton->curTime);
@@ -62826,12 +63284,16 @@ void GameWorld::postProcess ()
 			
 			if ((singleton->gem->currentActor == NULL)||singleton->gem->firstPerson) {
 				singleton->setShaderFloat("thirdPerson", 0.0f);
+				singleton->setShaderVec3("entPos", 0.0f, 0.0f, 0.0f);
 			}
 			else {
 				singleton->setShaderFloat("thirdPerson", 1.0f);
 				singleton->setShaderfVec3("entPos", singleton->gem->currentActor->getCenterPointFIV(0));
 				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
+			
+			
+			singleton->setShaderInt("gridOn", singleton->gridOn);
 			
 			if (singleton->gem->currentActor == NULL) {
 				singleton->setShaderInt("isFalling",false);

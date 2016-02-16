@@ -418,7 +418,7 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 								}
 							break;
 							
-							default:
+							case E_GCT_AUTOMATIC:
 								//numEntries = curData->CountChildren();
 								// for (q = 0; q < numEntries; q++) {
 								// 	jvChildTemplate->Child("label")->string_value = singleton->gem->getStringForObjectId(objectId);
@@ -449,6 +449,9 @@ void GameGUI::addChildFromJSON (int lastIndex, JSONValue * jv, int curParentId, 
 								
 								
 								
+							break;
+							default:
+								cout << "Error: unexpected GTC type\n";
 							break;
 						}
 						

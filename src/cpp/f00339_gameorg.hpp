@@ -46,7 +46,7 @@ public:
 		targetPose.RLBN = RLBN_NEIT;
 		targetPose.group = -1;
 		rootObj = NULL;
-		defVecLength = 0.05f;
+		defVecLength = 0.05f*ORG_SCALE_BASE;
 	}
 
 
@@ -239,6 +239,9 @@ public:
 	
 	
 	void saveOrgToFile(string fileName) {
+		
+		cout << "saveOrgToFile " << fileName << "\n";
+		
 		int actorId = getPoseUID();
 		
 		
@@ -461,6 +464,7 @@ public:
 		int i;
 		int j;
 		
+		float mult = 1.0f;
 		
 		JSONValue* tempVal;
 		
@@ -472,10 +476,33 @@ public:
 		
 		for (i = 0; i < E_OV_LENGTH; i++) {
 			
+			mult = 1.0f;
+			
+			switch (i) {
+				//case E_OV_TANGENT:
+				//case E_OV_BITANGENT:
+				//case E_OV_NORMAL:
+				case E_OV_TBNRAD0:
+				case E_OV_TBNRAD1:
+				//case E_OV_THETAPHIRHO:
+				//case E_OV_TPRORIG:
+				//case E_OV_MATPARAMS:
+				case E_OV_TBNOFFSET:
+					mult = ORG_SCALE_DELTA;
+				break;
+			}
+			
+			
 			for (j = 0; j < 4; j++) {
+				
+				if (j == 3) {
+					mult = 1.0f;
+				}
+				
 				(*parentObj)->object_value["orgVecs"]->array_value.push_back(new JSONValue(
-					(double)(curNode->orgVecs[i][j])	
+					(double)(curNode->orgVecs[i][j]*mult)	
 				));
+				
 			}
 			
 		}
@@ -548,14 +575,14 @@ public:
 		
 		
 		
-		wepLengths[E_BONE_WEAPON_POMMEL] = 0.125f;
-		wepLengths[E_BONE_WEAPON_HANDLE] = 0.3f;
-		wepLengths[E_BONE_WEAPON_CENTER] = 0.125f;
-		wepLengths[E_BONE_WEAPON_CROSSR] = 0.5f;
-		wepLengths[E_BONE_WEAPON_BLADER] = 0.5f;
-		wepLengths[E_BONE_WEAPON_CROSSL] = 0.5f;
-		wepLengths[E_BONE_WEAPON_BLADEL] = 0.5f;
-		wepLengths[E_BONE_WEAPON_BLADEU] = 1.0f;
+		wepLengths[E_BONE_WEAPON_POMMEL] = 0.125f*ORG_SCALE_BASE;
+		wepLengths[E_BONE_WEAPON_HANDLE] = 0.3f*ORG_SCALE_BASE;
+		wepLengths[E_BONE_WEAPON_CENTER] = 0.125f*ORG_SCALE_BASE;
+		wepLengths[E_BONE_WEAPON_CROSSR] = 0.5f*ORG_SCALE_BASE;
+		wepLengths[E_BONE_WEAPON_BLADER] = 0.5f*ORG_SCALE_BASE;
+		wepLengths[E_BONE_WEAPON_CROSSL] = 0.5f*ORG_SCALE_BASE;
+		wepLengths[E_BONE_WEAPON_BLADEL] = 0.5f*ORG_SCALE_BASE;
+		wepLengths[E_BONE_WEAPON_BLADEU] = 1.0f*ORG_SCALE_BASE;
 		
 		
 		
@@ -663,8 +690,8 @@ public:
 				i,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.75f/numSpineSegs, defVecLength, defVecLength,
-				0.75f/numSpineSegs, defVecLength, defVecLength,
+				0.75f*ORG_SCALE_BASE/numSpineSegs, defVecLength, defVecLength,
+				0.75f*ORG_SCALE_BASE/numSpineSegs, defVecLength, defVecLength,
 				
 				0.0f,0.0f,1.0f,
 				0.0f,1.0f,0.0f,
@@ -677,8 +704,8 @@ public:
 			E_BONE_C_SKULL,
 			
 			baseMat, 0.0f, 0.0f, 0.0f,
-			0.25f,  defVecLength, defVecLength,
-			0.25f,  defVecLength, defVecLength,
+			0.25f*ORG_SCALE_BASE,  defVecLength, defVecLength,
+			0.25f*ORG_SCALE_BASE,  defVecLength, defVecLength,
 			
 			0.0f,0.0f,1.0f,
 			0.0f,1.0f,0.0f,
@@ -704,8 +731,8 @@ public:
 				E_BONE_L_SHOULDER + lrMod,
 
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.20f,  defVecLength, defVecLength,
-				0.20f,  defVecLength, defVecLength,
+				0.20f*ORG_SCALE_BASE,  defVecLength, defVecLength,
+				0.20f*ORG_SCALE_BASE,  defVecLength, defVecLength,
 				
 				dirMod*1.0f,0.0f,0.0f,
 				0.0f,1.0f,0.0f,
@@ -715,8 +742,8 @@ public:
 				E_BONE_L_UPPERARM + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.25f, defVecLength, defVecLength,
-				0.25f, defVecLength, defVecLength,
+				0.25f*ORG_SCALE_BASE, defVecLength, defVecLength,
+				0.25f*ORG_SCALE_BASE, defVecLength, defVecLength,
 				
 				dirMod*1.0f,0.0f,0.0f,
 				0.0f,1.0f,0.0f,
@@ -726,8 +753,8 @@ public:
 				E_BONE_L_LOWERARM + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.25f, defVecLength, defVecLength,
-				0.25f, defVecLength, defVecLength,
+				0.25f*ORG_SCALE_BASE, defVecLength, defVecLength,
+				0.25f*ORG_SCALE_BASE, defVecLength, defVecLength,
 				
 				dirMod*1.0f,0.0f,0.0f,
 				0.0f,1.0f,0.0f,
@@ -737,8 +764,8 @@ public:
 				E_BONE_L_METACARPALS + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.1f, defVecLength, defVecLength,
-				0.1f, defVecLength, defVecLength,
+				0.1f*ORG_SCALE_BASE, defVecLength, defVecLength,
+				0.1f*ORG_SCALE_BASE, defVecLength, defVecLength,
 				
 				dirMod*1.0f,0.0f,0.0f,
 				0.0f,1.0f,0.0f,
@@ -752,8 +779,8 @@ public:
 				E_BONE_L_HIP + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.1f, defVecLength, defVecLength,
-				0.1f, defVecLength, defVecLength,
+				0.1f*ORG_SCALE_BASE, defVecLength, defVecLength,
+				0.1f*ORG_SCALE_BASE, defVecLength, defVecLength,
 				
 				dirMod*1.0f,0.0f,0.0f,
 				0.0f,1.0f,0.0f,
@@ -763,8 +790,8 @@ public:
 				E_BONE_L_UPPERLEG + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.45f, defVecLength, defVecLength,
-				0.45f, defVecLength, defVecLength,
+				0.45f*ORG_SCALE_BASE, defVecLength, defVecLength,
+				0.45f*ORG_SCALE_BASE, defVecLength, defVecLength,
 				
 				0.0f,0.0f,-1.0f,
 				0.0f,1.0f,0.0f,
@@ -774,8 +801,8 @@ public:
 				E_BONE_L_LOWERLEG + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.45f, defVecLength, defVecLength,
-				0.45f, defVecLength, defVecLength,
+				0.45f*ORG_SCALE_BASE, defVecLength, defVecLength,
+				0.45f*ORG_SCALE_BASE, defVecLength, defVecLength,
 				
 				0.0f,0.0f,-1.0f,
 				0.0f,1.0f,0.0f,
@@ -785,8 +812,8 @@ public:
 				E_BONE_L_TALUS + lrMod,
 				
 				baseMat, 0.0f, 0.0f, 0.0f,
-				0.2f, defVecLength, defVecLength,
-				0.2f, defVecLength, defVecLength,
+				0.2f*ORG_SCALE_BASE, defVecLength, defVecLength,
+				0.2f*ORG_SCALE_BASE, defVecLength, defVecLength,
 				
 				0.0f,1.0f,0.0f,
 				dirMod*1.0f,0.0f,0.0f,

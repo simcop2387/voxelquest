@@ -33,6 +33,7 @@ uniform vec2 clipDist;
 
 uniform bool isFalling;
 uniform bool isJumping;
+uniform bool gridOn;
 uniform int iNumSteps;
 uniform float seaLevel;
 uniform float volSizePrim;
@@ -824,15 +825,53 @@ void main() {
     
     
     
+    
+    
+    
+    float cellSize = 1.0;// *cellsPerBlock;
+    vec3 grid0 = 
+        //floor(worldPosition.xyz/cellSize);
+        abs(mod(worldPosition.xyz, cellSize) - cellSize / 2.0) * 2.0;
+    
+    float unitBuf = (cellSize - cellSize/8.0);
+    float unitBuf2 = (cellSize - cellSize/32.0);
+    
+    float gridVal0 = float(
+        (grid0.x >= unitBuf) ||
+        (grid0.y >= unitBuf)
+    );
+    
+    float gridVal1 = float(
+        (grid0.x >= unitBuf2) ||
+        (grid0.y >= unitBuf2)
+    );
+    
+    
+    
+    //gridVal0 = max(gridVal0 - abs(lookAtVec),vec3(0.0));
+    
+    float disMod = clamp(1.0-distance(worldPosition.xyz, entPos.xyz)/8.0,0.0,1.0);
+    
+    gridVal0 *= disMod;
+    gridVal1 *= disMod;
+    
+    
+    if ( (!gridOn) || (dot(abs(entPos.xyz),oneVec.xyz) == 0.0) || isOutline || (tex4.w != 0.0) ) {
+        gridVal0 = (0.0);
+        gridVal1 = (0.0);
+    }
+    finalCol.rgb += vec3(gridVal1*0.5+gridVal0*0.5,0.0,0.0);
+    
 
     if (valIsGeom&&(!isOutline)) {
         
         if (worldPosition.w < tex9.w) {
-            finalCol = tex10.rgb;
+            finalCol = mix(finalCol,tex10.rgb,0.5);
         }
         
         
     }
+    
     
     //finalCol = vec3(tex7.a);
     

@@ -137,8 +137,10 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		curFontIcons = singleton->fontWrappers[EFW_ICONS];
 		
 		wasHit = false;
-		privValueX = floatVals[E_GFT_VALUE];
+		
 		divisions = floatVals[E_GFT_DIVISIONS];
+		privValueX = floatVals[E_GFT_VALUE];
+		updateTextNumber();
 
 		mouseDown = false;
 		mouseOver = false;
@@ -207,6 +209,7 @@ void UIComponent::init (Singleton * _singleton, int _parentId, int _nodeId, int 
 		}
 		
 		//
+		
 		
 		
 	}
@@ -405,6 +408,21 @@ float UIComponent::getValueIndexPtr (int ind)
 		
 		
 	}
+void UIComponent::updateTextNumber ()
+                                {
+		if (
+			//(guiClass == E_GT_SLIDER) &&
+			(divisions > 1.0f)
+		) {
+			setText(
+					label + ": " +
+					i__s(privValueX*divisions) +
+					//getPaddedInt(privValueX*divisions, divisions) +
+					" / " +
+					i__s(divisions)
+			);
+		}
+	}
 void UIComponent::setValue (float _value, bool doEventDispatch, bool preventRefresh)
                                                                                                {
 		UIComponent* curValuePtr = getValuePtr();
@@ -428,6 +446,9 @@ void UIComponent::setValue (float _value, bool doEventDispatch, bool preventRefr
 		}
 		else {
 			privValueX = _value;
+			
+			updateTextNumber();
+			
 			
 			updateLinkedValues();
 			
@@ -1199,12 +1220,11 @@ void UIComponent::updateValue (float x, float y)
 					//visible = (curParent->selected)&&(curParent->visible);
 				}
 				
-				
-				
-				
 			break;
-
 		}
+		
+		
+		
 		
 		for (i = 0; i < getChildCount(); i++) {
 			

@@ -37,7 +37,6 @@ uniform bool markerFound;
 
 uniform bool testOn;
 uniform bool testOn2;
-uniform bool gridOn;
 uniform float curTime;
 
 uniform mat4 modelviewInverse;
@@ -46,7 +45,7 @@ uniform vec3 lightVec;
 uniform vec3 lightVecOrig;
 uniform vec2 clipDist;
 
-
+uniform vec3 entPos;
 uniform vec3 cameraPos;
 
 const int VECS_PER_LIGHT = 4;
@@ -547,60 +546,6 @@ void main()
 	
 	
 	
-	float cellSize = 32.0;// *cellsPerBlock;
-	vec3 grid0 = 
-		//floor(worldPosition.xyz/cellSize);
-		abs(mod(worldPosition.xyz, cellSize) - cellSize / 2.0) * 2.0;
-	
-	float unitBuf = (cellSize - cellSize/32.0);
-	
-	vec3 gridVec = vec3(
-		float(grid0.x >= unitBuf),
-		float(grid0.y >= unitBuf),
-		float(grid0.z >= unitBuf)	
-	);
-	
-	vec3 absVec = abs(myVec);
-	
-	vec3 gridVal0 = gridVec;
-	
-	gridVal0 = max(gridVal0 - abs(lookAtVec),vec3(0.0));
-	
-	// if (absVec.x > 0.99) {
-	// 	gridVal0.x = 1.0;
-	// }
-	// if (absVec.y > 0.99) {
-	// 	gridVal0.y = 1.0;	
-	// }
-	// if (absVec.z > 0.99) {
-	// 	gridVal0.z = 1.0;	
-	// }
-	
-	//gridVal0 *= clamp(1.0-distance(worldPosition.xyz, cameraPos.xyz)/32.0,0.0,1.0);
-	
-	
-	if (!gridOn)
-	{
-		gridVal0 = vec3(0.0);
-	}
-	
-	// float temp = float(valIsGeom)*(
-	// 	0.25 + float(tex8.w < tex0.w)*0.5
-	// );
-	
-	// if (tex8.w > tex0.w) {
-	// 	resColor.rgb = mix(resColor.rgb, matValsGeom.rgb, temp);
-	// }
-	
-	
-	// if (temp > 0.5) {
-		
-	// 	tot = 1.0;
-		
-	// }
-	// else {
-		resColor.rgb += gridVal0;
-	//}
 	
 
 	

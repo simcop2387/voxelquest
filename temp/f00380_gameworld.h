@@ -4585,6 +4585,21 @@ void GameWorld::renderDebug ()
 						singleton->drawBoxRad(boxCenter,boxRadius);
 					}
 					
+					if (singleton->gem->turnBased) {
+						boxCenter = (ge->tbPos + btVector3(0.5f,0.5f,0.5f));
+						singleton->setShaderVec4(
+							"rotationZ",
+							boxCenter.getX(),
+							boxCenter.getY(),
+							boxCenter.getZ(),
+							0.0f	
+						);
+						singleton->setShaderVec3("matVal", 255, 0, 0);
+						singleton->drawBoxMinMax(ge->tbPos, ge->tbPos + btVector3(1.0f,1.0f,1.0f));
+					}
+					
+					
+					
 				}
 			}
 		}
@@ -4862,7 +4877,6 @@ void GameWorld::postProcess ()
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY); //MUST BE CALLED AFTER FBO IS BOUND
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-		singleton->setShaderInt("gridOn", (int)(singleton->gridOn));
 		singleton->setShaderInt("testOn", (int)(singleton->testOn));
 		singleton->setShaderInt("testOn2", (int)(singleton->testOn2));
 		singleton->setShaderFloat("curTime", singleton->curTime);
@@ -5015,12 +5029,16 @@ void GameWorld::postProcess ()
 			
 			if ((singleton->gem->currentActor == NULL)||singleton->gem->firstPerson) {
 				singleton->setShaderFloat("thirdPerson", 0.0f);
+				singleton->setShaderVec3("entPos", 0.0f, 0.0f, 0.0f);
 			}
 			else {
 				singleton->setShaderFloat("thirdPerson", 1.0f);
 				singleton->setShaderfVec3("entPos", singleton->gem->currentActor->getCenterPointFIV(0));
 				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
+			
+			
+			singleton->setShaderInt("gridOn", singleton->gridOn);
 			
 			if (singleton->gem->currentActor == NULL) {
 				singleton->setShaderInt("isFalling",false);

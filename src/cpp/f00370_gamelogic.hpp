@@ -59,6 +59,7 @@ public:
 		
 		int curActor = singleton->gem->getCurActorUID();
 		
+		btVector3 tVec;
 		btVector3 offsetVec;
 		btVector3 readCenter;
 		btVector3 writeCenter;
@@ -250,65 +251,81 @@ public:
 				
 				if (writeObj->isAlive()) {
 					
-					if (writeObj->behaviorTarget.isZero()) {
+					if (singleton->gem->turnBased) {
 						
+						deltaAng = writeObj->turnTowardsTargAng(TBDIR_ARR[writeObj->tbDir]);
+						
+						singleton->gem->makeTurn(writeObj->uid,deltaAng*4.0f);
+						
+						// tVec = (writeObj->tbPos+btVector3(0.5f,0.5f,0.5f))-writeObj->getCenterPoint(E_BDG_CENTER);
+						// tVec *= btVector3(1.0f,1.0f,0.0f);
+						
+						// singleton->gem->makeMoveVec(
+						// 	writeObj->uid,
+						// 	tVec
+						// );
 					}
 					else {
-						deltaAng = writeObj->turnTowardsPointDelta(writeObj->behaviorTarget);
-						
-						singleton->gem->makeTurn(writeObj->uid,deltaAng*16.0f);
-						
-						curDis = writeObj->behaviorTarget.distance(writeObj->getCenterPoint(E_BDG_CENTER));
-						
-						if (curDis > singleton->conVals[E_CONST_AI_SEEK_THRESH]) {
-							singleton->gem->makeMove(writeObj->uid, btVector3(0.0f,1.0f,0.0f), true, true);
-						}
-						if (curDis < singleton->conVals[E_CONST_AI_REPEL_THRESH]) {
-							singleton->gem->makeMove(writeObj->uid, btVector3(0.0f,-1.0f,0.0f), true, true);
-						}
-						
-						singleton->gem->makeMoveVec(writeObj->uid,writeObj->npcRepel);
-						
-						if (curDis > 6.0f) {
-							writeObj->blockCount += clampfZO(1.0 - abs(curDis - writeObj->lastBlockDis)*100.0f);
+						if (writeObj->behaviorTarget.isZero()) {
 							
-						}
-						
-						if (writeObj->holdingWeapon(-1)) {
-							if (
-								(curDis > 1.0f) &&
-								(curDis < 5.0f)	
-							) {
-								writeObj->swingCount += 1.0f;
-							
-								if (writeObj->swingCount > singleton->conVals[E_CONST_SWING_DELAY]) {
-									writeObj->swingCount = 0.0f;
-									singleton->gem->makeSwing(writeObj->uid,iGenRand(0,1));
-								}
-								
-							}
 						}
 						else {
-							if (
-								(curDis > 1.0f) &&
-								(curDis < 4.0f)	
-							) {
-								singleton->gem->makeGrab(writeObj->uid, -1);
+							deltaAng = writeObj->turnTowardsPointDelta(writeObj->behaviorTarget);
+							
+							singleton->gem->makeTurn(writeObj->uid,deltaAng*16.0f);
+							
+							curDis = writeObj->behaviorTarget.distance(writeObj->getCenterPoint(E_BDG_CENTER));
+							
+							if (curDis > singleton->conVals[E_CONST_AI_SEEK_THRESH]) {
+								singleton->gem->makeMove(writeObj->uid, btVector3(0.0f,1.0f,0.0f), true, true);
 							}
+							if (curDis < singleton->conVals[E_CONST_AI_REPEL_THRESH]) {
+								singleton->gem->makeMove(writeObj->uid, btVector3(0.0f,-1.0f,0.0f), true, true);
+							}
+							
+							singleton->gem->makeMoveVec(writeObj->uid,writeObj->npcRepel);
+							
+							if (curDis > 6.0f) {
+								writeObj->blockCount += clampfZO(1.0 - abs(curDis - writeObj->lastBlockDis)*100.0f);
+								
+							}
+							
+							if (writeObj->holdingWeapon(-1)) {
+								if (
+									(curDis > 1.0f) &&
+									(curDis < 5.0f)	
+								) {
+									writeObj->swingCount += 1.0f;
+								
+									if (writeObj->swingCount > singleton->conVals[E_CONST_SWING_DELAY]) {
+										writeObj->swingCount = 0.0f;
+										singleton->gem->makeSwing(writeObj->uid,iGenRand(0,1));
+									}
+									
+								}
+							}
+							else {
+								if (
+									(curDis > 1.0f) &&
+									(curDis < 4.0f)	
+								) {
+									singleton->gem->makeGrab(writeObj->uid, -1);
+								}
+							}
+							
+							
+							
+							if (writeObj->blockCount > 100.0f) {
+								writeObj->blockCount = 0.0f;
+								singleton->gem->makeJump(writeObj->uid, true,
+									clampfZO(curDis-6.0f)*0.75f + 0.25f	
+								);
+							}
+							writeObj->blockCount *= 0.999f;
+							writeObj->lastBlockDis = curDis;
+							
+							
 						}
-						
-						
-						
-						if (writeObj->blockCount > 100.0f) {
-							writeObj->blockCount = 0.0f;
-							singleton->gem->makeJump(writeObj->uid, true,
-								clampfZO(curDis-6.0f)*0.75f + 0.25f	
-							);
-						}
-						writeObj->blockCount *= 0.999f;
-						writeObj->lastBlockDis = curDis;
-						
-						
 					}
 					
 				}
