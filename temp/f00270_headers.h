@@ -1356,18 +1356,18 @@ public:
 };
 #undef LZZ_INLINE
 #endif
-// f00347_gameactor.e
+// f00347_gamephysrig.e
 //
 
-#ifndef LZZ_f00347_gameactor_e
-#define LZZ_f00347_gameactor_e
+#ifndef LZZ_f00347_gamephysrig_e
+#define LZZ_f00347_gamephysrig_e
 #define LZZ_INLINE inline
-class GameActor
+class GamePhysRig
 {
 public:
   Singleton * singleton;
   btDynamicsWorld * m_ownerWorld;
-  std::vector <ActorJointStruct> actorJoints;
+  std::vector <RigJointStruct> rigJoints;
   int geId;
   btVector3 origOffset;
   GameOrg * baseOrg;
@@ -1376,9 +1376,9 @@ public:
   int addJoint (int nodeName, int parentId, int jointType, float mass, GameOrgNode * curNode);
   void initFromOrg (GameOrgNode * curNode, int curParent);
   void reinit ();
-  GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset);
+  GamePhysRig (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset);
   void removeAllBodies ();
-  virtual ~ GameActor ();
+  virtual ~ GamePhysRig ();
 };
 #undef LZZ_INLINE
 #endif
@@ -1403,7 +1403,8 @@ public:
   bool firstPerson;
   bool showHealth;
   int weaponToPlace;
-  int currentActorUID;
+  int activeActorUID;
+  int curActorUID;
   int curPoseType;
   int highlightedLimb;
   int highlightedLimb2;
@@ -1424,12 +1425,11 @@ public:
   map <BaseObjType, BaseObj> gameObjects;
   vector <BaseObjType> visObjects;
   vector <int> turnList;
-  BaseObj * currentActor;
   GameOrgNode * bestNode;
   GameOrgNode * selectedNode;
   GameOrgNode * lastSelNode;
   GameOrgNode * activeNode;
-  std::vector <GameActor*> gameActors;
+  std::vector <GamePhysRig*> gamePhysRigs;
   std::vector <GameOrg*> gameOrgs;
   std::vector <GameOrg*> gamePoses;
   PoseInfo (gamePoseInfo) [E_PG_LENGTH];
@@ -1442,6 +1442,11 @@ public:
   string (objStrings) [MAX_OBJ_TYPES];
   GameEntManager ();
   void init (Singleton * _singleton);
+  BaseObj * getCurActor ();
+  BaseObj * getActiveActor ();
+  void applyLogicForTurn ();
+  void endTurn ();
+  void nextTurn ();
   void refreshTurnList ();
   void setTurnBased (bool newVal);
   void checkActorRefresh ();
@@ -1467,7 +1472,7 @@ public:
   bool isRecycledFunc (int poolId);
   BaseObjType placeNewEnt (bool isReq, int et, FIVector4 * cellPos, bool isHidden = false);
   void performDrag (bool isReq, int _draggingFromInd, int _draggingFromType, int _draggingToInd, int _draggingToType, FIVector4 * _worldMarker);
-  void setCurrentActor (BaseObj * ge);
+  void setCurActor (int newUID);
   void toggleFirstPerson ();
   void toggleActorSel ();
   void setSelInd (int ind);
@@ -1475,7 +1480,9 @@ public:
   void toggleCont (int contIndex, bool onMousePos);
   void addVisObject (BaseObjType _uid, bool isRecycled);
   bool removeVisObject (BaseObjType _uid, bool isRecycled);
-  int getClosestObj (int actorId, FIVector4 * basePoint, int objType, float maxDis);
+  bool areEnemies (int actorUID1, int actorUID2);
+  bool areFriends (int actorUID1, int actorUID2);
+  int getClosestActor (int actorId, int objType, float maxDis, uint flags);
   GameOrg * getCurOrg ();
   BaseObj * getActorRef (int uid);
   bool combatMode ();
@@ -1856,6 +1863,7 @@ public:
   bool globFoundTarg;
   GameLogic ();
   void init (Singleton * _singleton);
+  void applyTBBehavior ();
   void applyBehavior ();
   GamePageHolder * getHolderById (int blockId, int holderId);
   GamePageHolder * getHolderByPR (PathResult * pr);

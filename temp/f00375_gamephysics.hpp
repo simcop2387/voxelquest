@@ -125,7 +125,7 @@ public:
 			(ge->actorId > -1)	
 		);
 		
-		GameActor* curActor;
+		GamePhysRig* curPhysRig;
 		
 		int i;
 		
@@ -136,8 +136,8 @@ public:
 		
 		
 		if (hasRig) {
-			curActor = singleton->gem->gameActors[ge->actorId];
-			curActor->removeAllBodies();
+			curPhysRig = singleton->gem->gamePhysRigs[ge->actorId];
+			curPhysRig->removeAllBodies();
 			
 			while (ge->bodies.size() > E_BDG_LENGTH ) {
 				ge->bodies.pop_back();
@@ -154,9 +154,9 @@ public:
 		
 		
 		// if (hasRig) {
-		// 	//curActor = singleton->gem->gameActors[ge->actorId];
-		// 	delete singleton->gem->gameActors[ge->actorId];
-		// 	singleton->gem->gameActors[ge->actorId] = NULL;
+		// 	//curPhysRig = singleton->gem->gamePhysRigs[ge->actorId];
+		// 	delete singleton->gem->gamePhysRigs[ge->actorId];
+		// 	singleton->gem->gamePhysRigs[ge->actorId] = NULL;
 			
 		// 	delete singleton->gem->gameOrgs[ge->orgId];
 		// 	singleton->gem->gameOrgs[ge->orgId] = NULL;
@@ -169,6 +169,8 @@ public:
 	}
 	
 	void addBoxFromObj(BaseObjType _uid, bool refreshLimbs) {
+		
+		
 		
 		//cout << "\n\nADD BOX\n\n";
 		
@@ -190,7 +192,7 @@ public:
 		trans.setIdentity();
 		trans.setOrigin(ge->startPoint);
 		
-		GameActor* curActor;
+		GamePhysRig* curPhysRig;
 		
 		float objRad = 0.5f;
 		bool isOrg = false;
@@ -279,9 +281,9 @@ public:
 					
 					if (refreshLimbs) {
 						
-						delete singleton->gem->gameActors[ge->actorId];
+						delete singleton->gem->gamePhysRigs[ge->actorId];
 						
-						singleton->gem->gameActors[ge->actorId] = new GameActor(
+						singleton->gem->gamePhysRigs[ge->actorId] = new GamePhysRig(
 							singleton,
 							ge->uid,
 							example->getWorld(),
@@ -296,24 +298,24 @@ public:
 						
 						singleton->gem->loadDefaultPose(ge->uid);
 						
-						singleton->gem->gameActors.push_back(new GameActor(
+						singleton->gem->gamePhysRigs.push_back(new GamePhysRig(
 							singleton,
 							ge->uid,
 							example->getWorld(),
 							ge->startPoint
 						));
-						ge->actorId = singleton->gem->gameActors.size()-1;
+						ge->actorId = singleton->gem->gamePhysRigs.size()-1;
 					}
 					
 					
-					curActor = (singleton->gem->gameActors[ge->actorId]);
+					curPhysRig = (singleton->gem->gamePhysRigs[ge->actorId]);
 					
 					if (refreshLimbs) {
-						curActor->reinit();	
+						curPhysRig->reinit();	
 					}
 					
 					
-					for (i = 0; i < curActor->actorJoints.size(); i++) {
+					for (i = 0; i < curPhysRig->rigJoints.size(); i++) {
 						
 						if (!refreshLimbs) {
 							ge->bodies.push_back(BodyStruct());
@@ -321,15 +323,15 @@ public:
 						
 						bodInd = i + bodyOffset;
 						
-						ge->bodies[bodInd].body = curActor->actorJoints[i].body;
-						ge->bodies[bodInd].boneId = curActor->actorJoints[i].boneId;
-						ge->bodies[bodInd].jointType = curActor->actorJoints[i].jointType;
-						ge->bodies[bodInd].rad = curActor->actorJoints[i].rad;
-						ge->bodies[bodInd].length = curActor->actorJoints[i].length;
+						ge->bodies[bodInd].body = curPhysRig->rigJoints[i].body;
+						ge->bodies[bodInd].boneId = curPhysRig->rigJoints[i].boneId;
+						ge->bodies[bodInd].jointType = curPhysRig->rigJoints[i].jointType;
+						ge->bodies[bodInd].rad = curPhysRig->rigJoints[i].rad;
+						ge->bodies[bodInd].length = curPhysRig->rigJoints[i].length;
 						ge->bodies[bodInd].actorJointId = i;
 						
 						// if (i == 0) {
-						// 	//ge->body = curActor->actorJoints[i].body;
+						// 	//ge->body = curPhysRig->rigJoints[i].body;
 						// 	//ge->body->setLinearFactor(orig);
 						// 	ge->bodies.back().body->setAngularFactor(orig);
 						// }
@@ -425,8 +427,8 @@ public:
 		
 	// 	// int i;
 		
-	// 	// for (i = 0; i < singleton->gem->gameActors.size(); i++) {
-	// 	// 	singleton->gem->gameActors[i]->stepSim(timeStep);
+	// 	// for (i = 0; i < singleton->gem->gamePhysRigs.size(); i++) {
+	// 	// 	singleton->gem->gamePhysRigs[i]->stepSim(timeStep);
 	// 	// }
 		
 		
@@ -648,7 +650,7 @@ public:
 		btVector3 dirForce;
 		GameOrg* curOrg = NULL;
 		GameOrgNode* curOrgNode = NULL;
-		GameActor* curActor = NULL;
+		GamePhysRig* curPhysRig = NULL;
 		btVector3 basePos;
 		btVector3 targPos;
 		
@@ -1214,7 +1216,7 @@ public:
 				
 				
 				if (hasRig) {
-					curActor = singleton->gem->gameActors[ge->actorId];
+					curPhysRig = singleton->gem->gamePhysRigs[ge->actorId];
 					curOrg = singleton->gem->gameOrgs[ge->orgId];
 					animatedRig = (ge->entType == E_ENTTYPE_NPC);
 					ge->clearAABB(&(ge->aabbMinSkel),&(ge->aabbMaxSkel));
@@ -1613,11 +1615,11 @@ public:
 		
 		btVector3 camPos;
 		
-		if (singleton->gem->currentActor == NULL) {
+		if (singleton->gem->getCurActor() == NULL) {
 			camPos = singleton->cameraGetPosNoShake()->getBTV();
 		}
 		else {
-			camPos = singleton->gem->currentActor->getCenterPoint(E_BDG_CENTER);
+			camPos = singleton->gem->getCurActor()->getCenterPoint(E_BDG_CENTER);
 		}
 		
 		

@@ -44,6 +44,46 @@ public:
 		
 	}
 	
+	
+	
+	void applyTBBehavior() {
+		BaseObj* ca = singleton->gem->getActiveActor();
+		
+		if (ca == NULL) {
+			return;
+		}
+		
+		BaseObj* nearestEnemy;
+		BaseObj* nearestWeapon;
+		
+		int nearestWeaponInd = singleton->gem->getClosestActor(
+				ca->uid,
+				E_ENTTYPE_WEAPON,
+				200.0f,
+				E_CF_NOTGRABBED
+		);
+		if (nearestWeaponInd > 0) {
+			nearestWeapon = &(singleton->gem->gameObjects[nearestWeaponInd]);
+		}
+		
+		
+		int nearestEnemyInd = singleton->gem->getClosestActor(
+				ca->uid,
+				E_ENTTYPE_NPC,
+				200.0f,
+				E_CF_AREENEMIES
+		);
+		if (nearestEnemyInd > 0) {
+			nearestEnemy = &(singleton->gem->gameObjects[nearestEnemyInd]);
+		}
+		
+		int xyDisEnemy = getUnitDistance(ca->uid, nearestEnemy->uid,true,true,false);
+		int xyDisWeapon = getUnitDistance(ca->uid, nearestWeapon->uid,true,true,false);
+		
+		
+		
+	}
+	
 	void applyBehavior() {
 		int i;
 		int j;

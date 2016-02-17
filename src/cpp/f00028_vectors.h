@@ -2006,6 +2006,9 @@ public:
 		
 	}
 	
+	
+	
+	
 	bool holdingWeapon(int handNum) {
 		
 		if (handNum == -1) {

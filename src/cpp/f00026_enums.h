@@ -321,8 +321,6 @@ enum E_CHAR_STATUS_VALS {
 };
 
 
-
-
 #define E_GUI_CHILD_TYPE(DDD) \
 DDD(E_GCT_INV_ITEM) \
 DDD(E_GCT_SHADER_PARAM) \
@@ -354,6 +352,17 @@ enum E_GUI_CHILD_TYPE_VALS {
 // 	E_GCT_STATS, 			// 6
 // 	E_GCT_LENGTH			// 5
 // };
+
+enum E_CLOSEST_FLAGS {
+	E_CF_NOTGRABBED = 1,
+	E_CF_AREENEMIES = 2,
+	E_CF_AREFRIENDS = 4
+	// E_CF_ = 8,
+	// E_CF_ = 16,
+	// E_CF_ = 32,
+	// E_CF_ = 64
+	
+};
 
 enum E_FONT_WRAPPERS {
 	EFW_TEXT,
@@ -1319,7 +1328,7 @@ struct BodyStruct {
 	
 };
 
-struct ActorJointStruct {
+struct RigJointStruct {
 	int boneId;
 	int jointType;
 	int jointId;

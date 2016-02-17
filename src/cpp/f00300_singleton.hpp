@@ -2762,8 +2762,8 @@ public:
 				gem->updateOrgMat(comp);
 			}
 			else if (comp->uid.compare("statMenu.apply") == 0) {
-				if (gem->currentActor != NULL) {	
-					curStatSheet = &(gem->currentActor->statSheet);
+				if (gem->getCurActor() != NULL) {	
+					curStatSheet = &(gem->getCurActor()->statSheet);
 					
 					for (i = 0; i < E_CS_LENGTH; i++) {
 						curStatSheet->baseStats[i] = curStatSheet->unapplyedStats[i];
@@ -2772,8 +2772,8 @@ public:
 				}
 			}
 			else if (comp->uid.compare("statMenu.reset") == 0) {
-				if (gem->currentActor != NULL) {
-					curStatSheet = &(gem->currentActor->statSheet);
+				if (gem->getCurActor() != NULL) {
+					curStatSheet = &(gem->getCurActor()->statSheet);
 					
 					
 					
@@ -2843,9 +2843,9 @@ public:
 			sphereMapPrec = mixf(0.0f,200.0f,curValue);
 		}
 		else if (comp->uid.compare("#statMenu.stat") == 0) {
-			if (gem->currentActor != NULL) {
+			if (gem->getCurActor() != NULL) {
 				
-				curStatSheet = &(gem->currentActor->statSheet);
+				curStatSheet = &(gem->getCurActor()->statSheet);
 				
 				oldVal = curStatSheet->unapplyedStats[comp->index];
 				newVal = roundVal(curValue*comp->divisions);
@@ -4642,7 +4642,7 @@ DISPATCH_EVENT_END:
 					
 					if (
 						rbDown
-						//&&( (gem->currentActor==NULL) || (gem->editPose)	)
+						//&&( (gem->getCurActor()==NULL) || (gem->editPose)	)
 					) {
 						
 						camRotation[0] -= dx*0.01f;
@@ -5003,6 +5003,7 @@ DISPATCH_EVENT_END:
 				
 				
 				case '1':
+					
 					getMarkerPos(x, y);
 					gem->placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
 				break;
@@ -5093,12 +5094,16 @@ DISPATCH_EVENT_END:
 					
 					
 					cout << "\n";
-					cout << "pathfindingOn: " << pathfindingOn << "\n";
 					cout << "updateHolders " << updateHolders << "\n";
 					
 					
 					
 				break;
+				case 'U':
+					pathfindingOn = !pathfindingOn;
+					cout << "pathfindingOn: " << pathfindingOn << "\n";
+				break;
+				
 				
 				case 'Q':
 					gem->toggleFirstPerson();
@@ -5452,7 +5457,7 @@ DISPATCH_EVENT_END:
 			}
 			
 			
-			if (gem->turnBased&&(gem->currentActor != NULL)) {
+			if (gem->turnBased&&(gem->getCurActor() != NULL)) {
 				switch(key) {
 					case 'a':
 						
@@ -5463,18 +5468,18 @@ DISPATCH_EVENT_END:
 					
 					
 					case 's':
-						gem->makeTurnUnit(gem->currentActor->uid, 1);
+						gem->makeTurnUnit(gem->getCurActor()->uid, 1);
 					break;
 					case 'f':
-						gem->makeTurnUnit(gem->currentActor->uid, -1);
+						gem->makeTurnUnit(gem->getCurActor()->uid, -1);
 					break;
 					
 					
 					case 'e':
-						gem->makeMoveUnit(gem->currentActor->uid, 1);
+						gem->makeMoveUnit(gem->getCurActor()->uid, 1);
 					break;
 					case 'd':
-						gem->makeMoveUnit(gem->currentActor->uid, -1);
+						gem->makeMoveUnit(gem->getCurActor()->uid, -1);
 					break;
 				}
 			}
@@ -5939,7 +5944,7 @@ DISPATCH_EVENT_END:
 		{
 			
 			// if (
-			// 	(gem->currentActor != NULL) && (!gem->editPose)	
+			// 	(gem->getCurActor() != NULL) && (!gem->editPose)	
 			// ) {
 			// 	camRotation[0] -= dx*0.02f;
 			// 	camRotation[1] += dy*0.02f;
@@ -6182,22 +6187,22 @@ DISPATCH_EVENT_END:
 				gem->setSwing(
 					mx*2.0f - 1.0f,
 					my*2.0f - 1.0f,
-					gem->currentActor->uid,
+					gem->getCurActor()->uid,
 					RLBN_LEFT,
 					bCtrl
 				);
-				gem->makeSwing(gem->currentActor->uid, RLBN_LEFT);
+				gem->makeSwing(gem->getCurActor()->uid, RLBN_LEFT);
 				return;
 			}
 			if (rbClicked) {
 				gem->setSwing(
 					mx*2.0f - 1.0f,
 					my*2.0f - 1.0f,
-					gem->currentActor->uid,
+					gem->getCurActor()->uid,
 					RLBN_RIGT,
 					bCtrl
 				);
-				gem->makeSwing(gem->currentActor->uid, RLBN_RIGT);
+				gem->makeSwing(gem->getCurActor()->uid, RLBN_RIGT);
 				return;
 			}
 			
@@ -6916,7 +6921,7 @@ DISPATCH_EVENT_END:
 		
 		if (smoothMove||(
 			(!gem->firstPerson) &&
-			(gem->currentActor != NULL)	
+			(gem->getCurActor() != NULL)	
 		)) {
 			curCamRotation[0] += (camRotation[0]-curCamRotation[0])*timeDelta*8.0f;
 			curCamRotation[1] += (camRotation[1]-curCamRotation[1])*timeDelta*8.0f;
@@ -6928,7 +6933,7 @@ DISPATCH_EVENT_END:
 		
 		
 		
-		if (gem->currentActor == NULL) {
+		if (gem->getCurActor() == NULL) {
 			if (keysPressed[keyMap[KEYMAP_UP]]) {
 				zmod += 1.0f;
 				isPressingMove = true;
@@ -7021,12 +7026,12 @@ DISPATCH_EVENT_END:
 		
 		
 		
-		if (gem->currentActor != NULL) {
-			if (gem->currentActor->entType == E_ENTTYPE_NPC) {
-				skullPos = gem->currentActor->getBodyByBoneId(E_BONE_C_SKULL)->body->getCenterOfMassPosition();
+		if (gem->getCurActor() != NULL) {
+			if (gem->getCurActor()->entType == E_ENTTYPE_NPC) {
+				skullPos = gem->getCurActor()->getBodyByBoneId(E_BONE_C_SKULL)->body->getCenterOfMassPosition();
 			}
 			else {
-				skullPos = gem->currentActor->getCenterPoint(E_BDG_CENTER);
+				skullPos = gem->getCurActor()->getCenterPoint(E_BDG_CENTER);
 			}
 			
 			
@@ -7057,7 +7062,7 @@ DISPATCH_EVENT_END:
 						
 						tempBTV = multByOtherRot(
 							btVector3(0.0f,1.0f,0.0f),
-							gem->currentActor->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()
+							gem->getCurActor()->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()
 						);
 						
 						camRotation[0] += 
@@ -7371,13 +7376,13 @@ DISPATCH_EVENT_END:
 				externalJSON[datString].jv->object_value["stats"] = new JSONValue(JSONArray());
 				tempVal0 = externalJSON[datString].jv->object_value["stats"];
 				
-				if (gem->currentActor == NULL) {
+				if (gem->getCurActor() == NULL) {
 					cout << "NULL STATS\n";
 					return;
 				}
 				else {
 					
-					curSS = &(gem->currentActor->statSheet);
+					curSS = &(gem->getCurActor()->statSheet);
 					
 					for (i = 0; i < E_CS_LENGTH; i++) {
 						tempVal0->array_value.push_back( new JSONValue(JSONObject()) );
@@ -7395,13 +7400,13 @@ DISPATCH_EVENT_END:
 				externalJSON[datString].jv->object_value["status"] = new JSONValue(JSONArray());
 				tempVal0 = externalJSON[datString].jv->object_value["status"];
 				
-				if (gem->currentActor == NULL) {
-					cout << "NULL STATUSS\n";
+				if (gem->getCurActor() == NULL) {
+					cout << "NULL STATUS\n";
 					return;
 				}
 				else {
 					
-					curSS = &(gem->currentActor->statSheet);
+					curSS = &(gem->getCurActor()->statSheet);
 					
 					for (i = 0; i < E_STATUS_LENGTH; i++) {
 						tempVal0->array_value.push_back( new JSONValue(JSONObject()) );
@@ -7430,11 +7435,11 @@ DISPATCH_EVENT_END:
 		UIComponent* tempComp;
 		
 		
-		if (gem->currentActor == NULL) {
+		if (gem->getCurActor() == NULL) {
 			return;
 		}
 		
-		StatSheet* curSS = &(gem->currentActor->statSheet);
+		StatSheet* curSS = &(gem->getCurActor()->statSheet);
 		
 		tempComp = getGUIComp("statMenu.availPoints");
 		tempComp->setValue(
@@ -8583,7 +8588,7 @@ DISPATCH_EVENT_END:
 		
 		if (!placingGeom) {
 			if (abs(globWheelDelta) > 0.001f) {
-				if (gem->currentActor != NULL) {
+				if (gem->getCurActor() != NULL) {
 					subjectDelta -= globWheelDelta;
 					targetSubjectZoom = pow(2.0, subjectDelta);
 					if (!ignoreFrameLimit) {
@@ -8636,11 +8641,11 @@ DISPATCH_EVENT_END:
 					
 					
 					
-					if (gem->currentActor != NULL) {
+					if (gem->getCurActor() != NULL) {
 						if ((currentTick%10) == 0) {
 							
 							// if (rbDown) {
-							// 	makeShoot(gem->currentActor->uid, E_ENTTYPE_TRACE);
+							// 	makeShoot(gem->getCurActor()->uid, E_ENTTYPE_TRACE);
 							// }
 							
 							
@@ -8673,24 +8678,24 @@ DISPATCH_EVENT_END:
 						}
 						
 						if (
-							(gem->currentActor != NULL) &&
-							gem->currentActor->hasBodies()	
+							(gem->getCurActor() != NULL) &&
+							gem->getCurActor()->hasBodies()	
 						) {
 							
-							if (gem->currentActor->bodies[E_BDG_CENTER].inWater) {
+							if (gem->getCurActor()->bodies[E_BDG_CENTER].inWater) {
 								temp = clampfZO(
-									gem->currentActor->getVel(0)->length()
+									gem->getCurActor()->getVel(0)->length()
 								)*0.25f;
 								temp2 = 0.0f;
 							}
 							else {
 								
-								if (gem->currentActor->allFalling()) {
+								if (gem->getCurActor()->allFalling()) {
 									temp2 = 0.0f;
 								}
 								else {
 									temp2 = clampfZO(
-										gem->currentActor->getVel(0)->length()
+										gem->getCurActor()->getVel(0)->length()
 									);
 								}
 								
@@ -8702,14 +8707,14 @@ DISPATCH_EVENT_END:
 							updateSoundPosAndPitch(
 								"swimming0",
 								cameraGetPosNoShake(),
-								BTV2FIV(gem->currentActor->getCenterPoint(E_BDG_CENTER)),
+								BTV2FIV(gem->getCurActor()->getCenterPoint(E_BDG_CENTER)),
 								temp*0.2,
 								0.01
 							);
 							updateSoundPosAndPitch(
 								"walkinggravel0",
 								cameraGetPosNoShake(),
-								BTV2FIV(gem->currentActor->getCenterPoint(E_BDG_CENTER)),
+								BTV2FIV(gem->getCurActor()->getCenterPoint(E_BDG_CENTER)),
 								temp2*0.2,
 								0.1
 							);

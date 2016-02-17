@@ -18,7 +18,7 @@ public:
 	
 	int weaponToPlace;
 	int activeActorUID; // actor whose turn it is
-	int currentActorUID; // actor selected by human player
+	int curActorUID; // actor selected by human player
 	int curPoseType;
 	int highlightedLimb;
 	int highlightedLimb2;
@@ -48,14 +48,13 @@ public:
 	vector<BaseObjType> visObjects;
 	vector<int> turnList;
 	
-	BaseObj* currentActor;
 	
 	GameOrgNode* bestNode;
 	GameOrgNode* selectedNode;
 	GameOrgNode* lastSelNode;
 	GameOrgNode* activeNode;
 	
-	std::vector<GameActor*> gameActors;
+	std::vector<GamePhysRig*> gamePhysRigs;
 	std::vector<GameOrg*> gameOrgs;
 	std::vector<GameOrg*> gamePoses;
 	PoseInfo gamePoseInfo[E_PG_LENGTH];
@@ -83,12 +82,11 @@ public:
 		weaponToPlace = E_PG_WPSWORD;
 		
 		activeActorUID = -1;
-		currentActorUID = -1;
+		curActorUID = -1;
 		
 		activeNode = NULL;
 		selectedNode = NULL;
 		lastSelNode = NULL;
-		currentActor = NULL;
 		poseRootJS = NULL;
 		
 		curPoseType = -1;
@@ -149,16 +147,30 @@ public:
 		
 	}
 	
+	BaseObj* getCurActor() {
+		if (curActorUID < 0) {
+			return NULL;
+		}
+		else {
+			return &(gameObjects[curActorUID]);
+		}
+	}
+	
 	BaseObj* getActiveActor() {
 		if (activeActorUID < 0) {
 			return NULL;
 		}
 		else {
-			return gameObjects[activeActorUID];
+			return &(gameObjects[activeActorUID]);
 		}
 	}
 	
 	void applyLogicForTurn() {
+		singleton->gameLogic->applyTBBehavior();
+		nextTurn();
+	}
+	
+	void endTurn() {
 		
 		nextTurn();
 	}
@@ -176,7 +188,7 @@ public:
 			activeActorUID = turnList[turnListInd];
 		}
 		
-		if (currentActorUID == activeActorUID) {
+		if (curActorUID == activeActorUID) {
 			// human turn
 		}
 		else {
@@ -329,7 +341,7 @@ public:
 		
 		bool newVal = _newVal;
 		
-		if (currentActor == NULL) {
+		if (getCurActor() == NULL) {
 			newVal = false;	
 		}
 		
@@ -347,11 +359,11 @@ public:
 	}
 	
 	int getCurActorUID() {
-		if (currentActor == NULL) {
+		if (getCurActor() == NULL) {
 			return -1;
 		}
 		else {
-			return currentActor->uid;
+			return getCurActor()->uid;
 		}
 	}
 	
@@ -641,7 +653,7 @@ public:
 					
 				// }
 				// else {
-				// 	//setCurrentActor(NULL);
+				// 	//setCurActor(-1);
 				// }
 				
 				
@@ -1085,25 +1097,25 @@ public:
 		isDraggingObject = false;
 	}
 	
-	void setCurrentActor(BaseObj* ge) {
+	void setCurActor(int newUID) {
 		
+		curActorUID = newUID;
 		
-		currentActor = ge;
-		if (currentActor == NULL) {
+		BaseObj* ca;
+		
+		if (curActorUID < 0) {
 			actObjInd = 0;
-			currentActorUID = -1;
 			setFirstPerson(false);
 		}
 		else {
-			currentActorUID = ge->uid;
-			actObjInd = ge->uid;
+			ca = &(gameObjects[newUID]);
+			actObjInd = newUID;
 			subjectDistance = singleton->BTV2FIV(
-				currentActor->getCenterPoint(E_BDG_CENTER)
+				ca->getCenterPoint(E_BDG_CENTER)
 			)->distance(singleton->cameraGetPosNoShake());
-			
-			curPoseType = currentActor->entType;
-			
+			curPoseType = ca->entType;
 		}
+		
 		
 	}
 	
@@ -1117,19 +1129,19 @@ public:
 		
 		if (selObjInd >= E_OBJ_LENGTH) {
 			if (selObjInd == actObjInd) {
-				setCurrentActor(NULL);
+				setCurActor(-1);
 			}
 			else {
-				setCurrentActor(&(gameObjects[selObjInd]));
+				setCurActor(selObjInd);
 				
-				if (currentActor != NULL) {
+				if (getCurActor() != NULL) {
 					
 				}
 				
 				
 				singleton->playSoundEnt(
 					"swimming0",
-					currentActor,
+					getCurActor(),
 					0.0f,
 					0.0f,
 					true
@@ -1137,7 +1149,7 @@ public:
 				
 				singleton->playSoundEnt(
 					"walkinggravel0",
-					currentActor,
+					getCurActor(),
 					0.0f,
 					0.0f,
 					true
@@ -1146,7 +1158,7 @@ public:
 			}
 		}
 		else {
-			setCurrentActor(NULL);
+			setCurActor(-1);
 		}
 	}
 	
@@ -1231,11 +1243,50 @@ public:
 		return false;
 	}
 	
-	int getClosestObj(
+	bool areEnemies(int actorUID1, int actorUID2) {
+		return true;
+	}
+	
+	bool areFriends(int actorUID1, int actorUID2) {
+		return false;
+	}
+	
+	int getUnitDistance(int actorUID1, int actorUID2, bool xd, bool yd, bool zd) {
+		
+		if (
+			(actorUID1 < 0) ||
+			(actorUID2 < 0)	
+		) {
+			return -1;
+		}
+		
+		BaseObj* actor1 = &(gameObjects[actorUID1]);
+		BaseObj* actor2 = &(gameObjects[actorUID2]);
+		
+		btVector3 p1 = actor1->getUnitBounds(false);
+		btVector3 p2 = actor2->getUnitBounds(false);
+		
+		int dis = 0;
+		
+		if (xd) {
+			dis += abs(p1.getX() - p2.getX());
+		}
+		if (yd) {
+			dis += abs(p1.getY() - p2.getY());
+		}
+		if (zd) {
+			dis += abs(p1.getZ() - p2.getZ());
+		}
+		
+		return dis;
+		
+	}
+	
+	int getClosestActor(
 		int actorId,
-		FIVector4* basePoint,
 		int objType,
-		float maxDis
+		float maxDis,
+		uint flags
 	) {
 		
 		int i;
@@ -1244,35 +1295,62 @@ public:
 		int testInd;
 		int bestInd = -1;
 		
+		if (actorId < 0) {
+			return -1;
+		}
+		
+		BaseObj* ca = &(gameObjects[actorId]);
+		
 		BaseObj* testObj;
+		
+		bool testForGrabbed = ( (flags&E_CF_NOTGRABBED) > 0 );
+		bool testForEnemies = ( (flags&E_CF_AREENEMIES) > 0 );
+		bool testForFriends = ( (flags&E_CF_AREFRIENDS) > 0 );
 		
 		for(i = 0; i < visObjects.size(); i++) {
 			
 			testInd = visObjects[i];
 			testObj = &(gameObjects[testInd]);
 			
-			// dont grab self, or another grabbed object
+			// if (
+			// 	(testInd == actorId) ||
+			// 	(testObj->isGrabbedById >= 0) ||
+			// 	(testObj->getVel(0)->length() > 2.0f) ||
+			// 	(testObj->isHidden) ||
+			// 	(testObj->entType != objType)	
+			// )
+			
 			if (
-				(testInd == actorId) ||
-				(testObj->isGrabbedById >= 0) ||
-				(testObj->getVel(0)->length() > 2.0f) ||
-				(testObj->entType == E_ENTTYPE_BULLET) ||
-				(testObj->entType == E_ENTTYPE_TRACE) ||
-				(testObj->isHidden) ||
-				(testObj->entType != objType)	
+				(!(testObj->isHidden)) &&
+				(testObj->entType == objType)	&&
+				(testInd != actorId)
 			) {
 				
-			}
-			else {
-				
-				
-				
-				testDis = testObj->getCenterPointFIV(0)->distance(basePoint);
-				
-				if (testDis < bestDis) {
-					bestDis = testDis;
-					bestInd = testInd;
+				if (
+					
+					(
+						( testForGrabbed && (testObj->isGrabbedById < 0) ) ||
+						(!testForGrabbed)
+					) &&
+					(
+						( testForEnemies && (areEnemies(actorId,testInd)) ) ||
+						(!testForEnemies)
+					) &&
+					(
+						( testForFriends && (areFriends(actorId,testInd)) ) ||
+						(!testForFriends)
+					)
+					
+				) {
+					testDis = testObj->getCenterPoint(0).distance(ca->getCenterPoint(0));
+					
+					if (testDis < bestDis) {
+						bestDis = testDis;
+						bestInd = testInd;
+					}
 				}
+				
+				
 			}
 		}
 		
@@ -1281,13 +1359,13 @@ public:
 	}
 	
 	GameOrg* getCurOrg() {
-		if (currentActor == NULL) {
+		if (getCurActor() == NULL) {
 			return NULL;
 		}
-		if (currentActor->orgId < 0) {
+		if (getCurActor()->orgId < 0) {
 			return NULL;
 		}
-		return gameOrgs[currentActor->orgId];
+		return gameOrgs[getCurActor()->orgId];
 	}
 	
 	BaseObj* getActorRef(int uid) {
@@ -1300,7 +1378,7 @@ public:
 	}
 	
 	bool combatMode() {
-		return (currentActor!=NULL)&&combatOn&&(!editPose);
+		return (getCurActor() != NULL)&&combatOn&&(!editPose);
 	}
 	
 	bool isSwingingWeapon(int actorId, int handNum) {
@@ -1638,11 +1716,11 @@ public:
 			
 			// find obj to pickup
 			
-			res = getClosestObj(
+			res = getClosestActor(
 				actorId,
-				singleton->BTV2FIV(ca->getCenterPoint(E_BDG_CENTER)),
 				E_ENTTYPE_WEAPON,
-				5.0f
+				5.0f,
+				E_CF_NOTGRABBED
 			);
 			
 			if (res < 0) {
@@ -2316,8 +2394,6 @@ public:
 			return;
 		}
 		
-		//GameActor* curActor = (gameActors[currentActor->actorId]);
-		//BodyStruct* curBody;
 		
 		GameOrg* testOrg = getCurOrg();
 		
@@ -2506,7 +2582,7 @@ public:
 			highlightedLimb = singleton->gamePhysics->lastBodyPick->limbUID;
 			
 			if (highlightedLimb > -1) {
-				boneId = currentActor->bodies[highlightedLimb].boneId;
+				boneId = getCurActor()->bodies[highlightedLimb].boneId;
 				
 				
 				if (boneId > -1) {
@@ -2573,8 +2649,8 @@ public:
 		
 		testOrg->loadOrgFromFile(currentFieldString, false);
 		//orientRotation();
-		if (currentActor != NULL) {
-			//currentActor->curRot = 1;
+		if (getCurActor() != NULL) {
+			//getCurActor()->curRot = 1;
 		}
 		transformOrg(testOrg, NULL);
 		makeDirty();
@@ -2583,8 +2659,8 @@ public:
 	
 	void makeDirty() {
 		
-		// if (currentActor != NULL) {
-		// 	currentActor->wakeAll();
+		// if (getCurActor() != NULL) {
+		// 	getCurActor()->wakeAll();
 		// }
 		
 		//testOrg->gph->childrenDirty = true;

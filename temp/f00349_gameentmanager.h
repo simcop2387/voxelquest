@@ -17,12 +17,12 @@ void GameEntManager::init (Singleton * _singleton)
 		
 		weaponToPlace = E_PG_WPSWORD;
 		
-		currentActorUID = -1;
+		activeActorUID = -1;
+		curActorUID = -1;
 		
 		activeNode = NULL;
 		selectedNode = NULL;
 		lastSelNode = NULL;
-		currentActor = NULL;
 		poseRootJS = NULL;
 		
 		curPoseType = -1;
@@ -80,6 +80,56 @@ void GameEntManager::init (Singleton * _singleton)
 		
 		initAllObjects();
 		loadPoseInfo(false);
+		
+	}
+BaseObj * GameEntManager::getCurActor ()
+                               {
+		if (curActorUID < 0) {
+			return NULL;
+		}
+		else {
+			return &(gameObjects[curActorUID]);
+		}
+	}
+BaseObj * GameEntManager::getActiveActor ()
+                                  {
+		if (activeActorUID < 0) {
+			return NULL;
+		}
+		else {
+			return &(gameObjects[activeActorUID]);
+		}
+	}
+void GameEntManager::applyLogicForTurn ()
+                                 {
+		singleton->gameLogic->applyTBBehavior();
+		nextTurn();
+	}
+void GameEntManager::endTurn ()
+                       {
+		
+		nextTurn();
+	}
+void GameEntManager::nextTurn ()
+                        {
+		turnListInd++;
+		if (turnListInd >= turnList.size()) {
+			turnListInd = 0;
+		}
+		
+		if (turnList.size() == 0) {
+			activeActorUID = -1;
+		}
+		else {
+			activeActorUID = turnList[turnListInd];
+		}
+		
+		if (curActorUID == activeActorUID) {
+			// human turn
+		}
+		else {
+			applyLogicForTurn();
+		}
 		
 	}
 void GameEntManager::refreshTurnList ()
@@ -226,7 +276,7 @@ void GameEntManager::setFirstPerson (bool _newVal)
 		
 		bool newVal = _newVal;
 		
-		if (currentActor == NULL) {
+		if (getCurActor() == NULL) {
 			newVal = false;	
 		}
 		
@@ -244,11 +294,11 @@ void GameEntManager::setFirstPerson (bool _newVal)
 	}
 int GameEntManager::getCurActorUID ()
                              {
-		if (currentActor == NULL) {
+		if (getCurActor() == NULL) {
 			return -1;
 		}
 		else {
-			return currentActor->uid;
+			return getCurActor()->uid;
 		}
 	}
 void GameEntManager::updateOrgMat (UIComponent * comp)
@@ -418,7 +468,7 @@ bool GameEntManager::handleGUI (UIComponent * comp, bool mouseUpEvent, bool mous
 				//closeContainer(i);
 			}
 			else if (comp->uid.compare("hudMenu.close") == 0) {		
-				singleton->menuList[E_FM_STATMENU]->visible = false;
+				singleton->menuList[E_FM_HUDMENU]->visible = false;
 				//i = comp->getParent()->getChild(1)->jvNodeNoTemplate->Child("objectId")->number_value;
 				//closeContainer(i);
 			}
@@ -529,7 +579,7 @@ void GameEntManager::updateDragInfo (int bestInd, bool lbDown, bool wasDoubleCli
 					
 				// }
 				// else {
-				// 	//setCurrentActor(NULL);
+				// 	//setCurActor(-1);
 				// }
 				
 				
@@ -957,26 +1007,26 @@ void GameEntManager::performDrag (bool isReq, int _draggingFromInd, int _draggin
 		singleton->markerFound = false;
 		isDraggingObject = false;
 	}
-void GameEntManager::setCurrentActor (BaseObj * ge)
-                                          {
+void GameEntManager::setCurActor (int newUID)
+                                     {
 		
+		curActorUID = newUID;
 		
-		currentActor = ge;
-		if (currentActor == NULL) {
+		BaseObj* ca;
+		
+		if (curActorUID < 0) {
 			actObjInd = 0;
-			currentActorUID = -1;
 			setFirstPerson(false);
 		}
 		else {
-			currentActorUID = ge->uid;
-			actObjInd = ge->uid;
+			ca = &(gameObjects[newUID]);
+			actObjInd = newUID;
 			subjectDistance = singleton->BTV2FIV(
-				currentActor->getCenterPoint(E_BDG_CENTER)
+				ca->getCenterPoint(E_BDG_CENTER)
 			)->distance(singleton->cameraGetPosNoShake());
-			
-			curPoseType = currentActor->entType;
-			
+			curPoseType = ca->entType;
 		}
+		
 		
 	}
 void GameEntManager::toggleFirstPerson ()
@@ -990,19 +1040,19 @@ void GameEntManager::toggleActorSel ()
 		
 		if (selObjInd >= E_OBJ_LENGTH) {
 			if (selObjInd == actObjInd) {
-				setCurrentActor(NULL);
+				setCurActor(-1);
 			}
 			else {
-				setCurrentActor(&(gameObjects[selObjInd]));
+				setCurActor(selObjInd);
 				
-				if (currentActor != NULL) {
+				if (getCurActor() != NULL) {
 					
 				}
 				
 				
 				singleton->playSoundEnt(
 					"swimming0",
-					currentActor,
+					getCurActor(),
 					0.0f,
 					0.0f,
 					true
@@ -1010,7 +1060,7 @@ void GameEntManager::toggleActorSel ()
 				
 				singleton->playSoundEnt(
 					"walkinggravel0",
-					currentActor,
+					getCurActor(),
 					0.0f,
 					0.0f,
 					true
@@ -1019,7 +1069,7 @@ void GameEntManager::toggleActorSel ()
 			}
 		}
 		else {
-			setCurrentActor(NULL);
+			setCurActor(-1);
 		}
 	}
 void GameEntManager::setSelInd (int ind)
@@ -1101,7 +1151,15 @@ bool GameEntManager::removeVisObject (BaseObjType _uid, bool isRecycled)
 		
 		return false;
 	}
-int GameEntManager::getClosestObj (int actorId, FIVector4 * basePoint, int objType, float maxDis)
+bool GameEntManager::areEnemies (int actorUID1, int actorUID2)
+                                                      {
+		return true;
+	}
+bool GameEntManager::areFriends (int actorUID1, int actorUID2)
+                                                      {
+		return false;
+	}
+int GameEntManager::getClosestActor (int actorId, int objType, float maxDis, uint flags)
           {
 		
 		int i;
@@ -1110,35 +1168,62 @@ int GameEntManager::getClosestObj (int actorId, FIVector4 * basePoint, int objTy
 		int testInd;
 		int bestInd = -1;
 		
+		if (actorId < 0) {
+			return -1;
+		}
+		
+		BaseObj* ca = &(gameObjects[actorId]);
+		
 		BaseObj* testObj;
+		
+		bool testForGrabbed = ( (flags&E_CF_NOTGRABBED) > 0 );
+		bool testForEnemies = ( (flags&E_CF_AREENEMIES) > 0 );
+		bool testForFriends = ( (flags&E_CF_AREFRIENDS) > 0 );
 		
 		for(i = 0; i < visObjects.size(); i++) {
 			
 			testInd = visObjects[i];
 			testObj = &(gameObjects[testInd]);
 			
-			// dont grab self, or another grabbed object
+			// if (
+			// 	(testInd == actorId) ||
+			// 	(testObj->isGrabbedById >= 0) ||
+			// 	(testObj->getVel(0)->length() > 2.0f) ||
+			// 	(testObj->isHidden) ||
+			// 	(testObj->entType != objType)	
+			// )
+			
 			if (
-				(testInd == actorId) ||
-				(testObj->isGrabbedById >= 0) ||
-				(testObj->getVel(0)->length() > 2.0f) ||
-				(testObj->entType == E_ENTTYPE_BULLET) ||
-				(testObj->entType == E_ENTTYPE_TRACE) ||
-				(testObj->isHidden) ||
-				(testObj->entType != objType)	
+				(!(testObj->isHidden)) &&
+				(testObj->entType == objType)	&&
+				(testInd != actorId)
 			) {
 				
-			}
-			else {
-				
-				
-				
-				testDis = testObj->getCenterPointFIV(0)->distance(basePoint);
-				
-				if (testDis < bestDis) {
-					bestDis = testDis;
-					bestInd = testInd;
+				if (
+					
+					(
+						( testForGrabbed && (testObj->isGrabbedById < 0) ) ||
+						(!testForGrabbed)
+					) &&
+					(
+						( testForEnemies && (areEnemies(actorId,testInd)) ) ||
+						(!testForEnemies)
+					) &&
+					(
+						( testForFriends && (areFriends(actorId,testInd)) ) ||
+						(!testForFriends)
+					)
+					
+				) {
+					testDis = testObj->getCenterPoint(0).distance(ca->getCenterPoint(0));
+					
+					if (testDis < bestDis) {
+						bestDis = testDis;
+						bestInd = testInd;
+					}
 				}
+				
+				
 			}
 		}
 		
@@ -1147,13 +1232,13 @@ int GameEntManager::getClosestObj (int actorId, FIVector4 * basePoint, int objTy
 	}
 GameOrg * GameEntManager::getCurOrg ()
                              {
-		if (currentActor == NULL) {
+		if (getCurActor() == NULL) {
 			return NULL;
 		}
-		if (currentActor->orgId < 0) {
+		if (getCurActor()->orgId < 0) {
 			return NULL;
 		}
-		return gameOrgs[currentActor->orgId];
+		return gameOrgs[getCurActor()->orgId];
 	}
 BaseObj * GameEntManager::getActorRef (int uid)
                                       {
@@ -1166,7 +1251,7 @@ BaseObj * GameEntManager::getActorRef (int uid)
 	}
 bool GameEntManager::combatMode ()
                           {
-		return (currentActor!=NULL)&&combatOn&&(!editPose);
+		return (getCurActor() != NULL)&&combatOn&&(!editPose);
 	}
 bool GameEntManager::isSwingingWeapon (int actorId, int handNum)
                                                         {
@@ -1497,11 +1582,11 @@ void GameEntManager::makeGrab (int actorId, int _handNum)
 			
 			// find obj to pickup
 			
-			res = getClosestObj(
+			res = getClosestActor(
 				actorId,
-				singleton->BTV2FIV(ca->getCenterPoint(E_BDG_CENTER)),
 				E_ENTTYPE_WEAPON,
-				5.0f
+				5.0f,
+				E_CF_NOTGRABBED
 			);
 			
 			if (res < 0) {
@@ -2169,8 +2254,6 @@ void GameEntManager::applyNodeChanges (GameOrgNode * _curNode, float dx, float d
 			return;
 		}
 		
-		//GameActor* curActor = (gameActors[currentActor->actorId]);
-		//BodyStruct* curBody;
 		
 		GameOrg* testOrg = getCurOrg();
 		
@@ -2352,7 +2435,7 @@ bool GameEntManager::updateNearestOrgNode (bool setActive, FIVector4 * mousePosW
 			highlightedLimb = singleton->gamePhysics->lastBodyPick->limbUID;
 			
 			if (highlightedLimb > -1) {
-				boneId = currentActor->bodies[highlightedLimb].boneId;
+				boneId = getCurActor()->bodies[highlightedLimb].boneId;
 				
 				
 				if (boneId > -1) {
@@ -2418,8 +2501,8 @@ void GameEntManager::loadOrgFromMenu (string currentFieldString)
 		
 		testOrg->loadOrgFromFile(currentFieldString, false);
 		//orientRotation();
-		if (currentActor != NULL) {
-			//currentActor->curRot = 1;
+		if (getCurActor() != NULL) {
+			//getCurActor()->curRot = 1;
 		}
 		transformOrg(testOrg, NULL);
 		makeDirty();
@@ -2427,8 +2510,8 @@ void GameEntManager::loadOrgFromMenu (string currentFieldString)
 void GameEntManager::makeDirty ()
                          {
 		
-		// if (currentActor != NULL) {
-		// 	currentActor->wakeAll();
+		// if (getCurActor() != NULL) {
+		// 	getCurActor()->wakeAll();
 		// }
 		
 		//testOrg->gph->childrenDirty = true;

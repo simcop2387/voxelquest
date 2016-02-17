@@ -919,13 +919,13 @@ public:
 		camBlockPos.copyFrom( singleton->cameraGetPosNoShake() );
 		camBlockPos.intDivXYZ(singleton->cellsPerBlock);
 
-		if (singleton->gem->currentActor == NULL) {
+		if (singleton->gem->getCurActor() == NULL) {
 			camHolderPos.copyFrom( singleton->cameraGetPosNoShake() );
 			camHolderPos.intDivXYZ(singleton->cellsPerHolder);
 			camHolderPos.addXYZRef(&(singleton->lookAtVec),4.0);
 		}
 		else {
-			camHolderPos.setBTV(singleton->gem->currentActor->getCenterPoint(0));
+			camHolderPos.setBTV(singleton->gem->getCurActor()->getCenterPoint(0));
 			camHolderPos.intDivXYZ(singleton->cellsPerHolder);
 		}
 
@@ -1759,14 +1759,14 @@ public:
 		
 		
 		
-		if ((singleton->gem->currentActor == NULL)||singleton->gem->firstPerson) {
+		if ((singleton->gem->getCurActor() == NULL)||singleton->gem->firstPerson) {
 			singleton->setShaderFloat("thirdPerson", 0.0f);
 			//singleton->setShaderFloat("CAM_BOX_SIZE", 0.5f);
 		}
 		else {
 			singleton->setShaderFloat("thirdPerson", 1.0f);
 			//singleton->setShaderFloat("CAM_BOX_SIZE", 0.5f);
-			singleton->setShaderfVec3("entPos", singleton->gem->currentActor->getCenterPointFIV(0));
+			singleton->setShaderfVec3("entPos", singleton->gem->getCurActor()->getCenterPointFIV(0));
 		}
 		
 		
@@ -1846,12 +1846,12 @@ public:
 		singleton->setShaderArrayfVec4("paramArrGeom", singleton->paramArrGeom, E_PRIMTEMP_LENGTH);
 		
 		
-		if (singleton->gem->currentActor != NULL) {
+		if (singleton->gem->getCurActor() != NULL) {
 			
-			singleton->splashArr[0] = singleton->gem->currentActor->getCenterPointFIV(0)->getFX();
-			singleton->splashArr[1] = singleton->gem->currentActor->getCenterPointFIV(0)->getFX();
-			singleton->splashArr[2] = singleton->gem->currentActor->getCenterPointFIV(0)->getFX();
-			singleton->splashArr[3] = singleton->gem->currentActor->getVel(0)->length();
+			singleton->splashArr[0] = singleton->gem->getCurActor()->getCenterPointFIV(0)->getFX();
+			singleton->splashArr[1] = singleton->gem->getCurActor()->getCenterPointFIV(0)->getFX();
+			singleton->splashArr[2] = singleton->gem->getCurActor()->getCenterPointFIV(0)->getFX();
+			singleton->splashArr[3] = singleton->gem->getCurActor()->getVel(0)->length();
 			
 			singleton->setShaderInt("numSplashes", 1);
 			singleton->setShaderArrayfVec4("splashArr", singleton->splashArr, MAX_SPLASHES);
@@ -2019,14 +2019,14 @@ public:
 				lineSeg[1].addXYZRef(&(lineSeg[0]));
 			//}
 			
-			if (singleton->gem->currentActor != NULL) {
+			if (singleton->gem->getCurActor() != NULL) {
 				
 				
-				if (singleton->gem->currentActor->isGrabbedById > -1) {
-					grabber = &(singleton->gem->gameObjects[singleton->gem->currentActor->isGrabbedById]);
+				if (singleton->gem->getCurActor()->isGrabbedById > -1) {
+					grabber = &(singleton->gem->gameObjects[singleton->gem->getCurActor()->isGrabbedById]);
 				}
 				else {
-					grabber = singleton->gem->currentActor;
+					grabber = singleton->gem->getCurActor();
 				}
 				
 				
@@ -4805,7 +4805,7 @@ UPDATE_LIGHTS_END:
 
 	void renderDebug() {
 		
-		BaseObj* ge = singleton->gem->currentActor;
+		BaseObj* ge = singleton->gem->getCurActor();
 		
 		int i;
 		
@@ -4869,14 +4869,14 @@ UPDATE_LIGHTS_END:
 		
 		
 		// skeleton outline		
-		if (singleton->gem->currentActor != NULL) {
-			if (singleton->gem->currentActor->orgId > -1) {
+		if (singleton->gem->getCurActor() != NULL) {
+			if (singleton->gem->getCurActor()->orgId > -1) {
 				
-				if (singleton->gem->currentActor->isGrabbedById > -1) {
-					grabber = &(singleton->gem->gameObjects[singleton->gem->currentActor->isGrabbedById]);
+				if (singleton->gem->getCurActor()->isGrabbedById > -1) {
+					grabber = &(singleton->gem->gameObjects[singleton->gem->getCurActor()->isGrabbedById]);
 				}
 				else {
-					grabber = singleton->gem->currentActor;
+					grabber = singleton->gem->getCurActor();
 				}
 				
 				
@@ -4885,7 +4885,7 @@ UPDATE_LIGHTS_END:
 				singleton->setShaderMatrix4x4("objmat",myMat,1);
 				
 				
-				drawOrg(singleton->gem->gameOrgs[singleton->gem->currentActor->orgId], false);
+				drawOrg(singleton->gem->gameOrgs[singleton->gem->getCurActor()->orgId], false);
 			}
 		}
 		
@@ -4950,9 +4950,12 @@ UPDATE_LIGHTS_END:
 		singleton->setShaderVec4(
 			"rotationZ",0.0f,0.0f,0.0f,0.0f
 		);
+		singleton->setShaderMatrix4x4("objmat",identMat,1);
 		
 		
-		
+		if (singleton->pathfindingOn) {
+			singleton->gameLogic->update();
+		}
 		
 		
 		
@@ -5369,26 +5372,26 @@ UPDATE_LIGHTS_END:
 			singleton->sampleFBO("debugTargFBO", 9);
 			
 			
-			if ((singleton->gem->currentActor == NULL)||singleton->gem->firstPerson) {
+			if ((singleton->gem->getCurActor() == NULL)||singleton->gem->firstPerson) {
 				singleton->setShaderFloat("thirdPerson", 0.0f);
 				singleton->setShaderVec3("entPos", 0.0f, 0.0f, 0.0f);
 			}
 			else {
 				singleton->setShaderFloat("thirdPerson", 1.0f);
-				singleton->setShaderfVec3("entPos", singleton->gem->currentActor->getCenterPointFIV(0));
+				singleton->setShaderfVec3("entPos", singleton->gem->getCurActor()->getCenterPointFIV(0));
 				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
 			
 			
 			singleton->setShaderInt("gridOn", singleton->gridOn);
 			
-			if (singleton->gem->currentActor == NULL) {
+			if (singleton->gem->getCurActor() == NULL) {
 				singleton->setShaderInt("isFalling",false);
 				singleton->setShaderInt("isJumping",false);
 			}
 			else {
-				singleton->setShaderInt("isFalling",singleton->gem->currentActor->allFalling());
-				singleton->setShaderInt("isJumping",singleton->gem->currentActor->getActionState(E_ACT_ISJUMPING,RLBN_NEIT));
+				singleton->setShaderInt("isFalling",singleton->gem->getCurActor()->allFalling());
+				singleton->setShaderInt("isJumping",singleton->gem->getCurActor()->getActionState(E_ACT_ISJUMPING,RLBN_NEIT));
 			}
 			
 			

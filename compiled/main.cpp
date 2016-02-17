@@ -3919,7 +3919,7 @@ enum E_CHAR_STAT_VALS {
 
 #define E_CHAR_STATUS(DDD) \
 DDD(E_STATUS_HEALTH) \
-DDD(E_STATUS_ACTION_POINTS) \
+DDD(E_STATUS_STAMINA) \
 DDD(E_STATUS_MANA) \
 DDD(E_STATUS_LENGTH)
 
@@ -3930,8 +3930,6 @@ string E_CHAR_STATUS_STRINGS[] = {
 enum E_CHAR_STATUS_VALS {
 	E_CHAR_STATUS(DO_ENUM)
 };
-
-
 
 
 #define E_GUI_CHILD_TYPE(DDD) \
@@ -3965,6 +3963,17 @@ enum E_GUI_CHILD_TYPE_VALS {
 // 	E_GCT_STATS, 			// 6
 // 	E_GCT_LENGTH			// 5
 // };
+
+enum E_CLOSEST_FLAGS {
+	E_CF_NOTGRABBED = 1,
+	E_CF_AREENEMIES = 2,
+	E_CF_AREFRIENDS = 4
+	// E_CF_ = 8,
+	// E_CF_ = 16,
+	// E_CF_ = 32,
+	// E_CF_ = 64
+	
+};
 
 enum E_FONT_WRAPPERS {
 	EFW_TEXT,
@@ -4930,7 +4939,7 @@ struct BodyStruct {
 	
 };
 
-struct ActorJointStruct {
+struct RigJointStruct {
 	int boneId;
 	int jointType;
 	int jointId;
@@ -22372,7 +22381,7 @@ class GameOrg;
 class GamePlantNode;
 class GamePlant;
 class GameEnt;
-class GameActor;
+class GamePhysRig;
 class GameEntManager;
 class GameBlock;
 class GamePageHolder;
@@ -23742,18 +23751,18 @@ public:
 };
 #undef LZZ_INLINE
 #endif
-// f00347_gameactor.e
+// f00347_gamephysrig.e
 //
 
-#ifndef LZZ_f00347_gameactor_e
-#define LZZ_f00347_gameactor_e
+#ifndef LZZ_f00347_gamephysrig_e
+#define LZZ_f00347_gamephysrig_e
 #define LZZ_INLINE inline
-class GameActor
+class GamePhysRig
 {
 public:
   Singleton * singleton;
   btDynamicsWorld * m_ownerWorld;
-  std::vector <ActorJointStruct> actorJoints;
+  std::vector <RigJointStruct> rigJoints;
   int geId;
   btVector3 origOffset;
   GameOrg * baseOrg;
@@ -23762,9 +23771,9 @@ public:
   int addJoint (int nodeName, int parentId, int jointType, float mass, GameOrgNode * curNode);
   void initFromOrg (GameOrgNode * curNode, int curParent);
   void reinit ();
-  GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset);
+  GamePhysRig (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset);
   void removeAllBodies ();
-  virtual ~ GameActor ();
+  virtual ~ GamePhysRig ();
 };
 #undef LZZ_INLINE
 #endif
@@ -23789,7 +23798,8 @@ public:
   bool firstPerson;
   bool showHealth;
   int weaponToPlace;
-  int currentActorUID;
+  int activeActorUID;
+  int curActorUID;
   int curPoseType;
   int highlightedLimb;
   int highlightedLimb2;
@@ -23810,12 +23820,11 @@ public:
   map <BaseObjType, BaseObj> gameObjects;
   vector <BaseObjType> visObjects;
   vector <int> turnList;
-  BaseObj * currentActor;
   GameOrgNode * bestNode;
   GameOrgNode * selectedNode;
   GameOrgNode * lastSelNode;
   GameOrgNode * activeNode;
-  std::vector <GameActor*> gameActors;
+  std::vector <GamePhysRig*> gamePhysRigs;
   std::vector <GameOrg*> gameOrgs;
   std::vector <GameOrg*> gamePoses;
   PoseInfo (gamePoseInfo) [E_PG_LENGTH];
@@ -23828,6 +23837,11 @@ public:
   string (objStrings) [MAX_OBJ_TYPES];
   GameEntManager ();
   void init (Singleton * _singleton);
+  BaseObj * getCurActor ();
+  BaseObj * getActiveActor ();
+  void applyLogicForTurn ();
+  void endTurn ();
+  void nextTurn ();
   void refreshTurnList ();
   void setTurnBased (bool newVal);
   void checkActorRefresh ();
@@ -23853,7 +23867,7 @@ public:
   bool isRecycledFunc (int poolId);
   BaseObjType placeNewEnt (bool isReq, int et, FIVector4 * cellPos, bool isHidden = false);
   void performDrag (bool isReq, int _draggingFromInd, int _draggingFromType, int _draggingToInd, int _draggingToType, FIVector4 * _worldMarker);
-  void setCurrentActor (BaseObj * ge);
+  void setCurActor (int newUID);
   void toggleFirstPerson ();
   void toggleActorSel ();
   void setSelInd (int ind);
@@ -23861,7 +23875,9 @@ public:
   void toggleCont (int contIndex, bool onMousePos);
   void addVisObject (BaseObjType _uid, bool isRecycled);
   bool removeVisObject (BaseObjType _uid, bool isRecycled);
-  int getClosestObj (int actorId, FIVector4 * basePoint, int objType, float maxDis);
+  bool areEnemies (int actorUID1, int actorUID2);
+  bool areFriends (int actorUID1, int actorUID2);
+  int getClosestActor (int actorId, int objType, float maxDis, uint flags);
   GameOrg * getCurOrg ();
   BaseObj * getActorRef (int uid);
   bool combatMode ();
@@ -24242,6 +24258,7 @@ public:
   bool globFoundTarg;
   GameLogic ();
   void init (Singleton * _singleton);
+  void applyTBBehavior ();
   void applyBehavior ();
   GamePageHolder * getHolderById (int blockId, int holderId);
   GamePageHolder * getHolderByPR (PathResult * pr);
@@ -26721,8 +26738,8 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 				gem->updateOrgMat(comp);
 			}
 			else if (comp->uid.compare("statMenu.apply") == 0) {
-				if (gem->currentActor != NULL) {	
-					curStatSheet = &(gem->currentActor->statSheet);
+				if (gem->getCurActor() != NULL) {	
+					curStatSheet = &(gem->getCurActor()->statSheet);
 					
 					for (i = 0; i < E_CS_LENGTH; i++) {
 						curStatSheet->baseStats[i] = curStatSheet->unapplyedStats[i];
@@ -26731,8 +26748,8 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 				}
 			}
 			else if (comp->uid.compare("statMenu.reset") == 0) {
-				if (gem->currentActor != NULL) {
-					curStatSheet = &(gem->currentActor->statSheet);
+				if (gem->getCurActor() != NULL) {
+					curStatSheet = &(gem->getCurActor()->statSheet);
 					
 					
 					
@@ -26802,9 +26819,9 @@ void Singleton::dispatchEvent (int button, int state, float x, float y, UICompon
 			sphereMapPrec = mixf(0.0f,200.0f,curValue);
 		}
 		else if (comp->uid.compare("#statMenu.stat") == 0) {
-			if (gem->currentActor != NULL) {
+			if (gem->getCurActor() != NULL) {
 				
-				curStatSheet = &(gem->currentActor->statSheet);
+				curStatSheet = &(gem->getCurActor()->statSheet);
 				
 				oldVal = curStatSheet->unapplyedStats[comp->index];
 				newVal = roundVal(curValue*comp->divisions);
@@ -28387,7 +28404,7 @@ void Singleton::moveObject (float dx, float dy)
 					
 					if (
 						rbDown
-						//&&( (gem->currentActor==NULL) || (gem->editPose)	)
+						//&&( (gem->getCurActor()==NULL) || (gem->editPose)	)
 					) {
 						
 						camRotation[0] -= dx*0.01f;
@@ -28655,6 +28672,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				
 				case '1':
+					
 					getMarkerPos(x, y);
 					gem->placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
 				break;
@@ -28745,12 +28763,16 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					
 					cout << "\n";
-					cout << "pathfindingOn: " << pathfindingOn << "\n";
 					cout << "updateHolders " << updateHolders << "\n";
 					
 					
 					
 				break;
+				case 'U':
+					pathfindingOn = !pathfindingOn;
+					cout << "pathfindingOn: " << pathfindingOn << "\n";
+				break;
+				
 				
 				case 'Q':
 					gem->toggleFirstPerson();
@@ -29104,7 +29126,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 			}
 			
 			
-			if (gem->turnBased&&(gem->currentActor != NULL)) {
+			if (gem->turnBased&&(gem->getCurActor() != NULL)) {
 				switch(key) {
 					case 'a':
 						
@@ -29115,18 +29137,18 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					
 					case 's':
-						gem->makeTurnUnit(gem->currentActor->uid, 1);
+						gem->makeTurnUnit(gem->getCurActor()->uid, 1);
 					break;
 					case 'f':
-						gem->makeTurnUnit(gem->currentActor->uid, -1);
+						gem->makeTurnUnit(gem->getCurActor()->uid, -1);
 					break;
 					
 					
 					case 'e':
-						gem->makeMoveUnit(gem->currentActor->uid, 1);
+						gem->makeMoveUnit(gem->getCurActor()->uid, 1);
 					break;
 					case 'd':
-						gem->makeMoveUnit(gem->currentActor->uid, -1);
+						gem->makeMoveUnit(gem->getCurActor()->uid, -1);
 					break;
 				}
 			}
@@ -29569,7 +29591,7 @@ void Singleton::mouseMove (int _x, int _y)
 		{
 			
 			// if (
-			// 	(gem->currentActor != NULL) && (!gem->editPose)	
+			// 	(gem->getCurActor() != NULL) && (!gem->editPose)	
 			// ) {
 			// 	camRotation[0] -= dx*0.02f;
 			// 	camRotation[1] += dy*0.02f;
@@ -29809,22 +29831,22 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 				gem->setSwing(
 					mx*2.0f - 1.0f,
 					my*2.0f - 1.0f,
-					gem->currentActor->uid,
+					gem->getCurActor()->uid,
 					RLBN_LEFT,
 					bCtrl
 				);
-				gem->makeSwing(gem->currentActor->uid, RLBN_LEFT);
+				gem->makeSwing(gem->getCurActor()->uid, RLBN_LEFT);
 				return;
 			}
 			if (rbClicked) {
 				gem->setSwing(
 					mx*2.0f - 1.0f,
 					my*2.0f - 1.0f,
-					gem->currentActor->uid,
+					gem->getCurActor()->uid,
 					RLBN_RIGT,
 					bCtrl
 				);
-				gem->makeSwing(gem->currentActor->uid, RLBN_RIGT);
+				gem->makeSwing(gem->getCurActor()->uid, RLBN_RIGT);
 				return;
 			}
 			
@@ -30462,7 +30484,7 @@ void Singleton::handleMovement ()
 		
 		if (smoothMove||(
 			(!gem->firstPerson) &&
-			(gem->currentActor != NULL)	
+			(gem->getCurActor() != NULL)	
 		)) {
 			curCamRotation[0] += (camRotation[0]-curCamRotation[0])*timeDelta*8.0f;
 			curCamRotation[1] += (camRotation[1]-curCamRotation[1])*timeDelta*8.0f;
@@ -30474,7 +30496,7 @@ void Singleton::handleMovement ()
 		
 		
 		
-		if (gem->currentActor == NULL) {
+		if (gem->getCurActor() == NULL) {
 			if (keysPressed[keyMap[KEYMAP_UP]]) {
 				zmod += 1.0f;
 				isPressingMove = true;
@@ -30567,12 +30589,12 @@ void Singleton::handleMovement ()
 		
 		
 		
-		if (gem->currentActor != NULL) {
-			if (gem->currentActor->entType == E_ENTTYPE_NPC) {
-				skullPos = gem->currentActor->getBodyByBoneId(E_BONE_C_SKULL)->body->getCenterOfMassPosition();
+		if (gem->getCurActor() != NULL) {
+			if (gem->getCurActor()->entType == E_ENTTYPE_NPC) {
+				skullPos = gem->getCurActor()->getBodyByBoneId(E_BONE_C_SKULL)->body->getCenterOfMassPosition();
 			}
 			else {
-				skullPos = gem->currentActor->getCenterPoint(E_BDG_CENTER);
+				skullPos = gem->getCurActor()->getCenterPoint(E_BDG_CENTER);
 			}
 			
 			
@@ -30603,7 +30625,7 @@ void Singleton::handleMovement ()
 						
 						tempBTV = multByOtherRot(
 							btVector3(0.0f,1.0f,0.0f),
-							gem->currentActor->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()
+							gem->getCurActor()->bodies[E_BDG_CENTER].body->getCenterOfMassTransform().getBasis()
 						);
 						
 						camRotation[0] += 
@@ -30855,13 +30877,13 @@ void Singleton::getSpecialData (int datEnum, string datString)
 				externalJSON[datString].jv->object_value["stats"] = new JSONValue(JSONArray());
 				tempVal0 = externalJSON[datString].jv->object_value["stats"];
 				
-				if (gem->currentActor == NULL) {
+				if (gem->getCurActor() == NULL) {
 					cout << "NULL STATS\n";
 					return;
 				}
 				else {
 					
-					curSS = &(gem->currentActor->statSheet);
+					curSS = &(gem->getCurActor()->statSheet);
 					
 					for (i = 0; i < E_CS_LENGTH; i++) {
 						tempVal0->array_value.push_back( new JSONValue(JSONObject()) );
@@ -30879,13 +30901,13 @@ void Singleton::getSpecialData (int datEnum, string datString)
 				externalJSON[datString].jv->object_value["status"] = new JSONValue(JSONArray());
 				tempVal0 = externalJSON[datString].jv->object_value["status"];
 				
-				if (gem->currentActor == NULL) {
-					cout << "NULL STATUSS\n";
+				if (gem->getCurActor() == NULL) {
+					cout << "NULL STATUS\n";
 					return;
 				}
 				else {
 					
-					curSS = &(gem->currentActor->statSheet);
+					curSS = &(gem->getCurActor()->statSheet);
 					
 					for (i = 0; i < E_STATUS_LENGTH; i++) {
 						tempVal0->array_value.push_back( new JSONValue(JSONObject()) );
@@ -30913,11 +30935,11 @@ void Singleton::updateStatGUI ()
 		UIComponent* tempComp;
 		
 		
-		if (gem->currentActor == NULL) {
+		if (gem->getCurActor() == NULL) {
 			return;
 		}
 		
-		StatSheet* curSS = &(gem->currentActor->statSheet);
+		StatSheet* curSS = &(gem->getCurActor()->statSheet);
 		
 		tempComp = getGUIComp("statMenu.availPoints");
 		tempComp->setValue(
@@ -31989,7 +32011,7 @@ void Singleton::frameUpdate ()
 		
 		if (!placingGeom) {
 			if (abs(globWheelDelta) > 0.001f) {
-				if (gem->currentActor != NULL) {
+				if (gem->getCurActor() != NULL) {
 					subjectDelta -= globWheelDelta;
 					targetSubjectZoom = pow(2.0, subjectDelta);
 					if (!ignoreFrameLimit) {
@@ -32042,11 +32064,11 @@ void Singleton::frameUpdate ()
 					
 					
 					
-					if (gem->currentActor != NULL) {
+					if (gem->getCurActor() != NULL) {
 						if ((currentTick%10) == 0) {
 							
 							// if (rbDown) {
-							// 	makeShoot(gem->currentActor->uid, E_ENTTYPE_TRACE);
+							// 	makeShoot(gem->getCurActor()->uid, E_ENTTYPE_TRACE);
 							// }
 							
 							
@@ -32079,24 +32101,24 @@ void Singleton::frameUpdate ()
 						}
 						
 						if (
-							(gem->currentActor != NULL) &&
-							gem->currentActor->hasBodies()	
+							(gem->getCurActor() != NULL) &&
+							gem->getCurActor()->hasBodies()	
 						) {
 							
-							if (gem->currentActor->bodies[E_BDG_CENTER].inWater) {
+							if (gem->getCurActor()->bodies[E_BDG_CENTER].inWater) {
 								temp = clampfZO(
-									gem->currentActor->getVel(0)->length()
+									gem->getCurActor()->getVel(0)->length()
 								)*0.25f;
 								temp2 = 0.0f;
 							}
 							else {
 								
-								if (gem->currentActor->allFalling()) {
+								if (gem->getCurActor()->allFalling()) {
 									temp2 = 0.0f;
 								}
 								else {
 									temp2 = clampfZO(
-										gem->currentActor->getVel(0)->length()
+										gem->getCurActor()->getVel(0)->length()
 									);
 								}
 								
@@ -32108,14 +32130,14 @@ void Singleton::frameUpdate ()
 							updateSoundPosAndPitch(
 								"swimming0",
 								cameraGetPosNoShake(),
-								BTV2FIV(gem->currentActor->getCenterPoint(E_BDG_CENTER)),
+								BTV2FIV(gem->getCurActor()->getCenterPoint(E_BDG_CENTER)),
 								temp*0.2,
 								0.01
 							);
 							updateSoundPosAndPitch(
 								"walkinggravel0",
 								cameraGetPosNoShake(),
-								BTV2FIV(gem->currentActor->getCenterPoint(E_BDG_CENTER)),
+								BTV2FIV(gem->getCurActor()->getCenterPoint(E_BDG_CENTER)),
 								temp2*0.2,
 								0.1
 							);
@@ -39815,13 +39837,13 @@ void GameFluid::shiftRegion ()
                            {
 		
 		
-		bool notThirdPerson = (singleton->gem->currentActor == NULL);
+		bool notThirdPerson = (singleton->gem->getCurActor() == NULL);
 		
 		if (notThirdPerson) {
 			newCamPos.copyFrom(singleton->cameraGetPosNoShake());
 		}
 		else {
-			newCamPos.setBTV(singleton->gem->currentActor->getCenterPoint(0));
+			newCamPos.setBTV(singleton->gem->getCurActor()->getCenterPoint(0));
 		}
 		
 		if (notThirdPerson&&(volSizePrim < 512)) { // && (mainId==E_FID_SML)
@@ -42520,17 +42542,17 @@ int GameOrg::getPoseUID ()
 		
 		BaseObj* ca;
 		
-		if (singleton->gem->currentActorUID < 0) {
+		if (singleton->gem->curActorUID < 0) {
 			return -1;
 		}
 		else {
-			ca = &(singleton->gem->gameObjects[singleton->gem->currentActorUID]);
+			ca = &(singleton->gem->gameObjects[singleton->gem->curActorUID]);
 			if (ca->entType != E_ENTTYPE_NPC) {
 				return -1;
 			}
 		}
 		
-		return singleton->gem->currentActorUID;
+		return singleton->gem->curActorUID;
 	}
 void GameOrg::loadOrgFromFile (string fileName, bool notThePose)
                                                                {
@@ -43498,18 +43520,18 @@ void GamePlant::applyRules (PlantRules * rules, GamePlantNode * curParent, int c
 	}
 #undef LZZ_INLINE
  
-// f00347_gameactor.h
+// f00347_gamephysrig.h
 //
 
-#include "f00347_gameactor.e"
+#include "f00347_gamephysrig.e"
 #define LZZ_INLINE inline
-void GameActor::updatePivot (int jointId)
+void GamePhysRig::updatePivot (int jointId)
                                       {
 		
 		
 		
-		ActorJointStruct* curJoint = &(actorJoints[jointId]);
-		ActorJointStruct* parJoint;
+		RigJointStruct* curJoint = &(rigJoints[jointId]);
+		RigJointStruct* parJoint;
 		
 		curJoint->isFixed = (baseEnt->entType == E_ENTTYPE_WEAPON);
 		
@@ -43535,7 +43557,7 @@ void GameActor::updatePivot (int jointId)
 			
 		}
 		else {
-			parJoint = &(actorJoints[curJoint->parentId]);
+			parJoint = &(rigJoints[curJoint->parentId]);
 			pivotA = btVector3(-parJoint->length*0.5f,0.0,0.0);
 			pivotB = btVector3( curJoint->length*0.5f,0.0,0.0);
 			
@@ -43576,7 +43598,7 @@ void GameActor::updatePivot (int jointId)
 			
 		}
 	}
-int GameActor::addJoint (int nodeName, int parentId, int jointType, float mass, GameOrgNode * curNode)
+int GamePhysRig::addJoint (int nodeName, int parentId, int jointType, float mass, GameOrgNode * curNode)
           {
 		
 		int i;
@@ -43634,12 +43656,12 @@ int GameActor::addJoint (int nodeName, int parentId, int jointType, float mass, 
 
 		btTransform localA, localB, localC;
 		
-		actorJoints.push_back(ActorJointStruct());
-		int curId = actorJoints.size()-1;
+		rigJoints.push_back(RigJointStruct());
+		int curId = rigJoints.size()-1;
 		
-		ActorJointStruct* curJoint = &(actorJoints.back());
-		ActorJointStruct* parJoint;
-		//ActorJointStruct* grdJoint;
+		RigJointStruct* curJoint = &(rigJoints.back());
+		RigJointStruct* parJoint;
+		//RigJointStruct* grdJoint;
 		
 		curJoint->boneId = nodeName;
 		curJoint->jointType = jointType;
@@ -43790,7 +43812,7 @@ int GameActor::addJoint (int nodeName, int parentId, int jointType, float mass, 
 		return curId;
 		
 	}
-void GameActor::initFromOrg (GameOrgNode * curNode, int curParent)
+void GamePhysRig::initFromOrg (GameOrgNode * curNode, int curParent)
           {
 		
 		
@@ -43835,7 +43857,7 @@ void GameActor::initFromOrg (GameOrgNode * curNode, int curParent)
 		}
 		
 	}
-void GameActor::reinit ()
+void GamePhysRig::reinit ()
                       {
 		removeAllBodies();
 		initFromOrg(
@@ -43843,7 +43865,7 @@ void GameActor::reinit ()
 			-1
 		);
 	}
-GameActor::GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset)
+GamePhysRig::GamePhysRig (Singleton * _singleton, int _geId, btDynamicsWorld * ownerWorld, btVector3 const & positionOffset)
           {
 		
 		int i;
@@ -43854,7 +43876,7 @@ GameActor::GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * owner
 		//uid = _uid;
 		
 		origOffset = positionOffset;// - btVector3(0.0f,0.0f,16.0f);
-		float actorScale = 1.0f;
+		
 
 		baseOrg = singleton->gem->gameOrgs[
 			singleton->gem->gameObjects[geId].orgId	
@@ -43868,37 +43890,37 @@ GameActor::GameActor (Singleton * _singleton, int _geId, btDynamicsWorld * owner
 		);
 
 	}
-void GameActor::removeAllBodies ()
+void GamePhysRig::removeAllBodies ()
                                {
 		int i;
 
 		// Remove all constraints
-		for ( i = 0; i < actorJoints.size(); ++i)
+		for ( i = 0; i < rigJoints.size(); ++i)
 		{
-			if (actorJoints[i].joint == NULL) {
+			if (rigJoints[i].joint == NULL) {
 				
 			}
 			else {
-				m_ownerWorld->removeConstraint(actorJoints[i].joint);
-				delete actorJoints[i].joint;
-				actorJoints[i].joint = NULL;
+				m_ownerWorld->removeConstraint(rigJoints[i].joint);
+				delete rigJoints[i].joint;
+				rigJoints[i].joint = NULL;
 			}
 		}
 
-		for ( i = 0; i < actorJoints.size(); ++i)
+		for ( i = 0; i < rigJoints.size(); ++i)
 		{
-			m_ownerWorld->removeRigidBody(actorJoints[i].body);
+			m_ownerWorld->removeRigidBody(rigJoints[i].body);
 			
-			delete actorJoints[i].body->getMotionState();
-			delete actorJoints[i].body;
-			actorJoints[i].body = NULL;
-			delete actorJoints[i].shape;
-			actorJoints[i].shape = NULL;
+			delete rigJoints[i].body->getMotionState();
+			delete rigJoints[i].body;
+			rigJoints[i].body = NULL;
+			delete rigJoints[i].shape;
+			rigJoints[i].shape = NULL;
 		}
 		
-		actorJoints.clear();
+		rigJoints.clear();
 	}
-GameActor::~ GameActor ()
+GamePhysRig::~ GamePhysRig ()
         {
 		removeAllBodies();
 	}
@@ -43923,12 +43945,12 @@ void GameEntManager::init (Singleton * _singleton)
 		
 		weaponToPlace = E_PG_WPSWORD;
 		
-		currentActorUID = -1;
+		activeActorUID = -1;
+		curActorUID = -1;
 		
 		activeNode = NULL;
 		selectedNode = NULL;
 		lastSelNode = NULL;
-		currentActor = NULL;
 		poseRootJS = NULL;
 		
 		curPoseType = -1;
@@ -43986,6 +44008,56 @@ void GameEntManager::init (Singleton * _singleton)
 		
 		initAllObjects();
 		loadPoseInfo(false);
+		
+	}
+BaseObj * GameEntManager::getCurActor ()
+                               {
+		if (curActorUID < 0) {
+			return NULL;
+		}
+		else {
+			return &(gameObjects[curActorUID]);
+		}
+	}
+BaseObj * GameEntManager::getActiveActor ()
+                                  {
+		if (activeActorUID < 0) {
+			return NULL;
+		}
+		else {
+			return &(gameObjects[activeActorUID]);
+		}
+	}
+void GameEntManager::applyLogicForTurn ()
+                                 {
+		singleton->gameLogic->applyTBBehavior();
+		nextTurn();
+	}
+void GameEntManager::endTurn ()
+                       {
+		
+		nextTurn();
+	}
+void GameEntManager::nextTurn ()
+                        {
+		turnListInd++;
+		if (turnListInd >= turnList.size()) {
+			turnListInd = 0;
+		}
+		
+		if (turnList.size() == 0) {
+			activeActorUID = -1;
+		}
+		else {
+			activeActorUID = turnList[turnListInd];
+		}
+		
+		if (curActorUID == activeActorUID) {
+			// human turn
+		}
+		else {
+			applyLogicForTurn();
+		}
 		
 	}
 void GameEntManager::refreshTurnList ()
@@ -44132,7 +44204,7 @@ void GameEntManager::setFirstPerson (bool _newVal)
 		
 		bool newVal = _newVal;
 		
-		if (currentActor == NULL) {
+		if (getCurActor() == NULL) {
 			newVal = false;	
 		}
 		
@@ -44150,11 +44222,11 @@ void GameEntManager::setFirstPerson (bool _newVal)
 	}
 int GameEntManager::getCurActorUID ()
                              {
-		if (currentActor == NULL) {
+		if (getCurActor() == NULL) {
 			return -1;
 		}
 		else {
-			return currentActor->uid;
+			return getCurActor()->uid;
 		}
 	}
 void GameEntManager::updateOrgMat (UIComponent * comp)
@@ -44324,7 +44396,7 @@ bool GameEntManager::handleGUI (UIComponent * comp, bool mouseUpEvent, bool mous
 				//closeContainer(i);
 			}
 			else if (comp->uid.compare("hudMenu.close") == 0) {		
-				singleton->menuList[E_FM_STATMENU]->visible = false;
+				singleton->menuList[E_FM_HUDMENU]->visible = false;
 				//i = comp->getParent()->getChild(1)->jvNodeNoTemplate->Child("objectId")->number_value;
 				//closeContainer(i);
 			}
@@ -44435,7 +44507,7 @@ void GameEntManager::updateDragInfo (int bestInd, bool lbDown, bool wasDoubleCli
 					
 				// }
 				// else {
-				// 	//setCurrentActor(NULL);
+				// 	//setCurActor(-1);
 				// }
 				
 				
@@ -44863,26 +44935,26 @@ void GameEntManager::performDrag (bool isReq, int _draggingFromInd, int _draggin
 		singleton->markerFound = false;
 		isDraggingObject = false;
 	}
-void GameEntManager::setCurrentActor (BaseObj * ge)
-                                          {
+void GameEntManager::setCurActor (int newUID)
+                                     {
 		
+		curActorUID = newUID;
 		
-		currentActor = ge;
-		if (currentActor == NULL) {
+		BaseObj* ca;
+		
+		if (curActorUID < 0) {
 			actObjInd = 0;
-			currentActorUID = -1;
 			setFirstPerson(false);
 		}
 		else {
-			currentActorUID = ge->uid;
-			actObjInd = ge->uid;
+			ca = &(gameObjects[newUID]);
+			actObjInd = newUID;
 			subjectDistance = singleton->BTV2FIV(
-				currentActor->getCenterPoint(E_BDG_CENTER)
+				ca->getCenterPoint(E_BDG_CENTER)
 			)->distance(singleton->cameraGetPosNoShake());
-			
-			curPoseType = currentActor->entType;
-			
+			curPoseType = ca->entType;
 		}
+		
 		
 	}
 void GameEntManager::toggleFirstPerson ()
@@ -44896,19 +44968,19 @@ void GameEntManager::toggleActorSel ()
 		
 		if (selObjInd >= E_OBJ_LENGTH) {
 			if (selObjInd == actObjInd) {
-				setCurrentActor(NULL);
+				setCurActor(-1);
 			}
 			else {
-				setCurrentActor(&(gameObjects[selObjInd]));
+				setCurActor(selObjInd);
 				
-				if (currentActor != NULL) {
+				if (getCurActor() != NULL) {
 					
 				}
 				
 				
 				singleton->playSoundEnt(
 					"swimming0",
-					currentActor,
+					getCurActor(),
 					0.0f,
 					0.0f,
 					true
@@ -44916,7 +44988,7 @@ void GameEntManager::toggleActorSel ()
 				
 				singleton->playSoundEnt(
 					"walkinggravel0",
-					currentActor,
+					getCurActor(),
 					0.0f,
 					0.0f,
 					true
@@ -44925,7 +44997,7 @@ void GameEntManager::toggleActorSel ()
 			}
 		}
 		else {
-			setCurrentActor(NULL);
+			setCurActor(-1);
 		}
 	}
 void GameEntManager::setSelInd (int ind)
@@ -45007,7 +45079,15 @@ bool GameEntManager::removeVisObject (BaseObjType _uid, bool isRecycled)
 		
 		return false;
 	}
-int GameEntManager::getClosestObj (int actorId, FIVector4 * basePoint, int objType, float maxDis)
+bool GameEntManager::areEnemies (int actorUID1, int actorUID2)
+                                                      {
+		return true;
+	}
+bool GameEntManager::areFriends (int actorUID1, int actorUID2)
+                                                      {
+		return false;
+	}
+int GameEntManager::getClosestActor (int actorId, int objType, float maxDis, uint flags)
           {
 		
 		int i;
@@ -45016,35 +45096,62 @@ int GameEntManager::getClosestObj (int actorId, FIVector4 * basePoint, int objTy
 		int testInd;
 		int bestInd = -1;
 		
+		if (actorId < 0) {
+			return -1;
+		}
+		
+		BaseObj* ca = &(gameObjects[actorId]);
+		
 		BaseObj* testObj;
+		
+		bool testForGrabbed = ( (flags&E_CF_NOTGRABBED) > 0 );
+		bool testForEnemies = ( (flags&E_CF_AREENEMIES) > 0 );
+		bool testForFriends = ( (flags&E_CF_AREFRIENDS) > 0 );
 		
 		for(i = 0; i < visObjects.size(); i++) {
 			
 			testInd = visObjects[i];
 			testObj = &(gameObjects[testInd]);
 			
-			// dont grab self, or another grabbed object
+			// if (
+			// 	(testInd == actorId) ||
+			// 	(testObj->isGrabbedById >= 0) ||
+			// 	(testObj->getVel(0)->length() > 2.0f) ||
+			// 	(testObj->isHidden) ||
+			// 	(testObj->entType != objType)	
+			// )
+			
 			if (
-				(testInd == actorId) ||
-				(testObj->isGrabbedById >= 0) ||
-				(testObj->getVel(0)->length() > 2.0f) ||
-				(testObj->entType == E_ENTTYPE_BULLET) ||
-				(testObj->entType == E_ENTTYPE_TRACE) ||
-				(testObj->isHidden) ||
-				(testObj->entType != objType)	
+				(!(testObj->isHidden)) &&
+				(testObj->entType == objType)	&&
+				(testInd != actorId)
 			) {
 				
-			}
-			else {
-				
-				
-				
-				testDis = testObj->getCenterPointFIV(0)->distance(basePoint);
-				
-				if (testDis < bestDis) {
-					bestDis = testDis;
-					bestInd = testInd;
+				if (
+					
+					(
+						( testForGrabbed && (testObj->isGrabbedById < 0) ) ||
+						(!testForGrabbed)
+					) &&
+					(
+						( testForEnemies && (areEnemies(actorId,testInd)) ) ||
+						(!testForEnemies)
+					) &&
+					(
+						( testForFriends && (areFriends(actorId,testInd)) ) ||
+						(!testForFriends)
+					)
+					
+				) {
+					testDis = testObj->getCenterPoint(0).distance(ca->getCenterPoint(0));
+					
+					if (testDis < bestDis) {
+						bestDis = testDis;
+						bestInd = testInd;
+					}
 				}
+				
+				
 			}
 		}
 		
@@ -45053,13 +45160,13 @@ int GameEntManager::getClosestObj (int actorId, FIVector4 * basePoint, int objTy
 	}
 GameOrg * GameEntManager::getCurOrg ()
                              {
-		if (currentActor == NULL) {
+		if (getCurActor() == NULL) {
 			return NULL;
 		}
-		if (currentActor->orgId < 0) {
+		if (getCurActor()->orgId < 0) {
 			return NULL;
 		}
-		return gameOrgs[currentActor->orgId];
+		return gameOrgs[getCurActor()->orgId];
 	}
 BaseObj * GameEntManager::getActorRef (int uid)
                                       {
@@ -45072,7 +45179,7 @@ BaseObj * GameEntManager::getActorRef (int uid)
 	}
 bool GameEntManager::combatMode ()
                           {
-		return (currentActor!=NULL)&&combatOn&&(!editPose);
+		return (getCurActor() != NULL)&&combatOn&&(!editPose);
 	}
 bool GameEntManager::isSwingingWeapon (int actorId, int handNum)
                                                         {
@@ -45403,11 +45510,11 @@ void GameEntManager::makeGrab (int actorId, int _handNum)
 			
 			// find obj to pickup
 			
-			res = getClosestObj(
+			res = getClosestActor(
 				actorId,
-				singleton->BTV2FIV(ca->getCenterPoint(E_BDG_CENTER)),
 				E_ENTTYPE_WEAPON,
-				5.0f
+				5.0f,
+				E_CF_NOTGRABBED
 			);
 			
 			if (res < 0) {
@@ -46075,8 +46182,6 @@ void GameEntManager::applyNodeChanges (GameOrgNode * _curNode, float dx, float d
 			return;
 		}
 		
-		//GameActor* curActor = (gameActors[currentActor->actorId]);
-		//BodyStruct* curBody;
 		
 		GameOrg* testOrg = getCurOrg();
 		
@@ -46258,7 +46363,7 @@ bool GameEntManager::updateNearestOrgNode (bool setActive, FIVector4 * mousePosW
 			highlightedLimb = singleton->gamePhysics->lastBodyPick->limbUID;
 			
 			if (highlightedLimb > -1) {
-				boneId = currentActor->bodies[highlightedLimb].boneId;
+				boneId = getCurActor()->bodies[highlightedLimb].boneId;
 				
 				
 				if (boneId > -1) {
@@ -46324,8 +46429,8 @@ void GameEntManager::loadOrgFromMenu (string currentFieldString)
 		
 		testOrg->loadOrgFromFile(currentFieldString, false);
 		//orientRotation();
-		if (currentActor != NULL) {
-			//currentActor->curRot = 1;
+		if (getCurActor() != NULL) {
+			//getCurActor()->curRot = 1;
 		}
 		transformOrg(testOrg, NULL);
 		makeDirty();
@@ -46333,8 +46438,8 @@ void GameEntManager::loadOrgFromMenu (string currentFieldString)
 void GameEntManager::makeDirty ()
                          {
 		
-		// if (currentActor != NULL) {
-		// 	currentActor->wakeAll();
+		// if (getCurActor() != NULL) {
+		// 	getCurActor()->wakeAll();
 		// }
 		
 		//testOrg->gph->childrenDirty = true;
@@ -53603,6 +53708,41 @@ void GameLogic::init (Singleton * _singleton)
 		threadPoolList->init(singleton, 8, false||SINGLE_THREADED);
 		
 	}
+void GameLogic::applyTBBehavior ()
+                               {
+		BaseObj* ca = singleton->gem->getActiveActor();
+		
+		if (ca == NULL) {
+			return;
+		}
+		
+		BaseObj* nearestEnemy;
+		BaseObj* nearestWeapon;
+		
+		int nearestWeaponInd = singleton->gem->getClosestActor(
+				ca->uid,
+				E_ENTTYPE_WEAPON,
+				200.0f,
+				E_CF_NOTGRABBED
+		);
+		if (nearestWeaponInd > 0) {
+			nearestWeapon = &(singleton->gem->gameObjects[nearestWeaponInd]);
+		}
+		
+		
+		int nearestEnemyInd = singleton->gem->getClosestActor(
+				ca->uid,
+				E_ENTTYPE_NPC,
+				200.0f,
+				E_CF_AREENEMIES
+		);
+		if (nearestEnemyInd > 0) {
+			nearestEnemy = &(singleton->gem->gameObjects[nearestEnemyInd]);
+		}
+		
+		
+		
+	}
 void GameLogic::applyBehavior ()
                              {
 		int i;
@@ -56736,7 +56876,7 @@ void GamePhysics::remBoxFromObj (BaseObjType _uid)
 			(ge->actorId > -1)	
 		);
 		
-		GameActor* curActor;
+		GamePhysRig* curPhysRig;
 		
 		int i;
 		
@@ -56747,8 +56887,8 @@ void GamePhysics::remBoxFromObj (BaseObjType _uid)
 		
 		
 		if (hasRig) {
-			curActor = singleton->gem->gameActors[ge->actorId];
-			curActor->removeAllBodies();
+			curPhysRig = singleton->gem->gamePhysRigs[ge->actorId];
+			curPhysRig->removeAllBodies();
 			
 			while (ge->bodies.size() > E_BDG_LENGTH ) {
 				ge->bodies.pop_back();
@@ -56765,9 +56905,9 @@ void GamePhysics::remBoxFromObj (BaseObjType _uid)
 		
 		
 		// if (hasRig) {
-		// 	//curActor = singleton->gem->gameActors[ge->actorId];
-		// 	delete singleton->gem->gameActors[ge->actorId];
-		// 	singleton->gem->gameActors[ge->actorId] = NULL;
+		// 	//curPhysRig = singleton->gem->gamePhysRigs[ge->actorId];
+		// 	delete singleton->gem->gamePhysRigs[ge->actorId];
+		// 	singleton->gem->gamePhysRigs[ge->actorId] = NULL;
 			
 		// 	delete singleton->gem->gameOrgs[ge->orgId];
 		// 	singleton->gem->gameOrgs[ge->orgId] = NULL;
@@ -56780,6 +56920,8 @@ void GamePhysics::remBoxFromObj (BaseObjType _uid)
 	}
 void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
                                                                 {
+		
+		
 		
 		//cout << "\n\nADD BOX\n\n";
 		
@@ -56801,7 +56943,7 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 		trans.setIdentity();
 		trans.setOrigin(ge->startPoint);
 		
-		GameActor* curActor;
+		GamePhysRig* curPhysRig;
 		
 		float objRad = 0.5f;
 		bool isOrg = false;
@@ -56890,9 +57032,9 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 					
 					if (refreshLimbs) {
 						
-						delete singleton->gem->gameActors[ge->actorId];
+						delete singleton->gem->gamePhysRigs[ge->actorId];
 						
-						singleton->gem->gameActors[ge->actorId] = new GameActor(
+						singleton->gem->gamePhysRigs[ge->actorId] = new GamePhysRig(
 							singleton,
 							ge->uid,
 							example->getWorld(),
@@ -56907,24 +57049,24 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 						
 						singleton->gem->loadDefaultPose(ge->uid);
 						
-						singleton->gem->gameActors.push_back(new GameActor(
+						singleton->gem->gamePhysRigs.push_back(new GamePhysRig(
 							singleton,
 							ge->uid,
 							example->getWorld(),
 							ge->startPoint
 						));
-						ge->actorId = singleton->gem->gameActors.size()-1;
+						ge->actorId = singleton->gem->gamePhysRigs.size()-1;
 					}
 					
 					
-					curActor = (singleton->gem->gameActors[ge->actorId]);
+					curPhysRig = (singleton->gem->gamePhysRigs[ge->actorId]);
 					
 					if (refreshLimbs) {
-						curActor->reinit();	
+						curPhysRig->reinit();	
 					}
 					
 					
-					for (i = 0; i < curActor->actorJoints.size(); i++) {
+					for (i = 0; i < curPhysRig->rigJoints.size(); i++) {
 						
 						if (!refreshLimbs) {
 							ge->bodies.push_back(BodyStruct());
@@ -56932,15 +57074,15 @@ void GamePhysics::addBoxFromObj (BaseObjType _uid, bool refreshLimbs)
 						
 						bodInd = i + bodyOffset;
 						
-						ge->bodies[bodInd].body = curActor->actorJoints[i].body;
-						ge->bodies[bodInd].boneId = curActor->actorJoints[i].boneId;
-						ge->bodies[bodInd].jointType = curActor->actorJoints[i].jointType;
-						ge->bodies[bodInd].rad = curActor->actorJoints[i].rad;
-						ge->bodies[bodInd].length = curActor->actorJoints[i].length;
+						ge->bodies[bodInd].body = curPhysRig->rigJoints[i].body;
+						ge->bodies[bodInd].boneId = curPhysRig->rigJoints[i].boneId;
+						ge->bodies[bodInd].jointType = curPhysRig->rigJoints[i].jointType;
+						ge->bodies[bodInd].rad = curPhysRig->rigJoints[i].rad;
+						ge->bodies[bodInd].length = curPhysRig->rigJoints[i].length;
 						ge->bodies[bodInd].actorJointId = i;
 						
 						// if (i == 0) {
-						// 	//ge->body = curActor->actorJoints[i].body;
+						// 	//ge->body = curPhysRig->rigJoints[i].body;
 						// 	//ge->body->setLinearFactor(orig);
 						// 	ge->bodies.back().body->setAngularFactor(orig);
 						// }
@@ -57237,7 +57379,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 		btVector3 dirForce;
 		GameOrg* curOrg = NULL;
 		GameOrgNode* curOrgNode = NULL;
-		GameActor* curActor = NULL;
+		GamePhysRig* curPhysRig = NULL;
 		btVector3 basePos;
 		btVector3 targPos;
 		
@@ -57803,7 +57945,7 @@ void GamePhysics::collideWithWorld (double curStepTime)
 				
 				
 				if (hasRig) {
-					curActor = singleton->gem->gameActors[ge->actorId];
+					curPhysRig = singleton->gem->gamePhysRigs[ge->actorId];
 					curOrg = singleton->gem->gameOrgs[ge->orgId];
 					animatedRig = (ge->entType == E_ENTTYPE_NPC);
 					ge->clearAABB(&(ge->aabbMinSkel),&(ge->aabbMaxSkel));
@@ -58202,11 +58344,11 @@ void GamePhysics::remFarAway ()
 		
 		btVector3 camPos;
 		
-		if (singleton->gem->currentActor == NULL) {
+		if (singleton->gem->getCurActor() == NULL) {
 			camPos = singleton->cameraGetPosNoShake()->getBTV();
 		}
 		else {
-			camPos = singleton->gem->currentActor->getCenterPoint(E_BDG_CENTER);
+			camPos = singleton->gem->getCurActor()->getCenterPoint(E_BDG_CENTER);
 		}
 		
 		
@@ -58910,13 +59052,13 @@ void GameWorld::update ()
 		camBlockPos.copyFrom( singleton->cameraGetPosNoShake() );
 		camBlockPos.intDivXYZ(singleton->cellsPerBlock);
 
-		if (singleton->gem->currentActor == NULL) {
+		if (singleton->gem->getCurActor() == NULL) {
 			camHolderPos.copyFrom( singleton->cameraGetPosNoShake() );
 			camHolderPos.intDivXYZ(singleton->cellsPerHolder);
 			camHolderPos.addXYZRef(&(singleton->lookAtVec),4.0);
 		}
 		else {
-			camHolderPos.setBTV(singleton->gem->currentActor->getCenterPoint(0));
+			camHolderPos.setBTV(singleton->gem->getCurActor()->getCenterPoint(0));
 			camHolderPos.intDivXYZ(singleton->cellsPerHolder);
 		}
 
@@ -59723,14 +59865,14 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		
 		
-		if ((singleton->gem->currentActor == NULL)||singleton->gem->firstPerson) {
+		if ((singleton->gem->getCurActor() == NULL)||singleton->gem->firstPerson) {
 			singleton->setShaderFloat("thirdPerson", 0.0f);
 			//singleton->setShaderFloat("CAM_BOX_SIZE", 0.5f);
 		}
 		else {
 			singleton->setShaderFloat("thirdPerson", 1.0f);
 			//singleton->setShaderFloat("CAM_BOX_SIZE", 0.5f);
-			singleton->setShaderfVec3("entPos", singleton->gem->currentActor->getCenterPointFIV(0));
+			singleton->setShaderfVec3("entPos", singleton->gem->getCurActor()->getCenterPointFIV(0));
 		}
 		
 		
@@ -59810,12 +59952,12 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		singleton->setShaderArrayfVec4("paramArrGeom", singleton->paramArrGeom, E_PRIMTEMP_LENGTH);
 		
 		
-		if (singleton->gem->currentActor != NULL) {
+		if (singleton->gem->getCurActor() != NULL) {
 			
-			singleton->splashArr[0] = singleton->gem->currentActor->getCenterPointFIV(0)->getFX();
-			singleton->splashArr[1] = singleton->gem->currentActor->getCenterPointFIV(0)->getFX();
-			singleton->splashArr[2] = singleton->gem->currentActor->getCenterPointFIV(0)->getFX();
-			singleton->splashArr[3] = singleton->gem->currentActor->getVel(0)->length();
+			singleton->splashArr[0] = singleton->gem->getCurActor()->getCenterPointFIV(0)->getFX();
+			singleton->splashArr[1] = singleton->gem->getCurActor()->getCenterPointFIV(0)->getFX();
+			singleton->splashArr[2] = singleton->gem->getCurActor()->getCenterPointFIV(0)->getFX();
+			singleton->splashArr[3] = singleton->gem->getCurActor()->getVel(0)->length();
 			
 			singleton->setShaderInt("numSplashes", 1);
 			singleton->setShaderArrayfVec4("splashArr", singleton->splashArr, MAX_SPLASHES);
@@ -59972,14 +60114,14 @@ void GameWorld::drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, fl
 				lineSeg[1].addXYZRef(&(lineSeg[0]));
 			//}
 			
-			if (singleton->gem->currentActor != NULL) {
+			if (singleton->gem->getCurActor() != NULL) {
 				
 				
-				if (singleton->gem->currentActor->isGrabbedById > -1) {
-					grabber = &(singleton->gem->gameObjects[singleton->gem->currentActor->isGrabbedById]);
+				if (singleton->gem->getCurActor()->isGrabbedById > -1) {
+					grabber = &(singleton->gem->gameObjects[singleton->gem->getCurActor()->isGrabbedById]);
 				}
 				else {
-					grabber = singleton->gem->currentActor;
+					grabber = singleton->gem->getCurActor();
 				}
 				
 				
@@ -62719,7 +62861,7 @@ UPDATE_LIGHTS_END:
 void GameWorld::renderDebug ()
                            {
 		
-		BaseObj* ge = singleton->gem->currentActor;
+		BaseObj* ge = singleton->gem->getCurActor();
 		
 		int i;
 		
@@ -62783,14 +62925,14 @@ void GameWorld::renderDebug ()
 		
 		
 		// skeleton outline		
-		if (singleton->gem->currentActor != NULL) {
-			if (singleton->gem->currentActor->orgId > -1) {
+		if (singleton->gem->getCurActor() != NULL) {
+			if (singleton->gem->getCurActor()->orgId > -1) {
 				
-				if (singleton->gem->currentActor->isGrabbedById > -1) {
-					grabber = &(singleton->gem->gameObjects[singleton->gem->currentActor->isGrabbedById]);
+				if (singleton->gem->getCurActor()->isGrabbedById > -1) {
+					grabber = &(singleton->gem->gameObjects[singleton->gem->getCurActor()->isGrabbedById]);
 				}
 				else {
-					grabber = singleton->gem->currentActor;
+					grabber = singleton->gem->getCurActor();
 				}
 				
 				
@@ -62799,7 +62941,7 @@ void GameWorld::renderDebug ()
 				singleton->setShaderMatrix4x4("objmat",myMat,1);
 				
 				
-				drawOrg(singleton->gem->gameOrgs[singleton->gem->currentActor->orgId], false);
+				drawOrg(singleton->gem->gameOrgs[singleton->gem->getCurActor()->orgId], false);
 			}
 		}
 		
@@ -62864,9 +63006,12 @@ void GameWorld::renderDebug ()
 		singleton->setShaderVec4(
 			"rotationZ",0.0f,0.0f,0.0f,0.0f
 		);
+		singleton->setShaderMatrix4x4("objmat",identMat,1);
 		
 		
-		
+		if (singleton->pathfindingOn) {
+			singleton->gameLogic->update();
+		}
 		
 		
 		
@@ -63282,26 +63427,26 @@ void GameWorld::postProcess ()
 			singleton->sampleFBO("debugTargFBO", 9);
 			
 			
-			if ((singleton->gem->currentActor == NULL)||singleton->gem->firstPerson) {
+			if ((singleton->gem->getCurActor() == NULL)||singleton->gem->firstPerson) {
 				singleton->setShaderFloat("thirdPerson", 0.0f);
 				singleton->setShaderVec3("entPos", 0.0f, 0.0f, 0.0f);
 			}
 			else {
 				singleton->setShaderFloat("thirdPerson", 1.0f);
-				singleton->setShaderfVec3("entPos", singleton->gem->currentActor->getCenterPointFIV(0));
+				singleton->setShaderfVec3("entPos", singleton->gem->getCurActor()->getCenterPointFIV(0));
 				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
 			
 			
 			singleton->setShaderInt("gridOn", singleton->gridOn);
 			
-			if (singleton->gem->currentActor == NULL) {
+			if (singleton->gem->getCurActor() == NULL) {
 				singleton->setShaderInt("isFalling",false);
 				singleton->setShaderInt("isJumping",false);
 			}
 			else {
-				singleton->setShaderInt("isFalling",singleton->gem->currentActor->allFalling());
-				singleton->setShaderInt("isJumping",singleton->gem->currentActor->getActionState(E_ACT_ISJUMPING,RLBN_NEIT));
+				singleton->setShaderInt("isFalling",singleton->gem->getCurActor()->allFalling());
+				singleton->setShaderInt("isJumping",singleton->gem->getCurActor()->getActionState(E_ACT_ISJUMPING,RLBN_NEIT));
 			}
 			
 			

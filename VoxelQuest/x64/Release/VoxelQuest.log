@@ -1,4 +1,4 @@
-﻿Build started 2/15/2016 10:09:56 PM.
+﻿Build started 2/17/2016 2:53:01 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -34,7 +34,7 @@
          .\src\cpp\f00339_gameorg.hpp
          .\src\cpp\f00340_gameplantnode.hpp
          .\src\cpp\f00341_gameplant.hpp
-         .\src\cpp\f00347_gameactor.hpp
+         .\src\cpp\f00347_gamephysrig.hpp
          .\src\cpp\f00349_gameentmanager.hpp
          .\src\cpp\f00351_gamepageholder.hpp
          .\src\cpp\f00352_gameblock.hpp
@@ -67,7 +67,7 @@
          .\f00339_gameorg.e
          .\f00340_gameplantnode.e
          .\f00341_gameplant.e
-         .\f00347_gameactor.e
+         .\f00347_gamephysrig.e
          .\f00349_gameentmanager.e
          .\f00351_gamepageholder.e
          .\f00352_gameblock.e
@@ -99,7 +99,7 @@
          .\temp\f00339_gameorg.e
          .\temp\f00340_gameplantnode.e
          .\temp\f00341_gameplant.e
-         .\temp\f00347_gameactor.e
+         .\temp\f00347_gamephysrig.e
          .\temp\f00349_gameentmanager.e
          .\temp\f00351_gamepageholder.e
          .\temp\f00352_gameblock.e
@@ -141,7 +141,7 @@
          .\temp\f00339_gameorg.h
          .\temp\f00340_gameplantnode.h
          .\temp\f00341_gameplant.h
-         .\temp\f00347_gameactor.h
+         .\temp\f00347_gamephysrig.h
          .\temp\f00349_gameentmanager.h
          .\temp\f00351_gamepageholder.h
          .\temp\f00352_gameblock.h
@@ -809,7 +809,7 @@
          
          Valid JSON
                    
-         NULL STATUSS
+         NULL STATUS
          NULL STATS
          Loading GUI Values
          Loading:  ..\data\saves\save0\compMap.txt         
@@ -839,8 +839,61 @@
          
          Valid JSON
                    
+         No code for key: 119
+         Loading:  ..\data\orgdata\E_PG_WPSWORD_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_WPAXE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_WPMACE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_WPHAMMER_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         turnBased 1
+         turnBased 0
+         No code for key: 119
+         No code for key: 119
+         turnBased 1
+         Grid On: 1
+         turnBased 0
+         turnBased 1
+         turnBased 0
+         turnBased 1
+         pathfindingOn: 1
+         turnBased 0
+         Found linking holders
+         Found linking groups
+         Found linking holders
+         Found linking groups
+         pathfindingOn: 0
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:01:01.01
+Time Elapsed 00:08:59.26

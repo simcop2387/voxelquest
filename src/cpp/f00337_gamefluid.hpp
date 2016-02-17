@@ -1075,13 +1075,13 @@ public:
 	void shiftRegion() {
 		
 		
-		bool notThirdPerson = (singleton->gem->currentActor == NULL);
+		bool notThirdPerson = (singleton->gem->getCurActor() == NULL);
 		
 		if (notThirdPerson) {
 			newCamPos.copyFrom(singleton->cameraGetPosNoShake());
 		}
 		else {
-			newCamPos.setBTV(singleton->gem->currentActor->getCenterPoint(0));
+			newCamPos.setBTV(singleton->gem->getCurActor()->getCenterPoint(0));
 		}
 		
 		if (notThirdPerson&&(volSizePrim < 512)) { // && (mainId==E_FID_SML)

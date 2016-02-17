@@ -206,17 +206,17 @@ public:
 		
 		BaseObj* ca;
 		
-		if (singleton->gem->currentActorUID < 0) {
+		if (singleton->gem->curActorUID < 0) {
 			return -1;
 		}
 		else {
-			ca = &(singleton->gem->gameObjects[singleton->gem->currentActorUID]);
+			ca = &(singleton->gem->gameObjects[singleton->gem->curActorUID]);
 			if (ca->entType != E_ENTTYPE_NPC) {
 				return -1;
 			}
 		}
 		
-		return singleton->gem->currentActorUID;
+		return singleton->gem->curActorUID;
 	}
 	
 	void loadOrgFromFile(string fileName, bool notThePose) {

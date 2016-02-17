@@ -17,7 +17,7 @@ class GameOrg;
 class GamePlantNode;
 class GamePlant;
 class GameEnt;
-class GameActor;
+class GamePhysRig;
 class GameEntManager;
 class GameBlock;
 class GamePageHolder;
