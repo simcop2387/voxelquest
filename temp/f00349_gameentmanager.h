@@ -1159,6 +1159,29 @@ bool GameEntManager::areFriends (int actorUID1, int actorUID2)
                                                       {
 		return false;
 	}
+btVector3 GameEntManager::getUnitDistance (int actorUID1, int actorUID2)
+                                                                {
+		
+		if (
+			(actorUID1 < 0) ||
+			(actorUID2 < 0)	
+		) {
+			return btVector3(-1.0f,-1.0f,-1.0f);
+		}
+		
+		BaseObj* actor1 = &(gameObjects[actorUID1]);
+		BaseObj* actor2 = &(gameObjects[actorUID2]);
+		
+		btVector3 p1 = actor1->getUnitBounds(false);
+		btVector3 p2 = actor2->getUnitBounds(false);
+				
+		return btVector3(
+			abs(p1.getX() - p2.getX()),
+			abs(p1.getY() - p2.getY()),
+			abs(p1.getZ() - p2.getZ())
+		);
+		
+	}
 int GameEntManager::getClosestActor (int actorId, int objType, float maxDis, uint flags)
           {
 		

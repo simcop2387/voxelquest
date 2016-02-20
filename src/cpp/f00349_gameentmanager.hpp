@@ -1251,13 +1251,13 @@ public:
 		return false;
 	}
 	
-	int getUnitDistance(int actorUID1, int actorUID2, bool xd, bool yd, bool zd) {
+	btVector3 getUnitDistance(int actorUID1, int actorUID2) {
 		
 		if (
 			(actorUID1 < 0) ||
 			(actorUID2 < 0)	
 		) {
-			return -1;
+			return btVector3(-1.0f,-1.0f,-1.0f);
 		}
 		
 		BaseObj* actor1 = &(gameObjects[actorUID1]);
@@ -1265,20 +1265,12 @@ public:
 		
 		btVector3 p1 = actor1->getUnitBounds(false);
 		btVector3 p2 = actor2->getUnitBounds(false);
-		
-		int dis = 0;
-		
-		if (xd) {
-			dis += abs(p1.getX() - p2.getX());
-		}
-		if (yd) {
-			dis += abs(p1.getY() - p2.getY());
-		}
-		if (zd) {
-			dis += abs(p1.getZ() - p2.getZ());
-		}
-		
-		return dis;
+				
+		return btVector3(
+			abs(p1.getX() - p2.getX()),
+			abs(p1.getY() - p2.getY()),
+			abs(p1.getZ() - p2.getZ())
+		);
 		
 	}
 	

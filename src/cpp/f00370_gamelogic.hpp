@@ -45,7 +45,6 @@ public:
 	}
 	
 	
-	
 	void applyTBBehavior() {
 		BaseObj* ca = singleton->gem->getActiveActor();
 		
@@ -56,29 +55,71 @@ public:
 		BaseObj* nearestEnemy;
 		BaseObj* nearestWeapon;
 		
-		int nearestWeaponInd = singleton->gem->getClosestActor(
-				ca->uid,
-				E_ENTTYPE_WEAPON,
-				200.0f,
-				E_CF_NOTGRABBED
-		);
-		if (nearestWeaponInd > 0) {
-			nearestWeapon = &(singleton->gem->gameObjects[nearestWeaponInd]);
-		}
+		btVector3 xyzDisEnemy;
+		btVector3 xyzDisWeapon;
+		
+		int nearestEnemyInd;
+		int nearestWeaponInd;
 		
 		
-		int nearestEnemyInd = singleton->gem->getClosestActor(
+		bool findWeapon = false;
+		
+		nearestEnemyInd = singleton->gem->getClosestActor(
 				ca->uid,
 				E_ENTTYPE_NPC,
 				200.0f,
 				E_CF_AREENEMIES
 		);
 		if (nearestEnemyInd > 0) {
+			// hostiles nearby
 			nearestEnemy = &(singleton->gem->gameObjects[nearestEnemyInd]);
+			xyzDisEnemy = singleton->gem->getUnitDistance(ca->uid, nearestEnemy->uid);
+			
+			
+			nearestWeaponInd = singleton->gem->getClosestActor(
+					ca->uid,
+					E_ENTTYPE_WEAPON,
+					200.0f,
+					E_CF_NOTGRABBED
+			);
+			if (nearestWeaponInd > 0) {
+				nearestWeapon = &(singleton->gem->gameObjects[nearestWeaponInd]);
+				xyzDisWeapon = singleton->gem->getUnitDistance(ca->uid, nearestWeapon->uid);
+			}
+			
+			
+			if (ca->holdingWeapon(-1)) {
+				// already holding weapon
+			}
+			else {
+				// find nearest weapon
+				
+				if (
+					(xyzDisWeapon.getX() + xyzDisWeapon.getY()) <
+					(xyzDisEnemy.getX() + xyzDisEnemy.getY())
+				) {
+					findWeapon = true;
+				}
+				
+			}
+			
+			if (findWeapon) {
+				
+			}
+			else {
+				
+			}
+			
+			
+		}
+		else {
+			// no hostiles nearby
 		}
 		
-		int xyDisEnemy = getUnitDistance(ca->uid, nearestEnemy->uid,true,true,false);
-		int xyDisWeapon = getUnitDistance(ca->uid, nearestWeapon->uid,true,true,false);
+		
+		
+		
+		
 		
 		
 		
@@ -428,20 +469,20 @@ public:
 		);
 	}
 	
-	void addHolderToStack(GamePageHolder* curHolder, int targId) {
+	void addHolderToStack(GamePageHolder* curHolder) {
 		pathSearchStack.push_back(PathResult());
 		pathSearchStack.back().blockId = curHolder->blockId;
 		pathSearchStack.back().holderId = curHolder->holderId;
-		curHolder->visitId = targId;
+		curHolder->visitId = idCounter;
 	}
 	
-	void remHolderFromStack(int opCode, int targId) {
+	void remHolderFromStack(int opCode) {
 		
 		GamePageHolder* curHolder = getHolderByPR(&(pathSearchStack.back()));
 		
 		switch(opCode) {
 			case E_PFO_CLEAR_GROUPS:
-				curHolder->clearGroupFlags(targId);
+				curHolder->clearGroupFlags(idCounter);
 				if (holdersEqual(globEndHolder,curHolder)) {
 					globFoundTarg = true;
 				}
@@ -456,7 +497,6 @@ public:
 		GamePageHolder* endHolder,
 		int begInd,
 		int endInd,
-		int targId,
 		int opCode
 	) {
 		int i;
@@ -466,7 +506,7 @@ public:
 		GamePageHolder* curHolder;
 		GamePageHolder* testHolder;
 		
-		addHolderToStack(begHolder,targId); //true
+		addHolderToStack(begHolder); //true
 		
 		bool notFound;
 		
@@ -486,19 +526,19 @@ public:
 				
 				if (testHolder != NULL) {
 					if (testHolder->pathsReady) {
-						if (testHolder->visitId == targId) {
+						if (testHolder->visitId == idCounter) {
 							
 						}
 						else {
 							notFound = false;
-							addHolderToStack(testHolder,targId);
+							addHolderToStack(testHolder);
 						}
 					}
 				}
 			}
 			
 			if (notFound) {
-				remHolderFromStack(opCode, targId);
+				remHolderFromStack(opCode);
 			}
 			
 		}
@@ -518,9 +558,10 @@ public:
 		int groupId,
 		GamePageHolder* lastHolder,
 		int lastGroupId,
-		int lastIndex,
-		int targId
+		int lastIndex
 	) {
+		
+		
 		
 		bool foundIt = false;
 		
@@ -532,7 +573,10 @@ public:
 		lastRes->groupId = groupId;
 		
 		
+		//curHolderFrom->getInfo(curInd)->cameFromInd
+		
 		if (testConNode == NULL) {
+			
 			lastRes->conNode.blockIdFrom = -1;
 			lastRes->conNode.holderIdFrom = -1;
 			lastRes->conNode.blockIdTo = -1;
@@ -561,7 +605,7 @@ public:
 		}
 		
 		
-		curHolder->groupInfoStack[groupId].visitId = targId;
+		curHolder->groupInfoStack[groupId].visitId = idCounter;
 		
 		
 		//////////
@@ -584,7 +628,7 @@ public:
 		
 		switch(opCode) {
 			case E_PFO_CLEAR_GROUPS:
-				// curHolder->clearGroupFlags(targId);
+				// curHolder->clearGroupFlags(idCounter);
 				// if (groupsEqual(globEndHolder,curHolder)) {
 				// 	globFoundTarg = true;
 				// }
@@ -607,7 +651,7 @@ public:
 		
 	}
 	
-	void remGroupFromStack(int opCode, int targId) {
+	void remGroupFromStack(int opCode) {
 		
 		
 		
@@ -619,7 +663,6 @@ public:
 		GamePageHolder* endHolder,
 		int begInd,
 		int endInd,
-		int targId,
 		int opCode
 	) {
 		int i;
@@ -656,8 +699,7 @@ public:
 			begGroupId,
 			NULL,
 			-1,
-			lastIndex,
-			targId
+			lastIndex
 		);
 		if (foundIt) {
 			goto FOUND_TARG_GROUP;
@@ -692,7 +734,7 @@ public:
 					
 					if (testHolder != NULL) {
 						if (testHolder->pathsReady) {
-							if (testHolder->groupInfoStack[groupIdTo].visitId == targId) {
+							if (testHolder->groupInfoStack[groupIdTo].visitId == idCounter) {
 								// already visited current group
 							}
 							else {
@@ -703,8 +745,7 @@ public:
 									groupIdTo,
 									curHolder,
 									curGroupId,
-									lastIndex,
-									targId
+									lastIndex
 								);
 								if (foundIt) {
 									goto FOUND_TARG_GROUP;
@@ -716,7 +757,7 @@ public:
 			}
 			
 			if (notFound) {
-			//	remGroupFromStack(opCode, targId);
+			//	remGroupFromStack(opCode);
 			}
 			
 		}
@@ -795,7 +836,15 @@ public:
 		// clear
 		globEndHolder = closestHolder2;
 		globFoundTarg = false;
-		fillAllPaths(closestHolder, closestHolder2, bestInd, bestInd2, idCounter, E_PFO_CLEAR_GROUPS); idCounter++;
+		fillAllPaths(
+			closestHolder,
+			closestHolder2,
+			bestInd,
+			bestInd2,
+			E_PFO_CLEAR_GROUPS
+		);
+		idCounter++;
+		
 		if (globFoundTarg) {
 			cout << "Found linking holders\n";
 		}
@@ -804,8 +853,19 @@ public:
 			return false;
 		}
 		
+		cout << "beginFill\n\n";
+		
 		globFoundTarg = false;
-		fillAllGroups(closestHolder, closestHolder2, bestInd, bestInd2, idCounter, E_PFO_SEARCH_GROUPS); idCounter++;
+		fillAllGroups(
+			closestHolder,
+			closestHolder2,
+			bestInd,
+			bestInd2,
+			E_PFO_SEARCH_GROUPS
+		);
+		idCounter++;
+		
+		cout << "endFill\n\n";
 		
 		if (globFoundTarg) {
 			cout << "Found linking groups\n";
@@ -900,106 +960,42 @@ public:
 			if (didFindPath) {
 				
 				
+				
+				
 				for (i = 0; i < pathFinalStack.size(); i++) {
 					curPR = &(pathFinalStack[i]);
-					
-					// if (curPR->conNode.blockIdTo < 0) {
-						
-					// }
-					// else {
-						
-					// 	tempHolder = getHolderById(curPR->testConNode,curPR->holderId)
-						
-					// 	drawPathToPoint(tempHolder, curPR->conNode.cellIndFrom);
-					// 	drawPathToPoint(tempHolder2, curPR->conNode.cellIndTo);
-					// }
 					
 					tempHolder = getHolderById(curPR->blockId,curPR->holderId);
 					if ((tempHolder != NULL)) {
 						tempInd = tempHolder->groupInfoStack[curPR->groupId].centerInd;
 						if (tempInd > -1) {
-							drawPointAtIndex(tempHolder, tempInd, 255, 128, 0, singleton->smoothTime);
-							
-							
-							// if (curPR->lastGroupId == -1) {
-								
-							// }
-							// else {
-							// 	tempHolder2 = getHolderById(curPR->lastBlockId,curPR->lastHolderId);
-								
-							// 	if (tempHolder2 != NULL) {
-							// 		tempInd2 = tempHolder2->groupInfoStack[curPR->lastGroupId].centerInd;
-									
-							// 		if (tempInd2 > -1) {
-										
-							// 			if (curPR->conNode.blockIdFrom < 0) {
-											
-							// 			}
-							// 			else {
-											
-											
-							// 				// drawPathToPoint(tempHolder, curPR->conNode.cellIndTo);
-							// 				// drawPathToPoint(tempHolder2, curPR->conNode.cellIndFrom);
-							// 			}
-										
-							// 			// drawPaths(
-							// 			// 	tempHolder,
-							// 			// 	curPR->groupId,
-											
-							// 			// 	tempHolder2,
-							// 			// 	curPR->lastGroupId
-							// 			// );
-							// 			// drawPaths(
-							// 			// 	tempHolder2,
-							// 			// 	curPR->lastGroupId,
-											
-							// 			// 	tempHolder,
-							// 			// 	curPR->groupId
-							// 			// );
-										
-									
-							// 		}
-									
-							// 	}
-								
-							// }
-							
+							drawPointAtIndex(tempHolder, tempInd, 255, 128, 0, singleton->smoothTime);	
 						}
-						
-						
 					}
-					
-					
 					
 					conHolder1 = getHolderById(curPR->conNode.blockIdFrom, curPR->conNode.holderIdFrom);
 					conHolder2 = getHolderById(curPR->conNode.blockIdTo, curPR->conNode.holderIdTo); 
 					
 					if (conHolder1 != NULL) {
-						drawPathToPoint(conHolder1, curPR->conNode.cellIndFrom);
+						
+						if (curPR->conNode.cellIndFrom < 0) {
+							cout << "curPR->conNode.cellIndFrom " << curPR->conNode.cellIndFrom << "\n";
+						}
+						
+						drawPathToPoint(conHolder1, curPR->conNode.cellIndFrom, 255, 0, 255); // problem
 					}
 					if (conHolder2 != NULL) {
-						drawPathToPoint(conHolder2, curPR->conNode.cellIndTo);
+						drawPathToPoint(conHolder2, curPR->conNode.cellIndTo, 128, 0, 128);
 					}
 					
 				}
 				
-				drawPathToPoint(closestHolder, bestInd);
-				drawPathToPoint(closestHolder2, bestInd2);
-				
-				
+				drawPathToPoint(closestHolder, bestInd, 255, 255, 255);
+				drawPathToPoint(closestHolder2, bestInd2, 255, 255, 255);
 				
 				
 				
 			}
-			
-			
-			// if (
-			// 	singleton->doPathReport
-			// ) {
-			// 	singleton->doPathReport = false;
-				
-			// 	cout << "Path Count " << pathCount << "\n";
-			// }
 			
 			
 			
@@ -1108,8 +1104,8 @@ public:
 	}
 	
 	
-	
-	void drawPathToPoint(GamePageHolder* curHolderFrom, int _curInd) {
+	//conHolder1, curPR->conNode.cellIndFrom
+	void drawPathToPoint(GamePageHolder* curHolderFrom, int _curInd, int rr, int gg, int bb) {
 		
 		pathCount++;
 		
@@ -1122,6 +1118,9 @@ public:
 		int ii2;
 		int jj2;
 		int kk2;
+		
+		
+		int totPath = 0;
 		
 		
 		FIVector4 pVec1;
@@ -1145,12 +1144,20 @@ public:
 			return;
 		}
 		
+		if (curHolderFrom->hasData) {
+			
+		}
+		else {
+			cout << "NO DATA\n";
+			return;
+		}
+		
 		
 		minv.copyFrom(&(curHolderFrom->gphMinInPixels));
 		
 		int cellsPerHolder = singleton->cellsPerHolder;
 		
-		singleton->setShaderVec3("matVal", 255, 0, 255);
+		singleton->setShaderVec3("matVal", rr, gg, bb);
 		
 		
 		if (curHolderFrom->getInfo(curInd) != NULL) {
@@ -1166,7 +1173,7 @@ public:
 		) {
 			
 			
-			
+			totPath++;
 			
 			if (curHolderFrom->getInfo(curInd) != NULL) {
 				cameFromInd = curHolderFrom->getInfo(curInd)->cameFromInd;
@@ -1204,11 +1211,28 @@ public:
 				pVec2.addXYZ(0.5f);
 				
 				singleton->drawLine(&pVec1, &pVec2);
+				
+				
+				
 			}
 			
 			curInd = cameFromInd;
 			
 		}
+		
+		if (totPath == 0) {
+			
+			drawPointAtIndex(curHolderFrom, curInd, 0, 255, 255, singleton->smoothTime);	
+			
+			
+			// cout << "0 path " << cameFromInd << " " << curInd << "\n";
+			
+			// if (curHolderFrom->getInfo(curInd) == NULL) {
+			// 		cout << "NULL IND DATA\n";
+			// }
+			
+		}
+		
 	}
 	
 	
@@ -1589,7 +1613,7 @@ public:
 				
 				
 				
-				drawPathToPoint(curHolderFrom, curInd);
+				drawPathToPoint(curHolderFrom, curInd, 255, 0, 255);
 				
 				doProc = false;
 			}

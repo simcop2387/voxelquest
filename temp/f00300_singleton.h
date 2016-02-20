@@ -322,7 +322,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		
-		
+		tempCounter = 0;
 		actorCount = 0;
 		polyCount = 0;
 		fpsCountMax = 500;
@@ -3913,6 +3913,14 @@ btVector3 Singleton::getRayTo (float x, float y)
 void Singleton::runReport ()
                          {
 		
+		cout << "pathFinalStack.size() " << gameLogic->pathFinalStack.size() << "\n";
+		
+		tempCounter++;
+		
+		// if (tempCounter >= gameLogic->pathFinalStack.size()) {
+		// 	tempCounter = 0;
+		// }
+		
 		//mainGUI->runReport();
 		
 		
@@ -4120,8 +4128,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 				break;
 				case 'U':
-					pathfindingOn = !pathfindingOn;
-					cout << "pathfindingOn: " << pathfindingOn << "\n";
+					runReport();
 				break;
 				
 				
@@ -4214,7 +4221,10 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				case 'j':
 				
-					gem->resetActiveNode();
+					pathfindingOn = !pathfindingOn;
+					cout << "pathfindingOn: " << pathfindingOn << "\n";
+				
+					//gem->resetActiveNode();
 				
 					// 
 					// doShaderRefresh(bakeParamsOn);
@@ -4440,7 +4450,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					// 	medianCount = 0;
 					// }
 					
-					//runReport();
+					//
 					
 					// refreshPaths = true;
 					
@@ -7685,7 +7695,7 @@ void Singleton::display (bool doFrameRender)
 		
 		
 		curTime = myTimer.getElapsedTimeInMilliSec();
-		smoothTime = (sin(curTime/1000.0)+1.0f)*0.5f;
+		smoothTime = (sin(curTime/200.0)+1.0f)*0.5f;
 		
 		if (timeMod) {
 			pauseTime = curTime;

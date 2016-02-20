@@ -1,4 +1,4 @@
-﻿Build started 2/17/2016 2:53:01 AM.
+﻿Build started 2/20/2016 12:09:33 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -834,66 +834,79 @@
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          genBlockHolder
-         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         No code for key: 119
-         Loading:  ..\data\orgdata\E_PG_WPSWORD_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loading:  ..\data\orgdata\E_PG_WPAXE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loading:  ..\data\orgdata\E_PG_WPMACE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loading:  ..\data\orgdata\E_PG_WPHAMMER_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         turnBased 1
-         turnBased 0
-         No code for key: 119
-         No code for key: 119
-         turnBased 1
-         Grid On: 1
-         turnBased 0
-         turnBased 1
-         turnBased 0
-         turnBased 1
          pathfindingOn: 1
-         turnBased 0
          Found linking holders
+         beginFill
+         
+         arghhhh
+         endFill
+         
          Found linking groups
          Found linking holders
+         beginFill
+         
+         arghhhh
+         endFill
+         
          Found linking groups
-         pathfindingOn: 0
+         Found linking holders
+         beginFill
+         
+         arghhhh
+         endFill
+         
+         Found linking groups
+         Found linking holders
+         beginFill
+         
+         arghhhh
+         endFill
+         
+         Found linking groups
+         Found linking holders
+         beginFill
+         
+         arghhhh
+         endFill
+         
+         Found linking groups
+         Found linking holders
+         beginFill
+         
+         arghhhh
+         endFill
+         
+         Found linking groups
+         Found linking holders
+         beginFill
+         
+         arghhhh
+         endFill
+         
+         Found linking groups
+         Found linking holders
+         beginFill
+         
+         arghhhh
+         endFill
+         
+         Found linking groups
+         Found linking holders
+         beginFill
+         
+         arghhhh
+         endFill
+         
+         Found linking groups
+         Found linking holders
+         beginFill
+         
+         arghhhh
+         endFill
+         
+         Found linking groups
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:08:59.26
+Time Elapsed 00:27:09.16

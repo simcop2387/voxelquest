@@ -319,6 +319,10 @@ void GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, G
 		
 		
 		
+		if (firstInd < 0) {
+			cout << "firstInd " << firstInd << "\n";
+		}
+		
 		
 		indexStack.clear();
 		
@@ -409,6 +413,10 @@ void GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, G
 							
 							groupIdStack.push_back(GroupIdStruct());
 							groupIdStack.back().ind = foundInd;
+							if (groupIdStack.back().ind < 0) {
+								cout << "groupIdStack.back().ind " << groupIdStack.back().ind << "\n";
+							}
+							
 							groupIdStack.back().groupId = newId;
 							groupIdStack.back().cameFromInd = ind;
 							groupIdStack.back().pathCost = lastCost+1;

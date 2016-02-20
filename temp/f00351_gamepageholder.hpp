@@ -485,6 +485,10 @@ public:
 		
 		
 		
+		if (firstInd < 0) {
+			cout << "firstInd " << firstInd << "\n";
+		}
+		
 		
 		indexStack.clear();
 		
@@ -575,6 +579,10 @@ public:
 							
 							groupIdStack.push_back(GroupIdStruct());
 							groupIdStack.back().ind = foundInd;
+							if (groupIdStack.back().ind < 0) {
+								cout << "groupIdStack.back().ind " << groupIdStack.back().ind << "\n";
+							}
+							
 							groupIdStack.back().groupId = newId;
 							groupIdStack.back().cameFromInd = ind;
 							groupIdStack.back().pathCost = lastCost+1;

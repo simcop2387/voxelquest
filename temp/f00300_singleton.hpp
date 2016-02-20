@@ -183,7 +183,7 @@ public:
 	
 	
 	
-	
+	int tempCounter;
 	int actorCount;
 	int polyCount;
 	int fdWritePos;
@@ -921,7 +921,7 @@ public:
 		
 		
 		
-		
+		tempCounter = 0;
 		actorCount = 0;
 		polyCount = 0;
 		fpsCountMax = 500;
@@ -4882,6 +4882,14 @@ DISPATCH_EVENT_END:
 
 	void runReport() {
 		
+		cout << "pathFinalStack.size() " << gameLogic->pathFinalStack.size() << "\n";
+		
+		tempCounter++;
+		
+		// if (tempCounter >= gameLogic->pathFinalStack.size()) {
+		// 	tempCounter = 0;
+		// }
+		
 		//mainGUI->runReport();
 		
 		
@@ -5100,8 +5108,7 @@ DISPATCH_EVENT_END:
 					
 				break;
 				case 'U':
-					pathfindingOn = !pathfindingOn;
-					cout << "pathfindingOn: " << pathfindingOn << "\n";
+					runReport();
 				break;
 				
 				
@@ -5194,7 +5201,10 @@ DISPATCH_EVENT_END:
 				
 				case 'j':
 				
-					gem->resetActiveNode();
+					pathfindingOn = !pathfindingOn;
+					cout << "pathfindingOn: " << pathfindingOn << "\n";
+				
+					//gem->resetActiveNode();
 				
 					// 
 					// doShaderRefresh(bakeParamsOn);
@@ -5420,7 +5430,7 @@ DISPATCH_EVENT_END:
 					// 	medianCount = 0;
 					// }
 					
-					//runReport();
+					//
 					
 					// refreshPaths = true;
 					
@@ -8913,7 +8923,7 @@ DISPATCH_EVENT_END:
 		
 		
 		curTime = myTimer.getElapsedTimeInMilliSec();
-		smoothTime = (sin(curTime/1000.0)+1.0f)*0.5f;
+		smoothTime = (sin(curTime/200.0)+1.0f)*0.5f;
 		
 		if (timeMod) {
 			pauseTime = curTime;
