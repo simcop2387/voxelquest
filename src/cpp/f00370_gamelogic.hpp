@@ -720,11 +720,13 @@ public:
 			curGroupId = pathSearchStack[frontIndex].groupId;
 			lastIndex = frontIndex;//pathSearchStack.size()-1;
 			
-			frontIndex++;
+			//frontIndex++;
 			
 			notFound = true;
 			
-			for (i = 0; i < curHolder->bestConnectingNodes.size();i++) {
+			curHolder->sortConNodes(endHolder,endInd);
+			
+			for (i = 0; i < curHolder->bestConnectingNodes.size(); i++) {
 				testConNode = &(curHolder->bestConnectingNodes[i]);
 				
 				if (testConNode->groupIdFrom == curGroupId) {
@@ -736,6 +738,7 @@ public:
 						if (testHolder->pathsReady) {
 							if (testHolder->groupInfoStack[groupIdTo].visitId == idCounter) {
 								// already visited current group
+								
 							}
 							else {
 								notFound = false;
@@ -757,6 +760,7 @@ public:
 			}
 			
 			if (notFound) {
+				frontIndex++;
 			//	remGroupFromStack(opCode);
 			}
 			
@@ -853,7 +857,6 @@ public:
 			return false;
 		}
 		
-		cout << "beginFill\n\n";
 		
 		globFoundTarg = false;
 		fillAllGroups(
@@ -864,8 +867,7 @@ public:
 			E_PFO_SEARCH_GROUPS
 		);
 		idCounter++;
-		
-		cout << "endFill\n\n";
+
 		
 		if (globFoundTarg) {
 			cout << "Found linking groups\n";
@@ -913,8 +915,10 @@ public:
 		
 		GamePageHolder* closestHolder;
 		GamePageHolder* closestHolder2;
+		GamePageHolder* closestHolder3;
 		int bestInd;
 		int bestInd2;
+		int bestInd3;
 		PathResult* curPR;
 		
 		pathCount = 0;
@@ -923,6 +927,9 @@ public:
 			
 			bestInd = getClosestPathInd(&(singleton->moveNodes[0]), closestHolder);
 			bestInd2 = getClosestPathInd(&(singleton->moveNodes[1]), closestHolder2);
+			
+			// current mouse position
+			//bestInd3 = getClosestPathInd(&(singleton->mouseMovePD), closestHolder3);
 			
 			
 			drawPointAtIndex(closestHolder, bestInd, 0,128+singleton->smoothTime*127.0f,0, singleton->smoothTime);
@@ -978,39 +985,57 @@ public:
 					
 					if (conHolder1 != NULL) {
 						
-						if (curPR->conNode.cellIndFrom < 0) {
-							cout << "curPR->conNode.cellIndFrom " << curPR->conNode.cellIndFrom << "\n";
-						}
 						
-						drawPathToPoint(conHolder1, curPR->conNode.cellIndFrom, 255, 0, 255); // problem
+						drawPathToPoint(conHolder1, curPR->conNode.cellIndFrom, 255, 0, 255);
 					}
 					if (conHolder2 != NULL) {
-						drawPathToPoint(conHolder2, curPR->conNode.cellIndTo, 128, 0, 128);
+						drawPathToPoint(conHolder2, curPR->conNode.cellIndTo, 255, 0, 255);
 					}
 					
 				}
 				
-				drawPathToPoint(closestHolder, bestInd, 255, 255, 255);
-				drawPathToPoint(closestHolder2, bestInd2, 255, 255, 255);
+				drawPathToPoint(closestHolder, bestInd, 255, 0, 255);
+				drawPathToPoint(closestHolder2, bestInd2, 255, 0, 255);
 				
 				
 				
 			}
 			
+			// if (bestInd3 > -1) {
+			// 	drawPathToPoint(closestHolder3, bestInd3, 255, 128, 0);
+				
+			// 	if (singleton->doPathReport) {
+			// 		if (closestHolder3->getInfo(bestInd3) == NULL) {
+			// 			cout << "NULL!!!\n";
+			// 		}
+			// 		else {
+			// 			cout << closestHolder3->holderId << " " <<
+			// 				closestHolder3->getInfo(bestInd3)->groupId << " " <<
+			// 				closestHolder3->getInfoPD(bestInd3) << " " <<
+			// 				bestInd3 << "/" << singleton->cellsPerHolder*singleton->cellsPerHolder*singleton->cellsPerHolder << " " <<
+			// 				closestHolder3->groupInfoStack.size() << " " << 
+			// 				"\n";
+						
+			// 		}
+			// 		singleton->doPathReport = false;
+			// 	}
+				
+			// }
 			
 			
 			
-			for (k = -1; k <= 1; k++) {
-				for (j = -1; j <= 1; j++) {
-					for (i = -1; i <= 1; i++) {
-						drawRegions(
-							i,
-							j,
-							k
-						);
-					}
-				}
-			}
+			
+			// for (k = -1; k <= 1; k++) {
+			// 	for (j = -1; j <= 1; j++) {
+			// 		for (i = -1; i <= 1; i++) {
+			// 			drawRegions(
+			// 				i,
+			// 				j,
+			// 				k
+			// 			);
+			// 		}
+			// 	}
+			// }
 			
 			
 			
@@ -1320,9 +1345,9 @@ public:
 				singleton->setShaderfVec3("matVal", &(singleton->colVecs[curId%16]));
 			}
 			
-			if (curInd == curHolderFrom->groupInfoStack[curId].centerInd) {
-				singleton->setShaderVec3("matVal", 254, 128, 0);
-			}
+			// if (curInd == curHolderFrom->groupInfoStack[curId].centerInd) {
+			// 	singleton->setShaderVec3("matVal", 254, 128, 0);
+			// }
 			
 			kk = curInd/(cellsPerHolder*cellsPerHolder);
 			jj = (curInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
@@ -1341,9 +1366,9 @@ public:
 			}
 			
 			
-			if (curInd == curHolderFrom->groupInfoStack[curId].centerInd) {
-				singleton->setShaderfVec3("matVal", &(singleton->colVecs[curId%16]));
-			}
+			// if (curInd == curHolderFrom->groupInfoStack[curId].centerInd) {
+			// 	singleton->setShaderfVec3("matVal", &(singleton->colVecs[curId%16]));
+			// }
 			
 			lastId = curId;
 		}

@@ -4832,6 +4832,8 @@ const static uint E_CD_SOLID = 4;
 
 struct ConnectingNodeStruct {
 	
+	float dist;
+	
 	int blockIdFrom;
 	int holderIdFrom;
 	
@@ -4847,11 +4849,13 @@ struct ConnectingNodeStruct {
 	int totCost;
 };
 
+bool sortByDist(const ConnectingNodeStruct &lhs, const ConnectingNodeStruct &rhs) {
+	return lhs.dist < rhs.dist;
+}
+
 struct GroupIdStruct {
 	int ind;
 	int groupId;
-	
-	
 	int cameFromInd;
 	int pathCost;
 };
@@ -24005,11 +24009,14 @@ public:
   void clearPathSizes ();
   void checkData (bool checkPath);
   void clearGroupFlags (int targId);
-  void floodFillAtInd (int firstInd, int newId, bool findCenter, GroupInfoStruct * curGI);
+  int floodFillAtInd (int firstInd, int newId, bool findCenter, GroupInfoStruct * curGI);
   void findIdealNodes ();
   int getGroupId (int pathDataIndex);
+  int getInfoPD (int pathDataIndex);
   GroupIdStruct * getInfo (int pathDataIndex);
   void getInfoReport (int pathDataIndex);
+  btVector3 holderIndToBTV (GamePageHolder * curPointHolder, int curPointIndex);
+  void sortConNodes (GamePageHolder * endHolder, int endInd);
   void linkRegions ();
   bool prepPathRefresh (int rad);
   void refreshPaths ();
@@ -28569,9 +28576,12 @@ btVector3 Singleton::getRayTo (float x, float y)
 void Singleton::runReport ()
                          {
 		
-		cout << "pathFinalStack.size() " << gameLogic->pathFinalStack.size() << "\n";
+		//cout << "pathFinalStack.size() " << gameLogic->pathFinalStack.size() << "\n";
 		
-		tempCounter++;
+		//tempCounter++;
+		
+		
+		doPathReport = true;
 		
 		// if (tempCounter >= gameLogic->pathFinalStack.size()) {
 		// 	tempCounter = 0;
@@ -28783,9 +28793,6 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					
 				break;
-				case 'U':
-					runReport();
-				break;
 				
 				
 				case 'Q':
@@ -28866,8 +28873,10 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 				
 				case 'n':
-					gem->nextSwing(gem->getCurActorUID(),RLBN_LEFT);
-					gem->nextSwing(gem->getCurActorUID(),RLBN_RIGT);
+					//gem->nextSwing(gem->getCurActorUID(),RLBN_LEFT);
+					//gem->nextSwing(gem->getCurActorUID(),RLBN_RIGT);
+					runReport();
+					
 					
 				break;
 				
@@ -47725,11 +47734,7 @@ void GamePageHolder::clearPathPreserve ()
 			}
 		}
 		
-		
-		
-		
 		groupIdStack.clear();
-		
 		totIdealNodes = 0;
 		totGroupIds = 0;
 		
@@ -47744,11 +47749,8 @@ void GamePageHolder::clearPathSizes ()
 			}
 		}
 		
-
-		
 		groupIdStack.clear();
 		groupInfoStack.clear();
-		
 		totIdealNodes = 0;
 		totGroupIds = 0;
 		
@@ -47784,7 +47786,7 @@ void GamePageHolder::clearGroupFlags (int targId)
 			groupInfoStack[i].visitId = targId;
 		}
 	}
-void GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, GroupInfoStruct * curGI)
+int GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, GroupInfoStruct * curGI)
           {
 		
 		
@@ -47807,6 +47809,8 @@ void GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, G
 		
 		bool doProc;
 		
+		int fillCount = 1;
+		
 		int groupIdStackInd;
 		int dir;
 		int ind;
@@ -47816,7 +47820,8 @@ void GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, G
 		int k;
 		int n;
 		int q;
-		int foundInd;
+		//int foundInd;
+		bool didFind = false;
 		int testI;
 		int testJ;
 		int testK;
@@ -47836,13 +47841,14 @@ void GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, G
 			//ind = indexStack.back();
 			
 			ind = indexStack[frontInd];
-			frontInd++;
+			//frontInd++;
 			
 			k = ind/(cellsPerHolder*cellsPerHolder);
 			j = (ind - k*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
 			i = ind - ( j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder );
 			
-			foundInd = -1;
+			//foundInd = -1;
+			didFind = false;
 			
 			for (dir = 0; dir < NUM_MOVEABLE_DIRS; dir++) {
 				testI = (i+DIR_VECS_MOVE[dir][0]);
@@ -47873,35 +47879,41 @@ void GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, G
 					) {
 						
 						
-						foundInd = testInd;
+						// foundInd = testInd;
 						// goto NEXT_FILL_POINT;
 					
-						if (foundInd >= 0) {
-							indexStack.push_back(foundInd);
-							
-							lastCost = groupIdStack.back().pathCost;
-							
-							groupIdStack.push_back(GroupIdStruct());
-							groupIdStack.back().ind = foundInd;
-							if (groupIdStack.back().ind < 0) {
-								cout << "groupIdStack.back().ind " << groupIdStack.back().ind << "\n";
-							}
-							
-							groupIdStack.back().groupId = newId;
-							groupIdStack.back().cameFromInd = ind;
-							groupIdStack.back().pathCost = lastCost+1;
-							
-							//.groupId
-							pathData[foundInd] = groupIdStack.size()-1;
-							
+						//if (testInd >= 0) {}
+					
+						
+						didFind = true;
+						
+						indexStack.push_back(testInd);
+						
+						lastCost = groupIdStack.back().pathCost;
+						
+						groupIdStack.push_back(GroupIdStruct());
+						groupIdStack.back().ind = testInd;
+						if (groupIdStack.back().ind < 0) {
+							cout << "groupIdStack.back().ind " << groupIdStack.back().ind << "\n";
 						}
+						
+						groupIdStack.back().groupId = newId;
+						groupIdStack.back().cameFromInd = ind;
+						groupIdStack.back().pathCost = lastCost+1;
+						
+						//.groupId
+						pathData[testInd] = groupIdStack.size()-1;
+						
+						
+						fillCount++;
+						
 					
 					}
 				}
 			}
 
 // NEXT_FILL_POINT:
-			if (foundInd >= 0) {
+			if (didFind) {
 				// indexStack.push_back(foundInd);
 				
 				// lastCost = groupIdStack.back().pathCost;
@@ -47917,12 +47929,16 @@ void GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, G
 				
 			}
 			else {
-				indexStack.pop_back();
+				frontInd++;
+				//indexStack.pop_back();
 			}
 			
 		}
 		
 		curGI->endInd = groupIdStack.size();
+		
+		
+		
 		
 		
 		// // if region touches one or fewer faces of bounding volume, remove it
@@ -48107,11 +48123,16 @@ void GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, G
 		
 		
 		//return true;
+		
+		return fillCount;
+		
 	}
 void GamePageHolder::findIdealNodes ()
                               {
 			idealPathsReady = false;
 			
+			
+			int curFillCount;
 			
 			int i;
 			int j;
@@ -48199,6 +48220,8 @@ void GamePageHolder::findIdealNodes ()
 				
 				//cout << "\n";
 				
+				curFillCount = 0;
+				
 				for (i = 0; i < pathSize; i++) {
 					if (
 						//.groupId
@@ -48208,28 +48231,41 @@ void GamePageHolder::findIdealNodes ()
 						
 						groupInfoStack.push_back(GroupInfoStruct());
 						groupInfoStack.back().visitId = 0;
-						floodFillAtInd(
+						curFillCount += floodFillAtInd(
 							i,
 							totGroupIds,
 							true,
 							&(groupInfoStack.back())
 						);
 						totGroupIds++;
+						
+						if (curFillCount >= totIdealNodes) {
+							goto FIRST_FILL_DONE;
+						}
+						
 					}
 				}
+				
+FIRST_FILL_DONE:
 				
 				//cout << "groupIdStack.size()1 " << groupIdStack.size() << "\n";
 				
 				clearPathPreserve();
 				
+				// while (groupInfoStack.size() > 1) {
+				// 	groupInfoStack.pop_back();
+				// }
+				
+				
+				
 				for (i = 0; i < groupInfoStack.size(); i++) {
 					floodFillAtInd(
 						groupInfoStack[i].centerInd,
-						totGroupIds,
+						i,//totGroupIds,
 						false,
 						&(groupInfoStack[i])
 					);
-					totGroupIds++;
+					//totGroupIds++;
 				}
 			}
 			
@@ -48258,6 +48294,17 @@ int GamePageHolder::getGroupId (int pathDataIndex)
 		
 		
 		
+		
+	}
+int GamePageHolder::getInfoPD (int pathDataIndex)
+                                         {
+		
+		if (hasPath) {
+			return pathData[pathDataIndex];
+		}
+		else {
+			return -100;
+		}
 		
 	}
 GroupIdStruct * GamePageHolder::getInfo (int pathDataIndex)
@@ -48296,6 +48343,52 @@ void GamePageHolder::getInfoReport (int pathDataIndex)
 			cout << "hasPath==false\n";
 			return;
 		}
+		
+		
+	}
+btVector3 GamePageHolder::holderIndToBTV (GamePageHolder * curPointHolder, int curPointIndex)
+                                                                                    {
+		btVector3 pVec1;
+		
+		int ii;
+		int jj;
+		int kk;
+		
+		kk = curPointIndex/(cellsPerHolder*cellsPerHolder);
+		jj = (curPointIndex-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+		ii = curPointIndex-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+		
+		pVec1 = curPointHolder->gphMinInPixels.getBTV();
+		pVec1 += btVector3(ii,jj,kk);
+		
+		return pVec1;
+	}
+void GamePageHolder::sortConNodes (GamePageHolder * endHolder, int endInd)
+                                                                 {
+		
+		btVector3 endPoint = holderIndToBTV(endHolder, endInd);
+		btVector3 curPoint;
+		
+		ConnectingNodeStruct tempCN;
+		GamePageHolder* curHolder;
+		
+		int i;
+		
+		for (i = 0; i < bestConnectingNodes.size(); i++) {
+			curHolder = singleton->gameLogic->getHolderById(
+				bestConnectingNodes[i].blockIdTo,
+				bestConnectingNodes[i].holderIdTo
+			);
+			
+			curPoint = holderIndToBTV(
+				curHolder,
+				curHolder->groupInfoStack[bestConnectingNodes[i].groupIdTo].centerInd
+			);
+			
+			bestConnectingNodes[i].dist = curPoint.distance(endPoint);
+		}
+		
+		sort(bestConnectingNodes.begin(), bestConnectingNodes.end(), sortByDist);
 		
 		
 	}
@@ -54265,9 +54358,9 @@ bool GameLogic::addGroupToStack (ConnectingNodeStruct * testConNode, GamePageHol
 		lastRes->groupId = groupId;
 		
 		
+		//curHolderFrom->getInfo(curInd)->cameFromInd
+		
 		if (testConNode == NULL) {
-			
-			cout << "arghhhh\n";
 			
 			lastRes->conNode.blockIdFrom = -1;
 			lastRes->conNode.holderIdFrom = -1;
@@ -54406,11 +54499,13 @@ void GameLogic::fillAllGroups (GamePageHolder * begHolder, GamePageHolder * endH
 			curGroupId = pathSearchStack[frontIndex].groupId;
 			lastIndex = frontIndex;//pathSearchStack.size()-1;
 			
-			frontIndex++;
+			//frontIndex++;
 			
 			notFound = true;
 			
-			for (i = 0; i < curHolder->bestConnectingNodes.size();i++) {
+			curHolder->sortConNodes(endHolder,endInd);
+			
+			for (i = 0; i < curHolder->bestConnectingNodes.size(); i++) {
 				testConNode = &(curHolder->bestConnectingNodes[i]);
 				
 				if (testConNode->groupIdFrom == curGroupId) {
@@ -54422,6 +54517,7 @@ void GameLogic::fillAllGroups (GamePageHolder * begHolder, GamePageHolder * endH
 						if (testHolder->pathsReady) {
 							if (testHolder->groupInfoStack[groupIdTo].visitId == idCounter) {
 								// already visited current group
+								
 							}
 							else {
 								notFound = false;
@@ -54443,6 +54539,7 @@ void GameLogic::fillAllGroups (GamePageHolder * begHolder, GamePageHolder * endH
 			}
 			
 			if (notFound) {
+				frontIndex++;
 			//	remGroupFromStack(opCode);
 			}
 			
@@ -54488,7 +54585,6 @@ bool GameLogic::findBestPath (GamePageHolder * closestHolder, GamePageHolder * c
 			return false;
 		}
 		
-		cout << "beginFill\n\n";
 		
 		globFoundTarg = false;
 		fillAllGroups(
@@ -54499,8 +54595,7 @@ bool GameLogic::findBestPath (GamePageHolder * closestHolder, GamePageHolder * c
 			E_PFO_SEARCH_GROUPS
 		);
 		idCounter++;
-		
-		cout << "endFill\n\n";
+
 		
 		if (globFoundTarg) {
 			cout << "Found linking groups\n";
@@ -54547,8 +54642,10 @@ void GameLogic::update ()
 		
 		GamePageHolder* closestHolder;
 		GamePageHolder* closestHolder2;
+		GamePageHolder* closestHolder3;
 		int bestInd;
 		int bestInd2;
+		int bestInd3;
 		PathResult* curPR;
 		
 		pathCount = 0;
@@ -54557,6 +54654,9 @@ void GameLogic::update ()
 			
 			bestInd = getClosestPathInd(&(singleton->moveNodes[0]), closestHolder);
 			bestInd2 = getClosestPathInd(&(singleton->moveNodes[1]), closestHolder2);
+			
+			// current mouse position
+			//bestInd3 = getClosestPathInd(&(singleton->mouseMovePD), closestHolder3);
 			
 			
 			drawPointAtIndex(closestHolder, bestInd, 0,128+singleton->smoothTime*127.0f,0, singleton->smoothTime);
@@ -54612,39 +54712,57 @@ void GameLogic::update ()
 					
 					if (conHolder1 != NULL) {
 						
-						if (curPR->conNode.cellIndFrom < 0) {
-							cout << "curPR->conNode.cellIndFrom " << curPR->conNode.cellIndFrom << "\n";
-						}
 						
-						drawPathToPoint(conHolder1, curPR->conNode.cellIndFrom, 255, 0, 255); // problem
+						drawPathToPoint(conHolder1, curPR->conNode.cellIndFrom, 255, 0, 255);
 					}
 					if (conHolder2 != NULL) {
-						drawPathToPoint(conHolder2, curPR->conNode.cellIndTo, 128, 0, 128);
+						drawPathToPoint(conHolder2, curPR->conNode.cellIndTo, 255, 0, 255);
 					}
 					
 				}
 				
-				drawPathToPoint(closestHolder, bestInd, 255, 255, 255);
-				drawPathToPoint(closestHolder2, bestInd2, 255, 255, 255);
+				drawPathToPoint(closestHolder, bestInd, 255, 0, 255);
+				drawPathToPoint(closestHolder2, bestInd2, 255, 0, 255);
 				
 				
 				
 			}
 			
+			// if (bestInd3 > -1) {
+			// 	drawPathToPoint(closestHolder3, bestInd3, 255, 128, 0);
+				
+			// 	if (singleton->doPathReport) {
+			// 		if (closestHolder3->getInfo(bestInd3) == NULL) {
+			// 			cout << "NULL!!!\n";
+			// 		}
+			// 		else {
+			// 			cout << closestHolder3->holderId << " " <<
+			// 				closestHolder3->getInfo(bestInd3)->groupId << " " <<
+			// 				closestHolder3->getInfoPD(bestInd3) << " " <<
+			// 				bestInd3 << "/" << singleton->cellsPerHolder*singleton->cellsPerHolder*singleton->cellsPerHolder << " " <<
+			// 				closestHolder3->groupInfoStack.size() << " " << 
+			// 				"\n";
+						
+			// 		}
+			// 		singleton->doPathReport = false;
+			// 	}
+				
+			// }
 			
 			
 			
-			for (k = -1; k <= 1; k++) {
-				for (j = -1; j <= 1; j++) {
-					for (i = -1; i <= 1; i++) {
-						drawRegions(
-							i,
-							j,
-							k
-						);
-					}
-				}
-			}
+			
+			// for (k = -1; k <= 1; k++) {
+			// 	for (j = -1; j <= 1; j++) {
+			// 		for (i = -1; i <= 1; i++) {
+			// 			drawRegions(
+			// 				i,
+			// 				j,
+			// 				k
+			// 			);
+			// 		}
+			// 	}
+			// }
 			
 			
 			
@@ -54938,9 +55056,9 @@ void GameLogic::drawRegions (int offX, int offY, int offZ)
 				singleton->setShaderfVec3("matVal", &(singleton->colVecs[curId%16]));
 			}
 			
-			if (curInd == curHolderFrom->groupInfoStack[curId].centerInd) {
-				singleton->setShaderVec3("matVal", 254, 128, 0);
-			}
+			// if (curInd == curHolderFrom->groupInfoStack[curId].centerInd) {
+			// 	singleton->setShaderVec3("matVal", 254, 128, 0);
+			// }
 			
 			kk = curInd/(cellsPerHolder*cellsPerHolder);
 			jj = (curInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
@@ -54959,9 +55077,9 @@ void GameLogic::drawRegions (int offX, int offY, int offZ)
 			}
 			
 			
-			if (curInd == curHolderFrom->groupInfoStack[curId].centerInd) {
-				singleton->setShaderfVec3("matVal", &(singleton->colVecs[curId%16]));
-			}
+			// if (curInd == curHolderFrom->groupInfoStack[curId].centerInd) {
+			// 	singleton->setShaderfVec3("matVal", &(singleton->colVecs[curId%16]));
+			// }
 			
 			lastId = curId;
 		}

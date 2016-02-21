@@ -1605,11 +1605,14 @@ public:
   void clearPathSizes ();
   void checkData (bool checkPath);
   void clearGroupFlags (int targId);
-  void floodFillAtInd (int firstInd, int newId, bool findCenter, GroupInfoStruct * curGI);
+  int floodFillAtInd (int firstInd, int newId, bool findCenter, GroupInfoStruct * curGI);
   void findIdealNodes ();
   int getGroupId (int pathDataIndex);
+  int getInfoPD (int pathDataIndex);
   GroupIdStruct * getInfo (int pathDataIndex);
   void getInfoReport (int pathDataIndex);
+  btVector3 holderIndToBTV (GamePageHolder * curPointHolder, int curPointIndex);
+  void sortConNodes (GamePageHolder * endHolder, int endInd);
   void linkRegions ();
   bool prepPathRefresh (int rad);
   void refreshPaths ();

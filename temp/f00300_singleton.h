@@ -3913,9 +3913,12 @@ btVector3 Singleton::getRayTo (float x, float y)
 void Singleton::runReport ()
                          {
 		
-		cout << "pathFinalStack.size() " << gameLogic->pathFinalStack.size() << "\n";
+		//cout << "pathFinalStack.size() " << gameLogic->pathFinalStack.size() << "\n";
 		
-		tempCounter++;
+		//tempCounter++;
+		
+		
+		doPathReport = true;
 		
 		// if (tempCounter >= gameLogic->pathFinalStack.size()) {
 		// 	tempCounter = 0;
@@ -4127,9 +4130,6 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					
 				break;
-				case 'U':
-					runReport();
-				break;
 				
 				
 				case 'Q':
@@ -4210,8 +4210,10 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 				
 				case 'n':
-					gem->nextSwing(gem->getCurActorUID(),RLBN_LEFT);
-					gem->nextSwing(gem->getCurActorUID(),RLBN_RIGT);
+					//gem->nextSwing(gem->getCurActorUID(),RLBN_LEFT);
+					//gem->nextSwing(gem->getCurActorUID(),RLBN_RIGT);
+					runReport();
+					
 					
 				break;
 				

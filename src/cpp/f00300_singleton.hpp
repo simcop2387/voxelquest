@@ -4882,9 +4882,12 @@ DISPATCH_EVENT_END:
 
 	void runReport() {
 		
-		cout << "pathFinalStack.size() " << gameLogic->pathFinalStack.size() << "\n";
+		//cout << "pathFinalStack.size() " << gameLogic->pathFinalStack.size() << "\n";
 		
-		tempCounter++;
+		//tempCounter++;
+		
+		
+		doPathReport = true;
 		
 		// if (tempCounter >= gameLogic->pathFinalStack.size()) {
 		// 	tempCounter = 0;
@@ -5107,9 +5110,6 @@ DISPATCH_EVENT_END:
 					
 					
 				break;
-				case 'U':
-					runReport();
-				break;
 				
 				
 				case 'Q':
@@ -5190,8 +5190,10 @@ DISPATCH_EVENT_END:
 					break;
 				
 				case 'n':
-					gem->nextSwing(gem->getCurActorUID(),RLBN_LEFT);
-					gem->nextSwing(gem->getCurActorUID(),RLBN_RIGT);
+					//gem->nextSwing(gem->getCurActorUID(),RLBN_LEFT);
+					//gem->nextSwing(gem->getCurActorUID(),RLBN_RIGT);
+					runReport();
+					
 					
 				break;
 				

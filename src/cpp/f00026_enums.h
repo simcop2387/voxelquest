@@ -1221,6 +1221,8 @@ const static uint E_CD_SOLID = 4;
 
 struct ConnectingNodeStruct {
 	
+	float dist;
+	
 	int blockIdFrom;
 	int holderIdFrom;
 	
@@ -1236,11 +1238,13 @@ struct ConnectingNodeStruct {
 	int totCost;
 };
 
+bool sortByDist(const ConnectingNodeStruct &lhs, const ConnectingNodeStruct &rhs) {
+	return lhs.dist < rhs.dist;
+}
+
 struct GroupIdStruct {
 	int ind;
 	int groupId;
-	
-	
 	int cameFromInd;
 	int pathCost;
 };

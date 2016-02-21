@@ -255,11 +255,7 @@ void GamePageHolder::clearPathPreserve ()
 			}
 		}
 		
-		
-		
-		
 		groupIdStack.clear();
-		
 		totIdealNodes = 0;
 		totGroupIds = 0;
 		
@@ -274,11 +270,8 @@ void GamePageHolder::clearPathSizes ()
 			}
 		}
 		
-
-		
 		groupIdStack.clear();
 		groupInfoStack.clear();
-		
 		totIdealNodes = 0;
 		totGroupIds = 0;
 		
@@ -314,7 +307,7 @@ void GamePageHolder::clearGroupFlags (int targId)
 			groupInfoStack[i].visitId = targId;
 		}
 	}
-void GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, GroupInfoStruct * curGI)
+int GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, GroupInfoStruct * curGI)
           {
 		
 		
@@ -337,6 +330,8 @@ void GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, G
 		
 		bool doProc;
 		
+		int fillCount = 1;
+		
 		int groupIdStackInd;
 		int dir;
 		int ind;
@@ -346,7 +341,8 @@ void GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, G
 		int k;
 		int n;
 		int q;
-		int foundInd;
+		//int foundInd;
+		bool didFind = false;
 		int testI;
 		int testJ;
 		int testK;
@@ -366,13 +362,14 @@ void GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, G
 			//ind = indexStack.back();
 			
 			ind = indexStack[frontInd];
-			frontInd++;
+			//frontInd++;
 			
 			k = ind/(cellsPerHolder*cellsPerHolder);
 			j = (ind - k*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
 			i = ind - ( j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder );
 			
-			foundInd = -1;
+			//foundInd = -1;
+			didFind = false;
 			
 			for (dir = 0; dir < NUM_MOVEABLE_DIRS; dir++) {
 				testI = (i+DIR_VECS_MOVE[dir][0]);
@@ -403,35 +400,41 @@ void GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, G
 					) {
 						
 						
-						foundInd = testInd;
+						// foundInd = testInd;
 						// goto NEXT_FILL_POINT;
 					
-						if (foundInd >= 0) {
-							indexStack.push_back(foundInd);
-							
-							lastCost = groupIdStack.back().pathCost;
-							
-							groupIdStack.push_back(GroupIdStruct());
-							groupIdStack.back().ind = foundInd;
-							if (groupIdStack.back().ind < 0) {
-								cout << "groupIdStack.back().ind " << groupIdStack.back().ind << "\n";
-							}
-							
-							groupIdStack.back().groupId = newId;
-							groupIdStack.back().cameFromInd = ind;
-							groupIdStack.back().pathCost = lastCost+1;
-							
-							//.groupId
-							pathData[foundInd] = groupIdStack.size()-1;
-							
+						//if (testInd >= 0) {}
+					
+						
+						didFind = true;
+						
+						indexStack.push_back(testInd);
+						
+						lastCost = groupIdStack.back().pathCost;
+						
+						groupIdStack.push_back(GroupIdStruct());
+						groupIdStack.back().ind = testInd;
+						if (groupIdStack.back().ind < 0) {
+							cout << "groupIdStack.back().ind " << groupIdStack.back().ind << "\n";
 						}
+						
+						groupIdStack.back().groupId = newId;
+						groupIdStack.back().cameFromInd = ind;
+						groupIdStack.back().pathCost = lastCost+1;
+						
+						//.groupId
+						pathData[testInd] = groupIdStack.size()-1;
+						
+						
+						fillCount++;
+						
 					
 					}
 				}
 			}
 
 // NEXT_FILL_POINT:
-			if (foundInd >= 0) {
+			if (didFind) {
 				// indexStack.push_back(foundInd);
 				
 				// lastCost = groupIdStack.back().pathCost;
@@ -447,12 +450,16 @@ void GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, G
 				
 			}
 			else {
-				indexStack.pop_back();
+				frontInd++;
+				//indexStack.pop_back();
 			}
 			
 		}
 		
 		curGI->endInd = groupIdStack.size();
+		
+		
+		
 		
 		
 		// // if region touches one or fewer faces of bounding volume, remove it
@@ -637,11 +644,16 @@ void GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, G
 		
 		
 		//return true;
+		
+		return fillCount;
+		
 	}
 void GamePageHolder::findIdealNodes ()
                               {
 			idealPathsReady = false;
 			
+			
+			int curFillCount;
 			
 			int i;
 			int j;
@@ -729,6 +741,8 @@ void GamePageHolder::findIdealNodes ()
 				
 				//cout << "\n";
 				
+				curFillCount = 0;
+				
 				for (i = 0; i < pathSize; i++) {
 					if (
 						//.groupId
@@ -738,28 +752,41 @@ void GamePageHolder::findIdealNodes ()
 						
 						groupInfoStack.push_back(GroupInfoStruct());
 						groupInfoStack.back().visitId = 0;
-						floodFillAtInd(
+						curFillCount += floodFillAtInd(
 							i,
 							totGroupIds,
 							true,
 							&(groupInfoStack.back())
 						);
 						totGroupIds++;
+						
+						if (curFillCount >= totIdealNodes) {
+							goto FIRST_FILL_DONE;
+						}
+						
 					}
 				}
+				
+FIRST_FILL_DONE:
 				
 				//cout << "groupIdStack.size()1 " << groupIdStack.size() << "\n";
 				
 				clearPathPreserve();
 				
+				// while (groupInfoStack.size() > 1) {
+				// 	groupInfoStack.pop_back();
+				// }
+				
+				
+				
 				for (i = 0; i < groupInfoStack.size(); i++) {
 					floodFillAtInd(
 						groupInfoStack[i].centerInd,
-						totGroupIds,
+						i,//totGroupIds,
 						false,
 						&(groupInfoStack[i])
 					);
-					totGroupIds++;
+					//totGroupIds++;
 				}
 			}
 			
@@ -788,6 +815,17 @@ int GamePageHolder::getGroupId (int pathDataIndex)
 		
 		
 		
+		
+	}
+int GamePageHolder::getInfoPD (int pathDataIndex)
+                                         {
+		
+		if (hasPath) {
+			return pathData[pathDataIndex];
+		}
+		else {
+			return -100;
+		}
 		
 	}
 GroupIdStruct * GamePageHolder::getInfo (int pathDataIndex)
@@ -826,6 +864,52 @@ void GamePageHolder::getInfoReport (int pathDataIndex)
 			cout << "hasPath==false\n";
 			return;
 		}
+		
+		
+	}
+btVector3 GamePageHolder::holderIndToBTV (GamePageHolder * curPointHolder, int curPointIndex)
+                                                                                    {
+		btVector3 pVec1;
+		
+		int ii;
+		int jj;
+		int kk;
+		
+		kk = curPointIndex/(cellsPerHolder*cellsPerHolder);
+		jj = (curPointIndex-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+		ii = curPointIndex-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+		
+		pVec1 = curPointHolder->gphMinInPixels.getBTV();
+		pVec1 += btVector3(ii,jj,kk);
+		
+		return pVec1;
+	}
+void GamePageHolder::sortConNodes (GamePageHolder * endHolder, int endInd)
+                                                                 {
+		
+		btVector3 endPoint = holderIndToBTV(endHolder, endInd);
+		btVector3 curPoint;
+		
+		ConnectingNodeStruct tempCN;
+		GamePageHolder* curHolder;
+		
+		int i;
+		
+		for (i = 0; i < bestConnectingNodes.size(); i++) {
+			curHolder = singleton->gameLogic->getHolderById(
+				bestConnectingNodes[i].blockIdTo,
+				bestConnectingNodes[i].holderIdTo
+			);
+			
+			curPoint = holderIndToBTV(
+				curHolder,
+				curHolder->groupInfoStack[bestConnectingNodes[i].groupIdTo].centerInd
+			);
+			
+			bestConnectingNodes[i].dist = curPoint.distance(endPoint);
+		}
+		
+		sort(bestConnectingNodes.begin(), bestConnectingNodes.end(), sortByDist);
 		
 		
 	}
