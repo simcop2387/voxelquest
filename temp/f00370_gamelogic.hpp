@@ -13,11 +13,15 @@ public:
 	FIVector4 minv;
 	FIVector4 maxv;
 	
-	bool didFindPath;
-	bool searchedForPath;
+	// bool didFindPath;
+	// bool searchedForPath;
+	
+	PathInfo testPath;
+	std::vector<btVector3> tempStack;
+	
 	
 	int idCounter;
-	int pathCount;
+	//int pathCount;
 	
 	// 
 	GamePageHolder* globEndHolder;
@@ -31,10 +35,13 @@ public:
 	void init(Singleton* _singleton) {
 		singleton = _singleton;
 		
-		searchedForPath = false;
-		didFindPath = false;
+		testPath.searchedForPath = false;
+		testPath.didFindPath = false;
+		testPath.points[0] = btVector3(0.0f,0.0f,0.0f);
+		testPath.points[1] = btVector3(0.0f,0.0f,0.0f);
+		
 		idCounter = 1;
-		pathCount = 0;
+		//pathCount = 0;
 		
 		threadPoolPath = new ThreadPoolWrapper();
 		threadPoolPath->init(singleton, 8, true||SINGLE_THREADED);
@@ -543,6 +550,8 @@ public:
 			
 		}
 		
+		
+		idCounter++;
 	}
 	
 	
@@ -680,7 +689,7 @@ public:
 			
 		}
 		else {
-			return;
+			goto FILL_GROUPS_RETURN;
 		}
 		
 		globEndGroupId = endGroupId;
@@ -769,7 +778,7 @@ public:
 		FOUND_TARG_GROUP:
 		
 		if (pathSearchStack.size() < 1) {
-			return;
+			goto FILL_GROUPS_RETURN;
 		}
 		
 		
@@ -780,6 +789,9 @@ public:
 			pathFinalStack.push_back(pathSearchStack[lastIndex]);
 			lastIndex = pathSearchStack[lastIndex].lastIndex;
 		}
+		
+FILL_GROUPS_RETURN:
+	idCounter++;
 		
 		
 	}
@@ -847,13 +859,13 @@ public:
 			bestInd2,
 			E_PFO_CLEAR_GROUPS
 		);
-		idCounter++;
+		
 		
 		if (globFoundTarg) {
-			cout << "Found linking holders\n";
+			//cout << "Found linking holders\n";
 		}
 		else {
-			cout << "No available path, or path data not ready\n";
+			//cout << "No available path, or path data not ready\n";
 			return false;
 		}
 		
@@ -866,14 +878,14 @@ public:
 			bestInd2,
 			E_PFO_SEARCH_GROUPS
 		);
-		idCounter++;
+		
 
 		
 		if (globFoundTarg) {
-			cout << "Found linking groups\n";
+			//cout << "Found linking groups\n";
 		}
 		else {
-			cout << "Could not find linking groups\n";
+			//cout << "Could not find linking groups\n";
 			return false;
 		}
 		
@@ -882,18 +894,49 @@ public:
 	}
 	
 	
-	void update() {
+	void drawFinalPath(PathInfo* pathInfo) {
+		
+		
+		GamePageHolder* closestHolder;
+		GamePageHolder* closestHolder2;
+		
+		int bestInd = getClosestPathInd(pathInfo->points[0], closestHolder);
+		int bestInd2 = getClosestPathInd(pathInfo->points[1], closestHolder2);
+		
+		drawPointAtIndex(closestHolder, bestInd, 0,128+singleton->smoothTime*127.0f,0, singleton->smoothTime);
+		drawPointAtIndex(closestHolder2, bestInd2, 128+singleton->smoothTime*127.0f,0,0, singleton->smoothTime);
+		
+		int i;
+		
+		singleton->setShaderVec3("matVal", 255, 0, 255);
+		
+		float curRad;
+		double fi;
+		
+		for (i = 0; i < pathInfo->finalPoints.size(); i++) {
+			fi = i;
+			
+			curRad = 0.25f + 0.15*sin( fi*0.5 + singleton->curTime/200.0 );
+			
+			singleton->drawBoxRad(pathInfo->finalPoints[i],btVector3(curRad,curRad,curRad));
+		}
+		
+		
+	}
+	
+	void getPath(PathInfo* pathInfo) {
+		
 		
 		int i;
 		int j;
 		int k;
 		
-		GamePageHolder* curHolder = singleton->gw->getHolderAtCoords(
-			singleton->lastHolderPos.getIX(),
-			singleton->lastHolderPos.getIY(),
-			singleton->lastHolderPos.getIZ(),
-			true
-		);
+		// GamePageHolder* curHolder = singleton->gw->getHolderAtCoords(
+		// 	singleton->lastHolderPos.getIX(),
+		// 	singleton->lastHolderPos.getIY(),
+		// 	singleton->lastHolderPos.getIZ(),
+		// 	true
+		// );
 		
 		// if (singleton->refreshPaths) {
 		// 	singleton->refreshPaths = false;
@@ -921,53 +964,53 @@ public:
 		int bestInd3;
 		PathResult* curPR;
 		
-		pathCount = 0;
+		//pathCount = 0;
 		
-		if (singleton->pathfindingOn) {
+		
+		
+		bestInd = getClosestPathInd(pathInfo->points[0], closestHolder);
+		bestInd2 = getClosestPathInd(pathInfo->points[1], closestHolder2);
+		
+		// current mouse position
+		// bestInd3 = getClosestPathInd(&(singleton->mouseMovePD), closestHolder3);
+		
+		
+		//drawPointAtIndex(closestHolder, bestInd, 0,128+singleton->smoothTime*127.0f,0, singleton->smoothTime);
+		//drawPointAtIndex(closestHolder2, bestInd2, 128+singleton->smoothTime*127.0f,0,0, singleton->smoothTime);
+		
+		
+		
+		// if (
+		// 	(bestInd > -1) &&
+		// 	singleton->doPathReport
+		// ) {
+		// 	singleton->doPathReport = false;
+		// 	;
 			
-			bestInd = getClosestPathInd(&(singleton->moveNodes[0]), closestHolder);
-			bestInd2 = getClosestPathInd(&(singleton->moveNodes[1]), closestHolder2);
+		// 	drawPointAtIndex(closestHolder, bestInd, 0,255,0, 0.5f);
 			
-			// current mouse position
-			//bestInd3 = getClosestPathInd(&(singleton->mouseMovePD), closestHolder3);
+		// }
+		
+		// if (
+		// 	(bestInd > -1)
+		// ) {
+		// 	if (closestHolder->getInfo(bestInd) != NULL) {
+		// 		if (closestHolder->getInfo(bestInd)->cameFromInd > -1) {
+		// 			drawPointAtIndex(closestHolder, closestHolder->getInfo(bestInd)->cameFromInd, 255,255,0, 0.5f);
+		// 		}
+		// 	}
+		// }
+		
+		
+		if ((bestInd > -1)  && (bestInd2 > -1)) {
 			
+			pathInfo->didFindPath = findBestPath(closestHolder, closestHolder2, bestInd, bestInd2);
 			
-			drawPointAtIndex(closestHolder, bestInd, 0,128+singleton->smoothTime*127.0f,0, singleton->smoothTime);
-			drawPointAtIndex(closestHolder2, bestInd2, 128+singleton->smoothTime*127.0f,0,0, singleton->smoothTime);
-			
-			// if (
-			// 	(bestInd > -1) &&
-			// 	singleton->doPathReport
-			// ) {
-			// 	singleton->doPathReport = false;
-			// 	;
+			if (pathInfo->didFindPath) {
 				
-			// 	drawPointAtIndex(closestHolder, bestInd, 0,255,0, 0.5f);
+				pathInfo->finalPoints.clear();
 				
-			// }
-			
-			// if (
-			// 	(bestInd > -1)
-			// ) {
-			// 	if (closestHolder->getInfo(bestInd) != NULL) {
-			// 		if (closestHolder->getInfo(bestInd)->cameFromInd > -1) {
-			// 			drawPointAtIndex(closestHolder, closestHolder->getInfo(bestInd)->cameFromInd, 255,255,0, 0.5f);
-			// 		}
-			// 	}
-			// }
-			
-			
-			if ((bestInd > -1)  && (bestInd2 >-1) && (!searchedForPath) && (singleton->pathFindingStep == 2)) {
-				// draw path between index
-				
-				didFindPath = findBestPath(closestHolder, closestHolder2, bestInd, bestInd2);
-				searchedForPath = true;
-			}
-			
-			if (didFindPath) {
-				
-				
-				
+				getPointsForPath(closestHolder, bestInd, pathInfo, true);
 				
 				for (i = 0; i < pathFinalStack.size(); i++) {
 					curPR = &(pathFinalStack[i]);
@@ -975,78 +1018,105 @@ public:
 					tempHolder = getHolderById(curPR->blockId,curPR->holderId);
 					if ((tempHolder != NULL)) {
 						tempInd = tempHolder->groupInfoStack[curPR->groupId].centerInd;
-						if (tempInd > -1) {
-							drawPointAtIndex(tempHolder, tempInd, 255, 128, 0, singleton->smoothTime);	
-						}
+						// if (tempInd > -1) {
+						// 	drawPointAtIndex(tempHolder, tempInd, 255, 128, 0, singleton->smoothTime);	
+						// }
 					}
 					
 					conHolder1 = getHolderById(curPR->conNode.blockIdFrom, curPR->conNode.holderIdFrom);
 					conHolder2 = getHolderById(curPR->conNode.blockIdTo, curPR->conNode.holderIdTo); 
 					
 					if (conHolder1 != NULL) {
-						
-						
-						drawPathToPoint(conHolder1, curPR->conNode.cellIndFrom, 255, 0, 255);
+						getPointsForPath(conHolder1, curPR->conNode.cellIndFrom, pathInfo, false);
 					}
 					if (conHolder2 != NULL) {
-						drawPathToPoint(conHolder2, curPR->conNode.cellIndTo, 255, 0, 255);
+						getPointsForPath(conHolder2, curPR->conNode.cellIndTo, pathInfo, true);
 					}
 					
 				}
 				
-				drawPathToPoint(closestHolder, bestInd, 255, 0, 255);
-				drawPathToPoint(closestHolder2, bestInd2, 255, 0, 255);
+				getPointsForPath(closestHolder2, bestInd2, pathInfo, false);
 				
 				
+				cout << "did find path\n";
 				
 			}
 			
-			// if (bestInd3 > -1) {
-			// 	drawPathToPoint(closestHolder3, bestInd3, 255, 128, 0);
-				
-			// 	if (singleton->doPathReport) {
-			// 		if (closestHolder3->getInfo(bestInd3) == NULL) {
-			// 			cout << "NULL!!!\n";
-			// 		}
-			// 		else {
-			// 			cout << closestHolder3->holderId << " " <<
-			// 				closestHolder3->getInfo(bestInd3)->groupId << " " <<
-			// 				closestHolder3->getInfoPD(bestInd3) << " " <<
-			// 				bestInd3 << "/" << singleton->cellsPerHolder*singleton->cellsPerHolder*singleton->cellsPerHolder << " " <<
-			// 				closestHolder3->groupInfoStack.size() << " " << 
-			// 				"\n";
-						
-			// 		}
-			// 		singleton->doPathReport = false;
-			// 	}
-				
-			// }
 			
 			
 			
-			
-			// for (k = -1; k <= 1; k++) {
-			// 	for (j = -1; j <= 1; j++) {
-			// 		for (i = -1; i <= 1; i++) {
-			// 			drawRegions(
-			// 				i,
-			// 				j,
-			// 				k
-			// 			);
-			// 		}
-			// 	}
-			// }
-			
-			
-			
-			
+			pathInfo->searchedForPath = true;
 		}
+		
+		
+		
+		// if (bestInd3 > -1) {
+		// 	drawPathToPoint(closestHolder3, bestInd3, 255, 128, 0);
+			
+		// 	if (singleton->doPathReport) {
+		// 		if (closestHolder3->getInfo(bestInd3) == NULL) {
+		// 			cout << "NULL!!!\n";
+		// 		}
+		// 		else {
+		// 			cout << closestHolder3->holderId << " " <<
+		// 				closestHolder3->getInfo(bestInd3)->groupId << " " <<
+		// 				closestHolder3->getInfoPD(bestInd3) << " " <<
+		// 				bestInd3 << "/" << singleton->cellsPerHolder*singleton->cellsPerHolder*singleton->cellsPerHolder << " " <<
+		// 				closestHolder3->groupInfoStack.size() << " " << 
+		// 				"\n";
+					
+		// 		}
+		// 		singleton->doPathReport = false;
+		// 	}
+			
+		// }
+		
+		
+		
+		
+		// for (k = -1; k <= 1; k++) {
+		// 	for (j = -1; j <= 1; j++) {
+		// 		for (i = -1; i <= 1; i++) {
+		// 			drawRegions(
+		// 				i,
+		// 				j,
+		// 				k
+		// 			);
+		// 		}
+		// 	}
+		// }
+		
+		
+		
+		
+		
 		
 		
 		
 		
 		
 		////////////////////
+		
+	}
+	
+	void update() {
+			
+			if (singleton->pathfindingOn) {
+				
+				if (
+					(!testPath.searchedForPath) && (singleton->pathFindingStep == 2)
+				) {
+					getPath(&testPath);
+				}
+				
+					
+			}
+			
+			drawFinalPath(&testPath);
+			
+			
+			
+			
 	}
 	
 	
@@ -1129,10 +1199,9 @@ public:
 	}
 	
 	
-	//conHolder1, curPR->conNode.cellIndFrom
-	void drawPathToPoint(GamePageHolder* curHolderFrom, int _curInd, int rr, int gg, int bb) {
+	void getPointsForPath(GamePageHolder* curHolderFrom, int _curInd, PathInfo* pathInfo, bool reverseOrder) {
 		
-		pathCount++;
+		//pathCount++;
 		
 		int curInd = _curInd;
 		int cameFromInd;
@@ -1144,12 +1213,15 @@ public:
 		int jj2;
 		int kk2;
 		
+		int i;
 		
-		int totPath = 0;
+		//int totPath = 0;
 		
 		
-		FIVector4 pVec1;
-		FIVector4 pVec2;
+		btVector3 pVec1;
+		
+		//FIVector4 pVec1;
+		//FIVector4 pVec2;
 		
 		if (curHolderFrom == NULL) {
 			return;
@@ -1173,16 +1245,20 @@ public:
 			
 		}
 		else {
-			cout << "NO DATA\n";
+			//cout << "NO DATA\n";
 			return;
 		}
 		
+		if (reverseOrder) {
+			tempStack.clear();
+		}
 		
-		minv.copyFrom(&(curHolderFrom->gphMinInPixels));
+		btVector3 newMin = curHolderFrom->gphMinInPixels.getBTV();
+		
 		
 		int cellsPerHolder = singleton->cellsPerHolder;
 		
-		singleton->setShaderVec3("matVal", rr, gg, bb);
+		//singleton->setShaderVec3("matVal", rr, gg, bb);
 		
 		
 		if (curHolderFrom->getInfo(curInd) != NULL) {
@@ -1198,7 +1274,7 @@ public:
 		) {
 			
 			
-			totPath++;
+			//totPath++;
 			
 			if (curHolderFrom->getInfo(curInd) != NULL) {
 				cameFromInd = curHolderFrom->getInfo(curInd)->cameFromInd;
@@ -1227,15 +1303,22 @@ public:
 				ii2 = cameFromInd-(kk2*cellsPerHolder*cellsPerHolder + jj2*cellsPerHolder);
 				
 				
-				pVec1.copyFrom(&minv);
-				pVec1.addXYZ(ii,jj,kk);
-				pVec1.addXYZ(0.5f);
+				pVec1 = newMin + btVector3(ii+0.5f,jj+0.5f,kk+0.5f);
 				
-				pVec2.copyFrom(&minv);
-				pVec2.addXYZ(ii2,jj2,kk2);
-				pVec2.addXYZ(0.5f);
+				if (reverseOrder) {
+					tempStack.push_back(pVec1);
+				}
+				else {
+					pathInfo->finalPoints.push_back(pVec1);
+				}
 				
-				singleton->drawLine(&pVec1, &pVec2);
+				
+				
+				// pVec2.copyFrom(&minv);
+				// pVec2.addXYZ(ii2,jj2,kk2);
+				// pVec2.addXYZ(0.5f);
+				
+				// singleton->drawLine(&pVec1, &pVec2);
 				
 				
 				
@@ -1245,18 +1328,27 @@ public:
 			
 		}
 		
-		if (totPath == 0) {
-			
-			drawPointAtIndex(curHolderFrom, curInd, 0, 255, 255, singleton->smoothTime);	
-			
-			
-			// cout << "0 path " << cameFromInd << " " << curInd << "\n";
-			
-			// if (curHolderFrom->getInfo(curInd) == NULL) {
-			// 		cout << "NULL IND DATA\n";
-			// }
-			
+		if (reverseOrder) {
+			for (i = (tempStack.size()-1); i >= 0; i--) {
+				pathInfo->finalPoints.push_back(tempStack[i]);
+			}
 		}
+		
+		
+		
+		
+		// if (totPath == 0) {
+			
+		// 	drawPointAtIndex(curHolderFrom, curInd, 0, 255, 255, singleton->smoothTime);	
+			
+			
+		// 	// cout << "0 path " << cameFromInd << " " << curInd << "\n";
+			
+		// 	// if (curHolderFrom->getInfo(curInd) == NULL) {
+		// 	// 		cout << "NULL IND DATA\n";
+		// 	// }
+			
+		// }
 		
 	}
 	
@@ -1427,223 +1519,223 @@ public:
 	
 	
 	
-	void drawPaths(
-		GamePageHolder* curHolderFrom,
-		int groupIdFrom,
+	// void drawPaths(
+	// 	GamePageHolder* curHolderFrom,
+	// 	int groupIdFrom,
 		
-		GamePageHolder* curHolderTo,
-		int groupIdTo
-	) {
+	// 	GamePageHolder* curHolderTo,
+	// 	int groupIdTo
+	// ) {
 		
 		
-		if (
-			(curHolderTo == NULL) ||
-			(curHolderFrom == NULL) ||
-			(groupIdFrom == -1) ||
-			(groupIdTo == -1)
-		) {
-			return;
-		}
+	// 	if (
+	// 		(curHolderTo == NULL) ||
+	// 		(curHolderFrom == NULL) ||
+	// 		(groupIdFrom == -1) ||
+	// 		(groupIdTo == -1)
+	// 	) {
+	// 		return;
+	// 	}
 		
-		if (curHolderFrom->pathsReady) {
+	// 	if (curHolderFrom->pathsReady) {
 			
-		}
-		else {
-			return;
-		}
-		if (curHolderTo->pathsReady) {
+	// 	}
+	// 	else {
+	// 		return;
+	// 	}
+	// 	if (curHolderTo->pathsReady) {
 			
-		}
-		else {
-			return;
-		}
+	// 	}
+	// 	else {
+	// 		return;
+	// 	}
 		
 		
-		int i;
-		int j;
-		int k;
-		int n;
-		int q;
+	// 	int i;
+	// 	int j;
+	// 	int k;
+	// 	int n;
+	// 	int q;
 		
-		int ii;
-		int jj;
-		int kk;
-		int ii2;
-		int jj2;
-		int kk2;
+	// 	int ii;
+	// 	int jj;
+	// 	int kk;
+	// 	int ii2;
+	// 	int jj2;
+	// 	int kk2;
 		
-		int ind;
-		int lastId;
-		int curId;
-		int curInd;
-		int cameFromInd;
-		int cellVal;
+	// 	int ind;
+	// 	int lastId;
+	// 	int curId;
+	// 	int curInd;
+	// 	int cameFromInd;
+	// 	int cellVal;
 		
-		int targetGroup;
-		int targetBlockId;
-		int targetHolderId;
-		
-		
-		int cellsPerHolder = singleton->cellsPerHolder;
-		
-		bool doProc = false;
-		
-		// FIVector4 lhPos;
-		// lhPos.copyFrom(&(singleton->lastHolderPos));
-		// lhPos.addXYZ(offX,offY,offZ);
-		
-		// GamePageHolder* curHolderFrom = singleton->gw->getHolderAtCoords(
-		// 	lhPos.getIX(),
-		// 	lhPos.getIY(),
-		// 	lhPos.getIZ(),
-		// 	true
-		// );
-		
-		// bool sameHolder = (
-		// 	(curHolderTo->blockId = curHolderFrom->blockId) &&
-		// 	(curHolderTo->holderId = curHolderFrom->holderId)
-		// );
-		
-		float curPathCost;
-		
-		FIVector4 pVec1;
-		FIVector4 pVec2;
-		FIVector4 pVec3;
+	// 	int targetGroup;
+	// 	int targetBlockId;
+	// 	int targetHolderId;
 		
 		
+	// 	int cellsPerHolder = singleton->cellsPerHolder;
+		
+	// 	bool doProc = false;
+		
+	// 	// FIVector4 lhPos;
+	// 	// lhPos.copyFrom(&(singleton->lastHolderPos));
+	// 	// lhPos.addXYZ(offX,offY,offZ);
+		
+	// 	// GamePageHolder* curHolderFrom = singleton->gw->getHolderAtCoords(
+	// 	// 	lhPos.getIX(),
+	// 	// 	lhPos.getIY(),
+	// 	// 	lhPos.getIZ(),
+	// 	// 	true
+	// 	// );
+		
+	// 	// bool sameHolder = (
+	// 	// 	(curHolderTo->blockId = curHolderFrom->blockId) &&
+	// 	// 	(curHolderTo->holderId = curHolderFrom->holderId)
+	// 	// );
+		
+	// 	float curPathCost;
+		
+	// 	FIVector4 pVec1;
+	// 	FIVector4 pVec2;
+	// 	FIVector4 pVec3;
 		
 		
-		singleton->setShaderFloat("isWire", 1.0);
-		singleton->setShaderVec3("matVal", 255, 0, 0);
-		minv.copyFrom(&(curHolderFrom->gphMinInPixels));
-		//minv.multXYZ(cellsPerHolder);
-		maxv.copyFrom(&minv);
-		maxv.addXYZ(cellsPerHolder);
-		singleton->drawBox(&minv, &maxv);
-		singleton->setShaderFloat("isWire", 0.0);
 		
 		
-		// draw all path points
-		lastId = -1;
-		// for (q = 0; q < curHolderFrom->groupIdStack.size(); q++) {
+	// 	singleton->setShaderFloat("isWire", 1.0);
+	// 	singleton->setShaderVec3("matVal", 255, 0, 0);
+	// 	minv.copyFrom(&(curHolderFrom->gphMinInPixels));
+	// 	//minv.multXYZ(cellsPerHolder);
+	// 	maxv.copyFrom(&minv);
+	// 	maxv.addXYZ(cellsPerHolder);
+	// 	singleton->drawBox(&minv, &maxv);
+	// 	singleton->setShaderFloat("isWire", 0.0);
+		
+		
+	// 	// draw all path points
+	// 	lastId = -1;
+	// 	// for (q = 0; q < curHolderFrom->groupIdStack.size(); q++) {
 			
-		// 	curId = curHolderFrom->groupIdStack[q].groupId;
-		// 	curInd = curHolderFrom->groupIdStack[q].ind;
+	// 	// 	curId = curHolderFrom->groupIdStack[q].groupId;
+	// 	// 	curInd = curHolderFrom->groupIdStack[q].ind;
 			
-		// 	if (lastId != curId) {
-		// 		singleton->setShaderfVec3("matVal", &(singleton->colVecs[curId%16]));
-		// 	}
+	// 	// 	if (lastId != curId) {
+	// 	// 		singleton->setShaderfVec3("matVal", &(singleton->colVecs[curId%16]));
+	// 	// 	}
 			
-		// 	if (curInd == curHolderFrom->groupInfoStack[curId].centerInd) {
-		// 		singleton->setShaderVec3("matVal", 254, 254, 254);
-		// 	}
+	// 	// 	if (curInd == curHolderFrom->groupInfoStack[curId].centerInd) {
+	// 	// 		singleton->setShaderVec3("matVal", 254, 254, 254);
+	// 	// 	}
 			
-		// 	kk = curInd/(cellsPerHolder*cellsPerHolder);
-		// 	jj = (curInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-		// 	ii = curInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+	// 	// 	kk = curInd/(cellsPerHolder*cellsPerHolder);
+	// 	// 	jj = (curInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+	// 	// 	ii = curInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 			
-		// 	pVec1.copyFrom(&minv);
-		// 	pVec1.addXYZ(ii,jj,kk);
-		// 	pVec1.addXYZ(0.5f);
+	// 	// 	pVec1.copyFrom(&minv);
+	// 	// 	pVec1.addXYZ(ii,jj,kk);
+	// 	// 	pVec1.addXYZ(0.5f);
 			
-		// 	if (curHolderFrom->getInfo(curInd) != NULL) {
-		// 		curPathCost = curHolderFrom->getInfo(curInd)->pathCost;
-		// 		singleton->drawCubeCentered(
-		// 			&pVec1, 
-		// 			mixf(0.05f,0.45f,clampfZO(curPathCost/128.0f))
-		// 		);
-		// 	}
-			
-			
+	// 	// 	if (curHolderFrom->getInfo(curInd) != NULL) {
+	// 	// 		curPathCost = curHolderFrom->getInfo(curInd)->pathCost;
+	// 	// 		singleton->drawCubeCentered(
+	// 	// 			&pVec1, 
+	// 	// 			mixf(0.05f,0.45f,clampfZO(curPathCost/128.0f))
+	// 	// 		);
+	// 	// 	}
 			
 			
 			
-		// 	if (curInd == curHolderFrom->groupInfoStack[curId].centerInd) {
-		// 		singleton->setShaderfVec3("matVal", &(singleton->colVecs[curId%16]));
-		// 	}
 			
-		// 	lastId = curId;
-		// }
-		
-		doProc = false;
-		
-		
-		
-		
-		// draw paths
-		
-		
-		
-		
-		
-		
-		// draw highlighted cube here if necessary
-		// ??
-		
-		
-		targetGroup = groupIdTo;//curHolderTo->getGroupId(curPointIndex);
-		targetBlockId = curHolderTo->blockId;
-		targetHolderId = curHolderTo->holderId;
-		
-		
-		
-		for (q = 0; q < curHolderFrom->bestConnectingNodes.size(); q++) {
-			//doProc = curHolderFrom->pathsReady && (targetGroup > -1);
 			
-			doProc = false;
-			// if (sameHolder) {
+	// 	// 	if (curInd == curHolderFrom->groupInfoStack[curId].centerInd) {
+	// 	// 		singleton->setShaderfVec3("matVal", &(singleton->colVecs[curId%16]));
+	// 	// 	}
+			
+	// 	// 	lastId = curId;
+	// 	// }
+		
+	// 	doProc = false;
+		
+		
+		
+		
+	// 	// draw paths
+		
+		
+		
+		
+		
+		
+	// 	// draw highlighted cube here if necessary
+	// 	// ??
+		
+		
+	// 	targetGroup = groupIdTo;//curHolderTo->getGroupId(curPointIndex);
+	// 	targetBlockId = curHolderTo->blockId;
+	// 	targetHolderId = curHolderTo->holderId;
+		
+		
+		
+	// 	for (q = 0; q < curHolderFrom->bestConnectingNodes.size(); q++) {
+	// 		//doProc = curHolderFrom->pathsReady && (targetGroup > -1);
+			
+	// 		doProc = false;
+	// 		// if (sameHolder) {
 				
-			// 	if (curHolderFrom->bestConnectingNodes[q].groupIdFrom == targetGroup) {
-			// 		doProc = true;
-			// 		curInd = curHolderFrom->bestConnectingNodes[q].cellIndFrom;
-			// 	}
-			// }
-			// else {
-				if (
+	// 		// 	if (curHolderFrom->bestConnectingNodes[q].groupIdFrom == targetGroup) {
+	// 		// 		doProc = true;
+	// 		// 		curInd = curHolderFrom->bestConnectingNodes[q].cellIndFrom;
+	// 		// 	}
+	// 		// }
+	// 		// else {
+	// 			if (
 					
-					(curHolderFrom->bestConnectingNodes[q].groupIdTo == targetGroup) &&
-					(curHolderFrom->bestConnectingNodes[q].blockIdTo == targetBlockId) &&
-					(curHolderFrom->bestConnectingNodes[q].holderIdTo == targetHolderId)	
+	// 				(curHolderFrom->bestConnectingNodes[q].groupIdTo == targetGroup) &&
+	// 				(curHolderFrom->bestConnectingNodes[q].blockIdTo == targetBlockId) &&
+	// 				(curHolderFrom->bestConnectingNodes[q].holderIdTo == targetHolderId)	
 					
-				) {
-					doProc = true;
-					curInd = curHolderFrom->bestConnectingNodes[q].cellIndFrom;
-				}
-			//}
+	// 			) {
+	// 				doProc = true;
+	// 				curInd = curHolderFrom->bestConnectingNodes[q].cellIndFrom;
+	// 			}
+	// 		//}
 			
-			// must set curInd
-			//curInd = curHolderTo->groupInfoStack[targetGroup].centerInd;
+	// 		// must set curInd
+	// 		//curInd = curHolderTo->groupInfoStack[targetGroup].centerInd;
 			
 			
-			if (doProc) {
+	// 		if (doProc) {
 				
 				
-				/////////////
-				kk = curInd/(cellsPerHolder*cellsPerHolder);
-				jj = (curInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-				ii = curInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+	// 			/////////////
+	// 			kk = curInd/(cellsPerHolder*cellsPerHolder);
+	// 			jj = (curInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+	// 			ii = curInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 				
-				pVec1.copyFrom(&minv);
-				pVec1.addXYZ(ii,jj,kk);
-				pVec1.addXYZ(0.5f);
+	// 			pVec1.copyFrom(&minv);
+	// 			pVec1.addXYZ(ii,jj,kk);
+	// 			pVec1.addXYZ(0.5f);
 				
-				singleton->setShaderVec3("matVal", 255, 255, 0);
-				if (curHolderFrom->getInfo(curInd) != NULL) {
-					singleton->drawCubeCentered(
-						&pVec1, 
-						singleton->smoothTime
-					);
-				}
-				/////////////
+	// 			singleton->setShaderVec3("matVal", 255, 255, 0);
+	// 			if (curHolderFrom->getInfo(curInd) != NULL) {
+	// 				singleton->drawCubeCentered(
+	// 					&pVec1, 
+	// 					singleton->smoothTime
+	// 				);
+	// 			}
+	// 			/////////////
 				
 				
 				
-				drawPathToPoint(curHolderFrom, curInd, 255, 0, 255);
+	// 			//drawPathToPoint(curHolderFrom, curInd, 255, 0, 255);
 				
-				doProc = false;
-			}
+	// 			doProc = false;
+	// 		}
 			
-		}
+	// 	}
 		
 		
 		
@@ -1652,42 +1744,42 @@ public:
 		
 		
 		
-		// if (curHolderFrom->idealPathsReady) {
-		// 	singleton->setShaderVec3("matVal", 30, 30, 30);
-		// 	for (q = 0; q < curHolderFrom->groupIdStack.size(); q++) {
+	// 	// if (curHolderFrom->idealPathsReady) {
+	// 	// 	singleton->setShaderVec3("matVal", 30, 30, 30);
+	// 	// 	for (q = 0; q < curHolderFrom->groupIdStack.size(); q++) {
 				
-		// 		//curId = curHolderFrom->groupIdStack[q].groupId;
-		// 		curInd = curHolderFrom->groupIdStack[q].ind;
+	// 	// 		//curId = curHolderFrom->groupIdStack[q].groupId;
+	// 	// 		curInd = curHolderFrom->groupIdStack[q].ind;
 				
-		// 		if (curHolderFrom->getInfo(curInd) != NULL) {
-		// 				cameFromInd = curHolderFrom->getInfo(curInd)->cameFromInd;
+	// 	// 		if (curHolderFrom->getInfo(curInd) != NULL) {
+	// 	// 				cameFromInd = curHolderFrom->getInfo(curInd)->cameFromInd;
 						
-		// 				if (
-		// 					(cameFromInd > -1) &&
-		// 					(cameFromInd < (cellsPerHolder*cellsPerHolder*cellsPerHolder))
-		// 				) {
-		// 					kk = curInd/(cellsPerHolder*cellsPerHolder);
-		// 					jj = (curInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-		// 					ii = curInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+	// 	// 				if (
+	// 	// 					(cameFromInd > -1) &&
+	// 	// 					(cameFromInd < (cellsPerHolder*cellsPerHolder*cellsPerHolder))
+	// 	// 				) {
+	// 	// 					kk = curInd/(cellsPerHolder*cellsPerHolder);
+	// 	// 					jj = (curInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+	// 	// 					ii = curInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 							
-		// 					kk2 = cameFromInd/(cellsPerHolder*cellsPerHolder);
-		// 					jj2 = (cameFromInd-kk2*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-		// 					ii2 = cameFromInd-(kk2*cellsPerHolder*cellsPerHolder + jj2*cellsPerHolder);
+	// 	// 					kk2 = cameFromInd/(cellsPerHolder*cellsPerHolder);
+	// 	// 					jj2 = (cameFromInd-kk2*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+	// 	// 					ii2 = cameFromInd-(kk2*cellsPerHolder*cellsPerHolder + jj2*cellsPerHolder);
 							
 							
-		// 					pVec1.copyFrom(&minv);
-		// 					pVec1.addXYZ(ii,jj,kk);
-		// 					pVec1.addXYZ(0.5f);
+	// 	// 					pVec1.copyFrom(&minv);
+	// 	// 					pVec1.addXYZ(ii,jj,kk);
+	// 	// 					pVec1.addXYZ(0.5f);
 							
-		// 					pVec2.copyFrom(&minv);
-		// 					pVec2.addXYZ(ii2,jj2,kk2);
-		// 					pVec2.addXYZ(0.5f);
+	// 	// 					pVec2.copyFrom(&minv);
+	// 	// 					pVec2.addXYZ(ii2,jj2,kk2);
+	// 	// 					pVec2.addXYZ(0.5f);
 							
-		// 					singleton->drawLine(&pVec1, &pVec2);
-		// 				}
-		// 			}
-		// 		}
-		// }
+	// 	// 					singleton->drawLine(&pVec1, &pVec2);
+	// 	// 				}
+	// 	// 			}
+	// 	// 		}
+	// 	// }
 		
 		
 			
@@ -1695,11 +1787,13 @@ public:
 		
 		
 		
-	}
+	// }
 	
-	int getClosestPathInd(FIVector4* closestPoint, GamePageHolder* &closestHolder) {
+	int getClosestPathInd(btVector3 cpBTV, GamePageHolder* &closestHolder) {
 			
+			FIVector4 closestPoint;
 			
+			closestPoint.setBTV(cpBTV);
 			
 			int i;
 			int j;
@@ -1713,7 +1807,7 @@ public:
 			int bestInd = -1;
 			
 			int cellsPerHolder = singleton->cellsPerHolder;
-			int curInd = singleton->gw->getCellInd(closestPoint, closestHolder);
+			int curInd = singleton->gw->getCellInd(&closestPoint, closestHolder);
 			
 			if (closestHolder == NULL) {
 				return -1;

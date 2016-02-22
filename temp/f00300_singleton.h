@@ -4974,10 +4974,10 @@ void Singleton::mouseMove (int _x, int _y)
 			
 			if (pathfindingOn) {
 				
-				if (gameLogic->getClosestPathInd(&mouseMovePD, closestHolder) > -1) {
+				if (gameLogic->getClosestPathInd(mouseMovePD.getBTV(), closestHolder) > -1) {
 					
 					if (pathFindingStep < 2) {
-						moveNodes[pathFindingStep].copyFrom(&(mouseMovePD));
+						gameLogic->testPath.points[pathFindingStep] = mouseMovePD.getBTV();
 					}
 				}
 				
@@ -5330,10 +5330,11 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 									
 									if (pathFindingStep == 3) {
 										pathFindingStep = 0;
-										moveNodes[0].setFXYZ(0.0,0.0,0.0);
-										moveNodes[1].setFXYZ(0.0,0.0,0.0);
-										gameLogic->searchedForPath = false;
-										gameLogic->didFindPath = false;
+										gameLogic->testPath.points[0] = btVector3(0.0f,0.0f,0.0f);
+										gameLogic->testPath.points[1] = btVector3(0.0f,0.0f,0.0f);
+										gameLogic->testPath.searchedForPath = false;
+										gameLogic->testPath.didFindPath = false;
+										gameLogic->testPath.finalPoints.clear();
 									}
 								}
 								else {

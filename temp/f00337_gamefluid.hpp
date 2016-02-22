@@ -1431,7 +1431,7 @@ public:
 		}
 		
 		singleton->refreshPaths = false;
-		singleton->gameLogic->searchedForPath = false;
+		singleton->gameLogic->testPath.searchedForPath = false;
 	}
 	
 	void prereadFluidData() {

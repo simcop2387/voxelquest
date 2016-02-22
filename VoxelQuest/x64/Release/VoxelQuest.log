@@ -1,4 +1,4 @@
-﻿Build started 2/21/2016 8:16:48 AM.
+﻿Build started 2/22/2016 7:02:57 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -835,21 +835,9 @@
          BenchmarkDemo:initPhysics()
          genBlockHolder
          pathfindingOn: 1
-         Found linking holders
-         Found linking groups
-         Found linking holders
-         Found linking groups
-         No available path, or path data not ready
-         Found linking holders
-         Found linking groups
-         Found linking holders
-         Found linking groups
-         Found linking holders
-         Found linking groups
-         Found linking holders
-         Found linking groups
+         did find path
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:02:34.83
+Time Elapsed 00:00:56.43

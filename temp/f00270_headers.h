@@ -363,7 +363,6 @@ public:
   FIVector4 tempVec1;
   FIVector4 tempVec2;
   FIVector4 tempVec3;
-  FIVector4 (moveNodes) [2];
   FIVector4 (voroVecArr) [125];
   floatAndIndex (indexArr) [125];
   FIVector4 mouseStart;
@@ -1859,10 +1858,9 @@ public:
   ThreadPoolWrapper * threadPoolList;
   FIVector4 minv;
   FIVector4 maxv;
-  bool didFindPath;
-  bool searchedForPath;
+  PathInfo testPath;
+  std::vector <btVector3> tempStack;
   int idCounter;
-  int pathCount;
   GamePageHolder * globEndHolder;
   int globEndGroupId;
   bool globFoundTarg;
@@ -1880,13 +1878,14 @@ public:
   void remGroupFromStack (int opCode);
   void fillAllGroups (GamePageHolder * begHolder, GamePageHolder * endHolder, int begInd, int endInd, int opCode);
   bool findBestPath (GamePageHolder * closestHolder, GamePageHolder * closestHolder2, int bestInd, int bestInd2);
+  void drawFinalPath (PathInfo * pathInfo);
+  void getPath (PathInfo * pathInfo);
   void update ();
   void drawLineAtIndices (GamePageHolder * curPointHolder, int curPointIndex, GamePageHolder * curPointHolder2, int curPointIndex2);
   void drawPointAtIndex (GamePageHolder * curPointHolder, int curPointIndex, int r, int g, int b, float rad);
-  void drawPathToPoint (GamePageHolder * curHolderFrom, int _curInd, int rr, int gg, int bb);
+  void getPointsForPath (GamePageHolder * curHolderFrom, int _curInd, PathInfo * pathInfo, bool reverseOrder);
   void drawRegions (int offX, int offY, int offZ);
-  void drawPaths (GamePageHolder * curHolderFrom, int groupIdFrom, GamePageHolder * curHolderTo, int groupIdTo);
-  int getClosestPathInd (FIVector4 * closestPoint, GamePageHolder * & closestHolder);
+  int getClosestPathInd (btVector3 cpBTV, GamePageHolder * & closestHolder);
   void loadNearestHolders ();
 };
 #undef LZZ_INLINE

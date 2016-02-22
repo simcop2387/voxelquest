@@ -1242,6 +1242,17 @@ bool sortByDist(const ConnectingNodeStruct &lhs, const ConnectingNodeStruct &rhs
 	return lhs.dist < rhs.dist;
 }
 
+
+struct PathInfo {
+	btVector3 points[2];
+	bool searchedForPath;
+	bool didFindPath;
+	
+	std::vector<btVector3> finalPoints;
+	
+};
+
+
 struct GroupIdStruct {
 	int ind;
 	int groupId;
