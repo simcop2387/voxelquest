@@ -32,6 +32,32 @@ public:
 		
 	}
 
+	void setEntTargPath(int sourceUID, int destUID) {
+		
+		if (sourceUID < 0) {
+			return;
+		}
+		if (destUID < 0) {
+			return;
+		}
+		
+		BaseObj* sEnt = &(singleton->gem->gameObjects[sourceUID]);
+		BaseObj* dEnt = &(singleton->gem->gameObjects[destUID]);
+		
+		
+		
+		
+		sEnt->targPath.points[0] = sEnt->tbPos;
+		sEnt->targPath.points[1] = dEnt->tbPos;
+		sEnt->targPath.searchedForPath = false;
+		sEnt->targPath.didFindPath = false;
+		sEnt->targPath.nextInd = -1;
+		sEnt->targPath.finalPoints.clear();
+		
+		getPath(&(sEnt->targPath));
+		
+	}
+
 	void init(Singleton* _singleton) {
 		singleton = _singleton;
 		
@@ -59,29 +85,44 @@ public:
 			return;
 		}
 		
-		BaseObj* nearestEnemy;
-		BaseObj* nearestWeapon;
+		if (ca->isDead()) {
+			return;
+		}
+		
+		if (ca->isHidden) {
+			return;
+		}
+		
+		BaseObj* nearestEnemy = NULL;
+		BaseObj* nearestWeapon = NULL;
 		
 		btVector3 xyzDisEnemy;
 		btVector3 xyzDisWeapon;
 		
+		int xyDisEnemy = 9999;
+		int xyDisWeapon = 9999;
+		
 		int nearestEnemyInd;
 		int nearestWeaponInd;
 		
+		int i;
 		
 		bool findWeapon = false;
+		bool doMove = false;
+		
+		btVector3 actorFinalVec;
 		
 		nearestEnemyInd = singleton->gem->getClosestActor(
 				ca->uid,
 				E_ENTTYPE_NPC,
 				200.0f,
-				E_CF_AREENEMIES
+				E_CF_AREENEMIES|E_CF_ISALIVE
 		);
 		if (nearestEnemyInd > 0) {
 			// hostiles nearby
 			nearestEnemy = &(singleton->gem->gameObjects[nearestEnemyInd]);
 			xyzDisEnemy = singleton->gem->getUnitDistance(ca->uid, nearestEnemy->uid);
-			
+			xyDisEnemy = (xyzDisEnemy.getX() + xyzDisEnemy.getY());
 			
 			nearestWeaponInd = singleton->gem->getClosestActor(
 					ca->uid,
@@ -92,29 +133,40 @@ public:
 			if (nearestWeaponInd > 0) {
 				nearestWeapon = &(singleton->gem->gameObjects[nearestWeaponInd]);
 				xyzDisWeapon = singleton->gem->getUnitDistance(ca->uid, nearestWeapon->uid);
-			}
-			
-			
-			if (ca->holdingWeapon(-1)) {
-				// already holding weapon
-			}
-			else {
-				// find nearest weapon
+				xyDisWeapon = (xyzDisWeapon.getX() + xyzDisWeapon.getY());
 				
-				if (
-					(xyzDisWeapon.getX() + xyzDisWeapon.getY()) <
-					(xyzDisEnemy.getX() + xyzDisEnemy.getY())
-				) {
-					findWeapon = true;
+				
+				if (ca->holdingWeapon(-1)) {
+					// already holding weapon
 				}
-				
+				else {
+					// find nearest weapon
+					
+					//if (xyDisWeapon <= xyDisEnemy) {
+						findWeapon = true;
+					//}
+				}
 			}
 			
 			if (findWeapon) {
-				
+				if (xyDisWeapon <= 1) {
+					singleton->gem->makeTurnTowardsTB(ca->uid, nearestWeapon->tbPos);
+					singleton->gem->makeGrab(ca->uid, -1);
+				}
+				else {
+					setEntTargPath(ca->uid,nearestWeapon->uid);
+					doMove = true;
+				}
 			}
 			else {
-				
+				if (xyDisEnemy <= 1) {
+					singleton->gem->makeTurnTowardsTB(ca->uid, nearestEnemy->tbPos);
+					singleton->gem->makeSwing(ca->uid, iGenRand(0,1));
+				}
+				else {
+					setEntTargPath(ca->uid,nearestEnemy->uid);
+					doMove = true;
+				}
 			}
 			
 			
@@ -124,7 +176,43 @@ public:
 		}
 		
 		
-		
+		if (doMove) {
+			if (ca->targPath.didFindPath) {
+				
+				
+				for (i = 0; i < ca->targPath.finalPoints.size(); i++) {
+					
+					if (
+						singleton->gem->getUnitDisXY(
+							ca->targPath.finalPoints[i],
+							ca->tbPos
+						) == 0
+					) {
+						break;
+					}
+					
+				}
+				
+				i++;
+				
+				if (i >= ca->targPath.finalPoints.size()) {
+					
+				}
+				else {
+					ca->targPath.nextInd = i;
+					
+					singleton->gem->makeTurnTowardsTB(ca->uid, ca->targPath.finalPoints[ca->targPath.nextInd]);
+					singleton->gem->makeMoveTB(ca->uid, 1);
+					
+				}
+				
+				
+				
+			}
+			else {
+				cout << "did not find path\n";
+			}
+		}
 		
 		
 		
@@ -842,12 +930,100 @@ FILL_GROUPS_RETURN:
 	// }
 	
 	
+	bool findNaivePath(PathInfo* pathInfo) {
+		
+		// attempt to find a naive greedy path
+		
+		int testInd;
+		int deltaXA;
+		int deltaYA;
+		int deltaX;
+		int deltaY;
+		
+		int toggleMod = 0;
+		
+		bool keepTesting = true;
+		GamePageHolder* testHolder;
+		
+		btVector3 testPos = pathInfo->points[0];
+		btVector3 destPos = pathInfo->points[1];
+		
+		btVector3 tempBTV;
+		
+		do {
+			testInd = getClosestPathRad(testPos, testHolder);
+			
+			if (testInd > -1) {
+				tempBTV = holderIndToBTV(testHolder, testInd, true);
+				pathInfo->finalPoints.push_back(tempBTV);
+				testPos.setZ(tempBTV.getZ());
+			}
+			
+			deltaX = (destPos.getX() - testPos.getX());
+			deltaY = (destPos.getY() - testPos.getY());
+			deltaXA = abs(deltaX);
+			deltaYA = abs(deltaY);
+			
+			keepTesting = (
+				(testInd > -1) &&
+				((deltaXA+deltaYA) > 0)
+			);
+			
+			
+			if ( (toggleMod%2) == 0 ) {
+				if (deltaXA > 0) {
+					testPos += btVector3(
+						qSign(deltaX),
+						0.0f,
+						0.0f
+					);
+				}
+				else if (deltaYA > 0) {
+					testPos += btVector3(
+						0.0f,
+						qSign(deltaY),
+						0.0f
+					);
+				}
+			}
+			else {
+				if (deltaYA > 0) {
+					testPos += btVector3(
+						0.0f,
+						qSign(deltaY),
+						0.0f
+					);
+				}
+				else if (deltaXA > 0) {
+					testPos += btVector3(
+						qSign(deltaX),
+						0.0f,
+						0.0f
+					);
+				}
+			}
+			
+			toggleMod++;
+			
+		} while (keepTesting);
+		
+		return (
+			(testInd > -1) &&
+			((deltaXA+deltaYA) == 0)
+		);
+		
+	}
+	
+	
 	bool findBestPath(
+		PathInfo* pathInfo,
 		GamePageHolder* closestHolder,
 		GamePageHolder* closestHolder2,
 		int bestInd,
 		int bestInd2
 	) {
+		
+		
 		
 		// clear
 		globEndHolder = closestHolder2;
@@ -900,8 +1076,8 @@ FILL_GROUPS_RETURN:
 		GamePageHolder* closestHolder;
 		GamePageHolder* closestHolder2;
 		
-		int bestInd = getClosestPathInd(pathInfo->points[0], closestHolder);
-		int bestInd2 = getClosestPathInd(pathInfo->points[1], closestHolder2);
+		int bestInd = getClosestPathRad(pathInfo->points[0], closestHolder);
+		int bestInd2 = getClosestPathRad(pathInfo->points[1], closestHolder2);
 		
 		drawPointAtIndex(closestHolder, bestInd, 0,128+singleton->smoothTime*127.0f,0, singleton->smoothTime);
 		drawPointAtIndex(closestHolder2, bestInd2, 128+singleton->smoothTime*127.0f,0,0, singleton->smoothTime);
@@ -918,7 +1094,16 @@ FILL_GROUPS_RETURN:
 			
 			curRad = 0.25f + 0.15*sin( fi*0.5 + singleton->curTime/200.0 );
 			
+			if (i == pathInfo->nextInd) {
+				singleton->setShaderVec3("matVal", 0, 255, 255);
+			}
+			
 			singleton->drawBoxRad(pathInfo->finalPoints[i],btVector3(curRad,curRad,curRad));
+			
+			if (i == pathInfo->nextInd) {
+				singleton->setShaderVec3("matVal", 255, 0, 255);
+			}
+			
 		}
 		
 		
@@ -926,6 +1111,7 @@ FILL_GROUPS_RETURN:
 	
 	void getPath(PathInfo* pathInfo) {
 		
+		pathInfo->finalPoints.clear();
 		
 		int i;
 		int j;
@@ -968,11 +1154,14 @@ FILL_GROUPS_RETURN:
 		
 		
 		
-		bestInd = getClosestPathInd(pathInfo->points[0], closestHolder);
-		bestInd2 = getClosestPathInd(pathInfo->points[1], closestHolder2);
+		bestInd = getClosestPathRad(pathInfo->points[0], closestHolder);
+		bestInd2 = getClosestPathRad(pathInfo->points[1], closestHolder2);
+		
+		
+		
 		
 		// current mouse position
-		// bestInd3 = getClosestPathInd(&(singleton->mouseMovePD), closestHolder3);
+		// bestInd3 = getClosestPathRad(&(singleton->mouseMovePD), closestHolder3);
 		
 		
 		//drawPointAtIndex(closestHolder, bestInd, 0,128+singleton->smoothTime*127.0f,0, singleton->smoothTime);
@@ -1004,44 +1193,56 @@ FILL_GROUPS_RETURN:
 		
 		if ((bestInd > -1)  && (bestInd2 > -1)) {
 			
-			pathInfo->didFindPath = findBestPath(closestHolder, closestHolder2, bestInd, bestInd2);
+			pathInfo->didFindPath = findNaivePath(pathInfo);
 			
 			if (pathInfo->didFindPath) {
-				
+				//cout << "found naive\n";
+			}
+			else {
 				pathInfo->finalPoints.clear();
 				
-				getPointsForPath(closestHolder, bestInd, pathInfo, true);
+				pathInfo->didFindPath = findBestPath(
+					pathInfo,
+					closestHolder,
+					closestHolder2,
+					bestInd,
+					bestInd2
+				);
 				
-				for (i = 0; i < pathFinalStack.size(); i++) {
-					curPR = &(pathFinalStack[i]);
+				if (pathInfo->didFindPath) {
 					
-					tempHolder = getHolderById(curPR->blockId,curPR->holderId);
-					if ((tempHolder != NULL)) {
-						tempInd = tempHolder->groupInfoStack[curPR->groupId].centerInd;
-						// if (tempInd > -1) {
-						// 	drawPointAtIndex(tempHolder, tempInd, 255, 128, 0, singleton->smoothTime);	
-						// }
+					//cout << "found complex\n";
+					
+					getPointsForPath(closestHolder, bestInd, pathInfo, true);
+					
+					for (i = 0; i < pathFinalStack.size(); i++) {
+						curPR = &(pathFinalStack[i]);
+						
+						tempHolder = getHolderById(curPR->blockId,curPR->holderId);
+						if ((tempHolder != NULL)) {
+							tempInd = tempHolder->groupInfoStack[curPR->groupId].centerInd;
+							// if (tempInd > -1) {
+							// 	drawPointAtIndex(tempHolder, tempInd, 255, 128, 0, singleton->smoothTime);	
+							// }
+						}
+						
+						conHolder1 = getHolderById(curPR->conNode.blockIdFrom, curPR->conNode.holderIdFrom);
+						conHolder2 = getHolderById(curPR->conNode.blockIdTo, curPR->conNode.holderIdTo); 
+						
+						if (conHolder1 != NULL) {
+							getPointsForPath(conHolder1, curPR->conNode.cellIndFrom, pathInfo, false);
+						}
+						if (conHolder2 != NULL) {
+							getPointsForPath(conHolder2, curPR->conNode.cellIndTo, pathInfo, true);
+						}
+						
 					}
 					
-					conHolder1 = getHolderById(curPR->conNode.blockIdFrom, curPR->conNode.holderIdFrom);
-					conHolder2 = getHolderById(curPR->conNode.blockIdTo, curPR->conNode.holderIdTo); 
+					getPointsForPath(closestHolder2, bestInd2, pathInfo, false);
 					
-					if (conHolder1 != NULL) {
-						getPointsForPath(conHolder1, curPR->conNode.cellIndFrom, pathInfo, false);
-					}
-					if (conHolder2 != NULL) {
-						getPointsForPath(conHolder2, curPR->conNode.cellIndTo, pathInfo, true);
-					}
 					
 				}
-				
-				getPointsForPath(closestHolder2, bestInd2, pathInfo, false);
-				
-				
-				cout << "did find path\n";
-				
 			}
-			
 			
 			
 			
@@ -1101,18 +1302,42 @@ FILL_GROUPS_RETURN:
 	
 	void update() {
 			
+			int i;
+			BaseObj* ca;
+			
 			if (singleton->pathfindingOn) {
 				
-				if (
-					(!testPath.searchedForPath) && (singleton->pathFindingStep == 2)
-				) {
-					getPath(&testPath);
+				if (singleton->pathfindingTestOn) {
+					if (
+						(!testPath.searchedForPath) && (singleton->pathFindingStep == 2)
+					) {
+						getPath(&testPath);
+					}
+					drawFinalPath(&testPath);
 				}
 				
+				
+				if (singleton->drawTargPaths) {
+					for (i = 0; i < singleton->gem->turnList.size(); i++) {
+						
+						ca = &(singleton->gem->gameObjects[ singleton->gem->turnList[i] ]); 
+						
+						if (ca->isHidden) {
+							
+						}
+						else {
+							if (ca->targPath.didFindPath) {
+								drawFinalPath(&(ca->targPath));
+							}
+						}
+						
+						
+					}
+				}
 					
 			}
 			
-			drawFinalPath(&testPath);
+			
 			
 			
 			
@@ -1166,6 +1391,28 @@ FILL_GROUPS_RETURN:
 		singleton->drawLine(&pVec1, &pVec2);
 	}
 	
+	btVector3 holderIndToBTV(GamePageHolder* curPointHolder, int curPointIndex, bool addHalfOff) {
+		int ii;
+		int jj;
+		int kk;
+		
+		int cellsPerHolder = singleton->cellsPerHolder;
+		
+		btVector3 pVec1;
+		
+		kk = curPointIndex/(cellsPerHolder*cellsPerHolder);
+		jj = (curPointIndex-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+		ii = curPointIndex-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+		
+		pVec1 = curPointHolder->gphMinInPixels.getBTV();
+		pVec1 += btVector3(ii,jj,kk);
+		
+		if (addHalfOff) {
+			pVec1 += btVector3(0.5f,0.5f,0.5f);
+		}
+		
+		return pVec1;
+	}
 	
 	void drawPointAtIndex(GamePageHolder* curPointHolder, int curPointIndex, int r, int g, int b, float rad) {
 		
@@ -1765,8 +2012,7 @@ FILL_GROUPS_RETURN:
 	// 	// 					kk2 = cameFromInd/(cellsPerHolder*cellsPerHolder);
 	// 	// 					jj2 = (cameFromInd-kk2*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
 	// 	// 					ii2 = cameFromInd-(kk2*cellsPerHolder*cellsPerHolder + jj2*cellsPerHolder);
-							
-							
+
 	// 	// 					pVec1.copyFrom(&minv);
 	// 	// 					pVec1.addXYZ(ii,jj,kk);
 	// 	// 					pVec1.addXYZ(0.5f);
@@ -1780,79 +2026,125 @@ FILL_GROUPS_RETURN:
 	// 	// 			}
 	// 	// 		}
 	// 	// }
-		
-		
-			
-			
-		
-		
-		
 	// }
 	
+	/*
+	
+	
 	int getClosestPathInd(btVector3 cpBTV, GamePageHolder* &closestHolder) {
-			
-			FIVector4 closestPoint;
-			
-			closestPoint.setBTV(cpBTV);
-			
-			int i;
-			int j;
-			int k;
-			int n;
-			int ind;
-			
-			int testInd;
-			int testDis;
-			int bestDis = 99999;
-			int bestInd = -1;
-			
-			int cellsPerHolder = singleton->cellsPerHolder;
-			int curInd = singleton->gw->getCellInd(&closestPoint, closestHolder);
-			
-			if (closestHolder == NULL) {
-				return -1;
-			}
-			
-			// if (singleton->gameFluid[E_FID_BIG]->threadPoolPath.anyRunning()) {
-			// 	return -1;
-			// }
-			
-			if (closestHolder->idealPathsReady) {
-				
-			}
-			else {
-				return -1;
-			}
-			
-			
-			int kk = curInd/(cellsPerHolder*cellsPerHolder);
-			int jj = (curInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-			int ii = curInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
-			
-			
-			for (n = 0; n < cellsPerHolder*cellsPerHolder*cellsPerHolder; n++) {
-				ind = n;
-				
-				
-				
-				if (closestHolder->getGroupId(n) > -1) {
-					k = ind/(cellsPerHolder*cellsPerHolder);
-					j = (ind - k*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-					i = ind - ( j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder );
-					
-					testInd = ind;
-					testDis = abs(i-ii) + abs(j-jj) + abs(k-kk);
-					
-					if (testDis < bestDis) {
-						bestDis = testDis;
-						bestInd = testInd;
-					}
-				}
-				
-			}
-			
-			return bestInd;
+		
+		FIVector4 closestPoint;
+		
+		closestPoint.setBTV(cpBTV);
+		
+		int i;
+		int j;
+		int k;
+		int n;
+		int ind;
+		
+		int testInd;
+		int testDis;
+		int bestDis = 99999;
+		int bestInd = -1;
+		
+		int cellsPerHolder = singleton->cellsPerHolder;
+		int curInd = singleton->gw->getCellInd(&closestPoint, closestHolder);
+		
+		if (closestHolder == NULL) {
+			return -1;
 		}
+		
+		// if (singleton->gameFluid[E_FID_BIG]->threadPoolPath.anyRunning()) {
+		// 	return -1;
+		// }
+		
+		if (closestHolder->idealPathsReady) {
+			
+		}
+		else {
+			return -1;
+		}
+		
+		
+		int kk = curInd/(cellsPerHolder*cellsPerHolder);
+		int jj = (curInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+		int ii = curInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+		
+		
+		for (n = 0; n < cellsPerHolder*cellsPerHolder*cellsPerHolder; n++) {
+			ind = n;
+			
+			
+			
+			if (closestHolder->getGroupId(n) > -1) {
+				k = ind/(cellsPerHolder*cellsPerHolder);
+				j = (ind - k*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+				i = ind - ( j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder );
+				
+				testInd = ind;
+				testDis = abs(i-ii) + abs(j-jj) + abs(k-kk);
+				
+				if (testDis < bestDis) {
+					bestDis = testDis;
+					bestInd = testInd;
+				}
+			}
+		}
+		
+		return bestInd;
+	}
+	
+	*/
+	
+	int getClosestPathRad(btVector3 cpBTV, GamePageHolder* &closestHolder) {
+		
+		int rad = BASE_MOVEABLE_Z;
+		
+		btVector3 newCoord;
+		
+		//FIVector4 closestPoint;
+		//
+		
+		int i;
+		int j;
+		int k;
+		int n;
+		int q;
+		int ind;
+		
+		int testInd;
+		int testDis;
+		int bestDis = 99999;
+		int bestInd = -1;
+		
+		int cellsPerHolder = singleton->cellsPerHolder;
+		int curInd;
+		
+		
+		for (q = -rad; q <= rad; q++) {
+			newCoord = cpBTV + btVector3(0.0f,0.0f,q);
+			//closestPoint.setBTV(newCoord);
+			
+			curInd = singleton->gw->getCellInd(newCoord, closestHolder);
+			
+			if (closestHolder != NULL) {
+				if (closestHolder->idealPathsReady) {
+					if (curInd > -1) {
+						if (closestHolder->getGroupId(curInd) > -1) {
+							return curInd;
+						}
+					} 
+				}
+			}
+			
+			
+			
+		}
+		
+		return -1;
+	}
+	
 	
 	void loadNearestHolders() {
 		
@@ -1970,7 +2262,7 @@ FILL_GROUPS_RETURN:
 							if (curHolder->wasGenerated) {
 								
 								
-								if ((curLoadRadius < 2)&&(singleton->pathfindingOn)&&doPaths) {
+								if ((curLoadRadius < 2)&&(singleton->pathfindingGen)&&doPaths) {
 									if (curHolder->pathsReady || curHolder->lockWrite) {
 										
 									}

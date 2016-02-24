@@ -200,7 +200,7 @@ $
 #line 1
 
 
-const float CAM_BOX_SIZE = 4.0;
+const float CAM_BOX_SIZE = 2.0;
 
 // qqqq
 const int TOT_STEPS = 128;

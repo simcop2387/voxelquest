@@ -124,6 +124,7 @@ public:
   int destructCount;
   bool sphereMapOn;
   bool waitingOnDestruction;
+  bool drawTargPaths;
   bool gridOn;
   bool physicsOn;
   bool isPressingMove;
@@ -144,6 +145,8 @@ public:
   bool (isInteractiveEnt) [E_CT_LENGTH];
   bool inputOn;
   bool pathfindingOn;
+  bool pathfindingGen;
+  bool pathfindingTestOn;
   bool placingGeom;
   bool isMacro;
   bool cavesOn;
@@ -196,6 +199,7 @@ public:
   int geomStep;
   int earthMod;
   int currentTick;
+  int tbTicks;
   int tempCounter;
   int actorCount;
   int polyCount;
@@ -629,6 +633,7 @@ public:
   void saveOrg ();
   void loadOrg ();
   float getConst (string conName);
+  int iGetConst (int ev);
   void loadConstants ();
   void loadGUI ();
   string loadFileString (string fnString);
@@ -1444,8 +1449,8 @@ public:
   void init (Singleton * _singleton);
   BaseObj * getCurActor ();
   BaseObj * getActiveActor ();
-  void applyLogicForTurn ();
-  void endTurn ();
+  void refreshActiveId ();
+  void cycleTurn ();
   void nextTurn ();
   void refreshTurnList ();
   void setTurnBased (bool newVal);
@@ -1482,6 +1487,7 @@ public:
   bool removeVisObject (BaseObjType _uid, bool isRecycled);
   bool areEnemies (int actorUID1, int actorUID2);
   bool areFriends (int actorUID1, int actorUID2);
+  int getUnitDisXY (btVector3 p1, btVector3 p2);
   btVector3 getUnitDistance (int actorUID1, int actorUID2);
   int getClosestActor (int actorId, int objType, float maxDis, uint flags);
   GameOrg * getCurOrg ();
@@ -1498,8 +1504,10 @@ public:
   void makeDropAll (int actorId);
   void makeThrow (int actorId, int _handNum);
   void makeSwing (int actorId, int handNum);
-  void makeTurnUnit (int actorId, int modVal);
-  void makeMoveUnit (int actorId, int modVal);
+  void makeTurnTowardsTB (int actorId, btVector3 actorTargVec);
+  BaseObj * getEntAtUnitPos (btVector3 pos);
+  void makeTurnTB (int actorId, int modVal);
+  bool makeMoveTB (int actorId, int modVal);
   void makeTurn (int actorId, float dirFactor);
   void makeMoveVec (int actorId, btVector3 moveVec);
   void makeMove (int actorId, btVector3 moveDir, bool relative, bool delayed);
@@ -1865,6 +1873,7 @@ public:
   int globEndGroupId;
   bool globFoundTarg;
   GameLogic ();
+  void setEntTargPath (int sourceUID, int destUID);
   void init (Singleton * _singleton);
   void applyTBBehavior ();
   void applyBehavior ();
@@ -1877,15 +1886,17 @@ public:
   bool addGroupToStack (ConnectingNodeStruct * testConNode, GamePageHolder * curHolder, int groupId, GamePageHolder * lastHolder, int lastGroupId, int lastIndex);
   void remGroupFromStack (int opCode);
   void fillAllGroups (GamePageHolder * begHolder, GamePageHolder * endHolder, int begInd, int endInd, int opCode);
-  bool findBestPath (GamePageHolder * closestHolder, GamePageHolder * closestHolder2, int bestInd, int bestInd2);
+  bool findNaivePath (PathInfo * pathInfo);
+  bool findBestPath (PathInfo * pathInfo, GamePageHolder * closestHolder, GamePageHolder * closestHolder2, int bestInd, int bestInd2);
   void drawFinalPath (PathInfo * pathInfo);
   void getPath (PathInfo * pathInfo);
   void update ();
   void drawLineAtIndices (GamePageHolder * curPointHolder, int curPointIndex, GamePageHolder * curPointHolder2, int curPointIndex2);
+  btVector3 holderIndToBTV (GamePageHolder * curPointHolder, int curPointIndex, bool addHalfOff);
   void drawPointAtIndex (GamePageHolder * curPointHolder, int curPointIndex, int r, int g, int b, float rad);
   void getPointsForPath (GamePageHolder * curHolderFrom, int _curInd, PathInfo * pathInfo, bool reverseOrder);
   void drawRegions (int offX, int offY, int offZ);
-  int getClosestPathInd (btVector3 cpBTV, GamePageHolder * & closestHolder);
+  int getClosestPathRad (btVector3 cpBTV, GamePageHolder * & closestHolder);
   void loadNearestHolders ();
 };
 #undef LZZ_INLINE
@@ -2118,7 +2129,7 @@ public:
   GamePageHolder * getHolderAtCoords (int x, int y, int z, bool createOnNull = false);
   GamePageHolder * getHolderAtId (int blockId, int holderId);
   GameBlock * getBlockAtId (int id);
-  int getCellInd (FIVector4 * cParam, GamePageHolder * & curHolder);
+  int getCellInd (btVector3 cParam, GamePageHolder * & curHolder);
   int getCellInd (GamePageHolder * & curHolder, int xv, int yv, int zv);
   int getCellAtCoords (int xv, int yv, int zv);
   float getCellAtCoordsLin (btVector3 pos);

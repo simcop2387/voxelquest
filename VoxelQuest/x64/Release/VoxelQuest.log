@@ -1,4 +1,4 @@
-﻿Build started 2/22/2016 7:02:57 AM.
+﻿Build started 2/24/2016 9:02:43 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -834,10 +834,62 @@
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          genBlockHolder
-         pathfindingOn: 1
-         did find path
+         
+         updateHolders 1
+         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         turnBased 1
+         turnBased 0
+         turnBased 1
+         turnBased 0
+         turnBased 1
+         Loading:  ..\data\orgdata\E_PG_WPSWORD_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         No code for key: 119
+         iNumSteps:  16         
+         turnBased 0
+         turnBased 1
+         Loading:  ..\data\orgdata\E_PG_WPAXE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         turnBased 0
+         No code for key: 119
+         editPose 1
+         Loading:  ..\data\orgdata\E_PG_TPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_TPOSE_N0
+         editPose 0
+         editPose 1
+         Loading:  ..\data\orgdata\E_PG_TPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         Loaded Pose E_PG_TPOSE_N0
+         editPose 0
+         turnBased 1
+         turnBased 0
+         turnBased 1
+         turnBased 0
+         turnBased 1
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:56.43
+Time Elapsed 00:06:04.56

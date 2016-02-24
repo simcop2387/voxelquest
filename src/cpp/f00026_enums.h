@@ -8,6 +8,7 @@
 // const static unsigned long int STEP_TIME_IN_MICRO_SEC = 32000;
 
 #define E_CONST(DDD) \
+DDD(E_CONST_TURNBASED_TICKS) \
 DDD(E_CONST_JUMP_COOLDOWN_MAX) \
 DDD(E_CONST_HIT_COOLDOWN_MAX) \
 DDD(E_CONST_TBSNAP_MULT) \
@@ -358,7 +359,8 @@ enum E_GUI_CHILD_TYPE_VALS {
 enum E_CLOSEST_FLAGS {
 	E_CF_NOTGRABBED = 1,
 	E_CF_AREENEMIES = 2,
-	E_CF_AREFRIENDS = 4
+	E_CF_AREFRIENDS = 4,
+	E_CF_ISALIVE = 8
 	// E_CF_ = 8,
 	// E_CF_ = 16,
 	// E_CF_ = 32,
@@ -1247,6 +1249,7 @@ struct PathInfo {
 	btVector3 points[2];
 	bool searchedForPath;
 	bool didFindPath;
+	int nextInd;
 	
 	std::vector<btVector3> finalPoints;
 	

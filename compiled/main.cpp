@@ -3619,6 +3619,7 @@ bool replaceStr(std::string& str, const std::string& from, const std::string& to
 // const static unsigned long int STEP_TIME_IN_MICRO_SEC = 32000;
 
 #define E_CONST(DDD) \
+DDD(E_CONST_TURNBASED_TICKS) \
 DDD(E_CONST_JUMP_COOLDOWN_MAX) \
 DDD(E_CONST_HIT_COOLDOWN_MAX) \
 DDD(E_CONST_TBSNAP_MULT) \
@@ -3969,7 +3970,8 @@ enum E_GUI_CHILD_TYPE_VALS {
 enum E_CLOSEST_FLAGS {
 	E_CF_NOTGRABBED = 1,
 	E_CF_AREENEMIES = 2,
-	E_CF_AREFRIENDS = 4
+	E_CF_AREFRIENDS = 4,
+	E_CF_ISALIVE = 8
 	// E_CF_ = 8,
 	// E_CF_ = 16,
 	// E_CF_ = 32,
@@ -4858,6 +4860,7 @@ struct PathInfo {
 	btVector3 points[2];
 	bool searchedForPath;
 	bool didFindPath;
+	int nextInd;
 	
 	std::vector<btVector3> finalPoints;
 	
@@ -9736,6 +9739,21 @@ float getShortestAngle(float begInRad, float endInRad, float amount) {
 	return shortest_angle * amount * M_PI / 180.0f;
 }
 
+btVector3 roundBTV(btVector3 v) {
+	return btVector3(
+		roundVal(v.getX()),
+		roundVal(v.getY()),
+		roundVal(v.getZ())	
+	);
+}
+btVector3 floorBTV(btVector3 v) {
+	return btVector3(
+		floor(v.getX()),
+		floor(v.getY()),
+		floor(v.getZ())	
+	);
+}
+
 btVector3 multByOtherRot( btVector3 imp, btMatrix3x3 otherRot) {
 	// Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
 	// Vector3 res = otherRot*myRHS;
@@ -9813,7 +9831,7 @@ private:
 	
 public:
 	
-	
+	PathInfo targPath;
 	StatSheet statSheet;
 	
 	int objectType;
@@ -9889,6 +9907,11 @@ public:
 	
 	
 	btVector3 getUnitBounds(bool getMax) {
+		
+		if (bodies.size() < 1) {
+			cout << "ERROR: getUnitBounds() with no bodies\n";
+		}
+		
 		btVector3 cp = getCenterPoint( E_BDG_CENTER );
 		
 		float diamXY = 2.0f;
@@ -10789,7 +10812,15 @@ public:
 		windResistance = 0.9;
 		
 		
-		tbPos = getUnitBounds(false);
+		//tbPos = getUnitBounds(false);
+		
+		targPath.points[0] = btVector3(0.0f,0.0f,0.0f);
+		targPath.points[1] = btVector3(0.0f,0.0f,0.0f);
+		targPath.searchedForPath = false;
+		targPath.didFindPath = false;
+		targPath.finalPoints.clear();
+		targPath.nextInd = -1;
+		
 		
 	}
 	
@@ -22539,6 +22570,7 @@ public:
   int destructCount;
   bool sphereMapOn;
   bool waitingOnDestruction;
+  bool drawTargPaths;
   bool gridOn;
   bool physicsOn;
   bool isPressingMove;
@@ -22559,6 +22591,8 @@ public:
   bool (isInteractiveEnt) [E_CT_LENGTH];
   bool inputOn;
   bool pathfindingOn;
+  bool pathfindingGen;
+  bool pathfindingTestOn;
   bool placingGeom;
   bool isMacro;
   bool cavesOn;
@@ -22611,6 +22645,7 @@ public:
   int geomStep;
   int earthMod;
   int currentTick;
+  int tbTicks;
   int tempCounter;
   int actorCount;
   int polyCount;
@@ -23044,6 +23079,7 @@ public:
   void saveOrg ();
   void loadOrg ();
   float getConst (string conName);
+  int iGetConst (int ev);
   void loadConstants ();
   void loadGUI ();
   string loadFileString (string fnString);
@@ -23859,8 +23895,8 @@ public:
   void init (Singleton * _singleton);
   BaseObj * getCurActor ();
   BaseObj * getActiveActor ();
-  void applyLogicForTurn ();
-  void endTurn ();
+  void refreshActiveId ();
+  void cycleTurn ();
   void nextTurn ();
   void refreshTurnList ();
   void setTurnBased (bool newVal);
@@ -23897,6 +23933,7 @@ public:
   bool removeVisObject (BaseObjType _uid, bool isRecycled);
   bool areEnemies (int actorUID1, int actorUID2);
   bool areFriends (int actorUID1, int actorUID2);
+  int getUnitDisXY (btVector3 p1, btVector3 p2);
   btVector3 getUnitDistance (int actorUID1, int actorUID2);
   int getClosestActor (int actorId, int objType, float maxDis, uint flags);
   GameOrg * getCurOrg ();
@@ -23913,8 +23950,10 @@ public:
   void makeDropAll (int actorId);
   void makeThrow (int actorId, int _handNum);
   void makeSwing (int actorId, int handNum);
-  void makeTurnUnit (int actorId, int modVal);
-  void makeMoveUnit (int actorId, int modVal);
+  void makeTurnTowardsTB (int actorId, btVector3 actorTargVec);
+  BaseObj * getEntAtUnitPos (btVector3 pos);
+  void makeTurnTB (int actorId, int modVal);
+  bool makeMoveTB (int actorId, int modVal);
   void makeTurn (int actorId, float dirFactor);
   void makeMoveVec (int actorId, btVector3 moveVec);
   void makeMove (int actorId, btVector3 moveDir, bool relative, bool delayed);
@@ -24280,6 +24319,7 @@ public:
   int globEndGroupId;
   bool globFoundTarg;
   GameLogic ();
+  void setEntTargPath (int sourceUID, int destUID);
   void init (Singleton * _singleton);
   void applyTBBehavior ();
   void applyBehavior ();
@@ -24292,15 +24332,17 @@ public:
   bool addGroupToStack (ConnectingNodeStruct * testConNode, GamePageHolder * curHolder, int groupId, GamePageHolder * lastHolder, int lastGroupId, int lastIndex);
   void remGroupFromStack (int opCode);
   void fillAllGroups (GamePageHolder * begHolder, GamePageHolder * endHolder, int begInd, int endInd, int opCode);
-  bool findBestPath (GamePageHolder * closestHolder, GamePageHolder * closestHolder2, int bestInd, int bestInd2);
+  bool findNaivePath (PathInfo * pathInfo);
+  bool findBestPath (PathInfo * pathInfo, GamePageHolder * closestHolder, GamePageHolder * closestHolder2, int bestInd, int bestInd2);
   void drawFinalPath (PathInfo * pathInfo);
   void getPath (PathInfo * pathInfo);
   void update ();
   void drawLineAtIndices (GamePageHolder * curPointHolder, int curPointIndex, GamePageHolder * curPointHolder2, int curPointIndex2);
+  btVector3 holderIndToBTV (GamePageHolder * curPointHolder, int curPointIndex, bool addHalfOff);
   void drawPointAtIndex (GamePageHolder * curPointHolder, int curPointIndex, int r, int g, int b, float rad);
   void getPointsForPath (GamePageHolder * curHolderFrom, int _curInd, PathInfo * pathInfo, bool reverseOrder);
   void drawRegions (int offX, int offY, int offZ);
-  int getClosestPathInd (btVector3 cpBTV, GamePageHolder * & closestHolder);
+  int getClosestPathRad (btVector3 cpBTV, GamePageHolder * & closestHolder);
   void loadNearestHolders ();
 };
 #undef LZZ_INLINE
@@ -24533,7 +24575,7 @@ public:
   GamePageHolder * getHolderAtCoords (int x, int y, int z, bool createOnNull = false);
   GamePageHolder * getHolderAtId (int blockId, int holderId);
   GameBlock * getBlockAtId (int id);
-  int getCellInd (FIVector4 * cParam, GamePageHolder * & curHolder);
+  int getCellInd (btVector3 cParam, GamePageHolder * & curHolder);
   int getCellInd (GamePageHolder * & curHolder, int xv, int yv, int zv);
   int getCellAtCoords (int xv, int yv, int zv);
   float getCellAtCoordsLin (btVector3 pos);
@@ -24994,15 +25036,17 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		
-		
+		tbTicks = 0;
 		tempCounter = 0;
 		actorCount = 0;
 		polyCount = 0;
 		fpsCountMax = 500;
 		
 		fpsTest = false;
-		pathfindingOn = false;
-		updateHolders = true;
+		pathfindingOn = true;
+		pathfindingGen = false;
+		pathfindingTestOn = false;
+		updateHolders = false;
 		
 		
 		maxHolderDis = 32;
@@ -25167,6 +25211,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		depthInvalidMove = true;
 		lastDepthInvalidMove = true;
 		depthInvalidRotate = true;
+		drawTargPaths = false;
 		gridOn = false;
 		fogOn = 1.0f;
 		cameraZoom = 1.0f;
@@ -28647,6 +28692,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
                                                                          {
 		
 		int i;
+		int tempType = E_ENTTYPE_NPC;
 		
 		GamePageHolder* curHolder;
 		
@@ -28707,25 +28753,41 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				
 				case '1':
-					
-					getMarkerPos(x, y);
-					gem->placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
-				break;
 				case '2':
-					getMarkerPos(x, y);
-					gem->placeNewEnt(gameNetwork->isConnected, E_ENTTYPE_WEAPON, &lastCellPos);
-					gem->weaponToPlace++;
-					
-					if (gem->weaponToPlace > E_PG_WPSPEAR) {
-						gem->weaponToPlace = E_PG_WPSWORD;
+				case '3':
+				
+					switch(key) {
+						case '1':
+							tempType = E_ENTTYPE_NPC;
+						break;
+						case '2':
+							tempType = E_ENTTYPE_WEAPON;
+						break;
+						case '3':
+							tempType = E_ENTTYPE_WEAPON;
+							gem->weaponToPlace = E_PG_WPSPEAR;
+						break;
+					}
+				
+					if (updateHolders) {
+						getMarkerPos(x, y);
+						gem->placeNewEnt(gameNetwork->isConnected,tempType,&lastCellPos);
+						
+						if (key == '2') {
+							gem->weaponToPlace++;
+							if (gem->weaponToPlace > E_PG_WPSPEAR) {
+								gem->weaponToPlace = E_PG_WPSWORD;
+							}
+						}
+						
+						gem->refreshTurnList();
+						
+					}
+					else {
+						cout << "Turn On Holder Update (u)\n";
+						doAlert();
 					}
 					
-				break;
-				case '3':
-					gem->weaponToPlace = E_PG_WPSPEAR;
-					getMarkerPos(x, y);
-					gem->placeNewEnt(gameNetwork->isConnected, E_ENTTYPE_WEAPON, &lastCellPos);
-				
 				break;
 				case '4':
 					
@@ -28795,6 +28857,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					// }
 				
 					updateHolders = !updateHolders;
+					pathfindingGen = updateHolders;
 					
 					
 					cout << "\n";
@@ -28896,8 +28959,8 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				case 'j':
 				
-					pathfindingOn = !pathfindingOn;
-					cout << "pathfindingOn: " << pathfindingOn << "\n";
+					pathfindingTestOn = !pathfindingTestOn;
+					cout << "pathfindingTestOn: " << pathfindingTestOn << "\n";
 				
 					//gem->resetActiveNode();
 				
@@ -29076,6 +29139,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					gem->setTurnBased(!(gem->turnBased));
 					gem->combatOn = (gem->turnBased);
+					gridOn = gem->combatOn;
 					//gem->combatOn = !(gem->combatOn);
 					//cout << "gem->combatOn " << gem->combatOn << "\n";
 					
@@ -29171,20 +29235,31 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						
 					break;
 					
+					case 'w':
+						gem->makeGrab(gem->getCurActor()->uid, -1);
+					break;
+					case 'y':
+						gem->makeThrow(gem->getCurActor()->uid,-1);
+					break;
 					
 					case 's':
-						gem->makeTurnUnit(gem->getCurActor()->uid, 1);
+						gem->makeTurnTB(gem->getCurActor()->uid, 1);
+						//gem->nextTurn();
 					break;
 					case 'f':
-						gem->makeTurnUnit(gem->getCurActor()->uid, -1);
+						gem->makeTurnTB(gem->getCurActor()->uid, -1);
+						//gem->nextTurn();
 					break;
-					
 					
 					case 'e':
-						gem->makeMoveUnit(gem->getCurActor()->uid, 1);
+						if (gem->makeMoveTB(gem->getCurActor()->uid, 1)) {
+							gem->nextTurn();
+						}
 					break;
 					case 'd':
-						gem->makeMoveUnit(gem->getCurActor()->uid, -1);
+						if (gem->makeMoveTB(gem->getCurActor()->uid, -1)) {
+							gem->nextTurn();
+						}
 					break;
 				}
 			}
@@ -29636,7 +29711,7 @@ void Singleton::mouseMove (int _x, int _y)
 			
 			
 
-			if (placingGeom||RT_TRANSFORM||gem->editPose||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
+			if (placingGeom||RT_TRANSFORM||gem->editPose||pathfindingTestOn||(mouseState != E_MOUSE_STATE_MOVE)) {
 			//if (true) {
 				getPixData(&mouseMovePD, x, y, false, false);
 				getPixData(&mouseMoveOPD, x, y, true, true);
@@ -29645,9 +29720,9 @@ void Singleton::mouseMove (int _x, int _y)
 
 			gw->updateMouseCoords(&mouseMovePD);
 			
-			if (pathfindingOn) {
+			if (pathfindingTestOn) {
 				
-				if (gameLogic->getClosestPathInd(mouseMovePD.getBTV(), closestHolder) > -1) {
+				if (gameLogic->getClosestPathRad(mouseMovePD.getBTV(), closestHolder) > -1) {
 					
 					if (pathFindingStep < 2) {
 						gameLogic->testPath.points[pathFindingStep] = mouseMovePD.getBTV();
@@ -29997,7 +30072,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 							if (noTravel) {
 								
 								
-								if (pathfindingOn) {
+								if (pathfindingTestOn) {
 									
 									pathFindingStep++;
 									
@@ -30007,6 +30082,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 										gameLogic->testPath.points[1] = btVector3(0.0f,0.0f,0.0f);
 										gameLogic->testPath.searchedForPath = false;
 										gameLogic->testPath.didFindPath = false;
+										gameLogic->testPath.nextInd = -1;
 										gameLogic->testPath.finalPoints.clear();
 									}
 								}
@@ -31665,6 +31741,10 @@ float Singleton::getConst (string conName)
 		}
 		return 0.0f;
 	}
+int Singleton::iGetConst (int ev)
+                              {
+		return conVals[ev];
+	}
 void Singleton::loadConstants ()
                              {
 		int i;
@@ -32297,6 +32377,15 @@ void Singleton::frameUpdate ()
 							gw->generateBlockHolder();
 						}
 						
+						if (gem->turnBased) {
+							if (
+								((tbTicks%iGetConst(E_CONST_TURNBASED_TICKS)) == 0) ||
+								(gem->getCurActor() != NULL)
+							) {
+								gem->cycleTurn();
+							}
+							tbTicks++;
+						}
 						
 					}
 					
@@ -44065,35 +44154,43 @@ BaseObj * GameEntManager::getActiveActor ()
 			return &(gameObjects[activeActorUID]);
 		}
 	}
-void GameEntManager::applyLogicForTurn ()
-                                 {
-		singleton->gameLogic->applyTBBehavior();
-		nextTurn();
-	}
-void GameEntManager::endTurn ()
-                       {
-		
-		nextTurn();
-	}
-void GameEntManager::nextTurn ()
-                        {
-		turnListInd++;
-		if (turnListInd >= turnList.size()) {
-			turnListInd = 0;
-		}
-		
+void GameEntManager::refreshActiveId ()
+                               {
 		if (turnList.size() == 0) {
 			activeActorUID = -1;
 		}
 		else {
 			activeActorUID = turnList[turnListInd];
 		}
+	}
+void GameEntManager::cycleTurn ()
+                         {
+		refreshActiveId();
+		
+		if (curActorUID == activeActorUID) {
+			// wait for human to take turn
+		}
+		else {
+			nextTurn();
+		}
+		
+	}
+void GameEntManager::nextTurn ()
+                        {
+		singleton->tbTicks = 1;
+		
+		turnListInd++;
+		if (turnListInd >= turnList.size()) {
+			turnListInd = 0;
+		}
+		
+		refreshActiveId();
 		
 		if (curActorUID == activeActorUID) {
 			// human turn
 		}
 		else {
-			applyLogicForTurn();
+			singleton->gameLogic->applyTBBehavior();
 		}
 		
 	}
@@ -44129,7 +44226,14 @@ void GameEntManager::setTurnBased (bool newVal)
 			testInd = visObjects[i];
 			testObj = &(gameObjects[testInd]);
 			
-			testObj->tbPos = testObj->getUnitBounds(false);	
+			if (testObj->isHidden) {
+				
+			}
+			else {
+				testObj->tbPos = testObj->getUnitBounds(false);	
+			}
+			
+			
 		}
 		
 		refreshTurnList();
@@ -44772,6 +44876,11 @@ BaseObjType GameEntManager::placeNewEnt (bool isReq, int et, FIVector4 * cellPos
 			&newPos
 		);
 		
+		tmpObj->tbPos = floorBTV(cellPos->getBTV());
+		
+		
+		
+		
 		tmpObj->defaultPose.group = -1;
 		tmpObj->defaultPose.RLBN = RLBN_NEIT;
 		tmpObj->defaultPose.step = 0;
@@ -45124,6 +45233,15 @@ bool GameEntManager::areFriends (int actorUID1, int actorUID2)
                                                       {
 		return false;
 	}
+int GameEntManager::getUnitDisXY (btVector3 p1, btVector3 p2)
+                                                     {
+		
+				
+		return 
+			floor(abs(p1.getX() - p2.getX())) +
+			floor(abs(p1.getY() - p2.getY()));
+		
+	}
 btVector3 GameEntManager::getUnitDistance (int actorUID1, int actorUID2)
                                                                 {
 		
@@ -45137,8 +45255,8 @@ btVector3 GameEntManager::getUnitDistance (int actorUID1, int actorUID2)
 		BaseObj* actor1 = &(gameObjects[actorUID1]);
 		BaseObj* actor2 = &(gameObjects[actorUID2]);
 		
-		btVector3 p1 = actor1->getUnitBounds(false);
-		btVector3 p2 = actor2->getUnitBounds(false);
+		btVector3 p1 = actor1->tbPos;
+		btVector3 p2 = actor2->tbPos;
 				
 		return btVector3(
 			abs(p1.getX() - p2.getX()),
@@ -45167,6 +45285,7 @@ int GameEntManager::getClosestActor (int actorId, int objType, float maxDis, uin
 		bool testForGrabbed = ( (flags&E_CF_NOTGRABBED) > 0 );
 		bool testForEnemies = ( (flags&E_CF_AREENEMIES) > 0 );
 		bool testForFriends = ( (flags&E_CF_AREFRIENDS) > 0 );
+		bool testForAlive = ( (flags&E_CF_ISALIVE) > 0 );
 		
 		for(i = 0; i < visObjects.size(); i++) {
 			
@@ -45200,6 +45319,10 @@ int GameEntManager::getClosestActor (int actorId, int objType, float maxDis, uin
 					(
 						( testForFriends && (areFriends(actorId,testInd)) ) ||
 						(!testForFriends)
+					) &&
+					(
+						( testForAlive && (testObj->isAlive()) ) ||
+						(!testForAlive)
 					)
 					
 				) {
@@ -45742,17 +45865,22 @@ void GameEntManager::makeSwing (int actorId, int handNum)
 				
 				
 				
-				if (ca->baseContact()) {
-					makeMove( actorId,
-						btVector3(
-							0.0f,
-							singleton->conVals[E_CONST_DASH_AMOUNT],
-							singleton->conVals[E_CONST_DASH_UP_AMOUNT]
-						),
-						true,
-						false
-					);
+				// if (ca->baseContact()) {
+				// 	makeMove( actorId,
+				// 		btVector3(
+				// 			0.0f,
+				// 			singleton->conVals[E_CONST_DASH_AMOUNT],
+				// 			singleton->conVals[E_CONST_DASH_UP_AMOUNT]
+				// 		),
+				// 		true,
+				// 		false
+				// 	);
+				// }
+				
+				if (turnBased) {
+					// was doing: apply turn based swing
 				}
+				
 				
 				if (ca->uid != getCurActorUID()) {
 					nextSwing(actorId,RLBN_LEFT);
@@ -45766,10 +45894,52 @@ void GameEntManager::makeSwing (int actorId, int handNum)
 			
 		}
 		
+	}
+void GameEntManager::makeTurnTowardsTB (int actorId, btVector3 actorTargVec)
+                                                                    {
+		BaseObj* ca = &(gameObjects[actorId]);
+		btVector3 actorFinalVec = actorTargVec - ca->tbPos;
+		
+		actorFinalVec = floorBTV(actorFinalVec);
+		
+		if (actorFinalVec.getX() == 1.0f) {
+			ca->tbDir = 0;
+		}
+		if (actorFinalVec.getX() == -1.0f) {
+			ca->tbDir = 2;
+		}
+		if (actorFinalVec.getY() == 1.0f) {
+			ca->tbDir = 1;
+		}
+		if (actorFinalVec.getY() == -1.0f) {
+			ca->tbDir = 3;
+		}
 		
 	}
-void GameEntManager::makeTurnUnit (int actorId, int modVal)
-                                                   {
+BaseObj * GameEntManager::getEntAtUnitPos (btVector3 pos)
+                                                {
+		int i;
+		
+		BaseObj* ca;
+		
+		for (i = 0; i < turnList.size(); i++) {
+			ca = &(gameObjects[turnList[i]]);
+			
+			if (ca->isHidden) {
+				
+			}
+			else {
+				if (getUnitDisXY(ca->tbPos, pos) < 1) {
+					return ca;
+				}
+			}
+			
+		}
+	
+		return NULL;
+	}
+void GameEntManager::makeTurnTB (int actorId, int modVal)
+                                                 {
 		BaseObj* ca = &(gameObjects[actorId]);
 		
 		ca->tbDir += modVal;
@@ -45780,16 +45950,21 @@ void GameEntManager::makeTurnUnit (int actorId, int modVal)
 		if (ca->tbDir > 3) {
 			ca->tbDir = 0;
 		}
-		
-		
 	}
-void GameEntManager::makeMoveUnit (int actorId, int modVal)
-                                                   {
+bool GameEntManager::makeMoveTB (int actorId, int modVal)
+                                                 {
 		BaseObj* ca = &(gameObjects[actorId]);
+		
+		if (actorId != activeActorUID) {
+			// only active actor should be moving
+			return false;
+		}
 		
 		float ang = TBDIR_ARR[ca->tbDir];
 		
-		ca->tbPos += btVector3(
+		btVector3 testPos = ca->tbPos;
+		
+		testPos += btVector3(
 			roundVal(cos(ang)*modVal),
 			roundVal(sin(ang)*modVal),
 			0.0f
@@ -45797,22 +45972,44 @@ void GameEntManager::makeMoveUnit (int actorId, int modVal)
 		
 		while (
 			singleton->gw->getCellAtCoords(
-				ca->tbPos.getX(),
-				ca->tbPos.getY(),
-				ca->tbPos.getZ()
+				testPos.getX(),
+				testPos.getY(),
+				testPos.getZ()
 			) == E_CD_EMPTY
 		) {
-			ca->tbPos += btVector3(0.0f,0.0f,-1.0f);
+			testPos += btVector3(0.0f,0.0f,-1.0f);
 		}
 		
 		while (
 			singleton->gw->getCellAtCoords(
-				ca->tbPos.getX(),
-				ca->tbPos.getY(),
-				ca->tbPos.getZ()
+				testPos.getX(),
+				testPos.getY(),
+				testPos.getZ()
 			) != E_CD_EMPTY
 		) {
-			ca->tbPos += btVector3(0.0f,0.0f,1.0f);
+			testPos += btVector3(0.0f,0.0f,1.0f);
+		}
+		
+		BaseObj* entInSquare = getEntAtUnitPos(testPos);
+		
+		bool preventMove = false;
+		
+		if (entInSquare == NULL) {
+			
+		}
+		else {
+			if (entInSquare->isAlive()) {
+				preventMove = true;
+			}
+		}
+		
+		if (preventMove) {
+			singleton->playSoundEnt("bump0");	
+			return false;
+		}
+		else {
+			ca->tbPos = testPos;
+			return true;
 		}
 		
 	}
@@ -46015,6 +46212,10 @@ void GameEntManager::makeHit (int attackerId, int victimId, int weaponId)
 		BaseObj* geWeapon = getActorRef(weaponId);
 		
 		int lastHealth;
+		
+		if (turnBased) {
+			return;
+		}
 		
 		GameOrg* curOrg = NULL;
 		
@@ -53844,6 +54045,32 @@ GameLogic::GameLogic ()
                     {
 		
 	}
+void GameLogic::setEntTargPath (int sourceUID, int destUID)
+                                                        {
+		
+		if (sourceUID < 0) {
+			return;
+		}
+		if (destUID < 0) {
+			return;
+		}
+		
+		BaseObj* sEnt = &(singleton->gem->gameObjects[sourceUID]);
+		BaseObj* dEnt = &(singleton->gem->gameObjects[destUID]);
+		
+		
+		
+		
+		sEnt->targPath.points[0] = sEnt->tbPos;
+		sEnt->targPath.points[1] = dEnt->tbPos;
+		sEnt->targPath.searchedForPath = false;
+		sEnt->targPath.didFindPath = false;
+		sEnt->targPath.nextInd = -1;
+		sEnt->targPath.finalPoints.clear();
+		
+		getPath(&(sEnt->targPath));
+		
+	}
 void GameLogic::init (Singleton * _singleton)
                                          {
 		singleton = _singleton;
@@ -53871,29 +54098,44 @@ void GameLogic::applyTBBehavior ()
 			return;
 		}
 		
-		BaseObj* nearestEnemy;
-		BaseObj* nearestWeapon;
+		if (ca->isDead()) {
+			return;
+		}
+		
+		if (ca->isHidden) {
+			return;
+		}
+		
+		BaseObj* nearestEnemy = NULL;
+		BaseObj* nearestWeapon = NULL;
 		
 		btVector3 xyzDisEnemy;
 		btVector3 xyzDisWeapon;
 		
+		int xyDisEnemy = 9999;
+		int xyDisWeapon = 9999;
+		
 		int nearestEnemyInd;
 		int nearestWeaponInd;
 		
+		int i;
 		
 		bool findWeapon = false;
+		bool doMove = false;
+		
+		btVector3 actorFinalVec;
 		
 		nearestEnemyInd = singleton->gem->getClosestActor(
 				ca->uid,
 				E_ENTTYPE_NPC,
 				200.0f,
-				E_CF_AREENEMIES
+				E_CF_AREENEMIES|E_CF_ISALIVE
 		);
 		if (nearestEnemyInd > 0) {
 			// hostiles nearby
 			nearestEnemy = &(singleton->gem->gameObjects[nearestEnemyInd]);
 			xyzDisEnemy = singleton->gem->getUnitDistance(ca->uid, nearestEnemy->uid);
-			
+			xyDisEnemy = (xyzDisEnemy.getX() + xyzDisEnemy.getY());
 			
 			nearestWeaponInd = singleton->gem->getClosestActor(
 					ca->uid,
@@ -53904,29 +54146,40 @@ void GameLogic::applyTBBehavior ()
 			if (nearestWeaponInd > 0) {
 				nearestWeapon = &(singleton->gem->gameObjects[nearestWeaponInd]);
 				xyzDisWeapon = singleton->gem->getUnitDistance(ca->uid, nearestWeapon->uid);
-			}
-			
-			
-			if (ca->holdingWeapon(-1)) {
-				// already holding weapon
-			}
-			else {
-				// find nearest weapon
+				xyDisWeapon = (xyzDisWeapon.getX() + xyzDisWeapon.getY());
 				
-				if (
-					(xyzDisWeapon.getX() + xyzDisWeapon.getY()) <
-					(xyzDisEnemy.getX() + xyzDisEnemy.getY())
-				) {
-					findWeapon = true;
+				
+				if (ca->holdingWeapon(-1)) {
+					// already holding weapon
 				}
-				
+				else {
+					// find nearest weapon
+					
+					//if (xyDisWeapon <= xyDisEnemy) {
+						findWeapon = true;
+					//}
+				}
 			}
 			
 			if (findWeapon) {
-				
+				if (xyDisWeapon <= 1) {
+					singleton->gem->makeTurnTowardsTB(ca->uid, nearestWeapon->tbPos);
+					singleton->gem->makeGrab(ca->uid, -1);
+				}
+				else {
+					setEntTargPath(ca->uid,nearestWeapon->uid);
+					doMove = true;
+				}
 			}
 			else {
-				
+				if (xyDisEnemy <= 1) {
+					singleton->gem->makeTurnTowardsTB(ca->uid, nearestEnemy->tbPos);
+					singleton->gem->makeSwing(ca->uid, iGenRand(0,1));
+				}
+				else {
+					setEntTargPath(ca->uid,nearestEnemy->uid);
+					doMove = true;
+				}
 			}
 			
 			
@@ -53936,7 +54189,43 @@ void GameLogic::applyTBBehavior ()
 		}
 		
 		
-		
+		if (doMove) {
+			if (ca->targPath.didFindPath) {
+				
+				
+				for (i = 0; i < ca->targPath.finalPoints.size(); i++) {
+					
+					if (
+						singleton->gem->getUnitDisXY(
+							ca->targPath.finalPoints[i],
+							ca->tbPos
+						) == 0
+					) {
+						break;
+					}
+					
+				}
+				
+				i++;
+				
+				if (i >= ca->targPath.finalPoints.size()) {
+					
+				}
+				else {
+					ca->targPath.nextInd = i;
+					
+					singleton->gem->makeTurnTowardsTB(ca->uid, ca->targPath.finalPoints[ca->targPath.nextInd]);
+					singleton->gem->makeMoveTB(ca->uid, 1);
+					
+				}
+				
+				
+				
+			}
+			else {
+				cout << "did not find path\n";
+			}
+		}
 		
 		
 		
@@ -54581,8 +54870,94 @@ FILL_GROUPS_RETURN:
 		
 		
 	}
-bool GameLogic::findBestPath (GamePageHolder * closestHolder, GamePageHolder * closestHolder2, int bestInd, int bestInd2)
+bool GameLogic::findNaivePath (PathInfo * pathInfo)
+                                               {
+		
+		// attempt to find a naive greedy path
+		
+		int testInd;
+		int deltaXA;
+		int deltaYA;
+		int deltaX;
+		int deltaY;
+		
+		int toggleMod = 0;
+		
+		bool keepTesting = true;
+		GamePageHolder* testHolder;
+		
+		btVector3 testPos = pathInfo->points[0];
+		btVector3 destPos = pathInfo->points[1];
+		
+		btVector3 tempBTV;
+		
+		do {
+			testInd = getClosestPathRad(testPos, testHolder);
+			
+			if (testInd > -1) {
+				tempBTV = holderIndToBTV(testHolder, testInd, true);
+				pathInfo->finalPoints.push_back(tempBTV);
+				testPos.setZ(tempBTV.getZ());
+			}
+			
+			deltaX = (destPos.getX() - testPos.getX());
+			deltaY = (destPos.getY() - testPos.getY());
+			deltaXA = abs(deltaX);
+			deltaYA = abs(deltaY);
+			
+			keepTesting = (
+				(testInd > -1) &&
+				((deltaXA+deltaYA) > 0)
+			);
+			
+			
+			if ( (toggleMod%2) == 0 ) {
+				if (deltaXA > 0) {
+					testPos += btVector3(
+						qSign(deltaX),
+						0.0f,
+						0.0f
+					);
+				}
+				else if (deltaYA > 0) {
+					testPos += btVector3(
+						0.0f,
+						qSign(deltaY),
+						0.0f
+					);
+				}
+			}
+			else {
+				if (deltaYA > 0) {
+					testPos += btVector3(
+						0.0f,
+						qSign(deltaY),
+						0.0f
+					);
+				}
+				else if (deltaXA > 0) {
+					testPos += btVector3(
+						qSign(deltaX),
+						0.0f,
+						0.0f
+					);
+				}
+			}
+			
+			toggleMod++;
+			
+		} while (keepTesting);
+		
+		return (
+			(testInd > -1) &&
+			((deltaXA+deltaYA) == 0)
+		);
+		
+	}
+bool GameLogic::findBestPath (PathInfo * pathInfo, GamePageHolder * closestHolder, GamePageHolder * closestHolder2, int bestInd, int bestInd2)
           {
+		
+		
 		
 		// clear
 		globEndHolder = closestHolder2;
@@ -54634,8 +55009,8 @@ void GameLogic::drawFinalPath (PathInfo * pathInfo)
 		GamePageHolder* closestHolder;
 		GamePageHolder* closestHolder2;
 		
-		int bestInd = getClosestPathInd(pathInfo->points[0], closestHolder);
-		int bestInd2 = getClosestPathInd(pathInfo->points[1], closestHolder2);
+		int bestInd = getClosestPathRad(pathInfo->points[0], closestHolder);
+		int bestInd2 = getClosestPathRad(pathInfo->points[1], closestHolder2);
 		
 		drawPointAtIndex(closestHolder, bestInd, 0,128+singleton->smoothTime*127.0f,0, singleton->smoothTime);
 		drawPointAtIndex(closestHolder2, bestInd2, 128+singleton->smoothTime*127.0f,0,0, singleton->smoothTime);
@@ -54652,7 +55027,16 @@ void GameLogic::drawFinalPath (PathInfo * pathInfo)
 			
 			curRad = 0.25f + 0.15*sin( fi*0.5 + singleton->curTime/200.0 );
 			
+			if (i == pathInfo->nextInd) {
+				singleton->setShaderVec3("matVal", 0, 255, 255);
+			}
+			
 			singleton->drawBoxRad(pathInfo->finalPoints[i],btVector3(curRad,curRad,curRad));
+			
+			if (i == pathInfo->nextInd) {
+				singleton->setShaderVec3("matVal", 255, 0, 255);
+			}
+			
 		}
 		
 		
@@ -54660,6 +55044,7 @@ void GameLogic::drawFinalPath (PathInfo * pathInfo)
 void GameLogic::getPath (PathInfo * pathInfo)
                                          {
 		
+		pathInfo->finalPoints.clear();
 		
 		int i;
 		int j;
@@ -54702,11 +55087,14 @@ void GameLogic::getPath (PathInfo * pathInfo)
 		
 		
 		
-		bestInd = getClosestPathInd(pathInfo->points[0], closestHolder);
-		bestInd2 = getClosestPathInd(pathInfo->points[1], closestHolder2);
+		bestInd = getClosestPathRad(pathInfo->points[0], closestHolder);
+		bestInd2 = getClosestPathRad(pathInfo->points[1], closestHolder2);
+		
+		
+		
 		
 		// current mouse position
-		// bestInd3 = getClosestPathInd(&(singleton->mouseMovePD), closestHolder3);
+		// bestInd3 = getClosestPathRad(&(singleton->mouseMovePD), closestHolder3);
 		
 		
 		//drawPointAtIndex(closestHolder, bestInd, 0,128+singleton->smoothTime*127.0f,0, singleton->smoothTime);
@@ -54738,44 +55126,56 @@ void GameLogic::getPath (PathInfo * pathInfo)
 		
 		if ((bestInd > -1)  && (bestInd2 > -1)) {
 			
-			pathInfo->didFindPath = findBestPath(closestHolder, closestHolder2, bestInd, bestInd2);
+			pathInfo->didFindPath = findNaivePath(pathInfo);
 			
 			if (pathInfo->didFindPath) {
-				
+				//cout << "found naive\n";
+			}
+			else {
 				pathInfo->finalPoints.clear();
 				
-				getPointsForPath(closestHolder, bestInd, pathInfo, true);
+				pathInfo->didFindPath = findBestPath(
+					pathInfo,
+					closestHolder,
+					closestHolder2,
+					bestInd,
+					bestInd2
+				);
 				
-				for (i = 0; i < pathFinalStack.size(); i++) {
-					curPR = &(pathFinalStack[i]);
+				if (pathInfo->didFindPath) {
 					
-					tempHolder = getHolderById(curPR->blockId,curPR->holderId);
-					if ((tempHolder != NULL)) {
-						tempInd = tempHolder->groupInfoStack[curPR->groupId].centerInd;
-						// if (tempInd > -1) {
-						// 	drawPointAtIndex(tempHolder, tempInd, 255, 128, 0, singleton->smoothTime);	
-						// }
+					//cout << "found complex\n";
+					
+					getPointsForPath(closestHolder, bestInd, pathInfo, true);
+					
+					for (i = 0; i < pathFinalStack.size(); i++) {
+						curPR = &(pathFinalStack[i]);
+						
+						tempHolder = getHolderById(curPR->blockId,curPR->holderId);
+						if ((tempHolder != NULL)) {
+							tempInd = tempHolder->groupInfoStack[curPR->groupId].centerInd;
+							// if (tempInd > -1) {
+							// 	drawPointAtIndex(tempHolder, tempInd, 255, 128, 0, singleton->smoothTime);	
+							// }
+						}
+						
+						conHolder1 = getHolderById(curPR->conNode.blockIdFrom, curPR->conNode.holderIdFrom);
+						conHolder2 = getHolderById(curPR->conNode.blockIdTo, curPR->conNode.holderIdTo); 
+						
+						if (conHolder1 != NULL) {
+							getPointsForPath(conHolder1, curPR->conNode.cellIndFrom, pathInfo, false);
+						}
+						if (conHolder2 != NULL) {
+							getPointsForPath(conHolder2, curPR->conNode.cellIndTo, pathInfo, true);
+						}
+						
 					}
 					
-					conHolder1 = getHolderById(curPR->conNode.blockIdFrom, curPR->conNode.holderIdFrom);
-					conHolder2 = getHolderById(curPR->conNode.blockIdTo, curPR->conNode.holderIdTo); 
+					getPointsForPath(closestHolder2, bestInd2, pathInfo, false);
 					
-					if (conHolder1 != NULL) {
-						getPointsForPath(conHolder1, curPR->conNode.cellIndFrom, pathInfo, false);
-					}
-					if (conHolder2 != NULL) {
-						getPointsForPath(conHolder2, curPR->conNode.cellIndTo, pathInfo, true);
-					}
 					
 				}
-				
-				getPointsForPath(closestHolder2, bestInd2, pathInfo, false);
-				
-				
-				cout << "did find path\n";
-				
 			}
-			
 			
 			
 			
@@ -54835,18 +55235,42 @@ void GameLogic::getPath (PathInfo * pathInfo)
 void GameLogic::update ()
                       {
 			
+			int i;
+			BaseObj* ca;
+			
 			if (singleton->pathfindingOn) {
 				
-				if (
-					(!testPath.searchedForPath) && (singleton->pathFindingStep == 2)
-				) {
-					getPath(&testPath);
+				if (singleton->pathfindingTestOn) {
+					if (
+						(!testPath.searchedForPath) && (singleton->pathFindingStep == 2)
+					) {
+						getPath(&testPath);
+					}
+					drawFinalPath(&testPath);
 				}
 				
+				
+				if (singleton->drawTargPaths) {
+					for (i = 0; i < singleton->gem->turnList.size(); i++) {
+						
+						ca = &(singleton->gem->gameObjects[ singleton->gem->turnList[i] ]); 
+						
+						if (ca->isHidden) {
+							
+						}
+						else {
+							if (ca->targPath.didFindPath) {
+								drawFinalPath(&(ca->targPath));
+							}
+						}
+						
+						
+					}
+				}
 					
 			}
 			
-			drawFinalPath(&testPath);
+			
 			
 			
 			
@@ -54893,6 +55317,29 @@ void GameLogic::drawLineAtIndices (GamePageHolder * curPointHolder, int curPoint
 		
 		
 		singleton->drawLine(&pVec1, &pVec2);
+	}
+btVector3 GameLogic::holderIndToBTV (GamePageHolder * curPointHolder, int curPointIndex, bool addHalfOff)
+                                                                                                     {
+		int ii;
+		int jj;
+		int kk;
+		
+		int cellsPerHolder = singleton->cellsPerHolder;
+		
+		btVector3 pVec1;
+		
+		kk = curPointIndex/(cellsPerHolder*cellsPerHolder);
+		jj = (curPointIndex-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
+		ii = curPointIndex-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
+		
+		pVec1 = curPointHolder->gphMinInPixels.getBTV();
+		pVec1 += btVector3(ii,jj,kk);
+		
+		if (addHalfOff) {
+			pVec1 += btVector3(0.5f,0.5f,0.5f);
+		}
+		
+		return pVec1;
 	}
 void GameLogic::drawPointAtIndex (GamePageHolder * curPointHolder, int curPointIndex, int r, int g, int b, float rad)
                                                                                                                  {
@@ -55230,71 +55677,54 @@ void GameLogic::drawRegions (int offX, int offY, int offZ)
 		
 		
 	}
-int GameLogic::getClosestPathInd (btVector3 cpBTV, GamePageHolder * & closestHolder)
+int GameLogic::getClosestPathRad (btVector3 cpBTV, GamePageHolder * & closestHolder)
                                                                                {
+		
+		int rad = BASE_MOVEABLE_Z;
+		
+		btVector3 newCoord;
+		
+		//FIVector4 closestPoint;
+		//
+		
+		int i;
+		int j;
+		int k;
+		int n;
+		int q;
+		int ind;
+		
+		int testInd;
+		int testDis;
+		int bestDis = 99999;
+		int bestInd = -1;
+		
+		int cellsPerHolder = singleton->cellsPerHolder;
+		int curInd;
+		
+		
+		for (q = -rad; q <= rad; q++) {
+			newCoord = cpBTV + btVector3(0.0f,0.0f,q);
+			//closestPoint.setBTV(newCoord);
 			
-			FIVector4 closestPoint;
+			curInd = singleton->gw->getCellInd(newCoord, closestHolder);
 			
-			closestPoint.setBTV(cpBTV);
-			
-			int i;
-			int j;
-			int k;
-			int n;
-			int ind;
-			
-			int testInd;
-			int testDis;
-			int bestDis = 99999;
-			int bestInd = -1;
-			
-			int cellsPerHolder = singleton->cellsPerHolder;
-			int curInd = singleton->gw->getCellInd(&closestPoint, closestHolder);
-			
-			if (closestHolder == NULL) {
-				return -1;
-			}
-			
-			// if (singleton->gameFluid[E_FID_BIG]->threadPoolPath.anyRunning()) {
-			// 	return -1;
-			// }
-			
-			if (closestHolder->idealPathsReady) {
-				
-			}
-			else {
-				return -1;
-			}
-			
-			
-			int kk = curInd/(cellsPerHolder*cellsPerHolder);
-			int jj = (curInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-			int ii = curInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
-			
-			
-			for (n = 0; n < cellsPerHolder*cellsPerHolder*cellsPerHolder; n++) {
-				ind = n;
-				
-				
-				
-				if (closestHolder->getGroupId(n) > -1) {
-					k = ind/(cellsPerHolder*cellsPerHolder);
-					j = (ind - k*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-					i = ind - ( j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder );
-					
-					testInd = ind;
-					testDis = abs(i-ii) + abs(j-jj) + abs(k-kk);
-					
-					if (testDis < bestDis) {
-						bestDis = testDis;
-						bestInd = testInd;
-					}
+			if (closestHolder != NULL) {
+				if (closestHolder->idealPathsReady) {
+					if (curInd > -1) {
+						if (closestHolder->getGroupId(curInd) > -1) {
+							return curInd;
+						}
+					} 
 				}
-				
 			}
 			
-			return bestInd;
+			
+			
 		}
+		
+		return -1;
+	}
 void GameLogic::loadNearestHolders ()
                                   {
 		
@@ -55412,7 +55842,7 @@ void GameLogic::loadNearestHolders ()
 							if (curHolder->wasGenerated) {
 								
 								
-								if ((curLoadRadius < 2)&&(singleton->pathfindingOn)&&doPaths) {
+								if ((curLoadRadius < 2)&&(singleton->pathfindingGen)&&doPaths) {
 									if (curHolder->pathsReady || curHolder->lockWrite) {
 										
 									}
@@ -58721,12 +59151,12 @@ GameBlock * GameWorld::getBlockAtId (int id)
 
 
 	}
-int GameWorld::getCellInd (FIVector4 * cParam, GamePageHolder * & curHolder)
+int GameWorld::getCellInd (btVector3 cParam, GamePageHolder * & curHolder)
           {
 		
-		int xv = cParam->getIX();
-		int yv = cParam->getIY();
-		int zv = cParam->getIZ();
+		int xv = cParam.getX();
+		int yv = cParam.getY();
+		int zv = cParam.getZ();
 		
 		int cellsPerHolder = singleton->cellsPerHolder;
 		

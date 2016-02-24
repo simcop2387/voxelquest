@@ -1823,6 +1823,21 @@ float getShortestAngle(float begInRad, float endInRad, float amount) {
 	return shortest_angle * amount * M_PI / 180.0f;
 }
 
+btVector3 roundBTV(btVector3 v) {
+	return btVector3(
+		roundVal(v.getX()),
+		roundVal(v.getY()),
+		roundVal(v.getZ())	
+	);
+}
+btVector3 floorBTV(btVector3 v) {
+	return btVector3(
+		floor(v.getX()),
+		floor(v.getY()),
+		floor(v.getZ())	
+	);
+}
+
 btVector3 multByOtherRot( btVector3 imp, btMatrix3x3 otherRot) {
 	// Vector3 myRHS = Vector3(imp.getX(),imp.getY(),imp.getZ());
 	// Vector3 res = otherRot*myRHS;
@@ -1900,7 +1915,7 @@ private:
 	
 public:
 	
-	
+	PathInfo targPath;
 	StatSheet statSheet;
 	
 	int objectType;
@@ -1976,6 +1991,11 @@ public:
 	
 	
 	btVector3 getUnitBounds(bool getMax) {
+		
+		if (bodies.size() < 1) {
+			cout << "ERROR: getUnitBounds() with no bodies\n";
+		}
+		
 		btVector3 cp = getCenterPoint( E_BDG_CENTER );
 		
 		float diamXY = 2.0f;
@@ -2876,7 +2896,15 @@ public:
 		windResistance = 0.9;
 		
 		
-		tbPos = getUnitBounds(false);
+		//tbPos = getUnitBounds(false);
+		
+		targPath.points[0] = btVector3(0.0f,0.0f,0.0f);
+		targPath.points[1] = btVector3(0.0f,0.0f,0.0f);
+		targPath.searchedForPath = false;
+		targPath.didFindPath = false;
+		targPath.finalPoints.clear();
+		targPath.nextInd = -1;
+		
 		
 	}
 	

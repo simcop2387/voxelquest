@@ -490,13 +490,13 @@ public:
 	
 	
 	int getCellInd(
-		FIVector4* cParam,
+		btVector3 cParam,
 		GamePageHolder* &curHolder 
 	) {
 		
-		int xv = cParam->getIX();
-		int yv = cParam->getIY();
-		int zv = cParam->getIZ();
+		int xv = cParam.getX();
+		int yv = cParam.getY();
+		int zv = cParam.getZ();
 		
 		int cellsPerHolder = singleton->cellsPerHolder;
 		

@@ -289,12 +289,12 @@ GameBlock * GameWorld::getBlockAtId (int id)
 
 
 	}
-int GameWorld::getCellInd (FIVector4 * cParam, GamePageHolder * & curHolder)
+int GameWorld::getCellInd (btVector3 cParam, GamePageHolder * & curHolder)
           {
 		
-		int xv = cParam->getIX();
-		int yv = cParam->getIY();
-		int zv = cParam->getIZ();
+		int xv = cParam.getX();
+		int yv = cParam.getY();
+		int zv = cParam.getZ();
 		
 		int cellsPerHolder = singleton->cellsPerHolder;
 		

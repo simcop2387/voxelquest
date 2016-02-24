@@ -321,15 +321,17 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		
-		
+		tbTicks = 0;
 		tempCounter = 0;
 		actorCount = 0;
 		polyCount = 0;
 		fpsCountMax = 500;
 		
 		fpsTest = false;
-		pathfindingOn = false;
-		updateHolders = true;
+		pathfindingOn = true;
+		pathfindingGen = false;
+		pathfindingTestOn = false;
+		updateHolders = false;
 		
 		
 		maxHolderDis = 32;
@@ -494,6 +496,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		depthInvalidMove = true;
 		lastDepthInvalidMove = true;
 		depthInvalidRotate = true;
+		drawTargPaths = false;
 		gridOn = false;
 		fogOn = 1.0f;
 		cameraZoom = 1.0f;
@@ -3974,6 +3977,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
                                                                          {
 		
 		int i;
+		int tempType = E_ENTTYPE_NPC;
 		
 		GamePageHolder* curHolder;
 		
@@ -4034,25 +4038,41 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				
 				case '1':
-					
-					getMarkerPos(x, y);
-					gem->placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
-				break;
 				case '2':
-					getMarkerPos(x, y);
-					gem->placeNewEnt(gameNetwork->isConnected, E_ENTTYPE_WEAPON, &lastCellPos);
-					gem->weaponToPlace++;
-					
-					if (gem->weaponToPlace > E_PG_WPSPEAR) {
-						gem->weaponToPlace = E_PG_WPSWORD;
+				case '3':
+				
+					switch(key) {
+						case '1':
+							tempType = E_ENTTYPE_NPC;
+						break;
+						case '2':
+							tempType = E_ENTTYPE_WEAPON;
+						break;
+						case '3':
+							tempType = E_ENTTYPE_WEAPON;
+							gem->weaponToPlace = E_PG_WPSPEAR;
+						break;
+					}
+				
+					if (updateHolders) {
+						getMarkerPos(x, y);
+						gem->placeNewEnt(gameNetwork->isConnected,tempType,&lastCellPos);
+						
+						if (key == '2') {
+							gem->weaponToPlace++;
+							if (gem->weaponToPlace > E_PG_WPSPEAR) {
+								gem->weaponToPlace = E_PG_WPSWORD;
+							}
+						}
+						
+						gem->refreshTurnList();
+						
+					}
+					else {
+						cout << "Turn On Holder Update (u)\n";
+						doAlert();
 					}
 					
-				break;
-				case '3':
-					gem->weaponToPlace = E_PG_WPSPEAR;
-					getMarkerPos(x, y);
-					gem->placeNewEnt(gameNetwork->isConnected, E_ENTTYPE_WEAPON, &lastCellPos);
-				
 				break;
 				case '4':
 					
@@ -4122,6 +4142,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					// }
 				
 					updateHolders = !updateHolders;
+					pathfindingGen = updateHolders;
 					
 					
 					cout << "\n";
@@ -4223,8 +4244,8 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				case 'j':
 				
-					pathfindingOn = !pathfindingOn;
-					cout << "pathfindingOn: " << pathfindingOn << "\n";
+					pathfindingTestOn = !pathfindingTestOn;
+					cout << "pathfindingTestOn: " << pathfindingTestOn << "\n";
 				
 					//gem->resetActiveNode();
 				
@@ -4403,6 +4424,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					gem->setTurnBased(!(gem->turnBased));
 					gem->combatOn = (gem->turnBased);
+					gridOn = gem->combatOn;
 					//gem->combatOn = !(gem->combatOn);
 					//cout << "gem->combatOn " << gem->combatOn << "\n";
 					
@@ -4498,20 +4520,31 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						
 					break;
 					
+					case 'w':
+						gem->makeGrab(gem->getCurActor()->uid, -1);
+					break;
+					case 'y':
+						gem->makeThrow(gem->getCurActor()->uid,-1);
+					break;
 					
 					case 's':
-						gem->makeTurnUnit(gem->getCurActor()->uid, 1);
+						gem->makeTurnTB(gem->getCurActor()->uid, 1);
+						//gem->nextTurn();
 					break;
 					case 'f':
-						gem->makeTurnUnit(gem->getCurActor()->uid, -1);
+						gem->makeTurnTB(gem->getCurActor()->uid, -1);
+						//gem->nextTurn();
 					break;
-					
 					
 					case 'e':
-						gem->makeMoveUnit(gem->getCurActor()->uid, 1);
+						if (gem->makeMoveTB(gem->getCurActor()->uid, 1)) {
+							gem->nextTurn();
+						}
 					break;
 					case 'd':
-						gem->makeMoveUnit(gem->getCurActor()->uid, -1);
+						if (gem->makeMoveTB(gem->getCurActor()->uid, -1)) {
+							gem->nextTurn();
+						}
 					break;
 				}
 			}
@@ -4963,7 +4996,7 @@ void Singleton::mouseMove (int _x, int _y)
 			
 			
 
-			if (placingGeom||RT_TRANSFORM||gem->editPose||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
+			if (placingGeom||RT_TRANSFORM||gem->editPose||pathfindingTestOn||(mouseState != E_MOUSE_STATE_MOVE)) {
 			//if (true) {
 				getPixData(&mouseMovePD, x, y, false, false);
 				getPixData(&mouseMoveOPD, x, y, true, true);
@@ -4972,9 +5005,9 @@ void Singleton::mouseMove (int _x, int _y)
 
 			gw->updateMouseCoords(&mouseMovePD);
 			
-			if (pathfindingOn) {
+			if (pathfindingTestOn) {
 				
-				if (gameLogic->getClosestPathInd(mouseMovePD.getBTV(), closestHolder) > -1) {
+				if (gameLogic->getClosestPathRad(mouseMovePD.getBTV(), closestHolder) > -1) {
 					
 					if (pathFindingStep < 2) {
 						gameLogic->testPath.points[pathFindingStep] = mouseMovePD.getBTV();
@@ -5324,7 +5357,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 							if (noTravel) {
 								
 								
-								if (pathfindingOn) {
+								if (pathfindingTestOn) {
 									
 									pathFindingStep++;
 									
@@ -5334,6 +5367,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 										gameLogic->testPath.points[1] = btVector3(0.0f,0.0f,0.0f);
 										gameLogic->testPath.searchedForPath = false;
 										gameLogic->testPath.didFindPath = false;
+										gameLogic->testPath.nextInd = -1;
 										gameLogic->testPath.finalPoints.clear();
 									}
 								}
@@ -6992,6 +7026,10 @@ float Singleton::getConst (string conName)
 		}
 		return 0.0f;
 	}
+int Singleton::iGetConst (int ev)
+                              {
+		return conVals[ev];
+	}
 void Singleton::loadConstants ()
                              {
 		int i;
@@ -7624,6 +7662,15 @@ void Singleton::frameUpdate ()
 							gw->generateBlockHolder();
 						}
 						
+						if (gem->turnBased) {
+							if (
+								((tbTicks%iGetConst(E_CONST_TURNBASED_TICKS)) == 0) ||
+								(gem->getCurActor() != NULL)
+							) {
+								gem->cycleTurn();
+							}
+							tbTicks++;
+						}
 						
 					}
 					

@@ -100,35 +100,43 @@ BaseObj * GameEntManager::getActiveActor ()
 			return &(gameObjects[activeActorUID]);
 		}
 	}
-void GameEntManager::applyLogicForTurn ()
-                                 {
-		singleton->gameLogic->applyTBBehavior();
-		nextTurn();
-	}
-void GameEntManager::endTurn ()
-                       {
-		
-		nextTurn();
-	}
-void GameEntManager::nextTurn ()
-                        {
-		turnListInd++;
-		if (turnListInd >= turnList.size()) {
-			turnListInd = 0;
-		}
-		
+void GameEntManager::refreshActiveId ()
+                               {
 		if (turnList.size() == 0) {
 			activeActorUID = -1;
 		}
 		else {
 			activeActorUID = turnList[turnListInd];
 		}
+	}
+void GameEntManager::cycleTurn ()
+                         {
+		refreshActiveId();
+		
+		if (curActorUID == activeActorUID) {
+			// wait for human to take turn
+		}
+		else {
+			nextTurn();
+		}
+		
+	}
+void GameEntManager::nextTurn ()
+                        {
+		singleton->tbTicks = 1;
+		
+		turnListInd++;
+		if (turnListInd >= turnList.size()) {
+			turnListInd = 0;
+		}
+		
+		refreshActiveId();
 		
 		if (curActorUID == activeActorUID) {
 			// human turn
 		}
 		else {
-			applyLogicForTurn();
+			singleton->gameLogic->applyTBBehavior();
 		}
 		
 	}
@@ -164,7 +172,14 @@ void GameEntManager::setTurnBased (bool newVal)
 			testInd = visObjects[i];
 			testObj = &(gameObjects[testInd]);
 			
-			testObj->tbPos = testObj->getUnitBounds(false);	
+			if (testObj->isHidden) {
+				
+			}
+			else {
+				testObj->tbPos = testObj->getUnitBounds(false);	
+			}
+			
+			
 		}
 		
 		refreshTurnList();
@@ -807,6 +822,11 @@ BaseObjType GameEntManager::placeNewEnt (bool isReq, int et, FIVector4 * cellPos
 			&newPos
 		);
 		
+		tmpObj->tbPos = floorBTV(cellPos->getBTV());
+		
+		
+		
+		
 		tmpObj->defaultPose.group = -1;
 		tmpObj->defaultPose.RLBN = RLBN_NEIT;
 		tmpObj->defaultPose.step = 0;
@@ -1159,6 +1179,15 @@ bool GameEntManager::areFriends (int actorUID1, int actorUID2)
                                                       {
 		return false;
 	}
+int GameEntManager::getUnitDisXY (btVector3 p1, btVector3 p2)
+                                                     {
+		
+				
+		return 
+			floor(abs(p1.getX() - p2.getX())) +
+			floor(abs(p1.getY() - p2.getY()));
+		
+	}
 btVector3 GameEntManager::getUnitDistance (int actorUID1, int actorUID2)
                                                                 {
 		
@@ -1172,8 +1201,8 @@ btVector3 GameEntManager::getUnitDistance (int actorUID1, int actorUID2)
 		BaseObj* actor1 = &(gameObjects[actorUID1]);
 		BaseObj* actor2 = &(gameObjects[actorUID2]);
 		
-		btVector3 p1 = actor1->getUnitBounds(false);
-		btVector3 p2 = actor2->getUnitBounds(false);
+		btVector3 p1 = actor1->tbPos;
+		btVector3 p2 = actor2->tbPos;
 				
 		return btVector3(
 			abs(p1.getX() - p2.getX()),
@@ -1202,6 +1231,7 @@ int GameEntManager::getClosestActor (int actorId, int objType, float maxDis, uin
 		bool testForGrabbed = ( (flags&E_CF_NOTGRABBED) > 0 );
 		bool testForEnemies = ( (flags&E_CF_AREENEMIES) > 0 );
 		bool testForFriends = ( (flags&E_CF_AREFRIENDS) > 0 );
+		bool testForAlive = ( (flags&E_CF_ISALIVE) > 0 );
 		
 		for(i = 0; i < visObjects.size(); i++) {
 			
@@ -1235,6 +1265,10 @@ int GameEntManager::getClosestActor (int actorId, int objType, float maxDis, uin
 					(
 						( testForFriends && (areFriends(actorId,testInd)) ) ||
 						(!testForFriends)
+					) &&
+					(
+						( testForAlive && (testObj->isAlive()) ) ||
+						(!testForAlive)
 					)
 					
 				) {
@@ -1777,17 +1811,22 @@ void GameEntManager::makeSwing (int actorId, int handNum)
 				
 				
 				
-				if (ca->baseContact()) {
-					makeMove( actorId,
-						btVector3(
-							0.0f,
-							singleton->conVals[E_CONST_DASH_AMOUNT],
-							singleton->conVals[E_CONST_DASH_UP_AMOUNT]
-						),
-						true,
-						false
-					);
+				// if (ca->baseContact()) {
+				// 	makeMove( actorId,
+				// 		btVector3(
+				// 			0.0f,
+				// 			singleton->conVals[E_CONST_DASH_AMOUNT],
+				// 			singleton->conVals[E_CONST_DASH_UP_AMOUNT]
+				// 		),
+				// 		true,
+				// 		false
+				// 	);
+				// }
+				
+				if (turnBased) {
+					// was doing: apply turn based swing
 				}
+				
 				
 				if (ca->uid != getCurActorUID()) {
 					nextSwing(actorId,RLBN_LEFT);
@@ -1801,10 +1840,52 @@ void GameEntManager::makeSwing (int actorId, int handNum)
 			
 		}
 		
+	}
+void GameEntManager::makeTurnTowardsTB (int actorId, btVector3 actorTargVec)
+                                                                    {
+		BaseObj* ca = &(gameObjects[actorId]);
+		btVector3 actorFinalVec = actorTargVec - ca->tbPos;
+		
+		actorFinalVec = floorBTV(actorFinalVec);
+		
+		if (actorFinalVec.getX() == 1.0f) {
+			ca->tbDir = 0;
+		}
+		if (actorFinalVec.getX() == -1.0f) {
+			ca->tbDir = 2;
+		}
+		if (actorFinalVec.getY() == 1.0f) {
+			ca->tbDir = 1;
+		}
+		if (actorFinalVec.getY() == -1.0f) {
+			ca->tbDir = 3;
+		}
 		
 	}
-void GameEntManager::makeTurnUnit (int actorId, int modVal)
-                                                   {
+BaseObj * GameEntManager::getEntAtUnitPos (btVector3 pos)
+                                                {
+		int i;
+		
+		BaseObj* ca;
+		
+		for (i = 0; i < turnList.size(); i++) {
+			ca = &(gameObjects[turnList[i]]);
+			
+			if (ca->isHidden) {
+				
+			}
+			else {
+				if (getUnitDisXY(ca->tbPos, pos) < 1) {
+					return ca;
+				}
+			}
+			
+		}
+	
+		return NULL;
+	}
+void GameEntManager::makeTurnTB (int actorId, int modVal)
+                                                 {
 		BaseObj* ca = &(gameObjects[actorId]);
 		
 		ca->tbDir += modVal;
@@ -1815,16 +1896,21 @@ void GameEntManager::makeTurnUnit (int actorId, int modVal)
 		if (ca->tbDir > 3) {
 			ca->tbDir = 0;
 		}
-		
-		
 	}
-void GameEntManager::makeMoveUnit (int actorId, int modVal)
-                                                   {
+bool GameEntManager::makeMoveTB (int actorId, int modVal)
+                                                 {
 		BaseObj* ca = &(gameObjects[actorId]);
+		
+		if (actorId != activeActorUID) {
+			// only active actor should be moving
+			return false;
+		}
 		
 		float ang = TBDIR_ARR[ca->tbDir];
 		
-		ca->tbPos += btVector3(
+		btVector3 testPos = ca->tbPos;
+		
+		testPos += btVector3(
 			roundVal(cos(ang)*modVal),
 			roundVal(sin(ang)*modVal),
 			0.0f
@@ -1832,22 +1918,44 @@ void GameEntManager::makeMoveUnit (int actorId, int modVal)
 		
 		while (
 			singleton->gw->getCellAtCoords(
-				ca->tbPos.getX(),
-				ca->tbPos.getY(),
-				ca->tbPos.getZ()
+				testPos.getX(),
+				testPos.getY(),
+				testPos.getZ()
 			) == E_CD_EMPTY
 		) {
-			ca->tbPos += btVector3(0.0f,0.0f,-1.0f);
+			testPos += btVector3(0.0f,0.0f,-1.0f);
 		}
 		
 		while (
 			singleton->gw->getCellAtCoords(
-				ca->tbPos.getX(),
-				ca->tbPos.getY(),
-				ca->tbPos.getZ()
+				testPos.getX(),
+				testPos.getY(),
+				testPos.getZ()
 			) != E_CD_EMPTY
 		) {
-			ca->tbPos += btVector3(0.0f,0.0f,1.0f);
+			testPos += btVector3(0.0f,0.0f,1.0f);
+		}
+		
+		BaseObj* entInSquare = getEntAtUnitPos(testPos);
+		
+		bool preventMove = false;
+		
+		if (entInSquare == NULL) {
+			
+		}
+		else {
+			if (entInSquare->isAlive()) {
+				preventMove = true;
+			}
+		}
+		
+		if (preventMove) {
+			singleton->playSoundEnt("bump0");	
+			return false;
+		}
+		else {
+			ca->tbPos = testPos;
+			return true;
 		}
 		
 	}
@@ -2050,6 +2158,10 @@ void GameEntManager::makeHit (int attackerId, int victimId, int weaponId)
 		BaseObj* geWeapon = getActorRef(weaponId);
 		
 		int lastHealth;
+		
+		if (turnBased) {
+			return;
+		}
 		
 		GameOrg* curOrg = NULL;
 		

@@ -102,6 +102,7 @@ public:
 	bool waitingOnDestruction;
 	
 	
+	bool drawTargPaths;
 	bool gridOn;
 	bool physicsOn;
 	bool isPressingMove;
@@ -122,6 +123,8 @@ public:
 	bool isInteractiveEnt[E_CT_LENGTH];
 	bool inputOn;
 	bool pathfindingOn;
+	bool pathfindingGen;
+	bool pathfindingTestOn;
 	bool placingGeom;
 	bool isMacro;
 	bool cavesOn;
@@ -182,7 +185,7 @@ public:
 	
 	
 	
-	
+	int tbTicks;
 	int tempCounter;
 	int actorCount;
 	int polyCount;
@@ -920,15 +923,17 @@ public:
 		
 		
 		
-		
+		tbTicks = 0;
 		tempCounter = 0;
 		actorCount = 0;
 		polyCount = 0;
 		fpsCountMax = 500;
 		
 		fpsTest = false;
-		pathfindingOn = false;
-		updateHolders = true;
+		pathfindingOn = true;
+		pathfindingGen = false;
+		pathfindingTestOn = false;
+		updateHolders = false;
 		
 		
 		maxHolderDis = 32;
@@ -1093,6 +1098,7 @@ public:
 		depthInvalidMove = true;
 		lastDepthInvalidMove = true;
 		depthInvalidRotate = true;
+		drawTargPaths = false;
 		gridOn = false;
 		fogOn = 1.0f;
 		cameraZoom = 1.0f;
@@ -4954,6 +4960,7 @@ DISPATCH_EVENT_END:
 	void processInput(unsigned char key, bool keyDown, int x, int y) {
 		
 		int i;
+		int tempType = E_ENTTYPE_NPC;
 		
 		GamePageHolder* curHolder;
 		
@@ -5014,25 +5021,41 @@ DISPATCH_EVENT_END:
 				
 				
 				case '1':
-					
-					getMarkerPos(x, y);
-					gem->placeNewEnt(gameNetwork->isConnected,E_ENTTYPE_NPC, &lastCellPos);
-				break;
 				case '2':
-					getMarkerPos(x, y);
-					gem->placeNewEnt(gameNetwork->isConnected, E_ENTTYPE_WEAPON, &lastCellPos);
-					gem->weaponToPlace++;
-					
-					if (gem->weaponToPlace > E_PG_WPSPEAR) {
-						gem->weaponToPlace = E_PG_WPSWORD;
+				case '3':
+				
+					switch(key) {
+						case '1':
+							tempType = E_ENTTYPE_NPC;
+						break;
+						case '2':
+							tempType = E_ENTTYPE_WEAPON;
+						break;
+						case '3':
+							tempType = E_ENTTYPE_WEAPON;
+							gem->weaponToPlace = E_PG_WPSPEAR;
+						break;
+					}
+				
+					if (updateHolders) {
+						getMarkerPos(x, y);
+						gem->placeNewEnt(gameNetwork->isConnected,tempType,&lastCellPos);
+						
+						if (key == '2') {
+							gem->weaponToPlace++;
+							if (gem->weaponToPlace > E_PG_WPSPEAR) {
+								gem->weaponToPlace = E_PG_WPSWORD;
+							}
+						}
+						
+						gem->refreshTurnList();
+						
+					}
+					else {
+						cout << "Turn On Holder Update (u)\n";
+						doAlert();
 					}
 					
-				break;
-				case '3':
-					gem->weaponToPlace = E_PG_WPSPEAR;
-					getMarkerPos(x, y);
-					gem->placeNewEnt(gameNetwork->isConnected, E_ENTTYPE_WEAPON, &lastCellPos);
-				
 				break;
 				case '4':
 					
@@ -5102,6 +5125,7 @@ DISPATCH_EVENT_END:
 					// }
 				
 					updateHolders = !updateHolders;
+					pathfindingGen = updateHolders;
 					
 					
 					cout << "\n";
@@ -5203,8 +5227,8 @@ DISPATCH_EVENT_END:
 				
 				case 'j':
 				
-					pathfindingOn = !pathfindingOn;
-					cout << "pathfindingOn: " << pathfindingOn << "\n";
+					pathfindingTestOn = !pathfindingTestOn;
+					cout << "pathfindingTestOn: " << pathfindingTestOn << "\n";
 				
 					//gem->resetActiveNode();
 				
@@ -5383,6 +5407,7 @@ DISPATCH_EVENT_END:
 					
 					gem->setTurnBased(!(gem->turnBased));
 					gem->combatOn = (gem->turnBased);
+					gridOn = gem->combatOn;
 					//gem->combatOn = !(gem->combatOn);
 					//cout << "gem->combatOn " << gem->combatOn << "\n";
 					
@@ -5478,20 +5503,31 @@ DISPATCH_EVENT_END:
 						
 					break;
 					
+					case 'w':
+						gem->makeGrab(gem->getCurActor()->uid, -1);
+					break;
+					case 'y':
+						gem->makeThrow(gem->getCurActor()->uid,-1);
+					break;
 					
 					case 's':
-						gem->makeTurnUnit(gem->getCurActor()->uid, 1);
+						gem->makeTurnTB(gem->getCurActor()->uid, 1);
+						//gem->nextTurn();
 					break;
 					case 'f':
-						gem->makeTurnUnit(gem->getCurActor()->uid, -1);
+						gem->makeTurnTB(gem->getCurActor()->uid, -1);
+						//gem->nextTurn();
 					break;
-					
 					
 					case 'e':
-						gem->makeMoveUnit(gem->getCurActor()->uid, 1);
+						if (gem->makeMoveTB(gem->getCurActor()->uid, 1)) {
+							gem->nextTurn();
+						}
 					break;
 					case 'd':
-						gem->makeMoveUnit(gem->getCurActor()->uid, -1);
+						if (gem->makeMoveTB(gem->getCurActor()->uid, -1)) {
+							gem->nextTurn();
+						}
 					break;
 				}
 			}
@@ -5965,7 +6001,7 @@ DISPATCH_EVENT_END:
 			
 			
 
-			if (placingGeom||RT_TRANSFORM||gem->editPose||pathfindingOn||(mouseState != E_MOUSE_STATE_MOVE)) {
+			if (placingGeom||RT_TRANSFORM||gem->editPose||pathfindingTestOn||(mouseState != E_MOUSE_STATE_MOVE)) {
 			//if (true) {
 				getPixData(&mouseMovePD, x, y, false, false);
 				getPixData(&mouseMoveOPD, x, y, true, true);
@@ -5974,9 +6010,9 @@ DISPATCH_EVENT_END:
 
 			gw->updateMouseCoords(&mouseMovePD);
 			
-			if (pathfindingOn) {
+			if (pathfindingTestOn) {
 				
-				if (gameLogic->getClosestPathInd(mouseMovePD.getBTV(), closestHolder) > -1) {
+				if (gameLogic->getClosestPathRad(mouseMovePD.getBTV(), closestHolder) > -1) {
 					
 					if (pathFindingStep < 2) {
 						gameLogic->testPath.points[pathFindingStep] = mouseMovePD.getBTV();
@@ -6329,7 +6365,7 @@ DISPATCH_EVENT_END:
 							if (noTravel) {
 								
 								
-								if (pathfindingOn) {
+								if (pathfindingTestOn) {
 									
 									pathFindingStep++;
 									
@@ -6339,6 +6375,7 @@ DISPATCH_EVENT_END:
 										gameLogic->testPath.points[1] = btVector3(0.0f,0.0f,0.0f);
 										gameLogic->testPath.searchedForPath = false;
 										gameLogic->testPath.didFindPath = false;
+										gameLogic->testPath.nextInd = -1;
 										gameLogic->testPath.finalPoints.clear();
 									}
 								}
@@ -8183,6 +8220,10 @@ DISPATCH_EVENT_END:
 		return 0.0f;
 	}
 	
+	int iGetConst(int ev) {
+		return conVals[ev];
+	}
+	
 	void loadConstants() {
 		int i;
 		if (loadJSON("..\\data\\constants.js", &constRootJS)) {
@@ -8850,6 +8891,15 @@ DISPATCH_EVENT_END:
 							gw->generateBlockHolder();
 						}
 						
+						if (gem->turnBased) {
+							if (
+								((tbTicks%iGetConst(E_CONST_TURNBASED_TICKS)) == 0) ||
+								(gem->getCurActor() != NULL)
+							) {
+								gem->cycleTurn();
+							}
+							tbTicks++;
+						}
 						
 					}
 					
