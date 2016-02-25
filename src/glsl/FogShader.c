@@ -31,6 +31,10 @@ uniform vec3 lightVec;
 uniform vec3 lightVecOrig;
 uniform vec2 clipDist;
 
+uniform vec3 patternTarg;
+uniform float patternCells[25];
+uniform bool placingPattern;
+
 uniform bool isFalling;
 uniform bool isJumping;
 uniform bool gridOn;
@@ -852,15 +856,15 @@ void main() {
     
     float disMod = clamp(1.0-distance(worldPosition.xyz, entPos.xyz)/8.0,0.0,1.0);
     
-    gridVal0 *= disMod;
-    gridVal1 *= disMod;
+    //gridVal0 *= disMod;
+    //gridVal1 *= disMod;
     
     
     if ( (!gridOn) || (dot(abs(entPos.xyz),oneVec.xyz) == 0.0) || isOutline || (tex4.w != 0.0) ) {
         gridVal0 = (0.0);
         gridVal1 = (0.0);
     }
-    finalCol.rgb += vec3(gridVal1*0.5+gridVal0*0.5,0.0,0.0);
+    finalCol.rgb += vec3(0.0,(gridVal1*0.5+gridVal0*0.5)*disMod,0.0);
     
 
     if (valIsGeom&&(!isOutline)) {
@@ -868,7 +872,55 @@ void main() {
         if (worldPosition.w < tex9.w) {
             finalCol = mix(finalCol,tex10.rgb,0.5);
         }
+    }
+    
+    int maxDiam = 5;
+    int maxRad = maxDiam/2;
+    ivec2 patXY = ivec2(patternTarg.xy);
+    ivec2 worldXY = ivec2(worldPosition.xy);
+    ivec2 offXY = patXY-worldXY;
+    ivec2 absXY = offXY;
+    
+    if (absXY.x < 0) {absXY.x *= -1;}
+    if (absXY.y < 0) {absXY.y *= -1;}
+    
+    vec3 lastCol;
+    
+    offXY += ivec2(maxRad,maxRad);
+    
+    if (placingPattern) {
         
+        if (
+            (absXY.x <= maxRad) &&
+            (absXY.y <= maxRad)    
+        ) {
+           
+            //
+            
+            if (isOutline || (tex4.w != 0.0)) {
+                
+            }
+            else {
+                if (patternCells[offXY.x + offXY.y*maxDiam] > 0.0) {
+                    
+                    lastCol = finalCol.rgb;
+                    
+                    if (gridVal0 < 0.5) {
+                        finalCol.rgb *= 0.5;
+                    }
+                    
+                    
+                    finalCol.r += pow(0.5*(1.0-gridVal0)*(sin(curTime/200.0 + max(
+                        grid0.x, grid0.y    
+                    )*8.0)+1.0),4.0);
+                    
+                    //finalCol.rgb = mix(finalCol.rgb,lastCol,0.5);
+                    
+                }
+            }
+            
+            
+        }
         
     }
     

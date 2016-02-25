@@ -1823,8 +1823,9 @@ void GameEntManager::makeSwing (int actorId, int handNum)
 				// 	);
 				// }
 				
+				
 				if (turnBased) {
-					// was doing: apply turn based swing
+					
 				}
 				
 				

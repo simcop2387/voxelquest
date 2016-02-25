@@ -1891,6 +1891,8 @@ public:
 		
 		int i;
 		
+		btVector3 swingPos;
+		
 		if (ca->getActionState(E_ACT_ISSWINGING,handNum) || (ca->bindingPower < 0.01f)) {
 			
 		}
@@ -1929,8 +1931,9 @@ public:
 				// 	);
 				// }
 				
+				
 				if (turnBased) {
-					// was doing: apply turn based swing
+					//swingPos = getOffset(ca->tbPos,)
 				}
 				
 				

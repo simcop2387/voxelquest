@@ -5382,6 +5382,20 @@ UPDATE_LIGHTS_END:
 				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
 			
+			if (singleton->placingPattern) {
+				singleton->setShaderArray(
+					"patternCells",
+					singleton->patterns[
+						singleton->curPattern*4 + singleton->curPatternRot
+					].patternVals,
+					PATTERN_SIZE*PATTERN_SIZE
+				);
+				singleton->setShaderfVec3("patternTarg", &(singleton->mouseMovePD));
+				
+			}
+			singleton->setShaderInt("placingPattern", singleton->placingPattern);
+			
+			
 			
 			singleton->setShaderInt("gridOn", singleton->gridOn);
 			

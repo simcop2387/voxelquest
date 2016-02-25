@@ -1929,8 +1929,9 @@ public:
 				// 	);
 				// }
 				
+				
 				if (turnBased) {
-					// was doing: apply turn based swing
+					
 				}
 				
 				

@@ -480,6 +480,46 @@ enum EVENT_OPS {
 // 	E_ENTPOOL_LENGTH
 // };
 
+
+
+#define E_PATTERN_TYPE(DDD) \
+DDD(E_PAT_1X1SQUARE) \
+DDD(E_PAT_3X3SQUARE) \
+DDD(E_PAT_5X5SQUARE) \
+DDD(E_PAT_1X1DIAMOND) \
+DDD(E_PAT_3X3DIAMOND) \
+DDD(E_PAT_5X5DIAMOND) \
+DDD(E_PAT_LENGTH)
+
+string E_PATTERN_TYPE_STRINGS[] = {
+	E_PATTERN_TYPE(DO_DESCRIPTION)
+};
+
+enum E_PATTERN_TYPE_VALS {
+	E_PATTERN_TYPE(DO_ENUM)
+};
+
+enum PATTERN_SHAPES {
+	E_PATSHAPE_SQUARE,
+	E_PATSHAPE_DIAMOND,
+	E_PATSHAPE_LENGTH
+};
+
+const static int PATTERN_SIZE = 5;
+const static int PATTERN_CENTER = (PATTERN_SIZE/2);
+
+struct PatternStruct {
+	int addPat;
+	int addX;
+	int addY;
+	
+	int subPat;
+	int subX;
+	int subY;
+	
+	float patternVals[PATTERN_SIZE*PATTERN_SIZE];
+};
+
 struct DebrisStruct {
 	btVector3 pos;
 };

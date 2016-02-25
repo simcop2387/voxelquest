@@ -4091,6 +4091,46 @@ enum EVENT_OPS {
 // 	E_ENTPOOL_LENGTH
 // };
 
+
+
+#define E_PATTERN_TYPE(DDD) \
+DDD(E_PAT_1X1SQUARE) \
+DDD(E_PAT_3X3SQUARE) \
+DDD(E_PAT_5X5SQUARE) \
+DDD(E_PAT_1X1DIAMOND) \
+DDD(E_PAT_3X3DIAMOND) \
+DDD(E_PAT_5X5DIAMOND) \
+DDD(E_PAT_LENGTH)
+
+string E_PATTERN_TYPE_STRINGS[] = {
+	E_PATTERN_TYPE(DO_DESCRIPTION)
+};
+
+enum E_PATTERN_TYPE_VALS {
+	E_PATTERN_TYPE(DO_ENUM)
+};
+
+enum PATTERN_SHAPES {
+	E_PATSHAPE_SQUARE,
+	E_PATSHAPE_DIAMOND,
+	E_PATSHAPE_LENGTH
+};
+
+const static int PATTERN_SIZE = 5;
+const static int PATTERN_CENTER = (PATTERN_SIZE/2);
+
+struct PatternStruct {
+	int addPat;
+	int addX;
+	int addY;
+	
+	int subPat;
+	int subX;
+	int subY;
+	
+	float patternVals[PATTERN_SIZE*PATTERN_SIZE];
+};
+
 struct DebrisStruct {
 	btVector3 pos;
 };
@@ -22565,11 +22605,13 @@ public:
   EntSelection selectedEnts;
   GameEnt * selectedEnt;
   GameEnt * highlightedEnt;
+  PatternStruct (patterns) [E_PAT_LENGTH*4];
   TBOWrapper limbTBO;
   float (limbTBOData) [MAX_LIMB_DATA_IN_BYTES];
   int destructCount;
   bool sphereMapOn;
   bool waitingOnDestruction;
+  bool placingPattern;
   bool drawTargPaths;
   bool gridOn;
   bool physicsOn;
@@ -22645,6 +22687,8 @@ public:
   int geomStep;
   int earthMod;
   int currentTick;
+  int curPattern;
+  int curPatternRot;
   int tbTicks;
   int tempCounter;
   int actorCount;
@@ -22919,6 +22963,8 @@ public:
   FIVector4 btvConv;
   FIVector4 * BTV2FIV (btVector3 btv);
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
+  void applyPat (int patInd, int patShape, int rot, int x, int y, int val, int rad);
+  void generatePatterns ();
   int placeInStack ();
   int placeInLayer (int nodeId, int layer);
   void initAllMatrices ();
@@ -25036,6 +25082,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		
+		curPattern = E_PAT_5X5DIAMOND;
+		curPatternRot = 0;
+		
+		generatePatterns();
+		
 		tbTicks = 0;
 		tempCounter = 0;
 		actorCount = 0;
@@ -25212,6 +25263,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		lastDepthInvalidMove = true;
 		depthInvalidRotate = true;
 		drawTargPaths = false;
+		placingPattern = false;
 		gridOn = false;
 		fogOn = 1.0f;
 		cameraZoom = 1.0f;
@@ -25947,6 +25999,113 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 
+	}
+void Singleton::applyPat (int patInd, int patShape, int rot, int x, int y, int val, int rad)
+          {
+		int i;
+		int j;
+		int ind;
+		
+		bool doProc = false;
+		
+		int cenX;
+		int cenY;
+		
+		switch(rot) {
+			case 0:
+				cenX = PATTERN_CENTER + x;
+				cenY = PATTERN_CENTER + y;
+			break;
+			case 1:
+				cenX = PATTERN_CENTER - y;
+				cenY = PATTERN_CENTER + x;
+			break;
+			case 2:
+				cenX = PATTERN_CENTER - x;
+				cenY = PATTERN_CENTER - y;
+			break;
+			case 3:
+				cenX = PATTERN_CENTER + y;
+				cenY = PATTERN_CENTER - x;
+			break;
+		}
+		
+		cout << "\n\n";
+		
+		for (j = 0; j < PATTERN_SIZE; j++) {
+			cout << "\n";
+			for (i = 0; i < PATTERN_SIZE; i++) {
+				ind = i + j*PATTERN_SIZE;
+				
+				doProc = false;
+				switch (patShape) {
+					case E_PATSHAPE_SQUARE:
+						doProc = (
+							(abs(i-cenX) <= rad) &&
+							(abs(j-cenY) <= rad)
+						);
+					break;
+					case E_PATSHAPE_DIAMOND:
+						doProc = (
+							(
+								abs(i-cenX) +
+								abs(j-cenY)	
+							) <= rad
+						);
+					break;
+				}
+				
+				if (doProc) {
+					patterns[patInd*4+rot].patternVals[ind] = val;
+					cout << "X";
+				}
+				else {
+					cout << "O";
+				}
+			}
+		}
+		
+	}
+void Singleton::generatePatterns ()
+                                {
+		int q;
+		
+		int i;
+		int j;
+		int k;
+		
+		int xb;
+		int yb;
+		
+		for (k = 0; k < 4; k++) {
+			for (q = 0; q < E_PAT_LENGTH; q++) {
+				switch (q) {
+					case E_PAT_1X1SQUARE:
+						applyPat(q,E_PATSHAPE_SQUARE,k,0,0,1,0);
+					break;
+					case E_PAT_3X3SQUARE:
+						applyPat(q,E_PATSHAPE_SQUARE,k,0,0,1,1);
+					break;
+					case E_PAT_5X5SQUARE:
+						applyPat(q,E_PATSHAPE_SQUARE,k,0,0,1,2);
+					break;
+					case E_PAT_1X1DIAMOND:
+						applyPat(q,E_PATSHAPE_DIAMOND,k,0,0,1,0);
+					break;
+					case E_PAT_3X3DIAMOND:
+						applyPat(q,E_PATSHAPE_DIAMOND,k,0,0,1,1);
+					break;
+					case E_PAT_5X5DIAMOND:
+						applyPat(q,E_PATSHAPE_DIAMOND,k,0,0,1,2);
+					break;
+					
+				}
+			}
+		}
+		
+		
+		
+		
 	}
 int Singleton::placeInStack ()
                            {
@@ -29040,8 +29199,10 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					cout << "physicsOn: " << physicsOn << "\n";
 				break;
 				case 'p':
-					
-					
+					placingPattern = !placingPattern;
+					cout << "placingPattern: " << placingPattern << "\n";
+				break;
+				case 'P':
 					toggleFullScreen();
 				break;
 				
@@ -29711,7 +29872,7 @@ void Singleton::mouseMove (int _x, int _y)
 			
 			
 
-			if (placingGeom||RT_TRANSFORM||gem->editPose||pathfindingTestOn||(mouseState != E_MOUSE_STATE_MOVE)) {
+			if ( placingPattern||placingGeom||RT_TRANSFORM||gem->editPose||pathfindingTestOn||(mouseState != E_MOUSE_STATE_MOVE)) {
 			//if (true) {
 				getPixData(&mouseMovePD, x, y, false, false);
 				getPixData(&mouseMoveOPD, x, y, true, true);
@@ -45877,8 +46038,9 @@ void GameEntManager::makeSwing (int actorId, int handNum)
 				// 	);
 				// }
 				
+				
 				if (turnBased) {
-					// was doing: apply turn based swing
+					
 				}
 				
 				
@@ -63901,6 +64063,19 @@ void GameWorld::postProcess ()
 				singleton->setShaderfVec3("entPos", singleton->gem->getCurActor()->getCenterPointFIV(0));
 				singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 			}
+			
+			if (singleton->placingPattern) {
+				singleton->setShaderArray(
+					"patternCells",
+					singleton->patterns[
+						singleton->curPattern*4 + singleton->curPatternRot
+					].patternVals,
+					PATTERN_SIZE*PATTERN_SIZE
+				);
+				singleton->setShaderfVec3("patternTarg", &(singleton->mouseMovePD));
+				singleton->setShaderInt("placingPattern", singleton->placingPattern);
+			}
+			
 			
 			
 			singleton->setShaderInt("gridOn", singleton->gridOn);

@@ -119,11 +119,13 @@ public:
   EntSelection selectedEnts;
   GameEnt * selectedEnt;
   GameEnt * highlightedEnt;
+  PatternStruct (patterns) [E_PAT_LENGTH*4];
   TBOWrapper limbTBO;
   float (limbTBOData) [MAX_LIMB_DATA_IN_BYTES];
   int destructCount;
   bool sphereMapOn;
   bool waitingOnDestruction;
+  bool placingPattern;
   bool drawTargPaths;
   bool gridOn;
   bool physicsOn;
@@ -199,6 +201,8 @@ public:
   int geomStep;
   int earthMod;
   int currentTick;
+  int curPattern;
+  int curPatternRot;
   int tbTicks;
   int tempCounter;
   int actorCount;
@@ -473,6 +477,8 @@ public:
   FIVector4 btvConv;
   FIVector4 * BTV2FIV (btVector3 btv);
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
+  void applyPat (int patInd, int patShape, int rot, int x, int y, int val, int rad);
+  void generatePatterns ();
   int placeInStack ();
   int placeInLayer (int nodeId, int layer);
   void initAllMatrices ();
