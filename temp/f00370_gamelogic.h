@@ -19,10 +19,7 @@ void GameLogic::setEntTargPath (int sourceUID, int destUID)
 		
 		BaseObj* sEnt = &(singleton->gem->gameObjects[sourceUID]);
 		BaseObj* dEnt = &(singleton->gem->gameObjects[destUID]);
-		
-		
-		
-		
+
 		sEnt->targPath.points[0] = sEnt->tbPos;
 		sEnt->targPath.points[1] = dEnt->tbPos;
 		sEnt->targPath.searchedForPath = false;

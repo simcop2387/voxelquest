@@ -1989,6 +1989,22 @@ public:
 	// END SPECIFIC //
 	//////////////////
 	
+	bool hasAtLeast(int status, int val) {
+		return (statSheet.curStatus[status] >= val);
+	}
+	
+	void modifyStatus(int status, int modVal) {
+		statSheet.curStatus[status] += modVal;
+		
+		
+		if (statSheet.curStatus[status] < 0) {
+			statSheet.curStatus[status] = 0;
+		}
+		if (statSheet.curStatus[status] > statSheet.maxStatus[status]) {
+			statSheet.curStatus[status] = statSheet.maxStatus[status];
+		}
+		
+	}
 	
 	btVector3 getUnitBounds(bool getMax) {
 		

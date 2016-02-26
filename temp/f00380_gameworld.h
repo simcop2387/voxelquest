@@ -5049,8 +5049,9 @@ void GameWorld::postProcess ()
 					PATTERN_SIZE*PATTERN_SIZE
 				);
 				singleton->setShaderfVec3("patternTarg", &(singleton->mouseMovePD));
-				singleton->setShaderInt("placingPattern", singleton->placingPattern);
+				
 			}
+			singleton->setShaderInt("placingPattern", singleton->placingPattern);
 			
 			
 			

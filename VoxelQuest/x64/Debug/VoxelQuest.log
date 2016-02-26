@@ -1,4 +1,4 @@
-﻿Build started 2/24/2016 4:59:45 AM.
+﻿Build started 2/26/2016 12:26:56 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -164,4 +164,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:06.94
+Time Elapsed 00:00:07.05

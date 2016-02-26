@@ -534,7 +534,7 @@ public:
 							}
 						}
 						if (doProc) {
-							singleton->gem->makeHit(geArr[k]->uid, geArr[otherK]->uid, -1);
+							singleton->gem->makeHit(false, geArr[k]->uid, geArr[otherK]->uid, -1);
 						}
 					}
 				}
@@ -577,10 +577,10 @@ public:
 						
 						if (doProc) {
 							if (geArr[otherK] == NULL) {
-								singleton->gem->makeHit(grabber->uid, -1, geArr[k]->uid);
+								singleton->gem->makeHit(false, grabber->uid, -1, geArr[k]->uid);
 							}
 							else {
-								singleton->gem->makeHit(grabber->uid, geArr[otherK]->uid, geArr[k]->uid);
+								singleton->gem->makeHit(false, grabber->uid, geArr[otherK]->uid, geArr[k]->uid);
 							}
 						}
 					}

@@ -615,6 +615,7 @@ public:
   void cleanJVPointer (JSONValue * * jv);
   void getSpecialData (int datEnum, string datString);
   void updateStatGUI ();
+  void updateStatusHUD ();
   void showHudMenu (bool visible);
   void showStatMenu (bool visible);
   void refreshContainers (bool onMousePos);
@@ -1413,6 +1414,7 @@ public:
   bool isDraggingObject;
   bool firstPerson;
   bool showHealth;
+  bool takingTurn;
   int weaponToPlace;
   int activeActorUID;
   int curActorUID;
@@ -1456,6 +1458,7 @@ public:
   BaseObj * getCurActor ();
   BaseObj * getActiveActor ();
   void refreshActiveId ();
+  void endHumanTurn ();
   void cycleTurn ();
   void nextTurn ();
   void refreshTurnList ();
@@ -1509,16 +1512,18 @@ public:
   void makeGrab (int actorId, int _handNum);
   void makeDropAll (int actorId);
   void makeThrow (int actorId, int _handNum);
+  void changeStatus (int actorId, int status, int modVal);
   void makeSwing (int actorId, int handNum);
   void makeTurnTowardsTB (int actorId, btVector3 actorTargVec);
   BaseObj * getEntAtUnitPos (btVector3 pos);
   void makeTurnTB (int actorId, int modVal);
+  btVector3 getOffsetTB (btVector3 orig, int dir, float amount);
   bool makeMoveTB (int actorId, int modVal);
   void makeTurn (int actorId, float dirFactor);
   void makeMoveVec (int actorId, btVector3 moveVec);
   void makeMove (int actorId, btVector3 moveDir, bool relative, bool delayed);
   void makeJump (int actorId, int isUp, float jumpFactor);
-  void makeHit (int attackerId, int victimId, int weaponId);
+  void makeHit (bool tb, int attackerId, int victimId, int weaponId);
   GameOrgNode * getMirroredNode (GameOrgNode * curNode);
   void refreshActor (int actorId);
   void applyNodeChanges (GameOrgNode * _curNode, float dx, float dy);

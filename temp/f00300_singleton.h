@@ -1066,7 +1066,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 				// 	clampType = GL_CLAMP_TO_EDGE;//GL_CLAMP_TO_BORDER
 				// break;
 				case E_VW_VORO:
-					tz = 256;
+					tz = 128;
 					clampType = GL_REPEAT;
 				break;
 			}
@@ -4438,10 +4438,22 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					cout << "physicsOn: " << physicsOn << "\n";
 				break;
 				case 'p':
-					placingPattern = !placingPattern;
-					cout << "placingPattern: " << placingPattern << "\n";
+				
+					curPattern++;
+					if (curPattern >= E_PAT_LENGTH) {
+						curPattern = 0;
+					}
+				
+					
 				break;
 				case 'P':
+				
+					placingPattern = !placingPattern;
+					cout << "placingPattern: " << placingPattern << "\n";
+				
+					//toggleFullScreen();
+				break;
+				case '\\':
 					toggleFullScreen();
 				break;
 				
@@ -4474,7 +4486,9 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 				break;
 				case 't':
-					testOn2 = !testOn2;
+					//testOn2 = !testOn2;
+					
+					pathfindingTestOn = !pathfindingTestOn;
 					
 				break;
 				// case 'o':
@@ -4644,21 +4658,21 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 					case 's':
 						gem->makeTurnTB(gem->getCurActor()->uid, 1);
-						//gem->nextTurn();
+						
 					break;
 					case 'f':
 						gem->makeTurnTB(gem->getCurActor()->uid, -1);
-						//gem->nextTurn();
+						
 					break;
 					
 					case 'e':
 						if (gem->makeMoveTB(gem->getCurActor()->uid, 1)) {
-							gem->nextTurn();
+							gem->endHumanTurn();
 						}
 					break;
 					case 'd':
 						if (gem->makeMoveTB(gem->getCurActor()->uid, -1)) {
-							gem->nextTurn();
+							gem->endHumanTurn();
 						}
 					break;
 				}
@@ -5347,6 +5361,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 					bCtrl
 				);
 				gem->makeSwing(gem->getCurActor()->uid, RLBN_LEFT);
+				if (gem->turnBased) {gem->endHumanTurn();}
 				return;
 			}
 			if (rbClicked) {
@@ -5358,6 +5373,7 @@ void Singleton::mouseClick (int button, int state, int _x, int _y)
 					bCtrl
 				);
 				gem->makeSwing(gem->getCurActor()->uid, RLBN_RIGT);
+				if (gem->turnBased) {gem->endHumanTurn();}
 				return;
 			}
 			
@@ -6459,6 +6475,48 @@ void Singleton::updateStatGUI ()
 			((float)curSS->availPoints)/((float)(tempComp->divisions))
 		);
 		
+		
+		
+	}
+void Singleton::updateStatusHUD ()
+                               {
+		
+		
+		int i;
+		
+		if (gem->getCurActor() == NULL) {
+			return;
+		}
+		if (menuList[E_FM_HUDMENU] == NULL) {
+			return;
+		}
+		if (menuList[E_FM_HUDMENU]->visible) {
+			
+		}
+		else {
+			return;
+		}
+		
+		StatSheet* curStatSheet = &(gem->getCurActor()->statSheet);
+		
+		UIComponent* tempComp = getGUIComp("hudMenu.statContainer");
+		UIComponent* childComp;
+		
+		if (tempComp == NULL) {
+			return;
+		}
+		
+		float v1;
+		float v2;
+		
+		for (i = 0; i < E_STATUS_LENGTH; i++) {
+			childComp = tempComp->getChild(i);
+			
+			v1 = curStatSheet->curStatus[i];
+			v2 = curStatSheet->maxStatus[i];
+			
+			childComp->setValue(v1/v2);
+		}
 		
 		
 	}
@@ -7779,8 +7837,8 @@ void Singleton::frameUpdate ()
 						
 						if (gem->turnBased) {
 							if (
-								((tbTicks%iGetConst(E_CONST_TURNBASED_TICKS)) == 0) ||
-								(gem->getCurActor() != NULL)
+								((tbTicks%iGetConst(E_CONST_TURNBASED_TICKS)) == 0)
+								// || (gem->getCurActor() != NULL)
 							) {
 								gem->cycleTurn();
 							}

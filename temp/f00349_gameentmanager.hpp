@@ -14,6 +14,7 @@ public:
 	bool isDraggingObject;
 	bool firstPerson;
 	bool showHealth;
+	bool takingTurn;
 	
 	
 	int weaponToPlace;
@@ -92,6 +93,7 @@ public:
 		curPoseType = -1;
 		highlightedLimb = -1;
 		
+		takingTurn = true;
 		curActorNeedsRefresh = false;
 		destroyTerrain = false;
 		editPose = false;
@@ -175,10 +177,19 @@ public:
 		}
 	}
 	
+	void endHumanTurn() {
+		takingTurn = false;
+		singleton->tbTicks = 1;
+	}
+	
 	void cycleTurn() {
 		refreshActiveId();
 		
-		if (curActorUID == activeActorUID) {
+		if (curActorUID != activeActorUID) {
+			takingTurn = false;
+		}
+		
+		if ((curActorUID == activeActorUID)&&takingTurn) {
 			// wait for human to take turn
 		}
 		else {
@@ -190,6 +201,11 @@ public:
 	void nextTurn() {
 		singleton->tbTicks = 1;
 		
+		refreshActiveId();
+		if (activeActorUID > -1) {
+			changeStatus(activeActorUID, E_STATUS_STAMINA, 2);
+		}
+		
 		turnListInd++;
 		if (turnListInd >= turnList.size()) {
 			turnListInd = 0;
@@ -199,6 +215,7 @@ public:
 		
 		if (curActorUID == activeActorUID) {
 			// human turn
+			takingTurn = true;
 		}
 		else {
 			singleton->gameLogic->applyTBBehavior();
@@ -1867,7 +1884,25 @@ public:
 		
 	}
 	
+	void changeStatus(int actorId, int status, int modVal) {
+		if (actorId < 0 ) {
+			return;
+		}
+		BaseObj* ca = &(gameObjects[actorId]);
+		
+		ca->modifyStatus(status,modVal);
+		
+		//if (ca->uid == curActorUID) {
+			
+			
+			singleton->updateStatusHUD();
+		//}
+		
+	}
+	
 	void makeSwing(int actorId, int handNum) {
+		
+		int totCost;
 		
 		if (editPose) {
 			return;
@@ -1890,6 +1925,9 @@ public:
 		}
 		
 		int i;
+		
+		btVector3 swingPos;
+		BaseObj* entInSquare;
 		
 		if (ca->getActionState(E_ACT_ISSWINGING,handNum) || (ca->bindingPower < 0.01f)) {
 			
@@ -1932,6 +1970,26 @@ public:
 				
 				if (turnBased) {
 					
+					if (ca->hasAtLeast(E_STATUS_STAMINA,5)) {
+						swingPos = getOffsetTB(ca->tbPos,ca->tbDir,1.0f);
+						entInSquare = getEntAtUnitPos(swingPos);
+						
+						// if (entInSquare != NULL) {
+							
+						// 	if (entInSquare->isAlive()) {
+								
+						// 		if (isKicking(ca->uid,handNum)) { //isPunching(ca->uid,handNum)||
+						// 			makeHit(true, ca->uid, entInSquare->uid, -1);
+						// 		}
+						// 		else {
+						// 			makeHit(true, ca->uid, entInSquare->uid, ca->isGrabbingId[handNum]);
+						// 		}
+						// 	}
+							
+						// }
+						
+						changeStatus(ca->uid, E_STATUS_STAMINA,-5);
+					}
 				}
 				
 				
@@ -2005,6 +2063,18 @@ public:
 		}
 	}
 	
+	btVector3 getOffsetTB(btVector3 orig, int dir, float amount) {
+		float ang = TBDIR_ARR[dir];
+		
+		btVector3 testPos = orig + btVector3(
+			roundVal(cos(ang)*amount),
+			roundVal(sin(ang)*amount),
+			0.0f
+		);
+		
+		return testPos;
+	}
+	
 	bool makeMoveTB(int actorId, int modVal) {
 		BaseObj* ca = &(gameObjects[actorId]);
 		
@@ -2013,15 +2083,11 @@ public:
 			return false;
 		}
 		
-		float ang = TBDIR_ARR[ca->tbDir];
 		
-		btVector3 testPos = ca->tbPos;
 		
-		testPos += btVector3(
-			roundVal(cos(ang)*modVal),
-			roundVal(sin(ang)*modVal),
-			0.0f
-		);
+		btVector3 testPos = getOffsetTB(ca->tbPos, ca->tbDir, modVal);
+		
+		
 		
 		while (
 			singleton->gw->getCellAtCoords(
@@ -2056,11 +2122,23 @@ public:
 			}
 		}
 		
+		if (ca->hasAtLeast(E_STATUS_STAMINA,1)) {
+			
+		}
+		else {
+			preventMove = true;
+		}
+		
+		
 		if (preventMove) {
-			singleton->playSoundEnt("bump0");	
+			if (actorId == curActorUID) {
+				singleton->playSoundEnt("bump0");	
+			}
+			
 			return false;
 		}
 		else {
+			changeStatus(ca->uid, E_STATUS_STAMINA,-1);
 			ca->tbPos = testPos;
 			return true;
 		}
@@ -2257,6 +2335,7 @@ public:
 	}
 	
 	void makeHit(
+		bool tb,
 		int attackerId,
 		int victimId,
 		int weaponId
@@ -2270,9 +2349,12 @@ public:
 		
 		int lastHealth;
 		
-		if (turnBased) {
-			return;
-		}
+		// if (turnBased&&(!tb)) {
+		// 	return;
+		// }
+		// if ((!turnBased)&&tb) {
+		// 	return;
+		// }
 		
 		GameOrg* curOrg = NULL;
 		
@@ -2302,16 +2384,21 @@ public:
 		}
 		
 		
-		
-		
 		for (i = 0; i < RLBN_LENGTH; i++) {
 			
 			
 			if (geAttacker->getActionState(E_ACT_HASNOTHIT,i)) {
+
+				
 				if (geAttacker->orgId > -1) {
 					curOrg = gameOrgs[geAttacker->orgId];
 					
-					if (curOrg->stepCount > 1) {
+
+					
+					if ( (curOrg->stepCount > 1) || tb ) {
+						
+
+						
 						geAttacker->setActionState(E_ACT_HASNOTHIT,i,false);
 						
 						
@@ -2333,12 +2420,14 @@ public:
 						}
 						else {
 							
+							
 							if (geVictim->entType == E_ENTTYPE_WEAPON) {
 								singleton->playSoundEnt("clang0",geAttacker,0.1,1.0f);
 								geAttacker->setActionState(E_ACT_ISSWINGING,i,false);
 							}
 							
 							if (geVictim->entType == E_ENTTYPE_NPC) {
+								
 								singleton->playSoundEnt("hit0",geVictim,0.3,1.0f);
 								if (geVictim->isAlive()) {
 									singleton->playSoundEnt("grunthitm0",geVictim,0.15,0.2f);
@@ -2350,12 +2439,13 @@ public:
 							
 							if (geVictim->entType == E_ENTTYPE_NPC) {
 								
+								
 								geVictim->hitCooldown = singleton->conVals[E_CONST_HIT_COOLDOWN_MAX];
 								
 								//geVictim->setActionState(E_ACT_ISHIT,RLBN_NEIT,true);
 								geVictim->bindingPower = singleton->conVals[E_CONST_BINDING_POW_ON_HIT];
 								lastHealth = geVictim->statSheet.curStatus[E_STATUS_HEALTH];
-								geVictim->statSheet.curStatus[E_STATUS_HEALTH] -= 32;
+								geVictim->statSheet.curStatus[E_STATUS_HEALTH] -= 1;
 								if (geVictim->statSheet.curStatus[E_STATUS_HEALTH] < 0) {
 									geVictim->statSheet.curStatus[E_STATUS_HEALTH] = 0;
 								}

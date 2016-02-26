@@ -862,6 +862,7 @@
 												"maxDimY": 512,
 												"minDimY": 32,
 												
+												"uid":"hudMenu.statContainer",
 												
 												"dataFile":"E_SDT_STATUSDATA",
 												"dataSource":"status",

@@ -254,7 +254,7 @@ vec3 getTerVal(vec3 pos, float camParam, bool justLand) {
 	
 	
 	if (camDis1 > 0.0) {
-		res = opD(res,(clamp(pow(1.0-samp1.r,8.0),0.0,1.0))*64.0*camDis1);
+		res = opD(res,(clamp(pow(1.0-samp1.r,8.0),0.0,1.0))*32.0*camDis1);
 		
 		//(heightRes+8.0) - (gradVal2.x)*32.0*float((pos.z-cellSize2.z*0.0) < cellVal2.z);
 		//res = (res+16.0) - (samp1.r)*32.0*float(samp1.b < 0.5);
