@@ -981,7 +981,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		keyMap[KEYMAP_BACKWARD] = 'd';
 		keyMap[KEYMAP_LEFT] = 's';
 		keyMap[KEYMAP_RIGHT] = 'f';
-		keyMap[KEYMAP_FIRE_PRIMARY] = '7';
+		keyMap[KEYMAP_FIRE_PRIMARY] = '6';
 		keyMapMaxCoolDown[KEYMAP_FIRE_PRIMARY] = 20;
 		keyMap[KEYMAP_GRAB] = 'w';
 		keyMapMaxCoolDown[KEYMAP_GRAB] = 200;
@@ -1176,6 +1176,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			gamePlants[i] = new GamePlant();
 		}
 
+
+		gameOct = new GameOctree();
+		gameOct->init(this,cellsPerWorld);
 
 		gem = new GameEntManager();
 		gem->init(this);
@@ -4189,7 +4192,19 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				break;
 				case '4':
 					
-				break;				
+				break;
+				
+				case '7':
+					cout << "captureBuffer\n";
+					gameOct->captureBuffer();
+				break;
+				case '8':
+					gameOct->modRenderLevel(-1);
+				break;
+				case '9':
+					gameOct->modRenderLevel(1);
+				break;
+				
 				case '`':
 					placingGeom = !placingGeom;
 					if (placingGeom) {
@@ -7613,14 +7628,9 @@ void Singleton::frameUpdate ()
 			if (mainGUI->isReady) {
 				//mainGUI->testOver(guiX, guiY);
 			}
-			
 		}
 		syncObjects();
 		updateGUI();
-		
-		
-		
-		
 		
 		
 		if (
@@ -7672,6 +7682,11 @@ void Singleton::frameUpdate ()
 							
 							gamePhysics = new GamePhysics();
 							gamePhysics->init(this);
+							
+							GLint maxTBO;
+							glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE, &maxTBO);
+							cout << "GL_MAX_TEXTURE_BUFFER_SIZE " << maxTBO << "\n";
+							
 							
 						}
 						

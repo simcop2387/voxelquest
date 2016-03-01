@@ -561,6 +561,7 @@ public:
 	Timer myTimer;
 	Timer scrollTimer;
 	Timer moveTimer;
+	GameOctree* gameOct;
 	GameWorld* gw;
 	GameEntManager* gem;
 	GamePhysics* gamePhysics;
@@ -1587,7 +1588,7 @@ public:
 		keyMap[KEYMAP_BACKWARD] = 'd';
 		keyMap[KEYMAP_LEFT] = 's';
 		keyMap[KEYMAP_RIGHT] = 'f';
-		keyMap[KEYMAP_FIRE_PRIMARY] = '7';
+		keyMap[KEYMAP_FIRE_PRIMARY] = '6';
 		keyMapMaxCoolDown[KEYMAP_FIRE_PRIMARY] = 20;
 		keyMap[KEYMAP_GRAB] = 'w';
 		keyMapMaxCoolDown[KEYMAP_GRAB] = 200;
@@ -1782,6 +1783,9 @@ public:
 			gamePlants[i] = new GamePlant();
 		}
 
+
+		gameOct = new GameOctree();
+		gameOct->init(this,cellsPerWorld);
 
 		gem = new GameEntManager();
 		gem->init(this);
@@ -5182,7 +5186,19 @@ DISPATCH_EVENT_END:
 				break;
 				case '4':
 					
-				break;				
+				break;
+				
+				case '7':
+					cout << "captureBuffer\n";
+					gameOct->captureBuffer();
+				break;
+				case '8':
+					gameOct->modRenderLevel(-1);
+				break;
+				case '9':
+					gameOct->modRenderLevel(1);
+				break;
+				
 				case '`':
 					placingGeom = !placingGeom;
 					if (placingGeom) {
@@ -8852,14 +8868,9 @@ DISPATCH_EVENT_END:
 			if (mainGUI->isReady) {
 				//mainGUI->testOver(guiX, guiY);
 			}
-			
 		}
 		syncObjects();
 		updateGUI();
-		
-		
-		
-		
 		
 		
 		if (
@@ -8911,6 +8922,11 @@ DISPATCH_EVENT_END:
 							
 							gamePhysics = new GamePhysics();
 							gamePhysics->init(this);
+							
+							GLint maxTBO;
+							glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE, &maxTBO);
+							cout << "GL_MAX_TEXTURE_BUFFER_SIZE " << maxTBO << "\n";
+							
 							
 						}
 						

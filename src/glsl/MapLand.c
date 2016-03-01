@@ -73,7 +73,7 @@ vec3 getTerVal(vec3 pos, float camParam, bool justLand) {
 					);
 	
 	
-	randVal1 = clamp((randVal1-0.5)*2.0+1.0+(clamp((pos-3192.0)/4096.0,0.0,1.0)*1.0),0.0,1.0);
+	randVal1 = clamp((randVal1-0.5)*2.0+1.0+(clamp((pos.z-3192.0)/4096.0,0.0,1.0)*1.0),0.0,1.0);
 	randVal2 = clamp((randVal2-0.5)*2.0+1.0,0.0,1.0);
 	randVal3 = clamp((randVal3-0.5)*2.0+1.0,0.0,1.0);
 	
@@ -253,7 +253,7 @@ vec3 getTerVal(vec3 pos, float camParam, bool justLand) {
 
 	
 	
-	if (camDis1 > 0.0) {
+	if (camDis1 > 0.0) { 
 		res = opD(res,(clamp(pow(1.0-samp1.r,8.0),0.0,1.0))*32.0*camDis1);
 		
 		//(heightRes+8.0) - (gradVal2.x)*32.0*float((pos.z-cellSize2.z*0.0) < cellVal2.z);
@@ -265,44 +265,33 @@ vec3 getTerVal(vec3 pos, float camParam, bool justLand) {
 	vec3 centerPos = pos - opRep(pos,vec3(flatDiam));// + vec3(flatDiam)*0.5;
 	float centerH = getTerHeight2(Texture2, centerPos.xy/cellsPerWorld)+512.0;
 	centerPos.z = centerH;
-	res = flatten(
-		res, pos, centerPos, 0.0, flatDiam*0.5, 0.8
 	
-		*clamp(
+	res = flatten(
+		res,
+		pos,
+		centerPos,
+		0.0,
+		flatDiam*0.5,
+		0.8 * clamp(
 			1.0-abs(baseHeight-centerH)/1024.0,
 			0.5,
 			1.0
 		)
 	);
 	
-	
-	
 	if (camDis2 > 0.0) {
-		//thMod = clamp((16.0-res)/128.0,0.0,1.0);
-		thMod = 1.0;//mix(1.0-clamp((64.0-res)/128.0,0.0,1.0),0.3,0.5);
-		
-		//res = opD(res,pow(1.0-samp2.r,4.0)*8.0*thMod*camDis2);
-		res = opD(res,pow(1.0-samp2.r,4.0)*4.0*thMod*camDis2);
+		res = opD(res,pow(1.0-samp2.r,4.0)*4.0*camDis2);
 	}
-	
-	//*bumpDet2
-
-	
-	
 	
 	
 	
 	if (camDis3 > 0.0) {
-		//thMod = clamp((4.0-res)/8.0,0.0,1.0);
-		thMod = 1.0;//mix(1.0-clamp((64.0-res)/32.0,0.0,1.0),0.5,0.75);
 		
 		res = opD(
 			res,
-			//max(
-			pow(1.0-samp3.r,4.0)*1.0*thMod	
-			//,0.1)
-			* ((sin(bumpDet*1.0)+1.0))
-			*camDis3
+			pow(1.0-samp3.r,4.0)
+			* (sin(bumpDet*1.0)+1.0)
+			* camDis3
 		);
 		
 		

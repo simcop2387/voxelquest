@@ -843,7 +843,7 @@ public:
 			//
 			//break;
 		case GL_RGBA32F:
-			numBytes = width * height * 4 * 4;
+			numBytes = width * height * 4;
 			break;
 
 		default:

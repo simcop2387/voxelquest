@@ -325,6 +325,9 @@ enum E_CHAR_STATUS_VALS {
 	E_CHAR_STATUS(DO_ENUM)
 };
 
+
+
+
 // #define E_TB_ACTION(DDD) \
 // DDD(E_TBA_) \
 // DDD(E_TBA_) \

@@ -449,6 +449,7 @@ public:
   Timer myTimer;
   Timer scrollTimer;
   Timer moveTimer;
+  GameOctree * gameOct;
   GameWorld * gw;
   GameEntManager * gem;
   GamePhysics * gamePhysics;
@@ -683,6 +684,7 @@ public:
   vector <string> paramVec;
   vector <UniformBuffer> uniVec;
   Singleton * singleton;
+  string localString;
   Shader (Singleton * _singleton);
   static char * textFileRead (char const * fileName);
   static void validateShader (GLuint shader, char const * file = 0);
@@ -796,6 +798,36 @@ public:
   CharStruct (charVals) [4096];
   FontWrapper ();
   void init (Singleton * _singleton, string fontName, bool _isIcons, float _fontScale, float _additionalOffset = 0.0f);
+};
+#undef LZZ_INLINE
+#endif
+// f00323_gameoctree.e
+//
+
+#ifndef LZZ_f00323_gameoctree_e
+#define LZZ_f00323_gameoctree_e
+#define LZZ_INLINE inline
+class GameOctree
+{
+public:
+  Singleton * singleton;
+  uint * data;
+  int dimInVoxels;
+  int maxDepth;
+  int maxSize;
+  int nullPtr;
+  int rootPtr;
+  int nodeSize;
+  int nextOpen;
+  int renderLevel;
+  GameOctree ();
+  void init (Singleton * _singleton, int _dimInVoxels, int _maxSize = -1, int _nodeSize = -1);
+  void captureBuffer ();
+  void modRenderLevel (int modVal);
+  void addNode (int x, int y, int z, uint col);
+  void remNode (uint index);
+  void startRender ();
+  void renderBB (int baseX, int baseY, int baseZ, int startIndex, int curLevel, int curDiv);
 };
 #undef LZZ_INLINE
 #endif

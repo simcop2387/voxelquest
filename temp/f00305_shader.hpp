@@ -14,6 +14,7 @@ public:
 	vector<UniformBuffer> uniVec;
 	Singleton* singleton;
 
+	string localString;
 	
 	Shader(Singleton* _singleton) {
 		singleton = _singleton;
@@ -402,7 +403,8 @@ public:
 					string fragStr = allTextStringSplit[0] + allTextStringSplit[2];
 
 					if (DO_SHADER_DUMP) {
-						if (_shaderFile.compare("../src/glsl/TopoShader.c") == 0) {
+						localString = fragStr;
+						if (_shaderFile.compare("../src/glsl/PrimShader.c") == 0) {
 							globString = fragStr;
 						}
 					}
@@ -415,7 +417,7 @@ public:
 					std::strcpy((GLchar*)fragCS,fragStr.c_str());
 
 
-			    	glShaderSource(shader_vp, 1, &(vertCS), 0);
+			    glShaderSource(shader_vp, 1, &(vertCS), 0);
 					glShaderSource(shader_fp, 1, &(fragCS), 0);
 				    
 					glCompileShader(shader_vp);

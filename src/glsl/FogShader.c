@@ -864,6 +864,9 @@ void main() {
         gridVal0 = (0.0);
         gridVal1 = (0.0);
     }
+    
+    
+    
     finalCol.rgb += vec3(0.0,(gridVal1*0.5+gridVal0*0.5)*disMod,0.0);
     
 

@@ -194,12 +194,6 @@ $
 
 
 
-
-
-
-#line 1
-
-
 const float CAM_BOX_SIZE = 2.0;
 
 // qqqq
@@ -2712,7 +2706,7 @@ vec4 permute(vec4 x) {
 
 vec4 taylorInvSqrt(vec4 r)
 {
-	return 1.79284291400159 - 0.85373472095314 * r;
+	return vec4(1.79284291400159 - 0.85373472095314 * r);
 }
 
 float snoise(vec3 v) { 
@@ -3381,7 +3375,7 @@ vec3 mapDyn(vec3 pos) {
 		
 		for (i = 0; i < numExplodes; i++) {
 				expRes.x = min(
-						expRes,
+						expRes.x,
 						sdSphere(
 								pos-explodeArr[i].xyz,
 								explodeArr[i].w + pow(sin(pos.x*multVal)*sin(pos.y*multVal)*sin(pos.z*multVal),2.0)

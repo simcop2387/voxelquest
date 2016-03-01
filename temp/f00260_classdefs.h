@@ -9,6 +9,7 @@ class GameMusic;
 class FontWrapper;
 class UIComponent;
 class GameGUI;
+class GameOctree;
 class GameAI;
 class GameNetwork;
 class GameFluid;

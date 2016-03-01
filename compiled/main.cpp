@@ -3936,6 +3936,9 @@ enum E_CHAR_STATUS_VALS {
 	E_CHAR_STATUS(DO_ENUM)
 };
 
+
+
+
 // #define E_TB_ACTION(DDD) \
 // DDD(E_TBA_) \
 // DDD(E_TBA_) \
@@ -22297,7 +22300,7 @@ public:
 			//
 			//break;
 		case GL_RGBA32F:
-			numBytes = width * height * 4 * 4;
+			numBytes = width * height * 4;
 			break;
 
 		default:
@@ -22498,6 +22501,7 @@ class GameMusic;
 class FontWrapper;
 class UIComponent;
 class GameGUI;
+class GameOctree;
 class GameAI;
 class GameNetwork;
 class GameFluid;
@@ -22969,6 +22973,7 @@ public:
   Timer myTimer;
   Timer scrollTimer;
   Timer moveTimer;
+  GameOctree * gameOct;
   GameWorld * gw;
   GameEntManager * gem;
   GamePhysics * gamePhysics;
@@ -23203,6 +23208,7 @@ public:
   vector <string> paramVec;
   vector <UniformBuffer> uniVec;
   Singleton * singleton;
+  string localString;
   Shader (Singleton * _singleton);
   static char * textFileRead (char const * fileName);
   static void validateShader (GLuint shader, char const * file = 0);
@@ -23316,6 +23322,36 @@ public:
   CharStruct (charVals) [4096];
   FontWrapper ();
   void init (Singleton * _singleton, string fontName, bool _isIcons, float _fontScale, float _additionalOffset = 0.0f);
+};
+#undef LZZ_INLINE
+#endif
+// f00323_gameoctree.e
+//
+
+#ifndef LZZ_f00323_gameoctree_e
+#define LZZ_f00323_gameoctree_e
+#define LZZ_INLINE inline
+class GameOctree
+{
+public:
+  Singleton * singleton;
+  uint * data;
+  int dimInVoxels;
+  int maxDepth;
+  int maxSize;
+  int nullPtr;
+  int rootPtr;
+  int nodeSize;
+  int nextOpen;
+  int renderLevel;
+  GameOctree ();
+  void init (Singleton * _singleton, int _dimInVoxels, int _maxSize = -1, int _nodeSize = -1);
+  void captureBuffer ();
+  void modRenderLevel (int modVal);
+  void addNode (int x, int y, int z, uint col);
+  void remNode (uint index);
+  void startRender ();
+  void renderBB (int baseX, int baseY, int baseZ, int startIndex, int curLevel, int curDiv);
 };
 #undef LZZ_INLINE
 #endif
@@ -25781,7 +25817,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		keyMap[KEYMAP_BACKWARD] = 'd';
 		keyMap[KEYMAP_LEFT] = 's';
 		keyMap[KEYMAP_RIGHT] = 'f';
-		keyMap[KEYMAP_FIRE_PRIMARY] = '7';
+		keyMap[KEYMAP_FIRE_PRIMARY] = '6';
 		keyMapMaxCoolDown[KEYMAP_FIRE_PRIMARY] = 20;
 		keyMap[KEYMAP_GRAB] = 'w';
 		keyMapMaxCoolDown[KEYMAP_GRAB] = 200;
@@ -25976,6 +26012,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			gamePlants[i] = new GamePlant();
 		}
 
+
+		gameOct = new GameOctree();
+		gameOct->init(this,cellsPerWorld);
 
 		gem = new GameEntManager();
 		gem->init(this);
@@ -28989,7 +29028,19 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				break;
 				case '4':
 					
-				break;				
+				break;
+				
+				case '7':
+					cout << "captureBuffer\n";
+					gameOct->captureBuffer();
+				break;
+				case '8':
+					gameOct->modRenderLevel(-1);
+				break;
+				case '9':
+					gameOct->modRenderLevel(1);
+				break;
+				
 				case '`':
 					placingGeom = !placingGeom;
 					if (placingGeom) {
@@ -32413,14 +32464,9 @@ void Singleton::frameUpdate ()
 			if (mainGUI->isReady) {
 				//mainGUI->testOver(guiX, guiY);
 			}
-			
 		}
 		syncObjects();
 		updateGUI();
-		
-		
-		
-		
 		
 		
 		if (
@@ -32472,6 +32518,11 @@ void Singleton::frameUpdate ()
 							
 							gamePhysics = new GamePhysics();
 							gamePhysics->init(this);
+							
+							GLint maxTBO;
+							glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE, &maxTBO);
+							cout << "GL_MAX_TEXTURE_BUFFER_SIZE " << maxTBO << "\n";
+							
 							
 						}
 						
@@ -33671,7 +33722,8 @@ void Shader::init (string shaderName, bool doBake, map <string, string> * includ
 					string fragStr = allTextStringSplit[0] + allTextStringSplit[2];
 
 					if (DO_SHADER_DUMP) {
-						if (_shaderFile.compare("../src/glsl/TopoShader.c") == 0) {
+						localString = fragStr;
+						if (_shaderFile.compare("../src/glsl/PrimShader.c") == 0) {
 							globString = fragStr;
 						}
 					}
@@ -33684,7 +33736,7 @@ void Shader::init (string shaderName, bool doBake, map <string, string> * includ
 					std::strcpy((GLchar*)fragCS,fragStr.c_str());
 
 
-			    	glShaderSource(shader_vp, 1, &(vertCS), 0);
+			    glShaderSource(shader_vp, 1, &(vertCS), 0);
 					glShaderSource(shader_fp, 1, &(fragCS), 0);
 				    
 					glCompileShader(shader_vp);
@@ -34544,6 +34596,182 @@ void FontWrapper::init (Singleton * _singleton, string fontName, bool _isIcons, 
 		}
 		
 		
+		
+		
+	}
+#undef LZZ_INLINE
+ 
+// f00323_gameoctree.h
+//
+
+#include "f00323_gameoctree.e"
+#define LZZ_INLINE inline
+GameOctree::GameOctree ()
+                     {
+		
+	}
+void GameOctree::init (Singleton * _singleton, int _dimInVoxels, int _maxSize, int _nodeSize)
+          {
+		singleton = _singleton;
+		dimInVoxels = _dimInVoxels;
+		maxSize = _maxSize;
+		nodeSize = _nodeSize;
+		
+		if (maxSize == -1) {
+			maxSize = 128*1024*1024;
+		}
+		if (nodeSize == -1) {
+			nodeSize = 8;
+		}
+		
+		maxDepth = intLogB2(dimInVoxels);
+		
+		data = new uint[maxSize];
+		
+		renderLevel = 0;
+		nullPtr = 0;
+		rootPtr = nodeSize;
+		nextOpen = rootPtr+nodeSize;
+		
+		int i;
+		
+		for (i = 0; i < maxSize; i++) {
+			data[i] = nullPtr;
+		}
+		
+	}
+void GameOctree::captureBuffer ()
+                             {
+		
+		cout << "captureBuffer\n";
+
+		FBOWrapper *fbow = singleton->getFBOWrapper("solidTargFBO", 0);
+		fbow->getPixels();
+		
+		int i;
+		
+		int x;
+		int y;
+		int z;
+		
+		for (i = 0; i < fbow->numBytes; i += 4) {
+			x = fbow->pixelsFloat[i+0];
+			y = fbow->pixelsFloat[i+1];
+			z = fbow->pixelsFloat[i+2];
+			
+			addNode(x,y,z,1);
+		}
+
+		cout << "newSize " << nextOpen << "\n";
+		
+	}
+void GameOctree::modRenderLevel (int modVal)
+                                        {
+		renderLevel += modVal;
+		if (renderLevel > maxDepth) {
+			renderLevel = maxDepth;
+		}
+		if (renderLevel < 0) {
+			renderLevel = 0;
+		}
+		
+		cout << "renderLevel " << renderLevel << "\n";
+	}
+void GameOctree::addNode (int x, int y, int z, uint col)
+                                                    {
+		int curPtr = rootPtr;
+		int curLevel = 0;
+		bool doProc = true;
+		
+		int curX = x;
+		int curY = y;
+		int curZ = z;
+		
+		int subX;
+		int subY;
+		int subZ;
+		
+		int curDiv = dimInVoxels/2;
+		
+		int offset;
+		
+		if (nextOpen >= (maxSize-nodeSize)) {
+			cout << "octree full\n";
+			return;
+		}
+		
+		do {
+			subX = curX/curDiv;
+			subY = curY/curDiv;
+			subZ = curZ/curDiv;
+			
+			curX -= subX*curDiv;
+			curY -= subY*curDiv;
+			curZ -= subZ*curDiv;
+			
+			offset = subX + subY*2 + subZ*4;
+			
+			if (data[curPtr+offset] == nullPtr) {
+				data[curPtr+offset] = nextOpen;
+				nextOpen += nodeSize;
+			}
+			
+			curPtr = data[curPtr+offset];
+			
+			curDiv = curDiv/2;
+			
+		} while (curDiv > 1);
+		
+		data[curPtr+0] = col;
+		
+		
+	}
+void GameOctree::remNode (uint index)
+                                 {
+		
+	}
+void GameOctree::startRender ()
+                           {
+		renderBB(0,0,0,rootPtr,0,dimInVoxels);
+	}
+void GameOctree::renderBB (int baseX, int baseY, int baseZ, int startIndex, int curLevel, int curDiv)
+          {
+		
+		int i;
+		int xm;
+		int ym;
+		int zm;
+		
+		if (curLevel > renderLevel) {
+			return;
+		}
+		
+		int curDiv2 = curDiv/2;
+		
+		singleton->drawBoxMinMax(
+			btVector3(baseX,baseY,baseZ),
+			btVector3(baseX+curDiv,baseY+curDiv,baseZ+curDiv)
+		);
+		
+		for (i = 0; i < 8; i++) {
+			zm = i/4;
+			ym = (i-zm*4)/2;
+			xm = (i-(zm*4 + ym*2));
+			
+			if (data[startIndex+i] == nullPtr) {
+				
+			}
+			else {
+				renderBB(
+					baseX+xm*curDiv2,
+					baseY+ym*curDiv2,
+					baseZ+zm*curDiv2,
+					data[startIndex+i],
+					curLevel+1,
+					curDiv2
+				);
+			}
+		}
 		
 		
 	}
@@ -63823,6 +64051,9 @@ void GameWorld::renderDebug ()
 		}
 		
 		
+		singleton->setShaderFloat("isWire", 1.0);
+		singleton->setShaderVec3("matVal", 255, 0, 0);
+		singleton->gameOct->startRender();
 		
 		
 		// btVector3 begPos = btVector3(0.0f,0.0f,0.0f);

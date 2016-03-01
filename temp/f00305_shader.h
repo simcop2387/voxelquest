@@ -390,7 +390,8 @@ void Shader::init (string shaderName, bool doBake, map <string, string> * includ
 					string fragStr = allTextStringSplit[0] + allTextStringSplit[2];
 
 					if (DO_SHADER_DUMP) {
-						if (_shaderFile.compare("../src/glsl/TopoShader.c") == 0) {
+						localString = fragStr;
+						if (_shaderFile.compare("../src/glsl/PrimShader.c") == 0) {
 							globString = fragStr;
 						}
 					}
@@ -403,7 +404,7 @@ void Shader::init (string shaderName, bool doBake, map <string, string> * includ
 					std::strcpy((GLchar*)fragCS,fragStr.c_str());
 
 
-			    	glShaderSource(shader_vp, 1, &(vertCS), 0);
+			    glShaderSource(shader_vp, 1, &(vertCS), 0);
 					glShaderSource(shader_fp, 1, &(fragCS), 0);
 				    
 					glCompileShader(shader_vp);

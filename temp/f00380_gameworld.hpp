@@ -4958,6 +4958,9 @@ UPDATE_LIGHTS_END:
 		}
 		
 		
+		singleton->setShaderFloat("isWire", 1.0);
+		singleton->setShaderVec3("matVal", 255, 0, 0);
+		singleton->gameOct->startRender();
 		
 		
 		// btVector3 begPos = btVector3(0.0f,0.0f,0.0f);
