@@ -551,7 +551,7 @@ public:
   void invalidateUniformBlock (int ubIndex);
   void beginUniformBlock (int ubIndex);
   bool wasUpdatedUniformBlock (int ubIndex);
-  void setShaderTBO (int multitexNumber, GLuint tbo_tex, GLuint tbo_buf);
+  void setShaderTBO (int multitexNumber, GLuint tbo_tex, GLuint tbo_buf, bool isFloat);
   void setShaderTexture (int multitexNumber, uint texId);
   void setShaderTexture3D (int multitexNumber, uint texId);
   bool shiftDown ();
@@ -820,8 +820,11 @@ public:
   int nodeSize;
   int nextOpen;
   int renderLevel;
+  bool hasTBO;
+  TBOWrapper octTBO;
   GameOctree ();
-  void init (Singleton * _singleton, int _dimInVoxels, int _maxSize = -1, int _nodeSize = -1);
+  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, int _maxSize = -1, int _nodeSize = -1);
+  void updateTBO ();
   void captureBuffer ();
   void modRenderLevel (int modVal);
   void addNode (int x, int y, int z, uint col);
@@ -2202,6 +2205,7 @@ public:
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
   void updateLights ();
+  void renderOct ();
   void renderDebug ();
   void postProcess ();
   ~ GameWorld ();

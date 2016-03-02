@@ -1631,7 +1631,7 @@ public:
 		
 		singleton->actorCount = actorCount;
 		
-		singleton->limbTBO.update(singleton->limbTBOData,dataInd*4);
+		singleton->limbTBO.update(singleton->limbTBOData,NULL,dataInd*4);
 		
 		// if (singleton->doPathReport) {
 		// 	cout << "\n\n";
@@ -1718,14 +1718,16 @@ public:
 			singleton->setShaderTBO(
 				1,
 				singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_tex,
-				singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_buf
+				singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_buf,
+				true
 			);
 		}
 		else {
 			singleton->setShaderTBO(
 				1,
 				singleton->limbTBO.tbo_tex,
-				singleton->limbTBO.tbo_buf
+				singleton->limbTBO.tbo_buf,
+				true
 			);
 		}
 		
@@ -1912,7 +1914,7 @@ public:
 		singleton->unsampleFBO("terDepthFBO",3);
 		singleton->unsampleFBO("hmFBOLinearBig",2);
 		
-		singleton->setShaderTBO(1,0,0);
+		singleton->setShaderTBO(1,0,0,true);
 		singleton->setShaderTexture3D(1, 0);
 		
 		singleton->unbindFBO();
@@ -4802,6 +4804,44 @@ UPDATE_LIGHTS_END:
 	// 	singleton->unbindShader();
 	// }
 
+
+	void renderOct(GameOctree* gameOct) {
+		
+		
+
+		singleton->bindShader("OctShader");
+		singleton->bindFBO("resultFBO0");
+
+		singleton->setShaderTBO(
+			0,
+			gameOct->octTBO.tbo_tex,
+			gameOct->octTBO.tbo_buf,
+			false
+		);
+
+		singleton->setShaderInt("dimInVoxels", gameOct->dimInVoxels);
+		singleton->setShaderInt("maxDepth", gameOct->maxDepth);
+		singleton->setShaderInt("maxSize", gameOct->rootPtr/4);
+		singleton->setShaderInt("rootPtr", gameOct->rootPtr/4);
+		singleton->setShaderInt("nodeSize", gameOct->nodeSize/4);
+		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+
+		singleton->fsQuad.draw();
+
+
+		singleton->setShaderTBO(0,0,0,false);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+
+		singleton->drawFBO("resultFBO0", 0, 1.0f);
+		
+		glutSwapBuffers();
+		
+	}
 
 	void renderDebug() {
 		

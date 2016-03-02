@@ -1340,7 +1340,7 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 		
 		singleton->actorCount = actorCount;
 		
-		singleton->limbTBO.update(singleton->limbTBOData,dataInd*4);
+		singleton->limbTBO.update(singleton->limbTBOData,NULL,dataInd*4);
 		
 		// if (singleton->doPathReport) {
 		// 	cout << "\n\n";
@@ -1427,14 +1427,16 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 			singleton->setShaderTBO(
 				1,
 				singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_tex,
-				singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_buf
+				singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_buf,
+				true
 			);
 		}
 		else {
 			singleton->setShaderTBO(
 				1,
 				singleton->limbTBO.tbo_tex,
-				singleton->limbTBO.tbo_buf
+				singleton->limbTBO.tbo_buf,
+				true
 			);
 		}
 		
@@ -1621,7 +1623,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		singleton->unsampleFBO("terDepthFBO",3);
 		singleton->unsampleFBO("hmFBOLinearBig",2);
 		
-		singleton->setShaderTBO(1,0,0);
+		singleton->setShaderTBO(1,0,0,true);
 		singleton->setShaderTexture3D(1, 0);
 		
 		singleton->unbindFBO();
@@ -4460,6 +4462,32 @@ UPDATE_LIGHTS_END:
 
 
 
+	}
+void GameWorld::renderOct ()
+                         {
+		
+		
+
+		
+
+		singleton->bindShader("OctShader");
+		//singleton->bindFBO("resultFBO", activeFBO);
+
+		
+		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+
+		singleton->fsQuad.draw();
+
+		//singleton->unbindFBO();
+		singleton->unbindShader();
+
+
+		
+		
 	}
 void GameWorld::renderDebug ()
                            {

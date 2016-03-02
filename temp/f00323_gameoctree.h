@@ -7,15 +7,16 @@ GameOctree::GameOctree ()
                      {
 		
 	}
-void GameOctree::init (Singleton * _singleton, int _dimInVoxels, int _maxSize, int _nodeSize)
+void GameOctree::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, int _maxSize, int _nodeSize)
           {
 		singleton = _singleton;
 		dimInVoxels = _dimInVoxels;
+		hasTBO = _hasTBO;
 		maxSize = _maxSize;
 		nodeSize = _nodeSize;
 		
 		if (maxSize == -1) {
-			maxSize = 128*1024*1024;
+			maxSize = (128/4)*1024*1024;
 		}
 		if (nodeSize == -1) {
 			nodeSize = 8;
@@ -36,6 +37,14 @@ void GameOctree::init (Singleton * _singleton, int _dimInVoxels, int _maxSize, i
 			data[i] = nullPtr;
 		}
 		
+		if (hasTBO) {
+			octTBO.init(false,NULL,data,maxSize*4);
+		}
+		
+	}
+void GameOctree::updateTBO ()
+                         {
+		octTBO.update(NULL, data, -1);
 	}
 void GameOctree::captureBuffer ()
                              {

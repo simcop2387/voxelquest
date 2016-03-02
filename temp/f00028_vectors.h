@@ -3200,22 +3200,37 @@ public:
 	
 	int dataSize;
 	
+	bool isFloat;
+	
 	TBOWrapper() {
 		
 	}
 	
-	void init(float* tbo_data, int _dataSize) {
+	void init(bool _isFloat, float* tbo_data, uint* tbo_data2, int _dataSize) {
+		
+		isFloat = _isFloat;
 		
 		dataSize = _dataSize;
 
 		glGenBuffers(1, &tbo_buf);
 		glBindBuffer(GL_TEXTURE_BUFFER, tbo_buf);
-		glBufferData(GL_TEXTURE_BUFFER, dataSize, tbo_data, GL_DYNAMIC_DRAW); // todo: dynamic draw? //GL_STATIC_DRAW
+		
+		if (isFloat) {
+			glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, tbo_buf);
+			glBufferData(GL_TEXTURE_BUFFER, dataSize, tbo_data, GL_DYNAMIC_DRAW); // todo: dynamic draw? //GL_STATIC_DRAW
+			
+		}
+		else {
+			glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32UI, tbo_buf);		
+			glBufferData(GL_TEXTURE_BUFFER, dataSize, tbo_data2, GL_DYNAMIC_DRAW); // todo: dynamic draw? //GL_STATIC_DRAW
+			
+		}
+		
 		glGenTextures(1, &tbo_tex);
 		glBindBuffer(GL_TEXTURE_BUFFER, 0);
 	}
 	
-	void update(float* tbo_data, int newDataSize) {
+	void update(float* tbo_data, uint* tbo_data2, int newDataSize) {
 		
 		int tempDataSize;
 		
@@ -3232,7 +3247,13 @@ public:
 		
 		
 		glBindBuffer(GL_TEXTURE_BUFFER, tbo_buf);
-		glBufferSubData(GL_TEXTURE_BUFFER, 0, tempDataSize, tbo_data);
+		if (isFloat) {
+			glBufferSubData(GL_TEXTURE_BUFFER, 0, tempDataSize, tbo_data);
+		}
+		else {
+			glBufferSubData(GL_TEXTURE_BUFFER, 0, tempDataSize, tbo_data2);
+		}
+		
 		glBindBuffer(GL_TEXTURE_BUFFER, 0);
 	}
 	

@@ -1,4 +1,4 @@
-﻿Build started 3/1/2016 8:26:23 AM.
+﻿Build started 3/2/2016 7:17:12 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -388,9 +388,18 @@
          
          Valid JSON
                    
+     1>EXEC : Shader  46  ( ../src/glsl/OctShader.c ) compile error : 0(14) : warning C7555: 'varying' is deprecated, use 'in/out' instead
+              
+     1>EXEC : Shader  47  ( ../src/glsl/OctShader.c ) compile error : 0(14) : warning C7555: 'varying' is deprecated, use 'in/out' instead
+              
+     1>EXEC : Program  48  link error : Vertex info
+         -----------
+     1>0(14): warning C7555: 'varying' is deprecated, use 'in/out' instead
          
-         Valid JSON
-                   
+         Fragment info
+         -------------
+     1>0(14): warning C7555: 'varying' is deprecated, use 'in/out' instead
+                
          Loading:  ..\data\constants.js         
          Load Successful          
          
@@ -971,9 +980,18 @@
          
          Valid JSON
                    
+     1>EXEC : Shader  151  ( ../src/glsl/OctShader.c ) compile error : 0(14) : warning C7555: 'varying' is deprecated, use 'in/out' instead
+              
+     1>EXEC : Shader  152  ( ../src/glsl/OctShader.c ) compile error : 0(14) : warning C7555: 'varying' is deprecated, use 'in/out' instead
+              
+     1>EXEC : Program  153  link error : Vertex info
+         -----------
+     1>0(14): warning C7555: 'varying' is deprecated, use 'in/out' instead
          
-         Valid JSON
-                   
+         Fragment info
+         -------------
+     1>0(14): warning C7555: 'varying' is deprecated, use 'in/out' instead
+                
          Loading:  ..\data\lastJSONBufferGUI.js         
          Load Successful          
          jsonPostProc
@@ -983,6 +1001,7 @@
                    
          NULL STATUS
          NULL STATS
+         attempted to load shaderParams
          Loading GUI Values
          Loading:  ..\data\saves\save0\compMap.txt         
          Load Successful          
@@ -998,53 +1017,52 @@
          
          Valid JSON
                    
+     1>EXEC : Shader  256  ( ../src/glsl/OctShader.c ) compile error : 0(14) : warning C7555: 'varying' is deprecated, use 'in/out' instead
+              
+     1>EXEC : Shader  257  ( ../src/glsl/OctShader.c ) compile error : 0(14) : warning C7555: 'varying' is deprecated, use 'in/out' instead
+              
+     1>EXEC : Program  258  link error : Vertex info
+         -----------
+     1>0(14): warning C7555: 'varying' is deprecated, use 'in/out' instead
          
-         Valid JSON
-                   
+         Fragment info
+         -------------
+     1>0(14): warning C7555: 'varying' is deprecated, use 'in/out' instead
+                
          GW DONE          
          curHeight 0 newHeight 3644.24
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          GL_MAX_TEXTURE_BUFFER_SIZE 134217728
          genBlockHolder
-         captureBuffer
-         captureBuffer
-         newSize 241968
-         renderLevel 1
-         renderLevel 2
-         renderLevel 3
-         renderLevel 4
-         renderLevel 5
-         renderLevel 6
-         renderLevel 7
-         renderLevel 8
-         renderLevel 9
-         renderLevel 10
-         renderLevel 11
-         renderLevel 12
-         renderLevel 13
-         renderLevel 14
-         renderLevel 13
-         renderLevel 12
-         renderLevel 11
-         renderLevel 10
-         renderLevel 9
-         renderLevel 8
-         renderLevel 7
-         renderLevel 6
-         renderLevel 5
-         renderLevel 4
-         captureBuffer
-         captureBuffer
-         newSize 1557008
-         captureBuffer
-         captureBuffer
-         newSize 2291480
-         captureBuffer
-         captureBuffer
-         newSize 2576480
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         No code for key: 173
+         No code for key: 173
+         No code for key: 173
+         No code for key: 173
+         No code for key: 173
+         No code for key: 173
+         No code for key: 173
+         iNumSteps:  16         
+         iNumSteps:  16         
+     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
+C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -1.
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
 
-Build succeeded.
+Build FAILED.
 
-Time Elapsed 00:20:26.84
+Time Elapsed 00:05:14.11

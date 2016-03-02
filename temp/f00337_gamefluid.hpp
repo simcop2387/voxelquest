@@ -793,7 +793,7 @@ public:
 					if (readyForTBOUpdate) {
 						readyForTBOUpdate = false;
 						fetchGeom();
-						tboWrapper.update(tboData,-1);
+						tboWrapper.update(tboData,NULL,-1);
 					}
 					
 					waterTick = 0;
@@ -997,7 +997,7 @@ public:
 		
 		
 		if (firstTime) {
-			tboWrapper.init(tboData,floatsInPrimMacro*4);
+			tboWrapper.init(true,tboData,NULL,floatsInPrimMacro*4);
 		}
 		else {
 			readyForTBOUpdate = true;

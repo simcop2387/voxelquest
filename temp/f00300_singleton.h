@@ -223,7 +223,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		cloudImage->getTextureId(GL_LINEAR);
 
 		
-		limbTBO.init(limbTBOData,MAX_LIMB_DATA_IN_BYTES);
+		limbTBO.init(true, limbTBOData, NULL, MAX_LIMB_DATA_IN_BYTES);
 		
 		numLights = MAX_LIGHTS;//min(MAX_LIGHTS,E_OBJ_LENGTH-E_OBJ_LIGHT0);
 
@@ -904,6 +904,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("RadiosityShader");
 		shaderStrings.push_back("RadiosityCombineShader");
 		shaderStrings.push_back("FogShader");
+		shaderStrings.push_back("OctShader");
 		shaderStrings.push_back("GeomShader");
 		shaderStrings.push_back("BoxShader");
 		shaderStrings.push_back("PolyShader");
@@ -1178,7 +1179,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 		gameOct = new GameOctree();
-		gameOct->init(this,cellsPerWorld);
+		gameOct->init(this,cellsPerWorld,true);
 
 		gem = new GameEntManager();
 		gem->init(this);
@@ -3337,14 +3338,20 @@ bool Singleton::wasUpdatedUniformBlock (int ubIndex)
 		return curShaderPtr->wasUpdatedUniformBlock(ubIndex);
 
 	}
-void Singleton::setShaderTBO (int multitexNumber, GLuint tbo_tex, GLuint tbo_buf)
+void Singleton::setShaderTBO (int multitexNumber, GLuint tbo_tex, GLuint tbo_buf, bool isFloat)
         {
 		if (shadersAreLoaded)
 		{
 			glActiveTexture(GL_TEXTURE0 + multitexNumber);
 			glBindTexture(GL_TEXTURE_2D, tbo_tex);
 			if (tbo_tex != 0) {
-				glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, tbo_buf); //GL_R32F
+				if (isFloat) {
+					glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, tbo_buf);
+				}
+				else {
+					glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32UI, tbo_buf);
+				}
+				
 			}
 			curShaderPtr->setShaderInt(shaderTextureIds[multitexNumber] , multitexNumber);
 		}
@@ -4195,7 +4202,6 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				break;
 				
 				case '7':
-					cout << "captureBuffer\n";
 					gameOct->captureBuffer();
 				break;
 				case '8':

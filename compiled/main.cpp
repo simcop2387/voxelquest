@@ -11177,22 +11177,37 @@ public:
 	
 	int dataSize;
 	
+	bool isFloat;
+	
 	TBOWrapper() {
 		
 	}
 	
-	void init(float* tbo_data, int _dataSize) {
+	void init(bool _isFloat, float* tbo_data, uint* tbo_data2, int _dataSize) {
+		
+		isFloat = _isFloat;
 		
 		dataSize = _dataSize;
 
 		glGenBuffers(1, &tbo_buf);
 		glBindBuffer(GL_TEXTURE_BUFFER, tbo_buf);
-		glBufferData(GL_TEXTURE_BUFFER, dataSize, tbo_data, GL_DYNAMIC_DRAW); // todo: dynamic draw? //GL_STATIC_DRAW
+		
+		if (isFloat) {
+			glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, tbo_buf);
+			glBufferData(GL_TEXTURE_BUFFER, dataSize, tbo_data, GL_DYNAMIC_DRAW); // todo: dynamic draw? //GL_STATIC_DRAW
+			
+		}
+		else {
+			glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32UI, tbo_buf);		
+			glBufferData(GL_TEXTURE_BUFFER, dataSize, tbo_data2, GL_DYNAMIC_DRAW); // todo: dynamic draw? //GL_STATIC_DRAW
+			
+		}
+		
 		glGenTextures(1, &tbo_tex);
 		glBindBuffer(GL_TEXTURE_BUFFER, 0);
 	}
 	
-	void update(float* tbo_data, int newDataSize) {
+	void update(float* tbo_data, uint* tbo_data2, int newDataSize) {
 		
 		int tempDataSize;
 		
@@ -11209,7 +11224,13 @@ public:
 		
 		
 		glBindBuffer(GL_TEXTURE_BUFFER, tbo_buf);
-		glBufferSubData(GL_TEXTURE_BUFFER, 0, tempDataSize, tbo_data);
+		if (isFloat) {
+			glBufferSubData(GL_TEXTURE_BUFFER, 0, tempDataSize, tbo_data);
+		}
+		else {
+			glBufferSubData(GL_TEXTURE_BUFFER, 0, tempDataSize, tbo_data2);
+		}
+		
 		glBindBuffer(GL_TEXTURE_BUFFER, 0);
 	}
 	
@@ -23075,7 +23096,7 @@ public:
   void invalidateUniformBlock (int ubIndex);
   void beginUniformBlock (int ubIndex);
   bool wasUpdatedUniformBlock (int ubIndex);
-  void setShaderTBO (int multitexNumber, GLuint tbo_tex, GLuint tbo_buf);
+  void setShaderTBO (int multitexNumber, GLuint tbo_tex, GLuint tbo_buf, bool isFloat);
   void setShaderTexture (int multitexNumber, uint texId);
   void setShaderTexture3D (int multitexNumber, uint texId);
   bool shiftDown ();
@@ -23344,8 +23365,11 @@ public:
   int nodeSize;
   int nextOpen;
   int renderLevel;
+  bool hasTBO;
+  TBOWrapper octTBO;
   GameOctree ();
-  void init (Singleton * _singleton, int _dimInVoxels, int _maxSize = -1, int _nodeSize = -1);
+  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, int _maxSize = -1, int _nodeSize = -1);
+  void updateTBO ();
   void captureBuffer ();
   void modRenderLevel (int modVal);
   void addNode (int x, int y, int z, uint col);
@@ -24726,6 +24750,7 @@ public:
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
   void updateLights ();
+  void renderOct ();
   void renderDebug ();
   void postProcess ();
   ~ GameWorld ();
@@ -25059,7 +25084,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		cloudImage->getTextureId(GL_LINEAR);
 
 		
-		limbTBO.init(limbTBOData,MAX_LIMB_DATA_IN_BYTES);
+		limbTBO.init(true, limbTBOData, NULL, MAX_LIMB_DATA_IN_BYTES);
 		
 		numLights = MAX_LIGHTS;//min(MAX_LIGHTS,E_OBJ_LENGTH-E_OBJ_LIGHT0);
 
@@ -25740,6 +25765,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("RadiosityShader");
 		shaderStrings.push_back("RadiosityCombineShader");
 		shaderStrings.push_back("FogShader");
+		shaderStrings.push_back("OctShader");
 		shaderStrings.push_back("GeomShader");
 		shaderStrings.push_back("BoxShader");
 		shaderStrings.push_back("PolyShader");
@@ -26014,7 +26040,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 		gameOct = new GameOctree();
-		gameOct->init(this,cellsPerWorld);
+		gameOct->init(this,cellsPerWorld,true);
 
 		gem = new GameEntManager();
 		gem->init(this);
@@ -28173,14 +28199,20 @@ bool Singleton::wasUpdatedUniformBlock (int ubIndex)
 		return curShaderPtr->wasUpdatedUniformBlock(ubIndex);
 
 	}
-void Singleton::setShaderTBO (int multitexNumber, GLuint tbo_tex, GLuint tbo_buf)
+void Singleton::setShaderTBO (int multitexNumber, GLuint tbo_tex, GLuint tbo_buf, bool isFloat)
         {
 		if (shadersAreLoaded)
 		{
 			glActiveTexture(GL_TEXTURE0 + multitexNumber);
 			glBindTexture(GL_TEXTURE_2D, tbo_tex);
 			if (tbo_tex != 0) {
-				glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, tbo_buf); //GL_R32F
+				if (isFloat) {
+					glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, tbo_buf);
+				}
+				else {
+					glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32UI, tbo_buf);
+				}
+				
 			}
 			curShaderPtr->setShaderInt(shaderTextureIds[multitexNumber] , multitexNumber);
 		}
@@ -29031,7 +29063,6 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				break;
 				
 				case '7':
-					cout << "captureBuffer\n";
 					gameOct->captureBuffer();
 				break;
 				case '8':
@@ -34610,15 +34641,16 @@ GameOctree::GameOctree ()
                      {
 		
 	}
-void GameOctree::init (Singleton * _singleton, int _dimInVoxels, int _maxSize, int _nodeSize)
+void GameOctree::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, int _maxSize, int _nodeSize)
           {
 		singleton = _singleton;
 		dimInVoxels = _dimInVoxels;
+		hasTBO = _hasTBO;
 		maxSize = _maxSize;
 		nodeSize = _nodeSize;
 		
 		if (maxSize == -1) {
-			maxSize = 128*1024*1024;
+			maxSize = (128/4)*1024*1024;
 		}
 		if (nodeSize == -1) {
 			nodeSize = 8;
@@ -34639,6 +34671,14 @@ void GameOctree::init (Singleton * _singleton, int _dimInVoxels, int _maxSize, i
 			data[i] = nullPtr;
 		}
 		
+		if (hasTBO) {
+			octTBO.init(false,NULL,data,maxSize*4);
+		}
+		
+	}
+void GameOctree::updateTBO ()
+                         {
+		octTBO.update(NULL, data, -1);
 	}
 void GameOctree::captureBuffer ()
                              {
@@ -40172,7 +40212,7 @@ bool GameFluid::updateAll ()
 					if (readyForTBOUpdate) {
 						readyForTBOUpdate = false;
 						fetchGeom();
-						tboWrapper.update(tboData,-1);
+						tboWrapper.update(tboData,NULL,-1);
 					}
 					
 					waterTick = 0;
@@ -40374,7 +40414,7 @@ void GameFluid::updateTBOData (bool firstTime, bool reloadTemplates)
 		
 		
 		if (firstTime) {
-			tboWrapper.init(tboData,floatsInPrimMacro*4);
+			tboWrapper.init(true,tboData,NULL,floatsInPrimMacro*4);
 		}
 		else {
 			readyForTBOUpdate = true;
@@ -56226,24 +56266,6 @@ void GameLogic::drawRegions (int offX, int offY, int offZ)
 			}
 			
 			
-			
-			// kk = curInd/(cellsPerHolder*cellsPerHolder);
-			// jj = (curInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-			// ii = curInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
-			
-			// pVec1.copyFrom(&minv);
-			// pVec1.addXYZ(ii,jj,kk);
-			// pVec1.addXYZ(0.5f);
-			
-			
-			// drawLine
-			
-			// singleton->drawCubeCentered(
-			// 	&pVec1,
-			// 	singleton->smoothTime
-			// );
-			
-			
 		}
 		
 		
@@ -60774,7 +60796,7 @@ void GameWorld::updateLimbTBOData (bool showLimbs)
 		
 		singleton->actorCount = actorCount;
 		
-		singleton->limbTBO.update(singleton->limbTBOData,dataInd*4);
+		singleton->limbTBO.update(singleton->limbTBOData,NULL,dataInd*4);
 		
 		// if (singleton->doPathReport) {
 		// 	cout << "\n\n";
@@ -60861,14 +60883,16 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 			singleton->setShaderTBO(
 				1,
 				singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_tex,
-				singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_buf
+				singleton->gameFluid[E_FID_BIG]->tboWrapper.tbo_buf,
+				true
 			);
 		}
 		else {
 			singleton->setShaderTBO(
 				1,
 				singleton->limbTBO.tbo_tex,
-				singleton->limbTBO.tbo_buf
+				singleton->limbTBO.tbo_buf,
+				true
 			);
 		}
 		
@@ -61055,7 +61079,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		singleton->unsampleFBO("terDepthFBO",3);
 		singleton->unsampleFBO("hmFBOLinearBig",2);
 		
-		singleton->setShaderTBO(1,0,0);
+		singleton->setShaderTBO(1,0,0,true);
 		singleton->setShaderTexture3D(1, 0);
 		
 		singleton->unbindFBO();
@@ -63894,6 +63918,32 @@ UPDATE_LIGHTS_END:
 
 
 
+	}
+void GameWorld::renderOct ()
+                         {
+		
+		
+
+		
+
+		singleton->bindShader("OctShader");
+		//singleton->bindFBO("resultFBO", activeFBO);
+
+		
+		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+
+		singleton->fsQuad.draw();
+
+		//singleton->unbindFBO();
+		singleton->unbindShader();
+
+
+		
+		
 	}
 void GameWorld::renderDebug ()
                            {

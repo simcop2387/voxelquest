@@ -1613,24 +1613,6 @@ void GameLogic::drawRegions (int offX, int offY, int offZ)
 			}
 			
 			
-			
-			// kk = curInd/(cellsPerHolder*cellsPerHolder);
-			// jj = (curInd-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
-			// ii = curInd-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
-			
-			// pVec1.copyFrom(&minv);
-			// pVec1.addXYZ(ii,jj,kk);
-			// pVec1.addXYZ(0.5f);
-			
-			
-			// drawLine
-			
-			// singleton->drawCubeCentered(
-			// 	&pVec1,
-			// 	singleton->smoothTime
-			// );
-			
-			
 		}
 		
 		
