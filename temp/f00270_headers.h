@@ -125,6 +125,8 @@ public:
   int destructCount;
   bool sphereMapOn;
   bool waitingOnDestruction;
+  bool renderingOctBounds;
+  bool renderingOct;
   bool placingPattern;
   bool drawTargPaths;
   bool gridOn;
@@ -2205,7 +2207,7 @@ public:
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
   void updateLights ();
-  void renderOct ();
+  void renderOct (GameOctree * gameOct);
   void renderDebug ();
   void postProcess ();
   ~ GameWorld ();

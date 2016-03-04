@@ -502,6 +502,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		lastDepthInvalidMove = true;
 		depthInvalidRotate = true;
 		drawTargPaths = false;
+		renderingOct = false;
+		renderingOctBounds = false;
 		placingPattern = false;
 		gridOn = false;
 		fogOn = 1.0f;
@@ -4197,17 +4199,25 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					}
 					
 				break;
-				case '4':
+				//case '0':
 					
-				break;
+				//break;
 				
-				case '7':
-					gameOct->captureBuffer();
+				
+				case '9':
+					renderingOctBounds = !renderingOctBounds;
 				break;
-				case '8':
+				case '/':
+					gameOct->captureBuffer();
+					gameOct->updateTBO();
+				break;
+				case '*':
+					renderingOct = !renderingOct;
+				break;
+				case '-':
 					gameOct->modRenderLevel(-1);
 				break;
-				case '9':
+				case '+':
 					gameOct->modRenderLevel(1);
 				break;
 				
@@ -4548,6 +4558,8 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 
 				case ' ':
+					
+					
 					
 				
 					//timeMod = !timeMod;
@@ -7850,7 +7862,13 @@ void Singleton::frameUpdate ()
 						
 						//gw->drawPrim();
 						
-						gw->update();
+						if (renderingOct) {
+							gw->renderOct(gameOct);
+						}
+						else {
+							gw->update();
+						}
+						
 						
 						if (GEN_POLYS_WORLD) {
 							gw->generateBlockHolder();

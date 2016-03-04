@@ -103,6 +103,7 @@ public:
 	bool sphereMapOn;
 	bool waitingOnDestruction;
 	
+	bool renderingOctBounds;
 	bool renderingOct;
 	bool placingPattern;
 	bool drawTargPaths;
@@ -1111,6 +1112,7 @@ public:
 		depthInvalidRotate = true;
 		drawTargPaths = false;
 		renderingOct = false;
+		renderingOctBounds = false;
 		placingPattern = false;
 		gridOn = false;
 		fogOn = 1.0f;
@@ -5193,17 +5195,25 @@ DISPATCH_EVENT_END:
 					}
 					
 				break;
-				case '0':
+				//case '0':
+					
+				//break;
+				
+				
+				case '9':
+					renderingOctBounds = !renderingOctBounds;
+				break;
+				case '/':
+					gameOct->captureBuffer();
+					gameOct->updateTBO();
+				break;
+				case '*':
 					renderingOct = !renderingOct;
 				break;
-				
-				case '7':
-					gameOct->captureBuffer();
-				break;
-				case '8':
+				case '-':
 					gameOct->modRenderLevel(-1);
 				break;
-				case '9':
+				case '+':
 					gameOct->modRenderLevel(1);
 				break;
 				
@@ -5544,6 +5554,8 @@ DISPATCH_EVENT_END:
 					break;
 
 				case ' ':
+					
+					
 					
 				
 					//timeMod = !timeMod;
@@ -9093,7 +9105,7 @@ DISPATCH_EVENT_END:
 						//gw->drawPrim();
 						
 						if (renderingOct) {
-							gw->renderOct();
+							gw->renderOct(gameOct);
 						}
 						else {
 							gw->update();

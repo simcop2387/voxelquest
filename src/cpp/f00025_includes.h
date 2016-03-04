@@ -44,11 +44,23 @@ const static int MAX_EXPLODES = 8;
 const static bool DO_SHADER_DUMP = false;
 bool EDIT_POSE = false;
 
+// warning: changing this changes the size of saved poses
+// should be a one time change, then revereted to 1.0 after save
+const static float ORG_SCALE_DELTA = 1.0f;
+
+// base scale applied to base org generation
+// only change this after changing ORG_SCALE_DELTA from 1.0
+const static float ORG_SCALE_BASE = 0.5f;
+
+
+
+
+
 // const static int DEF_WIN_W = 1440;
 // const static int DEF_WIN_H = 720;
 
 
-#define STREAM_RES 1
+//#define STREAM_RES 1
 
 #ifdef STREAM_RES
 	const static int DEF_WIN_W = 1920; //2048;//
@@ -60,20 +72,11 @@ bool EDIT_POSE = false;
 
 
 
-// warning: changing this changes the size of saved poses
-// should be a one time change, then revereted to 1.0 after save
-const static float ORG_SCALE_DELTA = 1.0f;
-
-// base scale applied to base org generation
-// only change this after changing ORG_SCALE_DELTA from 1.0
-const static float ORG_SCALE_BASE = 0.5f;
-
-
-const static int DEF_VOL_SIZE = 128;
-
-const static int DEF_SCALE_FACTOR = 4;
+const static int DEF_SCALE_FACTOR = 8;
 const static int RENDER_SCALE_FACTOR = 1;
 const static float SPHEREMAP_SCALE_FACTOR = 0.5f; // lower is faster
+
+const static int DEF_VOL_SIZE = 128;
 
 const static bool USE_SPHERE_MAP = false;
 

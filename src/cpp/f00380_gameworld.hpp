@@ -4807,6 +4807,14 @@ UPDATE_LIGHTS_END:
 
 	void renderOct(GameOctree* gameOct) {
 		
+		// get view matrix
+		singleton->perspectiveOn = true;
+		singleton->bindShader("OctShader");
+		singleton->bindFBO("resultFBO0");
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		singleton->perspectiveOn = false;
+		// 
 		
 
 		singleton->bindShader("OctShader");
@@ -4819,11 +4827,11 @@ UPDATE_LIGHTS_END:
 			false
 		);
 
-		singleton->setShaderInt("dimInVoxels", gameOct->dimInVoxels);
-		singleton->setShaderInt("maxDepth", gameOct->maxDepth);
-		singleton->setShaderInt("maxSize", gameOct->rootPtr/4);
-		singleton->setShaderInt("rootPtr", gameOct->rootPtr/4);
-		singleton->setShaderInt("nodeSize", gameOct->nodeSize/4);
+		singleton->setShaderFloat("dimInVoxels", gameOct->dimInVoxels);
+		singleton->setShaderInt("renderLevel", gameOct->renderLevel);
+		singleton->setShaderInt("maxSize", gameOct->maxSize);
+		singleton->setShaderInt("rootPtr", gameOct->rootPtr);
+		singleton->setShaderInt("nodeSize", gameOct->nodeSize);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
@@ -4997,10 +5005,12 @@ UPDATE_LIGHTS_END:
 			singleton->gameLogic->update();
 		}
 		
+		if (singleton->renderingOctBounds) {
+			singleton->setShaderFloat("isWire", 1.0);
+			singleton->setShaderVec3("matVal", 255, 0, 0);
+			singleton->gameOct->startRender();
+		}
 		
-		singleton->setShaderFloat("isWire", 1.0);
-		singleton->setShaderVec3("matVal", 255, 0, 0);
-		singleton->gameOct->startRender();
 		
 		
 		// btVector3 begPos = btVector3(0.0f,0.0f,0.0f);

@@ -80,12 +80,22 @@ public:
 		int y;
 		int z;
 		
+		btVector3 myPoint;
+		btVector3 camPoint = singleton->cameraGetPosNoShake()->getBTV();
+		
+		float maxDis = singleton->clipDist[1]-50.0f;
+		
 		for (i = 0; i < fbow->numBytes; i += 4) {
 			x = fbow->pixelsFloat[i+0];
 			y = fbow->pixelsFloat[i+1];
 			z = fbow->pixelsFloat[i+2];
 			
-			addNode(x,y,z,1);
+			myPoint = btVector3(x,y,z);
+			
+			if (camPoint.distance(myPoint) < maxDis) {
+				addNode(x,y,z,1);
+			}
+			
 		}
 
 		cout << "newSize " << nextOpen << "\n";
@@ -184,10 +194,14 @@ public:
 		
 		int curDiv2 = curDiv/2;
 		
-		singleton->drawBoxMinMax(
-			btVector3(baseX,baseY,baseZ),
-			btVector3(baseX+curDiv,baseY+curDiv,baseZ+curDiv)
-		);
+		if (curLevel == renderLevel) {
+			singleton->drawBoxMinMax(
+				btVector3(baseX,baseY,baseZ),
+				btVector3(baseX+curDiv,baseY+curDiv,baseZ+curDiv)
+			);
+		}
+		
+		
 		
 		for (i = 0; i < 8; i++) {
 			zm = i/4;

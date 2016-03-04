@@ -4463,30 +4463,50 @@ UPDATE_LIGHTS_END:
 
 
 	}
-void GameWorld::renderOct ()
-                         {
+void GameWorld::renderOct (GameOctree * gameOct)
+                                            {
 		
-		
-
+		// get view matrix
+		singleton->perspectiveOn = true;
+		singleton->bindShader("OctShader");
+		singleton->bindFBO("resultFBO0");
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		singleton->perspectiveOn = false;
+		// 
 		
 
 		singleton->bindShader("OctShader");
-		//singleton->bindFBO("resultFBO", activeFBO);
+		singleton->bindFBO("resultFBO0");
 
-		
+		singleton->setShaderTBO(
+			0,
+			gameOct->octTBO.tbo_tex,
+			gameOct->octTBO.tbo_buf,
+			false
+		);
+
+		singleton->setShaderFloat("dimInVoxels", gameOct->dimInVoxels);
+		singleton->setShaderInt("renderLevel", gameOct->renderLevel);
+		singleton->setShaderInt("maxSize", gameOct->maxSize);
+		singleton->setShaderInt("rootPtr", gameOct->rootPtr);
+		singleton->setShaderInt("nodeSize", gameOct->nodeSize);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
 
 		singleton->fsQuad.draw();
 
-		//singleton->unbindFBO();
+
+		singleton->setShaderTBO(0,0,0,false);
+		singleton->unbindFBO();
 		singleton->unbindShader();
 
-
+		singleton->drawFBO("resultFBO0", 0, 1.0f);
 		
+		glutSwapBuffers();
 		
 	}
 void GameWorld::renderDebug ()
@@ -4644,10 +4664,12 @@ void GameWorld::renderDebug ()
 			singleton->gameLogic->update();
 		}
 		
+		if (singleton->renderingOctBounds) {
+			singleton->setShaderFloat("isWire", 1.0);
+			singleton->setShaderVec3("matVal", 255, 0, 0);
+			singleton->gameOct->startRender();
+		}
 		
-		singleton->setShaderFloat("isWire", 1.0);
-		singleton->setShaderVec3("matVal", 255, 0, 0);
-		singleton->gameOct->startRender();
 		
 		
 		// btVector3 begPos = btVector3(0.0f,0.0f,0.0f);

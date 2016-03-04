@@ -103,6 +103,8 @@ public:
 	bool sphereMapOn;
 	bool waitingOnDestruction;
 	
+	bool renderingOctBounds;
+	bool renderingOct;
 	bool placingPattern;
 	bool drawTargPaths;
 	bool gridOn;
@@ -1109,6 +1111,8 @@ public:
 		lastDepthInvalidMove = true;
 		depthInvalidRotate = true;
 		drawTargPaths = false;
+		renderingOct = false;
+		renderingOctBounds = false;
 		placingPattern = false;
 		gridOn = false;
 		fogOn = 1.0f;
@@ -5191,17 +5195,25 @@ DISPATCH_EVENT_END:
 					}
 					
 				break;
-				case '4':
+				//case '0':
 					
-				break;
+				//break;
 				
-				case '7':
-					gameOct->captureBuffer();
+				
+				case '9':
+					renderingOctBounds = !renderingOctBounds;
 				break;
-				case '8':
+				case '/':
+					gameOct->captureBuffer();
+					gameOct->updateTBO();
+				break;
+				case '*':
+					renderingOct = !renderingOct;
+				break;
+				case '-':
 					gameOct->modRenderLevel(-1);
 				break;
-				case '9':
+				case '+':
 					gameOct->modRenderLevel(1);
 				break;
 				
@@ -5542,6 +5554,8 @@ DISPATCH_EVENT_END:
 					break;
 
 				case ' ':
+					
+					
 					
 				
 					//timeMod = !timeMod;
@@ -9090,7 +9104,13 @@ DISPATCH_EVENT_END:
 						
 						//gw->drawPrim();
 						
-						gw->update();
+						if (renderingOct) {
+							gw->renderOct(gameOct);
+						}
+						else {
+							gw->update();
+						}
+						
 						
 						if (GEN_POLYS_WORLD) {
 							gw->generateBlockHolder();

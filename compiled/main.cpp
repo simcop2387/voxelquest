@@ -44,11 +44,23 @@ const static int MAX_EXPLODES = 8;
 const static bool DO_SHADER_DUMP = false;
 bool EDIT_POSE = false;
 
+// warning: changing this changes the size of saved poses
+// should be a one time change, then revereted to 1.0 after save
+const static float ORG_SCALE_DELTA = 1.0f;
+
+// base scale applied to base org generation
+// only change this after changing ORG_SCALE_DELTA from 1.0
+const static float ORG_SCALE_BASE = 0.5f;
+
+
+
+
+
 // const static int DEF_WIN_W = 1440;
 // const static int DEF_WIN_H = 720;
 
 
-#define STREAM_RES 1
+//#define STREAM_RES 1
 
 #ifdef STREAM_RES
 	const static int DEF_WIN_W = 1920; //2048;//
@@ -60,20 +72,11 @@ bool EDIT_POSE = false;
 
 
 
-// warning: changing this changes the size of saved poses
-// should be a one time change, then revereted to 1.0 after save
-const static float ORG_SCALE_DELTA = 1.0f;
-
-// base scale applied to base org generation
-// only change this after changing ORG_SCALE_DELTA from 1.0
-const static float ORG_SCALE_BASE = 0.5f;
-
-
-const static int DEF_VOL_SIZE = 128;
-
-const static int DEF_SCALE_FACTOR = 4;
+const static int DEF_SCALE_FACTOR = 8;
 const static int RENDER_SCALE_FACTOR = 1;
 const static float SPHEREMAP_SCALE_FACTOR = 0.5f; // lower is faster
+
+const static int DEF_VOL_SIZE = 128;
 
 const static bool USE_SPHERE_MAP = false;
 
@@ -22670,6 +22673,8 @@ public:
   int destructCount;
   bool sphereMapOn;
   bool waitingOnDestruction;
+  bool renderingOctBounds;
+  bool renderingOct;
   bool placingPattern;
   bool drawTargPaths;
   bool gridOn;
@@ -24750,7 +24755,7 @@ public:
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
   void updateLights ();
-  void renderOct ();
+  void renderOct (GameOctree * gameOct);
   void renderDebug ();
   void postProcess ();
   ~ GameWorld ();
@@ -25363,6 +25368,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		lastDepthInvalidMove = true;
 		depthInvalidRotate = true;
 		drawTargPaths = false;
+		renderingOct = false;
+		renderingOctBounds = false;
 		placingPattern = false;
 		gridOn = false;
 		fogOn = 1.0f;
@@ -29058,17 +29065,25 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					}
 					
 				break;
-				case '4':
+				//case '0':
 					
-				break;
+				//break;
 				
-				case '7':
-					gameOct->captureBuffer();
+				
+				case '9':
+					renderingOctBounds = !renderingOctBounds;
 				break;
-				case '8':
+				case '/':
+					gameOct->captureBuffer();
+					gameOct->updateTBO();
+				break;
+				case '*':
+					renderingOct = !renderingOct;
+				break;
+				case '-':
 					gameOct->modRenderLevel(-1);
 				break;
-				case '9':
+				case '+':
 					gameOct->modRenderLevel(1);
 				break;
 				
@@ -29409,6 +29424,8 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 
 				case ' ':
+					
+					
 					
 				
 					//timeMod = !timeMod;
@@ -32711,7 +32728,13 @@ void Singleton::frameUpdate ()
 						
 						//gw->drawPrim();
 						
-						gw->update();
+						if (renderingOct) {
+							gw->renderOct(gameOct);
+						}
+						else {
+							gw->update();
+						}
+						
 						
 						if (GEN_POLYS_WORLD) {
 							gw->generateBlockHolder();
@@ -34694,12 +34717,22 @@ void GameOctree::captureBuffer ()
 		int y;
 		int z;
 		
+		btVector3 myPoint;
+		btVector3 camPoint = singleton->cameraGetPosNoShake()->getBTV();
+		
+		float maxDis = singleton->clipDist[1]-50.0f;
+		
 		for (i = 0; i < fbow->numBytes; i += 4) {
 			x = fbow->pixelsFloat[i+0];
 			y = fbow->pixelsFloat[i+1];
 			z = fbow->pixelsFloat[i+2];
 			
-			addNode(x,y,z,1);
+			myPoint = btVector3(x,y,z);
+			
+			if (camPoint.distance(myPoint) < maxDis) {
+				addNode(x,y,z,1);
+			}
+			
 		}
 
 		cout << "newSize " << nextOpen << "\n";
@@ -34788,10 +34821,14 @@ void GameOctree::renderBB (int baseX, int baseY, int baseZ, int startIndex, int 
 		
 		int curDiv2 = curDiv/2;
 		
-		singleton->drawBoxMinMax(
-			btVector3(baseX,baseY,baseZ),
-			btVector3(baseX+curDiv,baseY+curDiv,baseZ+curDiv)
-		);
+		if (curLevel == renderLevel) {
+			singleton->drawBoxMinMax(
+				btVector3(baseX,baseY,baseZ),
+				btVector3(baseX+curDiv,baseY+curDiv,baseZ+curDiv)
+			);
+		}
+		
+		
 		
 		for (i = 0; i < 8; i++) {
 			zm = i/4;
@@ -63919,30 +63956,50 @@ UPDATE_LIGHTS_END:
 
 
 	}
-void GameWorld::renderOct ()
-                         {
+void GameWorld::renderOct (GameOctree * gameOct)
+                                            {
 		
-		
-
+		// get view matrix
+		singleton->perspectiveOn = true;
+		singleton->bindShader("OctShader");
+		singleton->bindFBO("resultFBO0");
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		singleton->perspectiveOn = false;
+		// 
 		
 
 		singleton->bindShader("OctShader");
-		//singleton->bindFBO("resultFBO", activeFBO);
+		singleton->bindFBO("resultFBO0");
 
-		
+		singleton->setShaderTBO(
+			0,
+			gameOct->octTBO.tbo_tex,
+			gameOct->octTBO.tbo_buf,
+			false
+		);
+
+		singleton->setShaderFloat("dimInVoxels", gameOct->dimInVoxels);
+		singleton->setShaderInt("renderLevel", gameOct->renderLevel);
+		singleton->setShaderInt("maxSize", gameOct->maxSize);
+		singleton->setShaderInt("rootPtr", gameOct->rootPtr);
+		singleton->setShaderInt("nodeSize", gameOct->nodeSize);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim));
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
 
 		singleton->fsQuad.draw();
 
-		//singleton->unbindFBO();
+
+		singleton->setShaderTBO(0,0,0,false);
+		singleton->unbindFBO();
 		singleton->unbindShader();
 
-
+		singleton->drawFBO("resultFBO0", 0, 1.0f);
 		
+		glutSwapBuffers();
 		
 	}
 void GameWorld::renderDebug ()
@@ -64100,10 +64157,12 @@ void GameWorld::renderDebug ()
 			singleton->gameLogic->update();
 		}
 		
+		if (singleton->renderingOctBounds) {
+			singleton->setShaderFloat("isWire", 1.0);
+			singleton->setShaderVec3("matVal", 255, 0, 0);
+			singleton->gameOct->startRender();
+		}
 		
-		singleton->setShaderFloat("isWire", 1.0);
-		singleton->setShaderVec3("matVal", 255, 0, 0);
-		singleton->gameOct->startRender();
 		
 		
 		// btVector3 begPos = btVector3(0.0f,0.0f,0.0f);
