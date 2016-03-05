@@ -85,7 +85,16 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		initAllMatrices();
 		
-		fsQuad.init(vertexDataQuad, 32, indexDataQuad, 6);
+		fsQuad.init(
+			vertexDataQuad,
+			32,
+			32,
+			indexDataQuad,
+			6,
+			6,
+			2,
+			GL_STATIC_DRAW
+		);
 		
 		colVecs[0].setFXYZ(255,0,0);
 		colVecs[1].setFXYZ(0,255,0);
@@ -142,7 +151,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		sphereMapOn = false;
 		waitingOnDestruction = false;
 		
-		physicsOn = true;
+		physicsOn = false;
 		isPressingMove = false;
 		fxaaOn = false;
 		doPathReport = false;
@@ -348,6 +357,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		int bufferDiv = 1;
 		
 		if (DO_POINTS) {
+			glDisable(GL_POINT_SMOOTH);
 			glEnable(GL_POINT_SPRITE);
 			glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 		}
@@ -907,6 +917,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("RadiosityCombineShader");
 		shaderStrings.push_back("FogShader");
 		shaderStrings.push_back("OctShader");
+		shaderStrings.push_back("RasterShader");
 		shaderStrings.push_back("GeomShader");
 		shaderStrings.push_back("BoxShader");
 		shaderStrings.push_back("PolyShader");
@@ -1103,6 +1114,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		}
 		
 		
+		fboMap["rasterFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, true, GL_NEAREST);
+		
 		
 		if (USE_SPHERE_MAP) {
 			fboMap["sphTargFBO"].init(8, bufferRenderDim.getIX()*SPHEREMAP_SCALE_FACTOR, bufferRenderDim.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth);
@@ -1181,7 +1194,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 		gameOct = new GameOctree();
-		gameOct->init(this,cellsPerWorld,true);
+		gameOct->init(this,cellsPerWorld,true,true);
 
 		gem = new GameEntManager();
 		gem->init(this);
@@ -3050,6 +3063,11 @@ void Singleton::unsampleFBODirect (FBOSet * fbos, int offset, int _minOff, int _
 			}
 		}
 	}
+void Singleton::getMatrixFromFBO (string fboName)
+                                              {
+		FBOSet *fbos = getFBOByName(fboName);
+		setMatrices(fbos->width, fbos->height);
+	}
 void Singleton::bindFBODirect (FBOSet * fbos, int doClear)
         {
 		setMatrices(fbos->width, fbos->height);
@@ -4208,8 +4226,9 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					renderingOctBounds = !renderingOctBounds;
 				break;
 				case '/':
-					gameOct->captureBuffer();
+					gameOct->captureBuffer(true);
 					gameOct->updateTBO();
+					gameOct->updateVBO();
 				break;
 				case '*':
 					renderingOct = !renderingOct;
@@ -7863,7 +7882,8 @@ void Singleton::frameUpdate ()
 						//gw->drawPrim();
 						
 						if (renderingOct) {
-							gw->renderOct(gameOct);
+							//gw->renderOct(gameOct);
+							gw->rasterOct(gameOct);
 						}
 						else {
 							gw->update();

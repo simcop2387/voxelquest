@@ -59,12 +59,13 @@ const static float ORG_SCALE_BASE = 0.5f;
 // const static int DEF_WIN_W = 1440;
 // const static int DEF_WIN_H = 720;
 
+// qqqq
 
-//#define STREAM_RES 1
+#define STREAM_RES 1
 
 #ifdef STREAM_RES
-	const static int DEF_WIN_W = 1920; //2048;//
-	const static int DEF_WIN_H = 1080; //1024;//
+	const static int DEF_WIN_W = 2560; //2048;//
+	const static int DEF_WIN_H = 1440; //1024;//
 #else
 	const static int DEF_WIN_W = 1440;//1536;
 	const static int DEF_WIN_H = 720;//768;
@@ -72,8 +73,8 @@ const static float ORG_SCALE_BASE = 0.5f;
 
 
 
-const static int DEF_SCALE_FACTOR = 8;
-const static int RENDER_SCALE_FACTOR = 1;
+const static int DEF_SCALE_FACTOR = 1;
+const static int RENDER_SCALE_FACTOR = 4;
 const static float SPHEREMAP_SCALE_FACTOR = 0.5f; // lower is faster
 
 const static int DEF_VOL_SIZE = 128;
@@ -11030,23 +11031,75 @@ class VBOWrapper {
 public:
 	GLuint vao, vbo, ibo;
 
+	int drawEnum;
 	int sizeOfID;
+	int maxSizeOfID;
 	int sizeOfVD;
-	GLfloat* vertexData;
-	GLuint* indexData;
+	int maxSizeOfVD;
+	int numVecs;
+	int attSize;
+	// GLfloat* vertexData;
+	// GLuint* indexData;
 
 	VBOWrapper() {
 		
 	}
 	
-	void init(GLfloat* _vertexData, int _sizeOfVD, GLuint* _indexData, int _sizeOfID) {
+	void update(
+		GLfloat* _vertexData,
+		int _sizeOfVD,
+		GLuint* _indexData,
+		int _sizeOfID
+	) {
 		
+		sizeOfVD = _sizeOfVD;
+		
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(GLfloat)*_sizeOfVD, _vertexData);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		
+		
+		if (_indexData != NULL) {
+			sizeOfID = _sizeOfID;
+			
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+			glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sizeof(GLuint)*_sizeOfID, _indexData);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		}
+		
+		
+	}
+	
+	void init(
+		GLfloat* _vertexData,
+		int _sizeOfVD,
+		int _maxSizeOfVD,
+		GLuint* _indexData,
+		int _sizeOfID,
+		int _maxSizeOfID,
+		int _numVecs, // number of 4 component vecs
+		int _drawEnum //GL_DYNAMIC_DRAW GL_STATIC_DRAW
+	) {
+		
+		
+		numVecs = _numVecs;
 		
 		sizeOfID = _sizeOfID;
-		sizeOfVD = _sizeOfVD;
-		vertexData = _vertexData;
-		indexData = _indexData;
+		maxSizeOfID = _maxSizeOfID;
 		
+		sizeOfVD = _sizeOfVD;
+		maxSizeOfVD = _maxSizeOfVD;
+		
+		// vertexData = _vertexData;
+		// indexData = _indexData;
+		drawEnum = _drawEnum;
+		
+		int i;
+		
+		attSize = numVecs*4;
+		
+		// a value of zero means that its tightly packed
+		int strideVal = attSize*sizeof(GLfloat);
 		
 		
 		// vao and vbo handle
@@ -11062,24 +11115,28 @@ public:
 		
 		
 		// fill with data
-		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*sizeOfVD, vertexData, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*maxSizeOfVD, _vertexData, drawEnum);
 		
 		
-		// set up generic attrib pointers
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 8*sizeof(GLfloat), (char*)0 + 0*sizeof(GLfloat));
-		
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 8*sizeof(GLfloat), (char*)0 + 4*sizeof(GLfloat));
+		for (i = 0; i < numVecs; i++) {
+			glEnableVertexAttribArray(i);
+			glVertexAttribPointer(i, 4, GL_FLOAT, GL_FALSE, strideVal, (char*)0 + i*4*sizeof(GLfloat));
+		}
 		
 		
-		// generate and bind the index buffer object
-		glGenBuffers(1, &ibo);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+		//glBindBuffer(GL_ARRAY_BUFFER, 0);
 		
-
-		// fill with data
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*sizeOfID, indexData, GL_STATIC_DRAW);
+		if (_indexData != NULL) {
+			// generate and bind the index buffer object
+			glGenBuffers(1, &ibo);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+			
+			// fill with data
+			glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*maxSizeOfID, _indexData, drawEnum);
+			
+			//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		}
+		
 		
 		// "unbind" vao
 		glBindVertexArray(0);
@@ -11093,6 +11150,16 @@ public:
 		glBindVertexArray(0);
 	}
 	
+	void drawPoints() {
+		// glBindVertexArray(vao);
+		// glDrawArrays(GL_POINTS, 0, sizeOfVD/8);
+		// glBindVertexArray(0);
+		
+		glBindVertexArray(vao);
+		glDrawArrays(GL_POINTS, 0, sizeOfVD/attSize);
+		glBindVertexArray(0);
+		
+	}	
 	
 };
 
@@ -23068,6 +23135,7 @@ public:
   void setWH (int w, int h);
   void sampleFBODirect (FBOSet * fbos, int offset = 0, int _minOff = 0, int _maxOff = -1 /* read max */);
   void unsampleFBODirect (FBOSet * fbos, int offset = 0, int _minOff = 0, int _maxOff = -1 /* read max */);
+  void getMatrixFromFBO (string fboName);
   void bindFBODirect (FBOSet * fbos, int doClear = 1);
   FBOSet * getFBOByName (string & fboName);
   void sampleFBO (string fboName, int offset = 0, int swapFlag = -1, int minOff = 0, int maxOff = -1);
@@ -23362,6 +23430,7 @@ class GameOctree
 public:
   Singleton * singleton;
   uint * data;
+  int indexCount;
   int dimInVoxels;
   int maxDepth;
   int maxSize;
@@ -23370,14 +23439,20 @@ public:
   int nodeSize;
   int nextOpen;
   int renderLevel;
+  int maxVerts;
+  int vertComponents;
   bool hasTBO;
+  bool hasVBO;
+  std::vector <float> vertexVec;
+  VBOWrapper vboWrapper;
   TBOWrapper octTBO;
   GameOctree ();
-  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, int _maxSize = -1, int _nodeSize = -1);
+  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, int _maxSize = -1, int _nodeSize = -1);
+  void updateVBO ();
   void updateTBO ();
-  void captureBuffer ();
+  void captureBuffer (bool getPoints);
   void modRenderLevel (int modVal);
-  void addNode (int x, int y, int z, uint col);
+  bool addNode (int x, int y, int z, uint col);
   void remNode (uint index);
   void startRender ();
   void renderBB (int baseX, int baseY, int baseZ, int startIndex, int curLevel, int curDiv);
@@ -24755,6 +24830,7 @@ public:
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
   void updateLights ();
+  void rasterOct (GameOctree * gameOct);
   void renderOct (GameOctree * gameOct);
   void renderDebug ();
   void postProcess ();
@@ -24951,7 +25027,16 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		initAllMatrices();
 		
-		fsQuad.init(vertexDataQuad, 32, indexDataQuad, 6);
+		fsQuad.init(
+			vertexDataQuad,
+			32,
+			32,
+			indexDataQuad,
+			6,
+			6,
+			2,
+			GL_STATIC_DRAW
+		);
 		
 		colVecs[0].setFXYZ(255,0,0);
 		colVecs[1].setFXYZ(0,255,0);
@@ -25008,7 +25093,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		sphereMapOn = false;
 		waitingOnDestruction = false;
 		
-		physicsOn = true;
+		physicsOn = false;
 		isPressingMove = false;
 		fxaaOn = false;
 		doPathReport = false;
@@ -25214,6 +25299,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		int bufferDiv = 1;
 		
 		if (DO_POINTS) {
+			glDisable(GL_POINT_SMOOTH);
 			glEnable(GL_POINT_SPRITE);
 			glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 		}
@@ -25773,6 +25859,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("RadiosityCombineShader");
 		shaderStrings.push_back("FogShader");
 		shaderStrings.push_back("OctShader");
+		shaderStrings.push_back("RasterShader");
 		shaderStrings.push_back("GeomShader");
 		shaderStrings.push_back("BoxShader");
 		shaderStrings.push_back("PolyShader");
@@ -25969,6 +26056,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		}
 		
 		
+		fboMap["rasterFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, true, GL_NEAREST);
+		
 		
 		if (USE_SPHERE_MAP) {
 			fboMap["sphTargFBO"].init(8, bufferRenderDim.getIX()*SPHEREMAP_SCALE_FACTOR, bufferRenderDim.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth);
@@ -26047,7 +26136,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 		gameOct = new GameOctree();
-		gameOct->init(this,cellsPerWorld,true);
+		gameOct->init(this,cellsPerWorld,true,true);
 
 		gem = new GameEntManager();
 		gem->init(this);
@@ -27916,6 +28005,11 @@ void Singleton::unsampleFBODirect (FBOSet * fbos, int offset, int _minOff, int _
 			}
 		}
 	}
+void Singleton::getMatrixFromFBO (string fboName)
+                                              {
+		FBOSet *fbos = getFBOByName(fboName);
+		setMatrices(fbos->width, fbos->height);
+	}
 void Singleton::bindFBODirect (FBOSet * fbos, int doClear)
         {
 		setMatrices(fbos->width, fbos->height);
@@ -29074,8 +29168,9 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					renderingOctBounds = !renderingOctBounds;
 				break;
 				case '/':
-					gameOct->captureBuffer();
+					gameOct->captureBuffer(true);
 					gameOct->updateTBO();
+					gameOct->updateVBO();
 				break;
 				case '*':
 					renderingOct = !renderingOct;
@@ -32729,7 +32824,8 @@ void Singleton::frameUpdate ()
 						//gw->drawPrim();
 						
 						if (renderingOct) {
-							gw->renderOct(gameOct);
+							//gw->renderOct(gameOct);
+							gw->rasterOct(gameOct);
 						}
 						else {
 							gw->update();
@@ -34664,11 +34760,12 @@ GameOctree::GameOctree ()
                      {
 		
 	}
-void GameOctree::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, int _maxSize, int _nodeSize)
+void GameOctree::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, int _maxSize, int _nodeSize)
           {
 		singleton = _singleton;
 		dimInVoxels = _dimInVoxels;
 		hasTBO = _hasTBO;
+		hasVBO = _hasVBO;
 		maxSize = _maxSize;
 		nodeSize = _nodeSize;
 		
@@ -34679,11 +34776,16 @@ void GameOctree::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, i
 			nodeSize = 8;
 		}
 		
+		indexCount = 0;
+		
+		vertComponents = 2;
+		maxVerts = (maxSize-nodeSize)/nodeSize;
+		
 		maxDepth = intLogB2(dimInVoxels);
 		
 		data = new uint[maxSize];
 		
-		renderLevel = 0;
+		renderLevel = 12;
 		nullPtr = 0;
 		rootPtr = nodeSize;
 		nextOpen = rootPtr+nodeSize;
@@ -34697,14 +34799,41 @@ void GameOctree::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, i
 		if (hasTBO) {
 			octTBO.init(false,NULL,data,maxSize*4);
 		}
+		if (hasVBO) {
+			vertexVec.clear();
+			vertexVec.reserve(maxVerts*vertComponents*4);
+			
+			//indexVec.clear();
+			//indexVec.reserve(maxVerts);
+			
+			vboWrapper.init(
+				&(vertexVec[0]),
+				vertexVec.size()*vertComponents*4,
+				maxVerts*vertComponents*4,
+				NULL,//&(indexVec[0]),
+				0,//indexVec.size()
+				0,//maxVerts
+				vertComponents,
+				GL_DYNAMIC_DRAW
+			);
+		}
 		
+	}
+void GameOctree::updateVBO ()
+                         {
+		vboWrapper.update(
+			&(vertexVec[0]),
+			vertexVec.size()*vertComponents*4,
+			NULL,//&(indexVec[0]),
+			0 //indexVec.size()
+		);
 	}
 void GameOctree::updateTBO ()
                          {
 		octTBO.update(NULL, data, -1);
 	}
-void GameOctree::captureBuffer ()
-                             {
+void GameOctree::captureBuffer (bool getPoints)
+                                           {
 		
 		cout << "captureBuffer\n";
 
@@ -34722,6 +34851,9 @@ void GameOctree::captureBuffer ()
 		
 		float maxDis = singleton->clipDist[1]-50.0f;
 		
+		bool didFail = false;
+		bool wasNew = false;
+		
 		for (i = 0; i < fbow->numBytes; i += 4) {
 			x = fbow->pixelsFloat[i+0];
 			y = fbow->pixelsFloat[i+1];
@@ -34729,9 +34861,41 @@ void GameOctree::captureBuffer ()
 			
 			myPoint = btVector3(x,y,z);
 			
-			if (camPoint.distance(myPoint) < maxDis) {
-				addNode(x,y,z,1);
+			if (nextOpen >= (maxSize-nodeSize)) {
+				didFail = true;
+				break;
 			}
+			
+			if (camPoint.distance(myPoint) < maxDis) {
+				wasNew = addNode(x,y,z,1);
+				
+				if (getPoints&&wasNew) {
+					vertexVec.push_back(x);
+					vertexVec.push_back(y);
+					vertexVec.push_back(z);
+					vertexVec.push_back(1.0f);
+					
+					vertexVec.push_back(0.0f);
+					vertexVec.push_back(0.0f);
+					vertexVec.push_back(0.0f);
+					vertexVec.push_back(0.0f);
+					
+					//indexVec.push_back(indexCount);
+					//indexCount++;
+					
+				}
+				
+			}
+			
+		}
+		
+		if (didFail) {
+			cout << "octree full\n";
+			
+			// todo: wrap back to start of buffer and overwrite?
+			// wont work - would leave invalid pointers
+			// instead, keep linear list of inserted points and reform octree
+			// wrap this linear list
 			
 		}
 
@@ -34750,7 +34914,7 @@ void GameOctree::modRenderLevel (int modVal)
 		
 		cout << "renderLevel " << renderLevel << "\n";
 	}
-void GameOctree::addNode (int x, int y, int z, uint col)
+bool GameOctree::addNode (int x, int y, int z, uint col)
                                                     {
 		int curPtr = rootPtr;
 		int curLevel = 0;
@@ -34768,10 +34932,7 @@ void GameOctree::addNode (int x, int y, int z, uint col)
 		
 		int offset;
 		
-		if (nextOpen >= (maxSize-nodeSize)) {
-			cout << "octree full\n";
-			return;
-		}
+		bool wasNew = false;
 		
 		do {
 			subX = curX/curDiv;
@@ -34787,6 +34948,7 @@ void GameOctree::addNode (int x, int y, int z, uint col)
 			if (data[curPtr+offset] == nullPtr) {
 				data[curPtr+offset] = nextOpen;
 				nextOpen += nodeSize;
+				wasNew = true;
 			}
 			
 			curPtr = data[curPtr+offset];
@@ -34797,7 +34959,7 @@ void GameOctree::addNode (int x, int y, int z, uint col)
 		
 		data[curPtr+0] = col;
 		
-		
+		return wasNew;
 	}
 void GameOctree::remNode (uint index)
                                  {
@@ -63956,15 +64118,67 @@ UPDATE_LIGHTS_END:
 
 
 	}
+void GameWorld::rasterOct (GameOctree * gameOct)
+                                            {
+		
+		// get view matrix
+		singleton->perspectiveOn = true;
+		singleton->getMatrixFromFBO("rasterFBO");
+		singleton->perspectiveOn = false;
+
+
+		glEnable(GL_DEPTH_TEST);
+		//glDepthMask(GL_TRUE);
+
+		singleton->bindShader("RasterShader");
+		singleton->bindFBO("rasterFBO");
+
+		// singleton->setShaderTBO(
+		// 	0,
+		// 	gameOct->octTBO.tbo_tex,
+		// 	gameOct->octTBO.tbo_buf,
+		// 	false
+		// );
+
+		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+		singleton->setShaderFloat("dimInVoxels", gameOct->dimInVoxels);
+		singleton->setShaderInt("renderLevel", gameOct->renderLevel);
+		singleton->setShaderInt("maxSize", gameOct->maxSize);
+		singleton->setShaderInt("rootPtr", gameOct->rootPtr);
+		singleton->setShaderInt("nodeSize", gameOct->nodeSize);
+		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+		
+		
+		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
+		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
+
+		gameOct->vboWrapper.drawPoints();
+
+		//singleton->setShaderTBO(0,0,0,false);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		
+		
+		//glDepthMask(GL_FALSE);
+		glDisable(GL_DEPTH_TEST);
+
+		
+
+		singleton->drawFBO("rasterFBO", 0, 1.0f);
+		
+		glutSwapBuffers();
+		
+	}
 void GameWorld::renderOct (GameOctree * gameOct)
                                             {
 		
 		// get view matrix
 		singleton->perspectiveOn = true;
-		singleton->bindShader("OctShader");
-		singleton->bindFBO("resultFBO0");
-		singleton->unbindFBO();
-		singleton->unbindShader();
+		singleton->getMatrixFromFBO("resultFBO0");
 		singleton->perspectiveOn = false;
 		// 
 		

@@ -520,6 +520,7 @@ public:
   void setWH (int w, int h);
   void sampleFBODirect (FBOSet * fbos, int offset = 0, int _minOff = 0, int _maxOff = -1 /* read max */);
   void unsampleFBODirect (FBOSet * fbos, int offset = 0, int _minOff = 0, int _maxOff = -1 /* read max */);
+  void getMatrixFromFBO (string fboName);
   void bindFBODirect (FBOSet * fbos, int doClear = 1);
   FBOSet * getFBOByName (string & fboName);
   void sampleFBO (string fboName, int offset = 0, int swapFlag = -1, int minOff = 0, int maxOff = -1);
@@ -814,6 +815,7 @@ class GameOctree
 public:
   Singleton * singleton;
   uint * data;
+  int indexCount;
   int dimInVoxels;
   int maxDepth;
   int maxSize;
@@ -822,14 +824,20 @@ public:
   int nodeSize;
   int nextOpen;
   int renderLevel;
+  int maxVerts;
+  int vertComponents;
   bool hasTBO;
+  bool hasVBO;
+  std::vector <float> vertexVec;
+  VBOWrapper vboWrapper;
   TBOWrapper octTBO;
   GameOctree ();
-  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, int _maxSize = -1, int _nodeSize = -1);
+  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, int _maxSize = -1, int _nodeSize = -1);
+  void updateVBO ();
   void updateTBO ();
-  void captureBuffer ();
+  void captureBuffer (bool getPoints);
   void modRenderLevel (int modVal);
-  void addNode (int x, int y, int z, uint col);
+  bool addNode (int x, int y, int z, uint col);
   void remNode (uint index);
   void startRender ();
   void renderBB (int baseX, int baseY, int baseZ, int startIndex, int curLevel, int curDiv);
@@ -2207,6 +2215,7 @@ public:
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
   void updateLights ();
+  void rasterOct (GameOctree * gameOct);
   void renderOct (GameOctree * gameOct);
   void renderDebug ();
   void postProcess ();

@@ -5,6 +5,7 @@ public:
 	
 	uint* data;
 	
+	int indexCount;
 	int dimInVoxels;
 	int maxDepth;
 	int maxSize;
@@ -14,24 +15,35 @@ public:
 	int nodeSize;
 	int nextOpen;
 	int renderLevel;
+	int maxVerts;
+	int vertComponents;
 	
 	bool hasTBO;
+	bool hasVBO;
+	
+	
+	//std::vector<uint> indexVec;
+	std::vector<float> vertexVec;
+	VBOWrapper vboWrapper;
 	TBOWrapper octTBO;
 	
 	GameOctree() {
 		
 	}
 	
+	
 	void init(
 		Singleton* _singleton,
 		int _dimInVoxels,
 		bool _hasTBO,
+		bool _hasVBO,
 		int _maxSize = -1,
 		int _nodeSize = -1
 	) {
 		singleton = _singleton;
 		dimInVoxels = _dimInVoxels;
 		hasTBO = _hasTBO;
+		hasVBO = _hasVBO;
 		maxSize = _maxSize;
 		nodeSize = _nodeSize;
 		
@@ -42,11 +54,16 @@ public:
 			nodeSize = 8;
 		}
 		
+		indexCount = 0;
+		
+		vertComponents = 2;
+		maxVerts = (maxSize-nodeSize)/nodeSize;
+		
 		maxDepth = intLogB2(dimInVoxels);
 		
 		data = new uint[maxSize];
 		
-		renderLevel = 0;
+		renderLevel = 12;
 		nullPtr = 0;
 		rootPtr = nodeSize;
 		nextOpen = rootPtr+nodeSize;
@@ -60,14 +77,41 @@ public:
 		if (hasTBO) {
 			octTBO.init(false,NULL,data,maxSize*4);
 		}
+		if (hasVBO) {
+			vertexVec.clear();
+			vertexVec.reserve(maxVerts*vertComponents*4);
+			
+			//indexVec.clear();
+			//indexVec.reserve(maxVerts);
+			
+			vboWrapper.init(
+				&(vertexVec[0]),
+				vertexVec.size()*vertComponents*4,
+				maxVerts*vertComponents*4,
+				NULL,//&(indexVec[0]),
+				0,//indexVec.size()
+				0,//maxVerts
+				vertComponents,
+				GL_DYNAMIC_DRAW
+			);
+		}
 		
+	}
+	
+	void updateVBO() {
+		vboWrapper.update(
+			&(vertexVec[0]),
+			vertexVec.size()*vertComponents*4,
+			NULL,//&(indexVec[0]),
+			0 //indexVec.size()
+		);
 	}
 	
 	void updateTBO() {
 		octTBO.update(NULL, data, -1);
 	}
 	
-	void captureBuffer() {
+	void captureBuffer(bool getPoints) {
 		
 		cout << "captureBuffer\n";
 
@@ -85,6 +129,9 @@ public:
 		
 		float maxDis = singleton->clipDist[1]-50.0f;
 		
+		bool didFail = false;
+		bool wasNew = false;
+		
 		for (i = 0; i < fbow->numBytes; i += 4) {
 			x = fbow->pixelsFloat[i+0];
 			y = fbow->pixelsFloat[i+1];
@@ -92,17 +139,47 @@ public:
 			
 			myPoint = btVector3(x,y,z);
 			
-			if (camPoint.distance(myPoint) < maxDis) {
-				addNode(x,y,z,1);
+			if (nextOpen >= (maxSize-nodeSize)) {
+				didFail = true;
+				break;
 			}
+			
+			if (camPoint.distance(myPoint) < maxDis) {
+				wasNew = addNode(x,y,z,1);
+				
+				if (getPoints&&wasNew) {
+					vertexVec.push_back(x);
+					vertexVec.push_back(y);
+					vertexVec.push_back(z);
+					vertexVec.push_back(1.0f);
+					
+					vertexVec.push_back(0.0f);
+					vertexVec.push_back(0.0f);
+					vertexVec.push_back(0.0f);
+					vertexVec.push_back(0.0f);
+					
+					//indexVec.push_back(indexCount);
+					//indexCount++;
+					
+				}
+				
+			}
+			
+		}
+		
+		if (didFail) {
+			cout << "octree full\n";
+			
+			// todo: wrap back to start of buffer and overwrite?
+			// wont work - would leave invalid pointers
+			// instead, keep linear list of inserted points and reform octree
+			// wrap this linear list
 			
 		}
 
 		cout << "newSize " << nextOpen << "\n";
 		
 	}
-	
-	
 	
 	void modRenderLevel(int modVal) {
 		renderLevel += modVal;
@@ -116,7 +193,7 @@ public:
 		cout << "renderLevel " << renderLevel << "\n";
 	}
 	
-	void addNode(int x, int y, int z, uint col) {
+	bool addNode(int x, int y, int z, uint col) {
 		int curPtr = rootPtr;
 		int curLevel = 0;
 		bool doProc = true;
@@ -133,10 +210,7 @@ public:
 		
 		int offset;
 		
-		if (nextOpen >= (maxSize-nodeSize)) {
-			cout << "octree full\n";
-			return;
-		}
+		bool wasNew = false;
 		
 		do {
 			subX = curX/curDiv;
@@ -152,6 +226,7 @@ public:
 			if (data[curPtr+offset] == nullPtr) {
 				data[curPtr+offset] = nextOpen;
 				nextOpen += nodeSize;
+				wasNew = true;
 			}
 			
 			curPtr = data[curPtr+offset];
@@ -162,7 +237,7 @@ public:
 		
 		data[curPtr+0] = col;
 		
-		
+		return wasNew;
 	}
 	
 	void remNode(uint index) {

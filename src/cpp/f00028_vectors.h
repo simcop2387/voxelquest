@@ -3050,23 +3050,75 @@ class VBOWrapper {
 public:
 	GLuint vao, vbo, ibo;
 
+	int drawEnum;
 	int sizeOfID;
+	int maxSizeOfID;
 	int sizeOfVD;
-	GLfloat* vertexData;
-	GLuint* indexData;
+	int maxSizeOfVD;
+	int numVecs;
+	int attSize;
+	// GLfloat* vertexData;
+	// GLuint* indexData;
 
 	VBOWrapper() {
 		
 	}
 	
-	void init(GLfloat* _vertexData, int _sizeOfVD, GLuint* _indexData, int _sizeOfID) {
+	void update(
+		GLfloat* _vertexData,
+		int _sizeOfVD,
+		GLuint* _indexData,
+		int _sizeOfID
+	) {
 		
+		sizeOfVD = _sizeOfVD;
+		
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(GLfloat)*_sizeOfVD, _vertexData);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		
+		
+		if (_indexData != NULL) {
+			sizeOfID = _sizeOfID;
+			
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+			glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sizeof(GLuint)*_sizeOfID, _indexData);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		}
+		
+		
+	}
+	
+	void init(
+		GLfloat* _vertexData,
+		int _sizeOfVD,
+		int _maxSizeOfVD,
+		GLuint* _indexData,
+		int _sizeOfID,
+		int _maxSizeOfID,
+		int _numVecs, // number of 4 component vecs
+		int _drawEnum //GL_DYNAMIC_DRAW GL_STATIC_DRAW
+	) {
+		
+		
+		numVecs = _numVecs;
 		
 		sizeOfID = _sizeOfID;
-		sizeOfVD = _sizeOfVD;
-		vertexData = _vertexData;
-		indexData = _indexData;
+		maxSizeOfID = _maxSizeOfID;
 		
+		sizeOfVD = _sizeOfVD;
+		maxSizeOfVD = _maxSizeOfVD;
+		
+		// vertexData = _vertexData;
+		// indexData = _indexData;
+		drawEnum = _drawEnum;
+		
+		int i;
+		
+		attSize = numVecs*4;
+		
+		// a value of zero means that its tightly packed
+		int strideVal = attSize*sizeof(GLfloat);
 		
 		
 		// vao and vbo handle
@@ -3082,24 +3134,28 @@ public:
 		
 		
 		// fill with data
-		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*sizeOfVD, vertexData, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*maxSizeOfVD, _vertexData, drawEnum);
 		
 		
-		// set up generic attrib pointers
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 8*sizeof(GLfloat), (char*)0 + 0*sizeof(GLfloat));
-		
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 8*sizeof(GLfloat), (char*)0 + 4*sizeof(GLfloat));
+		for (i = 0; i < numVecs; i++) {
+			glEnableVertexAttribArray(i);
+			glVertexAttribPointer(i, 4, GL_FLOAT, GL_FALSE, strideVal, (char*)0 + i*4*sizeof(GLfloat));
+		}
 		
 		
-		// generate and bind the index buffer object
-		glGenBuffers(1, &ibo);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+		//glBindBuffer(GL_ARRAY_BUFFER, 0);
 		
-
-		// fill with data
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*sizeOfID, indexData, GL_STATIC_DRAW);
+		if (_indexData != NULL) {
+			// generate and bind the index buffer object
+			glGenBuffers(1, &ibo);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+			
+			// fill with data
+			glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*maxSizeOfID, _indexData, drawEnum);
+			
+			//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		}
+		
 		
 		// "unbind" vao
 		glBindVertexArray(0);
@@ -3113,6 +3169,16 @@ public:
 		glBindVertexArray(0);
 	}
 	
+	void drawPoints() {
+		// glBindVertexArray(vao);
+		// glDrawArrays(GL_POINTS, 0, sizeOfVD/8);
+		// glBindVertexArray(0);
+		
+		glBindVertexArray(vao);
+		glDrawArrays(GL_POINTS, 0, sizeOfVD/attSize);
+		glBindVertexArray(0);
+		
+	}	
 	
 };
 

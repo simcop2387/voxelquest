@@ -4,7 +4,6 @@ uniform usamplerBuffer Texture0;
 
 uniform float dimInVoxels;
 uniform int renderLevel;
-//uniform int maxDepth;
 uniform int maxSize;
 uniform int rootPtr;
 uniform int nodeSize;
@@ -31,6 +30,7 @@ void main() {
 
 $
 
+// qqqq
 
 const int MAX_STEPS = 128;
 const int MAX_DEPTH = 16;
@@ -176,6 +176,7 @@ void main() {
 	int childPtrs[8];
 	int curChild;
 	int minK;
+	int maxK;
 	vec3 curNodeOffset;
 	
 	
@@ -187,6 +188,11 @@ void main() {
 	bool myTest = false;
 	bool doBreak = false;
 	
+	ivec4 oneVec = ivec4(0);
+
+	int disRL;
+	float maxDepth = renderLevel;
+	float minDepth = 2.0;
 
 
 	if (hitBox.x < hitBox.y) {
@@ -204,6 +210,7 @@ void main() {
 
 			readVal0 = ivec4(texelFetch(Texture0, curPtr))/4;
 			readVal1 = ivec4(texelFetch(Texture0, curPtr+1))/4;
+
 
 			childPtrs[0] = readVal0.x;
 			childPtrs[1] = readVal0.y;
@@ -224,6 +231,7 @@ void main() {
 				
 				curChild = childPtrs[j];
 				
+				
 				if (curChild != 0) {
 					
 					
@@ -235,13 +243,24 @@ void main() {
 					
 					curHitBox = aabbIntersect(ro,rd,testXYZ,testXYZ2);
 					
-					if (all(lessThanEqual(ro, testXYZ2))&&all(greaterThanEqual(ro, testXYZ))) {
-						curHitBox.x = 0.0;
-						curHitBox.y = 1.0;
-					}
+					// if (all(lessThanEqual(ro, testXYZ2))&&all(greaterThanEqual(ro, testXYZ))) {
+					// 	curHitBox.x = 0.0;
+					// 	curHitBox.y = 1.0;
+					// }
+					
+					
 					
 					if (curHitBox.x < curHitBox.y) {
-						if (stackInd >= renderLevel) {
+						disRL = int(
+							
+							mix(
+								maxDepth,
+								minDepth,
+								clamp(curHitBox.x*2.0/clipDist.y,0.0,1.0)
+							)
+						);
+						
+						if (stackInd >= disRL) {
 							doBreak = true;
 						}
 						else {
@@ -273,6 +292,10 @@ void main() {
 				stackInd--;
 				curDiv *= 2.0;
 				curDiv2 *= 2.0;
+				
+				if (stackInd <= 0) {
+					break;
+				}
 			}
 
 		}
@@ -292,10 +315,17 @@ void main() {
 	}
 	else {
 		
-		FragColor0 = vec4(vec3(
-			float(i)/100.0
-			//mod(pos/256.0,1.0)
-		),1.0);//vec4((rd+1.0)*0.5,1.0);
+		//if (doBreak) {
+			FragColor0 = vec4(vec3(
+				float(i)/float(MAX_STEPS)
+				//mod(pos/256.0,1.0)
+			),1.0);//vec4((rd+1.0)*0.5,1.0);
+		// }
+		// else {
+		// 	FragColor0 = vec4(0.0,1.0,0.0,1.0);
+		// }
+		
+		
 		
 		
 	}

@@ -694,7 +694,16 @@ public:
 		
 		initAllMatrices();
 		
-		fsQuad.init(vertexDataQuad, 32, indexDataQuad, 6);
+		fsQuad.init(
+			vertexDataQuad,
+			32,
+			32,
+			indexDataQuad,
+			6,
+			6,
+			2,
+			GL_STATIC_DRAW
+		);
 		
 		colVecs[0].setFXYZ(255,0,0);
 		colVecs[1].setFXYZ(0,255,0);
@@ -751,7 +760,7 @@ public:
 		sphereMapOn = false;
 		waitingOnDestruction = false;
 		
-		physicsOn = true;
+		physicsOn = false;
 		isPressingMove = false;
 		fxaaOn = false;
 		doPathReport = false;
@@ -957,6 +966,7 @@ public:
 		int bufferDiv = 1;
 		
 		if (DO_POINTS) {
+			glDisable(GL_POINT_SMOOTH);
 			glEnable(GL_POINT_SPRITE);
 			glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 		}
@@ -1516,6 +1526,7 @@ public:
 		shaderStrings.push_back("RadiosityCombineShader");
 		shaderStrings.push_back("FogShader");
 		shaderStrings.push_back("OctShader");
+		shaderStrings.push_back("RasterShader");
 		shaderStrings.push_back("GeomShader");
 		shaderStrings.push_back("BoxShader");
 		shaderStrings.push_back("PolyShader");
@@ -1712,6 +1723,8 @@ public:
 		}
 		
 		
+		fboMap["rasterFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, true, GL_NEAREST);
+		
 		
 		if (USE_SPHERE_MAP) {
 			fboMap["sphTargFBO"].init(8, bufferRenderDim.getIX()*SPHEREMAP_SCALE_FACTOR, bufferRenderDim.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth);
@@ -1790,7 +1803,7 @@ public:
 
 
 		gameOct = new GameOctree();
-		gameOct->init(this,cellsPerWorld,true);
+		gameOct->init(this,cellsPerWorld,true,true);
 
 		gem = new GameEntManager();
 		gem->init(this);
@@ -3861,6 +3874,11 @@ DISPATCH_EVENT_END:
 	}
 
 
+	void getMatrixFromFBO(string fboName) {
+		FBOSet *fbos = getFBOByName(fboName);
+		setMatrices(fbos->width, fbos->height);
+	}
+
 
 	void bindFBODirect(FBOSet *fbos, int doClear = 1)
 	{
@@ -5204,8 +5222,9 @@ DISPATCH_EVENT_END:
 					renderingOctBounds = !renderingOctBounds;
 				break;
 				case '/':
-					gameOct->captureBuffer();
+					gameOct->captureBuffer(true);
 					gameOct->updateTBO();
+					gameOct->updateVBO();
 				break;
 				case '*':
 					renderingOct = !renderingOct;
@@ -9105,7 +9124,8 @@ DISPATCH_EVENT_END:
 						//gw->drawPrim();
 						
 						if (renderingOct) {
-							gw->renderOct(gameOct);
+							//gw->renderOct(gameOct);
+							gw->rasterOct(gameOct);
 						}
 						else {
 							gw->update();

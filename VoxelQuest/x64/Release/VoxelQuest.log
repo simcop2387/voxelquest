@@ -1,4 +1,4 @@
-﻿Build started 3/4/2016 3:28:17 AM.
+﻿Build started 3/5/2016 10:21:20 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -1008,23 +1008,45 @@
          GL_MAX_TEXTURE_BUFFER_SIZE 134217728
          genBlockHolder
          captureBuffer
-         newSize 451608
-         renderLevel 1
-         renderLevel 2
-         renderLevel 3
-         renderLevel 4
-         renderLevel 5
-         renderLevel 6
-         renderLevel 7
-         renderLevel 8
-         renderLevel 9
-         renderLevel 10
+         newSize 2119568
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         start FPS timer
+         Average Frame Time: 17822.4
+         FPS: 56.109
+         start FPS timer
+         Average Frame Time: 16679.7
+         FPS: 59.9527
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
          captureBuffer
-         newSize 968216
-         captureBuffer
-         newSize 1413616
-         captureBuffer
-         newSize 1857808
+         newSize 3973000
          Loading:  ..\data\constants.js         
          Load Successful          
          
@@ -1055,61 +1077,6 @@
          Valid JSON
                    
          Shaders Refreshed
-         renderLevel 11
-         renderLevel 10
-         renderLevel 9
-         renderLevel 8
-         renderLevel 7
-         renderLevel 8
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         renderLevel 9
-         renderLevel 10
-         renderLevel 11
-         renderLevel 12
          Loading:  ..\data\constants.js         
          Load Successful          
          
@@ -1141,25 +1108,12 @@
                    
          Shaders Refreshed
          captureBuffer
-         newSize 2222408
-         captureBuffer
-         newSize 2569448
-         renderLevel 13
-         renderLevel 14
-         renderLevel 13
-         captureBuffer
-         newSize 2719728
-         renderLevel 12
-         renderLevel 11
-         renderLevel 10
-         renderLevel 9
-         renderLevel 10
-         captureBuffer
-         newSize 2719728
-         captureBuffer
-         newSize 3138304
+         newSize 7261064
+         start FPS timer
+         Average Frame Time: 16679.7
+         FPS: 59.9529
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:07:10.31
+Time Elapsed 00:06:45.66

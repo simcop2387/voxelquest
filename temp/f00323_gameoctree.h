@@ -7,11 +7,12 @@ GameOctree::GameOctree ()
                      {
 		
 	}
-void GameOctree::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, int _maxSize, int _nodeSize)
+void GameOctree::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, int _maxSize, int _nodeSize)
           {
 		singleton = _singleton;
 		dimInVoxels = _dimInVoxels;
 		hasTBO = _hasTBO;
+		hasVBO = _hasVBO;
 		maxSize = _maxSize;
 		nodeSize = _nodeSize;
 		
@@ -22,11 +23,16 @@ void GameOctree::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, i
 			nodeSize = 8;
 		}
 		
+		indexCount = 0;
+		
+		vertComponents = 2;
+		maxVerts = (maxSize-nodeSize)/nodeSize;
+		
 		maxDepth = intLogB2(dimInVoxels);
 		
 		data = new uint[maxSize];
 		
-		renderLevel = 0;
+		renderLevel = 12;
 		nullPtr = 0;
 		rootPtr = nodeSize;
 		nextOpen = rootPtr+nodeSize;
@@ -40,14 +46,41 @@ void GameOctree::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, i
 		if (hasTBO) {
 			octTBO.init(false,NULL,data,maxSize*4);
 		}
+		if (hasVBO) {
+			vertexVec.clear();
+			vertexVec.reserve(maxVerts*vertComponents*4);
+			
+			//indexVec.clear();
+			//indexVec.reserve(maxVerts);
+			
+			vboWrapper.init(
+				&(vertexVec[0]),
+				vertexVec.size()*vertComponents*4,
+				maxVerts*vertComponents*4,
+				NULL,//&(indexVec[0]),
+				0,//indexVec.size()
+				0,//maxVerts
+				vertComponents,
+				GL_DYNAMIC_DRAW
+			);
+		}
 		
+	}
+void GameOctree::updateVBO ()
+                         {
+		vboWrapper.update(
+			&(vertexVec[0]),
+			vertexVec.size()*vertComponents*4,
+			NULL,//&(indexVec[0]),
+			0 //indexVec.size()
+		);
 	}
 void GameOctree::updateTBO ()
                          {
 		octTBO.update(NULL, data, -1);
 	}
-void GameOctree::captureBuffer ()
-                             {
+void GameOctree::captureBuffer (bool getPoints)
+                                           {
 		
 		cout << "captureBuffer\n";
 
@@ -65,6 +98,9 @@ void GameOctree::captureBuffer ()
 		
 		float maxDis = singleton->clipDist[1]-50.0f;
 		
+		bool didFail = false;
+		bool wasNew = false;
+		
 		for (i = 0; i < fbow->numBytes; i += 4) {
 			x = fbow->pixelsFloat[i+0];
 			y = fbow->pixelsFloat[i+1];
@@ -72,9 +108,41 @@ void GameOctree::captureBuffer ()
 			
 			myPoint = btVector3(x,y,z);
 			
-			if (camPoint.distance(myPoint) < maxDis) {
-				addNode(x,y,z,1);
+			if (nextOpen >= (maxSize-nodeSize)) {
+				didFail = true;
+				break;
 			}
+			
+			if (camPoint.distance(myPoint) < maxDis) {
+				wasNew = addNode(x,y,z,1);
+				
+				if (getPoints&&wasNew) {
+					vertexVec.push_back(x);
+					vertexVec.push_back(y);
+					vertexVec.push_back(z);
+					vertexVec.push_back(1.0f);
+					
+					vertexVec.push_back(0.0f);
+					vertexVec.push_back(0.0f);
+					vertexVec.push_back(0.0f);
+					vertexVec.push_back(0.0f);
+					
+					//indexVec.push_back(indexCount);
+					//indexCount++;
+					
+				}
+				
+			}
+			
+		}
+		
+		if (didFail) {
+			cout << "octree full\n";
+			
+			// todo: wrap back to start of buffer and overwrite?
+			// wont work - would leave invalid pointers
+			// instead, keep linear list of inserted points and reform octree
+			// wrap this linear list
 			
 		}
 
@@ -93,7 +161,7 @@ void GameOctree::modRenderLevel (int modVal)
 		
 		cout << "renderLevel " << renderLevel << "\n";
 	}
-void GameOctree::addNode (int x, int y, int z, uint col)
+bool GameOctree::addNode (int x, int y, int z, uint col)
                                                     {
 		int curPtr = rootPtr;
 		int curLevel = 0;
@@ -111,10 +179,7 @@ void GameOctree::addNode (int x, int y, int z, uint col)
 		
 		int offset;
 		
-		if (nextOpen >= (maxSize-nodeSize)) {
-			cout << "octree full\n";
-			return;
-		}
+		bool wasNew = false;
 		
 		do {
 			subX = curX/curDiv;
@@ -130,6 +195,7 @@ void GameOctree::addNode (int x, int y, int z, uint col)
 			if (data[curPtr+offset] == nullPtr) {
 				data[curPtr+offset] = nextOpen;
 				nextOpen += nodeSize;
+				wasNew = true;
 			}
 			
 			curPtr = data[curPtr+offset];
@@ -140,7 +206,7 @@ void GameOctree::addNode (int x, int y, int z, uint col)
 		
 		data[curPtr+0] = col;
 		
-		
+		return wasNew;
 	}
 void GameOctree::remNode (uint index)
                                  {
