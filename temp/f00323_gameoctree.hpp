@@ -3,12 +3,16 @@ class GameOctree {
 public:
 	Singleton* singleton;
 	
-	uint* data;
+	uint* vData;
+	uint* nData;
+	
+	int numNeighbors;
+	int vDataSize;
+	int nDataSize;
 	
 	int indexCount;
 	int dimInVoxels;
 	int maxDepth;
-	int maxSize;
 	
 	int nullPtr;
 	int rootPtr;
@@ -20,6 +24,7 @@ public:
 	
 	bool hasTBO;
 	bool hasVBO;
+	bool hasNeighbors;
 	
 	
 	//std::vector<uint> indexVec;
@@ -37,31 +42,46 @@ public:
 		int _dimInVoxels,
 		bool _hasTBO,
 		bool _hasVBO,
-		int _maxSize = -1,
-		int _nodeSize = -1
+		bool _hasNeighbors,
+		int _maxVerts
+		//int _maxSize = -1,
+		//int _nodeSize = -1
 	) {
 		singleton = _singleton;
 		dimInVoxels = _dimInVoxels;
 		hasTBO = _hasTBO;
 		hasVBO = _hasVBO;
-		maxSize = _maxSize;
-		nodeSize = _nodeSize;
+		hasNeighbors = _hasNeighbors;
+		maxVerts = _maxVerts;
+		nodeSize = 8;
+		numNeighbors = 6;
 		
-		if (maxSize == -1) {
-			maxSize = (128/4)*1024*1024;
-		}
-		if (nodeSize == -1) {
-			nodeSize = 8;
-		}
+		//nodeSize = _nodeSize;
+		
+		// if (maxSize == -1) {
+		// 	maxSize = (128/4)*1024*1024;
+		// }
+		// if (nodeSize == -1) {
+			
+		// }
 		
 		indexCount = 0;
 		
 		vertComponents = 2;
-		maxVerts = (maxSize-nodeSize)/nodeSize;
+		vDataSize = maxVerts*nodeSize;
+		nDataSize = maxVerts*numNeighbors;
 		
 		maxDepth = intLogB2(dimInVoxels);
 		
-		data = new uint[maxSize];
+		vData = new uint[vDataSize];
+		
+		if (hasNeighbors) {
+			nData = new uint[nDataSize];
+		}
+		else {
+			nData = NULL;
+		}
+		
 		
 		renderLevel = 12;
 		nullPtr = 0;
@@ -70,13 +90,14 @@ public:
 		
 		int i;
 		
-		for (i = 0; i < maxSize; i++) {
-			data[i] = nullPtr;
+		for (i = 0; i < vDataSize; i++) {
+			vData[i] = nullPtr;
 		}
 		
 		if (hasTBO) {
-			octTBO.init(false,NULL,data,maxSize*4);
+			octTBO.init(false,NULL,vData,vDataSize*4);
 		}
+		
 		if (hasVBO) {
 			vertexVec.clear();
 			vertexVec.reserve(maxVerts*vertComponents*4);
@@ -92,13 +113,17 @@ public:
 				0,//indexVec.size()
 				0,//maxVerts
 				vertComponents,
-				GL_DYNAMIC_DRAW
+				GL_STATIC_DRAW
 			);
 		}
 		
 	}
 	
 	void updateVBO() {
+		if (!hasVBO) {
+			return;
+		}
+		
 		vboWrapper.update(
 			&(vertexVec[0]),
 			vertexVec.size()*vertComponents*4,
@@ -108,7 +133,11 @@ public:
 	}
 	
 	void updateTBO() {
-		octTBO.update(NULL, data, -1);
+		if (!hasTBO) {
+			return;
+		}
+		
+		octTBO.update(NULL, vData, -1);
 	}
 	
 	void captureBuffer(bool getPoints) {
@@ -118,11 +147,16 @@ public:
 		FBOWrapper *fbow = singleton->getFBOWrapper("solidTargFBO", 0);
 		fbow->getPixels();
 		
+		FBOWrapper *fbow2 = singleton->getFBOWrapper("resultFBO0", 0);
+		fbow2->getPixels();
+		
 		int i;
 		
 		int x;
 		int y;
 		int z;
+		
+		float r, g, b;
 		
 		btVector3 myPoint;
 		btVector3 camPoint = singleton->cameraGetPosNoShake()->getBTV();
@@ -137,15 +171,24 @@ public:
 			y = fbow->pixelsFloat[i+1];
 			z = fbow->pixelsFloat[i+2];
 			
+			r = fbow2->pixelsChar[i+0];
+			g = fbow2->pixelsChar[i+1];
+			b = fbow2->pixelsChar[i+2];
+			
+			r /= 255.0f;
+			g /= 255.0f;
+			b /= 255.0f;
+			
+			
 			myPoint = btVector3(x,y,z);
 			
-			if (nextOpen >= (maxSize-nodeSize)) {
+			if (nextOpen >= (vDataSize-nodeSize)) {
 				didFail = true;
 				break;
 			}
 			
 			if (camPoint.distance(myPoint) < maxDis) {
-				wasNew = addNode(x,y,z,1);
+				wasNew = addNode(x,y,z,r,g,b);
 				
 				if (getPoints&&wasNew) {
 					vertexVec.push_back(x);
@@ -153,9 +196,9 @@ public:
 					vertexVec.push_back(z);
 					vertexVec.push_back(1.0f);
 					
-					vertexVec.push_back(0.0f);
-					vertexVec.push_back(0.0f);
-					vertexVec.push_back(0.0f);
+					vertexVec.push_back(r);
+					vertexVec.push_back(g);
+					vertexVec.push_back(b);
 					vertexVec.push_back(0.0f);
 					
 					//indexVec.push_back(indexCount);
@@ -177,7 +220,7 @@ public:
 			
 		}
 
-		cout << "newSize " << nextOpen << "\n";
+		cout << "points " << vertexVec.size()/8 << "\n";
 		
 	}
 	
@@ -193,7 +236,7 @@ public:
 		cout << "renderLevel " << renderLevel << "\n";
 	}
 	
-	bool addNode(int x, int y, int z, uint col) {
+	bool addNode(int x, int y, int z, float r, float g, float b) {
 		int curPtr = rootPtr;
 		int curLevel = 0;
 		bool doProc = true;
@@ -223,19 +266,19 @@ public:
 			
 			offset = subX + subY*2 + subZ*4;
 			
-			if (data[curPtr+offset] == nullPtr) {
-				data[curPtr+offset] = nextOpen;
+			if (vData[curPtr+offset] == nullPtr) {
+				vData[curPtr+offset] = nextOpen;
 				nextOpen += nodeSize;
 				wasNew = true;
 			}
 			
-			curPtr = data[curPtr+offset];
+			curPtr = vData[curPtr+offset];
 			
 			curDiv = curDiv/2;
 			
-		} while (curDiv > 1);
+		} while (curDiv > 4);
 		
-		data[curPtr+0] = col;
+		vData[curPtr+0] = 1;
 		
 		return wasNew;
 	}
@@ -283,7 +326,7 @@ public:
 			ym = (i-zm*4)/2;
 			xm = (i-(zm*4 + ym*2));
 			
-			if (data[startIndex+i] == nullPtr) {
+			if (vData[startIndex+i] == nullPtr) {
 				
 			}
 			else {
@@ -291,7 +334,7 @@ public:
 					baseX+xm*curDiv2,
 					baseY+ym*curDiv2,
 					baseZ+zm*curDiv2,
-					data[startIndex+i],
+					vData[startIndex+i],
 					curLevel+1,
 					curDiv2
 				);

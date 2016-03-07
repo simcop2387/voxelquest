@@ -4795,8 +4795,7 @@ UPDATE_LIGHTS_END:
 	// 	singleton->setShaderVec2("resolution", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 	// 	singleton->setShaderFloat("curTime", singleton->curTime);
 	// 	singleton->drawFSQuad();
-		
-		
+
 	// 	singleton->unsampleFBO("waterTargFBO",2);
 	// 	singleton->unsampleFBO("solidTargFBO",0);
 		
@@ -4826,10 +4825,11 @@ UPDATE_LIGHTS_END:
 		// 	false
 		// );
 
+		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 		singleton->setShaderFloat("dimInVoxels", gameOct->dimInVoxels);
 		singleton->setShaderInt("renderLevel", gameOct->renderLevel);
-		singleton->setShaderInt("maxSize", gameOct->maxSize);
+		singleton->setShaderInt("vDataSize", gameOct->vDataSize);
 		singleton->setShaderInt("rootPtr", gameOct->rootPtr);
 		singleton->setShaderInt("nodeSize", gameOct->nodeSize);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
@@ -4881,7 +4881,7 @@ UPDATE_LIGHTS_END:
 
 		singleton->setShaderFloat("dimInVoxels", gameOct->dimInVoxels);
 		singleton->setShaderInt("renderLevel", gameOct->renderLevel);
-		singleton->setShaderInt("maxSize", gameOct->maxSize);
+		singleton->setShaderInt("vDataSize", gameOct->vDataSize);
 		singleton->setShaderInt("rootPtr", gameOct->rootPtr);
 		singleton->setShaderInt("nodeSize", gameOct->nodeSize);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);

@@ -64,8 +64,8 @@ const static float ORG_SCALE_BASE = 0.5f;
 #define STREAM_RES 1
 
 #ifdef STREAM_RES
-	const static int DEF_WIN_W = 2560; //2048;//
-	const static int DEF_WIN_H = 1440; //1024;//
+	const static int DEF_WIN_W = 1920; //2048;//
+	const static int DEF_WIN_H = 1080; //1024;//
 #else
 	const static int DEF_WIN_W = 1440;//1536;
 	const static int DEF_WIN_H = 720;//768;
@@ -73,8 +73,8 @@ const static float ORG_SCALE_BASE = 0.5f;
 
 
 
-const static int DEF_SCALE_FACTOR = 1;
-const static int RENDER_SCALE_FACTOR = 4;
+const static int DEF_SCALE_FACTOR = 8;
+const static int RENDER_SCALE_FACTOR = 1;
 const static float SPHEREMAP_SCALE_FACTOR = 0.5f; // lower is faster
 
 const static int DEF_VOL_SIZE = 128;
@@ -23429,11 +23429,14 @@ class GameOctree
 {
 public:
   Singleton * singleton;
-  uint * data;
+  uint * vData;
+  uint * nData;
+  int numNeighbors;
+  int vDataSize;
+  int nDataSize;
   int indexCount;
   int dimInVoxels;
   int maxDepth;
-  int maxSize;
   int nullPtr;
   int rootPtr;
   int nodeSize;
@@ -23443,16 +23446,17 @@ public:
   int vertComponents;
   bool hasTBO;
   bool hasVBO;
+  bool hasNeighbors;
   std::vector <float> vertexVec;
   VBOWrapper vboWrapper;
   TBOWrapper octTBO;
   GameOctree ();
-  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, int _maxSize = -1, int _nodeSize = -1);
+  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, bool _hasNeighbors, int _maxVerts);
   void updateVBO ();
   void updateTBO ();
   void captureBuffer (bool getPoints);
   void modRenderLevel (int modVal);
-  bool addNode (int x, int y, int z, uint col);
+  bool addNode (int x, int y, int z, float r, float g, float b);
   void remNode (uint index);
   void startRender ();
   void renderBB (int baseX, int baseY, int baseZ, int startIndex, int curLevel, int curDiv);
@@ -26136,7 +26140,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 		gameOct = new GameOctree();
-		gameOct->init(this,cellsPerWorld,true,true);
+		gameOct->init(this, cellsPerWorld, false, true, false, 32*1024*1024);
 
 		gem = new GameEntManager();
 		gem->init(this);
@@ -29605,6 +29609,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 				case 'M':
 					smoothMove = !smoothMove;
+					cout << "smoothMove " << smoothMove << "\n";
 				break;
 				
 
@@ -34760,30 +34765,43 @@ GameOctree::GameOctree ()
                      {
 		
 	}
-void GameOctree::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, int _maxSize, int _nodeSize)
+void GameOctree::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, bool _hasNeighbors, int _maxVerts)
           {
 		singleton = _singleton;
 		dimInVoxels = _dimInVoxels;
 		hasTBO = _hasTBO;
 		hasVBO = _hasVBO;
-		maxSize = _maxSize;
-		nodeSize = _nodeSize;
+		hasNeighbors = _hasNeighbors;
+		maxVerts = _maxVerts;
+		nodeSize = 8;
+		numNeighbors = 6;
 		
-		if (maxSize == -1) {
-			maxSize = (128/4)*1024*1024;
-		}
-		if (nodeSize == -1) {
-			nodeSize = 8;
-		}
+		//nodeSize = _nodeSize;
+		
+		// if (maxSize == -1) {
+		// 	maxSize = (128/4)*1024*1024;
+		// }
+		// if (nodeSize == -1) {
+			
+		// }
 		
 		indexCount = 0;
 		
 		vertComponents = 2;
-		maxVerts = (maxSize-nodeSize)/nodeSize;
+		vDataSize = maxVerts*nodeSize;
+		nDataSize = maxVerts*numNeighbors;
 		
 		maxDepth = intLogB2(dimInVoxels);
 		
-		data = new uint[maxSize];
+		vData = new uint[vDataSize];
+		
+		if (hasNeighbors) {
+			nData = new uint[nDataSize];
+		}
+		else {
+			nData = NULL;
+		}
+		
 		
 		renderLevel = 12;
 		nullPtr = 0;
@@ -34792,13 +34810,14 @@ void GameOctree::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, b
 		
 		int i;
 		
-		for (i = 0; i < maxSize; i++) {
-			data[i] = nullPtr;
+		for (i = 0; i < vDataSize; i++) {
+			vData[i] = nullPtr;
 		}
 		
 		if (hasTBO) {
-			octTBO.init(false,NULL,data,maxSize*4);
+			octTBO.init(false,NULL,vData,vDataSize*4);
 		}
+		
 		if (hasVBO) {
 			vertexVec.clear();
 			vertexVec.reserve(maxVerts*vertComponents*4);
@@ -34814,13 +34833,17 @@ void GameOctree::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, b
 				0,//indexVec.size()
 				0,//maxVerts
 				vertComponents,
-				GL_DYNAMIC_DRAW
+				GL_STATIC_DRAW
 			);
 		}
 		
 	}
 void GameOctree::updateVBO ()
                          {
+		if (!hasVBO) {
+			return;
+		}
+		
 		vboWrapper.update(
 			&(vertexVec[0]),
 			vertexVec.size()*vertComponents*4,
@@ -34830,7 +34853,11 @@ void GameOctree::updateVBO ()
 	}
 void GameOctree::updateTBO ()
                          {
-		octTBO.update(NULL, data, -1);
+		if (!hasTBO) {
+			return;
+		}
+		
+		octTBO.update(NULL, vData, -1);
 	}
 void GameOctree::captureBuffer (bool getPoints)
                                            {
@@ -34840,11 +34867,16 @@ void GameOctree::captureBuffer (bool getPoints)
 		FBOWrapper *fbow = singleton->getFBOWrapper("solidTargFBO", 0);
 		fbow->getPixels();
 		
+		FBOWrapper *fbow2 = singleton->getFBOWrapper("resultFBO0", 0);
+		fbow2->getPixels();
+		
 		int i;
 		
 		int x;
 		int y;
 		int z;
+		
+		float r, g, b;
 		
 		btVector3 myPoint;
 		btVector3 camPoint = singleton->cameraGetPosNoShake()->getBTV();
@@ -34859,15 +34891,24 @@ void GameOctree::captureBuffer (bool getPoints)
 			y = fbow->pixelsFloat[i+1];
 			z = fbow->pixelsFloat[i+2];
 			
+			r = fbow2->pixelsChar[i+0];
+			g = fbow2->pixelsChar[i+1];
+			b = fbow2->pixelsChar[i+2];
+			
+			r /= 255.0f;
+			g /= 255.0f;
+			b /= 255.0f;
+			
+			
 			myPoint = btVector3(x,y,z);
 			
-			if (nextOpen >= (maxSize-nodeSize)) {
+			if (nextOpen >= (vDataSize-nodeSize)) {
 				didFail = true;
 				break;
 			}
 			
 			if (camPoint.distance(myPoint) < maxDis) {
-				wasNew = addNode(x,y,z,1);
+				wasNew = addNode(x,y,z,r,g,b);
 				
 				if (getPoints&&wasNew) {
 					vertexVec.push_back(x);
@@ -34875,9 +34916,9 @@ void GameOctree::captureBuffer (bool getPoints)
 					vertexVec.push_back(z);
 					vertexVec.push_back(1.0f);
 					
-					vertexVec.push_back(0.0f);
-					vertexVec.push_back(0.0f);
-					vertexVec.push_back(0.0f);
+					vertexVec.push_back(r);
+					vertexVec.push_back(g);
+					vertexVec.push_back(b);
 					vertexVec.push_back(0.0f);
 					
 					//indexVec.push_back(indexCount);
@@ -34899,7 +34940,7 @@ void GameOctree::captureBuffer (bool getPoints)
 			
 		}
 
-		cout << "newSize " << nextOpen << "\n";
+		cout << "points " << vertexVec.size()/8 << "\n";
 		
 	}
 void GameOctree::modRenderLevel (int modVal)
@@ -34914,8 +34955,8 @@ void GameOctree::modRenderLevel (int modVal)
 		
 		cout << "renderLevel " << renderLevel << "\n";
 	}
-bool GameOctree::addNode (int x, int y, int z, uint col)
-                                                    {
+bool GameOctree::addNode (int x, int y, int z, float r, float g, float b)
+                                                                     {
 		int curPtr = rootPtr;
 		int curLevel = 0;
 		bool doProc = true;
@@ -34945,19 +34986,19 @@ bool GameOctree::addNode (int x, int y, int z, uint col)
 			
 			offset = subX + subY*2 + subZ*4;
 			
-			if (data[curPtr+offset] == nullPtr) {
-				data[curPtr+offset] = nextOpen;
+			if (vData[curPtr+offset] == nullPtr) {
+				vData[curPtr+offset] = nextOpen;
 				nextOpen += nodeSize;
 				wasNew = true;
 			}
 			
-			curPtr = data[curPtr+offset];
+			curPtr = vData[curPtr+offset];
 			
 			curDiv = curDiv/2;
 			
-		} while (curDiv > 1);
+		} while (curDiv > 4);
 		
-		data[curPtr+0] = col;
+		vData[curPtr+0] = 1;
 		
 		return wasNew;
 	}
@@ -34997,7 +35038,7 @@ void GameOctree::renderBB (int baseX, int baseY, int baseZ, int startIndex, int 
 			ym = (i-zm*4)/2;
 			xm = (i-(zm*4 + ym*2));
 			
-			if (data[startIndex+i] == nullPtr) {
+			if (vData[startIndex+i] == nullPtr) {
 				
 			}
 			else {
@@ -35005,7 +35046,7 @@ void GameOctree::renderBB (int baseX, int baseY, int baseZ, int startIndex, int 
 					baseX+xm*curDiv2,
 					baseY+ym*curDiv2,
 					baseZ+zm*curDiv2,
-					data[startIndex+i],
+					vData[startIndex+i],
 					curLevel+1,
 					curDiv2
 				);
@@ -64140,10 +64181,11 @@ void GameWorld::rasterOct (GameOctree * gameOct)
 		// 	false
 		// );
 
+		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 		singleton->setShaderFloat("dimInVoxels", gameOct->dimInVoxels);
 		singleton->setShaderInt("renderLevel", gameOct->renderLevel);
-		singleton->setShaderInt("maxSize", gameOct->maxSize);
+		singleton->setShaderInt("vDataSize", gameOct->vDataSize);
 		singleton->setShaderInt("rootPtr", gameOct->rootPtr);
 		singleton->setShaderInt("nodeSize", gameOct->nodeSize);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
@@ -64195,7 +64237,7 @@ void GameWorld::renderOct (GameOctree * gameOct)
 
 		singleton->setShaderFloat("dimInVoxels", gameOct->dimInVoxels);
 		singleton->setShaderInt("renderLevel", gameOct->renderLevel);
-		singleton->setShaderInt("maxSize", gameOct->maxSize);
+		singleton->setShaderInt("vDataSize", gameOct->vDataSize);
 		singleton->setShaderInt("rootPtr", gameOct->rootPtr);
 		singleton->setShaderInt("nodeSize", gameOct->nodeSize);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);

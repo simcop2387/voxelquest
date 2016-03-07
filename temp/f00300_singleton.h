@@ -1194,7 +1194,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 
 		gameOct = new GameOctree();
-		gameOct->init(this,cellsPerWorld,true,true);
+		gameOct->init(this, cellsPerWorld, false, true, false, 32*1024*1024);
 
 		gem = new GameEntManager();
 		gem->init(this);
@@ -4663,6 +4663,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 				case 'M':
 					smoothMove = !smoothMove;
+					cout << "smoothMove " << smoothMove << "\n";
 				break;
 				
 

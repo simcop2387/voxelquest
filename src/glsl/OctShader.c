@@ -4,7 +4,7 @@ uniform usamplerBuffer Texture0;
 
 uniform float dimInVoxels;
 uniform int renderLevel;
-uniform int maxSize;
+uniform int vDataSize;
 uniform int rootPtr;
 uniform int nodeSize;
 

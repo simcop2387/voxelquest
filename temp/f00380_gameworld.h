@@ -4485,10 +4485,11 @@ void GameWorld::rasterOct (GameOctree * gameOct)
 		// 	false
 		// );
 
+		singleton->setShaderFloat("curTime", singleton->curTime);
 		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 		singleton->setShaderFloat("dimInVoxels", gameOct->dimInVoxels);
 		singleton->setShaderInt("renderLevel", gameOct->renderLevel);
-		singleton->setShaderInt("maxSize", gameOct->maxSize);
+		singleton->setShaderInt("vDataSize", gameOct->vDataSize);
 		singleton->setShaderInt("rootPtr", gameOct->rootPtr);
 		singleton->setShaderInt("nodeSize", gameOct->nodeSize);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
@@ -4540,7 +4541,7 @@ void GameWorld::renderOct (GameOctree * gameOct)
 
 		singleton->setShaderFloat("dimInVoxels", gameOct->dimInVoxels);
 		singleton->setShaderInt("renderLevel", gameOct->renderLevel);
-		singleton->setShaderInt("maxSize", gameOct->maxSize);
+		singleton->setShaderInt("vDataSize", gameOct->vDataSize);
 		singleton->setShaderInt("rootPtr", gameOct->rootPtr);
 		singleton->setShaderInt("nodeSize", gameOct->nodeSize);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);

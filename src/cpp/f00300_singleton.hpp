@@ -1803,7 +1803,7 @@ public:
 
 
 		gameOct = new GameOctree();
-		gameOct->init(this,cellsPerWorld,true,true);
+		gameOct->init(this, cellsPerWorld, false, true, false, 32*1024*1024);
 
 		gem = new GameEntManager();
 		gem->init(this);
@@ -5659,6 +5659,7 @@ DISPATCH_EVENT_END:
 					break;
 				case 'M':
 					smoothMove = !smoothMove;
+					cout << "smoothMove " << smoothMove << "\n";
 				break;
 				
 

@@ -814,11 +814,14 @@ class GameOctree
 {
 public:
   Singleton * singleton;
-  uint * data;
+  uint * vData;
+  uint * nData;
+  int numNeighbors;
+  int vDataSize;
+  int nDataSize;
   int indexCount;
   int dimInVoxels;
   int maxDepth;
-  int maxSize;
   int nullPtr;
   int rootPtr;
   int nodeSize;
@@ -828,16 +831,17 @@ public:
   int vertComponents;
   bool hasTBO;
   bool hasVBO;
+  bool hasNeighbors;
   std::vector <float> vertexVec;
   VBOWrapper vboWrapper;
   TBOWrapper octTBO;
   GameOctree ();
-  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, int _maxSize = -1, int _nodeSize = -1);
+  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, bool _hasNeighbors, int _maxVerts);
   void updateVBO ();
   void updateTBO ();
   void captureBuffer (bool getPoints);
   void modRenderLevel (int modVal);
-  bool addNode (int x, int y, int z, uint col);
+  bool addNode (int x, int y, int z, float r, float g, float b);
   void remNode (uint index);
   void startRender ();
   void renderBB (int baseX, int baseY, int baseZ, int startIndex, int curLevel, int curDiv);
