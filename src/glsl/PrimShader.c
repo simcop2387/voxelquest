@@ -70,7 +70,7 @@ uniform samplerBuffer Texture1; // prim ids
 
 uniform sampler2D Texture2; // hm fbo
 
-// depth targ fbo
+// now: rasterFBO               ///////////// depth targ fbo
 uniform sampler2D Texture3;
 uniform sampler2D Texture4;
 
@@ -5099,7 +5099,8 @@ void main() {
 		
 		vec4 maxRes = vec4(0.0);
 		
-		//cacheLand = vec4(MIN_CAM_VOL_DIS);
+		
+		//cacheLand = texture(Texture3,baseCoords.xy).xxxx;// - vec4(1.0);
 		cacheWater = vec4(MIN_CAM_VOL_DIS);
 		
 		vec4 finalMaxDis = vec4( max(MAX_CAM_DIS,MAX_CAM_VOL_DIS) );
@@ -5708,11 +5709,12 @@ void main() {
 				else {
 						
 						
-						t = MAX_CAM_DIS;
+						t = (FAR-0.1);
 						nor = vec3(0.0);
 						curMat = 0.0;
-						pos = vec3(0.0);
-						zbVal = 0.0;
+						pos = ro+rd*t;//vec3(0.0);
+						camDis = distance(cameraPos.xyz,pos.xyz);
+						zbVal = 1.0-camDis/clipDist.y;
 				}
 				
 				fragRes0 = vec4(pos.xyz, zbVal);
@@ -5724,73 +5726,65 @@ void main() {
 				
 				//shadowRes *= clamp(globCurSteps/float(TOT_STEPS*2.0),0.0,1.0);
 				
-				if (testOn) {
+				// if (testOn) {
 						
 						
 						
-						#ifdef DOTER
+				// 		#ifdef DOTER
 					
-								//shadowRes = texture(Texture15, baseCoords.xy).r;
-								//shadowRes = globCurSteps/float(TOT_STEPS*2.0);
+				// 				//shadowRes = texture(Texture15, baseCoords.xy).r;
+				// 				shadowRes = globCurSteps/float(TOT_STEPS*2.0);
 					
-								if (false) {// placingGeom||(MAX_PRIM_IDS > 0)) {
-									
-										// dont do anything since we are doing a geometry pass
-								}
-								else {
+				// 				// skip geom pass and send current data to debug
+				// 				fragRes0 = vec4(
+										
+				// 						//texture(Texture14,baseCoords.xy).xxx,
+										
+				// 						//tempNor.xyz,
+										
+				// 						//float(setMaxLand),0.0,0.0,
 										
 										
-										
-										// skip geom pass and send current data to debug
-										fragRes0 = vec4(
-												
-												//texture(Texture14,baseCoords.xy).xxx,
-												
-												//tempNor.xyz,
-												
-												//float(setMaxLand),0.0,0.0,
-												
-												
 
-												//baseCoords.xy, 0.0,
-												
-												//cacheLand.xyz,//floor(mod(worldPos.xyz,1.0)*16.0)/16.0,//0.0,//float(setMaxLand),
-												
-												//float(volBounds.x <= volBounds.y), 0.0, 0.0,
-												
-												//(sin(t/100.0)+1.0)*0.5,0.0,0.0,
-												
-												shadowRes,
-												//globTest,
-												0.0,
-												0.0,
-												//globTexTap/300.0, //
-												//float(texture(Texture14,baseCoords.xy).x != 0.0)*0.25,
-												
-												// (getTexCubic(Texture13, vec3(
-												// 	baseCoords.x+(sin(curTime)+1.0)/2.0,
-												// 	0.0,//baseCoords.y+(sin(curTime)+1.0)/2.0,
-												// 	baseCoords.y+(sin(curTime)+1.0)/2.0
-												// )*256.0, voroSize).b), 0.0, 0.0,
-												
-												//mod(texture(Texture14,baseCoords.xy).x*rd+cameraPos + 1.0,32.0)/32.0,//*float(zbVal > 0.0),
-												
-												
-												1.0
-										);
-								}
+				// 						//baseCoords.xy, 0.0,
+										
+				// 						//cacheLand.xyz,//floor(mod(worldPos.xyz,1.0)*16.0)/16.0,//0.0,//float(setMaxLand),
+										
+				// 						//float(volBounds.x <= volBounds.y), 0.0, 0.0,
+										
+				// 						//(sin(t/100.0)+1.0)*0.5,0.0,0.0,
+										
+				// 						shadowRes,
+				// 						//globTest,
+				// 						0.0,
+				// 						0.0,
+				// 						//globTexTap/300.0, //
+				// 						//float(texture(Texture14,baseCoords.xy).x != 0.0)*0.25,
+										
+				// 						// (getTexCubic(Texture13, vec3(
+				// 						// 	baseCoords.x+(sin(curTime)+1.0)/2.0,
+				// 						// 	0.0,//baseCoords.y+(sin(curTime)+1.0)/2.0,
+				// 						// 	baseCoords.y+(sin(curTime)+1.0)/2.0
+				// 						// )*256.0, voroSize).b), 0.0, 0.0,
+										
+				// 						//mod(texture(Texture14,baseCoords.xy).x*rd+cameraPos + 1.0,32.0)/32.0,//*float(zbVal > 0.0),
+										
+										
+				// 						1.0
+				// 				);
 								
-						#endif
-						#ifdef DOPRIM
-								fragRes0 = vec4(
-										0.0, // shadowRes + terSamp4.w,
-										0.0,
-										0.15,
-										1.0
-								);
-						#endif
+								
+				// 		#endif
+				// 		#ifdef DOPRIM
+				// 				fragRes0 = vec4(
+				// 						shadowRes + terSamp4.w,
+				// 						0.0,
+				// 						0.15,
+				// 						1.0
+				// 				);
+				// 		#endif
 						
-				}
+				// }
 				
 				
 				if (i == 0) {
@@ -5818,7 +5812,7 @@ void main() {
 		FragColor5 = vec4(curTexArr[0].xy,curTexArr[1].xy); //terSamp5
 		
 		FragColor6 = limbRes;
-		FragColor7 = vec4(0.0,0.0,0.0,0.0);
+		FragColor7 = vec4(globCurSteps/float(TOT_STEPS*2.0),0.0,0.0,0.0);
 		
 		
 		

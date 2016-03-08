@@ -37,7 +37,7 @@ void main() {
 	
 	newCol = vtexcoord;
 	vec4 screenPos = proj*modelview*worldPos;
-	//gl_PointSize = (heightOfNearPlane / pow(screenPos.w,0.5))*0.5;
+	gl_PointSize = (heightOfNearPlane / pow(screenPos.w,0.5))*4.0;
 	camDis = distance(cameraPos.xyz,worldPos.xyz);
 	gl_Position = screenPos; ///clipDist.y
 }
@@ -52,14 +52,14 @@ layout(location = 0) out vec4 FragColor0;
 
 void main() {
 
-	// vec2 mv = (gl_PointCoord.xy - 0.5)*2.0;
-	// float c = 1.0 - length(mv);
+	vec2 mv = (gl_PointCoord.xy - 0.5)*2.0;
+	float c = 1.0 - length(mv);
 	
-	// gl_FragDepth = camDis/clipDist.y + length(mv)*0.00075;
+	gl_FragDepth = camDis/clipDist.y + length(mv)*0.00075;
 	
-	// if (c < 0.0) {
-	//     discard;
-	// }
+	if (c < 0.0) {
+	    discard;
+	}
 	
 
 	FragColor0 = vec4(
@@ -67,7 +67,8 @@ void main() {
 		//mod(worldPos.xyz/100.0,1.0),
 		//vec3(1.0-clamp(camDis*8.0/clipDist.y,0.0,1.0)),
 		//(sin(worldPos.xyz*0.005)+1.0)*0.5,
-		newCol.rgb,
+		//newCol.rgb,
+		camDis, 0.0, 0.0, 
 		1.0
 	);
 

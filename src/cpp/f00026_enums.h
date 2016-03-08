@@ -8,6 +8,7 @@
 // const static unsigned long int STEP_TIME_IN_MICRO_SEC = 32000;
 
 #define E_CONST(DDD) \
+DDD(E_CONST_BAKE_TICKS) \
 DDD(E_CONST_TURNBASED_TICKS) \
 DDD(E_CONST_JUMP_COOLDOWN_MAX) \
 DDD(E_CONST_HIT_COOLDOWN_MAX) \
@@ -525,6 +526,36 @@ enum PATTERN_SHAPES {
 	E_PATSHAPE_DIAMOND,
 	E_PATSHAPE_LENGTH
 };
+
+
+enum E_VN_FLAGS {
+	E_VNF_ISFILLED_RIGHT = 1,
+	E_VNF_ISFILLED_UP = 2,
+	E_VNF_ISFILLED_LEFT = 4,
+	E_VNF_ISFILLED_DOWN = 8,
+	
+	E_VNF_DIDVISIT_RIGHT = 16,
+	E_VNF_DIDVISIT_UP = 32,
+	E_VNF_DIDVISIT_LEFT = 64,
+	E_VNF_DIDVISIT_DOWN = 128,
+	
+	E_VNF_DEADEND = 256,
+	
+	E_VNF_LENGTH = 65536
+};
+
+struct VoxelNode {
+	uint flags;
+};
+
+struct VoxelWrap {
+	std::vector<VoxelNode> nodeList;
+};
+
+struct VoxelSlice {
+	std::vector<VoxelWrap> wrapList;
+};
+
 
 const static int PATTERN_SIZE = 5;
 const static int PATTERN_CENTER = (PATTERN_SIZE/2);

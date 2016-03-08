@@ -205,6 +205,7 @@ public:
   int currentTick;
   int curPattern;
   int curPatternRot;
+  int bakeTicks;
   int tbTicks;
   int tempCounter;
   int actorCount;
@@ -451,6 +452,7 @@ public:
   Timer myTimer;
   Timer scrollTimer;
   Timer moveTimer;
+  VBOGrid myVBOGrid;
   GameOctree * gameOct;
   GameWorld * gw;
   GameEntManager * gem;
@@ -836,6 +838,51 @@ public:
   VBOWrapper vboWrapper;
   TBOWrapper octTBO;
   GameOctree ();
+  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, bool _hasNeighbors, int _maxVerts);
+  void updateVBO ();
+  void updateTBO ();
+  void captureBuffer (bool getPoints);
+  void modRenderLevel (int modVal);
+  bool addNode (int x, int y, int z, float r, float g, float b);
+  void remNode (uint index);
+  void startRender ();
+  void renderBB (int baseX, int baseY, int baseZ, int startIndex, int curLevel, int curDiv);
+};
+#undef LZZ_INLINE
+#endif
+// f00324_gamevoxelwrap.e
+//
+
+#ifndef LZZ_f00324_gamevoxelwrap_e
+#define LZZ_f00324_gamevoxelwrap_e
+#define LZZ_INLINE inline
+class GameVoxelWrap
+{
+public:
+  Singleton * singleton;
+  uint * vData;
+  uint * nData;
+  int numNeighbors;
+  int vDataSize;
+  int nDataSize;
+  int indexCount;
+  int dimInVoxels;
+  int maxDepth;
+  int nullPtr;
+  int rootPtr;
+  int nodeSize;
+  int nextOpen;
+  int renderLevel;
+  int maxVerts;
+  int vertComponents;
+  bool hasTBO;
+  bool hasVBO;
+  bool hasNeighbors;
+  std::vector <float> vertexVec;
+  VBOWrapper vboWrapper;
+  TBOWrapper octTBO;
+  std::vector <VoxelSlice*> voxelSlices;
+  GameVoxelWrap ();
   void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, bool _hasNeighbors, int _maxVerts);
   void updateVBO ();
   void updateTBO ();
@@ -1647,8 +1694,6 @@ public:
   std::vector <btScalar> vertexVec;
   std::vector <unsigned short> indexVec;
   std::vector <int> collideIndices;
-  std::vector <GameEnt *> entityGeom;
-  int entityGeomCounter;
   FIVector4 offsetInHolders;
   FIVector4 gphMinInPixels;
   FIVector4 gphMaxInPixels;
@@ -2079,6 +2124,7 @@ public:
 class GameWorld
 {
 public:
+  bool skippedPrim;
   int numProvinces;
   int seaLevel;
   int seaSlack;
@@ -2198,7 +2244,7 @@ public:
   void getArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void fireEvent (BaseObjType uid, int opCode, float fParam);
   void generateBlockHolder ();
-  void update ();
+  void update (bool postToScreen);
   void toggleVis (GameEnt * se);
   void ensureBlocks ();
   void findNearestEnt (EntSelection * entSelection, int entType, int maxLoadRad, int radStep, FIVector4 * testPoint, bool onlyInteractive = false, bool ignoreDistance = false);
@@ -2219,10 +2265,11 @@ public:
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
   void updateLights ();
-  void rasterOct (GameOctree * gameOct);
+  void rasterGrid (VBOGrid * vboGrid, bool showResults);
+  void rasterOct (GameOctree * gameOct, bool showResults);
   void renderOct (GameOctree * gameOct);
   void renderDebug ();
-  void postProcess ();
+  void postProcess (bool postToScreen);
   ~ GameWorld ();
 };
 #undef LZZ_INLINE

@@ -1,5 +1,7 @@
 #version 120
 
+uniform bool skippedPrim;
+
 //solidBaseTargFBO
 uniform sampler2D Texture0;
 uniform sampler2D Texture1;
@@ -33,10 +35,17 @@ void main() {
     
     //tex3.w = curMat;
     
-    if (tex2.w > tex0.w) {
-    	tex0 = tex2;
-    	tex1 = tex3;
+    if (skippedPrim) {
+        
     }
+    else {
+        if (tex2.w > tex0.w) {
+            tex0 = tex2;
+            tex1 = tex3;
+        }
+    }
+    
+    
     
     gl_FragData[0] = tex0;
     gl_FragData[1] = tex1;

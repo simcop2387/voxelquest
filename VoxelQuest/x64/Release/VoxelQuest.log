@@ -1,4 +1,4 @@
-﻿Build started 3/7/2016 9:30:34 AM.
+﻿Build started 3/8/2016 10:16:29 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -26,6 +26,7 @@
          .\src\cpp\f00307_dynbuffer.hpp
          .\src\cpp\f00320_fontwrapper.hpp
          .\src\cpp\f00323_gameoctree.hpp
+         .\src\cpp\f00324_gamevoxelwrap.hpp
          .\src\cpp\f00325_uicomponent.hpp
          .\src\cpp\f00330_gamegui.hpp
          .\src\cpp\f00332_gamenetwork.hpp
@@ -47,11 +48,11 @@
          .\src\cpp\f00375_gamephysics.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         42 File(s) copied
+         43 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         27
+         28
          copying headers to one file
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
@@ -60,6 +61,7 @@
          .\f00307_dynbuffer.e
          .\f00320_fontwrapper.e
          .\f00323_gameoctree.e
+         .\f00324_gamevoxelwrap.e
          .\f00325_uicomponent.e
          .\f00330_gamegui.e
          .\f00332_gamenetwork.e
@@ -83,7 +85,7 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         27
+         28
          .
          copying files to compiled
          .\temp\f00293_gamesound.e
@@ -93,6 +95,7 @@
          .\temp\f00307_dynbuffer.e
          .\temp\f00320_fontwrapper.e
          .\temp\f00323_gameoctree.e
+         .\temp\f00324_gamevoxelwrap.e
          .\temp\f00325_uicomponent.e
          .\temp\f00330_gamegui.e
          .\temp\f00332_gamenetwork.e
@@ -113,7 +116,7 @@
          .\temp\f00374_myglhelper.e
          .\temp\f00375_gamephysics.e
          .\temp\f00380_gameworld.e
-         27 File(s) copied
+         28 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_mat.h
@@ -136,6 +139,7 @@
          .\temp\f00307_dynbuffer.h
          .\temp\f00320_fontwrapper.h
          .\temp\f00323_gameoctree.h
+         .\temp\f00324_gamevoxelwrap.h
          .\temp\f00325_uicomponent.h
          .\temp\f00330_gamegui.h
          .\temp\f00332_gamenetwork.h
@@ -1007,20 +1011,53 @@
          BenchmarkDemo:initPhysics()
          GL_MAX_TEXTURE_BUFFER_SIZE 134217728
          genBlockHolder
-         captureBuffer
-         points 18201
-         captureBuffer
-         points 34292
-         captureBuffer
-         points 49933
-         captureBuffer
-         points 58127
-         captureBuffer
-         points 67456
-         captureBuffer
-         points 85010
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:01:11.73
+Time Elapsed 00:03:54.69

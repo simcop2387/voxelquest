@@ -630,9 +630,9 @@ void main()
 	
 	float shadVal = texSpec.b;
 	
-	if (testOn2) {
-		resColor.rgb = tex2.rgb;
-	}
+	// if (testOn2) {
+	// 	resColor.rgb = tex2.rgb;
+	// }
 	
 	resColor.rgb += modColor*0.25;
 	

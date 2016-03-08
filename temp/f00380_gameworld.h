@@ -24,6 +24,8 @@ void GameWorld::init (Singleton * _singleton)
 		int i;
 		int j;
 		
+		skippedPrim = false;
+		
 		shiftCounter = 0;
 		
 		curTargFBO[0] = "terTargFBO";
@@ -620,8 +622,8 @@ void GameWorld::generateBlockHolder ()
 			
 		// }
 	}
-void GameWorld::update ()
-                      {
+void GameWorld::update (bool postToScreen)
+                                       {
 		
 		singleton->updateLock = true;
 
@@ -767,7 +769,7 @@ void GameWorld::update ()
 		
 		
 		
-
+		skippedPrim = false;
 
 		drawPrim(false,true,false);
 		drawPrim(false,false,false);
@@ -782,6 +784,7 @@ void GameWorld::update ()
 		//singleton->copyFBO2("solidBaseTargFBO","solidTargFBO");
 		
 		singleton->bindShader("SolidCombineShader");
+		singleton->setShaderInt("skippedPrim", (int)(skippedPrim));
 		singleton->bindFBO("solidTargFBO");//, -1, 0);
 		singleton->sampleFBO("solidBaseTargFBO",0);
 		singleton->sampleFBO("geomTargFBO",2);
@@ -794,15 +797,14 @@ void GameWorld::update ()
 	
 		
 		
-		postProcess();
+		postProcess(postToScreen);
 		
 		
+		if (postToScreen) {
+			drawMap();
+			glutSwapBuffers();
+		}
 		
-		drawMap();
-		
-		
-
-		glutSwapBuffers();
 		//glFlush();
 		
 		singleton->updateLock = false;
@@ -1383,6 +1385,8 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 				singleton->copyFBO2("terTargFBO","solidBaseTargFBO", 0, 1);
 				singleton->copyFBO2("terTargFBO","waterTargFBO", 2, 3);
 				singleton->copyFBO2("terTargFBO","prmDepthFBO", 4, 5);
+				singleton->copyFBO("terTargFBO","numstepsFBO", 7);
+				skippedPrim = true;
 				return;
 			}
 			
@@ -1443,7 +1447,9 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		
 		singleton->sampleFBO("hmFBOLinearBig",2);
-		singleton->sampleFBO("terDepthFBO",3);
+		
+		singleton->sampleFBO("rasterFBO",3);
+		//singleton->sampleFBO("terDepthFBO",3);
 		
 		//if (USE_SPHERE_MAP) {
 		//	singleton->sampleFBO("sphDepthFBO",5);
@@ -4463,8 +4469,57 @@ UPDATE_LIGHTS_END:
 
 
 	}
-void GameWorld::rasterOct (GameOctree * gameOct)
-                                            {
+void GameWorld::rasterGrid (VBOGrid * vboGrid, bool showResults)
+                                                            {
+		
+		// get view matrix
+		singleton->perspectiveOn = true;
+		singleton->getMatrixFromFBO("rasterFBO");
+		singleton->perspectiveOn = false;
+
+
+		glEnable(GL_DEPTH_TEST);
+
+		singleton->bindShader("GridShader");
+		singleton->bindFBO("rasterFBO");
+
+		singleton->sampleFBO("rasterPosFBO",0);
+		singleton->sampleFBO("rasterSourceFBO",1);
+
+		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+		
+		
+		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
+		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
+
+		//singleton->fsQuad.draw();
+		vboGrid->vboWrapper.draw();
+
+
+		singleton->unsampleFBO("rasterSourceFBO",1);
+		singleton->unsampleFBO("rasterPosFBO",0);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		
+		glDisable(GL_DEPTH_TEST);
+
+		
+		if (showResults) {
+			singleton->drawFBO("rasterFBO", 0, 1.0f);
+			
+			glutSwapBuffers();
+			
+			
+		}
+		
+		
+	}
+void GameWorld::rasterOct (GameOctree * gameOct, bool showResults)
+                                                              {
 		
 		// get view matrix
 		singleton->perspectiveOn = true;
@@ -4513,10 +4568,12 @@ void GameWorld::rasterOct (GameOctree * gameOct)
 		glDisable(GL_DEPTH_TEST);
 
 		
-
-		singleton->drawFBO("rasterFBO", 0, 1.0f);
+		if (showResults) {
+			singleton->drawFBO("rasterFBO", 0, 1.0f);
+			
+			glutSwapBuffers();
+		}
 		
-		glutSwapBuffers();
 		
 	}
 void GameWorld::renderOct (GameOctree * gameOct)
@@ -4804,7 +4861,7 @@ void GameWorld::renderDebug ()
 		singleton->unbindShader();
 		
 	}
-void GameWorld::postProcess ()
+void GameWorld::postProcess (bool postToScreen)
         {
 
 		
@@ -5135,6 +5192,8 @@ void GameWorld::postProcess ()
 			singleton->sampleFBO("noiseFBOLinear", 8);
 			singleton->sampleFBO("debugTargFBO", 9);
 			
+			singleton->sampleFBO("numstepsFBO", 11);
+			
 			
 			if ((singleton->gem->getCurActor() == NULL)||singleton->gem->firstPerson) {
 				singleton->setShaderFloat("thirdPerson", 0.0f);
@@ -5160,6 +5219,7 @@ void GameWorld::postProcess ()
 			singleton->setShaderInt("placingPattern", singleton->placingPattern);
 			
 			
+			singleton->setShaderInt("testOn2", (int)(singleton->testOn2));
 			
 			singleton->setShaderInt("gridOn", singleton->gridOn);
 			
@@ -5194,7 +5254,7 @@ void GameWorld::postProcess ()
 
 			singleton->drawFSQuad();
 
-			
+			singleton->unsampleFBO("numstepsFBO", 11);			
 			singleton->unsampleFBO("debugTargFBO", 9);
 			singleton->unsampleFBO("noiseFBOLinear", 8);
 			singleton->setShaderTexture3D(7,0);
@@ -5295,9 +5355,15 @@ void GameWorld::postProcess ()
 			
 			
 			
+			if (postToScreen) {
+				singleton->drawFBO("resultFBO", 0, 1.0f, 1 - activeFBO);
+			}
+			else {
+				singleton->copyFBO("solidTargFBO", "rasterPosFBO");
+				singleton->copyFBO("resultFBO"+i__s(activeFBO), "rasterSourceFBO");
+			}
 			
 			
-			singleton->drawFBO("resultFBO", 0, 1.0f, 1 - activeFBO);
 			
 			
 			
@@ -5307,7 +5373,7 @@ void GameWorld::postProcess ()
 		
 
 
-		if (singleton->anyMenuVisible()) {
+		if (singleton->anyMenuVisible()&&postToScreen) {
 			glEnable (GL_BLEND);
 
 			singleton->bindShader("GUIShader");

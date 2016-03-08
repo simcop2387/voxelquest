@@ -3,7 +3,7 @@ class GameWorld
 {
 public:
 
-		
+	bool skippedPrim;
 
 	int numProvinces;
 	int seaLevel;
@@ -200,6 +200,8 @@ public:
 
 		int i;
 		int j;
+		
+		skippedPrim = false;
 		
 		shiftCounter = 0;
 		
@@ -885,7 +887,7 @@ public:
 	}
 	
 
-	void update() {
+	void update(bool postToScreen) {
 		
 		singleton->updateLock = true;
 
@@ -1031,7 +1033,7 @@ public:
 		
 		
 		
-
+		skippedPrim = false;
 
 		drawPrim(false,true,false);
 		drawPrim(false,false,false);
@@ -1046,6 +1048,7 @@ public:
 		//singleton->copyFBO2("solidBaseTargFBO","solidTargFBO");
 		
 		singleton->bindShader("SolidCombineShader");
+		singleton->setShaderInt("skippedPrim", (int)(skippedPrim));
 		singleton->bindFBO("solidTargFBO");//, -1, 0);
 		singleton->sampleFBO("solidBaseTargFBO",0);
 		singleton->sampleFBO("geomTargFBO",2);
@@ -1058,15 +1061,14 @@ public:
 	
 		
 		
-		postProcess();
+		postProcess(postToScreen);
 		
 		
+		if (postToScreen) {
+			drawMap();
+			glutSwapBuffers();
+		}
 		
-		drawMap();
-		
-		
-
-		glutSwapBuffers();
 		//glFlush();
 		
 		singleton->updateLock = false;
@@ -1674,6 +1676,8 @@ public:
 				singleton->copyFBO2("terTargFBO","solidBaseTargFBO", 0, 1);
 				singleton->copyFBO2("terTargFBO","waterTargFBO", 2, 3);
 				singleton->copyFBO2("terTargFBO","prmDepthFBO", 4, 5);
+				singleton->copyFBO("terTargFBO","numstepsFBO", 7);
+				skippedPrim = true;
 				return;
 			}
 			
@@ -1734,7 +1738,9 @@ public:
 		
 		
 		singleton->sampleFBO("hmFBOLinearBig",2);
-		singleton->sampleFBO("terDepthFBO",3);
+		
+		singleton->sampleFBO("rasterFBO",3);
+		//singleton->sampleFBO("terDepthFBO",3);
 		
 		//if (USE_SPHERE_MAP) {
 		//	singleton->sampleFBO("sphDepthFBO",5);
@@ -4804,7 +4810,56 @@ UPDATE_LIGHTS_END:
 	// }
 
 
-	void rasterOct(GameOctree* gameOct) {
+	void rasterGrid(VBOGrid* vboGrid, bool showResults) {
+		
+		// get view matrix
+		singleton->perspectiveOn = true;
+		singleton->getMatrixFromFBO("rasterFBO");
+		singleton->perspectiveOn = false;
+
+
+		glEnable(GL_DEPTH_TEST);
+
+		singleton->bindShader("GridShader");
+		singleton->bindFBO("rasterFBO");
+
+		singleton->sampleFBO("rasterPosFBO",0);
+		singleton->sampleFBO("rasterSourceFBO",1);
+
+		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+		
+		
+		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
+		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
+
+		//singleton->fsQuad.draw();
+		vboGrid->vboWrapper.draw();
+
+
+		singleton->unsampleFBO("rasterSourceFBO",1);
+		singleton->unsampleFBO("rasterPosFBO",0);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		
+		glDisable(GL_DEPTH_TEST);
+
+		
+		if (showResults) {
+			singleton->drawFBO("rasterFBO", 0, 1.0f);
+			
+			glutSwapBuffers();
+			
+			
+		}
+		
+		
+	}
+
+	void rasterOct(GameOctree* gameOct, bool showResults) {
 		
 		// get view matrix
 		singleton->perspectiveOn = true;
@@ -4853,10 +4908,12 @@ UPDATE_LIGHTS_END:
 		glDisable(GL_DEPTH_TEST);
 
 		
-
-		singleton->drawFBO("rasterFBO", 0, 1.0f);
+		if (showResults) {
+			singleton->drawFBO("rasterFBO", 0, 1.0f);
+			
+			glutSwapBuffers();
+		}
 		
-		glutSwapBuffers();
 		
 	}
 
@@ -5145,7 +5202,7 @@ UPDATE_LIGHTS_END:
 		
 	}
 
-	void postProcess()
+	void postProcess(bool postToScreen)
 	{
 
 		
@@ -5476,6 +5533,8 @@ UPDATE_LIGHTS_END:
 			singleton->sampleFBO("noiseFBOLinear", 8);
 			singleton->sampleFBO("debugTargFBO", 9);
 			
+			singleton->sampleFBO("numstepsFBO", 11);
+			
 			
 			if ((singleton->gem->getCurActor() == NULL)||singleton->gem->firstPerson) {
 				singleton->setShaderFloat("thirdPerson", 0.0f);
@@ -5501,6 +5560,7 @@ UPDATE_LIGHTS_END:
 			singleton->setShaderInt("placingPattern", singleton->placingPattern);
 			
 			
+			singleton->setShaderInt("testOn2", (int)(singleton->testOn2));
 			
 			singleton->setShaderInt("gridOn", singleton->gridOn);
 			
@@ -5535,7 +5595,7 @@ UPDATE_LIGHTS_END:
 
 			singleton->drawFSQuad();
 
-			
+			singleton->unsampleFBO("numstepsFBO", 11);			
 			singleton->unsampleFBO("debugTargFBO", 9);
 			singleton->unsampleFBO("noiseFBOLinear", 8);
 			singleton->setShaderTexture3D(7,0);
@@ -5636,9 +5696,15 @@ UPDATE_LIGHTS_END:
 			
 			
 			
+			if (postToScreen) {
+				singleton->drawFBO("resultFBO", 0, 1.0f, 1 - activeFBO);
+			}
+			else {
+				singleton->copyFBO("solidTargFBO", "rasterPosFBO");
+				singleton->copyFBO("resultFBO"+i__s(activeFBO), "rasterSourceFBO");
+			}
 			
 			
-			singleton->drawFBO("resultFBO", 0, 1.0f, 1 - activeFBO);
 			
 			
 			
@@ -5648,7 +5714,7 @@ UPDATE_LIGHTS_END:
 		
 
 
-		if (singleton->anyMenuVisible()) {
+		if (singleton->anyMenuVisible()&&postToScreen) {
 			glEnable (GL_BLEND);
 
 			singleton->bindShader("GUIShader");

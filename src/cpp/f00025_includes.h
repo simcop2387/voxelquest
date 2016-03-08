@@ -64,16 +64,16 @@ const static float ORG_SCALE_BASE = 0.5f;
 #define STREAM_RES 1
 
 #ifdef STREAM_RES
-	const static int DEF_WIN_W = 1920; //2048;//
-	const static int DEF_WIN_H = 1080; //1024;//
+	const static int DEF_WIN_W = 2048; //2048;//
+	const static int DEF_WIN_H = 1024; //1024;//
 #else
-	const static int DEF_WIN_W = 1440;//1536;
-	const static int DEF_WIN_H = 720;//768;
+	const static int DEF_WIN_W = 1536;//1536;
+	const static int DEF_WIN_H = 768;//768;
 #endif
 
 
 
-const static int DEF_SCALE_FACTOR = 8;
+const static int DEF_SCALE_FACTOR = 1;
 const static int RENDER_SCALE_FACTOR = 1;
 const static float SPHEREMAP_SCALE_FACTOR = 0.5f; // lower is faster
 

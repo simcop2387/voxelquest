@@ -62,8 +62,8 @@ public:
 	std::vector<unsigned short> indexVec;
 	std::vector<int> collideIndices;
 	
-	std::vector<GameEnt *> entityGeom;
-	int entityGeomCounter;
+	//std::vector<GameEnt *> entityGeom;
+	//int entityGeomCounter;
 	FIVector4 offsetInHolders;
 
 	FIVector4 gphMinInPixels;
@@ -155,7 +155,7 @@ public:
 		lockRead = false;
 		lockWrite = false;
 
-		entityGeomCounter = 0;
+		//entityGeomCounter = 0;
 		totIdealNodes = 0;
 		totGroupIds = 0;
 

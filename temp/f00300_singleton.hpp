@@ -190,7 +190,7 @@ public:
 	int curPattern;
 	int curPatternRot;
 	
-	
+	int bakeTicks;
 	int tbTicks;
 	int tempCounter;
 	int actorCount;
@@ -563,6 +563,7 @@ public:
 	Timer myTimer;
 	Timer scrollTimer;
 	Timer moveTimer;
+	VBOGrid myVBOGrid; 
 	GameOctree* gameOct;
 	GameWorld* gw;
 	GameEntManager* gem;
@@ -757,7 +758,7 @@ public:
 		
 		destructCount = 0;
 		
-		sphereMapOn = false;
+		sphereMapOn = true;
 		waitingOnDestruction = false;
 		
 		physicsOn = false;
@@ -944,6 +945,7 @@ public:
 		
 		generatePatterns();
 		
+		bakeTicks = 0;
 		tbTicks = 0;
 		tempCounter = 0;
 		actorCount = 0;
@@ -1307,6 +1309,11 @@ public:
 		bufferModDim.copyIntMult(&bufferDim,1);
 		bufferRenderDim.copyIntDiv(&bufferDimTarg,RENDER_SCALE_FACTOR);
 
+
+		myVBOGrid.init(bufferRenderDim.getIX(), bufferRenderDim.getIY());
+
+
+
 		myTimer.start();
 
 
@@ -1527,6 +1534,7 @@ public:
 		shaderStrings.push_back("FogShader");
 		shaderStrings.push_back("OctShader");
 		shaderStrings.push_back("RasterShader");
+		shaderStrings.push_back("GridShader");
 		shaderStrings.push_back("GeomShader");
 		shaderStrings.push_back("BoxShader");
 		shaderStrings.push_back("PolyShader");
@@ -1714,6 +1722,9 @@ public:
 		fboMap["prmTargFBO"].init(8, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
 		fboMap["prmDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
 		
+		
+		fboMap["numstepsFBO"].init(1, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
+		
 		fboMap["terTargFBO"].init(8, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
 		fboMap["limbFBO"].init(1, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
 		fboMap["terDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
@@ -1723,7 +1734,7 @@ public:
 		}
 		
 		
-		fboMap["rasterFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, true, GL_NEAREST);
+		fboMap["rasterFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
 		
 		
 		if (USE_SPHERE_MAP) {
@@ -1753,8 +1764,8 @@ public:
 		
 		
 		
-		// fboMap["noiseFBO"].init(1, 1024, 1024, 1, false, GL_NEAREST, GL_REPEAT);
-		// fboMap["noiseFBOLinear"].init(1, 1024, 1024, 1, false, GL_LINEAR, GL_REPEAT);
+		fboMap["rasterPosFBO"].init(1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR, GL_REPEAT);
+		fboMap["rasterSourceFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST, GL_REPEAT);
 		
 		fboMap["noiseFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST, GL_REPEAT);
 		fboMap["noiseFBOLinear"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR, GL_REPEAT);
@@ -1804,6 +1815,9 @@ public:
 
 		gameOct = new GameOctree();
 		gameOct->init(this, cellsPerWorld, false, true, false, 32*1024*1024);
+		
+		
+		
 
 		gem = new GameEntManager();
 		gem->init(this);
@@ -5532,9 +5546,9 @@ DISPATCH_EVENT_END:
 					
 				break;
 				case 't':
-					//testOn2 = !testOn2;
+					testOn2 = !testOn2;
 					
-					pathfindingTestOn = !pathfindingTestOn;
+					//pathfindingTestOn = !pathfindingTestOn;
 					
 				break;
 				// case 'o':
@@ -8947,11 +8961,6 @@ DISPATCH_EVENT_END:
 						
 						
 						
-						
-						// if (currentTick < 2) {
-						// 	gw->update();
-						// }
-						
 						if (currentTick < 4) {
 							cameraGetPosNoShake()->setFXYZ(2048.0,2048.0,0.0);
 							camLerpPos.copyFrom(cameraGetPosNoShake());
@@ -9126,10 +9135,19 @@ DISPATCH_EVENT_END:
 						
 						if (renderingOct) {
 							//gw->renderOct(gameOct);
-							gw->rasterOct(gameOct);
+							//gw->rasterOct(gameOct,true);
+							
+							if ((bakeTicks % iGetConst(E_CONST_BAKE_TICKS)) == 0) {
+								gw->update(false);
+							}
+							
+							gw->rasterGrid(&myVBOGrid,true);
+							bakeTicks++;
 						}
 						else {
-							gw->update();
+							//gw->rasterOct(gameOct,false);
+							//gw->rasterGrid(&myVBOGrid,false);
+							gw->update(true);
 						}
 						
 						

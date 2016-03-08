@@ -238,7 +238,7 @@ bool GameOctree::addNode (int x, int y, int z, float r, float g, float b)
 			
 			curDiv = curDiv/2;
 			
-		} while (curDiv > 4);
+		} while (curDiv > 2);
 		
 		vData[curPtr+0] = 1;
 		

@@ -25,6 +25,9 @@ uniform sampler2D Texture8;
 uniform sampler2D Texture9;
 uniform sampler2D Texture10;
 
+// numstepsFBO
+uniform sampler2D Texture11;
+
 uniform mat4 modelviewInverse;
 uniform float FOV;
 uniform vec3 lightVec;
@@ -35,6 +38,8 @@ uniform vec3 patternTarg;
 uniform float patternCells[25];
 uniform bool placingPattern;
 
+
+uniform bool testOn2;
 uniform bool isFalling;
 uniform bool isJumping;
 uniform bool gridOn;
@@ -408,7 +413,7 @@ void main() {
     vec4 matValsGeom = tex10;
     bool valIsGeom = dot(matValsGeom.rgb,oneVec.rgb) != 0.0;
     
-    
+    vec4 tex11 = texture2D(Texture11, TexCoord0.xy);
     
     
     vec4 worldPosition = tex0;
@@ -945,6 +950,11 @@ void main() {
     // }
     
     //finalCol = vec3(tex4.w/1000.0);
+
+
+    if (testOn2) {
+        finalCol = tex11.rgb;
+    }
 
     gl_FragData[0] = vec4(finalCol,1.0);
 

@@ -41,7 +41,7 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		lockRead = false;
 		lockWrite = false;
 
-		entityGeomCounter = 0;
+		//entityGeomCounter = 0;
 		totIdealNodes = 0;
 		totGroupIds = 0;
 

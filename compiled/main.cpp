@@ -64,16 +64,16 @@ const static float ORG_SCALE_BASE = 0.5f;
 #define STREAM_RES 1
 
 #ifdef STREAM_RES
-	const static int DEF_WIN_W = 1920; //2048;//
-	const static int DEF_WIN_H = 1080; //1024;//
+	const static int DEF_WIN_W = 2048; //2048;//
+	const static int DEF_WIN_H = 1024; //1024;//
 #else
-	const static int DEF_WIN_W = 1440;//1536;
-	const static int DEF_WIN_H = 720;//768;
+	const static int DEF_WIN_W = 1536;//1536;
+	const static int DEF_WIN_H = 768;//768;
 #endif
 
 
 
-const static int DEF_SCALE_FACTOR = 8;
+const static int DEF_SCALE_FACTOR = 1;
 const static int RENDER_SCALE_FACTOR = 1;
 const static float SPHEREMAP_SCALE_FACTOR = 0.5f; // lower is faster
 
@@ -3623,6 +3623,7 @@ bool replaceStr(std::string& str, const std::string& from, const std::string& to
 // const static unsigned long int STEP_TIME_IN_MICRO_SEC = 32000;
 
 #define E_CONST(DDD) \
+DDD(E_CONST_BAKE_TICKS) \
 DDD(E_CONST_TURNBASED_TICKS) \
 DDD(E_CONST_JUMP_COOLDOWN_MAX) \
 DDD(E_CONST_HIT_COOLDOWN_MAX) \
@@ -4140,6 +4141,36 @@ enum PATTERN_SHAPES {
 	E_PATSHAPE_DIAMOND,
 	E_PATSHAPE_LENGTH
 };
+
+
+enum E_VN_FLAGS {
+	E_VNF_ISFILLED_RIGHT = 1,
+	E_VNF_ISFILLED_UP = 2,
+	E_VNF_ISFILLED_LEFT = 4,
+	E_VNF_ISFILLED_DOWN = 8,
+	
+	E_VNF_DIDVISIT_RIGHT = 16,
+	E_VNF_DIDVISIT_UP = 32,
+	E_VNF_DIDVISIT_LEFT = 64,
+	E_VNF_DIDVISIT_DOWN = 128,
+	
+	E_VNF_DEADEND = 256,
+	
+	E_VNF_LENGTH = 65536
+};
+
+struct VoxelNode {
+	uint flags;
+};
+
+struct VoxelWrap {
+	std::vector<VoxelNode> nodeList;
+};
+
+struct VoxelSlice {
+	std::vector<VoxelWrap> wrapList;
+};
+
 
 const static int PATTERN_SIZE = 5;
 const static int PATTERN_CENTER = (PATTERN_SIZE/2);
@@ -11161,6 +11192,126 @@ public:
 		
 	}	
 	
+};
+
+
+class VBOGrid {
+public:
+
+	int xpitch;
+	int ypitch;
+	
+	int totVerts;
+	int totInd;
+
+	VBOWrapper vboWrapper;
+
+
+	std::vector<float> vertexVec;
+	std::vector<uint> indexVec;
+	
+
+	VBOGrid() {
+		
+	}
+	
+	void init(
+		int _xpitch,
+		int _ypitch
+	) {
+		
+		xpitch = _xpitch+1;
+		ypitch = _ypitch+1;
+		
+		totVerts = xpitch*ypitch;
+		totInd = 6*totVerts;
+		
+		int i;
+		int j;
+		
+		float fxp = xpitch-2;
+		float fyp = ypitch;
+		
+		float fi;
+		float fj;
+		
+		
+		
+		for (j = 0; j < ypitch; j++) {
+			fj = j;
+			for (i = 0; i < xpitch; i++) {
+				fi = i;
+				vertexVec.push_back(i);
+				vertexVec.push_back(j);
+				vertexVec.push_back(1.0f);
+				vertexVec.push_back(0.0f);
+				
+				
+				
+				vertexVec.push_back(fi/fxp);
+				vertexVec.push_back(fj/fyp);
+				vertexVec.push_back(0.0f);
+				vertexVec.push_back(0.0f);
+				
+			}
+		}
+		
+		int ind0;
+		int ind1;
+		int ind2;
+		int ind3;
+		
+		int ip1;
+		int jp1;
+		
+		for (j = 0; j < (ypitch-1); j++) {
+			
+			for (i = 0; i < (xpitch-1); i++) {
+				
+				ip1 = i+1;
+				jp1 = j+1;
+				
+				// if (ip1 == xpitch) {
+				// 	ip1 = 0;
+				// }
+				// if (jp1 == ypitch) {
+				// 	jp1 = 0;
+				// }
+				
+				ind0 = (i) + (j)*xpitch;
+				ind1 = (ip1) + (j)*xpitch;
+				ind2 = (i) + (jp1)*xpitch;
+				ind3 = (ip1) + (jp1)*xpitch;
+				
+				// 0 1
+				// 2 3
+				
+				indexVec.push_back(ind0);
+				indexVec.push_back(ind1);
+				indexVec.push_back(ind3);
+				
+				indexVec.push_back(ind3);
+				indexVec.push_back(ind2);
+				indexVec.push_back(ind0);
+				
+				
+			}
+		}
+		
+		
+		
+		
+		vboWrapper.init(
+			&(vertexVec[0]),
+			vertexVec.size(),
+			vertexVec.size(),
+			&(indexVec[0]),
+			indexVec.size(),
+			indexVec.size(),
+			2,
+			GL_STATIC_DRAW
+		);
+	}
 };
 
 // class PlaneGrid {
@@ -22820,6 +22971,7 @@ public:
   int currentTick;
   int curPattern;
   int curPatternRot;
+  int bakeTicks;
   int tbTicks;
   int tempCounter;
   int actorCount;
@@ -23066,6 +23218,7 @@ public:
   Timer myTimer;
   Timer scrollTimer;
   Timer moveTimer;
+  VBOGrid myVBOGrid;
   GameOctree * gameOct;
   GameWorld * gw;
   GameEntManager * gem;
@@ -23451,6 +23604,51 @@ public:
   VBOWrapper vboWrapper;
   TBOWrapper octTBO;
   GameOctree ();
+  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, bool _hasNeighbors, int _maxVerts);
+  void updateVBO ();
+  void updateTBO ();
+  void captureBuffer (bool getPoints);
+  void modRenderLevel (int modVal);
+  bool addNode (int x, int y, int z, float r, float g, float b);
+  void remNode (uint index);
+  void startRender ();
+  void renderBB (int baseX, int baseY, int baseZ, int startIndex, int curLevel, int curDiv);
+};
+#undef LZZ_INLINE
+#endif
+// f00324_gamevoxelwrap.e
+//
+
+#ifndef LZZ_f00324_gamevoxelwrap_e
+#define LZZ_f00324_gamevoxelwrap_e
+#define LZZ_INLINE inline
+class GameVoxelWrap
+{
+public:
+  Singleton * singleton;
+  uint * vData;
+  uint * nData;
+  int numNeighbors;
+  int vDataSize;
+  int nDataSize;
+  int indexCount;
+  int dimInVoxels;
+  int maxDepth;
+  int nullPtr;
+  int rootPtr;
+  int nodeSize;
+  int nextOpen;
+  int renderLevel;
+  int maxVerts;
+  int vertComponents;
+  bool hasTBO;
+  bool hasVBO;
+  bool hasNeighbors;
+  std::vector <float> vertexVec;
+  VBOWrapper vboWrapper;
+  TBOWrapper octTBO;
+  std::vector <VoxelSlice*> voxelSlices;
+  GameVoxelWrap ();
   void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, bool _hasNeighbors, int _maxVerts);
   void updateVBO ();
   void updateTBO ();
@@ -24262,8 +24460,6 @@ public:
   std::vector <btScalar> vertexVec;
   std::vector <unsigned short> indexVec;
   std::vector <int> collideIndices;
-  std::vector <GameEnt *> entityGeom;
-  int entityGeomCounter;
   FIVector4 offsetInHolders;
   FIVector4 gphMinInPixels;
   FIVector4 gphMaxInPixels;
@@ -24694,6 +24890,7 @@ public:
 class GameWorld
 {
 public:
+  bool skippedPrim;
   int numProvinces;
   int seaLevel;
   int seaSlack;
@@ -24813,7 +25010,7 @@ public:
   void getArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void fireEvent (BaseObjType uid, int opCode, float fParam);
   void generateBlockHolder ();
-  void update ();
+  void update (bool postToScreen);
   void toggleVis (GameEnt * se);
   void ensureBlocks ();
   void findNearestEnt (EntSelection * entSelection, int entType, int maxLoadRad, int radStep, FIVector4 * testPoint, bool onlyInteractive = false, bool ignoreDistance = false);
@@ -24834,10 +25031,11 @@ public:
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
   void updateLights ();
-  void rasterOct (GameOctree * gameOct);
+  void rasterGrid (VBOGrid * vboGrid, bool showResults);
+  void rasterOct (GameOctree * gameOct, bool showResults);
   void renderOct (GameOctree * gameOct);
   void renderDebug ();
-  void postProcess ();
+  void postProcess (bool postToScreen);
   ~ GameWorld ();
 };
 #undef LZZ_INLINE
@@ -25094,7 +25292,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		destructCount = 0;
 		
-		sphereMapOn = false;
+		sphereMapOn = true;
 		waitingOnDestruction = false;
 		
 		physicsOn = false;
@@ -25281,6 +25479,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		generatePatterns();
 		
+		bakeTicks = 0;
 		tbTicks = 0;
 		tempCounter = 0;
 		actorCount = 0;
@@ -25644,6 +25843,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		bufferModDim.copyIntMult(&bufferDim,1);
 		bufferRenderDim.copyIntDiv(&bufferDimTarg,RENDER_SCALE_FACTOR);
 
+
+		myVBOGrid.init(bufferRenderDim.getIX(), bufferRenderDim.getIY());
+
+
+
 		myTimer.start();
 
 
@@ -25864,6 +26068,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("FogShader");
 		shaderStrings.push_back("OctShader");
 		shaderStrings.push_back("RasterShader");
+		shaderStrings.push_back("GridShader");
 		shaderStrings.push_back("GeomShader");
 		shaderStrings.push_back("BoxShader");
 		shaderStrings.push_back("PolyShader");
@@ -26051,6 +26256,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		fboMap["prmTargFBO"].init(8, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
 		fboMap["prmDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
 		
+		
+		fboMap["numstepsFBO"].init(1, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
+		
 		fboMap["terTargFBO"].init(8, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
 		fboMap["limbFBO"].init(1, bufferRenderDim.getIX(), bufferRenderDim.getIY(), numChannels, fboHasDepth);
 		fboMap["terDepthFBO"].init(numMaps, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);
@@ -26060,7 +26268,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		}
 		
 		
-		fboMap["rasterFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, true, GL_NEAREST);
+		fboMap["rasterFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
 		
 		
 		if (USE_SPHERE_MAP) {
@@ -26090,8 +26298,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		
-		// fboMap["noiseFBO"].init(1, 1024, 1024, 1, false, GL_NEAREST, GL_REPEAT);
-		// fboMap["noiseFBOLinear"].init(1, 1024, 1024, 1, false, GL_LINEAR, GL_REPEAT);
+		fboMap["rasterPosFBO"].init(1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR, GL_REPEAT);
+		fboMap["rasterSourceFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST, GL_REPEAT);
 		
 		fboMap["noiseFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST, GL_REPEAT);
 		fboMap["noiseFBOLinear"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR, GL_REPEAT);
@@ -26141,6 +26349,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 
 		gameOct = new GameOctree();
 		gameOct->init(this, cellsPerWorld, false, true, false, 32*1024*1024);
+		
+		
+		
 
 		gem = new GameEntManager();
 		gem->init(this);
@@ -29482,9 +29693,9 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 				break;
 				case 't':
-					//testOn2 = !testOn2;
+					testOn2 = !testOn2;
 					
-					pathfindingTestOn = !pathfindingTestOn;
+					//pathfindingTestOn = !pathfindingTestOn;
 					
 				break;
 				// case 'o':
@@ -32651,11 +32862,6 @@ void Singleton::frameUpdate ()
 						
 						
 						
-						
-						// if (currentTick < 2) {
-						// 	gw->update();
-						// }
-						
 						if (currentTick < 4) {
 							cameraGetPosNoShake()->setFXYZ(2048.0,2048.0,0.0);
 							camLerpPos.copyFrom(cameraGetPosNoShake());
@@ -32830,10 +33036,19 @@ void Singleton::frameUpdate ()
 						
 						if (renderingOct) {
 							//gw->renderOct(gameOct);
-							gw->rasterOct(gameOct);
+							//gw->rasterOct(gameOct,true);
+							
+							if ((bakeTicks % iGetConst(E_CONST_BAKE_TICKS)) == 0) {
+								gw->update(false);
+							}
+							
+							gw->rasterGrid(&myVBOGrid,true);
+							bakeTicks++;
 						}
 						else {
-							gw->update();
+							//gw->rasterOct(gameOct,false);
+							//gw->rasterGrid(&myVBOGrid,false);
+							gw->update(true);
 						}
 						
 						
@@ -34996,7 +35211,7 @@ bool GameOctree::addNode (int x, int y, int z, float r, float g, float b)
 			
 			curDiv = curDiv/2;
 			
-		} while (curDiv > 4);
+		} while (curDiv > 2);
 		
 		vData[curPtr+0] = 1;
 		
@@ -35011,6 +35226,307 @@ void GameOctree::startRender ()
 		renderBB(0,0,0,rootPtr,0,dimInVoxels);
 	}
 void GameOctree::renderBB (int baseX, int baseY, int baseZ, int startIndex, int curLevel, int curDiv)
+          {
+		
+		int i;
+		int xm;
+		int ym;
+		int zm;
+		
+		if (curLevel > renderLevel) {
+			return;
+		}
+		
+		int curDiv2 = curDiv/2;
+		
+		if (curLevel == renderLevel) {
+			singleton->drawBoxMinMax(
+				btVector3(baseX,baseY,baseZ),
+				btVector3(baseX+curDiv,baseY+curDiv,baseZ+curDiv)
+			);
+		}
+		
+		
+		
+		for (i = 0; i < 8; i++) {
+			zm = i/4;
+			ym = (i-zm*4)/2;
+			xm = (i-(zm*4 + ym*2));
+			
+			if (vData[startIndex+i] == nullPtr) {
+				
+			}
+			else {
+				renderBB(
+					baseX+xm*curDiv2,
+					baseY+ym*curDiv2,
+					baseZ+zm*curDiv2,
+					vData[startIndex+i],
+					curLevel+1,
+					curDiv2
+				);
+			}
+		}
+		
+		
+	}
+#undef LZZ_INLINE
+ 
+// f00324_gamevoxelwrap.h
+//
+
+#include "f00324_gamevoxelwrap.e"
+#define LZZ_INLINE inline
+GameVoxelWrap::GameVoxelWrap ()
+                        {
+		
+	}
+void GameVoxelWrap::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, bool _hasNeighbors, int _maxVerts)
+          {
+		singleton = _singleton;
+		dimInVoxels = _dimInVoxels;
+		hasTBO = _hasTBO;
+		hasVBO = _hasVBO;
+		hasNeighbors = _hasNeighbors;
+		maxVerts = _maxVerts;
+		nodeSize = 8;
+		numNeighbors = 6;
+		
+		//nodeSize = _nodeSize;
+		
+		// if (maxSize == -1) {
+		// 	maxSize = (128/4)*1024*1024;
+		// }
+		// if (nodeSize == -1) {
+			
+		// }
+		
+		indexCount = 0;
+		
+		vertComponents = 2;
+		vDataSize = maxVerts*nodeSize;
+		nDataSize = maxVerts*numNeighbors;
+		
+		maxDepth = intLogB2(dimInVoxels);
+		
+		vData = new uint[vDataSize];
+		
+		if (hasNeighbors) {
+			nData = new uint[nDataSize];
+		}
+		else {
+			nData = NULL;
+		}
+		
+		
+		renderLevel = 12;
+		nullPtr = 0;
+		rootPtr = nodeSize;
+		nextOpen = rootPtr+nodeSize;
+		
+		int i;
+		
+		for (i = 0; i < vDataSize; i++) {
+			vData[i] = nullPtr;
+		}
+		
+		if (hasTBO) {
+			octTBO.init(false,NULL,vData,vDataSize*4);
+		}
+		
+		if (hasVBO) {
+			vertexVec.clear();
+			vertexVec.reserve(maxVerts*vertComponents*4);
+			
+			//indexVec.clear();
+			//indexVec.reserve(maxVerts);
+			
+			vboWrapper.init(
+				&(vertexVec[0]),
+				vertexVec.size()*vertComponents*4,
+				maxVerts*vertComponents*4,
+				NULL,//&(indexVec[0]),
+				0,//indexVec.size()
+				0,//maxVerts
+				vertComponents,
+				GL_STATIC_DRAW
+			);
+		}
+		
+	}
+void GameVoxelWrap::updateVBO ()
+                         {
+		if (!hasVBO) {
+			return;
+		}
+		
+		vboWrapper.update(
+			&(vertexVec[0]),
+			vertexVec.size()*vertComponents*4,
+			NULL,//&(indexVec[0]),
+			0 //indexVec.size()
+		);
+	}
+void GameVoxelWrap::updateTBO ()
+                         {
+		if (!hasTBO) {
+			return;
+		}
+		
+		octTBO.update(NULL, vData, -1);
+	}
+void GameVoxelWrap::captureBuffer (bool getPoints)
+                                           {
+		
+		cout << "captureBuffer\n";
+
+		FBOWrapper *fbow = singleton->getFBOWrapper("solidTargFBO", 0);
+		fbow->getPixels();
+		
+		FBOWrapper *fbow2 = singleton->getFBOWrapper("resultFBO0", 0);
+		fbow2->getPixels();
+		
+		int i;
+		
+		int x;
+		int y;
+		int z;
+		
+		float r, g, b;
+		
+		btVector3 myPoint;
+		btVector3 camPoint = singleton->cameraGetPosNoShake()->getBTV();
+		
+		float maxDis = singleton->clipDist[1]-50.0f;
+		
+		bool didFail = false;
+		bool wasNew = false;
+		
+		for (i = 0; i < fbow->numBytes; i += 4) {
+			x = fbow->pixelsFloat[i+0];
+			y = fbow->pixelsFloat[i+1];
+			z = fbow->pixelsFloat[i+2];
+			
+			r = fbow2->pixelsChar[i+0];
+			g = fbow2->pixelsChar[i+1];
+			b = fbow2->pixelsChar[i+2];
+			
+			r /= 255.0f;
+			g /= 255.0f;
+			b /= 255.0f;
+			
+			
+			myPoint = btVector3(x,y,z);
+			
+			if (nextOpen >= (vDataSize-nodeSize)) {
+				didFail = true;
+				break;
+			}
+			
+			if (camPoint.distance(myPoint) < maxDis) {
+				wasNew = addNode(x,y,z,r,g,b);
+				
+				if (getPoints&&wasNew) {
+					vertexVec.push_back(x);
+					vertexVec.push_back(y);
+					vertexVec.push_back(z);
+					vertexVec.push_back(1.0f);
+					
+					vertexVec.push_back(r);
+					vertexVec.push_back(g);
+					vertexVec.push_back(b);
+					vertexVec.push_back(0.0f);
+					
+					//indexVec.push_back(indexCount);
+					//indexCount++;
+					
+				}
+				
+			}
+			
+		}
+		
+		if (didFail) {
+			cout << "octree full\n";
+			
+			// todo: wrap back to start of buffer and overwrite?
+			// wont work - would leave invalid pointers
+			// instead, keep linear list of inserted points and reform octree
+			// wrap this linear list
+			
+		}
+
+		cout << "points " << vertexVec.size()/8 << "\n";
+		
+	}
+void GameVoxelWrap::modRenderLevel (int modVal)
+                                        {
+		renderLevel += modVal;
+		if (renderLevel > maxDepth) {
+			renderLevel = maxDepth;
+		}
+		if (renderLevel < 0) {
+			renderLevel = 0;
+		}
+		
+		cout << "renderLevel " << renderLevel << "\n";
+	}
+bool GameVoxelWrap::addNode (int x, int y, int z, float r, float g, float b)
+                                                                     {
+		int curPtr = rootPtr;
+		int curLevel = 0;
+		bool doProc = true;
+		
+		int curX = x;
+		int curY = y;
+		int curZ = z;
+		
+		int subX;
+		int subY;
+		int subZ;
+		
+		int curDiv = dimInVoxels/2;
+		
+		int offset;
+		
+		bool wasNew = false;
+		
+		do {
+			subX = curX/curDiv;
+			subY = curY/curDiv;
+			subZ = curZ/curDiv;
+			
+			curX -= subX*curDiv;
+			curY -= subY*curDiv;
+			curZ -= subZ*curDiv;
+			
+			offset = subX + subY*2 + subZ*4;
+			
+			if (vData[curPtr+offset] == nullPtr) {
+				vData[curPtr+offset] = nextOpen;
+				nextOpen += nodeSize;
+				wasNew = true;
+			}
+			
+			curPtr = vData[curPtr+offset];
+			
+			curDiv = curDiv/2;
+			
+		} while (curDiv > 4);
+		
+		vData[curPtr+0] = 1;
+		
+		return wasNew;
+	}
+void GameVoxelWrap::remNode (uint index)
+                                 {
+		
+	}
+void GameVoxelWrap::startRender ()
+                           {
+		renderBB(0,0,0,rootPtr,0,dimInVoxels);
+	}
+void GameVoxelWrap::renderBB (int baseX, int baseY, int baseZ, int startIndex, int curLevel, int curDiv)
           {
 		
 		int i;
@@ -48587,7 +49103,7 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		lockRead = false;
 		lockWrite = false;
 
-		entityGeomCounter = 0;
+		//entityGeomCounter = 0;
 		totIdealNodes = 0;
 		totGroupIds = 0;
 
@@ -59720,6 +60236,8 @@ void GameWorld::init (Singleton * _singleton)
 		int i;
 		int j;
 		
+		skippedPrim = false;
+		
 		shiftCounter = 0;
 		
 		curTargFBO[0] = "terTargFBO";
@@ -60316,8 +60834,8 @@ void GameWorld::generateBlockHolder ()
 			
 		// }
 	}
-void GameWorld::update ()
-                      {
+void GameWorld::update (bool postToScreen)
+                                       {
 		
 		singleton->updateLock = true;
 
@@ -60463,7 +60981,7 @@ void GameWorld::update ()
 		
 		
 		
-
+		skippedPrim = false;
 
 		drawPrim(false,true,false);
 		drawPrim(false,false,false);
@@ -60478,6 +60996,7 @@ void GameWorld::update ()
 		//singleton->copyFBO2("solidBaseTargFBO","solidTargFBO");
 		
 		singleton->bindShader("SolidCombineShader");
+		singleton->setShaderInt("skippedPrim", (int)(skippedPrim));
 		singleton->bindFBO("solidTargFBO");//, -1, 0);
 		singleton->sampleFBO("solidBaseTargFBO",0);
 		singleton->sampleFBO("geomTargFBO",2);
@@ -60490,15 +61009,14 @@ void GameWorld::update ()
 	
 		
 		
-		postProcess();
+		postProcess(postToScreen);
 		
 		
+		if (postToScreen) {
+			drawMap();
+			glutSwapBuffers();
+		}
 		
-		drawMap();
-		
-		
-
-		glutSwapBuffers();
 		//glFlush();
 		
 		singleton->updateLock = false;
@@ -61079,6 +61597,8 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 				singleton->copyFBO2("terTargFBO","solidBaseTargFBO", 0, 1);
 				singleton->copyFBO2("terTargFBO","waterTargFBO", 2, 3);
 				singleton->copyFBO2("terTargFBO","prmDepthFBO", 4, 5);
+				singleton->copyFBO("terTargFBO","numstepsFBO", 7);
+				skippedPrim = true;
 				return;
 			}
 			
@@ -61139,7 +61659,9 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		
 		singleton->sampleFBO("hmFBOLinearBig",2);
-		singleton->sampleFBO("terDepthFBO",3);
+		
+		singleton->sampleFBO("rasterFBO",3);
+		//singleton->sampleFBO("terDepthFBO",3);
 		
 		//if (USE_SPHERE_MAP) {
 		//	singleton->sampleFBO("sphDepthFBO",5);
@@ -64159,8 +64681,57 @@ UPDATE_LIGHTS_END:
 
 
 	}
-void GameWorld::rasterOct (GameOctree * gameOct)
-                                            {
+void GameWorld::rasterGrid (VBOGrid * vboGrid, bool showResults)
+                                                            {
+		
+		// get view matrix
+		singleton->perspectiveOn = true;
+		singleton->getMatrixFromFBO("rasterFBO");
+		singleton->perspectiveOn = false;
+
+
+		glEnable(GL_DEPTH_TEST);
+
+		singleton->bindShader("GridShader");
+		singleton->bindFBO("rasterFBO");
+
+		singleton->sampleFBO("rasterPosFBO",0);
+		singleton->sampleFBO("rasterSourceFBO",1);
+
+		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+		
+		
+		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
+		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
+
+		//singleton->fsQuad.draw();
+		vboGrid->vboWrapper.draw();
+
+
+		singleton->unsampleFBO("rasterSourceFBO",1);
+		singleton->unsampleFBO("rasterPosFBO",0);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		
+		glDisable(GL_DEPTH_TEST);
+
+		
+		if (showResults) {
+			singleton->drawFBO("rasterFBO", 0, 1.0f);
+			
+			glutSwapBuffers();
+			
+			
+		}
+		
+		
+	}
+void GameWorld::rasterOct (GameOctree * gameOct, bool showResults)
+                                                              {
 		
 		// get view matrix
 		singleton->perspectiveOn = true;
@@ -64209,10 +64780,12 @@ void GameWorld::rasterOct (GameOctree * gameOct)
 		glDisable(GL_DEPTH_TEST);
 
 		
-
-		singleton->drawFBO("rasterFBO", 0, 1.0f);
+		if (showResults) {
+			singleton->drawFBO("rasterFBO", 0, 1.0f);
+			
+			glutSwapBuffers();
+		}
 		
-		glutSwapBuffers();
 		
 	}
 void GameWorld::renderOct (GameOctree * gameOct)
@@ -64500,7 +65073,7 @@ void GameWorld::renderDebug ()
 		singleton->unbindShader();
 		
 	}
-void GameWorld::postProcess ()
+void GameWorld::postProcess (bool postToScreen)
         {
 
 		
@@ -64831,6 +65404,8 @@ void GameWorld::postProcess ()
 			singleton->sampleFBO("noiseFBOLinear", 8);
 			singleton->sampleFBO("debugTargFBO", 9);
 			
+			singleton->sampleFBO("numstepsFBO", 11);
+			
 			
 			if ((singleton->gem->getCurActor() == NULL)||singleton->gem->firstPerson) {
 				singleton->setShaderFloat("thirdPerson", 0.0f);
@@ -64856,6 +65431,7 @@ void GameWorld::postProcess ()
 			singleton->setShaderInt("placingPattern", singleton->placingPattern);
 			
 			
+			singleton->setShaderInt("testOn2", (int)(singleton->testOn2));
 			
 			singleton->setShaderInt("gridOn", singleton->gridOn);
 			
@@ -64890,7 +65466,7 @@ void GameWorld::postProcess ()
 
 			singleton->drawFSQuad();
 
-			
+			singleton->unsampleFBO("numstepsFBO", 11);			
 			singleton->unsampleFBO("debugTargFBO", 9);
 			singleton->unsampleFBO("noiseFBOLinear", 8);
 			singleton->setShaderTexture3D(7,0);
@@ -64991,9 +65567,15 @@ void GameWorld::postProcess ()
 			
 			
 			
+			if (postToScreen) {
+				singleton->drawFBO("resultFBO", 0, 1.0f, 1 - activeFBO);
+			}
+			else {
+				singleton->copyFBO("solidTargFBO", "rasterPosFBO");
+				singleton->copyFBO("resultFBO"+i__s(activeFBO), "rasterSourceFBO");
+			}
 			
 			
-			singleton->drawFBO("resultFBO", 0, 1.0f, 1 - activeFBO);
 			
 			
 			
@@ -65003,7 +65585,7 @@ void GameWorld::postProcess ()
 		
 
 
-		if (singleton->anyMenuVisible()) {
+		if (singleton->anyMenuVisible()&&postToScreen) {
 			glEnable (GL_BLEND);
 
 			singleton->bindShader("GUIShader");
