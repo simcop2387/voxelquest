@@ -3089,6 +3089,11 @@ public:
 		
 	}
 	
+	void updateNew() {
+		// todo: use glBufferData instead of glBufferSubData
+		// to completely clear and create new buffer
+	}
+	
 	void init(
 		GLfloat* _vertexData,
 		int _sizeOfVD,

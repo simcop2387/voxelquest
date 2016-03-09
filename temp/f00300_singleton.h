@@ -148,7 +148,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		destructCount = 0;
 		
-		sphereMapOn = true;
+		sphereMapOn = false;
 		waitingOnDestruction = false;
 		
 		physicsOn = false;
@@ -383,6 +383,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		cellsPerBlock = holdersPerBlock * cellsPerHolder;
 		blocksPerWorld = holdersPerWorld/holdersPerBlock;
 		
+		
+		voxelsPerCell = 16;
+		
+		
+		
 		if (blocksPerWorld > 256) {
 			cout << "Too many blocks in world, change holdersPerBlock\n";
 			exit(0);
@@ -506,6 +511,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		radiosityOn = true;
 		testOn = false;
 		testOn2 = false;
+		testOn3 = false;
 		updateLock = false;
 		traceOn = false;
 		frameMouseMove = false;
@@ -924,6 +930,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("FogShader");
 		shaderStrings.push_back("OctShader");
 		shaderStrings.push_back("RasterShader");
+		shaderStrings.push_back("HolderShader");
 		shaderStrings.push_back("GridShader");
 		shaderStrings.push_back("GeomShader");
 		shaderStrings.push_back("BoxShader");
@@ -1126,6 +1133,11 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		fboMap["rasterFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
 		
+		fboMap["rasterPosFBO"].init(1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);//, GL_REPEAT);
+		fboMap["rasterSourceFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);//, GL_REPEAT);
+		
+		
+		
 		
 		if (USE_SPHERE_MAP) {
 			fboMap["sphTargFBO"].init(8, bufferRenderDim.getIX()*SPHEREMAP_SCALE_FACTOR, bufferRenderDim.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth);
@@ -1154,8 +1166,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		
-		fboMap["rasterPosFBO"].init(1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR, GL_REPEAT);
-		fboMap["rasterSourceFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST, GL_REPEAT);
+		
 		
 		fboMap["noiseFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST, GL_REPEAT);
 		fboMap["noiseFBOLinear"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR, GL_REPEAT);
@@ -4244,7 +4255,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					gameOct->updateVBO();
 				break;
 				case '*':
-					renderingOct = !renderingOct;
+					//renderingOct = !renderingOct;
 				break;
 				case '-':
 					gameOct->modRenderLevel(-1);
@@ -4318,7 +4329,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					// }
 				
 					updateHolders = !updateHolders;
-					pathfindingGen = updateHolders;
+					//pathfindingGen = updateHolders;
 					
 					
 					cout << "\n";
@@ -4549,7 +4560,15 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 				break;
 				case 't':
-					testOn2 = !testOn2;
+					//testOn2 = !testOn2;
+					//testOn3 = !testOn3;
+					renderingOct = !renderingOct;
+					
+					// if (renderingOct) {
+					// 	gameLogic->threadPoolList->stopAll();
+					// 	gameLogic->threadPoolPath->stopAll();
+					// }
+					
 					
 					//pathfindingTestOn = !pathfindingTestOn;
 					
@@ -4675,8 +4694,16 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 					break;
 				case 'M':
-					smoothMove = !smoothMove;
-					cout << "smoothMove " << smoothMove << "\n";
+					// smoothMove = !smoothMove;
+					// cout << "smoothMove " << smoothMove << "\n";
+					
+					medianCount++;					
+					if (medianCount == 4) {
+						medianCount = 0;
+					
+					}
+					cout << "medianCount " << medianCount << "\n";
+					
 				break;
 				
 
@@ -7894,12 +7921,14 @@ void Singleton::frameUpdate ()
 							//gw->renderOct(gameOct);
 							//gw->rasterOct(gameOct,true);
 							
-							if ((bakeTicks % iGetConst(E_CONST_BAKE_TICKS)) == 0) {
-								gw->update(false);
-							}
+							// if ((bakeTicks % iGetConst(E_CONST_BAKE_TICKS)) == 0) {
+							// 	gw->update(false);
+							// }
+							// gw->rasterGrid(&myVBOGrid,true);
+							// bakeTicks++;
 							
-							gw->rasterGrid(&myVBOGrid,true);
-							bakeTicks++;
+							gw->rasterHolders(true);
+							
 						}
 						else {
 							//gw->rasterOct(gameOct,false);

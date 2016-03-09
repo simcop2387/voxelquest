@@ -933,10 +933,6 @@ public:
 
 		
 		
-		//loadNearestHolders();
-		
-		
-		
 		if (singleton->depthInvalidMove) {
 			invalidCount += 1.25f + singleton->amountInvalidMove*0.25f;
 		}
@@ -2111,7 +2107,6 @@ public:
 			singleton->setShaderVec4("maskVals", 0.0f, 1.0f, 0.0f, 0.0f);
 		}
 		
-		
 		singleton->setShaderFloat("volSizePrim", singleton->gameFluid[E_FID_BIG]->volSizePrim);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
@@ -2250,6 +2245,8 @@ public:
 						curRad = max(max(abs(bi-ii),abs(bj-jj)),abs(bk-kk));
 						
 						
+						
+						
 						// if (q == 4) {
 						// 	idealDis = true;
 						// }
@@ -2262,23 +2259,29 @@ public:
 						// 	}
 						// }
 						
-						
-						if (
-							(curHolder->listGenerated) &&
-							(!(curHolder->listEmpty)) &&
-							(q==curRad) || (q == -1)
-						) {
-							
-							pCount++;
-							
-							// singleton->setShaderFloat("volSizePrim", singleton->cellsPerHolder);
-							// singleton->setShaderfVec3("volMinReadyInPixels", &(curHolder->gphMinInPixels) );
-							// singleton->setShaderfVec3("volMaxReadyInPixels", &(curHolder->gphMaxInPixels) );
-							// singleton->setShaderTexture3D(0, curHolder->terVW->volId);
-							
-							curHolder->vboWrapper.draw();
+						if (curHolder->lockWrite) {
 							
 						}
+						else {
+							if (
+								(curHolder->listGenerated) &&
+								(!(curHolder->listEmpty)) &&
+								((q==curRad) || (q == -1))
+							) {
+								
+								pCount++;
+								
+								// singleton->setShaderFloat("volSizePrim", singleton->cellsPerHolder);
+								// singleton->setShaderfVec3("volMinReadyInPixels", &(curHolder->gphMinInPixels) );
+								// singleton->setShaderfVec3("volMaxReadyInPixels", &(curHolder->gphMaxInPixels) );
+								// singleton->setShaderTexture3D(0, curHolder->terVW->volId);
+								
+								curHolder->vboWrapper.draw();
+								
+							}
+						}
+						
+						
 					}
 				}
 			}
@@ -4810,6 +4813,57 @@ UPDATE_LIGHTS_END:
 	// }
 
 
+
+
+	void rasterHolders(bool showResults) {
+		
+		// get view matrix
+		singleton->perspectiveOn = true;
+		singleton->getMatrixFromFBO("rasterFBO");
+		singleton->perspectiveOn = false;
+
+
+		glEnable(GL_DEPTH_TEST);
+		
+
+		singleton->bindShader("HolderShader");
+		singleton->bindFBO("rasterFBO");
+
+
+		// singleton->sampleFBO("rasterPosFBO",0);
+		// singleton->sampleFBO("rasterSourceFBO",1);
+
+		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+		
+		
+		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
+		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
+
+		rasterPolys(-1,0,5);
+
+		// singleton->unsampleFBO("rasterSourceFBO",1);
+		// singleton->unsampleFBO("rasterPosFBO",0);
+		singleton->unbindFBO();
+		singleton->unbindShader();
+		
+		glDisable(GL_DEPTH_TEST);
+
+		
+		if (showResults) {
+			singleton->drawFBO("rasterFBO", 0, 1.0f);
+			
+			glutSwapBuffers();
+			
+			
+		}
+		
+		
+	}
+
 	void rasterGrid(VBOGrid* vboGrid, bool showResults) {
 		
 		// get view matrix
@@ -5622,7 +5676,7 @@ UPDATE_LIGHTS_END:
 			singleton->sampleFBO("resultFBO", 0, activeFBO);
 			singleton->sampleFBO("solidTargFBO", 1);
 			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-			singleton->setShaderfVec2("bufferDim", &(singleton->bufferModDim) );
+			singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim) );
 			
 			singleton->drawFSQuad();
 			

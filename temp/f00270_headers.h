@@ -167,6 +167,7 @@ public:
   bool bShift;
   bool testOn;
   bool testOn2;
+  bool testOn3;
   bool emptyVDNotReady;
   bool radiosityOn;
   bool updateLock;
@@ -273,6 +274,7 @@ public:
   int cellsPerWorld;
   int holdersPerWorld;
   int blocksPerWorld;
+  int voxelsPerCell;
   intPair (entIdArr) [1024];
   uint palWidth;
   uint palHeight;
@@ -1691,8 +1693,8 @@ public:
   std::vector <GroupIdStruct> groupIdStack;
   std::vector <GroupInfoStruct> groupInfoStack;
   std::vector <ConnectingNodeStruct> bestConnectingNodes;
-  std::vector <btScalar> vertexVec;
-  std::vector <unsigned short> indexVec;
+  std::vector <float> vertexVec;
+  std::vector <uint> indexVec;
   std::vector <int> collideIndices;
   FIVector4 offsetInHolders;
   FIVector4 gphMinInPixels;
@@ -1702,11 +1704,6 @@ public:
   Singleton * singleton;
   intPairVec (containsEntIds) [E_ET_LENGTH];
   bool wasGenerated;
-  btTriangleIndexVertexArray * meshInterface;
-  btIndexedMesh part;
-  btRigidBody * body;
-  btBvhTriangleMeshShape * trimeshShape;
-  btBoxShape * boxShape;
   GamePageHolder ();
   void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isBlockHolder = false);
   int getCellAtCoordsLocal (int xx, int yy, int zz);
@@ -1731,8 +1728,7 @@ public:
   void genCellData ();
   void getIndVal (int procCount);
   void getIndVal2 (int procCount);
-  void getPixVal (float xb, float yb, float zb, int xm, int ym, int zm, int * mv);
-  void createMesh ();
+  void getPixVal (float xb, float yb, float zb, int xm, int ym, int zm);
   void fillVBO ();
   void generateList ();
 };
@@ -1754,19 +1750,30 @@ LZZ_INLINE void GamePageHolder::getIndVal2 (int procCount)
 		indexVec.push_back(1+procCount*4);
 		indexVec.push_back(2+procCount*4);
 	}
-LZZ_INLINE void GamePageHolder::getPixVal (float xb, float yb, float zb, int xm, int ym, int zm, int * mv)
+LZZ_INLINE void GamePageHolder::getPixVal (float xb, float yb, float zb, int xm, int ym, int zm)
           {
-		int maskInd = xm + ym*2 + zm*4;
+		//int maskInd = xm + ym*2 + zm*4;
 		
-		vertexVec.push_back(xb+xm+NET_MASKS[mv[maskInd]].getX());
-		vertexVec.push_back(yb+ym+NET_MASKS[mv[maskInd]].getY());
-		vertexVec.push_back(zb+zm+NET_MASKS[mv[maskInd]].getZ());
-		//vertexVec.push_back(1.0f);
+		// vertexVec.push_back(xb+xm+NET_MASKS[mv[maskInd]].getX());
+		// vertexVec.push_back(yb+ym+NET_MASKS[mv[maskInd]].getY());
+		// vertexVec.push_back(zb+zm+NET_MASKS[mv[maskInd]].getZ());
+		// vertexVec.push_back(1.0f);
 		
 		// vertexVec.push_back(xb+xm);
 		// vertexVec.push_back(yb+ym);
 		// vertexVec.push_back(zb+zm);
-		//vertexVec.push_back(1.0f);
+		// vertexVec.push_back(1.0f);
+		
+		
+		vertexVec.push_back(xb+xm);
+		vertexVec.push_back(yb+ym);
+		vertexVec.push_back(zb+zm);
+		vertexVec.push_back(1.0f);
+		
+		vertexVec.push_back(xb+xm);
+		vertexVec.push_back(yb+ym);
+		vertexVec.push_back(zb+zm);
+		vertexVec.push_back(1.0f);
 		
 		
 		
@@ -2265,6 +2272,7 @@ public:
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
   void updateLights ();
+  void rasterHolders (bool showResults);
   void rasterGrid (VBOGrid * vboGrid, bool showResults);
   void rasterOct (GameOctree * gameOct, bool showResults);
   void renderOct (GameOctree * gameOct);

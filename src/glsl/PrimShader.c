@@ -4831,6 +4831,12 @@ void main() {
 		float aspect = bufferDim.y/bufferDim.x;
 		float dx = tan(FOV*0.5)*(baseCoords.x*2.0-1.0)/aspect; //gl_FragCoord.x/(bufferDim.x*0.5)
 		float dy = tan(FOV*0.5)*((1.0-baseCoords.y)*2.0-1.0); //gl_FragCoord.y/(bufferDim.y*0.5)
+		
+		// if (doSphereMap) {
+		// 	dx *= 400.0;
+		// 	dy *= 400.0;
+		// }
+		
 		dx = -dx;
 		vec4 p1 = vec4(dx*NEAR,dy*NEAR,NEAR,1.0);
 		vec4 p2 = vec4(dx*FAR,dy*FAR,FAR,1.0);
@@ -4844,7 +4850,7 @@ void main() {
 		float theta = (baseCoords.y)*M_PI;// - acos(lookAtVec.z);
 		
 		
-		
+		vec3 lookAtPoint;
 		
 		vec4 terSamp4;
 		
@@ -4857,13 +4863,39 @@ void main() {
 			
 		
 		if (doSphereMap) {
-				rd = normalize(vec3(
-						cos(phi)*sin(theta),
-						sin(phi)*sin(theta),
-						cos(theta)
+				
+				// ro = cameraPos.xyz;
+				// ro.xy += (baseCoords.xy-0.5)*(cameraPos.z-2000.0);
+
+				// rd = vec3(0.0,0.0,-1.0);
+				
+				//ro = cameraPos.xyz;
+			
+				// lookAtPoint = cameraPos.xyz;
+			
+				// ro = normalize(
+				// 	vec3(
+				// 		cos(phi)*sin(theta),
+				// 		sin(phi)*sin(theta),
+				// 		cos(theta)
+				// 	)
+				// )*500.0 + lookAtPoint;
+			
+				// ro += -rd*100.0;
+				
+				// rd = normalize(lookAtPoint-ro);
+			
+			
+			
+			ro = cameraPos.xyz;
+			rd = normalize(
+				vec3(
+					cos(phi)*sin(theta),
+					sin(phi)*sin(theta),
+					cos(theta)
 				)
-				//+randV*0.01
-				);
+			);
+				
 				
 		}
 		else {

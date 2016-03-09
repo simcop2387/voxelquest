@@ -58,8 +58,8 @@ public:
 	std::vector<GroupInfoStruct> groupInfoStack; // stores all info about one group
 	std::vector<ConnectingNodeStruct> bestConnectingNodes; // best connections between groups
 	
-	std::vector<btScalar> vertexVec;
-	std::vector<unsigned short> indexVec;
+	std::vector<float> vertexVec; //btScalar
+	std::vector<uint> indexVec; //unsigned short
 	std::vector<int> collideIndices;
 	
 	//std::vector<GameEnt *> entityGeom;
@@ -92,11 +92,11 @@ public:
 	
 	
 	
-	btTriangleIndexVertexArray* meshInterface;
-	btIndexedMesh part;
-	btRigidBody* body;
-	btBvhTriangleMeshShape* trimeshShape;
-	btBoxShape* boxShape;
+	// btTriangleIndexVertexArray* meshInterface;
+	// btIndexedMesh part;
+	// btRigidBody* body;
+	// btBvhTriangleMeshShape* trimeshShape;
+	// btBoxShape* boxShape;
 	
 	// int vertCount;
 	// int indCount;
@@ -107,10 +107,10 @@ public:
 
 	GamePageHolder() {
 		
-		boxShape = NULL;
-		trimeshShape = NULL;
-		meshInterface = NULL;
-		body = NULL;
+		// boxShape = NULL;
+		// trimeshShape = NULL;
+		// meshInterface = NULL;
+		// body = NULL;
 		
 		hasData = true;
 		hasPath = true;
@@ -1948,20 +1948,30 @@ FIRST_FILL_DONE:
 		//FBOWrapper* fbow1,
 		//int ind,
 		float xb, float yb, float zb,
-		int xm, int ym, int zm,
-		int* mv
+		int xm, int ym, int zm
 	) {
-		int maskInd = xm + ym*2 + zm*4;
+		//int maskInd = xm + ym*2 + zm*4;
 		
-		vertexVec.push_back(xb+xm+NET_MASKS[mv[maskInd]].getX());
-		vertexVec.push_back(yb+ym+NET_MASKS[mv[maskInd]].getY());
-		vertexVec.push_back(zb+zm+NET_MASKS[mv[maskInd]].getZ());
-		//vertexVec.push_back(1.0f);
+		// vertexVec.push_back(xb+xm+NET_MASKS[mv[maskInd]].getX());
+		// vertexVec.push_back(yb+ym+NET_MASKS[mv[maskInd]].getY());
+		// vertexVec.push_back(zb+zm+NET_MASKS[mv[maskInd]].getZ());
+		// vertexVec.push_back(1.0f);
 		
 		// vertexVec.push_back(xb+xm);
 		// vertexVec.push_back(yb+ym);
 		// vertexVec.push_back(zb+zm);
-		//vertexVec.push_back(1.0f);
+		// vertexVec.push_back(1.0f);
+		
+		
+		vertexVec.push_back(xb+xm);
+		vertexVec.push_back(yb+ym);
+		vertexVec.push_back(zb+zm);
+		vertexVec.push_back(1.0f);
+		
+		vertexVec.push_back(xb+xm);
+		vertexVec.push_back(yb+ym);
+		vertexVec.push_back(zb+zm);
+		vertexVec.push_back(1.0f);
 		
 		
 		
@@ -1988,111 +1998,111 @@ FIRST_FILL_DONE:
 
 
 
-	void createMesh()
-	{
-		btTransform trans;
-		trans.setIdentity();
+	// void createMesh()
+	// {
+	// 	btTransform trans;
+	// 	trans.setIdentity();
 		
-		float objRad;
+	// 	float objRad;
 		
-		if (trimeshShape == NULL) {
+	// 	if (trimeshShape == NULL) {
 			
-		}
-		else {
+	// 	}
+	// 	else {
 			
-			//cout << "regen\n";
+	// 		//cout << "regen\n";
 			
-			singleton->gamePhysics->example->removeRigidBody(body);
-			delete meshInterface;
-			meshInterface = NULL;
-			delete trimeshShape;
-			trimeshShape = NULL;
-			//delete body;
-			//body = NULL;
+	// 		singleton->gamePhysics->example->removeRigidBody(body);
+	// 		delete meshInterface;
+	// 		meshInterface = NULL;
+	// 		delete trimeshShape;
+	// 		trimeshShape = NULL;
+	// 		//delete body;
+	// 		//body = NULL;
 			
-			if (body != NULL) {
+	// 		if (body != NULL) {
 				
-				delete body;
-				body = NULL;
+	// 			delete body;
+	// 			body = NULL;
 				
-				//cout << "body not null\n";
-			}
-		}
+	// 			//cout << "body not null\n";
+	// 		}
+	// 	}
 		
-		if (boxShape == NULL) {
+	// 	if (boxShape == NULL) {
 			
-		}
-		else {
-			singleton->gamePhysics->example->removeRigidBody(body);
-			delete boxShape;
-			boxShape = NULL;
-		}
+	// 	}
+	// 	else {
+	// 		singleton->gamePhysics->example->removeRigidBody(body);
+	// 		delete boxShape;
+	// 		boxShape = NULL;
+	// 	}
 		
 		
-		if ((holderFlags == E_CD_SOLID)&&listEmpty) {
-			objRad = (gphMaxInPixels[0]-gphMinInPixels[0])*0.5f;
+	// 	if ((holderFlags == E_CD_SOLID)&&listEmpty) {
+	// 		objRad = (gphMaxInPixels[0]-gphMinInPixels[0])*0.5f;
 			
-			boxShape = new btBoxShape(btVector3(objRad,objRad,objRad));
-			trans.setOrigin(btVector3(
-				(gphMinInPixels[0]+gphMaxInPixels[0])*0.5f,
-				(gphMinInPixels[1]+gphMaxInPixels[1])*0.5f,
-				(gphMinInPixels[2]+gphMaxInPixels[2])*0.5f
-			));
+	// 		boxShape = new btBoxShape(btVector3(objRad,objRad,objRad));
+	// 		trans.setOrigin(btVector3(
+	// 			(gphMinInPixels[0]+gphMaxInPixels[0])*0.5f,
+	// 			(gphMinInPixels[1]+gphMaxInPixels[1])*0.5f,
+	// 			(gphMinInPixels[2]+gphMaxInPixels[2])*0.5f
+	// 		));
 
-			body = singleton->gamePhysics->example->createRigidBodyMask(
-				0,
-				trans,
-				boxShape
-				,COL_STATIC,
-				terCollidesWith
-			);
+	// 		body = singleton->gamePhysics->example->createRigidBodyMask(
+	// 			0,
+	// 			trans,
+	// 			boxShape
+	// 			,COL_STATIC,
+	// 			terCollidesWith
+	// 		);
 			
-		}
-		else {
+	// 	}
+	// 	else {
 			
-			meshInterface = new btTriangleIndexVertexArray();
+	// 		meshInterface = new btTriangleIndexVertexArray();
 			
-			part.m_vertexBase = (const unsigned char*)(&(vertexVec[0]));
-			part.m_vertexStride = sizeof(btScalar) * 3;
-			part.m_numVertices = vertexVec.size()/3;
-			part.m_triangleIndexBase = (const unsigned char*)(&(indexVec[0]));
-			part.m_triangleIndexStride = sizeof(short) * 3;
-			part.m_numTriangles = indexVec.size()/3;
-			part.m_indexType = PHY_SHORT;
+	// 		part.m_vertexBase = (const unsigned char*)(&(vertexVec[0]));
+	// 		part.m_vertexStride = sizeof(btScalar) * 3;
+	// 		part.m_numVertices = vertexVec.size()/3;
+	// 		part.m_triangleIndexBase = (const unsigned char*)(&(indexVec[0]));
+	// 		part.m_triangleIndexStride = sizeof(short) * 3;
+	// 		part.m_numTriangles = indexVec.size()/3;
+	// 		part.m_indexType = PHY_SHORT;
 
-			meshInterface->addIndexedMesh(part,PHY_SHORT);
+	// 		meshInterface->addIndexedMesh(part,PHY_SHORT);
 
 			
-			trimeshShape = new btBvhTriangleMeshShape(meshInterface,true,true);
+	// 		trimeshShape = new btBvhTriangleMeshShape(meshInterface,true,true);
 			
-			trans.setOrigin(btVector3(
-				gphMinInPixels[0],
-				gphMinInPixels[1],
-				gphMinInPixels[2]
-			));
+	// 		trans.setOrigin(btVector3(
+	// 			gphMinInPixels[0],
+	// 			gphMinInPixels[1],
+	// 			gphMinInPixels[2]
+	// 		));
 
-			body = singleton->gamePhysics->example->createRigidBodyMask(
-				0,
-				trans,
-				trimeshShape
-				,COL_STATIC,
-				terCollidesWith
-			);
+	// 		body = singleton->gamePhysics->example->createRigidBodyMask(
+	// 			0,
+	// 			trans,
+	// 			trimeshShape
+	// 			,COL_STATIC,
+	// 			terCollidesWith
+	// 		);
 			
 			
-		}
+	// 	}
 		
 
 		
-		body->setFriction(btScalar(0.9));
-		body->bodyUID = -1;
-		body->limbUID = -1;
+	// 	body->setFriction(btScalar(0.9));
+	// 	body->bodyUID = -1;
+	// 	body->limbUID = -1;
 		
-		singleton->gamePhysics->example->updateGraphicsObjects();
+	// 	singleton->gamePhysics->example->updateGraphicsObjects();
 		
 		
 		
-	}
+	// }
 
 	void fillVBO() {
 		
@@ -2186,36 +2196,42 @@ FIRST_FILL_DONE:
 		
 		
 		if (
-			// (isBlockHolder&&GEN_POLYS_WORLD) ||
-			((!isBlockHolder)&&POLY_COLLISION)	
+			listEmpty || (!hasData)
+			// && (holderFlags != E_CD_SOLID)
 		) {
-			if (
-				listEmpty
-				// && (holderFlags != E_CD_SOLID)
-			) {
-				
-			}
-			else {
-
-				createMesh();
+			
+		}
+		else {
+			if (POLYS_FOR_CELLS) {
 				
 				
-				// vboWrapper.init(
-				// 	&(vertexVec[0]),
-				// 	vertexVec.size(),
-				// 	&(indexVec[0]),
-				// 	indexVec.size()
-				// );
 				
+				vboWrapper.init(
+					&(vertexVec[0]),
+					vertexVec.size(),
+					vertexVec.size(),
+					&(indexVec[0]),
+					indexVec.size(),
+					indexVec.size(),
+					2,
+					GL_STATIC_DRAW
+				);
+				
+				glFlush();
+				glFinish();
 				
 				// todo: not needed?
 				//glFlush();
 				//glFinish();
 			}
+			// else if ((!isBlockHolder)&&POLY_COLLISION) {
+			// 	createMesh();
+			// }
+			// else if (isBlockHolder&&GEN_POLYS_WORLD) {
+				
+			// }
+			
 		}
-		
-		
-		
 		
 		
 		listGenerated = true;
@@ -2289,8 +2305,12 @@ FIRST_FILL_DONE:
 		const uint AIR_VAL = 0;
 		
 		
-		bool doProcAny;
+		bool doProcAny = false;
 		bool doProc[6];// = false;
+		
+		for (i = 0; i < 6; i++) {
+			doProc[i] = false;
+		}
 
 		uint tempHF = E_CD_UNKNOWN;
 
@@ -2374,8 +2394,8 @@ FIRST_FILL_DONE:
 		
 		bool fillPolys = 
 			// (isBlockHolder&&GEN_POLYS_WORLD) ||
-			((!isBlockHolder)&&POLY_COLLISION);
-		
+			//((!isBlockHolder)&&POLY_COLLISION);
+			POLYS_FOR_CELLS;
 		
 		
 		bool rleOn = false;
@@ -2459,9 +2479,9 @@ FIRST_FILL_DONE:
 							iX = gphMinInPixels.getIX() + i;
 							iY = gphMinInPixels.getIY() + j;
 							iZ = gphMinInPixels.getIZ() + k;
-							bpX = i*cellPitch;
-							bpY = j*cellPitch;
-							bpZ = k*cellPitch;
+							bpX = iX;
+							bpY = iY;
+							bpZ = iZ;
 							
 							if (isBlockHolder) {
 								cellVal = getCellAtCoordsLocal(iX,iY,iZ);
@@ -2564,10 +2584,10 @@ FIRST_FILL_DONE:
 								
 								if (doProc[0]) { // x+
 									
-									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
 									
 									getIndVal(procCount);
 									procCount++;
@@ -2576,10 +2596,10 @@ FIRST_FILL_DONE:
 								}
 								if (doProc[1]) { // x-
 									
-									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
 									
 									getIndVal2(procCount);
 									procCount++;
@@ -2587,10 +2607,10 @@ FIRST_FILL_DONE:
 								}
 								if (doProc[2]) { // y+
 									
-									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
 									
 									getIndVal2(procCount);
 									procCount++;
@@ -2599,30 +2619,30 @@ FIRST_FILL_DONE:
 								if (doProc[3]) { // y-
 									
 									
-									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
 									
 									getIndVal(procCount);
 									procCount++;
 								}
 								if (doProc[4]) { // z+
 									
-									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
 									
 									getIndVal(procCount);
 									procCount++;
 								}
 								if (doProc[5]) { // z-
 									
-									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
 									
 									getIndVal2(procCount);
 									procCount++;

@@ -14,8 +14,8 @@ bool ND_TRACE_OFF = false;
 
 const static int MAX_LIMB_DATA_IN_BYTES = 65536;
 
-
-const static bool POLY_COLLISION = false;
+const static bool POLYS_FOR_CELLS = true;
+//const static bool POLY_COLLISION = false;
 const static bool VOXEL_COLLISION = true;
 
 const static bool GEN_DEBRIS = false;
@@ -61,7 +61,7 @@ const static float ORG_SCALE_BASE = 0.5f;
 
 // qqqq
 
-#define STREAM_RES 1
+//#define STREAM_RES 1
 
 #ifdef STREAM_RES
 	const static int DEF_WIN_W = 2048; //2048;//
@@ -73,7 +73,7 @@ const static float ORG_SCALE_BASE = 0.5f;
 
 
 
-const static int DEF_SCALE_FACTOR = 1;
+const static int DEF_SCALE_FACTOR = 4;
 const static int RENDER_SCALE_FACTOR = 1;
 const static float SPHEREMAP_SCALE_FACTOR = 0.5f; // lower is faster
 

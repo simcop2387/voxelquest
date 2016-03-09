@@ -859,7 +859,7 @@ void main() {
     
     //gridVal0 = max(gridVal0 - abs(lookAtVec),vec3(0.0));
     
-    float disMod = clamp(1.0-distance(worldPosition.xyz, entPos.xyz)/8.0,0.0,1.0);
+    float disMod = clamp(1.0-distance(worldPosition.xyz, entPos.xyz)/16.0,0.0,1.0);
     
     //gridVal0 *= disMod;
     //gridVal1 *= disMod;

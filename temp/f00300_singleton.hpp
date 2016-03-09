@@ -145,6 +145,7 @@ public:
 	bool bShift;
 	bool testOn;
 	bool testOn2;
+	bool testOn3;
 	bool emptyVDNotReady;
 	bool radiosityOn;
 	bool updateLock;
@@ -265,8 +266,7 @@ public:
 	int holdersPerWorld;
 	int blocksPerWorld;
 	
-	
-	
+	int voxelsPerCell;
 	
 	
 	
@@ -758,7 +758,7 @@ public:
 		
 		destructCount = 0;
 		
-		sphereMapOn = true;
+		sphereMapOn = false;
 		waitingOnDestruction = false;
 		
 		physicsOn = false;
@@ -993,6 +993,11 @@ public:
 		cellsPerBlock = holdersPerBlock * cellsPerHolder;
 		blocksPerWorld = holdersPerWorld/holdersPerBlock;
 		
+		
+		voxelsPerCell = 16;
+		
+		
+		
 		if (blocksPerWorld > 256) {
 			cout << "Too many blocks in world, change holdersPerBlock\n";
 			exit(0);
@@ -1116,6 +1121,7 @@ public:
 		radiosityOn = true;
 		testOn = false;
 		testOn2 = false;
+		testOn3 = false;
 		updateLock = false;
 		traceOn = false;
 		frameMouseMove = false;
@@ -1534,6 +1540,7 @@ public:
 		shaderStrings.push_back("FogShader");
 		shaderStrings.push_back("OctShader");
 		shaderStrings.push_back("RasterShader");
+		shaderStrings.push_back("HolderShader");
 		shaderStrings.push_back("GridShader");
 		shaderStrings.push_back("GeomShader");
 		shaderStrings.push_back("BoxShader");
@@ -1736,6 +1743,11 @@ public:
 		
 		fboMap["rasterFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
 		
+		fboMap["rasterPosFBO"].init(1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);//, GL_REPEAT);
+		fboMap["rasterSourceFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);//, GL_REPEAT);
+		
+		
+		
 		
 		if (USE_SPHERE_MAP) {
 			fboMap["sphTargFBO"].init(8, bufferRenderDim.getIX()*SPHEREMAP_SCALE_FACTOR, bufferRenderDim.getIY()*SPHEREMAP_SCALE_FACTOR, numChannels, fboHasDepth);
@@ -1764,8 +1776,7 @@ public:
 		
 		
 		
-		fboMap["rasterPosFBO"].init(1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR, GL_REPEAT);
-		fboMap["rasterSourceFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST, GL_REPEAT);
+		
 		
 		fboMap["noiseFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST, GL_REPEAT);
 		fboMap["noiseFBOLinear"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_LINEAR, GL_REPEAT);
@@ -5241,7 +5252,7 @@ DISPATCH_EVENT_END:
 					gameOct->updateVBO();
 				break;
 				case '*':
-					renderingOct = !renderingOct;
+					//renderingOct = !renderingOct;
 				break;
 				case '-':
 					gameOct->modRenderLevel(-1);
@@ -5315,7 +5326,7 @@ DISPATCH_EVENT_END:
 					// }
 				
 					updateHolders = !updateHolders;
-					pathfindingGen = updateHolders;
+					//pathfindingGen = updateHolders;
 					
 					
 					cout << "\n";
@@ -5546,7 +5557,15 @@ DISPATCH_EVENT_END:
 					
 				break;
 				case 't':
-					testOn2 = !testOn2;
+					//testOn2 = !testOn2;
+					//testOn3 = !testOn3;
+					renderingOct = !renderingOct;
+					
+					// if (renderingOct) {
+					// 	gameLogic->threadPoolList->stopAll();
+					// 	gameLogic->threadPoolPath->stopAll();
+					// }
+					
 					
 					//pathfindingTestOn = !pathfindingTestOn;
 					
@@ -5672,8 +5691,16 @@ DISPATCH_EVENT_END:
 
 					break;
 				case 'M':
-					smoothMove = !smoothMove;
-					cout << "smoothMove " << smoothMove << "\n";
+					// smoothMove = !smoothMove;
+					// cout << "smoothMove " << smoothMove << "\n";
+					
+					medianCount++;					
+					if (medianCount == 4) {
+						medianCount = 0;
+					
+					}
+					cout << "medianCount " << medianCount << "\n";
+					
 				break;
 				
 
@@ -9137,12 +9164,14 @@ DISPATCH_EVENT_END:
 							//gw->renderOct(gameOct);
 							//gw->rasterOct(gameOct,true);
 							
-							if ((bakeTicks % iGetConst(E_CONST_BAKE_TICKS)) == 0) {
-								gw->update(false);
-							}
+							// if ((bakeTicks % iGetConst(E_CONST_BAKE_TICKS)) == 0) {
+							// 	gw->update(false);
+							// }
+							// gw->rasterGrid(&myVBOGrid,true);
+							// bakeTicks++;
 							
-							gw->rasterGrid(&myVBOGrid,true);
-							bakeTicks++;
+							gw->rasterHolders(true);
+							
 						}
 						else {
 							//gw->rasterOct(gameOct,false);

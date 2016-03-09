@@ -32,7 +32,8 @@ $
 
 void main() {
 
-    vec2 sampSize = 1.0/bufferDim;
+    vec2 sampSize = 8.0/bufferDim;
+    
 
     vec3 v[9];
 
@@ -79,7 +80,7 @@ void main() {
     finalRes = mix(
       v[4].rgb,
       tex0.rgb,
-      @medianStrength@ // *float(distance(tex0.rgb,v[4].rgb) > 0.5)//mixVal
+      0.0//@medianStrength@ // *float(distance(tex0.rgb,v[4].rgb) > 0.5)//mixVal
     );
   //}
   

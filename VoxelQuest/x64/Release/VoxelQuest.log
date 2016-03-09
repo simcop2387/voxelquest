@@ -1,4 +1,4 @@
-﻿Build started 3/8/2016 10:16:29 AM.
+﻿Build started 3/9/2016 6:49:07 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -1011,6 +1011,23 @@
          BenchmarkDemo:initPhysics()
          GL_MAX_TEXTURE_BUFFER_SIZE 134217728
          genBlockHolder
+         
+         updateHolders 1
+         
+         updateHolders 0
+         
+         updateHolders 1
+         
+         updateHolders 0
+         
+         updateHolders 1
+         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         updateHolders 0
          Loading:  ..\data\constants.js         
          Load Successful          
          
@@ -1056,8 +1073,43 @@
          Valid JSON
                    
          Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         
+         updateHolders 1
+         
+         updateHolders 0
+         No code for key: 33
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:03:54.69
+Time Elapsed 00:11:54.16

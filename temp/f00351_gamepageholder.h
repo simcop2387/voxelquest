@@ -6,10 +6,10 @@
 GamePageHolder::GamePageHolder ()
                          {
 		
-		boxShape = NULL;
-		trimeshShape = NULL;
-		meshInterface = NULL;
-		body = NULL;
+		// boxShape = NULL;
+		// trimeshShape = NULL;
+		// meshInterface = NULL;
+		// body = NULL;
 		
 		hasData = true;
 		hasPath = true;
@@ -1445,111 +1445,6 @@ void GamePageHolder::genCellData ()
 		wasGenerated = true;
 		
 	}
-void GamePageHolder::createMesh ()
-        {
-		btTransform trans;
-		trans.setIdentity();
-		
-		float objRad;
-		
-		if (trimeshShape == NULL) {
-			
-		}
-		else {
-			
-			//cout << "regen\n";
-			
-			singleton->gamePhysics->example->removeRigidBody(body);
-			delete meshInterface;
-			meshInterface = NULL;
-			delete trimeshShape;
-			trimeshShape = NULL;
-			//delete body;
-			//body = NULL;
-			
-			if (body != NULL) {
-				
-				delete body;
-				body = NULL;
-				
-				//cout << "body not null\n";
-			}
-		}
-		
-		if (boxShape == NULL) {
-			
-		}
-		else {
-			singleton->gamePhysics->example->removeRigidBody(body);
-			delete boxShape;
-			boxShape = NULL;
-		}
-		
-		
-		if ((holderFlags == E_CD_SOLID)&&listEmpty) {
-			objRad = (gphMaxInPixels[0]-gphMinInPixels[0])*0.5f;
-			
-			boxShape = new btBoxShape(btVector3(objRad,objRad,objRad));
-			trans.setOrigin(btVector3(
-				(gphMinInPixels[0]+gphMaxInPixels[0])*0.5f,
-				(gphMinInPixels[1]+gphMaxInPixels[1])*0.5f,
-				(gphMinInPixels[2]+gphMaxInPixels[2])*0.5f
-			));
-
-			body = singleton->gamePhysics->example->createRigidBodyMask(
-				0,
-				trans,
-				boxShape
-				,COL_STATIC,
-				terCollidesWith
-			);
-			
-		}
-		else {
-			
-			meshInterface = new btTriangleIndexVertexArray();
-			
-			part.m_vertexBase = (const unsigned char*)(&(vertexVec[0]));
-			part.m_vertexStride = sizeof(btScalar) * 3;
-			part.m_numVertices = vertexVec.size()/3;
-			part.m_triangleIndexBase = (const unsigned char*)(&(indexVec[0]));
-			part.m_triangleIndexStride = sizeof(short) * 3;
-			part.m_numTriangles = indexVec.size()/3;
-			part.m_indexType = PHY_SHORT;
-
-			meshInterface->addIndexedMesh(part,PHY_SHORT);
-
-			
-			trimeshShape = new btBvhTriangleMeshShape(meshInterface,true,true);
-			
-			trans.setOrigin(btVector3(
-				gphMinInPixels[0],
-				gphMinInPixels[1],
-				gphMinInPixels[2]
-			));
-
-			body = singleton->gamePhysics->example->createRigidBodyMask(
-				0,
-				trans,
-				trimeshShape
-				,COL_STATIC,
-				terCollidesWith
-			);
-			
-			
-		}
-		
-
-		
-		body->setFriction(btScalar(0.9));
-		body->bodyUID = -1;
-		body->limbUID = -1;
-		
-		singleton->gamePhysics->example->updateGraphicsObjects();
-		
-		
-		
-	}
 void GamePageHolder::fillVBO ()
                        {
 		
@@ -1643,36 +1538,42 @@ void GamePageHolder::fillVBO ()
 		
 		
 		if (
-			// (isBlockHolder&&GEN_POLYS_WORLD) ||
-			((!isBlockHolder)&&POLY_COLLISION)	
+			listEmpty || (!hasData)
+			// && (holderFlags != E_CD_SOLID)
 		) {
-			if (
-				listEmpty
-				// && (holderFlags != E_CD_SOLID)
-			) {
-				
-			}
-			else {
-
-				createMesh();
+			
+		}
+		else {
+			if (POLYS_FOR_CELLS) {
 				
 				
-				// vboWrapper.init(
-				// 	&(vertexVec[0]),
-				// 	vertexVec.size(),
-				// 	&(indexVec[0]),
-				// 	indexVec.size()
-				// );
 				
+				vboWrapper.init(
+					&(vertexVec[0]),
+					vertexVec.size(),
+					vertexVec.size(),
+					&(indexVec[0]),
+					indexVec.size(),
+					indexVec.size(),
+					2,
+					GL_STATIC_DRAW
+				);
+				
+				glFlush();
+				glFinish();
 				
 				// todo: not needed?
 				//glFlush();
 				//glFinish();
 			}
+			// else if ((!isBlockHolder)&&POLY_COLLISION) {
+			// 	createMesh();
+			// }
+			// else if (isBlockHolder&&GEN_POLYS_WORLD) {
+				
+			// }
+			
 		}
-		
-		
-		
 		
 		
 		listGenerated = true;
@@ -1746,8 +1647,12 @@ void GamePageHolder::generateList ()
 		const uint AIR_VAL = 0;
 		
 		
-		bool doProcAny;
+		bool doProcAny = false;
 		bool doProc[6];// = false;
+		
+		for (i = 0; i < 6; i++) {
+			doProc[i] = false;
+		}
 
 		uint tempHF = E_CD_UNKNOWN;
 
@@ -1831,8 +1736,8 @@ void GamePageHolder::generateList ()
 		
 		bool fillPolys = 
 			// (isBlockHolder&&GEN_POLYS_WORLD) ||
-			((!isBlockHolder)&&POLY_COLLISION);
-		
+			//((!isBlockHolder)&&POLY_COLLISION);
+			POLYS_FOR_CELLS;
 		
 		
 		bool rleOn = false;
@@ -1916,9 +1821,9 @@ void GamePageHolder::generateList ()
 							iX = gphMinInPixels.getIX() + i;
 							iY = gphMinInPixels.getIY() + j;
 							iZ = gphMinInPixels.getIZ() + k;
-							bpX = i*cellPitch;
-							bpY = j*cellPitch;
-							bpZ = k*cellPitch;
+							bpX = iX;
+							bpY = iY;
+							bpZ = iZ;
 							
 							if (isBlockHolder) {
 								cellVal = getCellAtCoordsLocal(iX,iY,iZ);
@@ -1964,67 +1869,67 @@ void GamePageHolder::generateList ()
 								
 								
 								
-								if (doProcAny) {
+								//if (doProcAny) {
 									
 									// gather nearest 27 points for mask
 									
-									for (kk = -1; kk <= 1; kk++) {
-										for (jj = -1; jj <= 1; jj++) {
-											for (ii = -1; ii <= 1; ii++) {
+								// 	for (kk = -1; kk <= 1; kk++) {
+								// 		for (jj = -1; jj <= 1; jj++) {
+								// 			for (ii = -1; ii <= 1; ii++) {
 												
-												if (
-													singleton->gw->getCellAtCoords(
-														iX + ii,
-														iY + jj,
-														iZ + kk
-													) == E_CD_SOLID
-												) {
-													tempVal = 1;
-												}
-												else {
-													tempVal = 0;
-												}
+								// 				if (
+								// 					singleton->gw->getCellAtCoords(
+								// 						iX + ii,
+								// 						iY + jj,
+								// 						iZ + kk
+								// 					) == E_CD_SOLID
+								// 				) {
+								// 					tempVal = 1;
+								// 				}
+								// 				else {
+								// 					tempVal = 0;
+								// 				}
 												
 												
-												cellGrid[
-													(ii+1) +
-													(jj+1)*3 +
-													(kk+1)*9	
-												] = tempVal;
-											}	
-										}
-									}
+								// 				cellGrid[
+								// 					(ii+1) +
+								// 					(jj+1)*3 +
+								// 					(kk+1)*9	
+								// 				] = tempVal;
+								// 			}	
+								// 		}
+								// 	}
 									
-									for (kk = 0; kk < 2; kk++) {
-										for (jj = 0; jj < 2; jj++) {
-											for (ii = 0; ii < 2; ii++) {
-												baseInd = ii + jj*3 + kk*9;
+								// 	for (kk = 0; kk < 2; kk++) {
+								// 		for (jj = 0; jj < 2; jj++) {
+								// 			for (ii = 0; ii < 2; ii++) {
+								// 				baseInd = ii + jj*3 + kk*9;
 												
 												
-												maskVals[ii+jj*2+kk*4] = 
-												((cellGrid[baseInd+0+0+0])<<0) |
-												((cellGrid[baseInd+1+0+0])<<1) |
-												((cellGrid[baseInd+0+3+0])<<2) |
-												((cellGrid[baseInd+1+3+0])<<3) |
+								// 				maskVals[ii+jj*2+kk*4] = 
+								// 				((cellGrid[baseInd+0+0+0])<<0) |
+								// 				((cellGrid[baseInd+1+0+0])<<1) |
+								// 				((cellGrid[baseInd+0+3+0])<<2) |
+								// 				((cellGrid[baseInd+1+3+0])<<3) |
 												
-												((cellGrid[baseInd+0+0+9])<<4) |
-												((cellGrid[baseInd+1+0+9])<<5) |
-												((cellGrid[baseInd+0+3+9])<<6) |
-												((cellGrid[baseInd+1+3+9])<<7);
+								// 				((cellGrid[baseInd+0+0+9])<<4) |
+								// 				((cellGrid[baseInd+1+0+9])<<5) |
+								// 				((cellGrid[baseInd+0+3+9])<<6) |
+								// 				((cellGrid[baseInd+1+3+9])<<7);
 												
-											}	
-										}
-									}
+								// 			}	
+								// 		}
+								// 	}
 									
-								}
+								// }
 								
 								
 								if (doProc[0]) { // x+
 									
-									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
 									
 									getIndVal(procCount);
 									procCount++;
@@ -2033,10 +1938,10 @@ void GamePageHolder::generateList ()
 								}
 								if (doProc[1]) { // x-
 									
-									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
 									
 									getIndVal2(procCount);
 									procCount++;
@@ -2044,10 +1949,10 @@ void GamePageHolder::generateList ()
 								}
 								if (doProc[2]) { // y+
 									
-									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
 									
 									getIndVal2(procCount);
 									procCount++;
@@ -2056,30 +1961,30 @@ void GamePageHolder::generateList ()
 								if (doProc[3]) { // y-
 									
 									
-									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
 									
 									getIndVal(procCount);
 									procCount++;
 								}
 								if (doProc[4]) { // z+
 									
-									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
 									
 									getIndVal(procCount);
 									procCount++;
 								}
 								if (doProc[5]) { // z-
 									
-									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0, maskVals);
-									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0, maskVals);
+									getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
+									getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
+									getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
+									getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
 									
 									getIndVal2(procCount);
 									procCount++;
