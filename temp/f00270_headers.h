@@ -1675,6 +1675,7 @@ public:
   bool lockRead;
   VBOWrapper vboWrapper;
   VolumeWrapper * terVW;
+  GameVoxelWrap vw;
   int blockId;
   int holderId;
   bool isBlockHolder;
@@ -1732,6 +1733,7 @@ public:
   void fillVBO ();
   void generateList ();
 };
+void beginVoxelWrap ();
 LZZ_INLINE void GamePageHolder::getIndVal (int procCount)
                                              {
 		indexVec.push_back(0+procCount*4);
@@ -2262,7 +2264,7 @@ public:
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void polyCombine ();
   void drawPolys (string fboName, int minPeel, int maxPeel, bool isBlockHolder);
-  void rasterPolysWorld ();
+  void rasterWorldPolys ();
   void rasterPolys (int minPeel, int maxPeel, int extraRad = 0);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);

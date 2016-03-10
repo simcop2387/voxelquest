@@ -25,6 +25,8 @@ public:
 	
 	VolumeWrapper* terVW;
 	
+	GameVoxelWrap* voxelWrap;
+	
 	//GLuint holderDL;
 	
 	
@@ -216,6 +218,15 @@ public:
 		gphCenInPixels.averageXYZ(&gphMaxInPixels,&gphMinInPixels);
 		
 
+		voxelWrap = new GameVoxelWrap();
+		voxelWrap->init(
+			singleton,
+			cellsPerHolder*singleton->voxelsPerCell,
+			true,
+			true,
+			true
+		);
+
 		
 	}
 	
@@ -372,11 +383,7 @@ public:
 					break;
 				}
 			}
-			
-			
 		}
-		
-		
 	}
 
 	void setArrAtInd(
@@ -475,8 +482,6 @@ public:
 		bool findCenter,
 		GroupInfoStruct* curGI
 	) {
-		
-		
 		
 		if (firstInd < 0) {
 			cout << "firstInd " << firstInd << "\n";
@@ -2314,6 +2319,15 @@ FIRST_FILL_DONE:
 
 		uint tempHF = E_CD_UNKNOWN;
 
+		int procFlags[6];
+		procFlags[0] = 1;
+		procFlags[1] = 2;
+		procFlags[2] = 4;
+		procFlags[3] = 8;
+		procFlags[4] = 16;
+		procFlags[5] = 32;
+		int procFlag = 0;
+
 		// if (GEN_COLLISION) {
 		// 	collideIndices.clear();
 		// }
@@ -2407,6 +2421,7 @@ FIRST_FILL_DONE:
 		int tempVal;
 		int cellGrid[27];
 		int maskVals[8];
+		int newInd;
 		
 		
 		// if (GEN_COLLISION) {
@@ -2490,10 +2505,15 @@ FIRST_FILL_DONE:
 								cellVal = singleton->gw->getCellAtCoords(iX,iY,iZ);
 							}
 							
+							newInd = i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder;
+							
+							extrData[newInd*4 + E_PTT_FLG] = 0;
 							
 							if ( cellVal == E_CD_SOLID ) {
 								
 								doProcAny = false;
+								
+								procFlag = 0;
 								
 								for (q = 0; q < NUM_ORIENTATIONS; q++) {
 									
@@ -2514,9 +2534,20 @@ FIRST_FILL_DONE:
 									
 									
 									doProc[q] = cellVal2 != E_CD_SOLID;
+									if (doProc[q]) {
+										procFlag = procFlag | procFlags[q];
+									}
+									
 									
 									doProcAny = doProcAny | doProc[q];
 									
+								}
+								
+								if (doProcAny) {
+									extrData[newInd*4 + E_PTT_FLG] =
+										extrData[newInd*4 + E_PTT_FLG] |
+										E_PTTF_SURFACE |
+										procFlag;
 								}
 								
 								// if (GEN_COLLISION) {
@@ -2527,60 +2558,63 @@ FIRST_FILL_DONE:
 								
 								
 								
+								// if (doProcAny) {
+									
+								// 	// gather nearest 27 points for mask
+									
+								// 	for (kk = -1; kk <= 1; kk++) {
+								// 		for (jj = -1; jj <= 1; jj++) {
+								// 			for (ii = -1; ii <= 1; ii++) {
+												
+								// 				if (
+								// 					singleton->gw->getCellAtCoords(
+								// 						iX + ii,
+								// 						iY + jj,
+								// 						iZ + kk
+								// 					) == E_CD_SOLID
+								// 				) {
+								// 					tempVal = 1;
+								// 				}
+								// 				else {
+								// 					tempVal = 0;
+								// 				}
+												
+												
+								// 				cellGrid[
+								// 					(ii+1) +
+								// 					(jj+1)*3 +
+								// 					(kk+1)*9	
+								// 				] = tempVal;
+								// 			}	
+								// 		}
+								// 	}
+									
+								// 	for (kk = 0; kk < 2; kk++) {
+								// 		for (jj = 0; jj < 2; jj++) {
+								// 			for (ii = 0; ii < 2; ii++) {
+								// 				baseInd = ii + jj*3 + kk*9;
+												
+												
+								// 				maskVals[ii+jj*2+kk*4] = 
+								// 				((cellGrid[baseInd+0+0+0])<<0) |
+								// 				((cellGrid[baseInd+1+0+0])<<1) |
+								// 				((cellGrid[baseInd+0+3+0])<<2) |
+								// 				((cellGrid[baseInd+1+3+0])<<3) |
+												
+								// 				((cellGrid[baseInd+0+0+9])<<4) |
+								// 				((cellGrid[baseInd+1+0+9])<<5) |
+								// 				((cellGrid[baseInd+0+3+9])<<6) |
+								// 				((cellGrid[baseInd+1+3+9])<<7);
+												
+								// 			}	
+								// 		}
+								// 	}
+									
+								// }
+								
 								if (doProcAny) {
 									
-									// gather nearest 27 points for mask
-									
-									for (kk = -1; kk <= 1; kk++) {
-										for (jj = -1; jj <= 1; jj++) {
-											for (ii = -1; ii <= 1; ii++) {
-												
-												if (
-													singleton->gw->getCellAtCoords(
-														iX + ii,
-														iY + jj,
-														iZ + kk
-													) == E_CD_SOLID
-												) {
-													tempVal = 1;
-												}
-												else {
-													tempVal = 0;
-												}
-												
-												
-												cellGrid[
-													(ii+1) +
-													(jj+1)*3 +
-													(kk+1)*9	
-												] = tempVal;
-											}	
-										}
-									}
-									
-									for (kk = 0; kk < 2; kk++) {
-										for (jj = 0; jj < 2; jj++) {
-											for (ii = 0; ii < 2; ii++) {
-												baseInd = ii + jj*3 + kk*9;
-												
-												
-												maskVals[ii+jj*2+kk*4] = 
-												((cellGrid[baseInd+0+0+0])<<0) |
-												((cellGrid[baseInd+1+0+0])<<1) |
-												((cellGrid[baseInd+0+3+0])<<2) |
-												((cellGrid[baseInd+1+3+0])<<3) |
-												
-												((cellGrid[baseInd+0+0+9])<<4) |
-												((cellGrid[baseInd+1+0+9])<<5) |
-												((cellGrid[baseInd+0+3+9])<<6) |
-												((cellGrid[baseInd+1+3+9])<<7);
-												
-											}	
-										}
-									}
-									
 								}
-								
 								
 								if (doProc[0]) { // x+
 									
@@ -2660,19 +2694,32 @@ FIRST_FILL_DONE:
 			
 		}
 		
-		
-
-		
 		listEmpty = (vertexVec.size() == 0);
 		holderFlags = tempHF;
+		
+		if (listEmpty) {
+			
+		}
+		else {
+			beginVoxelWrap();
+		}
 		
 		preGenList = true;
 		
 	}
 
+	
+
+	void beginVoxelWrap() {
+		voxelWrap->process(this);
+	}
+
 
 
 };
+
+
+
 
 
 

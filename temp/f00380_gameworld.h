@@ -1814,7 +1814,7 @@ void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel, bool isBloc
 		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 		
 		if (isBlockHolder) {
-			rasterPolysWorld();
+			rasterWorldPolys();
 		}
 		else {
 			rasterPolys(minPeel,maxPeel*4, 6);
@@ -1830,7 +1830,7 @@ void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel, bool isBloc
 		singleton->unbindFBO();
 		singleton->unbindShader();
 	}
-void GameWorld::rasterPolysWorld ()
+void GameWorld::rasterWorldPolys ()
                                 {
 		
 		
@@ -1935,44 +1935,50 @@ void GameWorld::rasterPolys (int minPeel, int maxPeel, int extraRad)
 					for (ii = minI; ii < maxI; ii++) {
 						curHolder = getHolderAtCoords(ii,jj,kk,true);
 						
-						curRad = max(max(abs(bi-ii),abs(bj-jj)),abs(bk-kk));
-						
-						
-						
-						
-						// if (q == 4) {
-						// 	idealDis = true;
-						// }
-						// else {
-						// 	if (q == 3) {
-						// 		idealDis = (q>=curRad);
-						// 	}
-						// 	else {
-						// 		idealDis = (q==curRad);
-						// 	}
-						// }
-						
-						if (curHolder->lockWrite) {
+						if (curHolder == NULL) {
 							
 						}
 						else {
-							if (
-								(curHolder->listGenerated) &&
-								(!(curHolder->listEmpty)) &&
-								((q==curRad) || (q == -1))
-							) {
-								
-								pCount++;
-								
-								// singleton->setShaderFloat("volSizePrim", singleton->cellsPerHolder);
-								// singleton->setShaderfVec3("volMinReadyInPixels", &(curHolder->gphMinInPixels) );
-								// singleton->setShaderfVec3("volMaxReadyInPixels", &(curHolder->gphMaxInPixels) );
-								// singleton->setShaderTexture3D(0, curHolder->terVW->volId);
-								
-								curHolder->vboWrapper.draw();
+							
+							curRad = max(max(abs(bi-ii),abs(bj-jj)),abs(bk-kk));
+							
+							// if (q == 4) {
+							// 	idealDis = true;
+							// }
+							// else {
+							// 	if (q == 3) {
+							// 		idealDis = (q>=curRad);
+							// 	}
+							// 	else {
+							// 		idealDis = (q==curRad);
+							// 	}
+							// }
+							
+							if (curHolder->lockWrite) {
 								
 							}
+							else {
+								if (
+									(curHolder->listGenerated) &&
+									(!(curHolder->listEmpty)) &&
+									((q==curRad) || (q == -1))
+								) {
+									
+									pCount++;
+									
+									// singleton->setShaderFloat("volSizePrim", singleton->cellsPerHolder);
+									// singleton->setShaderfVec3("volMinReadyInPixels", &(curHolder->gphMinInPixels) );
+									// singleton->setShaderfVec3("volMaxReadyInPixels", &(curHolder->gphMaxInPixels) );
+									// singleton->setShaderTexture3D(0, curHolder->terVW->volId);
+									
+									curHolder->vboWrapper.draw();
+									
+								}
+							}
+							
 						}
+						
+						
 						
 						
 					}

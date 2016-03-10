@@ -268,6 +268,7 @@ public:
 	
 	int voxelsPerCell;
 	
+	int paddingInCells;
 	
 	
 	
@@ -995,7 +996,7 @@ public:
 		
 		
 		voxelsPerCell = 16;
-		
+		paddingInCells = 1;
 		
 		
 		if (blocksPerWorld > 256) {

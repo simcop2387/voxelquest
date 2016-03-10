@@ -118,7 +118,7 @@ enum E_PRIM_TYPE_EXT {
 	E_PTT_IDE,
 	E_PTT_STB,
 	E_PTT_BLD,
-	E_PTT_RS1,
+	E_PTT_FLG,
 	E_EXT_LENGTH
 };
 
@@ -527,6 +527,17 @@ enum PATTERN_SHAPES {
 	E_PATSHAPE_LENGTH
 };
 
+enum E_PTT_FLAGS {
+	E_PTTF_XP = 1,
+	E_PTTF_XM = 2,
+	E_PTTF_YP = 4,
+	E_PTTF_YM = 8,
+	E_PTTF_ZP = 16,
+	E_PTTF_ZM = 32,
+	
+	E_PTTF_SURFACE = 64,
+	E_PTTF_LENGTH = 65536
+};
 
 enum E_VN_FLAGS {
 	E_VNF_ISFILLED_RIGHT = 1,
@@ -549,7 +560,9 @@ struct VoxelNode {
 };
 
 struct VoxelWrap {
-	std::vector<VoxelNode> nodeList;
+	uint nodePtr;
+	// use nodeList within GameVoxelWrap
+	// std::vector<VoxelNode> nodeList;
 };
 
 struct VoxelSlice {

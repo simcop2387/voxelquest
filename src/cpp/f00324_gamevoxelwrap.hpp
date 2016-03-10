@@ -34,7 +34,7 @@ public:
 	TBOWrapper octTBO;
 	
 	std::vector<VoxelSlice*> voxelSlices;
-	
+	std::vector<VoxelNode> nodeList;
 	
 	GameVoxelWrap() {
 		
@@ -46,36 +46,30 @@ public:
 		int _dimInVoxels,
 		bool _hasTBO,
 		bool _hasVBO,
-		bool _hasNeighbors,
-		int _maxVerts
-		//int _maxSize = -1,
-		//int _nodeSize = -1
+		bool _hasNeighbors
 	) {
 		singleton = _singleton;
 		dimInVoxels = _dimInVoxels;
+		maxDepth = intLogB2(dimInVoxels);
 		hasTBO = _hasTBO;
 		hasVBO = _hasVBO;
 		hasNeighbors = _hasNeighbors;
-		maxVerts = _maxVerts;
 		nodeSize = 8;
 		numNeighbors = 6;
-		
-		//nodeSize = _nodeSize;
-		
-		// if (maxSize == -1) {
-		// 	maxSize = (128/4)*1024*1024;
-		// }
-		// if (nodeSize == -1) {
-			
-		// }
+		vData = NULL;
+		renderLevel = 12;
+	}
+	
+	void update(
+		int _maxVerts	
+	) {
+		int i;
 		
 		indexCount = 0;
-		
+		maxVerts = _maxVerts;
 		vertComponents = 2;
 		vDataSize = maxVerts*nodeSize;
 		nDataSize = maxVerts*numNeighbors;
-		
-		maxDepth = intLogB2(dimInVoxels);
 		
 		vData = new uint[vDataSize];
 		
@@ -87,12 +81,12 @@ public:
 		}
 		
 		
-		renderLevel = 12;
+		
 		nullPtr = 0;
 		rootPtr = nodeSize;
 		nextOpen = rootPtr+nodeSize;
 		
-		int i;
+		
 		
 		for (i = 0; i < vDataSize; i++) {
 			vData[i] = nullPtr;
@@ -120,8 +114,8 @@ public:
 				GL_STATIC_DRAW
 			);
 		}
-		
 	}
+	
 	
 	void updateVBO() {
 		if (!hasVBO) {
@@ -347,6 +341,44 @@ public:
 		
 		
 	}
+	
+	
+	void process(GamePageHolder* gph) {
+		int i;
+		int j;
+		int k;
+		
+		int cellsPerHolder = singleton->cellsPerHolder;
+		int paddingInCells = singleton->paddingInCells;
+		
+		int procFlags[6];
+		procFlags[0] = 1;
+		procFlags[1] = 2;
+		procFlags[2] = 4;
+		procFlags[3] = 8;
+		procFlags[4] = 16;
+		procFlags[5] = 32;
+		int procFlag = 0;
+		
+		int minv = -paddingInCells;
+		int maxv = cellsPerHolder+paddingInCells;
+		
+		for (i = minv; i < maxv; i++) {
+			for (j = minv; j < maxv; j++) {
+				for (k = minv; k < maxv; k++) {
+					newInd = i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder;
+					
+					if ((gph->extrData[newInd*4 + E_PTT_FLG]) & E_PTTF_SURFACE) {
+						
+					}
+				}
+			}
+		}
+			
+		
+		
+	}
+	
 	
 	
 };

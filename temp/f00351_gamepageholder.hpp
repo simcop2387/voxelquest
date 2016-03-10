@@ -25,6 +25,8 @@ public:
 	
 	VolumeWrapper* terVW;
 	
+	GameVoxelWrap vw;
+	
 	//GLuint holderDL;
 	
 	
@@ -372,11 +374,7 @@ public:
 					break;
 				}
 			}
-			
-			
 		}
-		
-		
 	}
 
 	void setArrAtInd(
@@ -475,8 +473,6 @@ public:
 		bool findCenter,
 		GroupInfoStruct* curGI
 	) {
-		
-		
 		
 		if (firstInd < 0) {
 			cout << "firstInd " << firstInd << "\n";
@@ -2407,6 +2403,7 @@ FIRST_FILL_DONE:
 		int tempVal;
 		int cellGrid[27];
 		int maskVals[8];
+		int newInd;
 		
 		
 		// if (GEN_COLLISION) {
@@ -2490,6 +2487,9 @@ FIRST_FILL_DONE:
 								cellVal = singleton->gw->getCellAtCoords(iX,iY,iZ);
 							}
 							
+							newInd = i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder;
+							
+							extrData[newInd*4 + E_PTT_FLG] = 0;
 							
 							if ( cellVal == E_CD_SOLID ) {
 								
@@ -2519,6 +2519,10 @@ FIRST_FILL_DONE:
 									
 								}
 								
+								if (doProcAny) {
+									extrData[newInd*4 + E_PTT_FLG] = extrData[newInd*4 + E_PTT_FLG] | E_PTTF_SURFACE;
+								}
+								
 								// if (GEN_COLLISION) {
 								// 	if (doProcAny) {
 								// 		collideIndices.push_back(i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder);
@@ -2527,9 +2531,9 @@ FIRST_FILL_DONE:
 								
 								
 								
-								//if (doProcAny) {
+								// if (doProcAny) {
 									
-									// gather nearest 27 points for mask
+								// 	// gather nearest 27 points for mask
 									
 								// 	for (kk = -1; kk <= 1; kk++) {
 								// 		for (jj = -1; jj <= 1; jj++) {
@@ -2581,6 +2585,9 @@ FIRST_FILL_DONE:
 									
 								// }
 								
+								if (doProcAny) {
+									
+								}
 								
 								if (doProc[0]) { // x+
 									
@@ -2666,14 +2673,31 @@ FIRST_FILL_DONE:
 		listEmpty = (vertexVec.size() == 0);
 		holderFlags = tempHF;
 		
+		
+		if (listEmpty) {
+			
+		}
+		else {
+			beginVoxelWrap();
+		}
+		
 		preGenList = true;
 		
 	}
+
+	
 
 
 
 };
 
+
+
+
+
+void beginVoxelWrap() {
+	
+}
 
 
 

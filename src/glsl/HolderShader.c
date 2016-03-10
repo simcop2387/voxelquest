@@ -43,7 +43,7 @@ layout(location = 0) out vec4 FragColor0;
 void main() {
 
 	FragColor0 = vec4(
-		(sin(worldPos.xyz/32.0)+1.0)*0.5,
+		mod(worldPos.xyz,1.0),//(sin(worldPos.xyz/8.0)+1.0)*0.5,
 		1.0
 	);
 

@@ -761,7 +761,7 @@ public:
 		sphereMapOn = false;
 		waitingOnDestruction = false;
 		
-		physicsOn = false;
+		physicsOn = true;
 		isPressingMove = false;
 		fxaaOn = false;
 		doPathReport = false;

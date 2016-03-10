@@ -151,7 +151,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		sphereMapOn = false;
 		waitingOnDestruction = false;
 		
-		physicsOn = false;
+		physicsOn = true;
 		isPressingMove = false;
 		fxaaOn = false;
 		doPathReport = false;

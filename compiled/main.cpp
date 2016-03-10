@@ -3733,7 +3733,7 @@ enum E_PRIM_TYPE_EXT {
 	E_PTT_IDE,
 	E_PTT_STB,
 	E_PTT_BLD,
-	E_PTT_RS1,
+	E_PTT_FLG,
 	E_EXT_LENGTH
 };
 
@@ -4142,6 +4142,10 @@ enum PATTERN_SHAPES {
 	E_PATSHAPE_LENGTH
 };
 
+enum E_PTT_FLAGS {
+	E_PTTF_SURFACE = 1,
+	E_PTTF_LENGTH = 65536
+};
 
 enum E_VN_FLAGS {
 	E_VNF_ISFILLED_RIGHT = 1,
@@ -22748,7 +22752,6 @@ class GameMusic;
 class FontWrapper;
 class UIComponent;
 class GameGUI;
-class GameOctree;
 class GameAI;
 class GameNetwork;
 class GameFluid;
@@ -22761,6 +22764,8 @@ class GamePhysRig;
 class GameEntManager;
 class GameBlock;
 class GamePageHolder;
+class GameOctree;
+class GameVoxelWrap;
 class VolumeWrapper;
 class ThreadPoolWrapper;
 class GameLogic;
@@ -24446,6 +24451,7 @@ public:
   bool lockRead;
   VBOWrapper vboWrapper;
   VolumeWrapper * terVW;
+  GameVoxelWrap vw;
   int blockId;
   int holderId;
   bool isBlockHolder;
@@ -24503,6 +24509,7 @@ public:
   void fillVBO ();
   void generateList ();
 };
+void beginVoxelWrap ();
 LZZ_INLINE void GamePageHolder::getIndVal (int procCount)
                                              {
 		indexVec.push_back(0+procCount*4);
@@ -25033,7 +25040,7 @@ public:
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void polyCombine ();
   void drawPolys (string fboName, int minPeel, int maxPeel, bool isBlockHolder);
-  void rasterPolysWorld ();
+  void rasterWorldPolys ();
   void rasterPolys (int minPeel, int maxPeel, int extraRad = 0);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);
@@ -25308,7 +25315,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		sphereMapOn = false;
 		waitingOnDestruction = false;
 		
-		physicsOn = false;
+		physicsOn = true;
 		isPressingMove = false;
 		fxaaOn = false;
 		doPathReport = false;
@@ -49322,11 +49329,7 @@ void GamePageHolder::getArrAtInd (int ind, int * tempCellData, int * tempCellDat
 					break;
 				}
 			}
-			
-			
 		}
-		
-		
 	}
 void GamePageHolder::setArrAtInd (int ind, int * tempCellData, int * tempCellData2)
           {
@@ -49413,8 +49416,6 @@ void GamePageHolder::clearGroupFlags (int targId)
 	}
 int GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, GroupInfoStruct * curGI)
           {
-		
-		
 		
 		if (firstInd < 0) {
 			cout << "firstInd " << firstInd << "\n";
@@ -50853,6 +50854,7 @@ void GamePageHolder::generateList ()
 		int tempVal;
 		int cellGrid[27];
 		int maskVals[8];
+		int newInd;
 		
 		
 		// if (GEN_COLLISION) {
@@ -50936,6 +50938,9 @@ void GamePageHolder::generateList ()
 								cellVal = singleton->gw->getCellAtCoords(iX,iY,iZ);
 							}
 							
+							newInd = i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder;
+							
+							extrData[newInd*4 + E_PTT_FLG] = 0;
 							
 							if ( cellVal == E_CD_SOLID ) {
 								
@@ -50965,6 +50970,10 @@ void GamePageHolder::generateList ()
 									
 								}
 								
+								if (doProcAny) {
+									extrData[newInd*4 + E_PTT_FLG] = extrData[newInd*4 + E_PTT_FLG] | E_PTTF_SURFACE;
+								}
+								
 								// if (GEN_COLLISION) {
 								// 	if (doProcAny) {
 								// 		collideIndices.push_back(i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder);
@@ -50973,9 +50982,9 @@ void GamePageHolder::generateList ()
 								
 								
 								
-								//if (doProcAny) {
+								// if (doProcAny) {
 									
-									// gather nearest 27 points for mask
+								// 	// gather nearest 27 points for mask
 									
 								// 	for (kk = -1; kk <= 1; kk++) {
 								// 		for (jj = -1; jj <= 1; jj++) {
@@ -51027,6 +51036,9 @@ void GamePageHolder::generateList ()
 									
 								// }
 								
+								if (doProcAny) {
+									
+								}
 								
 								if (doProc[0]) { // x+
 									
@@ -51112,9 +51124,21 @@ void GamePageHolder::generateList ()
 		listEmpty = (vertexVec.size() == 0);
 		holderFlags = tempHF;
 		
+		
+		if (listEmpty) {
+			
+		}
+		else {
+			beginVoxelWrap();
+		}
+		
 		preGenList = true;
 		
 	}
+void beginVoxelWrap ()
+                      {
+	
+}
 #undef LZZ_INLINE
  
 // f00352_gameblock.h
@@ -61973,7 +61997,7 @@ void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel, bool isBloc
 		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 		
 		if (isBlockHolder) {
-			rasterPolysWorld();
+			rasterWorldPolys();
 		}
 		else {
 			rasterPolys(minPeel,maxPeel*4, 6);
@@ -61989,7 +62013,7 @@ void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel, bool isBloc
 		singleton->unbindFBO();
 		singleton->unbindShader();
 	}
-void GameWorld::rasterPolysWorld ()
+void GameWorld::rasterWorldPolys ()
                                 {
 		
 		
@@ -62094,44 +62118,50 @@ void GameWorld::rasterPolys (int minPeel, int maxPeel, int extraRad)
 					for (ii = minI; ii < maxI; ii++) {
 						curHolder = getHolderAtCoords(ii,jj,kk,true);
 						
-						curRad = max(max(abs(bi-ii),abs(bj-jj)),abs(bk-kk));
-						
-						
-						
-						
-						// if (q == 4) {
-						// 	idealDis = true;
-						// }
-						// else {
-						// 	if (q == 3) {
-						// 		idealDis = (q>=curRad);
-						// 	}
-						// 	else {
-						// 		idealDis = (q==curRad);
-						// 	}
-						// }
-						
-						if (curHolder->lockWrite) {
+						if (curHolder == NULL) {
 							
 						}
 						else {
-							if (
-								(curHolder->listGenerated) &&
-								(!(curHolder->listEmpty)) &&
-								((q==curRad) || (q == -1))
-							) {
-								
-								pCount++;
-								
-								// singleton->setShaderFloat("volSizePrim", singleton->cellsPerHolder);
-								// singleton->setShaderfVec3("volMinReadyInPixels", &(curHolder->gphMinInPixels) );
-								// singleton->setShaderfVec3("volMaxReadyInPixels", &(curHolder->gphMaxInPixels) );
-								// singleton->setShaderTexture3D(0, curHolder->terVW->volId);
-								
-								curHolder->vboWrapper.draw();
+							
+							curRad = max(max(abs(bi-ii),abs(bj-jj)),abs(bk-kk));
+							
+							// if (q == 4) {
+							// 	idealDis = true;
+							// }
+							// else {
+							// 	if (q == 3) {
+							// 		idealDis = (q>=curRad);
+							// 	}
+							// 	else {
+							// 		idealDis = (q==curRad);
+							// 	}
+							// }
+							
+							if (curHolder->lockWrite) {
 								
 							}
+							else {
+								if (
+									(curHolder->listGenerated) &&
+									(!(curHolder->listEmpty)) &&
+									((q==curRad) || (q == -1))
+								) {
+									
+									pCount++;
+									
+									// singleton->setShaderFloat("volSizePrim", singleton->cellsPerHolder);
+									// singleton->setShaderfVec3("volMinReadyInPixels", &(curHolder->gphMinInPixels) );
+									// singleton->setShaderfVec3("volMaxReadyInPixels", &(curHolder->gphMaxInPixels) );
+									// singleton->setShaderTexture3D(0, curHolder->terVW->volId);
+									
+									curHolder->vboWrapper.draw();
+									
+								}
+							}
+							
 						}
+						
+						
 						
 						
 					}

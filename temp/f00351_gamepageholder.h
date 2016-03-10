@@ -218,11 +218,7 @@ void GamePageHolder::getArrAtInd (int ind, int * tempCellData, int * tempCellDat
 					break;
 				}
 			}
-			
-			
 		}
-		
-		
 	}
 void GamePageHolder::setArrAtInd (int ind, int * tempCellData, int * tempCellData2)
           {
@@ -309,8 +305,6 @@ void GamePageHolder::clearGroupFlags (int targId)
 	}
 int GamePageHolder::floodFillAtInd (int firstInd, int newId, bool findCenter, GroupInfoStruct * curGI)
           {
-		
-		
 		
 		if (firstInd < 0) {
 			cout << "firstInd " << firstInd << "\n";
@@ -1749,6 +1743,7 @@ void GamePageHolder::generateList ()
 		int tempVal;
 		int cellGrid[27];
 		int maskVals[8];
+		int newInd;
 		
 		
 		// if (GEN_COLLISION) {
@@ -1832,6 +1827,9 @@ void GamePageHolder::generateList ()
 								cellVal = singleton->gw->getCellAtCoords(iX,iY,iZ);
 							}
 							
+							newInd = i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder;
+							
+							extrData[newInd*4 + E_PTT_FLG] = 0;
 							
 							if ( cellVal == E_CD_SOLID ) {
 								
@@ -1861,6 +1859,10 @@ void GamePageHolder::generateList ()
 									
 								}
 								
+								if (doProcAny) {
+									extrData[newInd*4 + E_PTT_FLG] = extrData[newInd*4 + E_PTT_FLG] | E_PTTF_SURFACE;
+								}
+								
 								// if (GEN_COLLISION) {
 								// 	if (doProcAny) {
 								// 		collideIndices.push_back(i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder);
@@ -1869,9 +1871,9 @@ void GamePageHolder::generateList ()
 								
 								
 								
-								//if (doProcAny) {
+								// if (doProcAny) {
 									
-									// gather nearest 27 points for mask
+								// 	// gather nearest 27 points for mask
 									
 								// 	for (kk = -1; kk <= 1; kk++) {
 								// 		for (jj = -1; jj <= 1; jj++) {
@@ -1923,6 +1925,9 @@ void GamePageHolder::generateList ()
 									
 								// }
 								
+								if (doProcAny) {
+									
+								}
 								
 								if (doProc[0]) { // x+
 									
@@ -2008,8 +2013,20 @@ void GamePageHolder::generateList ()
 		listEmpty = (vertexVec.size() == 0);
 		holderFlags = tempHF;
 		
+		
+		if (listEmpty) {
+			
+		}
+		else {
+			beginVoxelWrap();
+		}
+		
 		preGenList = true;
 		
 	}
+void beginVoxelWrap ()
+                      {
+	
+}
 #undef LZZ_INLINE
  
