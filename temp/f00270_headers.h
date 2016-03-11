@@ -269,12 +269,15 @@ public:
   int frameSkip;
   int frameSkipCount;
   int cellsPerHolder;
+  int cellsPerHolderPad;
   int cellsPerBlock;
   int holdersPerBlock;
   int cellsPerWorld;
   int holdersPerWorld;
   int blocksPerWorld;
   int voxelsPerCell;
+  int paddingInCells;
+  PaddedData (pdPool) [MAX_PDPOOL_SIZE];
   intPair (entIdArr) [1024];
   uint palWidth;
   uint palHeight;
@@ -455,7 +458,6 @@ public:
   Timer scrollTimer;
   Timer moveTimer;
   VBOGrid myVBOGrid;
-  GameOctree * gameOct;
   GameWorld * gw;
   GameEntManager * gem;
   GamePhysics * gamePhysics;
@@ -808,50 +810,6 @@ public:
 };
 #undef LZZ_INLINE
 #endif
-// f00323_gameoctree.e
-//
-
-#ifndef LZZ_f00323_gameoctree_e
-#define LZZ_f00323_gameoctree_e
-#define LZZ_INLINE inline
-class GameOctree
-{
-public:
-  Singleton * singleton;
-  uint * vData;
-  uint * nData;
-  int numNeighbors;
-  int vDataSize;
-  int nDataSize;
-  int indexCount;
-  int dimInVoxels;
-  int maxDepth;
-  int nullPtr;
-  int rootPtr;
-  int nodeSize;
-  int nextOpen;
-  int renderLevel;
-  int maxVerts;
-  int vertComponents;
-  bool hasTBO;
-  bool hasVBO;
-  bool hasNeighbors;
-  std::vector <float> vertexVec;
-  VBOWrapper vboWrapper;
-  TBOWrapper octTBO;
-  GameOctree ();
-  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, bool _hasNeighbors, int _maxVerts);
-  void updateVBO ();
-  void updateTBO ();
-  void captureBuffer (bool getPoints);
-  void modRenderLevel (int modVal);
-  bool addNode (int x, int y, int z, float r, float g, float b);
-  void remNode (uint index);
-  void startRender ();
-  void renderBB (int baseX, int baseY, int baseZ, int startIndex, int curLevel, int curDiv);
-};
-#undef LZZ_INLINE
-#endif
 // f00324_gamevoxelwrap.e
 //
 
@@ -876,16 +834,27 @@ public:
   int nextOpen;
   int renderLevel;
   int maxVerts;
+  int maxVertSize;
   int vertComponents;
   bool hasTBO;
   bool hasVBO;
   bool hasNeighbors;
+  int curPD;
+  PaddedDataEntry * baseData;
+  int voxelsPerCell;
+  int cellsPerHolder;
+  int cellsPerHolderPad;
+  int paddingInCells;
+  VectorI3 offsetInCells;
+  VectorI3 offsetInVoxels;
   std::vector <float> vertexVec;
   VBOWrapper vboWrapper;
   TBOWrapper octTBO;
   std::vector <VoxelSlice*> voxelSlices;
+  std::vector <VoxelNode> nodeList;
   GameVoxelWrap ();
-  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, bool _hasNeighbors, int _maxVerts);
+  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, bool _hasNeighbors);
+  void update (int _maxVerts);
   void updateVBO ();
   void updateTBO ();
   void captureBuffer (bool getPoints);
@@ -894,7 +863,26 @@ public:
   void remNode (uint index);
   void startRender ();
   void renderBB (int baseX, int baseY, int baseZ, int startIndex, int curLevel, int curDiv);
+  PaddedDataEntry * getPadData (int ii, int jj, int kk);
+  bool findNextCoord (VectorI3 * cellCoord, VectorI3 * voxCoord);
+  void process (GamePageHolder * gph);
+  bool isSurfaceVoxel (VectorI3 * voxCoord);
+  bool getVoxelAtCoord (VectorI3 voxCoord);
 };
+LZZ_INLINE PaddedDataEntry * GameVoxelWrap::getPadData (int ii, int jj, int kk)
+                                                                   {
+		
+		
+		int i = ii + paddingInCells;
+		int j = jj + paddingInCells;
+		int k = kk + paddingInCells;
+		
+		return &(
+			baseData[
+				i + j*cellsPerHolderPad + k*cellsPerHolderPad*cellsPerHolderPad
+			]	
+		);
+	}
 #undef LZZ_INLINE
 #endif
 // f00325_uicomponent.e
@@ -1675,10 +1663,10 @@ public:
   bool lockRead;
   VBOWrapper vboWrapper;
   VolumeWrapper * terVW;
-  GameVoxelWrap vw;
+  GameVoxelWrap * voxelWrap;
+  int curPD;
   int blockId;
   int holderId;
-  bool isBlockHolder;
   int pathSize;
   int totIdealNodes;
   int totGroupIds;
@@ -1698,15 +1686,15 @@ public:
   std::vector <uint> indexVec;
   std::vector <int> collideIndices;
   FIVector4 offsetInHolders;
-  FIVector4 gphMinInPixels;
-  FIVector4 gphMaxInPixels;
-  FIVector4 gphCenInPixels;
+  FIVector4 gphMinInCells;
+  FIVector4 gphMaxInCells;
+  FIVector4 gphCenInCells;
   FIVector4 origOffset;
   Singleton * singleton;
   intPairVec (containsEntIds) [E_ET_LENGTH];
   bool wasGenerated;
   GamePageHolder ();
-  void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isBlockHolder = false);
+  void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ);
   int getCellAtCoordsLocal (int xx, int yy, int zz);
   int getCellAtInd (int ind);
   void getArrAtInd (int ind, int * tempCellData, int * tempCellData2);
@@ -1731,9 +1719,11 @@ public:
   void getIndVal2 (int procCount);
   void getPixVal (float xb, float yb, float zb, int xm, int ym, int zm);
   void fillVBO ();
+  PaddedDataEntry * getPadData (int ii, int jj, int kk);
+  int gatherData ();
   void generateList ();
+  void beginVoxelWrap ();
 };
-void beginVoxelWrap ();
 LZZ_INLINE void GamePageHolder::getIndVal (int procCount)
                                              {
 		indexVec.push_back(0+procCount*4);
@@ -1798,6 +1788,22 @@ LZZ_INLINE void GamePageHolder::getPixVal (float xb, float yb, float zb, int xm,
 		// );
 		
 		//glVertex3f(xb+xm,yb+ym,zb+zm);
+	}
+LZZ_INLINE PaddedDataEntry * GamePageHolder::getPadData (int ii, int jj, int kk)
+                                                                   {
+		
+		int cellsPerHolderPad = singleton->cellsPerHolderPad;
+		int paddingInCells = singleton->paddingInCells;
+		
+		int i = ii + paddingInCells;
+		int j = jj + paddingInCells;
+		int k = kk + paddingInCells;
+		
+		return &(
+			singleton->pdPool[curPD].data[
+				i + j*cellsPerHolderPad + k*cellsPerHolderPad*cellsPerHolderPad
+			]	
+		);
 	}
 #undef LZZ_INLINE
 #endif
@@ -2252,7 +2258,6 @@ public:
   void setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void getArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void fireEvent (BaseObjType uid, int opCode, float fParam);
-  void generateBlockHolder ();
   void update (bool postToScreen);
   void toggleVis (GameEnt * se);
   void ensureBlocks ();
@@ -2263,8 +2268,7 @@ public:
   void drawOrg (GameOrg * curOrg, bool drawAll);
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void polyCombine ();
-  void drawPolys (string fboName, int minPeel, int maxPeel, bool isBlockHolder);
-  void rasterWorldPolys ();
+  void drawPolys (string fboName, int minPeel, int maxPeel);
   void rasterPolys (int minPeel, int maxPeel, int extraRad = 0);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);
@@ -2276,8 +2280,8 @@ public:
   void updateLights ();
   void rasterHolders (bool showResults);
   void rasterGrid (VBOGrid * vboGrid, bool showResults);
-  void rasterOct (GameOctree * gameOct, bool showResults);
-  void renderOct (GameOctree * gameOct);
+  void rasterOct (GameVoxelWrap * gameOct, bool showResults);
+  void renderOct (GameVoxelWrap * gameOct);
   void renderDebug ();
   void postProcess (bool postToScreen);
   ~ GameWorld ();

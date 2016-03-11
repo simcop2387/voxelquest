@@ -21,7 +21,7 @@ const static bool VOXEL_COLLISION = true;
 const static bool GEN_DEBRIS = false;
 const static int  MAX_DEBRIS = 0;
 const static bool GEN_COLLISION = false;
-const static bool GEN_POLYS_WORLD = true;
+//const static bool GEN_POLYS_WORLD = false;
 
 const static bool SINGLE_THREADED = false;
 const static bool DO_RANDOMIZE = false;
@@ -84,6 +84,8 @@ const static bool USE_SPHERE_MAP = false;
 const static float TIME_DELTA = 1.0f/60.0f;
 
 const static int THREAD_DATA_COUNT = 16;
+
+const static int MAX_PDPOOL_SIZE = 8;
 
 const static float MASS_PER_LIMB = 0.1f;
 
@@ -4143,7 +4145,14 @@ enum PATTERN_SHAPES {
 };
 
 enum E_PTT_FLAGS {
-	E_PTTF_SURFACE = 1,
+	E_PTTF_XP = 1,
+	E_PTTF_XM = 2,
+	E_PTTF_YP = 4,
+	E_PTTF_YM = 8,
+	E_PTTF_ZP = 16,
+	E_PTTF_ZM = 32,
+	
+	E_PTTF_SURFACE = 64,
 	E_PTTF_LENGTH = 65536
 };
 
@@ -4163,18 +4172,36 @@ enum E_VN_FLAGS {
 	E_VNF_LENGTH = 65536
 };
 
+
 struct VoxelNode {
 	uint flags;
 };
 
 struct VoxelWrap {
-	std::vector<VoxelNode> nodeList;
+	uint nodePtr;
+	// use nodeList within GameVoxelWrap
+	// std::vector<VoxelNode> nodeList;
 };
 
 struct VoxelSlice {
 	std::vector<VoxelWrap> wrapList;
 };
 
+struct PaddedDataEntry {
+	float terVal;
+	int cellVal;
+	bool visited;
+};
+
+struct VoxEntry {
+	
+};
+
+struct PaddedData {
+	PaddedDataEntry* data;
+	//VoxEntry* voxData;
+	bool isFree;
+};
 
 const static int PATTERN_SIZE = 5;
 const static int PATTERN_CENTER = (PATTERN_SIZE/2);
@@ -8017,6 +8044,170 @@ Matrix4& Matrix4::rotateZ(float angle)
 
 
 
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// 3D vector
+///////////////////////////////////////////////////////////////////////////////
+struct VectorI3
+{
+    int x;
+    int y;
+    int z;
+
+    // ctors
+    VectorI3() : x(0), y(0), z(0) {};
+    VectorI3(int x, int y, int z) : x(x), y(y), z(z) {};
+
+    // utils functions
+    void        set(int x, int y, int z);
+    int       length() const;                         //
+    int       distance(const VectorI3& vec) const;     // distance between two vectors
+    VectorI3&    normalize();                            //
+    int       dot(const VectorI3& vec) const;          // dot product
+    VectorI3     cross(const VectorI3& vec) const;        // cross product
+    bool        equal(const VectorI3& vec, int e) const; // compare with epsilon
+
+    // operators
+    VectorI3     operator-() const;                      // unary operator (negate)
+    VectorI3     operator+(const VectorI3& rhs) const;    // add rhs
+    VectorI3     operator-(const VectorI3& rhs) const;    // subtract rhs
+    VectorI3&    operator+=(const VectorI3& rhs);         // add rhs and update this object
+    VectorI3&    operator-=(const VectorI3& rhs);         // subtract rhs and update this object
+    VectorI3     operator*(const int scale) const;     // scale
+    VectorI3     operator*(const VectorI3& rhs) const;    // multiplay each element
+    VectorI3&    operator*=(const int scale);          // scale and update this object
+    VectorI3&    operator*=(const VectorI3& rhs);         // product each element and update this object
+    VectorI3     operator/(const int scale) const;     // inverse scale
+    VectorI3&    operator/=(const int scale);          // scale and update this object
+    bool        operator==(const VectorI3& rhs) const;   // exact compare, no epsilon
+    bool        operator!=(const VectorI3& rhs) const;   // exact compare, no epsilon
+    bool        operator<(const VectorI3& rhs) const;    // comparison for sort
+    int       operator[](int index) const;            // subscript operator v[0], v[1]
+    int&      operator[](int index);                  // subscript operator v[0], v[1]
+
+    friend VectorI3 operator*(const int a, const VectorI3 vec);
+    friend std::ostream& operator<<(std::ostream& os, const VectorI3& vec);
+};
+
+inline VectorI3 VectorI3::operator-() const {
+    return VectorI3(-x, -y, -z);
+}
+
+inline VectorI3 VectorI3::operator+(const VectorI3& rhs) const {
+    return VectorI3(x+rhs.x, y+rhs.y, z+rhs.z);
+}
+
+inline VectorI3 VectorI3::operator-(const VectorI3& rhs) const {
+    return VectorI3(x-rhs.x, y-rhs.y, z-rhs.z);
+}
+
+inline VectorI3& VectorI3::operator+=(const VectorI3& rhs) {
+    x += rhs.x; y += rhs.y; z += rhs.z; return *this;
+}
+
+inline VectorI3& VectorI3::operator-=(const VectorI3& rhs) {
+    x -= rhs.x; y -= rhs.y; z -= rhs.z; return *this;
+}
+
+inline VectorI3 VectorI3::operator*(const int a) const {
+    return VectorI3(x*a, y*a, z*a);
+}
+
+inline VectorI3 VectorI3::operator*(const VectorI3& rhs) const {
+    return VectorI3(x*rhs.x, y*rhs.y, z*rhs.z);
+}
+
+inline VectorI3& VectorI3::operator*=(const int a) {
+    x *= a; y *= a; z *= a; return *this;
+}
+
+inline VectorI3& VectorI3::operator*=(const VectorI3& rhs) {
+    x *= rhs.x; y *= rhs.y; z *= rhs.z; return *this;
+}
+
+inline VectorI3 VectorI3::operator/(const int a) const {
+    return VectorI3(x/a, y/a, z/a);
+}
+
+inline VectorI3& VectorI3::operator/=(const int a) {
+    x /= a; y /= a; z /= a; return *this;
+}
+
+inline bool VectorI3::operator==(const VectorI3& rhs) const {
+    return (x == rhs.x) && (y == rhs.y) && (z == rhs.z);
+}
+
+inline bool VectorI3::operator!=(const VectorI3& rhs) const {
+    return (x != rhs.x) || (y != rhs.y) || (z != rhs.z);
+}
+
+inline bool VectorI3::operator<(const VectorI3& rhs) const {
+    if(x < rhs.x) return true;
+    if(x > rhs.x) return false;
+    if(y < rhs.y) return true;
+    if(y > rhs.y) return false;
+    if(z < rhs.z) return true;
+    if(z > rhs.z) return false;
+    return false;
+}
+
+inline int VectorI3::operator[](int index) const {
+    return (&x)[index];
+}
+
+inline int& VectorI3::operator[](int index) {
+    return (&x)[index];
+}
+
+inline void VectorI3::set(int x, int y, int z) {
+    this->x = x; this->y = y; this->z = z;
+}
+
+inline int VectorI3::length() const {
+    return sqrtf(x*x + y*y + z*z);
+}
+
+inline int VectorI3::distance(const VectorI3& vec) const {
+    return sqrtf((vec.x-x)*(vec.x-x) + (vec.y-y)*(vec.y-y) + (vec.z-z)*(vec.z-z));
+}
+
+inline VectorI3& VectorI3::normalize() {
+    int xxyyzz = x*x + y*y + z*z;
+    //int invLength = invSqrt(xxyyzz);
+    int invLength = 1.0f / sqrtf(xxyyzz);
+    x *= invLength;
+    y *= invLength;
+    z *= invLength;
+    return *this;
+}
+
+inline int VectorI3::dot(const VectorI3& rhs) const {
+    return (x*rhs.x + y*rhs.y + z*rhs.z);
+}
+
+inline VectorI3 VectorI3::cross(const VectorI3& rhs) const {
+    return VectorI3(y*rhs.z - z*rhs.y, z*rhs.x - x*rhs.z, x*rhs.y - y*rhs.x);
+}
+
+inline bool VectorI3::equal(const VectorI3& rhs, int epsilon) const {
+    return abs(x - rhs.x) < epsilon && abs(y - rhs.y) < epsilon && abs(z - rhs.z) < epsilon;
+}
+
+inline VectorI3 operator*(const int a, const VectorI3 vec) {
+    return VectorI3(a*vec.x, a*vec.y, a*vec.z);
+}
+
+inline std::ostream& operator<<(std::ostream& os, const VectorI3& vec) {
+    os << "(" << vec.x << ", " << vec.y << ", " << vec.z << ")";
+    return os;
+}
+
+ 
+
+
+
 int boolToInt(bool val) {
 	if (val) {
 		return 1;
@@ -11073,11 +11264,12 @@ public:
 	int maxSizeOfVD;
 	int numVecs;
 	int attSize;
+	bool hasInit;
 	// GLfloat* vertexData;
 	// GLuint* indexData;
 
 	VBOWrapper() {
-		
+		hasInit = false;
 	}
 	
 	void update(
@@ -11181,16 +11373,27 @@ public:
 		// "unbind" vao
 		glBindVertexArray(0);
 		
+		hasInit = true;
 	
 	}
 	
 	void draw() {
+		
+		if (!hasInit) {
+			return;
+		}
+		
 		glBindVertexArray(vao);
 		glDrawElements(GL_TRIANGLES, sizeOfID, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 	}
 	
 	void drawPoints() {
+		
+		if (!hasInit) {
+			return;
+		}
+		
 		// glBindVertexArray(vao);
 		// glDrawArrays(GL_POINTS, 0, sizeOfVD/8);
 		// glBindVertexArray(0);
@@ -22764,7 +22967,6 @@ class GamePhysRig;
 class GameEntManager;
 class GameBlock;
 class GamePageHolder;
-class GameOctree;
 class GameVoxelWrap;
 class VolumeWrapper;
 class ThreadPoolWrapper;
@@ -23045,12 +23247,15 @@ public:
   int frameSkip;
   int frameSkipCount;
   int cellsPerHolder;
+  int cellsPerHolderPad;
   int cellsPerBlock;
   int holdersPerBlock;
   int cellsPerWorld;
   int holdersPerWorld;
   int blocksPerWorld;
   int voxelsPerCell;
+  int paddingInCells;
+  PaddedData (pdPool) [MAX_PDPOOL_SIZE];
   intPair (entIdArr) [1024];
   uint palWidth;
   uint palHeight;
@@ -23231,7 +23436,6 @@ public:
   Timer scrollTimer;
   Timer moveTimer;
   VBOGrid myVBOGrid;
-  GameOctree * gameOct;
   GameWorld * gw;
   GameEntManager * gem;
   GamePhysics * gamePhysics;
@@ -23584,50 +23788,6 @@ public:
 };
 #undef LZZ_INLINE
 #endif
-// f00323_gameoctree.e
-//
-
-#ifndef LZZ_f00323_gameoctree_e
-#define LZZ_f00323_gameoctree_e
-#define LZZ_INLINE inline
-class GameOctree
-{
-public:
-  Singleton * singleton;
-  uint * vData;
-  uint * nData;
-  int numNeighbors;
-  int vDataSize;
-  int nDataSize;
-  int indexCount;
-  int dimInVoxels;
-  int maxDepth;
-  int nullPtr;
-  int rootPtr;
-  int nodeSize;
-  int nextOpen;
-  int renderLevel;
-  int maxVerts;
-  int vertComponents;
-  bool hasTBO;
-  bool hasVBO;
-  bool hasNeighbors;
-  std::vector <float> vertexVec;
-  VBOWrapper vboWrapper;
-  TBOWrapper octTBO;
-  GameOctree ();
-  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, bool _hasNeighbors, int _maxVerts);
-  void updateVBO ();
-  void updateTBO ();
-  void captureBuffer (bool getPoints);
-  void modRenderLevel (int modVal);
-  bool addNode (int x, int y, int z, float r, float g, float b);
-  void remNode (uint index);
-  void startRender ();
-  void renderBB (int baseX, int baseY, int baseZ, int startIndex, int curLevel, int curDiv);
-};
-#undef LZZ_INLINE
-#endif
 // f00324_gamevoxelwrap.e
 //
 
@@ -23652,16 +23812,27 @@ public:
   int nextOpen;
   int renderLevel;
   int maxVerts;
+  int maxVertSize;
   int vertComponents;
   bool hasTBO;
   bool hasVBO;
   bool hasNeighbors;
+  int curPD;
+  PaddedDataEntry * baseData;
+  int voxelsPerCell;
+  int cellsPerHolder;
+  int cellsPerHolderPad;
+  int paddingInCells;
+  VectorI3 offsetInCells;
+  VectorI3 offsetInVoxels;
   std::vector <float> vertexVec;
   VBOWrapper vboWrapper;
   TBOWrapper octTBO;
   std::vector <VoxelSlice*> voxelSlices;
+  std::vector <VoxelNode> nodeList;
   GameVoxelWrap ();
-  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, bool _hasNeighbors, int _maxVerts);
+  void init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, bool _hasNeighbors);
+  void update (int _maxVerts);
   void updateVBO ();
   void updateTBO ();
   void captureBuffer (bool getPoints);
@@ -23670,7 +23841,26 @@ public:
   void remNode (uint index);
   void startRender ();
   void renderBB (int baseX, int baseY, int baseZ, int startIndex, int curLevel, int curDiv);
+  PaddedDataEntry * getPadData (int ii, int jj, int kk);
+  bool findNextCoord (VectorI3 * cellCoord, VectorI3 * voxCoord);
+  void process (GamePageHolder * gph);
+  bool isSurfaceVoxel (VectorI3 * voxCoord);
+  bool getVoxelAtCoord (VectorI3 voxCoord);
 };
+LZZ_INLINE PaddedDataEntry * GameVoxelWrap::getPadData (int ii, int jj, int kk)
+                                                                   {
+		
+		
+		int i = ii + paddingInCells;
+		int j = jj + paddingInCells;
+		int k = kk + paddingInCells;
+		
+		return &(
+			baseData[
+				i + j*cellsPerHolderPad + k*cellsPerHolderPad*cellsPerHolderPad
+			]	
+		);
+	}
 #undef LZZ_INLINE
 #endif
 // f00325_uicomponent.e
@@ -24451,10 +24641,10 @@ public:
   bool lockRead;
   VBOWrapper vboWrapper;
   VolumeWrapper * terVW;
-  GameVoxelWrap vw;
+  GameVoxelWrap * voxelWrap;
+  int curPD;
   int blockId;
   int holderId;
-  bool isBlockHolder;
   int pathSize;
   int totIdealNodes;
   int totGroupIds;
@@ -24474,15 +24664,15 @@ public:
   std::vector <uint> indexVec;
   std::vector <int> collideIndices;
   FIVector4 offsetInHolders;
-  FIVector4 gphMinInPixels;
-  FIVector4 gphMaxInPixels;
-  FIVector4 gphCenInPixels;
+  FIVector4 gphMinInCells;
+  FIVector4 gphMaxInCells;
+  FIVector4 gphCenInCells;
   FIVector4 origOffset;
   Singleton * singleton;
   intPairVec (containsEntIds) [E_ET_LENGTH];
   bool wasGenerated;
   GamePageHolder ();
-  void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isBlockHolder = false);
+  void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ);
   int getCellAtCoordsLocal (int xx, int yy, int zz);
   int getCellAtInd (int ind);
   void getArrAtInd (int ind, int * tempCellData, int * tempCellData2);
@@ -24507,9 +24697,11 @@ public:
   void getIndVal2 (int procCount);
   void getPixVal (float xb, float yb, float zb, int xm, int ym, int zm);
   void fillVBO ();
+  PaddedDataEntry * getPadData (int ii, int jj, int kk);
+  int gatherData ();
   void generateList ();
+  void beginVoxelWrap ();
 };
-void beginVoxelWrap ();
 LZZ_INLINE void GamePageHolder::getIndVal (int procCount)
                                              {
 		indexVec.push_back(0+procCount*4);
@@ -24574,6 +24766,22 @@ LZZ_INLINE void GamePageHolder::getPixVal (float xb, float yb, float zb, int xm,
 		// );
 		
 		//glVertex3f(xb+xm,yb+ym,zb+zm);
+	}
+LZZ_INLINE PaddedDataEntry * GamePageHolder::getPadData (int ii, int jj, int kk)
+                                                                   {
+		
+		int cellsPerHolderPad = singleton->cellsPerHolderPad;
+		int paddingInCells = singleton->paddingInCells;
+		
+		int i = ii + paddingInCells;
+		int j = jj + paddingInCells;
+		int k = kk + paddingInCells;
+		
+		return &(
+			singleton->pdPool[curPD].data[
+				i + j*cellsPerHolderPad + k*cellsPerHolderPad*cellsPerHolderPad
+			]	
+		);
 	}
 #undef LZZ_INLINE
 #endif
@@ -25028,7 +25236,6 @@ public:
   void setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void getArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void fireEvent (BaseObjType uid, int opCode, float fParam);
-  void generateBlockHolder ();
   void update (bool postToScreen);
   void toggleVis (GameEnt * se);
   void ensureBlocks ();
@@ -25039,8 +25246,7 @@ public:
   void drawOrg (GameOrg * curOrg, bool drawAll);
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void polyCombine ();
-  void drawPolys (string fboName, int minPeel, int maxPeel, bool isBlockHolder);
-  void rasterWorldPolys ();
+  void drawPolys (string fboName, int minPeel, int maxPeel);
   void rasterPolys (int minPeel, int maxPeel, int extraRad = 0);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);
@@ -25052,8 +25258,8 @@ public:
   void updateLights ();
   void rasterHolders (bool showResults);
   void rasterGrid (VBOGrid * vboGrid, bool showResults);
-  void rasterOct (GameOctree * gameOct, bool showResults);
-  void renderOct (GameOctree * gameOct);
+  void rasterOct (GameVoxelWrap * gameOct, bool showResults);
+  void renderOct (GameVoxelWrap * gameOct);
   void renderDebug ();
   void postProcess (bool postToScreen);
   ~ GameWorld ();
@@ -25549,7 +25755,15 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		
 		voxelsPerCell = 16;
+		paddingInCells = 1;
 		
+		cellsPerHolderPad = cellsPerHolder+paddingInCells*2;
+		
+		for (i = 0; i < MAX_PDPOOL_SIZE; i++) {
+			pdPool[i].data = new PaddedDataEntry[cellsPerHolderPad*cellsPerHolderPad*cellsPerHolderPad];
+			//pdPool[i].voxData = new VoxEntry[voxelsPerCell*voxelsPerCell*voxelsPerCell]
+			pdPool[i].isFree = true;
+		}
 		
 		
 		if (blocksPerWorld > 256) {
@@ -26245,13 +26459,15 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 					clampType = GL_CLAMP_TO_EDGE; //GL_CLAMP_TO_BORDER
 				break;
 				case E_VW_WORLD:
-					vwChan = 4;
-					filterType = GL_NEAREST,
-					tz = blocksPerWorld;
-					clampType = GL_REPEAT; //GL_CLAMP_TO_BORDER
-					if (!GEN_POLYS_WORLD) {
-						doProc = false;
-					}
+					
+					// vwChan = 4;
+					// filterType = GL_NEAREST,
+					// tz = blocksPerWorld;
+					// clampType = GL_REPEAT; //GL_CLAMP_TO_BORDER
+					// if (!GEN_POLYS_WORLD) {
+					 	doProc = false;
+					// }
+					
 				break;
 				// case E_VW_TERGEN:
 				// 	tz = 128;
@@ -26378,8 +26594,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		}
 
 
-		gameOct = new GameOctree();
-		gameOct->init(this, cellsPerWorld, false, true, false, 32*1024*1024);
+		//gameOct = new GameOctree();
+		//gameOct->init(this, cellsPerWorld, false, true, false, 32*1024*1024);
 		
 		
 		
@@ -29414,18 +29630,18 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					renderingOctBounds = !renderingOctBounds;
 				break;
 				case '/':
-					gameOct->captureBuffer(true);
-					gameOct->updateTBO();
-					gameOct->updateVBO();
+					//gameOct->captureBuffer(true);
+					//gameOct->updateTBO();
+					//gameOct->updateVBO();
 				break;
 				case '*':
 					//renderingOct = !renderingOct;
 				break;
 				case '-':
-					gameOct->modRenderLevel(-1);
+					//gameOct->modRenderLevel(-1);
 				break;
 				case '+':
-					gameOct->modRenderLevel(1);
+					//gameOct->modRenderLevel(1);
 				break;
 				
 				case '`':
@@ -33101,9 +33317,9 @@ void Singleton::frameUpdate ()
 						}
 						
 						
-						if (GEN_POLYS_WORLD) {
-							gw->generateBlockHolder();
-						}
+						// if (GEN_POLYS_WORLD) {
+						// 	gw->generateBlockHolder();
+						// }
 						
 						if (gem->turnBased) {
 							if (
@@ -35020,307 +35236,6 @@ void FontWrapper::init (Singleton * _singleton, string fontName, bool _isIcons, 
 	}
 #undef LZZ_INLINE
  
-// f00323_gameoctree.h
-//
-
-#include "f00323_gameoctree.e"
-#define LZZ_INLINE inline
-GameOctree::GameOctree ()
-                     {
-		
-	}
-void GameOctree::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, bool _hasNeighbors, int _maxVerts)
-          {
-		singleton = _singleton;
-		dimInVoxels = _dimInVoxels;
-		hasTBO = _hasTBO;
-		hasVBO = _hasVBO;
-		hasNeighbors = _hasNeighbors;
-		maxVerts = _maxVerts;
-		nodeSize = 8;
-		numNeighbors = 6;
-		
-		//nodeSize = _nodeSize;
-		
-		// if (maxSize == -1) {
-		// 	maxSize = (128/4)*1024*1024;
-		// }
-		// if (nodeSize == -1) {
-			
-		// }
-		
-		indexCount = 0;
-		
-		vertComponents = 2;
-		vDataSize = maxVerts*nodeSize;
-		nDataSize = maxVerts*numNeighbors;
-		
-		maxDepth = intLogB2(dimInVoxels);
-		
-		vData = new uint[vDataSize];
-		
-		if (hasNeighbors) {
-			nData = new uint[nDataSize];
-		}
-		else {
-			nData = NULL;
-		}
-		
-		
-		renderLevel = 12;
-		nullPtr = 0;
-		rootPtr = nodeSize;
-		nextOpen = rootPtr+nodeSize;
-		
-		int i;
-		
-		for (i = 0; i < vDataSize; i++) {
-			vData[i] = nullPtr;
-		}
-		
-		if (hasTBO) {
-			octTBO.init(false,NULL,vData,vDataSize*4);
-		}
-		
-		if (hasVBO) {
-			vertexVec.clear();
-			vertexVec.reserve(maxVerts*vertComponents*4);
-			
-			//indexVec.clear();
-			//indexVec.reserve(maxVerts);
-			
-			vboWrapper.init(
-				&(vertexVec[0]),
-				vertexVec.size()*vertComponents*4,
-				maxVerts*vertComponents*4,
-				NULL,//&(indexVec[0]),
-				0,//indexVec.size()
-				0,//maxVerts
-				vertComponents,
-				GL_STATIC_DRAW
-			);
-		}
-		
-	}
-void GameOctree::updateVBO ()
-                         {
-		if (!hasVBO) {
-			return;
-		}
-		
-		vboWrapper.update(
-			&(vertexVec[0]),
-			vertexVec.size()*vertComponents*4,
-			NULL,//&(indexVec[0]),
-			0 //indexVec.size()
-		);
-	}
-void GameOctree::updateTBO ()
-                         {
-		if (!hasTBO) {
-			return;
-		}
-		
-		octTBO.update(NULL, vData, -1);
-	}
-void GameOctree::captureBuffer (bool getPoints)
-                                           {
-		
-		cout << "captureBuffer\n";
-
-		FBOWrapper *fbow = singleton->getFBOWrapper("solidTargFBO", 0);
-		fbow->getPixels();
-		
-		FBOWrapper *fbow2 = singleton->getFBOWrapper("resultFBO0", 0);
-		fbow2->getPixels();
-		
-		int i;
-		
-		int x;
-		int y;
-		int z;
-		
-		float r, g, b;
-		
-		btVector3 myPoint;
-		btVector3 camPoint = singleton->cameraGetPosNoShake()->getBTV();
-		
-		float maxDis = singleton->clipDist[1]-50.0f;
-		
-		bool didFail = false;
-		bool wasNew = false;
-		
-		for (i = 0; i < fbow->numBytes; i += 4) {
-			x = fbow->pixelsFloat[i+0];
-			y = fbow->pixelsFloat[i+1];
-			z = fbow->pixelsFloat[i+2];
-			
-			r = fbow2->pixelsChar[i+0];
-			g = fbow2->pixelsChar[i+1];
-			b = fbow2->pixelsChar[i+2];
-			
-			r /= 255.0f;
-			g /= 255.0f;
-			b /= 255.0f;
-			
-			
-			myPoint = btVector3(x,y,z);
-			
-			if (nextOpen >= (vDataSize-nodeSize)) {
-				didFail = true;
-				break;
-			}
-			
-			if (camPoint.distance(myPoint) < maxDis) {
-				wasNew = addNode(x,y,z,r,g,b);
-				
-				if (getPoints&&wasNew) {
-					vertexVec.push_back(x);
-					vertexVec.push_back(y);
-					vertexVec.push_back(z);
-					vertexVec.push_back(1.0f);
-					
-					vertexVec.push_back(r);
-					vertexVec.push_back(g);
-					vertexVec.push_back(b);
-					vertexVec.push_back(0.0f);
-					
-					//indexVec.push_back(indexCount);
-					//indexCount++;
-					
-				}
-				
-			}
-			
-		}
-		
-		if (didFail) {
-			cout << "octree full\n";
-			
-			// todo: wrap back to start of buffer and overwrite?
-			// wont work - would leave invalid pointers
-			// instead, keep linear list of inserted points and reform octree
-			// wrap this linear list
-			
-		}
-
-		cout << "points " << vertexVec.size()/8 << "\n";
-		
-	}
-void GameOctree::modRenderLevel (int modVal)
-                                        {
-		renderLevel += modVal;
-		if (renderLevel > maxDepth) {
-			renderLevel = maxDepth;
-		}
-		if (renderLevel < 0) {
-			renderLevel = 0;
-		}
-		
-		cout << "renderLevel " << renderLevel << "\n";
-	}
-bool GameOctree::addNode (int x, int y, int z, float r, float g, float b)
-                                                                     {
-		int curPtr = rootPtr;
-		int curLevel = 0;
-		bool doProc = true;
-		
-		int curX = x;
-		int curY = y;
-		int curZ = z;
-		
-		int subX;
-		int subY;
-		int subZ;
-		
-		int curDiv = dimInVoxels/2;
-		
-		int offset;
-		
-		bool wasNew = false;
-		
-		do {
-			subX = curX/curDiv;
-			subY = curY/curDiv;
-			subZ = curZ/curDiv;
-			
-			curX -= subX*curDiv;
-			curY -= subY*curDiv;
-			curZ -= subZ*curDiv;
-			
-			offset = subX + subY*2 + subZ*4;
-			
-			if (vData[curPtr+offset] == nullPtr) {
-				vData[curPtr+offset] = nextOpen;
-				nextOpen += nodeSize;
-				wasNew = true;
-			}
-			
-			curPtr = vData[curPtr+offset];
-			
-			curDiv = curDiv/2;
-			
-		} while (curDiv > 2);
-		
-		vData[curPtr+0] = 1;
-		
-		return wasNew;
-	}
-void GameOctree::remNode (uint index)
-                                 {
-		
-	}
-void GameOctree::startRender ()
-                           {
-		renderBB(0,0,0,rootPtr,0,dimInVoxels);
-	}
-void GameOctree::renderBB (int baseX, int baseY, int baseZ, int startIndex, int curLevel, int curDiv)
-          {
-		
-		int i;
-		int xm;
-		int ym;
-		int zm;
-		
-		if (curLevel > renderLevel) {
-			return;
-		}
-		
-		int curDiv2 = curDiv/2;
-		
-		if (curLevel == renderLevel) {
-			singleton->drawBoxMinMax(
-				btVector3(baseX,baseY,baseZ),
-				btVector3(baseX+curDiv,baseY+curDiv,baseZ+curDiv)
-			);
-		}
-		
-		
-		
-		for (i = 0; i < 8; i++) {
-			zm = i/4;
-			ym = (i-zm*4)/2;
-			xm = (i-(zm*4 + ym*2));
-			
-			if (vData[startIndex+i] == nullPtr) {
-				
-			}
-			else {
-				renderBB(
-					baseX+xm*curDiv2,
-					baseY+ym*curDiv2,
-					baseZ+zm*curDiv2,
-					vData[startIndex+i],
-					curLevel+1,
-					curDiv2
-				);
-			}
-		}
-		
-		
-	}
-#undef LZZ_INLINE
- 
 // f00324_gamevoxelwrap.h
 //
 
@@ -35330,33 +35245,36 @@ GameVoxelWrap::GameVoxelWrap ()
                         {
 		
 	}
-void GameVoxelWrap::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, bool _hasNeighbors, int _maxVerts)
+void GameVoxelWrap::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO, bool _hasVBO, bool _hasNeighbors)
           {
 		singleton = _singleton;
 		dimInVoxels = _dimInVoxels;
+		maxDepth = intLogB2(dimInVoxels);
 		hasTBO = _hasTBO;
 		hasVBO = _hasVBO;
 		hasNeighbors = _hasNeighbors;
-		maxVerts = _maxVerts;
 		nodeSize = 8;
 		numNeighbors = 6;
+		vData = NULL;
+		nData = NULL;
+		renderLevel = 12;
 		
-		//nodeSize = _nodeSize;
+		voxelsPerCell = singleton->voxelsPerCell;
+		cellsPerHolder = singleton->cellsPerHolder;
+		cellsPerHolderPad = singleton->cellsPerHolderPad;
+		paddingInCells = singleton->paddingInCells;
+	}
+void GameVoxelWrap::update (int _maxVerts)
+          {
+		int i;
 		
-		// if (maxSize == -1) {
-		// 	maxSize = (128/4)*1024*1024;
-		// }
-		// if (nodeSize == -1) {
-			
-		// }
 		
 		indexCount = 0;
-		
+		maxVerts = _maxVerts;
 		vertComponents = 2;
 		vDataSize = maxVerts*nodeSize;
 		nDataSize = maxVerts*numNeighbors;
-		
-		maxDepth = intLogB2(dimInVoxels);
+		maxVertSize = maxVerts*vertComponents*4;
 		
 		vData = new uint[vDataSize];
 		
@@ -35367,13 +35285,11 @@ void GameVoxelWrap::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO
 			nData = NULL;
 		}
 		
-		
-		renderLevel = 12;
 		nullPtr = 0;
 		rootPtr = nodeSize;
 		nextOpen = rootPtr+nodeSize;
 		
-		int i;
+		
 		
 		for (i = 0; i < vDataSize; i++) {
 			vData[i] = nullPtr;
@@ -35385,15 +35301,39 @@ void GameVoxelWrap::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO
 		
 		if (hasVBO) {
 			vertexVec.clear();
-			vertexVec.reserve(maxVerts*vertComponents*4);
+			vertexVec.reserve(maxVertSize);
 			
 			//indexVec.clear();
 			//indexVec.reserve(maxVerts);
 			
+			
+		}
+	}
+void GameVoxelWrap::updateVBO ()
+                         {
+		int i;
+		
+		if (!hasVBO) {
+			return;
+		}
+		
+		if (vertexVec.size() < 1) {
+			return;
+		}
+		
+		if (vboWrapper.hasInit) {
+			vboWrapper.update(
+				&(vertexVec[0]),
+				vertexVec.size(),
+				NULL,//&(indexVec[0]),
+				0 //indexVec.size()
+			);
+		}
+		else {
 			vboWrapper.init(
 				&(vertexVec[0]),
-				vertexVec.size()*vertComponents*4,
-				maxVerts*vertComponents*4,
+				vertexVec.size(),
+				maxVertSize,
 				NULL,//&(indexVec[0]),
 				0,//indexVec.size()
 				0,//maxVerts
@@ -35402,19 +35342,6 @@ void GameVoxelWrap::init (Singleton * _singleton, int _dimInVoxels, bool _hasTBO
 			);
 		}
 		
-	}
-void GameVoxelWrap::updateVBO ()
-                         {
-		if (!hasVBO) {
-			return;
-		}
-		
-		vboWrapper.update(
-			&(vertexVec[0]),
-			vertexVec.size()*vertComponents*4,
-			NULL,//&(indexVec[0]),
-			0 //indexVec.size()
-		);
 	}
 void GameVoxelWrap::updateTBO ()
                          {
@@ -35619,6 +35546,129 @@ void GameVoxelWrap::renderBB (int baseX, int baseY, int baseZ, int startIndex, i
 		}
 		
 		
+	}
+bool GameVoxelWrap::findNextCoord (VectorI3 * cellCoord, VectorI3 * voxCoord)
+                                                                    {
+		int i;
+		int j;
+		int k;
+		int q;
+		int v;
+		
+		int ii;
+		int jj;
+		int kk;
+		
+		int iOff;
+		int jOff;
+		int kOff;
+		
+		VectorI3 curVoxel;
+		
+		int cellsPerHolder = singleton->cellsPerHolder;
+		int paddingInCells = singleton->paddingInCells;
+		
+		// int procFlags[6];
+		// procFlags[0] = 1;
+		// procFlags[1] = 2;
+		// procFlags[2] = 4;
+		// procFlags[3] = 8;
+		// procFlags[4] = 16;
+		// procFlags[5] = 32;
+		// int procFlag = 0;
+		
+		int minv = 0;
+		int maxv = cellsPerHolder;
+		
+		int cellData;
+		int cellData2;
+		int voxelsPerCellM1 = voxelsPerCell-1;
+		
+		for (i = minv; i < maxv; i++) {
+			for (j = minv; j < maxv; j++) {
+				for (k = minv; k < maxv; k++) {
+					
+					if (getPadData(i,j,k)->visited) {
+						
+					}
+					else {
+						cellData = getPadData(i,j,k)->cellVal;
+						
+						if (cellData == E_CD_SOLID) {
+							
+							for (q = 0; q < NUM_ORIENTATIONS; q++) {
+								cellData2 = getPadData(
+									i + DIR_VECS_I[q][0],
+									j + DIR_VECS_I[q][1],
+									k + DIR_VECS_I[q][2]
+								)->cellVal;
+								
+								if (cellData2 != E_CD_SOLID) {
+									
+									//iOff = i*voxelsPerCell + ;
+									
+									for (kk = 0; kk < voxelsPerCell; kk++) {
+										// for (jj = 0; jj < voxelsPerCell; jj++) {
+										// 	for (ii = 0; ii < voxelsPerCell; ii++) {
+												
+										// 	}
+										// }
+										
+										curVoxel = offsetInVoxels;
+										
+										
+										if (isSurfaceVoxel(&curVoxel)) {
+											//cellCoord->set(i,j,k);
+											return true;
+										}
+										
+										
+									}
+									
+									
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		return false;
+	}
+void GameVoxelWrap::process (GamePageHolder * gph)
+                                          {
+		VectorI3 cellCoord;
+		VectorI3 voxCoord;
+		
+		curPD = gph->curPD;
+		
+		offsetInCells.set(
+			gph->gphMinInCells.getIX(),
+			gph->gphMinInCells.getIY(),
+			gph->gphMinInCells.getIZ()
+		);
+		
+		offsetInVoxels = offsetInCells;
+		offsetInVoxels *= voxelsPerCell;
+		
+		baseData = singleton->pdPool[curPD].data;
+		
+		
+		int q;
+		
+		// while( findNextCoord(&cellCoord, &voxCoord) ) {
+			
+		// }
+		
+	}
+bool GameVoxelWrap::isSurfaceVoxel (VectorI3 * voxCoord)
+                                                {
+		return false;
+	}
+bool GameVoxelWrap::getVoxelAtCoord (VectorI3 voxCoord)
+                                                {
+		return false;
 	}
 #undef LZZ_INLINE
  
@@ -49140,12 +49190,16 @@ GamePageHolder::GamePageHolder ()
 		cellData = NULL;
 		extrData = NULL;
 		pathData = NULL;
+		
+		
 		wasGenerated = false;
 	}
-void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ, bool _isBlockHolder)
+void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ)
           {
 
-		isBlockHolder = _isBlockHolder;
+		curPD = -1;
+
+		//isBlockHolder = _isBlockHolder;
 
 		//cout << "gph init\n";
 
@@ -49171,12 +49225,12 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		singleton = _singleton;
 
 		
-		if (isBlockHolder) {
-			cellsPerHolder = singleton->blocksPerWorld;
-		}
-		else {
+		// if (isBlockHolder) {
+		// 	cellsPerHolder = singleton->blocksPerWorld;
+		// }
+		// else {
 			cellsPerHolder = singleton->cellsPerHolder;
-		}
+		//}
 		
 		
 		
@@ -49189,29 +49243,36 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		//offsetInBlocks.copyFrom(&offsetInHolders);
 		//offsetInBlocks.intDivXYZ(singleton->holdersPerBlock);
 		
-		gphMinInPixels.copyFrom(&offsetInHolders);
-		gphMaxInPixels.copyFrom(&offsetInHolders);
+		gphMinInCells.copyFrom(&offsetInHolders);
+		gphMaxInCells.copyFrom(&offsetInHolders);
 
-		gphMaxInPixels.addXYZ(1);
+		gphMaxInCells.addXYZ(1);
 
 		
 		
-		if (isBlockHolder) {
-			gphMinInPixels.multXYZ(singleton->cellsPerWorld);
-			gphMaxInPixels.multXYZ(singleton->cellsPerWorld);
+		// if (isBlockHolder) {
+		// 	gphMinInCells.multXYZ(singleton->cellsPerWorld);
+		// 	gphMaxInCells.multXYZ(singleton->cellsPerWorld);
 			
-			doTraceVecND("gphMin",&gphMinInPixels);
-			doTraceVecND("gphMax",&gphMaxInPixels);
 			
-		}
-		else {
-			gphMinInPixels.multXYZ(cellsPerHolder);
-			gphMaxInPixels.multXYZ(cellsPerHolder);
-		}
+		// }
+		// else {
+			gphMinInCells.multXYZ(cellsPerHolder);
+			gphMaxInCells.multXYZ(cellsPerHolder);
+		//}
 		
 
-		gphCenInPixels.averageXYZ(&gphMaxInPixels,&gphMinInPixels);
+		gphCenInCells.averageXYZ(&gphMaxInCells,&gphMinInCells);
 		
+
+		voxelWrap = new GameVoxelWrap();
+		voxelWrap->init(
+			singleton,
+			cellsPerHolder*singleton->voxelsPerCell,
+			true,
+			true,
+			false
+		);
 
 		
 	}
@@ -49785,24 +49846,24 @@ void GamePageHolder::findIdealNodes ()
 					for (j = 0; j < cellsPerHolder; j++) {
 						for (i = 0; i < cellsPerHolder; i++) {
 							cellVal = singleton->gw->getCellAtCoords(
-								gphMinInPixels.getIX()+i,
-								gphMinInPixels.getIY()+j,
-								gphMinInPixels.getIZ()+k
+								gphMinInCells.getIX()+i,
+								gphMinInCells.getIY()+j,
+								gphMinInCells.getIZ()+k
 							);
 							cellValAbove = singleton->gw->getCellAtCoords(
-								gphMinInPixels.getIX()+i,
-								gphMinInPixels.getIY()+j,
-								gphMinInPixels.getIZ()+k+1
+								gphMinInCells.getIX()+i,
+								gphMinInCells.getIY()+j,
+								gphMinInCells.getIZ()+k+1
 							);
 							// cellValAbove2 = singleton->gw->getCellAtCoords(
-							// 	gphMinInPixels.getIX()+i,
-							// 	gphMinInPixels.getIY()+j,
-							// 	gphMinInPixels.getIZ()+k+2
+							// 	gphMinInCells.getIX()+i,
+							// 	gphMinInCells.getIY()+j,
+							// 	gphMinInCells.getIZ()+k+2
 							// );
 							cellValBelow = singleton->gw->getCellAtCoords(
-								gphMinInPixels.getIX()+i,
-								gphMinInPixels.getIY()+j,
-								gphMinInPixels.getIZ()+k-1
+								gphMinInCells.getIX()+i,
+								gphMinInCells.getIY()+j,
+								gphMinInCells.getIZ()+k-1
 							);
 							
 							
@@ -49984,7 +50045,7 @@ btVector3 GamePageHolder::holderIndToBTV (GamePageHolder * curPointHolder, int c
 		jj = (curPointIndex-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
 		ii = curPointIndex-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 		
-		pVec1 = curPointHolder->gphMinInPixels.getBTV();
+		pVec1 = curPointHolder->gphMinInCells.getBTV();
 		pVec1 += btVector3(ii,jj,kk);
 		
 		return pVec1;
@@ -50139,9 +50200,9 @@ void GamePageHolder::linkRegions ()
 			
 			if (doProc) {
 				
-				baseX = i + gphMinInPixels.getIX();
-				baseY = j + gphMinInPixels.getIY();
-				baseZ = k + gphMinInPixels.getIZ();
+				baseX = i + gphMinInCells.getIX();
+				baseY = j + gphMinInCells.getIY();
+				baseZ = k + gphMinInCells.getIZ();
 				
 				for (m = 0; m < NUM_PLANAR_ORIENTATIONS; m++) {
 					
@@ -50452,37 +50513,37 @@ void GamePageHolder::genCellData ()
 		
 		VolumeWrapper* curVW;
 		
-		if (isBlockHolder) {
-			curVW = (singleton->volumeWrappers[E_VW_WORLD]);
-			cout << "genBlockHolder\n";
-		}
-		else {
+		// if (isBlockHolder) {
+		// 	curVW = (singleton->volumeWrappers[E_VW_WORLD]);
+		// 	cout << "genBlockHolder\n";
+		// }
+		// else {
 			curVW = (singleton->volumeWrappers[E_VW_HOLDER]);
-		}
+		//}
 		
 		
 		singleton->gw->drawVol(
 			curVW,
-			&gphMinInPixels,
-			&gphMaxInPixels,
+			&gphMinInCells,
+			&gphMaxInCells,
 			true,
 			true,
-			false,
-			isBlockHolder
+			false
+			//,isBlockHolder
 		);
 		FBOWrapper* fbow = curVW->fboSet.getFBOWrapper(0);
 		
-		if (isBlockHolder) {
-			wasGenerated = true;
-			return;
-		}
+		// if (isBlockHolder) {
+		// 	wasGenerated = true;
+		// 	return;
+		// }
 		
 		// if (terVW == NULL) {
 		// 	terVW = new VolumeWrapper();
 		// 	terVW->init(cellsPerHolder,GL_REPEAT,false);
 		// }
 		// FBOWrapper* fbow = terVW->fboSet.getFBOWrapper(0);
-		// singleton->gw->drawVol(terVW, &gphMinInPixels, &gphMaxInPixels, true, true);
+		// singleton->gw->drawVol(terVW, &gphMinInCells, &gphMaxInCells, true, true);
 		
 		
 		unsigned char* vdPtr = fbow->pixelsChar;
@@ -50498,12 +50559,12 @@ void GamePageHolder::genCellData ()
 			jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
 			ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 			
-			if (isBlockHolder) {
-				fk = gphMinInPixels[2] + kk*singleton->cellsPerBlock;
-			}
-			else {
-				fk = gphMinInPixels[2] + kk;
-			}
+			// if (isBlockHolder) {
+			// 	fk = gphMinInCells[2] + kk*singleton->cellsPerBlock;
+			// }
+			// else {
+				fk = gphMinInCells[2] + kk;
+			//}
 			
 			
 			
@@ -50684,6 +50745,102 @@ void GamePageHolder::fillVBO ()
 		listGenerated = true;
 		
 	}
+int GamePageHolder::gatherData ()
+                         {
+		int i;
+		int j;
+		int k;
+		
+		int cellVal;
+		uint tempHF = E_CD_UNKNOWN;
+		
+		// int empCount = 0;
+		// int watCount = 0;
+		// int solCount = 0;
+		// int errCount = 0;
+		
+		PaddedDataEntry* curData;
+		
+		int iX;
+		int iY;
+		int iZ;
+		
+		int minRad = 0;
+		int cellsPerHolderPad = singleton->cellsPerHolderPad;
+		int maxRad = cellsPerHolderPad;
+		int paddingInCells = singleton->paddingInCells;
+		
+		float terVal = 0.0f;
+		
+		// if (isBlockHolder) {
+		// 	minRad = 0;
+		// 	maxRad = cellsPerHolder-1;
+		// }
+		
+		
+		for (k = minRad; k < maxRad; k++) {
+			for (j = minRad; j < maxRad; j++) {
+				for (i = minRad; i < maxRad; i++) {
+					
+					iX = gphMinInCells.getIX() + i;
+					iY = gphMinInCells.getIY() + j;
+					iZ = gphMinInCells.getIZ() + k;
+					
+					// if (isBlockHolder) {
+						
+						
+					// 	//cellVal = getCellAtCoordsLocal(iX,iY,iZ);
+						
+					// 	// switch (cellVal) {
+					// 	// 	case E_CD_EMPTY:
+					// 	// 		empCount++;
+					// 	// 	break;
+					// 	// 	case E_CD_WATER:
+					// 	// 		watCount++;
+					// 	// 	break;
+					// 	// 	case E_CD_SOLID:
+					// 	// 		solCount++;
+					// 	// 	break;
+					// 	// 	default:
+					// 	// 		errCount++;
+					// 	// 	break;
+					// 	// }
+						
+					// }
+					// else {
+						cellVal = singleton->gw->getCellAtCoords(
+							iX - paddingInCells,
+							iY - paddingInCells,
+							iZ - paddingInCells
+						);
+					//}
+					
+					
+					tempHF = tempHF|cellVal;
+					
+					if (cellVal == E_CD_SOLID) {
+						terVal = 1.0f;
+					}
+					else {
+						terVal = 0.0f;
+					}
+					
+					curData = &(
+						singleton->pdPool[curPD].data[
+							i + j*cellsPerHolderPad + k*cellsPerHolderPad*cellsPerHolderPad
+						]	
+					);
+					
+					curData->terVal = terVal;
+					curData->cellVal = cellVal;
+					curData->visited = false;
+					
+				}
+			}	
+		}
+		
+		return tempHF;
+	}
 void GamePageHolder::generateList ()
                             { //int fboNum
 		
@@ -50700,6 +50857,7 @@ void GamePageHolder::generateList ()
 		int curInd;
 		
 		int procCount = 0;
+		uint tempHF = E_CD_UNKNOWN;
 		
 		bool edgeK;
 		bool edgeJ;
@@ -50713,12 +50871,12 @@ void GamePageHolder::generateList ()
 		
 		float cellPitch;
 		
-		if (isBlockHolder) {
-			cellPitch = singleton->cellsPerBlock;
-		}
-		else {
+		// if (isBlockHolder) {
+		// 	cellPitch = singleton->cellsPerBlock;
+		// }
+		// else {
 			cellPitch = 1.0f;
-		}
+		// }
 		
 		float iv0 = 0.0f;
 		float iv1 = cellPitch;
@@ -50759,7 +50917,16 @@ void GamePageHolder::generateList ()
 			doProc[i] = false;
 		}
 
-		uint tempHF = E_CD_UNKNOWN;
+		
+
+		int procFlags[6];
+		procFlags[0] = 1;
+		procFlags[1] = 2;
+		procFlags[2] = 4;
+		procFlags[3] = 8;
+		procFlags[4] = 16;
+		procFlags[5] = 32;
+		int procFlag = 0;
 
 		// if (GEN_COLLISION) {
 		// 	collideIndices.clear();
@@ -50775,69 +50942,20 @@ void GamePageHolder::generateList ()
 		
 		
 		
-		int empCount = 0;
-		int watCount = 0;
-		int solCount = 0;
-		int errCount = 0;
-		
-		int minRad = -1;
-		int maxRad = cellsPerHolder;
-		
-		if (isBlockHolder) {
-			minRad = 0;
-			maxRad = cellsPerHolder-1;
-		}
-		
-		
-		for (k = minRad; k <= maxRad; k++) {
-			for (j = minRad; j <= maxRad; j++) {
-				for (i = minRad; i <= maxRad; i++) {
-					
-					iX = gphMinInPixels.getIX() + i;
-					iY = gphMinInPixels.getIY() + j;
-					iZ = gphMinInPixels.getIZ() + k;
-					
-					if (isBlockHolder) {
-						cellVal = getCellAtCoordsLocal(iX,iY,iZ);
-						
-						switch (cellVal) {
-							case E_CD_EMPTY:
-								empCount++;
-							break;
-							case E_CD_WATER:
-								watCount++;
-							break;
-							case E_CD_SOLID:
-								solCount++;
-							break;
-							default:
-								errCount++;
-							break;
-						}
-						
-					}
-					else {
-						cellVal = singleton->gw->getCellAtCoords(iX,iY,iZ);
-					}
-					
-					
-					tempHF = tempHF|cellVal;
-				}
-			}	
-		}
 		
 		
 		
-		if (isBlockHolder) {
+		
+		// if (isBlockHolder) {
 			
-			cout << "\n\n\n";
-			cout << "cellsPerHolder" << cellsPerHolder << "\n";
-			cout << "empCount " << empCount << "\n";
-			cout << "watCount " << watCount << "\n";
-			cout << "solCount " << solCount << "\n";
-			cout << "errCount " << errCount << "\n";
-			cout << "\n\n\n";
-		}
+		// 	cout << "\n\n\n";
+		// 	cout << "cellsPerHolder" << cellsPerHolder << "\n";
+		// 	cout << "empCount " << empCount << "\n";
+		// 	cout << "watCount " << watCount << "\n";
+		// 	cout << "solCount " << solCount << "\n";
+		// 	cout << "errCount " << errCount << "\n";
+		// 	cout << "\n\n\n";
+		// }
 		
 		bool fillPolys = 
 			// (isBlockHolder&&GEN_POLYS_WORLD) ||
@@ -50856,6 +50974,8 @@ void GamePageHolder::generateList ()
 		int maskVals[8];
 		int newInd;
 		
+		
+		tempHF = gatherData();
 		
 		// if (GEN_COLLISION) {
 			
@@ -50910,13 +51030,23 @@ void GamePageHolder::generateList ()
 		
 		if (fillPolys) {
 			
+			
+			
 			if (
 				(tempHF == E_CD_SOLID) ||
-				(tempHF == E_CD_EMPTY)	
+				(tempHF == E_CD_EMPTY) ||
+				(tempHF == E_CD_WATER)
 			) {
 				
 			}
 			else {
+				
+				
+				
+				beginVoxelWrap();
+				
+				
+				
 				for (k = 0; k < cellsPerHolder; k++) {
 					
 					for (j = 0; j < cellsPerHolder; j++) {
@@ -50924,55 +51054,64 @@ void GamePageHolder::generateList ()
 						for (i = 0; i < cellsPerHolder; i++) {
 							
 							
-							iX = gphMinInPixels.getIX() + i;
-							iY = gphMinInPixels.getIY() + j;
-							iZ = gphMinInPixels.getIZ() + k;
+							iX = gphMinInCells.getIX() + i;
+							iY = gphMinInCells.getIY() + j;
+							iZ = gphMinInCells.getIZ() + k;
 							bpX = iX;
 							bpY = iY;
 							bpZ = iZ;
 							
-							if (isBlockHolder) {
-								cellVal = getCellAtCoordsLocal(iX,iY,iZ);
-							}
-							else {
-								cellVal = singleton->gw->getCellAtCoords(iX,iY,iZ);
-							}
+							// if (isBlockHolder) {
+							// 	cellVal = getCellAtCoordsLocal(iX,iY,iZ);
+							// }
+							// else {
+								cellVal = getPadData(i,j,k)->cellVal;
+							//}
 							
 							newInd = i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder;
 							
-							extrData[newInd*4 + E_PTT_FLG] = 0;
+							//extrData[newInd*4 + E_PTT_FLG] = 0;
 							
 							if ( cellVal == E_CD_SOLID ) {
 								
 								doProcAny = false;
 								
+								procFlag = 0;
+								
 								for (q = 0; q < NUM_ORIENTATIONS; q++) {
 									
-									if (isBlockHolder) {
-										cellVal2 = getCellAtCoordsLocal(
-											iX + DIR_VECS_I[q][0],
-											iY + DIR_VECS_I[q][1],
-											iZ + DIR_VECS_I[q][2]	
-										);
-									}
-									else {
-										cellVal2 = singleton->gw->getCellAtCoords(
-											iX + DIR_VECS_I[q][0],
-											iY + DIR_VECS_I[q][1],
-											iZ + DIR_VECS_I[q][2]
-										);
-									}
+									// if (isBlockHolder) {
+									// 	cellVal2 = getCellAtCoordsLocal(
+									// 		iX + DIR_VECS_I[q][0],
+									// 		iY + DIR_VECS_I[q][1],
+									// 		iZ + DIR_VECS_I[q][2]	
+									// 	);
+									// }
+									// else {
+										cellVal2 = getPadData(
+											i + DIR_VECS_I[q][0],
+											j + DIR_VECS_I[q][1],
+											k + DIR_VECS_I[q][2]
+										)->cellVal;
+									//}
 									
 									
 									doProc[q] = cellVal2 != E_CD_SOLID;
+									if (doProc[q]) {
+										procFlag = procFlag | procFlags[q];
+									}
+									
 									
 									doProcAny = doProcAny | doProc[q];
 									
 								}
 								
-								if (doProcAny) {
-									extrData[newInd*4 + E_PTT_FLG] = extrData[newInd*4 + E_PTT_FLG] | E_PTTF_SURFACE;
-								}
+								// if (doProcAny) {
+								// 	extrData[newInd*4 + E_PTT_FLG] =
+								// 		extrData[newInd*4 + E_PTT_FLG] |
+								// 		E_PTTF_SURFACE |
+								// 		procFlag;
+								// }
 								
 								// if (GEN_COLLISION) {
 								// 	if (doProcAny) {
@@ -51115,30 +51254,25 @@ void GamePageHolder::generateList ()
 				}
 			}
 			
-			
 		}
-		
-		
-
 		
 		listEmpty = (vertexVec.size() == 0);
 		holderFlags = tempHF;
-		
 		
 		if (listEmpty) {
 			
 		}
 		else {
-			beginVoxelWrap();
+			
 		}
 		
 		preGenList = true;
 		
 	}
-void beginVoxelWrap ()
-                      {
-	
-}
+void GamePageHolder::beginVoxelWrap ()
+                              {
+		voxelWrap->process(this);
+	}
 #undef LZZ_INLINE
  
 // f00352_gameblock.h
@@ -55300,7 +55434,8 @@ bool ThreadPoolWrapper::stopTP (int threadId)
 				break;
 				case E_TT_GENLIST:
 					curHolder->fillVBO();
-					
+					singleton->pdPool[curHolder->curPD].isFree = true;
+					curHolder->curPD = -1;
 				break;
 			}
 			
@@ -56642,7 +56777,7 @@ void GameLogic::drawLineAtIndices (GamePageHolder * curPointHolder, int curPoint
 		jj = (curPointIndex-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
 		ii = curPointIndex-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 		
-		pVec1.copyFrom(&(curPointHolder->gphMinInPixels));
+		pVec1.copyFrom(&(curPointHolder->gphMinInCells));
 		pVec1.addXYZ(ii,jj,kk);
 		pVec1.addXYZ(0.5f);
 		
@@ -56650,7 +56785,7 @@ void GameLogic::drawLineAtIndices (GamePageHolder * curPointHolder, int curPoint
 		jj = (curPointIndex2-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
 		ii = curPointIndex2-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 		
-		pVec2.copyFrom(&(curPointHolder2->gphMinInPixels));
+		pVec2.copyFrom(&(curPointHolder2->gphMinInCells));
 		pVec2.addXYZ(ii,jj,kk);
 		pVec2.addXYZ(0.5f);
 		
@@ -56671,7 +56806,7 @@ btVector3 GameLogic::holderIndToBTV (GamePageHolder * curPointHolder, int curPoi
 		jj = (curPointIndex-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
 		ii = curPointIndex-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 		
-		pVec1 = curPointHolder->gphMinInPixels.getBTV();
+		pVec1 = curPointHolder->gphMinInCells.getBTV();
 		pVec1 += btVector3(ii,jj,kk);
 		
 		if (addHalfOff) {
@@ -56706,7 +56841,7 @@ void GameLogic::drawPointAtIndex (GamePageHolder * curPointHolder, int curPointI
 		jj = (curPointIndex-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
 		ii = curPointIndex-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 		
-		pVec1.copyFrom(&(curPointHolder->gphMinInPixels));
+		pVec1.copyFrom(&(curPointHolder->gphMinInCells));
 		pVec1.addXYZ(ii,jj,kk);
 		pVec1.addXYZ(0.5f);
 		singleton->drawCubeCentered(&pVec1, rad);
@@ -56766,7 +56901,7 @@ void GameLogic::getPointsForPath (GamePageHolder * curHolderFrom, int _curInd, P
 			tempStack.clear();
 		}
 		
-		btVector3 newMin = curHolderFrom->gphMinInPixels.getBTV();
+		btVector3 newMin = curHolderFrom->gphMinInCells.getBTV();
 		
 		
 		int cellsPerHolder = singleton->cellsPerHolder;
@@ -56912,7 +57047,7 @@ void GameLogic::drawRegions (int offX, int offY, int offZ)
 		GamePageHolder* curHolderTo;
 		
 		
-		minv.copyFrom(&(curHolderFrom->gphMinInPixels));
+		minv.copyFrom(&(curHolderFrom->gphMinInCells));
 		maxv.copyFrom(&minv);
 		maxv.addXYZ(cellsPerHolder);
 		
@@ -57051,6 +57186,8 @@ void GameLogic::loadNearestHolders ()
 		
 		FIVector4 tempVec;
 		
+		int q;
+		
 		int i, j, k;
 		int ii, jj, kk;
 		int incVal;
@@ -57064,6 +57201,7 @@ void GameLogic::loadNearestHolders ()
 		int maxi;
 		int curLoadRadius;
 		int radStep = 1;
+		int curPD;
 		intPair curId;
 		
 		int cellsPerHolder = singleton->cellsPerHolder;
@@ -57192,15 +57330,29 @@ void GameLogic::loadNearestHolders ()
 									
 									if(curHolder->prepPathRefresh(1)) {
 										
-										
-										
-										threadPoolList->intData[0] = E_TT_GENLIST;
-										threadPoolList->intData[1] = curHolder->blockId;
-										threadPoolList->intData[2] = curHolder->holderId;
-										
-										if (threadPoolList->startThread()) {
-											genCount++;
+										curPD = -1;
+										for (q = 0; q < MAX_PDPOOL_SIZE; q++) {
+											
+											if (singleton->pdPool[q].isFree) {
+												singleton->pdPool[q].isFree = false;
+												curPD = q;
+												break;
+											}
 										}
+										
+										if (curPD >= 0) {
+											curHolder->curPD = curPD;
+											
+											threadPoolList->intData[0] = E_TT_GENLIST;
+											threadPoolList->intData[1] = curHolder->blockId;
+											threadPoolList->intData[2] = curHolder->holderId;
+											
+											if (threadPoolList->startThread()) {
+												genCount++;
+											}
+										}
+										
+										
 										
 										//curHolder->generateList();
 									}
@@ -60352,10 +60504,10 @@ void GameWorld::init (Singleton * _singleton)
 			blockData[i] = NULL;
 		}
 
-		if (GEN_POLYS_WORLD) {
-			blockHolder = new GamePageHolder();
-			blockHolder->init(singleton, -1, -1, 0,0,0, true);
-		}
+		// if (GEN_POLYS_WORLD) {
+		// 	blockHolder = new GamePageHolder();
+		// 	blockHolder->init(singleton, -1, -1, 0,0,0, true);
+		// }
 		
 		
 		
@@ -60751,59 +60903,6 @@ void GameWorld::fireEvent (BaseObjType uid, int opCode, float fParam)
 				singleton->performCamShake(ge, fParam);
 			break;
 		}
-	}
-void GameWorld::generateBlockHolder ()
-                                   {
-		
-		if (noiseGenerated || (blockHolder == NULL)) {
-			
-		}
-		else {
-			return;
-		}
-		
-		
-		
-		if (blockHolder->wasGenerated) {
-			
-		}
-		else {
-			glFlush();
-			glFinish();
-			
-			
-			blockHolder->genCellData();
-			
-			
-			glFlush();
-			glFinish();
-		}
-		
-		// if (blockHolder->preGenList) {
-			
-		// }
-		// else {
-			
-		// 	blockHolder->generateList();
-		// }
-		
-		// if (blockHolder->listGenerated) {
-			
-		// }
-		// else {
-		// 	glFlush();
-		// 	glFinish();
-			
-			
-		// 	blockHolder->fillVBO();
-			
-			
-		// 	glFlush();
-		// 	glFinish();
-			
-			
-			
-		// }
 	}
 void GameWorld::update (bool postToScreen)
                                        {
@@ -61219,9 +61318,9 @@ void GameWorld::drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * ma
 			singleton->setShaderTexture3D(13, singleton->volumeWrappers[E_VW_VORO]->volId);
 		}
 		
-		if (!getBlockHolders) {
-			singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
-		}
+		// if (!getBlockHolders) {
+		// 	singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
+		// }
 		
 		singleton->setShaderfVec3("bufferDim", &(curVW->terGenDim) );
 		
@@ -61239,15 +61338,15 @@ void GameWorld::drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * ma
 		//singleton->setShaderfVec3("volMaxReadyInPixels", &(singleton->gameFluid[E_FID_BIG]->volMaxInPixels) );
 		
 		singleton->setShaderInt("getVoro", (int)(getVoro));
-		singleton->setShaderInt("getBlockHolders", (int)(getBlockHolders));
+		singleton->setShaderInt("getBlockHolders", (int)(false));
 		
 		singleton->setShaderFloat("cellsPerWorld", cellsPerWorld );
 		
 		singleton->fsQuad.draw();
 		
-		if (!getBlockHolders) {
-			singleton->setShaderTexture3D(14, 0);
-		}
+		// if (!getBlockHolders) {
+		// 	singleton->setShaderTexture3D(14, 0);
+		// }
 		if (!getVoro) {
 			singleton->setShaderTexture3D(13, 0);
 		}
@@ -61645,7 +61744,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		}
 		
 		singleton->setShaderTexture3D(13, singleton->volumeWrappers[E_VW_VORO]->volId);
-		singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
+		//singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
 		singleton->sampleFBO("noiseFBOLinear", 15);
 		
 		// if (!doPoly) {
@@ -61789,7 +61888,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		
 		singleton->unsampleFBO("noiseFBOLinear", 15);
-		singleton->setShaderTexture3D(14, 0);
+		//singleton->setShaderTexture3D(14, 0);
 		singleton->setShaderTexture3D(13, 0);
 		
 		
@@ -61961,8 +62060,8 @@ void GameWorld::polyCombine ()
 		singleton->unbindFBO();
 		singleton->unbindShader();
 	}
-void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel, bool isBlockHolder)
-                                                                                     {
+void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel)
+          {
 		
 		//VolumeWrapper* curVW = (singleton->volumeWrappers[E_VW_VORO]);
 		
@@ -61996,12 +62095,12 @@ void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel, bool isBloc
 		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
 		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 		
-		if (isBlockHolder) {
-			rasterWorldPolys();
-		}
-		else {
+		// if (isBlockHolder) {
+		// 	rasterWorldPolys();
+		// }
+		// else {
 			rasterPolys(minPeel,maxPeel*4, 6);
-		}
+		//}
 		
 		
 		
@@ -62012,26 +62111,6 @@ void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel, bool isBloc
 		//singleton->unsampleFBO("polyFBO",0,fboNum);
 		singleton->unbindFBO();
 		singleton->unbindShader();
-	}
-void GameWorld::rasterWorldPolys ()
-                                {
-		
-		
-		GamePageHolder* curHolder = blockHolder;
-		
-		if (curHolder == NULL) {
-			return;
-		}
-		
-		if (
-			(curHolder->listGenerated) &&
-			(!(curHolder->listEmpty))
-		) {
-			curHolder->vboWrapper.draw();
-		}
-		
-		
-		
 	}
 void GameWorld::rasterPolys (int minPeel, int maxPeel, int extraRad)
                                                                      {
@@ -62150,8 +62229,8 @@ void GameWorld::rasterPolys (int minPeel, int maxPeel, int extraRad)
 									pCount++;
 									
 									// singleton->setShaderFloat("volSizePrim", singleton->cellsPerHolder);
-									// singleton->setShaderfVec3("volMinReadyInPixels", &(curHolder->gphMinInPixels) );
-									// singleton->setShaderfVec3("volMaxReadyInPixels", &(curHolder->gphMaxInPixels) );
+									// singleton->setShaderfVec3("volMinReadyInPixels", &(curHolder->gphMinInCells) );
+									// singleton->setShaderfVec3("volMaxReadyInPixels", &(curHolder->gphMaxInCells) );
 									// singleton->setShaderTexture3D(0, curHolder->terVW->volId);
 									
 									curHolder->vboWrapper.draw();
@@ -64759,8 +64838,8 @@ void GameWorld::rasterGrid (VBOGrid * vboGrid, bool showResults)
 		
 		
 	}
-void GameWorld::rasterOct (GameOctree * gameOct, bool showResults)
-                                                              {
+void GameWorld::rasterOct (GameVoxelWrap * gameOct, bool showResults)
+                                                                 {
 		
 		// get view matrix
 		singleton->perspectiveOn = true;
@@ -64817,8 +64896,8 @@ void GameWorld::rasterOct (GameOctree * gameOct, bool showResults)
 		
 		
 	}
-void GameWorld::renderOct (GameOctree * gameOct)
-                                            {
+void GameWorld::renderOct (GameVoxelWrap * gameOct)
+                                               {
 		
 		// get view matrix
 		singleton->perspectiveOn = true;
@@ -65015,11 +65094,11 @@ void GameWorld::renderDebug ()
 			singleton->gameLogic->update();
 		}
 		
-		if (singleton->renderingOctBounds) {
-			singleton->setShaderFloat("isWire", 1.0);
-			singleton->setShaderVec3("matVal", 255, 0, 0);
-			singleton->gameOct->startRender();
-		}
+		// if (singleton->renderingOctBounds) {
+		// 	singleton->setShaderFloat("isWire", 1.0);
+		// 	singleton->setShaderVec3("matVal", 255, 0, 0);
+		// 	singleton->gameOct->startRender();
+		// }
 		
 		
 		

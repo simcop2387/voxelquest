@@ -346,10 +346,10 @@ public:
 			blockData[i] = NULL;
 		}
 
-		if (GEN_POLYS_WORLD) {
-			blockHolder = new GamePageHolder();
-			blockHolder->init(singleton, -1, -1, 0,0,0, true);
-		}
+		// if (GEN_POLYS_WORLD) {
+		// 	blockHolder = new GamePageHolder();
+		// 	blockHolder->init(singleton, -1, -1, 0,0,0, true);
+		// }
 		
 		
 		
@@ -833,58 +833,58 @@ public:
 	
 	
 	
-	void generateBlockHolder() {
+	// void generateBlockHolder() {
 		
-		if (noiseGenerated || (blockHolder == NULL)) {
+	// 	if (noiseGenerated || (blockHolder == NULL)) {
 			
-		}
-		else {
-			return;
-		}
+	// 	}
+	// 	else {
+	// 		return;
+	// 	}
 		
 		
 		
-		if (blockHolder->wasGenerated) {
+	// 	if (blockHolder->wasGenerated) {
 			
-		}
-		else {
-			glFlush();
-			glFinish();
-			
-			
-			blockHolder->genCellData();
+	// 	}
+	// 	else {
+	// 		glFlush();
+	// 		glFinish();
 			
 			
-			glFlush();
-			glFinish();
-		}
+	// 		blockHolder->genCellData();
+			
+			
+	// 		glFlush();
+	// 		glFinish();
+	// 	}
 		
-		// if (blockHolder->preGenList) {
+	// 	// if (blockHolder->preGenList) {
 			
-		// }
-		// else {
+	// 	// }
+	// 	// else {
 			
-		// 	blockHolder->generateList();
-		// }
+	// 	// 	blockHolder->generateList();
+	// 	// }
 		
-		// if (blockHolder->listGenerated) {
+	// 	// if (blockHolder->listGenerated) {
 			
-		// }
-		// else {
-		// 	glFlush();
-		// 	glFinish();
-			
-			
-		// 	blockHolder->fillVBO();
+	// 	// }
+	// 	// else {
+	// 	// 	glFlush();
+	// 	// 	glFinish();
 			
 			
-		// 	glFlush();
-		// 	glFinish();
+	// 	// 	blockHolder->fillVBO();
+			
+			
+	// 	// 	glFlush();
+	// 	// 	glFinish();
 			
 			
 			
-		// }
-	}
+	// 	// }
+	// }
 	
 
 	void update(bool postToScreen) {
@@ -1327,9 +1327,9 @@ public:
 			singleton->setShaderTexture3D(13, singleton->volumeWrappers[E_VW_VORO]->volId);
 		}
 		
-		if (!getBlockHolders) {
-			singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
-		}
+		// if (!getBlockHolders) {
+		// 	singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
+		// }
 		
 		singleton->setShaderfVec3("bufferDim", &(curVW->terGenDim) );
 		
@@ -1347,15 +1347,15 @@ public:
 		//singleton->setShaderfVec3("volMaxReadyInPixels", &(singleton->gameFluid[E_FID_BIG]->volMaxInPixels) );
 		
 		singleton->setShaderInt("getVoro", (int)(getVoro));
-		singleton->setShaderInt("getBlockHolders", (int)(getBlockHolders));
+		singleton->setShaderInt("getBlockHolders", (int)(false));
 		
 		singleton->setShaderFloat("cellsPerWorld", cellsPerWorld );
 		
 		singleton->fsQuad.draw();
 		
-		if (!getBlockHolders) {
-			singleton->setShaderTexture3D(14, 0);
-		}
+		// if (!getBlockHolders) {
+		// 	singleton->setShaderTexture3D(14, 0);
+		// }
 		if (!getVoro) {
 			singleton->setShaderTexture3D(13, 0);
 		}
@@ -1753,7 +1753,7 @@ public:
 		}
 		
 		singleton->setShaderTexture3D(13, singleton->volumeWrappers[E_VW_VORO]->volId);
-		singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
+		//singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
 		singleton->sampleFBO("noiseFBOLinear", 15);
 		
 		// if (!doPoly) {
@@ -1897,7 +1897,7 @@ public:
 		
 		
 		singleton->unsampleFBO("noiseFBOLinear", 15);
-		singleton->setShaderTexture3D(14, 0);
+		//singleton->setShaderTexture3D(14, 0);
 		singleton->setShaderTexture3D(13, 0);
 		
 		
@@ -2085,7 +2085,12 @@ public:
 	}
 	
 	
-	void drawPolys(string fboName, int minPeel, int maxPeel, bool isBlockHolder) {
+	void drawPolys(
+		string fboName,
+		int minPeel,
+		int maxPeel
+		//, bool isBlockHolder
+	) {
 		
 		//VolumeWrapper* curVW = (singleton->volumeWrappers[E_VW_VORO]);
 		
@@ -2119,12 +2124,12 @@ public:
 		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
 		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 		
-		if (isBlockHolder) {
-			rasterWorldPolys();
-		}
-		else {
+		// if (isBlockHolder) {
+		// 	rasterWorldPolys();
+		// }
+		// else {
 			rasterPolys(minPeel,maxPeel*4, 6);
-		}
+		//}
 		
 		
 		
@@ -2137,25 +2142,25 @@ public:
 		singleton->unbindShader();
 	}
 	
-	void rasterWorldPolys() {
+	// void rasterWorldPolys() {
 		
 		
-		GamePageHolder* curHolder = blockHolder;
+	// 	GamePageHolder* curHolder = blockHolder;
 		
-		if (curHolder == NULL) {
-			return;
-		}
+	// 	if (curHolder == NULL) {
+	// 		return;
+	// 	}
 		
-		if (
-			(curHolder->listGenerated) &&
-			(!(curHolder->listEmpty))
-		) {
-			curHolder->vboWrapper.draw();
-		}
+	// 	if (
+	// 		(curHolder->listGenerated) &&
+	// 		(!(curHolder->listEmpty))
+	// 	) {
+	// 		curHolder->vboWrapper.draw();
+	// 	}
 		
 		
 		
-	}
+	// }
 	
 	
 	void rasterPolys(int minPeel, int maxPeel, int extraRad = 0) {
@@ -2274,8 +2279,8 @@ public:
 									pCount++;
 									
 									// singleton->setShaderFloat("volSizePrim", singleton->cellsPerHolder);
-									// singleton->setShaderfVec3("volMinReadyInPixels", &(curHolder->gphMinInPixels) );
-									// singleton->setShaderfVec3("volMaxReadyInPixels", &(curHolder->gphMaxInPixels) );
+									// singleton->setShaderfVec3("volMinReadyInPixels", &(curHolder->gphMinInCells) );
+									// singleton->setShaderfVec3("volMaxReadyInPixels", &(curHolder->gphMaxInCells) );
 									// singleton->setShaderTexture3D(0, curHolder->terVW->volId);
 									
 									curHolder->vboWrapper.draw();
@@ -4919,7 +4924,7 @@ UPDATE_LIGHTS_END:
 		
 	}
 
-	void rasterOct(GameOctree* gameOct, bool showResults) {
+	void rasterOct(GameVoxelWrap* gameOct, bool showResults) {
 		
 		// get view matrix
 		singleton->perspectiveOn = true;
@@ -4977,7 +4982,7 @@ UPDATE_LIGHTS_END:
 		
 	}
 
-	void renderOct(GameOctree* gameOct) {
+	void renderOct(GameVoxelWrap* gameOct) {
 		
 		// get view matrix
 		singleton->perspectiveOn = true;
@@ -5174,11 +5179,11 @@ UPDATE_LIGHTS_END:
 			singleton->gameLogic->update();
 		}
 		
-		if (singleton->renderingOctBounds) {
-			singleton->setShaderFloat("isWire", 1.0);
-			singleton->setShaderVec3("matVal", 255, 0, 0);
-			singleton->gameOct->startRender();
-		}
+		// if (singleton->renderingOctBounds) {
+		// 	singleton->setShaderFloat("isWire", 1.0);
+		// 	singleton->setShaderVec3("matVal", 255, 0, 0);
+		// 	singleton->gameOct->startRender();
+		// }
 		
 		
 		

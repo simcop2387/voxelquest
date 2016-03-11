@@ -169,10 +169,10 @@ void GameWorld::init (Singleton * _singleton)
 			blockData[i] = NULL;
 		}
 
-		if (GEN_POLYS_WORLD) {
-			blockHolder = new GamePageHolder();
-			blockHolder->init(singleton, -1, -1, 0,0,0, true);
-		}
+		// if (GEN_POLYS_WORLD) {
+		// 	blockHolder = new GamePageHolder();
+		// 	blockHolder->init(singleton, -1, -1, 0,0,0, true);
+		// }
 		
 		
 		
@@ -568,59 +568,6 @@ void GameWorld::fireEvent (BaseObjType uid, int opCode, float fParam)
 				singleton->performCamShake(ge, fParam);
 			break;
 		}
-	}
-void GameWorld::generateBlockHolder ()
-                                   {
-		
-		if (noiseGenerated || (blockHolder == NULL)) {
-			
-		}
-		else {
-			return;
-		}
-		
-		
-		
-		if (blockHolder->wasGenerated) {
-			
-		}
-		else {
-			glFlush();
-			glFinish();
-			
-			
-			blockHolder->genCellData();
-			
-			
-			glFlush();
-			glFinish();
-		}
-		
-		// if (blockHolder->preGenList) {
-			
-		// }
-		// else {
-			
-		// 	blockHolder->generateList();
-		// }
-		
-		// if (blockHolder->listGenerated) {
-			
-		// }
-		// else {
-		// 	glFlush();
-		// 	glFinish();
-			
-			
-		// 	blockHolder->fillVBO();
-			
-			
-		// 	glFlush();
-		// 	glFinish();
-			
-			
-			
-		// }
 	}
 void GameWorld::update (bool postToScreen)
                                        {
@@ -1036,9 +983,9 @@ void GameWorld::drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * ma
 			singleton->setShaderTexture3D(13, singleton->volumeWrappers[E_VW_VORO]->volId);
 		}
 		
-		if (!getBlockHolders) {
-			singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
-		}
+		// if (!getBlockHolders) {
+		// 	singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
+		// }
 		
 		singleton->setShaderfVec3("bufferDim", &(curVW->terGenDim) );
 		
@@ -1056,15 +1003,15 @@ void GameWorld::drawVol (VolumeWrapper * curVW, FIVector4 * minc, FIVector4 * ma
 		//singleton->setShaderfVec3("volMaxReadyInPixels", &(singleton->gameFluid[E_FID_BIG]->volMaxInPixels) );
 		
 		singleton->setShaderInt("getVoro", (int)(getVoro));
-		singleton->setShaderInt("getBlockHolders", (int)(getBlockHolders));
+		singleton->setShaderInt("getBlockHolders", (int)(false));
 		
 		singleton->setShaderFloat("cellsPerWorld", cellsPerWorld );
 		
 		singleton->fsQuad.draw();
 		
-		if (!getBlockHolders) {
-			singleton->setShaderTexture3D(14, 0);
-		}
+		// if (!getBlockHolders) {
+		// 	singleton->setShaderTexture3D(14, 0);
+		// }
 		if (!getVoro) {
 			singleton->setShaderTexture3D(13, 0);
 		}
@@ -1462,7 +1409,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		}
 		
 		singleton->setShaderTexture3D(13, singleton->volumeWrappers[E_VW_VORO]->volId);
-		singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
+		//singleton->setShaderTexture3D(14, singleton->volumeWrappers[E_VW_WORLD]->volId);
 		singleton->sampleFBO("noiseFBOLinear", 15);
 		
 		// if (!doPoly) {
@@ -1606,7 +1553,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		
 		singleton->unsampleFBO("noiseFBOLinear", 15);
-		singleton->setShaderTexture3D(14, 0);
+		//singleton->setShaderTexture3D(14, 0);
 		singleton->setShaderTexture3D(13, 0);
 		
 		
@@ -1778,8 +1725,8 @@ void GameWorld::polyCombine ()
 		singleton->unbindFBO();
 		singleton->unbindShader();
 	}
-void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel, bool isBlockHolder)
-                                                                                     {
+void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel)
+          {
 		
 		//VolumeWrapper* curVW = (singleton->volumeWrappers[E_VW_VORO]);
 		
@@ -1813,12 +1760,12 @@ void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel, bool isBloc
 		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
 		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 		
-		if (isBlockHolder) {
-			rasterWorldPolys();
-		}
-		else {
+		// if (isBlockHolder) {
+		// 	rasterWorldPolys();
+		// }
+		// else {
 			rasterPolys(minPeel,maxPeel*4, 6);
-		}
+		//}
 		
 		
 		
@@ -1829,26 +1776,6 @@ void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel, bool isBloc
 		//singleton->unsampleFBO("polyFBO",0,fboNum);
 		singleton->unbindFBO();
 		singleton->unbindShader();
-	}
-void GameWorld::rasterWorldPolys ()
-                                {
-		
-		
-		GamePageHolder* curHolder = blockHolder;
-		
-		if (curHolder == NULL) {
-			return;
-		}
-		
-		if (
-			(curHolder->listGenerated) &&
-			(!(curHolder->listEmpty))
-		) {
-			curHolder->vboWrapper.draw();
-		}
-		
-		
-		
 	}
 void GameWorld::rasterPolys (int minPeel, int maxPeel, int extraRad)
                                                                      {
@@ -1967,8 +1894,8 @@ void GameWorld::rasterPolys (int minPeel, int maxPeel, int extraRad)
 									pCount++;
 									
 									// singleton->setShaderFloat("volSizePrim", singleton->cellsPerHolder);
-									// singleton->setShaderfVec3("volMinReadyInPixels", &(curHolder->gphMinInPixels) );
-									// singleton->setShaderfVec3("volMaxReadyInPixels", &(curHolder->gphMaxInPixels) );
+									// singleton->setShaderfVec3("volMinReadyInPixels", &(curHolder->gphMinInCells) );
+									// singleton->setShaderfVec3("volMaxReadyInPixels", &(curHolder->gphMaxInCells) );
 									// singleton->setShaderTexture3D(0, curHolder->terVW->volId);
 									
 									curHolder->vboWrapper.draw();
@@ -4576,8 +4503,8 @@ void GameWorld::rasterGrid (VBOGrid * vboGrid, bool showResults)
 		
 		
 	}
-void GameWorld::rasterOct (GameOctree * gameOct, bool showResults)
-                                                              {
+void GameWorld::rasterOct (GameVoxelWrap * gameOct, bool showResults)
+                                                                 {
 		
 		// get view matrix
 		singleton->perspectiveOn = true;
@@ -4634,8 +4561,8 @@ void GameWorld::rasterOct (GameOctree * gameOct, bool showResults)
 		
 		
 	}
-void GameWorld::renderOct (GameOctree * gameOct)
-                                            {
+void GameWorld::renderOct (GameVoxelWrap * gameOct)
+                                               {
 		
 		// get view matrix
 		singleton->perspectiveOn = true;
@@ -4832,11 +4759,11 @@ void GameWorld::renderDebug ()
 			singleton->gameLogic->update();
 		}
 		
-		if (singleton->renderingOctBounds) {
-			singleton->setShaderFloat("isWire", 1.0);
-			singleton->setShaderVec3("matVal", 255, 0, 0);
-			singleton->gameOct->startRender();
-		}
+		// if (singleton->renderingOctBounds) {
+		// 	singleton->setShaderFloat("isWire", 1.0);
+		// 	singleton->setShaderVec3("matVal", 255, 0, 0);
+		// 	singleton->gameOct->startRender();
+		// }
 		
 		
 		

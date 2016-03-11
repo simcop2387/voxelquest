@@ -10,7 +10,9 @@ private:
 	int* pathData;
 	int* cellData;
 	int* extrData;
+	
 public:
+
 
 	bool preGenList;
 	bool listGenerated;
@@ -25,16 +27,17 @@ public:
 	
 	VolumeWrapper* terVW;
 	
-	GameVoxelWrap vw;
+	GameVoxelWrap* voxelWrap;
 	
 	//GLuint holderDL;
 	
 	
+	int curPD;
 	
 	int blockId;
 	int holderId;
 	
-	bool isBlockHolder;
+	//bool isBlockHolder;
 	
 	int pathSize;
 	int totIdealNodes;
@@ -68,9 +71,9 @@ public:
 	//int entityGeomCounter;
 	FIVector4 offsetInHolders;
 
-	FIVector4 gphMinInPixels;
-	FIVector4 gphMaxInPixels;
-	FIVector4 gphCenInPixels;
+	FIVector4 gphMinInCells;
+	FIVector4 gphMaxInCells;
+	FIVector4 gphCenInCells;
 
 	//FIVector4 offsetInBlocks;
 	FIVector4 origOffset;
@@ -132,6 +135,8 @@ public:
 		cellData = NULL;
 		extrData = NULL;
 		pathData = NULL;
+		
+		
 		wasGenerated = false;
 	}
 	
@@ -144,13 +149,15 @@ public:
 		
 		int trueX,
 		int trueY,
-		int trueZ, 
+		int trueZ 
 		
-		bool _isBlockHolder = false
+		//, bool _isBlockHolder = false
 		
 	) {
 
-		isBlockHolder = _isBlockHolder;
+		curPD = -1;
+
+		//isBlockHolder = _isBlockHolder;
 
 		//cout << "gph init\n";
 
@@ -176,12 +183,12 @@ public:
 		singleton = _singleton;
 
 		
-		if (isBlockHolder) {
-			cellsPerHolder = singleton->blocksPerWorld;
-		}
-		else {
+		// if (isBlockHolder) {
+		// 	cellsPerHolder = singleton->blocksPerWorld;
+		// }
+		// else {
 			cellsPerHolder = singleton->cellsPerHolder;
-		}
+		//}
 		
 		
 		
@@ -194,29 +201,36 @@ public:
 		//offsetInBlocks.copyFrom(&offsetInHolders);
 		//offsetInBlocks.intDivXYZ(singleton->holdersPerBlock);
 		
-		gphMinInPixels.copyFrom(&offsetInHolders);
-		gphMaxInPixels.copyFrom(&offsetInHolders);
+		gphMinInCells.copyFrom(&offsetInHolders);
+		gphMaxInCells.copyFrom(&offsetInHolders);
 
-		gphMaxInPixels.addXYZ(1);
+		gphMaxInCells.addXYZ(1);
 
 		
 		
-		if (isBlockHolder) {
-			gphMinInPixels.multXYZ(singleton->cellsPerWorld);
-			gphMaxInPixels.multXYZ(singleton->cellsPerWorld);
+		// if (isBlockHolder) {
+		// 	gphMinInCells.multXYZ(singleton->cellsPerWorld);
+		// 	gphMaxInCells.multXYZ(singleton->cellsPerWorld);
 			
-			doTraceVecND("gphMin",&gphMinInPixels);
-			doTraceVecND("gphMax",&gphMaxInPixels);
 			
-		}
-		else {
-			gphMinInPixels.multXYZ(cellsPerHolder);
-			gphMaxInPixels.multXYZ(cellsPerHolder);
-		}
+		// }
+		// else {
+			gphMinInCells.multXYZ(cellsPerHolder);
+			gphMaxInCells.multXYZ(cellsPerHolder);
+		//}
 		
 
-		gphCenInPixels.averageXYZ(&gphMaxInPixels,&gphMinInPixels);
+		gphCenInCells.averageXYZ(&gphMaxInCells,&gphMinInCells);
 		
+
+		voxelWrap = new GameVoxelWrap();
+		voxelWrap->init(
+			singleton,
+			cellsPerHolder*singleton->voxelsPerCell,
+			true,
+			true,
+			false
+		);
 
 		
 	}
@@ -842,24 +856,24 @@ public:
 					for (j = 0; j < cellsPerHolder; j++) {
 						for (i = 0; i < cellsPerHolder; i++) {
 							cellVal = singleton->gw->getCellAtCoords(
-								gphMinInPixels.getIX()+i,
-								gphMinInPixels.getIY()+j,
-								gphMinInPixels.getIZ()+k
+								gphMinInCells.getIX()+i,
+								gphMinInCells.getIY()+j,
+								gphMinInCells.getIZ()+k
 							);
 							cellValAbove = singleton->gw->getCellAtCoords(
-								gphMinInPixels.getIX()+i,
-								gphMinInPixels.getIY()+j,
-								gphMinInPixels.getIZ()+k+1
+								gphMinInCells.getIX()+i,
+								gphMinInCells.getIY()+j,
+								gphMinInCells.getIZ()+k+1
 							);
 							// cellValAbove2 = singleton->gw->getCellAtCoords(
-							// 	gphMinInPixels.getIX()+i,
-							// 	gphMinInPixels.getIY()+j,
-							// 	gphMinInPixels.getIZ()+k+2
+							// 	gphMinInCells.getIX()+i,
+							// 	gphMinInCells.getIY()+j,
+							// 	gphMinInCells.getIZ()+k+2
 							// );
 							cellValBelow = singleton->gw->getCellAtCoords(
-								gphMinInPixels.getIX()+i,
-								gphMinInPixels.getIY()+j,
-								gphMinInPixels.getIZ()+k-1
+								gphMinInCells.getIX()+i,
+								gphMinInCells.getIY()+j,
+								gphMinInCells.getIZ()+k-1
 							);
 							
 							
@@ -1041,7 +1055,7 @@ FIRST_FILL_DONE:
 		jj = (curPointIndex-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
 		ii = curPointIndex-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 		
-		pVec1 = curPointHolder->gphMinInPixels.getBTV();
+		pVec1 = curPointHolder->gphMinInCells.getBTV();
 		pVec1 += btVector3(ii,jj,kk);
 		
 		return pVec1;
@@ -1198,9 +1212,9 @@ FIRST_FILL_DONE:
 			
 			if (doProc) {
 				
-				baseX = i + gphMinInPixels.getIX();
-				baseY = j + gphMinInPixels.getIY();
-				baseZ = k + gphMinInPixels.getIZ();
+				baseX = i + gphMinInCells.getIX();
+				baseY = j + gphMinInCells.getIY();
+				baseZ = k + gphMinInCells.getIZ();
 				
 				for (m = 0; m < NUM_PLANAR_ORIENTATIONS; m++) {
 					
@@ -1512,37 +1526,37 @@ FIRST_FILL_DONE:
 		
 		VolumeWrapper* curVW;
 		
-		if (isBlockHolder) {
-			curVW = (singleton->volumeWrappers[E_VW_WORLD]);
-			cout << "genBlockHolder\n";
-		}
-		else {
+		// if (isBlockHolder) {
+		// 	curVW = (singleton->volumeWrappers[E_VW_WORLD]);
+		// 	cout << "genBlockHolder\n";
+		// }
+		// else {
 			curVW = (singleton->volumeWrappers[E_VW_HOLDER]);
-		}
+		//}
 		
 		
 		singleton->gw->drawVol(
 			curVW,
-			&gphMinInPixels,
-			&gphMaxInPixels,
+			&gphMinInCells,
+			&gphMaxInCells,
 			true,
 			true,
-			false,
-			isBlockHolder
+			false
+			//,isBlockHolder
 		);
 		FBOWrapper* fbow = curVW->fboSet.getFBOWrapper(0);
 		
-		if (isBlockHolder) {
-			wasGenerated = true;
-			return;
-		}
+		// if (isBlockHolder) {
+		// 	wasGenerated = true;
+		// 	return;
+		// }
 		
 		// if (terVW == NULL) {
 		// 	terVW = new VolumeWrapper();
 		// 	terVW->init(cellsPerHolder,GL_REPEAT,false);
 		// }
 		// FBOWrapper* fbow = terVW->fboSet.getFBOWrapper(0);
-		// singleton->gw->drawVol(terVW, &gphMinInPixels, &gphMaxInPixels, true, true);
+		// singleton->gw->drawVol(terVW, &gphMinInCells, &gphMaxInCells, true, true);
 		
 		
 		unsigned char* vdPtr = fbow->pixelsChar;
@@ -1558,12 +1572,12 @@ FIRST_FILL_DONE:
 			jj = (p-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
 			ii = p-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 			
-			if (isBlockHolder) {
-				fk = gphMinInPixels[2] + kk*singleton->cellsPerBlock;
-			}
-			else {
-				fk = gphMinInPixels[2] + kk;
-			}
+			// if (isBlockHolder) {
+			// 	fk = gphMinInCells[2] + kk*singleton->cellsPerBlock;
+			// }
+			// else {
+				fk = gphMinInCells[2] + kk;
+			//}
 			
 			
 			
@@ -1666,10 +1680,10 @@ FIRST_FILL_DONE:
 	// 	float simplexMod = 0.0f;
 		
 	// 	for (j = 0; j < cellsPerHolder; j++) {
-	// 		fj = abs(j + gphMinInPixels[1]);
+	// 		fj = abs(j + gphMinInCells[1]);
 	// 		fjAbs = abs(wspY-fj);
 	// 		for (i = 0; i < cellsPerHolder; i++) {
-	// 			fi = abs(i + gphMinInPixels[0]);
+	// 			fi = abs(i + gphMinInCells[0]);
 	// 			fiAbs = abs(wspX-fi);
 				
 				
@@ -1727,7 +1741,7 @@ FIRST_FILL_DONE:
 				
 				
 	// 			for (k = 0; k < cellsPerHolder; k++) {
-	// 				fk = (k + gphMinInPixels[2]);
+	// 				fk = (k + gphMinInCells[2]);
 	// 				fkAbs = fk;//abs(j-singleton->heightMapMaxInCells*0.5f);
 					
 					
@@ -1887,7 +1901,7 @@ FIRST_FILL_DONE:
 	// 						start.clampZ(0.0,singleton->cellsPerWorld-1.0f);
 	// 						end.clampZ(0.0,singleton->cellsPerWorld-1.0f);
 
-	// 						if (FIVector4::intersectInt(&start,&end,&gphMinInPixels,&gphMaxInPixels)) {
+	// 						if (FIVector4::intersectInt(&start,&end,&gphMinInCells,&gphMaxInCells)) {
 	// 							containsEntIds[n].data.push_back(intPair());
 	// 							containsEntIds[n].data.back().v0 = curBlock->blockId;
 	// 							containsEntIds[n].data.back().v1 = m;
@@ -2036,13 +2050,13 @@ FIRST_FILL_DONE:
 		
 		
 	// 	if ((holderFlags == E_CD_SOLID)&&listEmpty) {
-	// 		objRad = (gphMaxInPixels[0]-gphMinInPixels[0])*0.5f;
+	// 		objRad = (gphMaxInCells[0]-gphMinInCells[0])*0.5f;
 			
 	// 		boxShape = new btBoxShape(btVector3(objRad,objRad,objRad));
 	// 		trans.setOrigin(btVector3(
-	// 			(gphMinInPixels[0]+gphMaxInPixels[0])*0.5f,
-	// 			(gphMinInPixels[1]+gphMaxInPixels[1])*0.5f,
-	// 			(gphMinInPixels[2]+gphMaxInPixels[2])*0.5f
+	// 			(gphMinInCells[0]+gphMaxInCells[0])*0.5f,
+	// 			(gphMinInCells[1]+gphMaxInCells[1])*0.5f,
+	// 			(gphMinInCells[2]+gphMaxInCells[2])*0.5f
 	// 		));
 
 	// 		body = singleton->gamePhysics->example->createRigidBodyMask(
@@ -2072,9 +2086,9 @@ FIRST_FILL_DONE:
 	// 		trimeshShape = new btBvhTriangleMeshShape(meshInterface,true,true);
 			
 	// 		trans.setOrigin(btVector3(
-	// 			gphMinInPixels[0],
-	// 			gphMinInPixels[1],
-	// 			gphMinInPixels[2]
+	// 			gphMinInCells[0],
+	// 			gphMinInCells[1],
+	// 			gphMinInCells[2]
 	// 		));
 
 	// 		body = singleton->gamePhysics->example->createRigidBodyMask(
@@ -2234,6 +2248,119 @@ FIRST_FILL_DONE:
 		
 	}
 
+
+	inline PaddedDataEntry* getPadData(int ii, int jj, int kk) {
+		
+		int cellsPerHolderPad = singleton->cellsPerHolderPad;
+		int paddingInCells = singleton->paddingInCells;
+		
+		int i = ii + paddingInCells;
+		int j = jj + paddingInCells;
+		int k = kk + paddingInCells;
+		
+		return &(
+			singleton->pdPool[curPD].data[
+				i + j*cellsPerHolderPad + k*cellsPerHolderPad*cellsPerHolderPad
+			]	
+		);
+	}
+
+	int gatherData() {
+		int i;
+		int j;
+		int k;
+		
+		int cellVal;
+		uint tempHF = E_CD_UNKNOWN;
+		
+		// int empCount = 0;
+		// int watCount = 0;
+		// int solCount = 0;
+		// int errCount = 0;
+		
+		PaddedDataEntry* curData;
+		
+		int iX;
+		int iY;
+		int iZ;
+		
+		int minRad = 0;
+		int cellsPerHolderPad = singleton->cellsPerHolderPad;
+		int maxRad = cellsPerHolderPad;
+		int paddingInCells = singleton->paddingInCells;
+		
+		float terVal = 0.0f;
+		
+		// if (isBlockHolder) {
+		// 	minRad = 0;
+		// 	maxRad = cellsPerHolder-1;
+		// }
+		
+		
+		for (k = minRad; k < maxRad; k++) {
+			for (j = minRad; j < maxRad; j++) {
+				for (i = minRad; i < maxRad; i++) {
+					
+					iX = gphMinInCells.getIX() + i;
+					iY = gphMinInCells.getIY() + j;
+					iZ = gphMinInCells.getIZ() + k;
+					
+					// if (isBlockHolder) {
+						
+						
+					// 	//cellVal = getCellAtCoordsLocal(iX,iY,iZ);
+						
+					// 	// switch (cellVal) {
+					// 	// 	case E_CD_EMPTY:
+					// 	// 		empCount++;
+					// 	// 	break;
+					// 	// 	case E_CD_WATER:
+					// 	// 		watCount++;
+					// 	// 	break;
+					// 	// 	case E_CD_SOLID:
+					// 	// 		solCount++;
+					// 	// 	break;
+					// 	// 	default:
+					// 	// 		errCount++;
+					// 	// 	break;
+					// 	// }
+						
+					// }
+					// else {
+						cellVal = singleton->gw->getCellAtCoords(
+							iX - paddingInCells,
+							iY - paddingInCells,
+							iZ - paddingInCells
+						);
+					//}
+					
+					
+					tempHF = tempHF|cellVal;
+					
+					if (cellVal == E_CD_SOLID) {
+						terVal = 1.0f;
+					}
+					else {
+						terVal = 0.0f;
+					}
+					
+					curData = &(
+						singleton->pdPool[curPD].data[
+							i + j*cellsPerHolderPad + k*cellsPerHolderPad*cellsPerHolderPad
+						]	
+					);
+					
+					curData->terVal = terVal;
+					curData->cellVal = cellVal;
+					curData->visited = false;
+					
+				}
+			}	
+		}
+		
+		return tempHF;
+	}
+
 	void generateList() { //int fboNum
 		
 		if (singleton->gamePhysics == NULL) {
@@ -2249,6 +2376,7 @@ FIRST_FILL_DONE:
 		int curInd;
 		
 		int procCount = 0;
+		uint tempHF = E_CD_UNKNOWN;
 		
 		bool edgeK;
 		bool edgeJ;
@@ -2262,12 +2390,12 @@ FIRST_FILL_DONE:
 		
 		float cellPitch;
 		
-		if (isBlockHolder) {
-			cellPitch = singleton->cellsPerBlock;
-		}
-		else {
+		// if (isBlockHolder) {
+		// 	cellPitch = singleton->cellsPerBlock;
+		// }
+		// else {
 			cellPitch = 1.0f;
-		}
+		// }
 		
 		float iv0 = 0.0f;
 		float iv1 = cellPitch;
@@ -2308,7 +2436,16 @@ FIRST_FILL_DONE:
 			doProc[i] = false;
 		}
 
-		uint tempHF = E_CD_UNKNOWN;
+		
+
+		int procFlags[6];
+		procFlags[0] = 1;
+		procFlags[1] = 2;
+		procFlags[2] = 4;
+		procFlags[3] = 8;
+		procFlags[4] = 16;
+		procFlags[5] = 32;
+		int procFlag = 0;
 
 		// if (GEN_COLLISION) {
 		// 	collideIndices.clear();
@@ -2324,69 +2461,20 @@ FIRST_FILL_DONE:
 		
 		
 		
-		int empCount = 0;
-		int watCount = 0;
-		int solCount = 0;
-		int errCount = 0;
-		
-		int minRad = -1;
-		int maxRad = cellsPerHolder;
-		
-		if (isBlockHolder) {
-			minRad = 0;
-			maxRad = cellsPerHolder-1;
-		}
-		
-		
-		for (k = minRad; k <= maxRad; k++) {
-			for (j = minRad; j <= maxRad; j++) {
-				for (i = minRad; i <= maxRad; i++) {
-					
-					iX = gphMinInPixels.getIX() + i;
-					iY = gphMinInPixels.getIY() + j;
-					iZ = gphMinInPixels.getIZ() + k;
-					
-					if (isBlockHolder) {
-						cellVal = getCellAtCoordsLocal(iX,iY,iZ);
-						
-						switch (cellVal) {
-							case E_CD_EMPTY:
-								empCount++;
-							break;
-							case E_CD_WATER:
-								watCount++;
-							break;
-							case E_CD_SOLID:
-								solCount++;
-							break;
-							default:
-								errCount++;
-							break;
-						}
-						
-					}
-					else {
-						cellVal = singleton->gw->getCellAtCoords(iX,iY,iZ);
-					}
-					
-					
-					tempHF = tempHF|cellVal;
-				}
-			}	
-		}
 		
 		
 		
-		if (isBlockHolder) {
+		
+		// if (isBlockHolder) {
 			
-			cout << "\n\n\n";
-			cout << "cellsPerHolder" << cellsPerHolder << "\n";
-			cout << "empCount " << empCount << "\n";
-			cout << "watCount " << watCount << "\n";
-			cout << "solCount " << solCount << "\n";
-			cout << "errCount " << errCount << "\n";
-			cout << "\n\n\n";
-		}
+		// 	cout << "\n\n\n";
+		// 	cout << "cellsPerHolder" << cellsPerHolder << "\n";
+		// 	cout << "empCount " << empCount << "\n";
+		// 	cout << "watCount " << watCount << "\n";
+		// 	cout << "solCount " << solCount << "\n";
+		// 	cout << "errCount " << errCount << "\n";
+		// 	cout << "\n\n\n";
+		// }
 		
 		bool fillPolys = 
 			// (isBlockHolder&&GEN_POLYS_WORLD) ||
@@ -2405,6 +2493,8 @@ FIRST_FILL_DONE:
 		int maskVals[8];
 		int newInd;
 		
+		
+		tempHF = gatherData();
 		
 		// if (GEN_COLLISION) {
 			
@@ -2459,13 +2549,23 @@ FIRST_FILL_DONE:
 		
 		if (fillPolys) {
 			
+			
+			
 			if (
 				(tempHF == E_CD_SOLID) ||
-				(tempHF == E_CD_EMPTY)	
+				(tempHF == E_CD_EMPTY) ||
+				(tempHF == E_CD_WATER)
 			) {
 				
 			}
 			else {
+				
+				
+				
+				beginVoxelWrap();
+				
+				
+				
 				for (k = 0; k < cellsPerHolder; k++) {
 					
 					for (j = 0; j < cellsPerHolder; j++) {
@@ -2473,55 +2573,64 @@ FIRST_FILL_DONE:
 						for (i = 0; i < cellsPerHolder; i++) {
 							
 							
-							iX = gphMinInPixels.getIX() + i;
-							iY = gphMinInPixels.getIY() + j;
-							iZ = gphMinInPixels.getIZ() + k;
+							iX = gphMinInCells.getIX() + i;
+							iY = gphMinInCells.getIY() + j;
+							iZ = gphMinInCells.getIZ() + k;
 							bpX = iX;
 							bpY = iY;
 							bpZ = iZ;
 							
-							if (isBlockHolder) {
-								cellVal = getCellAtCoordsLocal(iX,iY,iZ);
-							}
-							else {
-								cellVal = singleton->gw->getCellAtCoords(iX,iY,iZ);
-							}
+							// if (isBlockHolder) {
+							// 	cellVal = getCellAtCoordsLocal(iX,iY,iZ);
+							// }
+							// else {
+								cellVal = getPadData(i,j,k)->cellVal;
+							//}
 							
 							newInd = i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder;
 							
-							extrData[newInd*4 + E_PTT_FLG] = 0;
+							//extrData[newInd*4 + E_PTT_FLG] = 0;
 							
 							if ( cellVal == E_CD_SOLID ) {
 								
 								doProcAny = false;
 								
+								procFlag = 0;
+								
 								for (q = 0; q < NUM_ORIENTATIONS; q++) {
 									
-									if (isBlockHolder) {
-										cellVal2 = getCellAtCoordsLocal(
-											iX + DIR_VECS_I[q][0],
-											iY + DIR_VECS_I[q][1],
-											iZ + DIR_VECS_I[q][2]	
-										);
-									}
-									else {
-										cellVal2 = singleton->gw->getCellAtCoords(
-											iX + DIR_VECS_I[q][0],
-											iY + DIR_VECS_I[q][1],
-											iZ + DIR_VECS_I[q][2]
-										);
-									}
+									// if (isBlockHolder) {
+									// 	cellVal2 = getCellAtCoordsLocal(
+									// 		iX + DIR_VECS_I[q][0],
+									// 		iY + DIR_VECS_I[q][1],
+									// 		iZ + DIR_VECS_I[q][2]	
+									// 	);
+									// }
+									// else {
+										cellVal2 = getPadData(
+											i + DIR_VECS_I[q][0],
+											j + DIR_VECS_I[q][1],
+											k + DIR_VECS_I[q][2]
+										)->cellVal;
+									//}
 									
 									
 									doProc[q] = cellVal2 != E_CD_SOLID;
+									if (doProc[q]) {
+										procFlag = procFlag | procFlags[q];
+									}
+									
 									
 									doProcAny = doProcAny | doProc[q];
 									
 								}
 								
-								if (doProcAny) {
-									extrData[newInd*4 + E_PTT_FLG] = extrData[newInd*4 + E_PTT_FLG] | E_PTTF_SURFACE;
-								}
+								// if (doProcAny) {
+								// 	extrData[newInd*4 + E_PTT_FLG] =
+								// 		extrData[newInd*4 + E_PTT_FLG] |
+								// 		E_PTTF_SURFACE |
+								// 		procFlag;
+								// }
 								
 								// if (GEN_COLLISION) {
 								// 	if (doProcAny) {
@@ -2664,40 +2773,34 @@ FIRST_FILL_DONE:
 				}
 			}
 			
-			
 		}
-		
-		
-
 		
 		listEmpty = (vertexVec.size() == 0);
 		holderFlags = tempHF;
-		
 		
 		if (listEmpty) {
 			
 		}
 		else {
-			beginVoxelWrap();
+			
 		}
 		
 		preGenList = true;
 		
 	}
 
+
+	void beginVoxelWrap() {
+		voxelWrap->process(this);
+	}
+
 	
-
-
 
 };
 
 
 
 
-
-void beginVoxelWrap() {
-	
-}
 
 
 

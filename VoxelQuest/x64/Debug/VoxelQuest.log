@@ -1,4 +1,4 @@
-﻿Build started 2/26/2016 12:26:56 PM.
+﻿Build started 3/11/2016 6:49:22 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -25,6 +25,7 @@
          .\src\cpp\f00305_shader.hpp
          .\src\cpp\f00307_dynbuffer.hpp
          .\src\cpp\f00320_fontwrapper.hpp
+         .\src\cpp\f00324_gamevoxelwrap.hpp
          .\src\cpp\f00325_uicomponent.hpp
          .\src\cpp\f00330_gamegui.hpp
          .\src\cpp\f00332_gamenetwork.hpp
@@ -46,11 +47,11 @@
          .\src\cpp\f00375_gamephysics.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         41 File(s) copied
+         42 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         26
+         27
          copying headers to one file
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
@@ -58,6 +59,7 @@
          .\f00305_shader.e
          .\f00307_dynbuffer.e
          .\f00320_fontwrapper.e
+         .\f00324_gamevoxelwrap.e
          .\f00325_uicomponent.e
          .\f00330_gamegui.e
          .\f00332_gamenetwork.e
@@ -81,7 +83,7 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         26
+         27
          .
          copying files to compiled
          .\temp\f00293_gamesound.e
@@ -90,6 +92,7 @@
          .\temp\f00305_shader.e
          .\temp\f00307_dynbuffer.e
          .\temp\f00320_fontwrapper.e
+         .\temp\f00324_gamevoxelwrap.e
          .\temp\f00325_uicomponent.e
          .\temp\f00330_gamegui.e
          .\temp\f00332_gamenetwork.e
@@ -110,7 +113,7 @@
          .\temp\f00374_myglhelper.e
          .\temp\f00375_gamephysics.e
          .\temp\f00380_gameworld.e
-         26 File(s) copied
+         27 File(s) copied
          .\temp\f00025_includes.h
          .\temp\f00026_enums.h
          .\temp\f00027_mat.h
@@ -132,6 +135,7 @@
          .\temp\f00305_shader.h
          .\temp\f00307_dynbuffer.h
          .\temp\f00320_fontwrapper.h
+         .\temp\f00324_gamevoxelwrap.h
          .\temp\f00325_uicomponent.h
          .\temp\f00330_gamegui.h
          .\temp\f00332_gamenetwork.h
@@ -164,4 +168,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:07.05
+Time Elapsed 00:00:06.79

@@ -6,12 +6,15 @@ public:
 	uint* vData;
 	uint* nData;
 	
+	GameOctree* gameOct;
+	
 	int numNeighbors;
 	int vDataSize;
 	int nDataSize;
 	
 	int indexCount;
 	int dimInVoxels;
+	int octInVoxels;
 	int maxDepth;
 	
 	int nullPtr;
@@ -20,13 +23,24 @@ public:
 	int nextOpen;
 	int renderLevel;
 	int maxVerts;
+	int maxVertSize;
 	int vertComponents;
 	
 	bool hasTBO;
 	bool hasVBO;
 	bool hasNeighbors;
 	
+	int curPD;
 	
+	PaddedDataEntry* baseData;
+	
+	int voxelsPerCell;
+	int cellsPerHolder;
+	int cellsPerHolderPad;
+	int paddingInCells;
+	
+	VectorI3 offsetInCells;
+	VectorI3 offsetInVoxels;
 	
 	//std::vector<uint> indexVec;
 	std::vector<float> vertexVec;
@@ -50,14 +64,25 @@ public:
 	) {
 		singleton = _singleton;
 		dimInVoxels = _dimInVoxels;
-		maxDepth = intLogB2(dimInVoxels);
+		octInVoxels = dimInVoxels*2;
+		maxDepth = intLogB2(octInVoxels);
 		hasTBO = _hasTBO;
 		hasVBO = _hasVBO;
 		hasNeighbors = _hasNeighbors;
 		nodeSize = 8;
 		numNeighbors = 6;
 		vData = NULL;
+		nData = NULL;
 		renderLevel = 12;
+		
+		voxelsPerCell = singleton->voxelsPerCell;
+		cellsPerHolder = singleton->cellsPerHolder;
+		cellsPerHolderPad = singleton->cellsPerHolderPad;
+		paddingInCells = singleton->paddingInCells;
+		
+		gameOct = new GameOctree();
+		gameOct->init(singleton,);
+		
 	}
 	
 	void update(
@@ -65,11 +90,13 @@ public:
 	) {
 		int i;
 		
+		
 		indexCount = 0;
 		maxVerts = _maxVerts;
 		vertComponents = 2;
 		vDataSize = maxVerts*nodeSize;
 		nDataSize = maxVerts*numNeighbors;
+		maxVertSize = maxVerts*vertComponents*4;
 		
 		vData = new uint[vDataSize];
 		
@@ -80,13 +107,9 @@ public:
 			nData = NULL;
 		}
 		
-		
-		
 		nullPtr = 0;
 		rootPtr = nodeSize;
 		nextOpen = rootPtr+nodeSize;
-		
-		
 		
 		for (i = 0; i < vDataSize; i++) {
 			vData[i] = nullPtr;
@@ -98,15 +121,40 @@ public:
 		
 		if (hasVBO) {
 			vertexVec.clear();
-			vertexVec.reserve(maxVerts*vertComponents*4);
+			vertexVec.reserve(maxVertSize);
 			
 			//indexVec.clear();
 			//indexVec.reserve(maxVerts);
 			
+			
+		}
+	}
+	
+	
+	void updateVBO() {
+		int i;
+		
+		if (!hasVBO) {
+			return;
+		}
+		
+		if (vertexVec.size() < 1) {
+			return;
+		}
+		
+		if (vboWrapper.hasInit) {
+			vboWrapper.update(
+				&(vertexVec[0]),
+				vertexVec.size(),
+				NULL,//&(indexVec[0]),
+				0 //indexVec.size()
+			);
+		}
+		else {
 			vboWrapper.init(
 				&(vertexVec[0]),
-				vertexVec.size()*vertComponents*4,
-				maxVerts*vertComponents*4,
+				vertexVec.size(),
+				maxVertSize,
 				NULL,//&(indexVec[0]),
 				0,//indexVec.size()
 				0,//maxVerts
@@ -114,20 +162,7 @@ public:
 				GL_STATIC_DRAW
 			);
 		}
-	}
-	
-	
-	void updateVBO() {
-		if (!hasVBO) {
-			return;
-		}
 		
-		vboWrapper.update(
-			&(vertexVec[0]),
-			vertexVec.size()*vertComponents*4,
-			NULL,//&(indexVec[0]),
-			0 //indexVec.size()
-		);
 	}
 	
 	void updateTBO() {
@@ -247,7 +282,7 @@ public:
 		int subY;
 		int subZ;
 		
-		int curDiv = dimInVoxels/2;
+		int curDiv = octInVoxels/2;
 		
 		int offset;
 		
@@ -343,40 +378,225 @@ public:
 	}
 	
 	
-	void process(GamePageHolder* gph) {
+	inline PaddedDataEntry* getPadData(int ii, int jj, int kk) {
+		
+		
+		int i = ii + paddingInCells;
+		int j = jj + paddingInCells;
+		int k = kk + paddingInCells;
+		
+		return &(
+			baseData[
+				i + j*cellsPerHolderPad + k*cellsPerHolderPad*cellsPerHolderPad
+			]	
+		);
+	}
+	
+	
+	
+	
+	bool findNextCoord(VectorI3* voxResult) {
 		int i;
 		int j;
 		int k;
+		int q;
+		int r;
+		
+		int ii;
+		int jj;
+		int kk;
+		int ikk;
+		
+		VectorI3 curVoxel;
+		VectorI3 localOffset;
 		
 		int cellsPerHolder = singleton->cellsPerHolder;
 		int paddingInCells = singleton->paddingInCells;
 		
-		int procFlags[6];
-		procFlags[0] = 1;
-		procFlags[1] = 2;
-		procFlags[2] = 4;
-		procFlags[3] = 8;
-		procFlags[4] = 16;
-		procFlags[5] = 32;
-		int procFlag = 0;
+		// int procFlags[6];
+		// procFlags[0] = 1;
+		// procFlags[1] = 2;
+		// procFlags[2] = 4;
+		// procFlags[3] = 8;
+		// procFlags[4] = 16;
+		// procFlags[5] = 32;
+		// int procFlag = 0;
 		
-		int minv = -paddingInCells;
-		int maxv = cellsPerHolder+paddingInCells;
+		int minv = 0;
+		int maxv = cellsPerHolder;
+		
+		int cellData;
+		int cellData2;
+		int voxelsPerCellM1 = voxelsPerCell-1;
+		
+		bool foundCell = false;
 		
 		for (i = minv; i < maxv; i++) {
 			for (j = minv; j < maxv; j++) {
 				for (k = minv; k < maxv; k++) {
-					newInd = i + j*cellsPerHolder + k*cellsPerHolder*cellsPerHolder;
 					
-					if ((gph->extrData[newInd*4 + E_PTT_FLG]) & E_PTTF_SURFACE) {
+					if (getPadData(i,j,k)->visited) {
 						
+					}
+					else {
+						getPadData(i,j,k)->visited = true;						
+						
+						cellData = getPadData(i,j,k)->cellVal;
+						
+						if (cellData == E_CD_SOLID) {
+							
+							foundCell = false;
+							
+							for (q = 0; q < NUM_ORIENTATIONS; q++) {
+								cellData2 = getPadData(
+									i + DIR_VECS_I[q][0],
+									j + DIR_VECS_I[q][1],
+									k + DIR_VECS_I[q][2]
+								)->cellVal;
+								
+								if (cellData2 != E_CD_SOLID) {
+									foundCell = true;
+									break;
+								}
+								
+							}
+						
+							if (foundCell) {
+								
+								foundCell = true;
+								
+								localOffset.set(i,j,k);
+								localOffset *= voxelsPerCell;
+								
+								for (kk = 0; kk < voxelsPerCell; kk++) {
+									
+									ikk = voxelsPerCellM1-kk;
+									
+									for (r = 0; r < 4; r++) {
+										switch (r) {
+											case 0:
+												curVoxel.set(kk, kk, ikk);
+											break;
+											case 1:
+												curVoxel.set(ikk, kk, ikk);
+											break;
+											case 2:
+												curVoxel.set(kk, ikk, ikk);
+											break;
+											case 3:
+												curVoxel.set(ikk, ikk, ikk);
+											break;
+										}
+										
+										curVoxel += offsetInVoxels;
+										curVoxel += localOffset;
+										if (isSurfaceVoxel(&curVoxel)) {
+											voxResult->set(
+												curVoxel.x, curVoxel.y, curVoxel.z
+											);
+											return true;
+										}
+										
+									}
+								}
+								
+								for (jj = 0; jj < voxelsPerCell; jj++) {
+									for (ii = 0; ii < voxelsPerCell; ii++) {
+										for (r = 0; r < 6; r++) {
+											switch (r) {
+												case 0:
+													curVoxel.set(0, ii, jj);
+												break;
+												case 1:
+													curVoxel.set(voxelsPerCellM1, ii, jj);
+												break;
+												case 2:
+													curVoxel.set( ii, 0, jj );
+												break;
+												case 3:
+													curVoxel.set( ii, voxelsPerCellM1, jj );
+												break;
+												case 4:
+													curVoxel.set(ii,jj,0);
+												break;
+												case 5:
+													curVoxel.set(ii,jj,voxelsPerCellM1);
+												break;
+											}
+											
+											curVoxel += offsetInVoxels;
+											curVoxel += localOffset;
+											if (isSurfaceVoxel(&curVoxel)) {
+												voxResult->set(
+													curVoxel.x, curVoxel.y, curVoxel.z
+												);
+												return true;
+											}
+											
+									}
+								}
+								
+								
+								
+							}
+						
+						}
 					}
 				}
 			}
 		}
+		
+		return false;
+	}
+	
+	void process(GamePageHolder* gph) {
+		VectorI3 cellCoord;
+		VectorI3 voxResult;
+		
+		curPD = gph->curPD;
+		
+		offsetInCells.set(
+			gph->gphMinInCells.getIX(),
+			gph->gphMinInCells.getIY(),
+			gph->gphMinInCells.getIZ()
+		);
+		
+		offsetInVoxels = offsetInCells;
+		offsetInVoxels *= voxelsPerCell;
+		
+		baseData = singleton->pdPool[curPD].data;
+		
+		
+		while( findNextCoord(&voxResult) ) {
+			floodFill(&voxResult);
+		}
+		
+	}
+	
+	bool isSurfaceVoxel(VectorI3* voxCoord) {
+		int q;
+		VectorI3 tempVox;
+		
+		if (getVoxelAtCoord(voxCoord)) {
 			
-		
-		
+			for (q = 0; q < NUM_ORIENTATIONS; q++) {
+				tempVox.x = DIR_VECS_I[q][0];
+				tempVox.y = DIR_VECS_I[q][1];
+				tempVox.z = DIR_VECS_I[q][2];
+				
+				tempVox += *voxCoord;
+				
+				if (getVoxelAtCoord(tempVox)) {
+					return true;
+				}
+				
+			}
+		}
+		return false;
+	}
+	
+	bool getVoxelAtCoord(VectorI3* voxCoord) {
+		return false;
 	}
 	
 	

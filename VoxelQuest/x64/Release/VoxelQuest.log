@@ -1,15 +1,16 @@
-﻿Build started 3/10/2016 2:35:51 AM.
+﻿Build started 3/11/2016 7:40:24 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
          :VCEnd
          cleaning files
          copying files to source
-         .\src\cpp\f00025_includes.h
-         .\src\cpp\f00026_enums.h
-         .\src\cpp\f00027_mat.h
-         .\src\cpp\f00028_vectors.h
-         .\src\cpp\f00029_gameent.h
+         .\src\cpp\f00020_includes.h
+         .\src\cpp\f00022_enums.h
+         .\src\cpp\f00024_mat.h
+         .\src\cpp\f00025_ivec.h
+         .\src\cpp\f00026_vectors.h
+         .\src\cpp\f00028_gameent.h
          .\src\cpp\f00030_json.h
          .\src\cpp\f00040_png.h
          .\src\cpp\f00215_helperfuncs.h
@@ -25,7 +26,6 @@
          .\src\cpp\f00305_shader.hpp
          .\src\cpp\f00307_dynbuffer.hpp
          .\src\cpp\f00320_fontwrapper.hpp
-         .\src\cpp\f00323_gameoctree.hpp
          .\src\cpp\f00324_gamevoxelwrap.hpp
          .\src\cpp\f00325_uicomponent.hpp
          .\src\cpp\f00330_gamegui.hpp
@@ -52,7 +52,7 @@
          running lzz
          Missing operator.
          tot hpp
-         28
+         27
          copying headers to one file
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
@@ -60,7 +60,6 @@
          .\f00305_shader.e
          .\f00307_dynbuffer.e
          .\f00320_fontwrapper.e
-         .\f00323_gameoctree.e
          .\f00324_gamevoxelwrap.e
          .\f00325_uicomponent.e
          .\f00330_gamegui.e
@@ -85,7 +84,7 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         28
+         27
          .
          copying files to compiled
          .\temp\f00293_gamesound.e
@@ -94,7 +93,6 @@
          .\temp\f00305_shader.e
          .\temp\f00307_dynbuffer.e
          .\temp\f00320_fontwrapper.e
-         .\temp\f00323_gameoctree.e
          .\temp\f00324_gamevoxelwrap.e
          .\temp\f00325_uicomponent.e
          .\temp\f00330_gamegui.e
@@ -116,12 +114,13 @@
          .\temp\f00374_myglhelper.e
          .\temp\f00375_gamephysics.e
          .\temp\f00380_gameworld.e
-         28 File(s) copied
-         .\temp\f00025_includes.h
-         .\temp\f00026_enums.h
-         .\temp\f00027_mat.h
-         .\temp\f00028_vectors.h
-         .\temp\f00029_gameent.h
+         27 File(s) copied
+         .\temp\f00020_includes.h
+         .\temp\f00022_enums.h
+         .\temp\f00024_mat.h
+         .\temp\f00025_ivec.h
+         .\temp\f00026_vectors.h
+         .\temp\f00028_gameent.h
          .\temp\f00030_json.h
          .\temp\f00040_png.h
          .\temp\f00215_helperfuncs.h
@@ -138,7 +137,6 @@
          .\temp\f00305_shader.h
          .\temp\f00307_dynbuffer.h
          .\temp\f00320_fontwrapper.h
-         .\temp\f00323_gameoctree.h
          .\temp\f00324_gamevoxelwrap.h
          .\temp\f00325_uicomponent.h
          .\temp\f00330_gamegui.h
@@ -954,8 +952,6 @@
          
          Valid JSON
                    
-         gphMin   0.000000   0.000000   0.000000    
-         gphMax   65536.000000   65536.000000   65536.000000    
          Sea Level: 100
          DONE WITH MAP
          Loading:  ..\data\constants.js         
@@ -1010,45 +1006,12 @@
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          GL_MAX_TEXTURE_BUFFER_SIZE 134217728
-         genBlockHolder
          
          updateHolders 1
          
          updateHolders 0
-         
-         updateHolders 1
-         
-         updateHolders 0
-         Turn On Holder Update (u)
-         
-         updateHolders 1
-         Loading:  ..\data\orgdata\E_PG_NONPOSE_N0.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         Grid On: 1
-         iNumSteps:  16         
-         Grid On: 0
-         iNumSteps:  16         
-         iNumSteps:  16         
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:07:07.17
+Time Elapsed 00:07:01.98

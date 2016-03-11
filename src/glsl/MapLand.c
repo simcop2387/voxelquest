@@ -348,78 +348,78 @@ vec3 getTerVal(vec3 pos, float camParam, bool justLand) {
 		
 		
 		
-#ifdef DOTREES
+// #ifdef DOTREES
 		
 		
-		vec3 cenPoint = vec3(160.0, 160.0, 460.0);
-		vec3 repPos = opRep(pos,cenPoint);
-		vec3 newPos = (pos-repPos);
+// 		vec3 cenPoint = vec3(160.0, 160.0, 460.0);
+// 		vec3 repPos = opRep(pos,cenPoint);
+// 		vec3 newPos = (pos-repPos);
 		
-		// repPos += vec3(
-		// 	hash2(newPos.x*1.7232),
-		// 	hash2(newPos.y*1.1532),
-		// 	hash2(newPos.z*1.9232)	
-		// )*32.0 - 16.0;
+// 		// repPos += vec3(
+// 		// 	hash2(newPos.x*1.7232),
+// 		// 	hash2(newPos.y*1.1532),
+// 		// 	hash2(newPos.z*1.9232)	
+// 		// )*32.0 - 16.0;
 		
-		// newPos = (pos-repPos);
+// 		// newPos = (pos-repPos);
 		
-		float newTex;
+// 		float newTex;
 		
-		float texCen = texture(Texture14, newPos/cellsPerWorld).x;
-		float texBel = texture(Texture14,
-			(
-				newPos + vec3(0.0,0.0,-200.0)	
-			)/cellsPerWorld
-		).x;
+// 		float texCen = texture(Texture14, newPos/cellsPerWorld).x;
+// 		float texBel = texture(Texture14,
+// 			(
+// 				newPos + vec3(0.0,0.0,-200.0)	
+// 			)/cellsPerWorld
+// 		).x;
 		
-		float curRad;
+// 		float curRad;
 		
-		vec2 segDis = vec2(0.0);
+// 		vec2 segDis = vec2(0.0);
 		
-		if (
-			(texCen > 100.0) &&
-			(texBel < -140.0)
-		) {
-			segDis = psDistanceV2(
-				repPos,
-				vec3(0.0,0.0,-200.0),
-				vec3(0.0,0.0,200.0)
-			);
-			newTex = TEX_GRASS;
-			curRad = (1.0-segDis.y)*(
-				80.0 +
-				10.0*sin(atan(repPos.x,repPos.y)*12.0) +
-				10.0*sin(segDis.y*150.0)
-			);
-			if (segDis.y < 0.5) {
-				curRad = mix(10.0,curRad,pow(segDis.y*2.0,16.0));
-			}
+// 		if (
+// 			(texCen > 100.0) &&
+// 			(texBel < -140.0)
+// 		) {
+// 			segDis = psDistanceV2(
+// 				repPos,
+// 				vec3(0.0,0.0,-200.0),
+// 				vec3(0.0,0.0,200.0)
+// 			);
+// 			newTex = TEX_GRASS;
+// 			curRad = (1.0-segDis.y)*(
+// 				80.0 +
+// 				10.0*sin(atan(repPos.x,repPos.y)*12.0) +
+// 				10.0*sin(segDis.y*150.0)
+// 			);
+// 			if (segDis.y < 0.5) {
+// 				curRad = mix(10.0,curRad,pow(segDis.y*2.0,16.0));
+// 			}
 			
-			if (segDis.y <
-				(
-					0.5
-					- (1.0-sin(atan(repPos.x,repPos.y)*12.0))*0.02
-				)
-			) {
-				newTex = TEX_BARK;
-			}
+// 			if (segDis.y <
+// 				(
+// 					0.5
+// 					- (1.0-sin(atan(repPos.x,repPos.y)*12.0))*0.02
+// 				)
+// 			) {
+// 				newTex = TEX_BARK;
+// 			}
 			
 			
-			finalRes = opU(
-				finalRes,
-				vec2(
-					(segDis.x-curRad),
-					newTex
-				)
-			);
+// 			finalRes = opU(
+// 				finalRes,
+// 				vec2(
+// 					(segDis.x-curRad),
+// 					newTex
+// 				)
+// 			);
 			
-			// finalRes.x = opD(
-			// 	finalRes.x,
-			// 	(1.0-samp3Orig)*0.5
-			// );
+// 			// finalRes.x = opD(
+// 			// 	finalRes.x,
+// 			// 	(1.0-samp3Orig)*0.5
+// 			// );
 			
-		}
-#endif
+// 		}
+// #endif
 		
 		//finalRes.x *= 0.25;
 		

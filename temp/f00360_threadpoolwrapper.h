@@ -97,7 +97,8 @@ bool ThreadPoolWrapper::stopTP (int threadId)
 				break;
 				case E_TT_GENLIST:
 					curHolder->fillVBO();
-					
+					singleton->pdPool[curHolder->curPD].isFree = true;
+					curHolder->curPD = -1;
 				break;
 			}
 			

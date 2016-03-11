@@ -1262,7 +1262,7 @@ void GameLogic::drawLineAtIndices (GamePageHolder * curPointHolder, int curPoint
 		jj = (curPointIndex-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
 		ii = curPointIndex-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 		
-		pVec1.copyFrom(&(curPointHolder->gphMinInPixels));
+		pVec1.copyFrom(&(curPointHolder->gphMinInCells));
 		pVec1.addXYZ(ii,jj,kk);
 		pVec1.addXYZ(0.5f);
 		
@@ -1270,7 +1270,7 @@ void GameLogic::drawLineAtIndices (GamePageHolder * curPointHolder, int curPoint
 		jj = (curPointIndex2-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
 		ii = curPointIndex2-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 		
-		pVec2.copyFrom(&(curPointHolder2->gphMinInPixels));
+		pVec2.copyFrom(&(curPointHolder2->gphMinInCells));
 		pVec2.addXYZ(ii,jj,kk);
 		pVec2.addXYZ(0.5f);
 		
@@ -1291,7 +1291,7 @@ btVector3 GameLogic::holderIndToBTV (GamePageHolder * curPointHolder, int curPoi
 		jj = (curPointIndex-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
 		ii = curPointIndex-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 		
-		pVec1 = curPointHolder->gphMinInPixels.getBTV();
+		pVec1 = curPointHolder->gphMinInCells.getBTV();
 		pVec1 += btVector3(ii,jj,kk);
 		
 		if (addHalfOff) {
@@ -1326,7 +1326,7 @@ void GameLogic::drawPointAtIndex (GamePageHolder * curPointHolder, int curPointI
 		jj = (curPointIndex-kk*cellsPerHolder*cellsPerHolder)/cellsPerHolder;
 		ii = curPointIndex-(kk*cellsPerHolder*cellsPerHolder + jj*cellsPerHolder);
 		
-		pVec1.copyFrom(&(curPointHolder->gphMinInPixels));
+		pVec1.copyFrom(&(curPointHolder->gphMinInCells));
 		pVec1.addXYZ(ii,jj,kk);
 		pVec1.addXYZ(0.5f);
 		singleton->drawCubeCentered(&pVec1, rad);
@@ -1386,7 +1386,7 @@ void GameLogic::getPointsForPath (GamePageHolder * curHolderFrom, int _curInd, P
 			tempStack.clear();
 		}
 		
-		btVector3 newMin = curHolderFrom->gphMinInPixels.getBTV();
+		btVector3 newMin = curHolderFrom->gphMinInCells.getBTV();
 		
 		
 		int cellsPerHolder = singleton->cellsPerHolder;
@@ -1532,7 +1532,7 @@ void GameLogic::drawRegions (int offX, int offY, int offZ)
 		GamePageHolder* curHolderTo;
 		
 		
-		minv.copyFrom(&(curHolderFrom->gphMinInPixels));
+		minv.copyFrom(&(curHolderFrom->gphMinInCells));
 		maxv.copyFrom(&minv);
 		maxv.addXYZ(cellsPerHolder);
 		
@@ -1671,6 +1671,8 @@ void GameLogic::loadNearestHolders ()
 		
 		FIVector4 tempVec;
 		
+		int q;
+		
 		int i, j, k;
 		int ii, jj, kk;
 		int incVal;
@@ -1684,6 +1686,7 @@ void GameLogic::loadNearestHolders ()
 		int maxi;
 		int curLoadRadius;
 		int radStep = 1;
+		int curPD;
 		intPair curId;
 		
 		int cellsPerHolder = singleton->cellsPerHolder;
@@ -1812,15 +1815,29 @@ void GameLogic::loadNearestHolders ()
 									
 									if(curHolder->prepPathRefresh(1)) {
 										
-										
-										
-										threadPoolList->intData[0] = E_TT_GENLIST;
-										threadPoolList->intData[1] = curHolder->blockId;
-										threadPoolList->intData[2] = curHolder->holderId;
-										
-										if (threadPoolList->startThread()) {
-											genCount++;
+										curPD = -1;
+										for (q = 0; q < MAX_PDPOOL_SIZE; q++) {
+											
+											if (singleton->pdPool[q].isFree) {
+												singleton->pdPool[q].isFree = false;
+												curPD = q;
+												break;
+											}
 										}
+										
+										if (curPD >= 0) {
+											curHolder->curPD = curPD;
+											
+											threadPoolList->intData[0] = E_TT_GENLIST;
+											threadPoolList->intData[1] = curHolder->blockId;
+											threadPoolList->intData[2] = curHolder->holderId;
+											
+											if (threadPoolList->startThread()) {
+												genCount++;
+											}
+										}
+										
+										
 										
 										//curHolder->generateList();
 									}

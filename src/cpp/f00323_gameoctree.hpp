@@ -3,58 +3,62 @@ class GameOctree {
 public:
 	Singleton* singleton;
 	
-	uint* vData;
-	uint* nData;
+	OctNode* rootNode;
 	
-	int numNeighbors;
-	int vDataSize;
-	int nDataSize;
-	
-	int indexCount;
 	int dimInVoxels;
 	int maxDepth;
 	
-	int nullPtr;
-	int rootPtr;
-	int nodeSize;
-	int nextOpen;
-	int renderLevel;
-	int maxVerts;
-	int vertComponents;
+	//uint* vData;
+	//uint* nData;
 	
-	bool hasTBO;
-	bool hasVBO;
-	bool hasNeighbors;
+	//int numNeighbors;
+	//int vDataSize;
+	//int nDataSize;
+	
+	//int indexCount;
+	
+	
+	//int nullPtr;
+	//int rootPtr;
+	//int nodeSize;
+	//int nextOpen;
+	//int renderLevel;
+	//int maxVerts;
+	//int vertComponents;
+	
+	//bool hasTBO;
+	//bool hasVBO;
 	
 	
 	//std::vector<uint> indexVec;
-	std::vector<float> vertexVec;
-	VBOWrapper vboWrapper;
-	TBOWrapper octTBO;
+	//std::vector<float> vertexVec;
+	//VBOWrapper vboWrapper;
+	//TBOWrapper octTBO;
 	
 	GameOctree() {
-		
+		//vData = NULL;
 	}
 	
+	~GameOctree() {
+		
+	}
 	
 	void init(
 		Singleton* _singleton,
 		int _dimInVoxels,
-		bool _hasTBO,
-		bool _hasVBO,
-		bool _hasNeighbors,
-		int _maxVerts
+		// bool _hasTBO,
+		// bool _hasVBO,
+		// int _maxVerts
 		//int _maxSize = -1,
 		//int _nodeSize = -1
 	) {
 		singleton = _singleton;
 		dimInVoxels = _dimInVoxels;
-		hasTBO = _hasTBO;
-		hasVBO = _hasVBO;
-		hasNeighbors = _hasNeighbors;
-		maxVerts = _maxVerts;
-		nodeSize = 8;
-		numNeighbors = 6;
+		// hasTBO = _hasTBO;
+		// hasVBO = _hasVBO;
+		//maxVerts = _maxVerts;
+		//nodeSize = 8;
+		//numNeighbors = 6;
 		
 		//nodeSize = _nodeSize;
 		
@@ -65,179 +69,189 @@ public:
 			
 		// }
 		
-		indexCount = 0;
+		//indexCount = 0;
 		
-		vertComponents = 2;
-		vDataSize = maxVerts*nodeSize;
-		nDataSize = maxVerts*numNeighbors;
+		//vertComponents = 2;
+		//vDataSize = maxVerts*nodeSize;
+		//nDataSize = maxVerts*numNeighbors;
 		
 		maxDepth = intLogB2(dimInVoxels);
 		
-		vData = new uint[vDataSize];
-		
-		if (hasNeighbors) {
-			nData = new uint[nDataSize];
-		}
-		else {
-			nData = NULL;
-		}
+		//vData = new uint[vDataSize];
 		
 		
-		renderLevel = 12;
-		nullPtr = 0;
-		rootPtr = nodeSize;
-		nextOpen = rootPtr+nodeSize;
+		
+		
+		//renderLevel = 12;
+		//nullPtr = 0;
+		//rootPtr = nodeSize;
+		//nextOpen = rootPtr+nodeSize;
 		
 		int i;
 		
-		for (i = 0; i < vDataSize; i++) {
-			vData[i] = nullPtr;
-		}
+		// for (i = 0; i < vDataSize; i++) {
+		// 	vData[i] = nullPtr;
+		// }
 		
-		if (hasTBO) {
-			octTBO.init(false,NULL,vData,vDataSize*4);
-		}
+		// if (hasTBO) {
+		// 	octTBO.init(false,NULL,vData,vDataSize*4);
+		// }
 		
-		if (hasVBO) {
-			vertexVec.clear();
-			vertexVec.reserve(maxVerts*vertComponents*4);
+		// if (hasVBO) {
+		// 	//vertexVec.clear();
+		// 	//vertexVec.reserve(maxVerts*vertComponents*4);
 			
-			//indexVec.clear();
-			//indexVec.reserve(maxVerts);
+		// 	//indexVec.clear();
+		// 	//indexVec.reserve(maxVerts);
 			
-			vboWrapper.init(
-				&(vertexVec[0]),
-				vertexVec.size()*vertComponents*4,
-				maxVerts*vertComponents*4,
-				NULL,//&(indexVec[0]),
-				0,//indexVec.size()
-				0,//maxVerts
-				vertComponents,
-				GL_STATIC_DRAW
-			);
-		}
+			
+		// }
+		
+		
+		rootNode = new OctNode();
+		rootNode->init();
+		
 		
 	}
 	
-	void updateVBO() {
-		if (!hasVBO) {
-			return;
-		}
+	// void updateVBO() {
+	// 	if (!hasVBO) {
+	// 		return;
+	// 	}
 		
-		vboWrapper.update(
-			&(vertexVec[0]),
-			vertexVec.size()*vertComponents*4,
-			NULL,//&(indexVec[0]),
-			0 //indexVec.size()
-		);
-	}
+	// 	if (vertexVec.size() < 1) {
+	// 		return;
+	// 	}
+		
+	// 	if (vboWrapper.hasInit) {
+	// 		vboWrapper.update(
+	// 			&(vertexVec[0]),
+	// 			vertexVec.size(),
+	// 			NULL,//&(indexVec[0]),
+	// 			0 //indexVec.size()
+	// 		);
+	// 	}
+	// 	else {
+	// 		vboWrapper.init(
+	// 			&(vertexVec[0]),
+	// 			vertexVec.size(),
+	// 			maxVerts*vertComponents*4,
+	// 			NULL,//&(indexVec[0]),
+	// 			0,//indexVec.size()
+	// 			0,//maxVerts
+	// 			vertComponents,
+	// 			GL_STATIC_DRAW
+	// 		);
+	// 	}
+		
+	// }
 	
-	void updateTBO() {
-		if (!hasTBO) {
-			return;
-		}
+	// void updateTBO() {
+	// 	if (!hasTBO) {
+	// 		return;
+	// 	}
 		
-		octTBO.update(NULL, vData, -1);
-	}
+	// 	octTBO.update(NULL, vData, -1);
+	// }
 	
-	void captureBuffer(bool getPoints) {
+	// void captureBuffer(bool getPoints) {
 		
-		cout << "captureBuffer\n";
+	// 	cout << "captureBuffer\n";
 
-		FBOWrapper *fbow = singleton->getFBOWrapper("solidTargFBO", 0);
-		fbow->getPixels();
+	// 	FBOWrapper *fbow = singleton->getFBOWrapper("solidTargFBO", 0);
+	// 	fbow->getPixels();
 		
-		FBOWrapper *fbow2 = singleton->getFBOWrapper("resultFBO0", 0);
-		fbow2->getPixels();
+	// 	FBOWrapper *fbow2 = singleton->getFBOWrapper("resultFBO0", 0);
+	// 	fbow2->getPixels();
 		
-		int i;
+	// 	int i;
 		
-		int x;
-		int y;
-		int z;
+	// 	int x;
+	// 	int y;
+	// 	int z;
 		
-		float r, g, b;
+	// 	float r, g, b;
 		
-		btVector3 myPoint;
-		btVector3 camPoint = singleton->cameraGetPosNoShake()->getBTV();
+	// 	btVector3 myPoint;
+	// 	btVector3 camPoint = singleton->cameraGetPosNoShake()->getBTV();
 		
-		float maxDis = singleton->clipDist[1]-50.0f;
+	// 	float maxDis = singleton->clipDist[1]-50.0f;
 		
-		bool didFail = false;
-		bool wasNew = false;
+	// 	bool didFail = false;
+	// 	bool wasNew = false;
 		
-		for (i = 0; i < fbow->numBytes; i += 4) {
-			x = fbow->pixelsFloat[i+0];
-			y = fbow->pixelsFloat[i+1];
-			z = fbow->pixelsFloat[i+2];
+	// 	for (i = 0; i < fbow->numBytes; i += 4) {
+	// 		x = fbow->pixelsFloat[i+0];
+	// 		y = fbow->pixelsFloat[i+1];
+	// 		z = fbow->pixelsFloat[i+2];
 			
-			r = fbow2->pixelsChar[i+0];
-			g = fbow2->pixelsChar[i+1];
-			b = fbow2->pixelsChar[i+2];
+	// 		r = fbow2->pixelsChar[i+0];
+	// 		g = fbow2->pixelsChar[i+1];
+	// 		b = fbow2->pixelsChar[i+2];
 			
-			r /= 255.0f;
-			g /= 255.0f;
-			b /= 255.0f;
+	// 		r /= 255.0f;
+	// 		g /= 255.0f;
+	// 		b /= 255.0f;
 			
 			
-			myPoint = btVector3(x,y,z);
+	// 		myPoint = btVector3(x,y,z);
 			
-			if (nextOpen >= (vDataSize-nodeSize)) {
-				didFail = true;
-				break;
-			}
+	// 		if (nextOpen >= (vDataSize-nodeSize)) {
+	// 			didFail = true;
+	// 			break;
+	// 		}
 			
-			if (camPoint.distance(myPoint) < maxDis) {
-				wasNew = addNode(x,y,z,r,g,b);
+	// 		if (camPoint.distance(myPoint) < maxDis) {
+	// 			wasNew = addNode(x,y,z,r,g,b);
 				
-				if (getPoints&&wasNew) {
-					vertexVec.push_back(x);
-					vertexVec.push_back(y);
-					vertexVec.push_back(z);
-					vertexVec.push_back(1.0f);
+	// 			if (getPoints&&wasNew) {
+	// 				vertexVec.push_back(x);
+	// 				vertexVec.push_back(y);
+	// 				vertexVec.push_back(z);
+	// 				vertexVec.push_back(1.0f);
 					
-					vertexVec.push_back(r);
-					vertexVec.push_back(g);
-					vertexVec.push_back(b);
-					vertexVec.push_back(0.0f);
+	// 				vertexVec.push_back(r);
+	// 				vertexVec.push_back(g);
+	// 				vertexVec.push_back(b);
+	// 				vertexVec.push_back(0.0f);
 					
-					//indexVec.push_back(indexCount);
-					//indexCount++;
+	// 				//indexVec.push_back(indexCount);
+	// 				//indexCount++;
 					
-				}
+	// 			}
 				
-			}
+	// 		}
 			
-		}
+	// 	}
 		
-		if (didFail) {
-			cout << "octree full\n";
+	// 	if (didFail) {
+	// 		cout << "octree full\n";
 			
-			// todo: wrap back to start of buffer and overwrite?
-			// wont work - would leave invalid pointers
-			// instead, keep linear list of inserted points and reform octree
-			// wrap this linear list
+	// 		// todo: wrap back to start of buffer and overwrite?
+	// 		// wont work - would leave invalid pointers
+	// 		// instead, keep linear list of inserted points and reform octree
+	// 		// wrap this linear list
 			
-		}
+	// 	}
 
-		cout << "points " << vertexVec.size()/8 << "\n";
+	// 	cout << "points " << vertexVec.size()/8 << "\n";
 		
-	}
+	// }
 	
-	void modRenderLevel(int modVal) {
-		renderLevel += modVal;
-		if (renderLevel > maxDepth) {
-			renderLevel = maxDepth;
-		}
-		if (renderLevel < 0) {
-			renderLevel = 0;
-		}
+	// void modRenderLevel(int modVal) {
+	// 	renderLevel += modVal;
+	// 	if (renderLevel > maxDepth) {
+	// 		renderLevel = maxDepth;
+	// 	}
+	// 	if (renderLevel < 0) {
+	// 		renderLevel = 0;
+	// 	}
 		
-		cout << "renderLevel " << renderLevel << "\n";
-	}
+	// 	cout << "renderLevel " << renderLevel << "\n";
+	// }
 	
-	bool addNode(int x, int y, int z, float r, float g, float b) {
-		int curPtr = rootPtr;
+	bool addNode(int x, int y, int z) {
+		int OctNode* curPtr = rootPtr;
 		int curLevel = 0;
 		bool doProc = true;
 		
@@ -266,83 +280,82 @@ public:
 			
 			offset = subX + subY*2 + subZ*4;
 			
-			if (vData[curPtr+offset] == nullPtr) {
-				vData[curPtr+offset] = nextOpen;
-				nextOpen += nodeSize;
+			if (curPtr->children[offset] == NULL) {
+				curPtr->children[offset] = new OctNode();
+				curPtr->children[offset]->init();
 				wasNew = true;
 			}
 			
-			curPtr = vData[curPtr+offset];
+			curPtr = curPtr->children[offset];
 			
 			curDiv = curDiv/2;
 			
-		} while (curDiv > 2);
+		} while (curDiv > 1);
 		
-		vData[curPtr+0] = 1;
 		
 		return wasNew;
 	}
 	
-	void remNode(uint index) {
+	// void remNode(uint index) {
 		
-	}
+	// }
 	
 	
-	void startRender() {
-		renderBB(0,0,0,rootPtr,0,dimInVoxels);
-	}
+	// void startRender() {
+	// 	renderBB(0,0,0,rootPtr,0,dimInVoxels);
+	// }
 	
-	void renderBB(
-		int baseX,
-		int baseY,
-		int baseZ,
-		int startIndex,
-		int curLevel,
-		int curDiv
-	) {
+	// void renderBB(
+	// 	int baseX,
+	// 	int baseY,
+	// 	int baseZ,
+	// 	int startIndex,
+	// 	int curLevel,
+	// 	int curDiv
+	// ) {
 		
-		int i;
-		int xm;
-		int ym;
-		int zm;
+	// 	int i;
+	// 	int xm;
+	// 	int ym;
+	// 	int zm;
 		
-		if (curLevel > renderLevel) {
-			return;
-		}
+	// 	if (curLevel > renderLevel) {
+	// 		return;
+	// 	}
 		
-		int curDiv2 = curDiv/2;
+	// 	int curDiv2 = curDiv/2;
 		
-		if (curLevel == renderLevel) {
-			singleton->drawBoxMinMax(
-				btVector3(baseX,baseY,baseZ),
-				btVector3(baseX+curDiv,baseY+curDiv,baseZ+curDiv)
-			);
-		}
+	// 	if (curLevel == renderLevel) {
+	// 		singleton->drawBoxMinMax(
+	// 			btVector3(baseX,baseY,baseZ),
+	// 			btVector3(baseX+curDiv,baseY+curDiv,baseZ+curDiv)
+	// 		);
+	// 	}
 		
 		
 		
-		for (i = 0; i < 8; i++) {
-			zm = i/4;
-			ym = (i-zm*4)/2;
-			xm = (i-(zm*4 + ym*2));
+	// 	for (i = 0; i < 8; i++) {
+	// 		zm = i/4;
+	// 		ym = (i-zm*4)/2;
+	// 		xm = (i-(zm*4 + ym*2));
 			
-			if (vData[startIndex+i] == nullPtr) {
+	// 		if (vData[startIndex+i] == nullPtr) {
 				
-			}
-			else {
-				renderBB(
-					baseX+xm*curDiv2,
-					baseY+ym*curDiv2,
-					baseZ+zm*curDiv2,
-					vData[startIndex+i],
-					curLevel+1,
-					curDiv2
-				);
-			}
-		}
+	// 		}
+	// 		else {
+	// 			renderBB(
+	// 				baseX+xm*curDiv2,
+	// 				baseY+ym*curDiv2,
+	// 				baseZ+zm*curDiv2,
+	// 				vData[startIndex+i],
+	// 				curLevel+1,
+	// 				curDiv2
+	// 			);
+	// 		}
+	// 	}
 		
 		
-	}
+	// }
 	
 	
 };

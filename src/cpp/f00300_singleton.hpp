@@ -259,6 +259,7 @@ public:
 	
 	
 	int cellsPerHolder;
+	int cellsPerHolderPad;
 	int cellsPerBlock;
 	int holdersPerBlock;
 	
@@ -271,7 +272,7 @@ public:
 	int paddingInCells;
 	
 	
-	
+	PaddedData pdPool[MAX_PDPOOL_SIZE];
 	
 	
 	
@@ -565,7 +566,7 @@ public:
 	Timer scrollTimer;
 	Timer moveTimer;
 	VBOGrid myVBOGrid; 
-	GameOctree* gameOct;
+	//GameOctree* gameOct;
 	GameWorld* gw;
 	GameEntManager* gem;
 	GamePhysics* gamePhysics;
@@ -997,6 +998,14 @@ public:
 		
 		voxelsPerCell = 16;
 		paddingInCells = 1;
+		
+		cellsPerHolderPad = cellsPerHolder+paddingInCells*2;
+		
+		for (i = 0; i < MAX_PDPOOL_SIZE; i++) {
+			pdPool[i].data = new PaddedDataEntry[cellsPerHolderPad*cellsPerHolderPad*cellsPerHolderPad];
+			//pdPool[i].voxData = new VoxEntry[voxelsPerCell*voxelsPerCell*voxelsPerCell]
+			pdPool[i].isFree = true;
+		}
 		
 		
 		if (blocksPerWorld > 256) {
@@ -1692,13 +1701,15 @@ public:
 					clampType = GL_CLAMP_TO_EDGE; //GL_CLAMP_TO_BORDER
 				break;
 				case E_VW_WORLD:
-					vwChan = 4;
-					filterType = GL_NEAREST,
-					tz = blocksPerWorld;
-					clampType = GL_REPEAT; //GL_CLAMP_TO_BORDER
-					if (!GEN_POLYS_WORLD) {
-						doProc = false;
-					}
+					
+					// vwChan = 4;
+					// filterType = GL_NEAREST,
+					// tz = blocksPerWorld;
+					// clampType = GL_REPEAT; //GL_CLAMP_TO_BORDER
+					// if (!GEN_POLYS_WORLD) {
+					 	doProc = false;
+					// }
+					
 				break;
 				// case E_VW_TERGEN:
 				// 	tz = 128;
@@ -1825,8 +1836,8 @@ public:
 		}
 
 
-		gameOct = new GameOctree();
-		gameOct->init(this, cellsPerWorld, false, true, false, 32*1024*1024);
+		//gameOct = new GameOctree();
+		//gameOct->init(this, cellsPerWorld, false, true, false, 32*1024*1024);
 		
 		
 		
@@ -5248,18 +5259,18 @@ DISPATCH_EVENT_END:
 					renderingOctBounds = !renderingOctBounds;
 				break;
 				case '/':
-					gameOct->captureBuffer(true);
-					gameOct->updateTBO();
-					gameOct->updateVBO();
+					//gameOct->captureBuffer(true);
+					//gameOct->updateTBO();
+					//gameOct->updateVBO();
 				break;
 				case '*':
 					//renderingOct = !renderingOct;
 				break;
 				case '-':
-					gameOct->modRenderLevel(-1);
+					//gameOct->modRenderLevel(-1);
 				break;
 				case '+':
-					gameOct->modRenderLevel(1);
+					//gameOct->modRenderLevel(1);
 				break;
 				
 				case '`':
@@ -9181,9 +9192,9 @@ DISPATCH_EVENT_END:
 						}
 						
 						
-						if (GEN_POLYS_WORLD) {
-							gw->generateBlockHolder();
-						}
+						// if (GEN_POLYS_WORLD) {
+						// 	gw->generateBlockHolder();
+						// }
 						
 						if (gem->turnBased) {
 							if (
