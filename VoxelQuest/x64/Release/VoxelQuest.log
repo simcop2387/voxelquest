@@ -1,4 +1,4 @@
-﻿Build started 3/11/2016 7:40:24 AM.
+﻿Build started 3/12/2016 2:02:14 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -26,6 +26,7 @@
          .\src\cpp\f00305_shader.hpp
          .\src\cpp\f00307_dynbuffer.hpp
          .\src\cpp\f00320_fontwrapper.hpp
+         .\src\cpp\f00323_gameoctree.hpp
          .\src\cpp\f00324_gamevoxelwrap.hpp
          .\src\cpp\f00325_uicomponent.hpp
          .\src\cpp\f00330_gamegui.hpp
@@ -48,11 +49,11 @@
          .\src\cpp\f00375_gamephysics.hpp
          .\src\cpp\f00380_gameworld.hpp
          .\src\cpp\f00500_mainfuncs.h
-         43 File(s) copied
+         44 File(s) copied
          running lzz
          Missing operator.
          tot hpp
-         27
+         28
          copying headers to one file
          .\f00293_gamesound.e
          .\f00294_gamemusic.e
@@ -60,6 +61,7 @@
          .\f00305_shader.e
          .\f00307_dynbuffer.e
          .\f00320_fontwrapper.e
+         .\f00323_gameoctree.e
          .\f00324_gamevoxelwrap.e
          .\f00325_uicomponent.e
          .\f00330_gamegui.e
@@ -84,7 +86,7 @@
                  1 file(s) copied.
          Missing operator.
          tot e
-         27
+         28
          .
          copying files to compiled
          .\temp\f00293_gamesound.e
@@ -93,6 +95,7 @@
          .\temp\f00305_shader.e
          .\temp\f00307_dynbuffer.e
          .\temp\f00320_fontwrapper.e
+         .\temp\f00323_gameoctree.e
          .\temp\f00324_gamevoxelwrap.e
          .\temp\f00325_uicomponent.e
          .\temp\f00330_gamegui.e
@@ -114,7 +117,7 @@
          .\temp\f00374_myglhelper.e
          .\temp\f00375_gamephysics.e
          .\temp\f00380_gameworld.e
-         27 File(s) copied
+         28 File(s) copied
          .\temp\f00020_includes.h
          .\temp\f00022_enums.h
          .\temp\f00024_mat.h
@@ -137,6 +140,7 @@
          .\temp\f00305_shader.h
          .\temp\f00307_dynbuffer.h
          .\temp\f00320_fontwrapper.h
+         .\temp\f00323_gameoctree.h
          .\temp\f00324_gamevoxelwrap.h
          .\temp\f00325_uicomponent.h
          .\temp\f00330_gamegui.h
@@ -1008,10 +1012,37 @@
          GL_MAX_TEXTURE_BUFFER_SIZE 134217728
          
          updateHolders 1
+         nodeCount 11370
+         vertices 20336
          
-         updateHolders 0
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
+         nodeCount 136049
+         vertices 229984
+         
+         nodeCount 227727
+         vertices 355912
+         
+         nodeCount 540363
+         vertices 921864
+         
+         nodeCount 633460
+         vertices 1330208
+         
+         nodeCount 1393376
+         vertices 612616
+         
+         nodeCount 602888
+         vertices 1150680
+         
+         nodeCount 546724
+         vertices 805936
+         
+         nodeCount 844310
+         vertices 942080
+         
+     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
+C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -1073741819.
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
 
-Build succeeded.
+Build FAILED.
 
-Time Elapsed 00:07:01.98
+Time Elapsed 00:00:28.12

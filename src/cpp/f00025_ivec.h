@@ -32,6 +32,12 @@ struct VectorI3
     VectorI3     operator-(const VectorI3& rhs) const;    // subtract rhs
     VectorI3&    operator+=(const VectorI3& rhs);         // add rhs and update this object
     VectorI3&    operator-=(const VectorI3& rhs);         // subtract rhs and update this object
+    
+    VectorI3     operator+(const int rhs) const;    // add rhs
+    VectorI3     operator-(const int rhs) const;    // subtract rhs
+    VectorI3&    operator+=(const int rhs);         // add rhs and update this object
+    VectorI3&    operator-=(const int rhs);         // subtract rhs and update this object
+    
     VectorI3     operator*(const int scale) const;     // scale
     VectorI3     operator*(const VectorI3& rhs) const;    // multiplay each element
     VectorI3&    operator*=(const int scale);          // scale and update this object
@@ -67,6 +73,31 @@ inline VectorI3& VectorI3::operator+=(const VectorI3& rhs) {
 inline VectorI3& VectorI3::operator-=(const VectorI3& rhs) {
     x -= rhs.x; y -= rhs.y; z -= rhs.z; return *this;
 }
+
+
+
+
+inline VectorI3 VectorI3::operator+(const int rhs) const {
+    return VectorI3(x+rhs, y+rhs, z+rhs);
+}
+
+inline VectorI3 VectorI3::operator-(const int rhs) const {
+    return VectorI3(x-rhs, y-rhs, z-rhs);
+}
+
+inline VectorI3& VectorI3::operator+=(const int rhs) {
+    x += rhs; y += rhs; z += rhs; return *this;
+}
+
+inline VectorI3& VectorI3::operator-=(const int rhs) {
+    x -= rhs; y -= rhs; z -= rhs; return *this;
+}
+
+
+
+
+
+
 
 inline VectorI3 VectorI3::operator*(const int a) const {
     return VectorI3(x*a, y*a, z*a);
@@ -149,7 +180,7 @@ inline VectorI3 VectorI3::cross(const VectorI3& rhs) const {
 }
 
 inline bool VectorI3::equal(const VectorI3& rhs, int epsilon) const {
-    return abs(x - rhs.x) < epsilon && abs(y - rhs.y) < epsilon && abs(z - rhs.z) < epsilon;
+    return (abs(x - rhs.x) <= epsilon) && (abs(y - rhs.y) <= epsilon) && (abs(z - rhs.z) <= epsilon);
 }
 
 inline VectorI3 operator*(const int a, const VectorI3 vec) {
@@ -160,4 +191,14 @@ inline std::ostream& operator<<(std::ostream& os, const VectorI3& vec) {
     os << "(" << vec.x << ", " << vec.y << ", " << vec.z << ")";
     return os;
 }
+
+const static VectorI3 DIR_VECS_IV[NUM_ORIENTATIONS] = {
+    VectorI3(1, 0, 0),
+    VectorI3(-1, 0, 0),
+    VectorI3(0, 1, 0),
+    VectorI3(0, -1, 0),
+    VectorI3(0, 0, 1),
+    VectorI3(0, 0, -1)
+};
+
 

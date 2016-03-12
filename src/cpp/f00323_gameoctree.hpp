@@ -3,7 +3,9 @@ class GameOctree {
 public:
 	Singleton* singleton;
 	
-	OctNode* rootNode;
+	int rootPtr;
+	
+	vector<OctNode> octNodes;
 	
 	int dimInVoxels;
 	int maxDepth;
@@ -46,6 +48,7 @@ public:
 	void init(
 		Singleton* _singleton,
 		int _dimInVoxels,
+		int reserveSize
 		// bool _hasTBO,
 		// bool _hasVBO,
 		// int _maxVerts
@@ -107,12 +110,18 @@ public:
 			
 		// }
 		
-		
-		rootNode = new OctNode();
-		rootNode->init();
+		octNodes.reserve(reserveSize);
+		clearAllNodes();
 		
 		
 	}
+	
+	int allocNode(int parent) {
+		octNodes.push_back(OctNode());
+		octNodes.back().init(parent);
+		return octNodes.size()-1;
+	}
+	
 	
 	// void updateVBO() {
 	// 	if (!hasVBO) {
@@ -250,19 +259,14 @@ public:
 	// 	cout << "renderLevel " << renderLevel << "\n";
 	// }
 	
-	bool addNode(int x, int y, int z) {
-		int OctNode* curPtr = rootPtr;
+	
+	int getNode(VectorI3* pos) {
+		int curPtr = rootPtr;
 		int curLevel = 0;
 		bool doProc = true;
 		
-		int curX = x;
-		int curY = y;
-		int curZ = z;
-		
-		int subX;
-		int subY;
-		int subZ;
-		
+		VectorI3 curPos = *pos;
+		VectorI3 subPos;
 		int curDiv = dimInVoxels/2;
 		
 		int offset;
@@ -270,30 +274,66 @@ public:
 		bool wasNew = false;
 		
 		do {
-			subX = curX/curDiv;
-			subY = curY/curDiv;
-			subZ = curZ/curDiv;
+			subPos = (curPos/curDiv);
+			curPos -= (subPos*curDiv);
 			
-			curX -= subX*curDiv;
-			curY -= subY*curDiv;
-			curZ -= subZ*curDiv;
+			offset = subPos.x + subPos.y*2 + subPos.z*4;
 			
-			offset = subX + subY*2 + subZ*4;
-			
-			if (curPtr->children[offset] == NULL) {
-				curPtr->children[offset] = new OctNode();
-				curPtr->children[offset]->init();
-				wasNew = true;
+			if (octNodes[curPtr].children[offset] == -1) {
+				return -1;
 			}
 			
-			curPtr = curPtr->children[offset];
+			curPtr = octNodes[curPtr].children[offset];
 			
 			curDiv = curDiv/2;
 			
-		} while (curDiv > 1);
+		} while (curDiv >= 1);
 		
 		
-		return wasNew;
+		return curPtr;
+	}
+	
+	int addNode(VectorI3* pos, bool &wasNew) {
+		int curPtr = rootPtr;
+		int curLevel = 0;
+		bool doProc = true;
+		
+		VectorI3 curPos = *pos;
+		VectorI3 subPos;
+		
+		int curDiv = dimInVoxels/2;
+		
+		int offset;
+		
+		wasNew = false;
+		
+		do {
+			subPos = (curPos/curDiv);
+			curPos -= (subPos*curDiv);
+			
+			offset = subPos.x + subPos.y*2 + subPos.z*4;
+			
+			if (octNodes[curPtr].children[offset] == -1) {
+				octNodes[curPtr].children[offset] = allocNode(curPtr);
+				wasNew = true;
+			}
+			
+			curPtr = octNodes[curPtr].children[offset];
+			
+			curDiv = curDiv/2;
+			
+		} while (curDiv >= 1);
+		
+		octNodes[curPtr].x = pos->x;
+		octNodes[curPtr].y = pos->y;
+		octNodes[curPtr].z = pos->z;
+		
+		return curPtr;//wasNew;
+	}
+	
+	void clearAllNodes() {
+		octNodes.clear();
+		rootPtr = allocNode(-1);
 	}
 	
 	// void remNode(uint index) {

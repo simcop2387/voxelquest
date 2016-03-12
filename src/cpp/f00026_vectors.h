@@ -3519,6 +3519,21 @@ struct PushModStruct
 	FIVector4 data[4];
 };
 
+struct PaddedDataEntry {
+	float terVal;
+	int cellVal;
+	bool visited;
+};
+
+
+struct PaddedData {
+	PaddedDataEntry* data;
+	vector<VectorI3> fillStack;
+	
+	bool isFree;
+};
+
+
 
 // class Q3Rend : public q3Render {
 // public:

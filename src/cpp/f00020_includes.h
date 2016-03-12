@@ -14,7 +14,8 @@ bool ND_TRACE_OFF = false;
 
 const static int MAX_LIMB_DATA_IN_BYTES = 65536;
 
-const static bool POLYS_FOR_CELLS = true;
+const static bool POLYS_FOR_CELLS = false;
+const static bool DO_VOXEL_WRAP = true;
 //const static bool POLY_COLLISION = false;
 const static bool VOXEL_COLLISION = true;
 

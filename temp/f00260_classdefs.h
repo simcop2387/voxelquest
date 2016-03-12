@@ -21,6 +21,7 @@ class GamePhysRig;
 class GameEntManager;
 class GameBlock;
 class GamePageHolder;
+class GameOctree;
 class GameVoxelWrap;
 class VolumeWrapper;
 class ThreadPoolWrapper;

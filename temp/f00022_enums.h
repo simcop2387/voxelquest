@@ -527,63 +527,32 @@ enum PATTERN_SHAPES {
 	E_PATSHAPE_LENGTH
 };
 
-enum E_PTT_FLAGS {
-	E_PTTF_XP = 1,
-	E_PTTF_XM = 2,
-	E_PTTF_YP = 4,
-	E_PTTF_YM = 8,
-	E_PTTF_ZP = 16,
-	E_PTTF_ZM = 32,
-	
-	E_PTTF_SURFACE = 64,
-	E_PTTF_LENGTH = 65536
-};
 
-enum E_VN_FLAGS {
-	E_VNF_ISFILLED_RIGHT = 1,
-	E_VNF_ISFILLED_UP = 2,
-	E_VNF_ISFILLED_LEFT = 4,
-	E_VNF_ISFILLED_DOWN = 8,
-	
-	E_VNF_DIDVISIT_RIGHT = 16,
-	E_VNF_DIDVISIT_UP = 32,
-	E_VNF_DIDVISIT_LEFT = 64,
-	E_VNF_DIDVISIT_DOWN = 128,
-	
-	E_VNF_DEADEND = 256,
-	
-	E_VNF_LENGTH = 65536
-};
+uint E_OCT_VISITED = 1;
+uint E_OCT_SOLID = 2;
+uint E_OCT_SURFACE = 4;
 
 
-struct VoxelNode {
+struct OctNode {
+	int parent;
+	int children[8];
 	uint flags;
-};
-
-struct VoxelWrap {
-	uint nodePtr;
-	// use nodeList within GameVoxelWrap
-	// std::vector<VoxelNode> nodeList;
-};
-
-struct VoxelSlice {
-	std::vector<VoxelWrap> wrapList;
-};
-
-struct PaddedDataEntry {
-	float terVal;
-	int cellVal;
-	bool visited;
-};
-
-struct VoxEntry {
 	
-};
-
-struct PaddedData {
-	PaddedDataEntry* data;
-	//VoxEntry* voxData;
-	bool isFree;
+	int x;
+	int y;
+	int z;	
+	
+	void init(int _parent) {
+		int i;
+		
+		parent = _parent;
+		flags = 0;
+		
+		for (i = 0; i < 8; i++) {
+			children[i] = -1;
+		}
+	}
+	
 };
 
 const static int PATTERN_SIZE = 5;

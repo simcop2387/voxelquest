@@ -273,7 +273,7 @@ public:
 	
 	
 	PaddedData pdPool[MAX_PDPOOL_SIZE];
-	
+	GameOctree* octPool[MAX_PDPOOL_SIZE];
 	
 	
 	
@@ -1005,6 +1005,12 @@ public:
 			pdPool[i].data = new PaddedDataEntry[cellsPerHolderPad*cellsPerHolderPad*cellsPerHolderPad];
 			//pdPool[i].voxData = new VoxEntry[voxelsPerCell*voxelsPerCell*voxelsPerCell]
 			pdPool[i].isFree = true;
+			octPool[i] = new GameOctree();
+			octPool[i]->init(
+				this,
+				cellsPerHolder*voxelsPerCell*2,
+				1024*1024*2
+			);
 		}
 		
 		
@@ -9016,6 +9022,7 @@ DISPATCH_EVENT_END:
 							cout << "GL_MAX_TEXTURE_BUFFER_SIZE " << maxTBO << "\n";
 							
 							
+							
 						}
 						
 						if (
@@ -9182,7 +9189,7 @@ DISPATCH_EVENT_END:
 							// gw->rasterGrid(&myVBOGrid,true);
 							// bakeTicks++;
 							
-							gw->rasterHolders(true);
+							gw->rasterHolders(true,true);
 							
 						}
 						else {

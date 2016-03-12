@@ -393,6 +393,12 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			pdPool[i].data = new PaddedDataEntry[cellsPerHolderPad*cellsPerHolderPad*cellsPerHolderPad];
 			//pdPool[i].voxData = new VoxEntry[voxelsPerCell*voxelsPerCell*voxelsPerCell]
 			pdPool[i].isFree = true;
+			octPool[i] = new GameOctree();
+			octPool[i]->init(
+				this,
+				cellsPerHolder*voxelsPerCell*2,
+				1024*1024*2
+			);
 		}
 		
 		
@@ -7771,6 +7777,7 @@ void Singleton::frameUpdate ()
 							cout << "GL_MAX_TEXTURE_BUFFER_SIZE " << maxTBO << "\n";
 							
 							
+							
 						}
 						
 						if (
@@ -7937,7 +7944,7 @@ void Singleton::frameUpdate ()
 							// gw->rasterGrid(&myVBOGrid,true);
 							// bakeTicks++;
 							
-							gw->rasterHolders(true);
+							gw->rasterHolders(true,true);
 							
 						}
 						else {

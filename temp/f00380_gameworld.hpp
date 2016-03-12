@@ -668,9 +668,9 @@ public:
 		int curRes;
 		
 		for (q = 0; q < 8; q++) {
-			k = q/4;
-			j = q - (k*4);
-			i = q - (k*4+j*2);
+			k = q/(2*2);
+			j = (q-k*2*2)/2;
+			i = q-(k*2*2 + j*2);
 			
 			curRes = getCellAtCoords(xv+i,yv+j,zv+k);
 			
@@ -2163,7 +2163,12 @@ public:
 	// }
 	
 	
-	void rasterPolys(int minPeel, int maxPeel, int extraRad = 0) {
+	void rasterPolys(
+		int minPeel,
+		int maxPeel,
+		int extraRad = 0,
+		bool doPoints = false
+	) {
 		
 		int q;
 		
@@ -2283,7 +2288,16 @@ public:
 									// singleton->setShaderfVec3("volMaxReadyInPixels", &(curHolder->gphMaxInCells) );
 									// singleton->setShaderTexture3D(0, curHolder->terVW->volId);
 									
-									curHolder->vboWrapper.draw();
+									
+									if (doPoints) {
+										curHolder->vboWrapper.drawPoints();
+									}
+									else {
+										curHolder->vboWrapper.draw();
+									}
+									
+									//
+									
 									
 								}
 							}
@@ -4826,7 +4840,7 @@ UPDATE_LIGHTS_END:
 
 
 
-	void rasterHolders(bool showResults) {
+	void rasterHolders(bool showResults, bool doPoints) {
 		
 		// get view matrix
 		singleton->perspectiveOn = true;
@@ -4836,14 +4850,20 @@ UPDATE_LIGHTS_END:
 
 		glEnable(GL_DEPTH_TEST);
 		
-
-		singleton->bindShader("HolderShader");
+		//if (doPoints) {
+		//singleton->bindShader("RasterShader");
+		//}
+		//else {
+			singleton->bindShader("HolderShader");
+		//}
+		
 		singleton->bindFBO("rasterFBO");
 
 
 		// singleton->sampleFBO("rasterPosFBO",0);
 		// singleton->sampleFBO("rasterSourceFBO",1);
 
+		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
@@ -4854,7 +4874,8 @@ UPDATE_LIGHTS_END:
 		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
 		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 
-		rasterPolys(-1,0,5);
+		rasterPolys(-1,0,5,doPoints);
+		//singleton->fsQuad.draw();
 
 		// singleton->unsampleFBO("rasterSourceFBO",1);
 		// singleton->unsampleFBO("rasterPosFBO",0);
@@ -4924,106 +4945,106 @@ UPDATE_LIGHTS_END:
 		
 	}
 
-	void rasterOct(GameVoxelWrap* gameOct, bool showResults) {
+	// void rasterOct(GameVoxelWrap* gameOct, bool showResults) {
 		
-		// get view matrix
-		singleton->perspectiveOn = true;
-		singleton->getMatrixFromFBO("rasterFBO");
-		singleton->perspectiveOn = false;
+	// 	// get view matrix
+	// 	singleton->perspectiveOn = true;
+	// 	singleton->getMatrixFromFBO("rasterFBO");
+	// 	singleton->perspectiveOn = false;
 
 
-		glEnable(GL_DEPTH_TEST);
-		//glDepthMask(GL_TRUE);
+	// 	glEnable(GL_DEPTH_TEST);
+	// 	//glDepthMask(GL_TRUE);
 
-		singleton->bindShader("RasterShader");
-		singleton->bindFBO("rasterFBO");
+	// 	singleton->bindShader("RasterShader");
+	// 	singleton->bindFBO("rasterFBO");
 
-		// singleton->setShaderTBO(
-		// 	0,
-		// 	gameOct->octTBO.tbo_tex,
-		// 	gameOct->octTBO.tbo_buf,
-		// 	false
-		// );
+	// 	// singleton->setShaderTBO(
+	// 	// 	0,
+	// 	// 	gameOct->octTBO.tbo_tex,
+	// 	// 	gameOct->octTBO.tbo_buf,
+	// 	// 	false
+	// 	// );
 
-		singleton->setShaderFloat("curTime", singleton->curTime);
-		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
-		singleton->setShaderFloat("dimInVoxels", gameOct->dimInVoxels);
-		singleton->setShaderInt("renderLevel", gameOct->renderLevel);
-		singleton->setShaderInt("vDataSize", gameOct->vDataSize);
-		singleton->setShaderInt("rootPtr", gameOct->rootPtr);
-		singleton->setShaderInt("nodeSize", gameOct->nodeSize);
-		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
-		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
-		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-		
-		
-		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
-		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
-		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
-
-		gameOct->vboWrapper.drawPoints();
-
-		//singleton->setShaderTBO(0,0,0,false);
-		singleton->unbindFBO();
-		singleton->unbindShader();
+	// 	singleton->setShaderFloat("curTime", singleton->curTime);
+	// 	singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+	// 	singleton->setShaderFloat("dimInVoxels", gameOct->dimInVoxels);
+	// 	singleton->setShaderInt("renderLevel", gameOct->renderLevel);
+	// 	singleton->setShaderInt("vDataSize", gameOct->vDataSize);
+	// 	singleton->setShaderInt("rootPtr", gameOct->rootPtr);
+	// 	singleton->setShaderInt("nodeSize", gameOct->nodeSize);
+	// 	singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+	// 	singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+	// 	singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+	// 	singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		
 		
-		//glDepthMask(GL_FALSE);
-		glDisable(GL_DEPTH_TEST);
+	// 	singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+	// 	singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
+	// 	singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
+
+	// 	gameOct->vboWrapper.drawPoints();
+
+	// 	//singleton->setShaderTBO(0,0,0,false);
+	// 	singleton->unbindFBO();
+	// 	singleton->unbindShader();
+		
+		
+	// 	//glDepthMask(GL_FALSE);
+	// 	glDisable(GL_DEPTH_TEST);
 
 		
-		if (showResults) {
-			singleton->drawFBO("rasterFBO", 0, 1.0f);
+	// 	if (showResults) {
+	// 		singleton->drawFBO("rasterFBO", 0, 1.0f);
 			
-			glutSwapBuffers();
-		}
+	// 		glutSwapBuffers();
+	// 	}
 		
 		
-	}
+	// }
 
-	void renderOct(GameVoxelWrap* gameOct) {
+	// void renderOct(GameVoxelWrap* gameOct) {
 		
-		// get view matrix
-		singleton->perspectiveOn = true;
-		singleton->getMatrixFromFBO("resultFBO0");
-		singleton->perspectiveOn = false;
-		// 
+	// 	// get view matrix
+	// 	singleton->perspectiveOn = true;
+	// 	singleton->getMatrixFromFBO("resultFBO0");
+	// 	singleton->perspectiveOn = false;
+	// 	// 
 		
 
-		singleton->bindShader("OctShader");
-		singleton->bindFBO("resultFBO0");
+	// 	singleton->bindShader("OctShader");
+	// 	singleton->bindFBO("resultFBO0");
 
-		singleton->setShaderTBO(
-			0,
-			gameOct->octTBO.tbo_tex,
-			gameOct->octTBO.tbo_buf,
-			false
-		);
+	// 	singleton->setShaderTBO(
+	// 		0,
+	// 		gameOct->octTBO.tbo_tex,
+	// 		gameOct->octTBO.tbo_buf,
+	// 		false
+	// 	);
 
-		singleton->setShaderFloat("dimInVoxels", gameOct->dimInVoxels);
-		singleton->setShaderInt("renderLevel", gameOct->renderLevel);
-		singleton->setShaderInt("vDataSize", gameOct->vDataSize);
-		singleton->setShaderInt("rootPtr", gameOct->rootPtr);
-		singleton->setShaderInt("nodeSize", gameOct->nodeSize);
-		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
-		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
-		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+	// 	singleton->setShaderFloat("dimInVoxels", gameOct->dimInVoxels);
+	// 	singleton->setShaderInt("renderLevel", gameOct->renderLevel);
+	// 	singleton->setShaderInt("vDataSize", gameOct->vDataSize);
+	// 	singleton->setShaderInt("rootPtr", gameOct->rootPtr);
+	// 	singleton->setShaderInt("nodeSize", gameOct->nodeSize);
+	// 	singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+	// 	singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+	// 	singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+	// 	singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+	// 	singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
 
-		singleton->fsQuad.draw();
+	// 	singleton->fsQuad.draw();
 
 
-		singleton->setShaderTBO(0,0,0,false);
-		singleton->unbindFBO();
-		singleton->unbindShader();
+	// 	singleton->setShaderTBO(0,0,0,false);
+	// 	singleton->unbindFBO();
+	// 	singleton->unbindShader();
 
-		singleton->drawFBO("resultFBO0", 0, 1.0f);
+	// 	singleton->drawFBO("resultFBO0", 0, 1.0f);
 		
-		glutSwapBuffers();
+	// 	glutSwapBuffers();
 		
-	}
+	// }
 
 	void renderDebug() {
 		

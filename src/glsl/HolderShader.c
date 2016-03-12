@@ -1,12 +1,6 @@
 #version 330
 
-// // solidTargFBO
-// uniform sampler2D Texture0;
-
-// // rasterSourceFBO
-// uniform sampler2D Texture1;
-
-
+uniform float heightOfNearPlane;
 uniform float FOV;
 uniform vec2 clipDist;
 uniform vec2 bufferDim;
@@ -29,7 +23,9 @@ out vec4 worldPos;
 void main() {
 	
 	worldPos = vec4(vposition.xyz,1.0);
-	vec4 screenPos = proj*modelview*worldPos;
+	vec4 screenPos = 
+		proj*modelview*worldPos;
+		//worldPos;
 	gl_Position = screenPos;
 	
 }
