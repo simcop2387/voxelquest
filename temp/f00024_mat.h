@@ -76,6 +76,8 @@ struct Vector3
     Vector3(float x, float y, float z) : x(x), y(y), z(z) {};
 
     // utils functions
+    void        doSin();
+    void        doFract();
     void        set(float x, float y, float z);
     float       length() const;                         //
     float       distance(const Vector3& vec) const;     // distance between two vectors
@@ -356,6 +358,17 @@ inline float& Vector3::operator[](int index) {
 
 inline void Vector3::set(float x, float y, float z) {
     this->x = x; this->y = y; this->z = z;
+}
+inline void Vector3::doSin() {
+    this->x = sin(this->x);
+    this->y = sin(this->y);
+    this->z = sin(this->z);
+}
+
+inline void Vector3::doFract() {
+    this->x = fract(this->x);
+    this->y = fract(this->y);
+    this->z = fract(this->z);
 }
 
 inline float Vector3::length() const {

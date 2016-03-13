@@ -528,32 +528,7 @@ enum PATTERN_SHAPES {
 };
 
 
-uint E_OCT_VISITED = 1;
-uint E_OCT_SOLID = 2;
-uint E_OCT_SURFACE = 4;
 
-
-struct OctNode {
-	int parent;
-	int children[8];
-	uint flags;
-	
-	int x;
-	int y;
-	int z;	
-	
-	void init(int _parent) {
-		int i;
-		
-		parent = _parent;
-		flags = 0;
-		
-		for (i = 0; i < 8; i++) {
-			children[i] = -1;
-		}
-	}
-	
-};
 
 const static int PATTERN_SIZE = 5;
 const static int PATTERN_CENTER = (PATTERN_SIZE/2);

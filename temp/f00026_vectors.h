@@ -28,9 +28,6 @@ float* toFloatPtr(char* baseAdr) {
 	return floatPtr;
 }
 
-float fract(float val) {
-	return (val - floor(val));
-}
 
 int intDiv(int v, int s) {
 	float fv = v;
@@ -3519,19 +3516,110 @@ struct PushModStruct
 	FIVector4 data[4];
 };
 
+
+uint E_OCT_VISITED = 1;
+uint E_OCT_SOLID = 2;
+uint E_OCT_SURFACE = 4;
+uint E_OCT_NOTNEW = 8;
+
+
+struct OctNode {
+	int parent;
+	int children[8];
+	uint flags;
+	
+	int x;
+	int y;
+	int z;	
+	
+	OctNode() {
+		
+	}
+	
+	void init(int _parent) {
+		int i;
+		
+		parent = _parent;
+		flags = 0;
+		
+		for (i = 0; i < 8; i++) {
+			children[i] = -1;
+		}
+	}
+	
+};
+
+
+
 struct PaddedDataEntry {
 	float terVal;
 	int cellVal;
 	bool visited;
 };
 
+struct VoxelBufferEntry {
+	uint flags;
+};
+
+struct VoxelBuffer {
+	VoxelBufferEntry* data;
+	int totSize;
+	int pitch;
+	vector<int> visitIds;
+	
+	void addIndex(int val) {
+		visitIds.push_back(val);
+	}
+	
+	bool getFlag(int flagPtr, uint flagVal) {
+		return (
+			(data[flagPtr].flags & flagVal) > 0
+		);
+	}
+	void setFlag(int flagPtr, uint flagVal) {
+		data[flagPtr].flags = data[flagPtr].flags | flagVal;
+	}
+	void clearFlag(int flagPtr, uint flagVal) {
+		data[flagPtr].flags = data[flagPtr].flags & (~flagVal);
+	}
+	
+	int addNode(VectorI3* pos, bool &wasNew) {
+		int ind = pos->x + pos->y*pitch + pos->z*pitch*pitch;
+		
+		wasNew = !(getFlag(ind,E_OCT_NOTNEW));
+		
+		return ind;
+	}
+	
+	void clearAllNodes() {
+		int i;
+		int mySize = visitIds.size();
+		int curInd;
+		
+		for (i = 0; i < mySize; i++) {
+			curInd = visitIds[i];
+			data[curInd].flags = 0;
+		}
+		
+		visitIds.clear();
+	}
+	
+};
 
 struct PaddedData {
 	PaddedDataEntry* data;
 	vector<VectorI3> fillStack;
+	VoxelBuffer voxelBuffer;
 	
 	bool isFree;
 };
+
+typedef Vector3 vec3;
+
+
+vec3 voroOffsets[27];
+// const static int VORO_PITCH = 16;
+// const static float VORO_VARIANCE = 0.25f;
 
 
 

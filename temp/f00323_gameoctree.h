@@ -68,7 +68,7 @@ void GameOctree::init (Singleton * _singleton, int _dimInVoxels, int reserveSize
 			
 		// }
 		
-		octNodes.reserve(reserveSize);
+		//octNodes.reserve(reserveSize);
 		clearAllNodes();
 		
 		
@@ -76,8 +76,10 @@ void GameOctree::init (Singleton * _singleton, int _dimInVoxels, int reserveSize
 int GameOctree::allocNode (int parent)
                                   {
 		octNodes.push_back(OctNode());
-		octNodes.back().init(parent);
-		return octNodes.size()-1;
+		int newInd = -1;
+		newInd = octNodes.size()-1;
+		octNodes[newInd].init(parent); //.back()
+		return newInd;
 	}
 int GameOctree::getNode (VectorI3 * pos)
                                    {

@@ -193,6 +193,7 @@ public:
   bool rotOn;
   bool doPageRender;
   bool markerFound;
+  bool updateFluid;
   bool updateHolders;
   bool fpsTest;
   bool frameMouseMove;
@@ -270,6 +271,7 @@ public:
   int frameSkipCount;
   int cellsPerHolder;
   int cellsPerHolderPad;
+  int voxelsPerHolderPad;
   int cellsPerBlock;
   int holdersPerBlock;
   int cellsPerWorld;
@@ -278,7 +280,6 @@ public:
   int voxelsPerCell;
   int paddingInCells;
   PaddedData (pdPool) [MAX_PDPOOL_SIZE];
-  GameOctree * (octPool) [MAX_PDPOOL_SIZE];
   intPair (entIdArr) [1024];
   uint palWidth;
   uint palHeight;
@@ -311,7 +312,6 @@ public:
   float cameraZoom;
   float targetZoom;
   float fogOn;
-  float mapSampScale;
   float curBrushRad;
   float timeOfDay;
   float targetTimeOfDay;
@@ -488,6 +488,7 @@ public:
   FIVector4 * BTV2FIV (btVector3 btv);
   void init (int _defaultWinW, int _defaultWinH, int _scaleFactor);
   void applyPat (int patInd, int patShape, int rot, int x, int y, int val, int rad);
+  void getVoroOffsets ();
   void generatePatterns ();
   int placeInStack ();
   int placeInLayer (int nodeId, int layer);
@@ -845,53 +846,41 @@ class GameVoxelWrap
 {
 public:
   Singleton * singleton;
-  GameOctree * gameOct;
+  VoxelBuffer * voxelBuffer;
   PaddedData * basePD;
   PaddedDataEntry * baseData;
-  VectorI3 octOffsetInVoxels;
+  int lastFFSteps;
   int curPD;
-  int dimInVoxels;
-  int octInVoxels;
   int voxelsPerCell;
   int cellsPerHolder;
   int cellsPerHolderPad;
+  int voxelsPerHolderPad;
   int paddingInCells;
   int paddingInVoxels;
   VectorI3 offsetInCells;
   VectorI3 offsetInVoxels;
+  vec3 oneVec;
+  vec3 halfOff;
+  vec3 crand0;
+  vec3 crand1;
+  vec3 crand2;
   GameVoxelWrap ();
+  void init (Singleton * _singleton);
   void fillVec (GamePageHolder * gph);
   void process (GamePageHolder * gph);
-  void init (Singleton * _singleton, int _dimInVoxels);
   bool findNextCoord (VectorI3 * voxResult);
   bool inBounds (VectorI3 * pos);
   int getNode (VectorI3 * pos);
-  int addNode (VectorI3 * pos, bool & wasNew);
   void floodFill (VectorI3 startVox);
-  bool getFlag (int flagPtr, uint flagVal);
-  void setFlag (int flagPtr, uint flagVal);
-  void clearFlag (int flagPtr, uint flagVal);
   bool isInvSurfaceVoxel (VectorI3 * pos, int ignorePtr, int & curPtr, bool checkVisited);
   bool isSurfaceVoxel (VectorI3 * pos, int & curPtr, bool checkVisited);
   int getVoxelAtCoord (VectorI3 * pos);
   float sampLinear (VectorI3 * pos);
   PaddedDataEntry * getPadData (int ii, int jj, int kk);
+  vec3 randPN (vec3 co);
+  void getVoro (VectorI3 * worldPos, VectorI3 * worldClosestCenter, int iSpacing);
   void calcVoxel (VectorI3 * pos, int octPtr);
 };
-LZZ_INLINE bool GameVoxelWrap::getFlag (int flagPtr, uint flagVal)
-                                                       {
-		return (
-			(gameOct->octNodes[flagPtr].flags & flagVal) > 0
-		);
-	}
-LZZ_INLINE void GameVoxelWrap::setFlag (int flagPtr, uint flagVal)
-                                                       {
-		gameOct->octNodes[flagPtr].flags = gameOct->octNodes[flagPtr].flags | flagVal;
-	}
-LZZ_INLINE void GameVoxelWrap::clearFlag (int flagPtr, uint flagVal)
-                                                         {
-		gameOct->octNodes[flagPtr].flags = gameOct->octNodes[flagPtr].flags & (~flagVal);
-	}
 #undef LZZ_INLINE
 #endif
 // f00325_uicomponent.e

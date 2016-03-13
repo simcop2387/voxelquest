@@ -756,11 +756,14 @@ public:
 							if (hasRead&&(!firstVPUpdate)) {
 								writeMIP.copyFrom(&volMinInPixels); //volMinInPixels
 								
-								//if (mainId == E_FID_SML) {
-									singleton->gameLogic->threadPoolPath->stopAll();
-									singleton->gameLogic->threadPoolList->stopAll();
-									writeFluidData();
-								//}
+								if (singleton->updateFluid) {
+									//if (mainId == E_FID_SML) {
+										singleton->gameLogic->threadPoolPath->stopAll();
+										singleton->gameLogic->threadPoolList->stopAll();
+										writeFluidData();
+									//}
+								}
+								
 								
 							}
 							
@@ -1116,9 +1119,13 @@ public:
 	
 	void funcFT() {
 		threadFluid.setRunningLocked(true);
-		//if (mainId==E_FID_SML) {
-			fluidChanged = updateFluidData();
-		//}
+		
+		if (singleton->updateFluid) {
+			//if (mainId==E_FID_SML) {
+				fluidChanged = updateFluidData();
+			//}
+		}
+		
 		
 		threadFluid.setRunningLocked(false);
 	}

@@ -102,7 +102,11 @@ class ThreadPoolWrapper {
 				break;
 				case E_TT_GENLIST:
 					curHolder->fillVBO();
+					
+					//cout << "unlocking pdPool " << curHolder->curPD << "\n";
+					
 					singleton->pdPool[curHolder->curPD].isFree = true;
+					curHolder->listGenerated = true;
 					curHolder->curPD = -1;
 				break;
 			}

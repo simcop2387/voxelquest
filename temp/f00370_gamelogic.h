@@ -1817,10 +1817,10 @@ void GameLogic::loadNearestHolders ()
 										
 										curPD = -1;
 										for (q = 0; q < MAX_PDPOOL_SIZE; q++) {
-											
 											if (singleton->pdPool[q].isFree) {
 												singleton->pdPool[q].isFree = false;
 												curPD = q;
+												//cout << "locking pdPool " << q << "\n";
 												break;
 											}
 										}
@@ -1834,6 +1834,11 @@ void GameLogic::loadNearestHolders ()
 											
 											if (threadPoolList->startThread()) {
 												genCount++;
+											}
+											else {
+												singleton->pdPool[curPD].isFree = true;
+												//cout << "unlocking pdPool (thread not ready) " << curPD << "\n";
+												curHolder->curPD = -1;
 											}
 										}
 										

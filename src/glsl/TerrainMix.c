@@ -5,7 +5,7 @@ uniform sampler2D Texture1; // imageHM0
 uniform sampler2D Texture2; // imageHM1
 
 uniform int passNum;
-uniform float mapSampScale;
+//uniform float mapSampScale;
 uniform vec3 paramArrMap[16];
 uniform vec2 minAndMax;
 
@@ -23,8 +23,8 @@ $
 
 float firstPass() {
     vec4 tex0 = texture2D( Texture0, (TexCoord0.xy + paramArrMap[8].xy) );
-    vec4 tex1 = texture2D( Texture1, (TexCoord0.xy + paramArrMap[9].xy)*mapSampScale );
-    vec4 tex2 = texture2D( Texture2, (TexCoord0.xy + paramArrMap[10].xy)*mapSampScale );
+    vec4 tex1 = texture2D( Texture1, (TexCoord0.xy + paramArrMap[9].xy) ); // *mapSampScale
+    vec4 tex2 = texture2D( Texture2, (TexCoord0.xy + paramArrMap[10].xy) ); // *mapSampScale
 
 
     float[6] sv;

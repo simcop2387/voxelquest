@@ -1,4 +1,4 @@
-﻿Build started 3/12/2016 2:02:14 PM.
+﻿Build started 3/13/2016 11:43:06 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -358,10 +358,10 @@
          cellsPerNodeXY: 16
          cellsPerNodeZ: 8
          holdersPerBlock: 8
-         cellsPerBlock: 256
-         terDataBufPitchScaledXY 20
-         cellsPerHolder: 32
-         cellsPerWorld: 65536
+         cellsPerBlock: 128
+         terDataBufPitchScaledXY 10
+         cellsPerHolder: 16
+         cellsPerWorld: 32768
          blocksPerWorld: 256
          MAX_UNIFORMS: 65536
          
@@ -1006,43 +1006,174 @@
          Valid JSON
                    
          GW DONE          
-         curHeight 0 newHeight 3644.24
+         curHeight 0 newHeight 1985.76
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          GL_MAX_TEXTURE_BUFFER_SIZE 134217728
          
          updateHolders 1
-         nodeCount 11370
-         vertices 20336
          
-         nodeCount 136049
-         vertices 229984
+         updateHolders 0
+         Loading:  ..\data\constants.js         
+         Load Successful          
          
-         nodeCount 227727
-         vertices 355912
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
          
-         nodeCount 540363
-         vertices 921864
+         Valid JSON
+                   
          
-         nodeCount 633460
-         vertices 1330208
+         Valid JSON
+                   
+         Shaders Refreshed
          
-         nodeCount 1393376
-         vertices 612616
+         updateHolders 1
          
-         nodeCount 602888
-         vertices 1150680
+         updateHolders 0
+         Loading:  ..\data\constants.js         
+         Load Successful          
          
-         nodeCount 546724
-         vertices 805936
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
          
-         nodeCount 844310
-         vertices 942080
+         Valid JSON
+                   
          
-     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
-C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -1073741819.
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         
+         updateHolders 1
+         
+         updateHolders 0
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
-Build FAILED.
+Build succeeded.
 
-Time Elapsed 00:00:28.12
+Time Elapsed 00:10:11.68

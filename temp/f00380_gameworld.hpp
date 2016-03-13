@@ -3426,7 +3426,7 @@ public:
 			singleton->setShaderInt("passNum",q);
 			singleton->setShaderVec2("minAndMax",((float)minSL)/255.0f,((float)maxSL)/255.0f);
 			singleton->setShaderArrayfVec3("paramArrMap", singleton->paramArrMap, 16 );
-			singleton->setShaderFloat("mapSampScale", 1.0f); //singleton->mapSampScale
+			//singleton->setShaderFloat("mapSampScale", 1.0f); //singleton->mapSampScale
 			singleton->drawFSQuad();
 			singleton->setShaderTexture(2, 0);
 			singleton->setShaderTexture(1, 0);

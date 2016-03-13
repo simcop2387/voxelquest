@@ -19,6 +19,8 @@ struct VectorI3
 
     // utils functions
     void        set(int x, int y, int z);
+    void        mod(int scale);
+    void        doAbs();
     int       length() const;                         //
     int       distance(const VectorI3& vec) const;     // distance between two vectors
     VectorI3&    normalize();                            //
@@ -151,6 +153,18 @@ inline int& VectorI3::operator[](int index) {
 
 inline void VectorI3::set(int x, int y, int z) {
     this->x = x; this->y = y; this->z = z;
+}
+
+inline void VectorI3::mod(int scale) {
+    this->x = (this->x % scale);
+    this->y = (this->y % scale);
+    this->z = (this->z % scale);
+}
+
+inline void VectorI3::doAbs() {
+    this->x = abs(this->x);
+    this->y = abs(this->y);
+    this->z = abs(this->z);
 }
 
 inline int VectorI3::length() const {

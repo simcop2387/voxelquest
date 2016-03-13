@@ -105,10 +105,7 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		
 
 		voxelWrap = new GameVoxelWrap();
-		voxelWrap->init(
-			singleton,
-			cellsPerHolder*singleton->voxelsPerCell
-		);
+		voxelWrap->init(singleton);
 
 		
 	}
@@ -1443,6 +1440,41 @@ void GamePageHolder::genCellData ()
 			cellData[ind+E_PTT_LST] = iWat;
 		}
 		
+		int cph2 = cellsPerHolder/2;
+		int readInd;
+		
+		for (k = 0; k < cph2; k++) {
+			for (j = 0; j < cph2; j++) {
+				for (i = 0; i < cph2; i++) {
+					
+					for (kk = 0; kk < 2; kk++) {
+						for (jj = 0; jj < 2; jj++) {
+							for (ii = 0; ii < 2; ii++) {
+								p = 
+									(k*2+kk)*cellsPerHolder*cellsPerHolder +
+									(j*2+jj)*cellsPerHolder +
+									(i*2+ii);
+								ind = p*4;
+								
+								p = 
+									(k*2)*cellsPerHolder*cellsPerHolder +
+									(j*2)*cellsPerHolder +
+									(i*2);
+								readInd = p*4;
+								
+								for (q = 0; q < 4; q++) {
+									cellData[ind+q] = cellData[readInd+q];
+									extrData[ind+q] = extrData[readInd+q];
+								}
+								
+							}
+						}
+					}
+					
+				}
+			}
+		}
+		
 		
 		wasGenerated = true;
 		
@@ -1597,7 +1629,7 @@ void GamePageHolder::fillVBO ()
 		}
 		
 		
-		listGenerated = true;
+		
 		
 	}
 int GamePageHolder::gatherData ()
@@ -1703,8 +1735,9 @@ void GamePageHolder::beginVoxelWrap ()
 		voxelWrap->process(this);
 		
 		if (curPD > -1) {
-			cout << "nodeCount " << singleton->octPool[curPD]->octNodes.size() << "\n";
-			cout << "vertices " << vertexVec.size() << "\n\n";
+			//cout << "lastFFSteps " << voxelWrap->lastFFSteps << "\n";
+			//cout << "nodeCount " << singleton->octPool[curPD]->octNodes.size() << "\n";
+			//cout << "vertices " << vertexVec.size() << "\n\n";
 		}
 		
 		

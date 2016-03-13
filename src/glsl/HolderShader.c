@@ -26,6 +26,9 @@ void main() {
 	vec4 screenPos = 
 		proj*modelview*worldPos;
 		//worldPos;
+	
+	gl_PointSize = (heightOfNearPlane / pow(screenPos.w,0.5))*0.2;
+		
 	gl_Position = screenPos;
 	
 }
@@ -39,7 +42,11 @@ layout(location = 0) out vec4 FragColor0;
 void main() {
 
 	FragColor0 = vec4(
-		mod((worldPos.xyz+0.01)/32.0,1.0),//(sin(worldPos.xyz/8.0)+1.0)*0.5,
+		//mod((worldPos.xyz+0.01)/32.0,1.0),
+		(sin(worldPos.xyz/16.0)+1.0)*0.5*
+		vec3(
+			1.0-distance(worldPos.xyz,cameraPos)/70.0	
+		),
 		1.0
 	);
 

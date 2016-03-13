@@ -4,56 +4,106 @@ public:
 	Singleton* singleton;
 	
 	
-	GameOctree* gameOct;
+	VoxelBuffer* voxelBuffer;
 	PaddedData* basePD;
 	PaddedDataEntry* baseData;
-	VectorI3 octOffsetInVoxels;
+	//VectorI3 octOffsetInVoxels;
 	
-	
+	int lastFFSteps;
 	int curPD;
-	int dimInVoxels;
-	int octInVoxels;
+	//int dimInVoxels;
+	//int octInVoxels;
+	//float fVoxelsPerCell;
 	int voxelsPerCell;
 	int cellsPerHolder;
 	int cellsPerHolderPad;
+	int voxelsPerHolderPad;
 	int paddingInCells;
 	int paddingInVoxels;
 	
 	VectorI3 offsetInCells;
 	VectorI3 offsetInVoxels;
 	
+	vec3 oneVec;
+	vec3 halfOff;
+	vec3 crand0;
+	vec3 crand1;
+	vec3 crand2;
 	
 	GameVoxelWrap() {
-		gameOct = NULL;
+		lastFFSteps = 0;
+		voxelBuffer = NULL;
 		basePD = NULL;
 		baseData = NULL;
+		
+		oneVec = vec3(1.0f,1.0f,1.0f);
+		halfOff = vec3(0.5,0.5,0.5);
+		crand0 = vec3(12.989, 78.233, 98.422);
+		crand1 = vec3(93.989, 67.345, 54.256);
+		crand2 = vec3(43.332, 93.532, 43.734);
 	}
 	
+	void init(
+		Singleton* _singleton
+		//,int _dimInVoxels
+	) {
+		singleton = _singleton;
+		//dimInVoxels = _dimInVoxels;
+		// octInVoxels = dimInVoxels*2;
+		
+		// octOffsetInVoxels = VectorI3(
+		// 	(octInVoxels-dimInVoxels)/2,
+		// 	(octInVoxels-dimInVoxels)/2,
+		// 	(octInVoxels-dimInVoxels)/2	
+		// );
+		
+		voxelsPerCell = singleton->voxelsPerCell;
+		//fVoxelsPerCell = voxelsPerCell;
+		cellsPerHolder = singleton->cellsPerHolder;
+		cellsPerHolderPad = singleton->cellsPerHolderPad;
+		paddingInCells = singleton->paddingInCells;
+		paddingInVoxels = paddingInCells*voxelsPerCell;
+		
+		voxelsPerHolderPad = singleton->voxelsPerHolderPad;
+		
+		
+	}
+	
+	
+	
 	void fillVec(GamePageHolder* gph) {
-		int totSize = gameOct->octNodes.size();
+		int totSize = voxelBuffer->visitIds.size();
 		
 		if (totSize <= 0) {
 			return;
 		}
 		
-		int i;
+		int q;
+		int p;
 		float fVPC = voxelsPerCell;
 		fVPC = 1.0f/fVPC;
 		
 		VectorI3 voxOffset;
 		Vector3 fVO;
-		OctNode* nodeArr = &(gameOct->octNodes[0]);
 		
-		for (i = 0; i < totSize; i++) {
+		
+		int ii;
+		int jj;
+		int kk;
+		
+		for (p = 0; p < totSize; p++) {
+			q = voxelBuffer->visitIds[p];
+			kk = q/(voxelsPerHolderPad*voxelsPerHolderPad);
+			jj = (q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
+			ii = q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
 			
-			
-			if (getFlag(i,E_OCT_SURFACE)) {
+			if (voxelBuffer->getFlag(q,E_OCT_SURFACE)) {
 				
-				voxOffset.x = nodeArr[i].x;
-				voxOffset.y = nodeArr[i].y;
-				voxOffset.z = nodeArr[i].z;
+				voxOffset.x = ii;
+				voxOffset.y = jj;
+				voxOffset.z = kk;
 				
-				voxOffset -= (octOffsetInVoxels - offsetInVoxels);
+				voxOffset += (offsetInVoxels);
 				
 				fVO.x = voxOffset.x;
 				fVO.y = voxOffset.y;
@@ -93,20 +143,21 @@ public:
 		offsetInVoxels = offsetInCells;
 		offsetInVoxels *= voxelsPerCell;
 		
-		gameOct = singleton->octPool[curPD];
-		gameOct->clearAllNodes();
+	
 		
 		
 		basePD = (&singleton->pdPool[curPD]);
 		baseData = singleton->pdPool[curPD].data;
 		
+		voxelBuffer = &(basePD->voxelBuffer);
+		voxelBuffer->clearAllNodes();
 		
 		while( findNextCoord(&voxResult) ) {
 			floodFill(voxResult);
-			//goto DONE_WITH_IT;
+			goto DONE_WITH_IT;
 		}
 		
-		//DONE_WITH_IT:
+		DONE_WITH_IT:
 		
 		fillVec(gph);
 		
@@ -116,28 +167,7 @@ public:
 	
 	
 	
-	void init(
-		Singleton* _singleton,
-		int _dimInVoxels
-	) {
-		singleton = _singleton;
-		dimInVoxels = _dimInVoxels;
-		octInVoxels = dimInVoxels*2;
-		
-		octOffsetInVoxels = VectorI3(
-			(octInVoxels-dimInVoxels)/2,
-			(octInVoxels-dimInVoxels)/2,
-			(octInVoxels-dimInVoxels)/2	
-		);
-		
-		voxelsPerCell = singleton->voxelsPerCell;
-		cellsPerHolder = singleton->cellsPerHolder;
-		cellsPerHolderPad = singleton->cellsPerHolderPad;
-		paddingInCells = singleton->paddingInCells;
-		paddingInVoxels = paddingInCells*voxelsPerCell;
-		
-		
-	}
+	
 	
 	
 
@@ -156,12 +186,9 @@ public:
 		VectorI3 curVoxel;
 		VectorI3 localOffset;
 		
-		int cellsPerHolder = singleton->cellsPerHolder;
-		int paddingInCells = singleton->paddingInCells;
 		
-		
-		int minv = 0;
-		int maxv = cellsPerHolder;
+		int minv = 0 + paddingInCells;
+		int maxv = cellsPerHolderPad-paddingInCells;
 		
 		int lastPtr;
 		int cellData;
@@ -228,7 +255,7 @@ public:
 												break;
 											}
 											
-											curVoxel += offsetInVoxels;
+											//curVoxel += offsetInVoxels;
 											curVoxel += localOffset;
 											if (isSurfaceVoxel(&curVoxel,lastPtr, false)) {
 												voxResult->set(
@@ -264,7 +291,7 @@ public:
 													break;
 												}
 												
-												curVoxel += offsetInVoxels;
+												//curVoxel += offsetInVoxels;
 												curVoxel += localOffset;
 												if (isSurfaceVoxel(&curVoxel,lastPtr,false)) {
 													voxResult->set(
@@ -293,38 +320,26 @@ public:
 
 	bool inBounds(VectorI3* pos) {
 		
-		VectorI3 minB = offsetInVoxels - octOffsetInVoxels;
-		VectorI3 maxB = offsetInVoxels + octOffsetInVoxels;
+		// VectorI3 minB = offsetInVoxels - octOffsetInVoxels;
+		// VectorI3 maxB = offsetInVoxels + octOffsetInVoxels;
 		
-		minB += (2);
-		maxB += (dimInVoxels - 2);
+		// minB += (0);
+		// maxB += (dimInVoxels - 0);
+		
+		int minB = 0;
+		int maxB = voxelsPerHolderPad;
 		
 		return (
-			(pos->x >= minB.x) && (pos->x < maxB.x)  &&
-			(pos->y >= minB.y) && (pos->y < maxB.y)  &&
-			(pos->z >= minB.z) && (pos->z < maxB.z)
+			(pos->x >= minB) && (pos->x < maxB)  &&
+			(pos->y >= minB) && (pos->y < maxB)  &&
+			(pos->z >= minB) && (pos->z < maxB)
 		);
 		
 	}
 
 
 	int getNode(VectorI3* pos) {
-		VectorI3 voxOffset = (*pos) + octOffsetInVoxels - offsetInVoxels;
-		
-		return gameOct->getNode(&voxOffset);
-	}
-	
-	int addNode(VectorI3* pos, bool &wasNew) {
-		bool wn;
-		int res;
-		
-		VectorI3 voxOffset = (*pos) + octOffsetInVoxels - offsetInVoxels;
-		
-		res = gameOct->addNode(&voxOffset,wn);
-		
-		wasNew = wn;
-		return res;
-		
+		return pos->x + pos->y*voxelsPerHolderPad + pos->z*voxelsPerHolderPad*voxelsPerHolderPad;
 	}
 
 	void floodFill(VectorI3 startVox) {
@@ -340,45 +355,60 @@ public:
 		int lastPtr;
 		
 		bool foundNext;
-				
+		
+		lastFFSteps = 0;
+		
+		curNode = getNode(&startVox);
+		voxelBuffer->setFlag(curNode,E_OCT_VISITED);
+		
 		while (basePD->fillStack.size() > 0) {
+			
+			lastFFSteps++;
+			
 			curVox = basePD->fillStack.back();
 			basePD->fillStack.pop_back();
 			
 			curNode = getNode(&curVox);
 			
 			
-			setFlag(curNode,E_OCT_VISITED);
-			
-			foundNext = false;
+			//foundNext = false;
 			
 			for (q = 0; q < NUM_ORIENTATIONS; q++) {
 				tempVox = curVox + DIR_VECS_IV[q];
 				
-				if (inBounds(&tempVox)) {
-					if (isSurfaceVoxel(&tempVox,lastPtr,true)) {
-						foundNext = true;
-						goto NEXT_FF_ITERATION;
-					}
+				//if (inBounds(&tempVox)) {}
+					
+				
+				if (isSurfaceVoxel(&tempVox,lastPtr,true)) {
+					basePD->fillStack.push_back(tempVox);
+					voxelBuffer->setFlag(lastPtr,E_OCT_VISITED);
+					// foundNext = true;
+					// goto NEXT_FF_ITERATION;
 				}
+				
 			}
 			
 			for (q = 0; q < NUM_ORIENTATIONS; q++) {
 				tempVox = curVox + DIR_VECS_IV[q];
 				
-				if (inBounds(&tempVox)) {
-					if (isInvSurfaceVoxel(&tempVox,curNode,lastPtr,true)) {
-						foundNext = true;
-						goto NEXT_FF_ITERATION;
-					}
+				//if (inBounds(&tempVox)) {}
+				
+				
+				if (isInvSurfaceVoxel(&tempVox,curNode,lastPtr,true)) {
+					basePD->fillStack.push_back(tempVox);
+					voxelBuffer->setFlag(lastPtr,E_OCT_VISITED);
+					// foundNext = true;
+					// goto NEXT_FF_ITERATION;
 				}
+				
+				
 			}
 			
-NEXT_FF_ITERATION:
+// NEXT_FF_ITERATION:
 			
-			if (foundNext) {
-				basePD->fillStack.push_back(tempVox);
-			}
+// 			if (foundNext) {
+// 				basePD->fillStack.push_back(tempVox);
+// 			}
 			
 		}
 		
@@ -386,47 +416,46 @@ NEXT_FF_ITERATION:
 
 
 
-	inline bool getFlag(int flagPtr, uint flagVal) {
-		return (
-			(gameOct->octNodes[flagPtr].flags & flagVal) > 0
-		);
-	}
-	inline void setFlag(int flagPtr, uint flagVal) {
-		gameOct->octNodes[flagPtr].flags = gameOct->octNodes[flagPtr].flags | flagVal;
-	}
-	inline void clearFlag(int flagPtr, uint flagVal) {
-		gameOct->octNodes[flagPtr].flags = gameOct->octNodes[flagPtr].flags & (~flagVal);
-	}
+	
 
 	bool isInvSurfaceVoxel(VectorI3* pos, int ignorePtr, int &curPtr, bool checkVisited) {
 		int q;
 		VectorI3 tempVox;
 		
 		curPtr = getVoxelAtCoord(pos);
+		if (curPtr < 0) {
+			return false;
+		}
+		
+		
 		int tempPtr;
 		
 		if (checkVisited) {
-			if (getFlag(curPtr,E_OCT_VISITED)) {
+			if (voxelBuffer->getFlag(curPtr,E_OCT_VISITED)) {
 				return false;
 			}
 		}
 		
-		if ( !(getFlag(curPtr,E_OCT_SOLID)) ) {
+		if ( !(voxelBuffer->getFlag(curPtr,E_OCT_SOLID)) ) {
 			
 			for (q = 0; q < NUM_ORIENTATIONS; q++) {
 				
 				tempVox = (*pos) + DIR_VECS_IV[q];
 				tempPtr = getVoxelAtCoord(&tempVox);
-				
-				if (tempPtr == ignorePtr) {
-					// ignore the voxel we came from
-				}
-				else {
-					if (getFlag(tempPtr,E_OCT_SOLID)) {
-						
-						return true;
+				if (tempPtr >= 0) {
+					if (tempPtr == ignorePtr) {
+						// ignore the voxel we came from
+					}
+					else {
+						if (voxelBuffer->getFlag(tempPtr,E_OCT_SOLID)) {
+							
+							return true;
+						}
 					}
 				}
+				
+				
+				
 				
 				
 				
@@ -441,47 +470,62 @@ NEXT_FF_ITERATION:
 		VectorI3 tempVox;
 		
 		curPtr = getVoxelAtCoord(pos);
+		if (curPtr < 0) {
+			return false;
+		}
 		
 		if (checkVisited) {
-			if (getFlag(curPtr,E_OCT_VISITED)) {
+			if (voxelBuffer->getFlag(curPtr,E_OCT_VISITED)) {
 				return false;
 			}
 		}
 		
 		int tempPtr;
 		
-		if ( getFlag(curPtr,E_OCT_SOLID) ) {
+		if ( voxelBuffer->getFlag(curPtr,E_OCT_SOLID) ) {
 			
 			for (q = 0; q < NUM_ORIENTATIONS; q++) {
 				
 				tempVox = (*pos) + DIR_VECS_IV[q];
 				tempPtr = getVoxelAtCoord(&tempVox);
 				
-				if (getFlag(tempPtr,E_OCT_SOLID)) {
-					
+				if (tempPtr >= 0) {
+					if (voxelBuffer->getFlag(tempPtr,E_OCT_SOLID)) {
+						
+					}
+					else {
+						voxelBuffer->setFlag(curPtr, E_OCT_SURFACE);
+						return true;
+					}
 				}
-				else {
-					setFlag(curPtr, E_OCT_SURFACE);
-					return true;
-				}
+				
 				
 			}
 		}
 		
-		clearFlag(curPtr, E_OCT_SURFACE);
+		//voxelBuffer->clearFlag(curPtr, E_OCT_SURFACE);
 		return false;
 	}
 
 	int getVoxelAtCoord(VectorI3* pos) {
 		
-		bool wasNew = false;
-		int result = addNode(pos,wasNew);
-		
-		if (wasNew) {
-			calcVoxel(pos,result);
+		if (inBounds(pos)) {
+			bool wasNew = false;
+			int result = voxelBuffer->addNode(pos,wasNew);
+			
+			if (wasNew) {
+				voxelBuffer->setFlag(result, E_OCT_NOTNEW);
+				voxelBuffer->addIndex(result);
+				calcVoxel(pos,result);
+			}
+			
+			return result;
+		}
+		else {
+			return -1;
 		}
 		
-		return result;
+		
 	}
 
 
@@ -542,9 +586,32 @@ NEXT_FF_ITERATION:
 	PaddedDataEntry* getPadData(int ii, int jj, int kk) {
 		
 		
-		int i = ii + paddingInCells;
-		int j = jj + paddingInCells;
-		int k = kk + paddingInCells;
+		int i = ii;
+		int j = jj;
+		int k = kk;
+		int cphM1 = cellsPerHolderPad-1;
+		
+		if (i < 0) {
+			i = 0;
+		}
+		if (i > cphM1) {
+			i = cphM1;
+		}
+		
+		if (j < 0) {
+			j = 0;
+		}
+		if (j > cphM1) {
+			j = cphM1;
+		}
+		
+		if (k < 0) {
+			k = 0;
+		}
+		if (k > cphM1) {
+			k = cphM1;
+		}
+		
 		
 		return &(
 			baseData[
@@ -556,22 +623,100 @@ NEXT_FF_ITERATION:
 
 	
 	
+
+	
+	vec3 randPN(vec3 co) {
+			
+			vec3 myres = vec3(
+					co.dot(crand0),
+					co.dot(crand1),
+					co.dot(crand2)
+			);
+			
+			myres.doSin();
+			myres *= 43758.8563f;
+			myres.doFract();
+			
+			return myres*2.0f - oneVec;
+	}
 	
 	
+	
+	void getVoro(VectorI3* worldPos, VectorI3* worldClosestCenter, int iSpacing) {
+		
+		vec3 fWorldPos = vec3(
+			worldPos->x,
+			worldPos->y,
+			worldPos->z
+		);
+		
+		float fSpacing = iSpacing;
+		
+		fWorldPos *= 1.0f/fSpacing;
+		
+		vec3 fWorldCellPos = vec3(
+			worldPos->x/iSpacing,
+			worldPos->y/iSpacing,
+			worldPos->z/iSpacing
+		);
+		
+		fWorldPos -= vec3(
+			fWorldCellPos.x,
+			fWorldCellPos.y,
+			fWorldCellPos.z
+		);
+		
+		int i;
+		
+		vec3 testPos;
+		float testDis;
+		float variance = 0.5f;
+		
+		vec3 bestPos = voroOffsets[0] + randPN(fWorldCellPos+voroOffsets[0])*variance;
+		float bestDis = fWorldPos.distance(bestPos);
+		
+		for (i = 1; i < 27; i++) {
+			testPos = voroOffsets[i] + randPN(fWorldCellPos+voroOffsets[i])*variance;
+			testDis = fWorldPos.distance(testPos);
+			
+			if (testDis < bestDis) {
+				bestDis = testDis;
+				bestPos = testPos;
+			}
+		}
+		
+		worldClosestCenter->set(
+			(bestPos.x + fWorldCellPos.x)*fSpacing,
+			(bestPos.y + fWorldCellPos.y)*fSpacing,
+			(bestPos.z + fWorldCellPos.z)*fSpacing
+		);
+		
+	}
 	
 	// should only be called when a new node is inserted!
 	void calcVoxel(VectorI3* pos, int octPtr) {
 		
-		VectorI3 sampPos = (*pos) - offsetInVoxels;
+		VectorI3 worldPos = (*pos) + offsetInVoxels;
+		worldPos -= paddingInVoxels;
 		
-		float terSamp = sampLinear(&sampPos);
+		VectorI3 worldClosestCenter;// = worldPos;
+		VectorI3 localClosestCenter;
 		
-		bool isSolid = (terSamp >= 0.5);
+		getVoro(&worldPos,&worldClosestCenter, voxelsPerCell);
+		localClosestCenter = worldClosestCenter - offsetInVoxels;
+		localClosestCenter += paddingInVoxels;
 		
-		//gameOct->octNodes[octPtr].flags = 0;
+		
+		
+		float terSamp = sampLinear(&localClosestCenter);
+		
+		float terSampOrig = sampLinear(pos);
+		bool isSolid = (mixf(terSamp,terSampOrig,0.5f) >= 0.5f);
+		//bool isSolid = (terSamp >= 0.5f);
+		
 		
 		if (isSolid) {
-			setFlag(octPtr, E_OCT_SOLID);
+			voxelBuffer->setFlag(octPtr, E_OCT_SOLID);
 		}
 		
 		

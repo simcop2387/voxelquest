@@ -74,11 +74,12 @@ const static float ORG_SCALE_BASE = 0.5f;
 
 
 
+
 const static int DEF_SCALE_FACTOR = 4;
 const static int RENDER_SCALE_FACTOR = 1;
 const static float SPHEREMAP_SCALE_FACTOR = 0.5f; // lower is faster
 
-const static int DEF_VOL_SIZE = 128;
+const static int DEF_VOL_SIZE = 64;
 
 const static bool USE_SPHERE_MAP = false;
 
@@ -163,6 +164,7 @@ const static float CUBE_POINTS[42] = {
 		
 		
 };
+
 
 
 
@@ -462,7 +464,9 @@ bool TRACE_ON = false;
 
 
 
-
+float fract(float val) {
+	return (val - floor(val));
+}
 
 
 

@@ -172,6 +172,7 @@ public:
 	bool doPageRender;
 	bool markerFound;
 	
+	bool updateFluid;
 	bool updateHolders;
 	bool fpsTest;
 	bool frameMouseMove;
@@ -260,6 +261,7 @@ public:
 	
 	int cellsPerHolder;
 	int cellsPerHolderPad;
+	int voxelsPerHolderPad;
 	int cellsPerBlock;
 	int holdersPerBlock;
 	
@@ -273,8 +275,7 @@ public:
 	
 	
 	PaddedData pdPool[MAX_PDPOOL_SIZE];
-	GameOctree* octPool[MAX_PDPOOL_SIZE];
-	
+	//GameOctree* octPool[MAX_PDPOOL_SIZE];
 	
 	
 	
@@ -322,7 +323,7 @@ public:
 	float cameraZoom;
 	float targetZoom;
 	float fogOn;
-	float mapSampScale;
+	//float mapSampScale;
 	float curBrushRad;
 	float timeOfDay;
 	float targetTimeOfDay;
@@ -795,6 +796,22 @@ public:
 			menuList[i] = NULL;
 		}
 		
+		// for (k = 0; k < VORO_PITCH; k++) {
+		// 	for (j = 0; j < VORO_PITCH; j++) {
+		// 		for (i = 0; i < VORO_PITCH; i++) {
+		// 			voroArr[k*VORO_PITCH*VORO_PITCH + j*VORO_PITCH + i] = 
+		// 			Vector3(
+		// 				(fGenRand2()-0.5f)*2.0f*VORO_VARIANCE + 0.5f,
+		// 				(fGenRand2()-0.5f)*2.0f*VORO_VARIANCE + 0.5f,
+		// 				(fGenRand2()-0.5f)*2.0f*VORO_VARIANCE + 0.5f
+		// 			);
+		// 		}
+		// 	}
+		// }
+		
+		getVoroOffsets();
+		
+		
 		mapComp = NULL;
 		fieldText = NULL;
 		selectedEnt = NULL;
@@ -923,7 +940,7 @@ public:
 		
 		
 		
-		// qqqqqq
+		
 		
 		// was doing: lerp from start to end postions, worlspace per pixel
 		
@@ -955,11 +972,11 @@ public:
 		fpsCountMax = 500;
 		
 		fpsTest = false;
-		pathfindingOn = true;
+		pathfindingOn = false;
 		pathfindingGen = false;
 		pathfindingTestOn = false;
 		updateHolders = false;
-		
+		updateFluid = false;
 		
 		maxHolderDis = 32;
 		heightOfNearPlane = 1.0f;
@@ -981,13 +998,19 @@ public:
 		// but also increases load times for each block
 		
 		
+		// qqqqqq
 		
-		heightMapMaxInCells = 8192.0f;
-		mapSampScale = 2.0f;
-		int newPitch = (imageHM0->width) * mapSampScale; //*2;
+		
+		heightMapMaxInCells = 4096.0f;
+		//mapSampScale = 2.0f;
+		int newPitch = (imageHM0->width) * 2; //*2;
 		mapPitch = (imageHM0->width); //newPitch;// //
 		
-		cellsPerHolder = 32;
+		
+		voxelsPerCell = 16;
+		paddingInCells = 1;
+		
+		cellsPerHolder = 16;
 		holdersPerBlock = 8;
 		
 		holdersPerWorld = newPitch;
@@ -996,21 +1019,27 @@ public:
 		blocksPerWorld = holdersPerWorld/holdersPerBlock;
 		
 		
-		voxelsPerCell = 16;
-		paddingInCells = 1;
+		
 		
 		cellsPerHolderPad = cellsPerHolder+paddingInCells*2;
+		voxelsPerHolderPad = voxelsPerCell*cellsPerHolderPad;
 		
 		for (i = 0; i < MAX_PDPOOL_SIZE; i++) {
 			pdPool[i].data = new PaddedDataEntry[cellsPerHolderPad*cellsPerHolderPad*cellsPerHolderPad];
 			//pdPool[i].voxData = new VoxEntry[voxelsPerCell*voxelsPerCell*voxelsPerCell]
 			pdPool[i].isFree = true;
-			octPool[i] = new GameOctree();
-			octPool[i]->init(
-				this,
-				cellsPerHolder*voxelsPerCell*2,
-				1024*1024*2
-			);
+			pdPool[i].voxelBuffer.pitch = voxelsPerHolderPad;
+			pdPool[i].voxelBuffer.totSize = voxelsPerHolderPad*voxelsPerHolderPad*voxelsPerHolderPad;
+			pdPool[i].voxelBuffer.data = new VoxelBufferEntry[
+				pdPool[i].voxelBuffer.totSize
+			];
+			
+			// octPool[i] = new GameOctree();
+			// octPool[i]->init(
+			// 	this,
+			// 	cellsPerHolder*voxelsPerCell*2,
+			// 	1024*1024*2
+			// );
 		}
 		
 		
@@ -1984,6 +2013,24 @@ public:
 			}
 		}
 		
+	}
+	
+	void getVoroOffsets() {
+		int i;
+		int j;
+		int k;
+		
+		for (k = 0; k <= 2; k++) {
+			for (j = 0; j <= 2; j++) {
+				for (i = 0; i <= 2; i++) {
+					voroOffsets[k*9 + j*3 + i] = vec3(
+						i - 1,
+						j - 1,
+						k - 1	
+					);
+				}
+			}
+		}
 	}
 	
 	void generatePatterns() {
