@@ -73,10 +73,11 @@ const static float ORG_SCALE_BASE = 0.5f;
 #endif
 
 
-
-
 const static int DEF_SCALE_FACTOR = 4;
 const static int RENDER_SCALE_FACTOR = 1;
+
+const static int VOXELS_PER_CELL = 8;
+
 const static float SPHEREMAP_SCALE_FACTOR = 0.5f; // lower is faster
 
 const static int DEF_VOL_SIZE = 64;
@@ -88,6 +89,7 @@ const static float TIME_DELTA = 1.0f/60.0f;
 const static int THREAD_DATA_COUNT = 16;
 
 const static int MAX_PDPOOL_SIZE = 8;
+const static int MAX_TBOPOOL_SIZE = 2;
 
 const static float MASS_PER_LIMB = 0.1f;
 
@@ -141,6 +143,13 @@ const static int TOT_MAP_DIRS = 4;
 
 const static int MAX_BLOCK_STACK = 10;
 const static int MAX_UI_LAYERS = 4;
+
+float ZERO_FLOATS[16] = {
+	0.0f, 0.0f, 0.0f, 0.0f,
+	0.0f, 0.0f, 0.0f, 0.0f,
+	0.0f, 0.0f, 0.0f, 0.0f,
+	0.0f, 0.0f, 0.0f, 0.0f
+};
 
 // solid, water, air
 const static float CUBE_POINTS[42] = {

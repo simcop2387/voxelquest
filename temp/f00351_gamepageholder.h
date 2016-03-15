@@ -26,6 +26,8 @@ GamePageHolder::GamePageHolder ()
 		
 		pathsReady = false;
 		idealPathsReady = false;
+		
+		cubeData = NULL;
 		cellData = NULL;
 		extrData = NULL;
 		pathData = NULL;
@@ -72,7 +74,7 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		//}
 		
 		
-		
+		cubeDataSize = cellsPerHolder*cellsPerHolder*cellsPerHolder;
 		pathSize = cellsPerHolder*cellsPerHolder*cellsPerHolder;
 		cellDataSize = cellsPerHolder*cellsPerHolder*cellsPerHolder*4;
 
@@ -279,10 +281,17 @@ void GamePageHolder::clearPathSizes ()
 	}
 void GamePageHolder::checkData (bool checkPath)
                                        {
+		int i;
 		
 		if (hasData) {
 			if (cellData == NULL) {
+				cubeData = new uint[cubeDataSize];
 				cellData = new int[cellDataSize];
+				
+				for (i = 0; i < cubeDataSize; i++) {
+					cubeData[i] = 0;
+				}
+				
 			}
 			
 			if (extrData == NULL) {
@@ -1457,7 +1466,7 @@ void GamePageHolder::genCellData ()
 								ind = p*4;
 								
 								p = 
-									(k*2)*cellsPerHolder*cellsPerHolder +
+									(k*2+kk)*cellsPerHolder*cellsPerHolder +
 									(j*2)*cellsPerHolder +
 									(i*2);
 								readInd = p*4;
@@ -1583,38 +1592,26 @@ void GamePageHolder::fillVBO ()
 			
 		}
 		else {
+			
 			if (POLYS_FOR_CELLS) {
 				
+				if (vboWrapper.hasInit) {
+					vboWrapper.endFill();
+				}
+				else {
+					vboWrapper.init(
+						2,
+						GL_STATIC_DRAW
+					);
+				}
 				
-				vboWrapper.init(
-					&(vertexVec[0]),
-					vertexVec.size(),
-					vertexVec.size(),
-					&(indexVec[0]),
-					indexVec.size(),
-					indexVec.size(),
-					2,
-					GL_STATIC_DRAW
-				);
 				
+				glFlush();
+				glFinish();
 			}
 			
 			if (DO_VOXEL_WRAP) {
-				vboWrapper.init(
-					&(vertexVec[0]),
-					vertexVec.size(),
-					vertexVec.size(),
-					NULL,
-					0,
-					0,
-					2,
-					GL_STATIC_DRAW
-				);
-			}
-			
-			if (POLYS_FOR_CELLS||DO_VOXEL_WRAP) {
-				glFlush();
-				glFinish();
+				
 			}
 			
 			
@@ -1754,7 +1751,7 @@ void GamePageHolder::wrapPolys ()
 		
 		int curInd;
 		
-		int procCount = 0;
+		
 		
 		
 		bool edgeK;
@@ -1815,14 +1812,8 @@ void GamePageHolder::wrapPolys ()
 			doProc[i] = false;
 		}
 		
-		int procFlags[6];
-		procFlags[0] = 1;
-		procFlags[1] = 2;
-		procFlags[2] = 4;
-		procFlags[3] = 8;
-		procFlags[4] = 16;
-		procFlags[5] = 32;
-		int procFlag = 0;
+		
+		uint procFlag = 0;
 
 		
 		
@@ -1836,6 +1827,8 @@ void GamePageHolder::wrapPolys ()
 		int cellGrid[27];
 		int maskVals[8];
 		int newInd;
+		
+		vboWrapper.beginFill();
 		
 		
 		for (k = 0; k < cellsPerHolder; k++) {
@@ -1967,82 +1960,23 @@ void GamePageHolder::wrapPolys ()
 						// }
 						
 						if (doProcAny) {
-							
+							vboWrapper.vboBox(
+								bpX,bpY,bpZ,
+								iv0,iv1,
+								procFlag,
+								ZERO_FLOATS,
+								4
+							);
 						}
-						
-						if (doProc[0]) { // x+
-							
-							getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
-							getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
-							getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
-							getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
-							
-							getIndVal(procCount);
-							procCount++;
-							
-							
-						}
-						if (doProc[1]) { // x-
-							
-							getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
-							getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
-							getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
-							getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
-							
-							getIndVal2(procCount);
-							procCount++;
-							
-						}
-						if (doProc[2]) { // y+
-							
-							getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
-							getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
-							getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
-							getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
-							
-							getIndVal2(procCount);
-							procCount++;
-							
-						}
-						if (doProc[3]) { // y-
-							
-							
-							getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
-							getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
-							getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
-							getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
-							
-							getIndVal(procCount);
-							procCount++;
-						}
-						if (doProc[4]) { // z+
-							
-							getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
-							getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
-							getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
-							getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
-							
-							getIndVal(procCount);
-							procCount++;
-						}
-						if (doProc[5]) { // z-
-							
-							getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
-							getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
-							getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
-							getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
-							
-							getIndVal2(procCount);
-							procCount++;
-						}
-						
-						
 						
 						
 					}
 				}
 			}
 		}
+		
+		
+		
 	}
 void GamePageHolder::generateList ()
                             { //int fboNum
@@ -2066,8 +2000,7 @@ void GamePageHolder::generateList ()
 		}
 		else {
 			
-			vertexVec.clear();
-			indexVec.clear();
+			
 			
 			if (DO_VOXEL_WRAP) {
 				beginVoxelWrap();
@@ -2080,7 +2013,12 @@ void GamePageHolder::generateList ()
 		}
 		
 		
-		listEmpty = (vertexVec.size() == 0);
+		listEmpty = (vboWrapper.vertexVec.size() == 0);
+		
+		if (DO_VOXEL_WRAP) {
+			listEmpty = (cubeWraps.size() == 0);
+		}
+		
 		holderFlags = tempHF;
 		
 		preGenList = true;

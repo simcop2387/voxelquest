@@ -85,16 +85,22 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		initAllMatrices();
 		
+		for (i = 0; i < 16; i++) {
+			ZERO_FLOATS[i] = 0.0f;
+		}
+		
+		for (i = 0; i < 32; i++) {
+			fsQuad.vertexVec.push_back(vertexDataQuad[i]);
+		}
+		for (i = 0; i < 6; i++) {
+			fsQuad.indexVec.push_back(indexDataQuad[i]);
+		}
 		fsQuad.init(
-			vertexDataQuad,
-			32,
-			32,
-			indexDataQuad,
-			6,
-			6,
 			2,
 			GL_STATIC_DRAW
 		);
+		fsQuad.updateNew();
+		
 		
 		colVecs[0].setFXYZ(255,0,0);
 		colVecs[1].setFXYZ(0,255,0);
@@ -394,7 +400,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		mapPitch = (imageHM0->width); //newPitch;// //
 		
 		
-		voxelsPerCell = 16;
+		voxelsPerCell = VOXELS_PER_CELL;
 		paddingInCells = 1;
 		
 		cellsPerHolder = 16;
@@ -410,6 +416,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		cellsPerHolderPad = cellsPerHolder+paddingInCells*2;
 		voxelsPerHolderPad = voxelsPerCell*cellsPerHolderPad;
+		voxelsPerHolder = voxelsPerCell*cellsPerHolder;
 		
 		for (i = 0; i < MAX_PDPOOL_SIZE; i++) {
 			pdPool[i].data = new PaddedDataEntry[cellsPerHolderPad*cellsPerHolderPad*cellsPerHolderPad];
@@ -427,6 +434,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			// 	cellsPerHolder*voxelsPerCell*2,
 			// 	1024*1024*2
 			// );
+		}
+		
+		for (i = 0; i < MAX_TBOPOOL_SIZE; i++) {
+			tboPool[i].init(128*1024*1024);
 		}
 		
 		
@@ -4622,9 +4633,15 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					
 				break;
 				case 't':
+				
+					
+				
 					//testOn2 = !testOn2;
 					//testOn3 = !testOn3;
 					renderingOct = !renderingOct;
+					if (renderingOct) {
+						gw->updateTBOPool(5);
+					}
 					
 					// if (renderingOct) {
 					// 	gameLogic->threadPoolList->stopAll();
@@ -7989,14 +8006,14 @@ void Singleton::frameUpdate ()
 							// }
 							// gw->rasterGrid(&myVBOGrid,true);
 							// bakeTicks++;
-							
+							gw->update(false,false);
 							gw->rasterHolders(true,true);
 							
 						}
 						else {
 							//gw->rasterOct(gameOct,false);
 							//gw->rasterGrid(&myVBOGrid,false);
-							gw->update(true);
+							gw->update(true,true);
 						}
 						
 						

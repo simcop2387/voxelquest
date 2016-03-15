@@ -12,8 +12,8 @@ private:
 	int* extrData;
 	
 public:
-
-	
+	uint* cubeData;
+	std::vector<CubeWrap> cubeWraps;
 
 	bool preGenList;
 	bool listGenerated;
@@ -30,6 +30,8 @@ public:
 	
 	GameVoxelWrap* voxelWrap;
 	
+	
+	
 	//GLuint holderDL;
 	
 	
@@ -45,7 +47,7 @@ public:
 	int totGroupIds;
 	
 	
-	
+	int cubeDataSize;
 	int cellDataSize;
 	int cellsPerHolder;
 	
@@ -64,8 +66,8 @@ public:
 	std::vector<GroupInfoStruct> groupInfoStack; // stores all info about one group
 	std::vector<ConnectingNodeStruct> bestConnectingNodes; // best connections between groups
 	
-	std::vector<float> vertexVec; //btScalar
-	std::vector<uint> indexVec; //unsigned short
+	// std::vector<float> vertexVec; //btScalar
+	// std::vector<uint> indexVec; //unsigned short
 	std::vector<int> collideIndices;
 	
 	//std::vector<GameEnt *> entityGeom;
@@ -133,6 +135,8 @@ public:
 		
 		pathsReady = false;
 		idealPathsReady = false;
+		
+		cubeData = NULL;
 		cellData = NULL;
 		extrData = NULL;
 		pathData = NULL;
@@ -192,7 +196,7 @@ public:
 		//}
 		
 		
-		
+		cubeDataSize = cellsPerHolder*cellsPerHolder*cellsPerHolder;
 		pathSize = cellsPerHolder*cellsPerHolder*cellsPerHolder;
 		cellDataSize = cellsPerHolder*cellsPerHolder*cellsPerHolder*4;
 
@@ -446,10 +450,17 @@ public:
 	}
 	
 	void checkData(bool checkPath) {
+		int i;
 		
 		if (hasData) {
 			if (cellData == NULL) {
+				cubeData = new uint[cubeDataSize];
 				cellData = new int[cellDataSize];
+				
+				for (i = 0; i < cubeDataSize; i++) {
+					cubeData[i] = 0;
+				}
+				
 			}
 			
 			if (extrData == NULL) {
@@ -1632,7 +1643,7 @@ FIRST_FILL_DONE:
 								ind = p*4;
 								
 								p = 
-									(k*2)*cellsPerHolder*cellsPerHolder +
+									(k*2+kk)*cellsPerHolder*cellsPerHolder +
 									(j*2)*cellsPerHolder +
 									(i*2);
 								readInd = p*4;
@@ -1963,78 +1974,7 @@ FIRST_FILL_DONE:
 	// }
 	
 	
-	inline void getIndVal(int procCount) {
-		indexVec.push_back(0+procCount*4);
-		indexVec.push_back(1+procCount*4);
-		indexVec.push_back(2+procCount*4);
-		indexVec.push_back(2+procCount*4);
-		indexVec.push_back(1+procCount*4);
-		indexVec.push_back(3+procCount*4);
-	}
 	
-	
-	
-	inline void getIndVal2(int procCount) {
-		indexVec.push_back(2+procCount*4);
-		indexVec.push_back(1+procCount*4);
-		indexVec.push_back(0+procCount*4);
-		indexVec.push_back(3+procCount*4);
-		indexVec.push_back(1+procCount*4);
-		indexVec.push_back(2+procCount*4);
-	}
-	
-	inline void getPixVal(
-		//FBOWrapper* fbow0,
-		//FBOWrapper* fbow1,
-		//int ind,
-		float xb, float yb, float zb,
-		int xm, int ym, int zm
-	) {
-		//int maskInd = xm + ym*2 + zm*4;
-		
-		// vertexVec.push_back(xb+xm+NET_MASKS[mv[maskInd]].getX());
-		// vertexVec.push_back(yb+ym+NET_MASKS[mv[maskInd]].getY());
-		// vertexVec.push_back(zb+zm+NET_MASKS[mv[maskInd]].getZ());
-		// vertexVec.push_back(1.0f);
-		
-		// vertexVec.push_back(xb+xm);
-		// vertexVec.push_back(yb+ym);
-		// vertexVec.push_back(zb+zm);
-		// vertexVec.push_back(1.0f);
-		
-		
-		vertexVec.push_back(xb+xm);
-		vertexVec.push_back(yb+ym);
-		vertexVec.push_back(zb+zm);
-		vertexVec.push_back(1.0f);
-		
-		vertexVec.push_back(xb+xm);
-		vertexVec.push_back(yb+ym);
-		vertexVec.push_back(zb+zm);
-		vertexVec.push_back(1.0f);
-		
-		
-		
-		
-		// glMultiTexCoord3f(
-		// 	GL_TEXTURE0,
-		// 	xb+xm,
-		// 	yb+ym,
-		// 	zb+zm
-		// );
-		// glMultiTexCoord4f(
-		// 	GL_TEXTURE1,
-		// 	fbow1->getPixelAtIndex(ind,R_CHANNEL)/255.0f,
-		// 	fbow1->getPixelAtIndex(ind,G_CHANNEL)/255.0f,
-		// 	fbow1->getPixelAtIndex(ind,B_CHANNEL)/255.0f,
-			
-		// 	fbow0->getPixelAtIndex(ind,B_CHANNEL) +
-		// 	fbow0->getPixelAtIndex(ind,A_CHANNEL)*256
-			
-		// );
-		
-		//glVertex3f(xb+xm,yb+ym,zb+zm);
-	}
 
 
 
@@ -2247,38 +2187,26 @@ FIRST_FILL_DONE:
 			
 		}
 		else {
+			
 			if (POLYS_FOR_CELLS) {
 				
+				if (vboWrapper.hasInit) {
+					vboWrapper.endFill();
+				}
+				else {
+					vboWrapper.init(
+						2,
+						GL_STATIC_DRAW
+					);
+				}
 				
-				vboWrapper.init(
-					&(vertexVec[0]),
-					vertexVec.size(),
-					vertexVec.size(),
-					&(indexVec[0]),
-					indexVec.size(),
-					indexVec.size(),
-					2,
-					GL_STATIC_DRAW
-				);
 				
+				glFlush();
+				glFinish();
 			}
 			
 			if (DO_VOXEL_WRAP) {
-				vboWrapper.init(
-					&(vertexVec[0]),
-					vertexVec.size(),
-					vertexVec.size(),
-					NULL,
-					0,
-					0,
-					2,
-					GL_STATIC_DRAW
-				);
-			}
-			
-			if (POLYS_FOR_CELLS||DO_VOXEL_WRAP) {
-				glFlush();
-				glFinish();
+				
 			}
 			
 			
@@ -2436,7 +2364,7 @@ FIRST_FILL_DONE:
 		
 		int curInd;
 		
-		int procCount = 0;
+		
 		
 		
 		bool edgeK;
@@ -2497,14 +2425,8 @@ FIRST_FILL_DONE:
 			doProc[i] = false;
 		}
 		
-		int procFlags[6];
-		procFlags[0] = 1;
-		procFlags[1] = 2;
-		procFlags[2] = 4;
-		procFlags[3] = 8;
-		procFlags[4] = 16;
-		procFlags[5] = 32;
-		int procFlag = 0;
+		
+		uint procFlag = 0;
 
 		
 		
@@ -2518,6 +2440,8 @@ FIRST_FILL_DONE:
 		int cellGrid[27];
 		int maskVals[8];
 		int newInd;
+		
+		vboWrapper.beginFill();
 		
 		
 		for (k = 0; k < cellsPerHolder; k++) {
@@ -2649,82 +2573,23 @@ FIRST_FILL_DONE:
 						// }
 						
 						if (doProcAny) {
-							
+							vboWrapper.vboBox(
+								bpX,bpY,bpZ,
+								iv0,iv1,
+								procFlag,
+								ZERO_FLOATS,
+								4
+							);
 						}
-						
-						if (doProc[0]) { // x+
-							
-							getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
-							getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
-							getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
-							getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
-							
-							getIndVal(procCount);
-							procCount++;
-							
-							
-						}
-						if (doProc[1]) { // x-
-							
-							getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
-							getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
-							getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
-							getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
-							
-							getIndVal2(procCount);
-							procCount++;
-							
-						}
-						if (doProc[2]) { // y+
-							
-							getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
-							getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
-							getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
-							getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
-							
-							getIndVal2(procCount);
-							procCount++;
-							
-						}
-						if (doProc[3]) { // y-
-							
-							
-							getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
-							getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
-							getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
-							getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
-							
-							getIndVal(procCount);
-							procCount++;
-						}
-						if (doProc[4]) { // z+
-							
-							getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1);
-							getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1);
-							getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1);
-							getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1);
-							
-							getIndVal(procCount);
-							procCount++;
-						}
-						if (doProc[5]) { // z-
-							
-							getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0);
-							getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0);
-							getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0);
-							getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0);
-							
-							getIndVal2(procCount);
-							procCount++;
-						}
-						
-						
 						
 						
 					}
 				}
 			}
 		}
+		
+		
+		
 	}
 
 	void generateList() { //int fboNum
@@ -2748,8 +2613,7 @@ FIRST_FILL_DONE:
 		}
 		else {
 			
-			vertexVec.clear();
-			indexVec.clear();
+			
 			
 			if (DO_VOXEL_WRAP) {
 				beginVoxelWrap();
@@ -2762,7 +2626,12 @@ FIRST_FILL_DONE:
 		}
 		
 		
-		listEmpty = (vertexVec.size() == 0);
+		listEmpty = (vboWrapper.vertexVec.size() == 0);
+		
+		if (DO_VOXEL_WRAP) {
+			listEmpty = (cubeWraps.size() == 0);
+		}
+		
 		holderFlags = tempHF;
 		
 		preGenList = true;

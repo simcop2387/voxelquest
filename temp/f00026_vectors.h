@@ -3044,25 +3044,10 @@ void moveToOrientation(
 
 
 class VBOWrapper {
-public:
-	GLuint vao, vbo, ibo;
-
-	int drawEnum;
-	int sizeOfID;
-	int maxSizeOfID;
-	int sizeOfVD;
-	int maxSizeOfVD;
-	int numVecs;
-	int attSize;
-	bool hasInit;
-	// GLfloat* vertexData;
-	// GLuint* indexData;
-
-	VBOWrapper() {
-		hasInit = false;
-	}
+private:
 	
-	void update(
+	
+	void updateBase(
 		GLfloat* _vertexData,
 		int _sizeOfVD,
 		GLuint* _indexData,
@@ -3087,24 +3072,47 @@ public:
 		
 	}
 	
-	void updateNew() {
-		// todo: use glBufferData instead of glBufferSubData
-		// to completely clear and create new buffer
+	void updateNewBase(
+		GLfloat* _vertexData,
+		int _sizeOfVD,
+		GLuint* _indexData,
+		int _sizeOfID
+	) {
+		
+		sizeOfVD = _sizeOfVD;
+		
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*_sizeOfVD, _vertexData, drawEnum);
+		//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(GLfloat)*_sizeOfVD, _vertexData);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		
+		
+		if (_indexData != NULL) {
+			sizeOfID = _sizeOfID;
+			
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+			glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*_sizeOfID, _indexData, drawEnum);
+			//glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sizeof(GLuint)*_sizeOfID, _indexData);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		}
 	}
 	
-	void init(
+	
+	void initBase(
 		GLfloat* _vertexData,
 		int _sizeOfVD,
 		int _maxSizeOfVD,
 		GLuint* _indexData,
 		int _sizeOfID,
-		int _maxSizeOfID,
-		int _numVecs, // number of 4 component vecs
-		int _drawEnum //GL_DYNAMIC_DRAW GL_STATIC_DRAW
+		int _maxSizeOfID
 	) {
 		
+		if (numVecs == -1) {
+			cout << "DID NOT INIT numVecs!\n";
+			return;
+		}
 		
-		numVecs = _numVecs;
+		
 		
 		sizeOfID = _sizeOfID;
 		maxSizeOfID = _maxSizeOfID;
@@ -3114,7 +3122,7 @@ public:
 		
 		// vertexData = _vertexData;
 		// indexData = _indexData;
-		drawEnum = _drawEnum;
+		
 		
 		int i;
 		
@@ -3136,8 +3144,11 @@ public:
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		
 		
-		// fill with data
-		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*maxSizeOfVD, _vertexData, drawEnum);
+		if (_vertexData != NULL) {
+			// fill with data
+			glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*maxSizeOfVD, _vertexData, drawEnum);
+		}
+		
 		
 		
 		for (i = 0; i < numVecs; i++) {
@@ -3148,10 +3159,12 @@ public:
 		
 		//glBindBuffer(GL_ARRAY_BUFFER, 0);
 		
+		// generate and bind the index buffer object
+		glGenBuffers(1, &ibo);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+		
 		if (_indexData != NULL) {
-			// generate and bind the index buffer object
-			glGenBuffers(1, &ibo);
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+			
 			
 			// fill with data
 			glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*maxSizeOfID, _indexData, drawEnum);
@@ -3167,9 +3180,126 @@ public:
 	
 	}
 	
+	
+	
+	
+public:
+	GLuint vao, vbo, ibo;
+
+	int drawEnum;
+	int sizeOfID;
+	int maxSizeOfID;
+	int sizeOfVD;
+	int maxSizeOfVD;
+	int numVecs;
+	int attSize;
+	bool hasInit;
+	
+	int procCount;
+
+	std::vector<float> vertexVec; //btScalar
+	std::vector<uint> indexVec; //unsigned short
+
+	VBOWrapper() {
+		numVecs = -1;
+		hasInit = false;
+		procCount = 0;
+	}
+	
+	
+	void init(
+		int _numVecs, // number of 4 component vecs
+		int _drawEnum //GL_DYNAMIC_DRAW GL_STATIC_DRAW	
+	) {
+		
+		numVecs = _numVecs;
+		drawEnum = _drawEnum;
+		
+	}
+	
+	void checkInit() {
+		if (hasInit) {
+			
+		}
+		else {
+			if (
+				(vertexVec.size() > 0) &&
+				(indexVec.size() > 0)	
+			) {
+				initBase(
+					&(vertexVec[0]),
+					vertexVec.size(),
+					vertexVec.size(),
+					&(indexVec[0]),
+					indexVec.size(),
+					indexVec.size()
+				);
+			}
+			else {
+				if (vertexVec.size() > 0) {
+					initBase(
+						&(vertexVec[0]),
+						vertexVec.size(),
+						vertexVec.size(),
+						NULL,
+						0,
+						0
+					);
+				}
+				else {
+					initBase(
+						NULL,
+						0,
+						0,
+						NULL,
+						0,
+						0
+					);
+				}
+			}
+		}
+	}
+	
+	void update() {
+		
+		checkInit();
+		
+		updateBase(
+			&(vertexVec[0]),
+			vertexVec.size(),
+			&(indexVec[0]),
+			indexVec.size()
+		);
+	}
+	void updateNew() {
+		
+		checkInit();
+		
+		updateNewBase(
+			&(vertexVec[0]),
+			vertexVec.size(),
+			&(indexVec[0]),
+			indexVec.size()	
+		);
+	}
+	
+	void beginFill() {
+		procCount = 0;
+		vertexVec.clear();
+		indexVec.clear();
+		
+	}
+	void endFill() {
+		if (vertexVec.size() > 0) {
+			updateNew();
+		}
+	}
+	
+	
 	void draw() {
 		
 		if (!hasInit) {
+			cout << "NOT INIT!\n";
 			return;
 		}
 		
@@ -3181,6 +3311,7 @@ public:
 	void drawPoints() {
 		
 		if (!hasInit) {
+			cout << "NOT INIT!\n";
 			return;
 		}
 		
@@ -3192,7 +3323,179 @@ public:
 		glDrawArrays(GL_POINTS, 0, sizeOfVD/attSize);
 		glBindVertexArray(0);
 		
-	}	
+	}
+	
+	
+	
+	
+	
+	inline void getIndVal(int procCount) {
+		indexVec.push_back(0+procCount*4);
+		indexVec.push_back(1+procCount*4);
+		indexVec.push_back(2+procCount*4);
+		indexVec.push_back(2+procCount*4);
+		indexVec.push_back(1+procCount*4);
+		indexVec.push_back(3+procCount*4);
+	}
+	
+	
+	
+	inline void getIndVal2(int procCount) {
+		indexVec.push_back(2+procCount*4);
+		indexVec.push_back(1+procCount*4);
+		indexVec.push_back(0+procCount*4);
+		indexVec.push_back(3+procCount*4);
+		indexVec.push_back(1+procCount*4);
+		indexVec.push_back(2+procCount*4);
+	}
+	
+	inline void getPixVal(
+		//FBOWrapper* fbow0,
+		//FBOWrapper* fbow1,
+		//int ind,
+		float xb, float yb, float zb,
+		float xm, float ym, float zm,
+		float* data,
+		int dataLen
+	) {
+		//int maskInd = xm + ym*2 + zm*4;
+		
+		// vertexVec.push_back(xb+xm+NET_MASKS[mv[maskInd]].getX());
+		// vertexVec.push_back(yb+ym+NET_MASKS[mv[maskInd]].getY());
+		// vertexVec.push_back(zb+zm+NET_MASKS[mv[maskInd]].getZ());
+		// vertexVec.push_back(1.0f);
+		
+		vertexVec.push_back(xb+xm);
+		vertexVec.push_back(yb+ym);
+		vertexVec.push_back(zb+zm);
+		vertexVec.push_back(1.0f);
+		
+		
+		// vertexVec.push_back(xb+xm);
+		// vertexVec.push_back(yb+ym);
+		// vertexVec.push_back(zb+zm);
+		
+		int i;
+		
+		for (i = 0; i < dataLen; i++) {
+			vertexVec.push_back(data[i]);
+		}
+		
+		
+		
+		
+		
+		// glMultiTexCoord3f(
+		// 	GL_TEXTURE0,
+		// 	xb+xm,
+		// 	yb+ym,
+		// 	zb+zm
+		// );
+		// glMultiTexCoord4f(
+		// 	GL_TEXTURE1,
+		// 	fbow1->getPixelAtIndex(ind,R_CHANNEL)/255.0f,
+		// 	fbow1->getPixelAtIndex(ind,G_CHANNEL)/255.0f,
+		// 	fbow1->getPixelAtIndex(ind,B_CHANNEL)/255.0f,
+			
+		// 	fbow0->getPixelAtIndex(ind,B_CHANNEL) +
+		// 	fbow0->getPixelAtIndex(ind,A_CHANNEL)*256
+			
+		// );
+		
+		//glVertex3f(xb+xm,yb+ym,zb+zm);
+	}
+	
+	void vboBox(
+		float bpX,
+		float bpY,
+		float bpZ,
+		
+		float iv0,
+		float iv1,
+		
+		uint procFlag,
+		
+		float* data,
+		int dataLen
+	) {
+		if (procFlags[0]&procFlag) { // x+
+			
+			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0,data,dataLen);
+			
+			getIndVal(procCount);
+			procCount++;
+			
+			
+		}
+		if (procFlags[1]&procFlag) { // x-
+			
+			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0,data,dataLen);
+			
+			getIndVal2(procCount);
+			procCount++;
+			
+		}
+		if (procFlags[2]&procFlag) { // y+
+			
+			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0,data,dataLen);
+			
+			getIndVal2(procCount);
+			procCount++;
+			
+		}
+		if (procFlags[3]&procFlag) { // y-
+			
+			
+			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0,data,dataLen);
+			
+			getIndVal(procCount);
+			procCount++;
+		}
+		if (procFlags[4]&procFlag) { // z+
+			
+			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1,data,dataLen);
+			
+			getIndVal(procCount);
+			procCount++;
+		}
+		if (procFlags[5]&procFlag) { // z-
+			
+			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0,data,dataLen);
+			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0,data,dataLen);
+			
+			getIndVal2(procCount);
+			procCount++;
+		}
+	}
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 };
 
@@ -3209,9 +3512,6 @@ public:
 	VBOWrapper vboWrapper;
 
 
-	std::vector<float> vertexVec;
-	std::vector<uint> indexVec;
-	
 
 	VBOGrid() {
 		
@@ -3243,17 +3543,17 @@ public:
 			fj = j;
 			for (i = 0; i < xpitch; i++) {
 				fi = i;
-				vertexVec.push_back(i);
-				vertexVec.push_back(j);
-				vertexVec.push_back(1.0f);
-				vertexVec.push_back(0.0f);
+				vboWrapper.vertexVec.push_back(i);
+				vboWrapper.vertexVec.push_back(j);
+				vboWrapper.vertexVec.push_back(1.0f);
+				vboWrapper.vertexVec.push_back(0.0f);
 				
 				
 				
-				vertexVec.push_back(fi/fxp);
-				vertexVec.push_back(fj/fyp);
-				vertexVec.push_back(0.0f);
-				vertexVec.push_back(0.0f);
+				vboWrapper.vertexVec.push_back(fi/fxp);
+				vboWrapper.vertexVec.push_back(fj/fyp);
+				vboWrapper.vertexVec.push_back(0.0f);
+				vboWrapper.vertexVec.push_back(0.0f);
 				
 			}
 		}
@@ -3288,28 +3588,20 @@ public:
 				// 0 1
 				// 2 3
 				
-				indexVec.push_back(ind0);
-				indexVec.push_back(ind1);
-				indexVec.push_back(ind3);
+				vboWrapper.indexVec.push_back(ind0);
+				vboWrapper.indexVec.push_back(ind1);
+				vboWrapper.indexVec.push_back(ind3);
 				
-				indexVec.push_back(ind3);
-				indexVec.push_back(ind2);
-				indexVec.push_back(ind0);
+				vboWrapper.indexVec.push_back(ind3);
+				vboWrapper.indexVec.push_back(ind2);
+				vboWrapper.indexVec.push_back(ind0);
 				
 				
 			}
 		}
 		
 		
-		
-		
 		vboWrapper.init(
-			&(vertexVec[0]),
-			vertexVec.size(),
-			vertexVec.size(),
-			&(indexVec[0]),
-			indexVec.size(),
-			indexVec.size(),
 			2,
 			GL_STATIC_DRAW
 		);
@@ -3551,6 +3843,71 @@ struct OctNode {
 
 
 
+const static int CUBE_WRAP_ENTRIES = 4;
+const static int CUBE_WRAP_SIZE = VOXELS_PER_CELL*VOXELS_PER_CELL*3*CUBE_WRAP_ENTRIES;
+
+// slice 0: yz
+// slice 1: xz
+// slice 2: xy
+
+struct CubeWrap {
+	uint data[CUBE_WRAP_SIZE];
+	
+	void insertValue(ivec3* loc) { //, vec3* val) {
+		int indYZ = (loc->y + loc->z*VOXELS_PER_CELL + 0*VOXELS_PER_CELL*VOXELS_PER_CELL)*CUBE_WRAP_ENTRIES;
+		int indXZ = (loc->x + loc->z*VOXELS_PER_CELL + 1*VOXELS_PER_CELL*VOXELS_PER_CELL)*CUBE_WRAP_ENTRIES;
+		int indXY = (loc->x + loc->y*VOXELS_PER_CELL + 2*VOXELS_PER_CELL*VOXELS_PER_CELL)*CUBE_WRAP_ENTRIES;
+		
+		if (loc->x > data[indYZ+0]) {
+			data[indYZ+0] = loc->x;
+		}
+		if (loc->x < data[indYZ+1]) {
+			data[indYZ+1] = loc->x;
+		}
+		
+		if (loc->y > data[indXZ+0]) {
+			data[indXZ+0] = loc->y;
+		}
+		if (loc->y < data[indXZ+1]) {
+			data[indXZ+1] = loc->y;
+		}
+		
+		if (loc->z > data[indXY+0]) {
+			data[indXY+0] = loc->z;
+		}
+		if (loc->z < data[indXY+1]) {
+			data[indXY+1] = loc->z;
+		}
+		
+	}
+	
+	void init() {
+		int i;
+		int j;
+		int k;
+		
+		int ind;
+		
+		for (k = 0; k < 3; k++) {
+			
+			for (j = 0; j < VOXELS_PER_CELL; j++) {
+				for (i = 0; i < VOXELS_PER_CELL; i++) {
+					
+					ind = (k*VOXELS_PER_CELL*VOXELS_PER_CELL + j*VOXELS_PER_CELL + i)*CUBE_WRAP_ENTRIES;
+					
+					data[ind+0] = 0;
+					data[ind+1] = VOXELS_PER_CELL-1;
+					data[ind+2] = 0.0f;
+					data[ind+3] = 0.0f;
+					
+				}
+			}
+		}
+	}
+};
+
+typedef CubeWrap* CubeWrapPtr;
+
 struct PaddedDataEntry {
 	float terVal;
 	int cellVal;
@@ -3614,7 +3971,72 @@ struct PaddedData {
 	bool isFree;
 };
 
-typedef Vector3 vec3;
+
+struct TBOEntry {
+	TBOWrapper tbo;
+	VBOWrapper vbo;
+	uint* data;
+	uint writeIndex;
+	
+	int sizeInBytes;
+	int sizeInEntries;
+	bool locked;
+	
+	
+	void init(int _sizeInBytes) {
+		locked = false;
+		writeIndex = 4;
+		
+		sizeInBytes = _sizeInBytes;
+		sizeInEntries = sizeInBytes/4;
+		tbo.init(false,NULL,data,sizeInBytes);
+		
+		vbo.init(
+			2,
+			GL_STATIC_DRAW
+		);
+		
+	}
+	
+	void writeData(uint val) {
+		data[writeIndex] = val;
+		writeIndex++;
+	}
+	
+	bool cantWrite(int len) {
+		return (
+			(writeIndex+len) >= sizeInEntries
+		);
+	}
+	
+	void writeDataArr(uint* vals, int len) {
+		int i;
+		
+		for (i = 0; i < len; i++) {
+			data[writeIndex] = vals[i];
+			writeIndex++;
+		}
+		
+	}
+	
+	
+	void lock() {
+		locked = true;
+		writeIndex = 4;
+		
+		vbo.beginFill();
+	}
+	
+	void unlock() {
+		tbo.update(NULL, data, -1);
+		vbo.endFill();
+		glFlush();
+		glFinish();
+		locked = false;
+	}
+	
+};
+
 
 
 vec3 voroOffsets[27];

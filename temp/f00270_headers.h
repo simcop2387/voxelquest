@@ -271,6 +271,7 @@ public:
   int frameSkipCount;
   int cellsPerHolder;
   int cellsPerHolderPad;
+  int voxelsPerHolder;
   int voxelsPerHolderPad;
   int cellsPerBlock;
   int holdersPerBlock;
@@ -279,6 +280,7 @@ public:
   int blocksPerWorld;
   int voxelsPerCell;
   int paddingInCells;
+  TBOEntry (tboPool) [MAX_TBOPOOL_SIZE];
   PaddedData (pdPool) [MAX_PDPOOL_SIZE];
   intPair (entIdArr) [1024];
   uint palWidth;
@@ -855,10 +857,11 @@ public:
   int cellsPerHolder;
   int cellsPerHolderPad;
   int voxelsPerHolderPad;
+  int voxelsPerHolder;
   int paddingInCells;
   int paddingInVoxels;
-  VectorI3 offsetInCells;
-  VectorI3 offsetInVoxels;
+  ivec3 offsetInCells;
+  ivec3 offsetInVoxels;
   vec3 oneVec;
   vec3 halfOff;
   vec3 crand0;
@@ -868,18 +871,18 @@ public:
   void init (Singleton * _singleton);
   void fillVec (GamePageHolder * gph);
   void process (GamePageHolder * gph);
-  bool findNextCoord (VectorI3 * voxResult);
-  bool inBounds (VectorI3 * pos);
-  int getNode (VectorI3 * pos);
-  void floodFill (VectorI3 startVox);
-  bool isInvSurfaceVoxel (VectorI3 * pos, int ignorePtr, int & curPtr, bool checkVisited);
-  bool isSurfaceVoxel (VectorI3 * pos, int & curPtr, bool checkVisited);
-  int getVoxelAtCoord (VectorI3 * pos);
-  float sampLinear (VectorI3 * pos);
+  bool findNextCoord (ivec3 * voxResult);
+  bool inBounds (ivec3 * pos, int minB, int maxB);
+  int getNode (ivec3 * pos);
+  void floodFill (ivec3 startVox);
+  bool isInvSurfaceVoxel (ivec3 * pos, int ignorePtr, int & curPtr, bool checkVisited);
+  bool isSurfaceVoxel (ivec3 * pos, int & curPtr, bool checkVisited);
+  int getVoxelAtCoord (ivec3 * pos);
+  float sampLinear (ivec3 * pos);
   PaddedDataEntry * getPadData (int ii, int jj, int kk);
   vec3 randPN (vec3 co);
-  void getVoro (VectorI3 * worldPos, VectorI3 * worldClosestCenter, int iSpacing);
-  void calcVoxel (VectorI3 * pos, int octPtr);
+  void getVoro (ivec3 * worldPos, ivec3 * worldClosestCenter, int iSpacing);
+  void calcVoxel (ivec3 * pos, int octPtr);
 };
 #undef LZZ_INLINE
 #endif
@@ -1652,6 +1655,8 @@ private:
   int * cellData;
   int * extrData;
 public:
+  uint * cubeData;
+  std::vector <CubeWrap> cubeWraps;
   bool preGenList;
   bool listGenerated;
   bool listEmpty;
@@ -1668,6 +1673,7 @@ public:
   int pathSize;
   int totIdealNodes;
   int totGroupIds;
+  int cubeDataSize;
   int cellDataSize;
   int cellsPerHolder;
   int visitId;
@@ -1680,8 +1686,6 @@ public:
   std::vector <GroupIdStruct> groupIdStack;
   std::vector <GroupInfoStruct> groupInfoStack;
   std::vector <ConnectingNodeStruct> bestConnectingNodes;
-  std::vector <float> vertexVec;
-  std::vector <uint> indexVec;
   std::vector <int> collideIndices;
   FIVector4 offsetInHolders;
   FIVector4 gphMinInCells;
@@ -1713,9 +1717,6 @@ public:
   bool prepPathRefresh (int rad);
   void refreshPaths ();
   void genCellData ();
-  void getIndVal (int procCount);
-  void getIndVal2 (int procCount);
-  void getPixVal (float xb, float yb, float zb, int xm, int ym, int zm);
   void fillVBO ();
   PaddedDataEntry * getPadData (int ii, int jj, int kk);
   int gatherData ();
@@ -1723,71 +1724,6 @@ public:
   void wrapPolys ();
   void generateList ();
 };
-LZZ_INLINE void GamePageHolder::getIndVal (int procCount)
-                                             {
-		indexVec.push_back(0+procCount*4);
-		indexVec.push_back(1+procCount*4);
-		indexVec.push_back(2+procCount*4);
-		indexVec.push_back(2+procCount*4);
-		indexVec.push_back(1+procCount*4);
-		indexVec.push_back(3+procCount*4);
-	}
-LZZ_INLINE void GamePageHolder::getIndVal2 (int procCount)
-                                              {
-		indexVec.push_back(2+procCount*4);
-		indexVec.push_back(1+procCount*4);
-		indexVec.push_back(0+procCount*4);
-		indexVec.push_back(3+procCount*4);
-		indexVec.push_back(1+procCount*4);
-		indexVec.push_back(2+procCount*4);
-	}
-LZZ_INLINE void GamePageHolder::getPixVal (float xb, float yb, float zb, int xm, int ym, int zm)
-          {
-		//int maskInd = xm + ym*2 + zm*4;
-		
-		// vertexVec.push_back(xb+xm+NET_MASKS[mv[maskInd]].getX());
-		// vertexVec.push_back(yb+ym+NET_MASKS[mv[maskInd]].getY());
-		// vertexVec.push_back(zb+zm+NET_MASKS[mv[maskInd]].getZ());
-		// vertexVec.push_back(1.0f);
-		
-		// vertexVec.push_back(xb+xm);
-		// vertexVec.push_back(yb+ym);
-		// vertexVec.push_back(zb+zm);
-		// vertexVec.push_back(1.0f);
-		
-		
-		vertexVec.push_back(xb+xm);
-		vertexVec.push_back(yb+ym);
-		vertexVec.push_back(zb+zm);
-		vertexVec.push_back(1.0f);
-		
-		vertexVec.push_back(xb+xm);
-		vertexVec.push_back(yb+ym);
-		vertexVec.push_back(zb+zm);
-		vertexVec.push_back(1.0f);
-		
-		
-		
-		
-		// glMultiTexCoord3f(
-		// 	GL_TEXTURE0,
-		// 	xb+xm,
-		// 	yb+ym,
-		// 	zb+zm
-		// );
-		// glMultiTexCoord4f(
-		// 	GL_TEXTURE1,
-		// 	fbow1->getPixelAtIndex(ind,R_CHANNEL)/255.0f,
-		// 	fbow1->getPixelAtIndex(ind,G_CHANNEL)/255.0f,
-		// 	fbow1->getPixelAtIndex(ind,B_CHANNEL)/255.0f,
-			
-		// 	fbow0->getPixelAtIndex(ind,B_CHANNEL) +
-		// 	fbow0->getPixelAtIndex(ind,A_CHANNEL)*256
-			
-		// );
-		
-		//glVertex3f(xb+xm,yb+ym,zb+zm);
-	}
 LZZ_INLINE PaddedDataEntry * GamePageHolder::getPadData (int ii, int jj, int kk)
                                                                    {
 		
@@ -2257,7 +2193,7 @@ public:
   void setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void getArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void fireEvent (BaseObjType uid, int opCode, float fParam);
-  void update (bool postToScreen);
+  void update (bool postToScreen, bool doRender);
   void toggleVis (GameEnt * se);
   void ensureBlocks ();
   void findNearestEnt (EntSelection * entSelection, int entType, int maxLoadRad, int radStep, FIVector4 * testPoint, bool onlyInteractive = false, bool ignoreDistance = false);
@@ -2268,6 +2204,7 @@ public:
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void polyCombine ();
   void drawPolys (string fboName, int minPeel, int maxPeel);
+  void updateTBOPool (int rad);
   void rasterPolys (int minPeel, int maxPeel, int extraRad = 0, bool doPoints = false);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);

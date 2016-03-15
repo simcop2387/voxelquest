@@ -527,6 +527,16 @@ enum PATTERN_SHAPES {
 	E_PATSHAPE_LENGTH
 };
 
+const static uint procFlags[6] = {
+	1,
+	2,
+	4,
+	8,
+	16,
+	32		
+};
+
+const static uint ALL_FACES = 63;
 
 
 

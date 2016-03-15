@@ -216,4 +216,13 @@ const static VectorI3 DIR_VECS_IV[NUM_ORIENTATIONS] = {
 };
 
 
+typedef VectorI3 ivec3;
+
+ivec3 toIVEC(vec3 val) {
+    return ivec3(val.x,val.y,val.z);
+}
+vec3 toVEC(ivec3 val) {
+    return vec3(val.x,val.y,val.z);
+}
+
  

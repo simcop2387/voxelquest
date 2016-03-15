@@ -7,7 +7,7 @@ public:
 	VoxelBuffer* voxelBuffer;
 	PaddedData* basePD;
 	PaddedDataEntry* baseData;
-	//VectorI3 octOffsetInVoxels;
+	//ivec3 octOffsetInVoxels;
 	
 	int lastFFSteps;
 	int curPD;
@@ -18,11 +18,12 @@ public:
 	int cellsPerHolder;
 	int cellsPerHolderPad;
 	int voxelsPerHolderPad;
+	int voxelsPerHolder;
 	int paddingInCells;
 	int paddingInVoxels;
 	
-	VectorI3 offsetInCells;
-	VectorI3 offsetInVoxels;
+	ivec3 offsetInCells;
+	ivec3 offsetInVoxels;
 	
 	vec3 oneVec;
 	vec3 halfOff;
@@ -51,7 +52,7 @@ public:
 		//dimInVoxels = _dimInVoxels;
 		// octInVoxels = dimInVoxels*2;
 		
-		// octOffsetInVoxels = VectorI3(
+		// octOffsetInVoxels = ivec3(
 		// 	(octInVoxels-dimInVoxels)/2,
 		// 	(octInVoxels-dimInVoxels)/2,
 		// 	(octInVoxels-dimInVoxels)/2	
@@ -65,6 +66,8 @@ public:
 		paddingInVoxels = paddingInCells*voxelsPerCell;
 		
 		voxelsPerHolderPad = singleton->voxelsPerHolderPad;
+		voxelsPerHolder = singleton->voxelsPerHolder;
+		
 		
 		
 	}
@@ -83,13 +86,20 @@ public:
 		float fVPC = voxelsPerCell;
 		fVPC = 1.0f/fVPC;
 		
-		VectorI3 voxOffset;
-		Vector3 fVO;
+		ivec3 voxOffset;
+		ivec3 cellOffset;
+		ivec3 localVoxOffset;
+		
+		//vec3 fLocalVoxOffset;
+		vec3 fVO;
 		
 		
 		int ii;
 		int jj;
 		int kk;
+		int ind;
+		
+		CubeWrap* curCW;
 		
 		for (p = 0; p < totSize; p++) {
 			q = voxelBuffer->visitIds[p];
@@ -103,23 +113,46 @@ public:
 				voxOffset.y = jj;
 				voxOffset.z = kk;
 				
-				voxOffset += (offsetInVoxels);
+				voxOffset -= paddingInVoxels;
 				
-				fVO.x = voxOffset.x;
-				fVO.y = voxOffset.y;
-				fVO.z = voxOffset.z;
+				if (inBounds(&voxOffset,0,voxelsPerHolder)) {
+					cellOffset = voxOffset/voxelsPerCell;
+					localVoxOffset = voxOffset-(cellOffset*voxelsPerCell);
+					//fLocalVoxOffset = toVEC(localVoxOffset);
+					//fLocalVoxOffset *= fVPC;
+					
+					ind = cellOffset.z*cellsPerHolder*cellsPerHolder + cellOffset.y*cellsPerHolder + cellOffset.x;
+					
+					if (gph->cubeData[ind] == 0) {
+						gph->cubeWraps.push_back(CubeWrap());
+						gph->cubeData[ind] = (gph->cubeWraps.size()-1)+gph->cubeDataSize;
+						gph->cubeWraps[gph->cubeData[ind]].init();
+					}
+					
+					curCW = &(gph->cubeWraps[gph->cubeData[ind]]);
+					
+					curCW->insertValue(&localVoxOffset);//, &fLocalVoxOffset);
+				}
 				
-				fVO *= fVPC;
+				// voxOffset += (offsetInVoxels);
 				
-				gph->vertexVec.push_back(fVO.x);
-				gph->vertexVec.push_back(fVO.y);
-				gph->vertexVec.push_back(fVO.z);
-				gph->vertexVec.push_back(1.0f);
+				// fVO.x = voxOffset.x;
+				// fVO.y = voxOffset.y;
+				// fVO.z = voxOffset.z;
 				
-				gph->vertexVec.push_back(fVO.x);
-				gph->vertexVec.push_back(fVO.y);
-				gph->vertexVec.push_back(fVO.z);
-				gph->vertexVec.push_back(1.0f);
+				// fVO *= fVPC;
+				
+				// gph->vertexVec.push_back(fVO.x);
+				// gph->vertexVec.push_back(fVO.y);
+				// gph->vertexVec.push_back(fVO.z);
+				// gph->vertexVec.push_back(1.0f);
+				
+				// gph->vertexVec.push_back(fVO.x);
+				// gph->vertexVec.push_back(fVO.y);
+				// gph->vertexVec.push_back(fVO.z);
+				// gph->vertexVec.push_back(1.0f);
+				
+				
 				
 				
 				
@@ -129,8 +162,8 @@ public:
 	}
 	
 	void process(GamePageHolder* gph) {
-		VectorI3 cellCoord;
-		VectorI3 voxResult;
+		ivec3 cellCoord;
+		ivec3 voxResult;
 		
 		curPD = gph->curPD;
 		
@@ -171,7 +204,7 @@ public:
 	
 	
 
-	bool findNextCoord(VectorI3* voxResult) {
+	bool findNextCoord(ivec3* voxResult) {
 		int i;
 		int j;
 		int k;
@@ -183,8 +216,8 @@ public:
 		int kk;
 		int ikk;
 		
-		VectorI3 curVoxel;
-		VectorI3 localOffset;
+		ivec3 curVoxel;
+		ivec3 localOffset;
 		
 		
 		int minv = 0 + paddingInCells;
@@ -318,16 +351,15 @@ public:
 		return false;
 	}
 
-	bool inBounds(VectorI3* pos) {
+	bool inBounds(ivec3* pos, int minB, int maxB) {
 		
-		// VectorI3 minB = offsetInVoxels - octOffsetInVoxels;
-		// VectorI3 maxB = offsetInVoxels + octOffsetInVoxels;
+		// ivec3 minB = offsetInVoxels - octOffsetInVoxels;
+		// ivec3 maxB = offsetInVoxels + octOffsetInVoxels;
 		
 		// minB += (0);
 		// maxB += (dimInVoxels - 0);
 		
-		int minB = 0;
-		int maxB = voxelsPerHolderPad;
+		
 		
 		return (
 			(pos->x >= minB) && (pos->x < maxB)  &&
@@ -338,16 +370,16 @@ public:
 	}
 
 
-	int getNode(VectorI3* pos) {
+	int getNode(ivec3* pos) {
 		return pos->x + pos->y*voxelsPerHolderPad + pos->z*voxelsPerHolderPad*voxelsPerHolderPad;
 	}
 
-	void floodFill(VectorI3 startVox) {
+	void floodFill(ivec3 startVox) {
 		basePD->fillStack.clear();
 		basePD->fillStack.push_back(startVox);
 		
-		VectorI3 curVox;
-		VectorI3 tempVox;
+		ivec3 curVox;
+		ivec3 tempVox;
 		int curNode;
 		int tempNode;
 		
@@ -376,7 +408,6 @@ public:
 			for (q = 0; q < NUM_ORIENTATIONS; q++) {
 				tempVox = curVox + DIR_VECS_IV[q];
 				
-				//if (inBounds(&tempVox)) {}
 					
 				
 				if (isSurfaceVoxel(&tempVox,lastPtr,true)) {
@@ -391,7 +422,6 @@ public:
 			for (q = 0; q < NUM_ORIENTATIONS; q++) {
 				tempVox = curVox + DIR_VECS_IV[q];
 				
-				//if (inBounds(&tempVox)) {}
 				
 				
 				if (isInvSurfaceVoxel(&tempVox,curNode,lastPtr,true)) {
@@ -418,9 +448,9 @@ public:
 
 	
 
-	bool isInvSurfaceVoxel(VectorI3* pos, int ignorePtr, int &curPtr, bool checkVisited) {
+	bool isInvSurfaceVoxel(ivec3* pos, int ignorePtr, int &curPtr, bool checkVisited) {
 		int q;
-		VectorI3 tempVox;
+		ivec3 tempVox;
 		
 		curPtr = getVoxelAtCoord(pos);
 		if (curPtr < 0) {
@@ -465,9 +495,9 @@ public:
 		return false;
 	}
 
-	bool isSurfaceVoxel(VectorI3* pos, int &curPtr, bool checkVisited) {
+	bool isSurfaceVoxel(ivec3* pos, int &curPtr, bool checkVisited) {
 		int q;
-		VectorI3 tempVox;
+		ivec3 tempVox;
 		
 		curPtr = getVoxelAtCoord(pos);
 		if (curPtr < 0) {
@@ -507,9 +537,11 @@ public:
 		return false;
 	}
 
-	int getVoxelAtCoord(VectorI3* pos) {
+	int getVoxelAtCoord(ivec3* pos) {
 		
-		if (inBounds(pos)) {
+		//int minB = 0;
+		//int maxB = voxelsPerHolderPad;
+		if (inBounds(pos,0,voxelsPerHolderPad)) {
 			bool wasNew = false;
 			int result = voxelBuffer->addNode(pos,wasNew);
 			
@@ -535,7 +567,7 @@ public:
 	// get rid of DONE_WITH_IT
 	// should be able to check 6 faces of this holder instead for starting surface point?
 
-	float sampLinear(VectorI3* pos) {
+	float sampLinear(ivec3* pos) {
 		int q;
 		int i;
 		int j;
@@ -642,7 +674,7 @@ public:
 	
 	
 	
-	void getVoro(VectorI3* worldPos, VectorI3* worldClosestCenter, int iSpacing) {
+	void getVoro(ivec3* worldPos, ivec3* worldClosestCenter, int iSpacing) {
 		
 		vec3 fWorldPos = vec3(
 			worldPos->x,
@@ -694,13 +726,13 @@ public:
 	}
 	
 	// should only be called when a new node is inserted!
-	void calcVoxel(VectorI3* pos, int octPtr) {
+	void calcVoxel(ivec3* pos, int octPtr) {
 		
-		VectorI3 worldPos = (*pos) + offsetInVoxels;
+		ivec3 worldPos = (*pos) + offsetInVoxels;
 		worldPos -= paddingInVoxels;
 		
-		VectorI3 worldClosestCenter;// = worldPos;
-		VectorI3 localClosestCenter;
+		ivec3 worldClosestCenter;// = worldPos;
+		ivec3 localClosestCenter;
 		
 		getVoro(&worldPos,&worldClosestCenter, voxelsPerCell);
 		localClosestCenter = worldClosestCenter - offsetInVoxels;

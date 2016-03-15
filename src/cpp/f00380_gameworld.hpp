@@ -887,36 +887,11 @@ public:
 	// }
 	
 
-	void update(bool postToScreen) {
+	void update(bool postToScreen, bool doRender) {
 		
 		singleton->updateLock = true;
 
 
-		if (noiseGenerated) {
-
-		}
-		else {
-			noiseGenerated = true;
-			singleton->bindShader("NoiseShader");
-			singleton->bindFBO("noiseFBO");
-			singleton->drawFSQuad();
-			singleton->unbindFBO();
-			singleton->unbindShader();
-			
-			singleton->copyFBO("noiseFBO","noiseFBOLinear");
-			
-			tempVec1.setFXYZ(0.0f,0.0f,0.0f);
-			tempVec2.setFXYZ(256.0,256.0f,256.0f);
-			
-			drawVol((singleton->volumeWrappers[E_VW_VORO]), &tempVec1, &tempVec2, true, true, true);
-			
-			
-			
-		}
-		
-		updateLimbTBOData(true);
-
-		
 		
 		camBlockPos.copyFrom( singleton->cameraGetPosNoShake() );
 		camBlockPos.intDivXYZ(singleton->cellsPerBlock);
@@ -962,110 +937,128 @@ public:
 			shiftCounter = 0;
 		}
 		
-		
-		
-		
-		
-		
-		
-		glEnable(GL_DEPTH_TEST);
-		singleton->perspectiveOn = true;
-		renderGeom();
-		renderDebug();
-		singleton->perspectiveOn = false;
-		glDisable(GL_DEPTH_TEST);
-		
-		
-		
-		// if (
+		if (doRender) {
 			
-		// 	(
-			
-		// 		( shiftCounter == 1 ) ||
-		// 		(
-		// 			(singleton->lastDepthInvalidMove) &&
-		// 			(!singleton->depthInvalidMove)
-		// 		)	
-				
-		// 	)
-		// 	&&
-		// 	USE_SPHERE_MAP
-		// ) {
-		// 	drawPrim(true,true,false);
-		// }
-		
-		
-		// if (GEN_POLYS_WORLD||POLY_COLLISION) {
-		// 	glEnable(GL_DEPTH_TEST);
-		// 	//glEnable(GL_CULL_FACE);
-			
-		// 	//back face
-		// 	//glDepthFunc(GL_GREATER);
-		// 	// glCullFace(GL_FRONT);
-		// 	// drawPolys(polyFBOStrings[1], 4,-1);
-			
-		// 	//front face
-		// 	//glDepthFunc(GL_LESS);
-		// 	//glCullFace(GL_BACK);
-		// 	//glDepthFunc(GL_LEQUAL);
-			
-		// 	//glDepthRange(singleton->clipDist[0],singleton->clipDist[1]);
-		// 	singleton->perspectiveOn = true;
-			
-		// 	if (GEN_POLYS_WORLD) {
-		// 		drawPolys(polyFBOStrings[0], 0, 0,true);
-		// 	}
-		// 	if (POLY_COLLISION) {
-		// 		drawPolys(polyFBOStrings[0], 0, DEF_VOL_SIZE/singleton->cellsPerHolder + 1,false);
-		// 	}
-			
-		// 	singleton->perspectiveOn = false;
-			
-		// 	//glDisable(GL_CULL_FACE);
-		// 	glDisable(GL_DEPTH_TEST);
-			
-		// 	//polyCombine();
-		// }
-		
-		
-		
-		skippedPrim = false;
+			if (noiseGenerated) {
 
-		drawPrim(false,true,false);
-		drawPrim(false,false,false);
-		
-		
-		
-		
-		
-		
-		
-		
-		//singleton->copyFBO2("solidBaseTargFBO","solidTargFBO");
-		
-		singleton->bindShader("SolidCombineShader");
-		singleton->setShaderInt("skippedPrim", (int)(skippedPrim));
-		singleton->bindFBO("solidTargFBO");//, -1, 0);
-		singleton->sampleFBO("solidBaseTargFBO",0);
-		singleton->sampleFBO("geomTargFBO",2);
-		singleton->drawFSQuad();
-		singleton->unsampleFBO("geomTargFBO",2);
-		singleton->unsampleFBO("solidBaseTargFBO",0);
-		singleton->unbindFBO();
-		singleton->unbindShader();
-		
-	
-		
-		
-		postProcess(postToScreen);
-		
-		
-		if (postToScreen) {
-			drawMap();
-			glutSwapBuffers();
+			}
+			else {
+				noiseGenerated = true;
+				singleton->bindShader("NoiseShader");
+				singleton->bindFBO("noiseFBO");
+				singleton->drawFSQuad();
+				singleton->unbindFBO();
+				singleton->unbindShader();
+				
+				singleton->copyFBO("noiseFBO","noiseFBOLinear");
+				
+				tempVec1.setFXYZ(0.0f,0.0f,0.0f);
+				tempVec2.setFXYZ(256.0,256.0f,256.0f);
+				
+				drawVol((singleton->volumeWrappers[E_VW_VORO]), &tempVec1, &tempVec2, true, true, true);
+				
+				
+			}
+			
+			updateLimbTBOData(true);
+			
+			glEnable(GL_DEPTH_TEST);
+			singleton->perspectiveOn = true;
+			renderGeom();
+			renderDebug();
+			singleton->perspectiveOn = false;
+			glDisable(GL_DEPTH_TEST);
+			
+			
+			
+			// if (
+				
+			// 	(
+				
+			// 		( shiftCounter == 1 ) ||
+			// 		(
+			// 			(singleton->lastDepthInvalidMove) &&
+			// 			(!singleton->depthInvalidMove)
+			// 		)	
+					
+			// 	)
+			// 	&&
+			// 	USE_SPHERE_MAP
+			// ) {
+			// 	drawPrim(true,true,false);
+			// }
+			
+			
+			// if (GEN_POLYS_WORLD||POLY_COLLISION) {
+			// 	glEnable(GL_DEPTH_TEST);
+			// 	//glEnable(GL_CULL_FACE);
+				
+			// 	//back face
+			// 	//glDepthFunc(GL_GREATER);
+			// 	// glCullFace(GL_FRONT);
+			// 	// drawPolys(polyFBOStrings[1], 4,-1);
+				
+			// 	//front face
+			// 	//glDepthFunc(GL_LESS);
+			// 	//glCullFace(GL_BACK);
+			// 	//glDepthFunc(GL_LEQUAL);
+				
+			// 	//glDepthRange(singleton->clipDist[0],singleton->clipDist[1]);
+			// 	singleton->perspectiveOn = true;
+				
+			// 	if (GEN_POLYS_WORLD) {
+			// 		drawPolys(polyFBOStrings[0], 0, 0,true);
+			// 	}
+			// 	if (POLY_COLLISION) {
+			// 		drawPolys(polyFBOStrings[0], 0, DEF_VOL_SIZE/singleton->cellsPerHolder + 1,false);
+			// 	}
+				
+			// 	singleton->perspectiveOn = false;
+				
+			// 	//glDisable(GL_CULL_FACE);
+			// 	glDisable(GL_DEPTH_TEST);
+				
+			// 	//polyCombine();
+			// }
+			
+			
+			
+			skippedPrim = false;
+
+			drawPrim(false,true,false);
+			drawPrim(false,false,false);
+			
+			
+			
+			
+			
+			
+			
+			
+			//singleton->copyFBO2("solidBaseTargFBO","solidTargFBO");
+			
+			singleton->bindShader("SolidCombineShader");
+			singleton->setShaderInt("skippedPrim", (int)(skippedPrim));
+			singleton->bindFBO("solidTargFBO");//, -1, 0);
+			singleton->sampleFBO("solidBaseTargFBO",0);
+			singleton->sampleFBO("geomTargFBO",2);
+			singleton->drawFSQuad();
+			singleton->unsampleFBO("geomTargFBO",2);
+			singleton->unsampleFBO("solidBaseTargFBO",0);
+			singleton->unbindFBO();
+			singleton->unbindShader();
+			
+			
+			
+			
+			postProcess(postToScreen);
+			
+			
+			if (postToScreen) {
+				drawMap();
+				glutSwapBuffers();
+			}
 		}
-		
-		//glFlush();
 		
 		singleton->updateLock = false;
 
@@ -2163,6 +2156,131 @@ public:
 	// }
 	
 	
+	
+	
+	
+	
+	
+	void updateTBOPool(int rad) {
+		
+		int q;
+		int p;
+		
+		int ii;
+		int jj;
+		int kk;
+		
+		int cellsPerHolder = singleton->cellsPerHolder;
+		
+		GamePageHolder* curHolder;
+		
+		minv.copyFrom(&camHolderPos);
+		maxv.copyFrom(&camHolderPos);
+		
+		
+		int minK = minv.getIZ() - rad;
+		int maxK = maxv.getIZ() + rad;
+		int minJ = minv.getIY() - rad;
+		int maxJ = maxv.getIY() + rad;
+		int minI = minv.getIX() - rad;
+		int maxI = maxv.getIX() + rad;
+		
+		int curTBOPool = 0;
+		int writeOffset = 0;
+		
+		TBOEntry* curTBO = &(singleton->tboPool[0]);
+		curTBO->lock();
+		
+		int curPtr;
+		int curSize;
+		
+		float tempData[4];
+		
+		float voxelsPerHolder = singleton->voxelsPerHolder;
+		
+		for (kk = minK; kk < maxK; kk++) {
+			for (jj = minJ; jj < maxJ; jj++) {
+				for (ii = minI; ii < maxI; ii++) {
+					curHolder = getHolderAtCoords(ii,jj,kk,true);
+					
+					if (curHolder == NULL) {
+						
+					}
+					else {
+						
+						if (curHolder->lockWrite) {
+							
+						}
+						else {
+							if (
+								(curHolder->listGenerated) &&
+								(!(curHolder->listEmpty))
+							) {
+								
+								writeOffset = curTBO->writeIndex;
+							
+								if (curTBO->cantWrite(curHolder->cubeDataSize)) {
+									goto TBO_FULL;
+								}
+								
+								for (q = 0; q < curHolder->cubeDataSize; q++) {
+									curTBO->writeData(
+										(curHolder->cubeData[q])*CUBE_WRAP_SIZE + writeOffset
+									);
+								}
+								
+								curSize = curHolder->cubeWraps.size();
+								
+								for (q = 0; q < curSize; q++) {
+									
+									if (curTBO->cantWrite(CUBE_WRAP_SIZE)) {
+										goto TBO_FULL;
+									}
+									
+									curTBO->writeDataArr(
+										curHolder->cubeWraps[q].data,
+										CUBE_WRAP_SIZE
+									);
+								}
+								
+								
+								curTBO->vbo.vboBox(
+									curHolder->gphMinInCells[0],
+									curHolder->gphMinInCells[1],
+									curHolder->gphMinInCells[2],
+									
+									0.0f,
+									cellsPerHolder,
+									
+									ALL_FACES,
+									tempData,
+									4
+								);
+								
+								
+							}
+						}
+					}
+				}
+			}
+		}
+		
+TBO_FULL:
+		
+		if (curTBO->cantWrite(1)) {
+			cout << "TBO FULL\n";
+		}
+		
+		curTBO->unlock();
+		
+		
+		cout << "writeIndex " << curTBO->writeIndex << "\n";
+		
+	}
+	
+	
+	
+	
 	void rasterPolys(
 		int minPeel,
 		int maxPeel,
@@ -2301,12 +2419,7 @@ public:
 									
 								}
 							}
-							
 						}
-						
-						
-						
-						
 					}
 				}
 			}
@@ -4848,6 +4961,8 @@ UPDATE_LIGHTS_END:
 		singleton->perspectiveOn = false;
 
 
+		TBOEntry* curTBO = &(singleton->tboPool[0]);
+
 		glEnable(GL_DEPTH_TEST);
 		
 		//if (doPoints) {
@@ -4874,7 +4989,10 @@ UPDATE_LIGHTS_END:
 		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
 		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 
-		rasterPolys(-1,0,5,doPoints);
+
+		curTBO->vbo.draw();
+		
+		//rasterPolys(-1,0,5,doPoints);
 		//singleton->fsQuad.draw();
 
 		// singleton->unsampleFBO("rasterSourceFBO",1);

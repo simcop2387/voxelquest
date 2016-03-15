@@ -2002,4 +2002,7 @@ Matrix4& Matrix4::rotateZ(float angle)
 
     return *this;
 }
+
+typedef Vector3 vec3;
+
  
