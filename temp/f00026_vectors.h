@@ -3329,25 +3329,25 @@ public:
 	
 	
 	
-	inline void getIndVal(int procCount) {
-		indexVec.push_back(0+procCount*4);
-		indexVec.push_back(1+procCount*4);
-		indexVec.push_back(2+procCount*4);
-		indexVec.push_back(2+procCount*4);
-		indexVec.push_back(1+procCount*4);
-		indexVec.push_back(3+procCount*4);
-	}
+	// inline void getIndVal(int procCount) {
+	// 	indexVec.push_back(0+procCount*4);
+	// 	indexVec.push_back(1+procCount*4);
+	// 	indexVec.push_back(2+procCount*4);
+	// 	indexVec.push_back(2+procCount*4);
+	// 	indexVec.push_back(1+procCount*4);
+	// 	indexVec.push_back(3+procCount*4);
+	// }
 	
 	
 	
-	inline void getIndVal2(int procCount) {
-		indexVec.push_back(2+procCount*4);
-		indexVec.push_back(1+procCount*4);
-		indexVec.push_back(0+procCount*4);
-		indexVec.push_back(3+procCount*4);
-		indexVec.push_back(1+procCount*4);
-		indexVec.push_back(2+procCount*4);
-	}
+	// inline void getIndVal2(int procCount) {
+	// 	indexVec.push_back(2+procCount*4);
+	// 	indexVec.push_back(1+procCount*4);
+	// 	indexVec.push_back(0+procCount*4);
+	// 	indexVec.push_back(3+procCount*4);
+	// 	indexVec.push_back(1+procCount*4);
+	// 	indexVec.push_back(2+procCount*4);
+	// }
 	
 	inline void getPixVal(
 		//FBOWrapper* fbow0,
@@ -3418,71 +3418,168 @@ public:
 		float* data,
 		int dataLen
 	) {
+		
+		
+		// counter clockwise == front face
+		
+		//         z  
+		//  4 5     . x
+		//  6 7     y
+		            
+		//    0 1
+		//    2 3
+
+		getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0,data,dataLen); // 0
+		getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0,data,dataLen); // 1
+		getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0,data,dataLen); // 2
+		getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0,data,dataLen); // 3
+		
+		getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1,data,dataLen); // 4
+		getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1,data,dataLen); // 5
+		getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1,data,dataLen); // 6
+		getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1,data,dataLen); // 7
+		
+		
+		
 		if (procFlags[0]&procFlag) { // x+
 			
-			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0,data,dataLen);
+			indexVec.push_back(5+procCount);
+			indexVec.push_back(1+procCount);
+			indexVec.push_back(3+procCount);
+			indexVec.push_back(3+procCount);
+			indexVec.push_back(7+procCount);
+			indexVec.push_back(5+procCount);
 			
-			getIndVal(procCount);
-			procCount++;
 			
 			
 		}
 		if (procFlags[1]&procFlag) { // x-
 			
-			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0,data,dataLen);
+			indexVec.push_back(6+procCount);
+			indexVec.push_back(2+procCount);
+			indexVec.push_back(0+procCount);
+			indexVec.push_back(0+procCount);
+			indexVec.push_back(4+procCount);
+			indexVec.push_back(6+procCount);
 			
-			getIndVal2(procCount);
-			procCount++;
 			
 		}
+		
+
+		
+		
 		if (procFlags[2]&procFlag) { // y+
 			
-			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0,data,dataLen);
+			indexVec.push_back(7+procCount);
+			indexVec.push_back(3+procCount);
+			indexVec.push_back(2+procCount);
+			indexVec.push_back(2+procCount);
+			indexVec.push_back(6+procCount);
+			indexVec.push_back(7+procCount);
 			
-			getIndVal2(procCount);
-			procCount++;
 			
 		}
 		if (procFlags[3]&procFlag) { // y-
 			
+			indexVec.push_back(4+procCount);
+			indexVec.push_back(0+procCount);
+			indexVec.push_back(1+procCount);
+			indexVec.push_back(1+procCount);
+			indexVec.push_back(5+procCount);
+			indexVec.push_back(4+procCount);
 			
-			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0,data,dataLen);
-			
-			getIndVal(procCount);
-			procCount++;
 		}
 		if (procFlags[4]&procFlag) { // z+
 			
-			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1,data,dataLen);
+			indexVec.push_back(4+procCount);
+			indexVec.push_back(5+procCount);
+			indexVec.push_back(7+procCount);
+			indexVec.push_back(7+procCount);
+			indexVec.push_back(6+procCount);
+			indexVec.push_back(4+procCount);
 			
-			getIndVal(procCount);
-			procCount++;
 		}
 		if (procFlags[5]&procFlag) { // z-
 			
-			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0,data,dataLen);
+			indexVec.push_back(3+procCount);
+			indexVec.push_back(1+procCount);
+			indexVec.push_back(0+procCount);
+			indexVec.push_back(0+procCount);
+			indexVec.push_back(2+procCount);
+			indexVec.push_back(3+procCount);
 			
-			getIndVal2(procCount);
-			procCount++;
 		}
+		
+		
+		procCount += 8;
+		
+		
+		
+		// if (procFlags[0]&procFlag) { // x+
+			
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0,data,dataLen);
+			
+		// 	getIndVal(procCount);
+		// 	procCount++;
+			
+			
+		// }
+		// if (procFlags[1]&procFlag) { // x-
+			
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0,data,dataLen);
+			
+		// 	getIndVal2(procCount);
+		// 	procCount++;
+			
+		// }
+		// if (procFlags[2]&procFlag) { // y+
+			
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0,data,dataLen);
+			
+		// 	getIndVal2(procCount);
+		// 	procCount++;
+			
+		// }
+		// if (procFlags[3]&procFlag) { // y-
+			
+			
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0,data,dataLen);
+			
+		// 	getIndVal(procCount);
+		// 	procCount++;
+		// }
+		// if (procFlags[4]&procFlag) { // z+
+			
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1,data,dataLen);
+			
+		// 	getIndVal(procCount);
+		// 	procCount++;
+		// }
+		// if (procFlags[5]&procFlag) { // z-
+			
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0,data,dataLen);
+			
+		// 	getIndVal2(procCount);
+		// 	procCount++;
+		// }
 	}
 
 	
@@ -3809,10 +3906,17 @@ struct PushModStruct
 };
 
 
-uint E_OCT_VISITED = 1;
-uint E_OCT_SOLID = 2;
-uint E_OCT_SURFACE = 4;
-uint E_OCT_NOTNEW = 8;
+
+uint E_OCT_XP = 1;
+uint E_OCT_XM = 2;
+uint E_OCT_YP = 4;
+uint E_OCT_YM = 8;
+uint E_OCT_ZP = 16;
+uint E_OCT_ZM = 32;
+uint E_OCT_VISITED = 64;
+uint E_OCT_SOLID = 128;
+uint E_OCT_SURFACE = 256;
+uint E_OCT_NOTNEW = 512;
 
 
 struct OctNode {
@@ -3841,43 +3945,156 @@ struct OctNode {
 	
 };
 
-
-
+const static uint CUBE_DATA_INVALID = 0xCCCCCCCC;
+const static int CUBE_DATA_SIZE = CELLS_PER_HOLDER*CELLS_PER_HOLDER*CELLS_PER_HOLDER;
 const static int CUBE_WRAP_ENTRIES = 4;
 const static int CUBE_WRAP_SIZE = VOXELS_PER_CELL*VOXELS_PER_CELL*3*CUBE_WRAP_ENTRIES;
+const static uint CUBE_WRAP_INVALID = 1024;
 
 // slice 0: yz
 // slice 1: xz
 // slice 2: xy
 
 struct CubeWrap {
+	
+	// data layout:
+	// yz plane - x up
+	// xz plane - y up
+	// xy plane - z up
+	
+	// offset 0: min depth
+	// offset 1: max depth
+	
 	uint data[CUBE_WRAP_SIZE];
 	
-	void insertValue(ivec3* loc) { //, vec3* val) {
+	void insertValue(ivec3* loc, uint flags) { //, vec3* val) {
 		int indYZ = (loc->y + loc->z*VOXELS_PER_CELL + 0*VOXELS_PER_CELL*VOXELS_PER_CELL)*CUBE_WRAP_ENTRIES;
 		int indXZ = (loc->x + loc->z*VOXELS_PER_CELL + 1*VOXELS_PER_CELL*VOXELS_PER_CELL)*CUBE_WRAP_ENTRIES;
 		int indXY = (loc->x + loc->y*VOXELS_PER_CELL + 2*VOXELS_PER_CELL*VOXELS_PER_CELL)*CUBE_WRAP_ENTRIES;
 		
-		if (loc->x > data[indYZ+0]) {
-			data[indYZ+0] = loc->x;
+		int voxMax = VOXELS_PER_CELL-1;
+		int voxMin = 0;
+		
+		if ((flags&E_OCT_XP) > 0) { // air x plus
+			if (
+				(loc->x < data[indYZ+1])
+				// || (data[indYZ+1] == CUBE_WRAP_INVALID)
+			) { // max
+				data[indYZ+1] = loc->x;
+			}
+			
 		}
-		if (loc->x < data[indYZ+1]) {
-			data[indYZ+1] = loc->x;
+		if ((flags&E_OCT_XM) > 0) { // air x minus
+			if (
+				(loc->x > data[indYZ+0])
+				// || (data[indYZ+0] == CUBE_WRAP_INVALID)
+			) { // min
+				data[indYZ+0] = loc->x;
+			}
 		}
 		
-		if (loc->y > data[indXZ+0]) {
-			data[indXZ+0] = loc->y;
+		
+		if ((flags&E_OCT_YP) > 0) { // air y plus
+			if (
+				(loc->y < data[indXZ+1])
+				// || (data[indXZ+1] == CUBE_WRAP_INVALID)
+			) { // max
+				data[indXZ+1] = loc->y;
+			}
 		}
-		if (loc->y < data[indXZ+1]) {
-			data[indXZ+1] = loc->y;
+		if ((flags&E_OCT_YM) > 0) { // air y minus
+			if (
+				(loc->y > data[indXZ+0])
+				// || (data[indXZ+0] == CUBE_WRAP_INVALID)
+			) { // min
+				data[indXZ+0] = loc->y;
+			}
 		}
 		
-		if (loc->z > data[indXY+0]) {
-			data[indXY+0] = loc->z;
+		
+		if ((flags&E_OCT_ZP) > 0) { // air z plus
+			if (
+				(loc->z < data[indXY+1])
+				// || (data[indXY+1] == CUBE_WRAP_INVALID)
+			) { // max
+				data[indXY+1] = loc->z;
+			}
 		}
-		if (loc->z < data[indXY+1]) {
-			data[indXY+1] = loc->z;
+		if ((flags&E_OCT_ZM) > 0) { // air z minus
+			if (
+				(loc->z > data[indXY+0])
+				// || (data[indXY+0] == CUBE_WRAP_INVALID)
+			) { // min
+				data[indXY+0] = loc->z;
+			}
 		}
+		
+		
+		
+		
+		
+		
+		
+		
+		// if ((flags&E_OCT_XP) > 0) { // air x plus
+		// 	if (loc->x > data[indYZ+0]) { // min
+		// 		data[indYZ+0] = loc->x;
+		// 	}
+		// 	if (loc->x < data[indYZ+1]) { // max
+		// 		data[indYZ+1] = loc->x;
+		// 	}
+		// }
+		// if ((flags&E_OCT_XM) > 0) { // air x minus
+		// 	if (loc->x > data[indYZ+0]) { // min
+		// 		data[indYZ+0] = loc->x;
+		// 	}
+		// 	if (loc->x < data[indYZ+1]) { // max
+		// 		data[indYZ+1] = loc->x;
+		// 	}
+		// }
+		
+		
+		// if ((flags&E_OCT_YP) > 0) { // air y plus
+		// 	if (loc->y > data[indXZ+0]) { // min
+		// 		data[indXZ+0] = loc->y;
+		// 	}
+		// 	if (loc->y < data[indXZ+1]) { // max
+		// 		data[indXZ+1] = loc->y;
+		// 	}
+		// }
+		// if ((flags&E_OCT_YM) > 0) { // air y minus
+		// 	if (loc->y > data[indXZ+0]) { // min
+		// 		data[indXZ+0] = loc->y;
+		// 	}
+		// 	if (loc->y < data[indXZ+1]) { // max
+		// 		data[indXZ+1] = loc->y;
+		// 	}
+		// }
+		
+		
+		// if ((flags&E_OCT_ZP) > 0) { // air z plus
+		// 	if (loc->z > data[indXY+0]) { // min
+		// 		data[indXY+0] = loc->z;
+		// 	}
+		// 	if (loc->z < data[indXY+1]) { // max
+		// 		data[indXY+1] = loc->z;
+		// 	}
+		// }
+		// if ((flags&E_OCT_ZM) > 0) { // air z minus
+		// 	if (loc->z > data[indXY+0]) { // min
+		// 		data[indXY+0] = loc->z;
+		// 	}
+		// 	if (loc->z < data[indXY+1]) { // max
+		// 		data[indXY+1] = loc->z;
+		// 	}
+		// }
+		
+		
+		
+		
+		
+		
+		
 		
 	}
 	
@@ -3897,8 +4114,8 @@ struct CubeWrap {
 					
 					data[ind+0] = 0;
 					data[ind+1] = VOXELS_PER_CELL-1;
-					data[ind+2] = 0.0f;
-					data[ind+3] = 0.0f;
+					data[ind+2] = 0;
+					data[ind+3] = 0;
 					
 				}
 			}
@@ -3928,6 +4145,10 @@ struct VoxelBuffer {
 		visitIds.push_back(val);
 	}
 	
+	uint getFlags(int flagPtr) {
+		return data[flagPtr].flags;
+	}
+	
 	bool getFlag(int flagPtr, uint flagVal) {
 		return (
 			(data[flagPtr].flags & flagVal) > 0
@@ -3946,6 +4167,10 @@ struct VoxelBuffer {
 		wasNew = !(getFlag(ind,E_OCT_NOTNEW));
 		
 		return ind;
+	}
+	
+	uint getFlagsAtNode(int ind) {
+		return data[ind].flags;
 	}
 	
 	void clearAllNodes() {
@@ -3985,16 +4210,20 @@ struct TBOEntry {
 	
 	void init(int _sizeInBytes) {
 		locked = false;
-		writeIndex = 4;
+		writeIndex = 0;
 		
 		sizeInBytes = _sizeInBytes;
 		sizeInEntries = sizeInBytes/4;
+		
+		data = new uint[sizeInEntries];
+		
 		tbo.init(false,NULL,data,sizeInBytes);
 		
 		vbo.init(
-			2,
+			4,
 			GL_STATIC_DRAW
 		);
+		
 		
 	}
 	
@@ -4022,7 +4251,7 @@ struct TBOEntry {
 	
 	void lock() {
 		locked = true;
-		writeIndex = 4;
+		writeIndex = 0;
 		
 		vbo.beginFill();
 	}
@@ -4039,7 +4268,10 @@ struct TBOEntry {
 
 
 
-vec3 voroOffsets[27];
+vec3 VORO_OFFSETS[27];
+
+vec3 BASE_NORMALS[64];
+
 // const static int VORO_PITCH = 16;
 // const static float VORO_VARIANCE = 0.25f;
 

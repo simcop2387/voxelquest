@@ -5,7 +5,7 @@
 #define LZZ_INLINE inline
 GameLogic::GameLogic ()
                     {
-		
+		allowThreadCreation = true;
 	}
 void GameLogic::setEntTargPath (int sourceUID, int destUID)
                                                         {
@@ -1666,6 +1666,13 @@ int GameLogic::getClosestPathRad (btVector3 cpBTV, GamePageHolder * & closestHol
 		
 		return -1;
 	}
+bool GameLogic::anyThreadsRunning ()
+                                 {
+		bool v1 = threadPoolList->anyRunning();
+		bool v2 = threadPoolPath->anyRunning();
+		
+		return v1||v2;
+	}
 void GameLogic::loadNearestHolders ()
                                   {
 		
@@ -1725,7 +1732,12 @@ void GameLogic::loadNearestHolders ()
 			doPaths = true;
 		}
 		
-		
+		if (allowThreadCreation) {
+			
+		}
+		else {
+			return;
+		}
 		
 		
 		tempVec.copyFrom(singleton->cameraGetPosNoShake());

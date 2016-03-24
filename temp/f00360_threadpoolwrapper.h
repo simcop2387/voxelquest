@@ -113,6 +113,12 @@ bool ThreadPoolWrapper::stopTP (int threadId)
 			availIds.push_back(threadId);
 			
 		}
+		
+		// if (didStop) {
+		// 	cout << "didStop\n";
+		// }
+		
+		
 		return didStop;
 	}
 bool ThreadPoolWrapper::startThread ()

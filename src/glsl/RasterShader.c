@@ -29,7 +29,7 @@ void main() {
 	
 	//newCol = vtexcoord;
 	vec4 screenPos = proj*modelview*worldPos;
-	gl_PointSize = (heightOfNearPlane / pow(screenPos.w,0.5))*4.0;
+	// gl_PointSize = (heightOfNearPlane / pow(screenPos.w,0.5))*4.0;
 	camDis = distance(cameraPos.xyz,worldPos.xyz);
 	gl_Position = screenPos; ///clipDist.y
 }

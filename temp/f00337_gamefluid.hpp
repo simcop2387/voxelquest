@@ -56,6 +56,7 @@ public:
 	FIVector4 minV;
 	FIVector4 maxV;
 	
+	bool waitingOnThreads;
 	bool fluidChanged;
 	bool posShifted;
 	bool hasRead;
@@ -181,6 +182,7 @@ public:
 
 	GameFluid() {
 		
+		waitingOnThreads = false;
 		fluidChanged = false;
 		posShifted = false;
 		hasRead = false;
@@ -647,28 +649,7 @@ public:
 		
 		
 	}
-	
-	bool tryToEndRead() {
-		
-		
-		if (threadLoader.isReady()) {
-			
-			
-			stopTL();
-			endFluidRead();
-			//cycleTerminated = false;
-			
-			
-			//if (mainId == E_FID_SML) {
-			//	startFT();
-			//}
-			
-			return true;
-		}
-		else {
-			return false;
-		}
-	}
+
 	
 	bool anyThreadsRunning() {
 		return threadLoader.threadRunning||threadTex.threadRunning||threadFluid.threadRunning;
@@ -1025,6 +1006,49 @@ public:
 		terminateCycle();
 	}
 	
+	
+	bool tryToEndRead() {
+		
+		
+		if (threadLoader.isReady()) {
+			
+			
+			stopTL();
+			endFluidRead();
+			//cycleTerminated = false;
+			
+			
+			//if (mainId == E_FID_SML) {
+			//	startFT();
+			//}
+			
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	
+	
+	void tryToEndThreads() {
+		
+		if (singleton->gameLogic->anyThreadsRunning()) {
+			
+		}
+		else {
+			waitingOnThreads = false;
+			// singleton->gameLogic->threadPoolPath->stopAll();
+			// singleton->gameLogic->threadPoolList->stopAll();
+			prereadFluidData();
+			singleton->gameLogic->allowThreadCreation = true;
+			
+			startTL();
+		}
+		
+		
+		
+	}
+	
 	void proceedWithRead() {
 		
 		
@@ -1038,15 +1062,11 @@ public:
 		//
 		
 		
-		
 		readMIP.copyFrom(&volMinInPixels);
 		
-		singleton->gameLogic->threadPoolPath->stopAll();
-		singleton->gameLogic->threadPoolList->stopAll();
-		prereadFluidData();
+		singleton->gameLogic->allowThreadCreation = false;
 		
-		
-		startTL();
+		waitingOnThreads = true;
 		
 	}
 	

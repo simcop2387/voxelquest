@@ -28,8 +28,10 @@ public:
 	int globEndGroupId;
 	bool globFoundTarg;
 
+	bool allowThreadCreation;
+
 	GameLogic() {
-		
+		allowThreadCreation = true;
 	}
 
 	void setEntTargPath(int sourceUID, int destUID) {
@@ -1788,6 +1790,12 @@ FILL_GROUPS_RETURN:
 		return -1;
 	}
 	
+	bool anyThreadsRunning() {
+		bool v1 = threadPoolList->anyRunning();
+		bool v2 = threadPoolPath->anyRunning();
+		
+		return v1||v2;
+	}
 	
 	void loadNearestHolders() {
 		
@@ -1847,7 +1855,12 @@ FILL_GROUPS_RETURN:
 			doPaths = true;
 		}
 		
-		
+		if (allowThreadCreation) {
+			
+		}
+		else {
+			return;
+		}
 		
 		
 		tempVec.copyFrom(singleton->cameraGetPosNoShake());

@@ -1027,14 +1027,7 @@ public:
 
 			drawPrim(false,true,false);
 			drawPrim(false,false,false);
-			
-			
-			
-			
-			
-			
-			
-			
+				
 			//singleton->copyFBO2("solidBaseTargFBO","solidTargFBO");
 			
 			singleton->bindShader("SolidCombineShader");
@@ -2161,122 +2154,246 @@ public:
 	
 	
 	
-	void updateTBOPool(int rad) {
+// 	void updateTBOPool(int rad) {
 		
-		int q;
-		int p;
+// 		int q;
+// 		int p;
 		
-		int ii;
-		int jj;
-		int kk;
+// 		int ii;
+// 		int jj;
+// 		int kk;
 		
-		int cellsPerHolder = singleton->cellsPerHolder;
+// 		int cellsPerHolder = singleton->cellsPerHolder;
 		
-		GamePageHolder* curHolder;
+// 		GamePageHolder* curHolder;
 		
-		minv.copyFrom(&camHolderPos);
-		maxv.copyFrom(&camHolderPos);
+// 		minv.copyFrom(&camHolderPos);
+// 		maxv.copyFrom(&camHolderPos);
 		
 		
-		int minK = minv.getIZ() - rad;
-		int maxK = maxv.getIZ() + rad;
-		int minJ = minv.getIY() - rad;
-		int maxJ = maxv.getIY() + rad;
-		int minI = minv.getIX() - rad;
-		int maxI = maxv.getIX() + rad;
+// 		int minK = minv.getIZ() - rad;
+// 		int maxK = maxv.getIZ() + rad;
+// 		int minJ = minv.getIY() - rad;
+// 		int maxJ = maxv.getIY() + rad;
+// 		int minI = minv.getIX() - rad;
+// 		int maxI = maxv.getIX() + rad;
 		
-		int curTBOPool = 0;
-		int writeOffset = 0;
+// 		int curTBOPool = 0;
+// 		int writeOffset = 0;
+// 		int curCubeInd = 0;
 		
-		TBOEntry* curTBO = &(singleton->tboPool[0]);
-		curTBO->lock();
+// 		int writeOffset0;
+// 		int writeOffset1;
 		
-		int curPtr;
-		int curSize;
+// 		TBOEntry* curTBO = &(singleton->tboPool[0]);
+// 		curTBO->lock();
 		
-		float tempData[4];
+// 		int curPtr;
+// 		int curSize;
 		
-		float voxelsPerHolder = singleton->voxelsPerHolder;
+// 		float tempData[12];
 		
-		for (kk = minK; kk < maxK; kk++) {
-			for (jj = minJ; jj < maxJ; jj++) {
-				for (ii = minI; ii < maxI; ii++) {
-					curHolder = getHolderAtCoords(ii,jj,kk,true);
+// 		float voxelsPerHolder = singleton->voxelsPerHolder;
+		
+		
+// 		int tboCount = 0;
+		
+// 		for (kk = minK; kk < maxK; kk++) {
+// 			for (jj = minJ; jj < maxJ; jj++) {
+// 				for (ii = minI; ii < maxI; ii++) {
+// 					curHolder = getHolderAtCoords(ii,jj,kk,true);
 					
-					if (curHolder == NULL) {
+// 					if (curHolder == NULL) {
 						
-					}
-					else {
+// 					}
+// 					else {
 						
-						if (curHolder->lockWrite) {
+// 						if (curHolder->lockWrite) {
+							
+// 						}
+// 						else {
+// 							if (
+// 								(curHolder->listGenerated) &&
+// 								(!(curHolder->listEmpty))
+// 							) {
+								
+// 								writeOffset = curTBO->writeIndex;
+							
+// 								if (curTBO->cantWrite(CUBE_DATA_SIZE)) {
+// 									goto TBO_FULL;
+// 								}
+								
+								
+// 								// fill up cells with pointers
+// 								for (q = 0; q < CUBE_DATA_SIZE; q++) {
+									
+// 									curCubeInd = curHolder->cubeData[q];
+									
+// 									if (curCubeInd == CUBE_DATA_INVALID) {
+// 										curTBO->writeData(CUBE_DATA_INVALID);
+// 									}
+// 									else {
+// 										curTBO->writeData(
+// 											(curCubeInd)*CUBE_WRAP_SIZE + CUBE_DATA_SIZE + writeOffset
+// 										);
+// 									}
+									
+									
+// 								}
+								
+// 								curSize = curHolder->cubeWraps.size();
+// 								// fill up list of cubeWraps
+// 								for (q = 0; q < curSize; q++) {
+									
+// 									if (curTBO->cantWrite(CUBE_WRAP_SIZE)) {
+// 										goto TBO_FULL;
+// 									}
+									
+// 									curTBO->writeDataArr(
+// 										curHolder->cubeWraps[q].data,
+// 										CUBE_WRAP_SIZE
+// 									);
+// 								}
+								
+								
+// 								// curOffset
+// 								writeOffset0 = writeOffset/4096;
+// 								writeOffset1 = writeOffset - writeOffset0*4096;
+								
+// 								// vdata0
+// 								tempData[0] = writeOffset0;
+// 								tempData[1] = writeOffset1;
+// 								tempData[2] = 0.0f;
+// 								tempData[3] = 0.0f;
+								
+// 								// vdata1
+// 								tempData[4] = curHolder->gphMinInCells[0];
+// 								tempData[5] = curHolder->gphMinInCells[1];
+// 								tempData[6] = curHolder->gphMinInCells[2];
+// 								tempData[7] = 1.0f;
+								
+// 								// vdata2
+// 								tempData[8] = curHolder->gphMaxInCells[0];
+// 								tempData[9] = curHolder->gphMaxInCells[1];
+// 								tempData[10] = curHolder->gphMaxInCells[2];
+// 								tempData[11] = 1.0f;
+								
+// 								curTBO->vbo.vboBox(
+// 									curHolder->gphMinInCells[0],
+// 									curHolder->gphMinInCells[1],
+// 									curHolder->gphMinInCells[2],
+									
+// 									0.0f,
+// 									cellsPerHolder,
+									
+// 									ALL_FACES,
+// 									tempData,
+// 									12
+// 								);
+								
+// 								tboCount++;
+								
+								
+// 							}
+// 						}
+// 					}
+// 				}
+// 			}
+// 		}
+		
+// TBO_FULL:
+		
+// 		if (curTBO->cantWrite(1)) {
+// 			cout << "TBO FULL\n";
+// 		}
+		
+// 		curTBO->unlock();
+		
+		
+// 		cout << "writeIndex " << curTBO->writeIndex << "\n";
+		
+// 		cout << "tboCount " << tboCount << "\n";
+		
+// 		glFlush();
+// 		glFinish();
+		
+// 	}
+	
+	
+	
+	
+	
+	
+	
+	
+		void rasterHolder(int rad) {
+			
+			//doTraceVecND("cam ", &camHolderPos);
+			
+			
+			int ii;
+			int jj;
+			int kk;
+			
+			
+			GamePageHolder* curHolder;
+			
+			minv.copyFrom(&camHolderPos);
+			maxv.copyFrom(&camHolderPos);
+			
+			FIVector4 tempFIV;
+			
+			int minK = minv.getIZ() - rad;
+			int maxK = maxv.getIZ() + rad;
+			int minJ = minv.getIY() - rad;
+			int maxJ = maxv.getIY() + rad;
+			int minI = minv.getIX() - rad;
+			int maxI = maxv.getIX() + rad;
+			
+			float disClip = singleton->cellsPerHolder*2;
+			
+			for (kk = minK; kk < maxK; kk++) {
+				for (jj = minJ; jj < maxJ; jj++) {
+					for (ii = minI; ii < maxI; ii++) {
+						curHolder = getHolderAtCoords(ii,jj,kk,true);
+						
+						if (curHolder == NULL) {
 							
 						}
 						else {
-							if (
-								(curHolder->listGenerated) &&
-								(!(curHolder->listEmpty))
-							) {
-								
-								writeOffset = curTBO->writeIndex;
 							
-								if (curTBO->cantWrite(curHolder->cubeDataSize)) {
-									goto TBO_FULL;
-								}
+							if (curHolder->lockWrite) {
 								
-								for (q = 0; q < curHolder->cubeDataSize; q++) {
-									curTBO->writeData(
-										(curHolder->cubeData[q])*CUBE_WRAP_SIZE + writeOffset
-									);
-								}
-								
-								curSize = curHolder->cubeWraps.size();
-								
-								for (q = 0; q < curSize; q++) {
+							}
+							else {
+								if (
+									(curHolder->listGenerated) &&
+									(!(curHolder->listEmpty))
+								) {
 									
-									if (curTBO->cantWrite(CUBE_WRAP_SIZE)) {
-										goto TBO_FULL;
+									tempFIV.copyFrom(&(curHolder->gphCenInCells));
+									tempFIV.addXYZRef(singleton->cameraGetPosNoShake(),-1.0f);
+									tempFIV.normalize();
+									
+									
+									if (
+										(tempFIV.dot(&(singleton->lookAtVec)) > singleton->conVals[E_CONST_DOT_CLIP]) ||
+										(curHolder->gphCenInCells.distance(singleton->cameraGetPosNoShake()) < disClip)
+									) {
+										curHolder->vboWrapper.draw();
 									}
 									
-									curTBO->writeDataArr(
-										curHolder->cubeWraps[q].data,
-										CUBE_WRAP_SIZE
-									);
 								}
-								
-								
-								curTBO->vbo.vboBox(
-									curHolder->gphMinInCells[0],
-									curHolder->gphMinInCells[1],
-									curHolder->gphMinInCells[2],
-									
-									0.0f,
-									cellsPerHolder,
-									
-									ALL_FACES,
-									tempData,
-									4
-								);
-								
-								
 							}
 						}
 					}
 				}
 			}
+			
+			
 		}
-		
-TBO_FULL:
-		
-		if (curTBO->cantWrite(1)) {
-			cout << "TBO FULL\n";
-		}
-		
-		curTBO->unlock();
-		
-		
-		cout << "writeIndex " << curTBO->writeIndex << "\n";
-		
-	}
+	
+	
 	
 	
 	
@@ -4953,7 +5070,7 @@ UPDATE_LIGHTS_END:
 
 
 
-	void rasterHolders(bool showResults, bool doPoints) {
+	void rasterHolders(bool showResults) {
 		
 		// get view matrix
 		singleton->perspectiveOn = true;
@@ -4961,45 +5078,48 @@ UPDATE_LIGHTS_END:
 		singleton->perspectiveOn = false;
 
 
-		TBOEntry* curTBO = &(singleton->tboPool[0]);
+		//TBOEntry* curTBO = &(singleton->tboPool[0]);
 
 		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_CULL_FACE);
+		//glCullFace(GL_FRONT);
 		
-		//if (doPoints) {
-		//singleton->bindShader("RasterShader");
-		//}
-		//else {
-			singleton->bindShader("HolderShader");
-		//}
 		
+		singleton->bindShader("HolderShader");
 		singleton->bindFBO("rasterFBO");
 
-
-		// singleton->sampleFBO("rasterPosFBO",0);
-		// singleton->sampleFBO("rasterSourceFBO",1);
-
+		// singleton->setShaderTBO(
+		// 	0,
+		// 	curTBO->tbo.tbo_tex,
+		// 	curTBO->tbo.tbo_buf,
+		// 	false
+		// );
+		
+		singleton->setShaderFloat("voxelsPerCell",singleton->voxelsPerCell);
+		singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
+		singleton->setShaderInt("CUBE_WRAP_ENTRIES", CUBE_WRAP_ENTRIES);
+		singleton->setShaderInt("CUBE_DATA_INVALID", CUBE_DATA_INVALID);
+		singleton->setShaderInt("CUBE_WRAP_INVALID", CUBE_WRAP_INVALID);
 		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-		
-		
+		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
 		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
 		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 
+		rasterHolder(5);
 
-		curTBO->vbo.draw();
+		//curTBO->vbo.draw();
 		
-		//rasterPolys(-1,0,5,doPoints);
-		//singleton->fsQuad.draw();
-
-		// singleton->unsampleFBO("rasterSourceFBO",1);
-		// singleton->unsampleFBO("rasterPosFBO",0);
+		//singleton->setShaderTBO(0,0,0,false);
 		singleton->unbindFBO();
 		singleton->unbindShader();
 		
+		//glCullFace(GL_BACK);
+		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
 
 		

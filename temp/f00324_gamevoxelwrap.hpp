@@ -99,7 +99,21 @@ public:
 		int kk;
 		int ind;
 		
+		int xx;
+		int yy;
+		int zz;
+		
+		uint curFlags;
+		uint tempFlags;
+		uint normFlags;
+		
+		float tempData[16];
+		
 		CubeWrap* curCW;
+		
+		int tempInd;
+		
+		vec3 totNorm;
 		
 		for (p = 0; p < totSize; p++) {
 			q = voxelBuffer->visitIds[p];
@@ -114,43 +128,91 @@ public:
 				voxOffset.z = kk;
 				
 				voxOffset -= paddingInVoxels;
-				
 				if (inBounds(&voxOffset,0,voxelsPerHolder)) {
-					cellOffset = voxOffset/voxelsPerCell;
-					localVoxOffset = voxOffset-(cellOffset*voxelsPerCell);
-					//fLocalVoxOffset = toVEC(localVoxOffset);
-					//fLocalVoxOffset *= fVPC;
 					
-					ind = cellOffset.z*cellsPerHolder*cellsPerHolder + cellOffset.y*cellsPerHolder + cellOffset.x;
 					
-					if (gph->cubeData[ind] == 0) {
-						gph->cubeWraps.push_back(CubeWrap());
-						gph->cubeData[ind] = (gph->cubeWraps.size()-1)+gph->cubeDataSize;
-						gph->cubeWraps[gph->cubeData[ind]].init();
+					curFlags = voxelBuffer->getFlags(q);
+					
+					totNorm.set(0.0f,0.0f,0.0f);
+					
+					for (zz = -NORM_RAD; zz <= NORM_RAD; zz++) {
+						for (yy = -NORM_RAD; yy <= NORM_RAD; yy++) {
+							for (xx = -NORM_RAD; xx <= NORM_RAD; xx++) {
+								
+								
+								
+								// if (
+								// 	(zz == 0) && (yy == 0) && (xx == 0)	
+								// ) {
+									
+								// }
+								// else {
+									
+								// }
+								
+								tempInd = (zz+kk)*voxelsPerHolderPad*voxelsPerHolderPad + (yy+jj)*voxelsPerHolderPad + (xx + ii);
+								tempFlags = voxelBuffer->getFlagsAtNode(tempInd);
+								
+								if ((tempFlags&E_OCT_SURFACE) > 0) {
+									normFlags = (tempFlags&63);
+									totNorm += BASE_NORMALS[normFlags];
+								}
+								
+								
+							}
+						}
 					}
 					
-					curCW = &(gph->cubeWraps[gph->cubeData[ind]]);
+					totNorm.normalize();
 					
-					curCW->insertValue(&localVoxOffset);//, &fLocalVoxOffset);
+					voxOffset += paddingInVoxels;
+					voxOffset += offsetInVoxels;
+					
+					fVO.x = voxOffset.x;
+					fVO.y = voxOffset.y;
+					fVO.z = voxOffset.z;
+					fVO *= fVPC;
+					
+					tempData[0] = totNorm.x;
+					tempData[1] = totNorm.y;
+					tempData[2] = totNorm.z;
+					
+					gph->vboWrapper.vboBox(
+						fVO.x, fVO.y, fVO.z,
+						0.0f,fVPC,
+						curFlags,
+						tempData,
+						4
+					);
+					
 				}
 				
-				// voxOffset += (offsetInVoxels);
+				// if (inBounds(&voxOffset,0,voxelsPerHolder)) {
+				// 	cellOffset = voxOffset/voxelsPerCell;
+				// 	localVoxOffset = voxOffset-(cellOffset*voxelsPerCell);
+				// 	//fLocalVoxOffset = toVEC(localVoxOffset);
+				// 	//fLocalVoxOffset *= fVPC;
+					
+				// 	ind = cellOffset.z*cellsPerHolder*cellsPerHolder + cellOffset.y*cellsPerHolder + cellOffset.x;
+					
+				// 	if (gph->cubeData[ind] == CUBE_DATA_INVALID) {
+				// 		gph->cubeWraps.push_back(CubeWrap());
+				// 		gph->cubeData[ind] = (gph->cubeWraps.size()-1);
+				// 		gph->cubeWraps[gph->cubeData[ind]].init();
+				// 	}
+					
+				// 	curCW = &(gph->cubeWraps[gph->cubeData[ind]]);
+					
+				// 	curCW->insertValue(&localVoxOffset,voxelBuffer->getFlags(q));//, &fLocalVoxOffset);
+				// }
 				
-				// fVO.x = voxOffset.x;
-				// fVO.y = voxOffset.y;
-				// fVO.z = voxOffset.z;
 				
-				// fVO *= fVPC;
 				
-				// gph->vertexVec.push_back(fVO.x);
-				// gph->vertexVec.push_back(fVO.y);
-				// gph->vertexVec.push_back(fVO.z);
-				// gph->vertexVec.push_back(1.0f);
 				
-				// gph->vertexVec.push_back(fVO.x);
-				// gph->vertexVec.push_back(fVO.y);
-				// gph->vertexVec.push_back(fVO.z);
-				// gph->vertexVec.push_back(1.0f);
+				
+				
+				
+				
 				
 				
 				
@@ -176,9 +238,7 @@ public:
 		offsetInVoxels = offsetInCells;
 		offsetInVoxels *= voxelsPerCell;
 		
-	
-		
-		
+
 		basePD = (&singleton->pdPool[curPD]);
 		baseData = singleton->pdPool[curPD].data;
 		
@@ -486,9 +546,6 @@ public:
 				
 				
 				
-				
-				
-				
 			}
 		}
 		
@@ -512,6 +569,10 @@ public:
 		
 		int tempPtr;
 		
+		bool isSurface = false;
+		
+		uint curSide = E_OCT_XP;
+		
 		if ( voxelBuffer->getFlag(curPtr,E_OCT_SOLID) ) {
 			
 			for (q = 0; q < NUM_ORIENTATIONS; q++) {
@@ -524,17 +585,21 @@ public:
 						
 					}
 					else {
-						voxelBuffer->setFlag(curPtr, E_OCT_SURFACE);
-						return true;
+						voxelBuffer->setFlag(curPtr, curSide);
+						isSurface = true;
 					}
 				}
 				
+				curSide *= 2;
 				
 			}
 		}
 		
-		//voxelBuffer->clearFlag(curPtr, E_OCT_SURFACE);
-		return false;
+		if (isSurface) {
+			voxelBuffer->setFlag(curPtr, E_OCT_SURFACE);
+		}
+		
+		return isSurface;
 	}
 
 	int getVoxelAtCoord(ivec3* pos) {
@@ -704,11 +769,11 @@ public:
 		float testDis;
 		float variance = 0.5f;
 		
-		vec3 bestPos = voroOffsets[0] + randPN(fWorldCellPos+voroOffsets[0])*variance;
+		vec3 bestPos = VORO_OFFSETS[0] + randPN(fWorldCellPos+VORO_OFFSETS[0])*variance;
 		float bestDis = fWorldPos.distance(bestPos);
 		
 		for (i = 1; i < 27; i++) {
-			testPos = voroOffsets[i] + randPN(fWorldCellPos+voroOffsets[i])*variance;
+			testPos = VORO_OFFSETS[i] + randPN(fWorldCellPos+VORO_OFFSETS[i])*variance;
 			testDis = fWorldPos.distance(testPos);
 			
 			if (testDis < bestDis) {
@@ -734,7 +799,7 @@ public:
 		ivec3 worldClosestCenter;// = worldPos;
 		ivec3 localClosestCenter;
 		
-		getVoro(&worldPos,&worldClosestCenter, voxelsPerCell);
+		getVoro(&worldPos,&worldClosestCenter, voxelsPerCell*2);
 		localClosestCenter = worldClosestCenter - offsetInVoxels;
 		localClosestCenter += paddingInVoxels;
 		
@@ -743,7 +808,7 @@ public:
 		float terSamp = sampLinear(&localClosestCenter);
 		
 		float terSampOrig = sampLinear(pos);
-		bool isSolid = (mixf(terSamp,terSampOrig,0.5f) >= 0.5f);
+		bool isSolid = (mixf(terSamp,terSampOrig,0.0f) >= 0.5f);
 		//bool isSolid = (terSamp >= 0.5f);
 		
 		

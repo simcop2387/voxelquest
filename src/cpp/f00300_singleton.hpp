@@ -193,6 +193,7 @@ public:
 	int curPattern;
 	int curPatternRot;
 	
+	int holderLoadCount;
 	int bakeTicks;
 	int tbTicks;
 	int tempCounter;
@@ -276,7 +277,7 @@ public:
 	int paddingInCells;
 	
 	
-	TBOEntry tboPool[MAX_TBOPOOL_SIZE];
+	//TBOEntry tboPool[MAX_TBOPOOL_SIZE];
 	PaddedData pdPool[MAX_PDPOOL_SIZE];
 	//GameOctree* octPool[MAX_PDPOOL_SIZE];
 	
@@ -973,6 +974,7 @@ public:
 		
 		generatePatterns();
 		
+		holderLoadCount = 0;
 		bakeTicks = 0;
 		tbTicks = 0;
 		tempCounter = 0;
@@ -984,7 +986,7 @@ public:
 		pathfindingOn = false;
 		pathfindingGen = false;
 		pathfindingTestOn = false;
-		updateHolders = false;
+		updateHolders = true;
 		updateFluid = false;
 		
 		maxHolderDis = 32;
@@ -1000,6 +1002,7 @@ public:
 			glEnable(GL_POINT_SPRITE);
 			glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 		}
+		glFrontFace(GL_CCW);
 		
 		glLineWidth(4.0f);
 		
@@ -1010,7 +1013,7 @@ public:
 		// qqqqqq
 		
 		
-		heightMapMaxInCells = 4096.0f;
+		heightMapMaxInCells = 8192.0f;
 		//mapSampScale = 2.0f;
 		int newPitch = (imageHM0->width) * 2; //*2;
 		mapPitch = (imageHM0->width); //newPitch;// //
@@ -1019,7 +1022,7 @@ public:
 		voxelsPerCell = VOXELS_PER_CELL;
 		paddingInCells = 1;
 		
-		cellsPerHolder = 16;
+		cellsPerHolder = CELLS_PER_HOLDER;
 		holdersPerBlock = 8;
 		
 		holdersPerWorld = newPitch;
@@ -1052,9 +1055,9 @@ public:
 			// );
 		}
 		
-		for (i = 0; i < MAX_TBOPOOL_SIZE; i++) {
-			tboPool[i].init(128*1024*1024);
-		}
+		// for (i = 0; i < MAX_TBOPOOL_SIZE; i++) {
+		// 	tboPool[i].init(128*1024*1024);
+		// }
 		
 		
 		if (blocksPerWorld > 256) {
@@ -1765,7 +1768,7 @@ public:
 				// 	clampType = GL_CLAMP_TO_EDGE;//GL_CLAMP_TO_BORDER
 				// break;
 				case E_VW_VORO:
-					tz = 128;
+					tz = 256;
 					clampType = GL_REPEAT;
 				break;
 			}
@@ -2037,7 +2040,7 @@ public:
 		for (k = 0; k <= 2; k++) {
 			for (j = 0; j <= 2; j++) {
 				for (i = 0; i <= 2; i++) {
-					voroOffsets[k*9 + j*3 + i] = vec3(
+					VORO_OFFSETS[k*9 + j*3 + i] = vec3(
 						i - 1,
 						j - 1,
 						k - 1	
@@ -2045,6 +2048,42 @@ public:
 				}
 			}
 		}
+		
+		uint q;
+		
+		vec3 totVec;
+		
+		for (q = 0; q < 64; q++) {
+			
+			totVec = vec3(0.0f,0.0f,0.0f);
+			
+			if ((q&E_OCT_XP)>0) {
+				totVec += vec3(1.0f,0.0f,0.0f);
+			}
+			if ((q&E_OCT_XM)>0) {
+				totVec += vec3(-1.0f,0.0f,0.0f);
+			}
+			
+			if ((q&E_OCT_YP)>0) {
+				totVec += vec3(0.0f,1.0f,0.0f);
+			}
+			if ((q&E_OCT_YM)>0) {
+				totVec += vec3(0.0f,-1.0f,0.0f);
+			}
+			
+			if ((q&E_OCT_ZP)>0) {
+				totVec += vec3(0.0f,0.0f,1.0f);
+			}
+			if ((q&E_OCT_ZM)>0) {
+				totVec += vec3(0.0f,0.0f,-1.0f);
+			}
+			
+			
+			BASE_NORMALS[q] = totVec;
+			BASE_NORMALS[q].normalize();
+			
+		}
+		
 	}
 	
 	void generatePatterns() {
@@ -4657,8 +4696,6 @@ DISPATCH_EVENT_END:
 			}
 		}
 		
-		
-		
 	}
 
 	void updateCamVals() {
@@ -5640,12 +5677,12 @@ DISPATCH_EVENT_END:
 				case 't':
 				
 					
-				
+
 					//testOn2 = !testOn2;
 					//testOn3 = !testOn3;
 					renderingOct = !renderingOct;
 					if (renderingOct) {
-						gw->updateTBOPool(5);
+					//	gw->updateTBOPool(5);
 					}
 					
 					// if (renderingOct) {
@@ -8925,6 +8962,60 @@ DISPATCH_EVENT_END:
 	
 	
 	
+	void checkFluid(GameFluid* gf) {
+		if ((!draggingMap)&&(!fpsTest)&&updateHolders) {
+			gf->updateAll();
+			
+			if (gf->fluidReading) {
+				if (gf->proceedingToRead) {
+					
+					if (gf->waitingOnThreads) {
+						gf->tryToEndThreads();
+					}
+					else {
+						gf->tryToEndRead();
+					}
+					
+					
+				}
+				else {
+					gf->proceedWithRead();
+				}
+			}
+			
+			
+			if (gf->readyForTermination) {
+				
+				
+				if (
+				 gf->anyThreadsRunning()
+				) {
+					
+				}
+				else {
+					gf->readyForTermination = false;
+					gf->cycleTerminated = true;
+				}
+				
+				
+			}
+			
+			if (gf->cycleTerminated) {
+				
+				gameLogic->loadNearestHolders();
+				holderLoadCount++;
+				
+				if (holderLoadCount == MAX_HOLDER_LOAD_COUNT) {
+					holderLoadCount = 0;
+					gf->cycleTerminated = false;
+					gf->startFT();
+				}
+				
+				
+			}
+		}
+	}
+	
 	
 	void frameUpdate() {
 		
@@ -9200,43 +9291,7 @@ DISPATCH_EVENT_END:
 						// 	}
 						// }
 						
-						if ((!draggingMap)&&(!fpsTest)&&updateHolders) {
-							gameFluid[E_FID_BIG]->updateAll();
-							
-							if (gameFluid[E_FID_BIG]->fluidReading) {
-								if (gameFluid[E_FID_BIG]->proceedingToRead) {
-									gameFluid[E_FID_BIG]->tryToEndRead();
-								}
-								else {
-									gameFluid[E_FID_BIG]->proceedWithRead();
-								}
-							}
-							
-							
-							if (gameFluid[E_FID_BIG]->readyForTermination) {
-								
-								
-								if (
-								 gameFluid[E_FID_BIG]->anyThreadsRunning()
-								) {
-									
-								}
-								else {
-									gameFluid[E_FID_BIG]->readyForTermination = false;
-									gameFluid[E_FID_BIG]->cycleTerminated = true;
-								}
-								
-								
-							}
-							
-							if (gameFluid[E_FID_BIG]->cycleTerminated) {
-								
-								gameLogic->loadNearestHolders();
-								
-								gameFluid[E_FID_BIG]->cycleTerminated = false;
-								gameFluid[E_FID_BIG]->startFT();
-							}
-						}
+						checkFluid(gameFluid[E_FID_BIG]);
 						
 						
 					}
@@ -9257,8 +9312,10 @@ DISPATCH_EVENT_END:
 							// }
 							// gw->rasterGrid(&myVBOGrid,true);
 							// bakeTicks++;
+							
+							
 							gw->update(false,false);
-							gw->rasterHolders(true,true);
+							gw->rasterHolders(true);
 							
 						}
 						else {

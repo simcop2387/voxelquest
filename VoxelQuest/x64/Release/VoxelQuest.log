@@ -1,4 +1,4 @@
-﻿Build started 3/14/2016 8:36:51 PM.
+﻿Build started 3/23/2016 9:10:02 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -358,10 +358,10 @@
          cellsPerNodeXY: 16
          cellsPerNodeZ: 8
          holdersPerBlock: 8
-         cellsPerBlock: 128
-         terDataBufPitchScaledXY 10
-         cellsPerHolder: 16
-         cellsPerWorld: 32768
+         cellsPerBlock: 256
+         terDataBufPitchScaledXY 20
+         cellsPerHolder: 32
+         cellsPerWorld: 65536
          blocksPerWorld: 256
          MAX_UNIFORMS: 65536
          
@@ -1006,16 +1006,14 @@
          Valid JSON
                    
          GW DONE          
-         curHeight 0 newHeight 1985.76
+         curHeight 0 newHeight 3644.24
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          GL_MAX_TEXTURE_BUFFER_SIZE 134217728
          
-         updateHolders 1
-     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
-C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -1073741819.
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
+         updateHolders 0
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
-Build FAILED.
+Build succeeded.
 
-Time Elapsed 00:00:23.61
+Time Elapsed 00:01:03.21

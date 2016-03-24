@@ -700,7 +700,7 @@ vec4 genVoro( vec3 pos ) {
       gradVal.x = 1.0;
     }
     
-    float nv = (seamlessNoise(pos,1.0/64.0)+1.0)*0.5;
+    float nv = (seamlessNoise(pos,1.0/128.0)+1.0)*0.5;
     //float nv2 = (seamlessNoise(abs(cellVal.xyz-vec3(64.0)),1.0/64.0)+1.0)*0.5;
     float cellZ = (pos.z-cellVal.z)/(cellSize.z);
     

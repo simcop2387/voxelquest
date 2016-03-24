@@ -118,6 +118,12 @@ class ThreadPoolWrapper {
 			availIds.push_back(threadId);
 			
 		}
+		
+		// if (didStop) {
+		// 	cout << "didStop\n";
+		// }
+		
+		
 		return didStop;
 	}
 	

@@ -207,6 +207,7 @@ public:
   int currentTick;
   int curPattern;
   int curPatternRot;
+  int holderLoadCount;
   int bakeTicks;
   int tbTicks;
   int tempCounter;
@@ -280,7 +281,6 @@ public:
   int blocksPerWorld;
   int voxelsPerCell;
   int paddingInCells;
-  TBOEntry (tboPool) [MAX_TBOPOOL_SIZE];
   PaddedData (pdPool) [MAX_PDPOOL_SIZE];
   intPair (entIdArr) [1024];
   uint palWidth;
@@ -664,6 +664,7 @@ public:
   bool saveFile (char * fileName, charArr * source);
   float getUnderWater ();
   void updateAmbientSounds ();
+  void checkFluid (GameFluid * gf);
   void frameUpdate ();
   FIVector4 * cameraGetPos ();
   FIVector4 * cameraGetPosNoShake ();
@@ -1199,6 +1200,7 @@ public:
   FIVector4 tempMax2;
   FIVector4 minV;
   FIVector4 maxV;
+  bool waitingOnThreads;
   bool fluidChanged;
   bool posShifted;
   bool hasRead;
@@ -1276,7 +1278,6 @@ public:
   void addGeom (FIVector4 * newPos, int templateId);
   void fetchGeom ();
   void setupPrimTexture ();
-  bool tryToEndRead ();
   bool anyThreadsRunning ();
   bool updateAll ();
   void copyPrimTexture (int ox, int oy, int oz, int dim, uint * * myData);
@@ -1284,6 +1285,8 @@ public:
   void updateTBOData (bool firstTime, bool reloadTemplates);
   void terminateCycle ();
   void beginFluidRead (FIVector4 * _campPosVPDump);
+  bool tryToEndRead ();
+  void tryToEndThreads ();
   void proceedWithRead ();
   void endFluidRead ();
   void shiftRegion ();
@@ -1673,7 +1676,6 @@ public:
   int pathSize;
   int totIdealNodes;
   int totGroupIds;
-  int cubeDataSize;
   int cellDataSize;
   int cellsPerHolder;
   int visitId;
@@ -1720,7 +1722,6 @@ public:
   void fillVBO ();
   PaddedDataEntry * getPadData (int ii, int jj, int kk);
   int gatherData ();
-  void beginVoxelWrap ();
   void wrapPolys ();
   void generateList ();
 };
@@ -1927,6 +1928,7 @@ public:
   GamePageHolder * globEndHolder;
   int globEndGroupId;
   bool globFoundTarg;
+  bool allowThreadCreation;
   GameLogic ();
   void setEntTargPath (int sourceUID, int destUID);
   void init (Singleton * _singleton);
@@ -1952,6 +1954,7 @@ public:
   void getPointsForPath (GamePageHolder * curHolderFrom, int _curInd, PathInfo * pathInfo, bool reverseOrder);
   void drawRegions (int offX, int offY, int offZ);
   int getClosestPathRad (btVector3 cpBTV, GamePageHolder * & closestHolder);
+  bool anyThreadsRunning ();
   void loadNearestHolders ();
 };
 #undef LZZ_INLINE
@@ -2204,7 +2207,7 @@ public:
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void polyCombine ();
   void drawPolys (string fboName, int minPeel, int maxPeel);
-  void updateTBOPool (int rad);
+  void rasterHolder (int rad);
   void rasterPolys (int minPeel, int maxPeel, int extraRad = 0, bool doPoints = false);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);
@@ -2214,7 +2217,7 @@ public:
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
   void updateLights ();
-  void rasterHolders (bool showResults, bool doPoints);
+  void rasterHolders (bool showResults);
   void rasterGrid (VBOGrid * vboGrid, bool showResults);
   void renderDebug ();
   void postProcess (bool postToScreen);

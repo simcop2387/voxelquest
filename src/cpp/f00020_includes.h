@@ -68,15 +68,25 @@ const static float ORG_SCALE_BASE = 0.5f;
 	const static int DEF_WIN_W = 2048; //2048;//
 	const static int DEF_WIN_H = 1024; //1024;//
 #else
-	const static int DEF_WIN_W = 1536;//1536;
-	const static int DEF_WIN_H = 768;//768;
+	const static int DEF_WIN_W = 1280;//1536;
+	const static int DEF_WIN_H = 640;//768;
 #endif
 
 
-const static int DEF_SCALE_FACTOR = 4;
-const static int RENDER_SCALE_FACTOR = 1;
+const static int DEF_SCALE_FACTOR = 1;
+const static int RENDER_SCALE_FACTOR = 4;
 
+
+const static int NORM_RAD = 2;
+const static int MAX_HOLDER_LOAD_COUNT = 512;
 const static int VOXELS_PER_CELL = 8;
+const static int CELLS_PER_HOLDER = 32;
+const static int MAX_PDPOOL_SIZE = 8;
+// const static int MAX_TBOPOOL_SIZE = 8;
+
+
+
+
 
 const static float SPHEREMAP_SCALE_FACTOR = 0.5f; // lower is faster
 
@@ -87,9 +97,6 @@ const static bool USE_SPHERE_MAP = false;
 const static float TIME_DELTA = 1.0f/60.0f;
 
 const static int THREAD_DATA_COUNT = 16;
-
-const static int MAX_PDPOOL_SIZE = 8;
-const static int MAX_TBOPOOL_SIZE = 2;
 
 const static float MASS_PER_LIMB = 0.1f;
 

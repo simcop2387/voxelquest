@@ -74,7 +74,7 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		//}
 		
 		
-		cubeDataSize = cellsPerHolder*cellsPerHolder*cellsPerHolder;
+		//cubeDataSize = cellsPerHolder*cellsPerHolder*cellsPerHolder;
 		pathSize = cellsPerHolder*cellsPerHolder*cellsPerHolder;
 		cellDataSize = cellsPerHolder*cellsPerHolder*cellsPerHolder*4;
 
@@ -285,11 +285,16 @@ void GamePageHolder::checkData (bool checkPath)
 		
 		if (hasData) {
 			if (cellData == NULL) {
-				cubeData = new uint[cubeDataSize];
+				cubeData = new uint[CUBE_DATA_SIZE];
 				cellData = new int[cellDataSize];
 				
-				for (i = 0; i < cubeDataSize; i++) {
-					cubeData[i] = 0;
+				// if (cubeWraps.size() == 0) {
+				// 	cubeWraps.push_back(CubeWrap());
+				// }
+				
+				
+				for (i = 0; i < CUBE_DATA_SIZE; i++) {
+					cubeData[i] = CUBE_DATA_INVALID;
 				}
 				
 			}
@@ -1593,10 +1598,10 @@ void GamePageHolder::fillVBO ()
 		}
 		else {
 			
-			if (POLYS_FOR_CELLS) {
+			if (POLYS_FOR_CELLS||DO_VOXEL_WRAP) {
 				
 				if (vboWrapper.hasInit) {
-					vboWrapper.endFill();
+					
 				}
 				else {
 					vboWrapper.init(
@@ -1605,9 +1610,11 @@ void GamePageHolder::fillVBO ()
 					);
 				}
 				
+				vboWrapper.endFill();
 				
-				glFlush();
-				glFinish();
+				
+				//glFlush();
+				//glFinish();
 			}
 			
 			if (DO_VOXEL_WRAP) {
@@ -1724,23 +1731,6 @@ int GamePageHolder::gatherData ()
 		}
 		
 		return tempHF;
-	}
-void GamePageHolder::beginVoxelWrap ()
-                              {
-		int i;
-		
-		voxelWrap->process(this);
-		
-		if (curPD > -1) {
-			//cout << "lastFFSteps " << voxelWrap->lastFFSteps << "\n";
-			//cout << "nodeCount " << singleton->octPool[curPD]->octNodes.size() << "\n";
-			//cout << "vertices " << vertexVec.size() << "\n\n";
-		}
-		
-		
-		
-		
-		
 	}
 void GamePageHolder::wrapPolys ()
                          {
@@ -2000,10 +1990,8 @@ void GamePageHolder::generateList ()
 		}
 		else {
 			
-			
-			
 			if (DO_VOXEL_WRAP) {
-				beginVoxelWrap();
+				voxelWrap->process(this);
 			}
 			
 			if (POLYS_FOR_CELLS) {
@@ -2015,9 +2003,9 @@ void GamePageHolder::generateList ()
 		
 		listEmpty = (vboWrapper.vertexVec.size() == 0);
 		
-		if (DO_VOXEL_WRAP) {
-			listEmpty = (cubeWraps.size() == 0);
-		}
+		// if (DO_VOXEL_WRAP) {
+		// 	listEmpty = (cubeWraps.size() <= 0);
+		// }
 		
 		holderFlags = tempHF;
 		

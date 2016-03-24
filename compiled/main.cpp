@@ -68,15 +68,25 @@ const static float ORG_SCALE_BASE = 0.5f;
 	const static int DEF_WIN_W = 2048; //2048;//
 	const static int DEF_WIN_H = 1024; //1024;//
 #else
-	const static int DEF_WIN_W = 1536;//1536;
-	const static int DEF_WIN_H = 768;//768;
+	const static int DEF_WIN_W = 1280;//1536;
+	const static int DEF_WIN_H = 640;//768;
 #endif
 
 
-const static int DEF_SCALE_FACTOR = 4;
-const static int RENDER_SCALE_FACTOR = 1;
+const static int DEF_SCALE_FACTOR = 1;
+const static int RENDER_SCALE_FACTOR = 4;
 
+
+const static int NORM_RAD = 2;
+const static int MAX_HOLDER_LOAD_COUNT = 512;
 const static int VOXELS_PER_CELL = 8;
+const static int CELLS_PER_HOLDER = 32;
+const static int MAX_PDPOOL_SIZE = 8;
+// const static int MAX_TBOPOOL_SIZE = 8;
+
+
+
+
 
 const static float SPHEREMAP_SCALE_FACTOR = 0.5f; // lower is faster
 
@@ -87,9 +97,6 @@ const static bool USE_SPHERE_MAP = false;
 const static float TIME_DELTA = 1.0f/60.0f;
 
 const static int THREAD_DATA_COUNT = 16;
-
-const static int MAX_PDPOOL_SIZE = 8;
-const static int MAX_TBOPOOL_SIZE = 2;
 
 const static float MASS_PER_LIMB = 0.1f;
 
@@ -3639,6 +3646,7 @@ bool replaceStr(std::string& str, const std::string& from, const std::string& to
 // const static unsigned long int STEP_TIME_IN_MICRO_SEC = 32000;
 
 #define E_CONST(DDD) \
+DDD(E_CONST_DOT_CLIP) \
 DDD(E_CONST_BAKE_TICKS) \
 DDD(E_CONST_TURNBASED_TICKS) \
 DDD(E_CONST_JUMP_COOLDOWN_MAX) \
@@ -8243,6 +8251,8 @@ const static VectorI3 DIR_VECS_IV[NUM_ORIENTATIONS] = {
 };
 
 
+
+
 typedef VectorI3 ivec3;
 
 ivec3 toIVEC(vec3 val) {
@@ -11584,25 +11594,25 @@ public:
 	
 	
 	
-	inline void getIndVal(int procCount) {
-		indexVec.push_back(0+procCount*4);
-		indexVec.push_back(1+procCount*4);
-		indexVec.push_back(2+procCount*4);
-		indexVec.push_back(2+procCount*4);
-		indexVec.push_back(1+procCount*4);
-		indexVec.push_back(3+procCount*4);
-	}
+	// inline void getIndVal(int procCount) {
+	// 	indexVec.push_back(0+procCount*4);
+	// 	indexVec.push_back(1+procCount*4);
+	// 	indexVec.push_back(2+procCount*4);
+	// 	indexVec.push_back(2+procCount*4);
+	// 	indexVec.push_back(1+procCount*4);
+	// 	indexVec.push_back(3+procCount*4);
+	// }
 	
 	
 	
-	inline void getIndVal2(int procCount) {
-		indexVec.push_back(2+procCount*4);
-		indexVec.push_back(1+procCount*4);
-		indexVec.push_back(0+procCount*4);
-		indexVec.push_back(3+procCount*4);
-		indexVec.push_back(1+procCount*4);
-		indexVec.push_back(2+procCount*4);
-	}
+	// inline void getIndVal2(int procCount) {
+	// 	indexVec.push_back(2+procCount*4);
+	// 	indexVec.push_back(1+procCount*4);
+	// 	indexVec.push_back(0+procCount*4);
+	// 	indexVec.push_back(3+procCount*4);
+	// 	indexVec.push_back(1+procCount*4);
+	// 	indexVec.push_back(2+procCount*4);
+	// }
 	
 	inline void getPixVal(
 		//FBOWrapper* fbow0,
@@ -11673,71 +11683,168 @@ public:
 		float* data,
 		int dataLen
 	) {
+		
+		
+		// counter clockwise == front face
+		
+		//         z  
+		//  4 5     . x
+		//  6 7     y
+		            
+		//    0 1
+		//    2 3
+
+		getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0,data,dataLen); // 0
+		getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0,data,dataLen); // 1
+		getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0,data,dataLen); // 2
+		getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0,data,dataLen); // 3
+		
+		getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1,data,dataLen); // 4
+		getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1,data,dataLen); // 5
+		getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1,data,dataLen); // 6
+		getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1,data,dataLen); // 7
+		
+		
+		
 		if (procFlags[0]&procFlag) { // x+
 			
-			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0,data,dataLen);
+			indexVec.push_back(5+procCount);
+			indexVec.push_back(1+procCount);
+			indexVec.push_back(3+procCount);
+			indexVec.push_back(3+procCount);
+			indexVec.push_back(7+procCount);
+			indexVec.push_back(5+procCount);
 			
-			getIndVal(procCount);
-			procCount++;
 			
 			
 		}
 		if (procFlags[1]&procFlag) { // x-
 			
-			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0,data,dataLen);
+			indexVec.push_back(6+procCount);
+			indexVec.push_back(2+procCount);
+			indexVec.push_back(0+procCount);
+			indexVec.push_back(0+procCount);
+			indexVec.push_back(4+procCount);
+			indexVec.push_back(6+procCount);
 			
-			getIndVal2(procCount);
-			procCount++;
 			
 		}
+		
+
+		
+		
 		if (procFlags[2]&procFlag) { // y+
 			
-			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0,data,dataLen);
+			indexVec.push_back(7+procCount);
+			indexVec.push_back(3+procCount);
+			indexVec.push_back(2+procCount);
+			indexVec.push_back(2+procCount);
+			indexVec.push_back(6+procCount);
+			indexVec.push_back(7+procCount);
 			
-			getIndVal2(procCount);
-			procCount++;
 			
 		}
 		if (procFlags[3]&procFlag) { // y-
 			
+			indexVec.push_back(4+procCount);
+			indexVec.push_back(0+procCount);
+			indexVec.push_back(1+procCount);
+			indexVec.push_back(1+procCount);
+			indexVec.push_back(5+procCount);
+			indexVec.push_back(4+procCount);
 			
-			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0,data,dataLen);
-			
-			getIndVal(procCount);
-			procCount++;
 		}
 		if (procFlags[4]&procFlag) { // z+
 			
-			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1,data,dataLen);
+			indexVec.push_back(4+procCount);
+			indexVec.push_back(5+procCount);
+			indexVec.push_back(7+procCount);
+			indexVec.push_back(7+procCount);
+			indexVec.push_back(6+procCount);
+			indexVec.push_back(4+procCount);
 			
-			getIndVal(procCount);
-			procCount++;
 		}
 		if (procFlags[5]&procFlag) { // z-
 			
-			getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0,data,dataLen);
-			getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0,data,dataLen);
+			indexVec.push_back(3+procCount);
+			indexVec.push_back(1+procCount);
+			indexVec.push_back(0+procCount);
+			indexVec.push_back(0+procCount);
+			indexVec.push_back(2+procCount);
+			indexVec.push_back(3+procCount);
 			
-			getIndVal2(procCount);
-			procCount++;
 		}
+		
+		
+		procCount += 8;
+		
+		
+		
+		// if (procFlags[0]&procFlag) { // x+
+			
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0,data,dataLen);
+			
+		// 	getIndVal(procCount);
+		// 	procCount++;
+			
+			
+		// }
+		// if (procFlags[1]&procFlag) { // x-
+			
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0,data,dataLen);
+			
+		// 	getIndVal2(procCount);
+		// 	procCount++;
+			
+		// }
+		// if (procFlags[2]&procFlag) { // y+
+			
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0,data,dataLen);
+			
+		// 	getIndVal2(procCount);
+		// 	procCount++;
+			
+		// }
+		// if (procFlags[3]&procFlag) { // y-
+			
+			
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0,data,dataLen);
+			
+		// 	getIndVal(procCount);
+		// 	procCount++;
+		// }
+		// if (procFlags[4]&procFlag) { // z+
+			
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv1,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv1,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv0,iv1,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv0,iv1,data,dataLen);
+			
+		// 	getIndVal(procCount);
+		// 	procCount++;
+		// }
+		// if (procFlags[5]&procFlag) { // z-
+			
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv1,iv0,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv1,iv0,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv1,iv0,iv0,data,dataLen);
+		// 	getPixVal(bpX,bpY,bpZ, iv0,iv0,iv0,data,dataLen);
+			
+		// 	getIndVal2(procCount);
+		// 	procCount++;
+		// }
 	}
 
 	
@@ -12064,10 +12171,17 @@ struct PushModStruct
 };
 
 
-uint E_OCT_VISITED = 1;
-uint E_OCT_SOLID = 2;
-uint E_OCT_SURFACE = 4;
-uint E_OCT_NOTNEW = 8;
+
+uint E_OCT_XP = 1;
+uint E_OCT_XM = 2;
+uint E_OCT_YP = 4;
+uint E_OCT_YM = 8;
+uint E_OCT_ZP = 16;
+uint E_OCT_ZM = 32;
+uint E_OCT_VISITED = 64;
+uint E_OCT_SOLID = 128;
+uint E_OCT_SURFACE = 256;
+uint E_OCT_NOTNEW = 512;
 
 
 struct OctNode {
@@ -12096,43 +12210,156 @@ struct OctNode {
 	
 };
 
-
-
+const static uint CUBE_DATA_INVALID = 0xCCCCCCCC;
+const static int CUBE_DATA_SIZE = CELLS_PER_HOLDER*CELLS_PER_HOLDER*CELLS_PER_HOLDER;
 const static int CUBE_WRAP_ENTRIES = 4;
 const static int CUBE_WRAP_SIZE = VOXELS_PER_CELL*VOXELS_PER_CELL*3*CUBE_WRAP_ENTRIES;
+const static uint CUBE_WRAP_INVALID = 1024;
 
 // slice 0: yz
 // slice 1: xz
 // slice 2: xy
 
 struct CubeWrap {
+	
+	// data layout:
+	// yz plane - x up
+	// xz plane - y up
+	// xy plane - z up
+	
+	// offset 0: min depth
+	// offset 1: max depth
+	
 	uint data[CUBE_WRAP_SIZE];
 	
-	void insertValue(ivec3* loc) { //, vec3* val) {
+	void insertValue(ivec3* loc, uint flags) { //, vec3* val) {
 		int indYZ = (loc->y + loc->z*VOXELS_PER_CELL + 0*VOXELS_PER_CELL*VOXELS_PER_CELL)*CUBE_WRAP_ENTRIES;
 		int indXZ = (loc->x + loc->z*VOXELS_PER_CELL + 1*VOXELS_PER_CELL*VOXELS_PER_CELL)*CUBE_WRAP_ENTRIES;
 		int indXY = (loc->x + loc->y*VOXELS_PER_CELL + 2*VOXELS_PER_CELL*VOXELS_PER_CELL)*CUBE_WRAP_ENTRIES;
 		
-		if (loc->x > data[indYZ+0]) {
-			data[indYZ+0] = loc->x;
+		int voxMax = VOXELS_PER_CELL-1;
+		int voxMin = 0;
+		
+		if ((flags&E_OCT_XP) > 0) { // air x plus
+			if (
+				(loc->x < data[indYZ+1])
+				// || (data[indYZ+1] == CUBE_WRAP_INVALID)
+			) { // max
+				data[indYZ+1] = loc->x;
+			}
+			
 		}
-		if (loc->x < data[indYZ+1]) {
-			data[indYZ+1] = loc->x;
+		if ((flags&E_OCT_XM) > 0) { // air x minus
+			if (
+				(loc->x > data[indYZ+0])
+				// || (data[indYZ+0] == CUBE_WRAP_INVALID)
+			) { // min
+				data[indYZ+0] = loc->x;
+			}
 		}
 		
-		if (loc->y > data[indXZ+0]) {
-			data[indXZ+0] = loc->y;
+		
+		if ((flags&E_OCT_YP) > 0) { // air y plus
+			if (
+				(loc->y < data[indXZ+1])
+				// || (data[indXZ+1] == CUBE_WRAP_INVALID)
+			) { // max
+				data[indXZ+1] = loc->y;
+			}
 		}
-		if (loc->y < data[indXZ+1]) {
-			data[indXZ+1] = loc->y;
+		if ((flags&E_OCT_YM) > 0) { // air y minus
+			if (
+				(loc->y > data[indXZ+0])
+				// || (data[indXZ+0] == CUBE_WRAP_INVALID)
+			) { // min
+				data[indXZ+0] = loc->y;
+			}
 		}
 		
-		if (loc->z > data[indXY+0]) {
-			data[indXY+0] = loc->z;
+		
+		if ((flags&E_OCT_ZP) > 0) { // air z plus
+			if (
+				(loc->z < data[indXY+1])
+				// || (data[indXY+1] == CUBE_WRAP_INVALID)
+			) { // max
+				data[indXY+1] = loc->z;
+			}
 		}
-		if (loc->z < data[indXY+1]) {
-			data[indXY+1] = loc->z;
+		if ((flags&E_OCT_ZM) > 0) { // air z minus
+			if (
+				(loc->z > data[indXY+0])
+				// || (data[indXY+0] == CUBE_WRAP_INVALID)
+			) { // min
+				data[indXY+0] = loc->z;
+			}
 		}
+		
+		
+		
+		
+		
+		
+		
+		
+		// if ((flags&E_OCT_XP) > 0) { // air x plus
+		// 	if (loc->x > data[indYZ+0]) { // min
+		// 		data[indYZ+0] = loc->x;
+		// 	}
+		// 	if (loc->x < data[indYZ+1]) { // max
+		// 		data[indYZ+1] = loc->x;
+		// 	}
+		// }
+		// if ((flags&E_OCT_XM) > 0) { // air x minus
+		// 	if (loc->x > data[indYZ+0]) { // min
+		// 		data[indYZ+0] = loc->x;
+		// 	}
+		// 	if (loc->x < data[indYZ+1]) { // max
+		// 		data[indYZ+1] = loc->x;
+		// 	}
+		// }
+		
+		
+		// if ((flags&E_OCT_YP) > 0) { // air y plus
+		// 	if (loc->y > data[indXZ+0]) { // min
+		// 		data[indXZ+0] = loc->y;
+		// 	}
+		// 	if (loc->y < data[indXZ+1]) { // max
+		// 		data[indXZ+1] = loc->y;
+		// 	}
+		// }
+		// if ((flags&E_OCT_YM) > 0) { // air y minus
+		// 	if (loc->y > data[indXZ+0]) { // min
+		// 		data[indXZ+0] = loc->y;
+		// 	}
+		// 	if (loc->y < data[indXZ+1]) { // max
+		// 		data[indXZ+1] = loc->y;
+		// 	}
+		// }
+		
+		
+		// if ((flags&E_OCT_ZP) > 0) { // air z plus
+		// 	if (loc->z > data[indXY+0]) { // min
+		// 		data[indXY+0] = loc->z;
+		// 	}
+		// 	if (loc->z < data[indXY+1]) { // max
+		// 		data[indXY+1] = loc->z;
+		// 	}
+		// }
+		// if ((flags&E_OCT_ZM) > 0) { // air z minus
+		// 	if (loc->z > data[indXY+0]) { // min
+		// 		data[indXY+0] = loc->z;
+		// 	}
+		// 	if (loc->z < data[indXY+1]) { // max
+		// 		data[indXY+1] = loc->z;
+		// 	}
+		// }
+		
+		
+		
+		
+		
+		
+		
 		
 	}
 	
@@ -12152,8 +12379,8 @@ struct CubeWrap {
 					
 					data[ind+0] = 0;
 					data[ind+1] = VOXELS_PER_CELL-1;
-					data[ind+2] = 0.0f;
-					data[ind+3] = 0.0f;
+					data[ind+2] = 0;
+					data[ind+3] = 0;
 					
 				}
 			}
@@ -12183,6 +12410,10 @@ struct VoxelBuffer {
 		visitIds.push_back(val);
 	}
 	
+	uint getFlags(int flagPtr) {
+		return data[flagPtr].flags;
+	}
+	
 	bool getFlag(int flagPtr, uint flagVal) {
 		return (
 			(data[flagPtr].flags & flagVal) > 0
@@ -12201,6 +12432,10 @@ struct VoxelBuffer {
 		wasNew = !(getFlag(ind,E_OCT_NOTNEW));
 		
 		return ind;
+	}
+	
+	uint getFlagsAtNode(int ind) {
+		return data[ind].flags;
 	}
 	
 	void clearAllNodes() {
@@ -12240,16 +12475,20 @@ struct TBOEntry {
 	
 	void init(int _sizeInBytes) {
 		locked = false;
-		writeIndex = 4;
+		writeIndex = 0;
 		
 		sizeInBytes = _sizeInBytes;
 		sizeInEntries = sizeInBytes/4;
+		
+		data = new uint[sizeInEntries];
+		
 		tbo.init(false,NULL,data,sizeInBytes);
 		
 		vbo.init(
-			2,
+			4,
 			GL_STATIC_DRAW
 		);
+		
 		
 	}
 	
@@ -12277,7 +12516,7 @@ struct TBOEntry {
 	
 	void lock() {
 		locked = true;
-		writeIndex = 4;
+		writeIndex = 0;
 		
 		vbo.beginFill();
 	}
@@ -12294,7 +12533,10 @@ struct TBOEntry {
 
 
 
-vec3 voroOffsets[27];
+vec3 VORO_OFFSETS[27];
+
+vec3 BASE_NORMALS[64];
+
 // const static int VORO_PITCH = 16;
 // const static float VORO_VARIANCE = 0.25f;
 
@@ -23759,6 +24001,7 @@ public:
   int currentTick;
   int curPattern;
   int curPatternRot;
+  int holderLoadCount;
   int bakeTicks;
   int tbTicks;
   int tempCounter;
@@ -23832,7 +24075,6 @@ public:
   int blocksPerWorld;
   int voxelsPerCell;
   int paddingInCells;
-  TBOEntry (tboPool) [MAX_TBOPOOL_SIZE];
   PaddedData (pdPool) [MAX_PDPOOL_SIZE];
   intPair (entIdArr) [1024];
   uint palWidth;
@@ -24216,6 +24458,7 @@ public:
   bool saveFile (char * fileName, charArr * source);
   float getUnderWater ();
   void updateAmbientSounds ();
+  void checkFluid (GameFluid * gf);
   void frameUpdate ();
   FIVector4 * cameraGetPos ();
   FIVector4 * cameraGetPosNoShake ();
@@ -24751,6 +24994,7 @@ public:
   FIVector4 tempMax2;
   FIVector4 minV;
   FIVector4 maxV;
+  bool waitingOnThreads;
   bool fluidChanged;
   bool posShifted;
   bool hasRead;
@@ -24828,7 +25072,6 @@ public:
   void addGeom (FIVector4 * newPos, int templateId);
   void fetchGeom ();
   void setupPrimTexture ();
-  bool tryToEndRead ();
   bool anyThreadsRunning ();
   bool updateAll ();
   void copyPrimTexture (int ox, int oy, int oz, int dim, uint * * myData);
@@ -24836,6 +25079,8 @@ public:
   void updateTBOData (bool firstTime, bool reloadTemplates);
   void terminateCycle ();
   void beginFluidRead (FIVector4 * _campPosVPDump);
+  bool tryToEndRead ();
+  void tryToEndThreads ();
   void proceedWithRead ();
   void endFluidRead ();
   void shiftRegion ();
@@ -25225,7 +25470,6 @@ public:
   int pathSize;
   int totIdealNodes;
   int totGroupIds;
-  int cubeDataSize;
   int cellDataSize;
   int cellsPerHolder;
   int visitId;
@@ -25272,7 +25516,6 @@ public:
   void fillVBO ();
   PaddedDataEntry * getPadData (int ii, int jj, int kk);
   int gatherData ();
-  void beginVoxelWrap ();
   void wrapPolys ();
   void generateList ();
 };
@@ -25479,6 +25722,7 @@ public:
   GamePageHolder * globEndHolder;
   int globEndGroupId;
   bool globFoundTarg;
+  bool allowThreadCreation;
   GameLogic ();
   void setEntTargPath (int sourceUID, int destUID);
   void init (Singleton * _singleton);
@@ -25504,6 +25748,7 @@ public:
   void getPointsForPath (GamePageHolder * curHolderFrom, int _curInd, PathInfo * pathInfo, bool reverseOrder);
   void drawRegions (int offX, int offY, int offZ);
   int getClosestPathRad (btVector3 cpBTV, GamePageHolder * & closestHolder);
+  bool anyThreadsRunning ();
   void loadNearestHolders ();
 };
 #undef LZZ_INLINE
@@ -25756,7 +26001,7 @@ public:
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void polyCombine ();
   void drawPolys (string fboName, int minPeel, int maxPeel);
-  void updateTBOPool (int rad);
+  void rasterHolder (int rad);
   void rasterPolys (int minPeel, int maxPeel, int extraRad = 0, bool doPoints = false);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);
@@ -25766,7 +26011,7 @@ public:
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
   void updateLights ();
-  void rasterHolders (bool showResults, bool doPoints);
+  void rasterHolders (bool showResults);
   void rasterGrid (VBOGrid * vboGrid, bool showResults);
   void renderDebug ();
   void postProcess (bool postToScreen);
@@ -26235,6 +26480,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		generatePatterns();
 		
+		holderLoadCount = 0;
 		bakeTicks = 0;
 		tbTicks = 0;
 		tempCounter = 0;
@@ -26246,7 +26492,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		pathfindingOn = false;
 		pathfindingGen = false;
 		pathfindingTestOn = false;
-		updateHolders = false;
+		updateHolders = true;
 		updateFluid = false;
 		
 		maxHolderDis = 32;
@@ -26262,6 +26508,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			glEnable(GL_POINT_SPRITE);
 			glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 		}
+		glFrontFace(GL_CCW);
 		
 		glLineWidth(4.0f);
 		
@@ -26272,7 +26519,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		// qqqqqq
 		
 		
-		heightMapMaxInCells = 4096.0f;
+		heightMapMaxInCells = 8192.0f;
 		//mapSampScale = 2.0f;
 		int newPitch = (imageHM0->width) * 2; //*2;
 		mapPitch = (imageHM0->width); //newPitch;// //
@@ -26281,7 +26528,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		voxelsPerCell = VOXELS_PER_CELL;
 		paddingInCells = 1;
 		
-		cellsPerHolder = 16;
+		cellsPerHolder = CELLS_PER_HOLDER;
 		holdersPerBlock = 8;
 		
 		holdersPerWorld = newPitch;
@@ -26314,9 +26561,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			// );
 		}
 		
-		for (i = 0; i < MAX_TBOPOOL_SIZE; i++) {
-			tboPool[i].init(128*1024*1024);
-		}
+		// for (i = 0; i < MAX_TBOPOOL_SIZE; i++) {
+		// 	tboPool[i].init(128*1024*1024);
+		// }
 		
 		
 		if (blocksPerWorld > 256) {
@@ -27027,7 +27274,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 				// 	clampType = GL_CLAMP_TO_EDGE;//GL_CLAMP_TO_BORDER
 				// break;
 				case E_VW_VORO:
-					tz = 128;
+					tz = 256;
 					clampType = GL_REPEAT;
 				break;
 			}
@@ -27290,7 +27537,7 @@ void Singleton::getVoroOffsets ()
 		for (k = 0; k <= 2; k++) {
 			for (j = 0; j <= 2; j++) {
 				for (i = 0; i <= 2; i++) {
-					voroOffsets[k*9 + j*3 + i] = vec3(
+					VORO_OFFSETS[k*9 + j*3 + i] = vec3(
 						i - 1,
 						j - 1,
 						k - 1	
@@ -27298,6 +27545,42 @@ void Singleton::getVoroOffsets ()
 				}
 			}
 		}
+		
+		uint q;
+		
+		vec3 totVec;
+		
+		for (q = 0; q < 64; q++) {
+			
+			totVec = vec3(0.0f,0.0f,0.0f);
+			
+			if ((q&E_OCT_XP)>0) {
+				totVec += vec3(1.0f,0.0f,0.0f);
+			}
+			if ((q&E_OCT_XM)>0) {
+				totVec += vec3(-1.0f,0.0f,0.0f);
+			}
+			
+			if ((q&E_OCT_YP)>0) {
+				totVec += vec3(0.0f,1.0f,0.0f);
+			}
+			if ((q&E_OCT_YM)>0) {
+				totVec += vec3(0.0f,-1.0f,0.0f);
+			}
+			
+			if ((q&E_OCT_ZP)>0) {
+				totVec += vec3(0.0f,0.0f,1.0f);
+			}
+			if ((q&E_OCT_ZM)>0) {
+				totVec += vec3(0.0f,0.0f,-1.0f);
+			}
+			
+			
+			BASE_NORMALS[q] = totVec;
+			BASE_NORMALS[q].normalize();
+			
+		}
+		
 	}
 void Singleton::generatePatterns ()
                                 {
@@ -29631,8 +29914,6 @@ void Singleton::syncObjects ()
 			}
 		}
 		
-		
-		
 	}
 void Singleton::updateCamVals ()
                              {
@@ -30513,12 +30794,12 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				case 't':
 				
 					
-				
+
 					//testOn2 = !testOn2;
 					//testOn3 = !testOn3;
 					renderingOct = !renderingOct;
 					if (renderingOct) {
-						gw->updateTBOPool(5);
+					//	gw->updateTBOPool(5);
 					}
 					
 					// if (renderingOct) {
@@ -33552,6 +33833,60 @@ void Singleton::updateAmbientSounds ()
 		
 		
 	}
+void Singleton::checkFluid (GameFluid * gf)
+                                       {
+		if ((!draggingMap)&&(!fpsTest)&&updateHolders) {
+			gf->updateAll();
+			
+			if (gf->fluidReading) {
+				if (gf->proceedingToRead) {
+					
+					if (gf->waitingOnThreads) {
+						gf->tryToEndThreads();
+					}
+					else {
+						gf->tryToEndRead();
+					}
+					
+					
+				}
+				else {
+					gf->proceedWithRead();
+				}
+			}
+			
+			
+			if (gf->readyForTermination) {
+				
+				
+				if (
+				 gf->anyThreadsRunning()
+				) {
+					
+				}
+				else {
+					gf->readyForTermination = false;
+					gf->cycleTerminated = true;
+				}
+				
+				
+			}
+			
+			if (gf->cycleTerminated) {
+				
+				gameLogic->loadNearestHolders();
+				holderLoadCount++;
+				
+				if (holderLoadCount == MAX_HOLDER_LOAD_COUNT) {
+					holderLoadCount = 0;
+					gf->cycleTerminated = false;
+					gf->startFT();
+				}
+				
+				
+			}
+		}
+	}
 void Singleton::frameUpdate ()
                            {
 		
@@ -33827,43 +34162,7 @@ void Singleton::frameUpdate ()
 						// 	}
 						// }
 						
-						if ((!draggingMap)&&(!fpsTest)&&updateHolders) {
-							gameFluid[E_FID_BIG]->updateAll();
-							
-							if (gameFluid[E_FID_BIG]->fluidReading) {
-								if (gameFluid[E_FID_BIG]->proceedingToRead) {
-									gameFluid[E_FID_BIG]->tryToEndRead();
-								}
-								else {
-									gameFluid[E_FID_BIG]->proceedWithRead();
-								}
-							}
-							
-							
-							if (gameFluid[E_FID_BIG]->readyForTermination) {
-								
-								
-								if (
-								 gameFluid[E_FID_BIG]->anyThreadsRunning()
-								) {
-									
-								}
-								else {
-									gameFluid[E_FID_BIG]->readyForTermination = false;
-									gameFluid[E_FID_BIG]->cycleTerminated = true;
-								}
-								
-								
-							}
-							
-							if (gameFluid[E_FID_BIG]->cycleTerminated) {
-								
-								gameLogic->loadNearestHolders();
-								
-								gameFluid[E_FID_BIG]->cycleTerminated = false;
-								gameFluid[E_FID_BIG]->startFT();
-							}
-						}
+						checkFluid(gameFluid[E_FID_BIG]);
 						
 						
 					}
@@ -33884,8 +34183,10 @@ void Singleton::frameUpdate ()
 							// }
 							// gw->rasterGrid(&myVBOGrid,true);
 							// bakeTicks++;
+							
+							
 							gw->update(false,false);
-							gw->rasterHolders(true,true);
+							gw->rasterHolders(true);
 							
 						}
 						else {
@@ -36044,7 +36345,21 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		int kk;
 		int ind;
 		
+		int xx;
+		int yy;
+		int zz;
+		
+		uint curFlags;
+		uint tempFlags;
+		uint normFlags;
+		
+		float tempData[16];
+		
 		CubeWrap* curCW;
+		
+		int tempInd;
+		
+		vec3 totNorm;
 		
 		for (p = 0; p < totSize; p++) {
 			q = voxelBuffer->visitIds[p];
@@ -36059,43 +36374,91 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 				voxOffset.z = kk;
 				
 				voxOffset -= paddingInVoxels;
-				
 				if (inBounds(&voxOffset,0,voxelsPerHolder)) {
-					cellOffset = voxOffset/voxelsPerCell;
-					localVoxOffset = voxOffset-(cellOffset*voxelsPerCell);
-					//fLocalVoxOffset = toVEC(localVoxOffset);
-					//fLocalVoxOffset *= fVPC;
 					
-					ind = cellOffset.z*cellsPerHolder*cellsPerHolder + cellOffset.y*cellsPerHolder + cellOffset.x;
 					
-					if (gph->cubeData[ind] == 0) {
-						gph->cubeWraps.push_back(CubeWrap());
-						gph->cubeData[ind] = (gph->cubeWraps.size()-1)+gph->cubeDataSize;
-						gph->cubeWraps[gph->cubeData[ind]].init();
+					curFlags = voxelBuffer->getFlags(q);
+					
+					totNorm.set(0.0f,0.0f,0.0f);
+					
+					for (zz = -NORM_RAD; zz <= NORM_RAD; zz++) {
+						for (yy = -NORM_RAD; yy <= NORM_RAD; yy++) {
+							for (xx = -NORM_RAD; xx <= NORM_RAD; xx++) {
+								
+								
+								
+								// if (
+								// 	(zz == 0) && (yy == 0) && (xx == 0)	
+								// ) {
+									
+								// }
+								// else {
+									
+								// }
+								
+								tempInd = (zz+kk)*voxelsPerHolderPad*voxelsPerHolderPad + (yy+jj)*voxelsPerHolderPad + (xx + ii);
+								tempFlags = voxelBuffer->getFlagsAtNode(tempInd);
+								
+								if ((tempFlags&E_OCT_SURFACE) > 0) {
+									normFlags = (tempFlags&63);
+									totNorm += BASE_NORMALS[normFlags];
+								}
+								
+								
+							}
+						}
 					}
 					
-					curCW = &(gph->cubeWraps[gph->cubeData[ind]]);
+					totNorm.normalize();
 					
-					curCW->insertValue(&localVoxOffset);//, &fLocalVoxOffset);
+					voxOffset += paddingInVoxels;
+					voxOffset += offsetInVoxels;
+					
+					fVO.x = voxOffset.x;
+					fVO.y = voxOffset.y;
+					fVO.z = voxOffset.z;
+					fVO *= fVPC;
+					
+					tempData[0] = totNorm.x;
+					tempData[1] = totNorm.y;
+					tempData[2] = totNorm.z;
+					
+					gph->vboWrapper.vboBox(
+						fVO.x, fVO.y, fVO.z,
+						0.0f,fVPC,
+						curFlags,
+						tempData,
+						4
+					);
+					
 				}
 				
-				// voxOffset += (offsetInVoxels);
+				// if (inBounds(&voxOffset,0,voxelsPerHolder)) {
+				// 	cellOffset = voxOffset/voxelsPerCell;
+				// 	localVoxOffset = voxOffset-(cellOffset*voxelsPerCell);
+				// 	//fLocalVoxOffset = toVEC(localVoxOffset);
+				// 	//fLocalVoxOffset *= fVPC;
+					
+				// 	ind = cellOffset.z*cellsPerHolder*cellsPerHolder + cellOffset.y*cellsPerHolder + cellOffset.x;
+					
+				// 	if (gph->cubeData[ind] == CUBE_DATA_INVALID) {
+				// 		gph->cubeWraps.push_back(CubeWrap());
+				// 		gph->cubeData[ind] = (gph->cubeWraps.size()-1);
+				// 		gph->cubeWraps[gph->cubeData[ind]].init();
+				// 	}
+					
+				// 	curCW = &(gph->cubeWraps[gph->cubeData[ind]]);
+					
+				// 	curCW->insertValue(&localVoxOffset,voxelBuffer->getFlags(q));//, &fLocalVoxOffset);
+				// }
 				
-				// fVO.x = voxOffset.x;
-				// fVO.y = voxOffset.y;
-				// fVO.z = voxOffset.z;
 				
-				// fVO *= fVPC;
 				
-				// gph->vertexVec.push_back(fVO.x);
-				// gph->vertexVec.push_back(fVO.y);
-				// gph->vertexVec.push_back(fVO.z);
-				// gph->vertexVec.push_back(1.0f);
 				
-				// gph->vertexVec.push_back(fVO.x);
-				// gph->vertexVec.push_back(fVO.y);
-				// gph->vertexVec.push_back(fVO.z);
-				// gph->vertexVec.push_back(1.0f);
+				
+				
+				
+				
 				
 				
 				
@@ -36121,9 +36484,7 @@ void GameVoxelWrap::process (GamePageHolder * gph)
 		offsetInVoxels = offsetInCells;
 		offsetInVoxels *= voxelsPerCell;
 		
-	
-		
-		
+
 		basePD = (&singleton->pdPool[curPD]);
 		baseData = singleton->pdPool[curPD].data;
 		
@@ -36418,9 +36779,6 @@ bool GameVoxelWrap::isInvSurfaceVoxel (ivec3 * pos, int ignorePtr, int & curPtr,
 				
 				
 				
-				
-				
-				
 			}
 		}
 		
@@ -36444,6 +36802,10 @@ bool GameVoxelWrap::isSurfaceVoxel (ivec3 * pos, int & curPtr, bool checkVisited
 		
 		int tempPtr;
 		
+		bool isSurface = false;
+		
+		uint curSide = E_OCT_XP;
+		
 		if ( voxelBuffer->getFlag(curPtr,E_OCT_SOLID) ) {
 			
 			for (q = 0; q < NUM_ORIENTATIONS; q++) {
@@ -36456,17 +36818,21 @@ bool GameVoxelWrap::isSurfaceVoxel (ivec3 * pos, int & curPtr, bool checkVisited
 						
 					}
 					else {
-						voxelBuffer->setFlag(curPtr, E_OCT_SURFACE);
-						return true;
+						voxelBuffer->setFlag(curPtr, curSide);
+						isSurface = true;
 					}
 				}
 				
+				curSide *= 2;
 				
 			}
 		}
 		
-		//voxelBuffer->clearFlag(curPtr, E_OCT_SURFACE);
-		return false;
+		if (isSurface) {
+			voxelBuffer->setFlag(curPtr, E_OCT_SURFACE);
+		}
+		
+		return isSurface;
 	}
 int GameVoxelWrap::getVoxelAtCoord (ivec3 * pos)
                                         {
@@ -36620,11 +36986,11 @@ void GameVoxelWrap::getVoro (ivec3 * worldPos, ivec3 * worldClosestCenter, int i
 		float testDis;
 		float variance = 0.5f;
 		
-		vec3 bestPos = voroOffsets[0] + randPN(fWorldCellPos+voroOffsets[0])*variance;
+		vec3 bestPos = VORO_OFFSETS[0] + randPN(fWorldCellPos+VORO_OFFSETS[0])*variance;
 		float bestDis = fWorldPos.distance(bestPos);
 		
 		for (i = 1; i < 27; i++) {
-			testPos = voroOffsets[i] + randPN(fWorldCellPos+voroOffsets[i])*variance;
+			testPos = VORO_OFFSETS[i] + randPN(fWorldCellPos+VORO_OFFSETS[i])*variance;
 			testDis = fWorldPos.distance(testPos);
 			
 			if (testDis < bestDis) {
@@ -36649,7 +37015,7 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr)
 		ivec3 worldClosestCenter;// = worldPos;
 		ivec3 localClosestCenter;
 		
-		getVoro(&worldPos,&worldClosestCenter, voxelsPerCell);
+		getVoro(&worldPos,&worldClosestCenter, voxelsPerCell*2);
 		localClosestCenter = worldClosestCenter - offsetInVoxels;
 		localClosestCenter += paddingInVoxels;
 		
@@ -36658,7 +37024,7 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr)
 		float terSamp = sampLinear(&localClosestCenter);
 		
 		float terSampOrig = sampLinear(pos);
-		bool isSolid = (mixf(terSamp,terSampOrig,0.5f) >= 0.5f);
+		bool isSolid = (mixf(terSamp,terSampOrig,0.0f) >= 0.5f);
 		//bool isSolid = (terSamp >= 0.5f);
 		
 		
@@ -41458,6 +41824,7 @@ void GameFluid::iciPushBack (int groupNum, int val)
 GameFluid::GameFluid ()
                     {
 		
+		waitingOnThreads = false;
 		fluidChanged = false;
 		posShifted = false;
 		hasRead = false;
@@ -41923,28 +42290,6 @@ void GameFluid::setupPrimTexture ()
 		
 		
 	}
-bool GameFluid::tryToEndRead ()
-                            {
-		
-		
-		if (threadLoader.isReady()) {
-			
-			
-			stopTL();
-			endFluidRead();
-			//cycleTerminated = false;
-			
-			
-			//if (mainId == E_FID_SML) {
-			//	startFT();
-			//}
-			
-			return true;
-		}
-		else {
-			return false;
-		}
-	}
 bool GameFluid::anyThreadsRunning ()
                                  {
 		return threadLoader.threadRunning||threadTex.threadRunning||threadFluid.threadRunning;
@@ -42293,6 +42638,47 @@ void GameFluid::beginFluidRead (FIVector4 * _campPosVPDump)
 		campPosVPDump.copyFrom(_campPosVPDump);
 		terminateCycle();
 	}
+bool GameFluid::tryToEndRead ()
+                            {
+		
+		
+		if (threadLoader.isReady()) {
+			
+			
+			stopTL();
+			endFluidRead();
+			//cycleTerminated = false;
+			
+			
+			//if (mainId == E_FID_SML) {
+			//	startFT();
+			//}
+			
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+void GameFluid::tryToEndThreads ()
+                               {
+		
+		if (singleton->gameLogic->anyThreadsRunning()) {
+			
+		}
+		else {
+			waitingOnThreads = false;
+			// singleton->gameLogic->threadPoolPath->stopAll();
+			// singleton->gameLogic->threadPoolList->stopAll();
+			prereadFluidData();
+			singleton->gameLogic->allowThreadCreation = true;
+			
+			startTL();
+		}
+		
+		
+		
+	}
 void GameFluid::proceedWithRead ()
                                {
 		
@@ -42307,15 +42693,11 @@ void GameFluid::proceedWithRead ()
 		//
 		
 		
-		
 		readMIP.copyFrom(&volMinInPixels);
 		
-		singleton->gameLogic->threadPoolPath->stopAll();
-		singleton->gameLogic->threadPoolList->stopAll();
-		prereadFluidData();
+		singleton->gameLogic->allowThreadCreation = false;
 		
-		
-		startTL();
+		waitingOnThreads = true;
 		
 	}
 void GameFluid::endFluidRead ()
@@ -50241,7 +50623,7 @@ void GamePageHolder::init (Singleton * _singleton, int _blockId, int _holderId, 
 		//}
 		
 		
-		cubeDataSize = cellsPerHolder*cellsPerHolder*cellsPerHolder;
+		//cubeDataSize = cellsPerHolder*cellsPerHolder*cellsPerHolder;
 		pathSize = cellsPerHolder*cellsPerHolder*cellsPerHolder;
 		cellDataSize = cellsPerHolder*cellsPerHolder*cellsPerHolder*4;
 
@@ -50452,11 +50834,16 @@ void GamePageHolder::checkData (bool checkPath)
 		
 		if (hasData) {
 			if (cellData == NULL) {
-				cubeData = new uint[cubeDataSize];
+				cubeData = new uint[CUBE_DATA_SIZE];
 				cellData = new int[cellDataSize];
 				
-				for (i = 0; i < cubeDataSize; i++) {
-					cubeData[i] = 0;
+				// if (cubeWraps.size() == 0) {
+				// 	cubeWraps.push_back(CubeWrap());
+				// }
+				
+				
+				for (i = 0; i < CUBE_DATA_SIZE; i++) {
+					cubeData[i] = CUBE_DATA_INVALID;
 				}
 				
 			}
@@ -51760,10 +52147,10 @@ void GamePageHolder::fillVBO ()
 		}
 		else {
 			
-			if (POLYS_FOR_CELLS) {
+			if (POLYS_FOR_CELLS||DO_VOXEL_WRAP) {
 				
 				if (vboWrapper.hasInit) {
-					vboWrapper.endFill();
+					
 				}
 				else {
 					vboWrapper.init(
@@ -51772,9 +52159,11 @@ void GamePageHolder::fillVBO ()
 					);
 				}
 				
+				vboWrapper.endFill();
 				
-				glFlush();
-				glFinish();
+				
+				//glFlush();
+				//glFinish();
 			}
 			
 			if (DO_VOXEL_WRAP) {
@@ -51891,23 +52280,6 @@ int GamePageHolder::gatherData ()
 		}
 		
 		return tempHF;
-	}
-void GamePageHolder::beginVoxelWrap ()
-                              {
-		int i;
-		
-		voxelWrap->process(this);
-		
-		if (curPD > -1) {
-			//cout << "lastFFSteps " << voxelWrap->lastFFSteps << "\n";
-			//cout << "nodeCount " << singleton->octPool[curPD]->octNodes.size() << "\n";
-			//cout << "vertices " << vertexVec.size() << "\n\n";
-		}
-		
-		
-		
-		
-		
 	}
 void GamePageHolder::wrapPolys ()
                          {
@@ -52167,10 +52539,8 @@ void GamePageHolder::generateList ()
 		}
 		else {
 			
-			
-			
 			if (DO_VOXEL_WRAP) {
-				beginVoxelWrap();
+				voxelWrap->process(this);
 			}
 			
 			if (POLYS_FOR_CELLS) {
@@ -52182,9 +52552,9 @@ void GamePageHolder::generateList ()
 		
 		listEmpty = (vboWrapper.vertexVec.size() == 0);
 		
-		if (DO_VOXEL_WRAP) {
-			listEmpty = (cubeWraps.size() == 0);
-		}
+		// if (DO_VOXEL_WRAP) {
+		// 	listEmpty = (cubeWraps.size() <= 0);
+		// }
 		
 		holderFlags = tempHF;
 		
@@ -56368,6 +56738,12 @@ bool ThreadPoolWrapper::stopTP (int threadId)
 			availIds.push_back(threadId);
 			
 		}
+		
+		// if (didStop) {
+		// 	cout << "didStop\n";
+		// }
+		
+		
 		return didStop;
 	}
 bool ThreadPoolWrapper::startThread ()
@@ -56442,7 +56818,7 @@ ThreadPoolWrapper::~ ThreadPoolWrapper ()
 #define LZZ_INLINE inline
 GameLogic::GameLogic ()
                     {
-		
+		allowThreadCreation = true;
 	}
 void GameLogic::setEntTargPath (int sourceUID, int destUID)
                                                         {
@@ -58103,6 +58479,13 @@ int GameLogic::getClosestPathRad (btVector3 cpBTV, GamePageHolder * & closestHol
 		
 		return -1;
 	}
+bool GameLogic::anyThreadsRunning ()
+                                 {
+		bool v1 = threadPoolList->anyRunning();
+		bool v2 = threadPoolPath->anyRunning();
+		
+		return v1||v2;
+	}
 void GameLogic::loadNearestHolders ()
                                   {
 		
@@ -58162,7 +58545,12 @@ void GameLogic::loadNearestHolders ()
 			doPaths = true;
 		}
 		
-		
+		if (allowThreadCreation) {
+			
+		}
+		else {
+			return;
+		}
 		
 		
 		tempVec.copyFrom(singleton->cameraGetPosNoShake());
@@ -61972,14 +62360,7 @@ void GameWorld::update (bool postToScreen, bool doRender)
 
 			drawPrim(false,true,false);
 			drawPrim(false,false,false);
-			
-			
-			
-			
-			
-			
-			
-			
+				
 			//singleton->copyFBO2("solidBaseTargFBO","solidTargFBO");
 			
 			singleton->bindShader("SolidCombineShader");
@@ -63032,123 +63413,73 @@ void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel)
 		singleton->unbindFBO();
 		singleton->unbindShader();
 	}
-void GameWorld::updateTBOPool (int rad)
-                                    {
-		
-		int q;
-		int p;
-		
-		int ii;
-		int jj;
-		int kk;
-		
-		int cellsPerHolder = singleton->cellsPerHolder;
-		
-		GamePageHolder* curHolder;
-		
-		minv.copyFrom(&camHolderPos);
-		maxv.copyFrom(&camHolderPos);
-		
-		
-		int minK = minv.getIZ() - rad;
-		int maxK = maxv.getIZ() + rad;
-		int minJ = minv.getIY() - rad;
-		int maxJ = maxv.getIY() + rad;
-		int minI = minv.getIX() - rad;
-		int maxI = maxv.getIX() + rad;
-		
-		int curTBOPool = 0;
-		int writeOffset = 0;
-		
-		TBOEntry* curTBO = &(singleton->tboPool[0]);
-		curTBO->lock();
-		
-		int curPtr;
-		int curSize;
-		
-		float tempData[4];
-		
-		float voxelsPerHolder = singleton->voxelsPerHolder;
-		
-		for (kk = minK; kk < maxK; kk++) {
-			for (jj = minJ; jj < maxJ; jj++) {
-				for (ii = minI; ii < maxI; ii++) {
-					curHolder = getHolderAtCoords(ii,jj,kk,true);
-					
-					if (curHolder == NULL) {
+void GameWorld::rasterHolder (int rad)
+                                           {
+			
+			//doTraceVecND("cam ", &camHolderPos);
+			
+			
+			int ii;
+			int jj;
+			int kk;
+			
+			
+			GamePageHolder* curHolder;
+			
+			minv.copyFrom(&camHolderPos);
+			maxv.copyFrom(&camHolderPos);
+			
+			FIVector4 tempFIV;
+			
+			int minK = minv.getIZ() - rad;
+			int maxK = maxv.getIZ() + rad;
+			int minJ = minv.getIY() - rad;
+			int maxJ = maxv.getIY() + rad;
+			int minI = minv.getIX() - rad;
+			int maxI = maxv.getIX() + rad;
+			
+			float disClip = singleton->cellsPerHolder*2;
+			
+			for (kk = minK; kk < maxK; kk++) {
+				for (jj = minJ; jj < maxJ; jj++) {
+					for (ii = minI; ii < maxI; ii++) {
+						curHolder = getHolderAtCoords(ii,jj,kk,true);
 						
-					}
-					else {
-						
-						if (curHolder->lockWrite) {
+						if (curHolder == NULL) {
 							
 						}
 						else {
-							if (
-								(curHolder->listGenerated) &&
-								(!(curHolder->listEmpty))
-							) {
-								
-								writeOffset = curTBO->writeIndex;
 							
-								if (curTBO->cantWrite(curHolder->cubeDataSize)) {
-									goto TBO_FULL;
-								}
+							if (curHolder->lockWrite) {
 								
-								for (q = 0; q < curHolder->cubeDataSize; q++) {
-									curTBO->writeData(
-										(curHolder->cubeData[q])*CUBE_WRAP_SIZE + writeOffset
-									);
-								}
-								
-								curSize = curHolder->cubeWraps.size();
-								
-								for (q = 0; q < curSize; q++) {
+							}
+							else {
+								if (
+									(curHolder->listGenerated) &&
+									(!(curHolder->listEmpty))
+								) {
 									
-									if (curTBO->cantWrite(CUBE_WRAP_SIZE)) {
-										goto TBO_FULL;
+									tempFIV.copyFrom(&(curHolder->gphCenInCells));
+									tempFIV.addXYZRef(singleton->cameraGetPosNoShake(),-1.0f);
+									tempFIV.normalize();
+									
+									
+									if (
+										(tempFIV.dot(&(singleton->lookAtVec)) > singleton->conVals[E_CONST_DOT_CLIP]) ||
+										(curHolder->gphCenInCells.distance(singleton->cameraGetPosNoShake()) < disClip)
+									) {
+										curHolder->vboWrapper.draw();
 									}
 									
-									curTBO->writeDataArr(
-										curHolder->cubeWraps[q].data,
-										CUBE_WRAP_SIZE
-									);
 								}
-								
-								
-								curTBO->vbo.vboBox(
-									curHolder->gphMinInCells[0],
-									curHolder->gphMinInCells[1],
-									curHolder->gphMinInCells[2],
-									
-									0.0f,
-									cellsPerHolder,
-									
-									ALL_FACES,
-									tempData,
-									4
-								);
-								
-								
 							}
 						}
 					}
 				}
 			}
+			
+			
 		}
-		
-TBO_FULL:
-		
-		if (curTBO->cantWrite(1)) {
-			cout << "TBO FULL\n";
-		}
-		
-		curTBO->unlock();
-		
-		
-		cout << "writeIndex " << curTBO->writeIndex << "\n";
-		
-	}
 void GameWorld::rasterPolys (int minPeel, int maxPeel, int extraRad, bool doPoints)
           {
 		
@@ -65781,8 +66112,8 @@ UPDATE_LIGHTS_END:
 
 
 	}
-void GameWorld::rasterHolders (bool showResults, bool doPoints)
-                                                            {
+void GameWorld::rasterHolders (bool showResults)
+                                             {
 		
 		// get view matrix
 		singleton->perspectiveOn = true;
@@ -65790,45 +66121,48 @@ void GameWorld::rasterHolders (bool showResults, bool doPoints)
 		singleton->perspectiveOn = false;
 
 
-		TBOEntry* curTBO = &(singleton->tboPool[0]);
+		//TBOEntry* curTBO = &(singleton->tboPool[0]);
 
 		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_CULL_FACE);
+		//glCullFace(GL_FRONT);
 		
-		//if (doPoints) {
-		//singleton->bindShader("RasterShader");
-		//}
-		//else {
-			singleton->bindShader("HolderShader");
-		//}
 		
+		singleton->bindShader("HolderShader");
 		singleton->bindFBO("rasterFBO");
 
-
-		// singleton->sampleFBO("rasterPosFBO",0);
-		// singleton->sampleFBO("rasterSourceFBO",1);
-
+		// singleton->setShaderTBO(
+		// 	0,
+		// 	curTBO->tbo.tbo_tex,
+		// 	curTBO->tbo.tbo_buf,
+		// 	false
+		// );
+		
+		singleton->setShaderFloat("voxelsPerCell",singleton->voxelsPerCell);
+		singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
+		singleton->setShaderInt("CUBE_WRAP_ENTRIES", CUBE_WRAP_ENTRIES);
+		singleton->setShaderInt("CUBE_DATA_INVALID", CUBE_DATA_INVALID);
+		singleton->setShaderInt("CUBE_WRAP_INVALID", CUBE_WRAP_INVALID);
 		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-		
-		
+		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
 		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
 		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 
+		rasterHolder(5);
 
-		curTBO->vbo.draw();
+		//curTBO->vbo.draw();
 		
-		//rasterPolys(-1,0,5,doPoints);
-		//singleton->fsQuad.draw();
-
-		// singleton->unsampleFBO("rasterSourceFBO",1);
-		// singleton->unsampleFBO("rasterPosFBO",0);
+		//singleton->setShaderTBO(0,0,0,false);
 		singleton->unbindFBO();
 		singleton->unbindShader();
 		
+		//glCullFace(GL_BACK);
+		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
 
 		

@@ -40,6 +40,7 @@ void GameFluid::iciPushBack (int groupNum, int val)
 GameFluid::GameFluid ()
                     {
 		
+		waitingOnThreads = false;
 		fluidChanged = false;
 		posShifted = false;
 		hasRead = false;
@@ -505,28 +506,6 @@ void GameFluid::setupPrimTexture ()
 		
 		
 	}
-bool GameFluid::tryToEndRead ()
-                            {
-		
-		
-		if (threadLoader.isReady()) {
-			
-			
-			stopTL();
-			endFluidRead();
-			//cycleTerminated = false;
-			
-			
-			//if (mainId == E_FID_SML) {
-			//	startFT();
-			//}
-			
-			return true;
-		}
-		else {
-			return false;
-		}
-	}
 bool GameFluid::anyThreadsRunning ()
                                  {
 		return threadLoader.threadRunning||threadTex.threadRunning||threadFluid.threadRunning;
@@ -875,6 +854,47 @@ void GameFluid::beginFluidRead (FIVector4 * _campPosVPDump)
 		campPosVPDump.copyFrom(_campPosVPDump);
 		terminateCycle();
 	}
+bool GameFluid::tryToEndRead ()
+                            {
+		
+		
+		if (threadLoader.isReady()) {
+			
+			
+			stopTL();
+			endFluidRead();
+			//cycleTerminated = false;
+			
+			
+			//if (mainId == E_FID_SML) {
+			//	startFT();
+			//}
+			
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+void GameFluid::tryToEndThreads ()
+                               {
+		
+		if (singleton->gameLogic->anyThreadsRunning()) {
+			
+		}
+		else {
+			waitingOnThreads = false;
+			// singleton->gameLogic->threadPoolPath->stopAll();
+			// singleton->gameLogic->threadPoolList->stopAll();
+			prereadFluidData();
+			singleton->gameLogic->allowThreadCreation = true;
+			
+			startTL();
+		}
+		
+		
+		
+	}
 void GameFluid::proceedWithRead ()
                                {
 		
@@ -889,15 +909,11 @@ void GameFluid::proceedWithRead ()
 		//
 		
 		
-		
 		readMIP.copyFrom(&volMinInPixels);
 		
-		singleton->gameLogic->threadPoolPath->stopAll();
-		singleton->gameLogic->threadPoolList->stopAll();
-		prereadFluidData();
+		singleton->gameLogic->allowThreadCreation = false;
 		
-		
-		startTL();
+		waitingOnThreads = true;
 		
 	}
 void GameFluid::endFluidRead ()
