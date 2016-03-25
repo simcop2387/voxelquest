@@ -393,6 +393,15 @@ public:
 
 	}
 
+	void clearAllHolders() {
+		singleton->stopAllThreads();
+		
+		// for (i = 0; i < ; i++) {
+			
+		// }
+		
+	}
+
 	// x, y, and z are measured in holders
 	GamePageHolder *getHolderAtCoords(int x, int y, int z, bool createOnNull = false)
 	{
@@ -517,7 +526,6 @@ public:
 		}
 		else {
 			//cout << "attempted getCellInd without generation\n";
-			//curHolder->genCellData();
 			return -1;
 		}
 		//GamePage* gp = getPageAtCoords(x2, y2, z2, false);
@@ -555,7 +563,6 @@ public:
 		}
 		else {
 			//cout << "attempted getCellInd without generation\n";
-			//curHolder->genCellData();
 			return -1;
 		}
 		//GamePage* gp = getPageAtCoords(x2, y2, z2, false);
@@ -831,60 +838,6 @@ public:
 	}
 	
 	
-	
-	
-	// void generateBlockHolder() {
-		
-	// 	if (noiseGenerated || (blockHolder == NULL)) {
-			
-	// 	}
-	// 	else {
-	// 		return;
-	// 	}
-		
-		
-		
-	// 	if (blockHolder->wasGenerated) {
-			
-	// 	}
-	// 	else {
-	// 		glFlush();
-	// 		glFinish();
-			
-			
-	// 		blockHolder->genCellData();
-			
-			
-	// 		glFlush();
-	// 		glFinish();
-	// 	}
-		
-	// 	// if (blockHolder->preGenList) {
-			
-	// 	// }
-	// 	// else {
-			
-	// 	// 	blockHolder->generateList();
-	// 	// }
-		
-	// 	// if (blockHolder->listGenerated) {
-			
-	// 	// }
-	// 	// else {
-	// 	// 	glFlush();
-	// 	// 	glFinish();
-			
-			
-	// 	// 	blockHolder->fillVBO();
-			
-			
-	// 	// 	glFlush();
-	// 	// 	glFinish();
-			
-			
-			
-	// 	// }
-	// }
 	
 
 	void update(bool postToScreen, bool doRender) {

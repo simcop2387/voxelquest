@@ -1454,7 +1454,6 @@ public:
 				}
 			}
 			
-			
 		}
 		
 		singleton->refreshPaths = false;

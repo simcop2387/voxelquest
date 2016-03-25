@@ -11558,6 +11558,9 @@ public:
 		if (vertexVec.size() > 0) {
 			updateNew();
 		}
+		else {
+			// todo: handle case where vertex buffer has gone to zero
+		}
 	}
 	
 	
@@ -12398,17 +12401,40 @@ struct PaddedDataEntry {
 
 struct VoxelBufferEntry {
 	uint flags;
+	int index;
+};
+
+struct VoxelInfo {
+	int index;
+	uint normId;
 };
 
 struct VoxelBuffer {
 	VoxelBufferEntry* data;
 	int totSize;
 	int pitch;
-	vector<int> visitIds;
+	vector<VoxelInfo> voxelList;
 	
-	void addIndex(int val) {
-		visitIds.push_back(val);
+	int addIndex(int val) {
+		voxelList.push_back(VoxelInfo());
+		voxelList.back().index = val;
+		voxelList.back().normId = 0;
+		
+		int VLInd = (voxelList.size()-1);
+		
+		data[val].index = VLInd;
+		
+		return VLInd;
 	}
+	
+	// VoxelInfo* getVoxelInfo(int index) {
+	// 	if (index < 0) {
+	// 		return NULL;
+	// 	}
+	// 	else {
+	// 		return &(voxelList[index]);
+	// 	}
+	// }
 	
 	uint getFlags(int flagPtr) {
 		return data[flagPtr].flags;
@@ -12437,18 +12463,22 @@ struct VoxelBuffer {
 	uint getFlagsAtNode(int ind) {
 		return data[ind].flags;
 	}
+	uint getIndAtNode(int ind) {
+		return data[ind].index;
+	}
 	
 	void clearAllNodes() {
 		int i;
-		int mySize = visitIds.size();
+		int mySize = voxelList.size();
 		int curInd;
 		
 		for (i = 0; i < mySize; i++) {
-			curInd = visitIds[i];
+			curInd = voxelList[i].index;
 			data[curInd].flags = 0;
+			data[curInd].index = -1;
 		}
 		
-		visitIds.clear();
+		voxelList.clear();
 	}
 	
 };
@@ -23919,6 +23949,7 @@ public:
   int destructCount;
   bool sphereMapOn;
   bool waitingOnDestruction;
+  bool commandOn;
   bool renderingOctBounds;
   bool renderingOct;
   bool placingPattern;
@@ -24391,6 +24422,7 @@ public:
   void updateCS ();
   void getMarkerPos (int x, int y);
   void resetGeom ();
+  void stopAllThreads ();
   void processInput (unsigned char key, bool keyDown, int x, int y);
   void getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj);
   float getMinGeom (int baseIndex);
@@ -24673,11 +24705,11 @@ public:
   bool isInvSurfaceVoxel (ivec3 * pos, int ignorePtr, int & curPtr, bool checkVisited);
   bool isSurfaceVoxel (ivec3 * pos, int & curPtr, bool checkVisited);
   int getVoxelAtCoord (ivec3 * pos);
-  float sampLinear (ivec3 * pos);
+  float sampLinear (ivec3 * pos, ivec3 offset);
   PaddedDataEntry * getPadData (int ii, int jj, int kk);
   vec3 randPN (vec3 co);
   void getVoro (ivec3 * worldPos, ivec3 * worldClosestCenter, int iSpacing);
-  void calcVoxel (ivec3 * pos, int octPtr);
+  void calcVoxel (ivec3 * pos, int octPtr, int VLIndex);
 };
 #undef LZZ_INLINE
 #endif
@@ -25979,6 +26011,7 @@ public:
   GameWorld ();
   void init (Singleton * _singleton);
   GameBlock * getBlockAtCoords (int xInBlocks, int yInBlocks, int zInBlocks, bool createOnNull = false);
+  void clearAllHolders ();
   GamePageHolder * getHolderAtCoords (int x, int y, int z, bool createOnNull = false);
   GamePageHolder * getHolderAtId (int blockId, int holderId);
   GameBlock * getBlockAtId (int id);
@@ -26552,6 +26585,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			pdPool[i].voxelBuffer.data = new VoxelBufferEntry[
 				pdPool[i].voxelBuffer.totSize
 			];
+			for (j = 0; j < pdPool[i].voxelBuffer.totSize; j++) {
+				pdPool[i].voxelBuffer.data[j].index = -1;
+				pdPool[i].voxelBuffer.data[j].flags = 0;
+			}
 			
 			// octPool[i] = new GameOctree();
 			// octPool[i]->init(
@@ -26699,6 +26736,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		drawTargPaths = false;
 		renderingOct = false;
 		renderingOctBounds = false;
+		commandOn = false;
 		placingPattern = false;
 		gridOn = false;
 		fogOn = 1.0f;
@@ -30372,11 +30410,19 @@ void Singleton::resetGeom ()
 			paramArrGeom[i] = defaultTemplate[i];
 		}
 	}
+void Singleton::stopAllThreads ()
+                              {
+		gameLogic->threadPoolPath->stopAll();
+		gameLogic->threadPoolList->stopAll();
+	}
 void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
                                                                          {
 		
 		int i;
 		int tempType = E_ENTTYPE_NPC;
+		
+		
+		
 		
 		GamePageHolder* curHolder;
 		
@@ -30408,607 +30454,637 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 			
 		}		
 		else {
-			switch (key) {
-
-				
-
-
-
 			
-			// case 'a':
-			// 	// selectedNode->material += 1.0f;
-			// 	// curNode = getMirroredNode(selectedNode);
-			// 	// if (curNode != NULL) {
-			// 	// 	curNode->material += 1.0f;
-			// 	// }
-			// 	// makeDirty();
-			// break;
-			// case 'z':
-			// 	// selectedNode->material -= 1.0f;
-			// 	// curNode = getMirroredNode(selectedNode);
-			// 	// if (curNode != NULL) {
-			// 	// 	curNode->material -= 1.0f;
-			// 	// }
-			// 	// makeDirty();
+			if (commandOn) {
+				commandOn = false;
 				
-			// break;
+				switch (key) {
+					case 'e':
+						cout << "error:\n";
+						glError();
+					break;
+					case 'r':
+						gw->clearAllHolders();
+					break;	
+				}
+				
+				cout << "command end\n";	
+				
+			}
+			else {
+				
+				
+				switch (key) {
+
+					
 
 
+
 				
-				
-				case '1':
-				case '2':
-				case '3':
-				
-					switch(key) {
-						case '1':
-							tempType = E_ENTTYPE_NPC;
-						break;
-						case '2':
-							tempType = E_ENTTYPE_WEAPON;
-						break;
-						case '3':
-							tempType = E_ENTTYPE_WEAPON;
-							gem->weaponToPlace = E_PG_WPSPEAR;
-						break;
-					}
-				
-					if (updateHolders) {
-						getMarkerPos(x, y);
-						gem->placeNewEnt(gameNetwork->isConnected,tempType,&lastCellPos);
-						
-						if (key == '2') {
-							gem->weaponToPlace++;
-							if (gem->weaponToPlace > E_PG_WPSPEAR) {
-								gem->weaponToPlace = E_PG_WPSWORD;
+				// case 'a':
+				// 	// selectedNode->material += 1.0f;
+				// 	// curNode = getMirroredNode(selectedNode);
+				// 	// if (curNode != NULL) {
+				// 	// 	curNode->material += 1.0f;
+				// 	// }
+				// 	// makeDirty();
+				// break;
+				// case 'z':
+				// 	// selectedNode->material -= 1.0f;
+				// 	// curNode = getMirroredNode(selectedNode);
+				// 	// if (curNode != NULL) {
+				// 	// 	curNode->material -= 1.0f;
+				// 	// }
+				// 	// makeDirty();
+					
+				// break;
+
+
+					
+					
+					case '1':
+					case '2':
+					case '3':
+					
+						switch(key) {
+							case '1':
+								tempType = E_ENTTYPE_NPC;
+							break;
+							case '2':
+								tempType = E_ENTTYPE_WEAPON;
+							break;
+							case '3':
+								tempType = E_ENTTYPE_WEAPON;
+								gem->weaponToPlace = E_PG_WPSPEAR;
+							break;
+						}
+					
+						if (updateHolders) {
+							getMarkerPos(x, y);
+							gem->placeNewEnt(gameNetwork->isConnected,tempType,&lastCellPos);
+							
+							if (key == '2') {
+								gem->weaponToPlace++;
+								if (gem->weaponToPlace > E_PG_WPSPEAR) {
+									gem->weaponToPlace = E_PG_WPSWORD;
+								}
 							}
-						}
-						
-						gem->refreshTurnList();
-						
-					}
-					else {
-						cout << "Turn On Holder Update (u)\n";
-						doAlert();
-					}
-					
-				break;
-				//case '0':
-					
-				//break;
-				
-				
-				case '9':
-					renderingOctBounds = !renderingOctBounds;
-				break;
-				case '/':
-					//gameOct->captureBuffer(true);
-					//gameOct->updateTBO();
-					//gameOct->updateVBO();
-				break;
-				case '*':
-					//renderingOct = !renderingOct;
-				break;
-				case '-':
-					//gameOct->modRenderLevel(-1);
-				break;
-				case '+':
-					//gameOct->modRenderLevel(1);
-				break;
-				
-				case '`':
-					placingGeom = !placingGeom;
-					if (placingGeom) {
-						resetGeom();
-					}
-					else {
-						
-					}
-				break;
-				
-				
-				case 'i':
-						
-						ignoreFrameLimit = !ignoreFrameLimit;
-						cout << "ignoreFrameLimit: " << ignoreFrameLimit << "\n";
-					break;
-				case 19: //ctrl-s
-					saveExternalJSON();
-					saveGUIValues();
-					gem->saveCurrentPose();
-					//cout << "Use s key in web editor to save\n";
-					break;
-
-				case 15: //ctrl-o
-					//loadAllData();
-					loadValuesGUI();
-
-					break;
-
-				case '[':
-					iNumSteps /= 2;
-					if (iNumSteps < 16)
-					{
-						iNumSteps = 16;
-					}
-					doTraceND("iNumSteps: ", i__s(iNumSteps));
-
-					break;
-				case ']':
-					iNumSteps *= 2;
-					if (iNumSteps > 256)
-					{
-						iNumSteps = 256;
-					}
-					doTraceND("iNumSteps: ", i__s(iNumSteps));
-
-					break;
-
-
-				case 'u':
-					
-					// if (updateHolders) {
-					// 	if (pathfindingOn) {
-					// 		updateHolders = false;
-					// 		pathfindingOn = false;
-					// 	}
-					// 	else {
-					// 		pathfindingOn = true;
-					// 	}
-					// }
-					// else {
-					// 	updateHolders = true;
-					// }
-				
-					updateHolders = !updateHolders;
-					//pathfindingGen = updateHolders;
-					
-					
-					cout << "\n";
-					cout << "updateHolders " << updateHolders << "\n";
-					
-					
-					
-				break;
-				
-				
-				case 'Q':
-					gem->toggleFirstPerson();
-				break;
-				
-				case 'q':
-					
-					gem->toggleActorSel();
-					
-					break;
-
-				
-				case 'W':
-					cout << "start FPS timer\n";
-					fpsTest = true;
-					fpsCount = 0;
-					fpsTimer.start();
-				break;
-				
-
-				case 27: // esc
-					//std::exit(0);
-					
-					if (menuList[E_FM_DDMENU]->visible || menuList[E_FM_CONTMENU]->visible) {
-						toggleDDMenu(x,y,false);
-						menuList[E_FM_CONTMENU]->visible = false;
-						gem->closeAllContainers();
-						escCount = 0;
-					}
-					else {
-						
-						escCount++;
-						if (escCount >= 3) {
-							std::exit(0);
-						}
-					}
-					
-					//pickerMenu->visible = false;
-					
-					
-					
-					break;
-
-				case 'b':
-				
-					bakeParamsOn = !bakeParamsOn;
-					cout << "bakeParamsOn: " << bakeParamsOn << "\n";
-					doShaderRefresh(bakeParamsOn);
-					
-					
-					
-				
-					//radiosityOn = !radiosityOn;
-					break;
-
-
-				case 'R':
-				
-					//loadValuesGUI(false);
-					gw->noiseGenerated = false;
-					gw->blockHolder->wasGenerated = false;
-					
-					loadGUI();
-					loadValuesGUI();
-					gem->loadPoseInfo(true);
-					
-				break;
-				case 'r':
-					
-					
-					
-					doShaderRefresh(bakeParamsOn);
-					cout << "Shaders Refreshed\n";
-
-					
-					
-					break;
-				
-				case 'n':
-					//gem->nextSwing(gem->getCurActorUID(),RLBN_LEFT);
-					//gem->nextSwing(gem->getCurActorUID(),RLBN_RIGT);
-					runReport();
-					
-					
-				break;
-				
-				case 'N':
-					gem->saveEveryPose();
-				break;
-				
-				case 'j':
-				
-					pathfindingTestOn = !pathfindingTestOn;
-					cout << "pathfindingTestOn: " << pathfindingTestOn << "\n";
-				
-					//gem->resetActiveNode();
-				
-					// 
-					// doShaderRefresh(bakeParamsOn);
-					// mapInvalid = true;
-					// gw->initMap();
-				break;
-
-				case 'J':
-				
-					doShaderRefresh(bakeParamsOn);
-					mapInvalid = true;
-					gw->initMap();
-				
-				break;
-
-				case 'G':
-				
-					
-				
-					gridOn = !gridOn;
-					cout << "Grid On: " << gridOn << "\n";
-
-					break;
-
-
-				case 'g':
-				
-					mouseState++;
-
-					
-					if (mouseState == E_MOUSE_STATE_PICKING) {
-						
-						mouseState = E_MOUSE_STATE_BRUSH;
-						
-						if (earthMod == E_PTT_WAT) {
-							mouseState = 0;
-							earthMod = E_PTT_TER;
+							
+							gem->refreshTurnList();
+							
 						}
 						else {
-							earthMod = E_PTT_WAT;
+							cout << "Turn On Holder Update (u)\n";
+							doAlert();
 						}
 						
-					}
-					
-
-					
-					
-					cout << mouseStateStrings[mouseState] << "\n";
-
-
-					wsBufferInvalid = true;
-					forceGetPD = true;
-				
-					
-				break;
-				
-				case 'k':
-					gem->destroyTerrain = !(gem->destroyTerrain);
-					cout << "destroyTerrain: " << gem->destroyTerrain << "\n";
-					//gameAI->getKB();
-				break;
-				
-				case 'l':
-
-					multiLights = !multiLights;
-					updateMultiLights();
-
-
-					forceGetPD = true;
-
 					break;
-
-				case ';':
-					physicsOn = !physicsOn;
-					cout << "physicsOn: " << physicsOn << "\n";
-				break;
-				case 'p':
-				
-					curPattern++;
-					if (curPattern >= E_PAT_LENGTH) {
-						curPattern = 0;
-					}
-				
-					
-				break;
-				case 'P':
-				
-					placingPattern = !placingPattern;
-					cout << "placingPattern: " << placingPattern << "\n";
-				
-					//toggleFullScreen();
-				break;
-				case '\\':
-					toggleFullScreen();
-				break;
-				
-				case 'o':
-					//targetTimeOfDay = 1.0f-targetTimeOfDay;
-					sphereMapOn = !sphereMapOn;
-					
-					break;
-
-				case 'h':
-					
-					// diagCount++;
-					
-					// if (diagCount >= 9) {
-					// 	diagCount = 0;
-					// }
-					
-					//gameFluid[E_FID_SML]->updateTBOData(false,true);
-					//gameFluid[E_FID_BIG]->updateTBOData(false,true);
-					
-					gem->showHealth = !(gem->showHealth);
-					
-					break;
-					
-				case 'y':
-					// throw
-				break;
-				case 'T':
-					testOn = !testOn;
-					
-				break;
-				case 't':
-				
-					
-
-					//testOn2 = !testOn2;
-					//testOn3 = !testOn3;
-					renderingOct = !renderingOct;
-					if (renderingOct) {
-					//	gw->updateTBOPool(5);
-					}
-					
-					// if (renderingOct) {
-					// 	gameLogic->threadPoolList->stopAll();
-					// 	gameLogic->threadPoolPath->stopAll();
-					// }
-					
-					
-					//pathfindingTestOn = !pathfindingTestOn;
-					
-				break;
-				// case 'o':
-				// 	//rotOn = !rotOn;
-				// 	break;
-					
-
-				case '\t':
-				
-					if (menuList[E_FM_DDMENU]->visible || menuList[E_FM_CONTMENU]->visible) {
-						toggleDDMenu(x,y,false);
-						menuList[E_FM_CONTMENU]->visible = false;
-						gem->closeAllContainers();
+					//case '0':
 						
-						escCount = 0;
-					}
-					else {
-						if (mainGUI->isReady) {
-							if (menuList[E_FM_MAINMENU] == NULL) {
-								
+					//break;
+					
+					
+					case '9':
+						renderingOctBounds = !renderingOctBounds;
+					break;
+					case '/':
+						//gameOct->captureBuffer(true);
+						//gameOct->updateTBO();
+						//gameOct->updateVBO();
+					break;
+					case '*':
+						//renderingOct = !renderingOct;
+					break;
+					case '-':
+						//gameOct->modRenderLevel(-1);
+					break;
+					case '+':
+						//gameOct->modRenderLevel(1);
+					break;
+					
+					case '`':
+						placingGeom = !placingGeom;
+						if (placingGeom) {
+							resetGeom();
+						}
+						else {
+							
+						}
+					break;
+					
+					
+					case 'i':
+							
+							ignoreFrameLimit = !ignoreFrameLimit;
+							cout << "ignoreFrameLimit: " << ignoreFrameLimit << "\n";
+						break;
+					case 19: //ctrl-s
+						saveExternalJSON();
+						saveGUIValues();
+						gem->saveCurrentPose();
+						//cout << "Use s key in web editor to save\n";
+						break;
+
+					case 15: //ctrl-o
+						//loadAllData();
+						loadValuesGUI();
+
+						break;
+
+					case '[':
+						iNumSteps /= 2;
+						if (iNumSteps < 16)
+						{
+							iNumSteps = 16;
+						}
+						doTraceND("iNumSteps: ", i__s(iNumSteps));
+
+						break;
+					case ']':
+						iNumSteps *= 2;
+						if (iNumSteps > 256)
+						{
+							iNumSteps = 256;
+						}
+						doTraceND("iNumSteps: ", i__s(iNumSteps));
+
+						break;
+
+
+					case 'u':
+						
+						// if (updateHolders) {
+						// 	if (pathfindingOn) {
+						// 		updateHolders = false;
+						// 		pathfindingOn = false;
+						// 	}
+						// 	else {
+						// 		pathfindingOn = true;
+						// 	}
+						// }
+						// else {
+						// 	updateHolders = true;
+						// }
+					
+						updateHolders = !updateHolders;
+						//pathfindingGen = updateHolders;
+						
+						
+						cout << "\n";
+						cout << "updateHolders " << updateHolders << "\n";
+						
+						
+						
+					break;
+					
+					
+					case 'Q':
+						gem->toggleFirstPerson();
+					break;
+					
+					case 'q':
+						
+						gem->toggleActorSel();
+						
+						break;
+
+					
+					case 'W':
+						cout << "start FPS timer\n";
+						fpsTest = true;
+						fpsCount = 0;
+						fpsTimer.start();
+					break;
+					
+
+					case 27: // esc
+						//std::exit(0);
+						
+						if (menuList[E_FM_DDMENU]->visible || menuList[E_FM_CONTMENU]->visible) {
+							toggleDDMenu(x,y,false);
+							menuList[E_FM_CONTMENU]->visible = false;
+							gem->closeAllContainers();
+							escCount = 0;
+						}
+						else {
+							
+							escCount++;
+							if (escCount >= 3) {
+								std::exit(0);
+							}
+						}
+						
+						//pickerMenu->visible = false;
+						
+						
+						
+						break;
+
+					case 'b':
+					
+						bakeParamsOn = !bakeParamsOn;
+						cout << "bakeParamsOn: " << bakeParamsOn << "\n";
+						doShaderRefresh(bakeParamsOn);
+						
+						
+						
+					
+						//radiosityOn = !radiosityOn;
+						break;
+
+
+					case 'R':
+					
+						//loadValuesGUI(false);
+						gw->noiseGenerated = false;
+						gw->blockHolder->wasGenerated = false;
+						
+						loadGUI();
+						loadValuesGUI();
+						gem->loadPoseInfo(true);
+						
+					break;
+					case 'r':
+						
+						
+						
+						doShaderRefresh(bakeParamsOn);
+						cout << "Shaders Refreshed\n";
+
+						
+						
+						break;
+					
+					case 'n':
+						//gem->nextSwing(gem->getCurActorUID(),RLBN_LEFT);
+						//gem->nextSwing(gem->getCurActorUID(),RLBN_RIGT);
+						runReport();
+						
+						
+					break;
+					
+					case 'N':
+						gem->saveEveryPose();
+					break;
+					
+					case 'j':
+					
+						pathfindingTestOn = !pathfindingTestOn;
+						cout << "pathfindingTestOn: " << pathfindingTestOn << "\n";
+					
+						//gem->resetActiveNode();
+					
+						// 
+						// doShaderRefresh(bakeParamsOn);
+						// mapInvalid = true;
+						// gw->initMap();
+					break;
+
+					case 'J':
+					
+						doShaderRefresh(bakeParamsOn);
+						mapInvalid = true;
+						gw->initMap();
+					
+					break;
+
+					case 'G':
+					
+						
+					
+						gridOn = !gridOn;
+						cout << "Grid On: " << gridOn << "\n";
+
+						break;
+
+
+					case 'g':
+					
+						mouseState++;
+
+						
+						if (mouseState == E_MOUSE_STATE_PICKING) {
+							
+							mouseState = E_MOUSE_STATE_BRUSH;
+							
+							if (earthMod == E_PTT_WAT) {
+								mouseState = 0;
+								earthMod = E_PTT_TER;
 							}
 							else {
-								if (menuList[E_FM_MAINMENU]->visible) {
-									playSoundEvent("hideGUI");
+								earthMod = E_PTT_WAT;
+							}
+							
+						}
+						
+
+						
+						
+						cout << mouseStateStrings[mouseState] << "\n";
+
+
+						wsBufferInvalid = true;
+						forceGetPD = true;
+					
+						
+					break;
+					
+					case 'k':
+						gem->destroyTerrain = !(gem->destroyTerrain);
+						cout << "destroyTerrain: " << gem->destroyTerrain << "\n";
+						//gameAI->getKB();
+					break;
+					
+					case 'l':
+
+						multiLights = !multiLights;
+						updateMultiLights();
+
+
+						forceGetPD = true;
+
+						break;
+
+					case ';':
+						physicsOn = !physicsOn;
+						cout << "physicsOn: " << physicsOn << "\n";
+					break;
+					case 'p':
+					
+						curPattern++;
+						if (curPattern >= E_PAT_LENGTH) {
+							curPattern = 0;
+						}
+					
+						
+					break;
+					case 'P':
+					
+						placingPattern = !placingPattern;
+						cout << "placingPattern: " << placingPattern << "\n";
+					
+						//toggleFullScreen();
+					break;
+					case '\\':
+						toggleFullScreen();
+					break;
+					
+					case 'o':
+						//targetTimeOfDay = 1.0f-targetTimeOfDay;
+						sphereMapOn = !sphereMapOn;
+						
+						break;
+
+					case 'h':
+						
+						// diagCount++;
+						
+						// if (diagCount >= 9) {
+						// 	diagCount = 0;
+						// }
+						
+						//gameFluid[E_FID_SML]->updateTBOData(false,true);
+						//gameFluid[E_FID_BIG]->updateTBOData(false,true);
+						
+						gem->showHealth = !(gem->showHealth);
+						
+						break;
+						
+					case 'y':
+						// throw
+					break;
+					case 'T':
+						testOn = !testOn;
+						
+					break;
+					case 't':
+					
+						
+
+						//testOn2 = !testOn2;
+						//testOn3 = !testOn3;
+						renderingOct = !renderingOct;
+						if (renderingOct) {
+						//	gw->updateTBOPool(5);
+						}
+						
+						// if (renderingOct) {
+						// 	gameLogic->threadPoolList->stopAll();
+						// 	gameLogic->threadPoolPath->stopAll();
+						// }
+						
+						
+						//pathfindingTestOn = !pathfindingTestOn;
+						
+					break;
+					// case 'o':
+					// 	//rotOn = !rotOn;
+					// 	break;
+						
+
+					case '\t':
+					
+						if (menuList[E_FM_DDMENU]->visible || menuList[E_FM_CONTMENU]->visible) {
+							toggleDDMenu(x,y,false);
+							menuList[E_FM_CONTMENU]->visible = false;
+							gem->closeAllContainers();
+							
+							escCount = 0;
+						}
+						else {
+							if (mainGUI->isReady) {
+								if (menuList[E_FM_MAINMENU] == NULL) {
+									
 								}
-								
-								menuList[E_FM_MAINMENU]->visible = !(menuList[E_FM_MAINMENU]->visible);
-								
-								if (menuList[E_FM_MAINMENU]->visible) {
-									playSoundEvent("showGUI");
+								else {
+									if (menuList[E_FM_MAINMENU]->visible) {
+										playSoundEvent("hideGUI");
+									}
+									
+									menuList[E_FM_MAINMENU]->visible = !(menuList[E_FM_MAINMENU]->visible);
+									
+									if (menuList[E_FM_MAINMENU]->visible) {
+										playSoundEvent("showGUI");
+									}
 								}
 							}
 						}
-					}
-					
-					break;
+						
+						break;
 
-				case ' ':
+					case ' ':
+						
+						
+						
 					
-					
-					
-				
-					//timeMod = !timeMod;
-					// if (mouseState == E_MOUSE_STATE_PICKING) {
-					// 	selectedEnts.cycleEnts();
-					// }
-					
-					showHudMenu( !(menuList[E_FM_HUDMENU]->visible) );
-					
-					//showStatMenu( !(menuList[E_FM_STATMENU]->visible) );
-					
-					//cout << makePretty("E_TEST_STRING_VALUE", "E_TEST_") << "\n";
-					
-					
-				break;
-				
-				
-				case 'C':
-				
-					
-				break;
-				case 'c':
-					
-					
-					gem->setTurnBased(!(gem->turnBased));
-					gem->combatOn = (gem->turnBased);
-					gridOn = gem->combatOn;
-					//gem->combatOn = !(gem->combatOn);
-					//cout << "gem->combatOn " << gem->combatOn << "\n";
-					
-					
-					//setCameraToElevation();
-				
-					//doShaderRefresh(bakeParamsOn);
-
+						//timeMod = !timeMod;
+						// if (mouseState == E_MOUSE_STATE_PICKING) {
+						// 	selectedEnts.cycleEnts();
+						// }
+						
+						showHudMenu( !(menuList[E_FM_HUDMENU]->visible) );
+						
+						//showStatMenu( !(menuList[E_FM_STATMENU]->visible) );
+						
+						//cout << makePretty("E_TEST_STRING_VALUE", "E_TEST_") << "\n";
+						
+						
 					break;
 					
-				case 'v':
-					gem->togglePoseEdit();
 					
+					case 'C':
 					
-					//waterBulletOn = !waterBulletOn;
-					//gw->toggleVis(selectedEnts.getSelectedEnt());
+						
+					break;
+					case 'c':
+					
+						cout << "command:\n";	
+						
+						// gem->setTurnBased(!(gem->turnBased));
+						// gem->combatOn = (gem->turnBased);
+						// gridOn = gem->combatOn;
+						
+						commandOn = true;
+						
+						
+						
+						//gem->combatOn = !(gem->combatOn);
+						//cout << "gem->combatOn " << gem->combatOn << "\n";
+						
+						
+						//setCameraToElevation();
+					
+						//doShaderRefresh(bakeParamsOn);
+
+						break;
+						
+					case 'v':
+						gem->togglePoseEdit();
+						
+						
+						//waterBulletOn = !waterBulletOn;
+						//gw->toggleVis(selectedEnts.getSelectedEnt());
+						break;
+						
+					case 'V':
+						gem->applyNonPoseData();
 					break;
 					
-				case 'V':
-					gem->applyNonPoseData();
-				break;
-				
 
-				case 'X':
-					//fogOn = 1.0 - fogOn;
-					//cout << "fog on " << fogOn << "\n";
-					gem->changePose(-1);
+					case 'X':
+						//fogOn = 1.0 - fogOn;
+						//cout << "fog on " << fogOn << "\n";
+						gem->changePose(-1);
+						break;
+						
+					case 'x':
+						gem->changePose(1);
+						
+						//fxaaOn = !fxaaOn;
+						//cout << "fxaaOn " << fxaaOn << "\n";
+						break;
+
+					case 'm':
+
+
+						gem->mirrorOn = !gem->mirrorOn;
+						cout << "gem->mirrorOn " << gem->mirrorOn << "\n";
+						
+						// doPathReport = true;
+
+						// medianCount++;					
+						// if (medianCount == 4) {
+						// 	medianCount = 0;
+						// }
+						
+						//
+						
+						// refreshPaths = true;
+						
+
+						break;
+					case 'M':
+						// smoothMove = !smoothMove;
+						// cout << "smoothMove " << smoothMove << "\n";
+						
+						medianCount++;					
+						if (medianCount == 4) {
+							medianCount = 0;
+						
+						}
+						cout << "medianCount " << medianCount << "\n";
+						
 					break;
 					
-				case 'x':
-					gem->changePose(1);
-					
-					//fxaaOn = !fxaaOn;
-					//cout << "fxaaOn " << fxaaOn << "\n";
-					break;
 
-				case 'm':
-
-
-					gem->mirrorOn = !gem->mirrorOn;
-					cout << "gem->mirrorOn " << gem->mirrorOn << "\n";
-					
-					// doPathReport = true;
-
-					// medianCount++;					
-					// if (medianCount == 4) {
-					// 	medianCount = 0;
-					// }
-					
-					//
-					
-					// refreshPaths = true;
 					
 
-					break;
-				case 'M':
-					// smoothMove = !smoothMove;
-					// cout << "smoothMove " << smoothMove << "\n";
-					
-					medianCount++;					
-					if (medianCount == 4) {
-						medianCount = 0;
-					
-					}
-					cout << "medianCount " << medianCount << "\n";
-					
-				break;
-				
-
-				
-
-				case 'A':
-				case 'Z':
-				case 'S':
-				case 'F':
-				case 'E':
-				case 'D':
-				case 'a':
-				case 'z':
-				case 's':
-				case 'f':
-				case 'e':
-				case 'd':
-					// reserved for movement
-				break;
-				
-				// 127 del
-				// 8 backspace
-
-				default:
-					cout << "No code for key: " << ((int)key) << "\n";
-					break;
-			}
-			
-			
-			if (gem->turnBased&&(gem->getCurActor() != NULL)) {
-				switch(key) {
+					case 'A':
+					case 'Z':
+					case 'S':
+					case 'F':
+					case 'E':
+					case 'D':
 					case 'a':
-						
-					break;
 					case 'z':
-						
-					break;
-					
-					case 'w':
-						gem->makeGrab(gem->getCurActor()->uid, -1);
-					break;
-					case 'y':
-						gem->makeThrow(gem->getCurActor()->uid,-1);
-					break;
-					
 					case 's':
-						gem->makeTurnTB(gem->getCurActor()->uid, 1);
-						
-					break;
 					case 'f':
-						gem->makeTurnTB(gem->getCurActor()->uid, -1);
-						
+					case 'e':
+					case 'd':
+						// reserved for movement
 					break;
 					
-					case 'e':
-						if (gem->makeMoveTB(gem->getCurActor()->uid, 1)) {
-							gem->endHumanTurn();
-						}
-					break;
-					case 'd':
-						if (gem->makeMoveTB(gem->getCurActor()->uid, -1)) {
-							gem->endHumanTurn();
-						}
-					break;
+					// 127 del
+					// 8 backspace
+
+					default:
+						cout << "No code for key: " << ((int)key) << "\n";
+						break;
 				}
+				
+				
+				if (gem->turnBased&&(gem->getCurActor() != NULL)) {
+					switch(key) {
+						case 'a':
+							
+						break;
+						case 'z':
+							
+						break;
+						
+						case 'w':
+							gem->makeGrab(gem->getCurActor()->uid, -1);
+						break;
+						case 'y':
+							gem->makeThrow(gem->getCurActor()->uid,-1);
+						break;
+						
+						case 's':
+							gem->makeTurnTB(gem->getCurActor()->uid, 1);
+							
+						break;
+						case 'f':
+							gem->makeTurnTB(gem->getCurActor()->uid, -1);
+							
+						break;
+						
+						case 'e':
+							if (gem->makeMoveTB(gem->getCurActor()->uid, 1)) {
+								gem->endHumanTurn();
+							}
+						break;
+						case 'd':
+							if (gem->makeMoveTB(gem->getCurActor()->uid, -1)) {
+								gem->endHumanTurn();
+							}
+						break;
+					}
+				}
+				
+				
 			}
 			
+		
 		}
 		
 		
@@ -33835,6 +33911,13 @@ void Singleton::updateAmbientSounds ()
 	}
 void Singleton::checkFluid (GameFluid * gf)
                                        {
+		
+		if (updateHolders) {
+			gameLogic->loadNearestHolders();
+		}
+		
+		return;
+		
 		if ((!draggingMap)&&(!fpsTest)&&updateHolders) {
 			gf->updateAll();
 			
@@ -34100,68 +34183,6 @@ void Singleton::frameUpdate ()
 						}
 						
 						
-						// if (
-						// 	gameFluid[E_FID_SML]->fluidReading ||
-						// 	gameFluid[E_FID_BIG]->fluidReading
-						// ) {
-						// 	if (gameFluid[E_FID_BIG]->fluidReading) {
-						// 		if (gameFluid[E_FID_SML]->cycleTerminated) {
-						// 			gameFluid[E_FID_BIG]->updateAll();
-						// 		}
-						// 		else {
-						// 			// wait for small fluid to finish its cycle
-						// 			gameFluid[E_FID_SML]->updateAll();
-						// 		}
-						// 	}
-						// 	else {
-						// 		if (gameFluid[E_FID_BIG]->cycleTerminated) {
-						// 			gameFluid[E_FID_SML]->updateAll();
-						// 		}
-						// 		else {
-						// 			// wait for big fluid to finish its cycle
-						// 			gameFluid[E_FID_BIG]->updateAll();
-						// 		}
-						// 	}
-						// }
-						// else {
-							
-							
-						// 	gameFluid[E_FID_SML]->updateAll();
-						// 	gameFluid[E_FID_BIG]->updateAll();
-							
-						// 	if (
-						// 		gameFluid[E_FID_SML]->fluidReading ||
-						// 		gameFluid[E_FID_BIG]->fluidReading
-						// 	) {
-								
-						// 	}
-						// 	else {
-								
-						// 		if (gameFluid[E_FID_SML]->cycleTerminated) {
-						// 			gameFluid[E_FID_SML]->cycleTerminated = false;
-									
-						// 			//tempVec1.copyFrom(&(gameFluid[E_FID_SML]->volMinReadyInPixels));
-						// 			//tempVec1.addXYZRef(&(gameFluid[E_FID_SML]->volMinReadyInPixels),-1.0f);
-									
-						// 			// gameFluid[E_FID_BIG]->copyPrimTexture(
-						// 			// 	tempVec1[0],
-						// 			// 	tempVec1[1],
-						// 			// 	tempVec1[2],
-						// 			// 	gameFluid[E_FID_SML]->volSizePrim,
-						// 			// 	&(gameFluid[E_FID_SML]->volDataPrim[0])
-						// 			// );
-									
-						// 			gameFluid[E_FID_SML]->startFT();
-						// 		}
-								
-								
-						// 		if (gameFluid[E_FID_BIG]->cycleTerminated) {
-						// 			gameFluid[E_FID_BIG]->cycleTerminated = false;
-						// 			gameFluid[E_FID_BIG]->startFT();
-						// 		}
-						// 	}
-						// }
-						
 						checkFluid(gameFluid[E_FID_BIG]);
 						
 						
@@ -34393,17 +34414,6 @@ void Singleton::display (bool doFrameRender)
 				gatherKeyActions();
 				handleMovement();
 				
-				
-				// if (destructCount > 50000) {
-				// 	waitingOnDestruction = false;
-				// }
-				
-				// if (waitingOnDestruction) {
-				// 	destructCount++;
-				// }
-				// else {
-					
-				// }
 				
 				if (physicsOn) {
 					gamePhysics->updateAll();
@@ -36321,7 +36331,7 @@ void GameVoxelWrap::init (Singleton * _singleton)
 	}
 void GameVoxelWrap::fillVec (GamePageHolder * gph)
                                           {
-		int totSize = voxelBuffer->visitIds.size();
+		int totSize = voxelBuffer->voxelList.size();
 		
 		if (totSize <= 0) {
 			return;
@@ -36358,11 +36368,21 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		CubeWrap* curCW;
 		
 		int tempInd;
+		int voxelListInd;
 		
 		vec3 totNorm;
+		vec3 zeroVec = vec3(0.0f,0.0f,0.0f);
+		
+		float weight;
+		
+		uint curNID;
+		uint testNID;
+		
+		float frad = NORM_RAD;
+		float maxRad = (frad*frad + frad*frad + frad*frad)*1.125f;
 		
 		for (p = 0; p < totSize; p++) {
-			q = voxelBuffer->visitIds[p];
+			q = voxelBuffer->voxelList[p].index;
 			kk = q/(voxelsPerHolderPad*voxelsPerHolderPad);
 			jj = (q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
 			ii = q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
@@ -36376,6 +36396,8 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 				voxOffset -= paddingInVoxels;
 				if (inBounds(&voxOffset,0,voxelsPerHolder)) {
 					
+					
+					curNID = voxelBuffer->voxelList[p].normId;
 					
 					curFlags = voxelBuffer->getFlags(q);
 					
@@ -36398,15 +36420,55 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 								
 								tempInd = (zz+kk)*voxelsPerHolderPad*voxelsPerHolderPad + (yy+jj)*voxelsPerHolderPad + (xx + ii);
 								tempFlags = voxelBuffer->getFlagsAtNode(tempInd);
+								voxelListInd = voxelBuffer->getIndAtNode(tempInd);
+								
+								if (voxelListInd == -1) {
+									testNID = 0;
+								}
+								else {
+									testNID = voxelBuffer->voxelList[voxelListInd].normId;
+								}
+								
+								// if (p%1000 == 0) {
+								// 	cout << "curNID " << curNID << "testNID" << testNID << "\n";
+								// }
+								
+								
+								
+								// if (
+								// 	((tempFlags&E_OCT_SURFACE) > 0)
+								// 	&& (curNID == testNID)
+								// ) {
+								// 	normFlags = (tempFlags&63);
+								// 	totNorm += BASE_NORMALS[normFlags];
+								// }
+								
+								
 								
 								if ((tempFlags&E_OCT_SURFACE) > 0) {
+									
+									weight = maxRad-(xx*xx + yy*yy + zz*zz);
+									
 									normFlags = (tempFlags&63);
-									totNorm += BASE_NORMALS[normFlags];
+								
+									if (curNID == testNID) {
+										totNorm += BASE_NORMALS[normFlags]*weight;
+									}
+									else {
+										totNorm -= BASE_NORMALS[normFlags]*0.75f*weight;
+									}
 								}
+								
+								
+								
 								
 								
 							}
 						}
+					}
+					
+					if (totNorm == zeroVec) {
+						totNorm = vec3(0.0f,0.0f,1.0f);
 					}
 					
 					totNorm.normalize();
@@ -36422,6 +36484,7 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 					tempData[0] = totNorm.x;
 					tempData[1] = totNorm.y;
 					tempData[2] = totNorm.z;
+					tempData[3] = curNID;
 					
 					gph->vboWrapper.vboBox(
 						fVO.x, fVO.y, fVO.z,
@@ -36837,6 +36900,8 @@ bool GameVoxelWrap::isSurfaceVoxel (ivec3 * pos, int & curPtr, bool checkVisited
 int GameVoxelWrap::getVoxelAtCoord (ivec3 * pos)
                                         {
 		
+		int VLIndex;
+		
 		//int minB = 0;
 		//int maxB = voxelsPerHolderPad;
 		if (inBounds(pos,0,voxelsPerHolderPad)) {
@@ -36845,8 +36910,8 @@ int GameVoxelWrap::getVoxelAtCoord (ivec3 * pos)
 			
 			if (wasNew) {
 				voxelBuffer->setFlag(result, E_OCT_NOTNEW);
-				voxelBuffer->addIndex(result);
-				calcVoxel(pos,result);
+				VLIndex = voxelBuffer->addIndex(result);
+				calcVoxel(pos,result,VLIndex);
 			}
 			
 			return result;
@@ -36857,8 +36922,8 @@ int GameVoxelWrap::getVoxelAtCoord (ivec3 * pos)
 		
 		
 	}
-float GameVoxelWrap::sampLinear (ivec3 * pos)
-                                     {
+float GameVoxelWrap::sampLinear (ivec3 * pos, ivec3 offset)
+                                                   {
 		int q;
 		int i;
 		int j;
@@ -36866,13 +36931,15 @@ float GameVoxelWrap::sampLinear (ivec3 * pos)
 		
 		float res[8];
 		
-		int xv = pos->x/voxelsPerCell;
-		int yv = pos->y/voxelsPerCell;
-		int zv = pos->z/voxelsPerCell;
+		ivec3 newPos = ((*pos) + offset);
 		
-		float fx = pos->x-xv*voxelsPerCell;
-		float fy = pos->y-yv*voxelsPerCell;
-		float fz = pos->z-zv*voxelsPerCell;
+		int xv = newPos.x/voxelsPerCell;
+		int yv = newPos.y/voxelsPerCell;
+		int zv = newPos.z/voxelsPerCell;
+		
+		float fx = newPos.x-xv*voxelsPerCell;
+		float fy = newPos.y-yv*voxelsPerCell;
+		float fz = newPos.z-zv*voxelsPerCell;
 		
 		float fVPC = voxelsPerCell;
 		
@@ -37006,8 +37073,8 @@ void GameVoxelWrap::getVoro (ivec3 * worldPos, ivec3 * worldClosestCenter, int i
 		);
 		
 	}
-void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr)
-                                               {
+void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
+                                                            {
 		
 		ivec3 worldPos = (*pos) + offsetInVoxels;
 		worldPos -= paddingInVoxels;
@@ -37015,15 +37082,36 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr)
 		ivec3 worldClosestCenter;// = worldPos;
 		ivec3 localClosestCenter;
 		
-		getVoro(&worldPos,&worldClosestCenter, voxelsPerCell*2);
+		getVoro(&worldPos,&worldClosestCenter, voxelsPerCell);
+		
+		voxelBuffer->voxelList[VLIndex].normId = worldClosestCenter.x*3 + worldClosestCenter.y*7 + worldClosestCenter.z*11;
+		
 		localClosestCenter = worldClosestCenter - offsetInVoxels;
 		localClosestCenter += paddingInVoxels;
 		
 		
+		int vOff = 16;
 		
-		float terSamp = sampLinear(&localClosestCenter);
+		float terSamp = sampLinear(&localClosestCenter, ivec3(0,0,0));
 		
-		float terSampOrig = sampLinear(pos);
+		float terSampOrig =  sampLinear(pos, ivec3(0,0,0));
+		float terSampOrigX = sampLinear(pos, ivec3(vOff,0,0));
+		float terSampOrigY = sampLinear(pos, ivec3(0,vOff,0));
+		float terSampOrigZ = sampLinear(pos, ivec3(0,0,vOff));
+		
+		vec3 terNorm = vec3(
+			terSampOrigX-terSampOrig,
+			terSampOrigY-terSampOrig,
+			terSampOrigZ-terSampOrig
+		);
+		
+		terNorm *= -1.0f;
+		
+		terNorm.normalize();
+		
+		
+		//clampfZO(terNorm.z)*0.5f + 0.5f
+		
 		bool isSolid = (mixf(terSamp,terSampOrig,0.0f) >= 0.5f);
 		//bool isSolid = (terSamp >= 0.5f);
 		
@@ -43076,7 +43164,6 @@ void GameFluid::writeFluidData ()
 					}
 				}
 			}
-			
 			
 		}
 		
@@ -50701,7 +50788,6 @@ int GamePageHolder::getCellAtInd (int ind)
 		}
 		else {
 			//cout << debugVal << " attempted getCellAtCoords without generation\n";
-			//genCellData();
 			
 			return E_CD_SOLID;
 		}
@@ -52020,7 +52106,7 @@ void GamePageHolder::genCellData ()
 								ind = p*4;
 								
 								p = 
-									(k*2+kk)*cellsPerHolder*cellsPerHolder +
+									(k*2)*cellsPerHolder*cellsPerHolder +
 									(j*2)*cellsPerHolder +
 									(i*2);
 								readInd = p*4;
@@ -52040,6 +52126,8 @@ void GamePageHolder::genCellData ()
 		
 		
 		wasGenerated = true;
+		
+		
 		
 	}
 void GamePageHolder::fillVBO ()
@@ -52162,8 +52250,8 @@ void GamePageHolder::fillVBO ()
 				vboWrapper.endFill();
 				
 				
-				//glFlush();
-				//glFinish();
+				glFlush();
+				glFinish();
 			}
 			
 			if (DO_VOXEL_WRAP) {
@@ -56674,7 +56762,6 @@ void ThreadPoolWrapper::funcTP (int threadId)
 			break;
 		}
 		
-		//curHolder->genCellData();
 		
 		threadPool[threadId].setRunningLocked(false);
 	}
@@ -58678,15 +58765,15 @@ void GameLogic::loadNearestHolders ()
 								
 							}
 							else {
-								// curHolder->genCellData();
-								// genCount++;
+								curHolder->genCellData();
+								genCount++;
 							}
 						}
 						
 						
-						// if (genCount >= 2) {
-						// 	return;
-						// }
+						if (genCount >= 2) {
+							return;
+						}
 						
 					}
 					
@@ -61856,6 +61943,15 @@ GameBlock * GameWorld::getBlockAtCoords (int xInBlocks, int yInBlocks, int zInBl
 		return blockData[ind];
 
 	}
+void GameWorld::clearAllHolders ()
+                               {
+		singleton->stopAllThreads();
+		
+		// for (i = 0; i < ; i++) {
+			
+		// }
+		
+	}
 GamePageHolder * GameWorld::getHolderAtCoords (int x, int y, int z, bool createOnNull)
         {
 
@@ -61965,7 +62061,6 @@ int GameWorld::getCellInd (btVector3 cParam, GamePageHolder * & curHolder)
 		}
 		else {
 			//cout << "attempted getCellInd without generation\n";
-			//curHolder->genCellData();
 			return -1;
 		}
 		//GamePage* gp = getPageAtCoords(x2, y2, z2, false);
@@ -61998,7 +62093,6 @@ int GameWorld::getCellInd (GamePageHolder * & curHolder, int xv, int yv, int zv)
 		}
 		else {
 			//cout << "attempted getCellInd without generation\n";
-			//curHolder->genCellData();
 			return -1;
 		}
 		//GamePage* gp = getPageAtCoords(x2, y2, z2, false);

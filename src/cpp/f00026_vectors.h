@@ -3293,6 +3293,9 @@ public:
 		if (vertexVec.size() > 0) {
 			updateNew();
 		}
+		else {
+			// todo: handle case where vertex buffer has gone to zero
+		}
 	}
 	
 	
@@ -4133,17 +4136,40 @@ struct PaddedDataEntry {
 
 struct VoxelBufferEntry {
 	uint flags;
+	int index;
+};
+
+struct VoxelInfo {
+	int index;
+	uint normId;
 };
 
 struct VoxelBuffer {
 	VoxelBufferEntry* data;
 	int totSize;
 	int pitch;
-	vector<int> visitIds;
+	vector<VoxelInfo> voxelList;
 	
-	void addIndex(int val) {
-		visitIds.push_back(val);
+	int addIndex(int val) {
+		voxelList.push_back(VoxelInfo());
+		voxelList.back().index = val;
+		voxelList.back().normId = 0;
+		
+		int VLInd = (voxelList.size()-1);
+		
+		data[val].index = VLInd;
+		
+		return VLInd;
 	}
+	
+	// VoxelInfo* getVoxelInfo(int index) {
+	// 	if (index < 0) {
+	// 		return NULL;
+	// 	}
+	// 	else {
+	// 		return &(voxelList[index]);
+	// 	}
+	// }
 	
 	uint getFlags(int flagPtr) {
 		return data[flagPtr].flags;
@@ -4172,18 +4198,22 @@ struct VoxelBuffer {
 	uint getFlagsAtNode(int ind) {
 		return data[ind].flags;
 	}
+	uint getIndAtNode(int ind) {
+		return data[ind].index;
+	}
 	
 	void clearAllNodes() {
 		int i;
-		int mySize = visitIds.size();
+		int mySize = voxelList.size();
 		int curInd;
 		
 		for (i = 0; i < mySize; i++) {
-			curInd = visitIds[i];
+			curInd = voxelList[i].index;
 			data[curInd].flags = 0;
+			data[curInd].index = -1;
 		}
 		
-		visitIds.clear();
+		voxelList.clear();
 	}
 	
 };

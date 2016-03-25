@@ -1865,15 +1865,15 @@ void GameLogic::loadNearestHolders ()
 								
 							}
 							else {
-								// curHolder->genCellData();
-								// genCount++;
+								curHolder->genCellData();
+								genCount++;
 							}
 						}
 						
 						
-						// if (genCount >= 2) {
-						// 	return;
-						// }
+						if (genCount >= 2) {
+							return;
+						}
 						
 					}
 					

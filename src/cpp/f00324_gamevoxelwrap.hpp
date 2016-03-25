@@ -75,7 +75,7 @@ public:
 	
 	
 	void fillVec(GamePageHolder* gph) {
-		int totSize = voxelBuffer->visitIds.size();
+		int totSize = voxelBuffer->voxelList.size();
 		
 		if (totSize <= 0) {
 			return;
@@ -112,11 +112,21 @@ public:
 		CubeWrap* curCW;
 		
 		int tempInd;
+		int voxelListInd;
 		
 		vec3 totNorm;
+		vec3 zeroVec = vec3(0.0f,0.0f,0.0f);
+		
+		float weight;
+		
+		uint curNID;
+		uint testNID;
+		
+		float frad = NORM_RAD;
+		float maxRad = (frad*frad + frad*frad + frad*frad)*1.125f;
 		
 		for (p = 0; p < totSize; p++) {
-			q = voxelBuffer->visitIds[p];
+			q = voxelBuffer->voxelList[p].index;
 			kk = q/(voxelsPerHolderPad*voxelsPerHolderPad);
 			jj = (q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
 			ii = q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
@@ -130,6 +140,8 @@ public:
 				voxOffset -= paddingInVoxels;
 				if (inBounds(&voxOffset,0,voxelsPerHolder)) {
 					
+					
+					curNID = voxelBuffer->voxelList[p].normId;
 					
 					curFlags = voxelBuffer->getFlags(q);
 					
@@ -152,15 +164,55 @@ public:
 								
 								tempInd = (zz+kk)*voxelsPerHolderPad*voxelsPerHolderPad + (yy+jj)*voxelsPerHolderPad + (xx + ii);
 								tempFlags = voxelBuffer->getFlagsAtNode(tempInd);
+								voxelListInd = voxelBuffer->getIndAtNode(tempInd);
+								
+								if (voxelListInd == -1) {
+									testNID = 0;
+								}
+								else {
+									testNID = voxelBuffer->voxelList[voxelListInd].normId;
+								}
+								
+								// if (p%1000 == 0) {
+								// 	cout << "curNID " << curNID << "testNID" << testNID << "\n";
+								// }
+								
+								
+								
+								// if (
+								// 	((tempFlags&E_OCT_SURFACE) > 0)
+								// 	&& (curNID == testNID)
+								// ) {
+								// 	normFlags = (tempFlags&63);
+								// 	totNorm += BASE_NORMALS[normFlags];
+								// }
+								
+								
 								
 								if ((tempFlags&E_OCT_SURFACE) > 0) {
+									
+									weight = maxRad-(xx*xx + yy*yy + zz*zz);
+									
 									normFlags = (tempFlags&63);
-									totNorm += BASE_NORMALS[normFlags];
+								
+									if (curNID == testNID) {
+										totNorm += BASE_NORMALS[normFlags]*weight;
+									}
+									else {
+										totNorm -= BASE_NORMALS[normFlags]*0.75f*weight;
+									}
 								}
+								
+								
+								
 								
 								
 							}
 						}
+					}
+					
+					if (totNorm == zeroVec) {
+						totNorm = vec3(0.0f,0.0f,1.0f);
 					}
 					
 					totNorm.normalize();
@@ -176,6 +228,7 @@ public:
 					tempData[0] = totNorm.x;
 					tempData[1] = totNorm.y;
 					tempData[2] = totNorm.z;
+					tempData[3] = curNID;
 					
 					gph->vboWrapper.vboBox(
 						fVO.x, fVO.y, fVO.z,
@@ -604,6 +657,8 @@ public:
 
 	int getVoxelAtCoord(ivec3* pos) {
 		
+		int VLIndex;
+		
 		//int minB = 0;
 		//int maxB = voxelsPerHolderPad;
 		if (inBounds(pos,0,voxelsPerHolderPad)) {
@@ -612,8 +667,8 @@ public:
 			
 			if (wasNew) {
 				voxelBuffer->setFlag(result, E_OCT_NOTNEW);
-				voxelBuffer->addIndex(result);
-				calcVoxel(pos,result);
+				VLIndex = voxelBuffer->addIndex(result);
+				calcVoxel(pos,result,VLIndex);
 			}
 			
 			return result;
@@ -793,7 +848,7 @@ public:
 	}
 	
 	// should only be called when a new node is inserted!
-	void calcVoxel(ivec3* pos, int octPtr) {
+	void calcVoxel(ivec3* pos, int octPtr, int VLIndex) {
 		
 		ivec3 worldPos = (*pos) + offsetInVoxels;
 		worldPos -= paddingInVoxels;
@@ -801,18 +856,35 @@ public:
 		ivec3 worldClosestCenter;// = worldPos;
 		ivec3 localClosestCenter;
 		
-		getVoro(&worldPos,&worldClosestCenter, voxelsPerCell*2);
+		getVoro(&worldPos,&worldClosestCenter, voxelsPerCell);
+		
+		voxelBuffer->voxelList[VLIndex].normId = worldClosestCenter.x*3 + worldClosestCenter.y*7 + worldClosestCenter.z*11;
+		
 		localClosestCenter = worldClosestCenter - offsetInVoxels;
 		localClosestCenter += paddingInVoxels;
 		
 		
+		int vOff = 16;
 		
-		float terSamp = sampLinear(&localClosestCenter);
+		float terSamp = sampLinear(&localClosestCenter, ivec3(0,0,0));
 		
-		float terSampOrig = sampLinear(pos);
-		float terSampOrigX = sampLinear(pos);
-		float terSampOrigY = sampLinear(pos);
-		float terSampOrigZ = sampLinear(pos);
+		float terSampOrig =  sampLinear(pos, ivec3(0,0,0));
+		float terSampOrigX = sampLinear(pos, ivec3(vOff,0,0));
+		float terSampOrigY = sampLinear(pos, ivec3(0,vOff,0));
+		float terSampOrigZ = sampLinear(pos, ivec3(0,0,vOff));
+		
+		vec3 terNorm = vec3(
+			terSampOrigX-terSampOrig,
+			terSampOrigY-terSampOrig,
+			terSampOrigZ-terSampOrig
+		);
+		
+		terNorm *= -1.0f;
+		
+		terNorm.normalize();
+		
+		
+		//clampfZO(terNorm.z)*0.5f + 0.5f
 		
 		bool isSolid = (mixf(terSamp,terSampOrig,0.0f) >= 0.5f);
 		//bool isSolid = (terSamp >= 0.5f);

@@ -429,6 +429,10 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			pdPool[i].voxelBuffer.data = new VoxelBufferEntry[
 				pdPool[i].voxelBuffer.totSize
 			];
+			for (j = 0; j < pdPool[i].voxelBuffer.totSize; j++) {
+				pdPool[i].voxelBuffer.data[j].index = -1;
+				pdPool[i].voxelBuffer.data[j].flags = 0;
+			}
 			
 			// octPool[i] = new GameOctree();
 			// octPool[i]->init(
@@ -576,6 +580,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		drawTargPaths = false;
 		renderingOct = false;
 		renderingOctBounds = false;
+		commandOn = false;
 		placingPattern = false;
 		gridOn = false;
 		fogOn = 1.0f;
@@ -4249,11 +4254,19 @@ void Singleton::resetGeom ()
 			paramArrGeom[i] = defaultTemplate[i];
 		}
 	}
+void Singleton::stopAllThreads ()
+                              {
+		gameLogic->threadPoolPath->stopAll();
+		gameLogic->threadPoolList->stopAll();
+	}
 void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
                                                                          {
 		
 		int i;
 		int tempType = E_ENTTYPE_NPC;
+		
+		
+		
 		
 		GamePageHolder* curHolder;
 		
@@ -4285,607 +4298,637 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 			
 		}		
 		else {
-			switch (key) {
-
-				
-
-
-
 			
-			// case 'a':
-			// 	// selectedNode->material += 1.0f;
-			// 	// curNode = getMirroredNode(selectedNode);
-			// 	// if (curNode != NULL) {
-			// 	// 	curNode->material += 1.0f;
-			// 	// }
-			// 	// makeDirty();
-			// break;
-			// case 'z':
-			// 	// selectedNode->material -= 1.0f;
-			// 	// curNode = getMirroredNode(selectedNode);
-			// 	// if (curNode != NULL) {
-			// 	// 	curNode->material -= 1.0f;
-			// 	// }
-			// 	// makeDirty();
+			if (commandOn) {
+				commandOn = false;
 				
-			// break;
+				switch (key) {
+					case 'e':
+						cout << "error:\n";
+						glError();
+					break;
+					case 'r':
+						gw->clearAllHolders();
+					break;	
+				}
+				
+				cout << "command end\n";	
+				
+			}
+			else {
+				
+				
+				switch (key) {
+
+					
 
 
+
 				
-				
-				case '1':
-				case '2':
-				case '3':
-				
-					switch(key) {
-						case '1':
-							tempType = E_ENTTYPE_NPC;
-						break;
-						case '2':
-							tempType = E_ENTTYPE_WEAPON;
-						break;
-						case '3':
-							tempType = E_ENTTYPE_WEAPON;
-							gem->weaponToPlace = E_PG_WPSPEAR;
-						break;
-					}
-				
-					if (updateHolders) {
-						getMarkerPos(x, y);
-						gem->placeNewEnt(gameNetwork->isConnected,tempType,&lastCellPos);
-						
-						if (key == '2') {
-							gem->weaponToPlace++;
-							if (gem->weaponToPlace > E_PG_WPSPEAR) {
-								gem->weaponToPlace = E_PG_WPSWORD;
+				// case 'a':
+				// 	// selectedNode->material += 1.0f;
+				// 	// curNode = getMirroredNode(selectedNode);
+				// 	// if (curNode != NULL) {
+				// 	// 	curNode->material += 1.0f;
+				// 	// }
+				// 	// makeDirty();
+				// break;
+				// case 'z':
+				// 	// selectedNode->material -= 1.0f;
+				// 	// curNode = getMirroredNode(selectedNode);
+				// 	// if (curNode != NULL) {
+				// 	// 	curNode->material -= 1.0f;
+				// 	// }
+				// 	// makeDirty();
+					
+				// break;
+
+
+					
+					
+					case '1':
+					case '2':
+					case '3':
+					
+						switch(key) {
+							case '1':
+								tempType = E_ENTTYPE_NPC;
+							break;
+							case '2':
+								tempType = E_ENTTYPE_WEAPON;
+							break;
+							case '3':
+								tempType = E_ENTTYPE_WEAPON;
+								gem->weaponToPlace = E_PG_WPSPEAR;
+							break;
+						}
+					
+						if (updateHolders) {
+							getMarkerPos(x, y);
+							gem->placeNewEnt(gameNetwork->isConnected,tempType,&lastCellPos);
+							
+							if (key == '2') {
+								gem->weaponToPlace++;
+								if (gem->weaponToPlace > E_PG_WPSPEAR) {
+									gem->weaponToPlace = E_PG_WPSWORD;
+								}
 							}
-						}
-						
-						gem->refreshTurnList();
-						
-					}
-					else {
-						cout << "Turn On Holder Update (u)\n";
-						doAlert();
-					}
-					
-				break;
-				//case '0':
-					
-				//break;
-				
-				
-				case '9':
-					renderingOctBounds = !renderingOctBounds;
-				break;
-				case '/':
-					//gameOct->captureBuffer(true);
-					//gameOct->updateTBO();
-					//gameOct->updateVBO();
-				break;
-				case '*':
-					//renderingOct = !renderingOct;
-				break;
-				case '-':
-					//gameOct->modRenderLevel(-1);
-				break;
-				case '+':
-					//gameOct->modRenderLevel(1);
-				break;
-				
-				case '`':
-					placingGeom = !placingGeom;
-					if (placingGeom) {
-						resetGeom();
-					}
-					else {
-						
-					}
-				break;
-				
-				
-				case 'i':
-						
-						ignoreFrameLimit = !ignoreFrameLimit;
-						cout << "ignoreFrameLimit: " << ignoreFrameLimit << "\n";
-					break;
-				case 19: //ctrl-s
-					saveExternalJSON();
-					saveGUIValues();
-					gem->saveCurrentPose();
-					//cout << "Use s key in web editor to save\n";
-					break;
-
-				case 15: //ctrl-o
-					//loadAllData();
-					loadValuesGUI();
-
-					break;
-
-				case '[':
-					iNumSteps /= 2;
-					if (iNumSteps < 16)
-					{
-						iNumSteps = 16;
-					}
-					doTraceND("iNumSteps: ", i__s(iNumSteps));
-
-					break;
-				case ']':
-					iNumSteps *= 2;
-					if (iNumSteps > 256)
-					{
-						iNumSteps = 256;
-					}
-					doTraceND("iNumSteps: ", i__s(iNumSteps));
-
-					break;
-
-
-				case 'u':
-					
-					// if (updateHolders) {
-					// 	if (pathfindingOn) {
-					// 		updateHolders = false;
-					// 		pathfindingOn = false;
-					// 	}
-					// 	else {
-					// 		pathfindingOn = true;
-					// 	}
-					// }
-					// else {
-					// 	updateHolders = true;
-					// }
-				
-					updateHolders = !updateHolders;
-					//pathfindingGen = updateHolders;
-					
-					
-					cout << "\n";
-					cout << "updateHolders " << updateHolders << "\n";
-					
-					
-					
-				break;
-				
-				
-				case 'Q':
-					gem->toggleFirstPerson();
-				break;
-				
-				case 'q':
-					
-					gem->toggleActorSel();
-					
-					break;
-
-				
-				case 'W':
-					cout << "start FPS timer\n";
-					fpsTest = true;
-					fpsCount = 0;
-					fpsTimer.start();
-				break;
-				
-
-				case 27: // esc
-					//std::exit(0);
-					
-					if (menuList[E_FM_DDMENU]->visible || menuList[E_FM_CONTMENU]->visible) {
-						toggleDDMenu(x,y,false);
-						menuList[E_FM_CONTMENU]->visible = false;
-						gem->closeAllContainers();
-						escCount = 0;
-					}
-					else {
-						
-						escCount++;
-						if (escCount >= 3) {
-							std::exit(0);
-						}
-					}
-					
-					//pickerMenu->visible = false;
-					
-					
-					
-					break;
-
-				case 'b':
-				
-					bakeParamsOn = !bakeParamsOn;
-					cout << "bakeParamsOn: " << bakeParamsOn << "\n";
-					doShaderRefresh(bakeParamsOn);
-					
-					
-					
-				
-					//radiosityOn = !radiosityOn;
-					break;
-
-
-				case 'R':
-				
-					//loadValuesGUI(false);
-					gw->noiseGenerated = false;
-					gw->blockHolder->wasGenerated = false;
-					
-					loadGUI();
-					loadValuesGUI();
-					gem->loadPoseInfo(true);
-					
-				break;
-				case 'r':
-					
-					
-					
-					doShaderRefresh(bakeParamsOn);
-					cout << "Shaders Refreshed\n";
-
-					
-					
-					break;
-				
-				case 'n':
-					//gem->nextSwing(gem->getCurActorUID(),RLBN_LEFT);
-					//gem->nextSwing(gem->getCurActorUID(),RLBN_RIGT);
-					runReport();
-					
-					
-				break;
-				
-				case 'N':
-					gem->saveEveryPose();
-				break;
-				
-				case 'j':
-				
-					pathfindingTestOn = !pathfindingTestOn;
-					cout << "pathfindingTestOn: " << pathfindingTestOn << "\n";
-				
-					//gem->resetActiveNode();
-				
-					// 
-					// doShaderRefresh(bakeParamsOn);
-					// mapInvalid = true;
-					// gw->initMap();
-				break;
-
-				case 'J':
-				
-					doShaderRefresh(bakeParamsOn);
-					mapInvalid = true;
-					gw->initMap();
-				
-				break;
-
-				case 'G':
-				
-					
-				
-					gridOn = !gridOn;
-					cout << "Grid On: " << gridOn << "\n";
-
-					break;
-
-
-				case 'g':
-				
-					mouseState++;
-
-					
-					if (mouseState == E_MOUSE_STATE_PICKING) {
-						
-						mouseState = E_MOUSE_STATE_BRUSH;
-						
-						if (earthMod == E_PTT_WAT) {
-							mouseState = 0;
-							earthMod = E_PTT_TER;
+							
+							gem->refreshTurnList();
+							
 						}
 						else {
-							earthMod = E_PTT_WAT;
+							cout << "Turn On Holder Update (u)\n";
+							doAlert();
 						}
 						
-					}
-					
-
-					
-					
-					cout << mouseStateStrings[mouseState] << "\n";
-
-
-					wsBufferInvalid = true;
-					forceGetPD = true;
-				
-					
-				break;
-				
-				case 'k':
-					gem->destroyTerrain = !(gem->destroyTerrain);
-					cout << "destroyTerrain: " << gem->destroyTerrain << "\n";
-					//gameAI->getKB();
-				break;
-				
-				case 'l':
-
-					multiLights = !multiLights;
-					updateMultiLights();
-
-
-					forceGetPD = true;
-
 					break;
-
-				case ';':
-					physicsOn = !physicsOn;
-					cout << "physicsOn: " << physicsOn << "\n";
-				break;
-				case 'p':
-				
-					curPattern++;
-					if (curPattern >= E_PAT_LENGTH) {
-						curPattern = 0;
-					}
-				
-					
-				break;
-				case 'P':
-				
-					placingPattern = !placingPattern;
-					cout << "placingPattern: " << placingPattern << "\n";
-				
-					//toggleFullScreen();
-				break;
-				case '\\':
-					toggleFullScreen();
-				break;
-				
-				case 'o':
-					//targetTimeOfDay = 1.0f-targetTimeOfDay;
-					sphereMapOn = !sphereMapOn;
-					
-					break;
-
-				case 'h':
-					
-					// diagCount++;
-					
-					// if (diagCount >= 9) {
-					// 	diagCount = 0;
-					// }
-					
-					//gameFluid[E_FID_SML]->updateTBOData(false,true);
-					//gameFluid[E_FID_BIG]->updateTBOData(false,true);
-					
-					gem->showHealth = !(gem->showHealth);
-					
-					break;
-					
-				case 'y':
-					// throw
-				break;
-				case 'T':
-					testOn = !testOn;
-					
-				break;
-				case 't':
-				
-					
-
-					//testOn2 = !testOn2;
-					//testOn3 = !testOn3;
-					renderingOct = !renderingOct;
-					if (renderingOct) {
-					//	gw->updateTBOPool(5);
-					}
-					
-					// if (renderingOct) {
-					// 	gameLogic->threadPoolList->stopAll();
-					// 	gameLogic->threadPoolPath->stopAll();
-					// }
-					
-					
-					//pathfindingTestOn = !pathfindingTestOn;
-					
-				break;
-				// case 'o':
-				// 	//rotOn = !rotOn;
-				// 	break;
-					
-
-				case '\t':
-				
-					if (menuList[E_FM_DDMENU]->visible || menuList[E_FM_CONTMENU]->visible) {
-						toggleDDMenu(x,y,false);
-						menuList[E_FM_CONTMENU]->visible = false;
-						gem->closeAllContainers();
+					//case '0':
 						
-						escCount = 0;
-					}
-					else {
-						if (mainGUI->isReady) {
-							if (menuList[E_FM_MAINMENU] == NULL) {
-								
+					//break;
+					
+					
+					case '9':
+						renderingOctBounds = !renderingOctBounds;
+					break;
+					case '/':
+						//gameOct->captureBuffer(true);
+						//gameOct->updateTBO();
+						//gameOct->updateVBO();
+					break;
+					case '*':
+						//renderingOct = !renderingOct;
+					break;
+					case '-':
+						//gameOct->modRenderLevel(-1);
+					break;
+					case '+':
+						//gameOct->modRenderLevel(1);
+					break;
+					
+					case '`':
+						placingGeom = !placingGeom;
+						if (placingGeom) {
+							resetGeom();
+						}
+						else {
+							
+						}
+					break;
+					
+					
+					case 'i':
+							
+							ignoreFrameLimit = !ignoreFrameLimit;
+							cout << "ignoreFrameLimit: " << ignoreFrameLimit << "\n";
+						break;
+					case 19: //ctrl-s
+						saveExternalJSON();
+						saveGUIValues();
+						gem->saveCurrentPose();
+						//cout << "Use s key in web editor to save\n";
+						break;
+
+					case 15: //ctrl-o
+						//loadAllData();
+						loadValuesGUI();
+
+						break;
+
+					case '[':
+						iNumSteps /= 2;
+						if (iNumSteps < 16)
+						{
+							iNumSteps = 16;
+						}
+						doTraceND("iNumSteps: ", i__s(iNumSteps));
+
+						break;
+					case ']':
+						iNumSteps *= 2;
+						if (iNumSteps > 256)
+						{
+							iNumSteps = 256;
+						}
+						doTraceND("iNumSteps: ", i__s(iNumSteps));
+
+						break;
+
+
+					case 'u':
+						
+						// if (updateHolders) {
+						// 	if (pathfindingOn) {
+						// 		updateHolders = false;
+						// 		pathfindingOn = false;
+						// 	}
+						// 	else {
+						// 		pathfindingOn = true;
+						// 	}
+						// }
+						// else {
+						// 	updateHolders = true;
+						// }
+					
+						updateHolders = !updateHolders;
+						//pathfindingGen = updateHolders;
+						
+						
+						cout << "\n";
+						cout << "updateHolders " << updateHolders << "\n";
+						
+						
+						
+					break;
+					
+					
+					case 'Q':
+						gem->toggleFirstPerson();
+					break;
+					
+					case 'q':
+						
+						gem->toggleActorSel();
+						
+						break;
+
+					
+					case 'W':
+						cout << "start FPS timer\n";
+						fpsTest = true;
+						fpsCount = 0;
+						fpsTimer.start();
+					break;
+					
+
+					case 27: // esc
+						//std::exit(0);
+						
+						if (menuList[E_FM_DDMENU]->visible || menuList[E_FM_CONTMENU]->visible) {
+							toggleDDMenu(x,y,false);
+							menuList[E_FM_CONTMENU]->visible = false;
+							gem->closeAllContainers();
+							escCount = 0;
+						}
+						else {
+							
+							escCount++;
+							if (escCount >= 3) {
+								std::exit(0);
+							}
+						}
+						
+						//pickerMenu->visible = false;
+						
+						
+						
+						break;
+
+					case 'b':
+					
+						bakeParamsOn = !bakeParamsOn;
+						cout << "bakeParamsOn: " << bakeParamsOn << "\n";
+						doShaderRefresh(bakeParamsOn);
+						
+						
+						
+					
+						//radiosityOn = !radiosityOn;
+						break;
+
+
+					case 'R':
+					
+						//loadValuesGUI(false);
+						gw->noiseGenerated = false;
+						gw->blockHolder->wasGenerated = false;
+						
+						loadGUI();
+						loadValuesGUI();
+						gem->loadPoseInfo(true);
+						
+					break;
+					case 'r':
+						
+						
+						
+						doShaderRefresh(bakeParamsOn);
+						cout << "Shaders Refreshed\n";
+
+						
+						
+						break;
+					
+					case 'n':
+						//gem->nextSwing(gem->getCurActorUID(),RLBN_LEFT);
+						//gem->nextSwing(gem->getCurActorUID(),RLBN_RIGT);
+						runReport();
+						
+						
+					break;
+					
+					case 'N':
+						gem->saveEveryPose();
+					break;
+					
+					case 'j':
+					
+						pathfindingTestOn = !pathfindingTestOn;
+						cout << "pathfindingTestOn: " << pathfindingTestOn << "\n";
+					
+						//gem->resetActiveNode();
+					
+						// 
+						// doShaderRefresh(bakeParamsOn);
+						// mapInvalid = true;
+						// gw->initMap();
+					break;
+
+					case 'J':
+					
+						doShaderRefresh(bakeParamsOn);
+						mapInvalid = true;
+						gw->initMap();
+					
+					break;
+
+					case 'G':
+					
+						
+					
+						gridOn = !gridOn;
+						cout << "Grid On: " << gridOn << "\n";
+
+						break;
+
+
+					case 'g':
+					
+						mouseState++;
+
+						
+						if (mouseState == E_MOUSE_STATE_PICKING) {
+							
+							mouseState = E_MOUSE_STATE_BRUSH;
+							
+							if (earthMod == E_PTT_WAT) {
+								mouseState = 0;
+								earthMod = E_PTT_TER;
 							}
 							else {
-								if (menuList[E_FM_MAINMENU]->visible) {
-									playSoundEvent("hideGUI");
+								earthMod = E_PTT_WAT;
+							}
+							
+						}
+						
+
+						
+						
+						cout << mouseStateStrings[mouseState] << "\n";
+
+
+						wsBufferInvalid = true;
+						forceGetPD = true;
+					
+						
+					break;
+					
+					case 'k':
+						gem->destroyTerrain = !(gem->destroyTerrain);
+						cout << "destroyTerrain: " << gem->destroyTerrain << "\n";
+						//gameAI->getKB();
+					break;
+					
+					case 'l':
+
+						multiLights = !multiLights;
+						updateMultiLights();
+
+
+						forceGetPD = true;
+
+						break;
+
+					case ';':
+						physicsOn = !physicsOn;
+						cout << "physicsOn: " << physicsOn << "\n";
+					break;
+					case 'p':
+					
+						curPattern++;
+						if (curPattern >= E_PAT_LENGTH) {
+							curPattern = 0;
+						}
+					
+						
+					break;
+					case 'P':
+					
+						placingPattern = !placingPattern;
+						cout << "placingPattern: " << placingPattern << "\n";
+					
+						//toggleFullScreen();
+					break;
+					case '\\':
+						toggleFullScreen();
+					break;
+					
+					case 'o':
+						//targetTimeOfDay = 1.0f-targetTimeOfDay;
+						sphereMapOn = !sphereMapOn;
+						
+						break;
+
+					case 'h':
+						
+						// diagCount++;
+						
+						// if (diagCount >= 9) {
+						// 	diagCount = 0;
+						// }
+						
+						//gameFluid[E_FID_SML]->updateTBOData(false,true);
+						//gameFluid[E_FID_BIG]->updateTBOData(false,true);
+						
+						gem->showHealth = !(gem->showHealth);
+						
+						break;
+						
+					case 'y':
+						// throw
+					break;
+					case 'T':
+						testOn = !testOn;
+						
+					break;
+					case 't':
+					
+						
+
+						//testOn2 = !testOn2;
+						//testOn3 = !testOn3;
+						renderingOct = !renderingOct;
+						if (renderingOct) {
+						//	gw->updateTBOPool(5);
+						}
+						
+						// if (renderingOct) {
+						// 	gameLogic->threadPoolList->stopAll();
+						// 	gameLogic->threadPoolPath->stopAll();
+						// }
+						
+						
+						//pathfindingTestOn = !pathfindingTestOn;
+						
+					break;
+					// case 'o':
+					// 	//rotOn = !rotOn;
+					// 	break;
+						
+
+					case '\t':
+					
+						if (menuList[E_FM_DDMENU]->visible || menuList[E_FM_CONTMENU]->visible) {
+							toggleDDMenu(x,y,false);
+							menuList[E_FM_CONTMENU]->visible = false;
+							gem->closeAllContainers();
+							
+							escCount = 0;
+						}
+						else {
+							if (mainGUI->isReady) {
+								if (menuList[E_FM_MAINMENU] == NULL) {
+									
 								}
-								
-								menuList[E_FM_MAINMENU]->visible = !(menuList[E_FM_MAINMENU]->visible);
-								
-								if (menuList[E_FM_MAINMENU]->visible) {
-									playSoundEvent("showGUI");
+								else {
+									if (menuList[E_FM_MAINMENU]->visible) {
+										playSoundEvent("hideGUI");
+									}
+									
+									menuList[E_FM_MAINMENU]->visible = !(menuList[E_FM_MAINMENU]->visible);
+									
+									if (menuList[E_FM_MAINMENU]->visible) {
+										playSoundEvent("showGUI");
+									}
 								}
 							}
 						}
-					}
-					
-					break;
+						
+						break;
 
-				case ' ':
+					case ' ':
+						
+						
+						
 					
-					
-					
-				
-					//timeMod = !timeMod;
-					// if (mouseState == E_MOUSE_STATE_PICKING) {
-					// 	selectedEnts.cycleEnts();
-					// }
-					
-					showHudMenu( !(menuList[E_FM_HUDMENU]->visible) );
-					
-					//showStatMenu( !(menuList[E_FM_STATMENU]->visible) );
-					
-					//cout << makePretty("E_TEST_STRING_VALUE", "E_TEST_") << "\n";
-					
-					
-				break;
-				
-				
-				case 'C':
-				
-					
-				break;
-				case 'c':
-					
-					
-					gem->setTurnBased(!(gem->turnBased));
-					gem->combatOn = (gem->turnBased);
-					gridOn = gem->combatOn;
-					//gem->combatOn = !(gem->combatOn);
-					//cout << "gem->combatOn " << gem->combatOn << "\n";
-					
-					
-					//setCameraToElevation();
-				
-					//doShaderRefresh(bakeParamsOn);
-
+						//timeMod = !timeMod;
+						// if (mouseState == E_MOUSE_STATE_PICKING) {
+						// 	selectedEnts.cycleEnts();
+						// }
+						
+						showHudMenu( !(menuList[E_FM_HUDMENU]->visible) );
+						
+						//showStatMenu( !(menuList[E_FM_STATMENU]->visible) );
+						
+						//cout << makePretty("E_TEST_STRING_VALUE", "E_TEST_") << "\n";
+						
+						
 					break;
 					
-				case 'v':
-					gem->togglePoseEdit();
 					
+					case 'C':
 					
-					//waterBulletOn = !waterBulletOn;
-					//gw->toggleVis(selectedEnts.getSelectedEnt());
+						
+					break;
+					case 'c':
+					
+						cout << "command:\n";	
+						
+						// gem->setTurnBased(!(gem->turnBased));
+						// gem->combatOn = (gem->turnBased);
+						// gridOn = gem->combatOn;
+						
+						commandOn = true;
+						
+						
+						
+						//gem->combatOn = !(gem->combatOn);
+						//cout << "gem->combatOn " << gem->combatOn << "\n";
+						
+						
+						//setCameraToElevation();
+					
+						//doShaderRefresh(bakeParamsOn);
+
+						break;
+						
+					case 'v':
+						gem->togglePoseEdit();
+						
+						
+						//waterBulletOn = !waterBulletOn;
+						//gw->toggleVis(selectedEnts.getSelectedEnt());
+						break;
+						
+					case 'V':
+						gem->applyNonPoseData();
 					break;
 					
-				case 'V':
-					gem->applyNonPoseData();
-				break;
-				
 
-				case 'X':
-					//fogOn = 1.0 - fogOn;
-					//cout << "fog on " << fogOn << "\n";
-					gem->changePose(-1);
+					case 'X':
+						//fogOn = 1.0 - fogOn;
+						//cout << "fog on " << fogOn << "\n";
+						gem->changePose(-1);
+						break;
+						
+					case 'x':
+						gem->changePose(1);
+						
+						//fxaaOn = !fxaaOn;
+						//cout << "fxaaOn " << fxaaOn << "\n";
+						break;
+
+					case 'm':
+
+
+						gem->mirrorOn = !gem->mirrorOn;
+						cout << "gem->mirrorOn " << gem->mirrorOn << "\n";
+						
+						// doPathReport = true;
+
+						// medianCount++;					
+						// if (medianCount == 4) {
+						// 	medianCount = 0;
+						// }
+						
+						//
+						
+						// refreshPaths = true;
+						
+
+						break;
+					case 'M':
+						// smoothMove = !smoothMove;
+						// cout << "smoothMove " << smoothMove << "\n";
+						
+						medianCount++;					
+						if (medianCount == 4) {
+							medianCount = 0;
+						
+						}
+						cout << "medianCount " << medianCount << "\n";
+						
 					break;
 					
-				case 'x':
-					gem->changePose(1);
-					
-					//fxaaOn = !fxaaOn;
-					//cout << "fxaaOn " << fxaaOn << "\n";
-					break;
 
-				case 'm':
-
-
-					gem->mirrorOn = !gem->mirrorOn;
-					cout << "gem->mirrorOn " << gem->mirrorOn << "\n";
-					
-					// doPathReport = true;
-
-					// medianCount++;					
-					// if (medianCount == 4) {
-					// 	medianCount = 0;
-					// }
-					
-					//
-					
-					// refreshPaths = true;
 					
 
-					break;
-				case 'M':
-					// smoothMove = !smoothMove;
-					// cout << "smoothMove " << smoothMove << "\n";
-					
-					medianCount++;					
-					if (medianCount == 4) {
-						medianCount = 0;
-					
-					}
-					cout << "medianCount " << medianCount << "\n";
-					
-				break;
-				
-
-				
-
-				case 'A':
-				case 'Z':
-				case 'S':
-				case 'F':
-				case 'E':
-				case 'D':
-				case 'a':
-				case 'z':
-				case 's':
-				case 'f':
-				case 'e':
-				case 'd':
-					// reserved for movement
-				break;
-				
-				// 127 del
-				// 8 backspace
-
-				default:
-					cout << "No code for key: " << ((int)key) << "\n";
-					break;
-			}
-			
-			
-			if (gem->turnBased&&(gem->getCurActor() != NULL)) {
-				switch(key) {
+					case 'A':
+					case 'Z':
+					case 'S':
+					case 'F':
+					case 'E':
+					case 'D':
 					case 'a':
-						
-					break;
 					case 'z':
-						
-					break;
-					
-					case 'w':
-						gem->makeGrab(gem->getCurActor()->uid, -1);
-					break;
-					case 'y':
-						gem->makeThrow(gem->getCurActor()->uid,-1);
-					break;
-					
 					case 's':
-						gem->makeTurnTB(gem->getCurActor()->uid, 1);
-						
-					break;
 					case 'f':
-						gem->makeTurnTB(gem->getCurActor()->uid, -1);
-						
+					case 'e':
+					case 'd':
+						// reserved for movement
 					break;
 					
-					case 'e':
-						if (gem->makeMoveTB(gem->getCurActor()->uid, 1)) {
-							gem->endHumanTurn();
-						}
-					break;
-					case 'd':
-						if (gem->makeMoveTB(gem->getCurActor()->uid, -1)) {
-							gem->endHumanTurn();
-						}
-					break;
+					// 127 del
+					// 8 backspace
+
+					default:
+						cout << "No code for key: " << ((int)key) << "\n";
+						break;
 				}
+				
+				
+				if (gem->turnBased&&(gem->getCurActor() != NULL)) {
+					switch(key) {
+						case 'a':
+							
+						break;
+						case 'z':
+							
+						break;
+						
+						case 'w':
+							gem->makeGrab(gem->getCurActor()->uid, -1);
+						break;
+						case 'y':
+							gem->makeThrow(gem->getCurActor()->uid,-1);
+						break;
+						
+						case 's':
+							gem->makeTurnTB(gem->getCurActor()->uid, 1);
+							
+						break;
+						case 'f':
+							gem->makeTurnTB(gem->getCurActor()->uid, -1);
+							
+						break;
+						
+						case 'e':
+							if (gem->makeMoveTB(gem->getCurActor()->uid, 1)) {
+								gem->endHumanTurn();
+							}
+						break;
+						case 'd':
+							if (gem->makeMoveTB(gem->getCurActor()->uid, -1)) {
+								gem->endHumanTurn();
+							}
+						break;
+					}
+				}
+				
+				
 			}
 			
+		
 		}
 		
 		
@@ -7712,6 +7755,13 @@ void Singleton::updateAmbientSounds ()
 	}
 void Singleton::checkFluid (GameFluid * gf)
                                        {
+		
+		if (updateHolders) {
+			gameLogic->loadNearestHolders();
+		}
+		
+		return;
+		
 		if ((!draggingMap)&&(!fpsTest)&&updateHolders) {
 			gf->updateAll();
 			
@@ -7977,68 +8027,6 @@ void Singleton::frameUpdate ()
 						}
 						
 						
-						// if (
-						// 	gameFluid[E_FID_SML]->fluidReading ||
-						// 	gameFluid[E_FID_BIG]->fluidReading
-						// ) {
-						// 	if (gameFluid[E_FID_BIG]->fluidReading) {
-						// 		if (gameFluid[E_FID_SML]->cycleTerminated) {
-						// 			gameFluid[E_FID_BIG]->updateAll();
-						// 		}
-						// 		else {
-						// 			// wait for small fluid to finish its cycle
-						// 			gameFluid[E_FID_SML]->updateAll();
-						// 		}
-						// 	}
-						// 	else {
-						// 		if (gameFluid[E_FID_BIG]->cycleTerminated) {
-						// 			gameFluid[E_FID_SML]->updateAll();
-						// 		}
-						// 		else {
-						// 			// wait for big fluid to finish its cycle
-						// 			gameFluid[E_FID_BIG]->updateAll();
-						// 		}
-						// 	}
-						// }
-						// else {
-							
-							
-						// 	gameFluid[E_FID_SML]->updateAll();
-						// 	gameFluid[E_FID_BIG]->updateAll();
-							
-						// 	if (
-						// 		gameFluid[E_FID_SML]->fluidReading ||
-						// 		gameFluid[E_FID_BIG]->fluidReading
-						// 	) {
-								
-						// 	}
-						// 	else {
-								
-						// 		if (gameFluid[E_FID_SML]->cycleTerminated) {
-						// 			gameFluid[E_FID_SML]->cycleTerminated = false;
-									
-						// 			//tempVec1.copyFrom(&(gameFluid[E_FID_SML]->volMinReadyInPixels));
-						// 			//tempVec1.addXYZRef(&(gameFluid[E_FID_SML]->volMinReadyInPixels),-1.0f);
-									
-						// 			// gameFluid[E_FID_BIG]->copyPrimTexture(
-						// 			// 	tempVec1[0],
-						// 			// 	tempVec1[1],
-						// 			// 	tempVec1[2],
-						// 			// 	gameFluid[E_FID_SML]->volSizePrim,
-						// 			// 	&(gameFluid[E_FID_SML]->volDataPrim[0])
-						// 			// );
-									
-						// 			gameFluid[E_FID_SML]->startFT();
-						// 		}
-								
-								
-						// 		if (gameFluid[E_FID_BIG]->cycleTerminated) {
-						// 			gameFluid[E_FID_BIG]->cycleTerminated = false;
-						// 			gameFluid[E_FID_BIG]->startFT();
-						// 		}
-						// 	}
-						// }
-						
 						checkFluid(gameFluid[E_FID_BIG]);
 						
 						
@@ -8270,17 +8258,6 @@ void Singleton::display (bool doFrameRender)
 				gatherKeyActions();
 				handleMovement();
 				
-				
-				// if (destructCount > 50000) {
-				// 	waitingOnDestruction = false;
-				// }
-				
-				// if (waitingOnDestruction) {
-				// 	destructCount++;
-				// }
-				// else {
-					
-				// }
 				
 				if (physicsOn) {
 					gamePhysics->updateAll();

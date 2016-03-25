@@ -125,6 +125,7 @@ public:
   int destructCount;
   bool sphereMapOn;
   bool waitingOnDestruction;
+  bool commandOn;
   bool renderingOctBounds;
   bool renderingOct;
   bool placingPattern;
@@ -597,6 +598,7 @@ public:
   void updateCS ();
   void getMarkerPos (int x, int y);
   void resetGeom ();
+  void stopAllThreads ();
   void processInput (unsigned char key, bool keyDown, int x, int y);
   void getPixData (FIVector4 * toVector, int _xv, int _yv, bool forceUpdate, bool isObj);
   float getMinGeom (int baseIndex);
@@ -879,11 +881,11 @@ public:
   bool isInvSurfaceVoxel (ivec3 * pos, int ignorePtr, int & curPtr, bool checkVisited);
   bool isSurfaceVoxel (ivec3 * pos, int & curPtr, bool checkVisited);
   int getVoxelAtCoord (ivec3 * pos);
-  float sampLinear (ivec3 * pos);
+  float sampLinear (ivec3 * pos, ivec3 offset);
   PaddedDataEntry * getPadData (int ii, int jj, int kk);
   vec3 randPN (vec3 co);
   void getVoro (ivec3 * worldPos, ivec3 * worldClosestCenter, int iSpacing);
-  void calcVoxel (ivec3 * pos, int octPtr);
+  void calcVoxel (ivec3 * pos, int octPtr, int VLIndex);
 };
 #undef LZZ_INLINE
 #endif
@@ -2185,6 +2187,7 @@ public:
   GameWorld ();
   void init (Singleton * _singleton);
   GameBlock * getBlockAtCoords (int xInBlocks, int yInBlocks, int zInBlocks, bool createOnNull = false);
+  void clearAllHolders ();
   GamePageHolder * getHolderAtCoords (int x, int y, int z, bool createOnNull = false);
   GamePageHolder * getHolderAtId (int blockId, int holderId);
   GameBlock * getBlockAtId (int id);

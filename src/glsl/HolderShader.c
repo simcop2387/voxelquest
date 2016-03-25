@@ -83,6 +83,11 @@ void main() {
 				-lightVec
 			)	
 		)
+		//  + vec3(
+		// 	mod(vdata0.w,255.0)/255.0,
+		// 	0.0,
+		// 	0.0
+		// )
 		//(vdata0.xyz + 1.0)*0.5
 		
 		//vec3(globTotSteps/64.0) // + baseCol*0.25

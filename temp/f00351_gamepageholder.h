@@ -152,7 +152,6 @@ int GamePageHolder::getCellAtInd (int ind)
 		}
 		else {
 			//cout << debugVal << " attempted getCellAtCoords without generation\n";
-			//genCellData();
 			
 			return E_CD_SOLID;
 		}
@@ -1471,7 +1470,7 @@ void GamePageHolder::genCellData ()
 								ind = p*4;
 								
 								p = 
-									(k*2+kk)*cellsPerHolder*cellsPerHolder +
+									(k*2)*cellsPerHolder*cellsPerHolder +
 									(j*2)*cellsPerHolder +
 									(i*2);
 								readInd = p*4;
@@ -1491,6 +1490,8 @@ void GamePageHolder::genCellData ()
 		
 		
 		wasGenerated = true;
+		
+		
 		
 	}
 void GamePageHolder::fillVBO ()
@@ -1613,8 +1614,8 @@ void GamePageHolder::fillVBO ()
 				vboWrapper.endFill();
 				
 				
-				//glFlush();
-				//glFinish();
+				glFlush();
+				glFinish();
 			}
 			
 			if (DO_VOXEL_WRAP) {

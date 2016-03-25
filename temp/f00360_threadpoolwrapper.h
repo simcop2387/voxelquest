@@ -49,7 +49,6 @@ void ThreadPoolWrapper::funcTP (int threadId)
 			break;
 		}
 		
-		//curHolder->genCellData();
 		
 		threadPool[threadId].setRunningLocked(false);
 	}

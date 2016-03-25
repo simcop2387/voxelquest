@@ -277,7 +277,6 @@ public:
 		}
 		else {
 			//cout << debugVal << " attempted getCellAtCoords without generation\n";
-			//genCellData();
 			
 			return E_CD_SOLID;
 		}
@@ -336,7 +335,7 @@ public:
 	// 		}
 	// 		else {
 	// 			cout << "attempted setCellAtInd without generation\n";
-	// 			//genCellData();
+	// 			
 	// 			return;
 	// 		}
 	// 		//GamePage* gp = getPageAtCoords(x2, y2, z2, false);
@@ -1648,7 +1647,7 @@ FIRST_FILL_DONE:
 								ind = p*4;
 								
 								p = 
-									(k*2+kk)*cellsPerHolder*cellsPerHolder +
+									(k*2)*cellsPerHolder*cellsPerHolder +
 									(j*2)*cellsPerHolder +
 									(i*2);
 								readInd = p*4;
@@ -1668,6 +1667,8 @@ FIRST_FILL_DONE:
 		
 		
 		wasGenerated = true;
+		
+		
 		
 	}
 
@@ -2208,8 +2209,8 @@ FIRST_FILL_DONE:
 				vboWrapper.endFill();
 				
 				
-				//glFlush();
-				//glFinish();
+				glFlush();
+				glFinish();
 			}
 			
 			if (DO_VOXEL_WRAP) {

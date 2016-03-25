@@ -206,6 +206,15 @@ GameBlock * GameWorld::getBlockAtCoords (int xInBlocks, int yInBlocks, int zInBl
 		return blockData[ind];
 
 	}
+void GameWorld::clearAllHolders ()
+                               {
+		singleton->stopAllThreads();
+		
+		// for (i = 0; i < ; i++) {
+			
+		// }
+		
+	}
 GamePageHolder * GameWorld::getHolderAtCoords (int x, int y, int z, bool createOnNull)
         {
 
@@ -315,7 +324,6 @@ int GameWorld::getCellInd (btVector3 cParam, GamePageHolder * & curHolder)
 		}
 		else {
 			//cout << "attempted getCellInd without generation\n";
-			//curHolder->genCellData();
 			return -1;
 		}
 		//GamePage* gp = getPageAtCoords(x2, y2, z2, false);
@@ -348,7 +356,6 @@ int GameWorld::getCellInd (GamePageHolder * & curHolder, int xv, int yv, int zv)
 		}
 		else {
 			//cout << "attempted getCellInd without generation\n";
-			//curHolder->genCellData();
 			return -1;
 		}
 		//GamePage* gp = getPageAtCoords(x2, y2, z2, false);

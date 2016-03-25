@@ -56,7 +56,6 @@ class ThreadPoolWrapper {
 			break;
 		}
 		
-		//curHolder->genCellData();
 		
 		threadPool[threadId].setRunningLocked(false);
 	}
