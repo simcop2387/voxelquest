@@ -74,6 +74,7 @@ public:
 	Matrix4 identMatrix;
 	Matrix4 viewMatrix;
 	Matrix4 projMatrix;
+	Matrix4 pmMatrix;
 	std::vector<Matrix4> objMatrixStack;
 	Matrix4 curObjMatrix;
 	Matrix4 curMVP;
@@ -1014,7 +1015,7 @@ public:
 		// qqqqqq
 		
 		
-		heightMapMaxInCells = 8192.0f;
+		heightMapMaxInCells = 4096.0f;
 		//mapSampScale = 2.0f;
 		int newPitch = (imageHM0->width) * 2; //*2;
 		mapPitch = (imageHM0->width); //newPitch;// //
@@ -9066,7 +9067,7 @@ DISPATCH_EVENT_END:
 	}
 	
 	
-	void frameUpdate() {
+	void frameUpdate(bool doFrameRender) {
 		
 		float temp;
 		float temp2;
@@ -9290,26 +9291,33 @@ DISPATCH_EVENT_END:
 						
 						//gw->drawPrim();
 						
-						if (renderingOct) {
-							//gw->renderOct(gameOct);
-							//gw->rasterOct(gameOct,true);
-							
-							// if ((bakeTicks % iGetConst(E_CONST_BAKE_TICKS)) == 0) {
-							// 	gw->update(false);
-							// }
-							// gw->rasterGrid(&myVBOGrid,true);
-							// bakeTicks++;
-							
-							
-							gw->update(false,false);
-							gw->rasterHolders(true);
-							
-						}
-						else {
-							//gw->rasterOct(gameOct,false);
-							//gw->rasterGrid(&myVBOGrid,false);
-							gw->update(true,true);
-						}
+						gw->preUpdate();
+						// if (true) { //doFrameRender
+						// 	if (renderingOct) {
+						// 		//gw->renderOct(gameOct);
+						// 		//gw->rasterOct(gameOct,true);
+								
+						// 		// if ((bakeTicks % iGetConst(E_CONST_BAKE_TICKS)) == 0) {
+						// 		// 	gw->update(false);
+						// 		// }
+						// 		// gw->rasterGrid(&myVBOGrid,true);
+						// 		// bakeTicks++;
+								
+								
+						// 		gw->rasterHolders(true);
+								
+						// 	}
+						// 	else {
+						// 		//gw->rasterOct(gameOct,false);
+						// 		//gw->rasterGrid(&myVBOGrid,false);
+								
+						// 		gw->update();
+						// 	}
+						// }
+						
+						gw->update();
+						
+						
 						
 						
 						// if (GEN_POLYS_WORLD) {
@@ -9385,6 +9393,10 @@ DISPATCH_EVENT_END:
 				sphereStack.erase(sphereStack.begin() + i);
 			}
 		}
+	}
+
+	void idleFunc() {
+		
 	}
 
 	void display(bool doFrameRender)
@@ -9603,7 +9615,7 @@ DISPATCH_EVENT_END:
 					
 					
 					//if (doFrameRender) {
-						frameUpdate();
+						frameUpdate(doFrameRender);
 						lastDepthInvalidMove = depthInvalidMove;
 						depthInvalidMove = false;
 						depthInvalidRotate = false;
@@ -9898,6 +9910,7 @@ DISPATCH_EVENT_END:
 			ptr1 = viewMatrix.get();
 			ptr2 = projMatrix.get();
 			
+			pmMatrix = projMatrix*viewMatrix;
 			
 			for (i = 0; i < 16; i++) {
 				viewMatrixD[i] = ptr1[i];
@@ -9928,24 +9941,32 @@ DISPATCH_EVENT_END:
 				(lastH == h) &&
 				(lastPersp == perspectiveOn)
 			) {
-				
+				// do nothing	
 			}
 			else {
-				glViewport(0, 0, w, h);
 				
-				glMatrixMode(GL_MODELVIEW);
-				glLoadIdentity ();
-				
-				glMatrixMode (GL_PROJECTION);
-				glLoadIdentity ();
-				
-				// glMatrixMode(GL_PROJECTION);
-				// glLoadIdentity();
-				// glOrtho(-0.5, +0.5, -0.5, +0.5, clipDist[0], clipDist[1]);
-				
-				lastW = w;
-				lastH = h;
 			}
+			
+			
+			glViewport(0, 0, w, h);
+			
+			glMatrixMode(GL_MODELVIEW);
+			glLoadIdentity ();
+			
+			glMatrixMode (GL_PROJECTION);
+			glLoadIdentity ();
+			
+			// glMatrixMode(GL_PROJECTION);
+			// glLoadIdentity();
+			// glOrtho(-0.5, +0.5, -0.5, +0.5, clipDist[0], clipDist[1]);
+			
+			lastW = w;
+			lastH = h;
+			
+			
+			
+			
+			
 		}
 		
 		lastPersp = perspectiveOn;
@@ -9954,6 +9975,8 @@ DISPATCH_EVENT_END:
 	
 	void reshape(int w, int h)
 	{
+
+		cout << "reshape\n";
 
 		setWH(w, h);
 

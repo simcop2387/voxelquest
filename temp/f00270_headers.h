@@ -103,6 +103,7 @@ public:
   Matrix4 identMatrix;
   Matrix4 viewMatrix;
   Matrix4 projMatrix;
+  Matrix4 pmMatrix;
   std::vector <Matrix4> objMatrixStack;
   Matrix4 curObjMatrix;
   Matrix4 curMVP;
@@ -667,11 +668,12 @@ public:
   float getUnderWater ();
   void updateAmbientSounds ();
   void checkFluid (GameFluid * gf);
-  void frameUpdate ();
+  void frameUpdate (bool doFrameRender);
   FIVector4 * cameraGetPos ();
   FIVector4 * cameraGetPosNoShake ();
   float getTargetTimeOfDay ();
   void updateBullets ();
+  void idleFunc ();
   void display (bool doFrameRender);
   bool gluInvertMatrix (double const (m) [16], float (invOut) [16]);
   int getMatrixInd (int col, int row);
@@ -1660,10 +1662,9 @@ private:
   int * cellData;
   int * extrData;
 public:
-  uint * cubeData;
-  std::vector <CubeWrap> cubeWraps;
   bool preGenList;
   bool listGenerated;
+  bool readyToRender;
   bool listEmpty;
   bool hasData;
   bool hasPath;
@@ -1699,6 +1700,7 @@ public:
   Singleton * singleton;
   intPairVec (containsEntIds) [E_ET_LENGTH];
   bool wasGenerated;
+  void reset ();
   GamePageHolder ();
   void init (Singleton * _singleton, int _blockId, int _holderId, int trueX, int trueY, int trueZ);
   int getCellAtCoordsLocal (int xx, int yy, int zz);
@@ -1721,6 +1723,8 @@ public:
   bool prepPathRefresh (int rad);
   void refreshPaths ();
   void genCellData ();
+  void bindPD (int pd);
+  void unbindPD ();
   void fillVBO ();
   PaddedDataEntry * getPadData (int ii, int jj, int kk);
   int gatherData ();
@@ -2132,6 +2136,7 @@ public:
   int visFlagO;
   int activeFBO;
   bool noiseGenerated;
+  std::vector <intPair> gamePageHolderList;
   std::vector <coordAndIndex> roadCoords;
   std::vector <int> ocThreads;
   btVector3 (offsetVal) [4];
@@ -2199,7 +2204,8 @@ public:
   void setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void getArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void fireEvent (BaseObjType uid, int opCode, float fParam);
-  void update (bool postToScreen, bool doRender);
+  void preUpdate ();
+  void update ();
   void toggleVis (GameEnt * se);
   void ensureBlocks ();
   void findNearestEnt (EntSelection * entSelection, int entType, int maxLoadRad, int radStep, FIVector4 * testPoint, bool onlyInteractive = false, bool ignoreDistance = false);
@@ -2223,6 +2229,7 @@ public:
   void rasterHolders (bool showResults);
   void rasterGrid (VBOGrid * vboGrid, bool showResults);
   void renderDebug ();
+  void finalStep (bool postToScreen);
   void postProcess (bool postToScreen);
   ~ GameWorld ();
 };

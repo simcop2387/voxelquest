@@ -2984,11 +2984,10 @@ public:
 		float powX = cornerDisThicknessPower->getFZ();
 		float powY = cornerDisThicknessPower->getFW();
 		
-		
-		
+
 
 		//newP.xy = pow(newP.xy, box_power.xx );
-		newP.powXYZ(powX,powX,1.0f);		
+		newP.powXYZ(powX,powX,1.0f);
 		//newP.x = pow( newP.x + newP.y, 1.0/box_power.x );
 		newP.setFX(newP[0] + newP[1]);
 		newP.powXYZ(1.0/powX,1.0f,1.0f);

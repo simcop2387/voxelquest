@@ -396,7 +396,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		// qqqqqq
 		
 		
-		heightMapMaxInCells = 8192.0f;
+		heightMapMaxInCells = 4096.0f;
 		//mapSampScale = 2.0f;
 		int newPitch = (imageHM0->width) * 2; //*2;
 		mapPitch = (imageHM0->width); //newPitch;// //
@@ -7814,8 +7814,8 @@ void Singleton::checkFluid (GameFluid * gf)
 			}
 		}
 	}
-void Singleton::frameUpdate ()
-                           {
+void Singleton::frameUpdate (bool doFrameRender)
+                                             {
 		
 		float temp;
 		float temp2;
@@ -8039,26 +8039,33 @@ void Singleton::frameUpdate ()
 						
 						//gw->drawPrim();
 						
-						if (renderingOct) {
-							//gw->renderOct(gameOct);
-							//gw->rasterOct(gameOct,true);
-							
-							// if ((bakeTicks % iGetConst(E_CONST_BAKE_TICKS)) == 0) {
-							// 	gw->update(false);
-							// }
-							// gw->rasterGrid(&myVBOGrid,true);
-							// bakeTicks++;
-							
-							
-							gw->update(false,false);
-							gw->rasterHolders(true);
-							
-						}
-						else {
-							//gw->rasterOct(gameOct,false);
-							//gw->rasterGrid(&myVBOGrid,false);
-							gw->update(true,true);
-						}
+						gw->preUpdate();
+						// if (true) { //doFrameRender
+						// 	if (renderingOct) {
+						// 		//gw->renderOct(gameOct);
+						// 		//gw->rasterOct(gameOct,true);
+								
+						// 		// if ((bakeTicks % iGetConst(E_CONST_BAKE_TICKS)) == 0) {
+						// 		// 	gw->update(false);
+						// 		// }
+						// 		// gw->rasterGrid(&myVBOGrid,true);
+						// 		// bakeTicks++;
+								
+								
+						// 		gw->rasterHolders(true);
+								
+						// 	}
+						// 	else {
+						// 		//gw->rasterOct(gameOct,false);
+						// 		//gw->rasterGrid(&myVBOGrid,false);
+								
+						// 		gw->update();
+						// 	}
+						// }
+						
+						gw->update();
+						
+						
 						
 						
 						// if (GEN_POLYS_WORLD) {
@@ -8133,6 +8140,10 @@ void Singleton::updateBullets ()
 				sphereStack.erase(sphereStack.begin() + i);
 			}
 		}
+	}
+void Singleton::idleFunc ()
+                        {
+		
 	}
 void Singleton::display (bool doFrameRender)
         {
@@ -8350,7 +8361,7 @@ void Singleton::display (bool doFrameRender)
 					
 					
 					//if (doFrameRender) {
-						frameUpdate();
+						frameUpdate(doFrameRender);
 						lastDepthInvalidMove = depthInvalidMove;
 						depthInvalidMove = false;
 						depthInvalidRotate = false;
@@ -8633,6 +8644,7 @@ void Singleton::setMatrices (int w, int h)
 			ptr1 = viewMatrix.get();
 			ptr2 = projMatrix.get();
 			
+			pmMatrix = projMatrix*viewMatrix;
 			
 			for (i = 0; i < 16; i++) {
 				viewMatrixD[i] = ptr1[i];
@@ -8663,24 +8675,32 @@ void Singleton::setMatrices (int w, int h)
 				(lastH == h) &&
 				(lastPersp == perspectiveOn)
 			) {
-				
+				// do nothing	
 			}
 			else {
-				glViewport(0, 0, w, h);
 				
-				glMatrixMode(GL_MODELVIEW);
-				glLoadIdentity ();
-				
-				glMatrixMode (GL_PROJECTION);
-				glLoadIdentity ();
-				
-				// glMatrixMode(GL_PROJECTION);
-				// glLoadIdentity();
-				// glOrtho(-0.5, +0.5, -0.5, +0.5, clipDist[0], clipDist[1]);
-				
-				lastW = w;
-				lastH = h;
 			}
+			
+			
+			glViewport(0, 0, w, h);
+			
+			glMatrixMode(GL_MODELVIEW);
+			glLoadIdentity ();
+			
+			glMatrixMode (GL_PROJECTION);
+			glLoadIdentity ();
+			
+			// glMatrixMode(GL_PROJECTION);
+			// glLoadIdentity();
+			// glOrtho(-0.5, +0.5, -0.5, +0.5, clipDist[0], clipDist[1]);
+			
+			lastW = w;
+			lastH = h;
+			
+			
+			
+			
+			
 		}
 		
 		lastPersp = perspectiveOn;
@@ -8688,6 +8708,8 @@ void Singleton::setMatrices (int w, int h)
 	}
 void Singleton::reshape (int w, int h)
         {
+
+		cout << "reshape\n";
 
 		setWH(w, h);
 

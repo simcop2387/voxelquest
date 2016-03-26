@@ -4,10 +4,10 @@
 
 uniform float voxelsPerCell;
 uniform int cellsPerHolder;
-uniform int CUBE_WRAP_INVALID;
-uniform int CUBE_WRAP_ENTRIES;
-uniform int CUBE_DATA_INVALID;
-uniform float heightOfNearPlane;
+// uniform int CUBE_WRAP_INVALID;
+// uniform int CUBE_WRAP_ENTRIES;
+// uniform int CUBE_DATA_INVALID;
+// uniform float heightOfNearPlane;
 uniform float FOV;
 uniform vec2 clipDist;
 uniform vec2 bufferDim;
@@ -15,9 +15,9 @@ uniform vec3 cameraPos;
 uniform vec3 lightVec;
 
 
-uniform mat4 modelviewInverse;
-uniform mat4 modelview;
-uniform mat4 proj;
+uniform mat4 pmMatrix;
+// uniform mat4 modelview;
+// uniform mat4 proj;
 
 
 
@@ -40,7 +40,7 @@ void main() {
 	//vdata1 = floor(data1+0.5);
 	//vdata2 = floor(data2+0.5);
 	vec4 screenPos = 
-		proj*modelview*worldPos;
+		pmMatrix*worldPos; //proj*modelview
 		//worldPos;
 	
 	//gl_PointSize = (heightOfNearPlane / pow(screenPos.w,0.5))*0.2;
@@ -81,7 +81,7 @@ void main() {
 			dot(
 				vdata0.xyz,
 				-lightVec
-			)	
+			)*pow(clamp(1.0-distance(worldPos.xyz,cameraPos.xyz)/50.0,0.0,1.0),0.5)
 		)
 		//  + vec3(
 		// 	mod(vdata0.w,255.0)/255.0,

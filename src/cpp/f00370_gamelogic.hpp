@@ -69,10 +69,10 @@ public:
 		//pathCount = 0;
 		
 		threadPoolPath = new ThreadPoolWrapper();
-		threadPoolPath->init(singleton, 8, true||SINGLE_THREADED);
+		threadPoolPath->init(singleton, 6, true||SINGLE_THREADED);
 		
 		threadPoolList = new ThreadPoolWrapper();
-		threadPoolList->init(singleton, 8, false||SINGLE_THREADED);
+		threadPoolList->init(singleton, 6, false||SINGLE_THREADED);
 		
 	}
 	
@@ -1943,6 +1943,18 @@ FILL_GROUPS_RETURN:
 								}
 								
 								if (curHolder->listGenerated || curHolder->lockWrite) {
+									if (curHolder->lockWrite) {
+										
+									}
+									else {
+										if (curHolder->readyToRender) {
+											
+										}
+										else {
+											curHolder->readyToRender = true;
+											curHolder->unbindPD();
+										}
+									}
 									
 								}
 								else {
@@ -1953,7 +1965,6 @@ FILL_GROUPS_RETURN:
 										curPD = -1;
 										for (q = 0; q < MAX_PDPOOL_SIZE; q++) {
 											if (singleton->pdPool[q].isFree) {
-												singleton->pdPool[q].isFree = false;
 												curPD = q;
 												//cout << "locking pdPool " << q << "\n";
 												break;
@@ -1961,7 +1972,7 @@ FILL_GROUPS_RETURN:
 										}
 										
 										if (curPD >= 0) {
-											curHolder->curPD = curPD;
+											curHolder->bindPD(curPD);
 											
 											threadPoolList->intData[0] = E_TT_GENLIST;
 											threadPoolList->intData[1] = curHolder->blockId;
@@ -1971,9 +1982,7 @@ FILL_GROUPS_RETURN:
 												genCount++;
 											}
 											else {
-												singleton->pdPool[curPD].isFree = true;
-												//cout << "unlocking pdPool (thread not ready) " << curPD << "\n";
-												curHolder->curPD = -1;
+												curHolder->unbindPD();
 											}
 										}
 										

@@ -12,11 +12,12 @@ private:
 	int* extrData;
 	
 public:
-	uint* cubeData;
-	std::vector<CubeWrap> cubeWraps;
+	//uint* cubeData;
+	//std::vector<CubeWrap> cubeWraps;
 
 	bool preGenList;
 	bool listGenerated;
+	bool readyToRender;
 	bool listEmpty;
 	bool hasData;
 	bool hasPath;
@@ -112,6 +113,11 @@ public:
 	// unsigned short *indices;
 
 	
+	void reset() {
+		listGenerated = false;
+		readyToRender = false;
+	}
+	
 
 	GamePageHolder() {
 		
@@ -130,13 +136,14 @@ public:
 		listEmpty = true;
 		preGenList = false;
 		listGenerated = false;
+		readyToRender = false;
 		pathsInvalid = true;
 		idealPathsInvalid = true;
 		
 		pathsReady = false;
 		idealPathsReady = false;
 		
-		cubeData = NULL;
+		//cubeData = NULL;
 		cellData = NULL;
 		extrData = NULL;
 		pathData = NULL;
@@ -453,7 +460,7 @@ public:
 		
 		if (hasData) {
 			if (cellData == NULL) {
-				cubeData = new uint[CUBE_DATA_SIZE];
+				//cubeData = new uint[CUBE_DATA_SIZE];
 				cellData = new int[cellDataSize];
 				
 				// if (cubeWraps.size() == 0) {
@@ -461,9 +468,9 @@ public:
 				// }
 				
 				
-				for (i = 0; i < CUBE_DATA_SIZE; i++) {
-					cubeData[i] = CUBE_DATA_INVALID;
-				}
+				// for (i = 0; i < CUBE_DATA_SIZE; i++) {
+				// 	cubeData[i] = CUBE_DATA_INVALID;
+				// }
 				
 			}
 			
@@ -2090,6 +2097,19 @@ FIRST_FILL_DONE:
 		
 	// }
 
+	void bindPD(int pd) {
+		curPD = pd;
+		singleton->pdPool[curPD].isFree = false;
+	}
+	
+	void unbindPD() {
+		if (curPD != -1) {
+			singleton->pdPool[curPD].isFree = true;
+		}
+		
+		curPD = -1;
+	}
+
 	void fillVBO() {
 		
 		if (singleton->gamePhysics == NULL) {
@@ -2211,10 +2231,6 @@ FIRST_FILL_DONE:
 				
 				glFlush();
 				glFinish();
-			}
-			
-			if (DO_VOXEL_WRAP) {
-				
 			}
 			
 			

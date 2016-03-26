@@ -62,14 +62,14 @@ const static float ORG_SCALE_BASE = 0.5f;
 
 // qqqq
 
-//#define STREAM_RES 1
+// #define STREAM_RES 1
 
 #ifdef STREAM_RES
-	const static int DEF_WIN_W = 2048; //2048;//
-	const static int DEF_WIN_H = 1024; //1024;//
+	const static int DEF_WIN_W = 1920; //2048;//
+	const static int DEF_WIN_H = 1080; //1024;//
 #else
-	const static int DEF_WIN_W = 1280;//1536;
-	const static int DEF_WIN_H = 640;//768;
+	const static int DEF_WIN_W = 1440;//1536;
+	const static int DEF_WIN_H = 720;//768;
 #endif
 
 
@@ -77,11 +77,12 @@ const static int DEF_SCALE_FACTOR = 1;
 const static int RENDER_SCALE_FACTOR = 4;
 
 
-const static int NORM_RAD = 2;
+const static int MAX_THREADS = 7;
+const static int NORM_RAD = 3;
 const static int MAX_HOLDER_LOAD_COUNT = 512;
-const static int VOXELS_PER_CELL = 8;
-const static int CELLS_PER_HOLDER = 32;
-const static int MAX_PDPOOL_SIZE = 8;
+const static int VOXELS_PER_CELL = 16;
+const static int CELLS_PER_HOLDER = 16;
+const static int MAX_PDPOOL_SIZE = MAX_THREADS;
 // const static int MAX_TBOPOOL_SIZE = 8;
 
 

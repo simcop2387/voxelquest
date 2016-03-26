@@ -78,6 +78,7 @@ public:
 
 	bool noiseGenerated;
 
+	std::vector<intPair> gamePageHolderList;
 
 	std::vector<coordAndIndex> roadCoords;
 
@@ -396,9 +397,16 @@ public:
 	void clearAllHolders() {
 		singleton->stopAllThreads();
 		
-		// for (i = 0; i < ; i++) {
-			
-		// }
+		GamePageHolder* gph;
+		
+		int i;
+		
+		for (i = 0; i < gamePageHolderList.size(); i++) {
+			gph = getHolderAtId(gamePageHolderList[i].v0, gamePageHolderList[i].v1);
+			if (gph != NULL) {
+				gph->reset();
+			}
+		}
 		
 	}
 
@@ -407,6 +415,8 @@ public:
 	{
 
 		GamePageHolder **holderData;
+
+		intPair ip;
 
 		int newX = wrapCoord(x, holdersPerWorld);
 		int newY = wrapCoord(y, holdersPerWorld);
@@ -440,6 +450,9 @@ public:
 				if (createOnNull)
 				{
 					holderData[holderId] = new GamePageHolder();
+					ip.v0 = curBlock->blockId;
+					ip.v1 = holderId;
+					gamePageHolderList.push_back(ip);
 					holderData[holderId]->init(singleton, curBlock->blockId, holderId, x, y, z); //, x, y, z
 				}
 			}
@@ -762,7 +775,7 @@ public:
 			curHolder->idealPathsInvalid = true;
 			curHolder->pathsReady = false;
 			curHolder->idealPathsReady = false;			
-			curHolder->listGenerated = false;
+			curHolder->reset();
 		}
 		
 		curHolder->setArrAtInd(ind,tempCellData,tempCellData2);
@@ -839,11 +852,8 @@ public:
 	
 	
 	
-
-	void update(bool postToScreen, bool doRender) {
-		
-		singleton->updateLock = true;
-
+	void preUpdate() {
+		activeFBO = 0;
 
 		
 		camBlockPos.copyFrom( singleton->cameraGetPosNoShake() );
@@ -890,37 +900,57 @@ public:
 			shiftCounter = 0;
 		}
 		
-		if (doRender) {
-			
-			if (noiseGenerated) {
+		
+		singleton->curMVP = singleton->projMatrix*singleton->viewMatrix;
+		singleton->curObjMatrix3.set4(singleton->curMVP.get());
+		singleton->curObjMatrix3.invert();
+		singleton->curObjMatrix3.transpose();
+		
+	}
+	
 
-			}
-			else {
-				noiseGenerated = true;
-				singleton->bindShader("NoiseShader");
-				singleton->bindFBO("noiseFBO");
-				singleton->drawFSQuad();
-				singleton->unbindFBO();
-				singleton->unbindShader();
-				
-				singleton->copyFBO("noiseFBO","noiseFBOLinear");
-				
-				tempVec1.setFXYZ(0.0f,0.0f,0.0f);
-				tempVec2.setFXYZ(256.0,256.0f,256.0f);
-				
-				drawVol((singleton->volumeWrappers[E_VW_VORO]), &tempVec1, &tempVec2, true, true, true);
-				
-				
-			}
+	void update() {
+		
+		singleton->updateLock = true;
+		
+		bool postToScreen = true;
+		
+		if (noiseGenerated) {
+
+		}
+		else {
+			noiseGenerated = true;
+			singleton->bindShader("NoiseShader");
+			singleton->bindFBO("noiseFBO");
+			singleton->drawFSQuad();
+			singleton->unbindFBO();
+			singleton->unbindShader();
 			
-			updateLimbTBOData(true);
+			singleton->copyFBO("noiseFBO","noiseFBOLinear");
 			
-			glEnable(GL_DEPTH_TEST);
-			singleton->perspectiveOn = true;
-			renderGeom();
-			renderDebug();
-			singleton->perspectiveOn = false;
-			glDisable(GL_DEPTH_TEST);
+			tempVec1.setFXYZ(0.0f,0.0f,0.0f);
+			tempVec2.setFXYZ(256.0,256.0f,256.0f);
+			
+			drawVol((singleton->volumeWrappers[E_VW_VORO]), &tempVec1, &tempVec2, true, true, true);
+			
+			
+		}
+		
+		glEnable(GL_DEPTH_TEST);
+		singleton->perspectiveOn = true;
+		renderGeom();
+		renderDebug();
+		singleton->perspectiveOn = false;
+		glDisable(GL_DEPTH_TEST);
+		
+		
+		if (singleton->renderingOct) {
+			rasterHolders(false);
+		}
+		else {
+			
+			
+			
 			
 			
 			
@@ -978,6 +1008,7 @@ public:
 			
 			skippedPrim = false;
 
+			updateLimbTBOData(true);
 			drawPrim(false,true,false);
 			drawPrim(false,false,false);
 				
@@ -994,17 +1025,19 @@ public:
 			singleton->unbindFBO();
 			singleton->unbindShader();
 			
-			
-			
-			
 			postProcess(postToScreen);
-			
-			
-			if (postToScreen) {
-				drawMap();
-				glutSwapBuffers();
-			}
 		}
+		
+		
+		
+		
+		finalStep(postToScreen);
+		
+		if (postToScreen) {
+			drawMap();
+			glutSwapBuffers();
+		}
+		
 		
 		singleton->updateLock = false;
 
@@ -2091,7 +2124,7 @@ public:
 	// 	}
 		
 	// 	if (
-	// 		(curHolder->listGenerated) &&
+	// 		(curHolder->readyToRender) &&
 	// 		(!(curHolder->listEmpty))
 	// 	) {
 	// 		curHolder->vboWrapper.draw();
@@ -2166,7 +2199,7 @@ public:
 // 						}
 // 						else {
 // 							if (
-// 								(curHolder->listGenerated) &&
+// 								(curHolder->readyToRender) &&
 // 								(!(curHolder->listEmpty))
 // 							) {
 								
@@ -2320,7 +2353,7 @@ public:
 							}
 							else {
 								if (
-									(curHolder->listGenerated) &&
+									(curHolder->readyToRender) &&
 									(!(curHolder->listEmpty))
 								) {
 									
@@ -2464,7 +2497,7 @@ public:
 							}
 							else {
 								if (
-									(curHolder->listGenerated) &&
+									(curHolder->readyToRender) &&
 									(!(curHolder->listEmpty)) &&
 									((q==curRad) || (q == -1))
 								) {
@@ -5026,16 +5059,16 @@ UPDATE_LIGHTS_END:
 	void rasterHolders(bool showResults) {
 		
 		// get view matrix
-		singleton->perspectiveOn = true;
-		singleton->getMatrixFromFBO("rasterFBO");
-		singleton->perspectiveOn = false;
+		// singleton->perspectiveOn = true;
+		// singleton->getMatrixFromFBO("rasterFBO");
+		// singleton->perspectiveOn = false;
 
 
 		//TBOEntry* curTBO = &(singleton->tboPool[0]);
 
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
-		//glCullFace(GL_FRONT);
+		
 		
 		
 		singleton->bindShader("HolderShader");
@@ -5048,20 +5081,24 @@ UPDATE_LIGHTS_END:
 		// 	false
 		// );
 		
+		// glClearColor(0, 1, 0, 1);
+		// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		
 		singleton->setShaderFloat("voxelsPerCell",singleton->voxelsPerCell);
 		singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
-		singleton->setShaderInt("CUBE_WRAP_ENTRIES", CUBE_WRAP_ENTRIES);
-		singleton->setShaderInt("CUBE_DATA_INVALID", CUBE_DATA_INVALID);
-		singleton->setShaderInt("CUBE_WRAP_INVALID", CUBE_WRAP_INVALID);
-		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+		// singleton->setShaderInt("CUBE_WRAP_ENTRIES", CUBE_WRAP_ENTRIES);
+		// singleton->setShaderInt("CUBE_DATA_INVALID", CUBE_DATA_INVALID);
+		// singleton->setShaderInt("CUBE_WRAP_INVALID", CUBE_WRAP_INVALID);
+		// singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
 		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
-		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
-		singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
-		singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
+		
+		singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
+		// singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
+		// singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
 
 		rasterHolder(5);
 
@@ -5071,18 +5108,33 @@ UPDATE_LIGHTS_END:
 		singleton->unbindFBO();
 		singleton->unbindShader();
 		
-		//glCullFace(GL_BACK);
+		
+		
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
 
 		
-		if (showResults) {
-			singleton->drawFBO("rasterFBO", 0, 1.0f);
+		//singleton->copyFBO("rasterFBO", "resultFBO"+i__s(activeFBO));
+		
+		singleton->bindFBO("resultFBO", activeFBO);
+		singleton->drawFBO("rasterFBO", 0, 1.0f);
+		singleton->unbindFBO();		
+		activeFBO = 1-activeFBO;
+		
+		
+		// if (showResults) {
 			
-			glutSwapBuffers();
+		// 	glClearColor(0, 1, 0, 1);
+		// 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			
+		// 	singleton->drawFBO("rasterFBO", 0, 1.0f);
 			
-		}
+		// 	glutSwapBuffers();
+			
+		// 	glFlush();
+		// 	glFinish();
+			
+		// }
 		
 		
 	}
@@ -5479,6 +5531,106 @@ UPDATE_LIGHTS_END:
 		
 	}
 
+
+
+	void finalStep(bool postToScreen) {
+		if (singleton->testOn) {			
+			
+			
+			
+			
+			//terGenFBO
+			//solidTargFBO
+			
+			
+			
+			//solidBaseTargFBO
+			//"solidTargFBO" //"polyFBO"
+			singleton->drawFBO("terTargFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
+			
+			// leave this here to catch errors
+			//cout << "Getting Errors: \n";
+			
+			
+			
+			
+			//glError();
+			
+		}
+		else {
+			
+			// if (singleton->frameCount > 1) {
+			// 	singleton->bindShader("MergeShader");
+			// 	singleton->bindFBO("resultFBO",activeFBO);
+			// 	singleton->sampleFBO("resultFBO", 0, activeFBO);
+			// 	singleton->sampleFBO("lastFBO", 1);
+			// 	singleton->drawFSQuad();
+			// 	singleton->unsampleFBO("lastFBO", 1);
+			// 	singleton->unsampleFBO("resultFBO", 0, activeFBO);
+			// 	singleton->unbindFBO();
+			// 	singleton->unbindShader();
+				
+			// 	activeFBO = 1-activeFBO;
+			// }
+			// if (activeFBO == 0) {
+			// 	singleton->copyFBO("resultFBO0", "lastFBO");
+			// }
+			// else {
+			// 	singleton->copyFBO("resultFBO1", "lastFBO");
+			// }
+			
+			
+			if (singleton->fxaaOn) {
+				singleton->bindShader("FXAAShader");
+				singleton->bindFBO("resultFBO",activeFBO);
+				singleton->sampleFBO("resultFBO", 0, activeFBO);
+				singleton->setShaderfVec2("resolution",&(singleton->bufferDim));
+				singleton->drawFSQuad();
+				singleton->unsampleFBO("resultFBO", 0, activeFBO);
+				singleton->unbindFBO();
+				singleton->unbindShader();
+				
+				activeFBO = 1 - activeFBO;
+			}
+			
+			
+			
+			if (postToScreen) {
+				singleton->drawFBO("resultFBO", 0, 1.0f, 1 - activeFBO);
+			}
+			else {
+				singleton->copyFBO("solidTargFBO", "rasterPosFBO");
+				singleton->copyFBO("resultFBO"+i__s(activeFBO), "rasterSourceFBO");
+			}
+			
+			
+		}
+
+		
+
+
+		if (singleton->anyMenuVisible()&&postToScreen) {
+			glEnable (GL_BLEND);
+
+			singleton->bindShader("GUIShader");
+			singleton->setShaderTexture(0,singleton->fontWrappers[EFW_TEXT]->fontImage->tid);
+			singleton->setShaderTexture(1,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
+			singleton->sampleFBO("swapFBOBLin0", 2);
+			singleton->setShaderTexture3D(3,singleton->volIdMat);
+			
+			singleton->mainGUI->renderGUI();
+			
+			
+			singleton->setShaderTexture3D(3,0);
+			singleton->unsampleFBO("swapFBOBLin0", 2);
+			singleton->setShaderTexture(1,0);
+			singleton->setShaderTexture(0,0);
+			singleton->unbindShader();
+			
+			glDisable(GL_BLEND);
+		}
+	}
+
 	void postProcess(bool postToScreen)
 	{
 
@@ -5491,67 +5643,67 @@ UPDATE_LIGHTS_END:
 
 		bool doProc = false;
 
-		GameEnt *curLight;
+		//GameEnt *curLight;
 
 
 
-		for (i = 0; i < singleton->numDynLights; i++)
-		{
-			activeLights[i] = singleton->dynObjects[E_OBJ_LIGHT0 + i]->getLight();
-		}
+		// for (i = 0; i < singleton->numDynLights; i++)
+		// {
+		// 	activeLights[i] = singleton->dynObjects[E_OBJ_LIGHT0 + i]->getLight();
+		// }
 
-		curCount = 0;
-		for (k = 0; k < lightCount; k++)
-		{
-			baseInd = curCount * FLOATS_PER_LIGHT;
-			curLight = activeLights[k];
-			lightPos = &(curLight->geomParams[E_LP_POSITION]);
+		// curCount = 0;
+		// for (k = 0; k < lightCount; k++)
+		// {
+		// 	baseInd = curCount * FLOATS_PER_LIGHT;
+		// 	curLight = activeLights[k];
+		// 	lightPos = &(curLight->geomParams[E_LP_POSITION]);
 
-			// if (curLight->toggled) {
-			// 	singleton->worldToScreenBase(&lScreenCoords, lightPos);
+		// 	// if (curLight->toggled) {
+		// 	// 	singleton->worldToScreenBase(&lScreenCoords, lightPos);
 
-			// 	singleton->lightArr[baseInd + 0] = lightPos->getFX();
-			// 	singleton->lightArr[baseInd + 1] = lightPos->getFY();
-			// 	singleton->lightArr[baseInd + 2] = lightPos->getFZ();
-			// 	singleton->lightArr[baseInd + 3] = lScreenCoords.getFZ();
-
-
-			// 	singleton->lightArr[baseInd + 4] = lScreenCoords.getFX();
-			// 	singleton->lightArr[baseInd + 5] = lScreenCoords.getFY();
-			// 	singleton->lightArr[baseInd + 6] = lScreenCoords.getFZ();
-			// 	singleton->lightArr[baseInd + 7] = curLight->geomParams[E_LP_RADIUS].getFX();
+		// 	// 	singleton->lightArr[baseInd + 0] = lightPos->getFX();
+		// 	// 	singleton->lightArr[baseInd + 1] = lightPos->getFY();
+		// 	// 	singleton->lightArr[baseInd + 2] = lightPos->getFZ();
+		// 	// 	singleton->lightArr[baseInd + 3] = lScreenCoords.getFZ();
 
 
-			// 	// light color
+		// 	// 	singleton->lightArr[baseInd + 4] = lScreenCoords.getFX();
+		// 	// 	singleton->lightArr[baseInd + 5] = lScreenCoords.getFY();
+		// 	// 	singleton->lightArr[baseInd + 6] = lScreenCoords.getFZ();
+		// 	// 	singleton->lightArr[baseInd + 7] = curLight->geomParams[E_LP_RADIUS].getFX();
 
-			// 	singleton->lightArr[baseInd + 8] = curLight->geomParams[E_LP_COLOR].getFX(); // light red
-			// 	singleton->lightArr[baseInd + 9] = curLight->geomParams[E_LP_COLOR].getFY(); // light green
-			// 	singleton->lightArr[baseInd + 10] = curLight->geomParams[E_LP_COLOR].getFZ(); // light blue
 
-			// 	// switch (k)
-			// 	// {
-			// 	// case 0:
-			// 	// 	singleton->lightArr[baseInd + 11] = 1.0f; // light intensity (unused?)
-			// 	// 	singleton->lightArr[baseInd + 12] = 0.0f; // light colorization (0-1)
-			// 	// 	singleton->lightArr[baseInd + 13] = 0.0f; // light flooding (colorizes regardless of shadows) (0-1)
-			// 	// 	break;
-			// 	// default:
-			// 	// 	singleton->lightArr[baseInd + 11] = 1.0f;
-			// 	// 	singleton->lightArr[baseInd + 12] = 1.0f;
-			// 	// 	singleton->lightArr[baseInd + 13] = 0.0f;
-			// 	// 	break;
+		// 	// 	// light color
 
-			// 	// }
+		// 	// 	singleton->lightArr[baseInd + 8] = curLight->geomParams[E_LP_COLOR].getFX(); // light red
+		// 	// 	singleton->lightArr[baseInd + 9] = curLight->geomParams[E_LP_COLOR].getFY(); // light green
+		// 	// 	singleton->lightArr[baseInd + 10] = curLight->geomParams[E_LP_COLOR].getFZ(); // light blue
 
-			// 	curCount++;
-			// }
+		// 	// 	// switch (k)
+		// 	// 	// {
+		// 	// 	// case 0:
+		// 	// 	// 	singleton->lightArr[baseInd + 11] = 1.0f; // light intensity (unused?)
+		// 	// 	// 	singleton->lightArr[baseInd + 12] = 0.0f; // light colorization (0-1)
+		// 	// 	// 	singleton->lightArr[baseInd + 13] = 0.0f; // light flooding (colorizes regardless of shadows) (0-1)
+		// 	// 	// 	break;
+		// 	// 	// default:
+		// 	// 	// 	singleton->lightArr[baseInd + 11] = 1.0f;
+		// 	// 	// 	singleton->lightArr[baseInd + 12] = 1.0f;
+		// 	// 	// 	singleton->lightArr[baseInd + 13] = 0.0f;
+		// 	// 	// 	break;
+
+		// 	// 	// }
+
+		// 	// 	curCount++;
+		// 	// }
 
 			
-		}
+		// }
 
 		
 
-		activeFBO = 0;
+		
 
 		//renderWaveHeight();
 
@@ -5596,11 +5748,8 @@ UPDATE_LIGHTS_END:
 		
 		//singleton->projMatrix*
 
-		singleton->curMVP = singleton->projMatrix*singleton->viewMatrix;
 		
-		singleton->curObjMatrix3.set4(singleton->curMVP.get());
-		singleton->curObjMatrix3.invert();
-		singleton->curObjMatrix3.transpose();
+		
 
 		
 
@@ -5910,109 +6059,6 @@ UPDATE_LIGHTS_END:
 			
 			activeFBO = 1-activeFBO;
 		}
-		
-		
-		if (singleton->testOn) {			
-			
-			
-			
-			
-			//terGenFBO
-			//solidTargFBO
-			
-			
-			
-			//solidBaseTargFBO
-			//"solidTargFBO" //"polyFBO"
-			singleton->drawFBO("terTargFBO", 0, 1.0f);//solidTargFBO //waterTargFBO //solidTargFBO
-			
-			// leave this here to catch errors
-			//cout << "Getting Errors: \n";
-			
-			
-			
-			
-			//glError();
-			
-		}
-		else {
-			
-			// if (singleton->frameCount > 1) {
-			// 	singleton->bindShader("MergeShader");
-			// 	singleton->bindFBO("resultFBO",activeFBO);
-			// 	singleton->sampleFBO("resultFBO", 0, activeFBO);
-			// 	singleton->sampleFBO("lastFBO", 1);
-			// 	singleton->drawFSQuad();
-			// 	singleton->unsampleFBO("lastFBO", 1);
-			// 	singleton->unsampleFBO("resultFBO", 0, activeFBO);
-			// 	singleton->unbindFBO();
-			// 	singleton->unbindShader();
-				
-			// 	activeFBO = 1-activeFBO;
-			// }
-			// if (activeFBO == 0) {
-			// 	singleton->copyFBO("resultFBO0", "lastFBO");
-			// }
-			// else {
-			// 	singleton->copyFBO("resultFBO1", "lastFBO");
-			// }
-			
-			
-			if (singleton->fxaaOn) {
-				singleton->bindShader("FXAAShader");
-				singleton->bindFBO("resultFBO",activeFBO);
-				singleton->sampleFBO("resultFBO", 0, activeFBO);
-				singleton->setShaderfVec2("resolution",&(singleton->bufferDim));
-				singleton->drawFSQuad();
-				singleton->unsampleFBO("resultFBO", 0, activeFBO);
-				singleton->unbindFBO();
-				singleton->unbindShader();
-				
-				activeFBO = 1 - activeFBO;
-			}
-			
-			
-			
-			if (postToScreen) {
-				singleton->drawFBO("resultFBO", 0, 1.0f, 1 - activeFBO);
-			}
-			else {
-				singleton->copyFBO("solidTargFBO", "rasterPosFBO");
-				singleton->copyFBO("resultFBO"+i__s(activeFBO), "rasterSourceFBO");
-			}
-			
-			
-			
-			
-			
-			
-		}
-
-		
-
-
-		if (singleton->anyMenuVisible()&&postToScreen) {
-			glEnable (GL_BLEND);
-
-			singleton->bindShader("GUIShader");
-			singleton->setShaderTexture(0,singleton->fontWrappers[EFW_TEXT]->fontImage->tid);
-			singleton->setShaderTexture(1,singleton->fontWrappers[EFW_ICONS]->fontImage->tid);
-			singleton->sampleFBO("swapFBOBLin0", 2);
-			singleton->setShaderTexture3D(3,singleton->volIdMat);
-			
-			singleton->mainGUI->renderGUI();
-			
-			
-			singleton->setShaderTexture3D(3,0);
-			singleton->unsampleFBO("swapFBOBLin0", 2);
-			singleton->setShaderTexture(1,0);
-			singleton->setShaderTexture(0,0);
-			singleton->unbindShader();
-			
-			glDisable(GL_BLEND);
-		}
-		
-		
 		
 
 	}

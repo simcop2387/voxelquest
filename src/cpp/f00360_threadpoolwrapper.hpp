@@ -104,9 +104,7 @@ class ThreadPoolWrapper {
 					
 					//cout << "unlocking pdPool " << curHolder->curPD << "\n";
 					
-					singleton->pdPool[curHolder->curPD].isFree = true;
 					curHolder->listGenerated = true;
-					curHolder->curPD = -1;
 				break;
 			}
 			

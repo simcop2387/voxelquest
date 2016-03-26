@@ -3,6 +3,11 @@
 
 #include "f00351_gamepageholder.e"
 #define LZZ_INLINE inline
+void GamePageHolder::reset ()
+                     {
+		listGenerated = false;
+		readyToRender = false;
+	}
 GamePageHolder::GamePageHolder ()
                          {
 		
@@ -21,13 +26,14 @@ GamePageHolder::GamePageHolder ()
 		listEmpty = true;
 		preGenList = false;
 		listGenerated = false;
+		readyToRender = false;
 		pathsInvalid = true;
 		idealPathsInvalid = true;
 		
 		pathsReady = false;
 		idealPathsReady = false;
 		
-		cubeData = NULL;
+		//cubeData = NULL;
 		cellData = NULL;
 		extrData = NULL;
 		pathData = NULL;
@@ -284,7 +290,7 @@ void GamePageHolder::checkData (bool checkPath)
 		
 		if (hasData) {
 			if (cellData == NULL) {
-				cubeData = new uint[CUBE_DATA_SIZE];
+				//cubeData = new uint[CUBE_DATA_SIZE];
 				cellData = new int[cellDataSize];
 				
 				// if (cubeWraps.size() == 0) {
@@ -292,9 +298,9 @@ void GamePageHolder::checkData (bool checkPath)
 				// }
 				
 				
-				for (i = 0; i < CUBE_DATA_SIZE; i++) {
-					cubeData[i] = CUBE_DATA_INVALID;
-				}
+				// for (i = 0; i < CUBE_DATA_SIZE; i++) {
+				// 	cubeData[i] = CUBE_DATA_INVALID;
+				// }
 				
 			}
 			
@@ -1494,6 +1500,19 @@ void GamePageHolder::genCellData ()
 		
 		
 	}
+void GamePageHolder::bindPD (int pd)
+                            {
+		curPD = pd;
+		singleton->pdPool[curPD].isFree = false;
+	}
+void GamePageHolder::unbindPD ()
+                        {
+		if (curPD != -1) {
+			singleton->pdPool[curPD].isFree = true;
+		}
+		
+		curPD = -1;
+	}
 void GamePageHolder::fillVBO ()
                        {
 		
@@ -1616,10 +1635,6 @@ void GamePageHolder::fillVBO ()
 				
 				glFlush();
 				glFinish();
-			}
-			
-			if (DO_VOXEL_WRAP) {
-				
 			}
 			
 			

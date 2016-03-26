@@ -1,4 +1,4 @@
-﻿Build started 3/25/2016 4:12:29 AM.
+﻿Build started 3/26/2016 7:46:28 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -358,10 +358,10 @@
          cellsPerNodeXY: 16
          cellsPerNodeZ: 8
          holdersPerBlock: 8
-         cellsPerBlock: 256
-         terDataBufPitchScaledXY 20
-         cellsPerHolder: 32
-         cellsPerWorld: 65536
+         cellsPerBlock: 128
+         terDataBufPitchScaledXY 10
+         cellsPerHolder: 16
+         cellsPerWorld: 32768
          blocksPerWorld: 256
          MAX_UNIFORMS: 65536
          
@@ -1006,29 +1006,11 @@
          Valid JSON
                    
          GW DONE          
-         curHeight 0 newHeight 3644.24
+         reshape
+         curHeight 0 newHeight 1985.76
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          GL_MAX_TEXTURE_BUFFER_SIZE 134217728
-         
-         updateHolders 0
-         iNumSteps:  16         
-         iNumSteps:  16         
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
          Loading:  ..\data\constants.js         
          Load Successful          
          
@@ -1063,4 +1045,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:13:35.86
+Time Elapsed 00:02:26.27
