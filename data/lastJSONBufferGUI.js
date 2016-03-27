@@ -1565,7 +1565,7 @@
 																},
 																{
 																	"template":"fillLabel",
-																	"uid":"debug.chunkMem"
+																	"uid":"debug.vertMem"
 																},
 																{
 																	"template":"fillLabel",

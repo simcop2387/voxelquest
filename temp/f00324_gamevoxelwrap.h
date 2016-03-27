@@ -51,6 +51,7 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		
 		int q;
 		int p;
+		int m;
 		float fVPC = voxelsPerCell;
 		fVPC = 1.0f/fVPC;
 		
@@ -92,6 +93,8 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		
 		float frad = NORM_RAD;
 		float maxRad = (frad*frad + frad*frad + frad*frad)*1.125f;
+		
+		int dataSize = 4;
 		
 		for (p = 0; p < totSize; p++) {
 			q = voxelBuffer->voxelList[p].index;
@@ -198,13 +201,29 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 					tempData[2] = totNorm.z;
 					tempData[3] = curNID;
 					
-					gph->vboWrapper.vboBox(
-						fVO.x, fVO.y, fVO.z,
-						0.0f,fVPC,
-						curFlags,
-						tempData,
-						4
-					);
+					if (DO_POINTS) {
+						gph->vboWrapper.vertexVec.push_back(fVO.x);
+						gph->vboWrapper.vertexVec.push_back(fVO.y);
+						gph->vboWrapper.vertexVec.push_back(fVO.z);
+						gph->vboWrapper.vertexVec.push_back(1.0f);
+						
+						for (m = 0; m < dataSize; m++) {
+							gph->vboWrapper.vertexVec.push_back(tempData[m]);
+						}
+						
+					}
+					else {
+						
+						gph->vboWrapper.vboBox(
+							fVO.x, fVO.y, fVO.z,
+							0.0f,fVPC,
+							curFlags,
+							tempData,
+							4
+						);
+					}
+					
+					
 					
 				}
 				
@@ -763,7 +782,7 @@ void GameVoxelWrap::getVoro (ivec3 * worldPos, ivec3 * worldClosestCenter, int i
 		
 		vec3 testPos;
 		float testDis;
-		float variance = 0.5f;
+		float variance = 0.4f;
 		
 		vec3 bestPos = VORO_OFFSETS[0] + randPN(fWorldCellPos+VORO_OFFSETS[0])*variance;
 		float bestDis = fWorldPos.distance(bestPos);

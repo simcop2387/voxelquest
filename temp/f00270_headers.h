@@ -2204,6 +2204,7 @@ public:
   void setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void getArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void fireEvent (BaseObjType uid, int opCode, float fParam);
+  void doMedian ();
   void preUpdate ();
   void update ();
   void toggleVis (GameEnt * se);

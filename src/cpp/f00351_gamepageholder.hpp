@@ -2231,6 +2231,8 @@ FIRST_FILL_DONE:
 				
 				glFlush();
 				glFinish();
+				
+				vboWrapper.clearVecs();
 			}
 			
 			

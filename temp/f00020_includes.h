@@ -78,7 +78,7 @@ const static int RENDER_SCALE_FACTOR = 4;
 
 
 const static int MAX_THREADS = 7;
-const static int NORM_RAD = 3;
+const static int NORM_RAD = 2;
 const static int MAX_HOLDER_LOAD_COUNT = 512;
 const static int VOXELS_PER_CELL = 16;
 const static int CELLS_PER_HOLDER = 16;
@@ -413,7 +413,9 @@ int PAGE_COUNT = 0;
 int MAX_HOLDERS = 2048;
 
 
-float MAX_GPU_MEM = 2560.0f;
+
+float MAX_GPU_MEM = 4096.0f;
+float VERTEX_MEM_USAGE = 0.0f;
 float TOT_GPU_MEM_USAGE = 0.0f;
 
 float MAX_CPU_MEM = 4096.0f;

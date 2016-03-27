@@ -413,7 +413,9 @@ int PAGE_COUNT = 0;
 int MAX_HOLDERS = 2048;
 
 
-float MAX_GPU_MEM = 2560.0f;
+
+float MAX_GPU_MEM = 4096.0f;
+float VERTEX_MEM_USAGE = 0.0f;
 float TOT_GPU_MEM_USAGE = 0.0f;
 
 float MAX_CPU_MEM = 4096.0f;

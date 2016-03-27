@@ -3098,6 +3098,7 @@ private:
 	}
 	
 	
+	
 	void initBase(
 		GLfloat* _vertexData,
 		int _sizeOfVD,
@@ -3217,6 +3218,19 @@ public:
 		
 	}
 	
+	void deallocVBO() {
+		
+		hasInit = false;
+	}
+	
+	void clearVecs() {
+		vertexVec.clear();
+		vertexVec.shrink_to_fit();
+		
+		indexVec.clear();
+		indexVec.shrink_to_fit();
+	}
+	
 	void checkInit() {
 		if (hasInit) {
 			
@@ -3296,6 +3310,11 @@ public:
 		else {
 			// todo: handle case where vertex buffer has gone to zero
 		}
+		
+		float vertMem = (vertexVec.size()+indexVec.size())*4;
+		
+		VERTEX_MEM_USAGE += vertMem/(1024.0f*1024.0f);
+		
 	}
 	
 	

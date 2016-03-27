@@ -78,7 +78,7 @@ const static int RENDER_SCALE_FACTOR = 4;
 
 
 const static int MAX_THREADS = 7;
-const static int NORM_RAD = 3;
+const static int NORM_RAD = 2;
 const static int MAX_HOLDER_LOAD_COUNT = 512;
 const static int VOXELS_PER_CELL = 16;
 const static int CELLS_PER_HOLDER = 16;
@@ -413,7 +413,9 @@ int PAGE_COUNT = 0;
 int MAX_HOLDERS = 2048;
 
 
-float MAX_GPU_MEM = 2560.0f;
+
+float MAX_GPU_MEM = 4096.0f;
+float VERTEX_MEM_USAGE = 0.0f;
 float TOT_GPU_MEM_USAGE = 0.0f;
 
 float MAX_CPU_MEM = 4096.0f;
@@ -3647,6 +3649,7 @@ bool replaceStr(std::string& str, const std::string& from, const std::string& to
 // const static unsigned long int STEP_TIME_IN_MICRO_SEC = 32000;
 
 #define E_CONST(DDD) \
+DDD(E_CONST_HVRAD) \
 DDD(E_CONST_DOT_CLIP) \
 DDD(E_CONST_BAKE_TICKS) \
 DDD(E_CONST_TURNBASED_TICKS) \
@@ -11364,6 +11367,7 @@ private:
 	}
 	
 	
+	
 	void initBase(
 		GLfloat* _vertexData,
 		int _sizeOfVD,
@@ -11483,6 +11487,19 @@ public:
 		
 	}
 	
+	void deallocVBO() {
+		
+		hasInit = false;
+	}
+	
+	void clearVecs() {
+		vertexVec.clear();
+		vertexVec.shrink_to_fit();
+		
+		indexVec.clear();
+		indexVec.shrink_to_fit();
+	}
+	
 	void checkInit() {
 		if (hasInit) {
 			
@@ -11562,6 +11579,11 @@ public:
 		else {
 			// todo: handle case where vertex buffer has gone to zero
 		}
+		
+		float vertMem = (vertexVec.size()+indexVec.size())*4;
+		
+		VERTEX_MEM_USAGE += vertMem/(1024.0f*1024.0f);
+		
 	}
 	
 	
@@ -26029,6 +26051,7 @@ public:
   void setArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void getArrAtCoords (int xv, int yv, int zv, int * tempCellData, int * tempCellData2);
   void fireEvent (BaseObjType uid, int opCode, float fParam);
+  void doMedian ();
   void preUpdate ();
   void update ();
   void toggleVis (GameEnt * se);
@@ -26546,7 +26569,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		if (DO_POINTS) {
 			glDisable(GL_POINT_SMOOTH);
-			glEnable(GL_POINT_SPRITE);
+			glDisable(GL_POINT_SPRITE);
 			glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 		}
 		glFrontFace(GL_CCW);
@@ -27357,7 +27380,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		}
 		
 		
-		fboMap["rasterFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
+		fboMap["rasterFBO0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
+		fboMap["rasterFBO1"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
 		
 		fboMap["rasterPosFBO"].init(1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);//, GL_REPEAT);
 		fboMap["rasterSourceFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);//, GL_REPEAT);
@@ -30862,8 +30886,9 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						// throw
 					break;
 					case 'T':
-						testOn = !testOn;
-						
+						//testOn = !testOn;
+						testOn3 = !testOn3;
+						cout << "testOn3 " << testOn3 << "\n";
 					break;
 					case 't':
 					
@@ -33499,9 +33524,6 @@ void Singleton::saveGUIValues ()
 void Singleton::updateGUI ()
                          {
 		
-		float chunkMem;
-		float fbMem;
-		
 		
 		
 		int mvPerPage = 1;
@@ -33510,16 +33532,14 @@ void Singleton::updateGUI ()
 		
 		string maxGPUMString = " / " + fi__s(MAX_GPU_MEM);
 		
+		float totUsage = TOT_GPU_MEM_USAGE + VERTEX_MEM_USAGE;
+		
 		// if (frameCount%120 == 0) {
 			
-		// 	chunkMem = 0;
-		// 	fbMem = TOT_GPU_MEM_USAGE - chunkMem;
-			
-			
-		// 	setGUIText("debug.fbMem", "Frame Buffer Mem Used: " + fi__s(fbMem) + maxGPUMString, fbMem/MAX_GPU_MEM, true );
-		// 	setGUIText("debug.chunkMem", "Chunk Mem Used: " + fi__s(chunkMem) + maxGPUMString, chunkMem/MAX_GPU_MEM, true );
-		// 	setGUIText("debug.totMem", "Total Mem Used: " + fi__s(TOT_GPU_MEM_USAGE) + maxGPUMString, TOT_GPU_MEM_USAGE/MAX_GPU_MEM, true );
-		// 	setGUIText("debug.chunksGen", "Voxels Generated (In Millions!): " + fi__s(voxelsGen) );
+			setGUIText("debug.fbMem", "Frame Buffer Mem Used: " + fi__s(TOT_GPU_MEM_USAGE) + maxGPUMString, TOT_GPU_MEM_USAGE/MAX_GPU_MEM, true );
+			setGUIText("debug.vertMem", "Vert Mem Used: " + fi__s(VERTEX_MEM_USAGE) + maxGPUMString, VERTEX_MEM_USAGE/MAX_GPU_MEM, true );
+			setGUIText("debug.totMem", "Total Mem Used: " + fi__s(totUsage) + maxGPUMString, totUsage/MAX_GPU_MEM, true );
+			//setGUIText("debug.chunksGen", "Voxels Generated (In Millions!): " + fi__s(voxelsGen) );
 			 
 		// }
 		
@@ -36369,6 +36389,7 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		
 		int q;
 		int p;
+		int m;
 		float fVPC = voxelsPerCell;
 		fVPC = 1.0f/fVPC;
 		
@@ -36410,6 +36431,8 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		
 		float frad = NORM_RAD;
 		float maxRad = (frad*frad + frad*frad + frad*frad)*1.125f;
+		
+		int dataSize = 4;
 		
 		for (p = 0; p < totSize; p++) {
 			q = voxelBuffer->voxelList[p].index;
@@ -36516,13 +36539,29 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 					tempData[2] = totNorm.z;
 					tempData[3] = curNID;
 					
-					gph->vboWrapper.vboBox(
-						fVO.x, fVO.y, fVO.z,
-						0.0f,fVPC,
-						curFlags,
-						tempData,
-						4
-					);
+					if (DO_POINTS) {
+						gph->vboWrapper.vertexVec.push_back(fVO.x);
+						gph->vboWrapper.vertexVec.push_back(fVO.y);
+						gph->vboWrapper.vertexVec.push_back(fVO.z);
+						gph->vboWrapper.vertexVec.push_back(1.0f);
+						
+						for (m = 0; m < dataSize; m++) {
+							gph->vboWrapper.vertexVec.push_back(tempData[m]);
+						}
+						
+					}
+					else {
+						
+						gph->vboWrapper.vboBox(
+							fVO.x, fVO.y, fVO.z,
+							0.0f,fVPC,
+							curFlags,
+							tempData,
+							4
+						);
+					}
+					
+					
 					
 				}
 				
@@ -37081,7 +37120,7 @@ void GameVoxelWrap::getVoro (ivec3 * worldPos, ivec3 * worldClosestCenter, int i
 		
 		vec3 testPos;
 		float testDis;
-		float variance = 0.5f;
+		float variance = 0.4f;
 		
 		vec3 bestPos = VORO_OFFSETS[0] + randPN(fWorldCellPos+VORO_OFFSETS[0])*variance;
 		float bestDis = fWorldPos.distance(bestPos);
@@ -52300,6 +52339,8 @@ void GamePageHolder::fillVBO ()
 				
 				glFlush();
 				glFinish();
+				
+				vboWrapper.clearVecs();
 			}
 			
 			
@@ -62376,6 +62417,29 @@ void GameWorld::fireEvent (BaseObjType uid, int opCode, float fParam)
 			break;
 		}
 	}
+void GameWorld::doMedian ()
+                        {
+		int i;
+		for (i = 0; i < singleton->medianCount; i++) {
+			singleton->bindShader("MedianShader");
+			singleton->bindFBO("resultFBO",activeFBO);
+			singleton->sampleFBO("resultFBO", 0, activeFBO);
+			singleton->sampleFBO("solidTargFBO", 1);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			//singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim) );
+			
+			
+			singleton->drawFSQuad();
+			
+			singleton->unsampleFBO("solidTargFBO", 1);
+			singleton->unsampleFBO("resultFBO", 0, activeFBO);
+			singleton->unbindFBO();
+			singleton->unbindShader();
+			
+			activeFBO = 1-activeFBO;
+		}
+	}
 void GameWorld::preUpdate ()
                          {
 		activeFBO = 0;
@@ -62553,7 +62617,7 @@ void GameWorld::update ()
 		}
 		
 		
-		
+		doMedian();
 		
 		finalStep(postToScreen);
 		
@@ -63204,7 +63268,7 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		
 		singleton->sampleFBO("hmFBOLinearBig",2);
 		
-		singleton->sampleFBO("rasterFBO",3);
+		singleton->sampleFBO("rasterFBO0",3);
 		//singleton->sampleFBO("terDepthFBO",3);
 		
 		//if (USE_SPHERE_MAP) {
@@ -63382,7 +63446,8 @@ void GameWorld::drawPrim (bool doSphereMap, bool doTer, bool doPoly)
 		// }
 		singleton->unsampleFBO("geomTargFBO",5);
 		
-		singleton->unsampleFBO("terDepthFBO",3);
+		singleton->unsampleFBO("rasterFBO0",3);
+		//singleton->unsampleFBO("terDepthFBO",3);
 		singleton->unsampleFBO("hmFBOLinearBig",2);
 		
 		singleton->setShaderTBO(1,0,0,true);
@@ -63645,7 +63710,13 @@ void GameWorld::rasterHolder (int rad)
 										(tempFIV.dot(&(singleton->lookAtVec)) > singleton->conVals[E_CONST_DOT_CLIP]) ||
 										(curHolder->gphCenInCells.distance(singleton->cameraGetPosNoShake()) < disClip)
 									) {
-										curHolder->vboWrapper.draw();
+										if (DO_POINTS) {
+											curHolder->vboWrapper.drawPoints();
+										}
+										else {
+											curHolder->vboWrapper.draw();
+										}
+										
 									}
 									
 								}
@@ -66294,66 +66365,107 @@ void GameWorld::rasterHolders (bool showResults)
 		
 		// get view matrix
 		// singleton->perspectiveOn = true;
-		// singleton->getMatrixFromFBO("rasterFBO");
+		// singleton->getMatrixFromFBO("rasterFBO0");
 		// singleton->perspectiveOn = false;
 
+		int activeRaster = 0;
 
-		//TBOEntry* curTBO = &(singleton->tboPool[0]);
+		int q;
 
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 		
-		
-		
 		singleton->bindShader("HolderShader");
-		singleton->bindFBO("rasterFBO");
-
-		// singleton->setShaderTBO(
-		// 	0,
-		// 	curTBO->tbo.tbo_tex,
-		// 	curTBO->tbo.tbo_buf,
-		// 	false
-		// );
-		
-		// glClearColor(0, 1, 0, 1);
-		// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		singleton->bindFBO("rasterFBO",activeRaster);
 		
 		singleton->setShaderFloat("voxelsPerCell",singleton->voxelsPerCell);
 		singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
-		// singleton->setShaderInt("CUBE_WRAP_ENTRIES", CUBE_WRAP_ENTRIES);
-		// singleton->setShaderInt("CUBE_DATA_INVALID", CUBE_DATA_INVALID);
-		// singleton->setShaderInt("CUBE_WRAP_INVALID", CUBE_WRAP_INVALID);
-		// singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-		singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim));
+		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 		
 		singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
-		// singleton->setShaderMatrix4x4("modelview",singleton->viewMatrix.get(),1);
-		// singleton->setShaderMatrix4x4("proj",singleton->projMatrix.get(),1);
+		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
 
 		rasterHolder(5);
 
-		//curTBO->vbo.draw();
-		
-		//singleton->setShaderTBO(0,0,0,false);
 		singleton->unbindFBO();
 		singleton->unbindShader();
-		
-		
 		
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
 
+		activeRaster = 1 - activeRaster;	
 		
-		//singleton->copyFBO("rasterFBO", "resultFBO"+i__s(activeFBO));
+		
+		
+		
+		singleton->bindShader("PointShader");
+		
+		singleton->setShaderFloat("voxelsPerCell",singleton->voxelsPerCell);
+		singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
+		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+		
+		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
+		singleton->setShaderInt("totRad",singleton->iGetConst(E_CONST_HVRAD));
+		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+		
+		for (q = 0; q < 4; q++) {
+			
+			singleton->setShaderInt("stepNum",q);
+			
+			if ((q % 2) == 0) {
+				singleton->setShaderVec2("hvMult", 1.0f, 0.0f);
+			}
+			else {
+				singleton->setShaderVec2("hvMult", 0.0f, 1.0f);
+			}
+			
+			singleton->bindFBO("rasterFBO", activeRaster);
+			singleton->sampleFBO("rasterFBO",0,activeRaster);
+			
+			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			
+			
+			
+			singleton->fsQuad.draw();
+
+			singleton->unsampleFBO("rasterFBO",0,activeRaster);
+			singleton->unbindFBO();
+			
+			activeRaster = 1 - activeRaster;	
+		}
+		
+		singleton->unbindShader();
+		
+		
+		
+		
 		
 		singleton->bindFBO("resultFBO", activeFBO);
-		singleton->drawFBO("rasterFBO", 0, 1.0f);
-		singleton->unbindFBO();		
+		singleton->drawFBO("rasterFBO", 0, 1.0f, 1 - activeRaster);
+		singleton->unbindFBO();
 		activeFBO = 1-activeFBO;
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		// singleton->bindFBO("resultFBO", activeFBO);
+		// singleton->drawFBO("rasterFBO", 0, 1.0f);
+		// singleton->unbindFBO();		
+		// activeFBO = 1-activeFBO;
 		
 		
 		// if (showResults) {
@@ -66377,14 +66489,14 @@ void GameWorld::rasterGrid (VBOGrid * vboGrid, bool showResults)
 		
 		// get view matrix
 		singleton->perspectiveOn = true;
-		singleton->getMatrixFromFBO("rasterFBO");
+		singleton->getMatrixFromFBO("rasterFBO0");
 		singleton->perspectiveOn = false;
 
 
 		glEnable(GL_DEPTH_TEST);
 
 		singleton->bindShader("GridShader");
-		singleton->bindFBO("rasterFBO");
+		singleton->bindFBO("rasterFBO0");
 
 		singleton->sampleFBO("rasterPosFBO",0);
 		singleton->sampleFBO("rasterSourceFBO",1);
@@ -66412,7 +66524,7 @@ void GameWorld::rasterGrid (VBOGrid * vboGrid, bool showResults)
 
 		
 		if (showResults) {
-			singleton->drawFBO("rasterFBO", 0, 1.0f);
+			singleton->drawFBO("rasterFBO0", 0, 1.0f);
 			
 			glutSwapBuffers();
 			
@@ -67172,23 +67284,7 @@ void GameWorld::postProcess (bool postToScreen)
 		}
 		
 		
-		for (i = 0; i < singleton->medianCount; i++) {
-			singleton->bindShader("MedianShader");
-			singleton->bindFBO("resultFBO",activeFBO);
-			singleton->sampleFBO("resultFBO", 0, activeFBO);
-			singleton->sampleFBO("solidTargFBO", 1);
-			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-			singleton->setShaderfVec2("bufferDim", &(singleton->bufferDim) );
-			
-			singleton->drawFSQuad();
-			
-			singleton->unsampleFBO("solidTargFBO", 1);
-			singleton->unsampleFBO("resultFBO", 0, activeFBO);
-			singleton->unbindFBO();
-			singleton->unbindShader();
-			
-			activeFBO = 1-activeFBO;
-		}
+		
 		
 
 	}

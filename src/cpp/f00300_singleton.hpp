@@ -1001,7 +1001,7 @@ public:
 		
 		if (DO_POINTS) {
 			glDisable(GL_POINT_SMOOTH);
-			glEnable(GL_POINT_SPRITE);
+			glDisable(GL_POINT_SPRITE);
 			glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 		}
 		glFrontFace(GL_CCW);
@@ -1812,7 +1812,8 @@ public:
 		}
 		
 		
-		fboMap["rasterFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
+		fboMap["rasterFBO0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
+		fboMap["rasterFBO1"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
 		
 		fboMap["rasterPosFBO"].init(1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);//, GL_REPEAT);
 		fboMap["rasterSourceFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);//, GL_REPEAT);
@@ -5704,8 +5705,9 @@ DISPATCH_EVENT_END:
 						// throw
 					break;
 					case 'T':
-						testOn = !testOn;
-						
+						//testOn = !testOn;
+						testOn3 = !testOn3;
+						cout << "testOn3 " << testOn3 << "\n";
 					break;
 					case 't':
 					
@@ -8546,9 +8548,6 @@ DISPATCH_EVENT_END:
 	
 	void updateGUI() {
 		
-		float chunkMem;
-		float fbMem;
-		
 		
 		
 		int mvPerPage = 1;
@@ -8557,16 +8556,14 @@ DISPATCH_EVENT_END:
 		
 		string maxGPUMString = " / " + fi__s(MAX_GPU_MEM);
 		
+		float totUsage = TOT_GPU_MEM_USAGE + VERTEX_MEM_USAGE;
+		
 		// if (frameCount%120 == 0) {
 			
-		// 	chunkMem = 0;
-		// 	fbMem = TOT_GPU_MEM_USAGE - chunkMem;
-			
-			
-		// 	setGUIText("debug.fbMem", "Frame Buffer Mem Used: " + fi__s(fbMem) + maxGPUMString, fbMem/MAX_GPU_MEM, true );
-		// 	setGUIText("debug.chunkMem", "Chunk Mem Used: " + fi__s(chunkMem) + maxGPUMString, chunkMem/MAX_GPU_MEM, true );
-		// 	setGUIText("debug.totMem", "Total Mem Used: " + fi__s(TOT_GPU_MEM_USAGE) + maxGPUMString, TOT_GPU_MEM_USAGE/MAX_GPU_MEM, true );
-		// 	setGUIText("debug.chunksGen", "Voxels Generated (In Millions!): " + fi__s(voxelsGen) );
+			setGUIText("debug.fbMem", "Frame Buffer Mem Used: " + fi__s(TOT_GPU_MEM_USAGE) + maxGPUMString, TOT_GPU_MEM_USAGE/MAX_GPU_MEM, true );
+			setGUIText("debug.vertMem", "Vert Mem Used: " + fi__s(VERTEX_MEM_USAGE) + maxGPUMString, VERTEX_MEM_USAGE/MAX_GPU_MEM, true );
+			setGUIText("debug.totMem", "Total Mem Used: " + fi__s(totUsage) + maxGPUMString, totUsage/MAX_GPU_MEM, true );
+			//setGUIText("debug.chunksGen", "Voxels Generated (In Millions!): " + fi__s(voxelsGen) );
 			 
 		// }
 		

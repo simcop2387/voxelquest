@@ -1635,6 +1635,8 @@ void GamePageHolder::fillVBO ()
 				
 				glFlush();
 				glFinish();
+				
+				vboWrapper.clearVecs();
 			}
 			
 			

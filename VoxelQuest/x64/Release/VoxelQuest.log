@@ -1,4 +1,4 @@
-﻿Build started 3/26/2016 7:46:28 AM.
+﻿Build started 3/27/2016 2:50:52 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -1011,6 +1011,9 @@
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          GL_MAX_TEXTURE_BUFFER_SIZE 134217728
+         medianCount 1
+         medianCount 2
+         medianCount 3
          Loading:  ..\data\constants.js         
          Load Successful          
          
@@ -1026,6 +1029,85 @@
          Valid JSON
                    
          Shaders Refreshed
+         medianCount 0
+         medianCount 1
+         medianCount 2
+         medianCount 3
+         medianCount 0
+         medianCount 1
+         medianCount 2
+         medianCount 3
+         medianCount 0
+         medianCount 1
+         medianCount 2
+         medianCount 3
+         medianCount 0
+         medianCount 1
+         medianCount 2
+         medianCount 3
+         medianCount 0
+         medianCount 1
+         medianCount 2
+         medianCount 3
+         medianCount 0
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         medianCount 1
+         medianCount 2
+         medianCount 3
+         medianCount 0
+         medianCount 1
+         medianCount 2
+         medianCount 3
+         medianCount 0
+         medianCount 1
+         medianCount 2
+         medianCount 3
+         medianCount 0
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         medianCount 1
+         medianCount 2
+         medianCount 3
+         medianCount 0
+         medianCount 1
+         medianCount 2
+         medianCount 3
+         medianCount 0
+         medianCount 1
+         medianCount 2
+         medianCount 3
+         medianCount 0
+         medianCount 1
+         medianCount 2
+         medianCount 3
+         medianCount 0
          Loading:  ..\data\constants.js         
          Load Successful          
          
@@ -1045,4 +1127,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:02:26.27
+Time Elapsed 00:04:26.15
