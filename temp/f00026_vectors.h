@@ -3202,11 +3202,16 @@ public:
 	std::vector<uint> indexVec; //unsigned short
 
 	VBOWrapper() {
+		ibo = 0;
+		vbo = 0;
 		numVecs = -1;
 		hasInit = false;
 		procCount = 0;
 	}
 	
+	int getNumVerts() {
+		return (vertexVec.size()/(numVecs*4));
+	}
 	
 	void init(
 		int _numVecs, // number of 4 component vecs
@@ -3219,6 +3224,18 @@ public:
 	}
 	
 	void deallocVBO() {
+		
+		if (ibo != 0) {
+			glDeleteBuffers(1,&ibo);
+		}
+		
+		if (vbo != 0) {
+			glDeleteBuffers(1,&vbo);
+		}
+		
+		ibo = 0;
+		vbo = 0;
+		numVecs = -1;
 		
 		hasInit = false;
 	}
@@ -4155,28 +4172,40 @@ struct PaddedDataEntry {
 
 struct VoxelBufferEntry {
 	uint flags;
-	int index;
+	int vbeIndex;
 };
 
 struct VoxelInfo {
-	int index;
+	int viIndex;
 	uint normId;
+};
+
+struct VoxelCell {
+	int curSize;
+	int* indexArr;
 };
 
 struct VoxelBuffer {
 	VoxelBufferEntry* data;
-	int totSize;
-	int pitch;
+	VoxelCell* cellLists;
 	vector<VoxelInfo> voxelList;
+	
+	int vcSize;
+	int vcPitch;
+	
+	int vbSize;
+	int vbPitch;
+	
+	
 	
 	int addIndex(int val) {
 		voxelList.push_back(VoxelInfo());
-		voxelList.back().index = val;
+		voxelList.back().viIndex = val;
 		voxelList.back().normId = 0;
 		
 		int VLInd = (voxelList.size()-1);
 		
-		data[val].index = VLInd;
+		data[val].vbeIndex = VLInd;
 		
 		return VLInd;
 	}
@@ -4207,7 +4236,7 @@ struct VoxelBuffer {
 	}
 	
 	int addNode(VectorI3* pos, bool &wasNew) {
-		int ind = pos->x + pos->y*pitch + pos->z*pitch*pitch;
+		int ind = pos->x + pos->y*vbPitch + pos->z*vbPitch*vbPitch;
 		
 		wasNew = !(getFlag(ind,E_OCT_NOTNEW));
 		
@@ -4218,18 +4247,24 @@ struct VoxelBuffer {
 		return data[ind].flags;
 	}
 	uint getIndAtNode(int ind) {
-		return data[ind].index;
+		return data[ind].vbeIndex;
 	}
 	
 	void clearAllNodes() {
 		int i;
+		int j;
+		
 		int mySize = voxelList.size();
 		int curInd;
 		
 		for (i = 0; i < mySize; i++) {
-			curInd = voxelList[i].index;
+			curInd = voxelList[i].viIndex;
 			data[curInd].flags = 0;
-			data[curInd].index = -1;
+			data[curInd].vbeIndex = -1;
+		}
+		
+		for (j = 0; j < vcSize; j++) {
+			cellLists[j].curSize = 0;
 		}
 		
 		voxelList.clear();

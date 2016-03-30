@@ -7,7 +7,10 @@
 // const static unsigned long int SPEEDUP_FACTOR = 4;
 // const static unsigned long int STEP_TIME_IN_MICRO_SEC = 32000;
 
+
+
 #define E_CONST(DDD) \
+DDD(E_CONST_GROWPOINTSTEPS) \
 DDD(E_CONST_HVRAD) \
 DDD(E_CONST_DOT_CLIP) \
 DDD(E_CONST_BAKE_TICKS) \

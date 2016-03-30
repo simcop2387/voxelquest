@@ -62,7 +62,7 @@ const static float ORG_SCALE_BASE = 0.5f;
 
 // qqqq
 
-// #define STREAM_RES 1
+#define STREAM_RES 1
 
 #ifdef STREAM_RES
 	const static int DEF_WIN_W = 1920; //2048;//
@@ -77,6 +77,9 @@ const static int DEF_SCALE_FACTOR = 1;
 const static int RENDER_SCALE_FACTOR = 4;
 
 
+int TOT_POINT_COUNT = 0;
+
+const static bool DO_POINTS = true;
 const static int MAX_THREADS = 7;
 const static int NORM_RAD = 2;
 const static int MAX_HOLDER_LOAD_COUNT = 512;
@@ -119,7 +122,7 @@ const static int FLUID_UNIT_MAX = 16384;
 const static int MAX_LAYERS = 2;
 const static int MAX_MIP_LEV = 1; // min of 1
 
-const static bool DO_POINTS = true;
+
 
 
 const static int MAX_KEYS = 256;
@@ -3648,7 +3651,10 @@ bool replaceStr(std::string& str, const std::string& from, const std::string& to
 // const static unsigned long int SPEEDUP_FACTOR = 4;
 // const static unsigned long int STEP_TIME_IN_MICRO_SEC = 32000;
 
+
+
 #define E_CONST(DDD) \
+DDD(E_CONST_GROWPOINTSTEPS) \
 DDD(E_CONST_HVRAD) \
 DDD(E_CONST_DOT_CLIP) \
 DDD(E_CONST_BAKE_TICKS) \
@@ -11471,11 +11477,16 @@ public:
 	std::vector<uint> indexVec; //unsigned short
 
 	VBOWrapper() {
+		ibo = 0;
+		vbo = 0;
 		numVecs = -1;
 		hasInit = false;
 		procCount = 0;
 	}
 	
+	int getNumVerts() {
+		return (vertexVec.size()/(numVecs*4));
+	}
 	
 	void init(
 		int _numVecs, // number of 4 component vecs
@@ -11488,6 +11499,18 @@ public:
 	}
 	
 	void deallocVBO() {
+		
+		if (ibo != 0) {
+			glDeleteBuffers(1,&ibo);
+		}
+		
+		if (vbo != 0) {
+			glDeleteBuffers(1,&vbo);
+		}
+		
+		ibo = 0;
+		vbo = 0;
+		numVecs = -1;
 		
 		hasInit = false;
 	}
@@ -12424,28 +12447,40 @@ struct PaddedDataEntry {
 
 struct VoxelBufferEntry {
 	uint flags;
-	int index;
+	int vbeIndex;
 };
 
 struct VoxelInfo {
-	int index;
+	int viIndex;
 	uint normId;
+};
+
+struct VoxelCell {
+	int curSize;
+	int* indexArr;
 };
 
 struct VoxelBuffer {
 	VoxelBufferEntry* data;
-	int totSize;
-	int pitch;
+	VoxelCell* cellLists;
 	vector<VoxelInfo> voxelList;
+	
+	int vcSize;
+	int vcPitch;
+	
+	int vbSize;
+	int vbPitch;
+	
+	
 	
 	int addIndex(int val) {
 		voxelList.push_back(VoxelInfo());
-		voxelList.back().index = val;
+		voxelList.back().viIndex = val;
 		voxelList.back().normId = 0;
 		
 		int VLInd = (voxelList.size()-1);
 		
-		data[val].index = VLInd;
+		data[val].vbeIndex = VLInd;
 		
 		return VLInd;
 	}
@@ -12476,7 +12511,7 @@ struct VoxelBuffer {
 	}
 	
 	int addNode(VectorI3* pos, bool &wasNew) {
-		int ind = pos->x + pos->y*pitch + pos->z*pitch*pitch;
+		int ind = pos->x + pos->y*vbPitch + pos->z*vbPitch*vbPitch;
 		
 		wasNew = !(getFlag(ind,E_OCT_NOTNEW));
 		
@@ -12487,18 +12522,24 @@ struct VoxelBuffer {
 		return data[ind].flags;
 	}
 	uint getIndAtNode(int ind) {
-		return data[ind].index;
+		return data[ind].vbeIndex;
 	}
 	
 	void clearAllNodes() {
 		int i;
+		int j;
+		
 		int mySize = voxelList.size();
 		int curInd;
 		
 		for (i = 0; i < mySize; i++) {
-			curInd = voxelList[i].index;
+			curInd = voxelList[i].viIndex;
 			data[curInd].flags = 0;
-			data[curInd].index = -1;
+			data[curInd].vbeIndex = -1;
+		}
+		
+		for (j = 0; j < vcSize; j++) {
+			cellLists[j].curSize = 0;
 		}
 		
 		voxelList.clear();
@@ -23973,6 +24014,7 @@ public:
   int destructCount;
   bool sphereMapOn;
   bool waitingOnDestruction;
+  bool vsyncOn;
   bool commandOn;
   bool renderingOctBounds;
   bool renderingOct;
@@ -24621,7 +24663,9 @@ public:
   bool pboSupported;
   int pboMode;
   int drawMode;
+  glInfo glInfo;
   DynBuffer ();
+  void setVsync (bool enabled);
   ~ DynBuffer ();
   bool initSharedMem ();
   void clearSharedMem ();
@@ -26550,7 +26594,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		tempCounter = 0;
 		actorCount = 0;
 		polyCount = 0;
-		fpsCountMax = 500;
+		fpsCountMax = 1000;
 		
 		fpsTest = false;
 		pathfindingOn = false;
@@ -26611,13 +26655,29 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			pdPool[i].data = new PaddedDataEntry[cellsPerHolderPad*cellsPerHolderPad*cellsPerHolderPad];
 			//pdPool[i].voxData = new VoxEntry[voxelsPerCell*voxelsPerCell*voxelsPerCell]
 			pdPool[i].isFree = true;
-			pdPool[i].voxelBuffer.pitch = voxelsPerHolderPad;
-			pdPool[i].voxelBuffer.totSize = voxelsPerHolderPad*voxelsPerHolderPad*voxelsPerHolderPad;
-			pdPool[i].voxelBuffer.data = new VoxelBufferEntry[
-				pdPool[i].voxelBuffer.totSize
+			
+			
+			pdPool[i].voxelBuffer.vcPitch = cellsPerHolderPad;
+			pdPool[i].voxelBuffer.vcSize = cellsPerHolderPad*cellsPerHolderPad*cellsPerHolderPad;
+			pdPool[i].voxelBuffer.cellLists = new VoxelCell[
+				pdPool[i].voxelBuffer.vcSize
 			];
-			for (j = 0; j < pdPool[i].voxelBuffer.totSize; j++) {
-				pdPool[i].voxelBuffer.data[j].index = -1;
+			
+			pdPool[i].voxelBuffer.vbPitch = voxelsPerHolderPad;
+			pdPool[i].voxelBuffer.vbSize = voxelsPerHolderPad*voxelsPerHolderPad*voxelsPerHolderPad;
+			pdPool[i].voxelBuffer.data = new VoxelBufferEntry[
+				pdPool[i].voxelBuffer.vbSize
+			];
+			
+			for (j = 0; j < pdPool[i].voxelBuffer.vcSize; j++) {
+				pdPool[i].voxelBuffer.cellLists[j].curSize = 0;
+				pdPool[i].voxelBuffer.cellLists[j].indexArr = new int[
+					voxelsPerCell*voxelsPerCell*voxelsPerCell
+				];
+			}
+			
+			for (j = 0; j < pdPool[i].voxelBuffer.vbSize; j++) {
+				pdPool[i].voxelBuffer.data[j].vbeIndex = -1;
 				pdPool[i].voxelBuffer.data[j].flags = 0;
 			}
 			
@@ -26768,6 +26828,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		renderingOct = false;
 		renderingOctBounds = false;
 		commandOn = false;
+		vsyncOn = true;
 		placingPattern = false;
 		gridOn = false;
 		fogOn = 1.0f;
@@ -27156,6 +27217,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("MergeShader");
 		shaderStrings.push_back("TopoShader");
 		shaderStrings.push_back("PointShader");
+		shaderStrings.push_back("LightShader");
 		shaderStrings.push_back("RoadShader");
 		shaderStrings.push_back("SkeletonShader");
 		shaderStrings.push_back("DilateShader");
@@ -30497,10 +30559,22 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 					case 'r':
 						gw->clearAllHolders();
-					break;	
+					break;
+					case 'v':
+						vsyncOn = !vsyncOn;
+						cout << "vsyncOn " << vsyncOn << "\n";
+						myDynBuffer->setVsync(vsyncOn);
+					break;
+					case 'f':
+						cout << "start FPS timer\n";
+						myDynBuffer->setVsync(false);
+						fpsTest = true;
+						fpsCount = 0;
+						fpsTimer.start();
+					break;
 				}
 				
-				cout << "command end\n";	
+				//cout << "command end\n";	
 				
 			}
 			else {
@@ -30682,10 +30756,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 					
 					case 'W':
-						cout << "start FPS timer\n";
-						fpsTest = true;
-						fpsCount = 0;
-						fpsTimer.start();
+						
 					break;
 					
 
@@ -34563,10 +34634,12 @@ void Singleton::display (bool doFrameRender)
 				if (fpsCount == fpsCountMax) {
 					
 					fpsTest = false;
-					
-					cout << "Average Frame Time: " << (fpsTimer.getElapsedTimeInMilliSec()*1000.0/((double)(fpsCountMax))) << "\n";
-					cout << "FPS: " << 1.0/(fpsTimer.getElapsedTimeInSec()/((double)(fpsCountMax))) << "\n";
+					cout << "\nTOT_POINT_COUNT: " << TOT_POINT_COUNT << "\n";
+					cout << "Microseconds per frame: " << (fpsTimer.getElapsedTimeInMilliSec()*1000.0/((double)(fpsCountMax))) << "\n";
+					cout << "FPS: " << 1.0/(fpsTimer.getElapsedTimeInSec()/((double)(fpsCountMax))) << "\n\n";
 					fpsTimer.stop();
+					myDynBuffer->setVsync(true);
+					
 				}
 				
 			}
@@ -35598,7 +35671,7 @@ DynBuffer::DynBuffer ()
 		    //initGL();
 
 		    // get OpenGL info
-		    glInfo glInfo;
+		    
 		    glInfo.getInfo();
 		    //glInfo.printSelf();
 
@@ -35693,6 +35766,28 @@ DynBuffer::DynBuffer ()
 		    //glutMainLoop(); /* Start GLUT event-processing loop */
 
 		
+	}
+void DynBuffer::setVsync (bool enabled)
+                                    {
+		// check EXT_swap_control is supported
+		if(glInfo.isExtensionSupported("WGL_EXT_swap_control"))
+		{
+		    // get pointers to WGL functions
+		    wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+		    wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
+		    if(wglSwapIntervalEXT && wglGetSwapIntervalEXT)
+		    {
+		    		if (enabled) {
+		    			wglSwapIntervalEXT(1);
+		    		}
+		    		else {
+		    			wglSwapIntervalEXT(0);
+		    		}
+		        // enable v-sync
+		        
+		        //std::cout << "Video card supports WGL_EXT_swap_control." << std::endl;
+		    }
+		}
 	}
 DynBuffer::~ DynBuffer ()
                      {
@@ -36404,6 +36499,11 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		int ii;
 		int jj;
 		int kk;
+		
+		int ii2;
+		int jj2;
+		int kk2;
+		
 		int ind;
 		
 		int xx;
@@ -36419,7 +36519,7 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		CubeWrap* curCW;
 		
 		int tempInd;
-		int voxelListInd;
+		int VLIndex;
 		
 		vec3 totNorm;
 		vec3 zeroVec = vec3(0.0f,0.0f,0.0f);
@@ -36434,8 +36534,34 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		
 		int dataSize = 4;
 		
+		
+		int cellInd;
+		
 		for (p = 0; p < totSize; p++) {
-			q = voxelBuffer->voxelList[p].index;
+			q = voxelBuffer->voxelList[p].viIndex;
+			kk = q/(voxelsPerHolderPad*voxelsPerHolderPad);
+			jj = (q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
+			ii = q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
+			
+			if (voxelBuffer->getFlag(q,E_OCT_SURFACE)) {
+				
+				kk2 = kk/voxelsPerCell;
+				jj2 = jj/voxelsPerCell;
+				ii2 = ii/voxelsPerCell;
+				
+				cellInd = kk2*cellsPerHolderPad*cellsPerHolderPad + jj2*cellsPerHolderPad + ii2;
+				
+				voxelBuffer->cellLists[cellInd].indexArr[voxelBuffer->cellLists[cellInd].curSize] = p;
+				voxelBuffer->cellLists[cellInd].curSize++;
+				
+			}
+		}
+		
+		
+		
+		
+		for (p = 0; p < totSize; p++) {
+			q = voxelBuffer->voxelList[p].viIndex;
 			kk = q/(voxelsPerHolderPad*voxelsPerHolderPad);
 			jj = (q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
 			ii = q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
@@ -36473,13 +36599,13 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 								
 								tempInd = (zz+kk)*voxelsPerHolderPad*voxelsPerHolderPad + (yy+jj)*voxelsPerHolderPad + (xx + ii);
 								tempFlags = voxelBuffer->getFlagsAtNode(tempInd);
-								voxelListInd = voxelBuffer->getIndAtNode(tempInd);
+								VLIndex = voxelBuffer->getIndAtNode(tempInd);
 								
-								if (voxelListInd == -1) {
+								if (VLIndex == -1) {
 									testNID = 0;
 								}
 								else {
-									testNID = voxelBuffer->voxelList[voxelListInd].normId;
+									testNID = voxelBuffer->voxelList[VLIndex].normId;
 								}
 								
 								// if (p%1000 == 0) {
@@ -36512,7 +36638,10 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 									}
 								}
 								
-								
+								// position(3)
+								// normal(3)
+								// material(1)
+								// id(1)
 								
 								
 								
@@ -36525,6 +36654,17 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 					}
 					
 					totNorm.normalize();
+					
+					
+					// for (zz = -NORM_RAD; zz <= NORM_RAD; zz++) {
+					// 	for (yy = -NORM_RAD; yy <= NORM_RAD; yy++) {
+					// 		for (xx = -NORM_RAD; xx <= NORM_RAD; xx++) {
+								
+					// 		}
+					// 	}
+					// }
+					
+					
 					
 					voxOffset += paddingInVoxels;
 					voxOffset += offsetInVoxels;
@@ -50709,6 +50849,8 @@ void GameEntManager::initAllObjects ()
 #define LZZ_INLINE inline
 void GamePageHolder::reset ()
                      {
+		vboWrapper.deallocVBO();
+		unbindPD();
 		listGenerated = false;
 		readyToRender = false;
 	}
@@ -52333,6 +52475,8 @@ void GamePageHolder::fillVBO ()
 						GL_STATIC_DRAW
 					);
 				}
+				
+				TOT_POINT_COUNT += vboWrapper.getNumVerts();
 				
 				vboWrapper.endFill();
 				
@@ -62039,6 +62183,9 @@ void GameWorld::clearAllHolders ()
                                {
 		singleton->stopAllThreads();
 		
+		glFlush();
+		glFinish();
+		
 		GamePageHolder* gph;
 		
 		int i;
@@ -62049,6 +62196,11 @@ void GameWorld::clearAllHolders ()
 				gph->reset();
 			}
 		}
+		
+		TOT_POINT_COUNT = 0;
+		
+		glFlush();
+		glFinish();
 		
 	}
 GamePageHolder * GameWorld::getHolderAtCoords (int x, int y, int z, bool createOnNull)
@@ -66402,45 +66554,78 @@ void GameWorld::rasterHolders (bool showResults)
 		
 		
 		
+		if (
+			(singleton->iGetConst(E_CONST_GROWPOINTSTEPS) > 0) &&
+			(DO_POINTS)	
+		) {
+			
+			singleton->bindShader("PointShader");
+			
+			singleton->setShaderFloat("voxelsPerCell",singleton->voxelsPerCell);
+			singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
+			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+			
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
+			singleton->setShaderInt("totRad",singleton->iGetConst(E_CONST_HVRAD));
+			singleton->setShaderInt("growSteps",singleton->iGetConst(E_CONST_GROWPOINTSTEPS));
+			singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+			
+			for (q = 0; q < singleton->iGetConst(E_CONST_GROWPOINTSTEPS); q++) {
+				
+				singleton->setShaderInt("stepNum",q);
+				
+				if ((q % 2) == 0) {
+					singleton->setShaderVec2("hvMult", 1.0f, 0.0f);
+				}
+				else {
+					singleton->setShaderVec2("hvMult", 0.0f, 1.0f);
+				}
+				
+				singleton->bindFBO("rasterFBO", activeRaster);
+				singleton->sampleFBO("rasterFBO",0,activeRaster);
+				
+				singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+				
+				
+				
+				singleton->fsQuad.draw();
+
+				singleton->unsampleFBO("rasterFBO",0,activeRaster);
+				singleton->unbindFBO();
+				
+				activeRaster = 1 - activeRaster;	
+			}
+			
+			singleton->unbindShader();
+		}
 		
-		singleton->bindShader("PointShader");
+		
+		
+		
+		
+		
+		
+		
+		
+		singleton->bindShader("LightShader");
+		singleton->bindFBO("resultFBO", activeRaster);
+		singleton->sampleFBO("rasterFBO",0,activeRaster);
 		
 		singleton->setShaderFloat("voxelsPerCell",singleton->voxelsPerCell);
 		singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
-		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-		
+		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
-		singleton->setShaderInt("totRad",singleton->iGetConst(E_CONST_HVRAD));
 		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
 		
-		for (q = 0; q < 4; q++) {
-			
-			singleton->setShaderInt("stepNum",q);
-			
-			if ((q % 2) == 0) {
-				singleton->setShaderVec2("hvMult", 1.0f, 0.0f);
-			}
-			else {
-				singleton->setShaderVec2("hvMult", 0.0f, 1.0f);
-			}
-			
-			singleton->bindFBO("rasterFBO", activeRaster);
-			singleton->sampleFBO("rasterFBO",0,activeRaster);
-			
-			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-			
-			
-			
-			singleton->fsQuad.draw();
+		singleton->fsQuad.draw();
 
-			singleton->unsampleFBO("rasterFBO",0,activeRaster);
-			singleton->unbindFBO();
-			
-			activeRaster = 1 - activeRaster;	
-		}
+		singleton->unsampleFBO("rasterFBO",0,activeRaster);
+		singleton->unbindFBO();
 		
 		singleton->unbindShader();
 		
@@ -66448,10 +66633,16 @@ void GameWorld::rasterHolders (bool showResults)
 		
 		
 		
-		singleton->bindFBO("resultFBO", activeFBO);
-		singleton->drawFBO("rasterFBO", 0, 1.0f, 1 - activeRaster);
-		singleton->unbindFBO();
-		activeFBO = 1-activeFBO;
+		
+		
+		
+		
+		
+		
+		// singleton->bindFBO("resultFBO", activeFBO);
+		// singleton->drawFBO("rasterFBO", 0, 1.0f, 1 - activeRaster);
+		// singleton->unbindFBO();
+		// activeFBO = 1-activeFBO;
 		
 		
 		

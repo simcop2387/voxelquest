@@ -27,7 +27,7 @@ DynBuffer::DynBuffer ()
 		    //initGL();
 
 		    // get OpenGL info
-		    glInfo glInfo;
+		    
 		    glInfo.getInfo();
 		    //glInfo.printSelf();
 
@@ -122,6 +122,28 @@ DynBuffer::DynBuffer ()
 		    //glutMainLoop(); /* Start GLUT event-processing loop */
 
 		
+	}
+void DynBuffer::setVsync (bool enabled)
+                                    {
+		// check EXT_swap_control is supported
+		if(glInfo.isExtensionSupported("WGL_EXT_swap_control"))
+		{
+		    // get pointers to WGL functions
+		    wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+		    wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
+		    if(wglSwapIntervalEXT && wglGetSwapIntervalEXT)
+		    {
+		    		if (enabled) {
+		    			wglSwapIntervalEXT(1);
+		    		}
+		    		else {
+		    			wglSwapIntervalEXT(0);
+		    		}
+		        // enable v-sync
+		        
+		        //std::cout << "Video card supports WGL_EXT_swap_control." << std::endl;
+		    }
+		}
 	}
 DynBuffer::~ DynBuffer ()
                      {

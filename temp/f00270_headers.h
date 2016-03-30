@@ -126,6 +126,7 @@ public:
   int destructCount;
   bool sphereMapOn;
   bool waitingOnDestruction;
+  bool vsyncOn;
   bool commandOn;
   bool renderingOctBounds;
   bool renderingOct;
@@ -774,7 +775,9 @@ public:
   bool pboSupported;
   int pboMode;
   int drawMode;
+  glInfo glInfo;
   DynBuffer ();
+  void setVsync (bool enabled);
   ~ DynBuffer ();
   bool initSharedMem ();
   void clearSharedMem ();

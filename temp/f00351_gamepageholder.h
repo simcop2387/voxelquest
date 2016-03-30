@@ -5,6 +5,8 @@
 #define LZZ_INLINE inline
 void GamePageHolder::reset ()
                      {
+		vboWrapper.deallocVBO();
+		unbindPD();
 		listGenerated = false;
 		readyToRender = false;
 	}
@@ -1629,6 +1631,8 @@ void GamePageHolder::fillVBO ()
 						GL_STATIC_DRAW
 					);
 				}
+				
+				TOT_POINT_COUNT += vboWrapper.getNumVerts();
 				
 				vboWrapper.endFill();
 				

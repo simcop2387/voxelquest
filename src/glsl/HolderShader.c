@@ -44,7 +44,7 @@ void main() {
 		pmMatrix*worldPos; //proj*modelview
 		//worldPos;
 	
-	// gl_PointSize = (heightOfNearPlane / pow(screenPos.w,0.5))*0.04;
+	//gl_PointSize = (heightOfNearPlane / pow(screenPos.w,0.5))*0.02;
 		
 	gl_Position = screenPos;
 	

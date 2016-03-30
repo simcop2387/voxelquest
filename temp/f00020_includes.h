@@ -62,7 +62,7 @@ const static float ORG_SCALE_BASE = 0.5f;
 
 // qqqq
 
-// #define STREAM_RES 1
+#define STREAM_RES 1
 
 #ifdef STREAM_RES
 	const static int DEF_WIN_W = 1920; //2048;//
@@ -77,6 +77,9 @@ const static int DEF_SCALE_FACTOR = 1;
 const static int RENDER_SCALE_FACTOR = 4;
 
 
+int TOT_POINT_COUNT = 0;
+
+const static bool DO_POINTS = true;
 const static int MAX_THREADS = 7;
 const static int NORM_RAD = 2;
 const static int MAX_HOLDER_LOAD_COUNT = 512;
@@ -119,7 +122,7 @@ const static int FLUID_UNIT_MAX = 16384;
 const static int MAX_LAYERS = 2;
 const static int MAX_MIP_LEV = 1; // min of 1
 
-const static bool DO_POINTS = true;
+
 
 
 const static int MAX_KEYS = 256;

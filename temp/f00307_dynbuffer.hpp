@@ -53,6 +53,7 @@ public:
 	bool pboSupported;
 	int pboMode;
 	int drawMode;
+	glInfo glInfo;
 	//Timer timer, t1, t2;
 	//float copyTime, updateTime;
 
@@ -83,7 +84,7 @@ public:
 		    //initGL();
 
 		    // get OpenGL info
-		    glInfo glInfo;
+		    
 		    glInfo.getInfo();
 		    //glInfo.printSelf();
 
@@ -179,6 +180,29 @@ public:
 
 		
 	}
+	
+	void setVsync(bool enabled) {
+		// check EXT_swap_control is supported
+		if(glInfo.isExtensionSupported("WGL_EXT_swap_control"))
+		{
+		    // get pointers to WGL functions
+		    wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+		    wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
+		    if(wglSwapIntervalEXT && wglGetSwapIntervalEXT)
+		    {
+		    		if (enabled) {
+		    			wglSwapIntervalEXT(1);
+		    		}
+		    		else {
+		    			wglSwapIntervalEXT(0);
+		    		}
+		        // enable v-sync
+		        
+		        //std::cout << "Video card supports WGL_EXT_swap_control." << std::endl;
+		    }
+		}
+	}
+	
 	
 	~DynBuffer() {
 		clearSharedMem();

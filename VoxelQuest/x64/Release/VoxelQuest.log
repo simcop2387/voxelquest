@@ -1,4 +1,4 @@
-﻿Build started 3/27/2016 2:50:52 AM.
+﻿Build started 3/29/2016 11:52:43 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -1011,120 +1011,19 @@
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          GL_MAX_TEXTURE_BUFFER_SIZE 134217728
-         medianCount 1
-         medianCount 2
-         medianCount 3
-         Loading:  ..\data\constants.js         
-         Load Successful          
          
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
+         updateHolders 0
+         command:
+         start FPS timer
          
-         Valid JSON
-                   
+         TOT_POINT_COUNT: 8025094
+         Microseconds per frame: 4085.76
+         FPS: 244.751
          
-         Valid JSON
-                   
-         Shaders Refreshed
-         medianCount 0
-         medianCount 1
-         medianCount 2
-         medianCount 3
-         medianCount 0
-         medianCount 1
-         medianCount 2
-         medianCount 3
-         medianCount 0
-         medianCount 1
-         medianCount 2
-         medianCount 3
-         medianCount 0
-         medianCount 1
-         medianCount 2
-         medianCount 3
-         medianCount 0
-         medianCount 1
-         medianCount 2
-         medianCount 3
-         medianCount 0
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         medianCount 1
-         medianCount 2
-         medianCount 3
-         medianCount 0
-         medianCount 1
-         medianCount 2
-         medianCount 3
-         medianCount 0
-         medianCount 1
-         medianCount 2
-         medianCount 3
-         medianCount 0
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         medianCount 1
-         medianCount 2
-         medianCount 3
-         medianCount 0
-         medianCount 1
-         medianCount 2
-         medianCount 3
-         medianCount 0
-         medianCount 1
-         medianCount 2
-         medianCount 3
-         medianCount 0
-         medianCount 1
-         medianCount 2
-         medianCount 3
-         medianCount 0
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
+         iNumSteps:  16         
+         iNumSteps:  16         
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:04:26.15
+Time Elapsed 00:35:02.89

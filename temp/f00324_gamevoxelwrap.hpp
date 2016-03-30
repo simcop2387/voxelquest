@@ -98,6 +98,11 @@ public:
 		int ii;
 		int jj;
 		int kk;
+		
+		int ii2;
+		int jj2;
+		int kk2;
+		
 		int ind;
 		
 		int xx;
@@ -113,7 +118,7 @@ public:
 		CubeWrap* curCW;
 		
 		int tempInd;
-		int voxelListInd;
+		int VLIndex;
 		
 		vec3 totNorm;
 		vec3 zeroVec = vec3(0.0f,0.0f,0.0f);
@@ -128,8 +133,34 @@ public:
 		
 		int dataSize = 4;
 		
+		
+		int cellInd;
+		
 		for (p = 0; p < totSize; p++) {
-			q = voxelBuffer->voxelList[p].index;
+			q = voxelBuffer->voxelList[p].viIndex;
+			kk = q/(voxelsPerHolderPad*voxelsPerHolderPad);
+			jj = (q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
+			ii = q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
+			
+			if (voxelBuffer->getFlag(q,E_OCT_SURFACE)) {
+				
+				kk2 = kk/voxelsPerCell;
+				jj2 = jj/voxelsPerCell;
+				ii2 = ii/voxelsPerCell;
+				
+				cellInd = kk2*cellsPerHolderPad*cellsPerHolderPad + jj2*cellsPerHolderPad + ii2;
+				
+				voxelBuffer->cellLists[cellInd].indexArr[voxelBuffer->cellLists[cellInd].curSize] = p;
+				voxelBuffer->cellLists[cellInd].curSize++;
+				
+			}
+		}
+		
+		
+		
+		
+		for (p = 0; p < totSize; p++) {
+			q = voxelBuffer->voxelList[p].viIndex;
 			kk = q/(voxelsPerHolderPad*voxelsPerHolderPad);
 			jj = (q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
 			ii = q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
@@ -167,13 +198,13 @@ public:
 								
 								tempInd = (zz+kk)*voxelsPerHolderPad*voxelsPerHolderPad + (yy+jj)*voxelsPerHolderPad + (xx + ii);
 								tempFlags = voxelBuffer->getFlagsAtNode(tempInd);
-								voxelListInd = voxelBuffer->getIndAtNode(tempInd);
+								VLIndex = voxelBuffer->getIndAtNode(tempInd);
 								
-								if (voxelListInd == -1) {
+								if (VLIndex == -1) {
 									testNID = 0;
 								}
 								else {
-									testNID = voxelBuffer->voxelList[voxelListInd].normId;
+									testNID = voxelBuffer->voxelList[VLIndex].normId;
 								}
 								
 								// if (p%1000 == 0) {
@@ -206,7 +237,10 @@ public:
 									}
 								}
 								
-								
+								// position(3)
+								// normal(3)
+								// material(1)
+								// id(1)
 								
 								
 								
@@ -219,6 +253,17 @@ public:
 					}
 					
 					totNorm.normalize();
+					
+					
+					// for (zz = -NORM_RAD; zz <= NORM_RAD; zz++) {
+					// 	for (yy = -NORM_RAD; yy <= NORM_RAD; yy++) {
+					// 		for (xx = -NORM_RAD; xx <= NORM_RAD; xx++) {
+								
+					// 		}
+					// 	}
+					// }
+					
+					
 					
 					voxOffset += paddingInVoxels;
 					voxOffset += offsetInVoxels;

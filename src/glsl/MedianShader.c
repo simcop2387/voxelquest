@@ -32,7 +32,7 @@ $
 
 void main() {
 
-    vec2 sampSize = 4.0/bufferDim;
+    vec2 sampSize = 1.0/bufferDim;
     
 
     vec3 v[9];

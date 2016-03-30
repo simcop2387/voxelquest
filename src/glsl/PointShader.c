@@ -6,7 +6,6 @@ uniform sampler2D Texture0;
 uniform float voxelsPerCell;
 uniform int stepNum;
 uniform int cellsPerHolder;
-uniform float heightOfNearPlane;
 uniform float FOV;
 uniform vec2 clipDist;
 uniform vec2 bufferDim;
@@ -14,6 +13,7 @@ uniform vec3 cameraPos;
 uniform vec3 lightVec;
 uniform vec2 hvMult;
 uniform int totRad;
+uniform int growSteps;
 uniform mat4 modelviewInverse;
 
 // uniform mat4 pmMatrix;
@@ -115,6 +115,8 @@ void main() {
     
     vec2 boxVal;
 
+    //float bestBox = distance(cameraPos.xyz,tex.xyz);
+
     // for (j = -radv; j <= radv; j++) {
     //     tc.y = float(j);
         
@@ -137,13 +139,14 @@ void main() {
             boxVal = aabbIntersect(ro,rd,samp.xyz-voxelWidth,samp.xyz+voxelWidth);
             
             if (
-                (boxVal.x < boxVal.y)
+                (boxVal.x <= boxVal.y)
                 // || (camDis > 50.0)
             ) {
                 testDis = boxVal.x;
                 if (testDis < bestDis) {
                     bestDis = testDis;
                     bestSamp = samp;
+                    //bestBox = boxVal.x;
                 }
             }
             
@@ -154,18 +157,17 @@ void main() {
 
 
 
-    vec3 finalCol = 
-        bestSamp.xyz
-    ;
-
-    
-    if (stepNum == 3) {
-        finalCol = mod(finalCol+0.01,1.0);
-    }
+    // vec3 finalCol = 
+    //     bestSamp.xyz
+    // ;    
+    // if (stepNum == (growSteps-1)) {
+    //     //finalCol = ro+rd*bestBox;
+    //     finalCol = mod(finalCol+0.01,1.0);
+    // }
     
 
     FragColor0 = vec4(
-        finalCol,
+        bestSamp.xyz,
         1.0
     );
 

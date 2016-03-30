@@ -363,7 +363,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		tempCounter = 0;
 		actorCount = 0;
 		polyCount = 0;
-		fpsCountMax = 500;
+		fpsCountMax = 1000;
 		
 		fpsTest = false;
 		pathfindingOn = false;
@@ -424,13 +424,29 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 			pdPool[i].data = new PaddedDataEntry[cellsPerHolderPad*cellsPerHolderPad*cellsPerHolderPad];
 			//pdPool[i].voxData = new VoxEntry[voxelsPerCell*voxelsPerCell*voxelsPerCell]
 			pdPool[i].isFree = true;
-			pdPool[i].voxelBuffer.pitch = voxelsPerHolderPad;
-			pdPool[i].voxelBuffer.totSize = voxelsPerHolderPad*voxelsPerHolderPad*voxelsPerHolderPad;
-			pdPool[i].voxelBuffer.data = new VoxelBufferEntry[
-				pdPool[i].voxelBuffer.totSize
+			
+			
+			pdPool[i].voxelBuffer.vcPitch = cellsPerHolderPad;
+			pdPool[i].voxelBuffer.vcSize = cellsPerHolderPad*cellsPerHolderPad*cellsPerHolderPad;
+			pdPool[i].voxelBuffer.cellLists = new VoxelCell[
+				pdPool[i].voxelBuffer.vcSize
 			];
-			for (j = 0; j < pdPool[i].voxelBuffer.totSize; j++) {
-				pdPool[i].voxelBuffer.data[j].index = -1;
+			
+			pdPool[i].voxelBuffer.vbPitch = voxelsPerHolderPad;
+			pdPool[i].voxelBuffer.vbSize = voxelsPerHolderPad*voxelsPerHolderPad*voxelsPerHolderPad;
+			pdPool[i].voxelBuffer.data = new VoxelBufferEntry[
+				pdPool[i].voxelBuffer.vbSize
+			];
+			
+			for (j = 0; j < pdPool[i].voxelBuffer.vcSize; j++) {
+				pdPool[i].voxelBuffer.cellLists[j].curSize = 0;
+				pdPool[i].voxelBuffer.cellLists[j].indexArr = new int[
+					voxelsPerCell*voxelsPerCell*voxelsPerCell
+				];
+			}
+			
+			for (j = 0; j < pdPool[i].voxelBuffer.vbSize; j++) {
+				pdPool[i].voxelBuffer.data[j].vbeIndex = -1;
 				pdPool[i].voxelBuffer.data[j].flags = 0;
 			}
 			
@@ -581,6 +597,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		renderingOct = false;
 		renderingOctBounds = false;
 		commandOn = false;
+		vsyncOn = true;
 		placingPattern = false;
 		gridOn = false;
 		fogOn = 1.0f;
@@ -969,6 +986,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("MergeShader");
 		shaderStrings.push_back("TopoShader");
 		shaderStrings.push_back("PointShader");
+		shaderStrings.push_back("LightShader");
 		shaderStrings.push_back("RoadShader");
 		shaderStrings.push_back("SkeletonShader");
 		shaderStrings.push_back("DilateShader");
@@ -4310,10 +4328,22 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 					break;
 					case 'r':
 						gw->clearAllHolders();
-					break;	
+					break;
+					case 'v':
+						vsyncOn = !vsyncOn;
+						cout << "vsyncOn " << vsyncOn << "\n";
+						myDynBuffer->setVsync(vsyncOn);
+					break;
+					case 'f':
+						cout << "start FPS timer\n";
+						myDynBuffer->setVsync(false);
+						fpsTest = true;
+						fpsCount = 0;
+						fpsTimer.start();
+					break;
 				}
 				
-				cout << "command end\n";	
+				//cout << "command end\n";	
 				
 			}
 			else {
@@ -4495,10 +4525,7 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 
 					
 					case 'W':
-						cout << "start FPS timer\n";
-						fpsTest = true;
-						fpsCount = 0;
-						fpsTimer.start();
+						
 					break;
 					
 
@@ -8376,10 +8403,12 @@ void Singleton::display (bool doFrameRender)
 				if (fpsCount == fpsCountMax) {
 					
 					fpsTest = false;
-					
-					cout << "Average Frame Time: " << (fpsTimer.getElapsedTimeInMilliSec()*1000.0/((double)(fpsCountMax))) << "\n";
-					cout << "FPS: " << 1.0/(fpsTimer.getElapsedTimeInSec()/((double)(fpsCountMax))) << "\n";
+					cout << "\nTOT_POINT_COUNT: " << TOT_POINT_COUNT << "\n";
+					cout << "Microseconds per frame: " << (fpsTimer.getElapsedTimeInMilliSec()*1000.0/((double)(fpsCountMax))) << "\n";
+					cout << "FPS: " << 1.0/(fpsTimer.getElapsedTimeInSec()/((double)(fpsCountMax))) << "\n\n";
 					fpsTimer.stop();
+					myDynBuffer->setVsync(true);
+					
 				}
 				
 			}

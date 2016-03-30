@@ -397,6 +397,9 @@ public:
 	void clearAllHolders() {
 		singleton->stopAllThreads();
 		
+		glFlush();
+		glFinish();
+		
 		GamePageHolder* gph;
 		
 		int i;
@@ -407,6 +410,11 @@ public:
 				gph->reset();
 			}
 		}
+		
+		TOT_POINT_COUNT = 0;
+		
+		glFlush();
+		glFinish();
 		
 	}
 
@@ -5127,45 +5135,78 @@ UPDATE_LIGHTS_END:
 		
 		
 		
+		if (
+			(singleton->iGetConst(E_CONST_GROWPOINTSTEPS) > 0) &&
+			(DO_POINTS)	
+		) {
+			
+			singleton->bindShader("PointShader");
+			
+			singleton->setShaderFloat("voxelsPerCell",singleton->voxelsPerCell);
+			singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
+			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+			
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
+			singleton->setShaderInt("totRad",singleton->iGetConst(E_CONST_HVRAD));
+			singleton->setShaderInt("growSteps",singleton->iGetConst(E_CONST_GROWPOINTSTEPS));
+			singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+			
+			for (q = 0; q < singleton->iGetConst(E_CONST_GROWPOINTSTEPS); q++) {
+				
+				singleton->setShaderInt("stepNum",q);
+				
+				if ((q % 2) == 0) {
+					singleton->setShaderVec2("hvMult", 1.0f, 0.0f);
+				}
+				else {
+					singleton->setShaderVec2("hvMult", 0.0f, 1.0f);
+				}
+				
+				singleton->bindFBO("rasterFBO", activeRaster);
+				singleton->sampleFBO("rasterFBO",0,activeRaster);
+				
+				singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+				
+				
+				
+				singleton->fsQuad.draw();
+
+				singleton->unsampleFBO("rasterFBO",0,activeRaster);
+				singleton->unbindFBO();
+				
+				activeRaster = 1 - activeRaster;	
+			}
+			
+			singleton->unbindShader();
+		}
 		
-		singleton->bindShader("PointShader");
+		
+		
+		
+		
+		
+		
+		
+		
+		singleton->bindShader("LightShader");
+		singleton->bindFBO("resultFBO", activeRaster);
+		singleton->sampleFBO("rasterFBO",0,activeRaster);
 		
 		singleton->setShaderFloat("voxelsPerCell",singleton->voxelsPerCell);
 		singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
-		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
 		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-		
+		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
-		singleton->setShaderInt("totRad",singleton->iGetConst(E_CONST_HVRAD));
 		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
 		
-		for (q = 0; q < 4; q++) {
-			
-			singleton->setShaderInt("stepNum",q);
-			
-			if ((q % 2) == 0) {
-				singleton->setShaderVec2("hvMult", 1.0f, 0.0f);
-			}
-			else {
-				singleton->setShaderVec2("hvMult", 0.0f, 1.0f);
-			}
-			
-			singleton->bindFBO("rasterFBO", activeRaster);
-			singleton->sampleFBO("rasterFBO",0,activeRaster);
-			
-			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-			
-			
-			
-			singleton->fsQuad.draw();
+		singleton->fsQuad.draw();
 
-			singleton->unsampleFBO("rasterFBO",0,activeRaster);
-			singleton->unbindFBO();
-			
-			activeRaster = 1 - activeRaster;	
-		}
+		singleton->unsampleFBO("rasterFBO",0,activeRaster);
+		singleton->unbindFBO();
 		
 		singleton->unbindShader();
 		
@@ -5173,10 +5214,16 @@ UPDATE_LIGHTS_END:
 		
 		
 		
-		singleton->bindFBO("resultFBO", activeFBO);
-		singleton->drawFBO("rasterFBO", 0, 1.0f, 1 - activeRaster);
-		singleton->unbindFBO();
-		activeFBO = 1-activeFBO;
+		
+		
+		
+		
+		
+		
+		// singleton->bindFBO("resultFBO", activeFBO);
+		// singleton->drawFBO("rasterFBO", 0, 1.0f, 1 - activeRaster);
+		// singleton->unbindFBO();
+		// activeFBO = 1-activeFBO;
 		
 		
 		
