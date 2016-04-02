@@ -1673,8 +1673,40 @@ bool GameLogic::anyThreadsRunning ()
 		
 		return v1||v2;
 	}
-void GameLogic::loadNearestHolders ()
-                                  {
+void GameLogic::freePD ()
+                      {
+		
+		int q;
+		GamePageHolder* curHolder;
+		
+		for (q = 0; q < MAX_PDPOOL_SIZE; q++) {
+			if (singleton->pdPool[q].isFree) {
+				
+			}
+			else {
+				curHolder = getHolderById(
+					singleton->pdPool[q].boundToHolder.v0,
+					singleton->pdPool[q].boundToHolder.v1
+				);
+				if (curHolder != NULL) {
+					if (curHolder->lockWrite) {
+						
+					}
+					else {
+						if (curHolder->readyToRender) {
+							
+						}
+						else {
+							curHolder->readyToRender = true;
+							curHolder->unbindPD();
+						}
+					}
+				}
+			}
+		}
+	}
+void GameLogic::loadNearestHolders (bool doUpdate)
+                                               {
 		
 		FIVector4 tempVec;
 		
@@ -1683,7 +1715,7 @@ void GameLogic::loadNearestHolders ()
 		int i, j, k;
 		int ii, jj, kk;
 		int incVal;
-		int maxLoadRad = 0;
+		int maxLoadRad = 4;
 		int genCount = 0;
 		int mink;
 		int maxk;
@@ -1715,6 +1747,8 @@ void GameLogic::loadNearestHolders ()
 				maxLoadRad = 1;
 			break;
 		}
+		
+		maxLoadRad *= 2;
 		
 		bool doPaths;
 		
@@ -1754,6 +1788,15 @@ void GameLogic::loadNearestHolders ()
 		// else {
 		// 	return;
 		// }
+		
+		freePD();
+		
+		if (doUpdate) {
+			
+		}
+		else {
+			return;
+		}
 		
 		for (curLoadRadius = 0; curLoadRadius < maxLoadRad; curLoadRadius++) {
 			
@@ -1820,24 +1863,14 @@ void GameLogic::loadNearestHolders ()
 								}
 								
 								if (curHolder->listGenerated || curHolder->lockWrite) {
-									if (curHolder->lockWrite) {
-										
-									}
-									else {
-										if (curHolder->readyToRender) {
-											
-										}
-										else {
-											curHolder->readyToRender = true;
-											curHolder->unbindPD();
-										}
-									}
-									
+																		
 								}
 								else {
 									//cout << "genList\n";
 									
-									if(curHolder->prepPathRefresh(1)) {
+									if(
+										curHolder->prepPathRefresh(1)										
+									) {
 										
 										curPD = -1;
 										for (q = 0; q < MAX_PDPOOL_SIZE; q++) {

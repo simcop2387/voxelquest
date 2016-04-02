@@ -2,8 +2,8 @@
 
 //uniform usamplerBuffer Texture0;
 
-uniform float voxelsPerCell;
-uniform int cellsPerHolder;
+//uniform float voxelsPerCell;
+//uniform int cellsPerHolder;
 // uniform int CUBE_WRAP_INVALID;
 // uniform int CUBE_WRAP_ENTRIES;
 // uniform int CUBE_DATA_INVALID;
@@ -12,11 +12,11 @@ uniform float FOV;
 uniform vec2 clipDist;
 uniform vec2 bufferDim;
 uniform vec3 cameraPos;
-uniform vec3 lightVec;
+//uniform float curTime;
 
 
 uniform mat4 pmMatrix;
-uniform mat4 modelviewInverse;
+//uniform mat4 modelviewInverse;
 // uniform mat4 modelview;
 // uniform mat4 proj;
 
@@ -37,6 +37,8 @@ out vec4 vdata0; // x: index / 4096, y: remaining index
 void main() {
 	
 	worldPos = vec4(vposition.xyz,1.0);
+	//vec4 worldPos2 = worldPos;
+	//worldPos2.xyz += sin(curTime)*0.02;
 	vdata0 = data0;
 	//vdata1 = floor(data1+0.5);
 	//vdata2 = floor(data2+0.5);
@@ -58,6 +60,7 @@ in vec4 vdata0;
 //in vec4 vdata2;
 
 layout(location = 0) out vec4 FragColor0;
+layout(location = 1) out vec4 FragColor1;
 
 
 
@@ -120,38 +123,42 @@ void main() {
 	// 	discard;
 	// }
 
-	FragColor0 = vec4(
-		//mod((worldPos.xyz+0.01)/32.0,1.0),
+	// FragColor0 = vec4(
+	// 	//mod((worldPos.xyz+0.01)/32.0,1.0),
 		
-		//globColor
+	// 	//globColor
 		
-		//mod((worldPos.xyz+0.001)/float(cellsPerHolder),1.0)
+	// 	//mod((worldPos.xyz+0.001)/float(cellsPerHolder),1.0)
 		
-		// vec3(
-		// 	dot(
-		// 		vdata0.xyz,
-		// 		-lightVec
-		// 	)*pow(clamp(1.0-distance(worldPos.xyz,cameraPos.xyz)/50.0,0.0,1.0),0.5)
-		// )
+	// 	// vec3(
+	// 	// 	dot(
+	// 	// 		vdata0.xyz,
+	// 	// 		-lightVec
+	// 	// 	)*pow(clamp(1.0-distance(worldPos.xyz,cameraPos.xyz)/50.0,0.0,1.0),0.5)
+	// 	// )
 		
-		worldPos.xyz
+	// 	worldPos.xyz
 		
-		//  + vec3(
-		// 	mod(vdata0.w,255.0)/255.0,
-		// 	0.0,
-		// 	0.0
-		// )
-		//(vdata0.xyz + 1.0)*0.5
+	// 	//  + vec3(
+	// 	// 	mod(vdata0.w,255.0)/255.0,
+	// 	// 	0.0,
+	// 	// 	0.0
+	// 	// )
+	// 	//(vdata0.xyz + 1.0)*0.5
 		
-		//vec3(globTotSteps/64.0) // + baseCol*0.25
+	// 	//vec3(globTotSteps/64.0) // + baseCol*0.25
 		
 		
-		// * vec3(
-		// 	1.0-distance(finalPos.xyz,cameraPos)/100.0	
-		// )
-		,
-		1.0
-	);
+	// 	// * vec3(
+	// 	// 	1.0-distance(finalPos.xyz,cameraPos)/100.0	
+	// 	// )
+	// 	,
+	// 	1.0
+	// );
+	
+	
+	FragColor0 = worldPos;
+	FragColor1 = vdata0;
 
 }
 

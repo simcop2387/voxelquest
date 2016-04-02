@@ -105,6 +105,7 @@ public:
 	bool sphereMapOn;
 	bool waitingOnDestruction;
 	
+	bool updateHolderLookat;
 	bool vsyncOn;
 	bool commandOn;
 	bool renderingOctBounds;
@@ -1016,14 +1017,14 @@ public:
 		// qqqqqq
 		
 		
-		heightMapMaxInCells = 4096.0f;
+		heightMapMaxInCells = 2048.0f;
 		//mapSampScale = 2.0f;
 		int newPitch = (imageHM0->width) * 2; //*2;
 		mapPitch = (imageHM0->width); //newPitch;// //
 		
 		
 		voxelsPerCell = VOXELS_PER_CELL;
-		paddingInCells = 1;
+		paddingInCells = PADDING_IN_CELLS;
 		
 		cellsPerHolder = CELLS_PER_HOLDER;
 		holdersPerBlock = 8;
@@ -1218,6 +1219,7 @@ public:
 		renderingOctBounds = false;
 		commandOn = false;
 		vsyncOn = true;
+		updateHolderLookat = true;
 		placingPattern = false;
 		gridOn = false;
 		fogOn = 1.0f;
@@ -1831,8 +1833,8 @@ public:
 		}
 		
 		
-		fboMap["rasterFBO0"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
-		fboMap["rasterFBO1"].init(1, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
+		fboMap["rasterFBO0"].init(2, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
+		fboMap["rasterFBO1"].init(2, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
 		
 		fboMap["rasterPosFBO"].init(1, bufferDimTarg.getIX(), bufferDimTarg.getIY(), numChannels, fboHasDepth, GL_LINEAR);//, GL_REPEAT);
 		fboMap["rasterSourceFBO"].init(1, bufferDim.getIX(), bufferDim.getIY(), 1, false, GL_NEAREST);//, GL_REPEAT);
@@ -3149,7 +3151,7 @@ public:
 		}
 		else if (comp->uid.compare("$options.graphics.clipDist") == 0) {
 			
-			clipDist[1] = curValue*4096.0f*4.0;
+			clipDist[1] = curValue*512.0f;
 			
 		}
 		else if (comp->uid.compare("$options.graphics.maxHeight") == 0) {
@@ -5269,7 +5271,21 @@ DISPATCH_EVENT_END:
 	}
 	
 	
-	
+	void holderReport() {
+		
+		GamePageHolder* gph = gw->holderInFocus;
+		
+		if (gph == NULL) {
+			
+		}
+		else {
+			cout << "holderFlags " << gph->holderFlags << "\n";
+			cout << "listEmpty " << gph->listEmpty << "\n";
+			cout << "hasData " << gph->hasData << "\n";
+			cout << "readyToRender " << gph->readyToRender << "\n";
+			
+		}
+	}
 	
 	
 	void resetGeom() {
@@ -5331,6 +5347,15 @@ DISPATCH_EVENT_END:
 				commandOn = false;
 				
 				switch (key) {
+					
+					case 'u':
+						updateHolderLookat = !updateHolderLookat;
+						cout << "updateHolderLookat " << updateHolderLookat << "\n";
+					break;
+					case 'h':
+						holderReport();
+					break;
+					
 					case 'e':
 						cout << "error:\n";
 						glError();
@@ -9031,14 +9056,20 @@ DISPATCH_EVENT_END:
 	}
 	
 	
+
+	
 	
 	void checkFluid(GameFluid* gf) {
 		
-		if (updateHolders) {
-			gameLogic->loadNearestHolders();
-		}
+		//(getAvailPD() < MAX_PDPOOL_SIZE)
 		
+		
+		gameLogic->loadNearestHolders(updateHolders);		
 		return;
+		
+		
+		
+		
 		
 		if ((!draggingMap)&&(!fpsTest)&&updateHolders) {
 			gf->updateAll();
@@ -9079,7 +9110,7 @@ DISPATCH_EVENT_END:
 			
 			if (gf->cycleTerminated) {
 				
-				gameLogic->loadNearestHolders();
+				gameLogic->loadNearestHolders(updateHolders);
 				holderLoadCount++;
 				
 				if (holderLoadCount == MAX_HOLDER_LOAD_COUNT) {
@@ -9318,7 +9349,7 @@ DISPATCH_EVENT_END:
 						
 						//gw->drawPrim();
 						
-						gw->preUpdate();
+						
 						// if (true) { //doFrameRender
 						// 	if (renderingOct) {
 						// 		//gw->renderOct(gameOct);
@@ -9342,6 +9373,7 @@ DISPATCH_EVENT_END:
 						// 	}
 						// }
 						
+						gw->preUpdate();
 						gw->update();
 						
 						
@@ -9387,6 +9419,17 @@ DISPATCH_EVENT_END:
 	
 
 	
+	int getAvailPD() {
+		int q;
+		int count = 0;
+		for (q = 0; q < MAX_PDPOOL_SIZE; q++) {
+			if (pdPool[q].isFree) {
+				count++;
+			}
+		}
+		return count;
+	}
+	
 	FIVector4* cameraGetPos() {
 		return &resultCameraPos;
 	}	
@@ -9428,6 +9471,10 @@ DISPATCH_EVENT_END:
 
 	void display(bool doFrameRender)
 	{
+		
+		double milVox = (
+			((double)(TOT_POINT_COUNT))/1000000.0
+		);
 		
 		bool noTravel = false;
 		
@@ -9660,9 +9707,15 @@ DISPATCH_EVENT_END:
 				if (fpsCount == fpsCountMax) {
 					
 					fpsTest = false;
-					cout << "\nTOT_POINT_COUNT: " << TOT_POINT_COUNT << "\n";
+					cout << "\nNumber of voxels (in millions): " << milVox << "\n";
+					cout << "Available pdPool: " << getAvailPD() << "\n";
+					cout << "FPS: " << 1.0/(fpsTimer.getElapsedTimeInSec()/((double)(fpsCountMax))) << "\n";
 					cout << "Microseconds per frame: " << (fpsTimer.getElapsedTimeInMilliSec()*1000.0/((double)(fpsCountMax))) << "\n";
-					cout << "FPS: " << 1.0/(fpsTimer.getElapsedTimeInSec()/((double)(fpsCountMax))) << "\n\n";
+					cout << "Microseconds per million voxels: " << (fpsTimer.getElapsedTimeInMilliSec()*1000.0/(
+						((double)(fpsCountMax))*
+						milVox
+					)) << "\n\n";
+					
 					fpsTimer.stop();
 					myDynBuffer->setVsync(true);
 					

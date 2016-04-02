@@ -2,6 +2,7 @@
 
 //uniform usamplerBuffer Texture0;
 uniform sampler2D Texture0;
+uniform sampler2D Texture1;
 
 uniform float voxelsPerCell;
 uniform int stepNum;
@@ -10,7 +11,6 @@ uniform float FOV;
 uniform vec2 clipDist;
 uniform vec2 bufferDim;
 uniform vec3 cameraPos;
-uniform vec3 lightVec;
 uniform vec2 hvMult;
 uniform int totRad;
 uniform int growSteps;
@@ -39,6 +39,7 @@ $
 in vec4 worldPos;
 
 layout(location = 0) out vec4 FragColor0;
+layout(location = 1) out vec4 FragColor1;
 
 
 void getRay(in vec2 newTC, inout vec3 ro, inout vec3 rd) {
@@ -82,7 +83,8 @@ void main() {
     vec4 oneVec = vec4(1.0);
 
     vec2 TexCoord0 = gl_FragCoord.xy/(bufferDim.xy);
-    vec4 tex = texture(Texture0,TexCoord0.xy);
+    vec4 tex0 = texture(Texture0,TexCoord0.xy);
+    vec4 tex1 = texture(Texture1,TexCoord0.xy);
 
     vec3 ro = vec3(0.0);
     vec3 rd = vec3(0.0);
@@ -108,14 +110,15 @@ void main() {
     
     vec4 absSamp = vec4(0.0);
     vec4 samp = vec4(0.0);
-    vec4 bestSamp = tex;
+    vec4 bestSamp0 = tex0;
+    vec4 bestSamp1 = tex1;
 
     vec2 curCoord = vec2(0.0);
     vec2 offVal = vec2(0.0);
     
     vec2 boxVal;
 
-    //float bestBox = distance(cameraPos.xyz,tex.xyz);
+    // /float bestBox = distance(cameraPos.xyz,tex0.xyz);
 
     // for (j = -radv; j <= radv; j++) {
     //     tc.y = float(j);
@@ -134,7 +137,7 @@ void main() {
         absSamp = abs(samp);
 
         if (dot(absSamp.xyz,oneVec.xyz) > 0.0) {
-            //camDis = distance(cameraPos.xyz,samp.xyz);
+            
             
             boxVal = aabbIntersect(ro,rd,samp.xyz-voxelWidth,samp.xyz+voxelWidth);
             
@@ -142,10 +145,12 @@ void main() {
                 (boxVal.x <= boxVal.y)
                 // || (camDis > 50.0)
             ) {
-                testDis = boxVal.x;
+                camDis = distance(cameraPos.xyz,samp.xyz);
+                testDis = boxVal.x+camDis;
                 if (testDis < bestDis) {
                     bestDis = testDis;
-                    bestSamp = samp;
+                    bestSamp0 = samp;
+                    bestSamp1 = texture2D(Texture1,curCoord);
                     //bestBox = boxVal.x;
                 }
             }
@@ -165,11 +170,11 @@ void main() {
     //     finalCol = mod(finalCol+0.01,1.0);
     // }
     
+    
+    //bestSamp0.xyz = ro+rd*bestBox;
 
-    FragColor0 = vec4(
-        bestSamp.xyz,
-        1.0
-    );
+    FragColor0 = bestSamp0;
+    FragColor1 = bestSamp1;
 
 }
 

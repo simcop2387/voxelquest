@@ -24,7 +24,7 @@ const static int  MAX_DEBRIS = 0;
 const static bool GEN_COLLISION = false;
 //const static bool GEN_POLYS_WORLD = false;
 
-const static bool SINGLE_THREADED = false;
+
 const static bool DO_RANDOMIZE = false;
 
 // no greater than 8 unless shader changed (primIdList[8])
@@ -75,17 +75,22 @@ const static float ORG_SCALE_BASE = 0.5f;
 
 const static int DEF_SCALE_FACTOR = 1;
 const static int RENDER_SCALE_FACTOR = 4;
-
+const static bool SINGLE_THREADED = false;
 
 int TOT_POINT_COUNT = 0;
 
+const static bool DO_AO = false;
 const static bool DO_POINTS = true;
 const static int MAX_THREADS = 7;
-const static int NORM_RAD = 2;
-const static int AO_RAD = 1;
+// const static int NORM_RAD = 2;
+// const static int AO_RAD = 1;
 const static int MAX_HOLDER_LOAD_COUNT = 512;
+//const static int RASTER_HOLDER_RAD = 8;
+
 const static int VOXELS_PER_CELL = 16;
-const static int CELLS_PER_HOLDER = 16;
+const static int CELLS_PER_HOLDER = 8;
+const static int PADDING_IN_CELLS = 1;
+
 const static int MAX_PDPOOL_SIZE = MAX_THREADS;
 // const static int MAX_TBOPOOL_SIZE = 8;
 

@@ -4179,6 +4179,7 @@ struct VoxelInfo {
 	int viIndex;
 	uint normId;
 	vec3 normal;
+	vec3 pos;
 };
 
 struct VoxelCell {
@@ -4278,6 +4279,7 @@ struct PaddedData {
 	vector<VectorI3> fillStack;
 	VoxelBuffer voxelBuffer;
 	
+	intPair boundToHolder;
 	bool isFree;
 };
 

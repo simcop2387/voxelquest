@@ -1797,7 +1797,39 @@ FILL_GROUPS_RETURN:
 		return v1||v2;
 	}
 	
-	void loadNearestHolders() {
+	void freePD() {
+		
+		int q;
+		GamePageHolder* curHolder;
+		
+		for (q = 0; q < MAX_PDPOOL_SIZE; q++) {
+			if (singleton->pdPool[q].isFree) {
+				
+			}
+			else {
+				curHolder = getHolderById(
+					singleton->pdPool[q].boundToHolder.v0,
+					singleton->pdPool[q].boundToHolder.v1
+				);
+				if (curHolder != NULL) {
+					if (curHolder->lockWrite) {
+						
+					}
+					else {
+						if (curHolder->readyToRender) {
+							
+						}
+						else {
+							curHolder->readyToRender = true;
+							curHolder->unbindPD();
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	void loadNearestHolders(bool doUpdate) {
 		
 		FIVector4 tempVec;
 		
@@ -1806,7 +1838,7 @@ FILL_GROUPS_RETURN:
 		int i, j, k;
 		int ii, jj, kk;
 		int incVal;
-		int maxLoadRad = 0;
+		int maxLoadRad = 4;
 		int genCount = 0;
 		int mink;
 		int maxk;
@@ -1838,6 +1870,8 @@ FILL_GROUPS_RETURN:
 				maxLoadRad = 1;
 			break;
 		}
+		
+		maxLoadRad *= 2;
 		
 		bool doPaths;
 		
@@ -1877,6 +1911,15 @@ FILL_GROUPS_RETURN:
 		// else {
 		// 	return;
 		// }
+		
+		freePD();
+		
+		if (doUpdate) {
+			
+		}
+		else {
+			return;
+		}
 		
 		for (curLoadRadius = 0; curLoadRadius < maxLoadRad; curLoadRadius++) {
 			
@@ -1943,24 +1986,14 @@ FILL_GROUPS_RETURN:
 								}
 								
 								if (curHolder->listGenerated || curHolder->lockWrite) {
-									if (curHolder->lockWrite) {
-										
-									}
-									else {
-										if (curHolder->readyToRender) {
-											
-										}
-										else {
-											curHolder->readyToRender = true;
-											curHolder->unbindPD();
-										}
-									}
-									
+																		
 								}
 								else {
 									//cout << "genList\n";
 									
-									if(curHolder->prepPathRefresh(1)) {
+									if(
+										curHolder->prepPathRefresh(1)										
+									) {
 										
 										curPD = -1;
 										for (q = 0; q < MAX_PDPOOL_SIZE; q++) {

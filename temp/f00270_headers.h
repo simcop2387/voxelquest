@@ -126,6 +126,7 @@ public:
   int destructCount;
   bool sphereMapOn;
   bool waitingOnDestruction;
+  bool updateHolderLookat;
   bool vsyncOn;
   bool commandOn;
   bool renderingOctBounds;
@@ -599,6 +600,7 @@ public:
   void runReport ();
   void updateCS ();
   void getMarkerPos (int x, int y);
+  void holderReport ();
   void resetGeom ();
   void stopAllThreads ();
   void processInput (unsigned char key, bool keyDown, int x, int y);
@@ -670,6 +672,7 @@ public:
   void updateAmbientSounds ();
   void checkFluid (GameFluid * gf);
   void frameUpdate (bool doFrameRender);
+  int getAvailPD ();
   FIVector4 * cameraGetPos ();
   FIVector4 * cameraGetPosNoShake ();
   float getTargetTimeOfDay ();
@@ -1964,7 +1967,8 @@ public:
   void drawRegions (int offX, int offY, int offZ);
   int getClosestPathRad (btVector3 cpBTV, GamePageHolder * & closestHolder);
   bool anyThreadsRunning ();
-  void loadNearestHolders ();
+  void freePD ();
+  void loadNearestHolders (bool doUpdate);
 };
 #undef LZZ_INLINE
 #endif
@@ -2146,6 +2150,7 @@ public:
   string (curTargFBO) [3];
   string (curDepthFBO) [3];
   GamePageHolder * blockHolder;
+  GamePageHolder * holderInFocus;
   FIVector4 lScreenCoords;
   FIVector4 cScreenCoords;
   int cellsPerWorld;
@@ -2163,6 +2168,7 @@ public:
   FIVector4 tempVec2;
   FIVector4 tempVec3;
   FIVector4 tempVec4;
+  FIVector4 holderLookAt;
   FIVector4 (blockPos) [2];
   FIVector4 (nodePos) [2];
   FIVector4 (nodePosInPixels) [2];
@@ -2220,7 +2226,7 @@ public:
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void polyCombine ();
   void drawPolys (string fboName, int minPeel, int maxPeel);
-  void rasterHolder (int rad);
+  void rastHolder (int rad, bool drawLoading);
   void rasterPolys (int minPeel, int maxPeel, int extraRad = 0, bool doPoints = false);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);

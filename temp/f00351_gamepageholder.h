@@ -1506,6 +1506,9 @@ void GamePageHolder::bindPD (int pd)
                             {
 		curPD = pd;
 		singleton->pdPool[curPD].isFree = false;
+		
+		singleton->pdPool[curPD].boundToHolder.v0 = blockId;
+		singleton->pdPool[curPD].boundToHolder.v1 = holderId;
 	}
 void GamePageHolder::unbindPD ()
                         {

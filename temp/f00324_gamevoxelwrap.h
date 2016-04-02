@@ -50,12 +50,15 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		}
 		
 		int q;
+		int q2;
 		int p;
+		int p2;
 		int m;
 		float fVPC = voxelsPerCell;
 		fVPC = 1.0f/fVPC;
 		
 		ivec3 voxOffset;
+		ivec3 voxOffset2;
 		ivec3 cellOffset;
 		ivec3 localVoxOffset;
 		
@@ -70,6 +73,10 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		int ii2;
 		int jj2;
 		int kk2;
+		
+		int ii3;
+		int jj3;
+		int kk3;
 		
 		int ind;
 		
@@ -88,224 +95,381 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		int tempInd;
 		int VLIndex;
 		
+		float normLength;
+		
+		vec3 curNorm;
+		vec3 curNorm2;
 		vec3 totNorm;
+		vec3 tempPos;
+		vec3 tempPos2;
 		vec3 zeroVec = vec3(0.0f,0.0f,0.0f);
 		
 		float weight;
+		float weight2;
 		
 		uint curNID;
 		uint testNID;
 		
-		float frad = NORM_RAD;
+		int voxelNormRad = singleton->iGetConst(E_CONST_VOXEL_NORM_RAD);
+		int cellAORad = singleton->iGetConst(E_CONST_CELL_AO_RAD);
+		float voxelAORad = voxelsPerCell*cellAORad;
+		
+		float frad = voxelNormRad;
 		float maxRad = (frad*frad + frad*frad + frad*frad)*1.125f;
 		
 		int dataSize = 4;
 		
+		int passNum;
 		
 		int cellInd;
+		int cellInd2;
+		int curSize;
 		
-		for (p = 0; p < totSize; p++) {
-			q = voxelBuffer->voxelList[p].viIndex;
-			kk = q/(voxelsPerHolderPad*voxelsPerHolderPad);
-			jj = (q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
-			ii = q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
-			
-			if (voxelBuffer->getFlag(q,E_OCT_SURFACE)) {
+		float totWeight = 0.0f;
+		float weightCount = 1.0f;
+		
+		int ww;
+		
+		if (DO_AO) {
+			for (p = 0; p < totSize; p++) {
+				q = voxelBuffer->voxelList[p].viIndex;
+				kk = q/(voxelsPerHolderPad*voxelsPerHolderPad);
+				jj = (q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
+				ii = q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
 				
-				kk2 = kk/voxelsPerCell;
-				jj2 = jj/voxelsPerCell;
-				ii2 = ii/voxelsPerCell;
-				
-				cellInd = kk2*cellsPerHolderPad*cellsPerHolderPad + jj2*cellsPerHolderPad + ii2;
-				
-				voxelBuffer->cellLists[cellInd].indexArr[voxelBuffer->cellLists[cellInd].curSize] = p;
-				voxelBuffer->cellLists[cellInd].curSize++;
-				
+				if (voxelBuffer->getFlag(q,E_OCT_SURFACE)) {
+					
+					kk2 = kk/voxelsPerCell;
+					jj2 = jj/voxelsPerCell;
+					ii2 = ii/voxelsPerCell;
+					
+					cellInd = kk2*cellsPerHolderPad*cellsPerHolderPad + jj2*cellsPerHolderPad + ii2;
+					
+					voxelBuffer->cellLists[cellInd].indexArr[voxelBuffer->cellLists[cellInd].curSize] = p;
+					voxelBuffer->cellLists[cellInd].curSize++;
+					
+					voxOffset.x = ii;
+					voxOffset.y = jj;
+					voxOffset.z = kk;
+					//voxOffset -= paddingInVoxels;
+					
+					tempPos.x = voxOffset.x;
+					tempPos.y = voxOffset.y;
+					tempPos.z = voxOffset.z;
+					
+					voxelBuffer->voxelList[p].pos = tempPos;
+					
+				}
 			}
 		}
 		
 		
+		int maxPass = 1;
 		
+		if (DO_AO) {
+			maxPass = 2;
+		}
 		
-		for (p = 0; p < totSize; p++) {
-			q = voxelBuffer->voxelList[p].viIndex;
-			kk = q/(voxelsPerHolderPad*voxelsPerHolderPad);
-			jj = (q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
-			ii = q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
-			
-			if (voxelBuffer->getFlag(q,E_OCT_SURFACE)) {
+		for (passNum = 0; passNum < maxPass; passNum++) {
+			for (p = 0; p < totSize; p++) {
+				q = voxelBuffer->voxelList[p].viIndex;
+				kk = q/(voxelsPerHolderPad*voxelsPerHolderPad);
+				jj = (q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
+				ii = q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
 				
-				voxOffset.x = ii;
-				voxOffset.y = jj;
-				voxOffset.z = kk;
-				
-				voxOffset -= paddingInVoxels;
-				if (inBounds(&voxOffset,0,voxelsPerHolder)) {
+				if (voxelBuffer->getFlag(q,E_OCT_SURFACE)) {
+					
+					voxOffset.x = ii;
+					voxOffset.y = jj;
+					voxOffset.z = kk;
+					//voxOffset -= paddingInVoxels;
+					
+					tempPos.x = voxOffset.x;
+					tempPos.y = voxOffset.y;
+					tempPos.z = voxOffset.z;
 					
 					
-					curNID = voxelBuffer->voxelList[p].normId;
 					
-					curFlags = voxelBuffer->getFlags(q);
 					
-					totNorm.set(0.0f,0.0f,0.0f);
-					
-					for (zz = -NORM_RAD; zz <= NORM_RAD; zz++) {
-						for (yy = -NORM_RAD; yy <= NORM_RAD; yy++) {
-							for (xx = -NORM_RAD; xx <= NORM_RAD; xx++) {
+					if (inBounds(&voxOffset,paddingInVoxels,voxelsPerHolder+paddingInVoxels)) {
+						
+						
+						curNID = voxelBuffer->voxelList[p].normId;
+						
+						curFlags = voxelBuffer->getFlags(q);
+						
+						switch (passNum) {
+							case 0:
+								
+								totNorm.set(0.0f,0.0f,0.0f);
+								
+								for (zz = -voxelNormRad; zz <= voxelNormRad; zz++) {
+									for (yy = -voxelNormRad; yy <= voxelNormRad; yy++) {
+										for (xx = -voxelNormRad; xx <= voxelNormRad; xx++) {
+											
+											
+											
+											// if (
+											// 	(zz == 0) && (yy == 0) && (xx == 0)	
+											// ) {
+												
+											// }
+											// else {
+												
+											// }
+											
+											tempInd = (zz+kk)*voxelsPerHolderPad*voxelsPerHolderPad + (yy+jj)*voxelsPerHolderPad + (xx + ii);
+											tempFlags = voxelBuffer->getFlagsAtNode(tempInd);
+											VLIndex = voxelBuffer->getIndAtNode(tempInd);
+											
+											if (VLIndex == -1) {
+												testNID = 0;
+											}
+											else {
+												testNID = voxelBuffer->voxelList[VLIndex].normId;
+											}
+											
+											// if (p%1000 == 0) {
+											// 	cout << "curNID " << curNID << "testNID" << testNID << "\n";
+											// }
+											
+											
+											
+											// if (
+											// 	((tempFlags&E_OCT_SURFACE) > 0)
+											// 	&& (curNID == testNID)
+											// ) {
+											// 	normFlags = (tempFlags&63);
+											// 	totNorm += BASE_NORMALS[normFlags];
+											// }
+											
+											
+											
+											if ((tempFlags&E_OCT_SURFACE) > 0) {
+												
+												weight = maxRad-(xx*xx + yy*yy + zz*zz);
+												
+												normFlags = (tempFlags&63);
+											
+												if (curNID == testNID) {
+													totNorm += BASE_NORMALS[normFlags]*weight;
+												}
+												else {
+													totNorm -= BASE_NORMALS[normFlags]*0.75f*weight;
+												}
+											}
+											
+											// position(3)
+											// normal(3)
+											// material(1)
+											// id(1)
+											
+											
+											
+										}
+									}
+								}
 								
 								
-								
-								// if (
-								// 	(zz == 0) && (yy == 0) && (xx == 0)	
-								// ) {
+								if (totNorm.normalize()) {
 									
-								// }
-								// else {
-									
-								// }
-								
-								tempInd = (zz+kk)*voxelsPerHolderPad*voxelsPerHolderPad + (yy+jj)*voxelsPerHolderPad + (xx + ii);
-								tempFlags = voxelBuffer->getFlagsAtNode(tempInd);
-								VLIndex = voxelBuffer->getIndAtNode(tempInd);
-								
-								if (VLIndex == -1) {
-									testNID = 0;
 								}
 								else {
-									testNID = voxelBuffer->voxelList[VLIndex].normId;
+									totNorm = vec3(0.0f,0.0f,1.0f);
 								}
 								
-								// if (p%1000 == 0) {
-								// 	cout << "curNID " << curNID << "testNID" << testNID << "\n";
-								// }
+								voxelBuffer->voxelList[p].normal = totNorm;
+
+							break;
+							
+							case 1:
 								
-								
-								
-								// if (
-								// 	((tempFlags&E_OCT_SURFACE) > 0)
-								// 	&& (curNID == testNID)
-								// ) {
-								// 	normFlags = (tempFlags&63);
-								// 	totNorm += BASE_NORMALS[normFlags];
-								// }
-								
-								
-								
-								if ((tempFlags&E_OCT_SURFACE) > 0) {
+								if (DO_AO) {
+									curNorm = voxelBuffer->voxelList[p].normal;
 									
-									weight = maxRad-(xx*xx + yy*yy + zz*zz);
+									kk2 = kk/voxelsPerCell;
+									jj2 = jj/voxelsPerCell;
+									ii2 = ii/voxelsPerCell;
 									
-									normFlags = (tempFlags&63);
-								
-									if (curNID == testNID) {
-										totNorm += BASE_NORMALS[normFlags]*weight;
-									}
-									else {
-										totNorm -= BASE_NORMALS[normFlags]*0.75f*weight;
+									cellInd = kk2*cellsPerHolderPad*cellsPerHolderPad + jj2*cellsPerHolderPad + ii2;
+									
+									totWeight = 0.0f;
+									weightCount = 0.01f;
+									
+									for (zz = -cellAORad; zz <= cellAORad; zz++) {
+										for (yy = -cellAORad; yy <= cellAORad; yy++) {
+											for (xx = -cellAORad; xx <= cellAORad; xx++) {
+												cellInd2 =
+													(kk2+zz)*cellsPerHolderPad*cellsPerHolderPad +
+													(jj2+yy)*cellsPerHolderPad +
+													(ii2+xx);
+													
+												curSize = voxelBuffer->cellLists[cellInd2].curSize;
+												
+												for (ww = 0; ww < curSize; ww++) {
+													p2 = voxelBuffer->cellLists[cellInd2].indexArr[ww];
+													q2 = voxelBuffer->voxelList[p2].viIndex;
+													
+													tempPos2 = voxelBuffer->voxelList[p2].pos;
+													curNorm2 = voxelBuffer->voxelList[p2].normal;
+													
+													totNorm = tempPos2 - tempPos;
+													
+													normLength = totNorm.length();
+													
+													if (normLength == 0.0f) {
+														
+													}
+													else {
+														totNorm /= normLength;
+														
+														// weight = how much it occludes; 0: none, 1: all
+														
+														weight = clampfZO((voxelAORad-normLength)/voxelAORad);
+														
+														weight2 =
+															weight * 
+															clampfZO((curNorm.dot(totNorm)+1.0f)*0.5f) * 
+															clampfZO(normLength*2.0f/voxelAORad) *
+															clampfZO((curNorm.dot(-curNorm2)+1.0f)*0.5f)
+														;
+														
+														totWeight += weight2;
+														weightCount += weight;
+														
+													}
+													
+													
+													
+													
+													
+													// kk3 = q2/(voxelsPerHolderPad*voxelsPerHolderPad);
+													// jj3 = (q2-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
+													// ii3 = q2-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
+													
+													// voxOffset2.x = ii3;
+													// voxOffset2.y = jj3;
+													// voxOffset2.z = kk3;
+													//voxOffset2 -= paddingInVoxels;
+													
+													// voxelBuffer->voxelList[p2]
+													/// 
+													
+													
+												}
+												
+											}
+										}
 									}
 								}
 								
-								// position(3)
-								// normal(3)
-								// material(1)
-								// id(1)
 								
 								
+								
+								
+							
+							
+							
+							break;
+						}
+						
+						
+						if (
+							(
+								DO_AO&&(passNum == 1)
+							) ||
+							(
+								!DO_AO	
+							)	
+						) {
+							
+							
+							//voxOffset += paddingInVoxels;
+							voxOffset += offsetInVoxels;
+							
+							fVO.x = voxOffset.x;
+							fVO.y = voxOffset.y;
+							fVO.z = voxOffset.z;
+							fVO *= fVPC;
+							
+							totNorm = voxelBuffer->voxelList[p].normal;
+							
+							tempData[0] = totNorm.x;
+							tempData[1] = totNorm.y;
+							tempData[2] = totNorm.z;
+							tempData[3] = totWeight/weightCount;
+							
+							if (DO_POINTS) {
+								gph->vboWrapper.vertexVec.push_back(fVO.x);
+								gph->vboWrapper.vertexVec.push_back(fVO.y);
+								gph->vboWrapper.vertexVec.push_back(fVO.z);
+								gph->vboWrapper.vertexVec.push_back(1.0f);
+								
+								for (m = 0; m < dataSize; m++) {
+									gph->vboWrapper.vertexVec.push_back(tempData[m]);
+								}
 								
 							}
-						}
-					}
-					
-					if (totNorm == zeroVec) {
-						totNorm = vec3(0.0f,0.0f,1.0f);
-					}
-					
-					totNorm.normalize();
-					
-					
-					// for (zz = -NORM_RAD; zz <= NORM_RAD; zz++) {
-					// 	for (yy = -NORM_RAD; yy <= NORM_RAD; yy++) {
-					// 		for (xx = -NORM_RAD; xx <= NORM_RAD; xx++) {
+							else {
 								
-					// 		}
+								gph->vboWrapper.vboBox(
+									fVO.x, fVO.y, fVO.z,
+									0.0f,fVPC,
+									curFlags,
+									tempData,
+									4
+								);
+							}
+						}
+						
+						
+						
+						
+						
+					}
+					else {
+						// not in bounds
+						
+						
+						
+					}
+					
+					// if (inBounds(&voxOffset,0,voxelsPerHolder)) {
+					// 	cellOffset = voxOffset/voxelsPerCell;
+					// 	localVoxOffset = voxOffset-(cellOffset*voxelsPerCell);
+					// 	//fLocalVoxOffset = toVEC(localVoxOffset);
+					// 	//fLocalVoxOffset *= fVPC;
+						
+					// 	ind = cellOffset.z*cellsPerHolder*cellsPerHolder + cellOffset.y*cellsPerHolder + cellOffset.x;
+						
+					// 	if (gph->cubeData[ind] == CUBE_DATA_INVALID) {
+					// 		gph->cubeWraps.push_back(CubeWrap());
+					// 		gph->cubeData[ind] = (gph->cubeWraps.size()-1);
+					// 		gph->cubeWraps[gph->cubeData[ind]].init();
 					// 	}
+						
+					// 	curCW = &(gph->cubeWraps[gph->cubeData[ind]]);
+						
+					// 	curCW->insertValue(&localVoxOffset,voxelBuffer->getFlags(q));//, &fLocalVoxOffset);
 					// }
 					
 					
 					
-					voxOffset += paddingInVoxels;
-					voxOffset += offsetInVoxels;
 					
-					fVO.x = voxOffset.x;
-					fVO.y = voxOffset.y;
-					fVO.z = voxOffset.z;
-					fVO *= fVPC;
 					
-					tempData[0] = totNorm.x;
-					tempData[1] = totNorm.y;
-					tempData[2] = totNorm.z;
-					tempData[3] = curNID;
 					
-					if (DO_POINTS) {
-						gph->vboWrapper.vertexVec.push_back(fVO.x);
-						gph->vboWrapper.vertexVec.push_back(fVO.y);
-						gph->vboWrapper.vertexVec.push_back(fVO.z);
-						gph->vboWrapper.vertexVec.push_back(1.0f);
-						
-						for (m = 0; m < dataSize; m++) {
-							gph->vboWrapper.vertexVec.push_back(tempData[m]);
-						}
-						
-					}
-					else {
-						
-						gph->vboWrapper.vboBox(
-							fVO.x, fVO.y, fVO.z,
-							0.0f,fVPC,
-							curFlags,
-							tempData,
-							4
-						);
-					}
+					
+					
+					
+					
 					
 					
 					
 				}
 				
-				// if (inBounds(&voxOffset,0,voxelsPerHolder)) {
-				// 	cellOffset = voxOffset/voxelsPerCell;
-				// 	localVoxOffset = voxOffset-(cellOffset*voxelsPerCell);
-				// 	//fLocalVoxOffset = toVEC(localVoxOffset);
-				// 	//fLocalVoxOffset *= fVPC;
-					
-				// 	ind = cellOffset.z*cellsPerHolder*cellsPerHolder + cellOffset.y*cellsPerHolder + cellOffset.x;
-					
-				// 	if (gph->cubeData[ind] == CUBE_DATA_INVALID) {
-				// 		gph->cubeWraps.push_back(CubeWrap());
-				// 		gph->cubeData[ind] = (gph->cubeWraps.size()-1);
-				// 		gph->cubeWraps[gph->cubeData[ind]].init();
-				// 	}
-					
-				// 	curCW = &(gph->cubeWraps[gph->cubeData[ind]]);
-					
-				// 	curCW->insertValue(&localVoxOffset,voxelBuffer->getFlags(q));//, &fLocalVoxOffset);
-				// }
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
 			}
-			
 		}
+		
 	}
 void GameVoxelWrap::process (GamePageHolder * gph)
                                           {
@@ -320,7 +484,7 @@ void GameVoxelWrap::process (GamePageHolder * gph)
 			gph->gphMinInCells.getIZ()
 		);
 		
-		offsetInVoxels = offsetInCells;
+		offsetInVoxels = offsetInCells - paddingInCells;
 		offsetInVoxels *= voxelsPerCell;
 		
 
@@ -332,7 +496,7 @@ void GameVoxelWrap::process (GamePageHolder * gph)
 		
 		while( findNextCoord(&voxResult) ) {
 			floodFill(voxResult);
-			goto DONE_WITH_IT;
+			//goto DONE_WITH_IT;
 		}
 		
 		DONE_WITH_IT:
@@ -357,8 +521,8 @@ bool GameVoxelWrap::findNextCoord (ivec3 * voxResult)
 		ivec3 localOffset;
 		
 		
-		int minv = 0 + paddingInCells;
-		int maxv = cellsPerHolderPad-paddingInCells;
+		int minv = 0;// + paddingInCells;
+		int maxv = cellsPerHolderPad; // -paddingInCells;
 		
 		int lastPtr;
 		int cellData;
@@ -853,7 +1017,7 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
                                                             {
 		
 		ivec3 worldPos = (*pos) + offsetInVoxels;
-		worldPos -= paddingInVoxels;
+		//worldPos -= paddingInVoxels;
 		
 		ivec3 worldClosestCenter;// = worldPos;
 		ivec3 localClosestCenter;
@@ -863,7 +1027,7 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
 		voxelBuffer->voxelList[VLIndex].normId = worldClosestCenter.x*3 + worldClosestCenter.y*7 + worldClosestCenter.z*11;
 		
 		localClosestCenter = worldClosestCenter - offsetInVoxels;
-		localClosestCenter += paddingInVoxels;
+		//localClosestCenter += paddingInVoxels;
 		
 		
 		int vOff = 16;
@@ -883,7 +1047,13 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
 		
 		terNorm *= -1.0f;
 		
-		terNorm.normalize();
+		if (terNorm.normalize()) {
+			
+		}
+		else {
+			
+		}
+		
 		
 		
 		//clampfZO(terNorm.z)*0.5f + 0.5f

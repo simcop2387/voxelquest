@@ -34,7 +34,7 @@ struct Vector2
     void        set(float x, float y);
     float       length() const;                         //
     float       distance(const Vector2& vec) const;     // distance between two vectors
-    Vector2&    normalize();                            //
+    bool        normalize();                            //
     float       dot(const Vector2& vec) const;          // dot product
     bool        equal(const Vector2& vec, float e) const; // compare with epsilon
 
@@ -81,7 +81,7 @@ struct Vector3
     void        set(float x, float y, float z);
     float       length() const;                         //
     float       distance(const Vector3& vec) const;     // distance between two vectors
-    Vector3&    normalize();                            //
+    bool        normalize();                            //
     float       dot(const Vector3& vec) const;          // dot product
     Vector3     cross(const Vector3& vec) const;        // cross product
     bool        equal(const Vector3& vec, float e) const; // compare with epsilon
@@ -252,14 +252,18 @@ inline float Vector2::distance(const Vector2& vec) const {
     return sqrtf((vec.x-x)*(vec.x-x) + (vec.y-y)*(vec.y-y));
 }
 
-inline Vector2& Vector2::normalize() {
+inline bool Vector2::normalize() {
     float xxyy = x*x + y*y;
 
-    //float invLength = invSqrt(xxyy);
-    float invLength = 1.0f / sqrtf(xxyy);
+    float len = sqrtf(xxyy);
+    if (len == 0.0f) {
+        return false;
+    }
+    float invLength = 1.0f / len;
+    
     x *= invLength;
     y *= invLength;
-    return *this;
+    return true;
 }
 
 inline float Vector2::dot(const Vector2& rhs) const {
@@ -379,14 +383,19 @@ inline float Vector3::distance(const Vector3& vec) const {
     return sqrtf((vec.x-x)*(vec.x-x) + (vec.y-y)*(vec.y-y) + (vec.z-z)*(vec.z-z));
 }
 
-inline Vector3& Vector3::normalize() {
+inline bool Vector3::normalize() {
     float xxyyzz = x*x + y*y + z*z;
     //float invLength = invSqrt(xxyyzz);
-    float invLength = 1.0f / sqrtf(xxyyzz);
+    float len = sqrtf(xxyyzz);
+    if (len == 0.0f) {
+        return false;
+    }
+    float invLength = 1.0f / len;
+    
     x *= invLength;
     y *= invLength;
     z *= invLength;
-    return *this;
+    return true;
 }
 
 inline float Vector3::dot(const Vector3& rhs) const {

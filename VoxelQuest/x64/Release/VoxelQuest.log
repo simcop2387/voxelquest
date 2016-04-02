@@ -1,4 +1,4 @@
-﻿Build started 3/29/2016 11:52:43 PM.
+﻿Build started 4/2/2016 1:36:28 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -358,10 +358,10 @@
          cellsPerNodeXY: 16
          cellsPerNodeZ: 8
          holdersPerBlock: 8
-         cellsPerBlock: 128
-         terDataBufPitchScaledXY 10
-         cellsPerHolder: 16
-         cellsPerWorld: 32768
+         cellsPerBlock: 64
+         terDataBufPitchScaledXY 4
+         cellsPerHolder: 8
+         cellsPerWorld: 16384
          blocksPerWorld: 256
          MAX_UNIFORMS: 65536
          
@@ -1007,23 +1007,208 @@
                    
          GW DONE          
          reshape
-         curHeight 0 newHeight 1985.76
+         curHeight 0 newHeight 1086.24
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          GL_MAX_TEXTURE_BUFFER_SIZE 134217728
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         iNumSteps:  32         
+         iNumSteps:  16         
+         iNumSteps:  32         
+         iNumSteps:  64         
+         iNumSteps:  32         
+         iNumSteps:  16         
+         iNumSteps:  32         
          
          updateHolders 0
          command:
          start FPS timer
          
-         TOT_POINT_COUNT: 8025094
-         Microseconds per frame: 4085.76
-         FPS: 244.751
+         Number of voxels (in millions): 7.06106
+         Available pdPool: 7
+         FPS: 120.77
+         Microseconds per frame: 8280.24
+         Microseconds per million voxels: 1172.68
          
-         iNumSteps:  16         
-         iNumSteps:  16         
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+     1>EXEC : Shader  527  ( ../src/glsl/PointShader.c ) compile error : 0(110) : error C1008: undefined variable "tex"
+     1>0(163): error C1008: undefined variable "bestSamp"
+              
+     1>EXEC : Program  528  link error : Fragment info
+         -------------
+     1>0(110): error C1008: undefined variable "tex"
+     1>0(163): error C1008: undefined variable "bestSamp"
+                
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+     1>EXEC : Shader  644  ( ../src/glsl/PointShader.c ) compile error : 0(163) : error C1008: undefined variable "bestSamp"
+              
+     1>EXEC : Program  645  link error : Fragment info
+         -------------
+     1>0(163): error C1008: undefined variable "bestSamp"
+                
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         iNumSteps:  64         
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         medianCount 1
+         medianCount 2
+     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
+C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -1.
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
 
-Build succeeded.
+Build FAILED.
 
-Time Elapsed 00:35:02.89
+Time Elapsed 00:09:46.87
