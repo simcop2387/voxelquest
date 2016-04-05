@@ -161,6 +161,7 @@ public:
 		float weightCount = 1.0f;
 		
 		int ww;
+		int curMat = 0;
 		
 		if (DO_AO) {
 			for (p = 0; p < totSize; p++) {
@@ -227,6 +228,9 @@ public:
 						
 						
 						curNID = voxelBuffer->voxelList[p].normId;
+						curMat = voxelBuffer->voxelList[p].matId;
+						
+						
 						
 						curFlags = voxelBuffer->getFlags(q);
 						
@@ -429,7 +433,7 @@ public:
 							tempData[0] = totNorm.x;
 							tempData[1] = totNorm.y;
 							tempData[2] = totNorm.z;
-							tempData[3] = totWeight/weightCount;
+							tempData[3] = curMat;//totWeight/weightCount;
 							
 							if (DO_POINTS) {
 								gph->vboWrapper.vertexVec.push_back(fVO.x);
@@ -749,7 +753,6 @@ public:
 			for (q = 0; q < NUM_ORIENTATIONS; q++) {
 				tempVox = curVox + DIR_VECS_IV[q];
 				
-					
 				
 				if (isSurfaceVoxel(&tempVox,lastPtr,true)) {
 					basePD->fillStack.push_back(tempVox);
@@ -1005,7 +1008,11 @@ public:
 
 	
 	
-
+	float rand2D(vec3 co) {
+		vec3 myres = co;
+		myres.z = 0.1725f;
+		return fract(sin(myres.dot(crand0))*43758.8563f);
+	}
 	
 	vec3 randPN(vec3 co) {
 			
@@ -1079,6 +1086,11 @@ public:
 	void calcVoxel(ivec3* pos, int octPtr, int VLIndex) {
 		
 		ivec3 worldPos = (*pos) + offsetInVoxels;
+		vec3 fWorldPos = vec3(
+			worldPos.x,
+			worldPos.y,
+			worldPos.z
+		);
 		//worldPos -= paddingInVoxels;
 		
 		ivec3 worldClosestCenter;// = worldPos;
@@ -1092,7 +1104,7 @@ public:
 		//localClosestCenter += paddingInVoxels;
 		
 		
-		int vOff = 16;
+		int vOff = 8;
 		
 		float terSamp = sampLinear(&localClosestCenter, ivec3(0,0,0));
 		
@@ -1109,23 +1121,49 @@ public:
 		
 		terNorm *= -1.0f;
 		
-		if (terNorm.normalize()) {
-			
+		bool isTer = (mixf(terSamp,terSampOrig,0.0f) >= 0.5f);
+		
+		bool isGrass = false;
+		
+		
+		uint finalMat = TEX_NULL;
+		
+		
+		if (isTer) {
+			finalMat = TEX_EARTH;
 		}
 		else {
+			if (terNorm.normalize()) {
+				if (terNorm.z > 0.5f) {
+					int grassOff = rand2D(fWorldPos)*8.0f;
+					float terSampGrass = sampLinear(pos, ivec3(0,0,-grassOff));
+					
+					if (terSampGrass > 0.5f) {
+						isGrass = true;
+						finalMat = TEX_GRASS;
+					}
+				}
+			}
 			
 		}
 		
 		
+		
+		bool isSolid = isTer||isGrass;
 		
 		//clampfZO(terNorm.z)*0.5f + 0.5f
 		
-		bool isSolid = (mixf(terSamp,terSampOrig,0.0f) >= 0.5f);
+		
 		//bool isSolid = (terSamp >= 0.5f);
 		
 		
 		if (isSolid) {
 			voxelBuffer->setFlag(octPtr, E_OCT_SOLID);
+			
+			// x = base tex, y = variant
+			//floor(curTex.x*256.0*255.0) + floor(curTex.y*255.0);
+			
+			voxelBuffer->voxelList[VLIndex].matId = finalMat*256;
 		}
 		
 		

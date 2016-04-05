@@ -1,22 +1,16 @@
 #version 330
 
-//uniform usamplerBuffer Texture0;
 uniform sampler2D Texture0;
 uniform sampler2D Texture1;
 
 uniform float voxelsPerCell;
-uniform int stepNum;
-uniform int cellsPerHolder;
 uniform float FOV;
 uniform vec2 clipDist;
 uniform vec2 bufferDim;
 uniform vec3 cameraPos;
 uniform vec2 hvMult;
 uniform int totRad;
-uniform int growSteps;
 uniform mat4 modelviewInverse;
-
-// uniform mat4 pmMatrix;
 
 
 
@@ -47,8 +41,8 @@ void getRay(in vec2 newTC, inout vec3 ro, inout vec3 rd) {
  float NEAR = clipDist.x;
  float FAR = clipDist.y;
 
- float dx = tan(FOV*0.5f)*(newTC.x*2.0-1.0f)/aspect; //gl_FragCoord.x/(bufferDim.x*0.5)
- float dy = tan(FOV*0.5f)*((1.0f-newTC.y)*2.0-1.0f); //gl_FragCoord.y/(bufferDim.y*0.5)
+ float dx = tan(FOV*0.5f)*(newTC.x*2.0-1.0f)/aspect;
+ float dy = tan(FOV*0.5f)*((1.0f-newTC.y)*2.0-1.0f);
 
  dx = -dx;
 
@@ -89,7 +83,7 @@ void main() {
     vec3 ro = vec3(0.0);
     vec3 rd = vec3(0.0);
     
-    getRay(TexCoord0,ro,rd);
+    
     
     
     
@@ -118,12 +112,8 @@ void main() {
     
     vec2 boxVal;
 
-    // /float bestBox = distance(cameraPos.xyz,tex0.xyz);
-
-    // for (j = -radv; j <= radv; j++) {
-    //     tc.y = float(j);
-        
-    // }
+    
+    getRay(TexCoord0,ro,rd);
     
     for (i = -totRad; i <= totRad; i++ ) {
         tc.x = float(i);
@@ -141,37 +131,23 @@ void main() {
             
             boxVal = aabbIntersect(ro,rd,samp.xyz-voxelWidth,samp.xyz+voxelWidth);
             
-            if (
-                (boxVal.x <= boxVal.y)
-                // || (camDis > 50.0)
-            ) {
+            if (boxVal.x <= boxVal.y) {
                 camDis = distance(cameraPos.xyz,samp.xyz);
                 testDis = boxVal.x+camDis;
                 if (testDis < bestDis) {
                     bestDis = testDis;
                     bestSamp0 = samp;
                     bestSamp1 = texture2D(Texture1,curCoord);
-                    //bestBox = boxVal.x;
                 }
             }
             
             
         }           
 
-    }  
-
-
-
-    // vec3 finalCol = 
-    //     bestSamp.xyz
-    // ;    
-    // if (stepNum == (growSteps-1)) {
-    //     //finalCol = ro+rd*bestBox;
-    //     finalCol = mod(finalCol+0.01,1.0);
-    // }
+    }
     
-    
-    //bestSamp0.xyz = ro+rd*bestBox;
+      
+
 
     FragColor0 = bestSamp0;
     FragColor1 = bestSamp1;

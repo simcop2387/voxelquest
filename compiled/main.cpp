@@ -73,6 +73,8 @@ const static float ORG_SCALE_BASE = 0.5f;
 #endif
 
 
+const static int SHADOW_MAP_RES = 2048;
+
 const static int DEF_SCALE_FACTOR = 1;
 const static int RENDER_SCALE_FACTOR = 4;
 const static bool SINGLE_THREADED = false;
@@ -90,6 +92,7 @@ const static int MAX_HOLDER_LOAD_COUNT = 512;
 const static int VOXELS_PER_CELL = 16;
 const static int CELLS_PER_HOLDER = 8;
 const static int PADDING_IN_CELLS = 1;
+const static float HM_MAX_IN_CELLS = CELLS_PER_HOLDER*256;//8192.0f;
 
 const static int MAX_PDPOOL_SIZE = MAX_THREADS;
 // const static int MAX_TBOPOOL_SIZE = 8;
@@ -3658,13 +3661,16 @@ bool replaceStr(std::string& str, const std::string& from, const std::string& to
 // const static unsigned long int STEP_TIME_IN_MICRO_SEC = 32000;
 
 
-
 #define E_CONST(DDD) \
+DDD(E_CONST_LIGHTTHRESH) \
+DDD(E_CONST_LIGHTORTHOSIZE) \
+DDD(E_CONST_LIGHTDIS) \
 DDD(E_CONST_RASTER_HOLDER_RAD) \
 DDD(E_CONST_VOXEL_NORM_RAD) \
 DDD(E_CONST_CELL_AO_RAD) \
 DDD(E_CONST_GROWPOINTSTEPS) \
 DDD(E_CONST_HVRAD) \
+DDD(E_CONST_FILLNEARESTRAD) \
 DDD(E_CONST_DOT_CLIP) \
 DDD(E_CONST_BAKE_TICKS) \
 DDD(E_CONST_TURNBASED_TICKS) \
@@ -3946,6 +3952,51 @@ enum E_VOLUME_WRAPPERS {
 // 	"E_VW_VORO",
 // 	"E_VW_LENGTH"
 // };
+
+
+
+
+
+#define E_TEXENTRY(DDD) \
+DDD(TEX_NULL) \
+DDD(TEX_DEBUG) \
+DDD(TEX_UNUSED) \
+DDD(TEX_SAND) \
+DDD(TEX_STONE) \
+DDD(TEX_SNOW) \
+DDD(TEX_GRASS) \
+DDD(TEX_MORTAR) \
+DDD(TEX_WOOD) \
+DDD(TEX_BRICK) \
+DDD(TEX_SHINGLE) \
+DDD(TEX_PLASTER) \
+DDD(TEX_EARTH) \
+DDD(TEX_BARK) \
+DDD(TEX_TREEWOOD) \
+DDD(TEX_LEAF) \
+DDD(TEX_GOLD) \
+DDD(TEX_WATER) \
+DDD(TEX_METAL) \
+DDD(TEX_GLASS) \
+DDD(TEX_MAPLAND) \
+DDD(TEX_MAPWATER) \
+DDD(TEX_SKY) \
+DDD(TEX_SKIN) \
+DDD(TEX_LEATHER) \
+DDD(TEX_EXPLOSION) \
+DDD(TEX_PANTS) \
+DDD(TEX_ARMOR) \
+DDD(TEX_MEAT) \
+DDD(TEX_BONE) \
+DDD(TEX_LENGTH)
+
+string E_TEXENTRY_STRINGS[] = {
+	E_TEXENTRY(DO_DESCRIPTION)
+};
+
+enum E_TEXENTRY_VALS {
+	E_TEXENTRY(DO_ENUM)
+};
 
 
 
@@ -6721,6 +6772,14 @@ public:
     void        setColumn(int index, const Vector4& v);
     void        setColumn(int index, const Vector3& v);
 
+    void        orthoProjection(const float width, const float height, const float nZ, const float fZ);
+
+    void        lookAt(
+        Vector3 &eye, // target point
+        Vector3 &center, // origin point
+        Vector3 &up    
+    );
+
     float* get();
     const float* getTranspose();                        // return transposed matrix
     float        getDeterminant();
@@ -7213,7 +7272,61 @@ inline Matrix4::Matrix4()
     identity();
 }
 
+void Matrix4::lookAt(
+    Vector3 &eye, // target point
+    Vector3 &center, // origin point
+    Vector3 &up
+) {
+   
+    
+    Vector3  f = (center - eye);
+    f.normalize();
+    Vector3 u = up;
+    Vector3 s = f.cross(u);
+    s.normalize();
+    u = s.cross(f);
+    u.normalize();
 
+    set(
+        s.x,
+        s.y,
+        s.z,
+        0.0f,
+        
+        u.x,
+        u.y,
+        u.z,
+        0.0f,
+        
+        -f.x,
+        -f.y,
+        -f.z,
+        0.0f,
+        
+        -s.dot(eye),
+        -u.dot(eye),
+         f.dot(eye),
+        1.0f
+    );
+}
+
+void Matrix4::orthoProjection(
+    const float width,
+    const float height,
+    const float nZ,
+    const float fZ
+) {
+    // asumed r-l = width , t-b = height
+    
+    set(
+        2.0f/width,  0.0f,              0.0f,                    0.0f,
+        0.0f,        2.0f/height,       0.0f,                    0.0f,
+        0.0f,        0.0f,              -2.0f/(fZ-nZ),           0.0f,
+        0.0f,        0.0f,              -(fZ+nZ)/(fZ-nZ),        1.0f
+    );
+    
+    
+}
 
 inline Matrix4::Matrix4(const float src[16])
 {
@@ -9141,6 +9254,26 @@ public:
 		fv4.x = std::max(v1->getFX(), v2->getFX());
 		fv4.y = std::max(v1->getFY(), v2->getFY());
 		fv4.z = std::max(v1->getFZ(), v2->getFZ());
+
+		iv4.x = (int)fv4.x;
+		iv4.y = (int)fv4.y;
+		iv4.z = (int)fv4.z;
+	}
+	
+	void minXYZ(FIVector4 *v1) {
+		fv4.x = std::min(v1->getFX(), fv4.x);
+		fv4.y = std::min(v1->getFY(), fv4.y);
+		fv4.z = std::min(v1->getFZ(), fv4.z);
+
+		iv4.x = (int)fv4.x;
+		iv4.y = (int)fv4.y;
+		iv4.z = (int)fv4.z;
+	}
+
+	void maxXYZ(FIVector4 *v1) {
+		fv4.x = std::max(v1->getFX(), fv4.x);
+		fv4.y = std::max(v1->getFY(), fv4.y);
+		fv4.z = std::max(v1->getFZ(), fv4.z);
 
 		iv4.x = (int)fv4.x;
 		iv4.y = (int)fv4.y;
@@ -12471,6 +12604,7 @@ struct VoxelBufferEntry {
 struct VoxelInfo {
 	int viIndex;
 	uint normId;
+	uint matId;
 	vec3 normal;
 	vec3 pos;
 };
@@ -12497,6 +12631,7 @@ struct VoxelBuffer {
 		voxelList.push_back(VoxelInfo());
 		voxelList.back().viIndex = val;
 		voxelList.back().normId = 0;
+		voxelList.back().matId = TEX_NULL;
 		
 		int VLInd = (voxelList.size()-1);
 		
@@ -24018,6 +24153,7 @@ public:
   Matrix4 curMVP;
   Matrix3 curObjMatrix3;
   Matrix4 tempObjMatrix;
+  Matrix4 lightSpaceMatrix;
   GLint (viewport) [4];
   E_OBJ activeObject;
   E_OBJ tempObj;
@@ -24035,6 +24171,9 @@ public:
   int destructCount;
   bool sphereMapOn;
   bool waitingOnDestruction;
+  bool debugViewOn;
+  bool lightChanged;
+  bool updateShadows;
   bool updateHolderLookat;
   bool vsyncOn;
   bool commandOn;
@@ -24276,6 +24415,9 @@ public:
   FIVector4 (colVecs) [16];
   FIVector4 geomOrigOffset;
   FIVector4 lastSend;
+  FIVector4 lastLightPos;
+  FIVector4 lightPos;
+  FIVector4 lightLookAt;
   FIVector4 lastHolderPos;
   FIVector4 lightVec;
   FIVector4 lightVecOrig;
@@ -24591,6 +24733,8 @@ public:
   bool gluInvertMatrix (double const (m) [16], float (invOut) [16]);
   int getMatrixInd (int col, int row);
   void ComputeFOVProjection (float * result, float fov, float aspect, float nearDist, float farDist, bool leftHanded);
+  void updateLightPos ();
+  void getLightMatrix ();
   void setMatrices (int w, int h);
   void reshape (int w, int h);
 };
@@ -24800,6 +24944,7 @@ public:
   int getVoxelAtCoord (ivec3 * pos);
   float sampLinear (ivec3 * pos, ivec3 offset);
   PaddedDataEntry * getPadData (int ii, int jj, int kk);
+  float rand2D (vec3 co);
   vec3 randPN (vec3 co);
   void getVoro (ivec3 * worldPos, ivec3 * worldClosestCenter, int iSpacing);
   void calcVoxel (ivec3 * pos, int octPtr, int VLIndex);
@@ -26084,6 +26229,10 @@ public:
   FIVector4 (lineSeg) [2];
   int (nodeInd) [2];
   GameBlock * (blockRef) [2];
+  FIVector4 minShadowBounds;
+  FIVector4 maxShadowBounds;
+  FIVector4 minShadowBoundsGrow;
+  FIVector4 maxShadowBoundsGrow;
   FIVector4 minv;
   FIVector4 maxv;
   FIVector4 tempVec;
@@ -26135,7 +26284,7 @@ public:
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void polyCombine ();
   void drawPolys (string fboName, int minPeel, int maxPeel);
-  void rastHolder (int rad, bool drawLoading);
+  void rastHolder (int rad, bool drawLoading, bool getBounds, bool clipToView);
   void rasterPolys (int minPeel, int maxPeel, int extraRad = 0, bool doPoints = false);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);
@@ -26145,7 +26294,7 @@ public:
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
   void updateLights ();
-  void rasterHolders (bool showResults);
+  void rasterHolders (bool doShadow);
   void rasterGrid (VBOGrid * vboGrid, bool showResults);
   void renderDebug ();
   void finalStep (bool postToScreen);
@@ -26654,7 +26803,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		// qqqqqq
 		
 		
-		heightMapMaxInCells = 2048.0f;
+		heightMapMaxInCells = HM_MAX_IN_CELLS;
 		//mapSampScale = 2.0f;
 		int newPitch = (imageHM0->width) * 2; //*2;
 		mapPitch = (imageHM0->width); //newPitch;// //
@@ -26856,6 +27005,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		renderingOctBounds = false;
 		commandOn = false;
 		vsyncOn = true;
+		updateShadows = false;
+		debugViewOn = false;
+		lightChanged = false;
 		updateHolderLookat = true;
 		placingPattern = false;
 		gridOn = false;
@@ -27245,6 +27397,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("MergeShader");
 		shaderStrings.push_back("TopoShader");
 		shaderStrings.push_back("PointShader");
+		shaderStrings.push_back("NearestShader");
 		shaderStrings.push_back("LightShader");
 		shaderStrings.push_back("RoadShader");
 		shaderStrings.push_back("SkeletonShader");
@@ -27268,6 +27421,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("OctShader");
 		shaderStrings.push_back("RasterShader");
 		shaderStrings.push_back("HolderShader");
+		shaderStrings.push_back("ShadowMapShader");
 		shaderStrings.push_back("GridShader");
 		shaderStrings.push_back("GeomShader");
 		shaderStrings.push_back("BoxShader");
@@ -27468,6 +27622,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		for (i = 0; i <= NUM_POLY_STRINGS; i++) {
 			fboMap[polyFBOStrings[i]].init(1, bufferRenderDim.getIX(), bufferRenderDim.getIY(), 4, true);
 		}
+		
+		fboMap["shadowMapFBO"].init(1, SHADOW_MAP_RES, SHADOW_MAP_RES, 4, true, GL_LINEAR);
 		
 		
 		fboMap["rasterFBO0"].init(2, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
@@ -29254,6 +29410,8 @@ void Singleton::getMaterialString ()
 			
 			includeMap["materials"] = resString;
 			
+			//cout << "\n\n" << resString << "\n\n";
+			
 		}
 		
 	}
@@ -30550,8 +30708,13 @@ void Singleton::resetGeom ()
 	}
 void Singleton::stopAllThreads ()
                               {
+		glFlush();
+		glFinish();
 		gameLogic->threadPoolPath->stopAll();
 		gameLogic->threadPoolList->stopAll();
+		glFlush();
+		glFinish();
+		
 	}
 void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
                                                                          {
@@ -30598,6 +30761,12 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				switch (key) {
 					
+					case 'd':
+						debugViewOn = !debugViewOn;
+					break;
+					case 's':
+						updateShadows = !updateShadows;
+					break;
 					case 'u':
 						updateHolderLookat = !updateHolderLookat;
 						cout << "updateHolderLookat " << updateHolderLookat << "\n";
@@ -31660,6 +31829,7 @@ void Singleton::mouseMove (int _x, int _y)
 			angleToVec(&lightVec, fx*2.0, fy*2.0);
 			lightVecOrig.copyFrom(&lightVec);
 			lightVec.setFZ(-abs(lightVec.getFZ()));
+			lightChanged = true;
 		}
 		
 		
@@ -33648,7 +33818,9 @@ void Singleton::saveGUIValues ()
 void Singleton::updateGUI ()
                          {
 		
-		
+		float milVox = (
+			((float)(TOT_POINT_COUNT))/1000000.0
+		);
 		
 		int mvPerPage = 1;
 		
@@ -33663,7 +33835,7 @@ void Singleton::updateGUI ()
 			setGUIText("debug.fbMem", "Frame Buffer Mem Used: " + fi__s(TOT_GPU_MEM_USAGE) + maxGPUMString, TOT_GPU_MEM_USAGE/MAX_GPU_MEM, true );
 			setGUIText("debug.vertMem", "Vert Mem Used: " + fi__s(VERTEX_MEM_USAGE) + maxGPUMString, VERTEX_MEM_USAGE/MAX_GPU_MEM, true );
 			setGUIText("debug.totMem", "Total Mem Used: " + fi__s(totUsage) + maxGPUMString, totUsage/MAX_GPU_MEM, true );
-			//setGUIText("debug.chunksGen", "Voxels Generated (In Millions!): " + fi__s(voxelsGen) );
+			setGUIText("debug.numVoxels", "Voxels Generated (In Millions!): " + f__s(milVox) );
 			 
 		// }
 		
@@ -33765,6 +33937,9 @@ int Singleton::iGetConst (int ev)
 void Singleton::loadConstants ()
                              {
 		int i;
+		
+		stopAllThreads();
+		
 		if (loadJSON("..\\data\\constants.js", &constRootJS)) {
 			
 			for (i = 0; i < E_CONST_LENGTH; i++) {
@@ -34239,7 +34414,11 @@ void Singleton::frameUpdate (bool doFrameRender)
 			}
 		}
 		syncObjects();
-		updateGUI();
+		
+		if (anyMenuVisible()) {
+			updateGUI();
+		}
+		
 		
 		
 		if (
@@ -34915,6 +35094,46 @@ void Singleton::ComputeFOVProjection (float * result, float fov, float aspect, f
 	    result[getMatrixInd(3,2)] = (-farDist * nearDist) * oneOverDepth;
 	    result[getMatrixInd(2,3)] = 1;
 	    result[getMatrixInd(3,3)] = 0;
+	}
+void Singleton::updateLightPos ()
+                              {
+		lightPos.copyFrom(cameraGetPosNoShake());
+		lightPos.addXYZRef(&lightVec,conVals[E_CONST_LIGHTDIS]);
+		lightLookAt.copyFrom(cameraGetPosNoShake());
+	}
+void Singleton::getLightMatrix ()
+                              {
+		Matrix4 lightProjection;
+		Matrix4 lightView;
+		GLfloat near_plane = clipDist[0];
+		GLfloat far_plane = clipDist[1]+conVals[E_CONST_LIGHTDIS];
+		lightProjection.orthoProjection(conVals[E_CONST_LIGHTORTHOSIZE], conVals[E_CONST_LIGHTORTHOSIZE], near_plane, far_plane);
+		//lightProjection = glm::perspective(45.0f, (GLfloat)SHADOW_WIDTH / (GLfloat)SHADOW_HEIGHT, near_plane, far_plane); // Note that if you use a perspective projection matrix you'll have to change the light position as the current light position isn't enough to reflect the whole scene.
+		
+		
+		glMatrixMode (GL_MODELVIEW);
+		glLoadIdentity();
+		gluLookAt(
+			lightLookAt[0],
+			lightLookAt[1],
+			lightLookAt[2],
+			lightPos[0],
+			lightPos[1],
+			lightPos[2],
+			0.0f,
+			0.0f,
+			1.0f
+		);
+		glGetFloatv(GL_MODELVIEW_MATRIX, lightView.get());
+		
+		// lightView.lookAt(
+		// 	Vector3(lightLookAt[0],lightLookAt[1],lightLookAt[2]),
+		// 	Vector3(lightPos[0],lightPos[1],lightPos[2]),
+		// 	Vector3(0.0f,0.0f,1.0f)
+		// );
+		
+		//lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
+		lightSpaceMatrix = lightProjection * lightView;
 	}
 void Singleton::setMatrices (int w, int h)
         {
@@ -36641,6 +36860,7 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		float weightCount = 1.0f;
 		
 		int ww;
+		int curMat = 0;
 		
 		if (DO_AO) {
 			for (p = 0; p < totSize; p++) {
@@ -36707,6 +36927,9 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 						
 						
 						curNID = voxelBuffer->voxelList[p].normId;
+						curMat = voxelBuffer->voxelList[p].matId;
+						
+						
 						
 						curFlags = voxelBuffer->getFlags(q);
 						
@@ -36909,7 +37132,7 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 							tempData[0] = totNorm.x;
 							tempData[1] = totNorm.y;
 							tempData[2] = totNorm.z;
-							tempData[3] = totWeight/weightCount;
+							tempData[3] = curMat;//totWeight/weightCount;
 							
 							if (DO_POINTS) {
 								gph->vboWrapper.vertexVec.push_back(fVO.x);
@@ -37220,7 +37443,6 @@ void GameVoxelWrap::floodFill (ivec3 startVox)
 			for (q = 0; q < NUM_ORIENTATIONS; q++) {
 				tempVox = curVox + DIR_VECS_IV[q];
 				
-					
 				
 				if (isSurfaceVoxel(&tempVox,lastPtr,true)) {
 					basePD->fillStack.push_back(tempVox);
@@ -37459,6 +37681,12 @@ PaddedDataEntry * GameVoxelWrap::getPadData (int ii, int jj, int kk)
 			]	
 		);
 	}
+float GameVoxelWrap::rand2D (vec3 co)
+                              {
+		vec3 myres = co;
+		myres.z = 0.1725f;
+		return fract(sin(myres.dot(crand0))*43758.8563f);
+	}
 vec3 GameVoxelWrap::randPN (vec3 co)
                              {
 			
@@ -37529,6 +37757,11 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
                                                             {
 		
 		ivec3 worldPos = (*pos) + offsetInVoxels;
+		vec3 fWorldPos = vec3(
+			worldPos.x,
+			worldPos.y,
+			worldPos.z
+		);
 		//worldPos -= paddingInVoxels;
 		
 		ivec3 worldClosestCenter;// = worldPos;
@@ -37542,7 +37775,7 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
 		//localClosestCenter += paddingInVoxels;
 		
 		
-		int vOff = 16;
+		int vOff = 8;
 		
 		float terSamp = sampLinear(&localClosestCenter, ivec3(0,0,0));
 		
@@ -37559,23 +37792,49 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
 		
 		terNorm *= -1.0f;
 		
-		if (terNorm.normalize()) {
-			
+		bool isTer = (mixf(terSamp,terSampOrig,0.0f) >= 0.5f);
+		
+		bool isGrass = false;
+		
+		
+		uint finalMat = TEX_NULL;
+		
+		
+		if (isTer) {
+			finalMat = TEX_EARTH;
 		}
 		else {
+			if (terNorm.normalize()) {
+				if (terNorm.z > 0.5f) {
+					int grassOff = rand2D(fWorldPos)*8.0f;
+					float terSampGrass = sampLinear(pos, ivec3(0,0,-grassOff));
+					
+					if (terSampGrass > 0.5f) {
+						isGrass = true;
+						finalMat = TEX_GRASS;
+					}
+				}
+			}
 			
 		}
 		
 		
+		
+		bool isSolid = isTer||isGrass;
 		
 		//clampfZO(terNorm.z)*0.5f + 0.5f
 		
-		bool isSolid = (mixf(terSamp,terSampOrig,0.0f) >= 0.5f);
+		
 		//bool isSolid = (terSamp >= 0.5f);
 		
 		
 		if (isSolid) {
 			voxelBuffer->setFlag(octPtr, E_OCT_SOLID);
+			
+			// x = base tex, y = variant
+			//floor(curTex.x*256.0*255.0) + floor(curTex.y*255.0);
+			
+			voxelBuffer->voxelList[VLIndex].matId = finalMat*256;
 		}
 		
 		
@@ -62473,8 +62732,7 @@ void GameWorld::clearAllHolders ()
                                {
 		singleton->stopAllThreads();
 		
-		glFlush();
-		glFinish();
+		
 		
 		GamePageHolder* gph;
 		
@@ -62985,22 +63243,56 @@ void GameWorld::update ()
 		// singleton->getMatrixFromFBO("rasterFBO0");
 		// singleton->perspectiveOn = false;
 		
+		
+		
+		
 		if (singleton->fpsTest) {
 			
 		}
 		else {
+			
 			glEnable(GL_DEPTH_TEST);
 			singleton->perspectiveOn = true;
-			renderGeom();
-			renderDebug();
+			
+			if (singleton->debugViewOn) {
+				renderGeom();
+				renderDebug();
+			}
+			else {
+				singleton->bindShader("GeomShader");
+				singleton->bindFBO("debugTargFBO");
+				singleton->unbindFBO();
+				singleton->unbindShader();
+			}
+			
 			singleton->perspectiveOn = false;
 			glDisable(GL_DEPTH_TEST);
+			
+			
 		}
 		
 		
 		
 		
 		if (singleton->renderingOct) {
+			
+			if (
+				singleton->lightChanged ||
+				(
+					(singleton->lastLightPos.distance(singleton->cameraGetPosNoShake())) >
+					singleton->conVals[E_CONST_LIGHTTHRESH]
+				)
+			) {
+				if (!singleton->lightChanged) {
+					cout << "updateShadows\n";
+				}
+				
+				rasterHolders(true);
+				singleton->lastLightPos.copyFrom(singleton->cameraGetPosNoShake());
+				singleton->lightChanged = false;
+				//singleton->updateShadows = false;
+			}
+			
 			rasterHolders(false);
 		}
 		else {
@@ -64123,8 +64415,8 @@ void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel)
 		singleton->unbindFBO();
 		singleton->unbindShader();
 	}
-void GameWorld::rastHolder (int rad, bool drawLoading)
-                                                           {
+void GameWorld::rastHolder (int rad, bool drawLoading, bool getBounds, bool clipToView)
+                  {
 			
 			//doTraceVecND("cam ", &camHolderPos);
 			
@@ -64134,6 +64426,7 @@ void GameWorld::rastHolder (int rad, bool drawLoading)
 			int jj;
 			int kk;
 			
+			bool doProc = false;
 			
 			GamePageHolder* curHolder;
 			
@@ -64150,6 +64443,12 @@ void GameWorld::rastHolder (int rad, bool drawLoading)
 			int maxI = maxv.getIX() + rad;
 			
 			float disClip = singleton->cellsPerHolder*2;
+			
+			if (getBounds) {
+				minShadowBounds.setFXYZ(16777216.0f,16777216.0f,16777216.0f);
+				maxShadowBounds.setFXYZ(0.0f,0.0f,0.0f);
+			}
+			
 			
 			for (kk = minK; kk < maxK; kk++) {
 				for (jj = minJ; jj < maxJ; jj++) {
@@ -64179,23 +64478,41 @@ void GameWorld::rastHolder (int rad, bool drawLoading)
 										(!(curHolder->listEmpty))
 									) {
 										
-										tempFIV.copyFrom(&(curHolder->gphCenInCells));
-										tempFIV.addXYZRef(singleton->cameraGetPosNoShake(),-1.0f);
-										tempFIV.normalize();
-										
-										
-										if (
-											(tempFIV.dot(&(singleton->lookAtVec)) > singleton->conVals[E_CONST_DOT_CLIP]) ||
-											(curHolder->gphCenInCells.distance(singleton->cameraGetPosNoShake()) < disClip)
-										) {
-											if (DO_POINTS) {
-												curHolder->vboWrapper.drawPoints();
+										if (getBounds) {
+											minShadowBounds.minXYZ(&(curHolder->gphMinInCells));
+											maxShadowBounds.maxXYZ(&(curHolder->gphMaxInCells));
+										}
+										else {
+											
+											doProc = false;
+											if (clipToView) {
+												tempFIV.copyFrom(&(curHolder->gphCenInCells));
+												tempFIV.addXYZRef(singleton->cameraGetPosNoShake(),-1.0f);
+												tempFIV.normalize();
+												if (
+													(tempFIV.dot(&(singleton->lookAtVec)) > singleton->conVals[E_CONST_DOT_CLIP]) ||
+													(curHolder->gphCenInCells.distance(singleton->cameraGetPosNoShake()) < disClip)
+												) {
+													doProc = true;
+												}
 											}
 											else {
-												curHolder->vboWrapper.draw();
+												doProc = true;
 											}
 											
+											
+											if (doProc) {
+												if (DO_POINTS) {
+													curHolder->vboWrapper.drawPoints();
+												}
+												else {
+													curHolder->vboWrapper.draw();
+												}
+											}
+											
+											
 										}
+										
 										
 									}
 								}
@@ -64207,6 +64524,27 @@ void GameWorld::rastHolder (int rad, bool drawLoading)
 				}
 			}
 			
+			
+			float boundsDepth = maxShadowBounds.getFZ() - minShadowBounds.getFZ();
+			
+			if (getBounds) {
+				
+				minShadowBoundsGrow.copyFrom(&minShadowBounds);
+				minShadowBoundsGrow.addXYZ(
+					-abs(singleton->lightVec.getFX())*boundsDepth,
+					-abs(singleton->lightVec.getFY())*boundsDepth,
+					0.0f
+				);
+				minShadowBounds.minXYZ(&minShadowBoundsGrow);
+				
+				maxShadowBoundsGrow.copyFrom(&maxShadowBounds);
+				maxShadowBoundsGrow.addXYZ(
+					abs(singleton->lightVec.getFX())*boundsDepth,
+					abs(singleton->lightVec.getFY())*boundsDepth,
+					0.0f
+				);
+				maxShadowBounds.maxXYZ(&maxShadowBoundsGrow);
+			}
 			
 		}
 void GameWorld::rasterPolys (int minPeel, int maxPeel, int extraRad, bool doPoints)
@@ -66841,8 +67179,8 @@ UPDATE_LIGHTS_END:
 
 
 	}
-void GameWorld::rasterHolders (bool showResults)
-                                             {
+void GameWorld::rasterHolders (bool doShadow)
+                                          {
 		
 		// get view matrix
 		// singleton->perspectiveOn = true;
@@ -66860,26 +67198,64 @@ void GameWorld::rasterHolders (bool showResults)
 		}
 		
 		
-		singleton->bindShader("HolderShader");
-		singleton->bindFBO("rasterFBO",activeRaster);
-		
-		//singleton->setShaderFloat("curTime", singleton->curTime);
-		//singleton->setShaderFloat("voxelsPerCell",singleton->voxelsPerCell);
-		//singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
-		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
-		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
-		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-		
-		
-		singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
-		//singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+		if (doShadow) {
+			
+			// glDepthRangef(
+			// 	singleton->clipDist[0],
+			// 	singleton->clipDist[1]+singleton->conVals[E_CONST_LIGHTDIS]
+			// );
+			
+			singleton->updateLightPos();
+			singleton->getLightMatrix();
+			
+			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, true, false);
+			
+			
+			singleton->bindShader("ShadowMapShader");
+			singleton->bindFBO("shadowMapFBO");
+			
+			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
+			
+			
+			// singleton->setShaderfVec3("minBounds",&(minShadowBounds));
+			// singleton->setShaderfVec3("maxBounds",&(maxShadowBounds));
+			// singleton->setShaderfVec3("lightVec",&(singleton->lightVec));
 
-		rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false);
+			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, false, false);
 
-		singleton->unbindFBO();
-		singleton->unbindShader();
+			singleton->unbindFBO();
+			singleton->unbindShader();
+			
+			// glDepthRangef(
+			// 	singleton->clipDist[0],
+			// 	singleton->clipDist[1]	
+			// );
+		}
+		else {
+			singleton->bindShader("HolderShader");
+			singleton->bindFBO("rasterFBO",activeRaster);
+			
+			singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			//singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			
+			//singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
+			singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
+
+			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, false, true);
+
+			singleton->unbindFBO();
+			singleton->unbindShader();
+			
+			activeRaster = 1 - activeRaster;	
+		}
+		
 		
 		if (!DO_POINTS) {
 			glDisable(GL_CULL_FACE);
@@ -66887,7 +67263,10 @@ void GameWorld::rasterHolders (bool showResults)
 		
 		glDisable(GL_DEPTH_TEST);
 
-		activeRaster = 1 - activeRaster;	
+		
+		if (doShadow) {
+			return;	
+		}
 		
 		
 		
@@ -66899,19 +67278,14 @@ void GameWorld::rasterHolders (bool showResults)
 			singleton->bindShader("PointShader");
 			
 			singleton->setShaderFloat("voxelsPerCell",singleton->voxelsPerCell);
-			singleton->setShaderFloat("curTime", singleton->curTime);
-			singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
 			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-			
 			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderInt("totRad",singleton->iGetConst(E_CONST_HVRAD));
-			singleton->setShaderInt("growSteps",singleton->iGetConst(E_CONST_GROWPOINTSTEPS));
 			singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
 			
 			for (q = 0; q < singleton->iGetConst(E_CONST_GROWPOINTSTEPS); q++) {
 				
-				singleton->setShaderInt("stepNum",q);
 				
 				if ((q % 2) == 0) {
 					singleton->setShaderVec2("hvMult", 1.0f, 0.0f);
@@ -66925,8 +67299,6 @@ void GameWorld::rasterHolders (bool showResults)
 				
 				singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 				
-				
-				
 				singleton->fsQuad.draw();
 
 				singleton->unsampleFBO("rasterFBO",0,activeRaster);
@@ -66936,21 +67308,37 @@ void GameWorld::rasterHolders (bool showResults)
 			}
 			
 			singleton->unbindShader();
+			
+			
+			singleton->bindShader("NearestShader");
+			singleton->bindFBO("rasterFBO", activeRaster);
+			singleton->sampleFBO("rasterFBO",0,activeRaster);
+			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			singleton->setShaderInt("totRad",singleton->iGetConst(E_CONST_FILLNEARESTRAD));
+			singleton->fsQuad.draw();
+			singleton->unsampleFBO("rasterFBO",0,activeRaster);
+			singleton->unbindFBO();
+			singleton->unbindShader();
+			activeRaster = 1 - activeRaster;
+			
 		}
 		
 		
 		
 		
-		
-		
-		
-		
-		
 		singleton->bindShader("LightShader");
-		singleton->bindFBO("resultFBO", activeRaster);
+		singleton->bindFBO("resultFBO", activeFBO);
 		singleton->sampleFBO("rasterFBO",0,activeRaster);
 		singleton->sampleFBO("debugTargFBO", 2);
+		singleton->setShaderTexture3D(4,singleton->volIdMat);
+		singleton->sampleFBO("shadowMapFBO",5);
 		
+		singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
+		singleton->setShaderInt("testOn3", (int)(singleton->testOn3));
+		singleton->setShaderfVec3("minBounds",&(minShadowBounds));
+		singleton->setShaderfVec3("maxBounds",&(maxShadowBounds));
+		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
 		singleton->setShaderFloat("voxelsPerCell",singleton->voxelsPerCell);
 		singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
@@ -66960,58 +67348,21 @@ void GameWorld::rasterHolders (bool showResults)
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+		singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
 		
 		singleton->fsQuad.draw();
 
+		singleton->unsampleFBO("shadowMapFBO",5);
+		singleton->setShaderTexture3D(4,0);
 		singleton->unsampleFBO("debugTargFBO", 2);
 		singleton->unsampleFBO("rasterFBO",0,activeRaster);
 		singleton->unbindFBO();
 		
 		singleton->unbindShader();
 		
+		activeFBO = 1-activeFBO;
 		
 		
-		
-		
-		
-		
-		
-		
-		
-		
-		// singleton->bindFBO("resultFBO", activeFBO);
-		// singleton->drawFBO("rasterFBO", 0, 1.0f, 1 - activeRaster);
-		// singleton->unbindFBO();
-		// activeFBO = 1-activeFBO;
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		// singleton->bindFBO("resultFBO", activeFBO);
-		// singleton->drawFBO("rasterFBO", 0, 1.0f);
-		// singleton->unbindFBO();		
-		// activeFBO = 1-activeFBO;
-		
-		
-		// if (showResults) {
-			
-		// 	glClearColor(0, 1, 0, 1);
-		// 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			
-		// 	singleton->drawFBO("rasterFBO", 0, 1.0f);
-			
-		// 	glutSwapBuffers();
-			
-		// 	glFlush();
-		// 	glFinish();
-			
-		// }
 		
 		
 	}
@@ -67222,13 +67573,15 @@ void GameWorld::renderDebug ()
 		if (singleton->renderingOct) {
 			singleton->setShaderFloat("isWire", 1.0);
 			singleton->setShaderVec3("matVal", 255, 0, 0);
-			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), true);
+			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), true, false, false);
 			
 			if (holderInFocus != NULL) {
 				singleton->setShaderVec3("matVal", 0, 0, 255);
 				singleton->drawBox(&(holderInFocus->gphMinInCells),&(holderInFocus->gphMaxInCells));
 			}
 			
+			singleton->setShaderVec3("matVal", 0, 255, 0);
+			singleton->drawBox(&(minShadowBounds),&(maxShadowBounds));
 			
 		}
 		

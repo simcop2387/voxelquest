@@ -396,7 +396,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		// qqqqqq
 		
 		
-		heightMapMaxInCells = 2048.0f;
+		heightMapMaxInCells = HM_MAX_IN_CELLS;
 		//mapSampScale = 2.0f;
 		int newPitch = (imageHM0->width) * 2; //*2;
 		mapPitch = (imageHM0->width); //newPitch;// //
@@ -598,6 +598,9 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		renderingOctBounds = false;
 		commandOn = false;
 		vsyncOn = true;
+		updateShadows = false;
+		debugViewOn = false;
+		lightChanged = false;
 		updateHolderLookat = true;
 		placingPattern = false;
 		gridOn = false;
@@ -987,6 +990,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("MergeShader");
 		shaderStrings.push_back("TopoShader");
 		shaderStrings.push_back("PointShader");
+		shaderStrings.push_back("NearestShader");
 		shaderStrings.push_back("LightShader");
 		shaderStrings.push_back("RoadShader");
 		shaderStrings.push_back("SkeletonShader");
@@ -1010,6 +1014,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		shaderStrings.push_back("OctShader");
 		shaderStrings.push_back("RasterShader");
 		shaderStrings.push_back("HolderShader");
+		shaderStrings.push_back("ShadowMapShader");
 		shaderStrings.push_back("GridShader");
 		shaderStrings.push_back("GeomShader");
 		shaderStrings.push_back("BoxShader");
@@ -1210,6 +1215,8 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		for (i = 0; i <= NUM_POLY_STRINGS; i++) {
 			fboMap[polyFBOStrings[i]].init(1, bufferRenderDim.getIX(), bufferRenderDim.getIY(), 4, true);
 		}
+		
+		fboMap["shadowMapFBO"].init(1, SHADOW_MAP_RES, SHADOW_MAP_RES, 4, true, GL_LINEAR);
 		
 		
 		fboMap["rasterFBO0"].init(2, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
@@ -2996,6 +3003,8 @@ void Singleton::getMaterialString ()
 			
 			includeMap["materials"] = resString;
 			
+			//cout << "\n\n" << resString << "\n\n";
+			
 		}
 		
 	}
@@ -4292,8 +4301,13 @@ void Singleton::resetGeom ()
 	}
 void Singleton::stopAllThreads ()
                               {
+		glFlush();
+		glFinish();
 		gameLogic->threadPoolPath->stopAll();
 		gameLogic->threadPoolList->stopAll();
+		glFlush();
+		glFinish();
+		
 	}
 void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
                                                                          {
@@ -4340,6 +4354,12 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 				
 				switch (key) {
 					
+					case 'd':
+						debugViewOn = !debugViewOn;
+					break;
+					case 's':
+						updateShadows = !updateShadows;
+					break;
 					case 'u':
 						updateHolderLookat = !updateHolderLookat;
 						cout << "updateHolderLookat " << updateHolderLookat << "\n";
@@ -5402,6 +5422,7 @@ void Singleton::mouseMove (int _x, int _y)
 			angleToVec(&lightVec, fx*2.0, fy*2.0);
 			lightVecOrig.copyFrom(&lightVec);
 			lightVec.setFZ(-abs(lightVec.getFZ()));
+			lightChanged = true;
 		}
 		
 		
@@ -7390,7 +7411,9 @@ void Singleton::saveGUIValues ()
 void Singleton::updateGUI ()
                          {
 		
-		
+		float milVox = (
+			((float)(TOT_POINT_COUNT))/1000000.0
+		);
 		
 		int mvPerPage = 1;
 		
@@ -7405,7 +7428,7 @@ void Singleton::updateGUI ()
 			setGUIText("debug.fbMem", "Frame Buffer Mem Used: " + fi__s(TOT_GPU_MEM_USAGE) + maxGPUMString, TOT_GPU_MEM_USAGE/MAX_GPU_MEM, true );
 			setGUIText("debug.vertMem", "Vert Mem Used: " + fi__s(VERTEX_MEM_USAGE) + maxGPUMString, VERTEX_MEM_USAGE/MAX_GPU_MEM, true );
 			setGUIText("debug.totMem", "Total Mem Used: " + fi__s(totUsage) + maxGPUMString, totUsage/MAX_GPU_MEM, true );
-			//setGUIText("debug.chunksGen", "Voxels Generated (In Millions!): " + fi__s(voxelsGen) );
+			setGUIText("debug.numVoxels", "Voxels Generated (In Millions!): " + f__s(milVox) );
 			 
 		// }
 		
@@ -7507,6 +7530,9 @@ int Singleton::iGetConst (int ev)
 void Singleton::loadConstants ()
                              {
 		int i;
+		
+		stopAllThreads();
+		
 		if (loadJSON("..\\data\\constants.js", &constRootJS)) {
 			
 			for (i = 0; i < E_CONST_LENGTH; i++) {
@@ -7981,7 +8007,11 @@ void Singleton::frameUpdate (bool doFrameRender)
 			}
 		}
 		syncObjects();
-		updateGUI();
+		
+		if (anyMenuVisible()) {
+			updateGUI();
+		}
+		
 		
 		
 		if (
@@ -8657,6 +8687,46 @@ void Singleton::ComputeFOVProjection (float * result, float fov, float aspect, f
 	    result[getMatrixInd(3,2)] = (-farDist * nearDist) * oneOverDepth;
 	    result[getMatrixInd(2,3)] = 1;
 	    result[getMatrixInd(3,3)] = 0;
+	}
+void Singleton::updateLightPos ()
+                              {
+		lightPos.copyFrom(cameraGetPosNoShake());
+		lightPos.addXYZRef(&lightVec,conVals[E_CONST_LIGHTDIS]);
+		lightLookAt.copyFrom(cameraGetPosNoShake());
+	}
+void Singleton::getLightMatrix ()
+                              {
+		Matrix4 lightProjection;
+		Matrix4 lightView;
+		GLfloat near_plane = clipDist[0];
+		GLfloat far_plane = clipDist[1]+conVals[E_CONST_LIGHTDIS];
+		lightProjection.orthoProjection(conVals[E_CONST_LIGHTORTHOSIZE], conVals[E_CONST_LIGHTORTHOSIZE], near_plane, far_plane);
+		//lightProjection = glm::perspective(45.0f, (GLfloat)SHADOW_WIDTH / (GLfloat)SHADOW_HEIGHT, near_plane, far_plane); // Note that if you use a perspective projection matrix you'll have to change the light position as the current light position isn't enough to reflect the whole scene.
+		
+		
+		glMatrixMode (GL_MODELVIEW);
+		glLoadIdentity();
+		gluLookAt(
+			lightLookAt[0],
+			lightLookAt[1],
+			lightLookAt[2],
+			lightPos[0],
+			lightPos[1],
+			lightPos[2],
+			0.0f,
+			0.0f,
+			1.0f
+		);
+		glGetFloatv(GL_MODELVIEW_MATRIX, lightView.get());
+		
+		// lightView.lookAt(
+		// 	Vector3(lightLookAt[0],lightLookAt[1],lightLookAt[2]),
+		// 	Vector3(lightPos[0],lightPos[1],lightPos[2]),
+		// 	Vector3(0.0f,0.0f,1.0f)
+		// );
+		
+		//lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
+		lightSpaceMatrix = lightProjection * lightView;
 	}
 void Singleton::setMatrices (int w, int h)
         {

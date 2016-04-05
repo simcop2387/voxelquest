@@ -109,6 +109,7 @@ public:
   Matrix4 curMVP;
   Matrix3 curObjMatrix3;
   Matrix4 tempObjMatrix;
+  Matrix4 lightSpaceMatrix;
   GLint (viewport) [4];
   E_OBJ activeObject;
   E_OBJ tempObj;
@@ -126,6 +127,9 @@ public:
   int destructCount;
   bool sphereMapOn;
   bool waitingOnDestruction;
+  bool debugViewOn;
+  bool lightChanged;
+  bool updateShadows;
   bool updateHolderLookat;
   bool vsyncOn;
   bool commandOn;
@@ -367,6 +371,9 @@ public:
   FIVector4 (colVecs) [16];
   FIVector4 geomOrigOffset;
   FIVector4 lastSend;
+  FIVector4 lastLightPos;
+  FIVector4 lightPos;
+  FIVector4 lightLookAt;
   FIVector4 lastHolderPos;
   FIVector4 lightVec;
   FIVector4 lightVecOrig;
@@ -682,6 +689,8 @@ public:
   bool gluInvertMatrix (double const (m) [16], float (invOut) [16]);
   int getMatrixInd (int col, int row);
   void ComputeFOVProjection (float * result, float fov, float aspect, float nearDist, float farDist, bool leftHanded);
+  void updateLightPos ();
+  void getLightMatrix ();
   void setMatrices (int w, int h);
   void reshape (int w, int h);
 };
@@ -891,6 +900,7 @@ public:
   int getVoxelAtCoord (ivec3 * pos);
   float sampLinear (ivec3 * pos, ivec3 offset);
   PaddedDataEntry * getPadData (int ii, int jj, int kk);
+  float rand2D (vec3 co);
   vec3 randPN (vec3 co);
   void getVoro (ivec3 * worldPos, ivec3 * worldClosestCenter, int iSpacing);
   void calcVoxel (ivec3 * pos, int octPtr, int VLIndex);
@@ -2175,6 +2185,10 @@ public:
   FIVector4 (lineSeg) [2];
   int (nodeInd) [2];
   GameBlock * (blockRef) [2];
+  FIVector4 minShadowBounds;
+  FIVector4 maxShadowBounds;
+  FIVector4 minShadowBoundsGrow;
+  FIVector4 maxShadowBoundsGrow;
   FIVector4 minv;
   FIVector4 maxv;
   FIVector4 tempVec;
@@ -2226,7 +2240,7 @@ public:
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void polyCombine ();
   void drawPolys (string fboName, int minPeel, int maxPeel);
-  void rastHolder (int rad, bool drawLoading);
+  void rastHolder (int rad, bool drawLoading, bool getBounds, bool clipToView);
   void rasterPolys (int minPeel, int maxPeel, int extraRad = 0, bool doPoints = false);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);
@@ -2236,7 +2250,7 @@ public:
   void drawMap ();
   void doBlur (string fboName, int _baseFBO = 0);
   void updateLights ();
-  void rasterHolders (bool showResults);
+  void rasterHolders (bool doShadow);
   void rasterGrid (VBOGrid * vboGrid, bool showResults);
   void renderDebug ();
   void finalStep (bool postToScreen);

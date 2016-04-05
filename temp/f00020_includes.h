@@ -73,6 +73,8 @@ const static float ORG_SCALE_BASE = 0.5f;
 #endif
 
 
+const static int SHADOW_MAP_RES = 2048;
+
 const static int DEF_SCALE_FACTOR = 1;
 const static int RENDER_SCALE_FACTOR = 4;
 const static bool SINGLE_THREADED = false;
@@ -90,6 +92,7 @@ const static int MAX_HOLDER_LOAD_COUNT = 512;
 const static int VOXELS_PER_CELL = 16;
 const static int CELLS_PER_HOLDER = 8;
 const static int PADDING_IN_CELLS = 1;
+const static float HM_MAX_IN_CELLS = CELLS_PER_HOLDER*256;//8192.0f;
 
 const static int MAX_PDPOOL_SIZE = MAX_THREADS;
 // const static int MAX_TBOPOOL_SIZE = 8;

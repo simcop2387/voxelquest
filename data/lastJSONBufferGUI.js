@@ -1573,7 +1573,7 @@
 																},
 																{
 																	"template":"fillLabel",
-																	"uid":"debug.chunksGen"
+																	"uid":"debug.numVoxels"
 																}
 															]
 														}

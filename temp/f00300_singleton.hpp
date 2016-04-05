@@ -80,6 +80,7 @@ public:
 	Matrix4 curMVP;
 	Matrix3 curObjMatrix3;
 	Matrix4 tempObjMatrix;
+	Matrix4 lightSpaceMatrix;
 	
 	GLint viewport[4];
 
@@ -105,6 +106,9 @@ public:
 	bool sphereMapOn;
 	bool waitingOnDestruction;
 	
+	bool debugViewOn;
+	bool lightChanged;
+	bool updateShadows;
 	bool updateHolderLookat;
 	bool vsyncOn;
 	bool commandOn;
@@ -401,8 +405,9 @@ public:
 	
 	
 	
-	
-	
+	FIVector4 lastLightPos;
+	FIVector4 lightPos;
+	FIVector4 lightLookAt;
 	FIVector4 lastHolderPos;
 	FIVector4 lightVec;
 	FIVector4 lightVecOrig;
@@ -1017,7 +1022,7 @@ public:
 		// qqqqqq
 		
 		
-		heightMapMaxInCells = 2048.0f;
+		heightMapMaxInCells = HM_MAX_IN_CELLS;
 		//mapSampScale = 2.0f;
 		int newPitch = (imageHM0->width) * 2; //*2;
 		mapPitch = (imageHM0->width); //newPitch;// //
@@ -1219,6 +1224,9 @@ public:
 		renderingOctBounds = false;
 		commandOn = false;
 		vsyncOn = true;
+		updateShadows = false;
+		debugViewOn = false;
+		lightChanged = false;
 		updateHolderLookat = true;
 		placingPattern = false;
 		gridOn = false;
@@ -1608,6 +1616,7 @@ public:
 		shaderStrings.push_back("MergeShader");
 		shaderStrings.push_back("TopoShader");
 		shaderStrings.push_back("PointShader");
+		shaderStrings.push_back("NearestShader");
 		shaderStrings.push_back("LightShader");
 		shaderStrings.push_back("RoadShader");
 		shaderStrings.push_back("SkeletonShader");
@@ -1631,6 +1640,7 @@ public:
 		shaderStrings.push_back("OctShader");
 		shaderStrings.push_back("RasterShader");
 		shaderStrings.push_back("HolderShader");
+		shaderStrings.push_back("ShadowMapShader");
 		shaderStrings.push_back("GridShader");
 		shaderStrings.push_back("GeomShader");
 		shaderStrings.push_back("BoxShader");
@@ -1831,6 +1841,8 @@ public:
 		for (i = 0; i <= NUM_POLY_STRINGS; i++) {
 			fboMap[polyFBOStrings[i]].init(1, bufferRenderDim.getIX(), bufferRenderDim.getIY(), 4, true);
 		}
+		
+		fboMap["shadowMapFBO"].init(1, SHADOW_MAP_RES, SHADOW_MAP_RES, 4, true, GL_LINEAR);
 		
 		
 		fboMap["rasterFBO0"].init(2, bufferDim.getIX(), bufferDim.getIY(), 4, true, GL_NEAREST);
@@ -3800,6 +3812,8 @@ DISPATCH_EVENT_END:
 			
 			includeMap["materials"] = resString;
 			
+			//cout << "\n\n" << resString << "\n\n";
+			
 		}
 		
 	}
@@ -5300,8 +5314,13 @@ DISPATCH_EVENT_END:
 	}
 	
 	void stopAllThreads() {
+		glFlush();
+		glFinish();
 		gameLogic->threadPoolPath->stopAll();
 		gameLogic->threadPoolList->stopAll();
+		glFlush();
+		glFinish();
+		
 	}
 	
 	void processInput(unsigned char key, bool keyDown, int x, int y) {
@@ -5348,6 +5367,12 @@ DISPATCH_EVENT_END:
 				
 				switch (key) {
 					
+					case 'd':
+						debugViewOn = !debugViewOn;
+					break;
+					case 's':
+						updateShadows = !updateShadows;
+					break;
 					case 'u':
 						updateHolderLookat = !updateHolderLookat;
 						cout << "updateHolderLookat " << updateHolderLookat << "\n";
@@ -6432,6 +6457,7 @@ DISPATCH_EVENT_END:
 			angleToVec(&lightVec, fx*2.0, fy*2.0);
 			lightVecOrig.copyFrom(&lightVec);
 			lightVec.setFZ(-abs(lightVec.getFZ()));
+			lightChanged = true;
 		}
 		
 		
@@ -8603,7 +8629,9 @@ DISPATCH_EVENT_END:
 	
 	void updateGUI() {
 		
-		
+		float milVox = (
+			((float)(TOT_POINT_COUNT))/1000000.0
+		);
 		
 		int mvPerPage = 1;
 		
@@ -8618,7 +8646,7 @@ DISPATCH_EVENT_END:
 			setGUIText("debug.fbMem", "Frame Buffer Mem Used: " + fi__s(TOT_GPU_MEM_USAGE) + maxGPUMString, TOT_GPU_MEM_USAGE/MAX_GPU_MEM, true );
 			setGUIText("debug.vertMem", "Vert Mem Used: " + fi__s(VERTEX_MEM_USAGE) + maxGPUMString, VERTEX_MEM_USAGE/MAX_GPU_MEM, true );
 			setGUIText("debug.totMem", "Total Mem Used: " + fi__s(totUsage) + maxGPUMString, totUsage/MAX_GPU_MEM, true );
-			//setGUIText("debug.chunksGen", "Voxels Generated (In Millions!): " + fi__s(voxelsGen) );
+			setGUIText("debug.numVoxels", "Voxels Generated (In Millions!): " + f__s(milVox) );
 			 
 		// }
 		
@@ -8725,6 +8753,9 @@ DISPATCH_EVENT_END:
 	
 	void loadConstants() {
 		int i;
+		
+		stopAllThreads();
+		
 		if (loadJSON("..\\data\\constants.js", &constRootJS)) {
 			
 			for (i = 0; i < E_CONST_LENGTH; i++) {
@@ -9237,7 +9268,11 @@ DISPATCH_EVENT_END:
 			}
 		}
 		syncObjects();
-		updateGUI();
+		
+		if (anyMenuVisible()) {
+			updateGUI();
+		}
+		
 		
 		
 		if (
@@ -9926,6 +9961,95 @@ DISPATCH_EVENT_END:
 	    result[getMatrixInd(3,2)] = (-farDist * nearDist) * oneOverDepth;
 	    result[getMatrixInd(2,3)] = 1;
 	    result[getMatrixInd(3,3)] = 0;
+	}
+	
+	
+	/*
+	
+	void Matrix_OrthoProjection( Matrix& out_M, const __VERTEX__TYPE__ width, const __VERTEX__TYPE__ height, const __VERTEX__TYPE__ nZ, const __VERTEX__TYPE__ fZ)
+	{
+	    // asumed r-l = width , t-b = height
+	    out_M.s[_0x0_] = 2./width; out_M.s[_0x1_] = 0;              out_M.s[_0x2_] = 0;                    out_M.s[_0x3_] = 0;
+	    out_M.s[_1x0_] = 0;        out_M.s[_1x1_] = 2./height;      out_M.s[_1x2_] = 0;                    out_M.s[_1x3_] = 0;
+	    out_M.s[_2x0_] = 0;        out_M.s[_2x1_] = 0;              out_M.s[_2x2_] = -2./(fZ-nZ);          out_M.s[_2x3_] = 0;
+	    out_M.s[_3x0_] = 0;        out_M.s[_3x1_] = 0;              out_M.s[_3x2_] = -(fZ+nZ)/(fZ-nZ);     out_M.s[_3x3_] = 1.;
+	}
+
+	void Matrix_PerspectiveProjection
+	(Matrix& out_M,
+	 const __VERTEX__TYPE__ FOV,
+	 const __VERTEX__TYPE__ ASPECT,
+	 const __VERTEX__TYPE__ NEAR,
+	 const __VERTEX__TYPE__ FAR)
+	{
+
+	    float fov = 1.0f / (float)tan(FOV * 0.5f); 
+	    float nf = 1.0f / (NEAR - FAR);
+
+	    out_M.s[_0x0_] = fov/ASPECT;
+	    out_M.s[_1x0_] = 0;
+	    out_M.s[_2x0_] = 0;
+	    out_M.s[_3x0_] = 0;
+
+	    out_M.s[_0x1_] = 0.0;
+	    out_M.s[_1x1_] = fov;
+	    out_M.s[_2x1_] = 0.0;
+	    out_M.s[_3x1_] = 0.0;
+
+	    out_M.s[_0x2_] = 0.0;
+	    out_M.s[_1x2_] = 0.0;
+	    out_M.s[_2x2_] = (NEAR+FAR) * nf;
+	    out_M.s[_3x2_] = (2.f*NEAR*FAR) * nf;
+
+	    out_M.s[_0x3_] = 0.0;
+	    out_M.s[_1x3_] = 0.0;
+	    out_M.s[_2x3_] = -1.0;
+	    out_M.s[_3x3_] = 0.0;
+
+	}
+	
+	*/
+	
+	
+	
+	void updateLightPos() {
+		lightPos.copyFrom(cameraGetPosNoShake());
+		lightPos.addXYZRef(&lightVec,conVals[E_CONST_LIGHTDIS]);
+		lightLookAt.copyFrom(cameraGetPosNoShake());
+	}
+	
+	void getLightMatrix() {
+		Matrix4 lightProjection;
+		Matrix4 lightView;
+		GLfloat near_plane = clipDist[0];
+		GLfloat far_plane = clipDist[1]+conVals[E_CONST_LIGHTDIS];
+		lightProjection.orthoProjection(conVals[E_CONST_LIGHTORTHOSIZE], conVals[E_CONST_LIGHTORTHOSIZE], near_plane, far_plane);
+		//lightProjection = glm::perspective(45.0f, (GLfloat)SHADOW_WIDTH / (GLfloat)SHADOW_HEIGHT, near_plane, far_plane); // Note that if you use a perspective projection matrix you'll have to change the light position as the current light position isn't enough to reflect the whole scene.
+		
+		
+		glMatrixMode (GL_MODELVIEW);
+		glLoadIdentity();
+		gluLookAt(
+			lightLookAt[0],
+			lightLookAt[1],
+			lightLookAt[2],
+			lightPos[0],
+			lightPos[1],
+			lightPos[2],
+			0.0f,
+			0.0f,
+			1.0f
+		);
+		glGetFloatv(GL_MODELVIEW_MATRIX, lightView.get());
+		
+		// lightView.lookAt(
+		// 	Vector3(lightLookAt[0],lightLookAt[1],lightLookAt[2]),
+		// 	Vector3(lightPos[0],lightPos[1],lightPos[2]),
+		// 	Vector3(0.0f,0.0f,1.0f)
+		// );
+		
+		//lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
+		lightSpaceMatrix = lightProjection * lightView;
 	}
 	
 	void setMatrices(int w, int h)

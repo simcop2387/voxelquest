@@ -853,6 +853,26 @@ public:
 		iv4.y = (int)fv4.y;
 		iv4.z = (int)fv4.z;
 	}
+	
+	void minXYZ(FIVector4 *v1) {
+		fv4.x = std::min(v1->getFX(), fv4.x);
+		fv4.y = std::min(v1->getFY(), fv4.y);
+		fv4.z = std::min(v1->getFZ(), fv4.z);
+
+		iv4.x = (int)fv4.x;
+		iv4.y = (int)fv4.y;
+		iv4.z = (int)fv4.z;
+	}
+
+	void maxXYZ(FIVector4 *v1) {
+		fv4.x = std::max(v1->getFX(), fv4.x);
+		fv4.y = std::max(v1->getFY(), fv4.y);
+		fv4.z = std::max(v1->getFZ(), fv4.z);
+
+		iv4.x = (int)fv4.x;
+		iv4.y = (int)fv4.y;
+		iv4.z = (int)fv4.z;
+	}
 
 	void clampXYZS(float minV, float maxV) {
 		if (fv4.x < minV) {
@@ -4178,6 +4198,7 @@ struct VoxelBufferEntry {
 struct VoxelInfo {
 	int viIndex;
 	uint normId;
+	uint matId;
 	vec3 normal;
 	vec3 pos;
 };
@@ -4204,6 +4225,7 @@ struct VoxelBuffer {
 		voxelList.push_back(VoxelInfo());
 		voxelList.back().viIndex = val;
 		voxelList.back().normId = 0;
+		voxelList.back().matId = TEX_NULL;
 		
 		int VLInd = (voxelList.size()-1);
 		

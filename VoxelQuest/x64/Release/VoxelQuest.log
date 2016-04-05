@@ -1,4 +1,4 @@
-﻿Build started 4/2/2016 1:36:28 AM.
+﻿Build started 4/5/2016 5:15:04 AM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -1011,77 +1011,7 @@
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          GL_MAX_TEXTURE_BUFFER_SIZE 134217728
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         iNumSteps:  32         
-         iNumSteps:  16         
-         iNumSteps:  32         
-         iNumSteps:  64         
-         iNumSteps:  32         
-         iNumSteps:  16         
-         iNumSteps:  32         
-         
-         updateHolders 0
-         command:
-         start FPS timer
-         
-         Number of voxels (in millions): 7.06106
-         Available pdPool: 7
-         FPS: 120.77
-         Microseconds per frame: 8280.24
-         Microseconds per million voxels: 1172.68
-         
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-     1>EXEC : Shader  527  ( ../src/glsl/PointShader.c ) compile error : 0(110) : error C1008: undefined variable "tex"
-     1>0(163): error C1008: undefined variable "bestSamp"
-              
-     1>EXEC : Program  528  link error : Fragment info
-         -------------
-     1>0(110): error C1008: undefined variable "tex"
-     1>0(163): error C1008: undefined variable "bestSamp"
-                
-         Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-     1>EXEC : Shader  644  ( ../src/glsl/PointShader.c ) compile error : 0(163) : error C1008: undefined variable "bestSamp"
-              
-     1>EXEC : Program  645  link error : Fragment info
-         -------------
-     1>0(163): error C1008: undefined variable "bestSamp"
-                
-         Shaders Refreshed
+         updateShadows
          Loading:  ..\data\constants.js         
          Load Successful          
          
@@ -1127,88 +1057,8 @@
          Valid JSON
                    
          Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         iNumSteps:  64         
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         Loading:  ..\data\constants.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         load jv data primTemplates.js
-         Loading:  ..\data\primTemplates.js         
-         Load Successful          
-         
-         Valid JSON
-                   
-         
-         Valid JSON
-                   
-         Shaders Refreshed
-         medianCount 1
-         medianCount 2
-     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: The command "../cleanup.bat;
-C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\Microsoft.CppCommon.targets(134,5): error MSB3073: :VCEnd" exited with code -1.
-     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)) -- FAILED.
+     1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
-Build FAILED.
+Build succeeded.
 
-Time Elapsed 00:09:46.87
+Time Elapsed 00:04:02.91

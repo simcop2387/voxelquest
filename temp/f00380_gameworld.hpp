@@ -133,7 +133,10 @@ public:
 	GameBlock* blockRef[2];
 	
 	
-
+	FIVector4 minShadowBounds;
+	FIVector4 maxShadowBounds;
+	FIVector4 minShadowBoundsGrow;
+	FIVector4 maxShadowBoundsGrow;
 
 	FIVector4 minv;
 	FIVector4 maxv;
@@ -400,8 +403,7 @@ public:
 	void clearAllHolders() {
 		singleton->stopAllThreads();
 		
-		glFlush();
-		glFinish();
+		
 		
 		GamePageHolder* gph;
 		
@@ -989,22 +991,56 @@ public:
 		// singleton->getMatrixFromFBO("rasterFBO0");
 		// singleton->perspectiveOn = false;
 		
+		
+		
+		
 		if (singleton->fpsTest) {
 			
 		}
 		else {
+			
 			glEnable(GL_DEPTH_TEST);
 			singleton->perspectiveOn = true;
-			renderGeom();
-			renderDebug();
+			
+			if (singleton->debugViewOn) {
+				renderGeom();
+				renderDebug();
+			}
+			else {
+				singleton->bindShader("GeomShader");
+				singleton->bindFBO("debugTargFBO");
+				singleton->unbindFBO();
+				singleton->unbindShader();
+			}
+			
 			singleton->perspectiveOn = false;
 			glDisable(GL_DEPTH_TEST);
+			
+			
 		}
 		
 		
 		
 		
 		if (singleton->renderingOct) {
+			
+			if (
+				singleton->lightChanged ||
+				(
+					(singleton->lastLightPos.distance(singleton->cameraGetPosNoShake())) >
+					singleton->conVals[E_CONST_LIGHTTHRESH]
+				)
+			) {
+				if (!singleton->lightChanged) {
+					cout << "updateShadows\n";
+				}
+				
+				rasterHolders(true);
+				singleton->lastLightPos.copyFrom(singleton->cameraGetPosNoShake());
+				singleton->lightChanged = false;
+				//singleton->updateShadows = false;
+			}
+			
 			rasterHolders(false);
 		}
 		else {
@@ -2373,7 +2409,12 @@ public:
 	
 	
 	
-		void rastHolder(int rad, bool drawLoading) {
+		void rastHolder(
+			int rad,
+			bool drawLoading,
+			bool getBounds,
+			bool clipToView
+		) {
 			
 			//doTraceVecND("cam ", &camHolderPos);
 			
@@ -2383,6 +2424,7 @@ public:
 			int jj;
 			int kk;
 			
+			bool doProc = false;
 			
 			GamePageHolder* curHolder;
 			
@@ -2399,6 +2441,12 @@ public:
 			int maxI = maxv.getIX() + rad;
 			
 			float disClip = singleton->cellsPerHolder*2;
+			
+			if (getBounds) {
+				minShadowBounds.setFXYZ(16777216.0f,16777216.0f,16777216.0f);
+				maxShadowBounds.setFXYZ(0.0f,0.0f,0.0f);
+			}
+			
 			
 			for (kk = minK; kk < maxK; kk++) {
 				for (jj = minJ; jj < maxJ; jj++) {
@@ -2428,23 +2476,41 @@ public:
 										(!(curHolder->listEmpty))
 									) {
 										
-										tempFIV.copyFrom(&(curHolder->gphCenInCells));
-										tempFIV.addXYZRef(singleton->cameraGetPosNoShake(),-1.0f);
-										tempFIV.normalize();
-										
-										
-										if (
-											(tempFIV.dot(&(singleton->lookAtVec)) > singleton->conVals[E_CONST_DOT_CLIP]) ||
-											(curHolder->gphCenInCells.distance(singleton->cameraGetPosNoShake()) < disClip)
-										) {
-											if (DO_POINTS) {
-												curHolder->vboWrapper.drawPoints();
+										if (getBounds) {
+											minShadowBounds.minXYZ(&(curHolder->gphMinInCells));
+											maxShadowBounds.maxXYZ(&(curHolder->gphMaxInCells));
+										}
+										else {
+											
+											doProc = false;
+											if (clipToView) {
+												tempFIV.copyFrom(&(curHolder->gphCenInCells));
+												tempFIV.addXYZRef(singleton->cameraGetPosNoShake(),-1.0f);
+												tempFIV.normalize();
+												if (
+													(tempFIV.dot(&(singleton->lookAtVec)) > singleton->conVals[E_CONST_DOT_CLIP]) ||
+													(curHolder->gphCenInCells.distance(singleton->cameraGetPosNoShake()) < disClip)
+												) {
+													doProc = true;
+												}
 											}
 											else {
-												curHolder->vboWrapper.draw();
+												doProc = true;
 											}
 											
+											
+											if (doProc) {
+												if (DO_POINTS) {
+													curHolder->vboWrapper.drawPoints();
+												}
+												else {
+													curHolder->vboWrapper.draw();
+												}
+											}
+											
+											
 										}
+										
 										
 									}
 								}
@@ -2456,6 +2522,27 @@ public:
 				}
 			}
 			
+			
+			float boundsDepth = maxShadowBounds.getFZ() - minShadowBounds.getFZ();
+			
+			if (getBounds) {
+				
+				minShadowBoundsGrow.copyFrom(&minShadowBounds);
+				minShadowBoundsGrow.addXYZ(
+					-abs(singleton->lightVec.getFX())*boundsDepth,
+					-abs(singleton->lightVec.getFY())*boundsDepth,
+					0.0f
+				);
+				minShadowBounds.minXYZ(&minShadowBoundsGrow);
+				
+				maxShadowBoundsGrow.copyFrom(&maxShadowBounds);
+				maxShadowBoundsGrow.addXYZ(
+					abs(singleton->lightVec.getFX())*boundsDepth,
+					abs(singleton->lightVec.getFY())*boundsDepth,
+					0.0f
+				);
+				maxShadowBounds.maxXYZ(&maxShadowBoundsGrow);
+			}
 			
 		}
 	
@@ -5136,7 +5223,7 @@ UPDATE_LIGHTS_END:
 
 
 
-	void rasterHolders(bool showResults) {
+	void rasterHolders(bool doShadow) {
 		
 		// get view matrix
 		// singleton->perspectiveOn = true;
@@ -5154,26 +5241,64 @@ UPDATE_LIGHTS_END:
 		}
 		
 		
-		singleton->bindShader("HolderShader");
-		singleton->bindFBO("rasterFBO",activeRaster);
-		
-		//singleton->setShaderFloat("curTime", singleton->curTime);
-		//singleton->setShaderFloat("voxelsPerCell",singleton->voxelsPerCell);
-		//singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
-		singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
-		singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
-		singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-		singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
-		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
-		
-		
-		singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
-		//singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+		if (doShadow) {
+			
+			// glDepthRangef(
+			// 	singleton->clipDist[0],
+			// 	singleton->clipDist[1]+singleton->conVals[E_CONST_LIGHTDIS]
+			// );
+			
+			singleton->updateLightPos();
+			singleton->getLightMatrix();
+			
+			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, true, false);
+			
+			
+			singleton->bindShader("ShadowMapShader");
+			singleton->bindFBO("shadowMapFBO");
+			
+			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
+			
+			
+			// singleton->setShaderfVec3("minBounds",&(minShadowBounds));
+			// singleton->setShaderfVec3("maxBounds",&(maxShadowBounds));
+			// singleton->setShaderfVec3("lightVec",&(singleton->lightVec));
 
-		rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false);
+			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, false, false);
 
-		singleton->unbindFBO();
-		singleton->unbindShader();
+			singleton->unbindFBO();
+			singleton->unbindShader();
+			
+			// glDepthRangef(
+			// 	singleton->clipDist[0],
+			// 	singleton->clipDist[1]	
+			// );
+		}
+		else {
+			singleton->bindShader("HolderShader");
+			singleton->bindFBO("rasterFBO",activeRaster);
+			
+			singleton->setShaderFloat("heightOfNearPlane",singleton->heightOfNearPlane);
+			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
+			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
+			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			//singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			
+			//singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
+			singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
+
+			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, false, true);
+
+			singleton->unbindFBO();
+			singleton->unbindShader();
+			
+			activeRaster = 1 - activeRaster;	
+		}
+		
 		
 		if (!DO_POINTS) {
 			glDisable(GL_CULL_FACE);
@@ -5181,7 +5306,10 @@ UPDATE_LIGHTS_END:
 		
 		glDisable(GL_DEPTH_TEST);
 
-		activeRaster = 1 - activeRaster;	
+		
+		if (doShadow) {
+			return;	
+		}
 		
 		
 		
@@ -5193,19 +5321,14 @@ UPDATE_LIGHTS_END:
 			singleton->bindShader("PointShader");
 			
 			singleton->setShaderFloat("voxelsPerCell",singleton->voxelsPerCell);
-			singleton->setShaderFloat("curTime", singleton->curTime);
-			singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
 			singleton->setShaderFloat("FOV", singleton->FOV*M_PI/180.0f);
 			singleton->setShaderVec2("clipDist",singleton->clipDist[0],singleton->clipDist[1]);
-			
 			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 			singleton->setShaderInt("totRad",singleton->iGetConst(E_CONST_HVRAD));
-			singleton->setShaderInt("growSteps",singleton->iGetConst(E_CONST_GROWPOINTSTEPS));
 			singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
 			
 			for (q = 0; q < singleton->iGetConst(E_CONST_GROWPOINTSTEPS); q++) {
 				
-				singleton->setShaderInt("stepNum",q);
 				
 				if ((q % 2) == 0) {
 					singleton->setShaderVec2("hvMult", 1.0f, 0.0f);
@@ -5219,8 +5342,6 @@ UPDATE_LIGHTS_END:
 				
 				singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
 				
-				
-				
 				singleton->fsQuad.draw();
 
 				singleton->unsampleFBO("rasterFBO",0,activeRaster);
@@ -5230,21 +5351,37 @@ UPDATE_LIGHTS_END:
 			}
 			
 			singleton->unbindShader();
+			
+			
+			singleton->bindShader("NearestShader");
+			singleton->bindFBO("rasterFBO", activeRaster);
+			singleton->sampleFBO("rasterFBO",0,activeRaster);
+			singleton->setShaderVec2("bufferDim", singleton->currentFBOResolutionX, singleton->currentFBOResolutionY);
+			singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
+			singleton->setShaderInt("totRad",singleton->iGetConst(E_CONST_FILLNEARESTRAD));
+			singleton->fsQuad.draw();
+			singleton->unsampleFBO("rasterFBO",0,activeRaster);
+			singleton->unbindFBO();
+			singleton->unbindShader();
+			activeRaster = 1 - activeRaster;
+			
 		}
 		
 		
 		
 		
-		
-		
-		
-		
-		
 		singleton->bindShader("LightShader");
-		singleton->bindFBO("resultFBO", activeRaster);
+		singleton->bindFBO("resultFBO", activeFBO);
 		singleton->sampleFBO("rasterFBO",0,activeRaster);
 		singleton->sampleFBO("debugTargFBO", 2);
+		singleton->setShaderTexture3D(4,singleton->volIdMat);
+		singleton->sampleFBO("shadowMapFBO",5);
 		
+		singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
+		singleton->setShaderInt("testOn3", (int)(singleton->testOn3));
+		singleton->setShaderfVec3("minBounds",&(minShadowBounds));
+		singleton->setShaderfVec3("maxBounds",&(maxShadowBounds));
+		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
 		singleton->setShaderFloat("voxelsPerCell",singleton->voxelsPerCell);
 		singleton->setShaderInt("cellsPerHolder",singleton->cellsPerHolder);
@@ -5254,58 +5391,21 @@ UPDATE_LIGHTS_END:
 		singleton->setShaderfVec3("cameraPos", singleton->cameraGetPos());
 		singleton->setShaderfVec3("lightVec", &(singleton->lightVec) );
 		singleton->setShaderMatrix4x4("modelviewInverse",singleton->viewMatrixDI,1);
+		singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
 		
 		singleton->fsQuad.draw();
 
+		singleton->unsampleFBO("shadowMapFBO",5);
+		singleton->setShaderTexture3D(4,0);
 		singleton->unsampleFBO("debugTargFBO", 2);
 		singleton->unsampleFBO("rasterFBO",0,activeRaster);
 		singleton->unbindFBO();
 		
 		singleton->unbindShader();
 		
+		activeFBO = 1-activeFBO;
 		
 		
-		
-		
-		
-		
-		
-		
-		
-		
-		// singleton->bindFBO("resultFBO", activeFBO);
-		// singleton->drawFBO("rasterFBO", 0, 1.0f, 1 - activeRaster);
-		// singleton->unbindFBO();
-		// activeFBO = 1-activeFBO;
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		// singleton->bindFBO("resultFBO", activeFBO);
-		// singleton->drawFBO("rasterFBO", 0, 1.0f);
-		// singleton->unbindFBO();		
-		// activeFBO = 1-activeFBO;
-		
-		
-		// if (showResults) {
-			
-		// 	glClearColor(0, 1, 0, 1);
-		// 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			
-		// 	singleton->drawFBO("rasterFBO", 0, 1.0f);
-			
-		// 	glutSwapBuffers();
-			
-		// 	glFlush();
-		// 	glFinish();
-			
-		// }
 		
 		
 	}
@@ -5617,13 +5717,15 @@ UPDATE_LIGHTS_END:
 		if (singleton->renderingOct) {
 			singleton->setShaderFloat("isWire", 1.0);
 			singleton->setShaderVec3("matVal", 255, 0, 0);
-			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), true);
+			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), true, false, false);
 			
 			if (holderInFocus != NULL) {
 				singleton->setShaderVec3("matVal", 0, 0, 255);
 				singleton->drawBox(&(holderInFocus->gphMinInCells),&(holderInFocus->gphMaxInCells));
 			}
 			
+			singleton->setShaderVec3("matVal", 0, 255, 0);
+			singleton->drawBox(&(minShadowBounds),&(maxShadowBounds));
 			
 		}
 		

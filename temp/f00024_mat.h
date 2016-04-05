@@ -675,6 +675,14 @@ public:
     void        setColumn(int index, const Vector4& v);
     void        setColumn(int index, const Vector3& v);
 
+    void        orthoProjection(const float width, const float height, const float nZ, const float fZ);
+
+    void        lookAt(
+        Vector3 &eye, // target point
+        Vector3 &center, // origin point
+        Vector3 &up    
+    );
+
     float* get();
     const float* getTranspose();                        // return transposed matrix
     float        getDeterminant();
@@ -1167,7 +1175,61 @@ inline Matrix4::Matrix4()
     identity();
 }
 
+void Matrix4::lookAt(
+    Vector3 &eye, // target point
+    Vector3 &center, // origin point
+    Vector3 &up
+) {
+   
+    
+    Vector3  f = (center - eye);
+    f.normalize();
+    Vector3 u = up;
+    Vector3 s = f.cross(u);
+    s.normalize();
+    u = s.cross(f);
+    u.normalize();
 
+    set(
+        s.x,
+        s.y,
+        s.z,
+        0.0f,
+        
+        u.x,
+        u.y,
+        u.z,
+        0.0f,
+        
+        -f.x,
+        -f.y,
+        -f.z,
+        0.0f,
+        
+        -s.dot(eye),
+        -u.dot(eye),
+         f.dot(eye),
+        1.0f
+    );
+}
+
+void Matrix4::orthoProjection(
+    const float width,
+    const float height,
+    const float nZ,
+    const float fZ
+) {
+    // asumed r-l = width , t-b = height
+    
+    set(
+        2.0f/width,  0.0f,              0.0f,                    0.0f,
+        0.0f,        2.0f/height,       0.0f,                    0.0f,
+        0.0f,        0.0f,              -2.0f/(fZ-nZ),           0.0f,
+        0.0f,        0.0f,              -(fZ+nZ)/(fZ-nZ),        1.0f
+    );
+    
+    
+}
 
 inline Matrix4::Matrix4(const float src[16])
 {
