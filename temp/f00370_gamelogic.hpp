@@ -2036,7 +2036,7 @@ FILL_GROUPS_RETURN:
 						}
 						
 						
-						if (genCount >= 2) {
+						if (genCount >= 6) {
 							return;
 						}
 						

@@ -4208,10 +4208,17 @@ struct VoxelCell {
 	int* indexArr;
 };
 
+struct VoxelMip {
+	bool* mipArr;
+	vector<int> mipList;
+};
+
 struct VoxelBuffer {
 	VoxelBufferEntry* data;
 	VoxelCell* cellLists;
 	vector<VoxelInfo> voxelList;
+	
+	VoxelMip mipMaps[NUM_MIP_LEVELS];
 	
 	int vcSize;
 	int vcPitch;
@@ -4292,6 +4299,19 @@ struct VoxelBuffer {
 		}
 		
 		voxelList.clear();
+		
+		int mipSize = vbPitch/2;
+		int mipVol;
+		
+		for (i = 0; i < NUM_MIP_LEVELS; i++) {
+			mipVol = mipSize*mipSize*mipSize;
+			for (j = 0; j < mipVol; j++) {
+				mipMaps[i].mipArr[j] = false;
+			}
+			mipMaps[i].mipList.clear();
+			mipSize /= 2;
+		}
+		
 	}
 	
 };

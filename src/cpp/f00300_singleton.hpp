@@ -1026,7 +1026,7 @@ public:
 		//mapSampScale = 2.0f;
 		int newPitch = (imageHM0->width) * 2; //*2;
 		mapPitch = (imageHM0->width); //newPitch;// //
-		
+		int curMipSize = 0;
 		
 		voxelsPerCell = VOXELS_PER_CELL;
 		paddingInCells = PADDING_IN_CELLS;
@@ -1039,8 +1039,7 @@ public:
 		cellsPerBlock = holdersPerBlock * cellsPerHolder;
 		blocksPerWorld = holdersPerWorld/holdersPerBlock;
 		
-		
-		
+
 		
 		cellsPerHolderPad = cellsPerHolder+paddingInCells*2;
 		voxelsPerHolderPad = voxelsPerCell*cellsPerHolderPad;
@@ -1050,6 +1049,9 @@ public:
 			pdPool[i].data = new PaddedDataEntry[cellsPerHolderPad*cellsPerHolderPad*cellsPerHolderPad];
 			//pdPool[i].voxData = new VoxEntry[voxelsPerCell*voxelsPerCell*voxelsPerCell]
 			pdPool[i].isFree = true;
+			
+			
+			
 			
 			
 			pdPool[i].voxelBuffer.vcPitch = cellsPerHolderPad;
@@ -1063,6 +1065,17 @@ public:
 			pdPool[i].voxelBuffer.data = new VoxelBufferEntry[
 				pdPool[i].voxelBuffer.vbSize
 			];
+			
+			if (DO_MIP) {
+				curMipSize = voxelsPerHolderPad/2;
+				for (j = 0; j < NUM_MIP_LEVELS; j++) {
+					pdPool[i].voxelBuffer.mipMaps[j].mipArr = new bool[curMipSize*curMipSize*curMipSize];
+					
+					curMipSize /= 2;
+				}
+			}
+			
+			
 			
 			for (j = 0; j < pdPool[i].voxelBuffer.vcSize; j++) {
 				pdPool[i].voxelBuffer.cellLists[j].curSize = 0;
@@ -3163,7 +3176,7 @@ public:
 		}
 		else if (comp->uid.compare("$options.graphics.clipDist") == 0) {
 			
-			clipDist[1] = curValue*512.0f;
+			clipDist[1] = curValue*conVals[E_CONST_MAX_CLIPDIST];
 			
 		}
 		else if (comp->uid.compare("$options.graphics.maxHeight") == 0) {
@@ -5527,9 +5540,9 @@ DISPATCH_EVENT_END:
 
 					case '[':
 						iNumSteps /= 2;
-						if (iNumSteps < 16)
+						if (iNumSteps < 4)
 						{
-							iNumSteps = 16;
+							iNumSteps = 4;
 						}
 						doTraceND("iNumSteps: ", i__s(iNumSteps));
 
@@ -6772,8 +6785,11 @@ DISPATCH_EVENT_END:
 		
 		
 		if (lbClicked) {
-			gamePhysics->lastBodyPick = NULL;
-			gamePhysics->lastBodyUID = -1;
+			if (gamePhysics != NULL) {
+				gamePhysics->lastBodyPick = NULL;
+				gamePhysics->lastBodyUID = -1;
+			}
+			
 		}
 		
 		

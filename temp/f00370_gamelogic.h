@@ -1913,7 +1913,7 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 						}
 						
 						
-						if (genCount >= 2) {
+						if (genCount >= 6) {
 							return;
 						}
 						

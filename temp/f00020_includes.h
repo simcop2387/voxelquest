@@ -81,7 +81,9 @@ const static bool SINGLE_THREADED = false;
 
 int TOT_POINT_COUNT = 0;
 
+const static int NUM_MIP_LEVELS = 3;
 const static bool DO_AO = false;
+const static bool DO_MIP = true;
 const static bool DO_POINTS = true;
 const static int MAX_THREADS = 7;
 // const static int NORM_RAD = 2;

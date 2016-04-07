@@ -35,6 +35,7 @@ in vec4 worldPos;
 layout(location = 0) out vec4 FragColor0;
 layout(location = 1) out vec4 FragColor1;
 
+^INCLUDE:MATERIALS^
 
 void getRay(in vec2 newTC, inout vec3 ro, inout vec3 rd) {
  float aspect = bufferDim.y/bufferDim.x;
@@ -95,6 +96,12 @@ void main() {
     float camDis = 0.0;
     
     
+    vec3 voxelMod1 = vec3(voxelWidth);
+    vec3 voxelMod2 = vec3(voxelWidth);
+    vec3 vm = vec3(voxelMod1);
+    voxelMod2.z *= 8.0;
+    
+    
     // int radh = int(hvRad.x);
     // int radv = int(hvRad.y);
     
@@ -128,8 +135,14 @@ void main() {
 
         if (dot(absSamp.xyz,oneVec.xyz) > 0.0) {
             
+            // if (distance(samp.w,TEX_GRASS*65280.0) < 4.0 ) {
+            //     vm = voxelMod2;
+            // }
+            // else {
+            //     vm = voxelMod1;
+            // }
             
-            boxVal = aabbIntersect(ro,rd,samp.xyz-voxelWidth,samp.xyz+voxelWidth);
+            boxVal = aabbIntersect(ro,rd,samp.xyz-voxelWidth,samp.xyz+vm);
             
             if (boxVal.x <= boxVal.y) {
                 camDis = distance(cameraPos.xyz,samp.xyz);

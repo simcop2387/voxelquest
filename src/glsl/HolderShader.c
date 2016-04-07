@@ -20,7 +20,7 @@ void main() {
 	
 	worldPos = vec4(vposition.xyz,1.0);
 	vdata0 = data0;
-	vdata0.w = floor(vdata0.w*65281.0 + 0.1)/65280.0;
+	vdata0.w = floor(vdata0.w+1.0); // *65281.0 + 0.1)/65280.0;
 	vec4 screenPos = pmMatrix*worldPos;
 	gl_Position = screenPos;
 	
@@ -36,7 +36,7 @@ layout(location = 1) out vec4 FragColor1;
 
 void main() {
 
-	FragColor0 = worldPos;
+	FragColor0 = vec4(worldPos.xyz,vdata0.w);
 	FragColor1 = vdata0;
 
 }

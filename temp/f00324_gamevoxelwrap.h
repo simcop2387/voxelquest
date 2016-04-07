@@ -49,6 +49,8 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 			return;
 		}
 		
+		int u;
+		int t;
 		int q;
 		int q2;
 		int p;
@@ -131,6 +133,46 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		int ww;
 		int curMat = 0;
 		
+		int mipAmount;
+		int curMipSize;
+		int mipInd;
+		
+		if (DO_MIP) {
+			mipAmount = 2;
+			
+			for (t = 0; t < NUM_MIP_LEVELS; t++) {
+				for (p = 0; p < totSize; p++) {
+					q = voxelBuffer->voxelList[p].viIndex;
+					kk = q/(voxelsPerHolderPad*voxelsPerHolderPad);
+					jj = (q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
+					ii = q-(kk*voxelsPerHolderPad*voxelsPerHolderPad + jj*voxelsPerHolderPad);
+					
+					if (voxelBuffer->getFlag(q,E_OCT_SURFACE)) {
+						
+						curMipSize = voxelsPerHolderPad/mipAmount;
+						
+						kk2 = kk/mipAmount;
+						jj2 = jj/mipAmount;
+						ii2 = ii/mipAmount;
+						
+						mipInd = kk2*curMipSize*curMipSize + jj2*curMipSize + ii2;
+						
+						if (voxelBuffer->mipMaps[t].mipArr[mipInd]) {
+							
+						}
+						else {
+							voxelBuffer->mipMaps[t].mipArr[mipInd] = true;
+							voxelBuffer->mipMaps[t].mipList.push_back(p);
+						}
+						
+					}
+				}
+				
+				mipAmount *= 2;
+			}
+			
+		}
+		
 		if (DO_AO) {
 			for (p = 0; p < totSize; p++) {
 				q = voxelBuffer->voxelList[p].viIndex;
@@ -172,7 +214,11 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 		}
 		
 		for (passNum = 0; passNum < maxPass; passNum++) {
+			
+			// for (u = 0; u < voxelBuffer->mipMaps[1].mipList.size(); u++) {
+			// 	p = voxelBuffer->mipMaps[1].mipList[u];
 			for (p = 0; p < totSize; p++) {
+				
 				q = voxelBuffer->voxelList[p].viIndex;
 				kk = q/(voxelsPerHolderPad*voxelsPerHolderPad);
 				jj = (q-kk*voxelsPerHolderPad*voxelsPerHolderPad)/voxelsPerHolderPad;
@@ -196,7 +242,7 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 						
 						
 						curNID = voxelBuffer->voxelList[p].normId;
-						curMat = voxelBuffer->voxelList[p].matId;
+						
 						
 						
 						
@@ -226,7 +272,7 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 											tempFlags = voxelBuffer->getFlagsAtNode(tempInd);
 											VLIndex = voxelBuffer->getIndAtNode(tempInd);
 											
-											if (VLIndex == -1) {
+											if ((VLIndex == -1)||(curNID == 0)) {
 												testNID = 0;
 											}
 											else {
@@ -283,6 +329,21 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 								}
 								
 								voxelBuffer->voxelList[p].normal = totNorm;
+								curMat = voxelBuffer->voxelList[p].matId;
+
+								// if (totNorm.z > 0.5f) {
+								// 	if (curMat == TEX_EARTH) {
+								// 		// if (
+								// 		// 	((ii%2)==0) &&
+								// 		// 	((jj%2)==0)	
+								// 		// ) {
+											
+								// 		// }
+										
+								// 		curMat = TEX_GRASS;
+								// 	}
+								// }
+
 
 							break;
 							
@@ -401,7 +462,7 @@ void GameVoxelWrap::fillVec (GamePageHolder * gph)
 							tempData[0] = totNorm.x;
 							tempData[1] = totNorm.y;
 							tempData[2] = totNorm.z;
-							tempData[3] = curMat;//totWeight/weightCount;
+							tempData[3] = curMat*256;//totWeight/weightCount;
 							
 							if (DO_POINTS) {
 								gph->vboWrapper.vertexVec.push_back(fVO.x);
@@ -1038,54 +1099,54 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
 		
 		getVoro(&worldPos,&worldClosestCenter, voxelsPerCell);
 		
-		voxelBuffer->voxelList[VLIndex].normId = worldClosestCenter.x*3 + worldClosestCenter.y*7 + worldClosestCenter.z*11;
+		
 		
 		localClosestCenter = worldClosestCenter - offsetInVoxels;
 		//localClosestCenter += paddingInVoxels;
 		
 		
 		int vOff = 8;
-		
-		float terSamp = sampLinear(&localClosestCenter, ivec3(0,0,0));
-		
+		float terSampVoro = sampLinear(&localClosestCenter, ivec3(0,0,0));
 		float terSampOrig =  sampLinear(pos, ivec3(0,0,0));
+		bool isTer = (terSampVoro >= 0.5f); //mixf(terSampVoro,terSampOrig,0.0f)
+		bool isGrass = false;
+		uint finalMat = TEX_NULL;
+		
+		// if (isTer) {
+		// 	finalMat = TEX_EARTH;
+		// }
+		
+		
+		
 		float terSampOrigX = sampLinear(pos, ivec3(vOff,0,0));
 		float terSampOrigY = sampLinear(pos, ivec3(0,vOff,0));
 		float terSampOrigZ = sampLinear(pos, ivec3(0,0,vOff));
-		
 		vec3 terNorm = vec3(
 			terSampOrigX-terSampOrig,
 			terSampOrigY-terSampOrig,
 			terSampOrigZ-terSampOrig
 		);
-		
 		terNorm *= -1.0f;
-		
-		bool isTer = (mixf(terSamp,terSampOrig,0.0f) >= 0.5f);
-		
-		bool isGrass = false;
-		
-		
-		uint finalMat = TEX_NULL;
-		
 		
 		if (isTer) {
 			finalMat = TEX_EARTH;
+			voxelBuffer->voxelList[VLIndex].normId = worldClosestCenter.x*3 + worldClosestCenter.y*7 + worldClosestCenter.z*11;
 		}
 		else {
 			if (terNorm.normalize()) {
 				if (terNorm.z > 0.5f) {
-					int grassOff = rand2D(fWorldPos)*8.0f;
+					int grassOff = rand2D(fWorldPos)*clampfZO((terNorm.z-0.5f)*2.0f)*8.0f;
 					float terSampGrass = sampLinear(pos, ivec3(0,0,-grassOff));
 					
 					if (terSampGrass > 0.5f) {
 						isGrass = true;
 						finalMat = TEX_GRASS;
+						voxelBuffer->voxelList[VLIndex].normId = 0;
 					}
 				}
 			}
-			
 		}
+		
 		
 		
 		
@@ -1103,7 +1164,7 @@ void GameVoxelWrap::calcVoxel (ivec3 * pos, int octPtr, int VLIndex)
 			// x = base tex, y = variant
 			//floor(curTex.x*256.0*255.0) + floor(curTex.y*255.0);
 			
-			voxelBuffer->voxelList[VLIndex].matId = finalMat*256;
+			voxelBuffer->voxelList[VLIndex].matId = finalMat;
 		}
 		
 		

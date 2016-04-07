@@ -1,4 +1,4 @@
-﻿Build started 4/5/2016 5:15:04 AM.
+﻿Build started 4/6/2016 11:56:30 PM.
      1>Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" on node 2 (Build target(s)).
      1>PreBuildEvent:
          ../combine.bat
@@ -1007,7 +1007,7 @@
                    
          GW DONE          
          reshape
-         curHeight 0 newHeight 1086.24
+         curHeight 0 newHeight 1139.45
          GamePhysics:init()
          BenchmarkDemo:initPhysics()
          GL_MAX_TEXTURE_BUFFER_SIZE 134217728
@@ -1042,6 +1042,9 @@
          Valid JSON
                    
          Shaders Refreshed
+         updateShadows
+         updateShadows
+         testOn3 1
          Loading:  ..\data\constants.js         
          Load Successful          
          
@@ -1057,8 +1060,211 @@
          Valid JSON
                    
          Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         testOn3 0
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         Loading:  ..\data\constants.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         load jv data primTemplates.js
+         Loading:  ..\data\primTemplates.js         
+         Load Successful          
+         
+         Valid JSON
+                   
+         
+         Valid JSON
+                   
+         Shaders Refreshed
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
+         updateShadows
      1>Done Building Project "C:\wamp\www\voxelquest\VoxelQuest\VoxelQuest.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:04:02.91
+Time Elapsed 00:24:48.82

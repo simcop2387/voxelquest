@@ -342,7 +342,6 @@ void main() {
   }
   else {
     
-    
     worldPosInLightSpace = lightSpaceMatrix*vec4(tex0.xyz,1.0);
     shadowVal = calcShadow(tex0, worldPosInLightSpace, tex1.xyz);
     lightVal *= shadowVal;
@@ -354,7 +353,7 @@ void main() {
     ;
     
     matVals = vec4(0.0,0.0,pack16(curMat));
-    finalCol = unpackColor(matVals.ba,lightRes) + getModCol(lightRes, tex1.xyz)*(lightVal*0.25+0.25);
+    finalCol = unpackColor(matVals.ba,lightRes) + getModCol(lightRes, tex1.xyz)*0.25;//(lightVal*0.25+0.25);
     
     
     // screenPos = worldToScreen(vec4(tex0.xyz,1.0));
