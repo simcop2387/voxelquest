@@ -508,29 +508,29 @@ public:
 								tempData[7] = curMat*256;
 								
 								for (m = 0; m < dataSize; m++) {
-									gph->vboWrapper.vertexVec.push_back(tempData[m]);
+									gph->vertexVec.push_back(tempData[m]);
 								}
 								
 							}
-							else {
+							// else {
 								
-								tempData[0] = totNorm.x;
-								tempData[1] = totNorm.y;
-								tempData[2] = totNorm.z;
-								tempData[3] = curMat*256;//totWeight/weightCount;
-								gph->vboWrapper.vertexVec.push_back(fVO.x);
-								gph->vboWrapper.vertexVec.push_back(fVO.y);
-								gph->vboWrapper.vertexVec.push_back(fVO.z);
-								gph->vboWrapper.vertexVec.push_back(1.0f);
+							// 	tempData[0] = totNorm.x;
+							// 	tempData[1] = totNorm.y;
+							// 	tempData[2] = totNorm.z;
+							// 	tempData[3] = curMat*256;//totWeight/weightCount;
+							// 	gph->vertexVec.push_back(fVO.x);
+							// 	gph->vertexVec.push_back(fVO.y);
+							// 	gph->vertexVec.push_back(fVO.z);
+							// 	gph->vertexVec.push_back(1.0f);
 								
-								gph->vboWrapper.vboBox(
-									fVO.x, fVO.y, fVO.z,
-									0.0f,fVPC,
-									curFlags,
-									tempData,
-									4
-								);
-							}
+							// 	gph->vboWrapper.vboBox(
+							// 		fVO.x, fVO.y, fVO.z,
+							// 		0.0f,fVPC,
+							// 		curFlags,
+							// 		tempData,
+							// 		4
+							// 	);
+							// }
 						}
 						
 						

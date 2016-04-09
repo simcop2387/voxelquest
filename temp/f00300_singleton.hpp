@@ -201,6 +201,7 @@ public:
 	int curPattern;
 	int curPatternRot;
 	
+	int cacheVersion;
 	int holderLoadCount;
 	int bakeTicks;
 	int tbTicks;
@@ -512,6 +513,10 @@ public:
 	string cbDataStrings[10];
 	
 	string guiSaveLoc;
+	
+	string curCLFull;
+	string curCLBaseDir;
+	string curCLWorldDir;
 
 	
 	VolumeWrapper* volumeWrappers[E_VW_LENGTH];
@@ -568,6 +573,8 @@ public:
 	JSONValue *rootObjJS;
 	JSONValue *guiRootJS;
 	JSONValue *constRootJS;
+	
+	JSONValue *cacheMetaJS;
 
 	// #ifdef USE_POCO
 	// 	WebSocketServer *myWS;
@@ -675,6 +682,14 @@ public:
 		
 		initNetMasks();
 		
+		
+		cacheMetaJS = NULL;
+		curCLBaseDir = "e:\\vqcache";
+		curCLWorldDir = "world001";
+		cacheVersion = 1;
+		updateCurCacheLoc();
+		loadCacheMetaData();
+
 		
 		if (DO_RANDOMIZE) {
 			// todo: get rid of this for random seeds, causes desync
@@ -2010,7 +2025,6 @@ public:
 
 
 	}
-	
 	
 	
 	
@@ -3534,6 +3548,10 @@ DISPATCH_EVENT_END:
 
 	~Singleton()
 	{
+		// stopAllThreads();
+		
+		cout << "End Program\n";
+		
 		if (gw)
 		{
 			delete gw;
@@ -5384,7 +5402,14 @@ DISPATCH_EVENT_END:
 						debugViewOn = !debugViewOn;
 					break;
 					case 's':
-						updateShadows = !updateShadows;
+						stopAllThreads();
+						if (saveCacheMetaData()) {
+							cout << "saveCacheMetaData successful\n";
+						}
+						else {
+							cout << "saveCacheMetaData failed\n";
+						}
+						//updateShadows = !updateShadows;
 					break;
 					case 'u':
 						updateHolderLookat = !updateHolderLookat;
@@ -8914,7 +8939,251 @@ DISPATCH_EVENT_END:
 	std::ifstream::pos_type filesize(const char* filename)
 	{
 	    std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
-	    return in.tellg(); 
+	    return in.tellg();
+	}
+
+
+	// file layout
+	// new folder for worldId / versionId
+	// blockId + "_" + holderId + ".bin"
+
+	bool checkCacheEntry(int blockId, int holderId) {
+		string entryName = "b" + i__s(blockId) + "h" + i__s(holderId);
+		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,holderId);
+		
+		if (curHolder == NULL) {
+			return false;
+		}
+		if (cacheMetaJS == NULL) {
+			return false;
+		}
+		
+		if (cacheMetaJS->Child("pages")->HasChild(entryName)) {
+			return true;
+		}
+		
+		return false;
+		
+	}
+
+	bool loadCacheEntry(int blockId, int holderId) {
+		string entryName = "b" + i__s(blockId) + "h" + i__s(holderId);
+		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,holderId);
+		JSONValue* curEntry;
+		
+		int curVersion;
+		int curDataSizeInFloats;
+		
+		if (curHolder == NULL) {
+			return false;
+		}
+		if (cacheMetaJS == NULL) {
+			return false;
+		}
+		if (cacheMetaJS->Child("pages")->HasChild(entryName)) {
+			
+			curEntry = cacheMetaJS->Child("pages")->Child(entryName);
+			
+			curVersion = curEntry->array_value[E_CMD_VERSION]->number_value;
+			curDataSizeInFloats = curEntry->array_value[E_CMD_SIZEINFLOATS]->number_value;
+			
+			if (curDataSizeInFloats == 0) {
+				return true;
+			}
+			
+			curHolder->vertexVec.resize(curDataSizeInFloats);
+			
+			if (
+				loadFloatArray(
+					curCLFull+entryName+".bin",
+					&(curHolder->vertexVec[0]),
+					curDataSizeInFloats
+				)
+			) {
+				return true;
+			}
+		}
+		
+		
+		return false;
+	}
+
+	bool saveCacheEntry(int blockId, int holderId) {
+		string entryName = "b" + i__s(blockId) + "h" + i__s(holderId);
+		JSONValue* curEntry;
+		bool justCreated = false;
+		int i;
+		
+		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,holderId);
+		
+		int dataSizeInFloats;
+		
+		
+		if (curHolder == NULL) {
+			return false;
+		}
+		
+		if (cacheMetaJS == NULL) {
+			return false;
+		}
+		
+		dataSizeInFloats = curHolder->vertexVec.size();
+		
+		bool doProc = false;
+		
+		if (dataSizeInFloats == 0) {
+			doProc = true;
+		}
+		else {
+			doProc = saveFloatArray(
+				curCLFull+entryName+".bin",
+				&(curHolder->vertexVec[0]),
+				curHolder->vertexVec.size()
+			);
+		}
+		
+		if (doProc) {
+			
+			if (cacheMetaJS->Child("pages")->HasChild(entryName)) {
+				
+			}
+			else {
+				cacheMetaJS->Child("pages")->object_value[entryName] = new JSONValue(JSONArray());
+				justCreated = true;
+			}
+			curEntry = cacheMetaJS->Child("pages")->Child(entryName);
+			
+			if (justCreated) {
+				for (i = 0; i < E_CMD_LENGTH; i++) {
+					curEntry->array_value.push_back(new JSONValue(0.0));
+				}
+			}
+			
+			curEntry->array_value[E_CMD_VERSION]->number_value = cacheVersion;
+			curEntry->array_value[E_CMD_SIZEINFLOATS]->number_value = dataSizeInFloats;
+			
+			
+			return true;
+		}
+		
+		
+		
+		return false;
+		
+	}
+
+	bool loadCacheMetaData() {
+		if (loadJSON(curCLFull+"meta.js",&cacheMetaJS)) {
+			cout << "Cache metadata loaded\n";
+			return true;
+		}
+		else {
+			cout << "Cache metadata not loaded, creating new metadata\n";
+			cleanJVPointer(&cacheMetaJS);
+			cacheMetaJS = new JSONValue(JSONObject());
+			cacheMetaJS->object_value["pages"] = new JSONValue(JSONObject());
+			
+			
+			
+			return false;
+		}
+	}
+	
+	bool saveCacheMetaData() {
+		if (cacheMetaJS == NULL) {
+			return false;
+		}
+		if (
+			saveFileString(
+				curCLFull+"meta.js",
+				&(cacheMetaJS->Stringify())
+			)	
+		) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+
+	void clearCache() {
+		// todo: delete all cache files
+	}
+	
+	bool updateCurCacheLoc() {
+		curCLFull = curCLBaseDir;
+		if (createFolder(curCLFull)) {} else {return false;}
+		
+		curCLFull += "\\" + curCLWorldDir;
+		if (createFolder(curCLFull)) {} else {return false;}
+		
+		curCLFull += "\\";
+		
+		cout << "curCLFull " << curCLFull << "\n";
+				
+		return true;
+	}
+
+	bool createFolder(string folderNameStr) {
+		
+		std::wstring folderNameWstr = s2ws(folderNameStr);
+		
+		if (
+			CreateDirectory(folderNameWstr.c_str(), NULL)
+		) {
+			return true;
+		}
+		else {
+			if (GetLastError() == ERROR_ALREADY_EXISTS) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool saveFloatArray(string fileName, float* data, int dataSizeInFloats) {
+		if (dataSizeInFloats == 0) {
+			return true;
+		}
+		
+		// ofstream outfile (fileName, ios::out | ios::binary);
+		// outfile.write(reinterpret_cast<char*>(&data), sizeof(float)*dataSizeInFloats);
+		// outfile.close();
+		
+		FILE * pFile;
+		pFile = fopen(fileName.c_str(), "wb");
+		
+		if (pFile!=NULL) {
+			fwrite(data , sizeof(float), dataSizeInFloats, pFile);
+			fclose(pFile);
+			return true;
+		}
+		else {
+			return false;
+		}
+		
+	}
+	
+	bool loadFloatArray(string fileName, float* data, int dataSizeInFloats) {
+		if (dataSizeInFloats == 0) {
+			return true;
+		}
+		
+		// ifstream infile (fileName, ios::in | ios::binary);
+		// infile.read(reinterpret_cast<char*>(&data), sizeof(float)*dataSizeInFloats);
+		// infile.close();
+		
+		FILE * pFile;
+		pFile = fopen(fileName.c_str(), "rb");
+		
+		if (pFile!=NULL) {
+			fread(data , sizeof(float), dataSizeInFloats, pFile);
+			fclose(pFile);
+			return true;
+		}
+		else {
+			return false;
+		}
 	}
 
 	bool loadFile(string fnString, charArr *dest)

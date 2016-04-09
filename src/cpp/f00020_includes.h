@@ -102,7 +102,6 @@ const static int MAX_PDPOOL_SIZE = MAX_THREADS;
 
 
 
-
 const static float SPHEREMAP_SCALE_FACTOR = 0.5f; // lower is faster
 
 const static int DEF_VOL_SIZE = 64;

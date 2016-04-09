@@ -50,6 +50,14 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		initNetMasks();
 		
 		
+		cacheMetaJS = NULL;
+		curCLBaseDir = "e:\\vqcache";
+		curCLWorldDir = "world001";
+		cacheVersion = 1;
+		updateCurCacheLoc();
+		loadCacheMetaData();
+
+		
 		if (DO_RANDOMIZE) {
 			// todo: get rid of this for random seeds, causes desync
 			srand(time(NULL));
@@ -2750,6 +2758,10 @@ void Singleton::qNormalizeAngle (int & angle)
 	}
 Singleton::~ Singleton ()
         {
+		// stopAllThreads();
+		
+		cout << "End Program\n";
+		
 		if (gw)
 		{
 			delete gw;
@@ -4371,7 +4383,14 @@ void Singleton::processInput (unsigned char key, bool keyDown, int x, int y)
 						debugViewOn = !debugViewOn;
 					break;
 					case 's':
-						updateShadows = !updateShadows;
+						stopAllThreads();
+						if (saveCacheMetaData()) {
+							cout << "saveCacheMetaData successful\n";
+						}
+						else {
+							cout << "saveCacheMetaData failed\n";
+						}
+						//updateShadows = !updateShadows;
 					break;
 					case 'u':
 						updateHolderLookat = !updateHolderLookat;
@@ -7663,7 +7682,246 @@ string Singleton::loadFileString (string fnString)
 std::ifstream::pos_type Singleton::filesize (char const * filename)
         {
 	    std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
-	    return in.tellg(); 
+	    return in.tellg();
+	}
+bool Singleton::checkCacheEntry (int blockId, int holderId)
+                                                        {
+		string entryName = "b" + i__s(blockId) + "h" + i__s(holderId);
+		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,holderId);
+		
+		if (curHolder == NULL) {
+			return false;
+		}
+		if (cacheMetaJS == NULL) {
+			return false;
+		}
+		
+		if (cacheMetaJS->Child("pages")->HasChild(entryName)) {
+			return true;
+		}
+		
+		return false;
+		
+	}
+bool Singleton::loadCacheEntry (int blockId, int holderId)
+                                                       {
+		string entryName = "b" + i__s(blockId) + "h" + i__s(holderId);
+		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,holderId);
+		JSONValue* curEntry;
+		
+		int curVersion;
+		int curDataSizeInFloats;
+		
+		if (curHolder == NULL) {
+			return false;
+		}
+		if (cacheMetaJS == NULL) {
+			return false;
+		}
+		if (cacheMetaJS->Child("pages")->HasChild(entryName)) {
+			
+			curEntry = cacheMetaJS->Child("pages")->Child(entryName);
+			
+			curVersion = curEntry->array_value[E_CMD_VERSION]->number_value;
+			curDataSizeInFloats = curEntry->array_value[E_CMD_SIZEINFLOATS]->number_value;
+			
+			if (curDataSizeInFloats == 0) {
+				return true;
+			}
+			
+			curHolder->vertexVec.resize(curDataSizeInFloats);
+			
+			if (
+				loadFloatArray(
+					curCLFull+entryName+".bin",
+					&(curHolder->vertexVec[0]),
+					curDataSizeInFloats
+				)
+			) {
+				return true;
+			}
+		}
+		
+		
+		return false;
+	}
+bool Singleton::saveCacheEntry (int blockId, int holderId)
+                                                       {
+		string entryName = "b" + i__s(blockId) + "h" + i__s(holderId);
+		JSONValue* curEntry;
+		bool justCreated = false;
+		int i;
+		
+		GamePageHolder* curHolder = gameLogic->getHolderById(blockId,holderId);
+		
+		int dataSizeInFloats;
+		
+		
+		if (curHolder == NULL) {
+			return false;
+		}
+		
+		if (cacheMetaJS == NULL) {
+			return false;
+		}
+		
+		dataSizeInFloats = curHolder->vertexVec.size();
+		
+		bool doProc = false;
+		
+		if (dataSizeInFloats == 0) {
+			doProc = true;
+		}
+		else {
+			doProc = saveFloatArray(
+				curCLFull+entryName+".bin",
+				&(curHolder->vertexVec[0]),
+				curHolder->vertexVec.size()
+			);
+		}
+		
+		if (doProc) {
+			
+			if (cacheMetaJS->Child("pages")->HasChild(entryName)) {
+				
+			}
+			else {
+				cacheMetaJS->Child("pages")->object_value[entryName] = new JSONValue(JSONArray());
+				justCreated = true;
+			}
+			curEntry = cacheMetaJS->Child("pages")->Child(entryName);
+			
+			if (justCreated) {
+				for (i = 0; i < E_CMD_LENGTH; i++) {
+					curEntry->array_value.push_back(new JSONValue(0.0));
+				}
+			}
+			
+			curEntry->array_value[E_CMD_VERSION]->number_value = cacheVersion;
+			curEntry->array_value[E_CMD_SIZEINFLOATS]->number_value = dataSizeInFloats;
+			
+			
+			return true;
+		}
+		
+		
+		
+		return false;
+		
+	}
+bool Singleton::loadCacheMetaData ()
+                                 {
+		if (loadJSON(curCLFull+"meta.js",&cacheMetaJS)) {
+			cout << "Cache metadata loaded\n";
+			return true;
+		}
+		else {
+			cout << "Cache metadata not loaded, creating new metadata\n";
+			cleanJVPointer(&cacheMetaJS);
+			cacheMetaJS = new JSONValue(JSONObject());
+			cacheMetaJS->object_value["pages"] = new JSONValue(JSONObject());
+			
+			
+			
+			return false;
+		}
+	}
+bool Singleton::saveCacheMetaData ()
+                                 {
+		if (cacheMetaJS == NULL) {
+			return false;
+		}
+		if (
+			saveFileString(
+				curCLFull+"meta.js",
+				&(cacheMetaJS->Stringify())
+			)	
+		) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+void Singleton::clearCache ()
+                          {
+		// todo: delete all cache files
+	}
+bool Singleton::updateCurCacheLoc ()
+                                 {
+		curCLFull = curCLBaseDir;
+		if (createFolder(curCLFull)) {} else {return false;}
+		
+		curCLFull += "\\" + curCLWorldDir;
+		if (createFolder(curCLFull)) {} else {return false;}
+		
+		curCLFull += "\\";
+		
+		cout << "curCLFull " << curCLFull << "\n";
+				
+		return true;
+	}
+bool Singleton::createFolder (string folderNameStr)
+                                                {
+		
+		std::wstring folderNameWstr = s2ws(folderNameStr);
+		
+		if (
+			CreateDirectory(folderNameWstr.c_str(), NULL)
+		) {
+			return true;
+		}
+		else {
+			if (GetLastError() == ERROR_ALREADY_EXISTS) {
+				return true;
+			}
+		}
+		return false;
+	}
+bool Singleton::saveFloatArray (string fileName, float * data, int dataSizeInFloats)
+                                                                                {
+		if (dataSizeInFloats == 0) {
+			return true;
+		}
+		
+		// ofstream outfile (fileName, ios::out | ios::binary);
+		// outfile.write(reinterpret_cast<char*>(&data), sizeof(float)*dataSizeInFloats);
+		// outfile.close();
+		
+		FILE * pFile;
+		pFile = fopen(fileName.c_str(), "wb");
+		
+		if (pFile!=NULL) {
+			fwrite(data , sizeof(float), dataSizeInFloats, pFile);
+			fclose(pFile);
+			return true;
+		}
+		else {
+			return false;
+		}
+		
+	}
+bool Singleton::loadFloatArray (string fileName, float * data, int dataSizeInFloats)
+                                                                                {
+		if (dataSizeInFloats == 0) {
+			return true;
+		}
+		
+		// ifstream infile (fileName, ios::in | ios::binary);
+		// infile.read(reinterpret_cast<char*>(&data), sizeof(float)*dataSizeInFloats);
+		// infile.close();
+		
+		FILE * pFile;
+		pFile = fopen(fileName.c_str(), "rb");
+		
+		if (pFile!=NULL) {
+			fread(data , sizeof(float), dataSizeInFloats, pFile);
+			fclose(pFile);
+			return true;
+		}
+		else {
+			return false;
+		}
 	}
 bool Singleton::loadFile (string fnString, charArr * dest)
         {

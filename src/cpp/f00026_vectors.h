@@ -3315,10 +3315,19 @@ public:
 		
 		checkInit();
 		
+		GLfloat* vertexPtr = NULL;
+		GLuint* indexPtr = NULL;
+		if (vertexVec.size() > 0) {
+			vertexPtr = &(vertexVec[0]);
+		}
+		if (indexVec.size() > 0) {
+			indexPtr = &(indexVec[0]);
+		}
+		
 		updateBase(
-			&(vertexVec[0]),
+			vertexPtr,
 			vertexVec.size(),
-			&(indexVec[0]),
+			indexPtr,
 			indexVec.size()
 		);
 	}
@@ -3326,11 +3335,20 @@ public:
 		
 		checkInit();
 		
+		GLfloat* vertexPtr = NULL;
+		GLuint* indexPtr = NULL;
+		if (vertexVec.size() > 0) {
+			vertexPtr = &(vertexVec[0]);
+		}
+		if (indexVec.size() > 0) {
+			indexPtr = &(indexVec[0]);
+		}
+		
 		updateNewBase(
-			&(vertexVec[0]),
+			vertexPtr,
 			vertexVec.size(),
-			&(indexVec[0]),
-			indexVec.size()	
+			indexPtr,
+			indexVec.size()
 		);
 	}
 	

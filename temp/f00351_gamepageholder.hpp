@@ -21,11 +21,13 @@ public:
 	bool listEmpty;
 	bool hasData;
 	bool hasPath;
+	bool hasCache;
 	
 	bool lockWrite;
 	bool lockRead;
 	
-	VBOWrapper vboWrapper;
+	//VBOWrapper vboWrapper;
+	vector<float> vertexVec;
 	
 	VolumeWrapper* terVW;
 	
@@ -114,7 +116,9 @@ public:
 
 	
 	void reset() {
-		vboWrapper.deallocVBO();
+		vertexVec.clear();
+		vertexVec.shrink_to_fit();
+		//vboWrapper.deallocVBO();
 		unbindPD();
 		listGenerated = false;
 		readyToRender = false;
@@ -128,6 +132,7 @@ public:
 		// meshInterface = NULL;
 		// body = NULL;
 		
+		hasCache = false;
 		hasData = true;
 		hasPath = true;
 		
@@ -2138,7 +2143,7 @@ FIRST_FILL_DONE:
 		// int jj2;
 		int kk2;
 		
-		
+		bool res;
 		
 		
 		
@@ -2210,6 +2215,17 @@ FIRST_FILL_DONE:
 		
 		////////////////////
 		
+		if (hasCache) {
+			res = singleton->loadCacheEntry(blockId,holderId);
+			listEmpty = (vertexVec.size() == 0); //vboWrapper.
+			
+			if (res) {
+				cout << "loaded cache\n";
+			}
+			else {
+				cout << "did not load cache\n";
+			}
+		}
 		
 		if (
 			listEmpty || (!hasData)
@@ -2220,26 +2236,19 @@ FIRST_FILL_DONE:
 		else {
 			
 			if (POLYS_FOR_CELLS||DO_VOXEL_WRAP) {
-				
-				if (vboWrapper.hasInit) {
+				if (hasCache) {
 					
 				}
 				else {
-					vboWrapper.init(
-						2,
-						GL_STATIC_DRAW
-					);
+					res = singleton->saveCacheEntry(blockId,holderId);
+					
+					// if (res) {
+					// 	//cout << "saved cache\n";
+					// }
+					// else {
+					// 	//cout << "did not save cache\n";
+					// }
 				}
-				
-				TOT_POINT_COUNT += vboWrapper.getNumVerts();
-				
-				vboWrapper.endFill();
-				
-				
-				glFlush();
-				glFinish();
-				
-				vboWrapper.clearVecs();
 			}
 			
 			
@@ -2458,7 +2467,7 @@ FIRST_FILL_DONE:
 		int maskVals[8];
 		int newInd;
 		
-		vboWrapper.beginFill();
+		vertexVec.clear();//beginFill();
 		
 		
 		for (k = 0; k < cellsPerHolder; k++) {
@@ -2590,13 +2599,13 @@ FIRST_FILL_DONE:
 						// }
 						
 						if (doProcAny) {
-							vboWrapper.vboBox(
-								bpX,bpY,bpZ,
-								iv0,iv1,
-								procFlag,
-								ZERO_FLOATS,
-								4
-							);
+							// vboWrapper.vboBox(
+							// 	bpX,bpY,bpZ,
+							// 	iv0,iv1,
+							// 	procFlag,
+							// 	ZERO_FLOATS,
+							// 	4
+							// );
 						}
 						
 						
@@ -2607,6 +2616,10 @@ FIRST_FILL_DONE:
 		
 		
 		
+	}
+
+	void checkCache() {
+		hasCache = singleton->checkCacheEntry(blockId,holderId);
 	}
 
 	void generateList() { //int fboNum
@@ -2631,7 +2644,13 @@ FIRST_FILL_DONE:
 		else {
 			
 			if (DO_VOXEL_WRAP) {
-				voxelWrap->process(this);
+				if (hasCache) {
+					
+				}
+				else {
+					voxelWrap->process(this);
+				}
+				
 			}
 			
 			if (POLYS_FOR_CELLS) {
@@ -2641,7 +2660,7 @@ FIRST_FILL_DONE:
 		}
 		
 		
-		listEmpty = (vboWrapper.vertexVec.size() == 0);
+		listEmpty = (vertexVec.size() == 0); //vboWrapper.
 		
 		// if (DO_VOXEL_WRAP) {
 		// 	listEmpty = (cubeWraps.size() <= 0);

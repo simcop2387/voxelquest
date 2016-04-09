@@ -99,11 +99,180 @@ public:
 
 	BuildingCon *curCon;
 
+	VBOWrapper vboWrapper;
+
+	bool readyToRender;
+	bool listEmpty;
+
+	
+
+	
 
 	GameBlock() {
+		readyToRender = false;
+		listEmpty = true;
 		terData = NULL;
 		buildingData = NULL;
 	}
+
+
+	void checkHolders(
+		bool drawLoading
+	) {
+		if (readyToRender) {
+			return;
+		}
+		
+		int i;
+		
+		GamePageHolder* curHolder;
+		
+		int readyCount = 0;
+		
+		for (i = 0; i < iHolderSize; i++) {
+			curHolder = holderData[i];
+						
+			if (curHolder == NULL) {
+				
+			}
+			else {
+				
+				if (drawLoading) {
+					if (curHolder->lockWrite) {
+						singleton->drawBox(&(curHolder->gphMinInCells),&(curHolder->gphMaxInCells));
+					}
+				}
+				else {
+					if (curHolder->lockWrite) {
+						
+					}
+					else {
+						if (
+							(curHolder->readyToRender)
+							//&& (!(curHolder->listEmpty))
+						) {
+							
+							readyCount++;
+							
+							//curHolder->vboWrapper.draw();
+							
+							
+						}
+					}
+				}
+			}
+		}
+		
+		if (drawLoading) {
+			return;
+		}
+		
+		// cout << readyCount << "/" << iHolderSize << "\n";
+		
+		if (readyCount == iHolderSize) {
+			fillVBO();
+		}
+		
+	}
+
+	void reset() {
+		vboWrapper.deallocVBO();
+	}
+	
+	void fillVBO() {
+		vboWrapper.beginFill();
+		
+		int totFloats = 0;
+		int i;
+		int j;
+		int k;
+		
+		GamePageHolder* curHolder;
+		
+		if (vboWrapper.hasInit) {
+			
+		}
+		else {
+			vboWrapper.init(
+				2,
+				GL_STATIC_DRAW
+			);
+		}
+		
+		int totInd = 0;
+		
+		for (j = 0; j < 2; j++) {
+			for (i = 0; i < iHolderSize; i++) {
+				curHolder = holderData[i];
+							
+				if (curHolder == NULL) {
+					
+				}
+				else {
+					if (curHolder->lockWrite) {
+						
+					}
+					else {
+						if (
+							(curHolder->readyToRender)
+							//&& (!(curHolder->listEmpty))
+						) {
+							if (j == 0) {
+								totFloats += curHolder->vertexVec.size();
+							}
+							else {
+								
+								for (k = 0; k < curHolder->vertexVec.size(); k++) {
+									vboWrapper.vertexVec[totInd] = curHolder->vertexVec[k];
+									totInd++;
+								}
+								
+								curHolder->vertexVec.clear();
+								curHolder->vertexVec.shrink_to_fit();
+								
+							}
+							
+						}
+					}
+					
+				}
+			}
+			
+			if (j == 0) {
+				
+				if (totFloats == 0) {
+					listEmpty = true;
+					j = 3;
+				}
+				else {
+					listEmpty = false;
+					vboWrapper.vertexVec.resize(totFloats);
+				}
+				
+				
+			}
+		}
+		
+		
+		
+		TOT_POINT_COUNT += vboWrapper.getNumVerts();
+		
+		vboWrapper.endFill();
+		
+		
+		glFlush();
+		glFinish();
+		
+		
+		
+		vboWrapper.clearVecs();
+		
+		readyToRender = true;
+	}
+
+
+
+
 
 	void init(
 		Singleton *_singleton,

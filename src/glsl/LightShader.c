@@ -17,8 +17,8 @@ uniform sampler2D Texture5;
 
 uniform vec3 lightPos;
 uniform bool testOn3;
-uniform vec3 minBounds;
-uniform vec3 maxBounds;
+// uniform vec3 minBounds;
+// uniform vec3 maxBounds;
 uniform vec3 lookAtVec;
 uniform int iNumSteps;
 uniform float voxelsPerCell;

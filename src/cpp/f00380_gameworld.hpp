@@ -133,10 +133,10 @@ public:
 	GameBlock* blockRef[2];
 	
 	
-	FIVector4 minShadowBounds;
-	FIVector4 maxShadowBounds;
-	FIVector4 minShadowBoundsGrow;
-	FIVector4 maxShadowBoundsGrow;
+	//FIVector4 minShadowBounds;
+	//FIVector4 maxShadowBounds;
+	//FIVector4 minShadowBoundsGrow;
+	//FIVector4 maxShadowBoundsGrow;
 
 	FIVector4 minv;
 	FIVector4 maxv;
@@ -1953,7 +1953,7 @@ public:
 		
 		
 		if (doPoly) {
-			rasterPolys(0,5);
+			//rasterPolys(0,5);
 		}
 		else {
 			singleton->fsQuad.draw();
@@ -2197,7 +2197,7 @@ public:
 		// 	rasterWorldPolys();
 		// }
 		// else {
-			rasterPolys(minPeel,maxPeel*4, 6);
+		//	rasterPolys(minPeel,maxPeel*4, 6);
 		//}
 		
 		
@@ -2412,11 +2412,9 @@ public:
 		void rastHolder(
 			int rad,
 			bool drawLoading,
-			bool getBounds,
+			//bool getBounds,
 			bool clipToView
 		) {
-			
-			//doTraceVecND("cam ", &camHolderPos);
 			
 			
 			
@@ -2426,12 +2424,18 @@ public:
 			
 			bool doProc = false;
 			
-			GamePageHolder* curHolder;
+			//GamePageHolder* curHolder;
+			GameBlock* curBlock;
 			
-			minv.copyFrom(&camHolderPos);
-			maxv.copyFrom(&camHolderPos);
+			
+			minv.copyFrom(&camBlockPos);
+			maxv.copyFrom(&camBlockPos);
 			
 			FIVector4 tempFIV;
+			FIVector4 blockCenInCells;
+			
+			FIVector4 blockMinInCells;
+			FIVector4 blockMaxInCells;
 			
 			int minK = minv.getIZ() - rad;
 			int maxK = maxv.getIZ() + rad;
@@ -2440,278 +2444,288 @@ public:
 			int minI = minv.getIX() - rad;
 			int maxI = maxv.getIX() + rad;
 			
-			float disClip = singleton->cellsPerHolder*2;
+			float disClip = singleton->cellsPerBlock*2;
 			
-			if (getBounds) {
-				minShadowBounds.setFXYZ(16777216.0f,16777216.0f,16777216.0f);
-				maxShadowBounds.setFXYZ(0.0f,0.0f,0.0f);
-			}
+			// if (getBounds) {
+			// 	minShadowBounds.setFXYZ(16777216.0f,16777216.0f,16777216.0f);
+			// 	maxShadowBounds.setFXYZ(0.0f,0.0f,0.0f);
+			// }
 			
 			
 			for (kk = minK; kk < maxK; kk++) {
 				for (jj = minJ; jj < maxJ; jj++) {
 					for (ii = minI; ii < maxI; ii++) {
-						curHolder = getHolderAtCoords(ii,jj,kk,true);
+						//curHolder = getHolderAtCoords(ii,jj,kk,true);
+						curBlock = getBlockAtCoords(ii,jj,kk,false);
 						
-						if (curHolder == NULL) {
+						if (curBlock == NULL) {
 							
 						}
 						else {
 							
 							if (drawLoading) {
+								singleton->setShaderVec3("matVal", 255, 0, 0);
+								curBlock->checkHolders(true);
 								
-								if (curHolder->lockWrite) {
-									singleton->drawBox(&(curHolder->gphMinInCells),&(curHolder->gphMaxInCells));
-								}
-								
-								
-							}
-							else {
-								if (curHolder->lockWrite) {
+								singleton->setShaderVec3("matVal", 0, 255, 0);
+								if (curBlock->readyToRender) {
 									
+									blockMinInCells.copyFrom(&(curBlock->offsetInBlocks));
+									blockMinInCells.addXYZ(0.0f);
+									blockMinInCells.multXYZ(singleton->cellsPerBlock);
+									
+									blockMaxInCells.copyFrom(&(curBlock->offsetInBlocks));
+									blockMaxInCells.addXYZ(1.0f);
+									blockMaxInCells.multXYZ(singleton->cellsPerBlock);
+									
+									singleton->drawBox(&(blockMinInCells),&(blockMaxInCells));
 								}
-								else {
-									if (
-										(curHolder->readyToRender) &&
-										(!(curHolder->listEmpty))
-									) {
-										
-										if (getBounds) {
-											minShadowBounds.minXYZ(&(curHolder->gphMinInCells));
-											maxShadowBounds.maxXYZ(&(curHolder->gphMaxInCells));
-										}
-										else {
-											
-											doProc = false;
-											if (clipToView) {
-												tempFIV.copyFrom(&(curHolder->gphCenInCells));
-												tempFIV.addXYZRef(singleton->cameraGetPosNoShake(),-1.0f);
-												tempFIV.normalize();
-												if (
-													(tempFIV.dot(&(singleton->lookAtVec)) > singleton->conVals[E_CONST_DOT_CLIP]) ||
-													(curHolder->gphCenInCells.distance(singleton->cameraGetPosNoShake()) < disClip)
-												) {
-													doProc = true;
-												}
-											}
-											else {
-												doProc = true;
-											}
-											
-											
-											if (doProc) {
-												if (DO_POINTS) {
-													curHolder->vboWrapper.drawPoints();
-												}
-												else {
-													curHolder->vboWrapper.draw();
-												}
-											}
-											
-											
-										}
-										
-										
-									}
-								}
-							}
-							
-							
-						}
-					}
-				}
-			}
-			
-			
-			float boundsDepth = maxShadowBounds.getFZ() - minShadowBounds.getFZ();
-			
-			if (getBounds) {
-				
-				minShadowBoundsGrow.copyFrom(&minShadowBounds);
-				minShadowBoundsGrow.addXYZ(
-					-abs(singleton->lightVec.getFX())*boundsDepth,
-					-abs(singleton->lightVec.getFY())*boundsDepth,
-					0.0f
-				);
-				minShadowBounds.minXYZ(&minShadowBoundsGrow);
-				
-				maxShadowBoundsGrow.copyFrom(&maxShadowBounds);
-				maxShadowBoundsGrow.addXYZ(
-					abs(singleton->lightVec.getFX())*boundsDepth,
-					abs(singleton->lightVec.getFY())*boundsDepth,
-					0.0f
-				);
-				maxShadowBounds.maxXYZ(&maxShadowBoundsGrow);
-			}
-			
-		}
-	
-	
-	
-	
-	
-	
-	void rasterPolys(
-		int minPeel,
-		int maxPeel,
-		int extraRad = 0,
-		bool doPoints = false
-	) {
-		
-		int q;
-		
-		int ii;
-		int jj;
-		int kk;
-		
-		int cellsPerHolder = singleton->cellsPerHolder;
-		
-		
-		
-		GamePageHolder* curHolder;
-		
-		minv.copyIntDiv(&(singleton->gameFluid[E_FID_BIG]->volMinReadyInPixels),cellsPerHolder);
-		maxv.copyIntDiv(&(singleton->gameFluid[E_FID_BIG]->volMaxReadyInPixels),cellsPerHolder);
-		
-		
-		
-		bool idealDis = false;
-		
-		int pCount = 0;
-		
-		
-		int bi = singleton->lastHolderPos.getIX();
-		int bj = singleton->lastHolderPos.getIY();
-		int bk = singleton->lastHolderPos.getIZ();
-		
-		int curRad = 0;
-		
-		
-		int minK = minv.getIZ() - extraRad;
-		int maxK = maxv.getIZ() + extraRad;
-		int minJ = minv.getIY() - extraRad;
-		int maxJ = maxv.getIY() + extraRad;
-		int minI = minv.getIX() - extraRad;
-		int maxI = maxv.getIX() + extraRad;
-		
-		int qmod;
-		
-		if (minPeel < maxPeel) {
-			qmod = 1;
-		}
-		else {
-			qmod = -1;
-		}
-		
-		for (q = minPeel; q != maxPeel; q += qmod) {
-			
-			// if (q <= 1) {
-			// 	doClear = 1;
-			// }
-			// else {
-			// 	doClear = 0;
-			// }
-			
-			
-			// switch(q) {
-			// 	case 0:
-			// 		singleton->setShaderVec4("maskVals", 1.0f, 0.0f, 0.0f, 0.0f);
-			// 	break;
-			// 	case 1:
-			// 		singleton->setShaderVec4("maskVals", 0.0f, 1.0f, 0.0f, 0.0f);
-			// 	break;
-			// 	case 2:
-			// 		singleton->setShaderVec4("maskVals", 0.0f, 0.0f, 1.0f, 0.0f);
-			// 	break;
-			// 	case 3:
-			// 		singleton->setShaderVec4("maskVals", 0.0f, 0.0f, 0.0f, 1.0f);
-			// 	break;
-			// 	case 4:
-			// 		singleton->setShaderVec4("maskVals", 1.0f, 0.0f, 0.0f, 0.0f);
-			// 	break;
-			// }
-			
-			
-			// singleton->bindFBO("polyFBO");//,swapFlag);
-			// //singleton->sampleFBO("polyFBO", 0, swapFlag);
-			
-			for (kk = minK; kk < maxK; kk++) {
-				for (jj = minJ; jj < maxJ; jj++) {
-					for (ii = minI; ii < maxI; ii++) {
-						curHolder = getHolderAtCoords(ii,jj,kk,true);
-						
-						if (curHolder == NULL) {
-							
-						}
-						else {
-							
-							curRad = max(max(abs(bi-ii),abs(bj-jj)),abs(bk-kk));
-							
-							// if (q == 4) {
-							// 	idealDis = true;
-							// }
-							// else {
-							// 	if (q == 3) {
-							// 		idealDis = (q>=curRad);
-							// 	}
-							// 	else {
-							// 		idealDis = (q==curRad);
-							// 	}
-							// }
-							
-							if (curHolder->lockWrite) {
 								
 							}
 							else {
+								curBlock->checkHolders(false);
+								
 								if (
-									(curHolder->readyToRender) &&
-									(!(curHolder->listEmpty)) &&
-									((q==curRad) || (q == -1))
+									(curBlock->readyToRender) &&
+									(!(curBlock->listEmpty))
 								) {
 									
-									pCount++;
 									
-									// singleton->setShaderFloat("volSizePrim", singleton->cellsPerHolder);
-									// singleton->setShaderfVec3("volMinReadyInPixels", &(curHolder->gphMinInCells) );
-									// singleton->setShaderfVec3("volMaxReadyInPixels", &(curHolder->gphMaxInCells) );
-									// singleton->setShaderTexture3D(0, curHolder->terVW->volId);
-									
-									
-									if (doPoints) {
-										curHolder->vboWrapper.drawPoints();
+									doProc = false;
+									if (clipToView) {
+										blockCenInCells.copyFrom(&(curBlock->offsetInBlocks));
+										blockCenInCells.addXYZ(0.5f);
+										blockCenInCells.multXYZ(singleton->cellsPerBlock);
+										
+										tempFIV.copyFrom(&blockCenInCells);
+										tempFIV.addXYZRef(singleton->cameraGetPosNoShake(),-1.0f);
+										tempFIV.normalize();
+										
+										if (
+											(tempFIV.dot(&(singleton->lookAtVec)) > singleton->conVals[E_CONST_DOT_CLIP]) ||
+											(blockCenInCells.distance(singleton->cameraGetPosNoShake()) < disClip)
+										) {
+											doProc = true;
+										}
 									}
 									else {
-										curHolder->vboWrapper.draw();
+										doProc = true;
 									}
 									
-									//
 									
+									if (doProc) {
+										if (DO_POINTS) {
+											curBlock->vboWrapper.drawPoints();
+										}
+										else {
+											curBlock->vboWrapper.draw();
+										}
+									}
 									
 								}
+								
 							}
+							
+							
+							
+							
+							
+							
 						}
 					}
 				}
 			}
 			
-			//singleton->unsampleFBO("polyFBO", 0);//, swapFlag);
-			//singleton->unbindFBO();
 			
-			//swapFlag = 1 - swapFlag;
+			//float boundsDepth = maxShadowBounds.getFZ() - minShadowBounds.getFZ();
+			
+			// if (getBounds) {
+				
+			// 	minShadowBoundsGrow.copyFrom(&minShadowBounds);
+			// 	minShadowBoundsGrow.addXYZ(
+			// 		-abs(singleton->lightVec.getFX())*boundsDepth,
+			// 		-abs(singleton->lightVec.getFY())*boundsDepth,
+			// 		0.0f
+			// 	);
+			// 	minShadowBounds.minXYZ(&minShadowBoundsGrow);
+				
+			// 	maxShadowBoundsGrow.copyFrom(&maxShadowBounds);
+			// 	maxShadowBoundsGrow.addXYZ(
+			// 		abs(singleton->lightVec.getFX())*boundsDepth,
+			// 		abs(singleton->lightVec.getFY())*boundsDepth,
+			// 		0.0f
+			// 	);
+			// 	maxShadowBounds.maxXYZ(&maxShadowBoundsGrow);
+			// }
 			
 		}
+	
+	
+	
+	
+	
+	
+	// void rasterPolys(
+	// 	int minPeel,
+	// 	int maxPeel,
+	// 	int extraRad = 0,
+	// 	bool doPoints = false
+	// ) {
+		
+	// 	int q;
+		
+	// 	int ii;
+	// 	int jj;
+	// 	int kk;
+		
+	// 	int cellsPerHolder = singleton->cellsPerHolder;
 		
 		
-		// singleton->setShaderTexture3D(13, 0);
-		// singleton->unsampleFBO("hmFBOLinearBig",2);
-		// singleton->setShaderTexture3D(0,0);
 		
-		// singleton->unbindShader();
+	// 	GamePageHolder* curHolder;
 		
-		singleton->polyCount = pCount;
+	// 	minv.copyIntDiv(&(singleton->gameFluid[E_FID_BIG]->volMinReadyInPixels),cellsPerHolder);
+	// 	maxv.copyIntDiv(&(singleton->gameFluid[E_FID_BIG]->volMaxReadyInPixels),cellsPerHolder);
 		
 		
-	}
+		
+	// 	bool idealDis = false;
+		
+	// 	int pCount = 0;
+		
+		
+	// 	int bi = singleton->lastHolderPos.getIX();
+	// 	int bj = singleton->lastHolderPos.getIY();
+	// 	int bk = singleton->lastHolderPos.getIZ();
+		
+	// 	int curRad = 0;
+		
+		
+	// 	int minK = minv.getIZ() - extraRad;
+	// 	int maxK = maxv.getIZ() + extraRad;
+	// 	int minJ = minv.getIY() - extraRad;
+	// 	int maxJ = maxv.getIY() + extraRad;
+	// 	int minI = minv.getIX() - extraRad;
+	// 	int maxI = maxv.getIX() + extraRad;
+		
+	// 	int qmod;
+		
+	// 	if (minPeel < maxPeel) {
+	// 		qmod = 1;
+	// 	}
+	// 	else {
+	// 		qmod = -1;
+	// 	}
+		
+	// 	for (q = minPeel; q != maxPeel; q += qmod) {
+			
+	// 		// if (q <= 1) {
+	// 		// 	doClear = 1;
+	// 		// }
+	// 		// else {
+	// 		// 	doClear = 0;
+	// 		// }
+			
+			
+	// 		// switch(q) {
+	// 		// 	case 0:
+	// 		// 		singleton->setShaderVec4("maskVals", 1.0f, 0.0f, 0.0f, 0.0f);
+	// 		// 	break;
+	// 		// 	case 1:
+	// 		// 		singleton->setShaderVec4("maskVals", 0.0f, 1.0f, 0.0f, 0.0f);
+	// 		// 	break;
+	// 		// 	case 2:
+	// 		// 		singleton->setShaderVec4("maskVals", 0.0f, 0.0f, 1.0f, 0.0f);
+	// 		// 	break;
+	// 		// 	case 3:
+	// 		// 		singleton->setShaderVec4("maskVals", 0.0f, 0.0f, 0.0f, 1.0f);
+	// 		// 	break;
+	// 		// 	case 4:
+	// 		// 		singleton->setShaderVec4("maskVals", 1.0f, 0.0f, 0.0f, 0.0f);
+	// 		// 	break;
+	// 		// }
+			
+			
+	// 		// singleton->bindFBO("polyFBO");//,swapFlag);
+	// 		// //singleton->sampleFBO("polyFBO", 0, swapFlag);
+			
+	// 		for (kk = minK; kk < maxK; kk++) {
+	// 			for (jj = minJ; jj < maxJ; jj++) {
+	// 				for (ii = minI; ii < maxI; ii++) {
+	// 					curHolder = getHolderAtCoords(ii,jj,kk,true);
+						
+	// 					if (curHolder == NULL) {
+							
+	// 					}
+	// 					else {
+							
+	// 						curRad = max(max(abs(bi-ii),abs(bj-jj)),abs(bk-kk));
+							
+	// 						// if (q == 4) {
+	// 						// 	idealDis = true;
+	// 						// }
+	// 						// else {
+	// 						// 	if (q == 3) {
+	// 						// 		idealDis = (q>=curRad);
+	// 						// 	}
+	// 						// 	else {
+	// 						// 		idealDis = (q==curRad);
+	// 						// 	}
+	// 						// }
+							
+	// 						if (curHolder->lockWrite) {
+								
+	// 						}
+	// 						else {
+	// 							if (
+	// 								(curHolder->readyToRender) &&
+	// 								(!(curHolder->listEmpty)) &&
+	// 								((q==curRad) || (q == -1))
+	// 							) {
+									
+	// 								pCount++;
+									
+	// 								// singleton->setShaderFloat("volSizePrim", singleton->cellsPerHolder);
+	// 								// singleton->setShaderfVec3("volMinReadyInPixels", &(curHolder->gphMinInCells) );
+	// 								// singleton->setShaderfVec3("volMaxReadyInPixels", &(curHolder->gphMaxInCells) );
+	// 								// singleton->setShaderTexture3D(0, curHolder->terVW->volId);
+									
+									
+	// 								if (doPoints) {
+	// 									curHolder->vboWrapper.drawPoints();
+	// 								}
+	// 								else {
+	// 									curHolder->vboWrapper.draw();
+	// 								}
+									
+	// 								//
+									
+									
+	// 							}
+	// 						}
+	// 					}
+	// 				}
+	// 			}
+	// 		}
+			
+	// 		//singleton->unsampleFBO("polyFBO", 0);//, swapFlag);
+	// 		//singleton->unbindFBO();
+			
+	// 		//swapFlag = 1 - swapFlag;
+			
+	// 	}
+		
+		
+	// 	// singleton->setShaderTexture3D(13, 0);
+	// 	// singleton->unsampleFBO("hmFBOLinearBig",2);
+	// 	// singleton->setShaderTexture3D(0,0);
+		
+	// 	// singleton->unbindShader();
+		
+	// 	singleton->polyCount = pCount;
+		
+		
+	// }
 	
 
 	void renderGeom()
@@ -5251,7 +5265,7 @@ UPDATE_LIGHTS_END:
 			singleton->updateLightPos();
 			singleton->getLightMatrix();
 			
-			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, true, false);
+			//rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, true, false);
 			
 			
 			singleton->bindShader("ShadowMapShader");
@@ -5268,7 +5282,7 @@ UPDATE_LIGHTS_END:
 			// singleton->setShaderfVec3("maxBounds",&(maxShadowBounds));
 			// singleton->setShaderfVec3("lightVec",&(singleton->lightVec));
 
-			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, false, false);
+			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, false);
 
 			singleton->unbindFBO();
 			singleton->unbindShader();
@@ -5291,7 +5305,7 @@ UPDATE_LIGHTS_END:
 			//singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
 			singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
 
-			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, false, true);
+			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, true);
 
 			singleton->unbindFBO();
 			singleton->unbindShader();
@@ -5379,8 +5393,8 @@ UPDATE_LIGHTS_END:
 		
 		singleton->setShaderfVec3("lightPos", &(singleton->lightPos));
 		singleton->setShaderInt("testOn3", (int)(singleton->testOn3));
-		singleton->setShaderfVec3("minBounds",&(minShadowBounds));
-		singleton->setShaderfVec3("maxBounds",&(maxShadowBounds));
+		// singleton->setShaderfVec3("minBounds",&(minShadowBounds));
+		// singleton->setShaderfVec3("maxBounds",&(maxShadowBounds));
 		singleton->setShaderfVec3("lookAtVec", &(singleton->lookAtVec));
 		singleton->setShaderInt("iNumSteps", singleton->iNumSteps);
 		singleton->setShaderFloat("voxelsPerCell",singleton->voxelsPerCell);
@@ -5716,16 +5730,16 @@ UPDATE_LIGHTS_END:
 		
 		if (singleton->renderingOct) {
 			singleton->setShaderFloat("isWire", 1.0);
-			singleton->setShaderVec3("matVal", 255, 0, 0);
-			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), true, false, false);
+			
+			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), true, false);
 			
 			if (holderInFocus != NULL) {
 				singleton->setShaderVec3("matVal", 0, 0, 255);
 				singleton->drawBox(&(holderInFocus->gphMinInCells),&(holderInFocus->gphMaxInCells));
 			}
 			
-			singleton->setShaderVec3("matVal", 0, 255, 0);
-			singleton->drawBox(&(minShadowBounds),&(maxShadowBounds));
+			// singleton->setShaderVec3("matVal", 0, 255, 0);
+			// singleton->drawBox(&(minShadowBounds),&(maxShadowBounds));
 			
 		}
 		

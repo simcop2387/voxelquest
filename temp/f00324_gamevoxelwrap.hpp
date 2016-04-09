@@ -153,6 +153,10 @@ public:
 		
 		int dataSize = 4;
 		
+		if (DO_POINTS) {
+			dataSize = 8;
+		}
+		
 		int passNum;
 		
 		int cellInd;
@@ -491,32 +495,42 @@ public:
 							
 							totNorm = voxelBuffer->voxelList[p].normal;
 							
-							tempData[0] = totNorm.x;
-							tempData[1] = totNorm.y;
-							tempData[2] = totNorm.z;
-							tempData[3] = curMat*256;//totWeight/weightCount;
+							
 							
 							if (DO_POINTS) {
-								gph->vboWrapper.vertexVec.push_back(fVO.x);
-								gph->vboWrapper.vertexVec.push_back(fVO.y);
-								gph->vboWrapper.vertexVec.push_back(fVO.z);
-								gph->vboWrapper.vertexVec.push_back(1.0f);
+								tempData[0] = fVO.x;
+								tempData[1] = fVO.y;
+								tempData[2] = fVO.z;
+								tempData[3] = 1.0f;
+								tempData[4] = totNorm.x;
+								tempData[5] = totNorm.y;
+								tempData[6] = totNorm.z;
+								tempData[7] = curMat*256;
 								
 								for (m = 0; m < dataSize; m++) {
-									gph->vboWrapper.vertexVec.push_back(tempData[m]);
+									gph->vertexVec.push_back(tempData[m]);
 								}
 								
 							}
-							else {
+							// else {
 								
-								gph->vboWrapper.vboBox(
-									fVO.x, fVO.y, fVO.z,
-									0.0f,fVPC,
-									curFlags,
-									tempData,
-									4
-								);
-							}
+							// 	tempData[0] = totNorm.x;
+							// 	tempData[1] = totNorm.y;
+							// 	tempData[2] = totNorm.z;
+							// 	tempData[3] = curMat*256;//totWeight/weightCount;
+							// 	gph->vertexVec.push_back(fVO.x);
+							// 	gph->vertexVec.push_back(fVO.y);
+							// 	gph->vertexVec.push_back(fVO.z);
+							// 	gph->vertexVec.push_back(1.0f);
+								
+							// 	gph->vboWrapper.vboBox(
+							// 		fVO.x, fVO.y, fVO.z,
+							// 		0.0f,fVPC,
+							// 		curFlags,
+							// 		tempData,
+							// 		4
+							// 	);
+							// }
 						}
 						
 						

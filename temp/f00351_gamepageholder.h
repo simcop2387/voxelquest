@@ -5,7 +5,9 @@
 #define LZZ_INLINE inline
 void GamePageHolder::reset ()
                      {
-		vboWrapper.deallocVBO();
+		vertexVec.clear();
+		vertexVec.shrink_to_fit();
+		//vboWrapper.deallocVBO();
 		unbindPD();
 		listGenerated = false;
 		readyToRender = false;
@@ -18,6 +20,7 @@ GamePageHolder::GamePageHolder ()
 		// meshInterface = NULL;
 		// body = NULL;
 		
+		hasCache = false;
 		hasData = true;
 		hasPath = true;
 		
@@ -1542,7 +1545,7 @@ void GamePageHolder::fillVBO ()
 		// int jj2;
 		int kk2;
 		
-		
+		bool res;
 		
 		
 		
@@ -1614,6 +1617,17 @@ void GamePageHolder::fillVBO ()
 		
 		////////////////////
 		
+		if (hasCache) {
+			res = singleton->loadCacheEntry(blockId,holderId);
+			listEmpty = (vertexVec.size() == 0); //vboWrapper.
+			
+			if (res) {
+				cout << "loaded cache\n";
+			}
+			else {
+				cout << "did not load cache\n";
+			}
+		}
 		
 		if (
 			listEmpty || (!hasData)
@@ -1624,26 +1638,19 @@ void GamePageHolder::fillVBO ()
 		else {
 			
 			if (POLYS_FOR_CELLS||DO_VOXEL_WRAP) {
-				
-				if (vboWrapper.hasInit) {
+				if (hasCache) {
 					
 				}
 				else {
-					vboWrapper.init(
-						2,
-						GL_STATIC_DRAW
-					);
+					res = singleton->saveCacheEntry(blockId,holderId);
+					
+					// if (res) {
+					// 	//cout << "saved cache\n";
+					// }
+					// else {
+					// 	//cout << "did not save cache\n";
+					// }
 				}
-				
-				TOT_POINT_COUNT += vboWrapper.getNumVerts();
-				
-				vboWrapper.endFill();
-				
-				
-				glFlush();
-				glFinish();
-				
-				vboWrapper.clearVecs();
 			}
 			
 			
@@ -1843,7 +1850,7 @@ void GamePageHolder::wrapPolys ()
 		int maskVals[8];
 		int newInd;
 		
-		vboWrapper.beginFill();
+		vertexVec.clear();//beginFill();
 		
 		
 		for (k = 0; k < cellsPerHolder; k++) {
@@ -1975,13 +1982,13 @@ void GamePageHolder::wrapPolys ()
 						// }
 						
 						if (doProcAny) {
-							vboWrapper.vboBox(
-								bpX,bpY,bpZ,
-								iv0,iv1,
-								procFlag,
-								ZERO_FLOATS,
-								4
-							);
+							// vboWrapper.vboBox(
+							// 	bpX,bpY,bpZ,
+							// 	iv0,iv1,
+							// 	procFlag,
+							// 	ZERO_FLOATS,
+							// 	4
+							// );
 						}
 						
 						
@@ -1992,6 +1999,10 @@ void GamePageHolder::wrapPolys ()
 		
 		
 		
+	}
+void GamePageHolder::checkCache ()
+                          {
+		hasCache = singleton->checkCacheEntry(blockId,holderId);
 	}
 void GamePageHolder::generateList ()
                             { //int fboNum
@@ -2016,7 +2027,13 @@ void GamePageHolder::generateList ()
 		else {
 			
 			if (DO_VOXEL_WRAP) {
-				voxelWrap->process(this);
+				if (hasCache) {
+					
+				}
+				else {
+					voxelWrap->process(this);
+				}
+				
 			}
 			
 			if (POLYS_FOR_CELLS) {
@@ -2026,7 +2043,7 @@ void GamePageHolder::generateList ()
 		}
 		
 		
-		listEmpty = (vboWrapper.vertexVec.size() == 0);
+		listEmpty = (vertexVec.size() == 0); //vboWrapper.
 		
 		// if (DO_VOXEL_WRAP) {
 		// 	listEmpty = (cubeWraps.size() <= 0);

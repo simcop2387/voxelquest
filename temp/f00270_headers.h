@@ -215,6 +215,7 @@ public:
   int currentTick;
   int curPattern;
   int curPatternRot;
+  int cacheVersion;
   int holderLoadCount;
   int bakeTicks;
   int tbTicks;
@@ -440,6 +441,9 @@ public:
   string curCallback;
   string (cbDataStrings) [10];
   string guiSaveLoc;
+  string curCLFull;
+  string curCLBaseDir;
+  string curCLWorldDir;
   VolumeWrapper * (volumeWrappers) [E_VW_LENGTH];
   vector <CompStruct> compStack;
   vector <int> emptyStack;
@@ -465,6 +469,7 @@ public:
   JSONValue * rootObjJS;
   JSONValue * guiRootJS;
   JSONValue * constRootJS;
+  JSONValue * cacheMetaJS;
   HPClock bulletTimer;
   Timer fpsTimer;
   Timer shakeTimer;
@@ -672,6 +677,16 @@ public:
   void loadGUI ();
   string loadFileString (string fnString);
   std::ifstream::pos_type filesize (char const * filename);
+  bool checkCacheEntry (int blockId, int holderId);
+  bool loadCacheEntry (int blockId, int holderId);
+  bool saveCacheEntry (int blockId, int holderId);
+  bool loadCacheMetaData ();
+  bool saveCacheMetaData ();
+  void clearCache ();
+  bool updateCurCacheLoc ();
+  bool createFolder (string folderNameStr);
+  bool saveFloatArray (string fileName, float * data, int dataSizeInFloats);
+  bool loadFloatArray (string fileName, float * data, int dataSizeInFloats);
   bool loadFile (string fnString, charArr * dest);
   bool saveFileString (string fileName, string * source);
   bool saveFile (char * fileName, charArr * source);
@@ -1684,9 +1699,10 @@ public:
   bool listEmpty;
   bool hasData;
   bool hasPath;
+  bool hasCache;
   bool lockWrite;
   bool lockRead;
-  VBOWrapper vboWrapper;
+  vector <float> vertexVec;
   VolumeWrapper * terVW;
   GameVoxelWrap * voxelWrap;
   int curPD;
@@ -1745,6 +1761,7 @@ public:
   PaddedDataEntry * getPadData (int ii, int jj, int kk);
   int gatherData ();
   void wrapPolys ();
+  void checkCache ();
   void generateList ();
 };
 LZZ_INLINE PaddedDataEntry * GamePageHolder::getPadData (int ii, int jj, int kk)
@@ -1845,7 +1862,13 @@ public:
   MapNode * mapData;
   uint * terData;
   BuildingCon * curCon;
+  VBOWrapper vboWrapper;
+  bool readyToRender;
+  bool listEmpty;
   GameBlock ();
+  void checkHolders (bool drawLoading);
+  void reset ();
+  void fillVBO ();
   void init (Singleton * _singleton, int _blockId, int _x, int _y, int _z, int _xw, int _yw, int _zw);
   int getNodeIndexClamped (int _x, int _y, int _z);
   int getNodeIndex (int x, int y, int z, int bufAmount);
@@ -2185,10 +2208,6 @@ public:
   FIVector4 (lineSeg) [2];
   int (nodeInd) [2];
   GameBlock * (blockRef) [2];
-  FIVector4 minShadowBounds;
-  FIVector4 maxShadowBounds;
-  FIVector4 minShadowBoundsGrow;
-  FIVector4 maxShadowBoundsGrow;
   FIVector4 minv;
   FIVector4 maxv;
   FIVector4 tempVec;
@@ -2240,8 +2259,7 @@ public:
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void polyCombine ();
   void drawPolys (string fboName, int minPeel, int maxPeel);
-  void rastHolder (int rad, bool drawLoading, bool getBounds, bool clipToView);
-  void rasterPolys (int minPeel, int maxPeel, int extraRad = 0, bool doPoints = false);
+  void rastHolder (int rad, bool drawLoading, bool clipToView);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);
   float weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean);

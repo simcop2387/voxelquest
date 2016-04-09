@@ -1871,7 +1871,7 @@ FILL_GROUPS_RETURN:
 			break;
 		}
 		
-		maxLoadRad *= 2;
+		maxLoadRad *= 8;
 		
 		bool doPaths;
 		
@@ -2005,6 +2005,7 @@ FILL_GROUPS_RETURN:
 										}
 										
 										if (curPD >= 0) {
+											curHolder->checkCache();
 											curHolder->bindPD(curPD);
 											
 											threadPoolList->intData[0] = E_TT_GENLIST;
