@@ -92,7 +92,7 @@ const static int MAX_HOLDER_LOAD_COUNT = 512;
 //const static int RASTER_HOLDER_RAD = 8;
 
 const static int VOXELS_PER_CELL = 16;
-const static int CELLS_PER_HOLDER = 8;
+const static int CELLS_PER_HOLDER = 16;
 const static int PADDING_IN_CELLS = 1;
 const static float HM_MAX_IN_CELLS = CELLS_PER_HOLDER*256;//8192.0f;
 

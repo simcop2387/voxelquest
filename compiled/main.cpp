@@ -92,7 +92,7 @@ const static int MAX_HOLDER_LOAD_COUNT = 512;
 //const static int RASTER_HOLDER_RAD = 8;
 
 const static int VOXELS_PER_CELL = 16;
-const static int CELLS_PER_HOLDER = 8;
+const static int CELLS_PER_HOLDER = 16;
 const static int PADDING_IN_CELLS = 1;
 const static float HM_MAX_IN_CELLS = CELLS_PER_HOLDER*256;//8192.0f;
 
@@ -3663,6 +3663,8 @@ bool replaceStr(std::string& str, const std::string& from, const std::string& to
 
 
 #define E_CONST(DDD) \
+DDD(E_CONST_MAX_BLOCK_TICKS) \
+DDD(E_CONST_MAX_HOLDER_GEN) \
 DDD(E_CONST_MAX_CLIPDIST) \
 DDD(E_CONST_LIGHTTHRESH) \
 DDD(E_CONST_LIGHTORTHOSIZE) \
@@ -3747,6 +3749,9 @@ enum E_CONST_VALS {
 	E_CONST(DO_ENUM)
 };
 
+const static uint RH_FLAG_DOCHECK = 1;
+const static uint RH_FLAG_DRAWLOADING = 2;
+const static uint RH_FLAG_CLIPTOVIEW = 4;
 
 enum E_GUI_DATA_STRINGS {
 	E_GDS_DATA_SOURCE,
@@ -4257,6 +4262,14 @@ const static uint ALL_FACES = 63;
 
 const static int PATTERN_SIZE = 5;
 const static int PATTERN_CENTER = (PATTERN_SIZE/2);
+
+struct LoadHolderStruct {
+	int holderId;
+	int blockId;
+	int x;
+	int y;
+	int z;
+};
 
 struct PatternStruct {
 	int addPat;
@@ -11619,6 +11632,7 @@ private:
 public:
 	GLuint vao, vbo, ibo;
 
+	float lastVMUsage;
 	int drawEnum;
 	int sizeOfID;
 	int maxSizeOfID;
@@ -11634,6 +11648,7 @@ public:
 	std::vector<uint> indexVec; //unsigned short
 
 	VBOWrapper() {
+		lastVMUsage = 0.0f;
 		ibo = 0;
 		vbo = 0;
 		numVecs = -1;
@@ -11771,6 +11786,9 @@ public:
 		
 	}
 	void endFill() {
+		
+		
+		
 		if (vertexVec.size() > 0) {
 			updateNew();
 		}
@@ -11778,9 +11796,10 @@ public:
 			// todo: handle case where vertex buffer has gone to zero
 		}
 		
+		VERTEX_MEM_USAGE -= lastVMUsage;
 		float vertMem = (vertexVec.size()+indexVec.size())*4;
-		
 		VERTEX_MEM_USAGE += vertMem/(1024.0f*1024.0f);
+		lastVMUsage = vertMem/(1024.0f*1024.0f);
 		
 	}
 	
@@ -25800,6 +25819,7 @@ public:
   bool hasData;
   bool hasPath;
   bool hasCache;
+  bool wasStacked;
   bool lockWrite;
   bool lockRead;
   vector <float> vertexVec;
@@ -25857,11 +25877,12 @@ public:
   void genCellData ();
   void bindPD (int pd);
   void unbindPD ();
+  void applyFill ();
   void fillVBO ();
   PaddedDataEntry * getPadData (int ii, int jj, int kk);
   int gatherData ();
   void wrapPolys ();
-  void checkCache ();
+  bool checkCache ();
   void generateList ();
 };
 LZZ_INLINE PaddedDataEntry * GamePageHolder::getPadData (int ii, int jj, int kk)
@@ -25892,6 +25913,7 @@ class GameBlock
 {
 public:
   Singleton * singleton;
+  int lastPointCount;
   int blockId;
   int holdersPerBlock;
   int terDataBufAmount;
@@ -25965,8 +25987,11 @@ public:
   VBOWrapper vboWrapper;
   bool readyToRender;
   bool listEmpty;
+  bool changeFlag;
+  int changeTick;
   GameBlock ();
-  void checkHolders (bool drawLoading);
+  void drawLoadingHolders ();
+  void checkHolders ();
   void reset ();
   void fillVBO ();
   void init (Singleton * _singleton, int _blockId, int _x, int _y, int _z, int _xw, int _yw, int _zw);
@@ -26063,6 +26088,7 @@ public:
   Singleton * singleton;
   std::vector <PathResult> pathSearchStack;
   std::vector <PathResult> pathFinalStack;
+  std::list <LoadHolderStruct> holderStack;
   ThreadPoolWrapper * threadPoolPath;
   ThreadPoolWrapper * threadPoolList;
   FIVector4 minv;
@@ -26101,7 +26127,8 @@ public:
   int getClosestPathRad (btVector3 cpBTV, GamePageHolder * & closestHolder);
   bool anyThreadsRunning ();
   void freePD ();
-  void loadNearestHolders (bool doUpdate);
+  void processCurHolder (GamePageHolder * curHolder, bool doPaths);
+  void loadNearestHolders (int rad, bool doUpdate);
 };
 #undef LZZ_INLINE
 #endif
@@ -26359,7 +26386,7 @@ public:
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void polyCombine ();
   void drawPolys (string fboName, int minPeel, int maxPeel);
-  void rastHolder (int rad, bool drawLoading, bool clipToView);
+  void rastHolder (int rad, uint flags);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);
   float weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean);
@@ -26887,7 +26914,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		heightMapMaxInCells = HM_MAX_IN_CELLS;
 		//mapSampScale = 2.0f;
-		int newPitch = (imageHM0->width) * 2; //*2;
+		int newPitch = (imageHM0->width);// * 2; //*2;
 		mapPitch = (imageHM0->width); //newPitch;// //
 		int curMipSize = 0;
 		
@@ -26895,7 +26922,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		paddingInCells = PADDING_IN_CELLS;
 		
 		cellsPerHolder = CELLS_PER_HOLDER;
-		holdersPerBlock = 8;
+		holdersPerBlock = 4;
 		
 		holdersPerWorld = newPitch;
 		cellsPerWorld = holdersPerWorld*cellsPerHolder;
@@ -34589,8 +34616,11 @@ void Singleton::checkFluid (GameFluid * gf)
 		
 		//(getAvailPD() < MAX_PDPOOL_SIZE)
 		
+		if (updateHolders) {
+			gw->rastHolder(iGetConst(E_CONST_RASTER_HOLDER_RAD), RH_FLAG_DOCHECK);
+		}
 		
-		gameLogic->loadNearestHolders(updateHolders);		
+		gameLogic->loadNearestHolders(2, updateHolders);		
 		return;
 		
 		
@@ -34636,7 +34666,7 @@ void Singleton::checkFluid (GameFluid * gf)
 			
 			if (gf->cycleTerminated) {
 				
-				gameLogic->loadNearestHolders(updateHolders);
+				gameLogic->loadNearestHolders(2, updateHolders);
 				holderLoadCount++;
 				
 				if (holderLoadCount == MAX_HOLDER_LOAD_COUNT) {
@@ -51077,7 +51107,11 @@ int GameEntManager::getActionStateFromPose (int poseNum)
 void GameEntManager::changePose (int amount)
                                     {
 		
+		
 		GameOrg* testOrg = getCurOrg();
+		if (testOrg == NULL) {
+			return;
+		}
 		
 		do {
 			curPose[curPoseType].index += amount;
@@ -51784,6 +51818,7 @@ void GamePageHolder::reset ()
 		vertexVec.shrink_to_fit();
 		//vboWrapper.deallocVBO();
 		unbindPD();
+		wasStacked = false;
 		listGenerated = false;
 		readyToRender = false;
 	}
@@ -51795,6 +51830,8 @@ GamePageHolder::GamePageHolder ()
 		// meshInterface = NULL;
 		// body = NULL;
 		
+		//appliedFill = false;
+		wasStacked = false;
 		hasCache = false;
 		hasData = true;
 		hasPath = true;
@@ -53296,6 +53333,60 @@ void GamePageHolder::unbindPD ()
 		
 		curPD = -1;
 	}
+void GamePageHolder::applyFill ()
+                         {
+		bool res;
+		
+		if (hasCache) {
+			res = singleton->loadCacheEntry(blockId,holderId);
+			listEmpty = (vertexVec.size() == 0); //vboWrapper.
+			
+			// if (res) {
+			// 	cout << "loaded cache\n";
+			// }
+			// else {
+			// 	cout << "did not load cache\n";
+			// }
+		}
+		
+		if (
+			listEmpty || (!hasData)
+			// && (holderFlags != E_CD_SOLID)
+		) {
+			
+		}
+		else {
+			
+			if (POLYS_FOR_CELLS||DO_VOXEL_WRAP) {
+				if (hasCache) {
+					
+				}
+				else {
+					res = singleton->saveCacheEntry(blockId,holderId);
+					
+					// if (res) {
+					// 	//cout << "saved cache\n";
+					// }
+					// else {
+					// 	//cout << "did not save cache\n";
+					// }
+				}
+			}
+			
+			
+			
+			// else if ((!isBlockHolder)&&POLY_COLLISION) {
+			// 	createMesh();
+			// }
+			// else if (isBlockHolder&&GEN_POLYS_WORLD) {
+				
+			// }
+			
+		}
+		
+		//appliedFill = true;
+		
+	}
 void GamePageHolder::fillVBO ()
                        {
 		
@@ -53320,7 +53411,7 @@ void GamePageHolder::fillVBO ()
 		// int jj2;
 		int kk2;
 		
-		bool res;
+		
 		
 		
 		
@@ -53344,7 +53435,7 @@ void GamePageHolder::fillVBO ()
 		/////////////////////
 		
 		
-		float fk;
+		//float fk;
 		
 		// if (GEN_COLLISION) {
 		// 	for (q = 0; q < collideIndices.size(); q += 2) {
@@ -53392,52 +53483,7 @@ void GamePageHolder::fillVBO ()
 		
 		////////////////////
 		
-		if (hasCache) {
-			res = singleton->loadCacheEntry(blockId,holderId);
-			listEmpty = (vertexVec.size() == 0); //vboWrapper.
-			
-			if (res) {
-				cout << "loaded cache\n";
-			}
-			else {
-				cout << "did not load cache\n";
-			}
-		}
-		
-		if (
-			listEmpty || (!hasData)
-			// && (holderFlags != E_CD_SOLID)
-		) {
-			
-		}
-		else {
-			
-			if (POLYS_FOR_CELLS||DO_VOXEL_WRAP) {
-				if (hasCache) {
-					
-				}
-				else {
-					res = singleton->saveCacheEntry(blockId,holderId);
-					
-					// if (res) {
-					// 	//cout << "saved cache\n";
-					// }
-					// else {
-					// 	//cout << "did not save cache\n";
-					// }
-				}
-			}
-			
-			
-			
-			// else if ((!isBlockHolder)&&POLY_COLLISION) {
-			// 	createMesh();
-			// }
-			// else if (isBlockHolder&&GEN_POLYS_WORLD) {
-				
-			// }
-			
-		}
+		applyFill();
 		
 		
 		
@@ -53775,9 +53821,10 @@ void GamePageHolder::wrapPolys ()
 		
 		
 	}
-void GamePageHolder::checkCache ()
+bool GamePageHolder::checkCache ()
                           {
 		hasCache = singleton->checkCacheEntry(blockId,holderId);
+		return hasCache;
 	}
 void GamePageHolder::generateList ()
                             { //int fboNum
@@ -53838,22 +53885,24 @@ void GamePageHolder::generateList ()
 #define LZZ_INLINE inline
 GameBlock::GameBlock ()
                     {
+		lastPointCount = 0;
+		changeFlag = false;
+		changeTick = 1;
+		//changeCount = 0;
+		
 		readyToRender = false;
 		listEmpty = true;
 		terData = NULL;
 		buildingData = NULL;
 	}
-void GameBlock::checkHolders (bool drawLoading)
-          {
-		if (readyToRender) {
-			return;
-		}
-		
+void GameBlock::drawLoadingHolders ()
+                                  {
 		int i;
-		
 		GamePageHolder* curHolder;
 		
-		int readyCount = 0;
+		// if (readyToRender) {
+		// 	return;
+		// }
 		
 		for (i = 0; i < iHolderSize; i++) {
 			curHolder = holderData[i];
@@ -53862,51 +53911,121 @@ void GameBlock::checkHolders (bool drawLoading)
 				
 			}
 			else {
-				
-				if (drawLoading) {
-					if (curHolder->lockWrite) {
-						singleton->drawBox(&(curHolder->gphMinInCells),&(curHolder->gphMaxInCells));
-					}
-				}
-				else {
-					if (curHolder->lockWrite) {
-						
-					}
-					else {
-						if (
-							(curHolder->readyToRender)
-							//&& (!(curHolder->listEmpty))
-						) {
-							
-							readyCount++;
-							
-							//curHolder->vboWrapper.draw();
-							
-							
-						}
-					}
+				if (curHolder->lockWrite) {
+					singleton->drawBox(&(curHolder->gphMinInCells),&(curHolder->gphMaxInCells));
 				}
 			}
 		}
 		
-		if (drawLoading) {
-			return;
-		}
+	}
+void GameBlock::checkHolders ()
+                            {
+		// if (readyToRender) {
+		// 	return;
+		// }
 		
-		// cout << readyCount << "/" << iHolderSize << "\n";
+		int i;
 		
-		if (readyCount == iHolderSize) {
+		int ii;
+		int jj;
+		int kk;
+		
+		int holderX;
+		int holderY;
+		int holderZ;
+		
+		GamePageHolder* curHolder;
+		int readyCount;
+		
+		
+		// readyCount = 0;
+		// for (i = 0; i < iHolderSize; i++) {
+		// 	if (
+		// 		singleton->checkCacheEntry(blockId,i)	
+		// 	) {
+		// 		readyCount++;
+		// 	}
+		// }
+		// if (readyCount == iHolderSize) {
+		// 	singleton->stopAllThreads();
+			
+		// 	cout << "filling from cache\n";
+			
+		// 	for (i = 0; i < iHolderSize; i++) {
+		// 		curHolder = holderData[i];
+				
+				
+				
+		// 		if (curHolder == NULL) {
+					
+		// 			kk = i/(holdersPerBlock*holdersPerBlock);
+		// 			jj = (i-kk*holdersPerBlock*holdersPerBlock)/holdersPerBlock;
+		// 			ii = i-(kk*holdersPerBlock*holdersPerBlock + jj*holdersPerBlock);
+					
+		// 			holderX = holdersPerBlock * (offsetInBlocks.getIX()) + ii;
+		// 			holderY = holdersPerBlock * (offsetInBlocks.getIY()) + jj;
+		// 			holderZ = holdersPerBlock * (offsetInBlocks.getIZ()) + kk;
+					
+		// 			singleton->gw->getHolderAtCoords(holderX,holderY,holderZ,true);
+		// 			curHolder = holderData[i];
+		// 		}
+				
+		// 		if (curHolder->appliedFill) {
+					
+		// 		}
+		// 		else {
+		// 			curHolder->applyFill();
+		// 		}
+				
+		// 	}
+			
+		// }
+		
+		
+		// readyCount = 0;
+		// for (i = 0; i < iHolderSize; i++) {
+		// 	curHolder = holderData[i];
+						
+		// 	if (curHolder == NULL) {
+				
+		// 	}
+		// 	else {
+		// 		if (curHolder->lockWrite) {
+					
+		// 		}
+		// 		else {
+					
+		// 		}
+		// 	}
+		// }
+		
+		// if (readyCount == iHolderSize) {
+		// 	fillVBO();
+		// }
+		
+		changeTick++;
+		
+		int maxTicks = singleton->iGetConst(E_CONST_MAX_BLOCK_TICKS);
+		
+		if (
+			//(changeCount > 0) &&
+			(changeFlag) &&
+			((changeTick%maxTicks) == 0)	
+		) {
+			changeFlag = false;
 			fillVBO();
 		}
 		
 	}
 void GameBlock::reset ()
                      {
+		changeTick = 1;
+		//changeCount = 0;
 		vboWrapper.deallocVBO();
 	}
 void GameBlock::fillVBO ()
                        {
-		vboWrapper.beginFill();
+		readyToRender = false;
 		
 		int totFloats = 0;
 		int i;
@@ -53915,6 +54034,7 @@ void GameBlock::fillVBO ()
 		
 		GamePageHolder* curHolder;
 		
+		vboWrapper.beginFill();
 		if (vboWrapper.hasInit) {
 			
 		}
@@ -53930,7 +54050,7 @@ void GameBlock::fillVBO ()
 		for (j = 0; j < 2; j++) {
 			for (i = 0; i < iHolderSize; i++) {
 				curHolder = holderData[i];
-							
+
 				if (curHolder == NULL) {
 					
 				}
@@ -53939,10 +54059,8 @@ void GameBlock::fillVBO ()
 						
 					}
 					else {
-						if (
-							(curHolder->readyToRender)
-							//&& (!(curHolder->listEmpty))
-						) {
+						if (curHolder->listGenerated) {
+							
 							if (j == 0) {
 								totFloats += curHolder->vertexVec.size();
 							}
@@ -53953,15 +54071,20 @@ void GameBlock::fillVBO ()
 									totInd++;
 								}
 								
-								curHolder->vertexVec.clear();
-								curHolder->vertexVec.shrink_to_fit();
+								// curHolder->vertexVec.clear();
+								// curHolder->vertexVec.shrink_to_fit();
 								
 							}
 							
 						}
 					}
-					
 				}
+
+				
+				
+				
+				
+				
 			}
 			
 			if (j == 0) {
@@ -53979,19 +54102,21 @@ void GameBlock::fillVBO ()
 			}
 		}
 		
-		
-		
+		TOT_POINT_COUNT -= lastPointCount;
 		TOT_POINT_COUNT += vboWrapper.getNumVerts();
+		lastPointCount = vboWrapper.getNumVerts();
 		
 		vboWrapper.endFill();
-		
 		
 		glFlush();
 		glFinish();
 		
 		
-		
 		vboWrapper.clearVecs();
+		
+		
+		changeTick = 1;
+		//changeCount = 0;
 		
 		readyToRender = true;
 	}
@@ -58125,6 +58250,7 @@ bool ThreadPoolWrapper::stopTP (int threadId)
                                   {
 		
 		GamePageHolder* curHolder;
+		GameBlock* curBlock;
 		
 		bool didStop = false;
 		if (threadPool[threadId].threadRunning) {
@@ -58151,6 +58277,16 @@ bool ThreadPoolWrapper::stopTP (int threadId)
 					//cout << "unlocking pdPool " << curHolder->curPD << "\n";
 					
 					curHolder->listGenerated = true;
+					curBlock = singleton->gw->getBlockAtId(curHolder->blockId);
+					
+					if (curHolder->listEmpty) {
+						
+					}
+					else {
+						curBlock->changeFlag = true;
+					}
+					
+					
 				break;
 			}
 			
@@ -59941,17 +60077,29 @@ void GameLogic::freePD ()
 			}
 		}
 	}
-void GameLogic::loadNearestHolders (bool doUpdate)
-                                               {
-		
-		FIVector4 tempVec;
-		
+void GameLogic::processCurHolder (GamePageHolder * curHolder, bool doPaths)
+                                                                       {
 		int q;
+		
+		
+		
+	}
+void GameLogic::loadNearestHolders (int rad, bool doUpdate)
+                                                        {
+		
+		int p;
+		int q;
+		int r;
+		
+		int holdersPerBlock = singleton->holdersPerBlock;
 		
 		int i, j, k;
 		int ii, jj, kk;
+		int ii2, jj2, kk2;
+		int ii3, jj3, kk3;
 		int incVal;
-		int maxLoadRad = 4;
+		int readyCount = 0;
+		int maxLoadRad = 0;
 		int genCount = 0;
 		int mink;
 		int maxk;
@@ -59964,27 +60112,11 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 		int curPD;
 		intPair curId;
 		
+		float maxStackDis = 32.0f;
+		
+		FIVector4 tempFIV;
+		
 		int cellsPerHolder = singleton->cellsPerHolder;
-		
-		switch(cellsPerHolder) {
-			case 16:
-				maxLoadRad = 4;
-			break;
-			
-			case 32:
-				maxLoadRad = 4;
-			break;
-			
-			case 64:
-				maxLoadRad = 2;
-			break;
-			
-			case 128:
-				maxLoadRad = 1;
-			break;
-		}
-		
-		maxLoadRad *= 8;
 		
 		bool doPaths;
 		
@@ -60009,21 +60141,14 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 			return;
 		}
 		
+		int maxGen = singleton->iGetConst(E_CONST_MAX_HOLDER_GEN);
 		
-		tempVec.copyFrom(singleton->cameraGetPosNoShake());
-		tempVec.intDivXYZ(singleton->cellsPerHolder);
+		
 
 		GamePageHolder* curHolder;
 		GameBlock *curBlock;
 
 		singleton->gw->ensureBlocks();
-		
-		// if (singleton->pathfindingOn) {
-			
-		// }
-		// else {
-		// 	return;
-		// }
 		
 		freePD();
 		
@@ -60034,50 +60159,82 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 			return;
 		}
 		
-		for (curLoadRadius = 0; curLoadRadius < maxLoadRad; curLoadRadius++) {
+		bool usingHolderStack = (holderStack.size() > 0);
+		
+		int lockCount = 0;
+		int numPasses = 1;
+		if (usingHolderStack) {
+			numPasses = 1;
+		}
+		else {
+			numPasses = 1;
+			maxLoadRad = 16;
+			tempFIV.copyFrom(&(singleton->gw->camHolderPos));
+		}
+		
+		for (p = 0; p < numPasses; p++) {
 			
-			mink = max(tempVec.getIZ() - curLoadRadius,0);
-			maxk = min(
-				tempVec.getIZ() + curLoadRadius,
-				singleton->holdersPerWorld - 1
-			);
-			minj = tempVec.getIY() - curLoadRadius;
-			maxj = tempVec.getIY() + curLoadRadius;
-			mini = tempVec.getIX() - curLoadRadius;
-			maxi = tempVec.getIX() + curLoadRadius;
+			if (usingHolderStack&&(holderStack.size() == 0)) {
+				break;
+			}
 			
-			for (jj = minj; jj <= maxj; jj += radStep) {
+			// find holder to begin fill
+			if (usingHolderStack) {
+				maxLoadRad = 2;
+				tempFIV.setIXYZ(
+					holderStack.front().x,
+					holderStack.front().y,
+					holderStack.front().z
+				);
+				holderStack.pop_front();
+			}
+			
+			lockCount = 0;
+			
+			for (curLoadRadius = 0; curLoadRadius < maxLoadRad; curLoadRadius++) {
 				
-				if (curLoadRadius <= 2) {
-					incVal = 1;
-				}
-				else {
-					if ( (jj == minj) || (jj == maxj) ) {
-						incVal = radStep;
+				mink = max(tempFIV.getIZ() - curLoadRadius,0);
+				maxk = min(
+					tempFIV.getIZ() + curLoadRadius,
+					singleton->holdersPerWorld - 1
+				);
+				minj = tempFIV.getIY() - curLoadRadius;
+				maxj = tempFIV.getIY() + curLoadRadius;
+				mini = tempFIV.getIX() - curLoadRadius;
+				maxi = tempFIV.getIX() + curLoadRadius;
+				
+				
+				
+				for (jj = minj; jj <= maxj; jj += radStep) {
+					
+					if (curLoadRadius <= 2) {
+						incVal = 1;
 					}
 					else {
-						incVal = maxi - mini;
-					}
-				}
-				
-				for (ii = maxi; ii >= mini; ii -= incVal) {
-					
-					
-					for (kk = mink; kk <= maxk; kk += radStep) {
-						
-						
-						curHolder = singleton->gw->getHolderAtCoords(ii, jj, kk, true);
-						curBlock = singleton->gw->getBlockAtId(curHolder->blockId);
-						
-						
-						if (curBlock == NULL) {
-							cout << "NULL BLOCK\n";
+						if ( (jj == minj) || (jj == maxj) ) {
+							incVal = radStep;
 						}
 						else {
+							incVal = maxi - mini;
+						}
+					}
+					
+					for (ii = maxi; ii >= mini; ii -= incVal) {
+						
+						
+						for (kk = mink; kk <= maxk; kk += radStep) {
+							
+							curHolder = singleton->gw->getHolderAtCoords(ii, jj, kk, true);
+							// curBlock = singleton->gw->getBlockAtId(curHolder->blockId);
+							
 							if (curHolder->wasGenerated) {
+										
 								
-								
-								if ((curLoadRadius < 2)&&(singleton->pathfindingGen)&&doPaths) {
+								if (
+									// (curLoadRadius < 2) &&
+									(singleton->pathfindingGen) && 
+									doPaths
+								) {
 									if (curHolder->pathsReady || curHolder->lockWrite) {
 										
 									}
@@ -60099,11 +60256,9 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 								}
 								
 								if (curHolder->listGenerated || curHolder->lockWrite) {
-																		
+									
 								}
 								else {
-									//cout << "genList\n";
-									
 									if(
 										curHolder->prepPathRefresh(1)										
 									) {
@@ -60112,7 +60267,6 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 										for (q = 0; q < MAX_PDPOOL_SIZE; q++) {
 											if (singleton->pdPool[q].isFree) {
 												curPD = q;
-												//cout << "locking pdPool " << q << "\n";
 												break;
 											}
 										}
@@ -60132,13 +60286,7 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 												curHolder->unbindPD();
 											}
 										}
-										
-										
-										
-										//curHolder->generateList();
 									}
-									
-									
 								}
 								
 								
@@ -60147,19 +60295,239 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 								curHolder->genCellData();
 								genCount++;
 							}
-						}
-						
-						
-						if (genCount >= 6) {
-							return;
+							
+							//holderCount++;
+							if (curHolder->lockWrite) {
+								lockCount++;
+							}
+							
+							if (curHolder->listGenerated) {
+								//listGenCount++;
+								
+								if (curHolder->listEmpty) {
+									
+								}
+								else {
+									if (curHolder->wasStacked) {
+										
+									}
+									else {
+										
+										if (curHolder->offsetInHolders.distance(&(singleton->gw->camHolderPos)) < maxStackDis) {
+											curHolder->wasStacked = true;
+											holderStack.push_back(LoadHolderStruct());
+											holderStack.back().blockId = curHolder->blockId;
+											holderStack.back().holderId = curHolder->holderId;
+											holderStack.back().x = ii;
+											holderStack.back().y = jj;
+											holderStack.back().z = kk;
+										}
+										
+										
+									}
+								}
+							}
+							
+							if (genCount >= maxGen) {
+								return;
+							}
+							
 						}
 						
 					}
-					
 				}
+				
 			}
 			
+			if (usingHolderStack) {
+				if (lockCount == 0) {
+					//holderStack.pop_front();
+				}
+			}
 		}
+		
+		
+		
+		
+		//minv.copyFrom(&camBlockPos);
+		//maxv.copyFrom(&camBlockPos);
+		
+		// FIVector4 tempFIV;
+		
+		// int minK = singleton->gw->camBlockPos.getIZ() - rad;
+		// int maxK = singleton->gw->camBlockPos.getIZ() + rad;
+		// int minJ = singleton->gw->camBlockPos.getIY() - rad;
+		// int maxJ = singleton->gw->camBlockPos.getIY() + rad;
+		// int minI = singleton->gw->camBlockPos.getIX() - rad;
+		// int maxI = singleton->gw->camBlockPos.getIX() + rad;
+		
+		
+		// for (kk = minK; kk < maxK; kk++) {
+		// 	for (jj = minJ; jj < maxJ; jj++) {
+		// 		for (ii = minI; ii < maxI; ii++) {
+		// 			curBlock = singleton->gw->getBlockAtCoords(ii,jj,kk,true);
+					
+		// 			if (curBlock->readyToRender) {
+						
+		// 			}
+		// 			else {
+						
+		// 				readyCount = 0;
+						
+		// 				for (kk2 = 0; kk2 < holdersPerBlock; kk2++) {
+		// 					for (jj2 = 0; jj2 < holdersPerBlock; jj2++) {
+		// 						for (ii2 = 0; ii2 < holdersPerBlock; ii2++) {
+									
+		// 							kk3 = kk2 + kk*holdersPerBlock;
+		// 							jj3 = jj2 + jj*holdersPerBlock;
+		// 							ii3 = ii2 + ii*holdersPerBlock;
+									
+		// 							curHolder = singleton->gw->getHolderAtCoords(ii3, jj3, kk3, true);
+									
+									
+		// 							//////////
+									
+									
+		// 							if (curHolder->wasGenerated) {
+										
+										
+		// 								if (
+		// 									// (curLoadRadius < 2) &&
+		// 									(singleton->pathfindingGen) && 
+		// 									doPaths
+		// 								) {
+		// 									if (curHolder->pathsReady || curHolder->lockWrite) {
+												
+		// 									}
+		// 									else {
+												
+		// 										if(curHolder->prepPathRefresh(2)) {
+													
+													
+		// 											threadPoolPath->intData[0] = E_TT_GENPATHS;
+		// 											threadPoolPath->intData[1] = curHolder->blockId;
+		// 											threadPoolPath->intData[2] = curHolder->holderId;
+													
+		// 											if (threadPoolPath->startThread()) {
+		// 												genCount++;
+		// 											}
+		// 										}
+												
+		// 									}
+		// 								}
+										
+		// 								if (curHolder->listGenerated || curHolder->lockWrite) {
+																				
+		// 								}
+		// 								else {
+		// 									//cout << "genList\n";
+											
+		// 									if(
+		// 										curHolder->prepPathRefresh(1)										
+		// 									) {
+												
+		// 										curPD = -1;
+		// 										for (q = 0; q < MAX_PDPOOL_SIZE; q++) {
+		// 											if (singleton->pdPool[q].isFree) {
+		// 												curPD = q;
+		// 												//cout << "locking pdPool " << q << "\n";
+		// 												break;
+		// 											}
+		// 										}
+												
+		// 										if (curPD >= 0) {
+		// 											curHolder->checkCache();
+		// 											curHolder->bindPD(curPD);
+													
+		// 											threadPoolList->intData[0] = E_TT_GENLIST;
+		// 											threadPoolList->intData[1] = curHolder->blockId;
+		// 											threadPoolList->intData[2] = curHolder->holderId;
+													
+		// 											if (threadPoolList->startThread()) {
+		// 												genCount++;
+		// 											}
+		// 											else {
+		// 												curHolder->unbindPD();
+		// 											}
+		// 										}
+												
+		// 									}
+											
+											
+		// 								}
+										
+										
+		// 							}
+		// 							else {
+		// 								curHolder->genCellData();
+		// 								genCount++;
+		// 							}
+									
+		// 							if (genCount >= maxGen) {
+		// 								return;
+		// 							}
+									
+		// 							if (curHolder->appliedFill) {
+		// 								readyCount++;
+		// 							}
+									
+		// 							//////////
+									
+									
+									
+		// 						}
+		// 					}
+		// 				}
+						
+		// 				if (readyCount == curBlock->iHolderSize) {
+		// 					curBlock->fillVBO();
+		// 				}
+						
+						
+		// 			}
+					
+					
+					
+					
+					
+					
+		// 		}
+		// 	}
+		// }
+		
+		
+		
+		
+		// {
+			
+			
+			
+			
+			
+			
+		// 	//curHolder = singleton->gw->getHolderAtCoords(ii, jj, kk, true);
+		// 	//curBlock = singleton->gw->getBlockAtId(curHolder->blockId);
+			
+			
+		// 	// if (curBlock == NULL) {
+		// 	// 	cout << "NULL BLOCK\n";
+		// 	// }
+		// 	// else {}
+			
+			
+		// 	// if (genCount >= 6) {
+		// 	// 	return;
+		// 	// }
+			
+			
+			
+			
+			
+		// }
+		
+		
+		
+		
 	}
 #undef LZZ_INLINE
  
@@ -65010,7 +65378,7 @@ void GameWorld::drawPolys (string fboName, int minPeel, int maxPeel)
 		singleton->unbindFBO();
 		singleton->unbindShader();
 	}
-void GameWorld::rastHolder (int rad, bool drawLoading, bool clipToView)
+void GameWorld::rastHolder (int rad, uint flags)
                   {
 			
 			
@@ -65041,7 +65409,7 @@ void GameWorld::rastHolder (int rad, bool drawLoading, bool clipToView)
 			int minI = minv.getIX() - rad;
 			int maxI = maxv.getIX() + rad;
 			
-			float disClip = singleton->cellsPerBlock*2;
+			float disClip = singleton->cellsPerBlock*1;
 			
 			// if (getBounds) {
 			// 	minShadowBounds.setFXYZ(16777216.0f,16777216.0f,16777216.0f);
@@ -65060,27 +65428,34 @@ void GameWorld::rastHolder (int rad, bool drawLoading, bool clipToView)
 						}
 						else {
 							
-							if (drawLoading) {
-								singleton->setShaderVec3("matVal", 255, 0, 0);
-								curBlock->checkHolders(true);
+							if ((flags&RH_FLAG_DRAWLOADING) > 0) {
 								
-								singleton->setShaderVec3("matVal", 0, 255, 0);
-								if (curBlock->readyToRender) {
+								curBlock->drawLoadingHolders();
+								
+								// singleton->setShaderVec3("matVal", 0, 255, 0);
+								// if (curBlock->readyToRender) {
 									
-									blockMinInCells.copyFrom(&(curBlock->offsetInBlocks));
-									blockMinInCells.addXYZ(0.0f);
-									blockMinInCells.multXYZ(singleton->cellsPerBlock);
+								// 	blockMinInCells.copyFrom(&(curBlock->offsetInBlocks));
+								// 	blockMinInCells.addXYZ(0.0f);
+								// 	blockMinInCells.multXYZ(singleton->cellsPerBlock);
 									
-									blockMaxInCells.copyFrom(&(curBlock->offsetInBlocks));
-									blockMaxInCells.addXYZ(1.0f);
-									blockMaxInCells.multXYZ(singleton->cellsPerBlock);
+								// 	blockMaxInCells.copyFrom(&(curBlock->offsetInBlocks));
+								// 	blockMaxInCells.addXYZ(1.0f);
+								// 	blockMaxInCells.multXYZ(singleton->cellsPerBlock);
 									
-									singleton->drawBox(&(blockMinInCells),&(blockMaxInCells));
-								}
+								// 	singleton->drawBox(&(blockMinInCells),&(blockMaxInCells));
+								// }
 								
 							}
 							else {
-								curBlock->checkHolders(false);
+								
+								if ((flags&RH_FLAG_DOCHECK) > 0) {
+									
+									
+									
+									curBlock->checkHolders();
+								}
+								
 								
 								if (
 									(curBlock->readyToRender) &&
@@ -65089,7 +65464,7 @@ void GameWorld::rastHolder (int rad, bool drawLoading, bool clipToView)
 									
 									
 									doProc = false;
-									if (clipToView) {
+									if ((flags&RH_FLAG_CLIPTOVIEW) > 0) {
 										blockCenInCells.copyFrom(&(curBlock->offsetInBlocks));
 										blockCenInCells.addXYZ(0.5f);
 										blockCenInCells.multXYZ(singleton->cellsPerBlock);
@@ -65099,8 +65474,8 @@ void GameWorld::rastHolder (int rad, bool drawLoading, bool clipToView)
 										tempFIV.normalize();
 										
 										if (
-											(tempFIV.dot(&(singleton->lookAtVec)) > singleton->conVals[E_CONST_DOT_CLIP]) ||
-											(blockCenInCells.distance(singleton->cameraGetPosNoShake()) < disClip)
+											(tempFIV.dot(&(singleton->lookAtVec)) > singleton->conVals[E_CONST_DOT_CLIP])
+											|| (blockCenInCells.distance(singleton->cameraGetPosNoShake()) < disClip)
 										) {
 											doProc = true;
 										}
@@ -65120,6 +65495,8 @@ void GameWorld::rastHolder (int rad, bool drawLoading, bool clipToView)
 									}
 									
 								}
+								
+								
 								
 							}
 							
@@ -67660,7 +68037,6 @@ void GameWorld::rasterHolders (bool doShadow)
 			singleton->updateLightPos();
 			singleton->getLightMatrix();
 			
-			//rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, true, false);
 			
 			
 			singleton->bindShader("ShadowMapShader");
@@ -67677,7 +68053,7 @@ void GameWorld::rasterHolders (bool doShadow)
 			// singleton->setShaderfVec3("maxBounds",&(maxShadowBounds));
 			// singleton->setShaderfVec3("lightVec",&(singleton->lightVec));
 
-			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, false);
+			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), 0);
 
 			singleton->unbindFBO();
 			singleton->unbindShader();
@@ -67700,7 +68076,7 @@ void GameWorld::rasterHolders (bool doShadow)
 			//singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
 			singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
 
-			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, true);
+			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), RH_FLAG_CLIPTOVIEW);
 
 			singleton->unbindFBO();
 			singleton->unbindShader();
@@ -68024,8 +68400,9 @@ void GameWorld::renderDebug ()
 		
 		if (singleton->renderingOct) {
 			singleton->setShaderFloat("isWire", 1.0);
+			singleton->setShaderVec3("matVal", 255, 0, 0);
 			
-			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), true, false);
+			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), RH_FLAG_DRAWLOADING);
 			
 			if (holderInFocus != NULL) {
 				singleton->setShaderVec3("matVal", 0, 0, 255);

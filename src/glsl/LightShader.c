@@ -259,7 +259,7 @@ float calcShadow(vec4 worldPos, vec4 worldPosInLightSpace, vec3 normVec)
     //projCoords.z *= 0.5;
     float currentDepth = distance(lightPos.xyz,worldPos.xyz);//projCoords.z;
     // Calculate bias (based on depth map resolution and slope)
-    float bias = max(0.3 * (1.0 - dot(normVec, lightVec)), 0.05);
+    float bias = max(0.3 * (1.0 - dot(normVec, lightVec)), 0.05)*4.0;
     currentDepth += bias;
     
     
@@ -307,7 +307,7 @@ void main() {
   if (testOn3) {
     FragColor0 = vec4(
      vec3(
-      distance(texture(Texture5,TexCoord0.xy).xyz,cameraPos.xyz)/100.0  
+      distance(texture(Texture5,TexCoord0.xy).xyz,cameraPos.xyz)/600.0  
      ),
      //(sin(texture(Texture5,TexCoord0.xy).xyz)+1.0)*0.5,
      1.0

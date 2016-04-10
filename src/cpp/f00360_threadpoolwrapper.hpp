@@ -79,6 +79,7 @@ class ThreadPoolWrapper {
 	bool stopTP(int threadId) {
 		
 		GamePageHolder* curHolder;
+		GameBlock* curBlock;
 		
 		bool didStop = false;
 		if (threadPool[threadId].threadRunning) {
@@ -105,6 +106,16 @@ class ThreadPoolWrapper {
 					//cout << "unlocking pdPool " << curHolder->curPD << "\n";
 					
 					curHolder->listGenerated = true;
+					curBlock = singleton->gw->getBlockAtId(curHolder->blockId);
+					
+					if (curHolder->listEmpty) {
+						
+					}
+					else {
+						curBlock->changeFlag = true;
+					}
+					
+					
 				break;
 			}
 			

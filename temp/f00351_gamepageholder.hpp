@@ -22,6 +22,8 @@ public:
 	bool hasData;
 	bool hasPath;
 	bool hasCache;
+	bool wasStacked;
+	//bool appliedFill;
 	
 	bool lockWrite;
 	bool lockRead;
@@ -120,6 +122,7 @@ public:
 		vertexVec.shrink_to_fit();
 		//vboWrapper.deallocVBO();
 		unbindPD();
+		wasStacked = false;
 		listGenerated = false;
 		readyToRender = false;
 	}
@@ -132,6 +135,8 @@ public:
 		// meshInterface = NULL;
 		// body = NULL;
 		
+		//appliedFill = false;
+		wasStacked = false;
 		hasCache = false;
 		hasData = true;
 		hasPath = true;
@@ -2120,6 +2125,60 @@ FIRST_FILL_DONE:
 		curPD = -1;
 	}
 
+	void applyFill() {
+		bool res;
+		
+		if (hasCache) {
+			res = singleton->loadCacheEntry(blockId,holderId);
+			listEmpty = (vertexVec.size() == 0); //vboWrapper.
+			
+			// if (res) {
+			// 	cout << "loaded cache\n";
+			// }
+			// else {
+			// 	cout << "did not load cache\n";
+			// }
+		}
+		
+		if (
+			listEmpty || (!hasData)
+			// && (holderFlags != E_CD_SOLID)
+		) {
+			
+		}
+		else {
+			
+			if (POLYS_FOR_CELLS||DO_VOXEL_WRAP) {
+				if (hasCache) {
+					
+				}
+				else {
+					res = singleton->saveCacheEntry(blockId,holderId);
+					
+					// if (res) {
+					// 	//cout << "saved cache\n";
+					// }
+					// else {
+					// 	//cout << "did not save cache\n";
+					// }
+				}
+			}
+			
+			
+			
+			// else if ((!isBlockHolder)&&POLY_COLLISION) {
+			// 	createMesh();
+			// }
+			// else if (isBlockHolder&&GEN_POLYS_WORLD) {
+				
+			// }
+			
+		}
+		
+		//appliedFill = true;
+		
+	}
+
 	void fillVBO() {
 		
 		if (singleton->gamePhysics == NULL) {
@@ -2143,7 +2202,7 @@ FIRST_FILL_DONE:
 		// int jj2;
 		int kk2;
 		
-		bool res;
+		
 		
 		
 		
@@ -2167,7 +2226,7 @@ FIRST_FILL_DONE:
 		/////////////////////
 		
 		
-		float fk;
+		//float fk;
 		
 		// if (GEN_COLLISION) {
 		// 	for (q = 0; q < collideIndices.size(); q += 2) {
@@ -2215,52 +2274,7 @@ FIRST_FILL_DONE:
 		
 		////////////////////
 		
-		if (hasCache) {
-			res = singleton->loadCacheEntry(blockId,holderId);
-			listEmpty = (vertexVec.size() == 0); //vboWrapper.
-			
-			if (res) {
-				cout << "loaded cache\n";
-			}
-			else {
-				cout << "did not load cache\n";
-			}
-		}
-		
-		if (
-			listEmpty || (!hasData)
-			// && (holderFlags != E_CD_SOLID)
-		) {
-			
-		}
-		else {
-			
-			if (POLYS_FOR_CELLS||DO_VOXEL_WRAP) {
-				if (hasCache) {
-					
-				}
-				else {
-					res = singleton->saveCacheEntry(blockId,holderId);
-					
-					// if (res) {
-					// 	//cout << "saved cache\n";
-					// }
-					// else {
-					// 	//cout << "did not save cache\n";
-					// }
-				}
-			}
-			
-			
-			
-			// else if ((!isBlockHolder)&&POLY_COLLISION) {
-			// 	createMesh();
-			// }
-			// else if (isBlockHolder&&GEN_POLYS_WORLD) {
-				
-			// }
-			
-		}
+		applyFill();
 		
 		
 		
@@ -2618,8 +2632,9 @@ FIRST_FILL_DONE:
 		
 	}
 
-	void checkCache() {
+	bool checkCache() {
 		hasCache = singleton->checkCacheEntry(blockId,holderId);
+		return hasCache;
 	}
 
 	void generateList() { //int fboNum

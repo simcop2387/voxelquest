@@ -1700,6 +1700,7 @@ public:
   bool hasData;
   bool hasPath;
   bool hasCache;
+  bool wasStacked;
   bool lockWrite;
   bool lockRead;
   vector <float> vertexVec;
@@ -1757,11 +1758,12 @@ public:
   void genCellData ();
   void bindPD (int pd);
   void unbindPD ();
+  void applyFill ();
   void fillVBO ();
   PaddedDataEntry * getPadData (int ii, int jj, int kk);
   int gatherData ();
   void wrapPolys ();
-  void checkCache ();
+  bool checkCache ();
   void generateList ();
 };
 LZZ_INLINE PaddedDataEntry * GamePageHolder::getPadData (int ii, int jj, int kk)
@@ -1792,6 +1794,7 @@ class GameBlock
 {
 public:
   Singleton * singleton;
+  int lastPointCount;
   int blockId;
   int holdersPerBlock;
   int terDataBufAmount;
@@ -1865,8 +1868,11 @@ public:
   VBOWrapper vboWrapper;
   bool readyToRender;
   bool listEmpty;
+  bool changeFlag;
+  int changeTick;
   GameBlock ();
-  void checkHolders (bool drawLoading);
+  void drawLoadingHolders ();
+  void checkHolders ();
   void reset ();
   void fillVBO ();
   void init (Singleton * _singleton, int _blockId, int _x, int _y, int _z, int _xw, int _yw, int _zw);
@@ -1963,6 +1969,7 @@ public:
   Singleton * singleton;
   std::vector <PathResult> pathSearchStack;
   std::vector <PathResult> pathFinalStack;
+  std::list <LoadHolderStruct> holderStack;
   ThreadPoolWrapper * threadPoolPath;
   ThreadPoolWrapper * threadPoolList;
   FIVector4 minv;
@@ -2001,7 +2008,8 @@ public:
   int getClosestPathRad (btVector3 cpBTV, GamePageHolder * & closestHolder);
   bool anyThreadsRunning ();
   void freePD ();
-  void loadNearestHolders (bool doUpdate);
+  void processCurHolder (GamePageHolder * curHolder, bool doPaths);
+  void loadNearestHolders (int rad, bool doUpdate);
 };
 #undef LZZ_INLINE
 #endif
@@ -2259,7 +2267,7 @@ public:
   void drawNodeEnt (GameOrgNode * curNode, FIVector4 * basePosition, float scale, int drawMode, bool drawAll);
   void polyCombine ();
   void drawPolys (string fboName, int minPeel, int maxPeel);
-  void rastHolder (int rad, bool drawLoading, bool clipToView);
+  void rastHolder (int rad, uint flags);
   void renderGeom ();
   void updateMouseCoords (FIVector4 * fPixelWorldCoordsBase);
   float weighPath (float x1, float y1, float x2, float y2, float rad, bool doSet, bool isOcean);

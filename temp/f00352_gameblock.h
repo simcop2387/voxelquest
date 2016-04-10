@@ -5,22 +5,24 @@
 #define LZZ_INLINE inline
 GameBlock::GameBlock ()
                     {
+		lastPointCount = 0;
+		changeFlag = false;
+		changeTick = 1;
+		//changeCount = 0;
+		
 		readyToRender = false;
 		listEmpty = true;
 		terData = NULL;
 		buildingData = NULL;
 	}
-void GameBlock::checkHolders (bool drawLoading)
-          {
-		if (readyToRender) {
-			return;
-		}
-		
+void GameBlock::drawLoadingHolders ()
+                                  {
 		int i;
-		
 		GamePageHolder* curHolder;
 		
-		int readyCount = 0;
+		// if (readyToRender) {
+		// 	return;
+		// }
 		
 		for (i = 0; i < iHolderSize; i++) {
 			curHolder = holderData[i];
@@ -29,51 +31,121 @@ void GameBlock::checkHolders (bool drawLoading)
 				
 			}
 			else {
-				
-				if (drawLoading) {
-					if (curHolder->lockWrite) {
-						singleton->drawBox(&(curHolder->gphMinInCells),&(curHolder->gphMaxInCells));
-					}
-				}
-				else {
-					if (curHolder->lockWrite) {
-						
-					}
-					else {
-						if (
-							(curHolder->readyToRender)
-							//&& (!(curHolder->listEmpty))
-						) {
-							
-							readyCount++;
-							
-							//curHolder->vboWrapper.draw();
-							
-							
-						}
-					}
+				if (curHolder->lockWrite) {
+					singleton->drawBox(&(curHolder->gphMinInCells),&(curHolder->gphMaxInCells));
 				}
 			}
 		}
 		
-		if (drawLoading) {
-			return;
-		}
+	}
+void GameBlock::checkHolders ()
+                            {
+		// if (readyToRender) {
+		// 	return;
+		// }
 		
-		// cout << readyCount << "/" << iHolderSize << "\n";
+		int i;
 		
-		if (readyCount == iHolderSize) {
+		int ii;
+		int jj;
+		int kk;
+		
+		int holderX;
+		int holderY;
+		int holderZ;
+		
+		GamePageHolder* curHolder;
+		int readyCount;
+		
+		
+		// readyCount = 0;
+		// for (i = 0; i < iHolderSize; i++) {
+		// 	if (
+		// 		singleton->checkCacheEntry(blockId,i)	
+		// 	) {
+		// 		readyCount++;
+		// 	}
+		// }
+		// if (readyCount == iHolderSize) {
+		// 	singleton->stopAllThreads();
+			
+		// 	cout << "filling from cache\n";
+			
+		// 	for (i = 0; i < iHolderSize; i++) {
+		// 		curHolder = holderData[i];
+				
+				
+				
+		// 		if (curHolder == NULL) {
+					
+		// 			kk = i/(holdersPerBlock*holdersPerBlock);
+		// 			jj = (i-kk*holdersPerBlock*holdersPerBlock)/holdersPerBlock;
+		// 			ii = i-(kk*holdersPerBlock*holdersPerBlock + jj*holdersPerBlock);
+					
+		// 			holderX = holdersPerBlock * (offsetInBlocks.getIX()) + ii;
+		// 			holderY = holdersPerBlock * (offsetInBlocks.getIY()) + jj;
+		// 			holderZ = holdersPerBlock * (offsetInBlocks.getIZ()) + kk;
+					
+		// 			singleton->gw->getHolderAtCoords(holderX,holderY,holderZ,true);
+		// 			curHolder = holderData[i];
+		// 		}
+				
+		// 		if (curHolder->appliedFill) {
+					
+		// 		}
+		// 		else {
+		// 			curHolder->applyFill();
+		// 		}
+				
+		// 	}
+			
+		// }
+		
+		
+		// readyCount = 0;
+		// for (i = 0; i < iHolderSize; i++) {
+		// 	curHolder = holderData[i];
+						
+		// 	if (curHolder == NULL) {
+				
+		// 	}
+		// 	else {
+		// 		if (curHolder->lockWrite) {
+					
+		// 		}
+		// 		else {
+					
+		// 		}
+		// 	}
+		// }
+		
+		// if (readyCount == iHolderSize) {
+		// 	fillVBO();
+		// }
+		
+		changeTick++;
+		
+		int maxTicks = singleton->iGetConst(E_CONST_MAX_BLOCK_TICKS);
+		
+		if (
+			//(changeCount > 0) &&
+			(changeFlag) &&
+			((changeTick%maxTicks) == 0)	
+		) {
+			changeFlag = false;
 			fillVBO();
 		}
 		
 	}
 void GameBlock::reset ()
                      {
+		changeTick = 1;
+		//changeCount = 0;
 		vboWrapper.deallocVBO();
 	}
 void GameBlock::fillVBO ()
                        {
-		vboWrapper.beginFill();
+		readyToRender = false;
 		
 		int totFloats = 0;
 		int i;
@@ -82,6 +154,7 @@ void GameBlock::fillVBO ()
 		
 		GamePageHolder* curHolder;
 		
+		vboWrapper.beginFill();
 		if (vboWrapper.hasInit) {
 			
 		}
@@ -97,7 +170,7 @@ void GameBlock::fillVBO ()
 		for (j = 0; j < 2; j++) {
 			for (i = 0; i < iHolderSize; i++) {
 				curHolder = holderData[i];
-							
+
 				if (curHolder == NULL) {
 					
 				}
@@ -106,10 +179,8 @@ void GameBlock::fillVBO ()
 						
 					}
 					else {
-						if (
-							(curHolder->readyToRender)
-							//&& (!(curHolder->listEmpty))
-						) {
+						if (curHolder->listGenerated) {
+							
 							if (j == 0) {
 								totFloats += curHolder->vertexVec.size();
 							}
@@ -120,15 +191,20 @@ void GameBlock::fillVBO ()
 									totInd++;
 								}
 								
-								curHolder->vertexVec.clear();
-								curHolder->vertexVec.shrink_to_fit();
+								// curHolder->vertexVec.clear();
+								// curHolder->vertexVec.shrink_to_fit();
 								
 							}
 							
 						}
 					}
-					
 				}
+
+				
+				
+				
+				
+				
 			}
 			
 			if (j == 0) {
@@ -146,19 +222,21 @@ void GameBlock::fillVBO ()
 			}
 		}
 		
-		
-		
+		TOT_POINT_COUNT -= lastPointCount;
 		TOT_POINT_COUNT += vboWrapper.getNumVerts();
+		lastPointCount = vboWrapper.getNumVerts();
 		
 		vboWrapper.endFill();
-		
 		
 		glFlush();
 		glFinish();
 		
 		
-		
 		vboWrapper.clearVecs();
+		
+		
+		changeTick = 1;
+		//changeCount = 0;
 		
 		readyToRender = true;
 	}

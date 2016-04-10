@@ -2411,9 +2411,10 @@ public:
 	
 		void rastHolder(
 			int rad,
-			bool drawLoading,
-			//bool getBounds,
-			bool clipToView
+			uint flags
+			// bool drawLoading,
+			// bool doCheck,
+			// bool clipToView
 		) {
 			
 			
@@ -2444,7 +2445,7 @@ public:
 			int minI = minv.getIX() - rad;
 			int maxI = maxv.getIX() + rad;
 			
-			float disClip = singleton->cellsPerBlock*2;
+			float disClip = singleton->cellsPerBlock*1;
 			
 			// if (getBounds) {
 			// 	minShadowBounds.setFXYZ(16777216.0f,16777216.0f,16777216.0f);
@@ -2463,27 +2464,34 @@ public:
 						}
 						else {
 							
-							if (drawLoading) {
-								singleton->setShaderVec3("matVal", 255, 0, 0);
-								curBlock->checkHolders(true);
+							if ((flags&RH_FLAG_DRAWLOADING) > 0) {
 								
-								singleton->setShaderVec3("matVal", 0, 255, 0);
-								if (curBlock->readyToRender) {
+								curBlock->drawLoadingHolders();
+								
+								// singleton->setShaderVec3("matVal", 0, 255, 0);
+								// if (curBlock->readyToRender) {
 									
-									blockMinInCells.copyFrom(&(curBlock->offsetInBlocks));
-									blockMinInCells.addXYZ(0.0f);
-									blockMinInCells.multXYZ(singleton->cellsPerBlock);
+								// 	blockMinInCells.copyFrom(&(curBlock->offsetInBlocks));
+								// 	blockMinInCells.addXYZ(0.0f);
+								// 	blockMinInCells.multXYZ(singleton->cellsPerBlock);
 									
-									blockMaxInCells.copyFrom(&(curBlock->offsetInBlocks));
-									blockMaxInCells.addXYZ(1.0f);
-									blockMaxInCells.multXYZ(singleton->cellsPerBlock);
+								// 	blockMaxInCells.copyFrom(&(curBlock->offsetInBlocks));
+								// 	blockMaxInCells.addXYZ(1.0f);
+								// 	blockMaxInCells.multXYZ(singleton->cellsPerBlock);
 									
-									singleton->drawBox(&(blockMinInCells),&(blockMaxInCells));
-								}
+								// 	singleton->drawBox(&(blockMinInCells),&(blockMaxInCells));
+								// }
 								
 							}
 							else {
-								curBlock->checkHolders(false);
+								
+								if ((flags&RH_FLAG_DOCHECK) > 0) {
+									
+									
+									
+									curBlock->checkHolders();
+								}
+								
 								
 								if (
 									(curBlock->readyToRender) &&
@@ -2492,7 +2500,7 @@ public:
 									
 									
 									doProc = false;
-									if (clipToView) {
+									if ((flags&RH_FLAG_CLIPTOVIEW) > 0) {
 										blockCenInCells.copyFrom(&(curBlock->offsetInBlocks));
 										blockCenInCells.addXYZ(0.5f);
 										blockCenInCells.multXYZ(singleton->cellsPerBlock);
@@ -2502,8 +2510,8 @@ public:
 										tempFIV.normalize();
 										
 										if (
-											(tempFIV.dot(&(singleton->lookAtVec)) > singleton->conVals[E_CONST_DOT_CLIP]) ||
-											(blockCenInCells.distance(singleton->cameraGetPosNoShake()) < disClip)
+											(tempFIV.dot(&(singleton->lookAtVec)) > singleton->conVals[E_CONST_DOT_CLIP])
+											|| (blockCenInCells.distance(singleton->cameraGetPosNoShake()) < disClip)
 										) {
 											doProc = true;
 										}
@@ -2523,6 +2531,8 @@ public:
 									}
 									
 								}
+								
+								
 								
 							}
 							
@@ -5265,7 +5275,6 @@ UPDATE_LIGHTS_END:
 			singleton->updateLightPos();
 			singleton->getLightMatrix();
 			
-			//rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, true, false);
 			
 			
 			singleton->bindShader("ShadowMapShader");
@@ -5282,7 +5291,7 @@ UPDATE_LIGHTS_END:
 			// singleton->setShaderfVec3("maxBounds",&(maxShadowBounds));
 			// singleton->setShaderfVec3("lightVec",&(singleton->lightVec));
 
-			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, false);
+			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), 0);
 
 			singleton->unbindFBO();
 			singleton->unbindShader();
@@ -5305,7 +5314,7 @@ UPDATE_LIGHTS_END:
 			//singleton->setShaderMatrix4x4("lightSpaceMatrix",singleton->lightSpaceMatrix.get(),1);
 			singleton->setShaderMatrix4x4("pmMatrix",singleton->pmMatrix.get(),1);
 
-			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), false, true);
+			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), RH_FLAG_CLIPTOVIEW);
 
 			singleton->unbindFBO();
 			singleton->unbindShader();
@@ -5730,8 +5739,9 @@ UPDATE_LIGHTS_END:
 		
 		if (singleton->renderingOct) {
 			singleton->setShaderFloat("isWire", 1.0);
+			singleton->setShaderVec3("matVal", 255, 0, 0);
 			
-			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), true, false);
+			rastHolder(singleton->iGetConst(E_CONST_RASTER_HOLDER_RAD), RH_FLAG_DRAWLOADING);
 			
 			if (holderInFocus != NULL) {
 				singleton->setShaderVec3("matVal", 0, 0, 255);

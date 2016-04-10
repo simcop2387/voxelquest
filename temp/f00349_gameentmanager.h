@@ -3028,7 +3028,11 @@ int GameEntManager::getActionStateFromPose (int poseNum)
 void GameEntManager::changePose (int amount)
                                     {
 		
+		
 		GameOrg* testOrg = getCurOrg();
+		if (testOrg == NULL) {
+			return;
+		}
 		
 		do {
 			curPose[curPoseType].index += amount;

@@ -3207,6 +3207,7 @@ private:
 public:
 	GLuint vao, vbo, ibo;
 
+	float lastVMUsage;
 	int drawEnum;
 	int sizeOfID;
 	int maxSizeOfID;
@@ -3222,6 +3223,7 @@ public:
 	std::vector<uint> indexVec; //unsigned short
 
 	VBOWrapper() {
+		lastVMUsage = 0.0f;
 		ibo = 0;
 		vbo = 0;
 		numVecs = -1;
@@ -3359,6 +3361,9 @@ public:
 		
 	}
 	void endFill() {
+		
+		
+		
 		if (vertexVec.size() > 0) {
 			updateNew();
 		}
@@ -3366,9 +3371,10 @@ public:
 			// todo: handle case where vertex buffer has gone to zero
 		}
 		
+		VERTEX_MEM_USAGE -= lastVMUsage;
 		float vertMem = (vertexVec.size()+indexVec.size())*4;
-		
 		VERTEX_MEM_USAGE += vertMem/(1024.0f*1024.0f);
+		lastVMUsage = vertMem/(1024.0f*1024.0f);
 		
 	}
 	

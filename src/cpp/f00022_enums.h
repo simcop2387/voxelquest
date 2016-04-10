@@ -9,6 +9,8 @@
 
 
 #define E_CONST(DDD) \
+DDD(E_CONST_MAX_BLOCK_TICKS) \
+DDD(E_CONST_MAX_HOLDER_GEN) \
 DDD(E_CONST_MAX_CLIPDIST) \
 DDD(E_CONST_LIGHTTHRESH) \
 DDD(E_CONST_LIGHTORTHOSIZE) \
@@ -93,6 +95,9 @@ enum E_CONST_VALS {
 	E_CONST(DO_ENUM)
 };
 
+const static uint RH_FLAG_DOCHECK = 1;
+const static uint RH_FLAG_DRAWLOADING = 2;
+const static uint RH_FLAG_CLIPTOVIEW = 4;
 
 enum E_GUI_DATA_STRINGS {
 	E_GDS_DATA_SOURCE,
@@ -603,6 +608,14 @@ const static uint ALL_FACES = 63;
 
 const static int PATTERN_SIZE = 5;
 const static int PATTERN_CENTER = (PATTERN_SIZE/2);
+
+struct LoadHolderStruct {
+	int holderId;
+	int blockId;
+	int x;
+	int y;
+	int z;
+};
 
 struct PatternStruct {
 	int addPat;

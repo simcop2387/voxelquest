@@ -9379,8 +9379,11 @@ DISPATCH_EVENT_END:
 		
 		//(getAvailPD() < MAX_PDPOOL_SIZE)
 		
+		if (updateHolders) {
+			gw->rastHolder(iGetConst(E_CONST_RASTER_HOLDER_RAD), RH_FLAG_DOCHECK);
+		}
 		
-		gameLogic->loadNearestHolders(updateHolders);		
+		gameLogic->loadNearestHolders(2, updateHolders);		
 		return;
 		
 		
@@ -9426,7 +9429,7 @@ DISPATCH_EVENT_END:
 			
 			if (gf->cycleTerminated) {
 				
-				gameLogic->loadNearestHolders(updateHolders);
+				gameLogic->loadNearestHolders(2, updateHolders);
 				holderLoadCount++;
 				
 				if (holderLoadCount == MAX_HOLDER_LOAD_COUNT) {

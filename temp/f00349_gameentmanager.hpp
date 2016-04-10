@@ -3161,7 +3161,11 @@ public:
 	
 	void changePose(int amount) {
 		
+		
 		GameOrg* testOrg = getCurOrg();
+		if (testOrg == NULL) {
+			return;
+		}
 		
 		do {
 			curPose[curPoseType].index += amount;

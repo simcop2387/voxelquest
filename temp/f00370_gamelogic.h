@@ -1705,17 +1705,29 @@ void GameLogic::freePD ()
 			}
 		}
 	}
-void GameLogic::loadNearestHolders (bool doUpdate)
-                                               {
-		
-		FIVector4 tempVec;
-		
+void GameLogic::processCurHolder (GamePageHolder * curHolder, bool doPaths)
+                                                                       {
 		int q;
+		
+		
+		
+	}
+void GameLogic::loadNearestHolders (int rad, bool doUpdate)
+                                                        {
+		
+		int p;
+		int q;
+		int r;
+		
+		int holdersPerBlock = singleton->holdersPerBlock;
 		
 		int i, j, k;
 		int ii, jj, kk;
+		int ii2, jj2, kk2;
+		int ii3, jj3, kk3;
 		int incVal;
-		int maxLoadRad = 4;
+		int readyCount = 0;
+		int maxLoadRad = 0;
 		int genCount = 0;
 		int mink;
 		int maxk;
@@ -1728,27 +1740,11 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 		int curPD;
 		intPair curId;
 		
+		float maxStackDis = 32.0f;
+		
+		FIVector4 tempFIV;
+		
 		int cellsPerHolder = singleton->cellsPerHolder;
-		
-		switch(cellsPerHolder) {
-			case 16:
-				maxLoadRad = 4;
-			break;
-			
-			case 32:
-				maxLoadRad = 4;
-			break;
-			
-			case 64:
-				maxLoadRad = 2;
-			break;
-			
-			case 128:
-				maxLoadRad = 1;
-			break;
-		}
-		
-		maxLoadRad *= 8;
 		
 		bool doPaths;
 		
@@ -1773,21 +1769,14 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 			return;
 		}
 		
+		int maxGen = singleton->iGetConst(E_CONST_MAX_HOLDER_GEN);
 		
-		tempVec.copyFrom(singleton->cameraGetPosNoShake());
-		tempVec.intDivXYZ(singleton->cellsPerHolder);
+		
 
 		GamePageHolder* curHolder;
 		GameBlock *curBlock;
 
 		singleton->gw->ensureBlocks();
-		
-		// if (singleton->pathfindingOn) {
-			
-		// }
-		// else {
-		// 	return;
-		// }
 		
 		freePD();
 		
@@ -1798,50 +1787,82 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 			return;
 		}
 		
-		for (curLoadRadius = 0; curLoadRadius < maxLoadRad; curLoadRadius++) {
+		bool usingHolderStack = (holderStack.size() > 0);
+		
+		int lockCount = 0;
+		int numPasses = 1;
+		if (usingHolderStack) {
+			numPasses = 1;
+		}
+		else {
+			numPasses = 1;
+			maxLoadRad = 16;
+			tempFIV.copyFrom(&(singleton->gw->camHolderPos));
+		}
+		
+		for (p = 0; p < numPasses; p++) {
 			
-			mink = max(tempVec.getIZ() - curLoadRadius,0);
-			maxk = min(
-				tempVec.getIZ() + curLoadRadius,
-				singleton->holdersPerWorld - 1
-			);
-			minj = tempVec.getIY() - curLoadRadius;
-			maxj = tempVec.getIY() + curLoadRadius;
-			mini = tempVec.getIX() - curLoadRadius;
-			maxi = tempVec.getIX() + curLoadRadius;
+			if (usingHolderStack&&(holderStack.size() == 0)) {
+				break;
+			}
 			
-			for (jj = minj; jj <= maxj; jj += radStep) {
+			// find holder to begin fill
+			if (usingHolderStack) {
+				maxLoadRad = 2;
+				tempFIV.setIXYZ(
+					holderStack.front().x,
+					holderStack.front().y,
+					holderStack.front().z
+				);
+				holderStack.pop_front();
+			}
+			
+			lockCount = 0;
+			
+			for (curLoadRadius = 0; curLoadRadius < maxLoadRad; curLoadRadius++) {
 				
-				if (curLoadRadius <= 2) {
-					incVal = 1;
-				}
-				else {
-					if ( (jj == minj) || (jj == maxj) ) {
-						incVal = radStep;
+				mink = max(tempFIV.getIZ() - curLoadRadius,0);
+				maxk = min(
+					tempFIV.getIZ() + curLoadRadius,
+					singleton->holdersPerWorld - 1
+				);
+				minj = tempFIV.getIY() - curLoadRadius;
+				maxj = tempFIV.getIY() + curLoadRadius;
+				mini = tempFIV.getIX() - curLoadRadius;
+				maxi = tempFIV.getIX() + curLoadRadius;
+				
+				
+				
+				for (jj = minj; jj <= maxj; jj += radStep) {
+					
+					if (curLoadRadius <= 2) {
+						incVal = 1;
 					}
 					else {
-						incVal = maxi - mini;
-					}
-				}
-				
-				for (ii = maxi; ii >= mini; ii -= incVal) {
-					
-					
-					for (kk = mink; kk <= maxk; kk += radStep) {
-						
-						
-						curHolder = singleton->gw->getHolderAtCoords(ii, jj, kk, true);
-						curBlock = singleton->gw->getBlockAtId(curHolder->blockId);
-						
-						
-						if (curBlock == NULL) {
-							cout << "NULL BLOCK\n";
+						if ( (jj == minj) || (jj == maxj) ) {
+							incVal = radStep;
 						}
 						else {
+							incVal = maxi - mini;
+						}
+					}
+					
+					for (ii = maxi; ii >= mini; ii -= incVal) {
+						
+						
+						for (kk = mink; kk <= maxk; kk += radStep) {
+							
+							curHolder = singleton->gw->getHolderAtCoords(ii, jj, kk, true);
+							// curBlock = singleton->gw->getBlockAtId(curHolder->blockId);
+							
 							if (curHolder->wasGenerated) {
+										
 								
-								
-								if ((curLoadRadius < 2)&&(singleton->pathfindingGen)&&doPaths) {
+								if (
+									// (curLoadRadius < 2) &&
+									(singleton->pathfindingGen) && 
+									doPaths
+								) {
 									if (curHolder->pathsReady || curHolder->lockWrite) {
 										
 									}
@@ -1863,11 +1884,9 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 								}
 								
 								if (curHolder->listGenerated || curHolder->lockWrite) {
-																		
+									
 								}
 								else {
-									//cout << "genList\n";
-									
 									if(
 										curHolder->prepPathRefresh(1)										
 									) {
@@ -1876,7 +1895,6 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 										for (q = 0; q < MAX_PDPOOL_SIZE; q++) {
 											if (singleton->pdPool[q].isFree) {
 												curPD = q;
-												//cout << "locking pdPool " << q << "\n";
 												break;
 											}
 										}
@@ -1896,13 +1914,7 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 												curHolder->unbindPD();
 											}
 										}
-										
-										
-										
-										//curHolder->generateList();
 									}
-									
-									
 								}
 								
 								
@@ -1911,19 +1923,239 @@ void GameLogic::loadNearestHolders (bool doUpdate)
 								curHolder->genCellData();
 								genCount++;
 							}
-						}
-						
-						
-						if (genCount >= 6) {
-							return;
+							
+							//holderCount++;
+							if (curHolder->lockWrite) {
+								lockCount++;
+							}
+							
+							if (curHolder->listGenerated) {
+								//listGenCount++;
+								
+								if (curHolder->listEmpty) {
+									
+								}
+								else {
+									if (curHolder->wasStacked) {
+										
+									}
+									else {
+										
+										if (curHolder->offsetInHolders.distance(&(singleton->gw->camHolderPos)) < maxStackDis) {
+											curHolder->wasStacked = true;
+											holderStack.push_back(LoadHolderStruct());
+											holderStack.back().blockId = curHolder->blockId;
+											holderStack.back().holderId = curHolder->holderId;
+											holderStack.back().x = ii;
+											holderStack.back().y = jj;
+											holderStack.back().z = kk;
+										}
+										
+										
+									}
+								}
+							}
+							
+							if (genCount >= maxGen) {
+								return;
+							}
+							
 						}
 						
 					}
-					
 				}
+				
 			}
 			
+			if (usingHolderStack) {
+				if (lockCount == 0) {
+					//holderStack.pop_front();
+				}
+			}
 		}
+		
+		
+		
+		
+		//minv.copyFrom(&camBlockPos);
+		//maxv.copyFrom(&camBlockPos);
+		
+		// FIVector4 tempFIV;
+		
+		// int minK = singleton->gw->camBlockPos.getIZ() - rad;
+		// int maxK = singleton->gw->camBlockPos.getIZ() + rad;
+		// int minJ = singleton->gw->camBlockPos.getIY() - rad;
+		// int maxJ = singleton->gw->camBlockPos.getIY() + rad;
+		// int minI = singleton->gw->camBlockPos.getIX() - rad;
+		// int maxI = singleton->gw->camBlockPos.getIX() + rad;
+		
+		
+		// for (kk = minK; kk < maxK; kk++) {
+		// 	for (jj = minJ; jj < maxJ; jj++) {
+		// 		for (ii = minI; ii < maxI; ii++) {
+		// 			curBlock = singleton->gw->getBlockAtCoords(ii,jj,kk,true);
+					
+		// 			if (curBlock->readyToRender) {
+						
+		// 			}
+		// 			else {
+						
+		// 				readyCount = 0;
+						
+		// 				for (kk2 = 0; kk2 < holdersPerBlock; kk2++) {
+		// 					for (jj2 = 0; jj2 < holdersPerBlock; jj2++) {
+		// 						for (ii2 = 0; ii2 < holdersPerBlock; ii2++) {
+									
+		// 							kk3 = kk2 + kk*holdersPerBlock;
+		// 							jj3 = jj2 + jj*holdersPerBlock;
+		// 							ii3 = ii2 + ii*holdersPerBlock;
+									
+		// 							curHolder = singleton->gw->getHolderAtCoords(ii3, jj3, kk3, true);
+									
+									
+		// 							//////////
+									
+									
+		// 							if (curHolder->wasGenerated) {
+										
+										
+		// 								if (
+		// 									// (curLoadRadius < 2) &&
+		// 									(singleton->pathfindingGen) && 
+		// 									doPaths
+		// 								) {
+		// 									if (curHolder->pathsReady || curHolder->lockWrite) {
+												
+		// 									}
+		// 									else {
+												
+		// 										if(curHolder->prepPathRefresh(2)) {
+													
+													
+		// 											threadPoolPath->intData[0] = E_TT_GENPATHS;
+		// 											threadPoolPath->intData[1] = curHolder->blockId;
+		// 											threadPoolPath->intData[2] = curHolder->holderId;
+													
+		// 											if (threadPoolPath->startThread()) {
+		// 												genCount++;
+		// 											}
+		// 										}
+												
+		// 									}
+		// 								}
+										
+		// 								if (curHolder->listGenerated || curHolder->lockWrite) {
+																				
+		// 								}
+		// 								else {
+		// 									//cout << "genList\n";
+											
+		// 									if(
+		// 										curHolder->prepPathRefresh(1)										
+		// 									) {
+												
+		// 										curPD = -1;
+		// 										for (q = 0; q < MAX_PDPOOL_SIZE; q++) {
+		// 											if (singleton->pdPool[q].isFree) {
+		// 												curPD = q;
+		// 												//cout << "locking pdPool " << q << "\n";
+		// 												break;
+		// 											}
+		// 										}
+												
+		// 										if (curPD >= 0) {
+		// 											curHolder->checkCache();
+		// 											curHolder->bindPD(curPD);
+													
+		// 											threadPoolList->intData[0] = E_TT_GENLIST;
+		// 											threadPoolList->intData[1] = curHolder->blockId;
+		// 											threadPoolList->intData[2] = curHolder->holderId;
+													
+		// 											if (threadPoolList->startThread()) {
+		// 												genCount++;
+		// 											}
+		// 											else {
+		// 												curHolder->unbindPD();
+		// 											}
+		// 										}
+												
+		// 									}
+											
+											
+		// 								}
+										
+										
+		// 							}
+		// 							else {
+		// 								curHolder->genCellData();
+		// 								genCount++;
+		// 							}
+									
+		// 							if (genCount >= maxGen) {
+		// 								return;
+		// 							}
+									
+		// 							if (curHolder->appliedFill) {
+		// 								readyCount++;
+		// 							}
+									
+		// 							//////////
+									
+									
+									
+		// 						}
+		// 					}
+		// 				}
+						
+		// 				if (readyCount == curBlock->iHolderSize) {
+		// 					curBlock->fillVBO();
+		// 				}
+						
+						
+		// 			}
+					
+					
+					
+					
+					
+					
+		// 		}
+		// 	}
+		// }
+		
+		
+		
+		
+		// {
+			
+			
+			
+			
+			
+			
+		// 	//curHolder = singleton->gw->getHolderAtCoords(ii, jj, kk, true);
+		// 	//curBlock = singleton->gw->getBlockAtId(curHolder->blockId);
+			
+			
+		// 	// if (curBlock == NULL) {
+		// 	// 	cout << "NULL BLOCK\n";
+		// 	// }
+		// 	// else {}
+			
+			
+		// 	// if (genCount >= 6) {
+		// 	// 	return;
+		// 	// }
+			
+			
+			
+			
+			
+		// }
+		
+		
+		
+		
 	}
 #undef LZZ_INLINE
  

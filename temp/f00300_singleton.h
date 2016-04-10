@@ -406,7 +406,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		
 		heightMapMaxInCells = HM_MAX_IN_CELLS;
 		//mapSampScale = 2.0f;
-		int newPitch = (imageHM0->width) * 2; //*2;
+		int newPitch = (imageHM0->width);// * 2; //*2;
 		mapPitch = (imageHM0->width); //newPitch;// //
 		int curMipSize = 0;
 		
@@ -414,7 +414,7 @@ void Singleton::init (int _defaultWinW, int _defaultWinH, int _scaleFactor)
 		paddingInCells = PADDING_IN_CELLS;
 		
 		cellsPerHolder = CELLS_PER_HOLDER;
-		holdersPerBlock = 8;
+		holdersPerBlock = 4;
 		
 		holdersPerWorld = newPitch;
 		cellsPerWorld = holdersPerWorld*cellsPerHolder;
@@ -8108,8 +8108,11 @@ void Singleton::checkFluid (GameFluid * gf)
 		
 		//(getAvailPD() < MAX_PDPOOL_SIZE)
 		
+		if (updateHolders) {
+			gw->rastHolder(iGetConst(E_CONST_RASTER_HOLDER_RAD), RH_FLAG_DOCHECK);
+		}
 		
-		gameLogic->loadNearestHolders(updateHolders);		
+		gameLogic->loadNearestHolders(2, updateHolders);		
 		return;
 		
 		
@@ -8155,7 +8158,7 @@ void Singleton::checkFluid (GameFluid * gf)
 			
 			if (gf->cycleTerminated) {
 				
-				gameLogic->loadNearestHolders(updateHolders);
+				gameLogic->loadNearestHolders(2, updateHolders);
 				holderLoadCount++;
 				
 				if (holderLoadCount == MAX_HOLDER_LOAD_COUNT) {
